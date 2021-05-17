@@ -569,7 +569,7 @@ This second vector can be thought of in two dimensions as a vector of width (x-a
 and in three dimensions as a vector of the width (x-axis), breadth (y-axis), and height (z-axis).
 
 Such a `Rect` can be constructed using the `FRect` or `FRect3D` functions that are exported by
-`AbstractPlotting.jl`.  See their documentation for more information.
+`Makie.jl`.  See their documentation for more information.
 """
 function update_limits!(scene::Scene, new_limits::Rect, padding::Vec3f0=scene.padding[])
     lims = FRect3D(new_limits)
@@ -585,4 +585,3 @@ function update_limits!(scene::Scene, new_limits::Rect, padding::Vec3f0=scene.pa
     scene.data_limits[] = FRect3D(minimum(lims) .- padd_abs, lim_w .+  2padd_abs)
     scene
 end
-

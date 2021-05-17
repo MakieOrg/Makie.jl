@@ -31,7 +31,7 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
 
 
 
-    bbox = lift(FRect2D ∘ AbstractPlotting.zero_origin, scenearea)
+    bbox = lift(FRect2D ∘ Makie.zero_origin, scenearea)
 
     roundedrectpoints = lift(roundedrectvertices, scenearea, cornerradius, cornersegments)
 
@@ -264,7 +264,7 @@ end
 
 function charbbs(text)
     glyphlayout = text._glyphlayout[]
-    if !(glyphlayout isa AbstractPlotting.Glyphlayout)
+    if !(glyphlayout isa Makie.Glyphlayout)
         error("Expected a single Glyphlayout from the textbox string, got a $(typeof(glyphlayout)).")
     end
     pos = Point2f0(text.position[])

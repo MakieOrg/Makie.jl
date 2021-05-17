@@ -25,7 +25,7 @@ This is the sequential logic by which conversions in Makie are attempted:
 Plotting of a `Circle` for example can be defined via a conversion into a vector of points:
 
 ```julia
-AbstractPlotting.convert_arguments(x::Circle) = (decompose(Point2f, x),)
+Makie.convert_arguments(x::Circle) = (decompose(Point2f, x),)
 ```
 
 !!! warning
@@ -34,19 +34,19 @@ AbstractPlotting.convert_arguments(x::Circle) = (decompose(Point2f, x),)
 You can restrict conversion to a subset of plot types, like only for scatter plots:
 
 ```julia
-AbstractPlotting.convert_arguments(P::Type{<:Scatter}, x::MyType) = convert_arguments(P, rand(10, 10))
+Makie.convert_arguments(P::Type{<:Scatter}, x::MyType) = convert_arguments(P, rand(10, 10))
 ```
 
 Conversion traits make it easier to define behavior for a group of plot types that share the same trait. `PointBased` for example applies to `Scatter`, `Lines`, etc. Predefined are `NoConversion`, `PointBased`, `SurfaceLike` and `VolumeLike`.
 
 ```julia
-AbstractPlotting.convert_arguments(P::PointBased, x::MyType) = ...
+Makie.convert_arguments(P::PointBased, x::MyType) = ...
 ```
 
 Lastly, it is also possible to convert multiple arguments together.
 
 ```julia
-AbstractPlotting.convert_arguments(P::Type{<:Scatter}, x::MyType, y::MyOtherType) = ...
+Makie.convert_arguments(P::Type{<:Scatter}, x::MyType, y::MyOtherType) = ...
 ```
 
 Optionally you may define the default plot type so that `plot(x::MyType)` will
@@ -58,7 +58,7 @@ plottype(::MyType) = Surface
 
 ### Single Argument Conversion with convert_single_argument
 
-Some types which are unknown to AbstractPlotting can be converted to other types, for which `convert_arguments` methods are available.
+Some types which are unknown to Makie can be converted to other types, for which `convert_arguments` methods are available.
 This is done with `convert_single_argument`.
 
 For example, `AbstractArrays` with `Real`s and `missing`s can usually be safely converted to `Float32` arrays with `NaN`s instead of `missing`s.
@@ -181,7 +181,7 @@ nothing # hide
 ```
 
 Then we get to the meat of the recipe, which is actually creating a plot method.
-We need to overload a specific method of `AbstractPlotting.plot!` which as its argument has a subtype of our new `StockChart` plot type.
+We need to overload a specific method of `Makie.plot!` which as its argument has a subtype of our new `StockChart` plot type.
 The type parameter of that type is a Tuple describing the argument types for which this method should work.
 
 Note that the input arguments we receive inside the `plot!` method, which we can extract by indexing into the `StockChart`, are automatically converted to Observables by Makie.
@@ -190,7 +190,7 @@ This means that we must construct our plotting function in a dynamic way so that
 This can be a bit trickier than recipes you might now from other plotting packages which produce mostly static plots.
 
 ```@example stocks
-function AbstractPlotting.plot!(
+function Makie.plot!(
         sc::StockChart{<:Tuple{AbstractVector{<:Real}, AbstractVector{<:StockValue}}})
 
     # our first argument is an observable of parametric type AbstractVector{<:Real}
@@ -231,7 +231,7 @@ function AbstractPlotting.plot!(
 
     # connect `update_plot` so that it is called whenver `times`
     # or `stockvalues` change
-    AbstractPlotting.Observables.onany(update_plot, times, stockvalues)
+    Makie.Observables.onany(update_plot, times, stockvalues)
 
     # then call it once manually with the first `times` and `stockvalues`
     # contents so we prepopulate all observables with correct values

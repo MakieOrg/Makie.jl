@@ -9,7 +9,7 @@ surface
 ```@example
 using GLMakie
 GLMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 xs = LinRange(0, 10, 100)
 ys = LinRange(0, 15, 100)
@@ -23,7 +23,7 @@ using SparseArrays
 using LinearAlgebra
 using GLMakie
 GLMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 # This example was provided by Moritz Schauer (@mschauer).
 

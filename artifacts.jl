@@ -23,7 +23,7 @@ using LibGit2
 
 version = v"0.1.2"
 user = "JuliaPlots"
-repo = "AbstractPlotting.jl"
+repo = "Makie.jl"
 host = "https://github.com/$user/$repo/releases/download"
 
 build_path = joinpath(@__DIR__, "build")

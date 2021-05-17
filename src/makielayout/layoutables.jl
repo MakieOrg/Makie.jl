@@ -40,7 +40,7 @@ macro Layoutable(name::Symbol, fields::Expr = Expr(:block))
     end
 
     push!(allfields, constructor)
-    
+
     structdef
 end
 
@@ -52,9 +52,9 @@ end
 can_be_current_axis(x) = false
 
 function _layoutable(T::Type{<:Layoutable},
-        fp::Union{AbstractPlotting.FigurePosition, AbstractPlotting.FigureSubposition}, args...; kwargs...)
+        fp::Union{Makie.FigurePosition, Makie.FigureSubposition}, args...; kwargs...)
 
-    fig = AbstractPlotting.get_figure(fp)
+    fig = Makie.get_figure(fp)
     l = fp[] = _layoutable(T, fig, args...; kwargs...)
     l
 end
@@ -63,7 +63,7 @@ function _layoutable(T::Type{<:Layoutable}, fig::Figure, args...; kwargs...)
     l = layoutable(T, fig, args...; kwargs...)
     register_in_figure!(fig, l)
     if can_be_current_axis(l)
-        AbstractPlotting.current_axis!(fig, l)
+        Makie.current_axis!(fig, l)
     end
     l
 end
@@ -78,7 +78,7 @@ Get the scene which layoutables need from their parent to plot stuff into
 """
 get_topscene(f::Figure) = f.scene
 function get_topscene(s::Scene)
-    if !(s.camera_controls[] isa AbstractPlotting.PixelCamera)
+    if !(s.camera_controls[] isa Makie.PixelCamera)
         error("Can only use scenes with PixelCamera as topscene")
     end
     s
@@ -95,7 +95,7 @@ function register_in_figure!(fig::Figure, @nospecialize layoutable::Layoutable)
 end
 
 
-# almost like in AbstractPlotting
+# almost like in Makie
 # make fields type inferrable
 # just access attributes directly instead of via indexing detour
 

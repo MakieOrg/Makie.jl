@@ -41,7 +41,7 @@ arrows
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure(resolution = (800, 800))
 Axis(f[1, 1], backgroundcolor = "black")
@@ -61,7 +61,7 @@ f
 ```@example 1
 using GLMakie
 GLMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 ps = [Point3f0(x, y, z) for x in -5:2:5 for y in -5:2:5 for z in -5:2:5]
 ns = map(p -> 0.1 * Vec3f0(p[2], p[3], p[1]), ps)

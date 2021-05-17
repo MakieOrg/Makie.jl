@@ -9,8 +9,8 @@ poly
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-using AbstractPlotting.GeometryBasics
-AbstractPlotting.inline!(true) # hide
+using Makie.GeometryBasics
+Makie.inline!(true) # hide
 
 f = Figure()
 Axis(f[1, 1])
@@ -20,12 +20,11 @@ poly!(Point2f0[(0, 0), (2, 0), (3, 1), (1, 1)], color = :red, strokecolor = :bla
 f
 ```
 
-
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-using AbstractPlotting.GeometryBasics
-AbstractPlotting.inline!(true) # hide
+using Makie.GeometryBasics
+Makie.inline!(true) # hide
 
 f = Figure()
 Axis(f[1, 1])
@@ -41,12 +40,11 @@ poly!(p, color = :blue)
 f
 ```
 
-
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-using AbstractPlotting.GeometryBasics
-AbstractPlotting.inline!(true) # hide
+using Makie.GeometryBasics
+Makie.inline!(true) # hide
 
 f = Figure()
 Axis(f[1, 1])
@@ -61,13 +59,11 @@ poly!(
 f
 ```
 
-
-
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-using AbstractPlotting.GeometryBasics
-AbstractPlotting.inline!(true) # hide
+using Makie.GeometryBasics
+Makie.inline!(true) # hide
 
 f = Figure()
 Axis(f[1, 1], aspect = DataAspect())
@@ -78,12 +74,11 @@ poly!(Circle(Point2f0(0, 0), 15f0), color = :pink)
 f
 ```
 
-
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-using AbstractPlotting.GeometryBasics
-AbstractPlotting.inline!(true) # hide
+using Makie.GeometryBasics
+Makie.inline!(true) # hide
 
 f = Figure()
 Axis(f[1, 1])

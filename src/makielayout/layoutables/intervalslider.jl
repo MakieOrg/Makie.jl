@@ -83,7 +83,7 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
     end
 
     # initialize slider value with closest from range
-    selected_indices[] = if startvalues[] === AbstractPlotting.automatic
+    selected_indices[] = if startvalues[] === Makie.automatic
         (1, lastindex(sliderrange[]))
     else
         closest_index.(Ref(sliderrange[]), startvalues[])
@@ -105,11 +105,11 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
         [ci, ci]
     end
 
-    endbuttons = scatter!(topscene, endpoints, color = endbuttoncolors, 
+    endbuttons = scatter!(topscene, endpoints, color = endbuttoncolors,
         markersize = linewidth, strokewidth = 0, raw = true, inspectable = false)
     decorations[:endbuttons] = endbuttons
 
-    linesegs = linesegments!(topscene, linepoints, color = linecolors, 
+    linesegs = linesegments!(topscene, linepoints, color = linecolors,
         linewidth = linewidth, raw = true, inspectable = false)
     decorations[:linesegments] = linesegs
 
@@ -126,7 +126,7 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
         end
     end
     buttonsizes = @lift($linewidth .* $button_magnifications)
-    buttons = scatter!(topscene, middlepoints, color = color_active, strokewidth = 0, 
+    buttons = scatter!(topscene, middlepoints, color = color_active, strokewidth = 0,
         markersize = buttonsizes, raw = true, inspectable = false)
     decorations[:buttons] = buttons
 
@@ -213,7 +213,7 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
     onmouseleftdown(mouseevents) do event
 
         pos = event.px
-        
+
         dim = horizontal[] ? 1 : 2
         frac = clamp(
             (pos[dim] - endpoints[][1][dim]) / (endpoints[][2][dim] - endpoints[][1][dim]),
@@ -240,7 +240,7 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
     end
 
     onmouseleftdoubleclick(mouseevents) do event
-        selected_indices[] = selected_indices[] = if startvalues[] === AbstractPlotting.automatic
+        selected_indices[] = selected_indices[] = if startvalues[] === Makie.automatic
             (1, lastindex(sliderrange[]))
         else
             closest_index.(Ref(sliderrange[]), startvalues[])

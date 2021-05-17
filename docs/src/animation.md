@@ -4,7 +4,6 @@ With Makie it is easy to create animated plots.
 Animations work by making changes to data or plot attribute Observables and recording the changing figure frame by frame.
 You can find out more about the Observables workflow on the [Observables & Interaction](@ref) page.
 
-
 ## A simple example
 
 To create an animation you need to use the [`record`](@ref) function.
@@ -20,7 +19,7 @@ As a start, here is how you can change the color of a line plot:
 ```@example 1
 using GLMakie
 GLMakie.activate!() # hide
-using AbstractPlotting.Colors
+using Makie.Colors
 
 fig, ax, lineplot = lines(0..10, sin; linewidth=10)
 
@@ -34,6 +33,7 @@ record(fig, "color_animation.mp4", hue_iterator; framerate = framerate) do hue
 end
 nothing # hide
 ```
+
 ![color animation](color_animation.mp4)
 
 Passing a function as the first argument is usually done with Julia's `do`-notation, which you might not be familiar with.
@@ -47,7 +47,6 @@ end
 record(change_function, fig, "color_animation.mp4", hue_iterator; framerate = framerate)
 ```
 
-
 ## File formats
 
 Video files are created with [`FFMPEG.jl`](https://github.com/JuliaIO/FFMPEG.jl).
@@ -57,7 +56,6 @@ You can choose from the following file formats:
 - `.mp4` (good for web, widely supported)
 - `.webm` (smallest file size)
 - `.gif` (lowest quality with largest file size)
-
 
 ## Animations using `Observables`
 

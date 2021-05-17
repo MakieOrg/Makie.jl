@@ -9,7 +9,7 @@ heatmap
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 
 f = Figure()

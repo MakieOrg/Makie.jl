@@ -1,4 +1,4 @@
-using AbstractPlotting:
+using Makie:
     NoConversion,
     convert_arguments,
     conversion_trait,
@@ -71,27 +71,27 @@ end
 
     pts = [Point(1, 2), Point(4,5), Point(10, 8), Point(1, 2)]
     ls=LineString(pts)
-    p = convert_arguments(AbstractPlotting.PointBased(), ls)
+    p = convert_arguments(Makie.PointBased(), ls)
     @test p[1] == pts
 
     pts1 = [Point(5, 2), Point(4,8), Point(2, 8), Point(5, 2)]
     ls1 = LineString(pts1)
     lsa = [ls, ls1]
-    p1 = convert_arguments(AbstractPlotting.PointBased(), lsa)
+    p1 = convert_arguments(Makie.PointBased(), lsa)
     @test p1[1][1:4] == pts
     @test p1[1][6:9] == pts1
 
     mls = MultiLineString(lsa)
-    p2 = convert_arguments(AbstractPlotting.PointBased(), mls)
+    p2 = convert_arguments(Makie.PointBased(), mls)
     @test p2[1][1:4] == pts
     @test p2[1][6:9] == pts1
 
     pol_e = Polygon(ls)
-    p3_e = convert_arguments(AbstractPlotting.PointBased(), pol_e)
+    p3_e = convert_arguments(Makie.PointBased(), pol_e)
     @test p3_e[1] == pts
 
     pol = Polygon(ls, [ls1])
-    p3 = convert_arguments(AbstractPlotting.PointBased(), pol)
+    p3 = convert_arguments(Makie.PointBased(), pol)
     @test p3[1][1:4] == pts
     @test p3[1][6:9] == pts1
 
@@ -103,7 +103,7 @@ end
     ls4 = LineString(pts4)
     pol1 = Polygon(ls2, [ls3, ls4])
     apol = [pol, pol1]
-    p4 = convert_arguments(AbstractPlotting.PointBased(), apol)
+    p4 = convert_arguments(Makie.PointBased(), apol)
     mpol = MultiPolygon([pol, pol1])
     @test p4[1][1:4] == pts
     @test p4[1][6:9] == pts1
@@ -112,7 +112,7 @@ end
     @test p4[1][22:26] == pts4
 end
 
-using AbstractPlotting: check_line_pattern, line_diff_pattern
+using Makie: check_line_pattern, line_diff_pattern
 
 @testset "Linetype" begin
     @test isnothing(check_line_pattern("-."))
@@ -160,8 +160,8 @@ end
     mynestedvector = MyNestedVector(MyVector(collect(11:20)))
     @test_throws ErrorException convert_arguments(Lines, myvector, mynestedvector)
 
-    AbstractPlotting.convert_single_argument(v::MyNestedVector) = v.v
-    AbstractPlotting.convert_single_argument(v::MyVector) = v.v
+    Makie.convert_single_argument(v::MyNestedVector) = v.v
+    Makie.convert_single_argument(v::MyVector) = v.v
 
     @test convert_arguments(Lines, myvector, mynestedvector) == (Point2f0.(1:10, 11:20),)
 

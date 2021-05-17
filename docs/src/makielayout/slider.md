@@ -16,7 +16,6 @@ You can double-click the slider to reset it (approximately) to the value present
 
 If you set the attribute `snap = false`, the slider will move continously while dragging and only jump to the closest available value when releasing the mouse.
 
-
 ```@example
 using GLMakie
 
@@ -38,7 +37,7 @@ fig
 
 ## Labelled slider convenience functions
 
-To create a horizontal layout containing a label, a slider, and a value label, use the convenience function [`AbstractPlotting.MakieLayout.labelslider!`](@ref), or, if you need multiple aligned rows of sliders, use [`AbstractPlotting.MakieLayout.labelslidergrid!`](@ref).
+To create a horizontal layout containing a label, a slider, and a value label, use the convenience function [`Makie.MakieLayout.labelslider!`](@ref), or, if you need multiple aligned rows of sliders, use [`Makie.MakieLayout.labelslidergrid!`](@ref).
 
 ```@example
 using GLMakie

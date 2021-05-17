@@ -9,7 +9,7 @@ errorbars
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure()
 Axis(f[1, 1])
@@ -28,11 +28,10 @@ scatter!(xs, ys, markersize = 3, color = :black)
 f
 ```
 
-
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure()
 Axis(f[1, 1])
@@ -53,11 +52,10 @@ scatter!(xs, ys, markersize = 3, color = :black)
 f
 ```
 
-
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure()
 Axis(f[1, 1])

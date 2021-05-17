@@ -7,7 +7,7 @@ contourf
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 xs = LinRange(0, 10, 100)
 ys = LinRange(0, 10, 100)
@@ -23,11 +23,10 @@ Colorbar(f[1, 2], co)
 f
 ```
 
-
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 xs = LinRange(0, 10, 100)
 ys = LinRange(0, 10, 100)
@@ -44,11 +43,10 @@ Colorbar(f[1, 2], co)
 f
 ```
 
-
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 xs = LinRange(0, 10, 100)
 ys = LinRange(0, 10, 100)
@@ -75,10 +73,10 @@ to `:relative` and specify the levels from 0 to 1, relative to the current minim
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 
-using AbstractPlotting.KernelDensity
+using Makie.KernelDensity
 
 k = kde([randn() + rand([0, 5]) for i in 1:10000, j in 1:2])
 

@@ -57,7 +57,7 @@ function _get_isoband_levels(::Val{:relative}, levels::AbstractVector, values)
 end
 
 
-function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}})
+function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}})
     xs, ys, zs = c[1:3]
 
 

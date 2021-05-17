@@ -31,7 +31,7 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene, heatmap::Union{Heatmap, Im
     )
 end
 
-function layoutable(::Type{<:Colorbar}, fig_or_scene, contourf::AbstractPlotting.Contourf; kwargs...)
+function layoutable(::Type{<:Colorbar}, fig_or_scene, contourf::Makie.Contourf; kwargs...)
 
     for key in (:colormap, :limits, :highclip, :lowclip)
         if key in keys(kwargs)
@@ -82,11 +82,11 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
     # make the layout width and height settings depend on `size` if they are set to automatic
     # and determine whether they are nothing or `size` depending on colorbar orientation
     _width = lift(Any, attrs.size, attrs.width, vertical) do sz, w, v
-        w === AbstractPlotting.automatic ? (v ? sz : nothing) : w
+        w === Makie.automatic ? (v ? sz : nothing) : w
     end
 
     _height = lift(Any, attrs.size, attrs.height, vertical) do sz, h, v
-        h === AbstractPlotting.automatic ? (v ? nothing : sz) : h
+        h === Makie.automatic ? (v ? nothing : sz) : h
     end
 
     layoutobservables = LayoutObservables{Colorbar}(_width, _height, attrs.tellwidth, attrs.tellheight,
@@ -131,9 +131,9 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         else
             # this is a bit weird, first convert to a vector of colors,
             # then use cgrad, but at least I can use `get` on that later
-            converted = AbstractPlotting.convert_attribute(
+            converted = Makie.convert_attribute(
                 cmap,
-                AbstractPlotting.key"colormap"()
+                Makie.key"colormap"()
             )
             cgrad(converted)
         end

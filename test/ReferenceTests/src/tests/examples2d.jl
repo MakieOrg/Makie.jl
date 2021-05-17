@@ -35,7 +35,7 @@ end
 
 @cell "image" begin
     fig = Figure()
-    image(fig[1,1], AbstractPlotting.logo(), axis = (; aspect = DataAspect()))
+    image(fig[1,1], Makie.logo(), axis = (; aspect = DataAspect()))
     image(fig[1, 2], RNG.rand(100, 500), axis = (; aspect = DataAspect()))
     fig
 end
@@ -231,7 +231,7 @@ end
 
     xs = 0:9        # data
     ys = zeros(10)
-    colors = AbstractPlotting.default_palettes.color[]
+    colors = Makie.default_palettes.color[]
     plots = map(1:N) do i # plot lines
         lines!(ax,
             xs, ys;
@@ -241,10 +241,10 @@ end
         ) # plot lines with colors
     end
     fig
-    AbstractPlotting.step!(st)
+    Makie.step!(st)
 
     for (i, rot) in enumerate(LinRange(0, π / 2, N))
-        AbstractPlotting.rotate!(plots[i], rot)
+        Makie.rotate!(plots[i], rot)
         arc!(ax,
             Point2f0(0),
             (8 - i),
@@ -256,7 +256,7 @@ end
         )
     end
 
-    AbstractPlotting.step!(st)
+    Makie.step!(st)
     fig
 end
 

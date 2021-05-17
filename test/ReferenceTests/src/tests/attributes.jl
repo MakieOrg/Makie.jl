@@ -1,4 +1,4 @@
-using AbstractPlotting: volume
+using Makie: volume
 
 @cell "align" begin
     fig, ax, sc = scatter(RNG.rand(10), color=:red)

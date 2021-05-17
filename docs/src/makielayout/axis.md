@@ -21,13 +21,11 @@ ax = Axis(f[1, 1], xlabel = "x label", ylabel = "y label",
 f
 ```
 
-
 ## Plotting into an Axis
 
 You can use all the normal mutating 2D plotting functions with an `Axis`.
 These functions return the created plot object.
 Omitting the `ax` argument plots into the `current_axis()`, which is usually the axis that was last created.
-
 
 ```@example laxis
 lineobject = lines!(ax, 0..10, sin, color = :red)
@@ -44,7 +42,7 @@ You can also remove all plots with `empty!(ax)`.
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure()
 
@@ -59,7 +57,6 @@ empty!(axs[3])
 
 f
 ```
-
 
 ## Setting Axis limits and reversing axes
 
@@ -76,7 +73,7 @@ but they will be changed to fit the chosen ratio.
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure()
 
@@ -106,7 +103,7 @@ The user-defined limits are stored in `ax.limits`. This can either be a tuple wi
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure()
 
@@ -229,7 +226,6 @@ end
 fig
 ```
 
-
 ## Hiding Axis spines and decorations
 
 You can hide all axis elements manually, by setting their specific visibility attributes to `false`, like
@@ -250,7 +246,6 @@ hidespines!(ax2, :t, :r) # only top and right
 
 f
 ```
-
 
 To hide decorations, you can use `hidedecorations!`, or the specific `hidexdecorations!` and `hideydecorations!`.
 When hiding, you can set `label = false`, `ticklabels = false`, `ticks = false`, `grid = false`, `minorgrid = false` or `minorticks = false` as keyword
@@ -286,7 +281,7 @@ data = LinRange(0.01, 0.99, 200)
 
 f = Figure(resolution = (800, 800))
 
-for (i, scale) in enumerate([identity, log10, log2, log, sqrt, AbstractPlotting.logit])
+for (i, scale) in enumerate([identity, log10, log2, log, sqrt, Makie.logit])
 
     row, col = fldmod1(i, 2)
     Axis(f[row, col], yscale = scale, title = string(scale),
@@ -329,7 +324,6 @@ same aspect ratio. This is the easiest to use with images.
 A different aspect ratio can only reduce the axis space that is being used, also
 it necessarily has to break the layout a little bit.
 
-
 ```@example
 using CairoMakie
 using FileIO
@@ -366,7 +360,6 @@ axes[2, 3].aspect = AxisAspect(2/3)
 
 f
 ```
-
 
 ## Controlling data aspect ratios
 
@@ -440,7 +433,6 @@ nothing # hide
 
 ![example circle aspect ratios](example_circle_aspect_ratios.mp4)
 
-
 ## Linking axes
 
 You can link axes to each other. Every axis simply keeps track of a list of other
@@ -476,7 +468,6 @@ end
 f
 ```
 
-
 ## Changing x and y axis position
 
 By default, the x axis is at the bottom, and the y axis at the left side.
@@ -497,7 +488,6 @@ end
 
 f
 ```
-
 
 ## Creating a twin axis
 
@@ -546,7 +536,6 @@ You can reset the limits with `ctrl + leftclick`. This is the same as doing `res
 You can alternatively press `ctrl + shift + leftclick`, which is the same as calling `autolimits!(ax)`.
 This function ignores previously set limits and computes them all anew given the axis content.
 
-
 ### Rectangle Selection Zoom
 
 Left-click and drag zooms into the selected rectangular area.
@@ -556,7 +545,6 @@ You can also restrict the selection zoom dimensions all the time by setting the 
 ### Custom Interactions
 
 The interaction system is an additional abstraction upon Makie's low-level event system to make it easier to quickly create your own interaction patterns.
-
 
 #### Registering and deregistering interactions
 
@@ -572,6 +560,7 @@ Often, you don't want to remove an interaction entirely but only disable it for 
 You can use the functions `activate_interaction!(ax, name::Symbol)` and `deactivate_interaction!(ax, name::Symbol)` for that.
 
 #### `Function` Interaction
+
 If `interaction` is a `Function`, it should accept two arguments, which correspond to an event and the axis.
 This function will then be called whenever the axis generates an event.
 
@@ -628,7 +617,6 @@ register_interaction!(ax, :left_and_right, MyInteraction(false, false))
 
 Some interactions might have more complex state involving plot objects that need to be setup or removed.
 For those purposes, you can overload the methods `registration_setup!(parent, interaction)` and `deregistration_cleanup!(parent, interaction)` which are called during registration and deregistration, respectively.
-
 
 ## Special Plots
 

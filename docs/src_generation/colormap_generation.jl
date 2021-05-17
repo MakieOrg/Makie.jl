@@ -1,4 +1,4 @@
-using AbstractPlotting.PlotUtils, AbstractPlotting.Colors
+using Makie.PlotUtils, Makie.Colors
 
 ################################################################################
 #                              Colormap reference                              #
@@ -34,7 +34,7 @@ function colors_svg(key::Symbol, cs, w, h; categorical)
             <stop offset="$((i - 1) / (n - 1))" stop-color="#$(hex(convert(RGB, c)))" />
             """
         end
-            
+
         html *= """
         </linearGradient>
         </defs>

@@ -72,9 +72,9 @@ function default_attributes(::Type{Axis}, scene)
         "Controls if the yticklabels are visible."
         yticklabelsvisible = true
         "The space reserved for the xticklabels."
-        xticklabelspace = AbstractPlotting.automatic
+        xticklabelspace = Makie.automatic
         "The space reserved for the yticklabels."
-        yticklabelspace = AbstractPlotting.automatic
+        yticklabelspace = Makie.automatic
         "The space between xticks and xticklabels."
         xticklabelpad = 2f0
         "The space between yticks and yticklabels."
@@ -84,9 +84,9 @@ function default_attributes(::Type{Axis}, scene)
         "The counterclockwise rotation of the yticklabels in radians."
         yticklabelrotation = 0f0
         "The horizontal and vertical alignment of the xticklabels."
-        xticklabelalign = AbstractPlotting.automatic
+        xticklabelalign = Makie.automatic
         "The horizontal and vertical alignment of the yticklabels."
-        yticklabelalign = AbstractPlotting.automatic
+        yticklabelalign = Makie.automatic
         "The size of the xtick marks."
         xticksize = 6f0
         "The size of the ytick marks."
@@ -188,23 +188,23 @@ function default_attributes(::Type{Axis}, scene)
         "The relative margins added to the autolimits in y direction."
         yautolimitmargin = (0.05f0, 0.05f0)
         "The xticks."
-        xticks = AbstractPlotting.automatic
+        xticks = Makie.automatic
         "Format for xticks."
-        xtickformat = AbstractPlotting.automatic
+        xtickformat = Makie.automatic
         "The yticks."
-        yticks = AbstractPlotting.automatic
+        yticks = Makie.automatic
         "Format for yticks."
-        ytickformat = AbstractPlotting.automatic
+        ytickformat = Makie.automatic
         "The button for panning."
-        panbutton = AbstractPlotting.Mouse.right
+        panbutton = Makie.Mouse.right
         "The key for limiting panning to the x direction."
-        xpankey = AbstractPlotting.Keyboard.x
+        xpankey = Makie.Keyboard.x
         "The key for limiting panning to the y direction."
-        ypankey = AbstractPlotting.Keyboard.y
+        ypankey = Makie.Keyboard.y
         "The key for limiting zooming to the x direction."
-        xzoomkey = AbstractPlotting.Keyboard.x
+        xzoomkey = Makie.Keyboard.x
         "The key for limiting zooming to the y direction."
-        yzoomkey = AbstractPlotting.Keyboard.y
+        yzoomkey = Makie.Keyboard.y
         "The position of the x axis (`:bottom` or `:top`)."
         xaxisposition = :bottom
         "The position of the y axis (`:left` or `:right`)."
@@ -297,11 +297,11 @@ function default_attributes(::Type{Colorbar}, scene)
         "Controls if the tick marks are visible."
         ticksvisible = true
         "The ticks."
-        ticks = AbstractPlotting.automatic
+        ticks = Makie.automatic
         "Format for ticks."
-        tickformat = AbstractPlotting.automatic
+        tickformat = Makie.automatic
         "The space reserved for the tick labels."
-        ticklabelspace = AbstractPlotting.automatic
+        ticklabelspace = Makie.automatic
         "The gap between tick labels and tick marks."
         ticklabelpad = 3f0
         "The alignment of the tick marks relative to the axis spine (0 = out, 1 = in)."
@@ -311,7 +311,7 @@ function default_attributes(::Type{Colorbar}, scene)
         "The color of the tick marks."
         tickcolor = RGBf0(0, 0, 0)
         "The horizontal and vertical alignment of the tick labels."
-        ticklabelalign = AbstractPlotting.automatic
+        ticklabelalign = Makie.automatic
         "The rotation of the ticklabels"
         ticklabelrotation = 0f0
         "The line width of the spines."
@@ -343,9 +343,9 @@ function default_attributes(::Type{Colorbar}, scene)
         "Flips the colorbar label if the axis is vertical."
         flip_vertical_label = false
         "The width setting of the colorbar. Use `size` to set width or height relative to colorbar orientation instead."
-        width = AbstractPlotting.automatic
+        width = Makie.automatic
         "The height setting of the colorbar."
-        height = AbstractPlotting.automatic
+        height = Makie.automatic
         "Controls if the parent layout can adjust to this element's width"
         tellwidth = true
         "Controls if the parent layout can adjust to this element's height"
@@ -557,8 +557,8 @@ function default_attributes(::Type{LineAxis})
         tickwidth = 1f0,
         tickcolor = RGBf0(0, 0, 0),
         tickalign = 0f0,
-        ticks = AbstractPlotting.automatic,
-        tickformat = AbstractPlotting.automatic,
+        ticks = Makie.automatic,
+        tickformat = Makie.automatic,
         ticklabelalign = (:center, :top),
         ticksvisible = true,
         ticklabelrotation = 0f0,
@@ -570,7 +570,7 @@ function default_attributes(::Type{LineAxis})
         labelsize = 20f0,
         labelcolor = RGBf0(0, 0, 0),
         labelvisible = true,
-        ticklabelspace = AbstractPlotting.automatic,
+        ticklabelspace = Makie.automatic,
         ticklabelpad = 3f0,
         labelpadding = 5f0,
         reversed = false,
@@ -579,7 +579,7 @@ function default_attributes(::Type{LineAxis})
         minorticksize = 4f0,
         minortickwidth = 1f0,
         minortickcolor = :black,
-        minorticks = AbstractPlotting.automatic,
+        minorticks = Makie.automatic,
         scale = identity,
     )
 end
@@ -649,7 +649,7 @@ function default_attributes(::Type{IntervalSlider}, scene)
         "Controls if the parent layout can adjust to this element's height"
         tellheight = true
         "The start values of the slider or the values that are closest in the slider range."
-        startvalues = AbstractPlotting.automatic
+        startvalues = Makie.automatic
         "The current interval of the slider. Don't set this manually, use the function `set_close_to!`."
         interval = (0, 0)
         "The width of the slider line"
@@ -1043,17 +1043,17 @@ function default_attributes(::Type{Axis3}, scene)
         "The z label font"
         zlabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
         "The x label rotation"
-        xlabelrotation = AbstractPlotting.automatic
+        xlabelrotation = Makie.automatic
         "The y label rotation"
-        ylabelrotation = AbstractPlotting.automatic
+        ylabelrotation = Makie.automatic
         "The z label rotation"
-        zlabelrotation = AbstractPlotting.automatic
+        zlabelrotation = Makie.automatic
         "The x label align"
-        xlabelalign = AbstractPlotting.automatic
+        xlabelalign = Makie.automatic
         "The y label align"
-        ylabelalign = AbstractPlotting.automatic
+        ylabelalign = Makie.automatic
         "The z label align"
-        zlabelalign = AbstractPlotting.automatic
+        zlabelalign = Makie.automatic
         "The x label offset"
         xlabeloffset = 40
         "The y label offset"
@@ -1129,11 +1129,11 @@ function default_attributes(::Type{Axis3}, scene)
         "The z ticks"
         zticks = WilkinsonTicks(5; k_min = 3)
         "The x tick format"
-        xtickformat = AbstractPlotting.automatic
+        xtickformat = Makie.automatic
         "The y tick format"
-        ytickformat = AbstractPlotting.automatic
+        ytickformat = Makie.automatic
         "The z tick format"
-        ztickformat = AbstractPlotting.automatic
+        ztickformat = Makie.automatic
         "The axis title string."
         title = ""
         "The font family of the title."

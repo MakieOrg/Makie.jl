@@ -1,15 +1,13 @@
-
 # Inspecting Data
 
-Makie provides a data inspection tool via `DataInspector(x)` where x can be a 
-figure, axis or scene. With it you get a floating tooltip with relevant 
-information for various plots by hovering over one of its elements. 
+Makie provides a data inspection tool via `DataInspector(x)` where x can be a
+figure, axis or scene. With it you get a floating tooltip with relevant
+information for various plots by hovering over one of its elements.
 
 By default the inspector will be able to pick any plot other than `text` and
 `volume` based plots. If you wish to ignore a plot, you can set its attribute
 `plot.inspectable[] = false`. With that the next closest plot (in range) will be
-picked. 
-
+picked.
 
 ## Attributes of `DataInspector`
 
@@ -28,20 +26,19 @@ The `inspector = DataInspector(fig)` contains the following attributes:
 - `outline_linewidth = 2`: Linewidth of the tooltip outline.
 - `indicator_color = :red`: Color of the selection indicator.
 - `indicator_linewidth = 2`: Linewidth of the selection indicator.
-- `indicator_linestyle = nothing`: Linestyle of the selection indicator  
+- `indicator_linestyle = nothing`: Linestyle of the selection indicator
 - `tooltip_align = (:center, :top)`: Default position of the tooltip relative to the cursor or current selection. The real align may adjust to keep the tooltip in view.
-- `tooltip_offset = Vec2f0(20)`: Offset from the indicator to the tooltip.  
+- `tooltip_offset = Vec2f0(20)`: Offset from the indicator to the tooltip.
 - `depth = 9e3`: Depth value of the tooltip. This should be high so that the tooltip is always in front.
 - `priority = 100`: The priority of creating a tooltip on a mouse movement or scrolling event.
-
 
 ## Extending the `DataInspector`
 
 The inspector implements tooltips for primitive plots and a few non-primitive
-(i.e. a recipe) plots. All other plots will fall back to tooltips of their 
-hovered child. While this means that most plots have a tooltip it also means 
+(i.e. a recipe) plots. All other plots will fall back to tooltips of their
+hovered child. While this means that most plots have a tooltip it also means
 many may not have a fitting one. If you wish to implement a more fitting tooltip
-for non-primitive plot you may do so by creating a method 
+for non-primitive plot you may do so by creating a method
 
 ```julia
 function show_data(inspector::DataInspector, my_plot::MyPlot, idx, primitive_child::SomePrimitive)
@@ -49,20 +46,20 @@ function show_data(inspector::DataInspector, my_plot::MyPlot, idx, primitive_chi
 end
 ```
 
-Here `my_plot` is the plot you want to create a custom tooltip for, 
+Here `my_plot` is the plot you want to create a custom tooltip for,
 `primitive_child` is one of the primitives your plot is made from and `idx` is
-the index into that primitive plot. The latter two are the result from 
-`pick_sorted` at the mouseposition. In general you will need to adjust `idx` to 
+the index into that primitive plot. The latter two are the result from
+`pick_sorted` at the mouseposition. In general you will need to adjust `idx` to
 be useful for `MyPlot`.
 
-Let's take a look at the `BarPlot` overload, which also powers `hist`. It 
-contains two primitive plots - `Mesh` and `Lines`. The `idx` from picking a 
+Let's take a look at the `BarPlot` overload, which also powers `hist`. It
+contains two primitive plots - `Mesh` and `Lines`. The `idx` from picking a
 `Mesh` is based on vertices, which there are four per rectangle. From `Lines` we
-get an index based on the end point of the line. To draw the outline of a 
+get an index based on the end point of the line. To draw the outline of a
 rectangle we need 5 points and a seperator, totaling 6. We thus implement
 
 ```julia
-import AbstractPlotting: show_data
+import Makie: show_data
 
 function show_data(inspector::DataInspector, plot::BarPlot, idx, ::Lines)
     return show_barplot(inspector, plot, div(idx-1, 6)+1)
@@ -76,18 +73,18 @@ end
 to map the primitive `idx` to one relevant for `BarPlot`. With this we can now
 get the position of the hovered bar with `plot[1][][idx]`. To align the tooltip
 to the selection we need to compute the relevant position in screen space and
-update the tooltip position. 
+update the tooltip position.
 
 ```julia
-using AbstractPlotting: parent_scene, shift_project, update_tooltip_alignment!, position2string
+using Makie: parent_scene, shift_project, update_tooltip_alignment!, position2string
 
 function show_barplot(inspector::DataInspector, plot::BarPlot, idx)
     # All the attributes of DataInspector are here
     a = inspector.plot.attributes
-    
+
     # Get the scene BarPlot lives in
     scene = parent_scene(plot)
-    
+
     # Get the hovered world-space position
     pos = plot[1][][idx]
     # project to screen space and shift it to be correct on the root scene
@@ -108,12 +105,12 @@ end
 
 Next we need to mark the rectangle we are hovering. In this case we can use the
 rectangles which `BarPlot` passes to `Poly`, i.e. `plot.plots[1][1][][idx]`. The
-`DataInspector` contains some functionality for keeping track of temporary plots, 
+`DataInspector` contains some functionality for keeping track of temporary plots,
 so we can plot the indicator to the same `scene` that `BarPlot` uses. Doing so
 results in
 
 ```julia
-using AbstractPlotting: 
+using Makie:
     parent_scene, shift_project, update_tooltip_alignment!, position2string,
     clear_temporary_plots!
 
@@ -121,13 +118,13 @@ using AbstractPlotting:
 function show_barplot(inspector::DataInspector, plot::BarPlot, idx)
     a = inspector.plot.attributes
     scene = parent_scene(plot)
-        
+
     pos = plot[1][][idx]
     proj_pos = shift_project(scene, to_ndim(Point3f0, pos, 0))
     update_tooltip_alignment!(inspector, proj_pos)
 
     # Get the rectangle BarPlot generated for Poly
-    # `_bbox2D` is a node meant for saving a `Rect2D` indicator. There is also 
+    # `_bbox2D` is a node meant for saving a `Rect2D` indicator. There is also
     # a `_bbox3D`. Here we keep `_bbox2D` updated and use it as a source for
     # our custom indicator.
     a._bbox2D[] = plot.plots[1][1][][idx]
@@ -144,7 +141,7 @@ function show_barplot(inspector::DataInspector, plot::BarPlot, idx)
         # control whether indicator is visible or not `a._bbox_visible` is set
         # instead, so it should be in any custom indicator like this.
         p = wireframe!(
-            scene, a._bbox2D, model = a._model, color = a.indicator_color, 
+            scene, a._bbox2D, model = a._model, color = a.indicator_color,
             strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
             visible = a._bbox_visible, show_axis = false, inspectable = false
         )

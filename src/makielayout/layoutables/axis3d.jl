@@ -68,7 +68,7 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
 
     add_ticks_and_ticklabels!(topscene, scene, 1, finallimits, ticknode_1, mi1, mi2, mi3, attrs, azimuth)
     add_ticks_and_ticklabels!(topscene, scene, 2, finallimits, ticknode_2, mi2, mi1, mi3, attrs, azimuth)
-    add_ticks_and_ticklabels!(topscene, scene, 3, finallimits, ticknode_3, mi3, mi1, mi2, attrs, azimuth)   
+    add_ticks_and_ticklabels!(topscene, scene, 3, finallimits, ticknode_3, mi3, mi1, mi2, attrs, azimuth)
 
     titlepos = lift(scene.px_area, attrs.titlegap, attrs.titlealign) do a, titlegap, align
 
@@ -100,7 +100,7 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
         font = attrs.titlefont,
         color = attrs.titlecolor,
         space = :data,
-        show_axis=false, 
+        show_axis=false,
         inspectable = false)
     decorations[:title] = titlet
 
@@ -131,7 +131,7 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
     on(attrs.limits) do lims
         reset_limits!(ax)
     end
-    
+
     on(attrs.targetlimits) do lims
         # adjustlimits!(ax)
         # we have no aspect constraints here currently, so just update final limits
@@ -167,7 +167,7 @@ function calculate_matrices(limits, px_area, elev, azim, perspectiveness, aspect
     ws = widths(limits)
 
 
-    t = AbstractPlotting.translationmatrix(-Float64.(limits.origin))
+    t = Makie.translationmatrix(-Float64.(limits.origin))
     s = if aspect == :equal
         scales = 2 ./ Float64.(ws)
     elseif aspect == :data
@@ -176,9 +176,9 @@ function calculate_matrices(limits, px_area, elev, azim, perspectiveness, aspect
         scales = 2 ./ Float64.(ws) .* Float64.(aspect) ./ maximum(aspect)
     else
         error("Invalid aspect $aspect")
-    end |> AbstractPlotting.scalematrix
+    end |> Makie.scalematrix
 
-    t2 = AbstractPlotting.translationmatrix(-0.5 .* ws .* scales)
+    t2 = Makie.translationmatrix(-0.5 .* ws .* scales)
     scale_matrix = t2 * s * t
 
     ang_max = 90
@@ -200,7 +200,7 @@ function calculate_matrices(limits, px_area, elev, azim, perspectiveness, aspect
 
     eyepos = Vec3{Float64}(x, y, z)
 
-    lookat_matrix = AbstractPlotting.lookat(
+    lookat_matrix = Makie.lookat(
         eyepos,
         Vec3{Float64}(0, 0, 0),
         Vec3{Float64}(0, 0, 1))
@@ -209,13 +209,13 @@ function calculate_matrices(limits, px_area, elev, azim, perspectiveness, aspect
     h = height(px_area)
 
     view_matrix = lookat_matrix * scale_matrix
-    
+
     projection_matrix = projectionmatrix(view_matrix, limits, eyepos, radius, azim, elev, angle, w, h, scales, viewmode)
 
     # for eyeposition dependent algorithms, we need to present the position as if
     # there was no scaling applied
     eyeposition = Vec3f0(inv(scale_matrix) * Vec4f0(eyepos..., 1))
-    
+
     view_matrix, projection_matrix, eyeposition
 end
 
@@ -230,7 +230,7 @@ function projectionmatrix(viewmatrix, limits, eyepos, radius, azim, elev, angle,
             angle = angle / aspect_ratio
         end
 
-        pm = AbstractPlotting.perspectiveprojection(Float64, angle, aspect_ratio, near, far)
+        pm = Makie.perspectiveprojection(Float64, angle, aspect_ratio, near, far)
 
         if viewmode in (:fitzoom, :stretch)
             points = decompose(Point3f0, limits)
@@ -245,12 +245,12 @@ function projectionmatrix(viewmatrix, limits, eyepos, radius, azim, elev, angle,
 
             if viewmode == :fitzoom
                 if ratio_y > ratio_x
-                    pm = AbstractPlotting.scalematrix(Vec3(1/ratio_y, 1/ratio_y, 1)) * pm
+                    pm = Makie.scalematrix(Vec3(1/ratio_y, 1/ratio_y, 1)) * pm
                 else
-                    pm = AbstractPlotting.scalematrix(Vec3(1/ratio_x, 1/ratio_x, 1)) * pm
+                    pm = Makie.scalematrix(Vec3(1/ratio_x, 1/ratio_x, 1)) * pm
                 end
             else
-                pm = AbstractPlotting.scalematrix(Vec3(1/ratio_x, 1/ratio_y, 1)) * pm
+                pm = Makie.scalematrix(Vec3(1/ratio_x, 1/ratio_y, 1)) * pm
             end
         end
         pm
@@ -260,9 +260,9 @@ function projectionmatrix(viewmatrix, limits, eyepos, radius, azim, elev, angle,
 end
 
 
-function AbstractPlotting.plot!(
-    ax::Axis3, P::AbstractPlotting.PlotFunc,
-    attributes::AbstractPlotting.Attributes, args...;
+function Makie.plot!(
+    ax::Axis3, P::Makie.PlotFunc,
+    attributes::Makie.Attributes, args...;
     kw_attributes...)
 
     allattrs = merge(attributes, Attributes(kw_attributes))
@@ -270,15 +270,15 @@ function AbstractPlotting.plot!(
     cycle = get_cycle_for_plottype(allattrs, P)
     add_cycle_attributes!(allattrs, P, cycle, ax.cycler, ax.palette)
 
-    plot = AbstractPlotting.plot!(ax.scene, P, allattrs, args...)
+    plot = Makie.plot!(ax.scene, P, allattrs, args...)
 
     reset_limits!(ax)
     plot
 end
 
-function AbstractPlotting.plot!(P::AbstractPlotting.PlotFunc, ax::Axis3, args...; kw_attributes...)
-    attributes = AbstractPlotting.Attributes(kw_attributes)
-    AbstractPlotting.plot!(ax, P, attributes, args...)
+function Makie.plot!(P::Makie.PlotFunc, ax::Axis3, args...; kw_attributes...)
+    attributes = Makie.Attributes(kw_attributes)
+    Makie.plot!(ax, P, attributes, args...)
 end
 
 function autolimits!(ax::Axis3)
@@ -319,8 +319,8 @@ function getlimits(ax::Axis3, dim)
         p -> !haskey(p.attributes, :visible) || p.attributes.visible[],
         plots_with_autolimits)
 
-    bboxes = AbstractPlotting.data_limits.(visible_plots)
-    finite_bboxes = filter(AbstractPlotting.isfinite_rect, bboxes)
+    bboxes = Makie.data_limits.(visible_plots)
+    finite_bboxes = filter(Makie.isfinite_rect, bboxes)
 
     isempty(finite_bboxes) && return nothing
 
@@ -439,7 +439,7 @@ end
 # small z value
 function to_topscene_z_2d(p3d, scene)
     o = scene.px_area[].origin
-    p2d = Point2f0(o + AbstractPlotting.project(scene, p3d))
+    p2d = Point2f0(o + Makie.project(scene, p3d))
     # -10000 is an arbitrary weird constant that in preliminary testing didn't seem
     # to clip into plot objects anymore
     Point3f0(p2d..., -10000)
@@ -508,10 +508,10 @@ function add_ticks_and_ticklabels!(topscene, scene, dim::Int, limits, ticknode, 
         o = pxa.origin
 
         points = map(ticksegs) do (tstart, tend)
-            tstartp = Point2f0(o + AbstractPlotting.project(scene, tstart))
-            tendp = Point2f0(o + AbstractPlotting.project(scene, tend))
+            tstartp = Point2f0(o + Makie.project(scene, tstart))
+            tendp = Point2f0(o + Makie.project(scene, tend))
 
-            offset = (dim == 3 ? 10 : 5) * AbstractPlotting.GeometryBasics.normalize(
+            offset = (dim == 3 ? 10 : 5) * Makie.GeometryBasics.normalize(
                 Point2f0(tendp - tstartp))
             tendp + offset
         end
@@ -552,8 +552,8 @@ function add_ticks_and_ticklabels!(topscene, scene, dim::Int, limits, ticknode, 
         p2 = dpoint(maximum(lims)[dim], f1, f2)
 
         # project them into screen space
-        pp1 = Point2f0(o + AbstractPlotting.project(scene, p1))
-        pp2 = Point2f0(o + AbstractPlotting.project(scene, p2))
+        pp1 = Point2f0(o + Makie.project(scene, p1))
+        pp2 = Point2f0(o + Makie.project(scene, p2))
 
         # find the midpoint
         midpoint = (pp1 + pp2) / 2
@@ -570,12 +570,12 @@ function add_ticks_and_ticklabels!(topscene, scene, dim::Int, limits, ticknode, 
         a = pi/2
 
         # get the vector pointing from the axis in the direction of the label anchor
-        offset_vec = (AbstractPlotting.Mat2f0(cos(a), sin(a), -sin(a), cos(a)) *
-            AbstractPlotting.GeometryBasics.normalize(diffsign * diff))
+        offset_vec = (Makie.Mat2f0(cos(a), sin(a), -sin(a), cos(a)) *
+            Makie.GeometryBasics.normalize(diffsign * diff))
 
         # calculate the label offset from the axis midpoint
         plus_offset = midpoint + labeloffset * offset_vec
-            
+
         offset_ang = atan(offset_vec[2], offset_vec[1])
         offset_ang_90deg = offset_ang + pi/2
         offset_ang_90deg_alwaysup = ((offset_ang + pi/2 + pi/2) % pi) - pi/2
@@ -587,7 +587,7 @@ function add_ticks_and_ticklabels!(topscene, scene, dim::Int, limits, ticknode, 
         end
         offset_ang_90deg_alwaysup
 
-        labelrotation = if lrotation == AbstractPlotting.automatic
+        labelrotation = if lrotation == Makie.automatic
             offset_ang_90deg_alwaysup
         else
             lrotation
@@ -599,7 +599,7 @@ function add_ticks_and_ticklabels!(topscene, scene, dim::Int, limits, ticknode, 
     end
 
     labelalign = lift(label_pos_rot_valign, attr(:labelalign)) do (_, _, valign), lalign
-        if lalign == AbstractPlotting.automatic
+        if lalign == Makie.automatic
             (:center, valign)
         else
             lalign
@@ -613,7 +613,7 @@ function add_ticks_and_ticklabels!(topscene, scene, dim::Int, limits, ticknode, 
         position = @lift($label_pos_rot_valign[1]),
         rotation = @lift($label_pos_rot_valign[2]),
         align = labelalign,
-        visible = attr(:labelvisible), 
+        visible = attr(:labelvisible),
         inspectable = false
     )
 
@@ -819,7 +819,7 @@ end
 
 function xautolimits(ax::Axis3)
     xlims = getlimits(ax, 1)
-    
+
     if isnothing(xlims)
         xlims = (ax.targetlimits[].origin[1], ax.targetlimits[].origin[1] + ax.targetlimits[].widths[1])
     else
@@ -833,7 +833,7 @@ end
 
 function yautolimits(ax::Axis3)
     ylims = getlimits(ax, 2)
-    
+
     if isnothing(ylims)
         ylims = (ax.targetlimits[].origin[2], ax.targetlimits[].origin[2] + ax.targetlimits[].widths[2])
     else
@@ -847,7 +847,7 @@ end
 
 function zautolimits(ax::Axis3)
     zlims = getlimits(ax, 3)
-    
+
     if isnothing(zlims)
         zlims = (ax.targetlimits[].origin[3], ax.targetlimits[].origin[3] + ax.targetlimits[].widths[3])
     else

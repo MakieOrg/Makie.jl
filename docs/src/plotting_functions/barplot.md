@@ -9,7 +9,7 @@ barplot
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure()
 Axis(f[1, 1])
@@ -26,7 +26,7 @@ f
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 xs = 1:0.2:10
 ys = 0.5 .* sin.(xs)
@@ -37,7 +37,7 @@ barplot(xs, ys, width = step(xs), color = :gray85, strokecolor = :black, strokew
 ```@example bar
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 tbl = (x = [1, 1, 1, 2, 2, 2, 3, 3, 3],
        height = 0.1:0.1:0.9,
@@ -77,7 +77,7 @@ barplot(tbl.x, tbl.height,
 
 ```@example bar
 let
-    colors = AbstractPlotting.wong_colors()
+    colors = Makie.wong_colors()
 
     # Figure and Axis
     fig = Figure()

@@ -30,22 +30,22 @@ function _precompile_()
     @warnpcfail precompile(plot!, (Scene, Type{Annotations{Tuple{Vector{Tuple{String, Point2f0}}}}}, Attributes, Tuple{Observable{Vector{Tuple{String, Point2f0}}}}, Observable{Tuple{Vector{Tuple{String, Point2f0}}}}))
 
     # A big dump from SnoopCompile. These will go stale rapidly, but until work is done on inferrability this is probably the best we can do
-    isdefined(AbstractPlotting, Symbol("#303#305")) && Base.precompile(Tuple{getfield(AbstractPlotting, Symbol("#303#305")),Int64,FTFont,Tuple{String, Point{2, Float32}},RGBA{Float32},Float32,Vec{2, Float32},Quaternionf0,Float64,Float64})   # time: 0.8072854
+    isdefined(Makie, Symbol("#303#305")) && Base.precompile(Tuple{getfield(Makie, Symbol("#303#305")),Int64,FTFont,Tuple{String, Point{2, Float32}},RGBA{Float32},Float32,Vec{2, Float32},Quaternionf0,Float64,Float64})   # time: 0.8072854
     Base.precompile(Tuple{typeof(transformationmatrix),Vec{3, Float32},Vec{3, Float32},Quaternionf0,Observable{Vec{2, Float32}},Tuple{Bool, Bool, Bool},GeometryBasics.HyperRectangle{3, Float32}})   # time: 0.70518523
     Base.precompile(Tuple{typeof(update_cam!),Scene,Camera2D,GeometryBasics.HyperRectangle{3, Float32}})   # time: 0.44654787
     Base.precompile(Tuple{typeof(scatter),Vector{Float64},Vararg{Vector{Float64}, 100}})   # time: 0.32425407
-    isdefined(AbstractPlotting, Symbol("#302#304")) && Base.precompile(Tuple{getfield(AbstractPlotting, Symbol("#302#304")),SMatrix{4, 4, Float32, 16},Vector{FTFont},Vector{Tuple{String, Point{2, Float32}}},Vector{RGBA{Float32}},Vararg{Any, 100}})   # time: 0.23708302
+    isdefined(Makie, Symbol("#302#304")) && Base.precompile(Tuple{getfield(Makie, Symbol("#302#304")),SMatrix{4, 4, Float32, 16},Vector{FTFont},Vector{Tuple{String, Point{2, Float32}}},Vector{RGBA{Float32}},Vararg{Any, 100}})   # time: 0.23708302
     Base.precompile(Tuple{typeof(plot!),Scene,Type{Lines{Tuple{GeometryBasics.HyperRectangle{2, Float32}}}},Attributes,Tuple{Observable{GeometryBasics.HyperRectangle{2, Float32}}},Observable{Tuple{Vector{Point{2, Float32}}}}})   # time: 0.23567033
     Base.precompile(Tuple{typeof(default_theme),Scene,Type{Scatter{Tuple{Vector{Point{2, Float32}}}}}})   # time: 0.22432384
     Base.precompile(Tuple{typeof(plot),Type{Scatter{ArgType} where ArgType},Vector{Float64},Vector{Float64}})   # time: 0.19391601
-    Base.precompile(Tuple{typeof(default_labels),Vector{Float64},typeof(AbstractPlotting.Formatters.plain)})   # time: 0.19084986
+    Base.precompile(Tuple{typeof(default_labels),Vector{Float64},typeof(Makie.Formatters.plain)})   # time: 0.19084986
     Base.precompile(Tuple{typeof(convert_arguments),Type{LineSegments{ArgType} where ArgType},Vector{Point{2, Float32}}})   # time: 0.18835282
     Base.precompile(Tuple{typeof(boundingbox),Scatter{Tuple{Vector{Point{2, Float32}}}}})   # time: 0.15786158
     Base.precompile(Tuple{typeof(same_length_array),Vector{Tuple{String, Point{2, Float32}}},Float64,Key{:rotation}})   # time: 0.15258642
     Base.precompile(Tuple{typeof(plot!),Scene,Type{Scatter{Tuple{Vector{Float64}, Vector{Float64}}}},Attributes,Tuple{Observable{Vector{Float64}}, Observable{Vector{Float64}}},Observable{Tuple{Vector{Point{2, Float32}}}}})   # time: 0.096797995
     Base.precompile(Tuple{typeof(data_limits),Text{Tuple{String}}})   # time: 0.09453959
     Base.precompile(Tuple{typeof(convert_arguments),Type{Annotations{ArgType} where ArgType},Vector{String},Vector{Point{2, Float32}}})   # time: 0.09197935
-    isdefined(AbstractPlotting, Symbol("#719#720")) && Base.precompile(Tuple{getfield(AbstractPlotting, Symbol("#719#720")),Int64,Quaternionf0,FTFont,Float32})   # time: 0.081979275
+    isdefined(Makie, Symbol("#719#720")) && Base.precompile(Tuple{getfield(Makie, Symbol("#719#720")),Int64,Quaternionf0,FTFont,Float32})   # time: 0.081979275
     let fbody = try Base.bodyfunction(which(convert_arguments, (Type{Scatter{Tuple{Vector{Float64}, Vector{Float64}}}},Vector{Float64},Vararg{Vector{Float64}, 100},))) catch missing end
         if !ismissing(fbody)
             precompile(fbody, (Base.Iterators.Pairs{Union{}, Union{}, Tuple{}, NamedTuple{(), Tuple{}}},typeof(convert_arguments),Type{Scatter{Tuple{Vector{Float64}, Vector{Float64}}}},Vector{Float64},Vararg{Vector{Float64}, 100},))
@@ -54,15 +54,15 @@ function _precompile_()
     Base.precompile(Tuple{typeof(icon)})   # time: 0.07657142
     Base.precompile(Tuple{Core.kwftype(typeof(Type)),NamedTuple{(:color, :linewidth, :transformation, :model, :visible, :transparency, :overdraw, :ambient, :diffuse, :specular, :shininess, :lightposition, :nan_color, :ssao), Tuple{Observable{Any}, Int64, Automatic, Automatic, Bool, Bool, Bool, Vec{3, Float32}, Vec{3, Float32}, Vec{3, Float32}, Float32, Symbol, RGBA{Float32}, Bool}},Type{Attributes}})   # time: 0.06820207
     Base.precompile(Tuple{typeof(project_widths),SMatrix{4, 4, Float32, 16},Vec{3, Float32}})   # time: 0.06811111
-    isdefined(AbstractPlotting, Symbol("#340#343")) && Base.precompile(Tuple{getfield(AbstractPlotting, Symbol("#340#343")),Float64,Tuple{Tuple{Float32, Float32}, Tuple{Float32, Float32}},Automatic,Automatic,Function})   # time: 0.055591293
-    isdefined(AbstractPlotting, Symbol("#302#304")) && Base.precompile(Tuple{getfield(AbstractPlotting, Symbol("#302#304")),Any,Any,Vector{Tuple{String, Point{2, Float32}}},Any,Any,Any,Any,Any,Any})   # time: 0.05321678
+    isdefined(Makie, Symbol("#340#343")) && Base.precompile(Tuple{getfield(Makie, Symbol("#340#343")),Float64,Tuple{Tuple{Float32, Float32}, Tuple{Float32, Float32}},Automatic,Automatic,Function})   # time: 0.055591293
+    isdefined(Makie, Symbol("#302#304")) && Base.precompile(Tuple{getfield(Makie, Symbol("#302#304")),Any,Any,Vector{Tuple{String, Point{2, Float32}}},Any,Any,Any,Any,Any,Any})   # time: 0.05321678
     let fbody = try Base.bodyfunction(which(cam2d!, (Scene,))) catch missing end
         if !ismissing(fbody)
             precompile(fbody, (Base.Iterators.Pairs{Union{}, Union{}, Tuple{}, NamedTuple{(), Tuple{}}},typeof(cam2d!),Scene,))
         end
     end   # time: 0.05295532
-    isdefined(AbstractPlotting, Symbol("#340#343")) && Base.precompile(Tuple{getfield(AbstractPlotting, Symbol("#340#343")),Any,Tuple{Tuple{Float32, Float32}, Tuple{Float32, Float32}},Any,Any,Any})   # time: 0.043772664
-    isdefined(AbstractPlotting, Symbol("#672#686")) && Base.precompile(Tuple{getfield(AbstractPlotting, Symbol("#672#686")),Tuple{Vector{Float64}, Float64}})   # time: 0.04195882
+    isdefined(Makie, Symbol("#340#343")) && Base.precompile(Tuple{getfield(Makie, Symbol("#340#343")),Any,Tuple{Tuple{Float32, Float32}, Tuple{Float32, Float32}},Any,Any,Any})   # time: 0.043772664
+    isdefined(Makie, Symbol("#672#686")) && Base.precompile(Tuple{getfield(Makie, Symbol("#672#686")),Tuple{Vector{Float64}, Float64}})   # time: 0.04195882
     Base.precompile(Tuple{Core.kwftype(typeof(Type)),NamedTuple{(:axisnames, :title, :textcolor, :textsize, :rotation, :align, :font), Tuple{Tuple{String, String}, Nothing, Tuple{Symbol, Symbol}, Tuple{Int64, Int64}, Tuple{Float64, Float64}, Tuple{Tuple{Symbol, Symbol}, Tuple{Symbol, Symbol}}, Observable{Tuple{String, String}}}},Type{Attributes}})   # time: 0.036071636
     Base.precompile(Tuple{Core.kwftype(typeof(Type)),NamedTuple{(:transparency, :shininess, :overdraw, :specular, :visible, :transformation, :model, :ssao, :color, :ambient, :linewidth, :diffuse, :lightposition, :nan_color, :colormap, :marker, :markersize, :strokecolor, :strokewidth, :glowcolor, :glowwidth, :rotations, :marker_offset, :transform_marker, :uv_offset_width, :distancefield, :markerspace, :fxaa), Tuple{Observable{Any}, Observable{Any}, Observable{Any}, Observable{Any}, Observable{Any}, Observable{Any}, Observable{Any}, Observable{Any}, Symbol, Observable{Any}, Observable{Any}, Observable{Any}, Observable{Any}, Observable{Any}, Symbol, UnionAll, Int64, Symbol, Float64, RGBA{N0f8}, Float64, Billboard, Automatic, Bool, Vec{4, Float32}, Nothing, UnionAll, Bool}},Type{Attributes}})   # time: 0.030648092
     let fbody = try Base.bodyfunction(which(plot!, (Scene,Type{Scatter{ArgType} where ArgType},Attributes,Vector{Float64},Vararg{Vector{Float64}, 100},))) catch missing end
@@ -71,7 +71,7 @@ function _precompile_()
         end
     end   # time: 0.029508112
     Base.precompile(Tuple{Type{Text{ArgType} where ArgType},Annotations{Tuple{Vector{Tuple{String, Point{2, Float32}}}}},Attributes,Tuple{Observable{String}},Observable{Tuple{String}}})   # time: 0.028124427
-    Base.precompile(Tuple{Core.kwftype(typeof(Type)),NamedTuple{(:ranges_labels, :formatter, :gap, :title_gap, :linewidth, :linecolor, :linestyle, :textcolor, :textsize, :rotation, :align, :font), Tuple{Tuple{Automatic, Automatic}, typeof(AbstractPlotting.Formatters.plain), Int64, Int64, Tuple{Int64, Int64}, Tuple{Tuple{Symbol, Float64}, Tuple{Symbol, Float64}}, Tuple{Nothing, Nothing}, Tuple{Symbol, Symbol}, Tuple{Int64, Int64}, Tuple{Float64, Float64}, Tuple{Tuple{Symbol, Symbol}, Tuple{Symbol, Symbol}}, Observable{Tuple{String, String}}}},Type{Attributes}})   # time: 0.028094089
+    Base.precompile(Tuple{Core.kwftype(typeof(Type)),NamedTuple{(:ranges_labels, :formatter, :gap, :title_gap, :linewidth, :linecolor, :linestyle, :textcolor, :textsize, :rotation, :align, :font), Tuple{Tuple{Automatic, Automatic}, typeof(Makie.Formatters.plain), Int64, Int64, Tuple{Int64, Int64}, Tuple{Tuple{Symbol, Float64}, Tuple{Symbol, Float64}}, Tuple{Nothing, Nothing}, Tuple{Symbol, Symbol}, Tuple{Int64, Int64}, Tuple{Float64, Float64}, Tuple{Tuple{Symbol, Symbol}, Tuple{Symbol, Symbol}}, Observable{Tuple{String, String}}}},Type{Attributes}})   # time: 0.028094089
     Base.precompile(Tuple{Core.kwftype(typeof(text!)),NamedTuple{(:align, :model, :position, :color, :visible, :textsize, :font, :rotation), Tuple{Vec{2, Float32}, SMatrix{4, 4, Float32, 16}, Vector{Point{3, Float32}}, Vector{RGBA{Float32}}, Observable{Any}, Vector{Float32}, Vector{FTFont}, Vector{Quaternionf0}}},typeof(text!),Annotations{Tuple{Vector{Tuple{String, Point{2, Float32}}}}},Vararg{Any, 100}})   # time: 0.027778953
     Base.precompile(Tuple{typeof(selection_rect!),Scene,Camera2D,Observable{Any}})   # time: 0.02611231
     Base.precompile(Tuple{typeof(map_once),Function,Observable{Annotations{Tuple{Vector{Tuple{String, Point{2, Float32}}}}}},Observable{LineSegments{Tuple{Vector{Point{2, Float32}}}}},Vararg{Observable, 100}})   # time: 0.024804583
@@ -89,9 +89,9 @@ function _precompile_()
     Base.precompile(Tuple{typeof(lift),Function,Observable{Any},Observable{Tuple{Tuple{Float32, Float32}, Tuple{Float32, Float32}}},Vararg{Any, 100}})   # time: 0.020434486
     Base.precompile(Tuple{typeof(broadcast_foreach),Function,UnitRange{Int64},Vararg{Any, 100}})   # time: 0.019735442
     Base.precompile(Tuple{typeof(map_once),Function,Observable{Vec{3, Float32}},Observable{Vec{3, Float32}},Vararg{Observable, 100}})   # time: 0.019173674
-    isdefined(AbstractPlotting, Symbol("#666#680")) && Base.precompile(Tuple{getfield(AbstractPlotting, Symbol("#666#680")),Vector{Float32},Float32})   # time: 0.015830928
-    isdefined(AbstractPlotting, Symbol("#669#683")) && Base.precompile(Tuple{getfield(AbstractPlotting, Symbol("#669#683")),Vector{Float64}})   # time: 0.015553104
-    isdefined(AbstractPlotting, Symbol("#340#343")) && Base.precompile(Tuple{getfield(AbstractPlotting, Symbol("#340#343")),Float64,Any,Any,Any,Any})   # time: 0.014724698
+    isdefined(Makie, Symbol("#666#680")) && Base.precompile(Tuple{getfield(Makie, Symbol("#666#680")),Vector{Float32},Float32})   # time: 0.015830928
+    isdefined(Makie, Symbol("#669#683")) && Base.precompile(Tuple{getfield(Makie, Symbol("#669#683")),Vector{Float64}})   # time: 0.015553104
+    isdefined(Makie, Symbol("#340#343")) && Base.precompile(Tuple{getfield(Makie, Symbol("#340#343")),Float64,Any,Any,Any,Any})   # time: 0.014724698
     Base.precompile(Tuple{Core.kwftype(typeof(Type)),NamedTuple{(:transparency, :shininess, :overdraw, :specular, :visible, :transformation, :model, :ssao, :color, :ambient, :linewidth, :diffuse, :lightposition, :nan_color, :font, :strokecolor, :strokewidth, :align, :rotation, :textsize, :position, :justification, :lineheight), Tuple{Observable{Any}, Observable{Any}, Observable{Any}, Observable{Any}, Observable{Any}, Observable{Any}, Observable{Any}, Observable{Any}, Observable{Any}, Observable{Any}, Observable{Any}, Observable{Any}, Observable{Any}, Observable{Any}, Observable{Any}, Tuple{Symbol, Float64}, Int64, Tuple{Symbol, Symbol}, Float64, Int64, Point{2, Float32}, Float64, Float64}},Type{Attributes}})   # time: 0.014095342
     Base.precompile(Tuple{typeof(on),Function,Camera,Observable{Scene},Vararg{Observable, 100}})   # time: 0.012858183
     Base.precompile(Tuple{Core.kwftype(typeof(Type)),NamedTuple{(:transparency, :shininess, :overdraw, :specular, :visible, :transformation, :model, :ssao, :color, :ambient, :linewidth, :diffuse, :lightposition, :nan_color, :colormap, :linestyle, :fxaa), Tuple{Observable{Any}, Observable{Any}, Observable{Any}, Observable{Any}, Observable{Any}, Observable{Any}, Observable{Any}, Observable{Any}, Symbol, Observable{Any}, Float64, Observable{Any}, Observable{Any}, Observable{Any}, Symbol, Nothing, Bool}},Type{Attributes}})   # time: 0.012534027
@@ -101,13 +101,13 @@ function _precompile_()
         end
     end   # time: 0.012269881
     Base.precompile(Tuple{typeof(lift),Function,Observable{Any},Observable{Union{Nothing, FRect3D, FRect{3}, Rect3D{Float32}}}})   # time: 0.012067013
-    isdefined(AbstractPlotting, Symbol("#89#92")) && Base.precompile(Tuple{getfield(AbstractPlotting, Symbol("#89#92")),Tuple{Int64, Int64}})   # time: 0.010871829
+    isdefined(Makie, Symbol("#89#92")) && Base.precompile(Tuple{getfield(Makie, Symbol("#89#92")),Tuple{Int64, Int64}})   # time: 0.010871829
     let fbody = try Base.bodyfunction(which(lift, (Function,Observable{Tuple{Vector{Tuple{String, Point{2, Float32}}}}},))) catch missing end
         if !ismissing(fbody)
             precompile(fbody, (Vector{Tuple{String, Point{2, Float32}}},Type,Symbol,typeof(lift),Function,Observable{Tuple{Vector{Tuple{String, Point{2, Float32}}}}},))
         end
     end   # time: 0.01042566
-    isdefined(AbstractPlotting, Symbol("#174#176")) && Base.precompile(Tuple{getfield(AbstractPlotting, Symbol("#174#176")),Vector{RGBA{Float32}}})   # time: 0.010158016
+    isdefined(Makie, Symbol("#174#176")) && Base.precompile(Tuple{getfield(Makie, Symbol("#174#176")),Vector{RGBA{Float32}}})   # time: 0.010158016
     Base.precompile(Tuple{typeof(color_and_colormap!),Scatter{Tuple{Vector{Point{2, Float32}}}},Observable{Any}})   # time: 0.009793119
     let fbody = try Base.bodyfunction(which(lift, (Function,Observable{GeometryBasics.HyperRectangle{2, Int64}},))) catch missing end
         if !ismissing(fbody)
@@ -123,7 +123,7 @@ function _precompile_()
         end
     end   # time: 0.00889073
     Base.precompile(Tuple{typeof(value_convert),Tuple{Tuple{Bool, Bool}, Tuple{Bool, Bool}}})   # time: 0.008890678
-    Base.precompile(Tuple{typeof(value_convert),Tuple{AbstractPlotting.Keyboard.Button, AbstractPlotting.Mouse.Button}})   # time: 0.008794897
+    Base.precompile(Tuple{typeof(value_convert),Tuple{Makie.Keyboard.Button, Makie.Mouse.Button}})   # time: 0.008794897
     let fbody = try Base.bodyfunction(which(lift, (Function,Observable{Tuple{Vector{Point{2, Float32}}}},))) catch missing end
         if !ismissing(fbody)
             precompile(fbody, (Vector{Point{2, Float32}},Type,Symbol,typeof(lift),Function,Observable{Tuple{Vector{Point{2, Float32}}}},))
@@ -142,11 +142,11 @@ function _precompile_()
         end
     end   # time: 0.007157104
     Base.precompile(Tuple{typeof(lift),Function,Observable{String}})   # time: 0.006988709
-    isdefined(AbstractPlotting, Symbol("#165#170")) && Base.precompile(Tuple{getfield(AbstractPlotting, Symbol("#165#170")),Int64})   # time: 0.006825633
+    isdefined(Makie, Symbol("#165#170")) && Base.precompile(Tuple{getfield(Makie, Symbol("#165#170")),Int64})   # time: 0.006825633
     Base.precompile(Tuple{typeof(lift),Function,Observable{Vector{Float64}},Observable{Vector{Float64}}})   # time: 0.006378372
     Base.precompile(Tuple{typeof(setindex!),LineSegments{Tuple{Vector{Point{2, Float32}}}},Observable{Vector{RGBA{Float32}}},Symbol})   # time: 0.006341601
     Base.precompile(Tuple{typeof(convert_attribute),Vector{Float32},Key{:textsize}})   # time: 0.006148856
-    isdefined(AbstractPlotting, Symbol("#634#635")) && Base.precompile(Tuple{getfield(AbstractPlotting, Symbol("#634#635")),Vec{3, Float32},Vec{3, Float32},Quaternionf0,Vec{2, Float32},SMatrix{4, 4, Float32, 16},Tuple{Bool, Bool, Bool}})   # time: 0.006117055
+    isdefined(Makie, Symbol("#634#635")) && Base.precompile(Tuple{getfield(Makie, Symbol("#634#635")),Vec{3, Float32},Vec{3, Float32},Quaternionf0,Vec{2, Float32},SMatrix{4, 4, Float32, 16},Tuple{Bool, Bool, Bool}})   # time: 0.006117055
     Base.precompile(Tuple{typeof(value_convert),Tuple{Nothing, Nothing}})   # time: 0.005686621
     Base.precompile(Tuple{typeof(default_labels),Automatic,Tuple{Vector{Float64}, Vector{Float64}},Function})   # time: 0.005572814
     Base.precompile(Tuple{Core.kwftype(typeof(plot!)),NamedTuple{(:align, :model, :position, :color, :visible, :textsize, :font, :rotation), Tuple{Vec{2, Float32}, SMatrix{4, 4, Float32, 16}, Vector{Point{3, Float32}}, Vector{RGBA{Float32}}, Observable{Any}, Vector{Float32}, Vector{FTFont}, Vector{Quaternionf0}}},typeof(plot!),Type{Text{ArgType} where ArgType},Annotations{Tuple{Vector{Tuple{String, Point{2, Float32}}}}},String})   # time: 0.005202268
@@ -161,7 +161,7 @@ function _precompile_()
         end
     end   # time: 0.004715678
     Base.precompile(Tuple{typeof(setindex!),Scatter{Tuple{Vector{Point{2, Float32}}}},Observable{Vec{2, Float32}},Symbol})   # time: 0.004576182
-    isdefined(AbstractPlotting, Symbol("#liftdim2#370")) && Base.precompile(Tuple{getfield(AbstractPlotting, Symbol("#liftdim2#370")),Observable{Any}})   # time: 0.004413254
+    isdefined(Makie, Symbol("#liftdim2#370")) && Base.precompile(Tuple{getfield(Makie, Symbol("#liftdim2#370")),Observable{Any}})   # time: 0.004413254
     Base.precompile(Tuple{typeof(default_theme),Annotations{Tuple{Vector{Tuple{String, Point{2, Float32}}}}},Type{Text{Tuple{String}}}})   # time: 0.004375755
     let fbody = try Base.bodyfunction(which(lift, (Function,Observable{Any},))) catch missing end
         if !ismissing(fbody)
@@ -239,7 +239,7 @@ function _precompile_()
     Base.precompile(Tuple{typeof(safe_off),Observable{LineSegments{Tuple{Vector{Point{2, Float32}}}}},Function})   # time: 0.001671355
     Base.precompile(Tuple{typeof(color_and_colormap!),LineSegments{Tuple{Vector{Point{2, Float32}}}},Observable{Any}})   # time: 0.001637833
     Base.precompile(Tuple{typeof(safe_off),Observable{Tuple{Tuple{Float32, Float32}, Tuple{Float32, Float32}}},Function})   # time: 0.00162075
-    isdefined(AbstractPlotting, Symbol("#186#188")) && Base.precompile(Tuple{getfield(AbstractPlotting, Symbol("#186#188"))})   # time: 0.001442432
+    isdefined(Makie, Symbol("#186#188")) && Base.precompile(Tuple{getfield(Makie, Symbol("#186#188"))})   # time: 0.001442432
     Base.precompile(Tuple{typeof(same_length_array),Vector{Tuple{String, Point{2, Float32}}},Tuple{Symbol, Symbol},Key{:align}})   # time: 0.001406379
     Base.precompile(Tuple{typeof(lift),Function,Observable{GeometryBasics.HyperRectangle{3, Float32}}})   # time: 0.001330926
     Base.precompile(Tuple{typeof(to_ndim),Type{Vec{3, Float32}},Vec{2, Float32},Float32})   # time: 0.001274049
