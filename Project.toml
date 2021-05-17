@@ -47,6 +47,7 @@ UnicodeFun = "1cfade01-22cf-5700-b092-accc4b62d6e1"
 
 [compat]
 Animations = "0.4"
+Artifacts = "1.3"
 ColorBrewer = "0.4"
 ColorSchemes = "3.5"
 ColorTypes = "0.8, 0.9, 0.10, 0.11"
