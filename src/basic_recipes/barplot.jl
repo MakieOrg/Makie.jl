@@ -55,7 +55,7 @@ function xw_from_dodge(x, width, minimum_distance, x_gap, dodge, n_dodge, dodge_
     return x .+ width .* shifts, width * dodge_width
 end
 
-function AbstractPlotting.plot!(p::BarPlot)
+function Makie.plot!(p::BarPlot)
 
     in_y_direction = lift(p.direction) do dir
         if dir == :y
@@ -68,7 +68,7 @@ function AbstractPlotting.plot!(p::BarPlot)
     end
 
     bars = lift(p[1], p.fillto, p.width, p.dodge, p.n_dodge, p.x_gap, p.dodge_gap, p.stack, in_y_direction) do xy, fillto, width, dodge, n_dodge, x_gap, dodge_gap, stack, in_y_direction
-        
+
         x = first.(xy)
         y = last.(xy)
 
@@ -94,13 +94,13 @@ function AbstractPlotting.plot!(p::BarPlot)
         elseif eltype(stack) <: Integer
             fillto === automatic || @warn "Ignore keyword fillto when keyword stack is provided"
             i_stack = stack
-            
+
             from, to = stack_grouped_from_to(i_stack, y, (x = x̂,))
             y, fillto = to, from
         else
             ArgumentError("The keyword argument `stack` currently supports only `AbstractVector{<: Integer}`") |> throw
         end
-        
+
         rects = @. bar_rectangle(x̂, y, barwidth, fillto)
         return in_y_direction ? rects : flip.(rects)
     end
@@ -119,23 +119,23 @@ function shift_dodge(i, dodge_width, dodge_gap)
 end
 
 function stack_grouped_from_to(i_stack, y, grp)
-	
+
 	from = Array{Float64}(undef, length(y))
 	to   = Array{Float64}(undef, length(y))
-	
+
 	groupby = StructArray((; grp..., is_pos = y .> 0))
 
 	grps = StructArrays.finduniquesorted(groupby)
-	
+
 	for (grp, inds) in grps
-		
+
 		fromto = stack_from_to(i_stack[inds], y[inds])
-		
+
 		from[inds] .= fromto.from
 		to[inds] .= fromto.to
-	
+
 	end
-	
+
 	(from = from, to = to)
 end
 
@@ -146,7 +146,7 @@ function stack_from_to(i_stack, y)
 	perm = sortperm(i_stack)
 	# restore original order
 	inv_perm = sortperm(order[perm])
-	
+
 	from, to = stack_from_to_sorted(view(y, perm))
 
 	(from = view(from, inv_perm), to = view(to, inv_perm))
@@ -155,6 +155,6 @@ end
 function stack_from_to_sorted(y)
 	to = cumsum(y)
 	from = [0.0; to[firstindex(to):end-1]]
-	
+
 	(from = from, to = to)
 end

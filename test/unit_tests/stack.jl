@@ -1,11 +1,11 @@
-using AbstractPlotting: stack_grouped_from_to
+using Makie: stack_grouped_from_to
 
 @testset "grouped bar: stack" begin
     x1         = [1, 1,  1,  1]
     grp_dodge1 = [2, 2,  1,  1]
     grp_stack1 = [1, 2,  1,  2]
     y1         = [2, 3, -3, -2]
-    
+
     x2         = [2, 2,  2,  2]
     grp_dodge2 = [3, 4,  3,  4]
     grp_stack2 = [3, 4,  3,  4]
@@ -28,10 +28,10 @@ using AbstractPlotting: stack_grouped_from_to
     y = [y1; y2][perm]
     grp_dodge = [grp_dodge1; grp_dodge2][perm]
     grp_stack = [grp_stack1; grp_stack2][perm]
-    
+
     from_test = [from1; from2][perm]
     to_test = [to1; to2][perm]
-    
+
     from, to = stack_grouped_from_to(grp_stack, y, (; x = x, grp_dodge = grp_dodge))
     @test from == from_test
     @test to == to_test

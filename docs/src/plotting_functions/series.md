@@ -9,7 +9,7 @@ series
 ```@example 1
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 fig, ax, sp = series(rand(4, 10), labels=["label $i" for i in 1:4])
 axislegend(ax)

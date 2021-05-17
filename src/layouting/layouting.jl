@@ -91,7 +91,7 @@ function glyph_positions(str::AbstractString, font_per_char, fontscale_px, halig
         lineheight = Float32(font.height / font.units_per_EM * lineheight_factor * scale)
         unscaled_hi_bb = height_insensitive_boundingbox(unscaled_extent, font)
         hi_bb = FRect2D(
-            AbstractPlotting.origin(unscaled_hi_bb) * scale,
+            Makie.origin(unscaled_hi_bb) * scale,
             widths(unscaled_hi_bb) * scale)
         (char = char, font = font, scale = scale, hadvance = hadvance(unscaled_extent) * scale,
             hi_bb = hi_bb, lineheight = lineheight)
@@ -233,7 +233,7 @@ end
 
 
 function preprojected_glyph_arrays(
-        string::String, position::VecTypes, glyphlayout::AbstractPlotting.Glyphlayout,
+        string::String, position::VecTypes, glyphlayout::Makie.Glyphlayout,
         font, textsize, space::Symbol, projview, resolution, offset::VecTypes, transfunc
     )
     offset = to_ndim(Point3f0, offset, 0)
@@ -242,7 +242,7 @@ function preprojected_glyph_arrays(
     if space == :data
         positions = apply_transform(transfunc, Point3f0[pos3f0 + offset + o for o in glyphlayout.origins])
     elseif space == :screen
-        projected = AbstractPlotting.project(projview, resolution, apply_transform(transfunc, pos3f0))
+        projected = Makie.project(projview, resolution, apply_transform(transfunc, pos3f0))
         positions = Point3f0[to_ndim(Point3f0, projected, 0) + offset + o for o in glyphlayout.origins]
     else
         error("Unknown space $space, only :data or :screen allowed")
@@ -251,7 +251,7 @@ function preprojected_glyph_arrays(
 end
 
 function preprojected_glyph_arrays(
-        string::String, position::VecTypes, glyphlayout::AbstractPlotting.Glyphlayout,
+        string::String, position::VecTypes, glyphlayout::Makie.Glyphlayout,
         font, textsize, space::Symbol, projview, resolution, offsets::Vector, transfunc
     )
 
@@ -261,7 +261,7 @@ function preprojected_glyph_arrays(
     if space == :data
         positions = apply_transform(transfunc, [pos3f0 + offset + o for (o, offset) in zip(glyphlayout.origins, offsets)])
     elseif space == :screen
-        projected = AbstractPlotting.project(projview, resolution, apply_transform(transfunc, pos3f0))
+        projected = Makie.project(projview, resolution, apply_transform(transfunc, pos3f0))
         positions = Point3f0[to_ndim(Point3f0, projected, 0) + offset + o for (o, offset) in zip(glyphlayout.origins, offsets)]
     else
         error("Unknown space $space, only :data or :screen allowed")
@@ -280,7 +280,7 @@ function preprojected_glyph_arrays(
     end
 
     if space == :data
-        allpos = broadcast(positions, glyphlayouts, offset) do pos, glyphlayout::AbstractPlotting.Glyphlayout, offs
+        allpos = broadcast(positions, glyphlayouts, offset) do pos, glyphlayout::Makie.Glyphlayout, offs
             p = to_ndim(Point3f0, pos, 0)
             apply_transform(
                 transfunc,
@@ -288,10 +288,10 @@ function preprojected_glyph_arrays(
             )
         end
     elseif space == :screen
-        allpos = broadcast(positions, glyphlayouts, offset) do pos, glyphlayout::AbstractPlotting.Glyphlayout, offs
+        allpos = broadcast(positions, glyphlayouts, offset) do pos, glyphlayout::Makie.Glyphlayout, offs
             projected = to_ndim(
                 Point3f0,
-                AbstractPlotting.project(
+                Makie.project(
                     projview,
                     resolution,
                     apply_transform(transfunc, to_ndim(Point3f0, pos, 0))
@@ -315,7 +315,7 @@ function preprojected_glyph_arrays(
     )
 
     if space == :data
-        allpos = broadcast(positions, glyphlayouts, offsets) do pos, glyphlayout::AbstractPlotting.Glyphlayout, offsets
+        allpos = broadcast(positions, glyphlayouts, offsets) do pos, glyphlayout::Makie.Glyphlayout, offsets
             p = to_ndim(Point3f0, pos, 0)
             apply_transform(
                 transfunc,
@@ -323,10 +323,10 @@ function preprojected_glyph_arrays(
             )
         end
     elseif space == :screen
-        allpos = broadcast(positions, glyphlayouts, offsets) do pos, glyphlayout::AbstractPlotting.Glyphlayout, offsets
+        allpos = broadcast(positions, glyphlayouts, offsets) do pos, glyphlayout::Makie.Glyphlayout, offsets
             projected = to_ndim(
                 Point3f0,
-                AbstractPlotting.project(
+                Makie.project(
                     projview,
                     resolution,
                     apply_transform(transfunc, to_ndim(Point3f0, pos, 0))

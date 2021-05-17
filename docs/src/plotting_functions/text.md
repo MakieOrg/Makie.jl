@@ -16,7 +16,7 @@ You can either plot one string with one position, or a vector of strings with a 
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure()
 
@@ -44,7 +44,7 @@ This means that the boundingbox of the text in data coordinates will include eve
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure()
 LScene(f[1, 1])
@@ -69,7 +69,7 @@ You can override this with the `justification` attribute.
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 scene = Scene(camera = campixel!, show_axis = false, resolution = (800, 800))
 
@@ -110,7 +110,7 @@ You can specify the end of the barplots in data coordinates, and then offset the
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure()
 

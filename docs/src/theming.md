@@ -11,7 +11,7 @@ Let's create a plot with the default theme:
 ```@example 1
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 function example_plot()
     f = Figure()
@@ -142,7 +142,7 @@ Here's an example that shows how density plots react to different palette option
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 set_theme!() # hide
 

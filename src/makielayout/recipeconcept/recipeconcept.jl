@@ -1,5 +1,5 @@
 using Makie, MakieLayout
-using AbstractPlotting: px
+using Makie: px
 using GLFW; GLFW.WindowHint(GLFW.FLOATING, 1)
 using KernelDensity
 using StatsBase

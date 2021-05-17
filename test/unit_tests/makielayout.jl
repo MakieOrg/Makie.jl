@@ -106,14 +106,14 @@ end
 end
 
 @testset "Tick functions" begin
-    automatic = AbstractPlotting.automatic
-    Automatic = AbstractPlotting.Automatic
+    automatic = Makie.automatic
+    Automatic = Makie.Automatic
 
     get_ticks = MakieLayout.get_ticks
     get_tickvalues = MakieLayout.get_tickvalues
     get_ticklabels = MakieLayout.get_ticklabels
 
-    for func in [identity, log, log2, log10, AbstractPlotting.logit]
+    for func in [identity, log, log2, log10, Makie.logit]
         tup = ([1, 2, 3], ["a", "b", "c"])
         @test get_ticks(tup, func, automatic, 0, 5) == tup
 
@@ -122,7 +122,7 @@ end
 
         numbers = [1.0, 1.5, 2.0]
         @test get_ticks(numbers, func, automatic, 0, 5) == (numbers, ["1.0", "1.5", "2.0"])
-    
+
         @test get_ticks(numbers, func, xs -> string.(xs) .* "kg", 0, 5) == (numbers, ["1.0kg", "1.5kg", "2.0kg"])
 
         @test get_ticks(WilkinsonTicks(5), identity, automatic, 1, 5) == ([1, 2, 3, 4, 5], ["1", "2", "3", "4", "5"])

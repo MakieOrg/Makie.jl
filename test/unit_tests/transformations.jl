@@ -1,4 +1,4 @@
-using AbstractPlotting: PointTrans, xyz_boundingbox, apply_transform
+using Makie: PointTrans, xyz_boundingbox, apply_transform
 
 @testset "Basic transforms" begin
     function fpoint2(x::Point2)

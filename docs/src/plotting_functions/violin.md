@@ -9,7 +9,7 @@ violin
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 xs = rand(1:3, 1000)
 ys = randn(1000)
@@ -17,11 +17,10 @@ ys = randn(1000)
 violin(xs, ys)
 ```
 
-
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 xs = rand(1:3, 1000)
 ys = map(xs) do x
@@ -31,11 +30,10 @@ end
 violin(xs, ys, datalimits = extrema)
 ```
 
-
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 N = 1000
 xs = rand(1:3, N)
@@ -52,7 +50,7 @@ violin(xs, ys, dodge = dodge, side = side, color = color)
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 N = 1000
 xs = rand(1:3, N)

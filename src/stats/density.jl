@@ -35,7 +35,7 @@ $(ATTRIBUTES)
     Theme(
         color = theme(scene, :patchcolor),
         colormap = theme(scene, :colormap),
-        colorrange = AbstractPlotting.automatic,
+        colorrange = Makie.automatic,
         strokecolor = theme(scene, :patchstrokecolor),
         strokewidth = theme(scene, :patchstrokewidth),
         strokearound = false,

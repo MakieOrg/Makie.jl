@@ -5,9 +5,9 @@ using Highlights
 using Markdown
 using Random
 using GLMakie
-using AbstractPlotting
-AbstractPlotting.inline!(true)
-import AbstractPlotting: to_string
+using Makie
+Makie.inline!(true)
+import Makie: to_string
 
 # Pause renderloop for slow software rendering.
 # This way, we only render if we actualy save e.g. an image
@@ -332,7 +332,7 @@ generate_colorschemes_markdown(
 
 makedocs(
     doctest = false, clean = true,
-    repo = "https://github.com/JuliaPlots/AbstractPlotting.jl/blob/{commit}{path}#{line}",
+    repo = "https://github.com/JuliaPlots/Makie.jl/blob/{commit}{path}#{line}",
     format = Documenter.HTML(
         prettyurls = false,
         assets = [
@@ -383,7 +383,7 @@ makedocs(
                 "makielayout/menu.md",
                 "makielayout/slider.md",
                 "makielayout/toggle.md",
-                
+
             ],
             "makielayout/layouting.md",
             "generated/colors.md",
@@ -394,7 +394,7 @@ makedocs(
             "lighting.md",
             "cameras.md",
             "faq.md",
-            "API Reference AbstractPlotting" => "abstractplotting_api.md",
+            "API Reference Makie" => "abstractplotting_api.md",
             "API Reference MakieLayout" => "makielayout/reference.md",
             "generated/axis.md",
         ],
@@ -409,7 +409,7 @@ makedocs(
 
 # for github actions, documenter checks that GITHUB_REPOSITORY matches the repo
 # keyword, but since we want to push to a different repo, we need to override the
-# env variable, which is JuliaPlots/AbstractPlotting.jl by default
+# env variable, which is JuliaPlots/Makie.jl by default
 ENV["GITHUB_REPOSITORY"] = "JuliaPlots/MakieDocumentation"
 
 if !isempty(get(ENV, "DOCUMENTER_KEY", ""))
@@ -418,4 +418,3 @@ if !isempty(get(ENV, "DOCUMENTER_KEY", ""))
         push_preview = true
     )
 end
-

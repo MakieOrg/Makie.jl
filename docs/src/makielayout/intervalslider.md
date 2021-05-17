@@ -14,15 +14,14 @@ When hovering over the slider, the larger button indicates the edge that will re
 If the mouse hovers over the central area of the interval and both buttons are enlarged, clicking and dragging shifts the interval around as a whole.
 
 You can double-click the slider to reset it to the values present in `startvalues`.
-If `startvalues === AbstractPlotting.automatic`, the full interval will be selected (this is the default).
+If `startvalues === Makie.automatic`, the full interval will be selected (this is the default).
 
 If you set the attribute `snap = false`, the slider will move continously while dragging and only jump to the closest available values when releasing the mouse.
-
 
 ```@example
 using GLMakie
 using CairoMakie # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 CairoMakie.activate!() # hide
 
 f = Figure()

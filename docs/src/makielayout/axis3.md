@@ -8,7 +8,7 @@ The two attributes `azimuth` and `elevation` control the angles from which the p
 using GLMakie
 using FileIO
 GLMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure(resolution = (1000, 1000), fontsize = 10)
 
@@ -50,7 +50,7 @@ You can also set it to a three-tuple, where each number gives the relative lengt
 using GLMakie
 using FileIO
 GLMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure(resolution = (1000, 800), fontsize = 14)
 
@@ -85,7 +85,7 @@ On the other hand, it uses the available space most efficiently.
 ```@example
 using GLMakie
 GLMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure(resolution = (1200, 1000), fontsize = 14)
 
@@ -117,7 +117,7 @@ A value of 0 looks like an orthographic projection (it is only approximate to a 
 ```@example
 using GLMakie
 GLMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure(resolution = (1200, 800), fontsize = 14)
 

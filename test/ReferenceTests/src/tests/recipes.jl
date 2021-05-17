@@ -1,9 +1,9 @@
-import AbstractPlotting: Plot, default_theme, plot!, to_value
+import Makie: Plot, default_theme, plot!, to_value
 struct Simulation
     grid::Vector{Point3f0}
 end
     # Probably worth having a macro for this!
-function AbstractPlotting.default_theme(scene::SceneLike, ::Type{<: Plot(Simulation)})
+function Makie.default_theme(scene::SceneLike, ::Type{<: Plot(Simulation)})
     Theme(
         advance=0,
         molecule_sizes=[0.08, 0.04, 0.04],
@@ -11,7 +11,7 @@ function AbstractPlotting.default_theme(scene::SceneLike, ::Type{<: Plot(Simulat
     )
 end
 # The recipe! - will get called for plot(!)(x::SimulationResult)
-function AbstractPlotting.plot!(p::Plot(Simulation))
+function Makie.plot!(p::Plot(Simulation))
     sim = to_value(p[1]) # first argument is the SimulationResult
     # when advance changes, get new positions from the simulation
     mpos = lift(p[:advance]) do i

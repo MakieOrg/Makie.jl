@@ -9,7 +9,7 @@ streamplot
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 struct FitzhughNagumo{T}
     ϵ::T

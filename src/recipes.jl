@@ -20,7 +20,7 @@ end
 
 
 """
-# Plot Recipes in `AbstractPlotting`
+# Plot Recipes in `Makie`
 
 There's two types of recipes. *Type recipes* define a simple mapping from a
 user defined type to an existing plot type. *Full recipes* can customize the
@@ -130,11 +130,11 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
         $(funcname)() = not_implemented_for($funcname)
         const $(PlotType){$(esc(:ArgType))} = Combined{$funcname, $(esc(:ArgType))}
         $(default_plot_signatures(funcname, funcname!, PlotType))
-        AbstractPlotting.default_theme(scene, ::Type{<: $PlotType}) = $(esc(theme_func))(scene)
+        Makie.default_theme(scene, ::Type{<: $PlotType}) = $(esc(theme_func))(scene)
         export $PlotType, $funcname, $funcname!
     end
     if !isempty(args)
-        push!(expr.args, :($(esc(:(AbstractPlotting.argument_names)))(::Type{<: $PlotType}, len::Integer) = $args))
+        push!(expr.args, :($(esc(:(Makie.argument_names)))(::Type{<: $PlotType}, len::Integer) = $args))
     end
     expr
 end

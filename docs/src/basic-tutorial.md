@@ -12,7 +12,7 @@ CairoMakie can output beautiful static vector graphics, but it doesn't have the 
 To see the output of plotting commands when using CairoMakie, we recommend you either use an IDE which supports png or svg output, such as VSCode, Atom/Juno, Jupyter, Pluto, etc., or try using a viewer package such as [ElectronDisplay.jl](https://github.com/queryverse/ElectronDisplay.jl), or alternatively save your plots to files directly.
 The Julia REPL by itself does not have the ability to show plots.
 
-GLMakie can open interactive windows, or alternatively display bitmaps inline if `AbstractPlotting.inline!(true)` is called.
+GLMakie can open interactive windows, or alternatively display bitmaps inline if `Makie.inline!(true)` is called.
 
 WGLMakie shows interactive plots in environments that support interactive html displays, such as VSCode, Atom/Juno, Jupyter, Pluto, etc.
 
@@ -27,7 +27,7 @@ First, we import CairoMakie.
 ```@example 1
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 nothing # hide
 ```
 
@@ -35,8 +35,8 @@ Makie has many different plotting functions, one of the most common ones is [lin
 You can just call such a function and your plot will appear if your coding environment can show png or svg files.
 
 !!! note
-    Objects such as [Figure](@ref), `FigureAxisPlot` or `Scene` are usually displayed whenever they are returned in global scope (e.g. in the REPL).
-    To display such objects from within a local scope, like from within a function, you can directly call `display(figure)`, for example.
+Objects such as [Figure](@ref), `FigureAxisPlot` or `Scene` are usually displayed whenever they are returned in global scope (e.g. in the REPL).
+To display such objects from within a local scope, like from within a function, you can directly call `display(figure)`, for example.
 
 ```@example 1
 x = range(0, 10, length=100)
@@ -172,7 +172,6 @@ colors = repeat([:crimson, :dodgerblue, :slateblue1, :sienna1, :orchid1], 20)
 scatter(x, y, color = colors, markersize = 20)
 ```
 
-
 ## Simple legend
 
 If you add label attributes to your plots, you can call the `axislegend` function to add a legend with all labeled plots to the current axis.
@@ -243,6 +242,7 @@ lines!(ax2, 0..10, cos)
 lines!(ax3, 0..10, sqrt)
 fig
 ```
+
 Note, the notation `0..10` above creates a closed interval from `0` to `10` (see [`IntervalSets.jl`](https://github.com/JuliaMath/IntervalSets.jl) for further details).
 
 Axes also have many attributes that you can set, for example to give them a title, or labels.

@@ -1,6 +1,6 @@
 ```@setup plot_attributes
 using GLMakie
-using AbstractPlotting
+using Makie
 ```
 
 Below is a list of some common plot attributes for Makie.

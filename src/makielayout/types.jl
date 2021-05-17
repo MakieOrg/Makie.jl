@@ -158,7 +158,7 @@ struct ScrollEvent
 end
 
 struct KeysEvent
-    keys::Set{AbstractPlotting.Keyboard.Button}
+    keys::Set{Makie.Keyboard.Button}
 end
 
 @Layoutable Axis begin

@@ -1,4 +1,4 @@
-using AbstractPlotting: PriorityObservable, MouseButtonEvent, KeyEvent
+using Makie: PriorityObservable, MouseButtonEvent, KeyEvent
 
 @testset "PriorityObservable" begin
     po = PriorityObservable(0)
@@ -43,7 +43,7 @@ end
 
 @testset "Events" begin
     @testset "Mouse and Keyboard state" begin
-        events = AbstractPlotting.Events()
+        events = Makie.Events()
         @test isempty(events.mousebuttonstate)
         @test isempty(events.keyboardstate)
 
@@ -68,8 +68,8 @@ end
         @test isempty(events.keyboardstate)
     end
 
-    # This testset is based on the results the current camera system has. If 
-    # cam3d! is updated this is likely to break. 
+    # This testset is based on the results the current camera system has. If
+    # cam3d! is updated this is likely to break.
     @testset "cam3d!" begin
         scene = Scene(resolution=(800, 600));
         e = events(scene)
@@ -174,7 +174,7 @@ end
 
         e.mouseposition[] = (0, 200)
         @test isempty(eventlog)
-        
+
         # move inside
         e.mouseposition[] = (300, 200)
         @test length(eventlog) == 1
@@ -197,8 +197,8 @@ end
             e.mousebutton[] = MouseButtonEvent(getfield(Mouse, button), Mouse.release)
             @test length(eventlog) == 3
             for (i, t) in enumerate((
-                    getfield(MouseEventTypes, Symbol(button, :down)), 
-                    getfield(MouseEventTypes, Symbol(button, :click)), 
+                    getfield(MouseEventTypes, Symbol(button, :down)),
+                    getfield(MouseEventTypes, Symbol(button, :click)),
                     getfield(MouseEventTypes, Symbol(button, :up))
                 ))
                 @test eventlog[i].type == t
@@ -212,8 +212,8 @@ end
             e.mousebutton[] = MouseButtonEvent(getfield(Mouse, button), Mouse.release)
             @test length(eventlog) == 3
             for (i, t) in enumerate((
-                    getfield(MouseEventTypes, Symbol(button, :down)), 
-                    getfield(MouseEventTypes, Symbol(button, :doubleclick)), 
+                    getfield(MouseEventTypes, Symbol(button, :down)),
+                    getfield(MouseEventTypes, Symbol(button, :doubleclick)),
                     getfield(MouseEventTypes, Symbol(button, :up))
                 ))
                 @test eventlog[i].type == t
@@ -227,8 +227,8 @@ end
             e.mousebutton[] = MouseButtonEvent(getfield(Mouse, button), Mouse.release)
             @test length(eventlog) == 3
             for (i, t) in enumerate((
-                    getfield(MouseEventTypes, Symbol(button, :down)), 
-                    getfield(MouseEventTypes, Symbol(button, :click)), 
+                    getfield(MouseEventTypes, Symbol(button, :down)),
+                    getfield(MouseEventTypes, Symbol(button, :click)),
                     getfield(MouseEventTypes, Symbol(button, :up))
                 ))
                 @test eventlog[i].type == t
@@ -246,11 +246,11 @@ end
             prev_px = Point2f0[(300, 300), (300, 300), (300, 300), (500, 300), (700, 200), (700, 200)]
             px      = Point2f0[(300, 300), (500, 300), (500, 300), (700, 200), (700, 200), (700, 200)]
             for (i, t) in enumerate((
-                    getfield(MouseEventTypes, Symbol(button, :down)), 
-                    getfield(MouseEventTypes, Symbol(button, :dragstart)), 
-                    getfield(MouseEventTypes, Symbol(button, :drag)), 
-                    getfield(MouseEventTypes, Symbol(button, :drag)), 
-                    getfield(MouseEventTypes, Symbol(button, :dragstop)), 
+                    getfield(MouseEventTypes, Symbol(button, :down)),
+                    getfield(MouseEventTypes, Symbol(button, :dragstart)),
+                    getfield(MouseEventTypes, Symbol(button, :drag)),
+                    getfield(MouseEventTypes, Symbol(button, :drag)),
+                    getfield(MouseEventTypes, Symbol(button, :dragstop)),
                     getfield(MouseEventTypes, :out),
                     # TODO this is kinda missing an "up outside"
                 ))

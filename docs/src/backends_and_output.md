@@ -1,15 +1,15 @@
 # Backends & Output
 
-AbstractPlotting is Makie's frontend package that defines all plotting functions.
+Makie is Makie's frontend package that defines all plotting functions.
 It is reexported by every backend, so you don't have to specifically install or import it.
 
-There are three main backends which concretely implement all abstract rendering capabilities defined in AbstractPlotting:
+There are three main backends which concretely implement all abstract rendering capabilities defined in Makie:
 
-| Package | Description |
-| :-- | :-- |
-| [`GLMakie.jl`](https://github.com/JuliaPlots/GLMakie.jl) | GPU-powered, interactive 2D and 3D plotting in standalone `GLFW.jl` windows. |
+| Package                                                        | Description                                                                           |
+| :------------------------------------------------------------- | :------------------------------------------------------------------------------------ |
+| [`GLMakie.jl`](https://github.com/JuliaPlots/GLMakie.jl)       | GPU-powered, interactive 2D and 3D plotting in standalone `GLFW.jl` windows.          |
 | [`CairoMakie.jl`](https://github.com/JuliaPlots/CairoMakie.jl) | `Cairo.jl` based, non-interactive 2D backend for publication-quality vector graphics. |
-| [`WGLMakie.jl`](https://github.com/JuliaPlots/WGLMakie.jl) | WebGL-based interactive 2D and 3D plotting that runs within browsers. |
+| [`WGLMakie.jl`](https://github.com/JuliaPlots/WGLMakie.jl)     | WebGL-based interactive 2D and 3D plotting that runs within browsers.                 |
 
 ### Activating Backends
 
@@ -24,10 +24,10 @@ WGLMakie.activate!()
 
 ## [GLMakie](https://github.com/JuliaPlots/GLMakie.jl)
 
-GLMakie is the native, desktop-based backend, and is the most feature-complete.  
+GLMakie is the native, desktop-based backend, and is the most feature-complete.
 It requires an OpenGL enabled graphics card with OpenGL version 3.3 or higher.
 
-### Special GLMakie Properties 
+### Special GLMakie Properties
 
 #### Window Parameters
 
@@ -51,7 +51,7 @@ set_window_config!(;
 CairoMakie uses Cairo.jl to draw vector graphics to SVG and PDF.
 You should use it if you want to achieve the highest-quality plots for publications, as the rendering process of the GL backends works via bitmaps and is geared more towards speed than pixel-perfection.
 
-### Special CairoMakie Properties 
+### Special CairoMakie Properties
 
 #### Inline Plot Type
 
@@ -72,7 +72,6 @@ Just specify `pt_per_unit` when saving vector formats and `px_per_unit` when sav
 When embedding svgs in websites, `1px` is equivalent to `0.75pt`.
 This means that by default, saving a png or an svg results in an embedded image of the same apparent size.
 If you require an exact size in `pt`, consider setting `pt_per_unit = 1`.
-
 
 Here's an example:
 

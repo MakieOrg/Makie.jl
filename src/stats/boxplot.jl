@@ -73,7 +73,7 @@ _cycle(v, idx::Integer) = v
 _flip_xy(p::Point2f0) = reverse(p)
 _flip_xy(r::Rect{2,T}) where {T} = Rect{2,T}(reverse(r.origin), reverse(r.widths))
 
-function AbstractPlotting.plot!(plot::BoxPlot)
+function Makie.plot!(plot::BoxPlot)
     args = @extract plot (width, range, show_outliers, whiskerwidth, show_notch, orientation, x_gap, dodge, n_dodge, dodge_gap)
 
     signals = lift(

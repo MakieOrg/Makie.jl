@@ -1,4 +1,4 @@
-using AbstractPlotting
+using Makie
 using Observables
 
 function cleanaxes()
@@ -60,7 +60,7 @@ end
         lock[] = false
         # Simulate pressing the keys
         key = getproperty(ax, zoomkey)[]
-        keypresses = getfield(e, AbstractPlotting.button_key(key))[]
+        keypresses = getfield(e, Makie.button_key(key))[]
         @test isempty(keypresses)
         push!(keypresses, key)
         e.scroll[] = (0.0, -1.0)
@@ -94,7 +94,7 @@ end
     @test newlim.origin ≈ lim.origin
     @test newlim.widths ≈ lim.widths ./ Vec2(2, 3)
     # Ctrl-click to restore
-    key = AbstractPlotting.Keyboard.left_control
+    key = Makie.Keyboard.left_control
     keypresses = e.keyboardbuttons[]
     @test isempty(keypresses)
     push!(keypresses, key)

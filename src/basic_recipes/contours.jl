@@ -14,7 +14,7 @@ $(ATTRIBUTES)
         default...,
         color = nothing,
         colormap = theme(scene, :colormap),
-        colorrange = AbstractPlotting.automatic,
+        colorrange = Makie.automatic,
         levels = 5,
         linewidth = 1.0,
         alpha = 1.0,
@@ -93,7 +93,7 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
         # resample colormap and make the empty area between iso surfaces transparent
         map(1:N) do i
             i01 = (i-1) / (N - 1)
-            c = AbstractPlotting.interpolated_getindex(cmap, i01)
+            c = Makie.interpolated_getindex(cmap, i01)
             isoval = vrange[1] + (i01 * (vrange[2] - vrange[1]))
             line = reduce(levels, init = false) do v0, level
                 (isoval in v_interval) || return false

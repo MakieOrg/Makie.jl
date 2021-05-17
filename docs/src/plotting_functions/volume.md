@@ -9,7 +9,7 @@ volume
 ```@example
 using GLMakie
 GLMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 r = LinRange(-1, 1, 100)
 cube = [(x.^2 + y.^2 + z.^2) for x = r, y = r, z = r]

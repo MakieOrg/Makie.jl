@@ -1,7 +1,7 @@
 using LinearAlgebra
 using FileIO, Colors, GeometryBasics
 using ReferenceTests: loadasset, RNG
-using AbstractPlotting: Record, volume
+using Makie: Record, volume
 
 @cell "Image on Geometry (Moon)" begin
     moon = loadasset("moon.png")
@@ -45,7 +45,7 @@ end
     cam.upvector[] = (0.0, 0.0, 1.0)
     cam.lookat[] = minimum(scene_limits(scene)) + dir_scaled
     cam.eyeposition[] = (cam.lookat[][1], cam.lookat[][2] + 6.3, cam.lookat[][3])
-    cam.projectiontype[] = AbstractPlotting.Orthographic
+    cam.projectiontype[] = Makie.Orthographic
     update_cam!(scene, cam)
     # stop scene display from centering, which would overwrite the camera paramter we just set
     scene.center = false
@@ -213,7 +213,7 @@ end
     z = [cospi(θ) for θ in θ, φ in φ]
     RNG.rand([-1f0, 1f0], 3)
     pts = vec(Point3f0.(x, y, z))
-    surface(x, y, z, color=AbstractPlotting.logo(), transparency=true)
+    surface(x, y, z, color=Makie.logo(), transparency=true)
 end
 
 @cell "Arrows on Sphere" begin
@@ -374,7 +374,7 @@ end
         markersize=1,
         # can also be an array of images for each point
         # need to be the same size for best performance, though
-        marker=AbstractPlotting.logo()
+        marker=Makie.logo()
     )
 end
 
@@ -463,7 +463,7 @@ end
     linesegments!(scene, FRect3D(Vec3f0(0, -1, 0), Vec3f0(1, 2, 2)))
     p = lines!(scene, us, sin.(us .+ time()), zeros(100), linewidth=3, transparency=true)
     lineplots = [p]
-    AbstractPlotting.translate!(p, 0, 0, 0)
+    Makie.translate!(p, 0, 0, 0)
     colors = to_colormap(:RdYlBu)
     # display(scene) # would be needed without the record
     Record(scene, 1:3) do i

@@ -16,12 +16,12 @@ function upload_reference_images(path=basedir("recorded"), tag=last_major_versio
     mktempdir() do dir
         tarfile = joinpath(dir, "$(name).tar")
         Tar.create(path, tarfile)
-        upload_release("JuliaPlots", "AbstractPlotting.jl", ENV["GITHUB_TOKEN"], tag, tarfile)
+        upload_release("JuliaPlots", "Makie.jl", ENV["GITHUB_TOKEN"], tag, tarfile)
     end
 end
 
 function download_refimages(tag=last_major_version(); name="refimages")
-    url = "https://github.com/JuliaPlots/AbstractPlotting.jl/releases/download/$(tag)/$(name).tar"
+    url = "https://github.com/JuliaPlots/Makie.jl/releases/download/$(tag)/$(name).tar"
     images_tar = basedir("$(name).tar")
     images = basedir(name)
     isfile(images_tar) && rm(images_tar)

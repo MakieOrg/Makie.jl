@@ -135,7 +135,7 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
     translate!(scene, 0, 0, 21)
 
     contentgrid = GridLayout(
-        bbox = lift(x -> FRect2D(AbstractPlotting.zero_origin(x)), scenearea),
+        bbox = lift(x -> FRect2D(Makie.zero_origin(x)), scenearea),
         valign = @lift($direction == :down ? :top : :bottom))
 
     selectionrect = Box(scene, width = nothing, height = nothing,

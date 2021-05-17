@@ -14,7 +14,7 @@ streamplot(v, -2..2, -2..2)
 $(ATTRIBUTES)
 
 ## Implementation
-See the function `AbstractPlotting.streamplot_impl` for implementation details.
+See the function `Makie.streamplot_impl` for implementation details.
 """
 @recipe(StreamPlot, f, limits) do scene
     merge(
@@ -23,7 +23,7 @@ See the function `AbstractPlotting.streamplot_impl` for implementation details.
             gridsize = (32, 32, 32),
             maxsteps = 500,
             colormap = theme(scene, :colormap),
-            colorrange = AbstractPlotting.automatic,
+            colorrange = Makie.automatic,
             arrow_size = 0.03,
             arrow_head = automatic,
             density = 1.0,
@@ -176,7 +176,7 @@ function plot!(p::StreamPlot)
     N = ndims(p.limits[])
     scatterfun(N)(
         p,
-        lift(first, data), markersize = p.arrow_size, 
+        lift(first, data), markersize = p.arrow_size,
         marker = @lift(arrow_head(N, $(p.arrow_head), $(p.quality))),
         color = lift(x-> x[4], data), rotations = lift(x-> x[2], data),
         colormap = p.colormap, colorrange = p.colorrange,

@@ -9,7 +9,7 @@ scatter
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure()
 Axis(f[1, 1])

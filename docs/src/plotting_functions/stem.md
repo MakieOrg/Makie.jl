@@ -9,7 +9,7 @@ stem
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure()
 Axis(f[1, 1])
@@ -21,11 +21,10 @@ stem!(xs, sin.(xs))
 f
 ```
 
-
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure()
 Axis(f[1, 1])
@@ -41,11 +40,10 @@ stem!(xs, sin,
 f
 ```
 
-
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure()
 Axis(f[1, 1])
@@ -60,11 +58,10 @@ stem!(xs, sin.(xs),
 f
 ```
 
-
 ```@example
 using GLMakie
 GLMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure()
 
@@ -76,5 +73,3 @@ stem(f[1, 1], 0.5xs, 2 .* sin.(xs), 2 .* cos.(xs),
 
 f
 ```
-
-

@@ -40,7 +40,7 @@ $(ATTRIBUTES)
 end
 
 
-function AbstractPlotting.plot!(plot::Hist)
+function Makie.plot!(plot::Hist)
 
     values = plot[:values]
 

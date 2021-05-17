@@ -79,11 +79,11 @@ function record_tests(db=load_database(); recording_dir=basedir("recorded"))
     @testset "Record tests" begin
         rm(recording_dir, recursive=true, force=true)
         mkdir(recording_dir)
-        AbstractPlotting.inline!(true)
-        no_backend = AbstractPlotting.current_backend[] === missing
+        Makie.inline!(true)
+        no_backend = Makie.current_backend[] === missing
         for (source_location, entry) in db
             try
-                AbstractPlotting.set_theme!(resolution=(500, 500))
+                Makie.set_theme!(resolution=(500, 500))
                 # we currently can't record anything without a backend!
                 if no_backend && ((:Record in entry.used_functions) || (:Stepper in entry.used_functions))
                     continue
