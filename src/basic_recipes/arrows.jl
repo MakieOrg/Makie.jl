@@ -158,7 +158,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
             color = line_c, colormap = colormap, linestyle = linestyle,
             linewidth = @lift($linewidth === automatic ? 1f0 : $linewidth),
             fxaa = fxaa_bool, inspectable = inspectable,
-            transparency = transparency, visible = visible, 
+            transparency = transparency, visible = visible,
         )
         scatter!(
             arrowplot,
@@ -204,7 +204,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
             arrowplot,
             start, rotations = directions,
             marker = @lift(arrow_head(3, $arrowhead, $quality)),
-            markersize = lift(arrowsize, typ=Any) do as
+            markersize = lift(Any, arrowsize) do as
                 as === automatic ? Vec3f0(0.2, 0.2, 0.3) : as
             end,
             color = arrow_c, colormap = colormap,

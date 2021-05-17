@@ -319,7 +319,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         font = titlefont,
         color = titlecolor,
         space = :data,
-        show_axis=false, 
+        show_axis=false,
         inspectable = false)
     decorations[:title] = titlet
 
@@ -558,7 +558,7 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
 
         for (isym, syms) in enumerate(attrsyms(cycle))
             for sym in syms
-                allattrs[sym] = lift(paletteattrs..., typ = Any) do ps...
+                allattrs[sym] = lift(Any, paletteattrs...) do ps...
                     if cycle.covary
                         ps[isym][mod1(index, length(ps[isym]))]
                     else
@@ -680,7 +680,7 @@ function getlimits(la::Axis, dim)
 
     # get all data limits
     bboxes = [FRect2D(AbstractPlotting.data_limits(p)) for p in visible_plots]
-    
+
     # filter out bboxes that are invalid somehow
     finite_bboxes = filter(AbstractPlotting.isfinite_rect, bboxes)
 
@@ -820,7 +820,7 @@ function yautolimits(ax)
 
     # if no limits have been found, use the targetlimits directly
     if isnothing(ylims)
-        ylims = (ax.targetlimits[].origin[2], ax.targetlimits[].origin[2] + ax.targetlimits[].widths[2])    
+        ylims = (ax.targetlimits[].origin[2], ax.targetlimits[].origin[2] + ax.targetlimits[].widths[2])
     end
     ylims
 end

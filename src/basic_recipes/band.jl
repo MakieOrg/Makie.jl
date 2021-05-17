@@ -29,7 +29,7 @@ function plot!(plot::Band)
     coordinates = @lift([$lowerpoints; $upperpoints])
     connectivity = lift(x -> band_connect(length(x)), plot[1])
 
-    meshcolor = lift(plot.color, typ = Any) do c
+    meshcolor = lift(Any, plot.color) do c
         if c isa AbstractArray
             # if the same number of colors is given as there are
             # points on one side of the band, the colors are mirrored to the other
