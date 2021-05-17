@@ -17,22 +17,53 @@ ys = randn(1000)
 violin(xs, ys)
 ```
 
+
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
 AbstractPlotting.inline!(true) # hide
 
-xs1 = rand(1:3, 1000)
-ys1 = randn(1000)
-dodge1 = rand(1:2, 1000)
+xs = rand(1:3, 1000)
+ys = map(xs) do x
+    return x == 1 ? randn() : x == 2 ? 0.5 * randn() : 5 * rand()
+end
 
-xs2 = rand(1:3, 1000)
-ys2 = randn(1000)
-dodge2 = rand(1:2, 1000)
+violin(xs, ys, datalimits = extrema)
+```
 
-fig = Figure()
-ax = Axis(fig[1, 1])
-violin!(ax, xs1, ys1, dodge = dodge1, side = :left, color = :orange)
-violin!(ax, xs2, ys2, dodge = dodge2, side = :right, color = :teal)
-fig
+
+```@example
+using CairoMakie
+CairoMakie.activate!() # hide
+AbstractPlotting.inline!(true) # hide
+
+N = 1000
+xs = rand(1:3, N)
+dodge = rand(1:2, N)
+side = rand([:left, :right], N)
+color = @. ifelse(side == :left, :orange, :teal)
+ys = map(side) do s
+    return s == :left ? randn() : rand()
+end
+
+violin(xs, ys, dodge = dodge, side = side, color = color)
+```
+
+```@example
+using CairoMakie
+CairoMakie.activate!() # hide
+AbstractPlotting.inline!(true) # hide
+
+N = 1000
+xs = rand(1:3, N)
+side = rand([:left, :right], N)
+color = map(xs, side) do x, s
+    colors = s == :left ? [:red, :orange, :yellow] : [:blue, :teal, :cyan]
+    return colors[x]
+end
+ys = map(side) do s
+    return s == :left ? randn() : rand()
+end
+
+violin(xs, ys, side = side, color = color)
 ```

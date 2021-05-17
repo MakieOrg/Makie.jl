@@ -34,7 +34,7 @@ $(ATTRIBUTES)
             align = :origin,
             normalize = false,
             lengthscale = 1f0,
-            colormap = :viridis,
+            colormap = theme(scene, :colormap),
             quality = 32,
             inspectable = theme(scene, :inspectable)
         )

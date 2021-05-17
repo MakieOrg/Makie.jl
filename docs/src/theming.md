@@ -9,12 +9,14 @@ You can also reset your changes by calling `set_theme!()` without arguments.
 Let's create a plot with the default theme:
 
 ```@example 1
-using GLMakie
+using CairoMakie
+CairoMakie.activate!() # hide
+AbstractPlotting.inline!(true) # hide
 
 function example_plot()
     f = Figure()
     for i in 1:2, j in 1:2
-        lines(f[i, j], cumsum(randn(1000)))
+        lines(f[i, j], cumsum(randn(50)))
     end
     f
 end
@@ -53,6 +55,21 @@ with_theme(fontsize_theme, fontsize = 25) do
 end
 ```
 
+## Theming plot objects
+
+You can theme plot objects by using their uppercase type names as a key in your theme.
+
+```@example 1
+lines_theme = Theme(
+    Lines = (
+        linewidth = 4,
+        linestyle = :dash,
+    )
+)
+
+with_theme(example_plot, lines_theme)
+```
+
 ## Theming layoutable objects
 
 Every Layoutable such as `Axis`, `Legend`, `Colorbar`, etc. can be themed by using its type name as a key in your theme.
@@ -75,6 +92,61 @@ ggplot_theme = Theme(
 with_theme(example_plot, ggplot_theme)
 ```
 
-### Special attributes
+## Cycles
+
+Makie supports a variety of options for cycling plot attributes automatically.
+For a plot object to use cycling, either its default theme or the currently active theme must have the `cycle` attribute set.
+
+There are multiple ways to specify this attribute:
+
+```julia
+# You can either make a list of symbols
+cycle = [:color, :marker]
+# or map specific plot attributes to palette attributes
+cycle = [:linecolor => :color, :marker]
+# you can also map multiple attributes that should receive
+# the same cycle attribute
+cycle = [[:linecolor, :markercolor] => :color, :marker]
+```
+
+```@example
+using CairoMakie
+CairoMakie.activate!() # hide
+AbstractPlotting.inline!(true) # hide
+
+set_theme!() # hide
+
+f = Figure(resolution = (800, 800))
+
+Axis(f[1, 1], title = "Default cycle palette")
+
+for i in 1:6
+    density!(randn(50) .+ 2i)
+end
+
+Axis(f[2, 1],
+    title = "Custom cycle palette",
+    palette = (patchcolor = [:red, :green, :blue, :yellow, :orange, :pink],))
+
+for i in 1:6
+    density!(randn(50) .+ 2i)
+end
+
+set_theme!(Density = (cycle = [],))
+
+Axis(f[3, 1], title = "No cycle")
+
+for i in 1:6
+    density!(randn(50) .+ 2i)
+end
+
+set_theme!() # hide
+
+f
+```
+
+
+
+## Special attributes
 
 You can use the keys `rowgap` and `colgap` to change the default grid layout gaps.

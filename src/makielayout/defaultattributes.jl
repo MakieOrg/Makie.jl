@@ -11,8 +11,12 @@ function lift_parent_attribute(::Nothing, attr::Symbol, default_value)
 end
 
 
+
+
 function default_attributes(::Type{Axis}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
+        "Attributes with one palette per key, for example `color = [:red, :green, :blue]`"
+        palette = scene !== nothing && haskey(scene.attributes, :palette) ? deepcopy(scene.palette) : Attributes()
         "The xlabel string."
         xlabel = ""
         "The ylabel string."
@@ -30,15 +34,15 @@ function default_attributes(::Type{Axis}, scene)
         "The horizontal alignment of the title."
         titlealign = :center
         "The color of the title"
-        titlecolor = :black
+        titlecolor = lift_parent_attribute(scene, :textcolor, :black)
         "The font family of the xlabel."
         xlabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
         "The font family of the ylabel."
         ylabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
         "The color of the xlabel."
-        xlabelcolor = RGBf0(0, 0, 0)
+        xlabelcolor = lift_parent_attribute(scene, :textcolor, :black)
         "The color of the ylabel."
-        ylabelcolor = RGBf0(0, 0, 0)
+        ylabelcolor = lift_parent_attribute(scene, :textcolor, :black)
         "The font size of the xlabel."
         xlabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
         "The font size of the ylabel."
@@ -56,9 +60,9 @@ function default_attributes(::Type{Axis}, scene)
         "The font family of the yticklabels."
         yticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
         "The color of xticklabels."
-        xticklabelcolor = RGBf0(0, 0, 0)
+        xticklabelcolor = lift_parent_attribute(scene, :textcolor, :black)
         "The color of yticklabels."
-        yticklabelcolor = RGBf0(0, 0, 0)
+        yticklabelcolor = lift_parent_attribute(scene, :textcolor, :black)
         "The font size of the xticklabels."
         xticklabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
         "The font size of the yticklabels."
@@ -271,7 +275,7 @@ function default_attributes(::Type{Colorbar}, scene)
         "The color bar label string."
         label = ""
         "The label color."
-        labelcolor = RGBf0(0, 0, 0)
+        labelcolor = lift_parent_attribute(scene, :textcolor, :black)
         "The label font family."
         labelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
         "The label font size."
@@ -287,7 +291,7 @@ function default_attributes(::Type{Colorbar}, scene)
         "Controls if the tick labels are visible."
         ticklabelsvisible = true
         "The color of the tick labels."
-        ticklabelcolor = RGBf0(0, 0, 0)
+        ticklabelcolor = lift_parent_attribute(scene, :textcolor, :black)
         "The size of the tick marks."
         ticksize = 6f0
         "Controls if the tick marks are visible."
@@ -347,7 +351,7 @@ function default_attributes(::Type{Colorbar}, scene)
         "Controls if the parent layout can adjust to this element's height"
         tellheight = true
         "The colormap that the colorbar uses."
-        colormap = :viridis
+        colormap = lift_parent_attribute(scene, :colormap, :viridis)
         "The range of values depicted in the colorbar."
         limits = (0f0, 1f0)
         "The align mode of the colorbar in its parent GridLayout."
@@ -402,7 +406,7 @@ function default_attributes(::Type{Label}, scene)
         "Controls if the text is visible."
         visible = true
         "The color of the text."
-        color = RGBf0(0, 0, 0)
+        color = lift_parent_attribute(scene, :textcolor, :black)
         "The font size of the text."
         textsize = lift_parent_attribute(scene, :fontsize, 16f0)
         "The font family of the text."
@@ -515,7 +519,7 @@ function default_attributes(::Type{Button}, scene)
         "The color of the button."
         buttoncolor = RGBf0(0.94, 0.94, 0.94)
         "The color of the label."
-        labelcolor = :black
+        labelcolor = lift_parent_attribute(scene, :textcolor, :black)
         "The color of the label when the mouse hovers over the button."
         labelcolor_hover = :black
         "The color of the label when the mouse clicks the button."
@@ -750,7 +754,7 @@ function default_attributes(::Type{Legend}, scene)
         "Controls if the legend titles are visible."
         titlevisible = true
         "The color of the legend titles"
-        titlecolor = :black
+        titlecolor = lift_parent_attribute(scene, :textcolor, :black)
         "The group title positions relative to their groups. Can be `:top` or `:left`."
         titleposition = :top
         "The font size of the entry labels."
@@ -758,7 +762,7 @@ function default_attributes(::Type{Legend}, scene)
         "The font family of the entry labels."
         labelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
         "The color of the entry labels."
-        labelcolor = :black
+        labelcolor = lift_parent_attribute(scene, :textcolor, :black)
         "The horizontal alignment of the entry labels."
         labelhalign = :left
         "The vertical alignment of the entry labels."
@@ -913,7 +917,7 @@ function default_attributes(::Type{Textbox}, scene)
         "Text size."
         textsize = lift_parent_attribute(scene, :fontsize, 16f0)
         "Text color."
-        textcolor = :black
+        textcolor = lift_parent_attribute(scene, :textcolor, :black)
         "Text color for the placeholder."
         textcolor_placeholder = RGBf0(0.5, 0.5, 0.5)
         "Font family."
@@ -968,6 +972,8 @@ Textbox
 
 function default_attributes(::Type{Axis3}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
+        "Attributes with one palette per key, for example `color = [:red, :green, :blue]`"
+        palette = scene !== nothing && haskey(scene.attributes, :palette) ? deepcopy(scene.palette) : Attributes()
         "The height setting of the scene."
         height = nothing
         "The width setting of the scene."
@@ -1001,11 +1007,11 @@ function default_attributes(::Type{Axis3}, scene)
         "The z label"
         zlabel = "z"
         "The x label color"
-        xlabelcolor = :black
+        xlabelcolor = lift_parent_attribute(scene, :textcolor, :black)
         "The y label color"
-        ylabelcolor = :black
+        ylabelcolor = lift_parent_attribute(scene, :textcolor, :black)
         "The z label color"
-        zlabelcolor = :black
+        zlabelcolor = lift_parent_attribute(scene, :textcolor, :black)
         "Controls if the x label is visible"
         xlabelvisible = true
         "Controls if the y label is visible"
@@ -1055,11 +1061,11 @@ function default_attributes(::Type{Axis3}, scene)
         "The z label offset"
         zlabeloffset = 50
         "The x ticklabel color"
-        xticklabelcolor = :black
+        xticklabelcolor = lift_parent_attribute(scene, :textcolor, :black)
         "The y ticklabel color"
-        yticklabelcolor = :black
+        yticklabelcolor = lift_parent_attribute(scene, :textcolor, :black)
         "The z ticklabel color"
-        zticklabelcolor = :black
+        zticklabelcolor = lift_parent_attribute(scene, :textcolor, :black)
         "The x ticklabel size"
         xticklabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
         "The y ticklabel size"
@@ -1141,7 +1147,7 @@ function default_attributes(::Type{Axis3}, scene)
         "The horizontal alignment of the title."
         titlealign = :center
         "The color of the title"
-        titlecolor = :black
+        titlecolor = lift_parent_attribute(scene, :textcolor, :black)
         "The color of the xy panel"
         xypanelcolor = :transparent
         "The color of the yz panel"

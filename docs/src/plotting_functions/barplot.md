@@ -77,7 +77,7 @@ barplot(tbl.x, tbl.height,
 
 ```@example bar
 let
-    colors = AbstractPlotting.wong_colors
+    colors = AbstractPlotting.wong_colors()
 
     # Figure and Axis
     fig = Figure()
