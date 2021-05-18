@@ -17,7 +17,7 @@ function layoutable(::Type{Label}, fig_or_scene; bbox = nothing, kwargs...)
 
     textpos = Node(Point3f0(0, 0, 0))
 
-    # this is just a hack until boundingboxes in abstractplotting are perfect
+    # this is just a hack until boundingboxes in Makie are perfect
     alignnode = lift(halign, rotation) do h, rot
         # left align the text if it's not rotated and left aligned
         if rot == 0 && (h == :left || h == 0.0)
@@ -69,4 +69,3 @@ function layoutable(::Type{Label}, fig_or_scene; bbox = nothing, kwargs...)
 
     lt
 end
-

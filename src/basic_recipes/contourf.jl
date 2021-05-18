@@ -119,7 +119,7 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
 
         nbands = length(lows)
 
-        # zs needs to be transposed to match rest of abstractplotting
+        # zs needs to be transposed to match rest of makie
         isos = Isoband.isobands(xs, ys, zs', lows, highs)
 
         allvertices = Point2f0[]

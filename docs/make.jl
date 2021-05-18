@@ -394,7 +394,7 @@ makedocs(
             "lighting.md",
             "cameras.md",
             "faq.md",
-            "API Reference Makie" => "abstractplotting_api.md",
+            "API Reference Makie" => "makie_api.md",
             "API Reference MakieLayout" => "makielayout/reference.md",
             "generated/axis.md",
         ],
