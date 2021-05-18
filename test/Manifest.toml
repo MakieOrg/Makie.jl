@@ -6,8 +6,48 @@ git-tree-sha1 = "051c95d6836228d120f5f4b984dd5aba1624f716"
 uuid = "621f4979-c628-5d54-868e-fcf4e3e8185c"
 version = "0.5.0"
 
-[[AbstractPlotting]]
-deps = ["Animations", "ColorBrewer", "ColorSchemes", "ColorTypes", "Colors", "Contour", "Distributions", "DocStringExtensions", "FFMPEG", "FileIO", "FixedPointNumbers", "Formatting", "FreeType", "FreeTypeAbstraction", "GeometryBasics", "GridLayoutBase", "ImageIO", "IntervalSets", "Isoband", "KernelDensity", "LinearAlgebra", "Markdown", "Match", "Observables", "Packing", "PaddedViews", "PlotUtils", "PolygonOps", "Printf", "Random", "Serialization", "Showoff", "SignedDistanceFields", "SparseArrays", "StaticArrays", "Statistics", "StatsBase", "StructArrays", "UnicodeFun"]
+[[Makie]]
+deps = [
+  "Animations",
+  "ColorBrewer",
+  "ColorSchemes",
+  "ColorTypes",
+  "Colors",
+  "Contour",
+  "Distributions",
+  "DocStringExtensions",
+  "FFMPEG",
+  "FileIO",
+  "FixedPointNumbers",
+  "Formatting",
+  "FreeType",
+  "FreeTypeAbstraction",
+  "GeometryBasics",
+  "GridLayoutBase",
+  "ImageIO",
+  "IntervalSets",
+  "Isoband",
+  "KernelDensity",
+  "LinearAlgebra",
+  "Markdown",
+  "Match",
+  "Observables",
+  "Packing",
+  "PaddedViews",
+  "PlotUtils",
+  "PolygonOps",
+  "Printf",
+  "Random",
+  "Serialization",
+  "Showoff",
+  "SignedDistanceFields",
+  "SparseArrays",
+  "StaticArrays",
+  "Statistics",
+  "StatsBase",
+  "StructArrays",
+  "UnicodeFun",
+]
 git-tree-sha1 = "2e7d37ecf7a62573b5b9a381b1c321dd7444cf76"
 uuid = "537997a7-5e4e-5d89-9595-2241ea00577e"
 version = "0.14.0"
@@ -87,7 +127,31 @@ uuid = "5ae59095-9a9b-59fe-a467-6f913c188581"
 version = "0.12.4"
 
 [[Compat]]
-deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", "LibGit2", "Libdl", "LinearAlgebra", "Markdown", "Mmap", "Pkg", "Printf", "REPL", "Random", "SHA", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "Test", "UUIDs", "Unicode"]
+deps = [
+  "Base64",
+  "Dates",
+  "DelimitedFiles",
+  "Distributed",
+  "InteractiveUtils",
+  "LibGit2",
+  "Libdl",
+  "LinearAlgebra",
+  "Markdown",
+  "Mmap",
+  "Pkg",
+  "Printf",
+  "REPL",
+  "Random",
+  "SHA",
+  "Serialization",
+  "SharedArrays",
+  "Sockets",
+  "SparseArrays",
+  "Statistics",
+  "Test",
+  "UUIDs",
+  "Unicode",
+]
 git-tree-sha1 = "a706ff10f1cd8dab94f59fd09c0e657db8e77ff0"
 uuid = "34da2185-b29b-5c13-b0c7-acf172513d20"
 version = "3.23.0"
@@ -137,7 +201,20 @@ deps = ["Random", "Serialization", "Sockets"]
 uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[Distributions]]
-deps = ["FillArrays", "LinearAlgebra", "PDMats", "Printf", "QuadGK", "Random", "SparseArrays", "SpecialFunctions", "StaticArrays", "Statistics", "StatsBase", "StatsFuns"]
+deps = [
+  "FillArrays",
+  "LinearAlgebra",
+  "PDMats",
+  "Printf",
+  "QuadGK",
+  "Random",
+  "SparseArrays",
+  "SpecialFunctions",
+  "StaticArrays",
+  "Statistics",
+  "StatsBase",
+  "StatsFuns",
+]
 git-tree-sha1 = "3d85c955190e6133966df58d3088d88234b72d12"
 uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"
 version = "0.24.6"
@@ -182,7 +259,26 @@ uuid = "c87230d0-a227-11e9-1b43-d7ebe4e7570a"
 version = "0.4.0"
 
 [[FFMPEG_jll]]
-deps = ["Artifacts", "Bzip2_jll", "FreeType2_jll", "FriBidi_jll", "JLLWrappers", "LAME_jll", "LibVPX_jll", "Libdl", "Ogg_jll", "OpenSSL_jll", "Opus_jll", "Pkg", "Zlib_jll", "libass_jll", "libfdk_aac_jll", "libvorbis_jll", "x264_jll", "x265_jll"]
+deps = [
+  "Artifacts",
+  "Bzip2_jll",
+  "FreeType2_jll",
+  "FriBidi_jll",
+  "JLLWrappers",
+  "LAME_jll",
+  "LibVPX_jll",
+  "Libdl",
+  "Ogg_jll",
+  "OpenSSL_jll",
+  "Opus_jll",
+  "Pkg",
+  "Zlib_jll",
+  "libass_jll",
+  "libfdk_aac_jll",
+  "libvorbis_jll",
+  "x264_jll",
+  "x265_jll",
+]
 git-tree-sha1 = "3cc57ad0a213808473eafef4845a74766242e05f"
 uuid = "b22a6f82-2f65-5046-a5b2-351ab43fb4e5"
 version = "4.3.1+4"
@@ -390,7 +486,25 @@ uuid = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
 version = "1.5.1"
 
 [[JSServe]]
-deps = ["AbstractTrees", "Base64", "Colors", "HTTP", "Hyperscript", "JSON3", "LinearAlgebra", "Markdown", "MsgPack", "Observables", "SHA", "Sockets", "Tables", "Test", "UUIDs", "WebSockets", "WidgetsBase"]
+deps = [
+  "AbstractTrees",
+  "Base64",
+  "Colors",
+  "HTTP",
+  "Hyperscript",
+  "JSON3",
+  "LinearAlgebra",
+  "Markdown",
+  "MsgPack",
+  "Observables",
+  "SHA",
+  "Sockets",
+  "Tables",
+  "Test",
+  "UUIDs",
+  "WebSockets",
+  "WidgetsBase",
+]
 git-tree-sha1 = "ad002c3917de314247b52a9c2570750bf17a7407"
 uuid = "824d6782-a2ef-11e9-3a09-e5662e0c26f9"
 version = "0.6.12"
@@ -591,7 +705,23 @@ uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
 version = "1.0.14"
 
 [[Pkg]]
-deps = ["Artifacts", "Dates", "Downloads", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs"]
+deps = [
+  "Artifacts",
+  "Dates",
+  "Downloads",
+  "LibGit2",
+  "Libdl",
+  "Logging",
+  "Markdown",
+  "Printf",
+  "REPL",
+  "Random",
+  "SHA",
+  "Serialization",
+  "TOML",
+  "Tar",
+  "UUIDs",
+]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
 [[PlotUtils]]

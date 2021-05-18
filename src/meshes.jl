@@ -15,7 +15,7 @@ end
 
 function array2color(colors, cmap, crange)
     cmap = RGBAf0.(Colors.color.(to_colormap(cmap)), 1.0)
-    return AbstractPlotting.interpolated_getindex.((cmap,), colors, (crange,))
+    return Makie.interpolated_getindex.((cmap,), colors, (crange,))
 end
 
 function array2color(colors::AbstractArray{<:Colorant}, cmap, crange)
@@ -28,7 +28,7 @@ function converted_attribute(plot::AbstractPlot, key::Symbol)
     end
 end
 
-function create_shader(scene::Scene, plot::AbstractPlotting.Mesh)
+function create_shader(scene::Scene, plot::Makie.Mesh)
     # Potentially per instance attributes
     mesh_signal = plot[1]
     mattributes = GeometryBasics.attributes

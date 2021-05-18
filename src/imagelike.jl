@@ -1,4 +1,4 @@
-using AbstractPlotting: el32convert, surface_normals, get_dim
+using Makie: el32convert, surface_normals, get_dim
 
 
 function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
@@ -99,7 +99,7 @@ function create_shader(mscene::Scene, plot::Volume)
     algorithm = lift(x -> Cuint(convert_attribute(x, key"algorithm"())), plot.algorithm)
 
     return Program(WebGL(), lasset("volume.vert"), lasset("volume.frag"), box,
-                   volumedata=Sampler(lift(AbstractPlotting.el32convert, vol)),
+                   volumedata=Sampler(lift(Makie.el32convert, vol)),
                    modelinv=modelinv, colormap=Sampler(lift(to_colormap, plot.colormap)),
                    colorrange=lift(Vec2f0, plot.colorrange),
                    isovalue=lift(Float32, plot.isovalue),

@@ -1,4 +1,4 @@
-using JSServe, WGLMakie, AbstractPlotting
+using JSServe, WGLMakie, Makie
 
 function handler(session, request)
     return scatter(1:4, color=1:4)

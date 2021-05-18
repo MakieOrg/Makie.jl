@@ -1,9 +1,7 @@
-
 ![CI](https://github.com/JuliaPlots/WGLMakie.jl/workflows/CI/badge.svg)
 [![Codecov](https://codecov.io/gh/JuliaPlots/WGLMakie.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaPlots/WGLMakie.jl)
 
 WGLMakie is a WebGL backend for the [Makie.jl](https://www.github.com/JuliaPlots/Makie.jl) plotting package, implemented using Three.js.
-
 
 Backend specific docs, for creating interactive and static html pages:
 
@@ -14,7 +12,7 @@ Backend specific docs, for creating interactive and static html pages:
 
 ```julia
 using Pkg
-pkg"add WGLMakie AbstractPlotting"
+pkg"add WGLMakie Makie"
 ```
 
 ## Teardown (if you want to uninstall)
@@ -24,19 +22,20 @@ using Pkg
 pkg"rm WGLMakie"
 ```
 
-
 # Usage
 
 Now, it should just work like Makie:
 
 ```julia
-using AbstractPlotting, WGLMakie
+using Makie, WGLMakie
 
 scatter(rand(4))
 ```
+
 In the REPL, this will open a browser tab, that will refresh on a new display.
 In VSCode, this should open in the plotpane.
 You can also embed plots in a JSServe webpage:
+
 ```julia
 function dom_handler(session, request)
     return DOM.div(

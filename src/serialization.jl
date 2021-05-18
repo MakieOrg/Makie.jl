@@ -1,9 +1,9 @@
 using Colors
 using ShaderAbstractions: InstancedProgram, Program
-using AbstractPlotting: Key, plotkey
+using Makie: Key, plotkey
 using Colors: N0f8
 
-AbstractPlotting.plotkey(::Nothing) = :scatter
+Makie.plotkey(::Nothing) = :scatter
 
 function lift_convert(key, value, plot)
     val = lift(value) do value
@@ -147,7 +147,7 @@ isscalar(x::Observable) = isscalar(x[])
 isscalar(x) = true
 
 function ShaderAbstractions.type_string(::ShaderAbstractions.AbstractContext,
-                                        ::Type{<:AbstractPlotting.Quaternion})
+                                        ::Type{<:Makie.Quaternion})
     return "vec4"
 end
 
@@ -157,9 +157,9 @@ function ShaderAbstractions.convert_uniform(::ShaderAbstractions.AbstractContext
 end
 
 function wgl_convert(value, key1, key2)
-    val = AbstractPlotting.convert_attribute(value, key1, key2)
+    val = Makie.convert_attribute(value, key1, key2)
     return if val isa AbstractArray{<:Float64}
-        return AbstractPlotting.el32convert(val)
+        return Makie.el32convert(val)
     else
         return val
     end
@@ -288,7 +288,7 @@ end
 function serialize_three(scene::Scene, plot::AbstractPlot)
     program = create_shader(scene, plot)
     mesh = serialize_three(program)
-    mesh[:name] = string(AbstractPlotting.plotkey(plot)) * "-" * string(objectid(plot))
+    mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
     mesh[:visible] = plot.visible
     mesh[:uuid] = js_uuid(plot)
     uniforms = mesh[:uniforms]
@@ -298,8 +298,7 @@ function serialize_three(scene::Scene, plot::AbstractPlot)
 
     if haskey(plot, :lightposition)
         eyepos = scene.camera.eyeposition
-        lightpos = lift(plot.lightposition, eyepos,
-                        typ=Vec3f0) do pos, eyepos
+        lightpos = lift(Vec3f0, plot.lightposition, eyepos) do pos, eyepos
             return ifelse(pos == :eyeposition, eyepos, pos)::Vec3f0
         end
         uniforms[:lightposition] = serialize_three(lightpos[])

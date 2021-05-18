@@ -71,7 +71,7 @@ primitive_shape(::Type{<:Rect2D}) = Cint(RECTANGLE)
 primitive_shape(::Type{T}) where {T} = error("Type $(T) not supported")
 primitive_shape(x::Shape) = Cint(x)
 
-using AbstractPlotting: to_spritemarker
+using Makie: to_spritemarker
 
 function scatter_shader(scene::Scene, attributes)
     # Potentially per instance attributes
@@ -81,7 +81,7 @@ function scatter_shader(scene::Scene, attributes)
 
     if haskey(attributes, :marker) && attributes[:marker][] isa Union{Vector{Char},String}
         x = pop!(attributes, :marker)
-        attributes[:uv_offset_width] = lift(x -> AbstractPlotting.glyph_uv_width!.(collect(x)),
+        attributes[:uv_offset_width] = lift(x -> Makie.glyph_uv_width!.(collect(x)),
                                             x)
         uniform_dict[:shape_type] = Cint(3)
     end
@@ -107,7 +107,7 @@ function scatter_shader(scene::Scene, attributes)
         return lift(x -> primitive_shape(to_spritemarker(x)), attributes[:marker])
     end
     if uniform_dict[:shape_type][] == 3
-        atlas = AbstractPlotting.get_texture_atlas()
+        atlas = Makie.get_texture_atlas()
         uniform_dict[:distancefield] = Sampler(atlas.data, minfilter=:linear,
                                                magfilter=:linear, anisotropic=16f0)
         uniform_dict[:atlas_texture_size] = Float32(size(atlas.data, 1)) # Texture must be quadratic
@@ -120,7 +120,7 @@ function scatter_shader(scene::Scene, attributes)
         get!(uniform_dict, :uv_offset_width) do
             return if haskey(attributes, :marker) &&
                       to_spritemarker(attributes[:marker][]) isa Char
-                lift(x -> AbstractPlotting.glyph_uv_width!(to_spritemarker(x)),
+                lift(x -> Makie.glyph_uv_width!(to_spritemarker(x)),
                      attributes[:marker])
             else
                 Vec4f0(0)
@@ -162,18 +162,18 @@ value_or_first(x::AbstractArray) = first(x)
 value_or_first(x::StaticArray) = x
 value_or_first(x) = x
 
-function create_shader(scene::Scene, plot::AbstractPlotting.Text)
+function create_shader(scene::Scene, plot::Makie.Text)
 
     string_obs = plot[1]
     liftkeys = (:position, :textsize, :font, :align, :rotation, :model, :justification, :lineheight, :space, :offset)
 
     args = getindex.(Ref(plot), liftkeys)
 
-    gl_text = lift(string_obs, scene.camera.projectionview, AbstractPlotting.transform_func_obs(scene), args...) do str, projview, transfunc, pos, tsize, font, align, rotation, model, j, l, space, offset
+    gl_text = lift(string_obs, scene.camera.projectionview, Makie.transform_func_obs(scene), args...) do str, projview, transfunc, pos, tsize, font, align, rotation, model, j, l, space, offset
         # For annotations, only str (x[1]) will get updated, but all others are updated too!
         args = @get_attribute plot (position, textsize, font, align, rotation, offset)
         res = Vec2f0(widths(pixelarea(scene)[]))
-        return AbstractPlotting.preprojected_glyph_arrays(str, pos, plot._glyphlayout[], font, textsize, space, projview, res, offset, transfunc)
+        return Makie.preprojected_glyph_arrays(str, pos, plot._glyphlayout[], font, textsize, space, projview, res, offset, transfunc)
     end
 
     # unpack values from the one signal:
@@ -202,7 +202,7 @@ function create_shader(scene::Scene, plot::AbstractPlotting.Text)
                     return identity.(result)
                 end
             else
-                return AbstractPlotting.get_attribute(plot, key)
+                return Makie.get_attribute(plot, key)
             end
         end
     end

@@ -1,12 +1,12 @@
 
 function JSServe.jsrender(session::Session, scene::Scene)
-    AbstractPlotting.update!(scene)
+    Makie.update!(scene)
     three, canvas = WGLMakie.three_display(session, scene)
     return canvas
 end
 
-function JSServe.jsrender(session::Session, scene::AbstractPlotting.FigureLike)
-    return JSServe.jsrender(session, AbstractPlotting.get_scene(scene))
+function JSServe.jsrender(session::Session, scene::Makie.FigureLike)
+    return JSServe.jsrender(session, Makie.get_scene(scene))
 end
 
 const WEB_MIMES = (MIME"text/html", MIME"application/vnd.webio.application+html",
@@ -14,7 +14,7 @@ const WEB_MIMES = (MIME"text/html", MIME"application/vnd.webio.application+html"
 
 for M in WEB_MIMES
     @eval begin
-        function AbstractPlotting.backend_show(::WGLBackend, io::IO, m::$M, scene::Scene)
+        function Makie.backend_show(::WGLBackend, io::IO, m::$M, scene::Scene)
             three = nothing
             inline_display = App() do session::Session
                 three, canvas = three_display(session, scene)
@@ -47,31 +47,31 @@ function scene2image(scene::Scene)
     if done == :timed_out
         error("JS Session not ready after 30s waiting, possibly errored while displaying")
     end
-    return AbstractPlotting.colorbuffer(three)
+    return Makie.colorbuffer(three)
 end
 
-function AbstractPlotting.backend_show(::WGLBackend, io::IO, m::MIME"image/png",
+function Makie.backend_show(::WGLBackend, io::IO, m::MIME"image/png",
                                        scene::Scene)
     img = scene2image(scene)
     return FileIO.save(FileIO.Stream(FileIO.format"PNG", io), img)
 end
 
-function AbstractPlotting.backend_show(::WGLBackend, io::IO, m::MIME"image/jpeg",
+function Makie.backend_show(::WGLBackend, io::IO, m::MIME"image/jpeg",
                                        scene::Scene)
     img = scene2image(scene)
     return FileIO.save(FileIO.Stream(FileIO.format"JPEG", io), img)
 end
 
-function AbstractPlotting.backend_showable(::WGLBackend, ::T, scene::Scene) where {T<:MIME}
+function Makie.backend_showable(::WGLBackend, ::T, scene::Scene) where {T<:MIME}
     return T in WEB_MIMES
 end
 
-struct WebDisplay <: AbstractPlotting.AbstractScreen
+struct WebDisplay <: Makie.AbstractScreen
     three::Base.RefValue{Any}
     display::Any
 end
 
-function AbstractPlotting.backend_display(::WGLBackend, scene::Scene)
+function Makie.backend_display(::WGLBackend, scene::Scene)
     # Reference to three object which gets set once we serve this to a browser
     three_ref = Base.RefValue{Any}(nothing)
     app = App() do s, request
@@ -96,7 +96,7 @@ function session2image(sessionlike)
     return ImageMagick.load_(bytes)
 end
 
-function AbstractPlotting.colorbuffer(screen::ThreeDisplay)
+function Makie.colorbuffer(screen::ThreeDisplay)
     return session2image(screen)
 end
 
@@ -121,7 +121,7 @@ function get_three(screen::WebDisplay; timeout = 30)
     return nothing
 end
 
-function AbstractPlotting.colorbuffer(screen::WebDisplay)
+function Makie.colorbuffer(screen::WebDisplay)
     return session2image(get_three(screen))
 end
 
