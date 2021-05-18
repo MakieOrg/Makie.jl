@@ -311,7 +311,7 @@ void main()
 
     float steps = 0.1;
     // the algorithm numbers correspond to the order in the
-    // RaymarchAlgorithm enum defined in AbstractPlotting types.jl
+    // RaymarchAlgorithm enum defined in Makie types.jl
     if(algorithm == 0)
         color = isosurface(start, step_in_dir);
     else if(algorithm == 1)

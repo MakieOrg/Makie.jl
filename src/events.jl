@@ -1,4 +1,4 @@
-using AbstractPlotting: MouseButtonEvent, KeyEvent
+using Makie: MouseButtonEvent, KeyEvent
 
 macro print_error(expr)
     return quote

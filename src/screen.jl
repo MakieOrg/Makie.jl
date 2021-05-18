@@ -42,7 +42,7 @@ end
 GeometryBasics.widths(x::Screen) = size(x.framebuffer)
 
 Base.wait(x::Screen) = isassigned(x.rendertask) && wait(x.rendertask[])
-Base.wait(scene::Scene) = wait(AbstractPlotting.getscreen(scene))
+Base.wait(scene::Scene) = wait(Makie.getscreen(scene))
 Base.show(io::IO, screen::Screen) = print(io, "GLMakie.Screen(...)")
 Base.size(x::Screen) = size(x.framebuffer)
 
@@ -61,7 +61,7 @@ end
 function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
     if !isempty(plot.plots)
         # this plot consists of children, so we flatten it and delete the children instead
-        delete!.(Ref(screen), Ref(scene), AbstractPlotting.flatten_plots(plot))
+        delete!.(Ref(screen), Ref(scene), Makie.flatten_plots(plot))
     else
         renderobject = get(screen.cache, objectid(plot)) do
             error("Could not find $(typeof(subplot)) in current GLMakie screen!")
@@ -149,7 +149,7 @@ depthbuffer(screen::Screen)
 Gets the depth buffer of screen.
 Usage:
 ```
-using AbstractPlotting, GLMakie
+using Makie, GLMakie
 x = scatter(1:4)
 screen = display(x)
 depth_color = GLMakie.depthbuffer(screen)
@@ -168,7 +168,7 @@ function depthbuffer(screen::Screen)
     return depth
 end
 
-function AbstractPlotting.colorbuffer(screen::Screen, format::AbstractPlotting.ImageStorageFormat = AbstractPlotting.JuliaNative)
+function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Makie.JuliaNative)
     if !isopen(screen)
         error("Screen not open!")
     end
@@ -183,9 +183,9 @@ function AbstractPlotting.colorbuffer(screen::Screen, format::AbstractPlotting.I
         screen.framecache = Matrix{RGB{N0f8}}(undef, size(ctex))
     end
     fast_color_data!(screen.framecache, ctex)
-    if format == AbstractPlotting.GLNative
+    if format == Makie.GLNative
         return screen.framecache
-    elseif format == AbstractPlotting.JuliaNative
+    elseif format == Makie.JuliaNative
         @static if VERSION < v"1.6"
             bufc = copy(screen.framecache)
             ind1, ind2 = axes(bufc)
@@ -343,7 +343,7 @@ function Screen(;
         rethrow(e)
     end
 
-    GLFW.SetWindowIcon(window, AbstractPlotting.icon())
+    GLFW.SetWindowIcon(window, Makie.icon())
 
     # tell GLAbstraction that we created a new context.
     # This is important for resource tracking, and only needed for the first context
@@ -459,7 +459,7 @@ function pick_native(screen::Screen, xy::Vec{2, Float64})
     return SelectionID{Int}(0, 0)
 end
 
-function AbstractPlotting.pick(scene::SceneLike, screen::Screen, xy::Vec{2, Float64})
+function Makie.pick(scene::SceneLike, screen::Screen, xy::Vec{2, Float64})
     sid = pick_native(screen, xy)
     if haskey(screen.cache2plot, sid.id)
         plot = screen.cache2plot[sid.id]
@@ -469,7 +469,7 @@ function AbstractPlotting.pick(scene::SceneLike, screen::Screen, xy::Vec{2, Floa
     end
 end
 
-function AbstractPlotting.pick(scene::SceneLike, screen::Screen, rect::IRect2D)
+function Makie.pick(scene::SceneLike, screen::Screen, rect::IRect2D)
     map(pick_native(screen, rect)) do sid
         if haskey(screen.cache2plot, sid.id)
             (screen.cache2plot[sid.id], sid.index)
@@ -481,7 +481,7 @@ end
 
 
 # Skips one set of allocations
-function AbstractPlotting.pick_closest(scene::SceneLike, screen::Screen, xy, range)
+function Makie.pick_closest(scene::SceneLike, screen::Screen, xy, range)
     isopen(screen) || return (nothing, 0)
     w, h = widths(screen)
     ((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h)) || return (nothing, 0)
@@ -496,7 +496,7 @@ function AbstractPlotting.pick_closest(scene::SceneLike, screen::Screen, xy, ran
     x, y =  xy .+ 1 .- Vec2f0(x0, y0)
     for i in 1:dx, j in 1:dy
         d = (x-i)^2 + (y-j)^2
-        if (d < min_dist) && (sid[i, j][1] > 0x00000000) && 
+        if (d < min_dist) && (sid[i, j][1] > 0x00000000) &&
             (sid[i, j][2] < 0x3f800000) && haskey(screen.cache2plot, sid[i, j][1])
             min_dist = d
             id = convert(SelectionID{Int}, sid[i, j])
@@ -511,7 +511,7 @@ function AbstractPlotting.pick_closest(scene::SceneLike, screen::Screen, xy, ran
 end
 
 # Skips some allocations
-function AbstractPlotting.pick_sorted(scene::SceneLike, screen::Screen, xy, range)
+function Makie.pick_sorted(scene::SceneLike, screen::Screen, xy, range)
     isopen(screen) || return (nothing, 0)
     w, h = widths(screen)
     if !((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h))
@@ -520,7 +520,7 @@ function AbstractPlotting.pick_sorted(scene::SceneLike, screen::Screen, xy, rang
     x0, y0 = max.(1, floor.(Int, xy .- range))
     x1, y1 = min.([w, h], floor.(Int, xy .+ range))
     dx = x1 - x0; dy = y1 - y0
-    
+
     picks = pick_native(screen, IRect2D(x0, y0, dx, dy))
 
     selected = filter(x -> x[1] > 0 && haskey(screen.cache2plot, x[1]), unique(vec(picks)))

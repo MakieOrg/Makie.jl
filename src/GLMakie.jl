@@ -1,13 +1,13 @@
 module GLMakie
 
 using ModernGL, FixedPointNumbers, Colors, GeometryBasics, StaticArrays
-using AbstractPlotting, FileIO
+using Makie, FileIO
 
-using AbstractPlotting: @key_str, Key, broadcast_foreach, to_ndim, NativeFont
-using AbstractPlotting: Scene, Lines, Text, Image, Heatmap, Scatter
-using AbstractPlotting: convert_attribute, @extractvalue, LineSegments
-using AbstractPlotting: @get_attribute, to_value, to_colormap, extrema_nan
-using AbstractPlotting: ClosedInterval, (..)
+using Makie: @key_str, Key, broadcast_foreach, to_ndim, NativeFont
+using Makie: Scene, Lines, Text, Image, Heatmap, Scatter
+using Makie: convert_attribute, @extractvalue, LineSegments
+using Makie: @get_attribute, to_value, to_colormap, extrema_nan
+using Makie: ClosedInterval, (..)
 using ShaderAbstractions
 using FreeTypeAbstraction
 
@@ -17,12 +17,12 @@ using Base.Iterators: repeated, drop
 
 using LinearAlgebra
 
-for name in names(AbstractPlotting)
-    @eval import AbstractPlotting: $(name)
+for name in names(Makie)
+    @eval import Makie: $(name)
     @eval export $(name)
 end
 
-struct GLBackend <: AbstractPlotting.AbstractBackend
+struct GLBackend <: Makie.AbstractBackend
 end
 
 loadshader(name) = normpath(joinpath(@__DIR__, "..", "assets", "shader", name))
@@ -32,10 +32,10 @@ include("gl_backend.jl")
 
 function activate!(use_display=true)
     b = GLBackend()
-    AbstractPlotting.register_backend!(b)
-    AbstractPlotting.set_glyph_resolution!(AbstractPlotting.High)
-    AbstractPlotting.current_backend[] = b
-    AbstractPlotting.inline!(!use_display)
+    Makie.register_backend!(b)
+    Makie.set_glyph_resolution!(Makie.High)
+    Makie.current_backend[] = b
+    Makie.inline!(!use_display)
 end
 
 function __init__()

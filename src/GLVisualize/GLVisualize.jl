@@ -1,14 +1,14 @@
 module GLVisualize
 
 using ..GLAbstraction
-using AbstractPlotting: RaymarchAlgorithm, IsoValue, Absorption, MaximumIntensityProjection, AbsorptionRGBA, IndexedAbsorptionRGBA
+using Makie: RaymarchAlgorithm, IsoValue, Absorption, MaximumIntensityProjection, AbsorptionRGBA, IndexedAbsorptionRGBA
 
 using ..GLMakie.GLFW
 using ModernGL
 using StaticArrays
 using GeometryBasics
 using Colors
-using AbstractPlotting
+using Makie
 using FixedPointNumbers
 using FileIO
 using Markdown
@@ -18,7 +18,7 @@ import Base: merge, convert, show
 using Base.Iterators: Repeated, repeated
 using LinearAlgebra
 
-import AbstractPlotting: to_font, glyph_uv_width!
+import Makie: to_font, glyph_uv_width!
 import ..GLMakie: get_texture!, loadshader
 
 const GLBoundingBox = FRect3D

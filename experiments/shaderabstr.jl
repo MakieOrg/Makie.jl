@@ -16,7 +16,7 @@ triangles_buff = Buffer(triangles)
 vert_color_buff = Buffer(xyz_vertex_color)
 uv_buff = Buffer(uv)
 texture_buff = Sampler(texture)
-texsampler = AbstractPlotting.sampler(:viridis, rand(length(positions)))
+texsampler = Makie.sampler(:viridis, rand(length(positions)))
 
 coords = VertexArray(pos_buff, triangles_buff, color=vert_color_buff)
 mesh = GeometryBasics.Mesh(coords)
@@ -52,7 +52,7 @@ rshader = GLMakie.GLAbstraction.gl_convert(shader, uniforms)
 vbo = GLMakie.GLAbstraction.GLVertexArray(program, posmeta, triangles_buff)
 
 m = GeometryBasics.Mesh(posmeta, triangles_buff)
-disp = display(AbstractPlotting.mesh(m, show_axis=false));
+disp = display(Makie.mesh(m, show_axis=false));
 
 
 mesh_normals = GeometryBasics.normals(positions, triangles)
@@ -112,13 +112,13 @@ function getter_function(io::IO, ::Vertex, ::AbstractVector{T}, name) where T
     """)
 end
 
-texsampler = AbstractPlotting.sampler(rand(RGBf0, 4, 4), uv)
+texsampler = Makie.sampler(rand(RGBf0, 4, 4), uv)
 coords = meta(positions, color=texsampler, normals=mesh_normals)
 texture_mesh = GeometryBasics.Mesh(coords, triangles)
 
 scren = mesh(texture_mesh, show_axis=false) |> display
 
-texsampler = AbstractPlotting.sampler(:viridis, rand(length(positions)))
+texsampler = Makie.sampler(:viridis, rand(length(positions)))
 coords = meta(positions, color=texsampler, normals=mesh_normals)
 texture_mesh = GeometryBasics.Mesh(coords, triangles)
 

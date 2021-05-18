@@ -1,14 +1,14 @@
-using GLMakie.AbstractPlotting: backend_display, getscreen
+using GLMakie.Makie: backend_display, getscreen
 
 function project_sp(scene, point)
-    point_px = AbstractPlotting.project(scene, point)
+    point_px = Makie.project(scene, point)
     offset = Point2f0(minimum(pixelarea(scene)[]))
     return point_px .+ offset
 end
 
 @testset "unit tests" begin
     @testset "Window handling" begin
-        AbstractPlotting.inline!(false)
+        Makie.inline!(false)
         screen = GLMakie.global_gl_screen((100, 100), false)
         @test isopen(screen)
         fig, ax, splot = scatter(1:4);
@@ -31,7 +31,7 @@ end
         screen = display(fig)
         # we don't really need the color buffer here, but this should be the best way right now to really
         # force a full render to happen
-        GLMakie.AbstractPlotting.colorbuffer(screen)
+        GLMakie.Makie.colorbuffer(screen)
         # test for pick a single data point (with idx > 65535)
         point_px = project_sp(ax.scene, Point2f0(N-1,N-1))
         plot,idx = pick(ax.scene, point_px)
@@ -45,7 +45,7 @@ end
         picks = unique(pick(ax.scene, rect_px))
 
         # objects returned in plot_idx should be either grid lines (i.e. LineSegments) or Scatter points
-        @test all(pi-> pi[1] isa Union{LineSegments,Scatter, AbstractPlotting.Mesh}, picks)
+        @test all(pi-> pi[1] isa Union{LineSegments,Scatter, Makie.Mesh}, picks)
         # scatter points should have indices equal to those in 99991:99998
         scatter_plot_idx = filter(pi -> pi[1] isa Scatter, picks)
         @test Set(last.(scatter_plot_idx)) == Set(99991:99998)

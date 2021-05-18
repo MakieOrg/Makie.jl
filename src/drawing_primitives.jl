@@ -1,6 +1,6 @@
-using AbstractPlotting: get_texture_atlas, glyph_uv_width!, transform_func_obs, apply_transform
-using AbstractPlotting: attribute_per_char, FastPixel, el32convert, Pixel
-using AbstractPlotting: convert_arguments, preprojected_glyph_arrays
+using Makie: get_texture_atlas, glyph_uv_width!, transform_func_obs, apply_transform
+using Makie: attribute_per_char, FastPixel, el32convert, Pixel
+using Makie: convert_arguments, preprojected_glyph_arrays
 
 convert_attribute(s::ShaderAbstractions.Sampler{RGBAf0}, k::key"color") = s
 function convert_attribute(s::ShaderAbstractions.Sampler{T, N}, k::key"color") where {T, N}
@@ -120,7 +120,7 @@ function handle_view(array::Node{T}, attributes) where T <: SubArray
 end
 
 function lift_convert(key, value, plot)
-    return lift_convert_inner(value, Key{key}(), Key{AbstractPlotting.plotkey(plot)}(), plot)
+    return lift_convert_inner(value, Key{key}(), Key{Makie.plotkey(plot)}(), plot)
 end
 
 function lift_convert_inner(value, key, plot_key, plot)
@@ -150,8 +150,8 @@ pixel2world(scene, msize::Number) = pixel2world(scene, Point2f0(msize))[1]
 
 function pixel2world(scene, msize::StaticVector{2})
     # TODO figure out why Vec(x, y) doesn't work correctly
-    p0 = AbstractPlotting.to_world(scene, Point2f0(0.0))
-    p1 = AbstractPlotting.to_world(scene, Point2f0(msize))
+    p0 = Makie.to_world(scene, Point2f0(0.0))
+    p1 = Makie.to_world(scene, Point2f0(msize))
     diff = p1 - p0
     return diff
 end
@@ -265,7 +265,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
         liftkeys = (:position, :textsize, :font, :align, :rotation, :model, :justification, :lineheight, :space, :offset)
         args = getindex.(Ref(gl_attributes), liftkeys)
 
-        gl_text = lift(string_obs, scene.camera.projectionview, AbstractPlotting.transform_func_obs(scene), args...) do str, projview, transfunc, pos, tsize, font, align, rotation, model, j, l, space, offset
+        gl_text = lift(string_obs, scene.camera.projectionview, Makie.transform_func_obs(scene), args...) do str, projview, transfunc, pos, tsize, font, align, rotation, model, j, l, space, offset
             # For annotations, only str (x[1]) will get updated, but all others are updated too!
             args = @get_attribute x (position, textsize, font, align, rotation, offset)
             res = Vec2f0(widths(pixelarea(scene)[]))
@@ -298,7 +298,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
                         return identity.(result)
                     end
                 else
-                    return AbstractPlotting.get_attribute(x, key)
+                    return Makie.get_attribute(x, key)
                 end
             end
         end
@@ -338,7 +338,7 @@ xy_convert(x, n) = Float32[LinRange(extrema(x)..., n + 1);]
 
 function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
     robj = cached_robj!(screen, scene, x) do gl_attributes
-        t = AbstractPlotting.transform_func_obs(scene)
+        t = Makie.transform_func_obs(scene)
         mat = x[3]
         xpos = map(t, x[1]) do t, x
             n = size(mat[], 1)
@@ -369,7 +369,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
 end
 
 function vec2color(colors, cmap, crange)
-    AbstractPlotting.interpolated_getindex.((to_colormap(cmap),), colors, (crange,))
+    Makie.interpolated_getindex.((to_colormap(cmap),), colors, (crange,))
 end
 
 function get_image(plot)
@@ -416,8 +416,8 @@ function draw_atomic(screen::GLScreen, scene::Scene, meshplot::Mesh)
             gl_attributes[:vertex_color] = color
             delete!(gl_attributes, :color_map)
             delete!(gl_attributes, :color_norm)
-        elseif to_value(color) isa AbstractPlotting.AbstractPattern
-            img = lift(x -> el32convert(AbstractPlotting.to_image(x)), color)
+        elseif to_value(color) isa Makie.AbstractPattern
+            img = lift(x -> el32convert(Makie.to_image(x)), color)
             gl_attributes[:image] = ShaderAbstractions.Sampler(img, x_repeat=:repeat, minfilter=:nearest)
             haskey(gl_attributes, :fetch_pixel) || (gl_attributes[:fetch_pixel] = true)
         elseif to_value(color) isa AbstractMatrix{<:Colorant}
@@ -430,7 +430,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, meshplot::Mesh)
             mesh = lift(mesh, color, cmap, crange) do mesh, color, cmap, crange
                 color_sampler = convert_mesh_color(color, cmap, crange)
                 mesh, uv = GeometryBasics.pop_pointmeta(mesh, :uv)
-                uv_sampler = AbstractPlotting.sampler(color_sampler, uv)
+                uv_sampler = Makie.sampler(color_sampler, uv)
                 return GeometryBasics.pointmeta(mesh, color=uv_sampler)
             end
         elseif to_value(color) isa AbstractVector{<: Union{Number, Colorant}}
@@ -457,8 +457,8 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
         # We automatically insert x[3] into the color channel, so if it's equal we don't need to do anything
         if isa(to_value(color), AbstractMatrix{<: Number}) && to_value(color) !== to_value(x[3])
             img = el32convert(color)
-        elseif to_value(color) isa AbstractPlotting.AbstractPattern
-            pattern_img = lift(x -> el32convert(AbstractPlotting.to_image(x)), color)
+        elseif to_value(color) isa Makie.AbstractPattern
+            pattern_img = lift(x -> el32convert(Makie.to_image(x)), color)
             img = ShaderAbstractions.Sampler(pattern_img, x_repeat=:repeat, minfilter=:nearest)
             haskey(gl_attributes, :fetch_pixel) || (gl_attributes[:fetch_pixel] = true)
             gl_attributes[:color_map] = nothing
