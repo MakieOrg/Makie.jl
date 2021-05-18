@@ -14,7 +14,7 @@ const Primitives3D = Union{AbstractGeometry{3}, AbstractMesh}
 const Sprites = Union{AbstractGeometry{2}, Shape, Char, Type}
 const AllPrimitives = Union{AbstractGeometry, Shape, Char, AbstractMesh}
 
-using AbstractPlotting: RectanglePacker
+using Makie: RectanglePacker
 
 # There is currently no way to get the two following two signatures
 # under one function, which is why we delegate to meshparticle
@@ -43,8 +43,8 @@ function to_mesh(mesh::TOrSignal{<: GeometryBasics.Mesh})
     return NativeMesh(mesh)
 end
 
-using AbstractPlotting
-using AbstractPlotting: get_texture_atlas
+using Makie
+using Makie: get_texture_atlas
 
 vec2quaternion(rotation::StaticVector{4}) = rotation
 
@@ -52,14 +52,14 @@ function vec2quaternion(r::StaticVector{2})
     vec2quaternion(Vec3f0(r[1], r[2], 0))
 end
 function vec2quaternion(rotation::StaticVector{3})
-    AbstractPlotting.rotation_between(Vec3f0(0, 0, 1), Vec3f0(rotation))
+    Makie.rotation_between(Vec3f0(0, 0, 1), Vec3f0(rotation))
 end
 
 vec2quaternion(rotation::Vec4f0) = rotation
 vec2quaternion(rotation::VectorTypes) = const_lift(x-> vec2quaternion.(x), rotation)
 vec2quaternion(rotation::Node) = lift(vec2quaternion, rotation)
-vec2quaternion(rotation::AbstractPlotting.Quaternion)= Vec4f0(rotation.data)
-GLAbstraction.gl_convert(rotation::AbstractPlotting.Quaternion)= Vec4f0(rotation.data)
+vec2quaternion(rotation::Makie.Quaternion)= Vec4f0(rotation.data)
+GLAbstraction.gl_convert(rotation::Makie.Quaternion)= Vec4f0(rotation.data)
 
 
 """
@@ -112,8 +112,8 @@ function meshparticle(p, s, data)
             )
         )
     end
-    if AbstractPlotting.to_value(intensity) != nothing
-        if AbstractPlotting.to_value(position) != nothing
+    if Makie.to_value(intensity) != nothing
+        if Makie.to_value(position) != nothing
             data[:intensity] = intensity_convert_tex(intensity, position)
             data[:len] = const_lift(length, position)
         else

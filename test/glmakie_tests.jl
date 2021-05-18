@@ -1,4 +1,4 @@
-using GLMakie.AbstractPlotting: Record
+using GLMakie.Makie: Record
 using GLMakie.GLFW
 using GLMakie.ModernGL
 using GLMakie.ShaderAbstractions
@@ -36,11 +36,11 @@ end
     # indexing will go straight to the GPU, while only transfering the changes
     st = Stepper(scene)
     x[1:10, 1:50] .= to_color(:red)
-    step!(st)
+    Makie.step!(st)
     x[1:10, end] .= to_color(:green)
-    step!(st)
+    Makie.step!(st)
     x[end, end] = to_color(:blue)
-    step!(st)
+    Makie.step!(st)
     st
 end
 # Test for resizing of TextureBuffer
@@ -84,7 +84,7 @@ end
         end
     end
     fig, ax, meshplot = meshscatter(RNG.rand(Point3f0, 10^4) .* 20f0)
-    screen = AbstractPlotting.backend_display(GLMakie.GLBackend(), fig.scene)
+    screen = Makie.backend_display(GLMakie.GLBackend(), fig.scene)
     buff = RNG.rand(Point3f0, 10^4) .* 20f0;
     update_loop(meshplot, buff, screen)
     set_window_config!(renderloop=GLMakie.renderloop)

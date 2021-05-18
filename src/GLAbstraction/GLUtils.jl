@@ -182,7 +182,7 @@ function NativeMesh{T}(mesh::T) where T <: GeometryBasics.Mesh
     end
     result[:color_range] = nothing
     for (field, val) in attribs
-        if val isa AbstractPlotting.Sampler
+        if val isa Makie.Sampler
             result[:image] = Texture(val.colors)
             result[:texturecoordinates] = GLBuffer(convert_texcoordinates(val.values))
             if val.scaling.range !== nothing
@@ -222,7 +222,7 @@ function NativeMesh{T}(m::Node{T}) where T <: GeometryBasics.Mesh
         end
 
         for (field, val) in attribs
-            if val isa AbstractPlotting.Sampler
+            if val isa Makie.Sampler
                 update!(result.data[:image], val.colors)
                 update!(result.data[:texturecoordinates], convert_texcoordinates(val.values))
                 if val.scaling.range !== nothing

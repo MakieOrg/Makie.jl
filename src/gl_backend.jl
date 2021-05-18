@@ -22,7 +22,7 @@ function get_texture!(atlas)
         if GLAbstraction.context_alive(ctx)
             return true
         else
-            AbstractPlotting.remove_font_render_callback!(tex_func[2])
+            Makie.remove_font_render_callback!(tex_func[2])
             return false
         end
     end
@@ -48,7 +48,7 @@ function get_texture!(atlas)
                 ShaderAbstractions.switch_context!(prev_ctx)
             end
         end
-        AbstractPlotting.font_render_callback!(callback)
+        Makie.font_render_callback!(callback)
         return (tex, callback)
     end
     return tex

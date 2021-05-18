@@ -1,6 +1,6 @@
 function _precompile_()
     ccall(:jl_generating_output, Cint, ()) == 1 || return nothing
-    precompile(AbstractPlotting.backend_display, (GLBackend, Scene))
+    precompile(Makie.backend_display, (GLBackend, Scene))
 
     # These are awful and will go stale as gensyms change (check by putting `@assert` in front of each one).
     # It would be far better to fix the inference problems.
