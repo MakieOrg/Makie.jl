@@ -22,8 +22,10 @@ using ShaderAbstractions: InstancedProgram
 import Makie.FileIO
 using Makie: get_texture_atlas, glyph_uv_width!, SceneSpace, Pixel
 using Makie: attribute_per_char, glyph_uv_width!, layout_text
+using Makie: MouseButtonEvent, KeyEvent
 using Makie: apply_transform, transform_func_obs
 using Makie: inline!
+
 struct WebGL <: ShaderAbstractions.AbstractContext end
 struct WGLBackend <: Makie.AbstractBackend end
 #["https://unpkg.com/three@0.123.0/build/three.min.js"
