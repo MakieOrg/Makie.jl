@@ -8,6 +8,7 @@ using Makie: Scene, Lines, Text, Image, Heatmap, Scatter
 using Makie: convert_attribute, @extractvalue, LineSegments
 using Makie: @get_attribute, to_value, to_colormap, extrema_nan
 using Makie: ClosedInterval, (..)
+using Makie: inline!
 using ShaderAbstractions
 using FreeTypeAbstraction
 
@@ -21,6 +22,7 @@ for name in names(Makie)
     @eval import Makie: $(name)
     @eval export $(name)
 end
+export inline!
 
 struct GLBackend <: Makie.AbstractBackend
 end

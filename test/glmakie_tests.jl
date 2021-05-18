@@ -36,11 +36,11 @@ end
     # indexing will go straight to the GPU, while only transfering the changes
     st = Stepper(scene)
     x[1:10, 1:50] .= to_color(:red)
-    step!(st)
+    Makie.step!(st)
     x[1:10, end] .= to_color(:green)
-    step!(st)
+    Makie.step!(st)
     x[end, end] = to_color(:blue)
-    step!(st)
+    Makie.step!(st)
     st
 end
 # Test for resizing of TextureBuffer
