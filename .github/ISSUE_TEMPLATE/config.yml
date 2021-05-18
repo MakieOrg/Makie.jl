@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Makie.jl issue tracker
+    url: https://github.com/JuliaPlots/Makie.jl/issues
+    about: Please ask and answer questions here.

@@ -1,26 +1,21 @@
-using MakieGallery, Makie, Test
+using Pkg
+using Test
+using MeshIO
+using StaticArrays
+using Makie
+using ImageMagick
 
-using MakieGallery: @block, @cell
+using Makie.Observables
+using Makie.GeometryBasics
+using Makie.PlotUtils
+using Makie.FileIO
+using Makie.IntervalSets
+using GeometryBasics: Pyramid
 
-@info "It is normal for the Makie window to not appear during tests"
+# ImageIO seems broken on 1.6 ... and there doesn't
+# seem to be a clean way anymore to force not to use a loader library?
+filter!(x-> x !== :ImageIO, FileIO.sym2saver[:PNG])
+filter!(x-> x !== :ImageIO, FileIO.sym2loader[:PNG])
 
-database = MakieGallery.load_test_database()
-tested_diff_path = joinpath(@__DIR__, "tested_different")
-test_record_path = joinpath(@__DIR__, "test_recordings")
-isdir(tested_diff_path) && rm(tested_diff_path, force = true, recursive = true)
-mkpath(tested_diff_path)
-isdir(test_record_path) && rm(test_record_path, force = true, recursive = true)
-mkpath(test_record_path)
-examples = MakieGallery.record_examples(test_record_path)
-@test length(examples) == length(database)
-MakieGallery.run_comparison(test_record_path, tested_diff_path)
-
-empty!(database) # remove other examples
-# These examples download additional data - don't want to deal with that!
-for path in (tested_diff_path, test_record_path)
-    rm(path, force = true, recursive = true)
-    mkpath(path)
-end
-
-examples = MakieGallery.record_examples(test_record_path)
-MakieGallery.run_comparison(test_record_path, tested_diff_path, maxdiff=0.00001)
+include("reference_tests.jl")
+include("unit_tests/runtests.jl")
