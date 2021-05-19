@@ -106,6 +106,6 @@ function connect_scene_events!(scene::Scene, comm::Observable)
     return
 end
 
-function AbstractPlotting.pick(scene::Scene, THREE::ThreeDisplay, xy::Vec{2,Float64})
+function Makie.pick(scene::Scene, THREE::ThreeDisplay, xy::Vec{2,Float64})
     return @warn "Picking not supported yet by WGLMakie"
 end

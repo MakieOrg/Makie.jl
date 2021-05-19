@@ -1,4 +1,4 @@
-struct ThreeDisplay <: AbstractPlotting.AbstractScreen
+struct ThreeDisplay <: Makie.AbstractScreen
     session::JSServe.Session
 end
 
@@ -14,7 +14,7 @@ function Base.insert!(td::ThreeDisplay, scene::Scene, plot::AbstractPlot)
 end
 
 function Base.delete!(td::ThreeDisplay, scene::Scene, plot::AbstractPlot)
-    uuids = js_uuid.(AbstractPlotting.flatten_plots(plot))
+    uuids = js_uuid.(Makie.flatten_plots(plot))
     WGL.delete_plots(td.session, js_uuid(scene), uuids)
     return
 end
@@ -22,7 +22,7 @@ end
 function all_plots_scenes(scene::Scene; scene_uuids=String[], plot_uuids=String[])
     push!(scene_uuids, js_uuid(scene))
     for plot in scene.plots
-        append!(plot_uuids, (js_uuid(p) for p in AbstractPlotting.flatten_plots(plot)))
+        append!(plot_uuids, (js_uuid(p) for p in Makie.flatten_plots(plot)))
     end
     for child in scene.children
         all_plots_scenes(child, plot_uuids=plot_uuids, scene_uuids=scene_uuids)
@@ -40,24 +40,24 @@ function find_plots(td::ThreeDisplay, plot::AbstractPlot)
 end
 
 function find_plots(session::Session, plot::AbstractPlot)
-    uuids = js_uuid.(AbstractPlotting.flatten_plots(plot))
+    uuids = js_uuid.(Makie.flatten_plots(plot))
     return WGL.find_plots(session, uuids)
 end
 
 
 function JSServe.print_js_code(io::IO, plot::AbstractPlot, context)
-    uuids = js_uuid.(AbstractPlotting.flatten_plots(plot))
+    uuids = js_uuid.(Makie.flatten_plots(plot))
     JSServe.print_js_code(io, js"$(WGL).find_plots($(uuids))", context)
 end
 
 function three_display(session::Session, scene::Scene)
     serialized = serialize_scene(scene)
-    
+
     if TEXTURE_ATLAS_CHANGED[]
-        JSServe.update_cached_value!(session, AbstractPlotting.get_texture_atlas().data)
+        JSServe.update_cached_value!(session, Makie.get_texture_atlas().data)
         TEXTURE_ATLAS_CHANGED[] = false
     end
-    
+
     JSServe.register_resource!(session, serialized)
     window_open = scene.events.window_open
 

@@ -15,8 +15,8 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1' # Leave this line unchanged. '1' will automatically expand to the latest stable 1.x release of Julia.
-          - 'nightly'
+          - '1.5'
+          - '1.6'
         os:
           - ubuntu-latest
         arch:
