@@ -1,5 +1,10 @@
 using Makie: el32convert, surface_normals, get_dim
 
+# Somehow we started using Nothing for some colors in Makie,
+# but the convert leaves them at nothing -.-
+# TODO clean this up in Makie
+nothing_or_color(c) = to_color(c)
+nothing_or_color(c::Nothing) = RGBAf0(0, 0, 0, 1)
 
 function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
     uniforms = Dict(uniforms)
@@ -29,7 +34,7 @@ function limits_to_uvmesh(plot)
     px, py, pz = plot[1], plot[2], plot[3]
     function grid(x, y, z, trans)
         g = map(CartesianIndices(z)) do i
-            return Point3f0(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), z[i])
+            return Point3f0(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), 0.0)
         end
         return apply_transform(trans, vec(g))
     end
@@ -71,9 +76,9 @@ function create_shader(mscene::Scene, plot::Surface)
                      shading=plot.shading, ambient=plot.ambient, diffuse=plot.diffuse,
                      specular=plot.specular, shininess=plot.shininess,
                      lightposition=Vec3f0(1),
-                     highclip=lift(to_color, plot.highclip),
-                     lowclip=lift(to_color, plot.lowclip),
-                     nan_color=lift(to_color, plot.nan_color))
+                     highclip=lift(nothing_or_color, plot.highclip),
+                     lowclip=lift(nothing_or_color, plot.lowclip),
+                     nan_color=lift(nothing_or_color, plot.nan_color))
 end
 
 function create_shader(mscene::Scene, plot::Union{Heatmap,Image})
@@ -87,9 +92,9 @@ function create_shader(mscene::Scene, plot::Union{Heatmap,Image})
                      diffuse=plot.diffuse, specular=plot.specular,
                      colorrange=haskey(plot, :colorrange) ? plot.colorrange : false,
                      shininess=plot.shininess, lightposition=Vec3f0(1),
-                     highclip=lift(to_color, plot.highclip),
-                     lowclip=lift(to_color, plot.lowclip),
-                     nan_color=lift(to_color, plot.nan_color))
+                     highclip=lift(nothing_or_color, plot.highclip),
+                     lowclip=lift(nothing_or_color, plot.lowclip),
+                     nan_color=lift(nothing_or_color, plot.nan_color))
 end
 
 function create_shader(mscene::Scene, plot::Volume)
