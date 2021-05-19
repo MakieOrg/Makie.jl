@@ -26,7 +26,7 @@ end
 
 const IGNORE_KEYS = Set([:shading, :overdraw, :rotation, :distancefield, :markerspace,
                          :fxaa, :visible, :transformation, :alpha, :linewidth,
-                         :transparency, :marker, :lightposition])
+                         :transparency, :marker, :lightposition, :cycle])
 
 function create_shader(scene::Scene, plot::MeshScatter)
     # Potentially per instance attributes
@@ -78,7 +78,6 @@ function scatter_shader(scene::Scene, attributes)
     per_instance_keys = (:offset, :rotations, :markersize, :color, :intensity,
                          :uv_offset_width, :marker_offset)
     uniform_dict = Dict{Symbol,Any}()
-
     if haskey(attributes, :marker) && attributes[:marker][] isa Union{Vector{Char},String}
         x = pop!(attributes, :marker)
         attributes[:uv_offset_width] = lift(x -> Makie.glyph_uv_width!.(collect(x)),
@@ -135,7 +134,6 @@ function scatter_shader(scene::Scene, attributes)
     handle_color!(uniform_dict, per_instance)
 
     instance = uv_mesh(Rect2D(-0.5f0, -0.5f0, 1f0, 1f0))
-
     uniform_dict[:resolution] = scene.camera.resolution
     return InstancedProgram(WebGL(), lasset("simple.vert"), lasset("sprites.frag"),
                             instance, VertexArray(; per_instance...); uniform_dict...)

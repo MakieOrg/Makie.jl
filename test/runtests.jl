@@ -3,7 +3,7 @@ ElectronDisplay.CONFIG.showable = showable
 ElectronDisplay.CONFIG.single_window = true
 ElectronDisplay.CONFIG.focus = false
 using ImageMagick, FileIO
-using WGLMakie, Makie, JSServe, Test
+using WGLMakie, Makie, Test
 using Pkg
 
 # ImageIO seems broken on 1.6 ... and there doesn't

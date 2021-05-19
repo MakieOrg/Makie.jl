@@ -20,6 +20,9 @@ void main(){
     // get_* gets the global inputs (uniform, sampler, position array)
     // those functions will get inserted by the shader creation pipeline
     vec3 vertex_position = tovec3(get_position());
+    if (isnan(vertex_position.z)) {
+        vertex_position.z = 0.0;
+    }
     vec4 position_world = model * vec4(vertex_position, 1);
 
     // normal in world space

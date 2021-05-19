@@ -42,7 +42,16 @@ float _normalize(float val, float from, float to){return (val-from) / (to - from
 vec4 get_color(sampler2D color, vec2 uv, vec2 colorrange, sampler2D colormap){
     float value = texture(color, uv).x;
     float normed = _normalize(value, colorrange.x, colorrange.y);
-    return texture(colormap, vec2(normed, 0.0));
+    vec4 c = texture(colormap, vec2(normed, 0.0));
+
+    if (isnan(value)) {
+        c = get_nan_color();
+    } else if (value < colorrange.x) {
+        c = get_lowclip();
+    } else if (value > colorrange.y) {
+        c = get_highclip();
+    }
+    return c;
 }
 
 vec4 get_color(sampler2D color, vec2 uv, bool colorrange, sampler2D colormap){

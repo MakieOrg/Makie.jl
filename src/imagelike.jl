@@ -17,6 +17,7 @@ function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
     get!(uniforms, :colorrange, false)
     get!(uniforms, :color, false)
     get!(uniforms, :model, plot.model)
+
     uniforms[:normalmatrix] = map(mscene.camera.view, plot.model) do v, m
         i = SOneTo(3)
         return transpose(inv(v[i, i] * m[i, i]))
@@ -25,16 +26,18 @@ function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
 end
 
 function limits_to_uvmesh(plot)
-    px, py = plot[1], plot[2]
-    rectangle = lift(px, py) do x, y
-        xmin, xmax = extrema(x)
-        ymin, ymax = extrema(y)
-        return Rect2D(xmin, ymin, xmax - xmin, ymax - ymin)
+    px, py, pz = plot[1], plot[2], plot[3]
+    function grid(x, y, z, trans)
+        g = map(CartesianIndices(z)) do i
+            return Point3f0(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), z[i])
+        end
+        return apply_transform(trans, vec(g))
     end
 
-    positions = Buffer(lift(x -> decompose(Point2f0, x), rectangle))
-    faces = Buffer(lift(x -> decompose(GLTriangleFace, x), rectangle))
-    uv = Buffer(lift(decompose_uv, rectangle))
+    positions = Buffer(lift(grid, px, py, pz, transform_func_obs(plot)))
+    rect = lift(z -> Tesselation(Rect2D(0f0, 0f0, 1f0, 1f0), size(z)), pz)
+    faces = Buffer(lift(r -> decompose(GLTriangleFace, r), rect))
+    uv = Buffer(lift(decompose_uv, rect))
 
     vertices = GeometryBasics.meta(positions; uv=uv)
 
@@ -67,7 +70,10 @@ function create_shader(mscene::Scene, plot::Surface)
     return draw_mesh(mscene, mesh, plot; uniform_color=color, color=Vec4f0(0),
                      shading=plot.shading, ambient=plot.ambient, diffuse=plot.diffuse,
                      specular=plot.specular, shininess=plot.shininess,
-                     lightposition=Vec3f0(1))
+                     lightposition=Vec3f0(1),
+                     highclip=lift(to_color, plot.highclip),
+                     lowclip=lift(to_color, plot.lowclip),
+                     nan_color=lift(to_color, plot.nan_color))
 end
 
 function create_shader(mscene::Scene, plot::Union{Heatmap,Image})
@@ -80,7 +86,10 @@ function create_shader(mscene::Scene, plot::Union{Heatmap,Image})
                      normals=Vec3f0(0), shading=false, ambient=plot.ambient,
                      diffuse=plot.diffuse, specular=plot.specular,
                      colorrange=haskey(plot, :colorrange) ? plot.colorrange : false,
-                     shininess=plot.shininess, lightposition=Vec3f0(1))
+                     shininess=plot.shininess, lightposition=Vec3f0(1),
+                     highclip=lift(to_color, plot.highclip),
+                     lowclip=lift(to_color, plot.lowclip),
+                     nan_color=lift(to_color, plot.nan_color))
 end
 
 function create_shader(mscene::Scene, plot::Volume)
