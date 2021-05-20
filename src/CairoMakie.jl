@@ -2,6 +2,8 @@ module CairoMakie
 
 using Makie, LinearAlgebra
 using Colors, GeometryBasics, FileIO, StaticArrays
+import SHA
+import Base64
 import Cairo
 
 using Makie: Scene, Lines, Text, Image, Heatmap, Scatter, @key_str, broadcast_foreach

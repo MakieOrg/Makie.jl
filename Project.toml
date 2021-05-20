@@ -1,9 +1,10 @@
-author = ["Simon Danisch <sdanisch@gmail.com>"]
 name = "CairoMakie"
 uuid = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
-version = "0.5"
+author = ["Simon Danisch <sdanisch@gmail.com>"]
+version = "0.5.0"
 
 [deps]
+Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 Cairo = "159f3aea-2a34-519c-b102-8c37f9878175"
 Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
 FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
@@ -12,6 +13,7 @@ FreeType = "b38be410-82b0-50bf-ab77-7b57e271db43"
 GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
+SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
