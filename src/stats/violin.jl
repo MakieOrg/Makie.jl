@@ -26,7 +26,7 @@ Draw a violin plot.
         datalimits = (-Inf, Inf),
         max_density = automatic,
         show_median = false,
-        mediancolor = automatic,
+        mediancolor = theme(scene, :linecolor),
         medianlinewidth = theme(scene, :linewidth),
     )
 end
@@ -129,11 +129,7 @@ function plot!(plot::Violin)
     linesegments!(
         plot,
         lift(s -> s.lines, signals),
-        color = lift(
-            (mc, sc) -> mc === automatic ? sc : mc,
-            plot[:mediancolor],
-            plot[:strokecolor],
-        ),
+        color = plot[:mediancolor],
         linewidth = plot[:medianlinewidth],
         visible = plot[:show_median],
         inspectable = plot[:inspectable]
