@@ -330,7 +330,7 @@ If you set only one attribute, be careful to do `axis = (key = value,)` (note th
 
 We've only looked at a small subset of Makie's functionality here.
 
-You can read about the different available plotting functions with examples in the [Plotting Functions](@ref) section.
+You can read about the different available plotting functions with examples in the Plotting Functions section.
 
 If you want to learn about making complex figures with nested sublayouts, have a look at the [Layout Tutorial](@ref) section.
 
