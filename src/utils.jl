@@ -5,7 +5,7 @@
 function project_position(scene, point, model)
 
     # use transform func
-    point = AbstractPlotting.apply_transform(scene.transformation.transform_func[], point)
+    point = Makie.apply_transform(scene.transformation.transform_func[], point)
 
     res = scene.camera.resolution[]
     p4d = to_ndim(Vec4f0, to_ndim(Vec3f0, point, 0f0), 1f0)
@@ -53,21 +53,21 @@ scale_matrix(x, y) = Cairo.CairoMatrix(x, 0.0, 0.0, y, 0.0, 0.0)
 
 function to_2d_rotation(x)
     quat = to_rotation(x)
-    return -AbstractPlotting.quaternion_to_2d_angle(quat)
+    return -Makie.quaternion_to_2d_angle(quat)
 end
 
-function to_2d_rotation(::AbstractPlotting.Billboard)
+function to_2d_rotation(::Makie.Billboard)
     @warn "This should not be reachable!"
     0
 end
 
 remove_billboard(x) = x
-remove_billboard(b::AbstractPlotting.Billboard) = b.rotation
+remove_billboard(b::Makie.Billboard) = b.rotation
 
-to_2d_rotation(quat::AbstractPlotting.Quaternion) = -AbstractPlotting.quaternion_to_2d_angle(quat)
+to_2d_rotation(quat::Makie.Quaternion) = -Makie.quaternion_to_2d_angle(quat)
 
 # TODO: this is a hack around a hack.
-# AbstractPlotting encodes the transformation from a 2-vector
+# Makie encodes the transformation from a 2-vector
 # to a quaternion as a rotation around the Y-axis,
 # when it should be a rotation around the X-axis.
 # Since I don't know how to fix this in GLMakie,
@@ -102,11 +102,11 @@ function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
     colormap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
     colorrange = get(primitive, :colorrange, nothing) |> to_value
 
-    if colorrange === AbstractPlotting.automatic
+    if colorrange === Makie.automatic
         colorrange = extrema(numbers)
     end
 
-    AbstractPlotting.interpolated_getindex.(
+    Makie.interpolated_getindex.(
         Ref(colormap),
         Float64.(numbers), # ints don't work in interpolated_getindex
         Ref(colorrange))
@@ -121,11 +121,11 @@ function to_cairo_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
 end
 
 function to_rgba_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
-    AbstractPlotting.@get_attribute attributes (colormap, colorrange, nan_color, lowclip, highclip)
+    Makie.@get_attribute attributes (colormap, colorrange, nan_color, lowclip, highclip)
 
-    nan_color = AbstractPlotting.to_color(nan_color)
-    lowclip = isnothing(lowclip) ? lowclip : AbstractPlotting.to_color(lowclip)
-    highclip = isnothing(highclip) ? highclip : AbstractPlotting.to_color(highclip)
+    nan_color = Makie.to_color(nan_color)
+    lowclip = isnothing(lowclip) ? lowclip : Makie.to_color(lowclip)
+    highclip = isnothing(highclip) ? highclip : Makie.to_color(highclip)
 
     [get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip) for pixel in img]
 end
@@ -142,7 +142,7 @@ function get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highcli
     elseif pixel > vmax && !isnothing(highclip)
         RGBAf0(highclip)
     else
-        RGBAf0(AbstractPlotting.interpolated_getindex(colormap, pixel, colorrange))
+        RGBAf0(Makie.interpolated_getindex(colormap, pixel, colorrange))
     end
 end
 
@@ -189,7 +189,12 @@ Base.getindex(fi::FaceIterator{:PerFace}, i::Integer) = fi.data[i]
 Base.getindex(fi::FaceIterator{:PerVert}, i::Integer) = fi.data[fi.faces[i]]
 Base.getindex(fi::FaceIterator{:Const}, i::Integer) = ntuple(i-> fi.data, 3)
 
-function per_face_colors(color, colormap, colorrange, matcap, vertices, faces, normals, uv)
+color_or_nothing(c) = c === nothing ? nothing : to_color(c)
+
+function per_face_colors(
+        color, colormap, colorrange, matcap, vertices, faces, normals, uv,
+        lowclip=nothing, highclip=nothing, nan_color=nothing
+    )
     if matcap !== nothing
         wsize = reverse(size(matcap))
         wh = wsize .- 1
@@ -204,8 +209,19 @@ function per_face_colors(color, colormap, colorrange, matcap, vertices, faces, n
     elseif color isa AbstractArray
         if color isa AbstractVector{<: Colorant}
             return FaceIterator(color, faces)
-        elseif color isa AbstractVector{<: Number}
-            cvec = AbstractPlotting.interpolated_getindex.((colormap,), color, (colorrange,))
+        elseif color isa AbstractArray{<: Number}
+            low, high = extrema(colorrange)
+            cvec = map(color[:]) do c
+                if isnan(c) && nan_color !== nothing
+                    return nan_color
+                elseif c < low && lowclip !== nothing
+                    return lowclip
+                elseif c > high && highclip !== nothing
+                    return highclip
+                else
+                    Makie.interpolated_getindex(colormap, c, colorrange)
+                end
+            end
             return FaceIterator(cvec, faces)
         elseif color isa AbstractMatrix{<: Colorant} && uv !== nothing
             wsize = reverse(size(color))

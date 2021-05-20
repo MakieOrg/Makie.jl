@@ -9,7 +9,7 @@
 @enum RenderType SVG PNG PDF EPS
 
 "The Cairo backend object.  Used to dispatch to CairoMakie methods."
-struct CairoBackend <: AbstractPlotting.AbstractBackend
+struct CairoBackend <: Makie.AbstractBackend
     typ::RenderType
     path::String
     px_per_unit::Float64
@@ -21,7 +21,7 @@ end
 A "screen" type for CairoMakie, which encodes a surface
 and a context which are used to draw a Scene.
 """
-struct CairoScreen{S} <: AbstractPlotting.AbstractScreen
+struct CairoScreen{S} <: Makie.AbstractScreen
     scene::Scene
     surface::S
     context::Cairo.CairoContext
@@ -140,7 +140,7 @@ to_mime(x::CairoBackend) = to_mime(x.typ)
 
 # The main entry point into the drawing pipeline
 function cairo_draw(screen::CairoScreen, scene::Scene)
-    AbstractPlotting.update!(scene)
+    Makie.update!(scene)
     draw_background(screen, scene)
 
     allplots = get_all_plots(scene)
@@ -173,7 +173,7 @@ end
 # and this way we can use the z-value as a means to shift the drawing order
 # by translating e.g. the axis spines forward so they are not obscured halfway
 # by heatmaps or images
-zvalue(x) = AbstractPlotting.translation(x)[][3] + zvalue(x.parent)
+zvalue(x) = Makie.translation(x)[][3] + zvalue(x.parent)
 zvalue(::Nothing) = 0f0
 
 function get_all_plots(scene, plots = AbstractPlot[])
@@ -187,7 +187,7 @@ end
 function prepare_for_scene(screen::CairoScreen, scene::Scene)
 
     # get the root area to correct for its pixel size when translating
-    root_area = AbstractPlotting.root(scene).px_area[]
+    root_area = Makie.root(scene).px_area[]
 
     root_area_height = widths(root_area)[2]
     scene_area = pixelarea(scene)[]
@@ -197,7 +197,7 @@ function prepare_for_scene(screen::CairoScreen, scene::Scene)
     # we need to translate x by the origin, so distance from the left
     # but y by the distance from the top, which is not the origin, but can
     # be calculated using the parent's height, the scene's height and the y origin
-    # this is because y goes downwards in Cairo and upwards in AbstractPlotting
+    # this is because y goes downwards in Cairo and upwards in Makie
 
     top_offset = root_area_height - scene_height - scene_y_origin
     Cairo.translate(screen.context, scene_x_origin, top_offset)
@@ -252,22 +252,22 @@ function clear(screen::CairoScreen)
 end
 
 #########################################
-# Backend interface to AbstractPlotting #
+# Backend interface to Makie #
 #########################################
 
-function AbstractPlotting.backend_display(x::CairoBackend, scene::Scene)
+function Makie.backend_display(x::CairoBackend, scene::Scene)
     return open(x.path, "w") do io
-        AbstractPlotting.backend_show(x, io, to_mime(x), scene)
+        Makie.backend_show(x, io, to_mime(x), scene)
     end
 end
 
-AbstractPlotting.backend_showable(x::CairoBackend, ::MIME"image/svg+xml", scene::Scene) = x.typ == SVG
-AbstractPlotting.backend_showable(x::CairoBackend, ::MIME"application/pdf", scene::Scene) = x.typ == PDF
-AbstractPlotting.backend_showable(x::CairoBackend, ::MIME"application/postscript", scene::Scene) = x.typ == EPS
-AbstractPlotting.backend_showable(x::CairoBackend, ::MIME"image/png", scene::Scene) = x.typ == PNG
+Makie.backend_showable(x::CairoBackend, ::MIME"image/svg+xml", scene::Scene) = x.typ == SVG
+Makie.backend_showable(x::CairoBackend, ::MIME"application/pdf", scene::Scene) = x.typ == PDF
+Makie.backend_showable(x::CairoBackend, ::MIME"application/postscript", scene::Scene) = x.typ == EPS
+Makie.backend_showable(x::CairoBackend, ::MIME"image/png", scene::Scene) = x.typ == PNG
 
 
-function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"image/svg+xml", scene::Scene)
+function Makie.backend_show(x::CairoBackend, io::IO, ::MIME"image/svg+xml", scene::Scene)
 
     pt_per_unit = get(io, :pt_per_unit, x.pt_per_unit)
 
@@ -277,7 +277,7 @@ function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"image/svg
     return screen
 end
 
-function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"application/pdf", scene::Scene)
+function Makie.backend_show(x::CairoBackend, io::IO, ::MIME"application/pdf", scene::Scene)
 
     pt_per_unit = get(io, :pt_per_unit, x.pt_per_unit)
 
@@ -288,7 +288,7 @@ function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"applicati
 end
 
 
-function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"application/postscript", scene::Scene)
+function Makie.backend_show(x::CairoBackend, io::IO, ::MIME"application/postscript", scene::Scene)
 
     pt_per_unit = get(io, :pt_per_unit, x.pt_per_unit)
 
@@ -299,7 +299,7 @@ function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"applicati
     return screen
 end
 
-function AbstractPlotting.backend_show(x::CairoBackend, io::IO, m::MIME"image/png", scene::Scene)
+function Makie.backend_show(x::CairoBackend, io::IO, m::MIME"image/png", scene::Scene)
 
     # multiply the resolution of the png with this factor for more or less detail
     # while relative line and font sizes are unaffected
@@ -316,7 +316,7 @@ end
 #    Fast colorbuffer for recording    #
 ########################################
 
-function AbstractPlotting.colorbuffer(screen::CairoScreen)
+function Makie.colorbuffer(screen::CairoScreen)
     # extract scene
     scene = screen.scene
     # get resolution

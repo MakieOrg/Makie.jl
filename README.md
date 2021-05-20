@@ -8,11 +8,13 @@ The Cairo Backend for Makie
 ## Usage
 
 To add CairoMakie to your environment, simply run the following in the REPL:
+
 ```julia
 ]add CairoMakie
 ```
 
 If you are using CairoMakie and GLMakie together, you can use each backend's `activate!` function to switch between them.
+
 ```julia
 GLMakie.activate!()
 # use GLMakie interactively
@@ -21,6 +23,7 @@ CairoMakie.activate!()
 ```
 
 ## Issues
+
 Please file all issues in [Makie.jl](https://github.com/JuliaPlots/Makie.jl/issues/new), and mention CairoMakie in the issue text.
 
 ## Limitations
@@ -29,7 +32,7 @@ CairoMakie is intended as a backend for static vector graphics at publication qu
 
 ## Saving
 
-Makie overloads the FileIO interface, so you can save a Scene `scene` as `save("filename.extension", scene)`.  CairoMakie supports saving to PNG, PDF, SVG and EPS.
+Makie overloads the FileIO interface, so you can save a Scene `scene` as `save("filename.extension", scene)`. CairoMakie supports saving to PNG, PDF, SVG and EPS.
 
 You can scale the size of the output figure, without changing its appearance by passing keyword arguments to `save`. PNGs can be scaled by `px_per_unit` (default 1) and vector graphics (SVG, PDF, EPS) can be scaled by `pt_per_unit`.
 
@@ -43,7 +46,7 @@ save("plot.png", scene, px_per_unit = 2) # double the resolution of the resultin
 You can render onto a GtkCanvas using Gtk, and use that as a display for your scenes.
 
 ```julia
-using Gtk, CairoMakie, AbstractPlotting
+using Gtk, CairoMakie, Makie
 
 canvas = @GtkCanvas()
 window = GtkWindow(canvas, "Makie", 500, 500)

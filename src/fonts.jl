@@ -17,10 +17,10 @@ function cairo_font_face_destroy(font_face)
 end
 
 function set_ft_font(ctx, font)
-    
+
     font_face = ccall(
         (:cairo_ft_font_face_create_for_ft_face, LIB_CAIRO),
-        Ptr{Cvoid}, (AbstractPlotting.FreeTypeAbstraction.FT_Face, Cint),
+        Ptr{Cvoid}, (Makie.FreeTypeAbstraction.FT_Face, Cint),
         font, 0
     )
 
@@ -33,16 +33,16 @@ end
 
 """
 Finds a font that can represent the unicode character!
-Returns AbstractPlotting.defaultfont() if not representable!
+Returns Makie.defaultfont() if not representable!
 """
-function best_font(c::Char, font = AbstractPlotting.defaultfont())
-    if AbstractPlotting.FreeType.FT_Get_Char_Index(font, c) == 0
-        for afont in AbstractPlotting.alternativefonts()
-            if AbstractPlotting.FreeType.FT_Get_Char_Index(afont, c) != 0
+function best_font(c::Char, font = Makie.defaultfont())
+    if Makie.FreeType.FT_Get_Char_Index(font, c) == 0
+        for afont in Makie.alternativefonts()
+            if Makie.FreeType.FT_Get_Char_Index(afont, c) != 0
                 return afont
             end
         end
-        return AbstractPlotting.defaultfont()
+        return Makie.defaultfont()
     end
     return font
 end

@@ -13,13 +13,13 @@ using CairoMakie
     end
 end
 
-path = normpath(joinpath(dirname(pathof(AbstractPlotting)), "..", "test", "ReferenceTests"))
+path = normpath(joinpath(dirname(pathof(Makie)), "..", "test", "ReferenceTests"))
 Pkg.develop(PackageSpec(path=path))
 using ReferenceTests
 using ReferenceTests: nice_title
 CairoMakie.activate!(type = "png")
 
-excludes = Set((
+excludes = Set([
     "Colored Mesh",
     "Line GIF",
     "Streamplot animation",
@@ -58,8 +58,10 @@ excludes = Set((
     # but doesn't interpolate the values inside the
     # triangles, so looks pretty different
     "FEM polygon 2D",
-    "Connected Sphere"
-))
+    "Connected Sphere",
+    # markers too big, close otherwise, needs to be assimilated with glmakie
+    "Unicode Marker",
+])
 
 database = ReferenceTests.load_database()
 
@@ -71,7 +73,8 @@ filter!(database) do (name, entry)
     nice_title(entry) !== "short_tests_90" &&
     nice_title(entry) !== "short_tests_111" &&
     nice_title(entry) !== "short_tests_35" &&
-    nice_title(entry) !== "short_tests_13"
+    nice_title(entry) !== "short_tests_13" &&
+    nice_title(entry) !== "short_tests_3"
 end
 
 recorded = joinpath(@__DIR__, "recorded")
