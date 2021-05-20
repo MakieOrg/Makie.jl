@@ -165,8 +165,13 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
                     pstart = project(scene, start)
                     pstop = project(scene, stop)
                     diff = pstop - pstart
-                    angle = acos(diff[2] / norm(diff))
-                    angle = ifelse(diff[1] > 0, 2pi - angle, angle)
+                    n = norm(diff)
+                    if n == 0
+                        zero(n)
+                    else
+                        angle = acos(diff[2] / norm(diff))
+                        angle = ifelse(diff[1] > 0, 2pi - angle, angle)
+                    end
                 end
                 Billboard(angles)
             end
