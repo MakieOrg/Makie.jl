@@ -11,14 +11,10 @@ function Base.:(==)(a::Camera, b::Camera)
 end
 
 function disconnect!(c::Camera)
-    for node in c.steering_nodes
-        # remove all camera lifts
-        for f in listeners(node)
-            if f isa CameraLift
-                off(node, f)
-            end
-        end
+    for obsfunc in c.steering_nodes
+        off(obsfunc)
     end
+    empty!(c.steering_nodes)
     return
 end
 
@@ -50,13 +46,14 @@ function Observables.on(f::Function, camera::Camera, nodes::AbstractObservable..
     # identifiable when we disconnect the nodes!
     cl = CameraLift(f, nodes)
     for n in nodes
-        if n isa PriorityObservable
+        obs = if n isa PriorityObservable
             on(cl, n, priority=priority)
         else
             on(cl, n)
         end
+        push!(camera.steering_nodes, obs)
     end
-    push!(camera.steering_nodes, nodes...)
+    # push!(camera.steering_nodes, nodes...)
     return f
 end
 
@@ -74,7 +71,7 @@ function Camera(px_area)
         Node(Mat4f0(I)),
         lift(a-> Vec2f0(widths(a)), px_area),
         Node(Vec3f0(1)),
-        []
+        ObserverFunction[]
     )
 end
 
