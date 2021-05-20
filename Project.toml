@@ -1,7 +1,7 @@
 author = ["Simon Danisch <sdanisch@gmail.com>"]
 name = "CairoMakie"
 uuid = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
-version = "0.4.7"
+version = "0.5"
 
 [deps]
 Cairo = "159f3aea-2a34-519c-b102-8c37f9878175"
