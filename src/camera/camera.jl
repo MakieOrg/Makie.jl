@@ -26,6 +26,15 @@ function disconnect!(nodes::Vector)
     return
 end
 
+struct CameraLift{F, Args}
+    f::F
+    args::Args
+end
+
+function (cl::CameraLift{F, Args})(val) where {F, Args}
+    cl.f(map(to_value, cl.args)...)
+end
+
 """
     on(f, c::Camera, nodes::Node...)
 
@@ -33,12 +42,14 @@ When mapping over nodes for the camera, we store them in the `steering_node` vec
 to make it easier to disconnect the camera steering signals later!
 """
 function Observables.on(f::Function, camera::Camera, nodes::AbstractObservable...; priority=Int8(0))
-    # PriorityObservables don't implement on_any
+    # PriorityObservables don't implement on_any, because that would replace
+    # the method in Observables. CameraLift acts as a workaround for now.
+    cl = CameraLift(f, nodes)
     for n in nodes
         obs = if n isa PriorityObservable
-            on(f, n, priority=priority)
+            on(cl, n, priority=priority)
         else
-            on(f, n)
+            on(cl, n)
         end
         push!(camera.steering_nodes, obs)
     end
