@@ -25,10 +25,9 @@ Draw a violin plot.
         dodge_gap = 0.03,
         datalimits = (-Inf, Inf),
         max_density = automatic,
-        strokecolor = :white,
         show_median = false,
         mediancolor = automatic,
-        medianlinewidth = 1.0,
+        medianlinewidth = theme(scene, :linewidth),
     )
 end
 
