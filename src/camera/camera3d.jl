@@ -279,7 +279,7 @@ function zoom!(scene, point, zoom_step, shift_lookat::Bool)
     else
         # Rotations need more extreme eyeposition shifts
         step = zoom_step
-        while abs(step) > 1f0
+        while abs(step) > 0f0
             cam.eyeposition[] = cam.eyeposition[] + sign(zoom_step) * (ray_dir - dir * 0.1f0)
             dir = cam.eyeposition[] - lookat
             step -= sign(step)
