@@ -226,7 +226,9 @@ end
 function draw_plot(scene::Scene, screen::CairoScreen, primitive::Combined)
 
     if isempty(primitive.plots)
+        Cairo.save(screen.context)
         draw_atomic(scene, screen, primitive)
+        Cairo.restore(screen.context)
     else
         for plot in primitive.plots
             if to_value(get(primitive, :visible, true))
