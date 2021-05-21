@@ -28,7 +28,7 @@ function _default(main::MatTypes{T}, ::Style, data::Dict) where T <: Colorant
         end => to_uvmesh
         preferred_camera = :orthographic_pixel
         fxaa = false
-        shader = GLVisualizeShader("fragment_output.frag", "uv_vert.vert", "texture.frag",
+        shader = GLVisualizeShader("fragment_output.frag", "image.vert", "texture.frag",
             view = Dict("uv_swizzle" => "o_uv.$(spatialorder)"))
     end
 end
@@ -47,18 +47,19 @@ A matrix of Intensities will result in a contourf kind of plot
 function gl_heatmap(main::MatTypes{T}, data::Dict) where T <: AbstractFloat
     @gen_defaults! data begin
         intensity = main => Texture
-        color_map = default(Vector{RGBA{N0f8}},s) => Texture
         primitive = Rect2D(0f0,0f0,1f0,1f0) => native_triangle_mesh
         nan_color = RGBAf0(1, 0, 0, 1)
         highclip = RGBAf0(0, 0, 0, 0)
         lowclip = RGBAf0(0, 0, 0, 0)
-        color_norm = const_lift(extrema2f0, main)
-        stroke_width::Float32 = 0.05f0
-        levels::Float32 = 5f0
-        stroke_color = RGBA{Float32}(1,1,1,1)
-        shader = GLVisualizeShader("fragment_output.frag", "uv_vert.vert", "intensity.frag")
+        color_map = nothing => Texture
+        color_norm = nothing
+        stroke_width::Float32 = 0.0f0
+        levels::Float32 = 0f0
+        stroke_color = RGBA{Float32}(0,0,0,0)
+        shader = GLVisualizeShader("fragment_output.frag", "heatmap.vert", "intensity.frag")
         fxaa = false
     end
+    return data
 end
 
 

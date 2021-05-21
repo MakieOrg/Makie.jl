@@ -337,7 +337,7 @@ xy_convert(x::AbstractVector, n) = el32convert(x)
 xy_convert(x, n) = Float32[LinRange(extrema(x)..., n + 1);]
 
 function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
-    robj = cached_robj!(screen, scene, x) do gl_attributes
+    return cached_robj!(screen, scene, x) do gl_attributes
         t = Makie.transform_func_obs(scene)
         mat = x[3]
         xpos = map(t, x[1]) do t, x

@@ -6,9 +6,9 @@ flat in uvec2 o_objectid;
 {{intensity_type}} intensity;
 uniform sampler1D color_map;
 uniform vec2 color_norm;
+
 uniform float stroke_width;
 uniform vec4 stroke_color;
-
 uniform float levels;
 
 uniform vec4 highclip;
