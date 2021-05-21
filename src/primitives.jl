@@ -92,13 +92,19 @@ function draw_single(primitive::Lines, ctx, positions)
 end
 
 function draw_single(primitive::LineSegments, ctx, positions)
+
     @assert iseven(length(positions))
-    @inbounds for i in 1:length(positions)
-        if iseven(i)
-            Cairo.line_to(ctx, positions[i]...)
-            Cairo.stroke(ctx)
+
+    @inbounds for i in 1:2:length(positions)-1
+        p1 = positions[i]
+        p2 = positions[i+1]
+
+        if isnan(p1) || isnan(p2)
+            continue
         else
-            Cairo.move_to(ctx, positions[i]...)
+            Cairo.move_to(ctx, p1...)
+            Cairo.line_to(ctx, p2...)
+            Cairo.stroke(ctx)
         end
     end
 end
