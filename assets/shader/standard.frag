@@ -22,18 +22,18 @@ flat in uvec2 o_id;
 {{color_map_type}} color_map;
 {{color_norm_type}} color_norm;
 
-vec4 get_color(Nothing image, vec2 uv, Nothing color_range, Nothing color_map, Nothing matcap){
+vec4 get_color(Nothing image, vec2 uv, Nothing color_norm, Nothing color_map, Nothing matcap){
     return o_color;
 }
-vec4 get_color(Nothing color, vec2 uv, vec2 color_range, sampler1D color_map, Nothing matcap){
-    return o_color;
-}
-
-vec4 get_color(sampler2D color, vec2 uv, vec2 color_range, sampler1D color_map, Nothing matcap){
+vec4 get_color(Nothing color, vec2 uv, vec2 color_norm, sampler1D color_map, Nothing matcap){
     return o_color;
 }
 
-vec4 get_color(sampler2D color, vec2 uv, Nothing color_range, Nothing color_map, Nothing matcap){
+vec4 get_color(sampler2D color, vec2 uv, vec2 color_norm, sampler1D color_map, Nothing matcap){
+    return o_color;
+}
+
+vec4 get_color(sampler2D color, vec2 uv, Nothing color_norm, Nothing color_map, Nothing matcap){
     return texture(color, uv);
 }
 
@@ -42,13 +42,13 @@ vec4 matcap_color(sampler2D matcap){
     return texture(matcap, vec2(1.0-muv.y, muv.x));
 }
 
-vec4 get_color(Nothing image, vec2 uv, Nothing color_range, Nothing color_map, sampler2D matcap){
+vec4 get_color(Nothing image, vec2 uv, Nothing color_norm, Nothing color_map, sampler2D matcap){
     return matcap_color(matcap);
 }
-vec4 get_color(sampler2D color, vec2 uv, Nothing color_range, Nothing color_map, sampler2D matcap){
+vec4 get_color(sampler2D color, vec2 uv, Nothing color_norm, Nothing color_map, sampler2D matcap){
     return matcap_color(matcap);
 }
-vec4 get_color(sampler1D color, vec2 uv, vec2 color_range, sampler1D color_map, sampler2D matcap){
+vec4 get_color(sampler1D color, vec2 uv, vec2 color_norm, sampler1D color_map, sampler2D matcap){
     return matcap_color(matcap);
 }
 

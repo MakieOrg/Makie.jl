@@ -180,13 +180,12 @@ function NativeMesh{T}(mesh::T) where T <: GeometryBasics.Mesh
         # when it has meta informtion
         result[:vertices] = GLBuffer(collect(metafree(coordinates(mesh))))
     end
-    result[:color_range] = nothing
     for (field, val) in attribs
         if val isa Makie.Sampler
             result[:image] = Texture(val.colors)
             result[:texturecoordinates] = GLBuffer(convert_texcoordinates(val.values))
             if val.scaling.range !== nothing
-                result[:color_range] = Observable(Vec2f0(val.scaling.range))
+                result[:color_norm] = Observable(Vec2f0(val.scaling.range))
             end
         elseif field in (:position, :uv, :uvw, :normals, :attribute_id, :color)
             if field == :color
@@ -226,7 +225,7 @@ function NativeMesh{T}(m::Node{T}) where T <: GeometryBasics.Mesh
                 update!(result.data[:image], val.colors)
                 update!(result.data[:texturecoordinates], convert_texcoordinates(val.values))
                 if val.scaling.range !== nothing
-                    result.data[:color_range][] = Vec2f0(val.scaling.range)
+                    result.data[:color_norm][] = Vec2f0(val.scaling.range)
                 end
             else
                 field == :color && (field = :vertex_color)

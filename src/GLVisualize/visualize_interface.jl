@@ -101,7 +101,7 @@ function assemble_robj(data, program, bb, primitive, pre_fun, post_fun)
     else
         GLAbstraction.StandardPostrender(robj.vertexarray, primitive)
     end
-    robj.postrenderfunction = if post_fun != nothing
+    robj.postrenderfunction = if post_fun !== nothing
         () -> begin
             post()
             post_fun()
