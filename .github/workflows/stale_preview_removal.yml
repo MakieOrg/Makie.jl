@@ -36,8 +36,8 @@ jobs:
           open_prs = [x.number for x in prs if x.state == "open"]
 
           run(`git clone https://github.com/JuliaPlots/MakieDocumentation`)
-          run(`git checkout gh-pages`)
           cd("MakieDocumentation")
+          run(`git checkout gh-pages`)
 
           preview_folders = filter(startswith("PR"), readdir("previews"))
           to_delete = [folder for folder in preview_folders if parse(Int, folder[3:end]) ∉ open_prs]
