@@ -20,12 +20,13 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
+      - uses: webfactory/ssh-agent@v0.5.2
+        with:
+          ssh-private-key: ${{ secrets.DOCUMENTER_KEY }}
       - uses: julia-actions/setup-julia@latest
         with:
           version: 1
       - name: Stale PR Removal
-        env:
-          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
         run: |
           julia -e '
           using Pkg
@@ -35,7 +36,7 @@ jobs:
           prs, _ = GitHub.pull_requests("JuliaPlots/Makie.jl")
           open_prs = [x.number for x in prs if x.state == "open"]
 
-          run(`git clone https://github.com/JuliaPlots/MakieDocumentation`)
+          run(`git clone git@github.com:JuliaPlots/MakieDocumentation.git`)
           cd("MakieDocumentation")
           run(`git checkout gh-pages`)
 
@@ -48,7 +49,6 @@ jobs:
                   run(`git rm -r $(joinpath("previews", folder))`)
               end
 
-              run(`git config user.name "GitHub Actions Preview Deleter"`)
-              run(`git commit -m "Deleted stale preview$(length(to_delete) == 1 ? "" : "s") $to_delete"`)
+              run(`git commit --author "Preview Deleter <>" -m "Deleted stale preview$(length(to_delete) == 1 ? "" : "s") $to_delete"`)
               run(`git push origin gh-pages`)
           end'
