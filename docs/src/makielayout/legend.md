@@ -22,7 +22,7 @@ Axis(f[1, 1])
 xs = 0:0.5:10
 ys = sin.(xs)
 lin = lines!(xs, ys, color = :blue)
-sca = scatter!(xs, ys, color = :red, markersize = 15)
+sca = scatter!(xs, ys, color = :red)
 
 Legend(f[1, 2], [lin, sca, [lin, sca]], ["a line", "some dots", "both together"])
 

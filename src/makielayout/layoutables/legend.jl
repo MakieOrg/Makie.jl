@@ -324,7 +324,7 @@ function LegendEntry(label::String, contentelements::AbstractArray, legend; kwar
     kwargattrs = Attributes(kwargs)
     merge!(attrs, kwargattrs)
 
-    elems = vcat(legendelements.(contentelements)...)
+    elems = vcat(legendelements.(contentelements, Ref(legend))...)
     LegendEntry(elems, attrs)
 end
 
