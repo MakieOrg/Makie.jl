@@ -23,10 +23,10 @@ jobs:
       - uses: julia-actions/setup-julia@latest
         with:
           version: 1
-      - name: CompatHelper.main()
+      - name: Stale PR Removal
         env:
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
-        run: >
+        run: |
           julia -e '
           using Pkg
           Pkg.add("GitHub")
