@@ -314,8 +314,8 @@ function Base.propertynames(lentry::LegendEntry)
     [fieldnames(T)..., keys(lentry.attributes)...]
 end
 
-legendelements(le::LegendElement) = LegendElement[le]
-legendelements(les::AbstractArray{<:LegendElement}) = LegendElement[les...]
+legendelements(le::LegendElement, legend) = LegendElement[le]
+legendelements(les::AbstractArray{<:LegendElement}, legend) = LegendElement[les...]
 
 
 function LegendEntry(label::String, contentelements::AbstractArray, legend; kwargs...)
@@ -393,7 +393,7 @@ function legendelements(plot, legend)::Vector{LegendElement}
     if isempty(plot.plots)
         error("No child plot elements found in plot of type $(typeof(plot)) but also no `legendelements` method defined.")
     end
-    reduce(vcat, [legendelements(childplot) for childplot in plot.plots])
+    reduce(vcat, [legendelements(childplot, legend) for childplot in plot.plots])
 end
 
 function Base.getproperty(legendelement::T, s::Symbol) where T <: LegendElement

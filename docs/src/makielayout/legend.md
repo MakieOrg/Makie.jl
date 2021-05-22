@@ -156,23 +156,22 @@ f = Figure()
 
 Axis(f[1, 1])
 
+elem_1 = [LineElement(linecolor = :red, linestyle = nothing),
+          MarkerElement(markercolor = :blue, marker = 'x',
+          markerstrokecolor = :black)]
 
-elem_1 = [LineElement(color = :red, linestyle = nothing),
-          MarkerElement(color = :blue, marker = 'x', strokecolor = :black)]
+elem_2 = [PolyElement(polycolor = :red, polystrokecolor = :blue),
+          LineElement(linecolor = :black, linestyle = :dash)]
 
-elem_2 = [PolyElement(color = :red, strokecolor = :blue),
-          LineElement(color = :black, linestyle = :dash)]
-
-elem_3 = LineElement(color = :green, linestyle = nothing,
+elem_3 = LineElement(linecolor = :green, linestyle = nothing,
         linepoints = Point2f0[(0, 0), (0, 1), (1, 0), (1, 1)])
 
-elem_4 = MarkerElement(color = :blue, marker = 'π',
-        strokecolor = :transparent,
+elem_4 = MarkerElement(markercolor = :blue, marker = 'π',
+        markerstrokecolor = :transparent,
         markerpoints = Point2f0[(0.2, 0.2), (0.5, 0.8), (0.8, 0.2)])
 
-elem_5 = PolyElement(color = :green, strokecolor = :black,
+elem_5 = PolyElement(polycolor = :green, polystrokecolor = :black,
         polypoints = Point2f0[(0, 0), (1, 0), (0, 1)])
-
 
 Legend(f[1, 2],
     [elem_1, elem_2, elem_3, elem_4, elem_5],
