@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: webfactory/ssh-agent@v0.5.2
         with:
-          ssh-private-key: ${{ secrets.DOCUMENTER_KEY }}
+          ssh-private-key: ${{ secrets.PREVIEW_DELETER_KEY }}
       - uses: julia-actions/setup-julia@latest
         with:
           version: 1
