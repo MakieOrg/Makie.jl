@@ -130,23 +130,35 @@ macro extractvalue(scene, args)
     extract_expr(getindex_value, scene, args)
 end
 
-bs_length(x::NativeFont) = 1 # these are our rules, and for what we do, Vecs are usually scalars
-bs_length(x::VecTypes) = 1 # these are our rules, and for what we do, Vecs are usually scalars
-bs_length(x::AbstractArray) = length(x)
-bs_length(x::AbstractString) = length(x)
-bs_length(x) = 1
 
-bs_getindex(x::NativeFont, i) = x # these are our rules, and for what we do, Vecs are usually scalars
-bs_getindex(x::VecTypes, i) = x # these are our rules, and for what we do, Vecs are usually scalars
-bs_getindex(x::AbstractArray, i) = x[i]
-bs_getindex(x::AbstractString, i) = x[i]
-bs_getindex(x, i) = x
+attr_broadcast_length(x::NativeFont) = 1 # these are our rules, and for what we do, Vecs are usually scalars
+attr_broadcast_length(x::VecTypes) = 1 # these are our rules, and for what we do, Vecs are usually scalars
+attr_broadcast_length(x::AbstractArray) = length(x)
+attr_broadcast_length(x) = 1
+
+attr_broadcast_getindex(x::NativeFont, i) = x # these are our rules, and for what we do, Vecs are usually scalars
+attr_broadcast_getindex(x::VecTypes, i) = x # these are our rules, and for what we do, Vecs are usually scalars
+attr_broadcast_getindex(x::AbstractArray, i) = x[i]
+attr_broadcast_getindex(x, i) = x
+
+is_vector_attribute(x::AbstractArray) = true
+is_vector_attribute(x::NativeFont) = false
+is_vector_attribute(x::VecTypes) = false
+is_vector_attribute(x) = false
+
+is_scalar_attribute(x) = !is_vector_attribute(x)
 
 """
+    broadcast_foreach(f, args...)
+
 Like broadcast but for foreach. Doesn't care about shape and treats Tuples && StaticVectors as scalars.
+This method is meant for broadcasting across attributes that can either have scalar or vector / array form.
+An example would be a collection of scatter markers that have different sizes but a single color.
+The length of an attribute is determined with `attr_broadcast_length` and elements are accessed with
+`attr_broadcast_getindex`.
 """
 function broadcast_foreach(f, args...)
-    lengths = bs_length.(args)
+    lengths = attr_broadcast_length.(args)
     maxlen = maximum(lengths)
 
     # all non scalars should have same length
@@ -159,10 +171,11 @@ function broadcast_foreach(f, args...)
     0 in lengths && return
 
     for i in 1:maxlen
-        f(bs_getindex.(args, i)...)
+        f(attr_broadcast_getindex.(args, i)...)
     end
     return
 end
+
 
 """
     from_dict(::Type{T}, dict)
