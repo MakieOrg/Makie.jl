@@ -1,0 +1,58 @@
+# This is a basic workflow to help you get started with Actions
+
+name: DeleteStalePreviews
+
+# Controls when the action will run. 
+on:
+  pull_request:
+    types: [ closed ]
+    branches: [ master ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  preview_removal:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - uses: julia-actions/setup-julia@latest
+        with:
+          version: 1
+      - name: CompatHelper.main()
+        env:
+          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
+        run: >
+          julia -e '
+          using Pkg
+          Pkg.add("GitHub")
+          import GitHub
+
+          prs, _ = GitHub.pull_requests("JuliaPlots/Makie.jl")
+          open_prs = [x.number for x in prs if x.state == "open"]
+
+          run(```
+              git clone "https://github.com/JuliaPlots/MakieDocumentation"
+              git checkout gh-pages
+          ```)
+          cd("MakieDocumentation")
+
+          preview_folders = filter(startswith("PR"), readdir("previews"))
+          to_delete = [folder for folder in preview_folders if parse(Int, folder[3:end]) ∉ open_prs]
+
+          if !isempty(to_delete)
+              for folder in to_delete
+                  @info "Deleting stale preview $folder"
+                  run(`git rm -r $(joinpath("previews", folder))`)
+              end
+
+              run(```
+                  git config user.name "GitHub Actions Preview Deleter"
+                  git commit -m "Deleted stale preview$(length(to_delete) == 1 ? "" : "s") $to_delete"
+                  git push origin gh-pages
+              ```)
+          end'
