@@ -35,10 +35,8 @@ jobs:
           prs, _ = GitHub.pull_requests("JuliaPlots/Makie.jl")
           open_prs = [x.number for x in prs if x.state == "open"]
 
-          run(```
-              git clone "https://github.com/JuliaPlots/MakieDocumentation"
-              git checkout gh-pages
-          ```)
+          run(`git clone https://github.com/JuliaPlots/MakieDocumentation`)
+          run(`git checkout gh-pages`)
           cd("MakieDocumentation")
 
           preview_folders = filter(startswith("PR"), readdir("previews"))
@@ -50,9 +48,7 @@ jobs:
                   run(`git rm -r $(joinpath("previews", folder))`)
               end
 
-              run(```
-                  git config user.name "GitHub Actions Preview Deleter"
-                  git commit -m "Deleted stale preview$(length(to_delete) == 1 ? "" : "s") $to_delete"
-                  git push origin gh-pages
-              ```)
+              run(`git config user.name "GitHub Actions Preview Deleter"`)
+              run(`git commit -m "Deleted stale preview$(length(to_delete) == 1 ? "" : "s") $to_delete"`)
+              run(`git push origin gh-pages`)
           end'
