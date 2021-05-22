@@ -49,6 +49,8 @@ jobs:
                   run(`git rm -r $(joinpath("previews", folder))`)
               end
 
-              run(`git commit --author "Preview Deleter <>" -m "Deleted stale preview$(length(to_delete) == 1 ? "" : "s") $to_delete"`)
+              run(`git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"`)
+              run(`git config --global user.name "github-actions[bot]"`)
+              run(`git commit -m "Deleted stale preview$(length(to_delete) == 1 ? "" : "s") $to_delete"`)
               run(`git push origin gh-pages`)
           end'
