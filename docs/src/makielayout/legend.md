@@ -232,10 +232,11 @@ for ms in markersizes, color in colors
     scatter!(randn(5, 2), markersize = ms, color = color)
 end
 
-group_size = [MarkerElement(marker = :circle, color = :black, strokecolor = :transparent,
+group_size = [MarkerElement(marker = :circle, markercolor = :black,
+    markerstrokecolor = :transparent,
     markersize = ms) for ms in markersizes]
 
-group_color = [PolyElement(color = color, strokecolor = :transparent)
+group_color = [PolyElement(polycolor = color, polystrokecolor = :transparent)
     for color in colors]
 
 legends = [Legend(f,
