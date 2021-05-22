@@ -436,6 +436,7 @@ function (PT::Type{<: Combined})(parent, transformation, attributes, input_args,
 end
 
 plotsym(T::Type{<:AbstractPlot{F}}) where F = Symbol(split(string(Symbol(T)), "{")[1])
+plotsym(::Type{Any}) = :plot
 
 """
     used_attributes(args...) = ()
@@ -812,7 +813,8 @@ end
 
 function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, args...)
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
-    plot_object = P(scene, attributes, args)
+    constr = plottype(P, args...)
+    plot_object = constr(scene, attributes, args)
     # call user defined recipe overload to fill the plot type
     plot!(plot_object)
     push!(scene.plots, plot_object)
