@@ -12,6 +12,14 @@ You can create a basic Legend by passing a vector of legend entries and a vector
 The elements in the vector of legend entries can either be plot objects or LegendElements like LineElement, MarkerElement and PolyElement.
 Or they can be vectors of such objects that will be layered together as one.
 
+### Legend element attributes
+
+The standard plot objects like `Scatter` or `Lines` have predefined conversions to `MarkerElement`s and `LineElement`s that copy the relevant plot attributes to the legend element.
+If an attribute has a vector-like value, it falls back to the scalar default of the legend.
+The legend defaults themselves are by default inherited from the main theme.
+For example, `polystrokewidth` of the legend falls back to `patchstrokewidth` of the main theme.
+In the following example, you can see that the legend for `sca2` copies the `:rect` marker but not the vector-valued color.
+
 ```@example
 using CairoMakie
 
@@ -22,9 +30,12 @@ Axis(f[1, 1])
 xs = 0:0.5:10
 ys = sin.(xs)
 lin = lines!(xs, ys, color = :blue)
-sca = scatter!(xs, ys, color = :red, markersize = 15)
+sca = scatter!(xs, ys, color = :red)
+sca2 = scatter!(xs, ys .+ 0.5, color = 1:length(xs), marker = :rect)
 
-Legend(f[1, 2], [lin, sca, [lin, sca]], ["a line", "some dots", "both together"])
+Legend(f[1, 2],
+    [lin, sca, [lin, sca], sca2],
+    ["a line", "some dots", "both together", "rect markers"])
 
 f
 ```
@@ -138,16 +149,23 @@ f
 
 Sometimes you might want to construct legend entries from scratch to have maximum
 control. So far you can use `LineElement`s, `MarkerElement`s or `PolyElement`s.
-Some attributes that can't have a meaningful preset and would usually be inherited
-from plot objects (like color) have to be explicitly specified. Others are
-inherited from the legend if they are not specified. These include marker
-arrangement for `MarkerElement`s or poly shape for `PolyElement`s. You can check
-the list using this function:
+The attributes for these elements are the following:
 
-```@example
-using Makie
-MakieLayout.attributenames(LegendEntry)
+```julia
+# LineElement
+linepoints, linecolor, linestyle, linewidth
+
+# MarkerElement
+markerpoints, marker, markersize, markercolor,
+markerstrokewidth, markerstrokecolor
+
+# PolyElement
+polypoints, polycolor, polystrokewidth, polystrokecolor
 ```
+
+The attributes `linepoints`, `markerpoints` and `polypoints` decide where in the legend entry patch rectangle the plot objects are placed.
+These values should be normalized to a 1 by 1 rectangle, and the final shape depends on the `patchsize` of the legend.
+For example, if you want wider line and poly markers, you could set the `patchsize` of the legend to `(50, 30)`.
 
 ```@example
 using CairoMakie
@@ -156,23 +174,21 @@ f = Figure()
 
 Axis(f[1, 1])
 
+elem_1 = [LineElement(linecolor = :red, linestyle = nothing),
+          MarkerElement(markercolor = :blue, marker = 'x', markersize = 15,
+          markerstrokecolor = :black)]
 
-elem_1 = [LineElement(color = :red, linestyle = nothing),
-          MarkerElement(color = :blue, marker = 'x', strokecolor = :black)]
+elem_2 = [PolyElement(polycolor = :red, polystrokecolor = :blue, polystrokewidth = 1),
+          LineElement(linecolor = :black, linestyle = :dash)]
 
-elem_2 = [PolyElement(color = :red, strokecolor = :blue),
-          LineElement(color = :black, linestyle = :dash)]
-
-elem_3 = LineElement(color = :green, linestyle = nothing,
+elem_3 = LineElement(linecolor = :green, linestyle = nothing,
         linepoints = Point2f0[(0, 0), (0, 1), (1, 0), (1, 1)])
 
-elem_4 = MarkerElement(color = :blue, marker = 'π',
-        strokecolor = :transparent,
+elem_4 = MarkerElement(markercolor = :blue, marker = 'π', markersize = 15,
         markerpoints = Point2f0[(0.2, 0.2), (0.5, 0.8), (0.8, 0.2)])
 
-elem_5 = PolyElement(color = :green, strokecolor = :black,
+elem_5 = PolyElement(polycolor = :green, polystrokecolor = :black, polystrokewidth = 2,
         polypoints = Point2f0[(0, 0), (1, 0), (0, 1)])
-
 
 Legend(f[1, 2],
     [elem_1, elem_2, elem_3, elem_4, elem_5],
@@ -233,10 +249,11 @@ for ms in markersizes, color in colors
     scatter!(randn(5, 2), markersize = ms, color = color)
 end
 
-group_size = [MarkerElement(marker = :circle, color = :black, strokecolor = :transparent,
+group_size = [MarkerElement(marker = :circle, markercolor = :black,
+    markerstrokecolor = :transparent,
     markersize = ms) for ms in markersizes]
 
-group_color = [PolyElement(color = color, strokecolor = :transparent)
+group_color = [PolyElement(polycolor = color, polystrokecolor = :transparent)
     for color in colors]
 
 legends = [Legend(f,

@@ -263,10 +263,10 @@ function legendelement_plots!(scene, element::MarkerElement, bbox::Node{FRect2D}
 
     fracpoints = attrs.markerpoints
     points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
-    scat = scatter!(scene, points, color = attrs.color, marker = attrs.marker,
+    scat = scatter!(scene, points, color = attrs.markercolor, marker = attrs.marker,
         markersize = attrs.markersize,
         strokewidth = attrs.markerstrokewidth,
-        strokecolor = attrs.strokecolor, raw = true, inspectable = false)
+        strokecolor = attrs.markerstrokecolor, raw = true, inspectable = false)
     [scat]
 end
 
@@ -276,7 +276,7 @@ function legendelement_plots!(scene, element::LineElement, bbox::Node{FRect2D}, 
 
     fracpoints = attrs.linepoints
     points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
-    lin = lines!(scene, points, linewidth = attrs.linewidth, color = attrs.color,
+    lin = lines!(scene, points, linewidth = attrs.linewidth, color = attrs.linecolor,
         linestyle = attrs.linestyle,
         raw = true, inspectable = false)
     [lin]
@@ -288,8 +288,8 @@ function legendelement_plots!(scene, element::PolyElement, bbox::Node{FRect2D}, 
 
     fracpoints = attrs.polypoints
     points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
-    pol = poly!(scene, points, strokewidth = attrs.polystrokewidth, color = attrs.color,
-        strokecolor = attrs.strokecolor,
+    pol = poly!(scene, points, strokewidth = attrs.polystrokewidth, color = attrs.polycolor,
+        strokecolor = attrs.polystrokecolor,
         raw = true, inspectable = false)
     [pol]
 end
@@ -314,27 +314,27 @@ function Base.propertynames(lentry::LegendEntry)
     [fieldnames(T)..., keys(lentry.attributes)...]
 end
 
-legendelements(le::LegendElement) = LegendElement[le]
-legendelements(les::AbstractArray{<:LegendElement}) = LegendElement[les...]
+legendelements(le::LegendElement, legend) = LegendElement[le]
+legendelements(les::AbstractArray{<:LegendElement}, legend) = LegendElement[les...]
 
 
-function LegendEntry(label::String, contentelements::AbstractArray; kwargs...)
+function LegendEntry(label::String, contentelements::AbstractArray, legend; kwargs...)
     attrs = Attributes(label = label)
 
     kwargattrs = Attributes(kwargs)
     merge!(attrs, kwargattrs)
 
-    elems = vcat(legendelements.(contentelements)...)
+    elems = vcat(legendelements.(contentelements, Ref(legend))...)
     LegendEntry(elems, attrs)
 end
 
-function LegendEntry(label::String, contentelement; kwargs...)
+function LegendEntry(label::String, contentelement, legend; kwargs...)
     attrs = Attributes(label = label)
 
     kwargattrs = Attributes(kwargs)
     merge!(attrs, kwargattrs)
 
-    elems = legendelements(contentelement)
+    elems = legendelements(contentelement, legend)
     LegendEntry(elems, attrs)
 end
 
@@ -350,32 +350,50 @@ function PolyElement(;kwargs...)
     PolyElement(Attributes(kwargs))
 end
 
-function legendelements(plot::Union{Lines, LineSegments})
-    LegendElement[LineElement(color = plot.color, linestyle = plot.linestyle)]
+function scalar_lift(attr, default)
+    lift(Any, attr, default) do at, def
+        Makie.is_scalar_attribute(at) ? at : def
+    end
 end
 
-function legendelements(plot::Scatter)
+function legendelements(plot::Union{Lines, LineSegments}, legend)
+    LegendElement[LineElement(
+        linecolor = scalar_lift(plot.color, legend.linecolor),
+        linestyle = scalar_lift(plot.linestyle, legend.linestyle),
+        linewidth = scalar_lift(plot.linewidth, legend.linewidth))]
+end
+
+
+function legendelements(plot::Scatter, legend)
     LegendElement[MarkerElement(
-        color = plot.color, marker = plot.marker,
-        strokecolor = plot.strokecolor)]
+        markercolor = scalar_lift(plot.color, legend.markercolor),
+        marker = scalar_lift(plot.marker, legend.marker),
+        markersize = scalar_lift(plot.markersize, legend.markersize),
+        markerstrokewidth = scalar_lift(plot.strokewidth, legend.markerstrokewidth),
+        markerstrokecolor = scalar_lift(plot.strokecolor, legend.markerstrokecolor),
+    )]
 end
 
-function legendelements(plot::Union{Poly, Violin, BoxPlot, CrossBar})
-    LegendElement[PolyElement(color = plot.color, strokecolor = plot.strokecolor)]
+function legendelements(plot::Union{Poly, Violin, BoxPlot, CrossBar}, legend)
+    LegendElement[PolyElement(
+        polycolor = scalar_lift(plot.color, legend.polycolor),
+        polystrokecolor = scalar_lift(plot.strokecolor, legend.polystrokecolor),
+        polystrokewidth = scalar_lift(plot.strokewidth, legend.polystrokewidth),
+    )]
 end
 
-function legendelements(plot::Band)
+function legendelements(plot::Band, legend)
     # there seems to be no stroke for Band, so we set it invisible
-    LegendElement[PolyElement(color = plot.color, strokecolor = :transparent)]
+    LegendElement[PolyElement(polycolor = scalar_lift(plot.color, legend.polystrokecolor), polystrokecolor = :transparent, polystrokewidth = 0)]
 end
 
 # if there is no specific overload available, we go through the child plots and just stack
 # those together as a simple fallback
-function legendelements(plot)::Vector{LegendElement}
+function legendelements(plot, legend)::Vector{LegendElement}
     if isempty(plot.plots)
         error("No child plot elements found in plot of type $(typeof(plot)) but also no `legendelements` method defined.")
     end
-    reduce(vcat, [legendelements(childplot) for childplot in plot.plots])
+    reduce(vcat, [legendelements(childplot, legend) for childplot in plot.plots])
 end
 
 function Base.getproperty(legendelement::T, s::Symbol) where T <: LegendElement
@@ -423,9 +441,11 @@ function layoutable(::Type{Legend}, fig_or_scene,
         error("Number of elements not equal: $(length(contents)) content elements and $(length(labels)) labels.")
     end
 
-    entries = [LegendEntry(label, content) for (content, label) in zip(contents, labels)]
-    entrygroups = Node{Vector{EntryGroup}}([(title, entries)])
+    entrygroups = Node{Vector{EntryGroup}}([])
     legend = layoutable(Legend, fig_or_scene, entrygroups; kwargs...)
+    entries = [LegendEntry(label, content, legend) for (content, label) in zip(contents, labels)]
+    entrygroups[] = [(title, entries)]
+    legend
 end
 
 
@@ -456,11 +476,13 @@ function layoutable(::Type{Legend}, fig_or_scene,
         error("Number of elements not equal: $(length(titles)) titles, $(length(contentgroups)) content groups and $(length(labelgroups)) label groups.")
     end
 
-    entries = [[LegendEntry(l, pg) for (l, pg) in zip(labelgroup, contentgroup)]
-        for (labelgroup, contentgroup) in zip(labelgroups, contentgroups)]
-
-    entrygroups = Node{Vector{EntryGroup}}([(t, en) for (t, en) in zip(titles, entries)])
+    
+    entrygroups = Node{Vector{EntryGroup}}([])
     legend = layoutable(Legend, fig_or_scene, entrygroups; kwargs...)
+    entries = [[LegendEntry(l, pg, legend) for (l, pg) in zip(labelgroup, contentgroup)]
+        for (labelgroup, contentgroup) in zip(labelgroups, contentgroups)]
+    entrygroups[] = [(t, en) for (t, en) in zip(titles, entries)]
+    legend
 end
 
 

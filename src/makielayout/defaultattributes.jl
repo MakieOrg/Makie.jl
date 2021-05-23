@@ -800,17 +800,31 @@ function default_attributes(::Type{Legend}, scene)
         "The default points used for LineElements in normalized coordinates relative to each label patch."
         linepoints = [Point2f0(0, 0.5), Point2f0(1, 0.5)]
         "The default line width used for LineElements."
-        linewidth = 3
+        linewidth = theme(scene, :linewidth)
+        "The default line color used for LineElements"
+        linecolor = theme(scene, :linecolor)
+        "The default line style used for LineElements"
+        linestyle = :solid
+        "The default marker color for MarkerElements"
+        markercolor = theme(scene, :markercolor)
+        "The default marker for MarkerElements"
+        marker = theme(scene, :marker)
         "The default marker points used for MarkerElements in normalized coordinates relative to each label patch."
         markerpoints = [Point2f0(0.5, 0.5)]
         "The default marker size used for MarkerElements."
-        markersize = 12
+        markersize = theme(scene, :markersize)
         "The default marker stroke width used for MarkerElements."
-        markerstrokewidth = 1
+        markerstrokewidth = theme(scene, :markerstrokewidth)
+        "The default marker stroke color used for MarkerElements."
+        markerstrokecolor = theme(scene, :markerstrokecolor)
         "The default poly points used for PolyElements in normalized coordinates relative to each label patch."
         polypoints = [Point2f0(0, 0), Point2f0(1, 0), Point2f0(1, 1), Point2f0(0, 1)]
         "The default poly stroke width used for PolyElements."
-        polystrokewidth = 1
+        polystrokewidth = theme(scene, :patchstrokewidth)
+        "The default poly color used for PolyElements."
+        polycolor = theme(scene, :patchcolor)
+        "The default poly stroke color used for PolyElements."
+        polystrokecolor = theme(scene, :patchstrokecolor)
         "The orientation of the legend (:horizontal or :vertical)."
         orientation = :vertical
         "The gap between each group title and its group."
@@ -840,8 +854,9 @@ Legend
 function attributenames(::Type{LegendEntry})
     (:label, :labelsize, :labelfont, :labelcolor, :labelhalign, :labelvalign,
         :patchsize, :patchstrokecolor, :patchstrokewidth, :patchcolor,
-        :linepoints, :markerpoints, :markersize, :markerstrokewidth, :linewidth,
-        :polypoints, :polystrokewidth)
+        :linepoints, :linewidth, :linecolor, :linestyle,
+        :markerpoints, :markersize, :markerstrokewidth, :markercolor, :markerstrokecolor, 
+        :polypoints, :polystrokewidth, :polycolor, :polystrokecolor)
 end
 
 function extractattributes(attributes::Attributes, typ::Type)
