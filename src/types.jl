@@ -237,7 +237,7 @@ mutable struct Camera
     projectionview::Node{Mat4f0}
     resolution::Node{Vec2f0}
     eyeposition::Node{Vec3f0}
-    steering_nodes::Vector{Any}
+    steering_nodes::Vector{ObserverFunction}
 end
 
 """

@@ -11,14 +11,10 @@ function Base.:(==)(a::Camera, b::Camera)
 end
 
 function disconnect!(c::Camera)
-    for node in c.steering_nodes
-        # remove all camera lifts
-        for f in listeners(node)
-            if f isa CameraLift
-                off(node, f)
-            end
-        end
+    for obsfunc in c.steering_nodes
+        off(obsfunc)
     end
+    empty!(c.steering_nodes)
     return
 end
 
@@ -41,22 +37,22 @@ end
 
 """
     on(f, c::Camera, nodes::Node...)
+
 When mapping over nodes for the camera, we store them in the `steering_node` vector,
 to make it easier to disconnect the camera steering signals later!
 """
 function Observables.on(f::Function, camera::Camera, nodes::AbstractObservable...; priority=Int8(0))
-    # this basically reimplements onany, which is a bit annoying, but like
-    # this we don't have such a closure hell and CameraLift will be nicely
-    # identifiable when we disconnect the nodes!
+    # PriorityObservables don't implement on_any, because that would replace
+    # the method in Observables. CameraLift acts as a workaround for now.
     cl = CameraLift(f, nodes)
     for n in nodes
-        if n isa PriorityObservable
+        obs = if n isa PriorityObservable
             on(cl, n, priority=priority)
         else
             on(cl, n)
         end
+        push!(camera.steering_nodes, obs)
     end
-    push!(camera.steering_nodes, nodes...)
     return f
 end
 
@@ -74,7 +70,7 @@ function Camera(px_area)
         Node(Mat4f0(I)),
         lift(a-> Vec2f0(widths(a)), px_area),
         Node(Vec3f0(1)),
-        []
+        ObserverFunction[]
     )
 end
 
