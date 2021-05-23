@@ -219,7 +219,7 @@ $(ATTRIBUTES)
         color = theme(scene, :markercolor),
         colormap = theme(scene, :colormap),
         colorrange = automatic,
-        marker = Circle,
+        marker = theme(scene, :marker),
         markersize = theme(scene, :markersize),
 
         strokecolor = theme(scene, :markerstrokecolor),
