@@ -81,7 +81,7 @@ for eventtype in instances(MouseEventType)
         a MouseEvent with `event.type === $($eventtype)`.
         """
         function $onfunctionname(f, mev::MouseEventHandle; priority = Int8(0))
-            sanitized_func = _sanitize_observer_function(f, (typeof(mev.obs.val),))
+            sanitized_func = PrioCallback(f)
             on(mev.obs, priority = priority) do event
                 if event.type === $eventtype
                     return sanitized_func(event)::Bool
