@@ -170,7 +170,9 @@ function Makie.plot!(plot::BoxPlot)
     boxwidth = @lift($signals.boxwidth)
 
     outliercolor = lift(plot[:outliercolor], plot[:color]) do outliercolor, color
-        outliercolor === automatic ? color : outliercolor
+        outliercolor === automatic || return outliercolor
+        c = to_color(color)
+        return RGB(red(c), green(c), blue(c))
     end
 
     scatter!(
