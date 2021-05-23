@@ -157,7 +157,7 @@ f = Figure()
 Axis(f[1, 1])
 
 elem_1 = [LineElement(linecolor = :red, linestyle = nothing),
-          MarkerElement(markercolor = :blue, marker = 'x',
+          MarkerElement(markercolor = :blue, marker = 'x', markersize = 15,
           markerstrokecolor = :black)]
 
 elem_2 = [PolyElement(polycolor = :red, polystrokecolor = :blue),
@@ -166,8 +166,7 @@ elem_2 = [PolyElement(polycolor = :red, polystrokecolor = :blue),
 elem_3 = LineElement(linecolor = :green, linestyle = nothing,
         linepoints = Point2f0[(0, 0), (0, 1), (1, 0), (1, 1)])
 
-elem_4 = MarkerElement(markercolor = :blue, marker = 'π',
-        markerstrokecolor = :transparent,
+elem_4 = MarkerElement(markercolor = :blue, marker = 'π', markersize = 15,
         markerpoints = Point2f0[(0.2, 0.2), (0.5, 0.8), (0.8, 0.2)])
 
 elem_5 = PolyElement(polycolor = :green, polystrokecolor = :black,
