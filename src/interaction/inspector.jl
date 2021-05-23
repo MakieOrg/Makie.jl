@@ -203,11 +203,11 @@ end
 ## Shifted projection
 ########################################
 
-function shift_project(scene, pos)
+function shift_project(scene, plot, pos)
     project(
         camera(scene).projectionview[],
         Vec2f0(widths(pixelarea(scene)[])),
-        pos
+        apply_transform(transform_func_obs(plot)[], pos)
     ) .+ Vec2f0(origin(pixelarea(scene)[]))
 end
 
@@ -532,7 +532,7 @@ function show_data(inspector::DataInspector, plot::Scatter, idx)
     a = inspector.plot.attributes
     scene = parent_scene(plot)
 
-    proj_pos = shift_project(scene, to_ndim(Point3f0, plot[1][][idx], 0))
+    proj_pos = shift_project(scene, plot, to_ndim(Point3f0, plot[1][][idx], 0))
     update_tooltip_alignment!(inspector, proj_pos)
     ms = plot.markersize[]
 
@@ -550,7 +550,7 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
     a = inspector.plot.attributes
     scene = parent_scene(plot)
         
-    proj_pos = shift_project(scene, to_ndim(Point3f0, plot[1][][idx], 0))
+    proj_pos = shift_project(scene, plot, to_ndim(Point3f0, plot[1][][idx], 0))
     update_tooltip_alignment!(inspector, proj_pos)
     bbox = Rect{3, Float32}(plot.marker[])
 
@@ -600,7 +600,7 @@ function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, i
     pos = closest_point_on_line(p0, p1, origin, dir)
     lw = plot.linewidth[] isa Vector ? plot.linewidth[][idx] : plot.linewidth[]
     
-    proj_pos = shift_project(scene, to_ndim(Point3f0, pos, 0))
+    proj_pos = shift_project(scene, plot, to_ndim(Point3f0, pos, 0))
     update_tooltip_alignment!(inspector, proj_pos)
 
     a._display_text[] = position2string(typeof(p0)(pos))
@@ -872,7 +872,7 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
     scene = parent_scene(plot)
         
     pos = plot[1][][idx]
-    proj_pos = shift_project(scene, to_ndim(Point3f0, pos, 0))
+    proj_pos = shift_project(scene, plot, to_ndim(Point3f0, pos, 0))
     update_tooltip_alignment!(inspector, proj_pos)
     a._model[] = plot.model[]
     a._bbox2D[] = plot.plots[1][1][][idx]
@@ -904,7 +904,7 @@ function show_data(inspector::DataInspector, plot::Arrows, idx, source)
     scene = parent_scene(plot)
         
     pos = plot[1][][idx]
-    proj_pos = shift_project(scene, to_ndim(Point3f0, pos, 0))
+    proj_pos = shift_project(scene, plot, to_ndim(Point3f0, pos, 0))
 
     mpos = Point2f0(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, mpos)
