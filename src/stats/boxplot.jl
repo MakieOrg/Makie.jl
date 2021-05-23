@@ -55,7 +55,7 @@ The boxplot has 3 components:
         whiskerlinewidth = theme(scene, :linewidth),
         # outliers points
         show_outliers = true,
-        marker = Circle,
+        marker = theme(scene, :marker),
         markersize = theme(scene, :markersize),
         outliercolor = automatic,
         outlierstrokecolor = theme(scene, :markerstrokecolor),
