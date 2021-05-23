@@ -43,7 +43,9 @@ jobs:
         run: >
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24'
           julia --project=docs -e
-          'using Pkg; Pkg.develop(PackageSpec(path=pwd())); 
+          'using Pkg;
+           pkg"registry up General";
+           Pkg.develop(PackageSpec(path=pwd())); 
            Pkg.add(url = "https://github.com/JuliaDocs/Documenter.jl", rev = "master");
            Pkg.instantiate()'
       - name: Build and deploy
