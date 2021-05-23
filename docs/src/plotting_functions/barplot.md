@@ -91,7 +91,7 @@ let
 
     # Legend
     labels = ["group 1", "group 2", "group 3"]
-    elements = [PolyElement(color = colors[i], strokecolor = :transparent) for i in 1:length(labels)]
+    elements = [PolyElement(polycolor = colors[i], polystrokecolor = :transparent) for i in 1:length(labels)]
     title = "Groups"
 
     Legend(fig[1,2], elements, labels, title)
