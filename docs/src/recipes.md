@@ -29,7 +29,7 @@ Makie.convert_arguments(x::Circle) = (decompose(Point2f, x),)
 ```
 
 !!! warning
-`convert_arguments` must always return a Tuple.
+    `convert_arguments` must always return a Tuple.
 
 You can restrict conversion to a subset of plot types, like only for scatter plots:
 

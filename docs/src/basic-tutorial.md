@@ -35,8 +35,8 @@ Makie has many different plotting functions, one of the most common ones is [lin
 You can just call such a function and your plot will appear if your coding environment can show png or svg files.
 
 !!! note
-Objects such as [Figure](@ref), `FigureAxisPlot` or `Scene` are usually displayed whenever they are returned in global scope (e.g. in the REPL).
-To display such objects from within a local scope, like from within a function, you can directly call `display(figure)`, for example.
+    Objects such as [Figure](@ref), `FigureAxisPlot` or `Scene` are usually displayed whenever they are returned in global scope (e.g. in the REPL).
+    To display such objects from within a local scope, like from within a function, you can directly call `display(figure)`, for example.
 
 ```@example 1
 x = range(0, 10, length=100)
