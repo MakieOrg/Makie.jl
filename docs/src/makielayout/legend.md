@@ -68,7 +68,7 @@ If `unique` is `true`, all plot objects with the same plot type and label will b
 ```@example
 f = Figure()
 
-traces = cumsum(randn(10, 5), dims = 2)
+traces = cumsum(randn(10, 5), dims = 1)
 
 for (i, (merge, unique)) in enumerate(
         Iterators.product([false, true], [false true]))
