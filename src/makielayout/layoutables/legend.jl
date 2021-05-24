@@ -487,24 +487,43 @@ end
 
 
 """
-    Legend(fig_or_scene, axis::Union{Axis, Scene, LScene}, title = nothing; kwargs...)
+    Legend(fig_or_scene, axis::Union{Axis, Scene, LScene}, title = nothing; merge = false, unique = false, kwargs...)
 
 Create a single-group legend with all plots from `axis` that have the
 attribute `label` set.
+
+If `merge` is `true`, all plot objects with the same label will be layered on top of each other into one legend entry.
+If `unique` is `true`, all plot objects with the same plot type and label will be reduced to one occurance.
 """
-function layoutable(::Type{Legend}, fig_or_scene, axis::Union{Axis, Scene, LScene}, title = nothing; kwargs...)
-    plots, labels = get_labeled_plots(axis)
+function layoutable(::Type{Legend}, fig_or_scene, axis::Union{Axis, Scene, LScene}, title = nothing; merge = false, unique = false, kwargs...)
+    plots, labels = get_labeled_plots(axis, merge = merge, unique = unique)
     isempty(plots) && error("There are no plots with labels in the given axis that can be put in the legend. Supply labels to plotting functions like `plot(args...; label = \"My label\")`")
     layoutable(Legend, fig_or_scene, plots, labels, title; kwargs...)
 end
 
-function get_labeled_plots(ax)
+function get_labeled_plots(ax; merge::Bool, unique::Bool)
     lplots = filter(get_plots(ax)) do plot
         haskey(plot.attributes, :label)
     end
     labels = map(lplots) do l
         convert(String, l.label[])
     end
+
+    # filter out plots with same plot type and label
+    if unique
+        plots_labels = Base.unique(((p, l),) -> (typeof(p), l), zip(lplots, labels))
+        lplots = first.(plots_labels)
+        labels = last.(plots_labels)
+    end
+
+    if merge
+        ulabels = Base.unique(labels)
+        mergedplots = [[lp for (i, lp) in enumerate(lplots) if labels[i] == ul]
+            for ul in ulabels]
+
+        lplots, labels = mergedplots, ulabels
+    end
+
     lplots, labels
 end
 
