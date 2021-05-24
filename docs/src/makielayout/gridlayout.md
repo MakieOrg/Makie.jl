@@ -113,7 +113,6 @@ scene
 ```
 
 !!! note
-
     Keep in mind that if you set too many constraints on row and column sizes, a GridLayout can easily be too big or too small. It's good to have variable-width elements to fill the remaining space if you use an element with fixed size or fixed aspect ratio.
 
 ## Nesting
