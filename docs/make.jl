@@ -5,6 +5,7 @@ using Highlights
 using Markdown
 using Random
 using GLMakie
+using CairoMakie
 using Makie
 Makie.inline!(true)
 import Makie: to_string
