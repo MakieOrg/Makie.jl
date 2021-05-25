@@ -204,9 +204,8 @@ function create_shader(scene::Scene, plot::Makie.Text)
             end
         end
     end
-
     uniforms = Dict(
-        :model => Observable(Mat4f0(I)),
+        :model => plot.model,
         :shape_type => Observable(Cint(3)),
         :color => signals[1],
         :rotations => signals[2],
