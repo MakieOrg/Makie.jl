@@ -430,22 +430,9 @@ const atomic_function_symbols = (
 const atomic_functions = getfield.(Ref(Makie), atomic_function_symbols)
 const Atomic{Arg} = Union{map(x-> Combined{x, Arg}, atomic_functions)...}
 
-
 function (PT::Type{<: Combined})(parent, transformation, attributes, input_args, converted)
     PT(parent, transformation, attributes, input_args, converted, AbstractPlot[])
 end
-
-function plotsym(T::Type{<:AbstractPlot{F}}) where F
-    properx = Base.makeproper(stdout, T)
-    x = Base.make_typealias(properx)
-    if x === nothing
-        error("Not proper? $(T)")
-    end
-    global_ref = x[1]
-    return global_ref.name
-end
-
-plotsym(::Type{Any}) = :plot
 
 """
     used_attributes(args...) = ()
