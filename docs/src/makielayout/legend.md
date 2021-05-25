@@ -66,6 +66,8 @@ If `merge` is `true`, all plot objects with the same label will be layered on to
 If `unique` is `true`, all plot objects with the same plot type and label will be reduced to one occurance.
 
 ```@example
+using CairoMakie
+
 f = Figure()
 
 traces = cumsum(randn(10, 5), dims = 1)
