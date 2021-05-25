@@ -435,7 +435,16 @@ function (PT::Type{<: Combined})(parent, transformation, attributes, input_args,
     PT(parent, transformation, attributes, input_args, converted, AbstractPlot[])
 end
 
-plotsym(T::Type{<:AbstractPlot{F}}) where F = Symbol(split(string(Symbol(T)), "{")[1])
+function plotsym(T::Type{<:AbstractPlot{F}}) where F
+    properx = Base.makeproper(stdout, T)
+    x = Base.make_typealias(properx)
+    if x === nothing
+        error("Not proper? $(T)")
+    end
+    global_ref = x[1]
+    return global_ref.name
+end
+
 plotsym(::Type{Any}) = :plot
 
 """
