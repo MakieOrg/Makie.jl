@@ -30,19 +30,34 @@ function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
     return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), mesh; uniforms...)
 end
 
+_length(x::Makie.IntervalSets.AbstractInterval) = 2
+_length(x) = length(x)
+
 function limits_to_uvmesh(plot)
     px, py, pz = plot[1], plot[2], plot[3]
-    function grid(x, y, z, trans)
-        g = map(CartesianIndices(z)) do i
-            return Point3f0(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), 0.0)
+    # Special path for ranges of length 2 wich
+    # can be displayed as a rectangle
+    if _length(px[]) == 2 && _length(py[]) == 2
+        rect = lift(px, py) do x, y
+            xmin, xmax = extrema(x)
+            ymin, ymax = extrema(y)
+            return Rect2D(xmin, ymin, xmax - xmin, ymax - ymin)
         end
-        return apply_transform(trans, vec(g))
+        positions = Buffer(lift(rect-> decompose(Point2f0, rect), rect))
+        faces = Buffer(lift(rect -> decompose(GLTriangleFace, rect), rect))
+        uv = Buffer(lift(decompose_uv, rect))
+    else
+        function grid(x, y, z, trans)
+            g = map(CartesianIndices(z)) do i
+                return Point3f0(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), 0.0)
+            end
+            return apply_transform(trans, vec(g))
+        end
+        rect = lift(z -> Tesselation(Rect2D(0f0, 0f0, 1f0, 1f0), size(z)), pz)
+        positions = Buffer(lift(grid, px, py, pz, transform_func_obs(plot)))
+        faces = Buffer(lift(r -> decompose(GLTriangleFace, r), rect))
+        uv = Buffer(lift(decompose_uv, rect))
     end
-
-    positions = Buffer(lift(grid, px, py, pz, transform_func_obs(plot)))
-    rect = lift(z -> Tesselation(Rect2D(0f0, 0f0, 1f0, 1f0), size(z)), pz)
-    faces = Buffer(lift(r -> decompose(GLTriangleFace, r), rect))
-    uv = Buffer(lift(decompose_uv, rect))
 
     vertices = GeometryBasics.meta(positions; uv=uv)
 
