@@ -28,7 +28,6 @@ The boxplot has 3 components:
 - `show_outliers`: show outliers as points
 """
 @recipe(BoxPlot, x, y) do scene
-    scattertheme = default_theme(scene, Scatter)
     Theme(
         color = theme(scene, :patchcolor),
         colormap = theme(scene, :colormap),
@@ -40,27 +39,28 @@ The boxplot has 3 components:
         n_dodge = automatic,
         x_gap = 0.2,
         dodge_gap = 0.03,
-        strokecolor = :white,
-        strokewidth = 0.0,
+        strokecolor = theme(scene, :patchstrokecolor),
+        strokewidth = theme(scene, :patchstrokewidth),
         # notch
         show_notch = false,
         notchwidth = 0.5,
         # median line
         show_median = true,
-        mediancolor = automatic,
-        medianlinewidth = 1.0,
+        mediancolor = theme(scene, :linecolor),
+        medianlinewidth = theme(scene, :linewidth),
         # whiskers
         range = 1.5,
         whiskerwidth = 0.0,
-        whiskercolor = :black,
-        whiskerlinewidth = 1.0,
+        whiskercolor = theme(scene, :linecolor),
+        whiskerlinewidth = theme(scene, :linewidth),
         # outliers points
         show_outliers = true,
-        marker = scattertheme.marker,
-        markersize = scattertheme.markersize,
+        marker = theme(scene, :marker),
+        markersize = theme(scene, :markersize),
         outliercolor = automatic,
-        outlierstrokecolor = scattertheme.strokecolor,
-        outlierstrokewidth = scattertheme.strokewidth,
+        outlierstrokecolor = theme(scene, :markerstrokecolor),
+        outlierstrokewidth = theme(scene, :markerstrokewidth),
+        cycle = [:color => :patchcolor],
         inspectable = theme(scene, :inspectable)
     )
 end
@@ -170,7 +170,9 @@ function Makie.plot!(plot::BoxPlot)
     boxwidth = @lift($signals.boxwidth)
 
     outliercolor = lift(plot[:outliercolor], plot[:color]) do outliercolor, color
-        outliercolor === automatic ? color : outliercolor
+        outliercolor === automatic || return outliercolor
+        c = to_color(color)
+        return RGB(red(c), green(c), blue(c))
     end
 
     scatter!(
