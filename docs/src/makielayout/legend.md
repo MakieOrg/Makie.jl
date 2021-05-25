@@ -61,6 +61,38 @@ f[1, 2] = Legend(f, ax, "Trig Functions", framevisible = false)
 f
 ```
 
+With the keywords `merge` and `unique` you can control how plot objects with the same labels are treated.
+If `merge` is `true`, all plot objects with the same label will be layered on top of each other into one legend entry.
+If `unique` is `true`, all plot objects with the same plot type and label will be reduced to one occurance.
+
+```@example
+using CairoMakie
+
+f = Figure()
+
+traces = cumsum(randn(10, 5), dims = 1)
+
+for (i, (merge, unique)) in enumerate(
+        Iterators.product([false, true], [false true]))
+
+    ax = Axis(f[fldmod1(i, 2)...],
+        title = "merge = $merge, unique = $unique")
+
+    for trace in eachcol(traces)
+        lines!(trace, label = "single", color = (:black, 0.2))
+    end
+
+    mu = vec(sum(traces, dims = 2) ./ 5)
+    lines!(mu, label = "mean")
+    scatter!(mu, label = "mean")
+
+    axislegend(ax, merge = merge, unique = unique)
+
+end
+
+f
+```
+
 ## Multi-Bank Legend
 
 You can control the number of banks with the `nbanks` attribute. Banks are columns

@@ -5,6 +5,7 @@ using Highlights
 using Markdown
 using Random
 using GLMakie
+using CairoMakie
 using Makie
 Makie.inline!(true)
 import Makie: to_string
@@ -15,6 +16,10 @@ GLMakie.set_window_config!(;
     framerate = 15.0,
     pause_rendering = true
 )
+
+# use svgs for CairoMakie which look crisper by default
+CairoMakie.activate!(type = "svg")
+
 # ImageIO seems broken on 1.6 ... and there doesn't
 # seem to be a clean way anymore to force not to use a loader library?
 filter!(x-> x !== :ImageIO, FileIO.sym2saver[:PNG])
