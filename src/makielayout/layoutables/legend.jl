@@ -340,15 +340,53 @@ end
 
 
 function LineElement(;kwargs...)
-    LineElement(Attributes(kwargs))
+    _legendelement(LineElement, Attributes(kwargs))
 end
 
 function MarkerElement(;kwargs...)
-    MarkerElement(Attributes(kwargs))
+    _legendelement(MarkerElement, Attributes(kwargs))
 end
+
 function PolyElement(;kwargs...)
-    PolyElement(Attributes(kwargs))
+    _legendelement(PolyElement, Attributes(kwargs))
 end
+
+function _legendelement(T::Type{<:LegendElement}, a::Attributes)
+    _rename_attributes!(T, a)
+    T(a)
+end
+
+_renaming_mapping(::Type{LineElement}) = Dict(
+    :points => :linepoints,
+    :color => :linecolor,
+)
+_renaming_mapping(::Type{MarkerElement}) = Dict(
+    :points => :markerpoints,
+    :color => :markercolor,
+    :strokewidth => :markerstrokewidth,
+    :strokecolor => :markerstrokecolor,
+)
+_renaming_mapping(::Type{PolyElement}) = Dict(
+    :points => :polypoints,
+    :color => :polycolor,
+    :strokewidth => :polystrokewidth,
+    :strokecolor => :polystrokecolor,
+)
+
+function _rename_attributes!(T, a)
+    m = _renaming_mapping(T)
+    for (key, val) in pairs(a)
+        if haskey(m, key)
+            newkey = m[key]
+            if haskey(a, newkey)
+                error("Can't rename $key to $newkey as $newkey already exists in attributes.")
+            end
+            a[newkey] = pop!(a, key)
+        end
+    end
+    a
+end
+
 
 function scalar_lift(attr, default)
     lift(Any, attr, default) do at, def
@@ -358,7 +396,7 @@ end
 
 function legendelements(plot::Union{Lines, LineSegments}, legend)
     LegendElement[LineElement(
-        linecolor = scalar_lift(plot.color, legend.linecolor),
+        color = scalar_lift(plot.color, legend.linecolor),
         linestyle = scalar_lift(plot.linestyle, legend.linestyle),
         linewidth = scalar_lift(plot.linewidth, legend.linewidth))]
 end
@@ -366,19 +404,19 @@ end
 
 function legendelements(plot::Scatter, legend)
     LegendElement[MarkerElement(
-        markercolor = scalar_lift(plot.color, legend.markercolor),
+        color = scalar_lift(plot.color, legend.markercolor),
         marker = scalar_lift(plot.marker, legend.marker),
         markersize = scalar_lift(plot.markersize, legend.markersize),
-        markerstrokewidth = scalar_lift(plot.strokewidth, legend.markerstrokewidth),
-        markerstrokecolor = scalar_lift(plot.strokecolor, legend.markerstrokecolor),
+        strokewidth = scalar_lift(plot.strokewidth, legend.markerstrokewidth),
+        strokecolor = scalar_lift(plot.strokecolor, legend.markerstrokecolor),
     )]
 end
 
 function legendelements(plot::Union{Poly, Violin, BoxPlot, CrossBar}, legend)
     LegendElement[PolyElement(
-        polycolor = scalar_lift(plot.color, legend.polycolor),
-        polystrokecolor = scalar_lift(plot.strokecolor, legend.polystrokecolor),
-        polystrokewidth = scalar_lift(plot.strokewidth, legend.polystrokewidth),
+        color = scalar_lift(plot.color, legend.polycolor),
+        strokecolor = scalar_lift(plot.strokecolor, legend.polystrokecolor),
+        strokewidth = scalar_lift(plot.strokewidth, legend.polystrokewidth),
     )]
 end
 

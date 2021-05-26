@@ -181,18 +181,18 @@ f
 
 Sometimes you might want to construct legend entries from scratch to have maximum
 control. So far you can use `LineElement`s, `MarkerElement`s or `PolyElement`s.
-The attributes for these elements are the following:
+The attributes for these elements are the following (the `[]` parts can be left out when constructing these elements directly, but have to be fully written out for the attributes that the legend holds):
 
 ```julia
 # LineElement
-linepoints, linecolor, linestyle, linewidth
+[line]points, [line]color, linestyle, linewidth
 
 # MarkerElement
-markerpoints, marker, markersize, markercolor,
-markerstrokewidth, markerstrokecolor
+[marker]points, marker, markersize, [marker]color,
+[marker]strokewidth, [marker]strokecolor
 
 # PolyElement
-polypoints, polycolor, polystrokewidth, polystrokecolor
+[poly]points, [poly]color, [poly]strokewidth, [poly]strokecolor
 ```
 
 The attributes `linepoints`, `markerpoints` and `polypoints` decide where in the legend entry patch rectangle the plot objects are placed.
@@ -206,20 +206,20 @@ f = Figure()
 
 Axis(f[1, 1])
 
-elem_1 = [LineElement(linecolor = :red, linestyle = nothing),
-          MarkerElement(markercolor = :blue, marker = 'x', markersize = 15,
-          markerstrokecolor = :black)]
+elem_1 = [LineElement(color = :red, linestyle = nothing),
+          MarkerElement(color = :blue, marker = 'x', markersize = 15,
+          strokecolor = :black)]
 
-elem_2 = [PolyElement(polycolor = :red, polystrokecolor = :blue, polystrokewidth = 1),
-          LineElement(linecolor = :black, linestyle = :dash)]
+elem_2 = [PolyElement(color = :red, strokecolor = :blue, strokewidth = 1),
+          LineElement(color = :black, linestyle = :dash)]
 
-elem_3 = LineElement(linecolor = :green, linestyle = nothing,
+elem_3 = LineElement(color = :green, linestyle = nothing,
         linepoints = Point2f0[(0, 0), (0, 1), (1, 0), (1, 1)])
 
-elem_4 = MarkerElement(markercolor = :blue, marker = 'π', markersize = 15,
+elem_4 = MarkerElement(color = :blue, marker = 'π', markersize = 15,
         markerpoints = Point2f0[(0.2, 0.2), (0.5, 0.8), (0.8, 0.2)])
 
-elem_5 = PolyElement(polycolor = :green, polystrokecolor = :black, polystrokewidth = 2,
+elem_5 = PolyElement(color = :green, strokecolor = :black, strokewidth = 2,
         polypoints = Point2f0[(0, 0), (1, 0), (0, 1)])
 
 Legend(f[1, 2],
@@ -281,11 +281,11 @@ for ms in markersizes, color in colors
     scatter!(randn(5, 2), markersize = ms, color = color)
 end
 
-group_size = [MarkerElement(marker = :circle, markercolor = :black,
-    markerstrokecolor = :transparent,
+group_size = [MarkerElement(marker = :circle, color = :black,
+    strokecolor = :transparent,
     markersize = ms) for ms in markersizes]
 
-group_color = [PolyElement(polycolor = color, polystrokecolor = :transparent)
+group_color = [PolyElement(color = color, strokecolor = :transparent)
     for color in colors]
 
 legends = [Legend(f,
