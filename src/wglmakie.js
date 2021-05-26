@@ -630,10 +630,12 @@ const WGLMakie = (function () {
         });
 
         renderer.setClearColor("#ffffff");
-
-        var pixelRatio = window.devicePixelRatio;
-        renderer.setPixelRatio(pixelRatio);
-        renderer.setSize(canvas.width / pixelRatio, canvas.height / pixelRatio);
+        // The following handles high-DPI devices
+        // After calling `renderer.setPixelRatio`,
+        // `canvas.width = window.devicePixelRatio * width` and
+        // `canvas.height = window.devicePixelRatio * height`
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(width, height);
 
         function mousemove(event) {
             var rect = canvas.getBoundingClientRect();
