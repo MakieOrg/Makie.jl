@@ -632,8 +632,8 @@ const WGLMakie = (function () {
         renderer.setClearColor("#ffffff");
         // The following handles high-DPI devices
         // After calling `renderer.setPixelRatio`,
-        // `canvas.width = width` and
-        // `canvas.height = height`
+        // `canvas.width = window.devicePixelRatio * width` and
+        // `canvas.height = window.devicePixelRatio * height`
         var pixelRatio = window.devicePixelRatio;
         renderer.setPixelRatio(pixelRatio);
         renderer.setSize(width / pixelRatio, height / pixelRatio);
