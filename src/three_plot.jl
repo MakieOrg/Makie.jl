@@ -63,7 +63,7 @@ function three_display(session::Session, scene::Scene)
 
     width, height = size(scene)
 
-    canvas = DOM.um("canvas", width=width, height=height, tabindex="0")
+    canvas = DOM.um("canvas", tabindex="0")
     wrapper = DOM.div(canvas)
     comm = Observable(Dict{String,Any}())
     push!(session, comm)
@@ -84,9 +84,9 @@ function three_display(session::Session, scene::Scene)
             const cam = new $(THREE).PerspectiveCamera(45, 1, 0, 100)
             $(WGL).start_renderloop(renderer, three_scenes, cam)
             JSServe.on_update($canvas_width, w_h => {
-                renderer.setSize(w_h[0], w_h[1]);
-                canvas.style.width = w_h[0];
-                canvas.style.height = w_h[1];
+                // `renderer.setSize` correctly updates `canvas` dimensions
+                var pixelRatio = window.devicePixelRatio;
+                renderer.setSize(w_h[0] / pixelRatio, w_h[1] / pixelRatio);
             })
         } else {
             const warning = $(WEBGL).getWebGLErrorMessage();

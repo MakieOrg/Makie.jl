@@ -577,7 +577,7 @@ const WGLMakie = (function () {
         renderer.autoClear = scene.clearscene;
         const area = JSServe.get_observable(scene.pixelarea);
         if (area) {
-            const [x, y, w, h] = area;
+            const [x, y, w, h] = area.map(t => t / window.devicePixelRatio);
             renderer.setViewport(x, y, w, h);
             renderer.setScissor(x, y, w, h);
             renderer.setScissorTest(true);
@@ -630,10 +630,13 @@ const WGLMakie = (function () {
         });
 
         renderer.setClearColor("#ffffff");
-
+        // The following handles high-DPI devices
+        // After calling `renderer.setPixelRatio`,
+        // `canvas.width = width` and
+        // `canvas.height = height`
         var pixelRatio = window.devicePixelRatio;
         renderer.setPixelRatio(pixelRatio);
-        renderer.setSize(canvas.width / pixelRatio, canvas.height / pixelRatio);
+        renderer.setSize(width / pixelRatio, height / pixelRatio);
 
         function mousemove(event) {
             var rect = canvas.getBoundingClientRect();
