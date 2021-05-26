@@ -446,7 +446,7 @@ const WGLMakie = (function () {
                 eyepos,
                 pixel_space,
             ] = camera;
-            const resolution_scaled = JSServe.deserialize_js(resolution).map(x=> x / pixelRatio)
+            const resolution_scaled = JSServe.deserialize_js(resolution)
             cam.view.value.fromArray(view);
             cam.projection.value.fromArray(projection);
             cam.projectionview.value.fromArray(projectionview);
