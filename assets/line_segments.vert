@@ -24,6 +24,7 @@ void main()
     vec2 normal = vec2(-dir.y, dir.x);
     vec4 anchor;
     float thickness;
+
     if(position.x == 0.0){
         anchor = point1_clip;
         frag_color = tovec4(get_color_start());
@@ -33,6 +34,7 @@ void main()
         frag_color = tovec4(get_color_end());
         thickness = get_linewidth_end();
     }
+    frag_color.a = frag_color.a * min(1.0, thickness * 2.0);
     // I think GLMakie is drawing the lines too thick...
     // untill we figure out who is right, we need to add 1.0 to linewidth
     thickness = thickness > 0.0 ? thickness + 1.0 : 0.0;
