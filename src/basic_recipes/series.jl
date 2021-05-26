@@ -54,7 +54,7 @@ function categorical_colors(cs::Union{String, Symbol}, categories::Integer)
     end
 end
 
-replace_missing(x::T) where T = ismissing(x) ? T(NaN) : x
+replace_missing(x) = ismissing(x) ? NaN : x
 
 function convert_arguments(T::Type{<: Series}, y::AbstractMatrix)
     convert_arguments(T, 1:size(y, 2), y)
