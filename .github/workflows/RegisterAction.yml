@@ -5,6 +5,7 @@ on:
       version:
         description: Version to register or component to bump
         required: true
+        
 jobs:
   register:
     runs-on: ubuntu-latest
