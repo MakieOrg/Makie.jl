@@ -64,11 +64,6 @@ function __init__()
     Makie.font_render_callback!() do sd, uv
         TEXTURE_ATLAS_CHANGED[] = true
     end
-    # If default resolution is set, set it to
-    # a smaller one as a good default for Pluto
-    if Makie._current_default_theme.resolution[] == (800, 600)
-        Makie._current_default_theme.resolution[] = (660, 500)
-    end
 end
 
 for name in names(Makie)

@@ -19,6 +19,7 @@ for M in WEB_MIMES
             three = nothing
             inline_display = App() do session::Session
                 three, canvas = three_display(session, scene)
+                Makie.push_screen!(scene, three)
                 return canvas
             end
             Base.show(io, m, inline_display)
