@@ -184,7 +184,7 @@ end
     mesh(x, y, z, faces)
     mesh(xyz, faces)
 
-Plots a 3D or 2D mesh.
+Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [GeometryBasics.jl](https://github.com/JuliaGeometry/GeometryBasics.jl).
 
 ## Attributes
 $(ATTRIBUTES)
