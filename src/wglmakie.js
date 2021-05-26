@@ -1,4 +1,5 @@
 const WGLMakie = (function () {
+    const pixelRatio = window.devicePixelRatio || 1.0;
     // global scene cache to look them up for dynamic operations in Makie
     // e.g. insert!(scene, plot) / delete!(scene, plot)
     const scene_cache = {};
@@ -66,14 +67,14 @@ const WGLMakie = (function () {
             plot_data.uniforms.view = new THREE.Uniform(new THREE.Matrix4());
             plot_data.uniforms.projection = cam.pixel_space;
             plot_data.uniforms.projectionview = cam.pixel_space;
-            plot_data.uniforms.resolution = cam.resolution;
         } else {
             plot_data.uniforms.view = cam.view;
             plot_data.uniforms.projection = cam.projection;
             plot_data.uniforms.projectionview = cam.projectionview;
-            plot_data.uniforms.resolution = cam.resolution;
             plot_data.uniforms.eyeposition = cam.eyeposition;
         }
+        plot_data.uniforms.resolution = cam.resolution;
+
         const p = deserialize_plot(plot_data);
         plot_cache[plot_data.uuid] = p;
         scene.add(p);
@@ -445,11 +446,12 @@ const WGLMakie = (function () {
                 eyepos,
                 pixel_space,
             ] = camera;
+            const resolution_scaled = JSServe.deserialize_js(resolution)
             cam.view.value.fromArray(view);
             cam.projection.value.fromArray(projection);
             cam.projectionview.value.fromArray(projectionview);
             cam.pixel_space.value.fromArray(pixel_space);
-            cam.resolution.value.fromArray(JSServe.deserialize_js(resolution));
+            cam.resolution.value.fromArray(resolution_scaled);
             cam.eyeposition.value.fromArray(JSServe.deserialize_js(eyepos));
         }
 
@@ -577,7 +579,7 @@ const WGLMakie = (function () {
         renderer.autoClear = scene.clearscene;
         const area = JSServe.get_observable(scene.pixelarea);
         if (area) {
-            const [x, y, w, h] = area;
+            const [x, y, w, h] = area.map(t => t / window.devicePixelRatio);
             renderer.setViewport(x, y, w, h);
             renderer.setScissor(x, y, w, h);
             renderer.setScissorTest(true);
@@ -630,17 +632,16 @@ const WGLMakie = (function () {
         });
 
         renderer.setClearColor("#ffffff");
+
         // The following handles high-DPI devices
-        // After calling `renderer.setPixelRatio`,
-        // `canvas.width = window.devicePixelRatio * width` and
-        // `canvas.height = window.devicePixelRatio * height`
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(width, height);
+        // `renderer.setSize` also updates `canvas` size
+        renderer.setPixelRatio(pixelRatio);
+        renderer.setSize(width / pixelRatio, height / pixelRatio);
 
         function mousemove(event) {
             var rect = canvas.getBoundingClientRect();
-            var x = event.clientX - rect.left;
-            var y = event.clientY - rect.top;
+            var x = (event.clientX - rect.left) * pixelRatio;
+            var y = (event.clientY - rect.top) * pixelRatio;
             JSServe.update_obs(comm, {
                 mouseposition: [x, y],
             });

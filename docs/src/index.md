@@ -47,6 +47,7 @@ surface(
 There are a couple of ways to keep interacting with Plots in a static export.
 
 ## Record a statemap
+
 JSServe allows to record a statemap for all widgets, that satisfy the following interface:
 
 ```julia
@@ -74,7 +75,7 @@ App() do session::Session
     end
     fig = Figure()
     ax, cplot = contour(fig[1, 1], volume)
-    rectplot = linesegments!(ax, Rect(-1, -1, 12, 12), linewidth=50, color=:red)
+    rectplot = linesegments!(ax, Rect(-1, -1, 12, 12), linewidth=2, color=:red)
     on(index_slider) do idx
         translate!(rectplot, 0,0,idx)
     end
@@ -177,8 +178,9 @@ This summarizes the current state of interactivity with WGLMakie inside static p
 # Pluto/IJulia
 
 Note that the normal interactivity from Makie is preserved with WGLMakie in e.g. Pluto, as long as the Julia session is running.
-Which brings us to setting up Pluto/IJulia sessions! The return value of your first cell must be the return value of the function `Page`. 
+Which brings us to setting up Pluto/IJulia sessions! The return value of your first cell must be the return value of the function `Page`.
 For example, your first cell can be
+
 ```julia
 begin
 	using JSServe
@@ -187,19 +189,20 @@ end
 ```
 
 As is common with files meant to be shared, you might wish to set up a temporary directory so as to not pollute other people's environment. The following code will also be a valid first cell.
+
 ```julia
 begin
 	using Pkg
 	Pkg.activate(mktempdir())
-	
+
 	Pkg.add("JSServe")
 	using JSServe
 	Page()
 end
 ```
 
-
 If you're accessing the notebook from another PC, you must set:
+
 ```julia
 begin
 	using JSServe
@@ -236,9 +239,11 @@ Tailwind is quite a amazing and has a great documentation especially for CSS beg
 https://tailwindcss.com/docs/
 
 Note, that JSServe.TailwindCSS is nothing but:
+
 ```
 TailwindCSS = JSServe.Asset("/path/to/tailwind.min.css")
 ```
+
 So any other CSS file can be used.
 
 It's also pretty easy to make reusable blocks from styled elements.
@@ -247,10 +252,13 @@ E.g. the `rows` function above is nothing but:
 ```julia
 rows(args...; class="") = DOM.div(args..., class=class * " flex flex-row")
 ```
+
 It would be more correct to define it as:
+
 ```julia
 rows(args...; class="") = DOM.div(JSServe.TailwindCSS, args..., class=class * " flex flex-row")
 ```
+
 JSServe will then make sure, that `JSServe.TailwindCSS` is loaded, and will only load it once!
 
 Finally, lets create a styled, reusable card componenent:
@@ -295,4 +303,5 @@ Hopefully, over time there will be helper libraries with lots of stylised elemen
 # Troubleshooting
 
 ## Plots don't display in Safari
+
 Safari users may need to [enable](https://discussions.apple.com/thread/8655829) WebGL.
