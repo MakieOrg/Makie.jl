@@ -63,7 +63,7 @@ function three_display(session::Session, scene::Scene)
 
     width, height = size(scene)
 
-    canvas = DOM.um("canvas", width=width, height=height, tabindex="0")
+    canvas = DOM.um("canvas", tabindex="0")
     wrapper = DOM.div(canvas)
     comm = Observable(Dict{String,Any}())
     push!(session, comm)
