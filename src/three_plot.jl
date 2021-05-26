@@ -84,9 +84,8 @@ function three_display(session::Session, scene::Scene)
             const cam = new $(THREE).PerspectiveCamera(45, 1, 0, 100)
             $(WGL).start_renderloop(renderer, three_scenes, cam)
             JSServe.on_update($canvas_width, w_h => {
+                // `renderer.setSize` correctly updates `canvas` dimensions
                 renderer.setSize(w_h[0], w_h[1]);
-                canvas.style.width = w_h[0];
-                canvas.style.height = w_h[1];
             })
         } else {
             const warning = $(WEBGL).getWebGLErrorMessage();
