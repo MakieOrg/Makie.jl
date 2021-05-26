@@ -412,7 +412,7 @@ function legendelements(plot::Scatter, legend)
     )]
 end
 
-function legendelements(plot::Union{Poly, Violin, BoxPlot, CrossBar}, legend)
+function legendelements(plot::Union{Poly, Violin, BoxPlot, CrossBar, Density}, legend)
     LegendElement[PolyElement(
         color = scalar_lift(plot.color, legend.polycolor),
         strokecolor = scalar_lift(plot.strokecolor, legend.polystrokecolor),
