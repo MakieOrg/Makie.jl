@@ -72,6 +72,10 @@ function convert_arguments(::Type{<: Series}, arg::AbstractVector{<: Tuple{X, Y}
     end,)
 end
 
+function convert_arguments(T::Type{<: Series}, arg::Tuple{<:AbstractVector, <:AbstractVector})
+    return convert_arguments(T, [arg])
+end
+
 function convert_arguments(::Type{<: Series}, arg::AbstractVector{<: AbstractVector{<:Point2}})
     return (map(arg) do points
         Point2f0.(replace_missing.(first.(points)), replace_missing.(last.(points)))
