@@ -638,8 +638,8 @@ const WGLMakie = (function () {
 
         function mousemove(event) {
             var rect = canvas.getBoundingClientRect();
-            var x = event.clientX - rect.left;
-            var y = event.clientY - rect.top;
+            var x = (event.clientX - rect.left) * pixelRatio;
+            var y = (event.clientY - rect.top) * pixelRatio;
             JSServe.update_obs(comm, {
                 mouseposition: [x, y],
             });
