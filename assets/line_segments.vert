@@ -1,8 +1,6 @@
 uniform mat4 projection;
 uniform mat4 view;
 
-#define AA_THICKNESS 2.0
-
 vec2 screen_space(vec4 position)
 {
     return vec2(position.xy / position.w) * get_resolution();
@@ -24,7 +22,8 @@ void main()
     vec2 point2_screen = screen_space(point2_clip);
     vec2 dir = normalize(point2_screen - point1_screen);
     vec2 normal = vec2(-dir.y, dir.x);
-    vec4 anchor; float thickness;
+    vec4 anchor;
+    float thickness;
     if(position.x == 0.0){
         anchor = point1_clip;
         frag_color = tovec4(get_color_start());
@@ -34,7 +33,8 @@ void main()
         frag_color = tovec4(get_color_end());
         thickness = get_linewidth_end();
     }
-    normal *= ((thickness + AA_THICKNESS) / 2.0) / get_resolution();
+    // make sure we don't draw a line with 0 th
+    normal *= ((thickness) / 2.0) / get_resolution();
     // quadpos y (position.y) gives us the direction to expand the line
     vec4 offset = vec4(normal * position.y, 0.0, 0.0);
     // start, or end of quad, need to use current or next point as anchor
