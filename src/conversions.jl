@@ -742,7 +742,7 @@ end
 
 # Do we really need all colors to be RGBAf0?!
 convert_attribute(c::AbstractArray{<: Colorant}, k::key"color") = el32convert(c)
-convert_attribute(c::AbstractArray{<: Union{Tuple{Any, Number}, Symbol}}, k::key"color") = to_color.(c)
+convert_attribute(c::AbstractArray, k::key"color") = to_color.(c)
 
 convert_attribute(c::AbstractArray, ::key"color", ::key"heatmap") = el32convert(c)
 
