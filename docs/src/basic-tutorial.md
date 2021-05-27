@@ -285,7 +285,7 @@ We just need to pass a position in the figure to it, and one plot object.
 In this example, we use a `heatmap`.
 
 You can see here that we split the return value of `heatmap` into three parts: the newly created figure, the axis and the heatmap plot object.
-This is useful as we can then continue with the figure `f` and the heatmap `hm` which we need for the colorbar.
+This is useful as we can then continue with the figure `fig` and the heatmap `hm` which we need for the colorbar.
 
 ```@example
 using CairoMakie
