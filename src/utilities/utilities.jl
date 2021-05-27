@@ -227,12 +227,6 @@ function merged_get!(defaults::Function, key, scene::SceneLike, input::Attribute
     return merge!(input, d)
 end
 
-struct Key{K} end
-macro key_str(arg)
-    :(Key{$(QuoteNode(Symbol(arg)))})
-end
-Base.broadcastable(x::Key) = (x,)
-
 to_vector(x::AbstractVector, len, T) = convert(Vector{T}, x)
 function to_vector(x::AbstractArray, len, T)
     if length(x) in size(x) # assert that just one dim != 1

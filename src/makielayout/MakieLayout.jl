@@ -8,7 +8,8 @@ using ..Makie.Mouse
 using ..Makie: ispressed, is_mouseinside, get_scene, FigureLike
 using ..Makie: _sanitize_observer_function
 using ..Makie: OpenInterval, Interval
-using ..Makie: Automatic, automatic
+using MakieCore
+using MakieCore: Automatic, automatic
 using Observables: onany
 import Observables
 import Formatting

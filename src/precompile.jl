@@ -122,15 +122,12 @@ function _precompile_()
             precompile(fbody, (Tuple{Tuple{Float32, Float32}, Tuple{Float32, Float32}},Type,Symbol,typeof(lift),Function,Observable{Tuple{Tuple{Tuple{Float32, Float32}, Tuple{Float32, Float32}}}},))
         end
     end   # time: 0.00889073
-    Base.precompile(Tuple{typeof(value_convert),Tuple{Tuple{Bool, Bool}, Tuple{Bool, Bool}}})   # time: 0.008890678
-    Base.precompile(Tuple{typeof(value_convert),Tuple{Makie.Keyboard.Button, Makie.Mouse.Button}})   # time: 0.008794897
     let fbody = try Base.bodyfunction(which(lift, (Function,Observable{Tuple{Vector{Point{2, Float32}}}},))) catch missing end
         if !ismissing(fbody)
             precompile(fbody, (Vector{Point{2, Float32}},Type,Symbol,typeof(lift),Function,Observable{Tuple{Vector{Point{2, Float32}}}},))
         end
     end   # time: 0.00867902
     Base.precompile(Tuple{typeof(default_theme),Scene,Type{Lines{Tuple{Vector{Point{2, Float32}}}}}})   # time: 0.008428088
-    Base.precompile(Tuple{typeof(value_convert),Tuple{Tuple{Symbol, Symbol}, Tuple{Symbol, Symbol}}})   # time: 0.008128306
     let fbody = try Base.bodyfunction(which(lift, (Function,Observable{GeometryBasics.HyperRectangle{2, Float32}},))) catch missing end
         if !ismissing(fbody)
             precompile(fbody, (Tuple{GeometryBasics.HyperRectangle{2, Float32}},Type,Symbol,typeof(lift),Function,Observable{GeometryBasics.HyperRectangle{2, Float32}},))
@@ -147,7 +144,6 @@ function _precompile_()
     Base.precompile(Tuple{typeof(setindex!),LineSegments{Tuple{Vector{Point{2, Float32}}}},Observable{Vector{RGBA{Float32}}},Symbol})   # time: 0.006341601
     Base.precompile(Tuple{typeof(convert_attribute),Vector{Float32},Key{:textsize}})   # time: 0.006148856
     isdefined(Makie, Symbol("#634#635")) && Base.precompile(Tuple{getfield(Makie, Symbol("#634#635")),Vec{3, Float32},Vec{3, Float32},Quaternionf0,Vec{2, Float32},SMatrix{4, 4, Float32, 16},Tuple{Bool, Bool, Bool}})   # time: 0.006117055
-    Base.precompile(Tuple{typeof(value_convert),Tuple{Nothing, Nothing}})   # time: 0.005686621
     Base.precompile(Tuple{typeof(default_labels),Automatic,Tuple{Vector{Float64}, Vector{Float64}},Function})   # time: 0.005572814
     Base.precompile(Tuple{Core.kwftype(typeof(plot!)),NamedTuple{(:align, :model, :position, :color, :visible, :textsize, :font, :rotation), Tuple{Vec{2, Float32}, SMatrix{4, 4, Float32, 16}, Vector{Point{3, Float32}}, Vector{RGBA{Float32}}, Observable{Any}, Vector{Float32}, Vector{FTFont}, Vector{Quaternionf0}}},typeof(plot!),Type{Text{ArgType} where ArgType},Annotations{Tuple{Vector{Tuple{String, Point{2, Float32}}}}},String})   # time: 0.005202268
     let fbody = try Base.bodyfunction(which(lift, (Function,Observable{GeometryBasics.HyperRectangle{2, Int64}},))) catch missing end

@@ -761,6 +761,8 @@ convert_attribute(r::StaticVector, ::key"rotations") = to_rotation(r)
 convert_attribute(c, ::key"markersize", ::key"scatter") = to_2d_scale(c)
 convert_attribute(c, k1::key"markersize", k2::key"meshscatter") = to_3d_scale(c)
 
+convert_attribute(x, ::key"uv_offset_width") = Vec4f0(x)
+
 to_2d_scale(x::Number) = Vec2f0(x)
 to_2d_scale(x::VecTypes) = to_ndim(Vec2f0, x, 1)
 to_2d_scale(x::Tuple{<:Number, <:Number}) = to_ndim(Vec2f0, x, 1)
@@ -895,6 +897,7 @@ convert_attribute(c::VecTypes{N}, ::key"position") where N = Point{N, Float32}(c
 """
 convert_attribute(x::Tuple{Symbol, Symbol}, ::key"align") = Vec2f0(alignment2num.(x))
 convert_attribute(x::Vec2f0, ::key"align") = x
+
 const _font_cache = Dict{String, NativeFont}()
 
 """
@@ -1217,3 +1220,15 @@ end
 convert_attribute(value, ::key"marker", ::key"scatter") = to_spritemarker(value)
 convert_attribute(value, ::key"isovalue", ::key"volume") = Float32(value)
 convert_attribute(value, ::key"isorange", ::key"volume") = Float32(value)
+
+function convert_attribute(value::Symbol, ::key"marker", ::key"meshscatter")
+    if value == :Sphere
+        return Sphere(Point3f0(0), 1f0)
+    else
+        error("Unsupported marker: $(value)")
+    end
+end
+
+function convert_attribute(value::AbstractGeometry, ::key"marker", ::key"meshscatter")
+    return value
+end

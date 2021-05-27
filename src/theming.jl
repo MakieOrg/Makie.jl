@@ -146,3 +146,5 @@ function with_theme(f, theme = Theme(); kwargs...)
         set_theme!(previous_theme)
     end
 end
+
+theme(::Nothing, key::Symbol) = deepcopy(current_default_theme()[key])

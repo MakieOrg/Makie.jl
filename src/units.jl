@@ -21,8 +21,6 @@ function to_screen(scene::Scene, mpos)
     return Point2f0(mpos) .- Point2f0(minimum(pixelarea(scene)[]))
 end
 
-abstract type Unit{T} <: Number end
-
 number(x::Unit) = x.value
 number(x) = x
 
@@ -55,20 +53,7 @@ const dip = DIP(1)
 const dip_in_millimeter = 0.15875
 const dip_in_inch = 1/160
 
-"""
-Unit in pixels on screen.
-This one is a bit tricky, since it refers to a static attribute (pixels on screen don't change)
-but since every visual is attached to a camera, the exact scale might change.
-So in the end, this is just relative to some normed camera - the value on screen, depending on the camera,
-will not actually sit on those pixels. Only camera that guarantees the correct mapping is the
-`:pixel` camera type.
-"""
-struct Pixel{T} <: Unit{T}
-    value::T
-end
 basetype(::Type{<: Pixel}) = Pixel
-
-const px = Pixel(1)
 
 """
 Millimeter on screen. This unit respects the dimension and pixel density of the screen

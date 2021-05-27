@@ -1,6 +1,6 @@
+authors = ["Simon Danisch", "Julius Krumbiegel"]
 name = "Makie"
 uuid = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
-authors = ["Simon Danisch", "Julius Krumbiegel"]
 version = "0.13.9"
 
 [deps]
@@ -26,6 +26,7 @@ IntervalSets = "8197267c-284f-5f27-9208-e0e47529a953"
 Isoband = "f1662d9f-8043-43de-a69a-05efc1cc6ff4"
 KernelDensity = "5ab0869b-81aa-558d-bb23-cbf5423bbe9b"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+MakieCore = "20f20a25-4f0e-4fdf-b5d1-57303727442b"
 Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 Match = "7eb4fadd-790c-5f42-8a69-bfa0b872bfbf"
 Observables = "510215fc-4207-5dde-b226-833fc4488ee2"
@@ -68,7 +69,7 @@ IntervalSets = "0.3, 0.4, 0.5"
 Isoband = "0.1"
 KernelDensity = "0.5, 0.6"
 Match = "1.1"
-Observables = "0.3.1, 0.4"
+Observables = "0.4"
 Packing = "0.4"
 PlotUtils = "1"
 PolygonOps = "0.1.1"
