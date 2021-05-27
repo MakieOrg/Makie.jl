@@ -154,7 +154,7 @@ end
 
 function stack_from_to_sorted(y)
 	to = cumsum(y)
-	from = [0.0; to[firstindex(to):end-1]]
+	from = [eps(); to[firstindex(to):end-1]]
 
 	(from = from, to = to)
 end
