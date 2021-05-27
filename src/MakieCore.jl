@@ -1,22 +1,15 @@
 module MakieCore
 
 using Observables
-using Colors
-using Random
-using LinearAlgebra
-using FixedPointNumbers
-import Base: *, +, -, /
+using Observables: to_value
+using Base: RefValue
 
-abstract type AbstractScreen end
-abstract type AbstractPlot end
+function convert_arguments end
+function convert_attribute end
 
-include("geometry/geometry_implementation.jl")
-include("utils.jl")
 include("types.jl")
-include("conversion.jl")
-include("scene.jl")
-include("scatter.jl")
-include("cairomakie/backend.jl")
-# include("precompile.jl")
+include("attributes.jl")
+include("recipes.jl")
+include("basic_plots.jl")
 
 end

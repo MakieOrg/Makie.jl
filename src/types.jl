@@ -1,101 +1,99 @@
-const RGBAf0 = RGBA{Float32}
-# Solution 1: strictly type fields
-const TorVector{T} = Union{Vector{T},T}
 
-@enum Space Pixel Data
+"""
+    abstract type Transformable
+This is a bit of a weird name, but all scenes and plots are transformable,
+so that's what they all have in common. This might be better expressed as traits.
+"""
+abstract type Transformable end
 
-mutable struct Camera
-    pixel_space::Observable{Mat4f}
-    view::Observable{Mat4f}
-    projection::Observable{Mat4f}
-    projectionview::Observable{Mat4f}
-    screen_area::Observable{Rect2D{Int}}
-    eyeposition::Observable{Vec3f}
-    steering_nodes::Vector{Any}
+abstract type AbstractPlot{Typ} <: Transformable end
+abstract type AbstractScene <: Transformable end
+abstract type ScenePlot{Typ} <: AbstractPlot{Typ} end
+abstract type AbstractScreen <: AbstractDisplay end
+
+const SceneLike = Union{AbstractScene, ScenePlot}
+
+"""
+Main structure for holding attributes, for theming plots etc!
+Will turn all values into nodes, so that they can be updated.
+"""
+struct Attributes
+    attributes::Dict{Symbol, Observable}
 end
 
-function Mat4f(x::UniformScaling)
-    return Mat4f((
-        1f0, 0f0, 0f0, 0f0,
-        0f0, 1f0, 0f0, 0f0,
-        0f0, 0f0, 1f0, 0f0,
-        0f0, 0f0, 0f0, 1f0,
-        ))
+struct Combined{Typ, T} <: ScenePlot{Typ}
+    parent::SceneLike
+    transformation::Transformable
+    attributes::Attributes
+    input_args::Tuple
+    converted::Tuple
+    plots::Vector{AbstractPlot}
 end
 
-
-function Camera()
-    Camera(
-        Observable(Mat4f(I)),
-        Observable(Mat4f(I)),
-        Observable(Mat4f(I)),
-        Observable(Mat4f(I)),
-        Observable(Rect2D(0, 0, 0, 0)),
-        Observable(Vec3f(1)),
-        [],
-    )
+function Base.show(io::IO, plot::Combined)
+    print(io, typeof(plot))
 end
 
-GeometryBasics.widths(x::Camera) = widths(x.screen_area[])
+Base.parent(x::AbstractPlot) = x.parent
 
-function connect!(camera::Camera, screen_area::Observable{Rect2D{Int}})
-    on(screen_area) do window_size
-        nearclip = -10_000.0f0
-        farclip = 10_000.0f0
-        w, h = Float32.(widths(window_size))
-        camera.pixel_space[] = orthographicprojection(0.0f0, w, 0.0f0, h, nearclip, farclip)
-        camera.screen_area[] = screen_area
-    end
+function func2string(func::F) where F <: Function
+    string(F.name.mt.name)
 end
 
-struct Transformation
-    parent::Base.RefValue{Any}
-    translation::Observable{Vec3f}
-    scale::Observable{Vec3f}
-    rotation::Observable{Quaternionf0}
-    model::Observable{Mat4f}
-    # data conversion node, for e.g. log / log10 etc
-    transform_func::Observable{Any}
-    function Transformation(translation, scale, rotation, model, transform_func)
-        return new(
-            Base.RefValue{Any}(),
-            translation,
-            scale,
-            rotation,
-            model,
-            transform_func,
-        )
-    end
+plotfunc(::Combined{F}) where F = F
+plotfunc(::Type{<: AbstractPlot{Func}}) where Func = Func
+plotfunc(::T) where T <: AbstractPlot = plotfunc(T)
+plotfunc(f::Function) = f
+
+func2type(x::T) where T = func2type(T)
+func2type(x::Type{<: AbstractPlot}) = x
+func2type(f::Function) = Combined{f}
+
+plotkey(::Type{<: AbstractPlot{Typ}}) where Typ = Symbol(lowercase(func2string(Typ)))
+plotkey(::T) where T <: AbstractPlot = plotkey(T)
+
+struct Key{K} end
+macro key_str(arg)
+    :(Key{$(QuoteNode(Symbol(arg)))})
+end
+Base.broadcastable(x::Key) = (x,)
+
+"""
+Type to indicate that an attribute will get calculated automatically
+"""
+struct Automatic end
+
+"""
+Singleton instance to indicate that an attribute will get calculated automatically
+"""
+const automatic = Automatic()
+
+abstract type Unit{T} <: Number end
+
+"""
+Unit in pixels on screen.
+This one is a bit tricky, since it refers to a static attribute (pixels on screen don't change)
+but since every visual is attached to a camera, the exact scale might change.
+So in the end, this is just relative to some normed camera - the value on screen, depending on the camera,
+will not actually sit on those pixels. Only camera that guarantees the correct mapping is the
+`:pixel` camera type.
+"""
+struct Pixel{T} <: Unit{T}
+    value::T
 end
 
-function transformationmatrix(translation, scale)
-    T = eltype(translation)
-    T0, T1 = zero(T), one(T)
-    return Mat4{T}((
-        T(scale[1]), T0, T0, T0,
-        T0,T(scale[2]), T0, T0,
-        T0, T0, T(scale[3]), T0,
-        translation[1], translation[2], translation[3], T1
-    ))
-end
+const px = Pixel(1)
 
-function transformationmatrix(translation, scale, rotation::Quaternion)
-    trans_scale = transformationmatrix(translation, scale)
-    return trans_scale * Mat4f(rotation)
-end
+"""
+    Billboard([angle::Real])
+    Billboard([angles::Vector{<: Real}])
 
-function Transformation(
-    transform_func = identity;
-    translation = Observable(Vec3f(0)),
-    scale = Observable(Vec3f(1)),
-    rotation = Observable(Quaternionf0(0, 0, 0, 1)),
-)
-    model = map(transformationmatrix, translation, scale, rotation)
-    return Transformation(
-        translation,
-        scale,
-        rotation,
-        model,
-        Observable{Any}(transform_func),
-    )
+Billboard attribute to always have a primitive face the camera.
+Can be used for rotation.
+"""
+struct Billboard{T <: Union{Float32, Vector{Float32}}}
+    rotation::T
 end
+Billboard() = Billboard(0f0)
+Billboard(angle::Real) = Billboard(Float32(angle))
+Billboard(angles::Vector) = Billboard(Float32.(angles))
