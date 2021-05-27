@@ -96,15 +96,9 @@ function process_interaction(f::Function, event, parent)
     # in case f is only defined for a specific type of event
     if applicable(f, event, parent)
         # TODO this is deprecation code, make this just `return f(event, parent)` eventually
-        x = f(event, parent)
-        if x isa Bool
-            return x
-        else
-            @warn "Interactions should return true if the consume the given event or false if they don't! ($f)" maxlog = 1
-            return false
-        end
+        return f(event, parent)
     end
-    return false
+    return nothing
 end
 
 

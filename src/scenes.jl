@@ -511,7 +511,7 @@ function is2d(scene::SceneLike)
     lims === nothing && return nothing
     return is2d(lims)
 end
-is2d(lims::Rect2D) = return true
+is2d(lims::Rect2D) = true
 is2d(lims::Rect3D) = widths(lims)[3] == 0.0
 
 """

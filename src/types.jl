@@ -19,8 +19,8 @@ include("interaction/iodevices.jl")
 This struct provides accessible `PriorityObservable`s to monitor the events
 associated with a Scene.
 
-Functions that act on a `PriorityObservable` must return true if the function 
-consumes an event and false if it does not. When an event is consumed it does 
+Functions that act on a `PriorityObservable` must return `Consume()` if the function
+consumes an event. When an event is consumed it does
 not trigger other observer functions. The order in which functions are exectued
 can be controlled via the `priority` keyword (default 0) in `on`.
 
@@ -29,9 +29,9 @@ Example:
 on(events(scene).mousebutton, priority = Int8(20)) do event
     if is_correct_event(event)
         do_something()
-        return true
+        return Consume()
     end
-    return false
+    return
 end
 ```
 
@@ -53,7 +53,7 @@ struct Events
     window_open::PriorityObservable{Bool}
 
     """
-    Most recently triggered `MouseButtonEvent`. Contains the relevant 
+    Most recently triggered `MouseButtonEvent`. Contains the relevant
     `event.button` and `event.action` (press/release)
 
     See also [`ispressed`](@ref).
@@ -116,9 +116,9 @@ function Events()
             error("Unrecognized Keyboard action $(event.action)")
         end
         # This never consumes because it just keeps track of the state
-        return false
+        return
     end
-        
+
     keyboardbutton = PriorityObservable(KeyEvent(Keyboard.unknown, Keyboard.release))
     keyboardstate = Set{Keyboard.Button}()
     on(keyboardbutton, priority = typemax(Int8)) do event
@@ -135,7 +135,7 @@ function Events()
             end
         end
         # This never consumes because it just keeps track of the state
-        return false
+        return
     end
 
     return Events(

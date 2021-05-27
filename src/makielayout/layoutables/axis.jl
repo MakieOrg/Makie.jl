@@ -376,9 +376,9 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     on(scene.events.scroll) do s
         if is_mouseinside(scene)
             scrollevents[] = ScrollEvent(s[1], s[2])
-            return true
+            return Consume()
         end
-        return false
+        return
     end
 
     # TODO this should probably just forward KeyEvent from Makie

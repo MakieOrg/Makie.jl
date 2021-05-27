@@ -6,9 +6,11 @@ struct PrioCallback
     f::Any
 end
 
+struct Consume end
+
 function (f::PrioCallback)(val)::Bool
     consume = Base.invokelatest(f.f, val)
-    return consume === true
+    return consume isa Consume
 end
 
 mutable struct PriorityObservable{T} <: AbstractObservable{T}

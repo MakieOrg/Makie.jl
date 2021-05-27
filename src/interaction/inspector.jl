@@ -42,7 +42,7 @@ function color2text(c::RGBAf0)
         @sprintf("RGB(%0.2f, %0.2f, %0.2f)", c.r, c.g, c.b)
     else
         @sprintf("RGBA(%0.2f, %0.2f, %0.2f, %0.2f)", c.r, c.g, c.b, c.alpha)
-    end 
+    end
 end
 
 color2text(name, i::Integer, j::Integer, c) = "$name[$i, $j] = $(color2text(c))"
@@ -224,8 +224,8 @@ end
         # Text
         text_padding = Vec4f0(5, 5, 3, 3), # LRBT
         text_align = (:left, :bottom),
-        textcolor = :black, 
-        textsize = 18, 
+        textcolor = :black,
+        textsize = 18,
         font = theme(scene, :font),
         _display_text = " ",
         _text_position = Point2f0(0),
@@ -242,7 +242,7 @@ end
         indicator_linestyle = nothing,
         _bbox2D = FRect2D(Vec2f0(0), Vec2f0(0)),
         _px_bbox_visible = true,
-        
+
         # general
         tooltip_align = (:center, :top), # default tooltip position relative to cursor
         tooltip_offset = Vec2f0(20), # default offset in alignment direction
@@ -266,18 +266,18 @@ function plot!(plot::_Inspector)
         text_padding, text_align, textcolor, textsize, font,
         background_color, outline_color, outline_linestyle, outline_linewidth,
         indicator_linestyle, indicator_linewidth, indicator_color,
-        tooltip_offset, depth, 
-        _display_text, _text_position, _bbox2D, _px_bbox_visible, 
+        tooltip_offset, depth,
+        _display_text, _text_position, _bbox2D, _px_bbox_visible,
         _tooltip_align, _root_px_projection, _visible
     )
 
     # tooltip text
     _aligned_text_position = Node(Point2f0(0))
     id = Mat4f0(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1)
-    text_plot = text!(plot, _display_text, 
+    text_plot = text!(plot, _display_text,
         position = _aligned_text_position, visible = _visible, align = text_align,
         color = textcolor, font = font, textsize = textsize, show_axis = false,
-        inspectable = false, 
+        inspectable = false,
         # with https://github.com/JuliaPlots/GLMakie.jl/pull/183 this should
         # allow the tooltip to work in any scene.
         space = :data,
@@ -289,7 +289,7 @@ function plot!(plot::_Inspector)
         rect = Bbox_from_glyphlayout(_display_text[], gl)
         l, r, b, t = pad
         FRect2D(
-            origin(rect) .+ Vec2f0(pos[1] - l, pos[2] - b), 
+            origin(rect) .+ Vec2f0(pos[1] - l, pos[2] - b),
             widths(rect) .+ Vec2f0(l + r, b + t)
         )
     end
@@ -318,9 +318,9 @@ function plot!(plot::_Inspector)
     end
 
 
-    # tooltip background and frame 
+    # tooltip background and frame
     background = mesh!(
-        plot, bbox, color = background_color, shading = false, #fxaa = false, 
+        plot, bbox, color = background_color, shading = false, #fxaa = false,
         # TODO with fxaa here the text above becomes seethrough on a heatmap
         visible = _visible, show_axis = false, inspectable = false,
         projection = _root_px_projection, view = id, projectionview = _root_px_projection
@@ -328,15 +328,15 @@ function plot!(plot::_Inspector)
     outline = wireframe!(
         plot, bbox,
         color = outline_color, visible = _visible, show_axis = false, inspectable = false,
-        linestyle = outline_linestyle, linewidth = outline_linewidth, 
+        linestyle = outline_linestyle, linewidth = outline_linewidth,
         projection = _root_px_projection, view = id, projectionview = _root_px_projection
     )
-    
+
     # pixel-space marker for selected element (not always used)
     px_bbox = wireframe!(
         plot, _bbox2D,
-        color = indicator_color, linewidth = indicator_linewidth, 
-        linestyle = indicator_linestyle, visible = _px_bbox_visible, 
+        color = indicator_color, linewidth = indicator_linewidth,
+        linestyle = indicator_linestyle, visible = _px_bbox_visible,
         show_axis = false, inspectable = false,
         projection = _root_px_projection, view = id, projectionview = _root_px_projection
     )
@@ -393,17 +393,17 @@ disable!(inspector::DataInspector) = inspector.plot.enabled[] = false
 """
     DataInspector(figure; kwargs...)
 
-Creates a data inspector which will show relevant information in a tooltip 
-when you hover over a plot. If you wish to exclude a plot you may set 
-`plot.inspectable[] = false`. 
+Creates a data inspector which will show relevant information in a tooltip
+when you hover over a plot. If you wish to exclude a plot you may set
+`plot.inspectable[] = false`.
 
 ### Keyword Arguments:
 - `range = 10`: Controls the snapping range for selecting an element of a plot.
 - `enabled = true`: Disables inspection of plots when set to false. Can also be
     adjusted with `enable!(inspector)` and `disable!(inspector)`.
-- `text_padding = Vec4f0(5, 5, 3, 3)`: Padding for the box drawn around the 
+- `text_padding = Vec4f0(5, 5, 3, 3)`: Padding for the box drawn around the
     tooltip text. (left, right, bottom, top)
-- `text_align = (:left, :bottom)`: Alignment of text within the tooltip. This 
+- `text_align = (:left, :bottom)`: Alignment of text within the tooltip. This
     does not affect the alignment of the tooltip relative to the cursor.
 - `textcolor = :black`: Tooltip text color.
 - `textsize = 20`: Tooltip text size.
@@ -414,14 +414,14 @@ when you hover over a plot. If you wish to exclude a plot you may set
 - `outline_linewidth = 2`: Linewidth of the tooltip outline.
 - `indicator_color = :red`: Color of the selection indicator.
 - `indicator_linewidth = 2`: Linewidth of the selection indicator.
-- `indicator_linestyle = nothing`: Linestyle of the selection indicator  
+- `indicator_linestyle = nothing`: Linestyle of the selection indicator
 - `tooltip_align = (:center, :top)`: Default position of the tooltip relative to
-    the cursor or current selection. The real align may adjust to keep the 
+    the cursor or current selection. The real align may adjust to keep the
     tooltip in view.
-- `tooltip_offset = Vec2f0(20)`: Offset from the indicator to the tooltip.  
-- `depth = 9e3`: Depth value of the tooltip. This should be high so that the 
+- `tooltip_offset = Vec2f0(20)`: Offset from the indicator to the tooltip.
+- `depth = 9e3`: Depth value of the tooltip. This should be high so that the
     tooltip is always in front.
-- `priority = 100`: The priority of creating a tooltip on a mouse movement or 
+- `priority = 100`: The priority of creating a tooltip on a mouse movement or
     scrolling event.
 """
 function DataInspector(fig_or_layoutable; kwargs...)
@@ -433,8 +433,8 @@ function DataInspector(scene::Scene; priority = 100, kwargs...)
     @assert origin(pixelarea(parent)[]) == Vec2f0(0)
 
     plot = _inspector!(
-        parent, 1, 
-        show_axis=false, _root_px_projection = camera(parent).pixel_space; 
+        parent, 1,
+        show_axis=false, _root_px_projection = camera(parent).pixel_space;
         kwargs...
     )
     inspector = DataInspector(parent, plot)
@@ -549,14 +549,14 @@ end
 function show_data(inspector::DataInspector, plot::MeshScatter, idx)
     a = inspector.plot.attributes
     scene = parent_scene(plot)
-        
+
     proj_pos = shift_project(scene, plot, to_ndim(Point3f0, plot[1][][idx], 0))
     update_tooltip_alignment!(inspector, proj_pos)
     bbox = Rect{3, Float32}(plot.marker[])
 
     a._model[] = transformationmatrix(
         plot[1][][idx],
-        to_scale(plot.markersize[], idx), 
+        to_scale(plot.markersize[], idx),
         to_rotation(plot.rotations[], idx)
     )
 
@@ -570,7 +570,7 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
 
         clear_temporary_plots!(inspector, plot)
         p = wireframe!(
-            scene, a._bbox3D, model = a._model, color = a.indicator_color, 
+            scene, a._bbox3D, model = a._model, color = a.indicator_color,
             linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
             visible = a._bbox_visible, show_axis = false, inspectable = false
         )
@@ -599,7 +599,7 @@ function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, i
     origin, dir = view_ray(scene)
     pos = closest_point_on_line(p0, p1, origin, dir)
     lw = plot.linewidth[] isa Vector ? plot.linewidth[][idx] : plot.linewidth[]
-    
+
     proj_pos = shift_project(scene, plot, to_ndim(Point3f0, pos, 0))
     update_tooltip_alignment!(inspector, proj_pos)
 
@@ -616,7 +616,7 @@ end
 function show_data(inspector::DataInspector, plot::Mesh, idx)
     a = inspector.plot.attributes
     scene = parent_scene(plot)
-        
+
     bbox = boundingbox(plot)
     proj_pos = Point2f0(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
@@ -630,7 +630,7 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
 
         clear_temporary_plots!(inspector, plot)
         p = wireframe!(
-            scene, a._bbox3D, color = a.indicator_color, 
+            scene, a._bbox3D, color = a.indicator_color,
             linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
             visible = a._bbox_visible, show_axis = false, inspectable = false
         )
@@ -653,7 +653,7 @@ end
 function show_data(inspector::DataInspector, plot::Surface, idx)
     a = inspector.plot.attributes
     scene = parent_scene(plot)
-            
+
     proj_pos = Point2f0(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
 
@@ -727,7 +727,7 @@ function show_imagelike(inspector, plot, name, edge_based)
 
     a._color[] = if z isa AbstractFloat
         interpolated_getindex(
-            to_colormap(plot.colormap[]), z, 
+            to_colormap(plot.colormap[]), z,
             to_value(get(plot.attributes, :colorrange, (0, 1)))
         )
     else
@@ -742,18 +742,18 @@ function show_imagelike(inspector, plot, name, edge_based)
         if inspector.selection != plot || !(inspector.temp_plots[1] isa Scatter)
             clear_temporary_plots!(inspector, plot)
             p = scatter!(
-                scene, map(p -> [p], a._position), color = a._color, 
+                scene, map(p -> [p], a._position), color = a._color,
                 visible = a._bbox_visible,
-                show_axis = false, inspectable = false, 
+                show_axis = false, inspectable = false,
                 marker=:rect, markersize = map(r -> 2r - 4, a.range),
-                strokecolor = a.indicator_color, 
+                strokecolor = a.indicator_color,
                 strokewidth = a.indicator_linewidth #, linestyle = a.indicator_linestyle no?
             )
             translate!(p, Vec3f0(0, 0, a.depth[]))
             push!(inspector.temp_plots, p)
             # Hacky?
             push!(
-                inspector.obsfuncs, 
+                inspector.obsfuncs,
                 Observables.ObserverFunction(a._position.listeners[end], a._position, false)
             )
         end
@@ -763,7 +763,7 @@ function show_imagelike(inspector, plot, name, edge_based)
         if inspector.selection != plot || !(inspector.temp_plots[1][1][] isa Rect2D)
             clear_temporary_plots!(inspector, plot)
             p = wireframe!(
-                scene, a._bbox2D, model = a._model, color = a.indicator_color, 
+                scene, a._bbox2D, model = a._model, color = a.indicator_color,
                 strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
                 visible = a._bbox_visible, show_axis = false, inspectable = false
             )
@@ -787,9 +787,9 @@ function _interpolated_getindex(xs, ys, img, mpos)
 
     i = clamp((x - x0) / (x1 - x0) * size(img, 1) + 0.5, 1, size(img, 1))
     j = clamp((y - y0) / (y1 - y0) * size(img, 2) + 0.5, 1, size(img, 2))
-    l = clamp(floor(Int, i), 1, size(img, 1)-1); 
+    l = clamp(floor(Int, i), 1, size(img, 1)-1);
     r = clamp(l+1, 2, size(img, 1))
-    b = clamp(floor(Int, j), 1, size(img, 2)-1); 
+    b = clamp(floor(Int, j), 1, size(img, 2)-1);
     t = clamp(b+1, 2, size(img, 2))
     z = ((r-i) * img[l, b] + (i-l) * img[r, b]) * (t-j) +
         ((r-i) * img[l, t] + (i-l) * img[r, t]) * (j-b)
@@ -870,7 +870,7 @@ end
 function show_data(inspector::DataInspector, plot::BarPlot, idx)
     a = inspector.plot.attributes
     scene = parent_scene(plot)
-        
+
     pos = plot[1][][idx]
     proj_pos = shift_project(scene, plot, to_ndim(Point3f0, pos, 0))
     update_tooltip_alignment!(inspector, proj_pos)
@@ -880,7 +880,7 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
     if inspector.selection != plot
         clear_temporary_plots!(inspector, plot)
         p = wireframe!(
-            scene, a._bbox2D, model = a._model, color = a.indicator_color, 
+            scene, a._bbox2D, model = a._model, color = a.indicator_color,
             strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
             visible = a._bbox_visible, show_axis = false, inspectable = false
         )
@@ -902,7 +902,7 @@ end
 function show_data(inspector::DataInspector, plot::Arrows, idx, source)
     a = inspector.plot.attributes
     scene = parent_scene(plot)
-        
+
     pos = plot[1][][idx]
     proj_pos = shift_project(scene, plot, to_ndim(Point3f0, pos, 0))
 
@@ -937,7 +937,7 @@ end
 
 # What should this display?
 # function show_data(
-#         inspector::DataInspector, plot::Poly{<: Tuple{<: AbstractVector}}, 
+#         inspector::DataInspector, plot::Poly{<: Tuple{<: AbstractVector}},
 #         idx, source::Mesh
 #     )
 #     @info "PolyMesh"
@@ -948,23 +948,23 @@ end
 function show_poly(inspector, plot, idx, source)
     a = inspector.plot.attributes
     scene = parent_scene(plot)
-        
+
     idx = vertexindex2poly(plot[1][], idx)
     m = GeometryBasics.mesh(plot[1][][idx])
-    
+
     clear_temporary_plots!(inspector, plot)
     ext = plot[1][][idx].exterior
     p = lines!(
-        scene, ext, color = a.indicator_color, 
+        scene, ext, color = a.indicator_color,
         strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
         visible = a._visible, show_axis = false, inspectable = false
     )
     translate!(p, Vec3f0(0,0,a.depth[]))
     push!(inspector.temp_plots, p)
-    
+
     for int in plot[1][][idx].interiors
         p = lines!(
-            scene, int, color = a.indicator_color, 
+            scene, int, color = a.indicator_color,
             strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
             visible = a._visible, show_axis = false, inspectable = false
         )
