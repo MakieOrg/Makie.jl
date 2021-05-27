@@ -175,3 +175,8 @@ end
         (Point2f0[(1.0, 2.0), (NaN, NaN), (3.0, 4.0)],)
     )
 end
+
+@testset "colors" begin
+    @test to_color(["red", "green"]) isa Vector{RGBAf0}
+    @test to_color(["red", "green"]) == [to_color("red"), to_color("green")]
+end
