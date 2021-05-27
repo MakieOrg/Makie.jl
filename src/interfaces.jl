@@ -184,7 +184,7 @@ end
     mesh(x, y, z, faces)
     mesh(xyz, faces)
 
-Plots a 3D or 2D mesh.
+Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [GeometryBasics.jl](https://github.com/JuliaGeometry/GeometryBasics.jl).
 
 ## Attributes
 $(ATTRIBUTES)
@@ -219,7 +219,7 @@ $(ATTRIBUTES)
         color = theme(scene, :markercolor),
         colormap = theme(scene, :colormap),
         colorrange = automatic,
-        marker = Circle,
+        marker = theme(scene, :marker),
         markersize = theme(scene, :markersize),
 
         strokecolor = theme(scene, :markerstrokecolor),
@@ -430,13 +430,9 @@ const atomic_function_symbols = (
 const atomic_functions = getfield.(Ref(Makie), atomic_function_symbols)
 const Atomic{Arg} = Union{map(x-> Combined{x, Arg}, atomic_functions)...}
 
-
 function (PT::Type{<: Combined})(parent, transformation, attributes, input_args, converted)
     PT(parent, transformation, attributes, input_args, converted, AbstractPlot[])
 end
-
-plotsym(T::Type{<:AbstractPlot{F}}) where F = Symbol(split(string(Symbol(T)), "{")[1])
-plotsym(::Type{Any}) = :plot
 
 """
     used_attributes(args...) = ()

@@ -54,7 +54,7 @@ function categorical_colors(cs::Union{String, Symbol}, categories::Integer)
     end
 end
 
-replace_missing(x::T) where T = ismissing(x) ? T(NaN) : x
+replace_missing(x) = ismissing(x) ? NaN : x
 
 function convert_arguments(T::Type{<: Series}, y::AbstractMatrix)
     convert_arguments(T, 1:size(y, 2), y)
@@ -70,6 +70,10 @@ function convert_arguments(::Type{<: Series}, arg::AbstractVector{<: Tuple{X, Y}
     return (map(arg) do (x, y)
         Point2f0.(replace_missing.(x), replace_missing.(y))
     end,)
+end
+
+function convert_arguments(T::Type{<: Series}, arg::Tuple{<:AbstractVector, <:AbstractVector})
+    return convert_arguments(T, [arg])
 end
 
 function convert_arguments(::Type{<: Series}, arg::AbstractVector{<: AbstractVector{<:Point2}})

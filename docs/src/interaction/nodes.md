@@ -57,8 +57,8 @@ nothing # hide
 ```
 
 !!! note
-All registered functions in a `Node` are executed synchronously in the order of registration.
-This means that if you change two Nodes after one another, all effects of the first change will happen before the second change.
+    All registered functions in a `Node` are executed synchronously in the order of registration.
+    This means that if you change two Nodes after one another, all effects of the first change will happen before the second change.
 
 There are two ways to access the value of a `Node`.
 You can use the indexing syntax or the `to_value` function:

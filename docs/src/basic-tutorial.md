@@ -35,8 +35,8 @@ Makie has many different plotting functions, one of the most common ones is [lin
 You can just call such a function and your plot will appear if your coding environment can show png or svg files.
 
 !!! note
-Objects such as [Figure](@ref), `FigureAxisPlot` or `Scene` are usually displayed whenever they are returned in global scope (e.g. in the REPL).
-To display such objects from within a local scope, like from within a function, you can directly call `display(figure)`, for example.
+    Objects such as [Figure](@ref), `FigureAxisPlot` or `Scene` are usually displayed whenever they are returned in global scope (e.g. in the REPL).
+    To display such objects from within a local scope, like from within a function, you can directly call `display(figure)`, for example.
 
 ```@example 1
 x = range(0, 10, length=100)
@@ -285,7 +285,7 @@ We just need to pass a position in the figure to it, and one plot object.
 In this example, we use a `heatmap`.
 
 You can see here that we split the return value of `heatmap` into three parts: the newly created figure, the axis and the heatmap plot object.
-This is useful as we can then continue with the figure `f` and the heatmap `hm` which we need for the colorbar.
+This is useful as we can then continue with the figure `fig` and the heatmap `hm` which we need for the colorbar.
 
 ```@example
 using CairoMakie

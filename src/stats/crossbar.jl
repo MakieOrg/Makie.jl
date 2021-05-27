@@ -42,7 +42,7 @@ It is most commonly used as part of the `boxplot`.
     # median line
     show_midline=true,
     midlinecolor=automatic,
-    midlinewidth=1.0,
+    midlinewidth=theme(scene, :linewidth),
     inspectable = theme(scene, :inspectable),
     cycle = [:color => :patchcolor],
 )

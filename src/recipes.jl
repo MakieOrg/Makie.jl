@@ -1,4 +1,7 @@
 to_func_name(x::Symbol) = Symbol(lowercase(string(x)))
+# Fallback for Combined ...
+# Will get overloaded by recipe Macro
+plotsym(::Type{Any}) = :plot
 
 """
      default_plot_signatures(funcname, funcname!, PlotType)
@@ -129,6 +132,7 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     expr = quote
         $(funcname)() = not_implemented_for($funcname)
         const $(PlotType){$(esc(:ArgType))} = Combined{$funcname, $(esc(:ArgType))}
+        Makie.plotsym(::Type{<: $(PlotType)}) = $(QuoteNode(Tsym))
         $(default_plot_signatures(funcname, funcname!, PlotType))
         Makie.default_theme(scene, ::Type{<: $PlotType}) = $(esc(theme_func))(scene)
         export $PlotType, $funcname, $funcname!

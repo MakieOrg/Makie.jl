@@ -340,15 +340,53 @@ end
 
 
 function LineElement(;kwargs...)
-    LineElement(Attributes(kwargs))
+    _legendelement(LineElement, Attributes(kwargs))
 end
 
 function MarkerElement(;kwargs...)
-    MarkerElement(Attributes(kwargs))
+    _legendelement(MarkerElement, Attributes(kwargs))
 end
+
 function PolyElement(;kwargs...)
-    PolyElement(Attributes(kwargs))
+    _legendelement(PolyElement, Attributes(kwargs))
 end
+
+function _legendelement(T::Type{<:LegendElement}, a::Attributes)
+    _rename_attributes!(T, a)
+    T(a)
+end
+
+_renaming_mapping(::Type{LineElement}) = Dict(
+    :points => :linepoints,
+    :color => :linecolor,
+)
+_renaming_mapping(::Type{MarkerElement}) = Dict(
+    :points => :markerpoints,
+    :color => :markercolor,
+    :strokewidth => :markerstrokewidth,
+    :strokecolor => :markerstrokecolor,
+)
+_renaming_mapping(::Type{PolyElement}) = Dict(
+    :points => :polypoints,
+    :color => :polycolor,
+    :strokewidth => :polystrokewidth,
+    :strokecolor => :polystrokecolor,
+)
+
+function _rename_attributes!(T, a)
+    m = _renaming_mapping(T)
+    for (key, val) in pairs(a)
+        if haskey(m, key)
+            newkey = m[key]
+            if haskey(a, newkey)
+                error("Can't rename $key to $newkey as $newkey already exists in attributes.")
+            end
+            a[newkey] = pop!(a, key)
+        end
+    end
+    a
+end
+
 
 function scalar_lift(attr, default)
     lift(Any, attr, default) do at, def
@@ -358,7 +396,7 @@ end
 
 function legendelements(plot::Union{Lines, LineSegments}, legend)
     LegendElement[LineElement(
-        linecolor = scalar_lift(plot.color, legend.linecolor),
+        color = scalar_lift(plot.color, legend.linecolor),
         linestyle = scalar_lift(plot.linestyle, legend.linestyle),
         linewidth = scalar_lift(plot.linewidth, legend.linewidth))]
 end
@@ -366,19 +404,19 @@ end
 
 function legendelements(plot::Scatter, legend)
     LegendElement[MarkerElement(
-        markercolor = scalar_lift(plot.color, legend.markercolor),
+        color = scalar_lift(plot.color, legend.markercolor),
         marker = scalar_lift(plot.marker, legend.marker),
         markersize = scalar_lift(plot.markersize, legend.markersize),
-        markerstrokewidth = scalar_lift(plot.strokewidth, legend.markerstrokewidth),
-        markerstrokecolor = scalar_lift(plot.strokecolor, legend.markerstrokecolor),
+        strokewidth = scalar_lift(plot.strokewidth, legend.markerstrokewidth),
+        strokecolor = scalar_lift(plot.strokecolor, legend.markerstrokecolor),
     )]
 end
 
-function legendelements(plot::Union{Poly, Violin, BoxPlot, CrossBar}, legend)
+function legendelements(plot::Union{Poly, Violin, BoxPlot, CrossBar, Density}, legend)
     LegendElement[PolyElement(
-        polycolor = scalar_lift(plot.color, legend.polycolor),
-        polystrokecolor = scalar_lift(plot.strokecolor, legend.polystrokecolor),
-        polystrokewidth = scalar_lift(plot.strokewidth, legend.polystrokewidth),
+        color = scalar_lift(plot.color, legend.polycolor),
+        strokecolor = scalar_lift(plot.strokecolor, legend.polystrokecolor),
+        strokewidth = scalar_lift(plot.strokewidth, legend.polystrokewidth),
     )]
 end
 
@@ -487,24 +525,43 @@ end
 
 
 """
-    Legend(fig_or_scene, axis::Union{Axis, Scene, LScene}, title = nothing; kwargs...)
+    Legend(fig_or_scene, axis::Union{Axis, Scene, LScene}, title = nothing; merge = false, unique = false, kwargs...)
 
 Create a single-group legend with all plots from `axis` that have the
 attribute `label` set.
+
+If `merge` is `true`, all plot objects with the same label will be layered on top of each other into one legend entry.
+If `unique` is `true`, all plot objects with the same plot type and label will be reduced to one occurance.
 """
-function layoutable(::Type{Legend}, fig_or_scene, axis::Union{Axis, Scene, LScene}, title = nothing; kwargs...)
-    plots, labels = get_labeled_plots(axis)
+function layoutable(::Type{Legend}, fig_or_scene, axis::Union{Axis, Scene, LScene}, title = nothing; merge = false, unique = false, kwargs...)
+    plots, labels = get_labeled_plots(axis, merge = merge, unique = unique)
     isempty(plots) && error("There are no plots with labels in the given axis that can be put in the legend. Supply labels to plotting functions like `plot(args...; label = \"My label\")`")
     layoutable(Legend, fig_or_scene, plots, labels, title; kwargs...)
 end
 
-function get_labeled_plots(ax)
+function get_labeled_plots(ax; merge::Bool, unique::Bool)
     lplots = filter(get_plots(ax)) do plot
         haskey(plot.attributes, :label)
     end
     labels = map(lplots) do l
         convert(String, l.label[])
     end
+
+    # filter out plots with same plot type and label
+    if unique
+        plots_labels = Base.unique(((p, l),) -> (typeof(p), l), zip(lplots, labels))
+        lplots = first.(plots_labels)
+        labels = last.(plots_labels)
+    end
+
+    if merge
+        ulabels = Base.unique(labels)
+        mergedplots = [[lp for (i, lp) in enumerate(lplots) if labels[i] == ul]
+            for ul in ulabels]
+
+        lplots, labels = mergedplots, ulabels
+    end
+
     lplots, labels
 end
 

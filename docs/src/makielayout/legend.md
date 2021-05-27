@@ -61,6 +61,38 @@ f[1, 2] = Legend(f, ax, "Trig Functions", framevisible = false)
 f
 ```
 
+With the keywords `merge` and `unique` you can control how plot objects with the same labels are treated.
+If `merge` is `true`, all plot objects with the same label will be layered on top of each other into one legend entry.
+If `unique` is `true`, all plot objects with the same plot type and label will be reduced to one occurance.
+
+```@example
+using CairoMakie
+
+f = Figure()
+
+traces = cumsum(randn(10, 5), dims = 1)
+
+for (i, (merge, unique)) in enumerate(
+        Iterators.product([false, true], [false true]))
+
+    ax = Axis(f[fldmod1(i, 2)...],
+        title = "merge = $merge, unique = $unique")
+
+    for trace in eachcol(traces)
+        lines!(trace, label = "single", color = (:black, 0.2))
+    end
+
+    mu = vec(sum(traces, dims = 2) ./ 5)
+    lines!(mu, label = "mean")
+    scatter!(mu, label = "mean")
+
+    axislegend(ax, merge = merge, unique = unique)
+
+end
+
+f
+```
+
 ## Multi-Bank Legend
 
 You can control the number of banks with the `nbanks` attribute. Banks are columns
@@ -149,18 +181,18 @@ f
 
 Sometimes you might want to construct legend entries from scratch to have maximum
 control. So far you can use `LineElement`s, `MarkerElement`s or `PolyElement`s.
-The attributes for these elements are the following:
+The attributes for these elements are the following (the `[]` parts can be left out when constructing these elements directly, but have to be fully written out for the attributes that the legend holds):
 
 ```julia
 # LineElement
-linepoints, linecolor, linestyle, linewidth
+[line]points, [line]color, linestyle, linewidth
 
 # MarkerElement
-markerpoints, marker, markersize, markercolor,
-markerstrokewidth, markerstrokecolor
+[marker]points, marker, markersize, [marker]color,
+[marker]strokewidth, [marker]strokecolor
 
 # PolyElement
-polypoints, polycolor, polystrokewidth, polystrokecolor
+[poly]points, [poly]color, [poly]strokewidth, [poly]strokecolor
 ```
 
 The attributes `linepoints`, `markerpoints` and `polypoints` decide where in the legend entry patch rectangle the plot objects are placed.
@@ -174,21 +206,21 @@ f = Figure()
 
 Axis(f[1, 1])
 
-elem_1 = [LineElement(linecolor = :red, linestyle = nothing),
-          MarkerElement(markercolor = :blue, marker = 'x', markersize = 15,
-          markerstrokecolor = :black)]
+elem_1 = [LineElement(color = :red, linestyle = nothing),
+          MarkerElement(color = :blue, marker = 'x', markersize = 15,
+          strokecolor = :black)]
 
-elem_2 = [PolyElement(polycolor = :red, polystrokecolor = :blue, polystrokewidth = 1),
-          LineElement(linecolor = :black, linestyle = :dash)]
+elem_2 = [PolyElement(color = :red, strokecolor = :blue, strokewidth = 1),
+          LineElement(color = :black, linestyle = :dash)]
 
-elem_3 = LineElement(linecolor = :green, linestyle = nothing,
-        linepoints = Point2f0[(0, 0), (0, 1), (1, 0), (1, 1)])
+elem_3 = LineElement(color = :green, linestyle = nothing,
+        points = Point2f0[(0, 0), (0, 1), (1, 0), (1, 1)])
 
-elem_4 = MarkerElement(markercolor = :blue, marker = 'π', markersize = 15,
-        markerpoints = Point2f0[(0.2, 0.2), (0.5, 0.8), (0.8, 0.2)])
+elem_4 = MarkerElement(color = :blue, marker = 'π', markersize = 15,
+        points = Point2f0[(0.2, 0.2), (0.5, 0.8), (0.8, 0.2)])
 
-elem_5 = PolyElement(polycolor = :green, polystrokecolor = :black, polystrokewidth = 2,
-        polypoints = Point2f0[(0, 0), (1, 0), (0, 1)])
+elem_5 = PolyElement(color = :green, strokecolor = :black, strokewidth = 2,
+        points = Point2f0[(0, 0), (1, 0), (0, 1)])
 
 Legend(f[1, 2],
     [elem_1, elem_2, elem_3, elem_4, elem_5],
@@ -249,11 +281,11 @@ for ms in markersizes, color in colors
     scatter!(randn(5, 2), markersize = ms, color = color)
 end
 
-group_size = [MarkerElement(marker = :circle, markercolor = :black,
-    markerstrokecolor = :transparent,
+group_size = [MarkerElement(marker = :circle, color = :black,
+    strokecolor = :transparent,
     markersize = ms) for ms in markersizes]
 
-group_color = [PolyElement(polycolor = color, polystrokecolor = :transparent)
+group_color = [PolyElement(color = color, strokecolor = :transparent)
     for color in colors]
 
 legends = [Legend(f,
