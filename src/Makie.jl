@@ -31,7 +31,7 @@ import PolygonOps
 import GridLayoutBase
 using MakieCore
 
-import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, calculated_attributes!, get_attribute, plotsym, plotkey, attributes
+import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, calculated_attributes!, get_attribute, plotsym, plotkey, attributes, used_attributes
 
 using MakieCore: SceneLike, AbstractScreen, ScenePlot, AbstractScene, AbstractPlot, Transformable, Attributes, Combined, Theme, Plot
 
@@ -39,11 +39,12 @@ using MakieCore: Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter
 import MakieCore: heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface, text, volume
 import MakieCore: heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, surface!, text!, volume!
 
-import MakieCore: convert_arguments, convert_attribute, default_theme
-
+import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
+using MakieCore: ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
+export ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
 using MakieCore: Key, @key_str, Automatic, automatic, @recipe
 using MakieCore: Pixel, px, Unit, Billboard
-export Pixel, px, Unit, plotkey, attributes
+export Pixel, px, Unit, plotkey, attributes, used_attributes
 
 using StatsFuns: logit, logistic
 

@@ -1,6 +1,7 @@
 ################################################################################
 #                               Type Conversions                               #
 ################################################################################
+const RangeLike = Union{AbstractRange, AbstractVector, ClosedInterval}
 
 # if no plot type based conversion is defined, we try using a trait
 function convert_arguments(T::PlotFunc, args...; kw...)
@@ -58,35 +59,6 @@ function recursively_convert_argument(x)
         recursively_convert_argument(newx)
     end
 end
-
-################################################################################
-#                              Conversion Traits                               #
-################################################################################
-
-abstract type ConversionTrait end
-
-const XYBased = Union{MeshScatter, Scatter, Lines, LineSegments}
-const RangeLike = Union{AbstractRange, AbstractVector, ClosedInterval}
-
-struct NoConversion <: ConversionTrait end
-
-# No conversion by default
-conversion_trait(::Type) = NoConversion()
-convert_arguments(::NoConversion, args...) = args
-
-struct PointBased <: ConversionTrait end
-conversion_trait(x::Type{<: XYBased}) = PointBased()
-
-abstract type SurfaceLike <: ConversionTrait end
-
-struct ContinuousSurface <: SurfaceLike end
-conversion_trait(::Type{<: Union{Surface, Image}}) = ContinuousSurface()
-
-struct DiscreteSurface <: SurfaceLike end
-conversion_trait(::Type{<: Heatmap}) = DiscreteSurface()
-
-struct VolumeLike end
-conversion_trait(::Type{<: Volume}) = VolumeLike()
 
 ################################################################################
 #                          Single Argument Conversion                          #
