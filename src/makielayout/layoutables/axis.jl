@@ -526,7 +526,7 @@ function get_cycler_index!(c::Cycler, P::Type)
 end
 
 function get_cycle_for_plottype(allattrs, P)::Cycle
-    psym = Makie.plotsym(P)
+    psym = MakieCore.plotsym(P)
 
     plottheme = Makie.default_theme(nothing, P)
 

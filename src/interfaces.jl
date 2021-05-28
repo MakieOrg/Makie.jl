@@ -352,7 +352,7 @@ end
 """
 Main plotting signatures that plot/plot! route to if no Plot Type is given
 """
-function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, args...; kw_attributes...)
+function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attributes, args...; kw_attributes...)
     attributes = merge!(Attributes(kw_attributes), attributes)
     argvalues = to_value.(args)
     PreType = plottype(P, argvalues...)
@@ -496,18 +496,9 @@ function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, input::NTu
     return plot_object
 end
 
-function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, args...)
-    # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
-    constr = plottype(P, args...)
-    plot_object = constr(scene, attributes, args)
-    # call user defined recipe overload to fill the plot type
-    plot!(plot_object)
-    push!(scene.plots, plot_object)
-    plot_object
-end
-
 function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, input::NTuple{N,Node}, args::Node) where {N}
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
+
     plot_object = P(scene, attributes, input, args)
     # call user defined recipe overload to fill the plot type
     plot!(plot_object)
