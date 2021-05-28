@@ -36,22 +36,6 @@ end
 
 Base.parent(x::AbstractPlot) = x.parent
 
-function func2string(func::F) where F <: Function
-    string(F.name.mt.name)
-end
-
-plotfunc(::Combined{F}) where F = F
-plotfunc(::Type{<: AbstractPlot{Func}}) where Func = Func
-plotfunc(::T) where T <: AbstractPlot = plotfunc(T)
-plotfunc(f::Function) = f
-
-func2type(x::T) where T = func2type(T)
-func2type(x::Type{<: AbstractPlot}) = x
-func2type(f::Function) = Combined{f}
-
-plotkey(::Type{<: AbstractPlot{Typ}}) where Typ = Symbol(lowercase(func2string(Typ)))
-plotkey(::T) where T <: AbstractPlot = plotkey(T)
-
 struct Key{K} end
 macro key_str(arg)
     :(Key{$(QuoteNode(Symbol(arg)))})

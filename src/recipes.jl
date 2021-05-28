@@ -1,7 +1,23 @@
 to_func_name(x::Symbol) = Symbol(lowercase(string(x)))
 # Fallback for Combined ...
 # Will get overloaded by recipe Macro
-plotsym(::Type{Any}) = :plot
+plotsym(x) = :plot
+
+function func2string(func::F) where F <: Function
+    string(F.name.mt.name)
+end
+
+plotfunc(::Combined{F}) where F = F
+plotfunc(::Type{<: AbstractPlot{Func}}) where Func = Func
+plotfunc(::T) where T <: AbstractPlot = plotfunc(T)
+plotfunc(f::Function) = f
+
+func2type(x::T) where T = func2type(T)
+func2type(x::Type{<: AbstractPlot}) = x
+func2type(f::Function) = Combined{f}
+
+plotkey(::Type{<: AbstractPlot{Typ}}) where Typ = Symbol(lowercase(func2string(Typ)))
+plotkey(::T) where T <: AbstractPlot = plotkey(T)
 
 """
      default_plot_signatures(funcname, funcname!, PlotType)
@@ -24,11 +40,11 @@ end
 """
 Each argument can be named for a certain plot type `P`. Falls back to `arg1`, `arg2`, etc.
 """
-function argument_names(plot::P) where P <: AbstractPlot
+function argument_names(plot::P) where {P<:AbstractPlot}
     argument_names(P, length(plot.converted))
 end
 
-function argument_names(::Type{<: AbstractPlot}, num_args::Integer)
+function argument_names(::Type{<:AbstractPlot}, num_args::Integer)
     # this is called in the indexing function, so let's be a bit efficient
     ntuple(i -> Symbol("arg$i"), num_args)
 end
@@ -152,14 +168,20 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     funcname = esc(funcname_sym)
     expr = quote
         $(funcname)() = not_implemented_for($funcname)
-        const $(PlotType){$(esc(:ArgType))} = Combined{$funcname, $(esc(:ArgType))}
-        MakieCore.plotsym(::Type{<: $(PlotType)}) = $(QuoteNode(Tsym))
+        const $(PlotType){$(esc(:ArgType))} = Combined{$funcname,$(esc(:ArgType))}
+        MakieCore.plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
         $(default_plot_signatures(funcname, funcname!, PlotType))
-        MakieCore.default_theme(scene, ::Type{<: $PlotType}) = $(esc(theme_func))(scene)
+        MakieCore.default_theme(scene, ::Type{<:$PlotType}) = $(esc(theme_func))(scene)
         export $PlotType, $funcname, $funcname!
     end
     if !isempty(args)
-        push!(expr.args, :($(esc(:(MakieCore.argument_names)))(::Type{<: $PlotType}, len::Integer) = $args))
+        push!(
+            expr.args,
+            :(
+                $(esc(:(MakieCore.argument_names)))(::Type{<:$PlotType}, len::Integer) =
+                    $args
+            ),
+        )
     end
     expr
 end
@@ -173,16 +195,16 @@ eval(default_plot_signatures(:plot, :plot!, :Any))
 """
 Returns the Combined type that represents the signature of `args`.
 """
-function Plot(args::Vararg{Any, N}) where N
-    Combined{Any, <: Tuple{args...}}
+function Plot(args::Vararg{Any,N}) where {N}
+    Combined{Any,<:Tuple{args...}}
 end
 
-Base.@pure function Plot(::Type{T}) where T
-    Combined{Any, <: Tuple{T}}
+Base.@pure function Plot(::Type{T}) where {T}
+    Combined{Any,<:Tuple{T}}
 end
 
-Base.@pure function Plot(::Type{T1}, ::Type{T2}) where {T1, T2}
-    Combined{Any, <: Tuple{T1, T2}}
+Base.@pure function Plot(::Type{T1}, ::Type{T2}) where {T1,T2}
+    Combined{Any,<:Tuple{T1,T2}}
 end
 
 """
