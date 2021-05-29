@@ -122,9 +122,9 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    mousestate = addmouseevents!(scene)
+    mouseevents = addmouseevents!(scene)
 
-    onmouseleftdown(mousestate) do state
+    onmouseleftdown(mouseevents) do state
         focus!(ltextbox)
 
         if displayed_string[] == placeholder[] || displayed_string[] == " "
@@ -147,17 +147,17 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
         return Consume(true)
     end
 
-    onmouseover(mousestate) do state
+    onmouseover(mouseevents) do state
         hovering[] = true
         return Consume(false)
     end
 
-    onmouseout(mousestate) do state
+    onmouseout(mouseevents) do state
         hovering[] = false
         return Consume(false)
     end
 
-    onmousedownoutside(mousestate) do state
+    onmousedownoutside(mouseevents) do state
         if reset_on_defocus[]
             reset_to_stored()
         end
