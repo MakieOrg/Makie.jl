@@ -202,12 +202,9 @@ function calculate_matrices(elev, azim, perspectiveness, viewmode)
     else
         fov = 90.0 * perspectiveness
         s = 1.1f0
-        near = Float32(s)
-        far = Float32(-s)
         scale = tan(fov / 360.0 * pi)
-        h = Float32(scale * near)
-        w = h
-        projection_matrix = Makie.frustum(-w, w, -h, h, near, far)
+        h = Float32(scale * s)
+        projection_matrix = Makie.frustum(-h, h, -h, h, s, -s)
         radius = zoom * 1.5^perspectiveness / scale # 1.4 is also pretty nice
     end
 
