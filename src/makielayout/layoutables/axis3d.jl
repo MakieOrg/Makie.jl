@@ -32,7 +32,7 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
 
     scene = Scene(topscene, scenearea, raw = true, clear = false, backgroundcolor = attrs.backgroundcolor)
 
-    matrices = lift(calculate_matrices, finallimits, scene.px_area, elevation, azimuth, perspectiveness, aspect, viewmode)
+    matrices = lift(calculate_matrices, elevation, azimuth, perspectiveness, viewmode)
 
     on(matrices) do (view, proj, eyepos)
         pv = proj * view
@@ -40,6 +40,23 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
         scene.camera.view[] = view
         scene.camera.eyeposition[] = eyepos
         scene.camera.projectionview[] = pv
+    end
+    notify(perspectiveness) # trigger matrix calculations
+
+    onany(finallimits, aspect) do limits, aspect
+        ws = widths(limits)
+        s = if aspect == :equal
+            scales = 2.0 ./ Float64.(ws)
+        elseif aspect == :data
+            scales = 2.0 ./ max.(maximum(ws), Float64.(ws))
+        elseif aspect isa VecTypes{3}
+            scales = 2.0 ./ Float64.(ws) .* Float64.(aspect) ./ maximum(aspect)
+        else
+            error("Invalid aspect $aspect")
+        end
+        scale!(scene, s)
+        translate!(scene, (minimum(limits) .- 0.5 .* ws) .* scales)
+        nothing
     end
 
     ticknode_1 = lift(finallimits, attrs.xticks, attrs.xtickformat) do lims, ticks, format
@@ -162,101 +179,42 @@ end
 
 can_be_current_axis(ax3::Axis3) = true
 
-function calculate_matrices(limits, px_area, elev, azim, perspectiveness, aspect,
-    viewmode)
-    ws = widths(limits)
-
-
-    t = Makie.translationmatrix(-Float64.(limits.origin))
-    s = if aspect == :equal
-        scales = 2 ./ Float64.(ws)
-    elseif aspect == :data
-        scales = 2 ./ max.(maximum(ws), Float64.(ws))
-    elseif aspect isa VecTypes{3}
-        scales = 2 ./ Float64.(ws) .* Float64.(aspect) ./ maximum(aspect)
-    else
-        error("Invalid aspect $aspect")
-    end |> Makie.scalematrix
-
-    t2 = Makie.translationmatrix(-0.5 .* ws .* scales)
-    scale_matrix = t2 * s * t
-
-    ang_max = 90
-    ang_min = 0.5
-
+function calculate_matrices(elev, azim, perspectiveness, viewmode)
     @assert 0 <= perspectiveness <= 1
 
-    angle = ang_min + (ang_max - ang_min) * perspectiveness
+    zoom = 2.5f0
 
-    # vFOV = 2 * Math.asin(sphereRadius / distance);
-    # distance = sphere_radius / Math.sin(vFov / 2)
-
-    # radius = sqrt(3) / tand(angle / 2)
-    radius = sqrt(3) / sind(angle / 2)
-
-    x = radius * cos(elev) * cos(azim)
-    y = radius * cos(elev) * sin(azim)
-    z = radius * sin(elev)
-
-    eyepos = Vec3{Float64}(x, y, z)
-
-    lookat_matrix = Makie.lookat(
-        eyepos,
-        Vec3{Float64}(0, 0, 0),
-        Vec3{Float64}(0, 0, 1))
-
-    w = width(px_area)
-    h = height(px_area)
-
-    view_matrix = lookat_matrix * scale_matrix
-
-    projection_matrix = projectionmatrix(view_matrix, limits, eyepos, radius, azim, elev, angle, w, h, scales, viewmode)
-
-    # for eyeposition dependent algorithms, we need to present the position as if
-    # there was no scaling applied
-    eyeposition = Vec3f0(inv(scale_matrix) * Vec4f0(eyepos..., 1))
-
-    view_matrix, projection_matrix, eyeposition
-end
-
-function projectionmatrix(viewmatrix, limits, eyepos, radius, azim, elev, angle, width, height, scales, viewmode)
-    near = radius - sqrt(3)
-    far = radius + 2 * sqrt(3)
-
-    aspect_ratio = width / height
-
-    projection_matrix = if viewmode in (:fit, :fitzoom, :stretch)
-        if height > width
-            angle = angle / aspect_ratio
-        end
-
-        pm = Makie.perspectiveprojection(Float64, angle, aspect_ratio, near, far)
-
-        if viewmode in (:fitzoom, :stretch)
-            points = decompose(Point3f0, limits)
-            # @show points
-            projpoints = Ref(pm * viewmatrix) .* to_ndim.(Point4f0, points, 1)
-
-            maxx = maximum(x -> abs(x[1] / x[4]), projpoints)
-            maxy = maximum(x -> abs(x[2] / x[4]), projpoints)
-
-            ratio_x = maxx
-            ratio_y = maxy
-
-            if viewmode == :fitzoom
-                if ratio_y > ratio_x
-                    pm = Makie.scalematrix(Vec3(1/ratio_y, 1/ratio_y, 1)) * pm
-                else
-                    pm = Makie.scalematrix(Vec3(1/ratio_x, 1/ratio_x, 1)) * pm
-                end
-            else
-                pm = Makie.scalematrix(Vec3(1/ratio_x, 1/ratio_y, 1)) * pm
-            end
-        end
-        pm
+    # Doesn't work well without equally scaled axes
+    if viewmode == :fitzoom
+        x = clamp(sqrt(2) * cos(azim), -1.0, 1.0) / sqrt(3)
+        y = clamp(sqrt(2) * sin(azim), -1.0, 1.0) / sqrt(3)
+        z = clamp(sqrt(2) * sin(elev), -1.0, 1.0) / sqrt(3)
     else
-        error("Invalid viewmode $viewmode")
+        x = cos(elev) * cos(azim)
+        y = cos(elev) * sin(azim)
+        z = sin(elev)
     end
+
+    if perspectiveness < 0.01
+        s = zoom * sqrt(x^2 + y^2 + z^2)
+        projection_matrix = Makie.orthographicprojection(-s, s, -s, s, 2s, -2s)
+        radius = 1.0
+    else
+        fov = 90.0 * perspectiveness
+        s = 1.1f0
+        near = Float32(s)
+        far = Float32(-s)
+        scale = tan(fov / 360.0 * pi)
+        h = Float32(scale * near)
+        w = h
+        projection_matrix = Makie.frustum(-w, w, -h, h, near, far)
+        radius = zoom * 1.5^perspectiveness / scale # 1.4 is also pretty nice
+    end
+
+    eyeposition = radius * Vec3{Float64}(x, y, z)
+    view_matrix = Makie.lookat(eyeposition, Vec3{Float64}(0), Vec3{Float64}(0, 0, 1))
+
+    return view_matrix, projection_matrix, eyeposition
 end
 
 
