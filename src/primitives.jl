@@ -638,7 +638,7 @@ function draw_mesh3D(
     end
     fs = faces(mesh)
     uv = hasproperty(mesh, :uv) ? mesh.uv : nothing
-    ns = map(n -> normalmatrix * n, normals(mesh))
+    ns = map(n -> normalize(normalmatrix * n), normals(mesh))
     cols = per_face_colors(
         color, colormap, colorrange, matcap, vs, fs, ns, uv,
         get(primitive, :lowclip, nothing) |> to_value |> color_or_nothing,
