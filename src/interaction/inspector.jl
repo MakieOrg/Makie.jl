@@ -450,7 +450,7 @@ end
 
 function on_hover(inspector)
     parent = inspector.root
-    (inspector.plot.enabled[] && is_mouseinside(parent)) || return false
+    (inspector.plot.enabled[] && is_mouseinside(parent)) || return Consume(false)
 
     mp = mouseposition_px(parent)
     should_clear = true
@@ -470,7 +470,7 @@ function on_hover(inspector)
         inspector.plot._px_bbox_visible[] = false
     end
 
-    return false
+    return Consume(false)
 end
 
 

@@ -119,7 +119,7 @@ function add_pan!(scene::SceneLike, cam::Camera2D)
             if event.action == Mouse.press && is_mouseinside(scene)
                 startpos[] = mp
                 active[] = true
-                return Consume()
+                return Consume(true)
             elseif event.action == Mouse.release && active[]
                 diff = startpos[] .- mp
                 startpos[] = mp
@@ -128,10 +128,10 @@ function add_pan!(scene::SceneLike, cam::Camera2D)
                 cam.area[] = FRect(minimum(area) .+ diff, widths(area))
                 update_cam!(scene, cam)
                 active[] = false
-                return Consume()
+                return Consume(true)
             end
         end
-        return
+        return Consume(false)
     end
 
     on(
@@ -146,9 +146,9 @@ function add_pan!(scene::SceneLike, cam::Camera2D)
             diff = Vec(diff) .* wscale(pixelarea(scene)[], area)
             cam.area[] = FRect(minimum(area) .+ diff, widths(area))
             update_cam!(scene, cam)
-            return Consume()
+            return Consume(true)
         end
-        return
+        return Consume(false)
     end
 end
 
@@ -168,9 +168,9 @@ function add_zoom!(scene::SceneLike, cam::Camera2D)
             p1, p2 = p1 + mp, p2 + mp
             cam.area[] = FRect(p1, p2 - p1)
             update_cam!(scene, cam)
-            return Consume()
+            return Consume(true)
         end
-        return
+        return Consume(false)
     end
 end
 
@@ -216,7 +216,7 @@ function selection_rect!(scene, cam, key)
                 rect_vis[:visible] = true # start displaying
                 rect[] = FRect(mp, 0, 0)
                 rect_vis[1] = rect[]
-                return Consume()
+                return Consume(true)
             end
         else
             if event.action == Mouse.release && waspressed[]
@@ -228,13 +228,13 @@ function selection_rect!(scene, cam, key)
                 end
                 rect[] = FRect(NaN, NaN, NaN, NaN)
                 rect_vis[1] = rect[]
-                return Consume()
+                return Consume(true)
             end
             # always hide if not the right key is pressed
             rect_vis[:visible] = false # hide
             return
         end
-        return
+        return Consume(false)
     end
 
     on(camera(scene), events(scene).mouseposition, key) do mp, key
@@ -243,9 +243,9 @@ function selection_rect!(scene, cam, key)
             mini = minimum(rect[])
             rect[] = FRect(mini, mp - mini)
             rect_vis[1] = rect[]
-            return Consume()
+            return Consume(true)
         end
-        return
+        return Consume(false)
     end
 
     # TODO: this needs explicit cleanup?

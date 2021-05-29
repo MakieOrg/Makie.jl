@@ -130,7 +130,7 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
         if displayed_string[] == placeholder[] || displayed_string[] == " "
             displayed_string[] = " "
             cursorindex[] = 0
-            return true
+            return Consume(true)
         end
 
         pos = state.data
@@ -144,17 +144,17 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
             closest_charindex - 1
         end
 
-        return true
+        return Consume(true)
     end
 
     onmouseover(mousestate) do state
         hovering[] = true
-        return false
+        return Consume(false)
     end
 
     onmouseout(mousestate) do state
         hovering[] = false
-        return false
+        return Consume(false)
     end
 
     onmousedownoutside(mousestate) do state
@@ -162,7 +162,7 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
             reset_to_stored()
         end
         defocus!(ltextbox)
-        return false
+        return Consume(false)
     end
 
     function insertchar!(c, index)
@@ -196,9 +196,9 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
     on(events(scene).unicode_input, priority = 60) do char
         if focused[] && is_allowed(char, restriction[])
             insertchar!(char, cursorindex[] + 1)
-            return true
+            return Consume(true)
         end
-        return false
+        return Consume(false)
     end
 
 
@@ -252,10 +252,10 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
                     cursor_backward()
                 end
             end
-            return true
+            return Consume(true)
         end
 
-        return false
+        return Consume(false)
     end
 
     ltextbox

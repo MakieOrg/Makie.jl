@@ -271,7 +271,7 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
         if is_open[]
             is_open[] = !is_open[]
         end
-        return false
+        return Consume(false)
     end
 
     # trigger bbox
@@ -338,27 +338,27 @@ function _reassemble_menu(
     # create mouse events for each menu entry rect / text combo
     for (i, (mouseeventhandle, r, t)) in enumerate(zip(mouseeventhandles, allrects, alltexts))
         onmouseover(mouseeventhandle) do _
-            r.visible[] || return false
-            (i == i_selected[]+1) && return false
+            r.visible[] || return Consume(false)
+            (i == i_selected[]+1) && return Consume(false)
             r.color = cell_color_hover[]
-            return false
+            return Consume(false)
         end
 
         onmouseout(mouseeventhandle) do _
-            r.visible[] || return false
+            r.visible[] || return Consume(false)
             # do nothing for selected items
-            (i == i_selected[]+1) && return false
+            (i == i_selected[]+1) && return Consume(false)
             if i == 1
                 r.color = selection_cell_color_inactive[]
             else
                 i_option = i - 1
                 r.color = iseven(i_option) ? cell_color_inactive_even[] : cell_color_inactive_odd[]
             end
-            return false
+            return Consume(false)
         end
 
         onmouseleftdown(mouseeventhandle) do _
-            r.visible[] || return false
+            r.visible[] || return Consume(false)
             r.color = cell_color_active[]
             if is_open[]
                 # first item is already selected
@@ -371,7 +371,7 @@ function _reassemble_menu(
                 end
             end
             is_open[] = !is_open[]
-            return true
+            return Consume(true)
         end
     end
 

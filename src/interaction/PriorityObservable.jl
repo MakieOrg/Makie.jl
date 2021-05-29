@@ -10,6 +10,7 @@ struct Consume
     x::Bool
 end
 Consume() = Consume(true)
+Consume(x::Consume) = Consume(x.x) # for safety in selection_point etc
 
 function (f::PrioCallback)(val)::Bool
     consume = Base.invokelatest(f.f, val)

@@ -376,15 +376,15 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     on(scene.events.scroll) do s
         if is_mouseinside(scene)
             scrollevents[] = ScrollEvent(s[1], s[2])
-            return Consume()
+            return Consume(true)
         end
-        return
+        return Consume(false)
     end
 
     # TODO this should probably just forward KeyEvent from Makie
     on(scene.events.keyboardbutton) do e
         keysevents[] = KeysEvent(scene.events.keyboardstate)
-        return false
+        return Consume(false)
     end
 
     interactions = Dict{Symbol, Tuple{Bool, Any}}()
@@ -396,9 +396,11 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
 
     function process_event(event)
         for (active, interaction) in values(ax.interactions)
-            active && process_interaction(interaction, event, ax) && return true
+            if active
+                process_interaction(interaction, event, ax) && return Consume(true)
+            end
         end
-        return false
+        return Consume(false)
     end
 
     on(process_event, mouseeventhandle.obs)

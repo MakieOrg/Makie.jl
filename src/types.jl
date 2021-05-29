@@ -116,7 +116,7 @@ function Events()
             error("Unrecognized Keyboard action $(event.action)")
         end
         # This never consumes because it just keeps track of the state
-        return
+        return Consume(false)
     end
 
     keyboardbutton = PriorityObservable(KeyEvent(Keyboard.unknown, Keyboard.release))
@@ -135,7 +135,7 @@ function Events()
             end
         end
         # This never consumes because it just keeps track of the state
-        return
+        return Consume(false)
     end
 
     return Events(
@@ -173,7 +173,7 @@ function Base.getproperty(e::Events, field::Symbol)
         mousebuttons = Node(Set{Mouse.Button}())
         on(getfield(e, :mousebutton), priority=typemax(Int8)-1) do event
             mousebuttons[] = getfield(e, :mousebuttonstate)
-            return false
+            return Consume(false)
         end
         return mousebuttons
     elseif field == :keyboardbuttons
@@ -191,7 +191,7 @@ function Base.getproperty(e::Events, field::Symbol)
         keyboardbuttons = Node(Set{Keyboard.Button}())
         on(getfield(e, :keyboardbutton), priority=typemax(Int8)-1) do event
             keyboardbuttons[] = getfield(e, :keyboardstate)
-            return false
+            return Consume(false)
         end
         return keyboardbuttons
     elseif field == :mousedrag
@@ -213,7 +213,7 @@ function Base.getproperty(e::Events, field::Symbol)
             elseif mousedrag[] in (Mouse.down, Mouse.pressed)
                 mousedrag[] = Mouse.up
             end
-            return false
+            return Consume(false)
         end
         on(getfield(e, :mouseposition), priority=typemax(Int8)-1) do pos
             if mousedrag[] in (Mouse.down, Mouse.pressed)
@@ -221,7 +221,7 @@ function Base.getproperty(e::Events, field::Symbol)
             elseif mousedrag[] == Mouse.up
                 mousedrag[] = Mouse.notpressed
             end
-            return false
+            return Consume(false)
         end
         return mousedrag
     else
