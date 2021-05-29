@@ -389,6 +389,7 @@ function add_gridlines_and_frames!(topscene, scene, dim::Int, limits, ticknode, 
         end
     end
     linesegments!(scene, endpoints, color = attr(:gridcolor),
+        linewidth = attr(:gridwidth),
         xautolimits = false, yautolimits = false, zautolimits = false, transparency = true,
         visible = attr(:gridvisible), inspectable = false)
 
@@ -503,7 +504,7 @@ function add_ticks_and_ticklabels!(topscene, scene, dim::Int, limits, ticknode, 
         color = attr(:tickcolor), linewidth = attr(:tickwidth), visible = attr(:ticksvisible))
 
     labels_positions = lift(scene.px_area, scene.camera.projectionview,
-            tick_segments, ticklabels) do pxa, pv, ticksegs, ticklabs
+            tick_segments, ticklabels, attr(:ticklabelpad)) do pxa, pv, ticksegs, ticklabs, pad
 
         o = pxa.origin
 
@@ -511,7 +512,7 @@ function add_ticks_and_ticklabels!(topscene, scene, dim::Int, limits, ticknode, 
             tstartp = Point2f0(o + Makie.project(scene, tstart))
             tendp = Point2f0(o + Makie.project(scene, tend))
 
-            offset = (dim == 3 ? 10 : 5) * Makie.GeometryBasics.normalize(
+            offset = pad * Makie.GeometryBasics.normalize(
                 Point2f0(tendp - tstartp))
             tendp + offset
         end
