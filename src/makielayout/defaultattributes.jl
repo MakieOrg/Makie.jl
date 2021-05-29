@@ -1087,6 +1087,12 @@ function default_attributes(::Type{Axis3}, scene)
         yticklabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
         "The z ticklabel size"
         zticklabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
+        "The x ticklabel pad"
+        xticklabelpad = 5
+        "The y ticklabel pad"
+        yticklabelpad = 5
+        "The z ticklabel pad"
+        zticklabelpad = 10
         "The x ticklabel font"
         xticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
         "The y ticklabel font"
@@ -1094,11 +1100,17 @@ function default_attributes(::Type{Axis3}, scene)
         "The z ticklabel font"
         zticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
         "The x grid color"
-        xgridcolor = :gray80
+        xgridcolor = RGBAf0(0, 0, 0, 0.12)
         "The y grid color"
-        ygridcolor = :gray80
+        ygridcolor = RGBAf0(0, 0, 0, 0.12)
         "The z grid color"
-        zgridcolor = :gray80
+        zgridcolor = RGBAf0(0, 0, 0, 0.12)
+        "The x grid width"
+        xgridwidth = 1
+        "The y grid width"
+        ygridwidth = 1
+        "The z grid width"
+        zgridwidth = 1
         "The x tick color"
         xtickcolor = :black
         "The y tick color"

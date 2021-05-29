@@ -91,6 +91,9 @@ end
 const FigureLike = Union{Scene, Figure, FigureAxisPlot}
 
 include("theming.jl")
+include("themes/theme_ggplot2.jl")
+include("themes/theme_black.jl")
+include("themes/theme_minimal.jl")
 include("recipes.jl")
 include("interfaces.jl")
 include("units.jl")
@@ -163,6 +166,10 @@ export Attributes, Theme, attributes, default_theme, theme, set_theme!, with_the
 export title
 export xlims!, ylims!, zlims!
 export xlabel!, ylabel!, zlabel!
+
+export theme_ggplot2
+export theme_black
+export theme_minimal
 
 export xticklabels, yticklabels, zticklabels
 export xtickrange, ytickrange, ztickrange
