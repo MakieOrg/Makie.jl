@@ -255,14 +255,14 @@ demofigure()
 with_theme(demofigure, theme_ggplot2())
 ```
 
-### theme_black
-
-```@example themes_demo
-with_theme(demofigure, theme_ggplot2())
-```
-
 ### theme_minimal
 
 ```@example themes_demo
 with_theme(demofigure, theme_minimal())
+```
+
+### theme_black
+
+```@example themes_demo
+with_theme(demofigure, theme_black())
 ```
