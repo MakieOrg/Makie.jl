@@ -191,6 +191,8 @@ Here you can see the same example figure with these different themes applied.
 
 ```@example themes_demo
 using CairoMakie
+using Random
+
 CairoMakie.activate!(type = "svg") # hide
 
 function demofigure()
