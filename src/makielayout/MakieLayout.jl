@@ -6,7 +6,7 @@ import ..Makie: IRect2D
 using ..Makie.Keyboard
 using ..Makie.Mouse
 using ..Makie: ispressed, is_mouseinside, get_scene, FigureLike
-using ..Makie: PrioCallback
+using ..Makie: Consume
 using ..Makie: OpenInterval, Interval
 using ..Makie: Automatic, automatic
 using Observables: onany

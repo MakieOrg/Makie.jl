@@ -141,7 +141,8 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
     function process_event(event)
         for (active, interaction) in values(ax.interactions)
             if active
-                process_interaction(interaction, event, ax) && return Consume(true)
+                maybe_consume = process_interaction(interaction, event, ax)
+                maybe_consume == Consume(true) && return Consume(true)
             end
         end
         return Consume(false)
