@@ -1123,12 +1123,24 @@ function default_attributes(::Type{Axis3}, scene)
         ytickwidth = 1
         "The z tick width"
         ztickwidth = 1
-        "The x spine color"
-        xspinecolor = :black
-        "The y spine color"
-        yspinecolor = :black
-        "The z spine color"
-        zspinecolor = :black
+        "The color of x spine 1 where the ticks are displayed"
+        xspinecolor_1 = :black
+        "The color of y spine 1 where the ticks are displayed"
+        yspinecolor_1 = :black
+        "The color of z spine 1 where the ticks are displayed"
+        zspinecolor_1 = :black
+        "The color of x spine 2 towards the center"
+        xspinecolor_2 = :black
+        "The color of y spine 2 towards the center"
+        yspinecolor_2 = :black
+        "The color of z spine 2 towards the center"
+        zspinecolor_2 = :black
+        "The color of x spine 3 opposite of the ticks"
+        xspinecolor_3 = :black
+        "The color of y spine 3 opposite of the ticks"
+        yspinecolor_3 = :black
+        "The color of z spine 3 opposite of the ticks"
+        zspinecolor_3 = :black
         "The x spine width"
         xspinewidth = 1
         "The y spine width"
