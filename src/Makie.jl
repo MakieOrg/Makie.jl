@@ -162,7 +162,7 @@ export AbstractScene, SceneLike, Scene, AbstractScreen
 export AbstractPlot, Combined, Atomic, OldAxis
 
 # Theming, working with Plots
-export Attributes, Theme, attributes, default_theme, theme, set_theme!, with_theme
+export Attributes, Theme, attributes, default_theme, theme, set_theme!, with_theme, update_theme!
 export title
 export xlims!, ylims!, zlims!
 export xlabel!, ylabel!, zlabel!
