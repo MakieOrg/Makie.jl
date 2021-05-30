@@ -146,3 +146,34 @@ function with_theme(f, theme = Theme(); kwargs...)
         set_theme!(previous_theme)
     end
 end
+
+"""
+    update_theme!(with_theme::Theme; kwargs...)
+
+Updates the current theme incrementally, that means only the keys given in `with_theme` or through keyword arguments are changed, the rest is left intact.
+Nested attributes are either also updated incrementally, or replaced if they are not attributes in the new theme.
+"""
+function update_theme!(with_theme = Theme()::Attributes; kwargs...)
+    new_theme = merge!(with_theme, Theme(kwargs))
+    _update_attrs!(_current_default_theme, new_theme)
+    return
+end
+
+function _update_attrs!(attrs1, attrs2)
+    for (key, value) in attrs2
+        _update_key!(attrs1, key, value)
+    end
+end
+
+function _update_key!(theme, key::Symbol, content)
+    theme[key] = content
+end
+
+function _update_key!(theme, key::Symbol, content::Attributes)
+    if haskey(theme, key) && theme[key] isa Attributes
+        _update_attrs!(theme[key], content)
+    else
+        theme[key] = content
+    end
+    theme
+end
