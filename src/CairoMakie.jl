@@ -48,10 +48,19 @@ function display_path(type::String)
     return joinpath(@__DIR__, "display." * type)
 end
 
-function activate!(; inline = true, type = "png", px_per_unit=1, pt_per_unit=1)
+const _last_inline = Ref(true)
+const _last_type = Ref("png")
+const _last_px_per_unit = Ref(1.0)
+const _last_pt_per_unit = Ref(0.75)
+
+function activate!(; inline = _last_inline[], type = _last_type[], px_per_unit=_last_px_per_unit[], pt_per_unit=_last_pt_per_unit[])
     backend = CairoBackend(display_path(type); px_per_unit=px_per_unit, pt_per_unit=pt_per_unit)
     Makie.current_backend[] = backend
     Makie.use_display[] = !inline
+    _last_inline[] = inline
+    _last_type[] = type
+    _last_px_per_unit[] = px_per_unit
+    _last_pt_per_unit[] = pt_per_unit
     return
 end
 
