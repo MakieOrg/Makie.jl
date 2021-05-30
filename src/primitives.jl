@@ -554,7 +554,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Makie.Mesh)
         draw_mesh2D(scene, screen, primitive)
     else
         if !haskey(primitive, :faceculling)
-            primitive[:faceculling] = Node(1e-6)
+            primitive[:faceculling] = Node(-10)
         end
         draw_mesh3D(scene, screen, primitive)
     end
@@ -728,7 +728,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Makie.Surface
         primitive[:color] = primitive[3]
     end
     if !haskey(primitive, :faceculling)
-        primitive[:faceculling] = Node(-0.1)
+        primitive[:faceculling] = Node(-10)
     end
     draw_mesh3D(scene, screen, primitive, mesh=mesh)
     primitive[:color] = old
@@ -800,7 +800,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Makie.MeshSca
         shading=primitive.shading, lightposition=primitive.lightposition,
         ambient=primitive.ambient, diffuse=primitive.diffuse,
         specular=primitive.specular, shininess=primitive.shininess,
-        faceculling=get(primitive, :faceculling, -0.1)
+        faceculling=get(primitive, :faceculling, -10)
     )
 
     if !(rotations isa Vector)
