@@ -84,3 +84,15 @@ with_theme(demofigure, theme_minimal())
 ```@example themes_demo
 with_theme(demofigure, theme_black())
 ```
+
+## theme_light
+
+```@example themes_demo
+with_theme(demofigure, theme_light())
+```
+
+## theme_dark
+
+```@example themes_demo
+with_theme(demofigure, theme_dark())
+```
