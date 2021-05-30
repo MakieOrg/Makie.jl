@@ -11,11 +11,6 @@ using Makie: convert_attribute, @extractvalue, LineSegments, to_ndim, NativeFont
 using Makie: @info, @get_attribute, Combined
 using Makie: to_value, to_colormap, extrema_nan
 using Makie: inline!
-const LIB_CAIRO = if isdefined(Cairo, :libcairo)
-    Cairo.libcairo
-else
-    Cairo._jl_libcairo
-end
 
 const OneOrVec{T} = Union{
     T,
@@ -37,6 +32,7 @@ include("primitives.jl")
 include("overrides.jl")
 
 function __init__()
+    global LIB_CAIRO = isdefined(Cairo, :libcairo) ? Cairo.libcairo : Cairo._jl_libcairo
     activate!()
     Makie.register_backend!(Makie.current_backend[])
 end
