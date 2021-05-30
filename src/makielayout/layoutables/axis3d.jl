@@ -404,6 +404,7 @@ function add_gridlines_and_frames!(topscene, scene, dim::Int, limits, ticknode, 
         end
     end
     linesegments!(scene, endpoints2, color = attr(:gridcolor),
+        linewidth = attr(:gridwidth),
         xautolimits = false, yautolimits = false, zautolimits = false, transparency = true,
         visible = attr(:gridvisible), inspectable = false)
 
@@ -414,10 +415,10 @@ function add_gridlines_and_frames!(topscene, scene, dim::Int, limits, ticknode, 
         o = pxa.origin
 
         f(mi) = mi ? minimum : maximum
-        p1 = dpoint(minimum(lims)[dim], f(mi1)(lims)[d1], f(mi2)(lims)[d2])
-        p2 = dpoint(maximum(lims)[dim], f(mi1)(lims)[d1], f(mi2)(lims)[d2])
-        p3 = dpoint(minimum(lims)[dim], f(!mi1)(lims)[d1], f(mi2)(lims)[d2])
-        p4 = dpoint(maximum(lims)[dim], f(!mi1)(lims)[d1], f(mi2)(lims)[d2])
+        p1 = dpoint(minimum(lims)[dim], f(!mi1)(lims)[d1], f(mi2)(lims)[d2])
+        p2 = dpoint(maximum(lims)[dim], f(!mi1)(lims)[d1], f(mi2)(lims)[d2])
+        p3 = dpoint(minimum(lims)[dim], f(mi1)(lims)[d1], f(mi2)(lims)[d2])
+        p4 = dpoint(maximum(lims)[dim], f(mi1)(lims)[d1], f(mi2)(lims)[d2])
         p5 = dpoint(minimum(lims)[dim], f(mi1)(lims)[d1], f(!mi2)(lims)[d2])
         p6 = dpoint(maximum(lims)[dim], f(mi1)(lims)[d1], f(!mi2)(lims)[d2])
         # p7 = dpoint(minimum(lims)[dim], f(!mi1)(lims)[d1], f(!mi2)(lims)[d2])
@@ -429,7 +430,8 @@ function add_gridlines_and_frames!(topscene, scene, dim::Int, limits, ticknode, 
         to_topscene_z_2d.([p1, p2, p3, p4, p5, p6], Ref(scene))
     end
 
-    linesegments!(topscene, framepoints, color = attr(:spinecolor), linewidth = attr(:spinewidth),
+    colors = lift(vcat, Any, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3))
+    linesegments!(topscene, framepoints, color = colors, linewidth = attr(:spinewidth),
         # transparency = true,
         visible = attr(:spinesvisible), show_axis = false, inspectable = false)
 
