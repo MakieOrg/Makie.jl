@@ -47,7 +47,7 @@ end
 
 const default_palettes = Attributes(
     color = wong_colors(1),
-    patchcolor = Makie.wong_colors(0.6),
+    patchcolor = Makie.wong_colors(0.8),
     marker = [:circle, :utriangle, :cross, :rect, :diamond, :dtriangle, :pentagon, :xcross],
     linestyle = [nothing, :dash, :dot, :dashdot, :dashdotdot],
     side = [:left, :right]
