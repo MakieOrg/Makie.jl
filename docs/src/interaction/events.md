@@ -85,7 +85,7 @@ on(events(fig).mousebutton, priority = 0) do event
         end
     end
     # Do not consume the event
-    return false
+    return Consume(false)
 end
 ```
 
@@ -116,7 +116,7 @@ on(events(fig).keyboardbutton) do event
         event.key == Keyboard.down   && move_down()
     end
     # Let the event reach other listeners
-    return false
+    return Consume(false)
 end
 ```
 
