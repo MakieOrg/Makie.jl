@@ -67,7 +67,7 @@ function CairoScreen(scene::Scene; device_scaling_factor = 1, antialias = Cairo.
     # this sets a scaling factor on the lowest level that is "hidden" so its even
     # enabled when the drawing space is reset for strokes
     # that means it can be used to increase or decrease the image resolution
-    ccall((:cairo_surface_set_device_scale, LIB_CAIRO), Cvoid, (Ptr{Nothing}, Cdouble, Cdouble),
+    ccall((:cairo_surface_set_device_scale, Cairo.libcairo), Cvoid, (Ptr{Nothing}, Cdouble, Cdouble),
         surf.ptr, device_scaling_factor, device_scaling_factor)
 
     ctx = Cairo.CairoContext(surf)

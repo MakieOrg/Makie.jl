@@ -32,7 +32,6 @@ include("primitives.jl")
 include("overrides.jl")
 
 function __init__()
-    global LIB_CAIRO = isdefined(Cairo, :libcairo) ? Cairo.libcairo : Cairo._jl_libcairo
     activate!()
     Makie.register_backend!(Makie.current_backend[])
 end
