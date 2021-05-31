@@ -11,11 +11,6 @@ using Makie: convert_attribute, @extractvalue, LineSegments, to_ndim, NativeFont
 using Makie: @info, @get_attribute, Combined
 using Makie: to_value, to_colormap, extrema_nan
 using Makie: inline!
-const LIB_CAIRO = if isdefined(Cairo, :libcairo)
-    Cairo.libcairo
-else
-    Cairo._jl_libcairo
-end
 
 const OneOrVec{T} = Union{
     T,
