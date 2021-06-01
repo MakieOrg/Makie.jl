@@ -6,7 +6,7 @@ hist
 
 ### Examples
 
-```julia
+```@example
 using GLMakie
 GLMakie.activate!() # hide
 Makie.inline!(true) # hide
