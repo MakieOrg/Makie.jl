@@ -351,7 +351,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         GridLayoutBase.RectSides{Float32}(left, right, bottom, top)
     end
 
-    onany(title, titlesize, titlegap, titlevisible, spinewidth,
+    onany(titlesize, titlegap, titlevisible, spinewidth,
             topspinevisible, bottomspinevisible, leftspinevisible, rightspinevisible,
             xaxis.protrusion, yaxis.protrusion, xaxisposition, yaxisposition) do args...
         protrusions[] = compute_protrusions(args...)

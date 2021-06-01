@@ -167,7 +167,7 @@ function layoutable(::Type{Legend},
         translate!(scene, (0, 0, 10))
     end
 
-    onany(title, nbanks, titleposition, rowgap, colgap, patchlabelgap, groupgap, titlegap,
+    onany(nbanks, titleposition, rowgap, colgap, patchlabelgap, groupgap, titlegap,
             titlevisible, orientation, gridshalign, gridsvalign) do args...
         relayout()
     end
