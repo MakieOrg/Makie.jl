@@ -169,16 +169,16 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     expr = quote
         $(funcname)() = not_implemented_for($funcname)
         const $(PlotType){$(esc(:ArgType))} = Combined{$funcname,$(esc(:ArgType))}
-        MakieCore.plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
+        $(MakieCore).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
         $(default_plot_signatures(funcname, funcname!, PlotType))
-        MakieCore.default_theme(scene, ::Type{<:$PlotType}) = $(esc(theme_func))(scene)
+        $(MakieCore).default_theme(scene, ::Type{<:$PlotType}) = $(esc(theme_func))(scene)
         export $PlotType, $funcname, $funcname!
     end
     if !isempty(args)
         push!(
             expr.args,
             :(
-                $(esc(:(MakieCore.argument_names)))(::Type{<:$PlotType}, len::Integer) =
+                $(esc(:($(MakieCore).argument_names)))(::Type{<:$PlotType}, len::Integer) =
                     $args
             ),
         )
