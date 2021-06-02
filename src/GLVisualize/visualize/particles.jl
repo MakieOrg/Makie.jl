@@ -59,6 +59,7 @@ vec2quaternion(rotation::Vec4f0) = rotation
 vec2quaternion(rotation::VectorTypes) = const_lift(x-> vec2quaternion.(x), rotation)
 vec2quaternion(rotation::Node) = lift(vec2quaternion, rotation)
 vec2quaternion(rotation::Makie.Quaternion)= Vec4f0(rotation.data)
+vec2quaternion(rotation)= vec2quaternion(to_rotation(rotation))
 GLAbstraction.gl_convert(rotation::Makie.Quaternion)= Vec4f0(rotation.data)
 
 
