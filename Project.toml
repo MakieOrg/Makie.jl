@@ -1,7 +1,7 @@
 authors = ["Simon Danisch", "Julius Krumbiegel"]
 name = "Makie"
 uuid = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
-version = "0.13.9"
+version = "0.13.11"
 
 [deps]
 Animations = "27a7e980-b3e6-11e9-2bcd-0b925532e340"
@@ -68,6 +68,7 @@ ImageIO = "0.2, 0.3, 0.4, 0.5"
 IntervalSets = "0.3, 0.4, 0.5"
 Isoband = "0.1"
 KernelDensity = "0.5, 0.6"
+MakieCore = "0.1.1"
 Match = "1.1"
 Observables = "0.4"
 Packing = "0.4"

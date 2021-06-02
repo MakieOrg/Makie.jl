@@ -120,7 +120,7 @@ To control ticks, you can set the axis attributes `xticks/yticks` and `xtickform
 You can overload one or more of these three functions to implement custom ticks:
 
 ```julia
-tickvalues, ticklabels = MakieLayout.get_ticks(ticks, formatter, vmin, vmax)
+tickvalues, ticklabels = MakieLayout.get_ticks(ticks, scale, formatter, vmin, vmax)
 tickvalues = MakieLayout.get_tickvalues(ticks, vmin, vmax)
 ticklabels = MakieLayout.get_ticklabels(formatter, tickvalues)
 ```

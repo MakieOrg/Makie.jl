@@ -424,10 +424,10 @@ function Base.delete!(la::LineAxis)
 end
 
 """
-    get_ticks(ticks, formatter, vmin, vmax)
+    get_ticks(ticks, scale, formatter, vmin, vmax)
 
 Base function that calls `get_tickvalues(ticks, vmin, max)` and
-`get_ticklabels(formatter, ticks, tickvalues)` and returns a tuple
+`get_ticklabels(formatter, tickvalues)` and returns a tuple
 `(tickvalues, ticklabels)`.
 For custom ticks / formatter combinations, this method can be overloaded
 directly, or both `get_tickvalues` and `get_ticklabels` separately.
