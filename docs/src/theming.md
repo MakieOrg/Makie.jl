@@ -1,7 +1,17 @@
-# Theming
+# Theming figures
 
 Makie allows you to change almost every visual aspect of your plots via attributes.
 You can set attributes whenever you create an object, or you define a general style that is then used as the default by all following objects.
+
+There are three functions you can use for that purpose:
+
+```julia
+set_theme!
+update_theme!
+with_theme
+```
+
+## set_theme!
 
 You can call `set_theme!(theme; kwargs...)` to change the current default theme to `theme` and override or add attributes given by `kwargs`.
 You can also reset your changes by calling `set_theme!()` without arguments.
@@ -38,6 +48,15 @@ This theme will be active until we call `set_theme!()`.
 ```@example 1
 set_theme!()
 ```
+
+## update_theme!
+
+If you have activated a theme already and want to update it partially, without removing the attributes not in the new theme, you can use `update_theme!`.
+
+For example, you can first call `set_theme!(my_theme)` and later update font and fontsize with `update_theme!(font = "Arial", fontsize = 18)`, leaving all other settings intact.
+
+
+## with_theme
 
 Because it can be tedious to remember to switch themes off which you need only temporarily, there's the function `with_theme(f, theme)` which handles the resetting for you automatically, even if you encounter an error while running `f`.
 

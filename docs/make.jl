@@ -368,7 +368,10 @@ makedocs(
                             sort = true)
                     )
                 ),
-            "theming.md",
+            "Theming" => [
+                "theming.md",
+                "predefined_themes.md",
+            ],
         ],
         "Documentation" => [
             "plot_method_signatures.md",
