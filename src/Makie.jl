@@ -127,7 +127,6 @@ include("basic_recipes/spy.jl")
 include("basic_recipes/stem.jl")
 include("basic_recipes/streamplot.jl")
 include("basic_recipes/timeseries.jl")
-include("basic_recipes/title.jl")
 include("basic_recipes/volumeslices.jl")
 include("basic_recipes/wireframe.jl")
 
@@ -165,7 +164,6 @@ export AbstractPlot, Combined, Atomic, OldAxis
 
 # Theming, working with Plots
 export Attributes, Theme, attributes, default_theme, theme, set_theme!, with_theme, update_theme!
-export title
 export xlims!, ylims!, zlims!
 export xlabel!, ylabel!, zlabel!
 
