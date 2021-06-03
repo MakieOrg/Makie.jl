@@ -1,5 +1,5 @@
 [deps]
-AbstractPlotting = "537997a7-5e4e-5d89-9595-2241ea00577e"
+MakieCore = "537997a7-5e4e-5d89-9595-2241ea00577e"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"

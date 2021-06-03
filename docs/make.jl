@@ -1,8 +1,8 @@
 import Pkg
-# Pkg.pkg"add CairoMakie#jk/scatter-glyphs AbstractPlotting#jk/text-layouting"
+# Pkg.pkg"add CairoMakie#jk/scatter-glyphs MakieCore#jk/text-layouting"
 using Documenter, Literate
 # avoid font caching warning in docs
-using AbstractPlotting, CairoMakie, MakieLayout
+using MakieCore, CairoMakie, MakieLayout
 CairoMakie.activate!()
 scatter(rand(10), rand(10))
 

@@ -1,15 +1,15 @@
 
-@AbstractPlotting.recipe(Bezier) do scene
+@recipe(Bezier) do scene
     merge(
         default_theme(scene, Lines),
         Attributes(
             npoints = 30,
-            colorrange = AbstractPlotting.automatic
+            colorrange = automatic
         )
     )
 end
 
-AbstractPlotting.conversion_trait(::Type{<: Bezier}) = AbstractPlotting.PointBased()
+conversion_trait(::Type{<: Bezier}) = PointBased()
 
 function calculated_attributes!(::Type{<: Bezier}, plot)
     color_and_colormap!(plot)
@@ -71,7 +71,7 @@ function to_bezier(p::Vector{Point2f0}, npoints::Int)
     return curves
 end
 
-function AbstractPlotting.plot!(plot::Bezier)
+function plot!(plot::Bezier)
     positions = plot[1]
 
     @extract plot (npoints,)

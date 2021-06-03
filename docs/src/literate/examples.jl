@@ -1,4 +1,4 @@
-using AbstractPlotting, CairoMakie, MakieRecipes; nothing# hide
+using MakieCore, CairoMakie, MakieRecipes; nothing# hide
 using MakieRecipes.RecipesPipeline; using MakieRecipes.RecipesPipeline: PlotUtils; using MakieRecipes.Colors: @colorant_str; nothing # hide
 # ```julia
 # using Makie, MakieRecipes
@@ -19,7 +19,7 @@ end
 
 recipeplot(T(); seriestype = :path)
 
-AbstractPlotting.save("basic.svg", AbstractPlotting.current_scene()); nothing #hide
+save("basic.svg", current_scene()); nothing #hide
 # ![](basic.svg)
 
 # ## Testing out series decomposition
@@ -28,7 +28,7 @@ sc = Scene()
 recipeplot!(sc, rand(10, 2); seriestype = :scatter)
 recipeplot!(sc, 1:10, rand(10, 1); seriestype = :path)
 
-AbstractPlotting.save("series.svg", AbstractPlotting.current_scene()); nothing #hide
+save("series.svg", current_scene()); nothing #hide
 # ![](series.svg)
 
 # ## Differential Equations
@@ -45,7 +45,7 @@ sol = solve(prob, Tsit5(), reltol=1e-8, abstol=1e-8)
 
 recipeplot(sol)
 
-AbstractPlotting.save("exp.svg", AbstractPlotting.current_scene()); nothing #hide
+save("exp.svg", current_scene()); nothing #hide
 # ![](exp.svg)
 
 # ### Matrix DiffEq
@@ -62,7 +62,7 @@ sol = solve(prob, Tsit5(), reltol=1e-8, abstol=1e-8)
 
 recipeplot(sol)
 
-AbstractPlotting.save("mat.svg", AbstractPlotting.current_scene()); nothing #hide
+save("mat.svg", current_scene()); nothing #hide
 # ![](mat.svg)
 
 # ### Stochastic DiffEq
@@ -77,7 +77,7 @@ sol = solve(prob,SRIW1())
 
 recipeplot(sol)
 
-AbstractPlotting.save("stochastic.svg", AbstractPlotting.current_scene()); nothing #hide
+save("stochastic.svg", current_scene()); nothing #hide
 # ![](stochastic.svg)
 
 # ### Animating a differential equation solution
@@ -129,7 +129,7 @@ scp = recipeplot(
     show_axis = false
 )
 
-AbstractPlotting.save("phylo.svg", AbstractPlotting.current_scene()); nothing #hide
+save("phylo.svg", current_scene()); nothing #hide
 # ![](phylo.svg)
 
 # ### Animation with different colormaps (changing attributes)
@@ -167,7 +167,7 @@ recipeplot(
     scale_plot = false
 )
 
-AbstractPlotting.save("simplegraph.svg", AbstractPlotting.current_scene()); nothing #hide
+save("simplegraph.svg", current_scene()); nothing #hide
 # ![](simplegraph.svg)
 
 # ### Undirected graph with node labels and sizes
@@ -190,7 +190,7 @@ recipeplot(
         scale_plot = false
     )
 
-AbstractPlotting.save("undigraph.svg", AbstractPlotting.current_scene()); nothing #hide
+save("undigraph.svg", current_scene()); nothing #hide
 # ![](undigraph.svg)
 
 
@@ -198,7 +198,7 @@ AbstractPlotting.save("undigraph.svg", AbstractPlotting.current_scene()); nothin
 
 recipeplot(GraphPlot(([[1,1,2,2],[1,1,1],[1]],)); names="node_".*string.(1:3), nodeshape=:circle, self_edge_size=0.25, show_axis = false, scale_plot = false)
 
-AbstractPlotting.save("digraph.svg", AbstractPlotting.current_scene()); nothing #hide
+save("digraph.svg", current_scene()); nothing #hide
 # ![](digraph.svg)
 
 
@@ -215,11 +215,11 @@ code = quote
 end
 
 recipeplot(code; fontsize = 12, shorten = 0.01, axis_buffer = 0.15, nodeshape = :rect)
-AbstractPlotting.save("ast.svg", AbstractPlotting.current_scene()); nothing #hide
+save("ast.svg", current_scene()); nothing #hide
 # ![](ast.svg)
 
 # ### Type tree with GraphRecipes
 
 recipeplot(AbstractFloat; method = :tree, fontsize = 10)
-AbstractPlotting.save("typetree.svg", AbstractPlotting.current_scene()); nothing #hide
+save("typetree.svg", current_scene()); nothing #hide
 # ![](typetree.svg)

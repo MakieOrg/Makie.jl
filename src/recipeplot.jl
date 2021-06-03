@@ -1,14 +1,14 @@
 
-@AbstractPlotting.recipe(RecipePlot) do scene
+@recipe(RecipePlot) do scene
     th = merge(
         default_theme(scene),
         Attributes(palette = Palette(rwong))
     )
-    th.color = AbstractPlotting.automatic
+    th.color = automatic
     return th
 end
 
-function AbstractPlotting.plot!(p::T) where T <: RecipePlot
+function plot!(p::T) where T <: RecipePlot
 
     # What happens here is that I want to lift on every available observable,
     # so they need to be splatted.  This also means that nested attributes

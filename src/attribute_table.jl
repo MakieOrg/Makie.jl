@@ -9,22 +9,23 @@ const makie_linetype = Dict{Symbol, Any}(
 
 function makie_color(c)
     if color === :match
-        return AbstractPlotting.Colors.colorant"blue"
+        return Colors.colorant"blue"
     end
-    convert(AbstractPlotting.RGBA, c)
+    convert(RGBA, c)
 end
+
 makie_seriestype_map = Dict{Symbol, Type}(
-    :path => AbstractPlotting.Lines,
-    :path3d => AbstractPlotting.Lines,
-    :scatter => AbstractPlotting.Scatter,
-    :linesegments => AbstractPlotting.LineSegments,
-    :heatmap => AbstractPlotting.Heatmap,
-    :image => AbstractPlotting.Image,
-    :spy => AbstractPlotting.Spy,
-    :surface => AbstractPlotting.Surface,
-    :shape => AbstractPlotting.Poly,
-    :contour => AbstractPlotting.Contour,
+    :path => Lines,
+    :path3d => Lines,
+    :scatter => Scatter,
+    :linesegments => LineSegments,
+    :heatmap => Heatmap,
+    :image => Image,
+    :spy => Spy,
+    :surface => Surface,
+    :shape => Poly,
+    :contour => Contour,
     :curves => Bezier,
-    :bar => AbstractPlotting.BarPlot,
+    :bar => BarPlot,
     # TODO: line, contour,
 )

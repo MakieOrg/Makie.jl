@@ -3,8 +3,8 @@
 # ## Types and aliases
 
 const PlotContext = Union{
-                    AbstractPlotting.AbstractScene,
-                    AbstractPlotting.AbstractPlot,
+                    AbstractScene,
+                    AbstractPlot,
                     MakieLayout.LAxis
                 }
 
@@ -46,7 +46,7 @@ end
 
 # Determine axis limits
 function RecipesPipeline.get_axis_limits(sc::PlotContext, f, letter)
-    lims = to_value(AbstractPlotting.data_limits(sc))
+    lims = to_value(data_limits(sc))
     i = if letter === :x
             1
         elseif letter === :y
@@ -91,12 +91,12 @@ Returns the Makie plot type which corresponds to the given seriestype.
 The plot type is returned as a Type (`Lines`, `Scatter`, ...).
 """
 function makie_plottype(st::Symbol)
-    return get(makie_seriestype_map, st, AbstractPlotting.Lines)
+    return get(makie_seriestype_map, st, Lines)
 end
 
-makie_args(::Type{T}, plotattributes) where T <: AbstractPlotting.AbstractPlot = makie_args(AbstractPlotting.conversion_trait(T), plotattributes)
+makie_args(::Type{T}, plotattributes) where T <: AbstractPlot = makie_args(conversion_trait(T), plotattributes)
 
-function makie_args(::AbstractPlotting.PointBased, plotattributes)
+function makie_args(::PointBased, plotattributes)
 
     x, y = (plotattributes[:x], plotattributes[:y])
 
@@ -113,11 +113,11 @@ function makie_args(::AbstractPlotting.PointBased, plotattributes)
 end
 
 # TODO use Makie.plottype
-makie_args(::AbstractPlotting.SurfaceLike, plotattributes) = (plotattributes[:x], plotattributes[:y], plotattributes[:z].surf)
+makie_args(::SurfaceLike, plotattributes) = (plotattributes[:x], plotattributes[:y], plotattributes[:z].surf)
 
 makie_args(::Type{<: Contour}, plotattributes) = (plotattributes[:x], plotattributes[:y], plotattributes[:z].surf)
 
-function makie_args(::Type{<: AbstractPlotting.Poly}, plotattributes)
+function makie_args(::Type{<: Poly}, plotattributes)
     return (from_nansep_vec(Point2f0.(plotattributes[:x], plotattributes[:y])),)
 end
 
@@ -184,7 +184,7 @@ function translate_to_makie!(st, pa)
             pa[:color] = pa[:seriescolor]
         end
 
-        pa[:markersize] = get(pa, :markersize, 5) * 5 * AbstractPlotting.px
+        pa[:markersize] = get(pa, :markersize, 5) * 5 * px
 
         # handle strokes
         pa[:strokewidth] = get(pa, :markerstrokewidth, 1)
@@ -234,7 +234,7 @@ end
 
 function set_series_color!(scene, st, plotattributes)
 
-    has_color = (haskey(plotattributes, :color) && plotattributes[:color] !== AbstractPlotting.automatic) || any(
+    has_color = (haskey(plotattributes, :color) && plotattributes[:color] !== automatic) || any(
         if st ∈ (:path, :path3d, :curves)
             haskey.(Ref(plotattributes), (:linecolor, :line_z, :seriescolor))
         elseif st == :scatter
@@ -249,7 +249,7 @@ function set_series_color!(scene, st, plotattributes)
     has_seriescolor = haskey(plotattributes, :seriescolor)
 
     if has_color
-        if haskey(plotattributes, :color) && plotattributes[:color] isa AbstractPlotting.Automatic
+        if haskey(plotattributes, :color) && plotattributes[:color] isa Automatic
             delete!(plotattributes, :color)
         end
         if has_seriescolor
@@ -275,7 +275,7 @@ function set_series_color!(scene, st, plotattributes)
         # println()
     end
 
-    if !(plot isa Union{AbstractPlotting.Heatmap, AbstractPlotting.Surface, AbstractPlotting.Image, AbstractPlotting.Spy, AbstractPlotting.Axis2D, AbstractPlotting.Axis3D})
+    if !(plot isa Union{Heatmap, Surface, Image, Spy, Axis2D, Axis3D})
 
         get!(plotattributes, :seriescolor, to_color(plotattributes[:palette]))
 
@@ -337,7 +337,7 @@ function plot_fill!(plt, args, pt, plotattributes)
 
     lower = fill(lowerval, size(x))
 
-    c = AbstractPlotting.to_color(color)
+    c = to_color(color)
     bandcolor = RGBA(red(c), green(c), blue(c), alpha(c) * opacity)
 
     band!(plt, x, upper, lower; color = bandcolor)
@@ -351,7 +351,7 @@ function RecipesPipeline.add_series!(plt::PlotContext, plotattributes)
 
     pt = makie_plottype(st)
 
-    theme = AbstractPlotting.default_theme(plt, pt)
+    theme = default_theme(plt, pt)
 
     set_palette!(plt, plotattributes)
 
@@ -377,7 +377,7 @@ function RecipesPipeline.add_series!(plt::PlotContext, plotattributes)
         return plt
     end
 
-    AbstractPlotting.plot!(plt, pt, args...; ap_attrs...)
+    plot!(plt, pt, args...; ap_attrs...)
 
     # handle fill and series annotations after, so they can overdraw
 

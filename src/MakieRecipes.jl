@@ -1,8 +1,8 @@
 module MakieRecipes
 
-using RecipesBase, AbstractPlotting, MakieLayout
+using RecipesBase, MakieCore
 using RecipesBase: @recipe
-using AbstractPlotting: Palette, to_color
+using MakieCore: Palette, to_color
 
 using RecipesPipeline
 using Colors
@@ -13,7 +13,7 @@ using Colors
 
 expand_palette(palette, n = 20; kwargs...) = RGBA.(distinguishable_colors(n, palette; kwargs...))
 
-const wong = copy(AbstractPlotting.wong_colors)
+const wong = copy(wong_colors)
 begin
     global wong
     tmp = wong[1]
@@ -30,14 +30,14 @@ include("recipeplot.jl")
 
 # TODO FIXME
 RecipesBase.is_key_supported(::Symbol) = false
-AbstractPlotting.plots(la::MakieLayout.LAxis) = plots(la.scene)
+plots(la::MakieLayout.LAxis) = plots(la.scene)
 # FIXME TODO
 
 function tomakie!(sc::AbstractScene, args...; attrs...)
     RecipesPipeline.recipe_pipeline!(sc, Dict{Symbol, Any}(attrs), args)
 end
 
-tomakie!(args...; attrs...) = tomakie!(AbstractPlotting.current_scene(), args...; attrs...)
+tomakie!(args...; attrs...) = tomakie!(current_scene(), args...; attrs...)
 
 tomakie(args...; attrs...) = tomakie!(Scene(), args...; attrs...)
 
