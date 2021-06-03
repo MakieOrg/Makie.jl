@@ -1,0 +1,56 @@
+using ElectronDisplay
+ElectronDisplay.CONFIG.showable = showable
+ElectronDisplay.CONFIG.single_window = true
+ElectronDisplay.CONFIG.focus = false
+using ImageMagick, FileIO
+using WGLMakie, Makie, Test
+using Pkg
+
+# ImageIO seems broken on 1.6 ... and there doesn't
+# seem to be a clean way anymore to force not to use a loader library?
+filter!(x-> x !== :ImageIO, FileIO.sym2saver[:PNG])
+filter!(x-> x !== :ImageIO, FileIO.sym2loader[:PNG])
+Makie.set_theme!(resolution=(400, 400))
+
+path = normpath(joinpath(dirname(pathof(Makie)), "..", "test", "ReferenceTests"))
+Pkg.develop(PackageSpec(path = path))
+using ReferenceTests
+using ReferenceTests: nice_title
+excludes = Set([
+    "Streamplot animation",
+    "Transforming lines",
+    "image scatter",
+    "Line GIF",
+    "surface + contour3d",
+    # Hm weird, looks like some internal JSServe error missing an Observable:
+    "Errorbars x y low high",
+    "Rangebars x y low high",
+    # These are a bit sad, since it's just missing interpolations
+    "FEM mesh 2D",
+    "FEM polygon 2D",
+    # missing transparency & image
+    "Wireframe of a Surface",
+    "Image on Surface Sphere",
+    "Surface with image",
+    # Marker size seems wrong in some occasions:
+    "Hbox",
+    "UnicodeMarker",
+    # Not sure, looks pretty similar to me! Maybe blend mode?
+    "Test heatmap + image overlap",
+    "Stars"
+])
+
+database = ReferenceTests.load_database()
+filter!(database) do (name, entry)
+    !(entry.title in excludes) &&
+    nice_title(entry) !== "short_tests_83" &&
+    nice_title(entry) !== "short_tests_78" &&
+    # difference in line rendering
+    nice_title(entry) !== "short_tests_40" &&
+    # Difference in text marker scaling (needs proper fixing in GLMakie + WGLMakie)
+    nice_title(entry) !== "short_tests_13"
+end
+recorded = joinpath(@__DIR__, "recorded")
+rm(recorded; force=true, recursive=true); mkdir(recorded)
+ReferenceTests.record_tests(database; recording_dir=recorded)
+ReferenceTests.reference_tests(recorded; difference=0.06)
