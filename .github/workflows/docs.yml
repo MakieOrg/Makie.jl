@@ -49,9 +49,7 @@ jobs:
            pkg"registry up General";
            # dev mono repo versions
            pkg"dev . ./MakieRecipes ./MakieCore ./CairoMakie ./WGLMakie ./GLMakie"
-
-           Pkg.add(url = "https://github.com/JuliaDocs/Documenter.jl", rev = "master");
-           Pkg.instantiate()'
+           pkg"add Documenter#master; instantiate"
       - name: Build and deploy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
