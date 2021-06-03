@@ -40,7 +40,7 @@ jobs:
             ${{ runner.os }}-
       - name: install mono repo
         run: >
-          julia --project=test -e
+          julia --project=. -e
           'using Pkg;
            pkg"dev ./MakieRecipes ./MakieCore ./CairoMakie ./WGLMakie ./GLMakie ./ReferenceTests"'
       - uses: julia-actions/julia-buildpkg@v1
