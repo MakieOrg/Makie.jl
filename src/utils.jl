@@ -135,7 +135,7 @@ to_rgba_image(img::AbstractMatrix{<: Colorant}, attributes) = RGBAf0.(img)
 function get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip)
     vmin, vmax = colorrange
 
-    if isnan(pixel) || isinf(pixel)
+    if isnan(pixel)
         RGBAf0(nan_color)
     elseif pixel < vmin && !isnothing(lowclip)
         RGBAf0(lowclip)

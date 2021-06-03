@@ -224,19 +224,17 @@ function draw_background(screen::CairoScreen, scene::Scene)
 end
 
 function draw_plot(scene::Scene, screen::CairoScreen, primitive::Combined)
-
-    if isempty(primitive.plots)
-        Cairo.save(screen.context)
-        draw_atomic(scene, screen, primitive)
-        Cairo.restore(screen.context)
-    else
-        for plot in primitive.plots
-            if to_value(get(primitive, :visible, true))
+    if to_value(get(primitive, :visible, true))
+        if isempty(primitive.plots)
+            Cairo.save(screen.context)
+            draw_atomic(scene, screen, primitive)
+            Cairo.restore(screen.context)
+        else
+            for plot in primitive.plots
                 draw_plot(scene, screen, plot)
             end
         end
     end
-
     return
 end
 
@@ -278,7 +276,7 @@ function Makie.backend_show(x::CairoBackend, io::IO, ::MIME"image/svg+xml", scen
     Cairo.flush(screen.surface)
     Cairo.finish(screen.surface)
     svg = String(take!(proxy_io))
-    
+
     # for some reason, in the svg, surfaceXXX ids keep counting up,
     # even with the very same figure drawn again and again
     # so we need to reset them to counting up from 1
