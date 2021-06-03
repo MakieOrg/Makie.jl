@@ -7,8 +7,9 @@ using Random
 using GLMakie
 using CairoMakie
 using Makie
-Makie.inline!(true)
 import Makie: to_string
+
+Makie.inline!(true)
 
 # Pause renderloop for slow software rendering.
 # This way, we only render if we actualy save e.g. an image
@@ -19,11 +20,6 @@ GLMakie.set_window_config!(;
 
 # use svgs for CairoMakie which look crisper by default
 CairoMakie.activate!(type = "svg")
-
-# ImageIO seems broken on 1.6 ... and there doesn't
-# seem to be a clean way anymore to force not to use a loader library?
-filter!(x-> x !== :ImageIO, FileIO.sym2saver[:PNG])
-filter!(x-> x !== :ImageIO, FileIO.sym2loader[:PNG])
 
 """
     print_table(io::IO, dict::Dict)
@@ -415,14 +411,9 @@ makedocs(
 #                           Deploying documentation                            #
 ################################################################################
 
-# for github actions, documenter checks that GITHUB_REPOSITORY matches the repo
-# keyword, but since we want to push to a different repo, we need to override the
-# env variable, which is JuliaPlots/Makie.jl by default
-ENV["GITHUB_REPOSITORY"] = "JuliaPlots/MakieDocumentation"
-
 if !isempty(get(ENV, "DOCUMENTER_KEY", ""))
     deploydocs(
-        repo = "github.com/JuliaPlots/MakieDocumentation",
+        repo = "github.com/JuliaPlots/Makie.jl",
         push_preview = true
     )
 end
