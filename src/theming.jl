@@ -147,6 +147,8 @@ function with_theme(f, theme = Theme(); kwargs...)
     end
 end
 
+theme(::Nothing, key::Symbol) = deepcopy(current_default_theme()[key])
+  
 """
     update_theme!(with_theme::Theme; kwargs...)
 
