@@ -1,6 +1,6 @@
 using Pkg
 
-pkg"dev ./MakieCore ./CairoMakie ./WGLMakie ./GLMakie ./ReferenceTests"
+pkg"dev ../MakieCore ../CairoMakie ../WGLMakie ../GLMakie ../ReferenceTests"
 
 
 using Test
