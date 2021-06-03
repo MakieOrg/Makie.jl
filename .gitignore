@@ -1,9 +1,0 @@
-*.jl.cov
-*.jl.*.cov
-*.jl.mem
-/src/display.*
-Manifest.toml
-.DS_Store
-*.png
-*.pdf
-test/recorded
