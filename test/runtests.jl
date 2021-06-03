@@ -1,4 +1,8 @@
 using Pkg
+
+pkg"dev ./MakieRecipes ./MakieCore ./CairoMakie ./WGLMakie ./GLMakie ./ReferenceTests"
+
+
 using Test
 using MeshIO
 using StaticArrays
