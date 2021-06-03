@@ -49,7 +49,7 @@ jobs:
            pkg"registry up General";
            # dev mono repo versions
            pkg"dev . ./MakieRecipes ./MakieCore ./CairoMakie ./WGLMakie ./GLMakie"
-           pkg"add Documenter#master; instantiate"
+           pkg"add Documenter#master; instantiate"'
       - name: Build and deploy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
