@@ -1,25 +1,11 @@
-#=
-pedestal    - up/down       - shift/ctrl and right drag
-truck       - left right    - ?? and right drag
-dolly       - in/out        - w/s
-
-pan     - rotate left/right         - a/d and left drag
-tilt    - rotate up/down            - ?? and left drag
-roll    - rotate counter/clockwise  - q/e
-
-zoom    - mouse wheel
-
-keep lookat - maybe swithc on shift?
-connects pedestal + tilt, truck + pan
-
-don't be super exact
-=#
-
 struct KeyCamera3D <: AbstractCamera
     rotationspeed::Node{Float32}
     translationspeed::Node{Float32}
     zoomspeed::Node{Float32}
+
     enable_crosshair::Node{Bool}
+    keep_lookat::Node{Bool}
+    update_rate::Node{Float64}
 
     eyeposition::Node{Vec3f0}
     lookat::Node{Vec3f0}
@@ -29,8 +15,6 @@ struct KeyCamera3D <: AbstractCamera
     near::Node{Float32}
     far::Node{Float32}
 
-    keep_lookat::Node{Bool}
-    update_rate::Node{Float64}
     pulser::Node{Bool}
 
     key_controls::Dict{Symbol, Keyboard.Button}
@@ -65,7 +49,10 @@ function keyboard_cam!(scene; kwargs...)
         to_node(get(kwdict, :rotationspeed, 1.0)),
         to_node(get(kwdict, :translationspeed, 1.0)),
         to_node(get(kwdict, :zoomspeed, 1.0)),
+
         to_node(get(kwdict, :enable_crosshair, true)),
+        to_node(get(kwdict, :keep_lookat, Node(true))),
+        to_node(get(kwdict, :update_rate, Node(1/60))),
 
         to_node(get(kwdict, :eyeposition, Vec3f0(3))),
         to_node(get(kwdict, :lookat, Vec3f0(0))),
@@ -75,8 +62,6 @@ function keyboard_cam!(scene; kwargs...)
         to_node(get(kwdict, :near, 0.01f0)),
         to_node(get(kwdict, :far, 100f0)),
 
-        to_node(get(kwdict, :keep_lookat, Node(true))),
-        to_node(get(kwdict, :update_rate, Node(1/60))),
         Node(false),
 
         key_controls
@@ -104,26 +89,122 @@ function keyboard_cam!(scene; kwargs...)
         end
         return false
     end
-
-    # TODO how do you clean this up?
-    scatter!(scene, 
-        map(p -> [p], cam.lookat), 
-        marker = '+', 
-        # TODO this needs explicit cleanup
-        markersize = lift(rect -> 0.01f0 * sum(widths(rect)), scene.data_limits), 
-        markerspace = SceneSpace, color = :red, visible = cam.enable_crosshair
-    )
-
+   
+    add_translation!(scene, cam)
+    add_rotation!(scene, cam)
+    
     cameracontrols!(scene, cam)
     on(camera(scene), scene.px_area) do area
         # update cam when screen ratio changes
         update_cam!(scene, cam)
     end
-
     center!(scene)
+    
+    # TODO how do you clean this up?
+    # TODO plotting resets the camera?
+    # scatter!(scene, 
+    #     map(p -> [p], cam.lookat), 
+    #     marker = '+', 
+    #     # TODO this needs explicit cleanup
+    #     markersize = lift(rect -> 0.01f0 * sum(widths(rect)), scene.data_limits), 
+    #     markerspace = SceneSpace, color = :red, visible = cam.enable_crosshair
+    # )
 
     cam
 end
+
+
+# TODO switch button and key because this is the wrong order
+function add_translation!(scene, cam::KeyCamera3D, button = Node(Mouse.right))
+    last_mousepos = RefValue(Vec2f0(0, 0))
+    dragging = RefValue(false)
+
+    # drag start/stop
+    on(camera(scene), scene.events.mousebutton) do event
+        if event.button == button[]
+            if event.action == Mouse.press && is_mouseinside(scene)
+                last_mousepos[] = mouseposition_px(scene)
+                dragging[] = true
+                return true
+            elseif event.action == Mouse.release && dragging[]
+                mousepos = mouseposition_px(scene)
+                dragging[] = false
+                diff = (last_mousepos[] - mousepos) * 0.01f0 * cam.translationspeed[]
+                last_mousepos[] = mousepos
+                translate_cam!(scene, cam, Vec3f0(diff[1], diff[2], 0f0))
+                update_cam!(scene, cam)
+                return true
+            end
+        end
+        return false
+    end
+
+    # in drag
+    on(camera(scene), scene.events.mouseposition) do mp
+        if dragging[] && ispressed(scene, button[])
+            mousepos = screen_relative(scene, mp)
+            diff = (last_mousepos[] .- mousepos) * 0.01f0 * cam.translationspeed[]
+            last_mousepos[] = mousepos
+            translate_cam!(scene, cam, Vec3f0(diff[1], diff[2], 0f0))
+            update_cam!(scene, cam)
+            return true
+        end
+        return false
+    end
+
+    on(camera(scene), scene.events.scroll) do scroll
+        if is_mouseinside(scene)
+            cam_res = Vec2f0(widths(scene.px_area[]))
+            mouse_pos_normalized = mouseposition_px(scene) ./ cam_res
+            mouse_pos_normalized = 2*mouse_pos_normalized .- 1f0
+            zoom = (1f0 + 0.1f0 * cam.zoomspeed[]) ^ scroll[2]
+            _zoom!(scene, cam, mouse_pos_normalized, zoom)
+            update_cam!(scene, cam)
+            return true
+        end
+        return false
+    end
+end
+
+function add_rotation!(scene, cam::KeyCamera3D, button = Node(Mouse.left))
+    last_mousepos = RefValue(Vec2f0(0, 0))
+    dragging = RefValue(false)
+    e = events(scene)
+
+    on(camera(scene), e.mousebutton) do event
+        if event.button == button[]
+            if event.action == Mouse.press && is_mouseinside(scene)
+                last_mousepos[] = mouseposition_px(scene)
+                dragging[] = true
+                return true
+            elseif event.action == Mouse.release && dragging[]
+                mousepos = mouseposition_px(scene)
+                dragging[] = false
+                rot_scaling = cam.rotationspeed[] * (e.window_dpi[] * 0.005)
+                mp = (last_mousepos[] - mousepos) * 0.01f0 * rot_scaling
+                last_mousepos[] = mousepos
+                rotate_cam!(scene, cam, Vec3f0(-mp[2], mp[1], 0f0))
+                update_cam!(scene, cam)
+                return true
+            end
+        end
+        return false
+    end
+
+    on(camera(scene), e.mouseposition) do mp
+        if dragging[]
+            mousepos = screen_relative(scene, mp)
+            rot_scaling = cam.rotationspeed[] * (e.window_dpi[] * 0.005)
+            mp = (last_mousepos[] .- mousepos) * 0.01f0 * rot_scaling
+            last_mousepos[] = mousepos
+            rotate_cam!(scene, cam, Vec3f0(-mp[2], mp[1], 0f0))
+            update_cam!(scene, cam)
+            return true
+        end
+        return false
+    end
+end
+
 
 function on_pulse(scene, cc)
     controls = cc.key_controls
@@ -135,18 +216,13 @@ function on_pulse(scene, cc)
     right = cross(viewdir, up)  # +x
 
     # TODO scale translation with zoom or ||lookat-eyeposition||
-    view_trans = cc.translationspeed[] * norm(viewdir) * cc.update_rate[] * Vec3f0(
+    translation = cc.translationspeed[] * norm(viewdir) * cc.update_rate[] * Vec3f0(
         ispressed(scene, controls[:right])    - ispressed(scene, controls[:left]),
         ispressed(scene, controls[:up])       - ispressed(scene, controls[:down]),
         ispressed(scene, controls[:backward]) - ispressed(scene, controls[:forward])
     )
 
-    translation = normalize(right) * view_trans[1] + 
-        normalize(up) * view_trans[2] - normalize(viewdir) * view_trans[3]
-
-    
-    eyepos = eyepos + translation
-    lookat = lookat + translation
+    translate_cam!(scene, cc, translation)
 
     # rotations around x/y/z axes
     angles = cc.rotationspeed[] * cc.update_rate[] * Vec3f0(
@@ -155,23 +231,66 @@ function on_pulse(scene, cc)
         ispressed(scene, controls[:roll_counterclockwise]) - ispressed(scene, controls[:roll_clockwise])
     )
 
-    rotation = qrotation(right, angles[1]) * qrotation(up, angles[2]) * qrotation(-viewdir, angles[3])
-    up = rotation * up
-    viewdir = rotation * viewdir
-    if cc.keep_lookat[]
-        eyepos = lookat - viewdir    
-    else
-        lookat = eyepos + viewdir
-    end
+    rotate_cam!(scene, cc, angles)
 
     # apply zoom (lookat - eyepos distance)
     zoom = (1f0 + cc.zoomspeed[] * cc.update_rate[]) ^ 
         (ispressed(scene, controls[:zoom_out]) - ispressed(scene, controls[:zoom_in]))
     
-    eyepos = lookat - zoom * viewdir
+    _zoom!(scene, cc, Vec3f0(0), zoom)
 
-    update_cam!(scene, cc, eyepos, lookat, up)
+    update_cam!(scene, cc)
 end
+
+
+function translate_cam!(scene, cc, translation)
+    # This uses a camera based coordinate system where
+    # x expands right, y expands up and z expands towards the screen
+    lookat = cc.lookat[]
+    eyepos = cc.eyeposition[]
+    up = cc.upvector[]          # +y
+    viewdir = lookat - eyepos   # -z
+    right = cross(viewdir, up)  # +x
+
+    trans = normalize(right) * translation[1] + 
+        normalize(up) * translation[2] - normalize(viewdir) * translation[3]
+
+    cc.eyeposition[] = eyepos + trans
+    cc.lookat[] = lookat + trans
+    nothing
+end
+
+function rotate_cam!(scene, cc::KeyCamera3D, angles)
+    # This applies rotations around the x/y/z axis of the camera coordinate system
+    # x expands right, y expands up and z expands towards the screen
+    lookat = cc.lookat[]
+    eyepos = cc.eyeposition[]
+    up = cc.upvector[]          # +y
+    viewdir = lookat - eyepos   # -z
+    right = cross(viewdir, up)  # +x
+
+    rotation = qrotation(right, angles[1]) * qrotation(up, angles[2]) * 
+                qrotation(-viewdir, angles[3])
+    
+    cc.upvector[] = rotation * up
+    viewdir = rotation * viewdir
+    if cc.keep_lookat[]
+        cc.eyeposition[] = lookat - viewdir    
+    else
+        cc.lookat[] = eyepos + viewdir
+    end
+    nothing
+end
+
+function _zoom!(scene::Scene, cc::KeyCamera3D, mouse_pos_normalized, zoom::AbstractFloat)
+    lookat = cc.lookat[]
+    eyepos = cc.eyeposition[]
+    viewdir = lookat - eyepos
+    cc.eyeposition[] = lookat - zoom * viewdir
+    # cc.fov[] = zoom * cc.fov[]
+    nothing
+end
+
 
 function update_cam!(scene::Scene, cam::KeyCamera3D)
     @extractvalue cam (fov, near, lookat, eyeposition, upvector)
