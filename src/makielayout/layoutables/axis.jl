@@ -453,15 +453,24 @@ that value is either copied from the targetlimits if `xauto` or `yauto` is false
 respectively, or it is determined automatically from the plots in the axis.
 If one of the components is a tuple of two numbers, those are used directly.
 """
-function reset_limits!(ax; xauto = true, yauto = true)
+function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
     mlims = convert_limit_attribute(ax.limits[])
 
-    mxlims, mylims = mlims::Tuple{Any, Any}
+    @show mlims
+
+    if ax isa Axis
+        mxlims, mylims = mlims::Tuple{Any, Any}
+    elseif ax isa Axis3
+        mxlims, mylims, mzlims = mlims::Tuple{Any, Any, Any}
+    else
+        error()
+    end
+
     xlims = if isnothing(mxlims) || mxlims[1] === nothing || mxlims[2] === nothing
         l = if xauto
             xautolimits(ax)
         else
-            left(ax.targetlimits[]), right(ax.targetlimits[])
+            minimum(ax.targetlimits[])[1], maximum(ax.targetlimits[])[1]
         end
         if mxlims === nothing
             l
@@ -477,7 +486,7 @@ function reset_limits!(ax; xauto = true, yauto = true)
         l = if yauto
             yautolimits(ax)
         else
-            bottom(ax.targetlimits[]), top(ax.targetlimits[])
+            minimum(ax.targetlimits[])[2], maximum(ax.targetlimits[])[2]
         end
         if mylims === nothing
             l
@@ -489,14 +498,46 @@ function reset_limits!(ax; xauto = true, yauto = true)
     else
         convert(Tuple{Float32, Float32}, mylims)
     end
+
+    if ax isa Axis3
+        zlims = if isnothing(mzlims) || mzlims[1] === nothing || mzlims[2] === nothing
+            l = if zauto
+                zautolimits(ax)
+            else
+                minimum(ax.targetlimits[])[3], maximum(ax.targetlimits[])[3]
+            end
+            if mzlims === nothing
+                l
+            else
+                lo = mzlims[1] === nothing ? l[1] : mzlims[1]
+                hi = mzlims[2] === nothing ? l[2] : mzlims[2]
+                (lo, hi)
+            end
+        else
+            convert(Tuple{Float32, Float32}, mzlims)
+        end
+    end
+
     if !(xlims[1] <= xlims[2])
         error("Invalid x-limits as xlims[1] <= xlims[2] is not met for $xlims.")
     end
     if !(ylims[1] <= ylims[2])
         error("Invalid y-limits as ylims[1] <= ylims[2] is not met for $ylims.")
     end
+    if ax isa Axis3
+        if !(zlims[1] <= zlims[2])
+            error("Invalid y-limits as ylims[1] <= ylims[2] is not met for $ylims.")
+        end
+    end
 
-    ax.targetlimits[] = BBox(xlims..., ylims...)
+    if ax isa Axis
+        ax.targetlimits[] = BBox(xlims..., ylims...)
+    elseif ax isa Axis3
+        ax.targetlimits[] = FRect3D(
+            Vec3f0(xlims[1], ylims[1], zlims[1]),
+            Vec3f0(xlims[2] - xlims[1], ylims[2] - ylims[1], zlims[2] - zlims[1]),
+        )
+    end
     nothing
 end
 
@@ -1132,14 +1173,17 @@ function Makie.ylims!(ax::Axis, ylims::Tuple{Union{Real, Nothing}, Union{Real, N
     nothing
 end
 
-Makie.xlims!(ax::Axis, low, high) = Makie.xlims!(ax, (low, high))
-Makie.ylims!(ax::Axis, low, high) = Makie.ylims!(ax, (low, high))
+Makie.xlims!(ax, low, high) = Makie.xlims!(ax, (low, high))
+Makie.ylims!(ax, low, high) = Makie.ylims!(ax, (low, high))
+Makie.zlims!(ax, low, high) = Makie.ylims!(ax, (low, high))
 
 Makie.xlims!(low, high) = Makie.xlims!(current_axis(), low, high)
 Makie.ylims!(low, high) = Makie.ylims!(current_axis(), low, high)
+Makie.zlims!(low, high) = Makie.ylims!(current_axis(), low, high)
 
 Makie.xlims!(ax = current_axis(); low = nothing, high = nothing) = Makie.xlims!(ax, low, high)
 Makie.ylims!(ax = current_axis(); low = nothing, high = nothing) = Makie.ylims!(ax, low, high)
+Makie.zlims!(ax = current_axis(); low = nothing, high = nothing) = Makie.ylims!(ax, low, high)
 
 """
     limits!(ax::Axis, xlims, ylims)
