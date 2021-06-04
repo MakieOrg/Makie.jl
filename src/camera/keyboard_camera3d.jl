@@ -101,14 +101,13 @@ function keyboard_cam!(scene; kwargs...)
     center!(scene)
     
     # TODO how do you clean this up?
-    # TODO plotting resets the camera?
-    # scatter!(scene, 
-    #     map(p -> [p], cam.lookat), 
-    #     marker = '+', 
-    #     # TODO this needs explicit cleanup
-    #     markersize = lift(rect -> 0.01f0 * sum(widths(rect)), scene.data_limits), 
-    #     markerspace = SceneSpace, color = :red, visible = cam.enable_crosshair
-    # )
+    scatter!(scene, 
+        map(p -> [p], cam.lookat), 
+        marker = '+', 
+        # TODO this needs explicit cleanup
+        markersize = lift(rect -> 0.01f0 * sum(widths(rect)), scene.data_limits), 
+        markerspace = SceneSpace, color = :red, visible = cam.enable_crosshair
+    )
 
     cam
 end
