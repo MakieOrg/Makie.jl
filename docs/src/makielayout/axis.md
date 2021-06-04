@@ -95,6 +95,42 @@ limits!(axes[6], BBox(0, 10, 0, 10)) # as rectangle
 f
 ```
 
+### Setting half-automatic limits
+
+You can set half limits by either giving one argument as `nothing` or by using the keyword syntax where only `low` or `high` is given.
+
+```@example
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+f = Figure()
+
+data = rand(100, 2) .* 0.7 .+ 0.15
+
+Axis(f[1, 1], title = "xlims!(nothing, 1)")
+scatter!(data)
+xlims!(nothing, 1)
+
+Axis(f[1, 2], title = "xlims!(low = 0)")
+scatter!(data)
+xlims!(low = 0)
+
+Axis(f[2, 1], title = "ylims!(0, nothing)")
+scatter!(data)
+ylims!(0, nothing)
+
+Axis(f[2, 2], title = "ylims!(high = 1)")
+scatter!(data)
+ylims!(high = 1)
+
+f
+```
+
+This also works when specifying limits directly, such as `Axis(..., limits = (nothing, 1, 2, nothing))`.
+
+### Auto-reset behavior
+
 When you create a new plot in an axis, `reset_limits!(ax)` is called, which adjusts the limits to the new bounds.
 If you have previously set limits with `limits!`, `xlims!` or `ylims!`, these limits are not overridden by the new plot. If you want to override the manually set limits, call `autolimits!(ax)` to compute completely new limits from the axis content.
 

@@ -448,28 +448,43 @@ end
     reset_limits!(ax; xauto = true, yauto = true)
 
 Resets the axis limits depending on the value of `ax.limits`.
-If one of the two components of limits is nothing, that value is either copied from the targetlimits if `xauto` or `yauto` is true, respectively, or it is determined automatically from the plots in the axis.
+If one of the two components of limits is nothing,
+that value is either copied from the targetlimits if `xauto` or `yauto` is false,
+respectively, or it is determined automatically from the plots in the axis.
 If one of the components is a tuple of two numbers, those are used directly.
 """
 function reset_limits!(ax; xauto = true, yauto = true)
     mlims = convert_limit_attribute(ax.limits[])
 
     mxlims, mylims = mlims::Tuple{Any, Any}
-    xlims = if isnothing(mxlims)
-        if xauto
-            xautolimits(ax)
+    xlims = if isnothing(mxlims) || mxlims[1] === nothing || mxlims[2] === nothing
+        l = if xauto
             xautolimits(ax)
         else
             left(ax.targetlimits[]), right(ax.targetlimits[])
         end
+        if mxlims === nothing
+            l
+        else
+            lo = mxlims[1] === nothing ? l[1] : mxlims[1]
+            hi = mxlims[2] === nothing ? l[2] : mxlims[2]
+            (lo, hi)
+        end
     else
         convert(Tuple{Float32, Float32}, tuple(mxlims...))
     end
-    ylims = if isnothing(mylims)
-        if yauto
+    ylims = if isnothing(mylims) || mylims[1] === nothing || mylims[2] === nothing
+        l = if yauto
             yautolimits(ax)
         else
             bottom(ax.targetlimits[]), top(ax.targetlimits[])
+        end
+        if mylims === nothing
+            l
+        else
+            lo = mylims[1] === nothing ? l[1] : mylims[1]
+            hi = mylims[2] === nothing ? l[2] : mylims[2]
+            (lo, hi)
         end
     else
         convert(Tuple{Float32, Float32}, mylims)
@@ -1083,53 +1098,48 @@ function Base.show(io::IO, ax::Axis)
 end
 
 
-function Makie.xlims!(ax::Axis, xlims)
+function Makie.xlims!(ax::Axis, xlims::Tuple{Union{Real, Nothing}, Union{Real, Nothing}})
     if length(xlims) != 2
         error("Invalid xlims length of $(length(xlims)), must be 2.")
     elseif xlims[1] == xlims[2]
         error("Can't set x limits to the same value $(xlims[1]).")
-    elseif xlims[1] > xlims[2]
+    elseif all(x -> x isa Real, xlims) && xlims[1] > xlims[2]
         xlims = reverse(xlims)
         ax.xreversed[] = true
     else
         ax.xreversed[] = false
     end
 
-	# lims = ax.targetlimits[]
-	# newlims = FRect2D((xlims[1], lims.origin[2]), (xlims[2] - xlims[1], lims.widths[2]))
-	# ax.targetlimits[] = newlims
     ax.limits.val = (xlims, ax.limits[][2])
     reset_limits!(ax, yauto = false)
     nothing
 end
 
-Makie.xlims!(ax::Axis, x1, x2) = Makie.xlims!(ax, (x1, x2))
-
-function Makie.ylims!(ax::Axis, ylims)
+function Makie.ylims!(ax::Axis, ylims::Tuple{Union{Real, Nothing}, Union{Real, Nothing}})
     if length(ylims) != 2
         error("Invalid ylims length of $(length(ylims)), must be 2.")
     elseif ylims[1] == ylims[2]
         error("Can't set y limits to the same value $(ylims[1]).")
-    elseif ylims[1] > ylims[2]
+    elseif all(x -> x isa Real, ylims) && ylims[1] > ylims[2]
         ylims = reverse(ylims)
         ax.yreversed[] = true
     else
         ax.yreversed[] = false
     end
 
-	# lims = ax.targetlimits[]
-	# newlims = FRect2D((lims.origin[1], ylims[1]), (lims.widths[1], ylims[2] - ylims[1]))
-	# ax.targetlimits[] = newlims
     ax.limits.val = (ax.limits[][1], ylims)
     reset_limits!(ax, xauto = false)
     nothing
 end
 
-Makie.ylims!(ax::Axis, y1, y2) = Makie.ylims!(ax, (y1, y2))
+Makie.xlims!(ax::Axis, low, high) = Makie.xlims!(ax, (low, high))
+Makie.ylims!(ax::Axis, low, high) = Makie.ylims!(ax, (low, high))
 
-Makie.xlims!(lims::Real...) = Makie.xlims!(current_axis(), lims...)
-Makie.ylims!(lims::Real...) = Makie.ylims!(current_axis(), lims...)
-# zlims!(lims::Real...) = zlims!(current_axis(), lims)
+Makie.xlims!(low, high) = Makie.xlims!(current_axis(), low, high)
+Makie.ylims!(low, high) = Makie.ylims!(current_axis(), low, high)
+
+Makie.xlims!(ax = current_axis(); low = nothing, high = nothing) = Makie.xlims!(ax, low, high)
+Makie.ylims!(ax = current_axis(); low = nothing, high = nothing) = Makie.ylims!(ax, low, high)
 
 """
     limits!(ax::Axis, xlims, ylims)
@@ -1187,15 +1197,24 @@ Makie.transform_func(ax::Axis) = Makie.transform_func(ax.scene)
 
 # these functions pick limits for different x and y scales, so that
 # we don't pick values that are invalid, such as 0 for log etc.
-function defaultlimits(userlimits::Tuple{Any, Any, Any, Any}, xscale, yscale)
+function defaultlimits(userlimits::Tuple{Real, Real, Real, Real}, xscale, yscale)
     BBox(userlimits...)
 end
 
+defaultlimits(l::Tuple{Any, Any, Any, Any}, xscale, yscale) = defaultlimits(((l[1], l[2]), (l[3], l[4])), xscale, yscale)
+
 function defaultlimits(userlimits::Tuple{Any, Any}, xscale, yscale)
-    xl = isnothing(userlimits[1]) ? defaultlimits(xscale) : userlimits[1]
-    yl = isnothing(userlimits[2]) ? defaultlimits(yscale) : userlimits[2]
+    xl = defaultlimits(userlimits[1], xscale)
+    yl = defaultlimits(userlimits[2], yscale)
     BBox(xl..., yl...)
 end
+
+defaultlimits(limits::Nothing, scale) = defaultlimits(scale)
+defaultlimits(limits::Tuple{Real, Real}, scale) = limits
+defaultlimits(limits::Tuple{Real, Nothing}, scale) = (limits[1], defaultlimits(scale)[2])
+defaultlimits(limits::Tuple{Nothing, Real}, scale) = (defaultlimits(scale)[1], limits[2])
+defaultlimits(limits::Tuple{Nothing, Nothing}, scale) = defaultlimits(scale)
+
 
 defaultlimits(::typeof(log10)) = (1.0, 1000.0)
 defaultlimits(::typeof(log2)) = (1.0, 8.0)
