@@ -4,6 +4,7 @@ using Documenter
 using Highlights
 using Markdown
 using Random
+using WGLMakie
 using GLMakie
 using CairoMakie
 using Makie
@@ -389,11 +390,15 @@ makedocs(
                 "makielayout/toggle.md",
 
             ],
+
             "makielayout/layouting.md",
             "generated/colors.md",
             "generated/plot-attributes.md",
             "recipes.md",
-            "backends_and_output.md",
+            "backends" => [
+                "backends_and_output.md",
+                "wglmakie.md"
+            ],
             "scenes.md",
             "lighting.md",
             "cameras.md",

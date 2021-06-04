@@ -17,8 +17,8 @@ building a complex figure step by step. This is the final result we will create:
 ```julia
 using CairoMakie
 
-noto_sans = "../assets/NotoSans-Regular.ttf"
-noto_sans_bold = "../assets/NotoSans-Bold.ttf"
+noto_sans = assetpath("fonts", "NotoSans-Regular.ttf")
+noto_sans_bold = assetpath("fonts", "NotoSans-Bold.ttf")
 
 fig = Figure(backgroundcolor = RGBf0(0.98, 0.98, 0.98),
     resolution = (1000, 700), font = noto_sans)
@@ -138,8 +138,8 @@ using CairoMakie
 using Random # hide
 Random.seed!(2) # hide
 
-noto_sans = "../assets/NotoSans-Regular.ttf"
-noto_sans_bold = "../assets/NotoSans-Bold.ttf"
+noto_sans = assetpath("fonts", "NotoSans-Regular.ttf")
+noto_sans_bold = assetpath("fonts", "NotoSans-Bold.ttf")
 
 fig = Figure(backgroundcolor = RGBf0(0.98, 0.98, 0.98),
     resolution = (1000, 700), font = noto_sans)
