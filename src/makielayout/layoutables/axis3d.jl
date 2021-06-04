@@ -896,7 +896,7 @@ function Makie.ylims!(ax::Axis3, ylims::Tuple{Union{Real, Nothing}, Union{Real, 
     nothing
 end
 
-function Makie.zlims!(ax::Axis3, zlims::Tuple{Union{Real, Nothing}, Union{Real, Nothing}})
+function Makie.zlims!(ax::Axis3, zlims)
     if length(zlims) != 2
         error("Invalid zlims length of $(length(zlims)), must be 2.")
     elseif zlims[1] == zlims[2]

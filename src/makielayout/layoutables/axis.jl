@@ -456,8 +456,6 @@ If one of the components is a tuple of two numbers, those are used directly.
 function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
     mlims = convert_limit_attribute(ax.limits[])
 
-    @show mlims
-
     if ax isa Axis
         mxlims, mylims = mlims::Tuple{Any, Any}
     elseif ax isa Axis3
@@ -1139,7 +1137,7 @@ function Base.show(io::IO, ax::Axis)
 end
 
 
-function Makie.xlims!(ax::Axis, xlims::Tuple{Union{Real, Nothing}, Union{Real, Nothing}})
+function Makie.xlims!(ax::Axis, xlims)
     if length(xlims) != 2
         error("Invalid xlims length of $(length(xlims)), must be 2.")
     elseif xlims[1] == xlims[2]
@@ -1156,7 +1154,7 @@ function Makie.xlims!(ax::Axis, xlims::Tuple{Union{Real, Nothing}, Union{Real, N
     nothing
 end
 
-function Makie.ylims!(ax::Axis, ylims::Tuple{Union{Real, Nothing}, Union{Real, Nothing}})
+function Makie.ylims!(ax::Axis, ylims)
     if length(ylims) != 2
         error("Invalid ylims length of $(length(ylims)), must be 2.")
     elseif ylims[1] == ylims[2]
@@ -1177,9 +1175,9 @@ Makie.xlims!(ax, low, high) = Makie.xlims!(ax, (low, high))
 Makie.ylims!(ax, low, high) = Makie.ylims!(ax, (low, high))
 Makie.zlims!(ax, low, high) = Makie.ylims!(ax, (low, high))
 
-Makie.xlims!(low, high) = Makie.xlims!(current_axis(), low, high)
-Makie.ylims!(low, high) = Makie.ylims!(current_axis(), low, high)
-Makie.zlims!(low, high) = Makie.ylims!(current_axis(), low, high)
+Makie.xlims!(low::Optional{<:Real}, high::Optional{<:Real}) = Makie.xlims!(current_axis(), low, high)
+Makie.ylims!(low::Optional{<:Real}, high::Optional{<:Real}) = Makie.ylims!(current_axis(), low, high)
+Makie.zlims!(low::Optional{<:Real}, high::Optional{<:Real}) = Makie.ylims!(current_axis(), low, high)
 
 Makie.xlims!(ax = current_axis(); low = nothing, high = nothing) = Makie.xlims!(ax, low, high)
 Makie.ylims!(ax = current_axis(); low = nothing, high = nothing) = Makie.ylims!(ax, low, high)
