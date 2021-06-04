@@ -85,7 +85,7 @@ function three_display(session::Session, scene::Scene)
             $(WGL).start_renderloop(renderer, three_scenes, cam)
             JSServe.on_update($canvas_width, w_h => {
                 // `renderer.setSize` correctly updates `canvas` dimensions
-                var pixelRatio = window.devicePixelRatio;
+                const pixelRatio = renderer.getPixelRatio();
                 renderer.setSize(w_h[0] / pixelRatio, w_h[1] / pixelRatio);
             })
         } else {
