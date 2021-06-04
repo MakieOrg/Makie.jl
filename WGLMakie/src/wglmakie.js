@@ -579,7 +579,7 @@ const WGLMakie = (function () {
         renderer.autoClear = scene.clearscene;
         const area = JSServe.get_observable(scene.pixelarea);
         if (area) {
-            const [x, y, w, h] = area.map(t => t / window.devicePixelRatio);
+            const [x, y, w, h] = area.map(t => t / pixelRatio);
             renderer.setViewport(x, y, w, h);
             renderer.setScissor(x, y, w, h);
             renderer.setScissorTest(true);
