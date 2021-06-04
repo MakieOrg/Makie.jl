@@ -734,6 +734,7 @@ convert_attribute(c, ::key"markersize", ::key"scatter") = to_2d_scale(c)
 convert_attribute(c, k1::key"markersize", k2::key"meshscatter") = to_3d_scale(c)
 
 convert_attribute(x, ::key"uv_offset_width") = Vec4f0(x)
+convert_attribute(x::AbstractVector{Vec4f0}, ::key"uv_offset_width") = x
 
 to_2d_scale(x::Number) = Vec2f0(x)
 to_2d_scale(x::VecTypes) = to_ndim(Vec2f0, x, 1)
