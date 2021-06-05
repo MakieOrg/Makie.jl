@@ -28,6 +28,6 @@ fig = Figure()
 lscene = LScene(fig[1, 1], scenekw = (camera = cam3d!, raw = false))
 
 # now you can plot into lscene like you're used to
-scatter!(lscene, randn(100, 3))
+meshscatter!(lscene, randn(100, 3))
 fig
 ```
