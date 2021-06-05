@@ -272,9 +272,9 @@ makedocs(
 #                           Deploying documentation                            #
 ################################################################################
 
-# if !isempty(get(ENV, "DOCUMENTER_KEY", ""))
-#     deploydocs(
-#         repo = "github.com/JuliaPlots/Makie.jl",
-#         push_preview = true
-#     )
-# end
+if !isempty(get(ENV, "DOCUMENTER_KEY", ""))
+    deploydocs(
+        repo = "github.com/JuliaPlots/Makie.jl",
+        push_preview = true
+    )
+end
