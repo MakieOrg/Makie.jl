@@ -17,8 +17,7 @@ to_node(n::Node) = n
 keyboard keys can be sets too
 """
 function keyboard_cam!(scene; kwargs...)
-    kwdict = Dict(kwargs)
-    attributes = merged_get!(:cam3d, scene, Attributes(kwargs)) do 
+    attr = merged_get!(:cam3d, scene, Attributes(kwargs)) do 
         Attributes(
             # Keyboard
             # Translations
@@ -59,24 +58,25 @@ function keyboard_cam!(scene; kwargs...)
     end
 
     cam = KeyCamera3D(
-        to_node(pop!(attributes, :eyeposition, Vec3f0(3))),
-        to_node(pop!(attributes, :lookat,      Vec3f0(0))),
-        to_node(pop!(attributes, :upvector,    Vec3f0(0, 0, 1))),
+        to_node(pop!(attr, :eyeposition, Vec3f0(3))),
+        to_node(pop!(attr, :lookat,      Vec3f0(0))),
+        to_node(pop!(attr, :upvector,    Vec3f0(0, 0, 1))),
 
         Node(1f0),
         Node(-1.0),
 
-        attributes
+        attr
     )
 
     disconnect!(camera(scene))
 
+    # Keyboard controls
     # ticks every so often to get consistent position updates.
     on(cam.pulser) do prev_time
         current_time = time()
         active = on_pulse(scene, cam, Float32(current_time - prev_time))
         @async if active
-            sleep(cam.attributes.update_rate[])
+            sleep(cam.attr.update_rate[])
             cam.pulser[] = current_time
         else
             cam.pulser.val = -1.0
@@ -92,7 +92,7 @@ function keyboard_cam!(scene; kwargs...)
     # camera(scene),
     on(events(scene).keyboardbutton) do event
         if event.action == Keyboard.press && cam.pulser[] == -1.0 &&
-            any(key -> ispressed(scene, cam.attributes[key][]), keynames)
+            any(key -> ispressed(scene, cam.attr[key][]), keynames)
               
             cam.pulser[] = time()
             return true
@@ -100,14 +100,18 @@ function keyboard_cam!(scene; kwargs...)
         return false
     end
    
-    add_translation!(scene, cam, attributes[:translation_button])
-    add_rotation!(scene, cam, attributes[:rotation_button])
+    # Mouse controls
+    add_translation!(scene, cam, attr[:translation_button])
+    add_rotation!(scene, cam, attr[:rotation_button])
     
     cameracontrols!(scene, cam)
-    on(camera(scene), scene.px_area) do area
-        # update cam when screen ratio changes
+
+    # Trigger updates on scene resize and settings change
+    on(camera(scene), scene.px_area, attr[:fov], attr[:near], attr[:far], attr[:projectiontype]) do _, _, _, _, _
         update_cam!(scene, cam)
     end
+
+    # TODO remove this?
     center!(scene)
     
     # TODO how do you clean this up?
