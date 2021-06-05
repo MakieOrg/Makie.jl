@@ -729,6 +729,7 @@ convert_attribute(b::Billboard{Float32}, ::key"rotations") = to_rotation(b.rotat
 convert_attribute(b::Billboard{Vector{Float32}}, ::key"rotations") = to_rotation.(b.rotation)
 convert_attribute(r::AbstractArray, ::key"rotations") = to_rotation.(r)
 convert_attribute(r::StaticVector, ::key"rotations") = to_rotation(r)
+convert_attribute(r, ::key"rotations") = to_rotation(r)
 
 convert_attribute(c, ::key"markersize", ::key"scatter") = to_2d_scale(c)
 convert_attribute(c, k1::key"markersize", k2::key"meshscatter") = to_3d_scale(c)
@@ -909,15 +910,14 @@ end
 convert_attribute(x::Vector{String}, k::key"font") = convert_attribute.(x, k)
 convert_attribute(x::NativeFont, k::key"font") = x
 
-
-
 """
     rotation accepts:
     to_rotation(b, quaternion)
     to_rotation(b, tuple_float)
     to_rotation(b, vec4)
 """
-convert_attribute(s::Quaternion, ::key"rotation") = s
+convert_attribute(s::Quaternionf0, ::key"rotation") = s
+convert_attribute(s::Quaternion, ::key"rotation") = Quaternionf0(s.data...)
 function convert_attribute(s::VecTypes{N}, ::key"rotation") where N
     if N == 4
         Quaternionf0(s...)
@@ -937,7 +937,6 @@ end
 convert_attribute(angle::AbstractFloat, ::key"rotation") = qrotation(Vec3f0(0, 0, 1), Float32(angle))
 convert_attribute(r::AbstractVector, k::key"rotation") = to_rotation.(r)
 convert_attribute(r::AbstractVector{<: Quaternionf0}, k::key"rotation") = r
-
 
 
 convert_attribute(x, k::key"colorrange") = x==nothing ? nothing : Vec2f0(x)
