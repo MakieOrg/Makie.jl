@@ -14,13 +14,20 @@ You can pass keyword arguments to the underlying `Scene` object to the `scenekw`
 Currently, it can be necessary to pass a couple of attributes explicitly to make sure they
 are not inherited from the main scene (which has a pixel camera and no axis, e.g.).
 
-```julia
-using CairoMakie
+```@example 1
+using JSServe
+Page(exportable=true, offline=true)
+```
+
+```@example 1
+using WGLMakie
+WGLMakie.activate!()
 
 fig = Figure()
 
 lscene = LScene(fig[1, 1], scenekw = (camera = cam3d!, raw = false))
 
 # now you can plot into lscene like you're used to
-scatter!(lscene, randn(100, 3))
+meshscatter!(lscene, randn(100, 3))
+fig
 ```
