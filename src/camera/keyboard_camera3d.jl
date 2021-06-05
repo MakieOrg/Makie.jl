@@ -18,7 +18,7 @@ keyboard keys can be sets too
 function keyboard_cam!(scene; kwargs...)
     attr = merged_get!(:cam3d, scene, Attributes(kwargs)) do 
         Attributes(
-            # Keyboard
+            # Keyboard controls
             # Translations
             up_key        = Keyboard.left_shift,
             down_key      = Keyboard.left_control,
@@ -37,14 +37,18 @@ function keyboard_cam!(scene; kwargs...)
             tilt_down_key = Keyboard.f,
             roll_clockwise_key        = Keyboard.e,
             roll_counterclockwise_key = Keyboard.q,
-            # Mouse
+            # Mouse controls
             translation_button = Mouse.right,
             rotation_button    = Mouse.left,
             # TODO modifiers
+            # Shared controls
+            fix_x_key = Keyboard.x,
+            fix_y_key = Keyboard.y,
+            fix_z_key = Keyboard.z,
             # Settings
             # TODO differentiate mouse and keyboard speeds
             rotationspeed = 1f0,
-            translationspeed = 1f0,
+            translationspeed = 0.5f0,
             zoomspeed = 1f0,
             fov = 45f0, # base fov
             near = automatic,
@@ -53,7 +57,10 @@ function keyboard_cam!(scene; kwargs...)
             enable_crosshair = true,
             update_rate = 1/30,
             projectiontype = Perspective,
-            fixed_axis = true
+            # cad has both of these false
+            fixed_axis = true,
+            zoom_shift_lookat = true,
+            cad = false
         )
     end
 
@@ -137,6 +144,9 @@ end
 # TODO switch button and key because this is the wrong order
 function add_translation!(scene, cam::KeyCamera3D, button = Node(Mouse.right))
     zoomspeed = cam.attributes[:zoomspeed]
+    shift_lookat = cam.attributes[:zoom_shift_lookat]
+    cad = cam.attributes[:cad]
+
     last_mousepos = RefValue(Vec2f0(0, 0))
     dragging = RefValue(false)
 
@@ -176,10 +186,8 @@ function add_translation!(scene, cam::KeyCamera3D, button = Node(Mouse.right))
     on(camera(scene), scene.events.scroll) do scroll
         if is_mouseinside(scene)
             cam_res = Vec2f0(widths(scene.px_area[]))
-            mouse_pos_normalized = mouseposition_px(scene) ./ cam_res
-            mouse_pos_normalized = 2*mouse_pos_normalized .- 1f0
-            cam.zoom_mult[] = cam.zoom_mult[] * (1f0 + 0.1f0 * zoomspeed[]) ^ -scroll[2]
-            _zoom!(scene, cam, mouse_pos_normalized)
+            zoom_step = (1f0 + 0.1f0 * zoomspeed[]) ^ -scroll[2]
+            _zoom!(scene, cam, zoom_step, shift_lookat[], cad[])
             update_cam!(scene, cam)
             return true
         end
@@ -265,9 +273,8 @@ function on_pulse(scene, cam, timestep)
     zooming = zoom_out || zoom_in
 
     if zooming
-        cam.zoom_mult[] = cam.zoom_mult[] * 
-            (1f0 + attr[:zoomspeed][] * timestep) ^ (zoom_out - zoom_in)
-        _zoom!(scene, cam, cam.lookat[])
+        zoom_Step = (1f0 + attr[:zoomspeed][] * timestep) ^ (zoom_out - zoom_in)
+        _zoom!(scene, cam, zoom_step, false)
     end
 
     if translating || rotating || zooming
@@ -291,6 +298,13 @@ function translate_cam!(scene, cam, translation)
     t = cam.attributes[:translationspeed][] * norm(viewdir) * translation
     trans = normalize(right) * t[1] + normalize(up) * t[2] - normalize(viewdir) * t[3]
 
+    fix_x = ispressed(scene, cam.attributes[:fix_x_key][])
+    fix_y = ispressed(scene, cam.attributes[:fix_y_key][])
+    fix_z = ispressed(scene, cam.attributes[:fix_z_key][])
+    if fix_x || fix_y || fix_z
+        trans = Vec3f0(fix_x, fix_y, fix_z) .* trans
+    end
+
     cam.eyeposition[] = eyepos + trans
     cam.lookat[] = lookat + trans
     nothing
@@ -305,13 +319,27 @@ function rotate_cam!(scene, cam::KeyCamera3D, angles)
     viewdir = lookat - eyepos   # -z
     right = cross(viewdir, up)  # +x
 
-    if cam.attributes[:fixed_axis][]
-        rotation = qrotation(Vec3f0(0, 0, sign(up[3])), angles[2]) * 
-                    qrotation(right, angles[1]) * qrotation(-viewdir, angles[3])
+    x_axis = right
+    y_axis = cam.attributes[:fixed_axis][] ? Vec3f0(0, 0, sign(up[3])) : up
+    z_axis = -viewdir
+
+    fix_x = ispressed(scene, cam.attributes[:fix_x_key][])
+    fix_y = ispressed(scene, cam.attributes[:fix_y_key][])
+    fix_z = ispressed(scene, cam.attributes[:fix_z_key][])
+    rotation = Quaternionf0(0, 0, 0, 1)
+    if !(fix_x || fix_y || fix_z)
+        rotation *= qrotation(y_axis, angles[2])
+        rotation *= qrotation(x_axis, angles[1])
+        rotation *= qrotation(z_axis, angles[3])
     else
-        rotation = qrotation(up, angles[2]) * qrotation(right, angles[1]) * 
-                    qrotation(-viewdir, angles[3])
+
+        
+        fix_y && (rotation *= qrotation(Vec3f0(0,0,1), angles[2]))
+        fix_x && (rotation *= qrotation(Vec3f0(1,0,0), angles[1]))
+        fix_z && (rotation *= qrotation(Vec3f0(0,1,0), angles[3]))
     end
+
+
     
     cam.upvector[] = rotation * up
     viewdir = rotation * viewdir
@@ -324,11 +352,8 @@ function rotate_cam!(scene, cam::KeyCamera3D, angles)
     nothing
 end
 
-function _zoom!(scene::Scene, cam::KeyCamera3D, mouse_pos_normalized)
-    # lookat = cam.lookat[]
-    # eyepos = cam.eyeposition[]
-    # viewdir = lookat - eyepos
-    # cam.eyeposition[] = lookat - zoom * viewdir
+function _zoom!(scene::Scene, cam::KeyCamera3D, zoom_step, shift_lookat, cad = false)
+    cam.zoom_mult[] = cam.zoom_mult[] * zoom_step
     
     nothing
 end
