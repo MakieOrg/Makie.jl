@@ -524,7 +524,7 @@ function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
     end
     if ax isa Axis3
         if !(zlims[1] <= zlims[2])
-            error("Invalid y-limits as ylims[1] <= ylims[2] is not met for $ylims.")
+            error("Invalid z-limits as zlims[1] <= zlims[2] is not met for $zlims.")
         end
     end
 
