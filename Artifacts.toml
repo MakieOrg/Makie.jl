@@ -1,6 +1,6 @@
 [assets]
-git-tree-sha1 = "44dd450ff84caab22883cc3875258022d32fd7d2"
+git-tree-sha1 = "7ad0043cf041056673218ba612714436727482fa"
 
-[[assets.download]]
-sha256 = "25d7d264bf638572b349b33e28641d9e85656588e73e1f18ee984dbf6caeade1"
-url = "https://github.com/JuliaPlots/Makie.jl/releases/download/assets-0.1.2/assets-0.1.2.tar.gz"
+    [[assets.download]]
+    sha256 = "8cfcadbe82671e83462169dc730d058b45ca8b61c6a3c2a70dbbf0b26712b3ed"
+    url = "https://github.com/JuliaPlots/Makie.jl/releases/download/assets-0.1.3/assets-0.1.3.tar.gz"
