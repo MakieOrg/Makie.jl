@@ -12,7 +12,7 @@ CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
 using FileIO
 
-img = rotr90(load("../assets/cow.png"))
+img = rotr90(load(assetpath("cow.png")))
 
 f = Figure()
 Axis(f[1, 1], aspect = DataAspect())

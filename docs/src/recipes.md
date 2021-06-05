@@ -20,7 +20,7 @@ This is the sequential logic by which conversions in Makie are attempted:
 - Dispatch on `convert_arguments(::PlotType, converted_args...)`
 - Fail if no method was found
 
-### Multiple Argument Conversion with `convert_arguments`
+### Multiple Argument Conversion with convert_arguments
 
 Plotting of a `Circle` for example can be defined via a conversion into a vector of points:
 
@@ -56,7 +56,7 @@ use it directly:
 plottype(::MyType) = Surface
 ```
 
-### Single Argument Conversion with `convert_single_argument`
+### Single Argument Conversion with convert_single_argument
 
 Some types which are unknown to Makie can be converted to other types, for which `convert_arguments` methods are available.
 This is done with `convert_single_argument`.
