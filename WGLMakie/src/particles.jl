@@ -51,8 +51,8 @@ function create_shader(scene::Scene, plot::MeshScatter)
     end
 
     handle_color!(uniform_dict, per_instance)
-
-    instance = normal_mesh(plot.marker[])
+    marker = convert_attribute(plot.marker[], key"marker"(), key"meshscatter"())
+    instance = normal_mesh(marker)
 
     if !hasproperty(instance, :uv)
         uniform_dict[:uv] = Vec2f0(0)
