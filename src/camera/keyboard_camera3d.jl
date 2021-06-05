@@ -4,6 +4,8 @@ struct KeyCamera3D <: AbstractCamera
     upvector::Node{Vec3f0}
 
     zoom_mult::Node{Float32}
+    near::Node{Float32}
+    far::Node{Float32}
     pulser::Node{Float64}
 
     attributes::Attributes
@@ -48,8 +50,8 @@ function keyboard_cam!(scene; kwargs...)
             translationspeed = 1f0,
             zoomspeed = 1f0,
             fov = 45f0, # base fov
-            near = 0.01f0,
-            far = 100f0,
+            near = automatic,
+            far = automatic,
             rotation_center = :lookat,
             enable_crosshair = true,
             update_rate = 1/30,
@@ -58,11 +60,13 @@ function keyboard_cam!(scene; kwargs...)
     end
 
     cam = KeyCamera3D(
-        to_node(pop!(attr, :eyeposition, Vec3f0(3))),
-        to_node(pop!(attr, :lookat,      Vec3f0(0))),
-        to_node(pop!(attr, :upvector,    Vec3f0(0, 0, 1))),
+        pop!(attr, :eyeposition, Vec3f0(3)),
+        pop!(attr, :lookat,      Vec3f0(0)),
+        pop!(attr, :upvector,    Vec3f0(0, 0, 1)),
 
         Node(1f0),
+        Node(attr[:near][] === automatic ? 0.1f0 : attr[:near][]),
+        Node(attr[:far][]  === automatic ? 100f0 : attr[:far][]),
         Node(-1.0),
 
         attr
@@ -76,7 +80,7 @@ function keyboard_cam!(scene; kwargs...)
         current_time = time()
         active = on_pulse(scene, cam, Float32(current_time - prev_time))
         @async if active
-            sleep(cam.attr.update_rate[])
+            sleep(attr.update_rate[])
             cam.pulser[] = current_time
         else
             cam.pulser.val = -1.0
@@ -92,7 +96,7 @@ function keyboard_cam!(scene; kwargs...)
     # camera(scene),
     on(events(scene).keyboardbutton) do event
         if event.action == Keyboard.press && cam.pulser[] == -1.0 &&
-            any(key -> ispressed(scene, cam.attr[key][]), keynames)
+            any(key -> ispressed(scene, attr[key][]), keynames)
               
             cam.pulser[] = time()
             return true
@@ -107,7 +111,12 @@ function keyboard_cam!(scene; kwargs...)
     cameracontrols!(scene, cam)
 
     # Trigger updates on scene resize and settings change
-    on(camera(scene), scene.px_area, attr[:fov], attr[:near], attr[:far], attr[:projectiontype]) do _, _, _, _, _
+    on(camera(scene), scene.px_area, attr[:fov], attr[:projectiontype]) do _, _, _
+        update_cam!(scene, cam)
+    end
+    on(camera(scene), attr[:near], attr[:far]) do near, far
+        near === automatic || (cam.near[] = near)
+        far  === automatic || (cam.far[] = far)
         update_cam!(scene, cam)
     end
 
@@ -120,7 +129,7 @@ function keyboard_cam!(scene; kwargs...)
         marker = '+', 
         # TODO this needs explicit cleanup
         markersize = lift(rect -> 0.01f0 * sum(widths(rect)), scene.data_limits), 
-        markerspace = SceneSpace, color = :red, visible = cam.attributes[:enable_crosshair]
+        markerspace = SceneSpace, color = :red, visible = attr[:enable_crosshair]
     )
 
     cam
@@ -129,7 +138,6 @@ end
 
 # TODO switch button and key because this is the wrong order
 function add_translation!(scene, cam::KeyCamera3D, button = Node(Mouse.right))
-    translationspeed = cam.attributes[:translationspeed]
     zoomspeed = cam.attributes[:zoomspeed]
     last_mousepos = RefValue(Vec2f0(0, 0))
     dragging = RefValue(false)
@@ -144,7 +152,7 @@ function add_translation!(scene, cam::KeyCamera3D, button = Node(Mouse.right))
             elseif event.action == Mouse.release && dragging[]
                 mousepos = mouseposition_px(scene)
                 dragging[] = false
-                diff = (last_mousepos[] - mousepos) * 0.01f0 * translationspeed[]
+                diff = (last_mousepos[] - mousepos) * 0.01f0
                 last_mousepos[] = mousepos
                 translate_cam!(scene, cam, Vec3f0(diff[1], diff[2], 0f0))
                 update_cam!(scene, cam)
@@ -158,7 +166,7 @@ function add_translation!(scene, cam::KeyCamera3D, button = Node(Mouse.right))
     on(camera(scene), scene.events.mouseposition) do mp
         if dragging[] && ispressed(scene, button[])
             mousepos = screen_relative(scene, mp)
-            diff = (last_mousepos[] .- mousepos) * 0.01f0 * translationspeed[]
+            diff = (last_mousepos[] .- mousepos) * 0.01f0
             last_mousepos[] = mousepos
             translate_cam!(scene, cam, Vec3f0(diff[1], diff[2], 0f0))
             update_cam!(scene, cam)
@@ -234,12 +242,7 @@ function on_pulse(scene, cam, timestep)
     translating = right || left || up || down || backward || forward
 
     if translating
-        lookat = cam.lookat[]
-        eyepos = cam.eyeposition[]
-        viewdir = lookat - eyepos
-        translation = attr[:translationspeed][] * norm(viewdir) * timestep * 
-            Vec3f0(right - left, up - down, backward - forward)
-
+        translation = timestep * Vec3f0(right - left, up - down, backward - forward)
         translate_cam!(scene, cam, translation)
     end
 
@@ -287,8 +290,8 @@ function translate_cam!(scene, cam, translation)
     viewdir = lookat - eyepos   # -z
     right = cross(viewdir, up)  # +x
 
-    trans = normalize(right) * translation[1] + 
-        normalize(up) * translation[2] - normalize(viewdir) * translation[3]
+    t = cam.attributes[:translationspeed][] * norm(viewdir) * translation
+    trans = normalize(right) * t[1] + normalize(up) * t[2] - normalize(viewdir) * t[3]
 
     cam.eyeposition[] = eyepos + trans
     cam.lookat[] = lookat + trans
@@ -332,11 +335,9 @@ function update_cam!(scene::Scene, cam::KeyCamera3D)
     @extractvalue cam (lookat, eyeposition, upvector)
 
     zoom = norm(lookat - eyeposition)
-    # TODO this means you can't set FarClip... SAD!
-    # TODO use boundingbox(scene) for optimal far/near
-    near = cam.attributes[:near][]
-    far = max(zoom * 5f0, 30f0)
+    near = cam.near[]; far = cam.far[]
     aspect = Float32((/)(widths(scene.px_area[])...))
+
     if cam.attributes[:projectiontype][] == Perspective
         fov = clamp(cam.zoom_mult[] * cam.attributes[:fov][], 0.01f0, 175f0)
         proj = perspectiveprojection(fov, aspect, near, far)
@@ -345,6 +346,7 @@ function update_cam!(scene::Scene, cam::KeyCamera3D)
         h = 0.5f0 * (1f0 + 1f0 / aspect) * cam.zoom_mult[]
         proj = orthographicprojection(-w, w, -h, h, near, far)
     end
+
     view = Makie.lookat(eyeposition, lookat, upvector)
 
     scene.camera.projection[] = proj
@@ -366,8 +368,12 @@ function update_cam!(scene::Scene, camera::KeyCamera3D, area3d::Rect)
     neweyepos = middle .+ (1.2*norm(width) .* old_dir)
     camera.eyeposition[] = neweyepos
     camera.upvector[] = Vec3f0(0,0,1)
-    camera.attributes[:near][] = 0.1f0 * norm(widths(bb))
-    camera.attributes[:far][] = 3f0 * norm(widths(bb))
+    if camera.attributes[:near][] === automatic
+        camera.near[] = 0.1f0 * norm(widths(bb))
+    end
+    if camera.attributes[:far][] === automatic
+        camera.far[]  = 3f0 * norm(widths(bb))
+    end
     update_cam!(scene, camera)
     return
 end
