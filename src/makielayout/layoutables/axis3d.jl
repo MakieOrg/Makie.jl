@@ -762,53 +762,6 @@ function hidespines!(ax::Axis3)
 end
 
 
-# """
-#     reset_limits!(ax; xauto = true, yauto = true)
-
-# Resets the axis limits depending on the value of `ax.limits`.
-# If one of the two components of limits is nothing, that value is either copied from the targetlimits if `xauto` or `yauto` is true, respectively, or it is determined automatically from the plots in the axis.
-# If one of the components is a tuple of two numbers, those are used directly.
-# """
-# function reset_limits!(ax::Axis3; xauto = true, yauto = true, zauto = true)
-#     mlims = convert_limit_attribute(ax.limits[])
-
-#     mxlims, mylims, mzlims = mlims::Tuple{Any, Any, Any}
-#     xlims = if isnothing(mxlims)
-#         if xauto
-#             xautolimits(ax)
-#         else
-#             left(ax.targetlimits[]), right(ax.targetlimits[])
-#         end
-#     else
-#         convert(Tuple{Float32, Float32}, tuple(mxlims...))
-#     end
-#     ylims = if isnothing(mylims)
-#         if yauto
-#             yautolimits(ax)
-#         else
-#             left(ax.targetlimits[]), right(ax.targetlimits[])
-#         end
-#     else
-#         convert(Tuple{Float32, Float32}, mylims)
-#     end
-#     zlims = if isnothing(mzlims)
-#         if zauto
-#             zautolimits(ax)
-#         else
-#             left(ax.targetlimits[]), right(ax.targetlimits[])
-#         end
-#     else
-#         convert(Tuple{Float32, Float32}, mzlims)
-#     end
-#     @assert xlims[1] <= xlims[2]
-#     @assert ylims[1] <= ylims[2]
-#     @assert zlims[1] <= zlims[2]
-#     ax.targetlimits[] = FRect3D(
-#         Vec3f0(xlims[1], ylims[1], zlims[1]),
-#         Vec3f0(xlims[2] - xlims[1], ylims[2] - ylims[1], zlims[2] - zlims[1]),
-#     )
-#     nothing
-# end
 
 # this is so users can do limits = (x1, x2, y1, y2, z1, z2)
 function convert_limit_attribute(lims::Tuple{Any, Any, Any, Any, Any, Any})
