@@ -11,9 +11,6 @@ struct KeyCamera3D <: AbstractCamera
     attributes::Attributes
 end
 
-to_node(x) = Node(x)
-to_node(n::Node) = n
-
 """
 
 keyboard keys can be sets too
@@ -55,7 +52,8 @@ function keyboard_cam!(scene; kwargs...)
             rotation_center = :lookat,
             enable_crosshair = true,
             update_rate = 1/30,
-            projectiontype = Perspective
+            projectiontype = Perspective,
+            fixed_axis = true
         )
     end
 
@@ -303,12 +301,17 @@ function rotate_cam!(scene, cam::KeyCamera3D, angles)
     # x expands right, y expands up and z expands towards the screen
     lookat = cam.lookat[]
     eyepos = cam.eyeposition[]
-    up = cam.upvector[]          # +y
+    up = cam.upvector[]         # +y
     viewdir = lookat - eyepos   # -z
     right = cross(viewdir, up)  # +x
 
-    rotation = qrotation(right, angles[1]) * qrotation(up, angles[2]) * 
-                qrotation(-viewdir, angles[3])
+    if cam.attributes[:fixed_axis][]
+        rotation = qrotation(Vec3f0(0, 0, sign(up[3])), angles[2]) * 
+                    qrotation(right, angles[1]) * qrotation(-viewdir, angles[3])
+    else
+        rotation = qrotation(up, angles[2]) * qrotation(right, angles[1]) * 
+                    qrotation(-viewdir, angles[3])
+    end
     
     cam.upvector[] = rotation * up
     viewdir = rotation * viewdir
