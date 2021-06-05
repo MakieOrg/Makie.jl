@@ -39,13 +39,13 @@ jobs:
             ${{ runner.os }}-test-
             ${{ runner.os }}-
       - name: Install Julia dependencies
-        run: >
-          julia --project=. -e
-          'using Pkg;
-           # dev mono repo versions
-           pkg"instantiate; dev MakieCore CairoMakie WGLMakie GLMakie ReferenceTests"'
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
+        shell: julia --project=monorepo {0}
+        run: |
+          using Pkg;
+          # dev mono repo versions
+          pkg"dev . MakieCore CairoMakie WGLMakie GLMakie ReferenceTests"
+          Pkg.test("Makie"; coverage=true)
+
       - uses: julia-actions/julia-processcoverage@v1
       - uses: codecov/codecov-action@v1
         with:
