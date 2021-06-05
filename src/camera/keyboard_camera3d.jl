@@ -213,7 +213,7 @@ function add_rotation!(scene, cam::KeyCamera3D, button = Node(Mouse.left))
                 rot_scaling = rotationspeed[] * (e.window_dpi[] * 0.005)
                 mp = (last_mousepos[] - mousepos) * 0.01f0 * rot_scaling
                 last_mousepos[] = mousepos
-                rotate_cam!(scene, cam, Vec3f0(-mp[2], mp[1], 0f0))
+                rotate_cam!(scene, cam, Vec3f0(-mp[2], mp[1], 0f0), true)
                 update_cam!(scene, cam)
                 return true
             end
@@ -227,7 +227,7 @@ function add_rotation!(scene, cam::KeyCamera3D, button = Node(Mouse.left))
             rot_scaling = rotationspeed[] * (e.window_dpi[] * 0.005)
             mp = (last_mousepos[] .- mousepos) * 0.01f0 * rot_scaling
             last_mousepos[] = mousepos
-            rotate_cam!(scene, cam, Vec3f0(-mp[2], mp[1], 0f0))
+            rotate_cam!(scene, cam, Vec3f0(-mp[2], mp[1], 0f0), true)
             update_cam!(scene, cam)
             return true
         end
@@ -310,7 +310,7 @@ function translate_cam!(scene, cam, translation)
     nothing
 end
 
-function rotate_cam!(scene, cam::KeyCamera3D, angles)
+function rotate_cam!(scene, cam::KeyCamera3D, angles, recontextualize=false)
     # This applies rotations around the x/y/z axis of the camera coordinate system
     # x expands right, y expands up and z expands towards the screen
     lookat = cam.lookat[]
@@ -327,16 +327,24 @@ function rotate_cam!(scene, cam::KeyCamera3D, angles)
     fix_y = ispressed(scene, cam.attributes[:fix_y_key][])
     fix_z = ispressed(scene, cam.attributes[:fix_z_key][])
     rotation = Quaternionf0(0, 0, 0, 1)
-    if !(fix_x || fix_y || fix_z)
+    if !xor(fix_x, fix_y, fix_z)
         rotation *= qrotation(y_axis, angles[2])
         rotation *= qrotation(x_axis, angles[1])
         rotation *= qrotation(z_axis, angles[3])
     else
-
+        if recontextualize
+            mp = mouseposition_px(scene)
+            past_half = 0.5f0 .* widths(scene.px_area[]) .> mp
+            flip = 2f0 * past_half .- 1f0 
+            angle = flip[1] * angles[1] + flip[2] * angles[2]
+            angles = Vec3f0(-angle, angle, -angle)
+        end
         
-        fix_y && (rotation *= qrotation(Vec3f0(0,0,1), angles[2]))
-        fix_x && (rotation *= qrotation(Vec3f0(1,0,0), angles[1]))
-        fix_z && (rotation *= qrotation(Vec3f0(0,1,0), angles[3]))
+        # only one fix is true so this only rotates around one axis
+        rotation *= qrotation(
+            Vec3f0(fix_x * sign(right[1]), fix_z * viewdir[2], fix_y * sign(up[3])),
+            dot(Vec3f0(fix_x, fix_y, fix_z), angles)
+        )
     end
 
 
