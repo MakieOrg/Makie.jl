@@ -129,13 +129,15 @@ function keyboard_cam!(scene; kwargs...)
     center!(scene)
     
     # TODO how do you clean this up?
-    scatter!(scene, 
-        map(p -> [p], cam.lookat), 
-        marker = '+', 
-        # TODO this needs explicit cleanup
-        markersize = lift(rect -> 0.01f0 * sum(widths(rect)), scene.data_limits), 
-        markerspace = SceneSpace, color = :red, visible = attr[:enable_crosshair]
-    )
+    # This creates an infinite loop in some cases because the plot will attempt 
+    # to pick a camera if none has been picked before.
+    # scatter!(scene, 
+    #     map(p -> [p], cam.lookat), 
+    #     marker = '+', raw = true,
+    #     # TODO this needs explicit cleanup
+    #     markersize = lift(rect -> 0.01f0 * sum(widths(rect)), scene.data_limits), 
+    #     markerspace = SceneSpace, color = :red, visible = attr[:enable_crosshair]
+    # )
 
     cam
 end
