@@ -340,19 +340,23 @@ function rotate_cam!(scene, cam::KeyCamera3D, angles, recontextualize=false)
             flip = 2f0 * past_half .- 1f0 
             angle = flip[1] * angles[1] + flip[2] * angles[2]
             angles = Vec3f0(-angle, angle, -angle)
+            # only one fix is true so this only rotates around one axis
+            rotation *= qrotation(
+                Vec3f0(fix_x, fix_z, fix_y) .* Vec3f0(sign(right[1]), viewdir[2], sign(up[3])),
+                dot(Vec3f0(fix_x, fix_y, fix_z), angles)
+            )
+        else
+            rotation *= qrotation(y_axis, angles[2])
+            rotation *= qrotation(x_axis, angles[1])
+            rotation *= qrotation(z_axis, angles[3])
+            # the first three components are related to rotations around the x/y/z-axis
+            rotation = Quaternionf0(rotation.data .* (fix_x, fix_y, fix_z, 1))
         end
-        
-        # only one fix is true so this only rotates around one axis
-        rotation *= qrotation(
-            Vec3f0(fix_x * sign(right[1]), fix_z * viewdir[2], fix_y * sign(up[3])),
-            dot(Vec3f0(fix_x, fix_y, fix_z), angles)
-        )
     end
 
-
-    
     cam.upvector[] = rotation * up
     viewdir = rotation * viewdir
+
     # TODO maybe generalize this to arbitrary center?
     if cam.attributes[:rotation_center][] == :lookat
         cam.eyeposition[] = lookat - viewdir    
