@@ -59,7 +59,7 @@ function keyboard_cam!(scene; kwargs...)
             projectiontype = Perspective,
             # cad has both of these false
             fixed_axis = true,
-            zoom_shift_lookat = true,
+            zoom_shift_lookat = true, # doesn't work with fov
             cad = false
         )
     end
@@ -363,6 +363,18 @@ function rotate_cam!(scene, cam::KeyCamera3D, angles, recontextualize=false)
 end
 
 function _zoom!(scene::Scene, cam::KeyCamera3D, zoom_step, shift_lookat, cad = false)
+    if cad
+        lookat = cam.lookat[]
+        eyepos = cam.eyeposition[]
+        up = cam.upvector[]         # +y
+        viewdir = lookat - eyepos   # -z
+        right = cross(viewdir, up)  # +x
+        rel_pos = 2f0 * mouseposition_px(scene) ./ widths(scene.px_area[]) .- 1f0
+        shift = rel_pos[1] * normalize(right) + rel_pos[2] * normalize(up)
+        shifted = eyepos + 0.1f0 * sign(1f0 - zoom_step) * norm(viewdir) * shift
+        cam.eyeposition[] = lookat + norm(viewdir) * normalize(shifted - lookat)
+    end
+    
     cam.zoom_mult[] = cam.zoom_mult[] * zoom_step
     
     nothing
