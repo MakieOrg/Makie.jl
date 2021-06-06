@@ -39,25 +39,27 @@ function keyboard_cam!(scene; kwargs...)
             roll_counterclockwise_key = Keyboard.q,
             # Mouse controls
             translation_button   = Mouse.right,
-            translation_modifier = Set{Keyboard.Button}(),
+            translation_modifier = nothing,
             rotation_button    = Mouse.left,
-            rotation_modifier  = Set{Keyboard.Button}(),
+            rotation_modifier  = nothing,
             # Shared controls
             fix_x_key = Keyboard.x,
             fix_y_key = Keyboard.y,
             fix_z_key = Keyboard.z,
             # Settings
             # TODO differentiate mouse and keyboard speeds
-            rotationspeed = 1f0,
-            translationspeed = 0.5f0,
-            zoomspeed = 1f0,
+            keyboard_rotationspeed = 1f0,
+            keyboard_translationspeed = 0.5f0,
+            keyboard_zoomspeed = 1f0,
+            mouse_rotationspeed = 1f0,
+            mouse_translationspeed = 0.5f0,
+            mouse_zoomspeed = 1f0,
             fov = 45f0, # base fov
             near = automatic,
             far = automatic,
             rotation_center = :lookat,
             update_rate = 1/30,
             projectiontype = Perspective,
-            # cad has both of these false
             fixed_axis = true,
             zoom_shift_lookat = true, # doesn't really work with fov
             cad = false
@@ -135,7 +137,8 @@ end
 
 # TODO switch button and key because this is the wrong order
 function add_translation!(scene, cam::KeyCamera3D)
-    zoomspeed = cam.attributes[:zoomspeed]
+    translationspeed = cam.attributes[:mouse_translationspeed]
+    zoomspeed = cam.attributes[:mouse_zoomspeed]
     shift_lookat = cam.attributes[:zoom_shift_lookat]
     cad = cam.attributes[:cad]
     button = cam.attributes[:translation_button]
@@ -147,14 +150,14 @@ function add_translation!(scene, cam::KeyCamera3D)
     # drag start/stop
     on(camera(scene), scene.events.mousebutton) do event
         if event.button == button[]
-            if event.action == Mouse.press && is_mouseinside(scene) && ispressed(scene, mod)
+            if event.action == Mouse.press && is_mouseinside(scene) && ispressed(scene, mod[])
                 last_mousepos[] = mouseposition_px(scene)
                 dragging[] = true
                 return true
             elseif event.action == Mouse.release && dragging[]
                 mousepos = mouseposition_px(scene)
                 dragging[] = false
-                diff = (last_mousepos[] - mousepos) * 0.01f0
+                diff = (last_mousepos[] - mousepos) * 0.01f0 * translationspeed[]
                 last_mousepos[] = mousepos
                 translate_cam!(scene, cam, Vec3f0(diff[1], diff[2], 0f0))
                 update_cam!(scene, cam)
@@ -166,9 +169,9 @@ function add_translation!(scene, cam::KeyCamera3D)
 
     # in drag
     on(camera(scene), scene.events.mouseposition) do mp
-        if dragging[] && ispressed(scene, button[]) && ispressed(scene, mod)
+        if dragging[] && ispressed(scene, button[]) && ispressed(scene, mod[])
             mousepos = screen_relative(scene, mp)
-            diff = (last_mousepos[] .- mousepos) * 0.01f0
+            diff = (last_mousepos[] .- mousepos) * 0.01f0 * translationspeed[]
             last_mousepos[] = mousepos
             translate_cam!(scene, cam, Vec3f0(diff[1], diff[2], 0f0))
             update_cam!(scene, cam)
@@ -178,7 +181,7 @@ function add_translation!(scene, cam::KeyCamera3D)
     end
 
     on(camera(scene), scene.events.scroll) do scroll
-        if is_mouseinside(scene) && ispressed(scene, mod)
+        if is_mouseinside(scene) && ispressed(scene, mod[])
             cam_res = Vec2f0(widths(scene.px_area[]))
             zoom_step = (1f0 + 0.1f0 * zoomspeed[]) ^ -scroll[2]
             _zoom!(scene, cam, zoom_step, shift_lookat[], cad[])
@@ -190,7 +193,7 @@ function add_translation!(scene, cam::KeyCamera3D)
 end
 
 function add_rotation!(scene, cam::KeyCamera3D)
-    rotationspeed = cam.attributes[:rotationspeed]
+    rotationspeed = cam.attributes[:mouse_rotationspeed]
     button = cam.attributes[:rotation_button]
     mod = cam.attributes[:rotation_modifier]
     last_mousepos = RefValue(Vec2f0(0, 0))
@@ -200,7 +203,7 @@ function add_rotation!(scene, cam::KeyCamera3D)
     # drag start/stop
     on(camera(scene), e.mousebutton) do event
         if event.button == button[]
-            if event.action == Mouse.press && is_mouseinside(scene) && ispressed(scene, mod)
+            if event.action == Mouse.press && is_mouseinside(scene) && ispressed(scene, mod[])
                 last_mousepos[] = mouseposition_px(scene)
                 dragging[] = true
                 return true
@@ -220,7 +223,7 @@ function add_rotation!(scene, cam::KeyCamera3D)
 
     # in drag
     on(camera(scene), e.mouseposition) do mp
-        if dragging[] && ispressed(scene, mod)
+        if dragging[] && ispressed(scene, mod[])
             mousepos = screen_relative(scene, mp)
             rot_scaling = rotationspeed[] * (e.window_dpi[] * 0.005)
             mp = (last_mousepos[] .- mousepos) * 0.01f0 * rot_scaling
@@ -248,7 +251,8 @@ function on_pulse(scene, cam, timestep)
 
     if translating
         # translation in camera space x/y/z direction
-        translation = timestep * Vec3f0(right - left, up - down, backward - forward)
+        translation = attr[:keyboard_translationspeed][] * timestep * 
+            Vec3f0(right - left, up - down, backward - forward)
         translate_cam!(scene, cam, translation)
     end
 
@@ -263,7 +267,7 @@ function on_pulse(scene, cam, timestep)
 
     if rotating
         # rotations around camera space x/y/z axes
-        angles = attr[:rotationspeed][] * timestep * 
+        angles = attr[:keyboard_rotationspeed][] * timestep * 
             Vec3f0(up - down, left - right, counterclockwise - clockwise)
 
         rotate_cam!(scene, cam, angles)
@@ -275,7 +279,7 @@ function on_pulse(scene, cam, timestep)
     zooming = zoom_out || zoom_in
 
     if zooming
-        zoom_step = (1f0 + attr[:zoomspeed][] * timestep) ^ (zoom_out - zoom_in)
+        zoom_step = (1f0 + attr[:keyboard_zoomspeed][] * timestep) ^ (zoom_out - zoom_in)
         _zoom!(scene, cam, zoom_step, false)
     end
 
@@ -298,7 +302,7 @@ function translate_cam!(scene, cam, translation)
     viewdir = lookat - eyepos   # -z
     right = cross(viewdir, up)  # +x
 
-    t = cam.attributes[:translationspeed][] * norm(viewdir) * translation
+    t = norm(viewdir) * translation
     trans = normalize(right) * t[1] + normalize(up) * t[2] - normalize(viewdir) * t[3]
 
     # apply world space restrictions
