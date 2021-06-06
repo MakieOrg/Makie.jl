@@ -12,8 +12,63 @@ struct KeyCamera3D <: AbstractCamera
 end
 
 """
+    keyboard_cam!(scene[; attributes...])
 
-keyboard keys can be sets too
+Creates a 3d camera with a lot of controls.
+
+# Attributes:
+
+## Camera settings:
+- `fov = 45f0`: "Neutral" field of view.
+- `near = automatic`: Value of the near clip. By default this will be chosen 
+    based on the scenes bounding box. The final value is outside attributes.
+- `far = automatic`: Value of the far clip. By default this will be chosen 
+based on the scenes bounding box. The final value is outside attributes.
+- `rotation_center = :lookat`: Use `lookat` or `eyeposition` as rotation center.
+- `projectiontype = Perspective`: Switch between `Orthographic` and `Perspective` projection.
+- `fixed_axis = true`: If true panning uses the (world) z-axis instead of the vertical direction.
+- `zoom_shift_lookat = true`: If true attempt to keep data under the cursor in view when zooming
+- `cad = false`: If true rotate view when zooming off-center.
+
+## Keyboard controlled camera
+- `up_key   = Keyboard.left_shift`: Translation towards the top of the screen.
+- `down_key = Keyboard.left_control`: Translation towards the bottom of the screen.
+- `left_key  = Keyboard.j`: Translation towards the left of the screen.
+- `right_key = Keyboard.l`: Translation towards the right of the screen.
+- `forward_key  = Keyboard.w`: Translation into the screen.
+- `backward_key = Keyboard.s`: Translation out of the screen.
+
+- `zoom_in_key   = Keyboard.i`: Zoom into the scene (enlarge, via fov).
+- `zoom_out_key  = Keyboard.k`: Zoom out of the scene (shrink, via fov).
+- `stretch_view_key  = Keyboard.page_up`: Moves `eyepostion` away from `lookat`.
+- `contract_view_key = Keyboard.page_down`: Moves `eyeposition` towards `lookat`.
+
+- `pan_left_key  = Keyboard.a`: Rotation around the screens vertical direction.
+- `pan_right_key = Keyboard.d`: Rotation around the screens vertical direction.
+- `tilt_up_key   = Keyboard.r`: Rotation around the screens horizontal direction.
+- `tilt_down_key = Keyboard.f`: Rotation around the screens horizontal direction.
+- `roll_clockwise_key        = Keyboard.e`: Rotation of the screen.
+- `roll_counterclockwise_key = Keyboard.q`: Rotation of the screen.
+
+- `keyboard_rotationspeed = 1f0`: Set the speed of keyboard based rotations.
+- `keyboard_translationspeed = 0.5f0`: Set the speed of keyboard based translations.
+- `keyboard_zoomspeed = 1f0`: Set the speed of keyboard based zooms.
+- `update_rate = 1/30`: Rate at which keyboard based camera updates trigger.
+
+## Buttons/keys for mouse controls
+- `translation_button   = Mouse.right`: Mouse button for drag-translations. (up/down/left/right)
+- `translation_modifier = nothing`: Additional keys that need to be held for mouse translations.
+- `rotation_button    = Mouse.left`: Mouse button for drag-rotations. (pan, tilt)
+- `rotation_modifier  = nothing`: Additional keys that need to be held for mouse rotations.
+
+- `mouse_rotationspeed = 1f0`: Speed of mouse rotations.
+- `mouse_translationspeed = 0.5f0`: Speed of mouse translations.
+- `mouse_zoomspeed = 1f0`: Speed of mouse zooming (mousewheel).
+
+## Shared controls
+- `fix_x_key = Keyboard.x`: Fix translations and rotations to the (world) x-axis.
+- `fix_y_key = Keyboard.y`: Fix translations and rotations to the (world) y-axis.
+- `fix_z_key = Keyboard.z`: Fix translations and rotations to the (world) z-axis.
 """
 function keyboard_cam!(scene; kwargs...)
     attr = merged_get!(:cam3d, scene, Attributes(kwargs)) do 
@@ -29,7 +84,8 @@ function keyboard_cam!(scene; kwargs...)
             # Zooms
             zoom_in_key   = Keyboard.i,
             zoom_out_key  = Keyboard.k,
-            # TODO maybe lookat_forward_key, lookat_backward_key?
+            stretch_view_key  = Keyboard.page_up,
+            contract_view_key = Keyboard.page_down,
             # Rotations
             pan_left_key  = Keyboard.a,
             pan_right_key = Keyboard.d,
@@ -96,8 +152,9 @@ function keyboard_cam!(scene; kwargs...)
 
     keynames = (
         :up_key, :down_key, :left_key, :right_key, :forward_key, :backward_key, 
-        :zoom_in_key, :zoom_out_key, :pan_left_key, :pan_right_key, :tilt_up_key, 
-        :tilt_down_key, :roll_clockwise_key, :roll_counterclockwise_key
+        :zoom_in_key, :zoom_out_key, :stretch_view_key, :contract_view_key, 
+        :pan_left_key, :pan_right_key, :tilt_up_key, :tilt_down_key, 
+        :roll_clockwise_key, :roll_counterclockwise_key
     )
     
     # Start ticking if relevant keys are pressed
@@ -282,6 +339,14 @@ function on_pulse(scene, cam, timestep)
         zoom_step = (1f0 + attr[:keyboard_zoomspeed][] * timestep) ^ (zoom_out - zoom_in)
         _zoom!(scene, cam, zoom_step, false)
     end
+
+    stretch = ispressed(scene, attr[:stretch_view_key][])
+    contract = ispressed(scene, attr[:contract_view_key][])
+    if stretch || contract
+        zoom_step = (1f0 + attr[:keyboard_zoomspeed][] * timestep) ^ (stretch - contract)
+        cam.eyeposition[] = cam.lookat[] + zoom_step * (cam.eyeposition[] - cam.lookat[])
+    end
+    zooming = zooming || stretch || contract
 
     # if any are active, update matrices, else stop clock
     if translating || rotating || zooming
