@@ -275,7 +275,7 @@ function on_pulse(scene, cam, timestep)
     zooming = zoom_out || zoom_in
 
     if zooming
-        zoom_Step = (1f0 + attr[:zoomspeed][] * timestep) ^ (zoom_out - zoom_in)
+        zoom_step = (1f0 + attr[:zoomspeed][] * timestep) ^ (zoom_out - zoom_in)
         _zoom!(scene, cam, zoom_step, false)
     end
 
