@@ -59,7 +59,7 @@ function keyboard_cam!(scene; kwargs...)
             projectiontype = Perspective,
             # cad has both of these false
             fixed_axis = true,
-            zoom_shift_lookat = true, # doesn't work with fov
+            zoom_shift_lookat = true, # doesn't really work with fov
             cad = false
         )
     end
@@ -373,6 +373,24 @@ function _zoom!(scene::Scene, cam::KeyCamera3D, zoom_step, shift_lookat, cad = f
         shift = rel_pos[1] * normalize(right) + rel_pos[2] * normalize(up)
         shifted = eyepos + 0.1f0 * sign(1f0 - zoom_step) * norm(viewdir) * shift
         cam.eyeposition[] = lookat + norm(viewdir) * normalize(shifted - lookat)
+    elseif shift_lookat
+        lookat = cam.lookat[]
+        eyepos = cam.eyeposition[]
+        up = cam.upvector[]         # +y
+        viewdir = lookat - eyepos   # -z
+        right = cross(viewdir, up)  # +x
+
+        fov = cam.attributes[:fov][]
+        before = tan(clamp(cam.zoom_mult[] * fov, 0.01f0, 175f0) / 360f0 * Float32(pi))
+        after  = tan(clamp(cam.zoom_mult[] * zoom_step * fov, 0.01f0, 175f0) / 360f0 * Float32(pi))
+
+        aspect = Float32((/)(widths(scene.px_area[])...))
+        rel_pos = 2f0 * mouseposition_px(scene) ./ widths(scene.px_area[]) .- 1f0
+        shift = rel_pos[1] * normalize(right) + rel_pos[2] * normalize(up)
+        shift = -(after - before) * norm(viewdir) * normalize(aspect .* shift)
+        
+        cam.lookat[]      = lookat + shift
+        cam.eyeposition[] = eyepos + shift
     end
     
     cam.zoom_mult[] = cam.zoom_mult[] * zoom_step
