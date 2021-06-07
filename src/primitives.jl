@@ -449,19 +449,43 @@ end
 #                                Heatmap, Image                                #
 ################################################################################
 
+"""
+    regularly_spaced_array_to_range(arr)
+If possible, converts `arr` to a range.
+If not, returns array unchanged.
+"""
+function regularly_spaced_array_to_range(arr)
+    diffs = unique!(sort!(diff(arr)))
+    step = sum(diffs) ./ length(diffs)
+    if all(x-> x ≈ step, diffs)
+        m, M = extrema(arr)
+        if step < zero(step)
+            m, M = M, m
+        end
+        return range(m, stop=M; step)
+    else
+        return arr
+    end
+end
+
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap, Image})
     ctx = screen.context
     image = primitive[3][]
     xs, ys = primitive[1][], primitive[2][]
+
     if !(xs isa Vector)
         l, r = extrema(xs)
         N = size(image, 1)
         xs = range(l, r, length = N+1)
+    else
+        xs = regularly_spaced_array_to_range(xs)
     end
     if !(ys isa Vector)
         l, r = extrema(ys)
         N = size(image, 2)
         ys = range(l, r, length = N+1)
+    else
+        ys = regularly_spaced_array_to_range(ys)
     end
 
     model = primitive[:model][]
