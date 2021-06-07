@@ -456,12 +456,12 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
     if !(xs isa Vector)
         l, r = extrema(xs)
         N = size(image, 1)
-        xs = collect(range(l, r, length = N+1))
+        xs = range(l, r, length = N+1)
     end
     if !(ys isa Vector)
         l, r = extrema(ys)
         N = size(image, 2)
-        ys = collect(range(l, r, length = N+1))
+        ys = range(l, r, length = N+1)
     end
 
     model = primitive[:model][]
@@ -471,8 +471,8 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
 
     # theoretically, we could restrict the non-interpolation vector graphics hack to actual vector
     # graphics backends, but it's not directly visible from screen.surface what type we have
-
-    if interp
+    weird_cairo_limit = (2^15) - 23
+    if xs isa AbstractRange && ys isa AbstractRange
         # find projected image corners
         # this already takes care of flipping the image to correct cairo orientation
         xy = project_position(scene, Point2f0(first.(imsize)), model)
@@ -480,9 +480,12 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
         w, h = xymax .- xy
 
         # FILTER_BEST doesn't work reliably with png backend, GAUSSIAN is not implemented
-        interp_flag = Cairo.FILTER_BILINEAR
+        interp_flag = interp ? Cairo.FILTER_BILINEAR : Cairo.FILTER_NEAREST
 
         s = to_cairo_image(image, primitive)
+        if s.width > weird_cairo_limit || s.height > weird_cairo_limit
+            error("Cairo stops rendering images bigger than $(weird_cairo_limit), which is likely a bug in Cairo. Please resample your image/heatmap with e.g. `ImageTransformations.imresize`")
+        end
         Cairo.rectangle(ctx, xy..., w, h)
         Cairo.save(ctx)
         Cairo.translate(ctx, xy...)
@@ -497,7 +500,9 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
         Cairo.restore(ctx)
 
     else
-
+        if interp
+            error("Interpolation for non gridded heatmaps/images isn't supported right now. Please use interpolate=false for this plot")
+        end
         # find projected image corners
         # this already takes care of flipping the image to correct cairo orientation
         xys = [project_position(scene, Point2f0(x, y), model) for x in xs, y in ys]
