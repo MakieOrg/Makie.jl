@@ -128,14 +128,11 @@ begin
         end
     end
 
-    const global_texture_atlas = RefValue{TextureAtlas}()
+    const global_texture_atlas = Dict{Int, TextureAtlas}()
 
     function get_texture_atlas()
-        if isassigned(global_texture_atlas) && size(global_texture_atlas[]) == TEXTURE_RESOLUTION[]
-            global_texture_atlas[]
-        else
-            global_texture_atlas[] = cached_load() # initialize only on demand
-            global_texture_atlas[]
+        return get!(global_texture_atlas, TEXTURE_RESOLUTION[]) do
+            cached_load() # initialize only on demand
         end
     end
 end
