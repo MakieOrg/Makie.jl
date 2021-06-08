@@ -124,7 +124,7 @@ function keyboard_cam!(scene; kwargs...)
             update_rate = 1/30,
             projectiontype = Perspective,
             fixed_axis = true,
-            zoom_shift_lookat = true, # doesn't really work with fov
+            zoom_shift_lookat = false, # doesn't really work with fov
             cad = false
         )
     end
@@ -213,8 +213,11 @@ function keyboard_cam!(scene; kwargs...)
     cam
 end
 
+# These imitate the old camera
+kcam3d!(scene) = keyboard_cam!(scene, zoom_shift_lookat = true, fixed_axis = true)
+kcam3d_cad!(scene) = keyboard_cam!(scene, cad = true, zoom_shift_lookat = false, fixed_axis = false)
 
-# TODO switch button and key because this is the wrong order
+
 function add_translation!(scene, cam::KeyCamera3D)
     translationspeed = cam.attributes[:mouse_translationspeed]
     zoomspeed = cam.attributes[:mouse_zoomspeed]
