@@ -131,8 +131,8 @@ begin
     const global_texture_atlas = Dict{Int, TextureAtlas}()
 
     function get_texture_atlas()
-        return get!(global_texture_atlas, TEXTURE_RESOLUTION[]) do
-            cached_load() # initialize only on demand
+        return get!(global_texture_atlas, PIXELSIZE_IN_ATLAS[]) do
+            return cached_load() # initialize only on demand
         end
     end
 end
