@@ -33,8 +33,8 @@ based on the scenes bounding box. The final value is outside attributes.
 ## Keyboard controlled camera
 - `up_key   = Keyboard.left_shift`: Translation towards the top of the screen.
 - `down_key = Keyboard.left_control`: Translation towards the bottom of the screen.
-- `left_key  = Keyboard.j`: Translation towards the left of the screen.
-- `right_key = Keyboard.l`: Translation towards the right of the screen.
+- `left_key  = Keyboard.a`: Translation towards the left of the screen.
+- `right_key = Keyboard.d`: Translation towards the right of the screen.
 - `forward_key  = Keyboard.w`: Translation into the screen.
 - `backward_key = Keyboard.s`: Translation out of the screen.
 
@@ -43,8 +43,8 @@ based on the scenes bounding box. The final value is outside attributes.
 - `stretch_view_key  = Keyboard.page_up`: Moves `eyepostion` away from `lookat`.
 - `contract_view_key = Keyboard.page_down`: Moves `eyeposition` towards `lookat`.
 
-- `pan_left_key  = Keyboard.a`: Rotation around the screens vertical direction.
-- `pan_right_key = Keyboard.d`: Rotation around the screens vertical direction.
+- `pan_left_key  = Keyboard.j`: Rotation around the screens vertical direction.
+- `pan_right_key = Keyboard.l`: Rotation around the screens vertical direction.
 - `tilt_up_key   = Keyboard.r`: Rotation around the screens horizontal direction.
 - `tilt_down_key = Keyboard.f`: Rotation around the screens horizontal direction.
 - `roll_clockwise_key        = Keyboard.e`: Rotation of the screen.
@@ -69,6 +69,7 @@ based on the scenes bounding box. The final value is outside attributes.
 - `fix_x_key = Keyboard.x`: Fix translations and rotations to the (world) x-axis.
 - `fix_y_key = Keyboard.y`: Fix translations and rotations to the (world) y-axis.
 - `fix_z_key = Keyboard.z`: Fix translations and rotations to the (world) z-axis.
+- `reset = Keyboard.home`: Resets the orientation, position and zoom level of the camera.
 """
 function keyboard_cam!(scene; kwargs...)
     attr = merged_get!(:cam3d, scene, Attributes(kwargs)) do 
@@ -77,8 +78,8 @@ function keyboard_cam!(scene; kwargs...)
             # Translations
             up_key        = Keyboard.left_shift,
             down_key      = Keyboard.left_control,
-            left_key      = Keyboard.j,
-            right_key     = Keyboard.l,
+            left_key      = Keyboard.a,
+            right_key     = Keyboard.d,
             forward_key   = Keyboard.w,
             backward_key  = Keyboard.s,
             # Zooms
@@ -87,8 +88,8 @@ function keyboard_cam!(scene; kwargs...)
             stretch_view_key  = Keyboard.page_up,
             contract_view_key = Keyboard.page_down,
             # Rotations
-            pan_left_key  = Keyboard.a,
-            pan_right_key = Keyboard.d,
+            pan_left_key  = Keyboard.j,
+            pan_right_key = Keyboard.l,
             tilt_up_key   = Keyboard.r,
             tilt_down_key = Keyboard.f,
             roll_clockwise_key        = Keyboard.e,
@@ -102,13 +103,14 @@ function keyboard_cam!(scene; kwargs...)
             fix_x_key = Keyboard.x,
             fix_y_key = Keyboard.y,
             fix_z_key = Keyboard.z,
+            reset = Keyboard.home,
             # Settings
             # TODO differentiate mouse and keyboard speeds
             keyboard_rotationspeed = 1f0,
             keyboard_translationspeed = 0.5f0,
             keyboard_zoomspeed = 1f0,
             mouse_rotationspeed = 1f0,
-            mouse_translationspeed = 0.5f0,
+            mouse_translationspeed = 0.2f0,
             mouse_zoomspeed = 1f0,
             fov = 45f0, # base fov
             near = automatic,
@@ -183,6 +185,21 @@ function keyboard_cam!(scene; kwargs...)
         near === automatic || (cam.near[] = near)
         far  === automatic || (cam.far[] = far)
         update_cam!(scene, cam)
+    end
+
+    # reset
+    on(camera(scene), events(scene).keyboardbutton) do event
+        if event.key == attr[:reset][] && event.action == Keyboard.release
+            # center keeps the rotation of the camera so we reset that here
+            # might make sense to keep user set lookat, upvector, eyeposition
+            # around somewhere for this?
+            cam.lookat[] = Vec3f0(0)
+            cam.upvector[] = Vec3f0(0,0,1)
+            cam.eyeposition[] = Vec3f0(3)
+            center!(scene)
+            return true
+        end
+        return false
     end
 
     # TODO remove this?
@@ -367,7 +384,7 @@ function translate_cam!(scene, cam, translation)
     viewdir = lookat - eyepos   # -z
     right = cross(viewdir, up)  # +x
 
-    t = norm(viewdir) * translation
+    t = cam.zoom_mult[] * norm(viewdir) * translation
     trans = normalize(right) * t[1] + normalize(up) * t[2] - normalize(viewdir) * t[3]
 
     # apply world space restrictions
@@ -527,6 +544,7 @@ function update_cam!(scene::Scene, camera::KeyCamera3D, area3d::Rect)
     if camera.attributes[:far][] === automatic
         camera.far[]  = 3f0 * norm(widths(bb))
     end
+    camera.zoom_mult[] = 1f0
     update_cam!(scene, camera)
     return
 end
