@@ -64,6 +64,10 @@ based on the scenes bounding box. The final value is outside attributes.
 - `mouse_rotationspeed = 1f0`: Speed of mouse rotations.
 - `mouse_translationspeed = 0.5f0`: Speed of mouse translations.
 - `mouse_zoomspeed = 1f0`: Speed of mouse zooming (mousewheel).
+- `circular_rotation = (true, true, true)`: Enables circular rotations
+    for (fixed x, fixed y, fixed z) rotation axis. (This means drawing
+    a circle with your mouse around the center will result in a continuous 
+    rotation.)
 
 ## Shared controls
 - `fix_x_key = Keyboard.x`: Fix translations and rotations to the (world) x-axis.
@@ -112,6 +116,7 @@ function keyboard_cam!(scene; kwargs...)
             mouse_rotationspeed = 1f0,
             mouse_translationspeed = 0.2f0,
             mouse_zoomspeed = 1f0,
+            circular_rotation = (true, true, true, false),
             fov = 45f0, # base fov
             near = automatic,
             far = automatic,
@@ -400,7 +405,7 @@ function translate_cam!(scene, cam, translation)
     nothing
 end
 
-function rotate_cam!(scene, cam::KeyCamera3D, angles, recontextualize=false)
+function rotate_cam!(scene, cam::KeyCamera3D, angles, from_mouse=false)
     # This applies rotations around the x/y/z axis of the camera coordinate system
     # x expands right, y expands up and z expands towards the screen
     lookat = cam.lookat[]
@@ -416,6 +421,7 @@ function rotate_cam!(scene, cam::KeyCamera3D, angles, recontextualize=false)
     fix_x = ispressed(scene, cam.attributes[:fix_x_key][])
     fix_y = ispressed(scene, cam.attributes[:fix_y_key][])
     fix_z = ispressed(scene, cam.attributes[:fix_z_key][])
+    cx, cy, cz, c = cam.attributes[:circular_rotation][]
     rotation = Quaternionf0(0, 0, 0, 1)
     if !xor(fix_x, fix_y, fix_z)
         # if there are more or less than one restriction apply all rotations
@@ -424,7 +430,7 @@ function rotate_cam!(scene, cam::KeyCamera3D, angles, recontextualize=false)
         rotation *= qrotation(z_axis, angles[3])
     else
         # apply world space restrictions
-        if recontextualize
+        if from_mouse && ((fix_x && (fix_x == dx)) || (fix_y && (fix_y == cy)) || (fix_z && (fix_z == cz)))
             # recontextualize the (dy, dx, 0) from mouse rotations so that
             # drawing circles creates continuous rotations around the fixed axis
             mp = mouseposition_px(scene)
