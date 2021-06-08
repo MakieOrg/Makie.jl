@@ -169,11 +169,35 @@ function Makie.plot!(plot::BoxPlot)
     t_segments = @lift($signals.t_segments)
     boxwidth = @lift($signals.boxwidth)
 
-    outliercolor = lift(plot[:outliercolor], plot[:color]) do outliercolor, color
-        outliercolor === automatic || return outliercolor
-        c = to_color(color)
-        return RGB(red(c), green(c), blue(c))
-    end
+    outliercolor = lift(plot[:outliercolor], plot[:color], centers, outliers, orientation) do outliercolor, color, centers, outliers, orientation
+        if outliercolor === automatic
+            color isa Symbol && return color
+            center_colors = Dict{eltype(centers), eltype(color)}()
+            for (col, center) in zip(color, centers)
+                center_colors[center] = col
+            end
+            if orientation == :vertical
+                outlier_colors = [center_colors[first(outlier)] for outlier in outliers]
+            else
+                outlier_colors = [center_colors[last(outlier)] for outlier in outliers]
+            end
+            return outlier_colors
+        elseif outliercolor isa AbstractVector
+            center_colors = Dict{eltype(centers), eltype(outliercolor)}()
+            for (col, center) in zip(outliercolor, centers)
+                center_colors[center] = col
+            end
+            if orientation == :vertical
+                outlier_colors = [center_colors[first(outlier)] for outlier in outliers]
+            else
+                outlier_colors = [center_colors[last(outlier)] for outlier in outliers]
+            end
+            return outlier_colors
+            return outliercolor
+        else
+            return outliercolor
+        end
+    end   
 
     scatter!(
         plot,
