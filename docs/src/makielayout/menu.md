@@ -15,7 +15,7 @@ The attribute `selection` is set to `optionvalue(element)` when the element's en
 
 ```@example
 using GLMakie
-
+GLMakie.activate!() # hide
 fig = Figure()
 
 menu = Menu(fig, options = ["viridis", "heat", "blues"])
