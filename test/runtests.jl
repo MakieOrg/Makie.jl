@@ -1,8 +1,5 @@
 using Pkg
 
-pkg"dev ../MakieCore ../CairoMakie ../WGLMakie ../GLMakie ../ReferenceTests"
-
-
 using Test
 using MeshIO
 using StaticArrays

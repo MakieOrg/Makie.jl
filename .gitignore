@@ -5,7 +5,11 @@ src/.cache
 src/logo.png
 **/._*
 Manifest.toml
-!docs/Manifest.toml
 /build
 
 \.DS_Store
+CairoMakie/src/display.*
+
+test/cairo_images/
+test/gl_images/
+test/wgl_images/
