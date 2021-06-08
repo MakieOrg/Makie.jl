@@ -1,6 +1,6 @@
 ```@eval
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!()
 ```
 
 # Axis
@@ -693,7 +693,7 @@ abline!
 
 ```@setup 1
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!()
 ```
 
 ```@example 1
