@@ -97,7 +97,6 @@ viewmodes = [:fitzoom, :fit, :stretch]
 
 for (j, viewmode) in enumerate(viewmodes)
     for (i, azimuth) in enumerate([1.1, 1.275, 1.45] .* pi)
-        Box(f[i, j], color = :transparent, strokecolor = :gray80)
         ax = Axis3(f[i, j], aspect = :data,
             azimuth = azimuth,
             viewmode = viewmode, title = "$viewmode")
