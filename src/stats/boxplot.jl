@@ -94,6 +94,7 @@ function Makie.plot!(plot::BoxPlot)
         notchmin = Float32[]
         notchmax = Float32[]
         t_segments = Point2f0[]
+        outlier_indices = Int[]
         for (i, (center, idxs)) in enumerate(StructArrays.finduniquesorted(x̂))
             values = view(y, idxs)
 
@@ -124,6 +125,8 @@ function Makie.plot!(plot::BoxPlot)
                 # change q1 and q5 to show outliers
                 # using maximum and minimum values inside the limits
                 q1, q5 = extrema_nan(inside)
+                # register outlier box indices
+                append!(outlier_indices, fill(i, length(outlier_points)))
             end
 
             # whiskers
@@ -157,6 +160,7 @@ function Makie.plot!(plot::BoxPlot)
             outliers = outlier_points,
             t_segments = t_segments,
             boxwidth = boxwidth,
+            outlier_indices = outlier_indices,
         )
     end
     centers = @lift($signals.centers)
@@ -168,32 +172,14 @@ function Makie.plot!(plot::BoxPlot)
     outliers = @lift($signals.outliers)
     t_segments = @lift($signals.t_segments)
     boxwidth = @lift($signals.boxwidth)
+    outlier_indices = @lift($signals.outlier_indices)
 
-    outliercolor = lift(plot[:outliercolor], plot[:color], centers, outliers, orientation) do outliercolor, color, centers, outliers, orientation
+    outliercolor = lift(plot[:outliercolor], plot[:color], outlier_indices) do outliercolor, color, outlier_indices
         if outliercolor === automatic
             color isa AbstractVector || return color
-            center_colors = Dict{eltype(centers), eltype(color)}()
-            for (col, center) in zip(color, centers)
-                center_colors[center] = col
-            end
-            if orientation == :vertical
-                outlier_colors = [center_colors[first(outlier)] for outlier in outliers]
-            else
-                outlier_colors = [center_colors[last(outlier)] for outlier in outliers]
-            end
-            return outlier_colors
+            return [color[i] for i in outlier_indices]
         elseif outliercolor isa AbstractVector
-            center_colors = Dict{eltype(centers), eltype(outliercolor)}()
-            for (col, center) in zip(outliercolor, centers)
-                center_colors[center] = col
-            end
-            if orientation == :vertical
-                outlier_colors = [center_colors[first(outlier)] for outlier in outliers]
-            else
-                outlier_colors = [center_colors[last(outlier)] for outlier in outliers]
-            end
-            return outlier_colors
-            return outliercolor
+            return [outliercolor[i] for i in outlier_indices]
         else
             return outliercolor
         end
