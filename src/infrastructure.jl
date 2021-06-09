@@ -76,10 +76,15 @@ function CairoScreen(scene::Scene; device_scaling_factor = 1, antialias = Cairo.
     return CairoScreen(scene, surf, ctx, nothing)
 end
 
+function get_type(surface::Cairo.CairoSurface)
+    return ccall((:cairo_surface_get_type, Cairo.libcairo), Cint, (Ptr{Nothing},), surface.ptr)
+end
+
 is_vector_backend(ctx::Cairo.CairoContext) = is_vector_backend(ctx.surface)
 
 function is_vector_backend(surf::Cairo.CairoSurface)
-    return surf isa Union{Cairo.CairoSVGSurface, Cairo.CairoPDFSurface, Cairo.CairoEPSSurface}
+    typ = get_type(surf)
+    return typ in (Cairo.CAIRO_SURFACE_TYPE_PDF, Cairo.CAIRO_SURFACE_TYPE_PS, Cairo.CAIRO_SURFACE_TYPE_SVG)
 end
 
 """
