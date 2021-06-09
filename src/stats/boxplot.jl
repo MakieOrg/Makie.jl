@@ -75,6 +75,7 @@ _flip_xy(r::Rect{2,T}) where {T} = Rect{2,T}(reverse(r.origin), reverse(r.widths
 
 function Makie.plot!(plot::BoxPlot)
     args = @extract plot (width, range, show_outliers, whiskerwidth, show_notch, orientation, x_gap, dodge, n_dodge, dodge_gap)
+
     signals = lift(
         plot[1],
         plot[2],
@@ -137,7 +138,7 @@ function Makie.plot!(plot::BoxPlot)
             push!(medians, q3)
             push!(boxmax, q4)
         end
-        
+
         # for horizontal boxplots just flip all components
         if orientation == :horizontal
             outlier_points = _flip_xy.(outlier_points)
