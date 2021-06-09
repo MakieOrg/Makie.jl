@@ -263,6 +263,8 @@ function render(atlas::TextureAtlas, glyph::Char, font, downsample=5, pad=6)
     # the target pixel size of our distance field
     pixelsize = PIXELSIZE_IN_ATLAS[]
     # we render the font `downsample` sizes times bigger
+    # Make sure the font doesn't have a nutated font matrix from e.g. Cairo
+    FreeTypeAbstraction.FreeType.FT_Set_Transform(font, C_NULL, C_NULL)
     bitmap, extent = renderface(font, glyph, pixelsize * downsample)
     # Our downsampeld & padded distancefield
     sd = sdistancefield(bitmap, downsample, pad)
