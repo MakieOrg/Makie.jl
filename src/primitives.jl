@@ -493,8 +493,6 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
 
     interp = to_value(get(primitive, :interpolate, true))
 
-    # theoretically, we could restrict the non-interpolation vector graphics hack to actual vector
-    # graphics backends, but it's not directly visible from screen.surface what type we have
     weird_cairo_limit = (2^15) - 23
     # Vector backends don't support FILTER_NEAREST for interp == false, so in that case we also need to draw rects
     if xs isa AbstractRange && ys isa AbstractRange && !(is_vector_backend(ctx) && !interp)
@@ -525,6 +523,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
         Cairo.restore(ctx)
 
     else
+        # We need to draw rectangles for vector backends, or irregular grids
         if interp
             error("Interpolation for non gridded heatmaps/images isn't supported right now. Please use interpolate=false for this plot")
         end
