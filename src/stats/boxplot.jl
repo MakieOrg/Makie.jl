@@ -79,8 +79,9 @@ function Makie.plot!(plot::BoxPlot)
     signals = lift(
         plot[1],
         plot[2],
+        plot[:color],
         args...,
-    ) do x, y, width, range, show_outliers, whiskerwidth, show_notch, orientation, x_gap, dodge, n_dodge, dodge_gap
+    ) do x, y, color, width, range, show_outliers, whiskerwidth, show_notch, orientation, x_gap, dodge, n_dodge, dodge_gap
         x̂, boxwidth = xw_from_dodge(x, width, 1.0, x_gap, dodge, n_dodge, dodge_gap)
         if !(whiskerwidth == :match || whiskerwidth >= 0)
             error("whiskerwidth must be :match or a positive number. Found: $whiskerwidth")
@@ -95,7 +96,7 @@ function Makie.plot!(plot::BoxPlot)
         notchmax = Float32[]
         t_segments = Point2f0[]
         outlier_indices = Int[]
-        boxcolor = eltype(plot[:color].val)[]
+        boxcolor = eltype(color)[]
         for (i, (center, idxs)) in enumerate(StructArrays.finduniquesorted(x̂))
             values = view(y, idxs)
 
@@ -180,13 +181,11 @@ function Makie.plot!(plot::BoxPlot)
     boxcolor = @lift($signals.boxcolor)
 
     outliercolor = lift(plot[:outliercolor], plot[:color], outlier_indices) do outliercolor, color, outlier_indices
-        if outliercolor === automatic
-            color isa AbstractVector || return color
-            return [color[i] for i in outlier_indices]
-        elseif outliercolor isa AbstractVector
-            return outliercolor[outlier_indices]
-        else
-            return outliercolor
+        c = outliercolor === automatic ? color : outliercolor
+        if c isa AbstractVector
+            return c[outlier_indices]
+        else 
+            return c
         end
     end
 
