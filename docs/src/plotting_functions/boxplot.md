@@ -29,8 +29,14 @@ dodge = rand(1:2, 1000)
 boxplot(xs, ys, dodge = dodge, show_notch = true, color = dodge)
 ```
 
-Colors are customizable, the `color` attribute refers to the color of the boxes, `outliercolor` refers to the color of the outliers. If not scalars (e.g. :red), these attributes
-must have the length of the data. If `outliercolor` is not provided, outliers will have the same color as their box, as shown above. The `color` of each data point in the same box must have the same color, use the `outliercolor` to customize the outliers.
+Colors are customizable. The `color` attribute refers to the color of the boxes, whereas
+`outliercolor` refers to the color of the outliers. If not scalars (e.g. `:red`), these attributes
+must have the length of the data. If `outliercolor` is not provided, outliers will have the
+same color as their box, as shown above.
+
+!!! note
+    For all indices corresponding to points within the same box, `color` (but not `outliercolor`)
+    must have the same value.
 
 ```@example
 using CairoMakie
