@@ -131,7 +131,7 @@ function Makie.plot!(plot::BoxPlot)
                 # using maximum and minimum values inside the limits
                 q1, q5 = extrema_nan(inside)
                 # register boxcolor
-                push!(boxcolor, getuniquevalue(plot[:color].val, idxs))
+                push!(boxcolor, getuniquevalue(color, idxs))
             end
 
             # whiskers
