@@ -35,14 +35,18 @@ Curves can be:
     )
 end
 
+function categorical_colors(cols::AbstractVector{<: Colorant}, categories::Integer)
+    if length(cols) < categories
+        error("Not enough colors for number of categories. Categories: $(categories), colors: $(length(cols))")
+    end
+    return to_colormap(cols)
+end
+
 function categorical_colors(cs::Union{String, Symbol}, categories::Integer)
     cs_string = string(cs)
     if cs_string in all_gradient_names
         cols = PlotUtils.get_colorscheme(Symbol(cs_string)).colors
-        if length(cols) < categories
-            error("Not enough colors for number of categories. Categories: $(categories), colors: $(length(cols))")
-        end
-        return to_colormap(cols)
+        categorical_colors(cols, categories)
     else
         error(
             """
