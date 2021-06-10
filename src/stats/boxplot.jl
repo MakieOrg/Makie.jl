@@ -95,6 +95,7 @@ function Makie.plot!(plot::BoxPlot)
         notchmax = Float32[]
         t_segments = Point2f0[]
         outlier_indices = Int[]
+        boxcolor = []
         for (i, (center, idxs)) in enumerate(StructArrays.finduniquesorted(x̂))
             values = view(y, idxs)
 
@@ -127,6 +128,8 @@ function Makie.plot!(plot::BoxPlot)
                 q1, q5 = extrema_nan(inside)
                 # register outlier box indices
                 append!(outlier_indices, fill(i, length(outlier_points)))
+                # register boxcolor
+                push!(boxcolor, getuniquevalue(plot[:color], idxs))
             end
 
             # whiskers
@@ -161,6 +164,7 @@ function Makie.plot!(plot::BoxPlot)
             t_segments = t_segments,
             boxwidth = boxwidth,
             outlier_indices = outlier_indices,
+            boxcolor = boxcolor,
         )
     end
     centers = @lift($signals.centers)
@@ -173,6 +177,7 @@ function Makie.plot!(plot::BoxPlot)
     t_segments = @lift($signals.t_segments)
     boxwidth = @lift($signals.boxwidth)
     outlier_indices = @lift($signals.outlier_indices)
+    boxcolor = @lift($signals.boxcolor)
 
     outliercolor = lift(plot[:outliercolor], plot[:color], outlier_indices) do outliercolor, color, outlier_indices
         if outliercolor === automatic
@@ -183,7 +188,7 @@ function Makie.plot!(plot::BoxPlot)
         else
             return outliercolor
         end
-    end   
+    end
 
     scatter!(
         plot,
@@ -204,7 +209,7 @@ function Makie.plot!(plot::BoxPlot)
     )
     crossbar!(
         plot,
-        color = plot[:color],
+        color = boxcolor,
         colorrange = plot[:colorrange],
         colormap = plot[:colormap],
         strokecolor = plot[:strokecolor],
