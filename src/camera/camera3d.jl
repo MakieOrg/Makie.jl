@@ -4,6 +4,7 @@ struct Camera3D <: AbstractCamera
     upvector::Node{Vec3f0}
 
     zoom_mult::Node{Float32}
+    fov::Node{Float32} # WGLMakie compat
     near::Node{Float32}
     far::Node{Float32}
     pulser::Node{Float64}
@@ -134,6 +135,7 @@ function Camera3D(scene; kwargs...)
         pop!(attr, :upvector,    Vec3f0(0, 0, 1)),
 
         Node(1f0),
+        Node(attr[:fov][]),
         Node(attr[:near][] === automatic ? 0.1f0 : attr[:near][]),
         Node(attr[:far][]  === automatic ? 100f0 : attr[:far][]),
         Node(-1.0),
@@ -522,12 +524,12 @@ end
 function update_cam!(scene::Scene, cam::Camera3D)
     @extractvalue cam (lookat, eyeposition, upvector)
 
-    zoom = norm(lookat - eyeposition)
     near = cam.near[]; far = cam.far[]
     aspect = Float32((/)(widths(scene.px_area[])...))
 
     if cam.attributes[:projectiontype][] == Perspective
         fov = clamp(cam.zoom_mult[] * cam.attributes[:fov][], 0.01f0, 175f0)
+        cam.fov[] = fov
         proj = perspectiveprojection(fov, aspect, near, far)
     else
         w = 0.5f0 * (1f0 + aspect) * cam.zoom_mult[]
