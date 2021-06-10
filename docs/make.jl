@@ -398,6 +398,7 @@ makedocs(
             "scenes.md",
             "lighting.md",
             "cameras.md",
+            "remote.md",
             "faq.md",
             "API Reference Makie" => "makie_api.md",
             "API Reference MakieLayout" => "makielayout/reference.md",
