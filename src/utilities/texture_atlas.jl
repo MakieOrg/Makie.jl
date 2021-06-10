@@ -128,14 +128,11 @@ begin
         end
     end
 
-    const global_texture_atlas = RefValue{TextureAtlas}()
+    const global_texture_atlas = Dict{Int, TextureAtlas}()
 
     function get_texture_atlas()
-        if isassigned(global_texture_atlas) && size(global_texture_atlas[]) == TEXTURE_RESOLUTION[]
-            global_texture_atlas[]
-        else
-            global_texture_atlas[] = cached_load() # initialize only on demand
-            global_texture_atlas[]
+        return get!(global_texture_atlas, PIXELSIZE_IN_ATLAS[]) do
+            return cached_load() # initialize only on demand
         end
     end
 end
@@ -263,7 +260,7 @@ function render(atlas::TextureAtlas, glyph::Char, font, downsample=5, pad=6)
     # the target pixel size of our distance field
     pixelsize = PIXELSIZE_IN_ATLAS[]
     # we render the font `downsample` sizes times bigger
-    # Make sure the font doesn't have a mutated font matrix from e.g. Cairo
+    # Make sure the font doesn't have a nutated font matrix from e.g. Cairo
     FreeTypeAbstraction.FreeType.FT_Set_Transform(font, C_NULL, C_NULL)
     bitmap, extent = renderface(font, glyph, pixelsize * downsample)
     # Our downsampeld & padded distancefield
