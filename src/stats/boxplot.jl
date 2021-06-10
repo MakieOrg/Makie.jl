@@ -95,7 +95,7 @@ function Makie.plot!(plot::BoxPlot)
         notchmax = Float32[]
         t_segments = Point2f0[]
         outlier_indices = Int[]
-        boxcolor = []
+        boxcolor = eltype(plot[:color].val)[]
         for (i, (center, idxs)) in enumerate(StructArrays.finduniquesorted(x̂))
             values = view(y, idxs)
 
@@ -118,6 +118,8 @@ function Makie.plot!(plot::BoxPlot)
                     if (value < (q2 - limit)) || (value > (q4 + limit))
                         if show_outliers
                             push!(outlier_points, (center, value))
+                            # register outlier box indices
+                            push!(outlier_indices, i)
                         end
                     else
                         push!(inside, value)
@@ -126,10 +128,8 @@ function Makie.plot!(plot::BoxPlot)
                 # change q1 and q5 to show outliers
                 # using maximum and minimum values inside the limits
                 q1, q5 = extrema_nan(inside)
-                # register outlier box indices
-                append!(outlier_indices, fill(i, length(outlier_points)))
                 # register boxcolor
-                push!(boxcolor, getuniquevalue(plot[:color], idxs))
+                push!(boxcolor, getuniquevalue(plot[:color].val, idxs))
             end
 
             # whiskers
