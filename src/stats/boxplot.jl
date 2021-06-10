@@ -96,7 +96,8 @@ function Makie.plot!(plot::BoxPlot)
         notchmax = Float32[]
         t_segments = Point2f0[]
         outlier_indices = Int[]
-        boxcolor = eltype(color)[]
+        T = color isa AbstractVector ? eltype(color) : typeof(color)
+        boxcolor = T[]
         for (i, (center, idxs)) in enumerate(StructArrays.finduniquesorted(x̂))
             values = view(y, idxs)
 
