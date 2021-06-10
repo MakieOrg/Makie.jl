@@ -114,12 +114,12 @@ function Makie.plot!(plot::BoxPlot)
             if Float64(range) != 0.0  # if the range is 0.0, the whiskers will extend to the data
                 limit = range * (q4 - q2)
                 inside = Float64[]
-                for value in values
+                for (value, idx) in zip(values,idxs)
                     if (value < (q2 - limit)) || (value > (q4 + limit))
                         if show_outliers
                             push!(outlier_points, (center, value))
                             # register outlier box indices
-                            push!(outlier_indices, i)
+                            push!(outlier_indices, idx)
                         end
                     else
                         push!(inside, value)
@@ -184,7 +184,7 @@ function Makie.plot!(plot::BoxPlot)
             color isa AbstractVector || return color
             return [color[i] for i in outlier_indices]
         elseif outliercolor isa AbstractVector
-            return [outliercolor[i] for i in outlier_indices]
+            return outliercolor[outlier_indices]
         else
             return outliercolor
         end
