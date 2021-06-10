@@ -462,7 +462,8 @@ function regularly_spaced_array_to_range(arr)
         if step < zero(step)
             m, M = M, m
         end
-        return range(m, stop=M; step)
+        # don't use stop=M, since that may not include M
+        return range(m; step, length=length(arr))
     else
         return arr
     end
@@ -487,7 +488,6 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
     else
         ys = regularly_spaced_array_to_range(ys)
     end
-
     model = primitive[:model][]
     imsize = (extrema_nan(xs), extrema_nan(ys))
 
