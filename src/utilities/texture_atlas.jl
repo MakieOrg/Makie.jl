@@ -242,14 +242,17 @@ function sdistancefield(img, downsample, pad)
     return Float16.(sdf(in_or_out, xres, yres) ./ downsample)
 end
 
-const font_render_callbacks = Function[]
+const font_render_callbacks = Dict{Int, Vector{Function}}()
 
 function font_render_callback!(f)
-    push!(font_render_callbacks, f)
+    funcs = get!(font_render_callbacks, PIXELSIZE_IN_ATLAS[], Function[])
+    push!(funcs, f)
 end
 
 function remove_font_render_callback!(f)
-    filter!(f2-> f2 != f, font_render_callbacks)
+    for (s, callbacks) in font_render_callbacks
+        filter!(f2-> f2 != f, callbacks)
+    end
 end
 
 function render(atlas::TextureAtlas, glyph::Char, font, downsample=5, pad=6)
@@ -270,7 +273,7 @@ function render(atlas::TextureAtlas, glyph::Char, font, downsample=5, pad=6)
     uv == nothing && error("texture atlas is too small. Resizing not implemented yet. Please file an issue at Makie if you encounter this") #TODO resize surface
     # write distancefield into texture
     atlas.data[uv.area] = sd
-    for f in font_render_callbacks
+    for f in get(font_render_callbacks, pixelsize, ())
         # update everyone who uses the atlas image directly (e.g. in GLMakie)
         f(sd, uv.area)
     end
