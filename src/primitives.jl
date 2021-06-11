@@ -481,7 +481,7 @@ function interpolation_flag(is_vector, interp, wpx, hpx, w, h)
     if interp
         if is_vector
             @warn("Using billinear filtering for vector backends, which can result in downsampling artifacts")
-            return Cairo.FILTER_BILLINEAR
+            return Cairo.FILTER_BILINEAR
         else
             return Cairo.FILTER_BEST
         end
