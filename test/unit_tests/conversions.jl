@@ -3,7 +3,8 @@ using Makie:
     convert_arguments,
     conversion_trait,
     convert_single_argument,
-    to_vertices
+    to_vertices,
+    categorical_colors
 
 @testset "Conversions" begin
 
@@ -174,6 +175,13 @@ end
         convert_arguments(Lines, [Point(1, 2), missing, Point(3, 4)]),
         (Point2f0[(1.0, 2.0), (NaN, NaN), (3.0, 4.0)],)
     )
+end
+
+@testset "categorical colors" begin
+    @test categorical_colors([to_color(:red)], 1) == [to_color(:red)]
+    @test categorical_colors([:red], 1) == [to_color(:red)]
+    @test_throws ErrorException categorical_colors([to_color(:red)], 2)
+    @test categorical_colors(:darktest, 1) == to_color.(Makie.PlotUtils.palette(:darktest))
 end
 
 @testset "colors" begin
