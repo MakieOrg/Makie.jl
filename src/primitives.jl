@@ -469,6 +469,35 @@ function regularly_spaced_array_to_range(arr)
     end
 end
 
+"""
+    interpolation_flag(is_vector, scene, interp, w, h)
+
+* is_vector: if we're using vector backend
+* interp: does the user want to interpolate?
+* wpx, hpx: projected size of the image in pixels, so the actual width in pixels on screen
+* w, h: size of image in pixels
+"""
+function interpolation_flag(is_vector, interp, wpx, hpx, w, h)
+    if interp
+        if is_vector
+            @warn("Using billinear filtering for vector backends, which can result in downsampling artifacts")
+            return Cairo.FILTER_BILLINEAR
+        else
+            return Cairo.FILTER_BEST
+        end
+    else
+        if wpx < w || hpx < h
+            # if size of image size in pixels is larger then the rectangle it gets drawn into,
+            # the pixels will be smaller than what ends up on screen, so one won't be able to see rectangles.
+            # In that case, we need to apply filtering, or we get artifacts from incorrectly downsampling!
+            return interpolation_flag(is_vector, true, wpx, hpx, w, h)
+        else
+            return Cairo.FILTER_NEAREST
+        end
+    end
+end
+
+
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap, Image})
     ctx = screen.context
     image = primitive[3][]
@@ -492,20 +521,24 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
     imsize = (extrema_nan(xs), extrema_nan(ys))
 
     interp = to_value(get(primitive, :interpolate, true))
-
     weird_cairo_limit = (2^15) - 23
+
+    # Debug attriubte we can set to disable fastpath
+    # probably shouldn't really be part of the interface
+    fast_path = to_value(get(primitive, :fastpath, true))
     # Vector backends don't support FILTER_NEAREST for interp == false, so in that case we also need to draw rects
-    if xs isa AbstractRange && ys isa AbstractRange && !(is_vector_backend(ctx) && !interp)
+    is_vector = is_vector_backend(ctx)
+    if fast_path && xs isa AbstractRange && ys isa AbstractRange && !(is_vector && !interp)
         # find projected image corners
         # this already takes care of flipping the image to correct cairo orientation
         xy = project_position(scene, Point2f0(first.(imsize)), model)
         xymax = project_position(scene, Point2f0(last.(imsize)), model)
         w, h = xymax .- xy
 
-        # FILTER_BEST doesn't work reliably with png backend, GAUSSIAN is not implemented
-        interp_flag = interp ? Cairo.FILTER_BILINEAR : Cairo.FILTER_NEAREST
-
         s = to_cairo_image(image, primitive)
+
+        interp_flag = interpolation_flag(is_vector, interp, abs(w), abs(h), s.width, s.height)
+
         if s.width > weird_cairo_limit || s.height > weird_cairo_limit
             error("Cairo stops rendering images bigger than $(weird_cairo_limit), which is likely a bug in Cairo. Please resample your image/heatmap with e.g. `ImageTransformations.imresize`")
         end
