@@ -76,6 +76,16 @@ function CairoScreen(scene::Scene; device_scaling_factor = 1, antialias = Cairo.
     return CairoScreen(scene, surf, ctx, nothing)
 end
 
+function get_type(surface::Cairo.CairoSurface)
+    return ccall((:cairo_surface_get_type, Cairo.libcairo), Cint, (Ptr{Nothing},), surface.ptr)
+end
+
+is_vector_backend(ctx::Cairo.CairoContext) = is_vector_backend(ctx.surface)
+
+function is_vector_backend(surf::Cairo.CairoSurface)
+    typ = get_type(surf)
+    return typ in (Cairo.CAIRO_SURFACE_TYPE_PDF, Cairo.CAIRO_SURFACE_TYPE_PS, Cairo.CAIRO_SURFACE_TYPE_SVG)
+end
 
 """
     CairoScreen(
@@ -319,7 +329,7 @@ function Makie.backend_show(x::CairoBackend, io::IO, ::MIME"application/postscri
     return screen
 end
 
-function Makie.backend_show(x::CairoBackend, io::IO, m::MIME"image/png", scene::Scene)
+function Makie.backend_show(x::CairoBackend, io::IO, ::MIME"image/png", scene::Scene)
 
     # multiply the resolution of the png with this factor for more or less detail
     # while relative line and font sizes are unaffected
