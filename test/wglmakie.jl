@@ -32,7 +32,7 @@ excludes = Set([
     "heatmaps & surface",
     "OldAxis + Surface"
 ])
-excludes2 = Set(["short_tests_83", "short_tests_78", "short_tests_40", "short_tests_13", "short_tests_5"])
+excludes2 = Set(["short_tests_83", "short_tests_78", "short_tests_40", "short_tests_13", "short_tests_5", "short_tests_41"])
 database = database_filtered!(excludes, excludes2)
 ReferenceTests.record_tests(database, recording_dir=recorded)
 ReferenceTests.reference_tests(recorded)

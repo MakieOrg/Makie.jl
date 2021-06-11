@@ -48,12 +48,12 @@ function limits_to_uvmesh(plot)
         uv = Buffer(lift(decompose_uv, rect))
     else
         function grid(x, y, z, trans)
-            g = map(CartesianIndices(z)) do i
+            g = map(CartesianIndices((length(x), length(y)))) do i
                 return Point3f0(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), 0.0)
             end
             return apply_transform(trans, vec(g))
         end
-        rect = lift(z -> Tesselation(Rect2D(0f0, 0f0, 1f0, 1f0), size(z)), pz)
+        rect = lift(z -> Tesselation(Rect2D(0f0, 0f0, 1f0, 1f0), size(z) .+ 1), pz)
         positions = Buffer(lift(grid, px, py, pz, transform_func_obs(plot)))
         faces = Buffer(lift(r -> decompose(GLTriangleFace, r), rect))
         uv = Buffer(lift(decompose_uv, rect))
