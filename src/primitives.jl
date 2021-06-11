@@ -470,7 +470,7 @@ function regularly_spaced_array_to_range(arr)
 end
 
 """
-    interpolation_flag(is_vector, scene, interp, w, h)
+    interpolation_flag(is_vector, interp, wpx, hpx, w, h)
 
 * is_vector: if we're using vector backend
 * interp: does the user want to interpolate?
@@ -523,9 +523,9 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
     interp = to_value(get(primitive, :interpolate, true))
     weird_cairo_limit = (2^15) - 23
 
-    # Debug attriubte we can set to disable fastpath
+    # Debug attribute we can set to disable fastpath
     # probably shouldn't really be part of the interface
-    fast_path = to_value(get(primitive, :fastpath, true))
+    fast_path = to_value(get(primitive, :fast_path, true))
     # Vector backends don't support FILTER_NEAREST for interp == false, so in that case we also need to draw rects
     is_vector = is_vector_backend(ctx)
     if fast_path && xs isa AbstractRange && ys isa AbstractRange && !(is_vector && !interp)
