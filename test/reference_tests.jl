@@ -1,28 +1,23 @@
 using ReferenceTests
-using ReferenceTests: @cell
+using ReferenceTests: @cell, nice_title
 
-using CairoMakie
-CairoMakie.activate!()
-recorded = joinpath(@__DIR__, "cairo_images")
-rm(recorded; force=true, recursive=true); mkdir(recorded)
-ReferenceTests.record_tests(recording_dir=recorded)
-# ReferenceTests.reference_tests(recorded)
+function database_filtered!(title_excludes = [], nice_title_excludes = []; functions=[])
+    database = ReferenceTests.load_database()
+    return filter(database) do (name, entry)
+        !(entry.title in title_excludes) &&
+        !(nice_title(entry) in nice_title_excludes) &&
+        !any(x-> x in entry.used_functions, functions)
+    end
+end
 
-# using WGLMakie
-# WGLMakie.activate!()
-# recorded = joinpath(@__DIR__, "wgl_images")
-# rm(recorded; force=true, recursive=true); mkdir(recorded)
-# ReferenceTests.record_tests(recording_dir=recorded)
-# ReferenceTests.reference_tests(recorded)
-
-using GLMakie
-GLMakie.activate!()
-recorded = joinpath(@__DIR__, "gl_images")
-rm(recorded; force=true, recursive=true); mkdir(recorded)
-ReferenceTests.record_tests(recording_dir=recorded)
-# ReferenceTests.reference_tests(ecorded)
-
-# needs GITHUB_TOKEN to be set:
-# ReferenceTests.upload_reference_images()
-# Needs a backend to actually have something recoreded:
-# ReferenceTests.reference_tests(recorded)
+@testset "reference tests" begin
+    @testset "cairomakie" begin
+        include("cairomakie.jl")
+    end
+    @testset "wglmakie" begin
+        include("wglmakie.jl")
+    end
+    @testset "glmakie" begin
+        include("glmakie.jl")
+    end
+end

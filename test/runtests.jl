@@ -1,5 +1,3 @@
-using Pkg
-
 using Test
 using MeshIO
 using StaticArrays

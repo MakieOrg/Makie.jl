@@ -631,12 +631,12 @@ function draw_mesh3D(
 
     # Mesh data
     # transform to view/camera space
-    vs = map(coordinates(mesh)) do v
+    vs = map(decompose(Point, mesh)) do v
         # Should v get a nan2zero?
         p4d = to_ndim(Vec4f0, scale .* to_ndim(Vec3f0, v, 0f0), 1f0)
         view * (model * p4d .+ to_ndim(Vec4f0, pos, 0f0))
     end
-    fs = faces(mesh)
+    fs = decompose(GLTriangleFace, mesh)
     uv = hasproperty(mesh, :uv) ? mesh.uv : nothing
     ns = map(n -> normalize(normalmatrix * n), normals(mesh))
     cols = per_face_colors(
@@ -782,7 +782,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Makie.MeshSca
         color = numbers_to_colors(color, primitive)
     end
 
-    m = normal_mesh(marker)
+    m = convert_attribute(marker, key"marker"(), key"meshscatter"())
     pos = primitive[1][]
     # For correct z-ordering we need to be in view/camera or screen space
     model = copy(model)

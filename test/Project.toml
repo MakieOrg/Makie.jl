@@ -2,6 +2,7 @@
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 CategoricalArrays = "324d7699-5711-5eae-9e2f-1d82baa6b597"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+ElectronDisplay = "d872a56f-244b-5cc9-b574-2017b5b909a8"
 GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
 ImageMagick = "6218d12a-5da1-5696-b52f-db25d2ecc6d1"

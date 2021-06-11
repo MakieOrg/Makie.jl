@@ -1195,12 +1195,12 @@ convert_attribute(value, ::key"isorange", ::key"volume") = Float32(value)
 
 function convert_attribute(value::Symbol, ::key"marker", ::key"meshscatter")
     if value == :Sphere
-        return Sphere(Point3f0(0), 1f0)
+        return normal_mesh(Sphere(Point3f0(0), 1f0))
     else
         error("Unsupported marker: $(value)")
     end
 end
 
 function convert_attribute(value::AbstractGeometry, ::key"marker", ::key"meshscatter")
-    return value
+    return normal_mesh(value)
 end
