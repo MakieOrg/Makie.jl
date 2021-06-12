@@ -5,7 +5,13 @@ src/.cache
 src/logo.png
 **/._*
 Manifest.toml
-!docs/Manifest.toml
 /build
 
 \.DS_Store
+CairoMakie/src/display.*
+
+WGLMakie/test/recorded/
+GLMakie/test/recorded/
+GLMakie/test/recorded_glmakie/
+CairoMakie/test/recorded/
+monorepo

@@ -23,4 +23,4 @@ jobs:
       - name: CompatHelper.main()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: julia -e 'using CompatHelper; CompatHelper.main()'
+        run: julia -e 'using CompatHelper; CompatHelper.main(; subdirs=["", "CairoMakie", "GLMakie", "MakieCore", "WGLMakie"])'

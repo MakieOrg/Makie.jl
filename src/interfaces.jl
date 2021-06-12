@@ -1,9 +1,5 @@
 not_implemented_for(x) = error("Not implemented for $(x). You might want to put:  `using Makie` into your code!")
 
-Attributes(x::AbstractPlot) = x.attributes
-
-default_theme(scene, T) = Attributes()
-
 function default_theme(scene)
     Attributes(
         # color = theme(scene, :color),
@@ -20,277 +16,6 @@ function default_theme(scene)
         lightposition = :eyeposition,
         nan_color = RGBAf0(0,0,0,0),
         ssao = false,
-        inspectable = theme(scene, :inspectable)
-    )
-end
-
-"""
-    `calculated_attributes!(trait::Type{<: AbstractPlot}, plot)`
-trait version of calculated_attributes
-"""
-calculated_attributes!(trait, plot) = nothing
-
-"""
-    `calculated_attributes!(plot::AbstractPlot)`
-Fill in values that can only be calculated when we have all other attributes filled
-"""
-calculated_attributes!(plot::T) where T = calculated_attributes!(T, plot)
-
-"""
-    image(x, y, image)
-    image(image)
-
-Plots an image on range `x, y` (defaults to dimensions).
-
-## Attributes
-$(ATTRIBUTES)
-"""
-@recipe(Image, x, y, image) do scene
-    Attributes(;
-        default_theme(scene)...,
-        colormap = [:black, :white],
-        colorrange = automatic,
-        interpolate = true,
-        fxaa = false,
-        lowclip = nothing,
-        highclip = nothing,
-        inspectable = theme(scene, :inspectable)
-    )
-end
-
-
-# could be implemented via image, but might be optimized specifically by the backend
-"""
-    heatmap(x, y, values)
-    heatmap(values)
-
-Plots a heatmap as an image on `x, y` (defaults to interpretation as dimensions).
-
-## Attributes
-$(ATTRIBUTES)
-"""
-@recipe(Heatmap, x, y, values) do scene
-    Attributes(;
-        default_theme(scene)...,
-        colormap = theme(scene, :colormap),
-        colorrange = automatic,
-        linewidth = 0.0,
-        interpolate = false,
-        levels = 1,
-        fxaa = true,
-        lowclip = nothing,
-        highclip = nothing,
-        inspectable = theme(scene, :inspectable)
-    )
-end
-
-"""
-    volume(volume_data)
-
-Plots a volume. Available algorithms are:
-* `:iso` => IsoValue
-* `:absorption` => Absorption
-* `:mip` => MaximumIntensityProjection
-* `:absorptionrgba` => AbsorptionRGBA
-* `:additive` => AdditiveRGBA
-* `:indexedabsorption` => IndexedAbsorptionRGBA
-
-## Attributes
-$(ATTRIBUTES)
-"""
-@recipe(Volume, x, y, z, volume) do scene
-    Attributes(;
-        default_theme(scene)...,
-        algorithm = :mip,
-        isovalue = 0.5,
-        isorange = 0.05,
-        color = nothing,
-        colormap = theme(scene, :colormap),
-        colorrange = (0, 1),
-        fxaa = true,
-        inspectable = theme(scene, :inspectable)
-    )
-end
-
-"""
-    surface(x, y, z)
-
-Plots a surface, where `(x, y)`  define a grid whose heights are the entries in `z`.
-`x` and `y` may be `Vectors` which define a regular grid, **or** `Matrices` which define an irregular grid.
-
-## Attributes
-$(ATTRIBUTES)
-"""
-@recipe(Surface, x, y, z) do scene
-    Attributes(;
-        default_theme(scene)...,
-        color = nothing,
-        colormap = theme(scene, :colormap),
-        colorrange = automatic,
-        shading = true,
-        fxaa = true,
-        lowclip = nothing,
-        highclip = nothing,
-        invert_normals = false,
-        inspectable = theme(scene, :inspectable)
-    )
-end
-
-"""
-    lines(positions)
-    lines(x, y)
-    lines(x, y, z)
-
-Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `positions`.
-
-!!! tip
-    You can separate segments by inserting `NaN`s.
-
-## Attributes
-$(ATTRIBUTES)
-"""
-@recipe(Lines, positions) do scene
-    Attributes(;
-        default_theme(scene)...,
-        linewidth = theme(scene, :linewidth),
-        color = theme(scene, :linecolor),
-        colormap = theme(scene, :colormap),
-        colorrange = automatic,
-        linestyle = nothing,
-        fxaa = false,
-        cycle = [:color],
-        inspectable = theme(scene, :inspectable)
-    )
-end
-
-"""
-    linesegments(positions)
-    linesegments(x, y)
-    linesegments(x, y, z)
-
-Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
-
-## Attributes
-$(ATTRIBUTES)
-"""
-@recipe(LineSegments, positions) do scene
-    default_theme(scene, Lines)
-end
-
-# alternatively, mesh3d? Or having only mesh instead of poly + mesh and figure out 2d/3d via dispatch
-"""
-    mesh(x, y, z)
-    mesh(mesh_object)
-    mesh(x, y, z, faces)
-    mesh(xyz, faces)
-
-Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [GeometryBasics.jl](https://github.com/JuliaGeometry/GeometryBasics.jl).
-
-## Attributes
-$(ATTRIBUTES)
-"""
-@recipe(Mesh, mesh) do scene
-    Attributes(;
-        default_theme(scene)...,
-        color = :black,
-        colormap = theme(scene, :colormap),
-        colorrange = automatic,
-        interpolate = false,
-        shading = true,
-        fxaa = true,
-        inspectable = theme(scene, :inspectable),
-        cycle = [:color => :patchcolor],
-    )
-end
-
-"""
-    scatter(positions)
-    scatter(x, y)
-    scatter(x, y, z)
-
-Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
-
-## Attributes
-$(ATTRIBUTES)
-"""
-@recipe(Scatter, positions) do scene
-    Attributes(;
-        default_theme(scene)...,
-        color = theme(scene, :markercolor),
-        colormap = theme(scene, :colormap),
-        colorrange = automatic,
-        marker = theme(scene, :marker),
-        markersize = theme(scene, :markersize),
-
-        strokecolor = theme(scene, :markerstrokecolor),
-        strokewidth = theme(scene, :markerstrokewidth),
-        glowcolor = RGBA(0, 0, 0, 0),
-        glowwidth = 0.0,
-
-        rotations = Billboard(),
-        marker_offset = automatic,
-        transform_marker = false, # Applies the plots transformation to marker
-        uv_offset_width = Vec4f0(0),
-        distancefield = nothing,
-        markerspace = Pixel,
-        fxaa = false,
-        cycle = [:color],
-        inspectable = theme(scene, :inspectable)
-    )
-end
-
-"""
-    meshscatter(positions)
-    meshscatter(x, y)
-    meshscatter(x, y, z)
-
-Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar to `scatter`).
-`markersize` is a scaling applied to the primitive passed as `marker`.
-
-## Attributes
-$(ATTRIBUTES)
-"""
-@recipe(MeshScatter, positions) do scene
-    Attributes(;
-        default_theme(scene)...,
-        color = :black,
-        colormap = theme(scene, :colormap),
-        colorrange = automatic,
-        marker = Sphere(Point3f0(0), 1f0),
-        markersize = 0.1,
-        rotations = Quaternionf0(0, 0, 0, 1),
-        # markerspace = relative,
-        shading = true,
-        fxaa = true,
-        inspectable = theme(scene, :inspectable),
-        cycle = [:color],
-    )
-end
-
-"""
-    text(string)
-
-Plots a text.
-
-## Attributes
-$(ATTRIBUTES)
-"""
-@recipe(Text, text) do scene
-    Attributes(;
-        default_theme(scene)...,
-        color = theme(scene, :textcolor),
-        font = theme(scene, :font),
-        strokecolor = (:black, 0.0),
-        strokewidth = 0,
-        align = (:left, :bottom),
-        rotation = 0.0,
-        textsize = 20,
-        position = Point2f0(0),
-        justification = automatic,
-        lineheight = 1.0,
-        space = :screen, # or :data
-        offset = Point2f0(0, 0),
-        _glyphlayout = nothing,
         inspectable = theme(scene, :inspectable)
     )
 end
@@ -546,20 +271,6 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     plot_obj
 end
 
-
-
-"""
-    `plottype(plot_args...)`
-
-Any custom argument combination that has a preferred way to be plotted should overload this.
-e.g.:
-```example
-    # make plot(rand(5, 5, 5)) plot as a volume
-    plottype(x::Array{<: AbstractFloat, 3}) = Volume
-```
-"""
-plottype(plot_args...) = Combined{Any, Tuple{typeof.(to_value.(plot_args))...}} # default to dispatch to type recipes!
-
 ## generic definitions
 # If the Combined has no plot func, calculate them
 plottype(::Type{<: Combined{Any}}, argvalues...) = plottype(argvalues...)
@@ -596,20 +307,6 @@ end
 """
 plottype(P1::Type{<: Combined{Any}}, P2::Type{<: Combined{T}}) where T = P2
 plottype(P1::Type{<: Combined{T}}, P2::Type{<: Combined}) where T = P1
-
-
-"""
-Returns the Combined type that represents the signature of `args`.
-"""
-function Plot(args::Vararg{Any, N}) where N
-    Combined{Any, <: Tuple{args...}}
-end
-Base.@pure function Plot(::Type{T}) where T
-    Combined{Any, <: Tuple{T}}
-end
-Base.@pure function Plot(::Type{T1}, ::Type{T2}) where {T1, T2}
-    Combined{Any, <: Tuple{T1, T2}}
-end
 
 # all the plotting functions that get a plot type
 const PlotFunc = Union{Type{Any}, Type{<: AbstractPlot}}
@@ -650,20 +347,12 @@ function plot!(P::PlotFunc, scene::SceneLike, attrs::Attributes, args...; kw_att
 end
 ######################################################################
 
-# Register plot / plot! using the Any type as PlotType.
-# This is done so that plot(args...) / plot!(args...) can by default go
-# through a pipeline where the appropriate PlotType is determined
-# from the input arguments themselves.
-eval(default_plot_signatures(:plot, :plot!, :Any))
-
 # plots to scene
-
-plotfunc(::Combined{F}) where F = F
 
 """
 Main plotting signatures that plot/plot! route to if no Plot Type is given
 """
-function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, args...; kw_attributes...)
+function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attributes, args...; kw_attributes...)
     attributes = merge!(Attributes(kw_attributes), attributes)
     argvalues = to_value.(args)
     PreType = plottype(P, argvalues...)
@@ -807,18 +496,9 @@ function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, input::NTu
     return plot_object
 end
 
-function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, args...)
-    # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
-    constr = plottype(P, args...)
-    plot_object = constr(scene, attributes, args)
-    # call user defined recipe overload to fill the plot type
-    plot!(plot_object)
-    push!(scene.plots, plot_object)
-    plot_object
-end
-
 function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, input::NTuple{N,Node}, args::Node) where {N}
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
+
     plot_object = P(scene, attributes, input, args)
     # call user defined recipe overload to fill the plot type
     plot!(plot_object)

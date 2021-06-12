@@ -18,7 +18,7 @@ If you set the attribute `snap = false`, the slider will move continously while 
 
 ```@example
 using GLMakie
-
+GLMakie.activate!() # hide
 fig = Figure()
 
 ax = Axis(fig[1, 1])

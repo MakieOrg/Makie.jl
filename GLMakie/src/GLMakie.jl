@@ -1,0 +1,54 @@
+module GLMakie
+
+using ModernGL, FixedPointNumbers, Colors, GeometryBasics, StaticArrays
+using Makie, FileIO
+
+using Makie: @key_str, Key, broadcast_foreach, to_ndim, NativeFont
+using Makie: Scene, Lines, Text, Image, Heatmap, Scatter
+using Makie: convert_attribute, @extractvalue, LineSegments
+using Makie: @get_attribute, to_value, to_colormap, extrema_nan
+using Makie: ClosedInterval, (..)
+using Makie: inline!
+using ShaderAbstractions
+using FreeTypeAbstraction
+
+using Base: RefValue
+import Base: push!, isopen, show
+using Base.Iterators: repeated, drop
+
+using LinearAlgebra
+
+for name in names(Makie)
+    @eval import Makie: $(name)
+    @eval export $(name)
+end
+export inline!
+
+struct GLBackend <: Makie.AbstractBackend
+end
+
+loadshader(name) = normpath(joinpath(@__DIR__, "..", "assets", "shader", name))
+
+# don't put this into try catch, to not mess with normal errors
+include("gl_backend.jl")
+
+function activate!(use_display=true)
+    b = GLBackend()
+    Makie.register_backend!(b)
+    Makie.set_glyph_resolution!(Makie.High)
+    Makie.current_backend[] = b
+    Makie.inline!(!use_display)
+end
+
+function __init__()
+    activate!()
+end
+
+export set_window_config!
+
+if Base.VERSION >= v"1.4.2"
+    include("precompile.jl")
+    _precompile_()
+end
+
+end

@@ -35,7 +35,7 @@ Here are two examples with the scatter function (take care to create single-argu
 
 ```@example
 using GLMakie
-
+GLMakie.activate!() # hide
 # FigureAxisPlot takes figure and axis keywords
 fig, ax, p = lines(cumsum(randn(1000)),
     figure = (resolution = (1000, 600),),
@@ -77,7 +77,7 @@ If a GridLayout along the nesting levels doesn't exist, yet, it is created autom
 
 ```@example
 using GLMakie
-
+GLMakie.activate!() # hide
 fig = Figure()
 
 # first row, first column
@@ -110,7 +110,7 @@ If it's not the case, the function will error.
 
 ```@example
 using GLMakie
-
+GLMakie.activate!() # hide
 fig = Figure()
 
 lines(fig[1, 1], 1.0..10, sin, color = :blue)

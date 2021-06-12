@@ -19,8 +19,7 @@ If `startvalues === Makie.automatic`, the full interval will be selected (this i
 If you set the attribute `snap = false`, the slider will move continously while dragging and only jump to the closest available values when releasing the mouse.
 
 ```@example
-using GLMakie
-using CairoMakie # hide
+using CairoMakie
 Makie.inline!(true) # hide
 CairoMakie.activate!() # hide
 
