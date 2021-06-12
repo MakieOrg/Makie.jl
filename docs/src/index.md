@@ -6,7 +6,7 @@ Makie is a high-performance, extendable, and multi-platform plotting ecosystem f
 
 ## Installation and Import
 
-Add one or more of the Makie backend packages [`GLMakie.jl`](https://github.com/JuliaPlots/GLMakie.jl) (OpenGL), [`CairoMakie.jl`](https://github.com/JuliaPlots/CairoMakie.jl) (Cairo), or [`WGLMakie.jl`](https://github.com/JuliaPlots/WGLMakie.jl) (WebGL).
+Add one or more of the Makie backend packages [`GLMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie) (OpenGL), [`CairoMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/CairoMakie) (Cairo), or [`WGLMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/WGLMakie) (WebGL).
 
 ```julia
 ]add GLMakie
@@ -54,9 +54,9 @@ Markdown.parse("""
 | Package                                                        | Description                                                                                         |
 | :------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------- |
 | [`Makie.jl`](https://github.com/JuliaPlots/Makie.jl)           | Defines all infrastructure objects which can be visualized using one of the three backend packages. |
-| [`GLMakie.jl`](https://github.com/JuliaPlots/GLMakie.jl)       | GPU-powered, interactive 2D and 3D plotting in standalone `GLFW.jl` windows.                        |
-| [`CairoMakie.jl`](https://github.com/JuliaPlots/CairoMakie.jl) | `Cairo.jl` based, non-interactive 2D backend for publication-quality vector graphics.               |
-| [`WGLMakie.jl`](https://github.com/JuliaPlots/WGLMakie.jl)     | WebGL-based interactive 2D and 3D plotting that runs within browsers.                               |
+| [`GLMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie)       | GPU-powered, interactive 2D and 3D plotting in standalone `GLFW.jl` windows.                        |
+| [`CairoMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/CairoMakie) | `Cairo.jl` based, non-interactive 2D backend for publication-quality vector graphics.               |
+| [`WGLMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/WGLMakie)     | WebGL-based interactive 2D and 3D plotting that runs within browsers.                               |
 
 The differences between backends are explained in more details under [Backends & Output](@ref).
 

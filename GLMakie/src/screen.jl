@@ -338,7 +338,7 @@ function Screen(;
             This likely means, you don't have an OpenGL capable Graphic Card,
             or you don't have an OpenGL 3.3 capable video driver installed.
             Have a look at the troubleshooting section in the GLMakie readme:
-            https://github.com/JuliaPlots/GLMakie.jl#troubleshooting-opengl.
+            https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie#troubleshooting-opengl.
         """)
         rethrow(e)
     end

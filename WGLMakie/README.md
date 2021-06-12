@@ -1,34 +1,13 @@
-![CI](https://github.com/JuliaPlots/WGLMakie.jl/workflows/CI/badge.svg)
-[![Codecov](https://codecov.io/gh/JuliaPlots/WGLMakie.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaPlots/WGLMakie.jl)
-
 WGLMakie is a WebGL backend for the [Makie.jl](https://www.github.com/JuliaPlots/Makie.jl) plotting package, implemented using Three.js.
 
-Backend specific docs, for creating interactive and static html pages:
-
-[![](https://img.shields.io/badge/docs-stable-blue.svg)](http://juliaplots.org/WGLMakie.jl/stable/)
-[![](https://img.shields.io/badge/docs-master-blue.svg)](http://juliaplots.org/WGLMakie.jl/dev/)
-
-# Installation
-
-```julia
-using Pkg
-pkg"add WGLMakie Makie"
-```
-
-## Teardown (if you want to uninstall)
-
-```julia
-using Pkg
-pkg"rm WGLMakie"
-```
+Read the docs for Makie and it's backends [here](http://makie.juliaplots.org/.dev)
 
 # Usage
 
 Now, it should just work like Makie:
 
 ```julia
-using Makie, WGLMakie
-
+using WGLMakie
 scatter(rand(4))
 ```
 

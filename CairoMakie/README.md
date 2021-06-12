@@ -2,25 +2,8 @@
 
 The Cairo Backend for Makie
 
-![CI](https://github.com/JuliaPlots/CairoMakie.jl/workflows/CI/badge.svg)
-[![codecov](https://codecov.io/gh/JuliaPlots/CairoMakie.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaPlots/CairoMakie.jl)
+Read the docs for Makie and it's backends [here](http://makie.juliaplots.org/.dev)
 
-## Usage
-
-To add CairoMakie to your environment, simply run the following in the REPL:
-
-```julia
-]add CairoMakie
-```
-
-If you are using CairoMakie and GLMakie together, you can use each backend's `activate!` function to switch between them.
-
-```julia
-GLMakie.activate!()
-# use GLMakie interactively
-CairoMakie.activate!()
-# save the scene as a vector graphic
-```
 
 ## Issues
 

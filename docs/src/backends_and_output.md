@@ -7,9 +7,9 @@ There are three main backends which concretely implement all abstract rendering 
 
 | Package                                                        | Description                                                                           |
 | :------------------------------------------------------------- | :------------------------------------------------------------------------------------ |
-| [`GLMakie.jl`](https://github.com/JuliaPlots/GLMakie.jl)       | GPU-powered, interactive 2D and 3D plotting in standalone `GLFW.jl` windows.          |
-| [`CairoMakie.jl`](https://github.com/JuliaPlots/CairoMakie.jl) | `Cairo.jl` based, non-interactive 2D backend for publication-quality vector graphics. |
-| [`WGLMakie.jl`](https://github.com/JuliaPlots/WGLMakie.jl)     | WebGL-based interactive 2D and 3D plotting that runs within browsers.                 |
+| [`GLMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie)       | GPU-powered, interactive 2D and 3D plotting in standalone `GLFW.jl` windows.          |
+| [`CairoMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/CairoMakie) | `Cairo.jl` based, non-interactive 2D backend for publication-quality vector graphics. |
+| [`WGLMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/WGLMakie)     | WebGL-based interactive 2D and 3D plotting that runs within browsers.                 |
 
 ### Activating Backends
 
@@ -22,7 +22,7 @@ using WGLMakie
 WGLMakie.activate!()
 ```
 
-## [GLMakie](https://github.com/JuliaPlots/GLMakie.jl)
+## [GLMakie](https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie)
 
 GLMakie is the native, desktop-based backend, and is the most feature-complete.
 It requires an OpenGL enabled graphics card with OpenGL version 3.3 or higher.
@@ -46,7 +46,7 @@ set_window_config!(;
 )
 ```
 
-## [CairoMakie](https://github.com/JuliaPlots/CairoMakie.jl)
+## [CairoMakie](https://github.com/JuliaPlots/Makie.jl/tree/master/CairoMakie)
 
 CairoMakie uses Cairo.jl to draw vector graphics to SVG and PDF.
 You should use it if you want to achieve the highest-quality plots for publications, as the rendering process of the GL backends works via bitmaps and is geared more towards speed than pixel-perfection.
@@ -94,7 +94,7 @@ The z-values of 3D plots will have no effect and will be projected flat onto the
 Z-layering is approximated by sorting all plot objects by their z translation value before drawing, after that by parent scene and then insertion order.
 Therefore, if you want to draw something on top of something else, but it ends up below, try translating it forward via `translate!(obj, 0, 0, some_positive_z_value)`.
 
-## [WGLMakie](https://github.com/JuliaPlots/WGLMakie.jl)
+## [WGLMakie](https://github.com/JuliaPlots/Makie.jl/tree/master/WGLMakie)
 
 WGLMakie is the Web-based backend, and is still experimental (though relatively feature-complete). Only serving it on a webpage or in Pluto.jl / Ijulia are currently supported. VSCode integration should come soon.
 
