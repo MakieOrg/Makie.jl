@@ -1,20 +1,12 @@
-using Pkg
 using GLMakie, Test
 using GLMakie.FileIO
 using GLMakie.Makie
 using GLMakie.GeometryBasics
 using GLMakie.GeometryBasics: origin
 using ImageMagick
-# ImageIO seems broken on 1.6 ... and there doesn't
-# seem to be a clean way anymore to force not to use a loader library?
-filter!(x-> x !== :ImageIO, FileIO.sym2saver[:PNG])
-filter!(x-> x !== :ImageIO, FileIO.sym2loader[:PNG])
-
 # run the unit test suite
 include("unit_tests.jl")
 
-path = normpath(joinpath(dirname(pathof(Makie)), "..", "test", "ReferenceTests"))
-Pkg.develop(PackageSpec(path = path))
 using ReferenceTests
 using ReferenceTests: @cell
 
