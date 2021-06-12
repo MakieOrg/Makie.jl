@@ -10,7 +10,7 @@ Manifest.toml
 \.DS_Store
 CairoMakie/src/display.*
 
-test/cairo_images/
-test/gl_images/
-test/wgl_images/
+WGLMakie/test/recorded/
+GLMakie/test/recorded/
+CairoMakie/test/recorded/
 monorepo

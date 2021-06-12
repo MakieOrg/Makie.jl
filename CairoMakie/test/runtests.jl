@@ -13,10 +13,9 @@ using CairoMakie
     end
 end
 
-path = normpath(joinpath(dirname(pathof(Makie)), "..", "test", "ReferenceTests"))
-Pkg.develop(PackageSpec(path=path))
 using ReferenceTests
-using ReferenceTests: nice_title
+using ReferenceTests: database_filtered
+
 CairoMakie.activate!(type = "png")
 
 excludes = Set([
@@ -62,20 +61,10 @@ excludes = Set([
     # markers too big, close otherwise, needs to be assimilated with glmakie
     "Unicode Marker",
 ])
+excludes2 = Set(["short_tests_90", "short_tests_111", "short_tests_35", "short_tests_13", "short_tests_3"])
 
-database = ReferenceTests.load_database()
-
-filter!(database) do (name, entry)
-    !(entry.title in excludes) &&
-    !(:volume in entry.used_functions) &&
-    !(:volume! in entry.used_functions) &&
-    !(:uv_mesh in entry.used_functions) &&
-    nice_title(entry) !== "short_tests_90" &&
-    nice_title(entry) !== "short_tests_111" &&
-    nice_title(entry) !== "short_tests_35" &&
-    nice_title(entry) !== "short_tests_13" &&
-    nice_title(entry) !== "short_tests_3"
-end
+functions = [:volume, :volume!, :uv_mesh]
+database = database_filtered(excludes, excludes2, functions=functions)
 
 recorded = joinpath(@__DIR__, "recorded")
 rm(recorded; force=true, recursive=true); mkdir(recorded)

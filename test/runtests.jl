@@ -11,5 +11,4 @@ using Makie.FileIO
 using Makie.IntervalSets
 using GeometryBasics: Pyramid
 
-include("reference_tests.jl")
 include("unit_tests/runtests.jl")

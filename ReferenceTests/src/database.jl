@@ -84,3 +84,12 @@ function load_database()
     include(joinpath(@__DIR__, "tests/short_tests.jl"))
     return DATABASE
 end
+
+function database_filtered(title_excludes = [], nice_title_excludes = []; functions=[])
+    database = ReferenceTests.load_database()
+    return filter(database) do (name, entry)
+        !(entry.title in title_excludes) &&
+        !(nice_title(entry) in nice_title_excludes) &&
+        !any(x-> x in entry.used_functions, functions)
+    end
+end
