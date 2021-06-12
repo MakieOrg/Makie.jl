@@ -1,4 +1,4 @@
-name: CI
+name: Makie CI
 on:
   pull_request:
     paths-ignore:
@@ -49,7 +49,7 @@ jobs:
         run: |
           using Pkg;
           # dev mono repo versions
-          pkg"dev . MakieCore CairoMakie WGLMakie GLMakie ReferenceTests"
+          pkg"dev . MakieCore"
           Pkg.test("Makie"; coverage=true)
 
       - uses: julia-actions/julia-processcoverage@v1
