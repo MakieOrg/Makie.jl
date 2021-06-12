@@ -12,5 +12,6 @@ CairoMakie/src/display.*
 
 WGLMakie/test/recorded/
 GLMakie/test/recorded/
+GLMakie/test/recorded_glmakie/
 CairoMakie/test/recorded/
 monorepo

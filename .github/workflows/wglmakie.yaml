@@ -34,16 +34,15 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
+      - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
       - name: Install Julia dependencies
         shell: julia --project=monorepo {0}
         run: |
           using Pkg;
           # dev mono repo versions
           pkg"dev . MakieCore WGLMakie ReferenceTests"
-      - name: Run headless test
-        uses: GabrielBB/xvfb-action@v1
-        with:
-          run: julia --project=monorepo -e 'using Pkg; Pkg.test("WGLMakie", coverage=true)'
+      - name: Run the tests
+        run: DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --project=monorepo -e 'using Pkg; Pkg.test("WGLMakie", coverage=true)'
       - name: Upload test Artifacts
         uses: actions/upload-artifact@v2
         with:
