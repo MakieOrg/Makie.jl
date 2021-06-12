@@ -187,7 +187,7 @@ The type parameter of that type is a Tuple describing the argument types for whi
 Note that the input arguments we receive inside the `plot!` method, which we can extract by indexing into the `StockChart`, are automatically converted to Observables by Makie.
 
 This means that we must construct our plotting function in a dynamic way so that it will update itself whenever the input observables change.
-This can be a bit trickier than recipes you might now from other plotting packages which produce mostly static plots.
+This can be a bit trickier than recipes you might know from other plotting packages which produce mostly static plots.
 
 ```@example stocks
 function Makie.plot!(
@@ -229,7 +229,7 @@ function Makie.plot!(
         colors[] = colors[]
     end
 
-    # connect `update_plot` so that it is called whenver `times`
+    # connect `update_plot` so that it is called whenever `times`
     # or `stockvalues` change
     Makie.Observables.onany(update_plot, times, stockvalues)
 
