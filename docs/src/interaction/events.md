@@ -110,10 +110,10 @@ For example we may react to specific keys being pressed or held with
 ```julia
 on(events(fig).keyboardbutton) do event
     if event.action in (Keyboard.press, Keyboard.repeat)
-        event.button == Keyboard.left   && move_left()
-        event.button == Keyboard.up     && move_up()
-        event.button == Keyboard.right  && move_right()
-        event.button == Keyboard.down   && move_down()
+        event.key == Keyboard.left   && move_left()
+        event.key == Keyboard.up     && move_up()
+        event.key == Keyboard.right  && move_right()
+        event.key == Keyboard.down   && move_down()
     end
     # Let the event reach other listeners
     return false
