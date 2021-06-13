@@ -229,7 +229,6 @@ function Base.getproperty(e::Events, field::Symbol)
     end
 end
 
-
 mutable struct Camera
     pixel_space::Node{Mat4f0}
     view::Node{Mat4f0}
@@ -242,7 +241,6 @@ end
 
 """
 Holds the transformations for Scenes.
-
 ## Fields
 $(TYPEDFIELDS)
 """
@@ -263,62 +261,6 @@ struct Transformation <: Transformable
         )
     end
 end
-
-struct Combined{Typ, T} <: ScenePlot{Typ}
-    parent::SceneLike
-    transformation::Transformation
-    attributes::Attributes
-    input_args::Tuple
-    converted::Tuple
-    plots::Vector{AbstractPlot}
-end
-
-function Base.show(io::IO, plot::Combined)
-    print(io, typeof(plot))
-end
-
-parent(x::AbstractPlot) = x.parent
-
-function func2string(func::F) where F <: Function
-    string(F.name.mt.name)
-end
-
-plotkey(::Type{<: AbstractPlot{Typ}}) where Typ = Symbol(lowercase(func2string(Typ)))
-plotkey(::T) where T <: AbstractPlot = plotkey(T)
-
-plotfunc(::Type{<: AbstractPlot{Func}}) where Func = Func
-plotfunc(::T) where T <: AbstractPlot = plotfunc(T)
-plotfunc(f::Function) = f
-
-func2type(x::T) where T = func2type(T)
-func2type(x::Type{<: AbstractPlot}) = x
-func2type(f::Function) = Combined{f}
-
-
-"""
-    Billboard([angle::Real])
-    Billboard([angles::Vector{<: Real}])
-
-Billboard attribute to always have a primitive face the camera.
-Can be used for rotation.
-"""
-struct Billboard{T <: Union{Float32, Vector{Float32}}}
-    rotation::T
-end
-Billboard() = Billboard(0f0)
-Billboard(angle::Real) = Billboard(Float32(angle))
-Billboard(angles::Vector) = Billboard(Float32.(angles))
-
-"""
-Type to indicate that an attribute will get calculated automatically
-"""
-struct Automatic end
-
-"""
-Singleton instance to indicate that an attribute will get calculated automatically
-"""
-const automatic = Automatic()
-
 
 """
 `PlotSpec{P<:AbstractPlot}(args...; kwargs...)`

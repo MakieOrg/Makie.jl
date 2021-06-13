@@ -10,7 +10,7 @@ or disable properties of an interactive plot.
 
 ```@example
 using GLMakie
-
+GLMakie.activate!() # hide
 fig = Figure()
 
 ax = Axis(fig[1, 1])

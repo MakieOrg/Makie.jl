@@ -278,7 +278,7 @@ function plot!(plot::_Inspector)
         position = _aligned_text_position, visible = _visible, align = text_align,
         color = textcolor, font = font, textsize = textsize, show_axis = false,
         inspectable = false,
-        # with https://github.com/JuliaPlots/GLMakie.jl/pull/183 this should
+        # with https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie/pull/183 this should
         # allow the tooltip to work in any scene.
         space = :data,
         projection = _root_px_projection, view = id, projectionview = _root_px_projection

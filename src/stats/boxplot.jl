@@ -79,8 +79,9 @@ function Makie.plot!(plot::BoxPlot)
     signals = lift(
         plot[1],
         plot[2],
+        plot[:color],
         args...,
-    ) do x, y, width, range, show_outliers, whiskerwidth, show_notch, orientation, x_gap, dodge, n_dodge, dodge_gap
+    ) do x, y, color, width, range, show_outliers, whiskerwidth, show_notch, orientation, x_gap, dodge, n_dodge, dodge_gap
         x̂, boxwidth = xw_from_dodge(x, width, 1.0, x_gap, dodge, n_dodge, dodge_gap)
         if !(whiskerwidth == :match || whiskerwidth >= 0)
             error("whiskerwidth must be :match or a positive number. Found: $whiskerwidth")
@@ -94,6 +95,9 @@ function Makie.plot!(plot::BoxPlot)
         notchmin = Float32[]
         notchmax = Float32[]
         t_segments = Point2f0[]
+        outlier_indices = Int[]
+        T = color isa AbstractVector ? eltype(color) : typeof(color)
+        boxcolor = T[]
         for (i, (center, idxs)) in enumerate(StructArrays.finduniquesorted(x̂))
             values = view(y, idxs)
 
@@ -112,10 +116,12 @@ function Makie.plot!(plot::BoxPlot)
             if Float64(range) != 0.0  # if the range is 0.0, the whiskers will extend to the data
                 limit = range * (q4 - q2)
                 inside = Float64[]
-                for value in values
+                for (value, idx) in zip(values,idxs)
                     if (value < (q2 - limit)) || (value > (q4 + limit))
                         if show_outliers
                             push!(outlier_points, (center, value))
+                            # register outlier box indices
+                            push!(outlier_indices, idx)
                         end
                     else
                         push!(inside, value)
@@ -124,6 +130,8 @@ function Makie.plot!(plot::BoxPlot)
                 # change q1 and q5 to show outliers
                 # using maximum and minimum values inside the limits
                 q1, q5 = extrema_nan(inside)
+                # register boxcolor
+                push!(boxcolor, getuniquevalue(color, idxs))
             end
 
             # whiskers
@@ -157,6 +165,8 @@ function Makie.plot!(plot::BoxPlot)
             outliers = outlier_points,
             t_segments = t_segments,
             boxwidth = boxwidth,
+            outlier_indices = outlier_indices,
+            boxcolor = boxcolor,
         )
     end
     centers = @lift($signals.centers)
@@ -168,11 +178,16 @@ function Makie.plot!(plot::BoxPlot)
     outliers = @lift($signals.outliers)
     t_segments = @lift($signals.t_segments)
     boxwidth = @lift($signals.boxwidth)
+    outlier_indices = @lift($signals.outlier_indices)
+    boxcolor = @lift($signals.boxcolor)
 
-    outliercolor = lift(plot[:outliercolor], plot[:color]) do outliercolor, color
-        outliercolor === automatic || return outliercolor
-        c = to_color(color)
-        return RGB(red(c), green(c), blue(c))
+    outliercolor = lift(plot[:outliercolor], plot[:color], outlier_indices) do outliercolor, color, outlier_indices
+        c = outliercolor === automatic ? color : outliercolor
+        if c isa AbstractVector
+            return c[outlier_indices]
+        else 
+            return c
+        end
     end
 
     scatter!(
@@ -194,7 +209,7 @@ function Makie.plot!(plot::BoxPlot)
     )
     crossbar!(
         plot,
-        color = plot[:color],
+        color = boxcolor,
         colorrange = plot[:colorrange],
         colormap = plot[:colormap],
         strokecolor = plot[:strokecolor],

@@ -1,10 +1,6 @@
-using Pkg
 using Test
-using MeshIO
 using StaticArrays
 using Makie
-using ImageMagick
-
 using Makie.Observables
 using Makie.GeometryBasics
 using Makie.PlotUtils
@@ -12,10 +8,24 @@ using Makie.FileIO
 using Makie.IntervalSets
 using GeometryBasics: Pyramid
 
-# ImageIO seems broken on 1.6 ... and there doesn't
-# seem to be a clean way anymore to force not to use a loader library?
-filter!(x-> x !== :ImageIO, FileIO.sym2saver[:PNG])
-filter!(x-> x !== :ImageIO, FileIO.sym2loader[:PNG])
+using Makie: volume
 
-include("reference_tests.jl")
-include("unit_tests/runtests.jl")
+@testset "Unit tests" begin
+    @testset "#659 Volume errors if data is not a cube" begin
+        fig, ax, vplot = volume(1:8, 1:8, 1:10, rand(8, 8, 10))
+        lims = Makie.data_limits(vplot)
+        lo, hi = extrema(lims)
+        @test all(lo .<= 1)
+        @test all(hi .>= (8,8,10))
+    end
+
+    include("conversions.jl")
+    include("quaternions.jl")
+    include("projection_math.jl")
+    include("liftmacro.jl")
+    include("makielayout.jl")
+    include("figures.jl")
+    include("transformations.jl")
+    include("stack.jl")
+    include("events.jl")
+end

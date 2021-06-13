@@ -128,14 +128,11 @@ begin
         end
     end
 
-    const global_texture_atlas = RefValue{TextureAtlas}()
+    const global_texture_atlas = Dict{Int, TextureAtlas}()
 
     function get_texture_atlas()
-        if isassigned(global_texture_atlas) && size(global_texture_atlas[]) == TEXTURE_RESOLUTION[]
-            global_texture_atlas[]
-        else
-            global_texture_atlas[] = cached_load() # initialize only on demand
-            global_texture_atlas[]
+        return get!(global_texture_atlas, PIXELSIZE_IN_ATLAS[]) do
+            return cached_load() # initialize only on demand
         end
     end
 end
@@ -245,14 +242,17 @@ function sdistancefield(img, downsample, pad)
     return Float16.(sdf(in_or_out, xres, yres) ./ downsample)
 end
 
-const font_render_callbacks = Function[]
+const font_render_callbacks = Dict{Int, Vector{Function}}()
 
 function font_render_callback!(f)
-    push!(font_render_callbacks, f)
+    funcs = get!(font_render_callbacks, PIXELSIZE_IN_ATLAS[], Function[])
+    push!(funcs, f)
 end
 
 function remove_font_render_callback!(f)
-    filter!(f2-> f2 != f, font_render_callbacks)
+    for (s, callbacks) in font_render_callbacks
+        filter!(f2-> f2 != f, callbacks)
+    end
 end
 
 function render(atlas::TextureAtlas, glyph::Char, font, downsample=5, pad=6)
@@ -263,6 +263,8 @@ function render(atlas::TextureAtlas, glyph::Char, font, downsample=5, pad=6)
     # the target pixel size of our distance field
     pixelsize = PIXELSIZE_IN_ATLAS[]
     # we render the font `downsample` sizes times bigger
+    # Make sure the font doesn't have a mutated font matrix from e.g. Cairo
+    FreeTypeAbstraction.FreeType.FT_Set_Transform(font, C_NULL, C_NULL)
     bitmap, extent = renderface(font, glyph, pixelsize * downsample)
     # Our downsampeld & padded distancefield
     sd = sdistancefield(bitmap, downsample, pad)
@@ -271,7 +273,7 @@ function render(atlas::TextureAtlas, glyph::Char, font, downsample=5, pad=6)
     uv == nothing && error("texture atlas is too small. Resizing not implemented yet. Please file an issue at Makie if you encounter this") #TODO resize surface
     # write distancefield into texture
     atlas.data[uv.area] = sd
-    for f in font_render_callbacks
+    for f in get(font_render_callbacks, pixelsize, ())
         # update everyone who uses the atlas image directly (e.g. in GLMakie)
         f(sd, uv.area)
     end

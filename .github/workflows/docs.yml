@@ -15,7 +15,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1'
+          - '1.6'
         os:
           - ubuntu-18.04
         arch:
@@ -47,9 +47,8 @@ jobs:
            # force the most recent registry to avoid older cached versions
            pkg"registry add https://github.com/JuliaRegistries/General";
            pkg"registry up General";
-           Pkg.develop(PackageSpec(path=pwd())); 
-           Pkg.add(url = "https://github.com/JuliaDocs/Documenter.jl", rev = "master");
-           Pkg.instantiate()'
+           # dev mono repo versions
+           pkg"dev . MakieCore CairoMakie WGLMakie GLMakie; add Documenter#master; instantiate"'
       - name: Build and deploy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

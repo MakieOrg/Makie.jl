@@ -21,7 +21,7 @@ using Pkg.Artifacts
 using ghr_jll
 using LibGit2
 
-version = v"0.1.2"
+version = v"0.1.3"
 user = "JuliaPlots"
 repo = "Makie.jl"
 host = "https://github.com/$user/$repo/releases/download"

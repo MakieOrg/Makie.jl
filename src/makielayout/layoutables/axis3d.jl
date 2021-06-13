@@ -392,6 +392,7 @@ function add_gridlines_and_frames!(topscene, scene, dim::Int, limits, ticknode, 
         end
     end
     linesegments!(scene, endpoints, color = attr(:gridcolor),
+        linewidth = attr(:gridwidth),
         xautolimits = false, yautolimits = false, zautolimits = false, transparency = true,
         visible = attr(:gridvisible), inspectable = false)
 
@@ -406,6 +407,7 @@ function add_gridlines_and_frames!(topscene, scene, dim::Int, limits, ticknode, 
         end
     end
     linesegments!(scene, endpoints2, color = attr(:gridcolor),
+        linewidth = attr(:gridwidth),
         xautolimits = false, yautolimits = false, zautolimits = false, transparency = true,
         visible = attr(:gridvisible), inspectable = false)
 
@@ -416,10 +418,10 @@ function add_gridlines_and_frames!(topscene, scene, dim::Int, limits, ticknode, 
         o = pxa.origin
 
         f(mi) = mi ? minimum : maximum
-        p1 = dpoint(minimum(lims)[dim], f(mi1)(lims)[d1], f(mi2)(lims)[d2])
-        p2 = dpoint(maximum(lims)[dim], f(mi1)(lims)[d1], f(mi2)(lims)[d2])
-        p3 = dpoint(minimum(lims)[dim], f(!mi1)(lims)[d1], f(mi2)(lims)[d2])
-        p4 = dpoint(maximum(lims)[dim], f(!mi1)(lims)[d1], f(mi2)(lims)[d2])
+        p1 = dpoint(minimum(lims)[dim], f(!mi1)(lims)[d1], f(mi2)(lims)[d2])
+        p2 = dpoint(maximum(lims)[dim], f(!mi1)(lims)[d1], f(mi2)(lims)[d2])
+        p3 = dpoint(minimum(lims)[dim], f(mi1)(lims)[d1], f(mi2)(lims)[d2])
+        p4 = dpoint(maximum(lims)[dim], f(mi1)(lims)[d1], f(mi2)(lims)[d2])
         p5 = dpoint(minimum(lims)[dim], f(mi1)(lims)[d1], f(!mi2)(lims)[d2])
         p6 = dpoint(maximum(lims)[dim], f(mi1)(lims)[d1], f(!mi2)(lims)[d2])
         # p7 = dpoint(minimum(lims)[dim], f(!mi1)(lims)[d1], f(!mi2)(lims)[d2])
@@ -431,7 +433,8 @@ function add_gridlines_and_frames!(topscene, scene, dim::Int, limits, ticknode, 
         to_topscene_z_2d.([p1, p2, p3, p4, p5, p6], Ref(scene))
     end
 
-    linesegments!(topscene, framepoints, color = attr(:spinecolor), linewidth = attr(:spinewidth),
+    colors = lift(vcat, Any, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3))
+    linesegments!(topscene, framepoints, color = colors, linewidth = attr(:spinewidth),
         # transparency = true,
         visible = attr(:spinesvisible), show_axis = false, inspectable = false)
 
@@ -506,7 +509,7 @@ function add_ticks_and_ticklabels!(topscene, scene, dim::Int, limits, ticknode, 
         color = attr(:tickcolor), linewidth = attr(:tickwidth), visible = attr(:ticksvisible))
 
     labels_positions = lift(scene.px_area, scene.camera.projectionview,
-            tick_segments, ticklabels) do pxa, pv, ticksegs, ticklabs
+            tick_segments, ticklabels, attr(:ticklabelpad)) do pxa, pv, ticksegs, ticklabs, pad
 
         o = pxa.origin
 
@@ -514,7 +517,7 @@ function add_ticks_and_ticklabels!(topscene, scene, dim::Int, limits, ticknode, 
             tstartp = Point2f0(o + Makie.project(scene, tstart))
             tendp = Point2f0(o + Makie.project(scene, tend))
 
-            offset = (dim == 3 ? 10 : 5) * Makie.GeometryBasics.normalize(
+            offset = pad * Makie.GeometryBasics.normalize(
                 Point2f0(tendp - tstartp))
             tendp + offset
         end
@@ -762,55 +765,8 @@ function hidespines!(ax::Axis3)
 end
 
 
-"""
-    reset_limits!(ax; xauto = true, yauto = true)
 
-Resets the axis limits depending on the value of `ax.limits`.
-If one of the two components of limits is nothing, that value is either copied from the targetlimits if `xauto` or `yauto` is true, respectively, or it is determined automatically from the plots in the axis.
-If one of the components is a tuple of two numbers, those are used directly.
-"""
-function reset_limits!(ax::Axis3; xauto = true, yauto = true, zauto = true)
-    mlims = convert_limit_attribute(ax.limits[])
-
-    mxlims, mylims, mzlims = mlims::Tuple{Any, Any, Any}
-    xlims = if isnothing(mxlims)
-        if xauto
-            xautolimits(ax)
-        else
-            left(ax.targetlimits[]), right(ax.targetlimits[])
-        end
-    else
-        convert(Tuple{Float32, Float32}, tuple(mxlims...))
-    end
-    ylims = if isnothing(mylims)
-        if yauto
-            yautolimits(ax)
-        else
-            left(ax.targetlimits[]), right(ax.targetlimits[])
-        end
-    else
-        convert(Tuple{Float32, Float32}, mylims)
-    end
-    zlims = if isnothing(mzlims)
-        if zauto
-            zautolimits(ax)
-        else
-            left(ax.targetlimits[]), right(ax.targetlimits[])
-        end
-    else
-        convert(Tuple{Float32, Float32}, mzlims)
-    end
-    @assert xlims[1] <= xlims[2]
-    @assert ylims[1] <= ylims[2]
-    @assert zlims[1] <= zlims[2]
-    ax.targetlimits[] = FRect3D(
-        Vec3f0(xlims[1], ylims[1], zlims[1]),
-        Vec3f0(xlims[2] - xlims[1], ylims[2] - ylims[1], zlims[2] - zlims[1]),
-    )
-    nothing
-end
-
-# this is so users can do limits = (left, right, bottom, top)
+# this is so users can do limits = (x1, x2, y1, y2, z1, z2)
 function convert_limit_attribute(lims::Tuple{Any, Any, Any, Any, Any, Any})
     (lims[1:2], lims[3:4], lims[5:6])
 end
@@ -860,4 +816,94 @@ function zautolimits(ax::Axis3)
             identity)
     end
     zlims
+end
+
+function Makie.xlims!(ax::Axis3, xlims::Tuple{Union{Real, Nothing}, Union{Real, Nothing}})
+    if length(xlims) != 2
+        error("Invalid xlims length of $(length(xlims)), must be 2.")
+    elseif xlims[1] == xlims[2]
+        error("Can't set x limits to the same value $(xlims[1]).")
+    # elseif all(x -> x isa Real, xlims) && xlims[1] > xlims[2]
+    #     xlims = reverse(xlims)
+    #     ax.xreversed[] = true
+    # else
+    #     ax.xreversed[] = false
+    end
+
+    ax.limits.val = (xlims, ax.limits[][2], ax.limits[][3])
+    reset_limits!(ax, yauto = false, zauto = false)
+    nothing
+end
+
+function Makie.ylims!(ax::Axis3, ylims::Tuple{Union{Real, Nothing}, Union{Real, Nothing}})
+    if length(ylims) != 2
+        error("Invalid ylims length of $(length(ylims)), must be 2.")
+    elseif ylims[1] == ylims[2]
+        error("Can't set y limits to the same value $(ylims[1]).")
+    # elseif all(x -> x isa Real, ylims) && ylims[1] > ylims[2]
+    #     ylims = reverse(ylims)
+    #     ax.yreversed[] = true
+    # else
+    #     ax.yreversed[] = false
+    end
+
+    ax.limits.val = (ax.limits[][1], ylims, ax.limits[][3])
+    reset_limits!(ax, xauto = false, zauto = false)
+    nothing
+end
+
+function Makie.zlims!(ax::Axis3, zlims)
+    if length(zlims) != 2
+        error("Invalid zlims length of $(length(zlims)), must be 2.")
+    elseif zlims[1] == zlims[2]
+        error("Can't set y limits to the same value $(zlims[1]).")
+    # elseif all(x -> x isa Real, zlims) && zlims[1] > zlims[2]
+    #     zlims = reverse(zlims)
+    #     ax.zreversed[] = true
+    # else
+    #     ax.zreversed[] = false
+    end
+
+    ax.limits.val = (ax.limits[][1], ax.limits[][2], zlims)
+    reset_limits!(ax, xauto = false, yauto = false)
+    nothing
+end
+
+
+"""
+    limits!(ax::Axis3, xlims, ylims)
+
+Set the axis limits to `xlims` and `ylims`.
+If limits are ordered high-low, this reverses the axis orientation.
+"""
+function limits!(ax::Axis3, xlims, ylims, zlims)
+    Makie.xlims!(ax, xlims)
+    Makie.ylims!(ax, ylims)
+    Makie.zlims!(ax, zlims)
+end
+
+"""
+    limits!(ax::Axis3, x1, x2, y1, y2, z1, z2)
+
+Set the axis x-limits to `x1` and `x2` and the y-limits to `y1` and `y2`.
+If limits are ordered high-low, this reverses the axis orientation.
+"""
+function limits!(ax::Axis3, x1, x2, y1, y2, z1, z2)
+    Makie.xlims!(ax, x1, x2)
+    Makie.ylims!(ax, y1, y2)
+    Makie.zlims!(ax, z1, z2)
+end
+
+"""
+    limits!(ax::Axis3, rect::Rect3D)
+
+Set the axis limits to `rect`.
+If limits are ordered high-low, this reverses the axis orientation.
+"""
+function limits!(ax::Axis3, rect::Rect3D)
+    xmin, ymin, zmin = minimum(rect)
+    xmax, ymax, zmax = maximum(rect)
+    Makie.xlims!(ax, xmin, xmax)
+    Makie.ylims!(ax, ymin, ymax)
+    Makie.zlims!(ax, zmin, zmax)
 end

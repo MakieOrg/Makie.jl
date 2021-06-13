@@ -1,56 +1,26 @@
-# This is a basic workflow to help you get started with Actions
+name: Doc Preview Cleanup
 
-name: DeleteStalePreviews
-
-# Controls when the action will run. 
 on:
   pull_request:
-    types: [ closed ]
-    branches: [ master ]
+    types: [closed]
 
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
-
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  preview_removal:
-    # The type of runner that the job will run on
+  doc-preview-cleanup:
     runs-on: ubuntu-latest
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      - uses: webfactory/ssh-agent@v0.5.2
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v2
         with:
-          ssh-private-key: ${{ secrets.PREVIEW_DELETER_KEY }}
-      - uses: julia-actions/setup-julia@latest
-        with:
-          version: 1
-      - name: Stale PR Removal
+          ref: gh-pages
+      - name: Delete preview and history + push changes
         run: |
-          julia -e '
-          using Pkg
-          Pkg.add("GitHub")
-          import GitHub
-
-          prs, _ = GitHub.pull_requests("JuliaPlots/Makie.jl")
-          open_prs = [x.number for x in prs if x.state == "open"]
-
-          run(`git clone git@github.com:JuliaPlots/MakieDocumentation.git`)
-          cd("MakieDocumentation")
-          run(`git checkout gh-pages`)
-
-          preview_folders = filter(startswith("PR"), readdir("previews"))
-          to_delete = [folder for folder in preview_folders if parse(Int, folder[3:end]) ∉ open_prs]
-
-          if !isempty(to_delete)
-              for folder in to_delete
-                  @info "Deleting stale preview $folder"
-                  run(`git rm -r $(joinpath("previews", folder))`)
-              end
-
-              run(`git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"`)
-              run(`git config --global user.name "github-actions[bot]"`)
-              run(`git commit -m "Deleted stale preview$(length(to_delete) == 1 ? "" : "s") $to_delete"`)
-              run(`git push origin gh-pages`)
-          end'
+            if [ -d "previews/PR$PRNUM" ]; then
+              git config user.name "Documenter.jl"
+              git config user.email "documenter@juliadocs.github.io"
+              git rm -rf "previews/PR$PRNUM"
+              git commit -m "delete preview"
+              git branch gh-pages-new $(echo "delete history" | git commit-tree HEAD^{tree})
+              git push --force origin gh-pages-new:gh-pages
+            fi
+        env:
+            PRNUM: ${{ github.event.number }}

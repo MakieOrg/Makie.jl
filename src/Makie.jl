@@ -1,5 +1,12 @@
 module Makie
 
+module ContoursHygiene
+    import Contour
+end
+
+using .ContoursHygiene
+const Contours = ContoursHygiene.Contour
+
 using Artifacts
 using Random
 using FFMPEG # get FFMPEG on any system!
@@ -22,27 +29,30 @@ using Printf: @sprintf
 import Isoband
 import PolygonOps
 import GridLayoutBase
+using MakieCore
+
+import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, calculated_attributes!, get_attribute, plotsym, plotkey, attributes, used_attributes
+
+using MakieCore: SceneLike, AbstractScreen, ScenePlot, AbstractScene, AbstractPlot, Transformable, Attributes, Combined, Theme, Plot
+
+using MakieCore: Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter, Surface, Text, Volume
+import MakieCore: heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface, text, volume
+import MakieCore: heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, surface!, text!, volume!
+
+import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
+using MakieCore: ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
+export ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
+using MakieCore: Key, @key_str, Automatic, automatic, @recipe
+using MakieCore: Pixel, px, Unit, Billboard
+export Pixel, px, Unit, plotkey, attributes, used_attributes
+
 using StatsFuns: logit, logistic
 
 # Imports from Base which we don't want to have to qualify
 using Base: RefValue
 using Base.Iterators: repeated, drop
 import Base: getindex, setindex!, push!, append!, parent, get, get!, delete!, haskey
-using Observables: listeners, to_value
-
-# Backwards compatability for Observables 0.3
-if hasmethod(Observables.notify, Tuple{Observable})
-    using Observables: notify
-else
-    Base.notify(obs::Observable) = Observables.notify!(obs)
-end
-
-module ContoursHygiene
-    import Contour
-end
-
-using .ContoursHygiene
-const Contours = ContoursHygiene.Contour
+using Observables: listeners, to_value, notify
 
 const RealVector{T} = AbstractVector{T} where T <: Number
 const Node = Observable # shorthand
@@ -53,8 +63,6 @@ const NativeFont = FreeTypeAbstraction.FTFont
 include("documentation/docstringextension.jl")
 
 include("utilities/quaternions.jl")
-include("attributes.jl")
-include("dictlike.jl")
 include("interaction/PriorityObservable.jl")
 include("types.jl")
 include("utilities/utilities.jl")
@@ -91,7 +99,11 @@ end
 const FigureLike = Union{Scene, Figure, FigureAxisPlot}
 
 include("theming.jl")
-include("recipes.jl")
+include("themes/theme_ggplot2.jl")
+include("themes/theme_black.jl")
+include("themes/theme_minimal.jl")
+include("themes/theme_light.jl")
+include("themes/theme_dark.jl")
 include("interfaces.jl")
 include("units.jl")
 include("conversions.jl")
@@ -122,7 +134,6 @@ include("basic_recipes/spy.jl")
 include("basic_recipes/stem.jl")
 include("basic_recipes/streamplot.jl")
 include("basic_recipes/timeseries.jl")
-include("basic_recipes/title.jl")
 include("basic_recipes/volumeslices.jl")
 include("basic_recipes/wireframe.jl")
 
@@ -159,10 +170,15 @@ export AbstractScene, SceneLike, Scene, AbstractScreen
 export AbstractPlot, Combined, Atomic, OldAxis
 
 # Theming, working with Plots
-export Attributes, Theme, attributes, default_theme, theme, set_theme!, with_theme
-export title
+export Attributes, Theme, attributes, default_theme, theme, set_theme!, with_theme, update_theme!
 export xlims!, ylims!, zlims!
 export xlabel!, ylabel!, zlabel!
+
+export theme_ggplot2
+export theme_black
+export theme_minimal
+export theme_light
+export theme_dark
 
 export xticklabels, yticklabels, zticklabels
 export xtickrange, ytickrange, ztickrange
@@ -280,9 +296,8 @@ end
 include("figureplotting.jl")
 include("basic_recipes/series.jl")
 
-if Base.VERSION >= v"1.4.2"
-    include("precompile.jl")
-    _precompile_()
-end
+export Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter, Surface, Text, Volume
+export heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface, text, volume
+export heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, surface!, text!, volume!
 
 end # module

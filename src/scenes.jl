@@ -320,19 +320,6 @@ function getindex(scene::Scene, ::Type{OldAxis})
     nothing
 end
 
-
-"""
-Each argument can be named for a certain plot type `P`. Falls back to `arg1`, `arg2`, etc.
-"""
-function argument_names(plot::P) where P <: AbstractPlot
-    argument_names(P, length(plot.converted))
-end
-
-function argument_names(::Type{<: AbstractPlot}, num_args::Integer)
-    # this is called in the indexing function, so let's be a bit efficient
-    ntuple(i -> Symbol("arg$i"), num_args)
-end
-
 function Base.empty!(scene::Scene)
     empty!(scene.plots)
     disconnect!(scene.camera)
@@ -355,13 +342,6 @@ function scene_limits(scene::Scene)
         return FRect3D(scene.limits[])
     end
 end
-
-# Since we can use Combined like a scene in some circumstances, we define this alias
-theme(x::SceneLike, args...) = theme(x.parent, args...)
-theme(x::Scene) = x.theme
-theme(x::Scene, key) = deepcopy(x.theme[key])
-theme(x::AbstractPlot, key) = deepcopy(x.attributes[key])
-theme(::Nothing, key::Symbol) = deepcopy(current_default_theme()[key])
 
 Base.push!(scene::Combined, subscene) = nothing # Combined plots add themselves uppon creation
 

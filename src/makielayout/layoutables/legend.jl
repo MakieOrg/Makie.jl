@@ -167,7 +167,7 @@ function layoutable(::Type{Legend},
         translate!(scene, (0, 0, 10))
     end
 
-    onany(title, nbanks, titleposition, rowgap, colgap, patchlabelgap, groupgap, titlegap,
+    onany(nbanks, titleposition, rowgap, colgap, patchlabelgap, groupgap, titlegap,
             titlevisible, orientation, gridshalign, gridsvalign) do args...
         relayout()
     end
@@ -514,7 +514,7 @@ function layoutable(::Type{Legend}, fig_or_scene,
         error("Number of elements not equal: $(length(titles)) titles, $(length(contentgroups)) content groups and $(length(labelgroups)) label groups.")
     end
 
-    
+
     entrygroups = Node{Vector{EntryGroup}}([])
     legend = layoutable(Legend, fig_or_scene, entrygroups; kwargs...)
     entries = [[LegendEntry(l, pg, legend) for (l, pg) in zip(labelgroup, contentgroup)]

@@ -85,6 +85,10 @@ box = Rect3D(Point3f0(-0.5), Vec3f0(1))
 positions = [Point3f0(x, y, rand()) for x in -5:5 for y in -5:5]
 meshscatter!(scene, positions, marker=box, markersize=1, color=:lightblue, ssao=true)
 scene
+
+GLMakie.enable_SSAO[] = false # hide
+close(GLMakie.global_gl_screen()) # hide
+scene # hide
 ```
 
 ```@example 1

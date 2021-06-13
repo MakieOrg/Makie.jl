@@ -38,6 +38,7 @@ $(ATTRIBUTES)
         colorrange = Makie.automatic,
         strokecolor = theme(scene, :patchstrokecolor),
         strokewidth = theme(scene, :patchstrokewidth),
+        linestyle = nothing,
         strokearound = false,
         npoints = 200,
         offset = 0.0,
@@ -110,6 +111,7 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
     band!(plot, lower, upper, color = colorobs, colormap = plot.colormap,
         colorrange = plot.colorrange, inspectable = plot.inspectable)
     l = lines!(plot, linepoints, color = plot.strokecolor,
-        linewidth = plot.strokewidth, inspectable = plot.inspectable)
+        linestyle = plot.linestyle, linewidth = plot.strokewidth,
+        inspectable = plot.inspectable)
     plot
 end
