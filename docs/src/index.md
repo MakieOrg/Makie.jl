@@ -26,6 +26,7 @@ CairoMakie.activate!()
 
 - Learn the basics of plotting with Makie in the [Basic Tutorial](@ref)
 - Check out how to make more complex plots and layouts in the [Layout Tutorial](@ref)
+- A [gallery of examples](https://lazarusa.github.io/BeautifulMakie/) is maintained in a separate repository.
 
 ```@eval
 using Markdown
