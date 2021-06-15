@@ -112,7 +112,7 @@ All right, let's get started!
 
 ## Importing a backend
 
-First, we import CairoMakie, which re-exports Makie and MakieLayout.
+First, we import CairoMakie, which re-exports Makie.
 
 ```@example tutorial
 using CairoMakie
