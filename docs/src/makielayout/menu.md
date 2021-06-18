@@ -11,7 +11,7 @@ as `(label, value)` and any other object as `value`, where `label = string(value
 
 The attribute `selection` is set to `optionvalue(element)` when the element's entry is selected.
 
-
+You can change the direction of the menu with `direction = :up` or `direction = :down`. By default, the direction is determined automatically to avoid cutoff at the figure boundaries.
 
 ```@example
 using GLMakie
