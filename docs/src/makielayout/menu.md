@@ -11,8 +11,6 @@ as `(label, value)` and any other object as `value`, where `label = string(value
 
 The attribute `selection` is set to `optionvalue(element)` when the element's entry is selected.
 
-
-
 ```@example
 using GLMakie
 GLMakie.activate!() # hide
@@ -49,6 +47,26 @@ on(menu2.selection) do s
     autolimits!(ax)
 end
 
+menu2.is_open = true
+
+fig
+```
+
+## Menu direction
+
+You can change the direction of the menu with `direction = :up` or `direction = :down`. By default, the direction is determined automatically to avoid cutoff at the figure boundaries.
+
+
+```@example
+using GLMakie
+GLMakie.activate!() # hide
+
+fig = Figure()
+
+menu = Menu(fig[1, 1], options = ["A", "B", "C"])
+menu2 = Menu(fig[3, 1], options = ["A", "B", "C"])
+
+menu.is_open = true
 menu2.is_open = true
 
 fig

@@ -43,7 +43,7 @@ function default_attributes(::Type{Menu}, scene)
         "Color of entry texts"
         textcolor = :black
         "The opening direction of the menu (:up or :down)"
-        direction = :down
+        direction = automatic
         "The default message prompting a selection when i == 0"
         prompt = "Select..."
     end
@@ -122,7 +122,22 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
 
     sceneheight = Node(20.0)
 
-    scenearea = lift(layoutobservables.computedbbox, sceneheight, direction) do bbox, h, d
+    # the direction is auto-chosen as up if there is too little space below and if the space below
+    # is smaller than above
+    _direction = lift(Any, layoutobservables.computedbbox, direction, sceneheight) do bb, dir, sh
+        if dir == Makie.automatic
+            pxa = pixelarea(topscene)[]
+            if (sh > abs(bottom(pxa) - bottom(bb))) && (abs(bottom(pxa) - bottom(bb)) < abs(top(pxa) - top(bb)))
+                :up
+            else
+                :down
+            end
+        else
+            dir
+        end
+    end
+
+    scenearea = lift(layoutobservables.computedbbox, sceneheight, _direction) do bbox, h, d
         round_to_IRect2D(BBox(
             left(bbox),
             right(bbox),
@@ -136,7 +151,7 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
 
     contentgrid = GridLayout(
         bbox = lift(x -> FRect2D(Makie.zero_origin(x)), scenearea),
-        valign = @lift($direction == :down ? :top : :bottom))
+        valign = @lift($_direction == :down ? :top : :bottom))
 
     selectionrect = Box(scene, width = nothing, height = nothing,
         color = selection_cell_color_inactive[], strokewidth = 0)
@@ -231,18 +246,17 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
     end
 
 
-    on(direction) do d
+    on(_direction) do d
         if d == :down
             contentgrid[:v] = allrects
             contentgrid[:v] = alltexts
         elseif d == :up
-            contentgrid[:v] = reverse(allrects)
-            contentgrid[:v] = reverse(alltexts)
+            contentgrid[:v] = vcat(allrects[2:end], allrects[1:1])
+            contentgrid[:v] = vcat(alltexts[2:end], alltexts[1:1])
         else
             error("Invalid direction $d. Possible values are :up and :down.")
         end
     end
-
 
     # trigger size without triggering selection
     i_selected[] = i_selected[]
@@ -276,6 +290,7 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
 
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
+    # notify(direction)
 
     Menu(fig_or_scene, layoutobservables, attrs, decorations)
 end
