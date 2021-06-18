@@ -23,7 +23,7 @@ FFTW = "1"
 FileIO = "1.1"
 FreeType = "3, 4.0"
 GeometryBasics = "0.2, 0.3"
-Makie = "=0.14.0"
+Makie = "=0.14.1"
 StaticArrays = "0.12, 1.0"
 julia = "1.3"
 
