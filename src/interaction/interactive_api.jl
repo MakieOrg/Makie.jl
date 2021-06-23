@@ -25,7 +25,7 @@ function onpick(f, scene::SceneLike, plots::AbstractPlot...; range=1)
     map_once(events(scene).mouseposition) do mp
         p, idx = mouse_selection(args...)
         (p in fplots) && f(idx)
-        return false
+        return Consume(false)
     end
 end
 
@@ -76,6 +76,7 @@ function mouse_in_scene(scene::SceneLike; priority = Int8(0))
     output = Node(Vec2(0.0))
     on(events(scene).mouseposition, priority = priority) do mp
         output[] = Vec(mp) .- minimum(pixelarea(scene)[])
+        return Consume(false)
     end
     output
 end
@@ -263,7 +264,7 @@ function select_rectangle(scene; blocking = false, priority = 2, strokewidth = 3
                 waspressed[] = true
                 plotted_rect[:visible] = true # start displaying
                 rect[] = FRect(mp, 0.0, 0.0)
-                return blocking
+                return Consume(blocking)
             end
         end
         if !(event.button == key && event.action == Mouse.press)
@@ -277,19 +278,19 @@ function select_rectangle(scene; blocking = false, priority = 2, strokewidth = 3
             end
             # always hide if not the right key is pressed
             plotted_rect[:visible] = false # make the plotted rectangle invisible
-            return blocking
+            return Consume(blocking)
         end
 
-        return false
+        return Consume(false)
     end
     on(events(scene).mouseposition, priority=priority) do event
         if waspressed[]
             mp = mouseposition(scene)
             mini = minimum(rect[])
             rect[] = FRect(mini, mp - mini)
-            return blocking
+            return Consume(blocking)
         end
-        return false
+        return Consume(false)
     end
 
     return rect_ret
@@ -329,7 +330,7 @@ function select_line(scene; blocking = false, priority = 2, kwargs...)
                 line[][1] = mp
                 line[][2] = mp
                 line[] = line[]
-                return blocking
+                return Consume(blocking)
             end
         end
         if !(event.button == key && event.action == Mouse.press)
@@ -340,18 +341,18 @@ function select_line(scene; blocking = false, priority = 2, kwargs...)
                 end
             end
             plotted_line[:visible] = false
-            return blocking
+            return Consume(blocking)
         end
-        return false
+        return Consume(false)
     end
     on(events(scene).mouseposition, priority=priority) do event
         if waspressed[]
             mp = mouseposition(scene)
             line[][2] = mp
             line[] = line[] # actually update observable
-            return blocking
+            return Consume(blocking)
         end
-        return false
+        return Consume(false)
     end
 
     return line_ret
@@ -390,7 +391,7 @@ function select_point(scene; blocking = false, priority=2, kwargs...)
                 plotted_point[:visible] = true  # start displaying
                 point[][1] = mp
                 point[] = point[]
-                return blocking
+                return Consume(blocking)
             end
         end
         if !(event.button == key && event.action == Mouse.press)
@@ -399,18 +400,18 @@ function select_point(scene; blocking = false, priority=2, kwargs...)
                 point_ret[] = copy(point[][1])
             end
             plotted_point[:visible] = false
-            return blocking
+            return Consume(blocking)
         end
-        return false
+        return Consume(false)
     end
     on(events(scene).mouseposition, priority=priority) do event
         if waspressed[]
             mp = mouseposition(scene)
             point[][1] = mp
             point[] = point[] # actually update observable
-            return blocking
+            return Consume(blocking)
         end
-        return false
+        return Consume(false)
     end
 
     return point_ret

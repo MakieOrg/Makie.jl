@@ -34,7 +34,7 @@ function push_screen!(scene::Scene, display::AbstractDisplay)
             filter!(x-> x !== display, scene.current_screens)
             deregister !== nothing && off(deregister)
         end
-        return false
+        return Consume(false)
     end
     return
 end
@@ -264,7 +264,7 @@ function record_events(f, scene::Scene, path::String)
         on(getfield(scene.events, field), priority = typemax(Int8)) do value
             value = isa(value, Set) ? copy(value) : value
             push!(result, time() => (field => value))
-            return false
+            return Consume(false)
         end
     end
     f()

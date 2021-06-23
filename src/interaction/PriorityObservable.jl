@@ -2,15 +2,30 @@ using Observables
 using Observables: AbstractObservable, ObserverFunction, notify
 import Observables: observe, listeners, on, off, notify
 
+struct PrioCallback
+    f::Any
+end
+
+struct Consume
+    x::Bool
+end
+Consume() = Consume(true)
+Consume(x::Consume) = Consume(x.x) # for safety in selection_point etc
+Base.:(==)(a::Consume, b::Consume) = a.x == b.x
+
+function (f::PrioCallback)(val)::Bool
+    consume = Base.invokelatest(f.f, val)
+    return consume isa Consume && consume.x
+end
 
 mutable struct PriorityObservable{T} <: AbstractObservable{T}
-    listeners::Vector{Pair{Int8, Vector{Any}}}
+    listeners::Vector{Pair{Int8, Vector{PrioCallback}}}
     val::T
 
-    PriorityObservable{T}() where {T} = new{T}(Pair{Int8, Vector{Any}}[])
-    PriorityObservable{T}(val) where {T} = new{T}(Pair{Int8, Vector{Any}}[], val)
+    PriorityObservable{T}() where {T} = new{T}(Pair{Int8, Vector{PrioCallback}}[])
+    PriorityObservable{T}(val) where {T} = new{T}(Pair{Int8, Vector{PrioCallback}}[], val)
     # Construct an Observable{Any} without runtime dispatch
-    PriorityObservable{Any}(@nospecialize(val)) = new{Any}(Pair{Int8, Vector{Any}}[], val)
+    PriorityObservable{Any}(@nospecialize(val)) = new{Any}(Pair{Int8, Vector{PrioCallback}}[], val)
 end
 
 """
@@ -18,16 +33,16 @@ end
 
 Creates a new `PriorityObservable` holding the given `value`.
 
-A `po = PriorityObservable` differs from a normal `Observable` (or `Node`) in 
+A `po = PriorityObservable` differs from a normal `Observable` (or `Node`) in
 two ways:
 1. When registering a function to `po` you can also give it a `priority`.
 Functions with higher priority will be evaluated first.
 2. Each registered function is assumed to return a `Bool`. If `true` is returned
 the observable will stop calling the remaining observer functions.
 
-In the following example we have 3 listeners to a `PriorityObservable`. When 
-triggering the `PriorityObservable` you will first see `"First"` as it is the 
-callback with the highest priority. After that `"Second"` will be printed and 
+In the following example we have 3 listeners to a `PriorityObservable`. When
+triggering the `PriorityObservable` you will first see `"First"` as it is the
+callback with the highest priority. After that `"Second"` will be printed and
 stop further execution. `"Third"` will therefore not be printed.
 ```
 po = PriorityObservable(1)
@@ -42,8 +57,6 @@ whether any observer function returned `true`, you can check the output of
 `setindex!(po, val)`.
 """
 PriorityObservable(val::T) where {T} = PriorityObservable{T}(val)
-
-
 
 function Base.show(io::IO, po::PriorityObservable)
     print(io, "PriorityObservable(")
@@ -77,36 +90,17 @@ end
 # reverse order so that the highest priority is notified first
 listeners(o::PriorityObservable) = (f for p in reverse(o.listeners) for f in p[2])
 
-
-function _sanitize_observer_function(@nospecialize(f), argtypes)
-    if Core.Compiler.return_type(f, argtypes) !== Bool
-        sanitized_func = x -> begin f(x); false end
-        @warn(
-            "Observer functions of PriorityObservables must return a Bool to " *
-            "specify whether the update is consumed (true) or should " *
-            "propagate (false) to other observer functions. The given " *
-            "function has been wrapped to always return false."
-        ) 
-        Base.show_backtrace(stderr, backtrace())
-        println()
-        return sanitized_func
-    else
-        return f
-    end
-end
-
-
 function on(@nospecialize(f), observable::PriorityObservable; weak::Bool = false, priority = 0)
-    sanitized_func = _sanitize_observer_function(f, (typeof(observable.val),))
-    
+    sanitized_func = PrioCallback(f)
+
     # Create or insert into correct priority
     idx = findfirst(p -> p[1] >= priority, observable.listeners)
     if idx === nothing
-        push!(observable.listeners, priority => Any[sanitized_func])
+        push!(observable.listeners, priority => [sanitized_func])
     elseif observable.listeners[idx][1] == priority
         push!(observable.listeners[idx][2], sanitized_func)
     else
-        insert!(observable.listeners, idx, priority => Any[sanitized_func])
+        insert!(observable.listeners, idx, priority => [sanitized_func])
     end
 
     # same as Observable?

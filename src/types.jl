@@ -19,8 +19,8 @@ include("interaction/iodevices.jl")
 This struct provides accessible `PriorityObservable`s to monitor the events
 associated with a Scene.
 
-Functions that act on a `PriorityObservable` must return true if the function
-consumes an event and false if it does not. When an event is consumed it does
+Functions that act on a `PriorityObservable` must return `Consume()` if the function
+consumes an event. When an event is consumed it does
 not trigger other observer functions. The order in which functions are exectued
 can be controlled via the `priority` keyword (default 0) in `on`.
 
@@ -29,9 +29,9 @@ Example:
 on(events(scene).mousebutton, priority = Int8(20)) do event
     if is_correct_event(event)
         do_something()
-        return true
+        return Consume()
     end
-    return false
+    return
 end
 ```
 
@@ -116,7 +116,7 @@ function Events()
             error("Unrecognized Keyboard action $(event.action)")
         end
         # This never consumes because it just keeps track of the state
-        return false
+        return Consume(false)
     end
 
     keyboardbutton = PriorityObservable(KeyEvent(Keyboard.unknown, Keyboard.release))
@@ -135,7 +135,7 @@ function Events()
             end
         end
         # This never consumes because it just keeps track of the state
-        return false
+        return Consume(false)
     end
 
     return Events(
@@ -173,7 +173,7 @@ function Base.getproperty(e::Events, field::Symbol)
         mousebuttons = Node(Set{Mouse.Button}())
         on(getfield(e, :mousebutton), priority=typemax(Int8)-1) do event
             mousebuttons[] = getfield(e, :mousebuttonstate)
-            return false
+            return Consume(false)
         end
         return mousebuttons
     elseif field == :keyboardbuttons
@@ -191,7 +191,7 @@ function Base.getproperty(e::Events, field::Symbol)
         keyboardbuttons = Node(Set{Keyboard.Button}())
         on(getfield(e, :keyboardbutton), priority=typemax(Int8)-1) do event
             keyboardbuttons[] = getfield(e, :keyboardstate)
-            return false
+            return Consume(false)
         end
         return keyboardbuttons
     elseif field == :mousedrag
@@ -213,7 +213,7 @@ function Base.getproperty(e::Events, field::Symbol)
             elseif mousedrag[] in (Mouse.down, Mouse.pressed)
                 mousedrag[] = Mouse.up
             end
-            return false
+            return Consume(false)
         end
         on(getfield(e, :mouseposition), priority=typemax(Int8)-1) do pos
             if mousedrag[] in (Mouse.down, Mouse.pressed)
@@ -221,7 +221,7 @@ function Base.getproperty(e::Events, field::Symbol)
             elseif mousedrag[] == Mouse.up
                 mousedrag[] = Mouse.notpressed
             end
-            return false
+            return Consume(false)
         end
         return mousedrag
     else

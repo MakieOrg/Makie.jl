@@ -142,7 +142,7 @@ function Scene(;clear=true, transform_func=identity, scene_attributes...)
         if !any(x -> x ≈ 0.0, widths(w_area)) && px_area[] != w_area
             px_area[] = w_area
         end
-        return false
+        return Consume(false)
     end
     scene = Scene(
         events,
@@ -491,7 +491,7 @@ function is2d(scene::SceneLike)
     lims === nothing && return nothing
     return is2d(lims)
 end
-is2d(lims::Rect2D) = return true
+is2d(lims::Rect2D) = true
 is2d(lims::Rect3D) = widths(lims)[3] == 0.0
 
 """

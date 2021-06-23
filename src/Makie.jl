@@ -227,6 +227,7 @@ export hasfocus
 export entered_window
 export disconnect!, must_update, force_update!, update!, update_limits!
 export DataInspector
+export Consume
 
 # Raymarching algorithms
 export RaymarchAlgorithm, IsoValue, Absorption, MaximumIntensityProjection, AbsorptionRGBA, IndexedAbsorptionRGBA

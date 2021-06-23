@@ -81,12 +81,11 @@ for eventtype in instances(MouseEventType)
         a MouseEvent with `event.type === $($eventtype)`.
         """
         function $onfunctionname(f, mev::MouseEventHandle; priority = Int8(0))
-            sanitized_func = _sanitize_observer_function(f, (typeof(mev.obs.val),))
             on(mev.obs, priority = priority) do event
                 if event.type === $eventtype
-                    return sanitized_func(event)::Bool
+                    return f(event)
                 end
-                return false
+                return Consume(false)
             end
         end
         export $onfunctionname
@@ -228,7 +227,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
         prev_data[] = data
         prev_px[] = px
         prev_t[] = t
-        return consumed::Bool
+        return Consume(consumed)
     end
 
 
@@ -374,7 +373,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
 
 
         prev_t[] = t
-        return consumed::Bool
+        return Consume(consumed)
     end
 
     MouseEventHandle(mouseevent, [mousepos_observerfunc, mousedrag_observerfunc])
