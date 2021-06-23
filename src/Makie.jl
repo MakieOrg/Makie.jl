@@ -114,6 +114,7 @@ include("camera/projection_math.jl")
 include("camera/camera.jl")
 include("camera/camera2d.jl")
 include("camera/camera3d.jl")
+include("camera/old_camera3d.jl")
 
 # basic recipes
 include("basic_recipes/convenience_functions.jl")
