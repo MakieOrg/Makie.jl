@@ -6,8 +6,8 @@ To specify the camera you want to use for your Scene, you can set the `camera` a
 
 [`campixel!`](@ref)
 [`cam2d!`](@ref)
-[`cam3d!`](@ref)
-[`cam3d_cad!`](@ref)
+[`cam3d!`]
+[`cam3d_cad!`]
 
 which will mutate the camera of the Scene into the specified type.
 
@@ -28,7 +28,7 @@ Note that this camera is not used by MakieLayout `Axis`. It is used, by default,
 
 ## 3D Camera
 
-The 3D camera is (or can be) unrestricted in terms of rotations and translations. Both [`cam3d!(scene)`](@ref) and [`cam3d_cad!(scene)`](@ref) create this camera type. Unlike the 2D camera, settings and controls are stored in the `cam.attributes` field rather than in the struct directly, but can still be passed as keyword arguments. The general camera settings include
+The 3D camera is (or can be) unrestricted in terms of rotations and translations. Both [`cam3d!(scene)`] and [`cam3d_cad!(scene)`] create this camera type. Unlike the 2D camera, settings and controls are stored in the `cam.attributes` field rather than in the struct directly, but can still be passed as keyword arguments. The general camera settings include
 
 - `fov = 45f0` sets the "neutral" field of view, i.e. the fov corresponding to no zoom. This is irrelevant if the camera uses an orthographic projection. 
 - `near = automatic` sets the value of the near clip. By default this will be chosen based on the scenes bounding box. The final value is in `cam.near`.
