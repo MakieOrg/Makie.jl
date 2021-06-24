@@ -209,7 +209,8 @@ export SceneSpace, PixelSpace, Pixel
 
 # camera related
 export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, cam2d!, cam2d
-export campixel!, campixel, cam3d!, cam3d_cad!, update_cam!, rotate_cam!, translate_cam!, zoom!
+export campixel!, campixel, cam3d!, cam3d_cad!, old_cam3d!, old_cam3d_cad!
+export update_cam!, rotate_cam!, translate_cam!, zoom!
 export pixelarea, plots, cameracontrols, cameracontrols!, camera, events
 export to_world
 

@@ -90,9 +90,9 @@ function old_cam3d_turntable!(scene; kw_args...)
 end
 
 """
-    cam3d!(scene; kwargs...)
+    old_cam3d!(scene; kwargs...)
 
-An alias to [`cam3d_turntable!`](@ref).
+An alias to [`old_cam3d_turntable!`](@ref).
 Creates a 3D camera for `scene`, which rotates around
 the plot's axis.
 """
