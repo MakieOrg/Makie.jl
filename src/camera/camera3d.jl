@@ -171,9 +171,9 @@ function Camera3D(scene; kwargs...)
             any(key -> ispressed(scene, attr[key][]), keynames)
 
             cam.pulser[] = time()
-            return true
+            return Consume(true)
         end
-        return false
+        return Consume(false)
     end
 
     # Mouse controls
@@ -203,9 +203,9 @@ function Camera3D(scene; kwargs...)
             cam.upvector[] = Vec3f0(0,0,1)
             cam.eyeposition[] = Vec3f0(3)
             center!(scene)
-            return true
+            return Consume(true)
         end
-        return false
+        return Consume(false)
     end
 
     # TODO remove this?

@@ -145,17 +145,17 @@ function add_translation!(scene, cam, key, button, zoom_shift_lookat::Bool)
             if event.action == Mouse.press && is_mouseinside(scene)
                 last_mousepos[] = mouseposition_px(scene)
                 dragging[] = true
-                return true
+                return Consume(true)
             elseif event.action == Mouse.release && dragging[]
                 mousepos = mouseposition_px(scene)
                 dragging[] = false
                 diff = (last_mousepos[] - mousepos) * cam.translationspeed[]
                 last_mousepos[] = mousepos
                 translate_cam!(scene, cam, Vec3f0(0f0, diff[1], diff[2]))
-                return true
+                return Consume(true)
             end
         end
-        return false
+        return Consume(false)
     end
 
     on(camera(scene), scene.events.mouseposition) do mp
@@ -164,9 +164,9 @@ function add_translation!(scene, cam, key, button, zoom_shift_lookat::Bool)
             diff = (last_mousepos[] .- mousepos) * cam.translationspeed[]
             last_mousepos[] = mousepos
             translate_cam!(scene, cam, Vec3f0(0f0, diff[1], diff[2]))
-            return true
+            return Consume(true)
         end
-        return false
+        return Consume(false)
     end
 
     on(camera(scene), scene.events.scroll) do scroll
@@ -176,9 +176,9 @@ function add_translation!(scene, cam, key, button, zoom_shift_lookat::Bool)
             mouse_pos_normalized = 2*mouse_pos_normalized .- 1f0
             zoom_step = scroll[2]
             zoom!(scene, mouse_pos_normalized, zoom_step, zoom_shift_lookat)
-            return true
+            return Consume(true)
         end
-        return false
+        return Consume(false)
     end
 end
 
@@ -192,7 +192,7 @@ function add_rotation!(scene, cam, button, key, fixed_axis::Bool)
             if event.action == Mouse.press && is_mouseinside(scene)
                 last_mousepos[] = mouseposition_px(scene)
                 dragging[] = true
-                return true
+                return Consume(true)
             elseif event.action == Mouse.release && dragging[]
                 mousepos = mouseposition_px(scene)
                 dragging[] = false
@@ -200,10 +200,10 @@ function add_rotation!(scene, cam, button, key, fixed_axis::Bool)
                 mp = (last_mousepos[] - mousepos) * rot_scaling
                 last_mousepos[] = mousepos
                 rotate_cam!(scene, cam, Vec3f0(mp[1], -mp[2], 0f0), fixed_axis)
-                return true
+                return Consume(true)
             end
         end
-        return false
+        return Consume(false)
     end
 
     on(camera(scene), e.mouseposition) do mp
@@ -213,9 +213,9 @@ function add_rotation!(scene, cam, button, key, fixed_axis::Bool)
             mp = (last_mousepos[] .- mousepos) * rot_scaling
             last_mousepos[] = mousepos
             rotate_cam!(scene, cam, Vec3f0(mp[1], -mp[2], 0f0), fixed_axis)
-            return true
+            return Consume(true)
         end
-        return false
+        return Consume(false)
     end
 end
 
