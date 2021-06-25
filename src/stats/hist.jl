@@ -42,6 +42,8 @@ $(ATTRIBUTES)
         bins = 15, # Int or iterable of edges
         normalization = :none,
         cycle = [:color => :patchcolor],
+        color = theme(scene, :patchcolor),
+
         bar_labels = nothing,
         flip_labels_at = Inf,
         label_color = theme(scene, :textcolor),
