@@ -88,8 +88,6 @@ function Makie.plot!(plot::Hist)
             return color
         end
     end
-    @show color
-
     # plot the values, not the observables, to be in control of updating
     bp = barplot!(plot, points[]; width = widths[], plot.attributes..., color=color)
 
