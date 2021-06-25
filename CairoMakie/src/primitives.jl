@@ -208,38 +208,18 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Scatter)
 
         Cairo.set_source_rgba(ctx, rgbatuple(col)...)
         m = convert_attribute(marker, key"marker"(), key"scatter"())
+        Cairo.save(ctx)
         if m isa Char
             draw_marker(ctx, m, best_font(m, font), pos, scale, strokecolor, strokewidth, offset, rotation)
         else
             draw_marker(ctx, m, pos, scale, strokecolor, strokewidth, offset, rotation)
         end
+        Cairo.restore(ctx)
     end
     nothing
 end
 
-
-function draw_marker(ctx, marker::Circle, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
-
-    marker_offset = marker_offset + scale ./ 2
-
-    pos += Point2f0(marker_offset[1], -marker_offset[2])
-
-    # Cairo.scale(ctx, scale...)
-    Cairo.move_to(ctx, pos[1] + scale[1]/2, pos[2])
-    Cairo.arc(ctx, pos[1], pos[2], scale[1]/2, 0, 2*pi)
-    Cairo.fill_preserve(ctx)
-
-    sc = to_color(strokecolor)
-
-    Cairo.set_source_rgba(ctx, rgbatuple(sc)...)
-    Cairo.set_line_width(ctx, Float64(strokewidth))
-    Cairo.stroke(ctx)
-end
-
 function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
-
-    Cairo.save(ctx)
-
     # Marker offset is meant to be relative to the
     # bottom left corner of the box centered at
     # `pos` with sides defined by `scale`, but
@@ -287,32 +267,32 @@ function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewid
     cairo_font_face_destroy(cairoface)
 
     set_font_matrix(ctx, old_matrix)
-    Cairo.restore(ctx)
-
 end
 
+function draw_marker(ctx, marker::Circle, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
 
-function draw_marker(ctx, marker::Union{Rect, Type{<: Rect}}, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
-    s2 = if marker isa Type{Rect}
-        Point2(scale[1], -scale[2])
-    else
-        Point2((widths(marker) .* scale .* (1, -1))...)
-    end
+    marker_offset = marker_offset + scale ./ 2
+    pos += Point2f0(marker_offset[1], -marker_offset[2])
+    Cairo.arc(ctx, pos[1], pos[2], scale[1]/2, 0, 2*pi)
+    Cairo.fill_preserve(ctx)
 
-    offset = marker_offset .+ scale ./ 2
+    Cairo.set_line_width(ctx, Float64(strokewidth))
 
-    pos += Point2f0(offset[1], -offset[2])
+    sc = to_color(strokecolor)
+    Cairo.set_source_rgba(ctx, rgbatuple(sc)...)
+    Cairo.stroke(ctx)
+end
 
-    Cairo.move_to(ctx, pos...)
+function draw_marker(ctx, marker::Rect, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
+    s2 = Point2((widths(marker) .* scale .* (1, -1))...)
+    pos = pos .+ Point2f0(marker_offset[1], -marker_offset[2])
     Cairo.rotate(ctx, to_2d_rotation(rotation))
-    Cairo.rectangle(ctx, 0, 0, s2...)
-    Cairo.fill_preserve(ctx);
-    if strokewidth > 0.0
-        sc = to_color(strokecolor)
-        Cairo.set_source_rgba(ctx, rgbatuple(sc)...)
-        Cairo.set_line_width(ctx, Float64(strokewidth))
-        Cairo.stroke(ctx)
-    end
+    Cairo.rectangle(ctx, pos[1], pos[2], s2...)
+    Cairo.fill_preserve(ctx)
+    Cairo.set_line_width(ctx, Float64(strokewidth))
+    sc = to_color(strokecolor)
+    Cairo.set_source_rgba(ctx, rgbatuple(sc)...)
+    Cairo.stroke(ctx)
 end
 
 
