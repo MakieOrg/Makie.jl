@@ -97,3 +97,49 @@ Legend(fig[1,2], elements, labels, title)
 
 fig
 ```
+
+```@example bar
+barplot(
+    tbl.x, tbl.height,
+    dodge = tbl.grp,
+    color = tbl.grp,
+    bar_labels = :y,
+    axis = (xticks = (1:3, ["left", "middle", "right"]),
+            title = "Dodged bars horizontal with labels"),
+    colormap = [:red, :green, :blue],
+    color_over_background=:red,
+    color_over_bar=:white,
+    flip_labels_at=0.85,
+    direction=:x,
+)
+```
+
+```@example bar
+barplot(
+    tbl.x, tbl.height,
+    dodge = tbl.grp,
+    color = tbl.grp,
+    bar_labels = :y,
+    axis = (xticks = (1:3, ["left", "middle", "right"]),
+            title = "Dodged bars horizontal with labels"),
+    colormap = [:red, :green, :blue],
+    color_over_background=:red,
+    color_over_bar=:white,
+    flip_labels_at=0.85,
+    direction=:x,
+)
+```
+
+```@example bar
+barplot(
+    [1, 2, 3],
+    bar_labels = :x,
+    label_font = assetpath("fonts", "blkchcry.ttf"),
+    axis = (title="Fonts + colors",),
+    label_size = 36,
+    flip_labels_at=2,
+    label_color=[:red, :green, :white],
+    label_formatter = x-> "x + $(x + 5)",
+    label_offset = 20
+)
+```

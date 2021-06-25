@@ -28,6 +28,12 @@ can be normalized by setting `normalization`. Possible values are:
    norm 1.
 *  `:none`: Do not normalize.
 
+Color can either be:
+* a vector of `bins` colors
+* a single color
+* the exact same array as values (`colors === values`), coloring by the result of the histogram
+* `:y` for the same effect as above, but less reliant on identity
+
 ## Attributes
 $(ATTRIBUTES)
 """
@@ -36,6 +42,15 @@ $(ATTRIBUTES)
         bins = 15, # Int or iterable of edges
         normalization = :none,
         cycle = [:color => :patchcolor],
+        bar_labels = nothing,
+        flip_labels_at = Inf,
+        label_color = theme(scene, :textcolor),
+        over_background_color = automatic,
+        over_bar_color = automatic,
+        label_offset = 5,
+        label_font = theme(scene, :font),
+        label_size = 20,
+        label_formatter = bar_label_formatter
     )
 end
 
@@ -66,9 +81,17 @@ function Makie.plot!(plot::Hist)
     end
 
     widths = lift(diff, edges)
+    color = lift(plot.color) do color
+        if color === plot.values[] || color === :y
+            return last.(points[])
+        else
+            return color
+        end
+    end
+    @show color
 
     # plot the values, not the observables, to be in control of updating
-    bp = barplot!(plot, points[]; width = widths[], plot.attributes...)
+    bp = barplot!(plot, points[]; width = widths[], plot.attributes..., color=color)
 
     # update the barplot points without triggering, then trigger with `width`
     on(widths) do w
