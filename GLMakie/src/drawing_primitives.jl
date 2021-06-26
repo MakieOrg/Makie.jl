@@ -340,14 +340,13 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
     return cached_robj!(screen, scene, x) do gl_attributes
         t = Makie.transform_func_obs(scene)
         mat = x[3]
-        xpos = map(t, x[1]) do t, x
-            n = size(mat[], 1)
-            return first.(apply_transform.((t,), Point.(xy_convert(x, n), 0)))
+        xypos = map(t, x[1], x[2]) do t, x, y
+            x1d = xy_convert(x, size(mat[], 1))
+            y1d = xy_convert(y, size(mat[], 2))
+            return [apply_transform(t, Point(x, y)) for x in x1d, y in y1d]
         end
-        ypos = map(t, x[2]) do t, y
-            n = size(mat[], 1)
-            return last.(apply_transform.((t,), Point.(0, xy_convert(y, n))))
-        end
+        xpos = map(x-> x[1], xypos)
+        ypos = map(x-> x[2], xypos)
         gl_attributes[:position_x] = Texture(xpos, minfilter = :nearest)
         gl_attributes[:position_y] = Texture(ypos, minfilter = :nearest)
         # number of planes used to render the heatmap
@@ -478,7 +477,23 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
         types = map(v -> typeof(to_value(v)), x[1:2])
 
         if all(T -> T <: Union{AbstractMatrix, AbstractVector}, types)
-            args = map(x[1:3]) do arg
+            t = Makie.transform_func_obs(scene)
+            mat = x[3]
+            xypos = map(t, x[1], x[2]) do t, x, y
+                x1d = xy_convert(x, size(mat[], 1))
+                y1d = xy_convert(y, size(mat[], 2))
+                # Only if transform doesn't do anything, we can stay linear in 1/2D
+                if t === identity
+                    return apply_transform.((t,), Point.(x1d, y1d))
+                else
+                    # If we do any transformation, we have to assume things aren't on the grid anymore
+                    # so x + y need to become matrices.
+                    return [apply_transform(t, Point(x, y)) for x in x1d, y in y1d]
+                end
+            end
+            xpos = map(x-> first.(x), xypos)
+            ypos = map(x-> last.(x), xypos)
+            args = map((xpos, ypos, mat)) do arg
                 Texture(el32convert(arg); minfilter=:nearest)
             end
             return visualize(args, Style(:surface), gl_attributes)

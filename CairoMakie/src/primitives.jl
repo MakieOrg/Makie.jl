@@ -673,8 +673,12 @@ function draw_mesh3D(
 
     # Mesh data
     # transform to view/camera space
-    vs = map(decompose(Point, mesh)) do v
+    func = Makie.transform_func_obs(scene)[]
+    # pass func as argument to function, so that we get a function barrier
+    # and have `func` be fully typed inside closure
+    vs = broadcast(decompose(Point, mesh), func) do v, f
         # Should v get a nan2zero?
+        v = Makie.apply_transform(f, v)
         p4d = to_ndim(Vec4f0, scale .* to_ndim(Vec3f0, v, 0f0), 1f0)
         view * (model * p4d .+ to_ndim(Vec4f0, pos, 0f0))
     end
