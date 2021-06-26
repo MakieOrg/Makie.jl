@@ -333,7 +333,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
     return robj
 end
 
-xy_convert(x::AbstractVector, n) = el32convert(x)
+xy_convert(x::AbstractArray, n) = el32convert(x)
 xy_convert(x, n) = Float32[LinRange(extrema(x)..., n + 1);]
 
 function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
@@ -484,15 +484,16 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
                 y1d = xy_convert(y, size(mat[], 2))
                 # Only if transform doesn't do anything, we can stay linear in 1/2D
                 if t === identity
-                    return apply_transform.((t,), Point.(x1d, y1d))
+                    return (x1d, y1d)
                 else
                     # If we do any transformation, we have to assume things aren't on the grid anymore
                     # so x + y need to become matrices.
-                    return [apply_transform(t, Point(x, y)) for x in x1d, y in y1d]
+                    matrix = [apply_transform(t, Point(x, y)) for x in x1d, y in y1d]
+                    return (first.(matrix), last.(matrix))
                 end
             end
-            xpos = map(x-> first.(x), xypos)
-            ypos = map(x-> last.(x), xypos)
+            xpos = map(first, xypos)
+            ypos = map(last, xypos)
             args = map((xpos, ypos, mat)) do arg
                 Texture(el32convert(arg); minfilter=:nearest)
             end
