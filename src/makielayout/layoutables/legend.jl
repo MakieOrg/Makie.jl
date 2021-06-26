@@ -54,7 +54,8 @@ function layoutable(::Type{Legend},
         relayout()
     end
 
-    onany(grid.needs_update, margin) do _, margin
+    update_grid = Node(true)
+    onany(update_grid, margin) do _, margin
         if manipulating_grid[]
             return
         end
@@ -159,7 +160,7 @@ function layoutable(::Type{Legend},
 
 
         manipulating_grid[] = false
-        grid.needs_update[] = true
+        notify(update_grid)
 
         # translate the legend forward so it is above the standard axis content
         # which is at zero. this will not really work if the legend should be

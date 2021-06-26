@@ -360,11 +360,6 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     # trigger first protrusions with one of the observables
     title[] = title[]
 
-    # trigger a layout update whenever the protrusions change
-    # on(protrusions) do prot
-    #     needs_update[] = true
-    # end
-
     # trigger bboxnode so the axis layouts itself even if not connected to a
     # layout
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
