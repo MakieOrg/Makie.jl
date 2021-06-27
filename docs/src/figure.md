@@ -48,10 +48,10 @@ ax = f[1, 1] = Axis(f)
 sl = f[2, 1] = Slider(f)
 ```
 
-## `FigurePosition`s and `FigureSubposition`s
+## `GridPosition`s and `GridSubposition`s
 
 The indexing syntax of `Figure` is implemented to work seamlessly with layouting.
-If you index into the figure, a `FigurePosition` object that stores this indexing operation is created.
+If you index into the figure, a `GridPosition` object that stores this indexing operation is created.
 This object can be used to plot a new axis into a certain layout position in the figure, for example like this:
 
 ```@example
@@ -72,8 +72,8 @@ f
 ```
 
 
-You can also index further into a `FigurePosition`, which creates a `FigureSubposition`.
-With `FigureSubposition`s you can describe positions in arbitrarily nested grid layouts.
+You can also index further into a `GridPosition`, which creates a `GridSubposition`.
+With `GridSubposition`s you can describe positions in arbitrarily nested grid layouts.
 Often, a desired plot layout can only be achieved with nesting, and repeatedly indexing makes this easy.
 
 ```@example
@@ -92,10 +92,10 @@ f
 ```
 
 
-All nested grid layouts that don't exist yet, but are needed for a nested plotting call, are created in the background automatically.
+All nested GridLayouts that don't exist yet, but are needed for a nested plotting call, are created in the background automatically.
 
 !!! note
-    The `GridLayout`s that are implicitly created when using `FigureSubpositions` are not directly available in the return
+    The `GridLayout`s that are implicitly created when using `GridSubpositions` are not directly available in the return
     value for further manipulation. You can instead retrieve them after the fact with the `content` function, for example,
     as explained in the following section.
 
@@ -121,13 +121,12 @@ f
 ## Retrieving Objects From A Figure
 
 Sometimes users are surprised that indexing into a figure does not retrieve the object placed at that position.
-This is because the `FigurePosition` is needed for plotting, and returning content objects directly would take
-away that possibility.
+This is because the `GridPosition` is needed for plotting, and returning content objects directly would take away that possibility.
 Furthermore, a `GridLayout` can hold multiple objects at the same position, or have partially overlapping content,
 so it's not well-defined what should be returned given a certain index.
 
 To retrieve objects from a Figure you can instead use indexing plus the `contents` or `content` functions.
-The `contents` function returns a Vector of all objects found at the given `FigurePosition`.
+The `contents` function returns a Vector of all objects found at the given `GridPosition`.
 You can use the `exact = true` keyword argument so that the position has to match exactly, otherwise objects
 contained in that position are also returned.
 
@@ -141,7 +140,7 @@ contents(f[1:3, 1:2]) == [box, ax]
 contents(f[1:3, 1:2], exact = true) == [box]
 ```
 
-If you use `contents` on a `FigureSubposition`, the `exact` keyword only refers to the lowest-level
+If you use `contents` on a `GridSubposition`, the `exact` keyword only refers to the lowest-level
 grid layout, all upper levels have to match exactly.
 
 ```julia

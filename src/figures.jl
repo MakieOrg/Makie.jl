@@ -119,8 +119,8 @@ Base.show(io::IO, ::MIME"text/plain", fig::Figure) = print(io, "Figure()")
 # Base.show(io::IO, ::MIME"image/svg+xml", fig::Figure) = show(io, MIME"image/svg+xml"(), fig.scene)
 
 
-get_figure(gsp::GridSubposition) = get_figure(gsp.parent)
-function get_figure(gp::GridPosition)
+get_figure(gsp::GridLayoutBase.GridSubposition) = get_figure(gsp.parent)
+function get_figure(gp::GridLayoutBase.GridPosition)
     top_parent = GridLayoutBase.top_parent(gp.layout)
     if top_parent isa Figure
         top_parent

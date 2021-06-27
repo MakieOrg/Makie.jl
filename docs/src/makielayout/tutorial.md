@@ -194,7 +194,7 @@ We can extend the grid with a new axis by plotting into a new grid position. Let
 with another line plot next to the one we have, in row 1 and column 2.
 
 We can use the non-mutating plotting syntax and pass a position in our figure as the first argument.
-When we index into a figure, we get a `FigurePosition` object which describes the position we want
+When we index into a figure, we get a `GridPosition` object which describes the position we want
 to put our new axis in.
 
 The plotting call returns an `AxisPlot` object which we can directly destructure into axis and plot.

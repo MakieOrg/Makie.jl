@@ -29,9 +29,9 @@ end
     @test current_axis() === nothing
     @test current_figure() === fig
 
-    figurepos = fig[1, 1]
-    @test figurepos isa Makie.FigurePosition
-    ap = scatter(figurepos, rand(100, 2))
+    gridpos = fig[1, 1]
+    @test gridpos isa GridPosition
+    ap = scatter(gridpos, rand(100, 2))
     @test ap isa Makie.AxisPlot
     @test current_axis() === ap.axis
 
