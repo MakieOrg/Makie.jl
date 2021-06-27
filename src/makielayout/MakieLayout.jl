@@ -101,7 +101,7 @@ export Cycle
 
 
 # from GridLayoutBase
-export GridLayout, GridPosition
+export GridLayout, GridPosition, GridSubposition
 export GridLayoutSpec
 export BBox
 export LayoutObservables
