@@ -73,7 +73,7 @@ The link to the Figure is in the parent field of the top layout.
 
 ### With Non-Mutating Plotting Functions
 
-Using the non-mutating plotting functions with figure positions creates new axes at the given locations.
+Using the non-mutating plotting functions with GridPositions creates new axes at the given locations.
 If a GridLayout along the nesting levels doesn't exist, yet, it is created automatically for convenience.
 
 ```@example
@@ -104,7 +104,7 @@ fig
 
 ### With Mutating Plotting Functions
 
-Mutating plotting functions work a bit differently with figure positions.
+Mutating plotting functions work a bit differently with GridPositions.
 First, it is checked if one - and only one - axis exists already at the given position.
 If that's the case, that axis is plotted into.
 If it's not the case, the function will error.

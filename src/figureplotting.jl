@@ -101,7 +101,7 @@ function plot(P::PlotFunc, gsp::GridSubposition, args...; axis = NamedTuple(), k
     c = contents(gsp, exact = true)
     if !isempty(c)
         error("""
-        You have used the non-mutating plotting syntax with a FigureSubposition, which requires an empty GridLayout slot to create an axis in, but there are already the following objects at this layout position:
+        You have used the non-mutating plotting syntax with a GridSubposition, which requires an empty GridLayout slot to create an axis in, but there are already the following objects at this layout position:
 
         $(c)
 
