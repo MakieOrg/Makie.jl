@@ -17,10 +17,10 @@ This is needed so that users can without much boilerplate create the necessary s
 
 A normal plotting command creates a FigureAxisPlot, which can be splatted into figure, axis and plot. It displays like a figure, so that simple plots show up immediately.
 
-A non-mutating plotting command that references a FigurePosition or a FigureSubposition creates an axis at that position and returns an AxisPlot, which can be splatted into axis and plot.
+A non-mutating plotting command that references a GridPosition or a GridSubposition creates an axis at that position and returns an AxisPlot, which can be splatted into axis and plot.
 
 All mutating plotting commands return AbstractPlots.
-They can either reference a FigurePosition or a FigureSubposition, in which case it is looked up
+They can either reference a GridPosition or a GridSubposition, in which case it is looked up
 if an axis is placed at that position (if not it errors) or it can reference an axis directly to plot into.
 =#
 
@@ -81,26 +81,24 @@ function Figure(; kwargs...)
     end
     notify(alignmode)
 
-    Figure(
+    f = Figure(
         scene,
         layout,
         [],
         Attributes(),
         Ref{Any}(nothing)
     )
+    # set figure as layout parent so GridPositions can refer to the figure
+    # if connected correctly
+    layout.parent = f
+    f
 end
 
 export Figure, current_axis, current_figure, current_axis!, current_figure!
 
-# the FigurePosition is used to plot into a specific part of a figure and create
-# an axis there, like `scatter(fig[1, 2], ...)`
-struct FigurePosition
-    fig::Figure
-    gp::GridLayoutBase.GridPosition
-end
 
 function Base.getindex(fig::Figure, rows, cols, side = GridLayoutBase.Inner())
-    FigurePosition(fig, fig.layout[rows, cols, side])
+    fig.layout[rows, cols, side]
 end
 
 function Base.setindex!(fig::Figure, obj, rows, cols, side = GridLayoutBase.Inner())
@@ -114,112 +112,20 @@ function Base.setindex!(fig::Figure, obj::AbstractArray, rows, cols)
 end
 
 Base.lastindex(f::Figure, i) = lastindex(f.layout, i)
-Base.lastindex(f::FigurePosition, i) = lastindex(f.fig, i)
 
 # for now just redirect figure display/show to the internal scene
 Base.show(io::IO, fig::Figure) = show(io, fig.scene)
 Base.show(io::IO, ::MIME"text/plain", fig::Figure) = print(io, "Figure()")
 # Base.show(io::IO, ::MIME"image/svg+xml", fig::Figure) = show(io, MIME"image/svg+xml"(), fig.scene)
 
-# a FigureSubposition is just a deeper nested position in a figure's layout, and it doesn't
-# necessarily have to refer to an existing layout either, because those can be created
-# when it becomes necessary
-struct FigureSubposition{T}
-    parent::T
-    rows
-    cols
-    side::GridLayoutBase.Side
-end
 
-# fp[1, 2] creates a FigureSubposition, a nested version of FigurePosition
-# currently, because at the time of creation there is not necessarily a gridlayout
-# at all nested locations, the end+1 syntax doesn't work, because it's not known how many
-# rows/cols the nested grid has if it doesn't exist yet
-function Base.getindex(parent::Union{FigurePosition,FigureSubposition},
-        rows, cols, side = GridLayoutBase.Inner())
-    FigureSubposition(parent, rows, cols, side)
-end
-
-function Base.setindex!(parent::Union{FigurePosition,FigureSubposition}, obj,
-    rows, cols, side = GridLayoutBase.Inner())
-    layout = get_layout_at!(parent, createmissing = true)
-    isnothing(layout) && error("No single GridLayout could be found or created at this FigureSubposition. This means that there are at least two GridLayouts at this position already and it's unclear which one is meant.")
-    layout[rows, cols, side] = obj
-    obj
-end
-
-function Base.setindex!(parent::FigurePosition, obj)
-    parent.gp[] = obj
-    obj
-end
-
-function Base.setindex!(parent::FigureSubposition, obj)
-    layout = get_layout_at!(parent.parent, createmissing = true)
-    isnothing(layout) && error("No single GridLayout could be found or created at this FigureSubposition. This means that there are at least two GridLayouts at this position already and it's unclear which one is meant.")
-    layout[parent.rows, parent.cols, parent.side] = obj
-    obj
-end
-
-
-# to power a simple syntax for plotting into nested grids like
-# `scatter(fig[1, 1][2, 3], ...)` we need to either find the only gridlayout that
-# sits at that position, or we create all the ones that are missing along the way
-# as a convenience, so that users don't have to manually create gridlayouts all that often
-function get_layout_at!(fp::FigurePosition; createmissing = false)
-    c = contents(fp.gp, exact = true)
-    layouts = filter(x -> x isa GridLayoutBase.GridLayout, c)
-    if isempty(layouts) && createmissing
-        fp.gp[] = GridLayoutBase.GridLayout()
-    elseif length(layouts) == 1
-        first(layouts)::GridLayoutBase.GridLayout
+get_figure(gsp::GridLayoutBase.GridSubposition) = get_figure(gsp.parent)
+function get_figure(gp::GridPosition)
+    top_parent = GridLayoutBase.top_parent(gp.layout)
+    if top_parent isa Figure
+        top_parent
     else
         nothing
-    end
-end
-
-function get_layout_at!(fsp::FigureSubposition; createmissing = false)
-    layout = get_layout_at!(fsp.parent; createmissing = createmissing)
-
-    if isnothing(layout)
-        return nothing
-    end
-
-    gp = layout[fsp.rows, fsp.cols, fsp.side]
-
-    c = contents(gp, exact = true)
-    layouts = filter(x -> x isa GridLayoutBase.GridLayout, c)
-    if isempty(layouts) && createmissing
-        gp[] = GridLayoutBase.GridLayout()
-    elseif length(layouts) == 1
-        first(layouts)::GridLayoutBase.GridLayout
-    else
-        nothing
-    end
-end
-
-get_figure(fsp::FigureSubposition) = get_figure(fsp.parent)
-get_figure(fp::FigurePosition) = fp.fig
-
-function GridLayoutBase.contents(f::FigurePosition; exact = false)
-    GridLayoutBase.contents(f.gp, exact = exact)
-end
-
-function GridLayoutBase.contents(f::FigureSubposition; exact = false)
-    layout = get_layout_at!(f.parent, createmissing = false)
-    isnothing(layout) && return []
-    GridLayoutBase.contents(layout[f.rows, f.cols, f.side], exact = exact)
-end
-
-function GridLayoutBase.content(f::FigurePosition)
-    content(f.gp)
-end
-
-function GridLayoutBase.content(f::FigureSubposition)
-    cs = contents(f, exact = true)
-    if length(cs) == 1
-        return cs[1]
-    else
-        error("There is not exactly one object at the given FigureSubposition")
     end
 end
 

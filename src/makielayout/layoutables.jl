@@ -51,11 +51,17 @@ end
 
 can_be_current_axis(x) = false
 
-function _layoutable(T::Type{<:Layoutable},
-        fp::Union{Makie.FigurePosition, Makie.FigureSubposition}, args...; kwargs...)
+get_top_parent(gp::GridLayoutBase.GridPosition) = GridLayoutBase.top_parent(gp.layout)
+get_top_parent(gp::GridLayoutBase.GridSubposition) = GridLayoutBase.top_parent(gp.parent)
 
-    fig = Makie.get_figure(fp)
-    l = fp[] = _layoutable(T, fig, args...; kwargs...)
+function _layoutable(T::Type{<:Layoutable},
+        gp::Union{GridPosition, GridLayoutBase.GridSubposition}, args...; kwargs...)
+
+    top_parent = get_top_parent(gp)
+    if top_parent === nothing
+        error("Found nothing as the top parent of this GridPosition. A GridPosition or GridSubposition needs to be connected to the top layout of a Figure, Scene or comparable object, either directly or through nested GridLayouts in order to plot into it.")
+    end
+    l = gp[] = _layoutable(T, top_parent, args...; kwargs...)
     l
 end
 
