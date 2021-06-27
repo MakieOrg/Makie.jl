@@ -46,8 +46,8 @@ jobs:
       - name: Upload test Artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: ReferenceImages
-          path: ./test/recorded
+          name: ReferenceImages_${{ matrix.os }}_${{ matrix.arch }}_${{ matrix.version }}
+          path: ./WGLMakie/test/recorded
       - uses: actions/cache@v1
         env:
           cache-name: cache-artifacts
