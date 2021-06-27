@@ -100,7 +100,6 @@ end
     @test contents(fig[1, 2][1, 1], exact = false) == [ax2]
     @test contents(fig[1, 2][1:2, 1:2], exact = true) == []
     @test contents(fig[1, 2][1:2, 1:2], exact = false) == [ax2]
-    @test contents(fig[1:2, 1:2][1, 1]) == []
 
     label2 = fig[1, 2][1, 1] = Label(fig)
     @test contents(fig[1, 2][1, 1], exact = true) == [ax2, label2]
