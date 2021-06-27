@@ -51,6 +51,7 @@ jobs:
           # dev mono repo versions
           pkg"dev . MakieCore CairoMakie ReferenceTests"
       - name: Run the tests
+        continue-on-error: true
         run: julia --project=monorepo -e 'using Pkg; Pkg.test("CairoMakie", coverage=true)'
       - name: Upload test Artifacts
         uses: actions/upload-artifact@v2
