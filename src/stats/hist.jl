@@ -31,8 +31,7 @@ can be normalized by setting `normalization`. Possible values are:
 Color can either be:
 * a vector of `bins` colors
 * a single color
-* the exact same array as values (`colors === values`), coloring by the result of the histogram
-* `:y` for the same effect as above, but less reliant on identity
+* `:values`, to color the bars with the values from the histogram
 
 ## Attributes
 $(ATTRIBUTES)
@@ -59,7 +58,7 @@ end
 
 function Makie.plot!(plot::Hist)
 
-    values = plot[:values]
+    values = plot.values
 
     edges = lift(values, plot.bins) do vals, bins
         if bins isa Int
@@ -84,7 +83,7 @@ function Makie.plot!(plot::Hist)
 
     widths = lift(diff, edges)
     color = lift(plot.color) do color
-        if color === plot.values[] || color === :y
+        if color === :values
             return last.(points[])
         else
             return color
