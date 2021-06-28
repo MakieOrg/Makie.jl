@@ -507,10 +507,10 @@ function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, input::NTup
 end
 
 function apply_camera!(scene::Scene, cam_func)
-    if cam_func in (cam2d!, cam3d!, campixel!, cam3d_cad!)
+    if cam_func in (cam2d!, cam3d!, old_cam3d!, campixel!, cam3d_cad!)
         cam_func(scene)
     else
-        error("Unrecognized `camera` attribute type: $(typeof(cam_func)). Use automatic, cam2d! or cam3d!, campixel!, cam3d_cad!")
+        error("Unrecognized `camera` attribute type: $(typeof(cam_func)). Use automatic, cam2d!, cam3d!, old_cam3d!, campixel!, cam3d_cad!")
     end
 end
 
