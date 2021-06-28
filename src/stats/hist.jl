@@ -89,7 +89,8 @@ function Makie.plot!(plot::Hist)
             return color
         end
     end
-    bar_labels = map(bar_labels) do x
+
+    bar_labels = map(plot.bar_labels) do x
         x === :values ? :y : x
     end
     # plot the values, not the observables, to be in control of updating
