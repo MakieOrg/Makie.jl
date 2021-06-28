@@ -3,12 +3,6 @@ using CairoMakie
 
 # Before changing Pkg environment, try the test in #864
 @testset "Runs without error" begin
-    recorded = joinpath(@__DIR__, "recorded")
-    rm(recorded; force=true, recursive=true); mkdir(recorded)
-    open(joinpath(@__DIR__, "recorded", "testfile.txt"), "w") do file
-        println(file, "test")
-    end
-    error()
     fig = Figure()
     scatter(fig[1, 1], rand(10))
     fn = tempname()*".png"
