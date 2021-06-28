@@ -61,10 +61,8 @@ jobs:
           name: ReferenceImages_${{ matrix.os }}_${{ matrix.arch }}_${{ matrix.version }}
           path: ./CairoMakie/test/recorded
       - name: Fail after artifacts if tests failed
-        run: |
-         if ["$TESTS_SUCCESSFUL" != "true"]; then
-            exit 1
-         fi
+        if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
+        run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
       - uses: codecov/codecov-action@v1
         with:
