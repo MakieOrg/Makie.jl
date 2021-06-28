@@ -62,7 +62,6 @@ function gl_heatmap(main::MatTypes{T}, data::Dict) where T <: AbstractFloat
     return data
 end
 
-
 #Volumes
 const VolumeElTypes = Union{Gray, AbstractFloat}
 
