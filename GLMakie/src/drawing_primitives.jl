@@ -333,6 +333,9 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
     return robj
 end
 
+# el32convert doesn't copy for array of Float32
+# But we assume that xy_convert copies when we use it
+xy_convert(x::AbstractArray{Float32}, n) = copy(x)
 xy_convert(x::AbstractArray, n) = el32convert(x)
 xy_convert(x, n) = Float32[LinRange(extrema(x)..., n + 1);]
 
@@ -340,13 +343,27 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
     return cached_robj!(screen, scene, x) do gl_attributes
         t = Makie.transform_func_obs(scene)
         mat = x[3]
+        mat = x[3]
         xypos = map(t, x[1], x[2]) do t, x, y
             x1d = xy_convert(x, size(mat[], 1))
             y1d = xy_convert(y, size(mat[], 2))
-            return [apply_transform(t, Point(x, y)) for x in x1d, y in y1d]
+            # Only if transform doesn't do anything, we can stay linear in 1/2D
+            if t === identity || t isa Tuple && all(x-> x === identity, t)
+                return (x1d, y1d)
+            else
+                # If we do any transformation, we have to assume things aren't on the grid anymore
+                # so x + y need to become matrices.
+                map!(x1d, x1d) do x
+                    return apply_transform(t, Point(x, 0))[1]
+                end
+                map!(y1d, y1d) do y
+                    return apply_transform(t, Point(0, y))[2]
+                end
+                return (x1d, y1d)
+            end
         end
-        xpos = map(x-> x[1], xypos)
-        ypos = map(x-> x[2], xypos)
+        xpos = map(first, xypos)
+        ypos = map(last, xypos)
         gl_attributes[:position_x] = Texture(xpos, minfilter = :nearest)
         gl_attributes[:position_y] = Texture(ypos, minfilter = :nearest)
         # number of planes used to render the heatmap
