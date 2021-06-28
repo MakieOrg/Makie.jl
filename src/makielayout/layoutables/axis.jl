@@ -193,7 +193,22 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         yflip ? lc : rc
     end
 
-    xaxis = LineAxis(topscene, endpoints = xaxis_endpoints, limits = lift(xlimits, finallimits),
+    xlims = Node(xlimits(finallimits[]))
+    ylims = Node(ylimits(finallimits[]))
+
+    on(finallimits) do lims
+        nxl = xlimits(lims)
+        nyl = ylimits(lims)
+
+        if nxl != xlims[]
+            xlims[] = nxl
+        end
+        if nyl != ylims[]
+            ylims[] = nyl
+        end
+    end
+
+    xaxis = LineAxis(topscene, endpoints = xaxis_endpoints, limits = xlims,
         flipped = xaxis_flipped, ticklabelrotation = xticklabelrotation,
         ticklabelalign = xticklabelalign, labelsize = xlabelsize,
         labelpadding = xlabelpadding, ticklabelpad = xticklabelpad, labelvisible = xlabelvisible,
@@ -206,7 +221,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         )
     decorations[:xaxis] = xaxis
 
-    yaxis  =  LineAxis(topscene, endpoints = yaxis_endpoints, limits = lift(ylimits, finallimits),
+    yaxis  =  LineAxis(topscene, endpoints = yaxis_endpoints, limits = ylims,
         flipped = yaxis_flipped, ticklabelrotation = yticklabelrotation,
         ticklabelalign = yticklabelalign, labelsize = ylabelsize,
         labelpadding = ylabelpadding, ticklabelpad = yticklabelpad, labelvisible = ylabelvisible,
@@ -896,7 +911,9 @@ function adjustlimits!(la)
 
     # in the simplest case, just update the final limits with the target limits
     if isnothing(asp)
-        la.finallimits[] = target
+        if target != la.finallimits[]
+            la.finallimits[] = target
+        end
         return
     end
 
@@ -936,7 +953,10 @@ function adjustlimits!(la)
 
     bbox = BBox(xlims[1], xlims[2], ylims[1], ylims[2])
 
-    la.finallimits[] = bbox
+    if bbox != la.finallimits[]
+        la.finallimits[] = bbox
+    end
+    return
 end
 
 """
