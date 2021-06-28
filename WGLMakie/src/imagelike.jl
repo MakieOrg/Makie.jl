@@ -49,9 +49,10 @@ function limits_to_uvmesh(plot)
     else
         function grid(x, y, z, trans)
             g = map(CartesianIndices((length(x), length(y)))) do i
-                return Point3f0(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), 0.0)
+                p = Point3f0(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), 0.0)
+                return apply_transform(trans, p)
             end
-            return apply_transform(trans, vec(g))
+            return vec(g)
         end
         rect = lift(z -> Tesselation(Rect2D(0f0, 0f0, 1f0, 1f0), size(z) .+ 1), pz)
         positions = Buffer(lift(grid, px, py, pz, transform_func_obs(plot)))
@@ -67,13 +68,15 @@ end
 function create_shader(mscene::Scene, plot::Surface)
     # TODO OWN OPTIMIZED SHADER ... Or at least optimize this a bit more ...
     px, py, pz = plot[1], plot[2], plot[3]
-    function grid(x, y, z)
+    function grid(x, y, z, trans)
         g = map(CartesianIndices(z)) do i
-            return Point3f0(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), z[i])
+            p = Point3f0(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), z[i])
+            return apply_transform(trans, p)
         end
         return vec(g)
     end
-    positions = Buffer(lift(grid, px, py, pz))
+
+    positions = Buffer(lift(grid, px, py, pz, transform_func_obs(plot)))
     rect = lift(z -> Tesselation(Rect2D(0f0, 0f0, 1f0, 1f0), size(z)), pz)
     faces = Buffer(lift(r -> decompose(GLTriangleFace, r), rect))
     uv = Buffer(lift(decompose_uv, rect))

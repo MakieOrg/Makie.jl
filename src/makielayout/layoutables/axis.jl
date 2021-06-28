@@ -360,11 +360,6 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     # trigger first protrusions with one of the observables
     title[] = title[]
 
-    # trigger a layout update whenever the protrusions change
-    # on(protrusions) do prot
-    #     needs_update[] = true
-    # end
-
     # trigger bboxnode so the axis layouts itself even if not connected to a
     # layout
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
@@ -1176,15 +1171,15 @@ end
 
 Makie.xlims!(ax, low, high) = Makie.xlims!(ax, (low, high))
 Makie.ylims!(ax, low, high) = Makie.ylims!(ax, (low, high))
-Makie.zlims!(ax, low, high) = Makie.ylims!(ax, (low, high))
+Makie.zlims!(ax, low, high) = Makie.zlims!(ax, (low, high))
 
 Makie.xlims!(low::Optional{<:Real}, high::Optional{<:Real}) = Makie.xlims!(current_axis(), low, high)
 Makie.ylims!(low::Optional{<:Real}, high::Optional{<:Real}) = Makie.ylims!(current_axis(), low, high)
-Makie.zlims!(low::Optional{<:Real}, high::Optional{<:Real}) = Makie.ylims!(current_axis(), low, high)
+Makie.zlims!(low::Optional{<:Real}, high::Optional{<:Real}) = Makie.zlims!(current_axis(), low, high)
 
 Makie.xlims!(ax = current_axis(); low = nothing, high = nothing) = Makie.xlims!(ax, low, high)
 Makie.ylims!(ax = current_axis(); low = nothing, high = nothing) = Makie.ylims!(ax, low, high)
-Makie.zlims!(ax = current_axis(); low = nothing, high = nothing) = Makie.ylims!(ax, low, high)
+Makie.zlims!(ax = current_axis(); low = nothing, high = nothing) = Makie.zlims!(ax, low, high)
 
 """
     limits!(ax::Axis, xlims, ylims)

@@ -55,7 +55,6 @@ $(ATTRIBUTES)
     )
 end
 
-
 function Makie.plot!(plot::Hist)
 
     values = plot.values

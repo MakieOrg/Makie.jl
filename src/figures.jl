@@ -77,7 +77,7 @@ function Figure(; kwargs...)
 
     on(alignmode) do al
         layout.alignmode[] = al
-        notify(layout.needs_update)
+        GridLayoutBase.update!(layout)
     end
     notify(alignmode)
 
