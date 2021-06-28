@@ -27,7 +27,7 @@ You can use all the same arguments as [`barplot`](@ref):
 ```@example hist
 using CairoMakie
 CairoMakie.activate!()
-hist(data, normalization = :pdf, bar_labels = :y,
+hist(data, normalization = :pdf, bar_labels = :values,
      label_formatter=x-> round(x, digits=2), label_size = 15,
-     strokewidth = 0.5, strokecolor = (:black, 0.5), color = :y)
+     strokewidth = 0.5, strokecolor = (:black, 0.5), color = :values)
 ```
