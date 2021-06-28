@@ -135,14 +135,19 @@ function calculated_attributes!(::Type{<: Scatter}, plot)
     end
 end
 
-function calculated_attributes!(::Type{<: Union{Lines, LineSegments}}, plot)
+function calculated_attributes!(::Type{T}, plot) where {T<:Union{Lines, LineSegments}}
     color_and_colormap!(plot)
     pos = plot[1][]
-    # extend one color per linesegment to be one (the same) color per vertex
-    # taken from @edljk  in PR #77
-    if haskey(plot, :color) && isa(plot[:color][], AbstractVector) && iseven(length(pos)) && (length(pos) ÷ 2) == length(plot[:color][])
-        plot[:color] = lift(plot[:color]) do cols
-            map(i-> cols[(i + 1) ÷ 2], 1:(length(cols) * 2))
+
+    # extend one color/linewidth per linesegment to be one (the same) color/linewidth per vertex
+    if T <: LineSegments
+        for attr in [:color, :linewidth]
+            # taken from @edljk  in PR #77
+            if haskey(plot, attr) && isa(plot[attr][], AbstractVector) && (length(pos) ÷ 2) == length(plot[attr][])
+                plot[attr] = lift(plot[attr]) do cols
+                    map(i -> cols[(i + 1) ÷ 2], 1:(length(cols) * 2))
+                end
+            end
         end
     end
 end
