@@ -6,7 +6,7 @@ end
 
 using .ContoursHygiene
 const Contours = ContoursHygiene.Contour
-
+using Base64
 using Artifacts
 using Random
 using FFMPEG # get FFMPEG on any system!
