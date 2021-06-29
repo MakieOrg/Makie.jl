@@ -917,9 +917,7 @@ function adjustlimits!(la)
 
     # in the simplest case, just update the final limits with the target limits
     if isnothing(asp)
-        if target != la.finallimits[]
-            la.finallimits[] = target
-        end
+        la.finallimits[] = target
         return
     end
 
@@ -958,10 +956,7 @@ function adjustlimits!(la)
     end
 
     bbox = BBox(xlims[1], xlims[2], ylims[1], ylims[2])
-
-    if bbox != la.finallimits[]
-        la.finallimits[] = bbox
-    end
+    la.finallimits[] = bbox
     return
 end
 
