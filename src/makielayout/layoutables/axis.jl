@@ -451,9 +451,15 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         adjustlimits!(ax)
     end
 
-    # in case the user set limits already
+    # trigger limit pipeline once, with manual finallimits if they haven't changed from
+    # their initial value as they need to be triggered at least once to correctly set up
+    # projection matrices etc.
+    fl = finallimits[]
     notify(limits)
-
+    if fl == finallimits[]
+        notify(finallimits)
+    end
+    
     ax
 end
 
