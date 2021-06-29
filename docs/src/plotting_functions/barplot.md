@@ -131,15 +131,13 @@ barplot(
 ```
 
 ```@example bar
-barplot(
-    [1, 2, 3],
-    bar_labels = :x,
-    label_font = assetpath("fonts", "blkchcry.ttf"),
-    axis = (title="Fonts + colors",),
-    label_size = 36,
-    flip_labels_at=2,
-    label_color=[:red, :green, :white],
-    label_formatter = x-> "x + $(x + 5)",
-    label_offset = 20
+barplot([-1, -0.5, 0.5, 1],
+    bar_labels = :y,
+    axis = (title="Fonts + flip_labels_at",),
+    label_size = 20,
+    flip_labels_at=(-0.8, 0.8),
+    label_color=[:white, :green, :black, :white],
+    label_formatter = x-> "Flip at $(x)?",
+    label_offset = 10
 )
 ```

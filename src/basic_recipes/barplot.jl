@@ -124,9 +124,19 @@ function text_attributes(values, in_y_direction, flip_labels_at, color_over_back
     swap(x, y) = in_y_direction ? (x, y) : (y, x)
     geti(x::AbstractArray, i) = x[i]
     geti(x, i) = x
+    function flip(k)
+        if flip_labels_at isa Number
+            return k > flip_labels_at || k < 0
+        elseif flip_labels_at isa Tuple{<:Number, <: Number}
+            return (k > flip_labels_at[2] || k < 0) && k > flip_labels_at[1]
+        else
+            error("flip_labels_at needs to be a tuple of two numbers (low, high), or a single number (high)")
+        end
+    end
+
     for (i, k) in enumerate(values)
         # Plot text inside bar
-        if k > flip_labels_at
+        if flip(k)
             push!(aligns, swap(0.5, 1.0))
             push!(offsets, swap(0, -label_offset))
             push!(text_colors, geti(color_over_bar, i))
