@@ -16,7 +16,7 @@ using FixedPointNumbers, Packing, SignedDistanceFields
 using Markdown, DocStringExtensions # documentation
 using Serialization # serialize events
 using StructArrays
-using GeometryBasics: widths, positive_widths, VecTypes, AbstractPolygon
+using GeometryBasics: widths, positive_widths, VecTypes, AbstractPolygon, value
 using StaticArrays
 import StatsBase, Distributions, KernelDensity
 using Distributions: Distribution, VariateForm, Discrete, QQPair, pdf, quantile, qqbuild
