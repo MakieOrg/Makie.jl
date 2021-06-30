@@ -1,4 +1,3 @@
-using Parameters, Colors, GeometryBasics
 
 @with_kw mutable struct Scatter{N} <: AbstractPlot
     parent::Union{Scene, Nothing} = nothing
@@ -24,13 +23,6 @@ end
 
 function Scatter(positions; kw...)
     pos = convert_arguments(Scatter, positions)
-    fields = from_keywords(Scatter, kw)
-
-    return Scatter(
-        nothing,
-        pos,
-        fields...,
-        true,
-        PlotBasics()
-    )
+    attributes = convert_attributes(Scatter, (positions=pos, kw...))
+    return Scatter(; attributes...)
 end

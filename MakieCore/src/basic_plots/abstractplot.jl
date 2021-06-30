@@ -6,23 +6,16 @@ function update!(scatter::AbstractPlot, values::Dict{Symbol})
 end
 
 function Base.setproperty!(scatter::T, field::Symbol, value::Any) where T <: AbstractPlot
-    converted = if field === :positions
-        convert_arguments(T, value)
-    else
-        convert_attribute(T, Key(field), value)
-    end
+    converted = convert_attribute(T, Key(field), value)
     setfield!(scatter, field, converted)
     update!(scatter, Dict(field => converted))
 end
 
-function from_keywords(::T, kw) where T
-    sdefaults = defaults(T)
-    return map(optional_fields(T)) do name
-        value = get(kw, name, getfield(sdefaults, name))
-        return convert_attribute(T, Key(name), value)
+function convert_attributes(::T, kw) where T
+    return map(keys(kw)) do name
+        return convert_attribute(T, Key(name), kw[name])
     end
 end
-
 
 mutable struct PlotBasics
     on_update::Observable{Dict{Symbol,Any}}
