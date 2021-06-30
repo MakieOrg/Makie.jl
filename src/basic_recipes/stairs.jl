@@ -1,4 +1,18 @@
-# adapted from https://gist.github.com/jkrumbiegel/529936a3a6f158715343601d9487880b
+"""
+    stairs(xs, ys; kwargs...)
+
+Plot a stair function.
+
+The `step` parameter can take the following values:
+- `:pre`: horizontal part of step extends to the left of each value in `xs`.
+- `:post`: horizontal part of step extends to the right of each value in `xs`.
+- `:center`: horizontal part of step extends halfway between the two adjacent values of `xs`.
+
+The conversion trait of stem is `PointBased`.
+
+## Attributes
+$(ATTRIBUTES)
+"""
 @recipe(Stairs) do scene
     a = Attributes(
         step = :pre, # :center :post
