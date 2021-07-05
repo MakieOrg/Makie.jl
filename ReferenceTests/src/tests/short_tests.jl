@@ -153,6 +153,6 @@ end
     fig
 end
 
-@testset "log10 heatmap" begin
+@cell "log10 heatmap" begin
     heatmap(rand(10, 5), axis = (yscale = log10, xscale=log10))
 end
