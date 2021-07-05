@@ -63,15 +63,15 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
         )
 
         if dir === :x
-            lower = Point2f0.(k.x, offs)
-            upper = Point2f0.(k.x, offs .+ k.density)
+            lowerv = Point2f0.(k.x, offs)
+            upperv = Point2f0.(k.x, offs .+ k.density)
         elseif dir === :y
-            lower = Point2f0.(offs, k.x)
-            upper = Point2f0.(offs .+ k.density, k.x)
+            lowerv = Point2f0.(offs, k.x)
+            upperv = Point2f0.(offs .+ k.density, k.x)
         else
             error("Invalid direction $dir, only :x or :y allowed")
         end
-        (lower, upper)
+        (lowerv, upperv)
     end
 
     linepoints = lift(lowerupper, plot.strokearound) do lu, sa
