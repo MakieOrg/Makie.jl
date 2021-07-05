@@ -45,6 +45,7 @@ Markdown.parse("""
       - $(print_dep_version("Makie"))
       - $(print_dep_version("GLMakie"))
       - $(print_dep_version("CairoMakie"))
+      - $(print_dep_version("WGLMakie"))
 
     If you encounter errors with the code examples, check first that your installed versions are appropriate.
 """)
