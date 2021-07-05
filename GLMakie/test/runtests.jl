@@ -24,9 +24,8 @@ empty!(ReferenceTests.DATABASE)
 include("glmakie_tests.jl")
 recorded_glmakie = joinpath(@__DIR__, "recorded_glmakie")
 rm(recorded_glmakie; force=true, recursive=true); mkdir(recorded_glmakie)
-ReferenceTests.record_tests(ReferenceTests.DATABASE, recording_dir=recorded_glmakie)
 ref_images = ReferenceTests.download_refimages(; name="glmakie_refimages")
-ReferenceTests.reference_tests(recorded_glmakie; ref_images=ref_images, difference=0.01)
+ReferenceTests.run_reference_tests(ReferenceTests.DATABASE, recorded_glmakie; ref_images=ref_images, difference=0.01)
 # needs GITHUB_TOKEN to be defined
 # First look at the generated refimages, to make sure they look ok:
 # ReferenceTests.generate_test_summary("index_gl.html", recorded_glmakie)
