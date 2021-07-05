@@ -75,7 +75,7 @@ function compare(test_files::Vector{String}, reference_dir::String; missing_refi
     return missing_refimages, scores
 end
 
-function run_reference_tests(db, recording_folder, difference=0.03)
+function run_reference_tests(db, recording_folder; difference=0.03)
     ref_images = download_refimages()
     record_tests(db, recording_dir=recording_folder)
     missing_files, scores = compare(joinpath.(recording_folder, readdir(recording_folder)), ref_images)
@@ -92,7 +92,7 @@ function run_reference_tests(db, recording_folder, difference=0.03)
     end
 
     generate_test_summary(joinpath(recording_folder, "preview.html"), recording_folder, ref_images, scores)
-    reference_tests(scores; difference=0.03)
+    reference_tests(scores; difference=difference)
 end
 
 function reference_tests(scores; difference=0.03)
