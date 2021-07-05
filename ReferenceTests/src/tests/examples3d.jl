@@ -45,7 +45,8 @@ end
     cam.upvector[] = (0.0, 0.0, 1.0)
     cam.lookat[] = minimum(scene_limits(scene)) + dir_scaled
     cam.eyeposition[] = (cam.lookat[][1], cam.lookat[][2] + 6.3, cam.lookat[][3])
-    cam.projectiontype[] = Makie.Orthographic
+    cam.attributes[:projectiontype][] = Makie.Orthographic
+    cam.zoom_mult[] = 0.61f0
     update_cam!(scene, cam)
     # stop scene display from centering, which would overwrite the camera paramter we just set
     scene.center = false

@@ -30,7 +30,7 @@ function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), 
         if is2d(proxyscene)
             ax = Axis(fig; axis...)
         else
-            ax = LScene(fig; scenekw = (camera = cam3d!, show_axis = true, raw = false, axis...))
+            ax = LScene(fig; scenekw = (camera = automatic, show_axis = true, raw = false, axis...))
         end
     end
 
@@ -125,7 +125,7 @@ function plot(P::PlotFunc, gsp::GridSubposition, args...; axis = NamedTuple(), k
         if is2d(proxyscene)
             ax = Axis(fig; axis...)
         else
-            ax = LScene(fig; scenekw = (camera = cam3d!, show_axis = true, raw = false, axis...))
+            ax = LScene(fig; scenekw = (camera = automatic, show_axis = true, raw = false, axis...))
         end
     end
 

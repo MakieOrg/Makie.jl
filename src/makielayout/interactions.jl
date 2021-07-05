@@ -149,6 +149,12 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
     transf = Makie.transform_func(ax)
     inv_transf = Makie.inverse_transform(transf)
 
+    if isnothing(inv_transf)
+        @warn "Can't rectangle zoom without inverse transform"
+        # TODO, what can we do without inverse?
+        return Consume(false)
+    end
+
     if event.type === MouseEventTypes.leftdragstart
         data = Makie.apply_transform(inv_transf, event.data)
         prev_data = Makie.apply_transform(inv_transf, event.prev_data)
@@ -240,7 +246,6 @@ function process_interaction(l::LimitReset, event::MouseEvent, ax::Axis)
 
     return Consume(false)
 end
-
 
 function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
     # use vertical zoom
