@@ -47,12 +47,14 @@ function plot!(P::PlotFunc, args...; kw_attributes...)
     plot!(P, ax, args...; kw_attributes...)
 end
 
-function plot(P::PlotFunc, fp::FigurePosition, args...; axis = NamedTuple(), kwargs...)
+function plot(P::PlotFunc, gp::GridPosition, args...; axis = NamedTuple(), kwargs...)
 
-    c = contents(fp.gp, exact = true)
+    f = MakieLayout.get_top_parent(gp)
+
+    c = contents(gp, exact = true)
     if !isempty(c)
         error("""
-        You have used the non-mutating plotting syntax with a FigurePosition, which requires an empty GridLayout slot to create an axis in, but there are already the following objects at this layout position:
+        You have used the non-mutating plotting syntax with a GridPosition, which requires an empty GridLayout slot to create an axis in, but there are already the following objects at this layout position:
 
         $(c)
 
@@ -66,39 +68,40 @@ function plot(P::PlotFunc, fp::FigurePosition, args...; axis = NamedTuple(), kwa
     if haskey(axis, :type)
         axtype = axis[:type]
         pop!(axis, :type)
-        ax = axtype(fp.fig; axis...)
+        ax = axtype(f; axis...)
     else
         proxyscene = Scene()
         plot!(proxyscene, P, Attributes(kwargs), args...; show_axis = false)
 
         if is2d(proxyscene)
-            ax = Axis(fp.fig; axis...)
+            ax = Axis(f; axis...)
         else
-            ax = LScene(fp.fig; scenekw = (camera = automatic, show_axis = true, raw = false, axis...))
+            ax = LScene(f; scenekw = (camera = cam3d!, show_axis = true, raw = false, axis...))
         end
     end
 
-    fp[] = ax
+    gp[] = ax
     p = plot!(P, ax, args...; kwargs...)
     AxisPlot(ax, p)
 end
 
-function plot!(P::PlotFunc, fp::FigurePosition, args...; kwargs...)
+function plot!(P::PlotFunc, gp::GridPosition, args...; kwargs...)
 
-    c = contents(fp.gp, exact = true)
+    c = contents(gp, exact = true)
     if !(length(c) == 1 && c[1] isa Union{Axis, LScene})
-        error("There needs to be a single axis at $(fp.gp.span), $(fp.gp.side) to plot into.\nUse a non-mutating plotting command to create an axis implicitly.")
+        error("There needs to be a single axis at $(gp.span), $(gp.side) to plot into.\nUse a non-mutating plotting command to create an axis implicitly.")
     end
     ax = first(c)
     plot!(P, ax, args...; kwargs...)
 end
 
-function plot(P::PlotFunc, fsp::FigureSubposition, args...; axis = NamedTuple(), kwargs...)
+function plot(P::PlotFunc, gsp::GridSubposition, args...; axis = NamedTuple(), kwargs...)
 
-    c = contents(fsp, exact = true)
+    layout = GridLayoutBase.get_layout_at!(gsp.parent, createmissing = true)
+    c = contents(gsp, exact = true)
     if !isempty(c)
         error("""
-        You have used the non-mutating plotting syntax with a FigureSubposition, which requires an empty GridLayout slot to create an axis in, but there are already the following objects at this layout position:
+        You have used the non-mutating plotting syntax with a GridSubposition, which requires an empty GridLayout slot to create an axis in, but there are already the following objects at this layout position:
 
         $(c)
 
@@ -107,7 +110,7 @@ function plot(P::PlotFunc, fsp::FigureSubposition, args...; axis = NamedTuple(),
         """)
     end
 
-    fig = get_figure(fsp)
+    fig = MakieLayout.get_top_parent(gsp)
 
     axis = Dict(pairs(axis))
 
@@ -126,16 +129,16 @@ function plot(P::PlotFunc, fsp::FigureSubposition, args...; axis = NamedTuple(),
         end
     end
 
-    fsp.parent[fsp.rows, fsp.cols, fsp.side] = ax
+    gsp.parent[gsp.rows, gsp.cols, gsp.side] = ax
     p = plot!(P, ax, args...; kwargs...)
     AxisPlot(ax, p)
 end
 
-function plot!(P::PlotFunc, fsp::FigureSubposition, args...; kwargs...)
+function plot!(P::PlotFunc, gsp::GridSubposition, args...; kwargs...)
 
-    layout = get_layout_at!(fsp.parent, createmissing = false)
+    layout = GridLayoutBase.get_layout_at!(gsp.parent, createmissing = false)
 
-    gp = layout[fsp.rows, fsp.cols, fsp.side]
+    gp = layout[gsp.rows, gsp.cols, gsp.side]
 
     c = contents(gp, exact = true)
     if !(length(c) == 1 && c[1] isa Union{Axis, LScene})
