@@ -16,23 +16,38 @@ function generate_preview(path=joinpath(@__DIR__, "preview.html"); media_root=ba
     end
 end
 
+function get_medias(path, result=[])
+    if isdir(path)
+        foreach(x-> get_medias(x, result), readdir(path, join=true))
+    else
+        file, ext = splitext(path)
+        if ext in (".png", ".jpg", ".jpeg", ".JPEG", ".JPG", ".gif", ".pdf", ".svg")
+            push!(result, load(path))
+        elseif ext == ".mp4"
+            append!(result, get_frames(path))
+        else
+            error("Unknown media extension: $ext with path: $path")
+        end
+    end
+    return result
+end
+
+using ImageShow
+
 function generate_test_summary(path, recorded_root, refimages_root, scores)
     open(path, "w") do io
         scores_sorted = sort!(collect(scores), by=last, rev=true)
         for (filename, score) in scores_sorted
-            media_ref = joinpath(refimages_root, filename)
-            media_recorded = joinpath(recorded_root, filename)
-            println(io, "<h1> $filename : $(round(score, digits=4)) [reference] - [recorded] </h1>")
-            println(io, """
-            <div style="display: flex">
-                <div>
-                    $(embed_media(media_ref))
-                </div>
-                <div>
-                    $(embed_media(media_recorded))
-                </div>
-            </div>
-            """)
+            media_ref = get_medias(joinpath(refimages_root, filename))
+            media_recorded = get_medias(joinpath(recorded_root, filename))
+            println(io, "<h1> $filename : $(round(score, digits=4)) </h1>")
+            for (ref, rec) in zip(media_ref, media_recorded)
+                diff = (ref .- rec) ./ 2.0
+
+                diff2 = (ref .* 0.5) .+ (rec .* 0.5)
+                ctx = IOContext(io, :thumbnailsize=> size(diff), :thumbnail => false)
+                show(ctx, "text/html", [diff, diff2])
+            end
         end
     end
 end

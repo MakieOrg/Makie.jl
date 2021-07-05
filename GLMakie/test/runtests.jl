@@ -13,14 +13,13 @@ using ReferenceTests: @cell
 # Run the Makie reference image testsuite
 recorded = joinpath(@__DIR__, "recorded")
 rm(recorded; force=true, recursive=true); mkdir(recorded)
-ReferenceTests.record_tests(recording_dir=recorded)
-ReferenceTests.reference_tests(recorded)
+ReferenceTests.run_reference_tests(ReferenceTests.load_database(), recorded)
+
 # Run the below, to generate a html to view all differences:
 # recorded, ref_images, scores = ReferenceTests.reference_tests(recorded)
-# ReferenceTests.generate_test_summary("preview.html", recorded, ref_images, scores)
 # ReferenceTests.generate_test_summary("preview.html", recorded)
-
 # Run the GLMakie specific backend reference tests
+
 empty!(ReferenceTests.DATABASE)
 include("glmakie_tests.jl")
 recorded_glmakie = joinpath(@__DIR__, "recorded_glmakie")
