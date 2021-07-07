@@ -76,18 +76,10 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         minorticksvisible, minortickalign, minorticksize, minortickwidth, minortickcolor, minorticks, scale)
 
     limits = lift(limits, colorrange) do limits, colorrange
-        if isnothing(limits)
-            if isnothing(colorrange)
-                return (0, 1)
-            else
-                return colorrange
-            end
-        else
-            if !isnothing(colorrange)
-                error("Both colorrange + limits are set, please only set one, they're aliases. colorrange: $(colorrange), limits: $(limits)")
-            end
-            return limits
+        if all(!isnothing, (limits, colorrange))
+            error("Both colorrange + limits are set, please only set one, they're aliases. colorrange: $(colorrange), limits: $(limits)")
         end
+        return something(limits, colorrange, (0, 1))
     end
 
     decorations = Dict{Symbol, Any}()
