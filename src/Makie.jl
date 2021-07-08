@@ -7,6 +7,10 @@ end
 using .ContoursHygiene
 const Contours = ContoursHygiene.Contour
 using Base64
+
+using LaTeXStrings
+export @L_str
+using MathTeXEngine
 using Artifacts
 using Random
 using FFMPEG # get FFMPEG on any system!
@@ -318,5 +322,143 @@ include("basic_recipes/series.jl")
 export Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter, Surface, Text, Volume
 export heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface, text, volume
 export heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, surface!, text!, volume!
+
+
+
+function plot!(plot::Text{<:Tuple{LaTeXString}})
+    # attach a function to any text that calculates the glyph layout and stores it
+    lineels_glyphlayout_offset = lift(plot[1], plot.textsize, plot.align, plot.rotation, plot.model) do mytex, ts, al, rot, mo
+        ts = to_textsize(ts)
+        rot = to_rotation(rot)
+
+        tex_elements, glyphlayout = texelems_and_glyph_positions(mytex, ts, al[1], al[2], rot)
+    end
+
+    glyphlayout = @lift($lineels_glyphlayout_offset[2])
+
+
+    linepairs = Node(Tuple{Point2f0, Point2f0}[])
+    linewidths = Node(Float32[])
+
+    onany(lineels_glyphlayout_offset, plot.position, plot.textsize, plot.rotation) do (allels, _, offs), pos, ts, rot
+
+        ts = to_textsize(ts)
+        rot = convert_attribute(rot, key"rotation"())
+
+        offset = Point2f0(pos)
+
+        els = map(allels) do el
+            if el[1] isa VLine
+                h = el[1].height
+                t = el[1].thickness * ts
+                pos = el[2]
+                size = el[3]
+                ps = (Point2f0(pos[1], pos[2]) .* ts, Point2f0(pos[1], pos[2] + h) .* ts) .- Ref(offs)
+                ps = Ref(rot) .* to_ndim.(Point3f0, ps, 0)
+                ps = Point2f0.(ps) .+ Ref(offset)
+                (ps, t)
+            elseif el[1] isa HLine
+                w = el[1].width
+                t = el[1].thickness * ts
+                pos = el[2]
+                size = el[3]
+                ps = (Point2f0(pos[1], pos[2]) .* ts, Point2f0(pos[1] + w, pos[2]) .* ts) .- Ref(offs)
+                ps = Ref(rot) .* to_ndim.(Point3f0, ps, 0)
+                ps = Point2f0.(ps) .+ Ref(offset)
+                (ps, t)
+            else
+                nothing
+            end
+        end
+        pairs = filter(!isnothing, els)
+        linewidths.val = repeat(last.(pairs), inner = 2)
+        linepairs[] = first.(pairs)
+        # @show linepairs
+    end
+
+    notify(plot.position)
+
+    if !(glyphlayout isa Observable{<:GlyphLayout3})
+        error("Incorrect type parameter $(typeof(glyphlayout))")
+    end
+
+    text!(plot, glyphlayout; plot.attributes...)
+    # linesegments!(plot, linepairs, linewidth = linewidths)
+    linesegments!(plot, linepairs, linewidth = linewidths, color = plot.color)
+
+    plot
+end
+
+##
+
+
+function texelems_and_glyph_positions(str::LaTeXString, fontscale_px, halign, valign, rotation)
+
+    rot = convert_attribute(rotation, key"rotation"())
+
+    all_els = generate_tex_elements(str.s[2:end-1])
+    els = filter(x -> x[1] isa TeXChar, all_els)
+
+    # hacky, but attr per char needs to be fixed
+    fs = Vec2f0(first(fontscale_px))
+
+    scales_2d = [Vec2f0(x[3] * Vec2f0(fs)) for x in els]
+
+    chars = [x[1].char for x in els]
+    fonts = [x[1].font for x in els]
+
+    extents = [FreeTypeAbstraction.get_extent(f, c) for (f, c) in zip(fonts, chars)]
+
+    bboxes = map(extents, fonts, scales_2d) do ext, font, scale
+        unscaled_hi_bb = FreeTypeAbstraction.height_insensitive_boundingbox(ext, font)
+        hi_bb = FRect2D(
+            origin(unscaled_hi_bb) * scale,
+            widths(unscaled_hi_bb) * scale
+        )
+    end
+
+    basepositions = [to_ndim(Vec3f0, fs, 0) .* to_ndim(Point3f0, x[2], 0)
+        for x in els]
+
+    bb = isempty(bboxes) ? BBox(0, 0, 0, 0) : begin
+        mapreduce(union, zip(bboxes, basepositions)) do (b, pos)
+            FRect2D(FRect3D(b) + pos)
+        end
+    end
+
+
+    xshift = if halign == :center
+        width(bb) / 2
+    elseif halign == :left
+        minimum(bb)[1]
+    elseif halign == :right
+        maximum(bb)[1]
+    end
+
+    yshift = if valign == :center
+        maximum(bb)[2] - (height(bb) / 2)
+    elseif valign == :top
+        maximum(bb)[2]
+    else
+        minimum(bb)[2]
+    end
+
+    positions = basepositions .- Ref(Point3f0(xshift, yshift, 0))
+    positions .= Ref(rot) .* positions
+
+    pre_align_gl = GlyphLayout3(
+        chars,
+        fonts,
+        Point3f0.(positions),
+        extents,
+        scales_2d,
+        fill(rot, length(chars)),
+    )
+
+    all_els, pre_align_gl, Point2f0(xshift, yshift)
+end
+
+MakieLayout.iswhitespace(l::LaTeXString) = MakieLayout.iswhitespace(l.s[2:end-1])
+
 
 end # module
