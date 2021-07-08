@@ -242,17 +242,17 @@ s
 
 ##
 
-lines(0..25, x -> sin(x) / (cos(3x) + 4), figure = (fontsize = 20, font = "Times"),
+lines(0..25, x -> 4 * sin(x) / (cos(3x) + 4), figure = (fontsize = 25, font = "Times"),
     axis = (
-        xticks = (0:50:100, [L"10^{-3.5}", L"10^{-4.5}", L"10^{-5.5}"]),
+        xticks = (0:10:20, [L"10^{-3.5}", L"10^{-4.5}", L"10^{-5.5}"]),
         yticks = ([-1, 0, 1], [L"\sum_%$i{xy}" for i in 1:3]),
         yticklabelrotation = pi/8,
         title = L"\int_0^1{x^2}",
         xlabel = L"\sum_k{x_k ⋅ y_k}",
         ylabel = L"\int_a^b{\sqrt{abx}}"
-    )
+    ),
 )
-text!(L"f(x) = \frac{sin(x)}{cos(3x) + 4}", position = (15, 2))
+# text!(L"f(x) = \frac{sin(x)}{cos(3x) + 4}", position = (15, 2))
 current_figure()
 
 ##
