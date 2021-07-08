@@ -40,6 +40,16 @@ function plot!(plot::Text)
     plot
 end
 
+# TODO: is this necessary? there seems to be a recursive loop with the above
+# function without these two interceptions, but I didn't need it before merging
+# everything into the monorepo...
+function plot!(plot::Text{<:Tuple{<:GlyphLayout3}})
+    plot
+end
+function plot!(plot::Text{<:Tuple{<:AbstractArray{<:GlyphLayout3}}})
+    plot
+end
+
 function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
 
     # attach a function to any text that calculates the glyph layout and stores it
