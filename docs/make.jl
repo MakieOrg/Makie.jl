@@ -260,7 +260,7 @@ makedocs(
             "cameras.md",
             "remote.md",
             "faq.md",
-            "News" => "../../../NEWS.md",
+            "News" => "../../NEWS.md",
             "API Reference Makie" => "makie_api.md",
             "API Reference MakieLayout" => "makielayout/reference.md",
             "generated/axis.md",
