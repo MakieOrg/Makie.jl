@@ -60,6 +60,22 @@ const RGBAf0 = RGBA{Float32}
 const RGBf0 = RGB{Float32}
 const NativeFont = FreeTypeAbstraction.FTFont
 
+
+"""
+    GlyphLayout3
+
+Stores information about the glyphs in a string that had a layout calculated for them.
+"""
+struct GlyphLayout3{G, F, R}
+    glyphs::Vector{G}
+    fonts::Vector{F}
+    origins::Vector{Point3f0}
+    extents::Vector{FreeTypeAbstraction.FontExtent{Float32}}
+    scales::Vector{Vec2f0}
+    rotations::Vector{R}
+end
+
+
 include("documentation/docstringextension.jl")
 
 include("utilities/quaternions.jl")

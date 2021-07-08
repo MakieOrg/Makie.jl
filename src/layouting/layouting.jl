@@ -28,19 +28,7 @@ function attribute_per_char(string, attribute)
     error("A vector of attributes with $(length(attribute)) elements was given but this fits neither the length of '$string' ($(length(string))) nor the number of words ($(n_words))")
 end
 
-"""
-    GlyphLayout3
 
-Stores information about the glyphs in a string that had a layout calculated for them.
-"""
-struct GlyphLayout3{G, F, R}
-    glyphs::Vector{G}
-    fonts::Vector{F}
-    origins::Vector{Point3f0}
-    extents::Vector{FreeTypeAbstraction.FontExtent{Float32}}
-    scales::Vector{Vec2f0}
-    rotations::Vector{R}
-end
 
 """
     layout_text(
