@@ -254,7 +254,7 @@ makedocs(
             "generated/colors.md",
             "generated/plot-attributes.md",
             "recipes.md",
-            "backends" => [
+            "Backends" => [
                 "backends_and_output.md",
                 "wglmakie.md"
             ],
