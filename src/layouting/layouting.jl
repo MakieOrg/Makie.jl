@@ -223,8 +223,8 @@ end
 
 
 function preprojected_glyph_arrays(
-        string::String, position::VecTypes, glyphlayout::Makie.GlyphLayout3,
-        font, textsize, space::Symbol, projview, resolution, offset::VecTypes, transfunc
+        position::VecTypes, glyphlayout::Makie.GlyphLayout3,
+        space::Symbol, projview, resolution, offset::VecTypes, transfunc
     )
     offset = to_ndim(Point3f0, offset, 0)
     pos3f0 = to_ndim(Point3f0, position, 0)
@@ -237,12 +237,12 @@ function preprojected_glyph_arrays(
     else
         error("Unknown space $space, only :data or :screen allowed")
     end
-    text_quads(positions, string, font, textsize)
+    text_quads(positions, glyphlayout.glyphs, glyphlayout.fonts, glyphlayout.scales)
 end
 
 function preprojected_glyph_arrays(
-        string::String, position::VecTypes, glyphlayout::Makie.GlyphLayout3,
-        font, textsize, space::Symbol, projview, resolution, offsets::Vector, transfunc
+        position::VecTypes, glyphlayout::Makie.GlyphLayout3,
+        space::Symbol, projview, resolution, offsets::Vector, transfunc
     )
 
     offsets = to_ndim.(Point3f0, offsets, 0)
@@ -261,8 +261,7 @@ function preprojected_glyph_arrays(
 end
 
 function preprojected_glyph_arrays(
-        strings::AbstractVector{<:String}, positions::AbstractVector, glyphlayouts::Vector, font,
-        textsize, space::Symbol, projview, resolution, offset, transfunc
+        positions::AbstractVector, glyphlayouts::Vector, space::Symbol, projview, resolution, offset, transfunc
     )
 
     if offset isa VecTypes
@@ -295,50 +294,54 @@ function preprojected_glyph_arrays(
         error("Unknown space $space, only :data or :screen allowed")
     end
 
-    text_quads(allpos, strings, font, textsize)
+    text_quads(
+        reduce(vcat, allpos),
+        reduce(vcat, x.glyphs for x in glyphlayouts),
+        reduce(vcat, x.fonts for x in glyphlayouts),
+        reduce(vcat, x.scales for x in glyphlayouts))
 end
 
 
-function preprojected_glyph_arrays(
-        strings::AbstractVector{<:String}, positions::AbstractVector, glyphlayouts::Vector, font,
-        textsize, space::Symbol, projview, resolution, offsets::Vector{<: Vector}, transfunc
-    )
+# function preprojected_glyph_arrays(
+#         strings::AbstractVector{<:String}, positions::AbstractVector, glyphlayouts::Vector, font,
+#         textsize, space::Symbol, projview, resolution, offsets::Vector{<: Vector}, transfunc
+#     )
 
-    if space == :data
-        allpos = broadcast(positions, glyphlayouts, offsets) do pos, glyphlayout::Makie.GlyphLayout3, offsets
-            p = to_ndim(Point3f0, pos, 0)
-            apply_transform(
-                transfunc,
-                Point3f0[p .+ to_ndim(Point3f0, offset, 0) .+ o for (o, offset) in zip(glyphlayout.origins, offsets)]
-            )
-        end
-    elseif space == :screen
-        allpos = broadcast(positions, glyphlayouts, offsets) do pos, glyphlayout::Makie.GlyphLayout3, offsets
-            projected = to_ndim(
-                Point3f0,
-                Makie.project(
-                    projview,
-                    resolution,
-                    apply_transform(transfunc, to_ndim(Point3f0, pos, 0))
-                ),
-                0)
+#     if space == :data
+#         allpos = broadcast(positions, glyphlayouts, offsets) do pos, glyphlayout::Makie.GlyphLayout3, offsets
+#             p = to_ndim(Point3f0, pos, 0)
+#             apply_transform(
+#                 transfunc,
+#                 Point3f0[p .+ to_ndim(Point3f0, offset, 0) .+ o for (o, offset) in zip(glyphlayout.origins, offsets)]
+#             )
+#         end
+#     elseif space == :screen
+#         allpos = broadcast(positions, glyphlayouts, offsets) do pos, glyphlayout::Makie.GlyphLayout3, offsets
+#             projected = to_ndim(
+#                 Point3f0,
+#                 Makie.project(
+#                     projview,
+#                     resolution,
+#                     apply_transform(transfunc, to_ndim(Point3f0, pos, 0))
+#                 ),
+#                 0)
 
-            return Point3f0[projected .+ to_ndim(Point3f0, offset, 0) + o for (o, offset) in zip(glyphlayout.origins, offsets)]
-        end
-    else
-        error("Unknown space $space, only :data or :screen allowed")
-    end
+#             return Point3f0[projected .+ to_ndim(Point3f0, offset, 0) + o for (o, offset) in zip(glyphlayout.origins, offsets)]
+#         end
+#     else
+#         error("Unknown space $space, only :data or :screen allowed")
+#     end
 
-    text_quads(allpos, strings, font, textsize)
-end
+#     text_quads(allpos, strings, font, textsize)
+# end
 
 
-function text_quads(positions, string::String, font, textsize)
+function text_quads(positions, glyphs::AbstractVector, fonts::AbstractVector, textsizes::AbstractVector{<:Vec2})
     atlas = get_texture_atlas()
     offsets = Vec2f0[]
     uv = Vec4f0[]
     scales = Vec2f0[]
-    for (c, font, pixelsize) in zip(string, attribute_per_char(string, font), attribute_per_char(string, textsize))
+    for (c, font, pixelsize) in zip(glyphs, fonts, textsizes)
         push!(uv, glyph_uv_width!(atlas, c, font))
         glyph_bb, extent = FreeTypeAbstraction.metrics_bb(c, font, pixelsize)
         push!(scales, widths(glyph_bb))
@@ -348,28 +351,28 @@ function text_quads(positions, string::String, font, textsize)
 end
 
 
-function text_quads(allpos::Vector, strings::Vector, font, textsize)
-    megapos::Vector{Point3f0} = if isempty(allpos)
-        Point3f0[]
-    else
-        reduce(vcat, allpos)
-    end
+# function text_quads(allpos::Vector, strings::Vector, font, textsize)
+#     megapos::Vector{Point3f0} = if isempty(allpos)
+#         Point3f0[]
+#     else
+#         reduce(vcat, allpos)
+#     end
 
-    atlas = get_texture_atlas()
-    offsets = Vec2f0[]
-    uv = Vec4f0[]
-    scales = Vec2f0[]
+#     atlas = get_texture_atlas()
+#     offsets = Vec2f0[]
+#     uv = Vec4f0[]
+#     scales = Vec2f0[]
 
-    broadcast_foreach(strings, font, textsize) do str, fo, ts
-        for (c, f, pixelsize) in zip(str, attribute_per_char(str, fo), attribute_per_char(str, ts))
-            push!(uv, glyph_uv_width!(atlas, c, f))
-            glyph_bb, extent = FreeTypeAbstraction.metrics_bb(c, f, pixelsize)
-            push!(scales, widths(glyph_bb))
-            push!(offsets, minimum(glyph_bb))
-        end
-    end
-    return megapos, offsets, uv, scales
-end
+#     broadcast_foreach(strings, font, textsize) do str, fo, ts
+#         for (c, f, pixelsize) in zip(str, attribute_per_char(str, fo), attribute_per_char(str, ts))
+#             push!(uv, glyph_uv_width!(atlas, c, f))
+#             glyph_bb, extent = FreeTypeAbstraction.metrics_bb(c, f, pixelsize)
+#             push!(scales, widths(glyph_bb))
+#             push!(offsets, minimum(glyph_bb))
+#         end
+#     end
+#     return megapos, offsets, uv, scales
+# end
 
 
 # function to concatenate vectors with a value between every pair
