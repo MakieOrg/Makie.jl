@@ -141,37 +141,6 @@ function atomic_limits(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}})
     end
 end
 
-# function atomic_limits(x::Text{<: Tuple{Arg1}}) where Arg1
-#     if x.space[] == :data
-#         return boundingbox(x)
-#     elseif x.space[] == :screen
-#         if x[1][] isa AbstractArray
-#             bb = FRect3D_from_point(x.position[][1])
-#             for p in x.position[][2:end]
-#                 bb = union(bb, FRect3D_from_point(p))
-#             end
-#         else
-#             if x.position[] isa Union{StaticArrays.StaticArray, Tuple{Real, Real}, GeometryBasics.Point}
-#                 bb = FRect3D_from_point(x.position[])
-#             else
-#                 bb = FRect3D_from_point(x.position[][1])
-#                 for p in x.position[][2:end]
-#                     bb = union(bb, FRect3D_from_point(p))
-#                 end
-#                 bb
-#             end
-#         end
-#         bb
-#     end
-# end
-
-# function data_limits(x::Annotations)
-#     # data limits is supposed to not include any transformation.
-#     # for the annotation, we use the model matrix directly, so we need to
-#     # to inverse that transformation for the correct limits
-#     bb = data_limits(x.plots[1])
-#     return inv(modelmatrix(x)) * bb
-# end
 
 isfinite_rect(x::Rect) = all(isfinite.(minimum(x))) &&  all(isfinite.(maximum(x)))
 
