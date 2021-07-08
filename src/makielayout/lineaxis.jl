@@ -348,7 +348,6 @@ function LineAxis(parent::Scene; kwargs...)
     protrusion = lift(ticksvisible, label, labelvisible, labelpadding, labelsize, tickalign, tickspace, ticklabelsvisible, actual_ticklabelspace, ticklabelpad, labelfont, ticklabelfont) do ticksvisible,
             label, labelvisible, labelpadding, labelsize, tickalign, tickspace, ticklabelsvisible,
             actual_ticklabelspace, ticklabelpad, labelfont, ticklabelfont
-
         position, extents, horizontal = pos_extents_horizontal[]
 
         label_is_empty = iswhitespace(label) || isempty(label)
@@ -374,7 +373,7 @@ function LineAxis(parent::Scene; kwargs...)
 
     # in order to dispatch to the correct text recipe later (normal text, latex, etc.)
     # we need to have the ticklabelannosnode populated once before adding the annotations
-    ticklabels = annotations!(
+    ticklabels = text!(
         parent,
         ticklabelannosnode,
         align = realticklabelalign,
@@ -387,6 +386,15 @@ function LineAxis(parent::Scene; kwargs...)
         space = :data,
         inspectable = false)
     decorations[:ticklabels] = ticklabels
+
+    # HACKY: the ticklabels in the string need to be updated
+    # before other stuff is triggered by them, which accesses the
+    # ticklabel boundingbox (which needs to be updated already)
+    # so we move the new listener from text! to the front
+    pushfirst!(
+        ticklabelannosnode.listeners,
+        pop!(ticklabelannosnode.listeners))
+
 
     # trigger calculation of ticklabel width once, now that it's not nothing anymore
     notify(ticklabelsvisible)
