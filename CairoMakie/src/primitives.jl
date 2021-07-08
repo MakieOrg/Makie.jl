@@ -308,7 +308,7 @@ function p3_to_p2(p::Point3{T}) where T
     end
 end
 
-function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text{<:Tuple{<:G}}) where G <: Union{AbstractArray{<:Makie.GlyphCollection2}, Makie.GlyphCollection2}
+function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text{<:Tuple{<:G}}) where G <: Union{AbstractArray{<:Makie.GlyphCollection}, Makie.GlyphCollection}
     ctx = screen.context
     @get_attribute(primitive, (rotation, model, space, offset))
     position = primitive.attributes[:position][]
@@ -351,7 +351,7 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
         old_matrix = get_font_matrix(ctx)
 
         p3_offset = to_ndim(Point3f0, offset, 0)
-        
+
         glyph in ('\r', '\n') && return
 
         Cairo.save(ctx)

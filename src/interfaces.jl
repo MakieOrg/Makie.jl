@@ -44,16 +44,16 @@ end
 # TODO: is this necessary? there seems to be a recursive loop with the above
 # function without these two interceptions, but I didn't need it before merging
 # everything into the monorepo...
-function plot!(plot::Text{<:Tuple{<:GlyphCollection2}})
+function plot!(plot::Text{<:Tuple{<:GlyphCollection}})
     plot
 end
-function plot!(plot::Text{<:Tuple{<:AbstractArray{<:GlyphCollection2}}})
+function plot!(plot::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}})
     plot
 end
 
 function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
-    
-    glyphlayouts = Node(GlyphCollection2[])
+
+    glyphlayouts = Node(GlyphCollection[])
     position = Node{Any}(nothing)
     rotation = Node{Any}(nothing)
     model = Node{Any}(nothing)
@@ -70,7 +70,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
         col = to_color(col)
         scol = to_color(scol)
 
-        gls = GlyphCollection2[]
+        gls = GlyphCollection[]
         broadcast_foreach(str, ts, f, al, rot, Ref(mo), jus, lh, col, scol, swi) do str,
                 ts, f, al, rot, mo, jus, lh, col, scol, swi
             subgl = layout_text(str, ts, f, al, rot, mo, jus, lh, col, scol, swi)

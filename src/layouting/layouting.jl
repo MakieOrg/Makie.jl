@@ -36,7 +36,7 @@ end
         font, align, rotation, model, justification, lineheight
     )
 
-Compute a GlyphCollection2 for a `string` given textsize, font, align, rotation, model, justification, and lineheight.
+Compute a GlyphCollection for a `string` given textsize, font, align, rotation, model, justification, and lineheight.
 """
 function layout_text(
         string::AbstractString, textsize::Union{AbstractVector, Number},
@@ -70,7 +70,7 @@ rotated to wherever it is needed in the plot.
 function glyph_collection(str::AbstractString, font_per_char, fontscale_px, halign, valign,
         lineheight_factor, justification, rotation, color, strokecolor, strokewidth)
 
-    isempty(str) && return GlyphCollection2(
+    isempty(str) && return GlyphCollection(
         [], [], Point3f0[],FreeTypeAbstraction.FontExtent{Float32}[],
         Vec2f0[], Float32[], RGBAf0[], RGBAf0[], Float32[])
 
@@ -209,12 +209,12 @@ function glyph_collection(str::AbstractString, font_per_char, fontscale_px, hali
     # use 3D coordinates already because later they will be required in that format anyway
     charorigins = [Ref(rotation) .* Point3f0.(xsgroup, y, 0) for (xsgroup, y) in zip(xs_aligned, ys_aligned)]
 
-    # return a GlyphCollection2, which contains each character's origin, height-insensitive
+    # return a GlyphCollection, which contains each character's origin, height-insensitive
     # boundingbox and horizontal advance value
     # these values should be enough to draw characters correctly,
     # compute boundingboxes without relayouting and maybe implement
     # interactive features that need to know where characters begin and end
-    return GlyphCollection2(
+    return GlyphCollection(
         [x.char for x in charinfos],
         [x.font for x in charinfos],
         reduce(vcat, charorigins),
@@ -229,7 +229,7 @@ end
 
 
 function preprojected_glyph_arrays(
-        position::VecTypes, glyphlayout::Makie.GlyphCollection2,
+        position::VecTypes, glyphlayout::Makie.GlyphCollection,
         space::Symbol, projview, resolution, offset::VecTypes, transfunc
     )
     offset = to_ndim(Point3f0, offset, 0)
@@ -247,7 +247,7 @@ function preprojected_glyph_arrays(
 end
 
 function preprojected_glyph_arrays(
-        position::VecTypes, glyphlayout::Makie.GlyphCollection2,
+        position::VecTypes, glyphlayout::Makie.GlyphCollection,
         space::Symbol, projview, resolution, offsets::Vector, transfunc
     )
 
@@ -267,7 +267,7 @@ function preprojected_glyph_arrays(
 end
 
 function preprojected_glyph_arrays(
-        positions::AbstractVector, glyphlayouts::AbstractVector{<:GlyphCollection2}, space::Symbol, projview, resolution, offset, transfunc
+        positions::AbstractVector, glyphlayouts::AbstractVector{<:GlyphCollection}, space::Symbol, projview, resolution, offset, transfunc
     )
 
     if offset isa VecTypes
@@ -314,7 +314,7 @@ end
 #     )
 
 #     if space == :data
-#         allpos = broadcast(positions, glyphlayouts, offsets) do pos, glyphlayout::Makie.GlyphCollection2, offsets
+#         allpos = broadcast(positions, glyphlayouts, offsets) do pos, glyphlayout::Makie.GlyphCollection, offsets
 #             p = to_ndim(Point3f0, pos, 0)
 #             apply_transform(
 #                 transfunc,
@@ -322,7 +322,7 @@ end
 #             )
 #         end
 #     elseif space == :screen
-#         allpos = broadcast(positions, glyphlayouts, offsets) do pos, glyphlayout::Makie.GlyphCollection2, offsets
+#         allpos = broadcast(positions, glyphlayouts, offsets) do pos, glyphlayout::Makie.GlyphCollection, offsets
 #             projected = to_ndim(
 #                 Point3f0,
 #                 Makie.project(

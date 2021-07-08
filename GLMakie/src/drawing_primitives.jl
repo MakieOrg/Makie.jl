@@ -260,26 +260,22 @@ value_or_first(x::StaticArray) = x
 value_or_first(x) = x
 
 function draw_atomic(screen::GLScreen, scene::Scene,
-        x::Text{<:Tuple{<:Union{<:Makie.GlyphCollection2, <:AbstractVector{<:Makie.GlyphCollection2}}}})
+        x::Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
 
     robj = cached_robj!(screen, scene, x) do gl_attributes
         glyphlayout = x[1]
         liftkeys = (:position, :rotation, :model, :space, :offset)
         args = getindex.(Ref(gl_attributes), liftkeys)
-
-        gl_text = lift(scene.camera.projectionview, Makie.transform_func_obs(scene),
-                gl_attributes[:position], gl_attributes[:rotation]) do glayout,
-                projview, transfunc, pos, rotation, model, space, offset
-
-            # this has changed 
+        function layout_text(projview, transfunc, pos, rotation, model, space, offset)
+            # this has changed
             glayout = glyphlayout[]
-            println()
             @show Makie.attr_broadcast_length(pos)
             @show Makie.attr_broadcast_length(glayout)
             @show Makie.attr_broadcast_length(offset)
             res = Vec2f0(widths(pixelarea(scene)[]))
             return preprojected_glyph_arrays(pos, glayout, space, projview, res, offset, transfunc)
         end
+        gl_text = lift(layout_text, scene.camera.projectionview, Makie.transform_func_obs(scene), args...)
 
         # unpack values from the one signal:
         positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i

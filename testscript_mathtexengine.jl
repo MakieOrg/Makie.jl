@@ -1,7 +1,6 @@
 using CairoMakie: Cairo
 # using CairoMakie
 using GLMakie
-using MathTeXEngine
 
 CairoMakie.activate!(type = "svg")
 
@@ -190,24 +189,21 @@ with_theme() do
     )
     text!(L"\int_{0}^{2π} \sin(x) dx", position = (500, 0))
 
-    Legend(f[1, 2], [l, l, l], [L"\sum{xy}", L"a\int_0^5x^2+2ab", "hello you!"])
-    f
+    Legend(f[1, 2], [l, l, l], [L"\sum{xy}", L"a\int_0^5x^2+2ab", L"||x-y||^2"])
+    display(f)
 end
 # save("test.pdf", f)
 ##
-Makie.attribute_per_char(str::MyTex, attr) = attr
-
-##
-s = Scene(camera = campixel!)
-t = text!(s,
-    L"\sqrt{2}",
-    # MyTex(raw"x + y - sin(x) × tan(y) + \sqrt{2}"),
-    position = (50, 50),
-    rotation = pi/2,
-    show_axis = false,
-    space = :data)
-s
-
+begin
+    s = Scene(camera = campixel!)
+    t = text!(s,
+        L"\sqrt{2}",
+        position = (50, 50),
+        rotation = pi/2,
+        show_axis = false,
+        space = :data)
+    display(s)
+end
 ##
 Makie.glyph_collection(MyTex("x_{2}"), 0, 0, 0, 0, 0, 0, 0)
 ##

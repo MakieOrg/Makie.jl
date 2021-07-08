@@ -84,11 +84,11 @@ Base.convert(::Type{<:ScalarOrVector}, x::T) where T = ScalarOrVector{T}(x)
 Base.convert(::Type{<:ScalarOrVector{T}}, x::ScalarOrVector{T}) where T = x
 
 """
-    GlyphCollection2
+    GlyphCollection
 
 Stores information about the glyphs in a string that had a layout calculated for them.
 """
-struct GlyphCollection2
+struct GlyphCollection
     glyphs::Vector{Char}
     fonts::Vector{FTFont}
     origins::Vector{Point3f0}
@@ -99,7 +99,7 @@ struct GlyphCollection2
     strokecolors::ScalarOrVector{RGBAf0}
     strokewidths::ScalarOrVector{Float32}
 
-    function GlyphCollection2(glyphs, fonts, origins, extents, scales, rotations,
+    function GlyphCollection(glyphs, fonts, origins, extents, scales, rotations,
             colors, strokecolors, strokewidths)
 
         n = length(glyphs)
@@ -382,7 +382,7 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
 
         if latexstring isa AbstractVector
             tex_elements = []
-            glyphlayouts = GlyphCollection2[]
+            glyphlayouts = GlyphCollection[]
             offsets = Point2f0[]
             broadcast_foreach(latexstring, ts, al, rot, color, scolor, swidth) do latexstring,
                 ts, al, rot, color, scolor, swidth
@@ -423,7 +423,7 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
 
         # for the vector case, allels is a vector of vectors
         # so for broadcasting the single vector needs to be wrapped in Ref
-        if gls isa GlyphCollection2
+        if gls isa GlyphCollection
             allels = [allels]
         end
         broadcast_foreach(allels, offs, pos, ts, rot) do allels, offs, pos, ts, rot
@@ -465,28 +465,12 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
     plot
 end
 
-##
-
-struct MakieCMFontset <: MathTeXEngine.TeXFontSet
-    regular::FTFont
-    italic::FTFont
-    math::FTFont
-end
-
-const MakieCM = MakieCMFontset(
-    convert_attribute(raw"C:\Users\Krumbiegel\.julia\dev\MathTeXEngine\assets\fonts\NewCM10-Regular.otf", key"font"()),
-    convert_attribute(raw"C:\Users\Krumbiegel\.julia\dev\MathTeXEngine\assets\fonts\NewCM10-Italic.otf", key"font"()),
-    convert_attribute(raw"C:\Users\Krumbiegel\.julia\dev\MathTeXEngine\assets\fonts\NewCMMath-Regular.otf", key"font"())
-)
-
-MathTeXEngine.load_fontset(fontset::MathTeXEngine.TeXFontSet) = fontset
-
 function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, valign,
         rotation, color, strokecolor, strokewidth)
 
     rot = convert_attribute(rotation, key"rotation"())
 
-    all_els = generate_tex_elements(str.s[2:end-1], MakieCM)
+    all_els = generate_tex_elements(str.s[2:end-1])
     els = filter(x -> x[1] isa TeXChar, all_els)
 
     # hacky, but attr per char needs to be fixed
@@ -536,7 +520,7 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
     positions = basepositions .- Ref(Point3f0(xshift, yshift, 0))
     positions .= Ref(rot) .* positions
 
-    pre_align_gl = GlyphCollection2(
+    pre_align_gl = GlyphCollection(
         chars,
         fonts,
         Point3f0.(positions),

@@ -113,7 +113,7 @@ FRect3D_from_point(p::VecTypes{2}) = FRect3D(Point3f0(p..., 0), Point3f0(0, 0, 0
 FRect3D_from_point(p::VecTypes{3}) = FRect3D(Point3f0(p...), Point3f0(0, 0, 0))
 
 
-function atomic_limits(x::Text{<:Tuple{<:GlyphCollection2}})
+function atomic_limits(x::Text{<:Tuple{<:GlyphCollection}})
     if x.space[] == :data
         boundingbox(x)
     elseif x.space[] == :screen
@@ -123,7 +123,7 @@ function atomic_limits(x::Text{<:Tuple{<:GlyphCollection2}})
     end
 end
 
-function atomic_limits(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection2}}})
+function atomic_limits(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}})
     if x.space[] == :data
         boundingbox(x)
     elseif x.space[] == :screen
