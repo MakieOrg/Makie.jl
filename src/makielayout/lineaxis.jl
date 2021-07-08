@@ -413,8 +413,9 @@ function tight_ticklabel_spacing!(la::LineAxis)
     la.attributes.ticklabelspace = maxwidth
 end
 
+
 function iswhitespace(str)
-    match(r"^\s+$", str) !== nothing
+    match(r"^\s*$", str) !== nothing
 end
 
 
