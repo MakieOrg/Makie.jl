@@ -293,18 +293,22 @@ function draw_atomic(screen::GLScreen, scene::Scene,
             # These are liftkeys without model
             !(k in (
                 :position, :space, :font,
-                :textsize, :rotation,
+                :textsize, :rotation, :justification
             ))
         end
 
-        gl_attributes[:color] = lift(glyphlayout) do gl
-            if gl isa AbstractArray
-                reduce(vcat, g.colors for g in gl)
-            else
-                gl.colors
-            end
-        end
-        gl_attributes[:stroke_color] = signals[2]
+        # gl_attributes[:color] = lift(glyphlayout) do gl
+        #     if gl isa AbstractArray
+        #         reduce(vcat, g.colors for g in gl)
+        #     else
+        #         gl.colors
+        #     end
+        # end
+
+        # TODO just plug in some scalars here for now to see if the basic pipeline works
+        gl_attributes[:color] = RGBAf0(1, 0, 0, 1)
+        # gl_attributes[:stroke_color] = signals[2]
+        gl_attributes[:stroke_color] = RGBAf0(0, 0, 0, 0)
         # gl_attributes[:rotation] = signals[3]
         gl_attributes[:rotation] = lift(positions) do pos
             map(pos) do p

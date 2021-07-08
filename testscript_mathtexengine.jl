@@ -204,22 +204,6 @@ begin
         space = :data)
     display(s)
 end
-##
-Makie.glyph_collection(MyTex("x_{2}"), 0, 0, 0, 0, 0, 0, 0)
-##
-# function Makie.boundingbox(x::Makie.Text{Tuple{MyTex}}, y, z)
-#     Makie.data_text_boundingbox(nothing, x._glyphlayout[], x.rotation[], x.position[])
-# end
-
-
-
-
-##
-data = randn(100, 2)
-f, ax, _ = scatter(data)
-vlines!(ax, data[:, 1], ymax = 0.03, color = :black)
-hlines!(ax, data[:, 2], xmax = 0.02, color = :black)
-f
 
 ##
 s = Scene(camera = campixel!)
@@ -245,6 +229,19 @@ s
 
 ##
 
+s = Scene(camera = campixel!)
+t = text!(s,
+    [L"\int_0^5x^2+2ab", L"\int_0^5x^2+2ab"],
+    position = Point2f0[(50, 50), (100, 100)],
+    rotation = 0.0,
+    show_axis = false,
+    space = :data)
+# wireframe!(s, boundingbox(t))
+s
+
+
+##
+
 lines(0..25, x -> sin(x) / (cos(3x) + 4), figure = (fontsize = 20, font = "Times"),
     axis = (
         xticks = (0:50:100, [L"10^{-3.5}", L"10^{-4.5}", L"10^{-5.5}"]),
@@ -263,6 +260,7 @@ current_figure()
 text(Tuple{AbstractString, Point2f0}[(L"xy", Point2f0(0, 0)), (L"\int^2_3", Point2f0(20, 20))],
     axis = (limits = (-5, 25, -5, 25),), align = (:center, :center))
 
+<<<<<<< HEAD
 
 # Data
 
@@ -272,3 +270,5 @@ text(Tuple{AbstractString, Point2f0}[(L"xy", Point2f0(0, 0)), (L"\int^2_3", Poin
 # sufficient information content to retrace steps
 # not so detailed / time-intensive as to hinder the actual work
 # write down implicit assumptions
+=======
+>>>>>>> 194a11fd (make scalar examples run through, but with hacked attributes)

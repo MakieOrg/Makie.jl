@@ -301,10 +301,10 @@ function preprojected_glyph_arrays(
     end
 
     text_quads(
-        reduce(vcat, allpos),
-        reduce(vcat, x.glyphs for x in glyphlayouts),
-        reduce(vcat, x.fonts for x in glyphlayouts),
-        reduce(vcat, x.scales for x in glyphlayouts))
+        allpos,
+        [x.glyphs for x in glyphlayouts],
+        [x.fonts for x in glyphlayouts],
+        [x.scales for x in glyphlayouts])
 end
 
 
@@ -342,16 +342,36 @@ end
 # end
 
 
-function text_quads(positions, glyphs::AbstractVector, fonts::AbstractVector, textsizes::AbstractVector{<:Vec2})
+function text_quads(positions, glyphs::AbstractVector, fonts::AbstractVector, textsizes::ScalarOrVector{<:Vec2})
+
     atlas = get_texture_atlas()
     offsets = Vec2f0[]
     uv = Vec4f0[]
     scales = Vec2f0[]
-    for (c, font, pixelsize) in zip(glyphs, fonts, textsizes)
+    broadcast_foreach(positions, glyphs, fonts, textsizes) do offs, c, font, pixelsize
+    # for (c, font, pixelsize) in zipx(glyphs, fonts, textsizes)
         push!(uv, glyph_uv_width!(atlas, c, font))
         glyph_bb, extent = FreeTypeAbstraction.metrics_bb(c, font, pixelsize)
         push!(scales, widths(glyph_bb))
         push!(offsets, minimum(glyph_bb))
+    end
+    return positions, offsets, uv, scales
+end
+
+function text_quads(positions, glyphs, fonts, textsizes::Vector{<:ScalarOrVector})
+
+    atlas = get_texture_atlas()
+    offsets = Vec2f0[]
+    uv = Vec4f0[]
+    scales = Vec2f0[]
+
+    broadcast_foreach(positions, glyphs, fonts, textsizes) do positions, glyphs, fonts, textsizes
+        broadcast_foreach(positions, glyphs, fonts, textsizes) do offs, c, font, pixelsize
+            push!(uv, glyph_uv_width!(atlas, c, font))
+            glyph_bb, extent = FreeTypeAbstraction.metrics_bb(c, font, pixelsize)
+            push!(scales, widths(glyph_bb))
+            push!(offsets, minimum(glyph_bb))
+        end
     end
     return positions, offsets, uv, scales
 end
