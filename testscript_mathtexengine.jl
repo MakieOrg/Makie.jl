@@ -1,4 +1,6 @@
-using CairoMakie
+using CairoMakie: Cairo
+# using CairoMakie
+using GLMakie
 using MathTeXEngine
 
 CairoMakie.activate!(type = "svg")
@@ -14,13 +16,33 @@ MakieLayout.iswhitespace(t::MyTex) = t.s == ""
 Base.isempty(::MyTex) = false
 
 ##
-# import FreeTypeAbstraction: ascender, descender, get_extent, hadvance, inkheight, inkwidth,
-#     leftinkbound, rightinkbound, topinkbound, bottominkbound
+t = Node(MyTex("\\sum_k{3.002}"))
+let
+    s = Scene(camera = campixel!)
+    text!(s,
+        t,
+        position = (100, 100),
+        textsize = 20,
+        show_axis = false)
+    sl = Slider(s, bbox = BBox(10, 200, 10, 30))
+    on(sl.value) do v
+        t[] = MyTex("\\sum_k{$v} + \\int_{$v}^{$v}xyz")
+    end
+    notify(sl.value)
+    s
+end
 
-# include("dev/MathTeXEngine/src/fonts.jl")
-# include("dev/MathTeXEngine/src/texelements.jl")
-# include("dev/MathTeXEngine/src/layout.jl")
-
+##
+let
+    s = Scene(camera = campixel!)
+    text!(s,
+        ["hello", "what's up"],
+        position = [(100, 100), (200, 200)],
+        textsize = 20,
+        space = :data,
+        show_axis = false)
+    s
+end
 ##
 
 function Makie.plot!(plot::Makie.Text{<:Tuple{MyTex}})
@@ -164,7 +186,7 @@ with_theme() do
             xlabel = MyTex(raw"\lim_{x →\infty} A^j v_{(a + b)_k}^i \sqrt{23.5} x!= \sqrt{\frac{1+6}{4+a+g}}\int_{0}^{2π} \sin(x) dx"),
             ylabel = MyTex(raw"x + y - sin(x) × tan(y) + \sqrt{2}"),
         ),
-        figure = (fontsize = 18, font = raw"dev\MathTeXEngine\assets\fonts\NewCM10-Regular.otf")
+        figure = (fontsize = 18, font = raw".\dev\MathTeXEngine\assets\fonts\NewCM10-Regular.otf")
     )
     text!(MyTex(raw"\int_{0}^{2π} \sin(x) dx"), position = (500, 0))
 
@@ -226,8 +248,7 @@ wireframe!(s, boundingbox(t))
 s
 
 ##
-
-lines(cumsum(randn(99)), axis = (title = "lol", xlabel = "hello", ylabel = "you too"))
-
-
-##
+lines(cumsum(randn(99)), figure = (fontsize = 20, font = "Times"),
+    axis = (
+        title = MyTex(raw"\int_0^1{x^2}∫"),
+        xlabel = MyTex(raw"\sum_k{x_k ⋅ y_k}"), ylabel = "you too"))
