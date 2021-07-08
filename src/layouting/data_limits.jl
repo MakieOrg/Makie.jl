@@ -116,7 +116,7 @@ FRect3D_from_point(p::VecTypes{3}) = FRect3D(Point3f0(p...), Point3f0(0, 0, 0))
 function atomic_limits(x::Text{<:Tuple{<:GlyphLayout3}})
     if x.space[] == :data
         boundingbox(x)
-    elseif x.space == :screen
+    elseif x.space[] == :screen
         FRect3D_from_point(x.position[])
     else
         error()
