@@ -259,17 +259,18 @@ value_or_first(x::AbstractArray) = first(x)
 value_or_first(x::StaticArray) = x
 value_or_first(x) = x
 
-function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
+function draw_atomic(screen::GLScreen, scene::Scene,
+        x::Text{<:Tuple{<:Union{<:Makie.GlyphLayout3, <:AbstractVector{<:Makie.GlyphLayout3}}}})
+
     robj = cached_robj!(screen, scene, x) do gl_attributes
-        string_obs = x[1]
-        liftkeys = (:position, :textsize, :font, :align, :rotation, :model, :justification, :lineheight, :space, :offset)
+        glyphlayout = x[1]
+        liftkeys = (:position, :align, :rotation, :model, :justification, :lineheight, :space, :offset)
         args = getindex.(Ref(gl_attributes), liftkeys)
 
-        gl_text = lift(string_obs, scene.camera.projectionview, Makie.transform_func_obs(scene), args...) do str, projview, transfunc, pos, tsize, font, align, rotation, model, j, l, space, offset
-            # For annotations, only str (x[1]) will get updated, but all others are updated too!
-            args = @get_attribute x (position, textsize, font, align, rotation, offset)
+        gl_text = lift(glyphlayout, scene.camera.projectionview, Makie.transform_func_obs(scene), args...) do glayout,
+                projview, transfunc, pos, align, rotation, model, j, l, space, offset
             res = Vec2f0(widths(pixelarea(scene)[]))
-            return preprojected_glyph_arrays(str, pos, x._glyphlayout[], font, textsize, space, projview, res, offset, transfunc)
+            return preprojected_glyph_arrays(pos, glayout, space, projview, res, offset, transfunc)
         end
 
         # unpack values from the one signal:
@@ -281,32 +282,13 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
         keys = (:color, :strokecolor, :rotation)
 
         signals = map(keys) do key
-            return lift(positions, x[key]) do pos, attr
-                str = string_obs[]
-                if str isa AbstractVector
-                    if isempty(str)
-                        attr = convert_attribute(value_or_first(attr), Key{key}())
-                        return Vector{typeof(attr)}()
-                    else
-                        result = []
-                        broadcast_foreach(str, attr) do st, aa
-                            for att in attribute_per_char(st, aa)
-                                push!(result, convert_attribute(att, Key{key}()))
-                            end
-                        end
-                        # narrow the type from any, this is ugly
-                        return identity.(result)
-                    end
-                else
-                    return Makie.get_attribute(x, key)
-                end
-            end
+            Makie.get_attribute(x, key)
         end
 
         filter!(gl_attributes) do (k, v)
-            # These are liftkeys without model but with _glyphlayout
+            # These are liftkeys without model
             !(k in (
-                :position, :space, :justification, :font, :_glyphlayout, :align,
+                :position, :space, :justification, :font, :align,
                 :textsize, :rotation, :lineheight,
             ))
         end
