@@ -23,7 +23,7 @@ end
 function plot!(plot::Text)
 
     # attach a function to any text that calculates the glyph layout and stores it
-    glyphlayout = lift(plot[1], plot.textsize, plot.font, plot.align,
+    glyphcollection = lift(plot[1], plot.textsize, plot.font, plot.align,
             plot.rotation, plot.model, plot.justification, plot.lineheight,
             plot.color, plot.strokecolor, plot.strokewidth) do str,
                 ts, f, al, rot, mo, jus, lh, col, scol, swi
@@ -36,7 +36,7 @@ function plot!(plot::Text)
         layout_text(str, ts, f, al, rot, mo, jus, lh, col, scol, swi)
     end
 
-    text!(plot, glyphlayout; plot.attributes...)
+    text!(plot, glyphcollection; plot.attributes...)
 
     plot
 end
@@ -53,7 +53,7 @@ end
 
 function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
 
-    glyphlayouts = Node(GlyphCollection[])
+    glyphcollections = Node(GlyphCollection[])
     position = Node{Any}(nothing)
     rotation = Node{Any}(nothing)
     model = Node{Any}(nothing)
@@ -70,11 +70,11 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
         col = to_color(col)
         scol = to_color(scol)
 
-        gls = GlyphCollection[]
+        gcs = GlyphCollection[]
         broadcast_foreach(str, ts, f, al, rot, Ref(mo), jus, lh, col, scol, swi) do str,
                 ts, f, al, rot, mo, jus, lh, col, scol, swi
             subgl = layout_text(str, ts, f, al, rot, mo, jus, lh, col, scol, swi)
-            push!(gls, subgl)
+            push!(gcs, subgl)
         end
         # @show Makie.attr_broadcast_length(gls)
         # @show Makie.attr_broadcast_length(pos)
@@ -82,13 +82,13 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
         position.val = pos
         rotation.val = rot
         model.val = mo
-        glyphlayouts[] = gls
+        glyphcollections[] = gcs
     end
 
     # run onany once to initialize
     notify(plot[1])
 
-    text!(plot, glyphlayouts; position = plot.position, rotation = rotation,
+    text!(plot, glyphcollections; position = plot.position, rotation = rotation,
         model = model, offset = plot.offset, space = plot.space)
 
     plot

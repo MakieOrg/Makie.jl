@@ -263,17 +263,13 @@ function draw_atomic(screen::GLScreen, scene::Scene,
         x::Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
 
     robj = cached_robj!(screen, scene, x) do gl_attributes
-        glyphlayout = x[1]
+        glyphcollection = x[1]
         liftkeys = (:position, :rotation, :model, :space, :offset)
         args = getindex.(Ref(gl_attributes), liftkeys)
         function collect_glyph_data(projview, transfunc, pos, rotation, model, space, offset)
-            # this has changed
-            glayout = glyphlayout[]
-            # @show Makie.attr_broadcast_length(pos)
-            # @show Makie.attr_broadcast_length(glayout)
-            # @show Makie.attr_broadcast_length(offset)
+            gcollection = glyphcollection[]
             res = Vec2f0(widths(pixelarea(scene)[]))
-            positions, offset, uv_offset_width, scale = preprojected_glyph_arrays(pos, glayout, space, projview, res, offset, transfunc)
+            positions, offset, uv_offset_width, scale = preprojected_glyph_arrays(pos, gcollection, space, projview, res, offset, transfunc)
         end
 
         glyph_data = lift(collect_glyph_data, scene.camera.projectionview, Makie.transform_func_obs(scene), args...)
@@ -298,28 +294,28 @@ function draw_atomic(screen::GLScreen, scene::Scene,
             ))
         end
 
-        gl_attributes[:color] = lift(glyphlayout) do gl
-            if gl isa AbstractArray
-                reduce(vcat, (Makie.collect_vector(g.colors, length(g.glyphs)) for g in gl),
+        gl_attributes[:color] = lift(glyphcollection) do gc
+            if gc isa AbstractArray
+                reduce(vcat, (Makie.collect_vector(g.colors, length(g.glyphs)) for g in gc),
                     init = RGBAf0[])
             else
-                Makie.collect_vector(gl.colors, length(gl.glyphs))
+                Makie.collect_vector(gc.colors, length(gc.glyphs))
             end
         end
-        gl_attributes[:stroke_color] = lift(glyphlayout) do gl
-            if gl isa AbstractArray
-                reduce(vcat, (Makie.collect_vector(g.strokecolors, length(g.glyphs)) for g in gl),
+        gl_attributes[:stroke_color] = lift(glyphcollection) do gc
+            if gc isa AbstractArray
+                reduce(vcat, (Makie.collect_vector(g.strokecolors, length(g.glyphs)) for g in gc),
                     init = RGBAf0[])
             else
-                Makie.collect_vector(gl.strokecolors, length(gl.glyphs))
+                Makie.collect_vector(gc.strokecolors, length(gc.glyphs))
             end
         end
-        gl_attributes[:rotation] = lift(glyphlayout) do gl
-            if gl isa AbstractArray
-                reduce(vcat, (Makie.collect_vector(g.rotations, length(g.glyphs)) for g in gl),
+        gl_attributes[:rotation] = lift(glyphcollection) do gc
+            if gc isa AbstractArray
+                reduce(vcat, (Makie.collect_vector(g.rotations, length(g.glyphs)) for g in gc),
                     init = Quaternionf0[])
             else
-                Makie.collect_vector(gl.rotations, length(gl.glyphs))
+                Makie.collect_vector(gc.rotations, length(gc.glyphs))
             end
         end
 

@@ -382,7 +382,7 @@ end
 function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXString}}}})
 
     # attach a function to any text that calculates the glyph layout and stores it
-    lineels_glyphlayout_offset = lift(plot[1], plot.textsize, plot.align, plot.rotation,
+    lineels_glyphcollection_offset = lift(plot[1], plot.textsize, plot.align, plot.rotation,
             plot.model, plot.color, plot.strokecolor, plot.strokewidth, plot.position) do latexstring,
                 ts, al, rot, mo, color, scolor, swidth, _
 
@@ -393,25 +393,25 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
 
         if latexstring isa AbstractVector
             tex_elements = []
-            glyphlayouts = GlyphCollection[]
+            glyphcollections = GlyphCollection[]
             offsets = Point2f0[]
             broadcast_foreach(latexstring, ts, al, rot, color, scolor, swidth) do latexstring,
                 ts, al, rot, color, scolor, swidth
 
-                te, gl, offs = texelems_and_glyph_collection(latexstring, ts,
+                te, gc, offs = texelems_and_glyph_collection(latexstring, ts,
                     al[1], al[2], rot, color, scolor, swidth)
                 push!(tex_elements, te)
-                push!(glyphlayouts, gl)
+                push!(glyphcollections, gc)
                 push!(offsets, offs)
             end
-            tex_elements, glyphlayouts, offsets
+            tex_elements, glyphcollections, offsets
         else
-            tex_elements, glyphlayout, offset = texelems_and_glyph_collection(latexstring, ts,
+            tex_elements, glyphcollection, offset = texelems_and_glyph_collection(latexstring, ts,
                 al[1], al[2], rot, color, scolor, swidth)
         end
     end
 
-    glyphlayout = @lift($lineels_glyphlayout_offset[2])
+    glyphcollection = @lift($lineels_glyphcollection_offset[2])
 
 
     linepairs = Node(Tuple{Point2f0, Point2f0}[])
@@ -419,8 +419,8 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
 
     scene = Makie.parent_scene(plot)
 
-    onany(lineels_glyphlayout_offset, scene.camera.projectionview) do (allels, gls, offs), projview
-        
+    onany(lineels_glyphcollection_offset, scene.camera.projectionview) do (allels, gcs, offs), projview
+
         inv_projview = inv(projview)
         pos = plot.position[]
         ts = plot.textsize[]
@@ -434,7 +434,7 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
 
         # for the vector case, allels is a vector of vectors
         # so for broadcasting the single vector needs to be wrapped in Ref
-        if gls isa GlyphCollection
+        if gcs isa GlyphCollection
             allels = [allels]
         end
         broadcast_foreach(allels, offs, pos, ts, rot) do allels, offs, pos, ts, rot
@@ -469,8 +469,7 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
 
     notify(plot.position)
 
-    text!(plot, glyphlayout; plot.attributes...)
-    # linesegments!(plot, linepairs, linewidth = linewidths)
+    text!(plot, glyphcollection; plot.attributes...)
     linesegments!(plot, linepairs, linewidth = linewidths, color = plot.color)
 
     plot

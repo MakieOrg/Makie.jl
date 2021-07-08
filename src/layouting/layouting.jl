@@ -54,10 +54,10 @@ function layout_text(
     fontperchar = attribute_per_char(string, ft_font)
     textsizeperchar = attribute_per_char(string, rscale)
 
-    glyphlayout = glyph_collection(string, fontperchar, textsizeperchar, align[1],
+    glyphcollection = glyph_collection(string, fontperchar, textsizeperchar, align[1],
         align[2], lineheight, justification, rot, color, strokecolor, strokewidth)
 
-    return glyphlayout
+    return glyphcollection
 end
 
 """
@@ -229,25 +229,25 @@ end
 
 
 function preprojected_glyph_arrays(
-        position::VecTypes, glyphlayout::Makie.GlyphCollection,
+        position::VecTypes, glyphcollection::Makie.GlyphCollection,
         space::Symbol, projview, resolution, offset::VecTypes, transfunc
     )
     offset = to_ndim(Point3f0, offset, 0)
     pos3f0 = to_ndim(Point3f0, position, 0)
 
     if space == :data
-        positions = apply_transform(transfunc, Point3f0[pos3f0 + offset + o for o in glyphlayout.origins])
+        positions = apply_transform(transfunc, Point3f0[pos3f0 + offset + o for o in glyphcollection.origins])
     elseif space == :screen
         projected = Makie.project(projview, resolution, apply_transform(transfunc, pos3f0))
-        positions = Point3f0[to_ndim(Point3f0, projected, 0) + offset + o for o in glyphlayout.origins]
+        positions = Point3f0[to_ndim(Point3f0, projected, 0) + offset + o for o in glyphcollection.origins]
     else
         error("Unknown space $space, only :data or :screen allowed")
     end
-    text_quads(positions, glyphlayout.glyphs, glyphlayout.fonts, glyphlayout.scales)
+    text_quads(positions, glyphcollection.glyphs, glyphcollection.fonts, glyphcollection.scales)
 end
 
 function preprojected_glyph_arrays(
-        position::VecTypes, glyphlayout::Makie.GlyphCollection,
+        position::VecTypes, glyphcollection::Makie.GlyphCollection,
         space::Symbol, projview, resolution, offsets::Vector, transfunc
     )
 
@@ -255,10 +255,10 @@ function preprojected_glyph_arrays(
     pos3f0 = to_ndim(Point3f0, position, 0)
 
     if space == :data
-        positions = apply_transform(transfunc, [pos3f0 + offset + o for (o, offset) in zip(glyphlayout.origins, offsets)])
+        positions = apply_transform(transfunc, [pos3f0 + offset + o for (o, offset) in zip(glyphcollection.origins, offsets)])
     elseif space == :screen
         projected = Makie.project(projview, resolution, apply_transform(transfunc, pos3f0))
-        positions = Point3f0[to_ndim(Point3f0, projected, 0) + offset + o for (o, offset) in zip(glyphlayout.origins, offsets)]
+        positions = Point3f0[to_ndim(Point3f0, projected, 0) + offset + o for (o, offset) in zip(glyphcollection.origins, offsets)]
     else
         error("Unknown space $space, only :data or :screen allowed")
     end
@@ -267,7 +267,7 @@ function preprojected_glyph_arrays(
 end
 
 function preprojected_glyph_arrays(
-        positions::AbstractVector, glyphlayouts::AbstractVector{<:GlyphCollection}, space::Symbol, projview, resolution, offset, transfunc
+        positions::AbstractVector, glyphcollections::AbstractVector{<:GlyphCollection}, space::Symbol, projview, resolution, offset, transfunc
     )
 
     if offset isa VecTypes
@@ -275,15 +275,15 @@ function preprojected_glyph_arrays(
     end
 
     if space == :data
-        allpos = broadcast(positions, glyphlayouts, offset) do pos, glyphlayout, offs
+        allpos = broadcast(positions, glyphcollections, offset) do pos, glyphcollection, offs
             p = to_ndim(Point3f0, pos, 0)
             apply_transform(
                 transfunc,
-                Point3f0[p .+ to_ndim(Point3f0, offs, 0) .+ o for o in glyphlayout.origins]
+                Point3f0[p .+ to_ndim(Point3f0, offs, 0) .+ o for o in glyphcollection.origins]
             )
         end
     elseif space == :screen
-        allpos = broadcast(positions, glyphlayouts, offset) do pos, glyphlayout, offs
+        allpos = broadcast(positions, glyphcollections, offset) do pos, glyphcollection, offs
             projected = to_ndim(
                 Point3f0,
                 Makie.project(
@@ -294,7 +294,7 @@ function preprojected_glyph_arrays(
                 0)
 
             return Point3f0[projected .+ to_ndim(Point3f0, offs, 0) + o
-                        for o in glyphlayout.origins]
+                        for o in glyphcollection.origins]
         end
     else
         error("Unknown space $space, only :data or :screen allowed")
@@ -302,27 +302,27 @@ function preprojected_glyph_arrays(
 
     text_quads(
         allpos,
-        [x.glyphs for x in glyphlayouts],
-        [x.fonts for x in glyphlayouts],
-        [x.scales for x in glyphlayouts])
+        [x.glyphs for x in glyphcollections],
+        [x.fonts for x in glyphcollections],
+        [x.scales for x in glyphcollections])
 end
 
 
 # function preprojected_glyph_arrays(
-#         strings::AbstractVector{<:String}, positions::AbstractVector, glyphlayouts::Vector, font,
+#         strings::AbstractVector{<:String}, positions::AbstractVector, glyphcollections::Vector, font,
 #         textsize, space::Symbol, projview, resolution, offsets::Vector{<: Vector}, transfunc
 #     )
 
 #     if space == :data
-#         allpos = broadcast(positions, glyphlayouts, offsets) do pos, glyphlayout::Makie.GlyphCollection, offsets
+#         allpos = broadcast(positions, glyphcollections, offsets) do pos, glyphcollection::Makie.GlyphCollection, offsets
 #             p = to_ndim(Point3f0, pos, 0)
 #             apply_transform(
 #                 transfunc,
-#                 Point3f0[p .+ to_ndim(Point3f0, offset, 0) .+ o for (o, offset) in zip(glyphlayout.origins, offsets)]
+#                 Point3f0[p .+ to_ndim(Point3f0, offset, 0) .+ o for (o, offset) in zip(glyphcollection.origins, offsets)]
 #             )
 #         end
 #     elseif space == :screen
-#         allpos = broadcast(positions, glyphlayouts, offsets) do pos, glyphlayout::Makie.GlyphCollection, offsets
+#         allpos = broadcast(positions, glyphcollections, offsets) do pos, glyphcollection::Makie.GlyphCollection, offsets
 #             projected = to_ndim(
 #                 Point3f0,
 #                 Makie.project(
@@ -332,7 +332,7 @@ end
 #                 ),
 #                 0)
 
-#             return Point3f0[projected .+ to_ndim(Point3f0, offset, 0) + o for (o, offset) in zip(glyphlayout.origins, offsets)]
+#             return Point3f0[projected .+ to_ndim(Point3f0, offset, 0) + o for (o, offset) in zip(glyphcollection.origins, offsets)]
 #         end
 #     else
 #         error("Unknown space $space, only :data or :screen allowed")

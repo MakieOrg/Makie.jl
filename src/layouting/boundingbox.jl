@@ -85,19 +85,6 @@ function rotate_bbox(bb::FRect3D, rot)
     FRect3D(Ref(rot) .* points)
 end
 
-# function boundingbox(x::Text, text, position)
-#     glyphlayout = x._glyphlayout[]
-
-#     pos = to_ndim(Point3f0, position, 0)
-#     rot = convert_attribute(x.rotation[], key"rotation"())
-
-#     if x.space[] == :data
-#         data_text_boundingbox(x[1][], glyphlayout, rot, pos)
-#     elseif x.space[] == :screen
-#         data_limits(x)
-#     end
-# end
-
 function gl_bboxes(gl::GlyphCollection)
     scales = gl.scales.sv isa Vec2f0 ? (gl.scales.sv for _ in gl.extents) : gl.scales.sv
     map(gl.extents, gl.fonts, scales) do ext, font, scale
@@ -109,15 +96,15 @@ function gl_bboxes(gl::GlyphCollection)
     end
 end
 
-function boundingbox(glyphlayout::GlyphCollection, position::Point3f0, rotation::Quaternion)
+function boundingbox(glyphcollection::GlyphCollection, position::Point3f0, rotation::Quaternion)
 
-    if isempty(glyphlayout.glyphs)
+    if isempty(glyphcollection.glyphs)
         return FRect3D(position, Vec3f0(0, 0, 0))
     end
 
-    chars = glyphlayout.glyphs
-    glyphorigins = glyphlayout.origins
-    glyphbbs = gl_bboxes(glyphlayout)
+    chars = glyphcollection.glyphs
+    glyphorigins = glyphcollection.origins
+    glyphbbs = gl_bboxes(glyphcollection)
 
     bb = FRect3D()
     for (char, charo, glyphbb) in zip(chars, glyphorigins, glyphbbs)

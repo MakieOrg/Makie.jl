@@ -91,7 +91,14 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
 
     cursorpoints = lift(cursorindex, displayed_charbbs) do ci, bbs
 
-        hadvances = t.elements[:text]._glyphlayout[].hadvances::Vector{Float32}
+
+        glyphcollection = t.elements[:text].plots[1][1][]::Makie.GlyphCollection
+
+        hadvances = Float32[]
+        broadcast_foreach(glyphcollection.extents, glyphcollection.scales) do ex, sc
+            hadvance = Makie.FreeTypeAbstraction.hadvance(ex) * sc[1]
+            push!(hadvances, hadvance)
+        end
 
         if ci > length(bbs)
             # correct cursorindex if it's outside of the displayed charbbs range
@@ -263,14 +270,18 @@ end
 
 
 function charbbs(text)
-    glyphlayout = text._glyphlayout[]
-    if !(glyphlayout isa Makie.GlyphCollection)
-        error("Expected a single GlyphCollection from the textbox string, got a $(typeof(glyphlayout)).")
+    gc = text.plots[1][1][]
+    if !(gc isa Makie.GlyphCollection)
+        error("Expected a single GlyphCollection from the textbox string, got a $(typeof(gc)).")
     end
     pos = Point2f0(text.position[])
-    map(glyphlayout.bboxes, glyphlayout.origins) do bb, ori
-        FRect2D(Point2f0(ori) + bb.origin + pos, bb.widths)
+    bbs = FRect2D[]
+    broadcast_foreach(gc.extents, gc.scales, gc.origins, gc.fonts) do ext, sc, ori, font
+        bb = Makie.FreeTypeAbstraction.height_insensitive_boundingbox(ext, font) * sc
+        fr = FRect2D(Point2f0(ori) + bb.origin + pos, bb.widths)
+        push!(bbs, fr)
     end
+    bbs
 end
 
 function validate_textbox(str, validator::Function)
