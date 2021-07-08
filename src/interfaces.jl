@@ -23,27 +23,47 @@ end
 function plot!(plot::Text)
 
     # attach a function to any text that calculates the glyph layout and stores it
-    onany(plot[1], plot.position, plot.textsize, plot.font, plot.align, plot.rotation, plot.model, plot.justification, plot.lineheight) do str, pos, ts, f, al, rot, mo, jus, lh
+    glyphlayout = lift(plot[1], plot.position, plot.textsize, plot.font, plot.align, plot.rotation, plot.model, plot.justification, plot.lineheight) do str, pos, ts, f, al, rot, mo, jus, lh
         ts = to_textsize(ts)
         f = to_font(f)
         rot = to_rotation(rot)
 
-        if str isa AbstractString
-            glyphlayout = layout_text(str, ts, f, al, rot, mo, jus, lh)
-        elseif str isa AbstractArray
-            glyphlayout = []
-            broadcast_foreach(str, ts, f, al, rot, Ref(mo), jus, lh) do str, ts, f, al, rot, mo, jus, lh
-                subgl = layout_text(str, ts, f, al, rot, mo, jus, lh)
-                push!(glyphlayout, subgl)
-            end
-        else
-            error("String shouldn't be a $(typeof(str))")
-        end
-
-        plot._glyphlayout[] = glyphlayout
+        layout_text(str, ts, f, al, rot, mo, jus, lh)
     end
-    # populate _glyphlayout first time
-    plot.position[] = plot.position[]
+
+    if !(glyphlayout isa Observable{<:GlyphLayout3})
+        error("Incorrect type parameter $(typeof(glyphlayout))")
+    end
+
+    text!(plot, glyphlayout; plot.attributes...)
+
+    plot
+end
+
+function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
+
+    # attach a function to any text that calculates the glyph layout and stores it
+    glyphlayouts = lift(Vector{GlyphLayout3}, plot[1], plot.position, plot.textsize, plot.font, plot.align, plot.rotation, plot.model, plot.justification, plot.lineheight) do str, pos, ts, f, al, rot, mo, jus, lh
+        ts = to_textsize(ts)
+        f = to_font(f)
+        rot = to_rotation(rot)
+
+
+        gls = []
+        broadcast_foreach(str, ts, f, al, rot, Ref(mo), jus, lh) do str, ts, f, al, rot, mo, jus, lh
+            subgl = layout_text(str, ts, f, al, rot, mo, jus, lh)
+            push!(gls, subgl)
+        end
+        
+        # narrow type
+        identity.(gls)
+    end
+
+    if !(glyphlayouts isa Observable{<:AbstractArray{<:GlyphLayout3}})
+        error("Incorrect type parameter $(typeof(glyphlayouts))")
+    end
+
+    text!(plot, glyphlayouts; plot.attributes...)
 
     plot
 end

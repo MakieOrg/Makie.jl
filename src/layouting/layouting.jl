@@ -81,7 +81,7 @@ rotated to wherever it is needed in the plot.
 """
 function glyph_positions(str::AbstractString, font_per_char, fontscale_px, halign, valign, lineheight_factor, justification, rotation)
 
-    isempty(str) && return GlyphLayout3([], [], Point3f0[], Vec2f0[], [], FRect2D[], Float32[])
+    isempty(str) && return GlyphLayout3([], [], Point3f0[], FreeTypeAbstraction.FontExtent{Float32}[], Vec2f0[], Float32[])
 
     # collect information about every character in the string
     charinfos = broadcast([c for c in str], font_per_char, fontscale_px) do char, font, scale

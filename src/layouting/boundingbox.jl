@@ -85,18 +85,18 @@ function rotate_bbox(bb::FRect3D, rot)
     FRect3D(Ref(rot) .* points)
 end
 
-function boundingbox(x::Text, text, position)
-    glyphlayout = x._glyphlayout[]
+# function boundingbox(x::Text, text, position)
+#     glyphlayout = x._glyphlayout[]
 
-    pos = to_ndim(Point3f0, position, 0)
-    rot = convert_attribute(x.rotation[], key"rotation"())
+#     pos = to_ndim(Point3f0, position, 0)
+#     rot = convert_attribute(x.rotation[], key"rotation"())
 
-    if x.space[] == :data
-        data_text_boundingbox(x[1][], glyphlayout, rot, pos)
-    elseif x.space[] == :screen
-        data_limits(x)
-    end
-end
+#     if x.space[] == :data
+#         data_text_boundingbox(x[1][], glyphlayout, rot, pos)
+#     elseif x.space[] == :screen
+#         data_limits(x)
+#     end
+# end
 
 function gl_bboxes(gl::GlyphLayout3)
     map(gl.extents, gl.fonts, gl.scales) do ext, font, scale
@@ -108,12 +108,17 @@ function gl_bboxes(gl::GlyphLayout3)
     end
 end
 
-function data_text_boundingbox(unused, glyphlayout::GlyphLayout3, rotation::Quaternion, position::Point3f0)
-    bb = FRect3D()
+function boundingbox(glyphlayout::GlyphLayout3, position::Point3f0, rotation::Quaternion)
+    
+    if isempty(glyphlayout.glyphs)
+        return FRect3D(position, Vec3f0(0, 0, 0))
+    end
+
     chars = glyphlayout.glyphs
     glyphorigins = glyphlayout.origins
     glyphbbs = gl_bboxes(glyphlayout)
 
+    bb = FRect3D()
     for (char, charo, glyphbb) in zip(chars, glyphorigins, glyphbbs)
         # ignore line breaks
         # char in ('\r', '\n') && continue
@@ -125,40 +130,42 @@ function data_text_boundingbox(unused, glyphlayout::GlyphLayout3, rotation::Quat
             bb = union(bb, charbb)
         end
     end
-
+    !isfinite_rect(bb) && error("Invalid text boundingbox")
     bb
 end
 
-function boundingbox(x::Text, texts::AbstractArray, positions::AbstractArray)
+function boundingbox(layouts::AbstractArray{<:GlyphLayout3}, positions, rotations)
 
-    layouts = x._glyphlayout[]
-    rotations = convert_attribute(x.rotation[], key"rotation"())
-    positions_3d = to_ndim.(Point3f0, positions, 0)
-
-    if x.space[] == :data
+    if isempty(layouts)
+        FRect3D((0, 0, 0), (0, 0, 0))
+    else
         bb = FRect3D()
-        broadcast_foreach(texts, positions_3d, layouts, rotations) do text, pos, layout, rot
+        broadcast_foreach(layouts, positions, rotations) do layout, pos, rot
             if !isfinite_rect(bb)
-                bb = data_text_boundingbox(text, layout, rot, pos)
+                bb = boundingbox(layout, pos, rot)
             else
-                bb = union(bb, data_text_boundingbox(text, layout, rot, pos))
+                bb = union(bb, boundingbox(layout, pos, rot))
             end
         end
+        !isfinite_rect(bb) && error("Invalid text boundingbox")
         bb
-    elseif x.space[] == :screen
-        data_limits(x)
     end
 end
 
-function boundingbox(x::Text)
+function boundingbox(x::Text{<:Tuple{<:GlyphLayout3}})
+    boundingbox(
+        to_value(x[1]),
+        to_ndim(Point3f0, to_value(x[:position]), 0),
+        convert_attribute(to_value(x[:rotation]), key"rotation"())
+    )
+end
 
-    # TODO: this is only necessary because of the "text in text" recipe weirdness
-    if !isempty(x.plots)
-        # the "real" text is inside the outer text
-        x = x.plots[1]
-    end
-
-    boundingbox(x, to_value(x[1]), to_value(x[:position]))
+function boundingbox(x::Text{<:Tuple{<:AbstractArray{<:GlyphLayout3}}})
+    boundingbox(
+        to_value(x[1]),
+        to_ndim.(Point3f0, to_value(x[:position]), 0),
+        convert_attribute(to_value(x[:rotation]), key"rotation"())
+    )
 end
 
 
