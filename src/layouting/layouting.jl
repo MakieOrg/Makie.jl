@@ -373,7 +373,7 @@ function text_quads(positions, glyphs, fonts, textsizes::Vector{<:ScalarOrVector
             push!(offsets, minimum(glyph_bb))
         end
     end
-    return positions, offsets, uv, scales
+    return reduce(vcat, positions), offsets, uv, scales
 end
 
 
