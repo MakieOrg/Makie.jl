@@ -1,6 +1,5 @@
 using CairoMakie
 using MathTeXEngine
-using MathTeXEngine.MathTeXParser
 
 CairoMakie.activate!(type = "svg")
 
@@ -15,12 +14,12 @@ MakieLayout.iswhitespace(t::MyTex) = t.s == ""
 Base.isempty(::MyTex) = false
 
 ##
-import FreeTypeAbstraction: ascender, descender, get_extent, hadvance, inkheight, inkwidth,
-    leftinkbound, rightinkbound, topinkbound, bottominkbound
+# import FreeTypeAbstraction: ascender, descender, get_extent, hadvance, inkheight, inkwidth,
+#     leftinkbound, rightinkbound, topinkbound, bottominkbound
 
-include("dev/MathTeXEngine/src/fonts.jl")
-include("dev/MathTeXEngine/src/texelements.jl")
-include("dev/MathTeXEngine/src/layout.jl")
+# include("dev/MathTeXEngine/src/fonts.jl")
+# include("dev/MathTeXEngine/src/texelements.jl")
+# include("dev/MathTeXEngine/src/layout.jl")
 
 ##
 
@@ -91,18 +90,12 @@ end
 
 ##
 
-function get_tex_elements(str::MyTex)
-    texexpr = texparse(str.s)
-    layout = tex_layout(texexpr)
-
-    map(Tuple, unravel(layout))
-end
 
 function texelems_and_glyph_positions(str::MyTex, fontscale_px, halign, valign, rotation)
 
     rot = Makie.convert_attribute(rotation, key"rotation"())
 
-    all_els = get_tex_elements(str)
+    all_els = generate_tex_elements(str.s)
     els = filter(x -> x[1] isa TeXChar, all_els)
 
     # hacky, but attr per char needs to be fixed
@@ -110,15 +103,13 @@ function texelems_and_glyph_positions(str::MyTex, fontscale_px, halign, valign, 
 
     scales_2d = [Vec2f0(x[3] * Vec2f0(fs)) for x in els]
 
-    libs = leftinkbound.(getindex.(els, 1))
-
     chars = [x[1].char for x in els]
     fonts = [x[1].font for x in els]
 
     extents = [Makie.FreeTypeAbstraction.get_extent(f, c) for (f, c) in zip(fonts, chars)]
 
     bboxes = map(extents, fonts, scales_2d) do ext, font, scale
-        unscaled_hi_bb = FreeTypeAbstraction.height_insensitive_boundingbox(ext, font)
+        unscaled_hi_bb = Makie.FreeTypeAbstraction.height_insensitive_boundingbox(ext, font)
         hi_bb = FRect2D(
             Makie.origin(unscaled_hi_bb) * scale,
             widths(unscaled_hi_bb) * scale
@@ -152,8 +143,8 @@ function texelems_and_glyph_positions(str::MyTex, fontscale_px, halign, valign, 
     end
 
     positions = basepositions .- Ref(Point3f0(xshift, yshift, 0))
-    positions .= Ref(rot) .* (positions .- Point3f0.(getindex.(scales_2d, 1) .* libs, 0, 0))
-   
+    positions .= Ref(rot) .* positions
+
     pre_align_gl = Makie.GlyphLayout3(
         chars,
         fonts,
