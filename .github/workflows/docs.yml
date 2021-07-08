@@ -47,6 +47,7 @@ jobs:
            # force the most recent registry to avoid older cached versions
            pkg"registry add https://github.com/JuliaRegistries/General";
            pkg"registry up General";
+           pkg"dev https://github.com/Kolaru/MathTeXEngine.jl";
            # dev mono repo versions
            pkg"dev . MakieCore CairoMakie WGLMakie GLMakie; add Documenter#master; instantiate"'
       - name: Build and deploy
