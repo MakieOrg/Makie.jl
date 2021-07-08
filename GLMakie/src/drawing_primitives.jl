@@ -300,21 +300,24 @@ function draw_atomic(screen::GLScreen, scene::Scene,
 
         gl_attributes[:color] = lift(glyphlayout) do gl
             if gl isa AbstractArray
-                reduce(vcat, (Makie.collect_vector(g.colors, length(g.glyphs)) for g in gl))
+                reduce(vcat, (Makie.collect_vector(g.colors, length(g.glyphs)) for g in gl),
+                    init = RGBAf0[])
             else
                 Makie.collect_vector(gl.colors, length(gl.glyphs))
             end
         end
         gl_attributes[:stroke_color] = lift(glyphlayout) do gl
             if gl isa AbstractArray
-                reduce(vcat, (Makie.collect_vector(g.strokecolors, length(g.glyphs)) for g in gl))
+                reduce(vcat, (Makie.collect_vector(g.strokecolors, length(g.glyphs)) for g in gl),
+                    init = RGBAf0[])
             else
                 Makie.collect_vector(gl.strokecolors, length(gl.glyphs))
             end
         end
         gl_attributes[:rotation] = lift(glyphlayout) do gl
             if gl isa AbstractArray
-                reduce(vcat, (Makie.collect_vector(g.rotations, length(g.glyphs)) for g in gl))
+                reduce(vcat, (Makie.collect_vector(g.rotations, length(g.glyphs)) for g in gl),
+                    init = Quaternionf0[])
             else
                 Makie.collect_vector(gl.rotations, length(gl.glyphs))
             end

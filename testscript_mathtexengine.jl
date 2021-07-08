@@ -311,3 +311,7 @@ lines(0..25, x -> 4 * sin(x) / (cos(3x) + 4), figure = (fontsize = 25, font = "T
         xtickformat = (xs -> [L"\sqrt{%$x}+\sum" for x in xs]),
     )
 )
+
+## empty ticks
+
+lines(randn(100), axis = (xticks = [-1000],))
