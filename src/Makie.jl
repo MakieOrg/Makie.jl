@@ -366,8 +366,8 @@ export heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, s
 function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXString}}}})
     # attach a function to any text that calculates the glyph layout and stores it
     lineels_glyphlayout_offset = lift(plot[1], plot.textsize, plot.align, plot.rotation,
-            plot.model, plot.color, plot.strokecolor, plot.strokewidth) do latexstring,
-                ts, al, rot, mo, color, scolor, swidth
+            plot.model, plot.color, plot.strokecolor, plot.strokewidth, plot.position) do latexstring,
+                ts, al, rot, mo, color, scolor, swidth, _
 
 
         ts = to_textsize(ts)
@@ -400,8 +400,11 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
     linepairs = Node(Tuple{Point2f0, Point2f0}[])
     linewidths = Node(Float32[])
 
-    onany(lineels_glyphlayout_offset, plot.position, plot.textsize,
-            plot.rotation) do (allels, _, offs), pos, ts, rot
+    onany(lineels_glyphlayout_offset) do (allels, gls, offs)
+        
+        pos = plot.position[]
+        ts = plot.textsize[]
+        rot = plot.rotation[]
 
         ts = to_textsize(ts)
         rot = convert_attribute(rot, key"rotation"())
@@ -411,29 +414,28 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
 
         # for the vector case, allels is a vector of vectors
         # so for broadcasting the single vector needs to be wrapped in Ref
-        if !(eltype(allels) <: Vector)
-            allels = Ref(allels)
+        if gls isa GlyphCollection2
+            allels = [allels]
         end
         broadcast_foreach(allels, offs, pos, ts, rot) do allels, offs, pos, ts, rot
-
             offset = Point2f0(pos)
 
             els = map(allels) do el
                 if el[1] isa VLine
                     h = el[1].height
                     t = el[1].thickness * ts
-                    pos = el[2]
+                    p = el[2]
                     size = el[3]
-                    ps = (Point2f0(pos[1], pos[2]) .* ts, Point2f0(pos[1], pos[2] + h) .* ts) .- Ref(offs)
+                    ps = (Point2f0(p[1], p[2]) .* ts, Point2f0(p[1], p[2] + h) .* ts) .- Ref(offs)
                     ps = Ref(rot) .* to_ndim.(Point3f0, ps, 0)
                     ps = Point2f0.(ps) .+ Ref(offset)
                     (ps, t)
                 elseif el[1] isa HLine
                     w = el[1].width
                     t = el[1].thickness * ts
-                    pos = el[2]
+                    p = el[2]
                     size = el[3]
-                    ps = (Point2f0(pos[1], pos[2]) .* ts, Point2f0(pos[1] + w, pos[2]) .* ts) .- Ref(offs)
+                    ps = (Point2f0(p[1], p[2]) .* ts, Point2f0(p[1] + w, p[2]) .* ts) .- Ref(offs)
                     ps = Ref(rot) .* to_ndim.(Point3f0, ps, 0)
                     ps = Point2f0.(ps) .+ Ref(offset)
                     (ps, t)
@@ -459,13 +461,26 @@ end
 
 ##
 
+struct MakieCMFontset <: MathTeXEngine.TeXFontSet
+    regular::FTFont
+    italic::FTFont
+    math::FTFont
+end
+
+MathTeXEngine.load_fontset(::Type{MakieCMFontset}) = MakieCMFontset(
+    convert_attribute(raw"C:\Users\Krumbiegel\.julia\dev\MathTeXEngine\assets\fonts\NewCM10-Regular.otf", key"font"()),
+    convert_attribute(raw"C:\Users\Krumbiegel\.julia\dev\MathTeXEngine\assets\fonts\NewCM10-Italic.otf", key"font"()),
+    convert_attribute(raw"C:\Users\Krumbiegel\.julia\dev\MathTeXEngine\assets\fonts\NewCMMath-Regular.otf", key"font"())
+)
 
 function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, valign,
         rotation, color, strokecolor, strokewidth)
 
     rot = convert_attribute(rotation, key"rotation"())
 
-    all_els = generate_tex_elements(str.s[2:end-1])
+    fontset = MakieCMFontset
+
+    all_els = generate_tex_elements(str.s[2:end-1], fontset)
     els = filter(x -> x[1] isa TeXChar, all_els)
 
     # hacky, but attr per char needs to be fixed

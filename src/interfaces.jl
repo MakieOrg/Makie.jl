@@ -52,7 +52,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:GlyphCollection2}}})
 end
 
 function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
-
+    
     glyphlayouts = Node(GlyphCollection2[])
     position = Node{Any}(nothing)
     rotation = Node{Any}(nothing)
@@ -95,7 +95,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
 end
 
 # overload text plotting for a vector of tuples of a string and a point each
-function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{String, <:Point}}}})
+function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:AbstractString, <:Point}}}})
     strings_and_positions = plot[1]
 
     strings = Node(first.(strings_and_positions[]))

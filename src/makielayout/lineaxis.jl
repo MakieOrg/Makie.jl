@@ -81,27 +81,16 @@ function LineAxis(parent::Scene; kwargs...)
         end
     end
 
-    ticklabelannosnode = Node(Tuple{String, Point2f0}[])
-    ticklabels = annotations!(
-        parent,
-        ticklabelannosnode,
-        align = realticklabelalign,
-        rotation = ticklabelrotation,
-        textsize = ticklabelsize,
-        font = ticklabelfont,
-        color = ticklabelcolor,
-        show_axis = false,
-        visible = ticklabelsvisible,
-        space = :data,
-        inspectable = false)
+    ticklabelannosnode = Node(Tuple{AbstractString, Point2f0}[])
+    ticklabels = nothing
 
     ticklabel_ideal_space = lift(Float32, ticklabelannosnode, ticklabelalign, ticklabelrotation, ticklabelfont, ticklabelsvisible) do args...
         maxwidth = if pos_extents_horizontal[][3]
                 # height
-                ticklabelsvisible[] ? height(FRect2D(boundingbox(ticklabels))) : 0f0
+                ticklabelsvisible[] ? (ticklabels === nothing ? 0f0 : height(FRect2D(boundingbox(ticklabels)))) : 0f0
             else
                 # width
-                ticklabelsvisible[] ? width(FRect2D(boundingbox(ticklabels))) : 0f0
+                ticklabelsvisible[] ? (ticklabels === nothing ? 0f0 : width(FRect2D(boundingbox(ticklabels)))) : 0f0
         end
         # in case there is no string in the annotations and the boundingbox comes back all NaN
         if !isfinite(maxwidth)
@@ -125,7 +114,6 @@ function LineAxis(parent::Scene; kwargs...)
     end
 
 
-    decorations[:ticklabels] = ticklabels
 
     tickspace = lift(ticksvisible, ticksize, tickalign) do ticksvisible,
             ticksize, tickalign
@@ -200,7 +188,7 @@ function LineAxis(parent::Scene; kwargs...)
     end
 
     tickpositions = Node(Point2f0[])
-    tickstrings = Node(String[])
+    tickstrings = Node(AbstractString[])
 
     onany(tickvalues_labels_unfiltered, reversed) do tickvalues_labels_unfiltered, reversed
 
@@ -383,6 +371,22 @@ function LineAxis(parent::Scene; kwargs...)
     # trigger whole pipeline once to fill tickpositions and tickstrings
     # etc to avoid empty ticks bug #69
     limits[] = limits[]
+
+    # in order to dispatch to the correct text recipe later (normal text, latex, etc.)
+    # we need to have the ticklabelannosnode populated once before adding the annotations
+    ticklabels = annotations!(
+        parent,
+        ticklabelannosnode,
+        align = realticklabelalign,
+        rotation = ticklabelrotation,
+        textsize = ticklabelsize,
+        font = ticklabelfont,
+        color = ticklabelcolor,
+        show_axis = false,
+        visible = ticklabelsvisible,
+        space = :data,
+        inspectable = false)
+    decorations[:ticklabels] = ticklabels
 
     LineAxis(parent, protrusion, attrs, decorations, tickpositions, tickvalues, tickstrings, minortickpositions, minortickvalues)
 end
