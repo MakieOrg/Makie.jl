@@ -363,7 +363,13 @@ export heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, s
 
 
 
+function project_point2(mat4, point2)
+    Point2f0(mat4 * to_ndim(Point4f0, to_ndim(Point3f0, point2, 0), 1))
+end
+
+
 function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXString}}}})
+
     # attach a function to any text that calculates the glyph layout and stores it
     lineels_glyphlayout_offset = lift(plot[1], plot.textsize, plot.align, plot.rotation,
             plot.model, plot.color, plot.strokecolor, plot.strokewidth, plot.position) do latexstring,
@@ -400,8 +406,11 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
     linepairs = Node(Tuple{Point2f0, Point2f0}[])
     linewidths = Node(Float32[])
 
-    onany(lineels_glyphlayout_offset) do (allels, gls, offs)
+    scene = Makie.parent_scene(plot)
+
+    onany(lineels_glyphlayout_offset, scene.camera.projectionview) do (allels, gls, offs), projview
         
+        inv_projview = inv(projview)
         pos = plot.position[]
         ts = plot.textsize[]
         rot = plot.rotation[]
@@ -421,27 +430,24 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
             offset = Point2f0(pos)
 
             els = map(allels) do el
-                if el[1] isa VLine
+                el[1] isa VLine || el[1] isa HLine || return nothing
+
+                t = el[1].thickness * ts
+                p = el[2]
+
+                ps = if el[1] isa VLine
                     h = el[1].height
-                    t = el[1].thickness * ts
-                    p = el[2]
-                    size = el[3]
-                    ps = (Point2f0(p[1], p[2]) .* ts, Point2f0(p[1], p[2] + h) .* ts) .- Ref(offs)
-                    ps = Ref(rot) .* to_ndim.(Point3f0, ps, 0)
-                    ps = Point2f0.(ps) .+ Ref(offset)
-                    (ps, t)
-                elseif el[1] isa HLine
-                    w = el[1].width
-                    t = el[1].thickness * ts
-                    p = el[2]
-                    size = el[3]
-                    ps = (Point2f0(p[1], p[2]) .* ts, Point2f0(p[1] + w, p[2]) .* ts) .- Ref(offs)
-                    ps = Ref(rot) .* to_ndim.(Point3f0, ps, 0)
-                    ps = Point2f0.(ps) .+ Ref(offset)
-                    (ps, t)
+                    (Point2f0(p[1], p[2]) .* ts, Point2f0(p[1], p[2] + h) .* ts) .- Ref(offs)
                 else
-                    nothing
+                    w = el[1].width
+                    (Point2f0(p[1], p[2]) .* ts, Point2f0(p[1] + w, p[2]) .* ts) .- Ref(offs)
                 end
+                ps = Ref(rot) .* to_ndim.(Point3f0, ps, 0)
+                # TODO the points need to be projected to work inside Axis
+                # ps = project ps with projview somehow
+
+                ps = Point2f0.(ps) .+ Ref(offset)
+                ps, t
             end
             pairs = filter(!isnothing, els)
             append!(linewidths.val, repeat(last.(pairs), inner = 2))
@@ -467,20 +473,20 @@ struct MakieCMFontset <: MathTeXEngine.TeXFontSet
     math::FTFont
 end
 
-MathTeXEngine.load_fontset(::Type{MakieCMFontset}) = MakieCMFontset(
+const MakieCM = MakieCMFontset(
     convert_attribute(raw"C:\Users\Krumbiegel\.julia\dev\MathTeXEngine\assets\fonts\NewCM10-Regular.otf", key"font"()),
     convert_attribute(raw"C:\Users\Krumbiegel\.julia\dev\MathTeXEngine\assets\fonts\NewCM10-Italic.otf", key"font"()),
     convert_attribute(raw"C:\Users\Krumbiegel\.julia\dev\MathTeXEngine\assets\fonts\NewCMMath-Regular.otf", key"font"())
 )
+
+MathTeXEngine.load_fontset(fontset::MathTeXEngine.TeXFontSet) = fontset
 
 function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, valign,
         rotation, color, strokecolor, strokewidth)
 
     rot = convert_attribute(rotation, key"rotation"())
 
-    fontset = MakieCMFontset
-
-    all_els = generate_tex_elements(str.s[2:end-1], fontset)
+    all_els = generate_tex_elements(str.s[2:end-1], MakieCM)
     els = filter(x -> x[1] isa TeXChar, all_els)
 
     # hacky, but attr per char needs to be fixed
