@@ -99,7 +99,7 @@ function Makie.plot!(plot::Makie.Text{<:Tuple{MyTex}})
 
     notify(plot.position)
 
-    if !(glyphlayout isa Observable{<:Makie.GlyphLayout3})
+    if !(glyphlayout isa Observable{<:Makie.GlyphLayout5})
         error("Incorrect type parameter $(typeof(glyphlayout))")
     end
 
@@ -167,7 +167,7 @@ function texelems_and_glyph_positions(str::MyTex, fontscale_px, halign, valign, 
     positions = basepositions .- Ref(Point3f0(xshift, yshift, 0))
     positions .= Ref(rot) .* positions
 
-    pre_align_gl = Makie.GlyphLayout3(
+    pre_align_gl = Makie.GlyphLayout5(
         chars,
         fonts,
         Point3f0.(positions),

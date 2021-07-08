@@ -66,18 +66,27 @@ const NativeFont = FreeTypeAbstraction.FTFont
 
 
 """
-    GlyphLayout3
+    GlyphLayout5
 
 Stores information about the glyphs in a string that had a layout calculated for them.
 """
-struct GlyphLayout3{G, F, R}
-    glyphs::Vector{G}
-    fonts::Vector{F}
+struct GlyphLayout5
+    glyphs::Vector{Char}
+    fonts::Vector{FTFont}
     origins::Vector{Point3f0}
     extents::Vector{FreeTypeAbstraction.FontExtent{Float32}}
     scales::Vector{Vec2f0}
-    rotations::Vector{R}
+    rotations::Vector{Quaternionf0}
+
+    function GlyphLayout5(glyphs, fonts, origins, extents, scales, rotations)
+        @assert(length(glyphs) == length(fonts) == length(origins) == length(extents) == length(scales) == length(rotations))
+        rotations = convert_attribute(rotations, key"rotation"())
+        fonts = [convert_attribute(f, key"font"()) for f in fonts]
+        new(glyphs, fonts, origins, extents, scales, rotations)
+    end
 end
+
+
 
 
 include("documentation/docstringextension.jl")
@@ -378,7 +387,7 @@ function plot!(plot::Text{<:Tuple{LaTeXString}})
 
     notify(plot.position)
 
-    if !(glyphlayout isa Observable{<:GlyphLayout3})
+    if !(glyphlayout isa Observable{<:GlyphLayout5})
         error("Incorrect type parameter $(typeof(glyphlayout))")
     end
 
@@ -446,7 +455,7 @@ function texelems_and_glyph_positions(str::LaTeXString, fontscale_px, halign, va
     positions = basepositions .- Ref(Point3f0(xshift, yshift, 0))
     positions .= Ref(rot) .* positions
 
-    pre_align_gl = GlyphLayout3(
+    pre_align_gl = GlyphLayout5(
         chars,
         fonts,
         Point3f0.(positions),

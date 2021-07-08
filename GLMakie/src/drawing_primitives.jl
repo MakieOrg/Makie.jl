@@ -260,7 +260,7 @@ value_or_first(x::StaticArray) = x
 value_or_first(x) = x
 
 function draw_atomic(screen::GLScreen, scene::Scene,
-        x::Text{<:Tuple{<:Union{<:Makie.GlyphLayout3, <:AbstractVector{<:Makie.GlyphLayout3}}}})
+        x::Text{<:Tuple{<:Union{<:Makie.GlyphLayout5, <:AbstractVector{<:Makie.GlyphLayout5}}}})
 
     robj = cached_robj!(screen, scene, x) do gl_attributes
         glyphlayout = x[1]

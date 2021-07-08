@@ -31,7 +31,7 @@ function plot!(plot::Text)
         layout_text(str, ts, f, al, rot, mo, jus, lh)
     end
 
-    if !(glyphlayout isa Observable{<:GlyphLayout3})
+    if !(glyphlayout isa Observable{<:GlyphLayout5})
         error("Incorrect type parameter $(typeof(glyphlayout))")
     end
 
@@ -43,17 +43,17 @@ end
 # TODO: is this necessary? there seems to be a recursive loop with the above
 # function without these two interceptions, but I didn't need it before merging
 # everything into the monorepo...
-function plot!(plot::Text{<:Tuple{<:GlyphLayout3}})
+function plot!(plot::Text{<:Tuple{<:GlyphLayout5}})
     plot
 end
-function plot!(plot::Text{<:Tuple{<:AbstractArray{<:GlyphLayout3}}})
+function plot!(plot::Text{<:Tuple{<:AbstractArray{<:GlyphLayout5}}})
     plot
 end
 
 function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
 
     # attach a function to any text that calculates the glyph layout and stores it
-    glyphlayouts = lift(Vector{GlyphLayout3}, plot[1], plot.position, plot.textsize, plot.font, plot.align, plot.rotation, plot.model, plot.justification, plot.lineheight) do str, pos, ts, f, al, rot, mo, jus, lh
+    glyphlayouts = lift(Vector{GlyphLayout5}, plot[1], plot.position, plot.textsize, plot.font, plot.align, plot.rotation, plot.model, plot.justification, plot.lineheight) do str, pos, ts, f, al, rot, mo, jus, lh
         ts = to_textsize(ts)
         f = to_font(f)
         rot = to_rotation(rot)
@@ -69,7 +69,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
         identity.(gls)
     end
 
-    if !(glyphlayouts isa Observable{<:AbstractArray{<:GlyphLayout3}})
+    if !(glyphlayouts isa Observable{<:AbstractArray{<:GlyphLayout5}})
         error("Incorrect type parameter $(typeof(glyphlayouts))")
     end
 

@@ -308,7 +308,7 @@ function p3_to_p2(p::Point3{T}) where T
     end
 end
 
-function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text{<:Tuple{<:G}}) where G <: Union{AbstractArray{<:Makie.GlyphLayout3}, Makie.GlyphLayout3}
+function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text{<:Tuple{<:G}}) where G <: Union{AbstractArray{<:Makie.GlyphLayout5}, Makie.GlyphLayout5}
     ctx = screen.context
     @get_attribute(primitive, (textsize, color, font, rotation, model, space, offset))
     position = primitive.attributes[:position][]

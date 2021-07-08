@@ -98,7 +98,7 @@ end
 #     end
 # end
 
-function gl_bboxes(gl::GlyphLayout3)
+function gl_bboxes(gl::GlyphLayout5)
     map(gl.extents, gl.fonts, gl.scales) do ext, font, scale
         unscaled_hi_bb = height_insensitive_boundingbox(ext, font)
         hi_bb = FRect2D(
@@ -108,7 +108,7 @@ function gl_bboxes(gl::GlyphLayout3)
     end
 end
 
-function boundingbox(glyphlayout::GlyphLayout3, position::Point3f0, rotation::Quaternion)
+function boundingbox(glyphlayout::GlyphLayout5, position::Point3f0, rotation::Quaternion)
     
     if isempty(glyphlayout.glyphs)
         return FRect3D(position, Vec3f0(0, 0, 0))
@@ -134,7 +134,7 @@ function boundingbox(glyphlayout::GlyphLayout3, position::Point3f0, rotation::Qu
     bb
 end
 
-function boundingbox(layouts::AbstractArray{<:GlyphLayout3}, positions, rotations)
+function boundingbox(layouts::AbstractArray{<:GlyphLayout5}, positions, rotations)
 
     if isempty(layouts)
         FRect3D((0, 0, 0), (0, 0, 0))
@@ -152,7 +152,7 @@ function boundingbox(layouts::AbstractArray{<:GlyphLayout3}, positions, rotation
     end
 end
 
-function boundingbox(x::Text{<:Tuple{<:GlyphLayout3}})
+function boundingbox(x::Text{<:Tuple{<:GlyphLayout5}})
     boundingbox(
         to_value(x[1]),
         to_ndim(Point3f0, to_value(x[:position]), 0),
@@ -160,7 +160,7 @@ function boundingbox(x::Text{<:Tuple{<:GlyphLayout3}})
     )
 end
 
-function boundingbox(x::Text{<:Tuple{<:AbstractArray{<:GlyphLayout3}}})
+function boundingbox(x::Text{<:Tuple{<:AbstractArray{<:GlyphLayout5}}})
     boundingbox(
         to_value(x[1]),
         to_ndim.(Point3f0, to_value(x[:position]), 0),
