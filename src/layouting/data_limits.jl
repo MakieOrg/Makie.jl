@@ -126,7 +126,7 @@ end
 function atomic_limits(x::Text{<:Tuple{<:AbstractArray{<:GlyphLayout3}}})
     if x.space[] == :data
         boundingbox(x)
-    elseif x.space == :screen
+    elseif x.space[] == :screen
         bb = FRect3D_from_point(x.position[][1])
         for p in x.position[][2:end]
             bb = union(bb, FRect3D_from_point(p))
