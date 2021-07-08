@@ -211,6 +211,7 @@ t = text!(s,
     "hi what's up?",
     position = (50, 50),
     rotation = 0.0,
+    color = :red,
     show_axis = false,
     space = :data)
 s
@@ -239,6 +240,44 @@ t = text!(s,
 # wireframe!(s, boundingbox(t))
 s
 
+## length update test
+
+s = Scene(camera = campixel!)
+textnode = Node([L"\int_0^5x^2+2ab", L"\int_0^5x^2+2ab"])
+posnode = Node(Point2f0[(50, 50), (100, 100)])
+
+t = text!(s,
+    textnode,
+    position = posnode,
+    rotation = 0.0,
+    show_axis = false,
+    space = :data)
+
+display(s)
+
+## change lengths
+
+textnode.val = push!(textnode[], L"\int_0^5x^2+2ab")
+posnode[] = push!(posnode[], Point2f0(150, 150))
+
+## length update test annotation style
+
+s = Scene(camera = campixel!)
+textposnode = Node([
+    (L"\int_0^5x^2+2ab", Point2f0(50, 50)),
+    (L"\int_0^5x^2+2ab", Point2f0(100, 100)),
+])
+
+t = text!(s,
+    textposnode,
+    show_axis = false,
+    space = :data)
+
+display(s)
+
+## change lengths
+
+textposnode[] = push!(textposnode[], (L"\int_0^5x^2+2ab", Point2f0(150, 150)))
 
 ##
 
@@ -255,12 +294,8 @@ lines(0..25, x -> 4 * sin(x) / (cos(3x) + 4), figure = (fontsize = 25, font = "T
 # text!(L"f(x) = \frac{sin(x)}{cos(3x) + 4}", position = (15, 2))
 current_figure()
 
-##
 
-text(Tuple{AbstractString, Point2f0}[(L"xy", Point2f0(0, 0)), (L"\int^2_3", Point2f0(20, 20))],
-    axis = (limits = (-5, 25, -5, 25),), align = (:center, :center))
-
-<<<<<<< HEAD
+## dynamic ticks with MathTeXEngine
 
 # Data
 
@@ -270,5 +305,9 @@ text(Tuple{AbstractString, Point2f0}[(L"xy", Point2f0(0, 0)), (L"\int^2_3", Poin
 # sufficient information content to retrace steps
 # not so detailed / time-intensive as to hinder the actual work
 # write down implicit assumptions
-=======
->>>>>>> 194a11fd (make scalar examples run through, but with hacked attributes)
+
+lines(0..25, x -> 4 * sin(x) / (cos(3x) + 4), figure = (fontsize = 25, font = "Times"),
+    axis = (
+        xtickformat = (xs -> [L"\sqrt{%$x}+\sum" for x in xs]),
+    )
+)
