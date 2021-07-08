@@ -266,20 +266,21 @@ function draw_atomic(screen::GLScreen, scene::Scene,
         glyphlayout = x[1]
         liftkeys = (:position, :rotation, :model, :space, :offset)
         args = getindex.(Ref(gl_attributes), liftkeys)
-        function layout_text(projview, transfunc, pos, rotation, model, space, offset)
+        function collect_glyph_data(projview, transfunc, pos, rotation, model, space, offset)
             # this has changed
             glayout = glyphlayout[]
-            @show Makie.attr_broadcast_length(pos)
-            @show Makie.attr_broadcast_length(glayout)
-            @show Makie.attr_broadcast_length(offset)
+            # @show Makie.attr_broadcast_length(pos)
+            # @show Makie.attr_broadcast_length(glayout)
+            # @show Makie.attr_broadcast_length(offset)
             res = Vec2f0(widths(pixelarea(scene)[]))
-            return preprojected_glyph_arrays(pos, glayout, space, projview, res, offset, transfunc)
+            positions, offset, uv_offset_width, scale = preprojected_glyph_arrays(pos, glayout, space, projview, res, offset, transfunc)
         end
-        gl_text = lift(layout_text, scene.camera.projectionview, Makie.transform_func_obs(scene), args...)
+
+        glyph_data = lift(collect_glyph_data, scene.camera.projectionview, Makie.transform_func_obs(scene), args...)
 
         # unpack values from the one signal:
         positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i
-            lift(getindex, gl_text, i)
+            lift(getindex, glyph_data, i)
         end
 
         atlas = get_texture_atlas()
@@ -297,24 +298,29 @@ function draw_atomic(screen::GLScreen, scene::Scene,
             ))
         end
 
-        # gl_attributes[:color] = lift(glyphlayout) do gl
-        #     if gl isa AbstractArray
-        #         reduce(vcat, g.colors for g in gl)
-        #     else
-        #         gl.colors
-        #     end
-        # end
-
-        # TODO just plug in some scalars here for now to see if the basic pipeline works
-        gl_attributes[:color] = RGBAf0(1, 0, 0, 1)
-        # gl_attributes[:stroke_color] = signals[2]
-        gl_attributes[:stroke_color] = RGBAf0(0, 0, 0, 0)
-        # gl_attributes[:rotation] = signals[3]
-        gl_attributes[:rotation] = lift(positions) do pos
-            map(pos) do p
-                Quaternionf0(0, 0, 0, 1)
+        gl_attributes[:color] = lift(glyphlayout) do gl
+            if gl isa AbstractArray
+                reduce(vcat, (Makie.collect_vector(g.colors, length(g.glyphs)) for g in gl))
+            else
+                Makie.collect_vector(gl.colors, length(gl.glyphs))
             end
         end
+        gl_attributes[:stroke_color] = lift(glyphlayout) do gl
+            if gl isa AbstractArray
+                reduce(vcat, (Makie.collect_vector(g.strokecolors, length(g.glyphs)) for g in gl))
+            else
+                Makie.collect_vector(gl.strokecolors, length(gl.glyphs))
+            end
+        end
+        gl_attributes[:rotation] = lift(glyphlayout) do gl
+            if gl isa AbstractArray
+                reduce(vcat, (Makie.collect_vector(g.rotations, length(g.glyphs)) for g in gl))
+            else
+                Makie.collect_vector(gl.rotations, length(gl.glyphs))
+            end
+        end
+
+        
         gl_attributes[:scale] = scale
         gl_attributes[:offset] = offset
         gl_attributes[:uv_offset_width] = uv_offset_width

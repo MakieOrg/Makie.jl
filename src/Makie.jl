@@ -83,6 +83,17 @@ Base.convert(::Type{<:ScalarOrVector}, v::AbstractVector{T}) where T = ScalarOrV
 Base.convert(::Type{<:ScalarOrVector}, x::T) where T = ScalarOrVector{T}(x)
 Base.convert(::Type{<:ScalarOrVector{T}}, x::ScalarOrVector{T}) where T = x
 
+function collect_vector(sv::ScalarOrVector, n::Int)
+    if sv.sv isa Vector
+        if length(sv.sv) != n
+            error("Requested collected vector with $n elements, contained vector had $(length(sv.sv)) elements.")
+        end
+        sv.sv
+    else
+        [sv.sv for i in 1:n]
+    end
+end
+
 """
     GlyphCollection
 
