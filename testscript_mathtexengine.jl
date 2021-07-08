@@ -52,7 +52,7 @@ function Makie.plot!(plot::Makie.Text{<:Tuple{MyTex}})
         ts = to_textsize(ts)
         rot = to_rotation(rot)
 
-        tex_elements, glyphlayout = texelems_and_glyph_positions(mytex, ts, al[1], al[2], rot)
+        tex_elements, glyphlayout = texelems_and_glyph_collection(mytex, ts, al[1], al[2], rot)
     end
 
     glyphlayout = @lift($lineels_glyphlayout_offset[2])
@@ -99,7 +99,7 @@ function Makie.plot!(plot::Makie.Text{<:Tuple{MyTex}})
 
     notify(plot.position)
 
-    if !(glyphlayout isa Observable{<:Makie.GlyphLayout5})
+    if !(glyphlayout isa Observable{<:Makie.GlyphCollection2})
         error("Incorrect type parameter $(typeof(glyphlayout))")
     end
 
@@ -113,7 +113,7 @@ end
 ##
 
 
-function texelems_and_glyph_positions(str::MyTex, fontscale_px, halign, valign, rotation)
+function texelems_and_glyph_collection(str::MyTex, fontscale_px, halign, valign, rotation)
 
     rot = Makie.convert_attribute(rotation, key"rotation"())
 
@@ -167,7 +167,7 @@ function texelems_and_glyph_positions(str::MyTex, fontscale_px, halign, valign, 
     positions = basepositions .- Ref(Point3f0(xshift, yshift, 0))
     positions .= Ref(rot) .* positions
 
-    pre_align_gl = Makie.GlyphLayout5(
+    pre_align_gl = Makie.GlyphCollection2(
         chars,
         fonts,
         Point3f0.(positions),
@@ -209,7 +209,7 @@ t = text!(s,
 s
 
 ##
-Makie.glyph_positions(MyTex("x_{2}"), 0, 0, 0, 0, 0, 0, 0)
+Makie.glyph_collection(MyTex("x_{2}"), 0, 0, 0, 0, 0, 0, 0)
 ##
 # function Makie.boundingbox(x::Makie.Text{Tuple{MyTex}}, y, z)
 #     Makie.data_text_boundingbox(nothing, x._glyphlayout[], x.rotation[], x.position[])

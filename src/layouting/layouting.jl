@@ -36,11 +36,11 @@ end
         font, align, rotation, model, justification, lineheight
     )
 
-Compute a GlyphLayout5 for a `string` given textsize, font, align, rotation, model, justification, and lineheight.
+Compute a GlyphCollection2 for a `string` given textsize, font, align, rotation, model, justification, and lineheight.
 """
 function layout_text(
         string::AbstractString, textsize::Union{AbstractVector, Number},
-        font, align, rotation, model, justification, lineheight
+        font, align, rotation, model, justification, lineheight, color, strokecolor, strokewidth
     )
 
     ft_font = to_font(font)
@@ -54,22 +54,25 @@ function layout_text(
     fontperchar = attribute_per_char(string, ft_font)
     textsizeperchar = attribute_per_char(string, rscale)
 
-    glyphlayout = glyph_positions(string, fontperchar, textsizeperchar, align[1],
-        align[2], lineheight, justification, rot)
+    glyphlayout = glyph_collection(string, fontperchar, textsizeperchar, align[1],
+        align[2], lineheight, justification, rot, color, strokecolor, strokewidth)
 
     return glyphlayout
 end
 
 """
-    glyph_positions(str::AbstractString, font_per_char, fontscale_px, halign, valign, lineheight_factor, justification, rotation)
+    glyph_collection(str::AbstractString, font_per_char, fontscale_px, halign, valign, lineheight_factor, justification, rotation, color)
 
 Calculate the positions for each glyph in a string given a certain font, font size, alignment, etc.
 This layout in text coordinates, relative to the anchor point [0,0] can then be translated and
 rotated to wherever it is needed in the plot.
 """
-function glyph_positions(str::AbstractString, font_per_char, fontscale_px, halign, valign, lineheight_factor, justification, rotation)
+function glyph_collection(str::AbstractString, font_per_char, fontscale_px, halign, valign,
+        lineheight_factor, justification, rotation, color, strokecolor, strokewidth)
 
-    isempty(str) && return GlyphLayout5([], [], Point3f0[], FreeTypeAbstraction.FontExtent{Float32}[], Vec2f0[], Float32[])
+    isempty(str) && return GlyphCollection2(
+        [], [], Point3f0[],FreeTypeAbstraction.FontExtent{Float32}[],
+        Vec2f0[], Float32[], RGBAf0[], RGBAf0[], Float32[])
 
     # collect information about every character in the string
     charinfos = broadcast([c for c in str], font_per_char, fontscale_px) do char, font, scale
@@ -206,24 +209,27 @@ function glyph_positions(str::AbstractString, font_per_char, fontscale_px, halig
     # use 3D coordinates already because later they will be required in that format anyway
     charorigins = [Ref(rotation) .* Point3f0.(xsgroup, y, 0) for (xsgroup, y) in zip(xs_aligned, ys_aligned)]
 
-    # return a GlyphLayout5, which contains each character's origin, height-insensitive
+    # return a GlyphCollection2, which contains each character's origin, height-insensitive
     # boundingbox and horizontal advance value
     # these values should be enough to draw characters correctly,
     # compute boundingboxes without relayouting and maybe implement
     # interactive features that need to know where characters begin and end
-    return GlyphLayout5(
+    return GlyphCollection2(
         [x.char for x in charinfos],
         [x.font for x in charinfos],
         reduce(vcat, charorigins),
         [x.extent for x in charinfos],
         [Vec2f0(x.scale) for x in charinfos],
         [rotation for x in charinfos],
+        [color for x in charinfos],
+        [strokecolor for x in charinfos],
+        [strokewidth for x in charinfos],
     )
 end
 
 
 function preprojected_glyph_arrays(
-        position::VecTypes, glyphlayout::Makie.GlyphLayout5,
+        position::VecTypes, glyphlayout::Makie.GlyphCollection2,
         space::Symbol, projview, resolution, offset::VecTypes, transfunc
     )
     offset = to_ndim(Point3f0, offset, 0)
@@ -241,7 +247,7 @@ function preprojected_glyph_arrays(
 end
 
 function preprojected_glyph_arrays(
-        position::VecTypes, glyphlayout::Makie.GlyphLayout5,
+        position::VecTypes, glyphlayout::Makie.GlyphCollection2,
         space::Symbol, projview, resolution, offsets::Vector, transfunc
     )
 
@@ -261,7 +267,7 @@ function preprojected_glyph_arrays(
 end
 
 function preprojected_glyph_arrays(
-        positions::AbstractVector, glyphlayouts::Vector, space::Symbol, projview, resolution, offset, transfunc
+        positions::AbstractVector, glyphlayouts::AbstractVector{<:GlyphCollection2}, space::Symbol, projview, resolution, offset, transfunc
     )
 
     if offset isa VecTypes
@@ -269,7 +275,7 @@ function preprojected_glyph_arrays(
     end
 
     if space == :data
-        allpos = broadcast(positions, glyphlayouts, offset) do pos, glyphlayout::Makie.GlyphLayout5, offs
+        allpos = broadcast(positions, glyphlayouts, offset) do pos, glyphlayout, offs
             p = to_ndim(Point3f0, pos, 0)
             apply_transform(
                 transfunc,
@@ -277,7 +283,7 @@ function preprojected_glyph_arrays(
             )
         end
     elseif space == :screen
-        allpos = broadcast(positions, glyphlayouts, offset) do pos, glyphlayout::Makie.GlyphLayout5, offs
+        allpos = broadcast(positions, glyphlayouts, offset) do pos, glyphlayout, offs
             projected = to_ndim(
                 Point3f0,
                 Makie.project(
@@ -308,7 +314,7 @@ end
 #     )
 
 #     if space == :data
-#         allpos = broadcast(positions, glyphlayouts, offsets) do pos, glyphlayout::Makie.GlyphLayout5, offsets
+#         allpos = broadcast(positions, glyphlayouts, offsets) do pos, glyphlayout::Makie.GlyphCollection2, offsets
 #             p = to_ndim(Point3f0, pos, 0)
 #             apply_transform(
 #                 transfunc,
@@ -316,7 +322,7 @@ end
 #             )
 #         end
 #     elseif space == :screen
-#         allpos = broadcast(positions, glyphlayouts, offsets) do pos, glyphlayout::Makie.GlyphLayout5, offsets
+#         allpos = broadcast(positions, glyphlayouts, offsets) do pos, glyphlayout::Makie.GlyphCollection2, offsets
 #             projected = to_ndim(
 #                 Point3f0,
 #                 Makie.project(

@@ -23,16 +23,17 @@ end
 function plot!(plot::Text)
 
     # attach a function to any text that calculates the glyph layout and stores it
-    glyphlayout = lift(plot[1], plot.position, plot.textsize, plot.font, plot.align, plot.rotation, plot.model, plot.justification, plot.lineheight) do str, pos, ts, f, al, rot, mo, jus, lh
+    glyphlayout = lift(plot[1], plot.textsize, plot.font, plot.align,
+            plot.rotation, plot.model, plot.justification, plot.lineheight,
+            plot.color, plot.strokecolor, plot.strokewidth) do str,
+                ts, f, al, rot, mo, jus, lh, col, scol, swi
         ts = to_textsize(ts)
         f = to_font(f)
         rot = to_rotation(rot)
+        col = to_color(col)
+        scol = to_color(scol)
 
-        layout_text(str, ts, f, al, rot, mo, jus, lh)
-    end
-
-    if !(glyphlayout isa Observable{<:GlyphLayout5})
-        error("Incorrect type parameter $(typeof(glyphlayout))")
+        layout_text(str, ts, f, al, rot, mo, jus, lh, col, scol, swi)
     end
 
     text!(plot, glyphlayout; plot.attributes...)
@@ -43,37 +44,52 @@ end
 # TODO: is this necessary? there seems to be a recursive loop with the above
 # function without these two interceptions, but I didn't need it before merging
 # everything into the monorepo...
-function plot!(plot::Text{<:Tuple{<:GlyphLayout5}})
+function plot!(plot::Text{<:Tuple{<:GlyphCollection2}})
     plot
 end
-function plot!(plot::Text{<:Tuple{<:AbstractArray{<:GlyphLayout5}}})
+function plot!(plot::Text{<:Tuple{<:AbstractArray{<:GlyphCollection2}}})
     plot
 end
 
 function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
 
-    # attach a function to any text that calculates the glyph layout and stores it
-    glyphlayouts = lift(Vector{GlyphLayout5}, plot[1], plot.position, plot.textsize, plot.font, plot.align, plot.rotation, plot.model, plot.justification, plot.lineheight) do str, pos, ts, f, al, rot, mo, jus, lh
+    glyphlayouts = Node(GlyphCollection2[])
+    position = Node{Any}(nothing)
+    rotation = Node{Any}(nothing)
+    model = Node{Any}(nothing)
+    # offset = Node{Any}(nothing)
+
+    onany(plot[1], plot.textsize, plot.position,
+            plot.font, plot.align, plot.rotation, plot.model, plot.justification,
+            plot.lineheight, plot.color, plot.strokecolor, plot.strokewidth) do str,
+                    ts, pos, f, al, rot, mo, jus, lh, col, scol, swi
+
         ts = to_textsize(ts)
         f = to_font(f)
         rot = to_rotation(rot)
+        col = to_color(col)
+        scol = to_color(scol)
 
-
-        gls = []
-        broadcast_foreach(str, ts, f, al, rot, Ref(mo), jus, lh) do str, ts, f, al, rot, mo, jus, lh
-            subgl = layout_text(str, ts, f, al, rot, mo, jus, lh)
+        gls = GlyphCollection2[]
+        broadcast_foreach(str, ts, f, al, rot, Ref(mo), jus, lh, col, scol, swi) do str,
+                ts, f, al, rot, mo, jus, lh, col, scol, swi
+            subgl = layout_text(str, ts, f, al, rot, mo, jus, lh, col, scol, swi)
             push!(gls, subgl)
         end
-        
-        # narrow type
-        identity.(gls)
+        # @show Makie.attr_broadcast_length(gls)
+        # @show Makie.attr_broadcast_length(pos)
+        # @show Makie.attr_broadcast_length(rot)
+        position.val = pos
+        rotation.val = rot
+        model.val = mo
+        glyphlayouts[] = gls
     end
 
-    if !(glyphlayouts isa Observable{<:AbstractArray{<:GlyphLayout5}})
-        error("Incorrect type parameter $(typeof(glyphlayouts))")
-    end
+    # run onany once to initialize
+    notify(plot[1])
 
-    text!(plot, glyphlayouts; plot.attributes...)
+    text!(plot, glyphlayouts; position = plot.position, rotation = rotation,
+        model = model, offset = plot.offset, space = plot.space)
 
     plot
 end

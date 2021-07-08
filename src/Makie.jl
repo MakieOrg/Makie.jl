@@ -75,25 +75,47 @@ include("documentation/docstringextension.jl")
 include("utilities/quaternions.jl")
 include("interaction/PriorityObservable.jl")
 
+struct ScalarOrVector{T}
+    sv::Union{T, Vector{T}}
+end
+
+Base.convert(::Type{<:ScalarOrVector}, v::AbstractVector{T}) where T = ScalarOrVector{T}(collect(v))
+Base.convert(::Type{<:ScalarOrVector}, x::T) where T = ScalarOrVector{T}(x)
+Base.convert(::Type{<:ScalarOrVector{T}}, x::ScalarOrVector{T}) where T = x
 
 """
-    GlyphLayout5
+    GlyphCollection2
 
 Stores information about the glyphs in a string that had a layout calculated for them.
 """
-struct GlyphLayout5
+struct GlyphCollection2
     glyphs::Vector{Char}
     fonts::Vector{FTFont}
     origins::Vector{Point3f0}
     extents::Vector{FreeTypeAbstraction.FontExtent{Float32}}
-    scales::Vector{Vec2f0}
-    rotations::Vector{Quaternionf0}
+    scales::ScalarOrVector{Vec2f0}
+    rotations::ScalarOrVector{Quaternionf0}
+    colors::ScalarOrVector{RGBAf0}
+    strokecolors::ScalarOrVector{RGBAf0}
+    strokewidths::ScalarOrVector{Float32}
 
-    function GlyphLayout5(glyphs, fonts, origins, extents, scales, rotations)
-        @assert(length(glyphs) == length(fonts) == length(origins) == length(extents) == length(scales) == length(rotations))
+    function GlyphCollection2(glyphs, fonts, origins, extents, scales, rotations,
+            colors, strokecolors, strokewidths)
+
+        n = length(glyphs)
+        @assert length(fonts)  == n
+        @assert length(origins)  == n
+        @assert length(extents)  == n
+        @assert attr_broadcast_length(scales) in (n, 1)
+        @assert attr_broadcast_length(rotations)  in (n, 1)
+        @assert attr_broadcast_length(colors) in (n, 1)
+
         rotations = convert_attribute(rotations, key"rotation"())
         fonts = [convert_attribute(f, key"font"()) for f in fonts]
-        new(glyphs, fonts, origins, extents, scales, rotations)
+        colors = convert_attribute(colors, key"color"())
+        strokecolors = convert_attribute(strokecolors, key"color"())
+        strokewidths = Float32.(strokewidths)
+        new(glyphs, fonts, origins, extents, scales, rotations, colors, strokecolors, strokewidths)
     end
 end
 
@@ -341,13 +363,35 @@ export heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, s
 
 
 
-function plot!(plot::Text{<:Tuple{LaTeXString}})
+function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXString}}}})
     # attach a function to any text that calculates the glyph layout and stores it
-    lineels_glyphlayout_offset = lift(plot[1], plot.textsize, plot.align, plot.rotation, plot.model) do mytex, ts, al, rot, mo
+    lineels_glyphlayout_offset = lift(plot[1], plot.textsize, plot.align, plot.rotation,
+            plot.model, plot.color, plot.strokecolor, plot.strokewidth) do latexstring,
+                ts, al, rot, mo, color, scolor, swidth
+
+
         ts = to_textsize(ts)
         rot = to_rotation(rot)
+        col = to_color(color)
 
-        tex_elements, glyphlayout = texelems_and_glyph_positions(mytex, ts, al[1], al[2], rot)
+        if latexstring isa AbstractVector
+            tex_elements = []
+            glyphlayouts = GlyphCollection2[]
+            offsets = Point2f0[]
+            broadcast_foreach(latexstring, ts, al, rot, color, scolor, swidth) do latexstring,
+                ts, al, rot, color, scolor, swidth
+
+                te, gl, offs = texelems_and_glyph_collection(latexstring, ts,
+                    al[1], al[2], rot, color, scolor, swidth)
+                push!(tex_elements, te)
+                push!(glyphlayouts, gl)
+                push!(offsets, offs)
+            end
+            tex_elements, glyphlayouts, offsets
+        else
+            tex_elements, glyphlayout, offset = texelems_and_glyph_collection(latexstring, ts,
+                al[1], al[2], rot, color, scolor, swidth)
+        end
     end
 
     glyphlayout = @lift($lineels_glyphlayout_offset[2])
@@ -356,47 +400,55 @@ function plot!(plot::Text{<:Tuple{LaTeXString}})
     linepairs = Node(Tuple{Point2f0, Point2f0}[])
     linewidths = Node(Float32[])
 
-    onany(lineels_glyphlayout_offset, plot.position, plot.textsize, plot.rotation) do (allels, _, offs), pos, ts, rot
+    onany(lineels_glyphlayout_offset, plot.position, plot.textsize,
+            plot.rotation) do (allels, _, offs), pos, ts, rot
 
         ts = to_textsize(ts)
         rot = convert_attribute(rot, key"rotation"())
 
-        offset = Point2f0(pos)
+        empty!(linepairs.val)
+        empty!(linewidths.val)
 
-        els = map(allels) do el
-            if el[1] isa VLine
-                h = el[1].height
-                t = el[1].thickness * ts
-                pos = el[2]
-                size = el[3]
-                ps = (Point2f0(pos[1], pos[2]) .* ts, Point2f0(pos[1], pos[2] + h) .* ts) .- Ref(offs)
-                ps = Ref(rot) .* to_ndim.(Point3f0, ps, 0)
-                ps = Point2f0.(ps) .+ Ref(offset)
-                (ps, t)
-            elseif el[1] isa HLine
-                w = el[1].width
-                t = el[1].thickness * ts
-                pos = el[2]
-                size = el[3]
-                ps = (Point2f0(pos[1], pos[2]) .* ts, Point2f0(pos[1] + w, pos[2]) .* ts) .- Ref(offs)
-                ps = Ref(rot) .* to_ndim.(Point3f0, ps, 0)
-                ps = Point2f0.(ps) .+ Ref(offset)
-                (ps, t)
-            else
-                nothing
-            end
+        # for the vector case, allels is a vector of vectors
+        # so for broadcasting the single vector needs to be wrapped in Ref
+        if !(eltype(allels) <: Vector)
+            allels = Ref(allels)
         end
-        pairs = filter(!isnothing, els)
-        linewidths.val = repeat(last.(pairs), inner = 2)
-        linepairs[] = first.(pairs)
-        # @show linepairs
+        broadcast_foreach(allels, offs, pos, ts, rot) do allels, offs, pos, ts, rot
+
+            offset = Point2f0(pos)
+
+            els = map(allels) do el
+                if el[1] isa VLine
+                    h = el[1].height
+                    t = el[1].thickness * ts
+                    pos = el[2]
+                    size = el[3]
+                    ps = (Point2f0(pos[1], pos[2]) .* ts, Point2f0(pos[1], pos[2] + h) .* ts) .- Ref(offs)
+                    ps = Ref(rot) .* to_ndim.(Point3f0, ps, 0)
+                    ps = Point2f0.(ps) .+ Ref(offset)
+                    (ps, t)
+                elseif el[1] isa HLine
+                    w = el[1].width
+                    t = el[1].thickness * ts
+                    pos = el[2]
+                    size = el[3]
+                    ps = (Point2f0(pos[1], pos[2]) .* ts, Point2f0(pos[1] + w, pos[2]) .* ts) .- Ref(offs)
+                    ps = Ref(rot) .* to_ndim.(Point3f0, ps, 0)
+                    ps = Point2f0.(ps) .+ Ref(offset)
+                    (ps, t)
+                else
+                    nothing
+                end
+            end
+            pairs = filter(!isnothing, els)
+            append!(linewidths.val, repeat(last.(pairs), inner = 2))
+            append!(linepairs.val, first.(pairs))
+        end
+        notify(linepairs)
     end
 
     notify(plot.position)
-
-    if !(glyphlayout isa Observable{<:GlyphLayout5})
-        error("Incorrect type parameter $(typeof(glyphlayout))")
-    end
 
     text!(plot, glyphlayout; plot.attributes...)
     # linesegments!(plot, linepairs, linewidth = linewidths)
@@ -408,7 +460,8 @@ end
 ##
 
 
-function texelems_and_glyph_positions(str::LaTeXString, fontscale_px, halign, valign, rotation)
+function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, valign,
+        rotation, color, strokecolor, strokewidth)
 
     rot = convert_attribute(rotation, key"rotation"())
 
@@ -462,13 +515,16 @@ function texelems_and_glyph_positions(str::LaTeXString, fontscale_px, halign, va
     positions = basepositions .- Ref(Point3f0(xshift, yshift, 0))
     positions .= Ref(rot) .* positions
 
-    pre_align_gl = GlyphLayout5(
+    pre_align_gl = GlyphCollection2(
         chars,
         fonts,
         Point3f0.(positions),
         extents,
         scales_2d,
-        fill(rot, length(chars)),
+        rot,
+        color,
+        strokecolor,
+        strokewidth,
     )
 
     all_els, pre_align_gl, Point2f0(xshift, yshift)

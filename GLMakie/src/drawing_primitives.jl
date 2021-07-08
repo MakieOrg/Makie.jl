@@ -260,15 +260,23 @@ value_or_first(x::StaticArray) = x
 value_or_first(x) = x
 
 function draw_atomic(screen::GLScreen, scene::Scene,
-        x::Text{<:Tuple{<:Union{<:Makie.GlyphLayout5, <:AbstractVector{<:Makie.GlyphLayout5}}}})
+        x::Text{<:Tuple{<:Union{<:Makie.GlyphCollection2, <:AbstractVector{<:Makie.GlyphCollection2}}}})
 
     robj = cached_robj!(screen, scene, x) do gl_attributes
         glyphlayout = x[1]
-        liftkeys = (:position, :align, :rotation, :model, :justification, :lineheight, :space, :offset)
+        liftkeys = (:position, :rotation, :model, :space, :offset)
         args = getindex.(Ref(gl_attributes), liftkeys)
 
-        gl_text = lift(glyphlayout, scene.camera.projectionview, Makie.transform_func_obs(scene), args...) do glayout,
-                projview, transfunc, pos, align, rotation, model, j, l, space, offset
+        gl_text = lift(scene.camera.projectionview, Makie.transform_func_obs(scene),
+                gl_attributes[:position], gl_attributes[:rotation]) do glayout,
+                projview, transfunc, pos, rotation, model, space, offset
+
+            # this has changed 
+            glayout = glyphlayout[]
+            println()
+            @show Makie.attr_broadcast_length(pos)
+            @show Makie.attr_broadcast_length(glayout)
+            @show Makie.attr_broadcast_length(offset)
             res = Vec2f0(widths(pixelarea(scene)[]))
             return preprojected_glyph_arrays(pos, glayout, space, projview, res, offset, transfunc)
         end
@@ -288,13 +296,25 @@ function draw_atomic(screen::GLScreen, scene::Scene,
         filter!(gl_attributes) do (k, v)
             # These are liftkeys without model
             !(k in (
-                :position, :space, :justification, :font, :align,
-                :textsize, :rotation, :lineheight,
+                :position, :space, :font,
+                :textsize, :rotation,
             ))
         end
-        gl_attributes[:color] = signals[1]
+
+        gl_attributes[:color] = lift(glyphlayout) do gl
+            if gl isa AbstractArray
+                reduce(vcat, g.colors for g in gl)
+            else
+                gl.colors
+            end
+        end
         gl_attributes[:stroke_color] = signals[2]
-        gl_attributes[:rotation] = signals[3]
+        # gl_attributes[:rotation] = signals[3]
+        gl_attributes[:rotation] = lift(positions) do pos
+            map(pos) do p
+                Quaternionf0(0, 0, 0, 1)
+            end
+        end
         gl_attributes[:scale] = scale
         gl_attributes[:offset] = offset
         gl_attributes[:uv_offset_width] = uv_offset_width

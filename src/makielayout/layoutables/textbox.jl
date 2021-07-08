@@ -264,8 +264,8 @@ end
 
 function charbbs(text)
     glyphlayout = text._glyphlayout[]
-    if !(glyphlayout isa Makie.GlyphLayout5)
-        error("Expected a single GlyphLayout5 from the textbox string, got a $(typeof(glyphlayout)).")
+    if !(glyphlayout isa Makie.GlyphCollection2)
+        error("Expected a single GlyphCollection2 from the textbox string, got a $(typeof(glyphlayout)).")
     end
     pos = Point2f0(text.position[])
     map(glyphlayout.bboxes, glyphlayout.origins) do bb, ori
