@@ -545,7 +545,7 @@ function get_labeled_plots(ax; merge::Bool, unique::Bool)
         haskey(plot.attributes, :label)
     end
     labels = map(lplots) do l
-        convert(String, l.label[])
+        l.label[]
     end
 
     # filter out plots with same plot type and label
