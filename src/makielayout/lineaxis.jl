@@ -388,6 +388,9 @@ function LineAxis(parent::Scene; kwargs...)
         inspectable = false)
     decorations[:ticklabels] = ticklabels
 
+    # trigger calculation of ticklabel width once, now that it's not nothing anymore
+    notify(ticklabelsvisible)
+
     LineAxis(parent, protrusion, attrs, decorations, tickpositions, tickvalues, tickstrings, minortickpositions, minortickvalues)
 end
 
