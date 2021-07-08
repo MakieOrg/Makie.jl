@@ -238,32 +238,6 @@ end
     f
 end
 
-@cell "Text Char offsets" begin
-    fig = Figure()
-    ls = LScene(fig[1, 1], scenkw = (camera=cam3d!, ))
-    text!(
-        ls,
-        ["kx", "π_2"],
-        position = [Point3f0(1, 0.5, 0.75), Point3f0(0.5, 1, 0.25)],
-        offset = [
-            [Vec2f0(0), Vec2f0(0, -5)],
-            [Vec2f0(0, 10), Vec2f0(-11, 11), Vec2f0(-22, -11)],
-        ],
-        textsize = [[20, 10], [20, 20, 20]],
-        limits = FRect3D(Point3f0(0), Point3f0(1))
-    )
-
-    ax = Axis(fig[1, 2])
-    text!(
-        ax, "x2",
-        offset=[Vec2f0(0), Vec2f0(0, 6)],
-        align = (:right, :top),
-        textsize = [20, 14]
-    )
-
-    fig
-end
-
 
 @cell "Log10 text" begin
     barplot([1, 10, 100], fillto = 0.1, axis = (yscale = log10,))
