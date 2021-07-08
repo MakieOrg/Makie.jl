@@ -92,6 +92,9 @@ genpath   = joinpath(srcpath, "generated")
 
 mkpath(genpath)
 
+# copy news file into src directory
+cp(joinpath(pathroot, "NEWS.md"), joinpath(srcpath, "news.md"))
+
 ################################################################################
 #                          Syntax highlighting theme                           #
 ################################################################################
@@ -260,7 +263,7 @@ makedocs(
             "cameras.md",
             "remote.md",
             "faq.md",
-            "News" => "../../NEWS.md",
+            "News" => "news.md",
             "API Reference Makie" => "makie_api.md",
             "API Reference MakieLayout" => "makielayout/reference.md",
             "generated/axis.md",
