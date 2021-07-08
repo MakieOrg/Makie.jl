@@ -159,19 +159,20 @@ value_or_first(x::AbstractArray) = first(x)
 value_or_first(x::StaticArray) = x
 value_or_first(x) = x
 
-function create_shader(scene::Scene, plot::Makie.Text)
+function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
 
-    string_obs = plot[1]
-    liftkeys = (:position, :textsize, :font, :align, :rotation, :model, :justification, :lineheight, :space, :offset)
+    glyphcollection = plot[1]
+    liftkeys = (:position, :rotation, :model, :space, :offset)
 
     args = getindex.(Ref(plot), liftkeys)
 
-    gl_text = lift(string_obs, scene.camera.projectionview, Makie.transform_func_obs(scene), args...) do str, projview, transfunc, pos, tsize, font, align, rotation, model, j, l, space, offset
-        # For annotations, only str (x[1]) will get updated, but all others are updated too!
-        args = @get_attribute plot (position, textsize, font, align, rotation, offset)
+    function collect_glyph_data(projview, transfunc, pos, rotation, model, space, offset)
+        gcollection = glyphcollection[]
         res = Vec2f0(widths(pixelarea(scene)[]))
-        return Makie.preprojected_glyph_arrays(str, pos, plot._glyphlayout[], font, textsize, space, projview, res, offset, transfunc)
+        positions, offset, uv_offset_width, scale = Makie.preprojected_glyph_arrays(pos, gcollection, space, projview, res, offset, transfunc)
     end
+
+    gl_text = lift(collect_glyph_data, scene.camera.projectionview, Makie.transform_func_obs(scene), args...)
 
     # unpack values from the one signal:
     positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i
@@ -179,35 +180,42 @@ function create_shader(scene::Scene, plot::Makie.Text)
     end
 
     atlas = get_texture_atlas()
-    keys = (:color, :rotation)
+    keys = (:color, :strokecolor, :rotation)
 
     signals = map(keys) do key
-        return lift(positions, plot[key]) do pos, attr
-            str = string_obs[]
-            if str isa AbstractVector
-                if isempty(str)
-                    attr = convert_attribute(value_or_first(attr), Key{key}())
-                    return Vector{typeof(attr)}()
-                else
-                    result = []
-                    broadcast_foreach(str, attr) do st, aa
-                        for att in attribute_per_char(st, aa)
-                            push!(result, convert_attribute(att, Key{key}()))
-                        end
-                    end
-                    # narrow the type from any, this is ugly
-                    return identity.(result)
-                end
-            else
-                return Makie.get_attribute(plot, key)
-            end
+        Makie.get_attribute(plot, key)
+    end
+
+    uniform_color = lift(glyphcollection) do gc
+        if gc isa AbstractArray
+            reduce(vcat, (Makie.collect_vector(g.colors, length(g.glyphs)) for g in gc),
+                init = RGBAf0[])
+        else
+            Makie.collect_vector(gc.colors, length(gc.glyphs))
         end
     end
+    uniform_stroke_color = lift(glyphcollection) do gc
+        if gc isa AbstractArray
+            reduce(vcat, (Makie.collect_vector(g.strokecolors, length(g.glyphs)) for g in gc),
+                init = RGBAf0[])
+        else
+            Makie.collect_vector(gc.strokecolors, length(gc.glyphs))
+        end
+    end
+    uniform_rotation = lift(glyphcollection) do gc
+        if gc isa AbstractArray
+            reduce(vcat, (Makie.collect_vector(g.rotations, length(g.glyphs)) for g in gc),
+                init = Quaternionf0[])
+        else
+            Makie.collect_vector(gc.rotations, length(gc.glyphs))
+        end
+    end
+
     uniforms = Dict(
         :model => plot.model,
         :shape_type => Observable(Cint(3)),
-        :color => signals[1],
-        :rotations => signals[2],
+        :color => uniform_color,
+        :rotations => uniform_rotation,
         :markersize => scale,
         :markerspace => Observable(Pixel),
         :marker_offset => offset,
