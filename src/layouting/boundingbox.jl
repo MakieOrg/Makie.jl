@@ -85,11 +85,10 @@ function rotate_bbox(bb::FRect3D, rot)
     FRect3D(Ref(rot) .* points)
 end
 
-function boundingbox(x::Text, text::String, position::VecTypes)
-
+function boundingbox(x::Text, text, position)
     glyphlayout = x._glyphlayout[]
 
-    pos = to_ndim(Point3f0, x.position[], 0)
+    pos = to_ndim(Point3f0, position, 0)
     rot = convert_attribute(x.rotation[], key"rotation"())
 
     if x.space[] == :data
@@ -99,11 +98,23 @@ function boundingbox(x::Text, text::String, position::VecTypes)
     end
 end
 
-function data_text_boundingbox(string::String, glyphlayout::Glyphlayout, rotation::Quaternion, position::Point3f0)
-    bb = FRect3D()
-    glyphorigins, glyphbbs = glyphlayout.origins, glyphlayout.bboxes
+function gl_bboxes(gl::GlyphLayout3)
+    map(gl.extents, gl.fonts, gl.scales) do ext, font, scale
+        unscaled_hi_bb = height_insensitive_boundingbox(ext, font)
+        hi_bb = FRect2D(
+            Makie.origin(unscaled_hi_bb) * scale,
+            widths(unscaled_hi_bb) * scale
+        )
+    end
+end
 
-    for (char, charo, glyphbb) in zip(string, glyphorigins, glyphbbs)
+function data_text_boundingbox(unused, glyphlayout::GlyphLayout3, rotation::Quaternion, position::Point3f0)
+    bb = FRect3D()
+    chars = glyphlayout.glyphs
+    glyphorigins = glyphlayout.origins
+    glyphbbs = gl_bboxes(glyphlayout)
+
+    for (char, charo, glyphbb) in zip(chars, glyphorigins, glyphbbs)
         # ignore line breaks
         # char in ('\r', '\n') && continue
 

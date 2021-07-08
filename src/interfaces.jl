@@ -28,7 +28,7 @@ function plot!(plot::Text)
         f = to_font(f)
         rot = to_rotation(rot)
 
-        if str isa String
+        if str isa AbstractString
             glyphlayout = layout_text(str, ts, f, al, rot, mo, jus, lh)
         elseif str isa AbstractArray
             glyphlayout = []
@@ -36,6 +36,8 @@ function plot!(plot::Text)
                 subgl = layout_text(str, ts, f, al, rot, mo, jus, lh)
                 push!(glyphlayout, subgl)
             end
+        else
+            error("String shouldn't be a $(typeof(str))")
         end
 
         plot._glyphlayout[] = glyphlayout

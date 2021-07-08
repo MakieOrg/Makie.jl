@@ -364,6 +364,7 @@ function LineAxis(parent::Scene; kwargs...)
         position, extents, horizontal = pos_extents_horizontal[]
 
         label_is_empty = iswhitespace(label) || isempty(label)
+
         real_labelsize = if label_is_empty
             0f0
         else

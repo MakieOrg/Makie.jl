@@ -335,7 +335,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
             top = xaxisprotrusion
         end
 
-        titlespace = if !titlevisible || iswhitespace(title) || isempty(title)
+        titlespace = if !titlevisible || iswhitespace(title)
             0f0
         else
             boundingbox(titlet).widths[2] + titlegap

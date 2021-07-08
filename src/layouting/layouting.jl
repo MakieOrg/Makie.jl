@@ -29,18 +29,17 @@ function attribute_per_char(string, attribute)
 end
 
 """
-    Glyphlayout
+    GlyphLayout3
 
 Stores information about the glyphs in a string that had a layout calculated for them.
-`origins` are the character origins relative to the layout's [0,0] point (the alignment)
-and rotation anchor). `bboxes` are the glyph bounding boxes relative to the glyphs' own
-origins. `hadvances` are the horizontal advance values, those are mostly needed for interactive
-purposes, for example to display a cursor at the right offset from a space character.
 """
-struct Glyphlayout
+struct GlyphLayout3{G, F, R}
+    glyphs::Vector{G}
+    fonts::Vector{F}
     origins::Vector{Point3f0}
-    bboxes::Vector{FRect2D}
-    hadvances::Vector{Float32}
+    extents::Vector{FreeTypeAbstraction.FontExtent{Float32}}
+    scales::Vector{Vec2f0}
+    rotations::Vector{R}
 end
 
 """
@@ -49,7 +48,7 @@ end
         font, align, rotation, model, justification, lineheight
     )
 
-Compute a Glyphlayout for a `string` given textsize, font, align, rotation, model, justification, and lineheight.
+Compute a GlyphLayout3 for a `string` given textsize, font, align, rotation, model, justification, and lineheight.
 """
 function layout_text(
         string::AbstractString, textsize::Union{AbstractVector, Number},
@@ -82,7 +81,7 @@ rotated to wherever it is needed in the plot.
 """
 function glyph_positions(str::AbstractString, font_per_char, fontscale_px, halign, valign, lineheight_factor, justification, rotation)
 
-    isempty(str) && return Glyphlayout([], [], [])
+    isempty(str) && return GlyphLayout3([], [], Point3f0[], Vec2f0[], [], FRect2D[], Float32[])
 
     # collect information about every character in the string
     charinfos = broadcast([c for c in str], font_per_char, fontscale_px) do char, font, scale
@@ -94,7 +93,7 @@ function glyph_positions(str::AbstractString, font_per_char, fontscale_px, halig
             Makie.origin(unscaled_hi_bb) * scale,
             widths(unscaled_hi_bb) * scale)
         (char = char, font = font, scale = scale, hadvance = hadvance(unscaled_extent) * scale,
-            hi_bb = hi_bb, lineheight = lineheight)
+            hi_bb = hi_bb, lineheight = lineheight, extent = unscaled_extent)
     end
 
     # split the character info vector into lines after every \n
@@ -219,20 +218,24 @@ function glyph_positions(str::AbstractString, font_per_char, fontscale_px, halig
     # use 3D coordinates already because later they will be required in that format anyway
     charorigins = [Ref(rotation) .* Point3f0.(xsgroup, y, 0) for (xsgroup, y) in zip(xs_aligned, ys_aligned)]
 
-    # return a GlyphLayout, which contains each character's origin, height-insensitive
+    # return a GlyphLayout3, which contains each character's origin, height-insensitive
     # boundingbox and horizontal advance value
     # these values should be enough to draw characters correctly,
     # compute boundingboxes without relayouting and maybe implement
     # interactive features that need to know where characters begin and end
-    return Glyphlayout(
+    return GlyphLayout3(
+        [x.char for x in charinfos],
+        [x.font for x in charinfos],
         reduce(vcat, charorigins),
-        reduce(vcat, map(line -> [l.hi_bb for l in line], lineinfos)),
-        reduce(vcat, map(line -> [l.hadvance for l in line], lineinfos)))
+        [x.extent for x in charinfos],
+        [Vec2f0(x.scale) for x in charinfos],
+        [rotation for x in charinfos],
+    )
 end
 
 
 function preprojected_glyph_arrays(
-        string::String, position::VecTypes, glyphlayout::Makie.Glyphlayout,
+        string::String, position::VecTypes, glyphlayout::Makie.GlyphLayout3,
         font, textsize, space::Symbol, projview, resolution, offset::VecTypes, transfunc
     )
     offset = to_ndim(Point3f0, offset, 0)
@@ -250,7 +253,7 @@ function preprojected_glyph_arrays(
 end
 
 function preprojected_glyph_arrays(
-        string::String, position::VecTypes, glyphlayout::Makie.Glyphlayout,
+        string::String, position::VecTypes, glyphlayout::Makie.GlyphLayout3,
         font, textsize, space::Symbol, projview, resolution, offsets::Vector, transfunc
     )
 
@@ -279,7 +282,7 @@ function preprojected_glyph_arrays(
     end
 
     if space == :data
-        allpos = broadcast(positions, glyphlayouts, offset) do pos, glyphlayout::Makie.Glyphlayout, offs
+        allpos = broadcast(positions, glyphlayouts, offset) do pos, glyphlayout::Makie.GlyphLayout3, offs
             p = to_ndim(Point3f0, pos, 0)
             apply_transform(
                 transfunc,
@@ -287,7 +290,7 @@ function preprojected_glyph_arrays(
             )
         end
     elseif space == :screen
-        allpos = broadcast(positions, glyphlayouts, offset) do pos, glyphlayout::Makie.Glyphlayout, offs
+        allpos = broadcast(positions, glyphlayouts, offset) do pos, glyphlayout::Makie.GlyphLayout3, offs
             projected = to_ndim(
                 Point3f0,
                 Makie.project(
@@ -314,7 +317,7 @@ function preprojected_glyph_arrays(
     )
 
     if space == :data
-        allpos = broadcast(positions, glyphlayouts, offsets) do pos, glyphlayout::Makie.Glyphlayout, offsets
+        allpos = broadcast(positions, glyphlayouts, offsets) do pos, glyphlayout::Makie.GlyphLayout3, offsets
             p = to_ndim(Point3f0, pos, 0)
             apply_transform(
                 transfunc,
@@ -322,7 +325,7 @@ function preprojected_glyph_arrays(
             )
         end
     elseif space == :screen
-        allpos = broadcast(positions, glyphlayouts, offsets) do pos, glyphlayout::Makie.Glyphlayout, offsets
+        allpos = broadcast(positions, glyphlayouts, offsets) do pos, glyphlayout::Makie.GlyphLayout3, offsets
             projected = to_ndim(
                 Point3f0,
                 Makie.project(
