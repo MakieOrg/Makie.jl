@@ -308,40 +308,6 @@ function preprojected_glyph_arrays(
 end
 
 
-# function preprojected_glyph_arrays(
-#         strings::AbstractVector{<:String}, positions::AbstractVector, glyphcollections::Vector, font,
-#         textsize, space::Symbol, projview, resolution, offsets::Vector{<: Vector}, transfunc
-#     )
-
-#     if space == :data
-#         allpos = broadcast(positions, glyphcollections, offsets) do pos, glyphcollection::Makie.GlyphCollection, offsets
-#             p = to_ndim(Point3f0, pos, 0)
-#             apply_transform(
-#                 transfunc,
-#                 Point3f0[p .+ to_ndim(Point3f0, offset, 0) .+ o for (o, offset) in zip(glyphcollection.origins, offsets)]
-#             )
-#         end
-#     elseif space == :screen
-#         allpos = broadcast(positions, glyphcollections, offsets) do pos, glyphcollection::Makie.GlyphCollection, offsets
-#             projected = to_ndim(
-#                 Point3f0,
-#                 Makie.project(
-#                     projview,
-#                     resolution,
-#                     apply_transform(transfunc, to_ndim(Point3f0, pos, 0))
-#                 ),
-#                 0)
-
-#             return Point3f0[projected .+ to_ndim(Point3f0, offset, 0) + o for (o, offset) in zip(glyphcollection.origins, offsets)]
-#         end
-#     else
-#         error("Unknown space $space, only :data or :screen allowed")
-#     end
-
-#     text_quads(allpos, strings, font, textsize)
-# end
-
-
 function text_quads(positions, glyphs::AbstractVector, fonts::AbstractVector, textsizes::ScalarOrVector{<:Vec2})
 
     atlas = get_texture_atlas()
@@ -376,30 +342,6 @@ function text_quads(positions, glyphs, fonts, textsizes::Vector{<:ScalarOrVector
 
     return reduce(vcat, positions, init = Point3f0[]), offsets, uv, scales
 end
-
-
-# function text_quads(allpos::Vector, strings::Vector, font, textsize)
-#     megapos::Vector{Point3f0} = if isempty(allpos)
-#         Point3f0[]
-#     else
-#         reduce(vcat, allpos)
-#     end
-
-#     atlas = get_texture_atlas()
-#     offsets = Vec2f0[]
-#     uv = Vec4f0[]
-#     scales = Vec2f0[]
-
-#     broadcast_foreach(strings, font, textsize) do str, fo, ts
-#         for (c, f, pixelsize) in zip(str, attribute_per_char(str, fo), attribute_per_char(str, ts))
-#             push!(uv, glyph_uv_width!(atlas, c, f))
-#             glyph_bb, extent = FreeTypeAbstraction.metrics_bb(c, f, pixelsize)
-#             push!(scales, widths(glyph_bb))
-#             push!(offsets, minimum(glyph_bb))
-#         end
-#     end
-#     return megapos, offsets, uv, scales
-# end
 
 
 # function to concatenate vectors with a value between every pair
