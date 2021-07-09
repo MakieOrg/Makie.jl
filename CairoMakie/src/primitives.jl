@@ -506,7 +506,9 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
     fast_path = to_value(get(primitive, :fast_path, true))
     # Vector backends don't support FILTER_NEAREST for interp == false, so in that case we also need to draw rects
     is_vector = is_vector_backend(ctx)
-    if fast_path && xs isa AbstractRange && ys isa AbstractRange && !(is_vector && !interp)
+    t = Makie.transform_func_obs(primitive)[]
+    identity_transform = t === identity || t isa Tuple && all(x-> x === identity, t)
+    if fast_path && xs isa AbstractRange && ys isa AbstractRange && !(is_vector && !interp) && identity_transform
         imsize = ((first(xs), last(xs)), (first(ys), last(ys)))
 
         # find projected image corners
