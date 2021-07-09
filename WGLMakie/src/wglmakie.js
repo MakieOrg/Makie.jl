@@ -380,8 +380,8 @@ const WGLMakie = (function () {
             fragmentShader: deserialize_three(program.fragment_source),
             side: is_volume ? THREE.BackSide : THREE.DoubleSide,
             transparent: true,
-            // depthTest: true,
-            // depthWrite: true
+            depthTest: !program.overdraw,
+            depthWrite: !program.transparency
         });
     }
 
@@ -410,7 +410,11 @@ const WGLMakie = (function () {
         mesh.name = data.name;
         mesh.frustumCulled = false;
         mesh.matrixAutoUpdate = false;
-        const update_visible = (v) => (mesh.visible = v);
+        const update_visible = (v) => {
+            mesh.visible = v
+            // don't return anything, since that will disable on_update callback
+            return
+        };
         update_visible(JSServe.get_observable(data.visible));
         JSServe.on_update(data.visible, update_visible);
         connect_uniforms(mesh, data.uniform_updater);
