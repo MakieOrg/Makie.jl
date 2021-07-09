@@ -14,4 +14,7 @@ WGLMakie/test/recorded/
 GLMakie/test/recorded/
 GLMakie/test/recorded_glmakie/
 CairoMakie/test/recorded/
+CairoMakie/src/display.svg
+CairoMakie/src/display.pdf
+CairoMakie/src/display.png
 monorepo

@@ -345,14 +345,14 @@ Takes vectors `x` and `y` and the function `f`, and applies `f` on the grid that
 This is equivalent to `f.(x, y')`.
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::SurfaceLike, x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function) where {T1, T2}
+function convert_arguments(sl::SurfaceLike, x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function) where {T1, T2}
     if !applicable(f, x[1], y[1])
         error("You need to pass a function with signature f(x::$T1, y::$T2). Found: $f")
     end
     T = typeof(f(x[1], y[1]))
     z = similar(x, T, (length(x), length(y)))
     z .= f.(x, y')
-    (x, y, z)
+    return convert_arguments(sl, x, y, z)
 end
 
 ################################################################################
