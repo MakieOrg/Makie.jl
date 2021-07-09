@@ -483,14 +483,14 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
     image = primitive[3][]
     xs, ys = primitive[1][], primitive[2][]
 
-    if !(xs isa Vector)
+    if !(xs isa AbstractVector)
         l, r = extrema(xs)
         N = size(image, 1)
         xs = range(l, r, length = N+1)
     else
         xs = regularly_spaced_array_to_range(xs)
     end
-    if !(ys isa Vector)
+    if !(ys isa AbstractVector)
         l, r = extrema(ys)
         N = size(image, 2)
         ys = range(l, r, length = N+1)
@@ -498,8 +498,6 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
         ys = regularly_spaced_array_to_range(ys)
     end
     model = primitive[:model][]
-    imsize = (extrema_nan(xs), extrema_nan(ys))
-
     interp = to_value(get(primitive, :interpolate, true))
     weird_cairo_limit = (2^15) - 23
 
@@ -509,6 +507,8 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
     # Vector backends don't support FILTER_NEAREST for interp == false, so in that case we also need to draw rects
     is_vector = is_vector_backend(ctx)
     if fast_path && xs isa AbstractRange && ys isa AbstractRange && !(is_vector && !interp)
+        imsize = ((first(xs), last(xs)), (first(ys), last(ys)))
+
         # find projected image corners
         # this already takes care of flipping the image to correct cairo orientation
         xy = project_position(scene, Point2f0(first.(imsize)), model)
@@ -522,6 +522,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
         if s.width > weird_cairo_limit || s.height > weird_cairo_limit
             error("Cairo stops rendering images bigger than $(weird_cairo_limit), which is likely a bug in Cairo. Please resample your image/heatmap with e.g. `ImageTransformations.imresize`")
         end
+
         Cairo.rectangle(ctx, xy..., w, h)
         Cairo.save(ctx)
         Cairo.translate(ctx, xy...)

@@ -64,10 +64,8 @@ end
     fig
 end
 
-
 @cell meshscatter(RNG.rand(10), RNG.rand(10), RNG.rand(10), color=RNG.rand(10))
 @cell meshscatter(RNG.rand(10), RNG.rand(10), RNG.rand(10), color=RNG.rand(RGBAf0, 10))
-
 
 @cell begin
     s1 = uv_mesh(Sphere(Point3f0(0), 1f0))
@@ -81,7 +79,7 @@ end
 
 @cell "Unequal x and y sizes in surface" begin
     #
-    NL = 30
+    NL = 15
     NR = 31
     function xy_data(x, y)
         r = sqrt(x^2 + y^2)
@@ -155,4 +153,10 @@ end
 
 @cell "log10 heatmap" begin
     heatmap(rand(10, 5), axis = (yscale = log10, xscale=log10))
+end
+
+@cell "reverse range heatmap" begin
+    x = [1 0
+         2 3]
+    heatmap(1:2, 1:-1:0, x)
 end
