@@ -37,6 +37,8 @@ heatmap(-2:0.1:1, -1.1:0.1:1.1, mandelbrot,
 
 ## Three vectors
 
+There must be no duplicate combinations of x and y, but it is allowed to leave out values.
+
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
