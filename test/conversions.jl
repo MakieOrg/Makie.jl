@@ -188,3 +188,14 @@ end
     @test to_color(["red", "green"]) isa Vector{RGBAf0}
     @test to_color(["red", "green"]) == [to_color("red"), to_color("green")]
 end
+
+
+@testset "heatmap from three vectors" begin
+    x = [2, 1, 2]
+    y = [2, 3, 3]
+    z = [1, 2, 3]
+    xx, yy, zz = convert_arguments(Heatmap, x, y, z)
+    @test xx == Float32[0.5, 1.5, 2.5]
+    @test yy == Float32[1.5, 2.5, 3.5]
+    @test isequal(zz, [NaN 2; 1 3])
+end
