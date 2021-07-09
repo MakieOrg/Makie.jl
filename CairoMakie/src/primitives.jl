@@ -443,7 +443,7 @@ function regularly_spaced_array_to_range(arr)
             m, M = M, m
         end
         # don't use stop=M, since that may not include M
-        return range(m; step, length=length(arr))
+        return range(m; step=step, length=length(arr))
     else
         return arr
     end
