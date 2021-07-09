@@ -24,9 +24,9 @@ end
     sc = scatter!(ax, randn(100, 2))
     li = lines!(ax, randn(100, 2))
     hm = heatmap!(ax, randn(20, 20))
-    @test length(ax.scene.plots) == 3
+    @test length(ax.scene.plots) == 4
     delete!(ax, sc)
-    @test length(ax.scene.plots) == 2
+    @test length(ax.scene.plots) == 3
     @test sc ∉ ax.scene.plots
     empty!(ax)
     @test isempty(ax.scene.plots)
