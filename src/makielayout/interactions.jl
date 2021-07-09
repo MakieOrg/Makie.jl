@@ -138,7 +138,7 @@ function _selection_vertices(outer, inner)
     itl = _clamp(topleft(inner), obl, otr)
     itr = _clamp(topright(inner), obl, otr)
 
-    vertices = [obl, obr, otr, otl, ibl, ibr, itr, itl]
+    return [obl, obr, otr, otl, ibl, ibr, itr, itl]
 end
 
 function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
@@ -162,21 +162,7 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
         r.from = prev_data
         r.to = data
         r.rectnode[] = _chosen_limits(r, ax)
-
-        selection_vertices = lift(_selection_vertices, ax.finallimits, r.rectnode)
-
-        # manually specify correct faces for a rectangle with a rectangle hole inside
-        faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
-
-        mesh = mesh!(ax.scene, selection_vertices, faces, color = (:black, 0.2), shading = false,
-            fxaa = false, inspectable = false) # fxaa false seems necessary for correct transparency
-        # wf = wireframe!(ax.scene, r.rectnode, color = (:black, 0.66), linewidth = 2)
-        # translate forward so selection mesh and frame are never behind data
-        translate!(mesh, 0, 0, 100)
-        # translate!(wf, 0, 0, 110)
-        # append!(r.plots, [mesh, wf])
-        append!(r.plots, [mesh])
-        r.active = true
+        r.active[] = true
         return Consume(true)
 
     elseif event.type === MouseEventTypes.leftdrag
@@ -189,18 +175,12 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
         return Consume(true)
 
     elseif event.type === MouseEventTypes.leftdragstop
-        newlims = r.rectnode[]
-        if !(0 in widths(newlims))
-            ax.targetlimits[] = newlims
+        try
+            r.callback(r.rectnode[])
+        catch e
+            @warn "error in rectangle zoom" exception=e
         end
-
-        while !isempty(r.plots)
-            delete!(ax.scene, r.plots[1])
-            deleteat!(r.plots, 1)
-        end
-        # remove any possible links in plotting functions
-        empty!(r.rectnode.listeners)
-        r.active = false
+        r.active[] = false
         return Consume(true)
     end
 
@@ -216,7 +196,7 @@ end
 function process_interaction(r::RectangleZoom, event::KeysEvent, ax::Axis)
     r.restrict_y = Keyboard.x in event.keys
     r.restrict_x = Keyboard.y in event.keys
-    r.active || return Consume(false)
+    r.active[] || return Consume(false)
 
     r.rectnode[] = _chosen_limits(r, ax)
     return Consume(true)
@@ -229,7 +209,6 @@ function positivize(r::FRect2D)
     newwidths = ifelse.(negwidths, -r.widths, r.widths)
     FRect2D(newori, newwidths)
 end
-
 
 function process_interaction(l::LimitReset, event::MouseEvent, ax::Axis)
 
