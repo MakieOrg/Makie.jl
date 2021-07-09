@@ -449,6 +449,8 @@ function regularly_spaced_array_to_range(arr)
     end
 end
 
+regularly_spaced_array_to_range(arr::AbstractRange) = arr
+
 """
     interpolation_flag(is_vector, interp, wpx, hpx, w, h)
 
@@ -460,7 +462,6 @@ end
 function interpolation_flag(is_vector, interp, wpx, hpx, w, h)
     if interp
         if is_vector
-            @warn("Using billinear filtering for vector backends, which can result in downsampling artifacts")
             return Cairo.FILTER_BILINEAR
         else
             return Cairo.FILTER_BEST
@@ -482,7 +483,6 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
     ctx = screen.context
     image = primitive[3][]
     xs, ys = primitive[1][], primitive[2][]
-
     if !(xs isa AbstractVector)
         l, r = extrema(xs)
         N = size(image, 1)
