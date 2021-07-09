@@ -30,17 +30,22 @@ function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
     return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), mesh; uniforms...)
 end
 
-_length(x::Makie.IntervalSets.AbstractInterval) = 2
-_length(x) = length(x)
+xy_convert(x::AbstractArray{Float32}, n) = copy(x)
+xy_convert(x::AbstractArray, n) = el32convert(x)
+xy_convert(x, n) = Float32[LinRange(extrema(x)..., n + 1);]
 
 function limits_to_uvmesh(plot)
     px, py, pz = plot[1], plot[2], plot[3]
+    px = map((x, z)-> xy_convert(x, size(z, 1)), px, pz)
+    py = map((y, z)-> xy_convert(y, size(z, 2)), py, pz)
     # Special path for ranges of length 2 wich
     # can be displayed as a rectangle
-    if _length(px[]) == 2 && _length(py[]) == 2
+    t = Makie.transform_func_obs(plot)[]
+    identity_transform = t === identity || t isa Tuple && all(x-> x === identity, t)
+    if length(px[]) == 2 && length(py[]) == 2 && identity_transform
         rect = lift(px, py) do x, y
-            xmin, xmax = extrema(x)
-            ymin, ymax = extrema(y)
+            xmin, xmax = x
+            ymin, ymax = y
             return Rect2D(xmin, ymin, xmax - xmin, ymax - ymin)
         end
         positions = Buffer(lift(rect-> decompose(Point2f0, rect), rect))
@@ -55,7 +60,7 @@ function limits_to_uvmesh(plot)
             return vec(g)
         end
         rect = lift(z -> Tesselation(Rect2D(0f0, 0f0, 1f0, 1f0), size(z) .+ 1), pz)
-        positions = Buffer(lift(grid, px, py, pz, transform_func_obs(plot)))
+        positions = Buffer(lift(grid, px, py, pz, t))
         faces = Buffer(lift(r -> decompose(GLTriangleFace, r), rect))
         uv = Buffer(lift(decompose_uv, rect))
     end
