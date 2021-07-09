@@ -198,4 +198,11 @@ end
     @test xx == Float32[0.5, 1.5, 2.5]
     @test yy == Float32[1.5, 2.5, 3.5]
     @test isequal(zz, [NaN 2; 1 3])
+
+    x = [1, 2]
+    @test_throws ErrorException convert_arguments(Heatmap, x, y, z)
+    x = copy(y)
+    @test_throws ErrorException convert_arguments(Heatmap, x, y, z)
+    x = [NaN, 1, 2]
+    @test_throws ErrorException convert_arguments(Heatmap, x, y, z)
 end
