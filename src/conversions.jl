@@ -312,6 +312,31 @@ function convert_arguments(::DiscreteSurface, data::AbstractMatrix)
     (0.5f0 .. n+0.5f0, 0.5f0 .. m+0.5f0, el32convert(data))
 end
 
+function convert_arguments(SL::SurfaceLike, x::AbstractVector{<:Number}, y::AbstractVector{<:Number}, z::AbstractVector{<:Number})
+    if !(length(x) == length(y) == length(z))
+        error("x, y and z need to have the same length. Lengths are $(length.((x, y, z)))")
+    end
+
+    xys = tuple.(x, y)
+    if length(unique(xys)) != length(x)
+        c = StatsBase.countmap(xys)
+        cdup = filter(x -> x[2] > 1, c)
+        error("Found duplicate x/y coordinates: $cdup")
+    end
+
+    xs = Float32.(sort(unique(x)))
+    any(isnan, xs) && error("x must not have NaN values.")
+    ys = Float32.(sort(unique(y)))
+    any(isnan, ys) && error("x must not have NaN values.")
+    zs = fill(NaN32, length(xs), length(ys))
+    foreach(zip(x, y, z)) do (xi, yi, zi)
+        i = searchsortedfirst(xs, xi)
+        j = searchsortedfirst(ys, yi)
+        @inbounds zs[i, j] = zi
+    end
+    convert_arguments(SL, xs, ys, zs)
+end
+
 
 """
     convert_arguments(P, x, y, f)::(Vector, Vector, Matrix)
