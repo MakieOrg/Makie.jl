@@ -6,7 +6,7 @@ end
 
 using .ContoursHygiene
 const Contours = ContoursHygiene.Contour
-
+using Base64
 using Artifacts
 using Random
 using FFMPEG # get FFMPEG on any system!
@@ -16,7 +16,7 @@ using FixedPointNumbers, Packing, SignedDistanceFields
 using Markdown, DocStringExtensions # documentation
 using Serialization # serialize events
 using StructArrays
-using GeometryBasics: widths, positive_widths, VecTypes, AbstractPolygon
+using GeometryBasics: widths, positive_widths, VecTypes, AbstractPolygon, value
 using StaticArrays
 import StatsBase, Distributions, KernelDensity
 using Distributions: Distribution, VariateForm, Discrete, QQPair, pdf, quantile, qqbuild
@@ -132,6 +132,7 @@ include("basic_recipes/pie.jl")
 include("basic_recipes/poly.jl")
 include("basic_recipes/scatterlines.jl")
 include("basic_recipes/spy.jl")
+include("basic_recipes/stairs.jl")
 include("basic_recipes/stem.jl")
 include("basic_recipes/streamplot.jl")
 include("basic_recipes/timeseries.jl")

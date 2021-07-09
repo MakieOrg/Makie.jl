@@ -602,7 +602,7 @@ end
 
 function Base.show(io::IO, ::MIME"text/html", vs::VideoStream)
     mktempdir() do dir
-        path = save(vs, joinpath(dir, "video.mp4"))
+        path = save(joinpath(dir, "video.mp4"), vs)
         print(
             io,
             """<video autoplay controls><source src="data:video/x-m4v;base64,""",

@@ -449,6 +449,8 @@ function regularly_spaced_array_to_range(arr)
     end
 end
 
+regularly_spaced_array_to_range(arr::AbstractRange) = arr
+
 """
     interpolation_flag(is_vector, interp, wpx, hpx, w, h)
 
@@ -460,7 +462,6 @@ end
 function interpolation_flag(is_vector, interp, wpx, hpx, w, h)
     if interp
         if is_vector
-            @warn("Using billinear filtering for vector backends, which can result in downsampling artifacts")
             return Cairo.FILTER_BILINEAR
         else
             return Cairo.FILTER_BEST
@@ -482,15 +483,14 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
     ctx = screen.context
     image = primitive[3][]
     xs, ys = primitive[1][], primitive[2][]
-
-    if !(xs isa Vector)
+    if !(xs isa AbstractVector)
         l, r = extrema(xs)
         N = size(image, 1)
         xs = range(l, r, length = N+1)
     else
         xs = regularly_spaced_array_to_range(xs)
     end
-    if !(ys isa Vector)
+    if !(ys isa AbstractVector)
         l, r = extrema(ys)
         N = size(image, 2)
         ys = range(l, r, length = N+1)
@@ -498,8 +498,6 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
         ys = regularly_spaced_array_to_range(ys)
     end
     model = primitive[:model][]
-    imsize = (extrema_nan(xs), extrema_nan(ys))
-
     interp = to_value(get(primitive, :interpolate, true))
     weird_cairo_limit = (2^15) - 23
 
@@ -508,7 +506,11 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
     fast_path = to_value(get(primitive, :fast_path, true))
     # Vector backends don't support FILTER_NEAREST for interp == false, so in that case we also need to draw rects
     is_vector = is_vector_backend(ctx)
-    if fast_path && xs isa AbstractRange && ys isa AbstractRange && !(is_vector && !interp)
+    t = Makie.transform_func_obs(primitive)[]
+    identity_transform = t === identity || t isa Tuple && all(x-> x === identity, t)
+    if fast_path && xs isa AbstractRange && ys isa AbstractRange && !(is_vector && !interp) && identity_transform
+        imsize = ((first(xs), last(xs)), (first(ys), last(ys)))
+
         # find projected image corners
         # this already takes care of flipping the image to correct cairo orientation
         xy = project_position(scene, Point2f0(first.(imsize)), model)
@@ -522,6 +524,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
         if s.width > weird_cairo_limit || s.height > weird_cairo_limit
             error("Cairo stops rendering images bigger than $(weird_cairo_limit), which is likely a bug in Cairo. Please resample your image/heatmap with e.g. `ImageTransformations.imresize`")
         end
+
         Cairo.rectangle(ctx, xy..., w, h)
         Cairo.save(ctx)
         Cairo.translate(ctx, xy...)
@@ -673,8 +676,12 @@ function draw_mesh3D(
 
     # Mesh data
     # transform to view/camera space
-    vs = map(decompose(Point, mesh)) do v
+    func = Makie.transform_func_obs(scene)[]
+    # pass func as argument to function, so that we get a function barrier
+    # and have `func` be fully typed inside closure
+    vs = broadcast(decompose(Point, mesh), (func,)) do v, f
         # Should v get a nan2zero?
+        v = Makie.apply_transform(f, v)
         p4d = to_ndim(Vec4f0, scale .* to_ndim(Vec3f0, v, 0f0), 1f0)
         view * (model * p4d .+ to_ndim(Vec4f0, pos, 0f0))
     end

@@ -28,6 +28,11 @@ can be normalized by setting `normalization`. Possible values are:
    norm 1.
 *  `:none`: Do not normalize.
 
+Color can either be:
+* a vector of `bins` colors
+* a single color
+* `:values`, to color the bars with the values from the histogram
+
 ## Attributes
 $(ATTRIBUTES)
 """
@@ -36,13 +41,23 @@ $(ATTRIBUTES)
         bins = 15, # Int or iterable of edges
         normalization = :none,
         cycle = [:color => :patchcolor],
+        color = theme(scene, :patchcolor),
+
+        bar_labels = nothing,
+        flip_labels_at = Inf,
+        label_color = theme(scene, :textcolor),
+        over_background_color = automatic,
+        over_bar_color = automatic,
+        label_offset = 5,
+        label_font = theme(scene, :font),
+        label_size = 20,
+        label_formatter = bar_label_formatter
     )
 end
 
-
 function Makie.plot!(plot::Hist)
 
-    values = plot[:values]
+    values = plot.values
 
     edges = lift(values, plot.bins) do vals, bins
         if bins isa Int
@@ -66,9 +81,19 @@ function Makie.plot!(plot::Hist)
     end
 
     widths = lift(diff, edges)
+    color = lift(plot.color) do color
+        if color === :values
+            return last.(points[])
+        else
+            return color
+        end
+    end
 
+    bar_labels = map(plot.bar_labels) do x
+        x === :values ? :y : x
+    end
     # plot the values, not the observables, to be in control of updating
-    bp = barplot!(plot, points[]; width = widths[], plot.attributes...)
+    bp = barplot!(plot, points[]; width = widths[], plot.attributes..., bar_labels=bar_labels, color=color)
 
     # update the barplot points without triggering, then trigger with `width`
     on(widths) do w

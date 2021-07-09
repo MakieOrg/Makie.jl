@@ -321,3 +321,4 @@ inverse_transform(::typeof(sqrt)) = x -> x ^ 2
 inverse_transform(F::Tuple) = map(inverse_transform, F)
 
 inverse_transform(::typeof(logit)) = logistic
+inverse_transform(x) = nothing

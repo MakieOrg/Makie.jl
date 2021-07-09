@@ -37,5 +37,4 @@ database = database_filtered(excludes, excludes2)
 
 recorded = joinpath(@__DIR__, "recorded")
 rm(recorded; force=true, recursive=true); mkdir(recorded)
-ReferenceTests.record_tests(database; recording_dir=recorded)
-ReferenceTests.reference_tests(recorded; difference=0.06)
+ReferenceTests.run_reference_tests(database, recorded; difference=0.06)

@@ -99,21 +99,6 @@ end
     wireframe(r, r, z)
 end
 
-@cell "Surface" begin
-    N = 30
-    function xy_data(x, y)
-        r = sqrt(x^2 + y^2)
-        r == 0.0 ? 1f0 : (sin(r) / r)
-    end
-    lspace = range(-10, stop=10, length=N)
-    z = Float32[xy_data(x, y) for x in lspace, y in lspace]
-    r = range(0, stop=3, length=N)
-    surface(
-        r, r, z,
-        colormap=:Spectral
-    )
-end
-
 @cell "Surface with image" begin
     N = 30
     function xy_data(x, y)
@@ -188,7 +173,6 @@ end
     r = range(-1, stop=1, length=100)
     contour3d(r, r, (x, y) -> xy_data(10x, 10y), levels=20, linewidth=3)
 end
-
 
 @cell "Arrows 3D" begin
     function SphericalToCartesian(r::T, θ::T, ϕ::T) where T <: AbstractArray

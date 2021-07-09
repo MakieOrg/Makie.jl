@@ -333,21 +333,36 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
     return robj
 end
 
-xy_convert(x::AbstractVector, n) = el32convert(x)
+# el32convert doesn't copy for array of Float32
+# But we assume that xy_convert copies when we use it
+xy_convert(x::AbstractArray{Float32}, n) = copy(x)
+xy_convert(x::AbstractArray, n) = el32convert(x)
 xy_convert(x, n) = Float32[LinRange(extrema(x)..., n + 1);]
 
 function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
     return cached_robj!(screen, scene, x) do gl_attributes
         t = Makie.transform_func_obs(scene)
         mat = x[3]
-        xpos = map(t, x[1]) do t, x
-            n = size(mat[], 1)
-            return first.(apply_transform.((t,), Point.(xy_convert(x, n), 0)))
+        xypos = map(t, x[1], x[2]) do t, x, y
+            x1d = xy_convert(x, size(mat[], 1))
+            y1d = xy_convert(y, size(mat[], 2))
+            # Only if transform doesn't do anything, we can stay linear in 1/2D
+            if t === identity || t isa Tuple && all(x-> x === identity, t)
+                return (x1d, y1d)
+            else
+                # If we do any transformation, we have to assume things aren't on the grid anymore
+                # so x + y need to become matrices.
+                map!(x1d, x1d) do x
+                    return apply_transform(t, Point(x, 0))[1]
+                end
+                map!(y1d, y1d) do y
+                    return apply_transform(t, Point(0, y))[2]
+                end
+                return (x1d, y1d)
+            end
         end
-        ypos = map(t, x[2]) do t, y
-            n = size(mat[], 1)
-            return last.(apply_transform.((t,), Point.(0, xy_convert(y, n))))
-        end
+        xpos = map(first, xypos)
+        ypos = map(last, xypos)
         gl_attributes[:position_x] = Texture(xpos, minfilter = :nearest)
         gl_attributes[:position_y] = Texture(ypos, minfilter = :nearest)
         # number of planes used to render the heatmap
@@ -478,7 +493,24 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
         types = map(v -> typeof(to_value(v)), x[1:2])
 
         if all(T -> T <: Union{AbstractMatrix, AbstractVector}, types)
-            args = map(x[1:3]) do arg
+            t = Makie.transform_func_obs(scene)
+            mat = x[3]
+            xypos = map(t, x[1], x[2]) do t, x, y
+                x1d = xy_convert(x, size(mat[], 1))
+                y1d = xy_convert(y, size(mat[], 2))
+                # Only if transform doesn't do anything, we can stay linear in 1/2D
+                if t === identity
+                    return (x1d, y1d)
+                else
+                    # If we do any transformation, we have to assume things aren't on the grid anymore
+                    # so x + y need to become matrices.
+                    matrix = [apply_transform(t, Point(x, y)) for x in x1d, y in y1d]
+                    return (first.(matrix), last.(matrix))
+                end
+            end
+            xpos = map(first, xypos)
+            ypos = map(last, xypos)
+            args = map((xpos, ypos, mat)) do arg
                 Texture(el32convert(arg); minfilter=:nearest)
             end
             return visualize(args, Style(:surface), gl_attributes)
