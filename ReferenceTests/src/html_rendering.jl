@@ -32,21 +32,17 @@ function get_medias(path, result=[])
     return result
 end
 
-using ImageShow
-
 function generate_test_summary(path, recorded_root, refimages_root, scores)
     open(path, "w") do io
         scores_sorted = sort!(collect(scores), by=last, rev=true)
         for (filename, score) in scores_sorted
             media_ref = get_medias(joinpath(refimages_root, filename))
             media_recorded = get_medias(joinpath(recorded_root, filename))
-            println(io, "<h1> $filename : $(round(score, digits=4)) </h1>")
+            println(io, "<h1> $filename [overlay, reference, recorded] : $(round(score, digits=4)) </h1>")
             for (ref, rec) in zip(media_ref, media_recorded)
-                diff = (ref .- rec) ./ 2.0
-
-                diff2 = (ref .* 0.5) .+ (rec .* 0.5)
+                diff = (ref .* 0.5) .+ (rec .* 0.5)
                 ctx = IOContext(io, :thumbnailsize=> size(diff), :thumbnail => false)
-                show(ctx, "text/html", [diff, diff2])
+                show(ctx, "text/html", [diff, ref, rec])
             end
         end
     end

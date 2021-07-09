@@ -152,7 +152,7 @@ end
 end
 
 @cell "log10 heatmap" begin
-    heatmap(rand(10, 5), axis = (yscale = log10, xscale=log10))
+    heatmap(RNG.rand(10, 5), axis = (yscale = log10, xscale=log10))
 end
 
 @cell "reverse range heatmap" begin
