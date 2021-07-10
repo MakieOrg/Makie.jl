@@ -54,15 +54,10 @@ using Base.Iterators: repeated, drop
 import Base: getindex, setindex!, push!, append!, parent, get, get!, delete!, haskey
 using Observables: listeners, to_value, notify
 
-const RealVector{T} = AbstractVector{T} where T <: Number
 const Node = Observable # shorthand
-const RGBAf0 = RGBA{Float32}
-const RGBf0 = RGB{Float32}
-const NativeFont = FreeTypeAbstraction.FTFont
 
 include("documentation/docstringextension.jl")
 
-include("utilities/quaternions.jl")
 include("interaction/PriorityObservable.jl")
 include("types.jl")
 include("utilities/utilities.jl")
@@ -110,7 +105,6 @@ include("conversions.jl")
 include("shorthands.jl")
 
 # camera types + functions
-include("camera/projection_math.jl")
 include("camera/camera.jl")
 include("camera/camera2d.jl")
 include("camera/camera3d.jl")

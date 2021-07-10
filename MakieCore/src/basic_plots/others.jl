@@ -161,40 +161,6 @@ Attributes(;
 end
 
 """
-scatter(positions)
-scatter(x, y)
-scatter(x, y, z)
-
-Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
-
-"""
-@recipe(Scatter, positions) do scene
-Attributes(;
-    default_theme(scene)...,
-    color = theme(scene, :markercolor),
-    colormap = theme(scene, :colormap),
-    colorrange = automatic,
-    marker = theme(scene, :marker),
-    markersize = theme(scene, :markersize),
-
-    strokecolor = theme(scene, :markerstrokecolor),
-    strokewidth = theme(scene, :markerstrokewidth),
-    glowcolor = (:black, 0.0),
-    glowwidth = 0.0,
-
-    rotations = Billboard(),
-    marker_offset = automatic,
-    transform_marker = false, # Applies the plots transformation to marker
-    distancefield = nothing,
-    uv_offset_width = (0.0, 0.0, 0.0, 0.0),
-    markerspace = Pixel,
-    fxaa = false,
-    cycle = [:color],
-    inspectable = theme(scene, :inspectable)
-)
-end
-
-"""
 meshscatter(positions)
 meshscatter(x, y)
 meshscatter(x, y, z)

@@ -1,28 +1,108 @@
+const MarkerSizeTypes{N} = TorVector{Union{Float32, Vec{N, Float32}}}
+const MarkerTypes = TorVector{<:Union{Symbol,Char, Type{Circle}, Type{Rect2D}}}
+const DistanceFieldType = Union{Nothing, AbstractMatrix{<: Union{Colorant, Number}}}
 
-@with_kw mutable struct Scatter{N} <: AbstractPlot
-    parent::Union{Scene, Nothing} = nothing
+mutable struct Scatter{N} <: AbstractPlot{Any}
+    parent::Any
 
-    positions::AbstractVector{Point{N,Float32}}
+    position::AbstractVector{Point{N,Float32}}
+    color::TorVector{RGBAf0}
+    marker::MarkerTypes
+    markersize::MarkerSizeTypes{N}
+    marker_offset::TorVector{Vec{N,Float32}}
+    strokecolor::TorVector{RGBAf0}
+    strokewidth::TorVector{Float32}
+    markerspace::Space
+    transform_marker::Bool
+    distancefield::DistanceFieldType
+    cycle::Vector{Symbol}
+    inspectable::Bool
 
-    color::TorVector{RGBAf0} = :black
-    marker::TorVector{<:Union{Symbol,Char, Type{Circle}, Type{Rect2D}}} = Circle
-    markersize::TorVector{Union{Float32, Vec{N,Float32}}} = 5
-    marker_offset::TorVector{Vec{N,Float32}} = automatic
-    strokecolor::TorVector{RGBAf0} = :black
-    strokewidth::TorVector{Float32} = 0.0
-    markerspace::Space = Pixel
-    transform_marker::Bool = false
-    distancefield::Union{Nothing, AbstractMatrix{<: Union{Colorant, Number}}} = nothing
-    cycle::Vector{Symbol} = [:color]
-    inspectable::Bool = true
+    anti_aliasing::AntiAliasing
+    visible::Bool
+    basics::PlotBasics
 
-    anti_aliasing::Bool = :fxaa
-    visible::Bool = true
-    basics::PlotBasics = PlotBasics()
+    function Scatter(
+            parent,
+            position::AbstractVector{Point{N, Float32}},
+            color,
+            marker,
+            markersize,
+            marker_offset,
+            strokecolor,
+            strokewidth,
+            markerspace,
+            transform_marker,
+            distancefield,
+            cycle,
+            inspectable,
+
+            anti_aliasing,
+            visible,
+            basics,
+        ) where N
+        obj = new{N}()
+        # Set fields with setfield to trigger conversion!
+        obj.parent = parent
+        obj.position = position
+        obj.color = color
+        obj.marker = marker
+        obj.markersize = markersize
+        obj.marker_offset = marker_offset
+        obj.strokecolor = strokecolor
+        obj.strokewidth = strokewidth
+        obj.markerspace = markerspace
+        obj.transform_marker = transform_marker
+        obj.distancefield = distancefield
+        obj.cycle = cycle
+        obj.inspectable = inspectable
+
+        obj.anti_aliasing = anti_aliasing
+        obj.visible = visible
+        obj.basics = basics
+        return obj
+    end
+
+    function Scatter(position;
+            parent = nothing,
+            color = :black,
+            marker = Circle,
+            markersize = 5,
+            marker_offset = automatic,
+            strokecolor = :black,
+            strokewidth = 0.0,
+            markerspace = Pixel,
+            transform_marker = false,
+            distancefield = nothing,
+            cycle = [:color],
+            inspectable = true,
+
+            anti_aliasing = NOAA,
+            visible = true,
+            basics = PlotBasics())
+
+        return Scatter(
+            parent,
+            convert_arguments(Scatter, position)[1],
+            color,
+            marker,
+            markersize,
+            marker_offset,
+            strokecolor,
+            strokewidth,
+            markerspace,
+            transform_marker,
+            distancefield,
+            cycle,
+            inspectable,
+
+            anti_aliasing,
+            visible,
+            basics,
+        )
+    end
 end
 
-function Scatter(positions; kw...)
-    pos = convert_arguments(Scatter, positions)
-    attributes = convert_attributes(Scatter, (positions=pos, kw...))
-    return Scatter(; attributes...)
+function convert_attribute(scatter::Scatter, ::Automatic, ::key"marker_offset")
+    return scatter.markersize ./ 2
 end

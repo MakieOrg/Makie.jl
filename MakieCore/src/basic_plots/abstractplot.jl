@@ -1,20 +1,16 @@
 
-optional_fields(T::Type{<: AbstractPlot}) = keys(defaults(T))
-
 function update!(scatter::AbstractPlot, values::Dict{Symbol})
-    scatter.basics.on_update[] = values
+    # scatter.basics.on_update[] = values
 end
 
 function Base.setproperty!(scatter::T, field::Symbol, value::Any) where T <: AbstractPlot
-    converted = convert_attribute(T, Key(field), value)
+    converted = convert_attribute(scatter, value, Key(field))
+    FT = fieldtype(T, field)
+    if !(converted isa FT)
+        error("Attribute $(field) couldn't be converted to required type. Converted type $(typeof(converted)). Required type: $(FT)")
+    end
     setfield!(scatter, field, converted)
     update!(scatter, Dict(field => converted))
-end
-
-function convert_attributes(::T, kw) where T
-    return map(keys(kw)) do name
-        return convert_attribute(T, Key(name), kw[name])
-    end
 end
 
 mutable struct PlotBasics
@@ -25,7 +21,6 @@ mutable struct PlotBasics
     camera::Camera
     transformation::Transformation
 end
-
 
 function PlotBasics()
     return PlotBasics(

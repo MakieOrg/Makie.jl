@@ -313,8 +313,6 @@ end
 plottype(P1::Type{<: Combined{Any}}, P2::Type{<: Combined{T}}) where T = P2
 plottype(P1::Type{<: Combined{T}}, P2::Type{<: Combined}) where T = P1
 
-# all the plotting functions that get a plot type
-const PlotFunc = Union{Type{Any}, Type{<: AbstractPlot}}
 
 
 ######################################################################
