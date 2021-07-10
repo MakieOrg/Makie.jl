@@ -64,108 +64,18 @@ const RGBAf0 = RGBA{Float32}
 const RGBf0 = RGB{Float32}
 const NativeFont = FreeTypeAbstraction.FTFont
 
-
-
-
-
-
-
 include("documentation/docstringextension.jl")
-
 include("utilities/quaternions.jl")
 include("interaction/PriorityObservable.jl")
-
-struct ScalarOrVector{T}
-    sv::Union{T, Vector{T}}
-end
-
-Base.convert(::Type{<:ScalarOrVector}, v::AbstractVector{T}) where T = ScalarOrVector{T}(collect(v))
-Base.convert(::Type{<:ScalarOrVector}, x::T) where T = ScalarOrVector{T}(x)
-Base.convert(::Type{<:ScalarOrVector{T}}, x::ScalarOrVector{T}) where T = x
-
-function collect_vector(sv::ScalarOrVector, n::Int)
-    if sv.sv isa Vector
-        if length(sv.sv) != n
-            error("Requested collected vector with $n elements, contained vector had $(length(sv.sv)) elements.")
-        end
-        sv.sv
-    else
-        [sv.sv for i in 1:n]
-    end
-end
-
-"""
-    GlyphCollection
-
-Stores information about the glyphs in a string that had a layout calculated for them.
-"""
-struct GlyphCollection
-    glyphs::Vector{Char}
-    fonts::Vector{FTFont}
-    origins::Vector{Point3f0}
-    extents::Vector{FreeTypeAbstraction.FontExtent{Float32}}
-    scales::ScalarOrVector{Vec2f0}
-    rotations::ScalarOrVector{Quaternionf0}
-    colors::ScalarOrVector{RGBAf0}
-    strokecolors::ScalarOrVector{RGBAf0}
-    strokewidths::ScalarOrVector{Float32}
-
-    function GlyphCollection(glyphs, fonts, origins, extents, scales, rotations,
-            colors, strokecolors, strokewidths)
-
-        n = length(glyphs)
-        @assert length(fonts)  == n
-        @assert length(origins)  == n
-        @assert length(extents)  == n
-        @assert attr_broadcast_length(scales) in (n, 1)
-        @assert attr_broadcast_length(rotations)  in (n, 1)
-        @assert attr_broadcast_length(colors) in (n, 1)
-
-        rotations = convert_attribute(rotations, key"rotation"())
-        fonts = [convert_attribute(f, key"font"()) for f in fonts]
-        colors = convert_attribute(colors, key"color"())
-        strokecolors = convert_attribute(strokecolors, key"color"())
-        strokewidths = Float32.(strokewidths)
-        new(glyphs, fonts, origins, extents, scales, rotations, colors, strokecolors, strokewidths)
-    end
-end
-
-
 include("types.jl")
 include("utilities/utilities.jl")
 include("utilities/texture_atlas.jl")
 include("interaction/nodes.jl")
 include("interaction/liftmacro.jl")
-
 include("colorsampler.jl")
 include("patterns.jl")
-
 # Basic scene/plot/recipe interfaces + types
 include("scenes.jl")
-
-
-
-struct Figure
-    scene::Scene
-    layout::GridLayoutBase.GridLayout
-    content::Vector
-    attributes::Attributes
-    current_axis::Ref{Any}
-
-    function Figure(args...)
-        f = new(args...)
-        current_figure!(f)
-        f
-    end
-end
-
-struct FigureAxisPlot
-    figure::Figure
-    axis
-    plot::AbstractPlot
-end
-
-const FigureLike = Union{Scene, Figure, FigureAxisPlot}
 
 include("theming.jl")
 include("themes/theme_ggplot2.jl")
@@ -367,185 +277,11 @@ end
 
 include("figureplotting.jl")
 include("basic_recipes/series.jl")
+include("basic_recipes/text.jl")
 
 export Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter, Surface, Text, Volume
 export heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface, text, volume
 export heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, surface!, text!, volume!
-
-
-
-function project_point2(mat4, point2)
-    Point2f0(mat4 * to_ndim(Point4f0, to_ndim(Point3f0, point2, 0), 1))
-end
-
-
-function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXString}}}})
-
-    # attach a function to any text that calculates the glyph layout and stores it
-    lineels_glyphcollection_offset = lift(plot[1], plot.textsize, plot.align, plot.rotation,
-            plot.model, plot.color, plot.strokecolor, plot.strokewidth, plot.position) do latexstring,
-                ts, al, rot, mo, color, scolor, swidth, _
-
-
-        ts = to_textsize(ts)
-        rot = to_rotation(rot)
-        col = to_color(color)
-
-        if latexstring isa AbstractVector
-            tex_elements = []
-            glyphcollections = GlyphCollection[]
-            offsets = Point2f0[]
-            broadcast_foreach(latexstring, ts, al, rot, color, scolor, swidth) do latexstring,
-                ts, al, rot, color, scolor, swidth
-
-                te, gc, offs = texelems_and_glyph_collection(latexstring, ts,
-                    al[1], al[2], rot, color, scolor, swidth)
-                push!(tex_elements, te)
-                push!(glyphcollections, gc)
-                push!(offsets, offs)
-            end
-            tex_elements, glyphcollections, offsets
-        else
-            tex_elements, glyphcollection, offset = texelems_and_glyph_collection(latexstring, ts,
-                al[1], al[2], rot, color, scolor, swidth)
-        end
-    end
-
-    glyphcollection = @lift($lineels_glyphcollection_offset[2])
-
-
-    linepairs = Node(Tuple{Point2f0, Point2f0}[])
-    linewidths = Node(Float32[])
-
-    scene = Makie.parent_scene(plot)
-
-    onany(lineels_glyphcollection_offset, scene.camera.projectionview) do (allels, gcs, offs), projview
-
-        inv_projview = inv(projview)
-        pos = plot.position[]
-        ts = plot.textsize[]
-        rot = plot.rotation[]
-
-        ts = to_textsize(ts)
-        rot = convert_attribute(rot, key"rotation"())
-
-        empty!(linepairs.val)
-        empty!(linewidths.val)
-
-        # for the vector case, allels is a vector of vectors
-        # so for broadcasting the single vector needs to be wrapped in Ref
-        if gcs isa GlyphCollection
-            allels = [allels]
-        end
-        broadcast_foreach(allels, offs, pos, ts, rot) do allels, offs, pos, ts, rot
-            offset = Point2f0(pos)
-
-            els = map(allels) do el
-                el[1] isa VLine || el[1] isa HLine || return nothing
-
-                t = el[1].thickness * ts
-                p = el[2]
-
-                ps = if el[1] isa VLine
-                    h = el[1].height
-                    (Point2f0(p[1], p[2]) .* ts, Point2f0(p[1], p[2] + h) .* ts) .- Ref(offs)
-                else
-                    w = el[1].width
-                    (Point2f0(p[1], p[2]) .* ts, Point2f0(p[1] + w, p[2]) .* ts) .- Ref(offs)
-                end
-                ps = Ref(rot) .* to_ndim.(Point3f0, ps, 0)
-                # TODO the points need to be projected to work inside Axis
-                # ps = project ps with projview somehow
-
-                ps = Point2f0.(ps) .+ Ref(offset)
-                ps, t
-            end
-            pairs = filter(!isnothing, els)
-            append!(linewidths.val, repeat(last.(pairs), inner = 2))
-            append!(linepairs.val, first.(pairs))
-        end
-        notify(linepairs)
-    end
-
-    notify(plot.position)
-
-    text!(plot, glyphcollection; plot.attributes...)
-    linesegments!(plot, linepairs, linewidth = linewidths, color = plot.color)
-
-    plot
-end
-
-function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, valign,
-        rotation, color, strokecolor, strokewidth)
-
-    rot = convert_attribute(rotation, key"rotation"())
-
-    all_els = generate_tex_elements(str.s[2:end-1])
-    els = filter(x -> x[1] isa TeXChar, all_els)
-
-    # hacky, but attr per char needs to be fixed
-    fs = Vec2f0(first(fontscale_px))
-
-    scales_2d = [Vec2f0(x[3] * Vec2f0(fs)) for x in els]
-
-    chars = [x[1].char for x in els]
-    fonts = [x[1].font for x in els]
-
-    extents = [FreeTypeAbstraction.get_extent(f, c) for (f, c) in zip(fonts, chars)]
-
-    bboxes = map(extents, fonts, scales_2d) do ext, font, scale
-        unscaled_hi_bb = FreeTypeAbstraction.height_insensitive_boundingbox(ext, font)
-        hi_bb = FRect2D(
-            origin(unscaled_hi_bb) * scale,
-            widths(unscaled_hi_bb) * scale
-        )
-    end
-
-    basepositions = [to_ndim(Vec3f0, fs, 0) .* to_ndim(Point3f0, x[2], 0)
-        for x in els]
-
-    bb = isempty(bboxes) ? BBox(0, 0, 0, 0) : begin
-        mapreduce(union, zip(bboxes, basepositions)) do (b, pos)
-            FRect2D(FRect3D(b) + pos)
-        end
-    end
-
-
-    xshift = if halign == :center
-        width(bb) / 2
-    elseif halign == :left
-        minimum(bb)[1]
-    elseif halign == :right
-        maximum(bb)[1]
-    end
-
-    yshift = if valign == :center
-        maximum(bb)[2] - (height(bb) / 2)
-    elseif valign == :top
-        maximum(bb)[2]
-    else
-        minimum(bb)[2]
-    end
-
-    positions = basepositions .- Ref(Point3f0(xshift, yshift, 0))
-    positions .= Ref(rot) .* positions
-
-    pre_align_gl = GlyphCollection(
-        chars,
-        fonts,
-        Point3f0.(positions),
-        extents,
-        scales_2d,
-        rot,
-        color,
-        strokecolor,
-        strokewidth,
-    )
-
-    all_els, pre_align_gl, Point2f0(xshift, yshift)
-end
-
-MakieLayout.iswhitespace(l::LaTeXString) = MakieLayout.iswhitespace(l.s[2:end-1])
 
 
 end # module

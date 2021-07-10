@@ -565,3 +565,29 @@ function update_limits!(scene::Scene, new_limits::Rect, padding::Vec3f0=scene.pa
     scene.data_limits[] = FRect3D(minimum(lims) .- padd_abs, lim_w .+  2padd_abs)
     scene
 end
+
+#####
+##### Figure type
+#####
+
+struct Figure
+    scene::Scene
+    layout::GridLayoutBase.GridLayout
+    content::Vector
+    attributes::Attributes
+    current_axis::Ref{Any}
+
+    function Figure(args...)
+        f = new(args...)
+        current_figure!(f)
+        f
+    end
+end
+
+struct FigureAxisPlot
+    figure::Figure
+    axis
+    plot::AbstractPlot
+end
+
+const FigureLike = Union{Scene, Figure, FigureAxisPlot}
