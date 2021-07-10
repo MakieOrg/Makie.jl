@@ -292,6 +292,8 @@ function serialize_three(scene::Scene, plot::AbstractPlot)
     mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
     mesh[:visible] = plot.visible
     mesh[:uuid] = js_uuid(plot)
+    mesh[:transparency] = plot.transparency
+    mesh[:overdraw] = plot.overdraw
     uniforms = mesh[:uniforms]
     updater = mesh[:uniform_updater]
 

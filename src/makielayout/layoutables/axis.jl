@@ -418,13 +418,9 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     on(process_event, scrollevents)
     on(process_event, keysevents)
 
-    register_interaction!(ax,
-        :rectanglezoom,
-        RectangleZoom(false, false, false, nothing, nothing, Node(FRect2D(0, 0, 1, 1)), []))
+    register_interaction!(ax, :rectanglezoom, RectangleZoom(ax))
 
-    register_interaction!(ax,
-        :limitreset,
-        LimitReset())
+    register_interaction!(ax, :limitreset, LimitReset())
 
     register_interaction!(ax,
         :scrollzoom,
