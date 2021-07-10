@@ -70,10 +70,17 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         ticklabelsvisible, ticks, tickformat, ticksize, ticksvisible, ticklabelpad, tickalign,
         tickwidth, tickcolor, spinewidth, topspinevisible,
         rightspinevisible, leftspinevisible, bottomspinevisible, topspinecolor,
-        leftspinecolor, rightspinecolor, bottomspinecolor, colormap, limits,
+        leftspinecolor, rightspinecolor, bottomspinecolor, colormap, limits, colorrange,
         halign, valign, vertical, flipaxis, ticklabelalign, flip_vertical_label,
         nsteps, highclip, lowclip,
         minorticksvisible, minortickalign, minorticksize, minortickwidth, minortickcolor, minorticks, scale)
+
+    limits = lift(limits, colorrange) do limits, colorrange
+        if all(!isnothing, (limits, colorrange))
+            error("Both colorrange + limits are set, please only set one, they're aliases. colorrange: $(colorrange), limits: $(limits)")
+        end
+        return something(limits, colorrange, (0, 1))
+    end
 
     decorations = Dict{Symbol, Any}()
 
