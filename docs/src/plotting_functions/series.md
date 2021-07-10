@@ -1,4 +1,4 @@
-# Series
+# series
 
 ```@docs
 series

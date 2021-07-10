@@ -17,6 +17,7 @@ using Match
 import Animations
 import PlotUtils
 using GridLayoutBase
+using GridLayoutBase: GridSubposition
 import Showoff
 using Colors
 
@@ -101,7 +102,7 @@ export Cycle
 
 
 # from GridLayoutBase
-export GridLayout, GridPosition
+export GridLayout, GridPosition, GridSubposition
 export GridLayoutSpec
 export BBox
 export LayoutObservables

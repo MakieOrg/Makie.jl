@@ -312,6 +312,31 @@ function convert_arguments(::DiscreteSurface, data::AbstractMatrix)
     (0.5f0 .. n+0.5f0, 0.5f0 .. m+0.5f0, el32convert(data))
 end
 
+function convert_arguments(SL::SurfaceLike, x::AbstractVector{<:Number}, y::AbstractVector{<:Number}, z::AbstractVector{<:Number})
+    if !(length(x) == length(y) == length(z))
+        error("x, y and z need to have the same length. Lengths are $(length.((x, y, z)))")
+    end
+
+    xys = tuple.(x, y)
+    if length(unique(xys)) != length(x)
+        c = StatsBase.countmap(xys)
+        cdup = filter(x -> x[2] > 1, c)
+        error("Found duplicate x/y coordinates: $cdup")
+    end
+
+    xs = Float32.(sort(unique(x)))
+    any(isnan, xs) && error("x must not have NaN values.")
+    ys = Float32.(sort(unique(y)))
+    any(isnan, ys) && error("x must not have NaN values.")
+    zs = fill(NaN32, length(xs), length(ys))
+    foreach(zip(x, y, z)) do (xi, yi, zi)
+        i = searchsortedfirst(xs, xi)
+        j = searchsortedfirst(ys, yi)
+        @inbounds zs[i, j] = zi
+    end
+    convert_arguments(SL, xs, ys, zs)
+end
+
 
 """
     convert_arguments(P, x, y, f)::(Vector, Vector, Matrix)
@@ -320,14 +345,14 @@ Takes vectors `x` and `y` and the function `f`, and applies `f` on the grid that
 This is equivalent to `f.(x, y')`.
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::SurfaceLike, x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function) where {T1, T2}
+function convert_arguments(sl::SurfaceLike, x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function) where {T1, T2}
     if !applicable(f, x[1], y[1])
         error("You need to pass a function with signature f(x::$T1, y::$T2). Found: $f")
     end
     T = typeof(f(x[1], y[1]))
     z = similar(x, T, (length(x), length(y)))
     z .= f.(x, y')
-    (x, y, z)
+    return convert_arguments(sl, x, y, z)
 end
 
 ################################################################################

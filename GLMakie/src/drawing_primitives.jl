@@ -343,7 +343,6 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
     return cached_robj!(screen, scene, x) do gl_attributes
         t = Makie.transform_func_obs(scene)
         mat = x[3]
-        mat = x[3]
         xypos = map(t, x[1], x[2]) do t, x, y
             x1d = xy_convert(x, size(mat[], 1))
             y1d = xy_convert(y, size(mat[], 2))
