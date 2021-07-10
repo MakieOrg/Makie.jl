@@ -125,13 +125,18 @@ end
 struct LimitReset end
 
 mutable struct RectangleZoom
-    active::Bool
+    callback::Function
+    active::Observable{Bool}
     restrict_x::Bool
     restrict_y::Bool
     from::Union{Nothing, Point2f0}
     to::Union{Nothing, Point2f0}
     rectnode::Observable{FRect2D}
-    plots::Vector{AbstractPlot}
+end
+
+function RectangleZoom(callback::Function; restrict_x=false, restrict_y=false)
+    return RectangleZoom(callback, Observable(false), restrict_x, restrict_y,
+                         nothing, nothing, Observable(FRect2D(0, 0, 1, 1)))
 end
 
 struct ScrollZoom
@@ -173,6 +178,25 @@ end
     keysevents::Observable{KeysEvent}
     interactions::Dict{Symbol, Tuple{Bool, Any}}
     cycler::Cycler
+end
+
+
+function RectangleZoom(ax::Axis)
+    r = RectangleZoom() do newlims
+        if !(0 in widths(newlims))
+            ax.targetlimits[] = newlims
+        end
+        return
+    end
+    selection_vertices = lift(_selection_vertices, ax.finallimits, r.rectnode)
+    # manually specify correct faces for a rectangle with a rectangle hole inside
+    faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
+    # fxaa false seems necessary for correct transparency
+    mesh = mesh!(ax.scene, selection_vertices, faces, color = (:black, 0.2), shading = false,
+                 fxaa = false, inspectable = false, visible=r.active, transparency=true)
+    # translate forward so selection mesh and frame are never behind data
+    translate!(mesh, 0, 0, 100)
+    return r
 end
 
 @Layoutable Colorbar
