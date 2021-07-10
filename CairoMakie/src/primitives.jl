@@ -308,60 +308,63 @@ function p3_to_p2(p::Point3{T}) where T
     end
 end
 
-function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
+function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text{<:Tuple{<:G}}) where G <: Union{AbstractArray{<:Makie.GlyphCollection}, Makie.GlyphCollection}
     ctx = screen.context
-    @get_attribute(primitive, (textsize, color, font, rotation, model, space, offset))
-    txt = to_value(primitive[1])
+    @get_attribute(primitive, (rotation, model, space, offset))
     position = primitive.attributes[:position][]
     # use cached glyph info
-    glyphlayouts = primitive._glyphlayout[]
+    glyph_collection = to_value(primitive[1])
 
-    draw_string(scene, ctx, txt, position, glyphlayouts, textsize, color, font,
-        remove_billboard(rotation), model, space, offset)
+    draw_glyph_collection(scene, ctx, position, glyph_collection, remove_billboard(rotation), model, space, offset)
 
     nothing
 end
 
-function draw_string(scene, ctx, strings::AbstractArray, positions::AbstractArray, glyphlayouts, textsize, color, font, rotation, model::SMatrix, space, offset)
+
+function draw_glyph_collection(scene, ctx, positions, glyph_collections::AbstractArray, rotation, model::SMatrix, space, offset)
 
     # TODO: why is the Ref around model necessary? doesn't broadcast_foreach handle staticarrays matrices?
-    broadcast_foreach(strings, positions, glyphlayouts, textsize, color, font, rotation,
-        Ref(model), space, offset) do str, pos, glayout, ts, c, f, ro, mo, sp, off
+    broadcast_foreach(positions, glyph_collections, rotation,
+        Ref(model), space, offset) do pos, glayout, ro, mo, sp, off
 
-        draw_string(scene, ctx, str, pos, glayout, ts, c, f, ro, mo, sp, off)
+        draw_glyph_collection(scene, ctx, pos, glayout, ro, mo, sp, off)
     end
 end
 
-function draw_string(scene, ctx, str::String, position::VecTypes, glyphlayout, textsize, color, font, rotation, model, space, offset)
+function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation, model, space, offsets)
 
-    glyphoffsets = glyphlayout.origins
+    glyphs = glyph_collection.glyphs
+    glyphoffsets = glyph_collection.origins
+    fonts = glyph_collection.fonts
+    rotations = glyph_collection.rotations
+    scales = glyph_collection.scales
+    colors = glyph_collection.colors
+    strokewidths = glyph_collection.strokewidths
+    strokecolors = glyph_collection.strokecolors
 
     Cairo.save(ctx)
-    cairoface = set_ft_font(ctx, font)
-    Cairo.set_source_rgba(ctx, rgbatuple(color)...)
-    old_matrix = get_font_matrix(ctx)
 
+    broadcast_foreach(glyphs, glyphoffsets, fonts, rotations, scales, colors, strokewidths, strokecolors, offsets) do glyph,
+        glyphoffset, font, rotation, scale, color, strokewidth, strokecolor, offset
 
-    for (i, char) in enumerate(str)
-        goffset = glyphoffsets[i]
-        if offset isa Vector
-            p3_offset = to_ndim(Point3f0, offset[i], 0)
-        else
-            p3_offset = to_ndim(Point3f0, offset, 0)
-        end
-        ts = textsize isa Vector ? textsize[i] : textsize
+        cairoface = set_ft_font(ctx, font)
+        old_matrix = get_font_matrix(ctx)
 
+        p3_offset = to_ndim(Point3f0, offset, 0)
 
-        char in ('\r', '\n') && continue
+        glyph in ('\r', '\n') && return
+
+        Cairo.save(ctx)
+        Cairo.set_source_rgba(ctx, rgbatuple(color)...)
 
         if space == :data
             # in data space, the glyph offsets are just added to the string positions
             # and then projected
 
             # glyph position in data coordinates (offset has rotation applied already)
-            gpos_data = to_ndim(Point3f0, position, 0) .+ goffset .+ p3_offset
+            gpos_data = to_ndim(Point3f0, position, 0) .+ glyphoffset .+ p3_offset
 
-            scale3 = ts isa Number ? Point3f0(ts, ts, 0) : to_ndim(Point3f0, ts, 0)
+            scale3 = scale isa Number ? Point3f0(scale, scale, 0) : to_ndim(Point3f0, scale, 0)
 
             # this could be done better but it works at least
 
@@ -373,12 +376,12 @@ function draw_string(scene, ctx, str::String, position::VecTypes, glyphlayout, t
             xvec = rotation * (scale3[1] * Point3f0(1, 0, 0))
             yvec = rotation * (scale3[2] * Point3f0(0, -1, 0))
 
-            gproj = project_position(scene, gpos_data, Mat4f0(I))
+            glyphpos = project_position(scene, gpos_data, Mat4f0(I))
             xproj = project_position(scene, gpos_data + xvec, Mat4f0(I))
             yproj = project_position(scene, gpos_data + yvec, Mat4f0(I))
 
-            xdiff = xproj - gproj
-            ydiff = yproj - gproj
+            xdiff = xproj - glyphpos
+            ydiff = yproj - glyphpos
 
             mat = Cairo.CairoMatrix(
                 xdiff[1], xdiff[2],
@@ -386,40 +389,49 @@ function draw_string(scene, ctx, str::String, position::VecTypes, glyphlayout, t
                 0, 0,
             )
 
-            Cairo.save(ctx)
-            Cairo.move_to(ctx, gproj...)
-            set_font_matrix(ctx, mat)
-
-            # Cairo.rotate(ctx, to_2d_rotation(rotation))
-            Cairo.show_text(ctx, string(char))
-            Cairo.restore(ctx)
-
         elseif space == :screen
             # in screen space, the glyph offsets are added after projecting
             # the string position into screen space
             glyphpos = project_position(
                 scene,
                 position,
-                Mat4f0(I)) .+ (p3_to_p2(goffset .+ p3_offset)) .* (1, -1) # flip for Cairo
+                Mat4f0(I)) .+ (p3_to_p2(glyphoffset .+ p3_offset)) .* (1, -1) # flip for Cairo
             # and the scale is just taken as is
-            scale = length(ts) == 2 ? ts : SVector(ts, ts)
+            scale = length(scale) == 2 ? scale : SVector(scale, scale)
 
-            Cairo.save(ctx)
-            Cairo.move_to(ctx, glyphpos...)
-            # TODO this only works in 2d
             mat = scale_matrix(scale...)
-            set_font_matrix(ctx, mat)
-            Cairo.rotate(ctx, to_2d_rotation(rotation))
-
-            Cairo.show_text(ctx, string(char))
-            Cairo.restore(ctx)
         else
             error()
         end
+
+        Cairo.save(ctx)
+        Cairo.move_to(ctx, glyphpos...)
+        set_font_matrix(ctx, mat)
+        if space == :screen
+            Cairo.rotate(ctx, to_2d_rotation(rotation))
+        end
+        Cairo.show_text(ctx, string(glyph))
+        Cairo.restore(ctx)
+
+        if strokewidth > 0 && strokecolor != RGBAf0(0, 0, 0, 0)
+            Cairo.save(ctx)
+            Cairo.move_to(ctx, glyphpos...)
+            set_font_matrix(ctx, mat)
+            if space == :screen
+                Cairo.rotate(ctx, to_2d_rotation(rotation))
+            end
+            Cairo.text_path(ctx, string(glyph))
+            Cairo.set_source_rgba(ctx, rgbatuple(strokecolor)...)
+            Cairo.set_line_width(ctx, strokewidth)
+            Cairo.stroke(ctx)
+            Cairo.restore(ctx)
+        end
+        Cairo.restore(ctx)
+
+        cairo_font_face_destroy(cairoface)
+        set_font_matrix(ctx, old_matrix)
     end
 
-    cairo_font_face_destroy(cairoface)
-    set_font_matrix(ctx, old_matrix)
     Cairo.restore(ctx)
 
     nothing

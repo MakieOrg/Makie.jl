@@ -52,6 +52,7 @@ function rotationmatrix_z(angle::Number)
         T0, T0, T0, T1
     )
 end
+
 """
     Create view frustum
 
@@ -99,6 +100,7 @@ function perspectiveprojection(fovy::T, aspect::T, znear::T, zfar::T) where T
     w = T(h * aspect)
     return frustum(-w, w, -h, h, znear, zfar)
 end
+
 function perspectiveprojection(
         ::Type{T}, fovy::Number, aspect::Number, znear::Number, zfar::Number
     ) where T
@@ -112,6 +114,7 @@ than the aspect ratio.
 function perspectiveprojection(wh::Rect2D, fov::T, near::T, far::T) where T
     perspectiveprojection(fov, T(wh.w/wh.h), near, far)
 end
+
 function perspectiveprojection(
         ::Type{T}, wh::Rect2D, fov::Number, near::Number, far::Number
     ) where T
@@ -138,12 +141,15 @@ function lookat(eyePos::Vec{3, T}, lookAt::Vec{3, T}, up::Vec{3, T}) where T
         T0,       T0,       T0,       T1
     ) * translationmatrix(-eyePos)
 end
+
 function lookat(::Type{T}, eyePos::Vec{3}, lookAt::Vec{3}, up::Vec{3}) where T
     lookat(Vec{3,T}(eyePos), Vec{3,T}(lookAt), Vec{3,T}(up))
 end
+
 function orthographicprojection(wh::Rect2D, near::T, far::T) where T
     orthographicprojection(zero(T), T(wh.w), zero(T), T(wh.h), near, far)
 end
+
 function orthographicprojection(
         ::Type{T}, wh::Rect2D, near::Number, far::Number
     ) where T
@@ -164,6 +170,7 @@ function orthographicprojection(
         -(right+left)/(right-left), -(top+bottom)/(top-bottom), -(zfar+znear)/(zfar-znear), T1
     )
 end
+
 function orthographicprojection(::Type{T},
         left  ::Number, right::Number,
         bottom::Number, top  ::Number,
@@ -323,13 +330,16 @@ function project(matrix::Mat4f0, p::T, dim4 = 1.0) where T <: VecTypes
     to_ndim(T, p, 0.0)
 end
 
-
 function project(proj_view::Mat4f0, resolution::Vec2, point::Point)
     p4d = to_ndim(Vec4f0, to_ndim(Vec3f0, point, 0f0), 1f0)
     clip = proj_view * p4d
     p = (clip / clip[4])[Vec(1, 2)]
     p = Vec2f0(p[1], p[2])
     return (((p .+ 1f0) / 2f0) .* (resolution .- 1f0)) .+ 1f0
+end
+
+function project_point2(mat4::Mat4, point2::Point2)
+    Point2f0(mat4 * to_ndim(Point4f0, to_ndim(Point3f0, point2, 0), 1))
 end
 
 function transform(model::Mat4, x::T) where T

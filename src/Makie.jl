@@ -7,6 +7,10 @@ end
 using .ContoursHygiene
 const Contours = ContoursHygiene.Contour
 using Base64
+
+using LaTeXStrings
+export @L_str
+using MathTeXEngine
 using Artifacts
 using Random
 using FFMPEG # get FFMPEG on any system!
@@ -61,7 +65,6 @@ const RGBf0 = RGB{Float32}
 const NativeFont = FreeTypeAbstraction.FTFont
 
 include("documentation/docstringextension.jl")
-
 include("utilities/quaternions.jl")
 include("interaction/PriorityObservable.jl")
 include("types.jl")
@@ -69,34 +72,10 @@ include("utilities/utilities.jl")
 include("utilities/texture_atlas.jl")
 include("interaction/nodes.jl")
 include("interaction/liftmacro.jl")
-
 include("colorsampler.jl")
 include("patterns.jl")
-
 # Basic scene/plot/recipe interfaces + types
 include("scenes.jl")
-
-struct Figure
-    scene::Scene
-    layout::GridLayoutBase.GridLayout
-    content::Vector
-    attributes::Attributes
-    current_axis::Ref{Any}
-
-    function Figure(args...)
-        f = new(args...)
-        current_figure!(f)
-        f
-    end
-end
-
-struct FigureAxisPlot
-    figure::Figure
-    axis
-    plot::AbstractPlot
-end
-
-const FigureLike = Union{Scene, Figure, FigureAxisPlot}
 
 include("theming.jl")
 include("themes/theme_ggplot2.jl")
@@ -298,9 +277,11 @@ end
 
 include("figureplotting.jl")
 include("basic_recipes/series.jl")
+include("basic_recipes/text.jl")
 
 export Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter, Surface, Text, Volume
 export heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface, text, volume
 export heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, surface!, text!, volume!
+
 
 end # module

@@ -286,3 +286,59 @@ to_plotspec(::Type{P}, p::PlotSpec{S}; kwargs...) where {P, S} =
     PlotSpec{plottype(P, S)}(p.args...; p.kwargs..., kwargs...)
 
 plottype(::PlotSpec{P}) where {P} = P
+
+
+struct ScalarOrVector{T}
+    sv::Union{T, Vector{T}}
+end
+
+Base.convert(::Type{<:ScalarOrVector}, v::AbstractVector{T}) where T = ScalarOrVector{T}(collect(v))
+Base.convert(::Type{<:ScalarOrVector}, x::T) where T = ScalarOrVector{T}(x)
+Base.convert(::Type{<:ScalarOrVector{T}}, x::ScalarOrVector{T}) where T = x
+
+function collect_vector(sv::ScalarOrVector, n::Int)
+    if sv.sv isa Vector
+        if length(sv.sv) != n
+            error("Requested collected vector with $n elements, contained vector had $(length(sv.sv)) elements.")
+        end
+        sv.sv
+    else
+        fill(sv.sv, n)
+    end
+end
+
+"""
+    GlyphCollection
+
+Stores information about the glyphs in a string that had a layout calculated for them.
+"""
+struct GlyphCollection
+    glyphs::Vector{Char}
+    fonts::Vector{FTFont}
+    origins::Vector{Point3f0}
+    extents::Vector{FreeTypeAbstraction.FontExtent{Float32}}
+    scales::ScalarOrVector{Vec2f0}
+    rotations::ScalarOrVector{Quaternionf0}
+    colors::ScalarOrVector{RGBAf0}
+    strokecolors::ScalarOrVector{RGBAf0}
+    strokewidths::ScalarOrVector{Float32}
+
+    function GlyphCollection(glyphs, fonts, origins, extents, scales, rotations,
+            colors, strokecolors, strokewidths)
+
+        n = length(glyphs)
+        @assert length(fonts)  == n
+        @assert length(origins)  == n
+        @assert length(extents)  == n
+        @assert attr_broadcast_length(scales) in (n, 1)
+        @assert attr_broadcast_length(rotations)  in (n, 1)
+        @assert attr_broadcast_length(colors) in (n, 1)
+
+        rotations = convert_attribute(rotations, key"rotation"())
+        fonts = [convert_attribute(f, key"font"()) for f in fonts]
+        colors = convert_attribute(colors, key"color"())
+        strokecolors = convert_attribute(strokecolors, key"color"())
+        strokewidths = Float32.(strokewidths)
+        new(glyphs, fonts, origins, extents, scales, rotations, colors, strokecolors, strokewidths)
+    end
+end

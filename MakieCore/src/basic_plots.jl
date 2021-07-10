@@ -241,7 +241,6 @@ Plots a text.
         lineheight = 1.0,
         space = :screen, # or :data
         offset = (0.0, 0.0),
-        _glyphlayout = nothing,
         inspectable = theme(scene, :inspectable)
     )
 end
