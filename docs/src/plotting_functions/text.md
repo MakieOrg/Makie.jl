@@ -4,7 +4,7 @@
 text
 ```
 
-### Examples
+## Screen space text
 
 By default, text is drawn in screen space (`space = :screen`).
 The text anchor is given in data coordinates, but the size of the glyphs is independent of data scaling.
@@ -38,6 +38,8 @@ text!(
 f
 ```
 
+## Data space text
+
 For text whose dimensions are meaningful in data space, set `space = :data`.
 This means that the boundingbox of the text in data coordinates will include every glyph.
 
@@ -61,6 +63,8 @@ text!(
 
 f
 ```
+
+## Justification
 
 By default, justification of multiline text follows alignment.
 Text that is left aligned is also left justified.
@@ -103,6 +107,8 @@ end
 scene
 ```
 
+## Offset
+
 The offset attribute can be used to shift text away from its position.
 This is especially useful with `space = :screen`, for example to place text together with barplots.
 You can specify the end of the barplots in data coordinates, and then offset the text a little bit to the left.
@@ -124,6 +130,29 @@ hideydecorations!(ax)
 barplot!(horsepower, direction = :x)
 text!(cars, position = Point.(horsepower, 1:5), align = (:right, :center),
     offset = (-20, 0), color = :white)
+
+f
+```
+
+## MathTeX
+
+Makie can render LaTeXStrings via [MathTeXEngine.jl](https://github.com/Kolaru/MathTeXEngine.jl/).
+For example, you can pass L-strings as labels to the legend.
+
+```@example
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+f = Figure()
+ax = Axis(f[1, 1])
+
+lines!(0..10, x -> sin(3x) / (cos(x) + 2),
+    label = L"\frac{\sin(3x)}{\cos(x) + 2}")
+lines!(0..10, x -> sin(x^2) / (cos(sqrt(x)) + 2),
+    label = L"\frac{\sin(x^2)}{\cos(\sqrt{x}) + 2}")
+
+Legend(f[1, 2], ax)
 
 f
 ```

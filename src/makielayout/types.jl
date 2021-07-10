@@ -211,7 +211,7 @@ struct LegendEntry
     attributes::Attributes
 end
 
-const EntryGroup = Tuple{Optional{String}, Vector{LegendEntry}}
+const EntryGroup = Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}
 
 @Layoutable Legend begin
     entrygroups::Node{Vector{EntryGroup}}

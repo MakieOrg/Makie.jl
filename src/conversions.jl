@@ -433,7 +433,7 @@ end
 
 Takes an input `AbstractString` `x` and converts it to a string.
 """
-convert_arguments(::Type{<: Text}, x::AbstractString) = (String(x),)
+# convert_arguments(::Type{<: Text}, x::AbstractString) = (String(x),)
 
 
 ################################################################################

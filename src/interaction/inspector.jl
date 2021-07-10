@@ -185,9 +185,14 @@ end
 ### Text bounding box
 ########################################
 
-function Bbox_from_glyphlayout(text, gl)
+function Bbox_from_glyphcollection(text, gc)
     bbox = FRect2D(0, 0, 0, 0)
-    for (c, o, bb) in zip(text, gl.origins, gl.bboxes)
+    bboxes = FRect2D[]
+    broadcast_foreach(gc.extents, gc.fonts, gc.scales) do extent, font, scale
+        b = FreeTypeAbstraction.height_insensitive_boundingbox(extent, font) * scale
+        push!(bboxes, b)
+    end
+    for (c, o, bb) in zip(text, gc.origins, bboxes)
         c == '\n' && continue
         bbox2 = FRect2D(o[Vec(1,2)] .+ origin(bb), widths(bb))
         if bbox == FRect2D(0, 0, 0, 0)
@@ -285,8 +290,8 @@ function plot!(plot::_Inspector)
     )
 
     # compute text boundingbox and adjust _aligned_text_position
-    bbox = map(text_plot._glyphlayout, text_plot.position, text_padding) do gl, pos, pad
-        rect = Bbox_from_glyphlayout(_display_text[], gl)
+    bbox = map(text_plot.plots[1][1], text_plot.position, text_padding) do gc, pos, pad
+        rect = Bbox_from_glyphcollection(_display_text[], gc)
         l, r, b, t = pad
         FRect2D(
             origin(rect) .+ Vec2f0(pos[1] - l, pos[2] - b),

@@ -7,6 +7,10 @@ end
 using .ContoursHygiene
 const Contours = ContoursHygiene.Contour
 using Base64
+
+using LaTeXStrings
+export @L_str
+using MathTeXEngine
 using Artifacts
 using Random
 using FFMPEG # get FFMPEG on any system!
@@ -44,6 +48,7 @@ using MakieCore: ConversionTrait, NoConversion, PointBased, SurfaceLike, Continu
 export ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
 using MakieCore: Key, @key_str, Automatic, automatic, @recipe
 using MakieCore: Pixel, px, Unit, Billboard
+using MakieCore: project_point2
 export Pixel, px, Unit, plotkey, attributes, used_attributes
 
 using StatsFuns: logit, logistic
@@ -57,41 +62,16 @@ using Observables: listeners, to_value, notify
 const Node = Observable # shorthand
 
 include("documentation/docstringextension.jl")
-
 include("interaction/PriorityObservable.jl")
 include("types.jl")
 include("utilities/utilities.jl")
 include("utilities/texture_atlas.jl")
 include("interaction/nodes.jl")
 include("interaction/liftmacro.jl")
-
 include("colorsampler.jl")
 include("patterns.jl")
-
 # Basic scene/plot/recipe interfaces + types
 include("scenes.jl")
-
-struct Figure
-    scene::Scene
-    layout::GridLayoutBase.GridLayout
-    content::Vector
-    attributes::Attributes
-    current_axis::Ref{Any}
-
-    function Figure(args...)
-        f = new(args...)
-        current_figure!(f)
-        f
-    end
-end
-
-struct FigureAxisPlot
-    figure::Figure
-    axis
-    plot::AbstractPlot
-end
-
-const FigureLike = Union{Scene, Figure, FigureAxisPlot}
 
 include("theming.jl")
 include("themes/theme_ggplot2.jl")
@@ -292,9 +272,11 @@ end
 
 include("figureplotting.jl")
 include("basic_recipes/series.jl")
+include("basic_recipes/text.jl")
 
 export Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter, Surface, Text, Volume
 export heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface, text, volume
 export heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, surface!, text!, volume!
+
 
 end # module
