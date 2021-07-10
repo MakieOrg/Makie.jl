@@ -165,3 +165,8 @@ data_limits(s::Scene) = data_limits(plots_from_camera(s))
 data_limits(s::Figure) = data_limits(s.scene)
 data_limits(s::FigureAxisPlot) = data_limits(s.figure)
 data_limits(plot::Combined) = data_limits(plot.plots)
+
+
+function data_limits(x::Scatter)
+    return FRect3D(x[:position])
+end

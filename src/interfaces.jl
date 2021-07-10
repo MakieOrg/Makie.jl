@@ -34,7 +34,6 @@ function color_and_colormap!(plot, intensity = plot[:color])
     end
 end
 
-
 function calculated_attributes!(::Type{<: Mesh}, plot)
     need_cmap = color_and_colormap!(plot)
     need_cmap || delete!(plot, :colormap)
@@ -59,27 +58,6 @@ end
 
 function calculated_attributes!(::Type{<: MeshScatter}, plot)
     color_and_colormap!(plot)
-end
-
-
-function calculated_attributes!(::Type{<: Scatter}, plot)
-    # calculate base case
-    color_and_colormap!(plot)
-
-    replace_automatic!(plot, :marker_offset) do
-        # default to middle
-        lift(x-> to_2d_scale(x .* (-0.5f0)), plot[:markersize])
-    end
-
-    replace_automatic!(plot, :markerspace) do
-        lift(plot.markersize) do ms
-            if ms isa Pixel || (ms isa AbstractVector && all(x-> ms isa Pixel, ms))
-                return Pixel
-            else
-                return SceneSpace
-            end
-        end
-    end
 end
 
 function calculated_attributes!(::Type{T}, plot) where {T<:Union{Lines, LineSegments}}
@@ -372,7 +350,7 @@ end
 
 function show_attributes(attributes)
     for (k, v) in attributes
-        println("    ", k, ": ", v[] == nothing ? "nothing" : v[])
+        println("    ", k, ": ", v[] === nothing ? "nothing" : v[])
     end
 end
 

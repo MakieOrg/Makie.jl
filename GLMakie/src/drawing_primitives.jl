@@ -183,6 +183,44 @@ function Base.insert!(screen::GLScreen, scene::Scene, @nospecialize(x::Combined)
     end
 end
 
+
+function Base.insert!(screen::GLScreen, scene::Scene, plot::Scatter)
+    draw_atomic(screen, scene, plot)
+end
+
+function draw_atomic(screen::GLScreen, scene::Scene, plot::Scatter)
+    # signals not supported for shading yet
+    gl_attributes = Dict{Symbol, Any}()
+    gl_attributes[:color] = plot.color
+    gl_attributes[:markersize] = plot.markersize
+    gl_attributes[:marker_offset] = plot.marker_offset
+    gl_attributes[:strokecolor] = plot.strokecolor
+    gl_attributes[:strokewidth] = plot.strokewidth
+    gl_attributes[:transform_marker] = plot.transform_marker
+    # gl_attributes[:marker] = plot.marker
+    gl_attributes[:billboard] = true
+    gl_attributes[:distancefield] = plot.distancefield
+    gl_attributes[:uv_offset_width] = Vec4f0(0)
+    gl_attributes[:use_pixel_marker] = lift(x-> x <: Pixel, plot.markerspace)
+    positions = apply_transform(plot.basics.transformation.transform_func, plot.position)
+
+    robj = visualize((plot[:marker], positions), Style(:default), gl_attributes)
+
+    for key in (:pixel_space, :view, :projection, :eyeposition, :projectionview)
+        if !haskey(robj.uniforms, key)
+            robj[key] = getfield(scene.camera, key)
+        end
+    end
+    robj[:resolution] = map(x-> Vec2f0(widths(x)), scene.camera.pixel_area)
+    if !haskey(gl_attributes, :normalmatrix)
+        robj[:normalmatrix] = map(robj[:view], robj[:model]) do v, m
+            i = SOneTo(3)
+            return transpose(inv(v[i, i] * m[i, i]))
+        end
+    end
+    return robj
+end
+
 function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Union{Scatter, MeshScatter}))
     robj = cached_robj!(screen, scene, x) do gl_attributes
         # signals not supported for shading yet
@@ -319,7 +357,7 @@ function draw_atomic(screen::GLScreen, scene::Scene,
             end
         end
 
-        
+
         gl_attributes[:scale] = scale
         gl_attributes[:offset] = offset
         gl_attributes[:uv_offset_width] = uv_offset_width

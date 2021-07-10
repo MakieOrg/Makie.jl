@@ -58,7 +58,14 @@ So in the end, this is just relative to some normed camera - the value on screen
 will not actually sit on those pixels. Only camera that guarantees the correct mapping is the
 `:pixel` camera type.
 """
-@enum Space Pixel Data
+struct Pixel{T} <: Unit{T}
+    value::T
+end
+
+const px = Pixel(1)
+
+const Space = Type{<: Unit}
+
 
 """
     Billboard([angle::Real])

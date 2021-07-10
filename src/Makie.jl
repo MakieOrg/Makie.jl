@@ -48,7 +48,12 @@ using MakieCore: ConversionTrait, NoConversion, PointBased, SurfaceLike, Continu
 export ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
 using MakieCore: Key, @key_str, Automatic, automatic, @recipe
 using MakieCore: Pixel, px, Unit, Billboard
-using MakieCore: project_point2
+using MakieCore: VecTypes, Quaternionf0, Quaternion, RGBAf0, RGBf0, NativeFont, RealVector
+import MakieCore: project_point2, project, to_world, transformationmatrix, orthographicprojection, perspectiveprojection, lookat, translationmatrix, scalematrix
+using MakieCore: Camera, Transformation, PlotFunc
+import MakieCore: to_colormap, to_color, to_font, to_rotation, FastPixel, Reverse
+import MakieCore: el32convert, to_textsize, to_align, qrotation, available_gradients
+export to_colormap, to_color, to_font, to_rotation
 export Pixel, px, Unit, plotkey, attributes, used_attributes
 
 using StatsFuns: logit, logistic
@@ -81,7 +86,7 @@ include("themes/theme_light.jl")
 include("themes/theme_dark.jl")
 include("interfaces.jl")
 include("units.jl")
-include("conversions.jl")
+# include("conversions.jl")
 include("shorthands.jl")
 
 # camera types + functions

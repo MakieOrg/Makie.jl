@@ -106,3 +106,28 @@ end
 function convert_attribute(scatter::Scatter, ::Automatic, ::key"marker_offset")
     return scatter[:markersize] ./ 2
 end
+
+function scatter(args...; attributes...)
+    plot(Scatter, args...; attributes...)
+end
+
+function scatter!(args...; attributes...)
+    plot!(Scatter, args...; attributes...)
+end
+
+function plot!(::Type{<:Scatter}, scene::AbstractScene, args...; attributes...)
+    scatter = Scatter(args...; attributes...)
+    plot!(scene, scatter)
+    return scatter
+end
+
+function plot!(P::PlotFunc, scene::SceneLike, args...; kw_attributes...)
+    attributes = Attributes(kw_attributes)
+    plot!(scene, P, attributes, args...)
+end
+
+function plot!(scene::SceneLike, scatter::Scatter)
+    push!(scene.plots, scatter)
+end
+
+export Scatter, scatter, scatter!
