@@ -23,26 +23,27 @@ mutable struct Scatter{N} <: AbstractPlot{Any}
     basics::PlotBasics
 
     function Scatter(
-            parent,
-            position::AbstractVector{Point{N, Float32}},
-            color,
-            marker,
-            markersize,
-            marker_offset,
-            strokecolor,
-            strokewidth,
-            markerspace,
-            transform_marker,
-            distancefield,
-            cycle,
-            inspectable,
+                parent,
+                position::AbstractVector{Point{N, Float32}},
+                color,
+                marker,
+                markersize,
+                marker_offset,
+                strokecolor,
+                strokewidth,
+                markerspace,
+                transform_marker,
+                distancefield,
+                cycle,
+                inspectable,
 
-            anti_aliasing,
-            visible,
-            basics,
-        ) where N
+                anti_aliasing,
+                visible,
+                basics,
+            ) where N
         obj = new{N}()
         # Set fields with setfield to trigger conversion!
+        obj.basics = basics
         obj.parent = parent
         obj.position = position
         obj.color = color
@@ -59,7 +60,6 @@ mutable struct Scatter{N} <: AbstractPlot{Any}
 
         obj.anti_aliasing = anti_aliasing
         obj.visible = visible
-        obj.basics = basics
         return obj
     end
 
@@ -104,5 +104,5 @@ mutable struct Scatter{N} <: AbstractPlot{Any}
 end
 
 function convert_attribute(scatter::Scatter, ::Automatic, ::key"marker_offset")
-    return scatter.markersize ./ 2
+    return scatter[:markersize] ./ 2
 end
