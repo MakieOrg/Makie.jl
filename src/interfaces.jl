@@ -144,14 +144,6 @@ function seperate_tuple(args::Node{<: NTuple{N, Any}}) where N
     end
 end
 
-function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::Attributes, args) where Typ
-    input = convert.(Node, args)
-    argnodes = lift(input...) do args...
-        convert_arguments(PlotType, args...)
-    end
-    return PlotType(scene, attributes, input, argnodes)
-end
-
 function plot(scene::Scene, plot::AbstractPlot)
     # plot object contains local theme (default values), and user given values (from constructor)
     # fill_theme now goes through all values that are missing from the user, and looks if the scene
@@ -163,42 +155,6 @@ function plot(scene::Scene, plot::AbstractPlot)
     # we just return the plot... whoever calls plot (our pipeline usually)
     # will need to push!(scene, plot) etc!
     return plot
-end
-
-function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::Attributes, input, args) where Typ
-    # The argument type of the final plot object is the assumened to stay constant after
-    # argument conversion. This might not always hold, but it simplifies
-    # things quite a bit
-    ArgTyp = typeof(to_value(args))
-    # construct the fully qualified plot type, from the possible incomplete (abstract)
-    # PlotType
-    FinalType = Combined{Typ, ArgTyp}
-    plot_attributes = merged_get!(
-        ()-> default_theme(scene, FinalType),
-        plotsym(FinalType), scene, attributes
-    )
-
-    # Transformation is a field of the plot type, but can be given as an attribute
-    trans = get(plot_attributes, :transformation, automatic)
-    transval = to_value(trans)
-    transformation = if transval === automatic
-        Transformation(scene)
-    elseif isa(transval, Transformation)
-        transval
-    else
-        t = Transformation(scene)
-        transform!(t, transval)
-        t
-    end
-    replace_automatic!(plot_attributes, :model) do
-        transformation.model
-    end
-    # create the plot, with the full attributes, the input signals, and the final signal nodes.
-    plot_obj = FinalType(scene, transformation, plot_attributes, input, seperate_tuple(args))
-
-    transformation.parent[] = plot_obj
-    calculated_attributes!(plot_obj)
-    plot_obj
 end
 
 ## generic definitions
@@ -238,41 +194,6 @@ end
 plottype(P1::Type{<: Combined{Any}}, P2::Type{<: Combined{T}}) where T = P2
 plottype(P1::Type{<: Combined{T}}, P2::Type{<: Combined}) where T = P1
 
-
-
-######################################################################
-# In this section, the plotting functions have P as the first argument
-# These are called from type recipes
-
-# # non-mutating, without positional attributes
-
-# function plot(P::PlotFunc, args...; kw_attributes...)
-#     attributes = Attributes(kw_attributes)
-#     plot(P, attributes, args...)
-# end
-
-# # with positional attributes
-
-# function plot(P::PlotFunc, attrs::Attributes, args...; kw_attributes...)
-#     attributes = merge!(Attributes(kw_attributes), attrs)
-#     scene_attributes = extract_scene_attributes!(attributes)
-#     scene = Scene(; scene_attributes...)
-#     plot!(scene, P, attributes, args...)
-# end
-
-# mutating, without positional attributes
-
-function plot!(P::PlotFunc, scene::SceneLike, args...; kw_attributes...)
-    attributes = Attributes(kw_attributes)
-    plot!(scene, P, attributes, args...)
-end
-
-# with positional attributes
-
-function plot!(P::PlotFunc, scene::SceneLike, attrs::Attributes, args...; kw_attributes...)
-    attributes = merge!(Attributes(kw_attributes), attrs)
-    plot!(scene, P, attributes, args...)
-end
 ######################################################################
 
 # plots to scene

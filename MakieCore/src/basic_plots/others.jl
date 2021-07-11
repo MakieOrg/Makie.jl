@@ -100,42 +100,6 @@ Attributes(;
 )
 end
 
-"""
-lines(positions)
-lines(x, y)
-lines(x, y, z)
-
-Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `positions`.
-
-!!! tip
-You can separate segments by inserting `NaN`s.
-"""
-@recipe(Lines, positions) do scene
-Attributes(;
-    default_theme(scene)...,
-    linewidth = theme(scene, :linewidth),
-    color = theme(scene, :linecolor),
-    colormap = theme(scene, :colormap),
-    colorrange = automatic,
-    linestyle = nothing,
-    fxaa = false,
-    cycle = [:color],
-    inspectable = theme(scene, :inspectable)
-)
-end
-
-"""
-linesegments(positions)
-linesegments(x, y)
-linesegments(x, y, z)
-
-Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
-
-"""
-@recipe(LineSegments, positions) do scene
-default_theme(scene, Lines)
-end
-
 # alternatively, mesh3d? Or having only mesh instead of poly + mesh and figure out 2d/3d via dispatch
 """
 mesh(x, y, z)
@@ -183,31 +147,5 @@ Attributes(;
     fxaa = true,
     inspectable = theme(scene, :inspectable),
     cycle = [:color],
-)
-end
-
-"""
-text(string)
-
-Plots a text.
-
-"""
-@recipe(Text, text) do scene
-Attributes(;
-    default_theme(scene)...,
-    color = theme(scene, :textcolor),
-    font = theme(scene, :font),
-    strokecolor = (:black, 0.0),
-    strokewidth = 0,
-    align = (:left, :bottom),
-    rotation = 0.0,
-    textsize = 20,
-    position = (0.0, 0.0),
-    justification = automatic,
-    lineheight = 1.0,
-    space = :screen, # or :data
-    offset = (0.0, 0.0),
-    _glyphlayout = nothing,
-    inspectable = theme(scene, :inspectable)
 )
 end

@@ -66,6 +66,9 @@ const px = Pixel(1)
 
 const Space = Type{<: Unit}
 
+struct Data{T} <: Unit{T}
+    value::T
+end
 
 """
     Billboard([angle::Real])

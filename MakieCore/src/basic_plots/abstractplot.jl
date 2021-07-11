@@ -1,4 +1,3 @@
-
 function update!(plot::AbstractPlot, values::Dict{Symbol})
     for (key, value) in values
         setproperty_noupdate!(plot, key, value)
@@ -20,6 +19,14 @@ end
 function Base.setproperty!(plot::T, field::Symbol, value::Any) where T <: AbstractPlot
     setproperty_noupdate!(plot, field, value)
     plot.basics.on_update[] = Set([field])
+    return
+end
+
+function Base.setproperty!(plot::T, field::Symbol, value::Observable) where T <: AbstractPlot
+    f(value) = setproperty!(plot, field, value)
+    on(f, value)
+    f(value[])
+    return
 end
 
 function on_update(f, plot::T, ::Key{field}) where {T <: AbstractPlot, field}
@@ -66,4 +73,19 @@ function PlotBasics()
         Camera(),
         Transformation(),
     )
+end
+
+function plot!(P::Type{<:AbstractPlot}, scene::AbstractScene, args...; attributes...)
+    scatter = P(args...; attributes...)
+    plot!(scene, scatter)
+    return scatter
+end
+
+function plot!(P::PlotFunc, scene::SceneLike, args...; kw_attributes...)
+    attributes = Attributes(kw_attributes)
+    plot!(scene, P, attributes, args...)
+end
+
+function plot!(scene::SceneLike, scatter::AbstractPlot)
+    push!(scene.plots, scatter)
 end

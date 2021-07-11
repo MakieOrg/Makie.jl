@@ -1,7 +1,7 @@
 module MakieCore
 
 using Observables
-using Observables: to_value
+using Observables: to_value, AbstractObservable
 using Base: RefValue
 using GeometryBasics
 using ColorTypes
@@ -36,6 +36,8 @@ include("attributes.jl")
 include("recipes.jl")
 include("basic_plots/abstractplot.jl")
 include("basic_plots/scatter.jl")
+include("basic_plots/lines.jl")
+include("basic_plots/text.jl")
 include("basic_plots/others.jl")
 include("conversion.jl")
 

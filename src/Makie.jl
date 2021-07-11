@@ -52,6 +52,7 @@ using MakieCore: VecTypes, Quaternionf0, Quaternion, RGBAf0, RGBf0, NativeFont, 
 import MakieCore: project_point2, project, to_world, transformationmatrix, orthographicprojection, perspectiveprojection, lookat, translationmatrix, scalematrix
 using MakieCore: Camera, Transformation, PlotFunc
 import MakieCore: to_colormap, to_color, to_font, to_rotation, FastPixel, Reverse
+import MakieCore: assetpath
 import MakieCore: el32convert, to_textsize, to_align, qrotation, available_gradients
 export to_colormap, to_color, to_font, to_rotation
 export Pixel, px, Unit, plotkey, attributes, used_attributes

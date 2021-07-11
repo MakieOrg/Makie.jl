@@ -468,16 +468,6 @@ function convert_arguments(::Type{<: LineSegments}, x::Rect2D)
     return (points[[1, 2, 2, 4, 4, 3, 3, 1]],)
 end
 
-################################################################################
-#                                    <:Text                                    #
-################################################################################
-
-"""
-    convert_arguments(x)::(String)
-
-Takes an input `AbstractString` `x` and converts it to a string.
-"""
-convert_arguments(::Type{<: Text}, x::AbstractString) = (String(x),)
 
 
 ################################################################################
@@ -791,7 +781,7 @@ convert_attribute(c::Tuple, k::key"color") = convert_attribute.(c, k)
 convert_attribute(p::AbstractPattern, k::key"color") = p
 
 function convert_attribute(c::Tuple{T, F}, k::key"color") where {T, F <: Number}
-    RGBAf0(Colors.color(to_color(c[1])), c[2])
+    RGBAf0(ColorTypes.color(to_color(c[1])), c[2])
 end
 
 convert_attribute(b::Billboard{Float32}, ::key"rotations") = to_rotation(b.rotation)
@@ -934,6 +924,13 @@ convert_attribute(f::Tuple{Tuple{Bool,Bool},Tuple{Bool,Bool}}, ::key"frames") = 
 convert_attribute(c::Tuple{<: Number, <: Number}, ::key"position") = Point2f0(c[1], c[2])
 convert_attribute(c::Tuple{<: Number, <: Number, <: Number}, ::key"position") = Point3f0(c)
 convert_attribute(c::VecTypes{N}, ::key"position") where N = Point{N, Float32}(c)
+
+function alignment2num(x::Symbol)
+    (x == :center) && return 0.5f0
+    (x in (:left, :bottom)) && return 0.0f0
+    (x in (:right, :top)) && return 1.0f0
+    return 0.0f0 # 0 default, or better to error?
+end
 
 """
     Text align, e.g.:

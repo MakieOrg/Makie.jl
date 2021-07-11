@@ -58,7 +58,7 @@ end
 
 
 transformation(t::Scene) = t.transformation
-transformation(t::AbstractPlot) = t.transformation
+transformation(t::AbstractPlot) = t.basics.transformation
 transformation(t::Transformation) = t
 
 scale(t::Transformable) = transformation(t).scale
