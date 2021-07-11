@@ -31,8 +31,8 @@ function convert_arguments(::Type{<:Text}, str::AbstractString)
     return ([(str, Point2f0(0))],)
 end
 
-function convert_arguments(::Type{<:Text}, str::AbstractVector)
-    return ([(str, Point2f0(0))],)
+function convert_arguments(::Type{<:Text}, str::AbstractVector{<: Tuple{<:AbstractString, <: Point{N, T}}}) where {N, T}
+    return (map(((s, p),)-> (string(s), Point{N, Float32}(p)), str),)
 end
 
 convert_attribute(::Type{<:Text}, lineheight::Number, ::key"lineheight") = Float32(lineheight)
@@ -40,6 +40,10 @@ function convert_attribute(::Type{<:Text}, space::Symbol, ::key"space")
     space === :data && return Data
     space === :screen && return Pixel
     error("Unknown space: $(space)")
+end
+
+function convert_attribute(::Type{<:Text}, offset, ::key"offset")
+    return Vec2f0(offset)
 end
 
 

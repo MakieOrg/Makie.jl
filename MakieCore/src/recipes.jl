@@ -297,7 +297,6 @@ macro plottype(arg)
     outer_constructor = quote
         function $(TypeName)(args...; $(kw...))
             ($(arg_names...),) = convert_arguments($(TypeName), to_value.(args)...)
-            @show $(arg_names...)
             obj = $(TypeName)(
                 $(all_fields...)
             )

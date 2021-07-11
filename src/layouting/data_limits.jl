@@ -173,3 +173,11 @@ end
 function raw_boundingbox(x::Scatter)
     return FRect3D(x[:position])
 end
+
+function data_limits(x::Text)
+    return FRect3D(lats.(x[:text]))
+end
+
+function raw_boundingbox(x::Text)
+    return FRect3D(lats.(x[:text]))
+end
