@@ -170,3 +170,6 @@ data_limits(plot::Combined) = data_limits(plot.plots)
 function data_limits(x::Scatter)
     return FRect3D(x[:position])
 end
+function raw_boundingbox(x::Scatter)
+    return FRect3D(x[:position])
+end

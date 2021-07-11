@@ -235,7 +235,7 @@ function selection_rect!(scene, cam, key)
 
     # TODO: this needs explicit cleanup?
     # why?
-    return rect_vis, rect
+    return nothing, rect
 end
 
 function reset!(cam, boundingbox, preserveratio = true)

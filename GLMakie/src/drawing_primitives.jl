@@ -192,12 +192,11 @@ function draw_atomic(screen::GLScreen, scene::Scene, plot::Scatter)
     # signals not supported for shading yet
     gl_attributes = Dict{Symbol, Any}()
     gl_attributes[:color] = plot.color
-    gl_attributes[:markersize] = plot.markersize
+    gl_attributes[:scale] = plot.markersize
     gl_attributes[:marker_offset] = plot.marker_offset
     gl_attributes[:strokecolor] = plot.strokecolor
     gl_attributes[:strokewidth] = plot.strokewidth
-    gl_attributes[:transform_marker] = plot.transform_marker
-    # gl_attributes[:marker] = plot.marker
+    gl_attributes[:scale_primitive] = plot.transform_marker
     gl_attributes[:billboard] = true
     gl_attributes[:distancefield] = plot.distancefield
     gl_attributes[:uv_offset_width] = Vec4f0(0)
@@ -212,12 +211,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, plot::Scatter)
         end
     end
     robj[:resolution] = map(x-> Vec2f0(widths(x)), scene.camera.pixel_area)
-    if !haskey(gl_attributes, :normalmatrix)
-        robj[:normalmatrix] = map(robj[:view], robj[:model]) do v, m
-            i = SOneTo(3)
-            return transpose(inv(v[i, i] * m[i, i]))
-        end
-    end
+    push!(screen, scene, robj)
     return robj
 end
 
