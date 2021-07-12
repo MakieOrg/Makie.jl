@@ -202,7 +202,7 @@ makedocs(
         ],
         sidebar_sitename=false,
         prerender = true,
-        highlightjs = joinpath(srcpath, "assets", "julia.highlight.js"),
+        highlightjs = joinpath(srcpath, "assets", "highlight.min.js"),
         ansicolor = true,
     ),
     sitename = "Makie Plotting Ecosystem",
