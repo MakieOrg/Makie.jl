@@ -201,6 +201,9 @@ makedocs(
             "assets/syntaxtheme.css"
         ],
         sidebar_sitename=false,
+        prerender = true,
+        highlightjs = joinpath(srcpath, "assets", "julia.highlight.js"),
+        ansicolor = true,
     ),
     sitename = "Makie Plotting Ecosystem",
     pages = Any[
