@@ -280,7 +280,7 @@ function to_world(scene::AbstractScene, point::T) where T <: StaticVector
         inv(transformationmatrix(scene)[]) *
         inv(cam.view[]) *
         inv(cam.projection[]),
-        T(widths(pixelarea(scene)[]))
+        T(widths(scene.px_area[]))
     )
     Point2f0(x[1], x[2])
 end

@@ -644,17 +644,13 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
     end
 end
 
-function Makie.plot!(
-        la::Axis, P::Makie.PlotFunc,
-        attributes::Makie.Attributes, args...;
-        kw_attributes...)
+function Makie.plot!(la::Axis, P::Type{<:AbstractPlot}, args...; kw...)
 
-    allattrs = merge(attributes, Attributes(kw_attributes))
-
+    allattrs = Attributes(kw)
     cycle = get_cycle_for_plottype(allattrs, P)
     add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
 
-    plot = Makie.plot!(la.scene, P, allattrs, args...)
+    plot = Makie.plot!(la.scene, P, args...; allattrs...)
 
     # some area-like plots basically always look better if they cover the whole plot area.
     # adjust the limit margins in those cases automatically.
@@ -663,6 +659,17 @@ function Makie.plot!(
     reset_limits!(la)
     plot
 end
+
+function Makie.plot!(la::Axis, plot::AbstractPlot)
+
+    plot = Makie.plot!(la.scene,plot)
+
+    needs_tight_limits(plot) && tightlimits!(la)
+
+    reset_limits!(la)
+    plot
+end
+
 
 function Makie.plot!(P::Makie.PlotFunc, ax::Axis, args...; kw_attributes...)
     attributes = Makie.Attributes(kw_attributes)
@@ -736,17 +743,17 @@ function getlimits(la::Axis, dim)
     # find all plots that don't have exclusion attributes set
     # for this dimension
     plots_with_autolimits = if dim == 1
-        filter(p -> !haskey(p.attributes, :xautolimits) || p.attributes.xautolimits[], la.scene.plots)
+        # filter(p -> !haskey(p.attributes, :xautolimits) || p.attributes.xautolimits[], la.scene.plots)
+        filter(p -> false, la.scene.plots)
     elseif dim == 2
-        filter(p -> !haskey(p.attributes, :yautolimits) || p.attributes.yautolimits[], la.scene.plots)
+        # filter(p -> !haskey(p.attributes, :yautolimits) || p.attributes.yautolimits[], la.scene.plots)
+        filter(p -> false, la.scene.plots)
     else
         error("Dimension $dim not allowed. Only 1 or 2.")
     end
 
     # only use visible plots for limits
-    visible_plots = filter(
-        p -> !haskey(p.attributes, :visible) || p.attributes.visible[],
-        plots_with_autolimits)
+    visible_plots = filter(p -> p[:visible], plots_with_autolimits)
 
     # get all data limits
     bboxes = [FRect2D(Makie.data_limits(p)) for p in visible_plots]

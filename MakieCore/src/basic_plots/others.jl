@@ -134,18 +134,18 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
 
 """
 @recipe(MeshScatter, positions) do scene
-Attributes(;
-    default_theme(scene)...,
-    color = :black,
-    colormap = theme(scene, :colormap),
-    colorrange = automatic,
-    marker = :Sphere,
-    markersize = 0.1,
-    rotations = 0.0,
-    # markerspace = relative,
-    shading = true,
-    fxaa = true,
-    inspectable = theme(scene, :inspectable),
-    cycle = [:color],
-)
+    Attributes(;
+        default_theme(scene)...,
+        color = :black,
+        colormap = theme(scene, :colormap),
+        colorrange = automatic,
+        marker = :Sphere,
+        markersize = 0.1,
+        rotations = 0.0,
+        # markerspace = relative,
+        shading = true,
+        fxaa = true,
+        inspectable = theme(scene, :inspectable),
+        cycle = [:color],
+    )
 end
