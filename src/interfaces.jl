@@ -116,7 +116,7 @@ end
 
 function used to indicate what keyword args one wants to get passed in `convert_arguments`.
 Usage:
-```example
+```julia
     struct MyType end
     used_attributes(::MyType) = (:attribute,)
     function convert_arguments(x::MyType; attribute = 1)
@@ -251,7 +251,7 @@ plottype(::MultiPolygon) = Lines
     plottype(P1::Type{<: Combined{T1}}, P2::Type{<: Combined{T2}})
 
 Chooses the more concrete plot type
-```example
+```julia
 function convert_arguments(P::PlotFunc, args...)
     ptype = plottype(P, Lines)
     ...

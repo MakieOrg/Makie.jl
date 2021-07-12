@@ -79,7 +79,7 @@ The attributes returned extend those attributes found in the `default_theme`.
 Use the optional keyword argument `extended` (default = `false`) to show
 in addition the default values of each attribute.
 usage:
-```example
+```julia
 >help_attributes(scatter)
     alpha
     color
