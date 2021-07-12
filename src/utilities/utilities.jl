@@ -98,7 +98,7 @@ conversions + will extract the value if it's a signal.
 It will make those attributes available as variables and return them as a tuple.
 So the above is equal to:
 will become:
-```example
+```julia
 begin
     a = get_attribute(scene, :a)
     b = get_attribute(scene, :b)
@@ -117,7 +117,7 @@ end
 """
 usage @extractvalue scene (a, b, c, d)
 will become:
-```example
+```julia
 begin
     a = to_value(scene[:a])
     b = to_value(scene[:b])
