@@ -249,9 +249,8 @@ end
     current_figure()
 end
 
-
 @cell "latex strings" begin
-    f, ax , l = lines(cumsum(randn(1000)),
+    f, ax , l = lines(cumsum(RNG.randn(1000)),
         axis = (
                 title = L"\sum_k{x y_k}",
                 xlabel = L"\lim_{x →\infty} A^j v_{(a + b)_k}^i \sqrt{23.5} x!= \sqrt{\frac{1+6}{4+a+g}}\int_{0}^{2π} \sin(x) dx",
