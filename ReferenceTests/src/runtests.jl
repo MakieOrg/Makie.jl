@@ -50,14 +50,14 @@ function compare_media(a, b; sigma=[1,1])
     end
 end
 
-function compare(test_files::Vector{String}, reference_dir::String; missing_refimages=String[], scores=Dict{String,Float64}())
+function compare(test_files::Vector{String}, reference_dir::String; o_refdir=reference_dir, missing_refimages=String[], scores=Dict{String,Float64}())
     for test_path in test_files
         ref_path = joinpath(reference_dir, basename(test_path))
         if isdir(test_path)
             if !isdir(ref_path)
                 push!(missing_refimages, test_path)
             else
-                compare(joinpath.(test_path, readdir(test_path)), ref_path; missing_refimages=missing_refimages, scores=scores)
+                compare(joinpath.(test_path, readdir(test_path)), ref_path; o_refdir=reference_dir, missing_refimages=missing_refimages, scores=scores)
             end
         elseif isfile(test_path)
             if !isfile(ref_path)
@@ -66,7 +66,7 @@ function compare(test_files::Vector{String}, reference_dir::String; missing_refi
                 # ignore
             else
                 diff = compare_media(test_path, ref_path)
-                name = replace(ref_path, reference_dir => "")[2:end]
+                name = relpath(ref_path, o_refdir)
                 @info(@sprintf "%1.4f == %s\n" diff name)
                 scores[name] = diff
             end
@@ -78,7 +78,13 @@ end
 function run_reference_tests(db, recording_folder; difference=0.03, ref_images = download_refimages())
     record_tests(db, recording_dir=recording_folder)
     missing_files, scores = compare(joinpath.(recording_folder, readdir(recording_folder)), ref_images)
-
+    if !isempty(missing_files)
+        @warn("""
+        #################################
+        Newly recorded files found! The tests will pass, but uploading new reference images is required!
+        #################################
+        """)
+    end
     open(joinpath(recording_folder, "new_files.html"), "w") do io
         for filename in missing_files
             println(io, "<h1> $(basename(filename)) </h1>")
