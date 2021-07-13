@@ -180,6 +180,8 @@ The default tick type is `LinearTicks(n)`, where `n` is the target number of tic
 
 ```@example
 using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
 
 fig = Figure()
 for (i, n) in enumerate([2, 5, 9])
@@ -195,6 +197,8 @@ A common scenario is plotting a trigonometric function which should be marked at
 
 ```@example
 using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
 
 lines(0..20, sin, axis = (xticks = MultiplesTicks(4, pi, "π"),))
 ```
@@ -203,6 +207,8 @@ Here are a couple of examples that show off different settings for ticks and for
 
 ```@example
 using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
@@ -240,6 +246,8 @@ The default minor tick type is `IntervalsBetween(n, mirror = true)` where `n` gi
 
 ```@example
 using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
 
 theme = Attributes(
     Axis = (
@@ -271,6 +279,8 @@ To hide spines, you can use `hidespines!`.
 
 ```@example
 using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
 
 f = Figure()
 
@@ -290,6 +300,8 @@ It's common, e.g., to hide everything but the grid lines in facet plots.
 
 ```@example
 using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
 
 f = Figure()
 
@@ -312,6 +324,8 @@ Take care that the axis limits always stay inside the limits appropriate for the
 
 ```@example
 using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
 
 data = LinRange(0.01, 0.99, 200)
 
@@ -330,10 +344,14 @@ end
 f
 ```
 
+### Pseudolog and symlog scales
+
 Some plotting functions, like barplots or density plots, have offset parameters which are usually zero, which you have to set to some non-zero value explicitly so they work in `log` axes.
 
 ```@example
 using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
 
 processors = ["VAX-11/780", "Sun-4/260", "PowerPC 604",
     "Alpha 21164", "Intel Pentium III", "Intel Xeon"]
@@ -346,6 +364,33 @@ barplot(relative_speeds, fillto = 0.5,
 ylims!(0.5, 10000)
 current_figure()
 ```
+
+Another option are pseudolog and symlog scales.
+Pseudolog is similar to log, but modified in order to work for zero and for negative values.
+The `pseudolog10` function is defined as `sign(x) * log10(abs(x) + 1)`.
+
+Another option for symmetric log scales including zero is the symmetric log scale `Symlog10`, which combines a normal log scale with a linear scale between two boundary values around zero.
+
+```@example
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+f = Figure(resolution = (800, 700))
+
+lines(f[1, 1], -100:0.1:100, axis = (
+    yscale = Makie.pseudolog10,
+    title = "Pseudolog scale",
+    yticks = [-100, -10, -1, 0, 1, 10, 100]))
+
+lines(f[2, 1], -100:0.1:100, axis = (
+    yscale = Makie.Symlog10(10.0),
+    title = "Symlog10 with linear scaling between -10 and 10",
+    yticks = [-100, -10, 0, 10, 100]))
+
+f
+```
+
 
 ## Controlling Axis aspect ratios
 

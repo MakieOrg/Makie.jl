@@ -145,7 +145,7 @@ end
 
 If the Node you want to reference is the result of some expression, just use `$` with parentheses around that expression.
 
-```example
+```julia
 container = (x = Node(1), y = Node(2))
 
 @lift($(container.x) + $(container.y))

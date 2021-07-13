@@ -1279,8 +1279,13 @@ defaultlimits(::typeof(log)) = (1.0, exp(3.0))
 defaultlimits(::typeof(identity)) = (0.0, 10.0)
 defaultlimits(::typeof(sqrt)) = (0.0, 100.0)
 defaultlimits(::typeof(Makie.logit)) = (0.01, 0.99)
+defaultlimits(::typeof(Makie.pseudolog10)) = (0.0, 100.0)
+defaultlimits(::Makie.Symlog10) = (0.0, 100.0)
 
 defined_interval(::typeof(identity)) = OpenInterval(-Inf, Inf)
 defined_interval(::Union{typeof(log2), typeof(log10), typeof(log)}) = OpenInterval(0.0, Inf)
 defined_interval(::typeof(sqrt)) = Interval{:closed,:open}(0, Inf)
 defined_interval(::typeof(Makie.logit)) = OpenInterval(0.0, 1.0)
+defined_interval(::typeof(Makie.pseudolog10)) = OpenInterval(-Inf, Inf)
+defined_interval(::Makie.Symlog10) = OpenInterval(-Inf, Inf)
+
