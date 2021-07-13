@@ -278,7 +278,6 @@ Update will perform the following operations for every scene:
 ```julia
 if !scene.raw[]
     scene.update_limits[] && update_limits!(scene)
-    scene.scale_plot[] && scale_scene!(scene)
     scene.center[] && center!(scene)
 end
 ```
@@ -286,6 +285,17 @@ end
 function update!(p::Scene)
     p.updated[] = true
     foreach(update!, p.children)
+end
+
+"""
+    `update!(p::Scene, b::Bool)`
+
+Sets `raw[]=b` on a `Scene` and all its children
+```
+"""
+function raw!(p::Scene, b::Bool)
+    p.raw[] = b
+    foreach(c -> (c.raw[] = b), p.children)
 end
 
 # Just indexing into a scene gets you plot 1, plot 2 etc
