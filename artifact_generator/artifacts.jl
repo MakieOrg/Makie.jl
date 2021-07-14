@@ -21,14 +21,14 @@ using Pkg.Artifacts
 using ghr_jll
 using LibGit2
 
-version = v"0.1.3"
+version = v"0.1.4"
 user = "JuliaPlots"
 repo = "Makie.jl"
 host = "https://github.com/$user/$repo/releases/download"
 
-build_path = joinpath(@__DIR__, "build")
-assets_path = joinpath(@__DIR__, "assets")
-artifact_toml = joinpath(@__DIR__, "Artifacts.toml")
+build_path = joinpath(@__DIR__, "..", "build")
+assets_path = joinpath(@__DIR__, "..", "assets")
+artifact_toml = joinpath(@__DIR__, "..", "Artifacts.toml")
 
 function rebuild_artifacts()
     ispath(build_path) && rm(build_path, force=true, recursive=true)
