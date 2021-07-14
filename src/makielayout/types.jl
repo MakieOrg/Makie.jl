@@ -180,14 +180,8 @@ end
     cycler::Cycler
 end
 
-
-function RectangleZoom(ax::Axis)
-    r = RectangleZoom() do newlims
-        if !(0 in widths(newlims))
-            ax.targetlimits[] = newlims
-        end
-        return
-    end
+function RectangleZoom(f::Function, ax::Axis; kw...)
+    r = RectangleZoom(f; kw...)
     selection_vertices = lift(_selection_vertices, ax.finallimits, r.rectnode)
     # manually specify correct faces for a rectangle with a rectangle hole inside
     faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
@@ -197,6 +191,15 @@ function RectangleZoom(ax::Axis)
     # translate forward so selection mesh and frame are never behind data
     translate!(mesh, 0, 0, 100)
     return r
+end
+
+function RectangleZoom(ax::Axis; kw...)
+    return RectangleZoom(ax; kw...) do newlims
+        if !(0 in widths(newlims))
+            ax.targetlimits[] = newlims
+        end
+        return
+    end
 end
 
 @Layoutable Colorbar
