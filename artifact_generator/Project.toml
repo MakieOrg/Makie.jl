@@ -1,0 +1,3 @@
+[deps]
+LibGit2 = "76f85450-5226-5b5a-8eaa-529ad045b433"
+ghr_jll = "07c12ed4-43bc-5495-8a2a-d5838ef8d533"
