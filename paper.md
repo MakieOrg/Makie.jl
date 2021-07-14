@@ -105,7 +105,7 @@ save("paper_example.png", f)
 
 # Overview
 
-Makie's core package is `AbstractPlotting.jl`, which contains the infrastructure that plots are built out of.
+`Makie.jl` is the core package, which contains the infrastructure that plots are built out of.
 It defines primitive plot types such as lines, scatters, heatmaps and text, which can be freely combined to build up higher-level recipes such as density plots, histograms, and contour plots.
 
 There are currently three different backends for AbstractPlotting, which are `GLMakie.jl`, `CairoMakie.jl` and `WGLMakie.jl`.
