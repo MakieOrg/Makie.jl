@@ -24,3 +24,15 @@ scatter!(xs, ys .- 3, marker = 'a':'t', strokewidth = 0, color = :black)
 
 f
 ```
+
+```@example
+using CairoMakie
+using DelimitedFiles
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+a = readdlm(assetpath("airportlocations.csv"))
+
+scatter(a[1:50:end, :], marker = '✈',
+    markersize = 20, color = :black)
+```
