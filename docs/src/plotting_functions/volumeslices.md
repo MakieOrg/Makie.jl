@@ -39,6 +39,7 @@ set_close_to!(sl_yz, .5length(x))
 set_close_to!(sl_xz, .5length(y))
 set_close_to!(sl_xy, .5length(z))
 
-cam3d!(ax.scene, projectiontype=Makie.Orthographic)
+# cam3d!(ax.scene, projectiontype=Makie.Orthographic)
+
 fig
 ```
