@@ -9,12 +9,9 @@ function plot!(plot::Text)
         rot = to_rotation(rot)
         col = to_color(col)
         scol = to_color(scol)
-
-        layout_text(str, ts, f, al, rot, mo, jus, lh, col, scol, swi)
+        return layout_text(str, ts, f, al, rot, mo, jus, lh, col, scol, swi)
     end
-
     text!(plot, glyphcollection; plot.attributes...)
-
     plot
 end
 
@@ -24,19 +21,18 @@ end
 plot!(plot::Text{<:Tuple{<:GlyphCollection}}) = plot
 plot!(plot::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}}) = plot
 
+to_point3_vec(vec::Vector{Point3f0}) = vec
+to_point3_vec(vec) = to_ndim.(Point3f0, vec, 0)
+
 function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
 
-    glyphcollections = Node(GlyphCollection[])
-    position = Node{Any}(nothing)
     rotation = Node{Any}(nothing)
-    model = Node{Any}(nothing)
-    # offset = Node{Any}(nothing)
+    positions = Node{Vector{Point3f0}}(Point3f0[])
 
-    onany(plot[1], plot.textsize, plot.position,
+    glyphcollections = lift(plot[1], plot.textsize,
             plot.font, plot.align, plot.rotation, plot.model, plot.justification,
             plot.lineheight, plot.color, plot.strokecolor, plot.strokewidth) do str,
-                    ts, pos, f, al, rot, mo, jus, lh, col, scol, swi
-
+                    ts, f, al, rot, mo, jus, lh, col, scol, swi
         ts = to_textsize(ts)
         f = to_font(f)
         rot = to_rotation(rot)
@@ -49,17 +45,13 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
             subgl = layout_text(str, ts, f, al, rot, mo, jus, lh, col, scol, swi)
             push!(gcs, subgl)
         end
-        position.val = pos
+        positions.val = to_point3_vec(plot.position[])
         rotation.val = rot
-        model.val = mo
-        glyphcollections[] = gcs
+        gcs
     end
 
-    # run onany once to initialize
-    notify(plot[1])
-
-    text!(plot, glyphcollections; position = plot.position, rotation = rotation,
-        model = model, offset = plot.offset, space = plot.space, visible=plot.visible)
+    text!(plot, glyphcollections; position = positions, rotation = rotation,
+        model = plot.model, offset = plot.offset, space = plot.space, visible=plot.visible)
 
     plot
 end
@@ -81,9 +73,10 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:AbstractString, <:Po
         strs = first.(str_pos)
         poss = to_ndim.(Ref(Point3f0), last.(str_pos), 0)
         # first mutate strings without triggering redraw
-        t[1].val = strs
+        empty!(positions.val)
+        append!(positions.val, poss)
         # then update positions with trigger
-        positions[] = poss
+        t[1] = strs
     end
     plot
 end

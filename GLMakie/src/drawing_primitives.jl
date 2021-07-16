@@ -264,15 +264,14 @@ function draw_atomic(screen::GLScreen, scene::Scene,
 
     robj = cached_robj!(screen, scene, x) do gl_attributes
         glyphcollection = x[1]
-        liftkeys = (:position, :rotation, :model, :space, :offset)
-        args = getindex.(Ref(gl_attributes), liftkeys)
-        function collect_glyph_data(projview, transfunc, pos, rotation, model, space, offset)
-            gcollection = glyphcollection[]
+
+        function collect_glyph_data(gcollection, projview, transfunc)
+            args = @get_attribute x (position, model, space, offset)
             res = Vec2f0(widths(pixelarea(scene)[]))
-            positions, offset, uv_offset_width, scale = preprojected_glyph_arrays(pos, gcollection, space, projview, res, offset, transfunc)
+            return preprojected_glyph_arrays(position, gcollection, space, projview, res, offset, transfunc)
         end
 
-        glyph_data = lift(collect_glyph_data, scene.camera.projectionview, Makie.transform_func_obs(scene), args...)
+        glyph_data = lift(collect_glyph_data, x[1], scene.camera.projectionview, Makie.transform_func_obs(scene))
 
         # unpack values from the one signal:
         positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i
@@ -280,11 +279,6 @@ function draw_atomic(screen::GLScreen, scene::Scene,
         end
 
         atlas = get_texture_atlas()
-        keys = (:color, :strokecolor, :rotation)
-
-        signals = map(keys) do key
-            Makie.get_attribute(x, key)
-        end
 
         filter!(gl_attributes) do (k, v)
             # These are liftkeys without model
