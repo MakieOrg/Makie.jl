@@ -166,17 +166,32 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
 
     args = getindex.(Ref(plot), liftkeys)
 
-    function collect_glyph_data(projview, transfunc, pos, rotation, model, space, offset)
-        gcollection = glyphcollection[]
-        res = Vec2f0(widths(pixelarea(scene)[]))
-        positions, offset, uv_offset_width, scale = Makie.preprojected_glyph_arrays(pos, gcollection, space, projview, res, offset, transfunc)
+    # TODO: This is a hack before we get better updating of plot objects and attributes going.
+    # Here we only update the glyphs when the glyphcollection changes, if it's a singular glyphcollection.
+    # The if statement will be compiled away depending on the parameter of Text.
+    # This means that updates of a text vector and a separate position vector will still not work if only the text
+    # vector is triggered, but basically all internal objects use the vector of tuples version, and that triggers
+    # both glyphcollection and position, so it still works
+    if glyphcollection[] isa Makie.GlyphCollection
+        # here we lift the glyph collection
+        collect_glyph_data = (gcollection, projview, transfunc, pos, rotation, model, space, offset) -> begin
+            res = Vec2f0(widths(pixelarea(scene)[]))
+            preprojected_glyph_arrays(pos, gcollection, space, projview, res, offset, transfunc)
+        end
+        glyph_data = lift(collect_glyph_data, glyphcollection, scene.camera.projectionview, Makie.transform_func_obs(scene), args...)
+    else
+        # and here we don't because it triggers dimension mismatches
+        collect_glyph_data = (projview, transfunc, pos, rotation, model, space, offset) -> begin
+            gcollection = glyphcollection[]
+            res = Vec2f0(widths(pixelarea(scene)[]))
+            preprojected_glyph_arrays(pos, gcollection, space, projview, res, offset, transfunc)
+        end
+        glyph_data = lift(collect_glyph_data, scene.camera.projectionview, Makie.transform_func_obs(scene), args...)
     end
-
-    gl_text = lift(collect_glyph_data, scene.camera.projectionview, Makie.transform_func_obs(scene), args...)
 
     # unpack values from the one signal:
     positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i
-        lift(getindex, gl_text, i)
+        lift(getindex, glyph_data, i)
     end
 
     atlas = get_texture_atlas()
