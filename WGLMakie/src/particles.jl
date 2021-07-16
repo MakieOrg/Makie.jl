@@ -176,7 +176,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         # here we lift the glyph collection
         collect_glyph_data = (gcollection, projview, transfunc, pos, rotation, model, space, offset) -> begin
             res = Vec2f0(widths(pixelarea(scene)[]))
-            preprojected_glyph_arrays(pos, gcollection, space, projview, res, offset, transfunc)
+            Makie.preprojected_glyph_arrays(pos, gcollection, space, projview, res, offset, transfunc)
         end
         glyph_data = lift(collect_glyph_data, glyphcollection, scene.camera.projectionview, Makie.transform_func_obs(scene), args...)
     else
@@ -184,7 +184,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         collect_glyph_data = (projview, transfunc, pos, rotation, model, space, offset) -> begin
             gcollection = glyphcollection[]
             res = Vec2f0(widths(pixelarea(scene)[]))
-            preprojected_glyph_arrays(pos, gcollection, space, projview, res, offset, transfunc)
+            Makie.preprojected_glyph_arrays(pos, gcollection, space, projview, res, offset, transfunc)
         end
         glyph_data = lift(collect_glyph_data, scene.camera.projectionview, Makie.transform_func_obs(scene), args...)
     end
