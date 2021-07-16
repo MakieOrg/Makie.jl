@@ -240,7 +240,7 @@ end
             linewidth=5
         ) # plot lines with colors
     end
-    fig
+
     Makie.step!(st)
 
     for (i, rot) in enumerate(LinRange(0, π / 2, N))
@@ -257,7 +257,7 @@ end
     end
 
     Makie.step!(st)
-    fig
+    st
 end
 
 @cell "Errorbars x y low high" begin

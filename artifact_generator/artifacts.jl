@@ -3,12 +3,13 @@
 # Requires:
 #
 #   - A github token stored in `ENV["GITHUB_TOKEN"]` with access to `repo` read/write.
-#   - Extra packages: `ghr_jll` for release uploading.
+#     (if you have github cli installed you can find this via `gh auth status --show-token`)
 #
 # Usage:
 #
 #   - Update files in `/assets` directory.
 #   - Bump the `version` variable below.
+#   - Activate the environment here in the `artifact_generator` folder.
 #   - Run `rebuild_artifacts()` to create new tarball and update Artifacts.toml.
 #   - Commit & push the changes.
 #   - Run `release_artifacts()` to create a new release and upload the new tarball.
@@ -21,14 +22,15 @@ using Pkg.Artifacts
 using ghr_jll
 using LibGit2
 
-version = v"0.1.3"
+version = v"0.1.4"
 user = "JuliaPlots"
 repo = "Makie.jl"
 host = "https://github.com/$user/$repo/releases/download"
 
-build_path = joinpath(@__DIR__, "build")
-assets_path = joinpath(@__DIR__, "assets")
-artifact_toml = joinpath(@__DIR__, "Artifacts.toml")
+repo_path = joinpath(@__DIR__, "..")
+build_path = joinpath(repo_path, "build")
+assets_path = joinpath(repo_path, "assets")
+artifact_toml = joinpath(repo_path, "Artifacts.toml")
 
 function rebuild_artifacts()
     ispath(build_path) && rm(build_path, force=true, recursive=true)
@@ -58,7 +60,7 @@ end
 
 function release_artifacts(tar_path)
     name = "Release assets $(version)"
-    commit = string(LibGit2.GitHash(LibGit2.GitCommit(LibGit2.GitRepo(@__DIR__), "HEAD")))
+    commit = string(LibGit2.GitHash(LibGit2.GitCommit(LibGit2.GitRepo(repo_path), "HEAD")))
     token = ENV["GITHUB_TOKEN"]
     tag = "assets-$version"
     ghr() do bin

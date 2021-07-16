@@ -15,16 +15,16 @@ end
 """
     onpick(f, scene::SceneLike, plots::AbstractPlot...)
 
-Calls `f(idx)` whenever the mouse is over any of `plots`.
+Calls `f(plot, idx)` whenever the mouse is over any of `plots`.
 `idx` is an index, e.g. when over a scatter plot, it will be the index of the
 hovered element
 """
 function onpick(f, scene::SceneLike, plots::AbstractPlot...; range=1)
     fplots = flatten_plots(plots)
     args = range == 1 ? (scene,) : (scene, range)
-    map_once(events(scene).mouseposition) do mp
+    on(events(scene).mouseposition) do mp
         p, idx = mouse_selection(args...)
-        (p in fplots) && f(idx)
+        (p in fplots) && f(p, idx)
         return Consume(false)
     end
 end
@@ -121,7 +121,7 @@ function pick_closest(scene::SceneLike, screen, xy, range)
     x0, y0 = max.(1, floor.(Int, xy .- range))
     x1, y1 = min.([w, h], floor.(Int, xy .+ range))
     dx = x1 - x0; dy = y1 - y0
-    
+
     picks = pick(scene, screen, IRect2D(x0, y0, dx, dy))
 
     min_dist = range^2
@@ -141,7 +141,7 @@ end
 """
     pick_sorted(scene::Scene, xy::VecLike, range)
 
-Return all `(plot, index)` pairs in a `(xy .- range, xy .+ range)` region 
+Return all `(plot, index)` pairs in a `(xy .- range, xy .+ range)` region
 sorted by distance to `xy`.
 """
 function pick_sorted(scene::SceneLike, xy, range)
@@ -158,7 +158,7 @@ function pick_sorted(scene::SceneLike, screen, xy, range)
     x0, y0 = max.(1, floor.(Int, xy .- range))
     x1, y1 = min.([w, h], floor.(Int, xy .+ range))
     dx = x1 - x0; dy = y1 - y0
-    
+
     picks = pick(scene, screen, IRect2D(x0, y0, dx, dy))
 
     selected = filter(x -> x[1] != nothing, unique(vec(picks)))
@@ -360,7 +360,7 @@ end
 
 """
     select_point(scene; kwargs...) -> point
-    
+
 Interactively select a point on a 2D `scene` by clicking the left mouse button,
 dragging and then un-clicking. Return an **observable** whose value corresponds
 to the selected point on the scene. In addition the function

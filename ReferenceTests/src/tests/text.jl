@@ -249,15 +249,14 @@ end
     current_figure()
 end
 
-
 @cell "latex strings" begin
-    f, ax , l = lines(cumsum(randn(1000)),
+    f, ax , l = lines(cumsum(RNG.randn(1000)),
         axis = (
                 title = L"\sum_k{x y_k}",
                 xlabel = L"\lim_{x →\infty} A^j v_{(a + b)_k}^i \sqrt{23.5} x!= \sqrt{\frac{1+6}{4+a+g}}\int_{0}^{2π} \sin(x) dx",
                 ylabel = L"x + y - sin(x) × tan(y) + \sqrt{2}",
             ),
-        figure = (fontsize = 18, font = raw".\dev\MathTeXEngine\assets\fonts\NewCM10-Regular.otf")
+        figure = (fontsize = 18,)
     )
     text!(L"\int_{0}^{2π} \sin(x) dx", position = (500, 0))
     Legend(f[1, 2], [l, l, l], [L"\sum{xy}", L"a\int_0^5x^2+2ab", L"||x-y||^2"])
@@ -329,7 +328,7 @@ end
 end
 
 @cell "latex ticks" begin
-    lines(0..25, x -> 4 * sin(x) / (cos(3x) + 4), figure = (fontsize = 25, font = "Times"),
+    lines(0..25, x -> 4 * sin(x) / (cos(3x) + 4), figure = (fontsize = 25,),
         axis = (
             xticks = (0:10:20, [L"10^{-3.5}", L"10^{-4.5}", L"10^{-5.5}"]),
             yticks = ([-1, 0, 1], [L"\sum_%$i{xy}" for i in 1:3]),
@@ -344,6 +343,6 @@ end
 
 @cell "dynamic latex ticks" begin
     lines(0..25, x -> 4 * sin(x) / (cos(3x) + 4),
-        figure = (fontsize = 16, font = "Times"),
+        figure = (fontsize = 16,),
         axis = (xtickformat = (xs -> [L"e^{\sqrt{%$x}}+\sum" for x in xs]), ))
 end
