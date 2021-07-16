@@ -1038,7 +1038,6 @@ function show_data(inspector::DataInspector, plot::VolumeSlices, idx, child::Hea
         i = clamp(round(Int, (x - qs[1]) / (qs[2] - qs[1]) * size(data, 1) + 0.5), 1, size(data, 1))
         j = clamp(round(Int, (y - ps[1]) / (ps[2] - ps[1]) * size(data, 2) + 0.5), 1, size(data, 2))
         val = data[i, j]
-        @info i, j val
 
         a._display_text[] = @sprintf(
             "x: %0.6f\ny: %0.6f\nz: %0.6f\n%0.6f0", 
