@@ -1,0 +1,99 @@
+<!doctype html>
+<!--
+  Minimal Mistakes Jekyll Theme 4.16.4 by Michael Rose
+  Copyright 2013-2019 Michael Rose - mademistakes.com | @mmistakes
+  Free for personal and commercial use under the MIT license
+  https://github.com/mmistakes/minimal-mistakes/blob/master/LICENSE
+-->
+<html lang="en" class="no-js">
+  <head>
+    <meta charset="utf-8">
+    <title>Minimal Mistakes</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+      document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+    </script>
+    <!-- For all browsers -->
+    <link rel="stylesheet" href="/css/minimal-mistakes.css">
+    <!--[if IE ]>
+      <style>
+        /* old IE unsupported flexbox fixes */
+        .greedy-nav .site-title {
+          padding-right: 4em;
+        }
+        .greedy-nav button {
+          position: absolute;
+          top: 0;
+          right: 0;
+          height: 100%;
+        }
+      </style>
+    <![endif]-->
+    <!-- start custom head snippets -->
+    <!-- insert favicons. use https://realfavicongenerator.net/ -->
+    <!-- end custom head snippets -->
+  </head>
+<body class="layout--splash">
+{{ insert masthead.html }}
+
+<div class="initial-content">
+  <div class="page__hero--overlay"
+    style="background-color: #5e616c; background-image: url('/assets/minimal-mistakes/mm-home-page-feature.jpg');">
+    <div class="wrapper">
+      <h1 id="page-title" class="page__title" itemprop="headline">Minimal Mistakes</h1>
+      <p class="page__lead">A flexible two-column theme <br> developed by Michael Rose.</p>
+    </div>
+  </div>
+
+  <div id="main" role="main">
+    <article class="splash" itemscope itemtype="https://schema.org/CreativeWork">
+      <meta itemprop="description" content="A flexible two-column Jekyll theme. Perfect for building personal sites, blogs, and portfolios. Latest release v4.16.4">
+      <section class="page__content" itemprop="text">
+        <div class="feature__wrapper">
+          <div class="feature__item">
+            <div class="archive__item">
+              <div class="archive__item-teaser">
+                <img src="/assets/minimal-mistakes/mm-customizable-feature.png" alt="customizable" />
+              </div>
+              <div class="archive__item-body">
+                <h2 class="archive__item-title">Franklin</h2>
+                <div class="archive__item-excerpt">
+                  <p>Minimal mistakes works with Franklin too!</p>
+                </div>
+                <p><a href="/minimal-mistakes/docs/configuration/" class="btn btn--primary">Learn more</a></p>
+              </div>
+            </div>
+          </div>
+          <div class="feature__item">
+            <div class="archive__item">
+              <div class="archive__item-teaser">
+                <img src="/assets/minimal-mistakes/mm-responsive-feature.png" alt="fully responsive" />
+              </div>
+              <div class="archive__item-body">
+                <h2 class="archive__item-title">Responsive</h2>
+                <div class="archive__item-excerpt">
+                  <p>Built with HTML5 + CSS3. All layouts are fully responsive with helpers to augment your content.</p>
+                </div>
+                <p><a href="/minimal-mistakes/docs/layouts/" class="btn btn--primary">Learn more</a></p>
+              </div>
+            </div>
+          </div>
+          <div class="feature__item">
+            <div class="archive__item">
+              <div class="archive__item-teaser">
+                <img src="/assets/minimal-mistakes/mm-free-feature.png" alt="100% free" />
+              </div>
+              <div class="archive__item-body">
+                <h2 class="archive__item-title">100% free</h2>
+                <div class="archive__item-excerpt">
+                  <p>Free to use however you want under the MIT License. Clone it, fork it, customize it… whatever!</p>
+                </div>
+                <p><a href="/minimal-mistakes/docs/license/" class="btn btn--primary">Learn more</a></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </article>
+
+    {{ insert foot.html }}
