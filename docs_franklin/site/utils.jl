@@ -48,20 +48,36 @@ function lx_examplefigure(com, _)
   s
 end
 
-function hfun_list_plotting_functions()
-  @chain begin
-    readdir(joinpath(@__DIR__, "plotting_functions"))
-    filter(endswith(".md"), _)
-    filter(!=("index.md"), _)
-    map(_) do page
-      name = splitext(page)[1]
-      """
-      <div style="border:1px solid black; margin: 5px">
-        <a href="$(name)">$name</a>
-        <p>There should be images here, generated on the linked sites, but they are not available when the hfun runs.</p>
-      </div>
-      """
+@delay function hfun_list_plotting_functions()
+    mds = @chain begin
+        readdir(joinpath(@__DIR__, "plotting_functions"))
+        filter(endswith(".md"), _)
+        filter(!=("index.md"), _)
     end
-    join
-  end
+
+
+    html = join(map(mds) do page
+        name = splitext(page)[1]
+
+        outputpath = joinpath(@__DIR__, "__site", "assets",
+            "plotting_functions", name, "code", "output")
+
+        pngpaths = @chain readdir(outputpath) begin
+            filter(endswith(".png"), _)
+            "/assets/plotting_functions/$name/code/output/" .* _
+        end
+
+        """
+        <div class="plotting-functions-item">
+            <a href="$(name)">$name</a>
+            $(
+                map(pngpaths) do pngpath
+                    "<img class='plotting-function-thumb' src=\"$pngpath\"/>"
+                end |> join
+            )
+        </div>
+        """
+    end)
+
+    html
 end

@@ -7,7 +7,7 @@ heatmap
 ## Two vectors and a matrix
 
 \examplefigure{
-```
+```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
@@ -23,8 +23,8 @@ heatmap(xs, ys, zs)
 
 ## Two ranges and a function
 
-\examplefigure{
-```
+\examplefigure{name = mandelbrot_heatmap
+```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
@@ -44,7 +44,7 @@ heatmap(-2:0.1:1, -1.1:0.1:1.1, mandelbrot,
 There must be no duplicate combinations of x and y, but it is allowed to leave out values.
 
 \examplefigure{
-```
+```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide

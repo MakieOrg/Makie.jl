@@ -7,7 +7,7 @@ lines
 ### Examples
 
 \examplefigure{
-```
+```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
