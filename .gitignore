@@ -18,3 +18,4 @@ CairoMakie/src/display.svg
 CairoMakie/src/display.pdf
 CairoMakie/src/display.png
 monorepo
+.vscode/settings.json
