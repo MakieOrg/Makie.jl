@@ -2197,25 +2197,6 @@ th {
   position: relative;
 }
 
-.greedy-nav .visible-links a::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  height: 4px;
-  background: #6f777d;
-  width: 100%;
-  -webkit-transition: all 0.2s ease-in-out;
-  transition: all 0.2s ease-in-out;
-  -webkit-transform: scaleX(0) translate3d(0, 0, 0);
-  transform: scaleX(0) translate3d(0, 0, 0);
-}
-
-.greedy-nav .visible-links a:hover::before {
-  -webkit-transform: scaleX(1);
-  -ms-transform: scaleX(1);
-  transform: scaleX(1);
-}
 
 .greedy-nav .hidden-links {
   position: absolute;
