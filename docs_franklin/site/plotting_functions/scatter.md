@@ -1,8 +1,6 @@
 # scatter
 
-```julia:code
-scatter
-```
+{{doc scatter}}
 
 ### Examples
 

@@ -1,4 +1,5 @@
 using Chain
+using Markdown
 
 
 function hfun_bar(vname)
@@ -11,11 +12,25 @@ function hfun_m1fill(vname)
   return pagevar("index", var)
 end
 
-function lx_baz(com, _)
-  # keep this first line
-  brace_content = Franklin.content(com.braces[1]) # input string
-  # do whatever you want here
-  return uppercase(brace_content)
+
+function hfun_doc(params)
+  fname = params[1]
+  head = length(params) > 1 ? params[2] : fname
+  type = length(params) == 3 ? params[3] : ""
+  doc = eval(Meta.parse("using Makie; @doc Makie.$fname"))
+  txt = Markdown.plain(doc)
+  # possibly further processing here
+  #body = Markdown.html(Markdown.parse(txt))
+  body = fd2html(txt, internal = true)
+  return """
+    <div class="docstring">
+        <h2 class="doc-header" id="$fname">
+          <a href="#$fname">$head</a>
+          <div class="doc-type">$type</div>
+        </h2>
+        <div class="doc-content">$body</div>
+    </div>
+  """
 end
 
 
