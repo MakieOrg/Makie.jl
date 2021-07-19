@@ -259,16 +259,6 @@ value_or_first(x::AbstractArray) = first(x)
 value_or_first(x::StaticArray) = x
 value_or_first(x) = x
 
-function collect_glyph_data(res, gcollection, projview, transfunc, pos, space, offset)
-    res = Vec2f0(widths(pixelarea(scene)[]))
-    preprojected_glyph_arrays(pos, gcollection, space, projview, res, offset, transfunc)
-end
-
-function collect_glyph_data(res, gcollection, projview, transfunc, pos, space, offset)
-    preprojected_glyph_arrays(pos, to_value(gcollection), space, projview, res, offset, transfunc)
-end
-
-
 function draw_atomic(screen::GLScreen, scene::Scene,
         x::Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
 
@@ -333,6 +323,7 @@ function draw_atomic(screen::GLScreen, scene::Scene,
                 Makie.collect_vector(gc.strokecolors, length(gc.glyphs))
             end
         end
+
         gl_attributes[:rotation] = lift(glyphcollection) do gc
             if gc isa AbstractArray
                 reduce(vcat, (Makie.collect_vector(g.rotations, length(g.glyphs)) for g in gc),
