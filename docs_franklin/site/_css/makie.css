@@ -5,26 +5,33 @@ html {
 /* plotting functions overview page */
 
 .plotting-functions-grid {
-    columns: 3;
+    /* columns: 3; */
+}
+
+.plotting-functions-grid a:hover {
+    text-decoration: none;
 }
 
 .plotting-functions-item {
     border: 1px solid #ddd;
     break-inside: avoid;
     margin-bottom: 1em;
+    border-radius: 4px;
     /* box-shadow: 0px 2px 8px 2px rgba(0, 0, 0, 0.1); */
 }
 
 .plotting-functions-item h2 {
     border-bottom: 1px solid #ddd;
     margin: 0;
-    color: black;
+    color: #444;
     padding: 0.1em 0.3em;
-    background-color: #efefef;
+    background-color: #f4f4f4;
     margin-bottom: 0.5em;
 }
 
 .plotting-functions-thumbcontainer > * {
+    max-height: 150px;
+    max-width: 250px;
     padding: 0.3em;
 }
 
@@ -36,7 +43,7 @@ html {
 }
 
 .doc-header {
-    background-color: #efefef;
+    background-color: #f4f4f4;
 }
 
 h2.doc-header {
