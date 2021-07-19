@@ -36,7 +36,7 @@
 
 ### Examples
 
-\examplefigure{
+\begin{examplefigure}{}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
@@ -56,9 +56,9 @@ arrows!(xs, ys, us, vs, arrowsize = 10, lengthscale = 0.3,
 
 f
 ```
-}
+\end{examplefigure}
 
-\examplefigure{
+\begin{examplefigure}{}
 ```julia
 using GLMakie
 GLMakie.activate!() # hide
@@ -73,9 +73,9 @@ arrows(
     align = :center, axis=(type=Axis3,)
 )
 ```
-}
+\end{examplefigure}
 
-\examplefigure{
+\begin{examplefigure}{}
 ```julia
 using GLMakie
 GLMakie.activate!() # hide
@@ -92,4 +92,4 @@ arrows(
     align = :center, axis=(type=Axis3,)
 )
 ```
-}
+\end{examplefigure}

@@ -4,7 +4,7 @@
 
 ## Two vectors and a matrix
 
-\examplefigure{
+\begin{examplefigure}{}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
@@ -17,11 +17,11 @@ zs = [cos(x) * sin(y) for x in xs, y in ys]
 
 heatmap(xs, ys, zs)
 ```
-}
+\end{examplefigure}
 
 ## Two ranges and a function
 
-\examplefigure{name = mandelbrot_heatmap
+\begin{examplefigure}{name = "mandelbrot_heatmap"}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
@@ -35,13 +35,13 @@ end
 heatmap(-2:0.1:1, -1.1:0.1:1.1, mandelbrot,
     colormap = Reverse(:deep))
 ```
-}
+\end{examplefigure}
 
 ## Three vectors
 
 There must be no duplicate combinations of x and y, but it is allowed to leave out values.
 
-\examplefigure{
+\begin{examplefigure}{}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
@@ -54,4 +54,4 @@ zs = [1, 2, 3, 4, 5, 6, 7, 8, NaN]
 
 heatmap(xs, ys, zs)
 ```
-}
+\end{examplefigure}

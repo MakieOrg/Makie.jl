@@ -4,7 +4,8 @@
 
 ### Examples
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
@@ -20,8 +21,10 @@ barplot!(xs, ys .- 1, fillto = -1, color = xs, strokecolor = :black, strokewidth
 
 f
 ```
+\end{examplefigure}
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
@@ -31,8 +34,10 @@ ys = 0.5 .* sin.(xs)
 
 barplot(xs, ys, width = step(xs), color = :gray85, strokecolor = :black, strokewidth = 1)
 ```
+\end{examplefigure}
 
-```@example bar
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
@@ -44,8 +49,10 @@ tbl = (x = [1, 1, 1, 2, 2, 2, 3, 3, 3],
        grp2 = [1, 1, 2, 1, 2, 1, 1, 2, 1]
        )
 ```
+\end{examplefigure}
 
-```@example bar
+\begin{examplefigure}{}
+```julia
 barplot(tbl.x, tbl.height,
         stack = tbl.grp,
         color = tbl.grp,
@@ -53,8 +60,10 @@ barplot(tbl.x, tbl.height,
                 title = "Stacked bars"),
         )
 ```
+\end{examplefigure}
 
-```@example bar
+\begin{examplefigure}{}
+```julia
 barplot(tbl.x, tbl.height,
         dodge = tbl.grp,
         color = tbl.grp,
@@ -62,8 +71,10 @@ barplot(tbl.x, tbl.height,
                 title = "Dodged bars"),
         )
 ```
+\end{examplefigure}
 
-```@example bar
+\begin{examplefigure}{}
+```julia
 barplot(tbl.x, tbl.height,
         dodge = tbl.grp1,
         stack = tbl.grp2,
@@ -72,8 +83,10 @@ barplot(tbl.x, tbl.height,
                 title = "Dodged and stacked bars"),
         )
 ```
+\end{examplefigure}
 
-```@example bar
+\begin{examplefigure}{}
+```julia
 colors = Makie.wong_colors()
 
 # Figure and Axis
@@ -95,8 +108,10 @@ Legend(fig[1,2], elements, labels, title)
 
 fig
 ```
+\end{examplefigure}
 
-```@example bar
+\begin{examplefigure}{}
+```julia
 barplot(
     tbl.x, tbl.height,
     dodge = tbl.grp,
@@ -111,8 +126,10 @@ barplot(
     direction=:x,
 )
 ```
+\end{examplefigure}
 
-```@example bar
+\begin{examplefigure}{}
+```julia
 barplot(
     tbl.x, tbl.height,
     dodge = tbl.grp,
@@ -127,8 +144,10 @@ barplot(
     direction=:x,
 )
 ```
+\end{examplefigure}
 
-```@example bar
+\begin{examplefigure}{}
+```julia
 barplot([-1, -0.5, 0.5, 1],
     bar_labels = :y,
     axis = (title="Fonts + flip_labels_at",),
@@ -139,3 +158,4 @@ barplot([-1, -0.5, 0.5, 1],
     label_offset = 10
 )
 ```
+\end{examplefigure}

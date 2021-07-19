@@ -34,19 +34,14 @@ function hfun_doc(params)
 end
 
 
-function lx_examplefigure(com, _)
-  content = Franklin.content(com.braces[1])
+function env_examplefigure(com, _)
+  content = Franklin.content(com)
 
-  preamble, middle = split(content, r"```(julia)?", limit = 2)
-  args = split(strip(preamble), r"\s*[=,]\s*", keepempty = false)
+  _, middle = split(content, r"```(julia)?", limit = 2)
+  kwargs = eval(Meta.parse("Dict(pairs((;" * Franklin.content(com.braces[1]) * ")))"))
 
-  if !iseven(length(args))
-    error("Uneven argument lengths, should be a=b pairs")
-  end
-  d = Dict(args[1:2:end] .=> args[2:2:end])
-
-  name = get(d, "name", "example_" * string(hash(content)))
-  svg = parse(Bool, get(d, "svg", "false"))
+  name = get(kwargs, :name, "example_" * string(hash(content)))
+  svg = get(kwargs, :svg, false)::Bool
 
   middle, _ = split(middle, r"```\s*$")
   s = "```julia:$name" *
@@ -86,11 +81,13 @@ end
         <a href="$(name)">
         <div class="plotting-functions-item">
           <h2>$name</h2>
-            $(
-                map(pngpaths) do pngpath
-                    "<img class='plotting-function-thumb' src=\"$pngpath\"/>"
-                end |> join
-            )
+            <div class="plotting-functions-thumbcontainer">
+              $(
+                  map(pngpaths) do pngpath
+                      "<img class='plotting-function-thumb' src=\"$pngpath\"/>"
+                  end |> join
+              )
+            </div>
         </div>
         </a>
         """

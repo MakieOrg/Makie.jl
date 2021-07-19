@@ -4,7 +4,7 @@
 
 ### Examples
 
-\examplefigure{
+\begin{examplefigure}{}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
@@ -18,4 +18,4 @@ dodge = [1, 2, 1, 2, 1, 2]
 
 crossbar(xs, ys, ymins, ymaxs, dodge = dodge, show_notch = true)
 ```
-}
+\end{examplefigure}

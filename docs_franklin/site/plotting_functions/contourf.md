@@ -2,7 +2,7 @@
 
 {{doc contourf}}
 
-\examplefigure{
+\begin{examplefigure}{}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
@@ -21,9 +21,9 @@ Colorbar(f[1, 2], co)
 
 f
 ```
-}
+\end{examplefigure}
 
-\examplefigure{
+\begin{examplefigure}{}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
@@ -43,9 +43,9 @@ Colorbar(f[1, 2], co)
 
 f
 ```
-}
+\end{examplefigure}
 
-\examplefigure{
+\begin{examplefigure}{}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
@@ -66,7 +66,7 @@ Colorbar(f[1, 2], co)
 
 f
 ```
-}
+\end{examplefigure}
 
 #### Relative mode
 
@@ -74,7 +74,7 @@ Sometimes it's beneficial to drop one part of the range of values, usually towar
 Rather than specifying the levels to include manually, you can set the `mode` attribute
 to `:relative` and specify the levels from 0 to 1, relative to the current minimum and maximum value.
 
-\examplefigure{
+\begin{examplefigure}{}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
@@ -95,4 +95,4 @@ contourf!(k, levels = 10)
 
 f
 ```
-}
+\end{examplefigure}

@@ -4,7 +4,7 @@
 
 ### Examples
 
-\examplefigure{
+\begin{examplefigure}{}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
@@ -21,4 +21,4 @@ contour!(xs, ys, zs)
 
 f
 ```
-}
+\end{examplefigure}

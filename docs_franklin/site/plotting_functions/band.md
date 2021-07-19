@@ -4,7 +4,7 @@
 
 ### Examples
 
-\examplefigure{
+\begin{examplefigure}{}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
@@ -22,9 +22,9 @@ band!(xs, ys_low .- 1, ys_high .-1, color = :red)
 
 f
 ```
-}
+\end{examplefigure}
 
-\examplefigure{
+\begin{examplefigure}{}
 ```julia
 using Statistics
 using CairoMakie
@@ -42,14 +42,15 @@ X = X .- X[:, 1]
 lines!(t, μ)              # plot mean line
 σ = vec(std(X, dims=1))  # stddev
 band!(t, μ + σ, μ - σ)   # plot stddev band
-
+haha = "lol"
 f
 ```
-}
+\end{examplefigure}
 
-\examplefigure{
+\begin{examplefigure}{}
 ```julia
 using GLMakie
+@show haha
 GLMakie.activate!() # hide
 Makie.inline!(true) # hide
 lower = fill(Point3f0(0,0,0), 100)
@@ -57,4 +58,4 @@ upper = [Point3f0(sin(x), cos(x), 1.0) for x in range(0,2pi, length=100)]
 col = repeat([1:50;50:-1:1],outer=2)
 band(lower, upper, color=col, axis=(type=Axis3,))
 ```
-}
+\end{examplefigure}

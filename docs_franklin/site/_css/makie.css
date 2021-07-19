@@ -24,6 +24,11 @@ html {
     margin-bottom: 0.5em;
 }
 
+.plotting-functions-thumbcontainer {
+    height: 200px;
+    overflow-y: auto;
+}
+
 /* docstrings */
 
 .docstring {

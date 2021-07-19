@@ -4,8 +4,7 @@
 
 ### Examples
 
-\examplefigure{
-name = basic_scatter, svg = true
+\begin{examplefigure}{name = "basic_scatter", svg = true}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
@@ -24,10 +23,10 @@ scatter!(xs, ys .- 3, marker = 'a':'t', strokewidth = 0, color = :black)
 
 f
 ```
-}
+\end{examplefigure}
 
 
-\examplefigure{
+\begin{examplefigure}{}
 ```julia
 using CairoMakie
 using DelimitedFiles
@@ -39,4 +38,4 @@ a = readdlm(assetpath("airportlocations.csv"))
 scatter(a[1:50:end, :], marker = '✈',
     markersize = 20, color = :black)
 ```
-}
+\end{examplefigure}

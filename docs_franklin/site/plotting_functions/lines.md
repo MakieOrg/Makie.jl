@@ -4,7 +4,7 @@
 
 ### Examples
 
-\examplefigure{
+\begin{examplefigure}{}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
@@ -23,4 +23,4 @@ lines!(xs, ys .- 3, linestyle = :dash)
 
 f
 ```
-}
+\end{examplefigure}
