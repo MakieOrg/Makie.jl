@@ -5,14 +5,7 @@ html {
 /* plotting functions overview page */
 
 .plotting-functions-grid {
-    display: flex;
-    flex-wrap: wrap;
-    margin: -10px;
-}
-
-.plotting-functions-grid>* {
-    flex: 1 1 200px;
-    margin: 10px;
+    columns: 3;
 }
 
 .plotting-functions-item {
@@ -30,9 +23,8 @@ html {
     margin-bottom: 0.5em;
 }
 
-.plotting-functions-thumbcontainer {
-    height: 200px;
-    overflow-y: auto;
+.plotting-functions-thumbcontainer > * {
+    padding: 0.3em;
 }
 
 /* docstrings */
