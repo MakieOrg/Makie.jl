@@ -264,7 +264,7 @@ function draw_atomic(screen::GLScreen, scene::Scene,
 
     robj = cached_robj!(screen, scene, x) do gl_attributes
         glyphcollection = x[1]
-        liftkeys = (:position, :rotation, :model, :space, :offset)
+        liftkeys = (:position, :space, :offset)
         args = getindex.(Ref(gl_attributes), liftkeys)
 
         # TODO: This is a hack before we get better updating of plot objects and attributes going.
@@ -275,14 +275,14 @@ function draw_atomic(screen::GLScreen, scene::Scene,
         # both glyphcollection and position, so it still works
         if glyphcollection[] isa Makie.GlyphCollection
             # here we lift the glyph collection
-            collect_glyph_data = (gcollection, projview, transfunc, pos, rotation, model, space, offset) -> begin
+            function collect_glyph_data(gcollection, projview, transfunc, pos, space, offset)
                 res = Vec2f0(widths(pixelarea(scene)[]))
                 preprojected_glyph_arrays(pos, gcollection, space, projview, res, offset, transfunc)
             end
             glyph_data = lift(collect_glyph_data, glyphcollection, scene.camera.projectionview, Makie.transform_func_obs(scene), args...)
         else
             # and here we don't because it triggers dimension mismatches
-            collect_glyph_data = (projview, transfunc, pos, rotation, model, space, offset) -> begin
+            function collect_glyph_data(projview, transfunc, pos, space, offset)
                 gcollection = glyphcollection[]
                 res = Vec2f0(widths(pixelarea(scene)[]))
                 preprojected_glyph_arrays(pos, gcollection, space, projview, res, offset, transfunc)
@@ -290,18 +290,12 @@ function draw_atomic(screen::GLScreen, scene::Scene,
             glyph_data = lift(collect_glyph_data, scene.camera.projectionview, Makie.transform_func_obs(scene), args...)
         end
 
-
         # unpack values from the one signal:
         positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i
             lift(getindex, glyph_data, i)
         end
 
         atlas = get_texture_atlas()
-        keys = (:color, :strokecolor, :rotation)
-
-        signals = map(keys) do key
-            Makie.get_attribute(x, key)
-        end
 
         filter!(gl_attributes) do (k, v)
             # These are liftkeys without model
