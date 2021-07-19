@@ -42,7 +42,6 @@ X = X .- X[:, 1]
 lines!(t, μ)              # plot mean line
 σ = vec(std(X, dims=1))  # stddev
 band!(t, μ + σ, μ - σ)   # plot stddev band
-haha = "lol"
 f
 ```
 \end{examplefigure}
@@ -50,7 +49,6 @@ f
 \begin{examplefigure}{}
 ```julia
 using GLMakie
-@show haha
 GLMakie.activate!() # hide
 Makie.inline!(true) # hide
 lower = fill(Point3f0(0,0,0), 100)

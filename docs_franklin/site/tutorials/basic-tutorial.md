@@ -24,15 +24,12 @@ Ok, now that this is out of the way, let's get started!
 
 First, we import CairoMakie.
 
-\begin{examplefigure}{}
-```julia
-
+```julia:setup
 using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
 nothing # hide
 ```
-\end{examplefigure}
 
 Makie has many different plotting functions, one of the most common ones is [lines](@ref).
 You can just call such a function and your plot will appear if your coding environment can show png or svg files.
