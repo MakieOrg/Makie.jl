@@ -71,7 +71,7 @@ end
     end
 
 
-    html = join(map(mds) do page
+    divs = join(map(mds) do page
         name = splitext(page)[1]
 
         outputpath = joinpath(@__DIR__, "__site", "assets",
@@ -83,16 +83,18 @@ end
         end
 
         """
+        <a href="$(name)">
         <div class="plotting-functions-item">
-            <a href="$(name)">$name</a>
+          <h2>$name</h2>
             $(
                 map(pngpaths) do pngpath
                     "<img class='plotting-function-thumb' src=\"$pngpath\"/>"
                 end |> join
             )
         </div>
+        </a>
         """
     end)
 
-    html
+    "<div class=\"plotting-functions-grid\">$divs</div>"
 end

@@ -1,8 +1,6 @@
 # heatmap
 
-```
-heatmap
-```
+{{doc heatmap}}
 
 ## Two vectors and a matrix
 

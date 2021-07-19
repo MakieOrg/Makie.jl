@@ -4,7 +4,8 @@
 
 ### Examples
 
-\examplefigure{name = basic_scatter, svg = true
+\examplefigure{
+name = basic_scatter, svg = true
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide

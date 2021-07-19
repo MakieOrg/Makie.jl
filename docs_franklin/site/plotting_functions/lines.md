@@ -1,8 +1,6 @@
 # lines
 
-```
-lines
-```
+{{doc lines}}
 
 ### Examples
 
