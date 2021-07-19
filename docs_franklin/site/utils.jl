@@ -48,9 +48,9 @@ function env_examplefigure(com, _)
   middle *
   """
   save(joinpath(@OUTPUT, "$name.png"), current_figure()) # hide
-  if $svg
+  if $svg # hide
     save(joinpath(@OUTPUT, "$name.svg"), current_figure()) # hide
-  end
+  end # hide
   ```
   \\fig{$name.$(svg ? "svg" : "png")}
   """
