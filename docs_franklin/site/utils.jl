@@ -141,3 +141,20 @@ end
 
     "<div class=\"plotting-functions-grid\">$divs</div>"
 end
+
+
+function hfun_list_folder(param)
+
+  folder = param[1]
+
+  mds = @chain begin
+      readdir(joinpath(@__DIR__, folder))
+      filter(endswith(".md"), _)
+      filter(!=("index.md"), _)
+  end
+
+  join(map(mds) do page
+    name = splitext(page)[1]
+    """<a href="$name"><h2>$name</h2></a>"""
+  end)
+end
