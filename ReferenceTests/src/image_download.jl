@@ -24,9 +24,15 @@ function download_refimages(tag=last_major_version(); name="refimages")
     url = "https://github.com/JuliaPlots/Makie.jl/releases/download/$(tag)/$(name).tar"
     images_tar = basedir("$(name).tar")
     images = basedir(name)
-    isfile(images_tar) && rm(images_tar)
+    if isfile(images_tar)
+        if Bool(parse(Int, get(ENV, "REUSE_IMAGES_TAR", "0")))
+            @info "$images_tar already exists, skipping download as requested"
+        else
+            rm(images_tar)
+        end
+    end
+    !isfile(images_tar) && download(url, images_tar)
     isdir(images) && rm(images, recursive=true, force=true)
-    Base.download(url, images_tar)
     Tar.extract(images_tar, images)
     return images
 end
