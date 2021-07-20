@@ -338,9 +338,6 @@ function draw_atomic(screen::GLScreen, scene::Scene,
         gl_attributes[:uv_offset_width] = uv_offset_width
         gl_attributes[:distancefield] = get_texture!(atlas)
         gl_attributes[:visible] = x.visible
-        on(gl_attributes[:model]) do m
-            @show m
-        end
         robj = visualize((DISTANCEFIELD, positions), Style(:default), gl_attributes)
         # Draw text in screenspace
         if x.space[] == :screen
