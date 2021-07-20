@@ -308,16 +308,6 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, args.
     return
 end
 
-function text_bb(str, font, size)
-    rot = Quaternionf0(0,0,0,1)
-    layout = layout_text(
-        str, size, font, Vec2f0(0), rot, Mat4f0(I), 0.5, 1.0,
-        RGBAf0(0, 0, 0, 0), RGBAf0(0, 0, 0, 0), 0f0)
-    # @assert typeof(layout.bboxes) <: Vector{FRect2D}
-    return boundingbox(layout, Point3f0(0), rot)
-end
-
-
 function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args...)
     axis = Axis3D(scene, attributes, args)
     # Disable any non linear transform for the axis plot!

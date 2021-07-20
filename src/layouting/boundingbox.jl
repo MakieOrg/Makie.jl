@@ -156,6 +156,13 @@ function boundingbox(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}})
     )
 end
 
+function text_bb(str, font, size)
+    rot = Quaternionf0(0,0,0,1)
+    layout = layout_text(
+        str, size, font, Vec2f0(0), rot, 0.5, 1.0,
+        RGBAf0(0, 0, 0, 0), RGBAf0(0, 0, 0, 0), 0f0)
+    return boundingbox(layout, Point3f0(0), rot)
+end
 
 """
 Calculate an approximation of a tight rectangle around a 2D rectangle rotated by `angle` radians.
