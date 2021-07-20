@@ -3,7 +3,7 @@
 In this tutorial, we will see some of the capabilities of layouts in Makie while
 building a complex figure step by step. This is the final result we will create:
 
-\fig{layout_tutorial_final.png}
+\fig{output/layout_tutorial_final.png}
 
 ~~~
 <details><summary>You can click here to see the full code</summary>
