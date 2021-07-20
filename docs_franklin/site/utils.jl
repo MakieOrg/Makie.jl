@@ -57,11 +57,14 @@ function env_examplefigure(com, _)
   middle, _ = split(middle, r"```\s*$")
   s = """
     ```julia:$name
+    __result = begin # hide
     $middle
-    save(joinpath(@OUTPUT, "$name.png"), current_figure()) # hide
-    if $svg # hide
-      save(joinpath(@OUTPUT, "$name.svg"), current_figure()) # hide
     end # hide
+    save(joinpath(@OUTPUT, "$name.png"), __result) # hide
+    if $svg # hide
+      save(joinpath(@OUTPUT, "$name.svg"), __result) # hide
+    end # hide
+    nothing # hide
     ```
     ~~~
     <a id="$name">
