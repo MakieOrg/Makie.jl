@@ -144,7 +144,7 @@ function boundingbox(x::Text{<:Tuple{<:GlyphCollection}})
     boundingbox(
         x[1][],
         to_ndim(Point3f0, x.position[], 0),
-        to_rotation(x.rotation)
+        to_rotation(x.rotation[])
     )
 end
 
