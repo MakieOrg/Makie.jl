@@ -19,7 +19,7 @@ jobs:
       with:
         python-version: '3.8'
     - name: Install binary dependencies
-        run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
+      run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
     # NOTE: Here you can install dependencies such as matplotlib if you use
     # packages such as PyPlot.
     # - run: pip install matplotlib
