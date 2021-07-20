@@ -52,15 +52,21 @@ function env_examplefigure(com, _)
   svg = get(kwargs, :svg, false)::Bool
 
   middle, _ = split(middle, r"```\s*$")
-  s = "```julia:$name" *
-  middle *
-  """
-  save(joinpath(@OUTPUT, "$name.png"), current_figure()) # hide
-  if $svg # hide
-    save(joinpath(@OUTPUT, "$name.svg"), current_figure()) # hide
-  end # hide
-  ```
-  \\fig{$name.$(svg ? "svg" : "png")}
+  s = """
+    ```julia:$name
+    $middle
+    save(joinpath(@OUTPUT, "$name.png"), current_figure()) # hide
+    if $svg # hide
+      save(joinpath(@OUTPUT, "$name.svg"), current_figure()) # hide
+    end # hide
+    ```
+    ~~~
+    <a id="$name">
+    ~~~
+    \\fig{$name.$(svg ? "svg" : "png")}
+    ~~~
+    </a>
+    ~~~
   """
 
   s
@@ -91,18 +97,18 @@ end
         end
 
         """
-        <a href="$(name)">
+        
         <div class="plotting-functions-item">
-          <h2>$name</h2>
-            <div class="plotting-functions-thumbcontainer">
-              $(
-                  map(pngpaths) do pngpath
-                      "<img class='plotting-function-thumb' src=\"$pngpath\"/>"
-                  end |> join
-              )
-            </div>
+          <a href="$name"><h2>$name</h2></a>
+          <div class="plotting-functions-thumbcontainer">
+            $(
+                map(pngpaths) do pngpath
+                    bn = splitext(basename(pngpath))[1]
+                    "<a href=\"$name#$bn\"><img class='plotting-function-thumb' src=\"$pngpath\"/></a>"
+                end |> join
+            )
+          </div>
         </div>
-        </a>
         """
     end)
 
