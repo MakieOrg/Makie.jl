@@ -35,8 +35,9 @@ fig
 # Adding a title
 Since `Axis3D` does not support adding a title, you can use a `Label` to add a title to a `LScene`.
 
-```julia
+```@example 1
 fig = Figure()
-LScene(fig[1, 1], ...)
+LScene(fig[1, 1])
 fig[1, 1, Top()] = Label(fig, "Fancy Title")
+fig
 ```
