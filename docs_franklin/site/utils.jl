@@ -1,5 +1,13 @@
 using Chain
 using Markdown
+using GLMakie
+
+# Pause renderloop for slow software rendering.
+# This way, we only render if we actualy save e.g. an image
+@show GLMakie.set_window_config!(;
+    framerate = 15.0,
+    pause_rendering = true
+)
 
 
 function hfun_bar(vname)
