@@ -29,13 +29,11 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
     glyphcollections = Node(GlyphCollection[])
     position = Node{Any}(nothing)
     rotation = Node{Any}(nothing)
-    model = Node{Any}(nothing)
-    # offset = Node{Any}(nothing)
 
     onany(plot[1], plot.textsize, plot.position,
-            plot.font, plot.align, plot.rotation, plot.model, plot.justification,
+            plot.font, plot.align, plot.rotation, plot.justification,
             plot.lineheight, plot.color, plot.strokecolor, plot.strokewidth) do str,
-                    ts, pos, f, al, rot, mo, jus, lh, col, scol, swi
+                    ts, pos, f, al, rot, jus, lh, col, scol, swi
 
         ts = to_textsize(ts)
         f = to_font(f)
@@ -51,7 +49,6 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
         end
         position.val = pos
         rotation.val = rot
-        model.val = mo
         glyphcollections[] = gcs
     end
 
@@ -59,7 +56,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
     notify(plot[1])
 
     text!(plot, glyphcollections; position = plot.position, rotation = rotation,
-        model = model, offset = plot.offset, space = plot.space, visible=plot.visible)
+        model = plot.model, offset = plot.offset, space = plot.space, visible=plot.visible)
 
     plot
 end
