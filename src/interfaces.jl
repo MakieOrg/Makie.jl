@@ -85,7 +85,6 @@ end
 function calculated_attributes!(::Type{T}, plot) where {T<:Union{Lines, LineSegments}}
     color_and_colormap!(plot)
     pos = plot[1][]
-
     # extend one color/linewidth per linesegment to be one (the same) color/linewidth per vertex
     if T <: LineSegments
         for attr in [:color, :linewidth]
