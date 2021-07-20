@@ -4,7 +4,8 @@
 
 The two attributes `azimuth` and `elevation` control the angles from which the plots are viewed.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using GLMakie
 using FileIO
 GLMakie.activate!() # hide
@@ -32,7 +33,7 @@ end
 
 f
 ```
-
+\end{examplefigure}
 ## Data aspects and view mode
 
 The attributes `aspect` and `viewmode` both influence the apparent relative scaling of the three axes.
@@ -46,7 +47,8 @@ The visual result is that objects with known real-world dimensions look correct 
 
 You can also set it to a three-tuple, where each number gives the relative length of that axis vs the others.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using GLMakie
 using FileIO
 GLMakie.activate!() # hide
@@ -65,7 +67,7 @@ end
 
 f
 ```
-
+\end{examplefigure}
 ### `viewmode`
 
 The `viewmode` changes how the final projection is adjusted to fit the axis into its scene.
@@ -82,7 +84,8 @@ In this mode, scaling in both x and y direction is applied to fit the axis right
 Be aware that this mode can skew the axis a lot and doesn't keep the `aspect` intact.
 On the other hand, it uses the available space most efficiently.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using GLMakie
 GLMakie.activate!() # hide
 Makie.inline!(true) # hide
@@ -107,14 +110,15 @@ end
 
 f
 ```
-
+\end{examplefigure}
 ## Perspective or orthographic look
 
 You can switch smoothly between an orthographic look and a perspective look using the `perspectiveness` attribute.
 
 A value of 0 looks like an orthographic projection (it is only approximate to a real one) while 1 gives a quite strong perspective look.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using GLMakie
 GLMakie.activate!() # hide
 Makie.inline!(true) # hide
@@ -134,3 +138,4 @@ end
 
 f
 ```
+\end{examplefigure}

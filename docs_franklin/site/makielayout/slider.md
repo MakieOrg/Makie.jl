@@ -1,7 +1,4 @@
-```@eval
-using CairoMakie
-CairoMakie.activate!()
-```
+
 
 # Slider
 
@@ -16,7 +13,8 @@ You can double-click the slider to reset it (approximately) to the value present
 
 If you set the attribute `snap = false`, the slider will move continously while dragging and only jump to the closest available value when releasing the mouse.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using GLMakie
 GLMakie.activate!() # hide
 fig = Figure()
@@ -34,12 +32,13 @@ limits!(ax, 0, 10, 0, 10)
 
 fig
 ```
-
+\end{examplefigure}
 ## Labelled slider convenience functions
 
 To create a horizontal layout containing a label, a slider, and a value label, use the convenience function [`Makie.MakieLayout.labelslider!`](@ref), or, if you need multiple aligned rows of sliders, use [`Makie.MakieLayout.labelslidergrid!`](@ref).
 
-```@example
+\begin{examplefigure}{}
+```julia
 using GLMakie
 
 fig = Figure()
@@ -70,3 +69,4 @@ set_close_to!(lsgrid.sliders[3], 15.9)
 
 fig
 ```
+\end{examplefigure}

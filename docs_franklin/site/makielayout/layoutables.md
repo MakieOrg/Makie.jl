@@ -19,7 +19,8 @@ The `layoutscene` function is supplied for this purpose.
 
 Here's one way to add a `Layoutable`, in this case an `Axis`, to a Figure.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
@@ -28,14 +29,15 @@ f = Figure()
 ax = Axis(f[1, 1])
 f
 ```
-
+\end{examplefigure}
 ## Adding to a `Scene`
 
 And here's how you can add the same Layoutable to a Scene, which is the primitive object underlying a Figure.
 As discussed above, `layoutscene` is an older convenience method to create a Scene with an attached GridLayout that tracks its size.
 This is mostly not needed anymore since Figures were added.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
@@ -44,7 +46,7 @@ scene, layout = layoutscene()
 ax = layout[1, 1] = Axis(scene)
 scene
 ```
-
+\end{examplefigure}
 ## Specifying a boundingbox directly
 
 Sometimes you just want to place a `Layoutable` in a specific location, without it being controlled by a dynamic layout.
@@ -54,7 +56,8 @@ The function `BBox` creates an `FRect2D`, but instead of passing origin and widt
 
 Here's an example where two axes are placed manually:
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
@@ -64,7 +67,7 @@ Axis(f, bbox = BBox(100, 300, 100, 500), title = "Axis 1")
 Axis(f, bbox = BBox(400, 700, 200, 400), title = "Axis 2")
 f
 ```
-
+\end{examplefigure}
 ## Deleting layoutables
 
 To remove layoutables from their layout and the figure or scene, use `delete!(layoutable)`.

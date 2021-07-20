@@ -1,14 +1,12 @@
-```@eval
-using CairoMakie
-CairoMakie.activate!()
-```
+
 
 # Label
 
 This is just normal text, except it's also layoutable. A text's size is known,
 so rows and columns in a GridLayout can shrink to the appropriate width or height.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 fig = Figure()
@@ -21,3 +19,4 @@ sideinfo = Label(fig[2:3, 0], "This text is vertical", rotation = pi/2)
 
 fig
 ```
+\end{examplefigure}

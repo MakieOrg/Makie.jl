@@ -1,7 +1,4 @@
-```@eval
-using CairoMakie
-CairoMakie.activate!()
-```
+
 
 # GridLayout
 
@@ -14,7 +11,8 @@ There are four different types of sizes you can give rows and columns.
 `Fixed(scene_units)` is used to set a column or row to an absolute size, independent of its content.
 This only really makes sense if there is variable width content in the column or row, that can shrink or expand to meet this size. You will probably not need `Fixed` sizes very often.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
@@ -27,14 +25,15 @@ colsize!(layout, 1, Fixed(400))
 
 scene
 ```
-
+\end{examplefigure}
 ### Relative
 
 `Relative(fraction)` is used to set a column or row to a size that is a certain fraction of the available width or height.
 This is useful, e.g., if you want a column to span 50% of the available width, no matter what other content is there.
 In this case, you would use `Relative(1/2)`. The available width is the width of the GridLayout minus the space taken by row or column gaps including protrusions.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
@@ -47,7 +46,7 @@ colsize!(layout, 1, Relative(2/3))
 
 scene
 ```
-
+\end{examplefigure}
 
 ### Auto
 
@@ -72,7 +71,8 @@ Column 1 has ratio `1` while column 2 has ratio `2`.
 The first column will get `1 / (1 + 2) * 300 == 100` units, while the second column gets `2 / (1 + 2) * 300 == 200` units.
 
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
@@ -86,7 +86,7 @@ colsize!(layout, 3, Auto(2)) # equivalent to Auto(true, 2)
 
 scene
 ```
-
+\end{examplefigure}
 
 ### Aspect
 
@@ -94,7 +94,8 @@ This size is also a little bit trickier to understand. The syntax is `Aspect(ref
 
 Aspect sized columns or rows are very useful when you want to constrain the aspect ratio of a grid cell. For example, a plot that is always supposed to be square. Enforcing the aspect *on the layout level is better* than setting `axis.aspect = AxisAspect(1)` in most cases, because it ensures an *intact layout* where all grid cell borders are aligned visually. An `Axis` with `aspect = AxisAspect(1)` on the other hand simply shrinks so it remains square, but this will break alignment with other grid content.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
@@ -111,7 +112,7 @@ colsize!(layout, 1, Aspect(1, 1))
 
 scene
 ```
-
+\end{examplefigure}
 !!! note
     Keep in mind that if you set too many constraints on row and column sizes, a GridLayout can easily be too big or too small. It's good to have variable-width elements to fill the remaining space if you use an element with fixed size or fixed aspect ratio.
 
@@ -124,7 +125,8 @@ also are by default set to alignmode Inside which means that the content edges
 are aligned to the grid's bounding box, excluding the outer protrusions. This way,
 plots in nested grids are nicely aligned along their spines.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 scene, layout = layoutscene(30, resolution = (1200, 900))
@@ -140,7 +142,7 @@ layout[1, 2] = subgl_right
 
 scene
 ```
-
+\end{examplefigure}
 ## Alignment
 
 Here you can see the difference between the align modes Outside with and without
@@ -150,7 +152,8 @@ main GridLayout so that there some space between the window edges and the plots.
 You can see that the normal axis looks the same as the one placed inside the
 grid with Inside alignment, and they are both effectively aligned exactly the same.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 1200))
@@ -171,7 +174,7 @@ layout[1:3, 2] = [Box(scene, color = :transparent, strokecolor = :red) for i in 
 
 scene
 ```
-
+\end{examplefigure}
 
 ## Spanned Placement
 
@@ -179,7 +182,8 @@ Elements in a grid layout can span multiple rows and columns. You can specify
 them with the range syntax and colons for the full width or height. You can
 also use end to specify the last row or column.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 scene, layout = layoutscene(4, 4, resolution = (1200, 1200))
@@ -192,7 +196,7 @@ layout[end, end] = Axis(scene, title="[end, end]")
 
 scene
 ```
-
+\end{examplefigure}
 ## Adding rows and columns by indexing
 
 If you index outside of the current range of a grid layout, you do not get an
@@ -200,7 +204,8 @@ error. Instead, the layout automatically resizes to contain the new indices.
 This is very useful if you want to iteratively build a layout, or add super or
 side titles.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 1200))
@@ -220,7 +225,7 @@ layout[2:end-1, end+1] = Label(scene, text="Right Text", textsize=50,
 
 scene
 ```
-
+\end{examplefigure}
 
 ## Trimming empty rows and columns
 
@@ -229,7 +234,8 @@ will remove those for you.
 
 Here we start with two axes:
 
-```@example trimming
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
@@ -239,31 +245,34 @@ ax2 = layout[1, 2] = Axis(scene, title = "Axis 2")
 
 scene
 ```
-
+\end{examplefigure}
 Now we decide we'd like the second axis better if it was below the first one.
 We move it two the new cell, and the old unused column is left blank.
 
-```@example trimming
+\begin{examplefigure}{}
+```julia
 layout[2, 1] = ax2
 
 scene
 ```
-
+\end{examplefigure}
 We can get rid of the unused space with `trim!`:
 
-```@example trimming
+\begin{examplefigure}{}
+```julia
 trim!(layout)
 
 scene
 ```
-
+\end{examplefigure}
 
 ## Tweaking space between rows and columns
 
 You can use `rowgap!` and `colgap!` to change the spacing between rows or
 columns respectively.
 
-```@example spacing
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 fig = Figure()
@@ -279,17 +288,14 @@ colgap!(fig.layout, 1, Relative(0.15))
 
 fig
 ```
-
+\end{examplefigure}
 All spaces can be changed at once by omitting the index of the gap to resize.
 
-```@example spacing
+\begin{examplefigure}{}
+```julia
 rowgap!(fig.layout, 50)
 
 fig
 ```
+\end{examplefigure}
 
-
-```@eval
-using GLMakie
-GLMakie.activate!()
-```

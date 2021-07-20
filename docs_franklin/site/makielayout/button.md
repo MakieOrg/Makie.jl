@@ -1,11 +1,9 @@
-```@eval
-using CairoMakie
-CairoMakie.activate!()
-```
+
 
 # Button
 
-```@example
+\begin{examplefigure}{}
+```julia
 using GLMakie
 GLMakie.activate!() # hide
 fig = Figure()
@@ -31,3 +29,4 @@ ylims!(ax, 0, 20)
 
 fig
 ```
+\end{examplefigure}

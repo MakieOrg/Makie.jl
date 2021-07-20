@@ -1,14 +1,12 @@
-```@eval
-using CairoMakie
-CairoMakie.activate!()
-```
+
 
 # Toggle
 
 A toggle with an attribute `active` that can either be true or false, to enable
 or disable properties of an interactive plot.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using GLMakie
 GLMakie.activate!() # hide
 fig = Figure()
@@ -29,3 +27,4 @@ connect!(line2.visible, toggles[2].active)
 
 fig
 ```
+\end{examplefigure}

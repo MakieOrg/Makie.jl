@@ -18,7 +18,8 @@ If `startvalues === Makie.automatic`, the full interval will be selected (this i
 
 If you set the attribute `snap = false`, the slider will move continously while dragging and only jump to the closest available values when releasing the mouse.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 Makie.inline!(true) # hide
 CairoMakie.activate!() # hide
@@ -49,3 +50,4 @@ scatter!(points, color = colors, colormap = [:black, :orange], strokewidth = 0)
 
 f
 ```
+\end{examplefigure}

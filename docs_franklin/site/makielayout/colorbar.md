@@ -1,7 +1,4 @@
-```@eval
-using CairoMakie
-CairoMakie.activate!()
-```
+
 
 # Colorbar
 
@@ -11,7 +8,8 @@ You can set ticks in a similar way to `Axis`.
 
 Here's how you can create Colorbars manually.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 fig = Figure()
@@ -37,10 +35,11 @@ Colorbar(fig[4, 1], limits = (-1, 1), colormap = :heat,
 
 fig
 ```
-
+\end{examplefigure}
 If you pass a `plotobject`, a `heatmap` or `contourf`, the Colorbar is set up automatically such that it tracks these objects' relevant attributes like `colormap`, `colorrange`, `highclip` and `lowclip`. If you want to adjust these attributes afterwards, change them in the plot object, otherwise the Colorbar and the plot object will go out of sync.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 xs = LinRange(0, 20, 50)
@@ -66,4 +65,4 @@ Colorbar(fig[2, 2][1, 2], hm, ticks = -1:0.25:1)
 
 fig
 ```
-
+\end{examplefigure}

@@ -58,9 +58,12 @@ function env_examplefigure(com, _)
   s
 end
 
-@delay function hfun_list_plotting_functions()
+@delay function hfun_list_folder_with_images(param)
+
+    folder = param[1]
+
     mds = @chain begin
-        readdir(joinpath(@__DIR__, "plotting_functions"))
+        readdir(joinpath(@__DIR__, folder))
         filter(endswith(".md"), _)
         filter(!=("index.md"), _)
     end
@@ -70,11 +73,13 @@ end
         name = splitext(page)[1]
 
         outputpath = joinpath(@__DIR__, "__site", "assets",
-            "plotting_functions", name, "code", "output")
+            folder, name, "code", "output")
+
+        !isdir(outputpath) && return ""
 
         pngpaths = @chain readdir(outputpath) begin
             filter(endswith(".png"), _)
-            "/assets/plotting_functions/$name/code/output/" .* _
+            "/assets/$folder/$name/code/output/" .* _
         end
 
         """

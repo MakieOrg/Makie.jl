@@ -1,7 +1,4 @@
-```@eval
-using CairoMakie
-CairoMakie.activate!()
-```
+
 
 # Axis
 
@@ -10,7 +7,8 @@ CairoMakie.activate!()
 The `Axis` is a 2D axis that works well with automatic layouts.
 Here's how you create one
 
-```@example laxis
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 f = Figure()
@@ -20,26 +18,28 @@ ax = Axis(f[1, 1], xlabel = "x label", ylabel = "y label",
 
 f
 ```
-
+\end{examplefigure}
 ## Plotting into an Axis
 
 You can use all the normal mutating 2D plotting functions with an `Axis`.
 These functions return the created plot object.
 Omitting the `ax` argument plots into the `current_axis()`, which is usually the axis that was last created.
 
-```@example laxis
+\begin{examplefigure}{}
+```julia
 lineobject = lines!(ax, 0..10, sin, color = :red)
 scatobject = scatter!(0:0.5:10, cos, color = :orange)
 
 f
 ```
-
+\end{examplefigure}
 ## Deleting plots
 
 You can delete a plot object directly via `delete!(ax, plotobj)`.
 You can also remove all plots with `empty!(ax)`.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
@@ -57,7 +57,7 @@ empty!(axs[3])
 
 f
 ```
-
+\end{examplefigure}
 ## Setting Axis limits and reversing axes
 
 You can set axis limits with the functions `xlims!`, `ylims!` or `limits!`. The
@@ -70,7 +70,8 @@ Note that if you enforce an aspect ratio between x-axis and y-axis using `autoli
 the values you set with these functions will probably not be exactly what you get,
 but they will be changed to fit the chosen ratio.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
@@ -94,12 +95,13 @@ limits!(axes[6], BBox(0, 10, 0, 10)) # as rectangle
 
 f
 ```
-
+\end{examplefigure}
 ### Setting half-automatic limits
 
 You can set half limits by either giving one argument as `nothing` or by using the keyword syntax where only `low` or `high` is given.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
@@ -126,7 +128,7 @@ ylims!(high = 1)
 
 f
 ```
-
+\end{examplefigure}
 This also works when specifying limits directly, such as `Axis(..., limits = (nothing, 1, 2, nothing))`.
 
 ### Auto-reset behavior
@@ -136,7 +138,8 @@ If you have previously set limits with `limits!`, `xlims!` or `ylims!`, these li
 
 The user-defined limits are stored in `ax.limits`. This can either be a tuple with two entries, where each entry can be either `nothing` or a tuple with numbers `(low, high)`.It can also be a tuple with four numbers `(xlow, xhigh, ylow, yhigh)`. You can pass this directly when creating a new axis. The same observable `limits` is also set using `limits!`, `xlims!` and `ylims!`, or reset to `(nothing, nothing)` using `autolimits!`.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
@@ -148,7 +151,7 @@ lines(f[1, 2], 0..10, sin, axis = (limits = (0, 10, -1, 1),))
 
 f
 ```
-
+\end{examplefigure}
 ## Modifying ticks
 
 To control ticks, you can set the axis attributes `xticks/yticks` and `xtickformat/ytickformat`.
@@ -178,7 +181,8 @@ You can also pass a format string which is passed to `Formatting.format` from [F
 
 The default tick type is `LinearTicks(n)`, where `n` is the target number of ticks which the algorithm tries to return.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
@@ -189,23 +193,25 @@ for (i, n) in enumerate([2, 5, 9])
 end
 fig
 ```
-
+\end{examplefigure}
 There's also `WilkinsonTicks` which uses the alternative Wilkinson algorithm.
 
 `MultiplesTicks` can be used when an axis should be marked at multiples of a certain number.
 A common scenario is plotting a trigonometric function which should be marked at pi intervals.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
 
 lines(0..20, sin, axis = (xticks = MultiplesTicks(4, pi, "π"),))
 ```
-
+\end{examplefigure}
 Here are a couple of examples that show off different settings for ticks and formats.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
@@ -234,7 +240,7 @@ axes[4].xlabel = "Time"
 
 scene
 ```
-
+\end{examplefigure}
 ## Minor ticks and grids
 
 You can show minor ticks and grids by setting `x/yminorticksvisible = true` and `x/yminorgridvisible = true` which are off by default.
@@ -244,7 +250,8 @@ For that purpose you can create your own minortick type and overload `MakieLayou
 
 The default minor tick type is `IntervalsBetween(n, mirror = true)` where `n` gives the number of intervals each gap between major ticks is divided into with minor ticks, and `mirror` decides if outside of the major ticks there are more minor ticks with the same intervals as the adjacent gaps.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
@@ -269,7 +276,7 @@ end
 
 fig
 ```
-
+\end{examplefigure}
 ## Hiding Axis spines and decorations
 
 You can hide all axis elements manually, by setting their specific visibility attributes to `false`, like
@@ -277,7 +284,8 @@ You can hide all axis elements manually, by setting their specific visibility at
 
 To hide spines, you can use `hidespines!`.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
@@ -292,13 +300,14 @@ hidespines!(ax2, :t, :r) # only top and right
 
 f
 ```
-
+\end{examplefigure}
 To hide decorations, you can use `hidedecorations!`, or the specific `hidexdecorations!` and `hideydecorations!`.
 When hiding, you can set `label = false`, `ticklabels = false`, `ticks = false`, `grid = false`, `minorgrid = false` or `minorticks = false` as keyword
 arguments if you want to keep those elements.
 It's common, e.g., to hide everything but the grid lines in facet plots.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
@@ -315,14 +324,15 @@ hideydecorations!(ax3, ticks = false)
 
 f
 ```
-
+\end{examplefigure}
 ## Log scales and other axis scales
 
 The two attributes `xscale` and `yscale`, which by default are set to `identity`, can be used to project the data in a nonlinear way, in addition to the linear zoom that the limits provide.
 
 Take care that the axis limits always stay inside the limits appropriate for the chosen scaling function, for example, `log` functions fail for values `x <= 0`, `sqrt` for `x < 0`, etc.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
@@ -343,12 +353,13 @@ end
 
 f
 ```
-
+\end{examplefigure}
 ### Pseudolog and symlog scales
 
 Some plotting functions, like barplots or density plots, have offset parameters which are usually zero, which you have to set to some non-zero value explicitly so they work in `log` axes.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
@@ -364,14 +375,15 @@ barplot(relative_speeds, fillto = 0.5,
 ylims!(0.5, 10000)
 current_figure()
 ```
-
+\end{examplefigure}
 Another option are pseudolog and symlog scales.
 Pseudolog is similar to log, but modified in order to work for zero and for negative values.
 The `pseudolog10` function is defined as `sign(x) * log10(abs(x) + 1)`.
 
 Another option for symmetric log scales including zero is the symmetric log scale `Symlog10`, which combines a normal log scale with a linear scale between two boundary values around zero.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
@@ -390,7 +402,7 @@ lines(f[2, 1], -100:0.1:100, axis = (
 
 f
 ```
-
+\end{examplefigure}
 
 ## Controlling Axis aspect ratios
 
@@ -405,7 +417,8 @@ same aspect ratio. This is the easiest to use with images.
 A different aspect ratio can only reduce the axis space that is being used, also
 it necessarily has to break the layout a little bit.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 using FileIO
 using Random # hide
@@ -441,7 +454,7 @@ axes[2, 3].aspect = AxisAspect(2/3)
 
 f
 ```
-
+\end{examplefigure}
 ## Controlling data aspect ratios
 
 If you want the content of an axis to adhere to a certain data aspect ratio, there is
@@ -454,7 +467,8 @@ axis (that are computed by `autolimits!`) are enlarged to have the correct aspec
 You can see the different ways to get a plot with an unstretched circle, using
 different ways of setting aspect ratios, in the following example.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 using Animations
 
@@ -511,7 +525,7 @@ record(container_scene, "example_circle_aspect_ratios.mp4", 0:1/30:9; framerate=
 end
 nothing # hide
 ```
-
+\end{examplefigure}
 ![example circle aspect ratios](example_circle_aspect_ratios.mp4)
 
 ## Linking axes
@@ -520,7 +534,8 @@ You can link axes to each other. Every axis simply keeps track of a list of othe
 axes which it updates when it is changed itself. You can link x and y dimensions
 separately.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 f = Figure()
@@ -548,13 +563,14 @@ end
 
 f
 ```
-
+\end{examplefigure}
 ## Changing x and y axis position
 
 By default, the x axis is at the bottom, and the y axis at the left side.
 You can change this with the attributes `xaxisposition = :top` and `yaxisposition = :right`.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 f = Figure()
@@ -569,14 +585,15 @@ end
 
 f
 ```
-
+\end{examplefigure}
 ## Creating a twin axis
 
 There is currently no dedicated function to do this, but you can simply add an Axis on top of another, then hide everything but the second axis.
 
 Here's an example how to do this with a second y axis on the right.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 f = Figure()
@@ -591,7 +608,7 @@ lines!(ax2, 0..10, x -> 100 * cos(x), color = :red)
 
 f
 ```
-
+\end{examplefigure}
 ## Axis interaction
 
 An Axis has a couple of predefined interactions enabled.
@@ -713,7 +730,8 @@ The positional argument gives one or many locations in data coordinates, while
 the keyword arguments `xmin` and `xmax` (for hlines) or `ymin` and `ymax` (for vlines)
 specify the extent along the axis. These values can also be a single number or an iterable.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 scene, layout = layoutscene(resolution = (1400, 900))
@@ -727,28 +745,23 @@ hlines!(ax2, [1, 2, 3, 4], xmax = [0.25, 0.5, 0.75, 1], color = :blue)
 
 scene
 ```
-
+\end{examplefigure}
 ### abline!
 
 abline works similar to v/hlines!:
 
-```@docs
-abline!
-```
+{{doc abline!}}
 
-```@setup 1
+
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 CairoMakie.activate!()
-```
 
-```@example 1
 fig, ax, pl = scatter(1:4)
 abline!(ax, 0, 1)
 abline!(ax, 0, 1.5, color = :red, linestyle=:dash, linewidth=2)
 fig
 ```
+\end{examplefigure}
 
-```@eval
-using GLMakie
-GLMakie.activate!()
-```

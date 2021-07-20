@@ -1,7 +1,4 @@
-```@eval
-using CairoMakie
-CairoMakie.activate!()
-```
+
 
 # Legend
 
@@ -20,7 +17,8 @@ The legend defaults themselves are by default inherited from the main theme.
 For example, `polystrokewidth` of the legend falls back to `patchstrokewidth` of the main theme.
 In the following example, you can see that the legend for `sca2` copies the `:rect` marker but not the vector-valued color.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 f = Figure()
@@ -39,13 +37,14 @@ Legend(f[1, 2],
 
 f
 ```
-
+\end{examplefigure}
 ## Creating A Legend From An Axis
 
 You can also create a Legend by passing it an axis object, like `Axis`, `LScene` or `Scene`.
 All plots that have a `label` attribute set will be put into the legend, in the order that they appear in the axis, and you can optionally pass a title as the third argument.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 f = Figure()
@@ -60,12 +59,13 @@ f[1, 2] = Legend(f, ax, "Trig Functions", framevisible = false)
 
 f
 ```
-
+\end{examplefigure}
 With the keywords `merge` and `unique` you can control how plot objects with the same labels are treated.
 If `merge` is `true`, all plot objects with the same label will be layered on top of each other into one legend entry.
 If `unique` is `true`, all plot objects with the same plot type and label will be reduced to one occurance.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 f = Figure()
@@ -92,13 +92,14 @@ end
 
 f
 ```
-
+\end{examplefigure}
 ## Multi-Bank Legend
 
 You can control the number of banks with the `nbanks` attribute. Banks are columns
 when in vertical mode, and rows when in horizontal mode.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 f = Figure()
@@ -112,7 +113,7 @@ Legend(f[1, 2], lins, string.(1:length(lins)), nbanks = 3)
 
 f
 ```
-
+\end{examplefigure}
 ## Legend Inside An Axis
 
 The `axislegend` function is a quick way to add a legend to an Axis.
@@ -121,7 +122,8 @@ If you pass only a string, it's used as the title with the current axis.
 
 The position can be set via a shortcut symbol, first halign (l, r, c) then valign (b, t, c), such as :lt for left, top and :cb for center bottom.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 f = Figure()
@@ -142,14 +144,15 @@ axislegend(ax, [sc1, sc2], ["One", "Two"], "Selected Dots", position = :rb,
 
 f
 ```
-
+\end{examplefigure}
 Alternatively, you can simply add a Legend to the same layout slot
 that an axis lives in. As long as the axis is bigger than the legend you can
 set the legend's `tellheight` and `tellwidth` to `false` and position it using the align
 variables. You can use the margin keyword to keep the legend from touching the axis
 spines.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 haligns = [:left, :right, :center]
@@ -176,7 +179,7 @@ end
 
 f
 ```
-
+\end{examplefigure}
 ## Creating Legend Entries Manually
 
 Sometimes you might want to construct legend entries from scratch to have maximum
@@ -199,7 +202,8 @@ The attributes `linepoints`, `markerpoints` and `polypoints` decide where in the
 These values should be normalized to a 1 by 1 rectangle, and the final shape depends on the `patchsize` of the legend.
 For example, if you want wider line and poly markers, you could set the `patchsize` of the legend to `(50, 30)`.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 f = Figure()
@@ -229,7 +233,7 @@ Legend(f[1, 2],
 
 f
 ```
-
+\end{examplefigure}
 ## Horizontal Legend
 
 In case you want the legend entries to be listed horizontally, set the `orientation`
@@ -238,7 +242,8 @@ number of rows instead of columns. To keep an adjacent axis from potentially shr
 the width of the horizontal legend, set `tellwidth = false` and `tellheight = true`
 if you place the legend below or above the axis.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 f = Figure()
@@ -257,7 +262,7 @@ Legend(f[2, 1], [lin, sca, lin], ["a line", "some dots", "line again"],
 
 f
 ```
-
+\end{examplefigure}
 ## Multi-Group Legends
 
 Sometimes a legend consists of multiple groups, for example in a plot where both
@@ -267,7 +272,8 @@ an array of elements and an array of labels, each within one collective array.
 You can shift the position of the titles relative to each group with the
 `titleposition` attribute, either `:left` or `:top`.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 
 f = Figure()
@@ -311,8 +317,5 @@ legends[6].nbanks = 2
 
 f
 ```
+\end{examplefigure}
 
-```@eval
-using GLMakie
-GLMakie.activate!()
-```

@@ -1,14 +1,12 @@
-```@eval
-using CairoMakie
-CairoMakie.activate!()
-```
+
 
 # Box
 
 A simple rectangle poly that is layoutable. This can be useful to make boxes for
 facet plots or when a rectangular placeholder is needed.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using CairoMakie
 using ColorSchemes
 
@@ -20,4 +18,4 @@ rects = fig[1:4, 1:6] = [
 
 fig
 ```
-
+\end{examplefigure}

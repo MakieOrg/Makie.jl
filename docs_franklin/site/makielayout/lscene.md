@@ -1,7 +1,4 @@
-```@eval
-using CairoMakie
-CairoMakie.activate!()
-```
+
 
 # LScene
 
@@ -14,14 +11,10 @@ You can pass keyword arguments to the underlying `Scene` object to the `scenekw`
 Currently, it can be necessary to pass a couple of attributes explicitly to make sure they
 are not inherited from the main scene (which has a pixel camera and no axis, e.g.).
 
-```@example 1
-using JSServe
-Page(exportable=true, offline=true)
+\begin{examplefigure}{}
 ```
-
-```@example 1
-using WGLMakie
-WGLMakie.activate!()
+using GLMakie
+GLMakie.activate!()
 
 fig = Figure()
 
@@ -31,3 +24,4 @@ lscene = LScene(fig[1, 1], scenekw = (camera = cam3d!, raw = false))
 meshscatter!(lscene, randn(100, 3))
 fig
 ```
+\end{examplefigure}

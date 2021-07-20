@@ -1,7 +1,4 @@
-```@eval
-using CairoMakie
-CairoMakie.activate!()
-```
+
 
 # Menu
 
@@ -11,7 +8,8 @@ as `(label, value)` and any other object as `value`, where `label = string(value
 
 The attribute `selection` is set to `optionvalue(element)` when the element's entry is selected.
 
-```@example
+\begin{examplefigure}{}
+```julia
 using GLMakie
 GLMakie.activate!() # hide
 fig = Figure()
@@ -51,13 +49,15 @@ menu2.is_open = true
 
 fig
 ```
+\end{examplefigure}
 
 ## Menu direction
 
 You can change the direction of the menu with `direction = :up` or `direction = :down`. By default, the direction is determined automatically to avoid cutoff at the figure boundaries.
 
 
-```@example
+\begin{examplefigure}{}
+```julia
 using GLMakie
 GLMakie.activate!() # hide
 
@@ -71,3 +71,4 @@ menu2.is_open = true
 
 fig
 ```
+\end{examplefigure}
