@@ -1,6 +1,9 @@
 using Chain
 using Markdown
 using GLMakie
+using FileIO
+using ImageTransformations
+
 
 # Pause renderloop for slow software rendering.
 # This way, we only render if we actualy save e.g. an image
@@ -92,9 +95,33 @@ end
         !isdir(outputpath) && return ""
 
         pngpaths = @chain readdir(outputpath) begin
-            filter(endswith(".png"), _)
-            "/assets/$folder/$name/code/output/" .* _
+            filter(x -> endswith(x, ".png") && !endswith(x, "_thumb.png"), _)
+            filter(_) do p
+              if endswith(p, "_thumb.png")
+                rm(joinpath(outputpath, p))
+                false
+              else
+                true
+              end
+
+            end
         end
+
+        max_thumb_height = 250
+
+        thumbpaths = map(pngpaths) do p
+          thumbpath = joinpath(outputpath, splitext(p)[1] * "_thumb.png")
+          
+          img = load(joinpath(outputpath, p))
+          sz = size(img)
+          new_size = round.(Int, sz .÷ (sz[2] / max_thumb_height))
+          img_resized = imresize(img, new_size)
+          save(thumbpath, img_resized)
+
+          thumbpath
+        end
+
+        thumbpaths_website = "/assets/$folder/$name/code/output/" .* basename.(thumbpaths)
 
         """
         
@@ -102,9 +129,9 @@ end
           <a href="$name"><h2>$name</h2></a>
           <div class="plotting-functions-thumbcontainer">
             $(
-                map(pngpaths) do pngpath
+                map(thumbpaths_website, pngpaths) do thumbpath, pngpath
                     bn = splitext(basename(pngpath))[1]
-                    "<a href=\"$name#$bn\"><img class='plotting-function-thumb' src=\"$pngpath\"/></a>"
+                    "<a href=\"$name#$bn\"><img class='plotting-function-thumb' src=\"$thumbpath\"/></a>"
                 end |> join
             )
           </div>
