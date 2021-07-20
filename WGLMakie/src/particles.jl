@@ -179,7 +179,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         gcollection = glyphcollection
     else
         # and here we wrap it into another observable
-        # so it doesn't triggers dimension mismatches
+        # so it doesn't trigger dimension mismatches
         # the actual, new value gets then taken in the below lift with to_value
         gcollection = Observable(glyphcollection)
     end
