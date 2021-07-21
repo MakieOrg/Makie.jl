@@ -129,8 +129,14 @@ function Camera3D(scene; kwargs...)
             update_rate = 1/30,
             projectiontype = Perspective,
             fixed_axis = true,
-            zoom_shift_lookat = false, # doesn't really work with fov
+            zoom_shift_lookat = nothing, # doesn't really work with fov
             cad = false
+        )
+    end
+
+    if isnothing(attr[:zoom_shift_lookat][])
+        attr[:zoom_shift_lookat][] = (
+            attr[:projectiontype][] == Orthographic ? false : !attr[:cad][]
         )
     end
 
@@ -220,11 +226,11 @@ function Camera3D(scene; kwargs...)
 end
 
 # These imitate the old camera
-function cam3d!(scene; zoom_shift_lookat = true, fixed_axis = true, kwargs...)
-    Camera3D(scene, zoom_shift_lookat = zoom_shift_lookat, fixed_axis = fixed_axis; kwargs...)
+function cam3d!(scene; fixed_axis = true, kwargs...)
+    Camera3D(scene, fixed_axis = fixed_axis; kwargs...)
 end
-function cam3d_cad!(scene; cad = true, zoom_shift_lookat = false, fixed_axis = false, kwargs...)
-    Camera3D(scene, cad = cad, zoom_shift_lookat = zoom_shift_lookat, fixed_axis = fixed_axis; kwargs...)
+function cam3d_cad!(scene; cad = true, fixed_axis = false, kwargs...)
+    Camera3D(scene, cad = cad, fixed_axis = fixed_axis; kwargs...)
 end
 
 
