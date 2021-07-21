@@ -583,7 +583,11 @@ function update_cam!(scene::Scene, camera::Camera3D, area3d::Rect)
     if camera.attributes[:far][] === automatic
         camera.far[]  = 3f0 * norm(widths(bb))
     end
-    camera.zoom_mult[] = 1f0
+    if camera.attributes[:projectiontype][] == Orthographic
+        camera.zoom_mult[] = 0.6 * norm(width)
+    else 
+        camera.zoom_mult[] = 1f0
+    end
     update_cam!(scene, camera)
     return
 end
