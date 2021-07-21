@@ -239,6 +239,8 @@ function add_translation!(scene, cam::Camera3D)
     last_mousepos = RefValue(Vec2f0(0, 0))
     dragging = RefValue(false)
 
+    fact = cam.attributes[:projectiontype][] == Perspective ? 0.01f0 : 0.001f0
+
     # drag start/stop
     on(camera(scene), scene.events.mousebutton) do event
         if event.button == button[]
@@ -249,7 +251,7 @@ function add_translation!(scene, cam::Camera3D)
             elseif event.action == Mouse.release && dragging[]
                 mousepos = mouseposition_px(scene)
                 dragging[] = false
-                diff = (last_mousepos[] - mousepos) * 0.01f0 * translationspeed[]
+                diff = (last_mousepos[] - mousepos) * fact * translationspeed[]
                 last_mousepos[] = mousepos
                 viewdir = cam.lookat[] - cam.eyeposition[]
                 translate_cam!(scene, cam, cam.zoom_mult[] * norm(viewdir) * Vec3f0(diff[1], diff[2], 0f0))
@@ -264,7 +266,7 @@ function add_translation!(scene, cam::Camera3D)
     on(camera(scene), scene.events.mouseposition) do mp
         if dragging[] && ispressed(scene, button[]) && ispressed(scene, mod[])
             mousepos = screen_relative(scene, mp)
-            diff = (last_mousepos[] .- mousepos) * 0.01f0 * translationspeed[]
+            diff = (last_mousepos[] - mousepos) * fact * translationspeed[]
             last_mousepos[] = mousepos
             viewdir = cam.lookat[] - cam.eyeposition[]
             translate_cam!(scene, cam, cam.zoom_mult[] * norm(viewdir) * Vec3f0(diff[1], diff[2], 0f0))
