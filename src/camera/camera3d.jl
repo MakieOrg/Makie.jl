@@ -239,6 +239,17 @@ function add_translation!(scene, cam::Camera3D)
     last_mousepos = RefValue(Vec2f0(0, 0))
     dragging = RefValue(false)
 
+    compute_diff(delta) = begin
+        if cam.attributes[:projectiontype][] == Orthographic
+            aspect = Float32((/)(widths(scene.px_area[])...))
+            aspect_scale = Vec2f0(1f0 + aspect, 1f0 + 1f0 / aspect)
+            return cam.zoom_mult[] * delta .* aspect_scale ./ widths(scene.px_area[])
+        else
+            viewdir = cam.lookat[] - cam.eyeposition[]
+            return 0.002f0 * cam.zoom_mult[] * norm(viewdir) * delta
+        end
+    end
+
     # drag start/stop
     on(camera(scene), scene.events.mousebutton) do event
         if event.button == button[]
@@ -248,17 +259,9 @@ function add_translation!(scene, cam::Camera3D)
                 return Consume(true)
             elseif event.action == Mouse.release && dragging[]
                 mousepos = mouseposition_px(scene)
-                dragging[] = false
-                diff = (last_mousepos[] - mousepos) 
+                diff = compute_diff(last_mousepos[] - mousepos)
                 last_mousepos[] = mousepos
-                if cam.attributes[:projectiontype][] == Orthographic
-                    aspect = Float32((/)(widths(scene.px_area[])...))
-                    aspect_scale = Vec2f0(1f0 + aspect, 1f0 + 1f0 / aspect)
-                    diff = cam.zoom_mult[] * diff .* aspect_scale ./ widths(scene.px_area[])
-                else
-                    viewdir = cam.lookat[] - cam.eyeposition[]
-                    diff = 0.002f0 * cam.zoom_mult[] * norm(viewdir) * diff
-                end
+                dragging[] = false
                 translate_cam!(scene, cam, translationspeed[] * Vec3f0(diff[1], diff[2], 0f0))
                 update_cam!(scene, cam)
                 return Consume(true)
@@ -271,16 +274,8 @@ function add_translation!(scene, cam::Camera3D)
     on(camera(scene), scene.events.mouseposition) do mp
         if dragging[] && ispressed(scene, button[]) && ispressed(scene, mod[])
             mousepos = screen_relative(scene, mp)
-            diff = (last_mousepos[] .- mousepos)
+            diff = compute_diff(last_mousepos[] - mousepos)
             last_mousepos[] = mousepos
-            if cam.attributes[:projectiontype][] == Orthographic
-                aspect = Float32((/)(widths(scene.px_area[])...))
-                aspect_scale = Vec2f0(1f0 + aspect, 1f0 + 1f0 / aspect)
-                diff = cam.zoom_mult[] * diff .* aspect_scale ./ widths(scene.px_area[])
-            else
-                viewdir = cam.lookat[] - cam.eyeposition[]
-                diff = 0.002f0 * cam.zoom_mult[] * norm(viewdir) * diff
-            end
             translate_cam!(scene, cam, translationspeed[] * Vec3f0(diff[1], diff[2], 0f0))
             update_cam!(scene, cam)
             return Consume(true)
