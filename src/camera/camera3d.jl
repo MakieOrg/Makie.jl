@@ -290,7 +290,6 @@ function add_translation!(scene, cam::Camera3D)
 
     on(camera(scene), scene.events.scroll) do scroll
         if is_mouseinside(scene) && ispressed(scene, mod[])
-            cam_res = Vec2f0(widths(scene.px_area[]))
             zoom_step = (1f0 + 0.1f0 * zoomspeed[]) ^ -scroll[2]
             zoom!(scene, cam, zoom_step, shift_lookat[], cad[])
             update_cam!(scene, cam)
@@ -570,7 +569,6 @@ function update_cam!(scene::Scene, camera::Camera3D, area3d::Rect)
     bb = FRect3D(area3d)
     width = widths(bb)
     half_width = width/2f0
-    lower_corner = minimum(bb)
     middle = maximum(bb) - half_width
     old_dir = normalize(eyeposition .- lookat)
     camera.lookat[] = middle
