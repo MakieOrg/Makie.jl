@@ -512,22 +512,32 @@ function zoom!(scene::Scene, cam::Camera3D, zoom_step, shift_lookat = false, cad
         shifted = eyepos + 0.1f0 * sign(1f0 - zoom_step) * norm(viewdir) * shift
         cam.eyeposition[] = lookat + norm(viewdir) * normalize(shifted - lookat)
     elseif shift_lookat
-        # translate both eyeposition and lookat to more or less keep data under
-        # the mouse in view
         lookat = cam.lookat[]
         eyepos = cam.eyeposition[]
-        up = cam.upvector[]         # +y
-        viewdir = lookat - eyepos   # -z
-        right = cross(viewdir, up)  # +x
+        up = normalize(cam.upvector[])
+        viewdir = lookat - eyepos
+        u_z = normalize(-viewdir)
+        u_x = normalize(cross(up, u_z))
+        u_y = normalize(cross(u_z, u_x))
 
-        fov = cam.attributes[:fov][]
-        before = tan(clamp(cam.zoom_mult[] * fov, 0.01f0, 175f0) / 360f0 * Float32(pi))
-        after  = tan(clamp(cam.zoom_mult[] * zoom_step * fov, 0.01f0, 175f0) / 360f0 * Float32(pi))
+        if cam.attributes[:projectiontype][] == Perspective
+            # translate both eyeposition and lookat to more or less keep data 
+            # under the mouse in view
+            fov = cam.attributes[:fov][]
+            before = tan(clamp(cam.zoom_mult[] * fov, 0.01f0, 175f0) / 360f0 * Float32(pi))
+            after  = tan(clamp(cam.zoom_mult[] * zoom_step * fov, 0.01f0, 175f0) / 360f0 * Float32(pi))
 
-        aspect = Float32((/)(widths(scene.px_area[])...))
-        rel_pos = 2f0 * mouseposition_px(scene) ./ widths(scene.px_area[]) .- 1f0
-        shift = rel_pos[1] * normalize(right) + rel_pos[2] * normalize(up)
-        shift = -(after - before) * norm(viewdir) * normalize(aspect .* shift)
+            aspect = Float32((/)(widths(scene.px_area[])...))
+            rel_pos = 2f0 * mouseposition_px(scene) ./ widths(scene.px_area[]) .- 1f0
+            shift = rel_pos[1] * u_x + rel_pos[2] * u_y
+            shift = -(after - before) * norm(viewdir) * normalize(aspect .* shift)
+        else
+            mx, my = 2f0 * mouseposition_px(scene) ./ widths(scene.px_area[]) .- 1f0
+            aspect = Float32((/)(widths(scene.px_area[])...))
+            w = 0.5f0 * (1f0 + aspect) * cam.zoom_mult[]
+            h = 0.5f0 * (1f0 + 1f0 / aspect) * cam.zoom_mult[]
+            shift = (1f0 - zoom_step) * (mx * w * u_x + my * h * u_y)
+        end
 
         cam.lookat[]      = lookat + shift
         cam.eyeposition[] = eyepos + shift
