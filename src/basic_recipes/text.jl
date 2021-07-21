@@ -185,7 +185,7 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
 
     rot = convert_attribute(rotation, key"rotation"())
 
-    all_els = generate_tex_elements(str.s[2:end-1])
+    all_els = generate_tex_elements(str)
     els = filter(x -> x[1] isa TeXChar, all_els)
 
     # hacky, but attr per char needs to be fixed
