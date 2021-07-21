@@ -142,6 +142,8 @@ include("interaction/inspector.jl")
 include("documentation/documentation.jl")
 include("display.jl")
 
+# deprecated types and methods
+include("deprecated.jl")
 
 # help functions and supporting functions
 export help, help_attributes, help_arguments
