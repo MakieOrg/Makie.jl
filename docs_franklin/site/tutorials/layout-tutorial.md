@@ -192,7 +192,7 @@ only one Axis inside of it:
 ```julia:layout
 fig.layout
 ```
-\output{layout}
+\show{layout}
 
 We can extend the grid with a new axis by plotting into a new grid position. Let's place a new axis
 with another line plot next to the one we have, in row 1 and column 2.
@@ -220,7 +220,7 @@ changed:
 ```julia:layout2
 fig.layout
 ```
-\output{layout2}
+\show{layout2}
 
 Let's plot into the new axis, the same way we did the scatter plots before.
 We can also leave out the axis as the first argument if we just want to plot into
