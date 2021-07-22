@@ -1,4 +1,3 @@
-@def title = "Tutorials"
+# Tutorials
 
-- [Basic Tutorial](basic-tutorial)
-- [Layout Tutorial](layout-tutorial)
+{{list_folder tutorials}}
