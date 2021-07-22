@@ -217,11 +217,10 @@ As you can see, the first axis has shrunk to the left to make space for the new
 axis on the right. We can take another look at the `layout` to see how it has
 changed:
 
-\begin{examplefigure}{}
-```julia
+```julia:layout2
 fig.layout
 ```
-\end{examplefigure}
+\output{layout2}
 
 Let's plot into the new axis, the same way we did the scatter plots before.
 We can also leave out the axis as the first argument if we just want to plot into
