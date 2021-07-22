@@ -48,11 +48,7 @@ tbl = (x = [1, 1, 1, 2, 2, 2, 3, 3, 3],
        grp1 = [1, 2, 2, 1, 1, 2, 1, 1, 2],
        grp2 = [1, 1, 2, 1, 2, 1, 1, 2, 1]
        )
-```
-\end{examplefigure}
 
-\begin{examplefigure}{}
-```julia
 barplot(tbl.x, tbl.height,
         stack = tbl.grp,
         color = tbl.grp,
