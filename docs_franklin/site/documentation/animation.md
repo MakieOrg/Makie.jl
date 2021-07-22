@@ -16,8 +16,7 @@ over the course of the animation.
 
 As a start, here is how you can change the color of a line plot:
 
-\begin{examplefigure}{}
-```julia
+```julia:color_animation
 using GLMakie
 GLMakie.activate!() # hide
 using Makie.Colors
@@ -29,14 +28,14 @@ nframes = 30
 framerate = 30
 hue_iterator = range(0, 360, length=nframes)
 
-record(fig, "color_animation.mp4", hue_iterator; framerate = framerate) do hue
+record(fig, joinpath(@OUTPUT, "color_animation.mp4"), hue_iterator;
+        framerate = framerate) do hue
     lineplot.color = HSV(hue, 1, 0.75)
 end
 nothing # hide
 ```
-\end{examplefigure}
 
-![color animation](color_animation.mp4)
+\video{color_animation}
 
 Passing a function as the first argument is usually done with Julia's `do`-notation, which you might not be familiar with.
 Instead of the above, we could also have written:
@@ -70,8 +69,7 @@ Here is an example that plots two different functions.
 The y-values of each depend on time and therefore we only have to change the time for both plots to change.
 We use the convenient `@lift` macro which denotes that the `lift`ed expression depends on each Observable marked with a `$` sign.
 
-\begin{examplefigure}{}
-```julia
+```julia:time_animation
 time = Node(0.0)
 
 xs = range(0, 7, length=40)
@@ -86,35 +84,33 @@ scatter!(xs, ys_2, color = :red, markersize = 15)
 framerate = 30
 timestamps = range(0, 2, step=1/framerate)
 
-record(fig, "time_animation.mp4", timestamps; framerate = framerate) do t
+record(fig, joinpath(@OUTPUT, "time_animation.mp4"), timestamps;
+        framerate = framerate) do t
     time[] = t
 end
 nothing # hide
 ```
-\end{examplefigure}
 
-![time animation](time_animation.mp4)
+\video{time_animation}
 
 You can set most plot attributes equal to `Observable`s, so that you need only update
 a single variable (like time) during your animation loop.
 
 For example, to make a line with color dependent on time, you could write:
 
-\begin{examplefigure}{}
-```julia
+```julia:color_animation_2
 time = Node(0.0)
 color_observable = @lift(RGBf0($time, 0, 0))
 
 fig = lines(0..10, sin, color = color_observable)
 
-record(fig, "color_animation.mp4", timestamps; framerate = framerate) do t
+record(fig, "color_animation_2.mp4", timestamps; framerate = framerate) do t
     time[] = t
 end
 nothing # hide
 ```
-\end{examplefigure}
 
-![color animation](color_animation.mp4)
+\video{color_animation_2}
 
 ## Appending data with Observables
 
@@ -123,8 +119,7 @@ Instead of passing `x` and `y` (or `z`) values separately,
 it is better to make a `Node` with a vector of `Point`s,
 so that the number of `x` and `y` values can not go out of sync.
 
-\begin{examplefigure}{}
-```julia
+```julia:append_animation
 points = Node(Point2f0[(0, 0)])
 
 fig, ax = scatter(points)
@@ -132,22 +127,21 @@ limits!(ax, 0, 30, 0, 30)
 
 frames = 1:30
 
-record(fig, "append_animation.mp4", frames; framerate = 30) do frame
+record(fig, joinpath(@OUTPUT, "append_animation.mp4"), frames;
+        framerate = 30) do frame
     new_point = Point2f0(frame, frame)
     points[] = push!(points[], new_point)
 end
 nothing # hide
 ```
-\end{examplefigure}
 
-![append animation](append_animation.mp4)
+\video{append_animation}
 
 ## Animating a plot "live"
 
 You can animate a live plot easily using a loop.
 Update all `Observables` that you need and then add a short sleep interval so that the display can refresh:
 
-\begin{examplefigure}{}
 ```julia
 points = Node(Point2f0[randn(2)])
 
@@ -164,4 +158,3 @@ for i = 1:nframes
 end
 nothing # hide
 ```
-\end{examplefigure}

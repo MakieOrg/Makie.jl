@@ -297,14 +297,14 @@ f
 As a last example, lets pretend our stock data is coming in dynamically, and we want to create an animation out of it.
 This is easy if we use observables as input arguments which we then update frame by frame:
 
-\begin{examplefigure}{}
-```julia
+```julia:stockchart_animation
 timestamps = Node(collect(1:100))
 stocknode = Node(stockvalues)
 
 fig, ax, sc = stockchart(timestamps, stocknode)
 
-record(fig, "stockchart_animation.mp4", 101:200, framerate = 30) do t
+record(fig, joinpath(@OUTPUT, "stockchart_animation.mp4"), 101:200,
+        framerate = 30) do t
     # push a new timestamp without triggering the observable
     push!(timestamps[], t)
 
@@ -330,6 +330,5 @@ nothing # hide
 using GLMakie # hide
 GLMakie.activate!() # hide
 ```
-\end{examplefigure}
 
-![stockchart animation](stockchart_animation.mp4)
+\video{stockchart_animation}

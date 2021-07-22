@@ -455,6 +455,7 @@ axes[2, 3].aspect = AxisAspect(2/3)
 f
 ```
 \end{examplefigure}
+
 ## Controlling data aspect ratios
 
 If you want the content of an axis to adhere to a certain data aspect ratio, there is
@@ -467,8 +468,7 @@ axis (that are computed by `autolimits!`) are enlarged to have the correct aspec
 You can see the different ways to get a plot with an unstretched circle, using
 different ways of setting aspect ratios, in the following example.
 
-\begin{examplefigure}{}
-```julia
+```julia:video
 using CairoMakie
 using Animations
 
@@ -520,13 +520,14 @@ axs[4].autolimitaspect = 1
 rects = layout[1:2, 1:2] = [Box(scene, color = (:black, 0.05),
     strokecolor = :transparent) for _ in 1:4]
 
-record(container_scene, "example_circle_aspect_ratios.mp4", 0:1/30:9; framerate=30) do ti
+record(container_scene, joinpath(@OUTPUT, "example_circle_aspect_ratios.mp4"), 0:1/30:9; framerate=30) do ti
     t[] = ti
 end
 nothing # hide
 ```
-\end{examplefigure}
-![example circle aspect ratios](example_circle_aspect_ratios.mp4)
+
+\video{example_circle_aspect_ratios}
+
 
 ## Linking axes
 

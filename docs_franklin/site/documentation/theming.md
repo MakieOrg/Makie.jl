@@ -49,11 +49,9 @@ example_plot()
 
 This theme will be active until we call `set_theme!()`.
 
-\begin{examplefigure}{}
-```julia
+```julia:set_theme
 set_theme!()
 ```
-\end{examplefigure}
 
 ## update_theme!
 

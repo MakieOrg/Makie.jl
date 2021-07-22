@@ -2,6 +2,10 @@ html {
     font-size: 18px;
 }
 
+video {
+  max-width: 100%;
+}
+
 /* plotting functions overview page */
 
 .plotting-functions-grid {
