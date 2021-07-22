@@ -104,7 +104,7 @@ color_observable = @lift(RGBf0($time, 0, 0))
 
 fig = lines(0..10, sin, color = color_observable)
 
-record(fig, "color_animation_2.mp4", timestamps; framerate = framerate) do t
+record(fig, joinpath(@OUTPUT, "color_animation_2.mp4"), timestamps; framerate = framerate) do t
     time[] = t
 end
 nothing # hide

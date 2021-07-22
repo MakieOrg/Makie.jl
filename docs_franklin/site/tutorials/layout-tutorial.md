@@ -188,11 +188,11 @@ This looks nice already, but we want another axis with a second dataset, to
 the right of the one we have. Currently our layout has one row and one cell, and
 only one Axis inside of it:
 
-\begin{examplefigure}{}
-```julia
+
+```julia:layout
 fig.layout
 ```
-\end{examplefigure}
+\output{layout}
 
 We can extend the grid with a new axis by plotting into a new grid position. Let's place a new axis
 with another line plot next to the one we have, in row 1 and column 2.

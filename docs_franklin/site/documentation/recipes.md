@@ -155,8 +155,7 @@ In this example, we will create a special type to hold this information, and a r
 
 First, we make a struct to hold the stock's values for a given day:
 
-\begin{examplefigure}{}
-```julia
+```julia:stock1
 using CairoMakie
 CairoMakie.activate!() # hide
 
@@ -167,13 +166,11 @@ struct StockValue{T<:Real}
     low::T
 end
 ```
-\end{examplefigure}
 
 Now we create a new plot type called `StockChart`.
 The `do scene` closure is just a function that returns our default attributes, in this case they color stocks going down red, and stocks going up green.
 
-\begin{examplefigure}{}
-```julia
+```julia:stock2
 @recipe(StockChart) do scene
     Attributes(
         downcolor = :red,
@@ -182,7 +179,6 @@ The `do scene` closure is just a function that returns our default attributes, i
 end
 nothing # hide
 ```
-\end{examplefigure}
 
 Then we get to the meat of the recipe, which is actually creating a plot method.
 We need to overload a specific method of `Makie.plot!` which as its argument has a subtype of our new `StockChart` plot type.
@@ -193,8 +189,7 @@ Note that the input arguments we receive inside the `plot!` method, which we can
 This means that we must construct our plotting function in a dynamic way so that it will update itself whenever the input observables change.
 This can be a bit trickier than recipes you might know from other plotting packages which produce mostly static plots.
 
-\begin{examplefigure}{}
-```julia
+```julia:stock3
 function Makie.plot!(
         sc::StockChart{<:Tuple{AbstractVector{<:Real}, AbstractVector{<:StockValue}}})
 
@@ -262,7 +257,6 @@ function Makie.plot!(
 end
 nothing # hide
 ```
-\end{examplefigure}
 
 Finally, let's try it out and plot some stocks:
 
