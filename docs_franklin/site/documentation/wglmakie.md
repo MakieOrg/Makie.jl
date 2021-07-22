@@ -12,16 +12,13 @@ Exportable has the effect of inlining all data & js dependencies, so that everyt
 `offline=true` will make the Page not even try to connect to a running Julia
 process, which makes sense for the kind of static export we do in Documenter.
 
-\begin{examplefigure}{}
 ```julia
 using JSServe
 Page(exportable=true, offline=true)
 ```
-\end{examplefigure}
 
 After the page got displayed by the frontend, we can start with creating plots and JSServe Apps:
 
-\begin{examplefigure}{}
 ```julia
 using WGLMakie
 WGLMakie.activate!()
@@ -29,13 +26,11 @@ WGLMakie.activate!()
 set_theme!(resolution=(800, 400))
 scatter(1:4, color=1:4)
 ```
-\end{examplefigure}
 
 As you can see, the output is completely static, because we don't have a running Julia server, as it would be the case with e.g. Pluto.
 To make the plot interactive, we will need to write more parts of WGLMakie in JS, which is an ongoing effort.
 As you can see, the interactivity already keeps working for 3D:
 
-\begin{examplefigure}{}
 ```julia
 N = 60
 function xy_data(x, y)
@@ -49,7 +44,6 @@ surface(
     colormap = :Spectral
 )
 ```
-\end{examplefigure}
 
 There are a couple of ways to keep interacting with Plots in a static export.
 
@@ -70,7 +64,6 @@ function update_value!(x, value) end
 
 Currently, only sliders overload the interface:
 
-\begin{examplefigure}{}
 ```julia
 using Observables
 
@@ -92,14 +85,12 @@ App() do session::Session
     return JSServe.record_states(session, DOM.div(slider, fig))
 end
 ```
-\end{examplefigure}
 
 ## Execute Javascript directly
 
 JSServe makes it easy to build whole HTML and JS applications.
 You can for example directly register javascript function that get run on change.
 
-\begin{examplefigure}{}
 ```julia
 using JSServe: onjs
 
@@ -117,7 +108,6 @@ app = App() do session::Session
     return DOM.div("slider 1: ", s1, slider_val)
 end
 ```
-\end{examplefigure}
 
 One can also interpolate plots into JS and update those via JS.
 The problem is, that there isn't an amazing interface yet.
@@ -126,7 +116,6 @@ The good news is, all attributes should be in either `three_scene.material.unifo
 Going forward, we should create an API in WGLMakie, that makes it as easy as in Julia: `plot.attribute = value`.
 But while this isn't in place, logging the the returned object makes it pretty easy to figure out what to do - btw, the JS console + logging is amazing and makes it very easy to play around with the object once logged.
 
-\begin{examplefigure}{}
 ```julia
 using JSServe: onjs, evaljs, on_document_load
 
@@ -184,7 +173,6 @@ app = App() do session::Session
     return DOM.div(s1, color_slider, markersize, fig)
 end
 ```
-\end{examplefigure}
 
 This summarizes the current state of interactivity with WGLMakie inside static pages.
 
@@ -231,7 +219,6 @@ You may have noticed, styling isn't really amazing right now.
 The good news is, that one can use the whole mighty power of the CSS/HTML universe.
 If it wasn't clear so far, JSServe allows to load arbitrary css, and `DOM.xxx` wraps all existing HTML tags.
 
-\begin{examplefigure}{}
 ```julia
 using Colors
 using JSServe: rows
@@ -248,7 +235,6 @@ App() do session::Session
     return DOM.div(JSServe.TailwindCSS, rows(hue_slider, color_swatch))
 end
 ```
-\end{examplefigure}
 
 Tailwind is quite a amazing and has a great documentation especially for CSS beginners:
 https://tailwindcss.com/docs/
@@ -278,7 +264,6 @@ JSServe will then make sure, that `JSServe.TailwindCSS` is loaded, and will only
 
 Finally, lets create a styled, reusable card componenent:
 
-\begin{examplefigure}{}
 ```julia
 using Markdown
 
@@ -313,7 +298,6 @@ App() do session::Session
     """
 end
 ```
-\end{examplefigure}
 
 Hopefully, over time there will be helper libraries with lots of stylised elements like the above, to make flashy dashboards with JSServe + WGLMakie.
 
