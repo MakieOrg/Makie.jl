@@ -297,7 +297,7 @@ end
 """
     convert_arguments(P, Matrix)::Tuple{ClosedInterval, ClosedInterval, Matrix}
 
-Takes an `AbstractMatrix`, converts the dimesions `n` and `m` into `ClosedInterval`,
+Takes an `AbstractMatrix`, converts the dimensions `n` and `m` into `ClosedInterval`,
 and stores the `ClosedInterval` to `n` and `m`, plus the original matrix in a Tuple.
 
 `P` is the plot Type (it is optional).
@@ -317,6 +317,9 @@ function convert_arguments(SL::SurfaceLike, x::AbstractVector{<:Number}, y::Abst
         error("x, y and z need to have the same length. Lengths are $(length.((x, y, z)))")
     end
 
+    # Convert to Float32 before checking for uniqueness
+    x, y, z = map(el32convert, (x, y, z))
+
     xys = tuple.(x, y)
     if length(unique(xys)) != length(x)
         c = StatsBase.countmap(xys)
@@ -324,10 +327,10 @@ function convert_arguments(SL::SurfaceLike, x::AbstractVector{<:Number}, y::Abst
         error("Found duplicate x/y coordinates: $cdup")
     end
 
-    xs = Float32.(sort(unique(x)))
+    xs = sort(unique(x))
     any(isnan, xs) && error("x must not have NaN values.")
-    ys = Float32.(sort(unique(y)))
-    any(isnan, ys) && error("x must not have NaN values.")
+    ys = sort(unique(y))
+    any(isnan, ys) && error("y must not have NaN values.")
     zs = fill(NaN32, length(xs), length(ys))
     foreach(zip(x, y, z)) do (xi, yi, zi)
         i = searchsortedfirst(xs, xi)

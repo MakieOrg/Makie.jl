@@ -205,4 +205,10 @@ end
     @test_throws ErrorException convert_arguments(Heatmap, x, y, z)
     x = [NaN, 1, 2]
     @test_throws ErrorException convert_arguments(Heatmap, x, y, z)
+
+    # https://github.com/JuliaPlots/Makie.jl/issues/1161
+    x = [2, 1, 2];
+    y = [2, 2, nextfloat(3.0)];
+    z = [1, 2, 3];
+    @test isequal(convert_arguments(Surface, x, y, z), ([1,2], [2,3], [2 NaN; 1 3]))
 end
