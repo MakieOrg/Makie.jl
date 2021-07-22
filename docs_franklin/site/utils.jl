@@ -204,8 +204,16 @@ function hfun_list_folder(param)
       filter(!=("index.md"), _)
   end
 
-  join(map(mds) do page
+  titles = map(mds) do md
+    str = String(read(joinpath(@__DIR__, folder, md)))
+    title = first(eachmatch(r"^#(.*)$"m, str))[1] |> strip
+  end
+
+
+  "<ul>" *
+  join(map(mds, titles) do page, title
     name = splitext(page)[1]
-    """<a href="$name"><h2>$name</h2></a>"""
-  end)
+    """<a href="$name"><li>$title</li></a>"""
+  end) *
+  "</ul>"
 end
