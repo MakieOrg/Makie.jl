@@ -55,16 +55,23 @@ function env_examplefigure(com, _)
   name = get(kwargs, :name, "example_" * string(hash(content)))
   svg = get(kwargs, :svg, false)::Bool
 
+  pngfile = "$name.png"
+  svgfile = "$name.svg"
+
+  # add the generated png name to the list of examples for this page, which
+  # can later be used to assemble an overview page
+  # for some reason franklin needs a pair as the content?
+  pngsvec, _ = get!(Franklin.LOCAL_VARS, "examplefigures_png", String[] => Vector{String})
+  push!(pngsvec, pngfile)
+
   middle, _ = split(middle, r"```\s*$")
   s = """
     ```julia:$name
     __result = begin # hide
     $middle
     end # hide
-    save(joinpath(@OUTPUT, "$name.png"), __result) # hide
-    if $svg # hide
-      save(joinpath(@OUTPUT, "$name.svg"), __result) # hide
-    end # hide
+    save(joinpath(@OUTPUT, "$pngfile"), __result) # hide
+    $(svg ? "save(joinpath(@OUTPUT, \"$svgfile\"), __result) # hide" : "")
     nothing # hide
     ```
     ~~~
@@ -146,17 +153,20 @@ end
 
         !isdir(outputpath) && return ""
 
-        pngpaths = @chain readdir(outputpath) begin
-            filter(x -> endswith(x, ".png") && !endswith(x, "_thumb.png"), _)
-            filter(_) do p
-              if endswith(p, "_thumb.png")
-                rm(joinpath(outputpath, p))
-                false
-              else
-                true
-              end
+        # retrieve the ordered list of generated pngs written by `env_examplefigure`
+        pngpaths = pagevar(
+          joinpath(folder, name),
+          "examplefigures_png",
+          default = String[]
+        )
 
-            end
+        filter!(pngpaths) do p
+          if isfile(joinpath(outputpath, p))
+            true
+          else
+            @warn "File $p from the list of example images for site \"$name\" was not found, it probably wasn't generated correctly."
+            false
+          end
         end
 
         max_thumb_height = 250
