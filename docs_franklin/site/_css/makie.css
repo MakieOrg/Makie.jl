@@ -209,3 +209,25 @@ h2.doc-header {
 .admonition-body code {
     background-color: rgba(0, 0, 0, 0.05);
 }
+
+
+/* tables */
+
+table {
+    border-collapse: collapse;
+    border: none;
+}
+
+thead {
+    display: table-header-group;
+}
+
+th,
+td {
+    border: 1px solid #ececec;
+}
+
+td,
+th {
+    padding: 8px 16px;
+}
