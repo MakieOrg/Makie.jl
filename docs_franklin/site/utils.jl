@@ -3,6 +3,7 @@ using Markdown
 using GLMakie
 using FileIO
 using ImageTransformations
+using Colors
 
 
 # Pause renderloop for slow software rendering.
@@ -166,8 +167,10 @@ end
           img = load(joinpath(outputpath, p))
           sz = size(img)
           new_size = round.(Int, sz .÷ (sz[2] / max_thumb_height))
-          img_resized = imresize(img, new_size)
-          save(thumbpath, img_resized)
+          img_resized = imresize(RGB{Float32}.(img), new_size,
+            method=ImageTransformations.Interpolations.Lanczos4OpenCV())
+          img_clamped = mapc.(x -> clamp(x, 0, 1), img_resized)
+          save(thumbpath, img_clamped)
 
           thumbpath
         end
