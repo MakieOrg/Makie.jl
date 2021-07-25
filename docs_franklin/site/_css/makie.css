@@ -40,6 +40,18 @@ img.plotting-function-thumb {
     padding: 0.3em;
 }
 
+@media (max-width: 480px) {
+    .plotting-functions-thumbcontainer {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    img.plotting-function-thumb {
+        max-height: none;
+        max-width: none;
+    }
+}
+
 
 /* docstrings */
 
