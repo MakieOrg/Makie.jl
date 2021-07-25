@@ -347,6 +347,7 @@ code {
     padding: 0.1em 0.2em;
     border-radius: 2px;
     font-size: var(--small);
+    border: 1px solid #eaeaea;
 }
 
 
