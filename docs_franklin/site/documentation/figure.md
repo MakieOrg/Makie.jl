@@ -1,4 +1,4 @@
-# `Figure`
+# Figures
 
 The `Figure` object contains a top-level `Scene` and a `GridLayout`, as well as a list of layoutables that have been placed into it, like `Axis`, `Colorbar`, `Slider`, `Legend`, etc.
 

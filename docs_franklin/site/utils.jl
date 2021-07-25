@@ -150,6 +150,8 @@ end
     divs = join(map(mds) do page
         name = splitext(page)[1]
 
+        title = pagevar(joinpath(folder, page), "title")
+
         outputpath = joinpath(@__DIR__, "__site", "assets",
             folder, name, "code", "output")
 
@@ -171,14 +173,15 @@ end
           end
         end
 
-        max_thumb_height = 350
+        thumb_height = 350
 
         thumbpaths = map(pngpaths) do p
           thumbpath = joinpath(outputpath, splitext(p)[1] * "_thumb.png")
           
           img = load(joinpath(outputpath, p))
           sz = size(img)
-          new_size = round.(Int, sz .÷ (sz[2] / max_thumb_height))
+          # height is dim 1
+          new_size = round.(Int, sz .÷ (sz[1] / thumb_height))
           img_resized = imresize(RGB{Float32}.(img), new_size,
             method=ImageTransformations.Interpolations.Lanczos4OpenCV())
           img_clamped = mapc.(x -> clamp(x, 0, 1), img_resized)
@@ -192,7 +195,7 @@ end
         """
         
         <div class="plotting-functions-item">
-          <a href="$name"><h2>$name</h2></a>
+          <a href="$name"><h2>$title</h2></a>
           <div class="plotting-functions-thumbcontainer">
             $(
                 map(thumbpaths_website, pngpaths) do thumbpath, pngpath
@@ -209,28 +212,28 @@ end
 end
 
 
-function hfun_list_folder(params)
+@delay function hfun_list_folder(params)
 
     file_location = locvar("fd_rpath")
     pathparts = split(file_location, r"\\|/")
     folder = joinpath(pathparts[1:end-1]..., only(params))
 
-  mds = @chain begin
-      readdir(joinpath(@__DIR__, folder))
-      filter(endswith(".md"), _)
-      filter(!=("index.md"), _)
-  end
+    mds = @chain begin
+        readdir(joinpath(@__DIR__, folder))
+        filter(endswith(".md"), _)
+        filter(!=("index.md"), _)
+    end
 
-  titles = map(mds) do md
-    str = String(read(joinpath(@__DIR__, folder, md)))
-    title = first(eachmatch(r"^#(.*)$"m, str))[1] |> strip
-  end
+    titles = map(mds) do md
+        p = joinpath(folder, md)
+        t = pagevar(p, "title")::String
+    end
 
 
-  "<ul>" *
-  join(map(mds, titles) do page, title
-    name = splitext(page)[1]
-    """<a href="$name"><li>$title</li></a>"""
-  end) *
-  "</ul>"
+    "<ul>" *
+    join(map(mds, titles) do page, title
+        name = splitext(page)[1]
+        """<a href="$name"><li>$title</li></a>"""
+    end) *
+    "</ul>"
 end
