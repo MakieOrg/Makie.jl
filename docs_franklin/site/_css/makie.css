@@ -231,3 +231,10 @@ td,
 th {
     padding: 8px 16px;
 }
+
+
+/* masthead */
+
+img.masthead-icon {
+    height: 1.5em;
+}
