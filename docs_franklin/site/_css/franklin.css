@@ -98,16 +98,6 @@ html {
 }
 
 
-/* On narrow device, reduce margins. */
-
-@media (max-width: 480px) {
-    .franklin-content {
-        padding-left: 6%;
-        padding-right: 6%;
-    }
-}
-
-
 /* ==================================================================
     TITLES
 ================================================================== */
