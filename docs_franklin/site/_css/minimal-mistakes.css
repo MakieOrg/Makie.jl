@@ -806,7 +806,7 @@ td>code {
     padding-top: 0.1rem;
     padding-bottom: 0.1rem;
     font-size: 0.8em;
-    background: #fafafa;
+    background: var(--block-background);
     border-radius: 4px;
 }
 
