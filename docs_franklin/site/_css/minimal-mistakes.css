@@ -2189,14 +2189,14 @@ th {
 .greedy-nav .hidden-links {
     position: absolute;
     top: 100%;
-    right: 0;
-    margin-top: 15px;
+    right: -1em;
+    margin-top: 1em;
     padding: 5px;
     border: 1px solid #f2f3f3;
     border-radius: 4px;
     background: #fff;
-    -webkit-box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.16), 0 2px 10px 0 rgba(0, 0, 0, 0.12);
-    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.16), 0 2px 10px 0 rgba(0, 0, 0, 0.12);
+    -webkit-box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0), 0 2px 10px 0 rgba(0, 0, 0, 0.04);
+    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0), 0 2px 10px 0 rgba(0, 0, 0, 0.04);
 }
 
 .greedy-nav .hidden-links.hidden {
@@ -2214,31 +2214,6 @@ th {
     background: #dbdddf;
 }
 
-.greedy-nav .hidden-links::before {
-    content: "";
-    position: absolute;
-    top: -11px;
-    right: 10px;
-    width: 0;
-    border-style: solid;
-    border-width: 0 10px 10px;
-    border-color: #f2f3f3 transparent;
-    display: block;
-    z-index: 0;
-}
-
-.greedy-nav .hidden-links::after {
-    content: "";
-    position: absolute;
-    top: -10px;
-    right: 10px;
-    width: 0;
-    border-style: solid;
-    border-width: 0 10px 10px;
-    border-color: #fff transparent;
-    display: block;
-    z-index: 1;
-}
 
 .greedy-nav .hidden-links li {
     display: block;
