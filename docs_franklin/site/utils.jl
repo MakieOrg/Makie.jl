@@ -89,11 +89,11 @@ end
 
 function lx_video(lxc, _)
     if length(lxc.braces) == 1
-      rpath = Franklin.stent(lxc.braces[1])
-      alt   = ""
+        rpath = Franklin.stent(lxc.braces[1])
+        alt   = ""
     elseif length(lxc.braces) == 2
-      rpath = Franklin.stent(lxc.braces[2])
-      alt   = Franklin.stent(lxc.braces[1])
+        rpath = Franklin.stent(lxc.braces[2])
+        alt   = Franklin.stent(lxc.braces[1])
     end
     
     path  = Franklin.parse_rpath(rpath; canonical=false, code=true)
@@ -134,9 +134,11 @@ function html_video(path, alt)
 end
 
 
-@delay function hfun_list_folder_with_images(param)
+@delay function hfun_list_folder_with_images(params)
 
-    folder = param[1]
+    file_location = locvar("fd_rpath")
+    pathparts = split(file_location, r"\\|/")
+    folder = joinpath(pathparts[1:end-1]..., only(params))
 
     mds = @chain begin
         readdir(joinpath(@__DIR__, folder))
@@ -207,9 +209,11 @@ end
 end
 
 
-function hfun_list_folder(param)
+function hfun_list_folder(params)
 
-  folder = param[1]
+    file_location = locvar("fd_rpath")
+    pathparts = split(file_location, r"\\|/")
+    folder = joinpath(pathparts[1:end-1]..., only(params))
 
   mds = @chain begin
       readdir(joinpath(@__DIR__, folder))
