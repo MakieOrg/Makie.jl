@@ -171,7 +171,7 @@ end
           end
         end
 
-        max_thumb_height = 250
+        max_thumb_height = 350
 
         thumbpaths = map(pngpaths) do p
           thumbpath = joinpath(outputpath, splitext(p)[1] * "_thumb.png")
