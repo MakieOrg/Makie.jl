@@ -5,6 +5,7 @@ using FileIO
 using ImageTransformations
 using Colors
 
+include("colormap_generation.jl")
 
 # Pause renderloop for slow software rendering.
 # This way, we only render if we actualy save e.g. an image
@@ -236,4 +237,30 @@ end
         """<a href="$name"><li>$title</li></a>"""
     end) *
     "</ul>"
+end
+
+
+function hfun_colorschemes()
+
+    md = IOBuffer()
+
+    write(md, """
+    <h2>misc</h2>
+    <p>These colorschemes are not defined or provide different colors in ColorSchemes.jl
+    They are kept for compatibility with the old behaviour of Makie, before v0.10.</p>
+    """)
+    write(
+        md,
+        generate_colorschemes_table(
+            [:default; sort(collect(keys(PlotUtils.MISC_COLORSCHEMES)))]
+        )
+    )
+    write(md, "<p>The following colorschemes are defined by ColorSchemes.jl.</p>")
+    for cs in ["cmocean", "scientific", "matplotlib", "colorbrewer", "gnuplot", "colorcet", "seaborn", "general"]
+        ks = sort([k for (k, v) in PlotUtils.ColorSchemes.colorschemes if occursin(cs, v.category)])
+        write(md, "<h2>$cs</h2>")
+        write(md, generate_colorschemes_table(ks))
+    end
+
+    String(take!(md))
 end
