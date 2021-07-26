@@ -245,14 +245,39 @@ td {
     border: 1px solid #ececec;
 }
 
-td,
-th {
-    padding: 8px 16px;
-}
-
 
 /* masthead */
 
 img.masthead-icon {
     height: 1.5em;
+}
+
+/* lists */
+
+ul {
+    margin: 0;
+    padding: 0 0 0 1em;
+}
+
+ol {
+    margin: 0;
+    padding: 0 0 0 1em;
+}
+
+/* links */
+
+.franklin-content a {
+    color: #6f6f6f;
+    text-decoration: underline #cacaca;
+}
+
+.franklin-content a:hover {
+    color: #2b5a68;
+    text-decoration: underline #2b5a68;
+
+}
+
+.franklin-content a:visited {
+    color: #6f6f6f;
+    text-decoration: underline #cacaca;
 }

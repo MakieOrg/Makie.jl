@@ -138,6 +138,7 @@ h6 {
 }
 
 .franklin-content h1 a {
+    text-decoration: none;
     color: inherit;
 }
 
@@ -146,6 +147,7 @@ h6 {
 }
 
 .franklin-content h2 a {
+    text-decoration: none;
     color: inherit;
 }
 
@@ -154,6 +156,7 @@ h6 {
 }
 
 .franklin-content h3 a {
+    text-decoration: none;
     color: inherit;
 }
 
@@ -162,6 +165,7 @@ h6 {
 }
 
 .franklin-content h4 a {
+    text-decoration: none;
     color: inherit;
 }
 
@@ -170,6 +174,7 @@ h6 {
 }
 
 .franklin-content h5 a {
+    text-decoration: none;
     color: inherit;
 }
 
@@ -178,6 +183,7 @@ h6 {
 }
 
 .franklin-content h6 a {
+    text-decoration: none;
     color: inherit;
 }
 
@@ -199,7 +205,7 @@ h6 {
 .franklin-content th,
 td {
     font-size: var(--small);
-    padding: 10px;
+    /* padding: 10px; */
 }
 
 .franklin-content blockquote {
@@ -224,15 +230,6 @@ td {
 
 .franklin-content li p {
     margin: 10px 0;
-}
-
-.franklin-content a {
-    color: #004de6;
-    text-decoration: none;
-}
-
-.franklin-content a:hover {
-    text-decoration: underline;
 }
 
 
