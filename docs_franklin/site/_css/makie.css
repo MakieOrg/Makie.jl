@@ -240,9 +240,13 @@ thead {
     display: table-header-group;
 }
 
-th,
 td {
     border: 1px solid #ececec;
+}
+
+th {
+    background: #f2f2f2;
+    border: 1px solid #dbdbdb;
 }
 
 
@@ -250,6 +254,10 @@ td {
 
 img.masthead-icon {
     height: 1.5em;
+}
+
+.title-icon img {
+    height: 2em;
 }
 
 /* lists */
