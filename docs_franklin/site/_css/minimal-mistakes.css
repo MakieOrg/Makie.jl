@@ -810,7 +810,7 @@ td>code {
     border-radius: 4px;
 }
 
-p>code::before,
+/* p>code::before,
 p>code::after,
 a>code::before,
 a>code::after,
@@ -822,7 +822,7 @@ td>code::before,
 td>code::after {
     letter-spacing: -0.2em;
     content: "\00a0";
-}
+} */
 
 hr {
     display: block;
