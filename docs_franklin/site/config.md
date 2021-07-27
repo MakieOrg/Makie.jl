@@ -24,3 +24,6 @@ Add here global latex commands to use throughout your pages.
 -->
 \newcommand{\R}{\mathbb R}
 \newcommand{\scal}[1]{\langle #1 \rangle}
+
+<!-- myreflink{Basic Tutorial} expands to [Basic Tutorial](link_to_that) -->
+\newcommand{\myreflink}[1]{[!#1](\reflink{!#1})}

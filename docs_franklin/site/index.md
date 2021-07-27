@@ -1,5 +1,3 @@
-![Makie](assets/logo.png)
-
 ## Welcome to Makie!
 
 Makie is a high-performance, extendable, and multi-platform plotting ecosystem for the [Julia](https://julialang.org/) programming language.
@@ -24,8 +22,8 @@ CairoMakie.activate!()
 
 ## First Steps
 
-- Learn the basics of plotting with Makie in the [Basic Tutorial](@ref)
-- Check out how to make more complex plots and layouts in the [Layout Tutorial](@ref)
+- Learn the basics of plotting with Makie in the \myreflink{Basic Tutorial}
+- Check out how to make more complex plots and layouts in the \myreflink{Layout Tutorial}
 - A [gallery of examples](https://lazarusa.github.io/BeautifulMakie/) is maintained in a separate repository.
 
 ```julia:autogen_notice

@@ -31,11 +31,11 @@ Makie.inline!(true) # hide
 nothing # hide
 ```
 
-Makie has many different plotting functions, one of the most common ones is [lines](@ref).
+Makie has many different plotting functions, one of the most common ones is \myreflink{lines}.
 You can just call such a function and your plot will appear if your coding environment can show png or svg files.
 
 !!! note
-    Objects such as [Figure](@ref), `FigureAxisPlot` or `Scene` are usually displayed whenever they are returned in global scope (e.g. in the REPL).
+    Objects such as [Figure](\reflink{Figures}), `FigureAxisPlot` or `Scene` are usually displayed whenever they are returned in global scope (e.g. in the REPL).
     To display such objects from within a local scope, like from within a function, you can directly call `display(figure)`, for example.
 
 \begin{examplefigure}{}
@@ -47,7 +47,7 @@ lines(x, y)
 ```
 \end{examplefigure}
 
-Another common function is [scatter](@ref).
+Another common function is \myreflink{scatter}.
 
 \begin{examplefigure}{}
 ```julia
@@ -169,7 +169,7 @@ current_figure()
 \end{examplefigure}
 
 Note that the color array does not actually contain colors, rather the numerical values are mapped to the plot's `colormap`.
-There are many different colormaps to choose from, take a look on the [Colors](@ref) page.
+There are many different colormaps to choose from, take a look on the \myreflink{Colors} page.
 
 The values are mapped to colors via the `colorrange` attribute, which by default goes from the minimum to the maximum color value, but we can also limit or expand the range manually.
 For example, we can constrain the previous scatter plot's color range to (0.25, 0.75), which will clip the colors at the bottom and the top quarters.
@@ -222,10 +222,10 @@ current_figure()
 ## Subplots
 
 Makie uses a powerful layout system under the hood, which allows you to create very complex figures with many subplots.
-For the easiest way to do this, we need a [Figure](@ref) object.
+For the easiest way to do this, we need a [Figure](\reflink{Figures}) object.
 So far, we haven't seen this explicitly, it was created in the background in the first plotting function call.
 
-We can also create a [Figure](@ref) directly and then continue working with it.
+We can also create a [Figure](\reflink{Figures}) directly and then continue working with it.
 We can make subplots by giving the location of the subplot in our layout grid as the first argument to our plotting function.
 The basic syntax for specifying the location in a figure is `fig[row, col]`.
 
@@ -250,10 +250,10 @@ Each `lines` call creates a new axis in the position given as the first argument
 
 ## Constructing axes manually
 
-Like [Figure](@ref)s, we can also create axes manually.
+Like [Figure](\reflink{Figures})s, we can also create axes manually.
 This is useful if we want to prepare an empty axis to then plot into it later.
 
-The default 2D axis that we have created implicitly so far is called [Axis](@ref) and can also be created in a specific position in the figure by passing that position as the first argument.
+The default 2D axis that we have created implicitly so far is called \myreflink{Axis} and can also be created in a specific position in the figure by passing that position as the first argument.
 
 For example, we can create a figure with three axes.
 
@@ -302,11 +302,11 @@ fig
 
 ## Legend and Colorbar
 
-We have seen two `Layoutables` so far, the [Axis](@ref) and the [Legend](@ref) which was created by the function `axislegend`.
+We have seen two `Layoutables` so far, the \myreflink{Axis} and the \myreflink{Legend} which was created by the function `axislegend`.
 All `Layoutable`s can be placed into the layout of a figure at arbitrary positions, which makes it easy to assemble complex figures.
 
-In the same way as with the [Axis](@ref) before, you can also create a [Legend](@ref) manually and then place it freely, wherever you want, in the figure.
-There are multiple ways to create [Legend](@ref)s, for one of them you pass one vector of plot objects and one vector of label strings.
+In the same way as with the \myreflink{Axis} before, you can also create a \myreflink{Legend} manually and then place it freely, wherever you want, in the figure.
+There are multiple ways to create \myreflink{Legend}s, for one of them you pass one vector of plot objects and one vector of label strings.
 
 You can see here that we can deconstruct the return value from the two `lines` calls into one newly created axis and one plot object each.
 We can then feed the plot objects to the legend constructor.
@@ -325,7 +325,7 @@ fig
 ```
 \end{examplefigure}
 
-The [Colorbar](@ref) works in a very similar way.
+The \myreflink{Colorbar} works in a very similar way.
 We just need to pass a position in the figure to it, and one plot object.
 In this example, we use a `heatmap`.
 
@@ -362,7 +362,7 @@ fig
 ## Passing attributes to Figure and Axis
 
 For one-off plots, it can be convenient to set axis or figure settings directly with the plotting command.
-You can do this using the plotting functions without the `!` suffix, like `lines` or `scatter`, because these always create a new axis and also create a new figure if they are not plotting onto an existing one. This is explained further under [Plot Method Signatures](@ref).
+You can do this using the plotting functions without the `!` suffix, like `lines` or `scatter`, because these always create a new axis and also create a new figure if they are not plotting onto an existing one. This is explained further under \myreflink{Plot Method Signatures}.
 
 You can pass axis attributes under the keyword `axis` and figure attributes under the keyword `figure`.
 
@@ -386,8 +386,8 @@ We've only looked at a small subset of Makie's functionality here.
 
 You can read about the different available plotting functions with examples in the Plotting Functions section.
 
-If you want to learn about making complex figures with nested sublayouts, have a look at the [Layout Tutorial](@ref) section.
+If you want to learn about making complex figures with nested sublayouts, have a look at the \myreflink{Layout Tutorial} section.
 
 If you're interested in creating interactive visualizations that use Makie's special `Observables` workflow, this is explained in more detail in the [Observables & Interaction](@ref) section.
 
-If you want to create animated movies, you can find more information in the [Animations](@ref) section.
+If you want to create animated movies, you can find more information in the \myreflink{Animations} section.
