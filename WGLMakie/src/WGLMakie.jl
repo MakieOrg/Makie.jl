@@ -64,8 +64,9 @@ function __init__()
     end
 end
 
-for name in names(Makie)
-    if name !== :Button && name !== :Slider
+# re-export Makie, including deprecated names
+for name in names(Makie, all=true)
+    if Base.isexported(Makie, name) && name !== :Button && name !== :Slider
         @eval import Makie: $(name)
         @eval export $(name)
     end
