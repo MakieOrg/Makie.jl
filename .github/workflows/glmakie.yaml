@@ -27,6 +27,8 @@ jobs:
           - ubuntu-18.04
         arch:
           - x64
+    env:
+      JULIA_PKG_SERVER: ""
     steps:
       - name: Checkout
         uses: actions/checkout@v2
