@@ -260,6 +260,10 @@ img.masthead-icon {
     height: 2em;
 }
 
+a.title-icon {
+    margin-left: 0;
+}
+
 /* lists */
 
 ul {
