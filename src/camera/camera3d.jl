@@ -239,7 +239,7 @@ function add_translation!(scene, cam::Camera3D)
     last_mousepos = RefValue(Vec2f0(0, 0))
     dragging = RefValue(false)
 
-    compute_diff(delta) = begin
+    function compute_diff(delta)
         if cam.attributes[:projectiontype][] == Orthographic
             aspect = Float32((/)(widths(scene.px_area[])...))
             aspect_scale = Vec2f0(1f0 + aspect, 1f0 + 1f0 / aspect)
