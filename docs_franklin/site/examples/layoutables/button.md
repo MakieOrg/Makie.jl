@@ -1,5 +1,3 @@
-
-
 # Button
 
 \begin{examplefigure}{}

@@ -31,7 +31,9 @@ ax = Axis(fig[1, 2])
 
 func = Node{Any}(funcs[1])
 
-ys = @lift($func.(0:0.3:10))
+ys = lift(func) do f
+    f.(0:0.3:10)
+end
 scat = scatter!(ax, ys, markersize = 10px, color = ys)
 
 cb = Colorbar(fig[1, 3], scat)

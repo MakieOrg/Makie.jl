@@ -32,9 +32,14 @@ rs_h = IntervalSlider(f[2, 1], range = LinRange(0, 1, 1000),
 rs_v = IntervalSlider(f[1, 2], range = LinRange(0, 1, 1000),
     startvalues = (0.4, 0.9), horizontal = false)
 
-Label(f[3, 1], @lift(string(round.($(rs_h.interval), digits = 2))),
-    tellwidth = false)
-Label(f[1, 3], @lift(string(round.($(rs_v.interval), digits = 2))),
+labeltext1 = lift(rs_h.interval) do int
+    string(round.(int, digits = 2))
+end
+Label(f[3, 1], labeltext1, tellwidth = false)
+labeltext2 = lift(rs_v.interval) do int
+    string(round.(int, digits = 2))
+end
+Label(f[1, 3], labeltext2,
     tellheight = false, rotation = pi/2)
 
 points = rand(Point2f0, 300)
