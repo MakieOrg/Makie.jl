@@ -1,5 +1,5 @@
 <div align="center">
-    <img src="https://raw.githubusercontent.com/JuliaPlots/Makie.jl/master/assets/logo.png" alt="Makie.jl" width="480">
+    <img src="https://raw.githubusercontent.com/JuliaPlots/Makie.jl/master/artwork/makie_logo_white.png" alt="Makie.jl" width="480">
 </div>
 
 From the japanese word [_Maki-e_](https://en.wikipedia.org/wiki/Maki-e), which is a technique to sprinkle lacquer with gold and silver powder.
