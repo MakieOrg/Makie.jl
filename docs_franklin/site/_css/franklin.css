@@ -202,12 +202,6 @@ h6 {
     list-style-type: lower-alpha;
 }
 
-.franklin-content th,
-td {
-    font-size: var(--small);
-    /* padding: 10px; */
-}
-
 .franklin-content blockquote {
     background: var(--block-background);
     border-left: 7px solid #a8a8a8;

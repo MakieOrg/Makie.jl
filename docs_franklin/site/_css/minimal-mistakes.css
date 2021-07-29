@@ -861,8 +861,6 @@ figure .fluid-width-video-wrapper {
 figure img {
     width: 100%;
     border-radius: 4px;
-    -webkit-transition: all 0.2s ease-in-out;
-    transition: all 0.2s ease-in-out;
 }
 
 figure>a {
@@ -898,10 +896,6 @@ figcaption {
     font-size: 0.75em;
 }
 
-figcaption a {
-    -webkit-transition: all 0.2s ease-in-out;
-    transition: all 0.2s ease-in-out;
-}
 
 figcaption a:hover {
     color: #266477;
@@ -934,32 +928,6 @@ nav li ol {
     margin-top: 0;
 }
 
-b,
-i,
-strong,
-em,
-blockquote,
-p,
-q,
-span,
-figure,
-img,
-h1,
-h2,
-header,
-input,
-a,
-tr,
-td,
-form button,
-input[type="submit"],
-.btn,
-#goog-wm-sb,
-.highlight,
-.archive__item-teaser {
-    -webkit-transition: all 0.2s ease-in-out;
-    transition: all 0.2s ease-in-out;
-}
 
 form {
     margin: 0 0 5px 0;
@@ -1318,7 +1286,7 @@ table {
     margin-bottom: 1em;
     width: 100%;
     font-family: -apple-system, BlinkMacSystemFont, "Roboto", "Segoe UI", "Helvetica Neue", "Lucida Grande", Arial, sans-serif;
-    font-size: 0.75em;
+    font-size: 0.85em;
     border-collapse: collapse;
     overflow-x: auto;
 }
@@ -1856,12 +1824,10 @@ th {
 }
 
 .masthead {
-    position: relative;
+    position: sticky;
+    background: white;
+    top: 0;
     border-bottom: 1px solid #f2f3f3;
-    -webkit-animation: intro 0.3s both;
-    animation: intro 0.3s both;
-    -webkit-animation-delay: 0.15s;
-    animation-delay: 0.15s;
     z-index: 20;
 }
 
@@ -1869,7 +1835,7 @@ th {
     clear: both;
     margin-left: auto;
     margin-right: auto;
-    padding: 1em;
+    padding: 0.5em;
     max-width: 100%;
     display: -webkit-box;
     display: -ms-flexbox;
@@ -1957,10 +1923,6 @@ th {
     padding-left: 1em;
     padding-right: 1em;
     font-family: -apple-system, BlinkMacSystemFont, "Roboto", "Segoe UI", "Helvetica Neue", "Lucida Grande", Arial, sans-serif;
-    -webkit-animation: intro 0.3s both;
-    animation: intro 0.3s both;
-    -webkit-animation-delay: 0.3s;
-    animation-delay: 0.3s;
 }
 
 .breadcrumbs::after {
@@ -2190,7 +2152,7 @@ th {
     position: absolute;
     top: 100%;
     right: -1em;
-    margin-top: 1em;
+    margin-top: 0.5em;
     padding: 5px;
     border: 1px solid #f2f3f3;
     border-radius: 4px;
@@ -2250,8 +2212,6 @@ th {
         border: 1px solid #bdc1c4;
         border-radius: 4px;
         z-index: 20;
-        -webkit-transition: 0.2s ease-out;
-        transition: 0.2s ease-out;
         cursor: pointer;
     }
     .nav__list label::before,
@@ -2264,8 +2224,6 @@ th {
         height: 0.125em;
         line-height: 1;
         background-color: #7a8288;
-        -webkit-transition: 0.2s ease-out;
-        transition: 0.2s ease-out;
     }
     .nav__list label::after {
         -webkit-transform: rotate(90deg);
@@ -2344,8 +2302,6 @@ th {
         opacity: 0%;
         overflow: hidden;
         z-index: 10;
-        -webkit-transition: 0.3s ease-in-out;
-        transition: 0.3s ease-in-out;
         -webkit-transform: translate(0, 10%);
         -ms-transform: translate(0, 10%);
         transform: translate(0, 10%);
@@ -2354,8 +2310,6 @@ th {
 
 @media (max-width: 63.9375em) {
     .nav__list input:checked~.nav__items {
-        -webkit-transition: 0.5s ease-in-out;
-        transition: 0.5s ease-in-out;
         max-height: 9999px;
         overflow: visible;
         opacity: 1;
@@ -2468,10 +2422,6 @@ th {
     height: auto;
     margin-top: 3em;
     color: #898c8f;
-    -webkit-animation: intro 0.3s both;
-    animation: intro 0.3s both;
-    -webkit-animation-delay: 0.45s;
-    animation-delay: 0.45s;
     background-color: #f2f3f3;
 }
 
@@ -2565,8 +2515,6 @@ th {
     color: #6f777d;
     background-color: transparent;
     cursor: pointer;
-    -webkit-transition: 0.2s;
-    transition: 0.2s;
 }
 
 .search__toggle:hover {
@@ -2591,10 +2539,6 @@ th {
     margin-right: auto;
     padding-left: 1em;
     padding-right: 1em;
-    -webkit-animation: intro 0.3s both;
-    animation: intro 0.3s both;
-    -webkit-animation-delay: 0.15s;
-    animation-delay: 0.15s;
 }
 
 @media (min-width: 80em) {
@@ -3276,8 +3220,6 @@ body:hover .visually-hidden button {
     height: 0.25rem;
     background: #6f777d;
     margin: auto;
-    -webkit-transition: 0.3s;
-    transition: 0.3s;
 }
 
 .navicon::before,
@@ -3288,8 +3230,6 @@ body:hover .visually-hidden button {
     width: 1.5rem;
     height: 0.25rem;
     background: #6f777d;
-    -webkit-transition: 0.3s;
-    transition: 0.3s;
 }
 
 .navicon::before {
@@ -3476,11 +3416,7 @@ a.reversefootnote:hover {
     margin-right: auto;
     padding-left: 1em;
     padding-right: 1em;
-    -webkit-animation: intro 0.3s both;
-    animation: intro 0.3s both;
     max-width: 100%;
-    -webkit-animation-delay: 0.15s;
-    animation-delay: 0.15s;
 }
 
 #main::after {
@@ -3594,10 +3530,6 @@ a.reversefootnote:hover {
     position: relative;
     margin-bottom: 2em;
     clear: both;
-    -webkit-animation: intro 0.3s both;
-    animation: intro 0.3s both;
-    -webkit-animation-delay: 0.25s;
-    animation-delay: 0.25s;
 }
 
 .page__hero::after {
@@ -3614,10 +3546,6 @@ a.reversefootnote:hover {
     background-size: cover;
     background-repeat: no-repeat;
     background-position: center;
-    -webkit-animation: intro 0.3s both;
-    animation: intro 0.3s both;
-    -webkit-animation-delay: 0.25s;
-    animation-delay: 0.25s;
 }
 
 .page__hero--overlay::after {
@@ -3856,11 +3784,6 @@ a.reversefootnote:hover {
     font-size: 0.75em;
     border-top: 1px solid #f2f3f3;
     text-transform: uppercase;
-}
-
-.page__comments-form {
-    -webkit-transition: all 0.2s ease-in-out;
-    transition: all 0.2s ease-in-out;
 }
 
 .page__comments-form.disabled input,
@@ -4452,8 +4375,6 @@ a.reversefootnote:hover {
         float: left;
         width: calc(200px - 1em);
         opacity: 0.75;
-        -webkit-transition: opacity 0.2s ease-in-out;
-        transition: opacity 0.2s ease-in-out;
     }
     .sidebar:hover {
         opacity: 1;
