@@ -112,21 +112,21 @@ end
         # 1) In scene, in drag
         e.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.press)
         e.mouseposition[] = (600, 250)
-        @test cc.lookat[]       ≈ Vec3f0(4.409082, -4.409082, -2.598076)
-        @test cc.eyeposition[]  ≈ Vec3f0(7.409082, -1.4090819, 0.4019239)
+        @test cc.lookat[]       ≈ Vec3f0(5.4697413, -3.3484206, -2.1213205)
+        @test cc.eyeposition[]  ≈ Vec3f0(8.469742, -0.34842062, 0.8786795)
         @test cc.upvector[]     ≈ Vec3f0(0.0, 0.0, 1.0)
 
         # 2) Outside scene, in drag
         e.mouseposition[] = (1000, 450)
-        @test cc.lookat[]       ≈ Vec3f0(7.3484697, -7.3484697, -4.676537)
-        @test cc.eyeposition[]  ≈ Vec3f0(10.34847, -4.3484697, -1.676537)
+        @test cc.lookat[]       ≈ Vec3f0(9.257657, -5.4392805, -3.818377)
+        @test cc.eyeposition[]  ≈ Vec3f0(12.257658, -2.4392805, -0.81837714)
         @test cc.upvector[]     ≈ Vec3f0(0.0, 0.0, 1.0)
 
         # 3) not in drag
         e.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.release)
         e.mouseposition[] = (400, 250)
-        @test cc.lookat[]       ≈ Vec3f0(7.3484697, -7.3484697, -4.676537)
-        @test cc.eyeposition[]  ≈ Vec3f0(10.34847, -4.3484697, -1.676537)
+        @test cc.lookat[]       ≈ Vec3f0(9.257657, -5.4392805, -3.818377)
+        @test cc.eyeposition[]  ≈ Vec3f0(12.257658, -2.4392805, -0.81837714)
         @test cc.upvector[]     ≈ Vec3f0(0.0, 0.0, 1.0)
 
 

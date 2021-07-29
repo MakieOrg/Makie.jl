@@ -264,15 +264,33 @@ function draw_atomic(screen::GLScreen, scene::Scene,
 
     robj = cached_robj!(screen, scene, x) do gl_attributes
         glyphcollection = x[1]
-        liftkeys = (:position, :rotation, :model, :space, :offset)
-        args = getindex.(Ref(gl_attributes), liftkeys)
-        function collect_glyph_data(projview, transfunc, pos, rotation, model, space, offset)
-            gcollection = glyphcollection[]
-            res = Vec2f0(widths(pixelarea(scene)[]))
-            positions, offset, uv_offset_width, scale = preprojected_glyph_arrays(pos, gcollection, space, projview, res, offset, transfunc)
-        end
 
-        glyph_data = lift(collect_glyph_data, scene.camera.projectionview, Makie.transform_func_obs(scene), args...)
+
+        res = map(x->Vec2f0(widths(x)), pixelarea(scene))
+        projview = scene.camera.projectionview
+        transfunc =  Makie.transform_func_obs(scene)
+        pos = gl_attributes[:position]
+        space = gl_attributes[:space]
+        offset = gl_attributes[:offset]
+
+        # TODO: This is a hack before we get better updating of plot objects and attributes going.
+        # Here we only update the glyphs when the glyphcollection changes, if it's a singular glyphcollection.
+        # The if statement will be compiled away depending on the parameter of Text.
+        # This means that updates of a text vector and a separate position vector will still not work if only the text
+        # vector is triggered, but basically all internal objects use the vector of tuples version, and that triggers
+        # both glyphcollection and position, so it still works
+        if glyphcollection[] isa Makie.GlyphCollection
+            # here we use the glyph collection observable directly
+            gcollection = glyphcollection
+        else
+            # and here we wrap it into another observable
+            # so it doesn't trigger dimension mismatches
+            # the actual, new value gets then taken in the below lift with to_value
+            gcollection = Observable(glyphcollection)
+        end
+        glyph_data = lift(pos, gcollection, space, projview, res, offset, transfunc) do pos, gc, args...
+            preprojected_glyph_arrays(pos, to_value(gc), args...)
+        end
 
         # unpack values from the one signal:
         positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i
@@ -280,11 +298,6 @@ function draw_atomic(screen::GLScreen, scene::Scene,
         end
 
         atlas = get_texture_atlas()
-        keys = (:color, :strokecolor, :rotation)
-
-        signals = map(keys) do key
-            Makie.get_attribute(x, key)
-        end
 
         filter!(gl_attributes) do (k, v)
             # These are liftkeys without model
@@ -310,6 +323,7 @@ function draw_atomic(screen::GLScreen, scene::Scene,
                 Makie.collect_vector(gc.strokecolors, length(gc.glyphs))
             end
         end
+
         gl_attributes[:rotation] = lift(glyphcollection) do gc
             if gc isa AbstractArray
                 reduce(vcat, (Makie.collect_vector(g.rotations, length(g.glyphs)) for g in gc),
@@ -324,7 +338,6 @@ function draw_atomic(screen::GLScreen, scene::Scene,
         gl_attributes[:uv_offset_width] = uv_offset_width
         gl_attributes[:distancefield] = get_texture!(atlas)
         gl_attributes[:visible] = x.visible
-
         robj = visualize((DISTANCEFIELD, positions), Style(:default), gl_attributes)
         # Draw text in screenspace
         if x.space[] == :screen

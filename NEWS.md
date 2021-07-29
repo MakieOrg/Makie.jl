@@ -1,5 +1,9 @@
 # News
 
+## master
+
+- Added a specialization for `volumeslices` to DataInspector
+
 ## v0.15.0
 
 - `LaTeXString`s can now be used as input to `text` and therefore as labels for `Axis`, `Legend`, or other comparable objects. Mathematical expressions are typeset using [MathTeXEngine.jl](https://github.com/Kolaru/MathTeXEngine.jl) which offers a fast approximation of LaTeX typesetting. [#1022](https://github.com/JuliaPlots/Makie.jl/pull/1022)
