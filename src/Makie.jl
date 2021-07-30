@@ -249,7 +249,8 @@ export assetpath
 # default icon for Makie
 function icon()
     path = assetpath("icons")
-    icons = FileIO.load.(joinpath.(path, readdir(path)))
+    imgs = FileIO.load.(joinpath.(path, readdir(path)))
+    icons = map(img-> RGBA{Colors.N0f8}.(img), imgs)
     return reinterpret.(NTuple{4,UInt8}, icons)
 end
 
