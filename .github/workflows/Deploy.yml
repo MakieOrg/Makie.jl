@@ -62,7 +62,7 @@ jobs:
       if: github.event_name == 'pull_request' && github.repository == github.event.pull_request.head.repo.full_name # if this build is a PR build and the PR is NOT from a fork
       uses: JamesIves/github-pages-deploy-action@releases/v3
       with:
-          BRANCH: gh-preview # The branch where the PRs previews are stored
+          BRANCH: gh-pages
           FOLDER: docs_franklin/site/__site
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TARGET_FOLDER: "previews/PR${{ github.event.number }}" # The website preview is going to be stored in a subfolder
@@ -71,5 +71,5 @@ jobs:
       uses: JamesIves/github-pages-deploy-action@releases/v3
       with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH: gh-pages # Replace here the branch where your website is deployed
+          BRANCH: gh-pages
           FOLDER: docs_franklin/site/__site
