@@ -1,10 +1,9 @@
-name: Build and Deploy
+name: Docs build and deploy
 on:
   push:
     branches:
       - main
       - master
-      - jk/franklin-docs
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
