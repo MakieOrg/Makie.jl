@@ -15,8 +15,8 @@ ignore = ["node_modules/"]
 generate_rss = true
 website_title = "Franklin Template"
 website_descr = "Example website using Franklin"
-website_url   = "https://jkrumbiegel.github.io/Makie.jl/"
-prepath = "Makie.jl"
+prepath = get(ENV, "PREVIEW_FRANKLIN_PREPATH", "")
+website_url = get(ENV, "PREVIEW_FRANKLIN_WEBSITE_URL", "makie.juliaplots.org")
 +++
 
 <!--
