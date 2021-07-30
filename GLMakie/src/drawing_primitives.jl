@@ -520,9 +520,13 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
                 if t === identity
                     return (x1d, y1d)
                 else
-                    # If we do any transformation, we have to assume things aren't on the grid anymore
-                    # so x + y need to become matrices.
-                    matrix = [apply_transform(t, Point(x, y)) for x in x1d, y in y1d]
+                    matrix = if x1d isa Matrix && y1d isa Matrix
+                        apply_transform.((t,), Point.(x1d, y1d))
+                    else
+                        # If we do any transformation, we have to assume things aren't on the grid anymore
+                        # so x + y need to become matrices.
+                        [apply_transform(t, Point(x, y)) for x in x1d, y in y1d]
+                    end
                     return (first.(matrix), last.(matrix))
                 end
             end
