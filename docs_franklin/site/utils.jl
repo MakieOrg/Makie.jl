@@ -264,3 +264,9 @@ function hfun_colorschemes()
 
     String(take!(md))
 end
+
+function lx_outputimage(lxc, _)
+    rpath = Franklin.stent(lxc.braces[1])
+    path = Franklin.parse_rpath("output/" * rpath; canonical=false, code=true)
+    return "![$rpath]($path)"
+end
