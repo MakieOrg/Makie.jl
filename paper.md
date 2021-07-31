@@ -40,6 +40,11 @@ Therefore, researchers have to switch between tools which means they have to spe
 `Makie.jl` is a new plotting package which is built from the ground up to leverage the power of `Julia`, a relatively young programming language which excels at technical computing and has seen steady growth of its user base since reaching the 1.0 milestone in 2018.
 Julia users have historically often used plotting software from other ecosystems, such as `matplotlib` [@Hunter:2007] or `ggplot2` [@Wickham:2011] through interface packages to Python and R like `PyCall.jl` and `RCall.jl`.
 But these wrapper packages cannot take full advantage of Julia's type system and multiple dispatch paradigm, so they leave both performance and flexibility on the table.
+
+The widely used `Plots.jl` package [@Breloff:2021] on the other hand offers a powerful and convenient abstraction on top of established plotting libraries from other languages.
+While its recipe system utilizes the strengths of Julia's multiple dispatch, the multi-backend approach means that only a limited subset of each backend's functionality is available.
+Interactivity is also not a priority, so for maximum control and performance, users have to look elsewhere.
+
 `Makie.jl` aims to fill this gap in the Julia ecosystem.
 
 # Example
