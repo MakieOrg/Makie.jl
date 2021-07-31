@@ -365,7 +365,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
             x1d = xy_convert(x, size(mat[], 1))
             y1d = xy_convert(y, size(mat[], 2))
             # Only if transform doesn't do anything, we can stay linear in 1/2D
-            if t === identity || t isa Tuple && all(x-> x === identity, t)
+            if Makie.is_identity_transform(t)
                 return (x1d, y1d)
             else
                 # If we do any transformation, we have to assume things aren't on the grid anymore
@@ -473,7 +473,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, meshplot::Mesh)
         end
 
         mesh = map(mesh, transform_func_obs(meshplot)) do mesh, func
-            if func ∉ (identity, (identity, identity), (identity, identity, identity))
+            if !Makie.is_identity_transform(func)
                 return update_positions(mesh, apply_transform.(Ref(func), mesh.position))
             end
             return mesh
@@ -517,10 +517,10 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
                 x1d = xy_convert(x, size(mat[], 1))
                 y1d = xy_convert(y, size(mat[], 2))
                 # Only if transform doesn't do anything, we can stay linear in 1/2D
-                if t === identity
+                if Makie.is_identity_transform(t)
                     return (x1d, y1d)
                 else
-                    matrix = if x1d isa Matrix && y1d isa Matrix
+                    matrix = if x1d isa AbstractMatrix && y1d isa AbstractMatrix
                         apply_transform.((t,), Point.(x1d, y1d))
                     else
                         # If we do any transformation, we have to assume things aren't on the grid anymore
