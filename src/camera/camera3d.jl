@@ -119,7 +119,7 @@ function Camera3D(scene; kwargs...)
             keyboard_translationspeed = 0.5f0,
             keyboard_zoomspeed = 1f0,
             mouse_rotationspeed = 1f0,
-            mouse_translationspeed = 0.2f0,
+            mouse_translationspeed = 1f0,
             mouse_zoomspeed = 1f0,
             circular_rotation = (true, true, true),
             fov = 45f0, # base fov
@@ -239,6 +239,17 @@ function add_translation!(scene, cam::Camera3D)
     last_mousepos = RefValue(Vec2f0(0, 0))
     dragging = RefValue(false)
 
+    function compute_diff(delta)
+        if cam.attributes[:projectiontype][] == Orthographic
+            aspect = Float32((/)(widths(scene.px_area[])...))
+            aspect_scale = Vec2f0(1f0 + aspect, 1f0 + 1f0 / aspect)
+            return cam.zoom_mult[] * delta .* aspect_scale ./ widths(scene.px_area[])
+        else
+            viewdir = cam.lookat[] - cam.eyeposition[]
+            return 0.002f0 * cam.zoom_mult[] * norm(viewdir) * delta
+        end
+    end
+
     # drag start/stop
     on(camera(scene), scene.events.mousebutton) do event
         if event.button == button[]
@@ -248,11 +259,10 @@ function add_translation!(scene, cam::Camera3D)
                 return Consume(true)
             elseif event.action == Mouse.release && dragging[]
                 mousepos = mouseposition_px(scene)
-                dragging[] = false
-                diff = (last_mousepos[] - mousepos) * 0.01f0 * translationspeed[]
+                diff = compute_diff(last_mousepos[] - mousepos)
                 last_mousepos[] = mousepos
-                viewdir = cam.lookat[] - cam.eyeposition[]
-                translate_cam!(scene, cam, cam.zoom_mult[] * norm(viewdir) * Vec3f0(diff[1], diff[2], 0f0))
+                dragging[] = false
+                translate_cam!(scene, cam, translationspeed[] * Vec3f0(diff[1], diff[2], 0f0))
                 update_cam!(scene, cam)
                 return Consume(true)
             end
@@ -264,10 +274,9 @@ function add_translation!(scene, cam::Camera3D)
     on(camera(scene), scene.events.mouseposition) do mp
         if dragging[] && ispressed(scene, button[]) && ispressed(scene, mod[])
             mousepos = screen_relative(scene, mp)
-            diff = (last_mousepos[] .- mousepos) * 0.01f0 * translationspeed[]
+            diff = compute_diff(last_mousepos[] - mousepos)
             last_mousepos[] = mousepos
-            viewdir = cam.lookat[] - cam.eyeposition[]
-            translate_cam!(scene, cam, cam.zoom_mult[] * norm(viewdir) * Vec3f0(diff[1], diff[2], 0f0))
+            translate_cam!(scene, cam, translationspeed[] * Vec3f0(diff[1], diff[2], 0f0))
             update_cam!(scene, cam)
             return Consume(true)
         end
@@ -276,7 +285,6 @@ function add_translation!(scene, cam::Camera3D)
 
     on(camera(scene), scene.events.scroll) do scroll
         if is_mouseinside(scene) && ispressed(scene, mod[])
-            cam_res = Vec2f0(widths(scene.px_area[]))
             zoom_step = (1f0 + 0.1f0 * zoomspeed[]) ^ -scroll[2]
             zoom!(scene, cam, zoom_step, shift_lookat[], cad[])
             update_cam!(scene, cam)
@@ -402,11 +410,12 @@ function translate_cam!(scene, cam, t)
     # x expands right, y expands up and z expands towards the screen
     lookat = cam.lookat[]
     eyepos = cam.eyeposition[]
-    up = cam.upvector[]         # +y
-    viewdir = lookat - eyepos   # -z
-    right = cross(viewdir, up)  # +x
+    up = normalize(cam.upvector[])
+    u_z = normalize(eyepos - lookat)
+    u_x = normalize(cross(up, u_z))
+    u_y = normalize(cross(u_z, u_x))
 
-    trans = normalize(right) * t[1] + normalize(up) * t[2] - normalize(viewdir) * t[3]
+    trans = u_x * t[1] + u_y * t[2] + u_z * t[3]
 
     # apply world space restrictions
     fix_x = ispressed(scene, cam.attributes[:fix_x_key][])
@@ -498,22 +507,32 @@ function zoom!(scene::Scene, cam::Camera3D, zoom_step, shift_lookat = false, cad
         shifted = eyepos + 0.1f0 * sign(1f0 - zoom_step) * norm(viewdir) * shift
         cam.eyeposition[] = lookat + norm(viewdir) * normalize(shifted - lookat)
     elseif shift_lookat
-        # translate both eyeposition and lookat to more or less keep data under
-        # the mouse in view
         lookat = cam.lookat[]
         eyepos = cam.eyeposition[]
-        up = cam.upvector[]         # +y
-        viewdir = lookat - eyepos   # -z
-        right = cross(viewdir, up)  # +x
+        up = normalize(cam.upvector[])
+        viewdir = lookat - eyepos
+        u_z = normalize(-viewdir)
+        u_x = normalize(cross(up, u_z))
+        u_y = normalize(cross(u_z, u_x))
 
-        fov = cam.attributes[:fov][]
-        before = tan(clamp(cam.zoom_mult[] * fov, 0.01f0, 175f0) / 360f0 * Float32(pi))
-        after  = tan(clamp(cam.zoom_mult[] * zoom_step * fov, 0.01f0, 175f0) / 360f0 * Float32(pi))
+        if cam.attributes[:projectiontype][] == Perspective
+            # translate both eyeposition and lookat to more or less keep data 
+            # under the mouse in view
+            fov = cam.attributes[:fov][]
+            before = tan(clamp(cam.zoom_mult[] * fov, 0.01f0, 175f0) / 360f0 * Float32(pi))
+            after  = tan(clamp(cam.zoom_mult[] * zoom_step * fov, 0.01f0, 175f0) / 360f0 * Float32(pi))
 
-        aspect = Float32((/)(widths(scene.px_area[])...))
-        rel_pos = 2f0 * mouseposition_px(scene) ./ widths(scene.px_area[]) .- 1f0
-        shift = rel_pos[1] * normalize(right) + rel_pos[2] * normalize(up)
-        shift = -(after - before) * norm(viewdir) * normalize(aspect .* shift)
+            aspect = Float32((/)(widths(scene.px_area[])...))
+            rel_pos = 2f0 * mouseposition_px(scene) ./ widths(scene.px_area[]) .- 1f0
+            shift = rel_pos[1] * u_x + rel_pos[2] * u_y
+            shift = -(after - before) * norm(viewdir) * normalize(aspect .* shift)
+        else
+            mx, my = 2f0 * mouseposition_px(scene) ./ widths(scene.px_area[]) .- 1f0
+            aspect = Float32((/)(widths(scene.px_area[])...))
+            w = 0.5f0 * (1f0 + aspect) * cam.zoom_mult[]
+            h = 0.5f0 * (1f0 + 1f0 / aspect) * cam.zoom_mult[]
+            shift = (1f0 - zoom_step) * (mx * w * u_x + my * h * u_y)
+        end
 
         cam.lookat[]      = lookat + shift
         cam.eyeposition[] = eyepos + shift
@@ -555,7 +574,6 @@ function update_cam!(scene::Scene, camera::Camera3D, area3d::Rect)
     bb = FRect3D(area3d)
     width = widths(bb)
     half_width = width/2f0
-    lower_corner = minimum(bb)
     middle = maximum(bb) - half_width
     old_dir = normalize(eyeposition .- lookat)
     camera.lookat[] = middle
@@ -568,7 +586,11 @@ function update_cam!(scene::Scene, camera::Camera3D, area3d::Rect)
     if camera.attributes[:far][] === automatic
         camera.far[]  = 3f0 * norm(widths(bb))
     end
-    camera.zoom_mult[] = 1f0
+    if camera.attributes[:projectiontype][] == Orthographic
+        camera.zoom_mult[] = 0.6 * norm(width)
+    else 
+        camera.zoom_mult[] = 1f0
+    end
     update_cam!(scene, camera)
     return
 end

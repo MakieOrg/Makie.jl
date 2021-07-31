@@ -33,23 +33,19 @@ end
 """
     layout_text(
         string::AbstractString, textsize::Union{AbstractVector, Number},
-        font, align, rotation, model, justification, lineheight
+        font, align, rotation, justification, lineheight
     )
 
 Compute a GlyphCollection for a `string` given textsize, font, align, rotation, model, justification, and lineheight.
 """
 function layout_text(
         string::AbstractString, textsize::Union{AbstractVector, Number},
-        font, align, rotation, model, justification, lineheight, color, strokecolor, strokewidth
+        font, align, rotation, justification, lineheight, color, strokecolor, strokewidth
     )
 
     ft_font = to_font(font)
     rscale = to_textsize(textsize)
     rot = to_rotation(rotation)
-
-    # atlas = get_texture_atlas()
-    # mpos = model * Vec4f0(to_ndim(Vec3f0, startpos, 0f0)..., 1f0)
-    # pos = to_ndim(Point3f0, mpos, 0)
 
     fontperchar = attribute_per_char(string, ft_font)
     textsizeperchar = attribute_per_char(string, rscale)

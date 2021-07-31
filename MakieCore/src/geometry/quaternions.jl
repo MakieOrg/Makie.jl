@@ -139,3 +139,8 @@ function rotation_between(u::StaticVector{3, T}, v::StaticVector{3, T}) where T
         return normalize(Quaternion(cross(u, v)..., k_cos_theta + k))
     end
 end
+
+function quaternion_to_2d_angle(quat::Quaternion)
+    # this assumes that the quaternion was calculated from a simple 2d rotation as well
+    return 2acos(quat[4]) * (signbit(quat[1]) ? -1 : 1)
+end

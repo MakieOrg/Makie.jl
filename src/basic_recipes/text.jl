@@ -1,16 +1,16 @@
 function plot!(plot::Text)
     # attach a function to any text that calculates the glyph layout and stores it
     glyphcollection = lift(plot[1], plot.textsize, plot.font, plot.align,
-            plot.rotation, plot.model, plot.justification, plot.lineheight,
+            plot.rotation, plot.justification, plot.lineheight,
             plot.color, plot.strokecolor, plot.strokewidth) do str,
-                ts, f, al, rot, mo, jus, lh, col, scol, swi
+                ts, f, al, rot, jus, lh, col, scol, swi
         ts = to_textsize(ts)
         f = to_font(f)
         rot = to_rotation(rot)
         col = to_color(col)
         scol = to_color(scol)
 
-        layout_text(str, ts, f, al, rot, mo, jus, lh, col, scol, swi)
+        layout_text(str, ts, f, al, rot, jus, lh, col, scol, swi)
     end
 
     text!(plot, glyphcollection; plot.attributes...)
@@ -29,13 +29,11 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
     glyphcollections = Node(GlyphCollection[])
     position = Node{Any}(nothing)
     rotation = Node{Any}(nothing)
-    model = Node{Any}(nothing)
-    # offset = Node{Any}(nothing)
 
     onany(plot[1], plot.textsize, plot.position,
-            plot.font, plot.align, plot.rotation, plot.model, plot.justification,
+            plot.font, plot.align, plot.rotation, plot.justification,
             plot.lineheight, plot.color, plot.strokecolor, plot.strokewidth) do str,
-                    ts, pos, f, al, rot, mo, jus, lh, col, scol, swi
+                    ts, pos, f, al, rot, jus, lh, col, scol, swi
 
         ts = to_textsize(ts)
         f = to_font(f)
@@ -44,14 +42,13 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
         scol = to_color(scol)
 
         gcs = GlyphCollection[]
-        broadcast_foreach(str, ts, f, al, rot, Ref(mo), jus, lh, col, scol, swi) do str,
-                ts, f, al, rot, mo, jus, lh, col, scol, swi
-            subgl = layout_text(str, ts, f, al, rot, mo, jus, lh, col, scol, swi)
+        broadcast_foreach(str, ts, f, al, rot, jus, lh, col, scol, swi) do str,
+                ts, f, al, rot, jus, lh, col, scol, swi
+            subgl = layout_text(str, ts, f, al, rot, jus, lh, col, scol, swi)
             push!(gcs, subgl)
         end
         position.val = pos
         rotation.val = rot
-        model.val = mo
         glyphcollections[] = gcs
     end
 
@@ -59,7 +56,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
     notify(plot[1])
 
     text!(plot, glyphcollections; position = plot.position, rotation = rotation,
-        model = model, offset = plot.offset, space = plot.space, visible=plot.visible)
+        model = plot.model, offset = plot.offset, space = plot.space, visible=plot.visible)
 
     plot
 end
@@ -188,7 +185,7 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
 
     rot = convert_attribute(rotation, key"rotation"())
 
-    all_els = generate_tex_elements(str.s[2:end-1])
+    all_els = generate_tex_elements(str)
     els = filter(x -> x[1] isa TeXChar, all_els)
 
     # hacky, but attr per char needs to be fixed
