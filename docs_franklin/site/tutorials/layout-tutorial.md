@@ -132,7 +132,7 @@ Let's move to B. We have two axes stacked on top of each other, and a colorbar a
 \begin{examplefigure}{}
 ```julia
 xs = LinRange(0.5, 6, 50)
-s = LinRange(0.5, 6, 50)
+ys = LinRange(0.5, 6, 50)
 data1 = [sin(x^1.5) * cos(y^0.5) for x in xs, y in ys] .+ 0.1 .* randn.()
 data2 = [sin(x^0.8) * cos(y^1.5) for x in xs, y in ys] .+ 0.1 .* randn.()
 
