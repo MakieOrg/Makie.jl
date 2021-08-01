@@ -1,6 +1,6 @@
 # Backends & Output
 
-Makie is Makie's frontend package that defines all plotting functions.
+Makie is the frontend package that defines all plotting functions.
 It is reexported by every backend, so you don't have to specifically install or import it.
 
 There are three main backends which concretely implement all abstract rendering capabilities defined in Makie:

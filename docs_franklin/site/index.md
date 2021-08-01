@@ -1,3 +1,7 @@
+~~~
+<img class="banner" src="/assets/makie_banner.png"/>
+~~~
+
 ## Welcome to Makie!
 
 Makie is a high-performance, extendable, and multi-platform plotting ecosystem for the [Julia](https://julialang.org/) programming language.
@@ -17,7 +21,8 @@ To switch to a different backend, for example `CairoMakie`, call `CairoMakie.act
 
 @@box-container
   @@box
-    @@title \myreflink{Basic Tutorial} @@
+    ~~~<a class="boxlink" href="tutorials/basic-tutorial/">~~~
+    @@title Basic Tutorial @@
     @@box-content
       @@description
       Learn the basics of plotting with Makie.
@@ -26,10 +31,12 @@ To switch to a different backend, for example `CairoMakie`, call `CairoMakie.act
       <img src="/assets/basic_tutorial_example.png">
       ~~~
     @@
+    ~~~</a>~~~
   @@
 
   @@box
-    @@title \myreflink{Layout Tutorial} @@
+    ~~~<a class="boxlink" href="tutorials/layout-tutorial/">~~~
+    @@title Layout Tutorial @@
     @@box-content
       @@description
       Check out how to make complex plots and layouts.
@@ -38,26 +45,32 @@ To switch to a different backend, for example `CairoMakie`, call `CairoMakie.act
       <img src="/assets/tutorials/layout-tutorial/code/output/final_result.png">
       ~~~
     @@
+    ~~~</a>~~~
   @@
 
   @@box
-    @@title [Beautiful Makie](https://lazarusa.github.io/BeautifulMakie/) @@
+    ~~~<a class="boxlink" href="https://lazarusa.github.io/BeautifulMakie/">~~~
+    @@title Beautiful Makie @@
     @@box-content
       @@description
-      A gallery that is maintained in a separate repository.
+      A third-party gallery with stunning examples.
       @@
       ~~~
       <img src="/assets/beautifulmakie_example.png">
       ~~~
     @@
+    ~~~</a>~~~
   @@
 @@
 
-## Makie Backends
+## Makie Ecosystem
+
+There are three backends, each of which has particular strengths. You can switch between backends at any time.
 
 @@box-container
   @@box
-    @@title [GLMakie.jl](https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie) @@
+    ~~~<a class="boxlink" href="https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie">~~~
+    @@title GLMakie.jl@@
     @@box-content
       @@description
       GPU-powered, interactive 2D and 3D plotting in standalone `GLFW.jl` windows.
@@ -66,10 +79,12 @@ To switch to a different backend, for example `CairoMakie`, call `CairoMakie.act
       <img src="/assets/surface_example.png">
       ~~~
     @@
+    ~~~</a>~~~
   @@
 
   @@box
-    @@title [CairoMakie.jl](https://github.com/JuliaPlots/Makie.jl/tree/master/CairoMakie) @@
+    ~~~<a class="boxlink" href="https://github.com/JuliaPlots/Makie.jl/tree/master/CairoMakie">~~~
+    @@title CairoMakie.jl @@
     @@box-content
       @@description
       `Cairo.jl` based, non-interactive 2D backend for publication-quality vector graphics.
@@ -78,10 +93,12 @@ To switch to a different backend, for example `CairoMakie`, call `CairoMakie.act
       <img src="/assets/density_example.png">
       ~~~
     @@
+    ~~~</a>~~~
   @@
 
   @@box
-    @@title [WGLMakie.jl](https://github.com/JuliaPlots/Makie.jl/tree/master/WGLMakie) @@
+    ~~~<a class="boxlink" href="https://github.com/JuliaPlots/Makie.jl/tree/master/WGLMakie">~~~
+    @@title WGLMakie.jl @@
     @@box-content
       @@description
       WebGL-based interactive 2D and 3D plotting that runs within browsers.
@@ -90,10 +107,11 @@ To switch to a different backend, for example `CairoMakie`, call `CairoMakie.act
       <img src="/assets/wireframe_example.png">
       ~~~
     @@
+    ~~~</a>~~~
   @@
 @@
 
-The differences between backends are explained in more details under [Backends & Output](@ref).
+The differences between backends are explained in more details under \myreflink{Backends & Output}.
 
 ### Extension Packages
 
@@ -101,23 +119,31 @@ These packages are maintained by third parties. If you install them, keep an eye
 
 @@box-container
   @@box
-    @@title [AlgebraOfGraphics.jl](https://github.com/JuliaPlots/AlgebraOfGraphics.jl/) @@
-    @@description
-    Grammar-of-graphics style plotting, inspired by ggplot2.
+    ~~~<a class="boxlink" href="https://github.com/JuliaPlots/AlgebraOfGraphics.jl/">~~~
+    @@title AlgebraOfGraphics.jl @@
+    @@box-content
+      @@description
+      Grammar-of-graphics style plotting, inspired by ggplot2.
+      @@
+      ~~~
+      <img src="/assets/algebraofgraphics_example.svg">
+      ~~~
     @@
-    ~~~
-    <img src="/assets/algebraofgraphics_example.svg">
-    ~~~
+    ~~~</a>~~~
   @@
 
   @@box
-    @@title [GeoMakie.jl](https://github.com/JuliaPlots/GeoMakie.jl) @@
-    @@description
-    Geographic plotting utilities. Currently not maintained.
+    ~~~<a class="boxlink" href="https://github.com/JuliaPlots/GeoMakie.jl">~~~
+    @@title GeoMakie.jl @@
+    @@box-content
+      @@description
+      Geographic plotting utilities including projections.
+      @@
+      ~~~
+      <img src="/assets/geomakie_example.png">
+      ~~~
     @@
-    ~~~
-    <img src="/assets/geomakie_example.png">
-    ~~~
+    ~~~</a>~~~
   @@
 @@
 
