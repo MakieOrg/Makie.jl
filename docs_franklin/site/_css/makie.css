@@ -293,3 +293,49 @@ ol {
     color: #6f6f6f;
     text-decoration: underline #cacaca;
 }
+
+/* start page boxes */
+
+.box-container {
+    display: grid;
+    grid-gap: 1em;
+    justify-content: space-between;
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.box {
+    position: relative;
+    background: rgb(241, 241, 241);
+    padding: 1em;
+    border-radius: 0.5em;
+    text-align: center;
+    box-shadow: 0px 2px 4px 1px rgba(0, 0, 0, 0.11);
+    font-size: var(--small);
+}
+
+.box img {
+    margin-top: 1em;
+    border-radius: 0.3em;
+}
+
+.box-content {}
+
+
+
+@media (max-width: 480px) {
+    .box-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+.title {
+    font-size: 20px;
+    color: black;
+    text-decoration: none;
+    margin-bottom: 1em;
+}
+
+.title a {
+    text-decoration: none;
+    color: black;
+}
