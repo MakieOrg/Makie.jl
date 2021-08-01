@@ -63,7 +63,7 @@ To switch to a different backend, for example `CairoMakie`, call `CairoMakie.act
       GPU-powered, interactive 2D and 3D plotting in standalone `GLFW.jl` windows.
       @@
       ~~~
-      <img src="/assets/examples/plotting_functions/surface/code/output/example_9574460083465564948.png">
+      <img src="/assets/surface_example.png">
       ~~~
     @@
   @@
@@ -75,7 +75,7 @@ To switch to a different backend, for example `CairoMakie`, call `CairoMakie.act
       `Cairo.jl` based, non-interactive 2D backend for publication-quality vector graphics.
       @@
       ~~~
-      <img src="/assets/examples/plotting_functions/density/code/output/example_7784305977099122996.png">
+      <img src="/assets/density_example.png">
       ~~~
     @@
   @@
@@ -87,7 +87,7 @@ To switch to a different backend, for example `CairoMakie`, call `CairoMakie.act
       WebGL-based interactive 2D and 3D plotting that runs within browsers.
       @@
       ~~~
-      <img src="/assets/examples/plotting_functions/wireframe/code/output/example_10531558327456654711.png">
+      <img src="/assets/wireframe_example.png">
       ~~~
     @@
   @@
