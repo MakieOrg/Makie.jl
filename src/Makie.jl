@@ -11,7 +11,7 @@ using Base64
 using LaTeXStrings
 export @L_str
 using MathTeXEngine
-using Artifacts
+import RelocatableFolders
 using Random
 using FFMPEG # get FFMPEG on any system!
 using Observables, GeometryBasics, IntervalSets, PlotUtils
@@ -242,13 +242,15 @@ export cgrad, available_gradients, showgradients
 
 export Pattern
 
-assetpath(files...) = normpath(joinpath(artifact"assets", files...))
+const ASSETS_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
+assetpath(files...) = normpath(joinpath(ASSETS_DIR, files...))
 
 export assetpath
 # default icon for Makie
 function icon()
     path = assetpath("icons")
-    icons = FileIO.load.(joinpath.(path, readdir(path)))
+    imgs = FileIO.load.(joinpath.(path, readdir(path)))
+    icons = map(img-> RGBA{Colors.N0f8}.(img), imgs)
     return reinterpret.(NTuple{4,UInt8}, icons)
 end
 

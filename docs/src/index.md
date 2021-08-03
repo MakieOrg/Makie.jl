@@ -1,4 +1,4 @@
-![Makie](assets/logo.png)
+![Makie](assets/makie_logo_canvas.svg)
 
 ## Welcome to Makie!
 
