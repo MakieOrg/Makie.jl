@@ -198,7 +198,7 @@ end
     z = [cospi(θ) for θ in θ, φ in φ]
     RNG.rand([-1f0, 1f0], 3)
     pts = vec(Point3f0.(x, y, z))
-    surface(x, y, z, color=Makie.logo(), transparency=true)
+    f, ax, p = surface(x, y, z, color=Makie.logo(), transparency=true)
 end
 
 @cell "Arrows on Sphere" begin

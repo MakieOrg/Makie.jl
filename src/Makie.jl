@@ -255,7 +255,7 @@ function icon()
 end
 
 function logo()
-    FileIO.load(assetpath("misc", "makie_logo.png"))
+    FileIO.load(assetpath("logo.png"))
 end
 
 function __init__()
