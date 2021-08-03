@@ -24,12 +24,14 @@ function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), 
         ax = axtype(fig; axis...)
     else
         proxyscene = Scene()
-        plot!(proxyscene, P, Attributes(kw_attributes), args...; show_axis = false)
-        @show is2d(proxyscene)
-        if true#is2d(proxyscene)
+        plot!(proxyscene, P, Attributes(kw_attributes), args...)
+        @show boundingbox(proxyscene)
+        if is2d(proxyscene)
             ax = Axis(fig; axis...)
         else
-            ax = LScene(fig; scenekw = (camera = automatic, show_axis = true, raw = false, axis...))
+            ax = LScene(fig; scenekw = axis)
+            cam3d!(ax.scene)
+            # axis3d!(ax.scene)
         end
     end
 
