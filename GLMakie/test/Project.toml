@@ -1,4 +1,4 @@
 [deps]
 ImageMagick = "6218d12a-5da1-5696-b52f-db25d2ecc6d1"
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-ReferenceTests = "d37af2e0-5618-4e00-9939-d430db56ee94"
