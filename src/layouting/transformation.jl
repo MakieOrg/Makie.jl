@@ -10,14 +10,8 @@ function Transformation(transform_func=identity)
         Node(Quaternionf0(0, 0, 0, 1)),
         Node(Vec2f0(0))
     )
-    trans = nothing
     model = map_once(scale, translation, rotation, align, flip) do s, o, q, a, flip
-        parent = if trans !== nothing && isassigned(trans.parent)
-            boundingbox(trans.parent[])
-        else
-            nothing
-        end
-        transformationmatrix(o, s, q, a, flip, parent)
+        transformationmatrix(o, s, q, a, flip)
     end
     return Transformation(
         translation,
@@ -39,14 +33,8 @@ function Transformation(scene::SceneLike)
         Node(Vec2f0(0))
     )
     pmodel = transformationmatrix(scene)
-    trans = nothing
     model = map_once(scale, translation, rotation, align, pmodel, flip) do s, o, q, a, p, f
-        bb = if trans !== nothing && isassigned(trans.parent)
-            boundingbox(trans.parent[])
-        else
-            nothing
-        end
-        return p * transformationmatrix(o, s, q, align, f, bb)
+        return p * transformationmatrix(o, s, q, align, f)
     end
 
     ptrans = transformation(scene)

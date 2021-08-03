@@ -1,6 +1,6 @@
 function lift_parent_attribute(scene, attr::Symbol, default_value)
-    if haskey(scene.attributes, attr)
-        lift(identity, scene[attr])
+    if haskey(scene.theme, attr)
+        lift(identity, scene.theme[attr])
     else
         lift_parent_attribute(scene.parent, attr, default_value)
     end
@@ -10,13 +10,10 @@ function lift_parent_attribute(::Nothing, attr::Symbol, default_value)
     default_value
 end
 
-
-
-
 function default_attributes(::Type{Axis}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "Attributes with one palette per key, for example `color = [:red, :green, :blue]`"
-        palette = scene !== nothing && haskey(scene.attributes, :palette) ? deepcopy(scene.palette) : Attributes()
+        palette = scene !== nothing && haskey(scene.theme, :palette) ? deepcopy(scene.theme[:palette]) : Attributes()
         "The xlabel string."
         xlabel = ""
         "The ylabel string."
@@ -903,8 +900,6 @@ end)
 LScene
 
 
-
-
 function default_attributes(::Type{Textbox}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "The height setting of the textbox."
@@ -985,12 +980,10 @@ end)
 """
 Textbox
 
-
-
 function default_attributes(::Type{Axis3}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "Attributes with one palette per key, for example `color = [:red, :green, :blue]`"
-        palette = scene !== nothing && haskey(scene.attributes, :palette) ? deepcopy(scene.palette) : Attributes()
+        palette = scene !== nothing && haskey(scene.theme, :palette) ? deepcopy(scene.theme[:palette]) : Attributes()
         "The height setting of the scene."
         height = nothing
         "The width setting of the scene."

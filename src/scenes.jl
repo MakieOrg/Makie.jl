@@ -10,7 +10,7 @@ $(FIELDS)
 """
 mutable struct Scene <: AbstractScene
     "The parent of the Scene; if it is a top-level Scene, `parent == nothing`."
-    parent
+    parent::Union{Nothing, Scene}
 
     "[`Events`](@ref) associated with the Scene."
     events::Events
@@ -27,21 +27,13 @@ mutable struct Scene <: AbstractScene
     "The controls for the camera of the Scene."
     camera_controls::RefValue
 
-    """
-    The limits of the data plotted in this scene.
-    Can't be set by user and is only used to store calculated data bounds.
-    """
-    data_limits::Node{Union{Nothing,FRect3D}}
-
     "The [`Transformation`](@ref) of the Scene."
     transformation::Transformation
 
     "The plots contained in the Scene."
     plots::Vector{AbstractPlot}
-    # TODO why 2?
-    theme::Attributes
 
-    attributes::Attributes
+    theme::Attributes
 
     "Children of the Scene inherit its transformation."
     children::Vector{Scene}
@@ -51,11 +43,9 @@ mutable struct Scene <: AbstractScene
     """
     current_screens::Vector{AbstractScreen}
 
-    """
-    Signal to indicate whether layouting should happen. If updated to true,
-    the Scene will be layouted according to its attributes (`raw`, `center`, or `scale_plot`).
-    """
-    updated::Node{Bool}
+    # Attributes
+    backgroundcolor::Observable{RGBAf0}
+    visible::Observable{Bool}
 end
 
 get_scene(scene::Scene) = scene
@@ -91,51 +81,28 @@ function Scene(
         clear::Bool,
         camera::Camera,
         camera_controls::RefValue,
-        scene_limits,
         transformation::Transformation,
         plots::Vector{AbstractPlot},
         theme::Attributes, # the default values a scene owns
-        attributes::Attributes, # the actual attribute values of a scene
         children::Vector{Scene},
         current_screens::Vector{AbstractScreen},
         parent=nothing,
+        backgroundcolor=Observable(RGBAf0(1, 1, 1, 1)),
+        visible=Observable(true)
     )
-
-    # indicates whether we can start updating the plot
-    # will be set when displayed
-    updated = Node(false)
-
-    scene = Scene(
+    bg = map(to_color, backgroundcolor)
+    return Scene(
         parent, events, px_area, clear, camera, camera_controls,
-        Node{Union{Nothing,FRect3D}}(scene_limits),
-        transformation, plots, theme, attributes,
-        children, current_screens, updated
+        transformation, plots, theme,
+        children, current_screens, bg, visible
     )
-
-    onany(updated, px_area) do update, px_area
-        if update && !(scene.camera_controls[] isa PixelCamera)
-            if !scene.raw[]
-                scene.update_limits[] && update_limits!(scene)
-                scene.center[] && center!(scene)
-            end
-        end
-        nothing
-    end
-    if scene[:camera][] !== automatic && camera_controls[] == EmptyCamera()
-        # camera shouldn't really be part of the attributes, especially since
-        # it just adds the camera one time and after that isn't usable
-        cam = pop!(scene.attributes, :camera)[]
-        apply_camera!(scene, cam)
-    end
-    scene
 end
 
 
-function Scene(;clear=true, transform_func=identity, scene_attributes...)
+function Scene(;clear=true, transform_func=identity, backgroundcolor=Observable(RGBAf0(1, 1, 1, 1)), visible=Observable(true), theme...)
     events = Events()
-    theme = current_default_theme(; scene_attributes...)
-    attributes = deepcopy(theme)
-    px_area = lift(attributes.resolution) do res
+    m_theme = current_default_theme(; theme...)
+    px_area = lift(m_theme.resolution) do res
         IRect(0, 0, res)
     end
     on(events.window_area, priority = typemax(Int8)) do w_area
@@ -150,18 +117,18 @@ function Scene(;clear=true, transform_func=identity, scene_attributes...)
         clear,
         Camera(px_area),
         RefValue{Any}(EmptyCamera()),
-        nothing,
         Transformation(transform_func),
         AbstractPlot[],
-        theme,
-        attributes,
+        m_theme,
         Scene[],
-        AbstractScreen[]
+        AbstractScreen[],
+        nothing,
+        backgroundcolor,
+        visible
     )
     # Set the transformation parent
     scene.transformation.parent[] = scene
-    current_global_scene[] = scene
-    scene
+    return scene
 end
 
 function Scene(
@@ -172,9 +139,11 @@ function Scene(
         cam=scene.camera,
         camera_controls=scene.camera_controls,
         transformation=Transformation(scene),
-        theme=copy(theme(scene)),
+        theme=theme(scene),
         current_screens=scene.current_screens,
-        kw_args...
+        backgroundcolor=Observable(RGBAf0(1, 1, 1, 1)),
+        visible = Observable(true),
+        theme_from_kw...
     )
     child = Scene(
         events,
@@ -185,53 +154,43 @@ function Scene(
         nothing,
         transformation,
         AbstractPlot[],
-        merge(current_default_theme(), theme),
-        merge!(Attributes(; kw_args...), scene.attributes),
+        current_default_theme(; theme..., theme_from_kw...),
         Scene[],
         current_screens,
-        scene
+        scene,
+        backgroundcolor,
+        visible
     )
-    push!(scene.children, child)
-    child
+    push!(scene, child)
+    return child
 end
 
-function Scene(parent::Scene, area; clear=false, transform_func=identity, attributes...)
+function Scene(parent::Scene, area; clear=false, transform_func=identity, backgroundcolor=Observable(RGBAf0(1, 1, 1, 1)), theme...)
     events = parent.events
     px_area = lift(pixelarea(parent), convert(Node, area)) do p, a
         # make coordinates relative to parent
         IRect2D(minimum(p) .+ minimum(a), widths(a))
     end
+    @show theme
     child = Scene(
         events,
         px_area,
         clear,
         Camera(px_area),
         RefValue{Any}(EmptyCamera()),
-        nothing,
         Transformation(transform_func),
         AbstractPlot[],
-        current_default_theme(; attributes...),
-        merge!(Attributes(; attributes...), parent.attributes),
+        current_default_theme(; theme...),
         Scene[],
         parent.current_screens,
-        parent
+        parent,
+        backgroundcolor
     )
-    push!(parent.children, child)
+    push!(parent, child)
     return child
 end
 
 # Base overloads for Scene
-
-Base.haskey(scene::Scene, key::Symbol) = haskey(scene.attributes, key)
-Base.propertynames(scene::Scene) = fieldnames(Scene) ∪ propertynames(scene.attributes)
-
-function Base.getindex(scene::Scene, key::Symbol)
-    return haskey(scene.attributes, key) ? scene.attributes[key] : scene.theme[key]
-end
-
-function Base.setindex!(scene::Scene, value, key::Symbol)
-    scene.attributes[key] = value
-end
 
 Base.parent(scene::Scene) = scene.parent
 isroot(scene::Scene) = parent(scene) === nothing
@@ -270,34 +229,6 @@ end
 
 getscreen(scene::SceneLike) = getscreen(rootparent(scene))
 
-"""
-    `update!(p::Scene)`
-
-Updates a `Scene` and all its children.
-Update will perform the following operations for every scene:
-```julia
-if !scene.raw[]
-    scene.update_limits[] && update_limits!(scene)
-    scene.center[] && center!(scene)
-end
-```
-"""
-function update!(p::Scene)
-    p.updated[] = true
-    foreach(update!, p.children)
-end
-
-"""
-    `update!(p::Scene, b::Bool)`
-
-Sets `raw[]=b` on a `Scene` and all its children
-```
-"""
-function raw!(p::Scene, b::Bool)
-    p.raw[] = b
-    foreach(c -> (c.raw[] = b), p.children)
-end
-
 # Just indexing into a scene gets you plot 1, plot 2 etc
 Base.iterate(scene::Scene, idx=1) = idx <= length(scene) ? (scene[idx], idx + 1) : nothing
 Base.length(scene::Scene) = length(scene.plots)
@@ -308,8 +239,10 @@ struct OldAxis end
 
 zero_origin(area) = IRect(0, 0, widths(area))
 
-function child(scene::Scene; attributes...)
-    Scene(scene, lift(zero_origin, pixelarea(scene)); attributes...)
+function child(scene::Scene; camera, attributes...)
+    child = Scene(scene, lift(zero_origin, pixelarea(scene)); attributes...)
+    camera(child)
+    return child
 end
 
 """
@@ -327,13 +260,12 @@ function getindex(scene::Scene, ::Type{OldAxis})
     for plot in scene
         isaxis(plot) && return plot
     end
-    nothing
+    return nothing
 end
 
 function Base.empty!(scene::Scene)
     empty!(scene.plots)
     disconnect!(scene.camera)
-    scene.data_limits[] = nothing
     scene.camera_controls[] = EmptyCamera()
     empty!(scene.theme)
     merge!(scene.theme, _current_default_theme)
@@ -341,31 +273,11 @@ function Base.empty!(scene::Scene)
     empty!(scene.current_screens)
 end
 
-limits(scene::Scene) = scene.data_limits
-
-limits(scene::SceneLike) = limits(parent(scene))
-
-function scene_limits(scene::Scene)
-    if scene.limits[] === automatic
-        return scene.data_limits[]
-    else
-        return FRect3D(scene.limits[])
-    end
-end
-
 Base.push!(scene::Combined, subscene) = nothing # Combined plots add themselves uppon creation
 
 function Base.push!(scene::Scene, plot::AbstractPlot)
     push!(scene.plots, plot)
     plot isa Combined || (plot.parent[] = scene)
-    if !scene.raw[]
-        # update scenes data limit for each new plot!
-        scene.data_limits[] = if scene.data_limits[] === nothing
-            data_limits(plot)
-        else
-            union(scene.data_limits[], data_limits(plot))
-        end
-    end
     for screen in scene.current_screens
         insert!(screen, scene, plot)
     end
@@ -391,10 +303,12 @@ function Base.push!(scene::Scene, child::Scene)
     disconnect!(child.camera)
     nodes = map([:view, :projection, :projectionview, :resolution, :eyeposition]) do field
         lift(getfield(scene.camera, field)) do val
-            push!(getfield(child.camera, field), val)
+            getfield(child.camera, field)[] = val
+            getfield(child.camera, field)[] = val
         end
     end
     cameracontrols!(child, nodes)
+    child.parent = scene
     return scene
 end
 
@@ -414,38 +328,6 @@ pixelarea(scene::Scene) = scene.px_area
 pixelarea(scene::SceneLike) = pixelarea(scene.parent)
 
 plots(scene::SceneLike) = scene.plots
-
-const _forced_update_scheduled = Ref(false)
-
-"""
-Returns whether a scene needs to be updated
-"""
-function must_update()
-    val = _forced_update_scheduled[]
-    _forced_update_scheduled[] = false
-    val
-end
-
-"""
-Forces the scene to be re-rendered
-"""
-function force_update!()
-    _forced_update_scheduled[] = true
-end
-
-
-const current_global_scene = Ref{Any}()
-
-"""
-Returns the current active scene (the last scene that got created)
-"""
-function current_scene()
-    if isassigned(current_global_scene)
-        current_global_scene[]
-    else
-        Scene()
-    end
-end
 
 """
 Fetches all plots sharing the same camera
@@ -477,8 +359,9 @@ function insertplots!(screen::AbstractDisplay, scene::Scene)
     for elem in scene.plots
         insert!(screen, scene, elem)
     end
-    foreach(s -> insertplots!(screen, s), scene.children)
+    foreach(child -> insertplots!(screen, child), scene.children)
 end
+
 update_cam!(scene::Scene, bb::AbstractCamera, rect) = nothing
 
 function center!(scene::Scene, padding=0.01)
@@ -490,91 +373,19 @@ function center!(scene::Scene, padding=0.01)
     update_cam!(scene, bb)
     scene
 end
+
 parent_scene(x::Combined) = parent_scene(parent(x))
 parent_scene(x::Scene) = x
 
 Base.isopen(x::SceneLike) = events(x).window_open[]
 
-
 function is2d(scene::SceneLike)
-    lims = scene_limits(scene)
+    lims = raw_boundingbox(scene)
     lims === nothing && return nothing
     return is2d(lims)
 end
 is2d(lims::Rect2D) = true
 is2d(lims::Rect3D) = widths(lims)[3] == 0.0
-
-"""
-    update_limits!(scene::Scene, limits::Union{Automatic, Rect} = scene.limits[], padding = scene.padding[])
-
-This function updates the limits of the `Scene` passed to it based on its data.
-If an actual limit is set by the theme or its attributes (scene.limits !== automatic),
-it will not update the limits. Call update_limits!(scene, automatic) for that.
-"""
-update_limits!(scene::Scene) = update_limits!(scene, scene.limits[])
-
-function update_limits!(scene::Scene, limits, padding)
-    update_limits!(scene, limits, to_ndim(Vec3f0, padding, 0.0))
-end
-
-function update_limits!(scene::Scene, ::Automatic, padding::Vec3f0=scene.padding[])
-    # for when scene is empty
-    dlimits = data_limits(scene)
-    dlimits === nothing && return # nothing to limit if there isn't anything
-    tlims = (minimum(dlimits), maximum(dlimits))
-    let avec = tlims[1], bvec = tlims[2]
-        if !all(x -> all(isfinite, x), (avec, bvec))
-            @warn "limits of scene contain non finite values: $(avec) .. $(bvec)"
-            mini = map(x -> ifelse(isfinite(x), x, zero(x)), avec)
-            maxi = Vec3f0(ntuple(3) do i
-                x = bvec[i]
-                ifelse(isfinite(x), x, avec[i] + oneunit(avec[i]))
-            end)
-            tlims = (mini, maxi)
-        end
-    end
-    local new_widths
-    let avec = tlims[1], bvec = tlims[2]
-        new_widths = Vec3f0(ntuple(3) do i
-            a = avec[i]; b = bvec[i]
-            w = b - a
-            # check for widths == 0.0... 3rd dimension is allowed to be 0 though.
-            # TODO maybe we should allow any one dimension to be 0, and then use the other 2 as 2D
-            with0 = (i != 3) && (w ≈ 0.0)
-            with0 && @warn "Founds 0 width in scene limits: $(avec) .. $(bvec)"
-            ifelse(with0, 1f0, w)
-        end)
-    end
-    update_limits!(scene, FRect3D(tlims[1], new_widths), padding)
-end
-
-"""
-    update_limits!(scene::Scene, new_limits::Rect, padding = Vec3f0(0))
-
-This function updates the limits of the given `Scene` according to the given Rect.
-
-A `Rect` is a generalization of a rectangle to n dimensions.  It contains two vectors.
-The first vector defines the origin; the second defines the displacement of the vertices from the origin.
-This second vector can be thought of in two dimensions as a vector of width (x-axis) and height (y-axis),
-and in three dimensions as a vector of the width (x-axis), breadth (y-axis), and height (z-axis).
-
-Such a `Rect` can be constructed using the `FRect` or `FRect3D` functions that are exported by
-`Makie.jl`.  See their documentation for more information.
-"""
-function update_limits!(scene::Scene, new_limits::Rect, padding::Vec3f0=scene.padding[])
-    lims = FRect3D(new_limits)
-    lim_w = widths(lims)
-    # use the smallest widths for scaling, to have a consistently wide padding for all sides
-    minw = if lim_w[3] ≈ 0.0
-        m = min(lim_w[1], lim_w[2])
-        Vec3f0(m, m, 0.0)
-    else
-        Vec3f0(minimum(lim_w))
-    end
-    padd_abs = minw .* to_ndim(Vec3f0, padding, 0.0)
-    scene.data_limits[] = FRect3D(minimum(lims) .- padd_abs, lim_w .+  2padd_abs)
-    scene
-end
 
 #####
 ##### Figure type

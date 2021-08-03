@@ -18,7 +18,6 @@ function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), 
     fig = Figure(; figure...)
 
     axis = Dict(pairs(axis))
-
     if haskey(axis, :type)
         axtype = axis[:type]
         pop!(axis, :type)
@@ -26,8 +25,8 @@ function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), 
     else
         proxyscene = Scene()
         plot!(proxyscene, P, Attributes(kw_attributes), args...; show_axis = false)
-
-        if is2d(proxyscene)
+        @show is2d(proxyscene)
+        if true#is2d(proxyscene)
             ax = Axis(fig; axis...)
         else
             ax = LScene(fig; scenekw = (camera = automatic, show_axis = true, raw = false, axis...))

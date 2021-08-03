@@ -37,16 +37,12 @@ scale!
 
 ## Updating the Scene
 
-When the Scene is changed, you may need to update several aspects of it.  
+When the Scene is changed, you may need to update several aspects of it.
 Makie provides three main updating functions:
 
 ```@docs
-update!
-update_limits!
 update_cam!
 ```
-
-In general, `update!` is to be used to keep data in sync, and `update_cam!` and `update_limits!` update the camera and limits respectively (to show all the data).
 
 ## Events
 

@@ -228,6 +228,12 @@ function transformationmatrix(
     )
     return transformationmatrix(translation, scale, rotation)
 end
+function transformationmatrix(
+    translation::Vec{3}, scale::Vec{3}, rotation::Quaternion,
+    align, flip::NTuple{3, Bool})
+    return transformationmatrix(translation, scale, rotation)
+end
+
 
 function transformationmatrix(
         translation::Vec{3}, scale::Vec{3}, rotation::Quaternion,
