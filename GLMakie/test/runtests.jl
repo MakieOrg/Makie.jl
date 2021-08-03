@@ -3,7 +3,13 @@ using GLMakie.FileIO
 using GLMakie.Makie
 using GLMakie.GeometryBasics
 using GLMakie.GeometryBasics: origin
+using GLMakie.Makie
 using ImageMagick
+using Pkg
+path = normpath(joinpath(dirname(pathof(Makie)), "..", "ReferenceTests"))
+Pkg.develop(PackageSpec(path = path))
+using ReferenceTests
+using ReferenceTests: @cell
 # run the unit test suite
 include("unit_tests.jl")
 

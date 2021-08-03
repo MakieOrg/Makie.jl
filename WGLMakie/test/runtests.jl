@@ -4,6 +4,10 @@ ElectronDisplay.CONFIG.single_window = true
 ElectronDisplay.CONFIG.focus = false
 using ImageMagick, FileIO
 using WGLMakie, Makie, Test
+using Pkg
+path = normpath(joinpath(dirname(pathof(Makie)), "..", "ReferenceTests"))
+Pkg.develop(PackageSpec(path = path))
+
 using ReferenceTests
 using ReferenceTests: database_filtered
 
