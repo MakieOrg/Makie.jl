@@ -29,21 +29,22 @@ save("plot.png", scene, px_per_unit = 2) # double the resolution of the resultin
 You can render onto a GtkCanvas using Gtk, and use that as a display for your scenes.
 
 ```julia
-using Gtk, CairoMakie, Makie
+using Gtk, CairoMakie
 
 canvas = @GtkCanvas()
 window = GtkWindow(canvas, "Makie", 500, 500)
 
-function drawonto(canvas, scene)
+function drawonto(canvas, figure)
     @guarded draw(canvas) do _
-       resize!(scene, Gtk.width(canvas), Gtk.height(canvas))
-       screen = CairoMakie.CairoScreen(scene, Gtk.cairo_surface(canvas), getgc(canvas), nothing)
-       CairoMakie.cairo_draw(screen, scene)
+        scene = figure.scene
+        resize!(scene, Gtk.width(canvas), Gtk.height(canvas))
+        screen = CairoMakie.CairoScreen(scene, Gtk.cairo_surface(canvas), getgc(canvas), nothing)
+        CairoMakie.cairo_draw(screen, scene)
     end
 end
 
-scene = heatmap(rand(50, 50)) # or something
+fig, ax, pl = heatmap(rand(50, 50)) # or something
 
-drawonto(canvas, scene)
+drawonto(canvas, fig)
 show(canvas); # trigger rendering
 ```
