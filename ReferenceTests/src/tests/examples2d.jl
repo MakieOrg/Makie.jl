@@ -109,14 +109,6 @@ end
     )
 end
 
-# @cell "Subscenes" begin
-#     img = RNG.rand(RGBAf0, 100, 100)
-#     scene = image(img, show_axis=false)
-#     subscene = Scene(scene, IRect(100, 100, 300, 300))
-#     scatter!(subscene, RNG.rand(100) * 200, RNG.rand(100) * 200, markersize=4)
-#     scene
-# end
-
 @cell "scale_plot" begin
     t = range(0, stop=1, length=500) # time steps
     θ = (6π) .* t    # angles

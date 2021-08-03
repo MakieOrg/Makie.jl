@@ -77,7 +77,7 @@ end
 
 function Scene(
         events::Events,
-        px_area::Node{IRect2D},
+        px_area::Observable{IRect2D},
         clear::Bool,
         camera::Camera,
         camera_controls::RefValue,
@@ -171,7 +171,6 @@ function Scene(parent::Scene, area; clear=false, transform_func=identity, backgr
         # make coordinates relative to parent
         IRect2D(minimum(p) .+ minimum(a), widths(a))
     end
-    @show theme
     child = Scene(
         events,
         px_area,
@@ -336,7 +335,7 @@ plots_from_camera(scene::Scene) = plots_from_camera(scene, scene.camera)
 function plots_from_camera(scene::Scene, camera::Camera, list=AbstractPlot[])
     append!(list, scene.plots)
     for child in scene.children
-        child.camera == camera && !child.raw[] && plots_from_camera(child, camera, list)
+        child.camera == camera && plots_from_camera(child, camera, list)
     end
     list
 end

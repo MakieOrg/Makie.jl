@@ -95,18 +95,18 @@ function layoutable(::Type{Slider}, fig_or_scene; bbox = nothing, kwargs...)
         [ca, ci]
     end
 
-    endbuttons = scatter!(topscene, endpoints, color = linecolors, 
-        markersize = linewidth, strokewidth = 0, raw = true, inspectable = false)
+    endbuttons = scatter!(topscene, endpoints, color = linecolors,
+        markersize = linewidth, strokewidth = 0, inspectable = false)
     decorations[:endbuttons] = endbuttons
 
-    linesegs = linesegments!(topscene, linepoints, color = linecolors, 
-        linewidth = linewidth, raw = true, inspectable = false)
+    linesegs = linesegments!(topscene, linepoints, color = linecolors,
+        linewidth = linewidth, inspectable = false)
     decorations[:linesegments] = linesegs
 
     button_magnification = Node(1.0)
     buttonsize = @lift($linewidth * $button_magnification)
-    button = scatter!(topscene, middlepoint, color = color_active, strokewidth = 0, 
-        markersize = buttonsize, raw = true, inspectable = false)
+    button = scatter!(topscene, middlepoint, color = color_active, strokewidth = 0,
+        markersize = buttonsize, inspectable = false)
     decorations[:button] = button
 
     mouseevents = addmouseevents!(topscene, layoutobservables.computedbbox)

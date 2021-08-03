@@ -36,7 +36,7 @@ function layoutable(::Type{Toggle}, fig_or_scene; bbox = nothing, kwargs...)
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
     framecolor = Node{Any}(active[] ? framecolor_active[] : framecolor_inactive[])
-    frame = poly!(topscene, buttonvertices, color = framecolor, raw = true, inspectable = false)
+    frame = poly!(topscene, buttonvertices, color = framecolor, inspectable = false)
     decorations[:frame] = frame
 
     animating = Node(false)
@@ -54,8 +54,8 @@ function layoutable(::Type{Toggle}, fig_or_scene; bbox = nothing, kwargs...)
         ms * (1 - rf) * bf
     end
 
-    button = scatter!(topscene, buttonpos, markersize = buttonsize, 
-        color = buttoncolor, strokewidth = 0, raw = true, inspectable = false)
+    button = scatter!(topscene, buttonpos, markersize = buttonsize,
+        color = buttoncolor, strokewidth = 0, inspectable = false)
     decorations[:button] = button
 
 

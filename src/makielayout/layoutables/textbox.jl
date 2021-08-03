@@ -24,7 +24,7 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
         Rect(round.(Int, bb.origin), round.(Int, bb.widths))
     end
 
-    scene = Scene(topscene, scenearea, raw = true, camera = campixel!)
+    scene = Scene(topscene, scenearea, camera = campixel!)
 
     cursorindex = Node(0)
     ltextbox = Textbox(fig_or_scene, layoutobservables, attrs, decorations, cursorindex, nothing)
@@ -65,7 +65,7 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
 
     box = poly!(topscene, roundedrectpoints, strokewidth = borderwidth,
         strokecolor = realbordercolor,
-        color = realboxcolor, raw = true, inspectable = false)
+        color = realboxcolor, inspectable = false)
     decorations[:box] = box
 
     displayed_chars = @lift([c for c in $displayed_string])

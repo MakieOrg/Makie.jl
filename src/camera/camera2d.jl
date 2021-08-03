@@ -193,7 +193,7 @@ function selection_rect!(scene, cam, key)
     lw = 2f0
     scene_unscaled = Scene(
         scene, transformation = Transformation(),
-        cam = copy(camera(scene)), clear = false, raw = true
+        cam = copy(camera(scene)), clear = false
     )
     scene_unscaled.clear = false
     scene_unscaled.updated = Node(false)
@@ -203,8 +203,7 @@ function selection_rect!(scene, cam, key)
         linestyle = :dot,
         linewidth = 2f0,
         color = (:black, 0.4),
-        visible = false,
-        raw = true
+        visible = false
     )
     waspressed = RefValue(false)
     on(camera(scene), events(scene).mousebutton, key) do event, key
@@ -316,7 +315,6 @@ function campixel!(scene)
     camera(scene).view[] = Mat4f0(I)
     update_once = Observable(false)
     on(camera(scene), update_once, pixelarea(scene)) do u, window_size
-        @show window_size
         nearclip = -10_000f0
         farclip = 10_000f0
         w, h = Float32.(widths(window_size))

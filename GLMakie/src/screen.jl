@@ -154,7 +154,7 @@ x = scatter(1:4)
 screen = display(x)
 depth_color = GLMakie.depthbuffer(screen)
 # Look at result:
-heatmap(depth_color, colormap=:grays, show_axis=false)
+heatmap(depth_color, colormap=:grays)
 ```
 """
 function depthbuffer(screen::Screen)

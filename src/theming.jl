@@ -77,18 +77,13 @@ const minimal_default = Attributes(
     resolution = (800, 600), # 4/3 aspect ratio
     visible = true,
     clear = true,
-    show_axis = true,
     show_legend = false,
-    scale_plot = true,
-    center = true,
-    update_limits = true,
     axis = Attributes(),
     axis3d = Attributes(),
     legend = Attributes(),
     axis_type = automatic,
     camera = automatic,
     limits = automatic,
-    raw = false,
     SSAO = Attributes(
         # enable = false,
         bias = 0.025f0,       # z threshhold for occlusion
@@ -148,7 +143,7 @@ function with_theme(f, theme = Theme(); kwargs...)
 end
 
 theme(::Nothing, key::Symbol) = deepcopy(current_default_theme()[key])
-  
+
 """
     update_theme!(with_theme::Theme; kwargs...)
 

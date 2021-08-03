@@ -5,9 +5,8 @@ using Makie: Record, volume
 
 @cell "Image on Geometry (Moon)" begin
     moon = loadasset("moon.png")
-    fig, ax, meshplot = mesh(Sphere(Point3f0(0), 1f0), color=moon, shading=false, show_axis=false, center=false)
+    fig, ax, meshplot = mesh(Sphere(Point3f0(0), 1f0), color=moon, shading=false)
     update_cam!(ax.scene, Vec3f0(-2, 2, 2), Vec3f0(0))
-    ax.scene.center = false # prevent to recenter on display
     fig
 end
 
@@ -36,20 +35,18 @@ end
     scene = ax.scene
     center!(scene)
     cam = cameracontrols(scene)
-    dir = widths(scene_limits(scene)) ./ 2.
+    dir = widths(data_limits(scene)) ./ 2.
     dir_scaled = Vec3f0(
         dir[1] * scene.transformation.scale[][1],
         0.0,
         dir[3] * scene.transformation.scale[][2],
     )
     cam.upvector[] = (0.0, 0.0, 1.0)
-    cam.lookat[] = minimum(scene_limits(scene)) + dir_scaled
+    cam.lookat[] = minimum(data_limits(scene)) + dir_scaled
     cam.eyeposition[] = (cam.lookat[][1], cam.lookat[][2] + 6.3, cam.lookat[][3])
     cam.attributes[:projectiontype][] = Makie.Orthographic
     cam.zoom_mult[] = 0.61f0
     update_cam!(scene, cam)
-    # stop scene display from centering, which would overwrite the camera paramter we just set
-    scene.center = false
     fig
 end
 
@@ -156,7 +153,7 @@ end
     # c[4] == fourth argument of the above plotting command
     fig, ax, c = contour(x, x, x, test, levels=6, alpha=0.3, transparency=true)
 
-    xm, ym, zm = minimum(scene_limits(ax.scene))
+    xm, ym, zm = minimum(data_limits(ax.scene))
     contour!(ax, x, x, map(v -> v[1, :, :], c[4]), transformation=(:xy, zm), linewidth=2)
     heatmap!(ax, x, x, map(v -> v[:, 1, :], c[4]), transformation=(:xz, ym))
     contour!(ax, x, x, map(v -> v[:, :, 1], c[4]), fillrange=true, transformation=(:yz, xm))
@@ -276,8 +273,7 @@ end
         position=(wh[1] / 2.0, wh[2] - 20.0),
         align=(:center,  :center),
         textsize=20,
-        font="helvetica",
-        raw=:true
+        font="helvetica"
     )
     c = lines!(scene, Circle(Point2f0(0.1, 0.5), 0.1f0), color=:red, offset=Vec3f0(0, 0, 1))
     scene
@@ -412,10 +408,8 @@ end
         color=RNG.rand(stars),
         colormap=[(:white, 0.4), (:blue, 0.4), (:yellow, 0.4)], strokewidth=0,
         markersize=RNG.rand(range(10, stop=100, length=100), stars),
-        show_axis=false
     )
     update_cam!(scene, FRect3D(Vec3f0(-5), Vec3f0(10)))
-    scene.center = false
     scene
 end
 
@@ -480,7 +474,7 @@ end
     y = x
     z = (-x .* exp.(-x.^2 .- (y').^2)) .* 4
     fig, ax, surfaceplot = surface(x, y, z)
-    xm, ym, zm = minimum(scene_limits(ax.scene))
+    xm, ym, zm = minimum(data_limits(ax.scene))
     contour!(ax, x, y, z, levels=15, linewidth=2, transformation=(:xy, zm))
     wireframe!(ax, x, y, z, overdraw=true, transparency=true, color=(:black, 0.1))
     center!(ax.scene) # center the Scene on the display

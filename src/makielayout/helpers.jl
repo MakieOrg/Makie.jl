@@ -206,13 +206,13 @@ function axislines!(scene, rect, spinewidth, topspinevisible, rightspinevisible,
         [p1, p2]
     end
 
-    (lines!(scene, bottomline, linewidth = spinewidth, show_axis = false,
+    (lines!(scene, bottomline, linewidth = spinewidth,
         visible = bottomspinevisible, color = bottomspinecolor),
-    lines!(scene, leftline, linewidth = spinewidth, show_axis = false,
+    lines!(scene, leftline, linewidth = spinewidth,
         visible = leftspinevisible, color = leftspinecolor),
-    lines!(scene, rightline, linewidth = spinewidth, show_axis = false,
+    lines!(scene, rightline, linewidth = spinewidth,
         visible = rightspinevisible, color = rightspinecolor),
-    lines!(scene, topline, linewidth = spinewidth, show_axis = false,
+    lines!(scene, topline, linewidth = spinewidth,
         visible = topspinevisible, color = topspinecolor))
 end
 

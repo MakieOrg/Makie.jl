@@ -181,7 +181,7 @@ export to_ndim, Reverse
 
 # Transformations
 export translated, translate!, scale!, rotate!, Accum, Absolute
-export boundingbox, insertplots!, center!, translation, scene_limits
+export boundingbox, insertplots!, center!, translation
 
 # Spaces for widths and markers
 const PixelSpace = Pixel
