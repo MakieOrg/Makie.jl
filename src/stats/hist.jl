@@ -50,8 +50,8 @@ $(ATTRIBUTES)
         cycle = [:color => :patchcolor],
         color = theme(scene, :patchcolor),
         offset = 0.0,
+        fillto = automatic,
         scale_to = nothing,
-        flip = false,
 
         bar_labels = nothing,
         flip_labels_at = Inf,
@@ -82,21 +82,17 @@ function Makie.plot!(plot::Hist)
         end
     end
 
-    points = lift(edges, plot.normalization, plot.offset, plot.scale_to, plot.flip) do edges, normalization, offset, scale_to, flip
+    points = lift(edges, plot.normalization, plot.scale_to) do edges, normalization, scale_to
         h = StatsBase.fit(StatsBase.Histogram, values[], edges)
         h_norm = StatsBase.normalize(h, mode = normalization)
         centers = edges[1:end-1] .+ (diff(edges) ./ 2)
         weights = h_norm.weights
         if !isnothing(scale_to)
-            min, max = extrema(weights)
-            weights .= ((weights .- min) ./ (max - min)) .* scale_to
+            max = maximum(weights)
+            weights .= weights ./ max .* scale_to
         end
-        if flip
-            weights .= -weights
-        end
-        return Point2f0.(centers, weights .+ offset)
+        return Point2f0.(centers, weights)
     end
-
     widths = lift(diff, edges)
     color = lift(plot.color) do color
         if color === :values
@@ -110,7 +106,7 @@ function Makie.plot!(plot::Hist)
         x === :values ? :y : x
     end
     # plot the values, not the observables, to be in control of updating
-    bp = barplot!(plot, points[]; width = widths[], plot.attributes..., bar_labels=bar_labels, color=color)
+    bp = barplot!(plot, points[]; width = widths[], plot.attributes..., fillto=plot.fillto, offset=plot.offset, ar_labels=bar_labels, color=color)
 
     # update the barplot points without triggering, then trigger with `width`
     on(widths) do w

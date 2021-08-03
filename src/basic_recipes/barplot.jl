@@ -13,6 +13,7 @@ $(ATTRIBUTES)
 @recipe(BarPlot, x, y) do scene
     Attributes(;
         fillto = automatic,
+        offset = 0.0,
         color = theme(scene, :patchcolor),
         colormap = theme(scene, :colormap),
         colorrange = automatic,
@@ -180,7 +181,7 @@ function Makie.plot!(p::BarPlot)
     label_aligns = Observable(Vec2f0[])
     label_offsets = Observable(Vec2f0[])
     label_colors = Observable(RGBAf0[])
-    function calculate_bars(xy, fillto, width, dodge, n_dodge, x_gap, dodge_gap, stack,
+    function calculate_bars(xy, fillto, offset, width, dodge, n_dodge, x_gap, dodge_gap, stack,
                             dir, bar_labels, flip_labels_at, label_color, color_over_background,
                             color_over_bar, label_formatter, label_offset)
 
@@ -208,7 +209,7 @@ function Makie.plot!(p::BarPlot)
 
         if stack === automatic
             if fillto === automatic
-                fillto = 0.0
+                fillto = offset
             end
         elseif eltype(stack) <: Integer
             fillto === automatic || @warn "Ignore keyword fillto when keyword stack is provided"
@@ -233,10 +234,10 @@ function Makie.plot!(p::BarPlot)
             labels[], label_aligns[], label_offsets[], label_colors[] = label_args
         end
 
-        return bar_rectangle.(x̂, y, barwidth, fillto, in_y_direction)
+        return bar_rectangle.(x̂, y .+ offset, barwidth, fillto, in_y_direction)
     end
 
-    bars = lift(calculate_bars, p[1], p.fillto, p.width, p.dodge, p.n_dodge, p.x_gap,
+    bars = lift(calculate_bars, p[1], p.fillto, p.offset, p.width, p.dodge, p.n_dodge, p.x_gap,
                 p.dodge_gap, p.stack, p.direction, p.bar_labels, p.flip_labels_at,
                 p.label_color, p.color_over_background, p.color_over_bar, p.label_formatter, p.label_offset)
 
