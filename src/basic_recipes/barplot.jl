@@ -213,6 +213,10 @@ function Makie.plot!(p::BarPlot)
             end
         elseif eltype(stack) <: Integer
             fillto === automatic || @warn "Ignore keyword fillto when keyword stack is provided"
+            if !iszero(offset)
+                @warn "Ignore keyword offset when keyword stack is provided"
+                offset = 0.0
+            end
             i_stack = stack
 
             from, to = stack_grouped_from_to(i_stack, y, (x = x̂,))
