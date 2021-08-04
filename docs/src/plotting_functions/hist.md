@@ -31,3 +31,17 @@ hist(data, normalization = :pdf, bar_labels = :values,
      label_formatter=x-> round(x, digits=2), label_size = 15,
      strokewidth = 0.5, strokecolor = (:black, 0.5), color = :values)
 ```
+
+#### Moving histograms
+
+With `scale_to`, and `offset`, one can put multiple histograms into the same plot.
+Note, that offset automatically sets fillto, to move the whole barplot.
+Also, one can use a negative `scale_to` amount to flip the histogram.
+```@example hist
+fig = Figure()
+ax = Axis(fig[1, 1])
+for i in 1:5
+     hist!(ax, randn(1000), scale_to=-0.6, offset=i, direction=:x)
+end
+fig
+```
