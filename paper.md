@@ -113,7 +113,7 @@ save("paper_example.png", f)
 `Makie.jl` is the core package, which contains the infrastructure that plots are built out of.
 It defines primitive plot types such as lines, scatters, heatmaps and text, which can be freely combined to build up higher-level recipes such as density plots, histograms, and contour plots.
 
-There are currently three different backends for AbstractPlotting, which are `GLMakie.jl`, `CairoMakie.jl` and `WGLMakie.jl`.
+There are currently three different backends for Makie, which are `GLMakie.jl`, `CairoMakie.jl` and `WGLMakie.jl`.
 Each backend package has a different set of strengths: GLMakie excels at high-performance plotting with large datasets, CairoMakie creates beautiful vector graphics and WGLMakie can be run in the browser.
 Users can switch back and forth between backends easily, allowing them to, for example, build up a figure piece by piece in GLMakie, explore the data interactively, and then save a publication-quality version with CairoMakie.
 
