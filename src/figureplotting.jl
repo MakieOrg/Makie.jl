@@ -25,13 +25,10 @@ function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), 
     else
         proxyscene = Scene()
         plot!(proxyscene, P, Attributes(kw_attributes), args...)
-        bb = boundingbox(proxyscene.plots)
-        if is2d(bb)
+        if is2d(proxyscene)
             ax = Axis(fig; axis...)
         else
-            ax = LScene(fig; scenekw = axis)
-            cam3d!(ax.scene)
-            # axis3d!(ax.scene)
+            ax = LScene(fig; scenekw = (camera=cam3d!, axis...))
         end
     end
 
@@ -73,7 +70,6 @@ function plot(P::PlotFunc, gp::GridPosition, args...; axis = NamedTuple(), kwarg
     else
         proxyscene = Scene()
         plot!(proxyscene, P, Attributes(kwargs), args...)
-
         if is2d(proxyscene)
             ax = Axis(f; axis...)
         else

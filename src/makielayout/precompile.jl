@@ -10,6 +10,4 @@ function _precompile_()
     @assert precompile(Button, (Scene,))
     @assert precompile(Slider, (Scene,))
     @assert precompile(Textbox, (Scene,))
-
-    @assert precompile(layoutscene, ())  # doesn't fully precompile
 end

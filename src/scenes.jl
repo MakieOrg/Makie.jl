@@ -25,7 +25,7 @@ mutable struct Scene <: AbstractScene
     camera::Camera
 
     "The controls for the camera of the Scene."
-    camera_controls::RefValue
+    camera_controls::AbstractCamera
 
     "The [`Transformation`](@ref) of the Scene."
     transformation::Transformation
@@ -76,121 +76,89 @@ function Base.show(io::IO, scene::Scene)
 end
 
 function Scene(
-        events::Events,
-        px_area::Observable{IRect2D},
-        clear::Bool,
-        camera::Camera,
-        camera_controls::RefValue,
-        transformation::Transformation,
-        plots::Vector{AbstractPlot},
-        theme::Attributes, # the default values a scene owns
-        children::Vector{Scene},
-        current_screens::Vector{AbstractScreen},
-        parent=nothing,
-        backgroundcolor=Observable(RGBAf0(1, 1, 1, 1)),
-        visible=Observable(true)
+        px_area::Union{Observable{IRect2D}, Nothing} = nothing;
+        events::Events = Events(),
+        clear::Bool = true,
+        transform_func=identity,
+        camera::Union{Function, Camera, Nothing} = nothing,
+        camera_controls::AbstractCamera = EmptyCamera(),
+        transformation::Transformation = Transformation(transform_func),
+        plots::Vector{AbstractPlot} = AbstractPlot[],
+        theme::Attributes = Attributes(),
+        children::Vector{Scene} = Scene[],
+        current_screens::Vector{AbstractScreen} = AbstractScreen[],
+        parent = nothing,
+        backgroundcolor = Observable(RGBAf0(1, 1, 1, 1)),
+        visible = Observable(true),
+        theme_kw...
     )
     bg = map(to_color, backgroundcolor)
-    return Scene(
-        parent, events, px_area, clear, camera, camera_controls,
-        transformation, plots, theme,
-        children, current_screens, bg, visible
-    )
-end
-
-
-function Scene(;clear=true, transform_func=identity, backgroundcolor=Observable(RGBAf0(1, 1, 1, 1)), visible=Observable(true), theme...)
-    events = Events()
-    m_theme = current_default_theme(; theme...)
-    px_area = lift(m_theme.resolution) do res
-        IRect(0, 0, res)
+    m_theme = current_default_theme(; theme..., theme_kw...)
+    if isnothing(px_area)
+        px_area = lift(m_theme.resolution) do res
+            IRect(0, 0, res)
+        end
     end
+
+    cam = camera isa Camera ? camera : Camera(px_area)
+
     on(events.window_area, priority = typemax(Int8)) do w_area
         if !any(x -> x ≈ 0.0, widths(w_area)) && px_area[] != w_area
             px_area[] = w_area
         end
         return Consume(false)
     end
+
     scene = Scene(
-        events,
-        px_area,
-        clear,
-        Camera(px_area),
-        RefValue{Any}(EmptyCamera()),
-        Transformation(transform_func),
-        AbstractPlot[],
-        m_theme,
-        Scene[],
-        AbstractScreen[],
-        nothing,
-        backgroundcolor,
-        visible
+        parent, events, px_area, clear, cam, camera_controls,
+        transformation, plots, m_theme,
+        children, current_screens, bg, visible
     )
-    # Set the transformation parent
     scene.transformation.parent[] = scene
+    cam = if camera isa Function
+        camera(scene)
+    end
     return scene
 end
 
 function Scene(
-        scene::Scene;
-        events=scene.events,
-        px_area=scene.px_area,
+        parent::Scene;
+        events=parent.events,
+        px_area=nothing,
         clear=false,
-        cam=scene.camera,
-        camera_controls=scene.camera_controls,
-        transformation=Transformation(scene),
-        theme=theme(scene),
-        current_screens=scene.current_screens,
-        backgroundcolor=Observable(RGBAf0(1, 1, 1, 1)),
-        visible = Observable(true),
-        theme_from_kw...
+        camera=parent.camera,
+        camera_controls=parent.camera_controls,
+        transformation=Transformation(parent),
+        theme=theme(parent),
+        current_screens=parent.current_screens,
+        kw...
     )
-    child = Scene(
-        events,
-        px_area,
-        clear,
-        cam,
-        camera_controls,
-        nothing,
-        transformation,
-        AbstractPlot[],
-        current_default_theme(; theme..., theme_from_kw...),
-        Scene[],
-        current_screens,
-        scene,
-        backgroundcolor,
-        visible
-    )
-    push!(scene, child)
-    return child
-end
-
-function Scene(parent::Scene, area; clear=false, transform_func=identity, backgroundcolor=Observable(RGBAf0(1, 1, 1, 1)), theme...)
-    events = parent.events
-    px_area = lift(pixelarea(parent), convert(Node, area)) do p, a
-        # make coordinates relative to parent
-        IRect2D(minimum(p) .+ minimum(a), widths(a))
+    if isnothing(px_area)
+        px_area = parent.px_area
+    else
+        px_area = lift(pixelarea(parent), convert(Node, px_area)) do p, a
+            # make coordinates relative to parent
+            IRect2D(minimum(p) .+ minimum(a), widths(a))
+        end
     end
-    child = Scene(
+    child = Scene(;
         events,
         px_area,
         clear,
-        Camera(px_area),
-        RefValue{Any}(EmptyCamera()),
-        Transformation(transform_func),
-        AbstractPlot[],
-        current_default_theme(; theme...),
-        Scene[],
-        parent.current_screens,
+        camera,
+        camera_controls,
         parent,
-        backgroundcolor
+        transformation,
+        theme,
+        current_screens,
+        kw...
     )
-    push!(parent, child)
+    push!(parent.children, child)
+    child.parent = parent
     return child
 end
 
 # Base overloads for Scene
-
 Base.parent(scene::Scene) = scene.parent
 isroot(scene::Scene) = parent(scene) === nothing
 function root(scene::Scene)
@@ -201,7 +169,9 @@ function root(scene::Scene)
 end
 parent_or_self(scene::Scene) = isroot(scene) ? scene : parent(scene)
 
-Base.size(x::Scene) = pixelarea(x) |> to_value |> widths |> Tuple
+GeometryBasics.widths(scene::Scene) = widths(to_value(pixelarea(scene)))
+
+Base.size(scene::Scene) = Tuple(widths(scene))
 Base.size(x::Scene, i) = size(x)[i]
 function Base.resize!(scene::Scene, xy::Tuple{Number,Number})
     resize!(scene, IRect(0, 0, xy))
@@ -233,7 +203,6 @@ Base.iterate(scene::Scene, idx=1) = idx <= length(scene) ? (scene[idx], idx + 1)
 Base.length(scene::Scene) = length(scene.plots)
 Base.lastindex(scene::Scene) = length(scene.plots)
 getindex(scene::Scene, idx::Integer) = scene.plots[idx]
-GeometryBasics.widths(scene::Scene) = widths(to_value(pixelarea(scene)))
 struct OldAxis end
 
 zero_origin(area) = IRect(0, 0, widths(area))
@@ -317,10 +286,10 @@ events(scene::SceneLike) = events(scene.parent)
 camera(scene::Scene) = scene.camera
 camera(scene::SceneLike) = camera(scene.parent)
 
-cameracontrols(scene::Scene) = scene.camera_controls[]
+cameracontrols(scene::Scene) = scene.camera_controls
 cameracontrols(scene::SceneLike) = cameracontrols(scene.parent)
 
-cameracontrols!(scene::Scene, cam) = (scene.camera_controls[] = cam)
+cameracontrols!(scene::Scene, cam) = (scene.camera_controls = cam)
 cameracontrols!(scene::SceneLike, cam) = cameracontrols!(parent(scene), cam)
 
 pixelarea(scene::Scene) = scene.px_area
@@ -379,7 +348,7 @@ parent_scene(x::Scene) = x
 Base.isopen(x::SceneLike) = events(x).window_open[]
 
 function is2d(scene::SceneLike)
-    lims = raw_boundingbox(scene)
+    lims = data_limits(scene)
     lims === nothing && return nothing
     return is2d(lims)
 end

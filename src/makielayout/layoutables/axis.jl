@@ -72,7 +72,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
 
     scenearea = sceneareanode!(layoutobservables.computedbbox, finallimits, aspect)
 
-    scene = Scene(topscene, scenearea)
+    scene = Scene(topscene, px_area=scenearea)
 
     background = poly!(topscene, scenearea, color = backgroundcolor, strokewidth = 0, inspectable = false)
     translate!(background, 0, 0, -100)
