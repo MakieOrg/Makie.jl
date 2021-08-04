@@ -75,8 +75,8 @@ function Base.show(io::IO, scene::Scene)
     end
 end
 
-function Scene(
-        px_area::Union{Observable{IRect2D}, Nothing} = nothing;
+function Scene(;
+        px_area::Union{Observable{IRect2D}, Nothing} = nothing,
         events::Events = Events(),
         clear::Bool = true,
         transform_func=identity,
@@ -94,21 +94,22 @@ function Scene(
     )
     bg = map(to_color, backgroundcolor)
     m_theme = current_default_theme(; theme..., theme_kw...)
-    if isnothing(px_area)
+    wasnothing = isnothing(px_area)
+    if wasnothing
         px_area = lift(m_theme.resolution) do res
             IRect(0, 0, res)
         end
     end
 
     cam = camera isa Camera ? camera : Camera(px_area)
-
-    on(events.window_area, priority = typemax(Int8)) do w_area
-        if !any(x -> x ≈ 0.0, widths(w_area)) && px_area[] != w_area
-            px_area[] = w_area
+    if wasnothing
+        on(events.window_area, priority = typemax(Int8)) do w_area
+            if !any(x -> x ≈ 0.0, widths(w_area)) && px_area[] != w_area
+                px_area[] = w_area
+            end
+            return Consume(false)
         end
-        return Consume(false)
     end
-
     scene = Scene(
         parent, events, px_area, clear, cam, camera_controls,
         transformation, plots, m_theme,
@@ -134,12 +135,16 @@ function Scene(
         kw...
     )
     if isnothing(px_area)
-        px_area = parent.px_area
+        px_area = lift(zero_origin, parent.px_area)
     else
         px_area = lift(pixelarea(parent), convert(Node, px_area)) do p, a
             # make coordinates relative to parent
-            IRect2D(minimum(p) .+ minimum(a), widths(a))
+            rect = IRect2D(minimum(p) .+ minimum(a), widths(a))
+            return rect
         end
+    end
+    if camera !== parent.camera
+        camera_controls = EmptyCamera()
     end
     child = Scene(;
         events,
@@ -289,7 +294,11 @@ camera(scene::SceneLike) = camera(scene.parent)
 cameracontrols(scene::Scene) = scene.camera_controls
 cameracontrols(scene::SceneLike) = cameracontrols(scene.parent)
 
-cameracontrols!(scene::Scene, cam) = (scene.camera_controls = cam)
+function cameracontrols!(scene::Scene, cam)
+    disconnect!(scene.camera_controls)
+    scene.camera_controls = cam
+    return cam
+end
 cameracontrols!(scene::SceneLike, cam) = cameracontrols!(parent(scene), cam)
 
 pixelarea(scene::Scene) = scene.px_area

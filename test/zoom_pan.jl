@@ -2,8 +2,8 @@ using Makie
 using Observables
 
 function cleanaxes()
-    scene, layout = layoutscene()
-    ax = layout[1, 1] = Axis(scene)
+    fig = Figure()
+    ax = Axis(fig[1, 1])
     axbox = pixelarea(ax.scene)[]
     lim = ax.finallimits[]
     e = events(ax.scene)
@@ -76,8 +76,8 @@ end
     end
 
     # Rubber band selection
-    scene, layout = layoutscene()
-    ax = layout[1, 1] = Axis(scene)
+    fig = Figure()
+    ax = Axis(fig[1, 1])
     plot!(ax, [10, 15, 20])
     axbox = pixelarea(ax.scene)[]
     lim = ax.finallimits[]
