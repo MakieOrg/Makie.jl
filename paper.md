@@ -50,7 +50,7 @@ Interactivity is also not a priority, so for maximum control and performance, us
 # Example
 
 The following figure illustrates a few key features of `Makie.jl`:
-The map example augments a dataset of the world's airports to 100 million points, a size that many other plotting frameworks would struggle with.
+The map example augments a dataset of the world's airports to 100 million points, a size that is too large to be rendered in reasonable time by many other plotting solutions. GLMakie can handle such amounts of data given a sufficiently powerful GPU.
 
 The mandelbrot fractal heatmap on the right is plotted by simply passing an x- and y-range, as well as the mandelbrot function, which is then automatically evaluated for all xy combinations.
 Julia's multiple dispatch mechanism is, in very simple terms, a way to overload functions with different versions or methods, that are chosen depending on the set of input arguments.
@@ -75,8 +75,10 @@ using DelimitedFiles
 f = Figure(resolution = (1400, 1000), font = "Helvetica")
 
 a = readdlm(assetpath("airportlocations.csv"))
-a_rep = repeat(a, 100_000_000 ÷ size(a, 1), 1) .+ randn.()
-scatter(f[1, 1], airports_rep, color = (:black, 0.01), markersize = 0.5,
+# reduce this number if your GPU is not powerful enough
+n_points = 100_000_000 
+a_rep = repeat(a, n_points ÷ size(a, 1), 1) .+ randn.()
+scatter(f[1, 1], a_rep, color = (:black, 0.01), markersize = 1.0,
     strokewidth = 0, axis = (title = "Airports (100 Million points)",
     limits = (-200, 200, -70, 80)))
 
@@ -106,7 +108,7 @@ Label(f[0, :], "Makie.jl Example Figure")
 save("paper_example.png", f)
 ```
 
-![Makie can visualize data with at least 100 million points interactively and render three-dimensional volumes or meshes. Axes and colorbars can be placed freely in nested grids and aligned in a visually pleasing way. The mandelbrot fractal heatmap demonstrates one use of Julia's multiple dispatch, as the mandelbrot function can be directly evaluated on a two-dimensional grid without manually preparing arrays.\label{fig:example}](paper_example.png)
+![GLMakie can visualize scatter plots with 100 million points (given a GPU with sufficient memory) and render three-dimensional volumes or meshes. Axes and colorbars can be placed freely in nested grids and aligned in a visually pleasing way. The mandelbrot fractal heatmap demonstrates one use of Julia's multiple dispatch, as the mandelbrot function can be directly evaluated on a two-dimensional grid without manually preparing arrays. Note that some 3D plots such as the displayed contour are not available in CairoMakie due to the technical limitations of vector graphics. \label{fig:example}](paper_example.png)
 
 # Overview
 
@@ -116,6 +118,7 @@ It defines primitive plot types such as lines, scatters, heatmaps and text, whic
 There are currently three different backends for AbstractPlotting, which are `GLMakie.jl`, `CairoMakie.jl` and `WGLMakie.jl`.
 Each backend package has a different set of strengths: GLMakie excels at high-performance plotting with large datasets, CairoMakie creates beautiful vector graphics and WGLMakie can be run in the browser.
 Users can switch back and forth between backends easily, allowing them to, for example, build up a figure piece by piece in GLMakie, explore the data interactively, and then save a publication-quality version with CairoMakie.
+Note that CairoMakie is generally limited to the subset of 2D plotting primitives, with a few exceptions that try to approximate 3D visuals with 2D elements.
 
 Makie is built around the idea of a reactive workflow using `Observables.jl`.
 Observables are wrappers for arbitrary objects which can trigger actions when their content is changed.
