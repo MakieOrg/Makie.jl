@@ -72,7 +72,7 @@ using GLMakie, GLMakie.FileIO
 using LinearAlgebra: norm
 using DelimitedFiles
 
-f = Figure(resolution = (1400, 1000), font = "Helvetica")
+f = Figure(resolution = (1400, 1000))
 
 a = readdlm(assetpath("airportlocations.csv"))
 # reduce this number if your GPU is not powerful enough
