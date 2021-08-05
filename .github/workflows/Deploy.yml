@@ -32,8 +32,8 @@ jobs:
       if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
       run: |
         echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
-        echo "PREVIEW_FRANKLIN_WEBSITE_URL=http://makie.juliaplots.org/{{ steps.tag.outputs.VERSION }}/" >> $GITHUB_ENV
-        echo "PREVIEW_FRANKLIN_PREPATH={{ steps.tag.outputs.VERSION }}" >> $GITHUB_ENV
+        echo "PREVIEW_FRANKLIN_WEBSITE_URL=http://makie.juliaplots.org/${{ steps.tag.outputs.VERSION }}/" >> $GITHUB_ENV
+        echo "PREVIEW_FRANKLIN_PREPATH=${{ steps.tag.outputs.VERSION }}" >> $GITHUB_ENV
     # NOTE: Python is necessary for the pre-rendering (minification) step
     - name: Install python
       uses: actions/setup-python@v2
@@ -94,4 +94,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH: gh-pages
           FOLDER: docs_franklin/site/__site
-          TARGET_FOLDER: "{{ steps.tag.outputs.VERSION }}"
+          TARGET_FOLDER: "${{ steps.tag.outputs.VERSION }}"
