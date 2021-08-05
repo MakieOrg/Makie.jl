@@ -4,6 +4,7 @@ on:
     branches:
       - main
       - master
+    tags: '*'
   pull_request:
     branches:
       - main
@@ -21,6 +22,18 @@ jobs:
       run: |
         echo "PREVIEW_FRANKLIN_WEBSITE_URL=http://makie.juliaplots.org/previews/PR${{ github.event.number }}/" >> $GITHUB_ENV
         echo "PREVIEW_FRANKLIN_PREPATH=previews/PR${{ github.event.number }}" >> $GITHUB_ENV
+    - name: Fix URLs for dev deployment
+      if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+      run: |
+        echo "PREVIEW_FRANKLIN_WEBSITE_URL=http://makie.juliaplots.org/dev/" >> $GITHUB_ENV
+        echo "PREVIEW_FRANKLIN_PREPATH=dev" >> $GITHUB_ENV
+    - name: Fix URLs for tagged version deployment
+      id: tag
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+      run: |
+        echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+        echo "PREVIEW_FRANKLIN_WEBSITE_URL=http://makie.juliaplots.org/{{ steps.tag.outputs.VERSION }}/" >> $GITHUB_ENV
+        echo "PREVIEW_FRANKLIN_PREPATH={{ steps.tag.outputs.VERSION }}" >> $GITHUB_ENV
     # NOTE: Python is necessary for the pre-rendering (minification) step
     - name: Install python
       uses: actions/setup-python@v2
@@ -66,10 +79,19 @@ jobs:
           FOLDER: docs_franklin/site/__site
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TARGET_FOLDER: "previews/PR${{ github.event.number }}" # The website preview is going to be stored in a subfolder
-    - name: Deploy (main)
+    - name: Deploy (dev)
       if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
       uses: JamesIves/github-pages-deploy-action@releases/v3
       with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH: gh-pages
           FOLDER: docs_franklin/site/__site
+          TARGET_FOLDER: "dev"
+    - name: Deploy (tag)
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+      uses: JamesIves/github-pages-deploy-action@releases/v3
+      with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: gh-pages
+          FOLDER: docs_franklin/site/__site
+          TARGET_FOLDER: "{{ steps.tag.outputs.VERSION }}"
