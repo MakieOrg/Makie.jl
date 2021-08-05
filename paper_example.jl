@@ -1,6 +1,8 @@
-using GLMakie, GLMakie.FileIO; using LinearAlgebra: norm
+using GLMakie
+using GLMakie.FileIO
+using LinearAlgebra: norm
 set_window_config!(pause_rendering = true)
-AbstractPlotting.inline!(true)
+Makie.inline!(true)
 using DelimitedFiles
 
 
@@ -9,9 +11,10 @@ let
     f = Figure(resolution = (1400, 1000), font = "Helvetica")
 
     airports = readdlm(raw"C:\Users\Krumbiegel\Downloads\airportlocations.csv")
-    airports_rep = repeat(airports, 100_000_000 ÷ size(airports, 1), 1) .+ randn.()
-    scatter(f[1, 1], airports_rep, color = (:black, 0.01), markersize = 0.5, strokewidth = 0,
-        axis = (title = "Airports (100 Million points)", limits = (-200, 200, -70, 80)))
+    n_points = 100_000_000 # reduce this number for less powerful GPUs
+    airports_rep = repeat(airports, n_points ÷ size(airports, 1), 1) .+ randn.()
+    scatter(f[1, 1], airports_rep, color = (:black, 0.01), markersize = 1, strokewidth = 0,
+        axis = (title = "Airports (10 Million points)", limits = (-200, 200, -70, 80)))
 
     r = LinRange(-5, 5, 100)
     volume = [sin(x) + sin(y) + 0.1z^2 for x = r, y = r, z = r]
@@ -37,5 +40,6 @@ let
     Label(f[0, :], "Makie.jl Example Figure")
 
     save("paper_example.png", f)
-    nothing
+    # nothing
+    f
 end
