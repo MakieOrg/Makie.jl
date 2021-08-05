@@ -85,25 +85,29 @@ function rotate_bbox(bb::FRect3D, rot)
     FRect3D(Ref(rot) .* points)
 end
 
-function boundingbox(x::Text, text::String, position::VecTypes)
-
-    glyphlayout = x._glyphlayout[]
-
-    pos = to_ndim(Point3f0, x.position[], 0)
-    rot = convert_attribute(x.rotation[], key"rotation"())
-
-    if x.space[] == :data
-        data_text_boundingbox(x[1][], glyphlayout, rot, pos)
-    elseif x.space[] == :screen
-        data_limits(x)
+function gl_bboxes(gl::GlyphCollection)
+    scales = gl.scales.sv isa Vec2f0 ? (gl.scales.sv for _ in gl.extents) : gl.scales.sv
+    map(gl.extents, gl.fonts, scales) do ext, font, scale
+        unscaled_hi_bb = height_insensitive_boundingbox(ext, font)
+        hi_bb = FRect2D(
+            Makie.origin(unscaled_hi_bb) * scale,
+            widths(unscaled_hi_bb) * scale
+        )
     end
 end
 
-function data_text_boundingbox(string::String, glyphlayout::Glyphlayout, rotation::Quaternion, position::Point3f0)
-    bb = FRect3D()
-    glyphorigins, glyphbbs = glyphlayout.origins, glyphlayout.bboxes
+function boundingbox(glyphcollection::GlyphCollection, position::Point3f0, rotation::Quaternion)
 
-    for (char, charo, glyphbb) in zip(string, glyphorigins, glyphbbs)
+    if isempty(glyphcollection.glyphs)
+        return FRect3D(position, Vec3f0(0, 0, 0))
+    end
+
+    chars = glyphcollection.glyphs
+    glyphorigins = glyphcollection.origins
+    glyphbbs = gl_bboxes(glyphcollection)
+
+    bb = FRect3D()
+    for (char, charo, glyphbb) in zip(chars, glyphorigins, glyphbbs)
         # ignore line breaks
         # char in ('\r', '\n') && continue
 
@@ -114,67 +118,51 @@ function data_text_boundingbox(string::String, glyphlayout::Glyphlayout, rotatio
             bb = union(bb, charbb)
         end
     end
-
+    !isfinite_rect(bb) && error("Invalid text boundingbox")
     bb
 end
 
-function boundingbox(x::Text, texts::AbstractArray, positions::AbstractArray)
+function boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotations)
 
-    layouts = x._glyphlayout[]
-    rotations = convert_attribute(x.rotation[], key"rotation"())
-    positions_3d = to_ndim.(Point3f0, positions, 0)
-
-    if x.space[] == :data
+    if isempty(layouts)
+        FRect3D((0, 0, 0), (0, 0, 0))
+    else
         bb = FRect3D()
-        broadcast_foreach(texts, positions_3d, layouts, rotations) do text, pos, layout, rot
+        broadcast_foreach(layouts, positions, rotations) do layout, pos, rot
             if !isfinite_rect(bb)
-                bb = data_text_boundingbox(text, layout, rot, pos)
+                bb = boundingbox(layout, pos, rot)
             else
-                bb = union(bb, data_text_boundingbox(text, layout, rot, pos))
+                bb = union(bb, boundingbox(layout, pos, rot))
             end
         end
+        !isfinite_rect(bb) && error("Invalid text boundingbox")
         bb
-    elseif x.space[] == :screen
-        data_limits(x)
     end
 end
 
-function boundingbox(x::Text)
-
-    # TODO: this is only necessary because of the "text in text" recipe weirdness
-    if !isempty(x.plots)
-        # the "real" text is inside the outer text
-        x = x.plots[1]
-    end
-
-    boundingbox(x, to_value(x[1]), to_value(x[:position]))
+function boundingbox(x::Text{<:Tuple{<:GlyphCollection}})
+    boundingbox(
+        x[1][],
+        to_ndim(Point3f0, x.position[], 0),
+        to_rotation(x.rotation[])
+    )
 end
 
+function boundingbox(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}})
+    boundingbox(
+        x[1][],
+        to_ndim.(Point3f0, x.position[], 0),
+        to_rotation(x.rotation[])
+    )
+end
 
-#     if x.space[] == :data
-#         if x[1][] isa AbstractArray
-#             bb = FRect3D()
-#             for
-#         else
-#             boundingbox(x, to_value(x[1]))
-#         end
-#     elseif x.space[] == :screen
-#         data_limits(x)
-#     end
-# end
-
-
-# boundingbox(x::Text) = boundingbox(x, to_value(x[1]))
-
-# function boundingbox(
-#         text::String, position, textsize;
-#         font = "default", align = (:left, :bottom), rotation = 0.0
-#     )
-#     return boundingbox(
-#         text, position, textsize,
-#         to_font(font), to_align(align), to_rotation(rotation)
-#     )
-# end
+function text_bb(str, font, size)
+    rot = Quaternionf0(0,0,0,1)
+    layout = layout_text(
+        str, size, font, Vec2f0(0), rot, 0.5, 1.0,
+        RGBAf0(0, 0, 0, 0), RGBAf0(0, 0, 0, 0), 0f0)
+    return boundingbox(layout, Point3f0(0), rot)
+end
 
 """
 Calculate an approximation of a tight rectangle around a 2D rectangle rotated by `angle` radians.
@@ -199,69 +187,4 @@ function rotatedrect(rect::Rect{2}, angle)
     rmaxs = maximum(rotated, dims = 2)
 
     return Rect2D(rmins..., (rmaxs .- rmins)...)
-end
-
-function quaternion_to_2d_angle(quat)
-    # this assumes that the quaternion was calculated from a simple 2d rotation as well
-    return 2acos(quat[4]) * (signbit(quat[1]) ? -1 : 1)
-end
-
-function boundingbox(
-        text::String, position, textsize, font,
-        align, rotation, model, justification, lineheight;
-        # use the font's ascenders and descenders for the bounding box
-        # this means that a string's boundingbox doesn't change in the vertical
-        # dimension when characters change (for example numbers during an animation)
-        # this is not wanted in most cases because of the jitter it creates when
-        # the boundingbox slightly changes size in each frame (in MakieLayout mostly)
-        use_vertical_dimensions_from_font = true
-    )
-    atlas = get_texture_atlas()
-    N = length(text)
-    ctext_state1 = iterate(text)
-    ctext_state1 === nothing && return FRect3D()
-
-    # call the layouting algorithm to find out where all the glyphs end up
-    # this is kind of a doubling, maybe it could be avoided if at creation all
-    # positions would be populated in the text object, but that seems convoluted
-    if position isa VecTypes
-        glyph_offsets = layout_text(text, textsize, font, align,
-            rotation, model, justification, lineheight)
-        position = [go .+ to_ndim(Point3f0, position, 0) for go in glyph_offsets]
-    end
-
-    bbox = Ref(FRect3D())            # use ref to avoid julia#15276
-    ctext_state = Ref{Union{Nothing,typeof(ctext_state1)}}(ctext_state1)
-
-    let position = position
-        broadcast_foreach(1:N, rotation, font, textsize) do i, rotation, font, scale
-            c, text_state = ctext_state[]::typeof(ctext_state1)
-            ctext_state[] = iterate(text, text_state)
-
-            if !(c in ('\r', '\n'))
-                bb_unitspace = if use_vertical_dimensions_from_font
-                    height_insensitive_boundingbox(
-                        FreeTypeAbstraction.get_extent(font, c), font)
-                else
-                    inkboundingbox(FreeTypeAbstraction.get_extent(font, c))
-                end
-
-                scaled_bb = bb_unitspace * scale
-
-                # TODO this only works in 2d
-                rot_2d_radians = quaternion_to_2d_angle(rotation)
-                rotated_bb = rotatedrect(scaled_bb, rot_2d_radians)
-
-                # bb = rectdiv(bb, 1.5)
-                shifted_bb = FRect3D(rotated_bb) + position[i]
-                bboxc = bbox[]
-                if !isfinite_rect(bboxc)
-                    bbox[] = shifted_bb
-                else
-                    bbox[] = union(bboxc, shifted_bb)
-                end
-            end
-        end
-    end
-    return bbox[]
 end

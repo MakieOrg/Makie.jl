@@ -98,7 +98,7 @@ conversions + will extract the value if it's a signal.
 It will make those attributes available as variables and return them as a tuple.
 So the above is equal to:
 will become:
-```example
+```julia
 begin
     a = get_attribute(scene, :a)
     b = get_attribute(scene, :b)
@@ -117,7 +117,7 @@ end
 """
 usage @extractvalue scene (a, b, c, d)
 will become:
-```example
+```julia
 begin
     a = to_value(scene[:a])
     b = to_value(scene[:b])
@@ -135,11 +135,13 @@ attr_broadcast_length(x::NativeFont) = 1 # these are our rules, and for what we 
 attr_broadcast_length(x::VecTypes) = 1 # these are our rules, and for what we do, Vecs are usually scalars
 attr_broadcast_length(x::AbstractArray) = length(x)
 attr_broadcast_length(x) = 1
+attr_broadcast_length(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
 
 attr_broadcast_getindex(x::NativeFont, i) = x # these are our rules, and for what we do, Vecs are usually scalars
 attr_broadcast_getindex(x::VecTypes, i) = x # these are our rules, and for what we do, Vecs are usually scalars
 attr_broadcast_getindex(x::AbstractArray, i) = x[i]
 attr_broadcast_getindex(x, i) = x
+attr_broadcast_getindex(x::ScalarOrVector, i) = x.sv isa Vector ? x.sv[i] : x.sv
 
 is_vector_attribute(x::AbstractArray) = true
 is_vector_attribute(x::NativeFont) = false

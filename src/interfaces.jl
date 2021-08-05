@@ -20,59 +20,6 @@ function default_theme(scene)
     )
 end
 
-function plot!(plot::Text)
-
-    # attach a function to any text that calculates the glyph layout and stores it
-    onany(plot[1], plot.position, plot.textsize, plot.font, plot.align, plot.rotation, plot.model, plot.justification, plot.lineheight) do str, pos, ts, f, al, rot, mo, jus, lh
-        ts = to_textsize(ts)
-        f = to_font(f)
-        rot = to_rotation(rot)
-
-        if str isa String
-            glyphlayout = layout_text(str, ts, f, al, rot, mo, jus, lh)
-        elseif str isa AbstractArray
-            glyphlayout = []
-            broadcast_foreach(str, ts, f, al, rot, Ref(mo), jus, lh) do str, ts, f, al, rot, mo, jus, lh
-                subgl = layout_text(str, ts, f, al, rot, mo, jus, lh)
-                push!(glyphlayout, subgl)
-            end
-        end
-
-        plot._glyphlayout[] = glyphlayout
-    end
-    # populate _glyphlayout first time
-    plot.position[] = plot.position[]
-
-    plot
-end
-
-# overload text plotting for a vector of tuples of a string and a point each
-function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{String, <:Point}}}})
-    strings_and_positions = plot[1]
-
-    strings = Node(first.(strings_and_positions[]))
-    positions = Node(to_ndim.(Ref(Point3f0), last.(strings_and_positions[]), 0))
-
-    attrs = plot.attributes
-    pop!(attrs, :position)
-
-    t = text!(plot, strings; position = positions, attrs...)
-
-    # update both text and positions together
-    on(strings_and_positions) do str_pos
-        strs = first.(str_pos)
-        poss = to_ndim.(Ref(Point3f0), last.(str_pos), 0)
-        # first mutate strings without triggering redraw
-        t[1].val = strs
-        # then update positions with trigger
-        positions[] = poss
-    end
-
-    plot
-end
-
-
-
 function color_and_colormap!(plot, intensity = plot[:color])
     if isa(intensity[], AbstractArray{<: Number})
         haskey(plot, :colormap) || error("Plot $(typeof(plot)) needs to have a colormap to allow the attribute color to be an array of numbers")
@@ -135,14 +82,18 @@ function calculated_attributes!(::Type{<: Scatter}, plot)
     end
 end
 
-function calculated_attributes!(::Type{<: Union{Lines, LineSegments}}, plot)
+function calculated_attributes!(::Type{T}, plot) where {T<:Union{Lines, LineSegments}}
     color_and_colormap!(plot)
     pos = plot[1][]
-    # extend one color per linesegment to be one (the same) color per vertex
-    # taken from @edljk  in PR #77
-    if haskey(plot, :color) && isa(plot[:color][], AbstractVector) && iseven(length(pos)) && (length(pos) ÷ 2) == length(plot[:color][])
-        plot[:color] = lift(plot[:color]) do cols
-            map(i-> cols[(i + 1) ÷ 2], 1:(length(cols) * 2))
+    # extend one color/linewidth per linesegment to be one (the same) color/linewidth per vertex
+    if T <: LineSegments
+        for attr in [:color, :linewidth]
+            # taken from @edljk  in PR #77
+            if haskey(plot, attr) && isa(plot[attr][], AbstractVector) && (length(pos) ÷ 2) == length(plot[attr][])
+                plot[attr] = lift(plot[attr]) do cols
+                    map(i -> cols[(i + 1) ÷ 2], 1:(length(cols) * 2))
+                end
+            end
         end
     end
 end
@@ -164,7 +115,7 @@ end
 
 function used to indicate what keyword args one wants to get passed in `convert_arguments`.
 Usage:
-```example
+```julia
     struct MyType end
     used_attributes(::MyType) = (:attribute,)
     function convert_arguments(x::MyType; attribute = 1)
@@ -299,7 +250,7 @@ plottype(::MultiPolygon) = Lines
     plottype(P1::Type{<: Combined{T1}}, P2::Type{<: Combined{T2}})
 
 Chooses the more concrete plot type
-```example
+```julia
 function convert_arguments(P::PlotFunc, args...)
     ptype = plottype(P, Lines)
     ...
@@ -507,10 +458,10 @@ function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, input::NTup
 end
 
 function apply_camera!(scene::Scene, cam_func)
-    if cam_func in (cam2d!, cam3d!, campixel!, cam3d_cad!)
+    if cam_func in (cam2d!, cam3d!, old_cam3d!, campixel!, cam3d_cad!)
         cam_func(scene)
     else
-        error("Unrecognized `camera` attribute type: $(typeof(cam_func)). Use automatic, cam2d! or cam3d!, campixel!, cam3d_cad!")
+        error("Unrecognized `camera` attribute type: $(typeof(cam_func)). Use automatic, cam2d!, cam3d!, old_cam3d!, campixel!, cam3d_cad!")
     end
 end
 

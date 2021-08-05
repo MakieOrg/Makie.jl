@@ -28,6 +28,18 @@ can be normalized by setting `normalization`. Possible values are:
    norm 1.
 *  `:none`: Do not normalize.
 
+The following attributes can move the histogram around,
+which comes in handy when placing multiple histograms into one plot:
+* offset = 0.0: adds an offset to every value
+* fillto = 0.0: defines where the bar starts
+* scale_to = nothing: allows to scale all values to a certain height
+* flip = false: flips all values
+
+Color can either be:
+* a vector of `bins` colors
+* a single color
+* `:values`, to color the bars with the values from the histogram
+
 ## Attributes
 $(ATTRIBUTES)
 """
@@ -36,13 +48,26 @@ $(ATTRIBUTES)
         bins = 15, # Int or iterable of edges
         normalization = :none,
         cycle = [:color => :patchcolor],
+        color = theme(scene, :patchcolor),
+        offset = 0.0,
+        fillto = automatic,
+        scale_to = nothing,
+
+        bar_labels = nothing,
+        flip_labels_at = Inf,
+        label_color = theme(scene, :textcolor),
+        over_background_color = automatic,
+        over_bar_color = automatic,
+        label_offset = 5,
+        label_font = theme(scene, :font),
+        label_size = 20,
+        label_formatter = bar_label_formatter
     )
 end
 
-
 function Makie.plot!(plot::Hist)
 
-    values = plot[:values]
+    values = plot.values
 
     edges = lift(values, plot.bins) do vals, bins
         if bins isa Int
@@ -57,18 +82,31 @@ function Makie.plot!(plot::Hist)
         end
     end
 
-    points = lift(edges, plot.normalization) do edges, normalization
+    points = lift(edges, plot.normalization, plot.scale_to) do edges, normalization, scale_to
         h = StatsBase.fit(StatsBase.Histogram, values[], edges)
         h_norm = StatsBase.normalize(h, mode = normalization)
         centers = edges[1:end-1] .+ (diff(edges) ./ 2)
         weights = h_norm.weights
+        if !isnothing(scale_to)
+            max = maximum(weights)
+            weights .= weights ./ max .* scale_to
+        end
         return Point2f0.(centers, weights)
     end
-
     widths = lift(diff, edges)
+    color = lift(plot.color) do color
+        if color === :values
+            return last.(points[])
+        else
+            return color
+        end
+    end
 
+    bar_labels = map(plot.bar_labels) do x
+        x === :values ? :y : x
+    end
     # plot the values, not the observables, to be in control of updating
-    bp = barplot!(plot, points[]; width = widths[], plot.attributes...)
+    bp = barplot!(plot, points[]; width = widths[], plot.attributes..., fillto=plot.fillto, offset=plot.offset, bar_labels=bar_labels, color=color)
 
     # update the barplot points without triggering, then trigger with `width`
     on(widths) do w

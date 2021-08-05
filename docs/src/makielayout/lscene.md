@@ -31,3 +31,13 @@ lscene = LScene(fig[1, 1], scenekw = (camera = cam3d!, raw = false))
 meshscatter!(lscene, randn(100, 3))
 fig
 ```
+
+# Adding a title
+Since `Axis3D` does not support adding a title, you can use a `Label` to add a title to a `LScene`.
+
+```@example 1
+fig = Figure()
+LScene(fig[1, 1])
+fig[1, 1, Top()] = Label(fig, "Fancy Title")
+fig
+```

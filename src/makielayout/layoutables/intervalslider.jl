@@ -200,14 +200,14 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
             end
         end
 
-        return true
+        return Consume(true)
     end
 
     onmouseleftdragstop(mouseevents) do event
         dragging[] = false
         # adjust slider to closest legal value
         sliderfractions[] = sliderfractions[]
-        return true
+        return Consume(true)
     end
 
     onmouseleftdown(mouseevents) do event
@@ -225,7 +225,7 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
         start_disp_fractions[] = displayed_sliderfractions[]
 
         if state[] in (:both, :none)
-            return true
+            return Consume(true)
         end
 
         newindex = closest_fractionindex(sliderrange[], frac)
@@ -236,7 +236,7 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
         end
         # linecolors[] = [color_active[], color_inactive[]]
 
-        return true
+        return Consume(true)
     end
 
     onmouseleftdoubleclick(mouseevents) do event
@@ -246,7 +246,7 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
             closest_index.(Ref(sliderrange[]), startvalues[])
         end
 
-        return true
+        return Consume(true)
     end
 
     onmouseover(mouseevents) do event
@@ -267,12 +267,12 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
             :max
         end
 
-        return false
+        return Consume(false)
     end
 
     onmouseout(mouseevents) do event
         state[] = :none
-        return false
+        return Consume(false)
     end
 
     # trigger autosize through linewidth for first layout

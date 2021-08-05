@@ -130,7 +130,7 @@ function layoutable(::Type{Slider}, fig_or_scene; bbox = nothing, kwargs...)
             selected_index[] = newindex
         end
 
-        return true
+        return Consume(true)
     end
 
     onmouseleftdragstop(mouseevents) do event
@@ -138,7 +138,7 @@ function layoutable(::Type{Slider}, fig_or_scene; bbox = nothing, kwargs...)
         # adjust slider to closest legal value
         sliderfraction[] = sliderfraction[]
         linecolors[] = [color_active_dimmed[], color_inactive[]]
-        return true
+        return Consume(true)
     end
 
     onmouseleftdown(mouseevents) do event
@@ -147,23 +147,23 @@ function layoutable(::Type{Slider}, fig_or_scene; bbox = nothing, kwargs...)
         frac = (pos[dim] - endpoints[][1][dim]) / (endpoints[][2][dim] - endpoints[][1][dim])
         selected_index[] = closest_fractionindex(sliderrange[], frac)
         # linecolors[] = [color_active[], color_inactive[]]
-        return true
+        return Consume(true)
     end
 
     onmouseleftdoubleclick(mouseevents) do event
         selected_index[] = closest_index(sliderrange[], startvalue[])
-        return true
+        return Consume(true)
     end
 
     onmouseenter(mouseevents) do event
         button_magnification[] = 1.25
-        return false
+        return Consume(false)
     end
 
     onmouseout(mouseevents) do event
         button_magnification[] = 1.0
         linecolors[] = [color_active_dimmed[], color_inactive[]]
-        return false
+        return Consume(false)
     end
 
     # trigger autosize through linewidth for first layout

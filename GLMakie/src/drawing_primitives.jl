@@ -259,68 +259,86 @@ value_or_first(x::AbstractArray) = first(x)
 value_or_first(x::StaticArray) = x
 value_or_first(x) = x
 
-function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
-    robj = cached_robj!(screen, scene, x) do gl_attributes
-        string_obs = x[1]
-        liftkeys = (:position, :textsize, :font, :align, :rotation, :model, :justification, :lineheight, :space, :offset)
-        args = getindex.(Ref(gl_attributes), liftkeys)
+function draw_atomic(screen::GLScreen, scene::Scene,
+        x::Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
 
-        gl_text = lift(string_obs, scene.camera.projectionview, Makie.transform_func_obs(scene), args...) do str, projview, transfunc, pos, tsize, font, align, rotation, model, j, l, space, offset
-            # For annotations, only str (x[1]) will get updated, but all others are updated too!
-            args = @get_attribute x (position, textsize, font, align, rotation, offset)
-            res = Vec2f0(widths(pixelarea(scene)[]))
-            return preprojected_glyph_arrays(str, pos, x._glyphlayout[], font, textsize, space, projview, res, offset, transfunc)
+    robj = cached_robj!(screen, scene, x) do gl_attributes
+        glyphcollection = x[1]
+
+
+        res = map(x->Vec2f0(widths(x)), pixelarea(scene))
+        projview = scene.camera.projectionview
+        transfunc =  Makie.transform_func_obs(scene)
+        pos = gl_attributes[:position]
+        space = gl_attributes[:space]
+        offset = gl_attributes[:offset]
+
+        # TODO: This is a hack before we get better updating of plot objects and attributes going.
+        # Here we only update the glyphs when the glyphcollection changes, if it's a singular glyphcollection.
+        # The if statement will be compiled away depending on the parameter of Text.
+        # This means that updates of a text vector and a separate position vector will still not work if only the text
+        # vector is triggered, but basically all internal objects use the vector of tuples version, and that triggers
+        # both glyphcollection and position, so it still works
+        if glyphcollection[] isa Makie.GlyphCollection
+            # here we use the glyph collection observable directly
+            gcollection = glyphcollection
+        else
+            # and here we wrap it into another observable
+            # so it doesn't trigger dimension mismatches
+            # the actual, new value gets then taken in the below lift with to_value
+            gcollection = Observable(glyphcollection)
+        end
+        glyph_data = lift(pos, gcollection, space, projview, res, offset, transfunc) do pos, gc, args...
+            preprojected_glyph_arrays(pos, to_value(gc), args...)
         end
 
         # unpack values from the one signal:
         positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i
-            lift(getindex, gl_text, i)
+            lift(getindex, glyph_data, i)
         end
 
         atlas = get_texture_atlas()
-        keys = (:color, :strokecolor, :rotation)
 
-        signals = map(keys) do key
-            return lift(positions, x[key]) do pos, attr
-                str = string_obs[]
-                if str isa AbstractVector
-                    if isempty(str)
-                        attr = convert_attribute(value_or_first(attr), Key{key}())
-                        return Vector{typeof(attr)}()
-                    else
-                        result = []
-                        broadcast_foreach(str, attr) do st, aa
-                            for att in attribute_per_char(st, aa)
-                                push!(result, convert_attribute(att, Key{key}()))
-                            end
-                        end
-                        # narrow the type from any, this is ugly
-                        return identity.(result)
-                    end
-                else
-                    return Makie.get_attribute(x, key)
-                end
+        filter!(gl_attributes) do (k, v)
+            # These are liftkeys without model
+            !(k in (
+                :position, :space, :font,
+                :textsize, :rotation, :justification
+            ))
+        end
+
+        gl_attributes[:color] = lift(glyphcollection) do gc
+            if gc isa AbstractArray
+                reduce(vcat, (Makie.collect_vector(g.colors, length(g.glyphs)) for g in gc),
+                    init = RGBAf0[])
+            else
+                Makie.collect_vector(gc.colors, length(gc.glyphs))
+            end
+        end
+        gl_attributes[:stroke_color] = lift(glyphcollection) do gc
+            if gc isa AbstractArray
+                reduce(vcat, (Makie.collect_vector(g.strokecolors, length(g.glyphs)) for g in gc),
+                    init = RGBAf0[])
+            else
+                Makie.collect_vector(gc.strokecolors, length(gc.glyphs))
             end
         end
 
-        filter!(gl_attributes) do (k, v)
-            # These are liftkeys without model but with _glyphlayout
-            !(k in (
-                :position, :space, :justification, :font, :_glyphlayout, :align,
-                :textsize, :rotation, :lineheight,
-            ))
+        gl_attributes[:rotation] = lift(glyphcollection) do gc
+            if gc isa AbstractArray
+                reduce(vcat, (Makie.collect_vector(g.rotations, length(g.glyphs)) for g in gc),
+                    init = Quaternionf0[])
+            else
+                Makie.collect_vector(gc.rotations, length(gc.glyphs))
+            end
         end
-        gl_attributes[:color] = signals[1]
-        gl_attributes[:stroke_color] = signals[2]
-        gl_attributes[:rotation] = signals[3]
+
         gl_attributes[:scale] = scale
         gl_attributes[:offset] = offset
         gl_attributes[:uv_offset_width] = uv_offset_width
         gl_attributes[:distancefield] = get_texture!(atlas)
-
-
+        gl_attributes[:visible] = x.visible
         robj = visualize((DISTANCEFIELD, positions), Style(:default), gl_attributes)
-
         # Draw text in screenspace
         if x.space[] == :screen
             robj[:view] = Observable(Mat4f0(I))
@@ -333,21 +351,36 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
     return robj
 end
 
-xy_convert(x::AbstractVector, n) = el32convert(x)
+# el32convert doesn't copy for array of Float32
+# But we assume that xy_convert copies when we use it
+xy_convert(x::AbstractArray{Float32}, n) = copy(x)
+xy_convert(x::AbstractArray, n) = el32convert(x)
 xy_convert(x, n) = Float32[LinRange(extrema(x)..., n + 1);]
 
 function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
     return cached_robj!(screen, scene, x) do gl_attributes
         t = Makie.transform_func_obs(scene)
         mat = x[3]
-        xpos = map(t, x[1]) do t, x
-            n = size(mat[], 1)
-            return first.(apply_transform.((t,), Point.(xy_convert(x, n), 0)))
+        xypos = map(t, x[1], x[2]) do t, x, y
+            x1d = xy_convert(x, size(mat[], 1))
+            y1d = xy_convert(y, size(mat[], 2))
+            # Only if transform doesn't do anything, we can stay linear in 1/2D
+            if Makie.is_identity_transform(t)
+                return (x1d, y1d)
+            else
+                # If we do any transformation, we have to assume things aren't on the grid anymore
+                # so x + y need to become matrices.
+                map!(x1d, x1d) do x
+                    return apply_transform(t, Point(x, 0))[1]
+                end
+                map!(y1d, y1d) do y
+                    return apply_transform(t, Point(0, y))[2]
+                end
+                return (x1d, y1d)
+            end
         end
-        ypos = map(t, x[2]) do t, y
-            n = size(mat[], 1)
-            return last.(apply_transform.((t,), Point.(0, xy_convert(y, n))))
-        end
+        xpos = map(first, xypos)
+        ypos = map(last, xypos)
         gl_attributes[:position_x] = Texture(xpos, minfilter = :nearest)
         gl_attributes[:position_y] = Texture(ypos, minfilter = :nearest)
         # number of planes used to render the heatmap
@@ -440,7 +473,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, meshplot::Mesh)
         end
 
         mesh = map(mesh, transform_func_obs(meshplot)) do mesh, func
-            if func ∉ (identity, (identity, identity), (identity, identity, identity))
+            if !Makie.is_identity_transform(func)
                 return update_positions(mesh, apply_transform.(Ref(func), mesh.position))
             end
             return mesh
@@ -478,7 +511,28 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
         types = map(v -> typeof(to_value(v)), x[1:2])
 
         if all(T -> T <: Union{AbstractMatrix, AbstractVector}, types)
-            args = map(x[1:3]) do arg
+            t = Makie.transform_func_obs(scene)
+            mat = x[3]
+            xypos = map(t, x[1], x[2]) do t, x, y
+                x1d = xy_convert(x, size(mat[], 1))
+                y1d = xy_convert(y, size(mat[], 2))
+                # Only if transform doesn't do anything, we can stay linear in 1/2D
+                if Makie.is_identity_transform(t)
+                    return (x1d, y1d)
+                else
+                    matrix = if x1d isa AbstractMatrix && y1d isa AbstractMatrix
+                        apply_transform.((t,), Point.(x1d, y1d))
+                    else
+                        # If we do any transformation, we have to assume things aren't on the grid anymore
+                        # so x + y need to become matrices.
+                        [apply_transform(t, Point(x, y)) for x in x1d, y in y1d]
+                    end
+                    return (first.(matrix), last.(matrix))
+                end
+            end
+            xpos = map(first, xypos)
+            ypos = map(last, xypos)
+            args = map((xpos, ypos, mat)) do arg
                 Texture(el32convert(arg); minfilter=:nearest)
             end
             return visualize(args, Style(:surface), gl_attributes)

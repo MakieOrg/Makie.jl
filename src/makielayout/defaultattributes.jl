@@ -353,7 +353,9 @@ function default_attributes(::Type{Colorbar}, scene)
         "The colormap that the colorbar uses."
         colormap = lift_parent_attribute(scene, :colormap, :viridis)
         "The range of values depicted in the colorbar."
-        limits = (0f0, 1f0)
+        limits = nothing
+        "The range of values depicted in the colorbar."
+        colorrange = nothing
         "The align mode of the colorbar in its parent GridLayout."
         alignmode = Inside()
         "The number of steps in the heatmap underlying the colorbar gradient."
@@ -855,7 +857,7 @@ function attributenames(::Type{LegendEntry})
     (:label, :labelsize, :labelfont, :labelcolor, :labelhalign, :labelvalign,
         :patchsize, :patchstrokecolor, :patchstrokewidth, :patchcolor,
         :linepoints, :linewidth, :linecolor, :linestyle,
-        :markerpoints, :markersize, :markerstrokewidth, :markercolor, :markerstrokecolor, 
+        :markerpoints, :markersize, :markerstrokewidth, :markercolor, :markerstrokecolor,
         :polypoints, :polystrokewidth, :polycolor, :polystrokecolor)
 end
 

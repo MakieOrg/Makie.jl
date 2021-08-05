@@ -193,7 +193,22 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         yflip ? lc : rc
     end
 
-    xaxis = LineAxis(topscene, endpoints = xaxis_endpoints, limits = lift(xlimits, finallimits),
+    xlims = Node(xlimits(finallimits[]))
+    ylims = Node(ylimits(finallimits[]))
+
+    on(finallimits) do lims
+        nxl = xlimits(lims)
+        nyl = ylimits(lims)
+
+        if nxl != xlims[]
+            xlims[] = nxl
+        end
+        if nyl != ylims[]
+            ylims[] = nyl
+        end
+    end
+
+    xaxis = LineAxis(topscene, endpoints = xaxis_endpoints, limits = xlims,
         flipped = xaxis_flipped, ticklabelrotation = xticklabelrotation,
         ticklabelalign = xticklabelalign, labelsize = xlabelsize,
         labelpadding = xlabelpadding, ticklabelpad = xticklabelpad, labelvisible = xlabelvisible,
@@ -206,7 +221,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         )
     decorations[:xaxis] = xaxis
 
-    yaxis  =  LineAxis(topscene, endpoints = yaxis_endpoints, limits = lift(ylimits, finallimits),
+    yaxis  =  LineAxis(topscene, endpoints = yaxis_endpoints, limits = ylims,
         flipped = yaxis_flipped, ticklabelrotation = yticklabelrotation,
         ticklabelalign = yticklabelalign, labelsize = ylabelsize,
         labelpadding = ylabelpadding, ticklabelpad = yticklabelpad, labelvisible = ylabelvisible,
@@ -335,7 +350,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
             top = xaxisprotrusion
         end
 
-        titlespace = if !titlevisible || iswhitespace(title) || isempty(title)
+        titlespace = if !titlevisible || iswhitespace(title)
             0f0
         else
             boundingbox(titlet).widths[2] + titlegap
@@ -360,11 +375,6 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     # trigger first protrusions with one of the observables
     title[] = title[]
 
-    # trigger a layout update whenever the protrusions change
-    # on(protrusions) do prot
-    #     needs_update[] = true
-    # end
-
     # trigger bboxnode so the axis layouts itself even if not connected to a
     # layout
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
@@ -376,15 +386,15 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     on(scene.events.scroll) do s
         if is_mouseinside(scene)
             scrollevents[] = ScrollEvent(s[1], s[2])
-            return true
+            return Consume(true)
         end
-        return false
+        return Consume(false)
     end
 
     # TODO this should probably just forward KeyEvent from Makie
     on(scene.events.keyboardbutton) do e
         keysevents[] = KeysEvent(scene.events.keyboardstate)
-        return false
+        return Consume(false)
     end
 
     interactions = Dict{Symbol, Tuple{Bool, Any}}()
@@ -396,22 +406,21 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
 
     function process_event(event)
         for (active, interaction) in values(ax.interactions)
-            active && process_interaction(interaction, event, ax) && return true
+            if active
+                maybe_consume = process_interaction(interaction, event, ax)
+                maybe_consume == Consume(true) && return Consume(true)
+            end
         end
-        return false
+        return Consume(false)
     end
 
     on(process_event, mouseeventhandle.obs)
     on(process_event, scrollevents)
     on(process_event, keysevents)
 
-    register_interaction!(ax,
-        :rectanglezoom,
-        RectangleZoom(false, false, false, nothing, nothing, Node(FRect2D(0, 0, 1, 1)), []))
+    register_interaction!(ax, :rectanglezoom, RectangleZoom(ax))
 
-    register_interaction!(ax,
-        :limitreset,
-        LimitReset())
+    register_interaction!(ax, :limitreset, LimitReset())
 
     register_interaction!(ax,
         :scrollzoom,
@@ -438,9 +447,15 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         adjustlimits!(ax)
     end
 
-    # in case the user set limits already
+    # trigger limit pipeline once, with manual finallimits if they haven't changed from
+    # their initial value as they need to be triggered at least once to correctly set up
+    # projection matrices etc.
+    fl = finallimits[]
     notify(limits)
-
+    if fl == finallimits[]
+        notify(finallimits)
+    end
+    
     ax
 end
 
@@ -937,8 +952,8 @@ function adjustlimits!(la)
     end
 
     bbox = BBox(xlims[1], xlims[2], ylims[1], ylims[2])
-
     la.finallimits[] = bbox
+    return
 end
 
 """
@@ -1173,15 +1188,15 @@ end
 
 Makie.xlims!(ax, low, high) = Makie.xlims!(ax, (low, high))
 Makie.ylims!(ax, low, high) = Makie.ylims!(ax, (low, high))
-Makie.zlims!(ax, low, high) = Makie.ylims!(ax, (low, high))
+Makie.zlims!(ax, low, high) = Makie.zlims!(ax, (low, high))
 
 Makie.xlims!(low::Optional{<:Real}, high::Optional{<:Real}) = Makie.xlims!(current_axis(), low, high)
 Makie.ylims!(low::Optional{<:Real}, high::Optional{<:Real}) = Makie.ylims!(current_axis(), low, high)
-Makie.zlims!(low::Optional{<:Real}, high::Optional{<:Real}) = Makie.ylims!(current_axis(), low, high)
+Makie.zlims!(low::Optional{<:Real}, high::Optional{<:Real}) = Makie.zlims!(current_axis(), low, high)
 
 Makie.xlims!(ax = current_axis(); low = nothing, high = nothing) = Makie.xlims!(ax, low, high)
 Makie.ylims!(ax = current_axis(); low = nothing, high = nothing) = Makie.ylims!(ax, low, high)
-Makie.zlims!(ax = current_axis(); low = nothing, high = nothing) = Makie.ylims!(ax, low, high)
+Makie.zlims!(ax = current_axis(); low = nothing, high = nothing) = Makie.zlims!(ax, low, high)
 
 """
     limits!(ax::Axis, xlims, ylims)
@@ -1264,8 +1279,13 @@ defaultlimits(::typeof(log)) = (1.0, exp(3.0))
 defaultlimits(::typeof(identity)) = (0.0, 10.0)
 defaultlimits(::typeof(sqrt)) = (0.0, 100.0)
 defaultlimits(::typeof(Makie.logit)) = (0.01, 0.99)
+defaultlimits(::typeof(Makie.pseudolog10)) = (0.0, 100.0)
+defaultlimits(::Makie.Symlog10) = (0.0, 100.0)
 
 defined_interval(::typeof(identity)) = OpenInterval(-Inf, Inf)
 defined_interval(::Union{typeof(log2), typeof(log10), typeof(log)}) = OpenInterval(0.0, Inf)
 defined_interval(::typeof(sqrt)) = Interval{:closed,:open}(0, Inf)
 defined_interval(::typeof(Makie.logit)) = OpenInterval(0.0, 1.0)
+defined_interval(::typeof(Makie.pseudolog10)) = OpenInterval(-Inf, Inf)
+defined_interval(::Makie.Symlog10) = OpenInterval(-Inf, Inf)
+

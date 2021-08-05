@@ -212,7 +212,7 @@ end
 
 Any custom argument combination that has a preferred way to be plotted should overload this.
 e.g.:
-```example
+```julia
     # make plot(rand(5, 5, 5)) plot as a volume
     plottype(x::Array{<: AbstractFloat, 3}) = Volume
 ```

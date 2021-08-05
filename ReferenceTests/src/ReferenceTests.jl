@@ -15,6 +15,8 @@ using Tar
 using Downloads
 using Pkg.TOML
 using Statistics
+using ImageShow
+using Downloads: download
 
 basedir(files...) = normpath(joinpath(@__DIR__, "..", files...))
 loadasset(files...) = FileIO.load(assetpath(files...))

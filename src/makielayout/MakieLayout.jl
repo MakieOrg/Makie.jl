@@ -6,7 +6,7 @@ import ..Makie: IRect2D
 using ..Makie.Keyboard
 using ..Makie.Mouse
 using ..Makie: ispressed, is_mouseinside, get_scene, FigureLike
-using ..Makie: _sanitize_observer_function
+using ..Makie: Consume
 using ..Makie: OpenInterval, Interval
 using MakieCore
 using MakieCore: Automatic, automatic
@@ -17,6 +17,7 @@ using Match
 import Animations
 import PlotUtils
 using GridLayoutBase
+using GridLayoutBase: GridSubposition
 import Showoff
 using Colors
 
@@ -101,7 +102,7 @@ export Cycle
 
 
 # from GridLayoutBase
-export GridLayout, GridPosition
+export GridLayout, GridPosition, GridSubposition
 export GridLayoutSpec
 export BBox
 export LayoutObservables

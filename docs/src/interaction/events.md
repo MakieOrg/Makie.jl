@@ -8,9 +8,10 @@ build up custom interactions.
 ## PriorityObservables
 
 Much like the name suggests a `PriorityObservable` adds a priority to its
-listeners. Furthermore it allows for a listener to stop execution of lower
-priority listeners by returning `true`. Note that because of this you cannot
-use `map` or `lift` on a `PriorityObservable`. Instead `on` should be used.
+listeners. Furthermore it allows for each listener to stop execution of lower
+priority listeners by returning `Consume(true)` or simply `Consume()`. Every
+other return value will be handled as `Consume(false)` meaning that the 
+listener does not block other listeners.
 
 To understand how a `PriorityObserable` works you may try this example:
 
@@ -21,28 +22,27 @@ po = PriorityObservable(0)
 
 on(po, priority = -1) do x
     println("Low priority: $x")
-    return false
 end
 po[] = 1
 
 on(po, priority = 0) do x
     println("Medium blocking priority: $x")
-    return true
+    return Consume()
 end
 po[] = 2
 
 on(po, priority = 1) do x
     println("High Priority: $x")
-    return false
+    return Consume(false)
 end
 po[] = 3
 ```
 
 With only the first listener connected you should see `Low priority: 1` getting
 printed. With the second you should only see a reaction from the medium priority
-listener, as it blocks execution of the lower priority by returning `true`. With
-all three connected you should see two prints, first the high priority, than the
-medium priority.
+listener, as it blocks execution of the lower priority by returning `Consume()`. 
+With all three connected you should see two prints, first the high priority, 
+than the medium priority.
 
 ## The Events struct
 
@@ -85,7 +85,7 @@ on(events(fig).mousebutton, priority = 0) do event
         end
     end
     # Do not consume the event
-    return false
+    return Consume(false)
 end
 ```
 
@@ -110,13 +110,13 @@ For example we may react to specific keys being pressed or held with
 ```julia
 on(events(fig).keyboardbutton) do event
     if event.action in (Keyboard.press, Keyboard.repeat)
-        event.button == Keyboard.left   && move_left()
-        event.button == Keyboard.up     && move_up()
-        event.button == Keyboard.right  && move_right()
-        event.button == Keyboard.down   && move_down()
+        event.key == Keyboard.left   && move_left()
+        event.key == Keyboard.up     && move_up()
+        event.key == Keyboard.right  && move_right()
+        event.key == Keyboard.down   && move_down()
     end
     # Let the event reach other listeners
-    return false
+    return Consume(false)
 end
 ```
 

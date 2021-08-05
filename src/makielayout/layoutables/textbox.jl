@@ -91,7 +91,14 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
 
     cursorpoints = lift(cursorindex, displayed_charbbs) do ci, bbs
 
-        hadvances = t.elements[:text]._glyphlayout[].hadvances::Vector{Float32}
+
+        glyphcollection = t.elements[:text].plots[1][1][]::Makie.GlyphCollection
+
+        hadvances = Float32[]
+        broadcast_foreach(glyphcollection.extents, glyphcollection.scales) do ex, sc
+            hadvance = Makie.FreeTypeAbstraction.hadvance(ex) * sc[1]
+            push!(hadvances, hadvance)
+        end
 
         if ci > length(bbs)
             # correct cursorindex if it's outside of the displayed charbbs range
@@ -122,15 +129,15 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    mousestate = addmouseevents!(scene)
+    mouseevents = addmouseevents!(scene)
 
-    onmouseleftdown(mousestate) do state
+    onmouseleftdown(mouseevents) do state
         focus!(ltextbox)
 
         if displayed_string[] == placeholder[] || displayed_string[] == " "
             displayed_string[] = " "
             cursorindex[] = 0
-            return true
+            return Consume(true)
         end
 
         pos = state.data
@@ -144,25 +151,25 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
             closest_charindex - 1
         end
 
-        return true
+        return Consume(true)
     end
 
-    onmouseover(mousestate) do state
+    onmouseover(mouseevents) do state
         hovering[] = true
-        return false
+        return Consume(false)
     end
 
-    onmouseout(mousestate) do state
+    onmouseout(mouseevents) do state
         hovering[] = false
-        return false
+        return Consume(false)
     end
 
-    onmousedownoutside(mousestate) do state
+    onmousedownoutside(mouseevents) do state
         if reset_on_defocus[]
             reset_to_stored()
         end
         defocus!(ltextbox)
-        return false
+        return Consume(false)
     end
 
     function insertchar!(c, index)
@@ -196,9 +203,9 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
     on(events(scene).unicode_input, priority = 60) do char
         if focused[] && is_allowed(char, restriction[])
             insertchar!(char, cursorindex[] + 1)
-            return true
+            return Consume(true)
         end
-        return false
+        return Consume(false)
     end
 
 
@@ -252,10 +259,10 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
                     cursor_backward()
                 end
             end
-            return true
+            return Consume(true)
         end
 
-        return false
+        return Consume(false)
     end
 
     ltextbox
@@ -263,14 +270,18 @@ end
 
 
 function charbbs(text)
-    glyphlayout = text._glyphlayout[]
-    if !(glyphlayout isa Makie.Glyphlayout)
-        error("Expected a single Glyphlayout from the textbox string, got a $(typeof(glyphlayout)).")
+    gc = text.plots[1][1][]
+    if !(gc isa Makie.GlyphCollection)
+        error("Expected a single GlyphCollection from the textbox string, got a $(typeof(gc)).")
     end
     pos = Point2f0(text.position[])
-    map(glyphlayout.bboxes, glyphlayout.origins) do bb, ori
-        FRect2D(Point2f0(ori) + bb.origin + pos, bb.widths)
+    bbs = FRect2D[]
+    broadcast_foreach(gc.extents, gc.scales, gc.origins, gc.fonts) do ext, sc, ori, font
+        bb = Makie.FreeTypeAbstraction.height_insensitive_boundingbox(ext, font) * sc
+        fr = FRect2D(Point2f0(ori) + bb.origin + pos, bb.widths)
+        push!(bbs, fr)
     end
+    bbs
 end
 
 function validate_textbox(str, validator::Function)

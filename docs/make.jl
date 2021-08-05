@@ -92,6 +92,9 @@ genpath   = joinpath(srcpath, "generated")
 
 mkpath(genpath)
 
+# copy news file into src directory
+cp(joinpath(pathroot, "NEWS.md"), joinpath(srcpath, "news.md"))
+
 ################################################################################
 #                          Syntax highlighting theme                           #
 ################################################################################
@@ -198,6 +201,9 @@ makedocs(
             "assets/syntaxtheme.css"
         ],
         sidebar_sitename=false,
+        prerender = true,
+        highlightjs = joinpath(srcpath, "assets", "highlight.min.js"),
+        ansicolor = true,
     ),
     sitename = "Makie Plotting Ecosystem",
     pages = Any[
@@ -251,7 +257,7 @@ makedocs(
             "generated/colors.md",
             "generated/plot-attributes.md",
             "recipes.md",
-            "backends" => [
+            "Backends" => [
                 "backends_and_output.md",
                 "wglmakie.md"
             ],
@@ -260,6 +266,7 @@ makedocs(
             "cameras.md",
             "remote.md",
             "faq.md",
+            "News" => "news.md",
             "API Reference Makie" => "makie_api.md",
             "API Reference MakieLayout" => "makielayout/reference.md",
             "generated/axis.md",

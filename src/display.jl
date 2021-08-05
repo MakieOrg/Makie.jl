@@ -34,7 +34,7 @@ function push_screen!(scene::Scene, display::AbstractDisplay)
             filter!(x-> x !== display, scene.current_screens)
             deregister !== nothing && off(deregister)
         end
-        return false
+        return Consume(false)
     end
     return
 end
@@ -48,17 +48,15 @@ function backend_display(::Missing, ::Scene)
     """)
 end
 
-Base.display(fap::FigureAxisPlot) = display(fap.figure)
-Base.display(fig::Figure) = display(fig.scene)
+Base.display(fap::FigureAxisPlot; kw...) = display(fap.figure; kw...)
+Base.display(fig::Figure; kw...) = display(fig.scene; kw...)
 
-function Base.display(scene::Scene)
+function Base.display(scene::Scene; update=true)
 
     if !use_display[]
         return Core.invoke(display, Tuple{Any}, scene)
     else
-        # set update to true, without triggering an event
-        # this just indicates, that now we may update on e.g. resize
-        update!(scene)
+        update && update!(scene)
         screen = backend_display(current_backend[], scene)
         push_screen!(scene, screen)
         return screen
@@ -98,17 +96,15 @@ function backend_show(backend, io::IO, ::MIME"text/plain", scene::Scene)
     return
 end
 
-function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
-    show(io, scene)
+function Base.show(io::IO, ::MIME"text/plain", scene::Scene; kw...)
+    show(io, scene; kw...)
 end
 
-Base.show(io::IO, m::MIME, fap::FigureAxisPlot) = show(io, m, fap.figure)
-Base.show(io::IO, m::MIME, fig::Figure) = show(io, m, fig.scene)
+Base.show(io::IO, m::MIME, fap::FigureAxisPlot; kw...) = show(io, m, fap.figure; kw...)
+Base.show(io::IO, m::MIME, fig::Figure; kw...) = show(io, m, fig.scene; kw...)
 
-function Base.show(io::IO, m::MIME, scene::Scene)
-    # set update to true, without triggering an event
-    # this just indicates, that now we may update on e.g. resize
-    update!(scene)
+function Base.show(io::IO, m::MIME, scene::Scene; update=true)
+    update && update!(scene)
 
     ioc = IOContext(io,
         :full_fidelity => true
@@ -209,6 +205,7 @@ Save a `Scene` with the specified filename and format.
 ## All Backends
 
 - `resolution`: `(width::Int, height::Int)` of the scene in dimensionless units (equivalent to `px` for GLMakie and WGLMakie).
+- `update`: Update the scene and its children before saving (`update_limits!` and `center!`). One might want to set `update=false` e.g. when saving a zoomed scene.
 
 ## CairoMakie
 
@@ -226,9 +223,16 @@ function FileIO.save(
         resolution = size(get_scene(fig)),
         pt_per_unit = 0.75,
         px_per_unit = 1.0,
+        update = true,
     )
     scene = get_scene(fig)
-    resolution != size(scene) && resize!(scene, resolution)
+    if resolution != size(scene)
+        is_raw = scene.raw[]
+        (!update && !is_raw) && raw!(scene, true)  # force raw! to prevent update_limits! and center!
+        resize!(scene, resolution)
+        (!update && !is_raw) && raw!(scene, false)  # restore
+    end
+
     filename = FileIO.filename(file)
     # Delete previous file if it exists and query only the file string for type.
     # We overwrite existing files anyway, so this doesn't change the behavior.
@@ -245,7 +249,7 @@ function FileIO.save(
             :pt_per_unit => pt_per_unit,
             :px_per_unit => px_per_unit
         )
-        show(iocontext, format2mime(F), scene)
+        show(iocontext, format2mime(F), scene; update)
     end
 end
 
@@ -264,7 +268,7 @@ function record_events(f, scene::Scene, path::String)
         on(getfield(scene.events, field), priority = typemax(Int8)) do value
             value = isa(value, Set) ? copy(value) : value
             push!(result, time() => (field => value))
-            return false
+            return Consume(false)
         end
     end
     f()
@@ -602,7 +606,7 @@ end
 
 function Base.show(io::IO, ::MIME"text/html", vs::VideoStream)
     mktempdir() do dir
-        path = save(vs, joinpath(dir, "video.mp4"))
+        path = save(joinpath(dir, "video.mp4"), vs)
         print(
             io,
             """<video autoplay controls><source src="data:video/x-m4v;base64,""",

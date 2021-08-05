@@ -1,6 +1,6 @@
-authors = ["Simon <sdanisch@protonmail.com> and contributors"]
 name = "ReferenceTests"
 uuid = "d37af2e0-5618-4e00-9939-d430db56ee94"
+authors = ["Simon <sdanisch@protonmail.com> and contributors"]
 version = "0.1.0"
 
 [deps]
@@ -11,7 +11,9 @@ Downloads = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
 FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 FixedPointNumbers = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
 GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
+ImageShow = "4e3cecfd-b093-5904-9786-8bbb286a6a31"
 Images = "916415d5-f1e6-5110-898d-aaa5f9f070e0"
+LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MacroTools = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"

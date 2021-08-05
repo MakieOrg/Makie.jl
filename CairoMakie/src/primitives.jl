@@ -208,38 +208,18 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Scatter)
 
         Cairo.set_source_rgba(ctx, rgbatuple(col)...)
         m = convert_attribute(marker, key"marker"(), key"scatter"())
+        Cairo.save(ctx)
         if m isa Char
             draw_marker(ctx, m, best_font(m, font), pos, scale, strokecolor, strokewidth, offset, rotation)
         else
             draw_marker(ctx, m, pos, scale, strokecolor, strokewidth, offset, rotation)
         end
+        Cairo.restore(ctx)
     end
     nothing
 end
 
-
-function draw_marker(ctx, marker::Circle, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
-
-    marker_offset = marker_offset + scale ./ 2
-
-    pos += Point2f0(marker_offset[1], -marker_offset[2])
-
-    # Cairo.scale(ctx, scale...)
-    Cairo.move_to(ctx, pos[1] + scale[1]/2, pos[2])
-    Cairo.arc(ctx, pos[1], pos[2], scale[1]/2, 0, 2*pi)
-    Cairo.fill_preserve(ctx)
-
-    sc = to_color(strokecolor)
-
-    Cairo.set_source_rgba(ctx, rgbatuple(sc)...)
-    Cairo.set_line_width(ctx, Float64(strokewidth))
-    Cairo.stroke(ctx)
-end
-
 function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
-
-    Cairo.save(ctx)
-
     # Marker offset is meant to be relative to the
     # bottom left corner of the box centered at
     # `pos` with sides defined by `scale`, but
@@ -287,32 +267,32 @@ function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewid
     cairo_font_face_destroy(cairoface)
 
     set_font_matrix(ctx, old_matrix)
-    Cairo.restore(ctx)
-
 end
 
+function draw_marker(ctx, marker::Circle, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
 
-function draw_marker(ctx, marker::Union{Rect, Type{<: Rect}}, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
-    s2 = if marker isa Type{Rect}
-        Point2(scale[1], -scale[2])
-    else
-        Point2((widths(marker) .* scale .* (1, -1))...)
-    end
+    marker_offset = marker_offset + scale ./ 2
+    pos += Point2f0(marker_offset[1], -marker_offset[2])
+    Cairo.arc(ctx, pos[1], pos[2], scale[1]/2, 0, 2*pi)
+    Cairo.fill_preserve(ctx)
 
-    offset = marker_offset .+ scale ./ 2
+    Cairo.set_line_width(ctx, Float64(strokewidth))
 
-    pos += Point2f0(offset[1], -offset[2])
+    sc = to_color(strokecolor)
+    Cairo.set_source_rgba(ctx, rgbatuple(sc)...)
+    Cairo.stroke(ctx)
+end
 
-    Cairo.move_to(ctx, pos...)
+function draw_marker(ctx, marker::Rect, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
+    s2 = Point2((widths(marker) .* scale .* (1, -1))...)
+    pos = pos .+ Point2f0(marker_offset[1], -marker_offset[2])
     Cairo.rotate(ctx, to_2d_rotation(rotation))
-    Cairo.rectangle(ctx, 0, 0, s2...)
-    Cairo.fill_preserve(ctx);
-    if strokewidth > 0.0
-        sc = to_color(strokecolor)
-        Cairo.set_source_rgba(ctx, rgbatuple(sc)...)
-        Cairo.set_line_width(ctx, Float64(strokewidth))
-        Cairo.stroke(ctx)
-    end
+    Cairo.rectangle(ctx, pos[1], pos[2], s2...)
+    Cairo.fill_preserve(ctx)
+    Cairo.set_line_width(ctx, Float64(strokewidth))
+    sc = to_color(strokecolor)
+    Cairo.set_source_rgba(ctx, rgbatuple(sc)...)
+    Cairo.stroke(ctx)
 end
 
 
@@ -328,60 +308,63 @@ function p3_to_p2(p::Point3{T}) where T
     end
 end
 
-function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
+function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text{<:Tuple{<:G}}) where G <: Union{AbstractArray{<:Makie.GlyphCollection}, Makie.GlyphCollection}
     ctx = screen.context
-    @get_attribute(primitive, (textsize, color, font, rotation, model, space, offset))
-    txt = to_value(primitive[1])
+    @get_attribute(primitive, (rotation, model, space, offset))
     position = primitive.attributes[:position][]
     # use cached glyph info
-    glyphlayouts = primitive._glyphlayout[]
+    glyph_collection = to_value(primitive[1])
 
-    draw_string(scene, ctx, txt, position, glyphlayouts, textsize, color, font,
-        remove_billboard(rotation), model, space, offset)
+    draw_glyph_collection(scene, ctx, position, glyph_collection, remove_billboard(rotation), model, space, offset)
 
     nothing
 end
 
-function draw_string(scene, ctx, strings::AbstractArray, positions::AbstractArray, glyphlayouts, textsize, color, font, rotation, model::SMatrix, space, offset)
+
+function draw_glyph_collection(scene, ctx, positions, glyph_collections::AbstractArray, rotation, model::SMatrix, space, offset)
 
     # TODO: why is the Ref around model necessary? doesn't broadcast_foreach handle staticarrays matrices?
-    broadcast_foreach(strings, positions, glyphlayouts, textsize, color, font, rotation,
-        Ref(model), space, offset) do str, pos, glayout, ts, c, f, ro, mo, sp, off
+    broadcast_foreach(positions, glyph_collections, rotation,
+        Ref(model), space, offset) do pos, glayout, ro, mo, sp, off
 
-        draw_string(scene, ctx, str, pos, glayout, ts, c, f, ro, mo, sp, off)
+        draw_glyph_collection(scene, ctx, pos, glayout, ro, mo, sp, off)
     end
 end
 
-function draw_string(scene, ctx, str::String, position::VecTypes, glyphlayout, textsize, color, font, rotation, model, space, offset)
+function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation, model, space, offsets)
 
-    glyphoffsets = glyphlayout.origins
+    glyphs = glyph_collection.glyphs
+    glyphoffsets = glyph_collection.origins
+    fonts = glyph_collection.fonts
+    rotations = glyph_collection.rotations
+    scales = glyph_collection.scales
+    colors = glyph_collection.colors
+    strokewidths = glyph_collection.strokewidths
+    strokecolors = glyph_collection.strokecolors
 
     Cairo.save(ctx)
-    cairoface = set_ft_font(ctx, font)
-    Cairo.set_source_rgba(ctx, rgbatuple(color)...)
-    old_matrix = get_font_matrix(ctx)
 
+    broadcast_foreach(glyphs, glyphoffsets, fonts, rotations, scales, colors, strokewidths, strokecolors, offsets) do glyph,
+        glyphoffset, font, rotation, scale, color, strokewidth, strokecolor, offset
 
-    for (i, char) in enumerate(str)
-        goffset = glyphoffsets[i]
-        if offset isa Vector
-            p3_offset = to_ndim(Point3f0, offset[i], 0)
-        else
-            p3_offset = to_ndim(Point3f0, offset, 0)
-        end
-        ts = textsize isa Vector ? textsize[i] : textsize
+        cairoface = set_ft_font(ctx, font)
+        old_matrix = get_font_matrix(ctx)
 
+        p3_offset = to_ndim(Point3f0, offset, 0)
 
-        char in ('\r', '\n') && continue
+        glyph in ('\r', '\n') && return
+
+        Cairo.save(ctx)
+        Cairo.set_source_rgba(ctx, rgbatuple(color)...)
 
         if space == :data
             # in data space, the glyph offsets are just added to the string positions
             # and then projected
 
             # glyph position in data coordinates (offset has rotation applied already)
-            gpos_data = to_ndim(Point3f0, position, 0) .+ goffset .+ p3_offset
+            gpos_data = to_ndim(Point3f0, position, 0) .+ glyphoffset .+ p3_offset
 
-            scale3 = ts isa Number ? Point3f0(ts, ts, 0) : to_ndim(Point3f0, ts, 0)
+            scale3 = scale isa Number ? Point3f0(scale, scale, 0) : to_ndim(Point3f0, scale, 0)
 
             # this could be done better but it works at least
 
@@ -393,12 +376,12 @@ function draw_string(scene, ctx, str::String, position::VecTypes, glyphlayout, t
             xvec = rotation * (scale3[1] * Point3f0(1, 0, 0))
             yvec = rotation * (scale3[2] * Point3f0(0, -1, 0))
 
-            gproj = project_position(scene, gpos_data, Mat4f0(I))
+            glyphpos = project_position(scene, gpos_data, Mat4f0(I))
             xproj = project_position(scene, gpos_data + xvec, Mat4f0(I))
             yproj = project_position(scene, gpos_data + yvec, Mat4f0(I))
 
-            xdiff = xproj - gproj
-            ydiff = yproj - gproj
+            xdiff = xproj - glyphpos
+            ydiff = yproj - glyphpos
 
             mat = Cairo.CairoMatrix(
                 xdiff[1], xdiff[2],
@@ -406,40 +389,49 @@ function draw_string(scene, ctx, str::String, position::VecTypes, glyphlayout, t
                 0, 0,
             )
 
-            Cairo.save(ctx)
-            Cairo.move_to(ctx, gproj...)
-            set_font_matrix(ctx, mat)
-
-            # Cairo.rotate(ctx, to_2d_rotation(rotation))
-            Cairo.show_text(ctx, string(char))
-            Cairo.restore(ctx)
-
         elseif space == :screen
             # in screen space, the glyph offsets are added after projecting
             # the string position into screen space
             glyphpos = project_position(
                 scene,
                 position,
-                Mat4f0(I)) .+ (p3_to_p2(goffset .+ p3_offset)) .* (1, -1) # flip for Cairo
+                Mat4f0(I)) .+ (p3_to_p2(glyphoffset .+ p3_offset)) .* (1, -1) # flip for Cairo
             # and the scale is just taken as is
-            scale = length(ts) == 2 ? ts : SVector(ts, ts)
+            scale = length(scale) == 2 ? scale : SVector(scale, scale)
 
-            Cairo.save(ctx)
-            Cairo.move_to(ctx, glyphpos...)
-            # TODO this only works in 2d
             mat = scale_matrix(scale...)
-            set_font_matrix(ctx, mat)
-            Cairo.rotate(ctx, to_2d_rotation(rotation))
-
-            Cairo.show_text(ctx, string(char))
-            Cairo.restore(ctx)
         else
             error()
         end
+
+        Cairo.save(ctx)
+        Cairo.move_to(ctx, glyphpos...)
+        set_font_matrix(ctx, mat)
+        if space == :screen
+            Cairo.rotate(ctx, to_2d_rotation(rotation))
+        end
+        Cairo.show_text(ctx, string(glyph))
+        Cairo.restore(ctx)
+
+        if strokewidth > 0 && strokecolor != RGBAf0(0, 0, 0, 0)
+            Cairo.save(ctx)
+            Cairo.move_to(ctx, glyphpos...)
+            set_font_matrix(ctx, mat)
+            if space == :screen
+                Cairo.rotate(ctx, to_2d_rotation(rotation))
+            end
+            Cairo.text_path(ctx, string(glyph))
+            Cairo.set_source_rgba(ctx, rgbatuple(strokecolor)...)
+            Cairo.set_line_width(ctx, strokewidth)
+            Cairo.stroke(ctx)
+            Cairo.restore(ctx)
+        end
+        Cairo.restore(ctx)
+
+        cairo_font_face_destroy(cairoface)
+        set_font_matrix(ctx, old_matrix)
     end
 
-    cairo_font_face_destroy(cairoface)
-    set_font_matrix(ctx, old_matrix)
     Cairo.restore(ctx)
 
     nothing
@@ -463,11 +455,13 @@ function regularly_spaced_array_to_range(arr)
             m, M = M, m
         end
         # don't use stop=M, since that may not include M
-        return range(m; step, length=length(arr))
+        return range(m; step=step, length=length(arr))
     else
         return arr
     end
 end
+
+regularly_spaced_array_to_range(arr::AbstractRange) = arr
 
 """
     interpolation_flag(is_vector, interp, wpx, hpx, w, h)
@@ -480,7 +474,6 @@ end
 function interpolation_flag(is_vector, interp, wpx, hpx, w, h)
     if interp
         if is_vector
-            @warn("Using billinear filtering for vector backends, which can result in downsampling artifacts")
             return Cairo.FILTER_BILINEAR
         else
             return Cairo.FILTER_BEST
@@ -502,15 +495,14 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
     ctx = screen.context
     image = primitive[3][]
     xs, ys = primitive[1][], primitive[2][]
-
-    if !(xs isa Vector)
+    if !(xs isa AbstractVector)
         l, r = extrema(xs)
         N = size(image, 1)
         xs = range(l, r, length = N+1)
     else
         xs = regularly_spaced_array_to_range(xs)
     end
-    if !(ys isa Vector)
+    if !(ys isa AbstractVector)
         l, r = extrema(ys)
         N = size(image, 2)
         ys = range(l, r, length = N+1)
@@ -518,8 +510,6 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
         ys = regularly_spaced_array_to_range(ys)
     end
     model = primitive[:model][]
-    imsize = (extrema_nan(xs), extrema_nan(ys))
-
     interp = to_value(get(primitive, :interpolate, true))
     weird_cairo_limit = (2^15) - 23
 
@@ -528,7 +518,11 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
     fast_path = to_value(get(primitive, :fast_path, true))
     # Vector backends don't support FILTER_NEAREST for interp == false, so in that case we also need to draw rects
     is_vector = is_vector_backend(ctx)
-    if fast_path && xs isa AbstractRange && ys isa AbstractRange && !(is_vector && !interp)
+    t = Makie.transform_func_obs(primitive)[]
+    identity_transform = t === identity || t isa Tuple && all(x-> x === identity, t)
+    if fast_path && xs isa AbstractRange && ys isa AbstractRange && !(is_vector && !interp) && identity_transform
+        imsize = ((first(xs), last(xs)), (first(ys), last(ys)))
+
         # find projected image corners
         # this already takes care of flipping the image to correct cairo orientation
         xy = project_position(scene, Point2f0(first.(imsize)), model)
@@ -542,6 +536,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
         if s.width > weird_cairo_limit || s.height > weird_cairo_limit
             error("Cairo stops rendering images bigger than $(weird_cairo_limit), which is likely a bug in Cairo. Please resample your image/heatmap with e.g. `ImageTransformations.imresize`")
         end
+
         Cairo.rectangle(ctx, xy..., w, h)
         Cairo.save(ctx)
         Cairo.translate(ctx, xy...)
@@ -693,8 +688,12 @@ function draw_mesh3D(
 
     # Mesh data
     # transform to view/camera space
-    vs = map(decompose(Point, mesh)) do v
+    func = Makie.transform_func_obs(scene)[]
+    # pass func as argument to function, so that we get a function barrier
+    # and have `func` be fully typed inside closure
+    vs = broadcast(decompose(Point, mesh), (func,)) do v, f
         # Should v get a nan2zero?
+        v = Makie.apply_transform(f, v)
         p4d = to_ndim(Vec4f0, scale .* to_ndim(Vec3f0, v, 0f0), 1f0)
         view * (model * p4d .+ to_ndim(Vec4f0, pos, 0f0))
     end

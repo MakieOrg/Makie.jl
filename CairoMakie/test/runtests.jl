@@ -1,6 +1,8 @@
-using Test, Pkg
+using Test
 using CairoMakie
-
+using Pkg
+path = normpath(joinpath(dirname(pathof(Makie)), "..", "ReferenceTests"))
+Pkg.develop(PackageSpec(path = path))
 # Before changing Pkg environment, try the test in #864
 @testset "Runs without error" begin
     fig = Figure()
@@ -68,5 +70,4 @@ database = database_filtered(excludes, excludes2, functions=functions)
 
 recorded = joinpath(@__DIR__, "recorded")
 rm(recorded; force=true, recursive=true); mkdir(recorded)
-ReferenceTests.record_tests(database; recording_dir=recorded)
-ReferenceTests.reference_tests(recorded)
+ReferenceTests.run_reference_tests(database, recorded)

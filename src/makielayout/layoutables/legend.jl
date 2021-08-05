@@ -1,6 +1,6 @@
 function layoutable(::Type{Legend},
         fig_or_scene,
-        entry_groups::Node{Vector{Tuple{Optional{String}, Vector{LegendEntry}}}};
+        entry_groups::Node{Vector{Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}}};
         bbox = nothing, kwargs...)
 
     topscene = get_topscene(fig_or_scene)
@@ -54,7 +54,8 @@ function layoutable(::Type{Legend},
         relayout()
     end
 
-    onany(grid.needs_update, margin) do _, margin
+    update_grid = Node(true)
+    onany(update_grid, margin) do _, margin
         if manipulating_grid[]
             return
         end
@@ -159,7 +160,7 @@ function layoutable(::Type{Legend},
 
 
         manipulating_grid[] = false
-        grid.needs_update[] = true
+        notify(update_grid)
 
         # translate the legend forward so it is above the standard axis content
         # which is at zero. this will not really work if the legend should be
@@ -318,7 +319,7 @@ legendelements(le::LegendElement, legend) = LegendElement[le]
 legendelements(les::AbstractArray{<:LegendElement}, legend) = LegendElement[les...]
 
 
-function LegendEntry(label::String, contentelements::AbstractArray, legend; kwargs...)
+function LegendEntry(label::AbstractString, contentelements::AbstractArray, legend; kwargs...)
     attrs = Attributes(label = label)
 
     kwargattrs = Attributes(kwargs)
@@ -328,7 +329,7 @@ function LegendEntry(label::String, contentelements::AbstractArray, legend; kwar
     LegendEntry(elems, attrs)
 end
 
-function LegendEntry(label::String, contentelement, legend; kwargs...)
+function LegendEntry(label::AbstractString, contentelement, legend; kwargs...)
     attrs = Attributes(label = label)
 
     kwargattrs = Attributes(kwargs)
@@ -460,8 +461,8 @@ end
     Legend(
         fig_or_scene,
         contents::AbstractArray,
-        labels::AbstractArray{String},
-        title::Optional{String} = nothing;
+        labels::AbstractArray{<:AbstractString},
+        title::Optional{<:AbstractString} = nothing;
         kwargs...)
 
 Create a legend from `contents` and `labels` where each label is associated to
@@ -471,8 +472,8 @@ one content element. A content element can be an `AbstractPlot`, an array of
 """
 function layoutable(::Type{Legend}, fig_or_scene,
         contents::AbstractArray,
-        labels::AbstractArray{String},
-        title::Optional{String} = nothing;
+        labels::AbstractArray{<:AbstractString},
+        title::Optional{<:AbstractString} = nothing;
         kwargs...)
 
     if length(contents) != length(labels)
@@ -493,7 +494,7 @@ end
         fig_or_scene,
         contentgroups::AbstractArray{<:AbstractArray},
         labelgroups::AbstractArray{<:AbstractArray},
-        titles::AbstractArray{<:Optional{String}};
+        titles::AbstractArray{<:Optional{<:AbstractString}};
         kwargs...)
 
 Create a multi-group legend from `contentgroups`, `labelgroups` and `titles`.
@@ -507,7 +508,7 @@ or any other object for which the `legendelements` method is defined.
 function layoutable(::Type{Legend}, fig_or_scene,
         contentgroups::AbstractArray{<:AbstractArray},
         labelgroups::AbstractArray{<:AbstractArray},
-        titles::AbstractArray{<:Optional{String}};
+        titles::AbstractArray{<:Optional{<:AbstractString}};
         kwargs...)
 
     if !(length(titles) == length(contentgroups) == length(labelgroups))
@@ -544,7 +545,7 @@ function get_labeled_plots(ax; merge::Bool, unique::Bool)
         haskey(plot.attributes, :label)
     end
     labels = map(lplots) do l
-        convert(String, l.label[])
+        l.label[]
     end
 
     # filter out plots with same plot type and label
@@ -579,13 +580,13 @@ end
 # convenience constructor for axis legend
 axislegend(ax = current_axis(); kwargs...) = axislegend(ax, ax; kwargs...)
 
-axislegend(title::String; kwargs...) = axislegend(current_axis(), current_axis(), title; kwargs...)
+axislegend(title::AbstractString; kwargs...) = axislegend(current_axis(), current_axis(), title; kwargs...)
 
 """
     axislegend(ax, args...; position = :rt, kwargs...)
     axislegend(ax, args...; position = (1, 1), kwargs...)
     axislegend(ax = current_axis(); kwargs...)
-    axislegend(title::String; kwargs...)
+    axislegend(title::AbstractString; kwargs...)
 
 Create a legend that sits inside an Axis's plot area.
 

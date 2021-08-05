@@ -313,11 +313,54 @@ apply_transform(f::typeof(identity), r::Rect) = r
 apply_transform(f::NTuple{2, typeof(identity)}, r::Rect) = r
 apply_transform(f::NTuple{3, typeof(identity)}, r::Rect) = r
 
+
+pseudolog10(x) = sign(x) * log10(abs(x) + 1)
+inv_pseudolog10(x) = sign(x) * (exp10(abs(x)) - 1)
+
+struct Symlog10
+    low::Float64
+    high::Float64
+    function Symlog10(low, high)
+        if !(low < 0 && high > 0)
+            error("Low bound needs to be smaller than 0 and high bound larger than 0. You gave $low, $high.")
+        end
+        new(Float64(low), Float64(high))
+    end
+end
+function Symlog10(x)
+    Symlog10(-x, x)
+end
+function (s::Symlog10)(x)
+    if x > 0
+        x <= s.high ? x / s.high * log10(s.high) : log10(x)
+    elseif x < 0
+        x >= s.low ? x / abs(s.low) * log10(abs(s.low)) : sign(x) * log10(abs(x))
+    else
+        x
+    end
+end
+function inv_symlog10(x, low, high)
+    if x > 0
+        l = log10(high)
+        x <= l ? x / l * high : exp10(x)
+    elseif x < 0
+        l = sign(x) * log10(abs(low))
+        x >= l ? x / l * abs(s.low) : sign(x) * exp10(abs(x))
+    else
+        x
+    end
+end
+
 inverse_transform(::typeof(identity)) = identity
 inverse_transform(::typeof(log10)) = exp10
 inverse_transform(::typeof(log)) = exp
 inverse_transform(::typeof(log2)) = exp2
 inverse_transform(::typeof(sqrt)) = x -> x ^ 2
+inverse_transform(::typeof(pseudolog10)) = inv_pseudolog10
 inverse_transform(F::Tuple) = map(inverse_transform, F)
-
 inverse_transform(::typeof(logit)) = logistic
+inverse_transform(s::Symlog10) = x -> inv_symlog10(x, s.low, s.high)
+
+function is_identity_transform(t)
+    return t === identity || t isa Tuple && all(x-> x === identity, t)
+end

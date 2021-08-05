@@ -142,7 +142,7 @@ function Scene(;clear=true, transform_func=identity, scene_attributes...)
         if !any(x -> x ≈ 0.0, widths(w_area)) && px_area[] != w_area
             px_area[] = w_area
         end
-        return false
+        return Consume(false)
     end
     scene = Scene(
         events,
@@ -278,7 +278,6 @@ Update will perform the following operations for every scene:
 ```julia
 if !scene.raw[]
     scene.update_limits[] && update_limits!(scene)
-    scene.scale_plot[] && scale_scene!(scene)
     scene.center[] && center!(scene)
 end
 ```
@@ -286,6 +285,17 @@ end
 function update!(p::Scene)
     p.updated[] = true
     foreach(update!, p.children)
+end
+
+"""
+    `update!(p::Scene, b::Bool)`
+
+Sets `raw[]=b` on a `Scene` and all its children
+```
+"""
+function raw!(p::Scene, b::Bool)
+    p.raw[] = b
+    foreach(c -> (c.raw[] = b), p.children)
 end
 
 # Just indexing into a scene gets you plot 1, plot 2 etc
@@ -491,7 +501,7 @@ function is2d(scene::SceneLike)
     lims === nothing && return nothing
     return is2d(lims)
 end
-is2d(lims::Rect2D) = return true
+is2d(lims::Rect2D) = true
 is2d(lims::Rect3D) = widths(lims)[3] == 0.0
 
 """
@@ -565,3 +575,29 @@ function update_limits!(scene::Scene, new_limits::Rect, padding::Vec3f0=scene.pa
     scene.data_limits[] = FRect3D(minimum(lims) .- padd_abs, lim_w .+  2padd_abs)
     scene
 end
+
+#####
+##### Figure type
+#####
+
+struct Figure
+    scene::Scene
+    layout::GridLayoutBase.GridLayout
+    content::Vector
+    attributes::Attributes
+    current_axis::Ref{Any}
+
+    function Figure(args...)
+        f = new(args...)
+        current_figure!(f)
+        f
+    end
+end
+
+struct FigureAxisPlot
+    figure::Figure
+    axis
+    plot::AbstractPlot
+end
+
+const FigureLike = Union{Scene, Figure, FigureAxisPlot}

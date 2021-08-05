@@ -69,23 +69,23 @@ function layoutable(::Type{Button}, fig_or_scene::FigureLike; bbox = nothing, kw
 
     onmouseover(mouseevents) do _
         mousestate[] = :hover
-        return false
+        return Consume(false)
     end
 
     onmouseout(mouseevents) do _
         mousestate[] = :out
-        return false
+        return Consume(false)
     end
 
     onmouseleftup(mouseevents) do _
         mousestate[] = :hover
-        return true
+        return Consume(true)
     end
 
     onmouseleftdown(mouseevents) do _
         mousestate[] = :active
         clicks[] = clicks[] + 1
-        return true
+        return Consume(true)
     end
 
     label[] = label[]

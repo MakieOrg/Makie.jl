@@ -6,8 +6,12 @@ end
 
 using .ContoursHygiene
 const Contours = ContoursHygiene.Contour
+using Base64
 
-using Artifacts
+using LaTeXStrings
+export @L_str
+using MathTeXEngine
+import RelocatableFolders
 using Random
 using FFMPEG # get FFMPEG on any system!
 using Observables, GeometryBasics, IntervalSets, PlotUtils
@@ -16,7 +20,7 @@ using FixedPointNumbers, Packing, SignedDistanceFields
 using Markdown, DocStringExtensions # documentation
 using Serialization # serialize events
 using StructArrays
-using GeometryBasics: widths, positive_widths, VecTypes, AbstractPolygon
+using GeometryBasics: widths, positive_widths, VecTypes, AbstractPolygon, value
 using StaticArrays
 import StatsBase, Distributions, KernelDensity
 using Distributions: Distribution, VariateForm, Discrete, QQPair, pdf, quantile, qqbuild
@@ -61,7 +65,6 @@ const RGBf0 = RGB{Float32}
 const NativeFont = FreeTypeAbstraction.FTFont
 
 include("documentation/docstringextension.jl")
-
 include("utilities/quaternions.jl")
 include("interaction/PriorityObservable.jl")
 include("types.jl")
@@ -69,34 +72,10 @@ include("utilities/utilities.jl")
 include("utilities/texture_atlas.jl")
 include("interaction/nodes.jl")
 include("interaction/liftmacro.jl")
-
 include("colorsampler.jl")
 include("patterns.jl")
-
 # Basic scene/plot/recipe interfaces + types
 include("scenes.jl")
-
-struct Figure
-    scene::Scene
-    layout::GridLayoutBase.GridLayout
-    content::Vector
-    attributes::Attributes
-    current_axis::Ref{Any}
-
-    function Figure(args...)
-        f = new(args...)
-        current_figure!(f)
-        f
-    end
-end
-
-struct FigureAxisPlot
-    figure::Figure
-    axis
-    plot::AbstractPlot
-end
-
-const FigureLike = Union{Scene, Figure, FigureAxisPlot}
 
 include("theming.jl")
 include("themes/theme_ggplot2.jl")
@@ -114,6 +93,7 @@ include("camera/projection_math.jl")
 include("camera/camera.jl")
 include("camera/camera2d.jl")
 include("camera/camera3d.jl")
+include("camera/old_camera3d.jl")
 
 # basic recipes
 include("basic_recipes/convenience_functions.jl")
@@ -131,6 +111,7 @@ include("basic_recipes/pie.jl")
 include("basic_recipes/poly.jl")
 include("basic_recipes/scatterlines.jl")
 include("basic_recipes/spy.jl")
+include("basic_recipes/stairs.jl")
 include("basic_recipes/stem.jl")
 include("basic_recipes/streamplot.jl")
 include("basic_recipes/timeseries.jl")
@@ -208,7 +189,8 @@ export SceneSpace, PixelSpace, Pixel
 
 # camera related
 export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, cam2d!, cam2d
-export campixel!, campixel, cam3d!, cam3d_cad!, update_cam!, rotate_cam!, translate_cam!, zoom!
+export campixel!, campixel, cam3d!, cam3d_cad!, old_cam3d!, old_cam3d_cad!
+export update_cam!, rotate_cam!, translate_cam!, zoom!
 export pixelarea, plots, cameracontrols, cameracontrols!, camera, events
 export to_world
 
@@ -227,6 +209,7 @@ export hasfocus
 export entered_window
 export disconnect!, must_update, force_update!, update!, update_limits!
 export DataInspector
+export Consume
 
 # Raymarching algorithms
 export RaymarchAlgorithm, IsoValue, Absorption, MaximumIntensityProjection, AbsorptionRGBA, IndexedAbsorptionRGBA
@@ -259,13 +242,15 @@ export cgrad, available_gradients, showgradients
 
 export Pattern
 
-assetpath(files...) = normpath(joinpath(artifact"assets", files...))
+const ASSETS_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
+assetpath(files...) = normpath(joinpath(ASSETS_DIR, files...))
 
 export assetpath
 # default icon for Makie
 function icon()
     path = assetpath("icons")
-    icons = FileIO.load.(joinpath.(path, readdir(path)))
+    imgs = FileIO.load.(joinpath.(path, readdir(path)))
+    icons = map(img-> RGBA{Colors.N0f8}.(img), imgs)
     return reinterpret.(NTuple{4,UInt8}, icons)
 end
 
@@ -294,9 +279,11 @@ end
 
 include("figureplotting.jl")
 include("basic_recipes/series.jl")
+include("basic_recipes/text.jl")
 
 export Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter, Surface, Text, Volume
 export heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface, text, volume
 export heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, surface!, text!, volume!
+
 
 end # module
