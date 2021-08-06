@@ -92,7 +92,7 @@ function Scene(;
         visible = Observable(true),
         theme_kw...
     )
-    bg = map(to_color, backgroundcolor)
+    bg = map(to_color, convert(Observable, backgroundcolor))
     m_theme = current_default_theme(; theme..., theme_kw...)
     wasnothing = isnothing(px_area)
     if wasnothing
@@ -161,6 +161,11 @@ function Scene(
     push!(parent.children, child)
     child.parent = parent
     return child
+end
+
+# legacy constructor
+function Scene(parent::Scene, area; kw...)
+    return Scene(parent; px_area=area, kw...)
 end
 
 # Base overloads for Scene
@@ -291,15 +296,15 @@ events(scene::SceneLike) = events(scene.parent)
 camera(scene::Scene) = scene.camera
 camera(scene::SceneLike) = camera(scene.parent)
 
-cameracontrols(scene::Scene) = scene.camera_controls
-cameracontrols(scene::SceneLike) = cameracontrols(scene.parent)
+camera_controls(scene::Scene) = scene.camera_controls
+camera_controls(scene::SceneLike) = camera_controls(scene.parent)
 
-function cameracontrols!(scene::Scene, cam)
+function camera_controls!(scene::Scene, cam)
     disconnect!(scene.camera_controls)
     scene.camera_controls = cam
     return cam
 end
-cameracontrols!(scene::SceneLike, cam) = cameracontrols!(parent(scene), cam)
+camera_controls!(scene::SceneLike, cam) = camera_controls!(parent(scene), cam)
 
 pixelarea(scene::Scene) = scene.px_area
 pixelarea(scene::SceneLike) = pixelarea(scene.parent)
