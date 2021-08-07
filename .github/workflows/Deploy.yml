@@ -25,17 +25,17 @@ jobs:
       if: github.event_name == 'pull_request'
       run: |
         echo "PREVIEW_FRANKLIN_WEBSITE_URL=http://jkrumbiegel.github.io/Makie.jl/previews/PR${{ github.event.number }}/" >> $GITHUB_ENV
-        echo "PREVIEW_FRANKLIN_PREPATH=previews/PR${{ github.event.number }}" >> $GITHUB_ENV
+        echo "PREVIEW_FRANKLIN_PREPATH=Makie.jl/previews/PR${{ github.event.number }}" >> $GITHUB_ENV
     - name: Fix URLs for dev deployment
       if: github.event_name == 'push' && github.ref == 'refs/heads/master'
       run: |
         echo "PREVIEW_FRANKLIN_WEBSITE_URL=http://jkrumbiegel.github.io/Makie.jl/dev/" >> $GITHUB_ENV
-        echo "PREVIEW_FRANKLIN_PREPATH=dev" >> $GITHUB_ENV
+        echo "PREVIEW_FRANKLIN_PREPATH=Makie.jl/dev" >> $GITHUB_ENV
     - name: Fix URLs for tagged version deployment
       if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
       run: |
         echo "PREVIEW_FRANKLIN_WEBSITE_URL=http://jkrumbiegel.github.io/Makie.jl/${{ steps.tag.outputs.VERSION }}/" >> $GITHUB_ENV
-        echo "PREVIEW_FRANKLIN_PREPATH=${{ steps.tag.outputs.VERSION }}" >> $GITHUB_ENV
+        echo "PREVIEW_FRANKLIN_PREPATH=Makie.jl/${{ steps.tag.outputs.VERSION }}" >> $GITHUB_ENV
     # NOTE: Python is necessary for the pre-rendering (minification) step
     - name: Install python
       uses: actions/setup-python@v2
