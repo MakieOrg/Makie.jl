@@ -50,50 +50,40 @@ jobs:
       uses: julia-actions/setup-julia@v1
       with:
         version: 1.6
-    # NOTE
-    #   The steps below ensure that NodeJS and Franklin are loaded then it
-    #   installs highlight.js which is needed for the prerendering step
-    #   (code highlighting + katex prerendering).
-    #   Then the environment is activated and instantiated to install all
-    #   Julia packages which may be required to successfully build your site.
-    #   The last line should be `optimize()` though you may want to give it
-    #   specific arguments, see the documentation or ?optimize in the REPL.
-    - name: build docs
+    - name: build and deploy docs
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: >
           cd docs_franklin/site;
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24'
-          julia -e
-          'using Pkg; Pkg.activate("."); Pkg.instantiate();
-            using NodeJS; run(`$(npm_cmd()) install highlight.js`);
-            using Franklin;
-            optimize()'
-    # - name: Build and Deploy
+          julia --project --color=yes makedocs.jl
+    # # - name: Build and Deploy
+    # #   uses: JamesIves/github-pages-deploy-action@releases/v3
+    # #   with:
+    # #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    # #     BRANCH: gh-pages
+    # #     FOLDER: docs_franklin/site/__site
+    # - name: Deploy (preview)
+    #   if: github.event_name == 'pull_request' && github.repository == github.event.pull_request.head.repo.full_name # if this build is a PR build and the PR is NOT from a fork
     #   uses: JamesIves/github-pages-deploy-action@releases/v3
     #   with:
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #     BRANCH: gh-pages
-    #     FOLDER: docs_franklin/site/__site
-    - name: Deploy (preview)
-      if: github.event_name == 'pull_request' && github.repository == github.event.pull_request.head.repo.full_name # if this build is a PR build and the PR is NOT from a fork
-      uses: JamesIves/github-pages-deploy-action@releases/v3
-      with:
-          BRANCH: gh-pages
-          FOLDER: docs_franklin/site/__site
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TARGET_FOLDER: "previews/PR${{ github.event.number }}" # The website preview is going to be stored in a subfolder
-    - name: Deploy (dev)
-      if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-      uses: JamesIves/github-pages-deploy-action@releases/v3
-      with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH: gh-pages
-          FOLDER: docs_franklin/site/__site
-          TARGET_FOLDER: "dev"
-    - name: Deploy (tag)
-      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-      uses: JamesIves/github-pages-deploy-action@releases/v3
-      with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH: gh-pages
-          FOLDER: docs_franklin/site/__site
-          TARGET_FOLDER: "${{ steps.tag.outputs.VERSION }}"
+    #       BRANCH: gh-pages
+    #       FOLDER: docs_franklin/site/__site
+    #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #       TARGET_FOLDER: "previews/PR${{ github.event.number }}" # The website preview is going to be stored in a subfolder
+    # - name: Deploy (dev)
+    #   if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    #   uses: JamesIves/github-pages-deploy-action@releases/v3
+    #   with:
+    #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #       BRANCH: gh-pages
+    #       FOLDER: docs_franklin/site/__site
+    #       TARGET_FOLDER: "dev"
+    # - name: Deploy (tag)
+    #   if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    #   uses: JamesIves/github-pages-deploy-action@releases/v3
+    #   with:
+    #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #       BRANCH: gh-pages
+    #       FOLDER: docs_franklin/site/__site
+    #       TARGET_FOLDER: "${{ steps.tag.outputs.VERSION }}"
