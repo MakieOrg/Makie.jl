@@ -56,7 +56,7 @@ jobs:
       run: >
           cd docs_franklin/site;
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24'
-          julia --project --color=yes makedocs.jl
+          julia --color=yes makedocs.jl
     # # - name: Build and Deploy
     # #   uses: JamesIves/github-pages-deploy-action@releases/v3
     # #   with:

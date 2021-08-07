@@ -1,3 +1,7 @@
+using Pkg
+Pkg.activate(".")
+Pkg.instantiate()
+
 using NodeJS
 using Franklin
 using Documenter: deploydocs
