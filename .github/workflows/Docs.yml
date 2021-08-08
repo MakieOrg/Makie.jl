@@ -31,7 +31,7 @@ jobs:
       uses: julia-actions/setup-julia@v1
       with:
         version: 1.6
-    - name: build and deploy docs
+    - name: Build and deploy docs
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: >
