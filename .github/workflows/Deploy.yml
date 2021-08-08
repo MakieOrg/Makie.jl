@@ -17,25 +17,6 @@ jobs:
       uses: actions/checkout@v2
       with:
         persist-credentials: false
-    - name: Get tag version
-      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-      id: tag
-      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
-    - name: Fix URLs for PR preview deployment (pull request previews)
-      if: github.event_name == 'pull_request'
-      run: |
-        echo "PREVIEW_FRANKLIN_WEBSITE_URL=http://jkrumbiegel.github.io/Makie.jl/previews/PR${{ github.event.number }}/" >> $GITHUB_ENV
-        echo "PREVIEW_FRANKLIN_PREPATH=Makie.jl/previews/PR${{ github.event.number }}" >> $GITHUB_ENV
-    - name: Fix URLs for dev deployment
-      if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-      run: |
-        echo "PREVIEW_FRANKLIN_WEBSITE_URL=http://jkrumbiegel.github.io/Makie.jl/dev/" >> $GITHUB_ENV
-        echo "PREVIEW_FRANKLIN_PREPATH=Makie.jl/dev" >> $GITHUB_ENV
-    - name: Fix URLs for tagged version deployment
-      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-      run: |
-        echo "PREVIEW_FRANKLIN_WEBSITE_URL=http://jkrumbiegel.github.io/Makie.jl/${{ steps.tag.outputs.VERSION }}/" >> $GITHUB_ENV
-        echo "PREVIEW_FRANKLIN_PREPATH=Makie.jl/${{ steps.tag.outputs.VERSION }}" >> $GITHUB_ENV
     # NOTE: Python is necessary for the pre-rendering (minification) step
     - name: Install python
       uses: actions/setup-python@v2
@@ -57,33 +38,4 @@ jobs:
           cd docs_franklin/site;
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24'
           julia --color=yes makedocs.jl
-    # # - name: Build and Deploy
-    # #   uses: JamesIves/github-pages-deploy-action@releases/v3
-    # #   with:
-    # #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    # #     BRANCH: gh-pages
-    # #     FOLDER: docs_franklin/site/__site
-    # - name: Deploy (preview)
-    #   if: github.event_name == 'pull_request' && github.repository == github.event.pull_request.head.repo.full_name # if this build is a PR build and the PR is NOT from a fork
-    #   uses: JamesIves/github-pages-deploy-action@releases/v3
-    #   with:
-    #       BRANCH: gh-pages
-    #       FOLDER: docs_franklin/site/__site
-    #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #       TARGET_FOLDER: "previews/PR${{ github.event.number }}" # The website preview is going to be stored in a subfolder
-    # - name: Deploy (dev)
-    #   if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-    #   uses: JamesIves/github-pages-deploy-action@releases/v3
-    #   with:
-    #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #       BRANCH: gh-pages
-    #       FOLDER: docs_franklin/site/__site
-    #       TARGET_FOLDER: "dev"
-    # - name: Deploy (tag)
-    #   if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    #   uses: JamesIves/github-pages-deploy-action@releases/v3
-    #   with:
-    #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    #       BRANCH: gh-pages
-    #       FOLDER: docs_franklin/site/__site
-    #       TARGET_FOLDER: "${{ steps.tag.outputs.VERSION }}"
+
