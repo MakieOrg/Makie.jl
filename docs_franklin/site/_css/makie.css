@@ -349,9 +349,9 @@ a.boxlink{
     .banner {
         margin-top: 0;
         border-radius: 0;
-        margin-left: -1em;
-        margin-right: -1em;
-        max-width: 100vw;
+        margin-left: -1em !important;
+        margin-right: -1em !important;
+        max-width: 100vw !important;
     }
 }
 
