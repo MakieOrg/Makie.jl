@@ -279,9 +279,18 @@ td {
 ================================================================== */
 
 .franklin-content img {
-    /* width: 70%; */
+    max-width: 100%;
+    max-height: 50vh;
+    margin: auto;
+    display: block;
     text-align: center;
-    /* padding-left: 10%; */
+}
+
+.franklin-content video {
+    max-width: 100%;
+    max-height: 50vh;
+    margin: auto;
+    display: block;
 }
 
 .franklin-content .img-small img {
