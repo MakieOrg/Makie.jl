@@ -34,27 +34,20 @@ video {
 }
 
 img.plotting-function-thumb {
-    max-height: 150px;
-    max-width: 250px;
-    /* padding: 0.3em; */
     box-shadow: 0px 2px 8px 2px rgba(0, 0, 0, 0.14);
-    margin: 0.5em;
 }
 
 .plotting-functions-thumbcontainer {
-    padding: 0.4em;
+    padding: 0.75em;
     background-color: #fbfbfb;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    grid-gap: 0.75em;
 }
 
 @media (max-width: 480px) {
     .plotting-functions-thumbcontainer {
-        max-height: 300px;
-        overflow-y: auto;
-    }
-
-    img.plotting-function-thumb {
-        max-height: none;
-        max-width: calc(100% - 1em);;
+        grid-template-columns: repeat(3, 1fr);
     }
 }
 
