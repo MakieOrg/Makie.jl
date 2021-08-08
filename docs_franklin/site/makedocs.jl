@@ -13,7 +13,10 @@ cfg = GitHubActions() # this should pick up all details via GHA environment vari
 repo = "github.com/JuliaPlots/Makie.jl.git"
 push_preview = true
 
-deploydecision = deploy_folder(cfg; repo, push_preview)
+deploydecision = deploy_folder(cfg; repo, push_preview,
+    devbranch = "master",
+    devurl = "dev",
+)
 
 @info "Setting PREVIEW_FRANKLIN_WEBSITE_URL to $repo"
 @info "Setting PREVIEW_FRANKLIN_PREPATH to $(deploydecision.subfolder)"
