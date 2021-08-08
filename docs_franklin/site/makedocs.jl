@@ -4,11 +4,11 @@ Pkg.instantiate()
 
 using NodeJS
 using Franklin
-using Documenter: deploydocs, deploy_folder, GithubActions
+using Documenter: deploydocs, deploy_folder, GitHubActions
 
 run(`$(npm_cmd()) install highlight.js`)
 
-cfg = GithubActions() # this should pick up all details via GHA environment variables
+cfg = GitHubActions() # this should pick up all details via GHA environment variables
 
 repo = "github.com/JuliaPlots/Makie.jl.git"
 push_preview = true
