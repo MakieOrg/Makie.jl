@@ -103,12 +103,12 @@ also choose to specify a bounding box manually if you need more control.
 using CairoMakie
 CairoMakie.activate!() # hide
 
-f = Figure(resolution = (1200, 1200))
+f = Figure()
 
 ax1 = Axis(f, title = "Squashed")
 ax2 = Axis(f[1, 1], title = "Placed in Layout")
-ax3 = Axis(f, bbox = BBox(400, 800, 400, 800),
-  title = "Placed at BBox(400, 800, 400, 800)")
+ax3 = Axis(f, bbox = BBox(200, 600, 100, 500),
+  title = "Placed at BBox(200, 600, 100, 500)")
 
 f
 ```
@@ -131,7 +131,7 @@ of that row or column to `Auto(false)` (or any other value than `Auto(true)`).
 ```julia
 using CairoMakie
 
-f = Figure(resolution = (1200, 1200))
+f = Figure()
 
 Axis(f[1, 1], title = "Shrunk")
 Axis(f[2, 1], title = "Expanded")
