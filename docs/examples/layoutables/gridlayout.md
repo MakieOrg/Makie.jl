@@ -209,8 +209,8 @@ f = Figure(resolution = (800, 800))
 
 Axis(f[1, 1])
 for i in 1:3
-    Axis([:, end+1])
-    Axis([end+1, :])
+    Axis(f[:, end+1])
+    Axis(f[end+1, :])
 end
 
 Label(f[0, :], text = "Super Title", textsize = 50)
