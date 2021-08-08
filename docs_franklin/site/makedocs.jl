@@ -19,7 +19,10 @@ deploydecision = deploy_folder(cfg; repo, push_preview,
 )
 
 @info "Setting PREVIEW_FRANKLIN_WEBSITE_URL to $repo"
+ENV["PREVIEW_FRANKLIN_WEBSITE_URL"] = repo
 @info "Setting PREVIEW_FRANKLIN_PREPATH to $(deploydecision.subfolder)"
+ENV["PREVIEW_FRANKLIN_PREPATH"] = deploydecision.subfolder
+
 
 optimize()
 
