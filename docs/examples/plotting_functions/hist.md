@@ -41,7 +41,7 @@ Note, that offset automatically sets fillto, to move the whole barplot.
 Also, one can use a negative `scale_to` amount to flip the histogram.
 
 \begin{examplefigure}{}
-```@example hist
+```julia
 fig = Figure()
 ax = Axis(fig[1, 1])
 for i in 1:5
