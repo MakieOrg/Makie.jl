@@ -4,7 +4,7 @@ Pkg.instantiate()
 
 using NodeJS
 using Franklin
-using Documenter: deploydocs, deployfolder, GithubActions
+using Documenter: deploydocs, deploy_folder, GithubActions
 
 run(`$(npm_cmd()) install highlight.js`)
 
