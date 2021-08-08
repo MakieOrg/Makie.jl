@@ -20,8 +20,8 @@ f = Figure()
 Axis(f[1, 1], title = "My column has size Fixed(400)")
 Axis(f[1, 2], title = "My column has size Auto()")
 
-colsize!(layout, 1, Fixed(400))
-# colsize!(layout, 1, 400) would also work
+colsize!(f.layout, 1, Fixed(400))
+# colsize!(f.layout, 1, 400) would also work
 
 f
 ```
@@ -36,15 +36,15 @@ In this case, you would use `Relative(1/2)`. The available width is the width of
 ```julia
 using CairoMakie
 
-scene, layout = layoutscene(resolution = (1200, 900))
+f = Figure()
 
-layout[1, 1] = Axis(scene, title = "My column has size Relative(2/3)")
-layout[1, 2] = Axis(scene, title = "My column has size Auto()")
-layout[1, 3] = Colorbar(scene)
+Axis(f[1, 1], title = "My column has size Relative(2/3)")
+Axis(f[1, 2], title = "My column has size Auto()")
+Colorbar(f[1, 3])
 
-colsize!(layout, 1, Relative(2/3))
+colsize!(f.layout, 1, Relative(2/3))
 
-scene
+f
 ```
 \end{examplefigure}
 
@@ -75,16 +75,16 @@ The first column will get `1 / (1 + 2) * 300 == 100` units, while the second col
 ```julia
 using CairoMakie
 
-scene, layout = layoutscene(resolution = (1200, 900))
+f = Figure()
 
-layout[1, 1] = Axis(scene, title = "My column infers my width\nof 200 units")
-layout[1, 2] = Axis(scene, title = "My column gets 1/3rd\nof the remaining space")
-layout[1, 3] = Axis(scene, title = "My column gets 2/3rds\nof the remaining space")
+Axis(f[1, 1], title = "My column infers my width\nof 200 units")
+Axis(f[1, 2], title = "My column gets 1/3rd\nof the remaining space")
+Axis(f[1, 3], title = "My column gets 2/3rds\nof the remaining space")
 
-colsize!(layout, 2, Auto(1)) # equivalent to Auto(true, 1)
-colsize!(layout, 3, Auto(2)) # equivalent to Auto(true, 2)
+colsize!(f.layout, 2, Auto(1)) # equivalent to Auto(true, 1)
+colsize!(f.layout, 3, Auto(2)) # equivalent to Auto(true, 2)
 
-scene
+f
 ```
 \end{examplefigure}
 
@@ -98,19 +98,19 @@ Aspect sized columns or rows are very useful when you want to constrain the aspe
 ```julia
 using CairoMakie
 
-scene, layout = layoutscene(resolution = (1200, 900))
+f = Figure()
 
-layout[1, 1] = Axis(scene, title = "I'm square and aligned")
-layout[1, 2] = Box(scene, color = (:blue, 0.1), strokecolor = :transparent)
-layout[1, 2] = Axis(scene, aspect = AxisAspect(1),
+Axis(f[1, 1], title = "I'm square and aligned")
+Box(f[1, 2], color = (:blue, 0.1), strokecolor = :transparent)
+Axis(f[1, 2], aspect = AxisAspect(1),
     title = "I'm square but break the layout.\nMy actual cell is the blue rect.")
-layout[2, 1] = Axis(scene)
-layout[2, 2] = Axis(scene)
+Axis(f[2, 1])
+Axis(f[2, 2])
 
-rowsize!(layout, 2, Relative(2/3))
-colsize!(layout, 1, Aspect(1, 1))
+rowsize!(f.layout, 2, Relative(2/3))
+colsize!(f.layout, 1, Aspect(1, 1))
 
-scene
+f
 ```
 \end{examplefigure}
 !!! note
@@ -129,20 +129,21 @@ plots in nested grids are nicely aligned along their spines.
 ```julia
 using CairoMakie
 
-scene, layout = layoutscene(30, resolution = (1200, 900))
+f = Figure()
 
 subgl_left = GridLayout()
-subgl_left[1:2, 1:2] = [Axis(scene) for i in 1:2, j in 1:2]
+subgl_left[1:2, 1:2] = [Axis(f) for i in 1:2, j in 1:2]
 
 subgl_right = GridLayout()
-subgl_right[1:3, 1] = [Axis(scene) for i in 1:3]
+subgl_right[1:3, 1] = [Axis(f) for i in 1:3]
 
-layout[1, 1] = subgl_left
-layout[1, 2] = subgl_right
+f.layout[1, 1] = subgl_left
+f.layout[1, 2] = subgl_right
 
-scene
+f
 ```
 \end{examplefigure}
+
 ## Alignment
 
 Here you can see the difference between the align modes Outside with and without
@@ -156,23 +157,19 @@ grid with Inside alignment, and they are both effectively aligned exactly the sa
 ```julia
 using CairoMakie
 
-scene, layout = layoutscene(resolution = (1200, 1200))
+f = Figure(resolution = (800, 800))
 
-layout[1, 1] = Axis(scene, title="No grid layout")
-layout[2, 1] = Axis(scene, title="No grid layout")
-layout[3, 1] = Axis(scene, title="No grid layout")
+Axis(f[1, 1], title = "No grid layout")
+Axis(f[2, 1], title = "No grid layout")
+Axis(f[3, 1], title = "No grid layout")
 
-subgl_1 = layout[1, 2] = GridLayout(alignmode=Inside())
-subgl_2 = layout[2, 2] = GridLayout(alignmode=Outside())
-subgl_3 = layout[3, 2] = GridLayout(alignmode=Outside(50))
+Axis(f[1, 2], title = "Inside", alignmode = Inside())
+Axis(f[2, 2], title = "Outside", alignmode = Outside())
+Axis(f[3, 2], title = "Outside(50)", alignmode = Outside(50))
 
-subgl_1[1, 1] = Axis(scene, title="Inside")
-subgl_2[1, 1] = Axis(scene, title="Outside")
-subgl_3[1, 1] = Axis(scene, title="Outside(50)")
+[Box(f[i, 2], color = :transparent, strokecolor = :red) for i in 1:3]
 
-layout[1:3, 2] = [Box(scene, color = :transparent, strokecolor = :red) for i in 1:3]
-
-scene
+f
 ```
 \end{examplefigure}
 
@@ -186,15 +183,15 @@ also use end to specify the last row or column.
 ```julia
 using CairoMakie
 
-scene, layout = layoutscene(4, 4, resolution = (1200, 1200))
+f = Figure()
 
-layout[1, 1:2] = Axis(scene, title="[1, 1:2]")
-layout[2:4, 1:2] = Axis(scene, title="[2:4, 1:2]")
-layout[:, 3] = Axis(scene, title="[:, 3]")
-layout[1:3, end] = Axis(scene, title="[1:3, end]")
-layout[end, end] = Axis(scene, title="[end, end]")
+Axis(f[1, 1:2], title = "[1, 1:2]")
+Axis(f[2:4, 1:2], title = "[2:4, 1:2]")
+Axis(f[:, 3], title = "[:, 3]")
+Axis(f[1:3, 4], title = "[1:3, 4]")
+Axis(f[end, end], title = "[end, end]")
 
-scene
+f
 ```
 \end{examplefigure}
 ## Adding rows and columns by indexing
@@ -208,22 +205,22 @@ side titles.
 ```julia
 using CairoMakie
 
-scene, layout = layoutscene(resolution = (1200, 1200))
+f = Figure(resolution = (800, 800))
 
-layout[1, 1] = Axis(scene)
+Axis(f[1, 1])
 for i in 1:3
-    layout[:, end+1] = Axis(scene)
-    layout[end+1, :] = Axis(scene)
+    Axis([:, end+1])
+    Axis([end+1, :])
 end
 
-layout[0, :] = Label(scene, text="Super Title", textsize=50)
-layout[end+1, :] = Label(scene, text="Sub Title", textsize=50)
-layout[2:end-1, 0] = Label(scene, text="Left Text", textsize=50,
-    rotation=pi/2)
-layout[2:end-1, end+1] = Label(scene, text="Right Text", textsize=50,
-    rotation=-pi/2)
+Label(f[0, :], text = "Super Title", textsize = 50)
+Label(f[end+1, :], text = "Sub Title", textsize = 50)
+Label(f[2:end-1, 0], text = "Left Text", textsize = 50,
+    rotation = pi/2)
+Label(f[2:end-1, end+1], text = "Right Text", textsize = 50,
+    rotation = -pi/2)
 
-scene
+f
 ```
 \end{examplefigure}
 
@@ -238,12 +235,12 @@ Here we start with two axes:
 ```julia
 using CairoMakie
 
-scene, layout = layoutscene(resolution = (1200, 900))
+f = Figure()
 
-ax1 = layout[1, 1] = Axis(scene, title = "Axis 1")
-ax2 = layout[1, 2] = Axis(scene, title = "Axis 2")
+ax1 = Axis(f[1, 1], title = "Axis 1")
+ax2 = Axis(f[1, 2], title = "Axis 2")
 
-scene
+f
 ```
 \end{examplefigure}
 Now we decide we'd like the second axis better if it was below the first one.
@@ -251,18 +248,18 @@ We move it two the new cell, and the old unused column is left blank.
 
 \begin{examplefigure}{}
 ```julia
-layout[2, 1] = ax2
+f[2, 1] = ax2
 
-scene
+f
 ```
 \end{examplefigure}
 We can get rid of the unused space with `trim!`:
 
 \begin{examplefigure}{}
 ```julia
-trim!(layout)
+trim!(f.layout)
 
-scene
+f
 ```
 \end{examplefigure}
 
