@@ -216,9 +216,9 @@ using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
 
-scene, layout = layoutscene(resolution = (1200, 900))
+f = Figure()
 
-axes = layout[] = [Axis(scene) for i in 1:2, j in 1:2]
+axes = [Axis(f[i, j]) for i in 1:2, j in 1:2]
 
 xs = LinRange(0, 2pi, 50)
 for (i, ax) in enumerate(axes)
@@ -237,8 +237,7 @@ axes[4].xticks = 0:pi:2pi
 axes[4].xtickformat = "{:.2f}ms"
 axes[4].xlabel = "Time"
 
-
-scene
+f
 ```
 \end{examplefigure}
 ## Minor ticks and grids
@@ -735,16 +734,17 @@ specify the extent along the axis. These values can also be a single number or a
 ```julia
 using CairoMakie
 
-scene, layout = layoutscene(resolution = (1400, 900))
-ax1 = layout[1, 1] = Axis(scene, title = "vlines")
+f = Figure()
+
+ax1 = Axis(f[1, 1], title = "vlines")
 
 lines!(ax1, 0..4pi, sin)
 vlines!(ax1, [pi, 2pi, 3pi], color = :red)
 
-ax2 = layout[1, 2] = Axis(scene, title = "hlines")
+ax2 = Axis(f[1, 2], title = "hlines")
 hlines!(ax2, [1, 2, 3, 4], xmax = [0.25, 0.5, 0.75, 1], color = :blue)
 
-scene
+f
 ```
 \end{examplefigure}
 ### abline!

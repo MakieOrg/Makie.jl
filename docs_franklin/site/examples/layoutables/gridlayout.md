@@ -15,15 +15,15 @@ This only really makes sense if there is variable width content in the column or
 ```julia
 using CairoMakie
 
-scene, layout = layoutscene(resolution = (1200, 900))
+f = Figure()
 
-layout[1, 1] = Axis(scene, title = "My column has size Fixed(400)")
-layout[1, 2] = Axis(scene, title = "My column has size Auto()")
+Axis(f[1, 1], title = "My column has size Fixed(400)")
+Axis(f[1, 2], title = "My column has size Auto()")
 
 colsize!(layout, 1, Fixed(400))
 # colsize!(layout, 1, 400) would also work
 
-scene
+f
 ```
 \end{examplefigure}
 ### Relative
