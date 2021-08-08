@@ -345,7 +345,7 @@ function inv_symlog10(x, low, high)
         x <= l ? x / l * high : exp10(x)
     elseif x < 0
         l = sign(x) * log10(abs(low))
-        x >= l ? x / l * abs(s.low) : sign(x) * exp10(abs(x))
+        x >= l ? x / l * abs(low) : sign(x) * exp10(abs(x))
     else
         x
     end
@@ -360,3 +360,7 @@ inverse_transform(::typeof(pseudolog10)) = inv_pseudolog10
 inverse_transform(F::Tuple) = map(inverse_transform, F)
 inverse_transform(::typeof(logit)) = logistic
 inverse_transform(s::Symlog10) = x -> inv_symlog10(x, s.low, s.high)
+
+function is_identity_transform(t)
+    return t === identity || t isa Tuple && all(x-> x === identity, t)
+end
