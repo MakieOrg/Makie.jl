@@ -4,11 +4,12 @@
 
 ## Welcome to Makie!
 
-Makie is a high-performance, extendable, and multi-platform plotting ecosystem for the [Julia](https://julialang.org/) programming language.
+Makie is a data visualization ecosystem for the [Julia](https://julialang.org/) programming language, with high performance and extensibility.
+It is available for Windows, Mac and Linux.
 
 ## Installation and Import
 
-Add one or more of the Makie backend packages [`GLMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie) (OpenGL), [`CairoMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/CairoMakie) (Cairo), or [`WGLMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/WGLMakie) (WebGL).
+Add one or more of the Makie backend packages [`GLMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie) (OpenGL), [`CairoMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/CairoMakie) (Cairo), or [`WGLMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/WGLMakie) (WebGL) using Julia's inbuilt package manager. Each backend re-exports `Makie` so there's no need to install it separately.
 
 ```julia
 ]add GLMakie
@@ -49,18 +50,19 @@ To switch to a different backend, for example `CairoMakie`, call `CairoMakie.act
   @@
 
   @@box
-    ~~~<a class="boxlink" href="https://lazarusa.github.io/BeautifulMakie/">~~~
-    @@title Beautiful Makie @@
+    ~~~<a class="boxlink" href="examples/plotting_functions/">~~~
+    @@title Plot Examples @@
     @@box-content
       @@description
-      A third-party gallery with stunning examples.
+      Have a look at this list of examples for the available plotting functions.
       @@
       ~~~
-      <img src="/assets/beautifulmakie_example.png">
+      <img src="/assets/examples/plotting_functions/heatmap/code/output/mandelbrot_heatmap.png">
       ~~~
     @@
     ~~~</a>~~~
   @@
+
 @@
 
 ## Makie Ecosystem
@@ -113,9 +115,9 @@ There are three backends, each of which has particular strengths. You can switch
 
 The differences between backends are explained in more details under \myreflink{Backends & Output}.
 
-### Extension Packages
+### Extensions and Resources
 
-These packages are maintained by third parties. If you install them, keep an eye on version conflicts or downgrades as the Makie ecosystem is developing quickly so things break occasionally.
+These packages and sites are maintained by third parties. If you install packages, keep an eye on version conflicts or downgrades as the Makie ecosystem is developing quickly so things break occasionally.
 
 @@box-container
   @@box
@@ -127,6 +129,20 @@ These packages are maintained by third parties. If you install them, keep an eye
       @@
       ~~~
       <img src="/assets/algebraofgraphics_example.svg">
+      ~~~
+    @@
+    ~~~</a>~~~
+  @@
+
+  @@box
+    ~~~<a class="boxlink" href="https://lazarusa.github.io/BeautifulMakie/">~~~
+    @@title Beautiful Makie @@
+    @@box-content
+      @@description
+      This third-party gallery contains many advanced examples.
+      @@
+      ~~~
+      <img src="/assets/beautifulmakie_example.png">
       ~~~
     @@
     ~~~</a>~~~
