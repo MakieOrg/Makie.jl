@@ -1,6 +1,8 @@
 using Pkg
 Pkg.activate(".")
+pkg"dev .. ../CairoMakie ../GLMakie ../WGLMakie"
 Pkg.instantiate()
+Pkg.precompile()
 
 using NodeJS
 using Franklin
