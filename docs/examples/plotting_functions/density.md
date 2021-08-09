@@ -90,7 +90,8 @@ Axis(f[1, 1], title = "Fictive temperatures",
 
 for i in 12:-1:1
     d = density!(randn(200) .- 2sin((i+3)/6*pi), offset = i / 4,
-        color = :x, colormap = :thermal, colorrange = (-5, 5))
+        color = :x, colormap = :thermal, colorrange = (-5, 5),
+        strokewidth = 1, strokecolor = :black)
     # this helps with layering in GLMakie
     translate!(d, 0, 0, -0.1i)
 end
