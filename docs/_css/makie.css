@@ -366,10 +366,71 @@ a.boxlink{
     top: 3em;
     overflow-y: auto;
     max-height: calc(100vh - 3em);
-    width: 300px;
+    grid-column: 1;
+    grid-row: 1;
+}
+
+#navbar ul li {
+    margin: 0;
+}
+
+#navbar a {
+    text-decoration: none;
+    color: #83898f;
+    display: block;
+    background: #fff;
+}
+
+#navbar a.active {
+    background: #f6f6f6;
+}
+
+#navbar a:hover {
+    background: #f6f6f6;
 }
 
 #navbar ul {
-    border-left: 1px solid #eee;
     list-style: none;
+}
+
+#navbar li ul {
+    border-left: 1px solid #eee;
+}
+
+#contenttable {
+    position: sticky;
+    top: 3em;
+    overflow-y: auto;
+    max-height: calc(100vh - 3em);
+    grid-column: 3;
+    grid-row: 1;
+}
+
+#contenttable ul li {
+    margin: 0;
+}
+
+#contenttable ul {
+    list-style: none;
+}
+
+#contenttable li ul {
+    border-left: 1px solid #eee;
+}
+
+#contenttable a {
+    color: #83898f;
+    background: #fff;
+}
+
+.franklin-content {
+    grid-column: 2;
+    grid-row: 1;
+}
+
+#main {
+    max-width: 1500px;
+    display: grid;
+    grid-template-columns: 300px auto 300px;
+    grid-gap: 2em;
 }

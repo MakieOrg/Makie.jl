@@ -303,7 +303,7 @@ end
   naventries = NavEntry[]
 
   for page in all_pages
-      parts = split(page, '/')
+      parts = splitpath(page)
 
       this_page_vars = Franklin.ALL_PAGE_VARS[page]
 
@@ -343,11 +343,15 @@ end
             #   ))
             # end
 
-            # pretty_url = match(r"(.*)/index.html", first(Franklin.LOCAL_VARS["fd_url"]))
+            pretty_url = match(r"(.*)/index.html", first(Franklin.LOCAL_VARS["fd_url"]))
+            pretty_url = pretty_url === nothing ? nothing : pretty_url[1]
+
+            n.metadata["isactive"] = pretty_url == "/" * join(parts, "/")
+
+
             # n.metadata["active"] = pretty_url !== nothing && pretty_url[1] == item.route || (pretty_url[1] == "" && item.route == "/")
           end
       end
-
 
 
       
@@ -357,42 +361,53 @@ end
   output = IOBuffer()
 
   function printlist(io, naventries)
+    isempty(naventries) && return
+
     print(io, "<ul>")
     for naventry in naventries
       print(io, "<li>")
 
+      active = naventry.metadata["isactive"]
+
       if haskey(naventry.metadata, "page")
-        print(io, """<a href="/$(naventry.metadata["page"])">$(naventry.metadata["title"])</a>""")
+        print(io, """<a $(active ? "class = active" : "") href="/$(naventry.metadata["page"])">$(naventry.metadata["title"])</a>""")
       else
-        print(io, "<span>$(naventry.metadata["title"])</a>")
+        print(io, "<span $(active ? "class = active" : "")>$(naventry.metadata["title"])</span>")
       end
 
       if get(naventry.metadata, "active", false)
         print(io, "active")
       end
       printlist(io, naventry.children)
-      print(io, "</li>")
+      print(io, "</li>\n")
     end
     print(io, "</ul>")
   end
 
   printlist(output, naventries)
-  # for item in nav
-  
-  #     println(output,
-  #     """
-  #     <li><a href="$(item.route)" class="$(is_active ? "active" : "")">$(item.page)</a></li>
-  #     """)
-  # end
 
   return String(take!(output))
 end
 
 
 function hfun_contenttable()
-  """
-  <ul>
-  $(join(["<li>$(val[1])</li>" for (key, val) in Franklin.PAGE_HEADERS]))
-  </ul>
-  """
+  io = IOBuffer()
+
+  println(io, "<ul>")
+
+  prev_order = 1
+  for (key, val) in Franklin.PAGE_HEADERS
+    order = val[3]
+    if order > prev_order
+      println(io, "<ul>")
+    elseif order < prev_order
+      println(io, "</ul>")
+    end
+    prev_order = order
+    println(io, "<li><a href=\"#$key\">$(val[1])</a></li>")
+  end
+
+  println(io, "</ul>")
+
+  return String(take!(io))
 end
