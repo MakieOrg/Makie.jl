@@ -355,3 +355,21 @@ a.boxlink{
     }
 }
 
+
+
+/* navbar */
+
+#navbar {
+    /* background: #eee; */
+    float: left;
+    position: sticky;
+    top: 3em;
+    overflow-y: auto;
+    max-height: calc(100vh - 3em);
+    width: 300px;
+}
+
+#navbar ul {
+    border-left: 1px solid #eee;
+    list-style: none;
+}
