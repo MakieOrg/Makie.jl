@@ -397,6 +397,10 @@ a.boxlink{
     border-left: 1px solid #eee;
 }
 
+#navbar ul ul.collapsed {
+    display: none;
+}
+
 #contenttable {
     position: sticky;
     top: 3em;
