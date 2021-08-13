@@ -368,6 +368,7 @@ a.boxlink{
     max-height: calc(100vh - 3em);
     grid-column: 1;
     grid-row: 1;
+    font-size: smaller;
 }
 
 #navbar ul li {
@@ -401,6 +402,16 @@ a.boxlink{
     display: none;
 }
 
+/* #navbar ul li a::after {
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    content: "\f078";
+}
+
+#navbar ul.collapsed li a::after {
+    content: "\f054";
+} */
+
 #contenttable {
     position: sticky;
     top: 3em;
@@ -408,6 +419,7 @@ a.boxlink{
     max-height: calc(100vh - 3em);
     grid-column: 3;
     grid-row: 1;
+    font-size: smaller;
 }
 
 #contenttable ul li {
@@ -423,6 +435,7 @@ a.boxlink{
 }
 
 #contenttable a {
+    text-decoration: none;
     color: #83898f;
     background: #fff;
 }

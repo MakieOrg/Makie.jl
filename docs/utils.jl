@@ -299,6 +299,7 @@ end
 
 @delay function hfun_navigation()
   all_pages = sort!(collect(keys(Franklin.ALL_PAGE_VARS)))
+  filter!(x -> x ∉ ["404"], all_pages)
 
   naventries = NavEntry[]
 
@@ -351,19 +352,21 @@ end
 
             # n.metadata["active"] = pretty_url !== nothing && pretty_url[1] == item.route || (pretty_url[1] == "" && item.route == "/")
           end
-      end
+      end      
+  end
 
-
-      
+  function should_collapse(naventry)
+    !naventry.metadata["isactive"] && all(should_collapse, naventry.children)
   end
 
   # sort!(nav, by = x -> x.order)
   output = IOBuffer()
 
-  function printlist(io, naventries)
+  function printlist(io, naventries, collapse = false)
     isempty(naventries) && return
 
-    print(io, "<ul>")
+    print(io, collapse ? "<ul class=\"collapsed\">" : "<ul>")
+
     for naventry in naventries
       print(io, "<li>")
 
@@ -375,10 +378,7 @@ end
         print(io, "<span $(active ? "class = active" : "")>$(naventry.metadata["title"])</span>")
       end
 
-      if get(naventry.metadata, "active", false)
-        print(io, "active")
-      end
-      printlist(io, naventry.children)
+      printlist(io, naventry.children, should_collapse(naventry))
       print(io, "</li>\n")
     end
     print(io, "</ul>")
@@ -391,19 +391,33 @@ end
 
 
 function hfun_contenttable()
+  if isempty(Franklin.PAGE_HEADERS)
+    return ""
+  end
+
   io = IOBuffer()
 
   println(io, "<ul>")
 
-  prev_order = 1
+  order_stack = [first(Franklin.PAGE_HEADERS)[2][3]]
+
   for (key, val) in Franklin.PAGE_HEADERS
     order = val[3]
-    if order > prev_order
-      println(io, "<ul>")
-    elseif order < prev_order
-      println(io, "</ul>")
+
+    n_steps_up = count(>=(order), order_stack)
+
+    if n_steps_up == 0
+      println(io, "<li><ul>")
+    elseif n_steps_up == 1
+      # do nothing
+    else
+      for i in 2:n_steps_up
+        println(io, "</ul></li>")
+      end
     end
-    prev_order = order
+    filter!(<(order), order_stack)
+    push!(order_stack, order)
+
     println(io, "<li><a href=\"#$key\">$(val[1])</a></li>")
   end
 
