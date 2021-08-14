@@ -363,7 +363,7 @@ a.boxlink{
     /* background: #eee; */
     float: left;
     position: sticky;
-    top: 3em;
+    top: 4em;
     overflow-y: auto;
     max-height: calc(100vh - 3em);
     grid-column: 1;
@@ -414,7 +414,7 @@ a.boxlink{
 
 #contenttable {
     position: sticky;
-    top: 3em;
+    top: 4em;
     overflow-y: auto;
     max-height: calc(100vh - 3em);
     grid-column: 3;
@@ -440,6 +440,11 @@ a.boxlink{
     background: #fff;
 }
 
+#contenttable a.active {
+    color: #1a1c1d;
+    font-weight: 500;
+}
+
 .franklin-content {
     grid-column: 2;
     grid-row: 1;
@@ -450,4 +455,8 @@ a.boxlink{
     display: grid;
     grid-template-columns: 300px auto 300px;
     grid-gap: 2em;
+}
+
+.franklin-content h2 {
+    scroll-margin-top: 5em;
 }

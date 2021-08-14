@@ -1,26 +1,19 @@
-ul = document.querySelector("#navbar ul");
+window.addEventListener('DOMContentLoaded', () => {
 
-function collapse_if_inactive(ul){
-    let active = false;
+	const observer = new IntersectionObserver(entries => {
+		entries.forEach(entry => {
+			const id = entry.target.getAttribute('id');
+			if (entry.intersectionRatio > 0) {
+				document.querySelector(`#contenttable a[href="#${id}"]`).classList.add('active');
+			} else {
+				document.querySelector(`#contenttable a[href="#${id}"]`).classList.remove('active');
+			}
+		});
+	});
 
-    console.log(ul.children.length);
-    for (li of ul.children){
-        let a = li.querySelector("a.active");
-        if (a !== null){
-            active = true;
-            console.log("active");
-        }
-        let cul = li.querySelector("ul");
-        if (cul !== null){
-            active = active || collapse_if_inactive(cul);
-            if (!active){
-                cul.classList.add("collapsed");
-            }
-        }
-    }
-    
-    return active;
-}
-
-collapse_if_inactive(ul);
-
+	// Track all sections that have an `id` applied
+	document.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach((section) => {
+		observer.observe(section);
+	});
+	
+});
