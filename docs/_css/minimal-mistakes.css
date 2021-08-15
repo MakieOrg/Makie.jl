@@ -1835,7 +1835,7 @@ th {
     clear: both;
     margin-left: auto;
     margin-right: auto;
-    padding: 0.5em;
+    padding: 0.5em 1em;
     max-width: 100%;
     display: -webkit-box;
     display: -ms-flexbox;
