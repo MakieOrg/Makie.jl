@@ -89,7 +89,7 @@ ispressed(scene, result::Bool) = result
 
 ispressed(scene, op::And) = ispressed(scene, op.l) && ispressed(scene, op.r)
 ispressed(scene, op::Or)  = ispressed(scene, op.l) || ispressed(scene, op.r)
-ispressed(scene, op::Not) = !ispressed(scene, op.l)
+ispressed(scene, op::Not) = !ispressed(scene, op.x)
 
 ispressed(scene, set::Set) = all(x -> ispressed(scene, x), set)
 ispressed(scene, set::Vector) = all(x -> ispressed(scene, x), set)
