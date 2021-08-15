@@ -27,7 +27,77 @@ function register_callbacks(scene::Scene, native_window)
 
 end
 
+abstract type BooleanOperator end
 
+struct And{L, R} <: BooleanOperator
+    l::L
+    r::R
+end
+
+struct Or{L, R} <: BooleanOperator
+    l::L
+    r::R
+end
+
+struct Not{T} <: BooleanOperator
+    x::T
+end
+
+function Base.show(io::IO, op::And)
+    print(io, "(")
+    show(io, op.l)
+    print(io, " && ")
+    show(io, op.r) 
+    print(io, ")")
+end
+function Base.show(io::IO, op::Or)
+    print(io, "(")
+    show(io, op.l)
+    print(io, " || ")
+    show(io, op.r) 
+    print(io, ")")
+end
+function Base.show(io::IO, op::Not)
+    print(io, "!")
+    show(io, op.x)
+end
+
+And(l, r, rest...) = And(And(l, r), rest...)
+Or(l, r, rest...) = Or(Or(l, r), rest...)
+
+macro logical(e)
+    to_boolops(e)
+end
+
+function to_boolops(e::Expr)
+    if e.head == :(||)
+        return Or(to_boolops(e.args[1]), to_boolops(e.args[2]))
+    elseif e.head == :(&&)
+        return And(to_boolops(e.args[1]), to_boolops(e.args[2]))
+    elseif e.head == :call && e.args[1] == :(!)
+        return Not(to_boolops(e.args[2]))
+    else
+        return eval(e)
+    end
+end
+to_boolops(x) = x
+
+ispressed(scene, mb::Mouse.Button) = mb in scene.events.mousebuttonstate
+ispressed(scene, key::Keyboard.Button) = key in scene.events.keyboardstate
+ispressed(scene, result::Bool) = result
+@deprecate ispressed(scene, ::Nothing) ispressed(scene, true)
+
+ispressed(scene, op::And) = ispressed(scene, op.l) && ispressed(scene, op.r)
+ispressed(scene, op::Or)  = ispressed(scene, op.l) || ispressed(scene, op.r)
+ispressed(scene, op::Not) = !ispressed(scene, op.l)
+
+ispressed(scene, set::Set) = all(x -> ispressed(scene, x), set)
+ispressed(scene, set::Vector) = all(x -> ispressed(scene, x), set)
+ispressed(scene, set::Tuple) = all(x -> ispressed(scene, x), set)
+
+
+
+#=
 button_key(x::Type{T}) where {T} = error("Must be a keyboard or mouse button. Found: $T")
 button_key(x::Type{Keyboard.Button}) = :keyboardstate
 button_key(x::Type{Mouse.Button}) = :mousebuttonstate
@@ -69,6 +139,7 @@ function ispressed(scene::SceneLike, button)
     buttons = getfield(events(scene), button_key(button))
     ispressed(buttons, button)
 end
+=#
 
 
 """

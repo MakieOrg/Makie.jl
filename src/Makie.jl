@@ -195,7 +195,7 @@ export pixelarea, plots, cameracontrols, cameracontrols!, camera, events
 export to_world
 
 # picking + interactive use cases + events
-export mouseover, ispressed, onpick, pick, Events, Keyboard, Mouse, mouse_selection
+export mouseover, ispressed, onpick, pick, Events, Keyboard, Mouse, mouse_selection, @logical
 export register_callbacks
 export window_area
 export window_open
