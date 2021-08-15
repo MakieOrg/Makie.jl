@@ -352,31 +352,47 @@ end
 
   output = IOBuffer()
 
-  function printlist(io, naventries, collapse = false)
+  function printlist(io, naventries, collapse = false, level = "")
     isempty(naventries) && return
 
     print(io, collapse ? "<ul class=\"collapsed\">" : "<ul>")
 
-    for naventry in naventries
-      if isempty(naventry.children)
-        print(io, "<li>")
-      else
-        print(io, "<li class=\"has_children\">")
-      end
+    for (i, naventry) in enumerate(naventries)
+
+      this_level = join([level, string(i)], "-")
+
+      has_children = !isempty(naventry.children)
+
+      print(io, "<li>")
 
       active = naventry.metadata["isactive"]
+
+      inputid = "menuitem$this_level"
+      if has_children
+        print(io, """<input class="collapse-toggle" id="$inputid" type="checkbox">""")
+      end
+
+      print(io, """<div class="tocitem-container">""")
 
       if haskey(naventry.metadata, "page")
         print(io, """<a $(active ? "class = active" : "") href="/$(naventry.metadata["page"])">$(naventry.metadata["title"])</a>""")
       else
         print(io, "<span $(active ? "class = active" : "")>$(naventry.metadata["title"])</span>")
       end
-      
+
+      if has_children
+        print(io, """<label class="tocexpander" for="$inputid">""")
+        print(io, "<i class=\"docs-chevron\"></i>")
+        print(io, "</label>")
+      end
+
+      print(io, "</div>")
+
       # if !isempty(naventry.children)
       #   print(io, "<i class=\"docs-chevron\"></i>")
       # end
 
-      printlist(io, naventry.children, should_collapse(naventry))
+      printlist(io, naventry.children, should_collapse(naventry), this_level)
       print(io, "</li>\n")
     end
     print(io, "</ul>")

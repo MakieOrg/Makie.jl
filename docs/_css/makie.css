@@ -371,11 +371,11 @@ a.boxlink{
 }
 
 #navbar a.active {
-    background: #f6f6f6;
+    color: black;
 }
 
 #navbar a:hover {
-    background: #f6f6f6;
+    color: black;
 }
 
 #navbar ul {
@@ -391,9 +391,9 @@ a.boxlink{
     border-left: 1px solid #eee;
 }
 
-#navbar ul ul.collapsed {
+/* #navbar ul ul.collapsed {
     display: none;
-}
+} */
 
 /* #navbar ul li a::after {
     font-family: "Font Awesome 5 Free";
@@ -511,7 +511,7 @@ a.boxlink{
         position: sticky;
         top: 4em;
         overflow-y: auto;
-        max-height: calc(100vh - 3em);
+        max-height: calc(100vh - 4em);
         grid-column: 1;
         grid-row: 1;
         font-size: smaller;
@@ -563,7 +563,7 @@ html {
     font-variant: normal;
     text-rendering: auto;
     line-height: 1;
-    font-size: 0.5rem;
+    font-size: 0.75rem;
     margin-left: 1rem;
     margin-top: auto;
     margin-bottom: auto;
@@ -574,3 +574,29 @@ html {
     font-weight: 900;
     content: "\f054";
 }
+
+input.collapse-toggle {
+    display: none;
+}
+
+#navbar input:checked ~ div label.tocexpander .docs-chevron::before {
+    content: "\f078";
+}
+
+#navbar ul ul {
+    display: none;
+}
+
+#navbar input:checked ~ ul {
+    display: block;
+}
+
+#navbar div.tocitem-container {
+    display: flex;
+}
+
+.tocexpander {
+    margin-left: auto;
+}
+
+
