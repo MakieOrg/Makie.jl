@@ -1,3 +1,5 @@
+@def title = "Home"
+
 ~~~
 <img class="banner" src="/assets/makie_banner.png"/>
 ~~~

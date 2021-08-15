@@ -324,7 +324,7 @@ end
             n.metadata["hidden"] = first(get(this_page_vars, "hidden", false => nothing))
             n.metadata["order"] = first(get(this_page_vars, "order", 999 => nothing))
             n.metadata["icon"] = first(get(this_page_vars, "icon", "" => nothing))
-            n.metadata["page"] = page
+            n.metadata["page"] = page === "index" ? "" : page
 
             # if !isempty(title) && !hidden
             #   route = ""
@@ -368,7 +368,11 @@ end
     print(io, collapse ? "<ul class=\"collapsed\">" : "<ul>")
 
     for naventry in naventries
-      print(io, "<li>")
+      if isempty(naventry.children)
+        print(io, "<li>")
+      else
+        print(io, "<li class=\"has_children\">")
+      end
 
       active = naventry.metadata["isactive"]
 
