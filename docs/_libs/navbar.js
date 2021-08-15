@@ -15,5 +15,15 @@ window.addEventListener('DOMContentLoaded', () => {
 	document.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach((section) => {
 		observer.observe(section);
 	});
+
+
+
+
+
+    // navbar button
+
+    document.querySelector("button.greedy-nav__toggle").addEventListener("click", function(){
+        document.querySelector("#navbar").classList.toggle('visible');
+    });
 	
 });
