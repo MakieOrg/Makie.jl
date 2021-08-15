@@ -326,24 +326,6 @@ end
             n.metadata["icon"] = first(get(this_page_vars, "icon", "" => nothing))
             n.metadata["page"] = page === "index" ? "" : page
 
-            # if !isempty(title) && !hidden
-            #   route = ""
-            #   if length(parts) == 1
-            #       route = string('/', page === "index" ? "" : page)
-            #   elseif length(parts) == 2 && parts[end] == "index"
-            #       route = string('/', parts[1])
-            #   else
-            #       println(parts)
-            #   end
-            #   push!(nav, (
-            #   page = page,
-            #   title = title,
-            #   order = order,
-            #   route = route,
-            #   icon = icon
-            #   ))
-            # end
-
             pretty_url = match(r"(.*)/index.html", first(Franklin.LOCAL_VARS["fd_url"]))
             pretty_url = pretty_url === nothing ? nothing : pretty_url[1]
 
@@ -359,7 +341,15 @@ end
     !naventry.metadata["isactive"] && all(should_collapse, naventry.children)
   end
 
-  # sort!(nav, by = x -> x.order)
+  function navsort!(entries)
+    sort!(entries, by = e -> e.metadata["order"])
+    foreach(entries) do entry
+      navsort!(entry.children)
+    end
+  end
+
+  navsort!(naventries)
+
   output = IOBuffer()
 
   function printlist(io, naventries, collapse = false)
@@ -381,6 +371,10 @@ end
       else
         print(io, "<span $(active ? "class = active" : "")>$(naventry.metadata["title"])</span>")
       end
+      
+      # if !isempty(naventry.children)
+      #   print(io, "<i class=\"docs-chevron\"></i>")
+      # end
 
       printlist(io, naventry.children, should_collapse(naventry))
       print(io, "</li>\n")

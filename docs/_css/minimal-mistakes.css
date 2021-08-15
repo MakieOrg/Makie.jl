@@ -1852,12 +1852,6 @@ th {
     display: table;
 }
 
-@media (min-width: 80em) {
-    .masthead__inner-wrap {
-        max-width: 1280px;
-    }
-}
-
 .masthead__inner-wrap nav {
     z-index: 10;
 }
