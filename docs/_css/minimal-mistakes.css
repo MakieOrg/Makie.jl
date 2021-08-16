@@ -985,7 +985,6 @@ textarea {
 
 label {
     display: block;
-    margin-bottom: 0.25em;
     color: #494e52;
     cursor: pointer;
 }
@@ -1835,7 +1834,7 @@ th {
     clear: both;
     margin-left: auto;
     margin-right: auto;
-    padding: 0.5em;
+    padding: 0.5em 1em;
     max-width: 100%;
     display: -webkit-box;
     display: -ms-flexbox;
@@ -1850,12 +1849,6 @@ th {
     clear: both;
     content: "";
     display: table;
-}
-
-@media (min-width: 80em) {
-    .masthead__inner-wrap {
-        max-width: 1280px;
-    }
 }
 
 .masthead__inner-wrap nav {
@@ -1909,6 +1902,7 @@ th {
     display: block;
     list-style-type: none;
     white-space: nowrap;
+    margin-left: 2rem;
 }
 
 .masthead__menu-item--lg {
@@ -2097,7 +2091,6 @@ th {
 
 .greedy-nav a {
     display: block;
-    margin: 0 1rem;
     color: #6f777d;
     text-decoration: none;
 }
@@ -2123,6 +2116,7 @@ th {
     outline: none;
     background-color: transparent;
     cursor: pointer;
+    margin-left: 2rem;
 }
 
 .greedy-nav .visible-links {
@@ -2411,16 +2405,14 @@ th {
 }
 
 .page__footer {
+    position: absolute;
     clear: both;
     float: left;
     margin-left: 0;
     margin-right: 0;
     width: 100%;
     clear: both;
-    position: absolute;
     bottom: 0;
-    height: auto;
-    margin-top: 3em;
     color: #898c8f;
     background-color: #f2f3f3;
 }

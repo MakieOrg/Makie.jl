@@ -355,3 +355,289 @@ a.boxlink{
     }
 }
 
+
+
+/* navbar */
+
+#navbar ul li {
+    margin: 0;
+}
+
+#navbar a {
+    text-decoration: none;
+    color: #83898f;
+    display: block;
+}
+
+#navbar a.active {
+    color: black;
+}
+
+#navbar a:hover {
+    color: black;
+}
+
+#navbar ul {
+    list-style: none;
+    padding: 0;
+}
+
+#navbar ul ul {
+    padding-left: 0.5em;
+}
+
+#navbar li ul {
+    margin-top: 0;
+    border-left: 1px solid #eee;
+}
+
+/* #navbar ul ul.collapsed {
+    display: none;
+} */
+
+/* #navbar ul li a::after {
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    content: "\f078";
+}
+
+#navbar ul.collapsed li a::after {
+    content: "\f054";
+} */
+
+
+
+#contenttable ul li {
+    margin: 0;
+}
+
+#contenttable ul {
+    list-style: none;
+    padding: 0;
+    margin-top: 0;
+}
+
+#contenttable ul ul {
+    padding-left: 0.5em;
+}
+
+#contenttable li ul {
+    border-left: 1px solid #eee;
+}
+
+#contenttable a {
+    text-decoration: none;
+    color: #83898f;
+    background: #fff;
+}
+
+#contenttable a.active {
+    color: #1a1c1d;
+    font-weight: 500;
+}
+
+.franklin-content {
+    grid-column: 2;
+    grid-row: 1;
+}
+
+
+#main {
+    max-width: none;
+    display: block;
+}
+
+#contenttable-container {
+    display: none;
+}
+
+#navbar-container {
+    display: block;
+    position: fixed;
+    left: -18rem;
+    transition: left 0.3s;
+    height: 100%;
+    width: 18rem;
+    z-index: 10;
+    background: white;
+    z-index: 30;
+    top: 0;
+    padding: 1em;
+}
+
+#navbar {
+    height: 100%;
+    overflow-y: auto;
+}
+
+#overlay {
+    height: 100vh;
+    width: 100vw;
+    background: black;
+    position: fixed;
+    top: 0;
+    left: 0;
+    opacity: 0.3;
+    z-index: 25;
+    transition: 0.3s;
+    display: none;
+    opacity: 0;
+}
+
+#overlay.visible {
+   display: block;
+   opacity: 0.3;
+}
+
+#navbar-container.visible {
+    left: 0;
+    box-shadow: 0 1px 13px 3px rgba(0, 0, 0, 0.11);
+}
+
+.masthead ul.visible-links {
+    display: none;
+}
+
+.greedy-nav__toggle {
+    display: block;
+    margin-left: auto;
+}
+
+
+@media (min-width: 768px){
+    #main {
+        max-width: 768px;
+        display: block;
+    }
+
+    .masthead ul.visible-links {
+        display: flex;
+    }
+
+    .masthead__inner-wrap {
+        max-width: 768px;
+    }
+
+    .greedy-nav__toggle {
+        display: block;
+        margin-left: 2rem;
+    }    
+}
+
+@media (min-width: 1100px){
+    #main {
+        max-width: 1100px;
+        display: grid;
+        grid-template-columns: 250px 800px;
+        grid-gap: 50px;
+    }
+
+    .masthead__inner-wrap {
+        max-width: 1100px;
+    }
+
+    #navbar-container {
+        float: left;
+        background: transparent;
+        position: static;
+        grid-column: 1;
+        grid-row: 1;
+        font-size: smaller;
+        width: 100%;
+        padding: 0;
+        z-index: 0;
+    }
+
+    #navbar {
+        position: sticky;
+        top: 4em;
+        height: auto;
+        max-height: calc(100vh - 4em);
+    }
+
+    .greedy-nav__toggle {
+        display: none;
+    }
+}
+
+@media (min-width: 1400px){
+    #main {
+        max-width: 1400px;
+        display: grid;
+        grid-template-columns: 250px 800px 250px;
+        grid-gap: 2em;
+    }
+
+    #contenttable-container {
+        display: block;
+        position: static;
+        overflow-y: auto;
+        grid-column: 3;
+        grid-row: 1;
+        font-size: smaller;
+    }
+
+    #contenttable {
+        display: block;
+        position: fixed;
+        top: 4em;
+        overflow-y: auto;
+    }
+
+    .masthead__inner-wrap {
+        max-width: 1400px;
+    }
+}
+
+
+
+html {
+    scroll-padding-top: 3.5rem;
+    scroll-behavior: smooth;
+}
+
+
+
+.docs-chevron {
+    display: inline-block;
+    font-style: normal;
+    font-variant: normal;
+    text-rendering: auto;
+    line-height: 1;
+    font-size: 0.75rem;
+    margin-left: 1rem;
+    margin-top: auto;
+    margin-bottom: auto;
+}
+
+.docs-chevron::before {
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    content: "\f054";
+}
+
+input.collapse-toggle {
+    display: none;
+}
+
+#navbar input:checked ~ div label.tocexpander .docs-chevron::before {
+    content: "\f078";
+}
+
+#navbar ul ul {
+    display: none;
+}
+
+#navbar input:checked ~ ul {
+    display: block;
+}
+
+#navbar div.tocitem-container {
+    display: flex;
+}
+
+.tocexpander {
+    margin-left: auto;
+}
+
+
