@@ -18,14 +18,19 @@ function layoutable(::Type{Legend},
         nbanks,
         colgap, rowgap, patchlabelgap,
         titlegap, groupgap,
-        orientation,
+        orientation, tellwidth, tellheight,
         titleposition,
         gridshalign, gridsvalign,
     )
 
     decorations = Dict{Symbol, Any}()
 
-    layoutobservables = LayoutObservables{Legend}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
+    # by default, `tellwidth = true` and `tellheight = false` for vertical legends
+    # and vice versa for horizontal legends
+    real_tellwidth = @lift $tellwidth === automatic ? $orientation == :vertical : $tellwidth
+    real_tellheight = @lift $tellheight === automatic ? $orientation == :horizontal : $tellheight
+
+    layoutobservables = LayoutObservables{Legend}(attrs.width, attrs.height, real_tellwidth, real_tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
     scenearea = lift(round_to_IRect2D, layoutobservables.computedbbox)
