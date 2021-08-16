@@ -19,6 +19,7 @@ $(ATTRIBUTES)
         colorrange = automatic,
         dodge = automatic,
         n_dodge = automatic,
+        x_distance = automatic,
         x_gap = 0.2,
         dodge_gap = 0.03,
         marker = Rect,
@@ -56,8 +57,8 @@ end
 
 flip(r::Rect2D) = Rect2D(reverse(origin(r)), reverse(widths(r)))
 
-function xw_from_dodge(x, width, minimum_distance, x_gap, dodge, n_dodge, dodge_gap)
-    width === automatic && (width = (1 - x_gap) * minimum_distance)
+function xw_from_dodge(x, width, x_distance, x_gap, dodge, n_dodge, dodge_gap)
+    width === automatic && (width = (1 - x_gap) * x_distance)
     if dodge === automatic
         i_dodge = 1
     elseif eltype(dodge) <: Integer
@@ -181,7 +182,7 @@ function Makie.plot!(p::BarPlot)
     label_aligns = Observable(Vec2f0[])
     label_offsets = Observable(Vec2f0[])
     label_colors = Observable(RGBAf0[])
-    function calculate_bars(xy, fillto, offset, width, dodge, n_dodge, x_gap, dodge_gap, stack,
+    function calculate_bars(xy, fillto, offset, width, x_distance, dodge, n_dodge, x_gap, dodge_gap, stack,
                             dir, bar_labels, flip_labels_at, label_color, color_over_background,
                             color_over_bar, label_formatter, label_offset)
 
@@ -192,16 +193,15 @@ function Makie.plot!(p::BarPlot)
         x = first.(xy)
         y = last.(xy)
 
-        minimum_distance = nothing
-        # only really compute `minimum_distance` if `width` is `automatic`
-        if width === automatic
+        # only really compute `x_distance` if `width` is `automatic`
+        if width === automatic && x_distance === automatic
             x_unique = unique(filter(isfinite, x))
             x_diffs = diff(sort(x_unique))
-            minimum_distance = isempty(x_diffs) ? 1.0 : minimum(x_diffs)
+            x_distance = isempty(x_diffs) ? 1.0 : minimum(x_diffs)
         end
 
         # compute width of bars and x̂ (horizontal position after dodging)
-        x̂, barwidth = xw_from_dodge(x, width, minimum_distance, x_gap, dodge, n_dodge, dodge_gap)
+        x̂, barwidth = xw_from_dodge(x, width, x_distance, x_gap, dodge, n_dodge, dodge_gap)
 
         # --------------------------------
         # ----------- Stacking -----------
@@ -241,7 +241,7 @@ function Makie.plot!(p::BarPlot)
         return bar_rectangle.(x̂, y .+ offset, barwidth, fillto, in_y_direction)
     end
 
-    bars = lift(calculate_bars, p[1], p.fillto, p.offset, p.width, p.dodge, p.n_dodge, p.x_gap,
+    bars = lift(calculate_bars, p[1], p.fillto, p.offset, p.width, p.x_distance, p.dodge, p.n_dodge, p.x_gap,
                 p.dodge_gap, p.stack, p.direction, p.bar_labels, p.flip_labels_at,
                 p.label_color, p.color_over_background, p.color_over_bar, p.label_formatter, p.label_offset)
 
