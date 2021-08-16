@@ -299,7 +299,6 @@ end
 
 @delay function hfun_navigation()
   all_pages = sort!(collect(keys(Franklin.ALL_PAGE_VARS)))
-  filter!(x -> x ∉ ["404"], all_pages)
 
   naventries = NavEntry[]
 
@@ -307,6 +306,9 @@ end
       parts = splitpath(page)
 
       this_page_vars = Franklin.ALL_PAGE_VARS[page]
+
+      hidden = first(get(this_page_vars, "hidden", false => nothing))
+      hidden && continue
 
       d = naventries
       for (j, part) in enumerate(parts)
@@ -321,7 +323,6 @@ end
 
           if j == length(parts)
             n.metadata["title"] = first(get(this_page_vars, "title", "" => nothing))
-            n.metadata["hidden"] = first(get(this_page_vars, "hidden", false => nothing))
             n.metadata["order"] = first(get(this_page_vars, "order", 999 => nothing))
             n.metadata["icon"] = first(get(this_page_vars, "icon", "" => nothing))
             n.metadata["page"] = page === "index" ? "" : page
@@ -352,10 +353,10 @@ end
 
   output = IOBuffer()
 
-  function printlist(io, naventries, collapse = false, level = "")
+  function printlist(io, naventries, level = "")
     isempty(naventries) && return
 
-    print(io, collapse ? "<ul class=\"collapsed\">" : "<ul>")
+    print(io, "<ul>")
 
     for (i, naventry) in enumerate(naventries)
 
@@ -369,7 +370,7 @@ end
 
       inputid = "menuitem$this_level"
       if has_children
-        print(io, """<input class="collapse-toggle" id="$inputid" type="checkbox">""")
+        print(io, """<input class="collapse-toggle" id="$inputid" type="checkbox" $(should_collapse(naventry) ? "" : "checked")>""")
       end
 
       print(io, """<div class="tocitem-container">""")
@@ -392,7 +393,7 @@ end
       #   print(io, "<i class=\"docs-chevron\"></i>")
       # end
 
-      printlist(io, naventry.children, should_collapse(naventry), this_level)
+      printlist(io, naventry.children, this_level)
       print(io, "</li>\n")
     end
     print(io, "</ul>")

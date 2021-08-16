@@ -23,7 +23,13 @@ window.addEventListener('DOMContentLoaded', () => {
     // navbar button
 
     document.querySelector("button.greedy-nav__toggle").addEventListener("click", function(){
-        document.querySelector("#navbar").classList.toggle('visible');
+        document.querySelector("#navbar-container").classList.toggle('visible');
+        document.querySelector("#overlay").classList.toggle('visible');
+    });
+
+	document.querySelector("#overlay").addEventListener("click", function(){
+        document.querySelector("#navbar-container").classList.toggle('visible');
+        document.querySelector("#overlay").classList.toggle('visible');
     });
 	
 });

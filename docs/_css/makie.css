@@ -367,7 +367,6 @@ a.boxlink{
     text-decoration: none;
     color: #83898f;
     display: block;
-    background: #fff;
 }
 
 #navbar a.active {
@@ -384,10 +383,11 @@ a.boxlink{
 }
 
 #navbar ul ul {
-    padding-left: 1em;
+    padding-left: 0.5em;
 }
 
 #navbar li ul {
+    margin-top: 0;
     border-left: 1px solid #eee;
 }
 
@@ -414,10 +414,11 @@ a.boxlink{
 #contenttable ul {
     list-style: none;
     padding: 0;
+    margin-top: 0;
 }
 
 #contenttable ul ul {
-    padding-left: 1em;
+    padding-left: 0.5em;
 }
 
 #contenttable li ul {
@@ -446,11 +447,11 @@ a.boxlink{
     display: block;
 }
 
-#contenttable {
+#contenttable-container {
     display: none;
 }
 
-#navbar {
+#navbar-container {
     display: block;
     position: fixed;
     left: -18rem;
@@ -459,11 +460,36 @@ a.boxlink{
     width: 18rem;
     z-index: 10;
     background: white;
-    top: 3em;
+    z-index: 30;
+    top: 0;
     padding: 1em;
 }
 
-#navbar.visible {
+#navbar {
+    height: 100%;
+    overflow-y: auto;
+}
+
+#overlay {
+    height: 100vh;
+    width: 100vw;
+    background: black;
+    position: fixed;
+    top: 0;
+    left: 0;
+    opacity: 0.3;
+    z-index: 25;
+    transition: 0.3s;
+    display: none;
+    opacity: 0;
+}
+
+#overlay.visible {
+   display: block;
+   opacity: 0.3;
+}
+
+#navbar-container.visible {
     left: 0;
     box-shadow: 0 1px 13px 3px rgba(0, 0, 0, 0.11);
 }
@@ -491,6 +517,11 @@ a.boxlink{
     .masthead__inner-wrap {
         max-width: 768px;
     }
+
+    .greedy-nav__toggle {
+        display: block;
+        margin-left: 2rem;
+    }    
 }
 
 @media (min-width: 1100px){
@@ -505,18 +536,22 @@ a.boxlink{
         max-width: 1100px;
     }
 
-    #navbar {
+    #navbar-container {
         float: left;
         background: transparent;
-        position: sticky;
-        top: 4em;
-        overflow-y: auto;
-        max-height: calc(100vh - 4em);
+        position: static;
         grid-column: 1;
         grid-row: 1;
         font-size: smaller;
         width: 100%;
         padding: 0;
+        z-index: 0;
+    }
+
+    #navbar {
+        position: sticky;
+        top: 4em;
+        height: auto;
     }
 
     .greedy-nav__toggle {
@@ -532,15 +567,20 @@ a.boxlink{
         grid-gap: 2em;
     }
 
-    #contenttable {
+    #contenttable-container {
         display: block;
-        position: sticky;
-        top: 4em;
+        position: static;
         overflow-y: auto;
-        max-height: calc(100vh - 3em);
         grid-column: 3;
         grid-row: 1;
         font-size: smaller;
+    }
+
+    #contenttable {
+        display: block;
+        position: fixed;
+        top: 4em;
+        overflow-y: auto;
     }
 
     .masthead__inner-wrap {

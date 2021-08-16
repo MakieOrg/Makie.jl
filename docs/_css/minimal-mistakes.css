@@ -1903,6 +1903,7 @@ th {
     display: block;
     list-style-type: none;
     white-space: nowrap;
+    margin-left: 2rem;
 }
 
 .masthead__menu-item--lg {
@@ -2091,7 +2092,6 @@ th {
 
 .greedy-nav a {
     display: block;
-    margin: 0 1rem;
     color: #6f777d;
     text-decoration: none;
 }
@@ -2117,6 +2117,7 @@ th {
     outline: none;
     background-color: transparent;
     cursor: pointer;
+    margin-left: 2rem;
 }
 
 .greedy-nav .visible-links {
@@ -2411,10 +2412,7 @@ th {
     margin-right: 0;
     width: 100%;
     clear: both;
-    position: absolute;
     bottom: 0;
-    height: auto;
-    margin-top: 3em;
     color: #898c8f;
     background-color: #f2f3f3;
 }

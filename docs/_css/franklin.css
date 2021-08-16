@@ -87,17 +87,6 @@ html {
 }
 
 
-/* On wide screens, fix content width to a max value. */
-
-@media (min-width: 940px) {
-    .franklin-content {
-        width: 800px;
-        margin-left: auto;
-        margin-right: auto;
-    }
-}
-
-
 /* ==================================================================
     TITLES
 ================================================================== */

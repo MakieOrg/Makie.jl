@@ -17,9 +17,9 @@ We're not always going to use the shortest possible syntax, as the main goal is 
 
 When building figures, you always think in terms of rectangular boxes. We want to find the biggest boxes that enclose meaningful groups of content, and then we realize those boxes either using `GridLayout` or by placing content objects there.
 
-If we look at our target figure, there is one box around each of the labelled areas A, B, C and D. But A and C are not in one row, neither are B and D. This means that we don't use a 2x2 GridLayout, but have to be a little more creative.
+If we look at our target figure, we can imagine one box around each of the labelled areas A, B, C and D. But A and C are not in one row, neither are B and D. This means that we don't use a 2x2 GridLayout, but have to be a little more creative.
 
-We can say that A and B are in one column, and C and D are in one column. We can have different row heights for both groups by making one big nested `GridLayout` within the second column, in which we place C and D. This way the rows of column 2 are decoupled from column 1.
+We could say that A and B are in one column, and C and D are in one column. We can have different row heights for both groups by making one big nested `GridLayout` within the second column, in which we place C and D. This way the rows of column 2 are decoupled from column 1.
 
 Ok, let's create the figure first with a gray backgroundcolor, and a predefined font:
 
@@ -37,6 +37,8 @@ f = Figure(backgroundcolor = RGBf0(0.98, 0.98, 0.98),
 ```
 \end{examplefigure}
 
+## Setting up GridLayouts
+
 Now, let's make the four nested GridLayouts that are going to hold the objects of A, B, C and D. There's also the layout that holds C and D together, so the rows are separate from A and B. We are not going to see anything yet as we have no visible content, but that will come soon.
 
 ```julia:grids
@@ -46,6 +48,8 @@ gcd = f[1:2, 2] = GridLayout()
 gc = gcd[1, 1] = GridLayout()
 gd = gcd[2, 1] = GridLayout()
 ```
+
+## Panel A
 
 Now we can start placing objects into the figure. We start with A.
 
@@ -81,6 +85,8 @@ f
 ```
 \end{examplefigure}
 
+### Legend
+
 We have set the `label` attribute in the scatter call so it's easier to construct the legend. We can just pass `axmain` as the second argument to `Legend`.
 
 \begin{examplefigure}{}
@@ -90,6 +96,8 @@ leg = Legend(ga[1, 2], axmain)
 f
 ```
 \end{examplefigure}
+
+### Legend Tweaks
 
 There are a couple things we want to change. There are unnecessary decorations for the side axes, which we are going to hide.
 
@@ -127,6 +135,8 @@ f
 ```
 \end{examplefigure}
 
+## Panel B
+
 Let's move to B. We have two axes stacked on top of each other, and a colorbar alongside them. This time, we create the axes by just plotting into the right `GridLayout` slots. This can be more convenient than creating an `Axis` first.
 
 \begin{examplefigure}{}
@@ -150,6 +160,8 @@ f
 ```
 \end{examplefigure}
 
+### Colorbar
+
 Now we need a colorbar.
 Because we haven't set specific edges for the two contour plots, just how many levels there are, we can make a colorbar using one of the contour plots and then label the bins in there from one to six.
 
@@ -164,6 +176,8 @@ cb.ticks = (centers, string.(1:6))
 f
 ```
 \end{examplefigure}
+
+#### Mixed alignmode
 
 The right edge of the colorbar is currently aligned with the right edge of the upper density plot.
 This can later cause a bit of a gap between the density plot and content on the right.
@@ -189,6 +203,8 @@ f
 ```
 \end{examplefigure}
 
+## Panel C
+
 Now, we move on to panel C. This is just an `Axis3` with a colorbar on the side.
 
 \begin{examplefigure}{}
@@ -210,6 +226,8 @@ f
 Note that the z label overlaps the plot to the left a little bit. `Axis3` can't have automatic protrusions because the label positions change with the projection and the cell size of the axis, which is different from the 2D `Axis`.
 
 You can set the attribute `ax3.protrusions` to a tuple of four values (left, right, bottom, top) but in this case we just continue plotting until we have all objects that we want, before we look if small tweaks like that are necessary.
+
+## Panel D
 
 We move on to Panel D, which has a grid of 3x2 axes.
 
@@ -256,6 +274,8 @@ f
 ```
 \end{examplefigure}
 
+### EEG labels
+
 Now, we add three boxes on the side with labels in them. In this case, we just place them in another column to the right.
 
 \begin{examplefigure}{}
@@ -279,6 +299,8 @@ f
 ```
 \end{examplefigure}
 
+### Scaling axes relatively
+
 The fake eeg data we have created has more datapoints on day 1 than day 2.
 We want to scale the axes so that they both have the same zoom level.
 We can do this by setting the column widths to `Auto(x)` where x is a number proportional to the number of data points of the axis.
@@ -296,6 +318,7 @@ f
 ```
 \end{examplefigure}
 
+## Subplot labels
 
 Now, we can add the subplot labels. We already have our four `GridLayout` objects that enclose each panel's content, so the easiest way is to create `Label`s in the top left protrusion of these layouts.
 That will leave all other alignments intact, because we're not creating any new columns or rows. The labels belong to the gaps between the layouts instead.
@@ -313,6 +336,8 @@ end
 f
 ```
 \end{examplefigure}
+
+## Final tweaks
 
 This looks pretty good already, but the first column of the layout is a bit too wide.
 We can reduce the column width by setting it to `Auto` with a number smaller than 1, for example.
