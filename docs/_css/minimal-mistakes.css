@@ -2405,6 +2405,7 @@ th {
 }
 
 .page__footer {
+    position: absolute;
     clear: both;
     float: left;
     margin-left: 0;
