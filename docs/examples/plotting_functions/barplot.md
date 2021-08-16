@@ -42,6 +42,22 @@ using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
 
+f = Figure()
+Axis(f[1, 1]);
+
+barplot!([1, 4, 7], rand(3), x_distance = 1);
+barplot!([2, 3, 5, 6], rand(4), x_distance = 1);
+
+f
+```
+\end{examplefigure}
+
+\begin{examplefigure}{}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
 tbl = (x = [1, 1, 1, 2, 2, 2, 3, 3, 3],
        height = 0.1:0.1:0.9,
        grp = [1, 2, 3, 1, 2, 3, 1, 2, 3],
