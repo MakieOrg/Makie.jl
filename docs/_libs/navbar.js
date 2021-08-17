@@ -54,13 +54,20 @@ window.addEventListener('DOMContentLoaded', () => {
     // navbar button
 
     document.querySelector("button.greedy-nav__toggle").addEventListener("click", function(){
-        document.querySelector("#navbar-container").classList.toggle('visible');
-        document.querySelector("#overlay").classList.toggle('visible');
+        document.querySelector("#navbar-container").classList.add('visible');
+        document.querySelector("#overlay").classList.add('visible');
     });
 
 	document.querySelector("#overlay").addEventListener("click", function(){
-        document.querySelector("#navbar-container").classList.toggle('visible');
-        document.querySelector("#overlay").classList.toggle('visible');
+        document.querySelector("#navbar-container").classList.remove('visible');
+        document.querySelector("#overlay").classList.remove('visible');
     });
+
+	document.querySelectorAll("#navbar .page-content a").forEach(x => {
+		x.addEventListener("click", function(){
+			document.querySelector("#navbar-container").classList.remove('visible', true);
+			document.querySelector("#overlay").classList.remove('visible', true);
+		});
+	})
 	
 });
