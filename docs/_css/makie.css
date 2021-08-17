@@ -406,36 +406,6 @@ a.boxlink{
 } */
 
 
-
-#contenttable ul li {
-    margin: 0;
-}
-
-#contenttable ul {
-    list-style: none;
-    padding: 0;
-    margin-top: 0;
-}
-
-#contenttable ul ul {
-    padding-left: 0.5em;
-}
-
-#contenttable li ul {
-    border-left: 1px solid #eee;
-}
-
-#contenttable a {
-    text-decoration: none;
-    color: #83898f;
-    background: #fff;
-}
-
-#contenttable a.active {
-    color: #1a1c1d;
-    font-weight: 500;
-}
-
 .franklin-content {
     grid-column: 2;
     grid-row: 1;
@@ -447,9 +417,6 @@ a.boxlink{
     display: block;
 }
 
-#contenttable-container {
-    display: none;
-}
 
 #navbar-container {
     display: block;
@@ -462,11 +429,12 @@ a.boxlink{
     background: white;
     z-index: 30;
     top: 0;
-    padding: 1em;
+    padding: 1em 0 1em 1em;
 }
 
 #navbar {
     height: 100%;
+    padding-right: 1em;
     overflow-y: auto;
 }
 
@@ -627,6 +595,17 @@ input.collapse-toggle {
 #navbar ul ul {
     display: none;
 }
+
+#navbar ul.page-content {
+    display: block;
+    background: rgb(250, 250, 250);
+}
+
+#navbar ul.page-content ul {
+    display: block;
+    background: rgb(250, 250, 250);
+}
+
 
 #navbar input:checked ~ ul {
     display: block;
