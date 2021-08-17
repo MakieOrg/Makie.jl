@@ -315,12 +315,14 @@ end
           i = findfirst(x -> x.name == part, d)
           if i === nothing
             n = NavEntry(part, [], Dict())
+            
             push!(d, n)
           else
             n = d[i]
           end
           d = n.children
 
+          
           if j == length(parts)
             n.metadata["title"] = first(get(this_page_vars, "title", "" => nothing))
             n.metadata["order"] = first(get(this_page_vars, "order", 999 => nothing))
@@ -339,11 +341,11 @@ end
   end
 
   function should_collapse(naventry)
-    !naventry.metadata["isactive"] && all(should_collapse, naventry.children)
+    !get(naventry.metadata, "isactive", false) && all(should_collapse, naventry.children)
   end
 
   function navsort!(entries)
-    sort!(entries, by = e -> e.metadata["order"])
+    sort!(entries, by = e -> get(e.metadata, "order", Inf))
     foreach(entries) do entry
       navsort!(entry.children)
     end
@@ -366,7 +368,7 @@ end
 
       print(io, "<li>")
 
-      active = naventry.metadata["isactive"]
+      active = get(naventry.metadata, "isactive", false)
 
       inputid = "menuitem$this_level"
       if has_children
@@ -378,7 +380,7 @@ end
       if haskey(naventry.metadata, "page")
         print(io, """<a $(active ? "class = active" : "") href="/$(naventry.metadata["page"])">$(naventry.metadata["title"])</a>""")
       else
-        print(io, "<span $(active ? "class = active" : "")>$(naventry.metadata["title"])</span>")
+        print(io, """<span $(active ? "class = active" : "")>$(get(naventry.metadata, "title", ""))</span>""")
       end
 
       if has_children
@@ -389,9 +391,9 @@ end
 
       print(io, "</div>")
 
-      # if !isempty(naventry.children)
-      #   print(io, "<i class=\"docs-chevron\"></i>")
-      # end
+      if active
+        print(io, contenttable())
+      end
 
       printlist(io, naventry.children, this_level)
       print(io, "</li>\n")
@@ -405,14 +407,14 @@ end
 end
 
 
-function hfun_contenttable()
+function contenttable()
   if isempty(Franklin.PAGE_HEADERS)
     return ""
   end
 
   io = IOBuffer()
 
-  println(io, "<ul>")
+  println(io, """<ul class="page-content">""")
 
   order_stack = [first(Franklin.PAGE_HEADERS)[2][3]]
 
@@ -436,7 +438,9 @@ function hfun_contenttable()
     println(io, "<li><a href=\"#$key\">$(val[1])</a></li>")
   end
 
-  println(io, "</ul>")
+  for i in 1:length(order_stack)
+    println(io, "</ul>")
+  end
 
   return String(take!(io))
 end
