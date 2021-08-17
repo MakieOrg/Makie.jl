@@ -1,76 +1,53 @@
 window.addEventListener('DOMContentLoaded', () => {
 
-	// const headings = [...document.querySelectorAll('h1, h2, h3, h4, h5, h6')];
+	let headings = [...document.querySelector(".franklin-content").querySelectorAll('h1, h2, h3, h4, h5, h6')];
+	let toc_entries = headings.map(head => {
+		let id = head.getAttribute('id');
+		return document.querySelector(`.page-content a[href="#${id}"]`)
+	});
 
-	// const observer = new IntersectionObserver(entries => {
+	headings = headings.filter((h, i) => toc_entries[i] !== null);
+	toc_entries = toc_entries.filter((h, i) => toc_entries[i] !== null);
+
+	const observer = new IntersectionObserver(entries => {
 		
-	// 	let prev_active = null;
+		rects = headings.map(h => h.getBoundingClientRect());
 
-	// 	if (entries.length == 1 && !entries[0].isIntersecting){
-	// 		let e = entries[0];
-	// 		if (e.boundingClientRect.top < 0){
-	// 			// moved out to the top, keep active
-	// 			prev_active = e.target;
-	// 		} else {
-	// 			// moved out to the bottom, deactivate and activate previous
-	// 			let id = e.target.getAttribute('id');
-	// 			document.querySelector(`.page-content a[href="#${id}"]`).classList.remove('active');
+		let was_visible = false;
+		for (let i = 0; i<headings.length; i++){
+			rect = rects[i];
 
-	// 			let i = headings.indexOf(e.target);
-	// 			if (i >= 1){
-	// 				let id = headings[i-1].getAttribute('id');
-	// 				document.querySelector(`.page-content a[href="#${id}"]`).classList.add('active');
-	// 				prev_active = headings[i-1];
-	// 			}
-	// 		}
-	// 	} else {
-	// 		if (prev_active !== null){
-	// 			prev_active.classList.remove('active');
-	// 			prev_active = null;
-	// 		}
+			visible = (
+				rect.top >= 0 &&
+				rect.left >= 0 &&
+				rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) && /* or $(window).height() */
+				rect.right <= (window.innerWidth || document.documentElement.clientWidth) /* or $(window).width() */
+			);
+			was_visible = was_visible || visible;
 
-	// 		entries.forEach(e => {
-	// 			let id = e.target.getAttribute('id');
-	// 			if (e.isIntersecting){
-	// 				document.querySelector(`.page-content a[href="#${id}"]`).classList.add('active');
-	// 			}
-	// 		});
-	// 	}
+			toc_entries[i].classList.toggle('active', visible);
+		}
 
-	// 	// intersectings = entries.filter(e => e.isIntersecting);
+		if (!was_visible){
+			let minimum_topdiff = Infinity;
+			let min_i = -1;
+			for (let i = 0; i<headings.length; i++){
+				td = Math.abs(rects[i].top);
+				if (td < minimum_topdiff){
+					minimum_topdiff = td;
+					min_i = i;
+				}
+			}
+			for (let i = 0; i<headings.length; i++){
+				toc_entries[i].classList.toggle('active', i == min_i);
+			}
+		}
+	});
 
-	// 	// for (let i = 0; i < entries.length; i++){
-	// 	// 	let entry = entries[i];
-	// 	// 	let id = entry.target.getAttribute('id');
-	// 	// 	if (entry.isIntersecting) {
-	// 	// 		document.querySelector(`.page-content a[href="#${id}"]`).classList.add('active');
-	// 	// 	} else {
-	// 	// 		document.querySelector(`.page-content a[href="#${id}"]`).classList.remove('active');
-	// 	// 	}
-	// 	// }
-	// 	// if (best_id !== null){
-	// 	// 	document.querySelector(`.page-content a[href="#${best_id}"]`).classList.add('active');
-	// 	// } else if(best_before_id !== null) {
-	// 	// 	document.querySelector(`.page-content a[href="#${best_before_id}"]`).classList.add('active');
-	// 	// }
-	// 	// best_before_id = best_id;
-	// 	// entries.forEach(entry => {
-
-	// 	// 	const id = entry.target.getAttribute('id');
-	// 	// 	if (entry.intersectionRatio > 0) {
-	// 	// 		document.querySelector(`.page-content a[href="#${id}"]`).classList.add('active');
-	// 	// 	} else {
-	// 	// 		document.querySelector(`.page-content a[href="#${id}"]`).classList.remove('active');
-	// 	// 	}
-	// 	// });
-	// });
-
-	// // Track all sections that have an `id` applied
-	// headings.forEach((section) => {
-	// 	observer.observe(section);
-	// });
-
-
+	// Track all sections that have an `id` applied
+	headings.forEach((section) => {
+		observer.observe(section);
+	});
 
 
 
