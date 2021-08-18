@@ -5,10 +5,12 @@ Pkg.instantiate()
 Pkg.precompile()
 
 using NodeJS
+run(`$(npm_cmd()) install highlight.js`)
+run(`$(npm_cmd()) install lunr`)
+run(`$(npm_cmd()) install cheerio`)
+
 using Franklin
 using Documenter: deploydocs, deploy_folder, GitHubActions
-
-run(`$(npm_cmd()) install highlight.js`)
 
 cfg = GitHubActions() # this should pick up all details via GHA environment variables
 
@@ -26,7 +28,9 @@ ENV["PREVIEW_FRANKLIN_WEBSITE_URL"] = repo
 ENV["PREVIEW_FRANKLIN_PREPATH"] = deploydecision.subfolder
 
 
-optimize()
+serve(single=true, cleanup=false)
+lunr()
+optimize(minify=false, prerender=false)
 
 deploydocs(;
     repo,
