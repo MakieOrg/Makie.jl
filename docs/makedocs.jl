@@ -27,7 +27,6 @@ ENV["PREVIEW_FRANKLIN_WEBSITE_URL"] = repo
 @info "Setting PREVIEW_FRANKLIN_PREPATH to $(deploydecision.subfolder)"
 ENV["PREVIEW_FRANKLIN_PREPATH"] = deploydecision.subfolder
 
-
 serve(single=true, cleanup=false)
 lunr()
 optimize(minify=false, prerender=false)
