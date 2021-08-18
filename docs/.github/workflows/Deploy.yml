@@ -34,9 +34,14 @@ jobs:
     #   specific arguments, see the documentation or ?optimize in the REPL.
     - run: julia -e '
             using Pkg; Pkg.activate("."); Pkg.instantiate();
-            using NodeJS; run(`$(npm_cmd()) install highlight.js`);
+            using NodeJS;
+            run(`$(npm_cmd()) install highlight.js`);
+            run(`$(npm_cmd()) install lunr`);
+            run(`$(npm_cmd()) install cheerio`);
             using Franklin;
-            optimize()'
+            serve(single=true, cleanup=false);
+            lunr();
+            optimize(minify=false, prerender=false);'
     - name: Build and Deploy
       uses: JamesIves/github-pages-deploy-action@releases/v3
       with:
