@@ -8,10 +8,6 @@ video {
 
 /* plotting functions overview page */
 
-.plotting-functions-grid {
-    /* columns: 3; */
-}
-
 .plotting-functions-grid a:hover {
     text-decoration: none;
 }
@@ -30,6 +26,15 @@ video {
     color: #444;
     padding: 0.1em 0.3em;
     background-color: #f4f4f4;
+}
+
+.plotting-functions-item > a {
+    text-decoration: none;
+}
+
+
+.plotting-functions-item h2:hover {
+    background-color: #eaeaea;
 }
 
 img.plotting-function-thumb {
@@ -263,22 +268,6 @@ ol {
     padding: 0 0 0 1em;
 }
 
-/* links */
-
-.franklin-content a {
-    color: #6f6f6f;
-    text-decoration: underline #cacaca;
-}
-
-.franklin-content a:hover {
-    color: #2b5a68;
-    text-decoration: underline #2b5a68;
-}
-
-.franklin-content a:visited {
-    color: #6f6f6f;
-    text-decoration: underline #cacaca;
-}
 
 /* start page boxes */
 
