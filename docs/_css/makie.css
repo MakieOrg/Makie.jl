@@ -610,8 +610,11 @@ input.collapse-toggle {
 
 #lunrSearchForm input {
     box-shadow: inset 0px 0px 3px 0px rgba(0, 0, 0, 0.04);
-    margin: 1em 0;
     padding: 0.25em 0.5em;
     border-radius: 1em;
     border: 1px solid #ddd;
+}
+
+#lunrSearchForm input:focus {
+    border: 1px solid #7192e1;
 }
