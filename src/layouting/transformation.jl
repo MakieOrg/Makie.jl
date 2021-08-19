@@ -333,7 +333,7 @@ function inv_symlog10(x, low, high)
         x <= l ? x / l * high : exp10(x)
     elseif x < 0
         l = sign(x) * log10(abs(low))
-        x >= l ? x / l * abs(s.low) : sign(x) * exp10(abs(x))
+        x >= l ? x / l * abs(low) : sign(x) * exp10(abs(x))
     else
         x
     end

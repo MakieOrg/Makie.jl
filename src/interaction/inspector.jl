@@ -55,13 +55,13 @@ end
 ### dealing with markersize and rotations
 ########################################
 
-to_scale(f::AbstractFloat, idx) = Vec3f0(f)
-to_scale(v::Vec2f0, idx) = Vec3f0(v[1], v[2], 1)
-to_scale(v::Vec3f0, idx) = v
-to_scale(v::Vector, idx) = to_scale(v[idx], idx)
+_to_scale(f::AbstractFloat, idx) = Vec3f0(f)
+_to_scale(v::Vec2f0, idx) = Vec3f0(v[1], v[2], 1)
+_to_scale(v::Vec3f0, idx) = v
+_to_scale(v::Vector, idx) = _to_scale(v[idx], idx)
 
-to_rotation(x, idx) = x
-to_rotation(x::Vector, idx) = x[idx]
+_to_rotation(x, idx) = to_rotation(x)
+_to_rotation(x::Vector, idx) = to_rotation(x[idx])
 
 
 ### Selecting a point on a nearby line
@@ -557,12 +557,14 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
 
     proj_pos = shift_project(scene, plot, to_ndim(Point3f0, plot[1][][idx], 0))
     update_tooltip_alignment!(inspector, proj_pos)
-    bbox = Rect{3, Float32}(plot.marker[])
+    bbox = Rect{3, Float32}(convert_attribute(
+        plot.marker[], Key{:marker}(), Key{Makie.plotkey(plot)}()
+    ))
 
     a._model[] = transformationmatrix(
         plot[1][][idx],
-        to_scale(plot.markersize[], idx),
-        to_rotation(plot.rotations[], idx)
+        _to_scale(plot.markersize[], idx),
+        _to_rotation(plot.rotations[], idx)
     )
 
     if inspector.selection != plot

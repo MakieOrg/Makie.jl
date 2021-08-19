@@ -257,9 +257,9 @@ function transformationmatrix(
 end
 
 function transformationmatrix(
-        translation, scale, rotation::Vec{3,T}, up = Vec{3,T}(0,0,1)
+        translation, scale, _rotation::Vec{3,T}, up = Vec{3,T}(0,0,1)
     ) where T
-    q = rotation(rotation, up)
+    q = rotation(_rotation, up)
     transformationmatrix(translation, scale, q)
 end
 

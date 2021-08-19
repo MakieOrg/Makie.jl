@@ -254,6 +254,7 @@ function convert_arguments(P::PlotFunc, args...)
     ptype = plottype(P, Lines)
     ...
 end
+```
 """
 plottype(P1::Type{<: Combined{Any}}, P2::Type{<: Combined{T}}) where T = P2
 plottype(P1::Type{<: Combined{T}}, P2::Type{<: Combined}) where T = P1

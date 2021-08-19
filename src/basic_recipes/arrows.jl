@@ -209,7 +209,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
         meshscatter!(
             arrowplot,
             start, rotations = directions,
-            marker = @lift(arrow_tail(3, $arrowhead, $quality)),
+            marker = @lift(arrow_tail(3, $arrowtail, $quality)),
             markersize = lift(directions, normalize, linewidth, lengthscale) do dirs, n, linewidth, ls
                 lw = linewidth === automatic ? 0.05f0 : linewidth
                 if n
