@@ -43,7 +43,6 @@ function _precompile_()
     Base.precompile(Tuple{typeof(boundingbox),Scatter{Tuple{Vector{Point{2, Float32}}}}})   # time: 0.15786158
     Base.precompile(Tuple{typeof(same_length_array),Vector{Tuple{String, Point{2, Float32}}},Float64,Key{:rotation}})   # time: 0.15258642
     Base.precompile(Tuple{typeof(plot!),Scene,Type{Scatter{Tuple{Vector{Float64}, Vector{Float64}}}},Attributes,Tuple{Observable{Vector{Float64}}, Observable{Vector{Float64}}},Observable{Tuple{Vector{Point{2, Float32}}}}})   # time: 0.096797995
-    Base.precompile(Tuple{typeof(data_limits),Text{Tuple{String}}})   # time: 0.09453959
     Base.precompile(Tuple{typeof(convert_arguments),Type{Annotations{ArgType} where ArgType},Vector{String},Vector{Point{2, Float32}}})   # time: 0.09197935
     isdefined(Makie, Symbol("#719#720")) && Base.precompile(Tuple{getfield(Makie, Symbol("#719#720")),Int64,Quaternionf0,FTFont,Float32})   # time: 0.081979275
     let fbody = try Base.bodyfunction(which(convert_arguments, (Type{Scatter{Tuple{Vector{Float64}, Vector{Float64}}}},Vector{Float64},Vararg{Vector{Float64}, 100},))) catch missing end
