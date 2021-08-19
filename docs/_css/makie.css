@@ -586,6 +586,11 @@ input.collapse-toggle {
 
 .tocexpander {
     margin-left: auto;
+    color: #ccc;
+}
+
+.tocexpander:hover {
+    color: #333;
 }
 
 .result-title a {
