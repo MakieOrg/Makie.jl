@@ -85,8 +85,8 @@ function Makie.plot!(plot::Hist)
             return bins
         end
     end
-    points = lift(edges, plot.normalization, plot.scale_to) do edges, normalization, scale_to
 
+    points = lift(edges, plot.normalization, plot.scale_to) do edges, normalization, scale_to
         h = StatsBase.fit(StatsBase.Histogram, values[], edges)
         h_norm = StatsBase.normalize(h, mode = normalization)
         centers = edges[1:end-1] .+ (diff(edges) ./ 2)
