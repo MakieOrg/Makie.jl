@@ -73,9 +73,10 @@ function Makie.plot!(plot::Hist)
         if bins isa Int
             mi, ma = float.(extrema(vals))
             if mi == ma
-                return nothing
+                return [mi - 0.5, ma + 0.5]
             end
-            ma = nextfloat(ma) # hist is right-open, so to include the upper data point, make the last bin a tiny bit bigger
+            # hist is right-open, so to include the upper data point, make the last bin a tiny bit bigger
+            ma = nextfloat(ma)
             return range(mi, ma, length = bins+1)
         else
             if !issorted(bins)
@@ -85,22 +86,18 @@ function Makie.plot!(plot::Hist)
         end
     end
     points = lift(edges, plot.normalization, plot.scale_to) do edges, normalization, scale_to
-        if isnothing(edges) # all values are the same!
-            weights = length(values[])
-            centers = values[][1]
-        else
-            h = StatsBase.fit(StatsBase.Histogram, values[], edges)
-            h_norm = StatsBase.normalize(h, mode = normalization)
-            centers = edges[1:end-1] .+ (diff(edges) ./ 2)
-            weights = h_norm.weights
-        end
+
+        h = StatsBase.fit(StatsBase.Histogram, values[], edges)
+        h_norm = StatsBase.normalize(h, mode = normalization)
+        centers = edges[1:end-1] .+ (diff(edges) ./ 2)
+        weights = h_norm.weights
         if !isnothing(scale_to)
             max = maximum(weights)
             weights .= weights ./ max .* scale_to
         end
         return Point2f0.(centers, weights)
     end
-    widths = lift(x-> isnothing(x) ? [1] : diff(x), edges)
+    widths = lift(diff, edges)
     color = lift(plot.color) do color
         if color === :values
             return last.(points[])
