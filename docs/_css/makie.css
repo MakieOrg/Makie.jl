@@ -446,16 +446,19 @@ a.boxlink {
     margin-left: auto;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 800px) {
     #main {
-        max-width: 768px;
+        width: 768px;
         display: block;
+        padding-left: 0;
+        padding-right: 0;
     }
     .masthead ul.visible-links {
         display: flex;
     }
     .masthead__inner-wrap {
-        max-width: 768px;
+        width: 768px;
+        padding: 0.5em 0;
     }
     .greedy-nav__toggle {
         display: block;
@@ -463,15 +466,15 @@ a.boxlink {
     }
 }
 
-@media (min-width: 1150px) {
+@media (min-width: 1200px) {
     #main {
-        max-width: 1150px;
+        width: 1150px;
         display: grid;
         grid-template-columns: 800px 300px;
         grid-gap: 50px;
     }
     .masthead__inner-wrap {
-        max-width: 1150px;
+        width: 1150px;
     }
     #navbar-container {
         float: left;
@@ -489,6 +492,7 @@ a.boxlink {
         top: 4em;
         height: auto;
         max-height: calc(100vh - 4em);
+        padding: 0;
     }
     .greedy-nav__toggle {
         display: none;
