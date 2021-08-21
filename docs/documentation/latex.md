@@ -8,7 +8,12 @@ This engine supports a subset of LaTeX's most used commands, which are rendered 
 
 You can pass `LaTeXString` objects to almost any object with text labels. They are constructed using the `L` string macro prefix.
 
-\begin{examplefigure}{}
+```!
+# hideall
+using CairoMakie
+```
+
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
@@ -32,7 +37,7 @@ You can currently not change a text object which has been instantiated with a no
 
 Notice how the second axis loses its LaTeX title. You have to pass the L-string at axis construction.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
@@ -51,7 +56,7 @@ f
 For implicitly created axes, you can do this via the `axis` keyword argument.
 
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 scatter(randn(50, 2), axis = (; title = L"\frac{x + y}{\sin(k^2)}"))
 ```
