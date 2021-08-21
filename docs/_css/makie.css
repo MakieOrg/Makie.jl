@@ -515,7 +515,6 @@ html {
     text-rendering: auto;
     line-height: 1;
     font-size: 0.75rem;
-    margin-left: 1rem;
     margin-top: auto;
     margin-bottom: auto;
 }
@@ -523,7 +522,7 @@ html {
 .docs-chevron::before {
     font-family: "Font Awesome 5 Free";
     font-weight: 900;
-    content: "\f054";
+    content: "\f138";
 }
 
 input.collapse-toggle {
@@ -531,7 +530,7 @@ input.collapse-toggle {
 }
 
 #navbar input:checked~div label.tocexpander .docs-chevron::before {
-    content: "\f078";
+    content: "\f13a";
 }
 
 #navbar ul ul {
@@ -557,7 +556,7 @@ input.collapse-toggle {
 }
 
 .tocexpander {
-    margin-left: auto;
+    margin-right: 0.75em;
     color: #ccc;
 }
 
