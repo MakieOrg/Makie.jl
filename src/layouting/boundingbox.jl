@@ -45,7 +45,7 @@ function raw_boundingbox(scene::Scene)
     @warn("BB FROM SCENE")
     if scene[OldAxis] !== nothing
         return raw_boundingbox(scene[OldAxis])
-    elseif cameracontrols(scene) == EmptyCamera()
+    elseif camera_controls(scene) == EmptyCamera()
         # Empty camera means this is a parent scene that itself doesn't display anything
         return raw_boundingbox(scene.children)
     else

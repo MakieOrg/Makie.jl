@@ -45,14 +45,14 @@ wscale(screenrect, viewrect) = widths(viewrect) ./ widths(screenrect)
 
 Updates the camera for the given `scene` to cover the given `area` in 2d.
 """
-update_cam!(scene::SceneLike, area) = update_cam!(scene, cameracontrols(scene), area)
+update_cam!(scene::SceneLike, area) = update_cam!(scene, camera_controls(scene), area)
 """
     update_cam!(scene::SceneLike)
 
 Updates the camera for the given `scene` to cover the limits of the `Scene`.
 Useful when using the `Node` pipeline.
 """
-update_cam!(scene::SceneLike) = update_cam!(scene, cameracontrols(scene), limits(scene)[])
+update_cam!(scene::SceneLike) = update_cam!(scene, camera_controls(scene), limits(scene)[])
 
 function update_cam!(scene::Scene, cam::Camera2D, area3d::Rect)
     area = FRect2D(area3d)
@@ -323,7 +323,7 @@ function campixel!(scene)
         camera(scene).projectionview[] = projection
     end
     cam = PixelCamera()
-    cameracontrols!(scene, cam)
+    camera_controls!(scene, cam)
     update_once[] = true
     cam
 end

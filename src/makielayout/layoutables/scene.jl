@@ -4,7 +4,12 @@ function Makie.plot!(
         kw_attributes...)
 
     plot = Makie.plot!(lscene.scene, P, attributes, args...; kw_attributes...)
-
+    if isnothing(lscene.scene[OldAxis])
+        # Add axis and center on first plot!
+        lims = Makie.data_limits(plot)
+        Makie.axis3d!(lscene.scene, Attributes(), lims, ticks = (ranges = automatic, labels = automatic))
+        center!(lscene.scene)
+    end
     plot
 end
 
@@ -28,9 +33,7 @@ function layoutable(::Type{LScene}, fig_or_scene; bbox = nothing, scenekw = Name
     # pick a camera and draw axis.
     scenekw = merge((clear = false,), scenekw)
     scene = Scene(topscene, lift(round_to_IRect2D, layoutobservables.computedbbox); scenekw...)
-
     ls = LScene(fig_or_scene, layoutobservables, attrs, Dict{Symbol, Any}(), scene)
-
     ls
 end
 
