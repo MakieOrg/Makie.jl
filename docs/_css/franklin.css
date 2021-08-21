@@ -385,3 +385,23 @@ code {
     border-radius: 0 10px 10px 0;
     border-left: 5px solid #4c9cf1;
 }
+
+
+
+
+/* links */
+
+.franklin-content a {
+    color: #6f6f6f;
+    text-decoration: underline #cacaca;
+}
+
+.franklin-content a:hover {
+    color: #2b5a68;
+    text-decoration: underline #2b5a68;
+}
+
+.franklin-content a:visited {
+    color: #6f6f6f;
+    text-decoration: underline #cacaca;
+}

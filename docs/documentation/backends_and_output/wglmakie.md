@@ -1,7 +1,6 @@
-# How to use JSServe + WGLMakie
+# JSServe and WGLMakie
 
-One can use JSServe and WGLMakie in Pluto, IJulia, Webpages - and Documenter!
-It's possible to create interactive apps and dashboards, serve them on live webpages, or export them to static HTML.
+You can use JSServe and WGLMakie in Pluto, IJulia, Webpages and Documenter to create interactive apps and dashboards, serve them on live webpages, or export them to static HTML.
 
 This tutorial will run through the different modes and what kind of limitations to expect.
 

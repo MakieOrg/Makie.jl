@@ -142,7 +142,7 @@ f
 
 ## MathTeX
 
-Makie can render LaTeXStrings via [MathTeXEngine.jl](https://github.com/Kolaru/MathTeXEngine.jl/).
+Makie can render LaTeX strings from the LaTeXStrings.jl package using [MathTeXEngine.jl](https://github.com/Kolaru/MathTeXEngine.jl/).
 For example, you can pass L-strings as labels to the legend.
 
 \begin{examplefigure}{}
