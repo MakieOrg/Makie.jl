@@ -492,7 +492,7 @@ function rotate_cam!(scene, cam::Camera3D, angles::VecTypes, from_mouse=false)
     return
 end
 
-zoom!(scene::Scene, zoom_step) = zoom!(scene, cameracontrols(scene), false, false)
+zoom!(scene::Scene, zoom_step) = zoom!(scene, cameracontrols(scene), zoom_step, false, false)
 function zoom!(scene::Scene, cam::Camera3D, zoom_step, shift_lookat = false, cad = false)
     if cad
         # move exeposition if mouse is not over the center
