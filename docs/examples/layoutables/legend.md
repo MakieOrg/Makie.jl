@@ -75,7 +75,7 @@ traces = cumsum(randn(10, 5), dims = 1)
 for (i, (merge, unique)) in enumerate(
         Iterators.product([false, true], [false true]))
 
-    ax = Axis(f[fldmod1(i, 2)...],
+    axis = Axis(f[fldmod1(i, 2)...],
         title = "merge = $merge, unique = $unique")
 
     for trace in eachcol(traces)
@@ -86,7 +86,7 @@ for (i, (merge, unique)) in enumerate(
     lines!(mu, label = "mean")
     scatter!(mu, label = "mean")
 
-    axislegend(ax, merge = merge, unique = unique)
+    axislegend(axis, merge = merge, unique = unique)
 
 end
 
