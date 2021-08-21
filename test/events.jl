@@ -66,7 +66,7 @@ end
         scene = Scene(resolution=(800, 600));
         e = events(scene)
         cam3d!(scene, fixed_axis=true, cad=false, zoom_shift_lookat=false)
-        cc = cameracontrols(scene)
+        cc = camera_controls(scene)
 
         # Verify initial camera state
         @test cc.lookat[]       == Vec3f0(0)
@@ -101,7 +101,7 @@ end
         scene = Scene(resolution=(800, 600));
         e = events(scene)
         cam3d!(scene, fixed_axis=true, cad=false, zoom_shift_lookat=false)
-        cc = cameracontrols(scene)
+        cc = camera_controls(scene)
 
         # Verify initial camera state
         @test cc.lookat[]       == Vec3f0(0)
@@ -135,7 +135,7 @@ end
         scene = Scene(resolution=(800, 600));
         e = events(scene)
         cam3d!(scene, fixed_axis=true, cad=false, zoom_shift_lookat=false)
-        cc = cameracontrols(scene)
+        cc = camera_controls(scene)
 
         # Verify initial camera state
         @test cc.lookat[]       == Vec3f0(0)

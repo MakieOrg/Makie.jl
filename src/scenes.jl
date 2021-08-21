@@ -285,7 +285,7 @@ function Base.push!(scene::Scene, child::Scene)
             getfield(child.camera, field)[] = val
         end
     end
-    cameracontrols!(child, nodes)
+    camera_controls!(child, nodes)
     child.parent = scene
     return scene
 end

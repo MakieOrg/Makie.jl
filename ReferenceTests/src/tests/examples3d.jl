@@ -34,7 +34,7 @@ end
     fig, ax, meshplot = mesh(merge(meshes))
     scene = ax.scene
     center!(scene)
-    cam = cameracontrols(scene)
+    cam = camera_controls(scene)
     dir = widths(data_limits(scene)) ./ 2.
     dir_scaled = Vec3f0(
         dir[1] * scene.transformation.scale[][1],

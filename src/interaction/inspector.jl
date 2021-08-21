@@ -568,9 +568,9 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
     )
 
     if inspector.selection != plot
-        eyeposition = cameracontrols(scene).eyeposition[]
-        lookat = cameracontrols(scene).lookat[]
-        upvector = cameracontrols(scene).upvector[]
+        eyeposition = camera_controls(scene).eyeposition[]
+        lookat = camera_controls(scene).lookat[]
+        upvector = camera_controls(scene).upvector[]
 
         # To avoid putting a bbox outside the plots bbox
         a._bbox3D[] = boundingbox(plot)
@@ -631,9 +631,9 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
     a._bbox3D[] = bbox
 
     if inspector.selection != plot
-        eyeposition = cameracontrols(scene).eyeposition[]
-        lookat = cameracontrols(scene).lookat[]
-        upvector = cameracontrols(scene).upvector[]
+        eyeposition = camera_controls(scene).eyeposition[]
+        lookat = camera_controls(scene).lookat[]
+        upvector = camera_controls(scene).upvector[]
 
         clear_temporary_plots!(inspector, plot)
         p = wireframe!(

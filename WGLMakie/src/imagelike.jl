@@ -123,7 +123,7 @@ end
 function create_shader(mscene::Scene, plot::Volume)
     x, y, z, vol = plot[1], plot[2], plot[3], plot[4]
     box = GeometryBasics.mesh(FRect3D(Vec3f0(0), Vec3f0(1)))
-    cam = cameracontrols(mscene)
+    cam = camera_controls(mscene)
     model2 = lift(plot.model, x, y, z) do m, xyz...
         mi = minimum.(xyz)
         maxi = maximum.(xyz)

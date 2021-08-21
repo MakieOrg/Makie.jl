@@ -33,7 +33,7 @@ function cam2d!(scene::SceneLike; kw_args...)
     add_pan!(scene, cam)
     correct_ratio!(scene, cam)
     selection_rect!(scene, cam, cam_attributes.selectionbutton)
-    cameracontrols!(scene, cam)
+    camera_controls!(scene, cam)
     cam
 end
 

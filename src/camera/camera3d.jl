@@ -28,7 +28,7 @@ The 3D camera is (or can be) unrestricted in terms of rotations and translations
 - `zoom_shift_lookat = true`: If true attempts to keep data under the cursor in view when zooming.
 - `cad = false`: If true rotates the view around `lookat` when zooming off-center.
 
-The camera view follows from the position of the camera `eyeposition`, the point which the camera focuses `lookat` and the up direction of the camera `upvector`. These can be accessed as `cam.eyeposition` etc and adjusted via `update_cam!(scene, cameracontrols(scene), eyeposition, lookat[, upvector = Vec3f0(0, 0, 1)])`. They can also be passed as keyword arguments when the camera is constructed.
+The camera view follows from the position of the camera `eyeposition`, the point which the camera focuses `lookat` and the up direction of the camera `upvector`. These can be accessed as `cam.eyeposition` etc and adjusted via `update_cam!(scene, camera_controls(scene), eyeposition, lookat[, upvector = Vec3f0(0, 0, 1)])`. They can also be passed as keyword arguments when the camera is constructed.
 
 The camera can be controlled by keyboard and mouse. The keyboard has the following available attributes
 
@@ -404,7 +404,7 @@ function on_pulse(scene, cam, timestep)
 end
 
 
-translate_cam!(scene, t) = translate_cam!(scene, cameracontrols(scene), t)
+translate_cam!(scene, t) = translate_cam!(scene, camera_controls(scene), t)
 function translate_cam!(scene, cam, t)
     # This uses a camera based coordinate system where
     # x expands right, y expands up and z expands towards the screen
@@ -430,7 +430,7 @@ function translate_cam!(scene, cam, t)
     return
 end
 
-rotate_cam!(scene, angles) = rotate_cam!(scene, cameracontrols(scene), angles, false)
+rotate_cam!(scene, angles) = rotate_cam!(scene, camera_controls(scene), angles, false)
 function rotate_cam!(scene, cam::Camera3D, angles::VecTypes, from_mouse=false)
     # This applies rotations around the x/y/z axis of the camera coordinate system
     # x expands right, y expands up and z expands towards the screen
@@ -492,7 +492,7 @@ function rotate_cam!(scene, cam::Camera3D, angles::VecTypes, from_mouse=false)
     return
 end
 
-zoom!(scene::Scene, zoom_step) = zoom!(scene, cameracontrols(scene), false, false)
+zoom!(scene::Scene, zoom_step) = zoom!(scene, camera_controls(scene), false, false)
 function zoom!(scene::Scene, cam::Camera3D, zoom_step, shift_lookat = false, cad = false)
     if cad
         # move exeposition if mouse is not over the center
