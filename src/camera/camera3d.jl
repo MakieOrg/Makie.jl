@@ -492,6 +492,15 @@ function rotate_cam!(scene, cam::Camera3D, angles::VecTypes, from_mouse=false)
     return
 end
 
+
+"""
+    zoom!(scene, zoom_step)
+
+Zooms the camera in or out based on the multiplier `zoom_step`. A `zoom_step` 
+of 1.0 is neutral, larger zooms out and lower zooms in.
+
+Note that this method only applies to Camera3D.
+"""
 zoom!(scene::Scene, zoom_step) = zoom!(scene, cameracontrols(scene), zoom_step, false, false)
 function zoom!(scene::Scene, cam::Camera3D, zoom_step, shift_lookat = false, cad = false)
     if cad

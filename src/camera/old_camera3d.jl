@@ -220,9 +220,9 @@ function add_rotation!(scene, cam, button, key, fixed_axis::Bool)
 end
 
 """
-    translate_cam!(scene::Scene. translation::VecTypes)
+    translate_cam!(scene::Scene, translation::VecTypes)
 
-Translate the camera to the given coordinates.
+Translate the camera by a translation vector given in camera space. 
 """
 translate_cam!(scene::Scene, translation::VecTypes) = translate_cam!(scene, cameracontrols(scene), translation)
 function translate_cam!(scene::Scene, cam::OldCamera3D, _translation::VecTypes)
