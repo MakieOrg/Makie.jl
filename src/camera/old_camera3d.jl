@@ -45,7 +45,7 @@ function old_cam3d_cad!(scene; kw_args...)
     disconnect!(scene.camera)
     add_translation!(scene, cam, cam.pan_button, cam.move_key, false)
     add_rotation!(scene, cam, cam.rotate_button, cam.move_key, false)
-    camera_controls!(scene, cam)
+    cameracontrols!(scene, cam)
     on(camera(scene), scene.px_area) do area
         # update cam when screen ratio changes
         update_cam!(scene, cam)
@@ -81,7 +81,7 @@ function old_cam3d_turntable!(scene; kw_args...)
     disconnect!(scene.camera)
     add_translation!(scene, cam, cam.pan_button, cam.move_key, true)
     add_rotation!(scene, cam, cam.rotate_button, cam.move_key, true)
-    camera_controls!(scene, cam)
+    cameracontrols!(scene, cam)
     on(camera(scene), scene.px_area) do area
         # update cam when screen ratio changes
         update_cam!(scene, cam)
@@ -224,7 +224,7 @@ end
 
 Translate the camera to the given coordinates.
 """
-translate_cam!(scene::Scene, translation::VecTypes) = translate_cam!(scene, camera_controls(scene), translation)
+translate_cam!(scene::Scene, translation::VecTypes) = translate_cam!(scene, cameracontrols(scene), translation)
 function translate_cam!(scene::Scene, cam::OldCamera3D, _translation::VecTypes)
     translation = Vec3f0(_translation)
     translation == Vec3f0(0) && return
@@ -256,7 +256,7 @@ Zooms the camera of `scene` in towards `point` by a factor of `zoom_step`. A pos
 `zoom_step` zooms in while a negative `zoom_step` zooms out.
 """
 function zoom!(scene, point::VecTypes, zoom_step, shift_lookat::Bool)
-    cam = camera_controls(scene)
+    cam = cameracontrols(scene)
     @extractvalue cam (projectiontype, lookat, eyeposition, upvector, projectiontype)
 
 
@@ -296,8 +296,8 @@ end
 Rotate the camera of the Scene by the given rotation. Passing `theta_v = (α, β, γ)` will rotate
 the camera according to the Euler angles (α, β, γ).
 """
-rotate_cam!(scene::Scene, theta_v::Number...) = rotate_cam!(scene, camera_controls(scene), theta_v)
-rotate_cam!(scene::Scene, theta_v::VecTypes) = rotate_cam!(scene, camera_controls(scene), theta_v)
+rotate_cam!(scene::Scene, theta_v::Number...) = rotate_cam!(scene, cameracontrols(scene), theta_v)
+rotate_cam!(scene::Scene, theta_v::VecTypes) = rotate_cam!(scene, cameracontrols(scene), theta_v)
 function rotate_cam!(scene::Scene, cam::OldCamera3D, _theta_v::VecTypes, fixed_axis::Bool = true)
     theta_v = Vec3f0(_theta_v)
     theta_v == Vec3f0(0) && return #nothing to do!
@@ -354,7 +354,7 @@ end
 
 Updates the camera's controls to point to the specified location.
 """
-update_cam!(scene::Scene, eyeposition, lookat, up = Vec3f0(0, 0, 1)) = update_cam!(scene, camera_controls(scene), eyeposition, lookat, up)
+update_cam!(scene::Scene, eyeposition, lookat, up = Vec3f0(0, 0, 1)) = update_cam!(scene, cameracontrols(scene), eyeposition, lookat, up)
 
 function update_cam!(scene::Scene, camera::OldCamera3D, eyeposition, lookat, up = Vec3f0(0, 0, 1))
     camera.lookat[] = Vec3f0(lookat)

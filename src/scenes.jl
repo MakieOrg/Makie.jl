@@ -285,7 +285,7 @@ function Base.push!(scene::Scene, child::Scene)
             getfield(child.camera, field)[] = val
         end
     end
-    camera_controls!(child, nodes)
+    cameracontrols!(child, nodes)
     child.parent = scene
     return scene
 end
@@ -296,15 +296,15 @@ events(scene::SceneLike) = events(scene.parent)
 camera(scene::Scene) = scene.camera
 camera(scene::SceneLike) = camera(scene.parent)
 
-camera_controls(scene::Scene) = scene.camera_controls
-camera_controls(scene::SceneLike) = camera_controls(scene.parent)
+cameracontrols(scene::Scene) = scene.camera_controls
+cameracontrols(scene::SceneLike) = cameracontrols(scene.parent)
 
-function camera_controls!(scene::Scene, cam)
+function cameracontrols!(scene::Scene, cam)
     disconnect!(scene.camera_controls)
     scene.camera_controls = cam
     return cam
 end
-camera_controls!(scene::SceneLike, cam) = camera_controls!(parent(scene), cam)
+cameracontrols!(scene::SceneLike, cam) = cameracontrols!(parent(scene), cam)
 
 pixelarea(scene::Scene) = scene.px_area
 pixelarea(scene::SceneLike) = pixelarea(scene.parent)

@@ -250,7 +250,7 @@ end
 function serialize_scene(scene::Scene, serialized_scenes=[])
     hexcolor(c) = "#" * hex(Colors.color(to_color(c)))
     pixel_area = lift(area -> [minimum(area)..., widths(area)...], pixelarea(scene))
-    cam_controls = camera_controls(scene)
+    cam_controls = cameracontrols(scene)
     cam3d_state = if cam_controls isa Camera3D
         fields = (:lookat, :upvector, :eyeposition, :fov, :near, :far)
         Dict((f => serialize_three(getfield(cam_controls, f)[]) for f in fields))

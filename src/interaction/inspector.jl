@@ -568,7 +568,7 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
     )
 
     if inspector.selection != plot
-        cc = camera_controls(scene)
+        cc = cameracontrols(scene)
         if cc isa Camera3D
             eyeposition = cc.eyeposition[]
             lookat = cc.lookat[]
@@ -634,7 +634,7 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
     a._bbox3D[] = bbox
 
     if inspector.selection != plot
-        cc = camera_controls(scene)
+        cc = cameracontrols(scene)
         if cc isa Camera3D
             eyeposition = cc.eyeposition[]
             lookat = cc.lookat[]

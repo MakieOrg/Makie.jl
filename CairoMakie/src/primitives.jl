@@ -607,7 +607,7 @@ end
 
 
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Makie.Mesh)
-    if Makie.camera_controls(scene) isa Union{Camera2D, Makie.PixelCamera}
+    if Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera}
         draw_mesh2D(scene, screen, primitive)
     else
         if !haskey(primitive, :faceculling)
