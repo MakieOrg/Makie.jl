@@ -377,16 +377,16 @@ end
 
       print(io, """<div class="tocitem-container">""")
 
-      if haskey(naventry.metadata, "page")
-        print(io, """<a $(active ? "class = active" : "") href="/$(naventry.metadata["page"])">$(naventry.metadata["title"])</a>""")
-      else
-        print(io, """<span $(active ? "class = active" : "")>$(get(naventry.metadata, "title", ""))</span>""")
-      end
-
       if has_children
         print(io, """<label class="tocexpander" for="$inputid">""")
         print(io, "<i class=\"docs-chevron\"></i>")
         print(io, "</label>")
+      end
+
+      if haskey(naventry.metadata, "page")
+        print(io, """<a $(active ? "class = active" : "") href="/$(naventry.metadata["page"])">$(naventry.metadata["title"])</a>""")
+      else
+        print(io, """<span $(active ? "class = active" : "")>$(get(naventry.metadata, "title", ""))</span>""")
       end
 
       print(io, "</div>")

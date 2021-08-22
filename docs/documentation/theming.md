@@ -1,4 +1,4 @@
-# Theming figures
+# Theming
 
 Makie allows you to change almost every visual aspect of your plots via attributes.
 You can set attributes whenever you create an object, or you define a general style that is then used as the default by all following objects.

@@ -8,10 +8,6 @@ video {
 
 /* plotting functions overview page */
 
-.plotting-functions-grid {
-    /* columns: 3; */
-}
-
 .plotting-functions-grid a:hover {
     text-decoration: none;
 }
@@ -30,6 +26,15 @@ video {
     color: #444;
     padding: 0.1em 0.3em;
     background-color: #f4f4f4;
+}
+
+.plotting-functions-item > a {
+    text-decoration: none;
+}
+
+
+.plotting-functions-item h2:hover {
+    background-color: #eaeaea;
 }
 
 img.plotting-function-thumb {
@@ -263,22 +268,6 @@ ol {
     padding: 0 0 0 1em;
 }
 
-/* links */
-
-.franklin-content a {
-    color: #6f6f6f;
-    text-decoration: underline #cacaca;
-}
-
-.franklin-content a:hover {
-    color: #2b5a68;
-    text-decoration: underline #2b5a68;
-}
-
-.franklin-content a:visited {
-    color: #6f6f6f;
-    text-decoration: underline #cacaca;
-}
 
 /* start page boxes */
 
@@ -457,16 +446,19 @@ a.boxlink {
     margin-left: auto;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 800px) {
     #main {
-        max-width: 768px;
+        width: 768px;
         display: block;
+        padding-left: 0;
+        padding-right: 0;
     }
     .masthead ul.visible-links {
         display: flex;
     }
     .masthead__inner-wrap {
-        max-width: 768px;
+        width: 768px;
+        padding: 0.5em 0;
     }
     .greedy-nav__toggle {
         display: block;
@@ -474,21 +466,21 @@ a.boxlink {
     }
 }
 
-@media (min-width: 1100px) {
+@media (min-width: 1200px) {
     #main {
-        max-width: 1100px;
+        width: 1150px;
         display: grid;
-        grid-template-columns: 250px 800px;
+        grid-template-columns: 800px 300px;
         grid-gap: 50px;
     }
     .masthead__inner-wrap {
-        max-width: 1100px;
+        width: 1150px;
     }
     #navbar-container {
         float: left;
         background: transparent;
         position: static;
-        grid-column: 1;
+        grid-column: 2;
         grid-row: 1;
         font-size: smaller;
         width: 100%;
@@ -500,37 +492,17 @@ a.boxlink {
         top: 4em;
         height: auto;
         max-height: calc(100vh - 4em);
+        padding: 0;
     }
     .greedy-nav__toggle {
         display: none;
     }
+    .franklin-content {
+        grid-column: 1;
+        grid-row: 1;
+    }
 }
 
-@media (min-width: 1400px) {
-    #main {
-        max-width: 1400px;
-        display: grid;
-        grid-template-columns: 250px 800px 250px;
-        grid-gap: 2em;
-    }
-    #contenttable-container {
-        display: block;
-        position: static;
-        overflow-y: auto;
-        grid-column: 3;
-        grid-row: 1;
-        font-size: smaller;
-    }
-    #contenttable {
-        display: block;
-        position: fixed;
-        top: 4em;
-        overflow-y: auto;
-    }
-    .masthead__inner-wrap {
-        max-width: 1400px;
-    }
-}
 
 html {
     scroll-padding-top: 3.5rem;
@@ -543,7 +515,6 @@ html {
     text-rendering: auto;
     line-height: 1;
     font-size: 0.75rem;
-    margin-left: 1rem;
     margin-top: auto;
     margin-bottom: auto;
 }
@@ -551,7 +522,7 @@ html {
 .docs-chevron::before {
     font-family: "Font Awesome 5 Free";
     font-weight: 900;
-    content: "\f054";
+    content: "\f138";
 }
 
 input.collapse-toggle {
@@ -559,7 +530,7 @@ input.collapse-toggle {
 }
 
 #navbar input:checked~div label.tocexpander .docs-chevron::before {
-    content: "\f078";
+    content: "\f13a";
 }
 
 #navbar ul ul {
@@ -585,7 +556,12 @@ input.collapse-toggle {
 }
 
 .tocexpander {
-    margin-left: auto;
+    margin-right: 0.75em;
+    color: #ccc;
+}
+
+.tocexpander:hover {
+    color: #333;
 }
 
 .result-title a {
@@ -616,8 +592,11 @@ input.collapse-toggle {
 
 #lunrSearchForm input {
     box-shadow: inset 0px 0px 3px 0px rgba(0, 0, 0, 0.04);
-    margin: 1em 0;
     padding: 0.25em 0.5em;
     border-radius: 1em;
     border: 1px solid #ddd;
+}
+
+#lunrSearchForm input:focus {
+    border: 1px solid #7192e1;
 }

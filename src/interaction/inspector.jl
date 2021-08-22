@@ -568,9 +568,12 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
     )
 
     if inspector.selection != plot
-        eyeposition = camera_controls(scene).eyeposition[]
-        lookat = camera_controls(scene).lookat[]
-        upvector = camera_controls(scene).upvector[]
+        cc = camera_controls(scene)
+        if cc isa Camera3D
+            eyeposition = cc.eyeposition[]
+            lookat = cc.lookat[]
+            upvector = cc.upvector[]
+        end
 
         # To avoid putting a bbox outside the plots bbox
         a._bbox3D[] = boundingbox(plot)
@@ -584,7 +587,7 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
         push!(inspector.temp_plots, p)
 
         # Restore camera
-        update_cam!(scene, eyeposition, lookat, upvector)
+        cc isa Camera3D && update_cam!(scene, eyeposition, lookat, upvector)
     end
 
     a._display_text[] = position2string(plot[1][][idx])
@@ -631,9 +634,12 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
     a._bbox3D[] = bbox
 
     if inspector.selection != plot
-        eyeposition = camera_controls(scene).eyeposition[]
-        lookat = camera_controls(scene).lookat[]
-        upvector = camera_controls(scene).upvector[]
+        cc = camera_controls(scene)
+        if cc isa Camera3D
+            eyeposition = cc.eyeposition[]
+            lookat = cc.lookat[]
+            upvector = cc.upvector[]
+        end
 
         clear_temporary_plots!(inspector, plot)
         p = wireframe!(
@@ -644,7 +650,7 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
         push!(inspector.temp_plots, p)
 
         # Restore camera
-        update_cam!(scene, eyeposition, lookat, upvector)
+        cc isa Camera3D && update_cam!(scene, eyeposition, lookat, upvector)
     end
 
     a._text_position[] = proj_pos

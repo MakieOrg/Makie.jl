@@ -72,7 +72,11 @@ function Makie.plot!(plot::Hist)
     edges = lift(values, plot.bins) do vals, bins
         if bins isa Int
             mi, ma = float.(extrema(vals))
-            ma = nextfloat(ma) # hist is right-open, so to include the upper data point, make the last bin a tiny bit bigger
+            if mi == ma
+                return [mi - 0.5, ma + 0.5]
+            end
+            # hist is right-open, so to include the upper data point, make the last bin a tiny bit bigger
+            ma = nextfloat(ma)
             return range(mi, ma, length = bins+1)
         else
             if !issorted(bins)
