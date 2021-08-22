@@ -10,6 +10,8 @@ function Makie.plot!(
         Makie.axis3d!(lscene.scene, Attributes(), lims, ticks = (ranges = automatic, labels = automatic))
         center!(lscene.scene)
     end
+    # Make sure axis is always in pos 1
+    sort!(lscene.scene.plots, by=!Makie.isaxis)
     plot
 end
 
