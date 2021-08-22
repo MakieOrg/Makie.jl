@@ -6,8 +6,7 @@ function Makie.plot!(
     plot = Makie.plot!(lscene.scene, P, attributes, args...; kw_attributes...)
     if isnothing(lscene.scene[OldAxis])
         # Add axis and center on first plot!
-        lims = Makie.data_limits(plot)
-        Makie.axis3d!(lscene.scene, Attributes(), lims, ticks = (ranges = automatic, labels = automatic))
+        Makie.axis3d!(lscene.scene)
         center!(lscene.scene)
     end
     # Make sure axis is always in pos 1

@@ -218,9 +218,7 @@ struct OldAxis end
 zero_origin(area) = IRect(0, 0, widths(area))
 
 function child(scene::Scene; camera, attributes...)
-    child = Scene(scene, lift(zero_origin, pixelarea(scene)); attributes...)
-    camera(child)
-    return child
+    return Scene(scene, lift(zero_origin, pixelarea(scene)); camera=camera, attributes...)
 end
 
 """

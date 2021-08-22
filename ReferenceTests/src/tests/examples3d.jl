@@ -245,15 +245,16 @@ end
     )
 end
 
-
 @cell "OldAxis + Surface" begin
     vx = -1:0.01:1
     vy = -1:0.01:1
 
     f(x, y) = (sin(x * 10) + cos(y * 10)) / 4
     scene = Scene(resolution=(500, 500))
+    cam3d!(scene)
     # One way to style the axis is to pass a nested dictionary / named tuple to it.
-    psurf = surface!(scene, vx, vy, f, axis=(frame = (linewidth = 2.0,),))
+    psurf = surface!(scene, vx, vy, f)
+    axis3d!(scene, frame = (linewidth = 2.0,))
     # One can also directly get the axis object and manipulate it
     axis = scene[OldAxis] # get axis
 
@@ -280,6 +281,7 @@ end
     # update surface
     # TODO explain and improve the situation here
     psurf.converted[3][] = f.(vx .+ 0.5, (vy .+ 0.5)')
+    center!(scene)
     scene
 end
 
