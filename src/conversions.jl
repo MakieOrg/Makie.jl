@@ -302,14 +302,14 @@ and stores the `ClosedInterval` to `n` and `m`, plus the original matrix in a Tu
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::SurfaceLike, data::AbstractMatrix)
+function convert_arguments(sl::SurfaceLike, data::AbstractMatrix)
     n, m = Float32.(size(data))
-    (0f0 .. n, 0f0 .. m, el32convert(data))
+    convert_arguments(sl, 0f0 .. n, 0f0 .. m, el32convert(data))
 end
 
-function convert_arguments(::DiscreteSurface, data::AbstractMatrix)
+function convert_arguments(ds::DiscreteSurface, data::AbstractMatrix)
     n, m = Float32.(size(data))
-    (0.5f0 .. n+0.5f0, 0.5f0 .. m+0.5f0, el32convert(data))
+    convert_arguments(ds, edges(1:n), edges(1:m), el32convert(data))
 end
 
 function convert_arguments(SL::SurfaceLike, x::AbstractVector{<:Number}, y::AbstractVector{<:Number}, z::AbstractVector{<:Number})
@@ -592,6 +592,7 @@ float32type(x::AbstractArray{T}) where T = float32type(T)
 float32type(x::T) where T = float32type(T)
 el32convert(x::AbstractArray) = elconvert(float32type(x), x)
 el32convert(x::AbstractArray{Float32}) = x
+el32convert(x::AbstractRange{Float32}) = collect(x)
 el32convert(x::Observable) = lift(el32convert, x)
 el32convert(x) = convert(float32type(x), x)
 

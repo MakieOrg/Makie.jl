@@ -141,7 +141,6 @@ function atomic_limits(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}})
     end
 end
 
-
 isfinite_rect(x::Rect) = all(isfinite.(minimum(x))) &&  all(isfinite.(maximum(x)))
 
 function data_limits(plots::Vector)
@@ -165,3 +164,54 @@ data_limits(s::Scene) = data_limits(plots_from_camera(s))
 data_limits(s::Figure) = data_limits(s.scene)
 data_limits(s::FigureAxisPlot) = data_limits(s.figure)
 data_limits(plot::Combined) = data_limits(plot.plots)
+
+function foreach_point(f, primitives::AbstractPlot)
+    return foreach(f, point_iterator(primitives))
+end
+
+function point_iterator(plot::Union{Scatter, MeshScatter, Lines, LineSegments})
+    return plot.positions[]
+end
+
+function point_iterator(plot::Mesh)
+    return decompose(Point, plot.mesh[])
+end
+
+function point_iterator(plot::Surface)
+    X = plot.x[]
+    Y = plot.y[]
+    Z = plot.z[]
+    indices = CartesianIndices(Z)
+    function get_points(linidx)
+        i, j = Tuple(indices[linidx])
+        x = X[i]
+        y = Y[j]
+        z = Z[linidx]
+        return Point(x, y, z)
+    end
+    return (get_points(idx) for idx in 1:length(Z))
+end
+
+function point_iterator(plot::Heatmap)
+    X = plot.x[]
+    Y = plot.y[]
+    Z = plot[3][]
+    zsize = size(Z) .+ 1
+    indices = CartesianIndices(zsize)
+    function get_points(linidx)
+        i, j = Tuple(indices[linidx])
+        x = X[i]
+        y = Y[j]
+        return Point(x, y, 0.0)
+    end
+    return (get_points(idx) for idx in 1:prod(zsize))
+end
+
+function point_iterator(x::Volume)
+    axes = (x[1], x[2], x[3])
+    extremata = map(extrema∘to_value, axes)
+    minpoint = Point3f0(first.(extremata)...)
+    widths = last.(extremata) .- first.(extremata)
+    rect = FRect3D(minpoint, Vec3f0(widths))
+    return unique(decompose(Point, rect))
+end
