@@ -22,6 +22,7 @@ for name in names(Makie)
     @eval import Makie: $(name)
     @eval export $(name)
 end
+
 export inline!
 
 struct GLBackend <: Makie.AbstractBackend

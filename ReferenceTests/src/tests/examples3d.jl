@@ -277,9 +277,6 @@ end
         font="helvetica"
     )
     c = lines!(scene, Circle(Point2f0(0.1, 0.5), 0.1f0), color=:red, offset=Vec3f0(0, 0, 1))
-    scene
-    # update surface
-    # TODO explain and improve the situation here
     psurf.converted[3][] = f.(vx .+ 0.5, (vy .+ 0.5)')
     center!(scene)
     scene
@@ -508,18 +505,12 @@ end
 
     ρ(x, y, z) = exp(-(abs(x))) # function (charge density)
 
-    # create a Scene with the attribute `backgroundcolor = :black`,
-    # can be any compatible color.  Useful for better contrast and not killing your eyes with a white background.
-    scene = Scene(backgroundcolor=:black)
-
-    volume!(
-        scene,
+    fig, ax, pl = volume(
         r, r, r,          # coordinates to plot on
         ρ,                # charge density (functions as colorant)
         algorithm=:mip  # maximum-intensity-projection
     )
-
-    scene[OldAxis].names.textcolor = :gray # let axis labels be seen on dark background
-
-    scene # show scene
+    ax.scene[OldAxis].names.textcolor = :gray # let axis labels be seen on dark background
+    fig.scene.backgroundcolor[] = to_color(:black)
+    fig
 end
