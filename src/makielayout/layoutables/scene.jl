@@ -7,8 +7,9 @@ function Makie.plot!(
     if isnothing(lscene.scene[OldAxis])
         # Add axis and center on first plot!
         Makie.axis3d!(lscene.scene)
-        center!(lscene.scene)
     end
+    lscene.scene[OldAxis][1] = data_limits(lscene.scene)
+    center!(lscene.scene)
     # Make sure axis is always in pos 1
     sort!(lscene.scene.plots, by=!Makie.isaxis)
     plot
