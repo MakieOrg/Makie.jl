@@ -27,7 +27,10 @@ You can use all the same arguments as [`barplot`](@ref):
 \begin{examplefigure}{}
 ```julia
 using CairoMakie
-CairoMakie.activate!()
+CairoMakie.activate!() # hide
+
+data = randn(1000)
+
 hist(data, normalization = :pdf, bar_labels = :values,
      label_formatter=x-> round(x, digits=2), label_size = 15,
      strokewidth = 0.5, strokecolor = (:black, 0.5), color = :values)
@@ -42,6 +45,9 @@ Also, one can use a negative `scale_to` amount to flip the histogram.
 
 \begin{examplefigure}{}
 ```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+
 fig = Figure()
 ax = Axis(fig[1, 1])
 for i in 1:5

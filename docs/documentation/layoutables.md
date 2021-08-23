@@ -1,9 +1,4 @@
-# `Layoutables`
-
-!!! note
-    All examples in this section are presented as static CairoMakie vector graphics for clarity of visuals.
-    Keep in mind that CairoMakie is not interactive.
-    Use GLMakie for interactive widgets, as WGLMakie currently doesn't have picking implemented.
+# Layoutables
 
 `Layoutables` are objects which can be added to a `Figure` or `Scene` and have their location and size controlled by a `GridLayout`. In of itself, a `Layoutable` is an abstract type.
 A `Figure` has its own internal `GridLayout` and therefore offers simplified syntax for adding layoutables to it.
