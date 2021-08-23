@@ -100,7 +100,7 @@ For example, to make a line with color dependent on time, you could write:
 
 ```julia:color_animation_2
 time = Node(0.0)
-color_observable = @lift(RGBf0($time, 0, 0))
+color_observable = @lift(RGBf($time, 0, 0))
 
 fig = lines(0..10, sin, color = color_observable)
 
@@ -120,7 +120,7 @@ it is better to make a `Node` with a vector of `Point`s,
 so that the number of `x` and `y` values can not go out of sync.
 
 ```julia:append_animation
-points = Node(Point2f0[(0, 0)])
+points = Node(Point2f[(0, 0)])
 
 fig, ax = scatter(points)
 limits!(ax, 0, 30, 0, 30)
@@ -129,7 +129,7 @@ frames = 1:30
 
 record(fig, joinpath(@OUTPUT, "append_animation.mp4"), frames;
         framerate = 30) do frame
-    new_point = Point2f0(frame, frame)
+    new_point = Point2f(frame, frame)
     points[] = push!(points[], new_point)
 end
 nothing # hide
@@ -143,7 +143,7 @@ You can animate a live plot easily using a loop.
 Update all `Observables` that you need and then add a short sleep interval so that the display can refresh:
 
 ```julia
-points = Node(Point2f0[randn(2)])
+points = Node(Point2f[randn(2)])
 
 fig, ax = scatter(points)
 limits!(ax, -4, 4, -4, 4)
@@ -152,7 +152,7 @@ fps = 60
 nframes = 120
 
 for i = 1:nframes
-    new_point = Point2f0(randn(2))
+    new_point = Point2f(randn(2))
     points[] = push!(points[], new_point)
     sleep(1/fps) # refreshes the display!
 end

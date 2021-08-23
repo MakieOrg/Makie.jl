@@ -263,7 +263,7 @@ function layoutable(::Type{Legend},
 end
 
 
-function legendelement_plots!(scene, element::MarkerElement, bbox::Node{FRect2D}, defaultattrs::Attributes)
+function legendelement_plots!(scene, element::MarkerElement, bbox::Node{Rect2f}, defaultattrs::Attributes)
     merge!(element.attributes, defaultattrs)
     attrs = element.attributes
 
@@ -276,7 +276,7 @@ function legendelement_plots!(scene, element::MarkerElement, bbox::Node{FRect2D}
     [scat]
 end
 
-function legendelement_plots!(scene, element::LineElement, bbox::Node{FRect2D}, defaultattrs::Attributes)
+function legendelement_plots!(scene, element::LineElement, bbox::Node{Rect2f}, defaultattrs::Attributes)
     merge!(element.attributes, defaultattrs)
     attrs = element.attributes
 
@@ -288,7 +288,7 @@ function legendelement_plots!(scene, element::LineElement, bbox::Node{FRect2D}, 
     [lin]
 end
 
-function legendelement_plots!(scene, element::PolyElement, bbox::Node{FRect2D}, defaultattrs::Attributes)
+function legendelement_plots!(scene, element::PolyElement, bbox::Node{Rect2f}, defaultattrs::Attributes)
     merge!(element.attributes, defaultattrs)
     attrs = element.attributes
 
