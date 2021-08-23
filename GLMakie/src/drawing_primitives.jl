@@ -2,8 +2,8 @@ using Makie: get_texture_atlas, glyph_uv_width!, transform_func_obs, apply_trans
 using Makie: attribute_per_char, FastPixel, el32convert, Pixel
 using Makie: convert_arguments, preprojected_glyph_arrays
 
-convert_attribute(s::ShaderAbstractions.Sampler{RGBAf}, k::key"color") = s
-function convert_attribute(s::ShaderAbstractions.Sampler{T, N}, k::key"color") where {T, N}
+Makie.convert_attribute(s::ShaderAbstractions.Sampler{RGBAf}, k::key"color") = s
+function Makie.convert_attribute(s::ShaderAbstractions.Sampler{T, N}, k::key"color") where {T, N}
     ShaderAbstractions.Sampler(
         el32convert(s.data), minfilter = s.minfilter, magfilter = s.magfilter,
         x_repeat = s.repeat[1], y_repeat = s.repeat[min(2, N)], z_repeat = s.repeat[min(3, N)],

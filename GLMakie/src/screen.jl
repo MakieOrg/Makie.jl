@@ -46,7 +46,7 @@ Base.wait(scene::Scene) = wait(Makie.getscreen(scene))
 Base.show(io::IO, screen::Screen) = print(io, "GLMakie.Screen(...)")
 Base.size(x::Screen) = size(x.framebuffer)
 
-function insertplots!(screen::GLScreen, scene::Scene)
+function Makie.insertplots!(screen::GLScreen, scene::Scene)
     get!(screen.screen2scene, WeakRef(scene)) do
         id = length(screen.screens) + 1
         push!(screen.screens, (id, scene))
