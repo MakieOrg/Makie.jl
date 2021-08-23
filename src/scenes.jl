@@ -44,7 +44,7 @@ mutable struct Scene <: AbstractScene
     current_screens::Vector{AbstractScreen}
 
     # Attributes
-    backgroundcolor::Observable{RGBAf0}
+    backgroundcolor::Observable{RGBAf}
     visible::Observable{Bool}
 end
 
@@ -76,7 +76,7 @@ function Base.show(io::IO, scene::Scene)
 end
 
 function Scene(;
-        px_area::Union{Observable{IRect2D}, Nothing} = nothing,
+        px_area::Union{Observable{Rect2i}, Nothing} = nothing,
         events::Events = Events(),
         clear::Bool = true,
         transform_func=identity,
@@ -88,7 +88,7 @@ function Scene(;
         children::Vector{Scene} = Scene[],
         current_screens::Vector{AbstractScreen} = AbstractScreen[],
         parent = nothing,
-        backgroundcolor = Observable(RGBAf0(1, 1, 1, 1)),
+        backgroundcolor = Observable(RGBAf(1, 1, 1, 1)),
         visible = Observable(true),
         theme_kw...
     )
@@ -97,7 +97,7 @@ function Scene(;
     wasnothing = isnothing(px_area)
     if wasnothing
         px_area = lift(m_theme.resolution) do res
-            IRect(0, 0, res)
+            Recti(0, 0, res)
         end
     end
 
@@ -139,7 +139,7 @@ function Scene(
     else
         px_area = lift(pixelarea(parent), convert(Node, px_area)) do p, a
             # make coordinates relative to parent
-            rect = IRect2D(minimum(p) .+ minimum(a), widths(a))
+            rect = Rect2i(minimum(p) .+ minimum(a), widths(a))
             return rect
         end
     end

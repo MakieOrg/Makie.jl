@@ -5,7 +5,7 @@ efficiently append + push new values to them
 
 function LinesegmentBuffer(
         scene::SceneLike, ::Type{Point{N}} = Point{2};
-        color = RGBAf0[], linewidth = Float32[],
+        color = RGBAf[], linewidth = Float32[],
         kw_args...
     ) where N
     linesegments!(
@@ -48,7 +48,7 @@ function TextBuffer(
         color = RGBAf[RGBAf(0,0,0,0)],
         textsize = Float32[0],
         font = [defaultfont()],
-        align = [Vec2f0(0)],
+        align = [Vec2f(0)],
         kw_args...
     ) where N
     annotations!(

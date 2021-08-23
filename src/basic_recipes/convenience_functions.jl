@@ -58,7 +58,7 @@ function showgradients(
         text!(
             scene,
             cmapstr,
-            position = Point2f0(-0.1, 0.5 + h),
+            position = Point2f(-0.1, 0.5 + h),
             align = (:right, :center),
             textsize = textsize
         )

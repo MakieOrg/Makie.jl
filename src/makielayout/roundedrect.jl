@@ -3,8 +3,8 @@
         rect = BBox(0, 100, 0, 100),
         cornerradius = 5,
         cornersegments = 10,
-        color = RGBf0(0.9, 0.9, 0.9),
-        strokecolor = RGBf0(0, 0, 0)
+        color = RGBf(0.9, 0.9, 0.9),
+        strokecolor = RGBf(0, 0, 0)
     )
 end
 

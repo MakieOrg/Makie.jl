@@ -942,7 +942,7 @@ function convert_attribute(s::VecTypes{N}, ::key"rotation") where N
     elseif N == 3
         rotation_between(Vec3f(0, 0, 1), to_ndim(Vec3f, s, 0.0))
     elseif N == 2
-        rotation_between(Vec3f0(0, 1, 0), to_ndim(Vec3f0, s, 0.0))
+        rotation_between(Vec3f(0, 1, 0), to_ndim(Vec3f, s, 0.0))
     else
         error("The $N dimensional vector $s can't be converted to a rotation.")
     end

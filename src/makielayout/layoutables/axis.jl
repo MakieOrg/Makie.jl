@@ -83,7 +83,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     xaxislinks = Axis[]
     yaxislinks = Axis[]
 
-    xgridnode = Node(Point2f0[])
+    xgridnode = Node(Point2f[])
     xgridlines = linesegments!(
         topscene, xgridnode, linewidth = xgridwidth, visible = xgridvisible,
         color = xgridcolor, linestyle = xgridstyle, inspectable = false

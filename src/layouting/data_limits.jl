@@ -210,8 +210,8 @@ end
 function point_iterator(x::Volume)
     axes = (x[1], x[2], x[3])
     extremata = map(extrema∘to_value, axes)
-    minpoint = Point3f0(first.(extremata)...)
+    minpoint = Point3f(first.(extremata)...)
     widths = last.(extremata) .- first.(extremata)
-    rect = FRect3D(minpoint, Vec3f0(widths))
+    rect = Rect3f(minpoint, Vec3f(widths))
     return unique(decompose(Point, rect))
 end

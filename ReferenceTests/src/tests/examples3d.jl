@@ -36,7 +36,7 @@ end
     center!(scene)
     cam = cameracontrols(scene)
     dir = widths(data_limits(scene)) ./ 2.
-    dir_scaled = Vec3f0(
+    dir_scaled = Vec3f(
         dir[1] * scene.transformation.scale[][1],
         0.0,
         dir[3] * scene.transformation.scale[][2],
@@ -194,7 +194,7 @@ end
     y = [sinpi(φ) * sinpi(θ) for θ in θ, φ in φ]
     z = [cospi(θ) for θ in θ, φ in φ]
     RNG.rand([-1f0, 1f0], 3)
-    pts = vec(Point3f0.(x, y, z))
+    pts = vec(Point3f.(x, y, z))
     f, ax, p = surface(x, y, z, color=Makie.logo(), transparency=true)
 end
 
@@ -276,7 +276,7 @@ end
         textsize=20,
         font="helvetica"
     )
-    c = lines!(scene, Circle(Point2f0(0.1, 0.5), 0.1f0), color=:red, offset=Vec3f0(0, 0, 1))
+    c = lines!(scene, Circle(Point2f(0.1, 0.5), 0.1f0), color=:red, offset=Vec3f(0, 0, 1))
     psurf.converted[3][] = f.(vx .+ 0.5, (vy .+ 0.5)')
     center!(scene)
     scene
@@ -408,7 +408,7 @@ end
         colormap=[(:white, 0.4), (:blue, 0.4), (:yellow, 0.4)], strokewidth=0,
         markersize=RNG.rand(range(10, stop=100, length=100), stars),
     )
-    update_cam!(scene, FRect3D(Vec3f0(-5), Vec3f0(10)))
+    update_cam!(scene, Rect3f(Vec3f(-5), Vec3f(10)))
     scene
 end
 

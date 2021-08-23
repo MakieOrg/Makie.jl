@@ -234,8 +234,8 @@ end
     text!("ABC", space = :data, offset = (20, 10), color = (:blue, 0.3), align = (:left, :baseline))
 
     LScene(f[2, 2])
-    scatter!(Point3f0[(0, 0, 0), (2, 2, 2)])
-    text!("hello", position = Point3f0(1, 1, 1), offset = (10, 10))
+    scatter!(Point3f[(0, 0, 0), (2, 2, 2)])
+    text!("hello", position = Point3f(1, 1, 1), offset = (10, 10))
 
     f
 end

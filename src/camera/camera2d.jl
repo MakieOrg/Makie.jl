@@ -312,7 +312,7 @@ struct PixelCamera <: AbstractCamera end
 Creates a pixel-level camera for the `Scene`.  No controls!
 """
 function campixel!(scene)
-    camera(scene).view[] = Mat4f0(I)
+    camera(scene).view[] = Mat4f(I)
     update_once = Observable(false)
     on(camera(scene), update_once, pixelarea(scene)) do u, window_size
         nearclip = -10_000f0
