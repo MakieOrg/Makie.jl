@@ -18,9 +18,12 @@ using Base.Iterators: repeated, drop
 
 using LinearAlgebra
 
-for name in names(Makie)
-    @eval import Makie: $(name)
-    @eval export $(name)
+# re-export Makie, including deprecated names
+for name in names(Makie, all=true)
+    if Base.isexported(Makie, name)
+        @eval using Makie: $(name)
+        @eval export $(name)
+    end
 end
 export inline!
 
