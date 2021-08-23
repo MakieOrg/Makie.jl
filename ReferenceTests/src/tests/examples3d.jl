@@ -5,14 +5,14 @@ using Makie: Record, volume
 
 @cell "Image on Geometry (Moon)" begin
     moon = loadasset("moon.png")
-    fig, ax, meshplot = mesh(Sphere(Point3f0(0), 1f0), color=moon, shading=false)
-    update_cam!(ax.scene, Vec3f0(-2, 2, 2), Vec3f0(0))
+    fig, ax, meshplot = mesh(Sphere(Point3f(0), 1f0), color=moon, shading=false)
+    update_cam!(ax.scene, Vec3f(-2, 2, 2), Vec3f(0))
     fig
 end
 
 @cell "Image on Geometry (Earth)" begin
     earth = loadasset("earth.png")
-    m = uv_mesh(Tesselation(Sphere(Point3f0(0), 1f0), 60))
+    m = uv_mesh(Tesselation(Sphere(Point3f(0), 1f0), 60))
     mesh(m, color=earth, shading=false)
 end
 
@@ -23,11 +23,11 @@ end
         return GeometryBasics.pointmeta(mesh1; color=fill(color, npoints))
     end
     # create an array of differently colored boxes in the direction of the 3 axes
-    x = Vec3f0(0); baselen = 0.2f0; dirlen = 1f0
+    x = Vec3f(0); baselen = 0.2f0; dirlen = 1f0
     rectangles = [
-        (Rect(Vec3f0(x), Vec3f0(dirlen, baselen, baselen)), RGBAf0(1, 0, 0, 1)),
-        (Rect(Vec3f0(x), Vec3f0(baselen, dirlen, baselen)), RGBAf0(0, 1, 0, 1)),
-        (Rect(Vec3f0(x), Vec3f0(baselen, baselen, dirlen)), RGBAf0(0, 0, 1, 1))
+        (Rect(Vec3f(x), Vec3f(dirlen, baselen, baselen)), RGBAf(1, 0, 0, 1)),
+        (Rect(Vec3f(x), Vec3f(baselen, dirlen, baselen)), RGBAf(0, 1, 0, 1)),
+        (Rect(Vec3f(x), Vec3f(baselen, baselen, dirlen)), RGBAf(0, 0, 1, 1))
     ]
 
     meshes = map(colormesh, rectangles)
@@ -81,7 +81,7 @@ end
 end
 
 @cell "Wireframe of Sphere" begin
-    wireframe(Sphere(Point3f0(0), 1f0))
+    wireframe(Sphere(Point3f(0), 1f0))
 end
 
 @cell "Wireframe of a Surface" begin
@@ -106,15 +106,15 @@ end
     surf_func(i) = [Float32(xy_data(x * i, y * i)) for x = xrange, y = xrange]
     surface(
         xrange, xrange, surf_func(10),
-        color=RNG.rand(RGBAf0, 124, 124)
+        color=RNG.rand(RGBAf, 124, 124)
     )
 end
 
 @cell "Meshscatter Function" begin
-    large_sphere = Sphere(Point3f0(0), 1f0)
-    positions = decompose(Point3f0, large_sphere)
-    colS = [RGBAf0(RNG.rand(), RNG.rand(), RNG.rand(), 1.0) for i = 1:length(positions)]
-    sizesS = [RNG.rand(Point3f0) .* 0.05f0 for i = 1:length(positions)]
+    large_sphere = Sphere(Point3f(0), 1f0)
+    positions = decompose(Point3f, large_sphere)
+    colS = [RGBAf(RNG.rand(), RNG.rand(), RNG.rand(), 1.0) for i = 1:length(positions)]
+    sizesS = [RNG.rand(Point3f) .* 0.05f0 for i = 1:length(positions)]
     meshscatter(positions, color=colS, markersize=sizesS)
 end
 
@@ -129,7 +129,7 @@ end
 @cell "Record Video" begin
     f(t, v, s) = (sin(v + t) * s, cos(v + t) * s, (cos(v + t) + sin(v)) * s)
     t = Node(Base.time()) # create a life signal
-    limits = FRect3D(Vec3f0(-1.5, -1.5, -3), Vec3f0(3, 3, 6))
+    limits = Rect3f(Vec3f(-1.5, -1.5, -3), Vec3f(3, 3, 6))
     fig, ax, p1 = meshscatter(lift(t -> f.(t, range(0, stop=2pi, length=50), 1), t), markersize=0.05)
     p2 = meshscatter!(ax, lift(t -> f.(t * 2.0, range(0, stop=2pi, length=50), 1.5), t), markersize=0.05)
 
@@ -176,7 +176,7 @@ end
         x = @.r * sin(θ) * cos(ϕ)
         y = @.r * sin(θ) * sin(ϕ)
         z = @.r * cos(θ)
-        Point3f0.(x, y, z)
+        Point3f.(x, y, z)
     end
     n = 100^2 # number of points to generate
     r = ones(n);
@@ -201,8 +201,8 @@ end
 @cell "Arrows on Sphere" begin
     n = 20
     f   = (x, y, z) -> x * exp(cos(y) * z)
-    ∇f  = (x, y, z) -> Point3f0(exp(cos(y) * z), -sin(y) * z * x * exp(cos(y) * z), x * cos(y) * exp(cos(y) * z))
-    ∇ˢf = (x, y, z) -> ∇f(x, y, z) - Point3f0(x, y, z) * dot(Point3f0(x, y, z), ∇f(x, y, z))
+    ∇f  = (x, y, z) -> Point3f(exp(cos(y) * z), -sin(y) * z * x * exp(cos(y) * z), x * cos(y) * exp(cos(y) * z))
+    ∇ˢf = (x, y, z) -> ∇f(x, y, z) - Point3f(x, y, z) * dot(Point3f(x, y, z), ∇f(x, y, z))
 
     θ = [0;(0.5:n - 0.5) / n;1]
     φ = [(0:2n - 2) * 2 / (2n - 1);2]
@@ -210,7 +210,7 @@ end
     y = [sinpi(φ) * sinpi(θ) for θ in θ, φ in φ]
     z = [cospi(θ) for θ in θ, φ in φ]
 
-    pts = vec(Point3f0.(x, y, z))
+    pts = vec(Point3f.(x, y, z))
     ∇ˢF = vec(∇ˢf.(x, y, z)) .* 0.1f0
     surface(x, y, z)
     arrows!(
@@ -235,7 +235,7 @@ end
 
 @cell "FEM mesh 3D" begin
     cat = loadasset("cat.obj")
-    vertices = decompose(Point3f0, cat)
+    vertices = decompose(Point3f, cat)
     faces = decompose(TriangleFace{Int}, cat)
     coordinates = [vertices[i][j] for i = 1:length(vertices), j = 1:3]
     connectivity = [faces[i][j] for i = 1:length(faces), j = 1:3]
@@ -287,30 +287,30 @@ end
     perturbfactor = 4e1
     N = 3; nbfacese = 30; radius = 0.02
 
-    large_sphere = Sphere(Point3f0(0), 1f0)
-    positions = decompose(Point3f0, large_sphere, 30)
+    large_sphere = Sphere(Point3f(0), 1f0)
+    positions = decompose(Point3f, large_sphere, 30)
     np = length(positions)
     pts = [positions[k][l] for k = 1:length(positions), l = 1:3]
     pts = vcat(pts, 1.1 .* pts + RNG.randn(size(pts)) / perturbfactor) # light position influence ?
     edges = hcat(collect(1:np), collect(1:np) .+ np)
     ne = size(edges, 1); np = size(pts, 1)
-    cylinder = Cylinder(Point3f0(0), Point3f0(0, 0, 1.0), 1f0)
+    cylinder = Cylinder(Point3f(0), Point3f(0, 0, 1.0), 1f0)
     # define markers meshes
     meshC = normal_mesh(Tesselation(cylinder, nbfacese))
     meshS = normal_mesh(Tesselation(large_sphere, 20))
     # define colors, markersizes and rotations
-    pG = [Point3f0(pts[k, 1], pts[k, 2], pts[k, 3]) for k = 1:np]
+    pG = [Point3f(pts[k, 1], pts[k, 2], pts[k, 3]) for k = 1:np]
     lengthsC = sqrt.(sum((pts[edges[:,1], :] .- pts[edges[:, 2], :]).^2, dims=2))
-    sizesC = [Vec3f0(radius, radius, lengthsC[i]) for i = 1:ne]
-    sizesC = [Vec3f0(1) for i = 1:ne]
+    sizesC = [Vec3f(radius, radius, lengthsC[i]) for i = 1:ne]
+    sizesC = [Vec3f(1) for i = 1:ne]
     colorsp = [RGBA{Float32}(RNG.rand(), RNG.rand(), RNG.rand(), 1.0) for i = 1:np]
     colorsC = [(colorsp[edges[i, 1]] .+ colorsp[edges[i, 2]]) / 2.0 for i = 1:ne]
-    sizesC = [Vec3f0(radius, radius, lengthsC[i]) for i = 1:ne]
+    sizesC = [Vec3f(radius, radius, lengthsC[i]) for i = 1:ne]
     Qlist = zeros(ne, 4)
     for k = 1:ne
         ct = Cylinder(
-            Point3f0(pts[edges[k, 1], 1], pts[edges[k, 1], 2], pts[edges[k, 1], 3]),
-            Point3f0(pts[edges[k, 2], 1], pts[edges[k, 2], 2], pts[edges[k, 2], 3]),
+            Point3f(pts[edges[k, 1], 1], pts[edges[k, 1], 2], pts[edges[k, 1], 3]),
+            Point3f(pts[edges[k, 2], 1], pts[edges[k, 2], 2], pts[edges[k, 2], 3]),
             1f0
         )
         Q = GeometryBasics.rotation(ct)
@@ -320,7 +320,7 @@ end
         Qlist[k, 3] = (Q[2, 1] .- Q[1, 2]) / (4 .* r)
     end
 
-    rotationsC = [Vec4f0(Qlist[i, 1], Qlist[i, 2], Qlist[i, 3], Qlist[i, 4]) for i = 1:ne]
+    rotationsC = [Vec4f(Qlist[i, 1], Qlist[i, 2], Qlist[i, 3], Qlist[i, 4]) for i = 1:ne]
     # plot
     fig, ax, meshplot = meshscatter(
         pG[edges[:, 1]],
@@ -335,14 +335,14 @@ end
 end
 
 @cell "Connected Sphere" begin
-    large_sphere = Sphere(Point3f0(0), 1f0)
-    positions = decompose(Point3f0, large_sphere)
+    large_sphere = Sphere(Point3f(0), 1f0)
+    positions = decompose(Point3f, large_sphere)
     linepos = view(positions, RNG.rand(1:length(positions), 1000))
     fig, ax, lineplot = lines(linepos, linewidth=0.1, color=:black, transparency=true)
     scatter!(
         ax, positions, markersize=50,
         strokewidth=2, strokecolor=:white,
-        color=RGBAf0(0.9, 0.2, 0.4, 0.5)
+        color=RGBAf(0.9, 0.2, 0.4, 0.5)
     )
     fig
 end
@@ -350,7 +350,7 @@ end
 @cell "image scatter" begin
     scatter(
         1:10, 1:10, RNG.rand(10, 10) .* 10,
-        rotations=normalize.(RNG.rand(Quaternionf0, 10 * 10)),
+        rotations=normalize.(RNG.rand(Quaternionf, 10 * 10)),
         markersize=1,
         # can also be an array of images for each point
         # need to be the same size for best performance, though
@@ -359,9 +359,9 @@ end
 end
 
 @cell "Simple meshscatter" begin
-    large_sphere = Sphere(Point3f0(0), 1f0)
-    positions = decompose(Point3f0, large_sphere)
-    meshscatter(positions, color=RGBAf0(0.9, 0.2, 0.4, 1), markersize=0.05)
+    large_sphere = Sphere(Point3f(0), 1f0)
+    positions = decompose(Point3f, large_sphere)
+    meshscatter(positions, color=RGBAf(0.9, 0.2, 0.4, 1), markersize=0.05)
 end
 
 @cell "Animated surface and wireframe" begin
@@ -387,7 +387,7 @@ end
 @cell "Normals of a Cat" begin
     x = loadasset("cat.obj")
     mesh(x, color=:black)
-    pos = map(decompose(Point3f0, x), GeometryBasics.normals(x)) do p, n
+    pos = map(decompose(Point3f, x), GeometryBasics.normals(x)) do p, n
         p => p .+ (normalize(n) .* 0.05f0)
     end
     linesegments!(pos, color=:blue)
@@ -395,7 +395,7 @@ end
 end
 
 @cell "Sphere Mesh" begin
-    mesh(Sphere(Point3f0(0), 1f0), color=:blue)
+    mesh(Sphere(Point3f(0), 1f0), color=:blue)
 end
 
 @cell "Stars" begin
@@ -403,7 +403,7 @@ end
     scene = Scene(backgroundcolor=:black)
     scatter!(
         scene,
-        map(i -> (RNG.randn(Point3f0) .- 0.5) .* 10, 1:stars),
+        map(i -> (RNG.randn(Point3f) .- 0.5) .* 10, 1:stars),
         color=RNG.rand(stars),
         colormap=[(:white, 0.4), (:blue, 0.4), (:yellow, 0.4)], strokewidth=0,
         markersize=RNG.rand(range(10, stop=100, length=100), stars),
@@ -413,7 +413,7 @@ end
 end
 
 @cell "Unicode Marker" begin
-    scatter(Point3f0[(1, 0, 0), (0, 1, 0), (0, 0, 1)], marker=[:x, :circle, :cross],
+    scatter(Point3f[(1, 0, 0), (0, 1, 0), (0, 0, 1)], marker=[:x, :circle, :cross],
             markersize=100)
 end
 
@@ -424,11 +424,11 @@ end
         return GeometryBasics.pointmeta(mesh1; color=fill(color, npoints))
     end
     # create an array of differently colored boxes in the direction of the 3 axes
-    x = Vec3f0(0); baselen = 0.2f0; dirlen = 1f0
+    x = Vec3f(0); baselen = 0.2f0; dirlen = 1f0
     rectangles = [
-        (Rect(Vec3f0(x), Vec3f0(dirlen, baselen, baselen)), RGBAf0(1, 0, 0, 1)),
-        (Rect(Vec3f0(x), Vec3f0(baselen, dirlen, baselen)), RGBAf0(0, 1, 0, 1)),
-        (Rect(Vec3f0(x), Vec3f0(baselen, baselen, dirlen)), RGBAf0(0, 0, 1, 1))
+        (Rect(Vec3f(x), Vec3f(dirlen, baselen, baselen)), RGBAf(1, 0, 0, 1)),
+        (Rect(Vec3f(x), Vec3f(baselen, dirlen, baselen)), RGBAf(0, 1, 0, 1)),
+        (Rect(Vec3f(x), Vec3f(baselen, baselen, dirlen)), RGBAf(0, 0, 1, 1))
     ]
 
     meshes = map(colormesh, rectangles)
@@ -438,7 +438,7 @@ end
 @cell "Line GIF" begin
     us = range(0, stop=1, length=100)
     scene = Scene()
-    linesegments!(scene, FRect3D(Vec3f0(0, -1, 0), Vec3f0(1, 2, 2)))
+    linesegments!(scene, Rect3f(Vec3f(0, -1, 0), Vec3f(1, 2, 2)))
     p = lines!(scene, us, sin.(us .+ time()), zeros(100), linewidth=3, transparency=true)
     lineplots = [p]
     Makie.translate!(p, 0, 0, 0)
@@ -490,7 +490,7 @@ let
 
     @cell "Streamplot 3D" begin
         P = FitzhughNagumo(0.1, 0.0, 1.5, 0.8)
-        f(x, P::FitzhughNagumo) = Point3f0(
+        f(x, P::FitzhughNagumo) = Point3f(
             (x[1] - x[2] - x[1]^3 + P.s) / P.ϵ,
             P.γ * x[2] - x[2] + P.β,
             P.γ * x[1] - x[3] - P.β,

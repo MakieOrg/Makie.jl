@@ -1,8 +1,8 @@
-@cell arc(Point2f0(0), 10f0, 0f0, pi, linewidth=20)
+@cell arc(Point2f(0), 10f0, 0f0, pi, linewidth=20)
 
-@cell mesh(IRect(0, 0, 200, 200))
+@cell mesh(Recti(0, 0, 200, 200))
 
-@cell poly(IRect(0, 0, 200, 200), strokewidth=20, strokecolor=:red, color=(:black, 0.4))
+@cell poly(Recti(0, 0, 200, 200), strokewidth=20, strokecolor=:red, color=(:black, 0.4))
 
 @cell begin
     scene = poly([Rect(0, 0, 20, 20)])
@@ -17,14 +17,14 @@ end
 end
 
 @cell lines(RNG.rand(10), RNG.rand(10), color=RNG.rand(10), linewidth=10)
-@cell lines(RNG.rand(10), RNG.rand(10), color=RNG.rand(RGBAf0, 10), linewidth=10)
+@cell lines(RNG.rand(10), RNG.rand(10), color=RNG.rand(RGBAf, 10), linewidth=10)
 @cell scatter(0..1, RNG.rand(10), markersize=RNG.rand(10) .* 20)
 @cell scatter(LinRange(0, 1, 10), RNG.rand(10))
 @cell scatter(RNG.rand(10), LinRange(0, 1, 10))
 
 @cell begin
     angles = range(0, stop=2pi, length=20)
-    pos = Point2f0.(sin.(angles), cos.(angles))
+    pos = Point2f.(sin.(angles), cos.(angles))
     scatter(pos, markersize=0.2, markerspace=SceneSpace, rotations=-angles, marker='▲', axis=(;aspect = DataAspect()))
     scatter!(pos, markersize=10, color=:red, axis=(;aspect = DataAspect()))
     current_figure()
@@ -65,15 +65,15 @@ end
 end
 
 @cell meshscatter(RNG.rand(10), RNG.rand(10), RNG.rand(10), color=RNG.rand(10))
-@cell meshscatter(RNG.rand(10), RNG.rand(10), RNG.rand(10), color=RNG.rand(RGBAf0, 10))
+@cell meshscatter(RNG.rand(10), RNG.rand(10), RNG.rand(10), color=RNG.rand(RGBAf, 10))
 
 @cell begin
-    s1 = uv_mesh(Sphere(Point3f0(0), 1f0))
-    mesh(uv_mesh(Sphere(Point3f0(0), 1f0)), color=RNG.rand(50, 50))
+    s1 = uv_mesh(Sphere(Point3f(0), 1f0))
+    mesh(uv_mesh(Sphere(Point3f(0), 1f0)), color=RNG.rand(50, 50))
     # ugh, bug In GeometryTypes for UVs of non unit spheres.
-    s2 = uv_mesh(Sphere(Point3f0(0), 1f0))
-    s2.position .= s2.position .+ (Point3f0(0, 2, 0),)
-    mesh!(s2, color=RNG.rand(RGBAf0, 50, 50))
+    s2 = uv_mesh(Sphere(Point3f(0), 1f0))
+    s2.position .= s2.position .+ (Point3f(0, 2, 0),)
+    mesh!(s2, color=RNG.rand(RGBAf, 50, 50))
     current_figure()
 end
 

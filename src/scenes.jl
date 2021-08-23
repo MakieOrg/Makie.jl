@@ -16,7 +16,7 @@ mutable struct Scene <: AbstractScene
     events::Events
 
     "The current pixel area of the Scene."
-    px_area::Node{IRect2D}
+    px_area::Node{Rect2i}
 
     "Whether the scene should be cleared."
     clear::Bool
@@ -184,10 +184,10 @@ GeometryBasics.widths(scene::Scene) = widths(to_value(pixelarea(scene)))
 Base.size(scene::Scene) = Tuple(widths(scene))
 Base.size(x::Scene, i) = size(x)[i]
 function Base.resize!(scene::Scene, xy::Tuple{Number,Number})
-    resize!(scene, IRect(0, 0, xy))
+    resize!(scene, Recti(0, 0, xy))
 end
 Base.resize!(scene::Scene, x::Number, y::Number) = resize!(scene, (x, y))
-function Base.resize!(scene::Scene, rect::Rect2D)
+function Base.resize!(scene::Scene, rect::Rect2)
     pixelarea(scene)[] = rect
 end
 
@@ -215,7 +215,7 @@ Base.lastindex(scene::Scene) = length(scene.plots)
 getindex(scene::Scene, idx::Integer) = scene.plots[idx]
 struct OldAxis end
 
-zero_origin(area) = IRect(0, 0, widths(area))
+zero_origin(area) = Recti(0, 0, widths(area))
 
 function child(scene::Scene; camera, attributes...)
     return Scene(scene, lift(zero_origin, pixelarea(scene)); camera=camera, attributes...)
@@ -349,7 +349,7 @@ function center!(scene::Scene, padding=0.01)
     bb = transformationmatrix(scene)[] * bb
     w = widths(bb)
     padd = w .* padding
-    bb = FRect3D(minimum(bb) .- padd, w .+ 2padd)
+    bb = Rect3f(minimum(bb) .- padd, w .+ 2padd)
     update_cam!(scene, bb)
     scene
 end
@@ -364,8 +364,8 @@ function is2d(scene::SceneLike)
     lims === nothing && return nothing
     return is2d(lims)
 end
-is2d(lims::Rect2D) = true
-is2d(lims::Rect3D) = widths(lims)[3] == 0.0
+is2d(lims::Rect2) = true
+is2d(lims::Rect3) = widths(lims)[3] == 0.0
 
 #####
 ##### Figure type
