@@ -24,7 +24,7 @@ fig
 
 \begin{examplefigure}{}
 ```julia
-pointvectors = [Point2f0.(1:100, cumsum(randn(100))) for i in 1:4]
+pointvectors = [Point2f.(1:100, cumsum(randn(100))) for i in 1:4]
 
 series(pointvectors, markersize=5, color=:Set1)
 ```
