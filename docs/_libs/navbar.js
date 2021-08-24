@@ -70,4 +70,51 @@ window.addEventListener('DOMContentLoaded', () => {
 		});
 	})
 	
+
+
+
+	// copy code buttons
+	document.querySelectorAll("pre code").forEach(el => {
+		let b = document.createElement("button");
+		b.innerText = "\uf46d";
+		b.title = "Copy code to clipboard"
+		b.classList.add("copy-code");
+		el.parentElement.append(b);
+
+		b.onclick = function(){
+			b.innerText = "\uf46c";
+			b.classList.add("clicked");
+			copyToClipboard(el.innerText);
+			setTimeout(function(){
+				b.innerText = "\uf46d";
+				b.classList.remove("clicked");
+			}, 2000);
+		};
+	});
 });
+
+
+
+function copyToClipboard(textToCopy) {
+    // navigator clipboard api needs a secure context (https)
+    if (navigator.clipboard && window.isSecureContext) {
+        // navigator clipboard api method'
+        return navigator.clipboard.writeText(textToCopy);
+    } else {
+        // text area method
+        let textArea = document.createElement("textarea");
+        textArea.value = textToCopy;
+        // make the textarea out of viewport
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        textArea.style.top = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        return new Promise((res, rej) => {
+            // here the magic happens
+            document.execCommand('copy') ? res() : rej();
+            textArea.remove();
+        });
+    }
+}

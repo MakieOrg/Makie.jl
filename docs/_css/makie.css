@@ -389,6 +389,7 @@ a.boxlink {
 }
 
 #main {
+    width: 100%;
     max-width: none;
     display: block;
     margin-bottom: 1em;
@@ -622,9 +623,79 @@ input.collapse-toggle {
 
 .banner-image {
     width: 100%;
+}
 
 .site-container {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+}
+
+input.hidecode {
+    display: none;
+}
+
+input.hidecode + pre {
+    margin-top: 0;
+}
+
+input.hidecode + pre code {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    height: 11em;
+    overflow-y: hidden;
+}
+
+input.hidecode:checked + pre code {
+    height: 100%;
+    transition: 1s linear;
+}
+
+label.hidecode {
+    display: block;
+    text-align: center;
+    padding: 0.25em;
+    background: #eee;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border: 1px solid #eaeaea;
+    font-size: var(--small);
+    color: #a7a6a6;
+}
+
+label.hidecode:hover {
+    color: #5e5e5e;
+}
+
+pre {
+    position: relative;
+}
+
+button.copy-code {
+    font-family: "Font Awesome 5 Free";
+    position: absolute;
+    top: 0.25em;
+    right: 0.25em;
+    background: rgba(0, 0, 0, 0.07);
+    border: none;
+    color: #a2a2a2;
+    border-radius: 0.25em;
+    padding: 0.25em 0.4em;
+    font-size: 0.9em;
+}
+
+button.copy-code.clicked {
+    color: rgb(22, 173, 22);
+}
+
+button.copy-code.clicked:hover {
+    color: rgb(22, 173, 22);
+}
+
+button.copy-code:hover {
+    color: #555555;
+}
+
+button.copy-code:focus {
+    outline: none;
 }
