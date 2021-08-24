@@ -2432,11 +2432,6 @@ th {
     padding: 0 1em 2em;
 }
 
-.page__footer footer::after {
-    clear: both;
-    content: "";
-    display: table;
-}
 
 @media (min-width: 80em) {
     .page__footer footer {
@@ -3411,11 +3406,6 @@ a.reversefootnote:hover {
     max-width: 100%;
 }
 
-#main::after {
-    clear: both;
-    content: "";
-    display: table;
-}
 
 @media (min-width: 80em) {
     #main {

@@ -391,6 +391,7 @@ a.boxlink {
 #main {
     max-width: none;
     display: block;
+    margin-bottom: 1em;
 }
 
 #navbar-container {
@@ -445,6 +446,8 @@ a.boxlink {
     display: block;
     margin-left: auto;
 }
+
+
 
 @media (min-width: 800px) {
     #main {
