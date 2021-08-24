@@ -3,10 +3,12 @@
 Makie has a few predefined themes.
 Here you can see the same example figure with these different themes applied.
 
-## Default theme
+~~~
+<label for="hidecode" class="hidecode">Expand code</label>
+<input id="hidecode" class="hidecode" type="checkbox">
+~~~
 
-\begin{examplefigure}{}
-```julia
+```julia:demofigure
 using CairoMakie
 using Random
 
@@ -64,7 +66,12 @@ function demofigure()
 
     f
 end
+```
 
+## Default theme
+
+\begin{examplefigure}{}
+```julia
 demofigure()
 ```
 \end{examplefigure}

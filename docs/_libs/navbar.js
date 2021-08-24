@@ -70,4 +70,22 @@ window.addEventListener('DOMContentLoaded', () => {
 		});
 	})
 	
+
+
+
+	// copy code buttons
+	document.querySelectorAll("pre code").forEach(el => {
+		let b = document.createElement("button");
+		b.innerText = "\uf46d";
+		b.classList.add("copy-code");
+		el.parentElement.append(b);
+
+		b.onclick = function(){
+			b.innerText = "\uf46c";
+			setTimeout(function(){
+				b.innerText = "\uf46d";
+				navigator.clipboard.writeText(el.innerText);
+			}, 2000);
+		};
+	});
 });
