@@ -1,4 +1,7 @@
 [deps]
+FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
+GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
 ImageMagick = "6218d12a-5da1-5696-b52f-db25d2ecc6d1"
+Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
