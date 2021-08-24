@@ -2405,16 +2405,9 @@ th {
 }
 
 .page__footer {
-    position: absolute;
-    clear: both;
-    float: left;
-    margin-left: 0;
-    margin-right: 0;
-    width: 100%;
-    clear: both;
-    bottom: 0;
     color: #898c8f;
     background-color: #f2f3f3;
+    margin-top: auto;
 }
 
 .page__footer::after {
@@ -2433,9 +2426,17 @@ th {
 }
 
 
-@media (min-width: 80em) {
+@media (min-width: 800px) {
     .page__footer footer {
-        max-width: 1280px;
+        width: 768px;
+        padding-left: 0;
+        padding-right: 0;
+    }
+}
+
+@media (min-width: 1200px) {
+    .page__footer footer {
+        width: 1150px;
     }
 }
 

@@ -95,7 +95,7 @@ function Makie.plot!(plot::Hist)
             max = maximum(weights)
             weights .= weights ./ max .* scale_to
         end
-        return Point2f0.(centers, weights)
+        return Point2f.(centers, weights)
     end
     widths = lift(diff, edges)
     color = lift(plot.color) do color
