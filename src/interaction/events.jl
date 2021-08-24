@@ -62,25 +62,24 @@ function Base.show(io::IO, op::Not)
     show(io, op.x)
 end
 
+
 And(l, r, rest...) = And(And(l, r), rest...)
 Or(l, r, rest...) = Or(Or(l, r), rest...)
 
-macro logical(e)
-    to_boolops(e)
-end
 
-function to_boolops(e::Expr)
-    if e.head == :(||)
-        return Or(to_boolops(e.args[1]), to_boolops(e.args[2]))
-    elseif e.head == :(&&)
-        return And(to_boolops(e.args[1]), to_boolops(e.args[2]))
-    elseif e.head == :call && e.args[1] == :(!)
-        return Not(to_boolops(e.args[2]))
-    else
-        return eval(e)
-    end
+function Base.:(&)(
+        l::Union{BooleanOperator, Keyboard.Button, Mouse.Button}, 
+        r::Union{BooleanOperator, Keyboard.Button, Mouse.Button}
+    )
+    And(l, r)
 end
-to_boolops(x) = x
+function Base.:(|)(
+        l::Union{BooleanOperator, Keyboard.Button, Mouse.Button}, 
+        r::Union{BooleanOperator, Keyboard.Button, Mouse.Button}
+    )
+    Or(l, r)
+end
+Base.:(!)(x::Union{BooleanOperator, Keyboard.Button, Mouse.Button}) = Not(x)
 
 ispressed(scene, mb::Mouse.Button) = mb in scene.events.mousebuttonstate
 ispressed(scene, key::Keyboard.Button) = key in scene.events.keyboardstate
