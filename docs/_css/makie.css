@@ -389,6 +389,7 @@ a.boxlink {
 }
 
 #main {
+    width: 100%;
     max-width: none;
     display: block;
     margin-bottom: 1em;
@@ -677,10 +678,22 @@ button.copy-code {
     right: 0.25em;
     background: rgba(0, 0, 0, 0.07);
     border: none;
-    color: #8c8c8c;
+    color: #a2a2a2;
     border-radius: 0.25em;
     padding: 0.25em 0.4em;
     font-size: 0.9em;
+}
+
+button.copy-code.clicked {
+    color: rgb(22, 173, 22);
+}
+
+button.copy-code.clicked:hover {
+    color: rgb(22, 173, 22);
+}
+
+button.copy-code:hover {
+    color: #555555;
 }
 
 button.copy-code:focus {
