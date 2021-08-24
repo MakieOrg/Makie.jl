@@ -77,6 +77,7 @@ window.addEventListener('DOMContentLoaded', () => {
 	document.querySelectorAll("pre code").forEach(el => {
 		let b = document.createElement("button");
 		b.innerText = "\uf46d";
+		b.title = "Copy code to clipboard"
 		b.classList.add("copy-code");
 		el.parentElement.append(b);
 
