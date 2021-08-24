@@ -391,6 +391,7 @@ a.boxlink {
 #main {
     max-width: none;
     display: block;
+    margin-bottom: 1em;
 }
 
 #navbar-container {
@@ -445,6 +446,8 @@ a.boxlink {
     display: block;
     margin-left: auto;
 }
+
+
 
 @media (min-width: 800px) {
     #main {
@@ -600,6 +603,25 @@ input.collapse-toggle {
 #lunrSearchForm input:focus {
     border: 1px solid #7192e1;
 }
+
+.banner-container {
+    margin-bottom: 3em;
+    margin-top: 1em;
+    background: url("../assets/bannermesh_gradient.png");
+    background-size: cover;
+    background-position: center;
+    width: 100%;
+    padding-top: 45%;
+}
+
+@media (min-width: 800px) {
+    .banner-container {
+        padding-top: 23.95%; /* 700 / 2922 */
+    }
+}
+
+.banner-image {
+    width: 100%;
 
 .site-container {
     display: flex;

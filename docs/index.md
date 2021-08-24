@@ -1,9 +1,6 @@
 @def title = "Home"
 @def order = 0
-
-~~~
-<img class="banner" src="/assets/makie_banner.png"/>
-~~~
+@def frontpage = true
 
 ## Welcome to Makie!
 
