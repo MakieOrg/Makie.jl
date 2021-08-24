@@ -22,9 +22,9 @@ using WGLMakie
 WGLMakie.activate!()
 ```
 
-## [GLMakie](https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie)
+## GLMakie
 
-GLMakie is the native, desktop-based backend, and is the most feature-complete.
+[GLMakie](https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie) is the native, desktop-based backend, and is the most feature-complete.
 It requires an OpenGL enabled graphics card with OpenGL version 3.3 or higher.
 
 ### Special GLMakie Properties
@@ -46,9 +46,9 @@ set_window_config!(;
 )
 ```
 
-## [CairoMakie](https://github.com/JuliaPlots/Makie.jl/tree/master/CairoMakie)
+## CairoMakie
 
-CairoMakie uses Cairo.jl to draw vector graphics to SVG and PDF.
+[CairoMakie](https://github.com/JuliaPlots/Makie.jl/tree/master/CairoMakie) uses Cairo.jl to draw vector graphics to SVG and PDF.
 You should use it if you want to achieve the highest-quality plots for publications, as the rendering process of the GL backends works via bitmaps and is geared more towards speed than pixel-perfection.
 
 ### Special CairoMakie Properties
@@ -94,9 +94,9 @@ The z-values of 3D plots will have no effect and will be projected flat onto the
 Z-layering is approximated by sorting all plot objects by their z translation value before drawing, after that by parent scene and then insertion order.
 Therefore, if you want to draw something on top of something else, but it ends up below, try translating it forward via `translate!(obj, 0, 0, some_positive_z_value)`.
 
-## [WGLMakie](https://github.com/JuliaPlots/Makie.jl/tree/master/WGLMakie)
+## WGLMakie
 
-WGLMakie is the Web-based backend, and is still experimental (though relatively feature-complete). Only serving it on a webpage or in Pluto.jl / Ijulia are currently supported. VSCode integration should come soon.
+[WGLMakie](https://github.com/JuliaPlots/Makie.jl/tree/master/WGLMakie) is the Web-based backend, and is still experimental (though relatively feature-complete). Only serving it on a webpage or in Pluto.jl / Ijulia are currently supported. VSCode integration should come soon.
 
 ## Miscellaneous Tips
 

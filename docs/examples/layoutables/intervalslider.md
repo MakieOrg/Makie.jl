@@ -42,7 +42,7 @@ end
 Label(f[1, 3], labeltext2,
     tellheight = false, rotation = pi/2)
 
-points = rand(Point2f0, 300)
+points = rand(Point2f, 300)
 
 # color points differently if they are within the two intervals
 colors = lift(rs_h.interval, rs_v.interval) do h_int, v_int
