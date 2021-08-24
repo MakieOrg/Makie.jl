@@ -75,7 +75,7 @@ traces = cumsum(randn(10, 5), dims = 1)
 for (i, (merge, unique)) in enumerate(
         Iterators.product([false, true], [false true]))
 
-    ax = Axis(f[fldmod1(i, 2)...],
+    axis = Axis(f[fldmod1(i, 2)...],
         title = "merge = $merge, unique = $unique")
 
     for trace in eachcol(traces)
@@ -86,7 +86,7 @@ for (i, (merge, unique)) in enumerate(
     lines!(mu, label = "mean")
     scatter!(mu, label = "mean")
 
-    axislegend(ax, merge = merge, unique = unique)
+    axislegend(axis, merge = merge, unique = unique)
 
 end
 
@@ -107,7 +107,7 @@ f = Figure()
 Axis(f[1, 1])
 
 xs = 0:0.1:10
-lins = [lines!(xs, sin.(xs .+ 3v), color = RGBf0(v, 0, 1-v)) for v in 0:0.1:1]
+lins = [lines!(xs, sin.(xs .+ 3v), color = RGBf(v, 0, 1-v)) for v in 0:0.1:1]
 
 Legend(f[1, 2], lins, string.(1:length(lins)), nbanks = 3)
 
@@ -218,13 +218,13 @@ elem_2 = [PolyElement(color = :red, strokecolor = :blue, strokewidth = 1),
           LineElement(color = :black, linestyle = :dash)]
 
 elem_3 = LineElement(color = :green, linestyle = nothing,
-        points = Point2f0[(0, 0), (0, 1), (1, 0), (1, 1)])
+        points = Point2f[(0, 0), (0, 1), (1, 0), (1, 1)])
 
 elem_4 = MarkerElement(color = :blue, marker = 'π', markersize = 15,
-        points = Point2f0[(0.2, 0.2), (0.5, 0.8), (0.8, 0.2)])
+        points = Point2f[(0.2, 0.2), (0.5, 0.8), (0.8, 0.2)])
 
 elem_5 = PolyElement(color = :green, strokecolor = :black, strokewidth = 2,
-        points = Point2f0[(0, 0), (1, 0), (0, 1)])
+        points = Point2f[(0, 0), (1, 0), (0, 1)])
 
 Legend(f[1, 2],
     [elem_1, elem_2, elem_3, elem_4, elem_5],

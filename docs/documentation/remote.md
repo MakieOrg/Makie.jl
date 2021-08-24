@@ -1,4 +1,4 @@
-# Using Makie on a remote server
+# Remote servers
 
 Makie can be used remotely and it supports working headless systems (such as CI servers).
 

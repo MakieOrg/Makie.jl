@@ -1,8 +1,10 @@
 
 """
     contour(x, y, z)
+    contour(z::Matrix)
 
 Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix
+If only `z::Matrix` is supplied, the indices of the elements in `z` will be used as the x and y locations when plotting the contour.
 
 ## Attributes
 $(ATTRIBUTES)
@@ -36,12 +38,12 @@ $(ATTRIBUTES)
 end
 
 function contourlines(::Type{<: Contour}, contours, cols)
-    result = Point2f0[]
+    result = Point2f[]
     colors = RGBA{Float32}[]
     for (color, c) in zip(cols, Contours.levels(contours))
         for elem in Contours.lines(c)
             append!(result, elem.vertices)
-            push!(result, Point2f0(NaN32))
+            push!(result, Point2f(NaN32))
             append!(colors, fill(color, length(elem.vertices) + 1))
         end
     end
@@ -49,14 +51,14 @@ function contourlines(::Type{<: Contour}, contours, cols)
 end
 
 function contourlines(::Type{<: Contour3d}, contours, cols)
-    result = Point3f0[]
+    result = Point3f[]
     colors = RGBA{Float32}[]
     for (color, c) in zip(cols, Contours.levels(contours))
         for elem in Contours.lines(c)
             for p in elem.vertices
-                push!(result, Point3f0(p[1], p[2], c.level))
+                push!(result, Point3f(p[1], p[2], c.level))
             end
-            push!(result, Point3f0(NaN32))
+            push!(result, Point3f(NaN32))
             append!(colors, fill(color, length(elem.vertices) + 1))
         end
     end
@@ -99,7 +101,7 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
                 (isoval in v_interval) || return false
                 v0 || (abs(level - isoval) <= iso_eps)
             end
-            RGBAf0(Colors.color(c), line ? alpha : 0.0)
+            RGBAf(Colors.color(c), line ? alpha : 0.0)
         end
     end
     volume!(
@@ -137,7 +139,7 @@ function color_per_level(::Nothing, colormap, colorrange, a, levels)
     cmap = to_colormap(colormap)
     map(levels) do level
         c = interpolated_getindex(cmap, level, colorrange)
-        RGBAf0(color(c), alpha(c) * a)
+        RGBAf(color(c), alpha(c) * a)
     end
 end
 

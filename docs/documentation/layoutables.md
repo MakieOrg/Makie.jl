@@ -1,9 +1,4 @@
-# `Layoutables`
-
-!!! note
-    All examples in this section are presented as static CairoMakie vector graphics for clarity of visuals.
-    Keep in mind that CairoMakie is not interactive.
-    Use GLMakie for interactive widgets, as WGLMakie currently doesn't have picking implemented.
+# Layoutables
 
 `Layoutables` are objects which can be added to a `Figure` or `Scene` and have their location and size controlled by a `GridLayout`. In of itself, a `Layoutable` is an abstract type.
 A `Figure` has its own internal `GridLayout` and therefore offers simplified syntax for adding layoutables to it.
@@ -52,7 +47,7 @@ scene
 Sometimes you just want to place a `Layoutable` in a specific location, without it being controlled by a dynamic layout.
 You can do this by setting the `bbox` parameter, which is usually controlled by the layout, manually.
 The boundingbox should be a 2D `Rect`, and can also be an Observable if you plan to change it dynamically.
-The function `BBox` creates an `FRect2D`, but instead of passing origin and widths, you pass left, right, bottom and top boundaries directly.
+The function `BBox` creates an `Rect2f`, but instead of passing origin and widths, you pass left, right, bottom and top boundaries directly.
 
 Here's an example where two axes are placed manually:
 
