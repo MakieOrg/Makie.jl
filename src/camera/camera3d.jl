@@ -32,22 +32,22 @@ The camera view follows from the position of the camera `eyeposition`, the point
 
 The camera can be controlled by keyboard and mouse. The keyboard has the following available attributes
 
-- `up_key   = Keyboard.left_shift` sets the key for translations towards the top of the screen.
-- `down_key = Keyboard.left_control` sets the key for translations towards the bottom of the screen.
+- `up_key   = Keyboard.r` sets the key for translations towards the top of the screen.
+- `down_key = Keyboard.f` sets the key for translations towards the bottom of the screen.
 - `left_key  = Keyboard.a` sets the key for translations towards the left of the screen.
 - `right_key = Keyboard.d` sets the key for translations towards the right of the screen.
 - `forward_key  = Keyboard.w` sets the key for translations into the screen.
 - `backward_key = Keyboard.s` sets the key for translations out of the screen.
 
-- `zoom_in_key   = Keyboard.i` sets the key for zooming into the scene (enlarge, via fov).
-- `zoom_out_key  = Keyboard.k` sets the key for zooming out of the scene (shrink, via fov).
+- `zoom_in_key   = Keyboard.u` sets the key for zooming into the scene (enlarge, via fov).
+- `zoom_out_key  = Keyboard.o` sets the key for zooming out of the scene (shrink, via fov).
 - `stretch_view_key  = Keyboard.page_up` sets the key for moving `eyepostion` away from `lookat`.
 - `contract_view_key = Keyboard.page_down` sets the key for moving `eyeposition` towards `lookat`.
 
 - `pan_left_key  = Keyboard.j` sets the key for rotations around the screens vertical axis.
 - `pan_right_key = Keyboard.l` sets the key for rotations around the screens vertical axis.
-- `tilt_up_key   = Keyboard.r` sets the key for rotations around the screens horizontal axis.
-- `tilt_down_key = Keyboard.f` sets the key for rotations around the screens horizontal axis.
+- `tilt_up_key   = Keyboard.i` sets the key for rotations around the screens horizontal axis.
+- `tilt_down_key = Keyboard.k` sets the key for rotations around the screens horizontal axis.
 - `roll_clockwise_key        = Keyboard.e` sets the key for rotations of the screen.
 - `roll_counterclockwise_key = Keyboard.q` sets the key for rotations of the screen.
 
@@ -86,22 +86,22 @@ function Camera3D(scene; kwargs...)
         Attributes(
             # Keyboard controls
             # Translations
-            up_key        = Keyboard.left_shift,
-            down_key      = Keyboard.left_control,
+            up_key        = Keyboard.r,
+            down_key      = Keyboard.f,
             left_key      = Keyboard.a,
             right_key     = Keyboard.d,
             forward_key   = Keyboard.w,
             backward_key  = Keyboard.s,
             # Zooms
-            zoom_in_key   = Keyboard.i,
-            zoom_out_key  = Keyboard.k,
+            zoom_in_key   = Keyboard.u,
+            zoom_out_key  = Keyboard.o,
             stretch_view_key  = Keyboard.page_up,
             contract_view_key = Keyboard.page_down,
             # Rotations
             pan_left_key  = Keyboard.j,
             pan_right_key = Keyboard.l,
-            tilt_up_key   = Keyboard.r,
-            tilt_down_key = Keyboard.f,
+            tilt_up_key   = Keyboard.i,
+            tilt_down_key = Keyboard.k,
             roll_clockwise_key        = Keyboard.e,
             roll_counterclockwise_key = Keyboard.q,
             # Mouse controls
