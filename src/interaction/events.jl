@@ -81,15 +81,40 @@ function Base.:(|)(
 end
 Base.:(!)(x::Union{BooleanOperator, Keyboard.Button, Mouse.Button}) = Not(x)
 
+
+# Direct methods
+"""
+    ispressed(scene, result::Bool)
+    ispressed(scene, button::Union{Mouse.Button, Keyboard.Button)
+    ispressed(scene, collection::Union{Set, Vector, Tuple})
+    ispressed(scene, op::BooleanOperator)
+
+This function checks if a button or combination of buttons is pressed.
+
+If given a true or false, `ispressed` will return true or false respectively. 
+This provides a way to turn an interaction "always on" or "always off" from the 
+outside.
+
+Passing a button or collection of buttons such as `Keyboard.enter` or 
+`Mouse.left` will return true if all of the given buttons are pressed.
+
+For more complicated combinations of buttons the `BooleanOperator` method can be 
+used. Buttons can be combined into boolean expression with `&`, `|` and `!`
+which can be passed to ispressed for evaluation. For example, you may have one 
+action `ispressed(scene, !Keyboard.left_control & Keyboard.c))` and another
+`ispressed(scene, Keyboard.left_control & Keyboard.c)`.
+"""
 ispressed(scene, mb::Mouse.Button) = mb in scene.events.mousebuttonstate
 ispressed(scene, key::Keyboard.Button) = key in scene.events.keyboardstate
 ispressed(scene, result::Bool) = result
 @deprecate ispressed(scene, ::Nothing) ispressed(scene, true)
 
+# Boolean Operator evaluation
 ispressed(scene, op::And) = ispressed(scene, op.l) && ispressed(scene, op.r)
 ispressed(scene, op::Or)  = ispressed(scene, op.l) || ispressed(scene, op.r)
 ispressed(scene, op::Not) = !ispressed(scene, op.x)
 
+# collections
 ispressed(scene, set::Set) = all(x -> ispressed(scene, x), set)
 ispressed(scene, set::Vector) = all(x -> ispressed(scene, x), set)
 ispressed(scene, set::Tuple) = all(x -> ispressed(scene, x), set)
