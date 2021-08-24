@@ -27,6 +27,20 @@ function register_callbacks(scene::Scene, native_window)
 
 end
 
+"""
+Picks a mouse position.  Implemented by the backend.
+"""
+function pick end
+
+"""
+    onpick(func, plot)
+Calls `func` if one clicks on `plot`.  Implemented by the backend.
+"""
+function onpick end
+
+
+# ispressed logic
+
 abstract type BooleanOperator end
 
 struct And{L, R} <: BooleanOperator
@@ -119,15 +133,3 @@ ispressed(scene, op::Not) = !ispressed(scene, op.x)
 ispressed(scene, set::Set) = all(x -> ispressed(scene, x), set)
 ispressed(scene, set::Vector) = all(x -> ispressed(scene, x), set)
 ispressed(scene, set::Tuple) = all(x -> ispressed(scene, x), set)
-
-
-"""
-Picks a mouse position.  Implemented by the backend.
-"""
-function pick end
-
-"""
-    onpick(func, plot)
-Calls `func` if one clicks on `plot`.  Implemented by the backend.
-"""
-function onpick end
