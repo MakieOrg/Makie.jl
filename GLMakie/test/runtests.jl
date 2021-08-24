@@ -1,9 +1,8 @@
 using GLMakie, Test
-using GLMakie.FileIO
-using GLMakie.Makie
-using GLMakie.GeometryBasics
-using GLMakie.GeometryBasics: origin
-using GLMakie.Makie
+using FileIO
+using GeometryBasics
+using GeometryBasics: origin
+using Makie
 using ImageMagick
 using Pkg
 path = normpath(joinpath(dirname(pathof(Makie)), "..", "ReferenceTests"))
