@@ -544,14 +544,6 @@ function convert_arguments(P::PlotFunc, i::AbstractInterval, f::Function)
     to_plotspec(ptype, convert_arguments(ptype, x, y))
 end
 
-to_tuple(t::Tuple) = t
-to_tuple(t) = (t,)
-
-function convert_arguments(P::PlotFunc, f::Function, args...; kwargs...)
-    tmp =to_tuple(f(args...; kwargs...))
-    convert_arguments(P, tmp...)
-end
-
 # The following `tryrange` code was copied from Plots.jl
 # https://github.com/JuliaPlots/Plots.jl/blob/15dc61feb57cba1df524ce5d69f68c2c4ea5b942/src/series.jl#L399-L416
 
