@@ -115,7 +115,6 @@ function Scene(;
         transformation, plots, m_theme,
         children, current_screens, bg, visible
     )
-    scene.transformation.parent[] = scene
     cam = if camera isa Function
         camera(scene)
     end

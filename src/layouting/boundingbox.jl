@@ -9,11 +9,6 @@ raw_boundingbox(x::Atomic) = data_limits(x)
 rootparent(x) = rootparent(parent(x))
 rootparent(x::Scene) = x
 
-# function raw_boundingbox(x::Annotations)
-#     bb = raw_boundingbox(x.plots)
-#     inv(modelmatrix(rootparent(x))) * bb
-# end
-
 raw_boundingbox(x::Combined) = raw_boundingbox(x.plots)
 boundingbox(x) = raw_boundingbox(x)
 
@@ -42,7 +37,6 @@ end
 
 boundingbox(scene::Scene) = raw_boundingbox(scene)
 function raw_boundingbox(scene::Scene)
-    @warn("BB FROM SCENE")
     if scene[OldAxis] !== nothing
         return raw_boundingbox(scene[OldAxis])
     elseif cameracontrols(scene) == EmptyCamera()

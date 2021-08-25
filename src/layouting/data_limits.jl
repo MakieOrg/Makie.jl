@@ -1,30 +1,6 @@
 argtypes(x::Combined{T, A}) where {T, A} = A
 argtypes(x) = Any
 
-function data_limits(x)
-    error("No datalimits for $(typeof(x)) and $(argtypes(x))")
-end
-
-function data_limits(x::Atomic)
-    isempty(x.plots) ? atomic_limits(x) : data_limits(x.plots)
-end
-
-"""
-Data limits calculate a minimal boundingbox from the data points in a plot.
-This doesn't include any transformations, markers etc.
-"""
-function atomic_limits(x::Atomic{<: Tuple{Arg1}}) where Arg1
-    return xyz_boundingbox(identity, to_value(x[1]))
-end
-
-function atomic_limits(x::Atomic{<: Tuple{X, Y, Z}}) where {X, Y, Z}
-    return xyz_boundingbox(identity, to_value.(x[1:3])...)
-end
-
-function atomic_limits(x::Atomic{<: Tuple{X, Y}}) where {X, Y}
-    return xyz_boundingbox(identity, to_value.(x[1:2])...)
-end
-
 _isfinite(x) = isfinite(x)
 _isfinite(x::VecTypes) = all(isfinite, x)
 scalarmax(x::Union{Tuple, AbstractArray}, y::Union{Tuple, AbstractArray}) = max.(x, y)
@@ -112,7 +88,6 @@ end
 FRect3D_from_point(p::VecTypes{2}) = Rect3f(Point3f(p..., 0), Point3f(0, 0, 0))
 FRect3D_from_point(p::VecTypes{3}) = Rect3f(Point3f(p...), Point3f(0, 0, 0))
 
-
 function atomic_limits(x::Text{<:Tuple{<:GlyphCollection}})
     if x.space[] == :data
         boundingbox(x)
@@ -143,39 +118,26 @@ end
 
 isfinite_rect(x::Rect) = all(isfinite.(minimum(x))) &&  all(isfinite.(maximum(x)))
 
-function data_limits(plots::Vector)
-    isempty(plots) && return
-    bb = Rect3f()
-    plot_idx = iterate(plots)
-    while plot_idx !== nothing
-        plot, idx = plot_idx
-        plot_idx = iterate(plots, idx)
-        # axis shouldn't be part of the data limit
-        isaxis(plot) && continue
-        bb2 = data_limits(plot)::Rect3f
-        isfinite_rect(bb) || (bb = bb2)
-        isfinite_rect(bb2) || continue
-        bb = union(bb, bb2)
-    end
-    bb
-end
-
 data_limits(s::Scene) = data_limits(plots_from_camera(s))
 data_limits(s::Figure) = data_limits(s.scene)
 data_limits(s::FigureAxisPlot) = data_limits(s.figure)
 data_limits(plot::Combined) = data_limits(plot.plots)
 
-function foreach_point(f, primitives::AbstractPlot)
-    return foreach(f, point_iterator(primitives))
+function point_iterator(plot::Combined)
+    return Iterators.flatten((point_iterator(p) for p in plot.plots))
 end
 
 function point_iterator(plot::Union{Scatter, MeshScatter, Lines, LineSegments})
     return plot.positions[]
 end
 
-function point_iterator(plot::Mesh)
-    return decompose(Point, plot.mesh[])
+point_iterator(mesh::GeometryBasics.Mesh) = decompose(Point, mesh)
+
+function point_iterator(list::AbstractVector)
+    Iterators.flatten((point_iterator(elem) for elem in list))
 end
+
+point_iterator(plot::Mesh) = point_iterator(plot.mesh[])
 
 function point_iterator(plot::Surface)
     X = plot.x[]
@@ -214,4 +176,74 @@ function point_iterator(x::Volume)
     widths = last.(extremata) .- first.(extremata)
     rect = Rect3f(minpoint, Vec3f(widths))
     return unique(decompose(Point, rect))
+end
+
+foreach_plot(f, s::Scene, keep=(x)-> true) = foreach_plot(f, s.plots, keep)
+foreach_plot(f, s::Figure, keep=(x)-> true) = foreach_plot(f, s.scene, keep)
+foreach_plot(f, s::FigureAxisPlot, keep=(x)-> true) = foreach_plot(f, s.figure, keep)
+foreach_plot(f, plot::Combined, keep=(x)-> true) = foreach_plot(f, plot.plots, keep)
+
+function foreach_plot(f, list::AbstractVector, keep=(x)-> true)
+    for element in list
+        if keep(element)
+            f(element)
+        end
+    end
+    return
+end
+
+function foreach_transformed(f, point_iterator, model, trans_func)
+    for point in point_iterator
+        point_t = apply_transform(trans_func, point)
+        point_m = project(model, point_t)
+        f(point_m)
+    end
+    return
+end
+
+function foreach_transformed(f, plot)
+    points = point_iterator(plot)
+    t = transformation(plot)
+    model = model_transform(t)
+    trans_func = t.transform_func[]
+    # use function barrier since trans_func is Any
+    foreach_transformed(f, points, model, trans_func)
+end
+
+function update_boundingbox!(bb_ref, point)
+    if all(isfinite, point)
+        vec = to_ndim(Vec3f0, point, 0.0)
+        bb_ref[] = update(bb_ref[], vec)
+    end
+end
+
+function update_boundingbox!(bb_ref, bb::Rect)
+    # ref is uninitialized, so just set it to the first bb
+    if !isfinite_rect(bb_ref[])
+        bb_ref[] = bb
+        return
+    end
+    # don't update if not finite
+    !isfinite_rect(bb) && return
+    # ok, update!
+    bb_ref[] = union(bb_ref[], bb)
+    return
+end
+
+function data_limits(plot::AbstractPlot)
+    # Because of closure inference problems
+    # we need to use a ref here which gets updated inplace
+    bb_ref = Base.RefValue(Rect3f())
+    foreach_transformed(plot) do point
+        update_boundingbox!(bb_ref, point)
+    end
+    return bb_ref[]
+end
+
+function data_limits(scenelike::Scene)
+    bb_ref = Base.RefValue(Rect3f())
+    foreach_plot(scenelike) do plot
+        update_boundingbox!(bb_ref, data_limits(plot))
+    end
+    return bb_ref[]
 end

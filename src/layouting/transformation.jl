@@ -1,55 +1,52 @@
 
-function Transformation(transform_func=identity)
-    flip = Node((false, false, false))
-    scale = Node(Vec3f(1))
-    scale = lift(flip, scale) do f, s
-        map((f, s)-> f ? -s : s, Vec(f), s)
-    end
-    translation, rotation, align = (
-        Node(Vec3f(0)),
-        Node(Quaternionf(0, 0, 0, 1)),
-        Node(Vec2f(0))
-    )
-    model = map_once(scale, translation, rotation, align, flip) do s, o, q, a, flip
-        transformationmatrix(o, s, q, a, flip)
-    end
+function Transformation(transform_func=identity;
+                        scale=Vec3f(1),
+                        translation=Vec3f(0),
+                        rotation=Quaternionf(0, 0, 0, 1))
+
+    scale_o = convert(Observable{Vec3f}, scale)
+    translation_o = convert(Observable{Vec3f}, translation)
+    rotation_o = convert(Observable{Quaternionf}, rotation)
+    model = map(transformationmatrix, translation_o, scale_o, rotation_o)
     return Transformation(
         translation,
         scale,
         rotation,
         model,
-        flip,
-        align,
-        Node{Any}(transform_func)
+        convert(Observable{Any}, transform_func)
     )
 end
 
-function Transformation(scene::SceneLike)
-    flip = Node((false, false, false))
-    scale = Node(Vec3f(1))
-    translation, rotation, align = (
-        Node(Vec3f(0)),
-        Node(Quaternionf(0, 0, 0, 1)),
-        Node(Vec2f(0))
-    )
-    pmodel = transformationmatrix(scene)
-    model = map_once(scale, translation, rotation, align, pmodel, flip) do s, o, q, a, p, f
-        return p * transformationmatrix(o, s, q, align, f)
+function Transformation(transformable::Transformable;
+                        scale=Vec3f(1),
+                        translation=Vec3f(0),
+                        rotation=Quaternionf(0, 0, 0, 1))
+
+    scale_o = convert(Observable{Vec3f}, scale)
+    translation_o = convert(Observable{Vec3f}, translation)
+    rotation_o = convert(Observable{Quaternionf}, rotation)
+    parent_transform = transformation(transformable)
+
+    pmodel = parent_transform.model
+    model = map(translation_o, scale_o, rotation_o, pmodel) do t, s, r, p
+        return p * transformationmatrix(t, s, r)
     end
 
-    ptrans = transformation(scene)
     trans = Transformation(
         translation,
         scale,
         rotation,
         model,
-        flip,
-        align,
-        copy(ptrans.transform_func)
+        copy(parent_transform.transform_func)
     )
+
+    trans.parent[] = parent_transform
     return trans
 end
 
+function model_transform(transformation::Transformation)
+    return transformationmatrix(transformation.translation[], transformation.scale[], transformation.rotation[])
+end
 
 function translated(scene::Scene, translation...)
     tscene = Scene(scene, transformation = Transformation())
@@ -73,8 +70,6 @@ function transform!(
     scale!(scene, scale)
     rotate!(scene, rotation)
 end
-
-
 
 transformation(t::Scene) = t.transformation
 transformation(t::AbstractPlot) = t.transformation
@@ -161,6 +156,7 @@ Apply an absolute translation to the Scene, translating it to `x, y, z`.
 """
 translate!(scene::Transformable, xyz::VecTypes) = translate!(Absolute, scene, xyz)
 translate!(scene::Transformable, xyz...) = translate!(Absolute, scene, xyz)
+
 """
     translate!(Accum, scene::Transformable, xyz...)
 
@@ -327,6 +323,7 @@ function (s::Symlog10)(x)
         x
     end
 end
+
 function inv_symlog10(x, low, high)
     if x > 0
         l = log10(high)

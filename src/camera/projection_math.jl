@@ -197,7 +197,6 @@ GeometryBasics.origin(p::Pivot) = p.origin
 
 rotationmatrix4(q::Quaternion{T}) where {T} = Mat4{T}(q)
 
-
 function transformationmatrix(p::Pivot)
     translationmatrix(p.origin) * #go to origin
     rotationmatrix4(p.rotation) * #apply rotation
@@ -208,11 +207,11 @@ end
 function transformationmatrix(translation, scale)
     T = eltype(translation)
     T0, T1 = zero(T), one(T)
-    Mat{4}(
+    return Mat{4}(
         scale[1],T0,  T0,  T0,
         T0,  scale[2],T0,  T0,
         T0,  T0,  scale[3],T0,
-        translation[1],translation[2],translation[3], T1
+        translation[1], translation[2], translation[3], T1
     )
 end
 
