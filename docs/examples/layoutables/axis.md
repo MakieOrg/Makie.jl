@@ -613,34 +613,34 @@ f
 
 An Axis has a couple of predefined interactions enabled.
 
-### Scroll Zoom
+### Scroll zoom
 
 You can zoom in an axis by scrolling in and out.
 If you press x or y while scrolling, the zoom movement is restricted to that dimension.
 These keys can be changed with the attributes `xzoomkey` and `yzoomkey`.
 You can also restrict the zoom dimensions all the time by setting the axis attributes `xzoomlock` or `yzoomlock` to `true`.
 
-### Drag Pan
+### Drag pan
 
 You can pan around the axis by right-clicking and dragging.
 If you press x or y while panning, the pan movement is restricted to that dimension.
 These keys can be changed with the attributes `xpankey` and `ypankey`.
 You can also restrict the pan dimensions all the time by setting the axis attributes `xpanlock` or `ypanlock` to `true`.
 
-### Limit Reset
+### Limit reset
 
 You can reset the limits with `ctrl + leftclick`. This is the same as doing `reset_limits!(ax)`. This sets the limits back to the values stored in `ax.limits`, and if they are `nothing`, computes them automatically. If you have previously called `limits!`, `xlims!` or `ylims!`, these settings therefore stay intact when doing a limit reset.
 
 You can alternatively press `ctrl + shift + leftclick`, which is the same as calling `autolimits!(ax)`.
 This function ignores previously set limits and computes them all anew given the axis content.
 
-### Rectangle Selection Zoom
+### Rectangle selection zoom
 
 Left-click and drag zooms into the selected rectangular area.
 If you press x or y while panning, only the respective dimension is affected.
 You can also restrict the selection zoom dimensions all the time by setting the axis attributes `xrectzoom` or `yrectzoom` to `true`.
 
-### Custom Interactions
+### Custom interactions
 
 The interaction system is an additional abstraction upon Makie's low-level event system to make it easier to quickly create your own interaction patterns.
 
@@ -657,7 +657,7 @@ You can check which interactions are currently active by calling `interactions(a
 Often, you don't want to remove an interaction entirely but only disable it for a moment, then reenable it again.
 You can use the functions `activate_interaction!(ax, name::Symbol)` and `deactivate_interaction!(ax, name::Symbol)` for that.
 
-#### `Function` Interaction
+#### `Function` interaction
 
 If `interaction` is a `Function`, it should accept two arguments, which correspond to an event and the axis.
 This function will then be called whenever the axis generates an event.
@@ -676,7 +676,7 @@ As you can see, it's possible to restrict the type parameter of the event argume
 Choices are one of `MouseEvent`, `KeysEvent` or `ScrollEvent` if you only want to handle a specific class.
 Your function can also have multiple methods dealing with each type.
 
-#### Custom Object Interaction
+#### Custom object interaction
 
 The function option is most suitable for interactions that don't involve much state.
 A more verbose but flexible option is available.
@@ -711,16 +711,16 @@ end
 register_interaction!(ax, :left_and_right, MyInteraction(false, false))
 ```
 
-#### Setup and Cleanup
+#### Setup and cleanup
 
 Some interactions might have more complex state involving plot objects that need to be setup or removed.
 For those purposes, you can overload the methods `registration_setup!(parent, interaction)` and `deregistration_cleanup!(parent, interaction)` which are called during registration and deregistration, respectively.
 
-## Special Plots
+## Special plots
 
 A few special plot functions currently only work specifically with the `Axis` type.
 
-### Vertical / Horizontal Lines
+### Vertical / horizontal lines
 
 Often, it's useful to mark horizontal or vertical locations in a plot with lines that span
 a certain percentage of the axis, not the data. There are two functions `hlines!` and `vlines!`
@@ -733,6 +733,7 @@ specify the extent along the axis. These values can also be a single number or a
 \begin{examplefigure}{}
 ```julia
 using CairoMakie
+CairoMakie.activate!() # hide
 
 f = Figure()
 
@@ -747,9 +748,10 @@ hlines!(ax2, [1, 2, 3, 4], xmax = [0.25, 0.5, 0.75, 1], color = :blue)
 f
 ```
 \end{examplefigure}
-### abline!
 
-abline works similar to v/hlines!:
+### Linear function
+
+The function `abline!` works similar to v/hlines!, only that it draws a diagonal line given a slope and intercept.
 
 {{doc abline!}}
 
@@ -757,7 +759,7 @@ abline works similar to v/hlines!:
 \begin{examplefigure}{}
 ```julia
 using CairoMakie
-CairoMakie.activate!()
+CairoMakie.activate!() # hide
 
 fig, ax, pl = scatter(1:4)
 abline!(ax, 0, 1)
@@ -766,3 +768,23 @@ fig
 ```
 \end{examplefigure}
 
+
+### Vertical / horizontal spans
+
+The `vspan!` and `hspan!` functions draw rectangular areas that are specified in data coordinates for one dimension, and in axis-relative coordinates for the other dimension.
+
+\begin{examplefigure}{}
+```julia
+using CairoMakie
+CairoMakie.activate!()
+
+f = Figure()
+ax = Axis(f[1, 1])
+
+lines!(ax, 0..20, sin)
+vspan!(ax, [0, 2pi, 4pi], [pi, 3pi, 5pi], color = (:red, 0.2))
+hspan!(ax, -1.1, -0.9, color = (:blue, 0.2))
+
+f
+```
+\end{examplefigure}
