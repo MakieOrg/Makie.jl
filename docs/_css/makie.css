@@ -1,5 +1,17 @@
+:root {
+    --text-color: #494e52;
+}
+
 html {
-    font-size: 18px;
+    font-size: 1em;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    color: var(--text-color);
+    font-family: -apple-system, BlinkMacSystemFont, "Roboto", "Segoe UI", "Helvetica Neue", "Lucida Grande", Arial, sans-serif;
+    line-height: 1.5;
 }
 
 video {
@@ -23,7 +35,7 @@ video {
 .plotting-functions-item h2 {
     border-bottom: 1px solid #ddd;
     margin: 0;
-    color: #444;
+    color: var(--text-color);;
     padding: 0.1em 0.3em;
     background-color: #f4f4f4;
 }
@@ -62,19 +74,43 @@ img.plotting-function-thumb {
     background-color: #fbfbfb;
 }
 
-.doc-header {
-    background-color: #f4f4f4;
+.docstring + .docstring {
+    margin-top: 2em;
 }
 
-h2.doc-header {
+.docstring pre > code {
+    display: block;
+    overflow-x: scroll;
+}
+
+.doc-header {
+    background-color: #eee;
     margin: 0 0 0 0;
-    padding-left: 0.3em;
+    padding: 0.3em;
     border: none;
     border-bottom: 1px solid #ddd;
+    font-weight: 600;
+    color: var(--text-color);
 }
 
 .doc-content {
-    padding: 0.3em;
+    padding: 0.5em;
+}
+
+.doc-content *:last-child {
+    margin-bottom: 0;
+}
+
+.doc-content *:first-child {
+    margin-top: 0;
+}
+
+.doc-content h1 {
+    font-size: 16px;
+}
+
+.doc-content h2 {
+    font-size: 16px;
 }
 
 /* admonition boxes */
@@ -486,7 +522,6 @@ a.boxlink {
         position: static;
         grid-column: 2;
         grid-row: 1;
-        font-size: smaller;
         width: 100%;
         padding: 0;
         z-index: 0;
@@ -699,3 +734,4 @@ button.copy-code:hover {
 button.copy-code:focus {
     outline: none;
 }
+

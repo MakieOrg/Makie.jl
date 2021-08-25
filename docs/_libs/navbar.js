@@ -75,6 +75,12 @@ window.addEventListener('DOMContentLoaded', () => {
 
 	// copy code buttons
 	document.querySelectorAll("pre code").forEach(el => {
+
+		// only add button for multiline strings
+		if (el.innerText.split(/\r\n|\r|\n/).length < 2){
+			return;
+		}
+
 		let b = document.createElement("button");
 		b.innerText = "\uf46d";
 		b.title = "Copy code to clipboard"
