@@ -220,6 +220,7 @@ function Makie.plot!(plot::BoxPlot)
         show_midline = plot[:show_median],
         orientation = orientation,
         width = boxwidth,
+        gap = 0,
         show_notch = show_notch,
         notchmin = notchmin,
         notchmax = notchmax,
