@@ -48,7 +48,7 @@ function plot!(plot::Violin)
     args = @extract plot (width, side, color, show_median, npoints, boundary, bandwidth,
         datalimits, max_density, dodge, n_dodge, gap, dodge_gap)
     signals = lift(x, y, args...) do x, y, width, vside, color, show_median, n, bound, bw, limits, max_density, dodge, n_dodge, gap, dodge_gap
-        x̂, violinwidth = compute_xs_and_widths(x, width, gap, dodge, n_dodge, dodge_gap)
+        x̂, violinwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
 
         # Allow `side` to be either scalar or vector
         sides = broadcast(x̂, vside) do _, s

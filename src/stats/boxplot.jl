@@ -82,7 +82,7 @@ function Makie.plot!(plot::BoxPlot)
         plot[:color],
         args...,
     ) do x, y, color, width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap
-        x̂, boxwidth = compute_xs_and_widths(x, width, gap, dodge, n_dodge, dodge_gap)
+        x̂, boxwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
         if !(whiskerwidth == :match || whiskerwidth >= 0)
             error("whiskerwidth must be :match or a positive number. Found: $whiskerwidth")
         end

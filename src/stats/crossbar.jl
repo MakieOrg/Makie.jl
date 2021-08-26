@@ -59,7 +59,7 @@ function Makie.plot!(plot::CrossBar)
         plot[4],
         args...,
     ) do x, y, ymin, ymax, width, dodge, n_dodge, gap, dodge_gap, show_notch, nmin, nmax, nw, orientation
-        x̂, boxwidth = compute_xs_and_widths(x, width, gap, dodge, n_dodge, dodge_gap)
+        x̂, boxwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
         show_notch = show_notch && (nmin !== automatic && nmax !== automatic)
 
         # for horizontal crossbars just flip all components

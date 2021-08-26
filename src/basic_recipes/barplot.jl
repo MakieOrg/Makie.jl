@@ -56,7 +56,7 @@ end
 
 flip(r::Rect2) = Rect2(reverse(origin(r)), reverse(widths(r)))
 
-function compute_xs_and_widths(x, width, gap, dodge, n_dodge, dodge_gap)
+function compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
     width === automatic && (width = 1)
     width *= 1 - gap
     if dodge === automatic
@@ -202,7 +202,7 @@ function Makie.plot!(p::BarPlot)
         end
 
         # compute width of bars and x̂ (horizontal position after dodging)
-        x̂, barwidth = compute_xs_and_widths(x, width, gap, dodge, n_dodge, dodge_gap)
+        x̂, barwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
 
         # --------------------------------
         # ----------- Stacking -----------
