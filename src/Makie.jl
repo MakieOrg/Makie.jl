@@ -34,6 +34,7 @@ import Isoband
 import PolygonOps
 import GridLayoutBase
 using MakieCore
+using OffsetArrays
 
 import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, calculated_attributes!, get_attribute, plotsym, plotkey, attributes, used_attributes
 

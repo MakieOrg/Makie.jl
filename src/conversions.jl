@@ -566,6 +566,16 @@ function tryrange(F, vec)
     error("$F is not a Function, or is not defined at any of the values $vec")
 end
 
+# OffsetArrays conversions
+function convert_arguments(sl::SurfaceLike, wm::OffsetArray) 
+  x1, y1 = wm.offsets .+ 1
+  nx, ny = size(wm)
+  x = range(x1, length = nx)
+  y = range(y1, length = ny)
+  v = parent(wm)
+  return convert_arguments(sl, x, y, v)
+end
+
 ################################################################################
 #                               Helper Functions                               #
 ################################################################################
@@ -1221,3 +1231,4 @@ end
 function convert_attribute(value::AbstractGeometry, ::key"marker", ::key"meshscatter")
     return normal_mesh(value)
 end
+
