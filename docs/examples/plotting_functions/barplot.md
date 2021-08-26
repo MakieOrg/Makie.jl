@@ -32,23 +32,7 @@ Makie.inline!(true) # hide
 xs = 1:0.2:10
 ys = 0.5 .* sin.(xs)
 
-barplot(xs, ys, width = step(xs), color = :gray85, strokecolor = :black, strokewidth = 1)
-```
-\end{examplefigure}
-
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
-
-f = Figure()
-Axis(f[1, 1]);
-
-barplot!([1, 4, 7], rand(3), x_distance = 1);
-barplot!([2, 3, 5, 6], rand(4), x_distance = 1);
-
-f
+barplot(xs, ys, gap = 0, color = :gray85, strokecolor = :black, strokewidth = 1)
 ```
 \end{examplefigure}
 

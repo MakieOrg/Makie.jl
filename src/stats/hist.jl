@@ -110,7 +110,7 @@ function Makie.plot!(plot::Hist)
         x === :values ? :y : x
     end
     # plot the values, not the observables, to be in control of updating
-    bp = barplot!(plot, points[]; width = widths[], plot.attributes..., fillto=plot.fillto, offset=plot.offset, bar_labels=bar_labels, color=color)
+    bp = barplot!(plot, points[]; width = widths[], gap = 0, plot.attributes..., fillto=plot.fillto, offset=plot.offset, bar_labels=bar_labels, color=color)
 
     # update the barplot points without triggering, then trigger with `width`
     on(widths) do w

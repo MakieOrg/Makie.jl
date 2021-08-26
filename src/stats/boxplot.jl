@@ -37,7 +37,7 @@ The boxplot has 3 components:
         width = automatic,
         dodge = automatic,
         n_dodge = automatic,
-        x_gap = 0.2,
+        gap = 0.2,
         dodge_gap = 0.03,
         strokecolor = theme(scene, :patchstrokecolor),
         strokewidth = theme(scene, :patchstrokewidth),
@@ -74,15 +74,15 @@ _flip_xy(p::Point2f) = reverse(p)
 _flip_xy(r::Rect{2,T}) where {T} = Rect{2,T}(reverse(r.origin), reverse(r.widths))
 
 function Makie.plot!(plot::BoxPlot)
-    args = @extract plot (width, range, show_outliers, whiskerwidth, show_notch, orientation, x_gap, dodge, n_dodge, dodge_gap)
+    args = @extract plot (width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap)
 
     signals = lift(
         plot[1],
         plot[2],
         plot[:color],
         args...,
-    ) do x, y, color, width, range, show_outliers, whiskerwidth, show_notch, orientation, x_gap, dodge, n_dodge, dodge_gap
-        x̂, boxwidth = xw_from_dodge(x, width, 1.0, x_gap, dodge, n_dodge, dodge_gap)
+    ) do x, y, color, width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap
+        x̂, boxwidth = compute_xs_and_widths(x, width, gap, dodge, n_dodge, dodge_gap)
         if !(whiskerwidth == :match || whiskerwidth >= 0)
             error("whiskerwidth must be :match or a positive number. Found: $whiskerwidth")
         end

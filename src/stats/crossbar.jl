@@ -30,7 +30,7 @@ It is most commonly used as part of the `boxplot`.
     width = automatic,
     dodge = automatic,
     n_dodge = automatic,
-    x_gap = 0.2,
+    gap = 0.2,
     dodge_gap = 0.03,
     strokecolor = theme(scene, :patchstrokecolor),
     strokewidth = theme(scene, :patchstrokewidth),
@@ -50,7 +50,7 @@ It is most commonly used as part of the `boxplot`.
 end
 
 function Makie.plot!(plot::CrossBar)
-    args = @extract plot (width, dodge, n_dodge, x_gap, dodge_gap, show_notch, notchmin, notchmax, notchwidth, orientation)
+    args = @extract plot (width, dodge, n_dodge, gap, dodge_gap, show_notch, notchmin, notchmax, notchwidth, orientation)
 
     signals = lift(
         plot[1],
@@ -58,8 +58,8 @@ function Makie.plot!(plot::CrossBar)
         plot[3],
         plot[4],
         args...,
-    ) do x, y, ymin, ymax, width, dodge, n_dodge, x_gap, dodge_gap, show_notch, nmin, nmax, nw, orientation
-        x̂, boxwidth = xw_from_dodge(x, width, 1.0, x_gap, dodge, n_dodge, dodge_gap)
+    ) do x, y, ymin, ymax, width, dodge, n_dodge, gap, dodge_gap, show_notch, nmin, nmax, nw, orientation
+        x̂, boxwidth = compute_xs_and_widths(x, width, gap, dodge, n_dodge, dodge_gap)
         show_notch = show_notch && (nmin !== automatic && nmax !== automatic)
 
         # for horizontal crossbars just flip all components
