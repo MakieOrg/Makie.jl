@@ -6,6 +6,8 @@ end
     barplot(x, y; kwargs...)
 
 Plots a barplot; `y` defines the height. `x` and `y` should be 1 dimensional.
+Bar width is determined by the attribute `width`, shrunk by `gap` in the following way:
+`width -> width * (1 - gap)`.
 
 ## Attributes
 $(ATTRIBUTES)

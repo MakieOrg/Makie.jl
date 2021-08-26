@@ -18,7 +18,8 @@ The boxplot has 3 components:
 - `y`: variables within the boxes
 # Keywords
 - `orientation=:vertical`: orientation of box (`:vertical` or `:horizontal`)
-- `width=0.8`: width of the box
+- `width=1`: width of the box before shrinking
+- `gap=0.2`: shrinking factor, `width -> width * (1 - gap)`
 - `show_notch=false`: draw the notch
 - `notchwidth=0.5`: multiplier of `width` for narrowest width of notch
 - `show_median=true`: show median as midline
