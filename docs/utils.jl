@@ -29,22 +29,27 @@ end
 
 function hfun_doc(params)
   fname = params[1]
-  head = length(params) > 1 ? params[2] : fname
-  type = length(params) == 3 ? params[3] : ""
+  html_docstring(fname)
+end
+
+function html_docstring(fname)
   doc = eval(Meta.parse("using Makie; @doc Makie.$fname"))
-  txt = Markdown.plain(doc)
-  # possibly further processing here
-  #body = Markdown.html(Markdown.parse(txt))
-  body = fd2html(txt, internal = true)
+  body = Markdown.html(doc)
+
+  # body = fd2html(replace(txt, raw"$" => raw"\$"), internal = true)
+
   return """
     <div class="docstring">
-        <h2 class="doc-header" id="$fname">
-          <a href="#$fname">$head</a>
-          <div class="doc-type">$type</div>
-        </h2>
+        <div class="doc-header" id="$fname">
+          <a href="#$fname">$fname</a>
+        </div>
         <div class="doc-content">$body</div>
     </div>
   """
+end
+
+function hfun_api_reference()
+  join(map(html_docstring, names(Makie)))
 end
 
 
@@ -179,15 +184,17 @@ end
 
         thumbpaths = map(pngpaths) do p
           thumbpath = joinpath(outputpath, splitext(p)[1] * "_thumb.png")
-          
-          img = load(joinpath(outputpath, p))
-          sz = size(img)
-          # height is dim 1
-          new_size = round.(Int, sz .÷ (sz[1] / thumb_height))
-          img_resized = imresize(RGB{Float32}.(img), new_size,
-            method=ImageTransformations.Interpolations.Lanczos4OpenCV())
-          img_clamped = mapc.(x -> clamp(x, 0, 1), img_resized)
-          save(thumbpath, img_clamped)
+
+          if !isfile(thumbpath)
+            img = load(joinpath(outputpath, p))
+            sz = size(img)
+            # height is dim 1
+            new_size = round.(Int, sz .÷ (sz[1] / thumb_height))
+            img_resized = imresize(RGB{Float32}.(img), new_size,
+              method=ImageTransformations.Interpolations.Lanczos4OpenCV())
+            img_clamped = mapc.(x -> clamp(x, 0, 1), img_resized)
+            save(thumbpath, img_clamped)
+          end
 
           thumbpath
         end

@@ -241,7 +241,7 @@ function FileIO.save(
             :pt_per_unit => pt_per_unit,
             :px_per_unit => px_per_unit
         )
-        show(iocontext, format2mime(F), scene; update)
+        show(iocontext, format2mime(F), scene; update=update)
     end
 end
 

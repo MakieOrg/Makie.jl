@@ -1,8 +1,15 @@
 # News
 
-## master
+## v0.15.2
+- bring back julia 1.3 support
+- use (MathTexEngine#0.2)[https://github.com/Kolaru/MathTeXEngine.jl/releases/tag/v0.2.0]
+- depend on new GeometryBasics, which changes all the Vec/Point/Quaternion/RGB/RGBA - f0 aliases to just f. So Vec2f0 -> Vec2f. Old aliases are still exported, but deprecated and will be removed in the next breaking release. For more details and an upgrade script, visit https://github.com/JuliaGeometry/GeometryBasics.jl/pull/97.
+- add (hspan!/vspan!)[https://github.com/JuliaPlots/Makie.jl/pull/1264]
 
+## v0.15.1
+- ❤❤ new documentation based on Franklin http://makie.juliaplots.org/stable/  ❤❤
 - Added a specialization for `volumeslices` to DataInspector
+- fix (1 element hist)[https://github.com/JuliaPlots/Makie.jl/pull/1238] and make it (easier to move hist)[https://github.com/JuliaPlots/Makie.jl/pull/1150]
 
 ## v0.15.0
 

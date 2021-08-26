@@ -1,5 +1,17 @@
+:root {
+    --text-color: #494e52;
+}
+
 html {
-    font-size: 18px;
+    font-size: 1em;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    color: var(--text-color);
+    font-family: -apple-system, BlinkMacSystemFont, "Roboto", "Segoe UI", "Helvetica Neue", "Lucida Grande", Arial, sans-serif;
+    line-height: 1.5;
 }
 
 video {
@@ -23,7 +35,7 @@ video {
 .plotting-functions-item h2 {
     border-bottom: 1px solid #ddd;
     margin: 0;
-    color: #444;
+    color: var(--text-color);;
     padding: 0.1em 0.3em;
     background-color: #f4f4f4;
 }
@@ -62,19 +74,43 @@ img.plotting-function-thumb {
     background-color: #fbfbfb;
 }
 
-.doc-header {
-    background-color: #f4f4f4;
+.docstring + .docstring {
+    margin-top: 2em;
 }
 
-h2.doc-header {
+.docstring pre > code {
+    display: block;
+    overflow-x: scroll;
+}
+
+.doc-header {
+    background-color: #eee;
     margin: 0 0 0 0;
-    padding-left: 0.3em;
+    padding: 0.3em;
     border: none;
     border-bottom: 1px solid #ddd;
+    font-weight: 600;
+    color: var(--text-color);
 }
 
 .doc-content {
-    padding: 0.3em;
+    padding: 0.5em;
+}
+
+.doc-content *:last-child {
+    margin-bottom: 0;
+}
+
+.doc-content *:first-child {
+    margin-top: 0;
+}
+
+.doc-content h1 {
+    font-size: 16px;
+}
+
+.doc-content h2 {
+    font-size: 16px;
 }
 
 /* admonition boxes */
@@ -389,8 +425,10 @@ a.boxlink {
 }
 
 #main {
+    width: 100%;
     max-width: none;
     display: block;
+    margin-bottom: 1em;
 }
 
 #navbar-container {
@@ -446,6 +484,8 @@ a.boxlink {
     margin-left: auto;
 }
 
+
+
 @media (min-width: 800px) {
     #main {
         width: 768px;
@@ -482,7 +522,6 @@ a.boxlink {
         position: static;
         grid-column: 2;
         grid-row: 1;
-        font-size: smaller;
         width: 100%;
         padding: 0;
         z-index: 0;
@@ -601,8 +640,98 @@ input.collapse-toggle {
     border: 1px solid #7192e1;
 }
 
+.banner-container {
+    margin-bottom: 3em;
+    margin-top: 1em;
+    background: url("../assets/bannermesh_gradient.png");
+    background-size: cover;
+    background-position: center;
+    width: 100%;
+    padding-top: 45%;
+}
+
+@media (min-width: 800px) {
+    .banner-container {
+        padding-top: 23.95%; /* 700 / 2922 */
+    }
+}
+
+.banner-image {
+    width: 100%;
+}
+
 .site-container {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
 }
+
+input.hidecode {
+    display: none;
+}
+
+input.hidecode + pre {
+    margin-top: 0;
+}
+
+input.hidecode + pre code {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    height: 11em;
+    overflow-y: hidden;
+}
+
+input.hidecode:checked + pre code {
+    height: 100%;
+    transition: 1s linear;
+}
+
+label.hidecode {
+    display: block;
+    text-align: center;
+    padding: 0.25em;
+    background: #eee;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border: 1px solid #eaeaea;
+    font-size: var(--small);
+    color: #a7a6a6;
+}
+
+label.hidecode:hover {
+    color: #5e5e5e;
+}
+
+pre {
+    position: relative;
+}
+
+button.copy-code {
+    font-family: "Font Awesome 5 Free";
+    position: absolute;
+    top: 0.25em;
+    right: 0.25em;
+    background: rgba(0, 0, 0, 0.07);
+    border: none;
+    color: #a2a2a2;
+    border-radius: 0.25em;
+    padding: 0.25em 0.4em;
+    font-size: 0.9em;
+}
+
+button.copy-code.clicked {
+    color: rgb(22, 173, 22);
+}
+
+button.copy-code.clicked:hover {
+    color: rgb(22, 173, 22);
+}
+
+button.copy-code:hover {
+    color: #555555;
+}
+
+button.copy-code:focus {
+    outline: none;
+}
+

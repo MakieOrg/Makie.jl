@@ -32,22 +32,22 @@ The camera view follows from the position of the camera `eyeposition`, the point
 
 The camera can be controlled by keyboard and mouse. The keyboard has the following available attributes
 
-- `up_key   = Keyboard.left_shift` sets the key for translations towards the top of the screen.
-- `down_key = Keyboard.left_control` sets the key for translations towards the bottom of the screen.
+- `up_key   = Keyboard.r` sets the key for translations towards the top of the screen.
+- `down_key = Keyboard.f` sets the key for translations towards the bottom of the screen.
 - `left_key  = Keyboard.a` sets the key for translations towards the left of the screen.
 - `right_key = Keyboard.d` sets the key for translations towards the right of the screen.
 - `forward_key  = Keyboard.w` sets the key for translations into the screen.
 - `backward_key = Keyboard.s` sets the key for translations out of the screen.
 
-- `zoom_in_key   = Keyboard.i` sets the key for zooming into the scene (enlarge, via fov).
-- `zoom_out_key  = Keyboard.k` sets the key for zooming out of the scene (shrink, via fov).
+- `zoom_in_key   = Keyboard.u` sets the key for zooming into the scene (enlarge, via fov).
+- `zoom_out_key  = Keyboard.o` sets the key for zooming out of the scene (shrink, via fov).
 - `stretch_view_key  = Keyboard.page_up` sets the key for moving `eyepostion` away from `lookat`.
 - `contract_view_key = Keyboard.page_down` sets the key for moving `eyeposition` towards `lookat`.
 
 - `pan_left_key  = Keyboard.j` sets the key for rotations around the screens vertical axis.
 - `pan_right_key = Keyboard.l` sets the key for rotations around the screens vertical axis.
-- `tilt_up_key   = Keyboard.r` sets the key for rotations around the screens horizontal axis.
-- `tilt_down_key = Keyboard.f` sets the key for rotations around the screens horizontal axis.
+- `tilt_up_key   = Keyboard.i` sets the key for rotations around the screens horizontal axis.
+- `tilt_down_key = Keyboard.k` sets the key for rotations around the screens horizontal axis.
 - `roll_clockwise_key        = Keyboard.e` sets the key for rotations of the screen.
 - `roll_counterclockwise_key = Keyboard.q` sets the key for rotations of the screen.
 
@@ -86,22 +86,22 @@ function Camera3D(scene; kwargs...)
         Attributes(
             # Keyboard controls
             # Translations
-            up_key        = Keyboard.left_shift,
-            down_key      = Keyboard.left_control,
+            up_key        = Keyboard.r,
+            down_key      = Keyboard.f,
             left_key      = Keyboard.a,
             right_key     = Keyboard.d,
             forward_key   = Keyboard.w,
             backward_key  = Keyboard.s,
             # Zooms
-            zoom_in_key   = Keyboard.i,
-            zoom_out_key  = Keyboard.k,
+            zoom_in_key   = Keyboard.u,
+            zoom_out_key  = Keyboard.o,
             stretch_view_key  = Keyboard.page_up,
             contract_view_key = Keyboard.page_down,
             # Rotations
             pan_left_key  = Keyboard.j,
             pan_right_key = Keyboard.l,
-            tilt_up_key   = Keyboard.r,
-            tilt_down_key = Keyboard.f,
+            tilt_up_key   = Keyboard.i,
+            tilt_down_key = Keyboard.k,
             roll_clockwise_key        = Keyboard.e,
             roll_counterclockwise_key = Keyboard.q,
             # Mouse controls
@@ -263,7 +263,6 @@ function add_translation!(scene, cam::Camera3D)
                 last_mousepos[] = mousepos
                 dragging[] = false
                 translate_cam!(scene, cam, translationspeed[] * Vec3f(diff[1], diff[2], 0f0))
-                update_cam!(scene, cam)
                 return Consume(true)
             end
         end
@@ -277,7 +276,6 @@ function add_translation!(scene, cam::Camera3D)
             diff = compute_diff(last_mousepos[] - mousepos)
             last_mousepos[] = mousepos
             translate_cam!(scene, cam, translationspeed[] * Vec3f(diff[1], diff[2], 0f0))
-            update_cam!(scene, cam)
             return Consume(true)
         end
         return Consume(false)
@@ -287,7 +285,6 @@ function add_translation!(scene, cam::Camera3D)
         if is_mouseinside(scene) && ispressed(scene, mod[])
             zoom_step = (1f0 + 0.1f0 * zoomspeed[]) ^ -scroll[2]
             zoom!(scene, cam, zoom_step, shift_lookat[], cad[])
-            update_cam!(scene, cam)
             return Consume(true)
         end
         return Consume(false)
@@ -316,7 +313,6 @@ function add_rotation!(scene, cam::Camera3D)
                 mp = (last_mousepos[] - mousepos) * 0.01f0 * rot_scaling
                 last_mousepos[] = mousepos
                 rotate_cam!(scene, cam, Vec3f(-mp[2], mp[1], 0f0), true)
-                update_cam!(scene, cam)
                 return Consume(true)
             end
         end
@@ -331,7 +327,6 @@ function add_rotation!(scene, cam::Camera3D)
             mp = (last_mousepos[] .- mousepos) * 0.01f0 * rot_scaling
             last_mousepos[] = mousepos
             rotate_cam!(scene, cam, Vec3f(-mp[2], mp[1], 0f0), true)
-            update_cam!(scene, cam)
             return Consume(true)
         end
         return Consume(false)
@@ -356,7 +351,7 @@ function on_pulse(scene, cam, timestep)
         translation = attr[:keyboard_translationspeed][] * timestep *
             Vec3f(right - left, up - down, backward - forward)
         viewdir = cam.lookat[] - cam.eyeposition[]
-        translate_cam!(scene, cam, cam.zoom_mult[] * norm(viewdir) * translation)
+        _translate_cam!(scene, cam, cam.zoom_mult[] * norm(viewdir) * translation)
     end
 
     # rotation
@@ -373,7 +368,7 @@ function on_pulse(scene, cam, timestep)
         angles = attr[:keyboard_rotationspeed][] * timestep *
             Vec3f(up - down, left - right, counterclockwise - clockwise)
 
-        rotate_cam!(scene, cam, angles)
+        _rotate_cam!(scene, cam, angles)
     end
 
     # zoom
@@ -383,7 +378,7 @@ function on_pulse(scene, cam, timestep)
 
     if zooming
         zoom_step = (1f0 + attr[:keyboard_zoomspeed][] * timestep) ^ (zoom_out - zoom_in)
-        zoom!(scene, cam, zoom_step, false)
+        _zoom!(scene, cam, zoom_step, false)
     end
 
     stretch = ispressed(scene, attr[:stretch_view_key][])
@@ -404,8 +399,12 @@ function on_pulse(scene, cam, timestep)
 end
 
 
-translate_cam!(scene, t) = translate_cam!(scene, cameracontrols(scene), t)
-function translate_cam!(scene, cam, t)
+function translate_cam!(scene::Scene, cam::Camera3D, t::VecTypes)
+    _translate_cam!(scene, cam, t)
+    update_cam!(scene, cam)
+    nothing
+end
+function _translate_cam!(scene, cam, t)
     # This uses a camera based coordinate system where
     # x expands right, y expands up and z expands towards the screen
     lookat = cam.lookat[]
@@ -430,8 +429,13 @@ function translate_cam!(scene, cam, t)
     return
 end
 
-rotate_cam!(scene, angles) = rotate_cam!(scene, cameracontrols(scene), angles, false)
+
 function rotate_cam!(scene, cam::Camera3D, angles::VecTypes, from_mouse=false)
+    _rotate_cam!(scene, cam, angles, from_mouse)
+    update_cam!(scene, cam)
+    nothing
+end
+function _rotate_cam!(scene, cam::Camera3D, angles::VecTypes, from_mouse=false)
     # This applies rotations around the x/y/z axis of the camera coordinate system
     # x expands right, y expands up and z expands towards the screen
     lookat = cam.lookat[]
@@ -492,8 +496,22 @@ function rotate_cam!(scene, cam::Camera3D, angles::VecTypes, from_mouse=false)
     return
 end
 
-zoom!(scene::Scene, zoom_step) = zoom!(scene, cameracontrols(scene), false, false)
+
+"""
+    zoom!(scene, zoom_step)
+
+Zooms the camera in or out based on the multiplier `zoom_step`. A `zoom_step` 
+of 1.0 is neutral, larger zooms out and lower zooms in.
+
+Note that this method only applies to Camera3D.
+"""
+zoom!(scene::Scene, zoom_step) = zoom!(scene, cameracontrols(scene), zoom_step, false, false)
 function zoom!(scene::Scene, cam::Camera3D, zoom_step, shift_lookat = false, cad = false)
+    _zoom!(scene, cam, zoom_step, shift_lookat, cad)
+    update_cam!(scene, cam)
+    nothing
+end
+function _zoom!(scene::Scene, cam::Camera3D, zoom_step, shift_lookat = false, cad = false)
     if cad
         # move exeposition if mouse is not over the center
         lookat = cam.lookat[]

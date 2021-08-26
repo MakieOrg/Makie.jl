@@ -1,6 +1,9 @@
 <body class="layout--single">
   <div class="site-container">
     {{ insert masthead.html }}
+    {{if frontpage}}
+    <div class="banner-container"></div>
+    {{end}}
       <div id="main" role="main">
         <div id="overlay"></div>
         <div id="navbar-container">
