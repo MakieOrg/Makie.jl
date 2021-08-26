@@ -1,8 +1,6 @@
-argtypes(x::Combined{T, A}) where {T, A} = A
-argtypes(x) = Any
-
 _isfinite(x) = isfinite(x)
 _isfinite(x::VecTypes) = all(isfinite, x)
+isfinite_rect(x::Rect) = all(isfinite.(minimum(x))) &&  all(isfinite.(maximum(x)))
 scalarmax(x::Union{Tuple, AbstractArray}, y::Union{Tuple, AbstractArray}) = max.(x, y)
 scalarmax(x, y) = max(x, y)
 scalarmin(x::Union{Tuple, AbstractArray}, y::Union{Tuple, AbstractArray}) = min.(x, y)
@@ -32,104 +30,19 @@ function extrema_nan(itr)
     return (vmin, vmax)
 end
 
-function xyz_boundingbox(transform_func, mesh::GeometryBasics.Mesh)
-    xyz_boundingbox(transform_func, decompose(Point, mesh))
-end
-
-function xyz_boundingbox(transform_func, xyz)
-    isempty(xyz) && return Rect3f()
-    mini, maxi = extrema_nan((apply_transform(transform_func, point) for point in xyz))
-    w = maxi .- mini
-    return Rect3f(to_ndim(Vec3f, mini, 0), to_ndim(Vec3f, w, 0))
-end
-
-const NumOrArray = Union{AbstractArray, Number}
-
-function xyz_boundingbox(transform_func, x::AbstractVector, y::AbstractVector, z::NumOrArray=0)
-    # use lazy variant of broadcast!
-    points = Base.broadcasted(Point3, x, y', z)
-    return xyz_boundingbox(transform_func, points)
-end
-
-function xyz_boundingbox(transform_func, x::NumOrArray, y::NumOrArray, z::NumOrArray = 0)
-    # use lazy variant of broadcast!
-    points = Base.broadcasted(Point3, x, y, z)
-    return xyz_boundingbox(transform_func, points)
-end
-
-function xyz_boundingbox(transform_func, x, y, z = 0)
-    isempty(x) && return Rect3f()
-    minmax = extrema_nan.(apply_transform.((transform_func,), (x, y, z)))
-    mini, maxi = Vec(first.(minmax)), Vec(last.(minmax))
-    w = maxi .- mini
-    return Rect3f(to_ndim(Vec3f, mini, 0), to_ndim(Vec3f, w, 0))
-end
-
-const ImageLike{Arg} = Union{Heatmap{Arg}, Image{Arg}}
-function data_limits(x::ImageLike{<: Tuple{X, Y, Z}}) where {X, Y, Z}
-    xyz_boundingbox(identity, to_value.((x[1], x[2]))...)
-end
-
-function data_limits(x::Volume)
-    _to_interval(r) = ((lo, hi) = extrema(r); lo..hi)
-    axes = (x[1], x[2], x[3])
-    xyz_boundingbox(identity, _to_interval.(to_value.(axes))...)
-end
-
-function text_limits(x::VecTypes)
-    p = to_ndim(Vec3f, x, 0.0)
-    return Rect3f(p, p)
-end
-
-function text_limits(x::AbstractVector)
-    return Rect3f(x)
-end
-
-FRect3D_from_point(p::VecTypes{2}) = Rect3f(Point3f(p..., 0), Point3f(0, 0, 0))
-FRect3D_from_point(p::VecTypes{3}) = Rect3f(Point3f(p...), Point3f(0, 0, 0))
-
-function atomic_limits(x::Text{<:Tuple{<:GlyphCollection}})
-    if x.space[] == :data
-        boundingbox(x)
-    elseif x.space[] == :screen
-        FRect3D_from_point(x.position[])
-    else
-        error()
+function xyz_boundingbox(transform_func, plot::AbstractPlot)
+    bb_ref = Base.RefValue(Rect3f())
+    foreach_transformed(point_iterator(plot), modelmatrix(plot), transform_func) do point
+        update_boundingbox!(bb_ref, point)
     end
-end
-
-function atomic_limits(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}})
-    if x.space[] == :data
-        boundingbox(x)
-    elseif x.space[] == :screen
-        if isempty(x.position[])
-            Rect3f()
-        else
-            bb = FRect3D_from_point(x.position[][1])
-            for p in x.position[][2:end]
-                bb = union(bb, FRect3D_from_point(p))
-            end
-            bb
-        end
-    else
-        error()
-    end
-end
-
-isfinite_rect(x::Rect) = all(isfinite.(minimum(x))) &&  all(isfinite.(maximum(x)))
-
-data_limits(s::Scene) = data_limits(plots_from_camera(s))
-data_limits(s::Figure) = data_limits(s.scene)
-data_limits(s::FigureAxisPlot) = data_limits(s.figure)
-data_limits(plot::Combined) = data_limits(plot.plots)
-
-function point_iterator(plot::Combined)
-    return Iterators.flatten((point_iterator(p) for p in plot.plots))
+    return bb_ref[]
 end
 
 function point_iterator(plot::Union{Scatter, MeshScatter, Lines, LineSegments})
     return plot.positions[]
 end
+
+point_iterator(text::Text) = text.position[]
 
 point_iterator(mesh::GeometryBasics.Mesh) = decompose(Point, mesh)
 
@@ -240,7 +153,7 @@ function data_limits(plot::AbstractPlot)
     return bb_ref[]
 end
 
-function data_limits(scenelike::Scene)
+function data_limits(scenelike)
     bb_ref = Base.RefValue(Rect3f())
     foreach_plot(scenelike) do plot
         update_boundingbox!(bb_ref, data_limits(plot))
