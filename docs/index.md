@@ -10,10 +10,13 @@ It is available for Windows, Mac and Linux.
 ## Example
 
 ~~~
-<label for="hidecode" class="hidecode">Expand setup code</label>
+<label for="hidecode" class="hidecode">Expand code</label>
 <input id="hidecode" class="hidecode" type="checkbox">
 ~~~
 ```julia:lorenz
+using GLMakie
+GLMakie.activate!() # hide
+
 Base.@kwdef mutable struct Lorenz
     dt::Float64 = 0.01
     σ::Float64 = 10
@@ -35,11 +38,6 @@ function step!(l::Lorenz)
 end
 
 attractor = Lorenz()
-```
-
-```julia:lorenz2
-using GLMakie
-GLMakie.activate!() # hide
 
 points = Node(Point3f[])
 colors = Node(Int[])
