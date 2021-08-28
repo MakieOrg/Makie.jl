@@ -677,13 +677,14 @@ input.hidecode + pre {
 input.hidecode + pre code {
     border-top-left-radius: 0;
     border-top-right-radius: 0;
-    height: 11em;
+    height: 7em;
     overflow-y: hidden;
+    box-shadow: inset 0px -19px 14px -20px rgba(0, 0, 0, 0.397);
 }
 
 input.hidecode:checked + pre code {
     height: 100%;
-    transition: 1s linear;
+    box-shadow: none;
 }
 
 label.hidecode {
