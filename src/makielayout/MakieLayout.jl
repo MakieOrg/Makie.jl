@@ -1,8 +1,8 @@
 module MakieLayout
 
 using ..Makie
-using ..Makie: Rect2D
-import ..Makie: IRect2D
+using ..Makie: Rect2
+import ..Makie: Rect2i
 using ..Makie.Keyboard
 using ..Makie.Mouse
 using ..Makie: ispressed, is_mouseinside, get_scene, FigureLike
@@ -22,8 +22,8 @@ import Showoff
 using Colors
 
 const FPS = Node(30)
-const COLOR_ACCENT = Ref(RGBf0(((79, 122, 214) ./ 255)...))
-const COLOR_ACCENT_DIMMED = Ref(RGBf0(((174, 192, 230) ./ 255)...))
+const COLOR_ACCENT = Ref(RGBf(((79, 122, 214) ./ 255)...))
+const COLOR_ACCENT_DIMMED = Ref(RGBf(((174, 192, 230) ./ 255)...))
 
 # Make GridLayoutBase default row and colgaps themeable when using MakieLayout
 # This mutates module-level state so it could mess up other libraries using
@@ -97,7 +97,7 @@ export labelslider!, labelslidergrid!
 export addmouseevents!
 export interactions, register_interaction!, deregister_interaction!, activate_interaction!, deactivate_interaction!
 export MouseEventTypes, MouseEvent, ScrollEvent, KeysEvent
-export hlines!, vlines!, abline!
+export hlines!, vlines!, abline!, hspan!, vspan!
 export Cycle
 
 

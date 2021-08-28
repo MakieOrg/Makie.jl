@@ -21,7 +21,7 @@ f = Figure()
 
 Axis(f[1, 1], aspect = DataAspect(), backgroundcolor = :gray50)
 
-scatter!(Point2f0(0, 0))
+scatter!(Point2f(0, 0))
 text!("center", position = (0, 0), align = (:center, :center))
 
 circlepoints = [(cos(a), sin(a)) for a in LinRange(0, 2pi, 16)[1:end-1]]
@@ -55,7 +55,7 @@ LScene(f[1, 1])
 text!(
     fill("Makie", 7),
     rotation = [i / 7 * 1.5pi for i in 1:7],
-    position = [Point3f0(0, 0, i/2) for i in 1:7],
+    position = [Point3f(0, 0, i/2) for i in 1:7],
     color = [cgrad(:viridis)[x] for x in LinRange(0, 1, 7)],
     align = (:left, :baseline),
     textsize = 1,
@@ -142,7 +142,7 @@ f
 
 ## MathTeX
 
-Makie can render LaTeXStrings via [MathTeXEngine.jl](https://github.com/Kolaru/MathTeXEngine.jl/).
+Makie can render LaTeX strings from the LaTeXStrings.jl package using [MathTeXEngine.jl](https://github.com/Kolaru/MathTeXEngine.jl/).
 For example, you can pass L-strings as labels to the legend.
 
 \begin{examplefigure}{}

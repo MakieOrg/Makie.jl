@@ -12,7 +12,7 @@ end
 
 function sceneareanode!(finalbbox, limits, aspect)
 
-    scenearea = Node(IRect(0, 0, 100, 100))
+    scenearea = Node(Recti(0, 0, 100, 100))
 
     onany(finalbbox, limits, aspect) do bbox, limits, aspect
 
@@ -172,7 +172,7 @@ function layoutscene(nrows::Int, ncols::Int, padding = 30; inspectable = false, 
 end
 
 
-GridLayoutBase.GridLayout(scene::Scene, args...; kwargs...) = GridLayout(args...; bbox = lift(x -> FRect2D(x), pixelarea(scene)), kwargs...)
+GridLayoutBase.GridLayout(scene::Scene, args...; kwargs...) = GridLayout(args...; bbox = lift(x -> Rect2f(x), pixelarea(scene)), kwargs...)
 
 function axislines!(scene, rect, spinewidth, topspinevisible, rightspinevisible,
     leftspinevisible, bottomspinevisible, topspinecolor, leftspinecolor,
@@ -402,7 +402,7 @@ end
 
 
 # helper function to create either h or vlines depending on `direction`
-# this works only with LAxes because it needs to react to limit changes
+# this works only with Axes because it needs to react to limit changes
 function hvlines!(ax::Axis, direction::Int, datavals, axmins, axmaxs; attributes...)
 
     datavals, axmins, axmaxs = map(x -> x isa Observable ? x : Observable(x), (datavals, axmins, axmaxs))
@@ -414,9 +414,9 @@ function hvlines!(ax::Axis, direction::Int, datavals, axmins, axmaxs; attributes
         xfrac(f) = xlims[1] + f * (xlims[2] - xlims[1])
         segs = broadcast(datavals, axmins, axmaxs) do dataval, axmin, axmax
             if direction == 1
-                (Point2f0(xfrac(axmin), dataval), Point2f0(xfrac(axmax), dataval))
+                (Point2f(xfrac(axmin), dataval), Point2f(xfrac(axmax), dataval))
             elseif direction == 2
-                (Point2f0(dataval, xfrac(axmin)), Point2f0(dataval, xfrac(axmax)))
+                (Point2f(dataval, xfrac(axmin)), Point2f(dataval, xfrac(axmax)))
             else
                 error("direction must be 1 or 2")
             end
@@ -460,7 +460,68 @@ function abline!(axis::Axis, a::Number, b::Number; kwargs...)
     f(x) = x * b + a
     line = map(axis.finallimits) do limits
         xmin, xmax = first.(extrema(limits))
-        return [Point2f0(xmin, f(xmin)), Point2f0(xmax, f(xmax))]
+        return [Point2f(xmin, f(xmin)), Point2f(xmax, f(xmax))]
     end
     return linesegments!(axis, line; xautolimits=false, yautolimits=false, kwargs...)
 end
+
+
+
+# helper function to create either h or vspans depending on `direction`
+# this works only with Axes because it needs to react to limit changes
+function hvspan!(ax::Axis, direction::Int, datavals_low, datavals_high,
+        axmins, axmaxs; attributes...)
+
+    datavals_low, datavals_high, axmins, axmaxs = map(x -> x isa Observable ? x : Observable(x), (datavals_low, datavals_high, axmins, axmaxs))
+
+    rects = lift(ax.finallimits, ax.scene.px_area, datavals_low, datavals_high,
+        axmins, axmaxs) do lims, pxa,
+            datavals_low, datavals_high, axmins, axmaxs
+
+        xlims = (minimum(lims)[direction], maximum(lims)[direction])
+        xfrac(f) = xlims[1] + f * (xlims[2] - xlims[1])
+        rects = broadcast(datavals_low, datavals_high,
+                axmins, axmaxs) do dataval_low, dataval_high, axmin, axmax
+
+            if direction ∉ (1, 2)
+                error("direction must be 1 or 2")
+            end
+
+            p1 = direction == 1 ? Point2f(xfrac(axmin), dataval_low) : Point2f(dataval_low, xfrac(axmin))
+            p2 = direction == 1 ? Point2f(xfrac(axmax), dataval_high) : Point2f(dataval_high, xfrac(axmax))
+
+            widths = p2 - p1
+            Rect2f(p1, widths)
+        end
+        # handle case that none of the inputs is an array, but we need an array for linesegments!
+        if rects isa Tuple
+            rects = [rects]
+        end
+        rects
+    end
+
+    poly!(ax, rects; xautolimits = direction == 2, yautolimits = direction == 1, attributes...)
+end
+
+
+"""
+    hspan!(ax::Axis, y_lows, y_highs; xmin = 0.0, xmax = 1.0, attrs...)
+
+Create horizontal spans across `ax` from `y_lows` to `y_highs` in data coordinates
+and `xmin` to `xmax` in axis coordinates (0 to 1 by default).
+All four of these can have single or multiple values because
+they are broadcast to calculate the final spans.
+"""
+hspan!(ax::Axis, y_lows, y_highs; xmin = 0.0, xmax = 1.0, attrs...) =
+    hvspan!(ax, 1, y_lows, y_highs, xmin, xmax; attrs...)
+
+"""
+    vspan!(ax::Axis, x_lows, x_highs; ymin = 0.0, ymax = 1.0, attrs...)
+
+Create vertical spans across `ax` from `x_lows` to `x_highs` in data coordinates
+and `ymin` to `ymax` in axis coordinates (0 to 1 by default).
+All four of these can have single or multiple values because
+they are broadcast to calculate the final spans.
+"""
+vspan!(ax::Axis, x_lows, x_highs; ymin = 0.0, ymax = 1.0, attrs...) =
+    hvspan!(ax, 2, x_lows, x_highs, ymin, ymax; attrs...)
