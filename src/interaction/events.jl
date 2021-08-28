@@ -39,65 +39,159 @@ Calls `func` if one clicks on `plot`.  Implemented by the backend.
 function onpick end
 
 
-# ispressed logic
+################################################################################
+### ispressed logic 
+################################################################################
+
 
 abstract type BooleanOperator end
 
+"""
+    And(left, right[, rest...])
+
+Creates an `And` struct with the left and right argument for later evaluation. 
+If more than two arguments are given a tree of `And` structs is created. 
+
+See also: [`Or`](@ref), [`Not`](@ref), [`ispressed`](@ref), [`&`](@ref)
+"""
 struct And{L, R} <: BooleanOperator
-    l::L
-    r::R
+    left::L
+    right::R    
 end
+And(left::Bool, right) = left ? right : false
+And(left, right::Bool) = right ? left : false
 
+"""
+    Or(left, right[, rest...])
+
+Creates an `Or` struct with the left and right argument for later evaluation. 
+If more than two arguments are given a tree of `Or` structs is created. 
+
+See also: [`And`](@ref), [`Not`](@ref), [`ispressed`](@ref), [`|`](@ref)
+"""
 struct Or{L, R} <: BooleanOperator
-    l::L
-    r::R
+    left::L
+    right::R
 end
+Or(left::Bool, right) = left ? true : right
+Or(left, right::Bool) = right ? true : left
 
+"""
+    Not(x)
+
+Creates a `Not` struct with the given argument for later evaluation. 
+
+See also: [`And`](@ref), [`Or`](@ref), [`ispressed`](@ref), [`!`](@ref)
+"""
 struct Not{T} <: BooleanOperator
     x::T
 end
+Not(x::Bool) = !x
 
+"""
+    Exclusively(x)
+
+Marks a button, button collection or logical expression of buttons as the 
+exclusive subset of buttons that must be pressed for `ispressed` to return true.
+
+For example `Exclusively((Keyboard.left_control, Keyboard.c))` would require 
+left control and c to be pressed without any other buttons.
+
+Boolean expressions are lowered to multiple `Exclusive` sets in an `Or`. It is
+worth noting that `Not` branches are ignored here, i.e. it assumed that every 
+button under a `Not` must not be pressed and that this follows automatically 
+from the subset of buttons that must be pressed. 
+
+See also: [`And`](@ref), [`Or`](@ref), [`Not`](@ref), [`ispressed`](@ref), 
+[`&`](@ref), [`|`](@ref), [`!`](@ref)
+"""
+struct Exclusively <: BooleanOperator
+    x::Set{Union{Keyboard.Button, Mouse.Button}}
+end
+
+# Printing
 
 function Base.show(io::IO, op::And)
     print(io, "(")
-    show(io, op.l)
-    print(io, " && ")
-    show(io, op.r) 
+    show(io, op.left)
+    print(io, " & ")
+    show(io, op.right) 
     print(io, ")")
 end
 function Base.show(io::IO, op::Or)
     print(io, "(")
-    show(io, op.l)
-    print(io, " || ")
-    show(io, op.r) 
+    show(io, op.left)
+    print(io, " | ")
+    show(io, op.right) 
     print(io, ")")
 end
 function Base.show(io::IO, op::Not)
     print(io, "!")
     show(io, op.x)
 end
+function Base.show(io::IO, op::Exclusively)
+    print(io, "exclusively(")
+    join(io, op.x, " & ")
+    print(io, ")")
+end
 
+# Constructors
 
-And(l, r, rest...) = And(And(l, r), rest...)
-Or(l, r, rest...) = Or(Or(l, r), rest...)
+And(left, right, rest...) = And(And(left, right), rest...)
+Or(left, right, rest...) = Or(Or(left, right), rest...)
+And(x) = x
+Or(x) = x
 
 
 function Base.:(&)(
-        l::Union{BooleanOperator, Keyboard.Button, Mouse.Button}, 
-        r::Union{BooleanOperator, Keyboard.Button, Mouse.Button}
+        left::Union{BooleanOperator, Keyboard.Button, Mouse.Button}, 
+        right::Union{BooleanOperator, Keyboard.Button, Mouse.Button, Bool}
     )
-    And(l, r)
+    And(left, right)
+end
+function Base.:(&)(
+        left::Bool, 
+        right::Union{BooleanOperator, Keyboard.Button, Mouse.Button}
+    )
+    And(left, right)
 end
 function Base.:(|)(
-        l::Union{BooleanOperator, Keyboard.Button, Mouse.Button}, 
-        r::Union{BooleanOperator, Keyboard.Button, Mouse.Button}
+        left::Union{BooleanOperator, Keyboard.Button, Mouse.Button}, 
+        right::Union{BooleanOperator, Keyboard.Button, Mouse.Button, Bool}
     )
-    Or(l, r)
+    Or(left, right)
+end
+function Base.:(|)(
+        left::Bool, 
+        right::Union{BooleanOperator, Keyboard.Button, Mouse.Button}
+    )
+    Or(left, right)
 end
 Base.:(!)(x::Union{BooleanOperator, Keyboard.Button, Mouse.Button}) = Not(x)
 
 
-# Direct methods
+Exclusively(x::Union{Vector, Tuple}) = Exclusively(Set(x))
+Exclusively(x::Union{Keyboard.Button, Mouse.Button}) = Exclusively(Set((x,)))
+Exclusively(x::Bool) = x
+Exclusively(x::Or) = Or(Exclusively(x.left), Exclusively(x.right))
+Exclusively(x::And) = Or(Exclusively.(unique(create_sets(x)))...)
+
+
+# Sets represent `And`, arrays represent `Or`
+function create_sets(x::And)
+    [union(left, right) for left in create_sets(x.left) 
+                        for right in create_sets(x.right)]
+end
+create_sets(x::Or) = vcat(create_sets(x.left), create_sets(x.right))
+create_sets(::Not) = Set{Union{Keyboard.Button, Mouse.Button}}()
+function create_sets(b::Union{Keyboard.Button, Mouse.Button})
+    [Set{Union{Keyboard.Button, Mouse.Button}}((b,))]
+end
+create_sets(s::Set) = [Set{Union{Keyboard.Button, Mouse.Button}}(s)]
+
+
+# ispressed and logic evaluation
+
 """
     ispressed(scene, result::Bool)
     ispressed(scene, button::Union{Mouse.Button, Keyboard.Button)
@@ -117,17 +211,28 @@ For more complicated combinations of buttons the `BooleanOperator` method can be
 used. Buttons can be combined into boolean expression with `&`, `|` and `!`
 which can be passed to ispressed for evaluation. For example, you may have one 
 action `ispressed(scene, !Keyboard.left_control & Keyboard.c))` and another
-`ispressed(scene, Keyboard.left_control & Keyboard.c)`.
+`ispressed(scene, Keyboard.left_control & Keyboard.c)`. 
+
+Furthermore you can also make any buttons, button collection or boolean 
+expression exclusive by wrapping it in `Exclusively(...)`. Then `ispressed` will 
+only return true if the currently pressed buttons match the request exactly.
+
+See also: [`And`](@ref), [`Or`](@ref), [`Not`](@ref), [`Exclusively`](@ref), 
+[`&`](@ref), [`|`](@ref), [`!`](@ref)
 """
-ispressed(scene, mb::Mouse.Button) = mb in scene.events.mousebuttonstate
-ispressed(scene, key::Keyboard.Button) = key in scene.events.keyboardstate
+ispressed(events::Events, mb::Mouse.Button) = mb in events.mousebuttonstate
+ispressed(events::Events, key::Keyboard.Button) = key in events.keyboardstate
+ispressed(scene, mb::Mouse.Button) = ispressed(events(scene), mb)
+ispressed(scene, key::Keyboard.Button) = ispressed(events(scene), key)
 ispressed(scene, result::Bool) = result
 @deprecate ispressed(scene, ::Nothing) ispressed(scene, true)
 
 # Boolean Operator evaluation
-ispressed(scene, op::And) = ispressed(scene, op.l) && ispressed(scene, op.r)
-ispressed(scene, op::Or)  = ispressed(scene, op.l) || ispressed(scene, op.r)
+ispressed(scene, op::And) = ispressed(scene, op.left) && ispressed(scene, op.right)
+ispressed(scene, op::Or)  = ispressed(scene, op.left) || ispressed(scene, op.right)
 ispressed(scene, op::Not) = !ispressed(scene, op.x)
+ispressed(scene::Scene, op::Exclusively) = ispressed(events(scene), op)
+ispressed(e::Events, op::Exclusively) = op.x == union(e.keyboardstate, e.mousebuttonstate)
 
 # collections
 ispressed(scene, set::Set) = all(x -> ispressed(scene, x), set)
