@@ -207,24 +207,25 @@ outside.
 Passing a button or collection of buttons such as `Keyboard.enter` or 
 `Mouse.left` will return true if all of the given buttons are pressed.
 
-For more complicated combinations of buttons the `BooleanOperator` method can be 
-used. Buttons can be combined into boolean expression with `&`, `|` and `!`
-which can be passed to ispressed for evaluation. For example, you may have one 
-action `ispressed(scene, !Keyboard.left_control & Keyboard.c))` and another
-`ispressed(scene, Keyboard.left_control & Keyboard.c)`. 
+For more complicated combinations of buttons they can be combined into boolean 
+expression with `&`, `|` and `!`. For example, you can have
+`ispressed(scene, !Keyboard.left_control & Keyboard.c))` and 
+`ispressed(scene, Keyboard.left_control & Keyboard.c)` to avoid triggering both 
+cases at the same time. 
 
-Furthermore you can also make any buttons, button collection or boolean 
-expression exclusive by wrapping it in `Exclusively(...)`. Then `ispressed` will 
-only return true if the currently pressed buttons match the request exactly.
+Furthermore you can also make any button, button collection or boolean 
+expression exclusive by wrapping it in `Exclusively(...)`. With that `ispressed` 
+will only return true if the currently pressed buttons match the request exactly.
 
 See also: [`And`](@ref), [`Or`](@ref), [`Not`](@ref), [`Exclusively`](@ref), 
 [`&`](@ref), [`|`](@ref), [`!`](@ref)
 """
 ispressed(events::Events, mb::Mouse.Button) = mb in events.mousebuttonstate
 ispressed(events::Events, key::Keyboard.Button) = key in events.keyboardstate
+ispressed(scene, result::Bool) = result
+
 ispressed(scene, mb::Mouse.Button) = ispressed(events(scene), mb)
 ispressed(scene, key::Keyboard.Button) = ispressed(events(scene), key)
-ispressed(scene, result::Bool) = result
 @deprecate ispressed(scene, ::Nothing) ispressed(scene, true)
 
 # Boolean Operator evaluation

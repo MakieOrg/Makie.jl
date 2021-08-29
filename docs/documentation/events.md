@@ -120,7 +120,7 @@ on(events(fig).keyboardbutton) do event
 end
 ```
 
-## `ispressed`
+## The `ispressed` function
 
 `ispressed(scene, x)` can be used to check if a button, collection of buttons or
 a boolean expression of buttons is pressed.
@@ -154,7 +154,8 @@ ispressed(scene, Exclusively(Keyboard.a & Keyboard.left_shift))
 ```
 
 You can also pass true (false) to `ispressed`. In this case true (false) will
-always be returned.
+always be returned. This is useful for removing interactivity, i.e. always or 
+never triggering something.
 
 ## Interactive Widgets
 

@@ -198,7 +198,7 @@ function Camera3D(scene; kwargs...)
 
     # reset
     on(camera(scene), events(scene).keyboardbutton) do event
-        if ispressed(scene, attr[:reset][])
+        if ispressed(scene, attr[:reset][]) && event.action == Keyboard.press
             # center keeps the rotation of the camera so we reset that here
             # might make sense to keep user set lookat, upvector, eyeposition
             # around somewhere for this?
@@ -251,18 +251,18 @@ function add_translation!(scene, cam::Camera3D)
     # drag start/stop
     on(camera(scene), scene.events.mousebutton) do event
         if ispressed(scene, button[])
-            if event.action == Mouse.press && is_mouseinside(scene)
+            if event.action == Mouse.press && is_mouseinside(scene) && !dragging[]
                 last_mousepos[] = mouseposition_px(scene)
                 dragging[] = true
                 return Consume(true)
-            elseif event.action == Mouse.release && dragging[]
-                mousepos = mouseposition_px(scene)
-                diff = compute_diff(last_mousepos[] - mousepos)
-                last_mousepos[] = mousepos
-                dragging[] = false
-                translate_cam!(scene, cam, translationspeed[] * Vec3f(diff[1], diff[2], 0f0))
-                return Consume(true)
             end
+        elseif event.action == Mouse.release && dragging[]
+            mousepos = mouseposition_px(scene)
+            diff = compute_diff(last_mousepos[] - mousepos)
+            last_mousepos[] = mousepos
+            dragging[] = false
+            translate_cam!(scene, cam, translationspeed[] * Vec3f(diff[1], diff[2], 0f0))
+            return Consume(true)
         end
         return Consume(false)
     end
@@ -299,19 +299,19 @@ function add_rotation!(scene, cam::Camera3D)
     # drag start/stop
     on(camera(scene), e.mousebutton) do event
         if ispressed(scene, button[])
-            if event.action == Mouse.press && is_mouseinside(scene)
+            if event.action == Mouse.press && is_mouseinside(scene) && !dragging[]
                 last_mousepos[] = mouseposition_px(scene)
                 dragging[] = true
                 return Consume(true)
-            elseif event.action == Mouse.release && dragging[]
-                mousepos = mouseposition_px(scene)
-                dragging[] = false
-                rot_scaling = rotationspeed[] * (e.window_dpi[] * 0.005)
-                mp = (last_mousepos[] - mousepos) * 0.01f0 * rot_scaling
-                last_mousepos[] = mousepos
-                rotate_cam!(scene, cam, Vec3f(-mp[2], mp[1], 0f0), true)
-                return Consume(true)
             end
+        elseif event.action == Mouse.release && dragging[]
+            mousepos = mouseposition_px(scene)
+            dragging[] = false
+            rot_scaling = rotationspeed[] * (e.window_dpi[] * 0.005)
+            mp = (last_mousepos[] - mousepos) * 0.01f0 * rot_scaling
+            last_mousepos[] = mousepos
+            rotate_cam!(scene, cam, Vec3f(-mp[2], mp[1], 0f0), true)
+            return Consume(true)
         end
         return Consume(false)
     end
