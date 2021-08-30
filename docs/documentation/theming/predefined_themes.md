@@ -4,7 +4,6 @@ Makie has a few predefined themes.
 Here you can see the same example figure with these different themes applied.
 
 ~~~
-<label for="hidecode" class="hidecode">Expand code</label>
 <input id="hidecode" class="hidecode" type="checkbox">
 ~~~
 
@@ -67,6 +66,10 @@ function demofigure()
     f
 end
 ```
+
+~~~
+<label for="hidecode" class="hidecode"></label>
+~~~
 
 ## Default theme
 
