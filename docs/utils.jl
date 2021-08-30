@@ -93,15 +93,14 @@ function env_examplefigure(com, _)
   s
 end
 
-
+# \video{name [, autoplay = false, loop = true, controls = true]}
 function lx_video(lxc, _)
-    if length(lxc.braces) == 1
-        rpath = Franklin.stent(lxc.braces[1])
-        alt   = ""
-    elseif length(lxc.braces) == 2
-        rpath = Franklin.stent(lxc.braces[2])
-        alt   = Franklin.stent(lxc.braces[1])
-    end
+    params = split(Franklin.stent(lxc.braces[1]), ",", limit = 2)
+    rpath, kwstring = params[1], length(params) == 1 ? "" : params[2]
+    alt = ""
+  
+    param_namedtuple = eval(Meta.parse("(;" * kwstring * ")"))
+    @show param_namedtuple
     
     path  = Franklin.parse_rpath(rpath; canonical=false, code=true)
     fdir, fext = splitext(path)
@@ -117,7 +116,7 @@ function lx_video(lxc, _)
     for ext ∈ candext
         candpath = fdir * ext
         syspath  = joinpath(Franklin.PATHS[:site], split(candpath, '/')...)
-        isfile(syspath) && return html_video(candpath, alt)
+        isfile(syspath) && return html_video(candpath, alt; param_namedtuple...)
     end
     # now try in the output dir just in case (provided we weren't already
     # looking there)
@@ -126,16 +125,16 @@ function lx_video(lxc, _)
         for ext ∈ candext
             candpath = joinpath(p1, "output", p2 * ext)
             syspath  = joinpath(Franklin.PATHS[:site], split(candpath, '/')...)
-            isfile(syspath) && return html_video(candpath, alt)
+            isfile(syspath) && return html_video(candpath, alt; param_namedtuple...)
         end
     end
     return Franklin.html_err("Video matching '$path' not found.")
   end
 
-function html_video(path, alt)
+function html_video(path, alt; controls::Bool = true, loop::Bool = true, autoplay::Bool = false)
   """
   ~~~
-  <video src="$path" controls="true" loop="true"></video>
+  <video src="$path" $(controls ? "controls" : "") $(loop ? "loop" : "") $(autoplay ? "autoplay muted playsinline" : "")></video>
   ~~~
   """
 end

@@ -329,11 +329,13 @@ ol {
     border-radius: 0.3em;
 }
 
-.box-content {}
-
 @media (max-width: 480px) {
     .box-container {
         grid-template-columns: 1fr;
+    }
+
+    .box img {
+        max-width: 75%;
     }
 }
 
@@ -671,15 +673,16 @@ input.hidecode {
 }
 
 input.hidecode + pre {
-    margin-top: 0;
+    margin-bottom: 0;
 }
 
 input.hidecode + pre code {
-    border-top-left-radius: 0;
-    border-top-right-radius: 0;
-    height: 7em;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    height: 8em;
     overflow-y: hidden;
-    box-shadow: inset 0px -19px 14px -20px rgba(0, 0, 0, 0.397);
+    box-shadow: inset 0px -19px 9px -20px rgba(0, 0, 0, 0.14);
+    border-bottom: none;
 }
 
 input.hidecode:checked + pre code {
@@ -691,12 +694,23 @@ label.hidecode {
     display: block;
     text-align: center;
     padding: 0.25em;
-    background: #eee;
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
+    background: var(--block-background);
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
     border: 1px solid #eaeaea;
     font-size: var(--small);
-    color: #a7a6a6;
+    color: rgb(160, 160, 160);
+    border-top: none;
+    margin-bottom: 2em;
+}
+
+input.hidecode + pre + label.hidecode::after {
+    content: "\f103";
+    font-family: "Font Awesome 5 Free";
+}
+
+input.hidecode:checked + pre + label.hidecode::after {
+    content: "\f102";
 }
 
 label.hidecode:hover {

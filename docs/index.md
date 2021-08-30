@@ -10,7 +10,6 @@ It is available for Windows, Mac and Linux.
 ## Example
 
 ~~~
-<label for="hidecode" class="hidecode">Expand code</label>
 <input id="hidecode" class="hidecode" type="checkbox">
 ~~~
 ```julia:lorenz
@@ -59,8 +58,11 @@ record(fig, joinpath(@OUTPUT, "lorenz.mp4"), 1:120) do frame
     l.colorrange = (0, frame)
 end
 ```
+~~~
+<label for="hidecode" class="hidecode"></label>
+~~~
 
-\video{lorenz}
+\video{lorenz, autoplay = true}
 
 ## Installation and Import
 
