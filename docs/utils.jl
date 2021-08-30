@@ -134,7 +134,7 @@ function lx_video(lxc, _)
 function html_video(path, alt; controls::Bool = true, loop::Bool = true, autoplay::Bool = false)
   """
   ~~~
-  <video src="$path" $(controls ? "controls" : "") $(loop ? "loop" : "") $(autoplay ? "autoplay muted" : "")></video>
+  <video src="$path" $(controls ? "controls" : "") $(loop ? "loop" : "") $(autoplay ? "autoplay muted playsinline" : "")></video>
   ~~~
   """
 end
