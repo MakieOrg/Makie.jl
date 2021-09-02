@@ -241,12 +241,13 @@ const GLOBAL_GL_SCREEN = Ref{Screen}()
 const gl_screens = GLFW.Window[]
 
 function global_gl_screen()
-    screen = if isassigned(GLOBAL_GL_SCREEN) && isopen(GLOBAL_GL_SCREEN[])
-        GLOBAL_GL_SCREEN[]
-    else
-        GLOBAL_GL_SCREEN[] = Screen()
-        GLOBAL_GL_SCREEN[]
-    end
+    # screen = if isassigned(GLOBAL_GL_SCREEN) && isopen(GLOBAL_GL_SCREEN[])
+    #     GLOBAL_GL_SCREEN[]
+    # else
+    #     GLOBAL_GL_SCREEN[] = Screen()
+    #     GLOBAL_GL_SCREEN[]
+    # end
+    screen = GLOBAL_GL_SCREEN[] = Screen() # always create a new screen
     return screen
 end
 
@@ -298,11 +299,17 @@ function Screen(;
         resolution = (10, 10), visible = false, title = WINDOW_CONFIG.title[],
         kw_args...
     )
+    @show "new screen"
+    @show size(gl_screens)
+    # print(stacktrace())
     if !isempty(gl_screens)
         for elem in gl_screens
-            isopen(elem) && destroy!(elem)
+            @show elem
+            @show elem.handle
+            isopen(elem) && deactivate!(elem) # destroy!(elem)
         end
-        empty!(gl_screens)
+        # empty!(gl_screens)
+        # gl_screens = []
     end
     # Somehow this constant isn't wrapped by glfw
     GLFW_FOCUS_ON_SHOW = 0x0002000C
@@ -348,7 +355,9 @@ function Screen(;
     # tell GLAbstraction that we created a new context.
     # This is important for resource tracking, and only needed for the first context
     ShaderAbstractions.switch_context!(window)
+    ShaderAbstractions.native_switch_context!(window)
     GLAbstraction.empty_shader_cache!()
+    @show size(gl_screens)
     push!(gl_screens, window)
 
     resize_native!(window, resolution...; wait_for_resize=false)
@@ -390,7 +399,7 @@ end
 function global_gl_screen(resolution::Tuple, visibility::Bool, tries = 1)
     # ugly but easy way to find out if we create new screen.
     # could just be returned by global_gl_screen, but dont want to change the API
-    isold = isassigned(GLOBAL_GL_SCREEN) && isopen(GLOBAL_GL_SCREEN[])
+    isold = true # isassigned(GLOBAL_GL_SCREEN) && isopen(GLOBAL_GL_SCREEN[])
     screen = global_gl_screen()
     GLFW.set_visibility!(to_native(screen), visibility)
     resize!(screen, resolution...)
