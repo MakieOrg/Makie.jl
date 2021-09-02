@@ -66,7 +66,7 @@ function Figure(; kwargs...)
 
     kwargs_dict = Dict(kwargs)
     padding = pop!(kwargs_dict, :figure_padding, current_default_theme()[:figure_padding])
-
+    @show "in figure"
     scene = Scene(; camera = campixel!, kwargs_dict...)
 
     padding = padding isa Observable ? padding : Observable{Any}(padding)

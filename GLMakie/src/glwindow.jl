@@ -126,7 +126,36 @@ function ShaderAbstractions.native_context_alive(x::GLFW.Window)
     GLFW.is_initialized() && !was_destroyed(x)
 end
 
+# stores the deactivated (stale) windows
+const gl_deactivated = Tuple{GLFW.Window, Ptr{Nothing}}[]
+
+function gl_activate(win_number)
+    @show "activate"
+    window = gl_deactivated[win_number][1]
+    if window.handle == 0
+        window.handle = gl_deactivated[win_number][2];
+    end
+    # deleteat!(gl_deactivated, win_number)
+    ShaderAbstractions.switch_context!(window)
+    ShaderAbstractions.native_switch_context!(window)
+    GLAbstraction.empty_shader_cache!()
+    GLFW.ShowWindow(window)
+    GLFW.PollEvents()
+end
+
+function deactivate!(nw::GLFW.Window)
+    @show "deactivate"
+    was_current = ShaderAbstractions.is_current_context(nw)
+    if !was_destroyed(nw)
+        GLFW.PollEvents()
+        push!(gl_deactivated,(nw, nw.handle))
+        nw.handle = C_NULL
+    end
+    was_current && ShaderAbstractions.switch_context!()
+end
+
 function destroy!(nw::GLFW.Window)
+    @show "destroy"
     was_current = ShaderAbstractions.is_current_context(nw)
     if !was_destroyed(nw)
         GLFW.SetWindowShouldClose(nw, true)

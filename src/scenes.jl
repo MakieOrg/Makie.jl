@@ -97,7 +97,7 @@ function Scene(
         theme::Attributes, # the default values a scene owns
         attributes::Attributes, # the actual attribute values of a scene
         children::Vector{Scene},
-        current_screens::Vector{AbstractScreen},
+        current_screens::Vector{<:AbstractScreen},
         parent=nothing,
     )
 
@@ -131,7 +131,8 @@ function Scene(
 end
 
 
-function Scene(;clear=true, transform_func=identity, scene_attributes...)
+function Scene(;clear=true, transform_func=identity, current_screens = AbstractScreen[],scene_attributes...)
+    @show current_screens
     events = Events()
     theme = current_default_theme(; scene_attributes...)
     attributes = deepcopy(theme)
@@ -156,7 +157,7 @@ function Scene(;clear=true, transform_func=identity, scene_attributes...)
         theme,
         attributes,
         Scene[],
-        AbstractScreen[]
+        current_screens
     )
     # Set the transformation parent
     scene.transformation.parent[] = scene

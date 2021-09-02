@@ -1,4 +1,5 @@
 function Makie.backend_display(::GLBackend, scene::Scene)
+    @show "in backend display 1"
     screen = global_gl_screen(size(scene), Makie.use_display[])
     display_loading_image(screen)
     Makie.backend_display(screen, scene)
@@ -6,7 +7,9 @@ function Makie.backend_display(::GLBackend, scene::Scene)
 end
 
 function Makie.backend_display(screen::Screen, scene::Scene)
-    empty!(screen)
+    @show "in backend display 2"
+    @show screen
+    empty!(screen) # clears the content of the screen
     # So, the GLFW window events are not guarantee to fire
     # when we close a window, so we ensure this here!
     window_open = events(scene).window_open
