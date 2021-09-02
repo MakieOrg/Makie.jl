@@ -156,9 +156,9 @@ end
 function data_limits(scenelike)
     bb_ref = Base.RefValue(Rect3f())
     foreach_plot(scenelike) do plot
-        if to_value(get(plot, :visible, true))
-            update_boundingbox!(bb_ref, data_limits(plot))
-        end
+        # if to_value(get(plot, :visible, true))
+        update_boundingbox!(bb_ref, data_limits(plot))
+        # end
     end
     return bb_ref[]
 end
