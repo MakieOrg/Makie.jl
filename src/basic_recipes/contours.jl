@@ -78,6 +78,7 @@ conversion_trait(::Type{<: Contour}) = ContinuousSurface()
 conversion_trait(::Type{<: Contour{<: Tuple{X, Y, Z, Vol}}}) where {X, Y, Z, Vol} = VolumeLike()
 conversion_trait(::Type{<: Contour{<: Tuple{<: AbstractArray{T, 3}}}}) where T = VolumeLike()
 
+THIS_GLOBAL = nothing
 function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     x, y, z, volume = plot[1:4]
     @extract plot (colormap, levels, linewidth, alpha)
@@ -89,7 +90,7 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
         levels = to_levels(l, vrange)
         nlevels = length(levels)
         N = nlevels * 50
-        iso_eps = nlevels * ((vrange[2] - vrange[1]) / N) # TODO calculate this
+        iso_eps = 20 # TODO calculate this
         cmap = to_colormap(_cmap)
         v_interval = cliprange[1] .. cliprange[2]
         # resample colormap and make the empty area between iso surfaces transparent
@@ -183,6 +184,11 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     plot
 end
 
-function data_limits(x::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
-    return xyz_boundingbox(transform_func(x), to_value.((x[1], x[2]))...)
+function point_iterator(x::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
+    axes = (x[1], x[2])
+    extremata = map(extrema∘to_value, axes)
+    minpoint = Point2f(first.(extremata)...)
+    widths = last.(extremata) .- first.(extremata)
+    rect = Rect2f(minpoint, Vec2f(widths))
+    return unique(decompose(Point, rect))
 end

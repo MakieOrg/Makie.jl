@@ -30,25 +30,33 @@ function extrema_nan(itr)
     return (vmin, vmax)
 end
 
-function xyz_boundingbox(transform_func, plot::AbstractPlot)
-    bb_ref = Base.RefValue(Rect3f())
-    foreach_transformed(point_iterator(plot), modelmatrix(plot), transform_func) do point
-        update_boundingbox!(bb_ref, point)
-    end
-    return bb_ref[]
-end
-
 function point_iterator(plot::Union{Scatter, MeshScatter, Lines, LineSegments})
     return plot.positions[]
 end
 
-point_iterator(text::Text) = text.position[]
+function point_iterator(text::Text{<: Tuple{<: Union{GlyphCollection, AbstractVector{GlyphCollection}}}})
+    if text.space[] == :data
+        return decompose(Point, boundingbox(text))
+    else
+        if text.position[] isa VecTypes
+            return [to_ndim(Point3f, text.position[], 0.0)]
+        else
+            return convert_arguments(PointBased(), text.position[])[1]
+        end
+    end
+end
+
+function point_iterator(text::Text)
+    return point_iterator(text.plots[1])
+end
 
 point_iterator(mesh::GeometryBasics.Mesh) = decompose(Point, mesh)
 
 function point_iterator(list::AbstractVector)
     Iterators.flatten((point_iterator(elem) for elem in list))
 end
+
+point_iterator(plot::Combined) = point_iterator(plot.plots)
 
 point_iterator(plot::Mesh) = point_iterator(plot.mesh[])
 
@@ -91,19 +99,11 @@ function point_iterator(x::Volume)
     return unique(decompose(Point, rect))
 end
 
-foreach_plot(f, s::Scene, keep=(x)-> true) = foreach_plot(f, s.plots, keep)
-foreach_plot(f, s::Figure, keep=(x)-> true) = foreach_plot(f, s.scene, keep)
-foreach_plot(f, s::FigureAxisPlot, keep=(x)-> true) = foreach_plot(f, s.figure, keep)
-foreach_plot(f, plot::Combined, keep=(x)-> true) = foreach_plot(f, plot.plots, keep)
-
-function foreach_plot(f, list::AbstractVector, keep=(x)-> true)
-    for element in list
-        if keep(element)
-            f(element)
-        end
-    end
-    return
-end
+foreach_plot(f, s::Scene) = foreach_plot(f, s.plots)
+foreach_plot(f, s::Figure) = foreach_plot(f, s.scene)
+foreach_plot(f, s::FigureAxisPlot) = foreach_plot(f, s.figure)
+foreach_plot(f, plot::Combined) = foreach_plot(f, plot.plots)
+foreach_plot(f, list::AbstractVector) = foreach(f, list)
 
 function foreach_transformed(f, point_iterator, model, trans_func)
     for point in point_iterator
@@ -156,7 +156,9 @@ end
 function data_limits(scenelike)
     bb_ref = Base.RefValue(Rect3f())
     foreach_plot(scenelike) do plot
-        update_boundingbox!(bb_ref, data_limits(plot))
+        if to_value(get(plot, :visible, true))
+            update_boundingbox!(bb_ref, data_limits(plot))
+        end
     end
     return bb_ref[]
 end

@@ -1,3 +1,4 @@
+Base.parent(t::Transformation) = isassigned(t.parent) ? t.parent[] : nothing
 
 function Transformation(transform_func=identity;
                         scale=Vec3f(1),

@@ -113,7 +113,6 @@ function _precompile_()
             precompile(fbody, (SMatrix{4, 4, Float32, 16},Type,Symbol,typeof(lift),Function,Observable{GeometryBasics.HyperRectangle{2, Int64}},))
         end
     end   # time: 0.009753768
-    Base.precompile(Tuple{typeof(xyz_boundingbox),Function,Vector{Point{2, Float32}}})   # time: 0.009729207
     Base.precompile(Tuple{typeof(setindex!),Attributes,Attributes,Symbol})   # time: 0.009677326
     Base.precompile(Tuple{typeof(lift),Function,Observable{Any}})   # time: 0.009117238
     let fbody = try Base.bodyfunction(which(lift, (Function,Observable{Tuple{Tuple{Tuple{Float32, Float32}, Tuple{Float32, Float32}}}},))) catch missing end

@@ -170,6 +170,9 @@ end
 # Base overloads for Scene
 Base.parent(scene::Scene) = scene.parent
 isroot(scene::Scene) = parent(scene) === nothing
+rootparent(x) = rootparent(parent(x))
+rootparent(x::Scene) = x
+
 function root(scene::Scene)
     while !isroot(scene)
         scene = parent(scene)
