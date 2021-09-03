@@ -16,7 +16,7 @@ GLMakie can open interactive windows, or alternatively display bitmaps inline if
 
 WGLMakie shows interactive plots in environments that support interactive html displays, such as VSCode, Atom/Juno, Jupyter, Pluto, etc.
 
-For more information, have a look at [Backends & Output](@ref).
+For more information, have a look at \myreflink{Backends & Output}.
 
 Ok, now that this is out of the way, let's get started!
 
@@ -388,6 +388,6 @@ You can read about the different available plotting functions with examples in t
 
 If you want to learn about making complex figures with nested sublayouts, have a look at the \myreflink{Layout Tutorial} section.
 
-If you're interested in creating interactive visualizations that use Makie's special `Observables` workflow, this is explained in more detail in the [Observables & Interaction](@ref) section.
+If you're interested in creating interactive visualizations that use Makie's special `Observables` workflow, this is explained in more detail in the \myreflink{Observables & Interaction} section.
 
 If you want to create animated movies, you can find more information in the \myreflink{Animations} section.

@@ -2,7 +2,7 @@
 
 With Makie it is easy to create animated plots.
 Animations work by making changes to data or plot attribute Observables and recording the changing figure frame by frame.
-You can find out more about the Observables workflow on the [Observables & Interaction](@ref) page.
+You can find out more about the Observables workflow on the \myreflink{Observables & Interaction} page.
 
 ## A simple example
 
