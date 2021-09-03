@@ -127,7 +127,7 @@ Makie has a couple of useful interactive widgets like sliders, buttons and menus
 ## Recording Animations with Interactions
 
 You can record a `Scene` while you're interacting with it.
-Just use the [`record`](@ref) function (also see the \myreflink{Animations} page) and allow interaction by `sleep`ing in the loop.
+Just use the \apilink{record} function (also see the \myreflink{Animations} page) and allow interaction by `sleep`ing in the loop.
 
 In this example, we sample from the Scene `scene` for 10 seconds, at a rate of 10 frames per second.
 

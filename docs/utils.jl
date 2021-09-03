@@ -100,7 +100,6 @@ function lx_video(lxc, _)
     alt = ""
   
     param_namedtuple = eval(Meta.parse("(;" * kwstring * ")"))
-    @show param_namedtuple
     
     path  = Franklin.parse_rpath(rpath; canonical=false, code=true)
     fdir, fext = splitext(path)
@@ -450,3 +449,5 @@ function contenttable()
 
   return String(take!(io))
 end
+
+

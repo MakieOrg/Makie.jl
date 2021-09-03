@@ -7,6 +7,7 @@
     --small: 14px;
     --normal: 19px;
     --text-color: hsv(0, 0%, 20%);
+    --link-color: #2776dc;
 }
 
 
@@ -57,8 +58,7 @@ html {
 
 .franklin-content .page-foot a {
     text-decoration: none;
-    color: #a6a2a0;
-    text-decoration: underline;
+    color: var(--link-color);
 }
 
 .page-foot {
@@ -391,16 +391,14 @@ code {
 /* links */
 
 .franklin-content a {
-    color: #6f6f6f;
-    text-decoration: underline #cacaca;
+    text-decoration: none;
+    color: var(--link-color);
 }
 
 .franklin-content a:hover {
-    color: #2b5a68;
-    text-decoration: underline #2b5a68;
+    text-decoration: underline;
 }
 
 .franklin-content a:visited {
-    color: #6f6f6f;
-    text-decoration: underline #cacaca;
+    color: var(--link-color);
 }

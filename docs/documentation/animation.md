@@ -6,7 +6,7 @@ You can find out more about the Observables workflow on the [Observables & Inter
 
 ## A simple example
 
-To create an animation you need to use the [`record`](@ref) function.
+To create an animation you need to use the \apilink{record} function.
 
 First you create a `Figure`. Next, you pass a function that modifies this figure frame-by-frame to `record`.
 Any changes you make to the figure or its plots will appear in the final animation.

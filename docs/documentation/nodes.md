@@ -76,7 +76,7 @@ The advantage of using `to_value` is that you can use it in situations where you
 
 ## Chaining `Node`s With `lift`
 
-You can create a Node depending on another Node using [`lift`](@ref).
+You can create a Node depending on another Node using \apilink{lift}.
 The first argument of `lift` must be a function that computes the value of the output Node given the values of the input Nodes.
 
 ```julia:code4
@@ -122,7 +122,7 @@ nothing # hide
 
 ## Shorthand Macro For `lift`
 
-When using [`lift`](@ref), it can be tedious to reference each participating `Node`
+When using \apilink{lift}, it can be tedious to reference each participating `Node`
 at least three times, once as an argument to `lift`, once as an argument to the closure that
 is the first argument, and at least once inside the closure:
 
