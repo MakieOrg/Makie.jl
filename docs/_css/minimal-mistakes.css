@@ -769,15 +769,6 @@ blockquote cite::before {
     padding-right: 5px;
 }
 
-a:visited {
-    color: #5197ad;
-}
-
-a:hover {
-    color: #266477;
-    outline: 0;
-}
-
 tt,
 code,
 kbd,

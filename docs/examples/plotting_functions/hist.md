@@ -23,7 +23,7 @@ f
 
 #### Histogram with labels
 
-You can use all the same arguments as [`barplot`](@ref):
+You can use all the same arguments as \apilink{barplot}:
 \begin{examplefigure}{}
 ```julia
 using CairoMakie
