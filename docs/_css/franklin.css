@@ -134,6 +134,10 @@ h6 {
     text-decoration: none;
 }
 
+.franklin-content h1 a:visited {
+    color: inherit;
+}
+
 .franklin-content h2 a {
     text-decoration: none;
     color: inherit;
@@ -141,6 +145,10 @@ h6 {
 
 .franklin-content h2 a:hover {
     text-decoration: none;
+}
+
+.franklin-content h2 a:visited {
+    color: inherit;
 }
 
 .franklin-content h3 a {
@@ -152,6 +160,10 @@ h6 {
     text-decoration: none;
 }
 
+.franklin-content h3 a:visited {
+    color: inherit;
+}
+
 .franklin-content h4 a {
     text-decoration: none;
     color: inherit;
@@ -159,6 +171,10 @@ h6 {
 
 .franklin-content h4 a:hover {
     text-decoration: none;
+}
+
+.franklin-content h4 a:visited {
+    color: inherit;
 }
 
 .franklin-content h5 a {
@@ -170,6 +186,10 @@ h6 {
     text-decoration: none;
 }
 
+.franklin-content h5 a:visited {
+    color: inherit;
+}
+
 .franklin-content h6 a {
     text-decoration: none;
     color: inherit;
@@ -177,6 +197,10 @@ h6 {
 
 .franklin-content h6 a:hover {
     text-decoration: none;
+}
+
+.franklin-content h6 a:visited {
+    color: inherit;
 }
 
 .franklin-content table {
