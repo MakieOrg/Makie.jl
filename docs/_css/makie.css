@@ -737,16 +737,22 @@ pre {
 }
 
 button.copy-code {
-    font-family: "Font Awesome 5 Free";
     position: absolute;
-    top: 0.25em;
-    right: 0.25em;
-    background: rgba(0, 0, 0, 0.07);
+    top: 0.2em;
+    right: 0.3em;
+    background: transparent;
     border: none;
     color: #a2a2a2;
-    border-radius: 0.25em;
-    padding: 0.25em 0.4em;
-    font-size: 0.9em;
+    padding: 0;
+    font-size: 1.2em;
+    display: flex;
+    align-items: center;
+}
+
+.copied-text {
+    font-size: 0.6em;
+    margin-right: 0.2em;
+    text-transform: uppercase;
 }
 
 button.copy-code.clicked {
