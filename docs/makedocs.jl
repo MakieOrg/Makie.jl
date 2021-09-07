@@ -79,35 +79,35 @@ function make_links_relative()
     old = pwd()
     try
         cd("__site")
-    for (root, dirs, files) in walkdir(".")
-        path = join(splitpath(root)[2:end], "/")
+        for (root, dirs, files) in walkdir(".")
+            path = join(splitpath(root)[2:end], "/")
 
-        html_files = filter(endswith(".html"), files)
-        for file in html_files
-            s = read(joinpath(root, file), String)
-            
-            html = parsehtml(s)
-            
-            for e in PreOrderDFS(html.root)
-                if (e isa HTMLElement{:script} ||
-                    e isa HTMLElement{:img} ||
-                    e isa HTMLElement{:video}) && haskey(e.attributes, "src")
+            html_files = filter(endswith(".html"), files)
+            for file in html_files
+                s = read(joinpath(root, file), String)
+                
+                html = parsehtml(s)
+                
+                for e in PreOrderDFS(html.root)
+                    if (e isa HTMLElement{:script} ||
+                        e isa HTMLElement{:img} ||
+                        e isa HTMLElement{:video}) && haskey(e.attributes, "src")
 
-                    h = e.attributes["src"]
-                    e.attributes["src"] = make_relative(h, path)
-                elseif (e isa HTMLElement{:link} ||
-                        e isa HTMLElement{:a}) && haskey(e.attributes, "href")
+                        h = e.attributes["src"]
+                        e.attributes["src"] = make_relative(h, path)
+                    elseif (e isa HTMLElement{:link} ||
+                            e isa HTMLElement{:a}) && haskey(e.attributes, "href")
 
-                    h = e.attributes["href"]
-                    e.attributes["href"] = make_relative(h, path)
+                        h = e.attributes["href"]
+                        e.attributes["href"] = make_relative(h, path)
+                    end
+                end
+
+                open(joinpath(root, file), "w") do f
+                    print(f, html)
                 end
             end
-
-            open(joinpath(root, file), "w") do f
-                print(f, html)
-            end
         end
-    end
     finally
         cd(old)
     end
