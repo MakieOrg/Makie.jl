@@ -126,6 +126,7 @@ optimize(minify=false, prerender=false)
 # which means that files in some `vX.Y.Z` subfolder which happens to be `stable`
 # at the time, link relatively within `stable` so that users don't accidentally
 # copy & paste versioned links if they started out on `stable`
+@info "Rewriting all absolute links as relative"
 make_links_relative()
 
 deploydocs(;
