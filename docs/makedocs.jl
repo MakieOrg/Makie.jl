@@ -125,7 +125,7 @@ serve(single=true, cleanup=false)
 # copy & paste versioned links if they started out on `stable`
 make_links_relative()
 lunr()
-optimize(minify=false, prerender=false)
+# optimize(minify=false, prerender=false)
 
 deploydocs(;
     repo,
