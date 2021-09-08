@@ -119,13 +119,14 @@ function make_links_relative()
 end
 
 serve(single=true, cleanup=false)
+lunr()
+optimize(minify=false, prerender=false)
+
 # by making all links relative, we can forgo the `prepath` setting of Franklin
 # which means that files in some `vX.Y.Z` subfolder which happens to be `stable`
 # at the time, link relatively within `stable` so that users don't accidentally
 # copy & paste versioned links if they started out on `stable`
 make_links_relative()
-lunr()
-# optimize(minify=false, prerender=false)
 
 deploydocs(;
     repo,
