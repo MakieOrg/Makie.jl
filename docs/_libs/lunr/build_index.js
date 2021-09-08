@@ -3,8 +3,8 @@ var fs      = require("fs");
 var lunr    = require("lunr");
 var cheerio = require("cheerio");
 
-// don't modify this, it'll be modified on the fly by lunr() in Franklin
-const PATH_PREPEND = "..";
+// this is hardcoded now to point one level up from search results
+const PATH_PREPEND_RELATIVE = "..";
 
 const HTML_FOLDER  = "../../__site";
 const OUTPUT_INDEX = "lunr_index.js";
@@ -77,7 +77,8 @@ function buildPreviews(docs) {
         var doc = docs[i];
         result[doc["id"]] = {
             "t": doc["t"],
-            "l": doc["l"].replace(/^\.\.\/\.\.\/__site/gi, '/' + PATH_PREPEND)
+            "l": doc["l"].replace(/^\.\.\/\.\.\/__site/gi, PATH_PREPEND_RELATIVE).
+                          replace(/^\.\.\\\.\.\\__site/gi, PATH_PREPEND_RELATIVE) // because there seem to be backslashes sometimes in this position we do both
         }
     }
     return result;
