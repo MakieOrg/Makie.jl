@@ -82,6 +82,9 @@ function make_links_relative()
         for (root, dirs, files) in walkdir(".")
             path = join(splitpath(root)[2:end], "/")
 
+            println()
+            @show path
+
             html_files = filter(endswith(".html"), files)
             for file in html_files
                 s = read(joinpath(root, file), String)
@@ -95,6 +98,8 @@ function make_links_relative()
 
                         h = e.attributes["src"]
                         e.attributes["src"] = make_relative(h, path)
+
+                        println(h, " -> ", e.attributes["src"])
                     elseif (e isa HTMLElement{:link} ||
                             e isa HTMLElement{:a}) && haskey(e.attributes, "href")
 
