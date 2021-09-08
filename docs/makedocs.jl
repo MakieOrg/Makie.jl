@@ -26,8 +26,6 @@ deploydecision = deploy_folder(cfg; repo, push_preview,
 
 @info "Setting PREVIEW_FRANKLIN_WEBSITE_URL to $repo"
 ENV["PREVIEW_FRANKLIN_WEBSITE_URL"] = repo
-# @info "Setting PREVIEW_FRANKLIN_PREPATH to $(deploydecision.subfolder)"
-# ENV["PREVIEW_FRANKLIN_PREPATH"] = deploydecision.subfolder
 
 """
 Converts the string `s` which might be an absolute path,
@@ -76,14 +74,12 @@ Replaces all absolute links in all html files in the __site folder with
 relative links.
 """
 function make_links_relative()
+
     old = pwd()
     try
         cd("__site")
         for (root, dirs, files) in walkdir(".")
             path = join(splitpath(root)[2:end], "/")
-
-            println()
-            @show path
 
             html_files = filter(endswith(".html"), files)
             for file in html_files
@@ -96,15 +92,19 @@ function make_links_relative()
                         e isa HTMLElement{:img} ||
                         e isa HTMLElement{:video}) && haskey(e.attributes, "src")
 
-                        h = e.attributes["src"]
-                        e.attributes["src"] = make_relative(h, path)
+                        link = e.attributes["src"]
+                        e.attributes["src"] = make_relative(link, path)
 
-                        println(h, " -> ", e.attributes["src"])
                     elseif (e isa HTMLElement{:link} ||
                             e isa HTMLElement{:a}) && haskey(e.attributes, "href")
 
-                        h = e.attributes["href"]
-                        e.attributes["href"] = make_relative(h, path)
+                        link = e.attributes["href"]
+                        e.attributes["href"] = make_relative(link, path)
+
+                    elseif e isa HTMLElement{:form} && haskey(e.attributes, "action")
+
+                        link = e.attributes["action"]
+                        e.attributes["action"] = make_relative(link, path)
                     end
                 end
 
