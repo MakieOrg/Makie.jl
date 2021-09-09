@@ -658,7 +658,7 @@ input.collapse-toggle {
 }
 
 .banner-container {
-    margin-bottom: 3em;
+    margin-bottom: -1em;
     margin-top: 1em;
     background: url("../assets/bannermesh_gradient.png");
     background-size: cover;
@@ -669,7 +669,8 @@ input.collapse-toggle {
 
 @media (min-width: 800px) {
     .banner-container {
-        padding-top: 23.95%; /* 700 / 2922 */
+        padding-top: 19.25%;
+        margin-bottom: 1em;
     }
 }
 
