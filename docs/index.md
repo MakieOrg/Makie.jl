@@ -2,7 +2,7 @@
 @def order = 0
 @def frontpage = true
 
-## Welcome to Makie!
+# Welcome to Makie!
 
 Makie is a data visualization ecosystem for the [Julia](https://julialang.org/) programming language, with high performance and extensibility.
 It is available for Windows, Mac and Linux.

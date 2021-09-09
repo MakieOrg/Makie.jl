@@ -311,7 +311,14 @@ ol {
     display: grid;
     grid-gap: 1em;
     justify-content: space-between;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.box-container-2 {
+    display: grid;
+    grid-gap: 1em;
+    justify-content: space-between;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .box {
@@ -335,14 +342,34 @@ ol {
     border-radius: 0.3em;
 }
 
+
 @media (max-width: 480px) {
-    .box-container {
-        grid-template-columns: 1fr;
+    .box-container, .box-container-2 {
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .box img {
         max-width: 75%;
     }
+}
+
+.youtube-container {
+    position: relative;
+    padding-bottom: 80.25%;
+    padding-top: 0;
+    height: 0;
+    overflow: hidden;
+    margin-top: 1em;
+}
+
+.youtube-container iframe,
+.youtube-container object,
+.youtube-container embed {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
 }
 
 .title {
@@ -595,12 +622,13 @@ input.collapse-toggle {
 
 #navbar ul.page-content {
     display: block;
-    background: rgb(250, 250, 250);
+    background: rgb(248, 248, 248);
+    border: 1px solid #ececec;
+    border-radius: 3px;
 }
 
 #navbar ul.page-content ul {
     display: block;
-    background: rgb(250, 250, 250);
 }
 
 #navbar input:checked~ul {
@@ -612,7 +640,7 @@ input.collapse-toggle {
 }
 
 .tocexpander {
-    margin-right: 0.75em;
+    margin-right: 0.45em;
     color: #ccc;
 }
 
@@ -658,7 +686,7 @@ input.collapse-toggle {
 }
 
 .banner-container {
-    margin-bottom: 3em;
+    margin-bottom: -1em;
     margin-top: 1em;
     background: url("../assets/bannermesh_gradient.png");
     background-size: cover;
@@ -669,7 +697,8 @@ input.collapse-toggle {
 
 @media (min-width: 800px) {
     .banner-container {
-        padding-top: 23.95%; /* 700 / 2922 */
+        padding-top: 19.25%;
+        margin-bottom: 1em;
     }
 }
 

@@ -6,6 +6,10 @@ using ImageTransformations
 using Colors
 using Pkg
 
+
+############################ Initialization ##############################
+
+
 include("colormap_generation.jl")
 
 # Pause renderloop for slow software rendering.
@@ -16,16 +20,15 @@ GLMakie.set_window_config!(;
 )
 
 
-function hfun_bar(vname)
-  val = Meta.parse(vname[1])
-  return round(sqrt(val), digits=2)
-end
+# copy NEWS file over to documentation
+cp(
+  joinpath(@__DIR__, "..", "NEWS.md"),
+  joinpath(@__DIR__, "documentation", "news.md"),
+  force = true)
 
-function hfun_m1fill(vname)
-  var = vname[1]
-  return pagevar("index", var)
-end
 
+
+############################ Functions ##############################
 
 function hfun_doc(params)
   fname = params[1]
@@ -337,10 +340,7 @@ end
             pretty_url = match(r"(.*)/index.html", first(Franklin.LOCAL_VARS["fd_url"]))
             pretty_url = pretty_url === nothing ? nothing : pretty_url[1]
 
-            n.metadata["isactive"] = pretty_url == "/" * join(parts, "/")
-
-
-            # n.metadata["active"] = pretty_url !== nothing && pretty_url[1] == item.route || (pretty_url[1] == "" && item.route == "/")
+            n.metadata["isactive"] = pretty_url == n.metadata["page"] || pretty_url == "/" * join(parts, "/")
           end
       end      
   end
