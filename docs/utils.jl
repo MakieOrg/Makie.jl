@@ -6,6 +6,10 @@ using ImageTransformations
 using Colors
 using Pkg
 
+
+############################ Initialization ##############################
+
+
 include("colormap_generation.jl")
 
 # Pause renderloop for slow software rendering.
@@ -16,16 +20,15 @@ GLMakie.set_window_config!(;
 )
 
 
-function hfun_bar(vname)
-  val = Meta.parse(vname[1])
-  return round(sqrt(val), digits=2)
-end
+# copy NEWS file over to documentation
+cp(
+  joinpath(@__DIR__, "..", "NEWS.md"),
+  joinpath(@__DIR__, "documentation", "news.md"),
+  force = true)
 
-function hfun_m1fill(vname)
-  var = vname[1]
-  return pagevar("index", var)
-end
 
+
+############################ Functions ##############################
 
 function hfun_doc(params)
   fname = params[1]
