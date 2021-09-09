@@ -51,8 +51,7 @@ function plot!(p::ECDFPlot{<:Tuple{<:AbstractVector}})
         return Point2f0.(xnew, ynew)
     end
 
-    attrs = p.attributes
-    map(key -> pop!(attrs, key), (:npoints, :weights))
+    attrs = filter(p -> first(p) ∉ (:npoints, :weights), p.attributes)
     stairs!(p, points; attrs..., step=:post)
     p
 end
