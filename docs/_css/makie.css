@@ -595,12 +595,13 @@ input.collapse-toggle {
 
 #navbar ul.page-content {
     display: block;
-    background: rgb(250, 250, 250);
+    background: rgb(248, 248, 248);
+    border: 1px solid #ececec;
+    border-radius: 3px;
 }
 
 #navbar ul.page-content ul {
     display: block;
-    background: rgb(250, 250, 250);
 }
 
 #navbar input:checked~ul {
@@ -612,7 +613,7 @@ input.collapse-toggle {
 }
 
 .tocexpander {
-    margin-right: 0.75em;
+    margin-right: 0.45em;
     color: #ccc;
 }
 

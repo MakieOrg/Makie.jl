@@ -337,10 +337,7 @@ end
             pretty_url = match(r"(.*)/index.html", first(Franklin.LOCAL_VARS["fd_url"]))
             pretty_url = pretty_url === nothing ? nothing : pretty_url[1]
 
-            n.metadata["isactive"] = pretty_url == "/" * join(parts, "/")
-
-
-            # n.metadata["active"] = pretty_url !== nothing && pretty_url[1] == item.route || (pretty_url[1] == "" && item.route == "/")
+            n.metadata["isactive"] = pretty_url == n.metadata["page"] || pretty_url == "/" * join(parts, "/")
           end
       end      
   end
