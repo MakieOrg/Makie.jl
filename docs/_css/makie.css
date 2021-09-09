@@ -311,7 +311,14 @@ ol {
     display: grid;
     grid-gap: 1em;
     justify-content: space-between;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.box-container-2 {
+    display: grid;
+    grid-gap: 1em;
+    justify-content: space-between;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .box {
@@ -335,14 +342,34 @@ ol {
     border-radius: 0.3em;
 }
 
+
 @media (max-width: 480px) {
-    .box-container {
-        grid-template-columns: 1fr;
+    .box-container, .box-container-2 {
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .box img {
         max-width: 75%;
     }
+}
+
+.youtube-container {
+    position: relative;
+    padding-bottom: 80.25%;
+    padding-top: 0;
+    height: 0;
+    overflow: hidden;
+    margin-top: 1em;
+}
+
+.youtube-container iframe,
+.youtube-container object,
+.youtube-container embed {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
 }
 
 .title {
