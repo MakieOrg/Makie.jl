@@ -1,7 +1,7 @@
 function ecdf_values(ecdf::StatsBase.ECDF, npoints)
     x = ecdf.sorted_values
     n = length(x)
-    npoints ≥ n && return unique(x)
+    npoints ≥ n && return float(unique(x))
     return @inbounds range(x[1], x[n]; length=npoints)
 end
 
@@ -10,18 +10,28 @@ function convert_arguments(P::PlotFunc, ecdf::StatsBase.ECDF)
     x0 = ecdf_values(ecdf, Inf)
     if ptype <: Stairs
         kwargs = (; step=:post)
-        x = [-Inf; x0]
+        x1 = x0[1]
+        x = [x1 - eps(x1); x0]
     else
         kwargs = NamedTuple()
         x = x0
     end
     return to_plotspec(ptype, convert_arguments(ptype, x, ecdf(x)); kwargs...)
 end
-function convert_arguments(P::PlotFunc, x::Union{AbstractVector,Interval}, ecdf::StatsBase.ECDF)
+function convert_arguments(P::PlotFunc, x::AbstractVector, ecdf::StatsBase.ECDF)
     ptype = plottype(P, Stairs)
     kwargs = ptype <: Stairs ? (; step=:post) : NamedTuple()
-    y = x isa AbstractVector ? ecdf(x) : x -> ecdf(x)
-    return to_plotspec(ptype, convert_arguments(ptype, x, y); kwargs...)
+    return to_plotspec(ptype, convert_arguments(ptype, x, ecdf(x)); kwargs...)
+end
+function convert_arguments(P::PlotFunc, x0::AbstractInterval, ecdf::StatsBase.ECDF)
+    xmin, xmax = extrema(x0)
+    z = ecdf_values(ecdf, Inf)
+    n = length(z)
+    imin, imax = findfirst(>(xmin), z), findlast(<(xmax), z)
+    idx_min = imin === nothing ? n+1 : imin
+    idx_max = imax === nothing ? -1 : imax
+    x = [xmin - eps(oftype(z[1], xmin)); xmin; view(z, idx_min:idx_max); xmax]
+    return convert_arguments(P, x, ecdf)
 end
 
 """
@@ -46,7 +56,9 @@ end
 function plot!(p::ECDFPlot{<:Tuple{<:AbstractVector}})
     points = lift(p[1], p.npoints, p.weights) do x, npoints, weights
         ecdf = StatsBase.ecdf(x; weights=weights)
-        xnew = [-Inf; ecdf_values(ecdf, npoints)]
+        z = ecdf_values(ecdf, npoints)
+        z1 = z[1]
+        xnew = [z1 - eps(z1); z]
         ynew = ecdf(xnew)
         return Point2f0.(xnew, ynew)
     end
