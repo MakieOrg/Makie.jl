@@ -42,7 +42,6 @@ using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
 
-let
 f = Figure()
 Axis(f[1, 1])
 
@@ -52,6 +51,5 @@ ecdfplot!(x)
 ecdfplot!(x; weights = w, color=:orange)
 
 f
-end
 ```
 \end{examplefigure}
