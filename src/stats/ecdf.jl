@@ -15,7 +15,7 @@ function convert_arguments(P::PlotFunc, ecdf::StatsBase.ECDF)
         kwargs = NamedTuple()
         x = x0
     end
-    return to_plotspec(ptype, convert_arguments(ptype, x, ecdf); kwargs...)
+    return to_plotspec(ptype, convert_arguments(ptype, x, ecdf(x)); kwargs...)
 end
 function convert_arguments(P::PlotFunc, x::Union{AbstractVector,Interval}, ecdf::StatsBase.ECDF)
     ptype = plottype(P, Stairs)
