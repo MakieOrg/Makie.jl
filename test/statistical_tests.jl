@@ -143,6 +143,38 @@ end
     @test last.(plt[1][]) ≈ ys rtol = 1e-6
 end
 
+@testset "ecdfplot" begin
+    v = randn(1000)
+    vmin = minimum(v)
+    d = ecdf(v)
+    fig, ax, p1 = plot(d)
+    @test p1 isa Stairs
+    fig, ax, p2 = ecdfplot(v)
+    @test p2 isa ECDFPlot
+    xunique = [vmin - eps(vmin); unique(d.sorted_values)]
+    fig, ax, p3 = stairs(xunique, d(xunique); step=:post)
+    @test p1[1][] == p3[1][]
+    @test p2.plots[1][1][] == p3[1][]
+
+    fig, ax, p4 = ecdfplot(v; npoints=10)
+    pts = p4.plots[1][1][]
+    @test length(pts) == 11
+    @test pts[1] == Point2f0(vmin - eps(vmin), 0)
+    @test pts[11][2] == 1
+
+    fig, ax, p5 = plot(2..3, ecdf(1:10))
+    pts = p5[1][]
+    @test pts[1] == Point2f0(2 - eps(2.0), 0.1)
+    @test pts[2] == Point2f0(2, 0.2)
+    @test pts[3] == Point2f0(3, 0.3)
+
+    fig, ax, p6 = plot([2.0, 2.5, 3.0], ecdf(1:10))
+    pts = p6[1][]
+    @test pts[1] == Point2f0(2, 0.2)
+    @test pts[2] == Point2f0(2.5, 0.2)
+    @test pts[3] == Point2f0(3, 0.3)
+end
+
 @testset "crossbar" begin
     fig, ax, p = crossbar(1, 3, 2, 4)
     @test p isa CrossBar
