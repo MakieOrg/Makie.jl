@@ -395,7 +395,7 @@ function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, input::NTu
     plot_object = P(scene, copy(attributes), input, args)
     # transfer the merged attributes from theme and user defined to the scene
     for (k, v) in scene_attributes
-        @warn "setting $k for scene via plot attribute not supported anymore"
+        error("setting $k for scene via plot attribute not supported anymore")
     end
     # call user defined recipe overload to fill the plot type
     plot!(plot_object)

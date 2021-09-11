@@ -24,7 +24,9 @@ function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), 
         ax = axtype(fig; axis...)
     else
         proxyscene = Scene()
-        plot!(proxyscene, P, Attributes(kw_attributes), args...)
+        attrs = Attributes(kw_attributes)
+        delete!(attrs, :show_axis)
+        plot!(proxyscene, P, attrs, args...)
         if is2d(proxyscene)
             ax = Axis(fig; axis...)
         else

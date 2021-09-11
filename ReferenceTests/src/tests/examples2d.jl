@@ -179,8 +179,7 @@ end
     sf = Node(Base.Fix2(v, 0e0))
     title_str = Node("t = 0.00")
     sp = streamplot(sf, -2..2, -2..2;
-                    linewidth=2, padding=(0, 0),
-                    arrow_size=0.09, colormap=:magma, axis=(;title=title_str))
+                    linewidth=2,  arrow_size=0.09, colormap=:magma, axis=(;title=title_str))
     Record(sp, LinRange(0, 20, 5)) do i
         sf[] = Base.Fix2(v, i)
         title_str[] = "t = $(round(i; sigdigits=2))"
@@ -228,7 +227,6 @@ end
         lines!(ax,
             xs, ys;
             color=colors[i],
-            limits=Rectf((0, 0), (10, 10)),
             linewidth=5
         ) # plot lines with colors
     end

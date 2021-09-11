@@ -60,34 +60,53 @@ point_iterator(plot::Combined) = point_iterator(plot.plots)
 
 point_iterator(plot::Mesh) = point_iterator(plot.mesh[])
 
+function br_getindex(vector::AbstractVector, idx::CartesianIndex, dim::Int)
+    return vector[Tuple(idx)[dim]]
+end
+
+function br_getindex(matrix::AbstractMatrix, idx::CartesianIndex, dim::Int)
+    return matrix[idx]
+end
+
+function get_point_xyz(linear_indx::Int, indices, X, Y, Z)
+    idx = indices[linear_indx]
+    x = br_getindex(X, idx, 1)
+    y = br_getindex(Y, idx, 2)
+    z = Z[linear_indx]
+    return Point(x, y, z)
+end
+
+function get_point_xyz(linear_indx::Int, indices, X, Y)
+    idx = indices[linear_indx]
+    x = br_getindex(X, idx, 1)
+    y = br_getindex(Y, idx, 2)
+    return Point(x, y, 0.0)
+end
+
 function point_iterator(plot::Surface)
     X = plot.x[]
     Y = plot.y[]
     Z = plot.z[]
     indices = CartesianIndices(Z)
-    function get_points(linidx)
-        i, j = Tuple(indices[linidx])
-        x = X[i]
-        y = Y[j]
-        z = Z[linidx]
-        return Point(x, y, z)
-    end
-    return (get_points(idx) for idx in 1:length(Z))
+    return (get_point_xyz(idx, indices, X, Y, Z) for idx in 1:length(Z))
 end
 
-function point_iterator(plot::Union{Image, Heatmap})
+function point_iterator(plot::Heatmap)
     X = plot.x[]
     Y = plot.y[]
     Z = plot[3][]
     zsize = size(Z) .+ 1
     indices = CartesianIndices(zsize)
-    function get_points(linidx)
-        i, j = Tuple(indices[linidx])
-        x = X[i]
-        y = Y[j]
-        return Point(x, y, 0.0)
-    end
-    return (get_points(idx) for idx in 1:prod(zsize))
+    return (get_point_xyz(idx, indices, X, Y) for idx in 1:prod(zsize))
+end
+
+function point_iterator(plot::Image)
+    X = plot.x[]
+    Y = plot.y[]
+    Z = plot[3][]
+    zsize = size(Z)
+    indices = CartesianIndices(zsize)
+    return (get_point_xyz(idx, indices, X, Y) for idx in 1:prod(zsize))
 end
 
 function point_iterator(x::Volume)
@@ -153,12 +172,12 @@ function data_limits(plot::AbstractPlot)
     return bb_ref[]
 end
 
-function data_limits(scenelike)
+function data_limits(scenelike, exclude=(p)-> false)
     bb_ref = Base.RefValue(Rect3f())
     foreach_plot(scenelike) do plot
-        # if to_value(get(plot, :visible, true))
-        update_boundingbox!(bb_ref, data_limits(plot))
-        # end
+        if !exclude(plot)
+            update_boundingbox!(bb_ref, data_limits(plot))
+        end
     end
     return bb_ref[]
 end

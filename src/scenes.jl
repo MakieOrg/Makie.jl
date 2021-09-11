@@ -126,7 +126,7 @@ function Scene(
         events=parent.events,
         px_area=nothing,
         clear=false,
-        camera=parent.camera,
+        camera=nothing,
         camera_controls=parent.camera_controls,
         transformation=Transformation(parent),
         theme=theme(parent),

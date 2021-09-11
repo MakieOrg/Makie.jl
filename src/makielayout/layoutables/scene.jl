@@ -3,15 +3,27 @@ function Makie.plot!(
         attributes::Makie.Attributes, args...;
         kw_attributes...)
 
+    # We store the show_axis attribute in the LScene
+    if haskey(attributes, :show_axis)
+        lscene.attributes[:show_axis] = pop!(attributes, :show_axis)
+    end
+
+
+    show_axis = get!(lscene.attributes, :show_axis, true)
     plot = Makie.plot!(lscene.scene, P, attributes, args...; kw_attributes...)
-    if isnothing(lscene.scene[OldAxis])
+
+    if isnothing(lscene.scene[OldAxis]) && to_value(show_axis)
         # Add axis and center on first plot!
         Makie.axis3d!(lscene.scene)
+    else
+        # Update limits when plotting new objects
+        axis = lscene.scene[OldAxis]
+        lims = data_limits(lscene.scene, Makie.isaxis)
+        axis[1] = lims
     end
-    lscene.scene[OldAxis][1] = data_limits(lscene.scene)
-    center!(lscene.scene)
     # Make sure axis is always in pos 1
     sort!(lscene.scene.plots, by=!Makie.isaxis)
+    center!(lscene.scene)
     plot
 end
 
@@ -31,12 +43,10 @@ function layoutable(::Type{LScene}, fig_or_scene; bbox = nothing, scenekw = Name
 
     layoutobservables = LayoutObservables{LScene}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         attrs.halign, attrs.valign, attrs.alignmode; suggestedbbox = bbox)
-
     # pick a camera and draw axis.
     scenekw = merge((clear = false,), scenekw)
     scene = Scene(topscene, lift(round_to_IRect2D, layoutobservables.computedbbox); scenekw...)
-    ls = LScene(fig_or_scene, layoutobservables, attrs, Dict{Symbol, Any}(), scene)
-    ls
+    return LScene(fig_or_scene, layoutobservables, attrs, Dict{Symbol, Any}(), scene)
 end
 
 function Base.delete!(ax::LScene, plot::AbstractPlot)

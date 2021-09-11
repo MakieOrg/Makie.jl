@@ -535,7 +535,7 @@ function add_ticks_and_ticklabels!(topscene, scene, dim::Int, limits, ticknode, 
         end
     end
 
-    ticklabel_obj = annotations!(topscene, labels_positions, align = align,
+    ticklabel_obj = text!(topscene, labels_positions, align = align,
         color = attr(:ticklabelcolor), textsize = attr(:ticklabelsize),
         font = attr(:ticklabelfont), visible = attr(:ticklabelsvisible), inspectable = false
     )
@@ -610,7 +610,6 @@ function add_ticks_and_ticklabels!(topscene, scene, dim::Int, limits, ticknode, 
             lalign
         end
     end
-
     text!(topscene, attr(:label),
         color = attr(:labelcolor),
         textsize = attr(:labelsize),
@@ -621,8 +620,7 @@ function add_ticks_and_ticklabels!(topscene, scene, dim::Int, limits, ticknode, 
         visible = attr(:labelvisible),
         inspectable = false
     )
-
-    nothing
+    return
 end
 
 function dim3point(dim1, dim2, dim3, v1, v2, v3)

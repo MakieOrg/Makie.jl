@@ -327,3 +327,5 @@ function campixel!(scene)
     update_once[] = true
     cam
 end
+
+# disconnect!(::Makie.PixelCamera) = nothing

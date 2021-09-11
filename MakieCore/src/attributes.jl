@@ -251,14 +251,8 @@ function merge_attributes!(input::Attributes, theme::Attributes)
             if value isa Attributes && current_value isa Attributes
                 # if nested attribute, we merge recursively
                 merge_attributes!(current_value, value)
-            elseif value isa Attributes || current_value isa Attributes
-                error("""
-                Type missmatch while merging plot attributes with theme for key: $(key).
-                Found $(value) in theme, while attributes contains: $(current_value)
-                """)
-            else
-                # we're good! input already has a value, can ignore theme
             end
+            # we're good! input already has a value, can ignore theme
         end
     end
     return input

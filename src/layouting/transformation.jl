@@ -62,14 +62,20 @@ function translated(scene::Scene; kw_args...)
 end
 
 function transform!(
-        scene::SceneLike;
+        scene::Transformable;
         translation = Vec3f(0),
         scale = Vec3f(1),
         rotation = 0.0,
     )
-    translate!(scene, translation)
-    scale!(scene, scale)
-    rotate!(scene, rotation)
+    translate!(scene, to_value(translation))
+    scale!(scene, to_value(scale))
+    rotate!(scene, to_value(rotation))
+end
+
+function transform!(
+        scene::Transformable, attributes::Union{Attributes, AbstractDict}
+    )
+    transform!(scene; attributes...)
 end
 
 transformation(t::Scene) = t.transformation

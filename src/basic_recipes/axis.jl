@@ -95,7 +95,7 @@ end
 isaxis(x) = false
 isaxis(x::Axis3D) = true
 
-const Limits{N} = NTuple{N, Tuple{Number, Number}}
+const Limits{N} = NTuple{N, <:Tuple{<: Number, <: Number}}
 
 function default_ticks(limits::Limits, ticks, scale_func::Function)
     default_ticks.(limits, (ticks,), scale_func)
@@ -333,6 +333,6 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
 end
 
 function axis3d!(scene::Scene; kw...)
-    lims = data_limits(scene)
+    lims = data_limits(scene, isaxis)
     axis3d!(scene, Attributes(), lims; ticks = (ranges = automatic, labels = automatic), kw...)
 end
