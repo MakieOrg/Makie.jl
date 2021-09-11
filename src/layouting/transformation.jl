@@ -10,9 +10,9 @@ function Transformation(transform_func=identity;
     rotation_o = convert(Observable{Quaternionf}, rotation)
     model = map(transformationmatrix, translation_o, scale_o, rotation_o)
     return Transformation(
-        translation,
-        scale,
-        rotation,
+        translation_o,
+        scale_o,
+        rotation_o,
         model,
         convert(Observable{Any}, transform_func)
     )
@@ -34,9 +34,9 @@ function Transformation(transformable::Transformable;
     end
 
     trans = Transformation(
-        translation,
-        scale,
-        rotation,
+        translation_o,
+        scale_o,
+        rotation_o,
         model,
         copy(parent_transform.transform_func)
     )

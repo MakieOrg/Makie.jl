@@ -75,7 +75,7 @@ function point_iterator(plot::Surface)
     return (get_points(idx) for idx in 1:length(Z))
 end
 
-function point_iterator(plot::Heatmap)
+function point_iterator(plot::Union{Image, Heatmap})
     X = plot.x[]
     Y = plot.y[]
     Z = plot[3][]
@@ -120,7 +120,7 @@ function foreach_transformed(f, plot)
     model = model_transform(t)
     trans_func = t.transform_func[]
     # use function barrier since trans_func is Any
-    foreach_transformed(f, points, model, trans_func)
+    foreach_transformed(f, points, model, identity)
 end
 
 function update_boundingbox!(bb_ref, point)
