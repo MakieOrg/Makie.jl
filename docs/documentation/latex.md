@@ -39,10 +39,7 @@ CairoMakie.activate!() # hide
 
 f = Figure(fontsize = 18)
 
-ax = f[1,1] = Axis(f, 
-    titlesize=30, 
-    title=L"Some text and some math: $\frac{2\alpha+1}{y}$"
-)
+Axis(f[1,1], title=L"Some text and some math: $\frac{2\alpha+1}{y}$")
 
 f
 ```
