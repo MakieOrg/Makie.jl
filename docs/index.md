@@ -207,6 +207,20 @@ These packages and sites are maintained by third parties. If you install package
   @@
 
   @@box
+    ~~~<a class="boxlink" href="https://github.com/JuliaPlots/GraphMakie.jl">~~~
+    @@title GraphMakie.jl @@
+    @@box-content
+      @@description
+      Graphs with two- and three-dimensional layout algorithms.
+      @@
+      ~~~
+      <img src="/assets/graphmakie.png">
+      ~~~
+    @@
+    ~~~</a>~~~
+  @@
+
+  @@box
     ~~~<a class="boxlink" href="https://github.com/JuliaPlots/GeoMakie.jl">~~~
     @@title GeoMakie.jl @@
     @@box-content
