@@ -186,7 +186,7 @@ These packages and sites are maintained by third parties. If you install package
       Grammar-of-graphics style plotting, inspired by ggplot2.
       @@
       ~~~
-      <img src="/assets/algebraofgraphics_example.svg">
+      <img src="/assets/aog_example.png">
       ~~~
     @@
     ~~~</a>~~~
