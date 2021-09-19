@@ -186,7 +186,7 @@ These packages and sites are maintained by third parties. If you install package
       Grammar-of-graphics style plotting, inspired by ggplot2.
       @@
       ~~~
-      <img src="/assets/algebraofgraphics_example.svg">
+      <img src="/assets/aog_example.png">
       ~~~
     @@
     ~~~</a>~~~
@@ -201,6 +201,20 @@ These packages and sites are maintained by third parties. If you install package
       @@
       ~~~
       <img src="/assets/beautifulmakie_example.png">
+      ~~~
+    @@
+    ~~~</a>~~~
+  @@
+
+  @@box
+    ~~~<a class="boxlink" href="https://github.com/JuliaPlots/GraphMakie.jl">~~~
+    @@title GraphMakie.jl @@
+    @@box-content
+      @@description
+      Graphs with two- and three-dimensional layout algorithms.
+      @@
+      ~~~
+      <img src="/assets/graphmakie.png">
       ~~~
     @@
     ~~~</a>~~~

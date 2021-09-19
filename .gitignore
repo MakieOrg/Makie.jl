@@ -19,3 +19,4 @@ CairoMakie/src/display.pdf
 CairoMakie/src/display.png
 monorepo
 .vscode/settings.json
+docs/documentation/news.md
