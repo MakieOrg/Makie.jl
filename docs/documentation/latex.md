@@ -30,6 +30,21 @@ f
 ```
 \end{examplefigure}
 
+You can also mix math-mode and text-mode:
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+
+f = Figure(fontsize = 18)
+
+Axis(f[1,1], title=L"Some text and some math: $\frac{2\alpha+1}{y}$")
+
+f
+```
+\end{examplefigure}
+
 
 ## Caveats
 
