@@ -1,4 +1,4 @@
-function ecdf_values(ecdf::StatsBase.ECDF, npoints)
+function ecdf_xvalues(ecdf::StatsBase.ECDF, npoints)
     x = ecdf.sorted_values
     n = length(x)
     npoints ≥ n && return float(unique(x))
@@ -7,7 +7,7 @@ end
 
 function convert_arguments(P::PlotFunc, ecdf::StatsBase.ECDF)
     ptype = plottype(P, Stairs)
-    x0 = ecdf_values(ecdf, Inf)
+    x0 = ecdf_xvalues(ecdf, Inf)
     if ptype <: Stairs
         kwargs = (; step=:post)
         x1 = x0[1]
@@ -25,7 +25,7 @@ function convert_arguments(P::PlotFunc, x::AbstractVector, ecdf::StatsBase.ECDF)
 end
 function convert_arguments(P::PlotFunc, x0::AbstractInterval, ecdf::StatsBase.ECDF)
     xmin, xmax = extrema(x0)
-    z = ecdf_values(ecdf, Inf)
+    z = ecdf_xvalues(ecdf, Inf)
     n = length(z)
     imin, imax = findfirst(>(xmin), z), findlast(<(xmax), z)
     idx_min = imin === nothing ? n+1 : imin
@@ -56,7 +56,7 @@ end
 function plot!(p::ECDFPlot{<:Tuple{<:AbstractVector}})
     points = lift(p[1], p.npoints, p.weights) do x, npoints, weights
         ecdf = StatsBase.ecdf(x; weights=weights)
-        z = ecdf_values(ecdf, npoints)
+        z = ecdf_xvalues(ecdf, npoints)
         z1 = z[1]
         xnew = [z1 - eps(z1); z]
         ynew = ecdf(xnew)
