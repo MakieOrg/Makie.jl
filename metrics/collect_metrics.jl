@@ -98,5 +98,4 @@ CSV.write(filename, df)
 
 run(`git add $filename`)
 run(`git commit -m "update metrics"`)
-error()
 run(`git push -u origin $branch_name`)

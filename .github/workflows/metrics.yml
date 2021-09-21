@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: webfactory/ssh-agent@v0.5.2
         with:
-          ssh-private-key: ${{ secrets.PREVIEW_DELETER_KEY }}
+          ssh-private-key: ${{ secrets.DOCUMENTER_KEY }}
       - name: Checkout
         uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
