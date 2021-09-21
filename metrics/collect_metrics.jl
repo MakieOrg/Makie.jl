@@ -90,6 +90,8 @@ else
     run(`git rm -rf .`)
 end
 
+run(`git pull`)
+
 filename = "compilation_latencies.csv"
 
 df = if !isfile(filename)
