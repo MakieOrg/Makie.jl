@@ -15,6 +15,7 @@ new_results = begin
     df = DataFrame()
     date = now()
 
+    # one process for every file in metrics folder
     for file in readdir("metrics", join = true)
 
         code = read(file, String)
