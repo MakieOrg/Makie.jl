@@ -69,6 +69,9 @@ cd("..")
 
 branch_exists = String(read(`git ls-remote --heads git@github.com:JuliaPlots/Makie.jl.git $branch_name`)) != ""
 
+run(`git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"`)
+run(`git config --global user.name "github-actions[bot]"`)
+
 if branch_exists
     @info "branch $branch_name exists, checking out"
     run(`git checkout $branch_name`)
@@ -94,4 +97,5 @@ CSV.write(filename, df)
 
 run(`git add $filename`)
 run(`git commit -m "update metrics"`)
+error()
 run(`git push -u origin $branch_name`)
