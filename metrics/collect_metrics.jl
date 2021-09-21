@@ -79,6 +79,7 @@ if branch_exists
 else
     @info "branch $branch_name doesn't exist, creating new orphan branch"
     run(`git checkout --orphan $branch_name`)
+    run(`git rm -rf .`)
 end
 
 filename = "compilation_latencies.csv"
