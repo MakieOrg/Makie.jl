@@ -68,7 +68,7 @@ branch_name = "metrics"
 # move to top folder
 cd("..")
 
-branch_exists = String(read(`git ls-remote --heads git@github.com:JuliaPlots/Makie.jl.git $branch_name`)) != ""
+branch_exists = success(`git rev-parse --verify --quiet $branch_name`)
 
 run(`git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"`)
 run(`git config --global user.name "github-actions[bot]"`)
