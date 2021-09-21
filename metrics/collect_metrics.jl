@@ -7,12 +7,15 @@ using DataFrames
 using Distributed
 using Dates
 
+makieversion = match(r"version = \"(.*?)\"", read("../Project.toml", String))[1]
+glmakieversion = match(r"version = \"(.*?)\"", read("../GLMakie/Project.toml", String))[1]
+cairomakieversion = match(r"version = \"(.*?)\"", read("../CairoMakie/Project.toml", String))[1]
+
 new_results = begin
     df = DataFrame()
     date = now()
 
-    # for file in readdir("metrics", join = true)
-    for file in []
+    for file in readdir("metrics", join = true)
 
         code = read(file, String)
         parts = split(code, r"^(?=## )"m, keepempty = false)
@@ -47,6 +50,9 @@ new_results = begin
                 push!(df, (
                     date = date,
                     juliaversion = string(Sys.VERSION),
+                    makie = makieversion,
+                    glmakie = glmakieversion,
+                    cairomakie = cairomakieversion,
                     name = partname,
                     time = timing.time,
                     allocations = timing.bytes,
