@@ -1,6 +1,8 @@
 name: Metrics
 on:
   push:
+    branches:
+      - jk/metrics
     tags: '*'
 jobs:
   test:

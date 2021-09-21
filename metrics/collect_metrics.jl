@@ -1,9 +1,11 @@
 using CSV
 using DataFrames
 using Distributed
+using Dates
 
-results = begin
+new_results = begin
     df = DataFrame()
+    date = now()
 
     for file in readdir("metrics", join = true)
 
@@ -38,6 +40,7 @@ results = begin
                 end
 
                 push!(df, (
+                    date = date,
                     juliaversion = string(Sys.VERSION),
                     name = partname,
                     time = timing.time,
@@ -52,3 +55,39 @@ results = begin
     end
     df
 end
+
+@show new_results
+
+branch_name = "metrics"
+
+# move to top folder
+cd("..")
+
+branch_exists = String(read(`git ls-remote --heads git@github.com:JuliaPlots/Makie.jl.git $branch_name`)) != ""
+
+if branch_exists
+    @info "branch $branch_name exists, checking out"
+    run(`git checkout $branch_name`)
+else
+    @info "branch $branch_name doesn't exist, creating new orphan branch"
+    run(`git checkout --orphan $branch_name`)
+end
+
+filename = "compilation_latencies.csv"
+
+df = if !isfile(filename)
+    @info "$filename doesn't exist, creating empty DataFrame."
+    DataFrame()
+else
+    @info "Loading DataFrame from $filename."
+    CSV.read(filename, DataFrame)
+end
+
+df = vcat(df, new_results, cols = :union)
+
+@info "Writing out DataFrame to $filename."
+CSV.write(filename, df)
+
+run(`git add $filename`)
+run(`git commit -m "update metrics"`)
+run(`git push -u origin $branch_name`)
