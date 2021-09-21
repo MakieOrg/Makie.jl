@@ -31,6 +31,7 @@ new_results = begin
             @everywhere i_proc begin
                 pkg"activate --temp"
                 pkg"dev .. MakieCore GLMakie CairoMakie"
+                Pkg.precompile()
                 @timed begin end
             end
 
