@@ -11,7 +11,8 @@ new_results = begin
     df = DataFrame()
     date = now()
 
-    for file in readdir("metrics", join = true)
+    # for file in readdir("metrics", join = true)
+    for file in []
 
         code = read(file, String)
         parts = split(code, r"^(?=## )"m, keepempty = false)
