@@ -44,4 +44,4 @@ jobs:
       - name: Collect metrics
         run: >
           cd metrics;
-          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --project collect_metrics.jl'
+          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --project collect_metrics.jl
