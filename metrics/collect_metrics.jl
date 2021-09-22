@@ -7,22 +7,35 @@ using DataFrames
 using Distributed
 using Dates
 
-metric_target = get(ENV, "METRIC_TARGET", "")
-if isempty(metric_target)
-    error("No metric target set (commit or tag)")
+metric_target_raw = get(ENV, "METRIC_TARGET", "")
+if isempty(metric_target_raw)
+    error("No metric target set.")
 end
 
-@info "checking out metric target $metric_target"
-run(`git checkout $metric_target`)
+metric_targets = if startswith(metric_target_raw, "regex ")
+    # a workflow_dispatch input of "regex some_regex" matches tags against some_regex
+    tags = strip.(split(read(`git tag`, String)))
+    regex = match(r"regex (.*)", metric_target_raw)[1] |> strip
+    filter(x -> !isnothing(match(Regex(regex), x)), tags)
+else
+    [metric_target_raw]
+end
 
-makieversion = match(r"version = \"(.*?)\"", read("../Project.toml", String))[1]
-glmakieversion = match(r"version = \"(.*?)\"", read("../GLMakie/Project.toml", String))[1]
-cairomakieversion = match(r"version = \"(.*?)\"", read("../CairoMakie/Project.toml", String))[1]
-commit_date = DateTime(
-    strip(String(read(`git show -s --format=%ci`)))[1:end-6],
-    "yyyy-mm-dd HH:MM:SS")
+@info "metric targets: $metric_targets"
 
-new_results = begin
+results = DataFrame()
+
+for metric_target in metric_targets
+    @info "checking out metric target $metric_target"
+    run(`git checkout $metric_target`)
+
+    makieversion = match(r"version = \"(.*?)\"", read("../Project.toml", String))[1]
+    glmakieversion = match(r"version = \"(.*?)\"", read("../GLMakie/Project.toml", String))[1]
+    cairomakieversion = match(r"version = \"(.*?)\"", read("../CairoMakie/Project.toml", String))[1]
+    commit_date = DateTime(
+        strip(String(read(`git show -s --format=%ci`)))[1:end-6],
+        "yyyy-mm-dd HH:MM:SS")
+
     df = DataFrame()
     date = now()
 
@@ -78,11 +91,10 @@ new_results = begin
         finally
             rmprocs(i_proc)
         end
+        
+        append!(results, df, cols = :union)
     end
-    df
 end
-
-@show new_results
 
 branch_name = "metrics"
 
@@ -99,7 +111,6 @@ if !success(`git checkout $branch_name`)
     run(`git checkout --orphan $branch_name`)
     run(`git rm -rf .`)
 end
-run(`git pull`)
 
 filename = "compilation_latencies.csv"
 
@@ -111,7 +122,7 @@ else
     CSV.read(filename, DataFrame)
 end
 
-df = vcat(df, new_results, cols = :union)
+append!(df, results, cols = :union)
 sort!(df, :commit_date)
 
 @info "Writing out DataFrame to $filename."
