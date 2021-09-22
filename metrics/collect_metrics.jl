@@ -27,7 +27,7 @@ results = DataFrame()
 
 for metric_target in metric_targets
     @info "checking out metric target $metric_target"
-    run(`git checkout $metric_target`)
+    run(`git checkout $metric_target --`)
 
     makieversion = match(r"version = \"(.*?)\"", read("../Project.toml", String))[1]
     glmakieversion = match(r"version = \"(.*?)\"", read("../GLMakie/Project.toml", String))[1]
@@ -106,11 +106,13 @@ run(`git config --global user.name "github-actions[bot]"`)
 
 
 @info "Checking out $branch_name."
-if !success(`git checkout $branch_name`)
+if !success(`git checkout $branch_name --`)
     @info "branch $branch_name doesn't exist, creating new orphan branch"
-    run(`git checkout --orphan $branch_name`)
+    run(`git checkout --orphan $branch_name --`)
     run(`git rm -rf .`)
 end
+
+run(`ls`)
 
 filename = "compilation_latencies.csv"
 
