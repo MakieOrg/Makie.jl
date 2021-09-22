@@ -84,7 +84,7 @@ run(`git config --global user.name "github-actions[bot]"`)
 if branch_exists
     @info "branch $branch_name exists, checking out"
     run(`git checkout $branch_name`)
-    run(`git pull`)
+    run(`git pull origin $branch_name`)
 else
     @info "branch $branch_name doesn't exist, creating new orphan branch"
     run(`git checkout --orphan $branch_name`)
