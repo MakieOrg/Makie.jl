@@ -122,4 +122,4 @@ CSV.write(filename, df)
 
 run(`git add $filename`)
 run(`git commit -m "update metrics"`)
-run(`git push -u origin $branch_name`)
+run(`git push origin $branch_name`)
