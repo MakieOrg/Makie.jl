@@ -1,8 +1,6 @@
 name: Metrics
 on:
   push:
-    branches:
-      - jk/metrics
     tags: '*'
   workflow_dispatch:
     inputs:
