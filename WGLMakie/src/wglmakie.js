@@ -380,8 +380,8 @@ const WGLMakie = (function () {
             fragmentShader: deserialize_three(program.fragment_source),
             side: is_volume ? THREE.BackSide : THREE.DoubleSide,
             transparent: true,
-            depthTest: !program.overdraw,
-            depthWrite: !program.transparency
+            depthTest: !JSServe.get_observable(program.overdraw),
+            depthWrite: !JSServe.get_observable(program.transparency)
         });
     }
 
