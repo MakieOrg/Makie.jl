@@ -7,8 +7,8 @@ using DataFrames
 using Distributed
 using Dates
 
-metric_target = get(ENV, "METRIC_TARGET", "nothing")
-if isnothing(metric_target)
+metric_target = get(ENV, "METRIC_TARGET", "")
+if isempty(metric_target)
     error("No metric target set (commit or tag)")
 end
 
