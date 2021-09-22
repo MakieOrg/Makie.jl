@@ -97,6 +97,7 @@ for metric_target in metric_targets
 end
 
 branch_name = "metrics"
+remote_branch = "origin/metrics"
 
 # move to top folder
 cd("..")
@@ -105,13 +106,15 @@ run(`git config --global user.email "41898282+github-actions[bot]@users.noreply.
 run(`git config --global user.name "github-actions[bot]"`)
 
 
+run(`git fetch`)
 @info "Checking out $branch_name."
-if !success(`git checkout $branch_name --`)
+if !success(`git checkout -b $branch_name $remote_branch`)
     @info "branch $branch_name doesn't exist, creating new orphan branch"
     run(`git checkout --orphan $branch_name --`)
     run(`git rm -rf .`)
 end
 
+println("\nFiles in working directory:")
 run(`ls`)
 
 filename = "compilation_latencies.csv"
