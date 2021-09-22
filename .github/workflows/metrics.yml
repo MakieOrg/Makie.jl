@@ -52,5 +52,4 @@ jobs:
         env:
           METRIC_TARGET: ${{ github.event.inputs.metric_target || steps.get_tag.outputs.CURRENT_TAG || steps.get_short_hash.outputs.SHORT_HASH }}
         run: >
-          cd metrics;
-          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia collect_metrics.jl
+          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia ./metrics/collect_metrics.jl

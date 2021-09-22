@@ -1,5 +1,5 @@
 using Pkg
-Pkg.activate(".")
+Pkg.activate("./metrics")
 Pkg.instantiate()
 
 using CSV
@@ -11,6 +11,8 @@ metric_target_raw = get(ENV, "METRIC_TARGET", "")
 if isempty(metric_target_raw)
     error("No metric target set.")
 end
+
+run(`git fetch`)
 
 metric_targets = if startswith(metric_target_raw, "regex ")
     # a workflow_dispatch input of "regex some_regex" matches tags against some_regex
@@ -27,8 +29,6 @@ else
     [metric_target_raw]
 end
 
-
-
 @info "metric targets: $metric_targets"
 
 results = DataFrame()
@@ -37,9 +37,9 @@ for metric_target in metric_targets
     @info "checking out metric target $metric_target"
     run(`git checkout $metric_target --`)
 
-    makieversion = match(r"version = \"(.*?)\"", read("../Project.toml", String))[1]
-    glmakieversion = match(r"version = \"(.*?)\"", read("../GLMakie/Project.toml", String))[1]
-    cairomakieversion = match(r"version = \"(.*?)\"", read("../CairoMakie/Project.toml", String))[1]
+    makieversion = match(r"version = \"(.*?)\"", read("Project.toml", String))[1]
+    glmakieversion = match(r"version = \"(.*?)\"", read("GLMakie/Project.toml", String))[1]
+    cairomakieversion = match(r"version = \"(.*?)\"", read("CairoMakie/Project.toml", String))[1]
     commit_date = DateTime(
         strip(String(read(`git show -s --format=%ci`)))[1:end-6],
         "yyyy-mm-dd HH:MM:SS")
@@ -48,7 +48,7 @@ for metric_target in metric_targets
     date = now()
 
     # one process for every file in metrics folder
-    for file in readdir("metrics", join = true)
+    for file in readdir(joinpath("metrics", "metrics"), join = true)
 
         code = read(file, String)
         parts = split(code, r"^(?=## )"m, keepempty = false)
@@ -63,7 +63,7 @@ for metric_target in metric_targets
 
             @everywhere i_proc begin
                 pkg"activate --temp"
-                pkg"dev .. MakieCore GLMakie CairoMakie"
+                pkg"dev . MakieCore GLMakie CairoMakie"
                 Pkg.precompile()
                 @timed begin end
             end
@@ -106,14 +106,9 @@ end
 branch_name = "metrics"
 remote_branch = "origin/metrics"
 
-# move to top folder
-cd("..")
-
 run(`git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"`)
 run(`git config --global user.name "github-actions[bot]"`)
 
-
-run(`git fetch`)
 @info "Checking out $branch_name."
 if !success(`git checkout -b $branch_name $remote_branch`)
     @info "branch $branch_name doesn't exist, creating new orphan branch"
