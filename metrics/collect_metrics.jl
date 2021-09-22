@@ -33,6 +33,12 @@ end
 
 results = DataFrame()
 
+# one vector of code parts for every file in metrics folder
+parts_vectors = map(readdir(joinpath("metrics", "metrics"), join = true)) do file
+    code = read(file, String)
+    parts = split(code, r"^(?=## )"m, keepempty = false)
+end
+
 for metric_target in metric_targets
     @info "checking out metric target $metric_target"
     run(`git checkout $metric_target --`)
@@ -47,11 +53,7 @@ for metric_target in metric_targets
     df = DataFrame()
     date = now()
 
-    # one process for every file in metrics folder
-    for file in readdir(joinpath("metrics", "metrics"), join = true)
-
-        code = read(file, String)
-        parts = split(code, r"^(?=## )"m, keepempty = false)
+    for parts in parts_vectors
 
         local i_proc
         try
