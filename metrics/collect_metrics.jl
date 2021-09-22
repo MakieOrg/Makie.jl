@@ -89,20 +89,17 @@ branch_name = "metrics"
 # move to top folder
 cd("..")
 
-branch_exists = success(`git rev-parse --verify --quiet $branch_name`)
-
 run(`git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"`)
 run(`git config --global user.name "github-actions[bot]"`)
 
-if branch_exists
-    @info "branch $branch_name exists, checking out"
-    run(`git checkout $branch_name`)
-    run(`git pull origin $branch_name`)
-else
+
+@info "Checking out $branch_name."
+if !success(`git checkout $branch_name`)
     @info "branch $branch_name doesn't exist, creating new orphan branch"
     run(`git checkout --orphan $branch_name`)
     run(`git rm -rf .`)
 end
+run(`git pull`)
 
 filename = "compilation_latencies.csv"
 
