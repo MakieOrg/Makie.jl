@@ -16,10 +16,18 @@ metric_targets = if startswith(metric_target_raw, "regex ")
     # a workflow_dispatch input of "regex some_regex" matches tags against some_regex
     tags = strip.(split(read(`git tag`, String)))
     regex = match(r"regex (.*)", metric_target_raw)[1] |> strip
-    filter(x -> !isnothing(match(Regex(regex), x)), tags)
+    r = Regex(regex)
+    ts = filter(x -> !isnothing(match(r, x)), tags)
+    @info "available tags: $tags"
+    if isempty(ts)
+        error("No metric targets found with regex: $r")
+    end
+    ts
 else
     [metric_target_raw]
 end
+
+
 
 @info "metric targets: $metric_targets"
 
