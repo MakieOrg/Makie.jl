@@ -18,7 +18,9 @@ run(`git checkout $metric_target`)
 makieversion = match(r"version = \"(.*?)\"", read("../Project.toml", String))[1]
 glmakieversion = match(r"version = \"(.*?)\"", read("../GLMakie/Project.toml", String))[1]
 cairomakieversion = match(r"version = \"(.*?)\"", read("../CairoMakie/Project.toml", String))[1]
-commit_timestamp = strip(String(read(`git show -s --format=%ci`)))
+commit_date = DateTime(
+    strip(String(read(`git show -s --format=%ci`)))[1:end-6],
+    "yyyy-mm-dd HH:MM:SS")
 
 new_results = begin
     df = DataFrame()
@@ -60,7 +62,7 @@ new_results = begin
 
                 push!(df, (
                     date = date,
-                    commit_date = commit_timestamp,
+                    commit_date = commit_date,
                     metric_target = metric_target,
                     juliaversion = string(Sys.VERSION),
                     makie = makieversion,
@@ -113,6 +115,7 @@ else
 end
 
 df = vcat(df, new_results, cols = :union)
+sort!(df, :commit_date)
 
 @info "Writing out DataFrame to $filename."
 CSV.write(filename, df)
