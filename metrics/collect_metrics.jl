@@ -90,10 +90,9 @@ for metric_target in metric_targets
 
         finally
             rmprocs(i_proc)
-        end
-        
-        append!(results, df, cols = :union)
+        end    
     end
+    append!(results, df, cols = :union)
 end
 
 branch_name = "metrics"
