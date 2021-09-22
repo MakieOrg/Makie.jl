@@ -7,9 +7,18 @@ using DataFrames
 using Distributed
 using Dates
 
+metric_target = get(ENV, "METRIC_TARGET", "nothing")
+if isnothing(metric_target)
+    error("No metric target set (commit or tag)")
+end
+
+@info "checking out metric target $metric_target"
+run(`git checkout $metric_target`)
+
 makieversion = match(r"version = \"(.*?)\"", read("../Project.toml", String))[1]
 glmakieversion = match(r"version = \"(.*?)\"", read("../GLMakie/Project.toml", String))[1]
 cairomakieversion = match(r"version = \"(.*?)\"", read("../CairoMakie/Project.toml", String))[1]
+commit_timestamp = strip(String(read(`git show -s --format=%ci`)))
 
 new_results = begin
     df = DataFrame()
@@ -51,6 +60,8 @@ new_results = begin
 
                 push!(df, (
                     date = date,
+                    commit_date = commit_timestamp,
+                    metric_target = metric_target,
                     juliaversion = string(Sys.VERSION),
                     makie = makieversion,
                     glmakie = glmakieversion,

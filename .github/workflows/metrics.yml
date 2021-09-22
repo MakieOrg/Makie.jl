@@ -4,6 +4,11 @@ on:
     branches:
       - jk/metrics
     tags: '*'
+  workflow_dispatch:
+    inputs:
+        metric_target:
+          description: 'What to run the metrics against (commit hash, tag, ...)'
+          required: true
 jobs:
   test:
     name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
@@ -18,6 +23,12 @@ jobs:
         arch:
           - x64
     steps:
+      - name: Get tag if it exists
+        id: get_tag
+        run: echo ::set-output name=CURRENT_TAG::${GITHUB_REF/refs\/tags\//}
+      - name: Get short commit hash
+        id: get_short_hash
+        run: echo ::set-output name=SHORT_HASH::$(git rev-parse --short "$GITHUB_SHA")
       - uses: webfactory/ssh-agent@v0.5.2
         with:
           ssh-private-key: ${{ secrets.PREVIEW_DELETER_KEY }}
@@ -39,6 +50,8 @@ jobs:
             ${{ runner.os }}-
       - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
       - name: Collect metrics
+        env:
+          METRIC_TARGET: ${{ github.event.inputs.metric_target || steps.get_tag.outputs.CURRENT_TAG || steps.get_short_hash.outputs.SHORT_HASH }}
         run: >
           cd metrics;
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia collect_metrics.jl
