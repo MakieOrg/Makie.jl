@@ -297,7 +297,8 @@ stocknode = Node(stockvalues)
 
 fig, ax, sc = stockchart(timestamps, stocknode)
 
-record(fig, joinpath(@OUTPUT, "stockchart_animation.mp4"), 101:200,
+prevdir = pwd(); try cd(@OUTPUT) # hide
+record(fig, "stockchart_animation.mp4", 101:200,
         framerate = 30) do t
     # push a new timestamp without triggering the observable
     push!(timestamps[], t)
@@ -319,6 +320,7 @@ record(fig, joinpath(@OUTPUT, "stockchart_animation.mp4"), 101:200,
     # to the right
     autolimits!(ax)
 end
+finally cd(prevdir) end # hide
 nothing # hide
 
 using GLMakie # hide

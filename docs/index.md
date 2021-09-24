@@ -48,7 +48,8 @@ fig, ax, l = lines(points, color = colors,
     axis = (; type = Axis3, protrusions = (0, 0, 0, 0),
         viewmode = :fit, limits = (-30, 30, -30, 30, 0, 50)))
 
-record(fig, joinpath(@OUTPUT, "lorenz.mp4"), 1:120) do frame
+prevdir = pwd(); try cd(@OUTPUT) # hide
+record(fig, "lorenz.mp4", 1:120) do frame
     for i in 1:50
         push!(points[], step!(attractor))
         push!(colors[], frame)
@@ -57,6 +58,7 @@ record(fig, joinpath(@OUTPUT, "lorenz.mp4"), 1:120) do frame
     notify.((points, colors))
     l.colorrange = (0, frame)
 end
+finally cd(prevdir) end # hide
 set_theme!() # hide
 ```
 ~~~

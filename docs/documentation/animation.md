@@ -28,10 +28,12 @@ nframes = 30
 framerate = 30
 hue_iterator = range(0, 360, length=nframes)
 
-record(fig, joinpath(@OUTPUT, "color_animation.mp4"), hue_iterator;
+prevdir = pwd(); try cd(@OUTPUT) # hide
+record(fig, "color_animation.mp4", hue_iterator;
         framerate = framerate) do hue
     lineplot.color = HSV(hue, 1, 0.75)
 end
+finally cd(prevdir) end # hide
 nothing # hide
 ```
 
@@ -84,10 +86,12 @@ scatter!(xs, ys_2, color = :red, markersize = 15)
 framerate = 30
 timestamps = range(0, 2, step=1/framerate)
 
-record(fig, joinpath(@OUTPUT, "time_animation.mp4"), timestamps;
+prevdir = pwd(); try cd(@OUTPUT) # hide
+record(fig, "time_animation.mp4", timestamps;
         framerate = framerate) do t
     time[] = t
 end
+finally cd(prevdir) end # hide
 nothing # hide
 ```
 
@@ -104,9 +108,11 @@ color_observable = @lift(RGBf($time, 0, 0))
 
 fig = lines(0..10, sin, color = color_observable)
 
-record(fig, joinpath(@OUTPUT, "color_animation_2.mp4"), timestamps; framerate = framerate) do t
+prevdir = pwd(); try cd(@OUTPUT) # hide
+record(fig, "color_animation_2.mp4", timestamps; framerate = framerate) do t
     time[] = t
 end
+finally cd(prevdir) end # hide
 nothing # hide
 ```
 
@@ -127,11 +133,13 @@ limits!(ax, 0, 30, 0, 30)
 
 frames = 1:30
 
-record(fig, joinpath(@OUTPUT, "append_animation.mp4"), frames;
+prevdir = pwd(); try cd(@OUTPUT) # hide
+record(fig, "append_animation.mp4", frames;
         framerate = 30) do frame
     new_point = Point2f(frame, frame)
     points[] = push!(points[], new_point)
 end
+finally cd(prevdir) end # hide
 nothing # hide
 ```
 
