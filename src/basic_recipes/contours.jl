@@ -6,6 +6,12 @@
 Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix
 If only `z::Matrix` is supplied, the indices of the elements in `z` will be used as the x and y locations when plotting the contour.
 
+The attribute levels can be either
+
+    an Int that produces n equally wide levels or bands
+
+    an AbstractVector{<:Real} that lists n consecutive edges from low to high, which result in n-1 levels or bands
+
 ## Attributes
 $(ATTRIBUTES)
 """
