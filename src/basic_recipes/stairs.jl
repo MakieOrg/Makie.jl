@@ -63,7 +63,23 @@ function plot!(p::Stairs{<:Tuple{<:AbstractVector{<:Point2}}})
         end
     end
 
-    lines!(p, steppoints; [x for x in pairs(p.attributes) if x[1] != :step]...)
+    if isa(p.color[], AbstractVector)
+        stepcolor = lift(p.color, p.step) do color, step
+            if step == :pre
+                c = [color';color'][2:end]
+            elseif step == :post
+                c = [color';color'][1:end-1]
+            elseif step == :center
+                c = [color';color'][1:end]
+            else
+                error("Invalid step $step. Valid options are :pre, :post and :center")
+            end
+            c
+        end
+        lines!(p, steppoints; color=stepcolor, [x for x in pairs(p.attributes) if x[1] != :step && x[1] != :color]...)
+    else
+        lines!(p, steppoints; [x for x in pairs(p.attributes) if x[1] != :step]...)
+    end
     p
 end
 
