@@ -2,7 +2,7 @@
 
 The Cairo Backend for Makie
 
-Read the docs for Makie and it's backends [here](http://makie.juliaplots.org/.dev)
+Read the docs for Makie and it's backends [here](http://makie.juliaplots.org/stable)
 
 
 ## Issues

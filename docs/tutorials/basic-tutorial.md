@@ -16,7 +16,7 @@ GLMakie can open interactive windows, or alternatively display bitmaps inline if
 
 WGLMakie shows interactive plots in environments that support interactive html displays, such as VSCode, Atom/Juno, Jupyter, Pluto, etc.
 
-For more information, have a look at [Backends & Output](@ref).
+For more information, have a look at \myreflink{Backends & Output}.
 
 Ok, now that this is out of the way, let's get started!
 
@@ -38,7 +38,7 @@ You can just call such a function and your plot will appear if your coding envir
     Objects such as [Figure](\reflink{Figures}), `FigureAxisPlot` or `Scene` are usually displayed whenever they are returned in global scope (e.g. in the REPL).
     To display such objects from within a local scope, like from within a function, you can directly call `display(figure)`, for example.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 
 x = range(0, 10, length=100)
@@ -49,7 +49,7 @@ lines(x, y)
 
 Another common function is \myreflink{scatter}.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 
 using CairoMakie
@@ -68,7 +68,7 @@ The functions without a `!` always create a new axis with a plot inside, while t
 
 Here's how you could plot two lines on top of each other.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 
 using CairoMakie
@@ -93,7 +93,7 @@ The call to `current_figure` is necessary here, because functions with `!` retur
 Every plotting function has attributes which you can set through keyword arguments.
 The lines in the previous example both have the same default color, which we can change easily.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 
 using CairoMakie
@@ -111,7 +111,7 @@ current_figure()
 Other plotting functions have different attributes.
 The function `scatter`, for example, does not only have the `color` attribute, but also a `markersize` attribute.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 
 using CairoMakie
@@ -128,7 +128,7 @@ current_figure()
 
 If you save the plot object returned from a call like `scatter!`, you can also manipulate its attributes later with the syntax `plot.attribute = new_value`.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 
 using CairoMakie
@@ -152,7 +152,7 @@ For example, it is usually much more performant to draw many points with one sca
 
 Here are the two scatter plots again, but one has varying markersize, and the other varying color.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 
 using CairoMakie
@@ -174,7 +174,7 @@ There are many different colormaps to choose from, take a look on the \myreflink
 The values are mapped to colors via the `colorrange` attribute, which by default goes from the minimum to the maximum color value, but we can also limit or expand the range manually.
 For example, we can constrain the previous scatter plot's color range to (0.25, 0.75), which will clip the colors at the bottom and the top quarters.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 
 sc.colorrange = (0.25, 0.75)
@@ -185,7 +185,7 @@ current_figure()
 
 Of course you can also use an array of colors directly, in which case the `colorrange` is ignored:
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 
 using CairoMakie
@@ -203,7 +203,7 @@ scatter(x, y, color = colors, markersize = 20)
 
 If you add label attributes to your plots, you can call the `axislegend` function to add a legend with all labeled plots to the current axis.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 
 using CairoMakie
@@ -229,7 +229,7 @@ We can also create a [Figure](\reflink{Figures}) directly and then continue work
 We can make subplots by giving the location of the subplot in our layout grid as the first argument to our plotting function.
 The basic syntax for specifying the location in a figure is `fig[row, col]`.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 
 using CairoMakie
@@ -257,7 +257,7 @@ The default 2D axis that we have created implicitly so far is called \myreflink{
 
 For example, we can create a figure with three axes.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 
 using CairoMakie
@@ -272,7 +272,7 @@ fig
 
 And then we can continue to plot into these empty axes.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 
 lines!(ax1, 0..10, sin)
@@ -286,7 +286,7 @@ Note, the notation `0..10` above creates a closed interval from `0` to `10` (see
 
 Axes also have many attributes that you can set, for example to give them a title, or labels.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 
 ax1.title = "sin"
@@ -312,7 +312,7 @@ You can see here that we can deconstruct the return value from the two `lines` c
 We can then feed the plot objects to the legend constructor.
 We place the legend in the second column and across both rows, which centers it nicely next to the two axes.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 
 using CairoMakie
@@ -332,7 +332,7 @@ In this example, we use a `heatmap`.
 You can see here that we split the return value of `heatmap` into three parts: the newly created figure, the axis and the heatmap plot object.
 This is useful as we can then continue with the figure `fig` and the heatmap `hm` which we need for the colorbar.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 
 using CairoMakie
@@ -346,7 +346,7 @@ fig
 The previous short syntax is basically equivalent to this longer, manual version.
 You can switch between those workflows however you please.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 
 using CairoMakie
@@ -366,7 +366,7 @@ You can do this using the plotting functions without the `!` suffix, like `lines
 
 You can pass axis attributes under the keyword `axis` and figure attributes under the keyword `figure`.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 
 using CairoMakie
@@ -388,6 +388,6 @@ You can read about the different available plotting functions with examples in t
 
 If you want to learn about making complex figures with nested sublayouts, have a look at the \myreflink{Layout Tutorial} section.
 
-If you're interested in creating interactive visualizations that use Makie's special `Observables` workflow, this is explained in more detail in the [Observables & Interaction](@ref) section.
+If you're interested in creating interactive visualizations that use Makie's special `Observables` workflow, this is explained in more detail in the \myreflink{Observables & Interaction} section.
 
 If you want to create animated movies, you can find more information in the \myreflink{Animations} section.

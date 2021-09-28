@@ -82,17 +82,17 @@ window.addEventListener('DOMContentLoaded', () => {
 		}
 
 		let b = document.createElement("button");
-		b.innerText = "\uf46d";
+		b.innerHTML = '<i class="far fa-clipboard"></i>';
 		b.title = "Copy code to clipboard"
 		b.classList.add("copy-code");
 		el.parentElement.append(b);
 
 		b.onclick = function(){
-			b.innerText = "\uf46c";
+			b.innerHTML = '<span class="copied-text">copied</span><i class="fas fa-clipboard-check"></i>';
 			b.classList.add("clicked");
 			copyToClipboard(el.innerText);
 			setTimeout(function(){
-				b.innerText = "\uf46d";
+				b.innerHTML = '<i class="far fa-clipboard"></i>';
 				b.classList.remove("clicked");
 			}, 2000);
 		};

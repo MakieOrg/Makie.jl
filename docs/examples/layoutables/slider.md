@@ -37,7 +37,7 @@ fig
 \end{examplefigure}
 ## Labelled slider convenience functions
 
-To create a horizontal layout containing a label, a slider, and a value label, use the convenience function [`Makie.MakieLayout.labelslider!`](@ref), or, if you need multiple aligned rows of sliders, use [`Makie.MakieLayout.labelslidergrid!`](@ref).
+To create a horizontal layout containing a label, a slider, and a value label, use the convenience function \apilink{Makie.MakieLayout.labelslider!}, or, if you need multiple aligned rows of sliders, use \apilink{Makie.MakieLayout.labelslidergrid!}.
 
 \begin{examplefigure}{}
 ```julia

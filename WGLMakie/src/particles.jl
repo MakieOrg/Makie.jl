@@ -26,7 +26,7 @@ end
 
 const IGNORE_KEYS = Set([:shading, :overdraw, :rotation, :distancefield, :markerspace,
                          :fxaa, :visible, :transformation, :alpha, :linewidth,
-                         :transparency, :marker, :lightposition, :cycle])
+                         :transparency, :marker, :lightposition, :cycle, :label])
 
 function create_shader(scene::Scene, plot::MeshScatter)
     # Potentially per instance attributes

@@ -28,3 +28,5 @@ Add here global latex commands to use throughout your pages.
 
 <!-- myreflink{Basic Tutorial} expands to [Basic Tutorial](link_to_that) -->
 \newcommand{\myreflink}[1]{[!#1](\reflink{!#1})}
+
+\newcommand{\apilink}[1]{[`!#1`](/documentation/api_reference/#!#1)}

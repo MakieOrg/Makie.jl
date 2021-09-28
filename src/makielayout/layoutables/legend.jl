@@ -33,17 +33,17 @@ function layoutable(::Type{Legend},
     layoutobservables = LayoutObservables{Legend}(attrs.width, attrs.height, real_tellwidth, real_tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
-    scenearea = lift(round_to_IRect2D, layoutobservables.computedbbox)
+    legend_area = lift(round_to_IRect2D, layoutobservables.computedbbox)
 
-    scene = Scene(topscene, scenearea, camera = campixel!)
+    scene = Scene(topscene, topscene.px_area, camera = campixel!)
 
     # the rectangle in which the legend is drawn when margins are removed
-    legendrect = @lift(
-        BBox($margin[1], width($scenearea) - $margin[2],
-             $margin[3], height($scenearea) - $margin[4]))
+    legendrect = @lift begin
+        enlarge($legend_area, -$margin[1], -$margin[2], -$margin[3], -$margin[4])
+    end
 
     decorations[:frame] = poly!(scene,
-        @lift(enlarge($legendrect, repeat([-$framewidth/2], 4)...)),
+        legendrect,
         color = bgcolor, strokewidth = framewidth, visible = framevisible,
         strokecolor = framecolor, inspectable = false)
 

@@ -6,6 +6,10 @@ using ImageTransformations
 using Colors
 using Pkg
 
+
+############################ Initialization ##############################
+
+
 include("colormap_generation.jl")
 
 # Pause renderloop for slow software rendering.
@@ -16,16 +20,15 @@ GLMakie.set_window_config!(;
 )
 
 
-function hfun_bar(vname)
-  val = Meta.parse(vname[1])
-  return round(sqrt(val), digits=2)
-end
+# copy NEWS file over to documentation
+cp(
+  joinpath(@__DIR__, "..", "NEWS.md"),
+  joinpath(@__DIR__, "documentation", "news.md"),
+  force = true)
 
-function hfun_m1fill(vname)
-  var = vname[1]
-  return pagevar("index", var)
-end
 
+
+############################ Functions ##############################
 
 function hfun_doc(params)
   fname = params[1]
@@ -93,15 +96,13 @@ function env_examplefigure(com, _)
   s
 end
 
-
+# \video{name [, autoplay = false, loop = true, controls = true]}
 function lx_video(lxc, _)
-    if length(lxc.braces) == 1
-        rpath = Franklin.stent(lxc.braces[1])
-        alt   = ""
-    elseif length(lxc.braces) == 2
-        rpath = Franklin.stent(lxc.braces[2])
-        alt   = Franklin.stent(lxc.braces[1])
-    end
+    params = split(Franklin.stent(lxc.braces[1]), ",", limit = 2)
+    rpath, kwstring = params[1], length(params) == 1 ? "" : params[2]
+    alt = ""
+  
+    param_namedtuple = eval(Meta.parse("(;" * kwstring * ")"))
     
     path  = Franklin.parse_rpath(rpath; canonical=false, code=true)
     fdir, fext = splitext(path)
@@ -117,7 +118,7 @@ function lx_video(lxc, _)
     for ext ∈ candext
         candpath = fdir * ext
         syspath  = joinpath(Franklin.PATHS[:site], split(candpath, '/')...)
-        isfile(syspath) && return html_video(candpath, alt)
+        isfile(syspath) && return html_video(candpath, alt; param_namedtuple...)
     end
     # now try in the output dir just in case (provided we weren't already
     # looking there)
@@ -126,16 +127,16 @@ function lx_video(lxc, _)
         for ext ∈ candext
             candpath = joinpath(p1, "output", p2 * ext)
             syspath  = joinpath(Franklin.PATHS[:site], split(candpath, '/')...)
-            isfile(syspath) && return html_video(candpath, alt)
+            isfile(syspath) && return html_video(candpath, alt; param_namedtuple...)
         end
     end
     return Franklin.html_err("Video matching '$path' not found.")
   end
 
-function html_video(path, alt)
+function html_video(path, alt; controls::Bool = true, loop::Bool = true, autoplay::Bool = false)
   """
   ~~~
-  <video src="$path" controls="true" loop="true"></video>
+  <video src="$path" $(controls ? "controls" : "") $(loop ? "loop" : "") $(autoplay ? "autoplay muted playsinline" : "")></video>
   ~~~
   """
 end
@@ -339,10 +340,7 @@ end
             pretty_url = match(r"(.*)/index.html", first(Franklin.LOCAL_VARS["fd_url"]))
             pretty_url = pretty_url === nothing ? nothing : pretty_url[1]
 
-            n.metadata["isactive"] = pretty_url == "/" * join(parts, "/")
-
-
-            # n.metadata["active"] = pretty_url !== nothing && pretty_url[1] == item.route || (pretty_url[1] == "" && item.route == "/")
+            n.metadata["isactive"] = pretty_url == n.metadata["page"] || pretty_url == "/" * join(parts, "/")
           end
       end      
   end
@@ -451,3 +449,5 @@ function contenttable()
 
   return String(take!(io))
 end
+
+

@@ -35,7 +35,7 @@ https://github.com/JuliaPlots/Makie.jl/tree/master/WGLMakie.
 If you get an error pointing to [GLFW.jl](https://github.com/JuliaGL/GLFW.jl), please look into the existing [GLFW issues](https://github.com/JuliaGL/GLFW.jl/issues), and also google for those errors. This is then very likely something that needs fixing in the  [glfw c library](https://github.com/glfw/glfw) or in the GPU drivers.
 
 
-## WGL setup or X-forwarding
+## WSL setup or X-forwarding
 
 From: https://github.com/Microsoft/WSL/issues/2855#issuecomment-358861903
 

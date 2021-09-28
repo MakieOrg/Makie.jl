@@ -97,11 +97,11 @@ img.plotting-function-thumb {
     padding: 0.5em;
 }
 
-.doc-content *:last-child {
+.doc-content > *:last-child {
     margin-bottom: 0;
 }
 
-.doc-content *:first-child {
+.doc-content > *:first-child {
     margin-top: 0;
 }
 
@@ -311,7 +311,14 @@ ol {
     display: grid;
     grid-gap: 1em;
     justify-content: space-between;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.box-container-2 {
+    display: grid;
+    grid-gap: 1em;
+    justify-content: space-between;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .box {
@@ -322,6 +329,12 @@ ol {
     text-align: center;
     box-shadow: 0px 2px 4px 1px rgba(0, 0, 0, 0.11);
     font-size: var(--small);
+    transition: scale 0.2s ease-in-out;
+}
+
+.box:hover {
+    /* outline: 2px solid var(--link-color); */
+    scale: 1.03;
 }
 
 .box img {
@@ -329,12 +342,34 @@ ol {
     border-radius: 0.3em;
 }
 
-.box-content {}
 
 @media (max-width: 480px) {
-    .box-container {
-        grid-template-columns: 1fr;
+    .box-container, .box-container-2 {
+        grid-template-columns: minmax(0, 1fr);
     }
+
+    .box img {
+        max-width: 75%;
+    }
+}
+
+.youtube-container {
+    position: relative;
+    padding-bottom: 80.25%;
+    padding-top: 0;
+    height: 0;
+    overflow: hidden;
+    margin-top: 1em;
+}
+
+.youtube-container iframe,
+.youtube-container object,
+.youtube-container embed {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
 }
 
 .title {
@@ -351,7 +386,16 @@ ol {
 
 a.boxlink {
     text-decoration: none;
+    color: var(--text-color);
     display: block;
+}
+
+a.boxlink:visited {
+    color: var(--text-color);
+}
+
+a.boxlink:hover {
+    text-decoration: none;
 }
 
 /* banner */
@@ -578,12 +622,13 @@ input.collapse-toggle {
 
 #navbar ul.page-content {
     display: block;
-    background: rgb(250, 250, 250);
+    background: rgb(248, 248, 248);
+    border: 1px solid #ececec;
+    border-radius: 3px;
 }
 
 #navbar ul.page-content ul {
     display: block;
-    background: rgb(250, 250, 250);
 }
 
 #navbar input:checked~ul {
@@ -595,7 +640,7 @@ input.collapse-toggle {
 }
 
 .tocexpander {
-    margin-right: 0.75em;
+    margin-right: 0.45em;
     color: #ccc;
 }
 
@@ -641,7 +686,7 @@ input.collapse-toggle {
 }
 
 .banner-container {
-    margin-bottom: 3em;
+    margin-bottom: -1em;
     margin-top: 1em;
     background: url("../assets/bannermesh_gradient.png");
     background-size: cover;
@@ -652,7 +697,8 @@ input.collapse-toggle {
 
 @media (min-width: 800px) {
     .banner-container {
-        padding-top: 23.95%; /* 700 / 2922 */
+        padding-top: 19.25%;
+        margin-bottom: 1em;
     }
 }
 
@@ -671,31 +717,44 @@ input.hidecode {
 }
 
 input.hidecode + pre {
-    margin-top: 0;
+    margin-bottom: 0;
 }
 
 input.hidecode + pre code {
-    border-top-left-radius: 0;
-    border-top-right-radius: 0;
-    height: 11em;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    height: 8em;
     overflow-y: hidden;
+    box-shadow: inset 0px -19px 9px -20px rgba(0, 0, 0, 0.14);
+    border-bottom: none;
 }
 
 input.hidecode:checked + pre code {
     height: 100%;
-    transition: 1s linear;
+    box-shadow: none;
 }
 
 label.hidecode {
     display: block;
     text-align: center;
     padding: 0.25em;
-    background: #eee;
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
+    background: var(--block-background);
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
     border: 1px solid #eaeaea;
     font-size: var(--small);
-    color: #a7a6a6;
+    color: rgb(160, 160, 160);
+    border-top: none;
+    margin-bottom: 2em;
+}
+
+input.hidecode + pre + label.hidecode::after {
+    content: "\f103";
+    font-family: "Font Awesome 5 Free";
+}
+
+input.hidecode:checked + pre + label.hidecode::after {
+    content: "\f102";
 }
 
 label.hidecode:hover {
@@ -707,16 +766,22 @@ pre {
 }
 
 button.copy-code {
-    font-family: "Font Awesome 5 Free";
     position: absolute;
-    top: 0.25em;
-    right: 0.25em;
-    background: rgba(0, 0, 0, 0.07);
+    top: 0.2em;
+    right: 0.3em;
+    background: transparent;
     border: none;
     color: #a2a2a2;
-    border-radius: 0.25em;
-    padding: 0.25em 0.4em;
-    font-size: 0.9em;
+    padding: 0;
+    font-size: 1.2em;
+    display: flex;
+    align-items: center;
+}
+
+.copied-text {
+    font-size: 0.6em;
+    margin-right: 0.2em;
+    text-transform: uppercase;
 }
 
 button.copy-code.clicked {

@@ -42,4 +42,4 @@ Makie provides three main updating functions:
 
 ## Events
 
-Scenes have several pre-created event "hooks" (through Observables) that you can handle.  These can be accessed through `scene.events`, which returns an [`Events`](@ref) struct.
+Scenes have several pre-created event "hooks" (through Observables) that you can handle.  These can be accessed through `scene.events`, which returns an \apilink{Events} struct.
