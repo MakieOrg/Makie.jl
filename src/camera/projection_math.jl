@@ -221,47 +221,6 @@ function transformationmatrix(translation, scale, rotation::Quaternion)
     trans_scale*rotation
 end
 
-function transformationmatrix(
-        translation::Vec{3}, scale::Vec{3}, rotation::Quaternion,
-        align, flip::NTuple{3, Bool}, boundingbox::Nothing
-    )
-    return transformationmatrix(translation, scale, rotation)
-end
-function transformationmatrix(
-    translation::Vec{3}, scale::Vec{3}, rotation::Quaternion,
-    align, flip::NTuple{3, Bool})
-    return transformationmatrix(translation, scale, rotation)
-end
-
-
-function transformationmatrix(
-        translation::Vec{3}, scale::Vec{3}, rotation::Quaternion,
-        align, flip::NTuple{3, Bool}, boundingbox::Rect3
-    )
-    full_width = widths(boundingbox)
-    mini = minimum(boundingbox)
-    half_width = full_width ./ 2
-    to_origin = (half_width + mini)
-    if isnan(to_origin)
-        to_origin = Vec3f(0)
-    end
-    align_middle = translationmatrix(-to_origin)
-    align_back = translationmatrix(to_origin)
-    flipsign = map(x-> ifelse(x, -1f0, 1f0), Vec{3}(flip))
-    flipped = align_back * scalematrix(flipsign) * align_middle
-    aligned = flipped #translationmatrix(align .* full_width) * flipped
-    trans_scale = transformationmatrix(translation, scale)
-    rotation = Mat4f(rotation)
-    aligned * trans_scale * rotation
-end
-
-function transformationmatrix(
-        translation, scale, _rotation::Vec{3,T}, up = Vec{3,T}(0,0,1)
-    ) where T
-    q = rotation(_rotation, up)
-    transformationmatrix(translation, scale, q)
-end
-
 #Calculate rotation between two vectors
 function rotation(u::Vec{3, T}, v::Vec{3, T}) where T
     # It is important that the inputs are of equal length when
@@ -278,8 +237,6 @@ function rotation(u::Vec{3, T}, v::Vec{3, T}) where T
     return Quaternion(cross(u, half)..., dot(u, half))
 end
 
-
-
 function to_world(scene::Scene, point::T) where T <: StaticVector
     cam = scene.camera
     x = to_world(
@@ -294,6 +251,7 @@ end
 
 w_component(x::Point) = 1.0
 w_component(x::Vec) = 0.0
+
 function to_world(
         p::StaticVector{N, T},
         prj_view_inv::Mat4,
@@ -321,7 +279,7 @@ end
 
 function project(scene::Scene, point::T) where T<:StaticVector
     cam = scene.camera
-    project(
+    return project(
         cam.projection[] *
         cam.view[] *
         transformationmatrix(scene)[],

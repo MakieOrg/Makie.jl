@@ -8,18 +8,17 @@ function Makie.plot!(
         lscene.attributes[:show_axis] = pop!(attributes, :show_axis)
     end
 
-
     show_axis = get!(lscene.attributes, :show_axis, true)
     plot = Makie.plot!(lscene.scene, P, attributes, args...; kw_attributes...)
 
-    if isnothing(lscene.scene[OldAxis]) && to_value(show_axis)
-        # Add axis and center on first plot!
-        Makie.axis3d!(lscene.scene)
+    if isnothing(lscene.scene[OldAxis])
+        # Add axis on first plot!, if requested
+        to_value(show_axis) && Makie.axis3d!(lscene.scene)
     else
         # Update limits when plotting new objects
-        axis = lscene.scene[OldAxis]
+        axis_plot = lscene.scene[OldAxis]
         lims = data_limits(lscene.scene, Makie.isaxis)
-        axis[1] = lims
+        axis_plot[1] = lims
     end
     # Make sure axis is always in pos 1
     sort!(lscene.scene.plots, by=!Makie.isaxis)

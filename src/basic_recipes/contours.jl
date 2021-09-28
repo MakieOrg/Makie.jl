@@ -96,7 +96,7 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
         levels = to_levels(l, vrange)
         nlevels = length(levels)
         N = nlevels * 50
-        iso_eps = 20 # TODO calculate this
+        iso_eps = nlevels * ((vrange[2] - vrange[1]) / N) # TODO calculate this
         cmap = to_colormap(_cmap)
         v_interval = cliprange[1] .. cliprange[2]
         # resample colormap and make the empty area between iso surfaces transparent
