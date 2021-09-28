@@ -84,7 +84,6 @@ conversion_trait(::Type{<: Contour}) = ContinuousSurface()
 conversion_trait(::Type{<: Contour{<: Tuple{X, Y, Z, Vol}}}) where {X, Y, Z, Vol} = VolumeLike()
 conversion_trait(::Type{<: Contour{<: Tuple{<: AbstractArray{T, 3}}}}) where T = VolumeLike()
 
-THIS_GLOBAL = nothing
 function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     x, y, z, volume = plot[1:4]
     @extract plot (colormap, levels, linewidth, alpha)
