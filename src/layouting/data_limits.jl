@@ -118,7 +118,11 @@ function point_iterator(x::Volume)
     return unique(decompose(Point, rect))
 end
 
-foreach_plot(f, s::Scene) = foreach_plot(f, s.plots)
+function foreach_plot(f, s::Scene)
+    foreach_plot(f, s.plots)
+    foreach(sub-> foreach_plot(f, sub), s.children)
+end
+
 foreach_plot(f, s::Figure) = foreach_plot(f, s.scene)
 foreach_plot(f, s::FigureAxisPlot) = foreach_plot(f, s.figure)
 foreach_plot(f, plot::Combined) = foreach_plot(f, plot.plots)
