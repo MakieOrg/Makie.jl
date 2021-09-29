@@ -89,4 +89,3 @@ end
 
 prerendertype(::Type{RenderObject{Pre}}) where {Pre} = Pre
 prerendertype(::RenderObject{Pre}) where {Pre} = Pre
-
