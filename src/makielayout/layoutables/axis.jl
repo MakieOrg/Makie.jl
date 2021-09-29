@@ -455,7 +455,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     if fl == finallimits[]
         notify(finallimits)
     end
-    
+
     ax
 end
 
@@ -580,8 +580,6 @@ function validate_limits_for_scales(lims::Rect, xsc, ysc)
 end
 
 validate_limits_for_scale(lims, scale) = all(x -> x in defined_interval(scale), lims)
-
-
 
 palettesyms(cycle::Cycle) = [c[2] for c in cycle.cycle]
 attrsyms(cycle::Cycle) = [c[1] for c in cycle.cycle]
@@ -1288,4 +1286,3 @@ defined_interval(::typeof(sqrt)) = Interval{:closed,:open}(0, Inf)
 defined_interval(::typeof(Makie.logit)) = OpenInterval(0.0, 1.0)
 defined_interval(::typeof(Makie.pseudolog10)) = OpenInterval(-Inf, Inf)
 defined_interval(::Makie.Symlog10) = OpenInterval(-Inf, Inf)
-
