@@ -189,7 +189,7 @@ barplot!(
     fillto = gantt.start,
     direction = :x,
     color = colors[gantt.job],
-    x_gap = 0.5
+    gap = 0.5
 )
 
 #Add labels
