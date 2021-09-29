@@ -148,7 +148,7 @@ end
 
 function update_boundingbox!(bb_ref, point)
     if all(isfinite, point)
-        vec = to_ndim(Vec3f0, point, 0.0)
+        vec = to_ndim(Vec3f, point, 0.0)
         bb_ref[] = update(bb_ref[], vec)
     end
 end

@@ -93,10 +93,8 @@ function Base.empty!(screen::Screen)
 end
 
 function destroy!(screen::Screen)
-    empty!(screen)
     screen.window_open[] = false
-    empty!(screen.cache)
-    empty!(screen.cache2plot)
+    empty!(screen)
     destroy!(screen.glscreen)
 end
 
