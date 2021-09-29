@@ -2,7 +2,7 @@
 @def order = 0
 @def frontpage = true
 
-## Welcome to Makie!
+# Welcome to Makie!
 
 Makie is a data visualization ecosystem for the [Julia](https://julialang.org/) programming language, with high performance and extensibility.
 It is available for Windows, Mac and Linux.
@@ -10,7 +10,6 @@ It is available for Windows, Mac and Linux.
 ## Example
 
 ~~~
-<label for="hidecode" class="hidecode">Expand code</label>
 <input id="hidecode" class="hidecode" type="checkbox">
 ~~~
 ```julia:lorenz
@@ -58,9 +57,13 @@ record(fig, joinpath(@OUTPUT, "lorenz.mp4"), 1:120) do frame
     notify.((points, colors))
     l.colorrange = (0, frame)
 end
+set_theme!() # hide
 ```
+~~~
+<label for="hidecode" class="hidecode"></label>
+~~~
 
-\video{lorenz}
+\video{lorenz, autoplay = true}
 
 ## Installation and Import
 
@@ -183,7 +186,7 @@ These packages and sites are maintained by third parties. If you install package
       Grammar-of-graphics style plotting, inspired by ggplot2.
       @@
       ~~~
-      <img src="/assets/algebraofgraphics_example.svg">
+      <img src="/assets/aog_example.png">
       ~~~
     @@
     ~~~</a>~~~
@@ -204,6 +207,20 @@ These packages and sites are maintained by third parties. If you install package
   @@
 
   @@box
+    ~~~<a class="boxlink" href="https://github.com/JuliaPlots/GraphMakie.jl">~~~
+    @@title GraphMakie.jl @@
+    @@box-content
+      @@description
+      Graphs with two- and three-dimensional layout algorithms.
+      @@
+      ~~~
+      <img src="/assets/graphmakie.png">
+      ~~~
+    @@
+    ~~~</a>~~~
+  @@
+
+  @@box
     ~~~<a class="boxlink" href="https://github.com/JuliaPlots/GeoMakie.jl">~~~
     @@title GeoMakie.jl @@
     @@box-content
@@ -218,6 +235,29 @@ These packages and sites are maintained by third parties. If you install package
   @@
 @@
 
+
+## Citing Makie
+
+If you use Makie for a scientific publication, please cite [our JOSS paper](https://joss.theoj.org/papers/10.21105/joss.03349) the following way:
+
+> Danisch & Krumbiegel, (2021). Makie.jl: Flexible high-performance data visualization for Julia. Journal of Open Source Software, 6(65), 3349, https://doi.org/10.21105/joss.03349
+
+You can use the following BibTeX entry:
+
+```
+@article{DanischKrumbiegel2021,
+  doi = {10.21105/joss.03349},
+  url = {https://doi.org/10.21105/joss.03349},
+  year = {2021},
+  publisher = {The Open Journal},
+  volume = {6},
+  number = {65},
+  pages = {3349},
+  author = {Simon Danisch and Julius Krumbiegel},
+  title = {Makie.jl: Flexible high-performance data visualization for Julia},
+  journal = {Journal of Open Source Software}
+}
+```
 
 ## Getting Help
 

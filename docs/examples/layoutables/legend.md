@@ -17,9 +17,10 @@ The legend defaults themselves are by default inherited from the main theme.
 For example, `polystrokewidth` of the legend falls back to `patchstrokewidth` of the main theme.
 In the following example, you can see that the legend for `sca2` copies the `:rect` marker but not the vector-valued color.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
+CairoMakie.activate!() # hide
 
 f = Figure()
 
@@ -43,7 +44,7 @@ f
 You can also create a Legend by passing it an axis object, like `Axis`, `LScene` or `Scene`.
 All plots that have a `label` attribute set will be put into the legend, in the order that they appear in the axis, and you can optionally pass a title as the third argument.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 
@@ -64,7 +65,7 @@ With the keywords `merge` and `unique` you can control how plot objects with the
 If `merge` is `true`, all plot objects with the same label will be layered on top of each other into one legend entry.
 If `unique` is `true`, all plot objects with the same plot type and label will be reduced to one occurrence.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 
@@ -98,7 +99,7 @@ f
 You can control the number of banks with the `nbanks` attribute. Banks are columns
 when in vertical mode, and rows when in horizontal mode.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 
@@ -122,7 +123,7 @@ If you pass only a string, it's used as the title with the current axis.
 
 The position can be set via a shortcut symbol, first halign (l, r, c) then valign (b, t, c), such as :lt for left, top and :cb for center bottom.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 
@@ -151,7 +152,7 @@ set the legend's `tellheight` and `tellwidth` to `false` and position it using t
 variables. You can use the margin keyword to keep the legend from touching the axis
 spines.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 
@@ -202,7 +203,7 @@ The attributes `linepoints`, `markerpoints` and `polypoints` decide where in the
 These values should be normalized to a 1 by 1 rectangle, and the final shape depends on the `patchsize` of the legend.
 For example, if you want wider line and poly markers, you could set the `patchsize` of the legend to `(50, 30)`.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 
@@ -242,7 +243,7 @@ number of rows instead of columns. To keep an adjacent axis from potentially shr
 the width of the horizontal legend, set `tellwidth = false` and `tellheight = true`
 if you place the legend below or above the axis.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 
@@ -272,7 +273,7 @@ an array of elements and an array of labels, each within one collective array.
 You can shift the position of the titles relative to each group with the
 `titleposition` attribute, either `:left` or `:top`.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 

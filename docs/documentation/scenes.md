@@ -46,4 +46,4 @@ In general, `update!` is to be used to keep data in sync, and `update_cam!` and 
 
 ## Events
 
-Scenes have several pre-created event "hooks" (through Observables) that you can handle.  These can be accessed through `scene.events`, which returns an [`Events`](@ref) struct.
+Scenes have several pre-created event "hooks" (through Observables) that you can handle.  These can be accessed through `scene.events`, which returns an \apilink{Events} struct.

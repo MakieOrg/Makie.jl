@@ -16,6 +16,29 @@ Data is the gold and silver of our age, so let's spread it out beautifully on th
 [docs-master-img]: https://img.shields.io/badge/docs-master-blue.svg
 [docs-master-url]: http://makie.juliaplots.org/dev/
 
+# Citing Makie
+
+If you use Makie for a scientific publication, please cite [our JOSS paper](https://joss.theoj.org/papers/10.21105/joss.03349) the following way:
+
+> Danisch & Krumbiegel, (2021). Makie.jl: Flexible high-performance data visualization for Julia. Journal of Open Source Software, 6(65), 3349, https://doi.org/10.21105/joss.03349
+
+BibTeX entry:
+
+```bib
+@article{DanischKrumbiegel2021,
+  doi = {10.21105/joss.03349},
+  url = {https://doi.org/10.21105/joss.03349},
+  year = {2021},
+  publisher = {The Open Journal},
+  volume = {6},
+  number = {65},
+  pages = {3349},
+  author = {Simon Danisch and Julius Krumbiegel},
+  title = {Makie.jl: Flexible high-performance data visualization for Julia},
+  journal = {Journal of Open Source Software}
+}
+```
+
 # Installation
 
 Please consider using the backends directly. As explained in the documentation, they re-export all of Makie's functionality.
