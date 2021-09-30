@@ -460,7 +460,7 @@ function on_hover(inspector)
     mp = mouseposition_px(parent)
     should_clear = true
     for (plt, idx) in pick_sorted(parent, mp, inspector.plot.range[])
-        if to_value(get(plt.attributes, :inspectable, true)) &&
+        if to_value(get(plt.attributes, :inspectable, true))
             # show_data should return true if it created a tooltip
             if show_data_recursion(inspector, plt, idx)
                 should_clear = false
