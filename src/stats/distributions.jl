@@ -1,4 +1,4 @@
-#= 
+#=
 Taken from https://github.com/JuliaPlots/StatsMakie.jl/blob/master/src/typerecipes/distribution.jl
 The StatMakie.jl package is licensed under the MIT "Expat" License:
     Copyright (c) 2018: Pietro Vertechi. =#
@@ -34,8 +34,8 @@ end
     default_theme(scene, Scatter)
 end
 
-convert_arguments(::Type{<:QQNorm}, args...; kwargs...) =
-    convert_arguments(QQPlot, Distributions.Normal, args...; kwargs...)
+convert_arguments(::Type{<:QQNorm}, args...; qqline=:R, kwargs...) =
+    convert_arguments(QQPlot, Distributions.Normal(0, 1), args...; qqline=qqline, kwargs...)
 
 convert_arguments(::Type{<:QQPlot}, args...; kwargs...) =
     convert_arguments(Scatter, qqbuild(loc(args...)...); kwargs...)
