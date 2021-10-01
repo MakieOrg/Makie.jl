@@ -10,8 +10,7 @@ macro Layoutable(name::Symbol, fields::Expr = Expr(:block))
         mutable struct $name <: Layoutable
             parent::Union{Figure, Scene, Nothing}
             layoutobservables::LayoutObservables
-            attributes::Attributes
-            elements::Dict{Symbol, Any}
+            layerscene::Scene
         end
     end
 
@@ -20,7 +19,7 @@ macro Layoutable(name::Symbol, fields::Expr = Expr(:block))
     # linenumbernode block, struct block, fields block
 
     allfields = structdef.args[2].args[3].args
-
+    basefields = filter(x -> !(x isa LineNumberNode), allfields)
     append!(allfields, fields.args)
 
     fieldnames = map(filter(x -> !(x isa LineNumberNode), allfields)) do field
@@ -34,8 +33,13 @@ macro Layoutable(name::Symbol, fields::Expr = Expr(:block))
     end
 
     constructor = quote
-        function $name($(fieldnames...))
-            new($(fieldnames...))
+        # """
+        #     $name(basefields...)
+
+        # Creates $name with all fields but the base fields uninitialized.
+        # """
+        function $name($(basefields...))
+            new($(basefields...))
         end
     end
 
@@ -65,17 +69,37 @@ function _layoutable(T::Type{<:Layoutable},
     l
 end
 
-function _layoutable(T::Type{<:Layoutable}, fig::Figure, args...; kwargs...)
-    l = layoutable(T, fig, args...; kwargs...)
-    register_in_figure!(fig, l)
-    if can_be_current_axis(l)
-        Makie.current_axis!(fig, l)
+function _layoutable(T::Type{<:Layoutable}, fig_or_scene::Union{Figure, Scene},
+        args...; bbox = nothing, kwargs...)
+
+    # create basic layout observables
+    lobservables = LayoutObservables{T}(
+        Observable{Any}(nothing),
+        Observable{Any}(nothing),
+        Observable(true),
+        Observable(true),
+        Observable(:center),
+        Observable(:center),
+        Observable(Inside());
+        suggestedbbox = bbox
+    )
+
+    topscene = get_topscene(fig_or_scene)
+    layerscene = Scene(topscene, lift(identity, topscene.px_area), camera = campixel!, show_axis = false, raw = true)
+
+    # create base layoutable with otherwise undefined fields
+    l = T(fig_or_scene, lobservables, layerscene)
+
+    initialize_attributes!(l)
+    initialize_layoutable!(l, args...; kwargs...)
+
+    if fig_or_scene isa Figure
+        register_in_figure!(fig_or_scene, l)
+        if can_be_current_axis(l)
+            Makie.current_axis!(fig_or_scene, l)
+        end
     end
     l
-end
-
-function _layoutable(T::Type{<:Layoutable}, scene::Scene, args...; kwargs...)
-    layoutable(T, scene, args...; kwargs...)
 end
 
 
@@ -105,28 +129,35 @@ end
 # make fields type inferrable
 # just access attributes directly instead of via indexing detour
 
-@generated Base.hasfield(x::T, ::Val{key}) where {T<:Layoutable, key} = :($(key in fieldnames(T)))
+# @generated Base.hasfield(x::T, ::Val{key}) where {T<:Layoutable, key} = :($(key in fieldnames(T)))
 
-@inline function Base.getproperty(x::T, key::Symbol) where T <: Layoutable
-    if hasfield(x, Val(key))
-        getfield(x, key)
-    else
-        x.attributes[key]
-    end
-end
+# @inline function Base.getproperty(x::T, key::Symbol) where T <: Layoutable
+#     if hasfield(x, Val(key))
+#         getfield(x, key)
+#     else
+#         x.attributes[key]
+#     end
+# end
 
 @inline function Base.setproperty!(x::T, key::Symbol, value) where T <: Layoutable
-    if hasfield(x, Val(key))
-        setfield!(x, key, value)
+    if hasfield(T, key)
+        if fieldtype(T, key) <: Observable
+            if value isa Observable
+                error("It is disallowed to set an Observable field of a $T struct to an Observable, because this would replace the existing Observable. If you really want to do this, use `setfield!` instead.")
+            end
+            getfield(x, key)[] = value
+        else
+            setfield!(x, key, value)
+        end
     else
-        x.attributes[key][] = value
+        throw(KeyError(key))
     end
 end
 
 # propertynames should list fields and attributes
-function Base.propertynames(layoutable::T) where T <: Layoutable
-    [fieldnames(T)..., keys(layoutable.attributes)...]
-end
+# function Base.propertynames(layoutable::T) where T <: Layoutable
+#     [fieldnames(T)..., keys(layoutable.attributes)...]
+# end
 
 # treat all layoutables as scalars when broadcasting
 Base.Broadcast.broadcastable(l::Layoutable) = Ref(l)

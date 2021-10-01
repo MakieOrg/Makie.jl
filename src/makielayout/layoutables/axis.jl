@@ -1,3 +1,42 @@
+function initialize_attributes!(@nospecialize x)
+    T = typeof(x)
+    topscene = get_topscene(x.parent)
+    default_attrs = default_attributes(T, topscene).attributes
+    for (key, val) in default_attrs
+        OT = fieldtype(T, key)
+        if !hasfield(T, key)
+            @warn "Target doesn't have field $key"
+        else
+            if val isa Observable
+                init_observable!(x, key, OT, val[])
+            elseif val isa Attributes
+                setfield!(x, key, val)
+            else
+                error("Unexpected type $(typeof(val))")
+            end
+        end
+    end
+    return x
+end
+
+function init_observable!(@nospecialize(x), key, @nospecialize(OT), @nospecialize(value))
+    o = convert_for_attribute(observable_type(OT), value)
+    setfield!(x, key, OT(o))
+    return x
+end
+
+function observable_type(x::Type{Observable{T}}) where T
+    T
+end
+
+convert_for_attribute(t::Type{T}, value::T) where T = value
+convert_for_attribute(t::Type{Float64}, x) = convert(Float64, x)
+convert_for_attribute(t::Type{RGBAf}, x) = to_color(x)::RGBAf
+convert_for_attribute(t::Type{RGBAf}, x::RGBAf) = x
+convert_for_attribute(t::Any, x) = x
+convert_for_attribute(t::Type{Makie.FreeTypeAbstraction.FTFont}, x) = to_font(x)
+
+
 """
     layoutable(Axis, fig_or_scene; bbox = nothing, kwargs...)
 
@@ -5,123 +44,92 @@ Creates an `Axis` object in the parent `fig_or_scene` which consists of a child 
 with orthographic projection for 2D plots and axis decorations that live in the
 parent.
 """
-function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = nothing, kwargs...)
-
-    topscene = get_topscene(fig_or_scene)
-
-    default_attrs = default_attributes(Axis, topscene).attributes
-    theme_attrs = subtheme(topscene, :Axis)
-    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
-
-    @extract attrs (
-        title, titlefont, titlesize, titlegap, titlevisible, titlealign, titlecolor,
-        xlabel, ylabel, xlabelcolor, ylabelcolor, xlabelsize, ylabelsize,
-        xlabelvisible, ylabelvisible, xlabelpadding, ylabelpadding,
-        xticklabelsize, xticklabelcolor, yticklabelsize, xticklabelsvisible, yticklabelsvisible,
-        xticksize, yticksize, xticksvisible, yticksvisible,
-        xticklabelspace, yticklabelspace, yticklabelcolor, xticklabelpad, yticklabelpad,
-        xticklabelrotation, yticklabelrotation, xticklabelalign, yticklabelalign,
-        xtickalign, ytickalign, xtickwidth, ytickwidth, xtickcolor, ytickcolor,
-        xpanlock, ypanlock, xzoomlock, yzoomlock,
-        spinewidth, xtrimspine, ytrimspine,
-        xgridvisible, ygridvisible, xgridwidth, ygridwidth, xgridcolor, ygridcolor,
-        xgridstyle, ygridstyle,
-        aspect, halign, valign, xticks, yticks, xtickformat, ytickformat, panbutton,
-        xpankey, ypankey, xzoomkey, yzoomkey,
-        xaxisposition, yaxisposition,
-        bottomspinevisible, leftspinevisible, topspinevisible, rightspinevisible,
-        bottomspinecolor, leftspinecolor, topspinecolor, rightspinecolor,
-        backgroundcolor,
-        xlabelfont, ylabelfont, xticklabelfont, yticklabelfont,
-        flip_ylabel, xreversed, yreversed,
-        xminorticksvisible, xminortickalign, xminorticksize, xminortickwidth, xminortickcolor, xminorticks,
-        yminorticksvisible, yminortickalign, yminorticksize, yminortickwidth, yminortickcolor, yminorticks,
-        xminorgridvisible, yminorgridvisible, xminorgridwidth, yminorgridwidth,
-        xminorgridcolor, yminorgridcolor, xminorgridstyle, yminorgridstyle,
-        limits
-    )
-
-    decorations = Dict{Symbol, Any}()
-
-    protrusions = Node(GridLayoutBase.RectSides{Float32}(0,0,0,0))
-    layoutobservables = LayoutObservables{Axis}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight, halign, valign, attrs.alignmode;
-        suggestedbbox = bbox, protrusions = protrusions)
+function initialize_layoutable!(ax::Axis)
 
     # initialize either with user limits, or pick defaults based on scales
     # so that we don't immediately error
-    targetlimits = Node{Rect2f}(defaultlimits(limits[], attrs.xscale[], attrs.yscale[]))
-    finallimits = Node{Rect2f}(targetlimits[])
+    targetlimits = Node{Rect2f}(defaultlimits(ax.limits[], ax.xscale[], ax.yscale[]))
+    setfield!(ax, :targetlimits, targetlimits)
+    finallimits = Node{Rect2f}(ax.targetlimits[])
+    setfield!(ax, :finallimits, finallimits)
 
     # the first thing to do when setting a new scale is
     # resetting the limits because simply through expanding they might be invalid for log
-    # but we don't have the axis here yet, so we make this nice and ugly ref for it
-    this_axis = Ref{Union{Nothing, Axis}}(nothing)
-    onany(attrs.xscale, attrs.yscale) do _, _
-        isnothing(this_axis[]) || reset_limits!(this_axis[])
+    onany(ax.xscale, ax.yscale) do _, _
+        reset_limits!(ax)
     end
 
-    on(targetlimits) do lims
+    on(ax.targetlimits) do lims
         # this should validate the targetlimits before anything else happens with them
         # so there should be nothing before this lifting `targetlimits`
         # we don't use finallimits because that's one step later and you
         # already shouldn't set invalid targetlimits (even if they could
         # theoretically be adjusted to fit somehow later?)
         # and this way we can error pretty early
-        validate_limits_for_scales(lims, attrs.xscale[], attrs.yscale[])
+        validate_limits_for_scales(lims, ax.xscale[], ax.yscale[])
     end
 
-    scenearea = sceneareanode!(layoutobservables.computedbbox, finallimits, aspect)
+    scenearea = sceneareanode!(ax.layoutobservables.computedbbox, ax.finallimits, ax.aspect)
 
-    scene = Scene(topscene, scenearea, raw = true)
+    scene = Scene(ax.layerscene, scenearea, raw = true)
+    ax.scene = scene
 
-    background = poly!(topscene, scenearea, color = backgroundcolor, strokewidth = 0, raw = true, inspectable = false)
+    background = poly!(ax.layerscene, scenearea, color = ax.backgroundcolor,
+        strokewidth = 0,inspectable = false)
     translate!(background, 0, 0, -100)
-    decorations[:background] = background
+    # decorations[:background] = background
 
-    block_limit_linking = Node(false)
+    setfield!(ax, :block_limit_linking, Observable(false))
 
-    xaxislinks = Axis[]
-    yaxislinks = Axis[]
+    ax.xaxislinks = Axis[]
+    ax.yaxislinks = Axis[]
+
+    ax.cycler = Cycler()
 
     campixel!(scene)
 
     xgridnode = Node(Point2f[])
     xgridlines = linesegments!(
-        topscene, xgridnode, linewidth = xgridwidth, show_axis = false, visible = xgridvisible,
-        color = xgridcolor, linestyle = xgridstyle, inspectable = false
+        ax.layerscene, xgridnode, linewidth = ax.xgridwidth, show_axis = false, visible = ax.xgridvisible,
+        color = ax.xgridcolor, linestyle = ax.xgridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(xgridlines, 0, 0, -10)
-    decorations[:xgridlines] = xgridlines
+    # decorations[:xgridlines] = xgridlines
+
 
     xminorgridnode = Node(Point2f[])
     xminorgridlines = linesegments!(
-        topscene, xminorgridnode, linewidth = xminorgridwidth, show_axis = false, visible = xminorgridvisible,
-        color = xminorgridcolor, linestyle = xminorgridstyle, inspectable = false
+        ax.layerscene, xminorgridnode, linewidth = ax.xminorgridwidth,
+        show_axis = false, visible = ax.xminorgridvisible,
+        color = ax.xminorgridcolor, linestyle = ax.xminorgridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(xminorgridlines, 0, 0, -10)
-    decorations[:xminorgridlines] = xminorgridlines
+    # decorations[:xminorgridlines] = xminorgridlines
 
     ygridnode = Node(Point2f[])
     ygridlines = linesegments!(
-        topscene, ygridnode, linewidth = ygridwidth, show_axis = false, visible = ygridvisible,
-        color = ygridcolor, linestyle = ygridstyle, inspectable = false
+        ax.layerscene, ygridnode, linewidth = ax.ygridwidth, show_axis = false,
+        visible = ax.ygridvisible,
+        color = ax.ygridcolor, linestyle = ax.ygridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(ygridlines, 0, 0, -10)
-    decorations[:ygridlines] = ygridlines
+    # decorations[:ygridlines] = ygridlines
 
     yminorgridnode = Node(Point2f[])
     yminorgridlines = linesegments!(
-        topscene, yminorgridnode, linewidth = yminorgridwidth, show_axis = false, visible = yminorgridvisible,
-        color = yminorgridcolor, linestyle = yminorgridstyle, inspectable = false
+        ax.layerscene, yminorgridnode, linewidth = ax.yminorgridwidth,
+        show_axis = false, visible = ax.yminorgridvisible,
+        color = ax.yminorgridcolor, linestyle = ax.yminorgridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(yminorgridlines, 0, 0, -10)
-    decorations[:yminorgridlines] = yminorgridlines
+    # decorations[:yminorgridlines] = yminorgridlines
 
-    onany(finallimits, xreversed, yreversed, attrs.xscale, attrs.yscale) do lims, xrev, yrev, xsc, ysc
+
+    onany(finallimits, ax.xreversed, ax.yreversed, ax.xscale, ax.yscale) do lims, xrev, yrev, xsc, ysc
 
         nearclip = -10_000f0
         farclip = 10_000f0
@@ -139,13 +147,15 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         camera(scene).projectionview[] = projection
     end
 
-    onany(attrs.xscale, attrs.yscale) do xsc, ysc
+    onany(ax.xscale, ax.yscale) do xsc, ysc
         scene.transformation.transform_func[] = (xsc, ysc)
     end
 
-    notify(attrs.xscale)
+    notify(ax.xscale)
 
-    xaxis_endpoints = lift(xaxisposition, scene.px_area) do xaxisposition, area
+
+
+    xaxis_endpoints = lift(ax.xaxisposition, scene.px_area) do xaxisposition, area
         if xaxisposition == :bottom
             bottomline(Rect2f(area))
         elseif xaxisposition == :top
@@ -155,7 +165,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         end
     end
 
-    yaxis_endpoints = lift(yaxisposition, scene.px_area) do yaxisposition, area
+    yaxis_endpoints = lift(ax.yaxisposition, scene.px_area) do yaxisposition, area
         if yaxisposition == :left
             leftline(Rect2f(area))
         elseif yaxisposition == :right
@@ -165,31 +175,31 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         end
     end
 
-    xaxis_flipped = lift(x->x == :top, xaxisposition)
-    yaxis_flipped = lift(x->x == :right, yaxisposition)
+    xaxis_flipped = lift(x->x == :top, ax.xaxisposition)
+    yaxis_flipped = lift(x->x == :right, ax.yaxisposition)
 
-    xspinevisible = lift(xaxis_flipped, bottomspinevisible, topspinevisible) do xflip, bv, tv
+    xspinevisible = lift(xaxis_flipped, ax.bottomspinevisible, ax.topspinevisible) do xflip, bv, tv
         xflip ? tv : bv
     end
-    xoppositespinevisible = lift(xaxis_flipped, bottomspinevisible, topspinevisible) do xflip, bv, tv
+    xoppositespinevisible = lift(xaxis_flipped, ax.bottomspinevisible, ax.topspinevisible) do xflip, bv, tv
         xflip ? bv : tv
     end
-    yspinevisible = lift(yaxis_flipped, leftspinevisible, rightspinevisible) do yflip, lv, rv
+    yspinevisible = lift(yaxis_flipped, ax.leftspinevisible, ax.rightspinevisible) do yflip, lv, rv
         yflip ? rv : lv
     end
-    yoppositespinevisible = lift(yaxis_flipped, leftspinevisible, rightspinevisible) do yflip, lv, rv
+    yoppositespinevisible = lift(yaxis_flipped, ax.leftspinevisible, ax.rightspinevisible) do yflip, lv, rv
         yflip ? lv : rv
     end
-    xspinecolor = lift(xaxis_flipped, bottomspinecolor, topspinecolor) do xflip, bc, tc
+    xspinecolor = lift(xaxis_flipped, ax.bottomspinecolor, ax.topspinecolor) do xflip, bc, tc
         xflip ? tc : bc
     end
-    xoppositespinecolor = lift(xaxis_flipped, bottomspinecolor, topspinecolor) do xflip, bc, tc
+    xoppositespinecolor = lift(xaxis_flipped, ax.bottomspinecolor, ax.topspinecolor) do xflip, bc, tc
         xflip ? bc : tc
     end
-    yspinecolor = lift(yaxis_flipped, leftspinecolor, rightspinecolor) do yflip, lc, rc
+    yspinecolor = lift(yaxis_flipped, ax.leftspinecolor, ax.rightspinecolor) do yflip, lc, rc
         yflip ? rc : lc
     end
-    yoppositespinecolor = lift(yaxis_flipped, leftspinecolor, rightspinecolor) do yflip, lc, rc
+    yoppositespinecolor = lift(yaxis_flipped, ax.leftspinecolor, ax.rightspinecolor) do yflip, lc, rc
         yflip ? lc : rc
     end
 
@@ -208,34 +218,34 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         end
     end
 
-    xaxis = LineAxis(topscene, endpoints = xaxis_endpoints, limits = xlims,
-        flipped = xaxis_flipped, ticklabelrotation = xticklabelrotation,
-        ticklabelalign = xticklabelalign, labelsize = xlabelsize,
-        labelpadding = xlabelpadding, ticklabelpad = xticklabelpad, labelvisible = xlabelvisible,
-        label = xlabel, labelfont = xlabelfont, ticklabelfont = xticklabelfont, ticklabelcolor = xticklabelcolor, labelcolor = xlabelcolor, tickalign = xtickalign,
-        ticklabelspace = xticklabelspace, ticks = xticks, tickformat = xtickformat, ticklabelsvisible = xticklabelsvisible,
-        ticksvisible = xticksvisible, spinevisible = xspinevisible, spinecolor = xspinecolor, spinewidth = spinewidth,
-        ticklabelsize = xticklabelsize, trimspine = xtrimspine, ticksize = xticksize,
-        reversed = xreversed, tickwidth = xtickwidth, tickcolor = xtickcolor,
-        minorticksvisible = xminorticksvisible, minortickalign = xminortickalign, minorticksize = xminorticksize, minortickwidth = xminortickwidth, minortickcolor = xminortickcolor, minorticks = xminorticks, scale = attrs.xscale,
+    xaxis = LineAxis(ax.layerscene, endpoints = xaxis_endpoints, limits = xlims,
+        flipped = xaxis_flipped, ticklabelrotation = ax.xticklabelrotation,
+        ticklabelalign = ax.xticklabelalign, labelsize = ax.xlabelsize,
+        labelpadding = ax.xlabelpadding, ticklabelpad = ax.xticklabelpad, labelvisible = ax.xlabelvisible,
+        label = ax.xlabel, labelfont = ax.xlabelfont, ticklabelfont = ax.xticklabelfont, ticklabelcolor = ax.xticklabelcolor, labelcolor = ax.xlabelcolor, tickalign = ax.xtickalign,
+        ticklabelspace = ax.xticklabelspace, ticks = ax.xticks, tickformat = ax.xtickformat, ticklabelsvisible = ax.xticklabelsvisible,
+        ticksvisible = ax.xticksvisible, spinevisible = xspinevisible, spinecolor = xspinecolor, spinewidth = ax.spinewidth,
+        ticklabelsize = ax.xticklabelsize, trimspine = ax.xtrimspine, ticksize = ax.xticksize,
+        reversed = ax.xreversed, tickwidth = ax.xtickwidth, tickcolor = ax.xtickcolor,
+        minorticksvisible = ax.xminorticksvisible, minortickalign = ax.xminortickalign, minorticksize = ax.xminorticksize, minortickwidth = ax.xminortickwidth, minortickcolor = ax.xminortickcolor, minorticks = ax.xminorticks, scale = ax.xscale,
         )
-    decorations[:xaxis] = xaxis
+    # # decorations[:xaxis] = xaxis
 
-    yaxis  =  LineAxis(topscene, endpoints = yaxis_endpoints, limits = ylims,
-        flipped = yaxis_flipped, ticklabelrotation = yticklabelrotation,
-        ticklabelalign = yticklabelalign, labelsize = ylabelsize,
-        labelpadding = ylabelpadding, ticklabelpad = yticklabelpad, labelvisible = ylabelvisible,
-        label = ylabel, labelfont = ylabelfont, ticklabelfont = yticklabelfont, ticklabelcolor = yticklabelcolor, labelcolor = ylabelcolor, tickalign = ytickalign,
-        ticklabelspace = yticklabelspace, ticks = yticks, tickformat = ytickformat, ticklabelsvisible = yticklabelsvisible,
-        ticksvisible = yticksvisible, spinevisible = yspinevisible, spinecolor = yspinecolor, spinewidth = spinewidth,
-        trimspine = ytrimspine, ticklabelsize = yticklabelsize, ticksize = yticksize, flip_vertical_label = flip_ylabel, reversed = yreversed, tickwidth = ytickwidth,
-            tickcolor = ytickcolor,
-        minorticksvisible = yminorticksvisible, minortickalign = yminortickalign, minorticksize = yminorticksize, minortickwidth = yminortickwidth, minortickcolor = yminortickcolor, minorticks = yminorticks, scale = attrs.yscale,
+    yaxis  =  LineAxis(ax.layerscene, endpoints = yaxis_endpoints, limits = ylims,
+        flipped = yaxis_flipped, ticklabelrotation = ax.yticklabelrotation,
+        ticklabelalign = ax.yticklabelalign, labelsize = ax.ylabelsize,
+        labelpadding = ax.ylabelpadding, ticklabelpad = ax.yticklabelpad, labelvisible = ax.ylabelvisible,
+        label = ax.ylabel, labelfont = ax.ylabelfont, ticklabelfont = ax.yticklabelfont, ticklabelcolor = ax.yticklabelcolor, labelcolor = ax.ylabelcolor, tickalign = ax.ytickalign,
+        ticklabelspace = ax.yticklabelspace, ticks = ax.yticks, tickformat = ax.ytickformat, ticklabelsvisible = ax.yticklabelsvisible,
+        ticksvisible = ax.yticksvisible, spinevisible = yspinevisible, spinecolor = yspinecolor, spinewidth = ax.spinewidth,
+        trimspine = ax.ytrimspine, ticklabelsize = ax.yticklabelsize, ticksize = ax.yticksize, flip_vertical_label = ax.flip_ylabel, reversed = ax.yreversed, tickwidth = ax.ytickwidth,
+            tickcolor = ax.ytickcolor,
+        minorticksvisible = ax.yminorticksvisible, minortickalign = ax.yminortickalign, minorticksize = ax.yminorticksize, minortickwidth = ax.yminortickwidth, minortickcolor = ax.yminortickcolor, minorticks = ax.yminorticks, scale = ax.yscale,
         )
 
-    decorations[:yaxis] = yaxis
+    # decorations[:yaxis] = yaxis
 
-    xoppositelinepoints = lift(scene.px_area, spinewidth, xaxisposition) do r, sw, xaxpos
+    xoppositelinepoints = lift(scene.px_area, ax.spinewidth, ax.xaxisposition) do r, sw, xaxpos
         if xaxpos == :top
             y = bottom(r)
             p1 = Point2(left(r) - 0.5sw, y)
@@ -249,7 +259,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         end
     end
 
-    yoppositelinepoints = lift(scene.px_area, spinewidth, yaxisposition) do r, sw, yaxpos
+    yoppositelinepoints = lift(scene.px_area, ax.spinewidth, ax.yaxisposition) do r, sw, yaxpos
         if yaxpos == :right
             x = left(r)
             p1 = Point2(x, bottom(r) - 0.5sw)
@@ -263,47 +273,47 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         end
     end
 
-    xoppositeline = lines!(topscene, xoppositelinepoints, linewidth = spinewidth,
+    xoppositeline = lines!(ax.layerscene, xoppositelinepoints, linewidth = ax.spinewidth,
         visible = xoppositespinevisible, color = xoppositespinecolor, inspectable = false,
         linestyle = nothing)
-    decorations[:xoppositeline] = xoppositeline
+    # decorations[:xoppositeline] = xoppositeline
     translate!(xoppositeline, 0, 0, 20)
-    yoppositeline = lines!(topscene, yoppositelinepoints, linewidth = spinewidth,
+    yoppositeline = lines!(ax.layerscene, yoppositelinepoints, linewidth = ax.spinewidth,
         visible = yoppositespinevisible, color = yoppositespinecolor, inspectable = false,
         linestyle = nothing)
-    decorations[:yoppositeline] = yoppositeline
+    # decorations[:yoppositeline] = yoppositeline
     translate!(yoppositeline, 0, 0, 20)
 
 
     on(xaxis.tickpositions) do tickpos
         pxheight = height(scene.px_area[])
-        offset = xaxisposition[] == :bottom ? pxheight : -pxheight
+        offset = ax.xaxisposition[] == :bottom ? pxheight : -pxheight
         opposite_tickpos = tickpos .+ Ref(Point2f(0, offset))
         xgridnode[] = interleave_vectors(tickpos, opposite_tickpos)
     end
 
     on(yaxis.tickpositions) do tickpos
         pxwidth = width(scene.px_area[])
-        offset = yaxisposition[] == :left ? pxwidth : -pxwidth
+        offset = ax.yaxisposition[] == :left ? pxwidth : -pxwidth
         opposite_tickpos = tickpos .+ Ref(Point2f(offset, 0))
         ygridnode[] = interleave_vectors(tickpos, opposite_tickpos)
     end
 
     on(xaxis.minortickpositions) do tickpos
         pxheight = height(scene.px_area[])
-        offset = xaxisposition[] == :bottom ? pxheight : -pxheight
+        offset = ax.xaxisposition[] == :bottom ? pxheight : -pxheight
         opposite_tickpos = tickpos .+ Ref(Point2f(0, offset))
         xminorgridnode[] = interleave_vectors(tickpos, opposite_tickpos)
     end
 
     on(yaxis.minortickpositions) do tickpos
         pxwidth = width(scene.px_area[])
-        offset = yaxisposition[] == :left ? pxwidth : -pxwidth
+        offset = ax.yaxisposition[] == :left ? pxwidth : -pxwidth
         opposite_tickpos = tickpos .+ Ref(Point2f(offset, 0))
         yminorgridnode[] = interleave_vectors(tickpos, opposite_tickpos)
     end
 
-    titlepos = lift(scene.px_area, titlegap, titlealign, xaxisposition, xaxis.protrusion) do a,
+    titlepos = lift(scene.px_area, ax.titlegap, ax.titlealign, ax.xaxisposition, xaxis.protrusion) do a,
             titlegap, align, xaxisposition, xaxisprotrusion
 
         x = if align == :center
@@ -321,22 +331,22 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         Point2(x, yoffset)
     end
 
-    titlealignnode = lift(titlealign) do align
+    titlealignnode = lift(ax.titlealign) do align
         (align, :bottom)
     end
 
     titlet = text!(
-        topscene, title,
+        ax.layerscene, ax.title,
         position = titlepos,
-        visible = titlevisible,
-        textsize = titlesize,
+        visible = ax.titlevisible,
+        textsize = ax.titlesize,
         align = titlealignnode,
-        font = titlefont,
-        color = titlecolor,
+        font = ax.titlefont,
+        color = ax.titlecolor,
         space = :data,
         show_axis=false,
         inspectable = false)
-    decorations[:title] = titlet
+    # # decorations[:title] = titlet
 
     function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidth,
                 topspinevisible, bottomspinevisible, leftspinevisible, rightspinevisible,
@@ -366,18 +376,20 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         GridLayoutBase.RectSides{Float32}(left, right, bottom, top)
     end
 
-    onany(title, titlesize, titlegap, titlevisible, spinewidth,
-            topspinevisible, bottomspinevisible, leftspinevisible, rightspinevisible,
-            xaxis.protrusion, yaxis.protrusion, xaxisposition, yaxisposition) do args...
-        protrusions[] = compute_protrusions(args...)
+    onany(ax.title, ax.titlesize, ax.titlegap, ax.titlevisible, ax.spinewidth,
+            ax.topspinevisible, ax.bottomspinevisible, ax.leftspinevisible, ax.rightspinevisible,
+            xaxis.protrusion, yaxis.protrusion, ax.xaxisposition, ax.yaxisposition) do args...
+        ax.layoutobservables.protrusions[] = compute_protrusions(args...)
     end
 
-    # trigger first protrusions with one of the observables
-    title[] = title[]
+    # # trigger first protrusions with one of the observables
+    notify(ax.title)
 
     # trigger bboxnode so the axis layouts itself even if not connected to a
     # layout
-    layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
+    notify(ax.layoutobservables.suggestedbbox)
+
+
 
     mouseeventhandle = addmouseevents!(scene)
     scrollevents = Node(ScrollEvent(0, 0))
@@ -397,12 +409,12 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         return Consume(false)
     end
 
-    interactions = Dict{Symbol, Tuple{Bool, Any}}()
+    ax.interactions = Dict{Symbol, Tuple{Bool, Any}}()
 
-    ax = Axis(fig_or_scene, layoutobservables, attrs, decorations, scene,
-        xaxislinks, yaxislinks, targetlimits, finallimits, block_limit_linking,
-        mouseeventhandle, scrollevents, keysevents, interactions, Cycler())
-    this_axis[] = ax
+    # ax = Axis(fig_or_scene, layoutobservables, attrs, decorations, scene,
+    #     xaxislinks, yaxislinks, targetlimits, finallimits, block_limit_linking,
+    #     mouseeventhandle, scrollevents, keysevents, interactions, Cycler())
+    # this_axis[] = ax
 
     function process_event(event)
         for (active, interaction) in values(ax.interactions)
@@ -432,13 +444,13 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
 
 
     # these are the user defined limits
-    on(limits) do mlims
+    on(ax.limits) do mlims
         reset_limits!(ax)
     end
 
-    # these are the limits that we try to target, but they can be changed for correct aspects
+    # # these are the limits that we try to target, but they can be changed for correct aspects
     on(targetlimits) do tlims
-        update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, tlims)
+        update_linked_limits!(ax.block_limit_linking, ax.xaxislinks, ax.yaxislinks, tlims)
     end
 
     # compute limits that adhere to the limit aspect ratio whenever the targeted
@@ -451,7 +463,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     # their initial value as they need to be triggered at least once to correctly set up
     # projection matrices etc.
     fl = finallimits[]
-    notify(limits)
+    notify(ax.limits)
     if fl == finallimits[]
         notify(finallimits)
     end
@@ -851,8 +863,8 @@ function xautolimits(ax::Axis)
         end
 
         xlims = expandlimits(xlims,
-            ax.attributes.xautolimitmargin[][1],
-            ax.attributes.xautolimitmargin[][2],
+            ax.xautolimitmargin[][1],
+            ax.xautolimitmargin[][2],
             ax.xscale[])
     end
 
@@ -884,8 +896,8 @@ function yautolimits(ax)
         end
 
         ylims = expandlimits(ylims,
-            ax.attributes.yautolimitmargin[][1],
-            ax.attributes.yautolimitmargin[][2],
+            ax.yautolimitmargin[][1],
+            ax.yautolimitmargin[][2],
             ax.yscale[])
     end
 

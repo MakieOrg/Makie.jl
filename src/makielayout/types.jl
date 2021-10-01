@@ -168,16 +168,136 @@ end
 
 @Layoutable Axis begin
     scene::Scene
+    xlabel::Observable{String}
+    ylabel::Observable{String}
+    title::Observable{String}
+    titlefont::Observable{Makie.FreeTypeAbstraction.FTFont}
+    titlesize::Observable{Float64}
+    titlegap::Observable{Float64}
+    titlevisible::Observable{Bool}
+    titlealign::Observable{Symbol}
+    titlecolor::Observable{RGBAf0}
+    xlabelfont::Observable{Makie.FreeTypeAbstraction.FTFont}
+    ylabelfont::Observable{Makie.FreeTypeAbstraction.FTFont}
+    xlabelcolor::Observable{RGBAf0}
+    ylabelcolor::Observable{RGBAf0}
+    xlabelsize::Observable{Float64}
+    ylabelsize::Observable{Float64}
+    xlabelvisible::Observable{Bool}
+    ylabelvisible::Observable{Bool}
+    xlabelpadding::Observable{Float64}
+    ylabelpadding::Observable{Float64}
+    xticklabelfont::Observable{Makie.FreeTypeAbstraction.FTFont}
+    yticklabelfont::Observable{Makie.FreeTypeAbstraction.FTFont}
+    xticklabelcolor::Observable{RGBAf0}
+    yticklabelcolor::Observable{RGBAf0}
+    xticklabelsize::Observable{Float64}
+    yticklabelsize::Observable{Float64}
+    xticklabelsvisible::Observable{Bool}
+    yticklabelsvisible::Observable{Bool}
+    xticklabelspace::Observable{Union{Makie.Automatic, Float64}}
+    yticklabelspace::Observable{Union{Makie.Automatic, Float64}}
+    xticklabelpad::Observable{Float64}
+    yticklabelpad::Observable{Float64}
+    xticklabelrotation::Observable{Float64}
+    yticklabelrotation::Observable{Float64}
+    xticklabelalign::Observable{Union{Makie.Automatic, Float64}}
+    yticklabelalign::Observable{Union{Makie.Automatic, Float64}}
+    xticksize::Observable{Float64}
+    yticksize::Observable{Float64}
+    xticksvisible::Observable{Bool}
+    yticksvisible::Observable{Bool}
+    xtickalign::Observable{Float64}
+    ytickalign::Observable{Float64}
+    xtickwidth::Observable{Float64}
+    ytickwidth::Observable{Float64}
+    xtickcolor::Observable{RGBAf0}
+    ytickcolor::Observable{RGBAf0}
+    xpanlock::Observable{Bool}
+    ypanlock::Observable{Bool}
+    xzoomlock::Observable{Bool}
+    yzoomlock::Observable{Bool}
+    xrectzoom::Observable{Bool}
+    yrectzoom::Observable{Bool}
+    spinewidth::Observable{Float64}
+    xgridvisible::Observable{Bool}
+    ygridvisible::Observable{Bool}
+    xgridwidth::Observable{Float64}
+    ygridwidth::Observable{Float64}
+    xgridcolor::Observable{RGBAf0}
+    ygridcolor::Observable{RGBAf0}
+    xgridstyle::Observable{Any}
+    ygridstyle::Observable{Any}
+    xminorgridvisible::Observable{Bool}
+    yminorgridvisible::Observable{Bool}
+    xminorgridwidth::Observable{Float64}
+    yminorgridwidth::Observable{Float64}
+    xminorgridcolor::Observable{RGBAf0}
+    yminorgridcolor::Observable{RGBAf0}
+    xminorgridstyle::Observable{Any}
+    yminorgridstyle::Observable{Any}
+    bottomspinevisible::Observable{Bool}
+    leftspinevisible::Observable{Bool}
+    topspinevisible::Observable{Bool}
+    rightspinevisible::Observable{Bool}
+    bottomspinecolor::Observable{RGBAf0}
+    leftspinecolor::Observable{RGBAf0}
+    topspinecolor::Observable{RGBAf0}
+    rightspinecolor::Observable{RGBAf0}
+    aspect::Observable{Any}
+    valign::Observable{Any}
+    halign::Observable{Any}
+    width::Observable{Any}
+    height::Observable{Any}
+    tellwidth::Observable{Bool}
+    tellheight::Observable{Bool}
+    xautolimitmargin::Observable{Tuple{Float64, Float64}}
+    yautolimitmargin::Observable{Tuple{Float64, Float64}}
+    xticks::Observable{Any}
+    xtickformat::Observable{Any}
+    yticks::Observable{Any}
+    ytickformat::Observable{Any}
+    panbutton::Observable{Makie.Mouse.Button}
+    xpankey::Observable{Makie.Keyboard.Button}
+    ypankey::Observable{Makie.Keyboard.Button}
+    xzoomkey::Observable{Makie.Keyboard.Button}
+    yzoomkey::Observable{Makie.Keyboard.Button}
+    xaxisposition::Observable{Symbol}
+    yaxisposition::Observable{Symbol}
+    xtrimspine::Observable{Bool}
+    ytrimspine::Observable{Bool}
+    backgroundcolor::Observable{RGBAf0}
+    flip_ylabel::Observable{Bool}
+    autolimitaspect::Observable{Any}
+    limits::Observable{Any}
+    alignmode::Observable{Any}
+    yreversed::Observable{Bool}
+    xreversed::Observable{Bool}
+    xminorticksvisible::Observable{Bool}
+    xminortickalign::Observable{Float64}
+    xminorticksize::Observable{Float64}
+    xminortickwidth::Observable{Float64}
+    xminortickcolor::Observable{RGBAf0}
+    xminorticks::Observable{Any}
+    yminorticksvisible::Observable{Bool}
+    yminortickalign::Observable{Float64}
+    yminorticksize::Observable{Float64}
+    yminortickwidth::Observable{Float64}
+    yminortickcolor::Observable{RGBAf0}
+    yminorticks::Observable{Any}
+    xscale::Observable{Function}
+    yscale::Observable{Function}
     xaxislinks::Vector{Axis}
     yaxislinks::Vector{Axis}
-    targetlimits::Node{Rect2f}
-    finallimits::Node{Rect2f}
-    block_limit_linking::Node{Bool}
+    targetlimits::Observable{Rect2f}
+    finallimits::Observable{Rect2f}
+    cycler::Cycler
+    palette::Attributes
+    block_limit_linking::Observable{Bool}
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
     keysevents::Observable{KeysEvent}
     interactions::Dict{Symbol, Tuple{Bool, Any}}
-    cycler::Cycler
 end
 
 function RectangleZoom(f::Function, ax::Axis; kw...)

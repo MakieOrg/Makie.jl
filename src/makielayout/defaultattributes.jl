@@ -15,7 +15,7 @@ end
 
 function default_attributes(::Type{Axis}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
-        "Attributes with one palette per key, for example `color = [:red, :green, :blue]`"
+        # "Attributes with one palette per key, for example `color = [:red, :green, :blue]`"
         palette = scene !== nothing && haskey(scene.attributes, :palette) ? deepcopy(scene.palette) : Attributes()
         "The xlabel string."
         xlabel = ""
