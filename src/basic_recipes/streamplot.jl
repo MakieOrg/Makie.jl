@@ -176,7 +176,9 @@ function plot!(p::StreamPlot)
     )
     N = ndims(p.limits[])
 
-    if N == 2 #plot.markerspace[] == Pixel
+    if N == 2 # && scatterplot.markerspace[] == Pixel (default)
+        # Calculate arrow head rotations as angles. To avoid distortions from 
+        # (extreme) aspect ratios we need to project to pixel space and renormalize.
         scene = parent_scene(p)
         rotations = lift(scene.camera.projectionview, scene.px_area, data) do pv, pxa, data
             angles = map(data[1], data[2]) do pos, dir
