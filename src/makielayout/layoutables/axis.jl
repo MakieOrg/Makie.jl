@@ -1,8 +1,15 @@
-function initialize_attributes!(@nospecialize x)
+function initialize_attributes!(@nospecialize x; kwargs...)
     T = typeof(x)
     topscene = get_topscene(x.parent)
     default_attrs = default_attributes(T, topscene).attributes
+
     for (key, val) in default_attrs
+
+        # give kwargs priority
+        if haskey(kwargs, key)
+            val = kwargs[key]
+        end
+
         OT = fieldtype(T, key)
         if !hasfield(T, key)
             @warn "Target doesn't have field $key"
@@ -12,7 +19,7 @@ function initialize_attributes!(@nospecialize x)
             elseif val isa Attributes
                 setfield!(x, key, val)
             else
-                error("Unexpected type $(typeof(val))")
+                init_observable!(x, key, OT, val)
             end
         end
     end
@@ -25,9 +32,8 @@ function init_observable!(@nospecialize(x), key, @nospecialize(OT), @nospecializ
     return x
 end
 
-function observable_type(x::Type{Observable{T}}) where T
-    T
-end
+observable_type(x::Type{Observable{T}}) where T = T
+observable_type(x::Observable{T}) where T = T
 
 convert_for_attribute(t::Type{T}, value::T) where T = value
 convert_for_attribute(t::Type{Float64}, x) = convert(Float64, x)

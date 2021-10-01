@@ -90,8 +90,16 @@ function _layoutable(T::Type{<:Layoutable}, fig_or_scene::Union{Figure, Scene},
     # create base layoutable with otherwise undefined fields
     l = T(fig_or_scene, lobservables, layerscene)
 
-    initialize_attributes!(l)
-    initialize_layoutable!(l, args...; kwargs...)
+    non_attribute_kwargs = Dict(kwargs)
+    attribute_kwargs = typeof(non_attribute_kwargs)()
+    for (key, value) in non_attribute_kwargs
+        if hasfield(T, key) && fieldtype(T, key) <: Observable
+            attribute_kwargs[key] = pop!(non_attribute_kwargs, key)
+        end
+    end
+
+    initialize_attributes!(l; attribute_kwargs...)
+    initialize_layoutable!(l, args...; non_attribute_kwargs...)
 
     if fig_or_scene isa Figure
         register_in_figure!(fig_or_scene, l)
@@ -145,7 +153,8 @@ end
             if value isa Observable
                 error("It is disallowed to set an Observable field of a $T struct to an Observable, because this would replace the existing Observable. If you really want to do this, use `setfield!` instead.")
             end
-            getfield(x, key)[] = value
+            obs = getfield(x, key)
+            obs[] = convert_for_attribute(observable_type(obs), value)
         else
             setfield!(x, key, value)
         end
