@@ -159,7 +159,8 @@ end
             setfield!(x, key, value)
         end
     else
-        throw(KeyError(key))
+        # this will throw correctly
+        getfield(x, key)
     end
 end
 
@@ -242,3 +243,49 @@ function delete_scene!(s::Scene)
     deleteat!(s.parent.children, findfirst(x -> x === s, s.parent.children))
     nothing
 end
+
+
+
+function initialize_attributes!(@nospecialize x; kwargs...)
+    T = typeof(x)
+    topscene = get_topscene(x.parent)
+    default_attrs = default_attributes(T, topscene).attributes
+
+    for (key, val) in default_attrs
+
+        # give kwargs priority
+        if haskey(kwargs, key)
+            val = kwargs[key]
+        end
+
+        OT = fieldtype(T, key)
+        if !hasfield(T, key)
+            @warn "Target doesn't have field $key"
+        else
+            if val isa Observable
+                init_observable!(x, key, OT, val[])
+            elseif val isa Attributes
+                setfield!(x, key, val)
+            else
+                init_observable!(x, key, OT, val)
+            end
+        end
+    end
+    return x
+end
+
+function init_observable!(@nospecialize(x), key, @nospecialize(OT), @nospecialize(value))
+    o = convert_for_attribute(observable_type(OT), value)
+    setfield!(x, key, OT(o))
+    return x
+end
+
+observable_type(x::Type{Observable{T}}) where T = T
+observable_type(x::Observable{T}) where T = T
+
+convert_for_attribute(t::Type{T}, value::T) where T = value
+convert_for_attribute(t::Type{Float64}, x) = convert(Float64, x)
+convert_for_attribute(t::Type{RGBAf}, x) = to_color(x)::RGBAf
+convert_for_attribute(t::Type{RGBAf}, x::RGBAf) = x
+convert_for_attribute(t::Any, x) = x
+convert_for_attribute(t::Type{Makie.FreeTypeAbstraction.FTFont}, x) = to_font(x)

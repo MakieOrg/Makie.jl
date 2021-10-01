@@ -298,6 +298,8 @@ end
     scrollevents::Observable{ScrollEvent}
     keysevents::Observable{KeysEvent}
     interactions::Dict{Symbol, Tuple{Bool, Any}}
+    xaxis::LineAxis
+    yaxis::LineAxis
 end
 
 function RectangleZoom(f::Function, ax::Axis; kw...)

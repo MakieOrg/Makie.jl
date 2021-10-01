@@ -664,3 +664,8 @@ function get_minor_tickvalues(i::IntervalsBetween, scale::Union{typeof(log), typ
 
     vals
 end
+
+
+function Base.show(io::IO, ::MIME"text/plain", lineaxis::LineAxis)
+    print(io, "LineAxis()")
+end

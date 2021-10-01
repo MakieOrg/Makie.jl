@@ -1,48 +1,3 @@
-function initialize_attributes!(@nospecialize x; kwargs...)
-    T = typeof(x)
-    topscene = get_topscene(x.parent)
-    default_attrs = default_attributes(T, topscene).attributes
-
-    for (key, val) in default_attrs
-
-        # give kwargs priority
-        if haskey(kwargs, key)
-            val = kwargs[key]
-        end
-
-        OT = fieldtype(T, key)
-        if !hasfield(T, key)
-            @warn "Target doesn't have field $key"
-        else
-            if val isa Observable
-                init_observable!(x, key, OT, val[])
-            elseif val isa Attributes
-                setfield!(x, key, val)
-            else
-                init_observable!(x, key, OT, val)
-            end
-        end
-    end
-    return x
-end
-
-function init_observable!(@nospecialize(x), key, @nospecialize(OT), @nospecialize(value))
-    o = convert_for_attribute(observable_type(OT), value)
-    setfield!(x, key, OT(o))
-    return x
-end
-
-observable_type(x::Type{Observable{T}}) where T = T
-observable_type(x::Observable{T}) where T = T
-
-convert_for_attribute(t::Type{T}, value::T) where T = value
-convert_for_attribute(t::Type{Float64}, x) = convert(Float64, x)
-convert_for_attribute(t::Type{RGBAf}, x) = to_color(x)::RGBAf
-convert_for_attribute(t::Type{RGBAf}, x::RGBAf) = x
-convert_for_attribute(t::Any, x) = x
-convert_for_attribute(t::Type{Makie.FreeTypeAbstraction.FTFont}, x) = to_font(x)
-
-
 """
     layoutable(Axis, fig_or_scene; bbox = nothing, kwargs...)
 
@@ -160,51 +115,21 @@ function initialize_layoutable!(ax::Axis)
     notify(ax.xscale)
 
 
-
-    xaxis_endpoints = lift(ax.xaxisposition, scene.px_area) do xaxisposition, area
-        if xaxisposition == :bottom
-            bottomline(Rect2f(area))
-        elseif xaxisposition == :top
-            topline(Rect2f(area))
-        else
-            error("Invalid xaxisposition $xaxisposition")
-        end
-    end
-
-    yaxis_endpoints = lift(ax.yaxisposition, scene.px_area) do yaxisposition, area
-        if yaxisposition == :left
-            leftline(Rect2f(area))
-        elseif yaxisposition == :right
-            rightline(Rect2f(area))
-        else
-            error("Invalid yaxisposition $yaxisposition")
-        end
-    end
-
     xaxis_flipped = lift(x->x == :top, ax.xaxisposition)
     yaxis_flipped = lift(x->x == :right, ax.yaxisposition)
-
-    xspinevisible = lift(xaxis_flipped, ax.bottomspinevisible, ax.topspinevisible) do xflip, bv, tv
-        xflip ? tv : bv
-    end
+    
     xoppositespinevisible = lift(xaxis_flipped, ax.bottomspinevisible, ax.topspinevisible) do xflip, bv, tv
         xflip ? bv : tv
     end
-    yspinevisible = lift(yaxis_flipped, ax.leftspinevisible, ax.rightspinevisible) do yflip, lv, rv
-        yflip ? rv : lv
-    end
+    
     yoppositespinevisible = lift(yaxis_flipped, ax.leftspinevisible, ax.rightspinevisible) do yflip, lv, rv
         yflip ? lv : rv
     end
-    xspinecolor = lift(xaxis_flipped, ax.bottomspinecolor, ax.topspinecolor) do xflip, bc, tc
-        xflip ? tc : bc
-    end
+    
     xoppositespinecolor = lift(xaxis_flipped, ax.bottomspinecolor, ax.topspinecolor) do xflip, bc, tc
         xflip ? bc : tc
     end
-    yspinecolor = lift(yaxis_flipped, ax.leftspinecolor, ax.rightspinecolor) do yflip, lc, rc
-        yflip ? rc : lc
-    end
+    
     yoppositespinecolor = lift(yaxis_flipped, ax.leftspinecolor, ax.rightspinecolor) do yflip, lc, rc
         yflip ? lc : rc
     end
@@ -224,30 +149,8 @@ function initialize_layoutable!(ax::Axis)
         end
     end
 
-    xaxis = LineAxis(ax.layerscene, endpoints = xaxis_endpoints, limits = xlims,
-        flipped = xaxis_flipped, ticklabelrotation = ax.xticklabelrotation,
-        ticklabelalign = ax.xticklabelalign, labelsize = ax.xlabelsize,
-        labelpadding = ax.xlabelpadding, ticklabelpad = ax.xticklabelpad, labelvisible = ax.xlabelvisible,
-        label = ax.xlabel, labelfont = ax.xlabelfont, ticklabelfont = ax.xticklabelfont, ticklabelcolor = ax.xticklabelcolor, labelcolor = ax.xlabelcolor, tickalign = ax.xtickalign,
-        ticklabelspace = ax.xticklabelspace, ticks = ax.xticks, tickformat = ax.xtickformat, ticklabelsvisible = ax.xticklabelsvisible,
-        ticksvisible = ax.xticksvisible, spinevisible = xspinevisible, spinecolor = xspinecolor, spinewidth = ax.spinewidth,
-        ticklabelsize = ax.xticklabelsize, trimspine = ax.xtrimspine, ticksize = ax.xticksize,
-        reversed = ax.xreversed, tickwidth = ax.xtickwidth, tickcolor = ax.xtickcolor,
-        minorticksvisible = ax.xminorticksvisible, minortickalign = ax.xminortickalign, minorticksize = ax.xminorticksize, minortickwidth = ax.xminortickwidth, minortickcolor = ax.xminortickcolor, minorticks = ax.xminorticks, scale = ax.xscale,
-        )
-    # # decorations[:xaxis] = xaxis
-
-    yaxis  =  LineAxis(ax.layerscene, endpoints = yaxis_endpoints, limits = ylims,
-        flipped = yaxis_flipped, ticklabelrotation = ax.yticklabelrotation,
-        ticklabelalign = ax.yticklabelalign, labelsize = ax.ylabelsize,
-        labelpadding = ax.ylabelpadding, ticklabelpad = ax.yticklabelpad, labelvisible = ax.ylabelvisible,
-        label = ax.ylabel, labelfont = ax.ylabelfont, ticklabelfont = ax.yticklabelfont, ticklabelcolor = ax.yticklabelcolor, labelcolor = ax.ylabelcolor, tickalign = ax.ytickalign,
-        ticklabelspace = ax.yticklabelspace, ticks = ax.yticks, tickformat = ax.ytickformat, ticklabelsvisible = ax.yticklabelsvisible,
-        ticksvisible = ax.yticksvisible, spinevisible = yspinevisible, spinecolor = yspinecolor, spinewidth = ax.spinewidth,
-        trimspine = ax.ytrimspine, ticklabelsize = ax.yticklabelsize, ticksize = ax.yticksize, flip_vertical_label = ax.flip_ylabel, reversed = ax.yreversed, tickwidth = ax.ytickwidth,
-            tickcolor = ax.ytickcolor,
-        minorticksvisible = ax.yminorticksvisible, minortickalign = ax.yminortickalign, minorticksize = ax.yminorticksize, minortickwidth = ax.yminortickwidth, minortickcolor = ax.yminortickcolor, minorticks = ax.yminorticks, scale = ax.yscale,
-        )
+    add_xaxis!(ax, xaxis_flipped, xlims)
+    add_yaxis!(ax, yaxis_flipped, ylims)
 
     # decorations[:yaxis] = yaxis
 
@@ -291,35 +194,35 @@ function initialize_layoutable!(ax::Axis)
     translate!(yoppositeline, 0, 0, 20)
 
 
-    on(xaxis.tickpositions) do tickpos
+    on(ax.xaxis.tickpositions) do tickpos
         pxheight = height(scene.px_area[])
         offset = ax.xaxisposition[] == :bottom ? pxheight : -pxheight
         opposite_tickpos = tickpos .+ Ref(Point2f(0, offset))
         xgridnode[] = interleave_vectors(tickpos, opposite_tickpos)
     end
 
-    on(yaxis.tickpositions) do tickpos
+    on(ax.yaxis.tickpositions) do tickpos
         pxwidth = width(scene.px_area[])
         offset = ax.yaxisposition[] == :left ? pxwidth : -pxwidth
         opposite_tickpos = tickpos .+ Ref(Point2f(offset, 0))
         ygridnode[] = interleave_vectors(tickpos, opposite_tickpos)
     end
 
-    on(xaxis.minortickpositions) do tickpos
+    on(ax.xaxis.minortickpositions) do tickpos
         pxheight = height(scene.px_area[])
         offset = ax.xaxisposition[] == :bottom ? pxheight : -pxheight
         opposite_tickpos = tickpos .+ Ref(Point2f(0, offset))
         xminorgridnode[] = interleave_vectors(tickpos, opposite_tickpos)
     end
 
-    on(yaxis.minortickpositions) do tickpos
+    on(ax.yaxis.minortickpositions) do tickpos
         pxwidth = width(scene.px_area[])
         offset = ax.yaxisposition[] == :left ? pxwidth : -pxwidth
         opposite_tickpos = tickpos .+ Ref(Point2f(offset, 0))
         yminorgridnode[] = interleave_vectors(tickpos, opposite_tickpos)
     end
 
-    titlepos = lift(scene.px_area, ax.titlegap, ax.titlealign, ax.xaxisposition, xaxis.protrusion) do a,
+    titlepos = lift(scene.px_area, ax.titlegap, ax.titlealign, ax.xaxisposition, ax.xaxis.protrusion) do a,
             titlegap, align, xaxisposition, xaxisprotrusion
 
         x = if align == :center
@@ -384,7 +287,7 @@ function initialize_layoutable!(ax::Axis)
 
     onany(ax.title, ax.titlesize, ax.titlegap, ax.titlevisible, ax.spinewidth,
             ax.topspinevisible, ax.bottomspinevisible, ax.leftspinevisible, ax.rightspinevisible,
-            xaxis.protrusion, yaxis.protrusion, ax.xaxisposition, ax.yaxisposition) do args...
+            ax.xaxis.protrusion, ax.yaxis.protrusion, ax.xaxisposition, ax.yaxisposition) do args...
         ax.layoutobservables.protrusions[] = compute_protrusions(args...)
     end
 
@@ -476,6 +379,137 @@ function initialize_layoutable!(ax::Axis)
     
     ax
 end
+
+
+function add_xaxis!(ax, xaxis_flipped, xlims)
+
+    xspinevisible = lift(xaxis_flipped, ax.bottomspinevisible, ax.topspinevisible) do xflip, bv, tv
+        xflip ? tv : bv
+    end
+
+    xspinecolor = lift(xaxis_flipped, ax.bottomspinecolor, ax.topspinecolor) do xflip, bc, tc
+        xflip ? tc : bc
+    end
+
+    xaxis_endpoints = lift(ax.xaxisposition, ax.scene.px_area) do xaxisposition, area
+        if xaxisposition == :bottom
+            bottomline(Rect2f(area))
+        elseif xaxisposition == :top
+            topline(Rect2f(area))
+        else
+            error("Invalid xaxisposition $xaxisposition")
+        end
+    end
+
+    xaxis = LineAxis(
+        ax.layerscene,
+        endpoints = xaxis_endpoints,
+        flipped = xaxis_flipped,
+        label = ax.xlabel,
+        labelcolor = ax.xlabelcolor,
+        labelfont = ax.xlabelfont,
+        labelpadding = ax.xlabelpadding,
+        labelsize = ax.xlabelsize,
+        labelvisible = ax.xlabelvisible,
+        limits = xlims,
+        minortickalign = ax.xminortickalign,
+        minortickcolor = ax.xminortickcolor,
+        minorticks = ax.xminorticks,
+        minorticksize = ax.xminorticksize,
+        minorticksvisible = ax.xminorticksvisible,
+        minortickwidth = ax.xminortickwidth,
+        reversed = ax.xreversed,
+        scale = ax.xscale,
+        spinecolor = xspinecolor,
+        spinevisible = xspinevisible,
+        spinewidth = ax.spinewidth,
+        tickalign = ax.xtickalign,
+        tickcolor = ax.xtickcolor,
+        tickformat = ax.xtickformat,
+        ticklabelalign = ax.xticklabelalign,
+        ticklabelcolor = ax.xticklabelcolor,
+        ticklabelfont = ax.xticklabelfont,
+        ticklabelpad = ax.xticklabelpad,
+        ticklabelrotation = ax.xticklabelrotation,
+        ticklabelsize = ax.xticklabelsize,
+        ticklabelspace = ax.xticklabelspace,
+        ticklabelsvisible = ax.xticklabelsvisible,
+        ticks = ax.xticks,
+        ticksize = ax.xticksize,
+        ticksvisible = ax.xticksvisible,
+        tickwidth = ax.xtickwidth,
+        trimspine = ax.xtrimspine,
+    )
+
+    ax.xaxis = xaxis
+    return
+end
+
+
+function add_yaxis!(ax, yaxis_flipped, ylims)
+
+    yspinecolor = lift(yaxis_flipped, ax.leftspinecolor, ax.rightspinecolor) do yflip, lc, rc
+        yflip ? rc : lc
+    end
+
+    yspinevisible = lift(yaxis_flipped, ax.leftspinevisible, ax.rightspinevisible) do yflip, lv, rv
+        yflip ? rv : lv
+    end
+
+    yaxis_endpoints = lift(ax.yaxisposition, ax.scene.px_area) do yaxisposition, area
+        if yaxisposition == :left
+            leftline(Rect2f(area))
+        elseif yaxisposition == :right
+            rightline(Rect2f(area))
+        else
+            error("Invalid yaxisposition $yaxisposition")
+        end
+    end
+
+    yaxis  =  LineAxis(
+        ax.layerscene,
+        endpoints = yaxis_endpoints,
+        flip_vertical_label = ax.flip_ylabel,
+        flipped = yaxis_flipped,
+        label = ax.ylabel,
+        labelcolor = ax.ylabelcolor,
+        labelfont = ax.ylabelfont,
+        labelpadding = ax.ylabelpadding,
+        labelsize = ax.ylabelsize,
+        labelvisible = ax.ylabelvisible,
+        limits = ylims,
+        minortickalign = ax.yminortickalign,
+        minortickcolor = ax.yminortickcolor,
+        minorticks = ax.yminorticks,
+        minorticksize = ax.yminorticksize,
+        minorticksvisible = ax.yminorticksvisible,
+        minortickwidth = ax.yminortickwidth,
+        reversed = ax.yreversed,
+        scale = ax.yscale,
+        spinecolor = yspinecolor,
+        spinevisible = yspinevisible,
+        spinewidth = ax.spinewidth,
+        tickalign = ax.ytickalign,
+        tickcolor = ax.ytickcolor,
+        tickformat = ax.ytickformat,
+        ticklabelalign = ax.yticklabelalign,
+        ticklabelcolor = ax.yticklabelcolor,
+        ticklabelfont = ax.yticklabelfont,
+        ticklabelpad = ax.yticklabelpad,
+        ticklabelrotation = ax.yticklabelrotation,
+        ticklabelsize = ax.yticklabelsize,
+        ticklabelspace = ax.yticklabelspace,
+        ticklabelsvisible = ax.yticklabelsvisible,
+        ticks = ax.yticks,
+        ticksize = ax.yticksize,
+        ticksvisible = ax.yticksvisible,
+        tickwidth = ax.ytickwidth,
+        trimspine = ax.ytrimspine,
+    )
+    ax.yaxis = yaxis
+    return
+end
+
 
 """
     reset_limits!(ax; xauto = true, yauto = true)
