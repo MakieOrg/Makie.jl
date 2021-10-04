@@ -1,22 +1,20 @@
 using GLMakie, Dates, Makie
 using Unitful
 
-
 struct TimeTicks
     time_unit
-    time_range
     tickformatter
 end
-const UnitfulTimes = (
-    typeof(1.0*u"d"), typeof(1.0*u"hr"), typeof(1.0*u"minute"),
-    typeof(1.0*u"s"), typeof(1.0*u"ms"), typeof(1.0*u"μs"), typeof(1.0*u"ns"))
 
-TimeUnits = Union{
-    Number,  # No time units
-    Nothing, # nothing yet
-    UnitfulTimes...}
+TimeUnits = (:yr, :wk, :d, :hr, :minute, :s, :ms, :μs, :ns, :fs)
 
-TimeTicks(ticks=Makie.automatic) = TimeTicks(Observable{Any}(nothing), Observable((Inf*u"ns", -Inf*u"ns")), ticks)
+UnitfulTimes2 = map(TimeUnits) do unit_name
+    Quantity{T, Unitful.𝐓, Unitful.FreeUnits{(getfield(Unitful, unit_name),), Unitful.𝐋, nothing}} where T <: Number
+end
+
+TimeUnits2 = Union{UnitfulTimes...}
+
+TimeTicks(ticks=Makie.automatic) = TimeTicks(Observable{Any}(nothing), ticks)
 to_timeticks(ticks) = TimeTicks(ticks)
 to_timeticks(ticks::TimeTicks) = ticks
 
@@ -24,8 +22,20 @@ struct TimeAxis
     axis::Axis
 end
 
-unit_symbol(::Type{T}) where T <: Unitful.AbstractQuantity = Unitful.unit(T)
+unit_symbol(::Type{T}) where T <: Unitful.AbstractQuantity = string(Unitful.unit(T))
 unit_symbol(::Union{Number, Nothing}) = ""
+
+unit_convert(::Nothing, range, x) = x
+
+function unit_convert(::Type{T}, x::AbstractArray) where T
+    return unit_convert.(T, x)
+end
+
+function unit_convert(::Type{T}, value) where T <: Unitful.AbstractQuantity
+    conv = convert(T, value)
+    preferred_unitless = conv / unit(Unitful.preferunits(conv))
+    return convert(Float64, preferred_unitless)
+end
 
 function MakieLayout.get_ticks(ticks::TimeTicks, scale, formatter, vmin, vmax)
     tick_vals = MakieLayout.get_tickvalues(ticks.tickformatter, scale, vmin, vmax)
@@ -39,27 +49,9 @@ function TimeAxis(args...; xticks=TimeTicks(), yticks=TimeTicks(), kw...)
     return TimeAxis(ax)
 end
 
-unit_convert(::Nothing, range, x) = x
-function unit_convert(::Type{T}, range, x) where T <: Unitful.AbstractQuantity
-    return map(x) do x
-        conv = convert(T, x)
-        return Unitful.ustrip(conv)
-    end
-end
-
 const TimeLike = Union{UnitfulTimes..., Period}
 
-function best_unit(duration)
-    # factor we fell comfortable to display as tick values
-    val = 100
-    duration < val * u"ns" && return typeof(1.0*u"ns")
-    duration < val * u"μs" && return typeof(1.0*u"μs")
-    duration < val * u"ms" && return typeof(1.0*u"ms")
-    duration < val * u"s" && return typeof(1.0*u"s")
-    duration < val * u"minute" && return typeof(1.0*u"minute")
-    duration < val * u"hr" && return typeof(1.0*u"hr")
-    return typeof(1.0*u"d")
-end
+
 
 function new_unit(unit, values, last_range)
     new_eltype = Union{}
@@ -69,19 +61,14 @@ function new_unit(unit, values, last_range)
         new_min = min(elem, new_min)
         new_max = max(elem, new_max)
     end
-    if new_eltype <: Union{Quantity, TimeLike}
-        last_min, last_max = last_range
-        new_range = (min(last_min, uconvert(u"ns", new_min)), max(last_max, uconvert(u"ns", new_max)))
-        duration = new_range[2] - new_range[1]
-        @show duration
-        return best_unit(duration), new_range
+    if new_eltype <: Union{Quantity, Period}
+        duration = new_max - new_min
+        return best_unit(duration)
     end
 
     new_eltype <: Number && isnothing(unit) && return (nothing, last_range)
 
     error("Plotting $(new_eltype) into an axis set to: $(unit_symbol(unit)). Please convert the data to $(unit_symbol(unit))")
-    # isnothing(unit) && return new_eltype
-    # return promote_type(new_eltype, unit)
 end
 
 function convert_times(ax::TimeAxis, x, y)
@@ -126,12 +113,124 @@ end
 
 begin
     scatter!(ax, rand(Hour(1):Hour(1):Hour(20), 10), 1:10)
-    scatter!(ax, rand(10), 1:10)
+    # scatter!(ax, rand(10), 1:10) # should error!
 end
 
 begin
     f = Figure()
     ax = TimeAxis(f[1,1]; backgroundcolor=:white)
+    ax.finallimits
     scatter!(ax, u"ns" .* (1:10), u"d" .* rand(10) .* 10)
     f
+end
+
+base_unit(q::Quantity) = base_unit(typeof(q))
+base_unit(::Type{Quantity{NumT, DimT, U}}) where {NumT, DimT, U} = base_unit(U)
+base_unit(::Type{Unitful.FreeUnits{U, DimT, nothing}}) where {DimT, U} = U[1]
+
+function next_smaller_unit(::Quantity{T, Dim, Unitful.FreeUnits{U, Dim, nothing}}) where {T, Dim, U}
+    next_smaller_unit(U[1])
+end
+
+function next_smaller_unit(::Unitful.FreeUnits{U, Dim, nothing}) where {Dim, U}
+    next_smaller_unit(U[1])
+end
+
+function next_smaller_unit(unit::Unitful.Unit{USym, Dim}) where {USym, Dim}
+    return next_smaller_unit_generic(unit)
+end
+
+function next_bigger_unit(::Quantity{T, Dim, Unitful.FreeUnits{U, Dim, nothing}}) where {T, Dim, U}
+    next_bigger_unit(U[1])
+end
+
+function next_bigger_unit(::Unitful.FreeUnits{U, Dim, nothing}) where {Dim, U}
+    next_bigger_unit(U[1])
+end
+
+function next_bigger_unit(unit::Unitful.Unit{USym, Dim}) where {USym, Dim}
+    return next_bigger_unit_generic(unit)
+end
+
+function next_bigger_unit_generic(unit::Unitful.Unit{USym, Dim}) where {USym, Dim}
+    next = (unit.tens >= 3 || unit.tens <= -6) ? 3 : 1
+    abs(next) > 24 && return unit
+    return Unitful.Unit{USym, Dim}(unit.tens + next, unit.power)
+end
+
+function next_smaller_unit_generic(unit::Unitful.Unit{USym, Dim}) where {USym, Dim}
+    next = (unit.tens >= 6 || unit.tens <= -3) ? 3 : 1
+    abs(next) > 24 && return unit
+    return Unitful.Unit{USym, Dim}(unit.tens - next, unit.power)
+end
+
+function next_bigger_unit(unit::Unitful.Unit{USym, Unitful.𝐓}) where {USym}
+    irregular = (:Year, :Week, :Day, :Hour, :Minute, :Second)
+    if USym === :Second && unit.tens < 0
+        return next_bigger_unit_generic(unit)
+    else
+        idx = findfirst(==(USym), irregular)
+        idx == 1 && return unit
+        return Unitful.Unit{irregular[idx - 1], Unitful.𝐓}(0, 1//1)
+    end
+end
+
+function next_smaller_unit(unit::Unitful.Unit{USym, Unitful.𝐓}) where {USym}
+    USym === :Second && return next_smaller_unit_generic(unit)
+    irregular = (:Year, :Week, :Day, :Hour, :Minute)
+    idx = findfirst(==(USym), irregular)
+    if isnothing(idx)
+        error("What unit is this: $(unit)!?")
+    else
+        idx == length(irregular) && return Unitful.Unit{:Second, Unitful.𝐓}(0, 1//1)
+        return Unitful.Unit{irregular[idx + 1], Unitful.𝐓}(0, 1//1)
+    end
+end
+
+function to_free_unit(unit, value::Quantity{T, Dim, Unitful.FreeUnits{U, Dim, nothing}}) where {T, Dim, U}
+    return Unitful.FreeUnits{(unit,), Dim, nothing}()
+end
+
+function unit_convert(unit, value::Quantity{T, Dim, Unitful.FreeUnits{U, Dim, nothing}}) where {T, Dim, U}
+    return uconvert(to_free_unit(unit, value), value)
+end
+
+function _best_unit(value)
+    # factor we fell comfortable to display as tick values
+    best_unit = to_free_unit(base_unit(value), value)
+    raw_value = ustrip(value)
+    while true
+        if abs(raw_value) > 100
+            _best_unit = to_free_unit(next_bigger_unit(best_unit), value)
+        elseif abs(raw_value) < 0.001
+            _best_unit = to_free_unit(next_smaller_unit(best_unit), value)
+        else
+            return best_unit
+        end
+        if _best_unit == best_unit
+            return best_unit # we reached max unit
+        else
+            best_unit = _best_unit
+            raw_value = ustrip(uconvert(best_unit, value))
+        end
+    end
+end
+
+TimeUnits = (:yr, :wk, :d, :hr, :minute, :s, :ds, :cs, :ms, :μs, :ns, :ps, :fs)
+TimeUnitsBig = map(TimeUnits[2:end]) do unit
+    next_bigger_unit(1.0 * getfield(Unitful, unit))
+end
+
+@test string.(TimeUnitsBig) == string.(TimeUnits[1:end-1])
+
+TimeUnitsSmaller = map(TimeUnits[1:end-1]) do unit
+    next_smaller_unit(1.0 * getfield(Unitful, unit))
+end
+
+@test string.(TimeUnitsSmaller) == string.(TimeUnits[2:end])
+
+PrefixFactors = last.(sort(collect(Unitful.prefixdict), by=first))
+MeterUnits = getfield.((Unitful,), Symbol.(PrefixFactors .* "m"))
+MeterUnits = map(MeterUnits[2:end]) do unit
+    next_bigger_unit(1.0 * unit)
 end
