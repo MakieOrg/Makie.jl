@@ -273,8 +273,6 @@ function rotation(u::Vec{3, T}, v::Vec{3, T}) where T
     return Quaternion(cross(u, half)..., dot(u, half))
 end
 
-
-
 function to_world(scene::Scene, point::T) where T <: StaticVector
     cam = scene.camera
     x = to_world(
