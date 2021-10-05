@@ -57,7 +57,7 @@ function to_rpr_scene(context::RPR.Context, mscene::Makie.Scene)
 
     light = RPR.PointLight(context)
     transform!(light, Makie.translationmatrix(cam.eyeposition[]))
-    RPR.setradiantpower!(light, 500, 500, 500)
+    RPR.setradiantpower!(light, 300, 300, 300)
     push!(scene, light)
 
     matsys = RPR.MaterialSystem(context, 0)

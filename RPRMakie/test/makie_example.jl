@@ -1,6 +1,7 @@
 using RadeonProRender, GeometryBasics, Colors, Makie
-using ReferenceTests
-using Makie: translationmatrix
+using ReferenceTests, Colors
+using RPRMakie
+
 RPR = RadeonProRender
 earth = ReferenceTests.loadasset("earth.png")
 m = uv_mesh(Tesselation(Sphere(Point3f(0), 1.0f0), 60))
@@ -12,7 +13,7 @@ wireframe!(ax, -2..2, -2..2, z)
 
 context = RPR.Context()
 
-to_rpr_scene(context, ax.scene)
+RPRMakie.to_rpr_scene(context, ax.scene)
 
 fb_size = (1500, 1500)
 frame_buffer = RPR.FrameBuffer(context, RGBA, fb_size)
@@ -22,7 +23,7 @@ set_standard_tonemapping!(context)
 
 begin
     clear!(frame_buffer)
-    RPR.rprContextSetParameterByKey1u(context, RPR.RPR_CONTEXT_ITERATIONS, 100)
+    RPR.rprContextSetParameterByKey1u(context, RPR.RPR_CONTEXT_ITERATIONS, 10)
     RPR.render(context)
     RPR.rprContextResolveFrameBuffer(context, frame_buffer, frame_bufferSolved, false)
     RPR.save(frame_bufferSolved, "test.png")

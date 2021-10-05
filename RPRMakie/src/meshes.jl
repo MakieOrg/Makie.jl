@@ -13,7 +13,7 @@ function mesh_material(context, matsys, plot)
     elseif color isa AbstractMatrix{<:Colorant}
         tex = RPR.MaterialNode(matsys, RPR.RPR_MATERIAL_NODE_IMAGE_TEXTURE)
         map(plot.color) do color
-            img = RPR.Image(context, color)
+            img = RPR.Image(context, collect(color'))
             set!(tex, RPR.RPR_MATERIAL_INPUT_DATA, img)
             return tex
         end
