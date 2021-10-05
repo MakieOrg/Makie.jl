@@ -664,3 +664,7 @@ function get_minor_tickvalues(i::IntervalsBetween, scale::Union{typeof(log), typ
 
     vals
 end
+
+function get_minor_tickvalues(v::AbstractVector{<:Real}, _, _, _, _)
+    Float32.(v)
+end
