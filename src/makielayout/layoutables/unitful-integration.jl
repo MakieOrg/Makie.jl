@@ -71,9 +71,9 @@ function best_unit(value)
     best_unit = to_free_unit(base_unit(value), value)
     raw_value = ustrip(value)
     while true
-        if abs(raw_value) > 100
+        if abs(raw_value) > 999
             _best_unit = to_free_unit(next_bigger_unit(best_unit), value)
-        elseif abs(raw_value) < 0.001
+        elseif abs(raw_value) > 0 && abs(raw_value) < 0.001
             _best_unit = to_free_unit(next_smaller_unit(best_unit), value)
         else
             return best_unit

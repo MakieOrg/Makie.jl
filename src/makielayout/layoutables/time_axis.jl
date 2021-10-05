@@ -1,5 +1,5 @@
-using GLMakie, Dates, Makie
-using Unitful
+using Dates, Unitful
+
 include("unitful-integration.jl")
 
 struct TimeTicks
@@ -28,14 +28,15 @@ end
 
 function unit_convert(unit::T, value) where T <: Union{Type{<:Unitful.AbstractQuantity}, Unitful.FreeUnits}
     conv = uconvert(unit, value)
-    return ustrip(Unitful.upreferred(conv))
+    return Float64(ustrip(Unitful.upreferred(conv)))
 end
 
 function convert_from_preferred(unit, value)
     unitful = upreferred(unit) * value
     in_target_unit = uconvert(unit, unitful)
-    return ustrip(in_target_unit)
+    return Float64(ustrip(in_target_unit))
 end
+
 convert_from_preferred(::Nothing, value) = value
 
 convert_to_preferred(::Nothing, value) = value
@@ -72,10 +73,10 @@ function new_unit(unit, values)
         new_min = min(elem, new_min)
         new_max = max(elem, new_max)
     end
-
     if new_eltype <: Union{Quantity, Period}
-        duration = new_max - new_min
-        return best_unit(Quantity(duration))
+        min_unit = best_unit(Quantity(new_min))
+        max_unit = best_unit(Quantity(new_max))
+        return max_unit
     end
 
     new_eltype <: Number && isnothing(unit) && return nothing
@@ -83,19 +84,19 @@ function new_unit(unit, values)
     error("Plotting $(new_eltype) into an axis set to: $(unit_symbol(unit)). Please convert the data to $(unit_symbol(unit))")
 end
 
-function convert_times(ax::TimeAxis, x, y)
-    xticks = ax.axis.xticks[]
-    yticks = ax.axis.yticks[]
+function unit_convert(ticks::TimeTicks, values)
+    unit = new_unit(ticks.time_unit[], values[])
+    ticks.time_unit[] = unit
+    return map(unit_convert, ticks.time_unit, values)
+end
 
-    xunit = new_unit(xticks.time_unit[], x[])
-    yunit = new_unit(yticks.time_unit[], y[])
+function unit_convert(ticks, values)
+    return values
+end
 
-    xticks.time_unit[] = xunit
-    yticks.time_unit[] = yunit
-
-    xconv = map(unit_convert, xticks.time_unit, x)
-    yconv = map(unit_convert, yticks.time_unit, y)
-
+function axis_convert(ax::TimeAxis, x, y)
+    xconv = unit_convert(ax.axis.xticks[], x)
+    yconv = unit_convert(ax.axis.yticks[], y)
     return xconv, yconv
 end
 
@@ -103,8 +104,7 @@ function Makie.plot!(
         ta::TimeAxis, P::Makie.PlotFunc,
         attributes::Makie.Attributes, args...)
 
-    converted_args = convert_times(ta, convert.(Observable, args)...)
-
+    converted_args = axis_convert(ta, convert.(Observable, args)...)
     return Makie.plot!(ta.axis, P, attributes, converted_args...)
 end
 
@@ -112,29 +112,4 @@ function Makie.plot!(P::Makie.PlotFunc, ax::TimeAxis, args...; kw_attributes...)
     Makie.plot!(ax, P, Attributes(kw_attributes), args...)
 end
 
-begin
-    f = Figure()
-    ax = TimeAxis(f[1,1]; backgroundcolor=:white)
-    scatter!(ax, rand(Second(1):Second(60):Second(20*60), 10), 1:10)
-    f
-end
-
-begin
-    scatter!(ax, rand(Hour(1):Hour(1):Hour(20), 10), 1:10)
-    # scatter!(ax, rand(10), 1:10) # should error!
-end
-
-begin
-    f = Figure()
-    ax = TimeAxis(f[1,1]; backgroundcolor=:white)
-    ax.axis.finallimits
-    scatter!(ax, u"ns" .* (1:10), u"d" .* rand(10) .* 10)
-    f
-end
-
-begin
-    f = Figure()
-    ax = TimeAxis(f[1,1]; backgroundcolor=:white)
-    scatter!(ax, u"km" .* (1:10), u"d" .* rand(10) .* 10)
-    f
-end
+export TimeAxis
