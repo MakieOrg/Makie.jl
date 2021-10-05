@@ -381,6 +381,21 @@ function initialize_layoutable!(ax::Axis)
 end
 
 
+function apply_meta_kwarg!(ax, ::Val{:hide_axis}, v::Bool, dict)
+    if v
+        hidespines!(ax)
+        hidedecorations!(ax)
+    end
+end
+
+function apply_meta_kwarg!(ax, ::Val{:xlims}, lims, dict)
+    xlims!(ax, lims)
+end
+
+function apply_meta_kwarg!(ax, ::Val{:ylims}, lims, dict)
+    ylims!(ax, lims)
+end
+
 function add_xaxis!(ax, xaxis_flipped, xlims)
 
     xspinevisible = lift(xaxis_flipped, ax.bottomspinevisible, ax.topspinevisible) do xflip, bv, tv

@@ -99,7 +99,11 @@ function _layoutable(T::Type{<:Layoutable}, fig_or_scene::Union{Figure, Scene},
     end
 
     initialize_attributes!(l; attribute_kwargs...)
-    initialize_layoutable!(l, args...; non_attribute_kwargs...)
+    initialize_layoutable!(l, args...)
+    all_kwargs = Dict(kwargs)
+    for (key, val) in non_attribute_kwargs
+        apply_meta_kwarg!(l, Val(key), val, all_kwargs)
+    end
 
     if fig_or_scene isa Figure
         register_in_figure!(fig_or_scene, l)
@@ -108,6 +112,10 @@ function _layoutable(T::Type{<:Layoutable}, fig_or_scene::Union{Figure, Scene},
         end
     end
     l
+end
+
+function apply_meta_kwarg!(@nospecialize(x), key::Val{S}, @nospecialize(val), all_kwargs) where S
+    error("Keyword :$S not implemented for $(typeof(x))")
 end
 
 
