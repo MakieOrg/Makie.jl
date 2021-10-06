@@ -153,6 +153,20 @@ end
 
 ticks_from_type(::Type{<: Union{Period, Unitful.Quantity, Unitful.Units}}) = TimeTicks()
 
+function eltype_extrema(values)
+    isempty(values) && return (eltype(values), nothing)
+
+    new_eltype = typeof(first(values))
+    new_min = new_max = first(values)
+
+    for elem in Iterators.drop(values, 1)
+        new_eltype = promote_type(new_eltype, typeof(elem))
+        new_min = min(elem, new_min)
+        new_max = max(elem, new_max)
+    end
+    return new_eltype, (new_min, new_max)
+end
+
 function new_unit(unit, values, existing_limits)
     new_eltype, extrema = eltype_extrema(values)
     # empty vector case:

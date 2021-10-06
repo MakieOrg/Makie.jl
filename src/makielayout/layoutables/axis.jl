@@ -643,36 +643,37 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
     end
 end
 
-function eltype_extrema(values)
-    isempty(values) && return (eltype(values), nothing)
-
-    new_eltype = typeof(first(values))
-    new_min = new_max = first(values)
-
-    for elem in Iterators.drop(values, 1)
-        new_eltype = promote_type(new_eltype, typeof(elem))
-        new_min = min(elem, new_min)
-        new_max = max(elem, new_max)
-    end
-    return new_eltype, (new_min, new_max)
-end
 
 ticks_from_type(::Type{<: Number}) = WilkinsonTicks(5, k_min = 3)
+ticks_from_type(any) = automatic
+
+get_element_type(::T) where T = T
+function get_element_type(arr::AbstractArray{T}) where T
+    if T == Any
+        return mapreduce(typeof, promote_type, arr)
+    else
+        return T
+    end
+end
 
 function convert_axis_dim(::Automatic, values::Observable, limits::Observable)
-    eltype, extrema = eltype_extrema(values[])
-    @show eltype
-    return convert_axis_dim(ticks_from_type(eltype), values, limits)
+    eltype = get_element_type(values[])
+    ticks = ticks_from_type(eltype)
+    if ticks isa Automatic
+        return (ticks, values)
+    else
+        return convert_axis_dim(ticks, values, limits)
+    end
 end
 
 convert_axis_dim(ticks, values, limits) = (ticks, values)
 
 # single arguments gets ignored for now
 # TODO: add similar overloads as convert_arguments for the most common ones that work with units
-axis_convert(::Axis, x::Observable) = x
+axis_convert(::Axis, x::Observable) = (x,)
 # we leave Z + n alone for now!
 function axis_convert(ax::Axis, x::Observable, y::Observable, z::Observable, args...)
-    return axis_convert(ax, x, y)..., z, args...
+    return (axis_convert(ax, x, y)..., z, args...)
 end
 
 function axis_convert(ax::Axis, x::Observable, y::Observable)

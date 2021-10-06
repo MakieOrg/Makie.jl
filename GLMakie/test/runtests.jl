@@ -12,9 +12,6 @@ using ReferenceTests: @cell
 # run the unit test suite
 include("unit_tests.jl")
 
-using ReferenceTests
-using ReferenceTests: @cell
-
 # Run the Makie reference image testsuite
 recorded = joinpath(@__DIR__, "recorded")
 rm(recorded; force=true, recursive=true); mkdir(recorded)
