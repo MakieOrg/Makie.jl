@@ -424,11 +424,9 @@ function tight_ticklabel_spacing!(la::LineAxis)
     la.attributes.ticklabelspace = maxwidth
 end
 
-
 function iswhitespace(str)
     match(r"^\s*$", str) !== nothing
 end
-
 
 function Base.delete!(la::LineAxis)
     for (_, d) in la.elements
@@ -464,8 +462,6 @@ get_tickvalues(::Automatic, F, vmin, vmax) = get_tickvalues(automatic, identity,
 # fall back to non-scale aware behavior if no special version is overloaded
 get_tickvalues(ticks, scale, vmin, vmax) = get_tickvalues(ticks, vmin, vmax)
 
-
-
 function get_ticks(ticks_and_labels::Tuple{Any, Any}, any_scale, ::Automatic, vmin, vmax)
     n1 = length(ticks_and_labels[1])
     n2 = length(ticks_and_labels[2])
@@ -489,7 +485,6 @@ end
 _logbase(::typeof(log10)) = "10"
 _logbase(::typeof(log2)) = "2"
 _logbase(::typeof(log)) = "e"
-
 
 function get_ticks(::Automatic, scale::Union{typeof(log10), typeof(log2), typeof(log)},
         any_formatter, vmin, vmax)

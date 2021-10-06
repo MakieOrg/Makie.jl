@@ -643,17 +643,62 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
     end
 end
 
-function Makie.plot!(
-        la::Axis, P::Makie.PlotFunc,
-        attributes::Makie.Attributes, args...;
-        kw_attributes...)
+function eltype_extrema(values)
+    isempty(values) && return (eltype(values), nothing)
 
-    allattrs = merge(attributes, Attributes(kw_attributes))
+    new_eltype = typeof(first(values))
+    new_min = new_max = first(values)
+
+    for elem in Iterators.drop(values, 1)
+        new_eltype = promote_type(new_eltype, typeof(elem))
+        new_min = min(elem, new_min)
+        new_max = max(elem, new_max)
+    end
+    return new_eltype, (new_min, new_max)
+end
+
+ticks_from_type(::Type{<: Number}) = WilkinsonTicks(5, k_min = 3)
+
+function convert_axis_dim(::Automatic, values::Observable, limits::Observable)
+    eltype, extrema = eltype_extrema(values[])
+    @show eltype
+    return convert_axis_dim(ticks_from_type(eltype), values, limits)
+end
+
+convert_axis_dim(ticks, values, limits) = (ticks, values)
+
+# single arguments gets ignored for now
+# TODO: add similar overloads as convert_arguments for the most common ones that work with units
+axis_convert(::Axis, x::Observable) = x
+# we leave Z + n alone for now!
+function axis_convert(ax::Axis, x::Observable, y::Observable, z::Observable, args...)
+    return axis_convert(ax, x, y)..., z, args...
+end
+
+function axis_convert(ax::Axis, x::Observable, y::Observable)
+
+    xlimits = map(limits-> first.(extrema(limits)), ax.finallimits)
+    xticks = ax.xticks[]
+    xticks_new, xconv = convert_axis_dim(xticks, x, xlimits)
+    xticks !== xticks_new && (ax.xticks = xticks_new)
+
+    ylimits = map(limits-> last.(extrema(limits)), ax.finallimits)
+    yticks = ax.yticks[]
+    yticks_new, yconv = convert_axis_dim(yticks, y, ylimits)
+
+    yticks !== yticks_new && (ax.yticks = yticks_new)
+
+    return xconv, yconv
+end
+
+function Makie.plot!(la::Axis, P::Makie.PlotFunc,
+                     allattrs::Makie.Attributes, args...)
 
     cycle = get_cycle_for_plottype(allattrs, P)
     add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
 
-    plot = Makie.plot!(la.scene, P, allattrs, args...)
+    converted_args = axis_convert(la, convert.(Observable, args)...)
+    plot = Makie.plot!(la.scene, P, allattrs, converted_args...)
 
     # some area-like plots basically always look better if they cover the whole plot area.
     # adjust the limit margins in those cases automatically.
