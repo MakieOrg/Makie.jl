@@ -8,7 +8,7 @@ function to_rpr_camera(context::RPR.Context, cam)
     end
 
     map(cam.fov) do fov
-        return RPR.rprCameraSetFocalLength(camera, fov/2)
+        return RPR.rprCameraSetFocalLength(camera, fov)
     end
     # TODO:
     # RPR_CAMERA_FSTOP
@@ -49,15 +49,15 @@ function to_rpr_scene(context::RPR.Context, mscene::Makie.Scene)
     set!(scene, camera)
 
     env_light = RPR.EnvironmentLight(context)
-    image_path = RPR.assetpath("studio026.exr")
+    image_path = RPR.assetpath("starmap_4k.tif")
     img = RPR.Image(context, image_path)
     set!(env_light, img)
     setintensityscale!(env_light, 0.5)
     push!(scene, env_light)
 
     light = RPR.PointLight(context)
-    transform!(light, Makie.translationmatrix(cam.eyeposition[]))
-    RPR.setradiantpower!(light, 300, 300, 300)
+    transform!(light, Makie.translationmatrix(Vec3f0(520, 0, 0)))
+    RPR.setradiantpower!(light, 1000000, 1000000, 1000000)
     push!(scene, light)
 
     matsys = RPR.MaterialSystem(context, 0)

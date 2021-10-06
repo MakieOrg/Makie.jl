@@ -23,7 +23,7 @@ function mesh_material(context, matsys, plot)
         error("Unsupported color type for RadeonProRender backend: $(typeof(color))")
     end
 
-    material = RPR.MaterialNode(matsys, RPR.RPR_MATERIAL_NODE_PHONG)
+    material = RPR.MaterialNode(matsys, RPR.RPR_MATERIAL_NODE_DIFFUSE)
     map(color_signal) do color
         return set!(material, RPR.RPR_MATERIAL_INPUT_COLOR, color)
     end
@@ -51,7 +51,7 @@ function to_rpr_object(context, matsys, scene, plot::Makie.MeshScatter)
     end
 
     materials = map(instances) do instance
-        material = RPR.MaterialNode(matsys, RPR.RPR_MATERIAL_NODE_PHONG)
+        material = RPR.MaterialNode(matsys, RPR.RPR_MATERIAL_NODE_DIFFUSE)
         set!(instance, material)
         material
     end
