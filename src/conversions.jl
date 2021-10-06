@@ -324,17 +324,17 @@ function convert_arguments(SL::SurfaceLike, x::AbstractVector{<:Number}, y::Abst
         error("Found duplicate x/y coordinates: $cdup")
     end
 
-    xs = Float32.(sort(unique(x)))
-    any(isnan, xs) && error("x must not have NaN values.")
-    ys = Float32.(sort(unique(y)))
-    any(isnan, ys) && error("x must not have NaN values.")
-    zs = fill(NaN32, length(xs), length(ys))
+    x_centers = sort(unique(x))
+    any(isnan, x_centers) && error("x must not have NaN values.")
+    y_centers = sort(unique(y))
+    any(isnan, y_centers) && error("x must not have NaN values.")
+    zs = fill(NaN32, length(x_centers), length(y_centers))
     foreach(zip(x, y, z)) do (xi, yi, zi)
-        i = searchsortedfirst(xs, xi)
-        j = searchsortedfirst(ys, yi)
+        i = searchsortedfirst(x_centers, xi)
+        j = searchsortedfirst(y_centers, yi)
         @inbounds zs[i, j] = zi
     end
-    convert_arguments(SL, xs, ys, zs)
+    convert_arguments(SL, x_centers, y_centers, zs)
 end
 
 
