@@ -146,15 +146,15 @@ function Scene(
         camera_controls = EmptyCamera()
     end
     child = Scene(;
-        events,
-        px_area,
-        clear,
-        camera,
-        camera_controls,
-        parent,
-        transformation,
-        theme,
-        current_screens,
+        events=events,
+        px_area=px_area,
+        clear=clear,
+        camera=camera,
+        camera_controls=camera_controls,
+        parent=parent,
+        transformation=transformation,
+        theme=theme,
+        current_screens=current_screens,
         kw...
     )
     push!(parent.children, child)
