@@ -118,7 +118,7 @@ function make_links_relative()
     end
 end
 
-serve(single=true, cleanup=false)
+serve(single=true, cleanup=false, fail_on_warning = true)
 lunr()
 optimize(minify=false, prerender=false)
 
