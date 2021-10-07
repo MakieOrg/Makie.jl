@@ -57,7 +57,7 @@ record(fig, "lorenz.mp4", 1:120) do frame
     notify.((points, colors))
     l.colorrange = (0, frame)
 end
-set_theme!(force_an_error) # hide
+set_theme!() # hide
 ```
 ~~~
 <label for="hidecode" class="hidecode"></label>
