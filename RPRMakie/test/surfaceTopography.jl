@@ -4,6 +4,7 @@ using YAXArrays.Datasets: open_mfdataset
 
 cs = collect(keys(colorschemes))
 cmapIdx = Node(1)
+cmapIdx
 cmap = @lift(cs[$cmapIdx]) # @lift(Reverse(cs[$cmapIdx]))
 ncolors = 101
 colors = @lift(to_colormap($cmap, ncolors))
@@ -34,46 +35,37 @@ upperL = [Point3f(-180,i, left[idx]) for (idx,i) in enumerate(lat)]
 lowerR = [Point3f(180, i, mindata) for i in lat]
 upperR = [Point3f(180,i, right[idx]) for (idx,i) in enumerate(lat)]
 
-#funcs = [theme_black, theme_dark, theme_light]
-#func = Node(funcs[end])
-set_theme!()
-fig = Figure(resolution = (1200,800),fontsize = 15) # figure_padding = -450,
-ax = Axis3(fig, aspect = (1,0.6,0.1), azimuth = -0.65π, elevation = 0.225π,
-    viewmode = :fitzoom, perspectiveness = 0.5, protrusions = (0, 0, 0, 0))
-menu = Menu(fig[1, 4], options = ["black", "grey90", "silver"], direction = :up)
-color = Node("black")
-menu.is_open =  false
-#menu2 = Menu(fig, options = zip(["black", "dark", "default"], funcs))
-
-pltobj = surface!(ax, lon, lat, data; colormap = cmap_alpha, backlight = 1.0f0,
-    colorrange =(-6500,5500), transparency = false)
-surface!(ax, lon, lat, fill(mindata, size(data)); colorrange = (0,1),
-    lowclip = color, shading = false, transparency = true)
-objb = band!(ax, lower, upper; color = color)
-band!(ax, lowerL, upperL; color = color)
-band!(ax, lowerR, upperR; color = color)
-band!(ax, lowerB, upperB; color = color)
-
-cbar  =Colorbar(fig, pltobj,label = "ETOPO1 [m]", ticklabelsize = 15,
-    flipaxis = true, tickalign =1, vertical = true, ticksize=15, height = Relative(0.35))
-hidespines!(ax)
-hidedecorations!(ax; grid = true)
-sl = Slider(fig[1, 3], range = 1:length(cs), startvalue = 44, horizontal = false)
-    connect!(cmapIdx, sl.value)
-fig[1, 4] = vgrid!(
-    Label(fig, "Base color", width = nothing), menu,
-    #Label(fig, "Function", width = nothing), menu2;
-    tellheight = false, width = 100
-    )
-on(menu.selection) do s
-    color[] = s
-end
-#on(menu2.selection) do s
-#    func[] = s
-#end
-fig[1,1] = ax
-fig[1,2] = cbar
-fig[0,1] = Label(fig, @lift("Colormap: $(cs[$cmapIdx]), $(cmapIdx.val)"), textsize = 20,
-    tellheight = true, tellwidth = false)
+fig = Figure()
+ax = LScene(fig[1, 1], scenekw=(show_axis=false,))
+mini, maxi = extrema(data)
+data_norm = ((data .- mini) ./ (maxi-mini)) .* 20
+crange = (((-6500,5500) .- mini) ./ (maxi-mini) .* 20)
+pltobj = surface!(ax, lon, lat, data_norm, colorrange=crange, colormap=[:black, :brown, :green], backlight = 1.0f0)
+color = :black
 display(fig)
-#end
+# surface!(ax, lon, lat, fill(0, size(data)); colorrange = (0,1),
+    # lowclip = color, shading = false, transparency = true)
+# objb = band!(ax, lower, upper; color = color)
+# band!(ax, lowerL, upperL; color = color)
+# band!(ax, lowerR, upperR; color = color)
+# band!(ax, lowerB, upperB; color = color)
+using RadeonProRender, GeometryBasics, Colors, Makie
+using ReferenceTests, Colors
+using RPRMakie
+RPR = RadeonProRender
+
+isdefined(Main, :context) && RPR.release(context)
+context = RPR.Context()
+RPRMakie.to_rpr_scene(context, ax.scene)
+fb_size = (1500, 1500)
+frame_buffer = RPR.FrameBuffer(context, RGBA, fb_size)
+frame_bufferSolved = RPR.FrameBuffer(context, RGBA, fb_size)
+set!(context, RPR.RPR_AOV_COLOR, frame_buffer)
+set_standard_tonemapping!(context)
+begin
+    clear!(frame_buffer)
+    RPR.rprContextSetParameterByKey1u(context, RPR.RPR_CONTEXT_ITERATIONS, 2)
+    RPR.render(context)
+    RPR.rprContextResolveFrameBuffer(context, frame_buffer, frame_bufferSolved, false)
+    RPR.save(frame_bufferSolved, "test.png")
+end

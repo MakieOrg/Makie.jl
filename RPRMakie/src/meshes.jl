@@ -1,24 +1,28 @@
-function mesh_material(context, matsys, plot)
+function mesh_material(context, matsys, plot, color_obs = plot.color)
     ambient = plot.ambient[]
     diffuse = plot.diffuse[]
     specular = plot.specular[]
     shininess = plot.shininess[]
 
-    color = to_color(plot.color[])
+    color = to_value(color_obs)
 
     color_signal = if color isa AbstractMatrix{<:Number}
-        map(plot.color, plot.color_map, plot.colorrange) do color, cmap, crange
-            Makie.interpolated_getindex.((cmap,), color, (crange,))
+        tex = RPR.MaterialNode(matsys, RPR.RPR_MATERIAL_NODE_IMAGE_TEXTURE)
+        map(color_obs, plot.colormap, plot.colorrange) do color, cmap, crange
+            color_interp = Makie.interpolated_getindex.((to_colormap(cmap),), color, (crange,))
+            img = RPR.Image(context, collect(color_interp'))
+            set!(tex, RPR.RPR_MATERIAL_INPUT_DATA, img)
+            return tex
         end
     elseif color isa AbstractMatrix{<:Colorant}
         tex = RPR.MaterialNode(matsys, RPR.RPR_MATERIAL_NODE_IMAGE_TEXTURE)
-        map(plot.color) do color
+        map(color_obs) do color
             img = RPR.Image(context, collect(color'))
             set!(tex, RPR.RPR_MATERIAL_INPUT_DATA, img)
             return tex
         end
-    elseif color isa Colorant
-        map(to_color, plot.color)
+    elseif color isa Colorant || color isa Union{String, Symbol}
+        map(to_color, color_obs)
     else
         error("Unsupported color type for RadeonProRender backend: $(typeof(color))")
     end
@@ -94,22 +98,30 @@ end
 
 
 function to_rpr_object(context, matsys, scene, plot::Makie.Surface)
-    x = plot[1][]
-    y = plot[2][]
-    z = plot[3][]
+    x = plot[1]
+    y = plot[2]
+    z = plot[3]
 
-    xyz = Point3f[Point3f(x[i, j], y[i, j], z[i, j]) for i in 1:size(x, 1), j in 1:size(x, 2)]
-    r = Tesselation(Rect2f((0, 0), (1, 1)), size(z))
+    function grid(x, y, z, trans)
+        g = map(CartesianIndices(z)) do i
+            p = Point3f(Makie.get_dim(x, i, 1, size(z)), Makie.get_dim(y, i, 2, size(z)), z[i])
+            return Makie.apply_transform(trans, p)
+        end
+        return vec(g)
+    end
+
+    positions = lift(grid, x, y, z, Makie.transform_func_obs(plot))
+    r = Tesselation(Rect2f((0, 0), (1, 1)), size(z[]))
     # decomposing a rectangle into uv and triangles is what we need to map the z coordinates on
     # since the xyz data assumes the coordinates to have the same neighouring relations
     # like a grid
     faces = decompose(GLTriangleFace, r)
     uv = decompose_uv(r)
     # with this we can beuild a mesh
-    mesh = GeometryBasics.Mesh(meta(vec(xyz), uv=uv), faces)
+    mesh = GeometryBasics.Mesh(meta(vec(positions[]), uv=uv), faces)
 
     rpr_mesh = RPR.Shape(context, mesh)
-    material = mesh_material(context, matsys, plot)
+    material = mesh_material(context, matsys, plot, z)
     set!(rpr_mesh, material)
     return rpr_mesh
 end

@@ -23,7 +23,7 @@ set_standard_tonemapping!(context)
 
 begin
     clear!(frame_buffer)
-    RPR.rprContextSetParameterByKey1u(context, RPR.RPR_CONTEXT_ITERATIONS, 10)
+    RPR.rprContextSetParameterByKey1u(context, RPR.RPR_CONTEXT_ITERATIONS, 100)
     RPR.render(context)
     RPR.rprContextResolveFrameBuffer(context, frame_buffer, frame_bufferSolved, false)
     RPR.save(frame_bufferSolved, "test.png")
