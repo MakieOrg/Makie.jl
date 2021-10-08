@@ -23,6 +23,5 @@ end
 
 function MakieLayout.get_ticks(ticks::CategoricalTicks, scale, formatter, vmin, vmax)
     categories = sort(collect(ticks.category_to_int[]), by=ticks.sortby)
-
     return last.(categories), string.(first.(categories))
 end

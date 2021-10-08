@@ -570,6 +570,7 @@ function default_attributes(::Type{LineAxis})
         ticklabelsvisible = true,
         spinewidth = 1f0,
         label = "label",
+        labelpostfix = "",
         labelsize = 20f0,
         labelcolor = RGBf(0, 0, 0),
         labelvisible = true,
