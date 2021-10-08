@@ -131,11 +131,20 @@ macro extractvalue(scene, args)
 end
 
 
-attr_broadcast_length(x::NativeFont) = 1 # these are our rules, and for what we do, Vecs are usually scalars
-attr_broadcast_length(x::VecTypes) = 1 # these are our rules, and for what we do, Vecs are usually scalars
-attr_broadcast_length(x::AbstractArray) = length(x)
-attr_broadcast_length(x) = 1
-attr_broadcast_length(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
+_attr_broadcast_length(x::NativeFont) = 1 # these are our rules, and for what we do, Vecs are usually scalars
+_attr_broadcast_length(x::VecTypes) = 1 # these are our rules, and for what we do, Vecs are usually scalars
+_attr_broadcast_length(x::AbstractArray) = length(x)
+_attr_broadcast_length(x) = 1
+_attr_broadcast_length(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
+
+#=
+Comment from Tim Holy about the need for _attr_broadcast_length(x)::Int:
+    The rename is necessary because you have >3 methods,
+    and Julia does "world-splitting" (splitting on the number of available methods) only for 3 for fewer.
+    So you're creating the public type with a single method so that the typeassert is part of the world-splittable chain.
+    Thus inference will know that it returns an Int regardless of the (unknown) type of x.
+=#
+attr_broadcast_length(x) = _attr_broadcast_length(x)::Int
 
 attr_broadcast_getindex(x::NativeFont, i) = x # these are our rules, and for what we do, Vecs are usually scalars
 attr_broadcast_getindex(x::VecTypes, i) = x # these are our rules, and for what we do, Vecs are usually scalars
