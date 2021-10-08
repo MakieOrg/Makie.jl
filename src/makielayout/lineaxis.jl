@@ -7,7 +7,7 @@ function LineAxis(parent::Scene; kwargs...)
     @extract attrs (endpoints, limits, flipped, ticksize, tickwidth,
         tickcolor, tickalign, ticks, tickformat, ticklabelalign, ticklabelrotation, ticksvisible,
         ticklabelspace, ticklabelpad, labelpadding,
-        ticklabelsize, ticklabelsvisible, spinewidth, spinecolor, label, labelsize, labelcolor,
+        ticklabelsize, ticklabelsvisible, spinewidth, spinecolor, label, labelpostfix, labelsize, labelcolor,
         labelfont, ticklabelfont, ticklabelcolor,
         labelvisible, spinevisible, trimspine, flip_vertical_label, reversed,
         minorticksvisible, minortickalign, minorticksize, minortickwidth, minortickcolor, minorticks)
@@ -170,7 +170,7 @@ function LineAxis(parent::Scene; kwargs...)
             end
         end
     end
-
+    label = map(string, label, labelpostfix)
     labeltext = text!(
         parent, label, textsize = labelsize, color = labelcolor,
         position = labelpos, show_axis = false, visible = labelvisible,

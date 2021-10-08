@@ -15,7 +15,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
 
     @extract attrs (
         title, titlefont, titlesize, titlegap, titlevisible, titlealign, titlecolor,
-        xlabel, ylabel, xlabelcolor, ylabelcolor, xlabelsize, ylabelsize,
+        xlabel, xlabelpostfix, ylabel, ylabelpostfix, xlabelcolor, ylabelcolor, xlabelsize, ylabelsize,
         xlabelvisible, ylabelvisible, xlabelpadding, ylabelpadding,
         xticklabelsize, xticklabelcolor, yticklabelsize, xticklabelsvisible, yticklabelsvisible,
         xticksize, yticksize, xticksvisible, yticksvisible,
@@ -212,7 +212,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         flipped = xaxis_flipped, ticklabelrotation = xticklabelrotation,
         ticklabelalign = xticklabelalign, labelsize = xlabelsize,
         labelpadding = xlabelpadding, ticklabelpad = xticklabelpad, labelvisible = xlabelvisible,
-        label = xlabel, labelfont = xlabelfont, ticklabelfont = xticklabelfont, ticklabelcolor = xticklabelcolor, labelcolor = xlabelcolor, tickalign = xtickalign,
+        label = xlabel, labelpostfix=xlabelpostfix, labelfont = xlabelfont, ticklabelfont = xticklabelfont, ticklabelcolor = xticklabelcolor, labelcolor = xlabelcolor, tickalign = xtickalign,
         ticklabelspace = xticklabelspace, ticks = xticks, tickformat = xtickformat, ticklabelsvisible = xticklabelsvisible,
         ticksvisible = xticksvisible, spinevisible = xspinevisible, spinecolor = xspinecolor, spinewidth = spinewidth,
         ticklabelsize = xticklabelsize, trimspine = xtrimspine, ticksize = xticksize,
@@ -225,7 +225,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         flipped = yaxis_flipped, ticklabelrotation = yticklabelrotation,
         ticklabelalign = yticklabelalign, labelsize = ylabelsize,
         labelpadding = ylabelpadding, ticklabelpad = yticklabelpad, labelvisible = ylabelvisible,
-        label = ylabel, labelfont = ylabelfont, ticklabelfont = yticklabelfont, ticklabelcolor = yticklabelcolor, labelcolor = ylabelcolor, tickalign = ytickalign,
+        label = ylabel, labelpostfix = ylabelpostfix, labelfont = ylabelfont, ticklabelfont = yticklabelfont, ticklabelcolor = yticklabelcolor, labelcolor = ylabelcolor, tickalign = ytickalign,
         ticklabelspace = yticklabelspace, ticks = yticks, tickformat = ytickformat, ticklabelsvisible = yticklabelsvisible,
         ticksvisible = yticksvisible, spinevisible = yspinevisible, spinecolor = yspinecolor, spinewidth = spinewidth,
         trimspine = ytrimspine, ticklabelsize = yticklabelsize, ticksize = yticksize, flip_vertical_label = flip_ylabel, reversed = yreversed, tickwidth = ytickwidth,
@@ -644,6 +644,26 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
 end
 
 
+function convert_axis_dim(::Automatic, values::Observable, limits::Observable)
+    eltype = get_element_type(values[])
+    ticks = ticks_from_type(eltype)
+    if ticks isa Automatic
+        return values
+    else
+        return convert_axis_dim(ticks, values, limits)
+    end
+end
+
+convert_axis_dim(ticks, values, limits) = values
+
+# single arguments gets ignored for now
+# TODO: add similar overloads as convert_arguments for the most common ones that work with units
+axis_convert(::Axis, x::Observable) = (x,)
+# we leave Z + n alone for now!
+function axis_convert(ax::Axis, x::Observable, y::Observable, z::Observable, args...)
+    return (axis_convert(ax, x, y)..., z, args...)
+end
+
 ticks_from_type(::Type{<: Number}) = WilkinsonTicks(5, k_min = 3)
 ticks_from_type(any) = automatic
 
@@ -656,38 +676,45 @@ function get_element_type(arr::AbstractArray{T}) where T
     end
 end
 
-function convert_axis_dim(::Automatic, values::Observable, limits::Observable)
-    eltype = get_element_type(values[])
-    ticks = ticks_from_type(eltype)
-    if ticks isa Automatic
-        return (ticks, values)
-    else
-        return convert_axis_dim(ticks, values, limits)
-    end
+ticks_from_args(ticks, values) = ticks
+
+function ticks_from_args(::Automatic, values)
+    return ticks_from_type(get_element_type(values))
 end
 
-convert_axis_dim(ticks, values, limits) = (ticks, values)
-
-# single arguments gets ignored for now
-# TODO: add similar overloads as convert_arguments for the most common ones that work with units
-axis_convert(::Axis, x::Observable) = (x,)
-# we leave Z + n alone for now!
-function axis_convert(ax::Axis, x::Observable, y::Observable, z::Observable, args...)
-    return (axis_convert(ax, x, y)..., z, args...)
-end
+label_postfix(ticks) = ""
 
 function axis_convert(ax::Axis, x::Observable, y::Observable)
 
     xlimits = map(limits-> first.(extrema(limits)), ax.finallimits)
     xticks = ax.xticks[]
-    xticks_new, xconv = convert_axis_dim(xticks, x, xlimits)
+    xticks_new = ticks_from_args(xticks, x[])
     xticks !== xticks_new && (ax.xticks = xticks_new)
+    if ax.xlabelpostfix[] isa Automatic
+        postfix = label_postfix(xticks_new)
+        ax.xlabelpostfix[] = to_value(postfix)
+        if postfix isa Observables.AbstractObservable
+            on(postfix) do postfix
+                ax.xlabelpostfix[] = postfix
+            end
+        end
+    end
+    xconv = convert_axis_dim(xticks_new, x, xlimits)
 
     ylimits = map(limits-> last.(extrema(limits)), ax.finallimits)
     yticks = ax.yticks[]
-    yticks_new, yconv = convert_axis_dim(yticks, y, ylimits)
-
+    yticks_new = ticks_from_args(yticks, y[])
     yticks !== yticks_new && (ax.yticks = yticks_new)
+    if ax.ylabelpostfix[] isa Automatic
+        postfix = label_postfix(yticks_new)
+        ax.ylabelpostfix[] = to_value(postfix)
+        if postfix isa Observables.AbstractObservable
+            on(postfix) do postfix
+                ax.ylabelpostfix[] = postfix
+            end
+        end
+    end
+    yconv = convert_axis_dim(yticks_new, y, ylimits)
 
     return xconv, yconv
 end

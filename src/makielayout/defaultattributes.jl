@@ -10,17 +10,18 @@ function lift_parent_attribute(::Nothing, attr::Symbol, default_value)
     default_value
 end
 
-
-
-
 function default_attributes(::Type{Axis}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "Attributes with one palette per key, for example `color = [:red, :green, :blue]`"
         palette = scene !== nothing && haskey(scene.attributes, :palette) ? deepcopy(scene.palette) : Attributes()
         "The xlabel string."
         xlabel = ""
+        "A string that gets prefixed to the xlabel. Useful to display the units of the x axis"
+        xlabelpostfix = automatic
         "The ylabel string."
         ylabel = ""
+        "A string that gets prefixed to the ylabel. Useful to display the units of the y axis"
+        ylabelpostfix = automatic
         "The axis title string."
         title = ""
         "The font family of the title."
