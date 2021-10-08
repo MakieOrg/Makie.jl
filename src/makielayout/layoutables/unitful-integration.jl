@@ -3,124 +3,46 @@ using Dates, Unitful, Observables
 
 const UNIT_POWER_OF_TENS = sort!(collect(keys(Unitful.prefixdict)))
 
-const TIME_UNIT_NAMES = [:yr, :wk, :d, :hr, :minute, :s, :ds, :cs, :ms, :μs, :ns, :ps, :fs]
+const TIME_UNIT_NAMES = [:yr, :wk, :d, :hr, :minute, :s, :ds, :cs, :ms, :μs, :ns, :ps, :fs, :as, :zs, :ys]
 
 base_unit(q::Quantity) = base_unit(typeof(q))
 base_unit(::Type{Quantity{NumT, DimT, U}}) where {NumT, DimT, U} = base_unit(U)
 base_unit(::Type{Unitful.FreeUnits{U, DimT, nothing}}) where {DimT, U} = U[1]
 base_unit(::Unitful.FreeUnits{U, DimT, nothing}) where {DimT, U} = U[1]
 
-function unit_in_middle(unit1::Unitful.Unit{Sym, Dim}, unit2::Unitful.Unit{Sym, Dim}) where {Sym, Dim}
-    unit1 == unit2 && return Unitful.FreeUnits{(unit1,), Dim , nothing}()
-    base10 = UNIT_POWER_OF_TENS
-    idx1 = findfirst(==(Unitful.tens(unit1)), base10)
-    isnothing(idx1) && error("Invalid base 10 $(Unitful.tens(unit1))")
-    idx2 = findfirst(==(Unitful.tens(unit2)), base10)
-    isnothing(idx2) && error("Invalid base 10 $(Unitful.tens(unit2))")
-    middle = (idx1 + idx2) ÷ 2
-    return Unitful.Unit{Sym, Dim}(base10[middle], unit1.power)
-end
-
-# Overload for irregular times
-function unit_in_middle(unit1::Unitful.Unit{Sym1, Unitful.𝐓}, unit2::Unitful.Unit{Sym2, Unitful.𝐓}) where {Sym1, Sym2}
-    unit1 == unit2 && return Unitful.FreeUnits{(unit1,), Unitful.𝐓 , nothing}()
-    idx1 = findfirst(==(Symbol(unit1)), TIME_UNIT_NAMES)
-    isnothing(idx1) && error("Unknown time unit $(unit1)")
-    idx2 = findfirst(==(Symbol(unit2)), TIME_UNIT_NAMES)
-    isnothing(idx2) && error("Unknown time unit $(unit2)")
-    middle = (idx1 + idx2) ÷ 2
-    return getfield(Unitful, TIME_UNIT_NAMES[middle])
-end
-
-function unit_in_middle(unit1, unit2)
-    bu1 = base_unit(unit1)
-    bu2 = base_unit(unit2)
-    return unit_in_middle(bu1, bu2)
-end
-
-
 function to_free_unit(unit, ::Quantity{T, Dim, Unitful.FreeUnits{U, Dim, nothing}}) where {T, Dim, U}
     return Unitful.FreeUnits{(unit,), Dim, nothing}()
 end
 
-function next_smaller_unit(::Quantity{T, Dim, Unitful.FreeUnits{U, Dim, nothing}}) where {T, Dim, U}
-    next_smaller_unit(U[1])
+get_all_base10_units(value) = get_all_base10_units(base_unit(value))
+
+function get_all_base10_units(value::Unitful.Unit{Sym, Dim}) where {Sym, Dim}
+    return Unitful.Unit{Sym, Dim}.(UNIT_POWER_OF_TENS, value.power)
 end
 
-function next_smaller_unit(::Unitful.FreeUnits{U, Dim, nothing}) where {Dim, U}
-    next_smaller_unit(U[1])
+function get_all_base10_units(::Unitful.Unit{Sym, Unitful.𝐓}) where {Sym, Dim}
+    return getfield.((Unitful,), TIME_UNIT_NAMES)
 end
 
-function next_smaller_unit(unit::Unitful.Unit{USym, Dim}) where {USym, Dim}
-    return next_smaller_unit_generic(unit)
-end
+ustrip_to_unit(unit, value) = Float64(ustrip(uconvert(unit, value)))
 
-function next_bigger_unit(::Quantity{T, Dim, Unitful.FreeUnits{U, Dim, nothing}}) where {T, Dim, U}
-    next_bigger_unit(U[1])
-end
+function best_unit(min, max)
+    middle = (min + max) / 2.0
+    all_units = get_all_base10_units(middle)
+    current_unit = unit(middle)
+    # Jeez, what a heuristic... TODO, do better!
+    short_enough(value) = (1 < abs(value) < 999) || ((0 < abs(value) < 1.0) && abs(value) > 0.001)
 
-function next_bigger_unit(::Unitful.FreeUnits{U, Dim, nothing}) where {Dim, U}
-    next_bigger_unit(U[1])
-end
-
-function next_bigger_unit(unit::Unitful.Unit{USym, Dim}) where {USym, Dim}
-    return next_bigger_unit_generic(unit)
-end
-
-function next_bigger_unit_generic(unit::Unitful.Unit{USym, Dim}) where {USym, Dim}
-    next = (unit.tens >= 3 || unit.tens <= -6) ? 3 : 1
-    abs(next) > 24 && return unit
-    return Unitful.Unit{USym, Dim}(unit.tens + next, unit.power)
-end
-
-function next_smaller_unit_generic(unit::Unitful.Unit{USym, Dim}) where {USym, Dim}
-    next = (unit.tens >= 6 || unit.tens <= -3) ? 3 : 1
-    abs(next) > 24 && return unit
-    return Unitful.Unit{USym, Dim}(unit.tens - next, unit.power)
-end
-
-function next_bigger_unit(unit::Unitful.Unit{USym, Unitful.𝐓}) where {USym}
-    irregular = (:Year, :Week, :Day, :Hour, :Minute, :Second)
-    if USym === :Second && unit.tens < 0
-        return next_bigger_unit_generic(unit)
-    else
-        idx = findfirst(==(USym), irregular)
-        idx == 1 && return unit
-        return Unitful.Unit{irregular[idx - 1], Unitful.𝐓}(0, 1//1)
-    end
-end
-
-function next_smaller_unit(unit::Unitful.Unit{USym, Unitful.𝐓}) where {USym}
-    USym === :Second && return next_smaller_unit_generic(unit)
-    irregular = (:Year, :Week, :Day, :Hour, :Minute)
-    idx = findfirst(==(USym), irregular)
-    if isnothing(idx)
-        error("What unit is this: $(unit)!?")
-    else
-        idx == length(irregular) && return Unitful.Unit{:Second, Unitful.𝐓}(0, 1//1)
-        return Unitful.Unit{irregular[idx + 1], Unitful.𝐓}(0, 1//1)
-    end
-end
-
-function best_unit(value)
-    # factor we fell comfortable to display as tick values
-    best_unit = to_free_unit(base_unit(value), value)
-    raw_value = ustrip(value)
-    while true
-        if abs(raw_value) > 999
-            _best_unit = to_free_unit(next_bigger_unit(best_unit), value)
-        elseif abs(raw_value) > 0 && abs(raw_value) < 0.001
-            _best_unit = to_free_unit(next_smaller_unit(best_unit), value)
-        else
-            return best_unit
-        end
-        if _best_unit == best_unit
-            return best_unit # we reached max unit
-        else
-            best_unit = _best_unit
-            raw_value = ustrip(uconvert(best_unit, value))
+    # Prefer current unit if short enough
+    short_enough(ustrip(middle)) && return current_unit
+    # TODO start from current unit!?
+    for unit in all_units
+        raw_value = ustrip(uconvert(unit, middle))
+        if short_enough(raw_value)
+            return unit
         end
     end
+    return current_unit
 end
 
 struct TimeTicks
@@ -182,9 +104,7 @@ function new_unit(unit, values, existing_limits)
             qmin = min(qmin, existing_limits[1] * upreferred(unit))
             qmax = min(qmax, existing_limits[2] * upreferred(unit))
         end
-        middle = (Quantity(new_min) + qmax) / 2.0
-        # get the unit that works best for the middle of the range
-        return best_unit(middle)
+        return best_unit(qmin, qmax)
     end
 
     new_eltype <: Number && isnothing(unit) && return nothing
