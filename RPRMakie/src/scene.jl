@@ -92,7 +92,7 @@ function replace_scene_rpr!(scene,
         RPR.rprContextResolveFrameBuffer(context, framebuffer, framebuffer2, false)
         data = RPR.get_data(framebuffer2)
         im[1] = reverse(reshape(data, fb_size), dims=2)
-        yield()
+        sleep(0.01)
     end
     return context, task
 end
