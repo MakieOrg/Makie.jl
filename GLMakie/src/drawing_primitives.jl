@@ -2,6 +2,7 @@ using Makie: get_texture_atlas, glyph_uv_width!, transform_func_obs, apply_trans
 using Makie: attribute_per_char, FastPixel, el32convert, Pixel
 using Makie: convert_arguments, preprojected_glyph_arrays
 
+Makie.el32convert(x::GLAbstraction.Texture) = x
 Makie.convert_attribute(s::ShaderAbstractions.Sampler{RGBAf}, k::key"color") = s
 function Makie.convert_attribute(s::ShaderAbstractions.Sampler{T, N}, k::key"color") where {T, N}
     ShaderAbstractions.Sampler(
@@ -51,7 +52,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     robj = get!(screen.cache, objectid(x)) do
 
         filtered = filter(x.attributes) do (k, v)
-            !(k in (:transformation, :tickranges, :ticklabels, :raw, :SSAO, :lightposition))
+            !(k in (:transformation, :tickranges, :ticklabels, :raw, :SSAO, :lightposition, :material))
         end
 
         gl_attributes = Dict{Symbol, Any}(map(filtered) do key_value
@@ -421,7 +422,12 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Image)
         img = get_image(gl_attributes)
         interp = to_value(pop!(gl_attributes, :interpolate))
         interp = interp ? :linear : :nearest
-        tex = Texture(el32convert(img), minfilter = interp)
+        img = el32convert(img)
+        tex = if to_value(img) isa Texture
+            to_value(img)
+        else
+            Texture(img, minfilter = interp)
+        end
         visualize(tex, Style(:default), gl_attributes)
     end
 end

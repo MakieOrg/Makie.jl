@@ -42,7 +42,7 @@ function insert_plots!(context, matsys, scene, mscene::Makie.Scene, @nospecializ
     end
 end
 
-function to_rpr_scene(context::RPR.Context, mscene::Makie.Scene)
+function to_rpr_scene(context::RPR.Context, matsys, mscene::Makie.Scene)
     scene = RPR.Scene(context)
     set!(context, scene)
     cam = Makie.cameracontrols(mscene)
@@ -61,10 +61,38 @@ function to_rpr_scene(context::RPR.Context, mscene::Makie.Scene)
     RPR.setradiantpower!(light, 100000, 100000, 100000)
     push!(scene, light)
 
-    matsys = RPR.MaterialSystem(context, 0)
+
 
     for plot in mscene.plots
         insert_plots!(context, matsys, scene, mscene, plot)
     end
     return scene
+end
+
+function replace_scene_rpr!(scene,
+        context=RPR.Context(resource=RPR.RPR_CREATION_FLAGS_ENABLE_GPU0),
+        matsys = RPR.MaterialSystem(context, 0); refresh=Observable(nothing))
+    set_standard_tonemapping!(context)
+    RPRMakie.to_rpr_scene(context, matsys, scene)
+    # hide Makie scene
+    scene.visible = false
+    # foreach(p-> delete!(scene, p), copy(scene.plots))
+    sub = campixel(scene)
+    fb_size = size(scene)
+    im = image!(sub, zeros(RGBAf0, fb_size), raw=true)
+    framebuffer = RPR.FrameBuffer(context, RGBA, fb_size)
+    framebuffer2 = RPR.FrameBuffer(context, RGBA, fb_size)
+    set!(context, RPR.RPR_AOV_COLOR, framebuffer)
+    onany(camera(scene).projection, refresh) do proj, refresh
+        clear!(framebuffer)
+    end
+    RPR.rprContextSetParameterByKey1u(context, RPR.RPR_CONTEXT_ITERATIONS, 1)
+    task = @async while isopen(scene)
+        RPR.render(context)
+        RPR.rprContextResolveFrameBuffer(context, framebuffer, framebuffer2, false)
+        data = RPR.get_data(framebuffer2)
+        im[1] = reverse(reshape(data, fb_size), dims=2)
+        yield()
+    end
+    return context, task
 end
