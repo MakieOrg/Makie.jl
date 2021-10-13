@@ -9,6 +9,7 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 {{color_norm_type}} color_norm;
 {{color_map_type}}  color_map;
 uniform uint objectid;
+uniform float depth_shift;
 
 flat out vec4 o_color;
 flat out uvec2 o_objectid;
@@ -37,4 +38,5 @@ void main(){
 	colorize(color_map, color, color_norm);
     o_objectid  = uvec2(objectid, gl_VertexID+1);
 	gl_Position = projectionview * model * _position(vertex);
+    gl_Position += gl_Position.w * depth_shift;
 }
