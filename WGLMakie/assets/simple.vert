@@ -1,5 +1,6 @@
 uniform mat4 projection;
 uniform mat4 view;
+uniform float depth_shift;
 
 uniform float atlas_tex_dim;
 
@@ -111,4 +112,5 @@ void main(){
     // screen space coordinates of the position
     vec4 quad_vertex = (trans * vec4(2.0 * bbox_signed_radius * get_position(), 0.0, 0.0));
     gl_Position = vclip + quad_vertex;
+    gl_Position.z += gl_Position.w * depth_shift;
 }

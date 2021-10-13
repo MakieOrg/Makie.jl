@@ -56,6 +56,9 @@ function create_shader(scene::Scene, plot::MeshScatter)
     if !hasproperty(instance, :uv)
         uniform_dict[:uv] = Vec2f(0)
     end
+    if !haskey(uniform_dict, :depth_shift)
+        uniform_dict[:depth_shift] = Node(0f0)
+    end
 
     return InstancedProgram(WebGL(), lasset("particles.vert"), lasset("particles.frag"),
                             instance, VertexArray(; per_instance...); uniform_dict...)
@@ -134,6 +137,11 @@ function scatter_shader(scene::Scene, attributes)
 
     instance = uv_mesh(Rect2(-0.5f0, -0.5f0, 1f0, 1f0))
     uniform_dict[:resolution] = scene.camera.resolution
+
+    if !haskey(uniform_dict, :depth_shift)
+        uniform_dict[:depth_shift] = Node(0f0)
+    end
+    
     return InstancedProgram(WebGL(), lasset("simple.vert"), lasset("sprites.frag"),
                             instance, VertexArray(; per_instance...); uniform_dict...)
 end

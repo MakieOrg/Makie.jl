@@ -27,6 +27,11 @@ function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
         i = SOneTo(3)
         return transpose(inv(v[i, i] * m[i, i]))
     end
+
+    if !haskey(uniforms, :depth_shift)
+        uniforms[:depth_shift] = Node(0f0)
+    end
+
     return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), mesh; uniforms...)
 end
 
@@ -144,7 +149,7 @@ function create_shader(mscene::Scene, plot::Volume)
                    absorption=lift(Float32, get(plot, :absorption, Observable(1f0))),
                    algorithm=algorithm, ambient=plot.ambient,
                    diffuse=plot.diffuse, specular=plot.specular, shininess=plot.shininess,
-                   model=model2,
+                   model=model2, depth_shift = get(plot.attributes, :depth_shift, Node(0f0)),
                    # these get filled in later by serialization, but we need them
                    # as dummy values here, so that the correct uniforms are emitted
                    lightposition=Vec3f(1), eyeposition=Vec3f(1))

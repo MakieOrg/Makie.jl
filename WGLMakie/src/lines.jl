@@ -60,6 +60,11 @@ function create_shader(scene::Scene, plot::Union{Lines,LineSegments})
     positions = meta(Point2f[(0, -1), (0, 1), (1, -1), (1, 1)],
                      uv=Vec2f[(0, 0), (0, 0), (0, 0), (0, 0)])
     instance = GeometryBasics.Mesh(positions, GLTriangleFace[(1, 2, 3), (2, 4, 3)])
+
+    if !haskey(uniforms, :depth_shift)
+        uniforms[:depth_shift] = Node(0f0)
+    end
+
     return InstancedProgram(WebGL(), lasset("line_segments.vert"),
                             lasset("line_segments.frag"), instance,
                             VertexArray(; per_instance...); uniforms...)

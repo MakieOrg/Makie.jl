@@ -7,6 +7,7 @@ out vec4 frag_color;
 
 uniform mat4 projection;
 uniform mat4 view;
+uniform float depth_shift;
 
 vec3 tovec3(vec2 v){return vec3(v, 0.0);}
 vec3 tovec3(vec3 v){return v;}
@@ -31,6 +32,7 @@ void main(){
     vec4 view_pos = view * position_world;
     // position in clip space (w/ depth)
     gl_Position = projection * view_pos;
+    gl_Position.z += gl_Position.w * depth_shift;
     // direction to light
     o_lightdir = normalize(view*vec4(get_lightposition(), 1.0) - view_pos).xyz;
     // direction to camera

@@ -2,6 +2,7 @@ out vec3 frag_vert;
 out vec3 o_light_dir;
 
 uniform mat4 projection, view;
+uniform float depth_shift;
 
 void main()
 {
@@ -9,4 +10,5 @@ void main()
     vec4 world_vert = model * vec4(position, 1);
     o_light_dir = vec3(modelinv * vec4(get_lightposition(), 1));
     gl_Position = projection * view * world_vert;
+    gl_Position.z += gl_Position.w * depth_shift;
 }
