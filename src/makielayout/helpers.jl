@@ -358,7 +358,8 @@ end
 
 """
     labelslidergrid!(scene, labels, ranges; formats = [string],
-        sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), layoutkw...)
+        sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(),
+        value_column_width = automatic, layoutkw...)
 
 Construct a GridLayout with a column of label, a column of sliders and a column of value labels in `scene`.
 The argument values are broadcast, so you can use scalars if you want to keep labels, ranges or formats constant across rows.
@@ -371,6 +372,8 @@ Specify format functions for the value labels with the `formats` keyword.
 The sliders are forwarded the keywords from `sliderkw`.
 The labels are forwarded the keywords from `labelkw`.
 The value labels are forwarded the keywords from `valuekw`.
+You can set the column width for the value label column with the keyword `value_column_width`.
+By default, the width is determined heuristically by sampling a few values from the slider ranges.
 All other keywords are forwarded to the `GridLayout`.
 
 Example:
@@ -380,7 +383,7 @@ ls = labelslidergrid!(scene, ["Voltage", "Ampere"], Ref(0:0.1:100); format = x -
 layout[1, 1] = ls.layout
 ```
 """
-function labelslidergrid!(scene, labels, ranges; formats = [string],
+function labelslidergrid!(scene, labels, ranges; formats = [string], value_column_width = automatic,
         sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), layoutkw...)
 
     elements = broadcast(labels, ranges, formats) do label, range, format
@@ -395,6 +398,30 @@ function labelslidergrid!(scene, labels, ranges; formats = [string],
     valuelabels = map(x -> x.valuelabel, elements)
 
     layout = grid!(hcat(labels, sliders, valuelabels); layoutkw...)
+
+    # This is a bit of a hacky way to determine a good column width for the value labels.
+    # We set each slider to the first, middle and last value, record the width of the
+    # value label, and then choose the maximum overall value so that hopefully each possible
+    # value fits. This can of course go wrong in many scenarios depending on the slider ranges
+    # and formatters that can be used, but it's better than nothing or constant jitter.
+    if value_column_width === automatic
+        maxwidth = 0.0
+        for e in elements
+            initial_value = e.slider.value[]
+            a = first(e.slider.range[])
+            b = last(e.slider.range[])
+            for frac in (0.0, 0.5, 1.0)
+                fracvalue = a + frac * (b - a)
+                set_close_to!(e.slider, fracvalue)
+                labelwidth = GridLayoutBase.computedbboxobservable(e.valuelabel)[].widths[1]
+                maxwidth = max(maxwidth, labelwidth)
+            end
+            set_close_to!(e.slider, initial_value)
+        end
+        colsize!(layout, 3, maxwidth)
+    else
+        colsize!(layout, 3, value_column_width)
+    end
 
     (sliders = sliders, labels = labels, valuelabels = valuelabels, layout = layout)
 end
