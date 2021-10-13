@@ -77,18 +77,17 @@ void main(void)
 
     float thickness_aa = thickness+4;
 
-
-    // perform naive culling
-    //vec2 area = resolution * 1.2;
-    //if( p1.x < -area.x || p1.x > area.x ) return;
-    //if( p1.y < -area.y || p1.y > area.y ) return;
-    //if( p2.x < -area.x || p2.x > area.x ) return;
-    //if( p2.y < -area.y || p2.y > area.y ) return;
-
     // determine the direction of each of the 3 segments (previous, current, next)
-    vec2 v1 =              normalize(p2 - p1);
-    vec2 v0 = isvalid[0] ? normalize(p1 - p0) : v1;
-    vec2 v2 = isvalid[3] ? normalize(p3 - p2) : v1;
+    vec2 v1 = normalize(p2 - p1);
+    vec2 v0 = v1;
+    vec2 v2 = v1;
+
+    if (p1 != p0 && isvalid[0]) {
+        v0 = normalize(p1 - p0);
+    }
+    if (p3 != p2 && isvalid[3]) {
+        v2 = normalize(p3 - p2);
+    }
 
     // determine the normal of each of the 3 segments (previous, current, next)
     vec2 n0 = vec2(-v0.y, v0.x);
