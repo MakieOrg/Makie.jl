@@ -166,9 +166,7 @@ function visualize(@nospecialize(main), @nospecialize(s), @nospecialize(data))
         model = Mat4f(I)
         depth_shift = 0f0
     end
-    shader = assemble_shader(data)
-    @info data[:depth_shift][]
-    return shader
+    return assemble_shader(data)
 end
 
 # Make changes to fragment_output to match what's needed for postprocessing
