@@ -719,21 +719,29 @@ function axis_convert(ax::Axis, x::Observable, y::Observable)
     return xconv, yconv
 end
 
+pre_convert_args(args...; kw...) = Makie.convert_arguments(args...; kw...)
+
+function pre_convert_args(::Type{<: Combined}, x::AbstractVector, y::AbstractVector)
+    return (x, y)
+end
+
 function Makie.plot!(la::Axis, P::Makie.PlotFunc,
                      allattrs::Makie.Attributes, args...)
 
     cycle = get_cycle_for_plottype(allattrs, P)
     add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
-
-    converted_args = axis_convert(la, convert.(Observable, args)...)
-    plot = Makie.plot!(la.scene, P, allattrs, converted_args...)
-
+    FinalType, attributes, input_nodes, converted_node = Makie.convert_plot_arguments(P, allattrs, args, pre_convert_args)
+    converted_args = axis_convert(la, Makie.seperate_tuple(converted_node)...)
+    converted_final = map((args...)-> convert_arguments(FinalType, args...), converted_args...)
+    plot_object = FinalType(la.scene, copy(attributes), input_nodes, converted_final)
+    plot!(plot_object)
+    push!(la.scene, plot_object)
     # some area-like plots basically always look better if they cover the whole plot area.
     # adjust the limit margins in those cases automatically.
-    needs_tight_limits(plot) && tightlimits!(la)
+    needs_tight_limits(plot_object) && tightlimits!(la)
 
     reset_limits!(la)
-    plot
+    return plot_object
 end
 
 function Makie.plot!(P::Makie.PlotFunc, ax::Axis, args...; kw_attributes...)

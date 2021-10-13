@@ -34,7 +34,6 @@ function color_and_colormap!(plot, intensity = plot[:color])
     end
 end
 
-
 function calculated_attributes!(::Type{<: Mesh}, plot)
     need_cmap = color_and_colormap!(plot)
     need_cmap || delete!(plot, :colormap)
@@ -186,11 +185,15 @@ function plot(scene::Scene, plot::AbstractPlot)
     return plot
 end
 
+function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::Attributes, input, args::Observable) where Typ
+    PlotType(scene, attributes, input, seperate_tuple(args))
+end
+
 function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::Attributes, input, args) where Typ
     # The argument type of the final plot object is the assumened to stay constant after
     # argument conversion. This might not always hold, but it simplifies
     # things quite a bit
-    ArgTyp = typeof(to_value(args))
+    ArgTyp = typeof(to_value.(args))
     # construct the fully qualified plot type, from the possible incomplete (abstract)
     # PlotType
     FinalType = Combined{Typ, ArgTyp}
@@ -215,7 +218,7 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
         transformation.model
     end
     # create the plot, with the full attributes, the input signals, and the final signal nodes.
-    plot_obj = FinalType(scene, transformation, plot_attributes, input, seperate_tuple(args))
+    plot_obj = FinalType(scene, transformation, plot_attributes, input, args)
 
     transformation.parent[] = plot_obj
     calculated_attributes!(plot_obj)
@@ -299,13 +302,7 @@ function plot!(P::PlotFunc, scene::SceneLike, attrs::Attributes, args...; kw_att
 end
 ######################################################################
 
-# plots to scene
-
-"""
-Main plotting signatures that plot/plot! route to if no Plot Type is given
-"""
-function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attributes, args...; kw_attributes...)
-    attributes = merge!(Attributes(kw_attributes), attributes)
+function convert_plot_arguments(P::PlotFunc, attributes::Attributes, args, convert_func)
     argvalues = to_value.(args)
     PreType = plottype(P, argvalues...)
     # plottype will lose the argument types, so we just extract the plot func
@@ -318,16 +315,16 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
         lift((args...)-> Pair.(convert_keys, args), getindex.(attributes, convert_keys)...) # make them one tuple to easier pass through
     end
     # call convert_arguments for a first time to get things started
-    converted = convert_arguments(PreType, argvalues...; kw_signal[]...)
+    converted = convert_func(PreType, argvalues...; kw_signal[]...)
     # convert_arguments can return different things depending on the recipe type
     # apply_conversion deals with that!
 
     FinalType, argsconverted = apply_convert!(PreType, attributes, converted)
     converted_node = Node(argsconverted)
     input_nodes =  convert.(Node, args)
-    onany(kw_signal, lift(tuple, input_nodes...)) do kwargs, args
+    onany(kw_signal, input_nodes...) do kwargs, args...
         # do the argument conversion inside a lift
-        result = convert_arguments(FinalType, args...; kwargs...)
+        result = convert_func(FinalType, args...; kwargs...)
         finaltype, argsconverted = apply_convert!(FinalType, attributes, result)
         if finaltype != FinalType
             error("Plot type changed from $FinalType to $finaltype after conversion.
@@ -336,6 +333,17 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
         end
         converted_node[] = argsconverted
     end
+    return FinalType, attributes, input_nodes, converted_node
+end
+
+# plots to scene
+
+"""
+Main plotting signatures that plot/plot! route to if no Plot Type is given
+"""
+function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attributes, args...; kw_attributes...)
+    attributes = merge!(Attributes(kw_attributes), attributes)
+    FinalType, attributes, input_nodes, converted_node = convert_plot_arguments(P, attributes, args, convert_arguments)
     plot!(scene, FinalType, attributes, input_nodes, converted_node)
 end
 

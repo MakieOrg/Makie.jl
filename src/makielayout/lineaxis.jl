@@ -170,7 +170,7 @@ function LineAxis(parent::Scene; kwargs...)
             end
         end
     end
-    label = map(string, label, labelpostfix)
+    label = map((l, p)-> p isa Automatic ? l : string(l, p), label, labelpostfix)
     labeltext = text!(
         parent, label, textsize = labelsize, color = labelcolor,
         position = labelpos, show_axis = false, visible = labelvisible,
@@ -200,9 +200,6 @@ function LineAxis(parent::Scene; kwargs...)
 
         px_o = extents[1]
         px_width = extents[2] - extents[1]
-
-        lim_o = limits[][1]
-        lim_w = limits[][2] - limits[][1]
 
         # if labels are given manually, it's possible that some of them are outside the displayed limits
         # we only check approximately because otherwise because of floating point errors, ticks can be dismissed sometimes
@@ -246,9 +243,6 @@ function LineAxis(parent::Scene; kwargs...)
 
         px_o = extents[1]
         px_width = extents[2] - extents[1]
-
-        lim_o = limits[][1]
-        lim_w = limits[][2] - limits[][1]
 
         scale = attrs.scale[]
         tickvalues_scaled = scale.(minortickvalues)
