@@ -160,7 +160,7 @@ Takes an input `Rect` `x` and decomposes it to points.
 """
 function convert_arguments(P::PointBased, x::Rect2)
     # TODO fix the order of decompose
-    return convert_arguments(P, decompose(Point2f, x)[[1, 2, 4, 3, 1]])
+    return convert_arguments(P, decompose(Point2f, x)[[1, 2, 4, 3]])
 end
 
 function convert_arguments(P::PointBased, mesh::AbstractMesh)
@@ -404,6 +404,16 @@ function convert_arguments(::VolumeLike, x::AbstractVector, y::AbstractVector, z
         reshape(A, ntuple(j-> j != i ? 1 : length(A), Val(3)))
     end
     return (x, y, z, el32convert.(f.(_x, _y, _z)))
+end
+
+################################################################################
+#                                <:Lines                                       #
+################################################################################
+
+function convert_arguments(::Type{<: Lines}, x::Rect2)
+    # TODO fix the order of decompose
+    points = decompose(Point2f, x)
+    return (points[[1, 2, 4, 3, 1]],)
 end
 
 ################################################################################
