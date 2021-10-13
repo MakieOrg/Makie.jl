@@ -164,8 +164,11 @@ function visualize(@nospecialize(main), @nospecialize(s), @nospecialize(data))
     data = _default(main, s, copy(data))
     @gen_defaults! data begin # make sure every object has these!
         model = Mat4f(I)
+        depth_shift = 0f0
     end
-    return assemble_shader(data)
+    shader = assemble_shader(data)
+    @info data[:depth_shift][]
+    return shader
 end
 
 # Make changes to fragment_output to match what's needed for postprocessing

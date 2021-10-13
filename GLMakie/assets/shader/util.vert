@@ -234,6 +234,7 @@ out vec3 o_camdir;
 uniform mat3 normalmatrix;
 uniform vec3 lightposition;
 uniform vec3 eyeposition;
+uniform float depth_shift;
 
 
 void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 lightposition)
@@ -244,6 +245,7 @@ void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 l
     o_view_pos = view * position_world;
     // position in clip space (w/ depth)
     gl_Position = projection * o_view_pos;
+    gl_Position.z += gl_Position.w * depth_shift;
     // direction to light
     o_lightdir = normalize(view*vec4(lightposition, 1.0) - o_view_pos).xyz;
     // direction to camera

@@ -96,6 +96,7 @@ vec4 _color(Nothing color, Nothing intensity, sampler1D color_map, vec2 color_no
 {{glow_color_type}} glow_color;
 
 uniform uint objectid;
+uniform float depth_shift;
 uniform int len;
 
 out uvec2 g_id;

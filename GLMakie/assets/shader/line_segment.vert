@@ -34,6 +34,8 @@ vec4 to_color(float color, sampler1D color_map, vec2 color_norm, int index){
     return color_lookup(color, color_map, color_norm);
 }
 
+uniform float depth_shift;
+
 void main()
 {
     int index = gl_VertexID;
@@ -41,4 +43,5 @@ void main()
     g_color = to_color(color, color_map, color_norm, index);
     g_thickness = thickness;
     gl_Position = projectionview * model * to_vec4(vertex);
+    gl_Position.z += gl_Position.w * depth_shift;
 }

@@ -7,6 +7,7 @@ in vec2 vertices;
 
 uniform mat4 projection, view, model;
 uniform uint objectid;
+uniform float depth_shift;
 
 out vec2 o_uv;
 flat out uvec2 o_objectid;
@@ -38,4 +39,5 @@ void main(){
     float y = texelFetch(position_y, index2D.y, 0).x;
 
     gl_Position = projection * view * model * vec4(x, y, 0, 1);
+    gl_Position += gl_Position.w * depth_shift;
 }

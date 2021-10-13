@@ -6,6 +6,7 @@ in vec2 texturecoordinates;
 
 uniform mat4 projection, view, model;
 uniform uint objectid;
+uniform float depth_shift;
 
 out vec2 o_uv;
 flat out uvec2 o_objectid;
@@ -23,4 +24,5 @@ void main(){
     o_uv = texturecoordinates;
     o_objectid = uvec2(objectid, gl_VertexID+1);
     gl_Position = projection * view * model * _position(vertices);
+    gl_Position += gl_Position.w * depth_shift;
 }
