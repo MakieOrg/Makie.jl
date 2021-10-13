@@ -10,9 +10,7 @@ layout(triangle_strip, max_vertices = 7) out;
 in vec4 g_color[];
 in float g_lastlen[];
 in uvec2 g_id[];
-in uint g_line_connections[];
 in int g_valid_vertex[];
-//in float g_thickness[];
 
 out vec4 f_color;
 out vec2 f_uv;
@@ -66,7 +64,7 @@ void main(void)
         g_valid_vertex[3] == 1 && g_id[2].y != g_id[3].y
     );
 
-    if(g_line_connections[1] != g_line_connections[2] || !isvalid[1] || !isvalid[2]){
+    if(!isvalid[1] || !isvalid[2]){
         // If one of the central vertices is invalid or there is a break in the
         // line, we don't emit anything.
         return;
