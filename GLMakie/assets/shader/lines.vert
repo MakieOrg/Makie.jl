@@ -51,5 +51,5 @@ void main()
     g_color = _color(color, intensity, color_map, color_norm, index, dims.x*dims.y);
     g_line_connections = uint(index/dims.x);
     gl_Position = projection * view * model * to_vec4(vertex);
-    gl_Position.z /= gl_Position.w * depth_shift;
+    gl_Position.z += gl_Position.w * depth_shift;
 }
