@@ -121,7 +121,7 @@ struct Transformation <: Transformable
     parent::RefValue{Transformable}
     translation::Observable{Vec3f0}
     scale::Observable{Vec3f0}
-    rotation::Observable{Quaternionf0}
+    rotation::Observable{Quaternionf}
     model::Observable{Mat4f0}
     flip::Observable{NTuple{3, Bool}}
     align::Observable{Vec2f0}
@@ -143,7 +143,7 @@ function Transformation(transform_func=identity)
     end
     translation, rotation, align = (
         Observable(Vec3f0(0)),
-        Observable(Quaternionf0(0, 0, 0, 1)),
+        Observable(Quaternionf(0, 0, 0, 1)),
         Observable(Vec2f0(0))
     )
     trans = nothing

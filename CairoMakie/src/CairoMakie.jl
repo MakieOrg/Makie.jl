@@ -18,10 +18,12 @@ const OneOrVec{T} = Union{
     NTuple{N2, T} where N2,
 }
 
-# re-export Makie
-for name in names(Makie)
-    @eval using Makie: $(name)
-    @eval export $(name)
+# re-export Makie, including deprecated names
+for name in names(Makie, all=true)
+    if Base.isexported(Makie, name)
+        @eval using Makie: $(name)
+        @eval export $(name)
+    end
 end
 export inline!
 

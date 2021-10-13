@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+This is based on Yandex's https://yandex.com/support/zen/website/rss-modify.html
+
+The scope of this segment is the GLOBAL scope (variables defined in config.md).
+For instance 'website_url' or 'website_description'.
+
+Notes:
+* namespaces (xmlns): https://validator.w3.org/feed/docs/howto/declare_namespaces.html
+* best practices: https://www.rssboard.org/rss-profile
+* fd2rss convers markdown to html and fixes or removes relative links
+* fd_rss_feed_url is built out of {website_url}/{rss_file}.xml, you can change the
+rss_file variable in your config file if you want to use something different than 'feed'
+-->
+<rss version="2.0"
+  xmlns:content="http://purl.org/rss/1.0/modules/content/"
+  xmlns:dc="http://purl.org/dc/elements/1.1/"
+  xmlns:media="http://search.yahoo.com/mrss/"
+  xmlns:atom="http://www.w3.org/2005/Atom"
+  xmlns:georss="http://www.georss.org/georss">
+
+  <channel>
+    <title>
+      <![CDATA[  {{fd2rss website_title}}  ]]>
+    </title>
+    <link> {{website_url}} </link>
+    <description>
+      <![CDATA[  {{fd2rss website_description}}  ]]>
+    </description>
+    <atom:link
+      href="{{fd_rss_feed_url}}"
+      rel="self"
+      type="application/rss+xml" />
+<!--
+* items will be added here in chronological order
+* the channel will then be closed
+-->

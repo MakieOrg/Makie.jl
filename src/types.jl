@@ -40,9 +40,9 @@ $(TYPEDFIELDS)
 """
 struct Events
     """
-    The area of the window in pixels, as a `Rect2D`.
+    The area of the window in pixels, as a `Rect2`.
     """
-    window_area::PriorityObservable{IRect2D}
+    window_area::PriorityObservable{Rect2i}
     """
     The DPI resolution of the window, as a `Float64`.
     """
@@ -139,7 +139,7 @@ function Events()
     end
 
     return Events(
-        PriorityObservable(IRect(0, 0, 0, 0)),
+        PriorityObservable(Recti(0, 0, 0, 0)),
         PriorityObservable(100.0),
         PriorityObservable(false),
 
@@ -282,12 +282,12 @@ Stores information about the glyphs in a string that had a layout calculated for
 struct GlyphCollection
     glyphs::Vector{Char}
     fonts::Vector{FTFont}
-    origins::Vector{Point3f0}
+    origins::Vector{Point3f}
     extents::Vector{FreeTypeAbstraction.FontExtent{Float32}}
-    scales::ScalarOrVector{Vec2f0}
-    rotations::ScalarOrVector{Quaternionf0}
-    colors::ScalarOrVector{RGBAf0}
-    strokecolors::ScalarOrVector{RGBAf0}
+    scales::ScalarOrVector{Vec2f}
+    rotations::ScalarOrVector{Quaternionf}
+    colors::ScalarOrVector{RGBAf}
+    strokecolors::ScalarOrVector{RGBAf}
     strokewidths::ScalarOrVector{Float32}
 
     function GlyphCollection(glyphs, fonts, origins, extents, scales, rotations,

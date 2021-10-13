@@ -1,0 +1,14 @@
+<body class="layout--single">
+  <div class="site-container">
+    {{ insert masthead.html }}
+      <div id="main" role="main">
+        <div id="overlay"></div>
+        <div id="navbar-container">
+          <div id="navbar">
+            <form id="lunrSearchForm" name="lunrSearchForm" action="/search/index.html">
+              <input class="search-input" name="q" placeholder="Search docs" type="text">
+            </form>
+            <h1>Navigation</h1>
+            {{ navigation }}
+          </div>
+        </div>

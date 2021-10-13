@@ -1,11 +1,11 @@
 
 function Transformation(scene::SceneLike)
     flip = Node((false, false, false))
-    scale = Node(Vec3f0(1))
+    scale = Node(Vec3f(1))
     translation, rotation, align = (
-        Node(Vec3f0(0)),
-        Node(Quaternionf0(0, 0, 0, 1)),
-        Node(Vec2f0(0))
+        Node(Vec3f(0)),
+        Node(Quaternionf(0, 0, 0, 1)),
+        Node(Vec2f(0))
     )
     pmodel = transformationmatrix(scene)
     trans = nothing
@@ -46,8 +46,8 @@ end
 
 function transform!(
         scene::SceneLike;
-        translation = Vec3f0(0),
-        scale = Vec3f0(1),
+        translation = Vec3f(0),
+        scale = Vec3f(1),
         rotation = 0.0,
     )
     translate!(scene, translation)
@@ -63,7 +63,7 @@ transformation(t::Transformation) = t
 
 scale(t::Transformable) = transformation(t).scale
 
-scale!(t::Transformable, s) = (scale(t)[] = to_ndim(Vec3f0, Float32.(s), 1))
+scale!(t::Transformable, s) = (scale(t)[] = to_ndim(Vec3f, Float32.(s), 1))
 
 """
     scale!(t::Transformable, x, y)
@@ -125,7 +125,7 @@ This is the default setting.
 struct Absolute end
 
 function translate!(::Type{T}, scene::Transformable, t) where T
-    offset = to_ndim(Vec3f0, Float32.(t), 0)
+    offset = to_ndim(Vec3f, Float32.(t), 0)
     if T === Accum
         translation(scene)[] = translation(scene)[] .+ offset
     elseif T === Absolute
@@ -158,11 +158,11 @@ function transform!(scene::Transformable, x::Tuple{Symbol, <: Number})
     if all(x-> x in ('x', 'y'), plane) # xy plane
         translate!(scene, 0, 0, dimval)
     elseif all(x-> x in ('x', 'z'), plane) # xz plane
-        rotate!(scene, Vec3f0(1, 0, 0), 0.5pi)
+        rotate!(scene, Vec3f(1, 0, 0), 0.5pi)
         translate!(scene, 0, dimval, 0)
     else #yz plane
-        r1 = qrotation(Vec3f0(0, 1, 0), 0.5pi)
-        r2 = qrotation(Vec3f0(1, 0, 0), 0.5pi)
+        r1 = qrotation(Vec3f(0, 1, 0), 0.5pi)
+        r2 = qrotation(Vec3f(1, 0, 0), 0.5pi)
         rotate!(scene,  r2 * r1)
         translate!(scene, dimval, 0, 0)
     end
@@ -314,7 +314,7 @@ function inv_symlog10(x, low, high)
         x <= l ? x / l * high : exp10(x)
     elseif x < 0
         l = sign(x) * log10(abs(low))
-        x >= l ? x / l * abs(s.low) : sign(x) * exp10(abs(x))
+        x >= l ? x / l * abs(low) : sign(x) * exp10(abs(x))
     else
         x
     end
@@ -329,3 +329,7 @@ inverse_transform(::typeof(pseudolog10)) = inv_pseudolog10
 inverse_transform(F::Tuple) = map(inverse_transform, F)
 inverse_transform(::typeof(logit)) = logistic
 inverse_transform(s::Symlog10) = x -> inv_symlog10(x, s.low, s.high)
+
+function is_identity_transform(t)
+    return t === identity || t isa Tuple && all(x-> x === identity, t)
+end

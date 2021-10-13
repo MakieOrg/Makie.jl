@@ -48,12 +48,14 @@ using MakieCore: ConversionTrait, NoConversion, PointBased, SurfaceLike, Continu
 export ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
 using MakieCore: Key, @key_str, Automatic, automatic, @recipe
 using MakieCore: Pixel, px, Unit, Billboard
-using MakieCore: VecTypes, Quaternionf0, Quaternion, RGBAf0, RGBf0, NativeFont, RealVector
+using MakieCore: VecTypes, Quaternionf, Quaternion, NativeFont, RealVector, RGBAf, RGBf, RGBAf0, RGBf0
 import MakieCore: project_point2, project, to_world, transformationmatrix, orthographicprojection, perspectiveprojection, lookat, translationmatrix, scalematrix
 using MakieCore: Camera, Transformation, PlotFunc
 import MakieCore: to_colormap, to_color, to_font, to_rotation, FastPixel, Reverse
 import MakieCore: assetpath
 import MakieCore: el32convert, to_textsize, to_align, qrotation, available_gradients
+using MakieCore: NativeFont
+
 export to_colormap, to_color, to_font, to_rotation
 export Pixel, px, Unit, plotkey, attributes, used_attributes
 
@@ -143,6 +145,8 @@ include("interaction/inspector.jl")
 include("documentation/documentation.jl")
 include("display.jl")
 
+# deprecated types and methods
+include("deprecated.jl")
 
 # help functions and supporting functions
 export help, help_attributes, help_arguments
@@ -218,11 +222,11 @@ export Billboard
 
 # Reexports of
 # Color/Vector types convenient for 3d/2d graphics
-export Quaternion, Quaternionf0, qrotation
-export RGBAf0, RGBf0, VecTypes, RealVector, FRect, FRect2D, IRect2D
-export FRect3D, IRect3D, Rect3D, Transformation
-export IRect, FRect, Rect, Rect2D, Sphere, Circle
-export Vec4f0, Vec3f0, Vec2f0, Point4f0, Point3f0, Point2f0
+export Quaternion, Quaternionf, qrotation
+export RGBAf, RGBf, VecTypes, RealVector, Rectf, Rect2f, Rect2i
+export Rect3f, Rect3i, Rect3, Transformation
+export Recti, Rectf, Rect, Rect2, Sphere, Circle
+export Vec4f, Vec3f, Vec2f, Point4f, Point3f, Point2f
 export Vec, Vec2, Vec3, Vec4, Point, Point2, Point3, Point4
 export (..), GLNormalUVMesh
 

@@ -6,7 +6,7 @@
     strokecolor::ColorType = (:black, 0.0)
     strokewidth::TorVector{Float32} = 0
     align::Vec2f0 = (:left, :bottom)
-    rotation::TorVector{Quaternionf0} = 0.0
+    rotation::TorVector{Quaternionf} = 0.0
     textsize::TorVector{Float32} = 20
     justification::Any = automatic
     lineheight::TorVector{Float32} = 1.0

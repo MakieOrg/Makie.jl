@@ -9,8 +9,6 @@ Data is the gold and silver of our age, so let's spread it out beautifully on th
 
 [![][docs-stable-img]][docs-stable-url] [![][docs-master-img]][docs-master-url]
 
-[![DOI](https://zenodo.org/badge/104806923.svg)](https://zenodo.org/badge/latestdoi/104806923)
-
 [gitlab-img]: https://gitlab.com/JuliaGPU/Makie.jl/badges/master/pipeline.svg
 [gitlab-url]: https://gitlab.com/JuliaGPU/Makie.jl/pipelines
 [docs-stable-img]: https://img.shields.io/badge/docs-stable-lightgrey.svg

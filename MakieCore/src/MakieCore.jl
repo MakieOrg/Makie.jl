@@ -29,6 +29,11 @@ abstract type AbstractScreen <: AbstractDisplay end
 
 const SceneLike = Union{AbstractScene, AbstractPlot}
 
+const RGBAf = RGBA{Float32}
+const RGBf = RGB{Float32}
+Base.@deprecate_binding RGBf0 RGBf
+Base.@deprecate_binding RGBAf0 RGBAf
+
 include("geometry/quaternions.jl")
 include("geometry/projection_math.jl")
 include("types.jl")
@@ -40,5 +45,6 @@ include("basic_plots/lines.jl")
 include("basic_plots/text.jl")
 include("basic_plots/others.jl")
 include("conversion.jl")
+
 
 end
