@@ -161,7 +161,7 @@ Takes an input `Rect` `x` and decomposes it to points.
 function convert_arguments(P::PointBased, x::Rect2)
     # TODO fix the order of decompose
     # repeat endpoint to close the line in cairomakie at least
-    return convert_arguments(P, decompose(Point2f, x)[[1, 2, 4, 3, 1]])
+    return convert_arguments(P, decompose(Point2f, x)[[1, 2, 4, 3]])
 end
 
 function convert_arguments(P::PointBased, mesh::AbstractMesh)
