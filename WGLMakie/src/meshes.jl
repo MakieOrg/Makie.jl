@@ -113,9 +113,5 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
         return transpose(inv(v[i, i] * m[i, i]))
     end
 
-    if !haskey(uniforms, :depth_shift)
-        uniforms[:depth_shift] = Node(0f0)
-    end
-
     return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), instance; uniforms...)
 end

@@ -164,7 +164,6 @@ function visualize(@nospecialize(main), @nospecialize(s), @nospecialize(data))
     data = _default(main, s, copy(data))
     @gen_defaults! data begin # make sure every object has these!
         model = Mat4f(I)
-        depth_shift = 0f0
     end
     return assemble_shader(data)
 end
