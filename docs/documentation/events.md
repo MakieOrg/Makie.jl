@@ -122,7 +122,7 @@ end
 
 ## Interactive Widgets
 
-Makie has a couple of useful interactive widgets like sliders, buttons and menus, which you can read about in the \myreflink{Layoutables} section.
+Makie has a couple of useful interactive widgets like sliders, buttons and menus, which you can read about in the \myreflink{Blocks} section.
 
 ## Recording Animations with Interactions
 

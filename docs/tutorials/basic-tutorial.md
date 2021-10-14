@@ -302,8 +302,8 @@ fig
 
 ## Legend and Colorbar
 
-We have seen two `Layoutables` so far, the \myreflink{Axis} and the \myreflink{Legend} which was created by the function `axislegend`.
-All `Layoutable`s can be placed into the layout of a figure at arbitrary positions, which makes it easy to assemble complex figures.
+We have seen two `Blocks` so far, the \myreflink{Axis} and the \myreflink{Legend} which was created by the function `axislegend`.
+All `Block`s can be placed into the layout of a figure at arbitrary positions, which makes it easy to assemble complex figures.
 
 In the same way as with the \myreflink{Axis} before, you can also create a \myreflink{Legend} manually and then place it freely, wherever you want, in the figure.
 There are multiple ways to create \myreflink{Legend}s, for one of them you pass one vector of plot objects and one vector of label strings.

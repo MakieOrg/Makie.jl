@@ -1,13 +1,13 @@
-abstract type Layoutable end
+abstract type Block end
 
-macro Layoutable(name::Symbol, fields::Expr = Expr(:block))
+macro Block(name::Symbol, fields::Expr = Expr(:block))
 
     if !(fields.head == :block)
         error("Fields need to be within a begin end block")
     end
 
     structdef = quote
-        mutable struct $name <: Layoutable
+        mutable struct $name <: Block
             parent::Union{Figure, Scene, Nothing}
             layoutobservables::LayoutObservables
             layerscene::Scene
@@ -48,8 +48,8 @@ macro Layoutable(name::Symbol, fields::Expr = Expr(:block))
     structdef
 end
 
-# intercept all layoutable constructors and divert to _layoutable(T, ...)
-function (::Type{T})(args...; kwargs...) where {T<:Layoutable}
+# intercept all block constructors and divert to _layoutable(T, ...)
+function (::Type{T})(args...; kwargs...) where {T<:Block}
     _layoutable(T, args...; kwargs...)
 end
 
@@ -58,7 +58,7 @@ can_be_current_axis(x) = false
 get_top_parent(gp::GridPosition) = GridLayoutBase.top_parent(gp.layout)
 get_top_parent(gp::GridSubposition) = GridLayoutBase.top_parent(gp.parent)
 
-function _layoutable(T::Type{<:Layoutable},
+function _layoutable(T::Type{<:Block},
         gp::Union{GridPosition, GridSubposition}, args...; kwargs...)
 
     top_parent = get_top_parent(gp)
@@ -69,7 +69,7 @@ function _layoutable(T::Type{<:Layoutable},
     l
 end
 
-function _layoutable(T::Type{<:Layoutable}, fig_or_scene::Union{Figure, Scene},
+function _layoutable(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
         args...; bbox = nothing, kwargs...)
 
     # create basic layout observables
@@ -87,7 +87,7 @@ function _layoutable(T::Type{<:Layoutable}, fig_or_scene::Union{Figure, Scene},
     topscene = get_topscene(fig_or_scene)
     layerscene = Scene(topscene, lift(identity, topscene.px_area), camera = campixel!, show_axis = false, raw = true)
 
-    # create base layoutable with otherwise undefined fields
+    # create base block with otherwise undefined fields
     l = T(fig_or_scene, lobservables, layerscene)
 
     non_attribute_kwargs = Dict(kwargs)
@@ -120,7 +120,7 @@ end
 
 
 """
-Get the scene which layoutables need from their parent to plot stuff into
+Get the scene which blocks need from their parent to plot stuff into
 """
 get_topscene(f::Figure) = f.scene
 function get_topscene(s::Scene)
@@ -130,12 +130,12 @@ function get_topscene(s::Scene)
     s
 end
 
-function register_in_figure!(fig::Figure, @nospecialize layoutable::Layoutable)
-    if layoutable.parent !== fig
-        error("Can't register a layoutable with a different parent in a figure.")
+function register_in_figure!(fig::Figure, @nospecialize block::Block)
+    if block.parent !== fig
+        error("Can't register a block with a different parent in a figure.")
     end
-    if !(layoutable in fig.content)
-        push!(fig.content, layoutable)
+    if !(block in fig.content)
+        push!(fig.content, block)
     end
     nothing
 end
@@ -145,9 +145,9 @@ end
 # make fields type inferrable
 # just access attributes directly instead of via indexing detour
 
-# @generated Base.hasfield(x::T, ::Val{key}) where {T<:Layoutable, key} = :($(key in fieldnames(T)))
+# @generated Base.hasfield(x::T, ::Val{key}) where {T<:Block, key} = :($(key in fieldnames(T)))
 
-# @inline function Base.getproperty(x::T, key::Symbol) where T <: Layoutable
+# @inline function Base.getproperty(x::T, key::Symbol) where T <: Block
 #     if hasfield(x, Val(key))
 #         getfield(x, key)
 #     else
@@ -155,7 +155,7 @@ end
 #     end
 # end
 
-@inline function Base.setproperty!(x::T, key::Symbol, value) where T <: Layoutable
+@inline function Base.setproperty!(x::T, key::Symbol, value) where T <: Block
     if hasfield(T, key)
         if fieldtype(T, key) <: Observable
             if value isa Observable
@@ -173,60 +173,60 @@ end
 end
 
 # propertynames should list fields and attributes
-# function Base.propertynames(layoutable::T) where T <: Layoutable
-#     [fieldnames(T)..., keys(layoutable.attributes)...]
+# function Base.propertynames(block::T) where T <: Block
+#     [fieldnames(T)..., keys(block.attributes)...]
 # end
 
-# treat all layoutables as scalars when broadcasting
-Base.Broadcast.broadcastable(l::Layoutable) = Ref(l)
+# treat all blocks as scalars when broadcasting
+Base.Broadcast.broadcastable(l::Block) = Ref(l)
 
 
-function Base.show(io::IO, ::T) where T <: Layoutable
+function Base.show(io::IO, ::T) where T <: Block
     print(io, "$T()")
 end
 
 
 
-function Base.delete!(layoutable::Layoutable)
-    for (key, d) in layoutable.elements
+function Base.delete!(block::Block)
+    for (key, d) in block.elements
         try
             remove_element(d)
         catch e
-            @info "Failed to remove element $key of $(typeof(layoutable))."
+            @info "Failed to remove element $key of $(typeof(block))."
             rethrow(e)
         end
     end
 
-    if hasfield(typeof(layoutable), :scene)
-        delete_scene!(layoutable.scene)
+    if hasfield(typeof(block), :scene)
+        delete_scene!(block.scene)
     end
 
-    GridLayoutBase.remove_from_gridlayout!(GridLayoutBase.gridcontent(layoutable))
+    GridLayoutBase.remove_from_gridlayout!(GridLayoutBase.gridcontent(block))
 
-    on_delete(layoutable)
-    delete_from_parent!(layoutable.parent, layoutable)
-    layoutable.parent = nothing
+    on_delete(block)
+    delete_from_parent!(block.parent, block)
+    block.parent = nothing
 
     nothing
 end
 
 # do nothing for scene and nothing
-function delete_from_parent!(parent, layoutable::Layoutable)
+function delete_from_parent!(parent, block::Block)
 end
 
-function delete_from_parent!(figure::Figure, layoutable::Layoutable)
-    filter!(x -> x !== layoutable, figure.content)
-    if current_axis(figure) === layoutable
+function delete_from_parent!(figure::Figure, block::Block)
+    filter!(x -> x !== block, figure.content)
+    if current_axis(figure) === block
         current_axis!(figure, nothing)
     end
     nothing
 end
 
 """
-Overload to execute cleanup actions for specific layoutables that go beyond
+Overload to execute cleanup actions for specific blocks that go beyond
 deleting elements and removing from gridlayout
 """
-function on_delete(layoutable)
+function on_delete(block)
 end
 
 function remove_element(x)

@@ -166,7 +166,7 @@ struct KeysEvent
     keys::Set{Makie.Keyboard.Button}
 end
 
-@Layoutable Axis begin
+@Block Axis begin
     scene::Scene
     xlabel::Observable{String}
     ylabel::Observable{String}
@@ -324,21 +324,21 @@ function RectangleZoom(ax::Axis; kw...)
     end
 end
 
-@Layoutable Colorbar
+@Block Colorbar
 
-@Layoutable Label
+@Block Label
 
-@Layoutable Box
+@Block Box
 
-@Layoutable Slider
+@Block Slider
 
-@Layoutable IntervalSlider
+@Block IntervalSlider
 
-@Layoutable Button
+@Block Button
 
-@Layoutable Toggle
+@Block Toggle
 
-@Layoutable Menu
+@Block Menu
 
 
 abstract type LegendElement end
@@ -362,20 +362,20 @@ end
 
 const EntryGroup = Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}
 
-@Layoutable Legend begin
+@Block Legend begin
     entrygroups::Node{Vector{EntryGroup}}
 end
 
-@Layoutable LScene begin
+@Block LScene begin
     scene::Scene
 end
 
-@Layoutable Textbox begin
+@Block Textbox begin
     cursorindex::Node{Int}
     cursoranimtask
 end
 
-@Layoutable Axis3 begin
+@Block Axis3 begin
     scene::Scene
     finallimits::Node{Rect3f}
     mouseeventhandle::MouseEventHandle

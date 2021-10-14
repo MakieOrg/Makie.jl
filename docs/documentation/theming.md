@@ -99,9 +99,9 @@ with_theme(example_plot, lines_theme)
 ```
 \end{examplefigure}
 
-## Theming layoutable objects
+## Theming block objects
 
-Every Layoutable such as `Axis`, `Legend`, `Colorbar`, etc. can be themed by using its type name as a key in your theme.
+Every Block such as `Axis`, `Legend`, `Colorbar`, etc. can be themed by using its type name as a key in your theme.
 
 Here is how you could define a simple ggplot-like style for your axes:
 

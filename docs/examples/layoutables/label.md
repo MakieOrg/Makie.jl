@@ -2,7 +2,7 @@
 
 # Label
 
-This is just normal text, except it's also layoutable. A text's size is known,
+This is just normal text, except it's also block. A text's size is known,
 so rows and columns in a GridLayout can shrink to the appropriate width or height.
 
 \begin{examplefigure}{}

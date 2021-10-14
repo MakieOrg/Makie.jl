@@ -1,5 +1,5 @@
 # Minimal sanity checks for MakieLayout
-@testset "Layoutables constructors" begin
+@testset "Blocks constructors" begin
     scene, layout = layoutscene()
     ax = layout[1, 1] = Axis(scene)
     cb = layout[1, 2] = Colorbar(scene)

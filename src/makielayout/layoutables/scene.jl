@@ -14,7 +14,7 @@ function Makie.plot!(P::Makie.PlotFunc, ls::LScene, args...; kw_attributes...)
 end
 
 
-function layoutable(::Type{LScene}, fig_or_scene; bbox = nothing, scenekw = NamedTuple(), kwargs...)
+function block(::Type{LScene}, fig_or_scene; bbox = nothing, scenekw = NamedTuple(), kwargs...)
 
     topscene = get_topscene(fig_or_scene)
 

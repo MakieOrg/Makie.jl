@@ -1,4 +1,4 @@
-function layoutable(::Type{Button}, fig_or_scene::FigureLike; bbox = nothing, kwargs...)
+function block(::Type{Button}, fig_or_scene::FigureLike; bbox = nothing, kwargs...)
 
     scene = get_scene(fig_or_scene)
 

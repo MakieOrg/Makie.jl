@@ -101,7 +101,7 @@ end)
 Menu
 
 
-function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
+function block(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
 
     topscene = get_topscene(fig_or_scene)
 
