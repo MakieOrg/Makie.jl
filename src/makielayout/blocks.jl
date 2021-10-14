@@ -1,9 +1,9 @@
 abstract type Block end
 
-macro Block(name::Symbol, fields::Expr = Expr(:block))
+macro Block(name::Symbol, body::Expr = Expr(:block))
 
-    if !(fields.head == :block)
-        error("Fields need to be within a begin end block")
+    if !(body.head == :block)
+        error("A Block needs to be defined within a `begin end` block")
     end
 
     structdef = quote
@@ -14,38 +14,72 @@ macro Block(name::Symbol, fields::Expr = Expr(:block))
         end
     end
 
+    fields_vector = structdef.args[2].args[3].args
 
-    # append user defined fields to struct definition
-    # linenumbernode block, struct block, fields block
+    attrs = extract_attributes!(body)
 
-    allfields = structdef.args[2].args[3].args
-    basefields = filter(x -> !(x isa LineNumberNode), allfields)
-    append!(allfields, fields.args)
-
-    fieldnames = map(filter(x -> !(x isa LineNumberNode), allfields)) do field
-        if field isa Symbol
-            return field
+    if attrs !== nothing
+        attribute_fields = map(attrs) do a
+            :($(a.symbol)::Observable{$(a.type)})
         end
-        if field isa Expr && field.head == Symbol("::")
-            return field.args[1]
-        end
-        error("Unexpected field format. Neither Symbol nor x::T")
+        append!(fields_vector, attribute_fields)
     end
 
+    basefields = filter(x -> !(x isa LineNumberNode), fields_vector)
     constructor = quote
-        # """
-        #     $name(basefields...)
-
-        # Creates $name with all fields but the base fields uninitialized.
-        # """
         function $name($(basefields...))
             new($(basefields...))
         end
     end
 
-    push!(allfields, constructor)
+    push!(fields_vector, constructor)
 
     structdef
+end
+
+function extract_attributes!(body)
+    i = findfirst(
+        (x -> x isa Expr && x.head == :macrocall && x.args[1] == Symbol("@attributes") &&
+            x.args[3] isa Expr && x.args[3].head == :block),
+        body.args
+    )
+    if i === nothing
+        return nothing
+    end
+
+    macroexpr = splice!(body.args, i)
+    attrs_block = macroexpr.args[3]
+
+    args = filter(x -> !(x isa LineNumberNode), attrs_block.args)
+    attrs = map(args) do arg
+        has_docs = arg isa Expr && arg.head == :macrocall && arg.args[1] isa GlobalRef
+
+        if has_docs
+            docs = arg.args[3]
+            attr = arg.args[4]
+        else
+            docs = nothing
+            attr = arg
+        end
+
+        if !(attr isa Expr && attr.head == :(=) && length(attr.args) == 2)
+            error("$attr is not a valid attribute line like :x[::Type] = default_value")
+        end
+        left = attr.args[1]
+        default = attr.args[2]
+        if left isa Symbol
+            attr_symbol = left
+            type = Any
+        else
+            if !(left isa Expr && left.head == :(::) && length(left.args) == 2)
+                error("$left is not a Symbol or an expression such as x::Type")
+            end
+            attr_symbol = left.args[1]::Symbol
+            type = left.args[2]
+        end
+        
+        (docs = docs, symbol = attr_symbol, type = type, default = default)
+    end
 end
 
 # intercept all block constructors and divert to _layoutable(T, ...)

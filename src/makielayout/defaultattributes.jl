@@ -13,262 +13,262 @@ end
 
 
 
-function default_attributes(::Type{Axis}, scene)
-    attrs, docdict, defaultdict = @documented_attributes begin
-        # "Attributes with one palette per key, for example `color = [:red, :green, :blue]`"
-        palette = scene !== nothing && haskey(scene.attributes, :palette) ? deepcopy(scene.palette) : Attributes()
-        "The xlabel string."
-        xlabel = ""
-        "The ylabel string."
-        ylabel = ""
-        "The axis title string."
-        title = ""
-        "The font family of the title."
-        titlefont = lift_parent_attribute(scene, :font, "DejaVu Sans")
-        "The title's font size."
-        titlesize = lift_parent_attribute(scene, :fontsize, 16f0)
-        "The gap between axis and title."
-        titlegap = 4f0
-        "Controls if the title is visible."
-        titlevisible = true
-        "The horizontal alignment of the title."
-        titlealign = :center
-        "The color of the title"
-        titlecolor = lift_parent_attribute(scene, :textcolor, :black)
-        "The font family of the xlabel."
-        xlabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
-        "The font family of the ylabel."
-        ylabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
-        "The color of the xlabel."
-        xlabelcolor = lift_parent_attribute(scene, :textcolor, :black)
-        "The color of the ylabel."
-        ylabelcolor = lift_parent_attribute(scene, :textcolor, :black)
-        "The font size of the xlabel."
-        xlabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
-        "The font size of the ylabel."
-        ylabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
-        "Controls if the xlabel is visible."
-        xlabelvisible = true
-        "Controls if the ylabel is visible."
-        ylabelvisible = true
-        "The padding between the xlabel and the ticks or axis."
-        xlabelpadding = 3f0
-        "The padding between the ylabel and the ticks or axis."
-        ylabelpadding = 5f0 # because of boundingbox inaccuracies of ticklabels
-        "The font family of the xticklabels."
-        xticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
-        "The font family of the yticklabels."
-        yticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
-        "The color of xticklabels."
-        xticklabelcolor = lift_parent_attribute(scene, :textcolor, :black)
-        "The color of yticklabels."
-        yticklabelcolor = lift_parent_attribute(scene, :textcolor, :black)
-        "The font size of the xticklabels."
-        xticklabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
-        "The font size of the yticklabels."
-        yticklabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
-        "Controls if the xticklabels are visible."
-        xticklabelsvisible = true
-        "Controls if the yticklabels are visible."
-        yticklabelsvisible = true
-        "The space reserved for the xticklabels."
-        xticklabelspace = Makie.automatic
-        "The space reserved for the yticklabels."
-        yticklabelspace = Makie.automatic
-        "The space between xticks and xticklabels."
-        xticklabelpad = 2f0
-        "The space between yticks and yticklabels."
-        yticklabelpad = 4f0
-        "The counterclockwise rotation of the xticklabels in radians."
-        xticklabelrotation = 0f0
-        "The counterclockwise rotation of the yticklabels in radians."
-        yticklabelrotation = 0f0
-        "The horizontal and vertical alignment of the xticklabels."
-        xticklabelalign = Makie.automatic
-        "The horizontal and vertical alignment of the yticklabels."
-        yticklabelalign = Makie.automatic
-        "The size of the xtick marks."
-        xticksize = 6f0
-        "The size of the ytick marks."
-        yticksize = 6f0
-        "Controls if the xtick marks are visible."
-        xticksvisible = true
-        "Controls if the ytick marks are visible."
-        yticksvisible = true
-        "The alignment of the xtick marks relative to the axis spine (0 = out, 1 = in)."
-        xtickalign = 0f0
-        "The alignment of the ytick marks relative to the axis spine (0 = out, 1 = in)."
-        ytickalign = 0f0
-        "The width of the xtick marks."
-        xtickwidth = 1f0
-        "The width of the ytick marks."
-        ytickwidth = 1f0
-        "The color of the xtick marks."
-        xtickcolor = RGBf(0, 0, 0)
-        "The color of the ytick marks."
-        ytickcolor = RGBf(0, 0, 0)
-        "Locks interactive panning in the x direction."
-        xpanlock = false
-        "Locks interactive panning in the y direction."
-        ypanlock = false
-        "Locks interactive zooming in the x direction."
-        xzoomlock = false
-        "Locks interactive zooming in the y direction."
-        yzoomlock = false
-        "Controls if rectangle zooming affects the x dimension."
-        xrectzoom = true
-        "Controls if rectangle zooming affects the y dimension."
-        yrectzoom = true
-        "The width of the axis spines."
-        spinewidth = 1f0
-        "Controls if the x grid lines are visible."
-        xgridvisible = true
-        "Controls if the y grid lines are visible."
-        ygridvisible = true
-        "The width of the x grid lines."
-        xgridwidth = 1f0
-        "The width of the y grid lines."
-        ygridwidth = 1f0
-        "The color of the x grid lines."
-        xgridcolor = RGBAf(0, 0, 0, 0.12)
-        "The color of the y grid lines."
-        ygridcolor = RGBAf(0, 0, 0, 0.12)
-        "The linestyle of the x grid lines."
-        xgridstyle = nothing
-        "The linestyle of the y grid lines."
-        ygridstyle = nothing
-        "Controls if the x minor grid lines are visible."
-        xminorgridvisible = false
-        "Controls if the y minor grid lines are visible."
-        yminorgridvisible = false
-        "The width of the x minor grid lines."
-        xminorgridwidth = 1f0
-        "The width of the y minor grid lines."
-        yminorgridwidth = 1f0
-        "The color of the x minor grid lines."
-        xminorgridcolor = RGBAf(0, 0, 0, 0.05)
-        "The color of the y minor grid lines."
-        yminorgridcolor = RGBAf(0, 0, 0, 0.05)
-        "The linestyle of the x minor grid lines."
-        xminorgridstyle = nothing
-        "The linestyle of the y minor grid lines."
-        yminorgridstyle = nothing
-        "Controls if the bottom axis spine is visible."
-        bottomspinevisible = true
-        "Controls if the left axis spine is visible."
-        leftspinevisible = true
-        "Controls if the top axis spine is visible."
-        topspinevisible = true
-        "Controls if the right axis spine is visible."
-        rightspinevisible = true
-        "The color of the bottom axis spine."
-        bottomspinecolor = :black
-        "The color of the left axis spine."
-        leftspinecolor = :black
-        "The color of the top axis spine."
-        topspinecolor = :black
-        "The color of the right axis spine."
-        rightspinecolor = :black
-        "The forced aspect ratio of the axis. `nothing` leaves the axis unconstrained, `DataAspect()` forces the same ratio as the ratio in data limits between x and y axis, `AxisAspect(ratio)` sets a manual ratio."
-        aspect = nothing
-        "The vertical alignment of the axis within its suggested bounding box."
-        valign = :center
-        "The horizontal alignment of the axis within its suggested bounding box."
-        halign = :center
-        "The width of the axis."
-        width = nothing
-        "The height of the axis."
-        height = nothing
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight = true
-        "The relative margins added to the autolimits in x direction."
-        xautolimitmargin = (0.05f0, 0.05f0)
-        "The relative margins added to the autolimits in y direction."
-        yautolimitmargin = (0.05f0, 0.05f0)
-        "The xticks."
-        xticks = Makie.automatic
-        "Format for xticks."
-        xtickformat = Makie.automatic
-        "The yticks."
-        yticks = Makie.automatic
-        "Format for yticks."
-        ytickformat = Makie.automatic
-        "The button for panning."
-        panbutton = Makie.Mouse.right
-        "The key for limiting panning to the x direction."
-        xpankey = Makie.Keyboard.x
-        "The key for limiting panning to the y direction."
-        ypankey = Makie.Keyboard.y
-        "The key for limiting zooming to the x direction."
-        xzoomkey = Makie.Keyboard.x
-        "The key for limiting zooming to the y direction."
-        yzoomkey = Makie.Keyboard.y
-        "The position of the x axis (`:bottom` or `:top`)."
-        xaxisposition = :bottom
-        "The position of the y axis (`:left` or `:right`)."
-        yaxisposition = :left
-        "Controls if the x spine is limited to the furthest tick marks or not."
-        xtrimspine = false
-        "Controls if the y spine is limited to the furthest tick marks or not."
-        ytrimspine = false
-        "The background color of the axis."
-        backgroundcolor = :white
-        "Controls if the ylabel's rotation is flipped."
-        flip_ylabel = false
-        "Constrains the data aspect ratio (`nothing` leaves the ratio unconstrained)."
-        autolimitaspect = nothing
-        "The limits that the user has manually set. They are reinstated when calling `reset_limits!` and are set to nothing by `autolimits!`. Can be either a tuple (xlow, xhigh, ylow, high) or a tuple (nothing_or_xlims, nothing_or_ylims). Are set by `xlims!`, `ylims!` and `limits!`."
-        limits = (nothing, nothing)
-        "The align mode of the axis in its parent GridLayout."
-        alignmode = Inside()
-        "Controls if the y axis goes upwards (false) or downwards (true)"
-        yreversed = false
-        "Controls if the x axis goes rightwards (false) or leftwards (true)"
-        xreversed = false
-        "Controls if minor ticks on the x axis are visible"
-        xminorticksvisible = false
-        "The alignment of x minor ticks on the axis spine"
-        xminortickalign = 0f0
-        "The tick size of x minor ticks"
-        xminorticksize = 4f0
-        "The tick width of x minor ticks"
-        xminortickwidth = 1f0
-        "The tick color of x minor ticks"
-        xminortickcolor = :black
-        "The tick locator for the x minor ticks"
-        xminorticks = IntervalsBetween(2)
-        "Controls if minor ticks on the y axis are visible"
-        yminorticksvisible = false
-        "The alignment of y minor ticks on the axis spine"
-        yminortickalign = 0f0
-        "The tick size of y minor ticks"
-        yminorticksize = 4f0
-        "The tick width of y minor ticks"
-        yminortickwidth = 1f0
-        "The tick color of y minor ticks"
-        yminortickcolor = :black
-        "The tick locator for the y minor ticks"
-        yminorticks = IntervalsBetween(2)
-        "The x axis scale"
-        xscale = identity
-        "The y axis scale"
-        yscale = identity
-    end
+# function default_attributes(::Type{Axis}, scene)
+#     attrs, docdict, defaultdict = @documented_attributes begin
+#         # "Attributes with one palette per key, for example `color = [:red, :green, :blue]`"
+#         palette = scene !== nothing && haskey(scene.attributes, :palette) ? deepcopy(scene.palette) : Attributes()
+#         "The xlabel string."
+#         xlabel = ""
+#         "The ylabel string."
+#         ylabel = ""
+#         "The axis title string."
+#         title = ""
+#         "The font family of the title."
+#         titlefont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+#         "The title's font size."
+#         titlesize = lift_parent_attribute(scene, :fontsize, 16f0)
+#         "The gap between axis and title."
+#         titlegap = 4f0
+#         "Controls if the title is visible."
+#         titlevisible = true
+#         "The horizontal alignment of the title."
+#         titlealign = :center
+#         "The color of the title"
+#         titlecolor = lift_parent_attribute(scene, :textcolor, :black)
+#         "The font family of the xlabel."
+#         xlabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+#         "The font family of the ylabel."
+#         ylabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+#         "The color of the xlabel."
+#         xlabelcolor = lift_parent_attribute(scene, :textcolor, :black)
+#         "The color of the ylabel."
+#         ylabelcolor = lift_parent_attribute(scene, :textcolor, :black)
+#         "The font size of the xlabel."
+#         xlabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
+#         "The font size of the ylabel."
+#         ylabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
+#         "Controls if the xlabel is visible."
+#         xlabelvisible = true
+#         "Controls if the ylabel is visible."
+#         ylabelvisible = true
+#         "The padding between the xlabel and the ticks or axis."
+#         xlabelpadding = 3f0
+#         "The padding between the ylabel and the ticks or axis."
+#         ylabelpadding = 5f0 # because of boundingbox inaccuracies of ticklabels
+#         "The font family of the xticklabels."
+#         xticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+#         "The font family of the yticklabels."
+#         yticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+#         "The color of xticklabels."
+#         xticklabelcolor = lift_parent_attribute(scene, :textcolor, :black)
+#         "The color of yticklabels."
+#         yticklabelcolor = lift_parent_attribute(scene, :textcolor, :black)
+#         "The font size of the xticklabels."
+#         xticklabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
+#         "The font size of the yticklabels."
+#         yticklabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
+#         "Controls if the xticklabels are visible."
+#         xticklabelsvisible = true
+#         "Controls if the yticklabels are visible."
+#         yticklabelsvisible = true
+#         "The space reserved for the xticklabels."
+#         xticklabelspace = Makie.automatic
+#         "The space reserved for the yticklabels."
+#         yticklabelspace = Makie.automatic
+#         "The space between xticks and xticklabels."
+#         xticklabelpad = 2f0
+#         "The space between yticks and yticklabels."
+#         yticklabelpad = 4f0
+#         "The counterclockwise rotation of the xticklabels in radians."
+#         xticklabelrotation = 0f0
+#         "The counterclockwise rotation of the yticklabels in radians."
+#         yticklabelrotation = 0f0
+#         "The horizontal and vertical alignment of the xticklabels."
+#         xticklabelalign = Makie.automatic
+#         "The horizontal and vertical alignment of the yticklabels."
+#         yticklabelalign = Makie.automatic
+#         "The size of the xtick marks."
+#         xticksize = 6f0
+#         "The size of the ytick marks."
+#         yticksize = 6f0
+#         "Controls if the xtick marks are visible."
+#         xticksvisible = true
+#         "Controls if the ytick marks are visible."
+#         yticksvisible = true
+#         "The alignment of the xtick marks relative to the axis spine (0 = out, 1 = in)."
+#         xtickalign = 0f0
+#         "The alignment of the ytick marks relative to the axis spine (0 = out, 1 = in)."
+#         ytickalign = 0f0
+#         "The width of the xtick marks."
+#         xtickwidth = 1f0
+#         "The width of the ytick marks."
+#         ytickwidth = 1f0
+#         "The color of the xtick marks."
+#         xtickcolor = RGBf(0, 0, 0)
+#         "The color of the ytick marks."
+#         ytickcolor = RGBf(0, 0, 0)
+#         "Locks interactive panning in the x direction."
+#         xpanlock = false
+#         "Locks interactive panning in the y direction."
+#         ypanlock = false
+#         "Locks interactive zooming in the x direction."
+#         xzoomlock = false
+#         "Locks interactive zooming in the y direction."
+#         yzoomlock = false
+#         "Controls if rectangle zooming affects the x dimension."
+#         xrectzoom = true
+#         "Controls if rectangle zooming affects the y dimension."
+#         yrectzoom = true
+#         "The width of the axis spines."
+#         spinewidth = 1f0
+#         "Controls if the x grid lines are visible."
+#         xgridvisible = true
+#         "Controls if the y grid lines are visible."
+#         ygridvisible = true
+#         "The width of the x grid lines."
+#         xgridwidth = 1f0
+#         "The width of the y grid lines."
+#         ygridwidth = 1f0
+#         "The color of the x grid lines."
+#         xgridcolor = RGBAf(0, 0, 0, 0.12)
+#         "The color of the y grid lines."
+#         ygridcolor = RGBAf(0, 0, 0, 0.12)
+#         "The linestyle of the x grid lines."
+#         xgridstyle = nothing
+#         "The linestyle of the y grid lines."
+#         ygridstyle = nothing
+#         "Controls if the x minor grid lines are visible."
+#         xminorgridvisible = false
+#         "Controls if the y minor grid lines are visible."
+#         yminorgridvisible = false
+#         "The width of the x minor grid lines."
+#         xminorgridwidth = 1f0
+#         "The width of the y minor grid lines."
+#         yminorgridwidth = 1f0
+#         "The color of the x minor grid lines."
+#         xminorgridcolor = RGBAf(0, 0, 0, 0.05)
+#         "The color of the y minor grid lines."
+#         yminorgridcolor = RGBAf(0, 0, 0, 0.05)
+#         "The linestyle of the x minor grid lines."
+#         xminorgridstyle = nothing
+#         "The linestyle of the y minor grid lines."
+#         yminorgridstyle = nothing
+#         "Controls if the bottom axis spine is visible."
+#         bottomspinevisible = true
+#         "Controls if the left axis spine is visible."
+#         leftspinevisible = true
+#         "Controls if the top axis spine is visible."
+#         topspinevisible = true
+#         "Controls if the right axis spine is visible."
+#         rightspinevisible = true
+#         "The color of the bottom axis spine."
+#         bottomspinecolor = :black
+#         "The color of the left axis spine."
+#         leftspinecolor = :black
+#         "The color of the top axis spine."
+#         topspinecolor = :black
+#         "The color of the right axis spine."
+#         rightspinecolor = :black
+#         "The forced aspect ratio of the axis. `nothing` leaves the axis unconstrained, `DataAspect()` forces the same ratio as the ratio in data limits between x and y axis, `AxisAspect(ratio)` sets a manual ratio."
+#         aspect = nothing
+#         "The vertical alignment of the axis within its suggested bounding box."
+#         valign = :center
+#         "The horizontal alignment of the axis within its suggested bounding box."
+#         halign = :center
+#         "The width of the axis."
+#         width = nothing
+#         "The height of the axis."
+#         height = nothing
+#         "Controls if the parent layout can adjust to this element's width"
+#         tellwidth = true
+#         "Controls if the parent layout can adjust to this element's height"
+#         tellheight = true
+#         "The relative margins added to the autolimits in x direction."
+#         xautolimitmargin = (0.05f0, 0.05f0)
+#         "The relative margins added to the autolimits in y direction."
+#         yautolimitmargin = (0.05f0, 0.05f0)
+#         "The xticks."
+#         xticks = Makie.automatic
+#         "Format for xticks."
+#         xtickformat = Makie.automatic
+#         "The yticks."
+#         yticks = Makie.automatic
+#         "Format for yticks."
+#         ytickformat = Makie.automatic
+#         "The button for panning."
+#         panbutton = Makie.Mouse.right
+#         "The key for limiting panning to the x direction."
+#         xpankey = Makie.Keyboard.x
+#         "The key for limiting panning to the y direction."
+#         ypankey = Makie.Keyboard.y
+#         "The key for limiting zooming to the x direction."
+#         xzoomkey = Makie.Keyboard.x
+#         "The key for limiting zooming to the y direction."
+#         yzoomkey = Makie.Keyboard.y
+#         "The position of the x axis (`:bottom` or `:top`)."
+#         xaxisposition = :bottom
+#         "The position of the y axis (`:left` or `:right`)."
+#         yaxisposition = :left
+#         "Controls if the x spine is limited to the furthest tick marks or not."
+#         xtrimspine = false
+#         "Controls if the y spine is limited to the furthest tick marks or not."
+#         ytrimspine = false
+#         "The background color of the axis."
+#         backgroundcolor = :white
+#         "Controls if the ylabel's rotation is flipped."
+#         flip_ylabel = false
+#         "Constrains the data aspect ratio (`nothing` leaves the ratio unconstrained)."
+#         autolimitaspect = nothing
+#         "The limits that the user has manually set. They are reinstated when calling `reset_limits!` and are set to nothing by `autolimits!`. Can be either a tuple (xlow, xhigh, ylow, high) or a tuple (nothing_or_xlims, nothing_or_ylims). Are set by `xlims!`, `ylims!` and `limits!`."
+#         limits = (nothing, nothing)
+#         "The align mode of the axis in its parent GridLayout."
+#         alignmode = Inside()
+#         "Controls if the y axis goes upwards (false) or downwards (true)"
+#         yreversed = false
+#         "Controls if the x axis goes rightwards (false) or leftwards (true)"
+#         xreversed = false
+#         "Controls if minor ticks on the x axis are visible"
+#         xminorticksvisible = false
+#         "The alignment of x minor ticks on the axis spine"
+#         xminortickalign = 0f0
+#         "The tick size of x minor ticks"
+#         xminorticksize = 4f0
+#         "The tick width of x minor ticks"
+#         xminortickwidth = 1f0
+#         "The tick color of x minor ticks"
+#         xminortickcolor = :black
+#         "The tick locator for the x minor ticks"
+#         xminorticks = IntervalsBetween(2)
+#         "Controls if minor ticks on the y axis are visible"
+#         yminorticksvisible = false
+#         "The alignment of y minor ticks on the axis spine"
+#         yminortickalign = 0f0
+#         "The tick size of y minor ticks"
+#         yminorticksize = 4f0
+#         "The tick width of y minor ticks"
+#         yminortickwidth = 1f0
+#         "The tick color of y minor ticks"
+#         yminortickcolor = :black
+#         "The tick locator for the y minor ticks"
+#         yminorticks = IntervalsBetween(2)
+#         "The x axis scale"
+#         xscale = identity
+#         "The y axis scale"
+#         yscale = identity
+#     end
 
-    (attributes = attrs, documentation = docdict, defaults = defaultdict)
-end
+#     (attributes = attrs, documentation = docdict, defaults = defaultdict)
+# end
 
-@doc """
-Axis has the following attributes:
+# @doc """
+# Axis has the following attributes:
 
-$(let
-    _, docs, defaults = default_attributes(Axis, nothing)
-    docvarstring(docs, defaults)
-end)
-"""
-Axis
+# $(let
+#     _, docs, defaults = default_attributes(Axis, nothing)
+#     docvarstring(docs, defaults)
+# end)
+# """
+# Axis
 
 function default_attributes(::Type{Colorbar}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
