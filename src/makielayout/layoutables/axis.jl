@@ -719,10 +719,16 @@ function axis_convert(ax::Axis, x::Observable, y::Observable)
     return xconv, yconv
 end
 
-pre_convert_args(args...; kw...) = Makie.convert_arguments(args...; kw...)
-
-function pre_convert_args(::Type{<: Combined}, x::AbstractVector, y::AbstractVector)
-    return (x, y)
+function pre_convert_args(args...; kw...)
+    try
+        return convert_arguments(args...; kw...)
+    catch e
+        if e isa MethodError
+            return args
+        else
+            rethrow(e)
+        end
+    end
 end
 
 function Makie.plot!(la::Axis, P::Makie.PlotFunc,
