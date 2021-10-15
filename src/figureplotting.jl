@@ -13,30 +13,27 @@ Base.show(io::IO, ::MIME"text/plain", fap::FigureAxisPlot) = print(io, "FigureAx
 Base.iterate(fap::FigureAxisPlot, args...) = iterate((fap.figure, fap.axis, fap.plot), args...)
 Base.iterate(ap::AxisPlot, args...) = iterate((ap.axis, ap.plot), args...)
 
+
+get_axis_type(::PlotFunc, args...) = Axis
+get_axis_type(::Type{<: Union{Surface, Volume}}, args...) = LScene
+get_axis_type(::PlotFunc, x::AbstractVector, y::AbstractVector, z::AbstractVector) = LScene
+get_axis_type(::PlotFunc, xyz::AbstractVector{<: Point3}) = LScene
+
+
 function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), kw_attributes...)
     # scene_attributes = extract_scene_attributes!(attributes)
     fig = Figure(; figure...)
 
     axis = Dict(pairs(axis))
 
-    if haskey(axis, :type)
-        axtype = axis[:type]
+    AxType = if haskey(axis, :type)
         pop!(axis, :type)
-        ax = axtype(fig; axis...)
     else
-        proxyscene = Scene()
-        plot!(proxyscene, P, Attributes(kw_attributes), args...; show_axis = false)
-
-        if is2d(proxyscene)
-            ax = Axis(fig; axis...)
-        else
-            ax = LScene(fig; scenekw = (camera = automatic, show_axis = true, raw = false, axis...))
-        end
+        get_axis_type(P, args...)
     end
-
-    fig[1, 1] = ax
+    ax = AxType(fig[1, 1]; axis...)
     p = plot!(ax, P, Attributes(kw_attributes), args...)
-    FigureAxisPlot(fig, ax, p)
+    return FigureAxisPlot(fig, ax, p)
 end
 
 # without scenelike, use current axis of current figure

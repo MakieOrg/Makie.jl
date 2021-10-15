@@ -719,11 +719,11 @@ function axis_convert(ax::Axis, x::Observable, y::Observable)
     return xconv, yconv
 end
 
-function pre_convert_args(args...; kw...)
+function pre_convert_args(P, args...; kw...)
     try
-        return convert_arguments(args...; kw...)
+        return Makie.convert_arguments(P, args...; kw...)
     catch e
-        if e isa MethodError
+        if e isa MethodError || e isa Makie.ConversionError
             return args
         else
             rethrow(e)
