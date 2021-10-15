@@ -533,9 +533,9 @@ end
     fig = Figure(resolution = (800, 400))
 
     prim = Rect3D(Point3f(0), Vec3f(1))
-    ps = rand(Point3f0, 10) .+ Point3f0(0, 0, 1)
-    mat = rand(4, 4)
-    A = rand(4,4,4)
+    ps  = RNG.rand(Point3f0, 10) .+ Point3f0(0, 0, 1)
+    mat = RNG.rand(4, 4)
+    A   = RNG.rand(4,4,4)
 
     # This generates two sets of plots each on two axis. Both axes have one set
     # without depth_shift (0f0, red) and one at ∓10eps(1f0) (blue, left/right axis).
