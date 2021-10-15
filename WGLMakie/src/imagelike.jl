@@ -61,7 +61,7 @@ function limits_to_uvmesh(plot)
             end
             return vec(g)
         end
-        rect = lift(z -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), size(z) .+ 1), pz)
+        rect = lift((x, y) -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), (length(x), length(y))), px, py)
         positions = Buffer(lift(grid, px, py, pz, t))
         faces = Buffer(lift(r -> decompose(GLTriangleFace, r), rect))
         uv = Buffer(lift(decompose_uv, rect))
