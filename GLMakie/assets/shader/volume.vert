@@ -22,5 +22,5 @@ void main()
     frag_vert = world_vert.xyz;
     o_light_dir = vec3(modelinv * vec4(lightposition, 1));
     gl_Position = projectionview * world_vert;
-    gl_Position += gl_Position.w * depth_shift;
+    gl_Position.z += gl_Position.w * depth_shift;
 }

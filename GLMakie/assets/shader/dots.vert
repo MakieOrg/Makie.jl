@@ -38,5 +38,5 @@ void main(){
 	colorize(color_map, color, color_norm);
     o_objectid  = uvec2(objectid, gl_VertexID+1);
 	gl_Position = projectionview * model * _position(vertex);
-    gl_Position += gl_Position.w * depth_shift;
+    gl_Position.z += gl_Position.w * depth_shift;
 }

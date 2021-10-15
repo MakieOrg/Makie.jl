@@ -16,5 +16,5 @@ void main(){
     o_uv = texturecoordinates;
     aa_scale = vec2(projection[0][0],projection[1][1])*(1.0/resolution)*AntiAliasScale/Zoom;
     gl_Position = projectionview * model * vec4(vertices, 0, 1);
-    gl_Position += gl_Position.w * depth_shift;
+    gl_Position.z += gl_Position.w * depth_shift;
 }

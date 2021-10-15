@@ -24,5 +24,5 @@ void main(){
     o_uv = texturecoordinates;
     o_objectid = uvec2(objectid, gl_VertexID+1);
     gl_Position = projection * view * model * _position(vertices);
-    gl_Position += gl_Position.w * depth_shift;
+    gl_Position.z += gl_Position.w * depth_shift;
 }
