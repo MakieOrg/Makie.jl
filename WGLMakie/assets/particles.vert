@@ -2,8 +2,6 @@ precision mediump float;
 
 uniform mat4 projection;
 uniform mat4 view;
-uniform float depth_shift;
-
 
 out vec3 frag_normal;
 out vec3 frag_position;
@@ -43,5 +41,5 @@ void main(){
     frag_position = -position_world.xyz;
     // screen space coordinates of the position
     gl_Position = projection * view * position_world;
-    gl_Position.z += gl_Position.w * depth_shift;
+    gl_Position.z += gl_Position.w * get_depth_shift();
 }

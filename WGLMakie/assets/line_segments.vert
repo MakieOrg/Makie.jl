@@ -1,6 +1,5 @@
 uniform mat4 projection;
 uniform mat4 view;
-uniform float depth_shift;
 
 vec2 screen_space(vec4 position)
 {
@@ -44,6 +43,6 @@ void main()
     vec4 offset = vec4(normal * position.y, 0.0, 0.0);
     // start, or end of quad, need to use current or next point as anchor
     gl_Position = anchor + offset;
-    gl_Position.z += gl_Position.w * depth_shift;
+    gl_Position.z += gl_Position.w * get_depth_shift();
 
 }
