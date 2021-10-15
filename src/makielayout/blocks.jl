@@ -15,6 +15,7 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
     end
 
     fields_vector = structdef.args[2].args[3].args
+    basefields = filter(x -> !(x isa LineNumberNode), fields_vector)
 
     attrs = extract_attributes!(body)
 
@@ -25,7 +26,6 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
         append!(fields_vector, attribute_fields)
     end
 
-    basefields = filter(x -> !(x isa LineNumberNode), fields_vector)
     constructor = quote
         function $name($(basefields...))
             new($(basefields...))
@@ -34,7 +34,50 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
 
     push!(fields_vector, constructor)
 
-    structdef
+    q = quote
+        """
+
+        For information about attributes, use `attribute_help($($name))`.
+        """
+        $structdef
+
+        function is_attribute(::Type{$(name)}, sym::Symbol)
+            sym in ($((attrs !== nothing ? [QuoteNode(a.symbol) for a in attrs] : [])...),)
+        end
+
+        function default_attribute_values(::Type{$(name)})
+            Dict(
+                $(
+                    (attrs !== nothing ?
+                        [Expr(:call, :(=>), QuoteNode(a.symbol), a.default) for a in attrs] :
+                        [])...
+                )
+            )
+        end
+
+        function _attribute_docs(::Type{$(name)})
+            Dict(
+                $(
+                    (attrs !== nothing ?
+                        [Expr(:call, :(=>), QuoteNode(a.symbol), a.docs) for a in attrs] :
+                        [])...
+                )
+            )
+        end
+    end
+
+    esc(q)
+end
+
+function attribute_help(T)
+    println("Available attributes for $T (use attribute_help($T, key) for more information):")
+    foreach(sort(collect(keys(_attribute_docs(T))))) do key
+        println(key)
+    end
+end
+
+function attribute_help(T, key)
+    println(_attribute_docs(T)[key])
 end
 
 function extract_attributes!(body)
