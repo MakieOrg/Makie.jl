@@ -16,7 +16,7 @@ mutable struct Scene <: AbstractScene
     events::Events
 
     "The current pixel area of the Scene."
-    px_area::Node{Rect2i}
+    px_area::Observable{Rect2i}
 
     "Whether the scene should be cleared."
     clear::Bool
@@ -136,7 +136,7 @@ function Scene(
     if isnothing(px_area)
         px_area = lift(zero_origin, parent.px_area)
     else
-        px_area = lift(pixelarea(parent), convert(Node, px_area)) do p, a
+        px_area = lift(pixelarea(parent), convert(Observable, px_area)) do p, a
             # make coordinates relative to parent
             rect = Rect2i(minimum(p) .+ minimum(a), widths(a))
             return rect

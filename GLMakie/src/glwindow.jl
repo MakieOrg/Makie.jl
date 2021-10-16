@@ -10,7 +10,7 @@ end
 
 
 mutable struct GLFramebuffer
-    resolution::Node{NTuple{2, Int}}
+    resolution::Observable{NTuple{2, Int}}
     id::NTuple{2, GLuint}
 
     buffers::Dict{Symbol, Texture}
@@ -57,7 +57,7 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     @assert status == GL_FRAMEBUFFER_COMPLETE
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0)
-    fb_size_node = Node(fb_size)
+    fb_size_node = Observable(fb_size)
 
     buffers = Dict(
         :color => color_buffer,

@@ -218,7 +218,7 @@ function print_rec(io::IO, dict, indent::Int = 1; extended = false)
             print(io, ": ")
             println(io)
             print_rec(io, v.attributes, indent + 1; extended = extended)
-        elseif isa(v, Node)
+        elseif isa(v, Observable)
             if extended
                 print(io, ": ")
                 println(io, isnothing(to_value(v)) ? "nothing" : to_value(v))

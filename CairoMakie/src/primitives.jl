@@ -611,7 +611,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Makie.Mesh)
         draw_mesh2D(scene, screen, primitive)
     else
         if !haskey(primitive, :faceculling)
-            primitive[:faceculling] = Node(-10)
+            primitive[:faceculling] = Observable(-10)
         end
         draw_mesh3D(scene, screen, primitive)
     end
@@ -789,7 +789,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Makie.Surface
         primitive[:color] = primitive[3]
     end
     if !haskey(primitive, :faceculling)
-        primitive[:faceculling] = Node(-10)
+        primitive[:faceculling] = Observable(-10)
     end
     draw_mesh3D(scene, screen, primitive, mesh=mesh)
     primitive[:color] = old

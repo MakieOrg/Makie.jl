@@ -26,7 +26,7 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
 
     notify(protrusions)
 
-    finallimits = Node(Rect3f(Vec3f(0f0, 0f0, 0f0), Vec3f(100f0, 100f0, 100f0)))
+    finallimits = Observable(Rect3f(Vec3f(0f0, 0f0, 0f0), Vec3f(100f0, 100f0, 100f0)))
 
     scenearea = lift(round_to_IRect2D, layoutobservables.computedbbox)
 
@@ -105,8 +105,8 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
 
 
     mouseeventhandle = addmouseevents!(scene)
-    scrollevents = Node(ScrollEvent(0, 0))
-    keysevents = Node(KeysEvent(Set()))
+    scrollevents = Observable(ScrollEvent(0, 0))
+    keysevents = Observable(KeysEvent(Set()))
 
     on(scene.events.scroll) do s
         if is_mouseinside(scene)

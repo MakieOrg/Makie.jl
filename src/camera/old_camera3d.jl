@@ -2,18 +2,18 @@
 @enum ProjectionEnum Perspective Orthographic
 
 struct OldCamera3D <: AbstractCamera
-    rotationspeed::Node{Float32}
-    translationspeed::Node{Float32}
-    eyeposition::Node{Vec3f}
-    lookat::Node{Vec3f}
-    upvector::Node{Vec3f}
-    fov::Node{Float32}
-    near::Node{Float32}
-    far::Node{Float32}
-    projectiontype::Node{ProjectionEnum}
-    pan_button::Node{ButtonTypes}
-    rotate_button::Node{ButtonTypes}
-    move_key::Node{ButtonTypes}
+    rotationspeed::Observable{Float32}
+    translationspeed::Observable{Float32}
+    eyeposition::Observable{Vec3f}
+    lookat::Observable{Vec3f}
+    upvector::Observable{Vec3f}
+    fov::Observable{Float32}
+    near::Observable{Float32}
+    far::Observable{Float32}
+    projectiontype::Observable{ProjectionEnum}
+    pan_button::Observable{ButtonTypes}
+    rotate_button::Observable{ButtonTypes}
+    move_key::Observable{ButtonTypes}
 end
 
 """
@@ -222,7 +222,7 @@ end
 """
     translate_cam!(scene::Scene, translation::VecTypes)
 
-Translate the camera by a translation vector given in camera space. 
+Translate the camera by a translation vector given in camera space.
 """
 translate_cam!(scene::Scene, translation::VecTypes) = translate_cam!(scene, cameracontrols(scene), translation)
 function translate_cam!(scene::Scene, cam::OldCamera3D, _translation::VecTypes)

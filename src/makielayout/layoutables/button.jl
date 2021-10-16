@@ -16,7 +16,7 @@ function layoutable(::Type{Button}, fig_or_scene::FigureLike; bbox = nothing, kw
     layoutobservables = LayoutObservables{Button}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
-    textpos = Node(Point2f(0, 0))
+    textpos = Observable(Point2f(0, 0))
 
     subarea = lift(layoutobservables.computedbbox) do bbox
         round_to_IRect2D(bbox)
@@ -36,7 +36,7 @@ function layoutable(::Type{Button}, fig_or_scene::FigureLike; bbox = nothing, kw
 
     roundedrectpoints = lift(roundedrectvertices, buttonrect, cornerradius, cornersegments)
 
-    mousestate = Node(:out)
+    mousestate = Observable(:out)
 
     bcolors = (; out = buttoncolor, active = buttoncolor_active, hover = buttoncolor_hover)
     bcolor = lift((s,_...)->bcolors[s][], Any, mousestate, values(bcolors)...)

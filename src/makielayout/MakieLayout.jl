@@ -21,7 +21,7 @@ using GridLayoutBase: GridSubposition
 import Showoff
 using Colors
 
-const FPS = Node(30)
+const FPS = Observable(30)
 const COLOR_ACCENT = Ref(RGBf(((79, 122, 214) ./ 255)...))
 const COLOR_ACCENT_DIMMED = Ref(RGBf(((174, 192, 230) ./ 255)...))
 

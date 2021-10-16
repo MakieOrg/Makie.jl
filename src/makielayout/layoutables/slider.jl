@@ -15,7 +15,7 @@ function layoutable(::Type{Slider}, fig_or_scene; bbox = nothing, kwargs...)
 
     sliderrange = attrs.range
 
-    protrusions = Node(GridLayoutBase.RectSides{Float32}(0, 0, 0, 0))
+    protrusions = Observable(GridLayoutBase.RectSides{Float32}(0, 0, 0, 0))
     layoutobservables = LayoutObservables{Slider}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox, protrusions = protrusions)
 
@@ -46,7 +46,7 @@ function layoutable(::Type{Slider}, fig_or_scene; bbox = nothing, kwargs...)
     end
 
     # this is the index of the selected value in the slider's range
-    # selected_index = Node(1)
+    # selected_index = Observable(1)
     # add the selected index to the attributes so it can be manipulated later
     attrs.selected_index = 1
     selected_index = attrs.selected_index
@@ -57,11 +57,11 @@ function layoutable(::Type{Slider}, fig_or_scene; bbox = nothing, kwargs...)
         (i - 1) / (length(r) - 1)
     end
 
-    dragging = Node(false)
+    dragging = Observable(false)
 
     # what the slider actually displays currently (also during dragging when
     # the slider position is in an "invalid" position given the slider's range)
-    displayed_sliderfraction = Node(0.0)
+    displayed_sliderfraction = Observable(0.0)
 
     on(sliderfraction) do frac
         # only update displayed fraction through sliderfraction if not dragging
@@ -103,7 +103,7 @@ function layoutable(::Type{Slider}, fig_or_scene; bbox = nothing, kwargs...)
         linewidth = linewidth, inspectable = false)
     decorations[:linesegments] = linesegs
 
-    button_magnification = Node(1.0)
+    button_magnification = Observable(1.0)
     buttonsize = @lift($linewidth * $button_magnification)
     button = scatter!(topscene, middlepoint, color = color_active, strokewidth = 0,
         markersize = buttonsize, inspectable = false)

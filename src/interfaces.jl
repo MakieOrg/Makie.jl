@@ -152,7 +152,7 @@ function apply_convert!(P, attributes::Attributes, x::PlotSpec{S}) where S
     return (plottype(P, S), args)
 end
 
-function seperate_tuple(args::Node{<: NTuple{N, Any}}) where N
+function seperate_tuple(args::Observable{<: NTuple{N, Any}}) where N
     ntuple(N) do i
         lift(args) do x
             if i <= length(x)
@@ -165,7 +165,7 @@ function seperate_tuple(args::Node{<: NTuple{N, Any}}) where N
 end
 
 function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::Attributes, args) where Typ
-    input = convert.(Node, args)
+    input = convert.(Observable, args)
     argnodes = lift(input...) do args...
         convert_arguments(PlotType, args...)
     end
@@ -293,7 +293,7 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
     PreType = Combined{plotfunc(PreType), typeof(argvalues)}
     convert_keys = intersect(used_attributes(PreType, argvalues...), keys(attributes))
     kw_signal = if isempty(convert_keys) # lift(f) isn't supported so we need to catch the empty case
-        Node(())
+        Observable(())
     else
         lift((args...)-> Pair.(convert_keys, args), getindex.(attributes, convert_keys)...) # make them one tuple to easier pass through
     end
@@ -303,8 +303,8 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
     # apply_conversion deals with that!
 
     FinalType, argsconverted = apply_convert!(PreType, attributes, converted)
-    converted_node = Node(argsconverted)
-    input_nodes =  convert.(Node, args)
+    converted_node = Observable(argsconverted)
+    input_nodes =  convert.(Observable, args)
     onany(kw_signal, lift(tuple, input_nodes...)) do kwargs, args
         # do the argument conversion inside a lift
         result = convert_arguments(FinalType, args...; kwargs...)
@@ -389,7 +389,7 @@ function extract_scene_attributes!(attributes)
     return result
 end
 
-function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, input::NTuple{N, Node}, args::Node) where {N}
+function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, input::NTuple{N, Observable}, args::Observable) where {N}
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
     scene_attributes = extract_scene_attributes!(attributes)
     plot_object = P(scene, copy(attributes), input, args)
@@ -403,7 +403,7 @@ function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, input::NTu
     return plot_object
 end
 
-function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, input::NTuple{N,Node}, args::Node) where {N}
+function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, input::NTuple{N,Observable}, args::Observable) where {N}
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
 
     plot_object = P(scene, attributes, input, args)

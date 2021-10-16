@@ -26,9 +26,9 @@ plot!(plot::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}}) = plot
 
 function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
 
-    glyphcollections = Node(GlyphCollection[])
-    position = Node{Any}(nothing)
-    rotation = Node{Any}(nothing)
+    glyphcollections = Observable(GlyphCollection[])
+    position = Observable{Any}(nothing)
+    rotation = Observable{Any}(nothing)
 
     onany(plot[1], plot.textsize, plot.position,
             plot.font, plot.align, plot.rotation, plot.justification,
@@ -65,8 +65,8 @@ end
 function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:AbstractString, <:Point}}}})
     strings_and_positions = plot[1]
 
-    strings = Node(first.(strings_and_positions[]))
-    positions = Node(to_ndim.(Ref(Point3f), last.(strings_and_positions[]), 0))
+    strings = Observable(first.(strings_and_positions[]))
+    positions = Observable(to_ndim.(Ref(Point3f), last.(strings_and_positions[]), 0))
 
     attrs = plot.attributes
     pop!(attrs, :position)
@@ -119,8 +119,8 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
     glyphcollection = @lift($lineels_glyphcollection_offset[2])
 
 
-    linepairs = Node(Tuple{Point2f, Point2f}[])
-    linewidths = Node(Float32[])
+    linepairs = Observable(Tuple{Point2f, Point2f}[])
+    linewidths = Observable(Float32[])
 
     scene = Makie.parent_scene(plot)
 

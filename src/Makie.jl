@@ -74,7 +74,7 @@ export ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface
 export Pixel, px, Unit, plotkey, attributes, used_attributes
 
 const RealVector{T} = AbstractVector{T} where T <: Number
-const Node = Observable # shorthand
+const Observable = Observable # shorthand
 const RGBAf = RGBA{Float32}
 const RGBf = RGB{Float32}
 const NativeFont = FreeTypeAbstraction.FTFont
@@ -181,8 +181,8 @@ export xticks!, yticks!, zticks!
 export xtickrotation, ytickrotation, ztickrotation
 export xtickrotation!, ytickrotation!, ztickrotation!
 
-# Node/Signal related
-export Node, Observable, lift, map_once, to_value, on, onany, @lift, off, connect!
+# Observable/Signal related
+export Observable, Observable, lift, map_once, to_value, on, onany, @lift, off, connect!
 
 # utilities and macros
 export @recipe, @extract, @extractvalue, @key_str, @get_attribute

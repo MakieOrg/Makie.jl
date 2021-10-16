@@ -43,14 +43,14 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
 
     decorations = Dict{Symbol, Any}()
 
-    protrusions = Node(GridLayoutBase.RectSides{Float32}(0,0,0,0))
+    protrusions = Observable(GridLayoutBase.RectSides{Float32}(0,0,0,0))
     layoutobservables = LayoutObservables{Axis}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight, halign, valign, attrs.alignmode;
         suggestedbbox = bbox, protrusions = protrusions)
 
     # initialize either with user limits, or pick defaults based on scales
     # so that we don't immediately error
-    targetlimits = Node{Rect2f}(defaultlimits(limits[], attrs.xscale[], attrs.yscale[]))
-    finallimits = Node{Rect2f}(targetlimits[])
+    targetlimits = Observable{Rect2f}(defaultlimits(limits[], attrs.xscale[], attrs.yscale[]))
+    finallimits = Observable{Rect2f}(targetlimits[])
 
     # the first thing to do when setting a new scale is
     # resetting the limits because simply through expanding they might be invalid for log
@@ -78,12 +78,12 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     translate!(background, 0, 0, -100)
     decorations[:background] = background
 
-    block_limit_linking = Node(false)
+    block_limit_linking = Observable(false)
 
     xaxislinks = Axis[]
     yaxislinks = Axis[]
 
-    xgridnode = Node(Point2f[])
+    xgridnode = Observable(Point2f[])
     xgridlines = linesegments!(
         topscene, xgridnode, linewidth = xgridwidth, visible = xgridvisible,
         color = xgridcolor, linestyle = xgridstyle, inspectable = false
@@ -92,7 +92,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     translate!(xgridlines, 0, 0, -10)
     decorations[:xgridlines] = xgridlines
 
-    xminorgridnode = Node(Point2f[])
+    xminorgridnode = Observable(Point2f[])
     xminorgridlines = linesegments!(
         topscene, xminorgridnode, linewidth = xminorgridwidth, visible = xminorgridvisible,
         color = xminorgridcolor, linestyle = xminorgridstyle, inspectable = false
@@ -101,7 +101,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     translate!(xminorgridlines, 0, 0, -10)
     decorations[:xminorgridlines] = xminorgridlines
 
-    ygridnode = Node(Point2f[])
+    ygridnode = Observable(Point2f[])
     ygridlines = linesegments!(
         topscene, ygridnode, linewidth = ygridwidth, visible = ygridvisible,
         color = ygridcolor, linestyle = ygridstyle, inspectable = false
@@ -110,7 +110,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     translate!(ygridlines, 0, 0, -10)
     decorations[:ygridlines] = ygridlines
 
-    yminorgridnode = Node(Point2f[])
+    yminorgridnode = Observable(Point2f[])
     yminorgridlines = linesegments!(
         topscene, yminorgridnode, linewidth = yminorgridwidth, visible = yminorgridvisible,
         color = yminorgridcolor, linestyle = yminorgridstyle, inspectable = false
@@ -190,8 +190,8 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         yflip ? lc : rc
     end
 
-    xlims = Node(xlimits(finallimits[]))
-    ylims = Node(ylimits(finallimits[]))
+    xlims = Observable(xlimits(finallimits[]))
+    ylims = Observable(ylimits(finallimits[]))
 
     on(finallimits) do lims
         nxl = xlimits(lims)
@@ -376,8 +376,8 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
     mouseeventhandle = addmouseevents!(scene)
-    scrollevents = Node(ScrollEvent(0, 0))
-    keysevents = Node(KeysEvent(Set()))
+    scrollevents = Observable(ScrollEvent(0, 0))
+    keysevents = Observable(KeysEvent(Set()))
 
     on(scene.events.scroll) do s
         if is_mouseinside(scene)

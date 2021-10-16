@@ -12,7 +12,7 @@ end
 
 function sceneareanode!(finalbbox, limits, aspect)
 
-    scenearea = Node(Recti(0, 0, 100, 100))
+    scenearea = Observable(Recti(0, 0, 100, 100))
 
     onany(finalbbox, limits, aspect) do bbox, limits, aspect
 
@@ -348,7 +348,7 @@ function labelslider!(scene, label, range; format = string,
     else
         colsize!(layout, 3, value_column_width)
     end
-    
+
     (slider = slider, label = label, valuelabel = valuelabel, layout = layout)
 end
 

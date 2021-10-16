@@ -10,9 +10,9 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
 @testset "PriorityObservable" begin
     po = PriorityObservable(0)
 
-    first = Node(0.0)
-    second = Node(0.0)
-    third = Node(0.0)
+    first = Observable(0.0)
+    second = Observable(0.0)
+    third = Observable(0.0)
 
     on(po, priority=1) do x
         sleep(0)
@@ -126,7 +126,7 @@ end
         @test ispressed(events, expr)
         @test Exclusively(expr) == lowered
         @test ispressed(events, Exclusively(expr))
-        
+
         events.keyboardbutton[] = KeyEvent(Keyboard.b, Keyboard.press)
         @test ispressed(events, expr)
         @test ispressed(events, Exclusively(expr))
@@ -134,7 +134,7 @@ end
         events.keyboardbutton[] = KeyEvent(Keyboard.c, Keyboard.press)
         @test ispressed(events, expr)
         @test !ispressed(events, Exclusively(expr))
-        
+
         events.keyboardbutton[] = KeyEvent(Keyboard.a, Keyboard.release)
         @test !ispressed(events, expr)
         @test !ispressed(events, Exclusively(expr))
@@ -261,7 +261,7 @@ end
     @testset "mouse state machine" begin
         scene = Scene(resolution=(800, 600));
         e = events(scene)
-        bbox = Node(Rect2(200, 200, 400, 300))
+        bbox = Observable(Rect2(200, 200, 400, 300))
         msm = addmouseevents!(scene, bbox, priority=typemax(Int8))
         eventlog = MouseEvent[]
         on(x -> begin push!(eventlog, x); false end, msm.obs)

@@ -1,13 +1,13 @@
 struct Camera3D <: AbstractCamera
-    eyeposition::Node{Vec3f}
-    lookat::Node{Vec3f}
-    upvector::Node{Vec3f}
+    eyeposition::Observable{Vec3f}
+    lookat::Observable{Vec3f}
+    upvector::Observable{Vec3f}
 
-    zoom_mult::Node{Float32}
-    fov::Node{Float32} # WGLMakie compat
-    near::Node{Float32}
-    far::Node{Float32}
-    pulser::Node{Float64}
+    zoom_mult::Observable{Float32}
+    fov::Observable{Float32} # WGLMakie compat
+    near::Observable{Float32}
+    far::Observable{Float32}
+    pulser::Observable{Float64}
 
     attributes::Attributes
 end
@@ -137,11 +137,11 @@ function Camera3D(scene; kwargs...)
         pop!(attr, :lookat,      Vec3f(0)),
         pop!(attr, :upvector,    Vec3f(0, 0, 1)),
 
-        Node(1f0),
-        Node(attr[:fov][]),
-        Node(attr[:near][] === automatic ? 0.1f0 : attr[:near][]),
-        Node(attr[:far][]  === automatic ? 100f0 : attr[:far][]),
-        Node(-1.0),
+        Observable(1f0),
+        Observable(attr[:fov][]),
+        Observable(attr[:near][] === automatic ? 0.1f0 : attr[:near][]),
+        Observable(attr[:far][]  === automatic ? 100f0 : attr[:far][]),
+        Observable(-1.0),
 
         attr
     )
@@ -497,7 +497,7 @@ end
 """
     zoom!(scene, zoom_step)
 
-Zooms the camera in or out based on the multiplier `zoom_step`. A `zoom_step` 
+Zooms the camera in or out based on the multiplier `zoom_step`. A `zoom_step`
 of 1.0 is neutral, larger zooms out and lower zooms in.
 
 Note that this method only applies to Camera3D.
