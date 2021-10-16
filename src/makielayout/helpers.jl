@@ -325,7 +325,8 @@ end
 
 
 """
-    labelslider!(scene, label, range; format = string, sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), layoutkw...)
+    labelslider!(scene, label, range; format = string, sliderkw = Dict(),
+    labelkw = Dict(), valuekw = Dict(), value_column_width = automatic, layoutkw...)
 
 Construct a horizontal GridLayout with a label, a slider and a value label in `scene`.
 
@@ -337,6 +338,8 @@ Specify a format function for the value label with the `format` keyword.
 The slider is forwarded the keywords from `sliderkw`.
 The label is forwarded the keywords from `labelkw`.
 The value label is forwarded the keywords from `valuekw`.
+You can set the column width for the value label column with the keyword `value_column_width`.
+By default, the width is determined heuristically by sampling a few values from the slider range.
 All other keywords are forwarded to the `GridLayout`.
 
 Example:
@@ -347,11 +350,29 @@ layout[1, 1] = ls.layout
 ```
 """
 function labelslider!(scene, label, range; format = string,
-        sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), layoutkw...)
+        sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), value_column_width = automatic, layoutkw...)
     slider = Slider(scene; range = range, sliderkw...)
     label = Label(scene, label; labelkw...)
     valuelabel = Label(scene, lift(format, slider.value); valuekw...)
     layout = hbox!(label, slider, valuelabel; layoutkw...)
+
+    if value_column_width === automatic
+        maxwidth = 0.0
+        initial_value = slider.value[]
+        a = first(slider.range[])
+        b = last(slider.range[])
+        for frac in (0.0, 0.5, 1.0)
+            fracvalue = a + frac * (b - a)
+            set_close_to!(slider, fracvalue)
+            labelwidth = GridLayoutBase.computedbboxobservable(valuelabel)[].widths[1]
+            maxwidth = max(maxwidth, labelwidth)
+        end
+        set_close_to!(slider, initial_value)
+        colsize!(layout, 3, maxwidth)
+    else
+        colsize!(layout, 3, value_column_width)
+    end
+    
     (slider = slider, label = label, valuelabel = valuelabel, layout = layout)
 end
 
