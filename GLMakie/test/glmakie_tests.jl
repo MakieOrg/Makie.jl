@@ -32,7 +32,7 @@ end
 @cell "Sampler type" begin
     # Directly access texture parameters:
     x = Sampler(fill(to_color(:yellow), 100, 100), minfilter=:nearest)
-    scene = image(x, show_axis=false)
+    scene = image(x)
     # indexing will go straight to the GPU, while only transfering the changes
     st = Stepper(scene)
     x[1:10, 1:50] .= to_color(:red)

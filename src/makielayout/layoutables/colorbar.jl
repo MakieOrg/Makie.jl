@@ -196,7 +196,6 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
     rects = poly!(topscene,
         lift(x -> getindex(x, 1), rects_and_colors),
         color = colors,
-        show_axis = false,
         visible = map_is_categorical,
         inspectable = false
     )
@@ -218,7 +217,6 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         @lift(range(bottom($barbox), top($barbox), length = 2)),
         continous_pixels,
         visible = @lift(!$map_is_categorical),
-        show_axis = false,
         interpolate = true,
         inspectable = false
     )

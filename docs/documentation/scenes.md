@@ -35,14 +35,10 @@ Makie offers mutation functions to scale, translate and rotate your Scenes on th
 
 ## Updating the Scene
 
-When the Scene is changed, you may need to update several aspects of it.  
+When the Scene is changed, you may need to update several aspects of it.
 Makie provides three main updating functions:
 
-{{doc update!}}
-{{doc update_limits!}}
 {{doc update_cam!}}
-
-In general, `update!` is to be used to keep data in sync, and `update_cam!` and `update_limits!` update the camera and limits respectively (to show all the data).
 
 ## Events
 

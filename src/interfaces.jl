@@ -34,7 +34,6 @@ function color_and_colormap!(plot, intensity = plot[:color])
     end
 end
 
-
 function calculated_attributes!(::Type{<: Mesh}, plot)
     need_cmap = color_and_colormap!(plot)
     need_cmap || delete!(plot, :colormap)
@@ -217,7 +216,6 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     # create the plot, with the full attributes, the input signals, and the final signal nodes.
     plot_obj = FinalType(scene, transformation, plot_attributes, input, seperate_tuple(args))
 
-    transformation.parent[] = plot_obj
     calculated_attributes!(plot_obj)
     plot_obj
 end
@@ -267,24 +265,6 @@ const PlotFunc = Union{Type{Any}, Type{<: AbstractPlot}}
 ######################################################################
 # In this section, the plotting functions have P as the first argument
 # These are called from type recipes
-
-# # non-mutating, without positional attributes
-
-# function plot(P::PlotFunc, args...; kw_attributes...)
-#     attributes = Attributes(kw_attributes)
-#     plot(P, attributes, args...)
-# end
-
-# # with positional attributes
-
-# function plot(P::PlotFunc, attrs::Attributes, args...; kw_attributes...)
-#     attributes = merge!(Attributes(kw_attributes), attrs)
-#     scene_attributes = extract_scene_attributes!(attributes)
-#     scene = Scene(; scene_attributes...)
-#     plot!(scene, P, attributes, args...)
-# end
-
-# mutating, without positional attributes
 
 function plot!(P::PlotFunc, scene::SceneLike, args...; kw_attributes...)
     attributes = Attributes(kw_attributes)
@@ -415,36 +395,11 @@ function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, input::NTu
     plot_object = P(scene, copy(attributes), input, args)
     # transfer the merged attributes from theme and user defined to the scene
     for (k, v) in scene_attributes
-        scene.attributes[k] = v
+        error("setting $k for scene via plot attribute not supported anymore")
     end
-    # We allow certain scene attributes to be part of the plot theme
-    for k in (:camera, :raw)
-        if haskey(plot_object, k)
-            scene.attributes[k] = plot_object[k]
-        end
-    end
-
     # call user defined recipe overload to fill the plot type
     plot!(plot_object)
-
     push!(scene, plot_object)
-    if !scene.raw[] && scene.show_axis[]
-        lims = lift(scene.limits, scene.data_limits) do sl, dl
-            sl === automatic && return dl
-            return sl
-        end
-        if !any(x-> x isa Axis3D, scene.plots)
-            axis3d!(scene, Attributes(), lims, ticks = (ranges = automatic, labels = automatic))
-            # move axis to pos 1
-            sort!(scene.plots, by=x-> !(x isa Axis3D))
-        end
-
-    end
-
-    if !scene.raw[] || scene[:camera][] !== automatic
-        # if no camera controls yet, setup camera
-        setup_camera!(scene)
-    end
     return plot_object
 end
 
@@ -456,30 +411,4 @@ function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, input::NTup
     plot!(plot_object)
     push!(scene.plots, plot_object)
     plot_object
-end
-
-function apply_camera!(scene::Scene, cam_func)
-    if cam_func in (cam2d!, cam3d!, old_cam3d!, campixel!, cam3d_cad!)
-        cam_func(scene)
-    else
-        error("Unrecognized `camera` attribute type: $(typeof(cam_func)). Use automatic, cam2d!, cam3d!, old_cam3d!, campixel!, cam3d_cad!")
-    end
-end
-
-function setup_camera!(scene::Scene)
-    theme_cam = scene[:camera][]
-    if theme_cam == automatic
-        cam = cameracontrols(scene)
-        # only automatically add camera when cameracontrols are empty (not set)
-        if cam == EmptyCamera()
-            if is2d(scene)
-                cam2d!(scene)
-            else
-                cam3d!(scene)
-            end
-        end
-    else
-        apply_camera!(scene, theme_cam)
-    end
-    scene
 end

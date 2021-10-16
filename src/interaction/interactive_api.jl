@@ -254,7 +254,7 @@ function select_rectangle(scene; blocking = false, priority = 2, strokewidth = 3
 
     # Create an initially hidden rectangle
     plotted_rect = poly!(
-        scene, rect, raw = true, visible = false, color = RGBAf(0, 0, 0, 0), strokecolor = RGBAf(0.1, 0.1, 0.8, 0.5), strokewidth = strokewidth, kwargs...,
+        scene, rect, visible = false, color = RGBAf(0, 0, 0, 0), strokecolor = RGBAf(0.1, 0.1, 0.8, 0.5), strokewidth = strokewidth, kwargs...,
     )
 
     on(events(scene).mousebutton, priority=priority) do event

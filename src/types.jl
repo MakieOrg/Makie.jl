@@ -245,19 +245,17 @@ Holds the transformations for Scenes.
 $(TYPEDFIELDS)
 """
 struct Transformation <: Transformable
-    parent::RefValue{Transformable}
+    parent::RefValue{Transformation}
     translation::Node{Vec3f}
     scale::Node{Vec3f}
     rotation::Node{Quaternionf}
     model::Node{Mat4f}
-    flip::Node{NTuple{3, Bool}}
-    align::Node{Vec2f}
     # data conversion node, for e.g. log / log10 etc
     transform_func::Node{Any}
-    function Transformation(translation, scale, rotation, model, flip, align, transform_func)
+    function Transformation(translation, scale, rotation, model, transform_func)
         return new(
-            RefValue{Transformable}(),
-            translation, scale, rotation, model, flip, align, transform_func
+            RefValue{Transformation}(),
+            translation, scale, rotation, model, transform_func
         )
     end
 end

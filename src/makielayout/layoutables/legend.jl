@@ -35,7 +35,7 @@ function layoutable(::Type{Legend},
 
     legend_area = lift(round_to_IRect2D, layoutobservables.computedbbox)
 
-    scene = Scene(topscene, topscene.px_area, raw = true, camera = campixel!)
+    scene = Scene(topscene, topscene.px_area, camera = campixel!)
 
     # the rectangle in which the legend is drawn when margins are removed
     legendrect = @lift begin
@@ -45,7 +45,7 @@ function layoutable(::Type{Legend},
     decorations[:frame] = poly!(scene,
         legendrect,
         color = bgcolor, strokewidth = framewidth, visible = framevisible,
-        strokecolor = framecolor, raw = true, inspectable = false)
+        strokecolor = framecolor, inspectable = false)
 
     # the grid containing all content
     grid = GridLayout(bbox = legendrect, alignmode = Outside(padding[]...))
@@ -272,7 +272,7 @@ function legendelement_plots!(scene, element::MarkerElement, bbox::Node{Rect2f},
     scat = scatter!(scene, points, color = attrs.markercolor, marker = attrs.marker,
         markersize = attrs.markersize,
         strokewidth = attrs.markerstrokewidth,
-        strokecolor = attrs.markerstrokecolor, raw = true, inspectable = false)
+        strokecolor = attrs.markerstrokecolor, inspectable = false)
     [scat]
 end
 
@@ -283,8 +283,7 @@ function legendelement_plots!(scene, element::LineElement, bbox::Node{Rect2f}, d
     fracpoints = attrs.linepoints
     points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
     lin = lines!(scene, points, linewidth = attrs.linewidth, color = attrs.linecolor,
-        linestyle = attrs.linestyle,
-        raw = true, inspectable = false)
+        linestyle = attrs.linestyle, inspectable = false)
     [lin]
 end
 
@@ -295,8 +294,7 @@ function legendelement_plots!(scene, element::PolyElement, bbox::Node{Rect2f}, d
     fracpoints = attrs.polypoints
     points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
     pol = poly!(scene, points, strokewidth = attrs.polystrokewidth, color = attrs.polycolor,
-        strokecolor = attrs.polystrokecolor,
-        raw = true, inspectable = false)
+        strokecolor = attrs.polystrokecolor, inspectable = false)
     [pol]
 end
 

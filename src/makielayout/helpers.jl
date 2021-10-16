@@ -148,30 +148,6 @@ function tightlimits!(la::Axis, ::Top)
     autolimits!(la)
 end
 
-
-"""
-    layoutscene(padding = 30; kwargs...)
-
-Create a `Scene` in `campixel!` mode and a `GridLayout` aligned to the scene's pixel area with `alignmode = Outside(padding)`.
-"""
-function layoutscene(padding = 30; inspectable = false, kwargs...)
-    scene = Scene(; camera = campixel!, inspectable = inspectable, kwargs...)
-    gl = GridLayout(scene, alignmode = Outside(padding))
-    scene, gl
-end
-
-"""
-    layoutscene(nrows::Int, ncols::Int, padding = 30; kwargs...)
-
-Create a `Scene` in `campixel!` mode and a `GridLayout` aligned to the scene's pixel area with size `nrows` x `ncols` and `alignmode = Outside(padding)`.
-"""
-function layoutscene(nrows::Int, ncols::Int, padding = 30; inspectable = false, kwargs...)
-    scene = Scene(; camera = campixel!, inspectable = inspectable, kwargs...)
-    gl = GridLayout(scene, nrows, ncols, alignmode = Outside(padding))
-    scene, gl
-end
-
-
 GridLayoutBase.GridLayout(scene::Scene, args...; kwargs...) = GridLayout(args...; bbox = lift(x -> Rect2f(x), pixelarea(scene)), kwargs...)
 
 function axislines!(scene, rect, spinewidth, topspinevisible, rightspinevisible,
@@ -206,13 +182,13 @@ function axislines!(scene, rect, spinewidth, topspinevisible, rightspinevisible,
         [p1, p2]
     end
 
-    (lines!(scene, bottomline, linewidth = spinewidth, show_axis = false,
+    (lines!(scene, bottomline, linewidth = spinewidth,
         visible = bottomspinevisible, color = bottomspinecolor),
-    lines!(scene, leftline, linewidth = spinewidth, show_axis = false,
+    lines!(scene, leftline, linewidth = spinewidth,
         visible = leftspinevisible, color = leftspinecolor),
-    lines!(scene, rightline, linewidth = spinewidth, show_axis = false,
+    lines!(scene, rightline, linewidth = spinewidth,
         visible = rightspinevisible, color = rightspinecolor),
-    lines!(scene, topline, linewidth = spinewidth, show_axis = false,
+    lines!(scene, topline, linewidth = spinewidth,
         visible = topspinevisible, color = topspinecolor))
 end
 

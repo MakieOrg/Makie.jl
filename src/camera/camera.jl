@@ -18,6 +18,10 @@ function disconnect!(c::Camera)
     return
 end
 
+function disconnect!(c::EmptyCamera)
+    return
+end
+
 function disconnect!(nodes::Vector)
     for node in nodes
         disconnect!(node)

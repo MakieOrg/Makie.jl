@@ -16,7 +16,8 @@ $(ATTRIBUTES)
         radius = 1,
         inner_radius = 0,
         offset = 0,
-        inspectable = theme(scene, :inspectable)
+        inspectable = theme(scene, :inspectable),
+        visible = true
     )
 end
 
@@ -64,7 +65,7 @@ function plot!(plot::Pie)
 
     # plot pieces as polys
     poly!(plot, polys, color = plot.color, strokewidth = plot.strokewidth,
-        strokecolor = plot.strokecolor, inspectable = plot.inspectable)
-    
+        strokecolor = plot.strokecolor, inspectable = plot.inspectable, visible = plot.visible)
+
     plot
 end

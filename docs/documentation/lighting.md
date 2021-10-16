@@ -74,10 +74,10 @@ close(GLMakie.global_gl_screen()) # close any open screen
 
 # Alternatively:
 # fig = Figure()
-# scene = LScene(fig[1, 1], scenekw = (SSAO = (radius = 5.0, blur = 3), show_axis=false, camera=cam3d!))
+# scene = LScene(fig[1, 1], scenekw = (SSAO = (radius = 5.0, blur = 3),))
 # scene.scene[:SSAO][:bias][] = 0.025
 
-scene = Scene(show_axis = false)
+scene = Scene()
 
 # SSAO attributes are per scene
 scene[:SSAO][:radius][] = 5.0

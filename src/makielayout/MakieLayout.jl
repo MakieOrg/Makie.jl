@@ -91,7 +91,6 @@ export autolimits!, limits!, reset_limits!
 export LinearTicks, WilkinsonTicks, MultiplesTicks, IntervalsBetween, LogTicks
 export hidexdecorations!, hideydecorations!, hidedecorations!, hidespines!
 export tight_xticklabel_spacing!, tight_yticklabel_spacing!, tight_ticklabel_spacing!, tightlimits!
-export layoutscene
 export set_close_to!
 export labelslider!, labelslidergrid!
 export addmouseevents!

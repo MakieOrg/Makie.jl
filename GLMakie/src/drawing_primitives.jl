@@ -514,18 +514,16 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
             t = Makie.transform_func_obs(scene)
             mat = x[3]
             xypos = map(t, x[1], x[2]) do t, x, y
-                x1d = xy_convert(x, size(mat[], 1))
-                y1d = xy_convert(y, size(mat[], 2))
                 # Only if transform doesn't do anything, we can stay linear in 1/2D
                 if Makie.is_identity_transform(t)
-                    return (x1d, y1d)
+                    return (x, y)
                 else
-                    matrix = if x1d isa AbstractMatrix && y1d isa AbstractMatrix
-                        apply_transform.((t,), Point.(x1d, y1d))
+                    matrix = if x isa AbstractMatrix && y isa AbstractMatrix
+                        apply_transform.((t,), Point.(x, y))
                     else
                         # If we do any transformation, we have to assume things aren't on the grid anymore
                         # so x + y need to become matrices.
-                        [apply_transform(t, Point(x, y)) for x in x1d, y in y1d]
+                        [apply_transform(t, Point(x, y)) for x in x, y in y]
                     end
                     return (first.(matrix), last.(matrix))
                 end

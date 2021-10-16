@@ -1,3 +1,9 @@
+
+
+function xlims! end
+function ylims! end
+function zlims! end
+
 """
     xlabel!([scene,] xlabel)
 
@@ -10,7 +16,6 @@ function xlabel!(scene, xlabel::AbstractString)
     scene[OldAxis][:names][:axisnames][] = (xlabel, scene[OldAxis][:names][:axisnames][][2:end]...)
     nothing
 end
-xlabel!(xlabel::AbstractString) = xlabel!(current_scene(), xlabel)
 
 """
     ylabel!([scene,] ylabel)
@@ -28,7 +33,6 @@ function ylabel!(scene, ylabel::AbstractString)
     end
     nothing
 end
-ylabel!(ylabel::AbstractString) = ylabel!(current_scene(), ylabel)
 
 """
     zlabel!([scene,] zlabel)
@@ -45,83 +49,6 @@ function zlabel!(scene, zlabel::AbstractString)
     scene[OldAxis][:names][:axisnames][] = (scene[OldAxis][:names][:axisnames][][1], scene[OldAxis][:names][:axisnames][][2], zlabel)
     return
 end
-zlabel!(zlabel::AbstractString) = zlabel!(current_scene(), zlabel)
-
-################################################################################
-"""
-    setlims!(scene::Scene, min_max::NTuple{2, Real}, dim=1)
-
-Sets the limits of the scene for dim=1.
-"""
-function setlims!(scene::Scene, min_max::NTuple{2, Real}, dim=1)
-    ol = scene_limits(scene)             # get the Scene's limits as values
-    if ol === nothing
-        msg = """
-        Setting limits of empty scene is currently not supported.
-        A possible workaround is to replace code like:
-        ```julia
-        scene = Scene(...)
-        ylims!(scene, ...)
-        plot!(scene, ...)
-        ```
-        by code like:
-        ```julia
-        scene = Scene(...)
-        plot!(scene, ...)
-        ylims!(scene, ...)
-        ```
-        or code like:
-        ```julia
-        scene = Scene(limits=Rect2f(0,0,5, 5))
-        plot!(scene, ...)
-        ```
-        """
-        throw(ArgumentError(msg))
-    end
-    o_origin = minimum(ol)                         # get the original origin
-    o_widths = widths(ol)                         # get the original widths
-    n_widths = convert(Vector, o_widths)         # convert to mutable form
-    n_origin = convert(Vector, o_origin)         # convert to mutable form
-    n_origin[dim] = min_max[1]                      # set the new origin in dim
-    n_widths[dim] = min_max[2] - min_max[1]            # set the new width in dim
-    scene.limits[] = Rect3f(n_origin, n_widths) # set the limits of the scene
-    center!(scene)
-    return
-end
-
-"""
-    xlims!(limits::Real...)
-    xlims!(limits::NTuple{2, Real})
-    xlims!(scene, limits::Real...)
-    xlims!(scene, limits::NTuple{2, Real})
-
-Set the x-limits for the given Scene (defaults to current Scene).
-"""
-xlims!(scene::Scene, lims::NTuple{2, Real}) = setlims!(scene, lims, 1)
-
-"""
-    ylims!(limits::Real...)
-    ylims!(limits::NTuple{2, Real})
-    ylims!(scene, limits::Real...)
-    ylims!(scene, limits::NTuple{2, Real})
-
-Set the y-limits for the given Scene (defaults to current Scene).
-"""
-ylims!(scene::Scene, lims::NTuple{2, Real}) = setlims!(scene, lims, 2)
-
-"""
-    zlims!(limits::Real...)
-    zlims!(limits::NTuple{2, Real})
-    zlims!(scene, limits::Real...)
-    zlims!(scene, limits::NTuple{2, Real})
-
-Set the z-limits for the given Scene (defaults to current Scene).
-"""
-zlims!(scene::Scene, lims::NTuple{2, Real}) = setlims!(scene, lims, 3)
-
-xlims!(scene::Scene, lims::Real...) = xlims!(scene, lims)
-ylims!(scene::Scene, lims::Real...) = ylims!(scene, lims)
-zlims!(scene::Scene, lims::Real...) = zlims!(scene, lims)
 
 ################################################################################
 """
@@ -200,7 +127,7 @@ end
 Set the tick labels and ranges along all axes. The respective labels and ranges
 along each axis must be of the same length.
 """
-function ticks!(scene=current_scene(); tickranges=tickranges(scene), ticklabels=ticklabels(scene))
+function ticks!(scene::Scene; tickranges=tickranges(scene), ticklabels=ticklabels(scene))
     axis = scene[OldAxis]
     @assert !isnothing(axis) "The Scene does not have an axis!"
     # Have to set `ranges_labels` first so that any changes in the length of these
@@ -216,7 +143,7 @@ end
 
 Set the tick labels and range along the x-axes. See also `ticks!`.
 """
-function xticks!(scene=current_scene(); xtickrange=xtickrange(scene), xticklabels=xticklabels(scene))
+function xticks!(scene::Scene; xtickrange=xtickrange(scene), xticklabels=xticklabels(scene))
     ticks!(scene, tickranges=(xtickrange, tickranges(scene)[2:end]...), ticklabels=(xticklabels, ticklabels(scene)[2:end]...))
     return nothing
 end
@@ -226,7 +153,7 @@ end
 
 Set the tick labels and range along all the y-axis. See also `ticks!`.
 """
-function yticks!(scene=current_scene(); ytickrange=ytickrange(scene), yticklabels=yticklabels(scene))
+function yticks!(scene::Scene; ytickrange=ytickrange(scene), yticklabels=yticklabels(scene))
     r = tickranges(scene)
     l = ticklabels(scene)
     if length(r) == 2
@@ -242,7 +169,7 @@ end
 
 Set the tick labels and range along all z-axis. See also `ticks!`.
 """
-function zticks!(scene=current_scene(); ztickrange=ztickrange(scene), zticklabels=zticklabels(scene))
+function zticks!(scene::Scene; ztickrange=ztickrange(scene), zticklabels=zticklabels(scene))
     @assert !is2d(scene)  "The Scene does not have a z-axis!"
     ticks!(scene, tickranges=(tickranges(scene)[1:2]..., ztickrange), ticklabels=(ticklabels(scene)[1:2]..., zticklabels))
     return nothing
@@ -307,7 +234,6 @@ function xtickrotation!(scene::Scene, xangle)
     tickrotations!(scene, (xangle, tickrotations(scene)[2:end]...))
     return nothing
 end
-xtickrotation!(xangle) = xtickrotation!(current_scene(), xangle)
 
 """
     ytickrotation!([scene,] yangle)
@@ -321,7 +247,6 @@ function ytickrotation!(scene::Scene, yangle)
         tickrotations!(scene, (xtickrotation(scene), yangle, ztickrotation(scene)))
     end
 end
-ytickrotation!(yangle) = ytickrotation!(current_scene(), yangle)
 
 """
     ztickrotation!([scene,] zangle)
@@ -333,4 +258,3 @@ function ztickrotation!(scene::Scene, zangle)
     tickrotations!(scene, (tickrotations(scene)[1:2]..., zangle))
     return nothing
 end
-ztickrotation!(zangle) = ztickrotation!(current_scene(), zangle)

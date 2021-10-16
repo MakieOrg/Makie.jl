@@ -72,9 +72,9 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
 
     scenearea = sceneareanode!(layoutobservables.computedbbox, finallimits, aspect)
 
-    scene = Scene(topscene, scenearea, raw = true)
+    scene = Scene(topscene, px_area=scenearea, camera=campixel!)
 
-    background = poly!(topscene, scenearea, color = backgroundcolor, strokewidth = 0, raw = true, inspectable = false)
+    background = poly!(topscene, scenearea, color = backgroundcolor, strokewidth = 0, inspectable = false)
     translate!(background, 0, 0, -100)
     decorations[:background] = background
 
@@ -83,11 +83,9 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     xaxislinks = Axis[]
     yaxislinks = Axis[]
 
-    campixel!(scene)
-
     xgridnode = Node(Point2f[])
     xgridlines = linesegments!(
-        topscene, xgridnode, linewidth = xgridwidth, show_axis = false, visible = xgridvisible,
+        topscene, xgridnode, linewidth = xgridwidth, visible = xgridvisible,
         color = xgridcolor, linestyle = xgridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
@@ -96,7 +94,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
 
     xminorgridnode = Node(Point2f[])
     xminorgridlines = linesegments!(
-        topscene, xminorgridnode, linewidth = xminorgridwidth, show_axis = false, visible = xminorgridvisible,
+        topscene, xminorgridnode, linewidth = xminorgridwidth, visible = xminorgridvisible,
         color = xminorgridcolor, linestyle = xminorgridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
@@ -105,7 +103,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
 
     ygridnode = Node(Point2f[])
     ygridlines = linesegments!(
-        topscene, ygridnode, linewidth = ygridwidth, show_axis = false, visible = ygridvisible,
+        topscene, ygridnode, linewidth = ygridwidth, visible = ygridvisible,
         color = ygridcolor, linestyle = ygridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
@@ -114,7 +112,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
 
     yminorgridnode = Node(Point2f[])
     yminorgridlines = linesegments!(
-        topscene, yminorgridnode, linewidth = yminorgridwidth, show_axis = false, visible = yminorgridvisible,
+        topscene, yminorgridnode, linewidth = yminorgridwidth, visible = yminorgridvisible,
         color = yminorgridcolor, linestyle = yminorgridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
@@ -122,7 +120,6 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     decorations[:yminorgridlines] = yminorgridlines
 
     onany(finallimits, xreversed, yreversed, attrs.xscale, attrs.yscale) do lims, xrev, yrev, xsc, ysc
-
         nearclip = -10_000f0
         farclip = 10_000f0
 
@@ -334,7 +331,6 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         font = titlefont,
         color = titlecolor,
         space = :data,
-        show_axis=false,
         inspectable = false)
     decorations[:title] = titlet
 
@@ -455,7 +451,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     if fl == finallimits[]
         notify(finallimits)
     end
-    
+
     ax
 end
 
@@ -1288,4 +1284,3 @@ defined_interval(::typeof(sqrt)) = Interval{:closed,:open}(0, Inf)
 defined_interval(::typeof(Makie.logit)) = OpenInterval(0.0, 1.0)
 defined_interval(::typeof(Makie.pseudolog10)) = OpenInterval(-Inf, Inf)
 defined_interval(::Makie.Symlog10) = OpenInterval(-Inf, Inf)
-

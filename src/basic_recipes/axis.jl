@@ -95,7 +95,7 @@ end
 isaxis(x) = false
 isaxis(x::Axis3D) = true
 
-const Limits{N} = NTuple{N, Tuple{Number, Number}}
+const Limits{N} = NTuple{N, <:Tuple{<: Number, <: Number}}
 
 function default_ticks(limits::Limits, ticks, scale_func::Function)
     default_ticks.(limits, (ticks,), scale_func)
@@ -181,7 +181,7 @@ default_labels(x::AbstractVector{<: AbstractString}, ranges::AbstractVector, for
 
 function convert_arguments(::Type{<: Axis3D}, limits::Rect)
     e = (minimum(limits), maximum(limits))
-    (((e[1][1], e[2][1]), (e[1][2], e[2][2]), (e[1][3], e[2][3])),)
+    return (((e[1][1], e[2][1]), (e[1][2], e[2][2]), (e[1][3], e[2][3])),)
 end
 
 a_length(x::AbstractVector) = length(x)
@@ -189,14 +189,10 @@ a_length(x::Automatic) = x
 
 function calculated_attributes!(::Type{<: Axis3D}, plot)
     ticks = plot.ticks
-    args = (plot.padding, plot[1], ticks.ranges, ticks.labels, ticks.formatter)
-    ticks[:ranges_labels] = lift(args...) do pad, lims, ranges, labels, formatter
-        limit_widths = map(x-> x[2] - x[1], lims)
-        pad = (limit_widths .* pad)
-        # pad the drawn limits and use them as the ranges
-        lim_pad = map((lim, p)-> (lim[1] - p, lim[2] + p), lims, pad)
+    args = (plot[1], ticks.ranges, ticks.labels, ticks.formatter)
+    ticks[:ranges_labels] = lift(args...) do lims, ranges, labels, formatter
         num_ticks = labels === automatic ? automatic : a_length.(labels)
-        ranges = default_ticks(ranges, lim_pad, num_ticks)
+        ranges = default_ticks(ranges, lims, num_ticks)
         labels = default_labels(labels, ranges, formatter)
         (ranges, labels)
     end
@@ -228,12 +224,18 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, args.
         axisnames, axisnames_color, axisnames_size, axisrotation, axisalign,
         axisnames_font, titlegap,
         gridcolors, gridthickness, axislinewidth, axiscolors,
-        ttextcolor, trotation, ttextsize, talign, tfont, tgap
+        ttextcolor, trotation, ttextsize, talign, tfont, tgap,
+        padding,
     ) = args3d # splat to names
 
     N = 3
     start!(textbuffer)
     start!(linebuffer)
+
+    limit_widths = map(x-> x[2] - x[1], limits)
+    # pad the drawn limits and use them as the ranges
+    limits = map((lim, p)-> (lim[1] - p, lim[2] + p), limits, limit_widths .* padding)
+
     mini, maxi = first.(limits), last.(limits)
 
     origin = Point{N, Float32}(min.(mini, first.(ranges)))
@@ -312,8 +314,8 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
     axis = Axis3D(scene, attributes, args)
     # Disable any non linear transform for the axis plot!
     axis.transformation.transform_func[] = identity
-    textbuffer = TextBuffer(axis, Point{3}, transparency = true, space = :data, inspectable = axis.inspectable)
-    linebuffer = LinesegmentBuffer(axis, Point{3}, transparency = true, inspectable = axis.inspectable)
+    textbuffer = TextBuffer(axis, Point3, transparency = true, space = :data, inspectable = axis.inspectable)
+    linebuffer = LinesegmentBuffer(axis, Point3, transparency = true, inspectable = axis.inspectable)
 
     tstyle, ticks, frame = to_value.(getindex.(axis, (:names, :ticks, :frame)))
     titlevals = getindex.(tstyle, (:axisnames, :textcolor, :textsize, :rotation, :align, :font, :gap))
@@ -321,7 +323,7 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
     tvals = getindex.(ticks, (:textcolor, :rotation, :textsize, :align, :font, :gap))
     args = (
         getindex.(axis, (:showaxis, :showticks, :showgrid))...,
-        titlevals..., framevals..., tvals...
+        titlevals..., framevals..., tvals..., axis.padding
     )
     map_once(
         draw_axis3d,
@@ -330,4 +332,9 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
     )
     push!(scene, axis)
     return axis
+end
+
+function axis3d!(scene::Scene; kw...)
+    lims = data_limits(scene, isaxis)
+    axis3d!(scene, Attributes(), lims; ticks = (ranges = automatic, labels = automatic), kw...)
 end

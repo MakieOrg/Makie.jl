@@ -15,8 +15,6 @@ using ShaderAbstractions: current_context, is_context_active, context_alive
 
 import FixedPointNumbers: N0f8, N0f16, N0f8, Normed
 
-import Makie: update!
-
 import Base: merge, resize!, similar, length, getindex, setindex!
 
 include("AbstractGPUArray.jl")

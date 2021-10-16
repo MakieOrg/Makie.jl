@@ -534,7 +534,7 @@ function _zoom!(scene::Scene, cam::Camera3D, zoom_step, shift_lookat = false, ca
         u_y = normalize(cross(u_z, u_x))
 
         if cam.attributes[:projectiontype][] == Perspective
-            # translate both eyeposition and lookat to more or less keep data 
+            # translate both eyeposition and lookat to more or less keep data
             # under the mouse in view
             fov = cam.attributes[:fov][]
             before = tan(clamp(cam.zoom_mult[] * fov, 0.01f0, 175f0) / 360f0 * Float32(pi))
@@ -606,7 +606,7 @@ function update_cam!(scene::Scene, camera::Camera3D, area3d::Rect)
     end
     if camera.attributes[:projectiontype][] == Orthographic
         camera.zoom_mult[] = 0.6 * norm(width)
-    else 
+    else
         camera.zoom_mult[] = 1f0
     end
     update_cam!(scene, camera)

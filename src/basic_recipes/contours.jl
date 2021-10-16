@@ -189,6 +189,11 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     plot
 end
 
-function data_limits(x::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
-    return xyz_boundingbox(transform_func(x), to_value.((x[1], x[2]))...)
+function point_iterator(x::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
+    axes = (x[1], x[2])
+    extremata = map(extrema∘to_value, axes)
+    minpoint = Point2f(first.(extremata)...)
+    widths = last.(extremata) .- first.(extremata)
+    rect = Rect2f(minpoint, Vec2f(widths))
+    return unique(decompose(Point, rect))
 end

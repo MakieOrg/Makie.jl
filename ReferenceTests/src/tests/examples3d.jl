@@ -5,9 +5,8 @@ using Makie: Record, volume
 
 @cell "Image on Geometry (Moon)" begin
     moon = loadasset("moon.png")
-    fig, ax, meshplot = mesh(Sphere(Point3f(0), 1f0), color=moon, shading=false, show_axis=false, center=false)
+    fig, ax, meshplot = mesh(Sphere(Point3f(0), 1f0), color=moon, shading=false, show_axis=false)
     update_cam!(ax.scene, Vec3f(-2, 2, 2), Vec3f(0))
-    ax.scene.center = false # prevent to recenter on display
     fig
 end
 
@@ -36,20 +35,18 @@ end
     scene = ax.scene
     center!(scene)
     cam = cameracontrols(scene)
-    dir = widths(scene_limits(scene)) ./ 2.
+    dir = widths(data_limits(scene)) ./ 2.
     dir_scaled = Vec3f(
         dir[1] * scene.transformation.scale[][1],
         0.0,
         dir[3] * scene.transformation.scale[][2],
     )
     cam.upvector[] = (0.0, 0.0, 1.0)
-    cam.lookat[] = minimum(scene_limits(scene)) + dir_scaled
+    cam.lookat[] = minimum(data_limits(scene)) + dir_scaled
     cam.eyeposition[] = (cam.lookat[][1], cam.lookat[][2] + 6.3, cam.lookat[][3])
     cam.attributes[:projectiontype][] = Makie.Orthographic
     cam.zoom_mult[] = 0.61f0
     update_cam!(scene, cam)
-    # stop scene display from centering, which would overwrite the camera paramter we just set
-    scene.center = false
     fig
 end
 
@@ -131,7 +128,7 @@ end
 
 @cell "Record Video" begin
     f(t, v, s) = (sin(v + t) * s, cos(v + t) * s, (cos(v + t) + sin(v)) * s)
-    t = Node(Base.time()) # create a life signal
+    t = Node(0.0) # create a life signal
     limits = Rect3f(Vec3f(-1.5, -1.5, -3), Vec3f(3, 3, 6))
     fig, ax, p1 = meshscatter(lift(t -> f.(t, range(0, stop=2pi, length=50), 1), t), markersize=0.05)
     p2 = meshscatter!(ax, lift(t -> f.(t * 2.0, range(0, stop=2pi, length=50), 1.5), t), markersize=0.05)
@@ -140,10 +137,10 @@ end
         map((a, b) -> (a => b), pos1, pos2)
     end
 
-    linesegments!(ax, linepoints, linestyle=:dot, limits=limits)
+    linesegments!(ax, linepoints, linestyle=:dot)
 
     Record(fig, 1:2) do i
-        t[] = Base.time()
+        t[] = i / 10
     end
 end
 
@@ -156,7 +153,7 @@ end
     # c[4] == fourth argument of the above plotting command
     fig, ax, c = contour(x, x, x, test, levels=6, alpha=0.3, transparency=true)
 
-    xm, ym, zm = minimum(scene_limits(ax.scene))
+    xm, ym, zm = minimum(data_limits(ax.scene))
     contour!(ax, x, x, map(v -> v[1, :, :], c[4]), transformation=(:xy, zm), linewidth=2)
     heatmap!(ax, x, x, map(v -> v[:, 1, :], c[4]), transformation=(:xz, ym))
     contour!(ax, x, x, map(v -> v[:, :, 1], c[4]), fillrange=true, transformation=(:yz, xm))
@@ -198,7 +195,7 @@ end
     z = [cospi(θ) for θ in θ, φ in φ]
     RNG.rand([-1f0, 1f0], 3)
     pts = vec(Point3f.(x, y, z))
-    surface(x, y, z, color=Makie.logo(), transparency=true)
+    f, ax, p = surface(x, y, z, color=Makie.logo(), transparency=true)
 end
 
 @cell "Arrows on Sphere" begin
@@ -248,15 +245,16 @@ end
     )
 end
 
-
 @cell "OldAxis + Surface" begin
     vx = -1:0.01:1
     vy = -1:0.01:1
 
     f(x, y) = (sin(x * 10) + cos(y * 10)) / 4
     scene = Scene(resolution=(500, 500))
+    cam3d!(scene)
     # One way to style the axis is to pass a nested dictionary / named tuple to it.
-    psurf = surface!(scene, vx, vy, f, axis=(frame = (linewidth = 2.0,),))
+    psurf = surface!(scene, vx, vy, f)
+    axis3d!(scene, frame = (linewidth = 2.0,))
     # One can also directly get the axis object and manipulate it
     axis = scene[OldAxis] # get axis
 
@@ -276,14 +274,11 @@ end
         position=(wh[1] / 2.0, wh[2] - 20.0),
         align=(:center,  :center),
         textsize=20,
-        font="helvetica",
-        raw=:true
+        font="helvetica"
     )
     c = lines!(scene, Circle(Point2f(0.1, 0.5), 0.1f0), color=:red, offset=Vec3f(0, 0, 1))
-    scene
-    # update surface
-    # TODO explain and improve the situation here
     psurf.converted[3][] = f.(vx .+ 0.5, (vy .+ 0.5)')
+    center!(scene)
     scene
 end
 
@@ -412,10 +407,8 @@ end
         color=RNG.rand(stars),
         colormap=[(:white, 0.4), (:blue, 0.4), (:yellow, 0.4)], strokewidth=0,
         markersize=RNG.rand(range(10, stop=100, length=100), stars),
-        show_axis=false
     )
     update_cam!(scene, Rect3f(Vec3f(-5), Vec3f(10)))
-    scene.center = false
     scene
 end
 
@@ -480,7 +473,7 @@ end
     y = x
     z = (-x .* exp.(-x.^2 .- (y').^2)) .* 4
     fig, ax, surfaceplot = surface(x, y, z)
-    xm, ym, zm = minimum(scene_limits(ax.scene))
+    xm, ym, zm = minimum(data_limits(ax.scene))
     contour!(ax, x, y, z, levels=15, linewidth=2, transformation=(:xy, zm))
     wireframe!(ax, x, y, z, overdraw=true, transparency=true, color=(:black, 0.1))
     center!(ax.scene) # center the Scene on the display
@@ -512,18 +505,12 @@ end
 
     ρ(x, y, z) = exp(-(abs(x))) # function (charge density)
 
-    # create a Scene with the attribute `backgroundcolor = :black`,
-    # can be any compatible color.  Useful for better contrast and not killing your eyes with a white background.
-    scene = Scene(backgroundcolor=:black)
-
-    volume!(
-        scene,
+    fig, ax, pl = volume(
         r, r, r,          # coordinates to plot on
         ρ,                # charge density (functions as colorant)
         algorithm=:mip  # maximum-intensity-projection
     )
-
-    scene[OldAxis].names.textcolor = :gray # let axis labels be seen on dark background
-
-    scene # show scene
+    ax.scene[OldAxis].names.textcolor = :gray # let axis labels be seen on dark background
+    fig.scene.backgroundcolor[] = to_color(:black)
+    fig
 end
