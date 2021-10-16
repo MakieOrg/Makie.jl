@@ -32,7 +32,7 @@ Makie.inline!(true) # hide
 xs = 1:0.2:10
 ys = 0.5 .* sin.(xs)
 
-barplot(xs, ys, width = step(xs), color = :gray85, strokecolor = :black, strokewidth = 1)
+barplot(xs, ys, gap = 0, color = :gray85, strokecolor = :black, strokewidth = 1)
 ```
 \end{examplefigure}
 
@@ -189,7 +189,7 @@ barplot!(
     fillto = gantt.start,
     direction = :x,
     color = colors[gantt.job],
-    x_gap = 0.5
+    gap = 0.5
 )
 
 #Add labels
