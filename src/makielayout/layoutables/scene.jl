@@ -28,7 +28,8 @@ function layoutable(::Type{LScene}, fig_or_scene; bbox = nothing, scenekw = Name
     # These attributes are inherited from the parent scene. We set them because:
     # raw = true stops the scene from picking a camera and drawing axis
     # show_axis = false stops the scene from drawing axis
-    scenekw = merge((raw = false, show_axis = true), scenekw)
+    # clear = true draws a background, which breaks DataInspector
+    scenekw = merge((raw = false, clear = false, show_axis = true), scenekw)
     scene = Scene(topscene, lift(round_to_IRect2D, layoutobservables.computedbbox); scenekw...)
 
     ls = LScene(fig_or_scene, layoutobservables, attrs, Dict{Symbol, Any}(), scene)
