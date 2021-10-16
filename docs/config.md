@@ -5,6 +5,7 @@ Add here global page variables to use throughout your website.
 author = "Makie.jl"
 mintoclevel = 2
 frontpage = false
+auto_code_path = true
 
 # Add here files or directories that should be ignored by Franklin, otherwise
 # these files might be copied and, if markdown, processed by Franklin which
