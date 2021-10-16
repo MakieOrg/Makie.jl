@@ -61,16 +61,16 @@ You can choose from the following file formats:
 ## Animations using `Observables`
 
 Often, you want to animate a complex plot over time, and all the data that is displayed should be determined by the current time stamp.
-Such a dependency is really easy to express with `Observables` or `Nodes`.
+Such a dependency is really easy to express with `Observables`.
 
-We can save a lot of work if we create our data depending on a single time `Node`, so we don't have to change every plot's data manually as the animation progresses.
+We can save a lot of work if we create our data depending on a single time `Observable`, so we don't have to change every plot's data manually as the animation progresses.
 
 Here is an example that plots two different functions.
 The y-values of each depend on time and therefore we only have to change the time for both plots to change.
 We use the convenient `@lift` macro which denotes that the `lift`ed expression depends on each Observable marked with a `$` sign.
 
 ```julia:time_animation
-time = Node(0.0)
+time = Observable(0.0)
 
 xs = range(0, 7, length=40)
 
@@ -99,7 +99,7 @@ a single variable (like time) during your animation loop.
 For example, to make a line with color dependent on time, you could write:
 
 ```julia:color_animation_2
-time = Node(0.0)
+time = Observable(0.0)
 color_observable = @lift(RGBf($time, 0, 0))
 
 fig = lines(0..10, sin, color = color_observable)
@@ -116,11 +116,11 @@ nothing # hide
 
 You can also append data to a plot during an animation.
 Instead of passing `x` and `y` (or `z`) values separately,
-it is better to make a `Node` with a vector of `Point`s,
+it is better to make a `Observable` with a vector of `Point`s,
 so that the number of `x` and `y` values can not go out of sync.
 
 ```julia:append_animation
-points = Node(Point2f[(0, 0)])
+points = Observable(Point2f[(0, 0)])
 
 fig, ax = scatter(points)
 limits!(ax, 0, 30, 0, 30)
@@ -143,7 +143,7 @@ You can animate a live plot easily using a loop.
 Update all `Observables` that you need and then add a short sleep interval so that the display can refresh:
 
 ```julia
-points = Node(Point2f[randn(2)])
+points = Observable(Point2f[randn(2)])
 
 fig, ax = scatter(points)
 limits!(ax, -4, 4, -4, 4)
