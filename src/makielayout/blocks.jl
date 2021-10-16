@@ -409,6 +409,7 @@ function initialize_attributes!(@nospecialize x; kwargs...)
     topscene = get_topscene(x.parent)
     default_attrs = default_attribute_values(T, topscene)
 
+    typekey_scene_attrs = get(topscene.attributes, nameof(T), Attributes())
     typekey_attrs = get(Makie.current_default_theme(), nameof(T), Attributes())
 
     for (key, val) in default_attrs
@@ -416,6 +417,9 @@ function initialize_attributes!(@nospecialize x; kwargs...)
         # give kwargs priority
         if haskey(kwargs, key)
             val = kwargs[key]
+        # otherwise scene theme
+        elseif haskey(typekey_scene_attrs, key)
+            val = typekey_scene_attrs[key]
         # otherwise global theme
         elseif haskey(typekey_attrs, key)
             val = typekey_attrs[key]
