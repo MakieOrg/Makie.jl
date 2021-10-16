@@ -74,7 +74,6 @@ export ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface
 export Pixel, px, Unit, plotkey, attributes, used_attributes
 
 const RealVector{T} = AbstractVector{T} where T <: Number
-const Observable = Observable # shorthand
 const RGBAf = RGBA{Float32}
 const RGBf = RGB{Float32}
 const NativeFont = FreeTypeAbstraction.FTFont
