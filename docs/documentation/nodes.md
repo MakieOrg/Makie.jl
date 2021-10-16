@@ -8,9 +8,19 @@ This way you can easily build dynamic and interactive visualizations.
 
 On this page you will learn how the `Observable`s pipeline and the event-based interaction system work. Besides this, there is also a video tutorial on how to make interactive visualizations (or animations) with Makie.jl and the `Observable` system:
 
-```@raw html
-<iframe width="560" height="315" src="https://www.youtube.com/embed/L-gyDvhjzGQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-```
+~~~<a class="boxlink" href="https://www.youtube.com/watch?v=L-gyDvhjzGQ">~~~
+@@title Animations & Interaction @@
+@@box-content
+    @@description
+    How to create animations and interactive applications in Makie.
+    @@
+    ~~~
+    <div class="youtube-container">
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/L-gyDvhjzGQ?controls=0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    </div>
+    ~~~
+@@
+~~~</a>~~~
 
 ## The `Observable` structure
 
