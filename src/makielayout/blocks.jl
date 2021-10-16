@@ -47,14 +47,10 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
             sym in ($((attrs !== nothing ? [QuoteNode(a.symbol) for a in attrs] : [])...),)
         end
 
-        function default_attribute_values(::Type{$(name)})
-            Dict(
-                $(
-                    (attrs !== nothing ?
-                        [Expr(:call, :(=>), QuoteNode(a.symbol), a.default) for a in attrs] :
-                        [])...
-                )
-            )
+        function default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
+            sceneattrs = scene === nothing ? Attributes() : scene.attributes
+
+            $(make_attr_dict_expr(attrs, :sceneattrs))
         end
 
         function _attribute_docs(::Type{$(name)})
@@ -69,6 +65,31 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
     end
 
     esc(q)
+end
+
+function make_attr_dict_expr(::Nothing, sceneattrsym)
+    :(Dict())
+end
+
+function make_attr_dict_expr(attrs, sceneattrsym)
+
+    pairs = map(attrs) do a
+
+        d = a.default
+        if d isa Expr && d.head == :macrocall && d.args[1] == Symbol("@inherit")
+            if length(d.args) != 4
+                error("@inherit works with exactly 2 arguments, expression was $d")
+            end
+            if !(d.args[3] isa QuoteNode)
+                error("Argument 1 of @inherit must be a :symbol, got $(d.args[3])")
+            end
+            d = :(get($sceneattrsym, $(d.args[3]), $(d.args[4])))
+        end
+
+        Expr(:call, :(=>), QuoteNode(a.symbol), d)
+    end
+
+    :(Dict($(pairs...)))
 end
 
 function attribute_help(T)
@@ -372,8 +393,8 @@ end
 function initialize_attributes!(@nospecialize x; kwargs...)
     T = typeof(x)
 
-    # topscene = get_topscene(x.parent)
-    default_attrs = default_attribute_values(T)
+    topscene = get_topscene(x.parent)
+    default_attrs = default_attribute_values(T, topscene)
 
     typekey_attrs = get(Makie.current_default_theme(), nameof(T), Attributes())
 
@@ -389,7 +410,7 @@ function initialize_attributes!(@nospecialize x; kwargs...)
 
         OT = fieldtype(T, key)
         if !hasfield(T, key)
-            @warn "Type $T doesn't have field $key"
+            error("Type $T doesn't have field $key but it exists in its default attributes.")
         else
             # TODO: shouldn't an observable get connected here?
             if val isa Observable

@@ -189,9 +189,9 @@ end
         "The axis title string."
         title::String = ""
         "The font family of the title."
-        titlefont::Makie.FreeTypeAbstraction.FTFont = "DejaVu Sans"
+        titlefont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "DejaVu Sans")
         "The title's font size."
-        titlesize::Float64 = 16f0
+        titlesize::Float64 = @inherit(:fontsize, 16f0)
         "The gap between axis and title."
         titlegap::Float64 = 4f0
         "Controls if the title is visible."
@@ -199,19 +199,19 @@ end
         "The horizontal alignment of the title."
         titlealign::Symbol = :center
         "The color of the title"
-        titlecolor::RGBAf0 = :black
+        titlecolor::RGBAf0 = @inherit(:textcolor, :black)
         "The font family of the xlabel."
-        xlabelfont::Makie.FreeTypeAbstraction.FTFont = "DejaVu Sans"
+        xlabelfont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "DejaVu Sans")
         "The font family of the ylabel."
-        ylabelfont::Makie.FreeTypeAbstraction.FTFont = "DejaVu Sans"
+        ylabelfont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "DejaVu Sans")
         "The color of the xlabel."
-        xlabelcolor::RGBAf0 = :black
+        xlabelcolor::RGBAf0 = @inherit(:textcolor, :black)
         "The color of the ylabel."
-        ylabelcolor::RGBAf0 = :black
+        ylabelcolor::RGBAf0 = @inherit(:textcolor, :black)
         "The font size of the xlabel."
-        xlabelsize::Float64 = 16f0
+        xlabelsize::Float64 = @inherit(:fontsize, 16f0)
         "The font size of the ylabel."
-        ylabelsize::Float64 = 16f0
+        ylabelsize::Float64 = @inherit(:fontsize, 16f0)
         "Controls if the xlabel is visible."
         xlabelvisible::Bool = true
         "Controls if the ylabel is visible."
@@ -221,17 +221,17 @@ end
         "The padding between the ylabel and the ticks or axis."
         ylabelpadding::Float64 = 5f0 # because of boundingbox inaccuracies of ticklabels
         "The font family of the xticklabels."
-        xticklabelfont::Makie.FreeTypeAbstraction.FTFont = "DejaVu Sans"
+        xticklabelfont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "DejaVu Sans")
         "The font family of the yticklabels."
-        yticklabelfont::Makie.FreeTypeAbstraction.FTFont = "DejaVu Sans"
+        yticklabelfont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "DejaVu Sans")
         "The color of xticklabels."
-        xticklabelcolor::RGBAf0 = :black
+        xticklabelcolor::RGBAf0 = @inherit(:textcolor, :black)
         "The color of yticklabels."
-        yticklabelcolor::RGBAf0 = :black
+        yticklabelcolor::RGBAf0 = @inherit(:textcolor, :black)
         "The font size of the xticklabels."
-        xticklabelsize::Float64 = 16f0
+        xticklabelsize::Float64 = @inherit(:fontsize, 16f0)
         "The font size of the yticklabels."
-        yticklabelsize::Float64 = 16f0
+        yticklabelsize::Float64 = @inherit(:fontsize, 16f0)
         "Controls if the xticklabels are visible."
         xticklabelsvisible::Bool = true
         "Controls if the yticklabels are visible."
