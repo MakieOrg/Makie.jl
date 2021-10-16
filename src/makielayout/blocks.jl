@@ -175,7 +175,7 @@ function _block(T::Type{<:Block}, args...; bbox = BBox(100, 400, 100, 400), kwar
     end
 
     initialize_attributes!(b; attribute_kwargs...)
-    initialize_layoutable!(b, args...)
+    initialize_block!(b, args...)
     all_kwargs = Dict(kwargs)
     for (key, val) in non_attribute_kwargs
         apply_meta_kwarg!(b, Val(key), val, all_kwargs)
@@ -214,7 +214,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
     end
 
     initialize_attributes!(b; attribute_kwargs...)
-    initialize_layoutable!(b, args...)
+    initialize_block!(b, args...)
     all_kwargs = Dict(kwargs)
     for (key, val) in non_attribute_kwargs
         apply_meta_kwarg!(b, Val(key), val, all_kwargs)
@@ -375,17 +375,23 @@ function initialize_attributes!(@nospecialize x; kwargs...)
     # topscene = get_topscene(x.parent)
     default_attrs = default_attribute_values(T)
 
+    typekey_attrs = get(Makie.current_default_theme(), nameof(T), Attributes())
+
     for (key, val) in default_attrs
 
         # give kwargs priority
         if haskey(kwargs, key)
             val = kwargs[key]
+        # otherwise global theme
+        elseif haskey(typekey_attrs, key)
+            val = typekey_attrs[key]
         end
 
         OT = fieldtype(T, key)
         if !hasfield(T, key)
-            @warn "Target doesn't have field $key"
+            @warn "Type $T doesn't have field $key"
         else
+            # TODO: shouldn't an observable get connected here?
             if val isa Observable
                 init_observable!(x, key, OT, val[])
             elseif val isa Attributes

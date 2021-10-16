@@ -1,11 +1,4 @@
-"""
-    block(Axis, fig_or_scene; bbox = nothing, kwargs...)
-
-Creates an `Axis` object in the parent `fig_or_scene` which consists of a child scene
-with orthographic projection for 2D plots and axis decorations that live in the
-parent.
-"""
-function initialize_layoutable!(ax::Axis)
+function initialize_block!(ax::Axis)
 
     # initialize either with user limits, or pick defaults based on scales
     # so that we don't immediately error
