@@ -49,8 +49,9 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
 
         function default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
             sceneattrs = scene === nothing ? Attributes() : scene.attributes
+            curdeftheme = Makie.current_default_theme()
 
-            $(make_attr_dict_expr(attrs, :sceneattrs))
+            $(make_attr_dict_expr(attrs, :sceneattrs, :curdeftheme))
         end
 
         function _attribute_docs(::Type{$(name)})
@@ -67,11 +68,11 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
     esc(q)
 end
 
-function make_attr_dict_expr(::Nothing, sceneattrsym)
+function make_attr_dict_expr(::Nothing, sceneattrsym, curthemesym)
     :(Dict())
 end
 
-function make_attr_dict_expr(attrs, sceneattrsym)
+function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
 
     pairs = map(attrs) do a
 
@@ -83,7 +84,19 @@ function make_attr_dict_expr(attrs, sceneattrsym)
             if !(d.args[3] isa QuoteNode)
                 error("Argument 1 of @inherit must be a :symbol, got $(d.args[3])")
             end
-            d = :(get($sceneattrsym, $(d.args[3]), $(d.args[4])))
+            key, default = d.args[3:4]
+            # first check scene theme
+            # then current_default_theme
+            # then default value
+            d = quote
+                if haskey($sceneattrsym, $key)
+                    $sceneattrsym.$key
+                elseif haskey($curthemesym, $key)
+                    $curthemesym.$key
+                else
+                    $default
+                end
+            end
         end
 
         Expr(:call, :(=>), QuoteNode(a.symbol), d)
