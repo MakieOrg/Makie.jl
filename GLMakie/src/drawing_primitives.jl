@@ -87,7 +87,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             end
         end
 
-        !haskey(gl_attributes, :ssao) && (robj[:ssao] = Node(false))
+        !haskey(gl_attributes, :ssao) && (robj[:ssao] = Observable(false))
         screen.cache2plot[robj.id] = x
         robj
     end
@@ -104,7 +104,7 @@ end
 index1D(x::SubArray) = parentindices(x)[1]
 
 handle_view(array::AbstractVector, attributes) = array
-handle_view(array::Node, attributes) = array
+handle_view(array::Observable, attributes) = array
 
 function handle_view(array::SubArray, attributes)
     A = parent(array)
@@ -113,7 +113,7 @@ function handle_view(array::SubArray, attributes)
     return A
 end
 
-function handle_view(array::Node{T}, attributes) where T <: SubArray
+function handle_view(array::Observable{T}, attributes) where T <: SubArray
     A = lift(parent, array)
     indices = lift(index1D, array)
     attributes[:indices] = indices
@@ -447,8 +447,8 @@ function draw_atomic(screen::GLScreen, scene::Scene, meshplot::Mesh)
         # signals not supported for shading yet
         gl_attributes[:shading] = to_value(pop!(gl_attributes, :shading))
         color = pop!(gl_attributes, :color)
-        # cmap = get(gl_attributes, :color_map, Node(nothing)); delete!(gl_attributes, :color_map)
-        # crange = get(gl_attributes, :color_norm, Node(nothing)); delete!(gl_attributes, :color_norm)
+        # cmap = get(gl_attributes, :color_map, Observable(nothing)); delete!(gl_attributes, :color_map)
+        # crange = get(gl_attributes, :color_norm, Observable(nothing)); delete!(gl_attributes, :color_norm)
         mesh = meshplot[1]
 
         if to_value(color) isa Colorant

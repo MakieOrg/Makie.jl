@@ -1,7 +1,7 @@
 """
 A matrix of colors is interpreted as an image
 """
-_default(::Node{Array{RGBA{N0f8}, 2}}, ::Style{:default}, ::Dict{Symbol,Any})
+_default(::Observable{Array{RGBA{N0f8}, 2}}, ::Style{:default}, ::Dict{Symbol,Any})
 
 
 function _default(main::MatTypes{T}, ::Style, data::Dict) where T <: Colorant
@@ -9,7 +9,7 @@ function _default(main::MatTypes{T}, ::Style, data::Dict) where T <: Colorant
         spatialorder = "yx"
     end
     if !(spatialorder in ("xy", "yx"))
-        error("Spatial order only accepts \"xy\" or \"yz\" as a value. Found: $spatialorder")
+        error("Spatial order only accepts \"xy\" or \"yx\" as a value. Found: $spatialorder")
     end
     ranges = get(data, :ranges) do
         const_lift(main, spatialorder) do m, s

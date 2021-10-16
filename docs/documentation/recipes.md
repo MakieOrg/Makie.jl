@@ -202,10 +202,10 @@ function Makie.plot!(
     # and barplots we need to draw
     # this is necessary because in Makie we want every recipe to be interactively updateable
     # and therefore need to connect the observable machinery to do so
-    linesegs = Node(Point2f[])
-    bar_froms = Node(Float32[])
-    bar_tos = Node(Float32[])
-    colors = Node(Bool[])
+    linesegs = Observable(Point2f[])
+    bar_froms = Observable(Float32[])
+    bar_tos = Observable(Float32[])
+    colors = Observable(Bool[])
 
     # this helper function will update our observables
     # whenever `times` or `stockvalues` change
@@ -292,8 +292,8 @@ As a last example, lets pretend our stock data is coming in dynamically, and we 
 This is easy if we use observables as input arguments which we then update frame by frame:
 
 ```julia:stockchart_animation
-timestamps = Node(collect(1:100))
-stocknode = Node(stockvalues)
+timestamps = Observable(collect(1:100))
+stocknode = Observable(stockvalues)
 
 fig, ax, sc = stockchart(timestamps, stocknode)
 

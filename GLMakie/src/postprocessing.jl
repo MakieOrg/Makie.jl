@@ -87,9 +87,9 @@ function ssao_postprocessor(framebuffer)
             minfilter = :nearest, x_repeat = :repeat
         ),
         :noise_scale => map(s -> Vec2f(s ./ 4.0), framebuffer.resolution),
-        :projection => Node(Mat4f(I)),
-        :bias => Node(0.025f0),
-        :radius => Node(0.5f0)
+        :projection => Observable(Mat4f(I)),
+        :bias => Observable(0.025f0),
+        :radius => Observable(0.5f0)
     )
     pass1 = RenderObject(data1, shader1, PostprocessPrerender(), nothing)
     pass1.postrenderfunction = () -> draw_fullscreen(pass1.vertexarray.id)
@@ -105,7 +105,7 @@ function ssao_postprocessor(framebuffer)
         :color_texture => framebuffer.buffers[:color],
         :ids => framebuffer.buffers[:objectid],
         :inv_texel_size => lift(rcpframe, framebuffer.resolution),
-        :blur_range => Node(Int32(2))
+        :blur_range => Observable(Int32(2))
     )
     pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing)
     pass2.postrenderfunction = () -> draw_fullscreen(pass2.vertexarray.id)
@@ -127,7 +127,7 @@ function ssao_postprocessor(framebuffer)
 
         for (screenid, scene) in screen.screens
             # Select the area of one leaf scene
-            # This should be per scene because projection may vary between 
+            # This should be per scene because projection may vary between
             # scenes. It should be a leaf scene to avoid repeatedly shading
             # the same region (though this is not guaranteed...)
             isempty(scene.children) || continue

@@ -84,8 +84,8 @@ struct GLVisualizeShader <: AbstractLazyShader
 end
 
 function assemble_robj(data, program, bb, primitive, pre_fun, post_fun)
-    transp = get(data, :transparency, Node(false))
-    overdraw = get(data, :overdraw, Node(false))
+    transp = get(data, :transparency, Observable(false))
+    overdraw = get(data, :overdraw, Observable(false))
     pre = if pre_fun != nothing
         _pre_fun = GLAbstraction.StandardPrerender(transp, overdraw)
         function ()
@@ -134,7 +134,7 @@ to_index_buffer(x::TOrSignal{UnitRange{Int}}) = x
 For integers, we transform it to 0 based indices
 """
 to_index_buffer(x::AbstractVector{I}) where {I <: Integer} = indexbuffer(Cuint.(x .- 1))
-function to_index_buffer(x::Node{<: AbstractVector{I}}) where I <: Integer
+function to_index_buffer(x::Observable{<: AbstractVector{I}}) where I <: Integer
     indexbuffer(lift(x -> Cuint.(x .- 1), x))
 end
 

@@ -74,7 +74,6 @@ export ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface
 export Pixel, px, Unit, plotkey, attributes, used_attributes
 
 const RealVector{T} = AbstractVector{T} where T <: Number
-const Node = Observable # shorthand
 const RGBAf = RGBA{Float32}
 const RGBf = RGB{Float32}
 const NativeFont = FreeTypeAbstraction.FTFont
@@ -181,8 +180,8 @@ export xticks!, yticks!, zticks!
 export xtickrotation, ytickrotation, ztickrotation
 export xtickrotation!, ytickrotation!, ztickrotation!
 
-# Node/Signal related
-export Node, Observable, lift, map_once, to_value, on, onany, @lift, off, connect!
+# Observable/Signal related
+export Observable, Observable, lift, map_once, to_value, on, onany, @lift, off, connect!
 
 # utilities and macros
 export @recipe, @extract, @extractvalue, @key_str, @get_attribute
@@ -209,18 +208,11 @@ export pixelarea, plots, cameracontrols, cameracontrols!, camera, events
 export to_world
 
 # picking + interactive use cases + events
-export mouseover, ispressed, onpick, pick, Events, Keyboard, Mouse, mouse_selection
+export mouseover, onpick, pick, Events, Keyboard, Mouse, mouse_selection
+export ispressed, Exclusively
 export register_callbacks
-export window_area
-export window_open
-export mouse_buttons
-export mouse_position
-export scroll
-export keyboard_buttons
-export unicode_input
-export dropped_files
-export hasfocus
-export entered_window
+export window_area, window_open, mouse_buttons, mouse_position, scroll,
+       keyboard_buttons, unicode_input, dropped_files, hasfocus, entered_window
 export disconnect!
 export DataInspector
 export Consume

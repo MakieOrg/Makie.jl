@@ -287,8 +287,8 @@ end
 @cell "latex updates" begin
     s = Scene(camera = campixel!)
     st = Stepper(s)
-    textnode = Node([L"\int_0^5x^2+2ab", L"\int_0^5x^2+2ab"])
-    posnode = Node(Point2f[(50, 50), (100, 100)])
+    textnode = Observable([L"\int_0^5x^2+2ab", L"\int_0^5x^2+2ab"])
+    posnode = Observable(Point2f[(50, 50), (100, 100)])
 
     t = text!(s,
         textnode,
@@ -307,7 +307,7 @@ end
 @cell "update annotation style" begin
     s = Scene(camera = campixel!)
     st = Stepper(s)
-    textposnode = Node([
+    textposnode = Observable([
         (L"\int_0^5x^2+2ab", Point2f(50, 50)),
         (L"\int_0^5x^2+2ab", Point2f(100, 100)),
     ])

@@ -26,7 +26,7 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
 
     scene = Scene(topscene, scenearea, camera = campixel!)
 
-    cursorindex = Node(0)
+    cursorindex = Observable(0)
     ltextbox = Textbox(fig_or_scene, layoutobservables, attrs, decorations, cursorindex, nothing)
 
 
@@ -41,7 +41,7 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
         valid::Bool = validate_textbox(str, validator)
     end
 
-    hovering = Node(false)
+    hovering = Observable(false)
 
     realbordercolor = lift(Any, bordercolor, bordercolor_focused,
         bordercolor_focused_invalid, bordercolor_hover, focused, displayed_is_valid, hovering) do bc, bcf, bcfi, bch, focused, valid, hovering
