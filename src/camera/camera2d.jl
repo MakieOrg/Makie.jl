@@ -1,11 +1,11 @@
 struct Camera2D <: AbstractCamera
-    area::Node{Rect2f}
-    zoomspeed::Node{Float32}
-    zoombutton::Node{ButtonTypes}
-    panbutton::Node{Union{ButtonTypes, Vector{ButtonTypes}}}
-    padding::Node{Float32}
-    last_area::Node{Vec{2, Int}}
-    update_limits::Node{Bool}
+    area::Observable{Rect2f}
+    zoomspeed::Observable{Float32}
+    zoombutton::Observable{ButtonTypes}
+    panbutton::Observable{Union{ButtonTypes, Vector{ButtonTypes}}}
+    padding::Observable{Float32}
+    last_area::Observable{Vec{2, Int}}
+    update_limits::Observable{Bool}
 end
 
 """
@@ -16,7 +16,7 @@ Creates a 2D camera for the given Scene.
 function cam2d!(scene::SceneLike; kw_args...)
     cam_attributes = merged_get!(:cam2d, scene, Attributes(kw_args)) do
         Attributes(
-            area = Node(Rectf(0, 0, 1, 1)),
+            area = Observable(Rectf(0, 0, 1, 1)),
             zoomspeed = 0.10f0,
             zoombutton = nothing,
             panbutton = Mouse.right,
@@ -50,7 +50,7 @@ update_cam!(scene::SceneLike, area) = update_cam!(scene, cameracontrols(scene), 
     update_cam!(scene::SceneLike)
 
 Updates the camera for the given `scene` to cover the limits of the `Scene`.
-Useful when using the `Node` pipeline.
+Useful when using the `Observable` pipeline.
 """
 update_cam!(scene::SceneLike) = update_cam!(scene, cameracontrols(scene), limits(scene)[])
 
@@ -111,7 +111,7 @@ function add_pan!(scene::SceneLike, cam::Camera2D)
 
     on(
         camera(scene),
-        Node.((scene, cam, startpos, drag_active))...,
+        Observable.((scene, cam, startpos, drag_active))...,
         e.mousebutton
     ) do scene, cam, startpos, active, event
         if event.button == cam.panbutton[]
@@ -136,7 +136,7 @@ function add_pan!(scene::SceneLike, cam::Camera2D)
 
     on(
         camera(scene),
-        Node.((scene, cam, startpos, drag_active))...,
+        Observable.((scene, cam, startpos, drag_active))...,
         e.mouseposition
     ) do scene, cam, startpos, active, pos
         if active[] && ispressed(scene, cam.panbutton[])
@@ -196,7 +196,7 @@ function selection_rect!(scene, cam, key)
         cam = copy(camera(scene)), clear = false
     )
     scene_unscaled.clear = false
-    scene_unscaled.updated = Node(false)
+    scene_unscaled.updated = Observable(false)
     rect_vis = lines!(
         scene_unscaled,
         rect[],
