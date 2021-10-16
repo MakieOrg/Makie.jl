@@ -1,15 +1,31 @@
-function to_rpr_camera(context::RPR.Context, cam)
+using LinearAlgebra
+
+function to_rpr_camera(context::RPR.Context, cam_controls, cam)
     # Create camera
     camera = RPR.Camera(context)
 
-    map(cam.eyeposition) do position
-        l, u = cam.lookat[], cam.upvector[]
-        return lookat!(camera, position, l, u)
+    map(cam_controls.eyeposition) do position
+        l, u = cam_controls.lookat[], cam_controls.upvector[]
+        RPR.rprCameraSetFocusDistance(camera, norm(l - position))
+        lookat!(camera, position, l, u)
+        return
     end
 
-    map(cam.fov) do fov
-        @show fov
-        return RPR.rprCameraSetFocalLength(camera, abs(15/tan(fov/2)))
+    map(cam_controls.far) do far
+        RPR.rprCameraSetFarPlane(camera, far)
+        return
+    end
+
+    map(cam_controls.near) do near
+        RPR.rprCameraSetNearPlane(camera, near)
+        return
+    end
+
+    map(cam_controls.fov, cam.resolution) do fov, res
+        l, p = cam_controls.lookat[], cam_controls.eyeposition[]
+        wd = norm(l-p)
+        h = norm(res)
+        return RPR.rprCameraSetFocalLength(camera, (h*wd)/fov)
     end
     # TODO:
     # RPR_CAMERA_FSTOP
@@ -45,15 +61,17 @@ end
 function to_rpr_scene(context::RPR.Context, matsys, mscene::Makie.Scene)
     scene = RPR.Scene(context)
     set!(context, scene)
-    cam = Makie.cameracontrols(mscene)
-    camera = to_rpr_camera(context, cam)
+    cam_controls = Makie.cameracontrols(mscene)
+    cam = Makie.camera(mscene)
+    camera = to_rpr_camera(context, cam_controls, cam)
     set!(scene, camera)
 
     env_light = RPR.EnvironmentLight(context)
-    image_path = RPR.assetpath("studio032.exr")
-    img = RPR.Image(context, image_path)
+    # image_path = RPR.assetpath("studio032.exr")
+    env_img = fill(to_color(mscene.backgroundcolor[]), 1, 1)
+    img = RPR.Image(context, env_img)
     set!(env_light, img)
-    setintensityscale!(env_light, 0.5)
+    setintensityscale!(env_light, 1.0)
     push!(scene, env_light)
 
     light = RPR.PointLight(context)
@@ -61,35 +79,44 @@ function to_rpr_scene(context::RPR.Context, matsys, mscene::Makie.Scene)
     RPR.setradiantpower!(light, 100000, 100000, 100000)
     push!(scene, light)
 
-
-
     for plot in mscene.plots
         insert_plots!(context, matsys, scene, mscene, plot)
     end
-    return scene
+    return scene, camera
 end
 
 function replace_scene_rpr!(scene,
         context=RPR.Context(resource=RPR.RPR_CREATION_FLAGS_ENABLE_GPU0),
         matsys = RPR.MaterialSystem(context, 0); refresh=Observable(nothing))
     set_standard_tonemapping!(context)
-    RPRMakie.to_rpr_scene(context, matsys, scene)
+    rpr_scene, rpr_camera = RPRMakie.to_rpr_scene(context, matsys, scene)
     # hide Makie scene
     scene.visible = false
     # foreach(p-> delete!(scene, p), copy(scene.plots))
     sub = campixel(scene)
     fb_size = size(scene)
     im = image!(sub, zeros(RGBAf0, fb_size), raw=true)
-    framebuffer = RPR.FrameBuffer(context, RGBA, fb_size)
+    framebuffer1 = RPR.FrameBuffer(context, RGBA, fb_size)
     framebuffer2 = RPR.FrameBuffer(context, RGBA, fb_size)
-    set!(context, RPR.RPR_AOV_COLOR, framebuffer)
+    RPR.rprCameraSetSensorSize(rpr_camera, fb_size...)
     onany(camera(scene).projection, refresh) do proj, refresh
-        clear!(framebuffer)
+        clear!(framebuffer1)
     end
+    set!(context, RPR.RPR_AOV_COLOR, framebuffer1)
     RPR.rprContextSetParameterByKey1u(context, RPR.RPR_CONTEXT_ITERATIONS, 1)
     task = @async while isopen(scene)
+        if fb_size != size(scene)
+            @info("resizing scene")
+            fb_size = size(scene)
+            RPR.release(framebuffer1)
+            RPR.release(framebuffer2)
+            framebuffer1 = RPR.FrameBuffer(context, RGBA, fb_size)
+            framebuffer2 = RPR.FrameBuffer(context, RGBA, fb_size)
+            set!(context, RPR.RPR_AOV_COLOR, framebuffer1)
+            RPR.rprCameraSetSensorSize(rpr_camera, fb_size...)
+        end
         RPR.render(context)
-        RPR.rprContextResolveFrameBuffer(context, framebuffer, framebuffer2, false)
+        RPR.rprContextResolveFrameBuffer(context, framebuffer1, framebuffer2, false)
         data = RPR.get_data(framebuffer2)
         im[1] = reverse(reshape(data, fb_size), dims=2)
         sleep(0.01)

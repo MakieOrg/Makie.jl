@@ -9,14 +9,13 @@ h = (u, v) -> -cos(u-3*v) * (5/4 +sin(3*u));
 u = range(0, stop=2π, length=150)
 v = range(0, stop=2π, length=150)
 
-RPR.release(context)
-context = RPR.Context(resource=RPR.RPR_CREATION_FLAGS_ENABLE_GPU0)
+context = RPR.Context()
 matsys = RPR.MaterialSystem(context, 0)
 material = RPR.UberMaterial(matsys)
 
-for (k, v) in pairs(RPR.defaults(RPR.UberMaterial))
-    setproperty!(material, k, v)
-end
+# for (k, v) in pairs(RPR.defaults(RPR.UberMaterial))
+#     setproperty!(material, k, v)
+# end
 
 fig, ax, pl = surface(f.(u,v'),
              g.(u,v'),
@@ -67,7 +66,7 @@ sliders = (
     refraction_ior = Input(fig, Vec4(0)),
     refraction_absorption_color = Input(fig, RGB(0, 0, 0)),
     refraction_absorption_distance = Input(fig, Vec4(0)),
-    refraction_caustics = Input(fig, Vec4(0)),
+    refraction_caustics = Input(fig, true),
 
     sss_scatter_color = Input(fig, RGB(0, 0, 0)),
     sss_scatter_distance = Input(fig, Vec4(0)),
@@ -91,6 +90,6 @@ for (key, (obs, input)) in pairs(sliders)
 end
 
 fig[1, 2] = grid!(hcat(labels, inputs), width=500)
-
+GLMakie.inline!(false)
 display(fig)
 context, task = RPRMakie.replace_scene_rpr!(ax.scene, context, matsys; refresh=refresh)

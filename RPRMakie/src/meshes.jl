@@ -30,7 +30,9 @@ function mesh_material(context, matsys, plot, color_obs = plot.color)
     material = to_value(get(plot, :material, RPR.DiffuseMaterial(matsys)))
 
     map(color_signal) do color
-        return material.diffuse_color = color
+        if hasproperty(material, :color)
+            material.color = color
+        end
     end
 
     return material.node
@@ -40,6 +42,7 @@ function to_rpr_object(context, matsys, scene, plot::Makie.Mesh)
     # Potentially per instance attributes
     rpr_mesh = RPR.Shape(context, to_value(plot[1]))
     material = mesh_material(context, matsys, plot)
+    RPR.transform!(rpr_mesh, plot.model[])
     set!(rpr_mesh, material)
     return rpr_mesh
 end
