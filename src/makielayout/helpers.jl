@@ -334,7 +334,7 @@ Returns a `NamedTuple`:
 
 `(slider = slider, label = label, valuelabel = valuelabel, layout = layout)`
 
-Specify a format function for the value label with the `format` keyword.
+Specify a format function for the value label with the `format` keyword or pass a format string used by `Formatting.format`.
 The slider is forwarded the keywords from `sliderkw`.
 The label is forwarded the keywords from `labelkw`.
 The value label is forwarded the keywords from `valuekw`.
@@ -353,7 +353,7 @@ function labelslider!(scene, label, range; format = string,
         sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), value_column_width = automatic, layoutkw...)
     slider = Slider(scene; range = range, sliderkw...)
     label = Label(scene, label; labelkw...)
-    valuelabel = Label(scene, lift(format, slider.value); valuekw...)
+    valuelabel = Label(scene, lift(x -> apply_format(x, format), slider.value); valuekw...)
     layout = hbox!(label, slider, valuelabel; layoutkw...)
 
     if value_column_width === automatic
@@ -389,7 +389,7 @@ Returns a `NamedTuple`:
 
 `(sliders = sliders, labels = labels, valuelabels = valuelabels, layout = layout)`
 
-Specify format functions for the value labels with the `formats` keyword.
+Specify format functions for the value labels with the `formats` keyword or pass format strings used by `Formatting.format`.
 The sliders are forwarded the keywords from `sliderkw`.
 The labels are forwarded the keywords from `labelkw`.
 The value labels are forwarded the keywords from `valuekw`.
@@ -410,7 +410,7 @@ function labelslidergrid!(scene, labels, ranges; formats = [string], value_colum
     elements = broadcast(labels, ranges, formats) do label, range, format
         slider = Slider(scene; range = range, sliderkw...)
         label = Label(scene, label; halign = :left, labelkw...)
-        valuelabel = Label(scene, lift(format, slider.value); halign = :right, valuekw...)
+        valuelabel = Label(scene, lift(x -> apply_format(x, format), slider.value); halign = :right, valuekw...)
         (; slider = slider, label = label, valuelabel = valuelabel)
     end
 
@@ -447,6 +447,13 @@ function labelslidergrid!(scene, labels, ranges; formats = [string], value_colum
     (sliders = sliders, labels = labels, valuelabels = valuelabels, layout = layout)
 end
 
+function apply_format(value, format)
+    format(value)
+end
+
+function apply_format(value, formatstring::String)
+    Formatting.format(formatstring, value)
+end
 
 
 # helper function to create either h or vlines depending on `direction`

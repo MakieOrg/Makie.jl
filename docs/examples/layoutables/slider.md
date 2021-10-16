@@ -47,6 +47,8 @@ The column with the value labels is automatically set to a fixed width, so that 
 This width is chosen by setting each slider to a few values and recording the maximum label width.
 Alternatively, you can set the width manually with the keyword argument `value_column_width`.
 
+You can pass either format functions or format strings as used by `Formatting.format`.
+
 \begin{examplefigure}{}
 ```julia
 using GLMakie
@@ -59,7 +61,7 @@ lsgrid = labelslidergrid!(
     fig,
     ["Voltage", "Current", "Resistance"],
     [0:0.1:10, 0:0.1:20, 0:0.1:30];
-    formats = [x -> "$(round(x, digits = 1))$s" for s in ["V", "A", "Ω"]],
+    formats = "{:.1f}" .* ["V", "A", "Ω"],
     width = 350,
     tellheight = false)
 
