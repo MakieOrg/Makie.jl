@@ -114,22 +114,22 @@ function add_pan!(scene::SceneLike, cam::Camera2D)
         Observable.((scene, cam, startpos, drag_active))...,
         e.mousebutton
     ) do scene, cam, startpos, active, event
-        if event.button == cam.panbutton[]
-            mp = e.mouseposition[]
-            if event.action == Mouse.press && is_mouseinside(scene)
+        mp = e.mouseposition[]
+        if ispressed(scene, cam.panbutton[])
+            if event.action == Mouse.press && is_mouseinside(scene) && !active[]
                 startpos[] = mp
                 active[] = true
                 return Consume(true)
-            elseif event.action == Mouse.release && active[]
-                diff = startpos[] .- mp
-                startpos[] = mp
-                area = cam.area[]
-                diff = Vec(diff) .* wscale(pixelarea(scene)[], area)
-                cam.area[] = Rectf(minimum(area) .+ diff, widths(area))
-                update_cam!(scene, cam)
-                active[] = false
-                return Consume(true)
             end
+        elseif event.action == Mouse.release && active[]
+            diff = startpos[] .- mp
+            startpos[] = mp
+            area = cam.area[]
+            diff = Vec(diff) .* wscale(pixelarea(scene)[], area)
+            cam.area[] = Rectf(minimum(area) .+ diff, widths(area))
+            update_cam!(scene, cam)
+            active[] = false
+            return Consume(true)
         end
         return Consume(false)
     end
@@ -208,14 +208,13 @@ function selection_rect!(scene, cam, key)
     waspressed = RefValue(false)
     on(camera(scene), events(scene).mousebutton, key) do event, key
         if ispressed(scene, key) && is_mouseinside(scene)
-            mp = events(scene).mouseposition[]
-            mp = camspace(scene, cam, mp)
-            if event.action == Mouse.press
+            mp = camspace(scene, cam, events(scene).mouseposition[])
+            if event.action == Mouse.press && !waspressed[]
                 waspressed[] = true
                 rect_vis[:visible] = true # start displaying
                 rect[] = Rectf(mp, 0, 0)
                 rect_vis[1] = rect[]
-                return Consume(true)
+                return Consume(true) 
             end
         else
             if event.action == Mouse.release && waspressed[]
@@ -239,6 +238,7 @@ function selection_rect!(scene, cam, key)
     on(camera(scene), events(scene).mouseposition, key) do mp, key
         # this is only true after a mousebutton update
         if ispressed(scene, key) && is_mouseinside(scene)
+            mp = camspace(scene, cam, mp)
             mini = minimum(rect[])
             rect[] = Rectf(mini, mp - mini)
             rect_vis[1] = rect[]

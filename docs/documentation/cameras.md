@@ -38,3 +38,5 @@ For example, you could pass the keyword argument `limits = Rect([0,0,0],[1,1,1])
 To ensure that the camera's view is not modified, you can pass the attribute `raw = true`.
 
 Often, when modifying the Scene, the camera can get "out of sync" with the Scene. To fix this, you can call the \apilink{update_cam!} function on the Scene.
+
+Buttons passed to the 2D and 3D camera are forwarded to `ispressed`. As such you can pass `false` to disable an interaction, `true` to ignore a modifier, any button, collection of buttons or even logical expressions of buttons. See the events documentation for more details.

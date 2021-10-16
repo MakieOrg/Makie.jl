@@ -209,18 +209,11 @@ export pixelarea, plots, cameracontrols, cameracontrols!, camera, events
 export to_world
 
 # picking + interactive use cases + events
-export mouseover, ispressed, onpick, pick, Events, Keyboard, Mouse, mouse_selection
+export mouseover, onpick, pick, Events, Keyboard, Mouse, mouse_selection
+export ispressed, Exclusively
 export register_callbacks
-export window_area
-export window_open
-export mouse_buttons
-export mouse_position
-export scroll
-export keyboard_buttons
-export unicode_input
-export dropped_files
-export hasfocus
-export entered_window
+export window_area, window_open, mouse_buttons, mouse_position, scroll,
+       keyboard_buttons, unicode_input, dropped_files, hasfocus, entered_window
 export disconnect!
 export DataInspector
 export Consume

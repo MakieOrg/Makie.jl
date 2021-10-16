@@ -58,10 +58,9 @@ The camera can be controlled by keyboard and mouse. The keyboard has the followi
 
 and mouse interactions are controlled by
 
-- `translation_button   = Mouse.right` sets the mouse button for drag-translations. (up/down/left/right)
-- `translation_modifier = nothing` sets additional keys that need to be held for mouse translations.
-- `rotation_button    = Mouse.left` sets the mouse button for drag-rotations. (pan, tilt)
-- `rotation_modifier  = nothing` sets additional keys that need to be held for mouse rotations.
+- `translation_button = Mouse.right` sets the mouse button for drag-translations. (up/down/left/right)
+- `scroll_mod = true` sets an additional modifier button for scroll-based zoom. (true being neutral)
+- `rotation_button = Mouse.left` sets the mouse button for drag-rotations. (pan, tilt)
 
 - `mouse_rotationspeed = 1f0` sets the speed of mouse rotations.
 - `mouse_translationspeed = 0.5f0` sets the speed of mouse translations.
@@ -105,10 +104,9 @@ function Camera3D(scene; kwargs...)
             roll_clockwise_key        = Keyboard.e,
             roll_counterclockwise_key = Keyboard.q,
             # Mouse controls
-            translation_button   = Mouse.right,
-            translation_modifier = nothing,
+            translation_button = Mouse.right,
+            scroll_mod         = true,
             rotation_button    = Mouse.left,
-            rotation_modifier  = nothing,
             # Shared controls
             fix_x_key = Keyboard.x,
             fix_y_key = Keyboard.y,
@@ -200,7 +198,7 @@ function Camera3D(scene; kwargs...)
 
     # reset
     on(camera(scene), events(scene).keyboardbutton) do event
-        if event.key == attr[:reset][] && event.action == Keyboard.release
+        if ispressed(scene, attr[:reset][]) && event.action == Keyboard.press
             # center keeps the rotation of the camera so we reset that here
             # might make sense to keep user set lookat, upvector, eyeposition
             # around somewhere for this?
@@ -234,7 +232,7 @@ function add_translation!(scene, cam::Camera3D)
     shift_lookat = cam.attributes[:zoom_shift_lookat]
     cad = cam.attributes[:cad]
     button = cam.attributes[:translation_button]
-    mod = cam.attributes[:translation_modifier]
+    scroll_mod = cam.attributes[:scroll_mod]
 
     last_mousepos = RefValue(Vec2f(0, 0))
     dragging = RefValue(false)
@@ -252,26 +250,26 @@ function add_translation!(scene, cam::Camera3D)
 
     # drag start/stop
     on(camera(scene), scene.events.mousebutton) do event
-        if event.button == button[]
-            if event.action == Mouse.press && is_mouseinside(scene) && ispressed(scene, mod[])
+        if ispressed(scene, button[])
+            if event.action == Mouse.press && is_mouseinside(scene) && !dragging[]
                 last_mousepos[] = mouseposition_px(scene)
                 dragging[] = true
                 return Consume(true)
-            elseif event.action == Mouse.release && dragging[]
-                mousepos = mouseposition_px(scene)
-                diff = compute_diff(last_mousepos[] - mousepos)
-                last_mousepos[] = mousepos
-                dragging[] = false
-                translate_cam!(scene, cam, translationspeed[] * Vec3f(diff[1], diff[2], 0f0))
-                return Consume(true)
             end
+        elseif event.action == Mouse.release && dragging[]
+            mousepos = mouseposition_px(scene)
+            diff = compute_diff(last_mousepos[] - mousepos)
+            last_mousepos[] = mousepos
+            dragging[] = false
+            translate_cam!(scene, cam, translationspeed[] * Vec3f(diff[1], diff[2], 0f0))
+            return Consume(true)
         end
         return Consume(false)
     end
 
     # in drag
     on(camera(scene), scene.events.mouseposition) do mp
-        if dragging[] && ispressed(scene, button[]) && ispressed(scene, mod[])
+        if dragging[] && ispressed(scene, button[])
             mousepos = screen_relative(scene, mp)
             diff = compute_diff(last_mousepos[] - mousepos)
             last_mousepos[] = mousepos
@@ -282,7 +280,7 @@ function add_translation!(scene, cam::Camera3D)
     end
 
     on(camera(scene), scene.events.scroll) do scroll
-        if is_mouseinside(scene) && ispressed(scene, mod[])
+        if is_mouseinside(scene) && ispressed(scene, scroll_mod[])
             zoom_step = (1f0 + 0.1f0 * zoomspeed[]) ^ -scroll[2]
             zoom!(scene, cam, zoom_step, shift_lookat[], cad[])
             return Consume(true)
@@ -294,34 +292,33 @@ end
 function add_rotation!(scene, cam::Camera3D)
     rotationspeed = cam.attributes[:mouse_rotationspeed]
     button = cam.attributes[:rotation_button]
-    mod = cam.attributes[:rotation_modifier]
-    last_mousepos = RefValue(Vec2f(0, 0))
+    last_mousepos = RefValue(Vec2f0(0, 0))
     dragging = RefValue(false)
     e = events(scene)
 
     # drag start/stop
     on(camera(scene), e.mousebutton) do event
-        if event.button == button[]
-            if event.action == Mouse.press && is_mouseinside(scene) && ispressed(scene, mod[])
+        if ispressed(scene, button[])
+            if event.action == Mouse.press && is_mouseinside(scene) && !dragging[]
                 last_mousepos[] = mouseposition_px(scene)
                 dragging[] = true
                 return Consume(true)
-            elseif event.action == Mouse.release && dragging[]
-                mousepos = mouseposition_px(scene)
-                dragging[] = false
-                rot_scaling = rotationspeed[] * (e.window_dpi[] * 0.005)
-                mp = (last_mousepos[] - mousepos) * 0.01f0 * rot_scaling
-                last_mousepos[] = mousepos
-                rotate_cam!(scene, cam, Vec3f(-mp[2], mp[1], 0f0), true)
-                return Consume(true)
             end
+        elseif event.action == Mouse.release && dragging[]
+            mousepos = mouseposition_px(scene)
+            dragging[] = false
+            rot_scaling = rotationspeed[] * (e.window_dpi[] * 0.005)
+            mp = (last_mousepos[] - mousepos) * 0.01f0 * rot_scaling
+            last_mousepos[] = mousepos
+            rotate_cam!(scene, cam, Vec3f(-mp[2], mp[1], 0f0), true)
+            return Consume(true)
         end
         return Consume(false)
     end
 
     # in drag
     on(camera(scene), e.mouseposition) do mp
-        if dragging[] && ispressed(scene, mod[])
+        if dragging[] && ispressed(scene, button[])
             mousepos = screen_relative(scene, mp)
             rot_scaling = rotationspeed[] * (e.window_dpi[] * 0.005)
             mp = (last_mousepos[] .- mousepos) * 0.01f0 * rot_scaling
