@@ -25,6 +25,18 @@ Any keyword argument given to the `Scene` will be propagated to its plots; there
 
 A subscene is no different than a normal Scene, except that it is linked to a "parent" Scene.  It inherits the transformations of the parent Scene, but can then be transformed independently of it.
 
+## Scene Attributes
+
+* `raw = false`: A raw scene will not trigger limit updates or center the view.
+* `scene.clear = true`: Scenes are drawn parent first onto the same image. If `clear = true` for a (sub)scene it will clear the previously drawn things in its region to its `backgroundcolor`. Otherwise the plots in `scene` will be drawn on top and the backgroundcolor will be ignored. Note that this is not technically an attribute but just a field of `Scene`.
+* `show_axis = true`: If `show_axis = false` the scene will not attempt to create axes. Note that this refers to scene axes, not MakieLayouts `Axis()` or `Axis3D()`.
+* `backgroundcolor = :white`: Sets the background color of the scene. This only applies to scenes with `clear = true`.
+* `update_limits = true`: Controls whether `scene.data_limits` gets updated when new plots are inserted.
+* `SSAO = Attributes(bias = 0.025, blur=2, radius=0.5)`: Controls SSAO settings, see lighting documentation.
+* `resolution = (800, 600)`: Sets the size of the created window if the scene is the root scene.
+* `center = true`: Controls whether the scene gets recentered when new plots are added.
+
+
 ## Modifying A Scene
 
 Makie offers mutation functions to scale, translate and rotate your Scenes on the fly.
