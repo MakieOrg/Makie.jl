@@ -10,7 +10,7 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
         mutable struct $name <: Block
             parent::Union{Figure, Scene, Nothing}
             layoutobservables::LayoutObservables
-            layerscene::Scene
+            blockscene::Scene
         end
     end
 
@@ -18,6 +18,8 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
     basefields = filter(x -> !(x isa LineNumberNode), fields_vector)
 
     attrs = extract_attributes!(body)
+    # append remaining fields
+    append!(fields_vector, body.args)
 
     if attrs !== nothing
         attribute_fields = map(attrs) do a
@@ -25,7 +27,7 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
         end
         append!(fields_vector, attribute_fields)
     end
-
+    
     constructor = quote
         function $name($(basefields...))
             new($(basefields...))
@@ -125,9 +127,9 @@ function extract_attributes!(body)
     end
 end
 
-# intercept all block constructors and divert to _layoutable(T, ...)
+# intercept all block constructors and divert to _block(T, ...)
 function (::Type{T})(args...; kwargs...) where {T<:Block}
-    _layoutable(T, args...; kwargs...)
+    _block(T, args...; kwargs...)
 end
 
 can_be_current_axis(x) = false
@@ -135,18 +137,54 @@ can_be_current_axis(x) = false
 get_top_parent(gp::GridPosition) = GridLayoutBase.top_parent(gp.layout)
 get_top_parent(gp::GridSubposition) = GridLayoutBase.top_parent(gp.parent)
 
-function _layoutable(T::Type{<:Block},
+function _block(T::Type{<:Block},
         gp::Union{GridPosition, GridSubposition}, args...; kwargs...)
 
     top_parent = get_top_parent(gp)
     if top_parent === nothing
         error("Found nothing as the top parent of this GridPosition. A GridPosition or GridSubposition needs to be connected to the top layout of a Figure, Scene or comparable object, either directly or through nested GridLayouts in order to plot into it.")
     end
-    l = gp[] = _layoutable(T, top_parent, args...; kwargs...)
-    l
+    b = gp[] = _block(T, top_parent, args...; kwargs...)
+    b
 end
 
-function _layoutable(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
+function _block(T::Type{<:Block}, args...; bbox = BBox(100, 400, 100, 400), kwargs...)
+    blockscene = Scene(camera = campixel!, show_axis = false, raw = true)
+
+    # create basic layout observables
+    lobservables = LayoutObservables{T}(
+        Observable{Any}(nothing),
+        Observable{Any}(nothing),
+        Observable(true),
+        Observable(true),
+        Observable(:center),
+        Observable(:center),
+        Observable(Inside());
+        suggestedbbox = bbox
+    )
+
+    # create base block with otherwise undefined fields
+    b = T(nothing, lobservables, blockscene)
+
+    non_attribute_kwargs = Dict(kwargs)
+    attribute_kwargs = typeof(non_attribute_kwargs)()
+    for (key, value) in non_attribute_kwargs
+        if hasfield(T, key) && fieldtype(T, key) <: Observable
+            attribute_kwargs[key] = pop!(non_attribute_kwargs, key)
+        end
+    end
+
+    initialize_attributes!(b; attribute_kwargs...)
+    initialize_layoutable!(b, args...)
+    all_kwargs = Dict(kwargs)
+    for (key, val) in non_attribute_kwargs
+        apply_meta_kwarg!(b, Val(key), val, all_kwargs)
+    end
+
+    b
+end
+
+function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
         args...; bbox = nothing, kwargs...)
 
     # create basic layout observables
@@ -162,10 +200,10 @@ function _layoutable(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
     )
 
     topscene = get_topscene(fig_or_scene)
-    layerscene = Scene(topscene, lift(identity, topscene.px_area), camera = campixel!, show_axis = false, raw = true)
+    blockscene = Scene(topscene, lift(identity, topscene.px_area), camera = campixel!, show_axis = false, raw = true)
 
     # create base block with otherwise undefined fields
-    l = T(fig_or_scene, lobservables, layerscene)
+    b = T(fig_or_scene, lobservables, blockscene)
 
     non_attribute_kwargs = Dict(kwargs)
     attribute_kwargs = typeof(non_attribute_kwargs)()
@@ -175,20 +213,20 @@ function _layoutable(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
         end
     end
 
-    initialize_attributes!(l; attribute_kwargs...)
-    initialize_layoutable!(l, args...)
+    initialize_attributes!(b; attribute_kwargs...)
+    initialize_layoutable!(b, args...)
     all_kwargs = Dict(kwargs)
     for (key, val) in non_attribute_kwargs
-        apply_meta_kwarg!(l, Val(key), val, all_kwargs)
+        apply_meta_kwarg!(b, Val(key), val, all_kwargs)
     end
 
     if fig_or_scene isa Figure
-        register_in_figure!(fig_or_scene, l)
-        if can_be_current_axis(l)
-            Makie.current_axis!(fig_or_scene, l)
+        register_in_figure!(fig_or_scene, b)
+        if can_be_current_axis(b)
+            Makie.current_axis!(fig_or_scene, b)
         end
     end
-    l
+    b
 end
 
 function apply_meta_kwarg!(@nospecialize(x), key::Val{S}, @nospecialize(val), all_kwargs) where S
@@ -333,8 +371,9 @@ end
 
 function initialize_attributes!(@nospecialize x; kwargs...)
     T = typeof(x)
-    topscene = get_topscene(x.parent)
-    default_attrs = default_attributes(T, topscene).attributes
+
+    # topscene = get_topscene(x.parent)
+    default_attrs = default_attribute_values(T)
 
     for (key, val) in default_attrs
 

@@ -32,10 +32,10 @@ function initialize_layoutable!(ax::Axis)
 
     scenearea = sceneareanode!(ax.layoutobservables.computedbbox, ax.finallimits, ax.aspect)
 
-    scene = Scene(ax.layerscene, scenearea, raw = true)
+    scene = Scene(ax.blockscene, scenearea, raw = true)
     ax.scene = scene
 
-    background = poly!(ax.layerscene, scenearea, color = ax.backgroundcolor,
+    background = poly!(ax.blockscene, scenearea, color = ax.backgroundcolor,
         strokewidth = 0,inspectable = false)
     translate!(background, 0, 0, -100)
     # decorations[:background] = background
@@ -46,12 +46,13 @@ function initialize_layoutable!(ax::Axis)
     ax.yaxislinks = Axis[]
 
     ax.cycler = Cycler()
+    ax.palette = copy(Makie.default_palettes)
 
     campixel!(scene)
 
     xgridnode = Node(Point2f[])
     xgridlines = linesegments!(
-        ax.layerscene, xgridnode, linewidth = ax.xgridwidth, show_axis = false, visible = ax.xgridvisible,
+        ax.blockscene, xgridnode, linewidth = ax.xgridwidth, show_axis = false, visible = ax.xgridvisible,
         color = ax.xgridcolor, linestyle = ax.xgridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
@@ -61,7 +62,7 @@ function initialize_layoutable!(ax::Axis)
 
     xminorgridnode = Node(Point2f[])
     xminorgridlines = linesegments!(
-        ax.layerscene, xminorgridnode, linewidth = ax.xminorgridwidth,
+        ax.blockscene, xminorgridnode, linewidth = ax.xminorgridwidth,
         show_axis = false, visible = ax.xminorgridvisible,
         color = ax.xminorgridcolor, linestyle = ax.xminorgridstyle, inspectable = false
     )
@@ -71,7 +72,7 @@ function initialize_layoutable!(ax::Axis)
 
     ygridnode = Node(Point2f[])
     ygridlines = linesegments!(
-        ax.layerscene, ygridnode, linewidth = ax.ygridwidth, show_axis = false,
+        ax.blockscene, ygridnode, linewidth = ax.ygridwidth, show_axis = false,
         visible = ax.ygridvisible,
         color = ax.ygridcolor, linestyle = ax.ygridstyle, inspectable = false
     )
@@ -81,7 +82,7 @@ function initialize_layoutable!(ax::Axis)
 
     yminorgridnode = Node(Point2f[])
     yminorgridlines = linesegments!(
-        ax.layerscene, yminorgridnode, linewidth = ax.yminorgridwidth,
+        ax.blockscene, yminorgridnode, linewidth = ax.yminorgridwidth,
         show_axis = false, visible = ax.yminorgridvisible,
         color = ax.yminorgridcolor, linestyle = ax.yminorgridstyle, inspectable = false
     )
@@ -182,12 +183,12 @@ function initialize_layoutable!(ax::Axis)
         end
     end
 
-    xoppositeline = lines!(ax.layerscene, xoppositelinepoints, linewidth = ax.spinewidth,
+    xoppositeline = lines!(ax.blockscene, xoppositelinepoints, linewidth = ax.spinewidth,
         visible = xoppositespinevisible, color = xoppositespinecolor, inspectable = false,
         linestyle = nothing)
     # decorations[:xoppositeline] = xoppositeline
     translate!(xoppositeline, 0, 0, 20)
-    yoppositeline = lines!(ax.layerscene, yoppositelinepoints, linewidth = ax.spinewidth,
+    yoppositeline = lines!(ax.blockscene, yoppositelinepoints, linewidth = ax.spinewidth,
         visible = yoppositespinevisible, color = yoppositespinecolor, inspectable = false,
         linestyle = nothing)
     # decorations[:yoppositeline] = yoppositeline
@@ -245,7 +246,7 @@ function initialize_layoutable!(ax::Axis)
     end
 
     titlet = text!(
-        ax.layerscene, ax.title,
+        ax.blockscene, ax.title,
         position = titlepos,
         visible = ax.titlevisible,
         textsize = ax.titlesize,
@@ -417,7 +418,7 @@ function add_xaxis!(ax, xaxis_flipped, xlims)
     end
 
     xaxis = LineAxis(
-        ax.layerscene,
+        ax.blockscene,
         endpoints = xaxis_endpoints,
         flipped = xaxis_flipped,
         label = ax.xlabel,
@@ -482,7 +483,7 @@ function add_yaxis!(ax, yaxis_flipped, ylims)
     end
 
     yaxis  =  LineAxis(
-        ax.layerscene,
+        ax.blockscene,
         endpoints = yaxis_endpoints,
         flip_vertical_label = ax.flip_ylabel,
         flipped = yaxis_flipped,
