@@ -130,7 +130,9 @@ function Camera3D(scene; kwargs...)
             projectiontype = Perspective,
             fixed_axis = true,
             zoom_shift_lookat = false, # doesn't really work with fov
-            cad = false
+            cad = false,
+            # internal
+            selected = true
         )
     end
 
@@ -155,7 +157,7 @@ function Camera3D(scene; kwargs...)
     on(cam.pulser) do prev_time
         current_time = time()
         active = on_pulse(scene, cam, Float32(current_time - prev_time))
-        @async if active
+        @async if active && attr.selected[]
             sleep(attr.update_rate[])
             cam.pulser[] = current_time
         else
@@ -172,11 +174,21 @@ function Camera3D(scene; kwargs...)
 
     # Start ticking if relevant keys are pressed
     on(camera(scene), events(scene).keyboardbutton) do event
-        if event.action == Keyboard.press && cam.pulser[] == -1.0 &&
-            any(key -> ispressed(scene, attr[key][]), keynames)
+        if event.action in (Keyboard.press, Keyboard.repeat) && cam.pulser[] == -1.0 &&
+            attr.selected[] && any(key -> ispressed(scene, attr[key][]), keynames)
 
             cam.pulser[] = time()
             return Consume(true)
+        end
+        return Consume(false)
+    end
+
+    # de/select plot on click outside/inside
+    # also deselect other cameras
+    deselect_all_cameras!(root(scene))
+    on(camera(scene), events(scene).mousebutton, priority = 100) do event
+        if event.action == Mouse.press
+            attr.selected[] = is_mouseinside(scene)
         end
         return Consume(false)
     end
@@ -200,7 +212,7 @@ function Camera3D(scene; kwargs...)
 
     # reset
     on(camera(scene), events(scene).keyboardbutton) do event
-        if event.key == attr[:reset][] && event.action == Keyboard.release
+        if attr.selected[] && event.key == attr[:reset][] && event.action == Keyboard.release
             # center keeps the rotation of the camera so we reset that here
             # might make sense to keep user set lookat, upvector, eyeposition
             # around somewhere for this?
@@ -213,9 +225,6 @@ function Camera3D(scene; kwargs...)
         return Consume(false)
     end
 
-    # TODO remove this?
-    # center!(scene)
-
     cam
 end
 
@@ -225,6 +234,16 @@ function cam3d!(scene; zoom_shift_lookat = true, fixed_axis = true, kwargs...)
 end
 function cam3d_cad!(scene; cad = true, zoom_shift_lookat = false, fixed_axis = false, kwargs...)
     Camera3D(scene, cad = cad, zoom_shift_lookat = zoom_shift_lookat, fixed_axis = fixed_axis; kwargs...)
+end
+
+
+function deselect_all_cameras!(scene)
+    cam = cameracontrols(scene)
+    cam isa Camera3D && (cam.attributes.selected[] = false)
+    for child in scene.children
+        deselect_all_cameras!(child)
+    end
+    nothing
 end
 
 
