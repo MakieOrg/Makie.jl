@@ -311,7 +311,7 @@ end
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text{<:Tuple{<:G}}) where G <: Union{AbstractArray{<:Makie.GlyphCollection}, Makie.GlyphCollection}
     ctx = screen.context
     @get_attribute(primitive, (rotation, model, space, offset))
-    position = primitive.attributes[:position][]
+    position = primitive.position[]
     # use cached glyph info
     glyph_collection = to_value(primitive[1])
 
@@ -679,12 +679,8 @@ function draw_mesh3D(
     model = primitive.model[]
     view = scene.camera.view[]
     projection = scene.camera.projection[]
-    normalmatrix = get(
-        scene.attributes, :normalmatrix, let
-            i = SOneTo(3)
-            transpose(inv(view[i, i] * model[i, i]))
-        end
-    )
+    i = SOneTo(3)
+    normalmatrix = transpose(inv(view[i, i] * model[i, i]))
 
     # Mesh data
     # transform to view/camera space
@@ -722,7 +718,7 @@ function draw_mesh3D(
             p_0_to_1 = (p_yflip .+ 1f0) / 2f0
         end
         p = p_0_to_1 .* scene.camera.resolution[]
-        Vec3f(p[1], p[2], clip[3])
+        return Vec3f(p[1], p[2], clip[3])
     end
 
     # Approximate zorder
