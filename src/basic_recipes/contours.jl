@@ -26,7 +26,8 @@ $(ATTRIBUTES)
         levels = 5,
         linewidth = 1.0,
         alpha = 1.0,
-        fillrange = false
+        fillrange = false,
+        enable_depth = true
     )
 end
 
@@ -114,7 +115,8 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
         plot, x, y, z, volume, colormap = cmap, colorrange = cliprange, algorithm = 7,
         transparency = plot.transparency, overdraw = plot.overdraw,
         ambient = plot.ambient, diffuse = plot.diffuse, lightposition = plot.lightposition,
-        shininess = plot.shininess, specular = plot.specular, inspectable = plot.inspectable
+        shininess = plot.shininess, specular = plot.specular, inspectable = plot.inspectable,
+        enable_depth = plot.enable_depth
     )
 end
 
