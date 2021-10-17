@@ -115,8 +115,8 @@ function Scene(;
         transformation, plots, m_theme,
         children, current_screens, bg, visible
     )
-    cam = if camera isa Function
-        camera(scene)
+    if camera isa Function
+        cam = camera(scene)
     end
     return scene
 end
