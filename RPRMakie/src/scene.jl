@@ -76,7 +76,7 @@ function to_rpr_scene(context::RPR.Context, matsys, mscene::Makie.Scene)
 
     light = RPR.PointLight(context)
     transform!(light, Makie.translationmatrix(Vec3f0(0, 50, 120)))
-    RPR.setradiantpower!(light, 100000, 100000, 100000)
+    RPR.setradiantpower!(light, 10000, 10000, 10000)
     push!(scene, light)
 
     for plot in mscene.plots
@@ -91,11 +91,11 @@ function replace_scene_rpr!(scene,
     set_standard_tonemapping!(context)
     rpr_scene, rpr_camera = RPRMakie.to_rpr_scene(context, matsys, scene)
     # hide Makie scene
-    scene.visible = false
+    scene.visible[] = false
     # foreach(p-> delete!(scene, p), copy(scene.plots))
     sub = campixel(scene)
     fb_size = size(scene)
-    im = image!(sub, zeros(RGBAf0, fb_size), raw=true)
+    im = image!(sub, zeros(RGBAf, fb_size))
     framebuffer1 = RPR.FrameBuffer(context, RGBA, fb_size)
     framebuffer2 = RPR.FrameBuffer(context, RGBA, fb_size)
     RPR.rprCameraSetSensorSize(rpr_camera, fb_size...)

@@ -11,7 +11,7 @@ colors = @lift(to_colormap($cmap, ncolors))
 # some transparencies in the colors
 g(x) = 0.5 + 0.5*tanh((x+3)/3)
 alphas = g.(LinRange(-10,10, ncolors))
-cmap_alpha = @lift(RGBAf0.($colors, alphas))
+cmap_alpha = @lift(RGBAf.($colors, alphas))
 
 dataset = open_mfdataset(joinpath(@__DIR__, "ETOPO1_halfdegree.nc"))
 lon = dataset.lon.values

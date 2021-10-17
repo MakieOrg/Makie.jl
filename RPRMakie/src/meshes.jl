@@ -42,7 +42,9 @@ function to_rpr_object(context, matsys, scene, plot::Makie.Mesh)
     # Potentially per instance attributes
     rpr_mesh = RPR.Shape(context, to_value(plot[1]))
     material = mesh_material(context, matsys, plot)
-    RPR.transform!(rpr_mesh, plot.model[])
+    map(plot.model) do m
+        RPR.transform!(rpr_mesh, m)
+    end
     set!(rpr_mesh, material)
     return rpr_mesh
 end
