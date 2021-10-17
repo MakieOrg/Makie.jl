@@ -90,3 +90,17 @@ end
     set_window_config!(renderloop=GLMakie.renderloop)
     fig
 end
+
+@cell "Contour and isosurface with correct depth" begin
+    # Make sure shaders can recompile
+    close(GLMakie.global_gl_screen())
+    
+    fig = Figure()
+    left = LScene(fig[1, 1])
+    contour!(left, [sin(i+j) * sin(j+k) * sin(i+k) for i in 1:10, j in 1:10, k in 1:10], enable_depth = true)
+    mesh!(left, Sphere(Point3f(5), 6f0))
+    right = LScene(fig[1, 2])
+    volume!(right, [sin(2i) * sin(2j) * sin(2k) for i in 1:10, j in 1:10, k in 1:10], algorithm = :iso, enable_depth = true)
+    mesh!(right, Sphere(Point3f(5), 6f0))
+    fig
+end
