@@ -172,15 +172,21 @@ function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) wh
     return convert_arguments(PB, collect(reinterpret(P, linesegments)))
 end
 
-function convert_arguments(P::PointBased, x::Rect3)
-    inds = [
-        1, 2, 3, 4, 5, 6, 7, 8,
-        1, 5, 5, 7, 7, 3, 1, 3,
-        4, 8, 8, 6, 2, 4, 2, 6
-    ]
-    convert_arguments(P, decompose(Point3f, x)[inds])
+function convert_arguments(P::PointBased, rect::Rect3)
+    return (decompose(Point3f, rect),)
 end
 
+function convert_arguments(P::Type{<: LineSegments}, rect::Rect3)
+    f = decompose(LineFace{Int}, rect)
+    p = connect(decompose(Point3f, rect), f)
+    return convert_arguments(P, p)
+end
+
+function convert_arguments(::Type{<: Lines}, rect::Rect3)
+    points = unique(decompose(Point3f, rect))
+    push!(points, Point3f(NaN)) # use to seperate linesegments
+    return (points[[1, 2, 3, 4, 1, 5, 6, 2, 9, 6, 8, 3, 9, 5, 7, 4, 9, 7, 8]],)
+end
 """
 
     convert_arguments(PB, LineString)
@@ -304,7 +310,7 @@ and stores the `ClosedInterval` to `n` and `m`, plus the original matrix in a Tu
 """
 function convert_arguments(sl::SurfaceLike, data::AbstractMatrix)
     n, m = Float32.(size(data))
-    convert_arguments(sl, 0f0 .. n, 0f0 .. m, el32convert(data))
+    convert_arguments(sl, 0:n, 0f0 .. m, el32convert(data))
 end
 
 function convert_arguments(ds::DiscreteSurface, data::AbstractMatrix)
@@ -413,6 +419,13 @@ end
 function convert_arguments(::Type{<: Lines}, x::Rect2)
     # TODO fix the order of decompose
     points = decompose(Point2f, x)
+    return (points[[1, 2, 4, 3, 1]],)
+end
+
+
+function convert_arguments(::Type{<: Lines}, x::Rect3)
+    # TODO fix the order of decompose
+    points = decompose(Point3f, x)
     return (points[[1, 2, 4, 3, 1]],)
 end
 
@@ -594,7 +607,6 @@ float32type(x::AbstractArray{T}) where T = float32type(T)
 float32type(x::T) where T = float32type(T)
 el32convert(x::AbstractArray) = elconvert(float32type(x), x)
 el32convert(x::AbstractArray{Float32}) = x
-el32convert(x::AbstractRange{Float32}) = collect(x)
 el32convert(x::Observable) = lift(el32convert, x)
 el32convert(x) = convert(float32type(x), x)
 

@@ -9,6 +9,7 @@ path = normpath(joinpath(dirname(pathof(Makie)), "..", "ReferenceTests"))
 Pkg.develop(PackageSpec(path = path))
 using ReferenceTests
 using ReferenceTests: @cell
+GLMakie.activate!()
 # run the unit test suite
 include("unit_tests.jl")
 

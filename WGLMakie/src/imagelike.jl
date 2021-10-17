@@ -41,11 +41,10 @@ function limits_to_uvmesh(plot)
     # Special path for ranges of length 2 wich
     # can be displayed as a rectangle
     t = Makie.transform_func_obs(plot)[]
-    identity_transform = t === identity || t isa Tuple && all(x-> x === identity, t)
-    if length(px[]) == 2 && length(py[]) == 2 && identity_transform
+    if px[] isa StepRangeLen && py[] isa StepRangeLen && Makie.is_identity_transform(t)
         rect = lift(px, py) do x, y
-            xmin, xmax = x
-            ymin, ymax = y
+            xmin, xmax = extrema(x)
+            ymin, ymax = extrema(y)
             return Rect2(xmin, ymin, xmax - xmin, ymax - ymin)
         end
         positions = Buffer(lift(rect-> decompose(Point2f, rect), rect))

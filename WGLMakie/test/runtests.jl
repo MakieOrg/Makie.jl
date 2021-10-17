@@ -7,7 +7,7 @@ using WGLMakie, Makie, Test
 using Pkg
 path = normpath(joinpath(dirname(pathof(Makie)), "..", "ReferenceTests"))
 Pkg.develop(PackageSpec(path = path))
-
+WGLMakie.activate!()
 using ReferenceTests
 using ReferenceTests: database_filtered
 
@@ -41,4 +41,4 @@ database = database_filtered(excludes, excludes2)
 
 recorded = joinpath(@__DIR__, "recorded")
 rm(recorded; force=true, recursive=true); mkdir(recorded)
-ReferenceTests.run_reference_tests(database, recorded; difference=0.06)
+ReferenceTests.run_reference_tests(database, recorded; difference=0.02)

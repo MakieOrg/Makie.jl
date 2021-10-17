@@ -437,18 +437,18 @@ end
 
 @cell "Line GIF" begin
     us = range(0, stop=1, length=100)
-    scene = Scene()
-    linesegments!(scene, Rect3f(Vec3f(0, -1, 0), Vec3f(1, 2, 2)))
-    p = lines!(scene, us, sin.(us .+ time()), zeros(100), linewidth=3, transparency=true)
+    f, ax, p = linesegments(Rect3f(Vec3f(0, -1, 0), Vec3f(1, 2, 2)))
+    p = lines!(ax, us, sin.(us), zeros(100), linewidth=3, transparency=true)
     lineplots = [p]
     Makie.translate!(p, 0, 0, 0)
     colors = to_colormap(:RdYlBu)
-    # display(scene) # would be needed without the record
-    Record(scene, 1:3) do i
+    N = 5
+    Record(f, 1:N) do i
+        t = i/(N/5)
         if length(lineplots) < 20
             p = lines!(
-                scene,
-                us, sin.(us .+ time()), zeros(100),
+                ax,
+                us, sin.(us .+ t), zeros(100),
                 color=colors[length(lineplots)],
                 linewidth=3
             )
@@ -457,7 +457,7 @@ end
         else
             lineplots = circshift(lineplots, 1)
             lp = first(lineplots)
-            lp[2] = sin.(us .+ time())
+            lp[2] = sin.(us .+ t)
             translate!(lp, 0, 0, 0)
         end
         for lp in Iterators.drop(lineplots, 1)

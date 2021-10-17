@@ -537,7 +537,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
             xpos = map(first, xypos)
             ypos = map(last, xypos)
             args = map((xpos, ypos, mat)) do arg
-                Texture(el32convert(arg); minfilter=:nearest)
+                Texture(map(x-> convert(Array, el32convert(x)), arg); minfilter=:nearest)
             end
             return visualize(args, Style(:surface), gl_attributes)
         else
