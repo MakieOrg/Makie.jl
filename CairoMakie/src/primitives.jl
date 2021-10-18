@@ -532,7 +532,6 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
         s = to_cairo_image(image, primitive)
 
         interp_flag = interpolation_flag(is_vector, interp, abs(w), abs(h), s.width, s.height)
-
         if s.width > weird_cairo_limit || s.height > weird_cairo_limit
             error("Cairo stops rendering images bigger than $(weird_cairo_limit), which is likely a bug in Cairo. Please resample your image/heatmap with e.g. `ImageTransformations.imresize`")
         end

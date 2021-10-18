@@ -685,7 +685,6 @@ end
 label_postfix(ticks) = ""
 
 function axis_convert(ax::Axis, x::Observable, y::Observable)
-
     xlimits = map(limits-> first.(extrema(limits)), ax.finallimits)
     xticks = ax.xticks[]
     xticks_new = ticks_from_args(xticks, x[])
@@ -733,7 +732,6 @@ end
 
 function Makie.plot!(la::Axis, P::Makie.PlotFunc,
                      allattrs::Makie.Attributes, args...)
-
     cycle = get_cycle_for_plottype(allattrs, P)
     add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
     FinalType, attributes, input_nodes, converted_node = Makie.convert_plot_arguments(P, allattrs, args, pre_convert_args)
