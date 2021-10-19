@@ -221,6 +221,7 @@ end
 function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
         args...; bbox = nothing, kwargs...)
 
+    # first sort out all user kwargs that correspond to block attributes
     kwdict = Dict(kwargs)
     attribute_kwargs = Dict{Symbol, Any}()
     for (key, value) in kwdict
@@ -228,13 +229,18 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
             attribute_kwargs[key] = pop!(kwdict, key)
         end
     end
+    # the non-attribute kwargs will be passed to the block later
     non_attribute_kwargs = kwdict
 
     topscene = get_topscene(fig_or_scene)
+    # retrieve the default attributes for this block given the scene theme
+    # and also the `Block = (...` style attributes from scene and global theme
     default_attrs = default_attribute_values(T, topscene)
     typekey_scene_attrs = get(topscene.attributes, nameof(T), Attributes())::Attributes
     typekey_attrs = get(Makie.current_default_theme(), nameof(T), Attributes())::Attributes
 
+    # make a final attribute dictionary using different priorities
+    # for the different themes
     attributes = Dict{Symbol, Any}()
     for (key, val) in default_attrs
         # give kwargs priority
@@ -371,21 +377,14 @@ function Base.show(io::IO, ::T) where T <: Block
     print(io, "$T()")
 end
 
-
-
 function Base.delete!(block::Block)
-    for (key, d) in block.elements
-        try
-            remove_element(d)
-        catch e
-            @info "Failed to remove element $key of $(typeof(block))."
-            rethrow(e)
-        end
-    end
+    block.parent === nothing && return
 
-    if hasfield(typeof(block), :scene)
-        delete_scene!(block.scene)
-    end
+    s = get_topscene(block.parent)
+    deleteat!(
+        s.children,
+        findfirst(x -> x === block.blockscene, s.children)
+    )
 
     GridLayoutBase.remove_from_gridlayout!(GridLayoutBase.gridcontent(block))
 
@@ -393,7 +392,7 @@ function Base.delete!(block::Block)
     delete_from_parent!(block.parent, block)
     block.parent = nothing
 
-    nothing
+    return
 end
 
 # do nothing for scene and nothing
