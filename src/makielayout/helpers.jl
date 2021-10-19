@@ -12,7 +12,7 @@ end
 
 function sceneareanode!(finalbbox, limits, aspect)
 
-    scenearea = Node(Recti(0, 0, 100, 100))
+    scenearea = Observable(Recti(0, 0, 100, 100))
 
     onany(finalbbox, limits, aspect) do bbox, limits, aspect
 
@@ -148,30 +148,6 @@ function tightlimits!(la::Axis, ::Top)
     autolimits!(la)
 end
 
-
-"""
-    layoutscene(padding = 30; kwargs...)
-
-Create a `Scene` in `campixel!` mode and a `GridLayout` aligned to the scene's pixel area with `alignmode = Outside(padding)`.
-"""
-function layoutscene(padding = 30; inspectable = false, kwargs...)
-    scene = Scene(; camera = campixel!, inspectable = inspectable, kwargs...)
-    gl = GridLayout(scene, alignmode = Outside(padding))
-    scene, gl
-end
-
-"""
-    layoutscene(nrows::Int, ncols::Int, padding = 30; kwargs...)
-
-Create a `Scene` in `campixel!` mode and a `GridLayout` aligned to the scene's pixel area with size `nrows` x `ncols` and `alignmode = Outside(padding)`.
-"""
-function layoutscene(nrows::Int, ncols::Int, padding = 30; inspectable = false, kwargs...)
-    scene = Scene(; camera = campixel!, inspectable = inspectable, kwargs...)
-    gl = GridLayout(scene, nrows, ncols, alignmode = Outside(padding))
-    scene, gl
-end
-
-
 GridLayoutBase.GridLayout(scene::Scene, args...; kwargs...) = GridLayout(args...; bbox = lift(x -> Rect2f(x), pixelarea(scene)), kwargs...)
 
 function axislines!(scene, rect, spinewidth, topspinevisible, rightspinevisible,
@@ -206,13 +182,13 @@ function axislines!(scene, rect, spinewidth, topspinevisible, rightspinevisible,
         [p1, p2]
     end
 
-    (lines!(scene, bottomline, linewidth = spinewidth, show_axis = false,
+    (lines!(scene, bottomline, linewidth = spinewidth,
         visible = bottomspinevisible, color = bottomspinecolor),
-    lines!(scene, leftline, linewidth = spinewidth, show_axis = false,
+    lines!(scene, leftline, linewidth = spinewidth,
         visible = leftspinevisible, color = leftspinecolor),
-    lines!(scene, rightline, linewidth = spinewidth, show_axis = false,
+    lines!(scene, rightline, linewidth = spinewidth,
         visible = rightspinevisible, color = rightspinecolor),
-    lines!(scene, topline, linewidth = spinewidth, show_axis = false,
+    lines!(scene, topline, linewidth = spinewidth,
         visible = topspinevisible, color = topspinecolor))
 end
 
@@ -325,7 +301,8 @@ end
 
 
 """
-    labelslider!(scene, label, range; format = string, sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), layoutkw...)
+    labelslider!(scene, label, range; format = string, sliderkw = Dict(),
+    labelkw = Dict(), valuekw = Dict(), value_column_width = automatic, layoutkw...)
 
 Construct a horizontal GridLayout with a label, a slider and a value label in `scene`.
 
@@ -333,10 +310,12 @@ Returns a `NamedTuple`:
 
 `(slider = slider, label = label, valuelabel = valuelabel, layout = layout)`
 
-Specify a format function for the value label with the `format` keyword.
+Specify a format function for the value label with the `format` keyword or pass a format string used by `Formatting.format`.
 The slider is forwarded the keywords from `sliderkw`.
 The label is forwarded the keywords from `labelkw`.
 The value label is forwarded the keywords from `valuekw`.
+You can set the column width for the value label column with the keyword `value_column_width`.
+By default, the width is determined heuristically by sampling a few values from the slider range.
 All other keywords are forwarded to the `GridLayout`.
 
 Example:
@@ -347,18 +326,37 @@ layout[1, 1] = ls.layout
 ```
 """
 function labelslider!(scene, label, range; format = string,
-        sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), layoutkw...)
+        sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), value_column_width = automatic, layoutkw...)
     slider = Slider(scene; range = range, sliderkw...)
     label = Label(scene, label; labelkw...)
-    valuelabel = Label(scene, lift(format, slider.value); valuekw...)
+    valuelabel = Label(scene, lift(x -> apply_format(x, format), slider.value); valuekw...)
     layout = hbox!(label, slider, valuelabel; layoutkw...)
+
+    if value_column_width === automatic
+        maxwidth = 0.0
+        initial_value = slider.value[]
+        a = first(slider.range[])
+        b = last(slider.range[])
+        for frac in (0.0, 0.5, 1.0)
+            fracvalue = a + frac * (b - a)
+            set_close_to!(slider, fracvalue)
+            labelwidth = GridLayoutBase.computedbboxobservable(valuelabel)[].widths[1]
+            maxwidth = max(maxwidth, labelwidth)
+        end
+        set_close_to!(slider, initial_value)
+        colsize!(layout, 3, maxwidth)
+    else
+        colsize!(layout, 3, value_column_width)
+    end
+
     (slider = slider, label = label, valuelabel = valuelabel, layout = layout)
 end
 
 
 """
     labelslidergrid!(scene, labels, ranges; formats = [string],
-        sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), layoutkw...)
+        sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(),
+        value_column_width = automatic, layoutkw...)
 
 Construct a GridLayout with a column of label, a column of sliders and a column of value labels in `scene`.
 The argument values are broadcast, so you can use scalars if you want to keep labels, ranges or formats constant across rows.
@@ -367,10 +365,12 @@ Returns a `NamedTuple`:
 
 `(sliders = sliders, labels = labels, valuelabels = valuelabels, layout = layout)`
 
-Specify format functions for the value labels with the `formats` keyword.
+Specify format functions for the value labels with the `formats` keyword or pass format strings used by `Formatting.format`.
 The sliders are forwarded the keywords from `sliderkw`.
 The labels are forwarded the keywords from `labelkw`.
 The value labels are forwarded the keywords from `valuekw`.
+You can set the column width for the value label column with the keyword `value_column_width`.
+By default, the width is determined heuristically by sampling a few values from the slider ranges.
 All other keywords are forwarded to the `GridLayout`.
 
 Example:
@@ -380,13 +380,13 @@ ls = labelslidergrid!(scene, ["Voltage", "Ampere"], Ref(0:0.1:100); format = x -
 layout[1, 1] = ls.layout
 ```
 """
-function labelslidergrid!(scene, labels, ranges; formats = [string],
+function labelslidergrid!(scene, labels, ranges; formats = [string], value_column_width = automatic,
         sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), layoutkw...)
 
     elements = broadcast(labels, ranges, formats) do label, range, format
         slider = Slider(scene; range = range, sliderkw...)
         label = Label(scene, label; halign = :left, labelkw...)
-        valuelabel = Label(scene, lift(format, slider.value); halign = :right, valuekw...)
+        valuelabel = Label(scene, lift(x -> apply_format(x, format), slider.value); halign = :right, valuekw...)
         (; slider = slider, label = label, valuelabel = valuelabel)
     end
 
@@ -396,9 +396,40 @@ function labelslidergrid!(scene, labels, ranges; formats = [string],
 
     layout = grid!(hcat(labels, sliders, valuelabels); layoutkw...)
 
+    # This is a bit of a hacky way to determine a good column width for the value labels.
+    # We set each slider to the first, middle and last value, record the width of the
+    # value label, and then choose the maximum overall value so that hopefully each possible
+    # value fits. This can of course go wrong in many scenarios depending on the slider ranges
+    # and formatters that can be used, but it's better than nothing or constant jitter.
+    if value_column_width === automatic
+        maxwidth = 0.0
+        for e in elements
+            initial_value = e.slider.value[]
+            a = first(e.slider.range[])
+            b = last(e.slider.range[])
+            for frac in (0.0, 0.5, 1.0)
+                fracvalue = a + frac * (b - a)
+                set_close_to!(e.slider, fracvalue)
+                labelwidth = GridLayoutBase.computedbboxobservable(e.valuelabel)[].widths[1]
+                maxwidth = max(maxwidth, labelwidth)
+            end
+            set_close_to!(e.slider, initial_value)
+        end
+        colsize!(layout, 3, maxwidth)
+    else
+        colsize!(layout, 3, value_column_width)
+    end
+
     (sliders = sliders, labels = labels, valuelabels = valuelabels, layout = layout)
 end
 
+function apply_format(value, format)
+    format(value)
+end
+
+function apply_format(value, formatstring::String)
+    Formatting.format(formatstring, value)
+end
 
 
 # helper function to create either h or vlines depending on `direction`

@@ -22,11 +22,13 @@ function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
     get!(uniforms, :colorrange, false)
     get!(uniforms, :color, false)
     get!(uniforms, :model, plot.model)
+    get!(uniforms, :depth_shift, 0f0)
 
     uniforms[:normalmatrix] = map(mscene.camera.view, plot.model) do v, m
         i = SOneTo(3)
         return transpose(inv(v[i, i] * m[i, i]))
     end
+
     return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), mesh; uniforms...)
 end
 
@@ -41,11 +43,10 @@ function limits_to_uvmesh(plot)
     # Special path for ranges of length 2 wich
     # can be displayed as a rectangle
     t = Makie.transform_func_obs(plot)[]
-    identity_transform = t === identity || t isa Tuple && all(x-> x === identity, t)
-    if length(px[]) == 2 && length(py[]) == 2 && identity_transform
+    if px[] isa StepRangeLen && py[] isa StepRangeLen && Makie.is_identity_transform(t)
         rect = lift(px, py) do x, y
-            xmin, xmax = x
-            ymin, ymax = y
+            xmin, xmax = extrema(x)
+            ymin, ymax = extrema(y)
             return Rect2(xmin, ymin, xmax - xmin, ymax - ymin)
         end
         positions = Buffer(lift(rect-> decompose(Point2f, rect), rect))
@@ -59,7 +60,7 @@ function limits_to_uvmesh(plot)
             end
             return vec(g)
         end
-        rect = lift(z -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), size(z) .+ 1), pz)
+        rect = lift((x, y) -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), (length(x), length(y))), px, py)
         positions = Buffer(lift(grid, px, py, pz, t))
         faces = Buffer(lift(r -> decompose(GLTriangleFace, r), rect))
         uv = Buffer(lift(decompose_uv, rect))
@@ -98,7 +99,8 @@ function create_shader(mscene::Scene, plot::Surface)
     return draw_mesh(mscene, mesh, plot; uniform_color=color, color=Vec4f(0),
                      shading=plot.shading, ambient=plot.ambient, diffuse=plot.diffuse,
                      specular=plot.specular, shininess=plot.shininess,
-                     lightposition=Vec3f(1),
+                     lightposition=Vec3f(1), 
+                     depth_shift=get(plot, :depth_shift, Observable(0f0)),
                      highclip=lift(nothing_or_color, plot.highclip),
                      lowclip=lift(nothing_or_color, plot.lowclip),
                      nan_color=lift(nothing_or_color, plot.nan_color))
@@ -117,7 +119,8 @@ function create_shader(mscene::Scene, plot::Union{Heatmap,Image})
                      shininess=plot.shininess, lightposition=Vec3f(1),
                      highclip=lift(nothing_or_color, plot.highclip),
                      lowclip=lift(nothing_or_color, plot.lowclip),
-                     nan_color=lift(nothing_or_color, plot.nan_color))
+                     nan_color=lift(nothing_or_color, plot.nan_color),
+                     depth_shift = get(plot, :depth_shift, Observable(0f0)))
 end
 
 function create_shader(mscene::Scene, plot::Volume)
@@ -144,7 +147,7 @@ function create_shader(mscene::Scene, plot::Volume)
                    absorption=lift(Float32, get(plot, :absorption, Observable(1f0))),
                    algorithm=algorithm, ambient=plot.ambient,
                    diffuse=plot.diffuse, specular=plot.specular, shininess=plot.shininess,
-                   model=model2,
+                   model=model2, depth_shift = get(plot, :depth_shift, Observable(0f0)),
                    # these get filled in later by serialization, but we need them
                    # as dummy values here, so that the correct uniforms are emitted
                    lightposition=Vec3f(1), eyeposition=Vec3f(1))

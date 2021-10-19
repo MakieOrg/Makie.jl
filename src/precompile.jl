@@ -43,7 +43,6 @@ function _precompile_()
     Base.precompile(Tuple{typeof(boundingbox),Scatter{Tuple{Vector{Point{2, Float32}}}}})   # time: 0.15786158
     Base.precompile(Tuple{typeof(same_length_array),Vector{Tuple{String, Point{2, Float32}}},Float64,Key{:rotation}})   # time: 0.15258642
     Base.precompile(Tuple{typeof(plot!),Scene,Type{Scatter{Tuple{Vector{Float64}, Vector{Float64}}}},Attributes,Tuple{Observable{Vector{Float64}}, Observable{Vector{Float64}}},Observable{Tuple{Vector{Point{2, Float32}}}}})   # time: 0.096797995
-    Base.precompile(Tuple{typeof(data_limits),Text{Tuple{String}}})   # time: 0.09453959
     Base.precompile(Tuple{typeof(convert_arguments),Type{Annotations{ArgType} where ArgType},Vector{String},Vector{Point{2, Float32}}})   # time: 0.09197935
     isdefined(Makie, Symbol("#719#720")) && Base.precompile(Tuple{getfield(Makie, Symbol("#719#720")),Int64,Quaternionf,FTFont,Float32})   # time: 0.081979275
     let fbody = try Base.bodyfunction(which(convert_arguments, (Type{Scatter{Tuple{Vector{Float64}, Vector{Float64}}}},Vector{Float64},Vararg{Vector{Float64}, 100},))) catch missing end
@@ -114,7 +113,6 @@ function _precompile_()
             precompile(fbody, (SMatrix{4, 4, Float32, 16},Type,Symbol,typeof(lift),Function,Observable{GeometryBasics.HyperRectangle{2, Int64}},))
         end
     end   # time: 0.009753768
-    Base.precompile(Tuple{typeof(xyz_boundingbox),Function,Vector{Point{2, Float32}}})   # time: 0.009729207
     Base.precompile(Tuple{typeof(setindex!),Attributes,Attributes,Symbol})   # time: 0.009677326
     Base.precompile(Tuple{typeof(lift),Function,Observable{Any}})   # time: 0.009117238
     let fbody = try Base.bodyfunction(which(lift, (Function,Observable{Tuple{Tuple{Tuple{Float32, Float32}, Tuple{Float32, Float32}}}},))) catch missing end

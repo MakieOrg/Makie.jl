@@ -44,10 +44,7 @@ xs = -10:0.1:10
 ys = -10:0.1:10
 zs = [10 * (cos(x) * cos(y)) * (.1 + exp(-(x^2 + y^2 + 1)/10)) for x in xs, y in ys]
 
-# Or use an LScene within a Figure
-scene = Scene()
-surface!(
-    scene, xs, ys, zs, colormap = (:white, :white),
+fig, ax, pl = surface(xs, ys, zs, colormap = (:white, :white),
 
     # Light comes from (0, 0, 15), i.e the sphere
     lightposition = Vec3f(0, 0, 15),
@@ -60,8 +57,8 @@ surface!(
     # Reflections are sharp
     shininess = 128f0
 )
-mesh!(scene, Sphere(Point3f(0, 0, 15), 1f0), color=RGBf(1, 0.7, 0.3))
-scene
+mesh!(ax, Sphere(Point3f(0, 0, 15), 1f0), color=RGBf(1, 0.7, 0.3))
+fig
 ```
 \end{examplefigure}
 
@@ -72,26 +69,18 @@ GLMakie.activate!() # hide
 GLMakie.enable_SSAO[] = true
 close(GLMakie.global_gl_screen()) # close any open screen
 
-# Alternatively:
-# fig = Figure()
-# scene = LScene(fig[1, 1], scenekw = (SSAO = (radius = 5.0, blur = 3), show_axis=false, camera=cam3d!))
-# scene.scene[:SSAO][:bias][] = 0.025
-
-scene = Scene(show_axis = false)
-
+fig = Figure()
+ax = LScene(fig[1, 1], scenekw = (SSAO = (radius = 5.0, blur = 3),))
 # SSAO attributes are per scene
-scene[:SSAO][:radius][] = 5.0
-scene[:SSAO][:blur][] = 3
-scene[:SSAO][:bias][] = 0.025
+ax.scene.theme[:SSAO][:bias][] = 0.025
 
 box = Rect3(Point3f(-0.5), Vec3f(1))
 positions = [Point3f(x, y, rand()) for x in -5:5 for y in -5:5]
-meshscatter!(scene, positions, marker=box, markersize=1, color=:lightblue, ssao=true)
-scene
+meshscatter!(ax, positions, marker=box, markersize=1, color=:lightblue, ssao=true)
 
 GLMakie.enable_SSAO[] = false # hide
 close(GLMakie.global_gl_screen()) # hide
-scene # hide
+fig # hide
 ```
 \end{examplefigure}
 

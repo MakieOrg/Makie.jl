@@ -55,8 +55,6 @@ function plot!(plot::Band)
     )
 end
 
-
-
 function fill_view(x, y1, y2, where::Nothing)
     x, y1, y2
   end
@@ -68,13 +66,13 @@ function fill_view(x, y1, y2, where::Nothing)
   end
 
   """
-      fill_between!(x, y1, y2; where = nothing, scene = current_scene(), kw_args...)
+      fill_between!(scenelike, x, y1, y2; where = nothing, kw_args...)
 
   fill the section between 2 lines with the condition `where`
   """
-  function fill_between!(x, y1, y2; where = nothing, scene = current_scene(), kw_args...)
+  function fill_between!(scenelike, x, y1, y2; where = nothing, kw_args...)
     xv, ylow, yhigh = fill_view(x, y1, y2, where)
-    band!(scene, xv, ylow, yhigh; kw_args...)
+    band!(scenelike, xv, ylow, yhigh; kw_args...)
   end
 
   export fill_between!

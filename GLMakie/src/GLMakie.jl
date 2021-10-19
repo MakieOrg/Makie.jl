@@ -25,6 +25,7 @@ for name in names(Makie, all=true)
         @eval export $(name)
     end
 end
+
 export inline!
 
 struct GLBackend <: Makie.AbstractBackend

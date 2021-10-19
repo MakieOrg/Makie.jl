@@ -16,7 +16,8 @@ function default_theme(scene)
         lightposition = :eyeposition,
         nan_color = RGBAf(0,0,0,0),
         ssao = false,
-        inspectable = theme(scene, :inspectable)
+        inspectable = theme(scene, :inspectable),
+        depth_shift = 0f0
     )
 end
 
@@ -152,7 +153,7 @@ function apply_convert!(P, attributes::Attributes, x::PlotSpec{S}) where S
     return (plottype(P, S), args)
 end
 
-function seperate_tuple(args::Node{<: NTuple{N, Any}}) where N
+function seperate_tuple(args::Observable{<: NTuple{N, Any}}) where N
     ntuple(N) do i
         lift(args) do x
             if i <= length(x)
@@ -165,7 +166,7 @@ function seperate_tuple(args::Node{<: NTuple{N, Any}}) where N
 end
 
 function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::Attributes, args) where Typ
-    input = convert.(Node, args)
+    input = convert.(Observable, args)
     argnodes = lift(input...) do args...
         convert_arguments(PlotType, args...)
     end
@@ -220,7 +221,6 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     # create the plot, with the full attributes, the input signals, and the final signal nodes.
     plot_obj = FinalType(scene, transformation, plot_attributes, input, args)
 
-    transformation.parent[] = plot_obj
     calculated_attributes!(plot_obj)
     plot_obj
 end
@@ -271,24 +271,6 @@ const PlotFunc = Union{Type{Any}, Type{<: AbstractPlot}}
 # In this section, the plotting functions have P as the first argument
 # These are called from type recipes
 
-# # non-mutating, without positional attributes
-
-# function plot(P::PlotFunc, args...; kw_attributes...)
-#     attributes = Attributes(kw_attributes)
-#     plot(P, attributes, args...)
-# end
-
-# # with positional attributes
-
-# function plot(P::PlotFunc, attrs::Attributes, args...; kw_attributes...)
-#     attributes = merge!(Attributes(kw_attributes), attrs)
-#     scene_attributes = extract_scene_attributes!(attributes)
-#     scene = Scene(; scene_attributes...)
-#     plot!(scene, P, attributes, args...)
-# end
-
-# mutating, without positional attributes
-
 function plot!(P::PlotFunc, scene::SceneLike, args...; kw_attributes...)
     attributes = Attributes(kw_attributes)
     plot!(scene, P, attributes, args...)
@@ -310,7 +292,7 @@ function convert_plot_arguments(P::PlotFunc, attributes::Attributes, args, conve
     PreType = Combined{plotfunc(PreType), typeof(argvalues)}
     convert_keys = intersect(used_attributes(PreType, argvalues...), keys(attributes))
     kw_signal = if isempty(convert_keys) # lift(f) isn't supported so we need to catch the empty case
-        Node(())
+        Observable(())
     else
         lift((args...)-> Pair.(convert_keys, args), getindex.(attributes, convert_keys)...) # make them one tuple to easier pass through
     end
@@ -320,8 +302,8 @@ function convert_plot_arguments(P::PlotFunc, attributes::Attributes, args, conve
     # apply_conversion deals with that!
 
     FinalType, argsconverted = apply_convert!(PreType, attributes, converted)
-    converted_node = Node(argsconverted)
-    input_nodes =  convert.(Node, args)
+    converted_node = Observable(argsconverted)
+    input_nodes =  convert.(Observable, args)
     onany(kw_signal, input_nodes...) do kwargs, args...
         # do the argument conversion inside a lift
         result = convert_func(FinalType, args...; kwargs...)
@@ -417,46 +399,21 @@ function extract_scene_attributes!(attributes)
     return result
 end
 
-function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, input::NTuple{N, Node}, args::Node) where {N}
+function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, input::NTuple{N, Observable}, args::Observable) where {N}
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
     scene_attributes = extract_scene_attributes!(attributes)
     plot_object = P(scene, copy(attributes), input, args)
     # transfer the merged attributes from theme and user defined to the scene
     for (k, v) in scene_attributes
-        scene.attributes[k] = v
+        error("setting $k for scene via plot attribute not supported anymore")
     end
-    # We allow certain scene attributes to be part of the plot theme
-    for k in (:camera, :raw)
-        if haskey(plot_object, k)
-            scene.attributes[k] = plot_object[k]
-        end
-    end
-
     # call user defined recipe overload to fill the plot type
     plot!(plot_object)
-
     push!(scene, plot_object)
-    if !scene.raw[] && scene.show_axis[]
-        lims = lift(scene.limits, scene.data_limits) do sl, dl
-            sl === automatic && return dl
-            return sl
-        end
-        if !any(x-> x isa Axis3D, scene.plots)
-            axis3d!(scene, Attributes(), lims, ticks = (ranges = automatic, labels = automatic))
-            # move axis to pos 1
-            sort!(scene.plots, by=x-> !(x isa Axis3D))
-        end
-
-    end
-
-    if !scene.raw[] || scene[:camera][] !== automatic
-        # if no camera controls yet, setup camera
-        setup_camera!(scene)
-    end
     return plot_object
 end
 
-function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, input::NTuple{N,Node}, args::Node) where {N}
+function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, input::NTuple{N,Observable}, args::Observable) where {N}
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
 
     plot_object = P(scene, attributes, input, args)
@@ -464,30 +421,4 @@ function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, input::NTup
     plot!(plot_object)
     push!(scene.plots, plot_object)
     plot_object
-end
-
-function apply_camera!(scene::Scene, cam_func)
-    if cam_func in (cam2d!, cam3d!, old_cam3d!, campixel!, cam3d_cad!)
-        cam_func(scene)
-    else
-        error("Unrecognized `camera` attribute type: $(typeof(cam_func)). Use automatic, cam2d!, cam3d!, old_cam3d!, campixel!, cam3d_cad!")
-    end
-end
-
-function setup_camera!(scene::Scene)
-    theme_cam = scene[:camera][]
-    if theme_cam == automatic
-        cam = cameracontrols(scene)
-        # only automatically add camera when cameracontrols are empty (not set)
-        if cam == EmptyCamera()
-            if is2d(scene)
-                cam2d!(scene)
-            else
-                cam3d!(scene)
-            end
-        end
-    else
-        apply_camera!(scene, theme_cam)
-    end
-    scene
 end

@@ -11,8 +11,8 @@
 end
 
 @cell begin
-    lines(Rect(0, 0, 1, 1), linewidth=4, scale_plot=false)
-    scatter!([Point2f(0.5, 0.5)], markersize=1, markerspace=SceneSpace, marker='I', scale_plot=false)
+    lines(Rect(0, 0, 1, 1), linewidth=4)
+    scatter!([Point2f(0.5, 0.5)], markersize=1, markerspace=SceneSpace, marker='I')
     current_figure()
 end
 
@@ -26,7 +26,7 @@ end
     angles = range(0, stop=2pi, length=20)
     pos = Point2f.(sin.(angles), cos.(angles))
     scatter(pos, markersize=0.2, markerspace=SceneSpace, rotations=-angles, marker='▲', axis=(;aspect = DataAspect()))
-    scatter!(pos, markersize=10, color=:red, axis=(;aspect = DataAspect()))
+    scatter!(pos, markersize=10, color=:red)
     current_figure()
 end
 
@@ -46,7 +46,7 @@ end
     colorrange=(0.2, 0.8)
 )
 
-@cell lines(Circle(Point2f(0), Float32(1)); scale_plot=false, resolution=(800, 1000))
+@cell lines(Circle(Point2f(0), Float32(1)))
 
 @cell begin
     v(x::Point2{T}) where T = Point2{T}(x[2], 4 * x[1])
@@ -58,9 +58,9 @@ end
 
 @cell begin
     r = range(-3pi, stop=3pi, length=100)
-    fig, ax, vplot = volume(r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), algorithm=:iso, isorange=0.1f0, show_axis=false)
-    v2 = volume!(ax, r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), algorithm=:mip, show_axis=false)
-    translate!(v2, Vec3f(6pi, 0, 0))
+    fig, ax, vplot = Makie.volume(r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), algorithm=:iso, isorange=0.1f0, show_axis=false)
+    v2 = volume!(ax, r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), algorithm=:mip,
+                 transformation=(translation=Vec3f(6pi, 0, 0),))
     fig
 end
 

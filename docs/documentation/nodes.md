@@ -1,34 +1,47 @@
 # Observables & Interaction
 
 Interaction and animations in Makie are handled using [`Observables.jl`](https://juliagizmos.github.io/Observables.jl/stable/).
-`Observable`s are called `Node`s in Makie for historical reasons and the two terms are used interchangeably.
 An `Observable` is a container object whose stored value you can update interactively.
 You can create functions that are executed whenever an observable changes.
 You can also create observables whose values are updated whenever other observables change.
 This way you can easily build dynamic and interactive visualizations.
 
-On this page you will learn how the `Node`s pipeline and the event-based interaction system work.
+On this page you will learn how the `Observable`s pipeline and the event-based interaction system work. Besides this, there is also a video tutorial on how to make interactive visualizations (or animations) with Makie.jl and the `Observable` system:
 
-## The `Node` structure
+~~~<a class="boxlink" href="https://www.youtube.com/watch?v=L-gyDvhjzGQ">~~~
+@@title Animations & Interaction @@
+@@box-content
+    @@description
+    How to create animations and interactive applications in Makie.
+    @@
+    ~~~
+    <div class="youtube-container">
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/L-gyDvhjzGQ?controls=0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    </div>
+    ~~~
+@@
+~~~</a>~~~
 
-A `Node` is an object that allows its value to be updated interactively.
+## The `Observable` structure
+
+A `Observable` is an object that allows its value to be updated interactively.
 Let's start by creating one:
 
 ```julia:code1
 using GLMakie, Makie
 
-x = Node(0.0)
+x = Observable(0.0)
 ```
 \show{code1}
 
-Each `Node` has a type parameter, which determines what kind of objects it can store.
+Each `Observable` has a type parameter, which determines what kind of objects it can store.
 If you create one like we did above, the type parameter will be the type of the argument.
-Keep in mind that sometimes you want a wider parametric type because you intend to update the `Node` later with objects of different types.
+Keep in mind that sometimes you want a wider parametric type because you intend to update the `Observable` later with objects of different types.
 You could for example write:
 
 ```julia
-x2 = Node{Real}(0.0)
-x3 = Node{Any}(0.0)
+x2 = Observable{Real}(0.0)
+x3 = Observable{Any}(0.0)
 ```
 
 This is often the case when dealing with attributes that can come in different forms.
@@ -36,7 +49,7 @@ For example, a color could be `:red` or `RGB(1,0,0)`.
 
 ## Triggering A Change
 
-You change the value of a Node with empy index notation:
+You change the value of a Observable with empty index notation:
 
 ```julia:code2
 x[] = 3.34
@@ -45,9 +58,9 @@ nothing # hide
 \show{code2}
 
 This was not particularly interesting.
-But Nodes allow you to register functions that are executed whenever the Node's content is changed.
+But Nodes allow you to register functions that are executed whenever the Observable's content is changed.
 
-One such function is `on`. Let's register something on our Node `x` and change `x`'s value:
+One such function is `on`. Let's register something on our Observable `x` and change `x`'s value:
 
 ```julia:code3
 on(x) do x
@@ -61,10 +74,10 @@ nothing # hide
 
 
 !!! note
-    All registered functions in a `Node` are executed synchronously in the order of registration.
+    All registered functions in a `Observable` are executed synchronously in the order of registration.
     This means that if you change two Nodes after one another, all effects of the first change will happen before the second change.
 
-There are two ways to access the value of a `Node`.
+There are two ways to access the value of a `Observable`.
 You can use the indexing syntax or the `to_value` function:
 
 ```julia
@@ -74,10 +87,10 @@ value = to_value(x)
 
 The advantage of using `to_value` is that you can use it in situations where you could either be dealing with Nodes or normal values. In the latter case, `to_value` just returns the original value, like `identity`.
 
-## Chaining `Node`s With `lift`
+## Chaining `Observable`s With `lift`
 
-You can create a Node depending on another Node using \apilink{lift}.
-The first argument of `lift` must be a function that computes the value of the output Node given the values of the input Nodes.
+You can create a Observable depending on another Observable using \apilink{lift}.
+The first argument of `lift` must be a function that computes the value of the output Observable given the values of the input Nodes.
 
 ```julia:code4
 f(x) = x^2
@@ -85,7 +98,7 @@ y = lift(f, x)
 ```
 \show{code4}
 
-Now, whenever `x` changes, the derived `Node` `y` will immediately hold the value `f(x)`.
+Now, whenever `x` changes, the derived `Observable` `y` will immediately hold the value `f(x)`.
 In turn, `y`'s change could trigger the update of other observables, if any have been connected.
 Let's connect one more observable and update x:
 
@@ -122,19 +135,19 @@ nothing # hide
 
 ## Shorthand Macro For `lift`
 
-When using \apilink{lift}, it can be tedious to reference each participating `Node`
+When using \apilink{lift}, it can be tedious to reference each participating `Observable`
 at least three times, once as an argument to `lift`, once as an argument to the closure that
 is the first argument, and at least once inside the closure:
 
 ```julia
-x = Node(rand(100))
-y = Node(rand(100))
+x = Observable(rand(100))
+y = Observable(rand(100))
 z = lift((x, y) -> x .+ y, x, y)
 ```
 
 To circumvent this, you can use the `@lift` macro. You simply write the operation
-you want to do with the lifted `Node`s and prepend each `Node` variable
-with a dollar sign \$. The macro will lift every Node variable it finds and wrap
+you want to do with the lifted `Observable`s and prepend each `Observable` variable
+with a dollar sign \$. The macro will lift every Observable variable it finds and wrap
 the whole expression in a closure. The equivalent to the above statement using `@lift` is:
 
 ```julia
@@ -151,10 +164,10 @@ multiline_node = @lift begin
 end
 ```
 
-If the Node you want to reference is the result of some expression, just use `$` with parentheses around that expression.
+If the Observable you want to reference is the result of some expression, just use `$` with parentheses around that expression.
 
 ```julia
-container = (x = Node(1), y = Node(2))
+container = (x = Observable(1), y = Observable(2))
 
 @lift($(container.x) + $(container.y))
 ```
@@ -168,8 +181,8 @@ If a function depends on two or more observables, changing one right after the o
 Here's an example where we define two nodes and lift a third one from them:
 
 ```julia
-xs = Node(1:10)
-ys = Node(rand(10))
+xs = Observable(1:10)
+ys = Observable(rand(10))
 
 zs = @lift($xs .+ $ys)
 ```

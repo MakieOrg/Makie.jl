@@ -28,19 +28,18 @@ function LineAxis(parent::Scene; kwargs...)
         end
     end
 
-    ticksnode = Node(Point2f[])
+    ticksnode = Observable(Point2f[])
     ticklines = linesegments!(
         parent, ticksnode, linewidth = tickwidth, color = tickcolor, linestyle = nothing,
-        show_axis = false, visible = ticksvisible, inspectable = false
+        visible = ticksvisible, inspectable = false
     )
     decorations[:ticklines] = ticklines
     translate!(ticklines, 0, 0, 10)
 
-    minorticksnode = Node(Point2f[])
+    minorticksnode = Observable(Point2f[])
     minorticklines = linesegments!(
         parent, minorticksnode, linewidth = minortickwidth, color = minortickcolor,
-        linestyle = nothing,
-        show_axis = false, visible = minorticksvisible, inspectable = false
+        linestyle = nothing, visible = minorticksvisible, inspectable = false
     )
     decorations[:minorticklines] = minorticklines
 
@@ -81,7 +80,7 @@ function LineAxis(parent::Scene; kwargs...)
         end
     end
 
-    ticklabelannosnode = Node(Tuple{AbstractString, Point2f}[])
+    ticklabelannosnode = Observable(Tuple{AbstractString, Point2f}[])
     ticklabels = nothing
 
     ticklabel_ideal_space = lift(Float32, ticklabelannosnode, ticklabelalign, ticklabelrotation, ticklabelfont, ticklabelsvisible) do args...
@@ -173,22 +172,22 @@ function LineAxis(parent::Scene; kwargs...)
     label = map((l, p)-> p isa Automatic ? l : string(l, p), label, labelpostfix)
     labeltext = text!(
         parent, label, textsize = labelsize, color = labelcolor,
-        position = labelpos, show_axis = false, visible = labelvisible,
+        position = labelpos, visible = labelvisible,
         align = labelalign, rotation = labelrotation, font = labelfont,
         space = :data, inspectable = false
     )
 
     decorations[:labeltext] = labeltext
 
-    tickvalues = Node(Float32[])
+    tickvalues = Observable(Float32[])
 
     tickvalues_labels_unfiltered = lift(pos_extents_horizontal, limits, ticks, tickformat, attrs.scale) do (position, extents, horizontal),
             limits, ticks, tickformat, scale
         get_ticks(ticks, scale, tickformat, limits...)
     end
 
-    tickpositions = Node(Point2f[])
-    tickstrings = Node(AbstractString[])
+    tickpositions = Observable(Point2f[])
+    tickstrings = Observable(AbstractString[])
 
     onany(tickvalues_labels_unfiltered, reversed) do tickvalues_labels_unfiltered, reversed
 
@@ -229,8 +228,8 @@ function LineAxis(parent::Scene; kwargs...)
         tickstrings[] = tickstrings_unfiltered[i_values_within_limits]
     end
 
-    minortickvalues = Node(Float32[])
-    minortickpositions = Node(Point2f[])
+    minortickvalues = Observable(Float32[])
+    minortickpositions = Observable(Point2f[])
 
     onany(tickvalues, minorticks) do tickvalues, minorticks
         minortickvalues[] = get_minor_tickvalues(minorticks, attrs.scale[], tickvalues, limits[]...)
@@ -335,7 +334,7 @@ function LineAxis(parent::Scene; kwargs...)
     end
 
     decorations[:axisline] = lines!(parent, linepoints, linewidth = spinewidth, visible = spinevisible,
-        color = spinecolor, raw = true, inspectable = false, linestyle = nothing)
+        color = spinecolor, inspectable = false, linestyle = nothing)
     translate!(decorations[:axisline], 0, 0, 20)
 
 
@@ -375,7 +374,6 @@ function LineAxis(parent::Scene; kwargs...)
         textsize = ticklabelsize,
         font = ticklabelfont,
         color = ticklabelcolor,
-        show_axis = false,
         visible = ticklabelsvisible,
         space = :data,
         inspectable = false)
@@ -652,4 +650,8 @@ function get_minor_tickvalues(i::IntervalsBetween, scale::Union{typeof(log), typ
     end
 
     vals
+end
+
+function get_minor_tickvalues(v::AbstractVector{<:Real}, _, _, _, _)
+    Float32.(v)
 end

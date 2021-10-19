@@ -148,6 +148,7 @@ function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize
             end
         end
     end
+
     return (
         arrow_pos,
         arrow_dir,
@@ -174,11 +175,35 @@ function plot!(p::StreamPlot)
         inspectable = p.inspectable
     )
     N = ndims(p.limits[])
+
+    if N == 2 # && scatterplot.markerspace[] == Pixel (default)
+        # Calculate arrow head rotations as angles. To avoid distortions from 
+        # (extreme) aspect ratios we need to project to pixel space and renormalize.
+        scene = parent_scene(p)
+        rotations = lift(scene.camera.projectionview, scene.px_area, data) do pv, pxa, data
+            angles = map(data[1], data[2]) do pos, dir
+                pstart = project(scene, pos)
+                pstop = project(scene, pos + dir)
+                pdir = pstop - pstart
+                n = norm(pdir)
+                if n == 0
+                    zero(n)
+                else
+                    angle = acos(pdir[2] / n)
+                    angle = ifelse(pdir[1] > 0, 2pi - angle, angle)
+                end
+            end
+            Billboard(angles)
+        end
+    else
+        rotations = map(x -> x[2], data)
+    end
+
     scatterfun(N)(
         p,
         lift(first, data), markersize = p.arrow_size,
         marker = @lift(arrow_head(N, $(p.arrow_head), $(p.quality))),
-        color = lift(x-> x[4], data), rotations = lift(x-> x[2], data),
+        color = lift(x-> x[4], data), rotations = rotations,
         colormap = p.colormap, colorrange = p.colorrange,
         inspectable = p.inspectable
     )

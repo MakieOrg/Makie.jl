@@ -130,7 +130,7 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
         color = plot.strokecolor, linestyle = plot.linestyle,
         linewidth = plot.strokewidth,
         overdraw = plot.overdraw, transparency = plot.transparency,
-        inspectable = plot.inspectable
+        inspectable = plot.inspectable, depth_shift = -1f-5
     )
 end
 
