@@ -16,7 +16,8 @@ function default_theme(scene)
         lightposition = :eyeposition,
         nan_color = RGBAf(0,0,0,0),
         ssao = false,
-        inspectable = theme(scene, :inspectable)
+        inspectable = theme(scene, :inspectable),
+        depth_shift = 0f0
     )
 end
 

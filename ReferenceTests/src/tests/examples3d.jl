@@ -512,3 +512,39 @@ end
     fig.scene.backgroundcolor[] = to_color(:black)
     fig
 end
+
+@cell "Depth Shift" begin
+    # Up to some artifacts from fxaa the left side should be blue and the right red.
+    fig = Figure(resolution = (800, 400))
+
+    prim = Rect3D(Point3f(0), Vec3f(1))
+    ps  = RNG.rand(Point3f0, 10) .+ Point3f0(0, 0, 1)
+    mat = RNG.rand(4, 4)
+    A   = RNG.rand(4,4,4)
+
+    # This generates two sets of plots each on two axis. Both axes have one set
+    # without depth_shift (0f0, red) and one at ∓10eps(1f0) (blue, left/right axis).
+    # A negative shift should push the plot in the foreground, positive in the background.
+    for (i, _shift) in enumerate((-10eps(1f0), 10eps(1f0)))
+        ax = LScene(fig[1, i], scenekw=(show_axis = false,))
+        
+        for (color, shift) in zip((:red, :blue), (0f0, _shift))
+            mesh!(ax, prim, color = color, depth_shift = shift)
+            lines!(ax, ps, color = color, depth_shift = shift)
+            linesegments!(ax, ps .+ Point3f0(-1, 1, 0), color = color, depth_shift = shift)
+            scatter!(ax, ps, color = color, markersize=100, depth_shift = shift)
+            text!(ax, "Test", position = Point3f0(0, 1, 1.1), color = color, depth_shift = shift)
+            surface!(ax, -1..0, 1..2, mat, colormap = (color, color), depth_shift = shift)
+            meshscatter!(ax, ps .+ Point3f0(-1, 1, 0), color = color, depth_shift = shift)
+            # # left side in axis
+            heatmap!(ax, 0..1, 0..1, mat, colormap = (color, color), depth_shift = shift)
+            # # right side in axis
+            image!(ax, -1..0, 1..2, mat, colormap = (color, color), depth_shift = shift)
+            p = volume!(ax, A, colormap = (:white, color), depth_shift = shift)
+            translate!(p, -1, 0, 0)
+            scale!(p, 0.25, 0.25, 0.25)
+        end
+    end
+
+    fig
+end
