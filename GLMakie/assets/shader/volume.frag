@@ -25,6 +25,8 @@ uniform int algorithm;
 uniform float isovalue;
 uniform float isorange;
 
+uniform mat4 model, projectionview;
+
 const float max_distance = 1.3;
 
 const int num_samples = 200;
@@ -206,11 +208,17 @@ vec4 contours(vec3 front, vec3 dir)
     vec3 Lo = vec3(0.0);
     int i = 0;
     vec3 camdir = normalize(-dir);
+    {{depth_init}}
+    // may write: float depth = 100000.0;
     for (i; i < num_samples; ++i) {
         float intensity = texture(volumedata, pos).x;
         vec4 density = color_lookup(intensity, color_map, color_norm, color);
         float opacity = density.a;
         if(opacity > 0.0){
+            {{depth_main}}
+            // may write
+            // vec4 frag_coord = projectionview * model * vec4(pos, 1);
+            // depth = min(depth, frag_coord.z / frag_coord.w);
             vec3 N = gennormal(pos, step_size);
             vec3 L = normalize(o_light_dir - pos);
             vec3 opaque = blinnphong(N, camdir, L, density.rgb);
@@ -221,6 +229,9 @@ vec4 contours(vec3 front, vec3 dir)
         }
         pos += dir;
     }
+    {{depth_write}}
+    // may write:
+    // gl_FragDepth = depth == 100000.0 ? gl_FragDepth : 0.5 * depth + 0.5;
     return vec4(Lo, 1-T);
 }
 
@@ -231,9 +242,15 @@ vec4 isosurface(vec3 front, vec3 dir)
     int i = 0;
     vec4 diffuse_color = color_lookup(isovalue, color_map, color_norm, color);
     vec3 camdir = normalize(-dir);
+    {{depth_init}}
+    // may write: float depth = 100000.0;
     for (i; i < num_samples; ++i){
         float density = texture(volumedata, pos).x;
         if(abs(density - isovalue) < isorange){
+            {{depth_main}}
+            // may write:
+            // vec4 frag_coord = projectionview * model * vec4(pos, 1);
+            // depth = min(depth, frag_coord.z / frag_coord.w);
             vec3 N = gennormal(pos, step_size);
             vec3 L = normalize(o_light_dir - pos);
             // back & frontface...
@@ -244,6 +261,9 @@ vec4 isosurface(vec3 front, vec3 dir)
         }
         pos += dir;
     }
+    {{depth_write}}
+    // may write:
+    // gl_FragDepth = depth == 100000.0 ? gl_FragDepth : 0.5 * depth + 0.5;
     return c;
 }
 
