@@ -162,10 +162,10 @@ using CairoMakie
 
 #Gantt data
 gantt = (
-    machine = [1,2,1,2], 
-    job = [1,1,2,3], 
-    task = [1,2,3,3], 
-    start = [1, 3, 3.5, 5], 
+    machine = [1,2,1,2],
+    job = [1,1,2,3],
+    task = [1,2,3,3],
+    start = [1, 3, 3.5, 5],
     stop = [3, 4, 5, 6]
 )
 
@@ -196,7 +196,7 @@ barplot!(
 bar_labels = ["task #$i" for i in gantt.task]
 text!(
     ["task #$i" for i in gantt.task],
-    position = Point2f0.(
+    position = Point2f.(
         (gantt.start .+ gantt.stop) ./ 2,
         gantt.machine
     ),

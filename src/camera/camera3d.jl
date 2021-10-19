@@ -311,7 +311,7 @@ end
 function add_rotation!(scene, cam::Camera3D)
     rotationspeed = cam.attributes[:mouse_rotationspeed]
     button = cam.attributes[:rotation_button]
-    last_mousepos = RefValue(Vec2f0(0, 0))
+    last_mousepos = RefValue(Vec2f(0, 0))
     dragging = RefValue(false)
     e = events(scene)
 
