@@ -182,77 +182,122 @@ function _block(T::Type{<:Block},
     b
 end
 
-function _block(T::Type{<:Block}, args...; bbox = BBox(100, 400, 100, 400), kwargs...)
-    blockscene = Scene(camera = campixel!, show_axis = false, raw = true)
+# function _block(T::Type{<:Block}, args...; bbox = BBox(100, 400, 100, 400), kwargs...)
+#     blockscene = Scene(camera = campixel!, show_axis = false, raw = true)
 
-    # create basic layout observables
-    lobservables = LayoutObservables{T}(
-        Observable{Any}(nothing),
-        Observable{Any}(nothing),
-        Observable(true),
-        Observable(true),
-        Observable(:center),
-        Observable(:center),
-        Observable(Inside());
-        suggestedbbox = bbox
-    )
+#     # create basic layout observables
+#     lobservables = LayoutObservables{T}(
+#         Observable{Any}(nothing),
+#         Observable{Any}(nothing),
+#         Observable(true),
+#         Observable(true),
+#         Observable(:center),
+#         Observable(:center),
+#         Observable(Inside());
+#         suggestedbbox = bbox
+#     )
 
-    # create base block with otherwise undefined fields
-    b = T(nothing, lobservables, blockscene)
+#     # create base block with otherwise undefined fields
+#     b = T(nothing, lobservables, blockscene)
 
-    non_attribute_kwargs = Dict(kwargs)
-    attribute_kwargs = typeof(non_attribute_kwargs)()
-    for (key, value) in non_attribute_kwargs
-        if hasfield(T, key) && fieldtype(T, key) <: Observable
-            attribute_kwargs[key] = pop!(non_attribute_kwargs, key)
-        end
-    end
+#     non_attribute_kwargs = Dict(kwargs)
+#     attribute_kwargs = typeof(non_attribute_kwargs)()
+#     for (key, value) in non_attribute_kwargs
+#         if hasfield(T, key) && fieldtype(T, key) <: Observable
+#             attribute_kwargs[key] = pop!(non_attribute_kwargs, key)
+#         end
+#     end
 
-    initialize_attributes!(b; attribute_kwargs...)
-    initialize_block!(b, args...)
-    all_kwargs = Dict(kwargs)
-    for (key, val) in non_attribute_kwargs
-        apply_meta_kwarg!(b, Val(key), val, all_kwargs)
-    end
+#     initialize_attributes!(b; attribute_kwargs...)
+#     initialize_block!(b, args...)
+#     all_kwargs = Dict(kwargs)
+#     for (key, val) in non_attribute_kwargs
+#         apply_meta_kwarg!(b, Val(key), val, all_kwargs)
+#     end
 
-    b
-end
+#     b
+# end
 
 function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
         args...; bbox = nothing, kwargs...)
 
-    # create basic layout observables
+    kwdict = Dict(kwargs)
+    attribute_kwargs = Dict{Symbol, Any}()
+    for (key, value) in kwdict
+        if is_attribute(T, key)
+            attribute_kwargs[key] = pop!(kwdict, key)
+        end
+    end
+    non_attribute_kwargs = kwdict
+
+    topscene = get_topscene(fig_or_scene)
+    default_attrs = default_attribute_values(T, topscene)
+    typekey_scene_attrs = get(topscene.attributes, nameof(T), Attributes())::Attributes
+    typekey_attrs = get(Makie.current_default_theme(), nameof(T), Attributes())::Attributes
+
+    attributes = Dict{Symbol, Any}()
+    for (key, val) in default_attrs
+        # give kwargs priority
+        if haskey(attribute_kwargs, key)
+            attributes[key] = attribute_kwargs[key]
+        # otherwise scene theme
+        elseif haskey(typekey_scene_attrs, key)
+            attributes[key] = typekey_scene_attrs[key]
+        # otherwise global theme
+        elseif haskey(typekey_attrs, key)
+            attributes[key] = typekey_attrs[key]
+        # otherwise its the value from the type default theme
+        else
+            attributes[key] = val
+        end
+    end
+
+    # create basic layout observables and connect attribute observables further down
+    # after creating the block with its observable fields
+
+    layout_width = Observable{Any}(nothing)
+    layout_height = Observable{Any}(nothing)
+    layout_tellwidth = Observable(true)
+    layout_tellheight = Observable(true)
+    layout_halign = Observable(:center)
+    layout_valign = Observable(:center)
+    layout_alignmode = Observable(Inside())
+
     lobservables = LayoutObservables{T}(
-        Observable{Any}(nothing),
-        Observable{Any}(nothing),
-        Observable(true),
-        Observable(true),
-        Observable(:center),
-        Observable(:center),
-        Observable(Inside());
+        layout_width,
+        layout_height,
+        layout_tellwidth,
+        layout_tellheight,
+        layout_halign,
+        layout_valign,
+        layout_alignmode,
         suggestedbbox = bbox
     )
 
-    topscene = get_topscene(fig_or_scene)
     blockscene = Scene(topscene, lift(identity, topscene.px_area), camera = campixel!, show_axis = false, raw = true)
 
     # create base block with otherwise undefined fields
     b = T(fig_or_scene, lobservables, blockscene)
 
-    non_attribute_kwargs = Dict(kwargs)
-    attribute_kwargs = typeof(non_attribute_kwargs)()
-    for (key, value) in non_attribute_kwargs
-        if hasfield(T, key) && fieldtype(T, key) <: Observable
-            attribute_kwargs[key] = pop!(non_attribute_kwargs, key)
-        end
+    for (key, val) in attributes
+        OT = fieldtype(T, key)
+        init_observable!(b, key, OT, val)
     end
 
-    initialize_attributes!(b; attribute_kwargs...)
+    connect!(layout_width, b.width)
+    connect!(layout_height, b.height)
+    connect!(layout_tellwidth, b.tellwidth)
+    connect!(layout_tellheight, b.tellheight)
+    connect!(layout_halign, b.halign)
+    connect!(layout_valign, b.valign)
+    connect!(layout_alignmode, b.alignmode)
+
     initialize_block!(b, args...)
     all_kwargs = Dict(kwargs)
-    for (key, val) in non_attribute_kwargs
-        apply_meta_kwarg!(b, Val(key), val, all_kwargs)
-    end
+
+    # for (key, val) in non_attribute_kwargs
+    #     apply_meta_kwarg!(b, Val(key), val, all_kwargs)
+    # end
 
     if fig_or_scene isa Figure
         register_in_figure!(fig_or_scene, b)
@@ -261,10 +306,6 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
         end
     end
     b
-end
-
-function apply_meta_kwarg!(@nospecialize(x), key::Val{S}, @nospecialize(val), all_kwargs) where S
-    error("Keyword :$S not implemented for $(typeof(x))")
 end
 
 
@@ -317,7 +358,7 @@ end
         end
     else
         # this will throw correctly
-        getfield(x, key)
+        setfield!(x, key, value)
     end
 end
 
@@ -402,54 +443,26 @@ function delete_scene!(s::Scene)
 end
 
 
-
-function initialize_attributes!(@nospecialize x; kwargs...)
-    T = typeof(x)
-
-    topscene = get_topscene(x.parent)
-    default_attrs = default_attribute_values(T, topscene)
-
-    typekey_scene_attrs = get(topscene.attributes, nameof(T), Attributes())
-    typekey_attrs = get(Makie.current_default_theme(), nameof(T), Attributes())
-
-    for (key, val) in default_attrs
-
-        # give kwargs priority
-        if haskey(kwargs, key)
-            val = kwargs[key]
-        # otherwise scene theme
-        elseif haskey(typekey_scene_attrs, key)
-            val = typekey_scene_attrs[key]
-        # otherwise global theme
-        elseif haskey(typekey_attrs, key)
-            val = typekey_attrs[key]
-        end
-
-        OT = fieldtype(T, key)
-        if !hasfield(T, key)
-            error("Type $T doesn't have field $key but it exists in its default attributes.")
-        else
-            # TODO: shouldn't an observable get connected here?
-            if val isa Observable
-                init_observable!(x, key, OT, val[])
-            elseif val isa Attributes
-                setfield!(x, key, val)
-            else
-                init_observable!(x, key, OT, val)
-            end
-        end
-    end
-    return x
-end
-
+# if a non-observable is passed, its value is converted and placed into an observable of
+# the correct type which is then used as the block field
 function init_observable!(@nospecialize(x), key, @nospecialize(OT), @nospecialize(value))
     o = convert_for_attribute(observable_type(OT), value)
     setfield!(x, key, OT(o))
     return x
 end
 
+# if an observable is passed, a converted type is lifted off of it, so it is
+# not used directly as a block field
+function init_observable!(@nospecialize(x), key, @nospecialize(OT), @nospecialize(value::Observable))
+    obstype = observable_type(OT)
+    o = lift(obstype, value) do v
+        convert_for_attribute(obstype, v)
+    end
+    setfield!(x, key, o)
+    return x
+end
+
 observable_type(x::Type{Observable{T}}) where T = T
-observable_type(x::Observable{T}) where T = T
 
 convert_for_attribute(t::Type{T}, value::T) where T = value
 convert_for_attribute(t::Type{Float64}, x) = convert(Float64, x)
