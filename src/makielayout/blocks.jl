@@ -284,6 +284,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
         init_observable!(b, key, OT, val)
     end
 
+    # connect the layoutobservable observables to the corresponding attributes
     connect!(layout_width, b.width)
     connect!(layout_height, b.height)
     connect!(layout_tellwidth, b.tellwidth)
@@ -292,12 +293,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
     connect!(layout_valign, b.valign)
     connect!(layout_alignmode, b.alignmode)
 
-    initialize_block!(b, args...)
-    all_kwargs = Dict(kwargs)
-
-    # for (key, val) in non_attribute_kwargs
-    #     apply_meta_kwarg!(b, Val(key), val, all_kwargs)
-    # end
+    initialize_block!(b, args...; non_attribute_kwargs...)
 
     if fig_or_scene isa Figure
         register_in_figure!(fig_or_scene, b)
