@@ -25,7 +25,7 @@ v = range(0, stop=2π, length=150)
 tr = surface(f.(u,v'),
              g.(u,v'),
              h.(u,v'),
-             ambient=Vec3f0(0.5),
-             diffuse=Vec3f0(1),
+             ambient=Vec3f(0.5),
+             diffuse=Vec3f(1),
              specular=0.5,
              colormap=:balance) |> display
