@@ -508,12 +508,9 @@ end
 
 scene = Scene(container_scene, scene_area, camera = campixel!)
 
-rect = poly!(scene, scene_area,
-    raw=true, color=RGBf(0.97, 0.97, 0.97), strokecolor=:transparent, strokewidth=0)
+rect = poly!(scene, scene_area, color=RGBf(0.97, 0.97, 0.97), strokecolor=:transparent, strokewidth=0)
 
 outer_layout = GridLayout(scene, alignmode = Outside(30))
-
-
 
 
 # example begins here

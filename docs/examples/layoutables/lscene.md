@@ -18,7 +18,7 @@ GLMakie.activate!()
 
 fig = Figure()
 
-lscene = LScene(fig[1, 1], scenekw = (camera = cam3d!, raw = false))
+lscene = LScene(fig[1, 1], scenekw = (camera = cam3d!,))
 
 # now you can plot into lscene like you're used to
 meshscatter!(lscene, randn(100, 3))

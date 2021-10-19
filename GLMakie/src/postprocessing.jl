@@ -134,7 +134,7 @@ function ssao_postprocessor(framebuffer)
             a = pixelarea(scene)[]
             glScissor(minimum(a)..., widths(a)...)
             # update uniforms
-            SSAO = scene.SSAO
+            SSAO = scene.theme.SSAO
             data1[:projection][] = scene.camera.projection[]
             data1[:bias][] = Float32(to_value(get(SSAO, :bias, 0.025)))
             data1[:radius][] = Float32(to_value(get(SSAO, :radius, 0.5)))
@@ -150,7 +150,7 @@ function ssao_postprocessor(framebuffer)
             a = pixelarea(scene)[]
             glScissor(minimum(a)..., widths(a)...)
             # update uniforms
-            SSAO = scene.attributes.SSAO
+            SSAO = scene.theme.SSAO
             data2[:blur_range][] = Int32(to_value(get(SSAO, :blur, 2)))
             GLAbstraction.render(pass2)
         end
@@ -178,8 +178,6 @@ function fxaa_postprocessor(framebuffer)
         push!(framebuffer.buffers, :color_luma => color_luma_buffer)
     end
 
-
-
     # calculate luma for FXAA
     shader1 = LazyShader(
         loadshader("postprocessing/fullscreen.vert"),
@@ -202,8 +200,6 @@ function fxaa_postprocessor(framebuffer)
     )
     pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing)
     pass2.postrenderfunction = () -> draw_fullscreen(pass2.vertexarray.id)
-
-
 
     full_render = screen -> begin
         fb = screen.framebuffer

@@ -3,7 +3,6 @@
 `Layoutables` are objects which can be added to a `Figure` or `Scene` and have their location and size controlled by a `GridLayout`. In of itself, a `Layoutable` is an abstract type.
 A `Figure` has its own internal `GridLayout` and therefore offers simplified syntax for adding layoutables to it.
 If you want to work with a bare `Scene`, you can attach a `GridLayout` to its pixel area.
-The `layoutscene` function is supplied for this purpose.
 
 !!! note
     A layout only controls an object's position or bounding box.
@@ -25,23 +24,7 @@ ax = Axis(f[1, 1])
 f
 ```
 \end{examplefigure}
-## Adding to a `Scene`
 
-And here's how you can add the same Layoutable to a Scene, which is the primitive object underlying a Figure.
-As discussed above, `layoutscene` is an older convenience method to create a Scene with an attached GridLayout that tracks its size.
-This is mostly not needed anymore since Figures were added.
-
-\begin{examplefigure}{}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
-
-scene, layout = layoutscene()
-ax = layout[1, 1] = Axis(scene)
-scene
-```
-\end{examplefigure}
 ## Specifying a boundingbox directly
 
 Sometimes you just want to place a `Layoutable` in a specific location, without it being controlled by a dynamic layout.
