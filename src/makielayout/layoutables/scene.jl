@@ -8,7 +8,6 @@ function Makie.plot!(
     end
 
     if haskey(attributes, :limits)
-        println("Jooo")
         lscene.attributes[:limits] = pop!(attributes, :limits)
     end
 
