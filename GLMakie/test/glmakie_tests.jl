@@ -10,7 +10,7 @@ using ReferenceTests.RNG
 # A test case for wide lines and mitering at joints
 @cell "Miter Joints for line rendering" begin
     scene = Scene()
-
+    cam2d!(scene)
     r = 4
     sep = 4*r
     scatter!(scene, (sep+2*r)*[-1,-1,1,1], (sep+2*r)*[-1,1,-1,1])
@@ -26,6 +26,7 @@ using ReferenceTests.RNG
             lines!(scene, x .+ sep*i, y .+ sep*j, color=:red)
         end
     end
+    center!(scene)
     scene
 end
 
@@ -43,9 +44,9 @@ end
     Makie.step!(st)
     st
 end
+
 # Test for resizing of TextureBuffer
 @cell "Dynamically adjusting number of particles in a meshscatter" begin
-
     pos = Observable(RNG.rand(Point3f, 2))
     rot = Observable(RNG.rand(Vec3f, 2))
     color = Observable(RNG.rand(RGBf, 2))
@@ -59,14 +60,13 @@ end
         size[] = 0.1*RNG.rand(i)
     end
 
-    scene = meshscatter(pos,
+    fig, ax, p = meshscatter(pos,
         rotations=rot,
         color=color,
         markersize=size,
         limits=Rect3f(Point3(0), Point3(1))
     )
-
-    Record(scene, [10, 5, 100, 60, 177]) do i
+    Record(fig, [10, 5, 100, 60, 177]) do i
         makenew[] = i
     end
 end

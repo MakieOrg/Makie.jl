@@ -196,7 +196,6 @@ function selection_rect!(scene, cam, key)
         cam = copy(camera(scene)), clear = false
     )
     scene_unscaled.clear = false
-    scene_unscaled.updated = Observable(false)
     rect_vis = lines!(
         scene_unscaled,
         rect[],
@@ -214,7 +213,7 @@ function selection_rect!(scene, cam, key)
                 rect_vis[:visible] = true # start displaying
                 rect[] = Rectf(mp, 0, 0)
                 rect_vis[1] = rect[]
-                return Consume(true) 
+                return Consume(true)
             end
         else
             if event.action == Mouse.release && waspressed[]

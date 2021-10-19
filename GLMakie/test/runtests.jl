@@ -29,7 +29,7 @@ recorded_glmakie = joinpath(@__DIR__, "recorded_glmakie")
 rm(recorded_glmakie; force=true, recursive=true); mkdir(recorded_glmakie)
 ref_images = ReferenceTests.download_refimages(; name="glmakie_refimages")
 
-ReferenceTests.record_tests(ReferenceTests.DATABASE, recording_dir=recorded_glmakie)
+ReferenceTests.run_reference_tests(ReferenceTests.DATABASE, recorded_glmakie; ref_images=ref_images)
 missing_files, scores = ReferenceTests.compare(joinpath.(recorded_glmakie, readdir(recorded_glmakie)), ref_images)
 ReferenceTests.reference_tests(scores; difference=0.01)
 # needs GITHUB_TOKEN to be defined

@@ -250,11 +250,11 @@ end
     vy = -1:0.01:1
 
     f(x, y) = (sin(x * 10) + cos(y * 10)) / 4
-    scene = Scene(resolution=(500, 500))
-    cam3d!(scene)
+    scene = Scene(resolution=(500, 500), camera=cam3d!)
     # One way to style the axis is to pass a nested dictionary / named tuple to it.
     psurf = surface!(scene, vx, vy, f)
     axis3d!(scene, frame = (linewidth = 2.0,))
+    center!(scene)
     # One can also directly get the axis object and manipulate it
     axis = scene[OldAxis] # get axis
 
@@ -278,7 +278,6 @@ end
     )
     c = lines!(scene, Circle(Point2f(0.1, 0.5), 0.1f0), color=:red, offset=Vec3f(0, 0, 1))
     psurf.converted[3][] = f.(vx .+ 0.5, (vy .+ 0.5)')
-    center!(scene)
     scene
 end
 
@@ -365,7 +364,6 @@ end
 end
 
 @cell "Animated surface and wireframe" begin
-    scene = Scene();
     function xy_data(x, y)
         r = sqrt(x^2 + y^2)
         r == 0.0 ? 1f0 : (sin(r) / r)
@@ -374,12 +372,12 @@ end
     xrange = range(-2, stop=2, length=50)
     surf_func(i) = [Float32(xy_data(x * i, y * i)) for x = xrange, y = xrange]
     z = surf_func(20)
-    surf = surface!(scene, xrange, xrange, z)
+    fig, ax, surf = surface(xrange, xrange, z)
 
-    wf = wireframe!(scene, xrange, xrange, lift(x -> x .+ 1.0, surf[3]),
+    wf = wireframe!(ax, xrange, xrange, lift(x -> x .+ 1.0, surf[3]),
         linewidth=2f0, color=lift(x -> to_colormap(x)[5], surf[:colormap])
     )
-    Record(scene, range(5, stop=40, length=3)) do i
+    Record(fig, range(5, stop=40, length=3)) do i
         surf[3] = surf_func(i)
     end
 end
@@ -400,13 +398,13 @@ end
 
 @cell "Stars" begin
     stars = 100_000
-    scene = Scene(backgroundcolor=:black)
+    scene = Scene(backgroundcolor=:black, camera=cam2d!)
     scatter!(
         scene,
         map(i -> (RNG.randn(Point3f) .- 0.5) .* 10, 1:stars),
         color=RNG.rand(stars),
         colormap=[(:white, 0.4), (:blue, 0.4), (:yellow, 0.4)], strokewidth=0,
-        markersize=RNG.rand(range(10, stop=100, length=100), stars),
+        markersize=RNG.rand(range(2, stop=8, length=100), stars),
     )
     update_cam!(scene, Rect3f(Vec3f(-5), Vec3f(10)))
     scene

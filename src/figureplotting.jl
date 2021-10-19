@@ -26,6 +26,7 @@ function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), 
         proxyscene = Scene()
         attrs = Attributes(kw_attributes)
         delete!(attrs, :show_axis)
+        delete!(attrs, :limits)
         plot!(proxyscene, P, attrs, args...)
         if is2d(proxyscene)
             ax = Axis(fig; axis...)
