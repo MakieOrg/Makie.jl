@@ -3,7 +3,7 @@ using Makie
 text()
 fig, ax, p = meshscatter(1:5, (1:5) .+ 5, rand(5))
 fig, ax, p = scatter(1:5, rand(5))
-fig, ax, p = mesh(Sphere(Point3f0(0), 1.0))
+fig, ax, p = mesh(Sphere(Point3f(0), 1.0))
 fig, ax, p = linesegments(1:5, rand(5))
 fig, ax, p = lines(1:5, rand(5))
 fig, ax, p = surface(rand(4, 7))

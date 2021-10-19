@@ -28,7 +28,7 @@ ze = [cos(θ) for θ in θ, φ in φ]
 fig = Figure(; resolution = (1500,1500))
 ax = LScene(fig[1, 1], scenekw=(show_axis=false,))
 surface!(ax, xe, ye, ze, color = earth_img)
-toPoints3D = [Point3f0([toCartesian(point[1], point[2])...]) for point in toPoints]
+toPoints3D = [Point3f([toCartesian(point[1], point[2])...]) for point in toPoints]
 meshscatter!(ax, toPoints3D, color = 1:length(toPoints3D), markersize = 0.01, colormap = :plasma)
 
 isdefined(Main, :context) && RPR.release(context)
