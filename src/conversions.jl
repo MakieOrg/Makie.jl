@@ -422,13 +422,6 @@ function convert_arguments(::Type{<: Lines}, x::Rect2)
     return (points[[1, 2, 4, 3, 1]],)
 end
 
-
-function convert_arguments(::Type{<: Lines}, x::Rect3)
-    # TODO fix the order of decompose
-    points = decompose(Point3f, x)
-    return (points[[1, 2, 4, 3, 1]],)
-end
-
 ################################################################################
 #                                <:LineSegments                                #
 ################################################################################
