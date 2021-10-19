@@ -310,7 +310,7 @@ and stores the `ClosedInterval` to `n` and `m`, plus the original matrix in a Tu
 """
 function convert_arguments(sl::SurfaceLike, data::AbstractMatrix)
     n, m = Float32.(size(data))
-    convert_arguments(sl, 0:n, 0f0 .. m, el32convert(data))
+    convert_arguments(sl, 0f0 .. n, 0f0 .. m, el32convert(data))
 end
 
 function convert_arguments(ds::DiscreteSurface, data::AbstractMatrix)
