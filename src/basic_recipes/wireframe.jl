@@ -10,7 +10,11 @@ Draws a wireframe, either interpreted as a surface or as a mesh.
 $(ATTRIBUTES)
 """
 @recipe(Wireframe) do scene
-    default_theme(scene, LineSegments)
+    # default_theme(scene, LineSegments)
+    Attributes(;
+        default_theme(scene, LineSegments)...,
+        depth_shift = -1f-5,
+    )
 end
 
 function convert_arguments(::Type{<: Wireframe}, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)

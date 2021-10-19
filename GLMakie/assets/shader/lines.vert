@@ -39,6 +39,7 @@ vec4 to_vec4(vec2 v){return vec4(v, 0, 1);}
 int get_valid_vertex(float se){return int(se);}
 int get_valid_vertex(Nothing se){return 1;}
 
+uniform float depth_shift;
 
 void main()
 {
@@ -46,6 +47,8 @@ void main()
     int index = gl_VertexID;
     g_id = uvec2(objectid, index+1);
     g_valid_vertex = get_valid_vertex(valid_vertex);
+
     g_color = _color(color, intensity, color_map, color_norm, index, total_length);
     gl_Position = projection*view*model*to_vec4(vertex);
+    gl_Position.z += gl_Position.w * depth_shift;
 }

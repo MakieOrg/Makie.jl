@@ -30,7 +30,7 @@ mutable struct Screen <: GLScreen
             cache2plot::Dict{UInt16, AbstractPlot},
         )
         s = size(framebuffer)
-        obj = new(
+        return new(
             glscreen, framebuffer, rendertask, screen2scene,
             screens, renderlist, postprocessors, cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(nothing),
@@ -83,16 +83,18 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
 end
 
 function Base.empty!(screen::Screen)
+    empty!(screen.render_tick.listeners)
+    empty!(screen.window_open.listeners)
     empty!(screen.renderlist)
     empty!(screen.screen2scene)
     empty!(screen.screens)
+    empty!(screen.cache)
+    empty!(screen.cache2plot)
 end
 
 function destroy!(screen::Screen)
-    empty!(screen)
     screen.window_open[] = false
-    empty!(screen.cache)
-    empty!(screen.cache2plot)
+    empty!(screen)
     destroy!(screen.glscreen)
 end
 
@@ -154,7 +156,7 @@ x = scatter(1:4)
 screen = display(x)
 depth_color = GLMakie.depthbuffer(screen)
 # Look at result:
-heatmap(depth_color, colormap=:grays, show_axis=false)
+heatmap(depth_color, colormap=:grays)
 ```
 """
 function depthbuffer(screen::Screen)
@@ -392,6 +394,7 @@ function global_gl_screen(resolution::Tuple, visibility::Bool, tries = 1)
     # could just be returned by global_gl_screen, but dont want to change the API
     isold = isassigned(GLOBAL_GL_SCREEN) && isopen(GLOBAL_GL_SCREEN[])
     screen = global_gl_screen()
+    empty!(screen)
     GLFW.set_visibility!(to_native(screen), visibility)
     resize!(screen, resolution...)
     new_size = windowsize(to_native(screen))

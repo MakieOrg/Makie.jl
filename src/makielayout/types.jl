@@ -112,14 +112,14 @@ IntervalsBetween(n) = IntervalsBetween(n, true)
 
 mutable struct LineAxis
     parent::Scene
-    protrusion::Node{Float32}
+    protrusion::Observable{Float32}
     attributes::Attributes
     elements::Dict{Symbol, Any}
-    tickpositions::Node{Vector{Point2f}}
-    tickvalues::Node{Vector{Float32}}
-    ticklabels::Node{Vector{String}}
-    minortickpositions::Node{Vector{Point2f}}
-    minortickvalues::Node{Vector{Float32}}
+    tickpositions::Observable{Vector{Point2f}}
+    tickvalues::Observable{Vector{Float32}}
+    ticklabels::Observable{Vector{String}}
+    minortickpositions::Observable{Vector{Point2f}}
+    minortickvalues::Observable{Vector{Float32}}
 end
 
 struct LimitReset end
@@ -170,9 +170,9 @@ end
     scene::Scene
     xaxislinks::Vector{Axis}
     yaxislinks::Vector{Axis}
-    targetlimits::Node{Rect2f}
-    finallimits::Node{Rect2f}
-    block_limit_linking::Node{Bool}
+    targetlimits::Observable{Rect2f}
+    finallimits::Observable{Rect2f}
+    block_limit_linking::Observable{Bool}
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
     keysevents::Observable{KeysEvent}
@@ -241,7 +241,7 @@ end
 const EntryGroup = Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}
 
 @Layoutable Legend begin
-    entrygroups::Node{Vector{EntryGroup}}
+    entrygroups::Observable{Vector{EntryGroup}}
 end
 
 @Layoutable LScene begin
@@ -249,13 +249,13 @@ end
 end
 
 @Layoutable Textbox begin
-    cursorindex::Node{Int}
+    cursorindex::Observable{Int}
     cursoranimtask
 end
 
 @Layoutable Axis3 begin
     scene::Scene
-    finallimits::Node{Rect3f}
+    finallimits::Observable{Rect3f}
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
     keysevents::Observable{KeysEvent}

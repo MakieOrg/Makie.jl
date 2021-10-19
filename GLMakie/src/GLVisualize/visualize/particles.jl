@@ -57,7 +57,7 @@ end
 
 vec2quaternion(rotation::Vec4f) = rotation
 vec2quaternion(rotation::VectorTypes) = const_lift(x-> vec2quaternion.(x), rotation)
-vec2quaternion(rotation::Node) = lift(vec2quaternion, rotation)
+vec2quaternion(rotation::Observable) = lift(vec2quaternion, rotation)
 vec2quaternion(rotation::Makie.Quaternion)= Vec4f(rotation.data)
 vec2quaternion(rotation)= vec2quaternion(to_rotation(rotation))
 GLAbstraction.gl_convert(rotation::Makie.Quaternion)= Vec4f(rotation.data)
@@ -184,7 +184,7 @@ Gets the texture atlas if primitive is a char.
 """
 primitive_distancefield(x) = nothing
 primitive_distancefield(::Char) = get_texture!(get_texture_atlas())
-primitive_distancefield(::Node{Char}) = get_texture!(get_texture_atlas())
+primitive_distancefield(::Observable{Char}) = get_texture!(get_texture_atlas())
 
 function _default(
         p::Tuple{TOrSignal{Matrix{C}}, VectorTypes{P}}, s::Style, data::Dict

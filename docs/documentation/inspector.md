@@ -143,7 +143,7 @@ function show_barplot(inspector::DataInspector, plot::BarPlot, idx)
         p = wireframe!(
             scene, a._bbox2D, model = a._model, color = a.indicator_color,
             strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
-            visible = a._bbox_visible, show_axis = false, inspectable = false
+            visible = a._bbox_visible, inspectable = false
         )
 
         # Make sure this draws on top

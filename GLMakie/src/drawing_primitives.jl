@@ -2,6 +2,7 @@ using Makie: get_texture_atlas, glyph_uv_width!, transform_func_obs, apply_trans
 using Makie: attribute_per_char, FastPixel, el32convert, Pixel
 using Makie: convert_arguments, preprojected_glyph_arrays
 
+Makie.el32convert(x::GLAbstraction.Texture) = x
 Makie.convert_attribute(s::ShaderAbstractions.Sampler{RGBAf}, k::key"color") = s
 function Makie.convert_attribute(s::ShaderAbstractions.Sampler{T, N}, k::key"color") where {T, N}
     ShaderAbstractions.Sampler(
@@ -51,7 +52,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     robj = get!(screen.cache, objectid(x)) do
 
         filtered = filter(x.attributes) do (k, v)
-            !(k in (:transformation, :tickranges, :ticklabels, :raw, :SSAO, :lightposition))
+            !(k in (:transformation, :tickranges, :ticklabels, :raw, :SSAO, :lightposition, :material))
         end
 
         gl_attributes = Dict{Symbol, Any}(map(filtered) do key_value
@@ -86,7 +87,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             end
         end
 
-        !haskey(gl_attributes, :ssao) && (robj[:ssao] = Node(false))
+        !haskey(gl_attributes, :ssao) && (robj[:ssao] = Observable(false))
         screen.cache2plot[robj.id] = x
         robj
     end
@@ -103,7 +104,7 @@ end
 index1D(x::SubArray) = parentindices(x)[1]
 
 handle_view(array::AbstractVector, attributes) = array
-handle_view(array::Node, attributes) = array
+handle_view(array::Observable, attributes) = array
 
 function handle_view(array::SubArray, attributes)
     A = parent(array)
@@ -112,7 +113,7 @@ function handle_view(array::SubArray, attributes)
     return A
 end
 
-function handle_view(array::Node{T}, attributes) where T <: SubArray
+function handle_view(array::Observable{T}, attributes) where T <: SubArray
     A = lift(parent, array)
     indices = lift(index1D, array)
     attributes[:indices] = indices
@@ -421,7 +422,12 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Image)
         img = get_image(gl_attributes)
         interp = to_value(pop!(gl_attributes, :interpolate))
         interp = interp ? :linear : :nearest
-        tex = Texture(el32convert(img), minfilter = interp)
+        img = el32convert(img)
+        tex = if to_value(img) isa Texture
+            to_value(img)
+        else
+            Texture(img, minfilter = interp)
+        end
         visualize(tex, Style(:default), gl_attributes)
     end
 end
@@ -441,8 +447,8 @@ function draw_atomic(screen::GLScreen, scene::Scene, meshplot::Mesh)
         # signals not supported for shading yet
         gl_attributes[:shading] = to_value(pop!(gl_attributes, :shading))
         color = pop!(gl_attributes, :color)
-        # cmap = get(gl_attributes, :color_map, Node(nothing)); delete!(gl_attributes, :color_map)
-        # crange = get(gl_attributes, :color_norm, Node(nothing)); delete!(gl_attributes, :color_norm)
+        # cmap = get(gl_attributes, :color_map, Observable(nothing)); delete!(gl_attributes, :color_map)
+        # crange = get(gl_attributes, :color_norm, Observable(nothing)); delete!(gl_attributes, :color_norm)
         mesh = meshplot[1]
 
         if to_value(color) isa Colorant
@@ -514,18 +520,16 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
             t = Makie.transform_func_obs(scene)
             mat = x[3]
             xypos = map(t, x[1], x[2]) do t, x, y
-                x1d = xy_convert(x, size(mat[], 1))
-                y1d = xy_convert(y, size(mat[], 2))
                 # Only if transform doesn't do anything, we can stay linear in 1/2D
                 if Makie.is_identity_transform(t)
-                    return (x1d, y1d)
+                    return (x, y)
                 else
-                    matrix = if x1d isa AbstractMatrix && y1d isa AbstractMatrix
-                        apply_transform.((t,), Point.(x1d, y1d))
+                    matrix = if x isa AbstractMatrix && y isa AbstractMatrix
+                        apply_transform.((t,), Point.(x, y))
                     else
                         # If we do any transformation, we have to assume things aren't on the grid anymore
                         # so x + y need to become matrices.
-                        [apply_transform(t, Point(x, y)) for x in x1d, y in y1d]
+                        [apply_transform(t, Point(x, y)) for x in x, y in y]
                     end
                     return (first.(matrix), last.(matrix))
                 end
@@ -533,7 +537,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
             xpos = map(first, xypos)
             ypos = map(last, xypos)
             args = map((xpos, ypos, mat)) do arg
-                Texture(el32convert(arg); minfilter=:nearest)
+                Texture(map(x-> convert(Array, el32convert(x)), arg); minfilter=:nearest)
             end
             return visualize(args, Style(:surface), gl_attributes)
         else

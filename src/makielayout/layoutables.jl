@@ -84,7 +84,7 @@ Get the scene which layoutables need from their parent to plot stuff into
 """
 get_topscene(f::Figure) = f.scene
 function get_topscene(s::Scene)
-    if !(s.camera_controls[] isa Makie.PixelCamera)
+    if !(Makie.cameracontrols(s) isa Makie.PixelCamera)
         error("Can only use scenes with PixelCamera as topscene")
     end
     s

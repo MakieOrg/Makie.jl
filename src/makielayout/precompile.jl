@@ -1,6 +1,6 @@
 function _precompile_()
     ccall(:jl_generating_output, Cint, ()) == 1 || return nothing
-    @assert precompile(Legend, (Scene, Node{Vector{Tuple{Optional{String}, Vector{LegendEntry}}}}))
+    @assert precompile(Legend, (Scene, Observable{Vector{Tuple{Optional{String}, Vector{LegendEntry}}}}))
     # @assert precompile(Legend, (Scene, AbstractArray, Vector{String}))
     @assert precompile(Colorbar, (Scene,))
     # @assert precompile(Axis, (Scene,))
@@ -10,6 +10,4 @@ function _precompile_()
     @assert precompile(Button, (Scene,))
     @assert precompile(Slider, (Scene,))
     @assert precompile(Textbox, (Scene,))
-
-    @assert precompile(layoutscene, ())  # doesn't fully precompile
 end

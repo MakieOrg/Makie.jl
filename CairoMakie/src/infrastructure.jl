@@ -150,7 +150,6 @@ to_mime(x::CairoBackend) = to_mime(x.typ)
 
 # The main entry point into the drawing pipeline
 function cairo_draw(screen::CairoScreen, scene::Scene)
-    Makie.update!(scene)
     draw_background(screen, scene)
 
     allplots = get_all_plots(scene)

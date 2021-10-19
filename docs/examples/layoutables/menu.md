@@ -29,7 +29,7 @@ fig[1, 1] = vgrid!(
 
 ax = Axis(fig[1, 2])
 
-func = Node{Any}(funcs[1])
+func = Observable{Any}(funcs[1])
 
 ys = lift(func) do f
     f.(0:0.3:10)
