@@ -13,12 +13,10 @@ Base.show(io::IO, ::MIME"text/plain", fap::FigureAxisPlot) = print(io, "FigureAx
 Base.iterate(fap::FigureAxisPlot, args...) = iterate((fap.figure, fap.axis, fap.plot), args...)
 Base.iterate(ap::AxisPlot, args...) = iterate((ap.axis, ap.plot), args...)
 
-
 get_axis_type(::PlotFunc, args...) = Axis
 get_axis_type(::Type{<: Union{Surface, Volume}}, args...) = LScene
 get_axis_type(::PlotFunc, x::AbstractVector, y::AbstractVector, z::AbstractVector) = LScene
 get_axis_type(::PlotFunc, xyz::AbstractVector{<: Point3}) = LScene
-
 
 function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), kw_attributes...)
     # scene_attributes = extract_scene_attributes!(attributes)

@@ -658,10 +658,10 @@ convert_axis_dim(ticks, values, limits) = values
 
 # single arguments gets ignored for now
 # TODO: add similar overloads as convert_arguments for the most common ones that work with units
-axis_convert(::Axis, x::Observable) = (x,)
+axis_convert(P, ::Axis, x::Observable) = (x,)
 # we leave Z + n alone for now!
-function axis_convert(ax::Axis, x::Observable, y::Observable, z::Observable, args...)
-    return (axis_convert(ax, x, y)..., z, args...)
+function axis_convert(P, ax::Axis, x::Observable, y::Observable, z::Observable, args...)
+    return (axis_convert(P, ax, x, y)..., z, args...)
 end
 
 ticks_from_type(::Type{<: Number}) = WilkinsonTicks(5, k_min = 3)
@@ -684,7 +684,7 @@ end
 
 label_postfix(ticks) = ""
 
-function axis_convert(ax::Axis, x::Observable, y::Observable)
+function axis_convert(FinalType, ax::Axis, x::Observable, y::Observable)
     xlimits = map(limits-> first.(extrema(limits)), ax.finallimits)
     xticks = ax.xticks[]
     xticks_new = ticks_from_args(xticks, x[])
@@ -715,7 +715,7 @@ function axis_convert(ax::Axis, x::Observable, y::Observable)
     end
     yconv = convert_axis_dim(yticks_new, y, ylimits)
 
-    return xconv, yconv
+    return Makie.seperate_tuple(map((x, y)-> pre_convert_args(FinalType, x, y), xconv, yconv))
 end
 
 function pre_convert_args(P, args...; kw...)
@@ -732,12 +732,12 @@ end
 
 function Makie.plot!(la::Axis, P::Makie.PlotFunc,
                      allattrs::Makie.Attributes, args...)
+
     cycle = get_cycle_for_plottype(allattrs, P)
     add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
     FinalType, attributes, input_nodes, converted_node = Makie.convert_plot_arguments(P, allattrs, args, pre_convert_args)
-    converted_args = axis_convert(la, Makie.seperate_tuple(converted_node)...)
-    converted_final = map((args...)-> convert_arguments(FinalType, args...), converted_args...)
-    plot_object = FinalType(la.scene, copy(attributes), input_nodes, converted_final)
+    converted_args = axis_convert(FinalType, la, Makie.seperate_tuple(converted_node)...)
+    plot_object = FinalType(la.scene, copy(attributes), input_nodes, converted_args)
     plot!(plot_object)
     push!(la.scene, plot_object)
     # some area-like plots basically always look better if they cover the whole plot area.
