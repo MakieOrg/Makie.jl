@@ -1,35 +1,20 @@
-function block(::Type{Slider}, fig_or_scene; bbox = nothing, kwargs...)
-
-    topscene = get_topscene(fig_or_scene)
-
-    default_attrs = default_attributes(Slider, topscene).attributes
-    theme_attrs = subtheme(topscene, :Slider)
-    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
+function initialize_block!(sl::Slider)
 
     decorations = Dict{Symbol, Any}()
 
-    @extract attrs (
-        halign, valign, horizontal, linewidth, snap,
-        startvalue, value, color_active, color_active_dimmed, color_inactive
-    )
+    sliderrange = sl.range
 
-    sliderrange = attrs.range
-
-    protrusions = Node(GridLayoutBase.RectSides{Float32}(0, 0, 0, 0))
-    layoutobservables = LayoutObservables{Slider}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
-        halign, valign, attrs.alignmode; suggestedbbox = bbox, protrusions = protrusions)
-
-    onany(linewidth, horizontal) do lw, horizontal
+    onany(sl.linewidth, sl.horizontal) do lw, horizontal
         if horizontal
-            layoutobservables.autosize[] = (nothing, Float32(lw))
+            sl.layoutobservables.autosize[] = (nothing, Float32(lw))
         else
-            layoutobservables.autosize[] = (Float32(lw), nothing)
+            sl.layoutobservables.autosize[] = (Float32(lw), nothing)
         end
     end
 
-    sliderbox = lift(identity, layoutobservables.computedbbox)
+    sliderbox = lift(identity, sl.layoutobservables.computedbbox)
 
-    endpoints = lift(sliderbox, horizontal) do bb, horizontal
+    endpoints = lift(sliderbox, sl.horizontal) do bb, horizontal
 
         h = height(bb)
         w = width(bb)
@@ -48,8 +33,8 @@ function block(::Type{Slider}, fig_or_scene; bbox = nothing, kwargs...)
     # this is the index of the selected value in the slider's range
     # selected_index = Node(1)
     # add the selected index to the attributes so it can be manipulated later
-    attrs.selected_index = 1
-    selected_index = attrs.selected_index
+    selected_index = Node(1)
+    setfield!(sl, :selected_index, selected_index)
 
     # the fraction on the slider corresponding to the selected_index
     # this is only used after dragging
@@ -77,11 +62,11 @@ function block(::Type{Slider}, fig_or_scene; bbox = nothing, kwargs...)
     end
 
     on(selected_index) do i
-        value[] = sliderrange[][i]
+        sl.value[] = sliderrange[][i]
     end
 
     # initialize slider value with closest from range
-    selected_index[] = closest_index(sliderrange[], startvalue[])
+    selected_index[] = closest_index(sliderrange[], sl.startvalue[])
 
     middlepoint = lift(endpoints, displayed_sliderfraction) do ep, sf
         Point2f(ep[1] .+ sf .* (ep[2] .- ep[1]))
@@ -91,37 +76,37 @@ function block(::Type{Slider}, fig_or_scene; bbox = nothing, kwargs...)
         [eps[1], middle, middle, eps[2]]
     end
 
-    linecolors = lift(color_active_dimmed, color_inactive) do ca, ci
+    linecolors = lift(sl.color_active_dimmed, sl.color_inactive) do ca, ci
         [ca, ci]
     end
 
-    endbuttons = scatter!(topscene, endpoints, color = linecolors, 
-        markersize = linewidth, strokewidth = 0, raw = true, inspectable = false)
+    endbuttons = scatter!(sl.blockscene, endpoints, color = linecolors, 
+        markersize = sl.linewidth, strokewidth = 0, raw = true, inspectable = false)
     decorations[:endbuttons] = endbuttons
 
-    linesegs = linesegments!(topscene, linepoints, color = linecolors, 
-        linewidth = linewidth, raw = true, inspectable = false)
+    linesegs = linesegments!(sl.blockscene, linepoints, color = linecolors, 
+        linewidth = sl.linewidth, raw = true, inspectable = false)
     decorations[:linesegments] = linesegs
 
     button_magnification = Node(1.0)
-    buttonsize = @lift($linewidth * $button_magnification)
-    button = scatter!(topscene, middlepoint, color = color_active, strokewidth = 0, 
+    buttonsize = @lift($(sl.linewidth) * $button_magnification)
+    button = scatter!(sl.blockscene, middlepoint, color = sl.color_active, strokewidth = 0, 
         markersize = buttonsize, raw = true, inspectable = false)
     decorations[:button] = button
 
-    mouseevents = addmouseevents!(topscene, layoutobservables.computedbbox)
+    mouseevents = addmouseevents!(sl.blockscene, sl.layoutobservables.computedbbox)
 
     onmouseleftdrag(mouseevents) do event
         dragging[] = true
         dif = event.px - event.prev_px
-        fraction = clamp(if horizontal[]
+        fraction = clamp(if sl.horizontal[]
             (event.px[1] - endpoints[][1][1]) / (endpoints[][2][1] - endpoints[][1][1])
         else
             (event.px[2] - endpoints[][1][2]) / (endpoints[][2][2] - endpoints[][1][2])
         end, 0, 1)
 
         newindex = closest_fractionindex(sliderrange[], fraction)
-        if snap[]
+        if sl.snap[]
             fraction = (newindex - 1) / (length(sliderrange[]) - 1)
         end
         displayed_sliderfraction[] = fraction
@@ -137,13 +122,13 @@ function block(::Type{Slider}, fig_or_scene; bbox = nothing, kwargs...)
         dragging[] = false
         # adjust slider to closest legal value
         sliderfraction[] = sliderfraction[]
-        linecolors[] = [color_active_dimmed[], color_inactive[]]
+        linecolors[] = [sl.color_active_dimmed[], sl.color_inactive[]]
         return Consume(true)
     end
 
     onmouseleftdown(mouseevents) do event
         pos = event.px
-        dim = horizontal[] ? 1 : 2
+        dim = sl.horizontal[] ? 1 : 2
         frac = (pos[dim] - endpoints[][1][dim]) / (endpoints[][2][dim] - endpoints[][1][dim])
         selected_index[] = closest_fractionindex(sliderrange[], frac)
         # linecolors[] = [color_active[], color_inactive[]]
@@ -151,7 +136,7 @@ function block(::Type{Slider}, fig_or_scene; bbox = nothing, kwargs...)
     end
 
     onmouseleftdoubleclick(mouseevents) do event
-        selected_index[] = closest_index(sliderrange[], startvalue[])
+        selected_index[] = closest_index(sliderrange[], sl.startvalue[])
         return Consume(true)
     end
 
@@ -162,14 +147,12 @@ function block(::Type{Slider}, fig_or_scene; bbox = nothing, kwargs...)
 
     onmouseout(mouseevents) do event
         button_magnification[] = 1.0
-        linecolors[] = [color_active_dimmed[], color_inactive[]]
+        linecolors[] = [sl.color_active_dimmed[], sl.color_inactive[]]
         return Consume(false)
     end
 
     # trigger autosize through linewidth for first layout
-    linewidth[] = linewidth[]
-
-    Slider(fig_or_scene, layoutobservables, attrs, decorations)
+    notify(sl.linewidth)
 end
 
 function valueindex(sliderrange, value)

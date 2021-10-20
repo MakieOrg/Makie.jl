@@ -43,6 +43,8 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
         """
         $structdef
 
+        export $name
+
         function is_attribute(::Type{$(name)}, sym::Symbol)
             sym in ($((attrs !== nothing ? [QuoteNode(a.symbol) for a in attrs] : [])...),)
         end
@@ -90,9 +92,9 @@ function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
             # then default value
             d = quote
                 if haskey($sceneattrsym, $key)
-                    $sceneattrsym.$key
+                    $sceneattrsym[$key]
                 elseif haskey($curthemesym, $key)
-                    $curthemesym.$key
+                    $curthemesym[$key]
                 else
                     $default
                 end
@@ -385,6 +387,8 @@ function Base.delete!(block::Block)
         s.children,
         findfirst(x -> x === block.blockscene, s.children)
     )
+    # TODO: what about the lift of the parent scene's
+    # `px_area`, should this be cleaned up as well?
 
     GridLayoutBase.remove_from_gridlayout!(GridLayoutBase.gridcontent(block))
 

@@ -447,11 +447,78 @@ end
 
 @Block Colorbar
 
-@Block Label
+@Block Label begin
+    @attributes begin
+        "The displayed text string."
+        text = "Text"
+        "Controls if the text is visible."
+        visible::Bool = true
+        "The color of the text."
+        color::RGBAf0 = lift_parent_attribute(scene, :textcolor, :black)
+        "The font size of the text."
+        textsize::Float32 = lift_parent_attribute(scene, :fontsize, 16f0)
+        "The font family of the text."
+        font::Makie.FreeTypeAbstraction.FTFont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        "The vertical alignment of the text in its suggested boundingbox"
+        valign = :center
+        "The horizontal alignment of the text in its suggested boundingbox"
+        halign = :center
+        "The counterclockwise rotation of the text in radians."
+        rotation::Float32 = 0f0
+        "The extra space added to the sides of the text boundingbox."
+        padding = (0f0, 0f0, 0f0, 0f0)
+        "The height setting of the text."
+        height = Auto()
+        "The width setting of the text."
+        width = Auto()
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth::Bool = true
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight::Bool = true
+        "The align mode of the text in its parent GridLayout."
+        alignmode = Inside()
+    end
+end
 
 @Block Box
 
-@Block Slider
+@Block Slider begin
+    selected_index::Observable{Int}
+    @attributes begin
+        "The horizontal alignment of the element in its suggested bounding box."
+        halign = :center
+        "The vertical alignment of the element in its suggested bounding box."
+        valign = :center
+        "The width setting of the element."
+        width = Auto()
+        "The height setting of the element."
+        height = Auto()
+        "The range of values that the slider can pick from."
+        range = 0:0.01:10
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth::Bool = true
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight::Bool = true
+        "The start value of the slider or the value that is closest in the slider range."
+        startvalue = 0
+        "The current value of the slider. Don't set this manually, use the function `set_close_to!`."
+        value = 0
+        "The width of the slider line"
+        linewidth::Float32 = 15
+        "The color of the slider when the mouse hovers over it."
+        color_active_dimmed::RGBAf = COLOR_ACCENT_DIMMED[]
+        "The color of the slider when the mouse clicks and drags the slider."
+        color_active::RGBAf = COLOR_ACCENT[]
+        "The color of the slider when it is not interacted with."
+        color_inactive::RGBAf = RGBf(0.94, 0.94, 0.94)
+        "Controls if the slider has a horizontal orientation or not."
+        horizontal::Bool = true
+        "The align mode of the slider in its parent GridLayout."
+        alignmode = Inside()
+        "Controls if the button snaps to valid positions or moves freely"
+        snap::Bool = true
+    end
+end
 
 @Block IntervalSlider
 
@@ -460,6 +527,26 @@ end
 @Block Toggle
 
 @Block Menu
+
+@Block SliderGrid begin
+    layout::GridLayout
+    @attributes begin
+        "The horizontal alignment of the block in its suggested bounding box."
+        halign = :center
+        "The vertical alignment of the block in its suggested bounding box."
+        valign = :center
+        "The width setting of the block."
+        width = Auto()
+        "The height setting of the block."
+        height = Auto()
+        "Controls if the parent layout can adjust to this block's width"
+        tellwidth::Bool = true
+        "Controls if the parent layout can adjust to this block's height"
+        tellheight::Bool = true
+        "The align mode of the block in its parent GridLayout."
+        alignmode = Inside()
+    end
+end
 
 
 abstract type LegendElement end
