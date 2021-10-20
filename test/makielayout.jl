@@ -1,20 +1,20 @@
 # Minimal sanity checks for MakieLayout
 @testset "Blocks constructors" begin
-    scene, layout = layoutscene()
-    ax = layout[1, 1] = Axis(scene)
-    cb = layout[1, 2] = Colorbar(scene)
-    gl2 = layout[2, :] = MakieLayout.GridLayout()
-    bu = gl2[1, 1] = Button(scene)
-    sl = gl2[1, 2] = Slider(scene)
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+    cb = Colorbar(fig[1, 2])
+    gl2 = fig[2, :] = MakieLayout.GridLayout()
+    bu = gl2[1, 1] = Button(fig)
+    sl = gl2[1, 2] = Slider(fig)
 
     scat = scatter!(ax, rand(10))
-    le = gl2[1, 3] = Legend(scene, [scat], ["scatter"])
+    le = gl2[1, 3] = Legend(fig, [scat], ["scatter"])
 
-    to = gl2[1, 4] = Toggle(scene)
-    te = layout[0, :] = Label(scene, "A super title")
-    me = layout[end + 1, :] = Menu(scene, options=["one", "two", "three"])
-    tb = layout[end + 1, :] = Textbox(scene)
-    is = layout[end + 1, :] = IntervalSlider(scene)
+    to = gl2[1, 4] = Toggle(fig)
+    te = fig[0, :] = Label(fig, "A super title")
+    me = fig[end + 1, :] = Menu(fig, options=["one", "two", "three"])
+    tb = fig[end + 1, :] = Textbox(fig)
+    is = fig[end + 1, :] = IntervalSlider(fig)
     @test true
 end
 

@@ -21,7 +21,7 @@ using GridLayoutBase: GridSubposition
 import Showoff
 using Colors
 
-const FPS = Node(30)
+const FPS = Observable(30)
 const COLOR_ACCENT = Ref(RGBf(((79, 122, 214) ./ 255)...))
 const COLOR_ACCENT_DIMMED = Ref(RGBf(((174, 192, 230) ./ 255)...))
 
@@ -92,7 +92,6 @@ export autolimits!, limits!, reset_limits!
 export LinearTicks, WilkinsonTicks, MultiplesTicks, IntervalsBetween, LogTicks
 export hidexdecorations!, hideydecorations!, hidedecorations!, hidespines!
 export tight_xticklabel_spacing!, tight_yticklabel_spacing!, tight_ticklabel_spacing!, tightlimits!
-export layoutscene
 export set_close_to!
 export labelslider!, labelslidergrid!
 export addmouseevents!

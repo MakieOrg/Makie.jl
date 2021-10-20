@@ -24,9 +24,9 @@ function block(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
         Rect(round.(Int, bb.origin), round.(Int, bb.widths))
     end
 
-    scene = Scene(topscene, scenearea, raw = true, camera = campixel!)
+    scene = Scene(topscene, scenearea, camera = campixel!)
 
-    cursorindex = Node(0)
+    cursorindex = Observable(0)
     ltextbox = Textbox(fig_or_scene, layoutobservables, attrs, decorations, cursorindex, nothing)
 
 
@@ -41,7 +41,7 @@ function block(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
         valid::Bool = validate_textbox(str, validator)
     end
 
-    hovering = Node(false)
+    hovering = Observable(false)
 
     realbordercolor = lift(Any, bordercolor, bordercolor_focused,
         bordercolor_focused_invalid, bordercolor_hover, focused, displayed_is_valid, hovering) do bc, bcf, bcfi, bch, focused, valid, hovering
@@ -65,7 +65,7 @@ function block(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
 
     box = poly!(topscene, roundedrectpoints, strokewidth = borderwidth,
         strokecolor = realbordercolor,
-        color = realboxcolor, raw = true, inspectable = false)
+        color = realboxcolor, inspectable = false)
     decorations[:box] = box
 
     displayed_chars = @lift([c for c in $displayed_string])

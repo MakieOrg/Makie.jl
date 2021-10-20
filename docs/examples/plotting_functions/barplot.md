@@ -32,7 +32,7 @@ Makie.inline!(true) # hide
 xs = 1:0.2:10
 ys = 0.5 .* sin.(xs)
 
-barplot(xs, ys, width = step(xs), color = :gray85, strokecolor = :black, strokewidth = 1)
+barplot(xs, ys, gap = 0, color = :gray85, strokecolor = :black, strokewidth = 1)
 ```
 \end{examplefigure}
 
@@ -162,10 +162,10 @@ using CairoMakie
 
 #Gantt data
 gantt = (
-    machine = [1,2,1,2], 
-    job = [1,1,2,3], 
-    task = [1,2,3,3], 
-    start = [1, 3, 3.5, 5], 
+    machine = [1,2,1,2],
+    job = [1,1,2,3],
+    task = [1,2,3,3],
+    start = [1, 3, 3.5, 5],
     stop = [3, 4, 5, 6]
 )
 
@@ -189,14 +189,14 @@ barplot!(
     fillto = gantt.start,
     direction = :x,
     color = colors[gantt.job],
-    x_gap = 0.5
+    gap = 0.5
 )
 
 #Add labels
 bar_labels = ["task #$i" for i in gantt.task]
 text!(
     ["task #$i" for i in gantt.task],
-    position = Point2f0.(
+    position = Point2f.(
         (gantt.start .+ gantt.stop) ./ 2,
         gantt.machine
     ),

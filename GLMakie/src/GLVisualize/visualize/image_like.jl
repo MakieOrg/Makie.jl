@@ -1,7 +1,7 @@
 """
 A matrix of colors is interpreted as an image
 """
-_default(::Node{Array{RGBA{N0f8}, 2}}, ::Style{:default}, ::Dict{Symbol,Any})
+_default(::Observable{Array{RGBA{N0f8}, 2}}, ::Style{:default}, ::Dict{Symbol,Any})
 
 
 function _default(main::MatTypes{T}, ::Style, data::Dict) where T <: Colorant
@@ -94,11 +94,34 @@ function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: VolumeE
         absorption = 1f0
         isovalue = 0.5f0
         isorange = 0.01f0
-        shader = GLVisualizeShader("fragment_output.frag", "util.vert", "volume.vert", "volume.frag")
+        enable_depth = true
+        shader = GLVisualizeShader(
+            "fragment_output.frag", "util.vert", "volume.vert", "volume.frag",
+            view = Dict(
+                "depth_init"  => vol_depth_init(to_value(enable_depth)),
+                "depth_main"  => vol_depth_main(to_value(enable_depth)),
+                "depth_write" => vol_depth_write(to_value(enable_depth))
+            )
+        )
         prerender = VolumePrerender(data[:transparency], data[:overdraw])
         postrender = () -> glDisable(GL_CULL_FACE)
     end
     return data
+end
+
+vol_depth_init(enable) = enable ? "float depth = 100000.0;" : ""
+function vol_depth_main(enable)
+    if enable
+        """
+        vec4 frag_coord = projectionview * model * vec4(pos, 1);
+        depth = min(depth, frag_coord.z / frag_coord.w);
+        """
+    else "" end
+end
+function vol_depth_write(enable)
+    if enable
+        "gl_FragDepth = depth == 100000.0 ? gl_FragDepth : 0.5 * depth + 0.5;"
+    else "" end
 end
 
 function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: RGBA

@@ -9,7 +9,7 @@ fig = Figure()
 ax = Axis(fig[1, 1])
 fig[2, 1] = buttongrid = GridLayout(tellwidth = false)
 
-counts = Node([1, 4, 3, 7, 2])
+counts = Observable([1, 4, 3, 7, 2])
 
 buttonlabels = [lift(x -> "Count: $(x[i])", counts) for i in 1:5]
 

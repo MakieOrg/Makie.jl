@@ -18,8 +18,8 @@ function block(::Type{Box}, fig_or_scene; bbox = nothing, kwargs...)
 
     ibbox = @lift(round_to_IRect2D($(layoutobservables.computedbbox)))
 
-    r = poly!(topscene, ibbox, color = color, visible = visible, raw = true,
-        strokecolor = strokecolor_with_visibility, strokewidth = strokewidth, 
+    r = poly!(topscene, ibbox, color = color, visible = visible,
+        strokecolor = strokecolor_with_visibility, strokewidth = strokewidth,
         inspectable = false)
 
     elements = Dict(:rect => r)

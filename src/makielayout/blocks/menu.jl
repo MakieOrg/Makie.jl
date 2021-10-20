@@ -120,7 +120,7 @@ function block(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
     halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
 
-    sceneheight = Node(20.0)
+    sceneheight = Observable(20.0)
 
     # the direction is auto-chosen as up if there is too little space below and if the space below
     # is smaller than above
@@ -146,7 +146,7 @@ function block(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
     end
 
 
-    scene = Scene(topscene, scenearea, raw = true, camera = campixel!)
+    scene = Scene(topscene, scenearea, camera = campixel!)
     translate!(scene, 0, 0, 21)
 
     contentgrid = GridLayout(
@@ -222,7 +222,7 @@ function block(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
         markersize = dropdown_arrow_size,
         color = dropdown_arrow_color,
         strokecolor = :transparent,
-        raw = true, inspectable = false)
+        inspectable = false)
     translate!(dropdown_arrow, 0, 0, 1)
 
 

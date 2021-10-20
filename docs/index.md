@@ -38,8 +38,8 @@ end
 
 attractor = Lorenz()
 
-points = Node(Point3f[])
-colors = Node(Int[])
+points = Observable(Point3f[])
+colors = Observable(Int[])
 
 set_theme!(theme_black())
 

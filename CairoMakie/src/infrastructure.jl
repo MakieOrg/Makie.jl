@@ -150,7 +150,6 @@ to_mime(x::CairoBackend) = to_mime(x.typ)
 
 # The main entry point into the drawing pipeline
 function cairo_draw(screen::CairoScreen, scene::Scene)
-    Makie.update!(scene)
     draw_background(screen, scene)
 
     allplots = get_all_plots(scene)
@@ -297,13 +296,19 @@ function Makie.backend_show(x::CairoBackend, io::IO, ::MIME"image/svg+xml", scen
         svg = replace(svg, id => "surface$i")
     end
 
-    # salt svg glyphs with the first 8 characters of the base64 encoded
+    # salt svg ids with the first 8 characters of the base64 encoded
     # sha512 hash to avoid collisions across svgs when embedding them on
     # websites. the hash and therefore the salt will always be the same for the same file
     # so the output is deterministic
     salt = String(Base64.base64encode(SHA.sha512(svg)))[1:8]
-    svg_salted = replace(svg, r"glyph(?=\d+-\d+)" => salt)
-    print(io, svg_salted)
+
+    ids = sort(unique(collect(m[1] for m in eachmatch(r"id\s*=\s*\"([^\"]*)\"", svg))))
+
+    for id in ids
+        svg = replace(svg, id => "$id-$salt")
+    end
+
+    print(io, svg)
     return screen
 end
 

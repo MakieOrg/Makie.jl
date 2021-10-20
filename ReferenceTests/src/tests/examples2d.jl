@@ -109,14 +109,6 @@ end
     )
 end
 
-# @cell "Subscenes" begin
-#     img = RNG.rand(RGBAf, 100, 100)
-#     scene = image(img, show_axis=false)
-#     subscene = Scene(scene, Recti(100, 100, 300, 300))
-#     scatter!(subscene, RNG.rand(100) * 200, RNG.rand(100) * 200, markersize=4)
-#     scene
-# end
-
 @cell "scale_plot" begin
     t = range(0, stop=1, length=500) # time steps
     θ = (6π) .* t    # angles
@@ -184,11 +176,10 @@ end
 
 @cell "Streamplot animation" begin
     v(x::Point2{T}, t) where T = Point2{T}(one(T) * x[2] * t, 4 * x[1])
-    sf = Node(Base.Fix2(v, 0e0))
-    title_str = Node("t = 0.00")
+    sf = Observable(Base.Fix2(v, 0e0))
+    title_str = Observable("t = 0.00")
     sp = streamplot(sf, -2..2, -2..2;
-                    linewidth=2, padding=(0, 0),
-                    arrow_size=0.09, colormap=:magma, axis=(;title=title_str))
+                    linewidth=2,  arrow_size=0.09, colormap=:magma, axis=(;title=title_str))
     Record(sp, LinRange(0, 20, 5)) do i
         sf[] = Base.Fix2(v, i)
         title_str[] = "t = $(round(i; sigdigits=2))"
@@ -236,7 +227,6 @@ end
         lines!(ax,
             xs, ys;
             color=colors[i],
-            limits=Rectf((0, 0), (10, 10)),
             linewidth=5
         ) # plot lines with colors
     end

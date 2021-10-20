@@ -66,9 +66,7 @@ function Figure(; kwargs...)
 
     kwargs_dict = Dict(kwargs)
     padding = pop!(kwargs_dict, :figure_padding, current_default_theme()[:figure_padding])
-
-    scene = Scene(; camera = campixel!, kwargs_dict...)
-
+    scene = Scene(; camera=campixel!, kwargs_dict...)
     padding = padding isa Observable ? padding : Observable{Any}(padding)
 
     alignmode = lift(Outside ∘ to_rectsides, padding)

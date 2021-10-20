@@ -15,7 +15,7 @@ function block(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs...)
 
     sliderrange = attrs.range
 
-    protrusions = Node(GridLayoutBase.RectSides{Float32}(0, 0, 0, 0))
+    protrusions = Observable(GridLayoutBase.RectSides{Float32}(0, 0, 0, 0))
     layoutobservables = LayoutObservables{IntervalSlider}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox, protrusions = protrusions)
 
@@ -46,7 +46,7 @@ function block(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs...)
     end
 
     # this is the index of the selected value in the slider's range
-    # selected_index = Node(1)
+    # selected_index = Observable(1)
     # add the selected index to the attributes so it can be manipulated later
     attrs.selected_indices = (1, 1)
     selected_indices = attrs.selected_indices
@@ -59,11 +59,11 @@ function block(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs...)
         end
     end
 
-    dragging = Node(false)
+    dragging = Observable(false)
 
     # what the slider actually displays currently (also during dragging when
     # the slider position is in an "invalid" position given the slider's range)
-    displayed_sliderfractions = Node((0.0, 0.0))
+    displayed_sliderfractions = Observable((0.0, 0.0))
 
     on(sliderfractions) do fracs
         # only update displayed fraction through sliderfraction if not dragging
@@ -106,14 +106,14 @@ function block(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs...)
     end
 
     endbuttons = scatter!(topscene, endpoints, color = endbuttoncolors,
-        markersize = linewidth, strokewidth = 0, raw = true, inspectable = false)
+        markersize = linewidth, strokewidth = 0, inspectable = false)
     decorations[:endbuttons] = endbuttons
 
     linesegs = linesegments!(topscene, linepoints, color = linecolors,
-        linewidth = linewidth, raw = true, inspectable = false)
+        linewidth = linewidth, inspectable = false)
     decorations[:linesegments] = linesegs
 
-    state = Node(:none)
+    state = Observable(:none)
     button_magnifications = lift(state) do state
         if state == :none
             [1.0, 1.0]
@@ -127,7 +127,7 @@ function block(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs...)
     end
     buttonsizes = @lift($linewidth .* $button_magnifications)
     buttons = scatter!(topscene, middlepoints, color = color_active, strokewidth = 0,
-        markersize = buttonsizes, raw = true, inspectable = false)
+        markersize = buttonsizes, inspectable = false)
     decorations[:buttons] = buttons
 
     mouseevents = addmouseevents!(topscene, layoutobservables.computedbbox)

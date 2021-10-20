@@ -33,7 +33,7 @@ end
 
 Creates a new `PriorityObservable` holding the given `value`.
 
-A `po = PriorityObservable` differs from a normal `Observable` (or `Node`) in
+A `po = PriorityObservable` differs from a normal `Observable` (or `Observable`) in
 two ways:
 1. When registering a function to `po` you can also give it a `priority`.
 Functions with higher priority will be evaluated first.

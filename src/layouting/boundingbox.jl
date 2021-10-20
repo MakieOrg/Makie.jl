@@ -1,77 +1,12 @@
 using FreeTypeAbstraction: height_insensitive_boundingbox
 
-"""
-Calculates the exact boundingbox of a Scene/Plot, without considering any transformation
-"""
-raw_boundingbox(x::Atomic) = data_limits(x)
-
-
-rootparent(x) = rootparent(parent(x))
-rootparent(x::Scene) = x
-
-# function raw_boundingbox(x::Annotations)
-#     bb = raw_boundingbox(x.plots)
-#     inv(modelmatrix(rootparent(x))) * bb
-# end
-
-raw_boundingbox(x::Combined) = raw_boundingbox(x.plots)
-boundingbox(x) = raw_boundingbox(x)
-
-function combined_modelmatrix(x)
-    m = Mat4f(I)
-    while true
-        m = modelmatrix(x) * m
-        if parent(x) !== nothing && parent(x) isa Combined
-            x = parent(x)
-        else
-            break
-        end
-    end
-    return m
+function parent_transform(x)
+    p = parent(transformation(x))
+    isnothing(p) ? Mat4f(I) : p.model[]
 end
 
-function modelmatrix(x)
-    t = transformation(x)
-    transformationmatrix(t.translation[], t.scale[], t.rotation[])
-end
-
-function boundingbox(x::Atomic)
-    bb = raw_boundingbox(x)
-    return combined_modelmatrix(x) * bb
-end
-
-boundingbox(scene::Scene) = raw_boundingbox(scene)
-function raw_boundingbox(scene::Scene)
-    if scene[OldAxis] !== nothing
-        return raw_boundingbox(scene[OldAxis])
-    elseif scene.limits[] !== automatic
-        return scene_limits(scene)
-    elseif cameracontrols(scene) == EmptyCamera()
-        # Empty camera means this is a parent scene that itself doesn't display anything
-        return raw_boundingbox(scene.children)
-    else
-        plots = plots_from_camera(scene)
-        children = filter(scene.children) do child
-            child.camera == scene.camera
-        end
-        return raw_boundingbox([plots; children])
-    end
-end
-
-function raw_boundingbox(plots::Vector)
-    isempty(plots) && return Rect3f()
-    plot_idx = iterate(plots)
-    bb = Rect3f()
-    while plot_idx !== nothing
-        plot, idx = plot_idx
-        plot_idx = iterate(plots, idx)
-        # isvisible(plot) || continue
-        bb2 = boundingbox(plot)
-        isfinite_rect(bb) || (bb = bb2)
-        isfinite_rect(bb2) || continue
-        bb = union(bb, bb2)
-    end
-    return bb
+function boundingbox(x)
+    return parent_transform(x) * data_limits(x)
 end
 
 function project_widths(matrix, vec)

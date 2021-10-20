@@ -277,11 +277,11 @@ function plot!(plot::_Inspector)
     )
 
     # tooltip text
-    _aligned_text_position = Node(Point2f(0))
+    _aligned_text_position = Observable(Point2f(0))
     id = Mat4f(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1)
     text_plot = text!(plot, _display_text,
         position = _aligned_text_position, visible = _visible, align = text_align,
-        color = textcolor, font = font, textsize = textsize, show_axis = false,
+        color = textcolor, font = font, textsize = textsize,
         inspectable = false,
         # with https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie/pull/183 this should
         # allow the tooltip to work in any scene.
@@ -327,12 +327,12 @@ function plot!(plot::_Inspector)
     background = mesh!(
         plot, bbox, color = background_color, shading = false, #fxaa = false,
         # TODO with fxaa here the text above becomes seethrough on a heatmap
-        visible = _visible, show_axis = false, inspectable = false,
+        visible = _visible, inspectable = false,
         projection = _root_px_projection, view = id, projectionview = _root_px_projection
     )
     outline = wireframe!(
         plot, bbox,
-        color = outline_color, visible = _visible, show_axis = false, inspectable = false,
+        color = outline_color, visible = _visible, inspectable = false,
         linestyle = outline_linestyle, linewidth = outline_linewidth,
         projection = _root_px_projection, view = id, projectionview = _root_px_projection
     )
@@ -342,7 +342,7 @@ function plot!(plot::_Inspector)
         plot, _bbox2D,
         color = indicator_color, linewidth = indicator_linewidth,
         linestyle = indicator_linestyle, visible = _px_bbox_visible,
-        show_axis = false, inspectable = false,
+        inspectable = false,
         projection = _root_px_projection, view = id, projectionview = _root_px_projection
     )
 
@@ -439,7 +439,7 @@ function DataInspector(scene::Scene; priority = 100, kwargs...)
 
     plot = _inspector!(
         parent, 1,
-        show_axis=false, _root_px_projection = camera(parent).pixel_space;
+        _root_px_projection = camera(parent).pixel_space;
         kwargs...
     )
     inspector = DataInspector(parent, plot)
@@ -582,7 +582,7 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
         p = wireframe!(
             scene, a._bbox3D, model = a._model, color = a.indicator_color,
             linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
-            visible = a._bbox_visible, show_axis = false, inspectable = false
+            visible = a._bbox_visible, inspectable = false
         )
         push!(inspector.temp_plots, p)
 
@@ -645,7 +645,7 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
         p = wireframe!(
             scene, a._bbox3D, color = a.indicator_color,
             linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
-            visible = a._bbox_visible, show_axis = false, inspectable = false
+            visible = a._bbox_visible, inspectable = false
         )
         push!(inspector.temp_plots, p)
 
@@ -757,8 +757,8 @@ function show_imagelike(inspector, plot, name, edge_based)
             p = scatter!(
                 scene, map(p -> [p], a._position), color = a._color,
                 visible = a._bbox_visible,
-                show_axis = false, inspectable = false,
-                marker=:rect, markersize = map(r -> 2r - 4, a.range),
+                inspectable = false,
+                marker=Rect, markersize = map(r -> 2r - 4, a.range),
                 strokecolor = a.indicator_color,
                 strokewidth = a.indicator_linewidth #, linestyle = a.indicator_linestyle no?
             )
@@ -778,7 +778,7 @@ function show_imagelike(inspector, plot, name, edge_based)
             p = wireframe!(
                 scene, a._bbox2D, model = a._model, color = a.indicator_color,
                 strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
-                visible = a._bbox_visible, show_axis = false, inspectable = false
+                visible = a._bbox_visible, inspectable = false
             )
             translate!(p, Vec3f(0, 0, a.depth[]))
             push!(inspector.temp_plots, p)
@@ -895,7 +895,7 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
         p = wireframe!(
             scene, a._bbox2D, model = a._model, color = a.indicator_color,
             strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
-            visible = a._bbox_visible, show_axis = false, inspectable = false
+            visible = a._bbox_visible, inspectable = false
         )
         translate!(p, Vec3f(0, 0, a.depth[]))
         push!(inspector.temp_plots, p)
@@ -970,7 +970,7 @@ function show_poly(inspector, plot, idx, source)
     p = lines!(
         scene, ext, color = a.indicator_color,
         strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
-        visible = a._visible, show_axis = false, inspectable = false
+        visible = a._visible, inspectable = false
     )
     translate!(p, Vec3f(0,0,a.depth[]))
     push!(inspector.temp_plots, p)
@@ -979,7 +979,7 @@ function show_poly(inspector, plot, idx, source)
         p = lines!(
             scene, int, color = a.indicator_color,
             strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
-            visible = a._visible, show_axis = false, inspectable = false
+            visible = a._visible, inspectable = false
         )
         translate!(p, Vec3f(0,0,a.depth[]))
         push!(inspector.temp_plots, p)
@@ -1048,7 +1048,7 @@ function show_data(inspector::DataInspector, plot::VolumeSlices, idx, child::Hea
         val = data[i, j]
 
         a._display_text[] = @sprintf(
-            "x: %0.6f\ny: %0.6f\nz: %0.6f\n%0.6f0", 
+            "x: %0.6f\ny: %0.6f\nz: %0.6f\n%0.6f0",
             pos[1], pos[2], pos[3], val
         )
         a._text_position[] = proj_pos
@@ -1062,5 +1062,5 @@ function show_data(inspector::DataInspector, plot::VolumeSlices, idx, child::Hea
         a._visible[] = false
     end
 
-    return true 
+    return true
 end
