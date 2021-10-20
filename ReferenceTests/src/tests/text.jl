@@ -178,7 +178,8 @@ end
         color = [cgrad(:viridis)[x] for x in LinRange(0, 1, 7)],
         align = (:left, :baseline),
         textsize = 1,
-        space = :data
+        space = :data,
+        axis=(type=LScene,)
     )
 end
 

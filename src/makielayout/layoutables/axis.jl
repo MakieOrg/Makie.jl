@@ -660,7 +660,7 @@ function axis_convert(P, ax::Axis, x::Observable, y::Observable, z::Observable, 
     return (axis_convert(P, ax, x, y)..., z, args...)
 end
 
-ticks_from_type(::Type{<: Number}) = WilkinsonTicks(5, k_min = 3)
+ticks_from_type(::Type{<: Number}) = automatic
 ticks_from_type(any) = automatic
 
 get_element_type(::T) where T = T
@@ -711,10 +711,10 @@ function axis_convert(FinalType, ax::Axis, x::Observable, y::Observable)
     end
     yconv = convert_axis_dim(yticks_new, y, ylimits)
 
-    return Makie.seperate_tuple(map((x, y)-> pre_convert_args(FinalType, x, y), xconv, yconv))
+    return Makie.seperate_tuple(map((x, y)-> try_convert_arguments(FinalType, x, y), xconv, yconv))
 end
 
-function pre_convert_args(P, args...; kw...)
+function try_convert_arguments(P, args...; kw...)
     try
         return Makie.convert_arguments(P, args...; kw...)
     catch e
@@ -731,7 +731,7 @@ function Makie.plot!(la::Axis, P::Makie.PlotFunc,
 
     cycle = get_cycle_for_plottype(allattrs, P)
     add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
-    FinalType, attributes, input_nodes, converted_node = Makie.convert_plot_arguments(P, allattrs, args, pre_convert_args)
+    FinalType, attributes, input_nodes, converted_node = Makie.convert_plot_arguments(P, allattrs, args, try_convert_arguments)
     converted_args = axis_convert(FinalType, la, Makie.seperate_tuple(converted_node)...)
     plot_object = FinalType(la.scene, copy(attributes), input_nodes, converted_args)
     plot!(plot_object)

@@ -13,10 +13,50 @@ Base.show(io::IO, ::MIME"text/plain", fap::FigureAxisPlot) = print(io, "FigureAx
 Base.iterate(fap::FigureAxisPlot, args...) = iterate((fap.figure, fap.axis, fap.plot), args...)
 Base.iterate(ap::AxisPlot, args...) = iterate((ap.axis, ap.plot), args...)
 
-get_axis_type(::PlotFunc, args...) = Axis
-get_axis_type(::Type{<: Union{Surface, Volume}}, args...) = LScene
-get_axis_type(::PlotFunc, x::AbstractVector, y::AbstractVector, z::AbstractVector) = LScene
-get_axis_type(::PlotFunc, xyz::AbstractVector{<: Point3}) = LScene
+function is_plot_3d(p::PlotFunc, args...)
+    result = is_plot_3d(p)
+    isnothing(result) || return result
+    converted = MakieLayout.try_convert_arguments(p, to_value.(args)...)
+    if converted isa Tuple
+        return is_plot_3d(converted...)
+    else
+        return false
+    end
+end
+
+is_plot_3d(p::PlotFunc) = is_plot_3d(Makie.conversion_trait(p))
+is_plot_3d(::Type{<: Union{Surface, Volume}}) = true
+is_plot_3d(::Type{<: Contour}) = nothing
+is_plot_3d(::Type{<: Union{Image, Heatmap}}) = false
+is_plot_3d(::VolumeLike) = true
+is_plot_3d(args...) = any(args) do arg
+    r = is_plot_3d(arg)
+    isnothing(r) ? false : r
+end
+
+is_plot_3d(x) = nothing
+is_plot_3d(x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Union{AbstractArray{<: Any, 3}, Function}) = true
+is_plot_3d(x::AbstractVector, y::AbstractVector, z::AbstractVector) = true
+is_plot_3d(x::AbstractArray, y::AbstractArray, z::AbstractArray) = true
+is_plot_3d(m::Union{AbstractGeometry, GeometryBasics.Mesh}) = !is2d(Rect(decompose(Point, m)))
+is_plot_3d(m::AbstractArray{T, 3}) where T = true
+is_plot_3d(x, y, z, m::AbstractArray{T, 3}) where T = true
+is_plot_3d(xyz::AbstractVector{<: Point3}) = true
+is_plot_3d(::Type{<: Contour}, x, y, z::Union{Function, AbstractMatrix}) = false
+is_plot_3d(::Type{<: Contour}, z::AbstractMatrix) = false
+
+function get_axis_type(p::PlotFunc, args...)
+    result = is_plot_3d(p, args...)
+    isnothing(result) && return Axis
+    return result ? LScene : Axis
+end
+# get_axis_type(::Type{<: Union{Surface, Volume, Mesh}}, args...) = LScene
+# get_axis_type(::PlotFunc, ::AbstractVector, y::AbstractVector, z::AbstractVector) = LScene
+# get_axis_type(::PlotFunc, ::AbstractVector{<: Point3}) = LScene
+# get_axis_type(::PlotFunc, m::Mesh) = is2d(Rect(m)) ? Axis : LScene
+# get_axis_type(::PlotFunc, m::AbstractGeometry) = is2d(Rect(m)) ? Axis : LScene
+# get_axis_type(::Type{<: Mesh}, m::AbstractGeometry) = is2d(Rect(m)) ? Axis : LScene
+# get_axis_type(p::PlotFunc, m::AbstractObservable) = get_axis_type(p, m[])
 
 function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), kw_attributes...)
     # scene_attributes = extract_scene_attributes!(attributes)
