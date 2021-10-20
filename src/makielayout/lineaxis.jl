@@ -212,9 +212,11 @@ function LineAxis(parent::Scene; kwargs...)
 
         scale = attrs.scale[]
         tickvalues_scaled = scale.(tickvalues[])
-
-        tick_fractions = (tickvalues_scaled .- scale(limits[][1])) ./ (scale(limits[][2]) - scale(limits[][1]))
-
+        limit_min, limit_max = limits[]
+        if limit_min == limit_max
+            error("Limit min and max set to same value, creating a 0 width axis, which isn't supported.")
+        end
+        tick_fractions = (tickvalues_scaled .- scale(limit_min)) ./ (scale(limit_max) - scale(limit_min))
         tick_scenecoords = px_o .+ px_width .* tick_fractions
 
         tickpos = if horizontal
@@ -290,7 +292,6 @@ function LineAxis(parent::Scene; kwargs...)
         else
             Point2f(flipped ? ticklabelgap : -ticklabelgap, 0f0)
         end
-
         ticklabelpositions = tickpositions[] .+ Ref(shift)
         ticklabelannosnode[] = collect(zip(tickstrings, ticklabelpositions))
     end
