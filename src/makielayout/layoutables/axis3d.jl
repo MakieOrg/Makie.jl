@@ -26,11 +26,11 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
 
     notify(protrusions)
 
-    finallimits = Node(Rect3f(Vec3f(0f0, 0f0, 0f0), Vec3f(100f0, 100f0, 100f0)))
+    finallimits = Observable(Rect3f(Vec3f(0f0, 0f0, 0f0), Vec3f(100f0, 100f0, 100f0)))
 
     scenearea = lift(round_to_IRect2D, layoutobservables.computedbbox)
 
-    scene = Scene(topscene, scenearea, raw = true, clear = false, backgroundcolor = attrs.backgroundcolor)
+    scene = Scene(topscene, scenearea, clear = false, backgroundcolor = attrs.backgroundcolor)
 
     matrices = lift(calculate_matrices, finallimits, scene.px_area, elevation, azimuth, perspectiveness, aspect, viewmode)
 
@@ -100,14 +100,13 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
         font = attrs.titlefont,
         color = attrs.titlecolor,
         space = :data,
-        show_axis=false,
         inspectable = false)
     decorations[:title] = titlet
 
 
     mouseeventhandle = addmouseevents!(scene)
-    scrollevents = Node(ScrollEvent(0, 0))
-    keysevents = Node(KeysEvent(Set()))
+    scrollevents = Observable(ScrollEvent(0, 0))
+    keysevents = Observable(KeysEvent(Set()))
 
     on(scene.events.scroll) do s
         if is_mouseinside(scene)
@@ -436,7 +435,7 @@ function add_gridlines_and_frames!(topscene, scene, dim::Int, limits, ticknode, 
     colors = lift(vcat, Any, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3))
     linesegments!(topscene, framepoints, color = colors, linewidth = attr(:spinewidth),
         # transparency = true,
-        visible = attr(:spinesvisible), show_axis = false, inspectable = false)
+        visible = attr(:spinesvisible), inspectable = false)
 
     nothing
 end
@@ -536,7 +535,7 @@ function add_ticks_and_ticklabels!(topscene, scene, dim::Int, limits, ticknode, 
         end
     end
 
-    ticklabel_obj = annotations!(topscene, labels_positions, align = align, show_axis = false,
+    ticklabel_obj = text!(topscene, labels_positions, align = align,
         color = attr(:ticklabelcolor), textsize = attr(:ticklabelsize),
         font = attr(:ticklabelfont), visible = attr(:ticklabelsvisible), inspectable = false
     )
@@ -611,7 +610,6 @@ function add_ticks_and_ticklabels!(topscene, scene, dim::Int, limits, ticknode, 
             lalign
         end
     end
-
     text!(topscene, attr(:label),
         color = attr(:labelcolor),
         textsize = attr(:labelsize),
@@ -622,8 +620,7 @@ function add_ticks_and_ticklabels!(topscene, scene, dim::Int, limits, ticknode, 
         visible = attr(:labelvisible),
         inspectable = false
     )
-
-    nothing
+    return
 end
 
 function dim3point(dim1, dim2, dim3, v1, v2, v3)

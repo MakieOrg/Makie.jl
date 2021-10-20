@@ -26,7 +26,7 @@ function lift(
     return result
 end
 
-Base.close(node::Node) = empty!(node.listeners)
+Base.close(node::Observable) = empty!(node.listeners)
 
 """
 Observables.off but without throwing an error
@@ -44,24 +44,24 @@ function safe_off(o::Observables.AbstractObservable, f)
     end
 end
 """
-    map_once(closure, inputs::Node....)::Node
+    map_once(closure, inputs::Observable....)::Observable
 
 Like Reactive.foreach, in the sense that it will be preserved even if no reference is kept.
 The difference is, that you can call map once multiple times with the same closure and it will
-close the old result Node and register a new one instead.
+close the old result Observable and register a new one instead.
 
 ```
-function test(s1::Node)
+function test(s1::Observable)
     s3 = map_once(x-> (println("1 ", x); x), s1)
     s3 = map_once(x-> (println("2 ", x); x), s1)
 
 end
-test(Node(1), Node(2))
+test(Observable(1), Observable(2))
 >
 
 """
 function map_once(
-        f, input::Node, inputrest::Node...
+        f, input::Observable, inputrest::Observable...
     )
     for arg in (input, inputrest...)
         safe_off(arg, f)

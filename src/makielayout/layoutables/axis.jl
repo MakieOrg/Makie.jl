@@ -43,14 +43,14 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
 
     decorations = Dict{Symbol, Any}()
 
-    protrusions = Node(GridLayoutBase.RectSides{Float32}(0,0,0,0))
+    protrusions = Observable(GridLayoutBase.RectSides{Float32}(0,0,0,0))
     layoutobservables = LayoutObservables{Axis}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight, halign, valign, attrs.alignmode;
         suggestedbbox = bbox, protrusions = protrusions)
 
     # initialize either with user limits, or pick defaults based on scales
     # so that we don't immediately error
-    targetlimits = Node{Rect2f}(defaultlimits(limits[], attrs.xscale[], attrs.yscale[]))
-    finallimits = Node{Rect2f}(targetlimits[])
+    targetlimits = Observable{Rect2f}(defaultlimits(limits[], attrs.xscale[], attrs.yscale[]))
+    finallimits = Observable{Rect2f}(targetlimits[])
 
     # the first thing to do when setting a new scale is
     # resetting the limits because simply through expanding they might be invalid for log
@@ -72,49 +72,47 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
 
     scenearea = sceneareanode!(layoutobservables.computedbbox, finallimits, aspect)
 
-    scene = Scene(topscene, scenearea, raw = true)
+    scene = Scene(topscene, px_area=scenearea, camera=campixel!)
 
-    background = poly!(topscene, scenearea, color = backgroundcolor, strokewidth = 0, raw = true, inspectable = false)
+    background = poly!(topscene, scenearea, color = backgroundcolor, strokewidth = 0, inspectable = false)
     translate!(background, 0, 0, -100)
     decorations[:background] = background
 
-    block_limit_linking = Node(false)
+    block_limit_linking = Observable(false)
 
     xaxislinks = Axis[]
     yaxislinks = Axis[]
 
-    campixel!(scene)
-
-    xgridnode = Node(Point2f[])
+    xgridnode = Observable(Point2f[])
     xgridlines = linesegments!(
-        topscene, xgridnode, linewidth = xgridwidth, show_axis = false, visible = xgridvisible,
+        topscene, xgridnode, linewidth = xgridwidth, visible = xgridvisible,
         color = xgridcolor, linestyle = xgridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(xgridlines, 0, 0, -10)
     decorations[:xgridlines] = xgridlines
 
-    xminorgridnode = Node(Point2f[])
+    xminorgridnode = Observable(Point2f[])
     xminorgridlines = linesegments!(
-        topscene, xminorgridnode, linewidth = xminorgridwidth, show_axis = false, visible = xminorgridvisible,
+        topscene, xminorgridnode, linewidth = xminorgridwidth, visible = xminorgridvisible,
         color = xminorgridcolor, linestyle = xminorgridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(xminorgridlines, 0, 0, -10)
     decorations[:xminorgridlines] = xminorgridlines
 
-    ygridnode = Node(Point2f[])
+    ygridnode = Observable(Point2f[])
     ygridlines = linesegments!(
-        topscene, ygridnode, linewidth = ygridwidth, show_axis = false, visible = ygridvisible,
+        topscene, ygridnode, linewidth = ygridwidth, visible = ygridvisible,
         color = ygridcolor, linestyle = ygridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(ygridlines, 0, 0, -10)
     decorations[:ygridlines] = ygridlines
 
-    yminorgridnode = Node(Point2f[])
+    yminorgridnode = Observable(Point2f[])
     yminorgridlines = linesegments!(
-        topscene, yminorgridnode, linewidth = yminorgridwidth, show_axis = false, visible = yminorgridvisible,
+        topscene, yminorgridnode, linewidth = yminorgridwidth, visible = yminorgridvisible,
         color = yminorgridcolor, linestyle = yminorgridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
@@ -122,7 +120,6 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     decorations[:yminorgridlines] = yminorgridlines
 
     onany(finallimits, xreversed, yreversed, attrs.xscale, attrs.yscale) do lims, xrev, yrev, xsc, ysc
-
         nearclip = -10_000f0
         farclip = 10_000f0
 
@@ -193,8 +190,8 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         yflip ? lc : rc
     end
 
-    xlims = Node(xlimits(finallimits[]))
-    ylims = Node(ylimits(finallimits[]))
+    xlims = Observable(xlimits(finallimits[]))
+    ylims = Observable(ylimits(finallimits[]))
 
     on(finallimits) do lims
         nxl = xlimits(lims)
@@ -334,7 +331,6 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         font = titlefont,
         color = titlecolor,
         space = :data,
-        show_axis=false,
         inspectable = false)
     decorations[:title] = titlet
 
@@ -380,8 +376,8 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
     mouseeventhandle = addmouseevents!(scene)
-    scrollevents = Node(ScrollEvent(0, 0))
-    keysevents = Node(KeysEvent(Set()))
+    scrollevents = Observable(ScrollEvent(0, 0))
+    keysevents = Observable(KeysEvent(Set()))
 
     on(scene.events.scroll) do s
         if is_mouseinside(scene)

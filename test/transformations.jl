@@ -1,4 +1,13 @@
-using Makie: PointTrans, xyz_boundingbox, apply_transform
+using Makie: PointTrans, apply_transform
+using LinearAlgebra
+
+function xyz_boundingbox(trans, points)
+    bb_ref = Base.RefValue(Rect3f())
+    Makie.foreach_transformed(points, Mat4f(I), trans) do point
+        Makie.update_boundingbox!(bb_ref, point)
+    end
+    return bb_ref[]
+end
 
 @testset "Basic transforms" begin
     function fpoint2(x::Point2)
@@ -28,7 +37,6 @@ using Makie: PointTrans, xyz_boundingbox, apply_transform
     @test_throws ErrorException PointTrans{2}(x::Int -> x)
     @test_throws ErrorException PointTrans{3}(x::Int -> x)
 end
-
 
 @testset "Tuple and identity transforms" begin
     t1 = sqrt

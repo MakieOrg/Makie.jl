@@ -15,7 +15,7 @@ A Scene's plots can be accessed via `scene.plots`.
 
 A Scene's subscenes (also called children) can be accessed through `scene.children`.  This will return an Array of the `Scene`'s child scenes.  A child scene can be created by `childscene = Scene(parentscene)`.
 
-Any `Scene` with an axis also has a `camera` associated with it; this can be accessed through `scene.camera`, and its controls through `scene.camera.cameracontrols`.  More documentation about these is in the \myreflink{Cameras} section.
+Any `Scene` with an axis also has a `camera` associated with it; this can be accessed through `camera(scene)`, and its controls through `cameracontrols(scene)`.  More documentation about these is in the \myreflink{Cameras} section.
 
 `Scene`'s also have configurable size/resolution. You can set the size in pixels by doing `Scene(resolution = (500, 500))`.
 
@@ -24,6 +24,12 @@ Any keyword argument given to the `Scene` will be propagated to its plots; there
 ## Subscenes
 
 A subscene is no different than a normal Scene, except that it is linked to a "parent" Scene.  It inherits the transformations of the parent Scene, but can then be transformed independently of it.
+
+## Scene Attributes
+
+* `scene.clear = true`: Scenes are drawn parent first onto the same image. If `clear = true` for a (sub)scene it will clear the previously drawn things in its region to its `backgroundcolor`. Otherwise the plots in `scene` will be drawn on top and the backgroundcolor will be ignored. Note that this is not technically an attribute but just a field of `Scene`.
+* `SSAO = Attributes(bias = 0.025, blur=2, radius=0.5)`: Controls SSAO settings, see lighting documentation.
+* `resolution = (800, 600)`: Sets the size of the created window if the scene is the root scene.
 
 ## Modifying A Scene
 
@@ -35,14 +41,10 @@ Makie offers mutation functions to scale, translate and rotate your Scenes on th
 
 ## Updating the Scene
 
-When the Scene is changed, you may need to update several aspects of it.  
+When the Scene is changed, you may need to update several aspects of it.
 Makie provides three main updating functions:
 
-{{doc update!}}
-{{doc update_limits!}}
 {{doc update_cam!}}
-
-In general, `update!` is to be used to keep data in sync, and `update_cam!` and `update_limits!` update the camera and limits respectively (to show all the data).
 
 ## Events
 

@@ -78,7 +78,7 @@ using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
 
-scene = Scene(camera = campixel!, show_axis = false, resolution = (800, 800))
+scene = Scene(camera = campixel!, resolution = (800, 800))
 
 points = [Point(x, y) .* 200 for x in 1:3 for y in 1:3]
 scatter!(scene, points, marker = :circle, markersize = 10px)

@@ -9,57 +9,71 @@ const Contours = ContoursHygiene.Contour
 using Base64
 
 using LaTeXStrings
-export @L_str
 using MathTeXEngine
-import RelocatableFolders
 using Random
 using FFMPEG # get FFMPEG on any system!
-using Observables, GeometryBasics, IntervalSets, PlotUtils
-using ColorBrewer, ColorTypes, Colors, ColorSchemes
-using FixedPointNumbers, Packing, SignedDistanceFields
-using Markdown, DocStringExtensions # documentation
+using Observables
+using GeometryBasics
+using IntervalSets
+using PlotUtils
+using ColorBrewer
+using ColorTypes
+using Colors
+using ColorSchemes
+using FixedPointNumbers
+using Packing
+using SignedDistanceFields
+using Markdown
+using DocStringExtensions # documentation
 using Serialization # serialize events
 using StructArrays
-using GeometryBasics: widths, positive_widths, VecTypes, AbstractPolygon, value
 using StaticArrays
-import StatsBase, Distributions, KernelDensity
-using Distributions: Distribution, VariateForm, Discrete, QQPair, pdf, quantile, qqbuild
 # Text related packages
-using FreeType, FreeTypeAbstraction, UnicodeFun
-using LinearAlgebra, Statistics
-import ImageIO, FileIO, SparseArrays
-import FileIO: save
-using Printf: @sprintf
+using FreeType
+using FreeTypeAbstraction
+using UnicodeFun
+using LinearAlgebra
+using Statistics
+
+import RelocatableFolders
+import StatsBase
+import Distributions
+import KernelDensity
 import Isoband
 import PolygonOps
 import GridLayoutBase
+import ImageIO
+import FileIO
+import SparseArrays
 using MakieCore
 
-import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, calculated_attributes!, get_attribute, plotsym, plotkey, attributes, used_attributes
+using GeometryBasics: widths, positive_widths, VecTypes, AbstractPolygon, value
+using Distributions: Distribution, VariateForm, Discrete, QQPair, pdf, quantile, qqbuild
 
-using MakieCore: SceneLike, AbstractScreen, ScenePlot, AbstractScene, AbstractPlot, Transformable, Attributes, Combined, Theme, Plot
-
-using MakieCore: Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter, Surface, Text, Volume
-import MakieCore: heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface, text, volume
-import MakieCore: heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, surface!, text!, volume!
-
-import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
-using MakieCore: ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
-export ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
-using MakieCore: Key, @key_str, Automatic, automatic, @recipe
-using MakieCore: Pixel, px, Unit, Billboard
-export Pixel, px, Unit, plotkey, attributes, used_attributes
-
+import FileIO: save
+using Printf: @sprintf
 using StatsFuns: logit, logistic
-
 # Imports from Base which we don't want to have to qualify
 using Base: RefValue
 using Base.Iterators: repeated, drop
 import Base: getindex, setindex!, push!, append!, parent, get, get!, delete!, haskey
 using Observables: listeners, to_value, notify
 
+using MakieCore: SceneLike, AbstractScreen, ScenePlot, AbstractScene, AbstractPlot, Transformable, Attributes, Combined, Theme, Plot
+using MakieCore: Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter, Surface, Text, Volume
+using MakieCore: ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
+using MakieCore: Key, @key_str, Automatic, automatic, @recipe
+using MakieCore: Pixel, px, Unit, Billboard
+import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, calculated_attributes!, get_attribute, plotsym, plotkey, attributes, used_attributes
+import MakieCore: heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface, text, volume
+import MakieCore: heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, surface!, text!, volume!
+import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
+
+export @L_str
+export ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
+export Pixel, px, Unit, plotkey, attributes, used_attributes
+
 const RealVector{T} = AbstractVector{T} where T <: Number
-const Node = Observable # shorthand
 const RGBAf = RGBA{Float32}
 const RGBf = RGB{Float32}
 const NativeFont = FreeTypeAbstraction.FTFont
@@ -142,9 +156,6 @@ include("interaction/inspector.jl")
 include("documentation/documentation.jl")
 include("display.jl")
 
-# deprecated types and methods
-include("deprecated.jl")
-
 # help functions and supporting functions
 export help, help_attributes, help_arguments
 
@@ -169,8 +180,8 @@ export xticks!, yticks!, zticks!
 export xtickrotation, ytickrotation, ztickrotation
 export xtickrotation!, ytickrotation!, ztickrotation!
 
-# Node/Signal related
-export Node, Observable, lift, map_once, to_value, on, onany, @lift, off, connect!
+# Observable/Signal related
+export Observable, Observable, lift, map_once, to_value, on, onany, @lift, off, connect!
 
 # utilities and macros
 export @recipe, @extract, @extractvalue, @key_str, @get_attribute
@@ -183,7 +194,7 @@ export to_ndim, Reverse
 
 # Transformations
 export translated, translate!, scale!, rotate!, Accum, Absolute
-export boundingbox, insertplots!, center!, translation, scene_limits
+export boundingbox, insertplots!, center!, translation, data_limits
 
 # Spaces for widths and markers
 const PixelSpace = Pixel
@@ -197,19 +208,12 @@ export pixelarea, plots, cameracontrols, cameracontrols!, camera, events
 export to_world
 
 # picking + interactive use cases + events
-export mouseover, ispressed, onpick, pick, Events, Keyboard, Mouse, mouse_selection
+export mouseover, onpick, pick, Events, Keyboard, Mouse, mouse_selection
+export ispressed, Exclusively
 export register_callbacks
-export window_area
-export window_open
-export mouse_buttons
-export mouse_position
-export scroll
-export keyboard_buttons
-export unicode_input
-export dropped_files
-export hasfocus
-export entered_window
-export disconnect!, must_update, force_update!, update!, update_limits!
+export window_area, window_open, mouse_buttons, mouse_position, scroll,
+       keyboard_buttons, unicode_input, dropped_files, hasfocus, entered_window
+export disconnect!
 export DataInspector
 export Consume
 
@@ -220,13 +224,13 @@ export Billboard
 # Reexports of
 # Color/Vector types convenient for 3d/2d graphics
 export Quaternion, Quaternionf, qrotation
-export RGBAf, RGBf, VecTypes, RealVector, Rectf, Rect2f, Rect2i
-export Rect3f, Rect3i, Rect3, Transformation
-export Recti, Rectf, Rect, Rect2, Sphere, Circle
+export RGBAf, RGBf, VecTypes, RealVector
+export Transformation
+export Sphere, Circle
 export Vec4f, Vec3f, Vec2f, Point4f, Point3f, Point2f
 export Vec, Vec2, Vec3, Vec4, Point, Point2, Point3, Point4
-export (..), GLNormalUVMesh
-
+export (..)
+export Rect, Rectf, Rect2f, Rect2i, Rect3f, Rect3i, Rect3, Recti, Rect2
 export widths, decompose
 
 # building blocks for series recipes
@@ -257,7 +261,7 @@ function icon()
 end
 
 function logo()
-    FileIO.load(assetpath("misc", "makie_logo.png"))
+    FileIO.load(assetpath("logo.png"))
 end
 
 function __init__()
@@ -267,7 +271,6 @@ function __init__()
         "Please include the file manually with `include(\"$cfg_path\")` before plotting."
     end
 end
-
 
 include("figures.jl")
 export content
@@ -286,6 +289,5 @@ include("basic_recipes/text.jl")
 export Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter, Surface, Text, Volume
 export heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface, text, volume
 export heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, surface!, text!, volume!
-
 
 end # module

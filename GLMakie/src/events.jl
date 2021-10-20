@@ -15,7 +15,7 @@ end
 
 """
 Returns a signal, which is true as long as the window is open.
-returns `Node{Bool}`
+returns `Observable{Bool}`
 [GLFW Docs](http://www.glfw.org/docs/latest/group__window.html#gaade9264e79fae52bdb78e2df11ee8d6a)
 """
 Makie.window_open(scene::Scene, screen) = window_open(scene, to_native(screen))
@@ -78,7 +78,7 @@ end
 
 """
 Registers a callback for the mouse buttons + modifiers
-returns `Node{NTuple{4, Int}}`
+returns `Observable{NTuple{4, Int}}`
 [GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#ga1e008c7a8751cea648c8f42cc91104cf)
 """
 Makie.mouse_buttons(scene::Scene, screen) = mouse_buttons(scene, to_native(screen))
@@ -113,7 +113,7 @@ end
 
 """
 Registers a callback for drag and drop of files.
-returns `Node{Vector{String}}`, which are absolute file paths
+returns `Observable{Vector{String}}`, which are absolute file paths
 [GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#gacc95e259ad21d4f666faa6280d4018fd)
 """
 Makie.dropped_files(scene::Scene, screen) = dropped_files(scene, to_native(screen))
@@ -134,7 +134,7 @@ end
 
 """
 Registers a callback for keyboard unicode input.
-returns an `Node{Vector{Char}}`,
+returns an `Observable{Vector{Char}}`,
 containing the pressed char. Is empty, if no key is pressed.
 [GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#ga1e008c7a8751cea648c8f42cc91104cf)
 """
@@ -185,7 +185,7 @@ end
 
 """
 Registers a callback for the mouse cursor position.
-returns an `Node{Vec{2, Float64}}`,
+returns an `Observable{Vec{2, Float64}}`,
 which is not in scene coordinates, with the upper left window corner being 0
 [GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#ga1e008c7a8751cea648c8f42cc91104cf)
 """
@@ -224,7 +224,7 @@ end
 
 """
 Registers a callback for the mouse scroll.
-returns an `Node{Vec{2, Float64}}`,
+returns an `Observable{Vec{2, Float64}}`,
 which is an x and y offset.
 [GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#gacc95e259ad21d4f666faa6280d4018fd)
 """
@@ -245,7 +245,7 @@ end
 
 """
 Registers a callback for the focus of a window.
-returns an `Node{Bool}`,
+returns an `Observable{Bool}`,
 which is true whenever the window has focus.
 [GLFW Docs](http://www.glfw.org/docs/latest/group__window.html#ga6b5f973531ea91663ad707ba4f2ac104)
 """
@@ -268,7 +268,7 @@ end
 
 """
 Registers a callback for if the mouse has entered the window.
-returns an `Node{Bool}`,
+returns an `Observable{Bool}`,
 which is true whenever the cursor enters the window.
 [GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#ga762d898d9b0241d7e3e3b767c6cf318f)
 """

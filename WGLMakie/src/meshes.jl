@@ -108,6 +108,8 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
     get!(uniforms, :highclip, RGBAf(0, 0, 0, 0))
     get!(uniforms, :lowclip, RGBAf(0, 0, 0, 0))
 
+    uniforms[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
+
     uniforms[:normalmatrix] = map(scene.camera.view, plot.model) do v, m
         i = SOneTo(3)
         return transpose(inv(v[i, i] * m[i, i]))

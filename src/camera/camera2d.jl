@@ -1,11 +1,11 @@
 struct Camera2D <: AbstractCamera
-    area::Node{Rect2f}
-    zoomspeed::Node{Float32}
-    zoombutton::Node{ButtonTypes}
-    panbutton::Node{Union{ButtonTypes, Vector{ButtonTypes}}}
-    padding::Node{Float32}
-    last_area::Node{Vec{2, Int}}
-    update_limits::Node{Bool}
+    area::Observable{Rect2f}
+    zoomspeed::Observable{Float32}
+    zoombutton::Observable{ButtonTypes}
+    panbutton::Observable{Union{ButtonTypes, Vector{ButtonTypes}}}
+    padding::Observable{Float32}
+    last_area::Observable{Vec{2, Int}}
+    update_limits::Observable{Bool}
 end
 
 """
@@ -16,7 +16,7 @@ Creates a 2D camera for the given Scene.
 function cam2d!(scene::SceneLike; kw_args...)
     cam_attributes = merged_get!(:cam2d, scene, Attributes(kw_args)) do
         Attributes(
-            area = Node(Rectf(0, 0, 1, 1)),
+            area = Observable(Rectf(0, 0, 1, 1)),
             zoomspeed = 0.10f0,
             zoombutton = nothing,
             panbutton = Mouse.right,
@@ -50,7 +50,7 @@ update_cam!(scene::SceneLike, area) = update_cam!(scene, cameracontrols(scene), 
     update_cam!(scene::SceneLike)
 
 Updates the camera for the given `scene` to cover the limits of the `Scene`.
-Useful when using the `Node` pipeline.
+Useful when using the `Observable` pipeline.
 """
 update_cam!(scene::SceneLike) = update_cam!(scene, cameracontrols(scene), limits(scene)[])
 
@@ -111,32 +111,32 @@ function add_pan!(scene::SceneLike, cam::Camera2D)
 
     on(
         camera(scene),
-        Node.((scene, cam, startpos, drag_active))...,
+        Observable.((scene, cam, startpos, drag_active))...,
         e.mousebutton
     ) do scene, cam, startpos, active, event
-        if event.button == cam.panbutton[]
-            mp = e.mouseposition[]
-            if event.action == Mouse.press && is_mouseinside(scene)
+        mp = e.mouseposition[]
+        if ispressed(scene, cam.panbutton[])
+            if event.action == Mouse.press && is_mouseinside(scene) && !active[]
                 startpos[] = mp
                 active[] = true
                 return Consume(true)
-            elseif event.action == Mouse.release && active[]
-                diff = startpos[] .- mp
-                startpos[] = mp
-                area = cam.area[]
-                diff = Vec(diff) .* wscale(pixelarea(scene)[], area)
-                cam.area[] = Rectf(minimum(area) .+ diff, widths(area))
-                update_cam!(scene, cam)
-                active[] = false
-                return Consume(true)
             end
+        elseif event.action == Mouse.release && active[]
+            diff = startpos[] .- mp
+            startpos[] = mp
+            area = cam.area[]
+            diff = Vec(diff) .* wscale(pixelarea(scene)[], area)
+            cam.area[] = Rectf(minimum(area) .+ diff, widths(area))
+            update_cam!(scene, cam)
+            active[] = false
+            return Consume(true)
         end
         return Consume(false)
     end
 
     on(
         camera(scene),
-        Node.((scene, cam, startpos, drag_active))...,
+        Observable.((scene, cam, startpos, drag_active))...,
         e.mouseposition
     ) do scene, cam, startpos, active, pos
         if active[] && ispressed(scene, cam.panbutton[])
@@ -193,25 +193,22 @@ function selection_rect!(scene, cam, key)
     lw = 2f0
     scene_unscaled = Scene(
         scene, transformation = Transformation(),
-        cam = copy(camera(scene)), clear = false, raw = true
+        cam = copy(camera(scene)), clear = false
     )
     scene_unscaled.clear = false
-    scene_unscaled.updated = Node(false)
     rect_vis = lines!(
         scene_unscaled,
         rect[],
         linestyle = :dot,
         linewidth = 2f0,
         color = (:black, 0.4),
-        visible = false,
-        raw = true
+        visible = false
     )
     waspressed = RefValue(false)
     on(camera(scene), events(scene).mousebutton, key) do event, key
         if ispressed(scene, key) && is_mouseinside(scene)
-            mp = events(scene).mouseposition[]
-            mp = camspace(scene, cam, mp)
-            if event.action == Mouse.press
+            mp = camspace(scene, cam, events(scene).mouseposition[])
+            if event.action == Mouse.press && !waspressed[]
                 waspressed[] = true
                 rect_vis[:visible] = true # start displaying
                 rect[] = Rectf(mp, 0, 0)
@@ -240,6 +237,7 @@ function selection_rect!(scene, cam, key)
     on(camera(scene), events(scene).mouseposition, key) do mp, key
         # this is only true after a mousebutton update
         if ispressed(scene, key) && is_mouseinside(scene)
+            mp = camspace(scene, cam, mp)
             mini = minimum(rect[])
             rect[] = Rectf(mini, mp - mini)
             rect_vis[1] = rect[]
@@ -313,7 +311,6 @@ struct PixelCamera <: AbstractCamera end
 Creates a pixel-level camera for the `Scene`.  No controls!
 """
 function campixel!(scene)
-    scene.updated = Node(false)
     camera(scene).view[] = Mat4f(I)
     update_once = Observable(false)
     on(camera(scene), update_once, pixelarea(scene)) do u, window_size
@@ -329,3 +326,5 @@ function campixel!(scene)
     update_once[] = true
     cam
 end
+
+# disconnect!(::Makie.PixelCamera) = nothing

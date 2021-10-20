@@ -23,13 +23,12 @@ vec4 _color(Nothing color, sampler1D intensity, sampler1D color_map, vec2 color_
 
 uniform mat4 projection, view, model;
 uniform uint objectid;
-uniform ivec2 dims;
+uniform int total_length;
 
 out uvec2 g_id;
 out vec4 g_color;
 out float g_lastlen;
 out int g_valid_vertex;
-out uint g_line_connections;
 
 vec4 getindex(sampler2D tex, int index);
 vec4 getindex(sampler1D tex, int index);
@@ -40,6 +39,7 @@ vec4 to_vec4(vec2 v){return vec4(v, 0, 1);}
 int get_valid_vertex(float se){return int(se);}
 int get_valid_vertex(Nothing se){return 1;}
 
+uniform float depth_shift;
 
 void main()
 {
@@ -47,7 +47,8 @@ void main()
     int index = gl_VertexID;
     g_id = uvec2(objectid, index+1);
     g_valid_vertex = get_valid_vertex(valid_vertex);
-    g_color = _color(color, intensity, color_map, color_norm, index, dims.x*dims.y);
-    g_line_connections = uint(index/dims.x);
+
+    g_color = _color(color, intensity, color_map, color_norm, index, total_length);
     gl_Position = projection*view*model*to_vec4(vertex);
+    gl_Position.z += gl_Position.w * depth_shift;
 }

@@ -2,10 +2,6 @@
 
 The `Figure` object contains a top-level `Scene` and a `GridLayout`, as well as a list of layoutables that have been placed into it, like `Axis`, `Colorbar`, `Slider`, `Legend`, etc.
 
-!!! note
-    Wherever you see the old `scene, layout = layoutscene()` workflow from MakieLayout, you can imagine that
-    the `Figure` takes over the role of both `scene` and `layout`, plus additional conveniences like keeping
-    track of layoutables.
 
 ## Creating a `Figure`
 

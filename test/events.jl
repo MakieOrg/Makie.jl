@@ -1,11 +1,18 @@
 using Makie: PriorityObservable, MouseButtonEvent, KeyEvent
+using Makie: Not, And, Or
+
+# rudimentary equality for tests
+Base.:(==)(l::Exclusively, r::Exclusively) = l.x == r.x
+Base.:(==)(l::Not, r::Not) = l.x == r.x
+Base.:(==)(l::And, r::And) = l.left == r.left && l.right == r.right
+Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
 
 @testset "PriorityObservable" begin
     po = PriorityObservable(0)
 
-    first = Node(0.0)
-    second = Node(0.0)
-    third = Node(0.0)
+    first = Observable(0.0)
+    second = Observable(0.0)
+    third = Observable(0.0)
 
     on(po, priority=1) do x
         sleep(0)
@@ -58,6 +65,98 @@ end
         events.keyboardbutton[] = KeyEvent(Keyboard.b, Keyboard.release)
         @test isempty(events.mousebuttonstate)
         @test isempty(events.keyboardstate)
+    end
+
+    @testset "ispressed" begin
+        events = Makie.Events()
+        @test isempty(events.mousebuttonstate)
+        @test isempty(events.keyboardstate)
+
+        events.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)
+        events.keyboardbutton[] = KeyEvent(Keyboard.a, Keyboard.press)
+
+        # Buttons
+        @test ispressed(events, Keyboard.a)
+        @test !ispressed(events, Keyboard.b)
+        @test ispressed(events, Mouse.left)
+        @test !ispressed(events, Mouse.right)
+
+        # Collections
+        @test ispressed(events, (Keyboard.a, ))
+        @test ispressed(events, [Keyboard.a, ])
+        @test ispressed(events, Set((Keyboard.a, )))
+
+        @test !ispressed(events, (Keyboard.a, Keyboard.b))
+        @test !ispressed(events, [Keyboard.a, Keyboard.b])
+        @test !ispressed(events, Set((Keyboard.a, Keyboard.b)))
+
+        @test ispressed(events, (Keyboard.a, Mouse.left))
+        @test ispressed(events, [Keyboard.a, Mouse.left])
+        @test ispressed(events, Set((Keyboard.a, Mouse.left)))
+
+        # Boolean
+        @test ispressed(events, Keyboard.a & Mouse.left)
+        @test !ispressed(events, Keyboard.a & Mouse.right)
+        @test ispressed(events, Keyboard.a & !Mouse.right)
+        @test !ispressed(events, !Keyboard.a & Mouse.left)
+
+        @test ispressed(events, Keyboard.a | Mouse.left)
+        @test ispressed(events, Keyboard.a | Mouse.right)
+        @test !ispressed(events, Keyboard.b | Mouse.right)
+        @test ispressed(events, Keyboard.b | !Mouse.right)
+
+        # Exclusively
+        @test !ispressed(events, Exclusively(Keyboard.a))
+        @test !ispressed(events, Exclusively(Mouse.left))
+
+        @test ispressed(events, Exclusively((Keyboard.a, Mouse.left)))
+        @test ispressed(events, Exclusively([Keyboard.a, Mouse.left]))
+        @test ispressed(events, Exclusively(Set((Keyboard.a, Mouse.left))))
+
+        @test Exclusively(Keyboard.a & Mouse.left) == Exclusively((Keyboard.a, Mouse.left))
+        @test ispressed(events, Exclusively(Keyboard.a & Mouse.left))
+        @test Exclusively(Keyboard.a | Mouse.left) == Makie.Or(Exclusively(Keyboard.a), Exclusively(Mouse.left))
+        @test !ispressed(events, Exclusively(Keyboard.a | Mouse.left))
+
+        expr = Mouse.left & (Keyboard.a | (Keyboard.a & Keyboard.b))
+        lowered = Or(
+            Exclusively((Mouse.left, Keyboard.a)),
+            Exclusively((Mouse.left, Keyboard.a, Keyboard.b))
+        )
+        @test ispressed(events, expr)
+        @test Exclusively(expr) == lowered
+        @test ispressed(events, Exclusively(expr))
+
+        events.keyboardbutton[] = KeyEvent(Keyboard.b, Keyboard.press)
+        @test ispressed(events, expr)
+        @test ispressed(events, Exclusively(expr))
+
+        events.keyboardbutton[] = KeyEvent(Keyboard.c, Keyboard.press)
+        @test ispressed(events, expr)
+        @test !ispressed(events, Exclusively(expr))
+
+        events.keyboardbutton[] = KeyEvent(Keyboard.a, Keyboard.release)
+        @test !ispressed(events, expr)
+        @test !ispressed(events, Exclusively(expr))
+
+        # Bools
+        @test ispressed(events, true)
+        @test !ispressed(events, false)
+
+        @test Exclusively(true) == true
+        @test Exclusively(false) == false
+
+        for x in (Keyboard.a, Mouse.left)
+            @test true & x == x
+            @test x & true == x
+            @test false & x == false
+            @test x & false == false
+
+            @test true | x == true
+            @test x | true == true
+            @test false | x == x
+            @test x | false == x
+        end
     end
 
     # This testset is based on the results the current camera system has. If
@@ -162,7 +261,7 @@ end
     @testset "mouse state machine" begin
         scene = Scene(resolution=(800, 600));
         e = events(scene)
-        bbox = Node(Rect2(200, 200, 400, 300))
+        bbox = Observable(Rect2(200, 200, 400, 300))
         msm = addmouseevents!(scene, bbox, priority=typemax(Int8))
         eventlog = MouseEvent[]
         on(x -> begin push!(eventlog, x); false end, msm.obs)

@@ -1,5 +1,5 @@
 ############################################################################
-const TOrSignal{T} = Union{Node{T},T}
+const TOrSignal{T} = Union{Observable{T},T}
 
 const ArrayOrSignal{T,N} = TOrSignal{X} where X <: AbstractArray{T,N}
 const VecOrSignal{T} = ArrayOrSignal{T,1}
@@ -109,7 +109,7 @@ struct FrameBuffer{T}
     id::GLuint
     attachments::Vector{Any}
     context::GLContext
-    function FrameBuffer{T}(dimensions::Node) where T
+    function FrameBuffer{T}(dimensions::Observable) where T
         fb = glGenFramebuffers()
         glBindFramebuffer(GL_FRAMEBUFFER, fb)
         new(id, attachments, current_context())
@@ -303,7 +303,7 @@ end
 function RenderObject(
         data::Dict{Symbol,Any}, program,
         pre::Pre, post,
-        bbs=Node(Rect3f(Vec3f(0), Vec3f(1))),
+        bbs=Observable(Rect3f(Vec3f(0), Vec3f(1))),
         main=nothing
     ) where Pre
     targets = get(data, :gl_convert_targets, Dict())

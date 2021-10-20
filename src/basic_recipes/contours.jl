@@ -26,7 +26,8 @@ $(ATTRIBUTES)
         levels = 5,
         linewidth = 1.0,
         alpha = 1.0,
-        fillrange = false
+        fillrange = false,
+        enable_depth = true
     )
 end
 
@@ -114,7 +115,8 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
         plot, x, y, z, volume, colormap = cmap, colorrange = cliprange, algorithm = 7,
         transparency = plot.transparency, overdraw = plot.overdraw,
         ambient = plot.ambient, diffuse = plot.diffuse, lightposition = plot.lightposition,
-        shininess = plot.shininess, specular = plot.specular, inspectable = plot.inspectable
+        shininess = plot.shininess, specular = plot.specular, inspectable = plot.inspectable,
+        enable_depth = plot.enable_depth
     )
 end
 
@@ -189,6 +191,11 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     plot
 end
 
-function data_limits(x::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
-    return xyz_boundingbox(transform_func(x), to_value.((x[1], x[2]))...)
+function point_iterator(x::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
+    axes = (x[1], x[2])
+    extremata = map(extrema∘to_value, axes)
+    minpoint = Point2f(first.(extremata)...)
+    widths = last.(extremata) .- first.(extremata)
+    rect = Rect2f(minpoint, Vec2f(widths))
+    return unique(decompose(Point, rect))
 end

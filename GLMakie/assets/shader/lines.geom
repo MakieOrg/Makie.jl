@@ -10,9 +10,7 @@ layout(triangle_strip, max_vertices = 7) out;
 in vec4 g_color[];
 in float g_lastlen[];
 in uvec2 g_id[];
-in uint g_line_connections[];
 in int g_valid_vertex[];
-//in float g_thickness[];
 
 out vec4 f_color;
 out vec2 f_uv;
@@ -66,7 +64,7 @@ void main(void)
         g_valid_vertex[3] == 1 && g_id[2].y != g_id[3].y
     );
 
-    if(g_line_connections[1] != g_line_connections[2] || !isvalid[1] || !isvalid[2]){
+    if(!isvalid[1] || !isvalid[2]){
         // If one of the central vertices is invalid or there is a break in the
         // line, we don't emit anything.
         return;
@@ -79,18 +77,17 @@ void main(void)
 
     float thickness_aa = thickness+4;
 
-
-    // perform naive culling
-    //vec2 area = resolution * 1.2;
-    //if( p1.x < -area.x || p1.x > area.x ) return;
-    //if( p1.y < -area.y || p1.y > area.y ) return;
-    //if( p2.x < -area.x || p2.x > area.x ) return;
-    //if( p2.y < -area.y || p2.y > area.y ) return;
-
     // determine the direction of each of the 3 segments (previous, current, next)
-    vec2 v1 =              normalize(p2 - p1);
-    vec2 v0 = isvalid[0] ? normalize(p1 - p0) : v1;
-    vec2 v2 = isvalid[3] ? normalize(p3 - p2) : v1;
+    vec2 v1 = normalize(p2 - p1);
+    vec2 v0 = v1;
+    vec2 v2 = v1;
+
+    if (p1 != p0 && isvalid[0]) {
+        v0 = normalize(p1 - p0);
+    }
+    if (p3 != p2 && isvalid[3]) {
+        v2 = normalize(p3 - p2);
+    }
 
     // determine the normal of each of the 3 segments (previous, current, next)
     vec2 n0 = vec2(-v0.y, v0.x);

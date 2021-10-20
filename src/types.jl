@@ -170,7 +170,7 @@ function Base.getproperty(e::Events, field::Symbol)
             Base.show_backtrace(stderr, bt)
             println(stderr)
         end
-        mousebuttons = Node(Set{Mouse.Button}())
+        mousebuttons = Observable(Set{Mouse.Button}())
         on(getfield(e, :mousebutton), priority=typemax(Int8)-1) do event
             mousebuttons[] = getfield(e, :mousebuttonstate)
             return Consume(false)
@@ -188,7 +188,7 @@ function Base.getproperty(e::Events, field::Symbol)
             Base.show_backtrace(stderr, bt)
             println(stderr)
         end
-        keyboardbuttons = Node(Set{Keyboard.Button}())
+        keyboardbuttons = Observable(Set{Keyboard.Button}())
         on(getfield(e, :keyboardbutton), priority=typemax(Int8)-1) do event
             keyboardbuttons[] = getfield(e, :keyboardstate)
             return Consume(false)
@@ -206,7 +206,7 @@ function Base.getproperty(e::Events, field::Symbol)
             Base.show_backtrace(stderr, bt)
             println(stderr)
         end
-        mousedrag = Node(Mouse.notpressed)
+        mousedrag = Observable(Mouse.notpressed)
         on(getfield(e, :mousebutton), priority=typemax(Int8)-1) do event
             if (event.action == Mouse.press) && (length(e.mousebuttonstate) == 1)
                 mousedrag[] = Mouse.down
@@ -230,12 +230,12 @@ function Base.getproperty(e::Events, field::Symbol)
 end
 
 mutable struct Camera
-    pixel_space::Node{Mat4f}
-    view::Node{Mat4f}
-    projection::Node{Mat4f}
-    projectionview::Node{Mat4f}
-    resolution::Node{Vec2f}
-    eyeposition::Node{Vec3f}
+    pixel_space::Observable{Mat4f}
+    view::Observable{Mat4f}
+    projection::Observable{Mat4f}
+    projectionview::Observable{Mat4f}
+    resolution::Observable{Vec2f}
+    eyeposition::Observable{Vec3f}
     steering_nodes::Vector{ObserverFunction}
 end
 
@@ -245,19 +245,17 @@ Holds the transformations for Scenes.
 $(TYPEDFIELDS)
 """
 struct Transformation <: Transformable
-    parent::RefValue{Transformable}
-    translation::Node{Vec3f}
-    scale::Node{Vec3f}
-    rotation::Node{Quaternionf}
-    model::Node{Mat4f}
-    flip::Node{NTuple{3, Bool}}
-    align::Node{Vec2f}
+    parent::RefValue{Transformation}
+    translation::Observable{Vec3f}
+    scale::Observable{Vec3f}
+    rotation::Observable{Quaternionf}
+    model::Observable{Mat4f}
     # data conversion node, for e.g. log / log10 etc
-    transform_func::Node{Any}
-    function Transformation(translation, scale, rotation, model, flip, align, transform_func)
+    transform_func::Observable{Any}
+    function Transformation(translation, scale, rotation, model, transform_func)
         return new(
-            RefValue{Transformable}(),
-            translation, scale, rotation, model, flip, align, transform_func
+            RefValue{Transformation}(),
+            translation, scale, rotation, model, transform_func
         )
     end
 end

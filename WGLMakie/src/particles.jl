@@ -57,6 +57,8 @@ function create_shader(scene::Scene, plot::MeshScatter)
         uniform_dict[:uv] = Vec2f(0)
     end
 
+    uniforms[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
+
     return InstancedProgram(WebGL(), lasset("particles.vert"), lasset("particles.frag"),
                             instance, VertexArray(; per_instance...); uniform_dict...)
 end
@@ -134,6 +136,7 @@ function scatter_shader(scene::Scene, attributes)
 
     instance = uv_mesh(Rect2(-0.5f0, -0.5f0, 1f0, 1f0))
     uniform_dict[:resolution] = scene.camera.resolution
+    
     return InstancedProgram(WebGL(), lasset("simple.vert"), lasset("sprites.frag"),
                             instance, VertexArray(; per_instance...); uniform_dict...)
 end
@@ -151,6 +154,8 @@ function create_shader(scene::Scene, plot::Scatter)
     attributes[:pixelspace] = getfield(scene.camera, :pixel_space)
     attributes[:model] = plot.model
     attributes[:markerspace] = plot.markerspace
+    attributes[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
+
     delete!(attributes, :uv_offset_width)
     return scatter_shader(scene, attributes)
 end
@@ -222,7 +227,9 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         :uv_offset_width => uv_offset_width,
         :transform_marker => Observable(false),
         :billboard => Observable(false),
-        :pixelspace => getfield(scene.camera, :pixel_space))
+        :pixelspace => getfield(scene.camera, :pixel_space),
+        :depth_shift => get(plot, :depth_shift, Observable(0f0))
+    )
 
     return scatter_shader(scene, uniforms)
 end

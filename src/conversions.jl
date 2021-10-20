@@ -164,7 +164,7 @@ Takes an input `Rect` `x` and decomposes it to points.
 """
 function convert_arguments(P::PointBased, x::Rect2)
     # TODO fix the order of decompose
-    return convert_arguments(P, decompose(Point2f, x)[[1, 2, 4, 3, 1]])
+    return convert_arguments(P, decompose(Point2f, x)[[1, 2, 4, 3]])
 end
 
 function convert_arguments(P::PointBased, mesh::AbstractMesh)
@@ -176,15 +176,21 @@ function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) wh
     return convert_arguments(PB, collect(reinterpret(P, linesegments)))
 end
 
-function convert_arguments(P::PointBased, x::Rect3)
-    inds = [
-        1, 2, 3, 4, 5, 6, 7, 8,
-        1, 5, 5, 7, 7, 3, 1, 3,
-        4, 8, 8, 6, 2, 4, 2, 6
-    ]
-    convert_arguments(P, decompose(Point3f, x)[inds])
+function convert_arguments(P::PointBased, rect::Rect3)
+    return (decompose(Point3f, rect),)
 end
 
+function convert_arguments(P::Type{<: LineSegments}, rect::Rect3)
+    f = decompose(LineFace{Int}, rect)
+    p = connect(decompose(Point3f, rect), f)
+    return convert_arguments(P, p)
+end
+
+function convert_arguments(::Type{<: Lines}, rect::Rect3)
+    points = unique(decompose(Point3f, rect))
+    push!(points, Point3f(NaN)) # use to seperate linesegments
+    return (points[[1, 2, 3, 4, 1, 5, 6, 2, 9, 6, 8, 3, 9, 5, 7, 4, 9, 7, 8]],)
+end
 """
 
     convert_arguments(PB, LineString)
@@ -306,14 +312,14 @@ and stores the `ClosedInterval` to `n` and `m`, plus the original matrix in a Tu
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::SurfaceLike, data::AbstractMatrix)
+function convert_arguments(sl::SurfaceLike, data::AbstractMatrix)
     n, m = Float32.(size(data))
-    (0f0 .. n, 0f0 .. m, el32convert(data))
+    convert_arguments(sl, 0f0 .. n, 0f0 .. m, el32convert(data))
 end
 
-function convert_arguments(::DiscreteSurface, data::AbstractMatrix)
+function convert_arguments(ds::DiscreteSurface, data::AbstractMatrix)
     n, m = Float32.(size(data))
-    (0.5f0 .. n+0.5f0, 0.5f0 .. m+0.5f0, el32convert(data))
+    convert_arguments(ds, edges(1:n), edges(1:m), el32convert(data))
 end
 
 function convert_arguments(SL::SurfaceLike, x::AbstractVector{<:Number}, y::AbstractVector{<:Number}, z::AbstractVector{<:Number})
@@ -328,17 +334,17 @@ function convert_arguments(SL::SurfaceLike, x::AbstractVector{<:Number}, y::Abst
         error("Found duplicate x/y coordinates: $cdup")
     end
 
-    xs = Float32.(sort(unique(x)))
-    any(isnan, xs) && error("x must not have NaN values.")
-    ys = Float32.(sort(unique(y)))
-    any(isnan, ys) && error("x must not have NaN values.")
-    zs = fill(NaN32, length(xs), length(ys))
+    x_centers = sort(unique(x))
+    any(isnan, x_centers) && error("x must not have NaN values.")
+    y_centers = sort(unique(y))
+    any(isnan, y_centers) && error("x must not have NaN values.")
+    zs = fill(NaN32, length(x_centers), length(y_centers))
     foreach(zip(x, y, z)) do (xi, yi, zi)
-        i = searchsortedfirst(xs, xi)
-        j = searchsortedfirst(ys, yi)
+        i = searchsortedfirst(x_centers, xi)
+        j = searchsortedfirst(y_centers, yi)
         @inbounds zs[i, j] = zi
     end
-    convert_arguments(SL, xs, ys, zs)
+    convert_arguments(SL, x_centers, y_centers, zs)
 end
 
 
@@ -408,6 +414,16 @@ function convert_arguments(::VolumeLike, x::AbstractVector, y::AbstractVector, z
         reshape(A, ntuple(j-> j != i ? 1 : length(A), Val(3)))
     end
     return (x, y, z, el32convert.(f.(_x, _y, _z)))
+end
+
+################################################################################
+#                                <:Lines                                       #
+################################################################################
+
+function convert_arguments(::Type{<: Lines}, x::Rect2)
+    # TODO fix the order of decompose
+    points = decompose(Point2f, x)
+    return (points[[1, 2, 4, 3, 1]],)
 end
 
 ################################################################################
@@ -945,7 +961,6 @@ function convert_attribute(s::VecTypes{N}, ::key"rotation") where N
     elseif N == 3
         rotation_between(Vec3f(0, 0, 1), to_ndim(Vec3f, s, 0.0))
     elseif N == 2
-
         rotation_between(Vec3f(0, 1, 0), to_ndim(Vec3f, s, 0.0))
     else
         error("The $N dimensional vector $s can't be converted to a rotation.")

@@ -63,10 +63,7 @@ function line_visualization(position::Union{VectorTypes{T}, MatTypes{T}}, data::
     end
 
     @gen_defaults! data begin
-        dims::Vec{2, Int32} = const_lift(position) do p
-            sz = ndims(p) == 1 ? (length(p), 1) : size(p)
-            Vec{2, Int32}(sz)
-        end
+        total_length::Int32 = const_lift(x-> Int32(length(x)), position)
         vertex              = p_vec => GLBuffer
         intensity           = nothing
         color_map           = nothing => Texture
@@ -75,18 +72,20 @@ function line_visualization(position::Union{VectorTypes{T}, MatTypes{T}}, data::
         thickness::Float32  = 2f0
         pattern             = nothing
         fxaa                = false
-        preferred_camera    = :orthographic_pixel
         # Duplicate the vertex indices on the ends of the line, as our geometry
         # shader in `layout(lines_adjacency)` mode requires each rendered
         # segment to have neighbouring vertices.
-        indices             = const_lift((p)-> isempty(p) ? Cuint[] : [1; 1:length(p); length(p)], p_vec) => to_index_buffer
+        indices             = const_lift(p_vec) do p
+            len0 = length(p) - 1
+            return isempty(p) ? Cuint[] : Cuint[0; 0:len0; len0]
+        end => to_index_buffer
         shader              = GLVisualizeShader("fragment_output.frag", "util.vert", "lines.vert", "lines.geom", "lines.frag")
         gl_primitive        = GL_LINE_STRIP_ADJACENCY
-        valid_vertex        = const_lift(p_vec) do pv
-            map(p-> Float32(all(isfinite, p)), pv)
+        valid_vertex        = const_lift(p_vec) do points
+            map(p-> Float32(all(isfinite, p)), points)
         end => GLBuffer
     end
-    if pattern != nothing
+    if pattern !== nothing
         if !isa(pattern, Texture)
             if !isa(pattern, Vector)
                 error("Pattern needs to be a Vector of floats. Found: $(typeof(pattern))")

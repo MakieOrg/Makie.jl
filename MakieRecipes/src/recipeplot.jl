@@ -16,8 +16,8 @@ function plot!(p::T) where T <: RecipePlot
     #
     # After lifting on everything,
 
-    # Node(1) is a dummy observable for dispatch.
-    lift(Node(1), p.attributes, p.converted, p.converted..., values(p.attributes)...) do _, attrs, args, __lifted...
+    # Observable(1) is a dummy observable for dispatch.
+    lift(Observable(1), p.attributes, p.converted, p.converted..., values(p.attributes)...) do _, attrs, args, __lifted...
 
         !isempty(p.plots) && empty!(p.plots)
 

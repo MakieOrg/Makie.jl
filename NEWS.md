@@ -1,5 +1,9 @@
 # News
 
+## master
+
+- The functions `labelslidergrid!` and `labelslider!` now set fixed widths for the value column with a heuristic. It is possible now to pass `Formatting.format` format strings as format specifiers in addition to the previous functions.
+
 ## v0.15.2
 - Reenabled Julia 1.3 support.
 - Use [MathTexEngine v0.2](https://github.com/Kolaru/MathTeXEngine.jl/releases/tag/v0.2.0).
