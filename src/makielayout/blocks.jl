@@ -7,9 +7,9 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
     end
 
     structdef = quote
-        mutable struct $name <: Block
+        mutable struct $name <: Makie.MakieLayout.Block
             parent::Union{Figure, Scene, Nothing}
-            layoutobservables::LayoutObservables
+            layoutobservables::Makie.MakieLayout.LayoutObservables
             blockscene::Scene
         end
     end
@@ -18,6 +18,18 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
     basefields = filter(x -> !(x isa LineNumberNode), fields_vector)
 
     attrs = extract_attributes!(body)
+
+    i_forwarded_layout = findfirst(
+        x -> x isa Expr && x.head == :macrocall &&
+            x.args[1] == Symbol("@forwarded_layout"),
+        body.args
+    )
+    has_forwarded_layout = i_forwarded_layout !== nothing
+
+    if has_forwarded_layout
+        splice!(body.args, i_forwarded_layout, [:(layout::GridLayout)])
+    end
+
     # append remaining fields
     append!(fields_vector, body.args)
 
@@ -45,18 +57,18 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
 
         export $name
 
-        function is_attribute(::Type{$(name)}, sym::Symbol)
+        function Makie.MakieLayout.is_attribute(::Type{$(name)}, sym::Symbol)
             sym in ($((attrs !== nothing ? [QuoteNode(a.symbol) for a in attrs] : [])...),)
         end
 
-        function default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
+        function Makie.MakieLayout.default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
             sceneattrs = scene === nothing ? Attributes() : theme(scene)
             curdeftheme = Makie.current_default_theme()
 
             $(make_attr_dict_expr(attrs, :sceneattrs, :curdeftheme))
         end
 
-        function _attribute_docs(::Type{$(name)})
+        function Makie.MakieLayout._attribute_docs(::Type{$(name)})
             Dict(
                 $(
                     (attrs !== nothing ?
@@ -65,6 +77,8 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
                 )
             )
         end
+
+        Makie.MakieLayout.has_forwarded_layout(::Type{$name}) = $has_forwarded_layout
     end
 
     esc(q)
@@ -269,7 +283,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
     layout_tellheight = Observable(true)
     layout_halign = Observable(:center)
     layout_valign = Observable(:center)
-    layout_alignmode = Observable(Inside())
+    layout_alignmode = Observable{Any}(Inside())
 
     lobservables = LayoutObservables{T}(
         layout_width,
@@ -292,7 +306,32 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
         init_observable!(b, key, OT, val)
     end
 
-    # connect the layoutobservable observables to the corresponding attributes
+    if has_forwarded_layout(T)
+        # create the gridlayout and set its parent to blockscene so that
+        # one can create objects in the layout and scene more easily
+        b.layout = GridLayout()
+        b.layout.parent = blockscene
+
+        # the gridlayout needs to forward its autosize and protrusions to
+        # the block's layoutobservables so from the outside, it looks like
+        # the block has the same layout behavior as its internal encapsulated
+        # gridlayout
+        connect!(lobservables.autosize, b.layout.layoutobservables.autosize)
+        connect!(lobservables.protrusions, b.layout.layoutobservables.protrusions)
+        # this is needed so that the update mechanism works, because the gridlayout's
+        # suggestedbbox is not connected to anything
+        on(b.layout.layoutobservables.suggestedbbox) do _
+            notify(lobservables.suggestedbbox)
+        end
+        # disable the GridLayout's own computedbbox's effect
+        empty!(b.layout.layoutobservables.computedbbox.listeners)
+        # connect the block's layoutobservables.computedbbox to the align action that
+        # usually the GridLayout executes itself
+        on(lobservables.computedbbox) do bb
+            GridLayoutBase.align_to_bbox!(b.layout, bb)
+        end
+    end
+    # forward all layout attributes to the block's layoutobservables
     connect!(layout_width, b.width)
     connect!(layout_height, b.height)
     connect!(layout_tellwidth, b.tellwidth)
@@ -301,6 +340,8 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
     connect!(layout_valign, b.valign)
     connect!(layout_alignmode, b.alignmode)
 
+    # in this function, the block specific setup logic is executed and the remaining
+    # uninitialized fields are filled
     initialize_block!(b, args...; non_attribute_kwargs...)
 
     if fig_or_scene isa Figure
@@ -355,8 +396,8 @@ end
             if value isa Observable
                 error("It is disallowed to set an Observable field of a $T struct to an Observable, because this would replace the existing Observable. If you really want to do this, use `setfield!` instead.")
             end
-            obs = getfield(x, key)
-            obs[] = convert_for_attribute(observable_type(obs), value)
+            obs = fieldtype(T, key)
+            getfield(x, key)[] = convert_for_attribute(observable_type(obs), value)
         else
             setfield!(x, key, value)
         end

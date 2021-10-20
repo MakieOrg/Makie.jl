@@ -529,7 +529,7 @@ end
 @Block Menu
 
 @Block SliderGrid begin
-    layout::GridLayout
+    @forwarded_layout
     sliders::Vector{Slider}
     valuelabels::Vector{Label}
     labels::Vector{Label}

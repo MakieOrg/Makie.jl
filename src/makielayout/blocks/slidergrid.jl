@@ -1,12 +1,5 @@
 function initialize_block!(sg::SliderGrid, pairs::Pair...)
-
-    sg.layout = GridLayout(bbox = sg.layoutobservables.suggestedbbox)
-    sg.layout.parent = sg.blockscene
     
-
-    connect!(sg.layoutobservables.autosize, sg.layout.layoutobservables.autosize)
-    connect!(sg.layoutobservables.reportedsize, sg.layout.layoutobservables.reportedsize)
-
     default_format = string
 
     sg.sliders = Slider[]
@@ -47,6 +40,7 @@ function initialize_block!(sg::SliderGrid, pairs::Pair...)
             end
             colsize!(sg.layout, 3, maxwidth)
         else
+            println("set colsize to $value_column_width")
             colsize!(sg.layout, 3, value_column_width)
         end
     end
