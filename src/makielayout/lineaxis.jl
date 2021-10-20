@@ -669,3 +669,7 @@ end
 function Base.show(io::IO, ::MIME"text/plain", lineaxis::LineAxis)
     print(io, "LineAxis()")
 end
+
+function get_minor_tickvalues(v::AbstractVector{<:Real}, _, _, _, _)
+    Float32.(v)
+end
