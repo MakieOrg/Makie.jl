@@ -4,7 +4,14 @@ function initialize_block!(sg::SliderGrid, pairs::Pair...)
     sg.layout.parent = sg.blockscene
     
 
+    connect!(sg.layoutobservables.autosize, sg.layout.layoutobservables.autosize)
+    connect!(sg.layoutobservables.reportedsize, sg.layout.layoutobservables.reportedsize)
+
     default_format = string
+
+    sg.sliders = Slider[]
+    sg.valuelabels = Label[]
+    sg.labels = Label[]
 
     for (i, pair) in enumerate(pairs)
         label, range_and_maybe_format = pair
@@ -14,23 +21,35 @@ function initialize_block!(sg::SliderGrid, pairs::Pair...)
             rng = range_and_maybe_format
             format = string
         end
-        Label(sg.layout[i, 1], label, halign = :left)
+        l = Label(sg.layout[i, 1], label, halign = :left)
         slider = Slider(sg.layout[i, 2], range = rng)
-        Label(sg.layout[i, 3], lift(format, slider.value), halign = :right)
+        vl = Label(sg.layout[i, 3],
+            lift(x -> apply_format(x, format), slider.value), halign = :right)
+        push!(sg.valuelabels, vl)
+        push!(sg.sliders, slider)
+        push!(sg.labels, l)
     end
 
-    # elements = broadcast(labels, ranges, formats) do label, range, format
-    #     slider = Slider(scene; range = range, sliderkw...)
-    #     label = Label(scene, label; halign = :left, labelkw...)
-    #     valuelabel = Label(scene, lift(format, slider.value); halign = :right, valuekw...)
-    #     (; slider = slider, label = label, valuelabel = valuelabel)
-    # end
-
-    # sliders = map(x -> x.slider, elements)
-    # labels = map(x -> x.label, elements)
-    # valuelabels = map(x -> x.valuelabel, elements)
-
-    # layout = grid!(hcat(labels, sliders, valuelabels); layoutkw...)
-
-    # sg
+    on(sg.value_column_width) do value_column_width
+        if value_column_width === automatic
+            maxwidth = 0.0
+            for (slider, valuelabel) in zip(sg.sliders, sg.valuelabels)
+                initial_value = slider.value[]
+                a = first(slider.range[])
+                b = last(slider.range[])
+                for frac in (0.0, 0.5, 1.0)
+                    fracvalue = a + frac * (b - a)
+                    set_close_to!(slider, fracvalue)
+                    labelwidth = GridLayoutBase.computedbboxobservable(valuelabel)[].widths[1]
+                    maxwidth = max(maxwidth, labelwidth)
+                end
+                set_close_to!(slider, initial_value)
+            end
+            colsize!(sg.layout, 3, maxwidth)
+        else
+            colsize!(sg.layout, 3, value_column_width)
+        end
+    end
+    notify(sg.value_column_width)
+    return
 end

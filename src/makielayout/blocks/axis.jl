@@ -2,9 +2,9 @@ function initialize_block!(ax::Axis)
 
     # initialize either with user limits, or pick defaults based on scales
     # so that we don't immediately error
-    targetlimits = Node{Rect2f}(defaultlimits(ax.limits[], ax.xscale[], ax.yscale[]))
+    targetlimits = Observable{Rect2f}(defaultlimits(ax.limits[], ax.xscale[], ax.yscale[]))
     setfield!(ax, :targetlimits, targetlimits)
-    finallimits = Node{Rect2f}(ax.targetlimits[])
+    finallimits = Observable{Rect2f}(ax.targetlimits[])
     setfield!(ax, :finallimits, finallimits)
 
     # the first thing to do when setting a new scale is
@@ -43,9 +43,9 @@ function initialize_block!(ax::Axis)
 
     campixel!(scene)
 
-    xgridnode = Node(Point2f[])
+    xgridnode = Observable(Point2f[])
     xgridlines = linesegments!(
-        ax.blockscene, xgridnode, linewidth = ax.xgridwidth, show_axis = false, visible = ax.xgridvisible,
+        ax.blockscene, xgridnode, linewidth = ax.xgridwidth, visible = ax.xgridvisible,
         color = ax.xgridcolor, linestyle = ax.xgridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
@@ -53,19 +53,18 @@ function initialize_block!(ax::Axis)
     # decorations[:xgridlines] = xgridlines
 
 
-    xminorgridnode = Node(Point2f[])
+    xminorgridnode = Observable(Point2f[])
     xminorgridlines = linesegments!(
-        ax.blockscene, xminorgridnode, linewidth = ax.xminorgridwidth,
-        show_axis = false, visible = ax.xminorgridvisible,
+        ax.blockscene, xminorgridnode, linewidth = ax.xminorgridwidth, visible = ax.xminorgridvisible,
         color = ax.xminorgridcolor, linestyle = ax.xminorgridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(xminorgridlines, 0, 0, -10)
     # decorations[:xminorgridlines] = xminorgridlines
 
-    ygridnode = Node(Point2f[])
+    ygridnode = Observable(Point2f[])
     ygridlines = linesegments!(
-        ax.blockscene, ygridnode, linewidth = ax.ygridwidth, show_axis = false,
+        ax.blockscene, ygridnode, linewidth = ax.ygridwidth,
         visible = ax.ygridvisible,
         color = ax.ygridcolor, linestyle = ax.ygridstyle, inspectable = false
     )
@@ -73,10 +72,10 @@ function initialize_block!(ax::Axis)
     translate!(ygridlines, 0, 0, -10)
     # decorations[:ygridlines] = ygridlines
 
-    yminorgridnode = Node(Point2f[])
+    yminorgridnode = Observable(Point2f[])
     yminorgridlines = linesegments!(
         ax.blockscene, yminorgridnode, linewidth = ax.yminorgridwidth,
-        show_axis = false, visible = ax.yminorgridvisible,
+        visible = ax.yminorgridvisible,
         color = ax.yminorgridcolor, linestyle = ax.yminorgridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
@@ -128,8 +127,8 @@ function initialize_block!(ax::Axis)
         yflip ? lc : rc
     end
 
-    xlims = Node(xlimits(finallimits[]))
-    ylims = Node(ylimits(finallimits[]))
+    xlims = Observable(xlimits(finallimits[]))
+    ylims = Observable(ylimits(finallimits[]))
 
     on(finallimits) do lims
         nxl = xlimits(lims)
@@ -247,7 +246,6 @@ function initialize_block!(ax::Axis)
         font = ax.titlefont,
         color = ax.titlecolor,
         space = :data,
-        show_axis=false,
         inspectable = false)
     # # decorations[:title] = titlet
 
@@ -295,8 +293,8 @@ function initialize_block!(ax::Axis)
 
 
     mouseeventhandle = addmouseevents!(scene)
-    scrollevents = Node(ScrollEvent(0, 0))
-    keysevents = Node(KeysEvent(Set()))
+    scrollevents = Observable(ScrollEvent(0, 0))
+    keysevents = Observable(KeysEvent(Set()))
 
     on(scene.events.scroll) do s
         if is_mouseinside(scene)

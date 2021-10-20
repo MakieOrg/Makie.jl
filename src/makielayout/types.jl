@@ -199,15 +199,15 @@ end
         "The horizontal alignment of the title."
         titlealign::Symbol = :center
         "The color of the title"
-        titlecolor::RGBAf0 = @inherit(:textcolor, :black)
+        titlecolor::RGBAf = @inherit(:textcolor, :black)
         "The font family of the xlabel."
         xlabelfont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "DejaVu Sans")
         "The font family of the ylabel."
         ylabelfont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "DejaVu Sans")
         "The color of the xlabel."
-        xlabelcolor::RGBAf0 = @inherit(:textcolor, :black)
+        xlabelcolor::RGBAf = @inherit(:textcolor, :black)
         "The color of the ylabel."
-        ylabelcolor::RGBAf0 = @inherit(:textcolor, :black)
+        ylabelcolor::RGBAf = @inherit(:textcolor, :black)
         "The font size of the xlabel."
         xlabelsize::Float64 = @inherit(:fontsize, 16f0)
         "The font size of the ylabel."
@@ -225,9 +225,9 @@ end
         "The font family of the yticklabels."
         yticklabelfont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "DejaVu Sans")
         "The color of xticklabels."
-        xticklabelcolor::RGBAf0 = @inherit(:textcolor, :black)
+        xticklabelcolor::RGBAf = @inherit(:textcolor, :black)
         "The color of yticklabels."
-        yticklabelcolor::RGBAf0 = @inherit(:textcolor, :black)
+        yticklabelcolor::RGBAf = @inherit(:textcolor, :black)
         "The font size of the xticklabels."
         xticklabelsize::Float64 = @inherit(:fontsize, 16f0)
         "The font size of the yticklabels."
@@ -269,9 +269,9 @@ end
         "The width of the ytick marks."
         ytickwidth::Float64 = 1f0
         "The color of the xtick marks."
-        xtickcolor::RGBAf0 = RGBf(0, 0, 0)
+        xtickcolor::RGBAf = RGBf(0, 0, 0)
         "The color of the ytick marks."
-        ytickcolor::RGBAf0 = RGBf(0, 0, 0)
+        ytickcolor::RGBAf = RGBf(0, 0, 0)
         "Locks interactive panning in the x direction."
         xpanlock::Bool = false
         "Locks interactive panning in the y direction."
@@ -295,9 +295,9 @@ end
         "The width of the y grid lines."
         ygridwidth::Float64 = 1f0
         "The color of the x grid lines."
-        xgridcolor::RGBAf0 = RGBAf(0, 0, 0, 0.12)
+        xgridcolor::RGBAf = RGBAf(0, 0, 0, 0.12)
         "The color of the y grid lines."
-        ygridcolor::RGBAf0 = RGBAf(0, 0, 0, 0.12)
+        ygridcolor::RGBAf = RGBAf(0, 0, 0, 0.12)
         "The linestyle of the x grid lines."
         xgridstyle = nothing
         "The linestyle of the y grid lines."
@@ -311,9 +311,9 @@ end
         "The width of the y minor grid lines."
         yminorgridwidth::Float64 = 1f0
         "The color of the x minor grid lines."
-        xminorgridcolor::RGBAf0 = RGBAf(0, 0, 0, 0.05)
+        xminorgridcolor::RGBAf = RGBAf(0, 0, 0, 0.05)
         "The color of the y minor grid lines."
-        yminorgridcolor::RGBAf0 = RGBAf(0, 0, 0, 0.05)
+        yminorgridcolor::RGBAf = RGBAf(0, 0, 0, 0.05)
         "The linestyle of the x minor grid lines."
         xminorgridstyle = nothing
         "The linestyle of the y minor grid lines."
@@ -327,13 +327,13 @@ end
         "Controls if the right axis spine is visible."
         rightspinevisible::Bool = true
         "The color of the bottom axis spine."
-        bottomspinecolor::RGBAf0 = :black
+        bottomspinecolor::RGBAf = :black
         "The color of the left axis spine."
-        leftspinecolor::RGBAf0 = :black
+        leftspinecolor::RGBAf = :black
         "The color of the top axis spine."
-        topspinecolor::RGBAf0 = :black
+        topspinecolor::RGBAf = :black
         "The color of the right axis spine."
-        rightspinecolor::RGBAf0 = :black
+        rightspinecolor::RGBAf = :black
         "The forced aspect ratio of the axis. `nothing` leaves the axis unconstrained, `DataAspect()` forces the same ratio as the ratio in data limits between x and y axis, `AxisAspect(ratio)` sets a manual ratio."
         aspect = nothing
         "The vertical alignment of the axis within its suggested bounding box."
@@ -379,7 +379,7 @@ end
         "Controls if the y spine is limited to the furthest tick marks or not."
         ytrimspine::Bool = false
         "The background color of the axis."
-        backgroundcolor::RGBAf0 = :white
+        backgroundcolor::RGBAf = :white
         "Controls if the ylabel's rotation is flipped."
         flip_ylabel::Bool = false
         "Constrains the data aspect ratio (`nothing` leaves the ratio unconstrained)."
@@ -401,7 +401,7 @@ end
         "The tick width of x minor ticks"
         xminortickwidth::Float64 = 1f0
         "The tick color of x minor ticks"
-        xminortickcolor::RGBAf0 = :black
+        xminortickcolor::RGBAf = :black
         "The tick locator for the x minor ticks"
         xminorticks = IntervalsBetween(2)
         "Controls if minor ticks on the y axis are visible"
@@ -413,7 +413,7 @@ end
         "The tick width of y minor ticks"
         yminortickwidth::Float64 = 1f0
         "The tick color of y minor ticks"
-        yminortickcolor::RGBAf0 = :black
+        yminortickcolor::RGBAf = :black
         "The tick locator for the y minor ticks"
         yminorticks = IntervalsBetween(2)
         "The x axis scale"
@@ -454,7 +454,7 @@ end
         "Controls if the text is visible."
         visible::Bool = true
         "The color of the text."
-        color::RGBAf0 = lift_parent_attribute(scene, :textcolor, :black)
+        color::RGBAf = lift_parent_attribute(scene, :textcolor, :black)
         "The font size of the text."
         textsize::Float32 = lift_parent_attribute(scene, :fontsize, 16f0)
         "The font family of the text."
@@ -530,6 +530,9 @@ end
 
 @Block SliderGrid begin
     layout::GridLayout
+    sliders::Vector{Slider}
+    valuelabels::Vector{Label}
+    labels::Vector{Label}
     @attributes begin
         "The horizontal alignment of the block in its suggested bounding box."
         halign = :center
@@ -545,6 +548,8 @@ end
         tellheight::Bool = true
         "The align mode of the block in its parent GridLayout."
         alignmode = Inside()
+        "The width of the value label column. If `automatic`, the width is determined by sampling a few values from the slider ranges and picking the largest label size found."
+        value_column_width = automatic
     end
 end
 

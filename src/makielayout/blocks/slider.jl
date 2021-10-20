@@ -31,9 +31,9 @@ function initialize_block!(sl::Slider)
     end
 
     # this is the index of the selected value in the slider's range
-    # selected_index = Node(1)
+    # selected_index = Observable(1)
     # add the selected index to the attributes so it can be manipulated later
-    selected_index = Node(1)
+    selected_index = Observable(1)
     setfield!(sl, :selected_index, selected_index)
 
     # the fraction on the slider corresponding to the selected_index
@@ -42,11 +42,11 @@ function initialize_block!(sl::Slider)
         (i - 1) / (length(r) - 1)
     end
 
-    dragging = Node(false)
+    dragging = Observable(false)
 
     # what the slider actually displays currently (also during dragging when
     # the slider position is in an "invalid" position given the slider's range)
-    displayed_sliderfraction = Node(0.0)
+    displayed_sliderfraction = Observable(0.0)
 
     on(sliderfraction) do frac
         # only update displayed fraction through sliderfraction if not dragging
@@ -81,17 +81,17 @@ function initialize_block!(sl::Slider)
     end
 
     endbuttons = scatter!(sl.blockscene, endpoints, color = linecolors, 
-        markersize = sl.linewidth, strokewidth = 0, raw = true, inspectable = false)
+        markersize = sl.linewidth, strokewidth = 0, inspectable = false)
     decorations[:endbuttons] = endbuttons
 
     linesegs = linesegments!(sl.blockscene, linepoints, color = linecolors, 
-        linewidth = sl.linewidth, raw = true, inspectable = false)
+        linewidth = sl.linewidth, inspectable = false)
     decorations[:linesegments] = linesegs
 
-    button_magnification = Node(1.0)
+    button_magnification = Observable(1.0)
     buttonsize = @lift($(sl.linewidth) * $button_magnification)
     button = scatter!(sl.blockscene, middlepoint, color = sl.color_active, strokewidth = 0, 
-        markersize = buttonsize, raw = true, inspectable = false)
+        markersize = buttonsize, inspectable = false)
     decorations[:button] = button
 
     mouseevents = addmouseevents!(sl.blockscene, sl.layoutobservables.computedbbox)
@@ -199,6 +199,6 @@ Set the `slider` to the value in the slider's range that is closest to `value` a
 """
 function set_close_to!(slider::Slider, value)
     closest = closest_index(slider.range[], value)
-    slider.selected_index = closest
+    slider.selected_index[] = closest
     slider.range[][closest]
 end

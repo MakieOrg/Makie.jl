@@ -1,6 +1,6 @@
 function initialize_block!(l::Label, text = nothing)
 
-    textpos = Node(Point3f(0, 0, 0))
+    textpos = Observable(Point3f(0, 0, 0))
 
     # this is just a hack until boundingboxes in Makie are perfect
     alignnode = lift(l.halign, l.rotation) do h, rot
@@ -17,7 +17,7 @@ function initialize_block!(l::Label, text = nothing)
     end
 
     t = text!(l.blockscene, l.text, position = textpos, textsize = l.textsize, font = l.font, color = l.color,
-        visible = l.visible, align = alignnode, rotation = l.rotation, raw = true, space = :data, inspectable = false)
+        visible = l.visible, align = alignnode, rotation = l.rotation, space = :data, inspectable = false)
 
     textbb = Ref(BBox(0, 1, 0, 1))
 

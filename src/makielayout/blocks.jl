@@ -50,7 +50,7 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
         end
 
         function default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
-            sceneattrs = scene === nothing ? Attributes() : scene.attributes
+            sceneattrs = scene === nothing ? Attributes() : theme(scene)
             curdeftheme = Makie.current_default_theme()
 
             $(make_attr_dict_expr(attrs, :sceneattrs, :curdeftheme))
@@ -238,7 +238,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
     # retrieve the default attributes for this block given the scene theme
     # and also the `Block = (...` style attributes from scene and global theme
     default_attrs = default_attribute_values(T, topscene)
-    typekey_scene_attrs = get(topscene.attributes, nameof(T), Attributes())::Attributes
+    typekey_scene_attrs = get(theme(topscene), nameof(T), Attributes())::Attributes
     typekey_attrs = get(Makie.current_default_theme(), nameof(T), Attributes())::Attributes
 
     # make a final attribute dictionary using different priorities
@@ -318,7 +318,7 @@ Get the scene which blocks need from their parent to plot stuff into
 """
 get_topscene(f::Figure) = f.scene
 function get_topscene(s::Scene)
-    if !(s.camera_controls[] isa Makie.PixelCamera)
+    if !(cameracontrols(s) isa Makie.PixelCamera)
         error("Can only use scenes with PixelCamera as topscene")
     end
     s
