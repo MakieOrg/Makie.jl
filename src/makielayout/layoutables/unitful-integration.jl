@@ -9,10 +9,12 @@ base_unit(q::Quantity) = base_unit(typeof(q))
 base_unit(::Type{Quantity{NumT, DimT, U}}) where {NumT, DimT, U} = base_unit(U)
 base_unit(::Type{Unitful.FreeUnits{U, DimT, nothing}}) where {DimT, U} = U[1]
 base_unit(::Unitful.FreeUnits{U, DimT, nothing}) where {DimT, U} = U[1]
+base_unit(x::Unitful.Unit) = x
 
 unit_string(::Type{T}) where T <: Unitful.AbstractQuantity = string(Unitful.unit(T))
 unit_string(unit::Type{<: Unitful.FreeUnits}) = string(unit())
-unit_string(unit::Unitful.FreeUnits) = string(unit)
+unit_string(unit::Unitful.FreeUnits) = unit_string(base_unit(unit))
+unit_string(unit::Unitful.Unit) = string(unit)
 unit_string(::Union{Number, Nothing}) = ""
 
 function eltype_extrema(values)
@@ -52,14 +54,28 @@ function new_unit(unit, values, existing_limits)
     error("Plotting $(new_eltype) into an axis set to: $(unit_string(unit)). Please convert the data to $(unit_string(unit))")
 end
 
+to_free_unit(unit::Unitful.FreeUnits, _) = unit
+to_free_unit(unit::Unitful.FreeUnits, ::Quantity) = unit
+to_free_unit(unit::Unitful.FreeUnits, ::Quantity{T, Dim, Unitful.FreeUnits{U, Dim, nothing}}) where {T, Dim, U} = unit
 function to_free_unit(unit, ::Quantity{T, Dim, Unitful.FreeUnits{U, Dim, nothing}}) where {T, Dim, U}
     return Unitful.FreeUnits{(unit,), Dim, nothing}()
 end
 
+to_free_unit(unit::Unitful.FreeUnits) = unit
+function to_free_unit(unit::Unitful.Unit{Sym, Dim}) where {Sym, Dim}
+    return Unitful.FreeUnits{(unit,), Dim, nothing}()
+end
+
+
 get_all_base10_units(value) = get_all_base10_units(base_unit(value))
 
-function get_all_base10_units(value::Unitful.Unit{Sym, Dim}) where {Sym, Dim}
-    return Unitful.Unit{Sym, Dim}.(UNIT_POWER_OF_TENS, value.power)
+function get_all_base10_units(value::Unitful.Unit{Sym, Unitful.𝐋}) where {Sym}
+    return Unitful.Unit{Sym, Unitful.𝐋}.(UNIT_POWER_OF_TENS, value.power)
+end
+
+function get_all_base10_units(value::Unitful.Unit)
+    # TODO, why does nothing work in a generic way in Unitful!?
+    return [value]
 end
 
 function get_all_base10_units(::Unitful.Unit{Sym, Unitful.𝐓}) where {Sym, Dim}
@@ -72,43 +88,36 @@ function best_unit(min, max)
     middle = (min + max) / 2.0
     all_units = get_all_base10_units(middle)
     current_unit = unit(middle)
-    # Jeez, what a heuristic... TODO, do better!
-    short_enough(value) = (1 < abs(value) < 999) || ((0 < abs(value) < 1.0) && abs(value) > 0.001)
-
-    # Prefer current unit if short enough
-    short_enough(ustrip(middle)) && return current_unit
     # TODO start from current unit!?
-    for unit in all_units
-        raw_value = ustrip(uconvert(unit, middle))
-        if short_enough(raw_value)
-            return unit
-        end
+    value, index = findmin(all_units) do unit
+        raw_value = ustrip(uconvert(to_free_unit(unit, middle), middle))
+        return abs(raw_value - 100)
     end
-    return current_unit
+    return all_units[index]
 end
 
 unit_convert(::Nothing, x) = x
 
-function unit_convert(unit::T, x::AbstractArray) where T <: Union{Type{<:Unitful.AbstractQuantity}, Unitful.FreeUnits}
-    return unit_convert.(unit, x)
+function unit_convert(unit::T, x::AbstractArray) where T <: Union{Type{<:Unitful.AbstractQuantity}, Unitful.FreeUnits, Unitful.Unit}
+    return unit_convert.((unit,), x)
 end
 
-function unit_convert(unit::T, value) where T <: Union{Type{<:Unitful.AbstractQuantity}, Unitful.FreeUnits}
-    conv = uconvert(unit, value)
+function unit_convert(unit::T, value) where T <: Union{Type{<:Unitful.AbstractQuantity}, Unitful.FreeUnits, Unitful.Unit}
+    conv = uconvert(to_free_unit(unit, value), value)
     return Float64(ustrip(Unitful.upreferred(conv)))
 end
 
 convert_from_preferred(::Nothing, value) = value
 
 function convert_from_preferred(unit, value)
-    unitful = upreferred(unit) * value
-    in_target_unit = uconvert(unit, unitful)
+    uf = to_free_unit(unit)
+    unitful = upreferred(uf) * value
+    in_target_unit = uconvert(uf, unitful)
     return Float64(ustrip(in_target_unit))
 end
 
 convert_to_preferred(::Nothing, value) = value
-convert_to_preferred(unit, value) = ustrip(upreferred(unit * value))
-
+convert_to_preferred(unit, value) = ustrip(upreferred(to_free_unit(unit) * value))
 
 # Overload conversion functions for Axis, to properly display units
 
