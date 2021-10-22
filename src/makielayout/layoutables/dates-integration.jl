@@ -38,13 +38,12 @@ end
 
 function MakieLayout.get_ticks(ticks::DateTimeTicks, scale, formatter, vmin, vmax)
     T, mini = ticks.type[]
-    tickvalues = MakieLayout.get_tickvalues(formatter, scale, vmin, vmax)
-
-    dates = unvalue.(T, round.(Int64, tickvalues .+ mini))
-
-    if eltype(dates) <: Dates.AbstractDateTime
-        dates = [first(dates), Time.(dates[2:end])...]
+    if T <: DateTime
+        ticks, dates = PlotUtils.optimize_datetime_ticks(vmin + mini, vmax + mini; k_min = 2, k_max = 4)
+        return ticks .- mini, dates
+    else
+        tickvalues = MakieLayout.get_tickvalues(formatter, scale, vmin, vmax)
+        dates = unvalue.(T, round.(Int64, tickvalues .+ mini))
+        return tickvalues, string.(dates)
     end
-
-    return tickvalues, string.(dates)
 end
