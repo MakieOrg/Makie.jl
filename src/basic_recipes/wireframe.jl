@@ -17,6 +17,8 @@ $(ATTRIBUTES)
     )
 end
 
+is_plot_3d(::Type{<: Wireframe}) = true
+
 function convert_arguments(::Type{<: Wireframe}, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
     (ngrid(x, y)..., z)
 end

@@ -27,23 +27,19 @@ end
 is_plot_3d(p::PlotFunc) = is_plot_3d(Makie.conversion_trait(p))
 is_plot_3d(::Type{<: Union{Surface, Volume}}) = true
 is_plot_3d(::Type{<: Contour}) = nothing
-is_plot_3d(::Type{<: Union{Image, Heatmap}}) = false
 is_plot_3d(::VolumeLike) = true
 is_plot_3d(args...) = any(args) do arg
     r = is_plot_3d(arg)
-    isnothing(r) ? false : r
+    return isnothing(r) ? false : r
 end
 
 is_plot_3d(x) = nothing
 is_plot_3d(x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Union{AbstractArray{<: Any, 3}, Function}) = true
-is_plot_3d(x::AbstractVector, y::AbstractVector, z::AbstractVector) = true
-is_plot_3d(x::AbstractArray, y::AbstractArray, z::AbstractArray) = true
-is_plot_3d(m::Union{AbstractGeometry, GeometryBasics.Mesh}) = !is2d(Rect(decompose(Point, m)))
 is_plot_3d(m::AbstractArray{T, 3}) where T = true
+is_plot_3d(x::AbstractVector, y::AbstractVector, z::AbstractVector) = true
+is_plot_3d(m::Union{AbstractGeometry, GeometryBasics.Mesh}) = !is2d(Rect(decompose(Point, m)))
 is_plot_3d(x, y, z, m::AbstractArray{T, 3}) where T = true
-is_plot_3d(xyz::AbstractVector{<: Point3}) = true
-is_plot_3d(::Type{<: Contour}, x, y, z::Union{Function, AbstractMatrix}) = false
-is_plot_3d(::Type{<: Contour}, z::AbstractMatrix) = false
+is_plot_3d(xyz::AbstractVector{<: Point3}) = any(x-> x[3] > 0, xyz)
 
 function get_axis_type(p::PlotFunc, args...)
     result = is_plot_3d(p, args...)

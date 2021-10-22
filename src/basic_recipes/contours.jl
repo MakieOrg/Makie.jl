@@ -44,6 +44,8 @@ $(ATTRIBUTES)
     default_theme(scene, Contour)
 end
 
+is_plot_3d(::Type{<: Contour3d}) = true
+
 function contourlines(::Type{<: Contour}, contours, cols)
     result = Point2f[]
     colors = RGBA{Float32}[]
