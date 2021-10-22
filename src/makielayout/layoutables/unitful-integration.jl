@@ -17,6 +17,10 @@ unit_string(unit::Unitful.FreeUnits) = unit_string(base_unit(unit))
 unit_string(unit::Unitful.Unit) = string(unit)
 unit_string(::Union{Number, Nothing}) = ""
 
+unit_string_long(unit) = unit_string_long(base_unit(unit))
+unit_string_long(::Unitful.Unit{Sym, D}) where {Sym, D} = string(Sym)
+
+
 function eltype_extrema(values)
     isempty(values) && return (eltype(values), nothing)
 
@@ -120,16 +124,25 @@ convert_to_preferred(::Nothing, value) = value
 convert_to_preferred(unit, value) = ustrip(upreferred(to_free_unit(unit) * value))
 
 # Overload conversion functions for Axis, to properly display units
-
 struct UnitfulTicks
     unit
     tickformatter
-    units_in_label
+    units_in_label::Observable{Bool}
+    short_label::Observable{Bool}
 end
 
-UnitfulTicks(ticks=Makie.automatic; units_in_label=false) = UnitfulTicks(Observable{Any}(nothing), ticks, units_in_label)
+function UnitfulTicks(ticks=Makie.automatic; units_in_label=false, short_label=false)
+    return UnitfulTicks(Observable{Any}(nothing), ticks, Observable(units_in_label), Observable(short_label))
+end
 
-label_postfix(ticks::UnitfulTicks) = map(x-> string("(", unit_string(x), ")"), ticks.unit)
+function label_postfix(ticks::UnitfulTicks)
+    return map(ticks.unit, ticks.units_in_label, ticks.short_label) do unit, in_label, short
+        in_label || return ""
+        isnothing(unit) && return ""
+        unit_str = short ? unit_string(unit) : unit_string_long(unit)
+        return string(" in ", unit_str)
+    end
+end
 
 function MakieLayout.get_ticks(ticks::UnitfulTicks, scale, formatter, vmin, vmax)
     unit = ticks.unit[]
@@ -142,7 +155,7 @@ function MakieLayout.get_ticks(ticks::UnitfulTicks, scale, formatter, vmin, vmax
         return tick_vals_preferred, MakieLayout.get_ticklabels(formatter, tick_vals)
     else
         labels = MakieLayout.get_ticklabels(formatter, tick_vals)
-        if !ticks.units_in_label
+        if !ticks.units_in_label[]
             labels = labels .* unit_str
         end
         return tick_vals_preferred, labels

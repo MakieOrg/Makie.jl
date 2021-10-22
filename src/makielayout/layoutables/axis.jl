@@ -736,6 +736,24 @@ function Makie.plot!(la::Axis, P::Makie.PlotFunc,
     plot_object = FinalType(la.scene, copy(attributes), input_nodes, converted_args)
     plot!(plot_object)
     push!(la.scene, plot_object)
+    if haskey(plot_object, :Axis)
+        topscene = la.scene
+        # TODO, we have to figure out which attributes are still set to the defaults,
+        # to be able to decide which we can set from the plot type...
+        default_attrs = default_attributes(Axis, topscene).attributes
+        theme_attrs = subtheme(topscene, :Axis)
+        attrs = merge!(copy(theme_attrs), default_attrs)
+        for (k, v) in plot_object.Axis
+            if !haskey(attrs, k)
+                error("$(k) is not an Axis attribute. Check recipe implementation for $(FinalType)")
+            end
+            default = to_value(attrs[k])
+            current = to_value(la.attributes[k])
+            if default == current
+                setproperty!(la, k, to_value(v))
+            end
+        end
+    end
     # some area-like plots basically always look better if they cover the whole plot area.
     # adjust the limit margins in those cases automatically.
     needs_tight_limits(plot_object) && tightlimits!(la)

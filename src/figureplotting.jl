@@ -50,13 +50,6 @@ function get_axis_type(p::PlotFunc, args...)
     isnothing(result) && return Axis
     return result ? LScene : Axis
 end
-# get_axis_type(::Type{<: Union{Surface, Volume, Mesh}}, args...) = LScene
-# get_axis_type(::PlotFunc, ::AbstractVector, y::AbstractVector, z::AbstractVector) = LScene
-# get_axis_type(::PlotFunc, ::AbstractVector{<: Point3}) = LScene
-# get_axis_type(::PlotFunc, m::Mesh) = is2d(Rect(m)) ? Axis : LScene
-# get_axis_type(::PlotFunc, m::AbstractGeometry) = is2d(Rect(m)) ? Axis : LScene
-# get_axis_type(::Type{<: Mesh}, m::AbstractGeometry) = is2d(Rect(m)) ? Axis : LScene
-# get_axis_type(p::PlotFunc, m::AbstractObservable) = get_axis_type(p, m[])
 
 function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), kw_attributes...)
     # scene_attributes = extract_scene_attributes!(attributes)
