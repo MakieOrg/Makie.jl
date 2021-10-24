@@ -20,6 +20,8 @@ using GridLayoutBase
 using GridLayoutBase: GridSubposition
 import Showoff
 using Colors
+using Markdown: Markdown
+using InteractiveUtils: InteractiveUtils
 
 const FPS = Observable(30)
 const COLOR_ACCENT = Ref(RGBf(((79, 122, 214) ./ 255)...))

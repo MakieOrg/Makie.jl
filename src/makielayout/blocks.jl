@@ -1,5 +1,11 @@
 abstract type Block end
 
+function is_attribute end
+function default_attribute_values end
+function _attribute_docs end
+function has_forwarded_layout end
+
+
 macro Block(name::Symbol, body::Expr = Expr(:block))
 
     if !(body.head == :block)
@@ -88,6 +94,42 @@ function make_attr_dict_expr(::Nothing, sceneattrsym, curthemesym)
     :(Dict())
 end
 
+function _argument_string(@nospecialize meth::Method)
+    s = string(meth)
+    r = Regex("^initialize_block!\\((.*?)\\)")
+    args = match(r, s)[1]
+    args_split = split(args, ",", limit = 2)
+    return if length(args_split) == 1
+        ""
+    else
+        strip(args_split[2])
+    end
+end
+
+function Docs.getdoc(@nospecialize T::Type{<:Block})
+
+    ks = sort(collect(keys(default_attribute_values(T, nothing))))
+
+    methods = InteractiveUtils.methodswith(T, initialize_block!)
+    methodstrings = map(methods) do m
+        as = _argument_string(m)
+        """```julia
+        $T(fig_scene_or_gridpos, $as)
+        ```"""
+    end
+
+    s = """
+    `$T` is a `Block`.
+    It has the following methods defined:
+
+    $(join(methodstrings, "\n"))
+
+    `$T` has the following attributes:
+    $(join([string('`', k, '`') for k in ks], ", "))
+    """
+    Markdown.parse(s)
+end
+
 function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
 
     pairs = map(attrs) do a
@@ -145,8 +187,30 @@ function extract_attributes!(body)
     macroexpr = splice!(body.args, i)
     attrs_block = macroexpr.args[3]
 
+    layout_related_attribute_block = quote
+        "The horizontal alignment of the block in its suggested bounding box."
+        halign = :center
+        "The vertical alignment of the block in its suggested bounding box."
+        valign = :center
+        "The width setting of the block."
+        width = Auto()
+        "The height setting of the block."
+        height = Auto()
+        "Controls if the parent layout can adjust to this block's width"
+        tellwidth::Bool = true
+        "Controls if the parent layout can adjust to this block's height"
+        tellheight::Bool = true
+        "The align mode of the block in its parent GridLayout."
+        alignmode = Inside()
+    end
+    layout_related_attributes = filter(
+        x -> !(x isa LineNumberNode),
+        layout_related_attribute_block.args
+    )
+
     args = filter(x -> !(x isa LineNumberNode), attrs_block.args)
-    attrs = map(args) do arg
+
+    function extract_attr(arg)
         has_docs = arg isa Expr && arg.head == :macrocall && arg.args[1] isa GlobalRef
 
         if has_docs
@@ -175,6 +239,19 @@ function extract_attributes!(body)
         
         (docs = docs, symbol = attr_symbol, type = type, default = default)
     end
+
+    attrs = map(extract_attr, args)
+
+    lras = map(extract_attr, layout_related_attributes)
+        
+    for lra in lras
+        i = findfirst(x -> x.symbol == lra.symbol, attrs)
+        if i === nothing
+            push!(attrs, extract_attr(lra))
+        end
+    end
+
+    attrs
 end
 
 # intercept all block constructors and divert to _block(T, ...)
