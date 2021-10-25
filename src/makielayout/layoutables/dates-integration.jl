@@ -18,7 +18,7 @@ struct DateTimeTicks
     # Second entry in tuple is a value we use to normalize the number range,
     # so that they fit into float32
     type::Observable{Tuple{Any, Int64}}
-    DateTimeTicks(type=Time) = new(Observable{Tuple{Any, Int64}}((type, 0)))
+    DateTimeTicks(type=nothing) = new(Observable{Tuple{Any, Int64}}((type, 0)))
 end
 
 ticks_from_type(::Type{<: Dates.TimeType}) = DateTimeTicks()
@@ -26,7 +26,7 @@ ticks_from_type(::Type{<: Dates.TimeType}) = DateTimeTicks()
 function convert_axis_dim(ticks::DateTimeTicks, values::Observable, limits::Observable)
     eltype = get_element_type(values[])
     T, mini = ticks.type[]
-    new_type = promote_type(T, eltype)
+    new_type = isnothing(T) ? eltype : promote_type(T, eltype)
     if new_type == Dates.AbstractTime
         error("Can't promote time types $(T) with $(eltype). Please use a time that can be converted to $(T)")
     end
@@ -38,8 +38,10 @@ end
 
 function MakieLayout.get_ticks(ticks::DateTimeTicks, scale, formatter, vmin, vmax)
     T, mini = ticks.type[]
+    isnothing(T) && return ([], [])
+
     if T <: DateTime
-        ticks, dates = PlotUtils.optimize_datetime_ticks(vmin + mini, vmax + mini; k_min = 2, k_max = 4)
+        ticks, dates = PlotUtils.optimize_datetime_ticks(Float64(vmin) + mini, Float64(vmax) + mini; k_min = 2, k_max = 3)
         return ticks .- mini, dates
     else
         tickvalues = MakieLayout.get_tickvalues(formatter, scale, vmin, vmax)
