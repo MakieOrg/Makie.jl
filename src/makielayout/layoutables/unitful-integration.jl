@@ -95,7 +95,7 @@ function best_unit(min, max)
         raw_value = abs(ustrip(uconvert(to_free_unit(unit, middle), middle)))
         # We want the unit that displays the value with the smallest number possible, but not something like 1.0e-19
         # So, for fractions between 0..1, we use inv to penalize really small fractions
-        positive = raw_value < 1.0 ? inv(raw_value) : raw_value
+        positive = raw_value < 1.0 ? (inv(raw_value) + 100) : raw_value
         # I think values are easiest to read between 0-100, so we want values close to 50
         return abs(positive - 50)
     end
