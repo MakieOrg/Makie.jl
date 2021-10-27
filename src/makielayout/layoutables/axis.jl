@@ -639,7 +639,6 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
     end
 end
 
-
 function convert_axis_dim(::Automatic, values::Observable, limits::Observable)
     eltype = get_element_type(values[])
     ticks = ticks_from_type(eltype)
@@ -680,11 +679,15 @@ end
 
 label_postfix(ticks) = ""
 
+connect!(ax, ticks_obs, ticks) = nothing
+
 function axis_convert(FinalType, ax::Axis, x::Observable, y::Observable)
-    xlimits = map(limits-> first.(extrema(limits)), ax.finallimits)
     xticks = ax.xticks[]
     xticks_new = ticks_from_args(xticks, x[])
-    xticks !== xticks_new && (ax.xticks = xticks_new)
+    if xticks !== xticks_new
+        ax.xticks = xticks_new
+        connect!(ax, ax.xticks, xticks_new)
+    end
     if ax.xlabelpostfix[] isa Automatic
         postfix = label_postfix(xticks_new)
         ax.xlabelpostfix[] = to_value(postfix)
@@ -694,12 +697,15 @@ function axis_convert(FinalType, ax::Axis, x::Observable, y::Observable)
             end
         end
     end
-    xconv = convert_axis_dim(xticks_new, x, xlimits)
+    xconv = convert_axis_dim(xticks_new, x, ax.finallimits)
 
-    ylimits = map(limits-> last.(extrema(limits)), ax.finallimits)
     yticks = ax.yticks[]
     yticks_new = ticks_from_args(yticks, y[])
     yticks !== yticks_new && (ax.yticks = yticks_new)
+    if yticks !== yticks_new
+        ax.yticks = yticks_new
+        connect!(ax, ax.yticks, yticks_new)
+    end
     if ax.ylabelpostfix[] isa Automatic
         postfix = label_postfix(yticks_new)
         ax.ylabelpostfix[] = to_value(postfix)
@@ -709,9 +715,22 @@ function axis_convert(FinalType, ax::Axis, x::Observable, y::Observable)
             end
         end
     end
-    yconv = convert_axis_dim(yticks_new, y, ylimits)
+    yconv = convert_axis_dim(yticks_new, y, ax.finallimits)
 
     return Makie.seperate_tuple(map((x, y)-> try_convert_arguments(FinalType, x, y), xconv, yconv))
+end
+
+
+# This is such a hack ...  We really need to clean up the conversion pipeline
+# But, we really want to convert arguments before we apply axis conversions, so that
+# convert_arguments can return units etc...
+# Now, we DON'T want to convert things to points though, since axis conversions
+# are applied to x and y values separately... This is why we need this beautiful function:
+function convert_arguments_no_points(P, args...; kw...)
+    if Makie.conversion_trait(P) isa Makie.PointBased && length(args) == 2 && all(x-> x isa AbstractVector, args)
+        return args
+    end
+    return try_convert_arguments(P, args...; kw...)
 end
 
 function try_convert_arguments(P, args...; kw...)
@@ -726,34 +745,46 @@ function try_convert_arguments(P, args...; kw...)
     end
 end
 
-function Makie.plot!(la::Axis, P::Makie.PlotFunc,
-                     allattrs::Makie.Attributes, args...)
 
-    cycle = get_cycle_for_plottype(allattrs, P)
-    add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
-    FinalType, attributes, input_nodes, converted_node = Makie.convert_plot_arguments(P, allattrs, args, try_convert_arguments)
-    converted_args = axis_convert(FinalType, la, Makie.seperate_tuple(converted_node)...)
-    plot_object = FinalType(la.scene, copy(attributes), input_nodes, converted_args)
-    plot!(plot_object)
-    push!(la.scene, plot_object)
-    if haskey(plot_object, :Axis)
-        topscene = la.scene
+"""
+    apply_axis_attributes!(ax::Axis, plot)
+
+If plot has Axis attribute, applies them to the axis, as long as they're not already set by the user.
+This allows recipes to change axis defaults!
+"""
+function apply_axis_attributes!(ax::Axis, plot)
+    if haskey(plot, :Axis)
+        topscene = ax.scene
         # TODO, we have to figure out which attributes are still set to the defaults,
         # to be able to decide which we can set from the plot type...
         default_attrs = default_attributes(Axis, topscene).attributes
         theme_attrs = subtheme(topscene, :Axis)
         attrs = merge!(copy(theme_attrs), default_attrs)
-        for (k, v) in plot_object.Axis
+        for (k, v) in plot.Axis
             if !haskey(attrs, k)
                 error("$(k) is not an Axis attribute. Check recipe implementation for $(FinalType)")
             end
             default = to_value(attrs[k])
-            current = to_value(la.attributes[k])
+            current = to_value(ax.attributes[k])
             if default == current
-                setproperty!(la, k, to_value(v))
+                setproperty!(ax, k, to_value(v))
             end
         end
     end
+end
+
+function Makie.plot!(la::Axis, P::Makie.PlotFunc,
+                     allattrs::Makie.Attributes, args...)
+    cycle = get_cycle_for_plottype(allattrs, P)
+    add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
+
+    FinalType, attributes, input_nodes, converted_node = Makie.convert_plot_arguments(P, allattrs, args, convert_arguments_no_points)
+    tupled = Makie.seperate_tuple(converted_node)
+    converted_args = axis_convert(FinalType, la, tupled...)
+    plot_object = FinalType(la.scene, copy(attributes), input_nodes, converted_args)
+    plot!(plot_object)
+    push!(la.scene, plot_object)
+    apply_axis_attributes!(la, plot_object)
     # some area-like plots basically always look better if they cover the whole plot area.
     # adjust the limit margins in those cases automatically.
     needs_tight_limits(plot_object) && tightlimits!(la)
@@ -773,26 +804,6 @@ function needs_tight_limits(c::Contourf)
     # we know that all values are included and the contourf is rectangular
     c.levels[] isa Int
     # otherwise here it could be in an arbitrary shape
-end
-
-function bboxunion(bb1, bb2)
-
-    o1 = bb1.origin
-    o2 = bb2.origin
-    e1 = bb1.origin + bb1.widths
-    e2 = bb2.origin + bb2.widths
-
-    o = min.(o1, o2)
-    e = max.(e1, e2)
-
-    BBox(o[1], e[1], o[2], e[2])
-end
-
-function expandbboxwithfractionalmargins(bb, margins)
-    newwidths = bb.widths .* (1f0 .+ margins)
-    diffs = newwidths .- bb.widths
-    neworigin = bb.origin .- (0.5f0 .* diffs)
-    Rect2f(neworigin, newwidths)
 end
 
 function limitunion(lims1, lims2)

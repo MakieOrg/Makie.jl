@@ -10,5 +10,7 @@ scatter(time_range, 1:10)
 scatter(date_range, 1:10)
 scatter(date_time_range, 1:10)
 
+
 date_time_range = range(date_time, step=Second(5), length=10)
 scatter(date_time_range, 1:10)
+scatter!(time_range, 1:10)

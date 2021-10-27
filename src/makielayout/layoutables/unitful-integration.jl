@@ -35,7 +35,7 @@ function eltype_extrema(values)
     return new_eltype, (new_min, new_max)
 end
 
-function new_unit(unit, values, existing_limits)
+function new_unit(unit, values)
     new_eltype, extrema = eltype_extrema(values)
     # empty vector case:
     isnothing(extrema) && return nothing
@@ -44,12 +44,6 @@ function new_unit(unit, values, existing_limits)
 
         qmin = Quantity(new_min)
         qmax = Quantity(new_max)
-        if unit isa Unitful.Units
-            # limits are in preferred units when `unit` is already set to a Quantity unit
-            # In that case, we can update the limits with the new range:
-            qmin = min(qmin, existing_limits[1] * upreferred(unit))
-            qmax = min(qmax, existing_limits[2] * upreferred(unit))
-        end
         return best_unit(qmin, qmax)
     end
 
@@ -70,7 +64,6 @@ function to_free_unit(unit::Unitful.Unit{Sym, Dim}) where {Sym, Dim}
     return Unitful.FreeUnits{(unit,), Dim, nothing}()
 end
 
-
 get_all_base10_units(value) = get_all_base10_units(base_unit(value))
 
 function get_all_base10_units(value::Unitful.Unit{Sym, Unitful.𝐋}) where {Sym}
@@ -79,6 +72,7 @@ end
 
 function get_all_base10_units(value::Unitful.Unit)
     # TODO, why does nothing work in a generic way in Unitful!?
+    # By only returning this one value, we simply don't chose any different unit as a fallback
     return [value]
 end
 
@@ -108,6 +102,7 @@ function unit_convert(unit::T, x::AbstractArray) where T <: Union{Type{<:Unitful
     return unit_convert.((unit,), x)
 end
 
+# We always convert to preferred unit!
 function unit_convert(unit::T, value) where T <: Union{Type{<:Unitful.AbstractQuantity}, Unitful.FreeUnits, Unitful.Unit}
     conv = uconvert(to_free_unit(unit, value), value)
     return Float64(ustrip(Unitful.upreferred(conv)))
@@ -130,21 +125,33 @@ convert_to_preferred(::Nothing, value) = value
 convert_to_preferred(unit, value) = ustrip(upreferred(to_free_unit(unit) * value))
 
 # Overload conversion functions for Axis, to properly display units
+
+
+"""
+    UnitfulTicks(unit=automatic; units_in_label=false, short_label=false, ticks=Makie.automatic)
+
+* `unit`: sets the unit as conversion target. If left at automatic, the best unit will be chosen for all plots + values plotted to the axis (e.g. years for long periods, or km for long distances, or nanoseconds for short times).
+* `units_in_label`: controls, whether plots are shown in the label_prefix of the axis labels, or in the tick labels
+* `short_label`: uses short or long label in axis label (when appended to ticks, short form is always used)
+* `ticks`: per default, Makie.automatic ticks are used (Which fallback to Wilkinson ticks). One can pass Another algorithm here explicitely (e.g. `WilkinsonTicks(3; k_min=2)`, `LinearTicks` etc)
+"""
 struct UnitfulTicks
-    unit
+    unit::Observable{Any}
+    automatic_units::Bool
     tickformatter
     units_in_label::Observable{Bool}
     short_label::Observable{Bool}
 end
 
-function UnitfulTicks(ticks=Makie.automatic; units_in_label=false, short_label=false)
-    return UnitfulTicks(Observable{Any}(nothing), ticks, Observable(units_in_label), Observable(short_label))
+function UnitfulTicks(unit=automatic; units_in_label=false, short_label=false, ticks=Makie.automatic)
+    automatic = unit isa Automatic
+    return UnitfulTicks(unit, automatic, ticks, units_in_label, short_label)
 end
 
 function label_postfix(ticks::UnitfulTicks)
     return map(ticks.unit, ticks.units_in_label, ticks.short_label) do unit, in_label, short
         in_label || return ""
-        isnothing(unit) && return ""
+        unit <: Automatic && return ""
         unit_str = short ? unit_string(unit) : unit_string_long(unit)
         return string(" in ", unit_str)
     end
@@ -152,26 +159,27 @@ end
 
 function MakieLayout.get_ticks(ticks::UnitfulTicks, scale, formatter, vmin, vmax)
     unit = ticks.unit[]
+    unit isa Automatic && return [], []
+
     vmin_tu = convert_from_preferred_striped(unit, vmin)
     vmax_tu = convert_from_preferred_striped(unit, vmax)
     unit_str = unit_string(unit)
     tick_vals = MakieLayout.get_tickvalues(ticks.tickformatter, scale, vmin_tu, vmax_tu)
     tick_vals_preferred = convert_to_preferred.((unit,), tick_vals)
-    if isnothing(unit)
-        return tick_vals_preferred, MakieLayout.get_ticklabels(formatter, tick_vals)
-    else
-        labels = MakieLayout.get_ticklabels(formatter, tick_vals)
-        if !ticks.units_in_label[]
-            labels = labels .* unit_str
-        end
-        return tick_vals_preferred, labels
+
+    labels = MakieLayout.get_ticklabels(formatter, tick_vals)
+    if !ticks.units_in_label[]
+        labels = labels .* unit_str
     end
+    return tick_vals_preferred, labels
 end
 
 ticks_from_type(::Type{<: Union{Period, Unitful.Quantity, Unitful.Units}}) = UnitfulTicks()
 
 function convert_axis_dim(ticks::UnitfulTicks, values::Observable, limits::Observable)
-    unit = new_unit(ticks.unit[], values[], limits[])
-    ticks.unit[] = unit
+    if ticks.unit[] isa Automatic || ticks.automatic_units
+        unit = new_unit(ticks.unit[], values[])
+        ticks.unit[] = unit
+    end
     return map(unit_convert, ticks.unit, values)
 end
