@@ -178,7 +178,7 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
         try
             r.callback(r.rectnode[])
         catch e
-            @warn "error in rectangle zoom" exception=e
+            @warn "error in rectangle zoom" exception=CapturedException(e, Base.catch_backtrace())
         end
         r.active[] = false
         return Consume(true)

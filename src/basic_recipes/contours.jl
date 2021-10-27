@@ -90,7 +90,7 @@ conversion_trait(::Type{<: Contour{<: Tuple{<: AbstractArray{T, 3}}}}) where T =
 function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     x, y, z, volume = plot[1:4]
     @extract plot (colormap, levels, linewidth, alpha)
-    valuerange = lift(nan_extrema, volume)
+    valuerange = lift(x->Vec2f(nan_extrema(x)), volume)
     cliprange = replace_automatic!(plot, :colorrange) do
         valuerange
     end
@@ -162,7 +162,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         plot[:linewidth] = map(x-> x ./ 10f0, plot[:linewidth])
         heatmap!(plot, Attributes(plot), x, y, z)
     else
-        zrange = lift(nan_extrema, z)
+        zrange = lift(x-> Vec2f(nan_extrema(x)), z)
         levels = lift(plot[:levels], zrange) do levels, zrange
             if levels isa AbstractVector{<: Number}
                 return levels
@@ -173,7 +173,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
             end
         end
         replace_automatic!(plot, :colorrange) do
-            lift(nan_extrema, levels)
+            lift(x-> Vec2f(nan_extrema(x)), levels)
         end
         args = @extract plot (color, colormap, colorrange, alpha)
         level_colors = lift(color_per_level, args..., levels)

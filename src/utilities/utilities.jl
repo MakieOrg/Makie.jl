@@ -68,7 +68,7 @@ function nan_extrema(array)
         mini = min(mini, elem)
         maxi = max(maxi, elem)
     end
-    Vec2f(mini, maxi)
+    return (mini, maxi)
 end
 
 function extract_expr(extract_func, dictlike, args)

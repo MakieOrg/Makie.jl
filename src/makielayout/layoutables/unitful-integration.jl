@@ -118,8 +118,12 @@ convert_from_preferred(::Nothing, value) = value
 function convert_from_preferred(unit, value)
     uf = to_free_unit(unit)
     unitful = upreferred(uf) * value
-    in_target_unit = uconvert(uf, unitful)
-    return Float64(ustrip(in_target_unit))
+    return uconvert(uf, unitful)
+end
+
+function convert_from_preferred_striped(unit, value)
+    unitful = convert_from_preferred(unit, value)
+    return Float64(ustrip(unitful))
 end
 
 convert_to_preferred(::Nothing, value) = value
@@ -148,8 +152,8 @@ end
 
 function MakieLayout.get_ticks(ticks::UnitfulTicks, scale, formatter, vmin, vmax)
     unit = ticks.unit[]
-    vmin_tu = convert_from_preferred(unit, vmin)
-    vmax_tu = convert_from_preferred(unit, vmax)
+    vmin_tu = convert_from_preferred_striped(unit, vmin)
+    vmax_tu = convert_from_preferred_striped(unit, vmax)
     unit_str = unit_string(unit)
     tick_vals = MakieLayout.get_tickvalues(ticks.tickformatter, scale, vmin_tu, vmax_tu)
     tick_vals_preferred = convert_to_preferred.((unit,), tick_vals)
