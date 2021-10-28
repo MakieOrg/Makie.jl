@@ -35,6 +35,7 @@ $(ATTRIBUTES)
 
         bar_labels = nothing,
         flip_labels_at = Inf,
+        label_rotation = 0π,
         label_color = theme(scene, :textcolor),
         color_over_background = automatic,
         color_over_bar = automatic,
@@ -254,6 +255,6 @@ function Makie.plot!(p::BarPlot)
         inspectable = p.inspectable
     )
     if !isnothing(p.bar_labels[])
-        text!(p, labels; align=label_aligns, offset=label_offsets, color=label_colors, font=p.label_font, textsize=p.label_size)
+        text!(p, labels; align=label_aligns, offset=label_offsets, color=label_colors, font=p.label_font, textsize=p.label_size, rotation=p.label_rotation)
     end
 end
