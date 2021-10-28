@@ -126,14 +126,30 @@ convert_to_preferred(unit, value) = ustrip(upreferred(to_free_unit(unit) * value
 
 # Overload conversion functions for Axis, to properly display units
 
-
 """
     UnitfulTicks(unit=automatic; units_in_label=false, short_label=false, ticks=Makie.automatic)
 
-* `unit`: sets the unit as conversion target. If left at automatic, the best unit will be chosen for all plots + values plotted to the axis (e.g. years for long periods, or km for long distances, or nanoseconds for short times).
-* `units_in_label`: controls, whether plots are shown in the label_prefix of the axis labels, or in the tick labels
-* `short_label`: uses short or long label in axis label (when appended to ticks, short form is always used)
-* `ticks`: per default, Makie.automatic ticks are used (Which fallback to Wilkinson ticks). One can pass Another algorithm here explicitely (e.g. `WilkinsonTicks(3; k_min=2)`, `LinearTicks` etc)
+Allows to plot arrays of unitful objects into an axis.
+
+# Arguments
+
+- `unit=automatic`: sets the unit as conversion target. If left at automatic, the best unit will be chosen for all plots + values plotted to the axis (e.g. years for long periods, or km for long distances, or nanoseconds for short times).
+- `units_in_label=false`: controls, whether plots are shown in the label_prefix of the axis labels, or in the tick labels
+- `short_label=false`: uses short or long label in axis label (when appended to ticks, short form is always used)
+- `ticks=automatic`: per default, Makie.automatic ticks are used (Which fallback to [`WilkinsonTicks`](@ref)). One can pass Another algorithm here explicitely (e.g. `WilkinsonTicks(3; k_min=2)`, [`LinearTicks`](@ref) etc)
+
+# Examples
+
+```julia
+using Unitful, CairoMakie
+
+# UnitfulTicks will get chosen automatically:
+scatter(1:4, [1u"ns", 2u"ns", 3u"ns", 4u"ns"])
+
+# fix unit to always use Meter & display unit in the xlabel postfix
+yticks = UnitfulTicks(u"m"; units_in_label=true)
+scatter(1:4, [0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"]; axis=(yticks=yticks,))
+```
 """
 struct UnitfulTicks
     unit::Observable{Any}

@@ -14,3 +14,9 @@ scatter(date_time_range, 1:10)
 date_time_range = range(date_time, step=Second(5), length=10)
 scatter(date_time_range, 1:10)
 scatter!(time_range, 1:10)
+
+
+using Unitful
+
+yticks = MakieLayout.DateTimeTicks(Time)
+scatter(1:4, (1:4) .* u"s", axis=(yticks=yticks,))

@@ -26,10 +26,26 @@ Creates ticks & conversions for Date, DateTime and Time. For other time units on
 
 For DateTimes `PlotUtils.optimize_datetime_ticks` is used for getting the ticks, otherwise `WilkinsonTicks` are used on the integer representation of the date.
 
-* `type`: when left at automatic, the first plot into the axis will determine the type. Otherwise, one can set this to `Time`, `Date`, or `DateTime`.
-* `k_min`: gets passed to `PlotUtils.optimize_datetime_ticks` for DateTimes, and otherwise to `WilkinsonTicks`.
-* `k_max`: gets passed to `PlotUtils.optimize_datetime_ticks` for DateTimes, and otherwise to `WilkinsonTicks`.
-* `k_ideal`: will be ignored for DateTime, and passed to `WilkinsonTicks` for Time / Date.
+# Arguments
+
+- `type=automatic`: when left at automatic, the first plot into the axis will determine the type. Otherwise, one can set this to `Time`, `Date`, or `DateTime`.
+- `k_min=automatic`: gets passed to `PlotUtils.optimize_datetime_ticks` for DateTimes, and otherwise to `WilkinsonTicks`.
+- `k_max=automatic`: gets passed to `PlotUtils.optimize_datetime_ticks` for DateTimes, and otherwise to `WilkinsonTicks`.
+- `k_ideal=automatic`: will be ignored for DateTime, and passed to `WilkinsonTicks` for Time / Date.
+
+# Examples
+
+```julia
+date_time = DateTime("2021-10-27T11:11:55.914")
+date_time_range = range(date_time, step=Week(5), length=10)
+# Automatically chose xticks as DateTeimeTicks:
+scatter(date_time_range, 1:10)
+
+# explicitely chose DateTimeTicks and use it to plot unitful values into it and display in the `Time` format:
+using Unitful
+yticks = DateTimeTicks(Time)
+scatter(1:4, (1:4) .* u"s", axis=(yticks=yticks,))
+```
 """
 struct DateTimeTicks
     # first element in tuple is the time type we converted from, which can be:

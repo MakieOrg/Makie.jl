@@ -4,6 +4,23 @@ Categorical ticks. Gets chosen automatically only for Strings right now.
 The categories work with any sortable value though, so one can always do `Axis(fig; xticks=CategoricalTicks())`,
 to use it for other categories.
 One can use `CategoricalTicks(sortby=func)`, to change the sorting, or make unsortable objects sortable.
+
+# Examples
+
+```julia
+# Ticks get chosen automatically as categorical
+scatter(1:4, ["a", "b", "c", "a"])
+
+# Explicitely set them for other types:
+
+struct Test
+    value
+end
+
+xticks = CategoricalTicks(sortby=x->x.value)
+xtickformat = x-> string.(getfield.(x, :value)) .* " val"
+barplot(Test.([:a, :b, :c]), rand(3), axis=(xticks=xticks, xtickformat=xtickformat))
+```
 """
 struct CategoricalTicks
     sets::Dict{Observable, Set{Any}}
@@ -16,7 +33,7 @@ function CategoricalTicks(; sortby=identity)
     CategoricalTicks(Dict{Observable, Set{Any}}(), Observable(Dict{Any, Int}()), Pair{Int, Any}[], sortby)
 end
 
-function connect!(ax::Axis, ticks_obs::Observable, ticks::CategoricalTicks)
+function Observable.connect!(ax::Axis, ticks_obs::Observable, ticks::CategoricalTicks)
     on(ticks.category_to_int) do _
         notify(ticks_obs)
     end
