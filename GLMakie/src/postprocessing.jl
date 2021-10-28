@@ -38,7 +38,8 @@ function ssao_postprocessor(framebuffer)
         position_buffer = Texture(
             Vec4f, size(framebuffer), minfilter = :nearest, x_repeat = :clamp_to_edge
         )
-        attach_framebuffer(position_buffer, GL_COLOR_ATTACHMENT2)
+        pos_id = attach_framebuffer!(framebuffer, position_buffer)
+        push!(framebuffer.buffer_ids, :position => pos_id)
         push!(framebuffer.buffers, :position => position_buffer)
     end
     if !haskey(framebuffer.buffers, :normal)
@@ -46,16 +47,17 @@ function ssao_postprocessor(framebuffer)
         normal_occlusion_buffer = Texture(
             Vec4f, size(framebuffer), minfilter = :nearest, x_repeat = :clamp_to_edge
         )
-        attach_framebuffer(normal_occlusion_buffer, GL_COLOR_ATTACHMENT3)
+        normal_occ_id = attach_framebuffer!(framebuffer, normal_occlusion_buffer)
+        push!(framebuffer.buffer_ids, :normal_occlusion => normal_occ_id)
         push!(framebuffer.buffers, :normal_occlusion => normal_occlusion_buffer)
     end
 
     # Add buffers written in primary render (before postprocessing)
-    if !(GL_COLOR_ATTACHMENT2 in framebuffer.render_buffer_ids)
-        push!(framebuffer.render_buffer_ids, GL_COLOR_ATTACHMENT2)
+    if !(pos_id in framebuffer.render_buffer_ids)
+        push!(framebuffer.render_buffer_ids, pos_id)
     end
-    if !(GL_COLOR_ATTACHMENT3 in framebuffer.render_buffer_ids)
-        push!(framebuffer.render_buffer_ids, GL_COLOR_ATTACHMENT3)
+    if !(normal_occ_id in framebuffer.render_buffer_ids)
+        push!(framebuffer.render_buffer_ids, normal_occ_id)
     end
 
     # SSAO setup
@@ -111,14 +113,14 @@ function ssao_postprocessor(framebuffer)
     pass2.postrenderfunction = () -> draw_fullscreen(pass2.vertexarray.id)
 
 
-
+    color_id = framebuffer.buffer_ids[:color]
     full_render = screen -> begin
         fb = screen.framebuffer
         w, h = size(fb)
 
         # Setup rendering
         # SSAO - calculate occlusion
-        glDrawBuffer(GL_COLOR_ATTACHMENT3)  # occlusion buffer
+        glDrawBuffer(normal_occ_id)  # occlusion buffer
         glViewport(0, 0, w, h)
         # glClearColor(1, 1, 1, 1)            # 1 means no darkening
         # glClear(GL_COLOR_BUFFER_BIT)
@@ -143,7 +145,7 @@ function ssao_postprocessor(framebuffer)
 
 
         # SSAO - blur occlusion and apply to color
-        glDrawBuffer(GL_COLOR_ATTACHMENT0)  # color buffer
+        glDrawBuffer(color_id)  # color buffer
         for (screenid, scene) in screen.screens
             # Select the area of one leaf scene
             isempty(scene.children) || continue
@@ -170,11 +172,15 @@ Returns a PostProcessor that handles fxaa.
 function fxaa_postprocessor(framebuffer)
     # Add missing buffers
     if !haskey(framebuffer.buffers, :color_luma)
-        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[2])
+        # glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[2])
+        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
         color_luma_buffer = Texture(
             RGBA{N0f8}, size(framebuffer), minfilter=:linear, x_repeat=:clamp_to_edge
         )
-        attach_framebuffer(color_luma_buffer, GL_COLOR_ATTACHMENT0)
+        # attach_framebuffer(color_luma_buffer, GL_COLOR_ATTACHMENT0)
+        # push!(framebuffer.buffers, :color_luma => (GL_COLOR_ATTACHMENT0, color_luma_buffer))
+        luma_id = attach_framebuffer!(framebuffer, color_luma_buffer)
+        push!(framebuffer.buffer_ids, :color_luma => luma_id)
         push!(framebuffer.buffers, :color_luma => color_luma_buffer)
     end
 
@@ -201,13 +207,15 @@ function fxaa_postprocessor(framebuffer)
     pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing)
     pass2.postrenderfunction = () -> draw_fullscreen(pass2.vertexarray.id)
 
+    color_id = framebuffer.buffer_ids[:color]
     full_render = screen -> begin
         fb = screen.framebuffer
         w, h = size(fb)
 
         # FXAA - calculate LUMA
-        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[2])
-        glDrawBuffer(GL_COLOR_ATTACHMENT0)  # color_luma buffer
+        # glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[2])
+        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
+        glDrawBuffer(luma_id)  # color_luma buffer
         glViewport(0, 0, w, h)
         # necessary with negative SSAO bias...
         glClearColor(1, 1, 1, 1)
@@ -215,8 +223,8 @@ function fxaa_postprocessor(framebuffer)
         GLAbstraction.render(pass1)
 
         # FXAA - perform anti-aliasing
-        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
-        glDrawBuffer(GL_COLOR_ATTACHMENT0)  # color buffer
+        # glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
+        glDrawBuffer(color_id)  # color buffer
         # glViewport(0, 0, w, h) # not necessary
         GLAbstraction.render(pass2)
     end
