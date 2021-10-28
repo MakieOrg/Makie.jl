@@ -33,7 +33,7 @@ function CategoricalTicks(; sortby=identity)
     CategoricalTicks(Dict{Observable, Set{Any}}(), Observable(Dict{Any, Int}()), Pair{Int, Any}[], sortby)
 end
 
-function Observable.connect!(ax::Axis, ticks_obs::Observable, ticks::CategoricalTicks)
+function Observables.connect!(ax::Axis, ticks_obs::Observable, ticks::CategoricalTicks)
     on(ticks.category_to_int) do _
         notify(ticks_obs)
     end

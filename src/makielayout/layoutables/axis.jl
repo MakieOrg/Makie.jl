@@ -679,7 +679,7 @@ end
 
 label_postfix(ticks) = ""
 
-Observable.connect!(ax::Axis, ticks_obs::Observable, ticks) = nothing
+Observables.connect!(ax::Axis, ticks_obs::Observable, ticks) = nothing
 
 function axis_convert(FinalType, ax::Axis, x::Observable, y::Observable)
     xticks = ax.xticks[]
