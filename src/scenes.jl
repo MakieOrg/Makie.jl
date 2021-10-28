@@ -88,12 +88,13 @@ function Scene(;
         children::Vector{Scene} = Scene[],
         current_screens::Vector{AbstractScreen} = AbstractScreen[],
         parent = nothing,
-        backgroundcolor = Observable(RGBAf(1, 1, 1, 1)),
         visible = Observable(true),
         theme_kw...
     )
-    bg = map(to_color, convert(Observable, backgroundcolor))
     m_theme = current_default_theme(; theme..., theme_kw...)
+
+    bg = map(to_color, m_theme.backgroundcolor)
+
     wasnothing = isnothing(px_area)
     if wasnothing
         px_area = lift(m_theme.resolution) do res
