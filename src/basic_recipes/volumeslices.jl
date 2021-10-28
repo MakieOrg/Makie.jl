@@ -10,9 +10,10 @@ Draws heatmap slices of the volume v
 $(ATTRIBUTES)
 """
 @recipe(VolumeSlices, x, y, z, volume) do scene
-    Attributes(
-        colorrange = automatic,
-        heatmap = Attributes(),
+    Attributes(;
+        default_theme(scene, Heatmap)...,
+        bbox_visible = true,
+        bbox_color = RGBAf(0.5, 0.5, 0.5, 0.5)
     )
 end
 
@@ -21,27 +22,24 @@ function plot!(plot::VolumeSlices)
     replace_automatic!(plot, :colorrange) do
         map(extrema, volume)
     end
-    hattributes = plot[:heatmap]
-    hattributes[:colorrange] = plot[:colorrange][]
-    mx, Mx = extrema(x[])
-    my, My = extrema(y[])
-    mz, Mz = extrema(z[])
-    v = (  # vertices
-        (mx, my, mz), (Mx, my, mz), (mx, My, mz), (mx, my, Mz),
-        (Mx, My, mz), (Mx, my, Mz), (mx, My, Mz), (Mx, My, Mz)
-    )
-    s = [  # segments
-        v[1], v[2], v[1], v[3], v[1], v[4], v[2], v[5],
-        v[2], v[6], v[3], v[5], v[3], v[7], v[5], v[8],
-        v[4], v[6], v[4], v[7], v[6], v[8], v[7], v[8],
-    ]
-    # bounding box
-    col = RGBAf(.5, .5, .5, .5)
-    linesegments!(plot, getindex.(s, 1), getindex.(s, 2), getindex.(s, 3), color=col, inspectable = false)
+
+    # heatmap will fail if we don't keep its attributes clean
+    attr = copy(Attributes(plot))
+    bbox_color = pop!(attr, :bbox_color)
+    bbox_visible = pop!(attr, :bbox_visible)
+    pop!(attr, :model) # stops `transform!()` from working
+
+    bbox = map(x, y, z) do x, y, z
+        mx, Mx = extrema(x)
+        my, My = extrema(y)
+        mz, Mz = extrema(z)
+        Rect3D(mx, my, mz, Mx-mx, My-my, Mz-mz)
+    end
+    linesegments!(plot, bbox, color = bbox_color, visible = bbox_visible, inspectable = false)
 
     axes = :x, :y, :z
     for (ax, p, r, (X, Y)) ∈ zip(axes, (:yz, :xz, :xy), (x, y, z), ((y, z), (x, z), (x, y)))
-        hmap = heatmap!(plot, hattributes, X, Y, zeros(length(X[]), length(Y[])))
+        hmap = heatmap!(plot, attr, X, Y, zeros(length(X[]), length(Y[])))
         plot[Symbol(:update_, p)] = i -> begin
             transform!(hmap, (p, r[][i]))
             indices = ntuple(Val(3)) do j
@@ -49,6 +47,8 @@ function plot!(plot::VolumeSlices)
             end
             hmap[3][] = view(volume[], indices...)
         end
+        # Trigger once to place heatmaps correctly
+        plot[Symbol(:update_, p)][](1)
     end
     plot
 end
