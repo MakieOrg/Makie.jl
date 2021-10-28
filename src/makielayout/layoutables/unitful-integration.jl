@@ -160,14 +160,14 @@ struct UnitfulTicks
 end
 
 function UnitfulTicks(unit=automatic; units_in_label=false, short_label=false, ticks=Makie.automatic)
-    automatic = unit isa Automatic
-    return UnitfulTicks(unit, automatic, ticks, units_in_label, short_label)
+    is_automatic = unit isa Automatic
+    return UnitfulTicks(unit, is_automatic, ticks, units_in_label, short_label)
 end
 
 function label_postfix(ticks::UnitfulTicks)
     return map(ticks.unit, ticks.units_in_label, ticks.short_label) do unit, in_label, short
         in_label || return ""
-        unit <: Automatic && return ""
+        unit isa Automatic && return ""
         unit_str = short ? unit_string(unit) : unit_string_long(unit)
         return string(" in ", unit_str)
     end
