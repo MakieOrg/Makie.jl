@@ -23,17 +23,27 @@ barplot(Test.([:a, :b, :c]), rand(3), axis=(xticks=xticks, xtickformat=xtickform
 ```
 """
 struct CategoricalTicks
+    parent::Base.RefValue{Axis}
     sets::Dict{Observable, Set{Any}}
     category_to_int::Observable{Dict{Any, Int}}
     int_to_category::Vector{Pair{Int, Any}}
-    sortby::Function
+    sortby::Union{Nothing, Function}
 end
 
-function CategoricalTicks(; sortby=identity)
-    CategoricalTicks(Dict{Observable, Set{Any}}(), Observable(Dict{Any, Int}()), Pair{Int, Any}[], sortby)
+function CategoricalTicks(; sortby=nothing)
+    CategoricalTicks(
+        Base.RefValue{Axis}(),
+        Dict{Observable, Set{Any}}(),
+        Observable(Dict{Any, Int}()),
+        Pair{Int, Any}[],
+        sortby)
 end
 
 function Observables.connect!(ax::Axis, ticks_obs::Observable, ticks::CategoricalTicks)
+    if isassigned(ticks.parent)
+        error("Connecting tick object to multiple axes not supported yet! Please use a distinct object for each axis + x/y")
+    end
+    ticks.parent[] = ax
     on(ticks.category_to_int) do _
         notify(ticks_obs)
     end
@@ -44,7 +54,9 @@ function recalculate_categories!(ticks::CategoricalTicks)
     for set in values(ticks.sets)
         union!(all_categories, set)
     end
-    sort!(all_categories; by=ticks.sortby)
+    if !isnothing(ticks.sortby)
+        sort!(all_categories; by=ticks.sortby)
+    end
     empty!(ticks.category_to_int[])
     empty!(ticks.int_to_category)
     i2c = pairs(all_categories)
@@ -52,7 +64,7 @@ function recalculate_categories!(ticks::CategoricalTicks)
     merge!(ticks.category_to_int[], Dict(reverse(p) for p in i2c))
 end
 
-ticks_from_type(::Type{String}) = CategoricalTicks()
+ticks_from_type(::Type{String}) = CategoricalTicks(sortby=identity)
 
 function convert_axis_dim(ticks::CategoricalTicks, values_obs::Observable, limits::Observable)
     prev_values = Set{Any}()

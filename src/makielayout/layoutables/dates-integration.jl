@@ -48,6 +48,7 @@ scatter(1:4, (1:4) .* u"s", axis=(yticks=yticks,))
 ```
 """
 struct DateTimeTicks
+    parent::Base.RefValue{Axis}
     # first element in tuple is the time type we converted from, which can be:
     # Time, Date, DateTime
     # Second entry in tuple is a value we use to normalize the number range,
@@ -58,7 +59,7 @@ struct DateTimeTicks
     k_ideal::Union{Automatic, Int}
     function DateTimeTicks(type=Automatic; k_min=automatic, k_max=automatic, k_ideal=automatic)
         obs = Observable{Tuple{Any, Float64}}((type, 0))
-        return new(obs, k_min, k_max, k_ideal)
+        return new(Base.RefValue{Axis}(), obs, k_min, k_max, k_ideal)
     end
 end
 

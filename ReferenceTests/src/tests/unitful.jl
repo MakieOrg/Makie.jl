@@ -1,4 +1,4 @@
-using Dates, Unitful
+using Dates, Unitful, GLMakie
 
 f, ax, pl = scatter(rand(Second(1):Second(60):Second(20*60), 10), 1:10)
 scatter!(ax, rand(Hour(1):Hour(1):Hour(20), 10), 1:10)

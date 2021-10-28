@@ -152,6 +152,7 @@ scatter(1:4, [0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"]; axis=(yticks=yticks,)
 ```
 """
 struct UnitfulTicks
+    parent::Base.RefValue{Axis}
     unit::Observable{Any}
     automatic_units::Bool
     tickformatter
@@ -160,8 +161,7 @@ struct UnitfulTicks
 end
 
 function UnitfulTicks(unit=automatic; units_in_label=false, short_label=false, ticks=Makie.automatic)
-    is_automatic = unit isa Automatic
-    return UnitfulTicks(unit, is_automatic, ticks, units_in_label, short_label)
+    return UnitfulTicks(Base.RefValue{Axis}(), unit, unit isa Automatic, ticks, units_in_label, short_label)
 end
 
 function label_postfix(ticks::UnitfulTicks)

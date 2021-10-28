@@ -4,6 +4,16 @@ begin
     f, ax, p = scatter(1:4, ["a", "b", "c", "a"])
     scatter!(ax, 1:4, ["b", "x", "a", "c"])
     # scatter!(ax, 1:4, 1:4) # error
+    f
+end
+
+begin
+    # If we set the ticks explicitely, with sortby defaulting to nothing,
+    # we can combine all objects:
+    f, ax, p = scatter(1:4, ["a", "b", "c", "a"], axis=(yticks=MakieLayout.CategoricalTicks(),))
+    scatter!(ax, 1:4, 1:4)
+    scatter!(ax, 1:2, [1im, 2im])
+    f
 end
 
 begin
@@ -34,6 +44,7 @@ end
 struct Test
     value
 end
+
 begin
     f = Figure()
     xticks = MakieLayout.CategoricalTicks(sortby=x->x.value)

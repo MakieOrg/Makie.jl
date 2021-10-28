@@ -400,6 +400,9 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         mouseeventhandle, scrollevents, keysevents, interactions, Cycler())
     this_axis[] = ax
 
+    connect!(ax, xticks, xticks[])
+    connect!(ax, yticks, yticks[])
+
     function process_event(event)
         for (active, interaction) in values(ax.interactions)
             if active
@@ -679,7 +682,17 @@ end
 
 label_postfix(ticks) = ""
 
-Observables.connect!(ax::Axis, ticks_obs::Observable, ticks) = nothing
+function Observables.connect!(ax::Axis, ticks_obs::Observable, ticks)
+    # TODO, implement trait / inheritance, so we can dispatch on type instead of checking hasproperty
+    if hasproperty(ticks, :parent)
+        if isassigned(ticks.parent)
+            # TODO, we could at least implement disconnect and reconnect
+            error("Connecting tick object to multiple axes not supported yet! Please use a distinct object for each axis + x/y")
+        end
+        ticks.parent[] = ax
+    end
+    return
+end
 
 function axis_convert(FinalType, ax::Axis, x::Observable, y::Observable)
     xticks = ax.xticks[]
