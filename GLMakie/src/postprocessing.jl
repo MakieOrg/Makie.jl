@@ -69,25 +69,15 @@ function ssao_postprocessor(framebuffer)
         position_buffer = Texture(
             Vec4f, size(framebuffer), minfilter = :nearest, x_repeat = :clamp_to_edge
         )
-        pos_id = attach_framebuffer!(framebuffer, position_buffer)
-        push!(framebuffer.buffer_ids, :position => pos_id)
-        push!(framebuffer.buffers, :position => position_buffer)
+        pos_id = attach_colorbuffer!(framebuffer, :position, position_buffer)
+        push!(framebuffer.render_buffer_ids, pos_id)
     end
     if !haskey(framebuffer.buffers, :normal)
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
         normal_occlusion_buffer = Texture(
             Vec4f, size(framebuffer), minfilter = :nearest, x_repeat = :clamp_to_edge
         )
-        normal_occ_id = attach_framebuffer!(framebuffer, normal_occlusion_buffer)
-        push!(framebuffer.buffer_ids, :normal_occlusion => normal_occ_id)
-        push!(framebuffer.buffers, :normal_occlusion => normal_occlusion_buffer)
-    end
-
-    # Add buffers written in primary render (before postprocessing)
-    if !(pos_id in framebuffer.render_buffer_ids)
-        push!(framebuffer.render_buffer_ids, pos_id)
-    end
-    if !(normal_occ_id in framebuffer.render_buffer_ids)
+        normal_occ_id = attach_colorbuffer!(framebuffer, :normal_occlusion, normal_occlusion_buffer)
         push!(framebuffer.render_buffer_ids, normal_occ_id)
     end
 
@@ -210,9 +200,7 @@ function fxaa_postprocessor(framebuffer)
         )
         # attach_framebuffer(color_luma_buffer, GL_COLOR_ATTACHMENT0)
         # push!(framebuffer.buffers, :color_luma => (GL_COLOR_ATTACHMENT0, color_luma_buffer))
-        luma_id = attach_framebuffer!(framebuffer, color_luma_buffer)
-        push!(framebuffer.buffer_ids, :color_luma => luma_id)
-        push!(framebuffer.buffers, :color_luma => color_luma_buffer)
+        luma_id = attach_colorbuffer!(framebuffer, :color_luma, color_luma_buffer)
     end
 
     # calculate luma for FXAA

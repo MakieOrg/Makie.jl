@@ -27,7 +27,11 @@ function attach_framebuffer(t::Texture{T, 2}, attachment) where T
 end
 
 # attach texture as color attachment with automatic id picking
-function attach_framebuffer!(fb::GLFramebuffer, t::Texture{T, 2}) where T
+function attach_colorbuffer!(fb::GLFramebuffer, key::Symbol, t::Texture{T, 2}) where T
+    if haskey(fb.buffer_ids, key) || haskey(fb.buffers, key)
+        error("Key $key already exists.")
+    end
+
     max_color_id = GL_COLOR_ATTACHMENT0
     for id in values(fb.buffer_ids)
         if GL_COLOR_ATTACHMENT0 <= id <= GL_COLOR_ATTACHMENT15 && id > max_color_id
@@ -40,6 +44,8 @@ function attach_framebuffer!(fb::GLFramebuffer, t::Texture{T, 2}) where T
     end
 
     glFramebufferTexture2D(GL_FRAMEBUFFER, next_color_id, GL_TEXTURE_2D, t.id, 0)
+    push!(fb.buffer_ids, key => next_color_id)
+    push!(fb.buffers, key => t)
     return next_color_id
 end
 
