@@ -64,9 +64,19 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
         internalformat = GL_DEPTH24_STENCIL8,
         format = GL_DEPTH_STENCIL
     )
+    # Order Independent Transparency
+    HDR_color_buffer = Texture(
+        RGBA{Float16}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
+    )
+    OIT_weight_buffer = Texture(
+        N0f8, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
+    )
+    # opaque is color, depth is depth, tonemapped_luma is luma?
 
     attach_framebuffer(color_buffer, GL_COLOR_ATTACHMENT0)
     attach_framebuffer(objectid_buffer, GL_COLOR_ATTACHMENT1)
+    attach_framebuffer(HDR_color_buffer, GL_COLOR_ATTACHMENT2)
+    attach_framebuffer(OIT_weight_buffer, GL_COLOR_ATTACHMENT3)
     attach_framebuffer(depth_buffer, GL_DEPTH_ATTACHMENT)
     attach_framebuffer(depth_buffer, GL_STENCIL_ATTACHMENT)
 
@@ -81,12 +91,16 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     buffer_ids = Dict(
         :color    => GL_COLOR_ATTACHMENT0,
         :objectid => GL_COLOR_ATTACHMENT1,
+        :HDR_color => GL_COLOR_ATTACHMENT2,
+        :OIT_weight => GL_COLOR_ATTACHMENT3,
         :depth    => GL_DEPTH_ATTACHMENT,
-        :stencil  => GL_STENCIL_ATTACHMENT
+        :stencil  => GL_STENCIL_ATTACHMENT,
     )
     buffers = Dict(
         :color    => color_buffer,
         :objectid => objectid_buffer,
+        :HDR_color => HDR_color_buffer,
+        :OIT_weight => OIT_weight_buffer,
         :depth    => depth_buffer,
         :stencil  => depth_buffer
     )

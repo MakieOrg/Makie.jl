@@ -12,8 +12,11 @@ function _default(mesh::TOrSignal{M}, s::Style, data::Dict) where M <: GeometryB
         color_norm = nothing
         fetch_pixel = false
         uv_scale = Vec2f(1)
+        transparency = false
         shader = GLVisualizeShader(
-            "fragment_output.frag", "util.vert", "standard.vert", "standard.frag",
+            # transparency ? "transparent_fragment_output.frag" : "fragment_output.frag", 
+            "transparent_fragment_output.frag",
+            "util.vert", "standard.vert", "standard.frag",
             view = Dict("light_calc" => light_calc(shading))
         )
     end

@@ -30,6 +30,37 @@ function empty_postprocessor(args...; kwargs...)
 end
 
 
+function OIT_postprocessor(framebuffer)
+    # OIT setup
+    shader = LazyShader(
+        loadshader("postprocessing/fullscreen.vert"),
+        loadshader("postprocessing/OIT_blend.frag")
+    )
+    data = Dict{Symbol, Any}(
+        :opaque_color => framebuffer.buffers[:color],
+        :sum_color => framebuffer.buffers[:HDR_color],
+        :prod_alpha => framebuffer.buffers[:OIT_weight],
+    )
+    pass = RenderObject(data, shader, PostprocessPrerender(), nothing)
+    pass.postrenderfunction = () -> draw_fullscreen(pass.vertexarray.id)
+
+    color_id = framebuffer.buffer_ids[:color]
+    full_render = screen -> begin
+        fb = screen.framebuffer
+        w, h = size(fb)
+
+        # Blend transparent onto opaque
+        glDrawBuffer(color_id)
+        glViewport(0, 0, w, h)
+        glDisable(GL_STENCIL_TEST)
+        GLAbstraction.render(pass)
+    end
+
+    PostProcessor([pass], full_render)
+end
+
+
+
 
 function ssao_postprocessor(framebuffer)
     # Add missing buffers
