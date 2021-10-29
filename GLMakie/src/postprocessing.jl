@@ -37,14 +37,14 @@ function OIT_postprocessor(framebuffer)
         loadshader("postprocessing/OIT_blend.frag")
     )
     data = Dict{Symbol, Any}(
-        :opaque_color => framebuffer.buffers[:color],
-        :sum_color => framebuffer.buffers[:HDR_color],
-        :prod_alpha => framebuffer.buffers[:OIT_weight],
+        :opaque_color => framebuffer[:color][2],
+        :sum_color => framebuffer[:HDR_color][2],
+        :prod_alpha => framebuffer[:OIT_weight][2],
     )
     pass = RenderObject(data, shader, PostprocessPrerender(), nothing)
     pass.postrenderfunction = () -> draw_fullscreen(pass.vertexarray.id)
 
-    color_id = framebuffer.buffer_ids[:color]
+    color_id = framebuffer[:color][1]
     full_render = screen -> begin
         fb = screen.framebuffer
         w, h = size(fb)
@@ -64,19 +64,19 @@ end
 
 function ssao_postprocessor(framebuffer)
     # Add missing buffers
-    if !haskey(framebuffer.buffers, :position)
-        if !haskey(framebuffer.buffers, :HDR_color)
+    if !haskey(framebuffer, :position)
+        if !haskey(framebuffer, :HDR_color)
             glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
             position_buffer = Texture(
                 Vec4{Float16}, size(framebuffer), minfilter = :nearest, x_repeat = :clamp_to_edge
             )
             pos_id = attach_colorbuffer!(framebuffer, :position, position_buffer)
         else
-            pos_id = framebuffer.buffer_ids[:HDR_color]
+            pos_id = framebuffer[:HDR_color][1]
         end
         push!(framebuffer.render_buffer_ids, pos_id)
     end
-    if !haskey(framebuffer.buffers, :normal)
+    if !haskey(framebuffer, :normal)
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
         normal_occlusion_buffer = Texture(
             Vec4{Float16}, size(framebuffer), minfilter = :nearest, x_repeat = :clamp_to_edge
@@ -106,8 +106,8 @@ function ssao_postprocessor(framebuffer)
         )
     )
     data1 = Dict{Symbol, Any}(
-        :position_buffer => get(framebuffer.buffers, :position, framebuffer.buffers[:HDR_color]),
-        :normal_occlusion_buffer => framebuffer.buffers[:normal_occlusion],
+        :position_buffer => getfallback(framebuffer, :position, :HDR_color)[2],
+        :normal_occlusion_buffer => framebuffer[:normal_occlusion][2],
         :kernel => kernel,
         :noise => Texture(
             [normalize(Vec2f(2.0rand(2) .- 1.0)) for _ in 1:4, __ in 1:4],
@@ -128,9 +128,9 @@ function ssao_postprocessor(framebuffer)
         loadshader("postprocessing/SSAO_blur.frag")
     )
     data2 = Dict{Symbol, Any}(
-        :normal_occlusion => framebuffer.buffers[:normal_occlusion],
-        :color_texture => framebuffer.buffers[:color],
-        :ids => framebuffer.buffers[:objectid],
+        :normal_occlusion => framebuffer[:normal_occlusion][2],
+        :color_texture => framebuffer[:color][2],
+        :ids => framebuffer[:objectid][2],
         :inv_texel_size => lift(rcpframe, framebuffer.resolution),
         :blur_range => Observable(Int32(2))
     )
@@ -138,7 +138,7 @@ function ssao_postprocessor(framebuffer)
     pass2.postrenderfunction = () -> draw_fullscreen(pass2.vertexarray.id)
 
 
-    color_id = framebuffer.buffer_ids[:color]
+    color_id = framebuffer[:color][1]
     full_render = screen -> begin
         fb = screen.framebuffer
         w, h = size(fb)
@@ -196,14 +196,11 @@ Returns a PostProcessor that handles fxaa.
 """
 function fxaa_postprocessor(framebuffer)
     # Add missing buffers
-    if !haskey(framebuffer.buffers, :color_luma)
-        # glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[2])
+    if !haskey(framebuffer, :color_luma)
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
         color_luma_buffer = Texture(
             RGBA{N0f8}, size(framebuffer), minfilter=:linear, x_repeat=:clamp_to_edge
         )
-        # attach_framebuffer(color_luma_buffer, GL_COLOR_ATTACHMENT0)
-        # push!(framebuffer.buffers, :color_luma => (GL_COLOR_ATTACHMENT0, color_luma_buffer))
         luma_id = attach_colorbuffer!(framebuffer, :color_luma, color_luma_buffer)
     end
 
@@ -213,7 +210,7 @@ function fxaa_postprocessor(framebuffer)
         loadshader("postprocessing/postprocess.frag")
     )
     data1 = Dict{Symbol, Any}(
-        :color_texture => framebuffer.buffers[:color]
+        :color_texture => framebuffer[:color][2]
     )
     pass1 = RenderObject(data1, shader1, PostprocessPrerender(), nothing)
     pass1.postrenderfunction = () -> draw_fullscreen(pass1.vertexarray.id)
@@ -224,13 +221,13 @@ function fxaa_postprocessor(framebuffer)
         loadshader("postprocessing/fxaa.frag")
     )
     data2 = Dict{Symbol, Any}(
-        :color_texture => framebuffer.buffers[:color_luma],
+        :color_texture => framebuffer[:color_luma][2],
         :RCPFrame => lift(rcpframe, framebuffer.resolution),
     )
     pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing)
     pass2.postrenderfunction = () -> draw_fullscreen(pass2.vertexarray.id)
 
-    color_id = framebuffer.buffer_ids[:color]
+    color_id = framebuffer[:color][1]
     full_render = screen -> begin
         fb = screen.framebuffer
         w, h = size(fb)
@@ -269,7 +266,7 @@ function to_screen_postprocessor(framebuffer)
         loadshader("postprocessing/copy.frag")
     )
     data = Dict{Symbol, Any}(
-        :color_texture => framebuffer.buffers[:color]
+        :color_texture => framebuffer[:color][2]
     )
     pass = RenderObject(data, shader, PostprocessPrerender(), nothing)
     pass.postrenderfunction = () -> draw_fullscreen(pass.vertexarray.id)

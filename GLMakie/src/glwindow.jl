@@ -20,6 +20,12 @@ end
 
 # it's guaranteed, that they all have the same size
 Base.size(fb::GLFramebuffer) = size(fb.buffers[:color])
+Base.haskey(fb::GLFramebuffer, key::Symbol) = haskey(fb.buffers, key)
+Base.getindex(fb::GLFramebuffer, key::Symbol) = fb.buffer_ids[key] => fb.buffers[key]
+
+function getfallback(fb::GLFramebuffer, key::Symbol, fallback_key::Symbol)
+    haskey(fb, key) ? fb[key] : fb[fallback_key]
+end
 
 
 function attach_framebuffer(t::Texture{T, 2}, attachment) where T
