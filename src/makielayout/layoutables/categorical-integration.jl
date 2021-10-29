@@ -41,7 +41,7 @@ end
 
 function Observables.connect!(ax::Axis, ticks_obs::Observable, ticks::CategoricalTicks)
     if isassigned(ticks.parent)
-        error("Connecting tick object to multiple axes not supported yet! Please use a distinct object for each axis + x/y")
+        @warn("Connecting tick object to multiple axes results in shared state! If not desired, use a distinct object for each axis")
     end
     ticks.parent[] = ax
     on(ticks.category_to_int) do _
