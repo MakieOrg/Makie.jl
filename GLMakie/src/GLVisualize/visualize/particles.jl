@@ -107,11 +107,12 @@ function meshparticle(p, s, data)
         backlight = 0f0
         transparency = false
         shader = GLVisualizeShader(
-            transparency[] ? "transparent_fragment_output.frag" : "fragment_output.frag", 
-            "util.vert", "particles.vert", "standard.frag",
+            "util.vert", "particles.vert", "standard.frag", "fragment_output.frag", 
             view = Dict(
                 "position_calc" => position_calc(position, position_x, position_y, position_z, TextureBuffer),
-                "light_calc" => light_calc(shading)
+                "light_calc" => light_calc(shading),
+                "buffers" => output_buffers(to_value(transparency)),
+                "buffer_writes" => output_buffer_writes(to_value(transparency))
             )
         )
     end
@@ -142,10 +143,17 @@ function _default(position::VectorTypes{T}, s::style"speed", data::Dict) where T
     @gen_defaults! data begin
         vertex       = position => GLBuffer
         color_map    = nothing  => Texture
-        color        = (color_map == nothing ? default(RGBA{Float32}, s) : nothing) => GLBuffer
+        color        = (color_map === nothing ? default(RGBA{Float32}, s) : nothing) => GLBuffer
         color_norm   = nothing
         scale        = 2f0
-        shader       = GLVisualizeShader("fragment_output.frag", "dots.vert", "dots.frag")
+        transparency = false
+        shader       = GLVisualizeShader(
+            "fragment_output.frag", "dots.vert", "dots.frag",
+            view = Dict(
+                "buffers" => output_buffers(to_value(transparency)),
+                "buffer_writes" => output_buffer_writes(to_value(transparency))
+            )
+        )
         gl_primitive = GL_POINTS
     end
     data[:prerender] = PointSizeRender(data[:scale])
@@ -311,10 +319,15 @@ function sprites(p, s, data)
         # rotation and billboard don't go along
         billboard        = rotation == Vec4f(0,0,0,1) => "if `billboard` == true, particles will always face camera"
         fxaa             = false
+        transparency     = false
         shader           = GLVisualizeShader(
             "fragment_output.frag", "util.vert", "sprites.geom",
             "sprites.vert", "distance_shape.frag",
-            view = Dict("position_calc"=>position_calc(position, position_x, position_y, position_z, GLBuffer))
+            view = Dict(
+                "position_calc" => position_calc(position, position_x, position_y, position_z, GLBuffer),
+                "buffers" => output_buffers(to_value(transparency)),
+                "buffer_writes" => output_buffer_writes(to_value(transparency))
+            )
         )
         scale_primitive = true
         gl_primitive = GL_POINTS

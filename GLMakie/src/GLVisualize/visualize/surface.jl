@@ -104,6 +104,7 @@ function surface(main, s::Style{:surface}, data::Dict)
 
         uv_scale = Vec2f(1)
         instances = const_lift(x->(size(x,1)-1) * (size(x,2)-1), main) => "number of planes used to render the surface"
+        transparency = false
         shader = GLVisualizeShader(
             "fragment_output.frag", "util.vert", "surface.vert",
             "standard.frag",
@@ -111,6 +112,8 @@ function surface(main, s::Style{:surface}, data::Dict)
                 "position_calc" => position_calc(position, position_x, position_y, position_z, Texture),
                 "normal_calc" => normal_calc(normal, to_value(invert_normals)),
                 "light_calc" => light_calc(shading),
+                "buffers" => output_buffers(to_value(transparency)),
+                "buffer_writess" => output_buffer_writess(to_value(transparency))
             )
         )
     end
