@@ -39,7 +39,7 @@ function CategoricalTicks(; sortby=nothing)
         sortby)
 end
 
-function Observables.connect!(ax::Axis, ticks_obs::Observable, ticks::CategoricalTicks)
+function Observables.connect!(ax::Axis, ticks_obs::Observable, ticks::CategoricalTicks, dim)
     if isassigned(ticks.parent)
         @warn("Connecting tick object to multiple axes results in shared state! If not desired, use a distinct object for each axis")
     end
@@ -66,7 +66,7 @@ end
 
 ticks_from_type(::Type{String}) = CategoricalTicks(sortby=identity)
 
-function convert_axis_dim(ticks::CategoricalTicks, values_obs::Observable, limits::Observable)
+function convert_axis_dim(ticks::CategoricalTicks, values_obs::Observable)
     prev_values = Set{Any}()
     # This is a bit tricky...
     # We need to recalculate the categories on each values_obs update,

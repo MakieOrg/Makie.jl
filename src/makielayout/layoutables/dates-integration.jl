@@ -65,19 +65,23 @@ end
 
 ticks_from_type(::Type{<: Dates.TimeType}) = DateTimeTicks()
 
-function convert_axis_dim(ticks::DateTimeTicks, values::Observable, limits)
+function convert_axis_dim(ticks::DateTimeTicks, values::Observable)
     eltype = get_element_type(values[])
     T, mini = ticks.type[]
-    new_type = T <: Automatic ? eltype : T
+    if T <: Automatic
+        new_type = eltype
+        init_vals = date_to_number.(T, values[])
+        # TODO update minimum in connect! on limit change!
+        ticks.type[] = (new_type, Makie.nan_extrema(init_vals)[1])
+    elseif T != eltype
+        if !(T <: Time && eltype <: Unitful.Quantity)
+            error("Plotting unit $(eltype) into axis with type $(T) not supported.")
+        end
+    end
 
-    init_vals = date_to_number.(T, values[])
-
-    ticks.type[] = (new_type, Makie.nan_extrema(init_vals)[1])
-
-    converted = map(values, ticks.type) do vals, (T, mini)
+    return map(values, ticks.type) do vals, (T, mini)
         return date_to_number.(T, vals) .- mini
     end
-    return converted
 end
 
 function MakieLayout.get_ticks(ticks::DateTimeTicks, scale, formatter, vmin, vmax)
@@ -95,7 +99,6 @@ function MakieLayout.get_ticks(ticks::DateTimeTicks, scale, formatter, vmin, vma
     T <: Automatic && return [], []
 
     if T <: DateTime
-
         k_min = ticks.k_min isa Automatic ? 2 : ticks.k_min
         k_max = ticks.k_max isa Automatic ? 3 : ticks.k_max
         ticks, dates = PlotUtils.optimize_datetime_ticks(

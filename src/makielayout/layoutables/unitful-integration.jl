@@ -96,7 +96,7 @@ function best_unit(min, max)
     return all_units[index]
 end
 
-unit_convert(::Nothing, x) = x
+unit_convert(::Automatic, x) = x
 
 function unit_convert(unit::T, x::AbstractArray) where T <: Union{Type{<:Unitful.AbstractQuantity}, Unitful.FreeUnits, Unitful.Unit}
     return unit_convert.((unit,), x)
@@ -108,7 +108,7 @@ function unit_convert(unit::T, value) where T <: Union{Type{<:Unitful.AbstractQu
     return Float64(ustrip(Unitful.upreferred(conv)))
 end
 
-convert_from_preferred(::Nothing, value) = value
+convert_from_preferred(::Automatic, value) = value
 
 function convert_from_preferred(unit, value)
     uf = to_free_unit(unit)
@@ -121,7 +121,7 @@ function convert_from_preferred_striped(unit, value)
     return Float64(ustrip(unitful))
 end
 
-convert_to_preferred(::Nothing, value) = value
+convert_to_preferred(::Automatic, value) = value
 convert_to_preferred(unit, value) = ustrip(upreferred(to_free_unit(unit) * value))
 
 # Overload conversion functions for Axis, to properly display units
@@ -164,6 +164,26 @@ function UnitfulTicks(unit=automatic; units_in_label=false, short_label=false, t
     return UnitfulTicks(Base.RefValue{Axis}(), unit, unit isa Automatic, ticks, units_in_label, short_label)
 end
 
+function Observables.connect!(ax::Axis, ticks_obs::Observable, ticks::UnitfulTicks, dim)
+    if isassigned(ticks.parent)
+        @warn("Connecting tick object to multiple axes results in shared state! If not desired, use a distinct object for each axis")
+    end
+    ticks.parent[] = ax
+    if ticks.automatic_units
+        on(ax.finallimits) do limits
+            unit = ticks.unit[]
+            if !(unit isa Automatic)
+                mini, maxi = getindex.(extrema(limits), dim)
+                t(v) = upreferred(to_free_unit(unit)) * v
+                new_unit = best_unit(t(mini), t(maxi))
+                ticks.unit[] = new_unit
+                # Make sure ticks get rerendered
+                notify(ticks_obs)
+            end
+        end
+    end
+end
+
 function label_postfix(ticks::UnitfulTicks)
     return map(ticks.unit, ticks.units_in_label, ticks.short_label) do unit, in_label, short
         in_label || return ""
@@ -192,8 +212,8 @@ end
 
 ticks_from_type(::Type{<: Union{Period, Unitful.Quantity, Unitful.Units}}) = UnitfulTicks()
 
-function convert_axis_dim(ticks::UnitfulTicks, values::Observable, limits::Observable)
-    if ticks.unit[] isa Automatic || ticks.automatic_units
+function convert_axis_dim(ticks::UnitfulTicks, values::Observable)
+    if ticks.unit[] isa Automatic
         unit = new_unit(ticks.unit[], values[])
         ticks.unit[] = unit
     end

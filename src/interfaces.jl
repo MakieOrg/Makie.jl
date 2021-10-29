@@ -153,15 +153,20 @@ function apply_convert!(P, attributes::Attributes, x::PlotSpec{S}) where S
     return (plottype(P, S), args)
 end
 
-function seperate_tuple(args::Observable{<: NTuple{N, Any}}) where N
-    ntuple(N) do i
-        lift(args) do x
+function seperate_tuple(args_obs::Observable; typed=false)
+    args = args_obs[]
+    @assert args isa Tuple
+    N = length(args)
+    return ntuple(N) do i
+        obs = typed ? Observable(args_obs[][i]) : Observable{Any}()
+        map!(obs, args_obs) do x
             if i <= length(x)
                 x[i]
             else
                 error("You changed the number of arguments. This isn't allowed!")
             end
         end
+        return obs
     end
 end
 
@@ -302,8 +307,8 @@ function convert_plot_arguments(P::PlotFunc, attributes::Attributes, args, conve
     # apply_conversion deals with that!
 
     FinalType, argsconverted = apply_convert!(PreType, attributes, converted)
-    converted_node = Observable(argsconverted)
-    input_nodes =  convert.(Observable, args)
+    converted_node = Observable{Any}(argsconverted)
+    input_nodes =  convert.(Observable{Any}, args)
     onany(kw_signal, input_nodes...) do kwargs, args...
         # do the argument conversion inside a lift
         result = convert_func(FinalType, args...; kwargs...)

@@ -400,8 +400,8 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         mouseeventhandle, scrollevents, keysevents, interactions, Cycler())
     this_axis[] = ax
 
-    connect!(ax, xticks, xticks[])
-    connect!(ax, yticks, yticks[])
+    connect!(ax, xticks, xticks[], 1)
+    connect!(ax, yticks, yticks[], 2)
 
     function process_event(event)
         for (active, interaction) in values(ax.interactions)
@@ -642,25 +642,18 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
     end
 end
 
-function convert_axis_dim(::Automatic, values::Observable, limits::Observable)
+function convert_axis_dim(::Automatic, values::Observable)
     eltype = get_element_type(values[])
     ticks = ticks_from_type(eltype)
     if ticks isa Automatic
         return values
     else
-        return convert_axis_dim(ticks, values, limits)
+        return convert_axis_dim(ticks, values)
     end
 end
 
-convert_axis_dim(ticks, values, limits) = values
+convert_axis_dim(ticks, values) = values
 
-# single arguments gets ignored for now
-# TODO: add similar overloads as convert_arguments for the most common ones that work with units
-axis_convert(P, ::Axis, x::Observable) = (x,)
-# we leave Z + n alone for now!
-function axis_convert(P, ax::Axis, x::Observable, y::Observable, z::Observable, args...)
-    return (axis_convert(P, ax, x, y)..., z, args...)
-end
 
 ticks_from_type(::Type{<: Number}) = automatic
 ticks_from_type(any) = automatic
@@ -682,7 +675,7 @@ end
 
 label_postfix(ticks) = ""
 
-function Observables.connect!(ax::Axis, ticks_obs::Observable, ticks)
+function Observables.connect!(ax::Axis, ticks_obs::Observable, ticks, dim)
     # TODO, implement trait / inheritance, so we can dispatch on type instead of checking hasproperty
     if hasproperty(ticks, :parent)
         if isassigned(ticks.parent)
@@ -695,12 +688,22 @@ function Observables.connect!(ax::Axis, ticks_obs::Observable, ticks)
     return
 end
 
+
+# single arguments gets ignored for now
+# TODO: add similar overloads as convert_arguments for the most common ones that work with units
+axis_convert(P, ::Axis, x::Observable) = (x,)
+
+# we leave Z + n alone for now!
+function axis_convert(P, ax::Axis, x::Observable, y::Observable, z::Observable, args...)
+    return (axis_convert(P, ax, x, y)..., z, args...)
+end
+
 function axis_convert(FinalType, ax::Axis, x::Observable, y::Observable)
     xticks = ax.xticks[]
     xticks_new = ticks_from_args(xticks, x[])
     if xticks !== xticks_new
         ax.xticks = xticks_new
-        connect!(ax, ax.xticks, xticks_new)
+        connect!(ax, ax.xticks, xticks_new, 1)
     end
     if ax.xlabelpostfix[] isa Automatic
         postfix = label_postfix(xticks_new)
@@ -711,14 +714,14 @@ function axis_convert(FinalType, ax::Axis, x::Observable, y::Observable)
             end
         end
     end
-    xconv = convert_axis_dim(xticks_new, x, ax.finallimits)
+    xconv = convert_axis_dim(xticks_new, x)
 
     yticks = ax.yticks[]
     yticks_new = ticks_from_args(yticks, y[])
     yticks !== yticks_new && (ax.yticks = yticks_new)
     if yticks !== yticks_new
         ax.yticks = yticks_new
-        connect!(ax, ax.yticks, yticks_new)
+        connect!(ax, ax.yticks, yticks_new, 2)
     end
     if ax.ylabelpostfix[] isa Automatic
         postfix = label_postfix(yticks_new)
@@ -729,11 +732,10 @@ function axis_convert(FinalType, ax::Axis, x::Observable, y::Observable)
             end
         end
     end
-    yconv = convert_axis_dim(yticks_new, y, ax.finallimits)
-
-    return Makie.seperate_tuple(map((x, y)-> try_convert_arguments(FinalType, x, y), xconv, yconv))
+    yconv = convert_axis_dim(yticks_new, y)
+    tuple = map((x, y)-> try_convert_arguments(FinalType, x, y), xconv, yconv)
+    return Makie.seperate_tuple(tuple, typed=true)
 end
-
 
 # This is such a hack ...  We really need to clean up the conversion pipeline
 # But, we really want to convert arguments before we apply axis conversions, so that
@@ -758,7 +760,6 @@ function try_convert_arguments(P, args...; kw...)
         end
     end
 end
-
 
 """
     apply_axis_attributes!(ax::Axis, plot)
@@ -787,6 +788,8 @@ function apply_axis_attributes!(ax::Axis, plot)
     end
 end
 
+to_typed(x::Observable) = convert(Observable{typeof(x[])}, x) # should not create a new observable if already typed
+
 function Makie.plot!(la::Axis, P::Makie.PlotFunc,
                      allattrs::Makie.Attributes, args...)
     cycle = get_cycle_for_plottype(allattrs, P)
@@ -795,7 +798,7 @@ function Makie.plot!(la::Axis, P::Makie.PlotFunc,
     FinalType, attributes, input_nodes, converted_node = Makie.convert_plot_arguments(P, allattrs, args, convert_arguments_no_points)
     tupled = Makie.seperate_tuple(converted_node)
     converted_args = axis_convert(FinalType, la, tupled...)
-    plot_object = FinalType(la.scene, copy(attributes), input_nodes, converted_args)
+    plot_object = FinalType(la.scene, copy(attributes), input_nodes, to_typed.(converted_args))
     plot!(plot_object)
     push!(la.scene, plot_object)
     apply_axis_attributes!(la, plot_object)

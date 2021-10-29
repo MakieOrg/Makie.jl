@@ -82,6 +82,9 @@ function load_database()
     include(joinpath(@__DIR__, "tests/examples2d.jl"))
     include(joinpath(@__DIR__, "tests/examples3d.jl"))
     include(joinpath(@__DIR__, "tests/short_tests.jl"))
+    include(joinpath(@__DIR__, "tests/unitful.jl"))
+    include(joinpath(@__DIR__, "tests/dates.jl"))
+    include(joinpath(@__DIR__, "tests/categorical.jl"))
     return DATABASE
 end
 
