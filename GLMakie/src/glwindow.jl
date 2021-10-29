@@ -83,7 +83,6 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     OIT_weight_buffer = Texture(
         N0f8, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
     )
-    # opaque is color, depth is depth, tonemapped_luma is luma?
 
     attach_framebuffer(color_buffer, GL_COLOR_ATTACHMENT0)
     attach_framebuffer(objectid_buffer, GL_COLOR_ATTACHMENT1)

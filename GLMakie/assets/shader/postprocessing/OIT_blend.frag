@@ -1,5 +1,6 @@
 {{GLSL_VERSION}}
 
+// Based on https://jcgt.org/published/0002/02/09/
 // See https://github.com/JuliaPlots/Makie.jl/issues/1390
 
 in vec2 frag_uv;

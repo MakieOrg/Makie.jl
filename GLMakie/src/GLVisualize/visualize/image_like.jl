@@ -101,8 +101,8 @@ function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: VolumeE
         model = Mat4f(I)
         modelinv = const_lift(inv, model)
         color_map = default(Vector{RGBA}, s) => Texture
-        color_norm = color_map == nothing ? nothing : const_lift(extrema2f0, main)
-        color = color_map == nothing ? default(RGBA, s) : nothing
+        color_norm = color_map === nothing ? nothing : const_lift(extrema2f0, main)
+        color = color_map === nothing ? default(RGBA, s) : nothing
 
         algorithm = MaximumIntensityProjection
         absorption = 1f0

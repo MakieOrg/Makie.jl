@@ -31,6 +31,7 @@ end
 
 
 function OIT_postprocessor(framebuffer)
+    # Based on https://jcgt.org/published/0002/02/09/, see #1390
     # OIT setup
     shader = LazyShader(
         loadshader("postprocessing/fullscreen.vert"),
