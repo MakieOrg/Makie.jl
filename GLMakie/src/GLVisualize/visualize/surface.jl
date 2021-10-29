@@ -113,7 +113,7 @@ function surface(main, s::Style{:surface}, data::Dict)
                 "normal_calc" => normal_calc(normal, to_value(invert_normals)),
                 "light_calc" => light_calc(shading),
                 "buffers" => output_buffers(to_value(transparency)),
-                "buffer_writess" => output_buffer_writess(to_value(transparency))
+                "buffer_writes" => output_buffer_writes(to_value(transparency))
             )
         )
     end
