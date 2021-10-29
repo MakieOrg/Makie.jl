@@ -120,7 +120,7 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
     halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
 
-    sceneheight = Node(20.0)
+    sceneheight = Observable(20.0)
 
     # the direction is auto-chosen as up if there is too little space below and if the space below
     # is smaller than above
@@ -146,7 +146,7 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
     end
 
 
-    scene = Scene(topscene, scenearea, raw = true, camera = campixel!)
+    scene = Scene(topscene, scenearea, camera = campixel!)
     translate!(scene, 0, 0, 21)
 
     contentgrid = GridLayout(
@@ -222,7 +222,7 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
         markersize = dropdown_arrow_size,
         color = dropdown_arrow_color,
         strokecolor = :transparent,
-        raw = true, inspectable = false)
+        inspectable = false)
     translate!(dropdown_arrow, 0, 0, 1)
 
 
@@ -337,6 +337,14 @@ function _reassemble_menu(
             textsize = textsize, color = textcolor,
             padding = textpadding, visible = is_open
         )
+
+        # translate dropdown elements in the foreground 
+        for p in values(allrects[i+1].elements)
+            translate!(p, Vec3f(0, 0, 4))
+        end
+        for p in values(alltexts[i+1].elements)
+            translate!(p, Vec3f(0, 0, 4))
+        end
     end
 
 
@@ -346,8 +354,13 @@ function _reassemble_menu(
     rowgap!(contentgrid, 0)
 
     resize!(mouseeventhandles, length(alltexts))
-    map!(mouseeventhandles, allrects) do r
-        addmouseevents!(scene, r.layoutobservables.computedbbox, priority=Int8(60))
+    map!(mouseeventhandles, eachindex(allrects), allrects) do i, r
+        # Use base priority for [Menu   v] and high priority for the dropdown 
+        # elements that may overlap with out interactive layoutables.
+        addmouseevents!(
+            scene, r.layoutobservables.computedbbox, 
+            priority = Int8(1) + (i != 1) * Int8(60)
+        )
     end
 
     # create mouse events for each menu entry rect / text combo

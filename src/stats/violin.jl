@@ -6,7 +6,8 @@ Draw a violin plot.
 - `y`: variables whose density is computed
 # Keywords
 - `orientation=:vertical`: orientation of the violins (`:vertical` or `:horizontal`)
-- `width=0.8`: width of the violin
+- `width=1`: width of the box before shrinking
+- `gap=0.2`: shrinking factor, `width -> width * (1 - gap)`
 - `show_median=true`: show median as midline
 - `side=:both`: specify `:left` or `:right` to only plot the violin on one side
 - `datalimits`: specify values to trim the `violin`. Can be a `Tuple` or a `Function` (e.g. `datalimits=extrema`)
@@ -21,7 +22,7 @@ Draw a violin plot.
         width = automatic,
         dodge = automatic,
         n_dodge = automatic,
-        x_gap = 0.2,
+        gap = 0.2,
         dodge_gap = 0.03,
         datalimits = (-Inf, Inf),
         max_density = automatic,
@@ -46,9 +47,9 @@ end
 function plot!(plot::Violin)
     x, y = plot[1], plot[2]
     args = @extract plot (width, side, color, show_median, npoints, boundary, bandwidth,
-        datalimits, max_density, dodge, n_dodge, x_gap, dodge_gap)
-    signals = lift(x, y, args...) do x, y, width, vside, color, show_median, n, bound, bw, limits, max_density, dodge, n_dodge, x_gap, dodge_gap
-        x̂, violinwidth = xw_from_dodge(x, width, 1, x_gap, dodge, n_dodge, dodge_gap)
+        datalimits, max_density, dodge, n_dodge, gap, dodge_gap)
+    signals = lift(x, y, args...) do x, y, width, vside, color, show_median, n, bound, bw, limits, max_density, dodge, n_dodge, gap, dodge_gap
+        x̂, violinwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
 
         # Allow `side` to be either scalar or vector
         sides = broadcast(x̂, vside) do _, s

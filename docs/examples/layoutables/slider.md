@@ -35,9 +35,19 @@ limits!(ax, 0, 10, 0, 10)
 fig
 ```
 \end{examplefigure}
-## Labelled slider convenience functions
 
-To create a horizontal layout containing a label, a slider, and a value label, use the convenience function \apilink{Makie.MakieLayout.labelslider!}, or, if you need multiple aligned rows of sliders, use \apilink{Makie.MakieLayout.labelslidergrid!}.
+
+## Labelled sliders and grids
+
+To create a horizontal layout containing a label, a slider, and a value label, use the convenience function \apilink{labelslider!}.
+
+If you need multiple aligned rows of sliders, use \apilink{labelslidergrid!}.
+
+The column with the value labels is automatically set to a fixed width, so that the layout doesn't jitter when sliders are dragged and the value labels change their widths.
+This width is chosen by setting each slider to a few values and recording the maximum label width.
+Alternatively, you can set the width manually with the keyword argument `value_column_width`.
+
+You can pass either format functions or format strings as used by `Formatting.format`.
 
 \begin{examplefigure}{}
 ```julia
@@ -51,7 +61,7 @@ lsgrid = labelslidergrid!(
     fig,
     ["Voltage", "Current", "Resistance"],
     [0:0.1:10, 0:0.1:20, 0:0.1:30];
-    formats = [x -> "$(round(x, digits = 1))$s" for s in ["V", "A", "Ω"]],
+    formats = "{:.1f}" .* ["V", "A", "Ω"],
     width = 350,
     tellheight = false)
 

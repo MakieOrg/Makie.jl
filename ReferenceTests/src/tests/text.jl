@@ -30,7 +30,7 @@ end
 end
 
 @cell "single_strings_single_positions" begin
-    scene = Scene(camera = campixel!, show_axis = false, resolution = (800, 800))
+    scene = Scene(camera = campixel!, resolution = (800, 800))
 
     points = [Point(x, y) .* 200 for x in 1:3 for y in 1:3]
     scatter!(scene, points, marker = :circle, markersize = 10px)
@@ -53,7 +53,7 @@ end
 
 
 @cell "multi_strings_multi_positions" begin
-    scene = Scene(camera = campixel!, show_axis = false, resolution = (800, 800))
+    scene = Scene(camera = campixel!, resolution = (800, 800))
 
     angles = (-pi/6, 0.0, pi/6)
     points = [Point(x, y) .* 200 for x in 1:3 for y in 1:3 for angle in angles]
@@ -78,7 +78,7 @@ end
 end
 
 @cell "single_strings_single_positions_justification" begin
-    scene = Scene(camera = campixel!, show_axis = false, resolution = (800, 800))
+    scene = Scene(camera = campixel!, resolution = (800, 800))
 
     points = [Point(x, y) .* 200 for x in 1:3 for y in 1:3]
     scatter!(scene, points, marker = :circle, markersize = 10px)
@@ -111,7 +111,7 @@ end
 end
 
 @cell "multi_boundingboxes" begin
-    scene = Scene(camera = campixel!, show_axis = false, resolution = (800, 800))
+    scene = Scene(camera = campixel!, resolution = (800, 800))
 
     t1 = text!(scene,
         fill("makie", 4),
@@ -139,7 +139,7 @@ end
 end
 
 @cell "single_boundingboxes" begin
-    scene = Scene(camera = campixel!, show_axis = false, resolution = (800, 800))
+    scene = Scene(camera = campixel!, resolution = (800, 800))
 
     for a in pi/4:pi/2:7pi/4
 
@@ -183,7 +183,7 @@ end
 end
 
 @cell "empty_lines" begin
-    scene = Scene(camera = campixel!, show_axis = false, resolution = (800, 800))
+    scene = Scene(camera = campixel!, resolution = (800, 800))
 
     t1 = text!(scene, "Line1\nLine 2\n\nLine4",
         position = (200, 400), align = (:center, :center), space = :data)
@@ -233,7 +233,7 @@ end
     text!("ABC", space = :data, offset = (10, 0), color = (:green, 0.3), align = (:left, :baseline))
     text!("ABC", space = :data, offset = (20, 10), color = (:blue, 0.3), align = (:left, :baseline))
 
-    LScene(f[2, 2], scenekw = (show_axis = false,))
+    LScene(f[2, 2], show_axis=false)
     scatter!(Point3f[(0, 0, 0), (2, 2, 2)])
     text!("hello", position = Point3f(1, 1, 1), offset = (10, 10))
 
@@ -269,7 +269,6 @@ end
         L"\sqrt{2}",
         position = (50, 50),
         rotation = pi/2,
-        show_axis = false,
         space = :data)
     s
 end
@@ -280,7 +279,6 @@ end
         L"\int_0^5x^2+2ab",
         position = Point2f(50, 50),
         rotation = 0.0,
-        show_axis = false,
         space = :data)
     wireframe!(s, boundingbox(t))
     s
@@ -289,14 +287,13 @@ end
 @cell "latex updates" begin
     s = Scene(camera = campixel!)
     st = Stepper(s)
-    textnode = Node([L"\int_0^5x^2+2ab", L"\int_0^5x^2+2ab"])
-    posnode = Node(Point2f[(50, 50), (100, 100)])
+    textnode = Observable([L"\int_0^5x^2+2ab", L"\int_0^5x^2+2ab"])
+    posnode = Observable(Point2f[(50, 50), (100, 100)])
 
     t = text!(s,
         textnode,
         position = posnode,
         rotation = 0.0,
-        show_axis = false,
         space = :data)
 
     Makie.step!(st)
@@ -310,14 +307,13 @@ end
 @cell "update annotation style" begin
     s = Scene(camera = campixel!)
     st = Stepper(s)
-    textposnode = Node([
+    textposnode = Observable([
         (L"\int_0^5x^2+2ab", Point2f(50, 50)),
         (L"\int_0^5x^2+2ab", Point2f(100, 100)),
     ])
 
     t = text!(s,
         textposnode,
-        show_axis = false,
         space = :data)
 
     Makie.step!(st)

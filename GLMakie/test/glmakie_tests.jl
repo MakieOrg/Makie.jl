@@ -10,7 +10,7 @@ using ReferenceTests.RNG
 # A test case for wide lines and mitering at joints
 @cell "Miter Joints for line rendering" begin
     scene = Scene()
-
+    cam2d!(scene)
     r = 4
     sep = 4*r
     scatter!(scene, (sep+2*r)*[-1,-1,1,1], (sep+2*r)*[-1,1,-1,1])
@@ -26,13 +26,14 @@ using ReferenceTests.RNG
             lines!(scene, x .+ sep*i, y .+ sep*j, color=:red)
         end
     end
+    center!(scene)
     scene
 end
 
 @cell "Sampler type" begin
     # Directly access texture parameters:
     x = Sampler(fill(to_color(:yellow), 100, 100), minfilter=:nearest)
-    scene = image(x, show_axis=false)
+    scene = image(x)
     # indexing will go straight to the GPU, while only transfering the changes
     st = Stepper(scene)
     x[1:10, 1:50] .= to_color(:red)
@@ -43,15 +44,15 @@ end
     Makie.step!(st)
     st
 end
+
 # Test for resizing of TextureBuffer
 @cell "Dynamically adjusting number of particles in a meshscatter" begin
+    pos = Observable(RNG.rand(Point3f, 2))
+    rot = Observable(RNG.rand(Vec3f, 2))
+    color = Observable(RNG.rand(RGBf, 2))
+    size = Observable(0.1*RNG.rand(2))
 
-    pos = Node(RNG.rand(Point3f, 2))
-    rot = Node(RNG.rand(Vec3f, 2))
-    color = Node(RNG.rand(RGBf, 2))
-    size = Node(0.1*RNG.rand(2))
-
-    makenew = Node(1)
+    makenew = Observable(1)
     on(makenew) do i
         pos[] = RNG.rand(Point3f, i)
         rot[] = RNG.rand(Vec3f, i)
@@ -59,14 +60,13 @@ end
         size[] = 0.1*RNG.rand(i)
     end
 
-    scene = meshscatter(pos,
+    fig, ax, p = meshscatter(pos,
         rotations=rot,
         color=color,
         markersize=size,
         limits=Rect3f(Point3(0), Point3(1))
     )
-
-    Record(scene, [10, 5, 100, 60, 177]) do i
+    Record(fig, [10, 5, 100, 60, 177]) do i
         makenew[] = i
     end
 end
@@ -88,5 +88,19 @@ end
     buff = RNG.rand(Point3f, 10^4) .* 20f0;
     update_loop(meshplot, buff, screen)
     set_window_config!(renderloop=GLMakie.renderloop)
+    fig
+end
+
+@cell "Contour and isosurface with correct depth" begin
+    # Make sure shaders can recompile
+    close(GLMakie.global_gl_screen())
+
+    fig = Figure()
+    left = LScene(fig[1, 1])
+    contour!(left, [sin(i+j) * sin(j+k) * sin(i+k) for i in 1:10, j in 1:10, k in 1:10], enable_depth = true)
+    mesh!(left, Sphere(Point3f(5), 6f0))
+    right = LScene(fig[1, 2])
+    volume!(right, [sin(2i) * sin(2j) * sin(2k) for i in 1:10, j in 1:10, k in 1:10], algorithm = :iso, enable_depth = true)
+    mesh!(right, Sphere(Point3f(5), 6f0))
     fig
 end

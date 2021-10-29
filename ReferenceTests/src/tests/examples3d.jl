@@ -5,9 +5,8 @@ using Makie: Record, volume
 
 @cell "Image on Geometry (Moon)" begin
     moon = loadasset("moon.png")
-    fig, ax, meshplot = mesh(Sphere(Point3f(0), 1f0), color=moon, shading=false, show_axis=false, center=false)
+    fig, ax, meshplot = mesh(Sphere(Point3f(0), 1f0), color=moon, shading=false, show_axis=false)
     update_cam!(ax.scene, Vec3f(-2, 2, 2), Vec3f(0))
-    ax.scene.center = false # prevent to recenter on display
     fig
 end
 
@@ -36,20 +35,18 @@ end
     scene = ax.scene
     center!(scene)
     cam = cameracontrols(scene)
-    dir = widths(scene_limits(scene)) ./ 2.
+    dir = widths(data_limits(scene)) ./ 2.
     dir_scaled = Vec3f(
         dir[1] * scene.transformation.scale[][1],
         0.0,
         dir[3] * scene.transformation.scale[][2],
     )
     cam.upvector[] = (0.0, 0.0, 1.0)
-    cam.lookat[] = minimum(scene_limits(scene)) + dir_scaled
+    cam.lookat[] = minimum(data_limits(scene)) + dir_scaled
     cam.eyeposition[] = (cam.lookat[][1], cam.lookat[][2] + 6.3, cam.lookat[][3])
     cam.attributes[:projectiontype][] = Makie.Orthographic
     cam.zoom_mult[] = 0.61f0
     update_cam!(scene, cam)
-    # stop scene display from centering, which would overwrite the camera paramter we just set
-    scene.center = false
     fig
 end
 
@@ -131,7 +128,7 @@ end
 
 @cell "Record Video" begin
     f(t, v, s) = (sin(v + t) * s, cos(v + t) * s, (cos(v + t) + sin(v)) * s)
-    t = Node(Base.time()) # create a life signal
+    t = Observable(0.0) # create a life signal
     limits = Rect3f(Vec3f(-1.5, -1.5, -3), Vec3f(3, 3, 6))
     fig, ax, p1 = meshscatter(lift(t -> f.(t, range(0, stop=2pi, length=50), 1), t), markersize=0.05)
     p2 = meshscatter!(ax, lift(t -> f.(t * 2.0, range(0, stop=2pi, length=50), 1.5), t), markersize=0.05)
@@ -140,10 +137,10 @@ end
         map((a, b) -> (a => b), pos1, pos2)
     end
 
-    linesegments!(ax, linepoints, linestyle=:dot, limits=limits)
+    linesegments!(ax, linepoints, linestyle=:dot)
 
     Record(fig, 1:2) do i
-        t[] = Base.time()
+        t[] = i / 10
     end
 end
 
@@ -156,7 +153,7 @@ end
     # c[4] == fourth argument of the above plotting command
     fig, ax, c = contour(x, x, x, test, levels=6, alpha=0.3, transparency=true)
 
-    xm, ym, zm = minimum(scene_limits(ax.scene))
+    xm, ym, zm = minimum(data_limits(c))
     contour!(ax, x, x, map(v -> v[1, :, :], c[4]), transformation=(:xy, zm), linewidth=2)
     heatmap!(ax, x, x, map(v -> v[:, 1, :], c[4]), transformation=(:xz, ym))
     contour!(ax, x, x, map(v -> v[:, :, 1], c[4]), fillrange=true, transformation=(:yz, xm))
@@ -198,7 +195,7 @@ end
     z = [cospi(θ) for θ in θ, φ in φ]
     RNG.rand([-1f0, 1f0], 3)
     pts = vec(Point3f.(x, y, z))
-    surface(x, y, z, color=Makie.logo(), transparency=true)
+    f, ax, p = surface(x, y, z, color=Makie.logo(), transparency=true)
 end
 
 @cell "Arrows on Sphere" begin
@@ -248,15 +245,16 @@ end
     )
 end
 
-
 @cell "OldAxis + Surface" begin
     vx = -1:0.01:1
     vy = -1:0.01:1
 
     f(x, y) = (sin(x * 10) + cos(y * 10)) / 4
-    scene = Scene(resolution=(500, 500))
+    scene = Scene(resolution=(500, 500), camera=cam3d!)
     # One way to style the axis is to pass a nested dictionary / named tuple to it.
-    psurf = surface!(scene, vx, vy, f, axis=(frame = (linewidth = 2.0,),))
+    psurf = surface!(scene, vx, vy, f)
+    axis3d!(scene, frame = (linewidth = 2.0,))
+    center!(scene)
     # One can also directly get the axis object and manipulate it
     axis = scene[OldAxis] # get axis
 
@@ -276,13 +274,9 @@ end
         position=(wh[1] / 2.0, wh[2] - 20.0),
         align=(:center,  :center),
         textsize=20,
-        font="helvetica",
-        raw=:true
+        font="helvetica"
     )
     c = lines!(scene, Circle(Point2f(0.1, 0.5), 0.1f0), color=:red, offset=Vec3f(0, 0, 1))
-    scene
-    # update surface
-    # TODO explain and improve the situation here
     psurf.converted[3][] = f.(vx .+ 0.5, (vy .+ 0.5)')
     scene
 end
@@ -370,7 +364,6 @@ end
 end
 
 @cell "Animated surface and wireframe" begin
-    scene = Scene();
     function xy_data(x, y)
         r = sqrt(x^2 + y^2)
         r == 0.0 ? 1f0 : (sin(r) / r)
@@ -379,12 +372,12 @@ end
     xrange = range(-2, stop=2, length=50)
     surf_func(i) = [Float32(xy_data(x * i, y * i)) for x = xrange, y = xrange]
     z = surf_func(20)
-    surf = surface!(scene, xrange, xrange, z)
+    fig, ax, surf = surface(xrange, xrange, z)
 
-    wf = wireframe!(scene, xrange, xrange, lift(x -> x .+ 1.0, surf[3]),
+    wf = wireframe!(ax, xrange, xrange, lift(x -> x .+ 1.0, surf[3]),
         linewidth=2f0, color=lift(x -> to_colormap(x)[5], surf[:colormap])
     )
-    Record(scene, range(5, stop=40, length=3)) do i
+    Record(fig, range(5, stop=40, length=3)) do i
         surf[3] = surf_func(i)
     end
 end
@@ -405,17 +398,15 @@ end
 
 @cell "Stars" begin
     stars = 100_000
-    scene = Scene(backgroundcolor=:black)
+    scene = Scene(backgroundcolor=:black, camera=cam2d!)
     scatter!(
         scene,
         map(i -> (RNG.randn(Point3f) .- 0.5) .* 10, 1:stars),
         color=RNG.rand(stars),
         colormap=[(:white, 0.4), (:blue, 0.4), (:yellow, 0.4)], strokewidth=0,
-        markersize=RNG.rand(range(10, stop=100, length=100), stars),
-        show_axis=false
+        markersize=RNG.rand(range(2, stop=8, length=100), stars),
     )
     update_cam!(scene, Rect3f(Vec3f(-5), Vec3f(10)))
-    scene.center = false
     scene
 end
 
@@ -444,18 +435,18 @@ end
 
 @cell "Line GIF" begin
     us = range(0, stop=1, length=100)
-    scene = Scene()
-    linesegments!(scene, Rect3f(Vec3f(0, -1, 0), Vec3f(1, 2, 2)))
-    p = lines!(scene, us, sin.(us .+ time()), zeros(100), linewidth=3, transparency=true)
+    f, ax, p = linesegments(Rect3f(Vec3f(0, -1, 0), Vec3f(1, 2, 2)))
+    p = lines!(ax, us, sin.(us), zeros(100), linewidth=3, transparency=true)
     lineplots = [p]
     Makie.translate!(p, 0, 0, 0)
     colors = to_colormap(:RdYlBu)
-    # display(scene) # would be needed without the record
-    Record(scene, 1:3) do i
+    N = 5
+    Record(f, 1:N) do i
+        t = i/(N/5)
         if length(lineplots) < 20
             p = lines!(
-                scene,
-                us, sin.(us .+ time()), zeros(100),
+                ax,
+                us, sin.(us .+ t), zeros(100),
                 color=colors[length(lineplots)],
                 linewidth=3
             )
@@ -464,7 +455,7 @@ end
         else
             lineplots = circshift(lineplots, 1)
             lp = first(lineplots)
-            lp[2] = sin.(us .+ time())
+            lp[2] = sin.(us .+ t)
             translate!(lp, 0, 0, 0)
         end
         for lp in Iterators.drop(lineplots, 1)
@@ -480,7 +471,7 @@ end
     y = x
     z = (-x .* exp.(-x.^2 .- (y').^2)) .* 4
     fig, ax, surfaceplot = surface(x, y, z)
-    xm, ym, zm = minimum(scene_limits(ax.scene))
+    xm, ym, zm = minimum(data_limits(ax.scene))
     contour!(ax, x, y, z, levels=15, linewidth=2, transformation=(:xy, zm))
     wireframe!(ax, x, y, z, overdraw=true, transparency=true, color=(:black, 0.1))
     center!(ax.scene) # center the Scene on the display
@@ -512,18 +503,48 @@ end
 
     ρ(x, y, z) = exp(-(abs(x))) # function (charge density)
 
-    # create a Scene with the attribute `backgroundcolor = :black`,
-    # can be any compatible color.  Useful for better contrast and not killing your eyes with a white background.
-    scene = Scene(backgroundcolor=:black)
-
-    volume!(
-        scene,
+    fig, ax, pl = volume(
         r, r, r,          # coordinates to plot on
         ρ,                # charge density (functions as colorant)
         algorithm=:mip  # maximum-intensity-projection
     )
+    ax.scene[OldAxis].names.textcolor = :gray # let axis labels be seen on dark background
+    fig.scene.backgroundcolor[] = to_color(:black)
+    fig
+end
 
-    scene[OldAxis].names.textcolor = :gray # let axis labels be seen on dark background
+@cell "Depth Shift" begin
+    # Up to some artifacts from fxaa the left side should be blue and the right red.
+    fig = Figure(resolution = (800, 400))
 
-    scene # show scene
+    prim = Rect3D(Point3f(0), Vec3f(1))
+    ps  = RNG.rand(Point3f, 10) .+ Point3f(0, 0, 1)
+    mat = RNG.rand(4, 4)
+    A   = RNG.rand(4,4,4)
+
+    # This generates two sets of plots each on two axis. Both axes have one set
+    # without depth_shift (0f0, red) and one at ∓10eps(1f0) (blue, left/right axis).
+    # A negative shift should push the plot in the foreground, positive in the background.
+    for (i, _shift) in enumerate((-10eps(1f0), 10eps(1f0)))
+        ax = LScene(fig[1, i], scenekw=(show_axis = false,))
+
+        for (color, shift) in zip((:red, :blue), (0f0, _shift))
+            mesh!(ax, prim, color = color, depth_shift = shift)
+            lines!(ax, ps, color = color, depth_shift = shift)
+            linesegments!(ax, ps .+ Point3f(-1, 1, 0), color = color, depth_shift = shift)
+            scatter!(ax, ps, color = color, markersize=100, depth_shift = shift)
+            text!(ax, "Test", position = Point3f(0, 1, 1.1), color = color, depth_shift = shift)
+            surface!(ax, -1..0, 1..2, mat, colormap = (color, color), depth_shift = shift)
+            meshscatter!(ax, ps .+ Point3f(-1, 1, 0), color = color, depth_shift = shift)
+            # # left side in axis
+            heatmap!(ax, 0..1, 0..1, mat, colormap = (color, color), depth_shift = shift)
+            # # right side in axis
+            image!(ax, -1..0, 1..2, mat, colormap = (color, color), depth_shift = shift)
+            p = volume!(ax, A, colormap = (:white, color), depth_shift = shift)
+            translate!(p, -1, 0, 0)
+            scale!(p, 0.25, 0.25, 0.25)
+        end
+    end
+
+    fig
 end

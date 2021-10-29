@@ -1,6 +1,6 @@
 function RenderObject(
         data::Dict{Symbol}, program, pre,
-        bbs=Node(Rect3f(Vec3f(0), Vec3f(1))),
+        bbs=Observable(Rect3f(Vec3f(0), Vec3f(1))),
         main=nothing
     )
     RenderObject(convert(Dict{Symbol,Any}, data), program, pre, bbs, main)
@@ -22,7 +22,7 @@ Base.setindex!(obj::RenderObject, value, symbol::Symbol, x::Function)     = seti
 Base.setindex!(obj::RenderObject, value, ::Val{:prerender}, x::Function)  = obj.prerenderfunctions[x] = value
 Base.setindex!(obj::RenderObject, value, ::Val{:postrender}, x::Function) = obj.postrenderfunctions[x] = value
 
-const empty_signal = Node(false)
+const empty_signal = Observable(false)
 post_empty() = push!(empty_signal, false)
 
 
@@ -30,8 +30,8 @@ post_empty() = push!(empty_signal, false)
 Represents standard sets of function applied before rendering
 """
 struct StandardPrerender
-    transparency::Node{Bool}
-    overdraw::Node{Bool}
+    transparency::Observable{Bool}
+    overdraw::Observable{Bool}
 end
 
 function (sp::StandardPrerender)()
@@ -73,14 +73,14 @@ end
 export EmptyPrerender
 export prerendertype
 
-function instanced_renderobject(data, program, bb=Node(Rect3f(Vec3f(0), Vec3f(1))), primitive::GLenum=GL_TRIANGLES, main=nothing)
+function instanced_renderobject(data, program, bb=Observable(Rect3f(Vec3f(0), Vec3f(1))), primitive::GLenum=GL_TRIANGLES, main=nothing)
     pre = StandardPrerender()
     robj = RenderObject(convert(Dict{Symbol,Any}, data), program, pre, nothing, bb, main)
     robj.postrenderfunction = StandardPostrenderInstanced(main, robj.vertexarray, primitive)
     robj
 end
 
-function std_renderobject(data, program, bb=Node(Rect3f(Vec3f(0), Vec3f(1))), primitive=GL_TRIANGLES, main=nothing)
+function std_renderobject(data, program, bb=Observable(Rect3f(Vec3f(0), Vec3f(1))), primitive=GL_TRIANGLES, main=nothing)
     pre = StandardPrerender()
     robj = RenderObject(convert(Dict{Symbol,Any}, data), program, pre, nothing, bb, main)
     robj.postrenderfunction = StandardPostrender(robj.vertexarray, primitive)
@@ -89,4 +89,3 @@ end
 
 prerendertype(::Type{RenderObject{Pre}}) where {Pre} = Pre
 prerendertype(::RenderObject{Pre}) where {Pre} = Pre
-

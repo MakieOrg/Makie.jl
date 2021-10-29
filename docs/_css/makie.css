@@ -97,11 +97,11 @@ img.plotting-function-thumb {
     padding: 0.5em;
 }
 
-.doc-content *:last-child {
+.doc-content > *:last-child {
     margin-bottom: 0;
 }
 
-.doc-content *:first-child {
+.doc-content > *:first-child {
     margin-top: 0;
 }
 

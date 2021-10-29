@@ -120,6 +120,43 @@ on(events(fig).keyboardbutton) do event
 end
 ```
 
+## The `ispressed` function
+
+`ispressed(scene, x)` can be used to check if a button, collection of buttons or
+a boolean expression of buttons is pressed.
+
+```julia
+# Check if the "a" key is pressed
+ispressed(scene, Keyboard.a)
+
+# Check if the left mouse button is pressed
+ispressed(scene, Mouse.left)
+
+# check if the left mouse button, left shift and left control are pressed.
+# This also works with Vectors and Sets.
+ispressed(scene, (Mouse.left, Keyboard.left_shift, Keyboard.left_control))
+
+# check if the left mouse button and either left or right control are pressed
+ispressed(scene, Mouse.left & (Keyboard.left_control | Keyboard.right_control))
+
+# check if the "c" key is pressed without either shift key
+ispressed(scene, Keyboard.c & !(Keyboard.left_shift | Keyboard.right_shift))
+```
+
+In all the examples above it is irrelevant how many buttons are pressed as long 
+as the specified subset is pressed (or the boolean expression matches). You can
+also check for exact matches by wrapping a button, collection or expression in
+`Exclusively`. For example
+
+```julia
+# check if exclusively "a" and left shift are pressed (i.e. no other key or mouse button)
+ispressed(scene, Exclusively(Keyboard.a & Keyboard.left_shift))
+```
+
+You can also pass true (false) to `ispressed`. In this case true (false) will
+always be returned. This is useful for removing interactivity, i.e. always or 
+never triggering something.
+
 ## Interactive Widgets
 
 Makie has a couple of useful interactive widgets like sliders, buttons and menus, which you can read about in the \myreflink{Layoutables} section.

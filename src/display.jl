@@ -51,12 +51,10 @@ end
 Base.display(fap::FigureAxisPlot; kw...) = display(fap.figure; kw...)
 Base.display(fig::Figure; kw...) = display(fig.scene; kw...)
 
-function Base.display(scene::Scene; update=true)
-
+function Base.display(scene::Scene)
     if !use_display[]
         return Core.invoke(display, Tuple{Any}, scene)
     else
-        update && update!(scene)
         screen = backend_display(current_backend[], scene)
         push_screen!(scene, screen)
         return screen
@@ -104,12 +102,9 @@ Base.show(io::IO, m::MIME, fap::FigureAxisPlot; kw...) = show(io, m, fap.figure;
 Base.show(io::IO, m::MIME, fig::Figure; kw...) = show(io, m, fig.scene; kw...)
 
 function Base.show(io::IO, m::MIME, scene::Scene; update=true)
-    update && update!(scene)
-
     ioc = IOContext(io,
         :full_fidelity => true
     )
-
     screen = backend_show(current_backend[], ioc, m, scene)
     push_screen!(scene, screen)
     return screen
@@ -227,10 +222,7 @@ function FileIO.save(
     )
     scene = get_scene(fig)
     if resolution != size(scene)
-        is_raw = scene.raw[]
-        (!update && !is_raw) && raw!(scene, true)  # force raw! to prevent update_limits! and center!
         resize!(scene, resolution)
-        (!update && !is_raw) && raw!(scene, false)  # restore
     end
 
     filename = FileIO.filename(file)
@@ -332,7 +324,6 @@ function VideoStream(scene::Scene; framerate::Integer = 24)
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
     dir = mktempdir()
     path = joinpath(dir, "$(gensym(:video)).mkv")
-    update!(scene)
     screen = backend_display(current_backend[], scene)
     push_screen!(scene, screen)
     _xdim, _ydim = size(scene)

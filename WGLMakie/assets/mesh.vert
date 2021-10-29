@@ -31,6 +31,7 @@ void main(){
     vec4 view_pos = view * position_world;
     // position in clip space (w/ depth)
     gl_Position = projection * view_pos;
+    gl_Position.z += gl_Position.w * get_depth_shift();
     // direction to light
     o_lightdir = normalize(view*vec4(get_lightposition(), 1.0) - view_pos).xyz;
     // direction to camera

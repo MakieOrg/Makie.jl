@@ -38,8 +38,8 @@ end
 
 attractor = Lorenz()
 
-points = Node(Point3f[])
-colors = Node(Int[])
+points = Observable(Point3f[])
+colors = Observable(Int[])
 
 set_theme!(theme_black())
 
@@ -48,7 +48,7 @@ fig, ax, l = lines(points, color = colors,
     axis = (; type = Axis3, protrusions = (0, 0, 0, 0),
         viewmode = :fit, limits = (-30, 30, -30, 30, 0, 50)))
 
-record(fig, joinpath(@OUTPUT, "lorenz.mp4"), 1:120) do frame
+record(fig, "lorenz.mp4", 1:120) do frame
     for i in 1:50
         push!(points[], step!(attractor))
         push!(colors[], frame)
@@ -186,7 +186,7 @@ These packages and sites are maintained by third parties. If you install package
       Grammar-of-graphics style plotting, inspired by ggplot2.
       @@
       ~~~
-      <img src="/assets/algebraofgraphics_example.svg">
+      <img src="/assets/aog_example.png">
       ~~~
     @@
     ~~~</a>~~~
@@ -201,6 +201,20 @@ These packages and sites are maintained by third parties. If you install package
       @@
       ~~~
       <img src="/assets/beautifulmakie_example.png">
+      ~~~
+    @@
+    ~~~</a>~~~
+  @@
+
+  @@box
+    ~~~<a class="boxlink" href="https://github.com/JuliaPlots/GraphMakie.jl">~~~
+    @@title GraphMakie.jl @@
+    @@box-content
+      @@description
+      Graphs with two- and three-dimensional layout algorithms.
+      @@
+      ~~~
+      <img src="/assets/graphmakie.png">
       ~~~
     @@
     ~~~</a>~~~

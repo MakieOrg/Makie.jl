@@ -83,7 +83,7 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
 
     decorations = Dict{Symbol, Any}()
 
-    protrusions = Node(GridLayoutBase.RectSides{Float32}(0, 0, 0, 0))
+    protrusions = Observable(GridLayoutBase.RectSides{Float32}(0, 0, 0, 0))
 
     # make the layout width and height settings depend on `size` if they are set to automatic
     # and determine whether they are nothing or `size` depending on colorbar orientation
@@ -196,7 +196,6 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
     rects = poly!(topscene,
         lift(x -> getindex(x, 1), rects_and_colors),
         color = colors,
-        show_axis = false,
         visible = map_is_categorical,
         inspectable = false
     )
@@ -218,7 +217,6 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         @lift(range(bottom($barbox), top($barbox), length = 2)),
         continous_pixels,
         visible = @lift(!$map_is_categorical),
-        show_axis = false,
         interpolate = true,
         inspectable = false
     )

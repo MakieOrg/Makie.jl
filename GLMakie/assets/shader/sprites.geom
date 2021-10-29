@@ -38,6 +38,7 @@ uniform float stroke_width;
 uniform float glow_width;
 uniform int shape; // for RECTANGLE hack below
 uniform vec2 resolution;
+uniform float depth_shift;
 
 in int g_primitive_index[];
 in vec4 g_uv_texture_bbox[];
@@ -79,6 +80,7 @@ float get_distancefield_scale(Nothing distancefield){
 void emit_vertex(vec4 vertex, vec2 uv)
 {
     gl_Position       = vertex;
+    gl_Position.z     += gl_Position.w * depth_shift;
     f_uv              = uv;
     f_uv_texture_bbox = g_uv_texture_bbox[0];
     f_primitive_index = g_primitive_index[0];

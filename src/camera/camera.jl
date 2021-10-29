@@ -18,6 +18,10 @@ function disconnect!(c::Camera)
     return
 end
 
+function disconnect!(c::EmptyCamera)
+    return
+end
+
 function disconnect!(nodes::Vector)
     for node in nodes
         disconnect!(node)
@@ -36,7 +40,7 @@ function (cl::CameraLift{F, Args})(val) where {F, Args}
 end
 
 """
-    on(f, c::Camera, nodes::Node...)
+    on(f, c::Camera, nodes::Observable...)
 
 When mapping over nodes for the camera, we store them in the `steering_node` vector,
 to make it easier to disconnect the camera steering signals later!
@@ -65,11 +69,11 @@ function Camera(px_area)
     end
     Camera(
         pixel_space,
-        Node(Mat4f(I)),
-        Node(Mat4f(I)),
-        Node(Mat4f(I)),
+        Observable(Mat4f(I)),
+        Observable(Mat4f(I)),
+        Observable(Mat4f(I)),
         lift(a-> Vec2f(widths(a)), px_area),
-        Node(Vec3f(1)),
+        Observable(Vec3f(1)),
         ObserverFunction[]
     )
 end

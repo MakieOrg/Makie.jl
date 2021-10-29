@@ -35,6 +35,6 @@ Note that this camera is not used by MakieLayout `Axis`. It is used, by default,
 To force a plot to be visualized in 3D, you can set the limits to have a nonzero \(z\)-axis interval, or ensure that a 3D camera type is used.
 For example, you could pass the keyword argument `limits = Rect([0,0,0],[1,1,1])`, or `camera = cam3d!`.
 
-To ensure that the camera's view is not modified, you can pass the attribute `raw = true`.
-
 Often, when modifying the Scene, the camera can get "out of sync" with the Scene. To fix this, you can call the \apilink{update_cam!} function on the Scene.
+
+Buttons passed to the 2D and 3D camera are forwarded to `ispressed`. As such you can pass `false` to disable an interaction, `true` to ignore a modifier, any button, collection of buttons or even logical expressions of buttons. See the events documentation for more details.
