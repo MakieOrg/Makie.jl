@@ -153,7 +153,7 @@ end
     # c[4] == fourth argument of the above plotting command
     fig, ax, c = contour(x, x, x, test, levels=6, alpha=0.3, transparency=true)
 
-    xm, ym, zm = minimum(data_limits(ax.scene))
+    xm, ym, zm = minimum(data_limits(c))
     contour!(ax, x, x, map(v -> v[1, :, :], c[4]), transformation=(:xy, zm), linewidth=2)
     heatmap!(ax, x, x, map(v -> v[:, 1, :], c[4]), transformation=(:xz, ym))
     contour!(ax, x, x, map(v -> v[:, :, 1], c[4]), fillrange=true, transformation=(:yz, xm))

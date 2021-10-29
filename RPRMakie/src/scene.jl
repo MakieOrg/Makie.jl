@@ -67,16 +67,16 @@ function to_rpr_scene(context::RPR.Context, matsys, mscene::Makie.Scene)
     set!(scene, camera)
 
     env_light = RPR.EnvironmentLight(context)
-    # image_path = RPR.assetpath("studio032.exr")
-    env_img = fill(to_color(mscene.backgroundcolor[]), 1, 1)
-    img = RPR.Image(context, env_img)
+    image_path = RPR.assetpath("studio032.exr")
+    # env_img = fill(to_color(mscene.backgroundcolor[]), 1, 1)
+    img = RPR.Image(context, image_path)
     set!(env_light, img)
-    setintensityscale!(env_light, 1.0)
+    setintensityscale!(env_light, 0.5)
     push!(scene, env_light)
 
     light = RPR.PointLight(context)
-    transform!(light, Makie.translationmatrix(Vec3f0(0, 50, 120)))
-    RPR.setradiantpower!(light, 10000, 10000, 10000)
+    transform!(light, Makie.translationmatrix(Vec3f0(10, 10, 10)))
+    RPR.setradiantpower!(light, 1000, 1000, 1000)
     push!(scene, light)
 
     for plot in mscene.plots
