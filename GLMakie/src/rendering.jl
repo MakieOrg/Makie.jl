@@ -220,7 +220,7 @@ function GLAbstraction.render(screen::GLScreen, transparent::Bool, fxaa::Bool, s
         # sort by overdraw, so that overdrawing objects get drawn last!
         # sort!(screen.renderlist, by = ((zi, id, robj),)-> robj.prerenderfunction.overdraw[])
         for (zindex, screenid, elem) in screen.renderlist
-            if !((elem.prerenderfunction.transparency[] == transparent) &&
+            if !((elem[:transparency][] == transparent) &&
                 (elem[:fxaa][] == fxaa) && (elem[:ssao][] == ssao))
                 continue
             end
