@@ -8,7 +8,7 @@ const TIME_UNIT_NAMES = [:yr, :wk, :d, :hr, :minute, :s, :ds, :cs, :ms, :μs, :n
 base_unit(q::Quantity) = base_unit(typeof(q))
 base_unit(::Type{Quantity{NumT, DimT, U}}) where {NumT, DimT, U} = base_unit(U)
 base_unit(::Type{Unitful.FreeUnits{U, DimT, nothing}}) where {DimT, U} = U[1]
-base_unit(::Unitful.FreeUnits{U, DimT, nothing}) where {DimT, U} = U[1]
+base_unit(x::Unitful.FreeUnits{U, DimT, nothing}) where {DimT, U} = U[1]
 base_unit(x::Unitful.Unit) = x
 
 unit_string(::Type{T}) where T <: Unitful.AbstractQuantity = string(Unitful.unit(T))
@@ -41,7 +41,6 @@ function new_unit(unit, values)
     isnothing(extrema) && return nothing
     new_min, new_max = extrema
     if new_eltype <: Union{Quantity, Period}
-
         qmin = Quantity(new_min)
         qmax = Quantity(new_max)
         return best_unit(qmin, qmax)
@@ -76,7 +75,7 @@ function get_all_base10_units(value::Unitful.Unit)
     return [value]
 end
 
-function get_all_base10_units(::Unitful.Unit{Sym, Unitful.𝐓}) where {Sym, Dim}
+function get_all_base10_units(x::Unitful.Unit{Sym, Unitful.𝐓}) where {Sym, Dim}
     return getfield.((Unitful,), TIME_UNIT_NAMES)
 end
 
@@ -172,7 +171,8 @@ function Observables.connect!(ax::Axis, ticks_obs::Observable, ticks::UnitfulTic
     if ticks.automatic_units
         on(ax.finallimits) do limits
             unit = ticks.unit[]
-            if !(unit isa Automatic)
+            # Only time & length units are tested/supported right now
+            if !(unit isa Automatic) && Unitful.dimension(unit) in (Unitful.𝐓, Unitful.𝐋)
                 mini, maxi = getindex.(extrema(limits), dim)
                 t(v) = upreferred(to_free_unit(unit)) * v
                 new_unit = best_unit(t(mini), t(maxi))
