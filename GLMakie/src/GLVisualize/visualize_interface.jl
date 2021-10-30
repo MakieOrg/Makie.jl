@@ -188,8 +188,9 @@ function output_buffer_writes(transparency = false)
     if transparency
         """
         float weight = color.a * max(0.01, 3000 * pow((1 - gl_FragCoord.z), 3));
-        fragment_color = weight * color;
         coverage = color.a;
+        fragment_color.rgb = weight * color.rgb;
+        fragment_color.a = weight;
         """
     elseif enable_SSAO[]
         """
