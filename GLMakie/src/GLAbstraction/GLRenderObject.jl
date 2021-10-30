@@ -47,10 +47,6 @@ function (sp::StandardPrerender)()
     glDisable(GL_CULL_FACE)
     # glCullFace(GL_BACK)
 
-    # # Disable depth write for transparent objects
-    # glDepthMask(sp.transparency[] ? GL_FALSE : GL_TRUE)
-    # enabletransparency()
-
     if sp.transparency[]
         sp.overdraw[] && @warn("overdraw may break transparency?")
 
@@ -74,6 +70,7 @@ function (sp::StandardPrerender)()
     else
         glDepthMask(GL_TRUE)
         glDisable(GL_BLEND)
+        enabletransparency()
     end
 end
 
