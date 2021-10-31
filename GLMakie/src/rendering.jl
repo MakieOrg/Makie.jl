@@ -119,6 +119,9 @@ const selection_queries = Function[]
 Renders a single frame of a `window`
 """
 function render_frame(screen::Screen; resize_buffers=true)
+    # NOTE
+    # The transparent color buffer is reused by SSAO and FXAA. Changing the 
+    # render order here may introduce artifacts because of that. 
     nw = to_native(screen)
     ShaderAbstractions.is_context_active(nw) || return
     fb = screen.framebuffer
@@ -166,12 +169,10 @@ function render_frame(screen::Screen; resize_buffers=true)
     glDrawBuffer(GL_COLOR_ATTACHMENT2)
     glClearColor(0, 0, 0, 0)
     glClear(GL_COLOR_BUFFER_BIT)
-
     # clear alpha product to 1
     glDrawBuffer(GL_COLOR_ATTACHMENT3)
     glClearColor(1, 1, 1, 1)
     glClear(GL_COLOR_BUFFER_BIT)
-
     # draw
     glDrawBuffers(3, [GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT3])
     glEnable(GL_STENCIL_TEST)
@@ -188,7 +189,6 @@ function render_frame(screen::Screen; resize_buffers=true)
 
     # FXAA
     screen.postprocessors[3].render(screen)
-
 
     # no FXAA primary render
     glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
