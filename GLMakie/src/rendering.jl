@@ -165,7 +165,7 @@ function render_frame(screen::Screen; resize_buffers=true)
 
 
     # TRANSPARENT RENDER
-    # clear sum to 0
+    # clear sums to 0
     glDrawBuffer(GL_COLOR_ATTACHMENT2)
     glClearColor(0, 0, 0, 0)
     glClear(GL_COLOR_BUFFER_BIT)

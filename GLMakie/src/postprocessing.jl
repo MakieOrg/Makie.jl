@@ -148,8 +148,6 @@ function ssao_postprocessor(framebuffer)
         # SSAO - calculate occlusion
         glDrawBuffer(normal_occ_id)  # occlusion buffer
         glViewport(0, 0, w, h)
-        # glClearColor(1, 1, 1, 1)            # 1 means no darkening
-        # glClear(GL_COLOR_BUFFER_BIT)
         glDisable(GL_STENCIL_TEST)
         glEnable(GL_SCISSOR_TEST)
 
@@ -238,9 +236,7 @@ function fxaa_postprocessor(framebuffer)
         w, h = size(fb)
 
         # FXAA - calculate LUMA
-        # glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[2])
-        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
-        glDrawBuffer(luma_id)  # color_luma buffer
+        glDrawBuffer(luma_id)
         glViewport(0, 0, w, h)
         # necessary with negative SSAO bias...
         glClearColor(1, 1, 1, 1)
@@ -248,9 +244,7 @@ function fxaa_postprocessor(framebuffer)
         GLAbstraction.render(pass1)
 
         # FXAA - perform anti-aliasing
-        # glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
         glDrawBuffer(color_id)  # color buffer
-        # glViewport(0, 0, w, h) # not necessary
         GLAbstraction.render(pass2)
     end
 
