@@ -66,23 +66,23 @@ end
 function ssao_postprocessor(framebuffer)
     # Add missing buffers
     if !haskey(framebuffer, :position)
-        if !haskey(framebuffer, :HDR_color)
-            glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
-            position_buffer = Texture(
-                Vec4{Float16}, size(framebuffer), minfilter = :nearest, x_repeat = :clamp_to_edge
-            )
-            pos_id = attach_colorbuffer!(framebuffer, :position, position_buffer)
-        else
-            pos_id = framebuffer[:HDR_color][1]
-        end
+        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
+        position_buffer = Texture(
+            Vec4f, size(framebuffer), minfilter = :nearest, x_repeat = :clamp_to_edge
+        )
+        pos_id = attach_colorbuffer!(framebuffer, :position, position_buffer)
         push!(framebuffer.render_buffer_ids, pos_id)
     end
     if !haskey(framebuffer, :normal)
-        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
-        normal_occlusion_buffer = Texture(
-            Vec4{Float16}, size(framebuffer), minfilter = :nearest, x_repeat = :clamp_to_edge
-        )
-        normal_occ_id = attach_colorbuffer!(framebuffer, :normal_occlusion, normal_occlusion_buffer)
+        if !haskey(framebuffer, :HDR_color)
+            glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
+            normal_occlusion_buffer = Texture(
+                Vec4{Float16}, size(framebuffer), minfilter = :nearest, x_repeat = :clamp_to_edge
+            )
+            normal_occ_id = attach_colorbuffer!(framebuffer, :normal_occlusion, normal_occlusion_buffer)
+        else
+            normal_occ_id = framebuffer[:HDR_color][1]
+        end
         push!(framebuffer.render_buffer_ids, normal_occ_id)
     end
 
@@ -107,8 +107,8 @@ function ssao_postprocessor(framebuffer)
         )
     )
     data1 = Dict{Symbol, Any}(
-        :position_buffer => getfallback(framebuffer, :position, :HDR_color)[2],
-        :normal_occlusion_buffer => framebuffer[:normal_occlusion][2],
+        :position_buffer => framebuffer[:position][2],
+        :normal_occlusion_buffer => getfallback(framebuffer, :normal_occlusion, :HDR_color)[2],
         :kernel => kernel,
         :noise => Texture(
             [normalize(Vec2f(2.0rand(2) .- 1.0)) for _ in 1:4, __ in 1:4],
@@ -129,7 +129,7 @@ function ssao_postprocessor(framebuffer)
         loadshader("postprocessing/SSAO_blur.frag")
     )
     data2 = Dict{Symbol, Any}(
-        :normal_occlusion => framebuffer[:normal_occlusion][2],
+        :normal_occlusion => getfallback(framebuffer, :normal_occlusion, :HDR_color)[2],
         :color_texture => framebuffer[:color][2],
         :ids => framebuffer[:objectid][2],
         :inv_texel_size => lift(rcpframe, framebuffer.resolution),
