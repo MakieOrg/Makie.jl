@@ -34,7 +34,8 @@ excludes = Set([
     "Test heatmap + image overlap",
     "Stars",
     "heatmaps & surface",
-    "OldAxis + Surface"
+    "OldAxis + Surface",
+    "Order Independent Transparency"
 ])
 excludes2 = Set(["short_tests_83", "short_tests_78", "short_tests_40", "short_tests_13", "short_tests_5", "short_tests_41"])
 database = database_filtered(excludes, excludes2)
