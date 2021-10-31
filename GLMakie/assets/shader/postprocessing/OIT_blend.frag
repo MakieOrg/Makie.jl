@@ -21,7 +21,7 @@ void main(void)
 
     vec3 weighted_transparent = summed_color_weight.rgb / max(summed_color_weight.a, 0.00001);
     vec3 full_weighted_transparent = weighted_transparent * (1 - transmittance);
-    vec3 weighted_opaque = (color.rgb * color.a) * transmittance;
+    vec3 weighted_opaque = color.rgb * transmittance;
 
     fragment_color.rgb = full_weighted_transparent + weighted_opaque;
     fragment_color.a = 1;
