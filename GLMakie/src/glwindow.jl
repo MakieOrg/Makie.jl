@@ -78,7 +78,7 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     )
     # Order Independent Transparency
     HDR_color_buffer = Texture(
-        RGBA{Float16}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
+        RGBA{Float16}, fb_size, minfilter = :linear, x_repeat = :clamp_to_edge
     )
     OIT_weight_buffer = Texture(
         N0f8, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge

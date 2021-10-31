@@ -198,11 +198,15 @@ Returns a PostProcessor that handles fxaa.
 function fxaa_postprocessor(framebuffer)
     # Add missing buffers
     if !haskey(framebuffer, :color_luma)
-        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
-        color_luma_buffer = Texture(
-            RGBA{N0f8}, size(framebuffer), minfilter=:linear, x_repeat=:clamp_to_edge
-        )
-        luma_id = attach_colorbuffer!(framebuffer, :color_luma, color_luma_buffer)
+        if !haskey(framebuffer, :HDR_color)
+            glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
+            color_luma_buffer = Texture(
+                RGBA{N0f8}, size(framebuffer), minfilter=:linear, x_repeat=:clamp_to_edge
+            )
+            luma_id = attach_colorbuffer!(framebuffer, :color_luma, color_luma_buffer)
+        else
+            luma_id = framebuffer[:HDR_color][1]
+        end
     end
 
     # calculate luma for FXAA
@@ -222,7 +226,7 @@ function fxaa_postprocessor(framebuffer)
         loadshader("postprocessing/fxaa.frag")
     )
     data2 = Dict{Symbol, Any}(
-        :color_texture => framebuffer[:color_luma][2],
+        :color_texture => getfallback(framebuffer, :color_luma, :HDR_color)[2],
         :RCPFrame => lift(rcpframe, framebuffer.resolution),
     )
     pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing)
