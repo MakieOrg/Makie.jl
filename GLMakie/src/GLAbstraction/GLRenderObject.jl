@@ -48,22 +48,21 @@ function (sp::StandardPrerender)()
     # glCullFace(GL_BACK)
 
     if sp.transparency[]
-        sp.overdraw[] && @warn("overdraw may break transparency?")
-
+        # disable depth buffer writing
         glDepthMask(GL_FALSE)
 
         # Blending
         glEnable(GL_BLEND)
         glBlendEquation(GL_FUNC_ADD)
 
-        # 0 contains weight * color.rgba, should do sum
+        # buffer 0 contains weight * color.rgba, should do sum
         # destination <- 1 * source + 1 * destination
         glBlendFunci(0, GL_ONE, GL_ONE)
         
-        # 1 is objectid, do nothing
+        # buffer 1 is objectid, do nothing
         glDisablei(1, GL_BLEND)
         
-        # 2 is color.a, should do product
+        # buffer 2 is color.a, should do product
         # destination <- 0 * source + (1 - source) * destination
         glBlendFunci(2, GL_ZERO, GL_ONE_MINUS_SRC_COLOR)
 
