@@ -185,3 +185,25 @@ function data_limits(scenelike, exclude=(p)-> false)
     end
     return bb_ref[]
 end
+
+# A few overloads for performance
+function data_limits(plot::Surface)
+    mini_maxi = extrema_nan.((plot.x[], plot.y[], plot.z[]))
+    mini = first.(mini_maxi)
+    maxi = last.(mini_maxi)
+    return Rect3f(mini, maxi .- mini)
+end
+
+function data_limits(plot::Heatmap)
+    mini_maxi = extrema_nan.((plot.x[], plot.y[]))
+    mini = Vec3f(first.(mini_maxi)..., 0)
+    maxi = Vec3f(last.(mini_maxi)..., 0)
+    return Rect3f(mini, maxi .- mini)
+end
+
+function data_limits(plot::Image)
+    mini_maxi = extrema_nan.((plot.x[], plot.y[]))
+    mini = Vec3f(first.(mini_maxi)..., 0)
+    maxi = Vec3f(last.(mini_maxi)..., 0)
+    return Rect3f(mini, maxi .- mini)
+end

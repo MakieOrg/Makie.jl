@@ -337,6 +337,14 @@ function _reassemble_menu(
             textsize = textsize, color = textcolor,
             padding = textpadding, visible = is_open
         )
+
+        # translate dropdown elements in the foreground 
+        for p in values(allrects[i+1].elements)
+            translate!(p, Vec3f(0, 0, 4))
+        end
+        for p in values(alltexts[i+1].elements)
+            translate!(p, Vec3f(0, 0, 4))
+        end
     end
 
 
@@ -346,8 +354,13 @@ function _reassemble_menu(
     rowgap!(contentgrid, 0)
 
     resize!(mouseeventhandles, length(alltexts))
-    map!(mouseeventhandles, allrects) do r
-        addmouseevents!(scene, r.layoutobservables.computedbbox, priority=Int8(60))
+    map!(mouseeventhandles, eachindex(allrects), allrects) do i, r
+        # Use base priority for [Menu   v] and high priority for the dropdown 
+        # elements that may overlap with out interactive layoutables.
+        addmouseevents!(
+            scene, r.layoutobservables.computedbbox, 
+            priority = Int8(1) + (i != 1) * Int8(60)
+        )
     end
 
     # create mouse events for each menu entry rect / text combo
