@@ -69,7 +69,6 @@ function (sp::StandardPrerender)()
 
     else
         glDepthMask(GL_TRUE)
-        glDisable(GL_BLEND)
         enabletransparency()
     end
 end
