@@ -16,17 +16,15 @@ function (sp::PostprocessPrerender)()
     return
 end
 
-const PostProcessROBJ = RenderObject{PostprocessPrerender}
-
 rcpframe(x) = 1f0 ./ Vec2f(x[1], x[2])
 
 struct PostProcessor{F}
-    robjs::Vector{PostProcessROBJ}
+    robjs::Vector{RenderObject}
     render::F
 end
 
 function empty_postprocessor(args...; kwargs...)
-    PostProcessor(PostProcessROBJ[], screen -> nothing)
+    PostProcessor(RenderObject[], screen -> nothing)
 end
 
 
@@ -38,11 +36,27 @@ function OIT_postprocessor(framebuffer)
         loadshader("postprocessing/OIT_blend.frag")
     )
     data = Dict{Symbol, Any}(
-        :opaque_color => framebuffer[:color][2],
+        # :opaque_color => framebuffer[:color][2],
         :sum_color => framebuffer[:HDR_color][2],
         :prod_alpha => framebuffer[:OIT_weight][2],
     )
-    pass = RenderObject(data, shader, PostprocessPrerender(), nothing)
+    pass = RenderObject(
+        data, shader, 
+        () -> begin
+            glDepthMask(GL_TRUE)
+            glDisable(GL_DEPTH_TEST)
+            glDisable(GL_CULL_FACE)
+            glEnable(GL_BLEND)
+            # shader computes:
+            # src.rgb = sum_color / sum_weight * (1 - prod_alpha)
+            # src.a = prod_alpha
+            # blending: (assumes opaque.a = 1)
+            # opaque.rgb = 1 * src.rgb + src.a * opaque.rgb
+            # opaque.a   = 0 * src.a   + 1 * opaque.a
+            glBlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_ONE)
+        end, 
+        nothing
+    )
     pass.postrenderfunction = () -> draw_fullscreen(pass.vertexarray.id)
 
     color_id = framebuffer[:color][1]
@@ -57,7 +71,7 @@ function OIT_postprocessor(framebuffer)
         GLAbstraction.render(pass)
     end
 
-    PostProcessor([pass], full_render)
+    PostProcessor(RenderObject[pass], full_render)
 end
 
 
@@ -183,7 +197,7 @@ function ssao_postprocessor(framebuffer)
         glDisable(GL_SCISSOR_TEST)
     end
 
-    PostProcessor([pass1, pass2], full_render)
+    PostProcessor(RenderObject[pass1, pass2], full_render)
 end
 
 
@@ -248,7 +262,7 @@ function fxaa_postprocessor(framebuffer)
         GLAbstraction.render(pass2)
     end
 
-    PostProcessor([pass1, pass2], full_render)
+    PostProcessor(RenderObject[pass1, pass2], full_render)
 end
 
 
@@ -281,5 +295,5 @@ function to_screen_postprocessor(framebuffer)
         GLAbstraction.render(pass) # copy postprocess
     end
 
-    PostProcessor([pass], full_render)
+    PostProcessor(RenderObject[pass], full_render)
 end
