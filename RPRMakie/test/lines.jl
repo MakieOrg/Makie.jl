@@ -11,26 +11,14 @@ begin
     matsys = RPR.MaterialSystem(context, 0)
     emissive = RPR.EmissiveMaterial(matsys)
     diffuse = RPR.DiffuseMaterial(matsys)
-    uber1 = RPR.UberMaterial(matsys)
-    uber2 = RPR.UberMaterial(matsys)
-    uber3 = RPR.UberMaterial(matsys)
-    uber4 = RPR.UberMaterial(matsys)
-    materials = [
-        uber4 RPR.MicrofacetMaterial(matsys);
-        uber3 uber1;
-        diffuse uber2;
-    ]
 
     fig = Figure(resolution=(1000, 1000))
     ax = LScene(fig[1, 1], scenekw=(show_axis=false,))
-    palette = reshape(Makie.default_palettes.color[][1:6], size(materials))
-    for i in CartesianIndices(materials)
-        x, y = Tuple(i)
-        # sphere = normal_mesh(Tesselation(Sphere(Point3f0(0.5), 0.5), 100))
-        catmesh = mesh!(ax, cat, material=materials[i], color=palette[i])
-        translate!(catmesh, ((x, y) .- (0.5.*size(materials)))..., 0)
-        rot = to_rotation((Vec3f0(1, 0, 0), 0.5pi)) * to_rotation((Vec3f0(0, 1, 0), rand()))
-        rotate!(ax.scene.plots[end], rot)
+    for i in 4:4:12
+        n = i + 1
+        y = LinRange(0, i, n)
+        y2 = (y ./ 2) .- 2
+        lines!(ax, fill((i-5) ./ 2, n), y2, sin.(y) .+ 1, linewidth=5)
     end
     mesh!(ax, Rect3f(Vec3f(-3, -3, -0.1), Vec3f(6, 6, 0.1)), color=:white)
     mesh!(ax, Sphere(Point3f(0, 0, 2), 0.1), material=emissive)

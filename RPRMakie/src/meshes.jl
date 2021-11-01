@@ -5,7 +5,7 @@ function mesh_material(context, matsys, plot, color_obs = plot.color)
     shininess = plot.shininess[]
 
     color = to_value(color_obs)
-
+    @show typeof(color)
     color_signal = if color isa AbstractMatrix{<:Number}
         tex = RPR.MaterialNode(matsys, RPR.RPR_MATERIAL_NODE_IMAGE_TEXTURE)
         map(color_obs, plot.colormap, plot.colorrange) do color, cmap, crange
@@ -17,6 +17,7 @@ function mesh_material(context, matsys, plot, color_obs = plot.color)
     elseif color isa AbstractMatrix{<:Colorant}
         tex = RPR.MaterialNode(matsys, RPR.RPR_MATERIAL_NODE_IMAGE_TEXTURE)
         map(color_obs) do color
+            println("Setting color images: $(typeof(color))")
             img = RPR.Image(context, collect(color'))
             set!(tex, RPR.RPR_MATERIAL_INPUT_DATA, img)
             return tex
@@ -30,6 +31,8 @@ function mesh_material(context, matsys, plot, color_obs = plot.color)
     material = to_value(get(plot, :material, RPR.DiffuseMaterial(matsys)))
 
     map(color_signal) do color
+        @show typeof(color)
+        @show hasproperty(material, :color)
         if hasproperty(material, :color)
             material.color = color
         end
@@ -127,7 +130,8 @@ function to_rpr_object(context, matsys, scene, plot::Makie.Surface)
     mesh = GeometryBasics.Mesh(meta(vec(positions[]), uv=uv), faces)
 
     rpr_mesh = RPR.Shape(context, mesh)
-    material = mesh_material(context, matsys, plot, z)
+    color = plot.color[]
+    material = mesh_material(context, matsys, plot, color isa AbstractMatrix ? plot.color : z)
     set!(rpr_mesh, material)
     return rpr_mesh
 end

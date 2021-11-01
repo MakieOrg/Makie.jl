@@ -24,8 +24,8 @@ function to_rpr_camera(context::RPR.Context, cam_controls, cam)
     map(cam_controls.fov, cam.resolution) do fov, res
         l, p = cam_controls.lookat[], cam_controls.eyeposition[]
         wd = norm(l-p)
-        h = norm(res)
-        return RPR.rprCameraSetFocalLength(camera, (h*wd)/fov)
+        h = 2norm(res)
+        return RPR.rprCameraSetFocalLength(camera, (h*wd)/0.5fov)
     end
     # TODO:
     # RPR_CAMERA_FSTOP
@@ -89,6 +89,7 @@ function replace_scene_rpr!(scene,
         context=RPR.Context(resource=RPR.RPR_CREATION_FLAGS_ENABLE_GPU0),
         matsys = RPR.MaterialSystem(context, 0); refresh=Observable(nothing))
     set_standard_tonemapping!(context)
+    set!(context, RPR.RPR_CONTEXT_MAX_RECURSION, UInt(10))
     rpr_scene, rpr_camera = RPRMakie.to_rpr_scene(context, matsys, scene)
     # hide Makie scene
     scene.visible[] = false
