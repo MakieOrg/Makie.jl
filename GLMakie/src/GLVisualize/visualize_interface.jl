@@ -176,7 +176,7 @@ function output_buffers(transparency = false)
         """
     elseif enable_SSAO[]
         """
-        layout(location=2) out vec4 fragment_position;
+        layout(location=2) out vec3 fragment_position;
         layout(location=3) out vec3 fragment_normal_occlusion;
         """
     else

@@ -97,12 +97,12 @@ mat2 diagm(vec2 v){
     return mat2(v.x, 0.0, 0.0, v.y);
 }
 
-out vec4 o_view_pos;
+out vec3 o_view_pos;
 out vec3 o_normal;
 
 void main(void)
 {
-    o_view_pos = vec4(0);
+    o_view_pos = vec3(0);
     o_normal = vec3(0);
 
     // emit quad as triangle strip

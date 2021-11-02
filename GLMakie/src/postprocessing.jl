@@ -82,7 +82,7 @@ function ssao_postprocessor(framebuffer)
     if !haskey(framebuffer, :position)
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
         position_buffer = Texture(
-            Vec4f, size(framebuffer), minfilter = :nearest, x_repeat = :clamp_to_edge
+            Vec3f, size(framebuffer), minfilter = :nearest, x_repeat = :clamp_to_edge
         )
         pos_id = attach_colorbuffer!(framebuffer, :position, position_buffer)
         push!(framebuffer.render_buffer_ids, pos_id)
