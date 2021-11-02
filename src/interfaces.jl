@@ -1,5 +1,3 @@
-not_implemented_for(x) = error("Not implemented for $(x). You might want to put:  `using Makie` into your code!")
-
 function default_theme(scene)
     Attributes(
         # color = theme(scene, :color),
