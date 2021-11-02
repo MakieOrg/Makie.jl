@@ -136,7 +136,7 @@ an arbitrary `x` axis.
 
 `P` is the plot Type (it is optional).
 """
-convert_arguments(P::PointBased, y::RealVector) = convert_arguments(P, 1:length(y), y)
+convert_arguments(P::PointBased, y::RealVector) = convert_arguments(P, keys(y), y)
 
 """
     convert_arguments(P, x, y)::(Vector)
@@ -580,6 +580,16 @@ function tryrange(F, vec)
         end
     end
     error("$F is not a Function, or is not defined at any of the values $vec")
+end
+
+# OffsetArrays conversions
+function convert_arguments(sl::SurfaceLike, wm::OffsetArray) 
+  x1, y1 = wm.offsets .+ 1
+  nx, ny = size(wm)
+  x = range(x1, length = nx)
+  y = range(y1, length = ny)
+  v = parent(wm)
+  return convert_arguments(sl, x, y, v)
 end
 
 ################################################################################
@@ -1236,3 +1246,4 @@ end
 function convert_attribute(value::AbstractGeometry, ::key"marker", ::key"meshscatter")
     return normal_mesh(value)
 end
+
