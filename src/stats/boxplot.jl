@@ -27,6 +27,7 @@ The boxplot has 3 components:
 - `whiskerwidth`: multiplier of `width` for width of T's on whiskers, or
     `:match` to match `width`
 - `show_outliers`: show outliers as points
+- `dodge`: vector (length of data) of grouping variable to create multiple side-by-side boxes at the same `x` position
 """
 @recipe(BoxPlot, x, y) do scene
     Theme(
