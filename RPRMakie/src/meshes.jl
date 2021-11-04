@@ -5,7 +5,6 @@ function mesh_material(context, matsys, plot, color_obs = plot.color)
     shininess = plot.shininess[]
 
     color = to_value(color_obs)
-    @show typeof(color)
     color_signal = if color isa AbstractMatrix{<:Number}
         tex = RPR.MaterialNode(matsys, RPR.RPR_MATERIAL_NODE_IMAGE_TEXTURE)
         map(color_obs, plot.colormap, plot.colorrange) do color, cmap, crange
@@ -31,8 +30,6 @@ function mesh_material(context, matsys, plot, color_obs = plot.color)
     material = to_value(get(plot, :material, RPR.DiffuseMaterial(matsys)))
 
     map(color_signal) do color
-        @show typeof(color)
-        @show hasproperty(material, :color)
         if hasproperty(material, :color)
             material.color = color
         end
@@ -134,4 +131,26 @@ function to_rpr_object(context, matsys, scene, plot::Makie.Surface)
     material = mesh_material(context, matsys, plot, color isa AbstractMatrix ? plot.color : z)
     set!(rpr_mesh, material)
     return rpr_mesh
+end
+
+using FileIO
+
+@recipe(Matball, material) do scene
+    return Attributes(
+        base = Makie.automatic,
+        inner = Makie.automatic,
+        outer = Makie.automatic,
+        color = :blue
+    )
+end
+
+function Makie.plot!(plot::Matball)
+    base = plot.material[]
+    for name in [:base, :inner, :outer]
+        mat = getproperty(plot, name)[]
+        mat = mat isa Makie.Automatic ? base : mat
+        mesh = load(assetpath("matball_$(name).obj"))
+        mesh!(plot, mesh, material=mat, color=plot.color)
+    end
+    return plot
 end

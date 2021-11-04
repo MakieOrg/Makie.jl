@@ -75,8 +75,8 @@ function to_rpr_scene(context::RPR.Context, matsys, mscene::Makie.Scene)
     push!(scene, env_light)
 
     light = RPR.PointLight(context)
-    transform!(light, Makie.translationmatrix(Vec3f0(10, 10, 10)))
-    RPR.setradiantpower!(light, 1000, 1000, 1000)
+    transform!(light, Makie.translationmatrix(Vec3f0(2, -10, 10)))
+    RPR.setradiantpower!(light, 100, 100, 100)
     push!(scene, light)
 
     for plot in mscene.plots
@@ -87,16 +87,19 @@ end
 
 function replace_scene_rpr!(scene,
         context=RPR.Context(resource=RPR.RPR_CREATION_FLAGS_ENABLE_GPU0),
-        matsys = RPR.MaterialSystem(context, 0); refresh=Observable(nothing))
+        matsys = RPR.MaterialSystem(context, 0);
+        refresh=Observable(nothing),
+        iterations=1)
     set_standard_tonemapping!(context)
     set!(context, RPR.RPR_CONTEXT_MAX_RECURSION, UInt(10))
     rpr_scene, rpr_camera = RPRMakie.to_rpr_scene(context, matsys, scene)
     # hide Makie scene
     scene.visible[] = false
-    # foreach(p-> delete!(scene, p), copy(scene.plots))
+    foreach(p-> p.visible = false, scene.plots)
     sub = campixel(scene)
     fb_size = size(scene)
     im = image!(sub, zeros(RGBAf, fb_size))
+    translate!(im, 0, 0, 10000)
     framebuffer1 = RPR.FrameBuffer(context, RGBA, fb_size)
     framebuffer2 = RPR.FrameBuffer(context, RGBA, fb_size)
     RPR.rprCameraSetSensorSize(rpr_camera, fb_size...)
@@ -104,7 +107,7 @@ function replace_scene_rpr!(scene,
         clear!(framebuffer1)
     end
     set!(context, RPR.RPR_AOV_COLOR, framebuffer1)
-    RPR.rprContextSetParameterByKey1u(context, RPR.RPR_CONTEXT_ITERATIONS, 1)
+    RPR.rprContextSetParameterByKey1u(context, RPR.RPR_CONTEXT_ITERATIONS, iterations)
     task = @async while isopen(scene)
         if fb_size != size(scene)
             @info("resizing scene")
@@ -122,5 +125,5 @@ function replace_scene_rpr!(scene,
         im[1] = reverse(reshape(data, fb_size), dims=2)
         sleep(0.01)
     end
-    return context, task
+    return context, task, rpr_scene
 end

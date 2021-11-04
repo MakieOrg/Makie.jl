@@ -2,48 +2,60 @@ using GLMakie, GeometryBasics, RPRMakie, RadeonProRender
 using Colors, FileIO
 using Colors: N0f8
 RPR = RadeonProRender
-GLMakie.set_window_config!(float=true, focus_on_show=false)
-cat = load(GLMakie.assetpath("cat.obj"))
 
 begin
     context = RPR.Context()
-
     matsys = RPR.MaterialSystem(context, 0)
+
     emissive = RPR.EmissiveMaterial(matsys)
     diffuse = RPR.DiffuseMaterial(matsys)
+
+
     uber1 = RPR.UberMaterial(matsys)
     uber2 = RPR.UberMaterial(matsys)
     uber3 = RPR.UberMaterial(matsys)
     uber4 = RPR.UberMaterial(matsys)
+    mfacet = RPR.MicrofacetMaterial(matsys)
+
     materials = [
-        uber4 RPR.MicrofacetMaterial(matsys);
+        mfacet uber4 ;
         uber3 uber1;
-        diffuse uber2;
+        emissive uber2;
     ]
 
-    fig = Figure(resolution=(1000, 1000))
-    ax = LScene(fig[1, 1], scenekw=(show_axis=false,))
+    fig = Figure(resolution=(1500, 700))
+    ax = LScene(fig[1, 1], show_axis=false)
+    mesh!(ax, load(Makie.assetpath("matball_floor.obj")), color=:white)
     palette = reshape(Makie.default_palettes.color[][1:6], size(materials))
     for i in CartesianIndices(materials)
         x, y = Tuple(i)
-        # sphere = normal_mesh(Tesselation(Sphere(Point3f0(0.5), 0.5), 100))
-        catmesh = mesh!(ax, cat, material=materials[i], color=palette[i])
-        translate!(catmesh, ((x, y) .- (0.5.*size(materials)))..., 0)
-        rot = to_rotation((Vec3f0(1, 0, 0), 0.5pi)) * to_rotation((Vec3f0(0, 1, 0), rand()))
-        rotate!(ax.scene.plots[end], rot)
+        mat = materials[i]
+        mat.color = palette[i]
+        mplot = if mat === emissive
+            println("emissive!!")
+            matball!(ax, diffuse; inner=emissive)
+        else
+            matball!(ax, mat)
+        end
+        v = Vec3f(((x, y) .- (0.5.*size(materials)) .- 0.5)..., 0)
+        translate!(mplot, v .- Vec3f(0, 3, 0))
     end
-    mesh!(ax, Rect3f(Vec3f(-3, -3, -0.1), Vec3f(6, 6, 0.1)), color=:white)
-    mesh!(ax, Sphere(Point3f(0, 0, 2), 0.1), material=emissive)
     display(fig)
-end
-# fetch(task)
-begin
-    context, task = RPRMakie.replace_scene_rpr!(ax.scene, context, matsys)
+    refresh = Observable(nothing)
+    context, task, rpr_scene = RPRMakie.replace_scene_rpr!(ax.scene, context, matsys; refresh)
     emissive.color = Vec3f(4, 2, 2)
 end
 
 begin
+    cam = cameracontrols(ax.scene)
+    cam.eyeposition[] = Vec3f(-0.3, -5.5, 0.8)
+    cam.lookat[] = Vec3f(0.5, 0, -0.5)
+    cam.upvector[] = Vec3f(0, 0, 1)
+    cam.fov[] = 35
+    notify(refresh)
+end
 
+begin
     uber1.color =Vec4f(1, 1, 1, 1)
     uber1.diffuse_weight =Vec4f(0, 0, 0, 0)
     uber1.diffuse_roughness =Vec4f(1, 1, 1, 1)
@@ -216,4 +228,21 @@ begin
     uber4.sss_multiscatter = 0
     uber4.backscatter_weight = Vec4f(0.0,0.0,0.0,0.0)
     uber4.backscatter_color = Vec4f(1.0,1.0,1.0,1.0)
+    notify(refresh)
+end
+
+begin
+    mfacet.roughness = Vec3f(0.0)
+    mfacet.ior = Vec3f(1.5)
+    diffuse.color = to_color(:white)
+    diffuse.roughness = Vec3f(0.1)
+end
+
+begin
+    cam = cameracontrols(ax.scene)
+    cam.eyeposition[] = Vec3f(-0.3, -5.5, 0.8)
+    cam.lookat[] = Vec3f(0.5, 0, -0.5)
+    cam.upvector[] = Vec3f(0, 0, 1)
+    cam.fov[] = 35
+    notify(refresh)
 end
