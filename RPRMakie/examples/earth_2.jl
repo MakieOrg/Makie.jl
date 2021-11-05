@@ -41,33 +41,33 @@ begin
     context, task = RPRMakie.replace_scene_rpr!(ax.scene, context, matsys; refresh)
 end
 
-begin
-    mesh!(ax, m, material=athmo)
-    athmo = RPR.UberMaterial(matsys)
-    athmo.color = Vec4f(1, 1, 1, 1)
-    athmo.diffuse_weight = Vec4f(0, 0, 0, 0)
-    athmo.diffuse_roughness = Vec4f(0)
+# begin
+#     mesh!(ax, m, material=athmo)
+#     athmo = RPR.UberMaterial(matsys)
+#     athmo.color = Vec4f(1, 1, 1, 1)
+#     athmo.diffuse_weight = Vec4f(0, 0, 0, 0)
+#     athmo.diffuse_roughness = Vec4f(0)
 
-    athmo.reflection_ior = Vec4f(1.0)
-    athmo.refraction_color = Vec4f(0.5, 0.5, 0.7, 0)
-    athmo.refraction_weight = Vec4f(1)
-    athmo.refraction_roughness = Vec4f(0)
-    athmo.refraction_ior =Vec4f(1.0)
-    athmo.refraction_absorption_color = Vec4f(0.9, 0.3, 0.1, 1)
-    athmo.refraction_absorption_distance = Vec4f(1)
-    athmo.refraction_caustics = false
+#     athmo.reflection_ior = Vec4f(1.0)
+#     athmo.refraction_color = Vec4f(0.5, 0.5, 0.7, 0)
+#     athmo.refraction_weight = Vec4f(1)
+#     athmo.refraction_roughness = Vec4f(0)
+#     athmo.refraction_ior =Vec4f(1.0)
+#     athmo.refraction_absorption_color = Vec4f(0.9, 0.3, 0.1, 1)
+#     athmo.refraction_absorption_distance = Vec4f(1)
+#     athmo.refraction_caustics = false
 
-    athmo.sss_scatter_color = Vec4f(1.4, 0.8, 0.3, 0)
-    athmo.sss_scatter_distance = Vec4f(0.3)
-    athmo.sss_scatter_direction = Vec4f(0)
-    athmo.sss_weight = Vec4f(1)
-    athmo.backscatter_weight = Vec4f(1)
-    athmo.backscatter_color = Vec4f(0.9, 0.1, 0.1, 1)
+#     athmo.sss_scatter_color = Vec4f(1.4, 0.8, 0.3, 0)
+#     athmo.sss_scatter_distance = Vec4f(0.3)
+#     athmo.sss_scatter_direction = Vec4f(0)
+#     athmo.sss_weight = Vec4f(1)
+#     athmo.backscatter_weight = Vec4f(1)
+#     athmo.backscatter_color = Vec4f(0.9, 0.1, 0.1, 1)
 
-    athmo.reflection_mode = UInt(RPR.RPR_UBER_MATERIAL_IOR_MODE_PBR)
-    athmo.emission_mode = UInt(RPR.RPR_UBER_MATERIAL_EMISSION_MODE_DOUBLESIDED)
-    athmo.coating_mode = UInt(RPR.RPR_UBER_MATERIAL_IOR_MODE_PBR)
-    athmo.sss_multiscatter = true
-    athmo.refraction_thin_surface = false
-    notify(refresh)
-end
+#     athmo.reflection_mode = UInt(RPR.RPR_UBER_MATERIAL_IOR_MODE_PBR)
+#     athmo.emission_mode = UInt(RPR.RPR_UBER_MATERIAL_EMISSION_MODE_DOUBLESIDED)
+#     athmo.coating_mode = UInt(RPR.RPR_UBER_MATERIAL_IOR_MODE_PBR)
+#     athmo.sss_multiscatter = true
+#     athmo.refraction_thin_surface = false
+#     notify(refresh)
+# end

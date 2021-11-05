@@ -23,6 +23,9 @@ function mesh_material(context, matsys, plot, color_obs = plot.color)
         end
     elseif color isa Colorant || color isa Union{String, Symbol}
         map(to_color, color_obs)
+    elseif color isa Nothing
+        # ignore!
+        color_obs
     else
         error("Unsupported color type for RadeonProRender backend: $(typeof(color))")
     end
@@ -30,7 +33,7 @@ function mesh_material(context, matsys, plot, color_obs = plot.color)
     material = to_value(get(plot, :material, RPR.DiffuseMaterial(matsys)))
 
     map(color_signal) do color
-        if hasproperty(material, :color)
+        if !isnothing(color) && hasproperty(material, :color)
             material.color = color
         end
     end
@@ -59,14 +62,18 @@ function to_rpr_object(context, matsys, scene, plot::Makie.MeshScatter)
     for i in 1:(n_instances-1)
         push!(instances, RPR.Shape(context, marker))
     end
-
-    materials = map(instances) do instance
-        material = RPR.MaterialNode(matsys, RPR.RPR_MATERIAL_NODE_DIFFUSE)
-        set!(instance, material)
-        material
+    if haskey(plot, :material)
+        materials = Iterators.repeated(plot.material[], n_instances)
+        set!(marker, plot.material[].node)
+    else
+        materials = map(instances) do instance
+            material = RPR.MaterialNode(matsys, RPR.RPR_MATERIAL_NODE_DIFFUSE)
+            set!(instance, material)
+            material
+        end
     end
 
-    color = plot.color[]
+    color = to_color(plot.color[])
     colors = if color isa AbstractVector{<:Number}
         cmap = to_colormap(plot.colormap[])
         crange = plot.colorrange[]
@@ -94,7 +101,6 @@ function to_rpr_object(context, matsys, scene, plot::Makie.MeshScatter)
     end
 
     for (material, instance, color, position, scale, rotation) in zip(materials, instances, colors, positions, scales, rotations)
-        set!(material, RPR.RPR_MATERIAL_INPUT_COLOR, color)
         mat = Makie.transformationmatrix(position, scale, rotation)
         transform!(instance, mat)
     end

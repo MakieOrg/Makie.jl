@@ -9,18 +9,16 @@ begin
 
     emissive = RPR.EmissiveMaterial(matsys)
     diffuse = RPR.DiffuseMaterial(matsys)
-
-
-    uber1 = RPR.UberMaterial(matsys)
+    glass = RPR.Glass(matsys)
+    uber1 = RPR.Plastic(matsys)
+    chrome = RPR.Chrome(matsys)
     uber2 = RPR.UberMaterial(matsys)
     uber3 = RPR.UberMaterial(matsys)
-    uber4 = RPR.UberMaterial(matsys)
-    mfacet = RPR.MicrofacetMaterial(matsys)
 
     materials = [
-        mfacet uber4 ;
-        uber3 uber1;
-        emissive uber2;
+        glass chrome;
+        uber3 uber2;
+        emissive uber1;
     ]
 
     fig = Figure(resolution=(1500, 700))
@@ -30,12 +28,11 @@ begin
     for i in CartesianIndices(materials)
         x, y = Tuple(i)
         mat = materials[i]
-        mat.color = palette[i]
         mplot = if mat === emissive
             println("emissive!!")
-            matball!(ax, diffuse; inner=emissive)
+            matball!(ax, diffuse; inner=emissive, color=nothing)
         else
-            matball!(ax, mat)
+            matball!(ax, mat, color=nothing)
         end
         v = Vec3f(((x, y) .- (0.5.*size(materials)) .- 0.5)..., 0)
         translate!(mplot, v .- Vec3f(0, 3, 0))
@@ -54,51 +51,6 @@ begin
     cam.fov[] = 35
     notify(refresh)
 end
-
-begin
-    uber1.color =Vec4f(1, 1, 1, 1)
-    uber1.diffuse_weight =Vec4f(0, 0, 0, 0)
-    uber1.diffuse_roughness =Vec4f(1, 1, 1, 1)
-    uber1.reflection_color =Vec4f(0.996078, 0.858824, 0.639216, 0)
-    uber1.reflection_weight =Vec4f(1, 1, 1, 1)
-    uber1.reflection_roughness =Vec4f(0, 0, 0, 0)
-    uber1.reflection_anisotropy =Vec4f(0, 0, 0, 0)
-    uber1.reflection_anisotropy_rotation =Vec4f(0, 0, 0, 0)
-    uber1.reflection_ior =Vec4f(1.36, 1.36, 1.36, 1.36)
-    uber1.refraction_color =Vec4f(0.996078, 0.858824, 0.639216, 0)
-    uber1.refraction_weight =Vec4f(1, 1, 1, 1)
-    uber1.refraction_roughness =Vec4f(0, 0, 0, 0)
-    uber1.refraction_ior =Vec4f(1.36, 1.36, 1.36, 1.36)
-    uber1.refraction_absorption_color =Vec4f(0.996078, 0.858824, 0.639216, 0)
-    uber1.refraction_absorption_distance =Vec4f(0, 0, 0, 0)
-    uber1.refraction_caustics =Vec4f(0)
-    uber1.coating_color =Vec4f(1, 1, 1, 1)
-    uber1.coating_weight =Vec4f(0, 0, 0, 0)
-    uber1.coating_roughness =Vec4f(0, 0, 0, 0)
-    uber1.coating_ior =Vec4f(3, 3, 3, 3)
-    uber1.coating_metalness =Vec4f(0, 0, 0, 0)
-    uber1.coating_transmission_color =Vec4f(1, 1, 1, 1)
-    uber1.coating_thickness =Vec4f(0, 0, 0, 0)
-    uber1.sheen =Vec4f(1, 1, 1, 1)
-    uber1.sheen_tint =Vec4f(0, 0, 0, 0)
-    uber1.sheen_weight =Vec4f(0, 0, 0, 0)
-    uber1.emission_color =Vec4f(1, 1, 1, 1)
-    uber1.emission_weight =Vec3f( 0, 0, 0)
-    uber1.transparency =Vec4f(0, 0, 0, 0)
-    uber1.sss_scatter_color =Vec4f(0, 0, 0, 0)
-    uber1.sss_scatter_distance =Vec4f(0, 0, 0, 0)
-    uber1.sss_scatter_direction =Vec4f(0, 0, 0, 0)
-    uber1.sss_weight =Vec4f(0, 0, 0, 0)
-    uber1.backscatter_weight =Vec4f(0, 0, 0, 0)
-    uber1.backscatter_color =Vec4f(1, 1, 1, 1)
-
-    uber1.reflection_mode = UInt(RPR.RPR_UBER_MATERIAL_IOR_MODE_PBR)
-    uber1.emission_mode = UInt(RPR.RPR_UBER_MATERIAL_EMISSION_MODE_SINGLESIDED)
-    uber1.coating_mode = UInt(RPR.RPR_UBER_MATERIAL_IOR_MODE_PBR)
-    uber1.sss_multiscatter = false
-    uber1.refraction_thin_surface = false
-end
-
 
 begin
     uber2.color = Vec4f(0.501961f0,0.0f0,0.0f0,0.0f0)
@@ -186,54 +138,7 @@ begin
     uber3.backscatter_color = Vec4(0.752941,0.596078,0.443137,0.0)
 end
 
-
 begin
-    uber4.color = Vec4f(1.0,1.0,1.0,1.0)
-    uber4.diffuse_weight = Vec4f(0.0,0.0,0.0,0.0)
-    uber4.diffuse_roughness = Vec4f(1.0,1.0,1.0,1.0)
-    uber4.reflection_color = Vec4f(0.501961,0.501961,0.501961,0.0)
-    uber4.reflection_weight = Vec4f(1.0,1.0,1.0,1.0)
-    uber4.reflection_roughness = Vec4f(0.0,0.0,0.0,0.0)
-    uber4.reflection_anisotropy = Vec4f(0.0,0.0,0.0,0.0)
-    uber4.reflection_anisotropy_rotation = Vec4f(0.0,0.0,0.0,0.0)
-    uber4.reflection_mode = 1
-    uber4.reflection_ior = Vec4f(1.330000,1.330000,1.330000,1.330000)
-    uber4.refraction_color = Vec4f(0.501961,0.898039,0.996078,0.0)
-    uber4.refraction_weight = Vec4f(1.0,1.0,1.0,1.0)
-    uber4.refraction_roughness = Vec4f(0.0,0.0,0.0,0.0)
-    uber4.refraction_ior = Vec4f(1.330000,1.330000,1.330000,1.330000)
-    uber4.refraction_thin_surface = 0
-    uber4.refraction_absorption_color = Vec4f(0.501961,0.898039,0.996078,0.0)
-    uber4.refraction_absorption_distance = Vec4f(0.0,0.0,0.0,0.0)
-    uber4.refraction_caustics = 0
-    uber4.coating_color = Vec4f(1.0,1.0,1.0,1.0)
-    uber4.coating_weight = Vec4f(0.0,0.0,0.0,0.0)
-    uber4.coating_roughness = Vec4f(0.0,0.0,0.0,0.0)
-    uber4.coating_mode = 1
-    uber4.coating_ior = Vec4f(3.0,3.0,3.0,3.0)
-    uber4.coating_metalness = Vec4f(0.0,0.0,0.0,0.0)
-    uber4.coating_transmission_color = Vec4f(1.0,1.0,1.0,1.0)
-    uber4.coating_thickness = Vec4f(0.0,0.0,0.0,0.0)
-    uber4.sheen = Vec4f(1.0,1.0,1.0,1.0)
-    uber4.sheen_tint = Vec4f(0.0,0.0,0.0,0.0)
-    uber4.sheen_weight = Vec4f(0.0,0.0,0.0,0.0)
-    uber4.emission_color = Vec4f(1.0,1.0,1.0,1.0)
-    uber4.emission_weight = Vec4f(0.0,0.0,0.0,0.0)
-    uber4.emission_mode = 1
-    uber4.transparency = Vec4f(0.0,0.0,0.0,0.0)
-    uber4.sss_scatter_color = Vec4f(0.0,0.0,0.0,0.0)
-    uber4.sss_scatter_distance = Vec4f(0.0,0.0,0.0,0.0)
-    uber4.sss_scatter_direction = Vec4f(0.0,0.0,0.0,0.0)
-    uber4.sss_weight = Vec4f(0.0,0.0,0.0,0.0)
-    uber4.sss_multiscatter = 0
-    uber4.backscatter_weight = Vec4f(0.0,0.0,0.0,0.0)
-    uber4.backscatter_color = Vec4f(1.0,1.0,1.0,1.0)
-    notify(refresh)
-end
-
-begin
-    mfacet.roughness = Vec3f(0.0)
-    mfacet.ior = Vec3f(1.5)
     diffuse.color = to_color(:white)
     diffuse.roughness = Vec3f(0.1)
 end
