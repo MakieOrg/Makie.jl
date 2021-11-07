@@ -115,6 +115,7 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     attr[:colorrange] = cliprange
     attr[:colormap] = cmap
     attr[:algorithm] = 7
+    pop!(attr, :levels)
     volume!(plot, attr, x, y, z, volume)
 end
 
