@@ -1,39 +1,23 @@
 using LinearAlgebra
 
-function to_rpr_camera(context::RPR.Context, cam_controls, cam)
+function update_rpr_camera!(oldvals, camera, cam_controls, cam)
     # Create camera
-    camera = RPR.Camera(context)
-
-    map(cam_controls.eyeposition) do position
-        l, u = cam_controls.lookat[], cam_controls.upvector[]
-        RPR.rprCameraSetFocusDistance(camera, norm(l - position))
-        lookat!(camera, position, l, u)
-        return
-    end
-
-    map(cam_controls.far) do far
-        RPR.rprCameraSetFarPlane(camera, far)
-        return
-    end
-
-    map(cam_controls.near) do near
-        RPR.rprCameraSetNearPlane(camera, near)
-        return
-    end
-
-    map(cam_controls.fov, cam.resolution) do fov, res
-        l, p = cam_controls.lookat[], cam_controls.eyeposition[]
-        wd = norm(l-p)
-        h = 2norm(res)
-        return RPR.rprCameraSetFocalLength(camera, (h*wd)/0.5fov)
-    end
-    # TODO:
+    c = cam_controls
+    l, u, p, fov = c.lookat[], c.upvector[], c.eyeposition[], c.fov[]
+    far, near, res = c.far[], c.near[], cam.resolution[]
+    new_vals = (; l, u, p, fov, far, near, res)
+    new_vals == oldvals && return oldvals
+    wd = norm(l - p)
+    RPR.rprCameraSetSensorSize(camera, res...)
+    RPR.rprCameraSetFocusDistance(camera, wd)
+    lookat!(camera, p, l, u)
+    RPR.rprCameraSetFarPlane(camera, far)
+    RPR.rprCameraSetNearPlane(camera, near)
+    h = norm(res)
+    RPR.rprCameraSetFocalLength(camera, (30*h)/fov)
     # RPR_CAMERA_FSTOP
-    # RPR_CAMERA_FOCAL_LENGTH
-    # RPR_CAMERA_SENSOR_SIZE
     # RPR_CAMERA_MODE
-    # RPR_CAMERA_FOCUS_DISTANCE
-    return camera
+    return new_vals
 end
 
 function to_rpr_object(context, matsys, scene, plot)
@@ -61,10 +45,6 @@ end
 function to_rpr_scene(context::RPR.Context, matsys, mscene::Makie.Scene)
     scene = RPR.Scene(context)
     set!(context, scene)
-    cam_controls = Makie.cameracontrols(mscene)
-    cam = Makie.camera(mscene)
-    camera = to_rpr_camera(context, cam_controls, cam)
-    set!(scene, camera)
 
     env_light = RPR.EnvironmentLight(context)
     # image_path = RPR.assetpath("studio032.exr")
@@ -83,7 +63,7 @@ function to_rpr_scene(context::RPR.Context, matsys, mscene::Makie.Scene)
     for plot in mscene.plots
         insert_plots!(context, matsys, scene, mscene, plot)
     end
-    return scene, camera
+    return scene
 end
 
 function replace_scene_rpr!(scene,
@@ -93,7 +73,14 @@ function replace_scene_rpr!(scene,
         iterations=1)
     set_standard_tonemapping!(context)
     set!(context, RPR.RPR_CONTEXT_MAX_RECURSION, UInt(10))
-    rpr_scene, rpr_camera = RPRMakie.to_rpr_scene(context, matsys, scene)
+
+    rpr_scene = RPRMakie.to_rpr_scene(context, matsys, scene)
+
+    cam_controls = Makie.cameracontrols(scene)
+    cam = Makie.camera(scene)
+    camera = RPR.Camera(context)
+    set!(rpr_scene, camera)
+
     # hide Makie scene
     scene.visible[] = false
     foreach(p-> p.visible = false, scene.plots)
@@ -103,12 +90,15 @@ function replace_scene_rpr!(scene,
     translate!(im, 0, 0, 10000)
     framebuffer1 = RPR.FrameBuffer(context, RGBA, fb_size)
     framebuffer2 = RPR.FrameBuffer(context, RGBA, fb_size)
-    RPR.rprCameraSetSensorSize(rpr_camera, fb_size...)
-    onany(camera(scene).projection, refresh) do proj, refresh
-        clear!(framebuffer1)
+
+    clear = true
+    onany(refresh, cam.projection) do _, _
+        clear = true
     end
+
     set!(context, RPR.RPR_AOV_COLOR, framebuffer1)
     RPR.rprContextSetParameterByKey1u(context, RPR.RPR_CONTEXT_ITERATIONS, iterations)
+    cam_values = (;)
     task = @async while isopen(scene)
         if fb_size != size(scene)
             @info("resizing scene")
@@ -118,7 +108,14 @@ function replace_scene_rpr!(scene,
             framebuffer1 = RPR.FrameBuffer(context, RGBA, fb_size)
             framebuffer2 = RPR.FrameBuffer(context, RGBA, fb_size)
             set!(context, RPR.RPR_AOV_COLOR, framebuffer1)
-            RPR.rprCameraSetSensorSize(rpr_camera, fb_size...)
+        end
+
+        cam_values = update_rpr_camera!(cam_values, camera, cam_controls, cam)
+
+        if clear
+            println("clearing")
+            clear!(framebuffer1)
+            clear = false
         end
         RPR.render(context)
         RPR.rprContextResolveFrameBuffer(context, framebuffer1, framebuffer2, false)

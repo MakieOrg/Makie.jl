@@ -13,17 +13,10 @@ begin
     z = rand(10,10)
     fig = Figure(resolution=(1200, 800), fontsize=26)
     ax = LScene(fig[1, 1])
-    mat  = RPR.Chrome(matsys)
-    mat.roughness = Vec4(0.3)
+    mat  = RPR.Plastic(matsys)
     meshscatter!(
-        ax, pos, marker = recmesh, markersize = Vec3f.(0.1, 0.1, z[:]), material=mat)
+        ax, pos, marker = recmesh, markersize = Vec3f.(0.1, 0.1, z[:]), material=mat, color=1:length(pos))
+    ax.scene[OldAxis][1] = Rect3f(Vec3f(0), Vec3f(1, 1, 1.2))
     display(fig)
     context, task, rpr_scene = RPRMakie.replace_scene_rpr!(ax.scene, context, matsys)
 end
-
-
-vol = rand(100, 100, 100)
-
-f, ax, pl = GLMakie.volume(0..1, 0..1, 0..1, vol, absorption=10.0)
-display(f)
-context, task, rpr_scene = RPRMakie.replace_scene_rpr!(ax.scene)
