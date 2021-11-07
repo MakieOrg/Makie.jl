@@ -46,6 +46,7 @@ import ImageIO
 import FileIO
 import SparseArrays
 using MakieCore
+using OffsetArrays
 
 using GeometryBasics: widths, positive_widths, VecTypes, AbstractPolygon, value
 using Distributions: Distribution, VariateForm, Discrete, QQPair, pdf, quantile, qqbuild
