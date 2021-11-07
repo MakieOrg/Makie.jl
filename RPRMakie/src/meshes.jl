@@ -17,7 +17,7 @@ function mesh_material(context, matsys, plot, color_obs = plot.color)
         tex = RPR.MaterialNode(matsys, RPR.RPR_MATERIAL_NODE_IMAGE_TEXTURE)
         map(color_obs) do color
             println("Setting color images: $(typeof(color))")
-            img = RPR.Image(context, collect(color'))
+            img = RPR.Image(context, Makie.el32convert(color'))
             set!(tex, RPR.RPR_MATERIAL_INPUT_DATA, img)
             return tex
         end
