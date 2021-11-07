@@ -164,6 +164,12 @@ function visualize(@nospecialize(main), @nospecialize(s), @nospecialize(data))
     data = _default(main, s, copy(data))
     @gen_defaults! data begin # make sure every object has these!
         model = Mat4f(I)
+        image = nothing => Texture
+        pattern = nothing => Texture
+        matcap = nothing => Texture
+        color_map = nothing => Texture
+        color_range = nothing => Vec2f
+        uv_scale = Vec2f(1)
     end
     return assemble_shader(data)
 end

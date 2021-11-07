@@ -19,7 +19,8 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 
 
 {{distancefield_type}}  distancefield;
-{{image_type}}          image;
+// {{image_type}}          image;
+// {{pattern_type}} pattern;
 
 uniform float           stroke_width;
 uniform float           glow_width;
@@ -41,7 +42,8 @@ flat in vec4            f_uv_texture_bbox;
 // These versions of aastep assume that `dist` is a signed distance function
 // which has been scaled to be in units of pixels.
 float aastep(float threshold1, float dist) {
-    return min(1.0, f_viewport_from_u_scale)*smoothstep(threshold1-ANTIALIAS_RADIUS, threshold1+ANTIALIAS_RADIUS, dist);
+    return min(1.0, f_viewport_from_u_scale) * 
+        smoothstep(threshold1-ANTIALIAS_RADIUS, threshold1+ANTIALIAS_RADIUS, dist);
 }
 float aastep(float threshold1, float threshold2, float dist) {
     return smoothstep(threshold1-ANTIALIAS_RADIUS, threshold1+ANTIALIAS_RADIUS, dist) -
@@ -74,6 +76,10 @@ float rounded_rectangle(vec2 uv, vec2 tl, vec2 br){
     vec2 d = max(tl-uv, uv-br);
     return -((length(max(vec2(0.0), d)) + min(0.0, max(d.x, d.y)))-tl.x);
 }
+
+
+vec4 get_color(vec4 color, vec2 uv, vec3 normal);
+
 
 void fill(vec4 fillcolor, Nothing image, vec2 uv, float infill, inout vec4 color){
     color = mix(color, fillcolor, infill);
@@ -147,7 +153,9 @@ void main(){
     float inside = aastep(inside_start, signed_distance);
     vec4 final_color = f_bg_color;
 
-    fill(f_color, image, tex_uv, inside, final_color);
+    // fill(f_color, image, tex_uv, inside, final_color);
+    // final_color = mix(final_color, get_color(tex_uv), inside);
+    final_color = mix(final_color, get_color(f_color, tex_uv.yx, vec3(0, 0, -1)), inside);
     stroke(f_stroke_color, signed_distance, -stroke_width, final_color);
     glow(f_glow_color, signed_distance, aastep(-stroke_width, signed_distance), final_color);
     // TODO: In 3D, we should arguably discard fragments outside the sprite

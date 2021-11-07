@@ -311,7 +311,7 @@ function sprites(p, s, data)
         fxaa             = false
         shader           = GLVisualizeShader(
             "fragment_output.frag", "util.vert", "sprites.geom",
-            "sprites.vert", "distance_shape.frag",
+            "sprites.vert", "colors.frag", "distance_shape.frag",
             view = Dict("position_calc"=>position_calc(position, position_x, position_y, position_z, GLBuffer))
         )
         scale_primitive = true
