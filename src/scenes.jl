@@ -301,7 +301,6 @@ cameracontrols(scene::Scene) = scene.camera_controls
 cameracontrols(scene::SceneLike) = cameracontrols(scene.parent)
 
 function cameracontrols!(scene::Scene, cam)
-    disconnect!(scene.camera_controls)
     scene.camera_controls = cam
     return cam
 end
