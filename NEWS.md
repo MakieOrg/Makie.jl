@@ -3,6 +3,17 @@
 ## master
 
 - The functions `labelslidergrid!` and `labelslider!` now set fixed widths for the value column with a heuristic. It is possible now to pass `Formatting.format` format strings as format specifiers in addition to the previous functions.
+- Add depth to 3D contours and isosurfaces [#1395](https://github.com/JuliaPlots/Makie.jl/pull/1395)
+
+- Remove `Node` alias [#1307](https://github.com/JuliaPlots/Makie.jl/pull/1307). To upgrade, simply replace all occurences of `Node` with `Observable`
+
+- simplify plotting barplot by group  [#1223](https://github.com/JuliaPlots/Makie.jl/pull/1223). This allows specifying x_distance in a bar plot. It corresponds to the bar width + the x_gap. The rationale is that we compute this from the data, assuming that bar width plus x_gap should equal minimum(diffs(x)), but in categorical data we just want that to be 1 (otherwise things get problematic if in some group not all categories are present).
+
+- add logical expressions for ispressed [#1222](https://github.com/JuliaPlots/Makie.jl/pull/1222). Allows for `ispressed(scene, Mouse.left & (Keyboard.left_control | Keyboard.right_control))`
+
+- add depth shift [#1382](https://github.com/JuliaPlots/Makie.jl/pull/1382)
+
+- **Breaking** clean up Scene type [#1192](https://github.com/JuliaPlots/Makie.jl/pull/1192). Long story short, Scene() doesn't create any axes or limits anymore. All keywords like `raw`, `show_axis` have been removed. A scene is now always works like when using the deprecated `raw=true`. All the high level functionality like showing an axis and adding a 3d camera has been moved to `LScene`. See the new `Scene` docs for more info:
 
 ## v0.15.2
 - Reenabled Julia 1.3 support.
