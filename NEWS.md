@@ -13,7 +13,7 @@
 
 - add depth shift [#1382](https://github.com/JuliaPlots/Makie.jl/pull/1382)
 
-- **Breaking** clean up Scene type [#1192](https://github.com/JuliaPlots/Makie.jl/pull/1192). Long story short, Scene() doesn't create any axes or limits anymore. All keywords like `raw`, `show_axis` have been removed. A scene is now always works like when using the deprecated `raw=true`. All the high level functionality like showing an axis and adding a 3d camera has been moved to `LScene`. See the new `Scene` docs for more info:
+- **Breaking** clean up Scene type [#1192](https://github.com/JuliaPlots/Makie.jl/pull/1192). Long story short, Scene() doesn't create any axes or limits anymore. All keywords like `raw`, `show_axis` have been removed. A scene now always works like when using the deprecated `raw=true`. All the high level functionality like showing an axis and adding a 3d camera has been moved to `LScene`. See the new `Scene` docs for more info:
 
 ## v0.15.2
 - Reenabled Julia 1.3 support.
