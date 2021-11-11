@@ -275,6 +275,7 @@ end
 
 include("figures.jl")
 export content
+export resize_to_layout!
 
 include("makielayout/MakieLayout.jl")
 # re-export MakieLayout
