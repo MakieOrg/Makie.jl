@@ -30,6 +30,20 @@
     @@
     ~~~</a>~~~
   @@
+
+  @@box
+    ~~~<a class="boxlink" href="aspect-tutorial/">~~~
+    @@title Aspect Tutorial @@
+    @@box-content
+      @@description
+      Learn how to deal with typical problems when constraining aspect ratios and sizes.
+      @@
+      ~~~
+      <img src="/assets/tutorials/layout-tutorial/code/output/final_result.png">
+      ~~~
+    @@
+    ~~~</a>~~~
+  @@
 @@
 
 ## Videos
