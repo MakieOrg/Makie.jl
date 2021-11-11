@@ -75,7 +75,7 @@ function to_rpr_scene(context::RPR.Context, matsys, mscene::Makie.Scene)
     push!(scene, env_light)
 
     light = RPR.PointLight(context)
-    transform!(light, Makie.translationmatrix(Vec3f0(10, 10, 10)))
+    transform!(light, Makie.translationmatrix(Vec3f(10, 10, 10)))
     RPR.setradiantpower!(light, 1000, 1000, 1000)
     push!(scene, light)
 
