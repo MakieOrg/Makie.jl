@@ -4,7 +4,7 @@
 
 `Scene`s are fundamental building blocks of Makie figures.
 A Scene is like a container for `Plot`s and other `Scene`s.
-`Scenes` have `Plot`s (including an `Axis` if `show_axis = true`) and `Subscenes` associated with them.
+`Scenes` have `Plot`s and `Subscenes` associated with them.
 Every Scene also has a transformation, made up of _scale_, _translation_, and _rotation_.
 
 !!! note

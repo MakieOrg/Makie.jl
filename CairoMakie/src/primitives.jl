@@ -665,7 +665,7 @@ function draw_mesh3D(
         scene, screen, primitive;
         mesh = primitive[1][], pos = Vec4f(0), scale = 1f0
     )
-    @get_attribute(primitive, (color, shading, lightposition, ambient, diffuse,
+    @get_attribute(primitive, (color, shading, diffuse,
         specular, shininess, faceculling))
 
     colormap = get(primitive, :colormap, nothing) |> to_value |> to_colormap

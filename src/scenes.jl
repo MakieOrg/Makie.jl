@@ -1,3 +1,51 @@
+struct SSAOParameters
+    """
+    sets the range of SSAO. You may want to scale this up or
+    down depending on the limits of your coordinate system
+    """
+    radius::Observable{Float32}
+
+    """
+    sets the minimum difference in depth required for a pixel to
+    be occluded. Increasing this will typically make the occlusion
+    effect stronger.
+    """
+    bias::Observable{Float32}
+
+    """
+    sets the (pixel) range of the blur applied to the occlusion texture.
+    The texture contains a (random) pattern, which is washed out by
+    blurring. Small `blur` will be faster, sharper and more patterned.
+    Large `blur` will be slower and smoother. Typically `blur = 2` is
+    a good compromise.
+    """
+    blur::Observable{Int32}
+end
+
+function SSAOParameters(; radius=nothing, bias=nothing, blur=nothing)
+    defaults = theme(nothing, :SSAO)
+    _radius = isnothing(radius) ? defaults.radius[] : radius
+    _bias = isnothing(bias) ? defaults.bias[] : bias
+    _blur = isnothing(blur) ? defaults.blur[] : blur
+    return SSAOParameters(_radius, _bias, _blur)
+end
+
+
+abstract type AbstractLight end
+
+struct PointLight <: AbstractLight
+    position::Observable{Vec3f}
+    radiance::Observable{RGBf}
+end
+
+struct EnvironmentLight <: AbstractLight
+    intensity::Observable{Float32}
+    image::Observable{Matrix{RGBf}}
+end
+
+struct AmbientLight <: AbstractLight
+    color::Observable{RGBf}
+end
 
 """
     Scene TODO document this
@@ -46,6 +94,9 @@ mutable struct Scene <: AbstractScene
     # Attributes
     backgroundcolor::Observable{RGBAf}
     visible::Observable{Bool}
+    ssao::SSAOParameters
+    lights::Vector{AbstractLight}
+
 end
 
 get_scene(scene::Scene) = scene
@@ -89,6 +140,8 @@ function Scene(;
         current_screens::Vector{AbstractScreen} = AbstractScreen[],
         parent = nothing,
         visible = Observable(true),
+        ssao = SSAOParameters(),
+        lights = AbstractLight[],
         theme_kw...
     )
     m_theme = current_default_theme(; theme..., theme_kw...)
@@ -111,16 +164,46 @@ function Scene(;
             return Consume(false)
         end
     end
+
     scene = Scene(
         parent, events, px_area, clear, cam, camera_controls,
         transformation, plots, m_theme,
-        children, current_screens, bg, visible
+        children, current_screens, bg, visible, ssao, lights
     )
     if camera isa Function
         cam = camera(scene)
     end
+
+    lightposition = to_value(get(m_theme, :lightposition, nothing))
+    if !isnothing(lightposition)
+        position = if lightposition == :eyeposition
+            scene.camera.eyeposition
+        else
+            m_theme.lightposition
+        end
+        push!(lights, PointLight(position, RGBf(1, 1, 1)))
+    end
+
+    ambient = to_value(get(m_theme, :ambient, nothing))
+    if !isnothing(ambient)
+        push!(lights, AmbientLight(ambient))
+    end
+
     return scene
 end
+
+function get_one_light(scene::Scene, Typ)
+    indices = findall(x-> x isa Typ, scene.lights)
+    isempty(indices) && return nothing
+    if length(indices) > 1
+        @warn("Only one light supported by backend right now. Using only first light")
+    end
+    return scene.lights[indices[1]]
+end
+
+get_point_light(scene::Scene) = get_one_light(scene, PointLight)
+get_ambient_light(scene::Scene) = get_one_light(scene, AmbientLight)
+
 
 function Scene(
         parent::Scene;

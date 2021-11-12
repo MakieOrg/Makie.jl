@@ -23,6 +23,7 @@ function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
     get!(uniforms, :color, false)
     get!(uniforms, :model, plot.model)
     get!(uniforms, :depth_shift, 0f0)
+    get!(uniforms, :lightposition, Vec3f(1))
 
     uniforms[:normalmatrix] = map(mscene.camera.view, plot.model) do v, m
         i = SOneTo(3)
@@ -97,9 +98,8 @@ function create_shader(mscene::Scene, plot::Surface)
     vertices = GeometryBasics.meta(positions; uv=uv, normals=normals)
     mesh = GeometryBasics.Mesh(vertices, faces)
     return draw_mesh(mscene, mesh, plot; uniform_color=color, color=Vec4f(0),
-                     shading=plot.shading, ambient=plot.ambient, diffuse=plot.diffuse,
+                     shading=plot.shading, diffuse=plot.diffuse,
                      specular=plot.specular, shininess=plot.shininess,
-                     lightposition=Vec3f(1), 
                      depth_shift=get(plot, :depth_shift, Observable(0f0)),
                      highclip=lift(nothing_or_color, plot.highclip),
                      lowclip=lift(nothing_or_color, plot.lowclip),
@@ -113,10 +113,10 @@ function create_shader(mscene::Scene, plot::Union{Heatmap,Image})
     mesh = limits_to_uvmesh(plot)
 
     return draw_mesh(mscene, mesh, plot; uniform_color=color, color=Vec4f(0),
-                     normals=Vec3f(0), shading=false, ambient=plot.ambient,
+                     normals=Vec3f(0), shading=false,
                      diffuse=plot.diffuse, specular=plot.specular,
                      colorrange=haskey(plot, :colorrange) ? plot.colorrange : false,
-                     shininess=plot.shininess, lightposition=Vec3f(1),
+                     shininess=plot.shininess,
                      highclip=lift(nothing_or_color, plot.highclip),
                      lowclip=lift(nothing_or_color, plot.lowclip),
                      nan_color=lift(nothing_or_color, plot.nan_color),
@@ -145,10 +145,10 @@ function create_shader(mscene::Scene, plot::Volume)
                    isovalue=lift(Float32, plot.isovalue),
                    isorange=lift(Float32, plot.isorange),
                    absorption=lift(Float32, get(plot, :absorption, Observable(1f0))),
-                   algorithm=algorithm, ambient=plot.ambient,
+                   algorithm=algorithm,
                    diffuse=plot.diffuse, specular=plot.specular, shininess=plot.shininess,
                    model=model2, depth_shift = get(plot, :depth_shift, Observable(0f0)),
                    # these get filled in later by serialization, but we need them
                    # as dummy values here, so that the correct uniforms are emitted
-                   lightposition=Vec3f(1), eyeposition=Vec3f(1))
+                   eyeposition=Vec3f(1))
 end
