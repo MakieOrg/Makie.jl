@@ -55,10 +55,10 @@ vec3 gennormal(vec3 uvw, float d)
 }
 
 vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
-    float diff_coeff = max(dot(L, N), 0.0);
+    float diff_coeff = max(dot(L, N), 0.0) + max(dot(L, -N), 0.0);
     // specular coefficient
     vec3 H = normalize(L + V);
-    float spec_coeff = pow(max(dot(H, N), 0.0), shininess);
+    float spec_coeff = pow(max(dot(H, N), 0.0) + max(dot(H, -N), 0.0), shininess);
     // final lighting model
     return vec3(
         ambient * color +
@@ -171,10 +171,10 @@ vec4 isosurface(vec3 front, vec3 dir)
         if(abs(density - isovalue) < isorange){
             vec3 N = gennormal(pos, step_size);
             vec3 L = normalize(o_light_dir - pos);
-            // back & frontface...
-            vec3 c1 = blinnphong(N, camdir, L, diffuse_color.rgb);
-            vec3 c2 = blinnphong(-N, camdir, L, diffuse_color.rgb);
-            c = vec4(0.5*c1 + 0.5*c2, diffuse_color.a);
+            c = vec4(
+                blinnphong(N, camdir, L, diffuse_color.rgb), 
+                diffuse_color.a
+            );
             break;
         }
         pos += dir;
