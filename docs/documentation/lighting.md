@@ -35,11 +35,19 @@ A matcap (material capture) is a texture which is applied based on the normals o
 
 ## Examples
 
-\begin{examplefigure}{}
-```julia
-using GLMakie
-GLMakie.activate!() # hide
+\begin{showhtml}{}
+```julia:wgl-light
+using JSServe
+Page(exportable=true, offline=true)
+```
+\end{showhtml}
 
+\begin{showhtml}{}
+```julia:wgl-light
+using WGLMakie
+using JSServe
+
+WGLMakie.activate!() # hide
 xs = -10:0.1:10
 ys = -10:0.1:10
 zs = [10 * (cos(x) * cos(y)) * (.1 + exp(-(x^2 + y^2 + 1)/10)) for x in xs, y in ys]
@@ -47,20 +55,40 @@ zs = [10 * (cos(x) * cos(y)) * (.1 + exp(-(x^2 + y^2 + 1)/10)) for x in xs, y in
 fig, ax, pl = surface(xs, ys, zs, colormap = (:white, :white),
 
     # Light comes from (0, 0, 15), i.e the sphere
-    lightposition = Vec3f(0, 0, 15),
-    # base light of the plot only illuminates red colors
-    ambient = Vec3f(0.3, 0, 0),
+    axis = (
+        # Light comes from (0, 0, 15), i.e the sphere
+        lightposition = Vec3f(0, 0, 15),
+        # base light of the plot only illuminates red colors
+        ambient = RGBf(0.3, 0, 0),
+    ),
     # light from source (sphere) illuminates yellow colors
     diffuse = Vec3f(0.4, 0.4, 0),
     # reflections illuminate blue colors
     specular = Vec3f(0, 0, 1.0),
     # Reflections are sharp
-    shininess = 128f0
+    shininess = 128f0,
+    figure = (resolution=(1000, 800),)
 )
 mesh!(ax, Sphere(Point3f(0, 0, 15), 1f0), color=RGBf(1, 0.7, 0.3))
-fig
+
+app = JSServe.App() do session
+    light_rotation = JSServe.Slider(1:360)
+    shininess = JSServe.Slider(1:128)
+
+    pointlight = ax.scene.lights[1]
+    ambient = ax.scene.lights[2]
+    on(shininess) do value
+        pl.shininess = value
+    end
+    on(light_rotation) do degree
+        r = deg2rad(degree)
+        pointlight.position[] = Vec3f(sin(r)*10, cos(r)*10, 15)
+    end
+    JSServe.record_states(session, DOM.div(light_rotation, shininess, fig))
+end
+app
 ```
-\end{examplefigure}
+\end{showhtml}
 
 \begin{examplefigure}{}
 ```julia
@@ -70,9 +98,10 @@ GLMakie.enable_SSAO[] = true
 close(GLMakie.global_gl_screen()) # close any open screen
 
 fig = Figure()
-ax = LScene(fig[1, 1], scenekw = (SSAO = (radius = 5.0, blur = 3),))
+ssao = Makie.SSAO(radius = 5.0, blur = 3)
+ax = LScene(fig[1, 1], scenekw = (ssao=ssao,))
 # SSAO attributes are per scene
-ax.scene.theme[:SSAO][:bias][] = 0.025
+ax.scene.ssao.bias[] = 0.025
 
 box = Rect3(Point3f(-0.5), Vec3f(1))
 positions = [Point3f(x, y, rand()) for x in -5:5 for y in -5:5]
@@ -80,7 +109,7 @@ meshscatter!(ax, positions, marker=box, markersize=1, color=:lightblue, ssao=tru
 
 GLMakie.enable_SSAO[] = false # hide
 close(GLMakie.global_gl_screen()) # hide
-fig # hide
+fig
 ```
 \end{examplefigure}
 

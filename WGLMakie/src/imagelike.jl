@@ -24,6 +24,7 @@ function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
     get!(uniforms, :model, plot.model)
     get!(uniforms, :depth_shift, 0f0)
     get!(uniforms, :lightposition, Vec3f(1))
+    get!(uniforms, :ambient, Vec3f(1))
 
     uniforms[:normalmatrix] = map(mscene.camera.view, plot.model) do v, m
         i = SOneTo(3)
@@ -150,5 +151,5 @@ function create_shader(mscene::Scene, plot::Volume)
                    model=model2, depth_shift = get(plot, :depth_shift, Observable(0f0)),
                    # these get filled in later by serialization, but we need them
                    # as dummy values here, so that the correct uniforms are emitted
-                   eyeposition=Vec3f(1))
+                   lightposition=Vec3f(1), eyeposition=Vec3f(1), ambient=Vec3f(1))
 end

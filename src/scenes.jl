@@ -1,4 +1,4 @@
-struct SSAOParameters
+struct SSAO
     """
     sets the range of SSAO. You may want to scale this up or
     down depending on the limits of your coordinate system
@@ -22,12 +22,19 @@ struct SSAOParameters
     blur::Observable{Int32}
 end
 
-function SSAOParameters(; radius=nothing, bias=nothing, blur=nothing)
+function Base.show(io::IO, ssao::SSAO)
+    println(io, "SSAO:")
+    println(io, "    radius: ", ssao.radius[])
+    println(io, "    bias:   ", ssao.bias[])
+    println(io, "    blur:   ", ssao.blur[])
+end
+
+function SSAO(; radius=nothing, bias=nothing, blur=nothing)
     defaults = theme(nothing, :SSAO)
     _radius = isnothing(radius) ? defaults.radius[] : radius
     _bias = isnothing(bias) ? defaults.bias[] : bias
     _blur = isnothing(blur) ? defaults.blur[] : blur
-    return SSAOParameters(_radius, _bias, _blur)
+    return SSAO(_radius, _bias, _blur)
 end
 
 
@@ -94,7 +101,7 @@ mutable struct Scene <: AbstractScene
     # Attributes
     backgroundcolor::Observable{RGBAf}
     visible::Observable{Bool}
-    ssao::SSAOParameters
+    ssao::SSAO
     lights::Vector{AbstractLight}
 
 end
@@ -140,7 +147,7 @@ function Scene(;
         current_screens::Vector{AbstractScreen} = AbstractScreen[],
         parent = nothing,
         visible = Observable(true),
-        ssao = SSAOParameters(),
+        ssao = SSAO(),
         lights = AbstractLight[],
         theme_kw...
     )
@@ -175,6 +182,7 @@ function Scene(;
     end
 
     lightposition = to_value(get(m_theme, :lightposition, nothing))
+
     if !isnothing(lightposition)
         position = if lightposition == :eyeposition
             scene.camera.eyeposition

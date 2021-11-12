@@ -294,14 +294,14 @@ function serialize_three(scene::Scene, plot::AbstractPlot)
     mesh[:uuid] = js_uuid(plot)
     mesh[:transparency] = plot.transparency
     mesh[:overdraw] = plot.overdraw
+
     uniforms = mesh[:uniforms]
     updater = mesh[:uniform_updater]
-
 
     pointlight = Makie.get_point_light(scene)
     if !isnothing(pointlight)
         uniforms[:lightposition] = serialize_three(pointlight.position[])
-        on(pointlight.lightposition) do value
+        on(pointlight.position) do value
             updater[] = [:lightposition, serialize_three(value)]
             return
         end

@@ -11,26 +11,34 @@ Exportable has the effect of inlining all data & js dependencies, so that everyt
 `offline=true` will make the Page not even try to connect to a running Julia
 process, which makes sense for the kind of static export we do in Documenter.
 
-```julia
-using JSServe
+
+\begin{showhtml}{}
+```julia:wgl-light
+using JSServe, Markdown
 Page(exportable=true, offline=true)
 ```
+\end{showhtml}
 
 After the page got displayed by the frontend, we can start with creating plots and JSServe Apps:
 
-```julia
+
+\begin{showhtml}{}
+```julia:wgl-light
 using WGLMakie
 WGLMakie.activate!()
 # Set the default resolution to something that fits the Documenter theme
 set_theme!(resolution=(800, 400))
 scatter(1:4, color=1:4)
 ```
+\end{showhtml}
+
 
 As you can see, the output is completely static, because we don't have a running Julia server, as it would be the case with e.g. Pluto.
 To make the plot interactive, we will need to write more parts of WGLMakie in JS, which is an ongoing effort.
 As you can see, the interactivity already keeps working for 3D:
 
-```julia
+\begin{showhtml}{}
+```julia:wgl-light
 N = 60
 function xy_data(x, y)
     r = sqrt(x^2 + y^2)
@@ -43,6 +51,7 @@ surface(
     colormap = :Spectral
 )
 ```
+\end{showhtml}
 
 There are a couple of ways to keep interacting with Plots in a static export.
 
@@ -50,7 +59,7 @@ There are a couple of ways to keep interacting with Plots in a static export.
 
 JSServe allows to record a statemap for all widgets, that satisfy the following interface:
 
-```julia
+```julia:wgl-light
 # must be true to be found inside the DOM
 is_widget(x) = true
 # Updating the widget isn't dependant on any other state (only thing supported right now)
@@ -63,7 +72,8 @@ function update_value!(x, value) end
 
 Currently, only sliders overload the interface:
 
-```julia
+\begin{showhtml}{}
+```julia:wgl-light
 using Observables
 
 App() do session::Session
@@ -84,13 +94,15 @@ App() do session::Session
     return JSServe.record_states(session, DOM.div(slider, fig))
 end
 ```
+\end{showhtml}
 
 ## Execute Javascript directly
 
 JSServe makes it easy to build whole HTML and JS applications.
 You can for example directly register javascript function that get run on change.
 
-```julia
+\begin{showhtml}{}
+```julia:wgl-light
 using JSServe: onjs
 
 app = App() do session::Session
@@ -107,6 +119,7 @@ app = App() do session::Session
     return DOM.div("slider 1: ", s1, slider_val)
 end
 ```
+\end{showhtml}
 
 One can also interpolate plots into JS and update those via JS.
 The problem is, that there isn't an amazing interface yet.
@@ -115,7 +128,8 @@ The good news is, all attributes should be in either `three_scene.material.unifo
 Going forward, we should create an API in WGLMakie, that makes it as easy as in Julia: `plot.attribute = value`.
 But while this isn't in place, logging the the returned object makes it pretty easy to figure out what to do - btw, the JS console + logging is amazing and makes it very easy to play around with the object once logged.
 
-```julia
+\begin{showhtml}{}
+```julia:wgl-light
 using JSServe: onjs, evaljs, on_document_load
 
 app = App() do session::Session
@@ -172,6 +186,7 @@ app = App() do session::Session
     return DOM.div(s1, color_slider, markersize, fig)
 end
 ```
+\end{showhtml}
 
 This summarizes the current state of interactivity with WGLMakie inside static pages.
 
@@ -218,7 +233,8 @@ You may have noticed, styling isn't really amazing right now.
 The good news is, that one can use the whole mighty power of the CSS/HTML universe.
 If it wasn't clear so far, JSServe allows to load arbitrary css, and `DOM.xxx` wraps all existing HTML tags.
 
-```julia
+\begin{showhtml}{}
+```julia:wgl-light
 using Colors
 using JSServe: rows
 
@@ -234,13 +250,14 @@ App() do session::Session
     return DOM.div(JSServe.TailwindCSS, rows(hue_slider, color_swatch))
 end
 ```
+\end{showhtml}
 
 Tailwind is quite a amazing and has a great documentation especially for CSS beginners:
 https://tailwindcss.com/docs/
 
 Note, that JSServe.TailwindCSS is nothing but:
 
-```
+```julia
 TailwindCSS = JSServe.Asset("/path/to/tailwind.min.css")
 ```
 
@@ -263,7 +280,8 @@ JSServe will then make sure, that `JSServe.TailwindCSS` is loaded, and will only
 
 Finally, lets create a styled, reusable card componenent:
 
-```julia
+\begin{showhtml}{}
+```julia:wgl-light
 using Markdown
 
 struct GridCard
@@ -297,6 +315,7 @@ App() do session::Session
     """
 end
 ```
+\end{showhtml}
 
 Hopefully, over time there will be helper libraries with lots of stylised elements like the above, to make flashy dashboards with JSServe + WGLMakie.
 

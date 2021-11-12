@@ -704,9 +704,21 @@ function draw_mesh3D(
     )
 
     # Liight math happens in view/camera space
-    if lightposition == :eyeposition
-        lightposition = scene.camera.eyeposition[]
+    pointlight = Makie.get_point_light(scene)
+    lightposition = if !isnothing(pointlight)
+        pointlight.position[]
+    else
+        Vec3f(0)
     end
+
+    ambientlight = Makie.get_ambient_light(scene)
+    ambient = if !isnothing(ambientlight)
+        c = ambientlight.color[]
+        Vec3f(c.r, c.g, c.b)
+    else
+        Vec3f(0)
+    end
+
     lightpos = (view * to_ndim(Vec4f, lightposition, 1.0))[Vec(1, 2, 3)]
 
     # Camera to screen space
@@ -854,8 +866,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Makie.MeshSca
     submesh = Attributes(
         model=model,
         color=color,
-        shading=primitive.shading, lightposition=primitive.lightposition,
-        ambient=primitive.ambient, diffuse=primitive.diffuse,
+        shading=primitive.shading, diffuse=primitive.diffuse,
         specular=primitive.specular, shininess=primitive.shininess,
         faceculling=get(primitive, :faceculling, -10)
     )
