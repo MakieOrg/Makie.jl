@@ -5,9 +5,10 @@ function ecdf_xvalues(ecdf::StatsBase.ECDF, npoints)
     return @inbounds range(x[1], x[n]; length=npoints)
 end
 
-function convert_arguments(P::PlotFunc, ecdf::StatsBase.ECDF)
+used_attributes(::PlotFunc, ::StatsBase.ECDF) = (:npoints,)
+function convert_arguments(P::PlotFunc, ecdf::StatsBase.ECDF; npoints=10_000)
     ptype = plottype(P, Stairs)
-    x0 = ecdf_xvalues(ecdf, Inf)
+    x0 = ecdf_xvalues(ecdf, npoints)
     if ptype <: Stairs
         kwargs = (; step=:post)
         x1 = x0[1]
@@ -53,17 +54,8 @@ $(ATTRIBUTES)
     )
 end
 
-function plot!(p::ECDFPlot{<:Tuple{<:AbstractVector}})
-    points = lift(p[1], p.npoints, p.weights) do x, npoints, weights
-        ecdf = StatsBase.ecdf(x; weights=weights)
-        z = ecdf_xvalues(ecdf, npoints)
-        z1 = z[1]
-        xnew = [z1 - eps(z1); z]
-        ynew = ecdf(xnew)
-        return Point2f0.(xnew, ynew)
-    end
-
-    attrs = filter(p -> first(p) ∉ (:npoints, :weights), p.attributes)
-    stairs!(p, points; attrs..., step=:post)
-    p
+used_attributes(::Type{<:ECDFPlot}, ::AbstractVector) = (:npoints, :weights)
+function convert_arguments(::Type{<:ECDFPlot}, x::AbstractVector; npoints=10_000, weights=StatsBase.Weights(Float64[]))
+    ecdf = StatsBase.ecdf(x; weights=weights)
+    return convert_arguments(Stairs, ecdf, npoints=npoints)
 end
