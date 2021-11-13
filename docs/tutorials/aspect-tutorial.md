@@ -76,6 +76,7 @@ We can visualize the effect of `Aspect` again with a red box, that shows us the 
 
 \begin{examplefigure}{svg = true}
 ```julia
+# hide
 Box(f[1, 1], color = (:red, 0.2), strokewidth = 0)
 f
 ```
@@ -111,6 +112,7 @@ Let's return to our previous state with a square axis:
 
 \begin{examplefigure}{svg = true}
 ```julia
+# hide
 f = Figure(resolution = (800, 500))
 ax = Axis(f[1, 1])
 Colorbar(f[1, 2])
@@ -174,6 +176,7 @@ But like before we can call `resize_to_layout!` and the size will be corrected s
 
 \begin{examplefigure}{svg = true}
 ```julia
+# hide
 resize_to_layout!(f)
 f
 ```
