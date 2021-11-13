@@ -106,12 +106,14 @@ ax.scene.ssao.bias[] = 0.025
 box = Rect3(Point3f(-0.5), Vec3f(1))
 positions = [Point3f(x, y, rand()) for x in -5:5 for y in -5:5]
 meshscatter!(ax, positions, marker=box, markersize=1, color=:lightblue, ssao=true)
-
-GLMakie.enable_SSAO[] = false # hide
-close(GLMakie.global_gl_screen()) # hide
 fig
 ```
 \end{examplefigure}
+
+```julia:disable-ssao
+GLMakie.enable_SSAO[] = false # hide
+close(GLMakie.global_gl_screen()) # hide
+```
 
 \begin{examplefigure}{}
 ```julia
