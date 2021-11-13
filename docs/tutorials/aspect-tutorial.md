@@ -30,7 +30,7 @@ Why is that?
 We can visualize the reason by adding a Box to the same cell where the axis is:
 
 
-\begin{examplefigure}{svg = true}
+\begin{examplefigure}{svg = true, name = "aspect_tutorial_example"}
 ```julia
 Box(f[1, 1], color = (:red, 0.2), strokewidth = 0)
 f

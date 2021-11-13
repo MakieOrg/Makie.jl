@@ -36,10 +36,10 @@
     @@title Aspect Tutorial @@
     @@box-content
       @@description
-      Learn how to deal with typical problems when constraining aspect ratios and sizes.
+      How to deal with fixed sizes and aspect ratios.
       @@
       ~~~
-      <img src="/assets/tutorials/layout-tutorial/code/output/final_result.png">
+      <img src="/assets/tutorials/aspect-tutorial/code/output/aspect_tutorial_example.png">
       ~~~
     @@
     ~~~</a>~~~
