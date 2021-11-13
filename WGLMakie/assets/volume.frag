@@ -67,7 +67,8 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
     );
 }
 
-// Simple random generator found: http://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
+// Simple random generator found:
+// http://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
 float rand(){
     return fract(sin(gl_FragCoord.x * 12.9898 + gl_FragCoord.y * 78.233) * 43758.5453);
 }
