@@ -96,7 +96,7 @@ Therefore, if you want to draw something on top of something else, but it ends u
 
 ## WGLMakie
 
-[WGLMakie](https://github.com/JuliaPlots/Makie.jl/tree/master/WGLMakie) is the Web-based backend, and is still experimental (though relatively feature-complete). Only serving it on a webpage or in Pluto.jl / Ijulia are currently supported. VSCode integration should come soon.
+[WGLMakie](https://github.com/JuliaPlots/Makie.jl/tree/master/WGLMakie) is the Web-based backend, and is still experimental (though relatively feature-complete). Serving it on a webpage or in Pluto.jl / Ijulia / VSCode are currently supported.
 
 ## Miscellaneous Tips
 
