@@ -319,7 +319,7 @@ function LineAxis(parent::Scene; kwargs...)
     linepoints = lift(pos_extents_horizontal, flipped, spinewidth, trimspine, tickpositions, tickwidth) do (position, extents, horizontal),
             flipped, sw, trimspine, tickpositions, tickwidth
 
-        if !trimspine
+        if !trimspine || length(tickpositions) < 2
             if horizontal
                 y = position
                 p1 = Point2f(extents[1] - 0.5sw, y)
