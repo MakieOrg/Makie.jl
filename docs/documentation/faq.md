@@ -185,6 +185,7 @@ But once we run `resize_to_layout!`, the `Figure` assumes the appropriate size f
 \begin{examplefigure}{svg = true}
 ```julia
 resize_to_layout!(f)
+set_theme!() # hide
 f
 ```
 \end{examplefigure}
