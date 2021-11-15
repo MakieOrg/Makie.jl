@@ -28,9 +28,9 @@ end
 
 App() do session
     levelsd, levels = labeled_slider(2:10, "levels")
-    absorptiond, absorption = labeled_slider(LinRange(0, 5, 10), "absorption", 3.0)
-    isovalued, isovalue = labeled_slider(LinRange(0, 1, 10), "isovalue", 0.5)
-    alphad, alpha = labeled_slider(LinRange(0, 1, 10), "alpha", 0.5)
+    absorptiond, absorption = labeled_slider(range(0, stop=5, step=0.5), "absorption", 3.0)
+    isovalued, isovalue = labeled_slider(range(0, stop=1, step=0.1), "isovalue", 0.5)
+    alphad, alpha = labeled_slider(range(0, stop=1, step=0.1), "alpha", 0.5)
 
     fig = Figure(resolution=(800, 800))
     # Make a colormap, with the first value being transparent
