@@ -99,7 +99,9 @@ myplot!(args...; kw_args...) = ...
 A specialization of `argument_names` is emitted if you have an argument list
 `(x,y,z)` provided to the recipe macro:
 
-    `argument_names(::Type{<: MyPlot}) = (:x, :y, :z)`
+```julia
+argument_names(::Type{<: MyPlot}) = (:x, :y, :z)
+```
 
 This is optional but it will allow the use of `plot_object[:x]` to
 fetch the first argument from the call
