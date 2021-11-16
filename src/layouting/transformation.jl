@@ -352,6 +352,7 @@ inverse_transform(::typeof(pseudolog10)) = inv_pseudolog10
 inverse_transform(F::Tuple) = map(inverse_transform, F)
 inverse_transform(::typeof(logit)) = logistic
 inverse_transform(s::Symlog10) = x -> inv_symlog10(x, s.low, s.high)
+inverse_transform(s) = nothing
 
 function is_identity_transform(t)
     return t === identity || t isa Tuple && all(x-> x === identity, t)
