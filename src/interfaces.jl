@@ -148,7 +148,7 @@ function apply_convert!(P, attributes::Attributes, x::PlotSpec{S}) where S
     for (k, v) in pairs(kwargs)
         attributes[k] = v
     end
-    return (plottype(P, S), args)
+    return (plottype(S, P), args)
 end
 
 function seperate_tuple(args::Observable{<: NTuple{N, Any}}) where N

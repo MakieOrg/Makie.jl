@@ -10,9 +10,10 @@ This tutorial uses CairoMakie, but the code can be executed with any backend.
 CairoMakie can output beautiful static vector graphics, but it doesn't have the native ability to open interactive windows.
 
 To see the output of plotting commands when using CairoMakie, we recommend you either use an IDE which supports png or svg output, such as VSCode, Atom/Juno, Jupyter, Pluto, etc., or try using a viewer package such as [ElectronDisplay.jl](https://github.com/queryverse/ElectronDisplay.jl), or alternatively save your plots to files directly.
-The Julia REPL by itself does not have the ability to show plots.
+The Julia REPL by itself does not have the ability to show the plots.
 
-GLMakie can open interactive windows, or alternatively display bitmaps inline if `Makie.inline!(true)` is called.
+GLMakie can open interactive plot windows, also from the Julia REPL, or alternatively display bitmaps inline if `Makie.inline!(true)` is called
+and if it is supported by the environment.
 
 WGLMakie shows interactive plots in environments that support interactive html displays, such as VSCode, Atom/Juno, Jupyter, Pluto, etc.
 

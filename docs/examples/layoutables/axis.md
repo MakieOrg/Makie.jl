@@ -343,6 +343,33 @@ hideydecorations!(ax3, ticks = false)
 f
 ```
 \end{examplefigure}
+
+## Trimmed spines
+
+The attributes `xtrimspine` and `ytrimspine` can be used to limit the respective spines to the range of the outermost major ticks.
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+hist(randn(100) ./ 4 .+ 5,
+    strokewidth = 1,
+    strokecolor = :black,
+    axis = (
+        xtrimspine = true,
+        ytrimspine = true,
+        topspinevisible = false,
+        rightspinevisible = false,
+        title = "Trimmed spines",
+        xgridvisible = false,
+        ygridvisible = false,
+    )
+)
+```
+\end{examplefigure}
+
 ## Log scales and other axis scales
 
 The two attributes `xscale` and `yscale`, which by default are set to `identity`, can be used to project the data in a nonlinear way, in addition to the linear zoom that the limits provide.

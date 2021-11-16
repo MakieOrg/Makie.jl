@@ -30,6 +30,20 @@
     @@
     ~~~</a>~~~
   @@
+
+  @@box
+    ~~~<a class="boxlink" href="aspect-tutorial/">~~~
+    @@title Aspect Tutorial @@
+    @@box-content
+      @@description
+      How to deal with fixed sizes and aspect ratios.
+      @@
+      ~~~
+      <img src="/assets/tutorials/aspect-tutorial/code/output/aspect_tutorial_example.png">
+      ~~~
+    @@
+    ~~~</a>~~~
+  @@
 @@
 
 ## Videos
