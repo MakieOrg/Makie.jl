@@ -113,10 +113,10 @@ will provide `plot_object[:arg1]` etc.
 
 The theme given in the body of the `@recipe` invocation is inserted into a
 specialization of `default_theme` which inserts the theme into any scene that
-plots `Myplot`:
+plots `MyPlot`:
 
 ```julia
-function default_theme(scene, ::Myplot)
+function default_theme(scene, ::MyPlot)
     Theme(
         plot_color => :red
     )
