@@ -28,12 +28,12 @@ brain = niread(Makie.assetpath("brain.nii.gz")).raw
 mini, maxi = extrema(brain)
 normed = Float32.((brain .- mini) ./ (maxi - mini))
 
-fig = Figure(resolution=(1000, 500))
+fig = Figure(resolution=(1000, 450))
 # Make a colormap, with the first value being transparent
 colormap = RGBAf.(to_colormap(:plasma), 1.0)
 colormap[1] = RGBAf(0,0,0,0)
-volume(fig[1, 1], normed, algorithm = :absorption, absorption=3.0, colormap=colormap, axis=(type=Axis3,))
-volume(fig[1, 2], normed, algorithm = :mip, colormap=colormap, axis=(type=Axis3,))
+volume(fig[1, 1], normed, algorithm = :absorption, absorption=4f0, colormap=colormap, axis=(type=Axis3, title = "Absorption"))
+volume(fig[1, 2], normed, algorithm = :mip, colormap=colormap, axis=(type=Axis3, title="Maximum Intensity Projection"))
 fig
 ```
 \end{examplefigure}
