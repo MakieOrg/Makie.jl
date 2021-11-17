@@ -58,5 +58,5 @@ function convert_arguments(
     weights=StatsBase.Weights(Float64[]),
 )
     ecdf = StatsBase.ecdf(x; weights=weights)
-    return convert_arguments(Stairs, ecdf)
+    return convert_arguments(Stairs, ecdf; npoints=npoints)
 end
