@@ -113,7 +113,9 @@ end
 """
     used_attributes(args...) = ()
 
-function used to indicate what keyword args one wants to get passed in `convert_arguments`.
+Function used to indicate what keyword args one wants to get passed in `convert_arguments`.
+Those attributes will not be forwarded to the backend, but only used during the
+conversion pipeline.
 Usage:
 ```julia
     struct MyType end
