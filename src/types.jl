@@ -229,13 +229,48 @@ function Base.getproperty(e::Events, field::Symbol)
     end
 end
 
-mutable struct Camera
+
+"""
+    Camera(pixel_area)
+
+Struct to hold all relevant matrices and additional parameters, to let backends
+apply camera based transformations.
+"""
+struct Camera
+    """
+    projection used to convert pixel to device units
+    """
     pixel_space::Observable{Mat4f}
+
+    """
+    View matrix is usually used to rotate, scale and translate the scene
+    """
     view::Observable{Mat4f}
+
+    """
+    Projection matrix is used for any perspective transformation
+    """
     projection::Observable{Mat4f}
+
+    """
+    just projection * view
+    """
     projectionview::Observable{Mat4f}
+
+    """
+    resolution of the canvas this camera draws to
+    """
     resolution::Observable{Vec2f}
+
+    """
+    Eye position of the camera, sued for e.g. ray tracing.
+    """
     eyeposition::Observable{Vec3f}
+
+    """
+    To make camera interactive, steering nodes are connected to the different matrices.
+    We need to keep track of them, so, that we can connect and disconnect them.
+    """
     steering_nodes::Vector{ObserverFunction}
 end
 

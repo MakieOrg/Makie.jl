@@ -100,7 +100,7 @@ function setup!(screen)
                 bits = GL_STENCIL_BUFFER_BIT
                 glClearStencil(id)
                 if scene.clear
-                    c = to_color(scene.backgroundcolor[])
+                    c = scene.backgroundcolor[]
                     glScissor(rt...)
                     glClearColor(red(c), green(c), blue(c), alpha(c))
                     bits |= GL_COLOR_BUFFER_BIT

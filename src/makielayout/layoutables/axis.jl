@@ -133,7 +133,6 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
             xsc.(leftright)...,
             ysc.(bottomtop)..., nearclip, farclip)
         camera(scene).projection[] = projection
-        camera(scene).projectionview[] = projection
     end
 
     onany(attrs.xscale, attrs.yscale) do xsc, ysc

@@ -292,4 +292,6 @@ export Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter, Surface,
 export heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface, text, volume
 export heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, surface!, text!, volume!
 
+export PointLight, EnvironmentLight, AmbientLight, SSAO
+
 end # module

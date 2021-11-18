@@ -245,6 +245,9 @@ function FileIO.save(
     end
 end
 
+raw_io(io::IO) = io
+raw_io(io::IOContext) = raw_io(io.io)
+
 """
     record_events(f, scene::Scene, path::String)
 

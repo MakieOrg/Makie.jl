@@ -40,16 +40,28 @@ end
 
 abstract type AbstractLight end
 
+
+"""
+A positional point light, shining at a certain color.
+Color values can be bigger than 1 for brighter lights.
+"""
 struct PointLight <: AbstractLight
     position::Observable{Vec3f}
     radiance::Observable{RGBf}
 end
 
+"""
+An environment Light, that uses a spherical environment map to provide lighting.
+See: https://en.wikipedia.org/wiki/Reflection_mapping
+"""
 struct EnvironmentLight <: AbstractLight
     intensity::Observable{Float32}
     image::Observable{Matrix{RGBf}}
 end
 
+"""
+A simple, one color ambient light.
+"""
 struct AmbientLight <: AbstractLight
     color::Observable{RGBf}
 end
@@ -148,7 +160,7 @@ function Scene(;
         parent = nothing,
         visible = Observable(true),
         ssao = SSAO(),
-        lights = AbstractLight[],
+        lights = automatic,
         theme_kw...
     )
     m_theme = current_default_theme(; theme..., theme_kw...)
@@ -172,29 +184,31 @@ function Scene(;
         end
     end
 
+    _lights = lights isa Automatic ? AbstractLight[] : lights
+
     scene = Scene(
         parent, events, px_area, clear, cam, camera_controls,
         transformation, plots, m_theme,
-        children, current_screens, bg, visible, ssao, lights
+        children, current_screens, bg, visible, ssao, _lights
     )
     if camera isa Function
         cam = camera(scene)
     end
 
-    lightposition = to_value(get(m_theme, :lightposition, nothing))
-
-    if !isnothing(lightposition)
-        position = if lightposition == :eyeposition
-            scene.camera.eyeposition
-        else
-            m_theme.lightposition
+    if lights isa Automatic
+        lightposition = to_value(get(m_theme, :lightposition, nothing))
+        if !isnothing(lightposition)
+            position = if lightposition == :eyeposition
+                scene.camera.eyeposition
+            else
+                m_theme.lightposition
+            end
+            push!(scene.lights, PointLight(position, RGBf(1, 1, 1)))
         end
-        push!(lights, PointLight(position, RGBf(1, 1, 1)))
-    end
-
-    ambient = to_value(get(m_theme, :ambient, nothing))
-    if !isnothing(ambient)
-        push!(lights, AmbientLight(ambient))
+        ambient = to_value(get(m_theme, :ambient, nothing))
+        if !isnothing(ambient)
+            push!(scene.lights, AmbientLight(ambient))
+        end
     end
 
     return scene
@@ -226,7 +240,7 @@ function Scene(
         kw...
     )
     if isnothing(px_area)
-        px_area = lift(zero_origin, parent.px_area)
+        px_area = parent.px_area
     else
         px_area = lift(pixelarea(parent), convert(Observable, px_area)) do p, a
             # make coordinates relative to parent
