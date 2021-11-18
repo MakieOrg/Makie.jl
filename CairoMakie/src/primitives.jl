@@ -89,6 +89,8 @@ function draw_single(primitive::Lines, ctx, positions)
             end
         end
     end
+    # force clearing of path in case of skipped NaN
+    Cairo.new_path(ctx)
 end
 
 function draw_single(primitive::LineSegments, ctx, positions)
@@ -107,6 +109,8 @@ function draw_single(primitive::LineSegments, ctx, positions)
             Cairo.stroke(ctx)
         end
     end
+    # force clearing of path in case of skipped NaN
+    Cairo.new_path(ctx)
 end
 
 # if linewidth is not an array
@@ -160,6 +164,8 @@ function draw_multi(primitive::Union{Lines, LineSegments}, ctx, positions, color
             Cairo.destroy(pat)
         end
     end
+    # force clearing of path in case of skipped NaN
+    Cairo.new_path(ctx)
 end
 
 ################################################################################
