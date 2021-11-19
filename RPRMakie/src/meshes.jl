@@ -5,7 +5,6 @@ function mesh_material(context, matsys, plot, color_obs = plot.color)
     shininess = plot.shininess[]
 
     color = to_value(color_obs)
-
     color_signal = if color isa AbstractMatrix{<:Number}
         tex = RPR.MaterialNode(matsys, RPR.RPR_MATERIAL_NODE_IMAGE_TEXTURE)
         map(color_obs, plot.colormap, plot.colorrange) do color, cmap, crange
@@ -17,12 +16,16 @@ function mesh_material(context, matsys, plot, color_obs = plot.color)
     elseif color isa AbstractMatrix{<:Colorant}
         tex = RPR.MaterialNode(matsys, RPR.RPR_MATERIAL_NODE_IMAGE_TEXTURE)
         map(color_obs) do color
-            img = RPR.Image(context, collect(color'))
+            println("Setting color images: $(typeof(color))")
+            img = RPR.Image(context, Makie.el32convert(color'))
             set!(tex, RPR.RPR_MATERIAL_INPUT_DATA, img)
             return tex
         end
     elseif color isa Colorant || color isa Union{String, Symbol}
         map(to_color, color_obs)
+    elseif color isa Nothing
+        # ignore!
+        color_obs
     else
         error("Unsupported color type for RadeonProRender backend: $(typeof(color))")
     end
@@ -30,7 +33,7 @@ function mesh_material(context, matsys, plot, color_obs = plot.color)
     material = to_value(get(plot, :material, RPR.DiffuseMaterial(matsys)))
 
     map(color_signal) do color
-        if hasproperty(material, :color)
+        if !isnothing(color) && hasproperty(material, :color)
             material.color = color
         end
     end
@@ -53,26 +56,39 @@ end
 function to_rpr_object(context, matsys, scene, plot::Makie.MeshScatter)
     # Potentially per instance attributes
     positions = to_value(plot[1])
-    marker = RPR.Shape(context, convert_attribute(plot.marker[], key"marker"(), key"meshscatter"()))
+    m_mesh = convert_attribute(plot.marker[], key"marker"(), key"meshscatter"())
+    marker = RPR.Shape(context, m_mesh)
     instances = [marker]
     n_instances = length(positions)
+    RPR.rprShapeSetObjectID(marker, 0)
+    material = if haskey(plot, :material)
+        plot.material[]
+    else
+        RPR.DiffuseMaterial(matsys)
+    end
+    set!(marker, material)
     for i in 1:(n_instances-1)
-        push!(instances, RPR.Shape(context, marker))
+        inst = RPR.Shape(context, marker)
+        RPR.rprShapeSetObjectID(inst, i)
+        push!(instances, inst)
     end
 
-    materials = map(instances) do instance
-        material = RPR.MaterialNode(matsys, RPR.RPR_MATERIAL_NODE_DIFFUSE)
-        set!(instance, material)
-        material
-    end
-
-    color = plot.color[]
-    colors = if color isa AbstractVector{<:Number}
+    color = to_color(plot.color[])
+    if color isa AbstractVector{<:Number}
         cmap = to_colormap(plot.colormap[])
         crange = plot.colorrange[]
-        Makie.interpolated_getindex.((cmap,), color, (crange,))
+        color_from_num = Makie.interpolated_getindex.((cmap,), color, (crange,))
+
+        object_id = RPR.InputLookupMaterial(matsys)
+        object_id.value = RPR.RPR_MATERIAL_NODE_LOOKUP_OBJECT_ID
+
+        uv = object_id * Vec3f(0, 1/n_instances, 0)
+
+        tex = RPR.Texture(context, matsys, collect(color_from_num'); uv = uv)
+
+        material.color = tex
     elseif color isa Colorant
-        Iterators.repeated(to_color(color), n_instances)
+        material.color = color
     else
         error("Unsupported color type for RadeonProRender backend: $(typeof(color))")
     end
@@ -93,8 +109,7 @@ function to_rpr_object(context, matsys, scene, plot::Makie.MeshScatter)
         rotations
     end
 
-    for (material, instance, color, position, scale, rotation) in zip(materials, instances, colors, positions, scales, rotations)
-        set!(material, RPR.RPR_MATERIAL_INPUT_COLOR, color)
+    for (instance, position, scale, rotation) in zip(instances, positions, scales, rotations)
         mat = Makie.transformationmatrix(position, scale, rotation)
         transform!(instance, mat)
     end
@@ -127,7 +142,30 @@ function to_rpr_object(context, matsys, scene, plot::Makie.Surface)
     mesh = GeometryBasics.Mesh(meta(vec(positions[]), uv=uv), faces)
 
     rpr_mesh = RPR.Shape(context, mesh)
-    material = mesh_material(context, matsys, plot, z)
+    color = plot.color[]
+    material = mesh_material(context, matsys, plot, color isa AbstractMatrix ? plot.color : z)
     set!(rpr_mesh, material)
     return rpr_mesh
+end
+
+using FileIO
+
+@recipe(Matball, material) do scene
+    return Attributes(
+        base = Makie.automatic,
+        inner = Makie.automatic,
+        outer = Makie.automatic,
+        color = :blue
+    )
+end
+
+function Makie.plot!(plot::Matball)
+    base = plot.material[]
+    for name in [:base, :inner, :outer]
+        mat = getproperty(plot, name)[]
+        mat = mat isa Makie.Automatic ? base : mat
+        mesh = load(assetpath("matball_$(name).obj"))
+        mesh!(plot, mesh, material=mat, color=plot.color)
+    end
+    return plot
 end
