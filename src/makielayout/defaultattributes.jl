@@ -410,6 +410,10 @@ function default_attributes(::Type{Label}, scene)
         textsize = lift_parent_attribute(scene, :fontsize, 16f0)
         "The font family of the text."
         font = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        "The justification of the text (:left, :right, :center)."
+        justification = :center
+        "The lineheight multiplier for the text."
+        lineheight = 1.0
         "The vertical alignment of the text in its suggested boundingbox"
         valign = :center
         "The horizontal alignment of the text in its suggested boundingbox"
