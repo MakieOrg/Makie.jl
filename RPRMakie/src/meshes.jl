@@ -1,9 +1,6 @@
 function mesh_material(context, matsys, plot, color_obs = plot.color)
-    ambient = plot.ambient[]
-    diffuse = plot.diffuse[]
     specular = plot.specular[]
     shininess = plot.shininess[]
-
     color = to_value(color_obs)
     color_signal = if color isa AbstractMatrix{<:Number}
         tex = RPR.MaterialNode(matsys, RPR.RPR_MATERIAL_NODE_IMAGE_TEXTURE)

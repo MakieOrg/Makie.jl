@@ -3,7 +3,7 @@ using GLMakie, GeometryBasics, RPRMakie, RadeonProRender
 using Colors, FileIO
 using Colors: N0f8
 RPR = RadeonProRender
-
+GLMakie.activate!()
 begin
     context = RPR.Context()
     matsys = RPR.MaterialSystem(context, 0)

@@ -82,7 +82,7 @@ function replace_scene_rpr!(scene,
     set!(rpr_scene, camera)
 
     # hide Makie scene
-    scene.visible[] = false
+    # scene.visible[] = false
     foreach(p-> p.visible = false, scene.plots)
     sub = campixel(scene)
     fb_size = size(scene)
@@ -92,7 +92,7 @@ function replace_scene_rpr!(scene,
     framebuffer2 = RPR.FrameBuffer(context, RGBA, fb_size)
 
     clear = true
-    onany(refresh, cam.projection) do _, _
+    onany(refresh, cam.projectionview) do _, _
         clear = true
     end
 
@@ -101,7 +101,6 @@ function replace_scene_rpr!(scene,
     cam_values = (;)
     task = @async while isopen(scene)
         if fb_size != size(scene)
-            @info("resizing scene")
             fb_size = size(scene)
             RPR.release(framebuffer1)
             RPR.release(framebuffer2)
@@ -113,7 +112,6 @@ function replace_scene_rpr!(scene,
         cam_values = update_rpr_camera!(cam_values, camera, cam_controls, cam)
 
         if clear
-            println("clearing")
             clear!(framebuffer1)
             clear = false
         end
@@ -124,4 +122,76 @@ function replace_scene_rpr!(scene,
         sleep(0.01)
     end
     return context, task, rpr_scene
+end
+
+struct RPRBackend <: Makie.AbstractBackend end
+
+mutable struct RPRScreen <: Makie.AbstractScreen
+    context::RPR.Context
+    matsys::RPR.MaterialSystem
+    framebuffer1::RPR.FrameBuffer
+    framebuffer2::RPR.FrameBuffer
+    fb_size::Tuple{Int, Int}
+    scene::Union{Nothing, Scene}
+    iterations::Int
+end
+
+function RPRScreen(scene::Scene; iterations=NUM_ITERATIONS[])
+    context = RPR.Context()
+    matsys = RPR.MaterialSystem(context, 0)
+    set_standard_tonemapping!(context)
+    set!(context, RPR.RPR_CONTEXT_MAX_RECURSION, UInt(10))
+    fb_size = size(scene)
+    framebuffer1 = RPR.FrameBuffer(context, RGBA, fb_size)
+    framebuffer2 = RPR.FrameBuffer(context, RGBA, fb_size)
+    set!(context, RPR.RPR_AOV_COLOR, framebuffer1)
+    return RPRScreen(context, matsys, framebuffer1, framebuffer2, fb_size, scene, iterations)
+end
+
+function render(screen)
+    context = screen.context
+    fb_size = screen.fb_size
+    framebuffer1 = screen.framebuffer1
+    framebuffer2 = screen.framebuffer2
+    scene = screen.scene
+    if fb_size != size(scene)
+        fb_size = size(scene)
+        RPR.release(framebuffer1)
+        RPR.release(framebuffer2)
+        framebuffer1 = RPR.FrameBuffer(context, RGBA, fb_size)
+        framebuffer2 = RPR.FrameBuffer(context, RGBA, fb_size)
+        set!(context, RPR.RPR_AOV_COLOR, framebuffer1)
+        screen.fb_size = fb_size
+        screen.framebuffer1 = framebuffer1
+        screen.framebuffer2 = framebuffer2
+    end
+    clear!(framebuffer1)
+    RPR.rprContextSetParameterByKey1u(context, RPR.RPR_CONTEXT_ITERATIONS, screen.iterations)
+    RPR.render(context)
+    RPR.rprContextResolveFrameBuffer(context, framebuffer1, framebuffer2, false)
+    return framebuffer2
+end
+
+function Makie.colorbuffer(screen::RPRScreen)
+    data_1d = RPR.get_data(render(screen))
+    r = reverse(reshape(data_1d, screen.fb_size), dims=2)
+    return rotl90(r)
+end
+
+function Makie.backend_display(::RPRBackend, scene::Scene)
+    screen = RPRScreen(scene::Scene; iterations=200)
+    rpr_scene = to_rpr_scene(screen.context, screen.matsys, scene)
+    cam_controls = cameracontrols(scene)
+    cam = camera(scene)
+    rpr_camera = RPR.Camera(screen.context)
+    set!(rpr_scene, rpr_camera)
+    update_rpr_camera!((;), rpr_camera, cam_controls, cam)
+    return screen
+end
+
+function Makie.backend_show(b::RPRBackend, io::IO, ::MIME"image/png", scene::Scene)
+    screen = Makie.backend_display(b, scene)
+    img = Makie.colorbuffer(screen)
+    FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img)
+    return screen
 end

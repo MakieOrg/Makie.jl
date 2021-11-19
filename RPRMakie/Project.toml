@@ -9,9 +9,11 @@ FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 RadeonProRender = "27029320-176d-4a42-b57d-56729d2ad457"
 
 [compat]
+FileIO = "1.6"
 julia = "1"
 
 [extras]
