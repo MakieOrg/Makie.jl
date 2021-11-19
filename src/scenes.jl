@@ -240,7 +240,7 @@ function Scene(
         kw...
     )
     if isnothing(px_area)
-        px_area = parent.px_area
+        px_area = lift(zero_origin, parent.px_area)
     else
         px_area = lift(pixelarea(parent), convert(Observable, px_area)) do p, a
             # make coordinates relative to parent

@@ -72,7 +72,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
 
     scenearea = sceneareanode!(layoutobservables.computedbbox, finallimits, aspect)
 
-    scene = Scene(topscene, px_area=scenearea, camera=campixel!)
+    scene = Scene(topscene, px_area=scenearea)
 
     background = poly!(topscene, scenearea, color = backgroundcolor, strokewidth = 0, inspectable = false)
     translate!(background, 0, 0, -100)
@@ -132,7 +132,8 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         projection = Makie.orthographicprojection(
             xsc.(leftright)...,
             ysc.(bottomtop)..., nearclip, farclip)
-        camera(scene).projection[] = projection
+
+        Makie.set_proj_view!(camera(scene), projection, Makie.Mat4f(Makie.I))
     end
 
     onany(attrs.xscale, attrs.yscale) do xsc, ysc

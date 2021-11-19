@@ -16,6 +16,9 @@ begin
 	Page(offline=true, exportable=true)
 end
 
+# ╔═╡ abe526e5-6d36-4ac5-876f-ebd65ff8a05f
+using RPRMakie
+
 # ╔═╡ ba3bb4b5-73b6-44b1-ab84-f57406058479
 begin
 	using MeshIO, FileIO, GeometryBasics
@@ -225,6 +228,12 @@ App() do session
 	JSServe.record_states(session, DOM.div(sliders..., s))
 end
 
+# ╔═╡ 63c9e396-6d20-49d1-a887-e268599221fd
+begin 
+	RPRMakie.activate!(1)
+	s
+end
+
 # ╔═╡ Cell order:
 # ╠═75852c20-4878-11ec-0f17-77727b908d78
 # ╠═f2f63242-e0ba-4fd6-a454-7fd0952236ad
@@ -248,3 +257,5 @@ end
 # ╠═ba3bb4b5-73b6-44b1-ab84-f57406058479
 # ╠═d5201580-108d-42e2-8eb5-c4489cc2ceb4
 # ╠═fa2373db-edd0-42fa-9256-492061a35190
+# ╠═abe526e5-6d36-4ac5-876f-ebd65ff8a05f
+# ╠═63c9e396-6d20-49d1-a887-e268599221fd
