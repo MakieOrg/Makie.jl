@@ -2,8 +2,8 @@
 
 ## master
 
+- The plot function `scatterlines` now uses `color` as `markercolor` if `markercolor` is `automatic`. Also, cycling of the `color` attribute is enabled. [#1463](https://github.com/JuliaPlots/Makie.jl/pull/1463)
 - Added the function `resize_to_layout!`, which allows to resize a `Figure` so that it contains its top `GridLayout` without additional whitespace or clipping.
-
 
 ## v0.15.3
 
