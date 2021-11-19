@@ -613,7 +613,7 @@ end
 
 
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Makie.Mesh)
-    if Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera}
+    if Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera, Makie.EmptyCamera}
         draw_mesh2D(scene, screen, primitive)
     else
         if !haskey(primitive, :faceculling)
@@ -700,8 +700,8 @@ function draw_mesh3D(
         view * (model * p4d .+ to_ndim(Vec4f, pos, 0f0))
     end
     fs = decompose(GLTriangleFace, mesh)
-    uv = hasproperty(mesh, :uv) ? mesh.uv : nothing
-    ns = map(n -> normalize(normalmatrix * n), normals(mesh))
+    uv = texturecoordinates(mesh)
+    ns = map(n -> normalize(normalmatrix * n), decompose_normals(mesh))
     cols = per_face_colors(
         color, colormap, colorrange, matcap, vs, fs, ns, uv,
         get(primitive, :lowclip, nothing) |> to_value |> color_or_nothing,
