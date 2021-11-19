@@ -176,7 +176,7 @@ But like before we can call `resize_to_layout!` and the size will be corrected s
 
 \begin{examplefigure}{svg = true}
 ```julia
-# hide
+set_theme!() # hide
 resize_to_layout!(f)
 f
 ```
