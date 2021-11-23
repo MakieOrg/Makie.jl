@@ -1,6 +1,10 @@
 using Pkg
+cd(@__DIR__)
 Pkg.activate(".")
-pkg"dev .. ../CairoMakie ../GLMakie ../WGLMakie"
+
+pkg"dev .. ../CairoMakie ../GLMakie ../WGLMakie ../RPRMakie"
+pkg"add MeshIO GeometryBasics"
+pkg"dev ../../RadeonProRender"
 Pkg.instantiate()
 Pkg.precompile()
 
@@ -84,9 +88,9 @@ function make_links_relative()
             html_files = filter(endswith(".html"), files)
             for file in html_files
                 s = read(joinpath(root, file), String)
-                
+
                 html = parsehtml(s)
-                
+
                 for e in PreOrderDFS(html.root)
                     if (e isa HTMLElement{:script} ||
                         e isa HTMLElement{:img} ||
@@ -117,8 +121,8 @@ function make_links_relative()
         cd(old)
     end
 end
-
-serve(single=true, cleanup=false, fail_on_warning = true)
+cd(@__DIR__)
+serve(single=false, cleanup=false, fail_on_warning = true)
 lunr()
 optimize(minify=false, prerender=false)
 

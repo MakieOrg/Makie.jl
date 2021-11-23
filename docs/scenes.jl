@@ -8,11 +8,12 @@ using InteractiveUtils
 using Pkg; Pkg.activate("C:\\Users\\sdani\\MakieDev")
 
 # ╔═╡ f2f63242-e0ba-4fd6-a454-7fd0952236ad
-using Revise, GLMakie; GLMakie.activate!()
+using Revise, GLMakie
 
 # ╔═╡ d5201580-108d-42e2-8eb5-c4489cc2ceb4
 begin 
 	using WGLMakie, JSServe
+	wgl = WGLMakie.activate!()
 	Page(offline=true, exportable=true)
 end
 
@@ -62,29 +63,30 @@ begin
 	    end
 	    return mesh!(scene, m; color=color, transformation=trans)
 	end
-	
-	s = Scene()
-	cam3d!(s)
-	# Plot hierarchical mesh!
-	torso = plot_part!(s, s, "torso")
-	    head = plot_part!(s, torso, "head")
-	        eyes_mouth = plot_part!(s, head, "eyes_mouth")
-	    arm_right = plot_part!(s, torso, "arm_right")
-	        hand_right = plot_part!(s, arm_right, "hand_right")
-	    arm_left = plot_part!(s, torso, "arm_left")
-	        hand_left = plot_part!(s, arm_left, "hand_left")
-	    belt = plot_part!(s, torso, "belt")
-	        leg_right = plot_part!(s, belt, "leg_right")
-	        leg_left = plot_part!(s, belt, "leg_left")
-	# lift the little guy up
-    translate!(torso, 0, 0, 20)
-    # add some floor
-    mesh!(s, Rect3f(Vec3f(-100, -100, -2), Vec3f(200, 200, 2)), color=:white)
-	center!(s)
+	function plot_lego_figure(s, floor=true)
+		# Plot hierarchical mesh!
+		figure = Dict()
+	    # Plot hierarchical mesh!
+	    figure["torso"] = plot_part!(s, s, "torso")
+	        figure["head"] = plot_part!(s, figure["torso"], "head")
+	            figure["eyes_mouth"] = plot_part!(s, figure["head"], "eyes_mouth")
+	        figure["arm_right"] = plot_part!(s, figure["torso"], "arm_right")
+	            figure["hand_right"] = plot_part!(s, figure["arm_right"], "hand_right")
+	        figure["arm_left"] = plot_part!(s, figure["torso"], "arm_left")
+	            figure["hand_left"] = plot_part!(s, figure["arm_left"], "hand_left")
+	        figure["belt"] = plot_part!(s, figure["torso"], "belt")
+	            figure["leg_right"] = plot_part!(s, figure["belt"], "leg_right")
+	            figure["leg_left"] = plot_part!(s, figure["belt"], "leg_left")
+		# lift the little guy up
+	    translate!(figure["torso"], 0, 0, 20)
+	    # add some floor
+	    floor && mesh!(s, Rect3f(Vec3f(-400, -400, -2), Vec3f(800, 800, 2)), color=:white)
+		return figure
+	end
 end
 
 # ╔═╡ 87021c46-5fcd-4995-80fc-bb49fd194978
-scene = Scene(;
+gl = GLMakie.activate!(); scene = Scene(;
     # clear everything behind scene
     clear = true,
     # the camera struct of the scene.
@@ -176,6 +178,7 @@ The scene graph can be used to create rigid transformations, like for a robot ar
 
 # ╔═╡ 7015a26c-f5a7-4e86-9c56-58432dbb0b44
 begin
+	gl
 	parent = Scene()
 	cam3d!(parent)
 	camc = cameracontrols(parent)
@@ -210,29 +213,66 @@ This is more efficient and easier than creating a scene for each model.
 
 # ╔═╡ fa2373db-edd0-42fa-9256-492061a35190
 App() do session
+	wgl
+	s = Scene(resolution=(500, 500))
+    cam3d!(s)
+	figure = plot_lego_figure(s, false)
 	bodies = [
-		"arm_left" => arm_left, "arm_right" => arm_right, 
-		"leg_left" => leg_left, "leg_right" => leg_right]
-	sliders = map(bodies) do (name, bodymesh)
+		"arm_left", "arm_right", 
+		"leg_left", "leg_right"]
+	sliders = map(bodies) do name
 		slider = if occursin("arm", name)
 			JSServe.Slider(-60:4:60)
 		else
 			JSServe.Slider(-30:4:30)
 		end
         rotvec = rotation_axes[name]
+		bodymesh = figure[name]
         on(slider) do val
             rotate!(bodymesh, rotvec, deg2rad(val))
         end
         DOM.div(name, slider)
     end
+	center!(s)
 	JSServe.record_states(session, DOM.div(sliders..., s))
 end
 
-# ╔═╡ 63c9e396-6d20-49d1-a887-e268599221fd
-begin 
-	RPRMakie.activate!(1)
-	s
+# ╔═╡ 3495dfd6-4a10-4178-9136-dd10a4d055b5
+let
+	RPRMakie.activate!(iterations=20)
+	radiance = 50000
+    lights = [
+        # EnvironmentLight(1.5, rotl90(load(assetpath("sunflowers_1k.hdr"))')),
+        PointLight(Vec3f(50, 0, 200), RGBf(radiance, radiance, radiance*1.1)),
+    ]
+    s = Scene(lights=lights, resolution=(500, 500))
+    cam3d!(s)
+    c = cameracontrols(s)
+    c.near[] = 5
+    c.far[] = 1000
+    update_cam!(s, c, Vec3f(100, 30, 80), Vec3f(0, 0, -10))
+	figure = plot_lego_figure(s)
+	
+    rot_joints_by = 0.25*pi
+    total_translation = 50
+    animation_strides = 10
+
+    a1 = LinRange(0, rot_joints_by, animation_strides)
+    angles = [a1; reverse(a1[1:end-1]); -a1[2:end]; reverse(-a1[1:end-1]);]
+    nsteps = length(angles); #Number of animation steps
+    translations = LinRange(0, total_translation, nsteps)
+    Makie.Record(s, zip(translations[1:4], angles[1:4])) do (translation, angle)
+        #Rotate right arm+hand
+        for name in ["arm_left", "arm_right",
+                			 "leg_left", "leg_right"]
+            rotate!(figure[name], rotation_axes[name], angle)
+        end
+        translate!(figure["torso"], translation, 0, 20)
+    end
 end
+
+# ╔═╡ 01bc92cf-6943-48be-a373-3cd328660bed
+
 
 # ╔═╡ Cell order:
 # ╠═75852c20-4878-11ec-0f17-77727b908d78
@@ -258,4 +298,5 @@ end
 # ╠═d5201580-108d-42e2-8eb5-c4489cc2ceb4
 # ╠═fa2373db-edd0-42fa-9256-492061a35190
 # ╠═abe526e5-6d36-4ac5-876f-ebd65ff8a05f
-# ╠═63c9e396-6d20-49d1-a887-e268599221fd
+# ╠═3495dfd6-4a10-4178-9136-dd10a4d055b5
+# ╠═01bc92cf-6943-48be-a373-3cd328660bed

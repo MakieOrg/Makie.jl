@@ -114,6 +114,8 @@ function env_examplefigure(com, _)
     content = Franklin.content(com)
 
     _, middle = split(content, r"```(julia)?", limit = 2)
+    arg1 = Franklin.content.(com.braces)
+    @show arg1
     kwargs = eval(Meta.parse("Dict(pairs((;" * Franklin.content(com.braces[1]) * ")))"))
 
     name = get(kwargs, :name, "example_" * string(hash(content)))

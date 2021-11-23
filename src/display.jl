@@ -101,7 +101,7 @@ end
 Base.show(io::IO, m::MIME, fap::FigureAxisPlot; kw...) = show(io, m, fap.figure; kw...)
 Base.show(io::IO, m::MIME, fig::Figure; kw...) = show(io, m, fig.scene; kw...)
 
-function Base.show(io::IO, m::MIME, scene::Scene; update=true)
+function Base.show(io::IO, m::MIME, scene::Scene)
     ioc = IOContext(io,
         :full_fidelity => true
     )
@@ -218,7 +218,6 @@ function FileIO.save(
         resolution = size(get_scene(fig)),
         pt_per_unit = 0.75,
         px_per_unit = 1.0,
-        update = true,
     )
     scene = get_scene(fig)
     if resolution != size(scene)
@@ -241,7 +240,7 @@ function FileIO.save(
             :pt_per_unit => pt_per_unit,
             :px_per_unit => px_per_unit
         )
-        show(iocontext, format2mime(F), scene; update=update)
+        show(iocontext, format2mime(F), scene)
     end
 end
 
@@ -589,7 +588,6 @@ end
 function Record(func, scene, iter; framerate::Int = 24)
     io = VideoStream(scene; framerate=framerate)
     for i in iter
-        t1 = time()
         func(i)
         recordframe!(io)
         @debug "Recording" progress=i/length(iter)
