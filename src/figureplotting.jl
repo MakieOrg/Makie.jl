@@ -13,6 +13,10 @@ Base.show(io::IO, ::MIME"text/plain", fap::FigureAxisPlot) = print(io, "FigureAx
 Base.iterate(fap::FigureAxisPlot, args...) = iterate((fap.figure, fap.axis, fap.plot), args...)
 Base.iterate(ap::AxisPlot, args...) = iterate((ap.axis, ap.plot), args...)
 
+
+# function axistheme(P::PlotFunc, A, attrs, args...)
+function axistheme end
+
 function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), kw_attributes...)
     # scene_attributes = extract_scene_attributes!(attributes)
     fig = Figure(; figure...)
@@ -29,7 +33,10 @@ function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), 
         delete!(attrs, :limits)
         plot!(proxyscene, P, attrs, args...)
         if is2d(proxyscene)
-            ax = Axis(fig; axis...)
+            axtheme = axistheme(P, Axis, Attributes(kw_attributes), args...)
+            axattrs = Attributes(axis)
+            merge!(axattrs, axtheme)
+            ax = Axis(fig; axattrs...)
         else
             ax = LScene(fig; scenekw = (camera=cam3d!, axis...))
         end
