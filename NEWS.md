@@ -2,8 +2,9 @@
 
 ## master
 
+- Added the `Cycled` type, which can be used to select the i-th value from the current cycler for a specific attribute. [#1248](https://github.com/JuliaPlots/Makie.jl/pull/1248)
+- The plot function `scatterlines` now uses `color` as `markercolor` if `markercolor` is `automatic`. Also, cycling of the `color` attribute is enabled. [#1463](https://github.com/JuliaPlots/Makie.jl/pull/1463)
 - Added the function `resize_to_layout!`, which allows to resize a `Figure` so that it contains its top `GridLayout` without additional whitespace or clipping.
-
 
 ## v0.15.3
 

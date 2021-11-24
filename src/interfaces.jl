@@ -111,7 +111,9 @@ end
 """
     used_attributes(args...) = ()
 
-function used to indicate what keyword args one wants to get passed in `convert_arguments`.
+Function used to indicate what keyword args one wants to get passed in `convert_arguments`.
+Those attributes will not be forwarded to the backend, but only used during the
+conversion pipeline.
 Usage:
 ```julia
     struct MyType end
@@ -294,7 +296,8 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
     kw_signal = if isempty(convert_keys) # lift(f) isn't supported so we need to catch the empty case
         Observable(())
     else
-        lift((args...)-> Pair.(convert_keys, args), getindex.(attributes, convert_keys)...) # make them one tuple to easier pass through
+        # Remove used attributes from `attributes` and collect them in a `Tuple` to pass them more easily
+        lift((args...)-> Pair.(convert_keys, args), pop!.(attributes, convert_keys)...)
     end
     # call convert_arguments for a first time to get things started
     converted = convert_arguments(PreType, argvalues...; kw_signal[]...)
