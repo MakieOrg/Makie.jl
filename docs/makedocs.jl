@@ -121,7 +121,7 @@ function make_links_relative()
     end
 end
 cd(@__DIR__)
-serve(single=false, cleanup=false, fail_on_warning = true)
+serve(single=true, cleanup=false, fail_on_warning = true)
 lunr()
 optimize(minify=false, prerender=false)
 
