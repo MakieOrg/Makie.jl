@@ -4,7 +4,6 @@ Pkg.activate(".")
 
 pkg"dev .. ../CairoMakie ../GLMakie ../WGLMakie ../RPRMakie"
 pkg"add MeshIO GeometryBasics"
-pkg"dev ../../RadeonProRender"
 Pkg.instantiate()
 Pkg.precompile()
 
