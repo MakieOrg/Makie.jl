@@ -42,7 +42,7 @@ f = Figure(backgroundcolor = RGBf(0.98, 0.98, 0.98),
 Now, let's make the four nested GridLayouts that are going to hold the objects of A, B, C and D. There's also the layout that holds C and D together, so the rows are separate from A and B. We are not going to see anything yet as we have no visible content, but that will come soon.
 
 !!! note
-    It's not strictly necessary to first create separate `GridLayout`s, then use them to place objects in the figure. You can also implicitly create nested grids using multiple indexing, for example like `Axis(f[1, 2:3][4:5, 6])`. This is further explained in \myreflink{`GridPosition`s and `GridSubposition`s}. But if you want to manipulate your nested grids afterwards, for example to change column sizes or row gaps, it's easier if you have them stored in variables already.
+    It's not strictly necessary to first create separate `GridLayout`s, then use them to place objects in the figure. You can also implicitly create nested grids using multiple indexing, for example like `Axis(f[1, 2:3][4:5, 6])`. This is further explained in \myreflink{GridPositions and GridSubpositions}. But if you want to manipulate your nested grids afterwards, for example to change column sizes or row gaps, it's easier if you have them stored in variables already.
 
 ```julia:grids
 ga = f[1, 1] = GridLayout()
