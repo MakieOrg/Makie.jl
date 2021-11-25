@@ -56,13 +56,16 @@ gd = gcd[2, 1] = GridLayout()
 
 Now we can start placing objects into the figure. We start with A.
 
-There are three axes and a legend. We can place the axes first and plot the first data into them.
+There are three axes and a legend. We can place the axes first, link them appropriately, and plot the first data into them.
 
 \begin{examplefigure}{}
 ```julia
 axtop = Axis(ga[1, 1])
 axmain = Axis(ga[2, 1], xlabel = "before", ylabel = "after")
 axright = Axis(ga[2, 2])
+
+linkyaxes!(axmain, axright)
+linkxaxes!(axmain, axtop)
 
 labels = ["treatment", "placebo", "control"]
 data = randn(3, 100, 2) .+ [1, 3, 5]
