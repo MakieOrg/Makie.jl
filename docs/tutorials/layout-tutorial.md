@@ -41,6 +41,9 @@ f = Figure(backgroundcolor = RGBf(0.98, 0.98, 0.98),
 
 Now, let's make the four nested GridLayouts that are going to hold the objects of A, B, C and D. There's also the layout that holds C and D together, so the rows are separate from A and B. We are not going to see anything yet as we have no visible content, but that will come soon.
 
+!!! note
+    It's not strictly necessary to first create separate `GridLayout`s, then use them to place objects in the figure. You can also implicitly create nested grids using multiple indexing, for example like `Axis(f[1, 2:3][4:5, 6])`. This is further explained in \myreflink{`GridPosition`s and `GridSubposition`s}. But if you want to manipulate your nested grids afterwards, for example to change column sizes or row gaps, it's easier if you have them stored in variables already.
+
 ```julia:grids
 ga = f[1, 1] = GridLayout()
 gb = f[2, 1] = GridLayout()
@@ -53,13 +56,16 @@ gd = gcd[2, 1] = GridLayout()
 
 Now we can start placing objects into the figure. We start with A.
 
-There are three axes and a legend. We can place the axes first and plot the first data into them.
+There are three axes and a legend. We can place the axes first, link them appropriately, and plot the first data into them.
 
 \begin{examplefigure}{}
 ```julia
 axtop = Axis(ga[1, 1])
 axmain = Axis(ga[2, 1], xlabel = "before", ylabel = "after")
 axright = Axis(ga[2, 2])
+
+linkyaxes!(axmain, axright)
+linkxaxes!(axmain, axtop)
 
 labels = ["treatment", "placebo", "control"]
 data = randn(3, 100, 2) .+ [1, 3, 5]
