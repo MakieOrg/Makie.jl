@@ -525,7 +525,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
     # Vector backends don't support FILTER_NEAREST for interp == false, so in that case we also need to draw rects
     is_vector = is_vector_backend(ctx)
     t = Makie.transform_func_obs(primitive)[]
-    identity_transform = t === identity || t isa Tuple && all(x-> x === identity, t)
+    identity_transform = (t === identity || t isa Tuple && all(x-> x === identity, t)) && (abs(model[1, 2]) < 1e-15)
     if fast_path && xs isa AbstractRange && ys isa AbstractRange && !(is_vector && !interp) && identity_transform
         imsize = ((first(xs), last(xs)), (first(ys), last(ys)))
 
@@ -571,10 +571,12 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
         if ni + 1 != length(xs) || nj + 1 != length(ys)
             error("Error in conversion pipeline. xs and ys should have size ni+1, nj+1. Found: xs: $(length(xs)), ys: $(length(ys)), ni: $(ni), nj: $(nj)")
         end
+
         @inbounds for i in 1:ni, j in 1:nj
-            x0, y0 = xys[i, j]
-            x1, y1 = xys[i+1, j+1]
-            w = x1 - x0; h = y1 - y0
+            p1 = xys[i, j]
+            p2 = xys[i+1, j]
+            p3 = xys[i+1, j+1]
+            p4 = xys[i, j+1]
 
             # there are usually white lines between directly adjacent rectangles
             # in vector graphics because of anti-aliasing
@@ -583,23 +585,23 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
             # those lines disappear
 
             # we heuristically only do this if the adjacent cells are fully opaque
-            # and if we're not in the last row / column so the overall heatmap doesn't get bigger
-
+            
             # this should be the most common case by far, though
 
-            xbulge = if i < ni && alpha(colors[i+1, j]) == 1
-                0.5
-            else
-                0.0
-            end
-            ybulge = if j < nj && alpha(colors[i, j+1]) == 1
-                0.5
-            else
-                0.0
+            if alpha(colors[i, j]) == 1
+                center = 0.25 * (p1 + p2 + p3 + p4)
+                p1 += sign.(p1 - center) .* Point2f(0.5, 0.5)
+                p2 += sign.(p2 - center) .* Point2f(0.5, 0.5)
+                p3 += sign.(p3 - center) .* Point2f(0.5, 0.5)
+                p4 += sign.(p4 - center) .* Point2f(0.5, 0.5)
             end
 
-            # we add the bulge in the direction of cell width / height in case the axes are reversed
-            Cairo.rectangle(ctx, x0, y0, w + sign(w) * xbulge, h + sign(h) * ybulge)
+            Cairo.set_line_width(ctx, 0)
+            Cairo.move_to(ctx, p1[1], p1[2])
+            Cairo.line_to(ctx, p2[1], p2[2])
+            Cairo.line_to(ctx, p3[1], p3[2])
+            Cairo.line_to(ctx, p4[1], p4[2])
+            Cairo.close_path(ctx)
             Cairo.set_source_rgba(ctx, rgbatuple(colors[i, j])...)
             Cairo.fill(ctx)
         end
