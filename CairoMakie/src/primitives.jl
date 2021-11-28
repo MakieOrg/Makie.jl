@@ -337,6 +337,9 @@ function draw_glyph_collection(scene, ctx, positions, glyph_collections::Abstrac
     end
 end
 
+_deref(x) = x
+_deref(x::Ref) = x[]
+
 function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation, model, space, offsets)
 
     glyphs = glyph_collection.glyphs
@@ -382,9 +385,9 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
             xvec = rotation * (scale3[1] * Point3f(1, 0, 0))
             yvec = rotation * (scale3[2] * Point3f(0, -1, 0))
 
-            glyphpos = project_position(scene, gpos_data, Mat4f(I))
-            xproj = project_position(scene, gpos_data + xvec, Mat4f(I))
-            yproj = project_position(scene, gpos_data + yvec, Mat4f(I))
+            glyphpos = project_position(scene, gpos_data, _deref(model))
+            xproj = project_position(scene, gpos_data + xvec, _deref(model))
+            yproj = project_position(scene, gpos_data + yvec, _deref(model))
 
             xdiff = xproj - glyphpos
             ydiff = yproj - glyphpos
@@ -398,14 +401,28 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
         elseif space == :screen
             # in screen space, the glyph offsets are added after projecting
             # the string position into screen space
-            glyphpos = project_position(
-                scene,
-                position,
-                Mat4f(I)) .+ (p3_to_p2(glyphoffset .+ p3_offset)) .* (1, -1) # flip for Cairo
+            glyphpos = let
+                p = project_position(
+                    scene,
+                    position,
+                    Mat4f(I)
+                ) .+ (p3_to_p2(glyphoffset .+ p3_offset))
+                p = model * Vec4f(p[1], p[2], 0, 1)
+                # flip for Cairo
+                (0, 1) .* scene.camera.resolution[] .+ p[Vec(1, 2)] .* (1, -1)
+            end
             # and the scale is just taken as is
             scale = length(scale) == 2 ? scale : SVector(scale, scale)
 
-            mat = scale_matrix(scale...)
+            mat = let
+                scale_mat = if length(scale) == 2
+                    Mat2f(scale[1], 0, 0, scale[2])
+                else
+                    Mat2f(scale, 0, 0, scale)
+                end
+                T = model[Vec(1, 2), Vec(1, 2)] * scale_mat
+                Cairo.CairoMatrix(T[1, 1], T[1, 2], T[2, 1], T[2, 2], 0, 0)
+            end
         else
             error()
         end
