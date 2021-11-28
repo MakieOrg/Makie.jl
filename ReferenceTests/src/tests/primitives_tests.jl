@@ -80,3 +80,69 @@ begin
     end
     s
 end
+
+# "poly"
+begin
+    s = Scene(resolution = (800, 800), camera = campixel!)
+
+    scalefactor = 70
+    Pol = Makie.GeometryBasics.Polygon
+
+    translate(pol, p) = Pol(
+        Ref(p) .+ decompose(Point2f, pol.exterior),
+        map(x -> decompose(Point2f, x) .+ Ref(p), pol.interiors)
+    )
+    scale(pol, sca) = Pol(
+        sca .* decompose(Point2f, pol.exterior),
+        map(x -> decompose(Point2f, x) .* sca, pol.interiors)
+    )
+
+    polys = [
+        # three points
+        Pol(Point2f[(1, 1), (1, 2), (2, 1)]),
+        # four points
+        Pol(Point2f[(1, 1), (1, 2), (2, 2), (2, 1)]),
+        # double point
+        Pol(Point2f[(1, 1), (1, 2), (2, 2), (2, 2)]),
+        # one hole
+        Pol(
+            Point2f[(1, 1), (1, 2), (2, 2), (2, 1)],
+            [Point2f[(1.3, 1.3), (1.3, 1.7), (1.7, 1.7), (1.7, 1.3)]]
+        ),
+        # two holes
+        Pol(
+            Point2f[(1, 1), (1, 2), (2, 2), (2, 1)],
+            [
+                Point2f[(1.15, 1.15), (1.15, 1.85), (1.4, 1.85), (1.4, 1.15)],
+                Point2f[(1.6, 1.15), (1.6, 1.85), (1.85, 1.85), (1.85, 1.15)],
+            ]
+        ),
+        # hole half same as exterior
+        Pol(
+            Point2f[(1, 1), (1, 2), (2, 2), (2, 1)],
+            [Point2f[(1, 1), (1, 2), (2, 2)]],
+        ),
+        # point self intersection
+        Pol(
+            Point2f[(1, 1), (2, 1), (2, 2), (1.5, 1), (1, 2)],
+        ),
+    ]
+
+    linewidths = 0:2:9
+
+    for (i, p) in enumerate(polys)
+        for (j, lw) in enumerate(linewidths)
+            poly!(
+                s,
+                translate(
+                    scale(p, scalefactor),
+                    scalefactor * Point2f(1.3 * (i-1), 1.3 * j)
+                ),
+                color = (:red, 0.5),
+                strokewidth = lw,
+            )
+        end
+    end
+
+    s
+end
