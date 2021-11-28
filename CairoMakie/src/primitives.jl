@@ -406,10 +406,18 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
                     scene,
                     position,
                     Mat4f(I)
-                ) .+ (p3_to_p2(glyphoffset .+ p3_offset))
-                p = model * Vec4f(p[1], p[2], 0, 1)
+                )
+                
                 # flip for Cairo
-                (0, 1) .* scene.camera.resolution[] .+ p[Vec(1, 2)] .* (1, -1)
+                if length(position) == 3
+                    p = (_deref(model) * Vec4f(p[1], p[2], 0, 1))[Vec(1, 2)]
+                    p += (p3_to_p2(glyphoffset .+ p3_offset)) .* (1, -1)
+                else
+                    p += p3_to_p2(glyphoffset .+ p3_offset)
+                    p = (_deref(model) * Vec4f(p[1], p[2], 0, 1))[Vec(1, 2)]
+                    p = (0, 1) .* scene.camera.resolution[] .+ p .* (1, -1)
+                end
+                p
             end
             # and the scale is just taken as is
             scale = length(scale) == 2 ? scale : SVector(scale, scale)
@@ -420,7 +428,7 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
                 else
                     Mat2f(scale, 0, 0, scale)
                 end
-                T = model[Vec(1, 2), Vec(1, 2)] * scale_mat
+                T = _deref(model)[Vec(1, 2), Vec(1, 2)] * scale_mat
                 Cairo.CairoMatrix(T[1, 1], T[1, 2], T[2, 1], T[2, 2], 0, 0)
             end
         else
