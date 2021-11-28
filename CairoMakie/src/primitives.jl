@@ -402,21 +402,13 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
             # in screen space, the glyph offsets are added after projecting
             # the string position into screen space
             glyphpos = let
-                p = project_position(
-                    scene,
-                    position,
-                    Mat4f(I)
-                )
+                # project without yflip - we need to apply model before that
+                p = project_position(scene, position, Mat4f(I), false)
                 
                 # flip for Cairo
-                if length(position) == 3
-                    p = (_deref(model) * Vec4f(p[1], p[2], 0, 1))[Vec(1, 2)]
-                    p += (p3_to_p2(glyphoffset .+ p3_offset)) .* (1, -1)
-                else
-                    p += p3_to_p2(glyphoffset .+ p3_offset)
-                    p = (_deref(model) * Vec4f(p[1], p[2], 0, 1))[Vec(1, 2)]
-                    p = (0, 1) .* scene.camera.resolution[] .+ p .* (1, -1)
-                end
+                p += (p3_to_p2(glyphoffset .+ p3_offset))
+                p = (_deref(model) * Vec4f(p[1], p[2], 0, 1))[Vec(1, 2)]
+                p = (0, 1) .* scene.camera.resolution[] .+ p .* (1, -1)
                 p
             end
             # and the scale is just taken as is
