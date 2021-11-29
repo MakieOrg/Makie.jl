@@ -595,22 +595,20 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
             p3 = xys[i+1, j+1]
             p4 = xys[i, j+1]
 
-            # there are usually white lines between directly adjacent rectangles
-            # in vector graphics because of anti-aliasing
-
-            # if we let each cell stick out (bulge) a little bit (half a point) under its neighbors
-            # those lines disappear
-
-            # we heuristically only do this if the adjacent cells are fully opaque
-            
-            # this should be the most common case by far, though
+            # Rectangles and polygons that are directly adjacent usually show
+            # white lines between them due to anti aliasing. To avoid this we
+            # increase their size slightly. 
 
             if alpha(colors[i, j]) == 1
+                # sign.(p - center) gives the direction in which we need to 
+                # extend the polygon. (Which may change due to rotations in the 
+                # model matrix.) (i!=1) etc is used to avoid increasing the
+                # outer extent of the heatmap.
                 center = 0.25 * (p1 + p2 + p3 + p4)
-                p1 += sign.(p1 - center) .* Point2f(0.5, 0.5)
-                p2 += sign.(p2 - center) .* Point2f(0.5, 0.5)
-                p3 += sign.(p3 - center) .* Point2f(0.5, 0.5)
-                p4 += sign.(p4 - center) .* Point2f(0.5, 0.5)
+                p1 += sign.(p1 - center) .* Point2f(0.5(i!=1),  0.5(j!=1))
+                p2 += sign.(p2 - center) .* Point2f(0.5(i!=ni), 0.5(j!=1))
+                p3 += sign.(p3 - center) .* Point2f(0.5(i!=ni), 0.5(j!=nj))
+                p4 += sign.(p4 - center) .* Point2f(0.5(i!=1),  0.5(j!=nj))
             end
 
             Cairo.set_line_width(ctx, 0)
