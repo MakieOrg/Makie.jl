@@ -289,7 +289,7 @@ end
 \end{showhtml}
 
 \begin{examplefigure}{}
-```julia:ex-scene
+```julia
 GLMakie.activate!()
 radiance = 50000
 lights = [
