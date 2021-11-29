@@ -49,7 +49,7 @@ As markers, you can use almost any unicode character.
 Currently, such glyphs are picked from the `Dejavu Sans` font, because it offers a wide range of symbols.
 There is also a number of markers that can be referred to as a symbol, so that it's not necessary to find out the respective unicode character.
 
-The backslash (`\`) character examples have to be tab-completed in the REPL or editor so they are converted into unicode.
+The backslash character examples have to be tab-completed in the REPL or editor so they are converted into unicode.
 
 !!! note
     The scatter markers have the same sizes that the glyphs in Dejavu Sans have. This means that they are not matched in size or area. Currently, Makie does not have the option to use area matched markers, and sometimes manual adjustment might be necessary to achieve a good visual result.
