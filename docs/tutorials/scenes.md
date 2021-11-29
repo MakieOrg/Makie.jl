@@ -288,11 +288,9 @@ end
 ```
 \end{showhtml}
 
-\begin{showhtml}{}
+\begin{examplefigure}{}
 ```julia:ex-scene
-using RPRMakie
-RPRMakie.activate!(iterations=200)
-# GLMakie.activate!()
+GLMakie.activate!()
 radiance = 50000
 lights = [
     EnvironmentLight(1.5, rotl90(load(assetpath("sunflowers_1k.hdr"))')),
@@ -314,7 +312,18 @@ a1 = LinRange(0, rot_joints_by, animation_strides)
 angles = [a1; reverse(a1[1:end-1]); -a1[2:end]; reverse(-a1[1:end-1]);]
 nsteps = length(angles); #Number of animation steps
 translations = LinRange(0, total_translation, nsteps)
-Makie.Record(s, zip(translations, angles)) do (translation, angle)
+s
+```
+\end{examplefigure}
+
+We can render an animation with RPRMakie.
+RPRMakie is still experimental and rendering out the video is quite slow, so the shown video is prerendered!
+
+```julia
+using RPRMakie
+# iterate rendering 200 times, to get less noise and more light
+RPRMakie.activate!(iterations=200)
+Makie.record(s, "lego_walk.mp4", zip(translations, angles)) do (translation, angle)
     #Rotate right arm+hand
     for name in ["arm_left", "arm_right",
                             "leg_left", "leg_right"]
@@ -323,4 +332,8 @@ Makie.Record(s, zip(translations, angles)) do (translation, angle)
     translate!(figure["torso"], translation, 0, 20)
 end
 ```
-\end{showhtml}
+~~~
+<video autoplay controls>
+    <source src="/assets/lego_walk.mp4" type="video/mp4">
+</video>
+~~~
