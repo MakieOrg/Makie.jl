@@ -37,9 +37,7 @@ function SSAO(; radius=nothing, bias=nothing, blur=nothing)
     return SSAO(_radius, _bias, _blur)
 end
 
-
 abstract type AbstractLight end
-
 
 """
 A positional point light, shining at a certain color.
@@ -338,6 +336,10 @@ end
 
 function campixel(scene::Scene)
     return child(scene, clear=false, camera=campixel!)
+end
+
+function camrelative(scene::Scene)
+    return child(scene, clear=false, camera=cam_relative!)
 end
 
 function getindex(scene::Scene, ::Type{OldAxis})

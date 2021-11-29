@@ -57,6 +57,72 @@ scene
 ```
 \end{examplefigure}
 
+## Scenes and subwindows
+
+Create a scene with a subwindow
+
+\begin{examplefigure}{name = "subwindow-1"}
+```julia
+scene = Scene(backgroundcolor=:gray)
+subwindow = Scene(scene, px_area=Rect(100, 100, 200, 200), clear=true, backgroundcolor=:white)
+scene
+```
+\end{examplefigure}
+
+One needs to manually set the camera
+and center the camera to the content of the scene
+
+\begin{examplefigure}{name = "subwindow-2"}
+```julia
+cam3d!(subwindow)
+meshscatter!(subwindow, rand(Point3f, 10), color=:gray)
+center!(subwindow)
+scene
+```
+\end{examplefigure}
+
+
+Instead of a white background, we can also stop clearing the background
+to make the scene see-through, and give it an outline instead.
+The easiest way to create an outline is, to make a sub scene with a projection that goes from 0..1 for the whole window.
+
+\begin{examplefigure}{name = "subwindow-3"}
+```julia
+subwindow.clear = false
+relative_space = Makie.camrelative(subwindow)
+# this draws a line at the scene window boundary
+lines!(relative_space, Rect(0, 0, 1, 1))
+scene
+```
+\end{examplefigure}
+
+Every scene also holds a reference to all global window events, which can be used to e.g. move the subwindow. If you execute the below in GLMakie, you can move the window around by pressing left mouse & ctrl:
+
+```julia
+on(scene.events.mouseposition) do mousepos
+    if ispressed(subwindow, Mouse.left & Keyboard.left_control)
+        subwindow.px_area[] = Rect(Int.(mousepos)..., 200, 200)
+    end
+end
+```
+
+One can also use camrelative and campixel together with the normal Axis,
+to e.g. plot in the middle of the axis:
+
+\begin{examplefigure}{name = "subwindow-4"}
+```julia
+figure, axis, plot_object = scatter(1:4)
+relative_projection = Makie.camrelative(axis.scene);
+scatter!(relative_projection, [Point2f(0.5)], color=:red)
+# offset & text are in pixelspace
+text!(relative_projection, "Hi", position=Point2f(0.5), offset=Vec2f(5))
+lines!(relative_projection, Rect(0, 0, 1, 1), color=:blue, linewidth=3)
+figure
+```
+\end{examplefigure}
+
+## Scenes and Transformations
+
 These are all camera transformations of the object.
 In contrast, there are also scene transformations, or commonly referred to as world transformations.
 To learn more about the different spaces, [learn opengl](https://learnopengl.com/Getting-started/Coordinate-Systems) offers some pretty nice explanations
@@ -79,7 +145,7 @@ One can also transform the plot objects directly, which then adds the transforma
 One can add subscenes and interact with those dynamically.
 Makie offers here what's usually referred to as a scene graph.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{name = "name_x"}
  ```julia
 translate!(sphere_plot, Vec3f(0, 0, 1))
 scene
@@ -224,15 +290,15 @@ end
 
 \begin{showhtml}{}
 ```julia:ex-scene
-#using RPRMakie
-#RPRMakie.activate!(iterations=20)
-GLMakie.activate!()
+using RPRMakie
+RPRMakie.activate!(iterations=200)
+# GLMakie.activate!()
 radiance = 50000
 lights = [
     EnvironmentLight(1.5, rotl90(load(assetpath("sunflowers_1k.hdr"))')),
     PointLight(Vec3f(50, 0, 200), RGBf(radiance, radiance, radiance*1.1)),
 ]
-s = Scene(resolution=(500, 500))
+s = Scene(resolution=(500, 500), lights=lights)
 cam3d!(s)
 c = cameracontrols(s)
 c.near[] = 5
@@ -248,7 +314,7 @@ a1 = LinRange(0, rot_joints_by, animation_strides)
 angles = [a1; reverse(a1[1:end-1]); -a1[2:end]; reverse(-a1[1:end-1]);]
 nsteps = length(angles); #Number of animation steps
 translations = LinRange(0, total_translation, nsteps)
-Makie.Record(s, zip(translations[1:4], angles[1:4])) do (translation, angle)
+Makie.Record(s, zip(translations, angles)) do (translation, angle)
     #Rotate right arm+hand
     for name in ["arm_left", "arm_right",
                             "leg_left", "leg_right"]

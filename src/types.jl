@@ -103,6 +103,16 @@ struct Events
     entered_window::PriorityObservable{Bool}
 end
 
+function Base.show(io::IO, events::Events)
+    println(io, "Events:")
+    fields = propertynames(events)
+    maxlen = maximum(length ∘ string, fields)
+    for field in propertynames(events)
+        pad = maxlen - length(string(field)) + 1
+        println(io, "  $field:", " "^pad, to_value(getproperty(events, field)))
+    end
+end
+
 function Events()
     mousebutton = PriorityObservable(MouseButtonEvent(Mouse.none, Mouse.release))
     mousebuttonstate = Set{Mouse.Button}()

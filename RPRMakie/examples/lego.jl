@@ -1,4 +1,5 @@
 using MeshIO, FileIO, GeometryBasics, RPRMakie
+# Example inspiration and Lego model by https://github.com/Kevin-Mattheus-Moerman
 
 colors = Dict(
     "eyes" => "#000",
@@ -40,21 +41,8 @@ function plot_part!(scene, parent, name::String)
     return mesh!(scene, m; color=color, transformation=trans)
 end
 
-RPRMakie.activate!(iterations=1)
-begin
-    RPRMakie.activate!(iterations=20)
-    radiance = 50000
-    lights = [
-        EnvironmentLight(1.5, rotl90(load(assetpath("sunflowers_1k.hdr"))')),
-        PointLight(Vec3f(50, 0, 200), RGBf(radiance, radiance, radiance*1.1)),
-    ]
-    s = Scene(lights=lights, resolution=(500, 500))
-    # s = Scene(resolution=(500, 500))
-    cam3d!(s)
-    cam = cameracontrols(s)
-    cam.near[] = 5
-    cam.far[] = 1000
-    update_cam!(s, cameracontrols(s), Vec3f(100, 30, 80), Vec3f(0, 0, -10))
+function plot_lego_figure(s, floor=true)
+    # Plot hierarchical mesh!
     figure = Dict()
     # Plot hierarchical mesh!
     figure["torso"] = plot_part!(s, s, "torso")
@@ -67,19 +55,29 @@ begin
         figure["belt"] = plot_part!(s, figure["torso"], "belt")
             figure["leg_right"] = plot_part!(s, figure["belt"], "leg_right")
             figure["leg_left"] = plot_part!(s, figure["belt"], "leg_left")
-
     # lift the little guy up
     translate!(figure["torso"], 0, 0, 20)
     # add some floor
-    m = mesh!(s, Rect3f(Vec3f(-400, -400, -2), Vec3f(800, 800, 2)), color=:white)
-
-    screen = Makie.backend_display(RPRMakie.RPRBackend(), s)
-    Makie.colorbuffer(screen)
+    floor && mesh!(s, Rect3f(Vec3f(-400, -400, -2), Vec3f(800, 800, 2)), color=:white)
+    return figure
 end
 
-@time RPRMakie.render(screen)
-
 begin
+    RPRMakie.activate!(iterations=200)
+    radiance = 50000
+    lights = [
+        EnvironmentLight(1.5, rotl90(load(assetpath("sunflowers_1k.hdr"))')),
+        PointLight(Vec3f(50, 0, 200), RGBf(radiance, radiance, radiance*1.1)),
+    ]
+    s = Scene(resolution=(500, 500), lights=lights)
+
+    cam3d!(s)
+    c = cameracontrols(s)
+    c.near[] = 5
+    c.far[] = 1000
+    update_cam!(s, c, Vec3f(100, 30, 80), Vec3f(0, 0, -10))
+    figure = plot_lego_figure(s)
+
     rot_joints_by = 0.25*pi
     total_translation = 50
     animation_strides = 10
@@ -88,13 +86,12 @@ begin
     angles = [a1; reverse(a1[1:end-1]); -a1[2:end]; reverse(-a1[1:end-1]);]
     nsteps = length(angles); #Number of animation steps
     translations = LinRange(0, total_translation, nsteps)
-    record(s, "test.mp4", zip(translations, angles)) do (translation, angle)
+    Makie.record(s, "lego_walk.mp4", zip(translations, angles)) do (translation, angle)
         #Rotate right arm+hand
-        for (part, name) in [
-                arm_left => "arm_left", arm_right => "arm_right",
-                leg_left => "leg_left", leg_right => "leg_right"]
-            rotate!(part, rotation_axes[name], angle)
+        for name in ["arm_left", "arm_right",
+                                "leg_left", "leg_right"]
+            rotate!(figure[name], rotation_axes[name], angle)
         end
-        translate!(torso, translation, 0, 20)
+        translate!(figure["torso"], translation, 0, 20)
     end
 end
