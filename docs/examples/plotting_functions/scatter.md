@@ -79,6 +79,8 @@ markers_labels = [
     (:x, ":x"),
     (:+, ":+"),
     (:circle, ":circle"),
+    ('a', "'a'"),
+    ('B', "'B'"),
     ('↑', "'\\uparrow'"),
     ('😄', "'\\:smile:'"),
     ('✈', "'\\:airplane:'"),
