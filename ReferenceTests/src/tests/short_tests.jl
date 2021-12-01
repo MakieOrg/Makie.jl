@@ -161,7 +161,7 @@ end
     heatmap(1:2, 1:-1:0, x)
 end
 
-@cell "lines/linesegments width test" begin
+@cell "lines linesegments width test" begin
     res = 200
     s = Scene(camera=campixel!, resolution=(res, res))
     half = res / 2
