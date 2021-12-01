@@ -89,7 +89,7 @@ function env_examplefigure(com, _)
     pngsvec, _ = get!(Franklin.LOCAL_VARS, "examplefigures_png", String[] => Vector{String})
     push!(pngsvec, pngfile)
 
-    return """
+    str = """
     ```julia:$name
     __result = begin # hide
         $code
@@ -106,6 +106,7 @@ function env_examplefigure(com, _)
     </a>
     ~~~
     """
+    return str
 end
 
 # \video{name [, autoplay = false, loop = true, controls = true]}

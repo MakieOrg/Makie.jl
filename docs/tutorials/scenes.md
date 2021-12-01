@@ -1,4 +1,5 @@
 # Scene tutorial
+@def reeval=true
 
 The scene constructor:
 
@@ -53,7 +54,6 @@ center!(subwindow)
 scene
 ```
 \end{examplefigure}
-
 
 Instead of a white background, we can also stop clearing the background
 to make the scene see-through, and give it an outline instead.
@@ -117,7 +117,6 @@ Every scene also holds a reference to all global window events:
 scene.events
 ```
 \show{ex-scene}
-
 
 We can use those events to e.g. move the subwindow. If you execute the below in GLMakie, you can move the sub-window around by pressing left mouse & ctrl:
 
@@ -383,7 +382,6 @@ Finally, lets let him walk and record it as a video with the new, experimental r
 Note: RPRMakie is still not very stable and rendering out the video is quite slow on CI, so the shown video is prerendered!
 
 ```julia
-
 using RPRMakie
 # iterate rendering 200 times, to get less noise and more light
 RPRMakie.activate!(iterations=200)

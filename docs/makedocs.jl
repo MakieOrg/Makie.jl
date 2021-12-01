@@ -121,7 +121,7 @@ function make_links_relative()
     end
 end
 
-serve(single=true, cleanup=false, fail_on_warning = true)
+cd(@__DIR__); serve(single=true, cleanup=false, fail_on_warning=true)
 # for interactive development of the docs, use:
 # cd(@__DIR__); serve(single=false, cleanup=false, fail_on_warning = false, eval_all=true)
 
