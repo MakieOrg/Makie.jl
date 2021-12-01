@@ -35,10 +35,9 @@ void main()
         thickness = get_linewidth_end();
     }
     frag_color.a = frag_color.a * min(1.0, thickness * 2.0);
-    // I think GLMakie is drawing the lines too thick...
+
     // untill we figure out who is right, we need to add 1.0 to linewidth
-    thickness = thickness > 0.0 ? thickness + 1.0 : 0.0;
-    normal *= (((thickness) / 2.0) / get_resolution()) * anchor.w;
+    normal *= (thickness / get_resolution()) * anchor.w;
     // quadpos y (position.y) gives us the direction to expand the line
     vec4 offset = vec4(normal * position.y, 0.0, 0.0);
     // start, or end of quad, need to use current or next point as anchor

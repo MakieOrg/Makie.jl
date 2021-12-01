@@ -160,3 +160,25 @@ end
          2 3]
     heatmap(1:2, 1:-1:0, x)
 end
+
+@cell "lines/linesegments width test" begin
+    res = 200
+    s = Scene(camera=campixel!, resolution=(res, res))
+    half = res / 2
+    linewidth = 10
+    xstart = half - (half/2)
+    xend = xstart + 100
+    half_w = linewidth/2
+
+    lines!(s, Point2f[(xstart, half), (xend, half)], linewidth=linewidth)
+    scatter!(s, Point2f[(xstart, half + half_w), (xstart, half - half_w), (xend, half + half_w), (xend, half - half_w)], color=:red, markersize=2)
+
+    l2 = linesegments!(s, Point2f[(xstart, half), (xend, half)], linewidth=linewidth, color=:gray)
+    s2 = scatter!(s, Point2f[(xstart, half + half_w), (xstart, half - half_w), (xend, half + half_w), (xend, half - half_w)], color=:red, markersize=2)
+
+    for p in (l2, s2)
+        translate!(p, 0, 20, 0)
+    end
+
+    s
+end
