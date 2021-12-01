@@ -36,7 +36,6 @@ void main()
     }
     frag_color.a = frag_color.a * min(1.0, thickness * 2.0);
 
-    // untill we figure out who is right, we need to add 1.0 to linewidth
     normal *= (thickness / get_resolution()) * anchor.w;
     // quadpos y (position.y) gives us the direction to expand the line
     vec4 offset = vec4(normal * position.y, 0.0, 0.0);
