@@ -3,8 +3,6 @@
 The scene constructor:
 
 ```julia
-using GLMakie, Makie
-GLMakie.activate!()
 scene = Scene(;
     # clear everything behind scene
     clear = true,
@@ -35,6 +33,8 @@ With scenes, one can create subwindows. The window extends are given by a `Rect{
 
 \begin{examplefigure}{}
 ```julia
+using GLMakie, Makie
+GLMakie.activate!()
 scene = Scene(backgroundcolor=:gray)
 subwindow = Scene(scene, px_area=Rect(100, 100, 200, 200), clear=true, backgroundcolor=:white)
 scene
