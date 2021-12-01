@@ -1,5 +1,4 @@
 # Scene tutorial
-@def reeval=true
 
 The scene constructor:
 

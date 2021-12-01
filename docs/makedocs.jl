@@ -1,7 +1,5 @@
 using Pkg
-cd(@__DIR__)
 Pkg.activate(".")
-
 pkg"dev .. ../CairoMakie ../GLMakie ../WGLMakie"
 pkg"add MeshIO GeometryBasics"
 Pkg.instantiate()
@@ -121,10 +119,9 @@ function make_links_relative()
     end
 end
 
-cd(@__DIR__); serve(single=true, cleanup=false, fail_on_warning=true)
+serve(single=true, cleanup=false, fail_on_warning = true)
 # for interactive development of the docs, use:
 # cd(@__DIR__); serve(single=false, cleanup=false, fail_on_warning = false, eval_all=true)
-
 lunr()
 optimize(minify=false, prerender=false)
 
