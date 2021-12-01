@@ -33,14 +33,12 @@ end
 
 function env_showhtml(com, _)
     content = Franklin.content(com)
-    name = match(r"```(julia):([a-zA-Z\-]*)", content)[2]
-    _, middle = split(content, r"```(julia):(.*)", limit = 2)
-    middle, _ = split(middle, r"```\s*$")
-
+    lang, ex_name, code = Franklin.parse_fenced_block(content, false)
+    name = "example_$(hash(code))"
     str = """
     ```julia:$name
     __result = begin # hide
-        $middle
+        $code
     end # hide
     println("~~~") # hide
     show(stdout, MIME"text/html"(), __result) # hide
@@ -48,7 +46,6 @@ function env_showhtml(com, _)
     nothing # hide
     ```
     \\textoutput{$name}
-
     """
     return str
 end
@@ -73,12 +70,15 @@ hfun_api_reference() = join(map(html_docstring, names(Makie)))
 
 function env_examplefigure(com, _)
     content = Franklin.content(com)
+    lang, ex_name, code = Franklin.parse_fenced_block(content, false)
+    if lang != "julia"
+        error("Code block needs to be julia. Found: $(lang), $(typeof(lang))")
+    end
 
-    _, middle = split(content, r"```(julia)?", limit = 2)
     kwargs = eval(Meta.parse("Dict(pairs((;" * Franklin.content(com.braces[1]) * ")))"))
 
     name = get(kwargs, :name, "example_" * string(hash(content)))
-    svg = get(kwargs, :svg, false)::Bool
+    svg = get(kwargs, :svg, false)
 
     pngfile = "$name.png"
     svgfile = "$name.svg"
@@ -89,52 +89,10 @@ function env_examplefigure(com, _)
     pngsvec, _ = get!(Franklin.LOCAL_VARS, "examplefigures_png", String[] => Vector{String})
     push!(pngsvec, pngfile)
 
-    middle, _ = split(middle, r"```\s*$")
     return """
     ```julia:$name
     __result = begin # hide
-        $middle
-    end # hide
-    save(joinpath(@OUTPUT, "$pngfile"), __result) # hide
-    $(svg ? "save(joinpath(@OUTPUT, \"$svgfile\"), __result) # hide" : "")
-    nothing # hide
-    ```
-    ~~~
-    <a id="$name">
-    ~~~
-    \\fig{$name.$(svg ? "svg" : "png")}
-    ~~~
-    </a>
-    ~~~
-    """
-end
-
-
-function env_examplefigure(com, _)
-    content = Franklin.content(com)
-
-    _, middle = split(content, r"```(julia)?", limit = 2)
-    arg1 = Franklin.content.(com.braces)
-    @show arg1
-    kwargs = eval(Meta.parse("Dict(pairs((;" * Franklin.content(com.braces[1]) * ")))"))
-
-    name = get(kwargs, :name, "example_" * string(hash(content)))
-    svg = get(kwargs, :svg, false)::Bool
-
-    pngfile = "$name.png"
-    svgfile = "$name.svg"
-
-    # add the generated png name to the list of examples for this page, which
-    # can later be used to assemble an overview page
-    # for some reason franklin needs a pair as the content?
-    pngsvec, _ = get!(Franklin.LOCAL_VARS, "examplefigures_png", String[] => Vector{String})
-    push!(pngsvec, pngfile)
-
-    middle, _ = split(middle, r"```\s*$")
-    return """
-    ```julia:$name
-    __result = begin # hide
-        $middle
+        $code
     end # hide
     save(joinpath(@OUTPUT, "$pngfile"), __result) # hide
     $(svg ? "save(joinpath(@OUTPUT, \"$svgfile\"), __result) # hide" : "")

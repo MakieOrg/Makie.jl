@@ -12,7 +12,7 @@ Currently, it can be necessary to pass a couple of attributes explicitly to make
 To see what parameters are applicable, have a look at the scene docs: \myreflink{documentation/Scenes}
 
 \begin{examplefigure}{}
-```
+```julia
 using GLMakie
 GLMakie.activate!()
 

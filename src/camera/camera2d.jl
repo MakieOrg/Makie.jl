@@ -304,15 +304,13 @@ end
 
 struct PixelCamera <: AbstractCamera end
 """
-    campixel!(scene)
+    campixel!(scene; nearclip=-1000f0, farclip=1000f0)
 
 Creates a pixel-level camera for the `Scene`.  No controls!
 """
-function campixel!(scene)
+function campixel!(scene; nearclip=-1000f0, farclip=1000f0)
     update_once = Observable(false)
     on(camera(scene), update_once, pixelarea(scene)) do u, window_size
-        nearclip = -10_000f0
-        farclip = 10_000f0
         w, h = Float32.(widths(window_size))
         projection = orthographicprojection(0f0, w, 0f0, h, nearclip, farclip)
         set_proj_view!(camera(scene), projection, Mat4f(I))
@@ -320,7 +318,7 @@ function campixel!(scene)
     cam = PixelCamera()
     cameracontrols!(scene, cam)
     update_once[] = true
-    cam
+    return cam
 end
 
 struct RelativeCamera <: AbstractCamera end
@@ -330,9 +328,7 @@ struct RelativeCamera <: AbstractCamera end
 
 Creates a pixel-level camera for the `Scene`.  No controls!
 """
-function cam_relative!(scene)
-    nearclip = -10_000f0
-    farclip = 10_000f0
+function cam_relative!(scene; nearclip=-1000f0, farclip=1000f0)
     projection = orthographicprojection(0f0, 1f0, 0f0, 1f0, nearclip, farclip)
     set_proj_view!(camera(scene), projection, Mat4f(I))
     cam = RelativeCamera()

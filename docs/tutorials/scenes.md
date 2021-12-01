@@ -1,6 +1,7 @@
 # Scene tutorial
 
-\begin{examplefigure}{name = "name_a"}
+The scene constructor:
+
 ```julia
 using GLMakie, Makie
 GLMakie.activate!()
@@ -9,59 +10,30 @@ scene = Scene(;
     clear = true,
     # the camera struct of the scene.
     visible = true,
+    # ssao and light are explained in more detail in `Documetation/Lighting`
     ssao = Makie.SSAO(),
     # Creates lights from theme, which right now defaults to `
     # set_theme!(lightposition=:eyeposition, ambient=RGBf(0.5, 0.5, 0.5))`
     lights = Makie.automatic,
     backgroundcolor = :gray,
-    resolution = (500, 500)
+    resolution = (500, 500);
+    # gets filled in with the currently set global theme
+    theme_kw...
 )
 ```
-\end{examplefigure}
 
-By default, the scenes goes from -1 to 1.
-So to draw a rectangle outlining the screen, the following rectangle does the job:
+A scene is doing three things:
 
-\begin{examplefigure}{name = "name_b"}
- ```julia
-lines!(scene, Rect2f(-1, -1, 2, 2), linewidth=5, color=:black)
-scene
-```
-\end{examplefigure}
-
-this is, because the projection matrix and view matrix are the identity matrix by default, and Makie's default unit space is what's called `Clip space` in the OpenGL world
-
-```julia:ex-scene
-cam = Makie.camera(scene) # this is how to access the scenes camera
-```
-
-One can change the mapping, to e.g. draw from -3 to 5:
-
-\begin{examplefigure}{name = "name_c"}
- ```julia
-cam.projection[] = Makie.orthographicprojection(-3f0, 5f0, -3f0, 5f0, -100f0, 100f0)
-scene
-```
-\end{examplefigure}
-
-one can also change the camera to a perspective 3d projection:
-
-\begin{examplefigure}{name = "name_d"}
- ```julia
-w, h = size(scene)
-cam.projection[] = Makie.perspectiveprojection(45f0, Float32(w / h), 0.1f0, 100f0)
-# Now, we also need to change the view matrix
-# to "put" the camera into some place.
-cam.view[] = Makie.lookat(Vec3f(10), Vec3f(0), Vec3f(0, 0, 1))
-scene
-```
-\end{examplefigure}
+* holds a local theme, that gets applied to all plot objects in that scene
+* manages the camera, projection and transformation matrices
+* defines the window size. For sub-scenes, the child scene can have smaller window areas than the parent area.
+* holds a reference to all window events
 
 ## Scenes and subwindows
 
-Create a scene with a subwindow
+With scenes, one can create subwindows. The window extends are given by a `Rect{2, Int}` and the position is always in window pixels and relative to the parent.
 
-\begin{examplefigure}{name = "subwindow-1"}
+\begin{examplefigure}{}
 ```julia
 scene = Scene(backgroundcolor=:gray)
 subwindow = Scene(scene, px_area=Rect(100, 100, 200, 200), clear=true, backgroundcolor=:white)
@@ -69,10 +41,11 @@ scene
 ```
 \end{examplefigure}
 
-One needs to manually set the camera
+When using `Scenes` directly, one needs to manually set up the camera
 and center the camera to the content of the scene
+As described in more detail the camera section, we have multiple `cam***!` functions to set a certain projection and camera type for the scene.
 
-\begin{examplefigure}{name = "subwindow-2"}
+\begin{examplefigure}{}
 ```julia
 cam3d!(subwindow)
 meshscatter!(subwindow, rand(Point3f, 10), color=:gray)
@@ -85,8 +58,10 @@ scene
 Instead of a white background, we can also stop clearing the background
 to make the scene see-through, and give it an outline instead.
 The easiest way to create an outline is, to make a sub scene with a projection that goes from 0..1 for the whole window.
+To make a subscene with a certain projection type, Makie offers for each camera function a version without `!`, that will create a subscene, and apply the camera type.
+We call the space that goes from 0..1 `relative` space, so `camrelative` will give this projection:
 
-\begin{examplefigure}{name = "subwindow-3"}
+\begin{examplefigure}{}
 ```julia
 subwindow.clear = false
 relative_space = Makie.camrelative(subwindow)
@@ -96,7 +71,55 @@ scene
 ```
 \end{examplefigure}
 
-Every scene also holds a reference to all global window events, which can be used to e.g. move the subwindow. If you execute the below in GLMakie, you can move the window around by pressing left mouse & ctrl:
+We can also now give the parent scene a more exciting background by using `campixel!` and plotting an image to the window:
+
+\begin{examplefigure}{}
+```julia
+campixel!(scene)
+w, h = size(scene) # get the size of the scene in pixels
+# this draws a line at the scene window boundary
+image!(scene, [sin(i/w) + cos(j/h) for i in 1:w, j in 1:h])
+scene
+```
+\end{examplefigure}
+
+We can fix this by translating the scene further back:
+
+\begin{examplefigure}{}
+```julia
+translate!(scene.plots[1], 0, 0, -1000)
+scene
+```
+\end{examplefigure}
+
+We need a fairly high translation, since the far + near plane for `campixel!` goes from `-1000` to `1000`, while for `cam3d!` those get automatically adjusted to the camera parameters. Both end up in the same depthbuffer, transformed to the range `0..1` by the far & near plane, so to stay behind the 3d scene, it needs to be set to a high value.
+
+With `clear = true` we wouldn't have this problem!
+
+In GLMakie, we can actually take a look at the depthbuffer, to see how it looks now:
+
+\begin{examplefigure}{}
+```julia
+screen = display(scene) # use display, to get a reference to the screen object
+depth_color = GLMakie.depthbuffer(screen)
+# Look at result:
+f, ax, pl = heatmap(depth_color)
+Colorbar(f[1, 2], pl)
+f
+```
+\end{examplefigure}
+
+
+## Window Events
+
+Every scene also holds a reference to all global window events:
+```julia:ex-scene
+scene.events
+```
+\show{ex-scene}
+
+
+We can use those events to e.g. move the subwindow. If you execute the below in GLMakie, you can move the sub-window around by pressing left mouse & ctrl:
 
 ```julia
 on(scene.events.mouseposition) do mousepos
@@ -106,10 +129,62 @@ on(scene.events.mouseposition) do mousepos
 end
 ```
 
-One can also use camrelative and campixel together with the normal Axis,
-to e.g. plot in the middle of the axis:
+## Projections and Camera
 
-\begin{examplefigure}{name = "subwindow-4"}
+We've already talked a bit about cameras, but not really how it works.
+Lets start from zero. By default, the scene x/y extends go from -1 to 1.
+So, to draw a rectangle outlining the scene window, the following rectangle does the job:
+\begin{examplefigure}{}
+ ```julia
+scene = Scene(backgroundcolor=:gray)
+lines!(scene, Rect2f(-1, -1, 2, 2), linewidth=5, color=:black)
+scene
+```
+\end{examplefigure}
+
+this is, because the projection matrix and view matrix are the identity matrix by default, and Makie's unit space is what's called `Clip space` in the OpenGL world
+
+```julia:ex-scene
+cam = Makie.camera(scene) # this is how to access the scenes camera
+```
+\show{ex-scene}
+
+One can change the mapping, to e.g. draw from -3 to 5 with an orthographic projection matrix:
+
+\begin{examplefigure}{}
+ ```julia
+cam.projection[] = Makie.orthographicprojection(-3f0, 5f0, -3f0, 5f0, -100f0, 100f0)
+scene
+```
+\end{examplefigure}
+
+one can also change the camera to a perspective 3d projection:
+
+\begin{examplefigure}{}
+ ```julia
+w, h = size(scene)
+nearplane = 0.1f0
+farplane = 100f0
+aspect = Float32(w / h)
+cam.projection[] = Makie.perspectiveprojection(45f0, aspect, nearplane, farplane)
+# Now, we also need to change the view matrix
+# to "put" the camera into some place.
+eyeposition = Vec3f(10)
+lookat = Vec3f(0)
+upvector = Vec3f(0, 0, 1)
+cam.view[] = Makie.lookat(eyeposition, lookat, upvector)
+scene
+```
+\end{examplefigure}
+
+## Interaction with Axis & Layouts
+
+The Axis contains a scene, which has the projection set to make the coordinates go from `(x/y)limits_min ... (x/y)limits_max`. That's what we plot into.
+Besides that, it's a normal scene, which we can use to create subscenes with smaller window size or a different projection.
+
+So, we can use `camrelative` and friends to e.g. plot in the middle of the axis:
+
+\begin{examplefigure}{}
 ```julia
 figure, axis, plot_object = scatter(1:4)
 relative_projection = Makie.camrelative(axis.scene);
@@ -121,19 +196,21 @@ figure
 ```
 \end{examplefigure}
 
-## Scenes and Transformations
 
-These are all camera transformations of the object.
+## Transformations and Scene graph
+
+So far we've been discussing only camera transformations of the scene.
 In contrast, there are also scene transformations, or commonly referred to as world transformations.
 To learn more about the different spaces, [learn opengl](https://learnopengl.com/Getting-started/Coordinate-Systems) offers some pretty nice explanations
 
-The "world" transformations are implemented via the `Transformation` struct in Makie. Scenes and plots both contain these, so these types are considered as "Makie.Transformable".
+The "world" transformation is implemented via the `Transformation` struct in Makie. Scenes and plots both contain these, so these types are considered as "Makie.Transformable".
 The transformation of a scene will get inherited by all plots added to the scene.
 An easy way to manipulate any `Transformable` is via these 3 functions:
 
-
-\begin{examplefigure}{name = "name_e"}
+\begin{examplefigure}{}
  ```julia
+scene = Scene()
+cam3d!(scene)
 sphere_plot = mesh!(scene, Sphere(Point3f(0), 0.5), color=:red)
 scale!(scene, 2, 2, 2)
 rotate!(scene, Vec3f(1, 0, 0), 0.5) # 0.5 rad around the y axis
@@ -145,7 +222,7 @@ One can also transform the plot objects directly, which then adds the transforma
 One can add subscenes and interact with those dynamically.
 Makie offers here what's usually referred to as a scene graph.
 
-\begin{examplefigure}{name = "name_x"}
+\begin{examplefigure}{}
  ```julia
 translate!(sphere_plot, Vec3f(0, 0, 1))
 scene
@@ -154,12 +231,15 @@ scene
 
 The scene graph can be used to create rigid transformations, like for a robot arm:
 
-\begin{examplefigure}{name = "name_6"}
+\begin{examplefigure}{}
  ```julia
 parent = Scene()
 cam3d!(parent)
+
+# One can set the camera lookat and eyeposition, by getting the camera controls and using `update_cam!`
 camc = cameracontrols(parent)
 update_cam!(parent, camc, Vec3f(0, 8, 0), Vec3f(4.0, 0, 0))
+
 s1 = Scene(parent, camera=parent.camera)
 mesh!(s1, Rect3f(Vec3f(0, -0.1, -0.1), Vec3f(5, 0.2, 0.2)))
 s2 = Scene(s1, camera=parent.camera)
@@ -172,8 +252,7 @@ parent
 ```
 \end{examplefigure}
 
-
-\begin{examplefigure}{name = "name_7"}
+\begin{examplefigure}{}
 ```julia
 # Now, rotate the "joints"
 rotate!(s2, Vec3f(0, 1, 0), 0.5)
@@ -215,24 +294,32 @@ rotation_axes = Dict(
 )
 
 function plot_part!(scene, parent, name::String)
+    # load the model file
     m = load(assetpath("lego_figure_" * name * ".stl"))
+    # look up color
     color = colors[split(name, "_")[1]]
-    trans = Transformation(parent)
+    # Create a child transformation from the parent
+    child = Transformation(parent)
+    # get the transformation of the parent
     ptrans = Makie.transformation(parent)
+    # get the origin if available
     origin = get(origins, name, nothing)
+    # center the mesh to its origin, if we have one
     if !isnothing(origin)
         centered = m.position .- origin
         m = GeometryBasics.Mesh(meta(centered; normals=m.normals), faces(m))
-        translate!(trans, origin)
+        translate!(child, origin)
     else
-        translate!(trans, -ptrans.translation[])
+        # if we don't have an origin, we need to correct for the parents translation
+        translate!(child, -ptrans.translation[])
     end
-    return mesh!(scene, m; color=color, transformation=trans)
+    # plot the part with transformation & color
+    return mesh!(scene, m; color=color, transformation=child)
 end
+
 function plot_lego_figure(s, floor=true)
-    # Plot hierarchical mesh!
+    # Plot hierarchical mesh and put all parts into a dictionary
     figure = Dict()
-    # Plot hierarchical mesh!
     figure["torso"] = plot_part!(s, s, "torso")
         figure["head"] = plot_part!(s, figure["torso"], "head")
             figure["eyes_mouth"] = plot_part!(s, figure["head"], "eyes_mouth")
@@ -243,6 +330,7 @@ function plot_lego_figure(s, floor=true)
         figure["belt"] = plot_part!(s, figure["torso"], "belt")
             figure["leg_right"] = plot_part!(s, figure["belt"], "leg_right")
             figure["leg_left"] = plot_part!(s, figure["belt"], "leg_left")
+
     # lift the little guy up
     translate!(figure["torso"], 0, 0, 20)
     # add some floor
@@ -251,8 +339,10 @@ function plot_lego_figure(s, floor=true)
 end
 ```
 
+Let's use WGLMakie with it's offline export feature, to create a plot with sliders to move the parts, that keeps working in the browser:
+
 \begin{showhtml}{}
- ```julia:ex-scene
+ ```julia
 using WGLMakie, JSServe
 wgl = WGLMakie.activate!()
 Page(offline=true, exportable=true)
@@ -260,7 +350,7 @@ Page(offline=true, exportable=true)
 \end{showhtml}
 
 \begin{showhtml}{}
-```julia:ex-scene
+```julia
 App() do session
     wgl
     s = Scene(resolution=(500, 500))
@@ -288,10 +378,18 @@ end
 ```
 \end{showhtml}
 
-\begin{examplefigure}{}
+Finally, lets let him walk and record it as a video with the new, experimental ray tracing backend.
+
+Note: RPRMakie is still not very stable and rendering out the video is quite slow on CI, so the shown video is prerendered!
+
 ```julia
-GLMakie.activate!()
+
+using RPRMakie
+# iterate rendering 200 times, to get less noise and more light
+RPRMakie.activate!(iterations=200)
+
 radiance = 50000
+# Note, that only RPRMakie supports `EnvironmentLight` so far
 lights = [
     EnvironmentLight(1.5, rotl90(load(assetpath("sunflowers_1k.hdr"))')),
     PointLight(Vec3f(50, 0, 200), RGBf(radiance, radiance, radiance*1.1)),
@@ -312,17 +410,7 @@ a1 = LinRange(0, rot_joints_by, animation_strides)
 angles = [a1; reverse(a1[1:end-1]); -a1[2:end]; reverse(-a1[1:end-1]);]
 nsteps = length(angles); #Number of animation steps
 translations = LinRange(0, total_translation, nsteps)
-s
-```
-\end{examplefigure}
 
-We can render an animation with RPRMakie.
-RPRMakie is still experimental and rendering out the video is quite slow, so the shown video is prerendered!
-
-```julia
-using RPRMakie
-# iterate rendering 200 times, to get less noise and more light
-RPRMakie.activate!(iterations=200)
 Makie.record(s, "lego_walk.mp4", zip(translations, angles)) do (translation, angle)
     #Rotate right arm+hand
     for name in ["arm_left", "arm_right",
@@ -333,7 +421,6 @@ Makie.record(s, "lego_walk.mp4", zip(translations, angles)) do (translation, ang
 end
 ```
 ~~~
-<video autoplay controls>
-    <source src="/assets/lego_walk.mp4" type="video/mp4">
+<video autoplay controls src="/assets/lego_walk.mp4">
 </video>
 ~~~
