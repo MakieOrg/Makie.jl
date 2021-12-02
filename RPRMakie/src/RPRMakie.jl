@@ -9,5 +9,6 @@ const RPR = RadeonProRender
 include("scene.jl")
 include("lines.jl")
 include("meshes.jl")
+include("volume.jl")
 
 end

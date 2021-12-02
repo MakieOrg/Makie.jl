@@ -164,6 +164,38 @@ cycle = Cycle([:color, :marker], covary = true)
 # ...
 ```
 
+### Manual cycling using `Cycled`
+
+If you want to give a plot's attribute a specific value from the respective cycler, you can use the `Cycled` object.
+The index `i` passed to `Cycled` is used directly to look up a value in the cycler that belongs to the attribute, and errors if no such cycler is defined.
+For example, to access the third color in a cycler, instead of plotting three plots to advance the cycler, you can use `color = Cycled(3)`.
+
+The cycler's internal counter is not advanced when using `Cycled` for any attribute, and only attributes with `Cycled` access the cycled values, all other usually cycled attributes fall back to their non-cycled defaults.
+
+\begin{examplefigure}{}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+f = Figure()
+
+Axis(f[1, 1])
+
+# the normal cycle
+lines!(0..10, x -> sin(x) - 1)
+lines!(0..10, x -> sin(x) - 2)
+lines!(0..10, x -> sin(x) - 3)
+
+# manually specified colors
+lines!(0..10, x -> sin(x) - 5, color = Cycled(3))
+lines!(0..10, x -> sin(x) - 6, color = Cycled(2))
+lines!(0..10, x -> sin(x) - 7, color = Cycled(1))
+
+f
+```
+\end{examplefigure}
+
 ### Palettes
 
 The attributes specified in the cycle are looked up in the axis' palette.

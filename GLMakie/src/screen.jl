@@ -324,6 +324,7 @@ function Screen(;
         (GLFW_FOCUS_ON_SHOW, WINDOW_CONFIG.focus_on_show[]),
         (GLFW.DECORATED, WINDOW_CONFIG.decorated[]),
         (GLFW.FLOATING, WINDOW_CONFIG.float[]),
+        # (GLFW.TRANSPARENT_FRAMEBUFFER, true)
     ]
 
     window = try

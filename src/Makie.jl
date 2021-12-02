@@ -143,6 +143,7 @@ include("layouting/boundingbox.jl")
 include("stats/conversions.jl")
 include("stats/hist.jl")
 include("stats/density.jl")
+include("stats/ecdf.jl")
 include("stats/distributions.jl")
 include("stats/crossbar.jl")
 include("stats/boxplot.jl")
@@ -275,6 +276,7 @@ end
 
 include("figures.jl")
 export content
+export resize_to_layout!
 
 include("makielayout/MakieLayout.jl")
 # re-export MakieLayout
