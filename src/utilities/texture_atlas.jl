@@ -14,23 +14,29 @@ Base.size(atlas::TextureAtlas) = size(atlas.data)
 
 @enum GlyphResolution High Low
 
-const TEXTURE_RESOLUTION = Ref((2048, 2048))
-const CACHE_RESOLUTION_PREFIX = Ref("high")
-
 const HIGH_PIXELSIZE = 64
 const LOW_PIXELSIZE = 32
 
+const CACHE_RESOLUTION_PREFIX = Ref("high")
+const TEXTURE_RESOLUTION = Ref((2048, 2048))
 const PIXELSIZE_IN_ATLAS = Ref(HIGH_PIXELSIZE)
+# Small padding results in artifacts during downsampling. It seems like roughly
+# 1.5px padding is required for a scaled glyph to be displayed without artifacts.
+# E.g. for textsize = 8px we need 1.5/8 * 64 = 12px+ padding (in each direction)
+# for things to look clear with a 64px glyph size.
+const GLYPH_PADDING = Ref(12)
 
 function set_glyph_resolution!(res::GlyphResolution)
     if res == High
         TEXTURE_RESOLUTION[] = (2048, 2048)
         CACHE_RESOLUTION_PREFIX[] = "high"
         PIXELSIZE_IN_ATLAS[] = HIGH_PIXELSIZE
+        GLYPH_PADDING[] = 12
     else
         TEXTURE_RESOLUTION[] = (1024, 1024)
         CACHE_RESOLUTION_PREFIX[] = "low"
         PIXELSIZE_IN_ATLAS[] = LOW_PIXELSIZE
+        GLYPH_PADDING[] = 6
     end
 end
 
@@ -191,22 +197,29 @@ end
 
 function insert_glyph!(atlas::TextureAtlas, glyph::Char, font::NativeFont)
     return get!(atlas.mapping, (glyph, FreeTypeAbstraction.fontname(font))) do
-        downsample = 5 # render font 5x larger, and then downsample back to desired pixelsize
-        pad = 8 # padd rendered font by 6 pixel in each direction
+        # We save glyphs as signed distance fields, i.e. we save the distance 
+        # a pixel is away from the edge of a symbol (continuous at the edge).
+        # To get accurate distances we want to draw the symbol at high 
+        # resolution and then downsample to the PIXELSIZE_IN_ATLAS.
+        downsample = 5 
+        # To draw a symbol from a sdf we essentially do `color * (sdf > 0)`. For
+        # antialiasing we smooth out the step function `sdf > 0`. That means we 
+        # need a few values outside the symbol. To guarantee that we have those 
+        # at all relevant scales we add padding to the rendered bitmap and the
+        # resulting sdf.
+        pad = GLYPH_PADDING[] 
+
         uv_pixel = render(atlas, glyph, font, downsample, pad)
         tex_size = Vec2f(size(atlas.data) .- 1) # starts at 1
 
-        idx_left_bottom = minimum(uv_pixel)# 0 based!!!
+        # 0 based
+        idx_left_bottom = minimum(uv_pixel)
         idx_right_top = maximum(uv_pixel)
-
-        # include padding
-        left_bottom_pad = idx_left_bottom .+ pad .- 1
-        # -1 for indexing offset
-        right_top_pad = idx_right_top .- pad
-
+        
         # transform to normalized texture coordinates
-        uv_left_bottom_pad = (left_bottom_pad) ./ tex_size
-        uv_right_top_pad =  (right_top_pad) ./ tex_size
+        # -1 for indexing offset
+        uv_left_bottom_pad = (idx_left_bottom) ./ tex_size
+        uv_right_top_pad = (idx_right_top .- 1) ./ tex_size
 
         uv_offset_rect = Vec4f(uv_left_bottom_pad..., uv_right_top_pad...)
         i = atlas.index
