@@ -182,18 +182,18 @@ function glyph_uv_width!(c::Char)
     return glyph_uv_width!(get_texture_atlas(), c, defaultfont())
 end
 
-function glyph_boundingbox(c::Char, font::NativeFont, pixelsize)
-    if FT_Get_Char_Index(font, c) == 0
-        for afont in alternativefonts()
-            if FT_Get_Char_Index(afont, c) != 0
-                font = afont
-                break
-            end
-        end
-    end
-    bb, ext = FreeTypeAbstraction.metrics_bb(c, font, pixelsize)
-    return bb
-end
+# function glyph_boundingbox(c::Char, font::NativeFont, pixelsize)
+#     if FT_Get_Char_Index(font, c) == 0
+#         for afont in alternativefonts()
+#             if FT_Get_Char_Index(afont, c) != 0
+#                 font = afont
+#                 break
+#             end
+#         end
+#     end
+#     bb, ext = FreeTypeAbstraction.metrics_bb(c, font, pixelsize)
+#     return bb
+# end
 
 function insert_glyph!(atlas::TextureAtlas, glyph::Char, font::NativeFont)
     return get!(atlas.mapping, (glyph, FreeTypeAbstraction.fontname(font))) do

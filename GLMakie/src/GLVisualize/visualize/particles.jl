@@ -262,6 +262,35 @@ function _default(
     sprites(p, s, data)
 end
 
+
+# To map (scale, scale_x, scale_y, scale_z) -> scale
+combine_scales(scale, x::Nothing, y::Nothing, z::Nothing) = scale
+combine_scales(s::Nothing, x, y, z::Nothing) = Vec2f.(x, y)
+combine_scales(s::Nothing, x, y, z) = Vec3f.(x, y, z)
+
+function char_scale_factor(char, font)
+    # uv * size(ta.data) / Makie.PIXELSIZE_IN_ATLAS[] is the padded glyph size
+    # normalized to the size the glyph was generated as. 
+    ta = Makie.get_texture_atlas()
+    lbrt = glyph_uv_width!(ta, char, font)
+    width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
+    width * Vec2f(size(ta.data)) / Makie.PIXELSIZE_IN_ATLAS[]
+end
+
+# This works the same for x being widths and offsets
+rescale_glyph(char::Char, font, x) = x * char_scale_factor(char, font)
+function rescale_glyph(char::Char, font, xs::Vector)
+    f = char_scale_factor(char, font)
+    map(xs -> f * x, xs)
+end
+function rescale_glyph(str::String, font, x)
+    [x * char_scale_factor(char, font) for char in collect(str)]
+end
+function rescale_glyph(str::String, font, xs::Vector)
+    map((char, x) -> x * char_scale_factor(char, font), collect(str), xs)
+end
+
+
 """
 Main assemble functions for sprite particles.
 Sprites are anything like distance fields, images and simple geometries
@@ -270,6 +299,23 @@ function sprites(p, s, data)
     rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
     rot = vec2quaternion(rot)
     delete!(data, :rotation)
+
+    # Rescale to include glyph padding and shape
+    if isa(to_value(p[1]), Char)
+        scale = map(combine_scales,
+            pop!(data, :scale, Observable(nothing)),
+            pop!(data, :scale_x, Observable(nothing)),
+            pop!(data, :scale_y, Observable(nothing)),
+            pop!(data, :scale_z, Observable(nothing))
+        )
+        font = get(data, :font, Observable(Makie.defaultfont()))
+        offset = get(data, :offset, Observable(Vec2f(0)))
+        
+        # The same scaling that needs to be applied to scale also needs to apply
+        # to offset.
+        data[:offset] = map(rescale_glyph, p[1], font, offset)
+        data[:scale] = map(rescale_glyph, p[1], font, scale)
+    end
 
     @gen_defaults! data begin
         shape       = const_lift(x-> Int32(primitive_shape(x)), p[1])
@@ -285,10 +331,6 @@ function sprites(p, s, data)
 
         rotation    = rot => GLBuffer
         image       = nothing => Texture
-    end
-    # TODO don't make this dependant on some shady type dispatch
-    if isa(to_value(p[1]), Char) && !isa(to_value(scale), Union{StaticVector, AbstractVector{<: StaticVector}}) # correct dimensions
-        data[:scale] = const_lift(correct_scale, p[1], scale)
     end
 
     @gen_defaults! data begin
@@ -350,7 +392,6 @@ function _default(main::TOrSignal{S}, s::Style, data::Dict) where S <: AbstractS
         font            = to_font("default")
         scale_primitive = true
         position        = const_lift(calc_position, main, start_position, relative_scale, font, atlas)
-        offset          = const_lift(calc_offset, main, relative_scale, font, atlas)
         prerender       = () -> begin
             glDisable(GL_DEPTH_TEST)
             glDepthMask(GL_TRUE)
@@ -360,10 +401,12 @@ function _default(main::TOrSignal{S}, s::Style, data::Dict) where S <: AbstractS
         uv_offset_width = const_lift(main) do str
             Vec4f[glyph_uv_width!(atlas, c, font) for c = str]
         end
-        scale = const_lift(main, relative_scale) do str, s
-            Vec2f[glyph_scale!(atlas, c, font, s) for c = str]
-        end
     end
+    
+    # Rescale to include glyph padding and shape
+    data[:offset] = map(rescale_glyph, main, data[:font], data[:offset])
+    data[:scale] = map(rescale_glyph, main, data[:font], data[:scale])
+
     delete!(data, :font)
     _default((DISTANCEFIELD, position), s, data)
 end

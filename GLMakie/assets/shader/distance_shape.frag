@@ -154,10 +154,12 @@ void main(){
     //       But note that this may interfere with object picking.
     //if (final_color == f_bg_color)
     //    discard;
+
     write2framebuffer(final_color, f_id);
+    
     // Debug tools:
     // * Show the background of the sprite.
-      // write2framebuffer(mix(final_color, vec4(1,0,0,1), 0.2), f_id);
+    //   write2framebuffer(mix(final_color, vec4(1,0,0,1), 0.2), f_id);
     // * Show the antialiasing border around glyphs
     //   write2framebuffer(vec4(vec3(abs(signed_distance)),1), f_id);
 }
