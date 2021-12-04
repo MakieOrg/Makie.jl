@@ -13,12 +13,11 @@ function mesh_material(context, matsys, plot, color_obs = plot.color)
     elseif color isa AbstractMatrix{<:Colorant}
         tex = RPR.MaterialNode(matsys, RPR.RPR_MATERIAL_NODE_IMAGE_TEXTURE)
         map(color_obs) do color
-            println("Setting color images: $(typeof(color))")
             img = RPR.Image(context, Makie.el32convert(color'))
             set!(tex, RPR.RPR_MATERIAL_INPUT_DATA, img)
             return tex
         end
-    elseif color isa Colorant || color isa Union{String, Symbol}
+    elseif color isa Colorant || color isa Union{String,Symbol}
         map(to_color, color_obs)
     elseif color isa Nothing
         # ignore!
@@ -81,7 +80,7 @@ function to_rpr_object(context, matsys, scene, plot::Makie.MeshScatter)
 
         uv = object_id * Vec3f(0, 1/n_instances, 0)
 
-        tex = RPR.Texture(context, matsys, collect(color_from_num'); uv = uv)
+        tex = RPR.Texture(matsys, collect(color_from_num'); uv = uv)
 
         material.color = tex
     elseif color isa Colorant

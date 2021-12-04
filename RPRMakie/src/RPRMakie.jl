@@ -8,6 +8,7 @@ using FileIO
 
 const RPR = RadeonProRender
 const NUM_ITERATIONS = Ref(200)
+using Makie: colorbuffer
 
 include("scene.jl")
 include("lines.jl")
@@ -19,18 +20,20 @@ function activate!(; iterations=200)
     b = RPRBackend()
     Makie.register_backend!(b)
     Makie.current_backend[] = b
-    Makie.inline!(true)
+    return Makie.inline!(true)
 end
 
 function __init__()
-    activate!()
+    return activate!()
 end
 
-for name in names(Makie, all=true)
+for name in names(Makie; all=true)
     if Base.isexported(Makie, name)
         @eval using Makie: $(name)
         @eval export $(name)
     end
 end
+
+export RPRScreen, RPR, colorbuffer
 
 end

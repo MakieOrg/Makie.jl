@@ -10,6 +10,7 @@ There are three main backends which concretely implement all abstract rendering 
 | [`GLMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie)       | GPU-powered, interactive 2D and 3D plotting in standalone `GLFW.jl` windows.          |
 | [`CairoMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/CairoMakie) | `Cairo.jl` based, non-interactive 2D backend for publication-quality vector graphics. |
 | [`WGLMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/WGLMakie)     | WebGL-based interactive 2D and 3D plotting that runs within browsers.                 |
+| [`RPRMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/RPRMakie)     | An experimental Ray tracing backend.                 |
 
 ### Activating Backends
 

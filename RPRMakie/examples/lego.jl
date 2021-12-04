@@ -1,5 +1,6 @@
-using MeshIO, FileIO, GeometryBasics, RPRMakie
 # Example inspiration and Lego model by https://github.com/Kevin-Mattheus-Moerman
+# https://twitter.com/KMMoerman/status/1417759722963415041
+using MeshIO, FileIO, GeometryBasics, RPRMakie
 
 colors = Dict(
     "eyes" => "#000",
@@ -86,10 +87,11 @@ begin
     angles = [a1; reverse(a1[1:end-1]); -a1[2:end]; reverse(-a1[1:end-1]);]
     nsteps = length(angles); #Number of animation steps
     translations = LinRange(0, total_translation, nsteps)
+
     Makie.record(s, "lego_walk.mp4", zip(translations, angles)) do (translation, angle)
-        #Rotate right arm+hand
-        for name in ["arm_left", "arm_right",
-                                "leg_left", "leg_right"]
+
+        # Rotate right arm + hand
+        for name in ["arm_left", "arm_right", "leg_left", "leg_right"]
             rotate!(figure[name], rotation_axes[name], angle)
         end
         translate!(figure["torso"], translation, 0, 20)

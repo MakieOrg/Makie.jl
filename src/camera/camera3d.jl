@@ -635,3 +635,13 @@ function update_cam!(scene::Scene, camera::Camera3D, eyeposition, lookat, up = V
     update_cam!(scene, camera)
     return
 end
+
+function show_cam(scene)
+    cam = cameracontrols(scene)
+    println("cam=cameracontrols(scene)")
+    println("cam.eyeposition[] = ", round.(cam.eyeposition[], digits=2))
+    println("cam.lookat[] = ", round.(cam.lookat[], digits=2))
+    println("cam.upvector[] = ", round.(cam.upvector[], digits=2))
+    println("cam.fov[] = ", round.(cam.fov[], digits=2))
+    return
+end
