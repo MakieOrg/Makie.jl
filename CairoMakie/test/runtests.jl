@@ -64,7 +64,7 @@ excludes = Set([
     "Unicode Marker",
     "Depth Shift"
 ])
-excludes2 = Set(["short_tests_90", "short_tests_111", "short_tests_35", "short_tests_13", "short_tests_3"])
+excludes2 = Set(["short_tests_90", "short_tests_111", "short_tests_35", "short_tests_3"])
 
 functions = [:volume, :volume!, :uv_mesh]
 database = database_filtered(excludes, excludes2, functions=functions)
