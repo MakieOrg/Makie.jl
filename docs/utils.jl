@@ -31,6 +31,24 @@ function hfun_doc(params)
 end
 
 
+function html_docstring(fname)
+    doc = eval(Meta.parse("using Makie; @doc Makie.$fname"))
+    body = Markdown.html(doc)
+
+    # body = fd2html(replace(txt, raw"$" => raw"\$"), internal = true)
+
+    return """
+    <div class="docstring">
+    <div class="doc-header" id="$fname">
+    <a href="#$fname">$fname</a>
+    </div>
+    <div class="doc-content">$body</div>
+    </div>
+    """
+end
+
+hfun_api_reference() = join(map(html_docstring, names(Makie)))
+
 function env_showhtml(com, _)
     content = Franklin.content(com)
     lang, ex_name, code = Franklin.parse_fenced_block(content, false)
@@ -50,23 +68,6 @@ function env_showhtml(com, _)
     return str
 end
 
-function html_docstring(fname)
-    doc = eval(Meta.parse("using Makie; @doc Makie.$fname"))
-    body = Markdown.html(doc)
-
-    # body = fd2html(replace(txt, raw"$" => raw"\$"), internal = true)
-
-    return """
-    <div class="docstring">
-    <div class="doc-header" id="$fname">
-    <a href="#$fname">$fname</a>
-    </div>
-    <div class="doc-content">$body</div>
-    </div>
-    """
-end
-
-hfun_api_reference() = join(map(html_docstring, names(Makie)))
 
 function env_examplefigure(com, _)
     content = Franklin.content(com)

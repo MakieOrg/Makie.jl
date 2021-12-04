@@ -47,6 +47,7 @@ As described in more detail the camera section, we have multiple `cam***!` funct
 
 \begin{examplefigure}{}
 ```julia
+GLMakie.activate!() # hide
 cam3d!(subwindow)
 meshscatter!(subwindow, rand(Point3f, 10), color=:gray)
 center!(subwindow)
@@ -62,6 +63,7 @@ We call the space that goes from 0..1 `relative` space, so `camrelative` will gi
 
 \begin{examplefigure}{}
 ```julia
+GLMakie.activate!() # hide
 subwindow.clear = false
 relative_space = Makie.camrelative(subwindow)
 # this draws a line at the scene window boundary
@@ -74,6 +76,7 @@ We can also now give the parent scene a more exciting background by using `campi
 
 \begin{examplefigure}{}
 ```julia
+GLMakie.activate!() # hide
 campixel!(scene)
 w, h = size(scene) # get the size of the scene in pixels
 # this draws a line at the scene window boundary
@@ -86,6 +89,7 @@ We can fix this by translating the scene further back:
 
 \begin{examplefigure}{}
 ```julia
+GLMakie.activate!() # hide
 translate!(scene.plots[1], 0, 0, -1000)
 scene
 ```
@@ -99,6 +103,7 @@ In GLMakie, we can actually take a look at the depthbuffer, to see how it looks 
 
 \begin{examplefigure}{}
 ```julia
+GLMakie.activate!() # hide
 screen = display(scene) # use display, to get a reference to the screen object
 depth_color = GLMakie.depthbuffer(screen)
 # Look at result:
@@ -133,7 +138,8 @@ We've already talked a bit about cameras, but not really how it works.
 Lets start from zero. By default, the scene x/y extends go from -1 to 1.
 So, to draw a rectangle outlining the scene window, the following rectangle does the job:
 \begin{examplefigure}{}
- ```julia
+```julia
+GLMakie.activate!() # hide
 scene = Scene(backgroundcolor=:gray)
 lines!(scene, Rect2f(-1, -1, 2, 2), linewidth=5, color=:black)
 scene
@@ -150,7 +156,8 @@ cam = Makie.camera(scene) # this is how to access the scenes camera
 One can change the mapping, to e.g. draw from -3 to 5 with an orthographic projection matrix:
 
 \begin{examplefigure}{}
- ```julia
+```julia
+GLMakie.activate!() # hide
 cam.projection[] = Makie.orthographicprojection(-3f0, 5f0, -3f0, 5f0, -100f0, 100f0)
 scene
 ```
@@ -159,7 +166,8 @@ scene
 one can also change the camera to a perspective 3d projection:
 
 \begin{examplefigure}{}
- ```julia
+```julia
+GLMakie.activate!() # hide
 w, h = size(scene)
 nearplane = 0.1f0
 farplane = 100f0
@@ -184,6 +192,7 @@ So, we can use `camrelative` and friends to e.g. plot in the middle of the axis:
 
 \begin{examplefigure}{}
 ```julia
+GLMakie.activate!() # hide
 figure, axis, plot_object = scatter(1:4)
 relative_projection = Makie.camrelative(axis.scene);
 scatter!(relative_projection, [Point2f(0.5)], color=:red)
@@ -206,7 +215,8 @@ The transformation of a scene will get inherited by all plots added to the scene
 An easy way to manipulate any `Transformable` is via these 3 functions:
 
 \begin{examplefigure}{}
- ```julia
+```julia
+GLMakie.activate!() # hide
 scene = Scene()
 cam3d!(scene)
 sphere_plot = mesh!(scene, Sphere(Point3f(0), 0.5), color=:red)
@@ -221,7 +231,8 @@ One can add subscenes and interact with those dynamically.
 Makie offers here what's usually referred to as a scene graph.
 
 \begin{examplefigure}{}
- ```julia
+```julia
+GLMakie.activate!() # hide
 translate!(sphere_plot, Vec3f(0, 0, 1))
 scene
 ```
@@ -230,7 +241,8 @@ scene
 The scene graph can be used to create rigid transformations, like for a robot arm:
 
 \begin{examplefigure}{}
- ```julia
+```julia
+GLMakie.activate!() # hide
 parent = Scene()
 cam3d!(parent)
 
@@ -252,6 +264,7 @@ parent
 
 \begin{examplefigure}{}
 ```julia
+GLMakie.activate!() # hide
 # Now, rotate the "joints"
 rotate!(s2, Vec3f(0, 1, 0), 0.5)
 rotate!(s3, Vec3f(1, 0, 0), 0.5)
@@ -263,8 +276,18 @@ With this basic principle, we can even bring robots to life :)
 [Kevin Moerman](https://github.com/Kevin-Mattheus-Moerman) was so nice to supply a Lego mesh, which we're going to animate!
 When the scene graph is really just about a transformation Graph, one can use the Transformation struct directly, which is what we're going to do here.
 This is more efficient and easier than creating a scene for each model.
+Let's use WGLMakie with it's offline export feature, to create a plot with sliders to move the parts, that keeps working in the browser:
 
-```julia:ex-scene
+\begin{showhtml}{}
+```julia
+using WGLMakie, JSServe
+WGLMakie.activate!()
+Page(offline=true, exportable=true)
+```
+\end{showhtml}
+
+\begin{showhtml}{}
+```julia
 using MeshIO, FileIO, GeometryBasics
 
 colors = Dict(
@@ -335,20 +358,6 @@ function plot_lego_figure(s, floor=true)
     floor && mesh!(s, Rect3f(Vec3f(-400, -400, -2), Vec3f(800, 800, 2)), color=:white)
     return figure
 end
-```
-
-Let's use WGLMakie with it's offline export feature, to create a plot with sliders to move the parts, that keeps working in the browser:
-
-\begin{showhtml}{}
- ```julia
-using WGLMakie, JSServe
-wgl = WGLMakie.activate!()
-Page(offline=true, exportable=true)
-```
-\end{showhtml}
-
-\begin{showhtml}{}
-```julia
 App() do session
     wgl
     s = Scene(resolution=(500, 500))
