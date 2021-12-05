@@ -35,6 +35,7 @@ excludes = Set([
     "Stars",
     "heatmaps & surface",
     "OldAxis + Surface",
+    "Order Independent Transparency",
     "Record Video"
 ])
 
@@ -43,4 +44,4 @@ database = database_filtered(excludes, excludes2)
 
 recorded = joinpath(@__DIR__, "recorded")
 rm(recorded; force=true, recursive=true); mkdir(recorded)
-ReferenceTests.run_reference_tests(database, recorded; difference=0.026)
+ReferenceTests.run_reference_tests(database, recorded; difference=0.032)

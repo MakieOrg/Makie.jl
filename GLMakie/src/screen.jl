@@ -359,6 +359,7 @@ function Screen(;
 
     postprocessors = [
         enable_SSAO[] ? ssao_postprocessor(fb) : empty_postprocessor(),
+        OIT_postprocessor(fb),
         enable_FXAA[] ? fxaa_postprocessor(fb) : empty_postprocessor(),
         to_screen_postprocessor(fb)
     ]

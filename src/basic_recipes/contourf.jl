@@ -25,7 +25,8 @@ $(ATTRIBUTES)
         colormap = theme(scene, :colormap),
         extendlow = nothing,
         extendhigh = nothing,
-        inspectable = theme(scene, :inspectable)
+        inspectable = theme(scene, :inspectable),
+        transparency = false
     )
 end
 
@@ -153,8 +154,9 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
         color = colors,
         strokewidth = 0,
         strokecolor = :transparent,
-        shading=false,
-        inspectable = c.inspectable
+        shading = false,
+        inspectable = c.inspectable,
+        transparency = c.transparency
     )
 end
 
