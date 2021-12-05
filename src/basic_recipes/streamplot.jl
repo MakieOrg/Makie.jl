@@ -205,6 +205,6 @@ function plot!(p::StreamPlot)
         marker = @lift(arrow_head(N, $(p.arrow_head), $(p.quality))),
         color = lift(x-> x[4], data), rotations = rotations,
         colormap = p.colormap, colorrange = p.colorrange,
-        inspectable = p.inspectable
+        inspectable = p.inspectable, transparency = p.transparency
     )
 end

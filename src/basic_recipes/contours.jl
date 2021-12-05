@@ -116,13 +116,13 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
             return RGBAf(Colors.color(c), line ? alpha : 0.0)
         end
     end
-    volume!(
-        plot, x, y, z, volume, colormap = cmap, colorrange = cliprange, algorithm = 7,
-        transparency = plot.transparency, overdraw = plot.overdraw,
-        diffuse = plot.diffuse, inspectable = plot.inspectable,
-        shininess = plot.shininess, specular = plot.specular,
-        enable_depth = plot.enable_depth
-    )
+
+    attr = Attributes(plot)
+    attr[:colorrange] = cliprange
+    attr[:colormap] = cmap
+    attr[:algorithm] = 7
+    pop!(attr, :levels)
+    volume!(plot, attr, x, y, z, volume)
 end
 
 function color_per_level(color, colormap, colorrange, alpha, levels)
