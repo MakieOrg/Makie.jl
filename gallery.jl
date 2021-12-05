@@ -8,10 +8,10 @@ GLMakie.inline!(false)
 url = "https://raw.githubusercontent.com/plotly/datasets/master/vortex.csv"
 df = CSV.File(HTTP.get(url).body)|> DataFrame;
 
-uvw = Vec3f0.(df.u, df.v, df.w)
+uvw = Vec3f.(df.u, df.v, df.w)
 len = norm.(uvw)
 
-arrows(df.x, df.y, df.z, df.u, df.v, df.w, linewidth=0, color=len, arrowsize = Vec3f0(0.5, 0.5, 1)) |> display
+arrows(df.x, df.y, df.z, df.u, df.v, df.w, linewidth=0, color=len, arrowsize = Vec3f(0.5, 0.5, 1)) |> display
 
 
 # surface parameterization  (u, v)----> (f(u,v), g(u,v), h(u,v)):

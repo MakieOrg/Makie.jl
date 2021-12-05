@@ -10,6 +10,7 @@ There are three main backends which concretely implement all abstract rendering 
 | [`GLMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie)       | GPU-powered, interactive 2D and 3D plotting in standalone `GLFW.jl` windows.          |
 | [`CairoMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/CairoMakie) | `Cairo.jl` based, non-interactive 2D backend for publication-quality vector graphics. |
 | [`WGLMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/WGLMakie)     | WebGL-based interactive 2D and 3D plotting that runs within browsers.                 |
+| [`RPRMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/RPRMakie)     | An experimental Ray tracing backend.                 |
 
 ### Activating Backends
 
@@ -96,7 +97,7 @@ Therefore, if you want to draw something on top of something else, but it ends u
 
 ## WGLMakie
 
-[WGLMakie](https://github.com/JuliaPlots/Makie.jl/tree/master/WGLMakie) is the Web-based backend, and is still experimental (though relatively feature-complete). Only serving it on a webpage or in Pluto.jl / Ijulia are currently supported. VSCode integration should come soon.
+[WGLMakie](https://github.com/JuliaPlots/Makie.jl/tree/master/WGLMakie) is the Web-based backend, and is still experimental (though relatively feature-complete). Serving it on a webpage or in Pluto.jl / Ijulia / VSCode are currently supported.
 
 ## Miscellaneous Tips
 

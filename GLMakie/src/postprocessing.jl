@@ -110,8 +110,6 @@ function ssao_postprocessor(framebuffer)
         v = Vec3f(scale * rand() * n)
     end
 
-
-
     # compute occlusion
     shader1 = LazyShader(
         loadshader("postprocessing/fullscreen.vert"),
@@ -130,8 +128,8 @@ function ssao_postprocessor(framebuffer)
         ),
         :noise_scale => map(s -> Vec2f(s ./ 4.0), framebuffer.resolution),
         :projection => Observable(Mat4f(I)),
-        :bias => Observable(0.025f0),
-        :radius => Observable(0.5f0)
+        :bias => 0.025f0,
+        :radius => 0.5f0
     )
     pass1 = RenderObject(data1, shader1, PostprocessPrerender(), nothing)
     pass1.postrenderfunction = () -> draw_fullscreen(pass1.vertexarray.id)
@@ -147,13 +145,12 @@ function ssao_postprocessor(framebuffer)
         :color_texture => framebuffer[:color][2],
         :ids => framebuffer[:objectid][2],
         :inv_texel_size => lift(rcpframe, framebuffer.resolution),
-        :blur_range => Observable(Int32(2))
+        :blur_range => Int32(2)
     )
     pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing)
     pass2.postrenderfunction = () -> draw_fullscreen(pass2.vertexarray.id)
-
-
     color_id = framebuffer[:color][1]
+  
     full_render = screen -> begin
         fb = screen.framebuffer
         w, h = size(fb)
@@ -174,13 +171,11 @@ function ssao_postprocessor(framebuffer)
             a = pixelarea(scene)[]
             glScissor(minimum(a)..., widths(a)...)
             # update uniforms
-            SSAO = scene.theme.SSAO
-            data1[:projection][] = scene.camera.projection[]
-            data1[:bias][] = Float32(to_value(get(SSAO, :bias, 0.025)))
-            data1[:radius][] = Float32(to_value(get(SSAO, :radius, 0.5)))
+            data1[:projection] = scene.camera.projection[]
+            data1[:bias] = scene.ssao.bias[]
+            data1[:radius] = scene.ssao.radius[]
             GLAbstraction.render(pass1)
         end
-
 
         # SSAO - blur occlusion and apply to color
         glDrawBuffer(color_id)  # color buffer
@@ -190,8 +185,7 @@ function ssao_postprocessor(framebuffer)
             a = pixelarea(scene)[]
             glScissor(minimum(a)..., widths(a)...)
             # update uniforms
-            SSAO = scene.theme.SSAO
-            data2[:blur_range][] = Int32(to_value(get(SSAO, :blur, 2)))
+            data2[:blur_range] = scene.ssao.blur
             GLAbstraction.render(pass2)
         end
         glDisable(GL_SCISSOR_TEST)
@@ -199,8 +193,6 @@ function ssao_postprocessor(framebuffer)
 
     PostProcessor(RenderObject[pass1, pass2], full_render)
 end
-
-
 
 """
     fxaa_postprocessor(framebuffer)

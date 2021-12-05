@@ -35,11 +35,9 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
     matrices = lift(calculate_matrices, finallimits, scene.px_area, elevation, azimuth, perspectiveness, aspect, viewmode)
 
     on(matrices) do (view, proj, eyepos)
-        pv = proj * view
-        scene.camera.projection[] = proj
-        scene.camera.view[] = view
-        scene.camera.eyeposition[] = eyepos
-        scene.camera.projectionview[] = pv
+        cam = camera(scene)
+        Makie.set_proj_view!(cam, proj, view)
+        cam.eyeposition[] = eyepos
     end
 
     ticknode_1 = lift(finallimits, attrs.xticks, attrs.xtickformat) do lims, ticks, format

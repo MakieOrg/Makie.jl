@@ -67,12 +67,16 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             gl_attributes[:use_pixel_marker] = lift(x-> x <: Pixel, mspace)
         end
 
-        if haskey(x.attributes, :lightposition)
-            eyepos = scene.camera.eyeposition
-            gl_attributes[:lightposition] = lift(x.attributes[:lightposition], eyepos) do pos, eyepos
-                return pos == :eyeposition ? eyepos : pos
-            end
+        pointlight = Makie.get_point_light(scene)
+        if !isnothing(pointlight)
+            gl_attributes[:lightposition] = pointlight.position
         end
+
+        ambientlight = Makie.get_ambient_light(scene)
+        if !isnothing(ambientlight)
+            gl_attributes[:ambient] = ambientlight.color
+        end
+
         robj = robj_func(gl_attributes)
         for key in (:pixel_space, :view, :projection, :resolution, :eyeposition, :projectionview)
             if !haskey(robj.uniforms, key)
