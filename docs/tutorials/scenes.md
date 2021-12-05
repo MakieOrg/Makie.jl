@@ -359,7 +359,6 @@ function plot_lego_figure(s, floor=true)
     return figure
 end
 App() do session
-    wgl
     s = Scene(resolution=(500, 500))
     cam3d!(s)
     figure = plot_lego_figure(s, false)
