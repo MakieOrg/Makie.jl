@@ -214,6 +214,10 @@ The "world" transformation is implemented via the `Transformation` struct in Mak
 The transformation of a scene will get inherited by all plots added to the scene.
 An easy way to manipulate any `Transformable` is via these 3 functions:
 
+{{doc translate!}}
+{{doc rotate!}}
+{{doc scale!}}
+
 \begin{examplefigure}{}
 ```julia
 GLMakie.activate!() # hide

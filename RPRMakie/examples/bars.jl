@@ -10,7 +10,7 @@ lights = [EnvironmentLight(0.5, load(RPR.assetpath("studio026.exr"))),
 
 ax = LScene(fig[1, 1]; scenekw=(lights=lights,))
 Makie.axis3d!(ax.scene, Rect3f(Vec3f(0), Vec3f(1, 1, 1.2)))
-screen = RPRScreen(ax.scene; iterations=800, plugin=RPR.Northstar)
+screen = RPRScreen(ax.scene; iterations=200, plugin=RPR.Northstar)
 matsys = screen.matsys
 rectMesh = FRect3D(Vec3f0(-0.5, -0.5, 0), Vec3f0(1))
 recmesh = GeometryBasics.normal_mesh(rectMesh)

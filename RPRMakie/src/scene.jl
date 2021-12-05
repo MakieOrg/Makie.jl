@@ -162,8 +162,10 @@ function RPRScreen(scene::Scene; kw...)
     return screen
 end
 
-function RPRScreen(fb_size::NTuple{2,<:Integer}; iterations=NUM_ITERATIONS[],
-                   resource=RPR.RPR_CREATION_FLAGS_ENABLE_GPU0, plugin=RPR.Tahoe, max_recursion=10)
+function RPRScreen(fb_size::NTuple{2,<:Integer};
+                   iterations=NUM_ITERATIONS[],
+                   resource=RENDER_RESOURCE[],
+                   plugin=RENDER_PLUGIN[], max_recursion=10)
     context = RPR.Context(; resource=resource, plugin=plugin)
     matsys = RPR.MaterialSystem(context, 0)
     set_standard_tonemapping!(context)
@@ -171,7 +173,8 @@ function RPRScreen(fb_size::NTuple{2,<:Integer}; iterations=NUM_ITERATIONS[],
     framebuffer1 = RPR.FrameBuffer(context, RGBA, fb_size)
     framebuffer2 = RPR.FrameBuffer(context, RGBA, fb_size)
     set!(context, RPR.RPR_AOV_COLOR, framebuffer1)
-    return RPRScreen(context, matsys, framebuffer1, framebuffer2, fb_size, nothing, false, nothing, iterations, false)
+    return RPRScreen(context, matsys, framebuffer1, framebuffer2, fb_size, nothing, false, nothing,
+                     iterations, false)
 end
 
 function render(screen; clear=true, iterations=screen.iterations)

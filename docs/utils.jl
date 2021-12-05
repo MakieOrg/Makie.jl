@@ -30,9 +30,10 @@ function hfun_doc(params)
     html_docstring(fname)
 end
 
+using Makie
 
 function html_docstring(fname)
-    doc = eval(Meta.parse("using Makie; @doc Makie.$fname"))
+    doc = Base.doc(getfield(Makie, Symbol(fname)))
     body = Markdown.html(doc)
 
     # body = fd2html(replace(txt, raw"$" => raw"\$"), internal = true)
@@ -67,7 +68,6 @@ function env_showhtml(com, _)
     """
     return str
 end
-
 
 function env_examplefigure(com, _)
     content = Franklin.content(com)
