@@ -36,14 +36,14 @@ A matcap (material capture) is a texture which is applied based on the normals o
 ## Examples
 
 \begin{showhtml}{}
-```julia:wgl-light
+```julia
 using JSServe
 Page(exportable=true, offline=true)
 ```
 \end{showhtml}
 
 \begin{showhtml}{}
-```julia:wgl-light
+```julia
 using WGLMakie
 using JSServe
 

@@ -13,7 +13,7 @@ process, which makes sense for the kind of static export we do in Documenter.
 
 
 \begin{showhtml}{}
-```julia:wgl-light
+```julia
 using JSServe, Markdown
 Page(exportable=true, offline=true)
 ```
@@ -23,7 +23,7 @@ After the page got displayed by the frontend, we can start with creating plots a
 
 
 \begin{showhtml}{}
-```julia:wgl-light
+```julia
 using WGLMakie
 WGLMakie.activate!()
 # Set the default resolution to something that fits the Documenter theme
@@ -38,7 +38,7 @@ To make the plot interactive, we will need to write more parts of WGLMakie in JS
 As you can see, the interactivity already keeps working for 3D:
 
 \begin{showhtml}{}
-```julia:wgl-light
+```julia
 N = 60
 function xy_data(x, y)
     r = sqrt(x^2 + y^2)
@@ -59,7 +59,7 @@ There are a couple of ways to keep interacting with Plots in a static export.
 
 JSServe allows to record a statemap for all widgets, that satisfy the following interface:
 
-```julia:wgl-light
+```julia
 # must be true to be found inside the DOM
 is_widget(x) = true
 # Updating the widget isn't dependant on any other state (only thing supported right now)
@@ -73,7 +73,7 @@ function update_value!(x, value) end
 Currently, only sliders overload the interface:
 
 \begin{showhtml}{}
-```julia:wgl-light
+```julia
 using Observables
 
 App() do session::Session
@@ -102,7 +102,7 @@ JSServe makes it easy to build whole HTML and JS applications.
 You can for example directly register javascript function that get run on change.
 
 \begin{showhtml}{}
-```julia:wgl-light
+```julia
 using JSServe: onjs
 
 app = App() do session::Session
@@ -129,7 +129,7 @@ Going forward, we should create an API in WGLMakie, that makes it as easy as in 
 But while this isn't in place, logging the the returned object makes it pretty easy to figure out what to do - btw, the JS console + logging is amazing and makes it very easy to play around with the object once logged.
 
 \begin{showhtml}{}
-```julia:wgl-light
+```julia
 using JSServe: onjs, evaljs, on_document_load
 
 app = App() do session::Session
@@ -234,7 +234,7 @@ The good news is, that one can use the whole mighty power of the CSS/HTML univer
 If it wasn't clear so far, JSServe allows to load arbitrary css, and `DOM.xxx` wraps all existing HTML tags.
 
 \begin{showhtml}{}
-```julia:wgl-light
+```julia
 using Colors
 using JSServe: rows
 
@@ -281,7 +281,7 @@ JSServe will then make sure, that `JSServe.TailwindCSS` is loaded, and will only
 Finally, lets create a styled, reusable card componenent:
 
 \begin{showhtml}{}
-```julia:wgl-light
+```julia
 using Markdown
 
 struct GridCard

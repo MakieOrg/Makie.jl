@@ -220,7 +220,7 @@ GLMakie.activate!() # hide
 scene = Scene()
 cam3d!(scene)
 sphere_plot = mesh!(scene, Sphere(Point3f(0), 0.5), color=:red)
-scale!(scene, 2, 2, 2)
+scale!(scene, 0.5, 0.5, 0.5)
 rotate!(scene, Vec3f(1, 0, 0), 0.5) # 0.5 rad around the y axis
 scene
 ```

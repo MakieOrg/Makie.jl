@@ -54,7 +54,7 @@ function env_showhtml(com, _)
     lang, ex_name, code = Franklin.parse_fenced_block(content, false)
     name = "example_$(hash(code))"
     str = """
-    ```julia:test
+    ```julia:$name
     __result = begin # hide
         $code
     end # hide
@@ -91,7 +91,7 @@ function env_examplefigure(com, _)
     push!(pngsvec, pngfile)
 
     str = """
-    ```julia:test
+    ```julia:example_figure
     __result = begin # hide
         $code
     end # hide
