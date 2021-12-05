@@ -1,7 +1,7 @@
 using Pkg
 cd(@__DIR__)
 Pkg.activate(".")
-pkg"dev .. ../CairoMakie ../GLMakie ../WGLMakie"
+pkg"dev .. ../CairoMakie ../GLMakie ../WGLMakie ../RPRMakie"
 pkg"add MeshIO GeometryBasics"
 Pkg.instantiate()
 Pkg.precompile()
@@ -113,7 +113,7 @@ end
 
 serve(; single=true, cleanup=false, fail_on_warning=true)
 # for interactive development of the docs, use:
-# cd(@__DIR__); serve(single=false, cleanup=false, fail_on_warning = false)
+# cd(@__DIR__); serve(single=false, cleanup=true, clear=true, fail_on_warning = false)
 lunr()
 optimize(; minify=false, prerender=false)
 
