@@ -1,5 +1,5 @@
 @testset "Glyph Collections" begin
-    using FreeTypeAbstraction
+    using Makie.FreeTypeAbstraction
 
     # Test whether Makie's padded signed distance field text matches 
     # FreeTypeAbstraction characters in terms of boundingbox
@@ -81,7 +81,7 @@
         Vec2f(mini .+ 2 * Makie.GLYPH_PADDING[] * 20.0 / Makie.PIXELSIZE_IN_ATLAS[])
     end
 
-    @test position == input_positions
+    @test positions == input_positions
     @test offsets == fta_offsets
     @test scales  == fta_scales
 end
