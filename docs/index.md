@@ -67,7 +67,7 @@ set_theme!() # hide
 
 ## Installation and Import
 
-Add one or more of the Makie backend packages [`GLMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie) (OpenGL), [`CairoMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/CairoMakie) (Cairo), or [`WGLMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/WGLMakie) (WebGL) using Julia's inbuilt package manager. Each backend re-exports `Makie` so there's no need to install it separately.
+Add one or more of the Makie backend packages [`GLMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie) (OpenGL), [`CairoMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/CairoMakie) (Cairo), or [`WGLMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/WGLMakie) (WebGL), [`RPRMakie`](https://github.com/JuliaPlots/Makie.jl/tree/master/RPRMakie) (RadeonProRender) using Julia's inbuilt package manager. Each backend re-exports `Makie` so there's no need to install it separately.
 
 ```julia
 ]add GLMakie
@@ -165,6 +165,19 @@ There are three backends, each of which has particular strengths. You can switch
       @@
       ~~~
       <img src="/assets/wireframe_example.png">
+      ~~~
+    @@
+    ~~~</a>~~~
+  @@
+  @@box
+    ~~~<a class="boxlink" href="documentation/backends_and_output/rprmakie/">~~~
+    @@title RPRMakie.jl @@
+    @@box-content
+      @@description
+      Backend using RadeonProRender for raytracing Makie scenes.
+      @@
+      ~~~
+      <img src="/assets/topographie.png">
       ~~~
     @@
     ~~~</a>~~~

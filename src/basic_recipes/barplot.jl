@@ -42,7 +42,8 @@ $(ATTRIBUTES)
         label_offset = 5,
         label_font = theme(scene, :font),
         label_size = 20,
-        label_formatter = bar_label_formatter
+        label_formatter = bar_label_formatter,
+        transparency = false
     )
 end
 
@@ -252,7 +253,7 @@ function Makie.plot!(p::BarPlot)
     poly!(
         p, bars, color = p.color, colormap = p.colormap, colorrange = p.colorrange,
         strokewidth = p.strokewidth, strokecolor = p.strokecolor, visible = p.visible,
-        inspectable = p.inspectable
+        inspectable = p.inspectable, transparency = p.transparency
     )
     if !isnothing(p.bar_labels[])
         text!(p, labels; align=label_aligns, offset=label_offsets, color=label_colors, font=p.label_font, textsize=p.label_size, rotation=p.label_rotation)

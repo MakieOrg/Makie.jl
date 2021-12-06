@@ -25,7 +25,8 @@ $(ATTRIBUTES)
         direction = :y,
         visible = theme(scene, :visible),
         colormap = theme(scene, :colormap),
-        inspectable = theme(scene, :inspectable)
+        inspectable = theme(scene, :inspectable),
+        transparency = false
     )
 end
 
@@ -51,7 +52,8 @@ $(ATTRIBUTES)
         direction = :y,
         visible = theme(scene, :visible),
         colormap = theme(scene, :colormap),
-        inspectable = theme(scene, :inspectable)
+        inspectable = theme(scene, :inspectable),
+        transparency = false
     )
 end
 
@@ -181,7 +183,7 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
 
     f_if(condition, f, arg) = condition ? f(arg) : arg
 
-    @extract plot (whiskerwidth, color, linewidth, visible, colormap, inspectable)
+    @extract plot (whiskerwidth, color, linewidth, visible, colormap, inspectable, transparency)
 
     scene = parent_scene(plot)
 
@@ -221,11 +223,12 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
 
     linesegments!(
         plot, linesegpairs, color = color, linewidth = linewidth, visible = visible,
-        colormap = colormap, inspectable = inspectable
+        colormap = colormap, inspectable = inspectable, transparency = transparency
     )
     linesegments!(
         plot, whiskers, color = whiskercolors, linewidth = whiskerlinewidths,
-        visible = visible, colormap = colormap, inspectable = inspectable
+        visible = visible, colormap = colormap, inspectable = inspectable, 
+        transparency = transparency
     )
     plot
 end

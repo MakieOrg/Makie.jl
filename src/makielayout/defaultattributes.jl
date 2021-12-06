@@ -872,7 +872,6 @@ function extractattributes(attributes::Attributes, typ::Type)
     extracted
 end
 
-
 function default_attributes(::Type{LScene}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "The height setting of the scene."

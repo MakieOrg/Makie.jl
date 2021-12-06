@@ -10,6 +10,17 @@ function Base.:(==)(a::Camera, b::Camera)
     to_value(a.resolution) == to_value(b.resolution)
 end
 
+function Base.show(io::IO, camera::Camera)
+    println(io, "Camera:")
+    println(io, "  $(length(camera.steering_nodes)) steering nodes connected")
+    println(io, "  pixel_space: ", camera.pixel_space[])
+    println(io, "  view: ", camera.view[])
+    println(io, "  projection: ", camera.projection[])
+    println(io, "  projectionview: ", camera.projectionview[])
+    println(io, "  resolution: ", camera.resolution[])
+    println(io, "  eyeposition: ", camera.eyeposition[])
+end
+
 function disconnect!(c::Camera)
     for obsfunc in c.steering_nodes
         off(obsfunc)
@@ -67,15 +78,26 @@ function Camera(px_area)
         w, h = Float32.(widths(window_size))
         return orthographicprojection(0f0, w, 0f0, h, nearclip, farclip)
     end
+    view = Observable(Mat4f(I))
+    proj = Observable(Mat4f(I))
+    proj_view = map(*, proj, view)
     Camera(
         pixel_space,
-        Observable(Mat4f(I)),
-        Observable(Mat4f(I)),
-        Observable(Mat4f(I)),
+        view,
+        proj,
+        proj_view,
         lift(a-> Vec2f(widths(a)), px_area),
         Observable(Vec3f(1)),
         ObserverFunction[]
     )
+end
+
+function set_proj_view!(camera::Camera, projection, view)
+    # hack, to not double update projectionview
+    # TODO, this makes code doing on(view), not work correctly...
+    # But nobody should do that, right?
+    camera.view.val = view
+    camera.projection[] = projection
 end
 
 function is_mouseinside(scene, target)

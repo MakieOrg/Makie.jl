@@ -62,7 +62,8 @@ excludes = Set([
     "Connected Sphere",
     # markers too big, close otherwise, needs to be assimilated with glmakie
     "Unicode Marker",
-    "Depth Shift"
+    "Depth Shift",
+    "Order Independent Transparency"
 ])
 excludes2 = Set(["short_tests_90", "short_tests_111", "short_tests_35", "short_tests_13", "short_tests_3"])
 

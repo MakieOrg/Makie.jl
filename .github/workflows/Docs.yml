@@ -38,4 +38,3 @@ jobs:
           cd docs;
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24'
           julia --color=yes makedocs.jl
-

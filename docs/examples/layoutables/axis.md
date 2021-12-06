@@ -10,6 +10,7 @@ Here's how you create one
 \begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
+CairoMakie.activate!() # hide
 
 f = Figure()
 

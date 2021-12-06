@@ -500,7 +500,12 @@ function get_ticks(l::LogTicks, scale::Union{typeof(log10), typeof(log2), typeof
 
     ticks = Makie.inverse_transform(scale).(ticks_scaled)
 
-    labels_scaled = get_ticklabels(automatic, ticks_scaled)
+    labels_scaled = get_ticklabels(
+        # avoid unicode superscripts in ticks, as the ticks are converted
+        # to superscripts in the next step
+        xs -> Showoff.showoff(xs, :plain),
+        ticks_scaled
+    )
     labels = _logbase(scale) .* Makie.UnicodeFun.to_superscript.(labels_scaled)
 
     (ticks, labels)
