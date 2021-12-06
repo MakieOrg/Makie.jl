@@ -17,7 +17,6 @@ using .GLAbstraction
 const atlas_texture_cache = Dict{Any, Tuple{Texture{Float16, 2}, Function}}()
 
 function get_texture!(atlas)
-    Makie.set_glyph_resolution!(Makie.High)
     # clean up dead context!
     filter!(atlas_texture_cache) do (ctx, tex_func)
         if GLAbstraction.context_alive(ctx)

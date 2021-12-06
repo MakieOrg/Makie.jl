@@ -310,12 +310,14 @@ function text_quads(positions, glyphs::AbstractVector, fonts::AbstractVector, te
     offsets = Vec2f[]
     uv = Vec4f[]
     scales = Vec2f[]
+    pad = GLYPH_PADDING[] / PIXELSIZE_IN_ATLAS[]
     broadcast_foreach(positions, glyphs, fonts, textsizes) do offs, c, font, pixelsize
     # for (c, font, pixelsize) in zipx(glyphs, fonts, textsizes)
         push!(uv, glyph_uv_width!(atlas, c, font))
         glyph_bb, extent = FreeTypeAbstraction.metrics_bb(c, font, pixelsize)
-        push!(scales, widths(glyph_bb))
-        push!(offsets, minimum(glyph_bb))
+
+        push!(scales, widths(glyph_bb) .+ pixelsize * 2pad)
+        push!(offsets, minimum(glyph_bb) .- pixelsize * pad)
     end
     return positions, offsets, uv, scales
 end
@@ -326,13 +328,14 @@ function text_quads(positions, glyphs, fonts, textsizes::Vector{<:ScalarOrVector
     offsets = Vec2f[]
     uv = Vec4f[]
     scales = Vec2f[]
+    pad = GLYPH_PADDING[] / PIXELSIZE_IN_ATLAS[]
 
     broadcast_foreach(positions, glyphs, fonts, textsizes) do positions, glyphs, fonts, textsizes
         broadcast_foreach(positions, glyphs, fonts, textsizes) do offs, c, font, pixelsize
             push!(uv, glyph_uv_width!(atlas, c, font))
             glyph_bb, extent = FreeTypeAbstraction.metrics_bb(c, font, pixelsize)
-            push!(scales, widths(glyph_bb))
-            push!(offsets, minimum(glyph_bb))
+            push!(scales, widths(glyph_bb) .+ pixelsize * 2pad)
+            push!(offsets, minimum(glyph_bb) .- pixelsize * pad)
         end
     end
 
