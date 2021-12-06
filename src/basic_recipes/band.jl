@@ -9,10 +9,12 @@ between the points in `lower` and `upper`.
 $(ATTRIBUTES)
 """
 @recipe(Band, lowerpoints, upperpoints) do scene
-    Attributes(;
+    attr = Attributes(;
         default_theme(scene, Mesh)...,
         colorrange = automatic,
     )
+    attr[:shading][] = false
+    attr
 end
 
 convert_arguments(::Type{<: Band}, x, ylower, yupper) = (Point2f.(x, ylower), Point2f.(x, yupper))
@@ -47,32 +49,29 @@ function plot!(plot::Band)
         end
     end
 
-    mesh!(plot, coordinates, connectivity;
-        color = meshcolor, colormap = plot[:colormap],
-        colorrange = plot[:colorrange],
-        shading = false, visible = plot[:visible],
-        inspectable = plot[:inspectable]
-    )
+    attr = Attributes(plot)
+    attr[:color] = meshcolor
+    mesh!(plot, attr, coordinates, connectivity)
 end
 
 function fill_view(x, y1, y2, where::Nothing)
     x, y1, y2
-  end
-  function fill_view(x, y1, y2, where::Function)
+end
+function fill_view(x, y1, y2, where::Function)
     fill_view(x, y1, y2, where.(x, y1, y2))
-  end
-  function fill_view(x, y1, y2, bools::AbstractVector{<: Union{Integer, Bool}})
+end
+function fill_view(x, y1, y2, bools::AbstractVector{<: Union{Integer, Bool}})
     view(x, bools), view(y1, bools), view(y2, bools)
-  end
+end
 
-  """
-      fill_between!(scenelike, x, y1, y2; where = nothing, kw_args...)
+"""
+    fill_between!(scenelike, x, y1, y2; where = nothing, kw_args...)
 
-  fill the section between 2 lines with the condition `where`
-  """
-  function fill_between!(scenelike, x, y1, y2; where = nothing, kw_args...)
+fill the section between 2 lines with the condition `where`
+"""
+function fill_between!(scenelike, x, y1, y2; where = nothing, kw_args...)
     xv, ylow, yhigh = fill_view(x, y1, y2, where)
     band!(scenelike, xv, ylow, yhigh; kw_args...)
-  end
+end
 
-  export fill_between!
+export fill_between!

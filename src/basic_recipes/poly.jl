@@ -54,13 +54,13 @@ function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}
         plot, plot[1],
         color = plot[:color], colormap = plot[:colormap], colorrange = plot[:colorrange],
         shading = plot[:shading], visible = plot[:visible], overdraw = plot[:overdraw],
-        inspectable = plot[:inspectable]
+        inspectable = plot[:inspectable], transparency = plot[:transparency]
     )
     wireframe!(
         plot, plot[1],
         color = plot[:strokecolor], linestyle = plot[:linestyle],
         linewidth = plot[:strokewidth], visible = plot[:visible], overdraw = plot[:overdraw],
-        inspectable = plot[:inspectable]
+        inspectable = plot[:inspectable], transparency = plot[:transparency]
     )
 end
 
@@ -138,7 +138,8 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
     meshes = plot[1]
     color_node = plot.color
     attributes = Attributes(
-        visible = plot.visible, shading = plot.shading, fxaa=plot.fxaa, inspectable = plot.inspectable
+        visible = plot.visible, shading = plot.shading, fxaa = plot.fxaa, 
+        inspectable = plot.inspectable, transparency = plot.transparency
     )
 
     attributes[:colormap] = get(plot, :colormap, nothing)

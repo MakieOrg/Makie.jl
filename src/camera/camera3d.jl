@@ -597,9 +597,8 @@ function update_cam!(scene::Scene, cam::Camera3D)
 
     view = Makie.lookat(eyeposition, lookat, upvector)
 
-    scene.camera.projection[] = proj
-    scene.camera.view[] = view
-    scene.camera.projectionview[] = proj * view
+    set_proj_view!(camera(scene), proj, view)
+
     scene.camera.eyeposition[] = cam.eyeposition[]
 end
 
@@ -634,5 +633,15 @@ function update_cam!(scene::Scene, camera::Camera3D, eyeposition, lookat, up = V
     camera.eyeposition[] = Vec3f(eyeposition)
     camera.upvector[] = Vec3f(up)
     update_cam!(scene, camera)
+    return
+end
+
+function show_cam(scene)
+    cam = cameracontrols(scene)
+    println("cam=cameracontrols(scene)")
+    println("cam.eyeposition[] = ", round.(cam.eyeposition[], digits=2))
+    println("cam.lookat[] = ", round.(cam.lookat[], digits=2))
+    println("cam.upvector[] = ", round.(cam.upvector[], digits=2))
+    println("cam.fov[] = ", round.(cam.fov[], digits=2))
     return
 end

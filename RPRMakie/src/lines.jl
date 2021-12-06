@@ -18,7 +18,7 @@ function line2segments(points)
 end
 
 function to_rpr_object(context, matsys, scene, plot::Makie.Lines)
-    points = to_value(plot[1])
+    points = decompose(Point3f, to_value(plot[1]))
     isempty(points) && return nothing
     npoints = length(points)
     indices = line2segments(points)
@@ -31,8 +31,8 @@ function to_rpr_object(context, matsys, scene, plot::Makie.Lines)
 end
 
 function to_rpr_object(context, matsys, scene, plot::Makie.LineSegments)
-    points = to_value(plot[1])
-    segments = TupleView{2, 2}(RPR.rpr_int(0):RPR.rpr_int(length(points)-1))
+    points = decompose(Point3f, to_value(plot[1]))
+    segments = TupleView{2,2}(RPR.rpr_int(0):RPR.rpr_int(length(points) - 1))
     indices = RPR.rpr_int[]
 
     for (a, b) in segments
@@ -52,21 +52,30 @@ function to_rpr_object(context, matsys, scene, plot::Makie.LineSegments)
         end
         Float32.(lw ./ 1000)
     else
-        fill(Float32(plot.linewidth[]/1000), nsegments)
+        fill(Float32(plot.linewidth[] / 1000), nsegments)
     end
 
-    curve = RPR.Curve(context, points, indices, radius, Vec2f.(0.0, LinRange(0, 1, nsegments)), fill(1, nsegments))
+    curve = RPR.Curve(context, points, indices, radius, Vec2f.(0.0, LinRange(0, 1, nsegments)),
+                      fill(1, nsegments))
     material = RPR.DiffuseMaterial(matsys)
+    color = to_color(plot.color[])
 
-    if plot.color[] isa AbstractVector{<: Colorant}
-        colvec = plot.color[]
-        ncols = length(colvec)
+    function set_color!(colorvec)
         tex = RPR.ImageTextureMaterial(matsys)
-        img = RPR.Image(context, reshape(colvec, (ncols, 1)))
+        ncols = length(colorvec)
+        img = RPR.Image(context, reshape(colorvec, (ncols, 1)))
         tex.data = img
         material.color = tex
+        return
+    end
+
+    if color isa AbstractVector{<:Colorant}
+        set_color!(copy(color))
+    elseif color isa AbstractVector{<:Number}
+        sampler = Makie.sampler(to_colormap(plot.colormap[]), color; scaling=Makie.Scaling(identity, plot.colorrange[]))
+        set_color!(collect(sampler))
     else
-        material.color = to_color(plot.color[])
+        material.color = to_color(color)
     end
     set!(curve, material.node)
     return curve

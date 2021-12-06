@@ -44,6 +44,20 @@
     @@
     ~~~</a>~~~
   @@
+
+  @@box
+    ~~~<a class="boxlink" href="scenes/">~~~
+    @@title Scene Tutorial @@
+    @@box-content
+      @@description
+      Explains the Scene type, projections and the scene graph.
+      @@
+      ~~~
+      <video src="/assets/lego_walk.mp4">
+      ~~~
+    @@
+    ~~~</a>~~~
+  @@
 @@
 
 ## Videos

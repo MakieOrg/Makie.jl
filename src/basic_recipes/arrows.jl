@@ -133,7 +133,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
         arrowtail, color, linecolor, linestyle, linewidth, lengthscale,
         arrowhead, arrowsize, arrowcolor, quality,
         # passthrough
-        lightposition, ambient, diffuse, specular, shininess,
+        diffuse, specular, shininess,
         fxaa, ssao, transparency, visible, inspectable
     )
 
@@ -153,7 +153,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
                 Point2f(p1 .- shift) => Point2f(p1 .- shift .+ (dir .* s))
             end
         end
-    
+
         scene = parent_scene(arrowplot)
         rotations = directions
 
@@ -220,7 +220,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
             end,
             color = line_c, colormap = colormap,
             fxaa = fxaa_bool, ssao = ssao,
-            lightposition = lightposition, ambient = ambient, diffuse = diffuse,
+            diffuse = diffuse,
             specular = specular, shininess = shininess, inspectable = inspectable,
             transparency = transparency, visible = visible
         )
@@ -233,7 +233,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
             end,
             color = arrow_c, colormap = colormap,
             fxaa = fxaa_bool, ssao = ssao,
-            lightposition = lightposition, ambient = ambient, diffuse = diffuse,
+            diffuse = diffuse,
             specular = specular, shininess = shininess, inspectable = inspectable,
             transparency = transparency, visible = visible
         )
