@@ -55,7 +55,7 @@ begin
 
     function get_cache_path()
         return abspath(
-            first(Base.DEPOT_PATH), "makiegallery", ".cache",
+            first(Base.DEPOT_PATH), "makie", 
             "texture_atlas_$(CACHE_RESOLUTION_PREFIX[])_$(VERSION).jls"
         )
     end
