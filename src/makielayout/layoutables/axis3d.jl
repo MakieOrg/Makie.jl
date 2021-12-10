@@ -220,7 +220,7 @@ function calculate_matrices(limits, px_area, elev, azim, perspectiveness, aspect
 end
 
 function projectionmatrix(viewmatrix, limits, eyepos, radius, azim, elev, angle, width, height, scales, viewmode)
-    near = radius - sqrt(3)
+    near = 1f-2
     far = radius + 2 * sqrt(3)
 
     aspect_ratio = width / height
