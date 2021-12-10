@@ -140,3 +140,10 @@ fig
 \end{examplefigure}
 
 Note that you can mix opaque `transparency = false` plots with transparent OIT plots without problems. So the first issue is not really an issue for truly opaque plots but rather close to opaque plots.
+
+Another problem you may run into is that part of your plot becomes black or white. This is a result of floats becoming infinite during the OIT calculation because of a large number of transparent colors being added close to the camera. You can fix this in two way:
+
+1. Move the `near` clipping plane closer to the camera. For an `ax::LScene` this can be done by adjusting `ax.scene.camera_controls.near[]` closer to 0 and calling `update_cam!(ax.scene, ax.scene.camera_controls)`.
+2. Reducing `GLMakie.transparency_weight_scale[]` which controls the maximum weight given to a transparent color. The default is `1000f0`.
+
+Adjusting the latter may also help with sharpness.
