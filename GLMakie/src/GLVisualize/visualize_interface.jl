@@ -167,7 +167,7 @@ function visualize(@nospecialize(main), @nospecialize(s), @nospecialize(data))
 end
 
 # Make changes to fragment_output to match what's needed for postprocessing
-using ..GLMakie: enable_SSAO
+using ..GLMakie: enable_SSAO, transparency_weight_scale
 
 function output_buffers(transparency = false)
     if transparency
@@ -186,8 +186,9 @@ end
 
 function output_buffer_writes(transparency = false)
     if transparency
+        scale = transparency_weight_scale[]
         """
-        float weight = color.a * max(0.01, 3000 * pow((1 - gl_FragCoord.z), 3));
+        float weight = color.a * max(0.01, $scale * pow((1 - gl_FragCoord.z), 3));
         coverage = color.a;
         fragment_color.rgb = weight * color.rgb;
         fragment_color.a = weight;
