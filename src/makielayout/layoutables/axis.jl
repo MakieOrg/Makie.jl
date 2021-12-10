@@ -72,7 +72,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
 
     scenearea = sceneareanode!(layoutobservables.computedbbox, finallimits, aspect)
 
-    scene = Scene(topscene, px_area=scenearea, camera=campixel!)
+    scene = Scene(topscene, px_area=scenearea)
 
     background = poly!(topscene, scenearea, color = backgroundcolor, strokewidth = 0, inspectable = false)
     translate!(background, 0, 0, -100)
@@ -132,8 +132,8 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         projection = Makie.orthographicprojection(
             xsc.(leftright)...,
             ysc.(bottomtop)..., nearclip, farclip)
-        camera(scene).projection[] = projection
-        camera(scene).projectionview[] = projection
+
+        Makie.set_proj_view!(camera(scene), projection, Makie.Mat4f(Makie.I))
     end
 
     onany(attrs.xscale, attrs.yscale) do xsc, ysc
@@ -614,27 +614,65 @@ function get_cycle_for_plottype(allattrs, P)::Cycle
 end
 
 function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palette::Attributes)
+    # check if none of the cycled attributes of this plot
+    # were passed manually, because we don't use the cycler
+    # if any of the cycled attributes were specified manually
     no_cycle_attribute_passed = !any(keys(allattrs)) do key
         any(syms -> key in syms, attrsyms(cycle))
     end
 
-    if no_cycle_attribute_passed
+    # check if any attributes were passed as `Cycled` entries
+    # because if there were any, these are looked up directly
+    # in the cycler without advancing the counter etc.
+    manually_cycled_attributes = filter(keys(allattrs)) do key
+        allattrs[key][] isa Cycled
+    end
+    
+    # if there are any manually cycled attributes, we don't do the normal
+    # cycling but only look up exactly the passed attributes
+    if !isempty(manually_cycled_attributes)
+        # an attribute given as Cycled needs to be present in the cycler,
+        # otherwise there's no cycle in which to look up a value
+        for k in manually_cycled_attributes
+            if k ∉ palettesyms(cycle)
+                error("Attribute `$k` was passed with an explicit `Cycled` value, but $k is not specified in the cycler for this plot type $P.")
+            end
+        end
+
+        palettes = [palette[sym][] for sym in palettesyms(cycle)]
+        
+        for sym in manually_cycled_attributes
+            isym = findfirst(syms -> sym in syms, attrsyms(cycle))
+            index = allattrs[sym][].i
+            # replace the Cycled values with values from the correct palettes
+            # at the index inside the Cycled object
+            allattrs[sym] = if cycle.covary
+                palettes[isym][mod1(index, length(palettes[isym]))]
+            else
+                cis = CartesianIndices(Tuple(length(p) for p in palettes))
+                n = length(cis)
+                k = mod1(index, n)
+                idx = Tuple(cis[k])
+                isym
+                palettes[isym][idx[isym]]
+            end
+        end
+
+    elseif no_cycle_attribute_passed
         index = get_cycler_index!(cycler, P)
 
-        paletteattrs = [palette[sym] for sym in palettesyms(cycle)]
+        palettes = [palette[sym][] for sym in palettesyms(cycle)]
 
         for (isym, syms) in enumerate(attrsyms(cycle))
             for sym in syms
-                allattrs[sym] = lift(Any, paletteattrs...) do ps...
-                    if cycle.covary
-                        ps[isym][mod1(index, length(ps[isym]))]
-                    else
-                        cis = CartesianIndices(length.(ps))
-                        n = length(cis)
-                        k = mod1(index, n)
-                        idx = Tuple(cis[k])
-                        ps[isym][idx[isym]]
-                    end
+                allattrs[sym] = if cycle.covary
+                    palettes[isym][mod1(index, length(palettes[isym]))]
+                else
+                    cis = CartesianIndices(Tuple(length(p) for p in palettes))
+                    n = length(cis)
+                    k = mod1(index, n)
+                    idx = Tuple(cis[k])
+                    palettes[isym][idx[isym]]
                 end
             end
         end

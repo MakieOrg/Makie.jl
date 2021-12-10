@@ -280,8 +280,7 @@ end
 function project(scene::Scene, point::T) where T<:StaticVector
     cam = scene.camera
     return project(
-        cam.projection[] *
-        cam.view[] *
+        cam.projectionview[] *
         transformationmatrix(scene)[],
         Vec2f(widths(pixelarea(scene)[])), point
     )

@@ -57,7 +57,8 @@ function create_shader(scene::Scene, plot::MeshScatter)
         uniform_dict[:uv] = Vec2f(0)
     end
 
-    uniforms[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
+    uniform_dict[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
+    get!(uniform_dict, :ambient, Vec3f(1))
 
     return InstancedProgram(WebGL(), lasset("particles.vert"), lasset("particles.frag"),
                             instance, VertexArray(; per_instance...); uniform_dict...)
@@ -72,6 +73,28 @@ primitive_shape(::Type{<:Rect2}) = Cint(RECTANGLE)
 primitive_shape(::Type{T}) where {T} = error("Type $(T) not supported")
 primitive_shape(x::Shape) = Cint(x)
 
+function char_scale_factor(char, font)
+    # uv * size(ta.data) / Makie.PIXELSIZE_IN_ATLAS[] is the padded glyph size
+    # normalized to the size the glyph was generated as. 
+    ta = Makie.get_texture_atlas()
+    lbrt = glyph_uv_width!(ta, char, font)
+    width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
+    width * Vec2f(size(ta.data)) / Makie.PIXELSIZE_IN_ATLAS[]
+end
+
+# This works the same for x being widths and offsets
+rescale_glyph(char::Char, font, x) = x * char_scale_factor(char, font)
+function rescale_glyph(char::Char, font, xs::Vector)
+    f = char_scale_factor(char, font)
+    map(xs -> f * x, xs)
+end
+function rescale_glyph(str::String, font, x)
+    [x * char_scale_factor(char, font) for char in collect(str)]
+end
+function rescale_glyph(str::String, font, xs::Vector)
+    map((char, x) -> x * char_scale_factor(char, font), collect(str), xs)
+end
+
 using Makie: to_spritemarker
 
 function scatter_shader(scene::Scene, attributes)
@@ -79,10 +102,16 @@ function scatter_shader(scene::Scene, attributes)
     per_instance_keys = (:offset, :rotations, :markersize, :color, :intensity,
                          :uv_offset_width, :marker_offset)
     uniform_dict = Dict{Symbol,Any}()
+    
+    if haskey(attributes, :marker) && attributes[:marker][] isa Union{Char, Vector{Char},String}
+        font = get(attributes, :font, Observable(Makie.defaultfont()))
+        attributes[:markersize] = map(rescale_glyph, attributes[:marker], font, attributes[:markersize])
+        attributes[:marker_offset] = map(rescale_glyph, attributes[:marker], font, attributes[:marker_offset])
+    end
+
     if haskey(attributes, :marker) && attributes[:marker][] isa Union{Vector{Char},String}
         x = pop!(attributes, :marker)
-        attributes[:uv_offset_width] = lift(x -> Makie.glyph_uv_width!.(collect(x)),
-                                            x)
+        attributes[:uv_offset_width] = lift(x -> Makie.glyph_uv_width!.(collect(x)), x)
         uniform_dict[:shape_type] = Cint(3)
     end
 
@@ -136,7 +165,7 @@ function scatter_shader(scene::Scene, attributes)
 
     instance = uv_mesh(Rect2(-0.5f0, -0.5f0, 1f0, 1f0))
     uniform_dict[:resolution] = scene.camera.resolution
-    
+
     return InstancedProgram(WebGL(), lasset("simple.vert"), lasset("sprites.frag"),
                             instance, VertexArray(; per_instance...); uniform_dict...)
 end

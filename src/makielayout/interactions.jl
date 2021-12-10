@@ -150,7 +150,7 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
     inv_transf = Makie.inverse_transform(transf)
 
     if isnothing(inv_transf)
-        @warn "Can't rectangle zoom without inverse transform"
+        @warn "Can't rectangle zoom without inverse transform" maxlog=1
         # TODO, what can we do without inverse?
         return Consume(false)
     end
@@ -188,9 +188,10 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
 end
 
 function rectclamp(p::Point, r::Rect)
-    map(p, minimum(r), maximum(r)) do pp, mi, ma
+    p = map(p, minimum(r), maximum(r)) do pp, mi, ma
         clamp(pp, mi, ma)
-    end |> Point
+    end
+    return Point(p)
 end
 
 function process_interaction(r::RectangleZoom, event::KeysEvent, ax::Axis)
@@ -202,12 +203,11 @@ function process_interaction(r::RectangleZoom, event::KeysEvent, ax::Axis)
     return Consume(true)
 end
 
-
 function positivize(r::Rect2f)
     negwidths = r.widths .< 0
     newori = ifelse.(negwidths, r.origin .+ r.widths, r.origin)
     newwidths = ifelse.(negwidths, -r.widths, r.widths)
-    Rect2f(newori, newwidths)
+    return Rect2f(newori, newwidths)
 end
 
 function process_interaction(l::LimitReset, event::MouseEvent, ax::Axis)

@@ -17,18 +17,11 @@ function layoutable(::Type{Label}, fig_or_scene; bbox = nothing, kwargs...)
 
     textpos = Observable(Point3f(0, 0, 0))
 
-    # this is just a hack until boundingboxes in Makie are perfect
-    alignnode = lift(halign, rotation) do h, rot
-        # left align the text if it's not rotated and left aligned
-        if rot == 0 && (h == :left || h == 0.0)
-            (:left, :center)
-        else
-            (:center, :center)
-        end
-    end
-
     t = text!(topscene, text, position = textpos, textsize = textsize, font = font, color = color,
-        visible = visible, align = alignnode, rotation = rotation, space = :data, inspectable = false)
+        visible = visible, align = (:center, :center), rotation = rotation, space = :data,
+        justification = attrs.justification,
+        lineheight = attrs.lineheight,
+        inspectable = false)
 
     textbb = Ref(BBox(0, 1, 0, 1))
 
@@ -49,11 +42,7 @@ function layoutable(::Type{Label}, fig_or_scene; bbox = nothing, kwargs...)
 
         # this is also part of the hack to improve left alignment until
         # boundingboxes are perfect
-        tx = if rotation[] == 0 && (halign[] == :left || halign[] == 0.0)
-            box + padding[1]
-        else
-            box + padding[1] + 0.5 * tw
-        end
+        tx = box + padding[1] + 0.5 * tw
         ty = boy + padding[3] + 0.5 * th
 
         textpos[] = Point3f(tx, ty, 0)

@@ -46,6 +46,7 @@ import ImageIO
 import FileIO
 import SparseArrays
 using MakieCore
+using OffsetArrays
 
 using GeometryBasics: widths, positive_widths, VecTypes, AbstractPolygon, value
 using Distributions: Distribution, VariateForm, Discrete, QQPair, pdf, quantile, qqbuild
@@ -144,6 +145,7 @@ include("layouting/boundingbox.jl")
 include("stats/conversions.jl")
 include("stats/hist.jl")
 include("stats/density.jl")
+include("stats/ecdf.jl")
 include("stats/distributions.jl")
 include("stats/crossbar.jl")
 include("stats/boxplot.jl")
@@ -276,6 +278,7 @@ end
 
 include("figures.jl")
 export content
+export resize_to_layout!
 
 include("makielayout/MakieLayout.jl")
 # re-export MakieLayout
@@ -291,5 +294,7 @@ include("basic_recipes/text.jl")
 export Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter, Surface, Text, Volume
 export heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface, text, volume
 export heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, surface!, text!, volume!
+
+export PointLight, EnvironmentLight, AmbientLight, SSAO
 
 end # module
