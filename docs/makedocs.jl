@@ -1,6 +1,6 @@
 using Pkg
 Pkg.activate(".")
-pkg"dev .. ../CairoMakie ../GLMakie ../WGLMakie"
+pkg"dev .. ../MakieCore ../CairoMakie ../GLMakie ../WGLMakie"
 Pkg.instantiate()
 Pkg.precompile()
 
