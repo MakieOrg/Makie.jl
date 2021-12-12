@@ -1,22 +1,16 @@
-abstract type PathCommand end
-
-struct BezierPath
-    commands::Vector{PathCommand}
-end
-
-struct MoveTo <: PathCommand
+struct MoveTo
     p::Point2{Float64}
 end
 
 MoveTo(x, y) = MoveTo(Point(x, y))
 
-struct LineTo <: PathCommand
+struct LineTo
     p::Point2{Float64}
 end
 
 LineTo(x, y) = LineTo(Point(x, y))
 
-struct CurveTo <: PathCommand
+struct CurveTo
     c1::Point2{Float64}
     c2::Point2{Float64}
     p::Point2{Float64}
@@ -26,7 +20,7 @@ CurveTo(cx1, cy1, cx2, cy2, p1, p2) = CurveTo(
     Point(cx1, cy1), Point(cx2, cy2), Point(p1, p1)
 )
 
-struct EllipticalArc <: PathCommand
+struct EllipticalArc
     c::Point2{Float64}
     r1::Float64
     r2::Float64
@@ -38,7 +32,13 @@ end
 EllipticalArc(cx, cy, r1, r2, angle, a1, a2) = EllipticalArc(Point(cx, cy),
     r1, r2, angle, a1, a2)
 
-struct ClosePath <: PathCommand end
+struct ClosePath end
+
+const PathCommand = Union{MoveTo, LineTo, CurveTo, EllipticalArc, ClosePath}
+
+struct BezierPath
+    commands::Vector{PathCommand}
+end
 
 function Base.:+(pc::P, p::Point2) where P <: PathCommand
     fnames = fieldnames(P)
@@ -61,6 +61,12 @@ scale(c::CurveTo, v::VecTypes{2}) = CurveTo(c.c1 .* v, c.c2 .* v, c.p .* v)
 scale(e::EllipticalArc, v::VecTypes{2}) = EllipticalArc(e.c .* v, e.r1, e.r2, e.angle, e.a1, e.a2)
 scale(c::ClosePath, v::VecTypes{2}) = c
 
+function fit_to_base_square(b::BezierPath)
+    bb = bbox(b)
+    w, h = widths(bb)
+    bb_t = translate(b, -(bb.origin + 0.5 * widths(bb)))
+    scale(bb_t, 2 / (max(w, h)))
+end
 
 Base.:+(pc::EllipticalArc, p::Point2) = EllipticalArc(pc.c + p, pc.r1, pc.r2, pc.angle, pc.a1, pc.a2)
 Base.:+(pc::ClosePath, p::Point2) = pc
@@ -357,4 +363,215 @@ function EllipticalArc(x1, y1, x2, y2, rx, ry, ϕ, largearc::Bool, sweepflag::Bo
     end
 
     EllipticalArc(c, rx, ry, ϕ, θ1, θ1 + Δθ)
+end
+
+###################################################
+# Freetype rendering of paths for GLMakie sprites #
+###################################################
+
+function make_outline(path)
+    n_contours::FT_Int = 0
+    n_points::FT_UInt = 0
+    points = FT_Vector[]
+    tags = Int8[]
+    contours = Int16[]
+    flags = Int32(0)
+    for command in path.commands
+        new_contour, n_newpoints, newpoints, newtags = convert_command(command)
+        if new_contour
+            n_contours += 1
+            if n_contours > 1
+                push!(contours, n_points - 1) # -1 because of C zero-based indexing
+            end
+        end
+        n_points += n_newpoints
+        append!(points, newpoints)
+        append!(tags, newtags)
+    end
+    push!(contours, n_points - 1)
+    @assert n_points == length(points) == length(tags)
+    @assert n_contours == length(contours)
+    push!(contours, n_points)
+
+    outline_ref = Ref{FT_Outline}()
+    finalizer(outline_ref) do r
+        FT_Outline_Done(Makie.FreeTypeAbstraction.FREE_FONT_LIBRARY[], outline_ref)
+    end
+    
+    FT_Outline_New(
+        Makie.FreeTypeAbstraction.FREE_FONT_LIBRARY[],
+        n_points,
+        n_contours,
+        outline_ref
+    )
+
+    for i in 1:length(points)
+        unsafe_store!(outline_ref[].points, points[i], i)
+    end
+    for i in 1:length(tags)
+        unsafe_store!(outline_ref[].tags, tags[i], i)
+    end
+    for i in 1:length(contours)
+        unsafe_store!(outline_ref[].contours, contours[i], i)
+    end
+    outline_ref
+end
+
+ftvec(p) = FT_Vector(round(Int, p[1]), round(Int, p[2]))
+
+function convert_command(m::MoveTo)
+    true, 1, ftvec.([m.p]), [FT_Curve_Tag_On] 
+end
+
+function convert_command(l::LineTo)
+    false, 1, ftvec.([l.p]), [FT_Curve_Tag_On] 
+end
+
+function convert_command(c::CurveTo)
+    false, 3, ftvec.([c.c1, c.c2, c.p]), [FT_Curve_Tag_Cubic, FT_Curve_Tag_Cubic, FT_Curve_Tag_On] 
+end
+
+
+function render_path(path)
+    # in the outline, 1 unit = 1/64px, so 64px = 4096 units wide,
+    outline_ref = make_outline(replace_nonfreetype_commands(path))
+
+    w = 64
+    h = 64
+    pitch = w * 1 # 8 bit gray
+    pixelbuffer = zeros(UInt8, h * pitch)
+    bitmap_ref = Ref{FT_Bitmap}()
+    bitmap_ref[] = FT_Bitmap(
+        h,
+        w,
+        pitch,
+        Base.unsafe_convert(Ptr{UInt8}, pixelbuffer),
+        256,
+        FT_PIXEL_MODE_GRAY,
+        C_NULL,
+        C_NULL
+    )
+
+    FT_Outline_Get_Bitmap(
+        Makie.FreeTypeAbstraction.FREE_FONT_LIBRARY[],
+        outline_ref,
+        bitmap_ref,
+    )
+
+    reshape(pixelbuffer, (w, h))
+end
+
+# FreeType can only handle lines and cubic / conic beziers so ClosePath
+# and EllipticalArc need to be replaced
+function replace_nonfreetype_commands(path)
+    newpath = BezierPath(copy(path.commands))
+    last_move_to = nothing
+    for (i, c) in enumerate(newpath.commands)
+        if c isa MoveTo
+            last_move_to = c
+        elseif c isa ClosePath
+            if last_move_to === nothing
+                error("Got ClosePath but no previous MoveTo")
+            end
+            newpath.commands[i] = LineTo(last_move_to.p)
+        end
+    end
+    newpath
+end
+
+
+Makie.convert_attribute(b::BezierPath, ::key"marker", ::key"scatter") = b
+Makie.convert_attribute(ab::AbstractVector{<:BezierPath}, ::key"marker", ::key"scatter") = ab
+
+struct BezierSegment
+    from::Point2f
+    c1::Point2f
+    c2::Point2f
+    to::Point2f
+end
+
+struct LineSegment
+    from::Point2f
+    to::Point2f
+end
+
+function bbox(b::BezierPath)
+    prev = b.commands[1]
+    bb = nothing
+    for comm in b.commands[2:end]
+        endp = endpoint(prev)
+        if comm isa MoveTo
+            continue
+        end
+        seg = segment(endp, comm)
+        bb = bb === nothing ? bbox(seg) : union(bb, bbox(seg))
+        prev = comm
+    end
+    bb
+end
+
+segment(p, l::LineTo) = LineSegment(p, l.p)
+segment(p, c::CurveTo) = BezierSegment(p, c.c1, c.c2, c.p)
+
+endpoint(m::MoveTo) = m.p
+endpoint(l::LineTo) = l.p
+endpoint(c::CurveTo) = c.p
+
+function bbox(ls::LineSegment)
+    Rect2f(ls.from, ls.to - ls.from)
+end
+
+function bbox(b::BezierSegment)
+
+    p0 = b.from
+    p1 = b.c1
+    p2 = b.c2
+    p3 = b.to
+
+    mi = [min.(p0, p3)...]
+    ma = [max.(p0, p3)...]
+
+    c = -p0 + p1
+    b =  p0 - 2p1 + p2
+    a = -p0 + 3p1 - 3p2 + 1p3
+
+    h = [(b.*b - a.*c)...]
+
+    if h[1] > 0
+        h[1] = sqrt(h[1])
+        t = (-b[1] - h[1]) / a[1]
+        if t > 0 && t < 1
+            s = 1.0-t
+            q = s*s*s*p0[1] + 3.0*s*s*t*p1[1] + 3.0*s*t*t*p2[1] + t*t*t*p3[1]
+            mi[1] = min(mi[1],q)
+            ma[1] = max(ma[1],q)
+        end
+        t = (-b[1] + h[1])/a[1]
+        if t>0 && t<1
+            s = 1.0-t
+            q = s*s*s*p0[1] + 3.0*s*s*t*p1[1] + 3.0*s*t*t*p2[1] + t*t*t*p3[1]
+            mi[1] = min(mi[1],q)
+            ma[1] = max(ma[1],q)
+        end
+    end
+
+    if h[2]>0.0
+        h[2] = sqrt(h[2])
+        t = (-b[2] - h[2])/a[2]
+        if t>0.0 && t<1.0
+            s = 1.0-t
+            q = s*s*s*p0[2] + 3.0*s*s*t*p1[2] + 3.0*s*t*t*p2[2] + t*t*t*p3[2]
+            mi[2] = min(mi[2],q)
+            ma[2] = max(ma[2],q)
+        end
+        t = (-b[2] + h[2])/a[2]
+        if t>0.0 && t<1.0
+            s = 1.0-t
+            q = s*s*s*p0[2] + 3.0*s*s*t*p1[2] + 3.0*s*t*t*p2[2] + t*t*t*p3[2]
+            mi[2] = min(mi[2],q)
+            ma[2] = max(ma[2],q)
+        end
+    end
+
+    Rect2f(Point(mi...), Point(ma...) - Point(mi...))
 end
