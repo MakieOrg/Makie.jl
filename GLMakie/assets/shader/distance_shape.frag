@@ -156,7 +156,7 @@ void main(){
     //    discard;
 
     write2framebuffer(final_color, f_id);
-    
+
     // Debug tools:
     // * Show the background of the sprite.
     //   write2framebuffer(mix(final_color, vec4(1,0,0,1), 0.2), f_id);
