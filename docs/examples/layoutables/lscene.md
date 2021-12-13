@@ -9,7 +9,7 @@ You can plot into the `LScene` directly, though.
 
 You can pass keyword arguments to the underlying `Scene` object to the `scenekw` keyword.
 Currently, it can be necessary to pass a couple of attributes explicitly to make sure they are not inherited from the main scene.
-To see what parameters are applicable, have a look at the scene docs: \myreflink{documentation/Scenes}
+To see what parameters are applicable, have a look at the [scene docs](/documentation/Scenes)
 
 \begin{examplefigure}{}
 ```julia
