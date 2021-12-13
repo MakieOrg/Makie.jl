@@ -4,6 +4,13 @@ Experimental ray tracing backend using AMDs [RadeonProRender](https://radeon-pro
 While it's created by AMD and tailored to Radeon GPUs, it still works just as well for NVidia and Intel GPUs using OpenCL.
 It also works on the CPU and even has a hybrid modus to use GPUs and CPUs in tandem to render images.
 
+RadeonProRender currently only works on Windows and Linux, and crashes on OSX when creating the most basic context. If you're on OSX and good at debugging segfaults, help us by debugging:
+
+```julia
+using RadeonProRender
+RadeonProRender.Context()
+```
+
 ## Activating and working with RPMakie
 
 To use the backend, just call `activate!` like with all other backends. There are a few extra parameters for RPRMakie:
