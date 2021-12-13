@@ -61,6 +61,21 @@ scale(c::CurveTo, v::VecTypes{2}) = CurveTo(c.c1 .* v, c.c2 .* v, c.p .* v)
 scale(e::EllipticalArc, v::VecTypes{2}) = EllipticalArc(e.c .* v, e.r1, e.r2, e.angle, e.a1, e.a2)
 scale(c::ClosePath, v::VecTypes{2}) = c
 
+rotmatrix2d(a) = SMatrix{2, 2, Float64}(cos(a), sin(a), -sin(a), cos(a))
+rotate(m::MoveTo, a) = MoveTo(rotmatrix2d(a) * m.p)
+rotate(l::LineTo, a) = LineTo(rotmatrix2d(a) * l.p)
+function rotate(c::CurveTo, a)
+    m = rotmatrix2d(a)
+    CurveTo(m * c.c1, m * c.c2, m *c.p)
+end
+function rotate(e::EllipticalArc, a)
+    m = rotmatrix2d(a)
+    newc = m * e.c
+    newangle = e.angle + a
+    EllipticalArc(newc, e.r1, e.r2, newangle, e.a1, e.a2)
+end
+rotate(b::BezierPath, a) = BezierPath(rotate.(b.commands, a))
+
 function fit_to_base_square(b::BezierPath)
     bb = bbox(b)
     w, h = widths(bb)
@@ -134,64 +149,6 @@ BezierCross = let
     ])
 end
 
-
-# pathtokens(::Union{Val{:M}, Val{:m}, Val{:L}, Val{:l}}) = (Float64, Float64)
-# pathtokens(::Union{Val{:H}, Val{:h}, Val{:V}, Val{:v}}) = (Float64,)
-# pathtokens(::Union{Val{:Z}, Val{:z}}) = ()
-# pathtokens(::Union{Val{:C}, Val{:c}}) = (Float64, Float64, Float64, Float64, Float64, Float64)
-# pathtokens(::Union{Val{:S}, Val{:s}}) = (Float64, Float64, Float64, Float64)
-# pathtokens(::Union{Val{:A}, Val{:a}}) = (Float64, Float64, Float64, Bool, Bool, Float64, Float64)
-# # pathtokens
-
-# function BezierPath(svg::AbstractString)
-#     n = length(svg)
-#     offset = 1
-
-#     commands = PathCommand{Float64}[]
-
-#     v = view(svg, 1:n)
-
-#     while offset < n
-#         offset += shift_to_nonseparator(v)
-#         v = view(svg, offset:n)
-#         command, offset = parsecommand(v)
-#         push!(commands, command)
-#     end
-
-#     BezierPath(commands)
-# end
-
-# function shift_to_nonseparator(substr)
-#     for (i, char) in enumerate(substr)
-#         if char ∉ " ,\n\t"
-#             return i - 1
-#         end
-#     end
-#     return length(substr) - 1
-# end
-
-# function parsecommand(substr)
-#     commandletters = "MmLlHhVvZzCcSsAa"
-#     @show substr
-
-#     command = substr[1]
-#     if command ∉ commandletters
-#         error("Expected a command letter but got $(substr[1]).")
-#     end
-
-#     types = pathtokens(Val(Symbol(command)))
-# end
-
-# function parsetypes(types, substr)
-#     offset = 1
-#     shift = 0
-#     map(types) do T
-#         offset += shift_to_nonseparator(substr)
-#         val, shift = parsetype(T, substr)
-#         offset += shift
-#         val
-#     end
-# end
 
 function BezierPath(svg::AbstractString)
 
@@ -469,6 +426,9 @@ function replace_nonfreetype_commands(path)
     for (i, c) in enumerate(newpath.commands)
         if c isa MoveTo
             last_move_to = c
+        elseif c isa EllipticalArc
+            bp = elliptical_arc_to_beziers(c)
+            splice!(newpath.commands, i, bp.commands)
         elseif c isa ClosePath
             if last_move_to === nothing
                 error("Got ClosePath but no previous MoveTo")
@@ -499,12 +459,13 @@ function bbox(b::BezierPath)
     prev = b.commands[1]
     bb = nothing
     for comm in b.commands[2:end]
-        endp = endpoint(prev)
         if comm isa MoveTo
             continue
+        else
+            endp = endpoint(prev)
+            seg = segment(endp, comm)
+            bb = bb === nothing ? bbox(seg) : union(bb, bbox(seg))
         end
-        seg = segment(endp, comm)
-        bb = bb === nothing ? bbox(seg) : union(bb, bbox(seg))
         prev = comm
     end
     bb
@@ -574,4 +535,28 @@ function bbox(b::BezierSegment)
     end
 
     Rect2f(Point(mi...), Point(ma...) - Point(mi...))
+end
+
+
+function elliptical_arc_to_beziers(arc::EllipticalArc)
+    delta_a = abs(arc.a2 - arc.a1)
+    n_beziers = ceil(Int, delta_a / 0.5pi)
+    angles = range(arc.a1, arc.a2, length = n_beziers + 1)
+
+    startpoint = Point2f(cos(arc.a1), sin(arc.a1))
+    curves = map(angles[1:end-1], angles[2:end]) do start, stop
+        theta = stop - start
+        kappa = 4/3 * tan(theta/4)
+
+        a = Point2f(cos(start), sin(start))
+        c1 = Point2f(cos(start) - kappa * sin(start), sin(start) + kappa * cos(start))
+        c2 = Point2f(cos(stop) + kappa * sin(stop), sin(stop) - kappa * cos(stop))
+        b = Point2f(cos(stop), sin(stop))
+        CurveTo(c1, c2, b)
+    end
+
+    path = BezierPath([LineTo(startpoint), curves...])
+    path = scale(path, Vec(arc.r1, arc.r2))
+    path = rotate(path, arc.angle)
+    path = translate(path, arc.c)
 end
