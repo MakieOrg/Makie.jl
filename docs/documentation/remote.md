@@ -58,7 +58,7 @@ JSServe.configure_server!(listen_port=8081)
 ```
 before any plotting commands with WGLMakie.
 
-If you also need to use a different port than `8081` on the _local_ machine, say `8081`,
+If you also need to use a different port than `8081` on the _local_ machine, say `8080`,
 you will also need to set the `forwarded_port` like this:
 ```julia
 using JSServe
