@@ -212,7 +212,7 @@ function BezierPath(svg::AbstractString)
             i += 3
         elseif comm == "H"
             x = parse(Float64, args[i+1])
-            push!(commands, LineTo(Point2(x, lastp().y)))
+            push!(commands, LineTo(Point2(x, lastp()[2])))
             i += 2
         elseif comm == "h"
             x = parse(Float64, args[i+1])
@@ -459,7 +459,7 @@ function bbox(b::BezierPath)
     prev = b.commands[1]
     bb = nothing
     for comm in b.commands[2:end]
-        if comm isa MoveTo
+        if comm isa MoveTo || comm isa ClosePath
             continue
         else
             endp = endpoint(prev)
