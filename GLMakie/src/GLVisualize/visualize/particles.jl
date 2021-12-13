@@ -11,7 +11,7 @@ the most sense for the datatype.
 #3D primitives
 const Primitives3D = Union{AbstractGeometry{3}, AbstractMesh}
 #2D primitives AKA sprites, since they are shapes mapped onto a 2D rectangle
-const Sprites = Union{AbstractGeometry{2}, Shape, Char, Type}
+const Sprites = Union{AbstractGeometry{2}, Shape, Char, Type, Makie.BezierPath}
 const AllPrimitives = Union{AbstractGeometry, Shape, Char, AbstractMesh}
 
 using Makie: RectanglePacker
@@ -164,6 +164,7 @@ end
 returns the Shape for the distancefield algorithm
 """
 primitive_shape(::Char) = DISTANCEFIELD
+primitive_shape(::BezierPath) = DISTANCEFIELD
 primitive_shape(x::X) where {X} = primitive_shape(X)
 primitive_shape(::Type{T}) where {T <: Circle} = CIRCLE
 primitive_shape(::Type{T}) where {T <: Rect2} = RECTANGLE
@@ -187,6 +188,7 @@ primitive_offset(x, scale) = const_lift(/, scale, -2f0)  # default offset
 Extracts the uv offset and width from a primitive.
 """
 primitive_uv_offset_width(c::Char) = glyph_uv_width!(c)
+primitive_uv_offset_width(b::BezierPath) = glyph_uv_width!(b)
 primitive_uv_offset_width(x) = Vec4f(0,0,1,1)
 
 """
@@ -194,6 +196,7 @@ Gets the texture atlas if primitive is a char.
 """
 primitive_distancefield(x) = nothing
 primitive_distancefield(::Char) = get_texture!(get_texture_atlas())
+primitive_distancefield(::BezierPath) = get_texture!(get_texture_atlas())
 primitive_distancefield(::Observable{Char}) = get_texture!(get_texture_atlas())
 
 function _default(
@@ -355,7 +358,7 @@ function sprites(p, s, data)
         stroke_width    = 0f0
         glow_width      = 0f0
         uv_offset_width = const_lift(primitive_uv_offset_width, p[1]) => GLBuffer
-
+        
         distancefield   = primitive_distancefield(p[1]) => Texture
         indices         = const_lift(length, p[2]) => to_index_buffer
         # rotation and billboard don't go along

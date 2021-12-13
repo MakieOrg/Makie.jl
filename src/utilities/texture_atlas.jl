@@ -3,7 +3,7 @@ using FreeTypeAbstraction: iter_or_array
 
 mutable struct TextureAtlas
     rectangle_packer::RectanglePacker
-    mapping::Dict{Tuple{Char, String}, Int} # styled glyph to index in sprite_attributes
+    mapping::Dict{Union{BezierPath, Tuple{Char, String}}, Int} # styled glyph to index in sprite_attributes
     index::Int
     data::Matrix{Float16}
     # rectangles we rendered our glyphs into in normalized uv coordinates
@@ -173,6 +173,9 @@ function glyph_index!(atlas::TextureAtlas, c::Char, font::NativeFont)
     return insert_glyph!(atlas, c, font)
 end
 
+function glyph_index!(atlas::TextureAtlas, b::BezierPath)
+    return insert_glyph!(atlas, b)
+end
 
 function glyph_uv_width!(atlas::TextureAtlas, c::Char, font::NativeFont)
     return atlas.uv_rectangles[glyph_index!(atlas, c, font)]
@@ -180,6 +183,11 @@ end
 
 function glyph_uv_width!(c::Char)
     return glyph_uv_width!(get_texture_atlas(), c, defaultfont())
+end
+
+function glyph_uv_width!(b::BezierPath)
+    atlas = get_texture_atlas()
+    return atlas.uv_rectangles[glyph_index!(atlas, b)]
 end
 
 # function glyph_boundingbox(c::Char, font::NativeFont, pixelsize)
@@ -210,6 +218,40 @@ function insert_glyph!(atlas::TextureAtlas, glyph::Char, font::NativeFont)
         pad = GLYPH_PADDING[] 
 
         uv_pixel = render(atlas, glyph, font, downsample, pad)
+        tex_size = Vec2f(size(atlas.data) .- 1) # starts at 1
+
+        # 0 based
+        idx_left_bottom = minimum(uv_pixel)
+        idx_right_top = maximum(uv_pixel)
+        
+        # transform to normalized texture coordinates
+        # -1 for indexing offset
+        uv_left_bottom_pad = (idx_left_bottom) ./ tex_size
+        uv_right_top_pad = (idx_right_top .- 1) ./ tex_size
+
+        uv_offset_rect = Vec4f(uv_left_bottom_pad..., uv_right_top_pad...)
+        i = atlas.index
+        push!(atlas.uv_rectangles, uv_offset_rect)
+        atlas.index = i + 1
+        return i
+    end
+end
+
+function insert_glyph!(atlas::TextureAtlas, path::BezierPath)
+    return get!(atlas.mapping, path) do
+        # We save glyphs as signed distance fields, i.e. we save the distance 
+        # a pixel is away from the edge of a symbol (continuous at the edge).
+        # To get accurate distances we want to draw the symbol at high 
+        # resolution and then downsample to the PIXELSIZE_IN_ATLAS.
+        downsample = 5 
+        # To draw a symbol from a sdf we essentially do `color * (sdf > 0)`. For
+        # antialiasing we smooth out the step function `sdf > 0`. That means we 
+        # need a few values outside the symbol. To guarantee that we have those 
+        # at all relevant scales we add padding to the rendered bitmap and the
+        # resulting sdf.
+        pad = GLYPH_PADDING[] 
+
+        uv_pixel = render(atlas, path, downsample, pad)
         tex_size = Vec2f(size(atlas.data) .- 1) # starts at 1
 
         # 0 based
@@ -279,6 +321,25 @@ function render(atlas::TextureAtlas, glyph::Char, font, downsample=5, pad=6)
     # Make sure the font doesn't have a mutated font matrix from e.g. Cairo
     FreeTypeAbstraction.FreeType.FT_Set_Transform(font, C_NULL, C_NULL)
     bitmap, extent = renderface(font, glyph, pixelsize * downsample)
+    # Our downsampeld & padded distancefield
+    sd = sdistancefield(bitmap, downsample, pad)
+    rect = Rect2(0, 0, size(sd)...)
+    uv = push!(atlas.rectangle_packer, rect) # find out where to place the rectangle
+    uv == nothing && error("texture atlas is too small. Resizing not implemented yet. Please file an issue at Makie if you encounter this") #TODO resize surface
+    # write distancefield into texture
+    atlas.data[uv.area] = sd
+    for f in get(font_render_callbacks, pixelsize, ())
+        # update everyone who uses the atlas image directly (e.g. in GLMakie)
+        f(sd, uv.area)
+    end
+    # return the area we rendered into!
+    return uv.area
+end
+
+function render(atlas::TextureAtlas, b::BezierPath, downsample=5, pad=6)
+    # the target pixel size of our distance field
+    pixelsize = PIXELSIZE_IN_ATLAS[]
+    bitmap = render_path(b)
     # Our downsampeld & padded distancefield
     sd = sdistancefield(bitmap, downsample, pad)
     rect = Rect2(0, 0, size(sd)...)

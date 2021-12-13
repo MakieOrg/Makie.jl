@@ -391,7 +391,19 @@ end
 
 function render_path(path)
     # in the outline, 1 unit = 1/64px, so 64px = 4096 units wide,
-    outline_ref = make_outline(replace_nonfreetype_commands(path))
+
+    # we assume that the path is already in a -1 to 1 square and we can
+    # scale and translate this to a 4096x4096 grid, which is 64px x 64px
+    # when rendered to bitmap
+    path_transformed = Makie.translate(Makie.scale(
+        path,
+        2048,
+    ), Point2f(2048, 2048))
+
+    # freetype has no ClosePath and EllipticalArc, so those need to be replaced
+    outline_ref = make_outline(
+        replace_nonfreetype_commands(path_transformed)
+    )
 
     w = 64
     h = 64
