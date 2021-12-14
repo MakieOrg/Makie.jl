@@ -104,6 +104,53 @@ f
 ```
 \end{examplefigure}
 
+### Bezier markers
+
+You can also use bezier paths as markers.
+A bezier path marker should fit into the square from -1 to 1 in x and y to be comparable in size to other default markers and to be correctly rendered by GLMakie, because here the path has to be rendered to a bitmap first .
+In CairoMakie, paths are drawn as they are without an intermediate bitmap, so every size is possible.
+
+A `BezierPath` contains a vector of path commands, these are `MoveTo`, `LineTo`, `CurveTo`, `EllipticalArc` and `ClosePath`.
+
+Here is an example with a simple marker built from path elements.
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+marker = BezierPath([
+    MoveTo(Point(1, 0)),
+    LineTo(Point(0, 1)),
+    CurveTo(Point(-1, 1), Point(-1, 1), Point(-1, 0)),
+    LineTo(Point(0, -1)),
+    LineTo(Point(0, 0)),
+    ClosePath()
+])
+
+scatter(1:10, marker = marker, markersize = 50, color = :black)
+```
+\end{examplefigure}
+
+You can also create a bezier path from an [svg path specification string](https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/d#path_commands).
+You can automatically resize the path to the -1 to 1 square and flip the y-axis with the keywords `fit` and `yflip`.
+Here's an example with an svg string that contains the bat symbol:
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+batsymbol_string = "M96.84 141.998c-4.947-23.457-20.359-32.211-25.862-13.887-11.822-22.963-37.961-16.135-22.041 6.289-3.005-1.295-5.872-2.682-8.538-4.191-8.646-5.318-15.259-11.314-19.774-17.586-3.237-5.07-4.994-10.541-4.994-16.229 0-19.774 21.115-36.758 50.861-43.694.446-.078.909-.154 1.372-.231-22.657 30.039 9.386 50.985 15.258 24.645l2.528-24.367 5.086 6.52H103.205l5.07-6.52 2.543 24.367c5.842 26.278 37.746 5.502 15.414-24.429 29.777 6.951 50.891 23.936 50.891 43.709 0 15.136-12.406 28.651-31.609 37.267 14.842-21.822-10.867-28.266-22.549-5.549-5.502-18.325-21.147-9.341-26.125 13.886z"
+
+batsymbol = BezierPath(batsymbol_string, fit = true, flipy = true)
+
+scatter(1:10, marker = batsymbol, markersize = 50, color = :black)
+```
+\end{examplefigure}
+
 ### Marker rotation
 
 Markers can be rotated using the `rotations` attribute, which also allows to pass a vector.
