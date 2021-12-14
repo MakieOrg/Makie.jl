@@ -43,7 +43,6 @@ function to_mesh(mesh::TOrSignal{<: GeometryBasics.Mesh})
     return NativeMesh(mesh)
 end
 
-using Makie
 using Makie: get_texture_atlas
 
 vec2quaternion(rotation::StaticVector{4}) = rotation

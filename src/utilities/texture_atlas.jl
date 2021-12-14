@@ -1,4 +1,3 @@
-using Serialization
 using FreeTypeAbstraction: iter_or_array
 
 mutable struct TextureAtlas
