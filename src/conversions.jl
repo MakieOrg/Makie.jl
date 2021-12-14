@@ -218,14 +218,17 @@ end
 Takes an input `Polygon` and decomposes it to points.
 """
 function convert_arguments(PB::PointBased, pol::Polygon)
-    if isempty(pol.interiors)
-        return convert_arguments(PB, pol.exterior)
-    else
-        arr = copy(convert_arguments(PB, pol.exterior)[1])
+    arr = copy(convert_arguments(PB, pol.exterior)[1])
+    push!(arr, arr[1]) # close exterior
+    if !isempty(pol.interiors)
         push!(arr, Point2f(NaN))
-        append!(arr, convert_arguments(PB, pol.interiors)[1])
-        return (arr,)
+        for interior in pol.interiors
+            inter = convert_arguments(PB, interior)[1]
+            append!(arr, inter)
+            push!(arr, inter[1], Point2f(NaN))
+        end
     end
+    return (arr,)
 end
 
 """
@@ -583,7 +586,7 @@ function tryrange(F, vec)
 end
 
 # OffsetArrays conversions
-function convert_arguments(sl::SurfaceLike, wm::OffsetArray) 
+function convert_arguments(sl::SurfaceLike, wm::OffsetArray)
   x1, y1 = wm.offsets .+ 1
   nx, ny = size(wm)
   x = range(x1, length = nx)
@@ -1246,4 +1249,3 @@ end
 function convert_attribute(value::AbstractGeometry, ::key"marker", ::key"meshscatter")
     return normal_mesh(value)
 end
-

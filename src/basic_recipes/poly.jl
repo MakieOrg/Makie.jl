@@ -87,8 +87,9 @@ function poly_convert(polygons::AbstractVector{<: AbstractVector{<: VecTypes}})
     end
 end
 
-to_line_segments(polygon) = convert_arguments(PointBased(), polygon)[1]
-to_line_segments(polygon::GeometryBasics.Mesh) = convert_arguments(PointBased(), polygon)[1]
+function to_line_segments(polygon)
+    return convert_arguments(PointBased(), polygon)[1]
+end
 
 function to_line_segments(meshes::AbstractVector)
     line = Point2f[]
@@ -138,7 +139,7 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
     meshes = plot[1]
     color_node = plot.color
     attributes = Attributes(
-        visible = plot.visible, shading = plot.shading, fxaa = plot.fxaa, 
+        visible = plot.visible, shading = plot.shading, fxaa = plot.fxaa,
         inspectable = plot.inspectable, transparency = plot.transparency
     )
 

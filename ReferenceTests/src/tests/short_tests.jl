@@ -1,62 +1,58 @@
-@cell arc(Point2f(0), 10f0, 0f0, pi, linewidth=20)
+@cell "thick arc" arc(Point2f(0), 10f0, 0f0, pi, linewidth=20)
 
-@cell mesh(Recti(0, 0, 200, 200))
+@cell "stroked rect poly" poly(Recti(0, 0, 200, 200), strokewidth=20, strokecolor=:red, color=(:black, 0.4))
 
-@cell poly(Recti(0, 0, 200, 200), strokewidth=20, strokecolor=:red, color=(:black, 0.4))
-
-@cell begin
-    scene = poly([Rect(0, 0, 20, 20)])
+@cell "array of rects poly" begin
+    f, ax, pl = poly([Rect(0, 0, 20, 20)])
     scatter!(Rect(0, 0, 20, 20), color=:red, markersize=20)
-    current_figure()
+    f
 end
 
-@cell begin
-    lines(Rect(0, 0, 1, 1), linewidth=4)
+@cell "char marker scenespace" begin
+    f, ax, pl = lines(Rect(0, 0, 1, 1), linewidth=4)
     scatter!([Point2f(0.5, 0.5)], markersize=1, markerspace=SceneSpace, marker='I')
-    current_figure()
+    f
 end
 
-@cell lines(RNG.rand(10), RNG.rand(10), color=RNG.rand(10), linewidth=10)
-@cell lines(RNG.rand(10), RNG.rand(10), color=RNG.rand(RGBAf, 10), linewidth=10)
-@cell scatter(0..1, RNG.rand(10), markersize=RNG.rand(10) .* 20)
-@cell scatter(LinRange(0, 1, 10), RNG.rand(10))
-@cell scatter(RNG.rand(10), LinRange(0, 1, 10))
+@cell "lines number color" lines(RNG.rand(10), RNG.rand(10), color=RNG.rand(10), linewidth=10)
+@cell "lines array of colors" lines(RNG.rand(10), RNG.rand(10), color=RNG.rand(RGBAf, 10), linewidth=10)
+@cell "scatter interval" scatter(0..1, RNG.rand(10), markersize=RNG.rand(10) .* 20)
+@cell "scatter linrange" scatter(LinRange(0, 1, 10), RNG.rand(10))
 
-@cell begin
+@cell "scatter rotation" begin
     angles = range(0, stop=2pi, length=20)
     pos = Point2f.(sin.(angles), cos.(angles))
-    scatter(pos, markersize=0.2, markerspace=SceneSpace, rotations=-angles, marker='▲', axis=(;aspect = DataAspect()))
+    f, ax, pl = scatter(pos, markersize=0.2, markerspace=SceneSpace, rotations=-angles, marker='▲', axis=(;aspect = DataAspect()))
     scatter!(pos, markersize=10, color=:red)
-    current_figure()
+    f
 end
 
-@cell heatmap(RNG.rand(50, 50), colormap=:RdBu, alpha=0.2)
+@cell "heatmap transparent colormap" heatmap(RNG.rand(50, 50), colormap=(:RdBu, 0.2))
 
-@cell contour(RNG.rand(10, 100))
-@cell contour(RNG.rand(100, 10))
-@cell contour(RNG.randn(100, 90), levels=3)
+@cell "contour small x" contour(RNG.rand(10, 100))
+@cell "contour small y" contour(RNG.rand(100, 10))
+@cell "contour with levels" contour(RNG.randn(100, 90), levels=3)
 
-@cell contour(RNG.randn(100, 90), levels=[0.1, 0.5, 0.8])
-@cell contour(RNG.randn(100, 90), levels=[0.1, 0.5, 0.8], color=:black)
-@cell contour(RNG.randn(33, 30), levels=[0.1, 0.5, 0.9], color=[:black, :green, (:blue, 0.4)], linewidth=2)
-@cell contour(RNG.randn(33, 30), levels=[0.1, 0.5, 0.9], colormap=:Spectral)
-@cell contour(
+@cell "contour with levels array" contour(RNG.randn(100, 90), levels=[0.1, 0.5, 0.8])
+@cell "contour with color per level" contour(RNG.randn(33, 30), levels=[0.1, 0.5, 0.9], color=[:black, :green, (:blue, 0.4)], linewidth=2)
+
+@cell "contour with colorrange" contour(
     RNG.rand(33, 30) .* 6 .- 3, levels=[-2.5, 0.4, 0.5, 0.6, 2.5],
     colormap=[(:black, 0.2), :red, :blue, :green, (:black, 0.2)],
     colorrange=(0.2, 0.8)
 )
 
-@cell lines(Circle(Point2f(0), Float32(1)))
+@cell "circle line" lines(Circle(Point2f(0), Float32(1)))
 
-@cell begin
+@cell "streamplot with func" begin
     v(x::Point2{T}) where T = Point2{T}(x[2], 4 * x[1])
-    streamplot(v, -2..2, -2..2)
+    streamplot(v, -2..2, -2..2, arrow_size=10)
 end
 
-@cell lines(-1..1, x -> x^2)
-@cell scatter(-1..1, x -> x^2)
+@cell "lines with func" lines(-1..1, x -> x^2)
+@cell "scatter with func" scatter(-1..1, x -> x^2)
 
-@cell begin
+@cell "volume translated" begin
     r = range(-3pi, stop=3pi, length=100)
     fig, ax, vplot = Makie.volume(r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), algorithm=:iso, isorange=0.1f0, show_axis=false)
     v2 = volume!(ax, r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), algorithm=:mip,
@@ -64,21 +60,20 @@ end
     fig
 end
 
-@cell meshscatter(RNG.rand(10), RNG.rand(10), RNG.rand(10), color=RNG.rand(10))
-@cell meshscatter(RNG.rand(10), RNG.rand(10), RNG.rand(10), color=RNG.rand(RGBAf, 10))
+@cell "meshscatter color numbers" meshscatter(RNG.rand(10), RNG.rand(10), RNG.rand(10), color=RNG.rand(10))
+@cell "meshscatter color array" meshscatter(RNG.rand(10), RNG.rand(10), RNG.rand(10), color=RNG.rand(RGBAf, 10), transparency=true)
 
-@cell begin
+@cell "transparent mesh texture" begin
     s1 = uv_mesh(Sphere(Point3f(0), 1f0))
-    mesh(uv_mesh(Sphere(Point3f(0), 1f0)), color=RNG.rand(50, 50))
+    f, ax, pl = mesh(uv_mesh(Sphere(Point3f(0), 1f0)), color=RNG.rand(50, 50))
     # ugh, bug In GeometryTypes for UVs of non unit spheres.
     s2 = uv_mesh(Sphere(Point3f(0), 1f0))
     s2.position .= s2.position .+ (Point3f(0, 2, 0),)
     mesh!(s2, color=RNG.rand(RGBAf, 50, 50))
-    current_figure()
+    f
 end
 
 @cell "Unequal x and y sizes in surface" begin
-    #
     NL = 15
     NR = 31
     function xy_data(x, y)

@@ -126,15 +126,15 @@ function record_tests(db=load_database(); recording_dir=basedir("recorded"))
                 RNG.seed_rng!()
                 result = Base.invokelatest(entry.func)
                 # only save if we have a backend for saving
-                uname = unique_name(entry)
+                uname = entry.title
                 if !no_backend
                     save_result(joinpath(recording_dir, uname), result)
                 end
                 push!(recorded_files, uname)
-                @info("Tested: $(nice_title(entry))")
+                @info("Tested: $(entry.title)")
                 @test true
             catch e
-                @info("Test: $(nice_title(entry)) didn't pass")
+                @info("Test: $(entry.title) didn't pass")
                 @test false
                 Base.showerror(stderr, e)
                 Base.show_backtrace(stderr, Base.catch_backtrace())
