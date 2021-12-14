@@ -72,4 +72,4 @@ database = database_filtered(excludes, functions=functions)
 
 recorded = joinpath(@__DIR__, "recorded")
 rm(recorded; force=true, recursive=true); mkdir(recorded)
-ReferenceTests.run_reference_tests(database, recorded)
+@time ReferenceTests.run_reference_tests(database, recorded)
