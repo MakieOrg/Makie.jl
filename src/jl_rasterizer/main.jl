@@ -21,7 +21,6 @@ function standard_transparency(source, dest::T) where T
     (alpha(source) .* source) .+ ((one(eltype(T)) - alpha(source)) .* dest)
 end
 
-
 mutable struct FixedGeomView{GeomOut, VT}
     buffer::Vector{GeomOut}
     view::VT
@@ -381,17 +380,16 @@ end
 function frag_particles(geom_out, uniforms)
     uv = geom_out[1]; color = geom_out[2]
     dist = uniforms.distance_func(uv)
-    bg_color = Vec4f(0f0, 0f0, 0f0, 1f0)
+    bg_color = Vec4f(0f0, 0f0, 0f0, 0f0)
     # col = Vec4f(norm(uv .- 0.5), 0, 0, 1)
     (sdf2color(dist, bg_color, color), )
 end
 
 resolution = (1024, 1024)
-using Makie
 
 proj = Makie.orthographicprojection(Rect2(0, 0, resolution...), -10_000f0, 10_000f0)
 
-circle(uv::Vec{2, T}) where {T} = T(1 - norm(uv)) ./ 10
+circle(uv::Vec{2, T}) where {T} = -T(norm(uv .- 0.5) - 0.5)
 
 uniforms = Uniforms(
     proj,
@@ -403,7 +401,7 @@ uniforms = Uniforms(
 
 N = 10
 middle = Vec2f(resolution) / 2f0
-radius = min(resolution...) / 2f0
+radius = (min(resolution...) / 2f0) - 50
 vertices = [(VertexCS(
     Vec2f((sin(2pi * (i / N)) , cos(2pi * (i / N))) .* radius) .+ middle,
     Vec4f(1, i/N, 0, 1),
@@ -435,4 +433,4 @@ end
 
 c = Canvas(resolution...)
 raster(c, vertices, (uniforms,))
-c.color[1]
+save("test.png", c.color[1])
