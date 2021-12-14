@@ -75,7 +75,7 @@ function rotate(e::EllipticalArc, a)
     newangle = e.angle + a
     EllipticalArc(newc, e.r1, e.r2, newangle, e.a1, e.a2)
 end
-rotate(b::BezierPath, a) = BezierPath(rotate.(b.commands, a))
+rotate(b::BezierPath, a) = BezierPath(PathCommand[rotate(c::PathCommand, a) for c in b.commands])
 
 function fit_to_base_square(b::BezierPath)
     bb = bbox(b)
@@ -154,7 +154,22 @@ BezierCross = let
 end
 
 
-function BezierPath(svg::AbstractString)
+function BezierPath(svg::AbstractString; fit = false, bbox = nothing, flipy = false)
+    commands = parse_bezier_commands(svg)
+    p = BezierPath(commands)
+    if fit
+        if bbox === nothing
+            p = fit_to_base_square(p)
+        else
+            error("Unkown bbox parameter $bbox")
+        end
+    end
+    if flipy
+        p = scale(p, Vec(1, -1))
+    end
+end
+
+function parse_bezier_commands(svg)
 
     # args = [e.match for e in eachmatch(r"([a-zA-Z])|(\-?\d*\.?\d+)", svg)]
     args = [e.match for e in eachmatch(r"(?:0(?=\d))|(?:[a-zA-Z])|(?:\-?\d*\.?\d+)", svg)]
@@ -287,8 +302,7 @@ function BezierPath(svg::AbstractString)
 
     end
 
-    BezierPath(commands)
-
+    commands
 end
 
 function EllipticalArc(x1, y1, x2, y2, rx, ry, ϕ, largearc::Bool, sweepflag::Bool)
