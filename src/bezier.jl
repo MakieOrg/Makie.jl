@@ -63,6 +63,7 @@ scale(c::ClosePath, v::VecTypes{2}) = c
 
 rotmatrix2d(a) = SMatrix{2, 2, Float64}(cos(a), sin(a), -sin(a), cos(a))
 rotate(m::MoveTo, a) = MoveTo(rotmatrix2d(a) * m.p)
+rotate(c::ClosePath, a) = c
 rotate(l::LineTo, a) = LineTo(rotmatrix2d(a) * l.p)
 function rotate(c::CurveTo, a)
     m = rotmatrix2d(a)
@@ -92,30 +93,33 @@ Base.:+(bp::BezierPath, p::Point2) = BezierPath(bp.commands .+ Ref(p))
 BezierCircle = let
     r = sqrt(1/pi)
     BezierPath([
+        MoveTo(Point(r, 0.0)),
         EllipticalArc(Point(0.0, 0), r, r, 0.0, 0.0, 2pi),
-        ClosePath()
+        ClosePath(),
     ])
 end
 
 BezierUTriangle = let
-    r = Float32(sqrt(1 / (3 * sqrt(3) / 4)))
-    BezierPath([
-        MoveTo(Point2(cosd(90), sind(90)) .* r),
-        LineTo(Point2(cosd(210), sind(210)) .* r),
-        LineTo(Point2(cosd(330), sind(330)) .* r),
+    aspect = 1
+    h = sqrt(aspect) * sqrt(2)
+    w = 1/sqrt(aspect) * sqrt(2)
+    # r = Float32(sqrt(1 / (3 * sqrt(3) / 4)))
+    p1 = Point(0, h/2)
+    p2 = Point2(-w/2, -h/2)
+    p3 = Point2(w/2, -h/2)
+    centroid = (p1 + p2 + p3) / 3
+    bp = BezierPath([
+        MoveTo(p1 - centroid),
+        LineTo(p2 - centroid),
+        LineTo(p3 - centroid),
         ClosePath()
     ])
 end
 
-BezierDTriangle = let
-    r = Float32(sqrt(1 / (3 * sqrt(3) / 4)))
-    BezierPath([
-        MoveTo(Point2(cosd(270), sind(270)) .* r),
-        LineTo(Point2(cosd(390), sind(390)) .* r),
-        LineTo(Point2(cosd(510), sind(510)) .* r),
-        ClosePath()
-    ])
-end
+BezierLTriangle = rotate(BezierUTriangle, pi/2)
+BezierDTriangle = rotate(BezierUTriangle, pi)
+BezierRTriangle = rotate(BezierUTriangle, 3pi/2)
+
 
 BezierSquare = let
     BezierPath([
@@ -392,21 +396,26 @@ end
 function render_path(path)
     # in the outline, 1 unit = 1/64px, so 64px = 4096 units wide,
 
+    bitmap_size_px = 256
+    scale_factor = bitmap_size_px * 64 / 2
+
     # we assume that the path is already in a -1 to 1 square and we can
     # scale and translate this to a 4096x4096 grid, which is 64px x 64px
     # when rendered to bitmap
-    path_transformed = Makie.translate(Makie.scale(
-        path,
-        2048,
-    ), Point2f(2048, 2048))
 
     # freetype has no ClosePath and EllipticalArc, so those need to be replaced
-    outline_ref = make_outline(
-        replace_nonfreetype_commands(path_transformed)
-    )
+    path_replaced = replace_nonfreetype_commands(path)
 
-    w = 64
-    h = 64
+    path_transformed = Makie.translate(Makie.scale(
+        path_replaced,
+        scale_factor,
+    ), Point2f(scale_factor, scale_factor))
+
+
+    outline_ref = make_outline(path_transformed)
+
+    w = bitmap_size_px
+    h = bitmap_size_px
     pitch = w * 1 # 8 bit gray
     pixelbuffer = zeros(UInt8, h * pitch)
     bitmap_ref = Ref{FT_Bitmap}()
@@ -435,7 +444,9 @@ end
 function replace_nonfreetype_commands(path)
     newpath = BezierPath(copy(path.commands))
     last_move_to = nothing
-    for (i, c) in enumerate(newpath.commands)
+    i = 1
+    while i <= length(newpath.commands)
+        c = newpath.commands[i]
         if c isa MoveTo
             last_move_to = c
         elseif c isa EllipticalArc
@@ -447,6 +458,7 @@ function replace_nonfreetype_commands(path)
             end
             newpath.commands[i] = LineTo(last_move_to.p)
         end
+        i += 1
     end
     newpath
 end
