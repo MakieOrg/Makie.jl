@@ -175,6 +175,7 @@ Extracts the scale from a primitive.
 """
 primitive_scale(prim::GeometryPrimitive) = Vec2f(widths(prim))
 primitive_scale(::Union{Shape, Char}) = Vec2f(40)
+# primitive_scale(::BezierPath) = Vec2f(40) # does nothing?
 primitive_scale(c) = Vec2f(0.1)
 
 """
@@ -197,6 +198,7 @@ Gets the texture atlas if primitive is a char.
 primitive_distancefield(x) = nothing
 primitive_distancefield(::Char) = get_texture!(get_texture_atlas())
 primitive_distancefield(::BezierPath) = get_texture!(get_texture_atlas())
+primitive_distancefield(::Observable{BezierPath}) = get_texture!(get_texture_atlas())
 primitive_distancefield(::Observable{Char}) = get_texture!(get_texture_atlas())
 
 function _default(
