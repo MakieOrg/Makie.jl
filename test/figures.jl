@@ -128,3 +128,7 @@ end
     fig[1, 1] = GridLayout()
     @test_throws ErrorException Axis(fig[1, 1][1, 1])
 end
+
+@testset "Not implemented error" begin
+    @test_throws ErrorException("Not implemented for scatter. You might want to put:  `using Makie` into your code!") scatter()
+end

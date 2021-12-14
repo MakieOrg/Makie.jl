@@ -1,7 +1,7 @@
 using Pkg
 cd(@__DIR__)
 Pkg.activate(".")
-pkg"dev .. ../CairoMakie ../GLMakie ../WGLMakie ../RPRMakie"
+pkg"dev .. ../MakieCore ../CairoMakie ../GLMakie ../WGLMakie ../RPRMakie"
 pkg"add MeshIO GeometryBasics"
 Pkg.instantiate()
 Pkg.precompile()

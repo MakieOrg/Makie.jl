@@ -65,7 +65,9 @@ using MakieCore: Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter
 using MakieCore: ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
 using MakieCore: Key, @key_str, Automatic, automatic, @recipe
 using MakieCore: Pixel, px, Unit, Billboard
-import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, calculated_attributes!, get_attribute, plotsym, plotkey, attributes, used_attributes
+using MakieCore: not_implemented_for
+import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, calculated_attributes!,
+get_attribute, plotsym, plotkey, attributes, used_attributes
 import MakieCore: heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface, text, volume
 import MakieCore: heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, surface!, text!, volume!
 import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
