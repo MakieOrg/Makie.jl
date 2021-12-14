@@ -8,8 +8,6 @@ function convert_arguments(P::Type{<:AbstractPlot}, h::StatsBase.Histogram{<:Any
 end
 
 
-import StatsBase
-
 """
     hist(values; bins = 15, normalization = :none)
 

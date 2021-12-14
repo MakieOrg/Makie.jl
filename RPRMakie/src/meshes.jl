@@ -144,8 +144,6 @@ function to_rpr_object(context, matsys, scene, plot::Makie.Surface)
     return rpr_mesh
 end
 
-using FileIO
-
 @recipe(Matball, material) do scene
     return Attributes(
         base = Makie.automatic,

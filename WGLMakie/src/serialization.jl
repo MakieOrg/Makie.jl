@@ -1,4 +1,3 @@
-using Colors
 using ShaderAbstractions: InstancedProgram, Program
 using Makie: Key, plotkey
 using Colors: N0f8
