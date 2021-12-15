@@ -28,4 +28,5 @@ using Makie: volume
     include("transformations.jl")
     include("stack.jl")
     include("events.jl")
+    include("text.jl")
 end
