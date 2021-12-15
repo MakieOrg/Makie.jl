@@ -225,6 +225,7 @@ function convert_arguments(PB::PointBased, pol::Polygon)
         for interior in pol.interiors
             inter = convert_arguments(PB, interior)[1]
             append!(arr, inter)
+            # close interior + separate!
             push!(arr, inter[1], Point2f(NaN))
         end
     end

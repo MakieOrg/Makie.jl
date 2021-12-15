@@ -87,9 +87,9 @@ function poly_convert(polygons::AbstractVector{<: AbstractVector{<: VecTypes}})
     end
 end
 
-function to_line_segments(polygon)
-    return convert_arguments(PointBased(), polygon)[1]
-end
+to_line_segments(polygon) = convert_arguments(PointBased(), polygon)[1]
+# Need to explicitly overload for Mesh, since otherwise, Mesh will dispatch to AbstractVector
+to_line_segments(polygon::GeometryBasics.Mesh) = convert_arguments(PointBased(), polygon)[1]
 
 function to_line_segments(meshes::AbstractVector)
     line = Point2f[]
