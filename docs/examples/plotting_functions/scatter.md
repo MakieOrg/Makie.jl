@@ -104,7 +104,7 @@ f
 ```
 \end{examplefigure}
 
-### Bezier markers
+### Bezier path markers
 
 You can also use bezier paths as markers.
 A bezier path marker should fit into the square from -1 to 1 in x and y to be comparable in size to other default markers and to be correctly rendered by GLMakie, because here the path has to be rendered to a bitmap first .
@@ -112,7 +112,7 @@ In CairoMakie, paths are drawn as they are without an intermediate bitmap, so ev
 
 A `BezierPath` contains a vector of path commands, these are `MoveTo`, `LineTo`, `CurveTo`, `EllipticalArc` and `ClosePath`.
 
-Here is an example with a simple marker built from path elements.
+Here is an example with a simple arrow that is centered on its tip, built from path elements.
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -120,16 +120,50 @@ using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
 
-marker = BezierPath([
-    MoveTo(Point(1, 0)),
-    LineTo(Point(0, 1)),
-    CurveTo(Point(-1, 1), Point(-1, 1), Point(-1, 0)),
-    LineTo(Point(0, -1)),
-    LineTo(Point(0, 0)),
+arrow_path = BezierPath([
+    MoveTo(Point(0, 0)),
+    LineTo(Point(0.3, -0.3)),
+    LineTo(Point(0.15, -0.3)),
+    LineTo(Point(0.3, -1)),
+    LineTo(Point(0, -0.9)),
+    LineTo(Point(-0.3, -1)),
+    LineTo(Point(-0.15, -0.3)),
+    LineTo(Point(-0.3, -0.3)),
     ClosePath()
 ])
 
-scatter(1:10, marker = marker, markersize = 50, color = :black)
+scatter(1:5,
+    marker = arrow_path,
+    markersize = range(20, 50, length = 5),
+    rotations = range(0, 2pi, length = 6)[1:end-1],
+)
+```
+\end{examplefigure}
+
+Paths can have holes, just start a new subpath with `MoveTo` that is inside the main path.
+The holes have to be in clockwise direction if the outside is in anti-clockwise direction, or vice versa.
+For example, a circle with a square cut out can be made by one `EllipticalArc` that goes anticlockwise, and a square inside that goes clockwise:
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+circle_with_hole = BezierPath([
+    MoveTo(Point(1, 0)),
+    EllipticalArc(Point(0, 0), 1, 1, 0, 0, 2pi),
+    MoveTo(Point(0.5, 0.5)),
+    LineTo(Point(0.5, -0.5)),
+    LineTo(Point(-0.5, -0.5)),
+    LineTo(Point(-0.5, 0.5)),
+    ClosePath(),
+])
+
+scatter(1:5,
+    marker = circle_with_hole,
+    markersize = 30,
+)
 ```
 \end{examplefigure}
 
