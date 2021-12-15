@@ -64,7 +64,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
 
         if haskey(gl_attributes, :markerspace)
             mspace = pop!(gl_attributes, :markerspace)
-            gl_attributes[:use_pixel_marker] = lift(x-> x <: Pixel, mspace)
+            gl_attributes[:use_pixel_marker] = lift(x -> x != :data, mspace)
         end
 
         pointlight = Makie.get_point_light(scene)
@@ -76,6 +76,8 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         if !isnothing(ambientlight)
             gl_attributes[:ambient] = ambientlight.color
         end
+
+        space = pop!(gl_attributes, :space, :data)
 
         robj = robj_func(gl_attributes)
         for key in (:pixel_space, :view, :projection, :resolution, :eyeposition, :projectionview)
@@ -275,7 +277,8 @@ function draw_atomic(screen::GLScreen, scene::Scene,
         projview = scene.camera.projectionview
         transfunc =  Makie.transform_func_obs(scene)
         pos = gl_attributes[:position]
-        space = gl_attributes[:space]
+        upm = gl_attributes[:use_pixel_marker]
+        space = map(x -> x ? (:screen) : (:data), upm)
         offset = gl_attributes[:offset]
 
         # TODO: This is a hack before we get better updating of plot objects and attributes going.
@@ -307,7 +310,7 @@ function draw_atomic(screen::GLScreen, scene::Scene,
         filter!(gl_attributes) do (k, v)
             # These are liftkeys without model
             !(k in (
-                :position, :space, :font,
+                :position, :space, :markerspace, :font,
                 :textsize, :rotation, :justification
             ))
         end
@@ -345,7 +348,7 @@ function draw_atomic(screen::GLScreen, scene::Scene,
         gl_attributes[:visible] = x.visible
         robj = visualize((DISTANCEFIELD, positions), Style(:default), gl_attributes)
         # Draw text in screenspace
-        if x.space[] == :screen
+        if space[] == :screen
             robj[:view] = Observable(Mat4f(I))
             robj[:projection] = scene.camera.pixel_space
             robj[:projectionview] = scene.camera.pixel_space

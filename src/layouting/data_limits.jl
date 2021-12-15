@@ -35,7 +35,7 @@ function point_iterator(plot::Union{Scatter, MeshScatter, Lines, LineSegments})
 end
 
 function point_iterator(text::Text{<: Tuple{<: Union{GlyphCollection, AbstractVector{GlyphCollection}}}})
-    if text.space[] == :data
+    if text.markerspace[] == :data
         return decompose(Point, boundingbox(text))
     else
         if text.position[] isa VecTypes

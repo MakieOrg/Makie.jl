@@ -231,9 +231,9 @@ function preprojected_glyph_arrays(
     offset = to_ndim(Point3f, offset, 0)
     pos3f0 = to_ndim(Point3f, position, 0)
 
-    if space == :data
+    if space in (:data, :world)
         positions = apply_transform(transfunc, Point3f[pos3f0 + offset + o for o in glyphcollection.origins])
-    elseif space == :screen
+    elseif space in (:screen, :pixel)
         projected = Makie.project(projview, resolution, apply_transform(transfunc, pos3f0))
         positions = Point3f[to_ndim(Point3f, projected, 0) + offset + o for o in glyphcollection.origins]
     else
@@ -250,9 +250,9 @@ function preprojected_glyph_arrays(
     offsets = to_ndim.(Point3f, offsets, 0)
     pos3f0 = to_ndim(Point3f, position, 0)
 
-    if space == :data
+    if space in (:data, :world)
         positions = apply_transform(transfunc, [pos3f0 + offset + o for (o, offset) in zip(glyphcollection.origins, offsets)])
-    elseif space == :screen
+    elseif space in (:screen, :pixel)
         projected = Makie.project(projview, resolution, apply_transform(transfunc, pos3f0))
         positions = Point3f[to_ndim(Point3f, projected, 0) + offset + o for (o, offset) in zip(glyphcollection.origins, offsets)]
     else
@@ -270,7 +270,7 @@ function preprojected_glyph_arrays(
         offset = [to_ndim(Point3f, offset, 0)]
     end
 
-    if space == :data
+    if space in (:data, :world)
         allpos = broadcast(positions, glyphcollections, offset) do pos, glyphcollection, offs
             p = to_ndim(Point3f, pos, 0)
             apply_transform(
@@ -278,7 +278,7 @@ function preprojected_glyph_arrays(
                 Point3f[p .+ to_ndim(Point3f, offs, 0) .+ o for o in glyphcollection.origins]
             )
         end
-    elseif space == :screen
+    elseif space in (:screen, :pixel)
         allpos = broadcast(positions, glyphcollections, offset) do pos, glyphcollection, offs
             projected = to_ndim(
                 Point3f,

@@ -195,7 +195,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Scatter)
                           markersize, strokecolor, strokewidth, marker, mo, rotation
 
         # if we give size in pixels, the size is always equal to that value
-        is_pixelspace = haskey(primitive, :markerspace) && primitive.markerspace[] == Makie.Pixel
+        is_pixelspace = to_value(get(primitive, :markerspace, :data)) in (:pixel, :screen)
         scale = if is_pixelspace
             Makie.to_2d_scale(markersize)
         else
@@ -316,22 +316,22 @@ end
 
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text{<:Tuple{<:G}}) where G <: Union{AbstractArray{<:Makie.GlyphCollection}, Makie.GlyphCollection}
     ctx = screen.context
-    @get_attribute(primitive, (rotation, model, space, offset))
+    @get_attribute(primitive, (rotation, model, markerspace, offset))
     position = primitive.position[]
     # use cached glyph info
     glyph_collection = to_value(primitive[1])
 
-    draw_glyph_collection(scene, ctx, position, glyph_collection, remove_billboard(rotation), model, space, offset)
+    draw_glyph_collection(scene, ctx, position, glyph_collection, remove_billboard(rotation), model, markerspace, offset)
 
     nothing
 end
 
 
-function draw_glyph_collection(scene, ctx, positions, glyph_collections::AbstractArray, rotation, model::SMatrix, space, offset)
+function draw_glyph_collection(scene, ctx, positions, glyph_collections::AbstractArray, rotation, model::SMatrix, markerspace, offset)
 
     # TODO: why is the Ref around model necessary? doesn't broadcast_foreach handle staticarrays matrices?
     broadcast_foreach(positions, glyph_collections, rotation,
-        Ref(model), space, offset) do pos, glayout, ro, mo, sp, off
+        Ref(model), markerspace, offset) do pos, glayout, ro, mo, sp, off
 
         draw_glyph_collection(scene, ctx, pos, glayout, ro, mo, sp, off)
     end
@@ -340,7 +340,7 @@ end
 _deref(x) = x
 _deref(x::Ref) = x[]
 
-function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation, model, space, offsets)
+function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation, model, markerspace, offsets)
 
     glyphs = glyph_collection.glyphs
     glyphoffsets = glyph_collection.origins
@@ -366,7 +366,7 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
         Cairo.save(ctx)
         Cairo.set_source_rgba(ctx, rgbatuple(color)...)
 
-        if space == :data
+        if markerspace in (:data, :world)
             # in data space, the glyph offsets are just added to the string positions
             # and then projected
 
@@ -398,7 +398,7 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
                 0, 0,
             )
 
-        elseif space == :screen
+        elseif markerspace in (:screen, :pixel)
             # in screen space, the glyph offsets are added after projecting
             # the string position into screen space
             glyphpos = let
@@ -430,7 +430,7 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
         Cairo.save(ctx)
         Cairo.move_to(ctx, glyphpos...)
         set_font_matrix(ctx, mat)
-        if space == :screen
+        if markerspace in (:screen, :pixel)
             Cairo.rotate(ctx, to_2d_rotation(rotation))
         end
         Cairo.show_text(ctx, string(glyph))
@@ -440,7 +440,7 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
             Cairo.save(ctx)
             Cairo.move_to(ctx, glyphpos...)
             set_font_matrix(ctx, mat)
-            if space == :screen
+            if markerspace in (:screen, :pixel)
                 Cairo.rotate(ctx, to_2d_rotation(rotation))
             end
             Cairo.text_path(ctx, string(glyph))

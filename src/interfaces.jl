@@ -70,9 +70,9 @@ function calculated_attributes!(::Type{<: Scatter}, plot)
     replace_automatic!(plot, :markerspace) do
         lift(plot.markersize) do ms
             if ms isa Pixel || (ms isa AbstractVector && all(x-> ms isa Pixel, ms))
-                return Pixel
+                return :pixel
             else
-                return SceneSpace
+                return :data
             end
         end
     end

@@ -314,7 +314,7 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
     axis = Axis3D(scene, attributes, args)
     # Disable any non linear transform for the axis plot!
     axis.transformation.transform_func[] = identity
-    textbuffer = TextBuffer(axis, Point3, transparency = true, space = :data, inspectable = axis.inspectable)
+    textbuffer = TextBuffer(axis, Point3, transparency = true, markerspace = :data, inspectable = axis.inspectable)
     linebuffer = LinesegmentBuffer(axis, Point3, transparency = true, inspectable = axis.inspectable)
 
     tstyle, ticks, frame = to_value.(getindex.(axis, (:names, :ticks, :frame)))

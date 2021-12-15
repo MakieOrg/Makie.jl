@@ -187,7 +187,7 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
         transform_marker = false, # Applies the plots transformation to marker
         distancefield = nothing,
         uv_offset_width = (0.0, 0.0, 0.0, 0.0),
-        markerspace = Pixel,
+        markerspace = :pixel,
         fxaa = false,
         cycle = [:color],
         inspectable = theme(scene, :inspectable)
@@ -239,7 +239,7 @@ Plots a text.
         position = (0.0, 0.0),
         justification = automatic,
         lineheight = 1.0,
-        space = :screen, # or :data
+        markerspace = :pixel,
         offset = (0.0, 0.0),
         inspectable = theme(scene, :inspectable)
     )

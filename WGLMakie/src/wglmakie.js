@@ -63,7 +63,7 @@ const WGLMakie = (function () {
     function add_plot(scene, plot_data) {
         // fill in the camera uniforms, that we don't sent in serialization per plot
         const cam = scene.wgl_camera;
-        if (plot_data.space == "screen") {
+        if ((plot_data.markerspace == "screen") || (plot_data.markerspace == "pixel")) {
             plot_data.uniforms.view = new THREE.Uniform(new THREE.Matrix4());
             plot_data.uniforms.projection = cam.pixel_space;
             plot_data.uniforms.projectionview = cam.pixel_space;

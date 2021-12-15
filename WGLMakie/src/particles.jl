@@ -157,9 +157,9 @@ function scatter_shader(scene::Scene, attributes)
         end
     end
 
-    space = get(uniforms, :markerspace, Observable(SceneSpace))
-    uniform_dict[:use_pixel_marker] = map(space) do space
-        return space == Pixel
+    markerspace = get(uniforms, :markerspace, Observable(:data))
+    uniform_dict[:use_pixel_marker] = map(markerspace) do space
+        return space in (:pixel, :screen)
     end
     handle_color!(uniform_dict, per_instance)
 
@@ -199,7 +199,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     projview = scene.camera.projectionview
     transfunc =  Makie.transform_func_obs(scene)
     pos = plot.position
-    space = plot.space
+    markerspace = plot.markerspace
     offset = plot.offset
 
     # TODO: This is a hack before we get better updating of plot objects and attributes going.
@@ -218,7 +218,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         gcollection = Observable(glyphcollection)
     end
 
-    glyph_data = lift(pos, gcollection, space, projview, res, offset, transfunc) do pos, gc, args...
+    glyph_data = lift(pos, gcollection, markerspace, projview, res, offset, transfunc) do pos, gc, args...
         Makie.preprojected_glyph_arrays(pos, to_value(gc), args...)
     end
     # unpack values from the one signal:
@@ -250,7 +250,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         :color => uniform_color,
         :rotations => uniform_rotation,
         :markersize => scale,
-        :markerspace => Observable(Pixel),
+        :markerspace => Observable(:pixel),
         :marker_offset => offset,
         :offset => positions,
         :uv_offset_width => uv_offset_width,
