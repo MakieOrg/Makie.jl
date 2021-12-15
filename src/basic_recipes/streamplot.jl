@@ -24,7 +24,7 @@ See the function `Makie.streamplot_impl` for implementation details.
             maxsteps = 500,
             colormap = theme(scene, :colormap),
             colorrange = Makie.automatic,
-            arrow_size = 0.03,
+            arrow_size = 10,
             arrow_head = automatic,
             density = 1.0,
             quality = 16
@@ -177,7 +177,7 @@ function plot!(p::StreamPlot)
     N = ndims(p.limits[])
 
     if N == 2 # && scatterplot.markerspace[] == Pixel (default)
-        # Calculate arrow head rotations as angles. To avoid distortions from 
+        # Calculate arrow head rotations as angles. To avoid distortions from
         # (extreme) aspect ratios we need to project to pixel space and renormalize.
         scene = parent_scene(p)
         rotations = lift(scene.camera.projectionview, scene.px_area, data) do pv, pxa, data
