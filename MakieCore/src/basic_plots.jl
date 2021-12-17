@@ -55,8 +55,10 @@ end
 
 """
     volume(volume_data)
+    volume(x, y, z, volume_data)
 
-Plots a volume. Available algorithms are:
+Plots a volume, with optional physical dimensions `x, y, z`. 
+Available algorithms are:
 * `:iso` => IsoValue
 * `:absorption` => Absorption
 * `:mip` => MaximumIntensityProjection
