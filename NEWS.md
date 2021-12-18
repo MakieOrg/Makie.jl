@@ -10,7 +10,7 @@
 - **Breaking** Remove `Node` alias [#1307](https://github.com/JuliaPlots/Makie.jl/pull/1307). To upgrade, simply replace all occurrences of `Node` with `Observable`
 - **Breaking** clean up Scene type [#1192](https://github.com/JuliaPlots/Makie.jl/pull/1192). Long story short, Scene() doesn't create any axes or limits anymore. All keywords like `raw`, `show_axis` have been removed. A scene now always works like when using the deprecated `raw=true`. All the high level functionality like showing an axis and adding a 3d camera has been moved to `LScene`. See the new `Scene` docs for more info:
 
-#### Smaller Changes
+#### Small Changes
 
 - Added the `Cycled` type, which can be used to select the i-th value from the current cycler for a specific attribute. [#1248](https://github.com/JuliaPlots/Makie.jl/pull/1248)
 - The plot function `scatterlines` now uses `color` as `markercolor` if `markercolor` is `automatic`. Also, cycling of the `color` attribute is enabled. [#1463](https://github.com/JuliaPlots/Makie.jl/pull/1463)
