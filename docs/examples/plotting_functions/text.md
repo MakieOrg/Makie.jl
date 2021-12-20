@@ -2,6 +2,34 @@
 
 {{doc text}}
 
+## Attributes
+
+### Generic
+
+- `visible::Bool = true` sets whether the plot will be rendered or not.
+- `overdraw::Bool = false` sets whether the plot will draw over other plots. This specifically means ignoring depth checks in GL backends.
+- `transparency::Bool = false` adjusts how the plot deals with transparency. In GLMakie `transparency = true` results in using Order Independent Transparency.
+- `fxaa::Bool = false` adjusts whether the plot is rendered with fxaa (anti aliasing). Note that some plots already include anti aliasing through different means.
+- `inspectable::Bool = true` sets whether this plot should be seen by `DataInspector`.
+- `depth_shift::Float32 = 0f0` adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw). 
+- `model::Makie.Mat4f` sets a model matrix for the plot. This replaces adjustments made with `translate!`, `rotate!` and `scale!`.
+- `color::Union{Symbol, <:Colorant, Tuple{Symbol, <:AbstractFloat}, Tuple{<:Colorant, <:AbstractFloat}}` sets the color of the plot. Usually the color can also be given per plot element (e.g. scattered marker, point in line, vertex in mesh, etc) by passing a `Vector` of colors.
+
+### Other
+
+- `align::Tuple{Union{Symbol, Real}, Union{Symbol, Real}} = (:left, :bottom)` sets the alignment of the string w.r.t. `position`. Uses `:left, :center, :right, :top, :bottom, :baseline` or fractions.
+- `font::Union{String, Vector{String}} = "Dejavu Sans"` sets the font for the string or each character.
+- `justification::Union{Real, Symbol} = automatic` sets the alignment of text w.r.t its bounding box. Can be `:left, :center, :right` or a fraction. Will default to the horizontal alignment in `align`.
+- `position::Union{Point2f, Point3f} = Point2f(0)` sets an anchor position for text. Can also be a `Vector` of positions.
+- `rotation::Union{Real, Quaternion}` rotates text around the given position.
+- `textsize::Union{Real, Vec2f}` sets the size of each character.
+- `space::Symbol = :screen` sets the space in which `textsize` acts. Can be `:screen` (pixel space) or `:data` (world space).
+- `strokewidth::Real = 0` sets the width of the outline around a marker.
+- `strokecolor::Union{Symbol, <:Colorant} = :black` sets the color of the outline around a marker.
+- `glowwidth::Real = 0` sets the size of a glow effect around the marker.
+- `glowcolor::Union{Symbol, <:Colorant} = (:black, 0)` sets the color of the glow effect.
+
+
 ## Screen space text
 
 By default, text is drawn in screen space (`space = :screen`).
