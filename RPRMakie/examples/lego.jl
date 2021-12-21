@@ -63,37 +63,35 @@ function plot_lego_figure(s, floor=true)
     return figure
 end
 
-begin
-    RPRMakie.activate!(iterations=200)
-    radiance = 50000
-    lights = [
-        EnvironmentLight(1.5, rotl90(load(assetpath("sunflowers_1k.hdr"))')),
-        PointLight(Vec3f(50, 0, 200), RGBf(radiance, radiance, radiance*1.1)),
-    ]
-    s = Scene(resolution=(500, 500), lights=lights)
+RPRMakie.activate!(iterations=200, plugin=RPR.Northstar)
+radiance = 50000
+lights = [
+    EnvironmentLight(1.5, rotl90(load(assetpath("sunflowers_1k.hdr"))')),
+    PointLight(Vec3f(50, 0, 200), RGBf(radiance, radiance, radiance*1.1)),
+]
+s = Scene(resolution=(500, 500), lights=lights)
 
-    cam3d!(s)
-    c = cameracontrols(s)
-    c.near[] = 5
-    c.far[] = 1000
-    update_cam!(s, c, Vec3f(100, 30, 80), Vec3f(0, 0, -10))
-    figure = plot_lego_figure(s)
+cam3d!(s)
+c = cameracontrols(s)
+c.near[] = 5
+c.far[] = 1000
+update_cam!(s, c, Vec3f(100, 30, 80), Vec3f(0, 0, -10))
+figure = plot_lego_figure(s)
 
-    rot_joints_by = 0.25*pi
-    total_translation = 50
-    animation_strides = 10
+rot_joints_by = 0.25*pi
+total_translation = 50
+animation_strides = 10
 
-    a1 = LinRange(0, rot_joints_by, animation_strides)
-    angles = [a1; reverse(a1[1:end-1]); -a1[2:end]; reverse(-a1[1:end-1]);]
-    nsteps = length(angles); #Number of animation steps
-    translations = LinRange(0, total_translation, nsteps)
+a1 = LinRange(0, rot_joints_by, animation_strides)
+angles = [a1; reverse(a1[1:end-1]); -a1[2:end]; reverse(-a1[1:end-1]);]
+nsteps = length(angles); #Number of animation steps
+translations = LinRange(0, total_translation, nsteps)
 
-    Makie.record(s, "lego_walk.mp4", zip(translations, angles)) do (translation, angle)
+Makie.record(s, "lego_walk.mp4", zip(translations, angles)) do (translation, angle)
 
-        # Rotate right arm + hand
-        for name in ["arm_left", "arm_right", "leg_left", "leg_right"]
-            rotate!(figure[name], rotation_axes[name], angle)
-        end
-        translate!(figure["torso"], translation, 0, 20)
+    # Rotate right arm + hand
+    for name in ["arm_left", "arm_right", "leg_left", "leg_right"]
+        rotate!(figure[name], rotation_axes[name], angle)
     end
+    translate!(figure["torso"], translation, 0, 20)
 end

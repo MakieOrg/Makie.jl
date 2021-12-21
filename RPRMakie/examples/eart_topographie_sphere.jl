@@ -48,6 +48,6 @@ begin
     cam.lookat[] = Vec3f(0)
     cam.upvector[] = Vec3f(0, 0, 1)
     Makie.update_cam!(ax.scene, cam)
-    RPRMakie.activate!(; iterations=100)
+    RPRMakie.activate!(; iterations=32, plugin=RPR.Tahoe)
     display(ax.scene)
 end
