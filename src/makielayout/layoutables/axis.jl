@@ -627,7 +627,7 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
     manually_cycled_attributes = filter(keys(allattrs)) do key
         allattrs[key][] isa Cycled
     end
-    
+
     # if there are any manually cycled attributes, we don't do the normal
     # cycling but only look up exactly the passed attributes
     if !isempty(manually_cycled_attributes)
@@ -640,7 +640,7 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
         end
 
         palettes = [palette[sym][] for sym in palettesyms(cycle)]
-        
+
         for sym in manually_cycled_attributes
             isym = findfirst(syms -> sym in syms, attrsyms(cycle))
             index = allattrs[sym][].i
@@ -708,8 +708,8 @@ needs_tight_limits(@nospecialize any) = false
 needs_tight_limits(::Union{Heatmap, Image}) = true
 function needs_tight_limits(c::Contourf)
     # we know that all values are included and the contourf is rectangular
-    c.levels[] isa Int
     # otherwise here it could be in an arbitrary shape
+    return c.levels[] isa Int
 end
 
 function bboxunion(bb1, bb2)
