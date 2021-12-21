@@ -13,7 +13,7 @@
 - `inspectable::Bool = true` sets whether this plot should be seen by `DataInspector`.
 - `depth_shift::Float32 = 0f0` adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw). 
 - `model::Makie.Mat4f` sets a model matrix for the plot. This replaces adjustments made with `translate!`, `rotate!` and `scale!`.
-- `color::Union{Symbol, <:Colorant, Tuple{Symbol, <:AbstractFloat}, Tuple{<:Colorant, <:AbstractFloat}, Real}` sets the color of the plot. Usually the color can also be given per plot element (e.g. scattered marker, point in line, vertex in mesh, etc) by passing a `Vector` of colors. If the color is numeric it will be used to sample the `colormap`. In some cases a `Matrix{<: Colorant}` can be passed to be used as a texture.
+- `color` sets the color of the plot. It can be given as a named color `Symbol` or a `Colors.Colorant`. Transparency can be included either directly as an alpha value in the `Colorant` or as an additional float in a tuple `(color, alpha)`. The color can also be set for each point in the line by passing a `Vector` of colors or be used to index the `colormap` by passing a `Real` number or `Vector{<: Real}`.
 - `colormap::Union{Symbol, Vector{<:Colorant}} = :viridis` sets the colormap that is sampled for numeric `color`s.
 - `colorrange::Tuple{<:Real, <:Real}` sets the values representing the start and end points of `colormap`.
 - `nan_color::Union{Symbol, <:Colorant} = RGBAf(0,0,0,0)` sets a replacement color for `color = NaN`.
