@@ -125,7 +125,7 @@ To switch to a different backend, for example `CairoMakie`, call `CairoMakie.act
 
 ## Makie Ecosystem
 
-There are three backends, each of which has particular strengths. You can switch between backends at any time.
+There are four backends, each of which has particular strengths. You can switch between backends at any time.
 
 @@box-container
   @@box
