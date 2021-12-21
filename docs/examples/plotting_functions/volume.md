@@ -27,7 +27,7 @@
 
 ### Other
 
-- `algorithm::Union{Symbol, RaymarchAlgorithm} = :mip` sets the volume algorithm that is used. The available algorithms are `:iso` or `IsoValue`, `:absorption` or `Absorption`, `:mip` or `MaxmimumIntensityProjection`, `:absorptionrgba` or `AbsorptionRGBA`, `:indexedabsorption` or `IndexedAbsorptionRGBA` and `:additive` or `AdditiveRGBA`.
+- `algorithm::Union{Symbol, RaymarchAlgorithm} = :mip` sets the volume algorithm that is used.
 - `isorange::Real = 0.05` sets the range of values picked up by the IsoValue algorithm.
 - `isovalue = 0.5` sets the target value for the IsoValue algorithm.
 
