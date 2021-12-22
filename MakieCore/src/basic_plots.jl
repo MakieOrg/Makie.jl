@@ -24,7 +24,7 @@ Plots an image on range `x, y` (defaults to dimensions).
         colormap = [:black, :white],
         colorrange = automatic,
         interpolate = true,
-        fxaa = true,
+        fxaa = false,
         lowclip = nothing,
         highclip = nothing,
         inspectable = theme(scene, :inspectable)
