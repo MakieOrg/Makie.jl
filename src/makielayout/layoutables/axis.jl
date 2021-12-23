@@ -767,40 +767,26 @@ function expandlimits(lims, margin_low, margin_high, scale)
 end
 
 function getlimits(la::Axis, dim)
-
     # find all plots that don't have exclusion attributes set
     # for this dimension
-    plots_with_autolimits = if dim == 1
-        filter(p -> !haskey(p.attributes, :xautolimits) || p.attributes.xautolimits[], la.scene.plots)
-    elseif dim == 2
-        filter(p -> !haskey(p.attributes, :yautolimits) || p.attributes.yautolimits[], la.scene.plots)
-    else
+    if !(dim in (1, 2))
         error("Dimension $dim not allowed. Only 1 or 2.")
     end
 
-    # only use visible plots for limits
-    visible_plots = filter(
-        p -> !haskey(p.attributes, :visible) || p.attributes.visible[],
-        plots_with_autolimits)
-
-    # get all data limits
-    bboxes = [Rect2f(Makie.data_limits(p)) for p in visible_plots]
-
-    # filter out bboxes that are invalid somehow
-    finite_bboxes = filter(Makie.isfinite_rect, bboxes)
-
+    function exclude(plot)
+        # only use plots with autolimits = true
+        to_value(get(plot, dim == 1 ? :xautolimits : :yautolimits, true)) || return true
+        # only use visible plots for limits
+        return !to_value(get(plot, :visible, true))
+    end
+    # get all data limits, minus the excluded plots
+    boundingbox = Makie.data_limits(la.scene, exclude)
     # if there are no bboxes remaining, `nothing` signals that no limits could be determined
-    isempty(finite_bboxes) && return nothing
+    Makie.isfinite_rect(boundingbox) || return nothing
 
     # otherwise start with the first box
-    templim = (finite_bboxes[1].origin[dim], finite_bboxes[1].origin[dim] + finite_bboxes[1].widths[dim])
-
-    # and union all other limits with it
-    for bb in finite_bboxes[2:end]
-        templim = limitunion(templim, (bb.origin[dim], bb.origin[dim] + bb.widths[dim]))
-    end
-
-    templim
+    mini, maxi = minimum(boundingbox), maximum(boundingbox)
+    return (mini[dim], maxi[dim])
 end
 
 getxlimits(la::Axis) = getlimits(la, 1)
