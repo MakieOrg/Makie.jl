@@ -218,7 +218,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         )
     decorations[:xaxis] = xaxis
 
-    yaxis  =  LineAxis(topscene, endpoints = yaxis_endpoints, limits = ylims,
+    yaxis = LineAxis(topscene, endpoints = yaxis_endpoints, limits = ylims,
         flipped = yaxis_flipped, ticklabelrotation = yticklabelrotation,
         ticklabelalign = yticklabelalign, labelsize = ylabelsize,
         labelpadding = ylabelpadding, ticklabelpad = yticklabelpad, labelvisible = ylabelvisible,
@@ -710,19 +710,6 @@ function needs_tight_limits(c::Contourf)
     # we know that all values are included and the contourf is rectangular
     # otherwise here it could be in an arbitrary shape
     return c.levels[] isa Int
-end
-
-function bboxunion(bb1, bb2)
-
-    o1 = bb1.origin
-    o2 = bb2.origin
-    e1 = bb1.origin + bb1.widths
-    e2 = bb2.origin + bb2.widths
-
-    o = min.(o1, o2)
-    e = max.(e1, e2)
-
-    BBox(o[1], e[1], o[2], e[2])
 end
 
 function expandbboxwithfractionalmargins(bb, margins)
