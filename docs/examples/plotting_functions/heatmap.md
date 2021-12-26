@@ -83,18 +83,4 @@ heatmap(xs, ys, zs)
 
 ### Colors
 
-Using the previous example, we can see how to change the color of our plot. you can find additional colors [here](https://makie.juliaplots.org/stable/documentation/colors/index.html#colors).
-
-\begin{examplefigure}{name = "colors"}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
-
-xs = range(0, 15, length = 25)
-ys = range(0, 15, length = 25)
-zs = [sin(x) + y for x in xs, y in ys]
-
-heatmap(xs, ys, zs, colormap=:dense)
-```
-\end{examplefigure}{}
+Using the previous example, we can see how to change the color of our plot. You can find additional colors [here](https://makie.juliaplots.org/stable/documentation/colors/index.html#colors).
