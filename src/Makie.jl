@@ -297,6 +297,4 @@ export heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, s
 
 export PointLight, EnvironmentLight, AmbientLight, SSAO
 
-@deprecate Node Observable
-
 end # module
