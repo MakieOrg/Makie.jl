@@ -27,6 +27,8 @@
 - fix issue where `pixelcam!` does not remove controls from other cameras [#1504](https://github.com/JuliaPlots/Makie.jl/pull/1504)
 - add conversion for offsetarrays [#1260](https://github.com/JuliaPlots/Makie.jl/pull/1260)
 
+#### All other changes
+Are collected [in this PR](https://github.com/JuliaPlots/Makie.jl/pull/1521) and in the [release notes](https://github.com/JuliaPlots/Makie.jl/releases).
 
 ## v0.15.3
 - The functions `labelslidergrid!` and `labelslider!` now set fixed widths for the value column with a heuristic. It is possible now to pass `Formatting.format` format strings as format specifiers in addition to the previous functions.
