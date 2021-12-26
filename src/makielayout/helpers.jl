@@ -108,7 +108,7 @@ Sets the autolimit margins to zero on all sides.
 function tightlimits!(la::Axis)
     la.xautolimitmargin = (0, 0)
     la.yautolimitmargin = (0, 0)
-    autolimits!(la)
+    reset_limits!(la)
 end
 
 """

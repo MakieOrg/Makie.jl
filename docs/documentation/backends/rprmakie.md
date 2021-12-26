@@ -80,10 +80,127 @@ there are several predefined materials one can use in RadeonProRender.
 RPR also supports the [MaterialX](https://www.materialx.org/) standard to load a wide range of predefined Materials. Make sure to use the Northstar backend for `Matx` materials.
 
 ~~~
+<input id="hidecode5" class="hidecode" type="checkbox">
+~~~
+```julia
+using GeometryBasics, RPRMakie
+using Colors, FileIO
+using Colors: N0f8
+
+radiance = 500
+lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
+            PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1))]
+fig = Figure(; resolution=(1500, 700))
+ax = LScene(fig[1, 1]; show_axis=false, scenekw=(lights=lights,))
+screen = RPRScreen(ax.scene; plugin=RPR.Northstar, iterations=400)
+
+matsys = screen.matsys
+emissive = RPR.EmissiveMaterial(matsys)
+diffuse = RPR.DiffuseMaterial(matsys)
+glass = RPR.Glass(matsys)
+plastic = RPR.Plastic(matsys)
+chrome = RPR.Chrome(matsys)
+dielectric = RPR.DielectricBrdfX(matsys)
+gold = RPR.SurfaceGoldX(matsys)
+
+materials = [glass chrome;
+                gold dielectric;
+                emissive plastic]
+
+mesh!(ax, load(Makie.assetpath("matball_floor.obj")); color=:white)
+palette = reshape(Makie.default_palettes.color[][1:6], size(materials))
+
+for i in CartesianIndices(materials)
+    x, y = Tuple(i)
+    mat = materials[i]
+    mplot = if mat === emissive
+        matball!(ax, diffuse; inner=emissive, color=nothing)
+    else
+        matball!(ax, mat; color=nothing)
+    end
+    v = Vec3f(((x, y) .- (0.5 .* size(materials)) .- 0.5)..., 0)
+    translate!(mplot, 0.9 .* (v .- Vec3f(0, 3, 0)))
+end
+cam = cameracontrols(ax.scene)
+cam.eyeposition[] = Vec3f(-0.3, -5.5, 0.9)
+cam.lookat[] = Vec3f(0.5, 0, -0.5)
+cam.upvector[] = Vec3f(0, 0, 1)
+cam.fov[] = 35
+emissive.color = Vec3f(4, 2, 2)
+image = colorbuffer(screen)
+save("materials.png", image)
+```
+~~~
+<label for="hidecode5" class="hidecode"></label>
+~~~
+
+~~~
 <img src="/assets/materials.png">
 ~~~
 
 ## Advanced custom material (earth_topography.jl)
+
+~~~
+<input id="hidecode4" class="hidecode" type="checkbox">
+~~~
+```julia
+using NCDatasets, ColorSchemes, RPRMakie
+using ImageShow, FileIO
+
+# Taken from https://lazarusa.github.io/BeautifulMakie/GeoPlots/topography/
+cmap = dataset = Dataset(joinpath(@__DIR__, "ETOPO1_halfdegree.nc"))
+lon = dataset["lon"][:]
+lat = dataset["lat"][:]
+data = Float32.(dataset["ETOPO1avg"][:, :])
+
+function glow_material(data_normed)
+    emission_weight = map(data_normed) do i
+        return Float32(i < 0.7 ? 0.0 : i)
+    end
+    emission_color = map(data_normed) do i
+        em = i * 2
+        return RGBf(em * 2.0, em * 0.4, em * 0.3)
+    end
+
+    return (
+        reflection_weight = 1,
+        reflection_color = RGBf(0.5, 0.5, 1.0),
+        reflection_metalness = 0,
+        reflection_ior = 1.4,
+        diffuse_weight = 1,
+        emission_weight = emission_weight',
+        emission_color = emission_color',
+    )
+end
+
+RPRMakie.activate!(iterations=32, plugin=RPR.Northstar)
+fig = Figure(; resolution=(2000, 800))
+radiance = 30000
+lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
+            PointLight(Vec3f(0, 100, 100), RGBf(radiance, radiance, radiance))]
+
+ax = LScene(fig[1, 1]; show_axis=false, scenekw=(lights=lights,))
+
+mini, maxi = extrema(data)
+data_normed = ((data .- mini) ./ (maxi - mini))
+
+material = glow_material(data_normed)
+
+pltobj = surface!(ax, lon, lat, data_normed .* 20;
+                    material=material, colormap=[:black, :white, :brown],
+                    colorrange=(0.2, 0.8) .* 20)
+# Set the camera to a nice angle
+cam = cameracontrols(ax.scene)
+cam.eyeposition[] = Vec3f(3, -300, 300)
+cam.lookat[] = Vec3f(0)
+cam.upvector[] = Vec3f(0, 0, 1)
+cam.fov[] = 23
+
+save("topographie.png", ax.scene)
+```
+~~~
+<label for="hidecode4" class="hidecode"></label>
+~~~
 
 ~~~
 <img src="/assets/topographie.png">
@@ -95,6 +212,105 @@ RPRMakie doesn't support layouting and sub scenes yet, but you can replace a sin
 This is especially handy, to show 2d graphics and interactive UI elements next to a ray traced scene and interactively tune camera and material parameters.
 
 ~~~
+<input id="hidecode3" class="hidecode" type="checkbox">
+~~~
+```julia
+using GLMakie, GeometryBasics, RPRMakie, RadeonProRender
+using Colors, FileIO
+using Colors: N0f8
+
+f = (u, v) -> cos(v) * (6 - (5 / 4 + sin(3 * u)) * sin(u - 3 * v))
+g = (u, v) -> sin(v) * (6 - (5 / 4 + sin(3 * u)) * sin(u - 3 * v))
+h = (u, v) -> -cos(u - 3 * v) * (5 / 4 + sin(3 * u));
+u = range(0; stop=2π, length=150)
+v = range(0; stop=2π, length=150)
+radiance = 500
+lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
+          PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1))]
+
+fig = Figure(; resolution=(1500, 1000))
+ax = LScene(fig[1, 1]; show_axis=false, scenekw=(lights=lights,))
+screen = RPRMakie.RPRScreen(size(ax.scene); plugin=RPR.Tahoe)
+material = RPR.UberMaterial(screen.matsys)
+
+surface!(ax, f.(u, v'), g.(u, v'), h.(u, v'); ambient=Vec3f(0.5), diffuse=Vec3f(1), specular=0.5,
+         colormap=:balance, material=material)
+
+function Input(fig, val::RGB)
+    hue = Slider(fig; range=1:380, width=200)
+    lightness = Slider(fig; range=LinRange(0, 1, 100), width=200)
+    labels = [Label(fig, "hue"; halign=:left), Label(fig, "light"; halign=:left)]
+    layout = grid!(hcat(labels, [hue, lightness]))
+    hsl = HSL(val)
+    set_close_to!(hue, hsl.h)
+    set_close_to!(lightness, hsl.l)
+    color = map((h, l) -> RGB(HSL(h, 0.9, l)), hue.value, lightness.value)
+    return color, layout
+end
+
+function Input(fig, val::Vec4)
+    s = Slider(fig; range=LinRange(0, 1, 100), width=200)
+    set_close_to!(s, first(val))
+    return map(x -> Vec4f(x), s.value), s
+end
+
+function Input(fig, val::Bool)
+    toggle = Toggle(fig; active=val)
+    return toggle.active, toggle
+end
+
+sliders = (reflection_color=Input(fig, RGB(0, 0, 0)), reflection_weight=Input(fig, Vec4(0)),
+           reflection_roughness=Input(fig, Vec4(0)), reflection_anisotropy=Input(fig, Vec4(0)),
+           reflection_anisotropy_rotation=Input(fig, Vec4(0)), reflection_mode=Input(fig, Vec4(0)),
+           reflection_ior=Input(fig, Vec4(0)), reflection_metalness=Input(fig, Vec4(0)),
+           refraction_color=Input(fig, RGB(0, 0, 0)), refraction_weight=Input(fig, Vec4(0)),
+           refraction_roughness=Input(fig, Vec4(0)), refraction_ior=Input(fig, Vec4(0)),
+           refraction_absorption_color=Input(fig, RGB(0, 0, 0)),
+           refraction_absorption_distance=Input(fig, Vec4(0)), refraction_caustics=Input(fig, true),
+           sss_scatter_color=Input(fig, RGB(0, 0, 0)), sss_scatter_distance=Input(fig, Vec4(0)),
+           sss_scatter_direction=Input(fig, Vec4(0)), sss_weight=Input(fig, Vec4(0)),
+           sss_multiscatter=Input(fig, false), backscatter_weight=Input(fig, Vec4(0)),
+           backscatter_color=Input(fig, RGB(0, 0, 0)))
+
+labels = []
+inputs = []
+refresh = Observable(nothing)
+for (key, (obs, input)) in pairs(sliders)
+    push!(labels, Label(fig, string(key); align=:left))
+    push!(inputs, input)
+    on(obs) do value
+        @show key value
+        setproperty!(material, key, value)
+        return notify(refresh)
+    end
+end
+
+fig[1, 2] = grid!(hcat(labels, inputs); width=500)
+GLMakie.activate!()
+
+cam = cameracontrols(ax.scene)
+cam.eyeposition[] = Vec3f(22, 0, 17)
+cam.lookat[] = Vec3f(0, 0, -1)
+cam.upvector[] = Vec3f(0, 0, 1)
+cam.fov[] = 30
+
+display(fig)
+
+context, task = RPRMakie.replace_scene_rpr!(ax.scene, screen; refresh=refresh)
+
+# Change light parameters interactively
+begin
+    lights[1].intensity[] = 1.5
+    lights[2].radiance[] = RGBf(1000, 1000, 1000)
+    lights[2].position[] = Vec3f(3, 10, 10)
+    notify(refresh)
+end
+```
+~~~
+<label for="hidecode3" class="hidecode"></label>
+~~~
+
+~~~
 <video autoplay controls src="/assets/opengl_interop.mp4">
 </video>
 ~~~
@@ -104,11 +320,220 @@ This is especially handy, to show 2d graphics and interactive UI elements next t
 Not all objects support updating via Observables yet, but translations, camera etc are already covered and can be used together with Makie's standard animation API.
 
 ~~~
+<input id="hidecode2" class="hidecode" type="checkbox">
+~~~
+```julia
+# Example inspiration and Lego model by https://github.com/Kevin-Mattheus-Moerman
+# https://twitter.com/KMMoerman/status/1417759722963415041
+using MeshIO, FileIO, GeometryBasics, RPRMakie
+
+colors = Dict(
+    "eyes" => "#000",
+    "belt" => "#000059",
+    "arm" => "#009925",
+    "leg" => "#3369E8",
+    "torso" => "#D50F25",
+    "head" => "yellow",
+    "hand" => "yellow"
+)
+
+origins = Dict(
+    "arm_right" => Point3f(0.1427, -6.2127, 5.7342),
+    "arm_left" => Point3f(0.1427, 6.2127, 5.7342),
+    "leg_right" => Point3f(0, -1, -8.2),
+    "leg_left" => Point3f(0, 1, -8.2),
+)
+
+rotation_axes = Dict(
+    "arm_right" => Vec3f(0.0000, -0.9828, 0.1848),
+    "arm_left" => Vec3f(0.0000, 0.9828, 0.1848),
+    "leg_right" => Vec3f(0, -1, 0),
+    "leg_left" => Vec3f(0, 1, 0),
+)
+
+function plot_part!(scene, parent, name::String)
+    m = load(assetpath("lego_figure_" * name * ".stl"))
+    color = colors[split(name, "_")[1]]
+    trans = Transformation(parent)
+    ptrans = Makie.transformation(parent)
+    origin = get(origins, name, nothing)
+    if !isnothing(origin)
+        centered = m.position .- origin
+        m = GeometryBasics.Mesh(meta(centered; normals=m.normals), faces(m))
+        translate!(trans, origin)
+    else
+        translate!(trans, -ptrans.translation[])
+    end
+    return mesh!(scene, m; color=color, transformation=trans)
+end
+
+function plot_lego_figure(s, floor=true)
+    # Plot hierarchical mesh!
+    figure = Dict()
+    # Plot hierarchical mesh!
+    figure["torso"] = plot_part!(s, s, "torso")
+        figure["head"] = plot_part!(s, figure["torso"], "head")
+            figure["eyes_mouth"] = plot_part!(s, figure["head"], "eyes_mouth")
+        figure["arm_right"] = plot_part!(s, figure["torso"], "arm_right")
+            figure["hand_right"] = plot_part!(s, figure["arm_right"], "hand_right")
+        figure["arm_left"] = plot_part!(s, figure["torso"], "arm_left")
+            figure["hand_left"] = plot_part!(s, figure["arm_left"], "hand_left")
+        figure["belt"] = plot_part!(s, figure["torso"], "belt")
+            figure["leg_right"] = plot_part!(s, figure["belt"], "leg_right")
+            figure["leg_left"] = plot_part!(s, figure["belt"], "leg_left")
+    # lift the little guy up
+    translate!(figure["torso"], 0, 0, 20)
+    # add some floor
+    floor && mesh!(s, Rect3f(Vec3f(-400, -400, -2), Vec3f(800, 800, 2)), color=:white)
+    return figure
+end
+
+RPRMakie.activate!(iterations=200, plugin=RPR.Northstar)
+radiance = 50000
+lights = [
+    EnvironmentLight(1.5, rotl90(load(assetpath("sunflowers_1k.hdr"))')),
+    PointLight(Vec3f(50, 0, 200), RGBf(radiance, radiance, radiance*1.1)),
+]
+s = Scene(resolution=(500, 500), lights=lights)
+
+cam3d!(s)
+c = cameracontrols(s)
+c.near[] = 5
+c.far[] = 1000
+update_cam!(s, c, Vec3f(100, 30, 80), Vec3f(0, 0, -10))
+figure = plot_lego_figure(s)
+
+rot_joints_by = 0.25*pi
+total_translation = 50
+animation_strides = 10
+
+a1 = LinRange(0, rot_joints_by, animation_strides)
+angles = [a1; reverse(a1[1:end-1]); -a1[2:end]; reverse(-a1[1:end-1]);]
+nsteps = length(angles); #Number of animation steps
+translations = LinRange(0, total_translation, nsteps)
+
+Makie.record(s, "lego_walk.mp4", zip(translations, angles)) do (translation, angle)
+
+    # Rotate right arm + hand
+    for name in ["arm_left", "arm_right", "leg_left", "leg_right"]
+        rotate!(figure[name], rotation_axes[name], angle)
+    end
+    translate!(figure["torso"], translation, 0, 20)
+end
+```
+~~~
+<label for="hidecode2" class="hidecode"></label>
+~~~
+
+~~~
 <video autoplay controls src="/assets/lego_walk.mp4">
 </video>
 ~~~
 
 ## Earth example
+
+~~~
+<input id="hidecode1" class="hidecode" type="checkbox">
+~~~
+```julia
+# by Lazaro Alonso
+# taken from: https://lazarusa.github.io/BeautifulMakie/GeoPlots/submarineCables3D/
+using GeoMakie, Downloads
+using GeoJSON, GeoInterface
+using HDF5, FileIO
+using RPRMakie
+# data from
+# https://github.com/telegeography/www.submarinecablemap.com
+urlPoints = "https://raw.githubusercontent.com/telegeography/www.submarinecablemap.com/master/web/public/api/v3/landing-point/landing-point-geo.json"
+urlCables = "https://raw.githubusercontent.com/telegeography/www.submarinecablemap.com/master/web/public/api/v3/cable/cable-geo.json"
+
+landPoints = Downloads.download(urlPoints, IOBuffer())
+landCables = Downloads.download(urlCables, IOBuffer())
+
+land_geoPoints = GeoJSON.read(seekstart(landPoints))
+land_geoCables = GeoJSON.read(seekstart(landCables))
+
+toPoints = GeoMakie.geo2basic(land_geoPoints)
+#toLines = GeoMakie.geo2basic(land_geoCables) # this should probably be supported.
+feat = GeoInterface.features(land_geoCables)
+toLines = GeoInterface.coordinates.(GeoInterface.geometry.(feat))
+
+# broken lines at -180 and 180... they should
+# be the same line and be in the same array.
+
+# also the coastlines data
+# this data can be download from here:
+# https://github.com/lazarusA/BeautifulMakie/tree/main/_assets/data
+worldxm = h5open(joinpath(@__DIR__, "world_xm.h5"), "r")
+world_110m = read(worldxm["world_110m"])
+close(worldxm)
+lonw, latw = world_110m["lon"], world_110m["lat"]
+# some 3D transformations
+function toCartesian(lon, lat; r=1.02, cxyz=(0, 0, 0))
+    lat, lon = lat * π / 180, lon * π / 180
+    return cxyz[1] + r * cos(lat) * cos(lon), cxyz[2] + r * cos(lat) * sin(lon), cxyz[3] + r * sin(lat)
+end
+
+function lonlat3D2(lon, lat; cxyz=(0, 0, 0))
+    xyzw = zeros(length(lon), 3)
+    for (i, lon) in enumerate(lon)
+        x, y, z = toCartesian(lon, lat[i]; cxyz=cxyz)
+        xyzw[i, 1] = x
+        xyzw[i, 2] = y
+        xyzw[i, 3] = z
+    end
+    return xyzw[:, 1], xyzw[:, 2], xyzw[:, 3]
+end
+
+xw, yw, zw = lonlat3D2(lonw, latw)
+toPoints3D = [Point3f([toCartesian(point[1], point[2])...]) for point in toPoints]
+
+splitLines3D = []
+for i in 1:length(toLines)
+    for j in 1:length(toLines[i])
+        ptsLines = toLines[i][j]
+        tmp3D = []
+        for k in 1:length(ptsLines)
+            x, y = ptsLines[k]
+            x, y, z = toCartesian(x, y)
+            push!(tmp3D, [x, y, z])
+        end
+        push!(splitLines3D, Point3f.(tmp3D))
+    end
+end
+
+earth_img = load(Downloads.download("https://upload.wikimedia.org/wikipedia/commons/5/56/Blue_Marble_Next_Generation_%2B_topography_%2B_bathymetry.jpg"))
+Makie.inline!(true)
+# the actual plot !
+RPRMakie.activate!(; iterations=100)
+scene = with_theme(theme_dark()) do
+    fig = Figure(; resolution=(1000, 1000))
+    radiance = 30
+    lights = [EnvironmentLight(0.5, load(RPR.assetpath("starmap_4k.tif"))),
+              PointLight(Vec3f(1, 1, 3), RGBf(radiance, radiance, radiance))]
+    ax = LScene(fig[1, 1]; show_axis=false, scenekw=(lights=lights,))
+    # lines!(ax, xw, yw, zw, color = :white, linewidth = 0.15)
+    n = 1024 ÷ 4 # 2048
+    θ = LinRange(0, pi, n)
+    φ = LinRange(-pi, pi, 2 * n)
+    xe = [cos(φ) * sin(θ) for θ in θ, φ in φ]
+    ye = [sin(φ) * sin(θ) for θ in θ, φ in φ]
+    ze = [cos(θ) for θ in θ, φ in φ]
+    surface!(ax, xe, ye, ze; color=earth_img)
+    meshscatter!(toPoints3D; color=1:length(toPoints3D), markersize=0.005, colormap=:plasma)
+    colors = Makie.default_palettes.color[]
+    c = Iterators.cycle(colors)
+    foreach(((l, c),) -> lines!(ax, l; linewidth=2, color=c), zip(splitLines3D, c))
+    ax.scene.camera_controls.eyeposition[] = Vec3f(1.5)
+    return ax.scene
+end
+
+save("submarin_cables.png", scene)
+```
+~~~
+<label for="hidecode1" class="hidecode"></label>
+~~~
+
 
 ~~~
 <img src="/assets/earth.png">

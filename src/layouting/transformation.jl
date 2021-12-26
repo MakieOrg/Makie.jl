@@ -356,3 +356,12 @@ inverse_transform(s) = nothing
 function is_identity_transform(t)
     return t === identity || t isa Tuple && all(x-> x === identity, t)
 end
+
+
+# this is a simplification which will only really work with non-rotated or
+# scaled scene transformations, but for 2D scenes this should work well enough.
+# and this way we can use the z-value as a means to shift the drawing order
+# by translating e.g. the axis spines forward so they are not obscured halfway
+# by heatmaps or images
+zvalue2d(x) = Makie.translation(x)[][3] + zvalue2d(x.parent)
+zvalue2d(::Nothing) = 0f0
