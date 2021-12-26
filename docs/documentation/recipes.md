@@ -76,7 +76,7 @@ We use an example to show how this works:
 ```julia
 @recipe(MyPlot, x, y, z) do scene
     Theme(
-        plot_color => :red
+        plot_color = :red
     )
 end
 ```

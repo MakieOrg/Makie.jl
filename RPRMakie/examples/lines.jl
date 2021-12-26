@@ -3,6 +3,7 @@ using Colors, FileIO
 using Colors: N0f8
 
 begin
+    RPRMakie.activate!(plugin=RPR.Tahoe)
     fig = Figure(; resolution=(1000, 1000))
     ax = LScene(fig[1, 1])
     points = Point3f[]

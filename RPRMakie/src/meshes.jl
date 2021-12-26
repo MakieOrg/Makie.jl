@@ -1,20 +1,32 @@
+function extract_material(matsys, plot)
+    material = if haskey(plot, :material)
+        if plot.material isa Attributes
+            return RPR.Material(matsys, Dict(map(((k,v),)-> k => to_value(v), plot.material)))
+        else
+            return plot.material[]
+        end
+    else
+        return RPR.DiffuseMaterial(matsys)
+    end
+end
+
 function mesh_material(context, matsys, plot, color_obs = plot.color)
     specular = plot.specular[]
     shininess = plot.shininess[]
     color = to_value(color_obs)
     color_signal = if color isa AbstractMatrix{<:Number}
-        tex = RPR.MaterialNode(matsys, RPR.RPR_MATERIAL_NODE_IMAGE_TEXTURE)
+        tex = RPR.ImageTextureMaterial(matsys)
         map(color_obs, plot.colormap, plot.colorrange) do color, cmap, crange
             color_interp = Makie.interpolated_getindex.((to_colormap(cmap),), color, (crange,))
             img = RPR.Image(context, collect(color_interp'))
-            set!(tex, RPR.RPR_MATERIAL_INPUT_DATA, img)
+            tex.data = img
             return tex
         end
     elseif color isa AbstractMatrix{<:Colorant}
-        tex = RPR.MaterialNode(matsys, RPR.RPR_MATERIAL_NODE_IMAGE_TEXTURE)
+        tex = RPR.ImageTextureMaterial(matsys)
         map(color_obs) do color
             img = RPR.Image(context, Makie.el32convert(color'))
-            set!(tex, RPR.RPR_MATERIAL_INPUT_DATA, img)
+            tex.data = img
             return tex
         end
     elseif color isa Colorant || color isa Union{String,Symbol}
@@ -26,15 +38,14 @@ function mesh_material(context, matsys, plot, color_obs = plot.color)
         error("Unsupported color type for RadeonProRender backend: $(typeof(color))")
     end
 
-    material = to_value(get(plot, :material, RPR.DiffuseMaterial(matsys)))
-
+    material = extract_material(matsys, plot)
     map(color_signal) do color
         if !isnothing(color) && hasproperty(material, :color)
             material.color = color
         end
     end
 
-    return material.node
+    return material
 end
 
 function to_rpr_object(context, matsys, scene, plot::Makie.Mesh)
@@ -58,7 +69,11 @@ function to_rpr_object(context, matsys, scene, plot::Makie.MeshScatter)
     n_instances = length(positions)
     RPR.rprShapeSetObjectID(marker, 0)
     material = if haskey(plot, :material)
-        plot.material[]
+        if plot.material isa Attributes
+            RPR.Material(matsys, Dict(map(((k,v),)-> k => to_value(v), plot.material)))
+        else
+            plot.material[]
+        end
     else
         RPR.DiffuseMaterial(matsys)
     end

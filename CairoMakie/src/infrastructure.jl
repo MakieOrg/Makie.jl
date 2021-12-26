@@ -153,7 +153,7 @@ function cairo_draw(screen::CairoScreen, scene::Scene)
     draw_background(screen, scene)
 
     allplots = get_all_plots(scene)
-    sort!(allplots, by = zvalue)
+    sort!(allplots, by = Makie.zvalue2d)
 
     last_scene = scene
 
@@ -175,15 +175,6 @@ function cairo_draw(screen::CairoScreen, scene::Scene)
 
     return
 end
-
-# this is a simplification which will only really work with non-rotated or
-# scaled scene transformations
-# but for Cairo's 2D paradigm that is the only likely mode of transformation
-# and this way we can use the z-value as a means to shift the drawing order
-# by translating e.g. the axis spines forward so they are not obscured halfway
-# by heatmaps or images
-zvalue(x) = Makie.translation(x)[][3] + zvalue(x.parent)
-zvalue(::Nothing) = 0f0
 
 function get_all_plots(scene, plots = AbstractPlot[])
     append!(plots, scene.plots)
