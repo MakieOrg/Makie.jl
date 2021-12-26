@@ -127,16 +127,15 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     onany(finallimits, xreversed, yreversed, scene.transformation.transform_func) do lims, xrev, yrev, t
         nearclip = -10_000f0
         farclip = 10_000f0
-
         left, bottom = Makie.apply_transform(t, Point(minimum(lims)))
         right, top = Makie.apply_transform(t, Point(maximum(lims)))
-
         leftright = xrev ? (right, left) : (left, right)
         bottomtop = yrev ? (top, bottom) : (bottom, top)
 
         projection = Makie.orthographicprojection(
             leftright...,
-            bottomtop..., nearclip, farclip)
+            bottomtop...,
+            nearclip, farclip)
 
         Makie.set_proj_view!(camera(scene), projection, Makie.Mat4f(Makie.I))
     end
@@ -195,7 +194,6 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     on(finallimits) do lims
         nxl = xlimits(lims)
         nyl = ylimits(lims)
-
         if nxl != xlims[]
             xlims[] = nxl
         end
@@ -451,7 +449,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         notify(finallimits)
     end
 
-    ax
+    return ax
 end
 
 """
@@ -463,90 +461,33 @@ that value is either copied from the targetlimits if `xauto` or `yauto` is false
 respectively, or it is determined automatically from the plots in the axis.
 If one of the components is a tuple of two numbers, those are used directly.
 """
-function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
+function reset_limits!(ax::Union{Axis, Axis3}; xauto = true, yauto = true, zauto = true)
     mlims = convert_limit_attribute(ax.limits[])
+    target_lims = ax.targetlimits[]
+    autolimits = nd_autolimits(ax)
 
-    if ax isa Axis
-        mxlims, mylims = mlims::Tuple{Any, Any}
-    elseif ax isa Axis3
-        mxlims, mylims, mzlims = mlims::Tuple{Any, Any, Any}
-    else
-        error()
-    end
+    autos = (xauto, yauto, zauto)
+    N = ifelse(ax isa Axis, 2, 3)
+    dims = ntuple(identity, N)
 
-    xlims = if isnothing(mxlims) || mxlims[1] === nothing || mxlims[2] === nothing
-        l = if xauto
-            xautolimits(ax)
-        else
-            minimum(ax.targetlimits[])[1], maximum(ax.targetlimits[])[1]
+    function get_limits(dim)
+        dimlims = mlims[dim]
+        auto = autos[dim]
+        autolims = autolimits[dim]
+        isnothing(dimlims) && return autolims
+        limit = map((l, a)-> Float64(ifelse(isnothing(l), a, l)), dimlims, autolims)
+        if !(limit[1] <= limit[2])
+            sym = (:x, :y, :z)[dim]
+            error("Invalid $sym-limits as lims[1] <= lims[2] is not met for $limit.")
         end
-        if mxlims === nothing
-            l
-        else
-            lo = mxlims[1] === nothing ? l[1] : mxlims[1]
-            hi = mxlims[2] === nothing ? l[2] : mxlims[2]
-            (lo, hi)
-        end
-    else
-        convert(Tuple{Float32, Float32}, tuple(mxlims...))
-    end
-    ylims = if isnothing(mylims) || mylims[1] === nothing || mylims[2] === nothing
-        l = if yauto
-            yautolimits(ax)
-        else
-            minimum(ax.targetlimits[])[2], maximum(ax.targetlimits[])[2]
-        end
-        if mylims === nothing
-            l
-        else
-            lo = mylims[1] === nothing ? l[1] : mylims[1]
-            hi = mylims[2] === nothing ? l[2] : mylims[2]
-            (lo, hi)
-        end
-    else
-        convert(Tuple{Float32, Float32}, mylims)
+        return limit
     end
 
-    if ax isa Axis3
-        zlims = if isnothing(mzlims) || mzlims[1] === nothing || mzlims[2] === nothing
-            l = if zauto
-                zautolimits(ax)
-            else
-                minimum(ax.targetlimits[])[3], maximum(ax.targetlimits[])[3]
-            end
-            if mzlims === nothing
-                l
-            else
-                lo = mzlims[1] === nothing ? l[1] : mzlims[1]
-                hi = mzlims[2] === nothing ? l[2] : mzlims[2]
-                (lo, hi)
-            end
-        else
-            convert(Tuple{Float32, Float32}, mzlims)
-        end
-    end
-
-    if !(xlims[1] <= xlims[2])
-        error("Invalid x-limits as xlims[1] <= xlims[2] is not met for $xlims.")
-    end
-    if !(ylims[1] <= ylims[2])
-        error("Invalid y-limits as ylims[1] <= ylims[2] is not met for $ylims.")
-    end
-    if ax isa Axis3
-        if !(zlims[1] <= zlims[2])
-            error("Invalid z-limits as zlims[1] <= zlims[2] is not met for $zlims.")
-        end
-    end
-
-    if ax isa Axis
-        ax.targetlimits[] = BBox(xlims..., ylims...)
-    elseif ax isa Axis3
-        ax.targetlimits[] = Rect3f(
-            Vec3f(xlims[1], ylims[1], zlims[1]),
-            Vec3f(xlims[2] - xlims[1], ylims[2] - ylims[1], zlims[2] - zlims[1]),
-        )
-    end
-    nothing
+    target_limits = get_limits.(dims)
+    mini = Vec(first.(target_limits))
+    maxi = Vec(last.(target_limits))
+    ax.targetlimits[] = Rect{N, Float32}(mini, maxi .- mini)
+    return
 end
 
 # this is so users can do limits = (left, right, bottom, top)
@@ -709,66 +650,98 @@ function needs_tight_limits(c::Contourf)
     return c.levels[] isa Int
 end
 
-function expandbboxwithfractionalmargins(bb, margins)
-    newwidths = bb.widths .* (1f0 .+ margins)
-    diffs = newwidths .- bb.widths
-    neworigin = bb.origin .- (0.5f0 .* diffs)
-    return Rect2f(neworigin, newwidths)
-end
-
 limitunion(lims1, lims2) = (min(lims1..., lims2...), max(lims1..., lims2...))
+
+function expandlimits_nd(nd_limits::NTuple{N, <:Any}, nd_margins::NTuple{N, <:Any}, transfunc) where {N}
+    # expand limits so that the margins are applied at the current axis scale
+    limsordered = map(nd_limits) do dim_lim
+        (minimum(dim_lim), maximum(dim_lim))
+    end
+    inverse = Makie.inverse_transform(transfunc)
+    if isnothing(inverse)
+        @warn("Not applying limit margin because $(transfunc) has no inverse")
+        return limsordered
+    end
+
+    min_point = Point(first.(limsordered))
+    max_point = Point(last.(limsordered))
+
+    lims_scaled = Makie.apply_transform(transfunc, [min_point, max_point])
+
+    w_scaled = lims_scaled[2] .- lims_scaled[1]
+
+    d_low_scaled = w_scaled .* Point(first.(nd_margins))
+    d_high_scaled = w_scaled .* Point(last.(nd_margins))
+
+    lims = Makie.apply_transform(inverse, [lims_scaled[1] .- d_low_scaled, lims_scaled[2] .+ d_high_scaled])
+    low, high = lims
+
+    # guard against singular limits from something like a vline or hline
+    return ntuple(N) do i
+        nlim = getindex.(lims, i)
+        if nlim[2] - nlim[1] ≈ 0
+            # this works for log as well
+            # we look at the distance to zero in scaled space
+            # then try to center the value between that zero and the value
+            # that is the same scaled distance away on the other side
+            # which centers the singular value optically
+            low_t = Makie.apply_transform(transfunc, low)
+            zerodist = abs.(low_t)
+
+            # for 0 in linear space this doesn't work so here we just expand to -1, 1
+            if zerodist[i] ≈ 0 && Makie.is_identity_transform(transfunc)
+                return (-one(nlim[1]), one(nlim[1]))
+            else
+                high_t = Makie.apply_transform(transfunc, high)
+                scaled = ntuple(N) do j
+                    j == i && return (low_t[i] - zerodist, high_t[i] + zerodist)
+                    return (low_t[i], high_t[i])
+                end
+                scaled_min = Point(first.(scaled))
+                scaled_max = Point(last.(scaled))
+                newlim = Makie.apply_transform(inverse, [scaled_min, scaled_max])
+                return (newlim[1][i], newlim[2][i])
+            end
+        else
+            return nlim
+        end
+    end
+end
 
 function expandlimits(lims, margin_low, margin_high, scale)
     # expand limits so that the margins are applied at the current axis scale
-    limsordered = (min(lims[1], lims[2]), max(lims[1], lims[2]))
-    lims_scaled = scale.(limsordered)
-
-    w_scaled = lims_scaled[2] - lims_scaled[1]
-    d_low_scaled = w_scaled * margin_low
-    d_high_scaled = w_scaled * margin_high
-    inverse = Makie.inverse_transform(scale)
-    lims = inverse.((lims_scaled[1] - d_low_scaled, lims_scaled[2] + d_high_scaled))
-
-    # guard against singular limits from something like a vline or hline
-    if lims[2] - lims[1] ≈ 0
-        # this works for log as well
-        # we look at the distance to zero in scaled space
-        # then try to center the value between that zero and the value
-        # that is the same scaled distance away on the other side
-        # which centers the singular value optically
-        zerodist = abs(scale(lims[1]))
-
-        # for 0 in linear space this doesn't work so here we just expand to -1, 1
-        if zerodist ≈ 0 && scale === identity
-            lims = (-one(lims[1]), one(lims[1]))
-        else
-            lims = inverse.(scale.(lims) .+ (-zerodist, zerodist))
-        end
-    end
-    lims
+    expandlimits_nd((lims,), ((margin_low, margin_high),), (scale,))
 end
 
-function getlimits(la::Axis, dim)
+function calculate_limits(ax::Axis; x = true, y = true)
+    function exclude(plot)
+        # if not visible, we don't use plots for limits
+        to_value(get(plot, :visible, true)) || return true
+        # Figure out if plot should be included in x/y limit calculation
+        if x
+            to_value(get(plot, :xautolimits, true)) || return true
+        end
+        if y
+            to_value(get(plot, :yautolimits, true)) || return true
+        end
+        # we include the plot in the limit calculation
+        return false
+    end
+    # get all data limits, minus the excluded plots
+    return Makie.data_limits(ax.scene, exclude)
+end
+
+function getlimits(ax::Axis, dim::Integer)
     # find all plots that don't have exclusion attributes set
     # for this dimension
     if !(dim in (1, 2))
         error("Dimension $dim not allowed. Only 1 or 2.")
     end
-
-    function exclude(plot)
-        # only use plots with autolimits = true
-        to_value(get(plot, dim == 1 ? :xautolimits : :yautolimits, true)) || return true
-        # only use visible plots for limits
-        return !to_value(get(plot, :visible, true))
-    end
     # get all data limits, minus the excluded plots
-    boundingbox = Makie.data_limits(la.scene, exclude)
-    # if there are no bboxes remaining, `nothing` signals that no limits could be determined
+    boundingbox = calculate_limits(ax; x = dim == 1, y = dim == 2)
+    # if bbox isn't finite, `nothing` signals that no limits could be determined
     Makie.isfinite_rect(boundingbox) || return nothing
-
-    # otherwise start with the first box
-    mini, maxi = minimum(boundingbox), maximum(boundingbox)
-    return (mini[dim], maxi[dim])
+    return limits(boundingbox, dim)
 end
 
 getxlimits(la::Axis) = getlimits(la, 1)
@@ -830,11 +803,25 @@ function autolimits!(ax::Axis)
     return
 end
 
+function nd_autolimits(ax::Axis)
+    bb = calculate_limits(ax)
+    # If bb isn't finite, we have no limits, so we just return previously calculated limits
+    Makie.isfinite_rect(bb) || return limits(ax.targetlimits[])
+    margins = (ax.attributes.xautolimitmargin[], ax.attributes.yautolimitmargin[])
+    transform_func = Makie.transform_func(ax.scene)
+    return expandlimits_nd(limits(bb)[1:2], margins, transform_func)
+end
+
 function autolimits(ax::Axis, dim::Integer)
     # try getting x limits for the axis and then union them with linked axes
     lims = getlimits(ax, dim)
 
-    for link in ax.xaxislinks
+    dimsym = dim == 1 ? :x : :y
+    links = getproperty(ax, Symbol(dimsym, :axislinks))
+    scale = getproperty(ax, Symbol(dimsym, :scale))[]
+    margin = getproperty(ax.attributes, Symbol(dimsym, :autolimitmargin))[]
+
+    for link in links
         if isnothing(lims)
             lims = getlimits(link, dim)
         else
@@ -845,18 +832,10 @@ function autolimits(ax::Axis, dim::Integer)
         end
     end
 
-    dimsym = dim == 1 ? :x : :y
-    scale = getproperty(ax, Symbol(dimsym, :scale))[]
-    margin = getproperty(ax.attributes, Symbol(dimsym, :autolimitmargin))[]
     if !isnothing(lims)
-        if !validate_limits_for_scale(lims, scale)
-            error("Found invalid x-limits $lims for scale $(scale) which is defined on the interval $(defined_interval(scale))")
-        end
         lims = expandlimits(lims, margin[1], margin[2], scale)
-    end
-
-    # if no limits have been found, use the targetlimits directly
-    if isnothing(lims)
+    else
+        # if no limits have been found, use the targetlimits directly
         lims = limits(ax.targetlimits[], dim)
     end
     return lims
@@ -875,17 +854,17 @@ function linkaxes!(a::Axis, others...)
     linkyaxes!(a, others...)
 end
 
-function adjustlimits!(la)
-    asp = la.autolimitaspect[]
-    target = la.targetlimits[]
+function adjustlimits!(ax::Axis)
+    asp = ax.autolimitaspect[]
+    target = ax.targetlimits[]
 
     # in the simplest case, just update the final limits with the target limits
     if isnothing(asp)
-        la.finallimits[] = target
+        ax.finallimits[] = target
         return
     end
 
-    area = la.scene.px_area[]
+    area = ax.scene.px_area[]
     xlims = (left(target), right(target))
     ylims = (bottom(target), top(target))
 
@@ -899,18 +878,18 @@ function adjustlimits!(la)
     if correction_factor > 1
         # need to go wider
 
-        marginsum = sum(la.xautolimitmargin[])
+        marginsum = sum(ax.xautolimitmargin[])
         ratios = if marginsum == 0
             (0.5, 0.5)
         else
-            (la.xautolimitmargin[] ./ marginsum)
+            (ax.xautolimitmargin[] ./ marginsum)
         end
 
         xlims = expandlimits(xlims, ((correction_factor - 1) .* ratios)..., identity) # don't use scale here?
     elseif correction_factor < 1
         # need to go taller
 
-        marginsum = sum(la.yautolimitmargin[])
+        marginsum = sum(ax.yautolimitmargin[])
         ratios = if marginsum == 0
             (0.5, 0.5)
         else
@@ -918,9 +897,7 @@ function adjustlimits!(la)
         end
         ylims = expandlimits(ylims, (((1 / correction_factor) - 1) .* ratios)..., identity) # don't use scale here?
     end
-
-    bbox = BBox(xlims[1], xlims[2], ylims[1], ylims[2])
-    la.finallimits[] = bbox
+    ax.finallimits[] = Rect2f(xlims[1], ylims[1], xlims[2] - xlims[1], ylims[2] - ylims[1])
     return
 end
 
