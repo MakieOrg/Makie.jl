@@ -11,7 +11,7 @@
 - `transparency::Bool = false` adjusts how the plot deals with transparency. In GLMakie `transparency = true` results in using Order Independent Transparency.
 - `fxaa::Bool = true` adjusts whether the plot is rendered with fxaa (anti-aliasing).
 - `inspectable::Bool = true` sets whether this plot should be seen by `DataInspector`.
-- `depth_shift::Float32 = 0f0` adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw). 
+- `depth_shift::Float32 = 0f0` adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw).
 - `model::Makie.Mat4f` sets a model matrix for the plot. This replaces adjustments made with `translate!`, `rotate!` and `scale!`.
 - `color` is set by the plot.
 - `colormap::Union{Symbol, Vector{<:Colorant}} = :viridis` sets the colormap that is sampled for numeric `color`s.
@@ -83,18 +83,4 @@ heatmap(xs, ys, zs)
 
 ### Colors
 
-Using the previous example, we can see how to change the color of our plot. you can find additional colors [here](https://makie.juliaplots.org/stable/documentation/colors/index.html#colors).
-
-\begin{examplefigure}{name = "colors"}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
-
-xs = range(0, 15, length = 25)
-ys = range(0, 15, length = 25)
-zs = [sin(x) + y for x in xs, y in ys]
-
-heatmap(xs, ys, zs, colormap=:dense)
-\end{examplefigure}{}
-
+Using the previous example, we can see how to change the color of our plot. You can find additional colors [here](https://makie.juliaplots.org/stable/documentation/colors/index.html#colors).
