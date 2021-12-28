@@ -445,9 +445,9 @@ If you want a simpler interface, consider using [`record`](@ref).
 - `compression = 0`: Controls the video compression with `0` being lossless and
                      `51` being the highest compression. Note that `compression = 0`
                      only works with `.mp4` if `profile = high444`.
-- `profile = "high422`: A ffmpeg compatible profile. Currently only applies to
-                        `.mp4`. If you have issues playing a video, try
-                        `profile = "high"` or `profile = "main"`.
+- `profile = "high422"`: A ffmpeg compatible profile. Currently only applies to
+                         `.mp4`. If you have issues playing a video, try
+                         `profile = "high"` or `profile = "main"`.
 - `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (pix_fmt). Currently
                               only applies to `.mp4`. Defaults to `yuv444p` for
                               `profile = high444`.
