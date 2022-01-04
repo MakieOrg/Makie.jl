@@ -125,6 +125,7 @@ function render_frame(screen::Screen; resize_buffers=true)
         return Makie.zvalue2d(plot)
     end
     sort!(screen.renderlist; by=sortby)
+
     # NOTE
     # The transparent color buffer is reused by SSAO and FXAA. Changing the
     # render order here may introduce artifacts because of that.
