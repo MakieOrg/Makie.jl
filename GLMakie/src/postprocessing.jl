@@ -41,7 +41,7 @@ function OIT_postprocessor(framebuffer)
         :prod_alpha => framebuffer[:OIT_weight][2],
     )
     pass = RenderObject(
-        data, shader, 
+        data, shader,
         () -> begin
             glDepthMask(GL_TRUE)
             glDisable(GL_DEPTH_TEST)
@@ -54,7 +54,7 @@ function OIT_postprocessor(framebuffer)
             # opaque.rgb = 1 * src.rgb + src.a * opaque.rgb
             # opaque.a   = 0 * src.a   + 1 * opaque.a
             glBlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_ONE)
-        end, 
+        end,
         nothing
     )
     pass.postrenderfunction = () -> draw_fullscreen(pass.vertexarray.id)
@@ -150,7 +150,7 @@ function ssao_postprocessor(framebuffer)
     pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing)
     pass2.postrenderfunction = () -> draw_fullscreen(pass2.vertexarray.id)
     color_id = framebuffer[:color][1]
-  
+
     full_render = screen -> begin
         fb = screen.framebuffer
         w, h = size(fb)
@@ -219,7 +219,8 @@ function fxaa_postprocessor(framebuffer)
         loadshader("postprocessing/postprocess.frag")
     )
     data1 = Dict{Symbol, Any}(
-        :color_texture => framebuffer[:color][2]
+        :color_texture => framebuffer[:color][2],
+        :object_ids => framebuffer[:objectid][2]
     )
     pass1 = RenderObject(data1, shader1, PostprocessPrerender(), nothing)
     pass1.postrenderfunction = () -> draw_fullscreen(pass1.vertexarray.id)

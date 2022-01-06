@@ -74,7 +74,6 @@ function uniformlocations(nametypedict::Dict{Symbol, GLenum}, program)
     texturetarget = -1 # start -1, as texture samplers start at 0
     for (name, typ) in nametypedict
         loc = get_uniform_location(program, name)
-        str_name = string(name)
         if istexturesampler(typ)
             texturetarget += 1
             result[name] = (loc, texturetarget)

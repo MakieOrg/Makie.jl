@@ -157,7 +157,7 @@ function render_frame(screen::Screen; resize_buffers=true)
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
     glStencilMask(0x00)
-    GLAbstraction.render(screen, false, true, true)
+    GLAbstraction.render(screen, false, true)
 
     # SSAO
     screen.postprocessors[1].render(screen)
@@ -167,7 +167,7 @@ function render_frame(screen::Screen; resize_buffers=true)
     glEnable(GL_STENCIL_TEST)
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
     glStencilMask(0x00)
-    GLAbstraction.render(screen, false, true, false)
+    GLAbstraction.render(screen, false, false)
     glDisable(GL_STENCIL_TEST)
 
 
@@ -185,10 +185,8 @@ function render_frame(screen::Screen; resize_buffers=true)
     glEnable(GL_STENCIL_TEST)
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
     glStencilMask(0x00)
-    GLAbstraction.render(screen, true, true, true)
-    GLAbstraction.render(screen, true, true, false)
-    GLAbstraction.render(screen, true, false, true)
-    GLAbstraction.render(screen, true, false, false)
+    GLAbstraction.render(screen, true, true)
+    GLAbstraction.render(screen, true, false)
     glDisable(GL_STENCIL_TEST)
 
     # TRANSPARENT BLEND
@@ -197,18 +195,8 @@ function render_frame(screen::Screen; resize_buffers=true)
     # FXAA
     screen.postprocessors[3].render(screen)
 
-    # no FXAA primary render
-    glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
-    glEnable(GL_STENCIL_TEST)
-    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
-    glStencilMask(0x00)
-    GLAbstraction.render(screen, false, false, true)
-    GLAbstraction.render(screen, false, false, false)
-    glDisable(GL_STENCIL_TEST)
-
     # transfer everything to the screen
     screen.postprocessors[4].render(screen)
-
 
     return
 end
@@ -221,14 +209,13 @@ function id2scene(screen, id1)
     return false, nothing
 end
 
-function GLAbstraction.render(screen::GLScreen, transparent::Bool, fxaa::Bool, ssao::Bool)
+function GLAbstraction.render(screen::GLScreen, transparent::Bool, ssao::Bool)
     # Somehow errors in here get ignored silently!?
     try
         # sort by overdraw, so that overdrawing objects get drawn last!
         # sort!(screen.renderlist, by = ((zi, id, robj),)-> robj.prerenderfunction.overdraw[])
         for (zindex, screenid, elem) in screen.renderlist
-            if !((elem[:transparency][] == transparent) &&
-                (elem[:fxaa][] == fxaa) && (elem[:ssao][] == ssao))
+            if !((elem[:transparency][] == transparent) && (elem[:ssao][] == ssao))
                 continue
             end
 

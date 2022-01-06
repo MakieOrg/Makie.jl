@@ -5,7 +5,7 @@ layout(location=1) out uvec2 fragment_groupid;
 {{buffers}}
 // resolves to:
 // // if transparency == true
-// layout(location=2) out float coverage; 
+// layout(location=2) out float coverage;
 
 // // if transparency == false && enable_SSAO[] = true
 // layout(location=2) out vec3 fragment_position;
@@ -15,13 +15,19 @@ layout(location=1) out uvec2 fragment_groupid;
 in vec3 o_view_pos;
 in vec3 o_normal;
 
+uniform bool fxaa;
+
 void write2framebuffer(vec4 color, uvec2 id){
     if(color.a <= 0.0)
         discard;
 
     // For plot/sprite picking
-    fragment_groupid = id;
-    
+    if (fxaa) {
+        fragment_groupid = uvec2(0, id.y);
+    } else {
+        fragment_groupid = id;
+    }
+
     {{buffer_writes}}
     // resolves to:
 
