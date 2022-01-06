@@ -14,20 +14,26 @@ vec3 linear_tone_mapping(vec3 color, float gamma)
     return color;
 }
 
+bool unpack_bool(uint id) {
+    uint high_bit_mask = uint(1) << uint(31);
+    return id >= high_bit_mask;
+}
+
 void main(void)
 {
     vec4 color = texture(color_texture, frag_uv).rgba;
     if(color.a <= 0){
         discard;
     }
-    uvec2 ids = texture(object_ids, frag_uv).xy;
+
+    uint id = texture(object_ids, frag_uv).x;
     // do tonemappings
     //opaque = linear_tone_mapping(color.rgb, 1.8);  // linear color output
     fragment_color.rgb = color.rgb;
-    // save luma in alpha for FXAA
-    if (ids.x != uint(0)) {
-        fragment_color.a = 1.0;
-    } else {
+    // we store fxaa = true/false in highbit of the object id
+    if (unpack_bool(id)) {
         fragment_color.a = dot(color.rgb, vec3(0.299, 0.587, 0.114)); // compute luma
+    } else {
+        fragment_color.a = 1.0;
     }
 }

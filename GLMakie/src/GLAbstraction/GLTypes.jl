@@ -275,7 +275,12 @@ end
 
 ##################################################################################
 
-const RENDER_OBJECT_ID_COUNTER = Ref(zero(GLushort))
+const RENDER_OBJECT_ID_COUNTER = Ref(zero(UInt32))
+
+function pack_bool(id, bool)
+    highbit_mask = UInt32(1) << UInt32(31)
+    return id + (bool ? highbit_mask : UInt32(0))
+end
 
 mutable struct RenderObject{Pre}
     main                 # main object
@@ -283,18 +288,20 @@ mutable struct RenderObject{Pre}
     vertexarray::GLVertexArray
     prerenderfunction::Pre
     postrenderfunction
-    id::GLushort
+    id::UInt32
     boundingbox          # workaround for having lazy boundingbox queries, while not using multiple dispatch for boundingbox function (No type hierarchy for RenderObjects)
     function RenderObject{Pre}(
             main, uniforms::Dict{Symbol,Any}, vertexarray::GLVertexArray,
             prerenderfunctions, postrenderfunctions,
             boundingbox
         ) where Pre
-        RENDER_OBJECT_ID_COUNTER[] += one(GLushort)
+        fxaa = to_value(pop!(uniforms, :fxaa, true))
+        RENDER_OBJECT_ID_COUNTER[] += one(UInt32)
+        id = pack_bool(RENDER_OBJECT_ID_COUNTER[], fxaa)
         new(
             main, uniforms, vertexarray,
             prerenderfunctions, postrenderfunctions,
-            RENDER_OBJECT_ID_COUNTER[], boundingbox
+            id, boundingbox
         )
     end
 end

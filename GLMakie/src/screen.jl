@@ -14,7 +14,7 @@ mutable struct Screen <: GLScreen
     renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}}
     postprocessors::Vector{PostProcessor}
     cache::Dict{UInt64, RenderObject}
-    cache2plot::Dict{UInt16, AbstractPlot}
+    cache2plot::Dict{UInt32, AbstractPlot}
     framecache::Matrix{RGB{N0f8}}
     render_tick::Observable{Nothing}
     window_open::Observable{Bool}
@@ -27,7 +27,7 @@ mutable struct Screen <: GLScreen
             renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}},
             postprocessors::Vector{PostProcessor},
             cache::Dict{UInt64, RenderObject},
-            cache2plot::Dict{UInt16, AbstractPlot},
+            cache2plot::Dict{UInt32, AbstractPlot},
         )
         s = size(framebuffer)
         return new(
@@ -372,7 +372,7 @@ function Screen(;
         Tuple{ZIndex, ScreenID, RenderObject}[],
         postprocessors,
         Dict{UInt64, RenderObject}(),
-        Dict{UInt16, AbstractPlot}(),
+        Dict{UInt32, AbstractPlot}(),
     )
 
     GLFW.SetWindowRefreshCallback(window, window -> begin
@@ -416,12 +416,9 @@ function global_gl_screen(resolution::Tuple, visibility::Bool, tries = 1)
 end
 
 
-
 #################################################################################
 ### Point picking
 ################################################################################
-
-
 
 function pick_native(screen::Screen, rect::Rect2i)
     isopen(screen) || return Matrix{SelectionID{Int}}(undef, 0, 0)
@@ -436,11 +433,6 @@ function pick_native(screen::Screen, rect::Rect2i)
     sid = zeros(SelectionID{UInt32}, widths(rect)...)
     if rx > 0 && ry > 0 && rx + rw <= w && ry + rh <= h
         glReadPixels(rx, ry, rw, rh, buff.format, buff.pixeltype, sid)
-        for i in eachindex(sid)
-            if sid[i][2] > 0x3f800000
-                sid[i] = SelectionID(0, sid[i].index)
-            end
-        end
         return sid
     else
         error("Pick region $rect out of screen bounds ($w, $h).")
