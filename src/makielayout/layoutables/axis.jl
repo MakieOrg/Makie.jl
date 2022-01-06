@@ -74,7 +74,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
 
     scene = Scene(topscene, px_area=scenearea)
 
-    background = poly!(topscene, scenearea, color = backgroundcolor, strokewidth = 0, inspectable = false)
+    background = mesh!(topscene, scenearea, color = backgroundcolor, inspectable = false, shading=false)
     translate!(background, 0, 0, -100)
     decorations[:background] = background
 
