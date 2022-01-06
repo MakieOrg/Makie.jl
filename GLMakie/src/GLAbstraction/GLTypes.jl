@@ -289,7 +289,7 @@ mutable struct RenderObject{Pre}
     prerenderfunction::Pre
     postrenderfunction
     id::UInt32
-    boundingbox          # workaround for having lazy boundingbox queries, while not using multiple dispatch for boundingbox function (No type hierarchy for RenderObjects)
+    boundingbox # TODO, remove, basicaly deprecated
     function RenderObject{Pre}(
             main, uniforms::Dict{Symbol,Any}, vertexarray::GLVertexArray,
             prerenderfunctions, postrenderfunctions,
@@ -297,6 +297,11 @@ mutable struct RenderObject{Pre}
         ) where Pre
         fxaa = to_value(pop!(uniforms, :fxaa, true))
         RENDER_OBJECT_ID_COUNTER[] += one(UInt32)
+        # Store fxaa in ID, so we can access it in the shader to create a mask
+        # for the fxaa render pass
+        # In theory, we need to unpack the id again as well,
+        # But with this implementation, the fxaa flag can't be changed,
+        # and since this is a UUID, it shouldn't matter
         id = pack_bool(RENDER_OBJECT_ID_COUNTER[], fxaa)
         new(
             main, uniforms, vertexarray,

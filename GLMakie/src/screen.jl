@@ -493,8 +493,7 @@ function Makie.pick_closest(scene::SceneLike, screen::Screen, xy, range)
     x, y =  xy .+ 1 .- Vec2f(x0, y0)
     for i in 1:dx, j in 1:dy
         d = (x-i)^2 + (y-j)^2
-        if (d < min_dist) && (sid[i, j][1] > 0x00000000) &&
-            (sid[i, j][2] < 0x3f800000) && haskey(screen.cache2plot, sid[i, j][1])
+        if (d < min_dist) && (sid[i, j][1] > 0) && haskey(screen.cache2plot, sid[i, j][1])
             min_dist = d
             id = convert(SelectionID{Int}, sid[i, j])
         end

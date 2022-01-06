@@ -34,6 +34,7 @@ void main(void)
     if (unpack_bool(id)) {
         fragment_color.a = dot(color.rgb, vec3(0.299, 0.587, 0.114)); // compute luma
     } else {
+        // we disable fxaa by setting luma to 1
         fragment_color.a = 1.0;
     }
 }
