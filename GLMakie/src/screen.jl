@@ -69,7 +69,7 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
 
         # These need explicit clean up because (some of) the source nodes
         # remain whe the plot is deleated.
-        for k in (:lightposition, :normalmatrix)
+        for k in (:normalmatrix, )
             if haskey(renderobject.uniforms, k)
                 n = renderobject.uniforms[k]
                 for input in n.inputs

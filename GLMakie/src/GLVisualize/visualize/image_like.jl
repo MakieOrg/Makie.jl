@@ -114,6 +114,7 @@ function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: VolumeE
             "fragment_output.frag", "util.vert", "volume.vert", "volume.frag",
             view = Dict(
                 "depth_init"  => vol_depth_init(to_value(enable_depth)),
+                "depth_default"  => vol_depth_default(to_value(enable_depth)),
                 "depth_main"  => vol_depth_main(to_value(enable_depth)),
                 "depth_write" => vol_depth_write(to_value(enable_depth)),
                 "buffers" => output_buffers(to_value(transparency)),
@@ -127,6 +128,7 @@ function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: VolumeE
 end
 
 vol_depth_init(enable) = enable ? "float depth = 100000.0;" : ""
+vol_depth_default(enable) = enable ? "gl_FragDepth = gl_FragCoord.z;" : ""
 function vol_depth_main(enable)
     if enable
         """
