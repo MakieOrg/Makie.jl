@@ -58,6 +58,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
     end
 
     uniform_dict[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
+    uniform_dict[:backlight] = plot.backlight
     get!(uniform_dict, :ambient, Vec3f(1))
 
     return InstancedProgram(WebGL(), lasset("particles.vert"), lasset("particles.frag"),
@@ -75,7 +76,7 @@ primitive_shape(x::Shape) = Cint(x)
 
 function char_scale_factor(char, font)
     # uv * size(ta.data) / Makie.PIXELSIZE_IN_ATLAS[] is the padded glyph size
-    # normalized to the size the glyph was generated as. 
+    # normalized to the size the glyph was generated as.
     ta = Makie.get_texture_atlas()
     lbrt = glyph_uv_width!(ta, char, font)
     width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
@@ -102,7 +103,7 @@ function scatter_shader(scene::Scene, attributes)
     per_instance_keys = (:offset, :rotations, :markersize, :color, :intensity,
                          :uv_offset_width, :marker_offset)
     uniform_dict = Dict{Symbol,Any}()
-    
+
     if haskey(attributes, :marker) && attributes[:marker][] isa Union{Char, Vector{Char},String}
         font = get(attributes, :font, Observable(Makie.defaultfont()))
         attributes[:markersize] = map(rescale_glyph, attributes[:marker], font, attributes[:markersize])

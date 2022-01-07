@@ -91,7 +91,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
 
     uniforms[:shading] = plot.shading
 
-    for key in (:diffuse, :specular, :shininess)
+    for key in (:diffuse, :specular, :shininess, :backlight)
         uniforms[key] = plot[key]
     end
 

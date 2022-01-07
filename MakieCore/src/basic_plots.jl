@@ -57,7 +57,7 @@ end
     volume(volume_data)
     volume(x, y, z, volume_data)
 
-Plots a volume, with optional physical dimensions `x, y, z`. 
+Plots a volume, with optional physical dimensions `x, y, z`.
 Available algorithms are:
 * `:iso` => IsoValue
 * `:absorption` => Absorption
@@ -90,6 +90,7 @@ Plots a surface, where `(x, y)`  define a grid whose heights are the entries in 
 @recipe(Surface, x, y, z) do scene
     Attributes(;
         default_theme(scene)...,
+        backlight = 0f0,
         color = nothing,
         colormap = theme(scene, :colormap),
         colorrange = automatic,
@@ -152,6 +153,7 @@ Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [Geome
     Attributes(;
         default_theme(scene)...,
         color = :black,
+        backlight = 0f0,
         colormap = theme(scene, :colormap),
         colorrange = automatic,
         interpolate = false,
@@ -214,6 +216,7 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
         marker = :Sphere,
         markersize = 0.1,
         rotations = 0.0,
+        backlight = 0f0,
         # markerspace = relative,
         shading = true,
         fxaa = true,

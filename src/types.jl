@@ -295,7 +295,7 @@ struct Transformation <: Transformable
     scale::Observable{Vec3f}
     rotation::Observable{Quaternionf}
     model::Observable{Mat4f}
-    # data conversion node, for e.g. log / log10 etc
+    # data conversion observable, for e.g. log / log10 etc
     transform_func::Observable{Any}
     function Transformation(translation, scale, rotation, model, transform_func)
         return new(

@@ -34,8 +34,8 @@ function disconnect!(c::EmptyCamera)
 end
 
 function disconnect!(observables::Vector)
-    for node in observables
-        disconnect!(node)
+    for obs in observables
+        disconnect!(obs)
     end
     empty!(observables)
     return
