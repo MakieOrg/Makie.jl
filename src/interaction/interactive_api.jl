@@ -67,7 +67,7 @@ end
 """
     mouse_in_scene(scene::Scene[, priority = 0])
 
-Returns a new node that is true whenever the cursor is inside the given scene.
+Returns a new observable that is true whenever the cursor is inside the given scene.
 
 See also: [`is_mouseinside`](@ref)
 """

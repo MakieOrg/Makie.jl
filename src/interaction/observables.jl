@@ -26,7 +26,7 @@ function lift(
     return result
 end
 
-Base.close(node::Observable) = empty!(node.listeners)
+Base.close(obs::Observable) = empty!(obs.listeners)
 
 """
 Observables.off but without throwing an error
