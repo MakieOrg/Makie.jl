@@ -119,7 +119,7 @@ nothing # hide
 If `x` changes, so does `y` and then `z`.
 
 Note, though, that changing `y` does not change `x`.
-There is no guarantee that chained Nodes are always synchronized, because they
+There is no guarantee that chained Observables are always synchronized, because they
 can be mutated in different places, even sidestepping the change trigger mechanism.
 
 ```julia:code6
@@ -178,7 +178,7 @@ One very common problem with a pipeline based on multiple observables is that yo
 Theoretically, each observable change triggers its listeners immediately.
 If a function depends on two or more observables, changing one right after the other would trigger it multiple times, which is often not what you want.
 
-Here's an example where we define two nodes and lift a third one from them:
+Here's an example where we define two Observables and lift a third one from them:
 
 ```julia
 xs = Observable(1:10)
