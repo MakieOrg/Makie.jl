@@ -1,6 +1,6 @@
-# Remote servers
+# Headless
 
-Makie can be used remotely and it supports working headless systems (such as CI servers).
+Makie can be used on headless systems (such as CI servers).
 This page describes what is required to get different back ends working in headless systems.
 
 ## CairoMakie
