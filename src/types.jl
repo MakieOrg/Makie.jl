@@ -278,7 +278,7 @@ struct Camera
     eyeposition::Observable{Vec3f}
 
     """
-    To make camera interactive, steering nodes are connected to the different matrices.
+    To make camera interactive, steering observables are connected to the different matrices.
     We need to keep track of them, so, that we can connect and disconnect them.
     """
     steering_nodes::Vector{ObserverFunction}

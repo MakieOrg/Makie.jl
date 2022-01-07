@@ -43,6 +43,7 @@ function safe_off(o::Observables.AbstractObservable, f)
         end
     end
 end
+
 """
     map_once(closure, inputs::Observable....)::Observable
 
