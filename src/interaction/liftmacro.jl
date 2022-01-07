@@ -1,20 +1,20 @@
 """
 Returns a set of all sub-expressions in an expression that look like \$some_expression
 """
-function find_node_expressions(obj::Expr)
-    node_expressions = Set()
+function find_observable_expressions(obj::Expr)
+    observable_expressions = Set()
     if is_interpolated_observable(obj)
-        push!(node_expressions, obj)
+        push!(observable_expressions, obj)
     else
         for a in obj.args
-            node_expressions = union(node_expressions, find_node_expressions(a))
+            observable_expressions = union(observable_expressions, find_observable_expressions(a))
         end
     end
-    node_expressions
+    observable_expressions
 end
 
 # empty dict if x is not an Expr
-find_node_expressions(x) = Set()
+find_observable_expressions(x) = Set()
 
 is_interpolated_observable(x) = false
 function is_interpolated_observable(e::Expr)
@@ -22,11 +22,11 @@ function is_interpolated_observable(e::Expr)
 end
 
 """
-Replaces every subexpression that looks like a node expression with a substitute symbol stored in `exprdict`.
+Replaces every subexpression that looks like a observable expression with a substitute symbol stored in `exprdict`.
 """
 function replace_observable_expressions!(exp::Expr, exprdict)
     if is_interpolated_observable(exp)
-        error("You can't @lift an expression that only consists of a single node.")
+        error("You can't @lift an expression that only consists of a single observable.")
     else
         for (i, arg) in enumerate(exp.args)
             if is_interpolated_observable(arg)
@@ -56,7 +56,7 @@ z = lift((x, y) -> x .+ y, x, y)
 ## after
 z = @lift(\$x .+ \$y)
 
-You can also use parentheses around an expression if that expression evaluates to a node.
+You can also use parentheses around an expression if that expression evaluates to an observable.
 
 ```julia
 nt = (x = Observable(1), y = Observable(2))
@@ -65,25 +65,25 @@ nt = (x = Observable(1), y = Observable(2))
 """
 macro lift(exp)
 
-    node_expr_set = find_node_expressions(exp)
+    observable_expr_set = find_observable_expressions(exp)
 
-    if length(node_expr_set) == 0
+    if length(observable_expr_set) == 0
         error("Did not find any interpolated observables. Use '\$(observable)' to interpolate it into the macro.")
     end
 
     # store expressions with their substitute symbols, gensym them manually to be
     # able to escape the expression later
-    node_expr_arg_dict = Dict(expr => gensym("arg$i") for (i, expr) in enumerate(node_expr_set))
+    observable_expr_arg_dict = Dict(expr => gensym("arg$i") for (i, expr) in enumerate(observable_expr_set))
 
-    replace_observable_expressions!(exp, node_expr_arg_dict)
+    replace_observable_expressions!(exp, observable_expr_arg_dict)
 
     # keep an array for ordering
-    node_expressions_array = collect(keys(node_expr_arg_dict))
-    node_substitutes_array = [node_expr_arg_dict[expr] for expr in node_expressions_array]
-    node_expressions_without_dollar = [n.args[1] for n in node_expressions_array]
+    observable_expressions_array = collect(keys(observable_expr_arg_dict))
+    observable_substitutes_array = [observable_expr_arg_dict[expr] for expr in observable_expressions_array]
+    observable_expressions_without_dollar = [n.args[1] for n in observable_expressions_array]
 
     # the arguments to the lifted function
-    argtuple = Expr(Symbol(:tuple), node_substitutes_array...)
+    argtuple = Expr(Symbol(:tuple), observable_substitutes_array...)
 
     # the lifted function itself
     function_expression = Expr(Symbol(:->), argtuple, exp)
@@ -93,7 +93,7 @@ macro lift(exp)
         Symbol(:call),
         Symbol(:lift),
         esc(function_expression),
-        esc.(node_expressions_without_dollar)...
+        esc.(observable_expressions_without_dollar)...
     )
 
     lift_expression
