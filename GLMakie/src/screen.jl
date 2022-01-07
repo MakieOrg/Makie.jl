@@ -67,7 +67,7 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
             error("Could not find $(typeof(subplot)) in current GLMakie screen!")
         end
 
-        # These need explicit clean up because (some of) the source nodes
+        # These need explicit clean up because (some of) the source observables
         # remain whe the plot is deleated.
         for k in (:normalmatrix, )
             if haskey(renderobject.uniforms, k)

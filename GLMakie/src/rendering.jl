@@ -153,23 +153,26 @@ function render_frame(screen::Screen; resize_buffers=true)
     setup!(screen)
     glDrawBuffers(length(fb.render_buffer_ids), fb.render_buffer_ids)
 
-    # render with FXAA & SSAO
+    # render with SSAO
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
     glStencilMask(0x00)
-    GLAbstraction.render(screen, false, true)
-
+    GLAbstraction.render(screen) do robj
+        return !Bool(robj[:transparency][]) && Bool(robj[:ssao][])
+    end
     # SSAO
     screen.postprocessors[1].render(screen)
 
-    # render with FXAA but no SSAO
+    # render no SSAO
     glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
     glEnable(GL_STENCIL_TEST)
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
     glStencilMask(0x00)
-    GLAbstraction.render(screen, false, false)
+    # render all non ssao
+    GLAbstraction.render(screen) do robj
+        return !Bool(robj[:transparency][]) && !Bool(robj[:ssao][])
+    end
     glDisable(GL_STENCIL_TEST)
-
 
     # TRANSPARENT RENDER
     # clear sums to 0
@@ -185,8 +188,10 @@ function render_frame(screen::Screen; resize_buffers=true)
     glEnable(GL_STENCIL_TEST)
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
     glStencilMask(0x00)
-    GLAbstraction.render(screen, true, true)
-    GLAbstraction.render(screen, true, false)
+    # Render only transparent objects
+    GLAbstraction.render(screen) do robj
+        return Bool(robj[:transparency][])
+    end
     glDisable(GL_STENCIL_TEST)
 
     # TRANSPARENT BLEND
@@ -209,13 +214,13 @@ function id2scene(screen, id1)
     return false, nothing
 end
 
-function GLAbstraction.render(screen::GLScreen, transparent::Bool, ssao::Bool)
+function GLAbstraction.render(filter_elem_func, screen::GLScreen)
     # Somehow errors in here get ignored silently!?
     try
         # sort by overdraw, so that overdrawing objects get drawn last!
         # sort!(screen.renderlist, by = ((zi, id, robj),)-> robj.prerenderfunction.overdraw[])
         for (zindex, screenid, elem) in screen.renderlist
-            if !((elem[:transparency][] == transparent) && (elem[:ssao][] == ssao))
+            if !filter_elem_func(elem)
                 continue
             end
 
