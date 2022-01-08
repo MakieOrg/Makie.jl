@@ -172,7 +172,8 @@ function plot!(p::StreamPlot)
         lift(x->x[3], data), color = lift(last, data), colormap = p.colormap, colorrange = p.colorrange,
         linestyle = p.linestyle,
         linewidth = p.linewidth,
-        inspectable = p.inspectable
+        inspectable = p.inspectable,
+        transparency = p.transparency
     )
     N = ndims(p.limits[])
 
