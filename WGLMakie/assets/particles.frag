@@ -22,6 +22,10 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
 }
 
 void main() {
-    vec3 color = blinnphong(frag_normal, frag_position, frag_lightdir, frag_color.xyz);
+    vec3 L = normalize(frag_lightdir);
+    vec3 N = normalize(frag_normal);
+    vec3 light1 = blinnphong(N, frag_position, L, frag_color.rgb);
+    vec3 light2 = blinnphong(N, frag_position, -L, frag_color.rgb);
+    vec3 color = get_ambient() * frag_color.rgb + light1 + get_backlight() * light2;
     fragment_color = vec4(color, frag_color.a);
 }
