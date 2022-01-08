@@ -122,6 +122,7 @@ function create_shader(mscene::Scene, plot::Union{Heatmap,Image})
                      highclip=lift(nothing_or_color, plot.highclip),
                      lowclip=lift(nothing_or_color, plot.lowclip),
                      nan_color=lift(nothing_or_color, plot.nan_color),
+                     backlight=0f0,
                      depth_shift = get(plot, :depth_shift, Observable(0f0)))
 end
 
