@@ -122,6 +122,7 @@ function render_frame(screen::Screen; resize_buffers=true)
     function sortby(x)
         robj = x[3]
         plot = screen.cache2plot[robj.id]
+        # TODO, use actual boundingbox
         return Makie.zvalue2d(plot)
     end
     sort!(screen.renderlist; by=sortby)
