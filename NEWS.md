@@ -1,15 +1,16 @@
 # News
 
-## master
+## v0.16
 
 #### Big Changes
 
 - add ECDF plot [#1310](https://github.com/JuliaPlots/Makie.jl/pull/1310)
 - add Order Independent Transparency to GLMakie [#1418](https://github.com/JuliaPlots/Makie.jl/pull/1418), [#1506](https://github.com/JuliaPlots/Makie.jl/pull/1506). This type of transparency is now used with `transpareny = true`. The old transparency handling is available with `transparency = false`.
 - fix blurry text in GLMakie and WGLMakie [#1494](https://github.com/JuliaPlots/Makie.jl/pull/1494)
-- A new experimental Backend for ray tracing got introduced: https://makie.juliaplots.org/dev/documentation/backends/rprmakie/
+- A new experimental Backend for ray tracing got introduced: [RPRMakie](https://makie.juliaplots.org/stable/documentation/backends/rprmakie/)
 - **Breaking** Remove `Node` alias [#1307](https://github.com/JuliaPlots/Makie.jl/pull/1307), [#1393](https://github.com/JuliaPlots/Makie.jl/pull/1393). To upgrade, simply replace all occurrences of `Node` with `Observable`
 - **Breaking** clean up Scene type [#1192](https://github.com/JuliaPlots/Makie.jl/pull/1192), [#1393](https://github.com/JuliaPlots/Makie.jl/pull/1393). Long story short, Scene() doesn't create any axes or limits anymore. All keywords like `raw`, `show_axis` have been removed. A scene now always works like when using the deprecated `raw=true`. All the high level functionality like showing an axis and adding a 3d camera has been moved to `LScene`. See the new `Scene` tutorial for more info: https://makie.juliaplots.org/dev/tutorials/scenes/
+- **lights got moved to scene** [lighting docs](https://makie.juliaplots.org/stable/documentation/lighting) and [RPRMakie examples](https://makie.juliaplots.org/stable/documentation/backends/rprmakie/)
 
 
 #### Small Changes
@@ -30,7 +31,7 @@
 - add conversion for offsetarrays [#1260](https://github.com/JuliaPlots/Makie.jl/pull/1260)
 
 #### All other changes
-Are collected [in this PR](https://github.com/JuliaPlots/Makie.jl/pull/1521) and in the [release notes](https://github.com/JuliaPlots/Makie.jl/releases).
+Are collected [in this PR](https://github.com/JuliaPlots/Makie.jl/pull/1521) and in the [release notes](https://github.com/JuliaPlots/Makie.jl/releases/tag/v0.16.0).
 
 ## v0.15.3
 - The functions `labelslidergrid!` and `labelslider!` now set fixed widths for the value column with a heuristic. It is possible now to pass `Formatting.format` format strings as format specifiers in addition to the previous functions.
