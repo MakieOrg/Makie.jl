@@ -1,15 +1,15 @@
 # Lighting
 
-For 3D scenes, `GLMakie` offers several attributes to control the lighting of the scene. These are set per plot.
+For 3D scenes, `GLMakie` offers several attributes to control the lighting of the material.
 
 - `ambient::Vec3f`: Objects should never be completely dark; we use an ambient light to simulate background lighting, and give the object some color. Each element of the vector represents the intensity of color in R, G or B respectively.
 - `diffuse::Vec3f`: Simulates the directional impact which the light source has on the plot object. This is the most visually significant component of the lighting model; the more a part of an object faces the light source, the brighter it becomes. Each element of the vector represents the intensity of color in R, G or B respectively.
 - `specular::Vec3f`: Simulates the bright spot of a light that appears on shiny objects. Specular highlights are more inclined to the color of the light than the color of the object. Each element of the vector represents the intensity of color in R, G or B respectively.
-
 - `shininess::Float32`: Controls the shininess of the object. Higher shininess reduces the size of the highlight, and makes it sharper. This value must be positive.
 - `lightposition::Vec3f`: The location of the main light source; by default, the light source is at the location of the camera.
 
 You can find more information on how these were implemented [here](https://learnopengl.com/Lighting/Basic-Lighting).
+Some usage examples can be found in the [RPRMakie examples](https://makie.juliaplots.org/stable/documentation/backends/rprmakie/).
 
 ## SSAO
 
