@@ -228,10 +228,14 @@ end
 
 # These imitate the old camera
 function cam3d!(scene; zoom_shift_lookat = true, fixed_axis = true, kwargs...)
-    Camera3D(scene, zoom_shift_lookat = zoom_shift_lookat, fixed_axis = fixed_axis; kwargs...)
+    cam = Camera3D(scene, zoom_shift_lookat = zoom_shift_lookat, fixed_axis = fixed_axis; kwargs...)
+    update_cam!(scene, cam)
+    cam
 end
 function cam3d_cad!(scene; cad = true, zoom_shift_lookat = false, fixed_axis = false, kwargs...)
-    Camera3D(scene, cad = cad, zoom_shift_lookat = zoom_shift_lookat, fixed_axis = fixed_axis; kwargs...)
+    cam = Camera3D(scene, cad = cad, zoom_shift_lookat = zoom_shift_lookat, fixed_axis = fixed_axis; kwargs...)
+    update_cam!(scene, cam)
+    cam
 end
 
 
