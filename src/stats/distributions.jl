@@ -35,10 +35,10 @@ samples, i.e., `AbstractVector{<:Real}`, whereas `x` can be
 - a distribution type, e.g. `Normal`.
 In the last case, the Q-Q plot by fitting that distribution type to the data `y`.
 
-The attribute `qqline` determines how to compute a fit line for the Q-Q plot.
+The attribute `qqline` (defaults to `:R`) determines how to compute a fit line for the Q-Q plot.
 Possible values are the following.
-- `:identity` draws the identity line (useful to see if the two distributions are the same).
-- `:fit` fits the line to the quantile pairs (useful to see if one distribution can be obtained for the other via an affine transformation).
+- `:identity` draws the identity line (useful to see `x` and `y` follow the same distribution).
+- `:fit` fits the line to the quantile pairs (useful to see if the distribution of `y` can be obtained from the distribution of `x` via an affine transformation).
 - `:quantile` is analogous to `:fit` but uses a quantile-based fitting method.
 - `:R` is an alias for `:quantile`, as that is the default behavior in `:R`.
 - `:none` (or any other value) omits drawing the line.
@@ -79,7 +79,7 @@ Shorthand for `qqplot(Normal, y)`. See [`qqplot`](@ref) for more details.
     default_theme(scene, QQPlot)
 end
 
-function fit_qqline(h::QQPair; qqline = :identity)
+function fit_qqline(h::QQPair; qqline = :R)
     if qqline in (:fit, :quantile, :identity, :R)
         xs = [extrema(h.qx)...]
         if qqline == :identity
@@ -98,20 +98,20 @@ function fit_qqline(h::QQPair; qqline = :identity)
     end
 end
 
-loc(D::Type{T}, x) where T <: Distribution = Distributions.fit(D, x), x
+loc(D::Type{<:Distribution}, x) = Distributions.fit(D, x), x
 loc(D, x) = D, x
 
-function convert_arguments(::Type{<:QQPlot}, x, y; qqline = :identity)
+function convert_arguments(::Type{<:QQPlot}, x, y; qqline = :R)
     h = qqbuild(loc(x, y)...)
     points = Point2f.(h.qx, h.qy)
     line = fit_qqline(h; qqline = qqline)
     return PlotSpec{QQPlot}(points, line)
 end
 
-convert_arguments(::Type{<:QQNorm}, y; qqline = :identity) =
+convert_arguments(::Type{<:QQNorm}, y; qqline = :R) =
     convert_arguments(QQPlot, Distributions.Normal(0, 1), y; qqline = qqline)
 
-convert_arguments(::PlotFunc, h::QQPair; qqline = :identity) =
+convert_arguments(::PlotFunc, h::QQPair; qqline = :R) =
     convert_arguments(QQPlot, h.qx, h.qy; qqline = qqline)
 
 used_attributes(::Type{<:QQNorm}, y) = (:qqline,)
