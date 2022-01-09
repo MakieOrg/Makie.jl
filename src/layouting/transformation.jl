@@ -290,12 +290,11 @@ function apply_transform(f, itr::ClosedInterval)
     return apply_transform(f, mini) .. apply_transform(f, maxi)
 end
 
-
 function apply_transform(f, r::Rect)
     mi = minimum(r)
     ma = maximum(r)
-    mi_t = apply_transform(f, mi)
-    ma_t = apply_transform(f, ma)
+    mi_t = apply_transform(f, Point(mi))
+    ma_t = apply_transform(f, Point(ma))
     Rect(Vec(mi_t), Vec(ma_t .- mi_t))
 end
 # ambiguity fix
@@ -351,6 +350,7 @@ inverse_transform(::typeof(pseudolog10)) = inv_pseudolog10
 inverse_transform(F::Tuple) = map(inverse_transform, F)
 inverse_transform(::typeof(logit)) = logistic
 inverse_transform(s::Symlog10) = x -> inv_symlog10(x, s.low, s.high)
+inverse_transform(t::PointTrans{N}) where {N} = Makie.PointTrans{N}(inverse_transform(t.f))
 inverse_transform(s) = nothing
 
 function is_identity_transform(t)

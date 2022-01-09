@@ -127,18 +127,18 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     onany(finallimits, xreversed, yreversed, scene.transformation.transform_func) do lims, xrev, yrev, t
         nearclip = -10_000f0
         farclip = 10_000f0
-
         left, bottom = Makie.apply_transform(t, Point(minimum(lims)))
         right, top = Makie.apply_transform(t, Point(maximum(lims)))
 
         leftright = xrev ? (right, left) : (left, right)
         bottomtop = yrev ? (top, bottom) : (bottom, top)
-
-        projection = Makie.orthographicprojection(
-            leftright...,
-            bottomtop..., nearclip, farclip)
-
-        Makie.set_proj_view!(camera(scene), projection, Makie.Mat4f(Makie.I))
+        args = (leftright..., bottomtop...)
+        if all(isfinite, args)
+            projection = Makie.orthographicprojection(args..., nearclip, farclip)
+            Makie.set_proj_view!(camera(scene), projection, Makie.Mat4f(Makie.I))
+        else
+            @warn("Can't set non finite limits")
+        end
     end
 
     xaxis_endpoints = lift(xaxisposition, scene.px_area) do xaxisposition, area
