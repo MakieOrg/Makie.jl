@@ -1,3 +1,5 @@
+const BEZIERPATH_BITMAP_SIZE = Ref(256)
+
 struct MoveTo
     p::Point2{Float64}
 end
@@ -40,6 +42,11 @@ struct BezierPath
     commands::Vector{PathCommand}
 end
 
+# so that the same bezierpath with a different instance of a vector hashes the same
+# and we don't create the same texture atlas entry twice
+Base.:(==)(b1::BezierPath, b2::BezierPath) = b1.commands == b2.commands
+Base.hash(b::BezierPath) = hash(b.commands)
+
 function Base.:+(pc::P, p::Point2) where P <: PathCommand
     fnames = fieldnames(P)
     P(map(f -> getfield(pc, f) + p, fnames)...)
@@ -77,11 +84,11 @@ function rotate(e::EllipticalArc, a)
 end
 rotate(b::BezierPath, a) = BezierPath(PathCommand[rotate(c::PathCommand, a) for c in b.commands])
 
-function fit_to_base_square(b::BezierPath)
+function fit_to_unit_square(b::BezierPath)
     bb = bbox(b)
     w, h = widths(bb)
-    bb_t = translate(b, -(bb.origin + 0.5 * widths(bb)))
-    scale(bb_t, 2 / (max(w, h)))
+    bb_t = translate(b, -(bb.origin))
+    scale(bb_t, 1 / (max(w, h)))
 end
 
 Base.:+(pc::EllipticalArc, p::Point2) = EllipticalArc(pc.c + p, pc.r1, pc.r2, pc.angle, pc.a1, pc.a2)
@@ -159,7 +166,7 @@ function BezierPath(svg::AbstractString; fit = false, bbox = nothing, flipy = fa
     p = BezierPath(commands)
     if fit
         if bbox === nothing
-            p = fit_to_base_square(p)
+            p = fit_to_unit_square(p)
         else
             error("Unkown bbox parameter $bbox")
         end
@@ -167,6 +174,7 @@ function BezierPath(svg::AbstractString; fit = false, bbox = nothing, flipy = fa
     if flipy
         p = scale(p, Vec(1, -1))
     end
+    p
 end
 
 function parse_bezier_commands(svg)
@@ -410,21 +418,22 @@ end
 function render_path(path)
     # in the outline, 1 unit = 1/64px, so 64px = 4096 units wide,
 
-    bitmap_size_px = 256
-    scale_factor = bitmap_size_px * 64 / 2
+    bitmap_size_px = BEZIERPATH_BITMAP_SIZE[]
+    scale_factor = bitmap_size_px * 64
 
-    # we assume that the path is already in a -1 to 1 square and we can
+    # we transform the path into the unit square and we can
     # scale and translate this to a 4096x4096 grid, which is 64px x 64px
     # when rendered to bitmap
 
     # freetype has no ClosePath and EllipticalArc, so those need to be replaced
     path_replaced = replace_nonfreetype_commands(path)
 
-    path_transformed = Makie.translate(Makie.scale(
-        path_replaced,
-        scale_factor,
-    ), Point2f(scale_factor, scale_factor))
+    path_unit_square = fit_to_unit_square(path_replaced)
 
+    path_transformed = Makie.scale(
+        path_unit_square,
+        scale_factor,
+    )
 
     outline_ref = make_outline(path_transformed)
 

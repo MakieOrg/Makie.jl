@@ -183,7 +183,10 @@ Extracts the offset from a primitive.
 """
 primitive_offset(x, scale::Nothing) = Vec2f(0) # default offset
 primitive_offset(x, scale) = const_lift(/, scale, -2f0)  # default offset
-
+function primitive_offset(b::BezierPath, scale)
+    bb = Makie.bbox(b)
+    const_lift((a, b) -> -a ./ b, Vec2f(bb.origin), scale)
+end
 
 """
 Extracts the uv offset and width from a primitive.
@@ -292,6 +295,15 @@ function char_scale_factor(char, font)
     width * Vec2f(size(ta.data)) / Makie.PIXELSIZE_IN_ATLAS[]
 end
 
+function bezierpath_scale_factor(bp)
+    # uv * size(ta.data) / Makie.PIXELSIZE_IN_ATLAS[] is the padded glyph size
+    # normalized to the size the glyph was generated as. 
+    ta = Makie.get_texture_atlas()
+    lbrt = glyph_uv_width!(bp)
+    width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
+    width * Vec2f(size(ta.data)) / Makie.PIXELSIZE_IN_ATLAS[]
+end
+
 # This works the same for x being widths and offsets
 rescale_glyph(char::Char, font, x) = x * char_scale_factor(char, font)
 function rescale_glyph(char::Char, font, xs::Vector)
@@ -305,6 +317,7 @@ function rescale_glyph(str::String, font, xs::Vector)
     map((char, x) -> x * char_scale_factor(char, font), collect(str), xs)
 end
 
+rescale_bezierpath(bp::BezierPath, x) = x .* bezierpath_scale_factor(bp)
 
 """
 Main assemble functions for sprite particles.
@@ -330,6 +343,22 @@ function sprites(p, s, data)
         # to offset.
         data[:offset] = map(rescale_glyph, p[1], font, offset)
         data[:scale] = map(rescale_glyph, p[1], font, scale)
+    end
+
+    if to_value(p[1]) isa BezierPath
+        scale = map(combine_scales,
+            pop!(data, :scale, Observable(nothing)),
+            pop!(data, :scale_x, Observable(nothing)),
+            pop!(data, :scale_y, Observable(nothing)),
+            pop!(data, :scale_z, Observable(nothing))
+        )
+        # offset = get(data, :offset, Observable(Vec2f(0)))
+        offset = primitive_offset(to_value(p[1]), scale)
+
+        # The same scaling that needs to be applied to scale also needs to apply
+        # to offset.
+        data[:offset] = map(rescale_bezierpath, p[1], offset)
+        data[:scale] = map(rescale_bezierpath, p[1], scale)
     end
 
     @gen_defaults! data begin
