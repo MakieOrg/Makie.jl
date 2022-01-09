@@ -517,7 +517,7 @@ end
     # Up to some artifacts from fxaa the left side should be blue and the right red.
     fig = Figure(resolution = (800, 400))
 
-    prim = Rect3D(Point3f(0), Vec3f(1))
+    prim = Rect3f(Point3f(0), Vec3f(1))
     ps  = RNG.rand(Point3f, 10) .+ Point3f(0, 0, 1)
     mat = RNG.rand(4, 4)
     A   = RNG.rand(4,4,4)

@@ -1,3 +1,4 @@
+
 """
     layoutable(Axis, fig_or_scene; bbox = nothing, kwargs...)
 
@@ -653,7 +654,8 @@ end
 
 limitunion(lims1, lims2) = (min(lims1..., lims2...), max(lims1..., lims2...))
 
-function expandlimits_nd(nd_limits::NTuple{N, <:Any}, nd_margins::NTuple{N, <:Any}, transfunc) where {N}
+function expandlimits_nd(nd_limits::Tuple, nd_margins::Tuple, transfunc)
+    N = length(nd_limits)
     # expand limits so that the margins are applied at the current axis scale
     limsordered = map(nd_limits) do dim_lim
         (minimum(dim_lim), maximum(dim_lim))
