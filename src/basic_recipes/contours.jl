@@ -92,10 +92,10 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     cliprange = replace_automatic!(plot, :colorrange) do
         valuerange
     end
-    N = 1024
     cmap = lift(colormap, levels, alpha, cliprange, valuerange) do _cmap, l, alpha, cliprange, vrange
         levels = to_levels(l, vrange)
         nlevels = length(levels)
+        N = 50 * nlevels
 
         iso_eps = if haskey(plot, :isorange)
             plot.isorange[]
