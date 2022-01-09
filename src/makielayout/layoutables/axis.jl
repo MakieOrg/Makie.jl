@@ -74,7 +74,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
 
     scene = Scene(topscene, px_area=scenearea)
 
-    background = poly!(topscene, scenearea, color = backgroundcolor, strokewidth = 0, inspectable = false)
+    background = mesh!(topscene, scenearea, color = backgroundcolor, inspectable = false, shading=false)
     translate!(background, 0, 0, -100)
     decorations[:background] = background
 
@@ -127,15 +127,16 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     onany(finallimits, xreversed, yreversed, scene.transformation.transform_func) do lims, xrev, yrev, t
         nearclip = -10_000f0
         farclip = 10_000f0
+
         left, bottom = Makie.apply_transform(t, Point(minimum(lims)))
         right, top = Makie.apply_transform(t, Point(maximum(lims)))
+
         leftright = xrev ? (right, left) : (left, right)
         bottomtop = yrev ? (top, bottom) : (bottom, top)
 
         projection = Makie.orthographicprojection(
             leftright...,
-            bottomtop...,
-            nearclip, farclip)
+            bottomtop..., nearclip, farclip)
 
         Makie.set_proj_view!(camera(scene), projection, Makie.Mat4f(Makie.I))
     end

@@ -1,6 +1,11 @@
-# Remote servers
+# Headless
 
-Makie can be used remotely and it supports working headless systems (such as CI servers).
+Makie can be used on headless systems (such as CI servers).
+This page describes what is required to get different back ends working in headless systems.
+
+## CairoMakie
+
+For CairoMakie, there shouldn't be any difference in using it on a remote or locally.
 
 ## GLMakie
 
@@ -65,7 +70,3 @@ using JSServe
 
 JSServe.configure_server!(listen_port=8081, forwarded_port=8080)
 ```
-
-## CairoMakie
-
-For CairoMakie there shouldn't be any difference in using it on a remote or locally.

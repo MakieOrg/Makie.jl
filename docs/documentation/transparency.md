@@ -45,16 +45,19 @@ scatter!(
     markersize=150
 )
 scatter!(scene, Point2f(150, 175), color = (:green, 0.5), markersize=150)
+p = scatter!(scene, Point2f(250, 175), color = (:green, 0.5), markersize=150)
+translate!(p, 0, 0, -1)
 scene
 ```
 \end{examplefigure}
 
-The graphic above follows two rules in terms of transparency:
+The graphic above follows three rules in terms of transparency:
 
-1. The drawing order of plots matches their creation order. I.e. the first plot is behind the second.
-2. Plot elements are drawn in order. I.e. the first scattered marker is behind the second which is behind the third.
+1. If two plots are at different z-levels, the one with the higher level will be in front of the lower z-level. (The  green circle on the right is behind all other plots.)
+2. The drawing order of plots at the same z-level matches their creation order. (The red and blue circles are behind the left green circle.)
+3. Plot elements are drawn in order. (The left red circle is behind the middle blue circle which is behind the right red circle.)
 
-This works fine if our concept of depth matches drawing order. But if we explicitly add depth to our plot this idea can fail. Take for example two planes rotated to have a varying depth value:
+The first rule follows from explicit sorting of plots. It is only done in 2D because a plot can have variable depth in 3D. The second and third rules apply in both cases. They will however frequently generate the wrong results in 3D. Take for example two planes rotated to have a varying depth value:
 
 \begin{examplefigure}{}
 ```julia
@@ -86,7 +89,7 @@ fig
 ```
 \end{examplefigure}
 
-Both backends handle this wrong. CairoMakie seems to ignore depth and just draws the planes in plotting order. This isn't quite true - CairoMakie does consider depth on a per-plot basis and in some cases on a per-element basis (e.g. triangles in a 3D mesh). But it can't handle depth on a per pixel level. 
+Both backends handle this wrong. CairoMakie seems to ignore depth and just draws the planes in plotting order. This isn't quite true - CairoMakie does consider depth on a per-plot and in some cases on a per-element basis (e.g. triangles in a 3D mesh). But it can't handle depth on a per pixel level. 
 
 GLMakie on the other hand can handle depth on a per-pixel level, as evident by the correct order shown above. The problem with transparency here is that the order of colors applied to a pixel is not known a priori. GLMakie will draw the red plane first and record depth values for each pixel. Then it will draw the blue plane if it's in front of the other. Solving this exactly would require collecting colors and depth values per pixel, sorting them and then blending them in order. This would be very expensive and is therefore rarely done. 
 

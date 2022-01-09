@@ -12,7 +12,7 @@ end
 
 function Base.show(io::IO, camera::Camera)
     println(io, "Camera:")
-    println(io, "  $(length(camera.steering_nodes)) steering nodes connected")
+    println(io, "  $(length(camera.steering_nodes)) steering observables connected")
     println(io, "  pixel_space: ", camera.pixel_space[])
     println(io, "  view: ", camera.view[])
     println(io, "  projection: ", camera.projection[])
@@ -33,11 +33,11 @@ function disconnect!(c::EmptyCamera)
     return
 end
 
-function disconnect!(nodes::Vector)
-    for node in nodes
-        disconnect!(node)
+function disconnect!(observables::Vector)
+    for obs in observables
+        disconnect!(obs)
     end
-    empty!(nodes)
+    empty!(observables)
     return
 end
 
@@ -51,16 +51,16 @@ function (cl::CameraLift{F, Args})(val) where {F, Args}
 end
 
 """
-    on(f, c::Camera, nodes::Observable...)
+    on(f, c::Camera, observables::Observable...)
 
-When mapping over nodes for the camera, we store them in the `steering_node` vector,
+When mapping over observables for the camera, we store them in the `steering_node` vector,
 to make it easier to disconnect the camera steering signals later!
 """
-function Observables.on(f::Function, camera::Camera, nodes::AbstractObservable...; priority=Int8(0))
+function Observables.on(f::Function, camera::Camera, observables::AbstractObservable...; priority=Int8(0))
     # PriorityObservables don't implement on_any, because that would replace
     # the method in Observables. CameraLift acts as a workaround for now.
-    cl = CameraLift(f, nodes)
-    for n in nodes
+    cl = CameraLift(f, observables)
+    for n in observables
         obs = if n isa PriorityObservable
             on(cl, n, priority=priority)
         else

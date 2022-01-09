@@ -94,7 +94,7 @@ end
 
 function Base.getindex(x::Attributes, key::Symbol)
     x = attributes(x)[key]
-    # We unpack Attributes, even though, for consistency, we store them as nodes
+    # We unpack Attributes, even though, for consistency, we store them as Observables
     # this makes it easier to create nested attributes
     return x[] isa Attributes ? x[] : x
 end

@@ -103,10 +103,9 @@ function meshparticle(p, s, data)
 
         instances = const_lift(length, position)
         shading = true
-        backlight = 0f0
         transparency = false
         shader = GLVisualizeShader(
-            "util.vert", "particles.vert", "standard.frag", "fragment_output.frag", 
+            "util.vert", "particles.vert", "standard.frag", "fragment_output.frag",
             view = Dict(
                 "position_calc" => position_calc(position, position_x, position_y, position_z, TextureBuffer),
                 "light_calc" => light_calc(shading),
@@ -279,7 +278,7 @@ combine_scales(s::Nothing, x, y, z) = Vec3f.(x, y, z)
 
 function char_scale_factor(char, font)
     # uv * size(ta.data) / Makie.PIXELSIZE_IN_ATLAS[] is the padded glyph size
-    # normalized to the size the glyph was generated as. 
+    # normalized to the size the glyph was generated as.
     ta = Makie.get_texture_atlas()
     lbrt = glyph_uv_width!(ta, char, font)
     width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
@@ -290,7 +289,7 @@ end
 rescale_glyph(char::Char, font, x) = x * char_scale_factor(char, font)
 function rescale_glyph(char::Char, font, xs::Vector)
     f = char_scale_factor(char, font)
-    map(xs -> f * x, xs)
+    map(x -> f * x, xs)
 end
 function rescale_glyph(str::String, font, x)
     [x * char_scale_factor(char, font) for char in collect(str)]
@@ -319,7 +318,7 @@ function sprites(p, s, data)
         )
         font = get(data, :font, Observable(Makie.defaultfont()))
         offset = get(data, :offset, Observable(Vec2f(0)))
-        
+
         # The same scaling that needs to be applied to scale also needs to apply
         # to offset.
         data[:offset] = map(rescale_glyph, p[1], font, offset)
@@ -416,7 +415,7 @@ function _default(main::TOrSignal{S}, s::Style, data::Dict) where S <: AbstractS
             Vec4f[glyph_uv_width!(atlas, c, font) for c = str]
         end
     end
-    
+
     # Rescale to include glyph padding and shape
     data[:offset] = map(rescale_glyph, main, data[:font], data[:offset])
     data[:scale] = map(rescale_glyph, main, data[:font], data[:scale])
