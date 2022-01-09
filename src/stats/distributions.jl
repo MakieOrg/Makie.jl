@@ -26,22 +26,29 @@ end
 # -----------------------------------------------------------------------------
 # qqplots (M. K. Borregaard implementation from StatPlots)
 
-@recipe(QQNorm) do scene
-    default_theme(scene, Scatter)
-end
-
 @recipe(QQPlot) do scene
-    default_theme(scene, Scatter)
+    s_theme = default_theme(scene, Scatter)
+    l_theme = default_theme(scene, Lines)
+    Attributes(
+        color = l_theme.color,
+        linestyle = l_theme.linestyle,
+        linewidth = l_theme.linewidth,
+        markercolor = automatic,
+        markersize = s_theme.markersize,
+        strokecolor = s_theme.strokecolor,
+        strokewidth = s_theme.strokewidth,
+        marker = s_theme.marker,
+        inspectable = theme(scene, :inspectable),
+        cycle = [:color],
+    )
 end
 
-convert_arguments(::Type{<:QQNorm}, args...; qqline=:R, kwargs...) =
-    convert_arguments(QQPlot, Distributions.Normal(0, 1), args...; qqline=qqline, kwargs...)
+@recipe(QQNorm) do scene
+    default_theme(scene, QQPlot)
+end
 
-convert_arguments(::Type{<:QQPlot}, args...; kwargs...) =
-    convert_arguments(Scatter, qqbuild(loc(args...)...); kwargs...)
-
-function convert_arguments(P::PlotFunc, h::QQPair; qqline=:identity)
-    line = if qqline in (:fit, :quantile, :identity, :R)
+function fit_qqline(h::QQPair; qqline = :identity)
+    if qqline in (:fit, :quantile, :identity, :R)
         xs = [extrema(h.qx)...]
         if qqline == :identity
             ys = xs
@@ -53,22 +60,49 @@ function convert_arguments(P::PlotFunc, h::QQPair; qqline=:identity)
             slp = diff(quanty) ./ diff(quantx)
             ys = quanty .+ slp .* (xs .- quantx)
         end
-        Point{2,Float32}.(xs, ys)
+        return Point2f.(xs, ys)
     else
-        nothing
+        return Point2f[]
     end
-    ptype = plottype(Scatter, P)
-    PlotSpec{ptype}(h, line)
-end
-
-used_attributes(::Type{<:QQNorm}, args...) = (:qqline,)
-used_attributes(::Type{<:QQPlot}, args...) = (:qqline,)
-used_attributes(::PlotFunc, ::QQPair, args...) = (:qqline,)
-
-function plot!(p::Combined{T,<:Tuple{QQPair,L}}) where {T,L}
-    plot!(p, Scatter, attributes_from(Scatter, p), lift(h -> Point{2,Float32}.(h.qx, h.qy), p[1]))
-    L !== Nothing && plot!(p, LineSegments, attributes_from(Lines, p), p[2])
 end
 
 loc(D::Type{T}, x) where T <: Distribution = Distributions.fit(D, x), x
 loc(D, x) = D, x
+
+function convert_arguments(::Type{<:QQPlot}, x, y; qqline = :identity)
+    h = qqbuild(loc(x, y)...)
+    points = Point2f.(h.qx, h.qy)
+    line = fit_qqline(h; qqline = qqline)
+    return PlotSpec{QQPlot}(points, line)
+end
+
+convert_arguments(::Type{<:QQNorm}, y; qqline = :identity) =
+    convert_arguments(QQPlot, Distributions.Normal(0, 1), y; qqline = qqline)
+
+convert_arguments(::PlotFunc, h::QQPair; qqline = :identity) =
+    convert_arguments(QQPlot, h.qx, h.qy; qqline = qqline)
+
+used_attributes(::Type{<:QQNorm}, y) = (:qqline,)
+used_attributes(::Type{<:QQPlot}, x, y) = (:qqline,)
+used_attributes(::PlotFunc, ::QQPair) = (:qqline,)
+
+function plot!(p::QQPlot)
+    points, line = p[1], p[2]
+    real_markercolor = lift(Any, p.color, p.markercolor) do color, markercolor
+        markercolor === automatic ? color : markercolor
+    end
+    scatter!(p, points;
+        color = real_markercolor,
+        strokecolor = p.strokecolor,
+        strokewidth = p.strokewidth,
+        marker = p.marker,
+        markersize = p.markersize,
+        inspectable = p.inspectable
+    )
+    linesegments!(p, line;
+        color = p.color,
+        linestyle = p.linestyle,
+        linewidth = p.linewidth,
+        inspectable = p.inspectable
+    )
+end
