@@ -254,10 +254,7 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
             # now to 0..1
             0.5 .+ 0.5
 
-        xscale = ax.xscale[]
-        yscale = ax.yscale[]
-
-        transf = (xscale, yscale)
+        transf = Makie.transform_func(ax)
         tlimits_trans = Makie.apply_transform(transf, tlimits[])
 
         xorigin = tlimits_trans.origin[1]
@@ -283,7 +280,12 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
         end
 
         inv_transf = Makie.inverse_transform(transf)
-        tlimits[] = Makie.apply_transform(inv_transf, newrect_trans)
+        rect = Makie.apply_transform(inv_transf, newrect_trans)
+        if Makie.isfinite_rect(rect)
+            tlimits[] = rect
+        else
+            @warn("zooming out of limits")
+        end
     end
 
     # NOTE this might be problematic if if we add scrolling to something like Menu
@@ -319,19 +321,11 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
         0.5 .+ 0.5
     end
 
-    xscale = ax.xscale[]
-    yscale = ax.yscale[]
+    transf = Makie.transform_func(ax.scene)
 
-    transf = (xscale, yscale)
     tlimits_trans = Makie.apply_transform(transf, tlimits[])
 
     movement_frac = mp_axfraction .- mp_axfraction_prev
-
-    xscale = ax.xscale[]
-    yscale = ax.yscale[]
-
-    transf = (xscale, yscale)
-    tlimits_trans = Makie.apply_transform(transf, tlimits[])
 
     xori, yori = tlimits_trans.origin .- movement_frac .* widths(tlimits_trans)
 
@@ -347,8 +341,10 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
 
     inv_transf = Makie.inverse_transform(transf)
     newrect_trans = Rectf(Vec2f(xori, yori), widths(tlimits_trans))
-    tlimits[] = Makie.apply_transform(inv_transf, newrect_trans)
-
+    lims = Makie.apply_transform(inv_transf, newrect_trans)
+    if Makie.isfinite_rect(lims)
+        tlimits[] = lims
+    end
     return Consume(true)
 end
 
