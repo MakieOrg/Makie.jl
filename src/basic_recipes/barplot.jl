@@ -60,6 +60,14 @@ end
 
 flip(r::Rect2) = Rect2(reverse(origin(r)), reverse(widths(r)))
 
+function default_width(x)
+    v = filter(isfinite, x)
+    sort!(v)
+    unique!(v)
+    N = length(v) - 1
+    return N ≥ 1 ? minimum(v[i+1]-v[i] for i in 1:N) : one(eltype(v))
+end
+
 function compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
     width === automatic && (width = 1)
     width *= 1 - gap
@@ -198,11 +206,9 @@ function Makie.plot!(p::BarPlot)
         x = first.(xy)
         y = last.(xy)
 
-        # by default, `width` is `minimum(diff(sort(unique(x)))`
+        # by default, `width` is the minimum difference between consecutive `x` positions
         if width === automatic
-            x_unique = unique(filter(isfinite, x))
-            x_diffs = diff(sort(x_unique))
-            width = isempty(x_diffs) ? 1.0 : minimum(x_diffs)
+            width = default_width(x)
         end
 
         # compute width of bars and x̂ (horizontal position after dodging)

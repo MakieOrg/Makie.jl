@@ -1,4 +1,4 @@
-using Makie: stack_grouped_from_to
+using Makie: stack_grouped_from_to, default_width
 
 @testset "grouped bar: stack" begin
     x1         = [1, 1,  1,  1]
@@ -35,4 +35,12 @@ using Makie: stack_grouped_from_to
     from, to = stack_grouped_from_to(grp_stack, y, (; x = x, grp_dodge = grp_dodge))
     @test from == from_test
     @test to == to_test
+end
+
+@testset "bar: width" begin
+    @test default_width([1, 3, 1, -Inf, NaN]) == 2
+    @test default_width(1:3:7) == 3
+    @test default_width(-1:-3:-7) == 3
+    @test default_width([12]) == 1
+    @test default_width(Int[]) == 1
 end
