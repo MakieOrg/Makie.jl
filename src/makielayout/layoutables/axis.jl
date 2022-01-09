@@ -697,7 +697,7 @@ function expandlimits_nd(nd_limits::Tuple, nd_margins::Tuple, transfunc)
             else
                 high_t = Makie.apply_transform(transfunc, high)
                 scaled = ntuple(N) do j
-                    j == i && return (low_t[i] - zerodist, high_t[i] + zerodist)
+                    j == i && return (low_t[i] - zerodist[i], high_t[i] + zerodist[i])
                     return (low_t[i], high_t[i])
                 end
                 scaled_min = Point(first.(scaled))
