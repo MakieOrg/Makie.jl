@@ -26,6 +26,33 @@ end
 # -----------------------------------------------------------------------------
 # qqplots (M. K. Borregaard implementation from StatPlots)
 
+"""
+    qqplot(x, y; kwargs...)
+Draw a Q-Q plot, comparing quantiles of two distributions. `y` must be a list of
+samples, i.e., `AbstractVector{<:Real}`, whereas `x` can be
+- a list of samples,
+- an abstract distribution, e.g. `Normal(0, 1)`,
+- a distribution type, e.g. `Normal`.
+In the last case, the Q-Q plot by fitting that distribution type to the data `y`.
+
+The attribute `qqline` determines how to compute a fit line for the Q-Q plot.
+Possible values are the following.
+- `:identity` draws the identity line (useful to see if the two distributions are the same).
+- `:fit` fits the line to the quantile pairs (useful to see if one distribution can be obtained for the other via an affine transformation).
+- `:quantile` is analogous to `:fit` but uses a quantile-based fitting method.
+- `:R` is an alias for `:quantile`, as that is the default behavior in `:R`.
+- `:none` (or any other value) omits drawing the line.
+
+Graphical attributes are
+- `color` to control color of both line and markers
+- `linestyle`
+- `linewidth`
+- `markercolor`
+- `strokecolor`
+- `strokewidth`
+- `marker`
+- `markersize`
+"""
 @recipe(QQPlot) do scene
     s_theme = default_theme(scene, Scatter)
     l_theme = default_theme(scene, Lines)
@@ -43,6 +70,11 @@ end
     )
 end
 
+"""
+    qqnorm(y; kwargs...)
+
+Shorthand for `qqplot(Normal, y)`. See [`qqplot`](@ref) for more details.
+"""
 @recipe(QQNorm) do scene
     default_theme(scene, QQPlot)
 end
