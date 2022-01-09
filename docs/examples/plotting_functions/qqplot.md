@@ -1,6 +1,7 @@
-# qqplot
+# qqplot and qqnorm
 
 {{doc qqplot}}
+{{doc qqnorm}}
 
 ### Examples
 
