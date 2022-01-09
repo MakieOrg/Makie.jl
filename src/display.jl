@@ -200,7 +200,6 @@ Save a `Scene` with the specified filename and format.
 ## All Backends
 
 - `resolution`: `(width::Int, height::Int)` of the scene in dimensionless units (equivalent to `px` for GLMakie and WGLMakie).
-- `update`: Update the scene and its children before saving (`update_limits!` and `center!`). One might want to set `update=false` e.g. when saving a zoomed scene.
 
 ## CairoMakie
 
