@@ -33,7 +33,7 @@ function plot!(plot::VolumeSlices)
         mx, Mx = extrema(x)
         my, My = extrema(y)
         mz, Mz = extrema(z)
-        Rect3f(mx, my, mz, Mx-mx, My-my, Mz-mz)
+        Rect3(mx, my, mz, Mx-mx, My-my, Mz-mz)
     end
 
     axes = :x, :y, :z
