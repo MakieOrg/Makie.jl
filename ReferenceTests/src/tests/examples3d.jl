@@ -341,7 +341,7 @@ end
     scatter!(
         ax, positions, markersize=50,
         strokewidth=2, strokecolor=:white,
-        color=RGBAf(0.9, 0.2, 0.4, 0.5)
+        color=RGBAf(0.9, 0.2, 0.4, 0.3), transparency=true,
     )
     fig
 end
@@ -473,7 +473,7 @@ end
     fig, ax, surfaceplot = surface(x, y, z)
     xm, ym, zm = minimum(data_limits(ax.scene))
     contour!(ax, x, y, z, levels=15, linewidth=2, transformation=(:xy, zm))
-    wireframe!(ax, x, y, z, overdraw=true, transparency=true, color=(:black, 0.1))
+    wireframe!(ax, x, y, z, transparency=true, color=(:black, 0.1))
     center!(ax.scene) # center the Scene on the display
     fig
 end
@@ -494,7 +494,7 @@ let
             P.γ * x[1] - x[3] - P.β,
         )
         f(x) = f(x, P)
-        streamplot(f, -1.5..1.5, -1.5..1.5, -1.5..1.5, colormap=:magma, gridsize=(10, 10), arrow_size=0.06)
+        streamplot(f, -1.5..1.5, -1.5..1.5, -1.5..1.5, colormap=:magma, gridsize=(10, 10), arrow_size=0.1, transparency=true)
     end
 end
 
@@ -546,5 +546,33 @@ end
         end
     end
 
+    fig
+end
+
+
+@cell "Order Independent Transparency" begin
+    # top row (yellow, cyan, magenta) contains stacks with the same alpha value
+    # bottom row (red, green, blue) contains stacks with varying alpha values
+    fig = Figure()
+    ax = LScene(fig[1, 1])
+    r = Rect2f(-1, -1, 2, 2)
+    for x in (0, 1)
+        for (i, a) in enumerate((0.25, 0.5, 0.75, 1.0))
+            ps = [Point3f(a, (0.15 + 0.01y)*(2x-1) , 0.2y) for y in 1:8]
+            if x == 0
+                cs = [RGBAf(1, 0, 0, 0.75), RGBAf(0, 1, 0, 0.5), RGBAf(0, 0, 1, 0.25)]
+            elseif x == 1
+                cs = [RGBAf(1, x, 0, a), RGBAf(0, 1, x, a), RGBAf(x, 0, 1, a)]
+            end
+            idxs = [1, 2, 3, 2, 1, 3, 1, 2, 1, 2, 3][i:7+i]
+            meshscatter!(
+                ax, ps, marker = r,
+                color = cs[idxs], transparency = true
+            )
+        end
+    end
+    cam = cameracontrols(ax.scene)
+    cam.attributes.fov[] = 22f0
+    update_cam!(ax.scene, cam, Vec3f(0.625, 0, 3.5), Vec3f(0.625, 0, 0), Vec3f(0, 1, 0))
     fig
 end

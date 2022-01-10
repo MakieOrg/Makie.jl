@@ -74,8 +74,6 @@ struct GLVisualizeShader <: AbstractLazyShader
             view["GLSL_EXTENSIONS"] = "#extension GL_ARB_conservative_depth: enable"
             view["SUPPORTED_EXTENSIONS"] = "#define DETPH_LAYOUT"
         end
-        view["buffers"] = get_buffers()
-        view["buffer_writes"] = get_buffer_writes()
         args = Dict{Symbol, Any}(kw_args)
         args[:view] = view
         args[:fragdatalocation] = [(0, "fragment_color"), (1, "fragment_groupid")]
@@ -169,11 +167,16 @@ function visualize(@nospecialize(main), @nospecialize(s), @nospecialize(data))
 end
 
 # Make changes to fragment_output to match what's needed for postprocessing
-using ..GLMakie: enable_SSAO
-function get_buffers()
-    if enable_SSAO[]
+using ..GLMakie: enable_SSAO, transparency_weight_scale
+
+function output_buffers(transparency = false)
+    if transparency
         """
-        layout(location=2) out vec4 fragment_position;
+        layout(location=2) out float coverage;
+        """
+    elseif enable_SSAO[]
+        """
+        layout(location=2) out vec3 fragment_position;
         layout(location=3) out vec3 fragment_normal_occlusion;
         """
     else
@@ -181,13 +184,22 @@ function get_buffers()
     end
 end
 
-function get_buffer_writes()
-    if enable_SSAO[]
+function output_buffer_writes(transparency = false)
+    if transparency
+        scale = transparency_weight_scale[]
         """
+        float weight = color.a * max(0.01, $scale * pow((1 - gl_FragCoord.z), 3));
+        coverage = color.a;
+        fragment_color.rgb = weight * color.rgb;
+        fragment_color.a = weight;
+        """
+    elseif enable_SSAO[]
+        """
+        fragment_color = color;
         fragment_position = o_view_pos;
         fragment_normal_occlusion.xyz = o_normal;
         """
     else
-        ""
+        "fragment_color = color;"
     end
 end

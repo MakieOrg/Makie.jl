@@ -182,7 +182,7 @@ end
 """
     from_dict(::Type{T}, dict)
 Creates the type `T` from the fields in dict.
-Automatically converts to the correct node types.
+Automatically converts to the correct types.
 """
 function from_dict(::Type{T}, dict) where T
     T(map(fieldnames(T)) do name

@@ -9,6 +9,7 @@ facet plots or when a rectangular placeholder is needed.
 ```julia
 using CairoMakie
 using ColorSchemes
+CairoMakie.activate!() # hide
 
 fig = Figure()
 

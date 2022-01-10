@@ -140,7 +140,7 @@ an arbitrary `x` axis.
 
 `P` is the plot Type (it is optional).
 """
-convert_arguments(P::PointBased, y::RealVector) = convert_arguments(P, 1:length(y), y)
+convert_arguments(P::PointBased, y::RealVector) = convert_arguments(P, keys(y), y)
 
 """
     convert_arguments(P, x, y)::(Vector)
@@ -222,14 +222,18 @@ end
 Takes an input `Polygon` and decomposes it to points.
 """
 function convert_arguments(PB::PointBased, pol::Polygon)
-    if isempty(pol.interiors)
-        return convert_arguments(PB, pol.exterior)
-    else
-        arr = copy(convert_arguments(PB, pol.exterior)[1])
+    arr = copy(convert_arguments(PB, pol.exterior)[1])
+    push!(arr, arr[1]) # close exterior
+    if !isempty(pol.interiors)
         push!(arr, Point2f(NaN))
-        append!(arr, convert_arguments(PB, pol.interiors)[1])
-        return (arr,)
+        for interior in pol.interiors
+            inter = convert_arguments(PB, interior)[1]
+            append!(arr, inter)
+            # close interior + separate!
+            push!(arr, inter[1], Point2f(NaN))
+        end
     end
+    return (arr,)
 end
 
 """
@@ -572,6 +576,16 @@ function tryrange(F, vec)
         end
     end
     error("$F is not a Function, or is not defined at any of the values $vec")
+end
+
+# OffsetArrays conversions
+function convert_arguments(sl::SurfaceLike, wm::OffsetArray)
+  x1, y1 = wm.offsets .+ 1
+  nx, ny = size(wm)
+  x = range(x1, length = nx)
+  y = range(y1, length = ny)
+  v = parent(wm)
+  return convert_arguments(sl, x, y, v)
 end
 
 ################################################################################

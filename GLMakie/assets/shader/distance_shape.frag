@@ -41,8 +41,9 @@ flat in vec4            f_uv_texture_bbox;
 // These versions of aastep assume that `dist` is a signed distance function
 // which has been scaled to be in units of pixels.
 float aastep(float threshold1, float dist) {
-    return min(1.0, f_viewport_from_u_scale)*smoothstep(threshold1-ANTIALIAS_RADIUS, threshold1+ANTIALIAS_RADIUS, dist);
+    return smoothstep(threshold1-ANTIALIAS_RADIUS, threshold1+ANTIALIAS_RADIUS, dist);
 }
+
 float aastep(float threshold1, float threshold2, float dist) {
     return smoothstep(threshold1-ANTIALIAS_RADIUS, threshold1+ANTIALIAS_RADIUS, dist) -
            smoothstep(threshold2-ANTIALIAS_RADIUS, threshold2+ANTIALIAS_RADIUS, dist);
@@ -152,12 +153,14 @@ void main(){
     glow(f_glow_color, signed_distance, aastep(-stroke_width, signed_distance), final_color);
     // TODO: In 3D, we should arguably discard fragments outside the sprite
     //       But note that this may interfere with object picking.
-    //if (final_color == f_bg_color)
+    // if (final_color == f_bg_color)
     //    discard;
+
     write2framebuffer(final_color, f_id);
+
     // Debug tools:
     // * Show the background of the sprite.
-      // write2framebuffer(mix(final_color, vec4(1,0,0,1), 0.2), f_id);
+    //   write2framebuffer(mix(final_color, vec4(1,0,0,1), 0.2), f_id);
     // * Show the antialiasing border around glyphs
     //   write2framebuffer(vec4(vec3(abs(signed_distance)),1), f_id);
 }

@@ -1,3 +1,5 @@
+not_implemented_for(x) = error("Not implemented for $(x). You might want to put:  `using Makie` into your code!")
+
 to_func_name(x::Symbol) = Symbol(lowercase(string(x)))
 # Fallback for Combined ...
 # Will get overloaded by recipe Macro

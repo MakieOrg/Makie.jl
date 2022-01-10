@@ -1,3 +1,5 @@
+struct OrthographicCamera <: AbstractCamera end
+
 """
     layoutable(Axis3, fig_or_scene; bbox = nothing, kwargs...)
 
@@ -31,15 +33,15 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
     scenearea = lift(round_to_IRect2D, layoutobservables.computedbbox)
 
     scene = Scene(topscene, scenearea, clear = false, backgroundcolor = attrs.backgroundcolor)
+    cam = OrthographicCamera()
+    cameracontrols!(scene, cam)
 
     matrices = lift(calculate_matrices, finallimits, scene.px_area, elevation, azimuth, perspectiveness, aspect, viewmode)
 
     on(matrices) do (view, proj, eyepos)
-        pv = proj * view
-        scene.camera.projection[] = proj
-        scene.camera.view[] = view
-        scene.camera.eyeposition[] = eyepos
-        scene.camera.projectionview[] = pv
+        cam = camera(scene)
+        Makie.set_proj_view!(cam, proj, view)
+        cam.eyeposition[] = eyepos
     end
 
     ticknode_1 = lift(finallimits, attrs.xticks, attrs.xtickformat) do lims, ticks, format
@@ -222,7 +224,7 @@ function calculate_matrices(limits, px_area, elev, azim, perspectiveness, aspect
 end
 
 function projectionmatrix(viewmatrix, limits, eyepos, radius, azim, elev, angle, width, height, scales, viewmode)
-    near = radius - sqrt(3)
+    near = 0.5 * (radius - sqrt(3))
     far = radius + 2 * sqrt(3)
 
     aspect_ratio = width / height

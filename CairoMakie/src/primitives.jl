@@ -89,6 +89,8 @@ function draw_single(primitive::Lines, ctx, positions)
             end
         end
     end
+    # force clearing of path in case of skipped NaN
+    Cairo.new_path(ctx)
 end
 
 function draw_single(primitive::LineSegments, ctx, positions)
@@ -107,6 +109,8 @@ function draw_single(primitive::LineSegments, ctx, positions)
             Cairo.stroke(ctx)
         end
     end
+    # force clearing of path in case of skipped NaN
+    Cairo.new_path(ctx)
 end
 
 # if linewidth is not an array
@@ -160,6 +164,8 @@ function draw_multi(primitive::Union{Lines, LineSegments}, ctx, positions, color
             Cairo.destroy(pat)
         end
     end
+    # force clearing of path in case of skipped NaN
+    Cairo.new_path(ctx)
 end
 
 ################################################################################
@@ -331,6 +337,9 @@ function draw_glyph_collection(scene, ctx, positions, glyph_collections::Abstrac
     end
 end
 
+_deref(x) = x
+_deref(x::Ref) = x[]
+
 function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation, model, space, offsets)
 
     glyphs = glyph_collection.glyphs
@@ -376,9 +385,9 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
             xvec = rotation * (scale3[1] * Point3f(1, 0, 0))
             yvec = rotation * (scale3[2] * Point3f(0, -1, 0))
 
-            glyphpos = project_position(scene, gpos_data, Mat4f(I))
-            xproj = project_position(scene, gpos_data + xvec, Mat4f(I))
-            yproj = project_position(scene, gpos_data + yvec, Mat4f(I))
+            glyphpos = project_position(scene, gpos_data, _deref(model))
+            xproj = project_position(scene, gpos_data + xvec, _deref(model))
+            yproj = project_position(scene, gpos_data + yvec, _deref(model))
 
             xdiff = xproj - glyphpos
             ydiff = yproj - glyphpos
@@ -392,14 +401,28 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
         elseif space == :screen
             # in screen space, the glyph offsets are added after projecting
             # the string position into screen space
-            glyphpos = project_position(
-                scene,
-                position,
-                Mat4f(I)) .+ (p3_to_p2(glyphoffset .+ p3_offset)) .* (1, -1) # flip for Cairo
+            glyphpos = let
+                # project without yflip - we need to apply model before that
+                p = project_position(scene, position, Mat4f(I), false)
+                
+                # flip for Cairo
+                p += (p3_to_p2(glyphoffset .+ p3_offset))
+                p = (_deref(model) * Vec4f(p[1], p[2], 0, 1))[Vec(1, 2)]
+                p = (0, 1) .* scene.camera.resolution[] .+ p .* (1, -1)
+                p
+            end
             # and the scale is just taken as is
             scale = length(scale) == 2 ? scale : SVector(scale, scale)
 
-            mat = scale_matrix(scale...)
+            mat = let
+                scale_mat = if length(scale) == 2
+                    Mat2f(scale[1], 0, 0, scale[2])
+                else
+                    Mat2f(scale, 0, 0, scale)
+                end
+                T = _deref(model)[Vec(1, 2), Vec(1, 2)] * scale_mat
+                Cairo.CairoMatrix(T[1, 1], T[1, 2], T[2, 1], T[2, 2], 0, 0)
+            end
         else
             error()
         end
@@ -519,7 +542,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
     # Vector backends don't support FILTER_NEAREST for interp == false, so in that case we also need to draw rects
     is_vector = is_vector_backend(ctx)
     t = Makie.transform_func_obs(primitive)[]
-    identity_transform = t === identity || t isa Tuple && all(x-> x === identity, t)
+    identity_transform = (t === identity || t isa Tuple && all(x-> x === identity, t)) && (abs(model[1, 2]) < 1e-15)
     if fast_path && xs isa AbstractRange && ys isa AbstractRange && !(is_vector && !interp) && identity_transform
         imsize = ((first(xs), last(xs)), (first(ys), last(ys)))
 
@@ -564,35 +587,35 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
         if ni + 1 != length(xs) || nj + 1 != length(ys)
             error("Error in conversion pipeline. xs and ys should have size ni+1, nj+1. Found: xs: $(length(xs)), ys: $(length(ys)), ni: $(ni), nj: $(nj)")
         end
+
         @inbounds for i in 1:ni, j in 1:nj
-            x0, y0 = xys[i, j]
-            x1, y1 = xys[i+1, j+1]
-            w = x1 - x0; h = y1 - y0
+            p1 = xys[i, j]
+            p2 = xys[i+1, j]
+            p3 = xys[i+1, j+1]
+            p4 = xys[i, j+1]
 
-            # there are usually white lines between directly adjacent rectangles
-            # in vector graphics because of anti-aliasing
+            # Rectangles and polygons that are directly adjacent usually show
+            # white lines between them due to anti aliasing. To avoid this we
+            # increase their size slightly. 
 
-            # if we let each cell stick out (bulge) a little bit (half a point) under its neighbors
-            # those lines disappear
-
-            # we heuristically only do this if the adjacent cells are fully opaque
-            # and if we're not in the last row / column so the overall heatmap doesn't get bigger
-
-            # this should be the most common case by far, though
-
-            xbulge = if i < ni && alpha(colors[i+1, j]) == 1
-                0.5
-            else
-                0.0
-            end
-            ybulge = if j < nj && alpha(colors[i, j+1]) == 1
-                0.5
-            else
-                0.0
+            if alpha(colors[i, j]) == 1
+                # sign.(p - center) gives the direction in which we need to 
+                # extend the polygon. (Which may change due to rotations in the 
+                # model matrix.) (i!=1) etc is used to avoid increasing the
+                # outer extent of the heatmap.
+                center = 0.25 * (p1 + p2 + p3 + p4)
+                p1 += sign.(p1 - center) .* Point2f(0.5(i!=1),  0.5(j!=1))
+                p2 += sign.(p2 - center) .* Point2f(0.5(i!=ni), 0.5(j!=1))
+                p3 += sign.(p3 - center) .* Point2f(0.5(i!=ni), 0.5(j!=nj))
+                p4 += sign.(p4 - center) .* Point2f(0.5(i!=1),  0.5(j!=nj))
             end
 
-            # we add the bulge in the direction of cell width / height in case the axes are reversed
-            Cairo.rectangle(ctx, x0, y0, w + sign(w) * xbulge, h + sign(h) * ybulge)
+            Cairo.set_line_width(ctx, 0)
+            Cairo.move_to(ctx, p1[1], p1[2])
+            Cairo.line_to(ctx, p2[1], p2[2])
+            Cairo.line_to(ctx, p3[1], p3[2])
+            Cairo.line_to(ctx, p4[1], p4[2])
+            Cairo.close_path(ctx)
             Cairo.set_source_rgba(ctx, rgbatuple(colors[i, j])...)
             Cairo.fill(ctx)
         end
@@ -606,7 +629,7 @@ end
 
 
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Makie.Mesh)
-    if Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera}
+    if Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera, Makie.EmptyCamera}
         draw_mesh2D(scene, screen, primitive)
     else
         if !haskey(primitive, :faceculling)
@@ -664,7 +687,7 @@ function draw_mesh3D(
         scene, screen, primitive;
         mesh = primitive[1][], pos = Vec4f(0), scale = 1f0
     )
-    @get_attribute(primitive, (color, shading, lightposition, ambient, diffuse,
+    @get_attribute(primitive, (color, shading, diffuse,
         specular, shininess, faceculling))
 
     colormap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
@@ -693,8 +716,8 @@ function draw_mesh3D(
         view * (model * p4d .+ to_ndim(Vec4f, pos, 0f0))
     end
     fs = decompose(GLTriangleFace, mesh)
-    uv = hasproperty(mesh, :uv) ? mesh.uv : nothing
-    ns = map(n -> normalize(normalmatrix * n), normals(mesh))
+    uv = texturecoordinates(mesh)
+    ns = map(n -> normalize(normalmatrix * n), decompose_normals(mesh))
     cols = per_face_colors(
         color, colormap, colorrange, matcap, vs, fs, ns, uv,
         get(primitive, :lowclip, nothing) |> to_value |> color_or_nothing,
@@ -703,9 +726,21 @@ function draw_mesh3D(
     )
 
     # Liight math happens in view/camera space
-    if lightposition == :eyeposition
-        lightposition = scene.camera.eyeposition[]
+    pointlight = Makie.get_point_light(scene)
+    lightposition = if !isnothing(pointlight)
+        pointlight.position[]
+    else
+        Vec3f(0)
     end
+
+    ambientlight = Makie.get_ambient_light(scene)
+    ambient = if !isnothing(ambientlight)
+        c = ambientlight.color[]
+        Vec3f(c.r, c.g, c.b)
+    else
+        Vec3f(0)
+    end
+
     lightpos = (view * to_ndim(Vec4f, lightposition, 1.0))[Vec(1, 2, 3)]
 
     # Camera to screen space
@@ -853,8 +888,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Makie.MeshSca
     submesh = Attributes(
         model=model,
         color=color,
-        shading=primitive.shading, lightposition=primitive.lightposition,
-        ambient=primitive.ambient, diffuse=primitive.diffuse,
+        shading=primitive.shading, diffuse=primitive.diffuse,
         specular=primitive.specular, shininess=primitive.shininess,
         faceculling=get(primitive, :faceculling, -10)
     )

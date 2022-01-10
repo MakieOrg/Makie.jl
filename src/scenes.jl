@@ -1,3 +1,68 @@
+struct SSAO
+    """
+    sets the range of SSAO. You may want to scale this up or
+    down depending on the limits of your coordinate system
+    """
+    radius::Observable{Float32}
+
+    """
+    sets the minimum difference in depth required for a pixel to
+    be occluded. Increasing this will typically make the occlusion
+    effect stronger.
+    """
+    bias::Observable{Float32}
+
+    """
+    sets the (pixel) range of the blur applied to the occlusion texture.
+    The texture contains a (random) pattern, which is washed out by
+    blurring. Small `blur` will be faster, sharper and more patterned.
+    Large `blur` will be slower and smoother. Typically `blur = 2` is
+    a good compromise.
+    """
+    blur::Observable{Int32}
+end
+
+function Base.show(io::IO, ssao::SSAO)
+    println(io, "SSAO:")
+    println(io, "    radius: ", ssao.radius[])
+    println(io, "    bias:   ", ssao.bias[])
+    println(io, "    blur:   ", ssao.blur[])
+end
+
+function SSAO(; radius=nothing, bias=nothing, blur=nothing)
+    defaults = theme(nothing, :SSAO)
+    _radius = isnothing(radius) ? defaults.radius[] : radius
+    _bias = isnothing(bias) ? defaults.bias[] : bias
+    _blur = isnothing(blur) ? defaults.blur[] : blur
+    return SSAO(_radius, _bias, _blur)
+end
+
+abstract type AbstractLight end
+
+"""
+A positional point light, shining at a certain color.
+Color values can be bigger than 1 for brighter lights.
+"""
+struct PointLight <: AbstractLight
+    position::Observable{Vec3f}
+    radiance::Observable{RGBf}
+end
+
+"""
+An environment Light, that uses a spherical environment map to provide lighting.
+See: https://en.wikipedia.org/wiki/Reflection_mapping
+"""
+struct EnvironmentLight <: AbstractLight
+    intensity::Observable{Float32}
+    image::Observable{Matrix{RGBf}}
+end
+
+"""
+A simple, one color ambient light.
+"""
+struct AmbientLight <: AbstractLight
+    color::Observable{RGBf}
+end
 
 """
     Scene TODO document this
@@ -46,6 +111,9 @@ mutable struct Scene <: AbstractScene
     # Attributes
     backgroundcolor::Observable{RGBAf}
     visible::Observable{Bool}
+    ssao::SSAO
+    lights::Vector{AbstractLight}
+
 end
 
 get_scene(scene::Scene) = scene
@@ -89,6 +157,8 @@ function Scene(;
         current_screens::Vector{AbstractScreen} = AbstractScreen[],
         parent = nothing,
         visible = Observable(true),
+        ssao = SSAO(),
+        lights = automatic,
         theme_kw...
     )
     m_theme = current_default_theme(; theme..., theme_kw...)
@@ -111,16 +181,49 @@ function Scene(;
             return Consume(false)
         end
     end
+
+    _lights = lights isa Automatic ? AbstractLight[] : lights
+
     scene = Scene(
         parent, events, px_area, clear, cam, camera_controls,
         transformation, plots, m_theme,
-        children, current_screens, bg, visible
+        children, current_screens, bg, visible, ssao, _lights
     )
     if camera isa Function
         cam = camera(scene)
     end
+
+    if lights isa Automatic
+        lightposition = to_value(get(m_theme, :lightposition, nothing))
+        if !isnothing(lightposition)
+            position = if lightposition == :eyeposition
+                scene.camera.eyeposition
+            else
+                m_theme.lightposition
+            end
+            push!(scene.lights, PointLight(position, RGBf(1, 1, 1)))
+        end
+        ambient = to_value(get(m_theme, :ambient, nothing))
+        if !isnothing(ambient)
+            push!(scene.lights, AmbientLight(ambient))
+        end
+    end
+
     return scene
 end
+
+function get_one_light(scene::Scene, Typ)
+    indices = findall(x-> x isa Typ, scene.lights)
+    isempty(indices) && return nothing
+    if length(indices) > 1
+        @warn("Only one light supported by backend right now. Using only first light")
+    end
+    return scene.lights[indices[1]]
+end
+
+get_point_light(scene::Scene) = get_one_light(scene, PointLight)
+get_ambient_light(scene::Scene) = get_one_light(scene, AmbientLight)
+
 
 function Scene(
         parent::Scene;
@@ -235,6 +338,10 @@ function campixel(scene::Scene)
     return child(scene, clear=false, camera=campixel!)
 end
 
+function camrelative(scene::Scene)
+    return child(scene, clear=false, camera=cam_relative!)
+end
+
 function getindex(scene::Scene, ::Type{OldAxis})
     for plot in scene
         isaxis(plot) && return plot
@@ -280,13 +387,14 @@ end
 function Base.push!(scene::Scene, child::Scene)
     push!(scene.children, child)
     disconnect!(child.camera)
-    nodes = map([:view, :projection, :projectionview, :resolution, :eyeposition]) do field
-        lift(getfield(scene.camera, field)) do val
+    observables = map([:view, :projection, :projectionview, :resolution, :eyeposition]) do field
+        return lift(getfield(scene.camera, field)) do val
             getfield(child.camera, field)[] = val
             getfield(child.camera, field)[] = val
+            return
         end
     end
-    cameracontrols!(child, nodes)
+    cameracontrols!(child, observables)
     child.parent = scene
     return scene
 end
@@ -301,7 +409,6 @@ cameracontrols(scene::Scene) = scene.camera_controls
 cameracontrols(scene::SceneLike) = cameracontrols(scene.parent)
 
 function cameracontrols!(scene::Scene, cam)
-    disconnect!(scene.camera_controls)
     scene.camera_controls = cam
     return cam
 end

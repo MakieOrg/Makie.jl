@@ -21,41 +21,27 @@ function Entry(title, source_location, code, func)
     return Entry(title, source_location, code, func, used_functions)
 end
 
-function unique_name(entry::Entry)
-    loc = entry.source_location
-    filename = splitext(basename(string(loc.file)))[1]
-    sep = isempty(entry.title) ? "" : "_"
-    return replace(string(filename, "_", loc.line, sep, entry.title), " " => "")
-end
-
-function nice_title(entry::Entry)
-    isempty(entry.title) || return entry.title
-    return unique_name(entry)
-end
-
 const DATABASE = Dict{String, Entry}()
 
 function cell_expr(name, code, source)
-    key = string(source.file, ":", source.line)
+    title = string(name)
     return quote
         closure = () -> $(esc(code))
         entry = ReferenceTests.Entry(
-            $(string(name)),
+            $(title),
             $(QuoteNode(source)),
             $(QuoteNode(code)),
             closure
         )
-        ReferenceTests.DATABASE[$key] = entry
-        # display(closure())
+        if haskey(ReferenceTests.DATABASE, $title)
+            error("Titles must be unique for tests")
+        end
+        ReferenceTests.DATABASE[$title] = entry
     end
 end
 
 macro cell(name, code)
     return cell_expr(name, code, __source__)
-end
-
-macro cell(code)
-    return cell_expr("", code, __source__)
 end
 
 """
@@ -77,6 +63,7 @@ end
 
 function load_database()
     empty!(DATABASE)
+    include(joinpath(@__DIR__, "tests/primitives.jl"))
     include(joinpath(@__DIR__, "tests/text.jl"))
     include(joinpath(@__DIR__, "tests/attributes.jl"))
     include(joinpath(@__DIR__, "tests/examples2d.jl"))
@@ -88,11 +75,10 @@ function load_database()
     return DATABASE
 end
 
-function database_filtered(title_excludes = [], nice_title_excludes = []; functions=[])
+function database_filtered(title_excludes = []; functions=[])
     database = ReferenceTests.load_database()
     return filter(database) do (name, entry)
         !(entry.title in title_excludes) &&
-        !(nice_title(entry) in nice_title_excludes) &&
         !any(x-> x in entry.used_functions, functions)
     end
 end

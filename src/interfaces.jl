@@ -1,5 +1,3 @@
-not_implemented_for(x) = error("Not implemented for $(x). You might want to put:  `using Makie` into your code!")
-
 function default_theme(scene)
     Attributes(
         # color = theme(scene, :color),
@@ -9,11 +7,9 @@ function default_theme(scene)
         visible = true,
         transparency = false,
         overdraw = false,
-        ambient = Vec3f(0.55),
         diffuse = Vec3f(0.4),
         specular = Vec3f(0.2),
         shininess = 32f0,
-        lightposition = :eyeposition,
         nan_color = RGBAf(0,0,0,0),
         ssao = false,
         inspectable = theme(scene, :inspectable),
@@ -113,7 +109,9 @@ end
 """
     used_attributes(args...) = ()
 
-function used to indicate what keyword args one wants to get passed in `convert_arguments`.
+Function used to indicate what keyword args one wants to get passed in `convert_arguments`.
+Those attributes will not be forwarded to the backend, but only used during the
+conversion pipeline.
 Usage:
 ```julia
     struct MyType end
@@ -150,7 +148,7 @@ function apply_convert!(P, attributes::Attributes, x::PlotSpec{S}) where S
     for (k, v) in pairs(kwargs)
         attributes[k] = v
     end
-    return (plottype(P, S), args)
+    return (plottype(S, P), args)
 end
 
 function seperate_tuple(args_obs::Observable; typed=false)
@@ -299,7 +297,8 @@ function convert_plot_arguments(P::PlotFunc, attributes::Attributes, args, conve
     kw_signal = if isempty(convert_keys) # lift(f) isn't supported so we need to catch the empty case
         Observable(())
     else
-        lift((args...)-> Pair.(convert_keys, args), getindex.(attributes, convert_keys)...) # make them one tuple to easier pass through
+        # Remove used attributes from `attributes` and collect them in a `Tuple` to pass them more easily
+        lift((args...)-> Pair.(convert_keys, args), pop!.(attributes, convert_keys)...)
     end
     # call convert_arguments for a first time to get things started
     converted = convert_func(PreType, argvalues...; kw_signal[]...)

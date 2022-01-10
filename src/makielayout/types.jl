@@ -30,7 +30,16 @@ to_cycle_single(sym::Symbol) = [sym] => sym
 to_cycle_single(pair::Pair{Symbol, Symbol}) = [pair[1]] => pair[2]
 to_cycle_single(pair::Pair{Vector{Symbol}, Symbol}) = pair
 
+"""
+    Cycled(i::Int)
 
+If a `Cycled` value is passed as an attribute to a plotting function,
+it is replaced with the value from the cycler for this attribute (as
+long as there is one defined) at the index `i`.
+"""
+struct Cycled
+    i::Int
+end
 
 """
 LinearTicks with ideally a number of `n_ideal` tick marks.

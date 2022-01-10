@@ -67,7 +67,7 @@ set_theme!() # hide
 
 ## Installation and Import
 
-Add one or more of the Makie backend packages [`GLMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie) (OpenGL), [`CairoMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/CairoMakie) (Cairo), or [`WGLMakie.jl`](https://github.com/JuliaPlots/Makie.jl/tree/master/WGLMakie) (WebGL) using Julia's inbuilt package manager. Each backend re-exports `Makie` so there's no need to install it separately.
+Add one or more of the Makie backend packages [`GLMakie.jl`](/documentation/backends/glmakie/) (OpenGL), [`CairoMakie.jl`](/documentation/backends/cairomakie/) (Cairo), or [`WGLMakie.jl`](/documentation/backends/wglmakie/) (WebGL), [`RPRMakie`](/documentation/backends/rprmakie/) (RadeonProRender) using Julia's inbuilt package manager. Each backend re-exports `Makie` so there's no need to install it separately.
 
 ```julia
 ]add GLMakie
@@ -125,11 +125,11 @@ To switch to a different backend, for example `CairoMakie`, call `CairoMakie.act
 
 ## Makie Ecosystem
 
-There are three backends, each of which has particular strengths. You can switch between backends at any time.
+There are four backends, each of which has particular strengths. You can switch between backends at any time.
 
 @@box-container
   @@box
-    ~~~<a class="boxlink" href="https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie">~~~
+    ~~~<a class="boxlink" href="/documentation/backends/glmakie/">~~~
     @@title GLMakie.jl@@
     @@box-content
       @@description
@@ -143,7 +143,7 @@ There are three backends, each of which has particular strengths. You can switch
   @@
 
   @@box
-    ~~~<a class="boxlink" href="https://github.com/JuliaPlots/Makie.jl/tree/master/CairoMakie">~~~
+    ~~~<a class="boxlink" href="/documentation/backends/cairomakie/">~~~
     @@title CairoMakie.jl @@
     @@box-content
       @@description
@@ -157,7 +157,7 @@ There are three backends, each of which has particular strengths. You can switch
   @@
 
   @@box
-    ~~~<a class="boxlink" href="https://github.com/JuliaPlots/Makie.jl/tree/master/WGLMakie">~~~
+    ~~~<a class="boxlink" href="/documentation/backends/wglmakie/">~~~
     @@title WGLMakie.jl @@
     @@box-content
       @@description
@@ -169,9 +169,22 @@ There are three backends, each of which has particular strengths. You can switch
     @@
     ~~~</a>~~~
   @@
+  @@box
+    ~~~<a class="boxlink" href="documentation/backends/rprmakie/">~~~
+    @@title RPRMakie.jl @@
+    @@box-content
+      @@description
+      Backend using RadeonProRender for raytracing Makie scenes.
+      @@
+      ~~~
+      <img src="/assets/topographie.png">
+      ~~~
+    @@
+    ~~~</a>~~~
+  @@
 @@
 
-The differences between backends are explained in more details under \myreflink{Backends & Output}.
+The differences between backends are explained in more details under \myreflink{Backends}.
 
 ### Extensions and Resources
 

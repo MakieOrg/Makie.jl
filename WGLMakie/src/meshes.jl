@@ -91,7 +91,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
 
     uniforms[:shading] = plot.shading
 
-    for key in (:ambient, :diffuse, :specular, :shininess)
+    for key in (:diffuse, :specular, :shininess, :backlight)
         uniforms[key] = plot[key]
     end
 
@@ -103,6 +103,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
     get!(uniforms, :colormap, true)
     get!(uniforms, :model, plot.model)
     get!(uniforms, :lightposition, Vec3f(1))
+    get!(uniforms, :ambient, Vec3f(1))
 
     get!(uniforms, :nan_color, RGBAf(0, 0, 0, 0))
     get!(uniforms, :highclip, RGBAf(0, 0, 0, 0))

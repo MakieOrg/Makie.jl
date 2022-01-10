@@ -12,10 +12,10 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
     vec3 H = normalize(L + V);
 
     float spec_coeff = pow(max(dot(H, N), 0.0), get_shininess());
-
+    if (diff_coeff <= 0.0)
+        spec_coeff = 0.0;
     // final lighting model
     return vec3(
-        get_ambient() * color +
         get_diffuse() * diff_coeff * color +
         get_specular() * spec_coeff
     );
@@ -60,12 +60,14 @@ vec4 get_color(sampler2D color, vec2 uv, bool colorrange, sampler2D colormap){
 
 void main() {
     vec4 real_color = get_color(uniform_color, frag_uv, get_colorrange(), colormap);
-    vec3 shaded_color = real_color.xyz;
+    vec3 shaded_color = real_color.rgb;
 
     if(get_shading()){
         vec3 L = normalize(o_lightdir);
         vec3 N = normalize(o_normal);
-        shaded_color = blinnphong(N, o_camdir, L, real_color.rgb);
+        vec3 light1 = blinnphong(N, o_camdir, L, real_color.rgb);
+        vec3 light2 = blinnphong(N, o_camdir, -L, real_color.rgb);
+        shaded_color = get_ambient() * real_color.rgb + light1 + get_backlight() * light2;
     }
     fragment_color = vec4(shaded_color, real_color.a);
 }

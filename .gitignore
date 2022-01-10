@@ -13,6 +13,7 @@ CairoMakie/src/display.*
 WGLMakie/test/recorded/
 GLMakie/test/recorded/
 GLMakie/test/recorded_glmakie/
+RPRMakie/test/recorded/
 CairoMakie/test/recorded/
 CairoMakie/src/display.svg
 CairoMakie/src/display.pdf

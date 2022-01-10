@@ -18,7 +18,7 @@ get_tickvalues(ticks::WilkinsonTicks, vmin, vmax) = get_tickvalues(ticks, Float6
 
 function get_tickvalues(ticks::WilkinsonTicks, vmin::Float64, vmax::Float64)
 
-    tickvalues, _ = PlotUtils.optimize_ticks(vmin, vmax;
+    tickvalues, _ = PlotUtils.optimize_ticks(Float64(vmin), Float64(vmax);
         extend_ticks = false, strict_span=true, span_buffer = nothing,
         k_min = ticks.k_min,
         k_max = ticks.k_max,

@@ -76,8 +76,6 @@ const minimal_default = Attributes(
     patchstrokewidth = 0,
     resolution = (800, 600), # 4/3 aspect ratio
     visible = true,
-    clear = true,
-    show_legend = false,
     axis = Attributes(),
     axis3d = Attributes(),
     legend = Attributes(),
@@ -91,6 +89,8 @@ const minimal_default = Attributes(
         blur = Int32(2),      # A (2blur+1) by (2blur+1) range is used for blurring
         # N_samples = 64,       # number of samples (requires shader reload)
     ),
+    ambient = RGBf(0.55, 0.55, 0.55),
+    lightposition = :eyeposition,
     inspectable = true
 )
 

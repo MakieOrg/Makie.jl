@@ -325,10 +325,7 @@ function update_cam!(scene::Scene, cam::OldCamera3D)
     far = max(zoom * 5f0, 30f0)
     proj = projection_switch(scene.px_area[], fov, near, far, projectiontype, zoom)
     view = Makie.lookat(eyeposition, lookat, upvector)
-
-    scene.camera.projection[] = proj
-    scene.camera.view[] = view
-    scene.camera.projectionview[] = proj * view
+    set_proj_view!(camera(scene), proj, view)
     scene.camera.eyeposition[] = cam.eyeposition[]
 end
 

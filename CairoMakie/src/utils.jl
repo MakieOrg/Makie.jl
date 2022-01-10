@@ -2,7 +2,7 @@
 #                             Projection utilities                             #
 ################################################################################
 
-function project_position(scene, point, model)
+function project_position(scene, point, model, yflip = true)
 
     # use transform func
     point = Makie.apply_transform(scene.transformation.transform_func[], point)
@@ -14,7 +14,7 @@ function project_position(scene, point, model)
     # between -1 and 1
         p = (clip ./ clip[4])[Vec(1, 2)]
         # flip y to match cairo
-        p_yflip = Vec2f(p[1], -p[2])
+        p_yflip = Vec2f(p[1], (1f0 - 2f0 * yflip) * p[2])
         # normalize to between 0 and 1
         p_0_to_1 = (p_yflip .+ 1f0) / 2f0
     end

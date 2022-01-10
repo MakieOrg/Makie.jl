@@ -79,13 +79,11 @@ end
 function update_cam!(scene::SceneLike, cam::Camera2D)
     x, y = minimum(cam.area[])
     w, h = widths(cam.area[]) ./ 2f0
-    # These nodes should be final, no one should do map(cam.projection),
+    # These observables should be final, no one should do map(cam.projection),
     # so we don't push! and just update the value in place
     view = translationmatrix(Vec3f(-x - w, -y - h, 0))
     projection = orthographicprojection(-w, w, -h, h, -10_000f0, 10_000f0)
-    camera(scene).view[] = view
-    camera(scene).projection[] = projection
-    camera(scene).projectionview[] = projection * view
+    set_proj_view!(camera(scene), projection, view)
     cam.last_area[] = Vec(size(scene))
     return
 end
@@ -306,24 +304,36 @@ end
 
 struct PixelCamera <: AbstractCamera end
 """
-    campixel!(scene)
+    campixel!(scene; nearclip=-1000f0, farclip=1000f0)
 
 Creates a pixel-level camera for the `Scene`.  No controls!
 """
-function campixel!(scene)
-    camera(scene).view[] = Mat4f(I)
+function campixel!(scene; nearclip=-10_000f0, farclip=10_000f0)
+    disconnect!(camera(scene))
     update_once = Observable(false)
     on(camera(scene), update_once, pixelarea(scene)) do u, window_size
-        nearclip = -10_000f0
-        farclip = 10_000f0
         w, h = Float32.(widths(window_size))
         projection = orthographicprojection(0f0, w, 0f0, h, nearclip, farclip)
-        camera(scene).projection[] = projection
-        camera(scene).projectionview[] = projection
+        set_proj_view!(camera(scene), projection, Mat4f(I))
     end
     cam = PixelCamera()
     cameracontrols!(scene, cam)
     update_once[] = true
+    return cam
+end
+
+struct RelativeCamera <: AbstractCamera end
+
+"""
+    cam_relative!(scene)
+
+Creates a pixel-level camera for the `Scene`.  No controls!
+"""
+function cam_relative!(scene; nearclip=-10_000f0, farclip=10_000f0)
+    projection = orthographicprojection(0f0, 1f0, 0f0, 1f0, nearclip, farclip)
+    set_proj_view!(camera(scene), projection, Mat4f(I))
+    cam = RelativeCamera()
+    cameracontrols!(scene, cam)
     cam
 end
 
