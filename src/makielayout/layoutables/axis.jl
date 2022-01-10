@@ -900,7 +900,7 @@ function adjustlimits!(ax::Axis)
         ratios = if marginsum == 0
             (0.5, 0.5)
         else
-            (la.yautolimitmargin[] ./ marginsum)
+            (ax.yautolimitmargin[] ./ marginsum)
         end
         ylims = expandlimits(ylims, (((1 / correction_factor) - 1) .* ratios)..., identity) # don't use scale here?
     end
