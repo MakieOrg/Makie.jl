@@ -26,6 +26,7 @@ StableRNGs = "860ef19b-820b-49d6-a774-d7a799459cd3"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Tar = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 ghr_jll = "07c12ed4-43bc-5495-8a2a-d5838ef8d533"
 
 [compat]
