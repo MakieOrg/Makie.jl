@@ -467,7 +467,6 @@ function reset_limits!(ax::Union{Axis, Axis3}; xauto = true, yauto = true, zauto
     mlims = convert_limit_attribute(ax.limits[])
     target_lims = ax.targetlimits[]
     autolimits = nd_autolimits(ax)
-
     autos = (xauto, yauto, zauto)
     N = ifelse(ax isa Axis, 2, 3)
     dims = ntuple(identity, N)
@@ -706,14 +705,14 @@ function expandlimits_nd(nd_limits::Tuple, nd_margins::Tuple, transfunc)
                 return (newlim[1][i], newlim[2][i])
             end
         else
-            return nlim
+            return (nlim...,)
         end
     end
 end
 
 function expandlimits(lims, margin_low, margin_high, scale)
     # expand limits so that the margins are applied at the current axis scale
-    expandlimits_nd((lims,), ((margin_low, margin_high),), (scale,))
+    expandlimits_nd((lims,), ((margin_low, margin_high),), (scale,))[1]
 end
 
 function calculate_limits(ax::Axis; x = true, y = true)
@@ -804,6 +803,11 @@ Reset manually specified limits of `la` to an automatically determined rectangle
 function autolimits!(ax::Axis)
     ax.limits[] = (nothing, nothing)
     return
+end
+
+function nd_autolimits(ax::Axis3)
+    # TODO clean up Axis3 as well
+    return (xautolimits(ax), yautolimits(ax), zautolimits(ax))
 end
 
 function nd_autolimits(ax::Axis)

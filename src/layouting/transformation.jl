@@ -195,30 +195,6 @@ transformationmatrix(x) = transformation(x).model
 transform_func(x) = transform_func_obs(x)[]
 transform_func_obs(x) = transformation(x).transform_func
 
-"""
-    apply_transform(f, data)
-Apply the data transform func to the data
-"""
-apply_transform(f::typeof(identity), x) = x
-# these are all ambiguity fixes
-apply_transform(f::typeof(identity), x::AbstractArray) = x
-apply_transform(f::typeof(identity), x::VecTypes) = x
-apply_transform(f::typeof(identity), x::Number) = x
-apply_transform(f::typeof(identity), x::ClosedInterval) = x
-
-apply_transform(f::NTuple{2, typeof(identity)}, x) = x
-apply_transform(f::NTuple{2, typeof(identity)}, x::AbstractArray) = x
-apply_transform(f::NTuple{2, typeof(identity)}, x::VecTypes) = x
-apply_transform(f::NTuple{2, typeof(identity)}, x::Number) = x
-apply_transform(f::NTuple{2, typeof(identity)}, x::ClosedInterval) = x
-
-apply_transform(f::NTuple{3, typeof(identity)}, x) = x
-apply_transform(f::NTuple{3, typeof(identity)}, x::AbstractArray) = x
-apply_transform(f::NTuple{3, typeof(identity)}, x::VecTypes) = x
-apply_transform(f::NTuple{3, typeof(identity)}, x::Number) = x
-apply_transform(f::NTuple{3, typeof(identity)}, x::ClosedInterval) = x
-
-
 struct PointTrans{N, F}
     f::F
     function PointTrans{N}(f::F) where {N, F}
@@ -228,9 +204,31 @@ struct PointTrans{N, F}
         new{N, F}(f)
     end
 end
-
 # PointTrans{N}(func::F) where {N, F} = PointTrans{N, F}(func)
 Base.broadcastable(x::PointTrans) = (x,)
+
+"""
+    apply_transform(f, data)
+Apply the data transform func to the data
+"""
+apply_transform(f, number::Number) = f(number)
+
+function apply_transform(f, data::AbstractArray)
+    map(point-> apply_transform(f, point), data)
+end
+
+# To not create ambiguities, we need to define these methods on all types
+for Type in (AbstractArray, VecTypes, Number, ClosedInterval, Rect)
+    @eval begin
+        apply_transform(f::typeof(identity), x::$(Type)) = x
+        apply_transform(f::Tuple{typeof(identity)}, x::$(Type)) = x
+        apply_transform(f::NTuple{2, typeof(identity)}, x::$(Type)) = x
+        apply_transform(f::NTuple{3, typeof(identity)}, x::$(Type)) = x
+    end
+end
+apply_transform(f::NTuple{2, typeof(identity)}, point::VecTypes{2}) = point
+apply_transform(f::NTuple{2, typeof(identity)}, point::VecTypes{3}) = point
+apply_transform(f::NTuple{3, typeof(identity)}, point::VecTypes{3}) = point
 
 function apply_transform(f::PointTrans{N}, point::Point{N}) where N
     return f.f(point)
@@ -247,25 +245,16 @@ function apply_transform(f::PointTrans{N1}, point::Point{N2}) where {N1, N2}
     end
 end
 
-function apply_transform(f, data::AbstractArray)
-    map(point-> apply_transform(f, point), data)
-end
-
 function apply_transform(f::Tuple{Any, Any}, point::VecTypes{2})
     Point2{Float32}(
         f[1](point[1]),
         f[2](point[2]),
     )
 end
-# ambiguity fix
-apply_transform(f::NTuple{2, typeof(identity)}, point::VecTypes{2}) = point
-
 
 function apply_transform(f::Tuple{Any, Any}, point::VecTypes{3})
     apply_transform((f..., identity), point)
 end
-# ambiguity fix
-apply_transform(f::NTuple{2, typeof(identity)}, point::VecTypes{3}) = point
 
 function apply_transform(f::Tuple{Any, Any, Any}, point::VecTypes{3})
     Point3{Float32}(
@@ -274,11 +263,6 @@ function apply_transform(f::Tuple{Any, Any, Any}, point::VecTypes{3})
         f[3](point[3]),
     )
 end
-# ambiguity fix
-apply_transform(f::NTuple{3, typeof(identity)}, point::VecTypes{3}) = point
-
-
-apply_transform(f, number::Number) = f(number)
 
 function apply_transform(f::Observable, data::Observable)
     return lift((f, d)-> apply_transform(f, d), f, data)
@@ -295,13 +279,8 @@ function apply_transform(f, r::Rect)
     ma = maximum(r)
     mi_t = apply_transform(f, Point(mi))
     ma_t = apply_transform(f, Point(ma))
-    Rect(Vec(mi_t), Vec(ma_t .- mi_t))
+    return Rect(Vec(mi_t), Vec(ma_t .- mi_t))
 end
-# ambiguity fix
-apply_transform(f::typeof(identity), r::Rect) = r
-apply_transform(f::NTuple{2, typeof(identity)}, r::Rect) = r
-apply_transform(f::NTuple{3, typeof(identity)}, r::Rect) = r
-
 
 pseudolog10(x) = sign(x) * log10(abs(x) + 1)
 inv_pseudolog10(x) = sign(x) * (exp10(abs(x)) - 1)
