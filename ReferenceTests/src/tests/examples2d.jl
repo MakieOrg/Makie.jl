@@ -216,7 +216,7 @@ end
 @cell "Transforming lines" begin
     N = 7 # number of colours in default palette
     fig = Figure()
-    ax = Axis(fig[1,1]; limits=((0, 10), (0, 10)))
+    ax = Axis(fig[1,1])
     st = Stepper(fig)
     xs = 0:9        # data
     ys = zeros(10)
