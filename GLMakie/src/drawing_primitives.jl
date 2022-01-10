@@ -569,6 +569,6 @@ function draw_atomic(screen::GLScreen, scene::Scene, vol::Volume)
             )
             return convert(Mat4f, m) * m2
         end
-        return visualize(vol[4], Style(:default), gl_attributes)
+        return visualize(lift(identity, vol[4]), Style(:default), gl_attributes)
     end
 end
