@@ -29,6 +29,7 @@
 - add label_rotation to barplot [#1401](https://github.com/JuliaPlots/Makie.jl/pull/1401)
 - fix issue where `pixelcam!` does not remove controls from other cameras [#1504](https://github.com/JuliaPlots/Makie.jl/pull/1504)
 - add conversion for offsetarrays [#1260](https://github.com/JuliaPlots/Makie.jl/pull/1260)
+- `qqplot` `qqline` options are now `:identity`, `:fit`, `:robust` and `:none` [#1563](https://github.com/JuliaPlots/Makie.jl/pull/1563).
 
 #### All other changes
 Are collected [in this PR](https://github.com/JuliaPlots/Makie.jl/pull/1521) and in the [release notes](https://github.com/JuliaPlots/Makie.jl/releases/tag/v0.16.0).

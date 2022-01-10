@@ -33,18 +33,20 @@ samples, i.e., `AbstractVector{<:Real}`, whereas `x` can be
 - a list of samples,
 - an abstract distribution, e.g. `Normal(0, 1)`,
 - a distribution type, e.g. `Normal`.
-In the last case, the Q-Q plot by fitting that distribution type to the data `y`.
+In the last case, the distribution type is fitted to the data `y`.
 
-The attribute `qqline` (defaults to `:R`) determines how to compute a fit line for the Q-Q plot.
+The attribute `qqline` (defaults to `:robust`) determines how to compute a fit line for the Q-Q plot.
 Possible values are the following.
-- `:identity` draws the identity line (useful to see `x` and `y` follow the same distribution).
-- `:fit` fits the line to the quantile pairs (useful to see if the distribution of `y` can be obtained from the distribution of `x` via an affine transformation).
-- `:quantile` is analogous to `:fit` but uses a quantile-based fitting method.
-- `:R` is an alias for `:quantile`, as that is the default behavior in `:R`.
+- `:identity` draws the identity line.
+- `:fit` computes a least squares line fit of the quantile pairs.
+- `:robust` computes the line that passes through the first and third quartiles of the distributions.
 - `:none` (or any other value) omits drawing the line.
+Broadly speaking, `qqline = :identity` is useful to see if `x` and `y` follow the same distribution,
+whereas `qqline = :fit` and `qqline = :robust` are useful to see if the distribution of `y` can be
+obtained from the distribution of `x` via an affine transformation.
 
 Graphical attributes are
-- `color` to control color of both line and markers
+- `color` to control color of both line and markers (if `markercolor` is not specified)
 - `linestyle`
 - `linewidth`
 - `markercolor`
@@ -73,46 +75,42 @@ end
 """
     qqnorm(y; kwargs...)
 
-Shorthand for `qqplot(Normal, y)`. See [`qqplot`](@ref) for more details.
+Shorthand for `qqplot(Normal, y)`. See `qqplot` for more details.
 """
 @recipe(QQNorm) do scene
     default_theme(scene, QQPlot)
 end
 
-function fit_qqline(h::QQPair; qqline = :R)
-    if qqline in (:fit, :quantile, :identity, :R)
-        xs = [extrema(h.qx)...]
-        if qqline == :identity
-            ys = xs
-        elseif qqline == :fit
-            itc, slp = hcat(fill!(similar(h.qx), 1), h.qx) \ h.qy
-            ys = slp .* xs .+ itc
-        else # if qqline == :quantile || qqline == :R
-            quantx, quanty = quantile(h.qx, [0.25, 0.75]), quantile(h.qy, [0.25, 0.75])
-            slp = diff(quanty) ./ diff(quantx)
-            ys = quanty .+ slp .* (xs .- quantx)
-        end
-        return Point2f.(xs, ys)
-    else
-        return Point2f[]
+function fit_qqline(h::QQPair; qqline = :robust)
+    qqline in (:identity, :fit, :robust) || return Point2f[]
+    xs = collect(extrema(h.qx))
+    if qqline == :identity
+        ys = xs
+    elseif qqline == :fit
+        itc, slp = hcat(fill!(similar(h.qx), 1), h.qx) \ h.qy
+        ys = slp .* xs .+ itc
+    else # if qqline == :robust
+        quantx, quanty = quantile(h.qx, [0.25, 0.75]), quantile(h.qy, [0.25, 0.75])
+        slp = diff(quanty) ./ diff(quantx)
+        ys = quanty .+ slp .* (xs .- quantx)
     end
+    return Point2f.(xs, ys)
 end
 
 loc(D::Type{<:Distribution}, x) = Distributions.fit(D, x), x
 loc(D, x) = D, x
 
-function convert_arguments(::Type{<:QQPlot}, x, y; qqline = :R)
-    h = qqbuild(loc(x, y)...)
+function convert_arguments(::PlotFunc, h::QQPair; qqline = :robust)
     points = Point2f.(h.qx, h.qy)
     line = fit_qqline(h; qqline = qqline)
     return PlotSpec{QQPlot}(points, line)
 end
 
-convert_arguments(::Type{<:QQNorm}, y; qqline = :R) =
-    convert_arguments(QQPlot, Distributions.Normal(0, 1), y; qqline = qqline)
+convert_arguments(::Type{<:QQPlot}, x, y; qqline = :robust) =
+    convert_arguments(QQPlot, qqbuild(loc(x, y)...); qqline = qqline)
 
-convert_arguments(::PlotFunc, h::QQPair; qqline = :R) =
-    convert_arguments(QQPlot, h.qx, h.qy; qqline = qqline)
+convert_arguments(::Type{<:QQNorm}, y; qqline = :robust) =
+    convert_arguments(QQPlot, Distributions.Normal(0, 1), y; qqline = qqline)
 
 used_attributes(::Type{<:QQNorm}, y) = (:qqline,)
 used_attributes(::Type{<:QQPlot}, x, y) = (:qqline,)
