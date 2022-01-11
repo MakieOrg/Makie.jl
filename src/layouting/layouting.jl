@@ -56,6 +56,18 @@ function layout_text(
     return glyphcollection
 end
 
+
+per_char_info(value, charinfo) = [value for ci in charinfo]
+per_char_info(value::VecTypes, charinfo) = [value for ci in charinfo]
+function per_char_info(value::AbstractVector, charinfo)
+    if length(value) == length(charinfo)
+        return value
+    else
+        error("Charinfo has length $(length(charinfo)) and attribute has length $(length(value))")
+    end
+end
+
+
 """
     glyph_collection(str::AbstractString, font_per_char, fontscale_px, halign, valign, lineheight_factor, justification, rotation, color)
 
@@ -71,7 +83,7 @@ function glyph_collection(str::AbstractString, font_per_char, fontscale_px, hali
         Vec2f[], Float32[], RGBAf[], RGBAf[], Float32[])
 
     # collect information about every character in the string
-    charinfos = broadcast([c for c in str], font_per_char, fontscale_px) do char, font, scale
+    charinfos = broadcast((c for c in str), font_per_char, fontscale_px) do char, font, scale
         # TODO: scale as SVector not Number
         unscaled_extent = get_extent(font, char)
         lineheight = Float32(font.height / font.units_per_EM * lineheight_factor * scale)
@@ -216,10 +228,10 @@ function glyph_collection(str::AbstractString, font_per_char, fontscale_px, hali
         reduce(vcat, charorigins),
         [x.extent for x in charinfos],
         [Vec2f(x.scale) for x in charinfos],
-        [rotation for x in charinfos],
-        [color for x in charinfos],
-        [strokecolor for x in charinfos],
-        [strokewidth for x in charinfos],
+        per_char_info(rotation, charinfos),
+        per_char_info(color, charinfos),
+        per_char_info(strokecolor, charinfos),
+        per_char_info(strokewidth, charinfos),
     )
 end
 
