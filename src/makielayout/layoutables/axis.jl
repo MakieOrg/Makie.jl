@@ -834,7 +834,8 @@ function autolimits(ax::Axis, dim::Integer)
     # try getting x limits for the axis and then union them with linked axes
     lims = getlimits(ax, dim)
 
-    for link in ax.xaxislinks
+    links = dim == 1 ? ax.xaxislinks : ax.yaxislinks
+    for link in links
         if isnothing(lims)
             lims = getlimits(link, dim)
         else
