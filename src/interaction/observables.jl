@@ -4,7 +4,22 @@
     lift(f, o1::Observables.AbstractObservable, rest...)
 
 Create a new `Observable` by applying `f` to all observables in `o1` and `rest...`.
-The initial value is determined by the first function evaluation.
+The initial value is determined by the first function evaluation. Notice that `f` 
+is expected to directly obtain the _values_ of the observables.
+
+## Examples
+```julia
+julia> x = Observable(2); y = Observable(3)
+Observable{Int64} with 0 listeners. Value:
+2
+
+julia> y = lift(a -> a^2, x)
+Observable{Int64} with 0 listeners. Value:
+4
+
+julia> z = lift((a,b) -> a+b, x, y)
+Observable{Int64} with 0 listeners. Value:
+6
 """
 function lift(f, o1::Observables.AbstractObservable, rest...; kw...)
     if !isempty(kw)
