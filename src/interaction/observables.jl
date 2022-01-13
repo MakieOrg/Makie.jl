@@ -20,6 +20,7 @@ Observable{Int64} with 0 listeners. Value:
 julia> z = lift((a,b) -> a+b, x, y)
 Observable{Int64} with 0 listeners. Value:
 6
+```
 """
 function lift(f, o1::Observables.AbstractObservable, rest...; kw...)
     if !isempty(kw)
