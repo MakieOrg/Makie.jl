@@ -9,7 +9,7 @@ is expected to directly obtain the _values_ of the observables.
 
 ## Examples
 ```julia
-julia> x = Observable(2); y = Observable(3)
+julia> x = Observable(2)
 Observable{Int64} with 0 listeners. Value:
 2
 
