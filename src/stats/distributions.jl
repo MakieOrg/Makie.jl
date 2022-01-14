@@ -81,8 +81,11 @@ Shorthand for `qqplot(Normal, y)`. See `qqplot` for more details.
     default_theme(scene, QQPlot)
 end
 
-function fit_qqline(h::QQPair; qqline = :robust)
-    qqline in (:identity, :fit, :robust) || return Point2f[]
+# Compute points and line for the qqplot
+function fit_qqplot(x, y; qqline = :robust)
+    h = qqbuild(x, y)
+    points = Point2f.(h.qx, h.qy)
+    qqline in (:identity, :fit, :robust) || return points, Point2f[]
     xs = collect(extrema(h.qx))
     if qqline == :identity
         ys = xs
@@ -90,24 +93,22 @@ function fit_qqline(h::QQPair; qqline = :robust)
         itc, slp = hcat(fill!(similar(h.qx), 1), h.qx) \ h.qy
         ys = @. slp * xs + itc
     else # if qqline == :robust
-        quantx, quanty = quantile(h.qx, [0.25, 0.75]), quantile(h.qy, [0.25, 0.75])
+        quantx, quanty = quantile(x, [0.25, 0.75]), quantile(y, [0.25, 0.75])
         slp = (quanty[2] - quanty[1]) / (quantx[2] - quantx[1])
         ys = @. quanty + slp * (xs - quantx)
     end
-    return Point2f.(xs, ys)
+    return points, Point2f.(xs, ys)
 end
 
-loc(D::Type{<:Distribution}, x) = Distributions.fit(D, x), x
-loc(D, x) = D, x
+# Fit distribution type, otherwise leave first argument unchanged
+maybefit(D::Type{<:Distribution}, y) = Distributions.fit(D, y)
+maybefit(x, _) = x
 
-function convert_arguments(::PlotFunc, h::QQPair; qqline = :robust)
-    points = Point2f.(h.qx, h.qy)
-    line = fit_qqline(h; qqline = qqline)
+function convert_arguments(::Type{<:QQPlot}, x′, y; qqline = :robust)
+    x = maybefit(x′, y)
+    points, line = fit_qqplot(x, y; qqline = qqline)
     return PlotSpec{QQPlot}(points, line)
 end
-
-convert_arguments(::Type{<:QQPlot}, x, y; qqline = :robust) =
-    convert_arguments(QQPlot, qqbuild(loc(x, y)...); qqline = qqline)
 
 convert_arguments(::Type{<:QQNorm}, y; qqline = :robust) =
     convert_arguments(QQPlot, Distributions.Normal(0, 1), y; qqline = qqline)
