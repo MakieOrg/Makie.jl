@@ -89,12 +89,12 @@ end
 
     pol_e = Polygon(ls)
     p3_e = convert_arguments(Makie.PointBased(), pol_e)
-    @test p3_e[1] == pts
+    @test p3_e[1][1:end-1] == pts # for poly we repeat last point
 
     pol = Polygon(ls, [ls1])
     p3 = convert_arguments(Makie.PointBased(), pol)
     @test p3[1][1:4] == pts
-    @test p3[1][6:9] == pts1
+    @test p3[1][7:10] == pts1
 
     pts2 = Point{2, Int}[(5, 1), (3, 3), (4, 8), (1, 2), (5, 1)]
     pts3 = Point{2, Int}[(2, 2), (2, 3),(3, 4), (2, 2)]
@@ -107,10 +107,10 @@ end
     p4 = convert_arguments(Makie.PointBased(), apol)
     mpol = MultiPolygon([pol, pol1])
     @test p4[1][1:4] == pts
-    @test p4[1][6:9] == pts1
-    @test p4[1][11:15] == pts2
-    @test p4[1][17:20] == pts3
-    @test p4[1][22:26] == pts4
+    @test p4[1][7:10] == pts1
+    @test p4[1][14:18] == pts2
+    @test p4[1][21:24] == pts3
+    @test p4[1][27:31] == pts4
 end
 
 using Makie: check_line_pattern, line_diff_pattern

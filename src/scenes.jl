@@ -387,13 +387,14 @@ end
 function Base.push!(scene::Scene, child::Scene)
     push!(scene.children, child)
     disconnect!(child.camera)
-    nodes = map([:view, :projection, :projectionview, :resolution, :eyeposition]) do field
-        lift(getfield(scene.camera, field)) do val
+    observables = map([:view, :projection, :projectionview, :resolution, :eyeposition]) do field
+        return lift(getfield(scene.camera, field)) do val
             getfield(child.camera, field)[] = val
             getfield(child.camera, field)[] = val
+            return
         end
     end
-    cameracontrols!(child, nodes)
+    cameracontrols!(child, observables)
     child.parent = scene
     return scene
 end

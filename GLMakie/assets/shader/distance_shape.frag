@@ -43,6 +43,7 @@ flat in vec4            f_uv_texture_bbox;
 float aastep(float threshold1, float dist) {
     return smoothstep(threshold1-ANTIALIAS_RADIUS, threshold1+ANTIALIAS_RADIUS, dist);
 }
+
 float aastep(float threshold1, float threshold2, float dist) {
     return smoothstep(threshold1-ANTIALIAS_RADIUS, threshold1+ANTIALIAS_RADIUS, dist) -
            smoothstep(threshold2-ANTIALIAS_RADIUS, threshold2+ANTIALIAS_RADIUS, dist);
@@ -152,11 +153,11 @@ void main(){
     glow(f_glow_color, signed_distance, aastep(-stroke_width, signed_distance), final_color);
     // TODO: In 3D, we should arguably discard fragments outside the sprite
     //       But note that this may interfere with object picking.
-    //if (final_color == f_bg_color)
+    // if (final_color == f_bg_color)
     //    discard;
 
     write2framebuffer(final_color, f_id);
-    
+
     // Debug tools:
     // * Show the background of the sprite.
     //   write2framebuffer(mix(final_color, vec4(1,0,0,1), 0.2), f_id);

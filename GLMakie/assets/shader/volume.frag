@@ -316,6 +316,8 @@ float min_bigger_0(vec3 v1, vec3 v2){
 
 void main()
 {
+    {{depth_default}}
+    // may write: gl_FragDepth = gl_FragCoord.z;
     vec4 color;
     vec3 eye_unit = vec3(modelinv * vec4(eyeposition, 1));
     vec3 back_position = vec3(modelinv * vec4(frag_vert, 1));

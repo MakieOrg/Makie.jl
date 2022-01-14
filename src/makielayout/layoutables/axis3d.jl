@@ -1,3 +1,5 @@
+struct OrthographicCamera <: AbstractCamera end
+
 """
     layoutable(Axis3, fig_or_scene; bbox = nothing, kwargs...)
 
@@ -31,6 +33,8 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
     scenearea = lift(round_to_IRect2D, layoutobservables.computedbbox)
 
     scene = Scene(topscene, scenearea, clear = false, backgroundcolor = attrs.backgroundcolor)
+    cam = OrthographicCamera()
+    cameracontrols!(scene, cam)
 
     matrices = lift(calculate_matrices, finallimits, scene.px_area, elevation, azimuth, perspectiveness, aspect, viewmode)
 
@@ -220,7 +224,7 @@ function calculate_matrices(limits, px_area, elev, azim, perspectiveness, aspect
 end
 
 function projectionmatrix(viewmatrix, limits, eyepos, radius, azim, elev, angle, width, height, scales, viewmode)
-    near = 0.01f0
+    near = 0.5 * (radius - sqrt(3))
     far = radius + 2 * sqrt(3)
 
     aspect_ratio = width / height

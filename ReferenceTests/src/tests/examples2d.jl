@@ -179,7 +179,7 @@ end
     sf = Observable(Base.Fix2(v, 0e0))
     title_str = Observable("t = 0.00")
     sp = streamplot(sf, -2..2, -2..2;
-                    linewidth=2,  arrow_size=0.09, colormap=:magma, axis=(;title=title_str))
+                    linewidth=2,  arrow_size=20, colormap=:magma, axis=(;title=title_str))
     Record(sp, LinRange(0, 20, 5)) do i
         sf[] = Base.Fix2(v, i)
         title_str[] = "t = $(round(i; sigdigits=2))"
@@ -204,12 +204,12 @@ let
     end
     @cell "streamplot" begin
         P = FitzhughNagumo(0.1, 0.0, 1.5, 0.8)
-        f(x, P::FitzhughNagumo) = Point2f(
+        ff(x, P::FitzhughNagumo) = Point2f(
             (x[1] - x[2] - x[1]^3 + P.s) / P.ϵ,
             P.γ * x[1] - x[2] + P.β
         )
-        f(x) = f(x, P)
-        streamplot(f, -1.5..1.5, -1.5..1.5, colormap=:magma)
+        ff(x) = ff(x, P)
+        streamplot(ff, -1.5..1.5, -1.5..1.5, colormap=:magma)
     end
 end
 

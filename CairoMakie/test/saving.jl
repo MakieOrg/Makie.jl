@@ -14,10 +14,10 @@ savepath(uid, fmt) = joinpath(format_save_path, "$uid.$fmt")
         scene = MakieGallery.eval_example(example)
         for fmt in ("png", "pdf", "svg")
             @test try
-                save(savepath(example.unique_name, fmt), scene)
+                save(savepath(example.title, fmt), scene)
                 true
             catch e
-                @warn "Saving $(example.unique_name) in format `$fmt` failed!" exception=(e, Base.catch_backtrace())
+                @warn "Saving $(example.title) in format `$fmt` failed!" exception=(e, Base.catch_backtrace())
                 false
             end
         end

@@ -74,7 +74,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
 
     scene = Scene(topscene, px_area=scenearea)
 
-    background = poly!(topscene, scenearea, color = backgroundcolor, strokewidth = 0, inspectable = false)
+    background = mesh!(topscene, scenearea, color = backgroundcolor, inspectable = false, shading=false)
     translate!(background, 0, 0, -100)
     decorations[:background] = background
 
@@ -119,28 +119,27 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     translate!(yminorgridlines, 0, 0, -10)
     decorations[:yminorgridlines] = yminorgridlines
 
-    onany(finallimits, xreversed, yreversed, attrs.xscale, attrs.yscale) do lims, xrev, yrev, xsc, ysc
+    onany(attrs.xscale, attrs.yscale) do xsc, ysc
+        scene.transformation.transform_func[] = (xsc, ysc)
+    end
+    notify(attrs.xscale)
+
+    onany(finallimits, xreversed, yreversed, scene.transformation.transform_func) do lims, xrev, yrev, t
         nearclip = -10_000f0
         farclip = 10_000f0
 
-        left, bottom = minimum(lims)
-        right, top = maximum(lims)
+        left, bottom = Makie.apply_transform(t, Point(minimum(lims)))
+        right, top = Makie.apply_transform(t, Point(maximum(lims)))
 
         leftright = xrev ? (right, left) : (left, right)
         bottomtop = yrev ? (top, bottom) : (bottom, top)
 
         projection = Makie.orthographicprojection(
-            xsc.(leftright)...,
-            ysc.(bottomtop)..., nearclip, farclip)
+            leftright...,
+            bottomtop..., nearclip, farclip)
 
         Makie.set_proj_view!(camera(scene), projection, Makie.Mat4f(Makie.I))
     end
-
-    onany(attrs.xscale, attrs.yscale) do xsc, ysc
-        scene.transformation.transform_func[] = (xsc, ysc)
-    end
-
-    notify(attrs.xscale)
 
     xaxis_endpoints = lift(xaxisposition, scene.px_area) do xaxisposition, area
         if xaxisposition == :bottom
@@ -218,7 +217,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         )
     decorations[:xaxis] = xaxis
 
-    yaxis  =  LineAxis(topscene, endpoints = yaxis_endpoints, limits = ylims,
+    yaxis = LineAxis(topscene, endpoints = yaxis_endpoints, limits = ylims,
         flipped = yaxis_flipped, ticklabelrotation = yticklabelrotation,
         ticklabelalign = yticklabelalign, labelsize = ylabelsize,
         labelpadding = ylabelpadding, ticklabelpad = yticklabelpad, labelvisible = ylabelvisible,
@@ -577,8 +576,6 @@ end
 
 validate_limits_for_scale(lims, scale) = all(x -> x in defined_interval(scale), lims)
 
-
-
 palettesyms(cycle::Cycle) = [c[2] for c in cycle.cycle]
 attrsyms(cycle::Cycle) = [c[1] for c in cycle.cycle]
 
@@ -627,7 +624,7 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
     manually_cycled_attributes = filter(keys(allattrs)) do key
         allattrs[key][] isa Cycled
     end
-    
+
     # if there are any manually cycled attributes, we don't do the normal
     # cycling but only look up exactly the passed attributes
     if !isempty(manually_cycled_attributes)
@@ -640,7 +637,7 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
         end
 
         palettes = [palette[sym][] for sym in palettesyms(cycle)]
-        
+
         for sym in manually_cycled_attributes
             isym = findfirst(syms -> sym in syms, attrsyms(cycle))
             index = allattrs[sym][].i
@@ -708,33 +705,18 @@ needs_tight_limits(@nospecialize any) = false
 needs_tight_limits(::Union{Heatmap, Image}) = true
 function needs_tight_limits(c::Contourf)
     # we know that all values are included and the contourf is rectangular
-    c.levels[] isa Int
     # otherwise here it could be in an arbitrary shape
-end
-
-function bboxunion(bb1, bb2)
-
-    o1 = bb1.origin
-    o2 = bb2.origin
-    e1 = bb1.origin + bb1.widths
-    e2 = bb2.origin + bb2.widths
-
-    o = min.(o1, o2)
-    e = max.(e1, e2)
-
-    BBox(o[1], e[1], o[2], e[2])
+    return c.levels[] isa Int
 end
 
 function expandbboxwithfractionalmargins(bb, margins)
     newwidths = bb.widths .* (1f0 .+ margins)
     diffs = newwidths .- bb.widths
     neworigin = bb.origin .- (0.5f0 .* diffs)
-    Rect2f(neworigin, newwidths)
+    return Rect2f(neworigin, newwidths)
 end
 
-function limitunion(lims1, lims2)
-    (min(lims1..., lims2...), max(lims1..., lims2...))
-end
+limitunion(lims1, lims2) = (min(lims1..., lims2...), max(lims1..., lims2...))
 
 function expandlimits(lims, margin_low, margin_high, scale)
     # expand limits so that the margins are applied at the current axis scale
@@ -767,40 +749,26 @@ function expandlimits(lims, margin_low, margin_high, scale)
 end
 
 function getlimits(la::Axis, dim)
-
     # find all plots that don't have exclusion attributes set
     # for this dimension
-    plots_with_autolimits = if dim == 1
-        filter(p -> !haskey(p.attributes, :xautolimits) || p.attributes.xautolimits[], la.scene.plots)
-    elseif dim == 2
-        filter(p -> !haskey(p.attributes, :yautolimits) || p.attributes.yautolimits[], la.scene.plots)
-    else
+    if !(dim in (1, 2))
         error("Dimension $dim not allowed. Only 1 or 2.")
     end
 
-    # only use visible plots for limits
-    visible_plots = filter(
-        p -> !haskey(p.attributes, :visible) || p.attributes.visible[],
-        plots_with_autolimits)
-
-    # get all data limits
-    bboxes = [Rect2f(Makie.data_limits(p)) for p in visible_plots]
-
-    # filter out bboxes that are invalid somehow
-    finite_bboxes = filter(Makie.isfinite_rect, bboxes)
-
+    function exclude(plot)
+        # only use plots with autolimits = true
+        to_value(get(plot, dim == 1 ? :xautolimits : :yautolimits, true)) || return true
+        # only use visible plots for limits
+        return !to_value(get(plot, :visible, true))
+    end
+    # get all data limits, minus the excluded plots
+    boundingbox = Makie.data_limits(la.scene, exclude)
     # if there are no bboxes remaining, `nothing` signals that no limits could be determined
-    isempty(finite_bboxes) && return nothing
+    Makie.isfinite_rect(boundingbox) || return nothing
 
     # otherwise start with the first box
-    templim = (finite_bboxes[1].origin[dim], finite_bboxes[1].origin[dim] + finite_bboxes[1].widths[dim])
-
-    # and union all other limits with it
-    for bb in finite_bboxes[2:end]
-        templim = limitunion(templim, (bb.origin[dim], bb.origin[dim] + bb.widths[dim]))
-    end
-
-    templim
+    mini, maxi = minimum(boundingbox), maximum(boundingbox)
+    return (mini[dim], maxi[dim])
 end
 
 getxlimits(la::Axis) = getlimits(la, 1)
@@ -830,8 +798,8 @@ function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, tlim
 
         for xlink in xlinks
             otherlims = xlink.targetlimits[]
-            otherylims = (otherlims.origin[2], otherlims.origin[2] + otherlims.widths[2])
-            otherxlims = (otherlims.origin[1], otherlims.origin[1] + otherlims.widths[1])
+            otherxlims = limits(otherlims, 1)
+            otherylims = limits(otherlims, 2)
             if thisxlims != otherxlims
                 xlink.block_limit_linking[] = true
                 xlink.targetlimits[] = BBox(thisxlims[1], thisxlims[2], otherylims[1], otherylims[2])
@@ -841,8 +809,8 @@ function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, tlim
 
         for ylink in ylinks
             otherlims = ylink.targetlimits[]
-            otherylims = (otherlims.origin[2], otherlims.origin[2] + otherlims.widths[2])
-            otherxlims = (otherlims.origin[1], otherlims.origin[1] + otherlims.widths[1])
+            otherxlims = limits(otherlims, 1)
+            otherylims = limits(otherlims, 2)
             if thisylims != otherylims
                 ylink.block_limit_linking[] = true
                 ylink.targetlimits[] = BBox(otherxlims[1], otherxlims[2], thisylims[1], thisylims[2])
@@ -859,76 +827,44 @@ Reset manually specified limits of `la` to an automatically determined rectangle
 """
 function autolimits!(ax::Axis)
     ax.limits[] = (nothing, nothing)
-    # bbox = BBox(xautolimits(ax)..., yautolimits(ax)...)
-    # ax.targetlimits[] = bbox
-    nothing
+    return
 end
 
-function xautolimits(ax::Axis)
+function autolimits(ax::Axis, dim::Integer)
     # try getting x limits for the axis and then union them with linked axes
-    xlims = getxlimits(ax)
+    lims = getlimits(ax, dim)
 
-    for link in ax.xaxislinks
-        if isnothing(xlims)
-            xlims = getxlimits(link)
+    links = dim == 1 ? ax.xaxislinks : ax.yaxislinks
+    for link in links
+        if isnothing(lims)
+            lims = getlimits(link, dim)
         else
-            newxlims = getxlimits(link)
-            if !isnothing(newxlims)
-                xlims = limitunion(xlims, newxlims)
+            newlims = getlimits(link, dim)
+            if !isnothing(newlims)
+                lims = limitunion(lims, newlims)
             end
         end
     end
 
-    if !isnothing(xlims)
-        if !validate_limits_for_scale(xlims, ax.xscale[])
-            error("Found invalid x-limits $xlims for scale $(ax.xscale[]) which is defined on the interval $(defined_interval(ax.xscale[]))")
+    dimsym = dim == 1 ? :x : :y
+    scale = getproperty(ax, Symbol(dimsym, :scale))[]
+    margin = getproperty(ax.attributes, Symbol(dimsym, :autolimitmargin))[]
+    if !isnothing(lims)
+        if !validate_limits_for_scale(lims, scale)
+            error("Found invalid x-limits $lims for scale $(scale) which is defined on the interval $(defined_interval(scale))")
         end
-
-        xlims = expandlimits(xlims,
-            ax.attributes.xautolimitmargin[][1],
-            ax.attributes.xautolimitmargin[][2],
-            ax.xscale[])
+        lims = expandlimits(lims, margin[1], margin[2], scale)
     end
 
     # if no limits have been found, use the targetlimits directly
-    if isnothing(xlims)
-        xlims = (ax.targetlimits[].origin[1], ax.targetlimits[].origin[1] + ax.targetlimits[].widths[1])
+    if isnothing(lims)
+        lims = limits(ax.targetlimits[], dim)
     end
-    xlims
+    return lims
 end
 
-function yautolimits(ax)
-    # try getting y limits for the axis and then union them with linked axes
-    ylims = getylimits(ax)
-
-    for link in ax.yaxislinks
-        if isnothing(ylims)
-            ylims = getylimits(link)
-        else
-            newylims = getylimits(link)
-            if !isnothing(newylims)
-                ylims = limitunion(ylims, newylims)
-            end
-        end
-    end
-
-    if !isnothing(ylims)
-        if !validate_limits_for_scale(ylims, ax.yscale[])
-            error("Found invalid direct y-limits $ylims for scale $(ax.yscale[]) which is defined on the interval $(defined_interval(ax.yscale[]))")
-        end
-
-        ylims = expandlimits(ylims,
-            ax.attributes.yautolimitmargin[][1],
-            ax.attributes.yautolimitmargin[][2],
-            ax.yscale[])
-    end
-
-    # if no limits have been found, use the targetlimits directly
-    if isnothing(ylims)
-        ylims = (ax.targetlimits[].origin[2], ax.targetlimits[].origin[2] + ax.targetlimits[].widths[2])
-    end
-    ylims
-end
+xautolimits(ax::Axis) = autolimits(ax, 1)
+yautolimits(ax::Axis) = autolimits(ax, 2)
 
 """
     linkaxes!(a::Axis, others...)
@@ -939,7 +875,6 @@ function linkaxes!(a::Axis, others...)
     linkxaxes!(a, others...)
     linkyaxes!(a, others...)
 end
-
 
 function adjustlimits!(la)
     asp = la.autolimitaspect[]
@@ -1157,7 +1092,6 @@ function hidespines!(la::Axis, spines::Symbol... = (:l, :r, :b, :t)...)
     end
 end
 
-
 function tight_yticklabel_spacing!(la::Axis)
     tight_ticklabel_spacing!(la.elements[:yaxis])
 end
@@ -1184,7 +1118,6 @@ function Base.show(io::IO, ax::Axis)
     nplots = length(ax.scene.plots)
     print(io, "Axis ($nplots plots)")
 end
-
 
 function Makie.xlims!(ax::Axis, xlims)
     if length(xlims) != 2
@@ -1284,7 +1217,6 @@ function Base.empty!(ax::Axis)
 end
 
 Makie.transform_func(ax::Axis) = Makie.transform_func(ax.scene)
-
 
 # these functions pick limits for different x and y scales, so that
 # we don't pick values that are invalid, such as 0 for log etc.
