@@ -173,7 +173,6 @@ Extracts the scale from a primitive.
 """
 primitive_scale(prim::GeometryPrimitive) = Vec2f(widths(prim))
 primitive_scale(::Union{Shape, Char}) = Vec2f(40)
-# primitive_scale(::BezierPath) = Vec2f(40) # does nothing?
 primitive_scale(c) = Vec2f(0.1)
 
 """
@@ -181,10 +180,6 @@ Extracts the offset from a primitive.
 """
 primitive_offset(x, scale::Nothing) = Vec2f(0) # default offset
 primitive_offset(x, scale) = const_lift(/, scale, -2f0)  # default offset
-function primitive_offset(b::BezierPath, scale)
-    bb = Makie.bbox(b)
-    const_lift((a, b) -> -a ./ b, Vec2f(bb.origin), scale)
-end
 
 """
 Extracts the uv offset and width from a primitive.
@@ -284,22 +279,25 @@ combine_scales(scale, x::Nothing, y::Nothing, z::Nothing) = scale
 combine_scales(s::Nothing, x, y, z::Nothing) = Vec2f.(x, y)
 combine_scales(s::Nothing, x, y, z) = Vec3f.(x, y, z)
 
+# Calculates the scaling factor from unpadded size -> padded size
+# Here we assume the glyph to be representative of Makie.PIXELSIZE_IN_ATLAS[]
+# regardless of its true size.
 function char_scale_factor(char, font)
-    # uv * size(ta.data) / Makie.PIXELSIZE_IN_ATLAS[] is the padded glyph size
-    # normalized to the size the glyph was generated as.
     ta = Makie.get_texture_atlas()
     lbrt = glyph_uv_width!(ta, char, font)
-    width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
-    width * Vec2f(size(ta.data)) / Makie.PIXELSIZE_IN_ATLAS[]
+    uv_width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
+    full_pixel_size_in_atlas = uv_width * Vec2f(size(ta.data) .- 1)
+    full_pixel_size_in_atlas / Makie.PIXELSIZE_IN_ATLAS[]
 end
 
-function bezierpath_scale_factor(bp)
-    # uv * size(ta.data) / Makie.PIXELSIZE_IN_ATLAS[] is the padded glyph size
-    # normalized to the size the glyph was generated as. 
+# full_pad / unpadded_atlas_width
+function bezierpath_pad_scale_factor(bp)
     ta = Makie.get_texture_atlas()
     lbrt = glyph_uv_width!(bp)
-    width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
-    width * Vec2f(size(ta.data)) / Makie.PIXELSIZE_IN_ATLAS[]
+    uv_width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
+    full_pixel_size_in_atlas = uv_width * Vec2f(size(ta.data) .- 1)
+    full_pad = 2f0 * Makie.GLYPH_PADDING[] # left + right pad
+    full_pad ./ (full_pixel_size_in_atlas .- full_pad)
 end
 
 # This works the same for x being widths and offsets
@@ -315,7 +313,14 @@ function rescale_glyph(str::String, font, xs::Vector)
     map((char, x) -> x * char_scale_factor(char, font), collect(str), xs)
 end
 
-rescale_bezierpath(bp::BezierPath, x) = x .* bezierpath_scale_factor(bp)
+# padded_width = (unpadded_target_width + unpadded_target_width * pad_per_unit)
+function rescale_bezierpath(bp::BezierPath, x)
+    x .* (1f0 .+ bezierpath_pad_scale_factor(bp)) .* widths(Makie.bbox(bp))
+end
+function offset_bezierpath(bp::BezierPath, offset)
+    bb = Makie.bbox(bp)
+    origin(bb) .+ offset .- 0.5f0 .* bezierpath_pad_scale_factor(bp) .* widths(bb)
+end
 
 """
 Main assemble functions for sprite particles.
@@ -341,21 +346,21 @@ function sprites(p, s, data)
         # to offset.
         data[:offset] = map(rescale_glyph, p[1], font, offset)
         data[:scale] = map(rescale_glyph, p[1], font, scale)
-    end
-
-    if to_value(p[1]) isa BezierPath
+    
+    elseif to_value(p[1]) isa BezierPath
         scale = map(combine_scales,
             pop!(data, :scale, Observable(nothing)),
             pop!(data, :scale_x, Observable(nothing)),
             pop!(data, :scale_y, Observable(nothing)),
             pop!(data, :scale_z, Observable(nothing))
         )
+        # TODO 
+        # marker_offset should be Vec2f(0) by default for BezierPaths
+        # once that is the case we should switch to this offset
         # offset = get(data, :offset, Observable(Vec2f(0)))
-        offset = primitive_offset(to_value(p[1]), scale)
+        offset = Observable(Vec2f(0))
 
-        # The same scaling that needs to be applied to scale also needs to apply
-        # to offset.
-        data[:offset] = map(rescale_bezierpath, p[1], offset)
+        data[:offset] = map(offset_bezierpath, p[1], offset)
         data[:scale] = map(rescale_bezierpath, p[1], scale)
     end
 
