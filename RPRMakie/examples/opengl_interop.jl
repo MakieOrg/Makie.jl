@@ -1,7 +1,6 @@
 using GLMakie, GeometryBasics, RPRMakie, RadeonProRender
 using Colors, FileIO
 using Colors: N0f8
-RPR = RadeonProRender
 
 f = (u, v) -> cos(v) * (6 - (5 / 4 + sin(3 * u)) * sin(u - 3 * v))
 g = (u, v) -> sin(v) * (6 - (5 / 4 + sin(3 * u)) * sin(u - 3 * v))

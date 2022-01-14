@@ -79,7 +79,7 @@ end
 function update_cam!(scene::SceneLike, cam::Camera2D)
     x, y = minimum(cam.area[])
     w, h = widths(cam.area[]) ./ 2f0
-    # These nodes should be final, no one should do map(cam.projection),
+    # These observables should be final, no one should do map(cam.projection),
     # so we don't push! and just update the value in place
     view = translationmatrix(Vec3f(-x - w, -y - h, 0))
     projection = orthographicprojection(-w, w, -h, h, -10_000f0, 10_000f0)
@@ -308,7 +308,7 @@ struct PixelCamera <: AbstractCamera end
 
 Creates a pixel-level camera for the `Scene`.  No controls!
 """
-function campixel!(scene; nearclip=-1000f0, farclip=1000f0)
+function campixel!(scene; nearclip=-10_000f0, farclip=10_000f0)
     disconnect!(camera(scene))
     update_once = Observable(false)
     on(camera(scene), update_once, pixelarea(scene)) do u, window_size
@@ -329,7 +329,7 @@ struct RelativeCamera <: AbstractCamera end
 
 Creates a pixel-level camera for the `Scene`.  No controls!
 """
-function cam_relative!(scene; nearclip=-1000f0, farclip=1000f0)
+function cam_relative!(scene; nearclip=-10_000f0, farclip=10_000f0)
     projection = orthographicprojection(0f0, 1f0, 0f0, 1f0, nearclip, farclip)
     set_proj_view!(camera(scene), projection, Mat4f(I))
     cam = RelativeCamera()

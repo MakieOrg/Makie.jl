@@ -63,13 +63,13 @@ excludes = Set([
     # markers too big, close otherwise, needs to be assimilated with glmakie
     "Unicode Marker",
     "Depth Shift",
-    "Order Independent Transparency"
+    "Order Independent Transparency",
+    "heatmap transparent colormap"
 ])
-excludes2 = Set(["short_tests_90", "short_tests_111", "short_tests_35", "short_tests_3"])
 
 functions = [:volume, :volume!, :uv_mesh]
-database = database_filtered(excludes, excludes2, functions=functions)
+database = database_filtered(excludes, functions=functions)
 
 recorded = joinpath(@__DIR__, "recorded")
 rm(recorded; force=true, recursive=true); mkdir(recorded)
-ReferenceTests.run_reference_tests(database, recorded)
+@time ReferenceTests.run_reference_tests(database, recorded)

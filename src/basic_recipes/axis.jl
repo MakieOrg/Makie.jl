@@ -115,8 +115,8 @@ function default_ticks(
     )
     # scale the limits
     scaled_ticks, mini, maxi = optimize_ticks(
-        scale_func(lmin),
-        scale_func(lmax);
+        Float64(scale_func(lmin)),
+        Float64(scale_func(lmax));
         k_min = 4, # minimum number of ticks
         k_max = 8, # maximum number of ticks
     )
@@ -128,8 +128,8 @@ function default_ticks(
         lmin::Number, lmax::Number, ticks::Integer, scale_func = identity
     )
     scaled_ticks, mini, maxi = optimize_ticks(
-        scale_func(lmin),
-        scale_func(lmax);
+        Float64(scale_func(lmin)),
+        Float64(scale_func(lmax));
         k_min = ticks, # minimum number of ticks
         k_max = ticks, # maximum number of ticks
         k_ideal = ticks,

@@ -212,7 +212,7 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     replace_automatic!(plot_attributes, :model) do
         transformation.model
     end
-    # create the plot, with the full attributes, the input signals, and the final signal nodes.
+    # create the plot, with the full attributes, the input signals, and the final signals.
     plot_obj = FinalType(scene, transformation, plot_attributes, input, seperate_tuple(args))
 
     calculated_attributes!(plot_obj)

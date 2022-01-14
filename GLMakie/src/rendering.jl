@@ -119,9 +119,17 @@ const selection_queries = Function[]
 Renders a single frame of a `window`
 """
 function render_frame(screen::Screen; resize_buffers=true)
+    function sortby(x)
+        robj = x[3]
+        plot = screen.cache2plot[robj.id]
+        # TODO, use actual boundingbox
+        return Makie.zvalue2d(plot)
+    end
+    sort!(screen.renderlist; by=sortby)
+
     # NOTE
-    # The transparent color buffer is reused by SSAO and FXAA. Changing the 
-    # render order here may introduce artifacts because of that. 
+    # The transparent color buffer is reused by SSAO and FXAA. Changing the
+    # render order here may introduce artifacts because of that.
     nw = to_native(screen)
     ShaderAbstractions.is_context_active(nw) || return
     fb = screen.framebuffer
@@ -146,23 +154,26 @@ function render_frame(screen::Screen; resize_buffers=true)
     setup!(screen)
     glDrawBuffers(length(fb.render_buffer_ids), fb.render_buffer_ids)
 
-    # render with FXAA & SSAO
+    # render with SSAO
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
     glStencilMask(0x00)
-    GLAbstraction.render(screen, false, true, true)
-
+    GLAbstraction.render(screen) do robj
+        return !Bool(robj[:transparency][]) && Bool(robj[:ssao][])
+    end
     # SSAO
     screen.postprocessors[1].render(screen)
 
-    # render with FXAA but no SSAO
+    # render no SSAO
     glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
     glEnable(GL_STENCIL_TEST)
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
     glStencilMask(0x00)
-    GLAbstraction.render(screen, false, true, false)
+    # render all non ssao
+    GLAbstraction.render(screen) do robj
+        return !Bool(robj[:transparency][]) && !Bool(robj[:ssao][])
+    end
     glDisable(GL_STENCIL_TEST)
-
 
     # TRANSPARENT RENDER
     # clear sums to 0
@@ -178,10 +189,10 @@ function render_frame(screen::Screen; resize_buffers=true)
     glEnable(GL_STENCIL_TEST)
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
     glStencilMask(0x00)
-    GLAbstraction.render(screen, true, true, true)
-    GLAbstraction.render(screen, true, true, false)
-    GLAbstraction.render(screen, true, false, true)
-    GLAbstraction.render(screen, true, false, false)
+    # Render only transparent objects
+    GLAbstraction.render(screen) do robj
+        return Bool(robj[:transparency][])
+    end
     glDisable(GL_STENCIL_TEST)
 
     # TRANSPARENT BLEND
@@ -190,18 +201,8 @@ function render_frame(screen::Screen; resize_buffers=true)
     # FXAA
     screen.postprocessors[3].render(screen)
 
-    # no FXAA primary render
-    glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
-    glEnable(GL_STENCIL_TEST)
-    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
-    glStencilMask(0x00)
-    GLAbstraction.render(screen, false, false, true)
-    GLAbstraction.render(screen, false, false, false)
-    glDisable(GL_STENCIL_TEST)
-
     # transfer everything to the screen
     screen.postprocessors[4].render(screen)
-
 
     return
 end
@@ -214,16 +215,11 @@ function id2scene(screen, id1)
     return false, nothing
 end
 
-function GLAbstraction.render(screen::GLScreen, transparent::Bool, fxaa::Bool, ssao::Bool)
+function GLAbstraction.render(filter_elem_func, screen::GLScreen)
     # Somehow errors in here get ignored silently!?
     try
-        # sort by overdraw, so that overdrawing objects get drawn last!
-        # sort!(screen.renderlist, by = ((zi, id, robj),)-> robj.prerenderfunction.overdraw[])
         for (zindex, screenid, elem) in screen.renderlist
-            if !((elem[:transparency][] == transparent) &&
-                (elem[:fxaa][] == fxaa) && (elem[:ssao][] == ssao))
-                continue
-            end
+            filter_elem_func(elem)::Bool || continue
 
             found, scene = id2scene(screen, screenid)
             found || continue
@@ -238,7 +234,7 @@ function GLAbstraction.render(screen::GLScreen, transparent::Bool, fxaa::Bool, s
                 # so we can't do the stencil test
                 glStencilFunc(GL_ALWAYS, screenid, 0xff)
             end
-            
+
             render(elem)
         end
     catch e

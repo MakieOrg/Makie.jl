@@ -1,5 +1,6 @@
-# "lines and linestyles"
-begin
+# @cell "lines and linestyles" begin
+quote
+    # For now disabled until we fix GLMakie linestyle
     s = Scene(resolution = (800, 800), camera = campixel!)
     scalar = 30
     points = Point2f[(1, 1), (1, 2), (2, 3), (2, 1)]
@@ -19,8 +20,7 @@ begin
     s
 end
 
-# "lines with gaps"
-begin
+@cell "lines with gaps" begin
     s = Scene(resolution = (800, 800), camera = campixel!)
     points = [
         Point2f[(1, 0), (2, 0.5), (NaN, NaN), (4, 0.5), (5, 0)],
@@ -36,13 +36,12 @@ begin
     s
 end
 
-# "scatters"
-begin
+@cell "scatters" begin
     s = Scene(resolution = (800, 800), camera = campixel!)
-    
+
     markersizes = 0:2:30
     markers = [:circle, :rect, :cross, :utriangle, :dtriangle,
-        'a', 'x', 'h', 'g', 'Y', 'J', 'α', '↑'    
+        'a', 'x', 'h', 'g', 'Y', 'J', 'α', '↑'
     ]
 
     for (i, ms) in enumerate(markersizes)
@@ -57,13 +56,12 @@ begin
     s
 end
 
-# "scatter rotations"
-begin
+@cell "scatter rotations" begin
     s = Scene(resolution = (800, 800), camera = campixel!)
-    
+
     rotations = range(0, 2pi, length = 15)
     markers = [:circle, :rect, :cross, :utriangle, :dtriangle,
-        'a', 'x', 'h', 'g', 'Y', 'J', 'α', '↑'    
+        'a', 'x', 'h', 'g', 'Y', 'J', 'α', '↑'
     ]
 
     for (i, rot) in enumerate(rotations)
@@ -81,22 +79,11 @@ begin
     s
 end
 
-# "poly"
-begin
-    s = Scene(resolution = (800, 800), camera = campixel!)
 
+@cell "basic polygon shapes" begin
+    s = Scene(resolution = (800, 800), camera = campixel!)
     scalefactor = 70
     Pol = Makie.GeometryBasics.Polygon
-
-    translate(pol, p) = Pol(
-        Ref(p) .+ decompose(Point2f, pol.exterior),
-        map(x -> decompose(Point2f, x) .+ Ref(p), pol.interiors)
-    )
-    scale(pol, sca) = Pol(
-        sca .* decompose(Point2f, pol.exterior),
-        map(x -> decompose(Point2f, x) .* sca, pol.interiors)
-    )
-
     polys = [
         # three points
         Pol(Point2f[(1, 1), (1, 2), (2, 1)]),
@@ -132,17 +119,15 @@ begin
 
     for (i, p) in enumerate(polys)
         for (j, lw) in enumerate(linewidths)
+            t = Transformation(scale=Vec3f(scalefactor), translation = Vec3f(1.3 * (i-1), 1.3 * j, 0) .* scalefactor)
             poly!(
                 s,
-                translate(
-                    scale(p, scalefactor),
-                    scalefactor * Point2f(1.3 * (i-1), 1.3 * j)
-                ),
+                p,
+                transformation = t,
                 color = (:red, 0.5),
                 strokewidth = lw,
             )
         end
     end
-
     s
 end

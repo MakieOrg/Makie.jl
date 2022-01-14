@@ -88,6 +88,7 @@ function poly_convert(polygons::AbstractVector{<: AbstractVector{<: VecTypes}})
 end
 
 to_line_segments(polygon) = convert_arguments(PointBased(), polygon)[1]
+# Need to explicitly overload for Mesh, since otherwise, Mesh will dispatch to AbstractVector
 to_line_segments(polygon::GeometryBasics.Mesh) = convert_arguments(PointBased(), polygon)[1]
 
 function to_line_segments(meshes::AbstractVector)
@@ -125,9 +126,23 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
         inspectable = plot.inspectable
     )
     outline = lift(to_line_segments, geometries)
+    stroke = lift(outline, plot.strokecolor) do outline, sc
+        if !(meshes[] isa Mesh) && meshes[] isa AbstractVector && sc isa AbstractVector && length(sc) == length(meshes[])
+            idx = 1
+            return map(outline) do point
+                if isnan(point)
+                    idx += 1
+                end
+                return sc[idx]
+            end
+        else
+            return sc
+        end
+    end
+
     lines!(
         plot, outline, visible = plot.visible,
-        color = plot.strokecolor, linestyle = plot.linestyle,
+        color = stroke, linestyle = plot.linestyle,
         linewidth = plot.strokewidth,
         overdraw = plot.overdraw, transparency = plot.transparency,
         inspectable = plot.inspectable, depth_shift = -1f-5
@@ -138,7 +153,7 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
     meshes = plot[1]
     color_node = plot.color
     attributes = Attributes(
-        visible = plot.visible, shading = plot.shading, fxaa = plot.fxaa, 
+        visible = plot.visible, shading = plot.shading, fxaa = plot.fxaa,
         inspectable = plot.inspectable, transparency = plot.transparency
     )
 

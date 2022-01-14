@@ -91,7 +91,7 @@ function render(vao::GLVertexArray{T}, mode::GLenum=GL_TRIANGLES) where T <: Vec
 end
 
 function render(vao::GLVertexArray{T}, mode::GLenum=GL_TRIANGLES) where T <: TOrSignal{UnitRange{Int}}
-    r = to_value(vao.indices)  
+    r = to_value(vao.indices)
     offset = first(r) - 1 # 1 based -> 0 based
     ndraw = length(r)
     nverts = length(vao)

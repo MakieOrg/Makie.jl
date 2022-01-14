@@ -397,10 +397,12 @@ disable!(inspector::DataInspector) = inspector.plot.enabled[] = false
 
 """
     DataInspector(figure; kwargs...)
+    DataInspector()
 
 Creates a data inspector which will show relevant information in a tooltip
 when you hover over a plot. If you wish to exclude a plot you may set
 `plot.inspectable[] = false`.
+Defaults to the current plot when called without arguments.
 
 ### Keyword Arguments:
 - `range = 10`: Controls the snapping range for selecting an element of a plot.
@@ -452,6 +454,8 @@ function DataInspector(scene::Scene; priority = 100, kwargs...)
 
     inspector
 end
+
+DataInspector(; kwargs...) = DataInspector(current_figure(); kwargs...)
 
 function on_hover(inspector)
     parent = inspector.root

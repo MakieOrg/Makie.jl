@@ -35,7 +35,6 @@ function plot!(plot::VolumeSlices)
         mz, Mz = extrema(z)
         Rect3D(mx, my, mz, Mx-mx, My-my, Mz-mz)
     end
-    linesegments!(plot, bbox, color = bbox_color, visible = bbox_visible, inspectable = false)
 
     axes = :x, :y, :z
     for (ax, p, r, (X, Y)) ∈ zip(axes, (:yz, :xz, :xy), (x, y, z), ((y, z), (x, z), (x, y)))
@@ -50,5 +49,8 @@ function plot!(plot::VolumeSlices)
         # Trigger once to place heatmaps correctly
         plot[Symbol(:update_, p)][](1)
     end
+
+    linesegments!(plot, bbox, color = bbox_color, visible = bbox_visible, inspectable = false)
+
     plot
 end

@@ -278,7 +278,7 @@ struct Camera
     eyeposition::Observable{Vec3f}
 
     """
-    To make camera interactive, steering nodes are connected to the different matrices.
+    To make camera interactive, steering observables are connected to the different matrices.
     We need to keep track of them, so, that we can connect and disconnect them.
     """
     steering_nodes::Vector{ObserverFunction}
@@ -295,7 +295,7 @@ struct Transformation <: Transformable
     scale::Observable{Vec3f}
     rotation::Observable{Quaternionf}
     model::Observable{Mat4f}
-    # data conversion node, for e.g. log / log10 etc
+    # data conversion observable, for e.g. log / log10 etc
     transform_func::Observable{Any}
     function Transformation(translation, scale, rotation, model, transform_func)
         return new(

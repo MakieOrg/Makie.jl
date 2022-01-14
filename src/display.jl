@@ -200,7 +200,6 @@ Save a `Scene` with the specified filename and format.
 ## All Backends
 
 - `resolution`: `(width::Int, height::Int)` of the scene in dimensionless units (equivalent to `px` for GLMakie and WGLMakie).
-- `update`: Update the scene and its children before saving (`update_limits!` and `center!`). One might want to set `update=false` e.g. when saving a zoomed scene.
 
 ## CairoMakie
 
@@ -257,7 +256,7 @@ function record_events(f, scene::Scene, path::String)
     display(scene)
     result = Vector{Pair{Float64, Pair{Symbol, Any}}}()
     for field in fieldnames(Events)
-        # These are not Nodes
+        # These are not Observables
         (field == :mousebuttonstate || field == :keyboardstate) && continue
         on(getfield(scene.events, field), priority = typemax(Int8)) do value
             value = isa(value, Set) ? copy(value) : value
@@ -445,9 +444,9 @@ If you want a simpler interface, consider using [`record`](@ref).
 - `compression = 0`: Controls the video compression with `0` being lossless and
                      `51` being the highest compression. Note that `compression = 0`
                      only works with `.mp4` if `profile = high444`.
-- `profile = "high422`: A ffmpeg compatible profile. Currently only applies to
-                        `.mp4`. If you have issues playing a video, try
-                        `profile = "high"` or `profile = "main"`.
+- `profile = "high422"`: A ffmpeg compatible profile. Currently only applies to
+                         `.mp4`. If you have issues playing a video, try
+                         `profile = "high"` or `profile = "main"`.
 - `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (pix_fmt). Currently
                               only applies to `.mp4`. Defaults to `yuv444p` for
                               `profile = high444`.

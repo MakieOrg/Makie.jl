@@ -16,7 +16,7 @@ include("unit_tests.jl")
 # Run the Makie reference image testsuite
 recorded = joinpath(@__DIR__, "recorded")
 rm(recorded; force=true, recursive=true); mkdir(recorded)
-ReferenceTests.run_reference_tests(ReferenceTests.load_database(), recorded)
+@time ReferenceTests.run_reference_tests(ReferenceTests.load_database(), recorded)
 
 # Run the below, to generate a html to view all differences:
 # recorded, ref_images, scores = ReferenceTests.reference_tests(recorded)

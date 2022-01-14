@@ -11,7 +11,7 @@ The protrusions are meant to stick into the gaps between grid cells, and not eve
 element has meaningful protrusions. They are mostly meant to allow for alignment
 of axes along their spines.
 
-Each element in a layout should have a couple of nodes that support the layout
+Each element in a layout should have a couple of observables that support the layout
 computations.
 - Suggested bounding box
 - Computed bounding box

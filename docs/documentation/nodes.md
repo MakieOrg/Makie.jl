@@ -58,7 +58,7 @@ nothing # hide
 \show{code2}
 
 This was not particularly interesting.
-But Nodes allow you to register functions that are executed whenever the Observable's content is changed.
+But Observables allow you to register functions that are executed whenever the Observable's content is changed.
 
 One such function is `on`. Let's register something on our Observable `x` and change `x`'s value:
 
@@ -75,7 +75,7 @@ nothing # hide
 
 !!! note
     All registered functions in a `Observable` are executed synchronously in the order of registration.
-    This means that if you change two Nodes after one another, all effects of the first change will happen before the second change.
+    This means that if you change two Observables after one another, all effects of the first change will happen before the second change.
 
 There are two ways to access the value of a `Observable`.
 You can use the indexing syntax or the `to_value` function:
@@ -85,12 +85,12 @@ value = x[]
 value = to_value(x)
 ```
 
-The advantage of using `to_value` is that you can use it in situations where you could either be dealing with Nodes or normal values. In the latter case, `to_value` just returns the original value, like `identity`.
+The advantage of using `to_value` is that you can use it in situations where you could either be dealing with Observables or normal values. In the latter case, `to_value` just returns the original value, like `identity`.
 
 ## Chaining `Observable`s With `lift`
 
 You can create a Observable depending on another Observable using \apilink{lift}.
-The first argument of `lift` must be a function that computes the value of the output Observable given the values of the input Nodes.
+The first argument of `lift` must be a function that computes the value of the output Observable given the values of the input Observables.
 
 ```julia:code4
 f(x) = x^2
@@ -119,7 +119,7 @@ nothing # hide
 If `x` changes, so does `y` and then `z`.
 
 Note, though, that changing `y` does not change `x`.
-There is no guarantee that chained Nodes are always synchronized, because they
+There is no guarantee that chained Observables are always synchronized, because they
 can be mutated in different places, even sidestepping the change trigger mechanism.
 
 ```julia:code6
@@ -178,7 +178,7 @@ One very common problem with a pipeline based on multiple observables is that yo
 Theoretically, each observable change triggers its listeners immediately.
 If a function depends on two or more observables, changing one right after the other would trigger it multiple times, which is often not what you want.
 
-Here's an example where we define two nodes and lift a third one from them:
+Here's an example where we define two Observables and lift a third one from them:
 
 ```julia
 xs = Observable(1:10)
