@@ -46,6 +46,33 @@ end
 
 make_context_current(screen::Screen) = GLFW.MakeContextCurrent(to_native(screen))
 
+function camera_matrix(cam, space, key)
+    # (0, 1) x (0, 1) x (0, 1) space
+    rel = Mat4f(
+        2, 0, 0, 0,
+        0, 2, 0, 0,
+        0, 0, 1, 0,
+        -1, -1, 0, 1
+    )
+
+    if key in (:view, :projectionview)
+        return map(getfield(cam, key), getfield(cam, :pixel_space), space) do data, pixel, space
+            if space in (:data, :world)         return data
+            elseif space in (:pixel, :screen)   return pixel
+            elseif space in (:unit, :relative)  return rel
+            else                                return Mat4f(I)
+            end # clip space (-1, +1) x (-1, +1) x (0, 1) ^
+        end
+    elseif key in (:projection, )
+        return map(getfield(cam, key), space) do proj, space
+            ifelse(space in (:data, :world), proj, Mat4f(I))
+        end
+    else # :pixel_space, :resolution, :eyepostion
+        return getfield(cam, key)
+    end
+end
+
+
 function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     # poll inside functions to make wait on compile less prominent
     pollevents(screen)
@@ -77,12 +104,12 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             gl_attributes[:ambient] = ambientlight.color
         end
 
-        space = pop!(gl_attributes, :space, :data)
+        space = convert(Observable{Symbol}, pop!(gl_attributes, :space, :data))
 
         robj = robj_func(gl_attributes)
         for key in (:pixel_space, :view, :projection, :resolution, :eyeposition, :projectionview)
             if !haskey(robj.uniforms, key)
-                robj[key] = getfield(scene.camera, key)
+                robj[key] = camera_matrix(scene.camera, space, key)
             end
         end
 
