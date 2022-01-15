@@ -5,8 +5,8 @@ function parent_transform(x)
     isnothing(p) ? Mat4f(I) : p.model[]
 end
 
-function boundingbox(x)
-    return parent_transform(x) * data_limits(x)
+function boundingbox(x, exclude = (p)-> false)
+    return parent_transform(x) * data_limits(x, exclude)
 end
 
 function project_widths(matrix, vec)

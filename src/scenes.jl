@@ -454,8 +454,11 @@ end
 
 update_cam!(scene::Scene, bb::AbstractCamera, rect) = nothing
 
-function center!(scene::Scene, padding=0.01)
-    bb = boundingbox(scene)
+function not_in_data_space(p)
+    !(to_value(get(p, :space, :data)) in (:data, :world))
+end
+function center!(scene::Scene, padding=0.01, exclude = not_in_data_space)
+    bb = boundingbox(scene, exclude)
     bb = transformationmatrix(scene)[] * bb
     w = widths(bb)
     padd = w .* padding

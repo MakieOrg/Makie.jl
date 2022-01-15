@@ -334,6 +334,6 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
     return axis
 end
 
-function axis3d!(scene::Scene, lims = data_limits(scene, isaxis); kw...)
+function axis3d!(scene::Scene, lims = data_limits(scene, p -> isaxis(p) || not_in_data_space(p)); kw...)
     axis3d!(scene, Attributes(), lims; ticks = (ranges = automatic, labels = automatic), kw...)
 end

@@ -55,7 +55,7 @@ function camera_matrix(cam, space, key)
         -1, -1, 0, 1
     )
 
-    if key in (:view, :projectionview)
+    if key in (:projection, :projectionview)
         return map(getfield(cam, key), getfield(cam, :pixel_space), space) do data, pixel, space
             if space in (:data, :world)         return data
             elseif space in (:pixel, :screen)   return pixel
@@ -63,9 +63,9 @@ function camera_matrix(cam, space, key)
             else                                return Mat4f(I)
             end # clip space (-1, +1) x (-1, +1) x (0, 1) ^
         end
-    elseif key in (:projection, )
-        return map(getfield(cam, key), space) do proj, space
-            ifelse(space in (:data, :world), proj, Mat4f(I))
+    elseif key in (:view, )
+        return map(getfield(cam, key), space) do mat, space
+            ifelse(space in (:data, :world), mat, Mat4f(I))
         end
     else # :pixel_space, :resolution, :eyepostion
         return getfield(cam, key)
@@ -77,7 +77,6 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     # poll inside functions to make wait on compile less prominent
     pollevents(screen)
     robj = get!(screen.cache, objectid(x)) do
-
         filtered = filter(x.attributes) do (k, v)
             !(k in (:transformation, :tickranges, :ticklabels, :raw, :SSAO, :lightposition, :material))
         end
@@ -104,7 +103,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             gl_attributes[:ambient] = ambientlight.color
         end
 
-        space = convert(Observable{Symbol}, pop!(gl_attributes, :space, :data))
+        space = pop!(gl_attributes, :space, Observable(:data))
 
         robj = robj_func(gl_attributes)
         for key in (:pixel_space, :view, :projection, :resolution, :eyeposition, :projectionview)

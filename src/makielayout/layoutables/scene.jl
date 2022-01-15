@@ -16,7 +16,7 @@ function Makie.plot!(
 
     function get_lims()
         return get(lscene.attributes, :limits) do
-            return data_limits(lscene.scene, Makie.isaxis)
+            return data_limits(lscene.scene, p -> Makie.isaxis(p) || Makie.not_in_data_space(p))
         end
     end
 
