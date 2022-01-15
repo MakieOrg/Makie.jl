@@ -75,7 +75,7 @@ end
 """
     qqnorm(y; kwargs...)
 
-Shorthand for `qqplot(Normal, y)`. See `qqplot` for more details.
+Shorthand for `qqplot(Normal(0,1), y)`. See `qqplot` for more details.
 """
 @recipe(QQNorm) do scene
     default_theme(scene, QQPlot)
