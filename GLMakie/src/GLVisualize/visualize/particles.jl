@@ -314,12 +314,12 @@ function rescale_glyph(str::String, font, xs::Vector)
 end
 
 # padded_width = (unpadded_target_width + unpadded_target_width * pad_per_unit)
-function rescale_bezierpath(bp::BezierPath, x)
-    x .* (1f0 .+ bezierpath_pad_scale_factor(bp)) .* widths(Makie.bbox(bp))
+function rescale_bezierpath(bp::BezierPath, scale)
+    scale .* (1f0 .+ bezierpath_pad_scale_factor(bp)) .* widths(Makie.bbox(bp))
 end
-function offset_bezierpath(bp::BezierPath, offset)
+function offset_bezierpath(bp::BezierPath, scale, offset)
     bb = Makie.bbox(bp)
-    origin(bb) .+ offset .- 0.5f0 .* bezierpath_pad_scale_factor(bp) .* widths(bb)
+    scale * (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(bp) .* widths(bb)) .+ offset
 end
 
 """
@@ -360,7 +360,7 @@ function sprites(p, s, data)
         # offset = get(data, :offset, Observable(Vec2f(0)))
         offset = Observable(Vec2f(0))
 
-        data[:offset] = map(offset_bezierpath, p[1], offset)
+        data[:offset] = map(offset_bezierpath, p[1], scale, offset)
         data[:scale] = map(rescale_bezierpath, p[1], scale)
     end
 
