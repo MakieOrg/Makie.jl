@@ -511,7 +511,8 @@ function bbox(b::BezierPath)
         else
             endp = endpoint(prev)
             seg = segment(endp, comm)
-            bb = bb === nothing ? bbox(seg) : union(bb, bbox(seg))
+            _bb = cleanup_bbox(bbox(seg))
+            bb = bb === nothing ? _bb : union(bb, _bb)
         end
         prev = comm
     end
@@ -524,6 +525,14 @@ segment(p, c::CurveTo) = BezierSegment(p, c.c1, c.c2, c.p)
 endpoint(m::MoveTo) = m.p
 endpoint(l::LineTo) = l.p
 endpoint(c::CurveTo) = c.p
+
+function cleanup_bbox(bb::Rect2f)
+    if any(x -> x < 0, bb.widths)
+        p = bb.origin .+ (bb.widths .< 0) .* bb.widths
+        return Rect2f(p, abs.(bb.widths))
+    end
+    return bb
+end
 
 function bbox(ls::LineSegment)
     Rect2f(ls.from, ls.to - ls.from)
