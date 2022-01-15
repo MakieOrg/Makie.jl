@@ -75,7 +75,8 @@ end
 """
     qqnorm(y; kwargs...)
 
-Shorthand for `qqplot(Normal(0,1), y)`. See `qqplot` for more details.
+Shorthand for `qqplot(Normal(0,1), y)`, i.e., draw a Q-Q plot of `y` against the
+standard normal distribution. See `qqplot` for more details.
 """
 @recipe(QQNorm) do scene
     default_theme(scene, QQPlot)
@@ -115,7 +116,6 @@ convert_arguments(::Type{<:QQNorm}, y; qqline = :robust) =
 
 used_attributes(::Type{<:QQNorm}, y) = (:qqline,)
 used_attributes(::Type{<:QQPlot}, x, y) = (:qqline,)
-used_attributes(::PlotFunc, ::QQPair) = (:qqline,)
 
 function plot!(p::QQPlot)
     points, line = p[1], p[2]
