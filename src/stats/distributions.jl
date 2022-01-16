@@ -85,8 +85,8 @@ end
 # Compute points and line for the qqplot
 function fit_qqplot(x, y; qqline = :none)
     if !(qqline in (:identity, :fit, :fitrobust, :none))
-        msg = "valid values for qqline are :identity, :fit, :fitrobust or :none, \
-            encountered $(repr(qqline))"
+        msg = "valid values for qqline are :identity, :fit, :fitrobust or :none, " *
+            "encountered " * repr(qqline)
         throw(ArgumentError(msg))
     end
     h = qqbuild(x, y)
