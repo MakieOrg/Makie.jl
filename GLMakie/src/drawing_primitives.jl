@@ -48,24 +48,22 @@ make_context_current(screen::Screen) = GLFW.MakeContextCurrent(to_native(screen)
 
 function camera_matrix(cam, space, key)
     # (0, 1) x (0, 1) x (0, 1) space
-    rel = Mat4f(
-        2, 0, 0, 0,
-        0, 2, 0, 0,
-        0, 0, 1, 0,
-        -1, -1, 0, 1
-    )
+    rel = Mat4f(2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, -1, -1, 0, 1)
+    # (-1, 1) x (-1, 1) x (0, 1) space 
+    id = Mat4f(I)
 
     if key in (:projection, :projectionview)
         return map(getfield(cam, key), getfield(cam, :pixel_space), space) do data, pixel, space
-            if space in (:data, :world)         return data
-            elseif space in (:pixel, :screen)   return pixel
-            elseif space in (:unit, :relative)  return rel
-            else                                return Mat4f(I)
-            end # clip space (-1, +1) x (-1, +1) x (0, 1) ^
+            if     is_data_space(space)     return data
+            elseif is_pixel_space(space)    return pixel
+            elseif is_relative_space(space) return rel
+            elseif is_clip_space(space)     return id
+            else error("Space $space not recognized. Must be one of $(spaces())")
+            end 
         end
     elseif key in (:view, )
         return map(getfield(cam, key), space) do mat, space
-            ifelse(space in (:data, :world), mat, Mat4f(I))
+            ifelse(is_data_space(space), mat, Mat4f(I))
         end
     else # :pixel_space, :resolution, :eyepostion
         return getfield(cam, key)

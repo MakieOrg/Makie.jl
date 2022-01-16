@@ -160,7 +160,7 @@ function scatter_shader(scene::Scene, attributes)
 
     markerspace = get(uniforms, :markerspace, Observable(:data))
     uniform_dict[:use_pixel_marker] = map(markerspace) do space
-        return space in (:pixel, :screen)
+        return is_pixel_space(space)
     end
     handle_color!(uniform_dict, per_instance)
 

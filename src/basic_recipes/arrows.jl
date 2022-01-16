@@ -159,7 +159,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
 
         # for 2D arrows, compute the correct marker rotation given the projection / scene size
         # for the screen-space marker
-        if arrowplot.markerspace[] == :pixel
+        if is_pixel_space(arrowplot.markerspace[])
             rotations = lift(scene.camera.projectionview, scene.px_area, headstart) do pv, pxa, hs
                 angles = map(hs) do (start, stop)
                     pstart = project(scene, start)

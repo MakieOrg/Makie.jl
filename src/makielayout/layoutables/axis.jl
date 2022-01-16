@@ -759,7 +759,7 @@ function getlimits(la::Axis, dim)
         # only use plots with autolimits = true
         to_value(get(plot, dim == 1 ? :xautolimits : :yautolimits, true)) || return true
         # only if they use data coordinates
-        to_value(get(plot, :space, :data)) in (:data, :world) || return true
+        is_data_space(to_value(get(plot, :space, :data))) || return true
         # only use visible plots for limits
         return !to_value(get(plot, :visible, true))
     end

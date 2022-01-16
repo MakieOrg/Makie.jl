@@ -124,3 +124,11 @@ to_2d_scale(x::VecTypes{2, <:Pixel}) = Vec2f(number.(x))
 
 # Exports of units
 export px
+
+########################################
+
+spaces() = (:data, :world, :pixel, :screen, :relative, :unit, :clip)
+is_data_space(space) = space in (:data, :world)
+is_pixel_space(space) = space in (:pixel, :screen)
+is_relative_space(space) = space in (:relative, :unit)
+is_clip_space(space) = space in (:clip, )

@@ -195,7 +195,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Scatter)
                           markersize, strokecolor, strokewidth, marker, mo, rotation
 
         # if we give size in pixels, the size is always equal to that value
-        is_pixelspace = to_value(get(primitive, :markerspace, :data)) in (:pixel, :screen)
+        is_pixelspace = is_pixel_space(to_value(get(primitive, :markerspace, :data)))
         scale = if is_pixelspace
             Makie.to_2d_scale(markersize)
         else
@@ -366,7 +366,7 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
         Cairo.save(ctx)
         Cairo.set_source_rgba(ctx, rgbatuple(color)...)
 
-        if markerspace in (:data, :world)
+        if is_data_space(markerspace)
             # in data space, the glyph offsets are just added to the string positions
             # and then projected
 
@@ -398,7 +398,7 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
                 0, 0,
             )
 
-        elseif markerspace in (:screen, :pixel)
+        elseif is_pixel_space(marker)
             # in screen space, the glyph offsets are added after projecting
             # the string position into screen space
             glyphpos = let
@@ -430,7 +430,7 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
         Cairo.save(ctx)
         Cairo.move_to(ctx, glyphpos...)
         set_font_matrix(ctx, mat)
-        if markerspace in (:screen, :pixel)
+        if is_pixel_space(markerspace)
             Cairo.rotate(ctx, to_2d_rotation(rotation))
         end
         Cairo.show_text(ctx, string(glyph))
@@ -440,7 +440,7 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
             Cairo.save(ctx)
             Cairo.move_to(ctx, glyphpos...)
             set_font_matrix(ctx, mat)
-            if markerspace in (:screen, :pixel)
+            if is_pixel_space(markerspace)
                 Cairo.rotate(ctx, to_2d_rotation(rotation))
             end
             Cairo.text_path(ctx, string(glyph))
