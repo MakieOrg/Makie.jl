@@ -309,3 +309,46 @@ function transform(model::Mat4, x::T) where T
     x4d = to_ndim(Vec4f, x, 0.0)
     to_ndim(T, model * x4d, 0.0)
 end
+
+# project between different coordinate systems/spaces
+
+function space_to_clip(cam::Camera, space::Symbol)
+    if is_data_space(space)
+        cam.projectionview[]
+    elseif is_pixel_space(space)
+        cam.pixel_space[]
+    elseif is_relative_space(space)
+        Mat4f(2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, -1, -1, 0, 1)
+    elseif is_clip_space(space)
+        Mat4f(I)
+    else
+        error("Space $space not recognized. Must be one of $(spaces())")
+    end
+end
+
+function clip_to_space(cam::Camera, space::Symbol)
+    if is_data_space(space)
+        inv(cam.projectionview[])
+    elseif is_pixel_space(space)
+        w, h = cam.resolution[]
+        Mat4f(0.5w, 0, 0, 0, 0, 0.5h, 0, 0, 0, 0, -10_000, 0, 0.5w, 0.5h, 0, 1) # -10_000
+    elseif is_relative_space(space)
+        Mat4f(0.5, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 1, 0, 0.5, 0.5, 0, 1)
+    elseif is_clip_space(space)
+        Mat4f(I)
+    else
+        error("Space $space not recognized. Must be one of $(spaces())")
+    end
+end
+
+
+function project(cam::Camera, input_space::Symbol, output_space::Symbol, pos)
+    if space_matches(input_space, output_space)
+        return to_ndim(Point3f, pos, 0)
+    end
+    clip_from_input = space_to_clip(cam, input_space)
+    output_from_clip = clip_to_space(cam, output_space)
+    p4d = to_ndim(Point4f, to_ndim(Point3f, pos, 0), 1)
+    transformed = output_from_clip * clip_from_input * p4d
+    return Point3f(transformed[SOneTo(3)] / transformed[4])
+end

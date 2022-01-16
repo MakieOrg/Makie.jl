@@ -132,3 +132,9 @@ is_data_space(space) = space in (:data, :world)
 is_pixel_space(space) = space in (:pixel, :screen)
 is_relative_space(space) = space in (:relative, :unit)
 is_clip_space(space) = space in (:clip, )
+function space_matches(a, b)
+    (is_data_space(a) && is_data_space(b)) ||
+    (is_pixel_space(a) && is_pixel_space(b)) ||
+    (is_relative_space(a) && is_relative_space(b)) ||
+    (is_clip_space(a) && is_clip_space(b))
+end

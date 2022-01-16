@@ -159,6 +159,7 @@ visualize(@nospecialize(main), s::Symbol=:default; kw_args...) = visualize(main,
 
 
 function visualize(@nospecialize(main), @nospecialize(s), @nospecialize(data))
+    haskey(data, :space) && pop!(data, :space)
     data = _default(main, s, copy(data))
     @gen_defaults! data begin # make sure every object has these!
         model = Mat4f(I)

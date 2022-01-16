@@ -225,75 +225,41 @@ end
 
 
 function preprojected_glyph_arrays(
-        position::VecTypes, glyphcollection::Makie.GlyphCollection,
-        space::Symbol, projview, resolution, offset::VecTypes, transfunc
+        position::VecTypes, glyphcollection::Makie.GlyphCollection, space::Symbol, 
+        markerspace::Symbol, cam::Camera, offset::VecTypes, transfunc
+        # markerspace::Symbol, projview, resolution, offset::VecTypes, transfunc
     )
     offset = to_ndim(Point3f, offset, 0)
-    pos3f0 = to_ndim(Point3f, position, 0)
-
-    if space in (:data, :world)
-        positions = apply_transform(transfunc, Point3f[pos3f0 + offset + o for o in glyphcollection.origins])
-    elseif space in (:screen, :pixel)
-        projected = Makie.project(projview, resolution, apply_transform(transfunc, pos3f0))
-        positions = Point3f[to_ndim(Point3f, projected, 0) + offset + o for o in glyphcollection.origins]
-    else
-        error("Unknown space $space, only :data or :screen allowed")
-    end
+    projected = project(cam, space, markerspace, apply_transform(transfunc, position))
+    positions = Point3f[projected + offset + o for o in glyphcollection.origins]
     text_quads(positions, glyphcollection.glyphs, glyphcollection.fonts, glyphcollection.scales)
 end
 
 function preprojected_glyph_arrays(
-        position::VecTypes, glyphcollection::Makie.GlyphCollection,
-        space::Symbol, projview, resolution, offsets::Vector, transfunc
+        position::VecTypes, glyphcollection::Makie.GlyphCollection, space::Symbol, 
+        markerspace::Symbol, cam::Camera, offsets::Vector, transfunc
     )
-
     offsets = to_ndim.(Point3f, offsets, 0)
-    pos3f0 = to_ndim(Point3f, position, 0)
-
-    if space in (:data, :world)
-        positions = apply_transform(transfunc, [pos3f0 + offset + o for (o, offset) in zip(glyphcollection.origins, offsets)])
-    elseif space in (:screen, :pixel)
-        projected = Makie.project(projview, resolution, apply_transform(transfunc, pos3f0))
-        positions = Point3f[to_ndim(Point3f, projected, 0) + offset + o for (o, offset) in zip(glyphcollection.origins, offsets)]
-    else
-        error("Unknown space $space, only :data or :screen allowed")
-    end
-
+    projected = project(cam, space, markerspace, apply_transform(transfunc, position))
+    positions = Point3f[projected + offset + o for (o, offset) in zip(glyphcollection.origins, offsets)]
     text_quads(positions, string, font, textsize)
 end
 
 function preprojected_glyph_arrays(
-        positions::AbstractVector, glyphcollections::AbstractVector{<:GlyphCollection}, space::Symbol, projview, resolution, offset, transfunc
+        positions::AbstractVector, glyphcollections::AbstractVector{<:GlyphCollection}, 
+        space::Symbol, markerspace::Symbol, cam::Camera, offset, transfunc
     )
 
     if offset isa VecTypes
         offset = [to_ndim(Point3f, offset, 0)]
     end
 
-    if space in (:data, :world)
-        allpos = broadcast(positions, glyphcollections, offset) do pos, glyphcollection, offs
-            p = to_ndim(Point3f, pos, 0)
-            apply_transform(
-                transfunc,
-                Point3f[p .+ to_ndim(Point3f, offs, 0) .+ o for o in glyphcollection.origins]
-            )
-        end
-    elseif space in (:screen, :pixel)
-        allpos = broadcast(positions, glyphcollections, offset) do pos, glyphcollection, offs
-            projected = to_ndim(
-                Point3f,
-                Makie.project(
-                    projview,
-                    resolution,
-                    apply_transform(transfunc, to_ndim(Point3f, pos, 0))
-                ),
-                0)
-
-            return Point3f[projected .+ to_ndim(Point3f, offs, 0) + o
-                        for o in glyphcollection.origins]
-        end
-    else
-        error("Unknown space $space, only :data or :screen allowed")
+    mat = clip_to_space(cam, markerspace) * space_to_clip(cam, space)
+    allpos = broadcast(positions, glyphcollections, offset) do pos, glyphcollection, offs
+        p = apply_transform(transfunc, to_ndim(Point3f, pos, 0))
+        p4d = mat * to_ndim(Point4f, p, 1)
+        p3d = p4d[SOneTo(3)] / p4d[4]
+        Point3f[p3d + to_ndim(Point3f, offs, 0) + o for o in glyphcollection.origins]
     end
 
     text_quads(

@@ -62,8 +62,8 @@ function camera_matrix(cam, space, key)
             end 
         end
     elseif key in (:view, )
-        return map(getfield(cam, key), space) do mat, space
-            ifelse(is_data_space(space), mat, Mat4f(I))
+        return map(getfield(cam, key), space) do view, space
+            ifelse(is_data_space(space), view, id)
         end
     else # :pixel_space, :resolution, :eyepostion
         return getfield(cam, key)
@@ -86,8 +86,9 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             gl_key => gl_value
         end)
 
+        # TODO
         if haskey(gl_attributes, :markerspace)
-            mspace = pop!(gl_attributes, :markerspace)
+            mspace = gl_attributes[:markerspace]
             gl_attributes[:use_pixel_marker] = lift(x -> x != :data, mspace)
         end
 
@@ -101,9 +102,9 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             gl_attributes[:ambient] = ambientlight.color
         end
 
-        space = pop!(gl_attributes, :space, Observable(:data))
-
+        space = get(gl_attributes, :space, Observable(:data))
         robj = robj_func(gl_attributes)
+
         for key in (:pixel_space, :view, :projection, :resolution, :eyeposition, :projectionview)
             if !haskey(robj.uniforms, key)
                 robj[key] = camera_matrix(scene.camera, space, key)
@@ -296,13 +297,12 @@ function draw_atomic(screen::GLScreen, scene::Scene,
     robj = cached_robj!(screen, scene, x) do gl_attributes
         glyphcollection = x[1]
 
-
-        res = map(x->Vec2f(widths(x)), pixelarea(scene))
-        projview = scene.camera.projectionview
         transfunc =  Makie.transform_func_obs(scene)
         pos = gl_attributes[:position]
-        upm = gl_attributes[:use_pixel_marker]
-        space = map(x -> x ? (:screen) : (:data), upm)
+        space = get(gl_attributes, :space, Observable(:data))
+        markerspace = gl_attributes[:markerspace]
+        # upm = gl_attributes[:use_pixel_marker]
+        # markerspace = map(x -> x ? (:screen) : (:data), upm)
         offset = gl_attributes[:offset]
 
         # TODO: This is a hack before we get better updating of plot objects and attributes going.
@@ -320,8 +320,12 @@ function draw_atomic(screen::GLScreen, scene::Scene,
             # the actual, new value gets then taken in the below lift with to_value
             gcollection = Observable(glyphcollection)
         end
-        glyph_data = lift(pos, gcollection, space, projview, res, offset, transfunc) do pos, gc, args...
-            preprojected_glyph_arrays(pos, to_value(gc), args...)
+        # This projects positions from space to markerspace
+        glyph_data = lift(
+                scene.camera.projectionview, scene.camera.resolution, # just for the update
+                pos, gcollection, space, markerspace, offset, transfunc
+            ) do _, _, pos, gc, space, mspace, offset, transfunc
+            preprojected_glyph_arrays(pos, to_value(gc), space, mspace, scene.camera, offset, transfunc)
         end
 
         # unpack values from the one signal:
@@ -336,7 +340,7 @@ function draw_atomic(screen::GLScreen, scene::Scene,
             !(k in (
                 :position, :space, :markerspace, :font,
                 :textsize, :rotation, :justification
-            ))
+            )) # space, 
         end
 
         gl_attributes[:color] = lift(glyphcollection) do gc
@@ -371,11 +375,10 @@ function draw_atomic(screen::GLScreen, scene::Scene,
         gl_attributes[:distancefield] = get_texture!(atlas)
         gl_attributes[:visible] = x.visible
         robj = visualize((DISTANCEFIELD, positions), Style(:default), gl_attributes)
-        # Draw text in screenspace
-        if space[] == :screen
-            robj[:view] = Observable(Mat4f(I))
-            robj[:projection] = scene.camera.pixel_space
-            robj[:projectionview] = scene.camera.pixel_space
+        
+        # These project everything from markerspace to clip space
+        for key in (:view, :projection, :projectionview)
+            robj[key] = camera_matrix(scene.camera, markerspace, key)
         end
 
         return robj

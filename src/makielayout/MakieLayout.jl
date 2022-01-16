@@ -8,6 +8,7 @@ using ..Makie.Mouse
 using ..Makie: ispressed, is_mouseinside, get_scene, FigureLike
 using ..Makie: Consume
 using ..Makie: OpenInterval, Interval
+using ..Makie: is_data_space
 using MakieCore
 using MakieCore: Automatic, automatic
 using Observables: onany
