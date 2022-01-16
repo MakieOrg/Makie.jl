@@ -16,7 +16,7 @@ Makie.inline!(true) # hide
 xs = randn(100)
 ys = randn(100)
 
-qqplot(xs, ys)
+qqplot(xs, ys, qqline = :identity)
 ```
 \end{examplefigure}
 
@@ -28,8 +28,8 @@ using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
 
-ys = randn(100)
+ys = 2 .* randn(100) .+ 3
 
-qqnorm(ys)
+qqnorm(ys, qqline = :fitrobust)
 ```
 \end{examplefigure}
