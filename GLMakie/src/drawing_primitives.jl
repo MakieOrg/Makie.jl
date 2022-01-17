@@ -215,11 +215,11 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Union{Scat
         gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
         marker = lift_convert(:marker, pop!(gl_attributes, :marker), x)
         if isa(x, Scatter)
-            markerspace = gl_attributes[:markerspace]
+            markerspace = get(gl_attributes, :markerspace, :pixel)
             cam = scene.camera
             positions = map(
-                    x[1], gl_attributes[:space], markerspace, transform_func_obs(x), 
-                    cam.projectionview, cam.resolution
+                    x[1], get(gl_attributes, :space, :data), markerspace, 
+                    transform_func_obs(x), cam.projectionview, cam.resolution
                 ) do positions, space, markerspace, tf, _, _
 
                 mat = Makie.clip_to_space(cam, markerspace) * Makie.space_to_clip(cam, space)
