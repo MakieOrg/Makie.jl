@@ -86,12 +86,6 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             gl_key => gl_value
         end)
 
-        # TODO
-        if haskey(gl_attributes, :markerspace)
-            mspace = gl_attributes[:markerspace]
-            gl_attributes[:use_pixel_marker] = lift(x -> x != :data, mspace)
-        end
-
         pointlight = Makie.get_point_light(scene)
         if !isnothing(pointlight)
             gl_attributes[:lightposition] = pointlight.position
@@ -221,13 +215,27 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Union{Scat
         gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
         marker = lift_convert(:marker, pop!(gl_attributes, :marker), x)
         if isa(x, Scatter)
+            markerspace = gl_attributes[:markerspace]
+            cam = scene.camera
+            positions = map(x[1], gl_attributes[:space], markerspace) do positions, space, markerspace
+                # TODO: it would be good to skip this when it's not necessary
+                mat = Makie.clip_to_space(cam, markerspace) * Makie.space_to_clip(cam, space)
+                map(positions) do pos
+                    p4d = mat * Makie.to_ndim(Point4f, Makie.to_ndim(Point3f, pos, 0), 1)
+                    p4d[SOneTo(3)] / p4d[4]
+                end
+            end
+            for key in (:view, :projection, :projectionview)
+                gl_attributes[key] = camera_matrix(scene.camera, markerspace, key)
+            end
+
             gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.rotations)
             gl_attributes[:distancefield][] == nothing && delete!(gl_attributes, :distancefield)
             gl_attributes[:uv_offset_width][] == Vec4f(0) && delete!(gl_attributes, :uv_offset_width)
+        else
+            positions = handle_view(x[1], gl_attributes)
+            positions = apply_transform(transform_func_obs(x), positions)
         end
-
-        positions = handle_view(x[1], gl_attributes)
-        positions = apply_transform(transform_func_obs(x), positions)
 
         if marker[] isa FastPixel
             filter!(gl_attributes) do (k, v,)
@@ -301,8 +309,6 @@ function draw_atomic(screen::GLScreen, scene::Scene,
         pos = gl_attributes[:position]
         space = get(gl_attributes, :space, Observable(:data))
         markerspace = gl_attributes[:markerspace]
-        # upm = gl_attributes[:use_pixel_marker]
-        # markerspace = map(x -> x ? (:screen) : (:data), upm)
         offset = gl_attributes[:offset]
 
         # TODO: This is a hack before we get better updating of plot objects and attributes going.
@@ -320,7 +326,7 @@ function draw_atomic(screen::GLScreen, scene::Scene,
             # the actual, new value gets then taken in the below lift with to_value
             gcollection = Observable(glyphcollection)
         end
-        # This projects positions from space to markerspace
+        # Projects positions from space to markerspace
         glyph_data = lift(
                 scene.camera.projectionview, scene.camera.resolution, # just for the update
                 pos, gcollection, space, markerspace, offset, transfunc
