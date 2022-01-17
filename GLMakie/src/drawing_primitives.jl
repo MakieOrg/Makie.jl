@@ -217,14 +217,19 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Union{Scat
         if isa(x, Scatter)
             markerspace = gl_attributes[:markerspace]
             cam = scene.camera
-            positions = map(x[1], gl_attributes[:space], markerspace) do positions, space, markerspace
-                # TODO: it would be good to skip this when it's not necessary
+            positions = map(
+                    x[1], gl_attributes[:space], markerspace, transform_func_obs(x), 
+                    cam.projectionview, cam.resolution
+                ) do positions, space, markerspace, tf, _, _
+
                 mat = Makie.clip_to_space(cam, markerspace) * Makie.space_to_clip(cam, space)
                 map(positions) do pos
-                    p4d = mat * Makie.to_ndim(Point4f, Makie.to_ndim(Point3f, pos, 0), 1)
+                    p = apply_transform(tf, pos)
+                    p4d = mat * Makie.to_ndim(Point4f, Makie.to_ndim(Point3f, p, 0), 1)
                     p4d[SOneTo(3)] / p4d[4]
                 end
             end
+
             for key in (:view, :projection, :projectionview)
                 gl_attributes[key] = camera_matrix(scene.camera, markerspace, key)
             end
