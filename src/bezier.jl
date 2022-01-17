@@ -84,11 +84,11 @@ function rotate(e::EllipticalArc, a)
 end
 rotate(b::BezierPath, a) = BezierPath(PathCommand[rotate(c::PathCommand, a) for c in b.commands])
 
-function fit_to_unit_square(b::BezierPath)
+function fit_to_unit_square(b::BezierPath, keep_aspect = true)
     bb = bbox(b)
     w, h = widths(bb)
     bb_t = translate(b, -(bb.origin))
-    scale(bb_t, 1 / (max(w, h)))
+    scale(bb_t, keep_aspect ? 1 / (max(w, h)) : 1 ./ (w, h))
 end
 
 Base.:+(pc::EllipticalArc, p::Point2) = EllipticalArc(pc.c + p, pc.r1, pc.r2, pc.angle, pc.a1, pc.a2)
@@ -161,12 +161,12 @@ BezierCross = let
 end
 
 
-function BezierPath(svg::AbstractString; fit = false, bbox = nothing, flipy = false)
+function BezierPath(svg::AbstractString; fit = false, bbox = nothing, flipy = false, keep_aspect = true)
     commands = parse_bezier_commands(svg)
     p = BezierPath(commands)
     if fit
         if bbox === nothing
-            p = fit_to_unit_square(p)
+            p = fit_to_unit_square(p, keep_aspect)
         else
             error("Unkown bbox parameter $bbox")
         end
@@ -428,7 +428,7 @@ function render_path(path)
     # freetype has no ClosePath and EllipticalArc, so those need to be replaced
     path_replaced = replace_nonfreetype_commands(path)
 
-    path_unit_square = fit_to_unit_square(path_replaced)
+    path_unit_square = fit_to_unit_square(path_replaced, false)
 
     path_transformed = Makie.scale(
         path_unit_square,

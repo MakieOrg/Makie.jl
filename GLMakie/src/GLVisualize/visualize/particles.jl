@@ -317,10 +317,32 @@ end
 function rescale_bezierpath(bp::BezierPath, scale)
     scale .* (1f0 .+ bezierpath_pad_scale_factor(bp)) .* widths(Makie.bbox(bp))
 end
+function rescale_bezierpath(bp::BezierPath, scale::Vector)
+    pad_scale_factor = bezierpath_pad_scale_factor(bp)
+    [s .* (1f0 .+ pad_scale_factor) .* widths(Makie.bbox(bp)) for s in scale]
+end
+
 function offset_bezierpath(bp::BezierPath, scale, offset)
     bb = Makie.bbox(bp)
-    scale * (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(bp) .* widths(bb)) .+ offset
+    pad_offset = (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(bp) .* widths(bb))
+    scale .* pad_offset .+ offset
 end
+function offset_bezierpath(bp::BezierPath, scale::Vector, offset)
+    bb = Makie.bbox(bp)
+    pad_offset = (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(bp) .* widths(bb))
+    [s .* pad_offset .+ offset for s in scale]
+end
+function offset_bezierpath(bp::BezierPath, scale, offsets::Vector)
+    bb = Makie.bbox(bp)
+    pad_offset = scale .* (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(bp) .* widths(bb))
+    [pad_offset .+ offset for offset in offsets]
+end
+function offset_bezierpath(bp::BezierPath, scales::Vector, offsets::Vector)
+    bb = Makie.bbox(bp)
+    pad_offset = (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(bp) .* widths(bb))
+    [s .* pad_offset .+ offset for s in scale]
+end
+
 
 """
 Main assemble functions for sprite particles.
