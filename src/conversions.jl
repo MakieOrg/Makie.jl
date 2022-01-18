@@ -646,10 +646,9 @@ function to_triangles(faces::AbstractVector{TriangleFace{T}}) where T
 end
 
 function to_triangles(faces::AbstractMatrix{T}) where T <: Integer
-    let N = Val(size(faces, 2)), lfaces = faces
-        broadcast(1:size(faces, 1), N) do fidx, n
-            to_ndim(GLTriangleFace, ntuple(i-> lfaces[fidx, i], n), 0.0)
-        end
+    @assert size(faces, 2) == 3
+    return broadcast(1:size(faces, 1), 3) do fidx, n
+        GLTriangleFace(ntuple(i-> faces[fidx, i], n))
     end
 end
 
