@@ -86,9 +86,15 @@ rotate(b::BezierPath, a) = BezierPath(PathCommand[rotate(c::PathCommand, a) for 
 
 function fit_to_unit_square(b::BezierPath, keep_aspect = true)
     bb = bbox(b)
-    w, h = widths(bb)
-    bb_t = translate(b, -(bb.origin))
-    scale(bb_t, keep_aspect ? 1 / (max(w, h)) : 1 ./ (w, h))
+    ws = widths(bb)
+    bb_t = translate(b, -(bb.origin + 0.5 * ws))
+    translate(
+        scale(
+            bb_t,
+            keep_aspect ? 1 ./ Vec2f(maximum(ws)) : 1 ./ ws
+        ),
+        Vec2f(0.5, 0.5)
+    )
 end
 
 Base.:+(pc::EllipticalArc, p::Point2) = EllipticalArc(pc.c + p, pc.r1, pc.r2, pc.angle, pc.a1, pc.a2)
@@ -166,7 +172,7 @@ function BezierPath(svg::AbstractString; fit = false, bbox = nothing, flipy = fa
     p = BezierPath(commands)
     if fit
         if bbox === nothing
-            p = fit_to_unit_square(p, keep_aspect)
+            p = translate(fit_to_unit_square(p, keep_aspect), Vec2f(-0.5, -0.5))
         else
             error("Unkown bbox parameter $bbox")
         end
@@ -510,8 +516,7 @@ function bbox(b::BezierPath)
             continue
         else
             endp = endpoint(prev)
-            seg = segment(endp, comm)
-            _bb = cleanup_bbox(bbox(seg))
+            _bb = cleanup_bbox(bbox(endp, comm))
             bb = bb === nothing ? _bb : union(bb, _bb)
         end
         prev = comm
@@ -525,6 +530,18 @@ segment(p, c::CurveTo) = BezierSegment(p, c.c1, c.c2, c.p)
 endpoint(m::MoveTo) = m.p
 endpoint(l::LineTo) = l.p
 endpoint(c::CurveTo) = c.p
+function endpoint(e::EllipticalArc)
+    point_at_angle(e, e.a2)
+end
+
+function point_at_angle(e::EllipticalArc, theta)
+    M = abs(e.r1) * cos(theta)
+    N = abs(e.r2) * sin(theta)
+    Point2f(
+        e.c[1] + cos(e.angle) * M - sin(e.angle) * N,
+        e.c[2] + sin(e.angle) * M + cos(e.angle) * N
+    )
+end
 
 function cleanup_bbox(bb::Rect2f)
     if any(x -> x < 0, bb.widths)
@@ -532,6 +549,11 @@ function cleanup_bbox(bb::Rect2f)
         return Rect2f(p, abs.(bb.widths))
     end
     return bb
+end
+
+bbox(p, x::Union{LineTo, CurveTo}) = bbox(segment(p, x))
+function bbox(p, e::EllipticalArc)
+    bbox(elliptical_arc_to_beziers(e))
 end
 
 function bbox(ls::LineSegment)
