@@ -56,18 +56,6 @@ function layout_text(
     return glyphcollection
 end
 
-
-per_char_info(value, charinfo) = [value for ci in charinfo]
-per_char_info(value::VecTypes, charinfo) = [value for ci in charinfo]
-function per_char_info(value::AbstractVector, charinfo)
-    if length(value) == length(charinfo)
-        return value
-    else
-        error("Charinfo has length $(length(charinfo)) and attribute has length $(length(value))")
-    end
-end
-
-
 """
     glyph_collection(str::AbstractString, font_per_char, fontscale_px, halign, valign, lineheight_factor, justification, rotation, color)
 
@@ -222,16 +210,17 @@ function glyph_collection(str::AbstractString, font_per_char, fontscale_px, hali
     # these values should be enough to draw characters correctly,
     # compute boundingboxes without relayouting and maybe implement
     # interactive features that need to know where characters begin and end
+    per_char(attr) = collect(attribute_per_char(str, attr)) # attribute_per_char returns generators
     return GlyphCollection(
         [x.char for x in charinfos],
         [x.font for x in charinfos],
         reduce(vcat, charorigins),
         [x.extent for x in charinfos],
         [Vec2f(x.scale) for x in charinfos],
-        per_char_info(rotation, charinfos),
-        per_char_info(color, charinfos),
-        per_char_info(strokecolor, charinfos),
-        per_char_info(strokewidth, charinfos),
+        rotation, # rotations is used as one rotation per string above. TODO, allow one rotation per char
+        per_char(color),
+        per_char(strokecolor),
+        per_char(strokewidth)
     )
 end
 
