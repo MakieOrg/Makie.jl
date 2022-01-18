@@ -217,7 +217,7 @@ function glyph_collection(str::AbstractString, font_per_char, fontscale_px, hali
         reduce(vcat, charorigins),
         [x.extent for x in charinfos],
         [Vec2f(x.scale) for x in charinfos],
-        rotation, # rotations is used as one rotation per string above. TODO, allow one rotation per char
+        per_char(rotation), # rotations is used as one rotation per string above. TODO, allow one rotation per char
         per_char(color),
         per_char(strokecolor),
         per_char(strokewidth)
