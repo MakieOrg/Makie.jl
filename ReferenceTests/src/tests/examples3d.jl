@@ -545,7 +545,7 @@ end
             scale!(p, 0.25, 0.25, 0.25)
         end
 
-        center!(ax)
+        center!(ax.scene)
     end
     fig
 end
