@@ -59,8 +59,7 @@ void main(){
     mat4 pview = projection * view;
     // Compute transform for the offset vectors from the central point
     mat4 trans = get_transform_marker() ? model : mat4(1.0);
-    mat4 billtrans = get_use_pixel_marker() ? pixelspace : projection;
-    trans = (get_billboard() ? billtrans : pview) * qmat(get_rotations()) * trans;
+    trans = (get_billboard() ? projection : pview) * qmat(get_rotations()) * trans;
 
     // Compute centre of billboard in clipping coordinates
     vec4 sprite_center = trans * vec4(sprite_bbox_centre, 0, 0);

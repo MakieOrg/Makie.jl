@@ -24,9 +24,11 @@ function handle_color!(uniform_dict, instance_dict)
     end
 end
 
-const IGNORE_KEYS = Set([:shading, :overdraw, :rotation, :distancefield, :markerspace,
-                         :fxaa, :visible, :transformation, :alpha, :linewidth,
-                         :transparency, :marker, :lightposition, :cycle, :label])
+const IGNORE_KEYS = Set([
+    :shading, :overdraw, :rotation, :distancefield, :space, :markerspace, :fxaa, 
+    :visible, :transformation, :alpha, :linewidth, :transparency, :marker, 
+    :lightposition, :cycle, :label
+])
 
 function create_shader(scene::Scene, plot::MeshScatter)
     # Potentially per instance attributes
@@ -158,10 +160,6 @@ function scatter_shader(scene::Scene, attributes)
         end
     end
 
-    markerspace = get(uniforms, :markerspace, Observable(:data))
-    uniform_dict[:use_pixel_marker] = map(markerspace) do space
-        return is_pixel_space(space)
-    end
     handle_color!(uniform_dict, per_instance)
 
     instance = uv_mesh(Rect2(-0.5f0, -0.5f0, 1f0, 1f0))
@@ -179,9 +177,23 @@ function create_shader(scene::Scene, plot::Scatter)
         return k in per_instance_keys && !(isscalar(v[]))
     end
     attributes = copy(plot.attributes.attributes)
-    attributes[:offset] = apply_transform(transform_func_obs(plot),  plot[1])
+    space = get(attributes, :space, :data)
+    markerspace = get(attributes, :markerspace, :pixel)
+    cam = scene.camera
+    attributes[:offset] = map(
+            plot[1], space, markerspace, 
+            transform_func_obs(plot), cam.projectionview, cam.resolution
+        ) do positions, space, markerspace, tf, _, _
+
+        mat = Makie.clip_to_space(cam, markerspace) * Makie.space_to_clip(cam, space)
+        map(positions) do pos
+            p = apply_transform(tf, pos)
+            p4d = mat * Makie.to_ndim(Point4f, Makie.to_ndim(Point3f, p, 0), 1)
+            p4d[SOneTo(3)] / p4d[4]
+        end
+    end
     attributes[:billboard] = map(rot -> isa(rot, Billboard), plot.rotations)
-    attributes[:pixelspace] = getfield(scene.camera, :pixel_space)
+    # attributes[:pixelspace] = getfield(scene.camera, :pixel_space)
     attributes[:model] = plot.model
     attributes[:markerspace] = plot.markerspace
     attributes[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
@@ -200,6 +212,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     projview = scene.camera.projectionview
     transfunc =  Makie.transform_func_obs(scene)
     pos = plot.position
+    space = plot.space
     markerspace = plot.markerspace
     offset = plot.offset
 
@@ -219,8 +232,11 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         gcollection = Observable(glyphcollection)
     end
 
-    glyph_data = lift(pos, gcollection, markerspace, projview, res, offset, transfunc) do pos, gc, args...
-        Makie.preprojected_glyph_arrays(pos, to_value(gc), args...)
+    glyph_data = lift(
+            scene.camera.projectionview, scene.camera.resolution,
+            pos, gcollection, space, markerspace, offset, transfunc
+        ) do _, _, pos, gc, space, mspace, offset, transfunc
+        Makie.preprojected_glyph_arrays(pos, to_value(gc), space, mspace, scene.camera, offset, transfunc)
     end
     # unpack values from the one signal:
     positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i
@@ -251,13 +267,13 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         :color => uniform_color,
         :rotations => uniform_rotation,
         :markersize => scale,
-        :markerspace => Observable(:pixel),
+        # :markerspace => Observable(:pixel),
         :marker_offset => offset,
         :offset => positions,
         :uv_offset_width => uv_offset_width,
         :transform_marker => Observable(false),
         :billboard => Observable(false),
-        :pixelspace => getfield(scene.camera, :pixel_space),
+        # :pixelspace => getfield(scene.camera, :pixel_space),
         :depth_shift => get(plot, :depth_shift, Observable(0f0))
     )
 
