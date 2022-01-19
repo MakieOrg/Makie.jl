@@ -13,7 +13,8 @@ function default_theme(scene)
         nan_color = RGBAf(0,0,0,0),
         ssao = false,
         inspectable = theme(scene, :inspectable),
-        depth_shift = 0f0
+        depth_shift = 0f0,
+        space = :data
     )
 end
 
