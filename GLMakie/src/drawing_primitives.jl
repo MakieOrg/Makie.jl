@@ -443,6 +443,8 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
         pop!(gl_attributes, :color)
         gl_attributes[:stroke_width] = pop!(gl_attributes, :thickness)
         # gl_attributes[:color_map] = Texture(gl_attributes[:color_map], minfilter=:nearest)
+        haskey(gl_attributes, :space) && pop!(gl_attributes, :space)
+        haskey(gl_attributes, :markerspace) && pop!(gl_attributes, :markerspace)
         GLVisualize.assemble_shader(GLVisualize.gl_heatmap(tex, gl_attributes))
     end
 end
