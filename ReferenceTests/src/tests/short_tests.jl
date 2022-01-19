@@ -10,7 +10,7 @@ end
 
 @cell "char marker scenespace" begin
     f, ax, pl = lines(Rect(0, 0, 1, 1), linewidth=4)
-    scatter!([Point2f(0.5, 0.5)], markersize=1, markerspace=SceneSpace, marker='I')
+    scatter!([Point2f(0.5, 0.5)], markersize=1, markerspace=:data, marker='I')
     f
 end
 
@@ -22,7 +22,7 @@ end
 @cell "scatter rotation" begin
     angles = range(0, stop=2pi, length=20)
     pos = Point2f.(sin.(angles), cos.(angles))
-    f, ax, pl = scatter(pos, markersize=0.2, markerspace=SceneSpace, rotations=-angles, marker='▲', axis=(;aspect = DataAspect()))
+    f, ax, pl = scatter(pos, markersize=0.2, markerspace=:data, rotations=-angles, marker='▲', axis=(;aspect = DataAspect()))
     scatter!(pos, markersize=10, color=:red)
     f
 end
