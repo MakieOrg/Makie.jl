@@ -577,3 +577,16 @@ end
     update_cam!(ax.scene, cam, Vec3f(0.625, 0, 3.5), Vec3f(0.625, 0, 0), Vec3f(0, 1, 0))
     fig
 end
+
+
+@cell "space 3D" begin
+    fig = Figure()
+    for ax in [LScene(fig[1, 1]), Axis3(fig[1, 2])]
+        mesh!(ax, Rect3(Point3f(-10), Vec3f(20)), color = :orange)
+        mesh!(ax, Rect2f(0.8, 0.1, 0.1, 0.8), space = :relative, color = :blue, shading = false)
+        linesegments!(ax, Rect2f(-0.5, -0.5, 1, 1), space = :clip, color = :cyan, linewidth = 5)
+        text!(ax, "Clip Space", position = Point2f(0, 0.52), align = (:center, :bottom), space = :clip)
+        image!(ax, 0..40, 0..800, [x for x in range(0, 1, length=40), _ in 1:10], space = :pixel)
+    end
+    fig
+end
