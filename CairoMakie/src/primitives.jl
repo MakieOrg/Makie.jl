@@ -405,9 +405,6 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
         Cairo.save(ctx)
         Cairo.move_to(ctx, glyphpos...)
         set_font_matrix(ctx, mat)
-        if is_pixel_space(markerspace)
-            Cairo.rotate(ctx, to_2d_rotation(rotation))
-        end
         Cairo.show_text(ctx, string(glyph))
         Cairo.restore(ctx)
 
@@ -415,9 +412,6 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
             Cairo.save(ctx)
             Cairo.move_to(ctx, glyphpos...)
             set_font_matrix(ctx, mat)
-            if is_pixel_space(markerspace)
-                Cairo.rotate(ctx, to_2d_rotation(rotation))
-            end
             Cairo.text_path(ctx, string(glyph))
             Cairo.set_source_rgba(ctx, rgbatuple(strokecolor)...)
             Cairo.set_line_width(ctx, strokewidth)
