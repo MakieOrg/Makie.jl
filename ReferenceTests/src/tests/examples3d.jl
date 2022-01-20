@@ -581,7 +581,9 @@ end
 
 @cell "space 3D" begin
     fig = Figure()
-    for ax in [LScene(fig[1, 1]), Axis3(fig[1, 2])]
+    ax1 = LScene(fig[1, 1])
+    ax2 = Axis3(fig[1, 2])
+    for ax in [ax1, ax2]
         mesh!(ax, Rect3(Point3f(-10), Vec3f(20)), color = :orange)
         mesh!(ax, Rect2f(0.8, 0.1, 0.1, 0.8), space = :relative, color = :blue, shading = false)
         linesegments!(ax, Rect2f(-0.5, -0.5, 1, 1), space = :clip, color = :cyan, linewidth = 5)
