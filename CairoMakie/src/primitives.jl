@@ -267,10 +267,18 @@ function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewid
 end
 
 function draw_marker(ctx, marker::Circle, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
-
     marker_offset = marker_offset + scale ./ 2
     pos += Point2f(marker_offset[1], -marker_offset[2])
-    Cairo.arc(ctx, pos[1], pos[2], scale[1]/2, 0, 2*pi)
+
+    if scale[1] != scale[2]
+        old_matrix = Cairo.get_matrix(ctx)
+        Cairo.scale(ctx, scale[1], scale[2])
+        Cairo.translate(ctx, pos[1]/scale[1], pos[2]/scale[2])
+        Cairo.arc(ctx, 0, 0, 0.5, 0, 2*pi)
+    else 
+        Cairo.arc(ctx, pos[1], pos[2], scale[1]/2, 0, 2*pi)
+    end
+
     Cairo.fill_preserve(ctx)
 
     Cairo.set_line_width(ctx, Float64(strokewidth))
@@ -278,6 +286,8 @@ function draw_marker(ctx, marker::Circle, pos, scale, strokecolor, strokewidth, 
     sc = to_color(strokecolor)
     Cairo.set_source_rgba(ctx, rgbatuple(sc)...)
     Cairo.stroke(ctx)
+    scale[1] != scale[2] && Cairo.set_matrix(ctx, old_matrix)
+    nothing
 end
 
 function draw_marker(ctx, marker::Rect, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
