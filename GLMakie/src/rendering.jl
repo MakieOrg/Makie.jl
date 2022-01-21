@@ -126,7 +126,7 @@ function render_frame(screen::Screen; resize_buffers=true)
         return Makie.zvalue2d(plot)
     end
     zvals = sortby.(screen.renderlist)
-    screen.renderlist = screen.renderlist[sortperm(zvals)]
+    permute!(screen.renderlist, sortperm(zvals))
 
     # NOTE
     # The transparent color buffer is reused by SSAO and FXAA. Changing the
