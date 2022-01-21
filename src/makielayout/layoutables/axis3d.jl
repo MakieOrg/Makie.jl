@@ -519,7 +519,8 @@ function add_ticks_and_ticklabels!(topscene, scene, dim::Int, limits, ticknode, 
             tendp + offset
         end
 
-        v = collect(zip(ticklabs, points))
+        N = min(length(ticklabs), length(points))
+        v = [(ticklabs[i], points[i]) for i in 1:N]
         v::Vector{Tuple{String, Point2f}}
     end
 
