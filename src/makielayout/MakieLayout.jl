@@ -20,10 +20,14 @@ using GridLayoutBase
 using GridLayoutBase: GridSubposition
 import Showoff
 using Colors
+using Memoization: @memoize
+using LRUCache: LRU
 
 const FPS = Observable(30)
 const COLOR_ACCENT = Ref(RGBf(((79, 122, 214) ./ 255)...))
 const COLOR_ACCENT_DIMMED = Ref(RGBf(((174, 192, 230) ./ 255)...))
+
+const TICK_CACHE_SIZE = Ref{Int}(100)
 
 # Make GridLayoutBase default row and colgaps themeable when using MakieLayout
 # This mutates module-level state so it could mess up other libraries using

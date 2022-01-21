@@ -447,7 +447,7 @@ Base function that calls `get_tickvalues(ticks, vmin, max)` and
 For custom ticks / formatter combinations, this method can be overloaded
 directly, or both `get_tickvalues` and `get_ticklabels` separately.
 """
-function get_ticks(ticks, scale, formatter, vmin, vmax)
+@memoize LRU(maxsize = TICK_CACHE_SIZE[]) function get_ticks(ticks, scale, formatter, vmin, vmax)
     tickvalues = get_tickvalues(ticks, scale, vmin, vmax)
     ticklabels = get_ticklabels(formatter, tickvalues)
     return tickvalues, ticklabels
