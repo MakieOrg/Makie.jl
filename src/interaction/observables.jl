@@ -1,10 +1,27 @@
 # I don't want to use map anymore, it's so ambigious, especially to newcomers.
 # TODO should this become it's own function?
 """
-    lift(f, o1::Observables.AbstractObservable, rest...)
+    lift(f, o1::Observables.AbstractObservable, rest...) -> w
 
-Create a new `Observable` by applying `f` to all observables in `o1` and `rest...`.
-The initial value is determined by the first function evaluation.
+Create a new `w::Observable` by applying `f` to the _values_ of all observables 
+in `o1` and `rest...`. The initial value of `w` is determined by the first function
+evaluation. The observable `w` is updated by calling `f` each time any of the
+observables `o1, rest...` are updated.
+
+## Examples
+```julia
+julia> x = Observable(2)
+Observable{Int64} with 0 listeners. Value:
+2
+
+julia> y = lift(a -> a^2, x)
+Observable{Int64} with 0 listeners. Value:
+4
+
+julia> z = lift((a,b) -> a+b, x, y)
+Observable{Int64} with 0 listeners. Value:
+6
+```
 """
 function lift(f, o1::Observables.AbstractObservable, rest...; kw...)
     if !isempty(kw)

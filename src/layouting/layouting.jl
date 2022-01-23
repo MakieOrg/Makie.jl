@@ -71,7 +71,7 @@ function glyph_collection(str::AbstractString, font_per_char, fontscale_px, hali
         Vec2f[], Float32[], RGBAf[], RGBAf[], Float32[])
 
     # collect information about every character in the string
-    charinfos = broadcast([c for c in str], font_per_char, fontscale_px) do char, font, scale
+    charinfos = broadcast((c for c in str), font_per_char, fontscale_px) do char, font, scale
         # TODO: scale as SVector not Number
         unscaled_extent = get_extent(font, char)
         lineheight = Float32(font.height / font.units_per_EM * lineheight_factor * scale)
@@ -210,16 +210,17 @@ function glyph_collection(str::AbstractString, font_per_char, fontscale_px, hali
     # these values should be enough to draw characters correctly,
     # compute boundingboxes without relayouting and maybe implement
     # interactive features that need to know where characters begin and end
+    per_char(attr) = collect(attribute_per_char(str, attr)) # attribute_per_char returns generators
     return GlyphCollection(
         [x.char for x in charinfos],
         [x.font for x in charinfos],
         reduce(vcat, charorigins),
         [x.extent for x in charinfos],
         [Vec2f(x.scale) for x in charinfos],
-        [rotation for x in charinfos],
-        [color for x in charinfos],
-        [strokecolor for x in charinfos],
-        [strokewidth for x in charinfos],
+        per_char(rotation), # rotations is used as one rotation per string above. TODO, allow one rotation per char
+        per_char(color),
+        per_char(strokecolor),
+        per_char(strokewidth)
     )
 end
 

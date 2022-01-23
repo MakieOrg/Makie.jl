@@ -250,4 +250,4 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
     all_els, pre_align_gl, Point2f(xshift, yshift)
 end
 
-MakieLayout.iswhitespace(l::LaTeXString) = MakieLayout.iswhitespace(l.s[2:end-1])
+MakieLayout.iswhitespace(l::LaTeXString) = MakieLayout.iswhitespace(replace(l.s, '$' => ""))
