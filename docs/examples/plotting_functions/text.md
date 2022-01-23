@@ -14,6 +14,7 @@
 - `depth_shift::Float32 = 0f0` adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw). 
 - `model::Makie.Mat4f` sets a model matrix for the plot. This replaces adjustments made with `translate!`, `rotate!` and `scale!`.
 - `color` sets the color of the plot. It can be given as a named color `Symbol` or a `Colors.Colorant`. Transparency can be included either directly as an alpha value in the `Colorant` or as an additional float in a tuple `(color, alpha)`. The color can also be set for each character by passing a `Vector` of colors. 
+- `space::Symbol = :data` sets the transformation space for text positions. See `Makie.spaces()` for possible inputs.
 
 ### Other
 
@@ -23,7 +24,7 @@
 - `position::Union{Point2f, Point3f} = Point2f(0)` sets an anchor position for text. Can also be a `Vector` of positions.
 - `rotation::Union{Real, Quaternion}` rotates text around the given position.
 - `textsize::Union{Real, Vec2f}` sets the size of each character.
-- `space::Symbol = :screen` sets the space in which `textsize` acts. Can be `:screen` (pixel space) or `:data` (world space).
+- `markerspace::Symbol = :screen` sets the space in which `textsize` acts. See `Makie.spaces()` for possible inputs.
 - `strokewidth::Real = 0` sets the width of the outline around a marker.
 - `strokecolor::Union{Symbol, <:Colorant} = :black` sets the color of the outline around a marker.
 - `glowwidth::Real = 0` sets the size of a glow effect around the marker.
