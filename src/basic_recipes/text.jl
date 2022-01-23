@@ -57,7 +57,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
 
     text!(plot, glyphcollections; position = plot.position, rotation = rotation,
         model = plot.model, offset = plot.offset, markerspace = plot.markerspace, 
-        visible=plot.visible)
+        visible=plot.visible, space = plot.space)
 
     plot
 end
