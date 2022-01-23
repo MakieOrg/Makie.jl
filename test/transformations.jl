@@ -89,7 +89,7 @@ end
 
 @testset "Coordinate Systems" begin
     funcs = [Makie.is_data_space, Makie.is_pixel_space, Makie.is_relative_space, Makie.is_clip_space]
-    spaces = [[:data, :world], [:pixel, :screne], [:relative, :unit], [:clip]]
+    spaces = [[:data, :world], [:pixel, :screen], [:relative, :unit], [:clip]]
     for (i, f) in enumerate(funcs)
         for j in 1:4
             for space in spaces[j]
@@ -100,7 +100,7 @@ end
 
     scene = Scene(cam = cam3d!)
     scatter!(scene, [Point3f(-10), Point3f(10)])
-    for space in spaces
+    for space in vcat(spaces...)
         @test Makie.clip_to_space(scene.camera, space) * Makie.space_to_clip(scene.camera, space) ≈ Mat4f(I)
     end
 end
