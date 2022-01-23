@@ -193,7 +193,6 @@ function create_shader(scene::Scene, plot::Scatter)
         end
     end
     attributes[:billboard] = map(rot -> isa(rot, Billboard), plot.rotations)
-    # attributes[:pixelspace] = getfield(scene.camera, :pixel_space)
     attributes[:model] = plot.model
     attributes[:markerspace] = plot.markerspace
     attributes[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
@@ -267,13 +266,11 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         :color => uniform_color,
         :rotations => uniform_rotation,
         :markersize => scale,
-        # :markerspace => Observable(:pixel),
         :marker_offset => offset,
         :offset => positions,
         :uv_offset_width => uv_offset_width,
         :transform_marker => Observable(false),
         :billboard => Observable(false),
-        # :pixelspace => getfield(scene.camera, :pixel_space),
         :depth_shift => get(plot, :depth_shift, Observable(0f0))
     )
 

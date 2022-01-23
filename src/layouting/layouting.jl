@@ -227,7 +227,6 @@ end
 function preprojected_glyph_arrays(
         position::VecTypes, glyphcollection::Makie.GlyphCollection, space::Symbol, 
         markerspace::Symbol, cam::Camera, offset::VecTypes, transfunc
-        # markerspace::Symbol, projview, resolution, offset::VecTypes, transfunc
     )
     offset = to_ndim(Point3f, offset, 0)
     projected = project(cam, space, markerspace, apply_transform(transfunc, position))
