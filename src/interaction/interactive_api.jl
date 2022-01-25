@@ -7,6 +7,7 @@ export select_rectangle, select_line, select_point
 
 Returns true if the mouse currently hovers any of `plots`.
 """
+mouseover(x, plots::AbstractPlot...) = mouseover(get_scene(x), plots...)
 function mouseover(scene::SceneLike, plots::AbstractPlot...)
     p, idx = mouse_selection(scene)
     return p in flatten_plots(plots)
@@ -19,6 +20,7 @@ Calls `f(plot, idx)` whenever the mouse is over any of `plots`.
 `idx` is an index, e.g. when over a scatter plot, it will be the index of the
 hovered element
 """
+onpick(f, x, plots::AbstractPlot...; range=1) = onpick(f, get_scene(x), plots..., range = range)
 function onpick(f, scene::SceneLike, plots::AbstractPlot...; range=1)
     fplots = flatten_plots(plots)
     args = range == 1 ? (scene,) : (scene, range)
@@ -34,9 +36,9 @@ end
 
 Returns the plot that is under the current mouse position
 """
-function mouse_selection(scene::SceneLike)
-    pick(scene, events(scene).mouseposition[])
-end
+mouse_selection(x) = mouse_selection(get_scene(x))
+mouse_selection(scene::SceneLike) = pick(scene, events(scene).mouseposition[])
+mouse_selection(x, range) = mouse_selection(get_scene(x), range)
 function mouse_selection(scene::SceneLike, range)
     pick(scene, events(scene).mouseposition[], range)
 end
@@ -87,6 +89,7 @@ end
 
 Returns the plot under pixel position `(x, y)`.
 """
+pick(obj, x::Number, y::Number) = pick(get_scene(obj), x, y)
 function pick(scene::SceneLike, x::Number, y::Number)
     return pick(scene, Vec{2, Float64}(x, y))
 end
@@ -97,7 +100,9 @@ end
 
 Return the plot under pixel position xy.
 """
-function pick(scene::SceneLike, xy)
+pick(obj) = pick(get_scene(obj), mouseposition_px(get_scene(obj)))
+pick(obj, xy::VecTypes{2}) = pick(get_scene(obj), xy)
+function pick(scene::SceneLike, xy::VecTypes{2})
     screen = getscreen(scene)
     screen === nothing && return (nothing, 0)
     pick(scene, screen, Vec{2, Float64}(xy))
@@ -108,7 +113,9 @@ end
 
 Return the plot closest to xy within a given range.
 """
-function pick(scene::SceneLike, xy, range)
+pick(obj, range::Real) = pick(get_scene(obj), mouseposition_px(get_scene(obj)), range)
+pick(obj, xy::VecTypes{2}, range::Real) = pick(get_scene(obj), xy, range)
+function pick(scene::SceneLike, xy::VecTypes{2}, range::Real)
     screen = getscreen(scene)
     screen === nothing && return (nothing, 0)
     pick_closest(scene, screen, xy, range)
@@ -187,6 +194,7 @@ end
 Return all `(plot, index)` pairs within the given rect. The rect must be within
 screen boundaries.
 """
+pick(x, rect::Rect2i) = pick(get_scene(x), rect)
 function pick(scene::SceneLike, rect::Rect2i)
     screen = getscreen(scene)
     screen === nothing && return Tuple{AbstractPlot, Int}[]
@@ -198,6 +206,7 @@ end
 
 Normalizes mouse position `pos` relative to the screen rectangle.
 """
+screen_relative(x, mpos) = screen_relative(get_scene(x), mpos)
 function screen_relative(scene::Scene, mpos)
     return Point2f(mpos) .- Point2f(minimum(pixelarea(scene)[]))
 end
@@ -210,11 +219,13 @@ given `scene`.
 
 By default uses the `scene` that the mouse is currently hovering over.
 """
-function mouseposition(scene = hovered_scene())
+mouseposition(x) = mouseposition(get_scene(x))
+function mouseposition(scene::Scene = hovered_scene())
     to_world(scene, mouseposition_px(scene))
 end
 
-function mouseposition_px(scene = hovered_scene())
+mouseposition_px(x) = mouseposition_px(get_scene(x))
+function mouseposition_px(scene::Scene = hovered_scene())
     screen_relative(
         scene,
         events(scene).mouseposition[]

@@ -25,6 +25,7 @@ if an axis is placed at that position (if not it errors) or it can reference an 
 =#
 
 get_scene(fig::Figure) = fig.scene
+get_scene(fap::FigureAxisPlot) = fap.figure.scene
 
 const _current_figure = Ref{Union{Nothing, Figure}}(nothing)
 "Returns the current active figure (or the last figure that got created)"
@@ -126,9 +127,6 @@ function get_figure(gp::GridLayoutBase.GridPosition)
         nothing
     end
 end
-
-events(fig::Figure) = events(fig.scene)
-events(fap::FigureAxisPlot) = events(fap.figure.scene)
 
 """
     resize_to_layout!(fig::Figure)
