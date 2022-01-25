@@ -120,7 +120,7 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
     halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
 
-    sceneheight = Observable(20.0)
+    sceneheight = ChangeObservable(20.0)
 
     # the direction is auto-chosen as up if there is too little space below and if the space below
     # is smaller than above
@@ -338,7 +338,7 @@ function _reassemble_menu(
             padding = textpadding, visible = is_open
         )
 
-        # translate dropdown elements in the foreground 
+        # translate dropdown elements in the foreground
         for p in values(allrects[i+1].elements)
             translate!(p, Vec3f(0, 0, 4))
         end
@@ -355,10 +355,10 @@ function _reassemble_menu(
 
     resize!(mouseeventhandles, length(alltexts))
     map!(mouseeventhandles, eachindex(allrects), allrects) do i, r
-        # Use base priority for [Menu   v] and high priority for the dropdown 
+        # Use base priority for [Menu   v] and high priority for the dropdown
         # elements that may overlap with out interactive layoutables.
         addmouseevents!(
-            scene, r.layoutobservables.computedbbox, 
+            scene, r.layoutobservables.computedbbox,
             priority = Int8(1) + (i != 1) * Int8(60)
         )
     end

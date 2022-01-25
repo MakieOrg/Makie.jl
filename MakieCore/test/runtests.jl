@@ -11,7 +11,7 @@ end
 
 function plot!(plot::Plot(AbstractTimeseriesSolution))
     # plot contains any keyword arguments that you pass to plot(series; kw...)
-    var = get(plot, :var, Observable(5))
+    var = get(plot, :var, ChangeObservable(5))
     density!(plot, map((v, r)-> v .* r.results, var, plot[1]))
 end
 

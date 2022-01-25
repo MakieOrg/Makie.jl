@@ -42,7 +42,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
         if haskey(data, key)
             attributes[key] = Buffer(get_attribute(mesh_signal, key))
         else
-            uniforms[key] = Observable(default)
+            uniforms[key] = ChangeObservable(default)
         end
     end
 
@@ -56,7 +56,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
         color_signal = converted_attribute(plot, :color)
         color = color_signal[]
         mesh_color = color_signal[]
-        uniforms[:uniform_color] = Observable(false) # this is the default
+        uniforms[:uniform_color] = ChangeObservable(false) # this is the default
 
         if color isa Colorant && haskey(data, :color)
             color_signal = get_attribute(mesh_signal, :color)
@@ -109,7 +109,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
     get!(uniforms, :highclip, RGBAf(0, 0, 0, 0))
     get!(uniforms, :lowclip, RGBAf(0, 0, 0, 0))
 
-    uniforms[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
+    uniforms[:depth_shift] = get(plot, :depth_shift, ChangeObservable(0f0))
 
     uniforms[:normalmatrix] = map(scene.camera.view, plot.model) do v, m
         i = SOneTo(3)

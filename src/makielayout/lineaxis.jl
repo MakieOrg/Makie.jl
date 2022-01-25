@@ -28,7 +28,7 @@ function LineAxis(parent::Scene; kwargs...)
         end
     end
 
-    ticksnode = Observable(Point2f[])
+    ticksnode = ChangeObservable(Point2f[])
     ticklines = linesegments!(
         parent, ticksnode, linewidth = tickwidth, color = tickcolor, linestyle = nothing,
         visible = ticksvisible, inspectable = false
@@ -36,7 +36,7 @@ function LineAxis(parent::Scene; kwargs...)
     decorations[:ticklines] = ticklines
     translate!(ticklines, 0, 0, 10)
 
-    minorticksnode = Observable(Point2f[])
+    minorticksnode = ChangeObservable(Point2f[])
     minorticklines = linesegments!(
         parent, minorticksnode, linewidth = minortickwidth, color = minortickcolor,
         linestyle = nothing, visible = minorticksvisible, inspectable = false
@@ -80,7 +80,7 @@ function LineAxis(parent::Scene; kwargs...)
         end
     end
 
-    ticklabelannosnode = Observable(Tuple{AbstractString, Point2f}[])
+    ticklabelannosnode = ChangeObservable(Tuple{AbstractString, Point2f}[])
     ticklabels = nothing
 
     ticklabel_ideal_space = lift(Float32, ticklabelannosnode, ticklabelalign, ticklabelrotation, ticklabelfont, ticklabelsvisible) do args...
@@ -179,15 +179,15 @@ function LineAxis(parent::Scene; kwargs...)
 
     decorations[:labeltext] = labeltext
 
-    tickvalues = Observable(Float32[])
+    tickvalues = ChangeObservable(Float32[])
 
     tickvalues_labels_unfiltered = lift(pos_extents_horizontal, limits, ticks, tickformat, attrs.scale) do (position, extents, horizontal),
             limits, ticks, tickformat, scale
         get_ticks(ticks, scale, tickformat, limits...)
     end
 
-    tickpositions = Observable(Point2f[])
-    tickstrings = Observable(AbstractString[])
+    tickpositions = ChangeObservable(Point2f[])
+    tickstrings = ChangeObservable(AbstractString[])
 
     onany(tickvalues_labels_unfiltered, reversed) do tickvalues_labels_unfiltered, reversed
 
@@ -231,8 +231,8 @@ function LineAxis(parent::Scene; kwargs...)
         tickstrings[] = tickstrings_unfiltered[i_values_within_limits]
     end
 
-    minortickvalues = Observable(Float32[])
-    minortickpositions = Observable(Point2f[])
+    minortickvalues = ChangeObservable(Float32[])
+    minortickpositions = ChangeObservable(Point2f[])
 
     onany(tickvalues, minorticks) do tickvalues, minorticks
         minortickvalues[] = get_minor_tickvalues(minorticks, attrs.scale[], tickvalues, limits[]...)

@@ -9,9 +9,9 @@ Base.broadcastable(x::Attributes) = Ref(x)
 value_convert(x::Observables.AbstractObservable) = Observables.observe(x)
 value_convert(@nospecialize(x)) = x
 
-# We transform a tuple of observables into a Observable(tuple(values...))
+# We transform a tuple of observables into a ChangeObservable(tuple(values...))
 function value_convert(x::NTuple{N, Union{Any, Observables.AbstractObservable}}) where N
-    result = Observable(to_value.(x))
+    result = ChangeObservable(to_value.(x))
     onany((args...)-> args, x...)
     return result
 end

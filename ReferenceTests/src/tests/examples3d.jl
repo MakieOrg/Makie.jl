@@ -128,7 +128,7 @@ end
 
 @cell "Record Video" begin
     f(t, v, s) = (sin(v + t) * s, cos(v + t) * s, (cos(v + t) + sin(v)) * s)
-    t = Observable(0.0) # create a life signal
+    t = ChangeObservable(0.0) # create a life signal
     limits = Rect3f(Vec3f(-1.5, -1.5, -3), Vec3f(3, 3, 6))
     fig, ax, p1 = meshscatter(lift(t -> f.(t, range(0, stop=2pi, length=50), 1), t), markersize=0.05)
     p2 = meshscatter!(ax, lift(t -> f.(t * 2.0, range(0, stop=2pi, length=50), 1.5), t), markersize=0.05)

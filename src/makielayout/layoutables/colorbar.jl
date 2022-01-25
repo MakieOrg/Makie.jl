@@ -83,7 +83,7 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
 
     decorations = Dict{Symbol, Any}()
 
-    protrusions = Observable(GridLayoutBase.RectSides{Float32}(0, 0, 0, 0))
+    protrusions = ChangeObservable(GridLayoutBase.RectSides{Float32}(0, 0, 0, 0))
 
     # make the layout width and height settings depend on `size` if they are set to automatic
     # and determine whether they are nothing or `size` depending on colorbar orientation

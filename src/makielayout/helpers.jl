@@ -12,7 +12,7 @@ end
 
 function sceneareanode!(finalbbox, limits, aspect)
 
-    scenearea = Observable(Recti(0, 0, 100, 100))
+    scenearea = ChangeObservable(Recti(0, 0, 100, 100))
 
     onany(finalbbox, limits, aspect) do bbox, limits, aspect
 
@@ -436,7 +436,7 @@ end
 # this works only with Axes because it needs to react to limit changes
 function hvlines!(ax::Axis, direction::Int, datavals, axmins, axmaxs; attributes...)
 
-    datavals, axmins, axmaxs = map(x -> x isa Observable ? x : Observable(x), (datavals, axmins, axmaxs))
+    datavals, axmins, axmaxs = map(x -> x isa Observable ? x : ChangeObservable(x), (datavals, axmins, axmaxs))
 
     linesegs = lift(ax.finallimits, ax.scene.px_area, datavals, axmins, axmaxs) do lims, pxa,
             datavals, axmins, axmaxs
@@ -503,7 +503,7 @@ end
 function hvspan!(ax::Axis, direction::Int, datavals_low, datavals_high,
         axmins, axmaxs; attributes...)
 
-    datavals_low, datavals_high, axmins, axmaxs = map(x -> x isa Observable ? x : Observable(x), (datavals_low, datavals_high, axmins, axmaxs))
+    datavals_low, datavals_high, axmins, axmaxs = map(x -> x isa Observable ? x : ChangeObservable(x), (datavals_low, datavals_high, axmins, axmaxs))
 
     rects = lift(ax.finallimits, ax.scene.px_area, datavals_low, datavals_high,
         axmins, axmaxs) do lims, pxa,

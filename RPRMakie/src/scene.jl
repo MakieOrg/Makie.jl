@@ -99,7 +99,7 @@ function to_rpr_scene(context::RPR.Context, matsys, mscene::Makie.Scene)
     return scene
 end
 
-function replace_scene_rpr!(scene::Makie.Scene, screen=RPRScreen(scene); refresh=Observable(nothing))
+function replace_scene_rpr!(scene::Makie.Scene, screen=RPRScreen(scene); refresh=ChangeObservable(nothing))
     context = screen.context
     matsys = screen.matsys
     screen.scene = scene

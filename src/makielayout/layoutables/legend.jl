@@ -59,7 +59,7 @@ function layoutable(::Type{Legend},
         relayout()
     end
 
-    update_grid = Observable(true)
+    update_grid = ChangeObservable(true)
     onany(update_grid, margin) do _, margin
         if manipulating_grid[]
             return

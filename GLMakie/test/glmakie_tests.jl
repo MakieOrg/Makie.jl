@@ -47,12 +47,12 @@ end
 
 # Test for resizing of TextureBuffer
 @cell "Dynamically adjusting number of particles in a meshscatter" begin
-    pos = Observable(RNG.rand(Point3f, 2))
-    rot = Observable(RNG.rand(Vec3f, 2))
-    color = Observable(RNG.rand(RGBf, 2))
-    size = Observable(0.1*RNG.rand(2))
+    pos = ChangeObservable(RNG.rand(Point3f, 2))
+    rot = ChangeObservable(RNG.rand(Vec3f, 2))
+    color = ChangeObservable(RNG.rand(RGBf, 2))
+    size = ChangeObservable(0.1*RNG.rand(2))
 
-    makenew = Observable(1)
+    makenew = ChangeObservable(1)
     on(makenew) do i
         pos[] = RNG.rand(Point3f, i)
         rot[] = RNG.rand(Vec3f, i)

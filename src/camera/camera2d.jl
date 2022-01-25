@@ -16,7 +16,7 @@ Creates a 2D camera for the given Scene.
 function cam2d!(scene::SceneLike; kw_args...)
     cam_attributes = merged_get!(:cam2d, scene, Attributes(kw_args)) do
         Attributes(
-            area = Observable(Rectf(0, 0, 1, 1)),
+            area = ChangeObservable(Rectf(0, 0, 1, 1)),
             zoomspeed = 0.10f0,
             zoombutton = nothing,
             panbutton = Mouse.right,
@@ -310,7 +310,7 @@ Creates a pixel-level camera for the `Scene`.  No controls!
 """
 function campixel!(scene; nearclip=-10_000f0, farclip=10_000f0)
     disconnect!(camera(scene))
-    update_once = Observable(false)
+    update_once = ChangeObservable(false)
     on(camera(scene), update_once, pixelarea(scene)) do u, window_size
         w, h = Float32.(widths(window_size))
         projection = orthographicprojection(0f0, w, 0f0, h, nearclip, farclip)

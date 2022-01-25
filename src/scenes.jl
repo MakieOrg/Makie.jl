@@ -156,7 +156,7 @@ function Scene(;
         children::Vector{Scene} = Scene[],
         current_screens::Vector{AbstractScreen} = AbstractScreen[],
         parent = nothing,
-        visible = Observable(true),
+        visible = ChangeObservable(true),
         ssao = SSAO(),
         lights = automatic,
         theme_kw...

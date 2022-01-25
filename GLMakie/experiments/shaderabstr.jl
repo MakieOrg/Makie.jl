@@ -5,11 +5,11 @@ mesh(Sphere(Point3f(0), 1f0)) |> display
 mesh(Sphere(Point3f(0), 1f0), color=:red, ambient=Vec3f(0.9))
 
 tocolor(x) = RGBf(x...)
-positions = Observable(decompose(Point3f, Sphere(Point3f(0), 1f0)))
-triangles = Observable(decompose(GLTriangleFace, Sphere(Point3f(0), 1f0)))
-uv = Observable(GeometryBasics.decompose_uv(Sphere(Point3f(0), 1f0)))
-xyz_vertex_color = Observable(tocolor.(positions[]))
-texture = Observable(rand(RGBAf, 10, 10))
+positions = ChangeObservable(decompose(Point3f, Sphere(Point3f(0), 1f0)))
+triangles = ChangeObservable(decompose(GLTriangleFace, Sphere(Point3f(0), 1f0)))
+uv = ChangeObservable(GeometryBasics.decompose_uv(Sphere(Point3f(0), 1f0)))
+xyz_vertex_color = ChangeObservable(tocolor.(positions[]))
+texture = ChangeObservable(rand(RGBAf, 10, 10))
 
 pos_buff = Buffer(positions)
 triangles_buff = Buffer(triangles)

@@ -65,7 +65,7 @@ matches_target(::Type{Target}, x::Observable{T}) where {Target, T} = applicable(
 matches_target(::Function, x) = true
 matches_target(::Function, x::Nothing) = false
 
-signal_convert(T1, y::T2) where {T2<:Observable} = lift(convert, Observable(T1), y)
+signal_convert(T1, y::T2) where {T2<:Observable} = lift(convert, ChangeObservable(T1), y)
 
 
 """
@@ -149,7 +149,7 @@ end
 export @gen_defaults!
 
 makesignal(s::Observable) = s
-makesignal(v) = Observable(v)
+makesignal(v) = ChangeObservable(v)
 
 @inline const_lift(f::Union{DataType, Type, Function}, inputs...) = lift(f, map(makesignal, inputs)...)
 export const_lift
@@ -185,7 +185,7 @@ function NativeMesh{T}(mesh::T) where T <: GeometryBasics.Mesh
             result[:image] = Texture(val.colors)
             result[:texturecoordinates] = GLBuffer(convert_texcoordinates(val.values))
             if val.scaling.range !== nothing
-                result[:color_norm] = Observable(Vec2f(val.scaling.range))
+                result[:color_norm] = ChangeObservable(Vec2f(val.scaling.range))
             end
         elseif field in (:position, :uv, :uvw, :normals, :attribute_id, :color)
             if field == :color

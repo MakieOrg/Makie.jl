@@ -3,14 +3,14 @@
 """
     lift(f, o1::Observables.AbstractObservable, rest...) -> w
 
-Create a new `w::Observable` by applying `f` to the _values_ of all observables 
+Create a new `w::Observable` by applying `f` to the _values_ of all observables
 in `o1` and `rest...`. The initial value of `w` is determined by the first function
 evaluation. The observable `w` is updated by calling `f` each time any of the
 observables `o1, rest...` are updated.
 
 ## Examples
 ```julia
-julia> x = Observable(2)
+julia> x = ChangeObservable(2)
 Observable{Int64} with 0 listeners. Value:
 2
 
@@ -25,7 +25,7 @@ Observable{Int64} with 0 listeners. Value:
 """
 function lift(f, o1::Observables.AbstractObservable, rest...; kw...)
     if !isempty(kw)
-        error("lift(f, obs...; init=f.(obs...), typ=typeof(init)) is deprecated. Use lift(typ, f, obs...), or map!(f, Observable(), obs...) for different init.")
+        error("lift(f, obs...; init=f.(obs...), typ=typeof(init)) is deprecated. Use lift(typ, f, obs...), or map!(f, ChangeObservable(), obs...) for different init.")
     end
     init = f(to_value(o1), to_value.(rest)...)
     typ = typeof(init)
@@ -74,7 +74,7 @@ function test(s1::Observable)
     s3 = map_once(x-> (println("2 ", x); x), s1)
 
 end
-test(Observable(1), Observable(2))
+test(ChangeObservable(1), ChangeObservable(2))
 >
 
 """

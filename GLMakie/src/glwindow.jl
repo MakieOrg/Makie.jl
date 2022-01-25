@@ -94,9 +94,9 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     status = glCheckFramebufferStatus(GL_FRAMEBUFFER)
     @assert status == GL_FRAMEBUFFER_COMPLETE
 
-    fb_size_node = Observable(fb_size)
+    fb_size_node = ChangeObservable(fb_size)
 
-    # To allow adding postprocessors in various combinations we need to keep 
+    # To allow adding postprocessors in various combinations we need to keep
     # track of the buffer ids that are already in use. We may also want to reuse
     # buffers so we give them names for easy fetching.
     buffer_ids = Dict(

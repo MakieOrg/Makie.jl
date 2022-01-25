@@ -183,10 +183,10 @@ end
 
 function Makie.plot!(p::BarPlot)
 
-    labels = Observable(Tuple{String, Point2f}[])
-    label_aligns = Observable(Vec2f[])
-    label_offsets = Observable(Vec2f[])
-    label_colors = Observable(RGBAf[])
+    labels = ChangeObservable(Tuple{String, Point2f}[])
+    label_aligns = ChangeObservable(Vec2f[])
+    label_offsets = ChangeObservable(Vec2f[])
+    label_colors = ChangeObservable(RGBAf[])
     function calculate_bars(xy, fillto, offset, width, dodge, n_dodge, gap, dodge_gap, stack,
                             dir, bar_labels, flip_labels_at, label_color, color_over_background,
                             color_over_bar, label_formatter, label_offset)

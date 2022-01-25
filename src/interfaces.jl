@@ -292,7 +292,7 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
     PreType = Combined{plotfunc(PreType), typeof(argvalues)}
     convert_keys = intersect(used_attributes(PreType, argvalues...), keys(attributes))
     kw_signal = if isempty(convert_keys) # lift(f) isn't supported so we need to catch the empty case
-        Observable(())
+        ChangeObservable(())
     else
         # Remove used attributes from `attributes` and collect them in a `Tuple` to pass them more easily
         lift((args...)-> Pair.(convert_keys, args), pop!.(attributes, convert_keys)...)
@@ -303,7 +303,7 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
     # apply_conversion deals with that!
 
     FinalType, argsconverted = apply_convert!(PreType, attributes, converted)
-    converted_node = Observable(argsconverted)
+    converted_node = ChangeObservable(argsconverted)
     input_nodes =  convert.(Observable, args)
     onany(kw_signal, lift(tuple, input_nodes...)) do kwargs, args
         # do the argument conversion inside a lift
