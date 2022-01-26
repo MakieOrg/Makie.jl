@@ -3,7 +3,7 @@
 """
     lift(f, o1::Observables.AbstractObservable, rest...) -> w
 
-Create a new `w::Observable` by applying `f` to the _values_ of all observables
+Create a new `w::Observable` by applying `f` to the _values_ of all observables 
 in `o1` and `rest...`. The initial value of `w` is determined by the first function
 evaluation. The observable `w` is updated by calling `f` each time any of the
 observables `o1, rest...` are updated.
@@ -27,7 +27,6 @@ function lift(f, o1::Observables.AbstractObservable, rest...; kw...)
     if !isempty(kw)
         error("lift(f, obs...; init=f.(obs...), typ=typeof(init)) is deprecated. Use lift(typ, f, obs...), or map!(f, Observable(), obs...) for different init.")
     end
-    # @show typeof(o1), typeof(to_value(o1))
     init = f(to_value(o1), to_value.(rest)...)
     typ = typeof(init)
     result = Observable{typ}(init)

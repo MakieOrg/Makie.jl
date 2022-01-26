@@ -2,7 +2,7 @@
     x = Observable(1.0)
     y = Observable(2.0)
     z = (x = x, y = y)
-
+    
     t1 = @lift($x + $y)
     @test t1[] == 3.0
     t2 = @lift($(z.x) - $(z.y))
