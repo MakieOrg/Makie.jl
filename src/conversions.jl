@@ -1136,16 +1136,16 @@ end
 
 
 const _marker_map = Dict(
-    :rect => '■',
+    :rect => BezierSquare,
     :star5 => '★',
     :diamond => '◆',
     :hexagon => '⬢',
-    :cross => '✚',
+    :cross => BezierCross,
     :xcross => '❌',
-    :utriangle => '▲',
-    :dtriangle => '▼',
-    :ltriangle => '◀',
-    :rtriangle => '▶',
+    :utriangle => BezierUTriangle,
+    :dtriangle => BezierDTriangle,
+    :ltriangle => BezierLTriangle,
+    :rtriangle => BezierRTriangle,
     :pentagon => '⬟',
     :octagon => '⯄',
     :star4 => '✦',
@@ -1155,7 +1155,7 @@ const _marker_map = Dict(
     :hline => '━',
     :+ => '+',
     :x => 'x',
-    :circle => '●'
+    :circle => BezierCircle,
 )
 
 """
@@ -1189,6 +1189,7 @@ to_spritemarker(x::Circle) = x
 to_spritemarker(::Type{<: Circle}) = Circle(Point2f(0), 1f0)
 to_spritemarker(::Type{<: Rect}) = Rect(Vec2f(0), Vec2f(1))
 to_spritemarker(x::Rect) = x
+to_spritemarker(b::BezierPath) = b
 
 """
     to_spritemarker(b, marker::Char)
