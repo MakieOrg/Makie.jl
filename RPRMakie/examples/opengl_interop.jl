@@ -57,7 +57,7 @@ sliders = (reflection_color=Input(fig, RGB(0, 0, 0)), reflection_weight=Input(fi
 
 labels = []
 inputs = []
-refresh = ChangeObservable(nothing)
+refresh = Observable(nothing)
 for (key, (obs, input)) in pairs(sliders)
     push!(labels, Label(fig, string(key); align=:left))
     push!(inputs, input)

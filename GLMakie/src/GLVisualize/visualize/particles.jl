@@ -311,10 +311,10 @@ function sprites(p, s, data)
     # Rescale to include glyph padding and shape
     if isa(to_value(p[1]), Char)
         scale = map(combine_scales,
-            pop!(data, :scale, ChangeObservable(nothing)),
-            pop!(data, :scale_x, ChangeObservable(nothing)),
-            pop!(data, :scale_y, ChangeObservable(nothing)),
-            pop!(data, :scale_z, ChangeObservable(nothing))
+            pop!(data, :scale, Observable(nothing)),
+            pop!(data, :scale_x, Observable(nothing)),
+            pop!(data, :scale_y, Observable(nothing)),
+            pop!(data, :scale_z, Observable(nothing))
         )
         font = get(data, :font, ChangeObservable(Makie.defaultfont()))
         offset = get(data, :offset, ChangeObservable(Vec2f(0)))

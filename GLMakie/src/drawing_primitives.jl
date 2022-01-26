@@ -451,8 +451,8 @@ function draw_atomic(screen::GLScreen, scene::Scene, meshplot::Mesh)
         # signals not supported for shading yet
         gl_attributes[:shading] = to_value(pop!(gl_attributes, :shading))
         color = pop!(gl_attributes, :color)
-        # cmap = get(gl_attributes, :color_map, ChangeObservable(nothing)); delete!(gl_attributes, :color_map)
-        # crange = get(gl_attributes, :color_norm, ChangeObservable(nothing)); delete!(gl_attributes, :color_norm)
+        # cmap = get(gl_attributes, :color_map, Observable(nothing)); delete!(gl_attributes, :color_map)
+        # crange = get(gl_attributes, :color_norm, Observable(nothing)); delete!(gl_attributes, :color_norm)
         mesh = meshplot[1]
 
         if to_value(color) isa Colorant

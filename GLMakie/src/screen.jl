@@ -33,7 +33,7 @@ mutable struct Screen <: GLScreen
         return new(
             glscreen, framebuffer, rendertask, screen2scene,
             screens, renderlist, postprocessors, cache, cache2plot,
-            Matrix{RGB{N0f8}}(undef, s), ChangeObservable(nothing),
+            Matrix{RGB{N0f8}}(undef, s), Observable(nothing),
             ChangeObservable(true)
         )
     end
