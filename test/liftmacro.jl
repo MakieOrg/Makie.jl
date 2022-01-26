@@ -1,6 +1,6 @@
 @testset "lift macro" begin
-    x = ChangeObservable(1.0)
-    y = ChangeObservable(2.0)
+    x = Observable(1.0)
+    y = Observable(2.0)
     z = (x = x, y = y)
 
     t1 = @lift($x + $y)
@@ -8,18 +8,18 @@
     t2 = @lift($(z.x) - $(z.y))
     @test t2[] == -1.0
 
-    f = ChangeObservable(sin)
+    f = Observable(sin)
 
     t3 = @lift($f($x))
     @test t3[] == sin(x[])
     t4 = @lift($f($f($(z.x))))
     @test t4[] == sin(sin(z.x[]))
 
-    arrobs = ChangeObservable([1, 2, 3])
+    arrobs = Observable([1, 2, 3])
     t5 = @lift($arrobs[2])
     @test t5[] == 2
 
-    observables = [ChangeObservable(1.0), ChangeObservable(2.0)]
+    observables = [Observable(1.0), Observable(2.0)]
     t6 = @lift($(observables[1]) + $(observables[2]))
     @test t6[] == 3.0
 end

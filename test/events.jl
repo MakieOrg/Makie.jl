@@ -10,9 +10,9 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
 @testset "PriorityObservable" begin
     po = PriorityObservable(0)
 
-    first = ChangeObservable(0.0)
-    second = ChangeObservable(0.0)
-    third = ChangeObservable(0.0)
+    first = Observable(0.0)
+    second = Observable(0.0)
+    third = Observable(0.0)
 
     on(po, priority=1) do x
         sleep(0)
@@ -261,7 +261,7 @@ end
     @testset "mouse state machine" begin
         scene = Scene(resolution=(800, 600));
         e = events(scene)
-        bbox = ChangeObservable(Rect2(200, 200, 400, 300))
+        bbox = Observable(Rect2(200, 200, 400, 300))
         msm = addmouseevents!(scene, bbox, priority=typemax(Int8))
         eventlog = MouseEvent[]
         on(x -> begin push!(eventlog, x); false end, msm.obs)
