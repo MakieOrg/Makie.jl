@@ -4,7 +4,7 @@
 Plots a sampled signal.
 Usage:
 ```julia
-signal = ChangeObservable(1.0)
+signal = Observable(1.0)
 scene = timeseries(signal)
 display(scene)
 # @async is optional, but helps to continue evaluating more code
@@ -37,7 +37,7 @@ Found: $(typeof(signal))
 function Makie.plot!(plot::TimeSeries)
     # normal plotting code, building on any previously defined recipes
     # or atomic plotting operations, and adding to the combined `plot`:
-    points = ChangeObservable(fill(Point2f(NaN), plot.history[]))
+    points = Observable(fill(Point2f(NaN), plot.history[]))
     buffer = copy(points[])
     lines!(plot, points)
     start = time()

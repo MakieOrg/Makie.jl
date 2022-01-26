@@ -101,7 +101,7 @@ function create_shader(mscene::Scene, plot::Surface)
     return draw_mesh(mscene, mesh, plot; uniform_color=color, color=Vec4f(0),
                      shading=plot.shading, diffuse=plot.diffuse,
                      specular=plot.specular, shininess=plot.shininess,
-                     depth_shift=get(plot, :depth_shift, ChangeObservable(0f0)),
+                     depth_shift=get(plot, :depth_shift, Observable(0f0)),
                      backlight=plot.backlight,
                      highclip=lift(nothing_or_color, plot.highclip),
                      lowclip=lift(nothing_or_color, plot.lowclip),
@@ -123,7 +123,7 @@ function create_shader(mscene::Scene, plot::Union{Heatmap,Image})
                      lowclip=lift(nothing_or_color, plot.lowclip),
                      nan_color=lift(nothing_or_color, plot.nan_color),
                      backlight=0f0,
-                     depth_shift = get(plot, :depth_shift, ChangeObservable(0f0)))
+                     depth_shift = get(plot, :depth_shift, Observable(0f0)))
 end
 
 function create_shader(mscene::Scene, plot::Volume)
@@ -147,10 +147,10 @@ function create_shader(mscene::Scene, plot::Volume)
                    colorrange=lift(Vec2f, plot.colorrange),
                    isovalue=lift(Float32, plot.isovalue),
                    isorange=lift(Float32, plot.isorange),
-                   absorption=lift(Float32, get(plot, :absorption, ChangeObservable(1f0))),
+                   absorption=lift(Float32, get(plot, :absorption, Observable(1f0))),
                    algorithm=algorithm,
                    diffuse=plot.diffuse, specular=plot.specular, shininess=plot.shininess,
-                   model=model2, depth_shift = get(plot, :depth_shift, ChangeObservable(0f0)),
+                   model=model2, depth_shift = get(plot, :depth_shift, Observable(0f0)),
                    # these get filled in later by serialization, but we need them
                    # as dummy values here, so that the correct uniforms are emitted
                    lightposition=Vec3f(1), eyeposition=Vec3f(1), ambient=Vec3f(1))

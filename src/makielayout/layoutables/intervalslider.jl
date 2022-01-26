@@ -15,7 +15,7 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
 
     sliderrange = attrs.range
 
-    protrusions = ChangeObservable(GridLayoutBase.RectSides{Float32}(0, 0, 0, 0))
+    protrusions = Observable(GridLayoutBase.RectSides{Float32}(0, 0, 0, 0))
     layoutobservables = LayoutObservables{IntervalSlider}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox, protrusions = protrusions)
 
@@ -46,7 +46,7 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
     end
 
     # this is the index of the selected value in the slider's range
-    # selected_index = ChangeObservable(1)
+    # selected_index = Observable(1)
     # add the selected index to the attributes so it can be manipulated later
     attrs.selected_indices = (1, 1)
     selected_indices = attrs.selected_indices
@@ -59,11 +59,11 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
         end
     end
 
-    dragging = ChangeObservable(false)
+    dragging = Observable(false)
 
     # what the slider actually displays currently (also during dragging when
     # the slider position is in an "invalid" position given the slider's range)
-    displayed_sliderfractions = ChangeObservable((0.0, 0.0))
+    displayed_sliderfractions = Observable((0.0, 0.0))
 
     on(sliderfractions) do fracs
         # only update displayed fraction through sliderfraction if not dragging
@@ -113,7 +113,7 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
         linewidth = linewidth, inspectable = false)
     decorations[:linesegments] = linesegs
 
-    state = ChangeObservable(:none)
+    state = Observable(:none)
     button_magnifications = lift(state) do state
         if state == :none
             [1.0, 1.0]

@@ -10,7 +10,7 @@ observables `o1, rest...` are updated.
 
 ## Examples
 ```julia
-julia> x = ChangeObservable(2)
+julia> x = Observable(2)
 Observable{Int64} with 0 listeners. Value:
 2
 
@@ -25,8 +25,9 @@ Observable{Int64} with 0 listeners. Value:
 """
 function lift(f, o1::Observables.AbstractObservable, rest...; kw...)
     if !isempty(kw)
-        error("lift(f, obs...; init=f.(obs...), typ=typeof(init)) is deprecated. Use lift(typ, f, obs...), or map!(f, ChangeObservable(), obs...) for different init.")
+        error("lift(f, obs...; init=f.(obs...), typ=typeof(init)) is deprecated. Use lift(typ, f, obs...), or map!(f, Observable(), obs...) for different init.")
     end
+    # @show typeof(o1), typeof(to_value(o1))
     init = f(to_value(o1), to_value.(rest)...)
     typ = typeof(init)
     result = Observable{typ}(init)
@@ -74,7 +75,7 @@ function test(s1::Observable)
     s3 = map_once(x-> (println("2 ", x); x), s1)
 
 end
-test(ChangeObservable(1), ChangeObservable(2))
+test(Observable(1), Observable(2))
 >
 
 """

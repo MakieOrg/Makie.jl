@@ -57,7 +57,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
         uniform_dict[:uv] = Vec2f(0)
     end
 
-    uniform_dict[:depth_shift] = get(plot, :depth_shift, ChangeObservable(0f0))
+    uniform_dict[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
     uniform_dict[:backlight] = plot.backlight
     get!(uniform_dict, :ambient, Vec3f(1))
 
@@ -105,7 +105,7 @@ function scatter_shader(scene::Scene, attributes)
     uniform_dict = Dict{Symbol,Any}()
 
     if haskey(attributes, :marker) && attributes[:marker][] isa Union{Char, Vector{Char},String}
-        font = get(attributes, :font, ChangeObservable(Makie.defaultfont()))
+        font = get(attributes, :font, Observable(Makie.defaultfont()))
         attributes[:markersize] = map(rescale_glyph, attributes[:marker], font, attributes[:markersize])
         attributes[:marker_offset] = map(rescale_glyph, attributes[:marker], font, attributes[:marker_offset])
     end
@@ -143,7 +143,7 @@ function scatter_shader(scene::Scene, attributes)
         uniform_dict[:atlas_texture_size] = Float32(size(atlas.data, 1)) # Texture must be quadratic
     else
         uniform_dict[:atlas_texture_size] = 0f0
-        uniform_dict[:distancefield] = ChangeObservable(false)
+        uniform_dict[:distancefield] = Observable(false)
     end
 
     if !haskey(per_instance, :uv_offset_width)
@@ -158,7 +158,7 @@ function scatter_shader(scene::Scene, attributes)
         end
     end
 
-    space = get(uniforms, :markerspace, ChangeObservable(SceneSpace))
+    space = get(uniforms, :markerspace, Observable(SceneSpace))
     uniform_dict[:use_pixel_marker] = map(space) do space
         return space == Pixel
     end
@@ -184,7 +184,7 @@ function create_shader(scene::Scene, plot::Scatter)
     attributes[:pixelspace] = getfield(scene.camera, :pixel_space)
     attributes[:model] = plot.model
     attributes[:markerspace] = plot.markerspace
-    attributes[:depth_shift] = get(plot, :depth_shift, ChangeObservable(0f0))
+    attributes[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
 
     delete!(attributes, :uv_offset_width)
     return scatter_shader(scene, attributes)
@@ -216,7 +216,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         # and here we wrap it into another observable
         # so it doesn't trigger dimension mismatches
         # the actual, new value gets then taken in the below lift with to_value
-        gcollection = ChangeObservable(glyphcollection)
+        gcollection = Observable(glyphcollection)
     end
 
     glyph_data = lift(pos, gcollection, space, projview, res, offset, transfunc) do pos, gc, args...
@@ -247,18 +247,18 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
 
     uniforms = Dict(
         :model => plot.model,
-        :shape_type => ChangeObservable(Cint(3)),
+        :shape_type => Observable(Cint(3)),
         :color => uniform_color,
         :rotations => uniform_rotation,
         :markersize => scale,
-        :markerspace => ChangeObservable(Pixel),
+        :markerspace => Observable(Pixel),
         :marker_offset => offset,
         :offset => positions,
         :uv_offset_width => uv_offset_width,
-        :transform_marker => ChangeObservable(false),
-        :billboard => ChangeObservable(false),
+        :transform_marker => Observable(false),
+        :billboard => Observable(false),
         :pixelspace => getfield(scene.camera, :pixel_space),
-        :depth_shift => get(plot, :depth_shift, ChangeObservable(0f0))
+        :depth_shift => get(plot, :depth_shift, Observable(0f0))
     )
 
     return scatter_shader(scene, uniforms)

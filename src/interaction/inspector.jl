@@ -277,7 +277,7 @@ function plot!(plot::_Inspector)
     )
 
     # tooltip text
-    _aligned_text_position = ChangeObservable(Point2f(0))
+    _aligned_text_position = Observable(Point2f(0))
     id = Mat4f(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1)
     text_plot = text!(plot, _display_text,
         position = _aligned_text_position, visible = _visible, align = text_align,

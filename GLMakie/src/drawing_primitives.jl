@@ -91,7 +91,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             end
         end
 
-        !haskey(gl_attributes, :ssao) && (robj[:ssao] = ChangeObservable(false))
+        !haskey(gl_attributes, :ssao) && (robj[:ssao] = Observable(false))
         screen.cache2plot[robj.id] = x
         robj
     end
@@ -291,7 +291,7 @@ function draw_atomic(screen::GLScreen, scene::Scene,
             # and here we wrap it into another observable
             # so it doesn't trigger dimension mismatches
             # the actual, new value gets then taken in the below lift with to_value
-            gcollection = ChangeObservable(glyphcollection)
+            gcollection = Observable(glyphcollection)
         end
         glyph_data = lift(pos, gcollection, space, projview, res, offset, transfunc) do pos, gc, args...
             preprojected_glyph_arrays(pos, to_value(gc), args...)
@@ -346,7 +346,7 @@ function draw_atomic(screen::GLScreen, scene::Scene,
         robj = visualize((DISTANCEFIELD, positions), Style(:default), gl_attributes)
         # Draw text in screenspace
         if x.space[] == :screen
-            robj[:view] = ChangeObservable(Mat4f(I))
+            robj[:view] = Observable(Mat4f(I))
             robj[:projection] = scene.camera.pixel_space
             robj[:projectionview] = scene.camera.pixel_space
         end

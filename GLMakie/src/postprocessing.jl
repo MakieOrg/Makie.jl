@@ -127,7 +127,7 @@ function ssao_postprocessor(framebuffer)
             minfilter = :nearest, x_repeat = :repeat
         ),
         :noise_scale => map(s -> Vec2f(s ./ 4.0), framebuffer.resolution),
-        :projection => ChangeObservable(Mat4f(I)),
+        :projection => Observable(Mat4f(I)),
         :bias => 0.025f0,
         :radius => 0.5f0
     )

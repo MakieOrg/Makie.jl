@@ -39,8 +39,8 @@ function layoutable(::Type{Toggle}, fig_or_scene; bbox = nothing, kwargs...)
     frame = poly!(topscene, buttonvertices, color = framecolor, inspectable = false)
     decorations[:frame] = frame
 
-    animating = ChangeObservable(false)
-    buttonpos = ChangeObservable(active[] ? [button_endpoint_active[]] : [button_endpoint_inactive[]])
+    animating = Observable(false)
+    buttonpos = Observable(active[] ? [button_endpoint_active[]] : [button_endpoint_inactive[]])
 
     # make the button stay in the correct place (and start there)
     on(layoutobservables.computedbbox) do bbox
@@ -49,7 +49,7 @@ function layoutable(::Type{Toggle}, fig_or_scene; bbox = nothing, kwargs...)
         end
     end
 
-    buttonfactor = ChangeObservable(1.0)
+    buttonfactor = Observable(1.0)
     buttonsize = lift(markersize, rimfraction, buttonfactor) do ms, rf, bf
         ms * (1 - rf) * bf
     end

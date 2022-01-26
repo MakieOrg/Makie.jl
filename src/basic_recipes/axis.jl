@@ -327,7 +327,7 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
     )
     map_once(
         draw_axis3d,
-        ChangeObservable(textbuffer), ChangeObservable(linebuffer), scale(scene),
+        Observable(textbuffer), Observable(linebuffer), scale(scene),
         axis[1], axis.ticks.ranges_labels, args...
     )
     push!(scene, axis)

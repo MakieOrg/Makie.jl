@@ -1,6 +1,6 @@
 function RenderObject(
         data::Dict{Symbol}, program, pre,
-        bbs=ChangeObservable(Rect3f(Vec3f(0), Vec3f(1))),
+        bbs=Observable(Rect3f(Vec3f(0), Vec3f(1))),
         main=nothing
     )
     RenderObject(convert(Dict{Symbol,Any}, data), program, pre, bbs, main)
@@ -94,14 +94,14 @@ struct EmptyPrerender end
 export EmptyPrerender
 export prerendertype
 
-function instanced_renderobject(data, program, bb=ChangeObservable(Rect3f(Vec3f(0), Vec3f(1))), primitive::GLenum=GL_TRIANGLES, main=nothing)
+function instanced_renderobject(data, program, bb=Observable(Rect3f(Vec3f(0), Vec3f(1))), primitive::GLenum=GL_TRIANGLES, main=nothing)
     pre = StandardPrerender()
     robj = RenderObject(convert(Dict{Symbol,Any}, data), program, pre, nothing, bb, main)
     robj.postrenderfunction = StandardPostrenderInstanced(main, robj.vertexarray, primitive)
     robj
 end
 
-function std_renderobject(data, program, bb=ChangeObservable(Rect3f(Vec3f(0), Vec3f(1))), primitive=GL_TRIANGLES, main=nothing)
+function std_renderobject(data, program, bb=Observable(Rect3f(Vec3f(0), Vec3f(1))), primitive=GL_TRIANGLES, main=nothing)
     pre = StandardPrerender()
     robj = RenderObject(convert(Dict{Symbol,Any}, data), program, pre, nothing, bb, main)
     robj.postrenderfunction = StandardPostrender(robj.vertexarray, primitive)

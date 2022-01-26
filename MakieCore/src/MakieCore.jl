@@ -4,7 +4,8 @@ using Observables
 using Observables: to_value
 using Base: RefValue, setindex!, getindex
 
-import Observables: to_value, observe, listeners, on, off, AbstractObservable, ObserverFunction
+import Observables: to_value, observe, listeners, on, off, AbstractObservable, ObserverFunction, MapUpdater
+
 
 struct ChangeObservable{T} <: AbstractObservable{T}
     obs::Observable{T}
@@ -16,6 +17,11 @@ struct ChangeObservable{T} <: AbstractObservable{T}
     end
 end
 ChangeObservable(val::T) where {T} = ChangeObservable{T}(val)
+
+Base.close(co::ChangeObservable) = empty!(co.change.listeners)
+
+# forward_change(@nospecialize(o)) = o
+# forward_change(co::ChangeObservable) = co.obs
 
 # Functions that use the value observable
 Base.setindex!(co::ChangeObservable, val) = Base.setindex!(co.obs, val)
@@ -29,7 +35,7 @@ on(@nospecialize(f), co::ChangeObservable; kwargs...) = on(f, co.change; kwargs.
 off(co::ChangeObservable, @nospecialize(f)) = off(co.change, f)
 off(co::ChangeObservable, f::ObserverFunction) = off(co.change, f)
 
-export ChangeObservable
+export ChangeObservable, forward_change
 
 
 include("types.jl")

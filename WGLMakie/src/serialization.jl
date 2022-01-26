@@ -205,7 +205,7 @@ function register_geometry_updates(update_buffer::Observable, program::Instanced
 end
 
 function uniform_updater(uniforms::Dict)
-    updater = ChangeObservable(Any[:none, []])
+    updater = Observable(Any[:none, []])
     for (name, value) in uniforms
         if value isa Sampler
             on(ShaderAbstractions.updater(value).update) do (f, args)
@@ -236,7 +236,7 @@ function serialize_three(program::Program)
     indices = GeometryBasics.faces(program.vertexarray)
     indices = reinterpret(UInt32, indices)
     uniforms = serialize_uniforms(program.uniforms)
-    attribute_updater = ChangeObservable(["", [], 0])
+    attribute_updater = Observable(["", [], 0])
     register_geometry_updates(attribute_updater, program)
     return Dict(:vertexarrays => serialize_named_buffer(program.vertexarray),
                 :faces => indices, :uniforms => uniforms,

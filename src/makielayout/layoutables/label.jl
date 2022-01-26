@@ -15,7 +15,7 @@ function layoutable(::Type{Label}, fig_or_scene; bbox = nothing, kwargs...)
     layoutobservables = LayoutObservables{Label}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
-    textpos = ChangeObservable(Point3f(0, 0, 0))
+    textpos = Observable(Point3f(0, 0, 0))
 
     t = text!(topscene, text, position = textpos, textsize = textsize, font = font, color = color,
         visible = visible, align = (:center, :center), rotation = rotation, space = :data,

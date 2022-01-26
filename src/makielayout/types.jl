@@ -144,8 +144,8 @@ mutable struct RectangleZoom
 end
 
 function RectangleZoom(callback::Function; restrict_x=false, restrict_y=false)
-    return RectangleZoom(callback, ChangeObservable(false), restrict_x, restrict_y,
-                         nothing, nothing, ChangeObservable(Rect2f(0, 0, 1, 1)))
+    return RectangleZoom(callback, Observable(false), restrict_x, restrict_y,
+                         nothing, nothing, Observable(Rect2f(0, 0, 1, 1)))
 end
 
 struct ScrollZoom

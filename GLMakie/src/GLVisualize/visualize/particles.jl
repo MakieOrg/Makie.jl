@@ -316,8 +316,8 @@ function sprites(p, s, data)
             pop!(data, :scale_y, Observable(nothing)),
             pop!(data, :scale_z, Observable(nothing))
         )
-        font = get(data, :font, ChangeObservable(Makie.defaultfont()))
-        offset = get(data, :offset, ChangeObservable(Vec2f(0)))
+        font = get(data, :font, Observable(Makie.defaultfont()))
+        offset = get(data, :offset, Observable(Vec2f(0)))
 
         # The same scaling that needs to be applied to scale also needs to apply
         # to offset.

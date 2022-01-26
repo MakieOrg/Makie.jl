@@ -139,11 +139,11 @@ function Camera3D(scene; kwargs...)
         pop!(attr, :lookat,      Vec3f(0)),
         pop!(attr, :upvector,    Vec3f(0, 0, 1)),
 
-        ChangeObservable(1f0),
-        ChangeObservable(attr[:fov][]),
-        ChangeObservable(attr[:near][] === automatic ? 0.1f0 : attr[:near][]),
-        ChangeObservable(attr[:far][]  === automatic ? 100f0 : attr[:far][]),
-        ChangeObservable(-1.0),
+        Observable(1f0),
+        Observable(attr[:fov][]),
+        Observable(attr[:near][] === automatic ? 0.1f0 : attr[:near][]),
+        Observable(attr[:far][]  === automatic ? 100f0 : attr[:far][]),
+        Observable(-1.0),
 
         attr
     )

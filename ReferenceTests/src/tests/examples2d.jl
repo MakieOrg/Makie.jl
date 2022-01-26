@@ -176,8 +176,8 @@ end
 
 @cell "Streamplot animation" begin
     v(x::Point2{T}, t) where T = Point2{T}(one(T) * x[2] * t, 4 * x[1])
-    sf = ChangeObservable(Base.Fix2(v, 0e0))
-    title_str = ChangeObservable("t = 0.00")
+    sf = Observable(Base.Fix2(v, 0e0))
+    title_str = Observable("t = 0.00")
     sp = streamplot(sf, -2..2, -2..2;
                     linewidth=2,  arrow_size=20, colormap=:magma, axis=(;title=title_str))
     Record(sp, LinRange(0, 20, 5)) do i

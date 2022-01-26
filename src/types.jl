@@ -180,7 +180,7 @@ function Base.getproperty(e::Events, field::Symbol)
             Base.show_backtrace(stderr, bt)
             println(stderr)
         end
-        mousebuttons = ChangeObservable(Set{Mouse.Button}())
+        mousebuttons = Observable(Set{Mouse.Button}())
         on(getfield(e, :mousebutton), priority=typemax(Int8)-1) do event
             mousebuttons[] = getfield(e, :mousebuttonstate)
             return Consume(false)
@@ -198,7 +198,7 @@ function Base.getproperty(e::Events, field::Symbol)
             Base.show_backtrace(stderr, bt)
             println(stderr)
         end
-        keyboardbuttons = ChangeObservable(Set{Keyboard.Button}())
+        keyboardbuttons = Observable(Set{Keyboard.Button}())
         on(getfield(e, :keyboardbutton), priority=typemax(Int8)-1) do event
             keyboardbuttons[] = getfield(e, :keyboardstate)
             return Consume(false)
@@ -216,7 +216,7 @@ function Base.getproperty(e::Events, field::Symbol)
             Base.show_backtrace(stderr, bt)
             println(stderr)
         end
-        mousedrag = ChangeObservable(Mouse.notpressed)
+        mousedrag = Observable(Mouse.notpressed)
         on(getfield(e, :mousebutton), priority=typemax(Int8)-1) do event
             if (event.action == Mouse.press) && (length(e.mousebuttonstate) == 1)
                 mousedrag[] = Mouse.down

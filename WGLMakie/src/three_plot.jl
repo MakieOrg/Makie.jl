@@ -65,10 +65,10 @@ function three_display(session::Session, scene::Scene)
 
     canvas = DOM.um("canvas", tabindex="0")
     wrapper = DOM.div(canvas)
-    comm = ChangeObservable(Dict{String,Any}())
+    comm = Observable(Dict{String,Any}())
     push!(session, comm)
 
-    scene_data = ChangeObservable(serialized)
+    scene_data = Observable(serialized)
 
     canvas_width = lift(x -> [round.(Int, widths(x))...], pixelarea(scene))
 

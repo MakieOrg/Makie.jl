@@ -390,8 +390,8 @@ function LineAxis(parent::Scene; kwargs...)
     # ticklabel boundingbox (which needs to be updated already)
     # so we move the new listener from text! to the front
     pushfirst!(
-        ticklabelannosnode.listeners,
-        pop!(ticklabelannosnode.listeners))
+        Observables.listeners(ticklabelannosnode),
+        pop!(Observables.listeners(ticklabelannosnode)))
 
 
     # trigger calculation of ticklabel width once, now that it's not nothing anymore

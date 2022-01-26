@@ -86,8 +86,8 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
         end
     end
 
-    lower = ChangeObservable(Point2f[])
-    upper = ChangeObservable(Point2f[])
+    lower = Observable(Point2f[])
+    upper = Observable(Point2f[])
 
     on(lowerupper) do (l, u)
         lower.val = l

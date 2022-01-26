@@ -82,8 +82,8 @@ struct GLVisualizeShader <: AbstractLazyShader
 end
 
 function assemble_robj(data, program, bb, primitive, pre_fun, post_fun)
-    transp = get(data, :transparency, ChangeObservable(false))
-    overdraw = get(data, :overdraw, ChangeObservable(false))
+    transp = get(data, :transparency, Observable(false))
+    overdraw = get(data, :overdraw, Observable(false))
     pre = if pre_fun != nothing
         _pre_fun = GLAbstraction.StandardPrerender(transp, overdraw)
         function ()

@@ -102,8 +102,8 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
 
     PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
 
-    polys = ChangeObservable(PolyType[])
-    colors = ChangeObservable(Float64[])
+    polys = Observable(PolyType[])
+    colors = Observable(Float64[])
 
     function calculate_polys(xs, ys, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)
         empty!(polys[])

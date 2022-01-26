@@ -3,8 +3,8 @@ function mandelbrot(x, y)
     for i in 1:100.0; abs(z) > 2 && return i; z = z^2 + c; end; 0
 end
 
-x = ChangeObservable(range(-2, 1, length = 400))
-y = ChangeObservable(range(-1, 1, length = 300))
+x = Observable(range(-2, 1, length = 400))
+y = Observable(range(-1, 1, length = 300))
 
 fig, ax, img = heatmap(x, y, mandelbrot, colormap = Reverse(:deep),
     figure = (resolution = (400, 300),))

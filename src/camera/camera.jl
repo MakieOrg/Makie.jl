@@ -78,8 +78,8 @@ function Camera(px_area)
         w, h = Float32.(widths(window_size))
         return orthographicprojection(0f0, w, 0f0, h, nearclip, farclip)
     end
-    view = ChangeObservable(Mat4f(I))
-    proj = ChangeObservable(Mat4f(I))
+    view = Observable(Mat4f(I))
+    proj = Observable(Mat4f(I))
     proj_view = map(*, proj, view)
     Camera(
         pixel_space,
@@ -87,7 +87,7 @@ function Camera(px_area)
         proj,
         proj_view,
         lift(a-> Vec2f(widths(a)), px_area),
-        ChangeObservable(Vec3f(1)),
+        Observable(Vec3f(1)),
         ObserverFunction[]
     )
 end
