@@ -141,9 +141,9 @@ if GitHubActionsUtils.is_pull_request()
 
         | Recorded | Reference |
         |--|--|
-        | ![]($(image_url("recorded", filename))) | ![]($(image_url("refimages", filename))) |
+        | <img src="$(image_url("recorded", filename))"> | <img src="$(image_url("refimages", filename))"> |
         
-        <details>
+        </details>
         """
     end
 
