@@ -91,7 +91,7 @@ missing_files, scores = ReferenceTests.compare(
 # copy reference images outside of Makie folder which will get cleaned
 cp(refimage_dir, joinpath(tempd, "refimages"))
 
-score_cutoff = 0.03
+score_cutoff = 0.01
 bad_scores = filter(x -> x[2] > score_cutoff, scores)
 
 
