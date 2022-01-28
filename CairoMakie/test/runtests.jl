@@ -84,7 +84,7 @@ ReferenceTests.record_tests(database, recording_dir=recorded_dir)
 
 refimage_dir = ReferenceTests.download_refimages()
 missing_files, scores = ReferenceTests.compare(
-    joinpath.(recording_folder, readdir(recording_folder)),
+    joinpath.(recorded_dir, readdir(recorded_dir)),
     refimage_dir
 )
 
