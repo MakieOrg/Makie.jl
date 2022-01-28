@@ -81,7 +81,6 @@ recorded_dir = joinpath(tempd, "recorded")
 mkdir(recorded_dir)
 
 ReferenceTests.record_tests(database, recording_dir=recorded_dir)
-cp()
 
 refimage_dir = ReferenceTests.download_refimages()
 missing_files, scores = ReferenceTests.compare(
