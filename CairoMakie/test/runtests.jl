@@ -111,7 +111,7 @@ if GitHubActionsUtils.is_pull_request()
 
     GitHubActionsUtils.switch_to_or_create_branch(image_branch_name; orphan = true)
     
-    run(`git rm -rf .`)
+    # run(`git rm -rf .`)
 
     cp(refimage_dir, "refimages")
     cp(recorded_dir, "recorded")
