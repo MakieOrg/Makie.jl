@@ -111,6 +111,8 @@ if GitHubActionsUtils.is_pull_request()
 
     GitHubActionsUtils.switch_to_or_create_branch(image_branch_name; orphan = true)
     
+    run(`git clean -f -d`)
+
     # run(`git rm -rf .`)
 
     cp(refimage_dir, "refimages")
@@ -119,7 +121,7 @@ if GitHubActionsUtils.is_pull_request()
     run(`git add -A`)
     run(`git commit -m "save testimages"`)
 
-    GitHubActionsUtils.push_git_branch(image_branch_name)
+    run(`git push -f origin $image_branch_name`)
 
     commit_hash = chomp(read(`git rev-parse HEAD`, String))
 
