@@ -83,10 +83,11 @@ mkdir(recorded_dir)
 ReferenceTests.record_tests(database, recording_dir=recorded_dir)
 
 refimage_dir = ReferenceTests.download_refimages()
-missing_files, scores = ReferenceTests.compare(
+missing_files_abs, scores = ReferenceTests.compare(
     joinpath.(recorded_dir, readdir(recorded_dir)),
     refimage_dir
 )
+missing_files_rel = relpath.(missing_files_abs, recorded_dir)
 
 # copy reference images outside of Makie folder which will get cleaned
 cp(refimage_dir, joinpath(tempd, "refimages"))
@@ -167,7 +168,7 @@ if GitHubActionsUtils.is_pull_request()
 
         ## New images
 
-        $(join([new_file_markdown(m) for m in missing_files], "\n\n"))
+        $(join([new_file_markdown(m) for m in missing_files_rel], "\n\n"))
         """
     )
 end
