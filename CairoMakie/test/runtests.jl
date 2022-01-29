@@ -137,7 +137,7 @@ if GitHubActionsUtils.is_pull_request()
     function comparison_markdown(filename, score)
         """
         <details>
-        <summary>$filename Score: $score</summary>
+        <summary>$filename Score: $(round(score, digits = 4))</summary>
 
         | Recorded | Reference |
         |--|--|
@@ -147,12 +147,27 @@ if GitHubActionsUtils.is_pull_request()
         """
     end
 
+    function new_file_markdown(filename)
+        """
+        <details>
+        <summary>$filename</summary>
+
+        <img src="$(image_url("recorded", filename))">
+        
+        </details>
+        """
+    end
+
     GitHubActionsUtils.comment_on_pr(
         pr_number,
         """
-        # Test images with high error scores:
+        ## Test images with difference scores > $score_cutoff:
 
         $(join([comparison_markdown(bs[1], bs[2]) for bs in bad_scores], "\n\n"))
+
+        ## New images
+
+        $(join([new_file_markdown(m) for m in missing_files], "\n\n"))
         """
     )
 end
