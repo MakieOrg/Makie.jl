@@ -329,6 +329,10 @@ end
 	fig
 end
 
-@cell "random test - delete this again" begin
+@cell "random test 1 - delete this again" begin
     lines(1:0.01:10, sin, color = :pink, linewidth = 20)
+end
+
+@cell "random test 2 - delete this again" begin
+    lines(1:0.01:10, cos, color = :purple, linewidth = 20)
 end
