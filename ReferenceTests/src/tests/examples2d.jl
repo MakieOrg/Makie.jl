@@ -328,3 +328,7 @@ end
 
 	fig
 end
+
+@cell "random test - delete this again" begin
+    lines(1:0.01:10, sin, color = :pink, linewidth = 20)
+end
