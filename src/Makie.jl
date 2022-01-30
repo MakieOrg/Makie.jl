@@ -58,7 +58,7 @@ using StatsFuns: logit, logistic
 using Base: RefValue
 using Base.Iterators: repeated, drop
 import Base: getindex, setindex!, push!, append!, parent, get, get!, delete!, haskey
-using Observables: listeners, to_value, notify, AbstractObservable
+using Observables: listeners, to_value, notify, AbstractObservable, ChangeObservable
 
 using MakieCore: SceneLike, AbstractScreen, ScenePlot, AbstractScene, AbstractPlot, Transformable, Attributes, Combined, Theme, Plot
 using MakieCore: Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter, Surface, Text, Volume
@@ -71,8 +71,6 @@ get_attribute, plotsym, plotkey, attributes, used_attributes
 import MakieCore: heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface, text, volume
 import MakieCore: heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, surface!, text!, volume!
 import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
-import MakieCore: ChangeObservable
-export ChangeObservable
 export @L_str
 export ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
 export Pixel, px, Unit, plotkey, attributes, used_attributes
