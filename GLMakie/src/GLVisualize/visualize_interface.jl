@@ -132,7 +132,7 @@ to_index_buffer(x::TOrSignal{UnitRange{Int}}) = x
 For integers, we transform it to 0 based indices
 """
 to_index_buffer(x::AbstractVector{I}) where {I <: Integer} = indexbuffer(Cuint.(x .- 1))
-function to_index_buffer(x::Observable{<: AbstractVector{I}}) where I <: Integer
+function to_index_buffer(x::AbstractObservable{<: AbstractVector{I}}) where I <: Integer
     indexbuffer(lift(x -> Cuint.(x .- 1), x))
 end
 

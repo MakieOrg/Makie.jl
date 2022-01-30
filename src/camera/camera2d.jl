@@ -1,11 +1,11 @@
 struct Camera2D <: AbstractCamera
-    area::Observable{Rect2f}
-    zoomspeed::Observable{Float32}
-    zoombutton::Observable{ButtonTypes}
-    panbutton::Observable{Union{ButtonTypes, Vector{ButtonTypes}}}
-    padding::Observable{Float32}
-    last_area::Observable{Vec{2, Int}}
-    update_limits::Observable{Bool}
+    area::AbstractObservable{Rect2f}
+    zoomspeed::AbstractObservable{Float32}
+    zoombutton::AbstractObservable{ButtonTypes}
+    panbutton::AbstractObservable{Union{ButtonTypes, Vector{ButtonTypes}}}
+    padding::AbstractObservable{Float32}
+    last_area::AbstractObservable{Vec{2, Int}}
+    update_limits::AbstractObservable{Bool}
 end
 
 """

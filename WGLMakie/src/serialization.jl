@@ -36,7 +36,7 @@ serialize_three(val::RGBA) = Float32[red(val), green(val), blue(val), alpha(val)
 serialize_three(val::Mat4f) = vec(val)
 serialize_three(val::Mat3) = vec(val)
 
-function serialize_three(observable::Observable)
+function serialize_three(observable::AbstractObservable)
     return Dict(:type => "Observable", :id => observable.id,
                 :value => serialize_three(observable[]))
 end
@@ -143,7 +143,7 @@ lasset(paths...) = read(joinpath(@__DIR__, "..", "assets", paths...), String)
 isscalar(x::StaticArrays.StaticArray) = true
 isscalar(x::AbstractArray) = false
 isscalar(x::Billboard) = isscalar(x.rotation)
-isscalar(x::Observable) = isscalar(x[])
+isscalar(x::AbstractObservable) = isscalar(x[])
 isscalar(x) = true
 
 function ShaderAbstractions.type_string(::ShaderAbstractions.AbstractContext,
@@ -179,7 +179,7 @@ function serialize_named_buffer(buffer)
                 end)
 end
 
-function register_geometry_updates(update_buffer::Observable, named_buffers)
+function register_geometry_updates(update_buffer::AbstractObservable, named_buffers)
     for (name, buffer) in pairs(named_buffers)
         if buffer isa Buffer
             on(ShaderAbstractions.updater(buffer).update) do (f, args)
@@ -196,11 +196,11 @@ function register_geometry_updates(update_buffer::Observable, named_buffers)
     return update_buffer
 end
 
-function register_geometry_updates(update_buffer::Observable, program::Program)
+function register_geometry_updates(update_buffer::AbstractObservable, program::Program)
     return register_geometry_updates(update_buffer, program.vertexarray)
 end
 
-function register_geometry_updates(update_buffer::Observable, program::InstancedProgram)
+function register_geometry_updates(update_buffer::AbstractObservable, program::InstancedProgram)
     return register_geometry_updates(update_buffer, program.per_instance)
 end
 

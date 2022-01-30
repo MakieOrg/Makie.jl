@@ -26,8 +26,8 @@ Base.setindex!(obj::RenderObject, value, ::Val{:postrender}, x::Function) = obj.
 Represents standard sets of function applied before rendering
 """
 struct StandardPrerender
-    transparency::Observable{Bool}
-    overdraw::Observable{Bool}
+    transparency::AbstractObservable{Bool}
+    overdraw::AbstractObservable{Bool}
 end
 
 function (sp::StandardPrerender)()

@@ -3,12 +3,12 @@ function vertexbuffer(x, trans)
     return apply_transform(trans,  pos)
 end
 
-function vertexbuffer(x::Observable, p)
+function vertexbuffer(x::AbstractObservable, p)
     return Buffer(lift(vertexbuffer, x, transform_func_obs(p)))
 end
 
 facebuffer(x) = facebuffer(GeometryBasics.faces(x))
-facebuffer(x::Observable) = Buffer(lift(facebuffer, x))
+facebuffer(x::AbstractObservable) = Buffer(lift(facebuffer, x))
 function facebuffer(x::AbstractArray{GLTriangleFace})
     return x
 end

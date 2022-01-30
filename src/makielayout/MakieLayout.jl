@@ -10,7 +10,7 @@ using ..Makie: Consume
 using ..Makie: OpenInterval, Interval
 using MakieCore
 using MakieCore: Automatic, automatic
-using Observables: onany
+using Observables: onany, AbstractObservable
 import Observables
 import Formatting
 using Match

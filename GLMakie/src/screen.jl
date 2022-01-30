@@ -16,8 +16,8 @@ mutable struct Screen <: GLScreen
     cache::Dict{UInt64, RenderObject}
     cache2plot::Dict{UInt32, AbstractPlot}
     framecache::Matrix{RGB{N0f8}}
-    render_tick::Observable{Nothing}
-    window_open::Observable{Bool}
+    render_tick::AbstractObservable{Nothing}
+    window_open::AbstractObservable{Bool}
     function Screen(
             glscreen::GLFW.Window,
             framebuffer::GLFramebuffer,

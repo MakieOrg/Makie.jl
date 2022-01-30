@@ -48,7 +48,7 @@ function Base.copy(attributes::Attributes)
     return result
 end
 
-function Base.deepcopy(obs::Observable)
+function Base.deepcopy(obs::AbstractObservable)
     return Observable{Any}(to_value(obs))
 end
 
@@ -107,7 +107,7 @@ function Base.setindex!(x::Attributes, value, key::Symbol)
     end
 end
 
-function Base.setindex!(x::Attributes, value::Observable, key::Symbol)
+function Base.setindex!(x::Attributes, value::AbstractObservable, key::Symbol)
     if haskey(x, key)
         # error("You're trying to update an attribute Observable with a new Observable. This is not supported right now.
         # You can do this manually like this:
@@ -219,7 +219,7 @@ function Base.setindex!(x::AbstractPlot, value, key::Symbol)
     end
 end
 
-function Base.setindex!(x::AbstractPlot, value::Observable, key::Symbol)
+function Base.setindex!(x::AbstractPlot, value::AbstractObservable, key::Symbol)
     argnames = argument_names(typeof(x), length(x.converted))
     idx = findfirst(isequal(key), argnames)
     if idx === nothing

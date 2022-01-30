@@ -10,7 +10,7 @@ end
 
 
 mutable struct GLFramebuffer
-    resolution::Observable{NTuple{2, Int}}
+    resolution::AbstractObservable{NTuple{2, Int}}
     id::GLuint
 
     buffer_ids::Dict{Symbol, GLuint}
@@ -96,7 +96,7 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
 
     fb_size_node = Observable(fb_size)
 
-    # To allow adding postprocessors in various combinations we need to keep 
+    # To allow adding postprocessors in various combinations we need to keep
     # track of the buffer ids that are already in use. We may also want to reuse
     # buffers so we give them names for easy fetching.
     buffer_ids = Dict(

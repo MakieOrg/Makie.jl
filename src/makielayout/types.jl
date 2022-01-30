@@ -121,26 +121,26 @@ IntervalsBetween(n) = IntervalsBetween(n, true)
 
 mutable struct LineAxis
     parent::Scene
-    protrusion::Observable{Float32}
+    protrusion::AbstractObservable{Float32}
     attributes::Attributes
     elements::Dict{Symbol, Any}
-    tickpositions::Observable{Vector{Point2f}}
-    tickvalues::Observable{Vector{Float32}}
-    ticklabels::Observable{Vector{String}}
-    minortickpositions::Observable{Vector{Point2f}}
-    minortickvalues::Observable{Vector{Float32}}
+    tickpositions::AbstractObservable{Vector{Point2f}}
+    tickvalues::AbstractObservable{Vector{Float32}}
+    ticklabels::AbstractObservable{Vector{AbstractString}}
+    minortickpositions::AbstractObservable{Vector{Point2f}}
+    minortickvalues::AbstractObservable{Vector{Float32}}
 end
 
 struct LimitReset end
 
 mutable struct RectangleZoom
     callback::Function
-    active::Observable{Bool}
+    active::AbstractObservable{Bool}
     restrict_x::Bool
     restrict_y::Bool
     from::Union{Nothing, Point2f}
     to::Union{Nothing, Point2f}
-    rectnode::Observable{Rect2f}
+    rectnode::AbstractObservable{Rect2f}
 end
 
 function RectangleZoom(callback::Function; restrict_x=false, restrict_y=false)
@@ -179,12 +179,12 @@ end
     scene::Scene
     xaxislinks::Vector{Axis}
     yaxislinks::Vector{Axis}
-    targetlimits::Observable{Rect2f}
-    finallimits::Observable{Rect2f}
-    block_limit_linking::Observable{Bool}
+    targetlimits::AbstractObservable{Rect2f}
+    finallimits::AbstractObservable{Rect2f}
+    block_limit_linking::AbstractObservable{Bool}
     mouseeventhandle::MouseEventHandle
-    scrollevents::Observable{ScrollEvent}
-    keysevents::Observable{KeysEvent}
+    scrollevents::AbstractObservable{ScrollEvent}
+    keysevents::AbstractObservable{KeysEvent}
     interactions::Dict{Symbol, Tuple{Bool, Any}}
     cycler::Cycler
 end
@@ -250,7 +250,7 @@ end
 const EntryGroup = Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}
 
 @Layoutable Legend begin
-    entrygroups::Observable{Vector{EntryGroup}}
+    entrygroups::AbstractObservable{Vector{EntryGroup}}
 end
 
 @Layoutable LScene begin
@@ -258,16 +258,16 @@ end
 end
 
 @Layoutable Textbox begin
-    cursorindex::Observable{Int}
+    cursorindex::AbstractObservable{Int}
     cursoranimtask
 end
 
 @Layoutable Axis3 begin
     scene::Scene
-    finallimits::Observable{Rect3f}
+    finallimits::AbstractObservable{Rect3f}
     mouseeventhandle::MouseEventHandle
-    scrollevents::Observable{ScrollEvent}
-    keysevents::Observable{KeysEvent}
+    scrollevents::AbstractObservable{ScrollEvent}
+    keysevents::AbstractObservable{KeysEvent}
     interactions::Dict{Symbol, Tuple{Bool, Any}}
     cycler::Cycler
 end

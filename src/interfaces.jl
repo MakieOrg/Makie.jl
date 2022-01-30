@@ -151,7 +151,7 @@ function apply_convert!(P, attributes::Attributes, x::PlotSpec{S}) where S
     return (plottype(S, P), args)
 end
 
-function seperate_tuple(args::Observable{<: NTuple{N, Any}}) where N
+function seperate_tuple(args::AbstractObservable{<: NTuple{N, Any}}) where N
     ntuple(N) do i
         lift(args) do x
             if i <= length(x)
@@ -389,7 +389,7 @@ function extract_scene_attributes!(attributes)
     return result
 end
 
-function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, input::NTuple{N, Observable}, args::Observable) where {N}
+function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, input::NTuple{N, Observable}, args::AbstractObservable) where {N}
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
     scene_attributes = extract_scene_attributes!(attributes)
     plot_object = P(scene, copy(attributes), input, args)
@@ -403,7 +403,7 @@ function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, input::NTu
     return plot_object
 end
 
-function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, input::NTuple{N,Observable}, args::Observable) where {N}
+function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, input::NTuple{N,Observable}, args::AbstractObservable) where {N}
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
 
     plot_object = P(scene, attributes, input, args)

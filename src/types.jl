@@ -250,32 +250,32 @@ struct Camera
     """
     projection used to convert pixel to device units
     """
-    pixel_space::Observable{Mat4f}
+    pixel_space::AbstractObservable{Mat4f}
 
     """
     View matrix is usually used to rotate, scale and translate the scene
     """
-    view::Observable{Mat4f}
+    view::AbstractObservable{Mat4f}
 
     """
     Projection matrix is used for any perspective transformation
     """
-    projection::Observable{Mat4f}
+    projection::AbstractObservable{Mat4f}
 
     """
     just projection * view
     """
-    projectionview::Observable{Mat4f}
+    projectionview::AbstractObservable{Mat4f}
 
     """
     resolution of the canvas this camera draws to
     """
-    resolution::Observable{Vec2f}
+    resolution::AbstractObservable{Vec2f}
 
     """
     Eye position of the camera, sued for e.g. ray tracing.
     """
-    eyeposition::Observable{Vec3f}
+    eyeposition::AbstractObservable{Vec3f}
 
     """
     To make camera interactive, steering observables are connected to the different matrices.
@@ -291,12 +291,12 @@ $(TYPEDFIELDS)
 """
 struct Transformation <: Transformable
     parent::RefValue{Transformation}
-    translation::Observable{Vec3f}
-    scale::Observable{Vec3f}
-    rotation::Observable{Quaternionf}
-    model::Observable{Mat4f}
+    translation::AbstractObservable{Vec3f}
+    scale::AbstractObservable{Vec3f}
+    rotation::AbstractObservable{Quaternionf}
+    model::AbstractObservable{Mat4f}
     # data conversion observable, for e.g. log / log10 etc
-    transform_func::Observable{Any}
+    transform_func::AbstractObservable{Any}
     function Transformation(translation, scale, rotation, model, transform_func)
         return new(
             RefValue{Transformation}(),

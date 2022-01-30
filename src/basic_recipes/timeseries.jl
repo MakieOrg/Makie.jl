@@ -1,5 +1,5 @@
 """
-    timeseries(x::Observable{{Union{Number, Point2}}})
+    timeseries(x::AbstractObservable{{Union{Number, Point2}}})
 
 Plots a sampled signal.
 Usage:

@@ -1,6 +1,6 @@
 function layoutable(::Type{Legend},
         fig_or_scene,
-        entry_groups::Observable{Vector{Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}}};
+        entry_groups::AbstractObservable{Vector{Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}}};
         bbox = nothing, kwargs...)
 
     topscene = get_topscene(fig_or_scene)
@@ -263,7 +263,7 @@ function layoutable(::Type{Legend},
 end
 
 
-function legendelement_plots!(scene, element::MarkerElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
+function legendelement_plots!(scene, element::MarkerElement, bbox::AbstractObservable{Rect2f}, defaultattrs::Attributes)
     merge!(element.attributes, defaultattrs)
     attrs = element.attributes
 
@@ -276,7 +276,7 @@ function legendelement_plots!(scene, element::MarkerElement, bbox::Observable{Re
     [scat]
 end
 
-function legendelement_plots!(scene, element::LineElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
+function legendelement_plots!(scene, element::LineElement, bbox::AbstractObservable{Rect2f}, defaultattrs::Attributes)
     merge!(element.attributes, defaultattrs)
     attrs = element.attributes
 
@@ -287,7 +287,7 @@ function legendelement_plots!(scene, element::LineElement, bbox::Observable{Rect
     [lin]
 end
 
-function legendelement_plots!(scene, element::PolyElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
+function legendelement_plots!(scene, element::PolyElement, bbox::AbstractObservable{Rect2f}, defaultattrs::Attributes)
     merge!(element.attributes, defaultattrs)
     attrs = element.attributes
 

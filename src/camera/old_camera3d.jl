@@ -2,18 +2,18 @@
 @enum ProjectionEnum Perspective Orthographic
 
 struct OldCamera3D <: AbstractCamera
-    rotationspeed::Observable{Float32}
-    translationspeed::Observable{Float32}
-    eyeposition::Observable{Vec3f}
-    lookat::Observable{Vec3f}
-    upvector::Observable{Vec3f}
-    fov::Observable{Float32}
-    near::Observable{Float32}
-    far::Observable{Float32}
-    projectiontype::Observable{ProjectionEnum}
-    pan_button::Observable{ButtonTypes}
-    rotate_button::Observable{ButtonTypes}
-    move_key::Observable{ButtonTypes}
+    rotationspeed::AbstractObservable{Float32}
+    translationspeed::AbstractObservable{Float32}
+    eyeposition::AbstractObservable{Vec3f}
+    lookat::AbstractObservable{Vec3f}
+    upvector::AbstractObservable{Vec3f}
+    fov::AbstractObservable{Float32}
+    near::AbstractObservable{Float32}
+    far::AbstractObservable{Float32}
+    projectiontype::AbstractObservable{ProjectionEnum}
+    pan_button::AbstractObservable{ButtonTypes}
+    rotate_button::AbstractObservable{ButtonTypes}
+    move_key::AbstractObservable{ButtonTypes}
 end
 
 """

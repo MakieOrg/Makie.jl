@@ -1,13 +1,13 @@
 struct Camera3D <: AbstractCamera
-    eyeposition::Observable{Vec3f}
-    lookat::Observable{Vec3f}
-    upvector::Observable{Vec3f}
+    eyeposition::AbstractObservable{Vec3f}
+    lookat::AbstractObservable{Vec3f}
+    upvector::AbstractObservable{Vec3f}
 
-    zoom_mult::Observable{Float32}
-    fov::Observable{Float32} # WGLMakie compat
-    near::Observable{Float32}
-    far::Observable{Float32}
-    pulser::Observable{Float64}
+    zoom_mult::AbstractObservable{Float32}
+    fov::AbstractObservable{Float32} # WGLMakie compat
+    near::AbstractObservable{Float32}
+    far::AbstractObservable{Float32}
+    pulser::AbstractObservable{Float64}
 
     attributes::Attributes
 end

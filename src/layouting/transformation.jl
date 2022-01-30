@@ -280,7 +280,7 @@ apply_transform(f::NTuple{3, typeof(identity)}, point::VecTypes{3}) = point
 
 apply_transform(f, number::Number) = f(number)
 
-function apply_transform(f::Observable, data::Observable)
+function apply_transform(f::AbstractObservable, data::AbstractObservable)
     return lift((f, d)-> apply_transform(f, d), f, data)
 end
 

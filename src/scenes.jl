@@ -3,14 +3,14 @@ struct SSAO
     sets the range of SSAO. You may want to scale this up or
     down depending on the limits of your coordinate system
     """
-    radius::Observable{Float32}
+    radius::AbstractObservable{Float32}
 
     """
     sets the minimum difference in depth required for a pixel to
     be occluded. Increasing this will typically make the occlusion
     effect stronger.
     """
-    bias::Observable{Float32}
+    bias::AbstractObservable{Float32}
 
     """
     sets the (pixel) range of the blur applied to the occlusion texture.
@@ -19,7 +19,7 @@ struct SSAO
     Large `blur` will be slower and smoother. Typically `blur = 2` is
     a good compromise.
     """
-    blur::Observable{Int32}
+    blur::AbstractObservable{Int32}
 end
 
 function Base.show(io::IO, ssao::SSAO)
@@ -44,8 +44,8 @@ A positional point light, shining at a certain color.
 Color values can be bigger than 1 for brighter lights.
 """
 struct PointLight <: AbstractLight
-    position::Observable{Vec3f}
-    radiance::Observable{RGBf}
+    position::AbstractObservable{Vec3f}
+    radiance::AbstractObservable{RGBf}
 end
 
 """
@@ -53,15 +53,15 @@ An environment Light, that uses a spherical environment map to provide lighting.
 See: https://en.wikipedia.org/wiki/Reflection_mapping
 """
 struct EnvironmentLight <: AbstractLight
-    intensity::Observable{Float32}
-    image::Observable{Matrix{RGBf}}
+    intensity::AbstractObservable{Float32}
+    image::AbstractObservable{Matrix{RGBf}}
 end
 
 """
 A simple, one color ambient light.
 """
 struct AmbientLight <: AbstractLight
-    color::Observable{RGBf}
+    color::AbstractObservable{RGBf}
 end
 
 """
@@ -81,7 +81,7 @@ mutable struct Scene <: AbstractScene
     events::Events
 
     "The current pixel area of the Scene."
-    px_area::Observable{Rect2i}
+    px_area::AbstractObservable{Rect2i}
 
     "Whether the scene should be cleared."
     clear::Bool
@@ -109,8 +109,8 @@ mutable struct Scene <: AbstractScene
     current_screens::Vector{AbstractScreen}
 
     # Attributes
-    backgroundcolor::Observable{RGBAf}
-    visible::Observable{Bool}
+    backgroundcolor::AbstractObservable{RGBAf}
+    visible::AbstractObservable{Bool}
     ssao::SSAO
     lights::Vector{AbstractLight}
 
@@ -144,7 +144,7 @@ function Base.show(io::IO, scene::Scene)
 end
 
 function Scene(;
-        px_area::Union{Observable{Rect2i}, Nothing} = nothing,
+        px_area::Union{AbstractObservable{Rect2i}, Nothing} = nothing,
         events::Events = Events(),
         clear::Bool = true,
         transform_func=identity,

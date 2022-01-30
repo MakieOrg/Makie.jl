@@ -614,7 +614,7 @@ float32type(x::AbstractArray{T}) where T = float32type(T)
 float32type(x::T) where T = float32type(T)
 el32convert(x::AbstractArray) = elconvert(float32type(x), x)
 el32convert(x::AbstractArray{Float32}) = x
-el32convert(x::Observable) = lift(el32convert, x)
+el32convert(x::AbstractObservable) = lift(el32convert, x)
 el32convert(x) = convert(float32type(x), x)
 
 function el32convert(x::AbstractArray{T, N}) where {T<:Union{Missing, <: Number}, N}

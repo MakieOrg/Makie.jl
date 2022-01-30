@@ -108,7 +108,7 @@ end
 index1D(x::SubArray) = parentindices(x)[1]
 
 handle_view(array::AbstractVector, attributes) = array
-handle_view(array::Observable, attributes) = array
+handle_view(array::AbstractObservable, attributes) = array
 
 function handle_view(array::SubArray, attributes)
     A = parent(array)
@@ -117,7 +117,7 @@ function handle_view(array::SubArray, attributes)
     return A
 end
 
-function handle_view(array::Observable{T}, attributes) where T <: SubArray
+function handle_view(array::AbstractObservable{T}, attributes) where T <: SubArray
     A = lift(parent, array)
     indices = lift(index1D, array)
     attributes[:indices] = indices

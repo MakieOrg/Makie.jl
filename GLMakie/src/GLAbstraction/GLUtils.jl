@@ -61,11 +61,12 @@ Needed to match the lazy gl_convert exceptions.
     `x`: the variable that gets matched
 """
 matches_target(::Type{Target}, x::T) where {Target, T} = applicable(gl_convert, Target, x) || T <: Target  # it can be either converted to Target, or it's already the target
-matches_target(::Type{Target}, x::Observable{T}) where {Target, T} = applicable(gl_convert, Target, x)  || T <: Target
+matches_target(::Type{Target}, x::AbstractObservable{T}) where {Target, T} = applicable(gl_convert, Target, x)  || T <: Target
 matches_target(::Function, x) = true
 matches_target(::Function, x::Nothing) = false
 
 signal_convert(T1, y::T2) where {T2<:Observable} = lift(convert, Observable(T1), y)
+signal_convert(T1, y::T2) where {T2<:ChangeObservable} = lift(convert, ChangeObservable(T1), y)
 
 
 """
@@ -148,7 +149,7 @@ macro gen_defaults!(dict, args)
 end
 export @gen_defaults!
 
-makesignal(s::Observable) = s
+makesignal(s::AbstractObservable) = s
 makesignal(v) = Observable(v)
 
 @inline const_lift(f::Union{DataType, Type, Function}, inputs...) = lift(f, map(makesignal, inputs)...)
@@ -166,7 +167,7 @@ end
 export NativeMesh
 
 NativeMesh(m::T) where {T <: GeometryBasics.Mesh} = NativeMesh{T}(m)
-NativeMesh(m::Observable{T}) where {T <: GeometryBasics.Mesh} = NativeMesh{T}(m)
+NativeMesh(m::AbstractObservable{T}) where {T <: GeometryBasics.Mesh} = NativeMesh{T}(m)
 
 convert_texcoordinates(uv::AbstractVector{Vec2f}) = uv
 convert_texcoordinates(x::AbstractVector{<:Number}) = convert(Vector{Float32}, x)
@@ -206,7 +207,7 @@ function NativeMesh{T}(mesh::T) where T <: GeometryBasics.Mesh
 end
 
 
-function NativeMesh{T}(m::Observable{T}) where T <: GeometryBasics.Mesh
+function NativeMesh{T}(m::AbstractObservable{T}) where T <: GeometryBasics.Mesh
     result = NativeMesh{T}(m[])
     on(m) do mesh
 

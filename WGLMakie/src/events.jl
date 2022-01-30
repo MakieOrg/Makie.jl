@@ -48,7 +48,7 @@ function code_to_keyboard(code::String)
     end
 end
 
-function connect_scene_events!(scene::Scene, comm::Observable)
+function connect_scene_events!(scene::Scene, comm::AbstractObservable)
     e = events(scene)
     on(comm) do msg
         @handle msg.mouseposition begin
