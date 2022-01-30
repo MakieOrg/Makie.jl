@@ -11,6 +11,7 @@ using Makie: ClosedInterval, (..)
 using Makie: inline!
 using ShaderAbstractions
 using FreeTypeAbstraction
+using Observables: listeners
 
 using Base: RefValue
 import Base: push!, isopen, show

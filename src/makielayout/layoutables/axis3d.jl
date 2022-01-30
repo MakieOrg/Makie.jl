@@ -28,7 +28,7 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
 
     notify(protrusions)
 
-    finallimits = ChangeObservable(Rect3f(Vec3f(0f0, 0f0, 0f0), Vec3f(100f0, 100f0, 100f0)))
+    finallimits = Observable(Rect3f(Vec3f(0f0, 0f0, 0f0), Vec3f(100f0, 100f0, 100f0)))
 
     scenearea = lift(round_to_IRect2D, layoutobservables.computedbbox)
 
