@@ -21,7 +21,7 @@ end
         # assure we correctly close screen and remove it from plot
         @test getscreen(ax.scene) === nothing
         @test !events(ax.scene).window_open[]
-        @test isempty(events(ax.scene).window_open.listeners)
+        @test isempty(listeners(events(ax.scene).window_open))
     end
 
     @testset "Pick a plot element or plot elements inside a rectangle" begin

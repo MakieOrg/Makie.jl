@@ -83,8 +83,8 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
 end
 
 function Base.empty!(screen::Screen)
-    empty!(screen.render_tick.listeners)
-    empty!(screen.window_open.listeners)
+    empty!(listeners(screen.render_tick))
+    empty!(listeners(screen.window_open))
     empty!(screen.renderlist)
     empty!(screen.screen2scene)
     empty!(screen.screens)

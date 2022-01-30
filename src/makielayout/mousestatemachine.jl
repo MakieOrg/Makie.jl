@@ -67,7 +67,7 @@ Cut observable connections to the scene and remove any listeners to the mouse ev
 function clear!(handle::MouseEventHandle)
     foreach(Observables.off, handle.observerfuncs)
     empty!(handle.observerfuncs)
-    empty!(handle.obs.listeners)
+    empty!(lissteners(handle.obs))
     nothing
 end
 

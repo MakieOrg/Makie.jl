@@ -771,7 +771,7 @@ function show_imagelike(inspector, plot, name, edge_based)
             # Hacky?
             push!(
                 inspector.obsfuncs,
-                Observables.ObserverFunction(a._position.listeners[end], a._position, false)
+                Observables.ObserverFunction(listeners(a._position)[end], a._position, false)
             )
         end
         a._display_text[] = color2text(name, mpos[1], mpos[2], z)
