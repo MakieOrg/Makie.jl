@@ -47,8 +47,8 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
             subgl = layout_text(str, ts, f, al, rot, jus, lh, col, scol, swi)
             push!(gcs, subgl)
         end
-        position.val = pos
-        rotation.val = rot
+        position[] = pos
+        rotation[] = rot
         glyphcollections[] = gcs
     end
 
@@ -78,7 +78,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:AbstractString, <:Po
         strs = first.(str_pos)
         poss = to_ndim.(Ref(Point3f), last.(str_pos), 0)
         # first mutate strings without triggering redraw
-        t[1].val = strs
+        t[1][] = strs
         # then update positions with trigger
         positions[] = poss
     end
@@ -134,8 +134,8 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
         ts = to_textsize(ts)
         rot = convert_attribute(rot, key"rotation"())
 
-        empty!(linepairs.val)
-        empty!(linewidths.val)
+        empty!(linepairs[])
+        empty!(linewidths[])
 
         # for the vector case, allels is a vector of vectors
         # so for broadcasting the single vector needs to be wrapped in Ref
@@ -166,8 +166,8 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
                 ps, t
             end
             pairs = filter(!isnothing, els)
-            append!(linewidths.val, repeat(last.(pairs), inner = 2))
-            append!(linepairs.val, first.(pairs))
+            append!(linewidths[], repeat(last.(pairs), inner = 2))
+            append!(linepairs[], first.(pairs))
         end
         notify(linepairs)
     end

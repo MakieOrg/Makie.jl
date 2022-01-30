@@ -90,7 +90,7 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
     upper = Observable(Point2f[])
 
     on(lowerupper) do (l, u)
-        lower.val = l
+        lower[] = l
         upper[] = u
     end
     notify(lowerupper)

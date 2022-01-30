@@ -11,7 +11,7 @@ fig, ax, img = heatmap(x, y, mandelbrot, colormap = Reverse(:deep),
 hidedecorations!(ax)
 
 record(fig, "mandelbrot.mp4", 1:200) do frame
-    x.val = x[] .+ ((-0.562 .- x[]) .* 0.05)
+    x[] = x[] .+ ((-0.562 .- x[]) .* 0.05)
     y[] = y[] .+ ((0.645 .- y[]) .* 0.05)
     autolimits!(ax)
 end

@@ -159,7 +159,7 @@ function Camera3D(scene; kwargs...)
             sleep(attr.update_rate[])
             cam.pulser[] = current_time
         else
-            cam.pulser.val = -1.0
+            cam.pulser[] = -1.0
         end
     end
 

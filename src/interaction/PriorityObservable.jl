@@ -59,12 +59,12 @@ PriorityObservable(val::T) where {T} = PriorityObservable{T}(val)
 
 function Base.show(io::IO, po::PriorityObservable)
     print(io, "PriorityObservable(")
-    print(io, po.val)
+    print(io, po[])
     print(io, ")")
 end
 function Base.show(io::IO, ::MIME"text/plain", po::PriorityObservable{T}) where {T}
     print(io, "PriorityObservable{T}(")
-    print(io, po.val)
+    print(io, po[])
     N = isempty(po.listeners) ? 0 : mapreduce(x -> length(x[2]), +, po.listeners)
     print(io, ") with $N listeners at priorities [", join(first.(po.listeners), ','), "]")
 end

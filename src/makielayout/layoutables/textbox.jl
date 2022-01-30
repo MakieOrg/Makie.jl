@@ -311,7 +311,7 @@ end
 Resets the stored_string of the given `Textbox` to `nothing` without triggering listeners, and resets the `Textbox` to the `placeholder` text.
 """
 function reset!(tb::Textbox)
-    tb.stored_string.val = nothing
+    tb.stored_string[] = nothing
     tb.displayed_string = tb.placeholder[]
     defocus!(tb)
     nothing

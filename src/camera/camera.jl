@@ -96,7 +96,7 @@ function set_proj_view!(camera::Camera, projection, view)
     # hack, to not double update projectionview
     # TODO, this makes code doing on(view), not work correctly...
     # But nobody should do that, right?
-    camera.view.val = view
+    camera.view[] = view
     camera.projection[] = projection
 end
 

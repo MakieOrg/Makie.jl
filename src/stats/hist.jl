@@ -112,7 +112,7 @@ function Makie.plot!(plot::Hist)
 
     # update the barplot points without triggering, then trigger with `width`
     on(widths) do w
-        bp[1].val = points[]
+        bp[1][] = points[]
         bp.width = w
     end
     plot

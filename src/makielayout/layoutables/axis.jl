@@ -1131,7 +1131,7 @@ function Makie.xlims!(ax::Axis, xlims)
         ax.xreversed[] = false
     end
 
-    ax.limits.val = (xlims, ax.limits[][2])
+    ax.limits[] = (xlims, ax.limits[][2])
     reset_limits!(ax, yauto = false)
     nothing
 end
@@ -1148,7 +1148,7 @@ function Makie.ylims!(ax::Axis, ylims)
         ax.yreversed[] = false
     end
 
-    ax.limits.val = (ax.limits[][1], ylims)
+    ax.limits[] = (ax.limits[][1], ylims)
     reset_limits!(ax, xauto = false)
     nothing
 end

@@ -207,7 +207,7 @@ function Makie.mouse_position(scene::Scene, screen::Screen)
     #     @print_error begin
     #         pos = correct_mouse(window, w, h)
     #         @timeit "triggerless mouseposition" begin
-    #             e.mouseposition.val = pos
+    #             e.mouseposition[] = pos
     #         end
     #         return
     #     end
