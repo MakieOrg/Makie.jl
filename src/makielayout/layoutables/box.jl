@@ -25,7 +25,7 @@ function layoutable(::Type{Box}, fig_or_scene; bbox = nothing, kwargs...)
     elements = Dict(:rect => r)
 
     # trigger bbox
-    layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
+    notify(layoutobservables.suggestedbbox)
 
     Box(fig_or_scene, layoutobservables, attrs, elements)
 end

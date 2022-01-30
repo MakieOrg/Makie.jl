@@ -365,10 +365,10 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
     end
 
     # trigger protrusions with one of the attributes
-    vertical[] = vertical[]
+    notify(vertical)
 
     # trigger bbox
-    layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
+    notify(layoutobservables.suggestedbbox)
 
     Colorbar(fig_or_scene, layoutobservables, attrs, decorations)
 end

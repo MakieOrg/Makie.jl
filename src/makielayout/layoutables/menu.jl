@@ -259,8 +259,8 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
     end
 
     # trigger size without triggering selection
-    i_selected[] = i_selected[]
-    is_open[] = is_open[]
+    notify(i_selected)
+    notify(is_open)
 
     on(i_selected) do i
         if i == 0
@@ -289,7 +289,7 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
     end
 
     # trigger bbox
-    layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
+    notify(layoutobservables.suggestedbbox)
     # notify(direction)
 
     Menu(fig_or_scene, layoutobservables, attrs, decorations)

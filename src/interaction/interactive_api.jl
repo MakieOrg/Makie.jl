@@ -349,7 +349,7 @@ function select_line(scene; blocking = false, priority = 2, kwargs...)
         if waspressed[]
             mp = mouseposition(scene)
             line[][2] = mp
-            line[] = line[] # actually update observable
+            notify(line) # actually update observable
             return Consume(blocking)
         end
         return Consume(false)
@@ -390,7 +390,7 @@ function select_point(scene; blocking = false, priority=2, kwargs...)
                 waspressed[] = true
                 plotted_point[:visible] = true  # start displaying
                 point[][1] = mp
-                point[] = point[]
+                notify(point)
                 return Consume(blocking)
             end
         end
@@ -408,7 +408,7 @@ function select_point(scene; blocking = false, priority=2, kwargs...)
         if waspressed[]
             mp = mouseposition(scene)
             point[][1] = mp
-            point[] = point[] # actually update observable
+            notify(point) # actually update observable
             return Consume(blocking)
         end
         return Consume(false)

@@ -36,9 +36,9 @@ end
 
 function finish!(lsb::LineSegments)
     # update the signal!
-    lsb[1][] = lsb[1][]
-    lsb[:color][] = lsb[:color][]
-    lsb[:linewidth][] = lsb[:linewidth][]
+    notify(lsb[1])
+    notify(lsb[:color])
+    notify(lsb[:linewidth])
     return
 end
 

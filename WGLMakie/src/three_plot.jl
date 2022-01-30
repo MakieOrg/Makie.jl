@@ -97,7 +97,7 @@ function three_display(session::Session, scene::Scene)
     """
 
     onjs(session, scene_data, setup)
-    scene_data[] = scene_data[]
+    notify(scene_data)
     connect_scene_events!(scene, comm)
     three = ThreeDisplay(session)
 

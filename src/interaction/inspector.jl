@@ -353,7 +353,7 @@ function plot!(plot::_Inspector)
         translate!(text_plot,  Vec3f(0,0,d+3))
         translate!(px_bbox,    Vec3f(0,0,d))
     end
-    depth[] = depth[]
+    notify(depth)
     nothing
 end
 

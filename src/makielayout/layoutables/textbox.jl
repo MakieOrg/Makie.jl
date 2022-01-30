@@ -127,7 +127,7 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
     t.text = displayed_string[]
 
     # trigger bbox
-    layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
+    notify(layoutobservables.suggestedbbox)
 
     mouseevents = addmouseevents!(scene)
 

@@ -254,11 +254,11 @@ function layoutable(::Type{Legend},
 
 
     # trigger suggestedbbox
-    layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
+    notify(layoutobservables.suggestedbbox)
 
     leg = Legend(fig_or_scene, layoutobservables, attrs, decorations, entry_groups)
     # trigger first relayout
-    entry_groups[] = entry_groups[]
+    notify(entry_groups)
     leg
 end
 

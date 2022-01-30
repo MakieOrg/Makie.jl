@@ -206,7 +206,7 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
     onmouseleftdragstop(mouseevents) do event
         dragging[] = false
         # adjust slider to closest legal value
-        sliderfractions[] = sliderfractions[]
+        notify(sliderfractions)
         return Consume(true)
     end
 
@@ -240,10 +240,15 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
     end
 
     onmouseleftdoubleclick(mouseevents) do event
-        selected_indices[] = selected_indices[] = if startvalues[] === Makie.automatic
+        val = if startvalues[] === Makie.automatic
             (1, lastindex(sliderrange[]))
         else
             closest_index.(Ref(sliderrange[]), startvalues[])
+        end
+        if selected_indices[] == val
+            notify(selected_indices)
+        else
+            selected_indices[] = val
         end
 
         return Consume(true)
@@ -276,7 +281,7 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
     end
 
     # trigger autosize through linewidth for first layout
-    linewidth[] = linewidth[]
+    notify(linewidth)
 
     IntervalSlider(fig_or_scene, layoutobservables, attrs, decorations)
 end

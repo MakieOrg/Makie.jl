@@ -368,7 +368,7 @@ function LineAxis(parent::Scene; kwargs...)
 
     # trigger whole pipeline once to fill tickpositions and tickstrings
     # etc to avoid empty ticks bug #69
-    limits[] = limits[]
+    notify(limits)
 
     # in order to dispatch to the correct text recipe later (normal text, latex, etc.)
     # we need to have the ticklabelannosnode populated once before adding the annotations

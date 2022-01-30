@@ -88,9 +88,9 @@ function layoutable(::Type{Button}, fig_or_scene::FigureLike; bbox = nothing, kw
         return Consume(true)
     end
 
-    label[] = label[]
+    notify(label)
     # trigger bbox
-    layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
+    notify(layoutobservables.suggestedbbox)
 
     Button(fig_or_scene, layoutobservables, attrs, decorations)
 end

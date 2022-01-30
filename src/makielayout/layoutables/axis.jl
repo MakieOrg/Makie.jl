@@ -368,11 +368,11 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     end
 
     # trigger first protrusions with one of the observables
-    title[] = title[]
+    notify(title)
 
     # trigger bboxnode so the axis layouts itself even if not connected to a
     # layout
-    layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
+    notify(layoutobservables.suggestedbbox)
 
     mouseeventhandle = addmouseevents!(scene)
     scrollevents = Observable(ScrollEvent(0, 0))

@@ -33,7 +33,7 @@ function layoutable(::Type{Toggle}, fig_or_scene; bbox = nothing, kwargs...)
     end
 
     # trigger bbox
-    layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
+    notify(layoutobservables.suggestedbbox)
 
     framecolor = Observable{Any}(active[] ? framecolor_active[] : framecolor_inactive[])
     frame = poly!(topscene, buttonvertices, color = framecolor, inspectable = false)

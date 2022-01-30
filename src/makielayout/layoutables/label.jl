@@ -50,9 +50,9 @@ function layoutable(::Type{Label}, fig_or_scene; bbox = nothing, kwargs...)
 
 
     # trigger first update, otherwise bounds are wrong somehow
-    text[] = text[]
+    notify(text)
     # trigger bbox
-    layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
+    notify(layoutobservables.suggestedbbox)
 
     lt = Label(fig_or_scene, layoutobservables, attrs, Dict(:text => t))
 

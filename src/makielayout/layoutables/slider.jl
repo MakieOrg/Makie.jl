@@ -136,7 +136,7 @@ function layoutable(::Type{Slider}, fig_or_scene; bbox = nothing, kwargs...)
     onmouseleftdragstop(mouseevents) do event
         dragging[] = false
         # adjust slider to closest legal value
-        sliderfraction[] = sliderfraction[]
+        notify(sliderfraction)
         linecolors[] = [color_active_dimmed[], color_inactive[]]
         return Consume(true)
     end
@@ -167,7 +167,7 @@ function layoutable(::Type{Slider}, fig_or_scene; bbox = nothing, kwargs...)
     end
 
     # trigger autosize through linewidth for first layout
-    linewidth[] = linewidth[]
+    notify(linewidth)
 
     Slider(fig_or_scene, layoutobservables, attrs, decorations)
 end
