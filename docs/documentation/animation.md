@@ -158,3 +158,28 @@ for i = 1:nframes
 end
 nothing # hide
 ```
+
+Another example that updates the contents of a heatmap:
+```julia
+using GLMakie, Printf
+
+datarows = 400; datacols = 500
+buf = fill(0.0f0, datarows, datacols) 
+fig, ax, hm = heatmap(buf)
+@show typeof(hm[1])  # Axis x
+@show typeof(hm[2])  # Axis y
+@show typeof(hm[3])  # This would suggest we should be using hm[3] to modify the content
+
+display(fig)
+
+Printf.@printf "Finished creating first plot, start updating now"
+numFrames = 1000
+for frame=1:numFrames
+    buf .= rand.(Float32)
+    hm[3][] = buf   # This is the key step, also see print of types above 
+                    # Use [3] to index to data observable and [] to modify observable
+    yield()
+end
+
+```
+
