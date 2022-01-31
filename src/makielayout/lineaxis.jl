@@ -181,7 +181,7 @@ function LineAxis(parent::Scene; kwargs...)
 
     tickvalues = Observable(Float32[])
 
-    tickvalues_labels_unfiltered = lift(pos_extents_horizontal, limits, ticks, tickformat, attrs.scale) do (position, extents, horizontal),
+    tickvalues_labels_unfiltered = lift(pos_extents_horizontal, limits, ticks, tickformat, attrs.scale, change_only = true) do (position, extents, horizontal),
             limits, ticks, tickformat, scale
         get_ticks(ticks, scale, tickformat, limits...)
     end
@@ -316,7 +316,7 @@ function LineAxis(parent::Scene; kwargs...)
         end
     end
 
-    linepoints = lift(pos_extents_horizontal, flipped, spinewidth, trimspine, tickpositions, tickwidth) do (position, extents, horizontal),
+    linepoints = lift(pos_extents_horizontal, flipped, spinewidth, trimspine, tickpositions, tickwidth, change_only = true) do (position, extents, horizontal),
             flipped, sw, trimspine, tickpositions, tickwidth
 
         if !trimspine || length(tickpositions) < 2

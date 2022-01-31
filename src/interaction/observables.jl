@@ -23,7 +23,7 @@ ChangeObservable{Int64} with 0 listeners. Value:
 6
 ```
 """
-function lift(f, o1::AbstractObservable, rest...; change_only = true, kw...)
+function lift(f, o1::AbstractObservable, rest...; change_only = false, kw...)
     if !isempty(kw)
         error("lift(f, obs...; init=f.(obs...), typ=typeof(init)) is deprecated. Use lift(typ, f, obs...), or map!(f, Observable(), obs...) for different init.")
     end
@@ -36,7 +36,7 @@ function lift(f, o1::AbstractObservable, rest...; change_only = true, kw...)
 end
 
 function lift(
-        f, ::Type{T}, o1::AbstractObservable, rest...; change_only = true
+        f, ::Type{T}, o1::AbstractObservable, rest...; change_only = false
     ) where {T}
     init = f(to_value(o1), to_value.(rest)...)
     obtype = change_only ? ChangeObservable : Observable
