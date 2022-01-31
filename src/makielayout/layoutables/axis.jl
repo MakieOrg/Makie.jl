@@ -622,7 +622,7 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
     # because if there were any, these are looked up directly
     # in the cycler without advancing the counter etc.
     manually_cycled_attributes = filter(keys(allattrs)) do key
-        allattrs[key][] isa Cycled
+        to_value(allattrs[key]) isa Cycled
     end
 
     # if there are any manually cycled attributes, we don't do the normal
