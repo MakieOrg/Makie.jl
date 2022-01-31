@@ -31,9 +31,9 @@ end
 
 function SSAO(; radius=nothing, bias=nothing, blur=nothing)
     defaults = theme(nothing, :SSAO)
-    _radius = ChangeObservable(isnothing(radius) ? defaults.radius[] : radius)
-    _bias = ChangeObservable(isnothing(bias) ? defaults.bias[] : bias)
-    _blur = ChangeObservable(isnothing(blur) ? defaults.blur[] : blur)
+    _radius = Observable(isnothing(radius) ? defaults.radius[] : radius)
+    _bias = Observable(isnothing(bias) ? defaults.bias[] : bias)
+    _blur = Observable(isnothing(blur) ? defaults.blur[] : blur)
     return SSAO(_radius, _bias, _blur)
 end
 
@@ -156,7 +156,7 @@ function Scene(;
         children::Vector{Scene} = Scene[],
         current_screens::Vector{AbstractScreen} = AbstractScreen[],
         parent = nothing,
-        visible = ChangeObservable(true),
+        visible = Observable(true),
         ssao = SSAO(),
         lights = automatic,
         theme_kw...
@@ -201,11 +201,11 @@ function Scene(;
             else
                 m_theme.lightposition
             end
-            push!(scene.lights, PointLight(position, ChangeObservable(RGBf(1, 1, 1))))
+            push!(scene.lights, PointLight(position, Observable(RGBf(1, 1, 1))))
         end
         ambient = to_value(get(m_theme, :ambient, nothing))
         if !isnothing(ambient)
-            push!(scene.lights, AmbientLight(ChangeObservable(ambient)))
+            push!(scene.lights, AmbientLight(Observable(ambient)))
         end
     end
 

@@ -107,8 +107,8 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
 
 
     mouseeventhandle = addmouseevents!(scene)
-    scrollevents = ChangeObservable(ScrollEvent(0, 0))
-    keysevents = ChangeObservable(KeysEvent(Set()))
+    scrollevents = Observable(ScrollEvent(0, 0))
+    keysevents = Observable(KeysEvent(Set()))
 
     on(scene.events.scroll) do s
         if is_mouseinside(scene)
