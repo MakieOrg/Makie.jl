@@ -23,12 +23,20 @@ end
 function gl_bboxes(gl::GlyphCollection)
     scales = gl.scales.sv isa Vec2f ? (gl.scales.sv for _ in gl.extents) : gl.scales.sv
     map(gl.extents, gl.fonts, scales) do ext, font, scale
-        unscaled_hi_bb = height_insensitive_boundingbox(ext, font)
+        unscaled_hi_bb = height_insensitive_boundingbox_with_advance(ext, font)
         hi_bb = Rect2f(
             Makie.origin(unscaled_hi_bb) * scale,
             widths(unscaled_hi_bb) * scale
         )
     end
+end
+
+function height_insensitive_boundingbox_with_advance(ext, font)
+    l = 0f0
+    r = FreeTypeAbstraction.hadvance(ext)
+    b = FreeTypeAbstraction.descender(font)
+    t = FreeTypeAbstraction.ascender(font)
+    return Rect2f((l, b), (r - l, t - b))
 end
 
 function boundingbox(glyphcollection::GlyphCollection, position::Point3f, rotation::Quaternion)
