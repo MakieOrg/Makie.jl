@@ -37,7 +37,7 @@ function to_glvisualize_key(k)
     k == :strokecolor && return :stroke_color
     k == :positions && return :position
     k == :linewidth && return :thickness
-    k == :marker_offset && return :offset
+    k == :marker_offset && return :quad_offset
     k == :colormap && return :color_map
     k == :colorrange && return :color_norm
     k == :transform_marker && return :scale_primitive
@@ -307,7 +307,7 @@ function draw_atomic(screen::GLScreen, scene::Scene,
         pos = gl_attributes[:position]
         space = get(gl_attributes, :space, Observable(:data))
         markerspace = gl_attributes[:markerspace]
-        offset = gl_attributes[:offset]
+        offset = pop!(gl_attributes, :offset, Vec2f(0))
 
         # TODO: This is a hack before we get better updating of plot objects and attributes going.
         # Here we only update the glyphs when the glyphcollection changes, if it's a singular glyphcollection.
@@ -324,19 +324,14 @@ function draw_atomic(screen::GLScreen, scene::Scene,
             # the actual, new value gets then taken in the below lift with to_value
             gcollection = Observable(glyphcollection)
         end
-        # Projects positions from space to markerspace
-        # glyph_data = lift(
-        #         scene.camera.projectionview, scene.camera.resolution, # just for the update
-        #         pos, gcollection, space, markerspace, offset, transfunc
-        #     ) do _, _, pos, gc, space, mspace, offset, transfunc
-        #     preprojected_glyph_arrays(pos, to_value(gc), space, mspace, scene.camera, offset, transfunc)
-        # end
+       
+        # calculate quad metrics
         glyph_data = map(pos, gcollection, offset, transfunc) do pos, gc, offset, transfunc
             Makie.text_quads(pos, to_value(gc), offset, transfunc)
         end
 
         # unpack values from the one signal:
-        positions, pos_offset, quad_offset, uv_offset_width, scale = map((1, 2, 3, 4, 5)) do i
+        positions, char_offset, quad_offset, uv_offset_width, scale = map((1, 2, 3, 4, 5)) do i
             lift(getindex, glyph_data, i)
         end
 
@@ -377,8 +372,8 @@ function draw_atomic(screen::GLScreen, scene::Scene,
         end
 
         gl_attributes[:scale] = scale
-        gl_attributes[:offset] = quad_offset
-        gl_attributes[:position_offset] = pos_offset
+        gl_attributes[:quad_offset] = quad_offset
+        gl_attributes[:marker_offset] = char_offset
         gl_attributes[:uv_offset_width] = uv_offset_width
         gl_attributes[:distancefield] = get_texture!(atlas)
         gl_attributes[:visible] = x.visible

@@ -103,13 +103,13 @@ using Makie: to_spritemarker
 function scatter_shader(scene::Scene, attributes)
     # Potentially per instance attributes
     per_instance_keys = (:pos, :rotations, :markersize, :color, :intensity,
-                         :uv_offset_width, :marker_offset, :position_offset)
+                         :uv_offset_width, :quad_offset, :marker_offset)
     uniform_dict = Dict{Symbol,Any}()
 
     if haskey(attributes, :marker) && attributes[:marker][] isa Union{Char, Vector{Char},String}
         font = get(attributes, :font, Observable(Makie.defaultfont()))
         attributes[:markersize] = map(rescale_glyph, attributes[:marker], font, attributes[:markersize])
-        attributes[:marker_offset] = map(rescale_glyph, attributes[:marker], font, attributes[:marker_offset])
+        attributes[:quad_offset] = map(rescale_glyph, attributes[:marker], font, attributes[:quad_offset])
     end
 
     if haskey(attributes, :marker) && attributes[:marker][] isa Union{Vector{Char},String}
@@ -172,7 +172,7 @@ end
 function create_shader(scene::Scene, plot::Scatter)
     # Potentially per instance attributes
     per_instance_keys = (:offset, :rotations, :markersize, :color, :intensity,
-                         :marker_offset)
+                         :quad_offset)
     per_instance = filter(plot.attributes.attributes) do (k, v)
         return k in per_instance_keys && !(isscalar(v[]))
     end
@@ -184,7 +184,9 @@ function create_shader(scene::Scene, plot::Scatter)
         Makie.clip_to_space(cam, mspace) * Makie.space_to_clip(cam, space)
     end
     attributes[:pos] = apply_transform(transform_func_obs(plot),  plot[1])
-    attributes[:position_offset] = Vec3f(0)
+    quad_offset = get(attributes, :marker_offset, Observable(Vec2f(0)))
+    attributes[:marker_offset] = Vec3f(0)
+    attributes[:quad_offset] = quad_offset
     attributes[:billboard] = map(rot -> isa(rot, Billboard), plot.rotations)
     attributes[:model] = plot.model
     attributes[:markerspace] = plot.markerspace
@@ -229,7 +231,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     end
 
     # unpack values from the one signal:
-    positions, pos_offset, quad_offset, uv_offset_width, scale = map((1, 2, 3, 4, 5)) do i
+    positions, char_offset, quad_offset, uv_offset_width, scale = map((1, 2, 3, 4, 5)) do i
         lift(getindex, glyph_data, i)
     end
     
@@ -262,10 +264,10 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         :shape_type => Observable(Cint(3)),
         :color => uniform_color,
         :rotations => uniform_rotation,
-        :markersize => scale,
-        :position_offset => pos_offset,
-        :marker_offset => quad_offset,
         :pos => positions,
+        :marker_offset => char_offset,
+        :quad_offset => quad_offset,
+        :markersize => scale,
         :preprojection => preprojection,
         :uv_offset_width => uv_offset_width,
         :transform_marker => Observable(false),

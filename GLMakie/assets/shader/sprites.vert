@@ -46,8 +46,8 @@ vec3 _scale(vec2    scale, float   scale_x, float   scale_y, float   scale_z, in
 
 
 
-{{position_offset_type}} position_offset;
-{{offset_type}} offset;
+{{marker_offset_type}} marker_offset;
+{{quad_offset_type}} quad_offset;
 
 {{rotation_type}} rotation;
 
@@ -119,9 +119,8 @@ void main(){
     vec3 pos;
     {{position_calc}}
     vec4 p = preprojection * vec4(pos, 1);
-    g_position        = p.xyz / p.w + position_offset;
-    // g_position        = pos;
-    g_offset_width.xy = offset.xy;
+    g_position        = p.xyz / p.w + marker_offset;
+    g_offset_width.xy = quad_offset.xy;
     g_offset_width.zw = _scale(scale, scale_x, scale_y, scale_z, g_primitive_index).xy;
     g_color           = _color(color, intensity, color_map, color_norm, g_primitive_index, len);
     g_rotation        = _rotation(rotation);

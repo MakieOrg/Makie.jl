@@ -201,7 +201,7 @@ function _default(
     @gen_defaults! data begin
         scale = lift(x-> Vec2f(size(x)), p[1])
         shape = RECTANGLE
-        offset = Vec2f(0)
+        quad_offset = Vec2f(0)
     end
     sprites(p, s, data)
 end
@@ -213,7 +213,7 @@ function _default(
     @gen_defaults! data begin
         scale = lift(x-> Vec2f(size(x)), p[1])
         shape = RECTANGLE
-        offset = Vec2f(0)
+        quad_offset = Vec2f(0)
     end
     sprites(p, s, data)
 end
@@ -246,7 +246,7 @@ function _default(
     data[:image] = images # we don't want this to be overwritten by user
     @gen_defaults! data begin
         shape = RECTANGLE
-        offset = Vec2f(0)
+        quad_offset = Vec2f(0)
     end
     sprites(p, s, data)
 end
@@ -317,11 +317,11 @@ function sprites(p, s, data)
             pop!(data, :scale_z, Observable(nothing))
         )
         font = get(data, :font, Observable(Makie.defaultfont()))
-        offset = get(data, :offset, Observable(Vec2f(0)))
+        quad_offset = get(data, :quad_offset, Observable(Vec2f(0)))
 
         # The same scaling that needs to be applied to scale also needs to apply
         # to offset.
-        data[:offset] = map(rescale_glyph, p[1], font, offset)
+        data[:quad_offset] = map(rescale_glyph, p[1], font, quad_offset)
         data[:scale] = map(rescale_glyph, p[1], font, scale)
     end
 
@@ -331,7 +331,7 @@ function sprites(p, s, data)
         position_x  = nothing => GLBuffer
         position_y  = nothing => GLBuffer
         position_z  = nothing => GLBuffer
-        position_offset = Vec3f(0) => GLBuffer;
+        marker_offset = Vec3f(0) => GLBuffer;
 
         scale       = const_lift(primitive_scale, p[1]) => GLBuffer
         scale_x     = nothing => GLBuffer
@@ -343,7 +343,7 @@ function sprites(p, s, data)
     end
 
     @gen_defaults! data begin
-        offset          = primitive_offset(p[1], scale) => GLBuffer
+        quad_offset     = primitive_offset(p[1], scale) => GLBuffer
         intensity       = nothing => GLBuffer
         color_map       = nothing => Texture
         color_norm      = nothing
@@ -418,7 +418,7 @@ function _default(main::TOrSignal{S}, s::Style, data::Dict) where S <: AbstractS
     end
 
     # Rescale to include glyph padding and shape
-    data[:offset] = map(rescale_glyph, main, data[:font], data[:offset])
+    data[:quad_offset] = map(rescale_glyph, main, data[:font], data[:quad_offset])
     data[:scale] = map(rescale_glyph, main, data[:font], data[:scale])
 
     delete!(data, :font)
