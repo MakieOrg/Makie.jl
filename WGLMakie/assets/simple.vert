@@ -63,7 +63,9 @@ void main(){
 
     // Compute centre of billboard in clipping coordinates
     vec4 sprite_center = trans * vec4(sprite_bbox_centre, 0, 0);
-    vec4 data_point = pview * model * vec4(tovec3(get_offset()), 1);
+    vec4 data_point = get_preprojection() * vec4(tovec3(get_pos()), 1);
+    data_point = vec4(data_point.xyz / data_point.w + tovec3(get_position_offset()), 1);
+    data_point = pview * model * data_point;
     vec4 vclip = data_point + sprite_center;
 
     // Extra buffering is required around sprites which are antialiased so that

@@ -214,32 +214,25 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Union{Scat
         # signals not supported for shading yet
         gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
         marker = lift_convert(:marker, pop!(gl_attributes, :marker), x)
+        
+        positions = handle_view(x[1], gl_attributes)
+        positions = apply_transform(transform_func_obs(x), positions)
+        
         if isa(x, Scatter)
-            markerspace = get(gl_attributes, :markerspace, :pixel)
+            space = get(gl_attributes, :space, :data)
+            mspace = get(gl_attributes, :markerspace, :pixel)
             cam = scene.camera
-            positions = map(
-                    x[1], get(gl_attributes, :space, :data), markerspace, 
-                    transform_func_obs(x), cam.projectionview, cam.resolution
-                ) do positions, space, markerspace, tf, _, _
-
-                mat = Makie.clip_to_space(cam, markerspace) * Makie.space_to_clip(cam, space)
-                map(positions) do pos
-                    p = apply_transform(tf, pos)
-                    p4d = mat * Makie.to_ndim(Point4f, Makie.to_ndim(Point3f, p, 0), 1)
-                    p4d[SOneTo(3)] / p4d[4]
-                end
+            gl_attributes[:preprojection] = map(space, mspace, cam.projectionview) do space, mspace, pv
+                Makie.clip_to_space(cam, mspace) * Makie.space_to_clip(cam, space)
             end
 
             for key in (:view, :projection, :projectionview)
-                gl_attributes[key] = camera_matrix(scene.camera, markerspace, key)
+                gl_attributes[key] = camera_matrix(scene.camera, mspace, key)
             end
 
             gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.rotations)
             gl_attributes[:distancefield][] == nothing && delete!(gl_attributes, :distancefield)
             gl_attributes[:uv_offset_width][] == Vec4f(0) && delete!(gl_attributes, :uv_offset_width)
-        else
-            positions = handle_view(x[1], gl_attributes)
-            positions = apply_transform(transform_func_obs(x), positions)
         end
 
         if marker[] isa FastPixel
@@ -332,15 +325,18 @@ function draw_atomic(screen::GLScreen, scene::Scene,
             gcollection = Observable(glyphcollection)
         end
         # Projects positions from space to markerspace
-        glyph_data = lift(
-                scene.camera.projectionview, scene.camera.resolution, # just for the update
-                pos, gcollection, space, markerspace, offset, transfunc
-            ) do _, _, pos, gc, space, mspace, offset, transfunc
-            preprojected_glyph_arrays(pos, to_value(gc), space, mspace, scene.camera, offset, transfunc)
+        # glyph_data = lift(
+        #         scene.camera.projectionview, scene.camera.resolution, # just for the update
+        #         pos, gcollection, space, markerspace, offset, transfunc
+        #     ) do _, _, pos, gc, space, mspace, offset, transfunc
+        #     preprojected_glyph_arrays(pos, to_value(gc), space, mspace, scene.camera, offset, transfunc)
+        # end
+        glyph_data = map(pos, gcollection, offset, transfunc) do pos, gc, offset, transfunc
+            Makie.text_quads(pos, to_value(gc), offset, transfunc)
         end
 
         # unpack values from the one signal:
-        positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i
+        positions, pos_offset, quad_offset, uv_offset_width, scale = map((1, 2, 3, 4, 5)) do i
             lift(getindex, glyph_data, i)
         end
 
@@ -381,10 +377,16 @@ function draw_atomic(screen::GLScreen, scene::Scene,
         end
 
         gl_attributes[:scale] = scale
-        gl_attributes[:offset] = offset
+        gl_attributes[:offset] = quad_offset
+        gl_attributes[:position_offset] = pos_offset
         gl_attributes[:uv_offset_width] = uv_offset_width
         gl_attributes[:distancefield] = get_texture!(atlas)
         gl_attributes[:visible] = x.visible
+        cam = scene.camera
+        # gl_attributes[:preprojection] = Observable(Mat4f(I))
+        gl_attributes[:preprojection] = map(space, markerspace, cam.projectionview, cam.resolution) do s, ms, pv, res
+            Makie.clip_to_space(cam, ms) * Makie.space_to_clip(cam, s)
+        end
         robj = visualize((DISTANCEFIELD, positions), Style(:default), gl_attributes)
         
         # These project everything from markerspace to clip space

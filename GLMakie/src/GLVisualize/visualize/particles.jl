@@ -331,6 +331,7 @@ function sprites(p, s, data)
         position_x  = nothing => GLBuffer
         position_y  = nothing => GLBuffer
         position_z  = nothing => GLBuffer
+        position_offset = Vec3f(0) => GLBuffer;
 
         scale       = const_lift(primitive_scale, p[1]) => GLBuffer
         scale_x     = nothing => GLBuffer

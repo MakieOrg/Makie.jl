@@ -102,8 +102,8 @@ using Makie: to_spritemarker
 
 function scatter_shader(scene::Scene, attributes)
     # Potentially per instance attributes
-    per_instance_keys = (:offset, :rotations, :markersize, :color, :intensity,
-                         :uv_offset_width, :marker_offset)
+    per_instance_keys = (:pos, :rotations, :markersize, :color, :intensity,
+                         :uv_offset_width, :marker_offset, :position_offset)
     uniform_dict = Dict{Symbol,Any}()
 
     if haskey(attributes, :marker) && attributes[:marker][] isa Union{Char, Vector{Char},String}
@@ -178,20 +178,13 @@ function create_shader(scene::Scene, plot::Scatter)
     end
     attributes = copy(plot.attributes.attributes)
     space = get(attributes, :space, :data)
-    markerspace = get(attributes, :markerspace, :pixel)
+    mspace = get(attributes, :markerspace, :pixel)
     cam = scene.camera
-    attributes[:offset] = map(
-            plot[1], space, markerspace, 
-            transform_func_obs(plot), cam.projectionview, cam.resolution
-        ) do positions, space, markerspace, tf, _, _
-
-        mat = Makie.clip_to_space(cam, markerspace) * Makie.space_to_clip(cam, space)
-        map(positions) do pos
-            p = apply_transform(tf, pos)
-            p4d = mat * Makie.to_ndim(Point4f, Makie.to_ndim(Point3f, p, 0), 1)
-            p4d[SOneTo(3)] / p4d[4]
-        end
+    attributes[:preprojection] = map(space, mspace, cam.projectionview) do space, mspace, pv
+        Makie.clip_to_space(cam, mspace) * Makie.space_to_clip(cam, space)
     end
+    attributes[:pos] = apply_transform(transform_func_obs(plot),  plot[1])
+    attributes[:position_offset] = Vec3f(0)
     attributes[:billboard] = map(rot -> isa(rot, Billboard), plot.rotations)
     attributes[:model] = plot.model
     attributes[:markerspace] = plot.markerspace
@@ -231,17 +224,15 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         gcollection = Observable(glyphcollection)
     end
 
-    glyph_data = lift(
-            scene.camera.projectionview, scene.camera.resolution,
-            pos, gcollection, space, markerspace, offset, transfunc
-        ) do _, _, pos, gc, space, mspace, offset, transfunc
-        Makie.preprojected_glyph_arrays(pos, to_value(gc), space, mspace, scene.camera, offset, transfunc)
-    end
-    # unpack values from the one signal:
-    positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i
-        lift(getindex, glyph_data, i)
+    glyph_data = map(pos, gcollection, offset, transfunc) do pos, gc, offset, transfunc
+        Makie.text_quads(pos, to_value(gc), offset, transfunc)
     end
 
+    # unpack values from the one signal:
+    positions, pos_offset, quad_offset, uv_offset_width, scale = map((1, 2, 3, 4, 5)) do i
+        lift(getindex, glyph_data, i)
+    end
+    
     uniform_color = lift(glyphcollection) do gc
         if gc isa AbstractArray
             reduce(vcat, (Makie.collect_vector(g.colors, length(g.glyphs)) for g in gc),
@@ -260,14 +251,22 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         end
     end
 
+    cam = scene.camera
+    # gl_attributes[:preprojection] = Observable(Mat4f(I))
+    preprojection = map(space, markerspace, cam.projectionview, cam.resolution) do s, ms, pv, res
+        Makie.clip_to_space(cam, ms) * Makie.space_to_clip(cam, s)
+    end
+
     uniforms = Dict(
         :model => plot.model,
         :shape_type => Observable(Cint(3)),
         :color => uniform_color,
         :rotations => uniform_rotation,
         :markersize => scale,
-        :marker_offset => offset,
-        :offset => positions,
+        :position_offset => pos_offset,
+        :marker_offset => quad_offset,
+        :pos => positions,
+        :preprojection => preprojection,
         :uv_offset_width => uv_offset_width,
         :transform_marker => Observable(false),
         :billboard => Observable(false),
