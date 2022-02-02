@@ -125,7 +125,8 @@ function render_frame(screen::Screen; resize_buffers=true)
         # TODO, use actual boundingbox
         return Makie.zvalue2d(plot)
     end
-    sort!(screen.renderlist; by=sortby)
+    zvals = sortby.(screen.renderlist)
+    permute!(screen.renderlist, sortperm(zvals))
 
     # NOTE
     # The transparent color buffer is reused by SSAO and FXAA. Changing the
