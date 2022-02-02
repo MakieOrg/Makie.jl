@@ -1,6 +1,6 @@
 using Makie: get_texture_atlas, glyph_uv_width!, transform_func_obs, apply_transform
 using Makie: attribute_per_char, FastPixel, el32convert, Pixel
-using Makie: convert_arguments, preprojected_glyph_arrays
+using Makie: convert_arguments
 
 Makie.el32convert(x::GLAbstraction.Texture) = x
 Makie.convert_attribute(s::ShaderAbstractions.Sampler{RGBAf}, k::key"color") = s
