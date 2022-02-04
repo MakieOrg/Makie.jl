@@ -14,7 +14,7 @@
 - `strokewidth = 1` sets the width of the outline around the segments.
 - `vertex_per_deg = 1` defines the number of vertices per degree that are used to create the pie plot with polys. Increase if smoother circles are needed.
 - `radius = 1` sets the radius for the pie plot.
-- `inner_radius = 0` sets the innner radius if the plot. Choose as a value between 0 and `radius` to create a donut chart.
+- `inner_radius = 0` sets the inner radius of the plot. Choose as a value between 0 and `radius` to create a donut chart.
 - `offset = 0` rotates the pie plot counterclockwise as given in radians.
 - `transparency = false` adjusts how the plot deals with transparency.
 In GLMakie `transparency = true` results in using Order Independent Transparency.
@@ -22,7 +22,7 @@ In GLMakie `transparency = true` results in using Order Independent Transparency
 
 ### Other
 
-Set the axis property `autolimitaspect = 1` to ensure that a circle and not an elipsoid is plottet. 
+Set the axis property `autolimitaspect = 1` to ensure that a circle and not an ellipsoid is plotted. 
 
 ## Examples
 
