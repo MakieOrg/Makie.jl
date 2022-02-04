@@ -7,7 +7,7 @@
 
 \begin{examplefigure}{}
 ```julia
-using CairoMakie
+using CairoMakie, SparseArrays
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
 
