@@ -16,13 +16,12 @@
 - `radius = 1` sets the radius for the pie plot.
 - `inner_radius = 0` sets the inner radius of the plot. Choose as a value between 0 and `radius` to create a donut chart.
 - `offset = 0` rotates the pie plot counterclockwise as given in radians.
-- `transparency = false` adjusts how the plot deals with transparency.
-In GLMakie `transparency = true` results in using Order Independent Transparency.
+- `transparency = false` adjusts how the plot deals with transparency. In GLMakie `transparency = true` results in using Order Independent Transparency.
 - `inspectable = true` sets whether this plot should be seen by `DataInspector`.
 
 ### Other
 
-Set the axis property `autolimitaspect = 1` to ensure that a circle and not an ellipsoid is plotted. 
+Set the axis properties `autolimitaspect = 1` or `aspect = DataAspect()` to ensure that the pie chart looks like a circle and not an ellipsoid.
 
 ## Examples
 
@@ -35,17 +34,16 @@ Makie.inline!(true) # hide
 data   = [36, 12, 68, 5, 42, 27]
 colors = [:yellow, :orange, :red, :blue, :purple, :green]
 
-f, ax, plt = pie(data, 
+f, ax, plt = pie(data,
                  color = colors,
-                 radius = 4, 
+                 radius = 4,
                  inner_radius = 2,
                  strokecolor = :white,
-                 strokewidth = 5, 
-                 figure = (resolution= (800, 600), ), 
+                 strokewidth = 5,
                  axis = (autolimitaspect = 1, ) 
-    )
+                )
 
-f 
+f
 ```
 \end{examplefigure}
 
@@ -60,10 +58,9 @@ f, ax, plt = pie([π/2, 2π/3, π/4],
                 normalize=false,
                 offset = π/2,
                 color = [:orange, :purple, :green],
-                figure = (resolution= (800, 600), ),
                 axis = (autolimitaspect = 1,)
                 )
 
-f                
+f
 ```
 \end{examplefigure}
