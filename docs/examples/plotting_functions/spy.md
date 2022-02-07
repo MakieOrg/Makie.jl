@@ -1,4 +1,4 @@
-# Spy
+# spy
 
 {{doc spy}}
 
