@@ -44,12 +44,12 @@ void emit_vertex(vec2 position, vec2 uv, int index, float ratio)
 uniform int max_primtives;
 const float infinity = 1.0 / 0.0;
 
-out vec4 o_view_pos;
+out vec3 o_view_pos;
 out vec3 o_normal;
 
 void main(void)
 {
-    o_view_pos = vec4(0);
+    o_view_pos = vec3(0);
     o_normal = vec3(0);
     // We mark each of the four vertices as valid or not. Vertices can be
     // marked invalid on input (eg, if they contain NaN). We also mark them

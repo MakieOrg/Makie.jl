@@ -28,9 +28,15 @@ function _default(main::MatTypes{T}, ::Style, data::Dict) where T <: Colorant
         end => to_uvmesh
         preferred_camera = :orthographic_pixel
         fxaa = false
+        transparency = false
         shader = GLVisualizeShader(
             "fragment_output.frag", "image.vert", "texture.frag", "color.frag",
-            view = Dict("uv_swizzle" => "o_uv.$(spatialorder)"))
+            view = Dict(
+                "uv_swizzle" => "o_uv.$(spatialorder)",
+                "buffers" => output_buffers(to_value(transparency)),
+                "buffer_writes" => output_buffer_writes(to_value(transparency))
+            )
+        )
     end
 end
 
@@ -61,8 +67,13 @@ function gl_heatmap(main::MatTypes{T}, data::Dict) where T <: AbstractFloat
         stroke_width::Float32 = 0.0f0
         levels::Float32 = 0f0
         stroke_color = RGBA{Float32}(0,0,0,0)
+        transparency = false
         shader = GLVisualizeShader(
-            "fragment_output.frag", "heatmap.vert", "intensity.frag", "color.frag"
+            "fragment_output.frag", "heatmap.vert", "intensity.frag", "color.frag",
+            view = Dict(
+                "buffers" => output_buffers(to_value(transparency)),
+                "buffer_writes" => output_buffer_writes(to_value(transparency))
+            )
         )
         fxaa = false
     end
@@ -94,21 +105,25 @@ function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: VolumeE
         model = Mat4f(I)
         modelinv = const_lift(inv, model)
         color_map = default(Vector{RGBA}, s) => Texture
-        color_norm = color_map == nothing ? nothing : const_lift(extrema2f0, main)
-        color = color_map == nothing ? default(RGBA, s) : nothing
+        color_norm = color_map === nothing ? nothing : const_lift(extrema2f0, main)
+        color = color_map === nothing ? default(RGBA, s) : nothing
 
         algorithm = MaximumIntensityProjection
         absorption = 1f0
         isovalue = 0.5f0
         isorange = 0.01f0
         enable_depth = true
+        transparency = false
         shader = GLVisualizeShader(
             "fragment_output.frag", "util.vert", "volume.vert", "volume.frag",
             "color.frag",
             view = Dict(
                 "depth_init"  => vol_depth_init(to_value(enable_depth)),
+                "depth_default"  => vol_depth_default(to_value(enable_depth)),
                 "depth_main"  => vol_depth_main(to_value(enable_depth)),
-                "depth_write" => vol_depth_write(to_value(enable_depth))
+                "depth_write" => vol_depth_write(to_value(enable_depth)),
+                "buffers" => output_buffers(to_value(transparency)),
+                "buffer_writes" => output_buffer_writes(to_value(transparency))
             )
         )
         prerender = VolumePrerender(data[:transparency], data[:overdraw])
@@ -118,6 +133,7 @@ function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: VolumeE
 end
 
 vol_depth_init(enable) = enable ? "float depth = 100000.0;" : ""
+vol_depth_default(enable) = enable ? "gl_FragDepth = gl_FragCoord.z;" : ""
 function vol_depth_main(enable)
     if enable
         """
@@ -144,8 +160,13 @@ function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: RGBA
         color = color_map === nothing ? default(RGBA, s) : nothing
 
         algorithm = AbsorptionRGBA
+        transparency = false
         shader = GLVisualizeShader(
-            "fragment_output.frag", "util.vert", "volume.vert", "volume.frag", "color.frag"
+            "fragment_output.frag", "util.vert", "volume.vert", "volume.frag", "color.frag",
+            view = Dict(
+                "buffers" => output_buffers(to_value(transparency)),
+                "buffer_writes" => output_buffer_writes(to_value(transparency))
+            )
         )
         prerender = VolumePrerender(data[:transparency], data[:overdraw])
         postrender = () -> glDisable(GL_CULL_FACE)

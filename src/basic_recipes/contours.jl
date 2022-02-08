@@ -92,15 +92,20 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     cliprange = replace_automatic!(plot, :colorrange) do
         valuerange
     end
-    cmap = lift(colormap, levels, linewidth, alpha, cliprange, valuerange) do _cmap, l, lw, alpha, cliprange, vrange
+    cmap = lift(colormap, levels, alpha, cliprange, valuerange) do _cmap, l, alpha, cliprange, vrange
         levels = to_levels(l, vrange)
         nlevels = length(levels)
-        N = nlevels * 50
-        iso_eps = nlevels * ((vrange[2] - vrange[1]) / N) # TODO calculate this
+        N = 50 * nlevels
+
+        iso_eps = if haskey(plot, :isorange)
+            plot.isorange[]
+        else
+            nlevels * ((vrange[2] - vrange[1]) / N) # TODO calculate this
+        end
         cmap = to_colormap(_cmap)
         v_interval = cliprange[1] .. cliprange[2]
         # resample colormap and make the empty area between iso surfaces transparent
-        map(1:N) do i
+        return map(1:N) do i
             i01 = (i-1) / (N - 1)
             c = Makie.interpolated_getindex(cmap, i01)
             isoval = vrange[1] + (i01 * (vrange[2] - vrange[1]))
@@ -108,16 +113,16 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
                 (isoval in v_interval) || return false
                 v0 || (abs(level - isoval) <= iso_eps)
             end
-            RGBAf(Colors.color(c), line ? alpha : 0.0)
+            return RGBAf(Colors.color(c), line ? alpha : 0.0)
         end
     end
-    volume!(
-        plot, x, y, z, volume, colormap = cmap, colorrange = cliprange, algorithm = 7,
-        transparency = plot.transparency, overdraw = plot.overdraw,
-        ambient = plot.ambient, diffuse = plot.diffuse, lightposition = plot.lightposition,
-        shininess = plot.shininess, specular = plot.specular, inspectable = plot.inspectable,
-        enable_depth = plot.enable_depth
-    )
+
+    attr = Attributes(plot)
+    attr[:colorrange] = cliprange
+    attr[:colormap] = cmap
+    attr[:algorithm] = 7
+    pop!(attr, :levels)
+    volume!(plot, attr, x, y, z, volume)
 end
 
 function color_per_level(color, colormap, colorrange, alpha, levels)

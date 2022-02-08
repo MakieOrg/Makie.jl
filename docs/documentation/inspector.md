@@ -124,7 +124,7 @@ function show_barplot(inspector::DataInspector, plot::BarPlot, idx)
     update_tooltip_alignment!(inspector, proj_pos)
 
     # Get the rectangle BarPlot generated for Poly
-    # `_bbox2D` is a node meant for saving a `Rect2` indicator. There is also
+    # `_bbox2D` is a observable meant for saving a `Rect2` indicator. There is also
     # a `_bbox3D`. Here we keep `_bbox2D` updated and use it as a source for
     # our custom indicator.
     a._bbox2D[] = plot.plots[1][1][][idx]

@@ -133,7 +133,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
         arrowtail, color, linecolor, linestyle, linewidth, lengthscale,
         arrowhead, arrowsize, arrowcolor, quality,
         # passthrough
-        lightposition, ambient, diffuse, specular, shininess,
+        diffuse, specular, shininess,
         fxaa, ssao, transparency, visible, inspectable
     )
 
@@ -153,7 +153,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
                 Point2f(p1 .- shift) => Point2f(p1 .- shift .+ (dir .* s))
             end
         end
-    
+
         scene = parent_scene(arrowplot)
         rotations = directions
 
@@ -196,6 +196,9 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
         )
     else
         fxaa_bool = @lift($fxaa == automatic ? true : $fxaa)
+        markersize = lift(Any, arrowsize) do as
+            as === automatic ? Vec3f(0.2, 0.2, 0.3) : as
+        end
         start = lift(points, directions, align, lengthscale) do points, dirs, align, s
             map(points, dirs) do p, dir
                 if align in (:head, :lineend, :tailend, :headstart, :center)
@@ -210,8 +213,8 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
             arrowplot,
             start, rotations = directions,
             marker = @lift(arrow_tail(3, $arrowtail, $quality)),
-            markersize = lift(directions, normalize, linewidth, lengthscale) do dirs, n, linewidth, ls
-                lw = linewidth === automatic ? 0.05f0 : linewidth
+            markersize = lift(directions, normalize, linewidth, lengthscale, markersize) do dirs, n, linewidth, ls, ms
+                lw = linewidth === automatic ? minimum(ms) * 0.5 : linewidth
                 if n
                     Vec3f(lw, lw, ls)
                 else
@@ -220,7 +223,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
             end,
             color = line_c, colormap = colormap,
             fxaa = fxaa_bool, ssao = ssao,
-            lightposition = lightposition, ambient = ambient, diffuse = diffuse,
+            diffuse = diffuse,
             specular = specular, shininess = shininess, inspectable = inspectable,
             transparency = transparency, visible = visible
         )
@@ -228,12 +231,10 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
             arrowplot,
             start, rotations = directions,
             marker = @lift(arrow_head(3, $arrowhead, $quality)),
-            markersize = lift(Any, arrowsize) do as
-                as === automatic ? Vec3f(0.2, 0.2, 0.3) : as
-            end,
+            markersize = markersize,
             color = arrow_c, colormap = colormap,
             fxaa = fxaa_bool, ssao = ssao,
-            lightposition = lightposition, ambient = ambient, diffuse = diffuse,
+            diffuse = diffuse,
             specular = specular, shininess = shininess, inspectable = inspectable,
             transparency = transparency, visible = visible
         )

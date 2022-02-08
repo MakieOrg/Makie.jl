@@ -14,7 +14,7 @@ mutable struct Screen <: GLScreen
     renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}}
     postprocessors::Vector{PostProcessor}
     cache::Dict{UInt64, RenderObject}
-    cache2plot::Dict{UInt16, AbstractPlot}
+    cache2plot::Dict{UInt32, AbstractPlot}
     framecache::Matrix{RGB{N0f8}}
     render_tick::Observable{Nothing}
     window_open::Observable{Bool}
@@ -27,7 +27,7 @@ mutable struct Screen <: GLScreen
             renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}},
             postprocessors::Vector{PostProcessor},
             cache::Dict{UInt64, RenderObject},
-            cache2plot::Dict{UInt16, AbstractPlot},
+            cache2plot::Dict{UInt32, AbstractPlot},
         )
         s = size(framebuffer)
         return new(
@@ -67,9 +67,9 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
             error("Could not find $(typeof(subplot)) in current GLMakie screen!")
         end
 
-        # These need explicit clean up because (some of) the source nodes
+        # These need explicit clean up because (some of) the source observables
         # remain whe the plot is deleated.
-        for k in (:lightposition, :normalmatrix)
+        for k in (:normalmatrix, )
             if haskey(renderobject.uniforms, k)
                 n = renderobject.uniforms[k]
                 for input in n.inputs
@@ -324,6 +324,7 @@ function Screen(;
         (GLFW_FOCUS_ON_SHOW, WINDOW_CONFIG.focus_on_show[]),
         (GLFW.DECORATED, WINDOW_CONFIG.decorated[]),
         (GLFW.FLOATING, WINDOW_CONFIG.float[]),
+        # (GLFW.TRANSPARENT_FRAMEBUFFER, true)
     ]
 
     window = try
@@ -358,6 +359,7 @@ function Screen(;
 
     postprocessors = [
         enable_SSAO[] ? ssao_postprocessor(fb) : empty_postprocessor(),
+        OIT_postprocessor(fb),
         enable_FXAA[] ? fxaa_postprocessor(fb) : empty_postprocessor(),
         to_screen_postprocessor(fb)
     ]
@@ -370,7 +372,7 @@ function Screen(;
         Tuple{ZIndex, ScreenID, RenderObject}[],
         postprocessors,
         Dict{UInt64, RenderObject}(),
-        Dict{UInt16, AbstractPlot}(),
+        Dict{UInt32, AbstractPlot}(),
     )
 
     GLFW.SetWindowRefreshCallback(window, window -> begin
@@ -414,12 +416,9 @@ function global_gl_screen(resolution::Tuple, visibility::Bool, tries = 1)
 end
 
 
-
 #################################################################################
 ### Point picking
 ################################################################################
-
-
 
 function pick_native(screen::Screen, rect::Rect2i)
     isopen(screen) || return Matrix{SelectionID{Int}}(undef, 0, 0)
@@ -434,11 +433,6 @@ function pick_native(screen::Screen, rect::Rect2i)
     sid = zeros(SelectionID{UInt32}, widths(rect)...)
     if rx > 0 && ry > 0 && rx + rw <= w && ry + rh <= h
         glReadPixels(rx, ry, rw, rh, buff.format, buff.pixeltype, sid)
-        for i in eachindex(sid)
-            if sid[i][2] > 0x3f800000
-                sid[i] = SelectionID(0, sid[i].index)
-            end
-        end
         return sid
     else
         error("Pick region $rect out of screen bounds ($w, $h).")
@@ -499,8 +493,7 @@ function Makie.pick_closest(scene::SceneLike, screen::Screen, xy, range)
     x, y =  xy .+ 1 .- Vec2f(x0, y0)
     for i in 1:dx, j in 1:dy
         d = (x-i)^2 + (y-j)^2
-        if (d < min_dist) && (sid[i, j][1] > 0x00000000) &&
-            (sid[i, j][2] < 0x3f800000) && haskey(screen.cache2plot, sid[i, j][1])
+        if (d < min_dist) && (sid[i, j][1] > 0) && haskey(screen.cache2plot, sid[i, j][1])
             min_dist = d
             id = convert(SelectionID{Int}, sid[i, j])
         end

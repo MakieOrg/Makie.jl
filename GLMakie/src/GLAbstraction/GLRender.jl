@@ -91,7 +91,7 @@ function render(vao::GLVertexArray{T}, mode::GLenum=GL_TRIANGLES) where T <: Vec
 end
 
 function render(vao::GLVertexArray{T}, mode::GLenum=GL_TRIANGLES) where T <: TOrSignal{UnitRange{Int}}
-    r = to_value(vao.indices)  
+    r = to_value(vao.indices)
     offset = first(r) - 1 # 1 based -> 0 based
     ndraw = length(r)
     nverts = length(vao)
@@ -156,6 +156,10 @@ end
 function enabletransparency()
     glEnablei(GL_BLEND, 0)
     glDisablei(GL_BLEND, 1)
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+    # This does:
+    # target.rgb = source.a * source.rgb + (1 - source.a) * target.rgb
+    # target.a = 0 * source.a + 1 * target.a
+    # the latter is required to keep target.a = 1 for the OIT pass
+    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE)
     return
 end

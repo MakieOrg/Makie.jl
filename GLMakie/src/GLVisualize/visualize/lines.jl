@@ -79,9 +79,13 @@ function line_visualization(position::Union{VectorTypes{T}, MatTypes{T}}, data::
             len0 = length(p) - 1
             return isempty(p) ? Cuint[] : Cuint[0; 0:len0; len0]
         end => to_index_buffer
+        transparency        = false
         shader              = GLVisualizeShader(
-            "fragment_output.frag", "util.vert", "lines.vert", "lines.geom", 
-            "lines.frag"
+            "fragment_output.frag", "util.vert", "lines.vert", "lines.geom", "lines.frag",
+            view = Dict(
+                "buffers" => output_buffers(to_value(transparency)),
+                "buffer_writes" => output_buffer_writes(to_value(transparency))
+            )
         )
         gl_primitive        = GL_LINE_STRIP_ADJACENCY
         valid_vertex        = const_lift(p_vec) do points
@@ -118,9 +122,13 @@ function _default(positions::VectorTypes{T}, s::style"linesegment", data::Dict) 
         fxaa                = false
         indices             = const_lift(length, positions) => to_index_buffer
         # TODO update boundingbox
+        transparency = false
         shader              = GLVisualizeShader(
-            "fragment_output.frag", "util.vert", "line_segment.vert", 
-            "line_segment.geom", "lines.frag"
+            "fragment_output.frag", "util.vert", "line_segment.vert", "line_segment.geom", "lines.frag",
+            view = Dict(
+                "buffers" => output_buffers(to_value(transparency)),
+                "buffer_writes" => output_buffer_writes(to_value(transparency))
+            )
         )
         gl_primitive        = GL_LINES
     end

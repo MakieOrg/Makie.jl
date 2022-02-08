@@ -65,7 +65,9 @@ using MakieCore: Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter
 using MakieCore: ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
 using MakieCore: Key, @key_str, Automatic, automatic, @recipe
 using MakieCore: Pixel, px, Unit, Billboard
-import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, calculated_attributes!, get_attribute, plotsym, plotkey, attributes, used_attributes
+using MakieCore: not_implemented_for
+import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, calculated_attributes!,
+get_attribute, plotsym, plotkey, attributes, used_attributes
 import MakieCore: heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface, text, volume
 import MakieCore: heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, surface!, text!, volume!
 import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
@@ -85,7 +87,7 @@ include("interaction/PriorityObservable.jl")
 include("types.jl")
 include("utilities/utilities.jl")
 include("utilities/texture_atlas.jl")
-include("interaction/nodes.jl")
+include("interaction/observables.jl")
 include("interaction/liftmacro.jl")
 include("colorsampler.jl")
 include("patterns.jl")
@@ -143,6 +145,7 @@ include("layouting/boundingbox.jl")
 include("stats/conversions.jl")
 include("stats/hist.jl")
 include("stats/density.jl")
+include("stats/ecdf.jl")
 include("stats/distributions.jl")
 include("stats/crossbar.jl")
 include("stats/boxplot.jl")
@@ -275,6 +278,7 @@ end
 
 include("figures.jl")
 export content
+export resize_to_layout!
 
 include("makielayout/MakieLayout.jl")
 # re-export MakieLayout
@@ -290,5 +294,7 @@ include("basic_recipes/text.jl")
 export Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter, Surface, Text, Volume
 export heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface, text, volume
 export heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, surface!, text!, volume!
+
+export PointLight, EnvironmentLight, AmbientLight, SSAO
 
 end # module

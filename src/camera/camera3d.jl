@@ -77,7 +77,7 @@ There are also a few generally applicable controls:
 You can also make adjustments to the camera position, rotation and zoom by calling relevant functions:
 
 - `translate_cam!(scene, v)` will translate the camera by the given world/plot space vector `v`.
-- `rotate_cam!(scene, angles)` will rotate the camera around its axes with the corresponding angles. The first angle will rotate around the cameras "right" that is the screens horizontal axis, the second around the up vector/vertical axis or `Vec3f(0, 0, +-1)` if `fixed_axis = true`, and the third will rotate around the view direction i.e. the axis out of the screen. The rotation respects the the current `rotation_center` of the camera.
+- `rotate_cam!(scene, angles)` will rotate the camera around its axes with the corresponding angles. The first angle will rotate around the cameras "right" that is the screens horizontal axis, the second around the up vector/vertical axis or `Vec3f(0, 0, +-1)` if `fixed_axis = true`, and the third will rotate around the view direction i.e. the axis out of the screen. The rotation respects the current `rotation_center` of the camera.
 - `zoom!(scene, zoom_step)` will change the zoom level of the scene without translating or rotating the scene. `zoom_step` applies multiplicatively to `cam.zoom_mult` which is used as a multiplier to the fov (perspective projection) or width and height (orthographic projection).
 """
 function Camera3D(scene; kwargs...)
@@ -222,18 +222,16 @@ function Camera3D(scene; kwargs...)
         end
         return Consume(false)
     end
-
+    update_cam!(scene, cam)
     cam
 end
 
 # These imitate the old camera
-function cam3d!(scene; zoom_shift_lookat = true, fixed_axis = true, kwargs...)
+cam3d!(scene; zoom_shift_lookat = true, fixed_axis = true, kwargs...) =
     Camera3D(scene, zoom_shift_lookat = zoom_shift_lookat, fixed_axis = fixed_axis; kwargs...)
-end
-function cam3d_cad!(scene; cad = true, zoom_shift_lookat = false, fixed_axis = false, kwargs...)
-    Camera3D(scene, cad = cad, zoom_shift_lookat = zoom_shift_lookat, fixed_axis = fixed_axis; kwargs...)
-end
 
+cam3d_cad!(scene; cad = true, zoom_shift_lookat = false, fixed_axis = false, kwargs...) =
+    Camera3D(scene, cad = cad, zoom_shift_lookat = zoom_shift_lookat, fixed_axis = fixed_axis; kwargs...)
 
 function deselect_all_cameras!(scene)
     cam = cameracontrols(scene)
@@ -597,9 +595,8 @@ function update_cam!(scene::Scene, cam::Camera3D)
 
     view = Makie.lookat(eyeposition, lookat, upvector)
 
-    scene.camera.projection[] = proj
-    scene.camera.view[] = view
-    scene.camera.projectionview[] = proj * view
+    set_proj_view!(camera(scene), proj, view)
+
     scene.camera.eyeposition[] = cam.eyeposition[]
 end
 
@@ -634,5 +631,15 @@ function update_cam!(scene::Scene, camera::Camera3D, eyeposition, lookat, up = V
     camera.eyeposition[] = Vec3f(eyeposition)
     camera.upvector[] = Vec3f(up)
     update_cam!(scene, camera)
+    return
+end
+
+function show_cam(scene)
+    cam = cameracontrols(scene)
+    println("cam=cameracontrols(scene)")
+    println("cam.eyeposition[] = ", round.(cam.eyeposition[], digits=2))
+    println("cam.lookat[] = ", round.(cam.lookat[], digits=2))
+    println("cam.upvector[] = ", round.(cam.upvector[], digits=2))
+    println("cam.fov[] = ", round.(cam.fov[], digits=2))
     return
 end

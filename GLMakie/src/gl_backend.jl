@@ -17,7 +17,6 @@ using .GLAbstraction
 const atlas_texture_cache = Dict{Any, Tuple{Texture{Float16, 2}, Function}}()
 
 function get_texture!(atlas)
-    Makie.set_glyph_resolution!(Makie.High)
     # clean up dead context!
     filter!(atlas_texture_cache) do (ctx, tex_func)
         if GLAbstraction.context_alive(ctx)
@@ -56,8 +55,14 @@ function get_texture!(atlas)
 end
 
 # TODO
+# find a better way to handle this
+# enable_SSAO and FXAA adjust the rendering pipeline and are currently per screen
 const enable_SSAO = Ref(false)
 const enable_FXAA = Ref(true)
+# This adjusts a factor in the rendering shaders for order independent 
+# transparency. This should be the same for all of them (within one rendering 
+# pipeline) otherwise depth "order" will be broken.
+const transparency_weight_scale = Ref(1000f0)
 
 include("GLVisualize/GLVisualize.jl")
 using .GLVisualize
