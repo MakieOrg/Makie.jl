@@ -1,28 +1,4 @@
-#=
-A lot of visualization forms in GLVisualize are realised in the form of instanced
-particles. This is because they can be handled very efficiently by OpenGL.
-There are quite a few different ways to feed instances with different attributes.
-The main constructor for particles is a tuple of (Primitive, Position), whereas
-position can come in all forms and shapes. You can leave away the primitive.
-In that case, GLVisualize will fill in some default that is anticipated to make
-the most sense for the datatype.
-=#
-
-#3D primitives
-const Primitives3D = Union{AbstractGeometry{3}, AbstractMesh}
-#2D primitives AKA sprites, since they are shapes mapped onto a 2D rectangle
-const Sprites = Union{AbstractGeometry{2}, Shape, Char, Type}
-const AllPrimitives = Union{AbstractGeometry, Shape, Char, AbstractMesh}
-
 using Makie: RectanglePacker
-
-# There is currently no way to get the two following two signatures
-# under one function, which is why we delegate to meshparticle
-function _default(
-        p::Tuple{TOrSignal{Pr}, VectorTypes{P}}, s::Style, data::Dict
-    ) where {Pr <: Primitives3D, P <: Point}
-    return meshparticle(p, s, data)
-end
 
 function to_meshcolor(color::TOrSignal{Vector{T}}) where T <: Colorant
     TextureBuffer(color)
@@ -60,103 +36,12 @@ vec2quaternion(rotation::Observable) = lift(vec2quaternion, rotation)
 vec2quaternion(rotation::Makie.Quaternion)= Vec4f(rotation.data)
 vec2quaternion(rotation)= vec2quaternion(to_rotation(rotation))
 GLAbstraction.gl_convert(rotation::Makie.Quaternion)= Vec4f(rotation.data)
-
-
-"""
-This is the main function to assemble particles with a GLNormalMesh as a primitive
-"""
-function meshparticle(p, s, data)
-    rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
-    rot = vec2quaternion(rot)
-    delete!(data, :rotation)
-    @gen_defaults! data begin
-        primitive = p[1] => to_mesh
-        position = p[2] => TextureBuffer
-        position_x = nothing => TextureBuffer
-        position_y = nothing => TextureBuffer
-        position_z = nothing => TextureBuffer
-
-        scale = Vec3f(1) => TextureBuffer
-        scale_x = nothing => TextureBuffer
-        scale_y = nothing => TextureBuffer
-        scale_z = nothing => TextureBuffer
-
-        rotation = rot => TextureBuffer
-        texturecoordinates = nothing
-        shading = true
-    end
-
-    @gen_defaults! data begin
-        color_map = nothing => Texture
-        color_norm = nothing
-        intensity = nothing
-        image = nothing
-        color = if color_map == nothing
-            default(RGBA{Float32}, s)
-        else
-            nothing
-        end => to_meshcolor
-        vertex_color = Vec4f(1)
-        matcap = nothing => Texture
-        fetch_pixel = false
-        uv_scale = Vec2f(1)
-
-        instances = const_lift(length, position)
-        shading = true
-        transparency = false
-        shader = GLVisualizeShader(
-            "util.vert", "particles.vert", "standard.frag", "fragment_output.frag",
-            view = Dict(
-                "position_calc" => position_calc(position, position_x, position_y, position_z, TextureBuffer),
-                "light_calc" => light_calc(shading),
-                "buffers" => output_buffers(to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(to_value(transparency))
-            )
-        )
-    end
-    if Makie.to_value(intensity) != nothing
-        if Makie.to_value(position) != nothing
-            data[:intensity] = intensity_convert_tex(intensity, position)
-            data[:len] = const_lift(length, position)
-        else
-            data[:intensity] = intensity_convert_tex(intensity, position_x)
-            data[:len] = const_lift(length, position_x)
-        end
-    end
-    data
-end
-
 to_pointsize(x::Number) = Float32(x)
 to_pointsize(x) = Float32(x[1])
-
 struct PointSizeRender
     size::Observable
 end
 (x::PointSizeRender)() = glPointSize(to_pointsize(x.size[]))
-"""
-This is the most primitive particle system, which uses simple points as primitives.
-This is supposed to be the fastest way of displaying particles!
-"""
-function _default(position::VectorTypes{T}, s::style"speed", data::Dict) where T <: Point
-    @gen_defaults! data begin
-        vertex       = position => GLBuffer
-        color_map    = nothing  => Texture
-        color        = (color_map === nothing ? default(RGBA{Float32}, s) : nothing) => GLBuffer
-        color_norm   = nothing
-        scale        = 2f0
-        transparency = false
-        shader       = GLVisualizeShader(
-            "fragment_output.frag", "dots.vert", "dots.frag",
-            view = Dict(
-                "buffers" => output_buffers(to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(to_value(transparency))
-            )
-        )
-        gl_primitive = GL_POINTS
-    end
-    data[:prerender] = PointSizeRender(data[:scale])
-    data
-end
 
 """
 returns the Shape for the distancefield algorithm
@@ -194,32 +79,118 @@ primitive_distancefield(x) = nothing
 primitive_distancefield(::Char) = get_texture!(get_texture_atlas())
 primitive_distancefield(::Observable{Char}) = get_texture!(get_texture_atlas())
 
-function _default(
-        p::Tuple{TOrSignal{Matrix{C}}, VectorTypes{P}}, s::Style, data::Dict
-    ) where {C <: Colorant, P <: Point}
-    data[:image] = p[1] # we don't want this to be overwritten by user
-    @gen_defaults! data begin
-        scale = lift(x-> Vec2f(size(x)), p[1])
-        shape = RECTANGLE
-        offset = Vec2f(0)
-    end
-    sprites(p, s, data)
+function char_scale_factor(char, font)
+    # uv * size(ta.data) / Makie.PIXELSIZE_IN_ATLAS[] is the padded glyph size
+    # normalized to the size the glyph was generated as.
+    ta = Makie.get_texture_atlas()
+    lbrt = glyph_uv_width!(ta, char, font)
+    width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
+    width * Vec2f(size(ta.data)) / Makie.PIXELSIZE_IN_ATLAS[]
 end
 
-function _default(
-        p::Tuple{TOrSignal{Matrix{C}}, VectorTypes{P}}, s::Style, data::Dict
-    ) where {C <: AbstractFloat, P <: Point}
-    data[:distancefield] = p[1] # we don't want this to be overwritten by user
-    @gen_defaults! data begin
-        scale = lift(x-> Vec2f(size(x)), p[1])
-        shape = RECTANGLE
-        offset = Vec2f(0)
-    end
-    sprites(p, s, data)
+# This works the same for x being widths and offsets
+rescale_glyph(char::Char, font, x) = x * char_scale_factor(char, font)
+function rescale_glyph(char::Char, font, xs::Vector)
+    f = char_scale_factor(char, font)
+    map(x -> f * x, xs)
+end
+function rescale_glyph(str::String, font, x)
+    [x * char_scale_factor(char, font) for char in collect(str)]
+end
+function rescale_glyph(str::String, font, xs::Vector)
+    map((char, x) -> x * char_scale_factor(char, font), collect(str), xs)
 end
 
-function _default(
-        p::Tuple{VectorTypes{Matrix{C}}, VectorTypes{P}}, s::Style, data::Dict
+@nospecialize
+"""
+This is the main function to assemble particles with a GLNormalMesh as a primitive
+"""
+function draw_mesh_particle(p, data)
+    rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
+    rot = vec2quaternion(rot)
+    delete!(data, :rotation)
+    @gen_defaults! data begin
+        primitive = p[1] => to_mesh
+        position = p[2] => TextureBuffer
+        position_x = nothing => TextureBuffer
+        position_y = nothing => TextureBuffer
+        position_z = nothing => TextureBuffer
+
+        scale = Vec3f(1) => TextureBuffer
+        scale_x = nothing => TextureBuffer
+        scale_y = nothing => TextureBuffer
+        scale_z = nothing => TextureBuffer
+
+        rotation = rot => TextureBuffer
+        texturecoordinates = nothing
+        shading = true
+    end
+
+    @gen_defaults! data begin
+        color_map = nothing => Texture
+        color_norm = nothing
+        intensity = nothing
+        image = nothing
+        color = nothing => to_meshcolor
+        vertex_color = Vec4f(1)
+        matcap = nothing => Texture
+        fetch_pixel = false
+        uv_scale = Vec2f(1)
+
+        instances = const_lift(length, position)
+        shading = true
+        transparency = false
+        shader = GLVisualizeShader(
+            "util.vert", "particles.vert", "standard.frag", "fragment_output.frag",
+            view = Dict(
+                "position_calc" => position_calc(position, nothing, nothing, nothing, TextureBuffer),
+                "light_calc" => light_calc(shading),
+                "buffers" => output_buffers(to_value(transparency)),
+                "buffer_writes" => output_buffer_writes(to_value(transparency))
+            )
+        )
+    end
+    if Makie.to_value(intensity) != nothing
+        if Makie.to_value(position) != nothing
+            data[:intensity] = intensity_convert_tex(intensity, position)
+            data[:len] = const_lift(length, position)
+        else
+            data[:intensity] = intensity_convert_tex(intensity, position_x)
+            data[:len] = const_lift(length, position_x)
+        end
+    end
+    return assemble_shader(data)
+end
+
+
+"""
+This is the most primitive particle system, which uses simple points as primitives.
+This is supposed to be the fastest way of displaying particles!
+"""
+function draw_pixel_scatter(position::VectorTypes, data::Dict)
+    @gen_defaults! data begin
+        vertex       = position => GLBuffer
+        color_map    = nothing  => Texture
+        color        = (color_map === nothing ? default(RGBA{Float32}, s) : nothing) => GLBuffer
+        color_norm   = nothing
+        scale        = 2f0
+        transparency = false
+        shader       = GLVisualizeShader(
+            "fragment_output.frag", "dots.vert", "dots.frag",
+            view = Dict(
+                "buffers" => output_buffers(to_value(transparency)),
+                "buffer_writes" => output_buffer_writes(to_value(transparency))
+            )
+        )
+        gl_primitive = GL_POINTS
+    end
+    data[:prerender] = PointSizeRender(data[:scale])
+    return assemble_shader(data)
+end
+
+
+function draw_scatter(
+        p::Tuple{VectorTypes{Matrix{C}}, VectorTypes{P}}, data::Dict
     ) where {C <: Colorant, P <: Point}
     images = to_value(p[1])
     isempty(images) && error("Can not display empty vector of images as primitive")
@@ -248,74 +219,21 @@ function _default(
         shape = RECTANGLE
         offset = Vec2f(0)
     end
-    sprites(p, s, data)
+    return draw_scatter(p, data)
 end
-
-# There is currently no way to get the two following two signatures
-# under one function, which is why we delegate to sprites
-_default(p::Tuple{TOrSignal{Pr}, VectorTypes{P}}, s::Style, data::Dict) where {Pr <: Sprites, P<:Point} =
-    sprites(p,s,data)
-
-
-function _default(
-            p::Tuple{TOrSignal{Pr}, G}, s::Style, data::Dict
-        ) where {Pr <: Sprites, G <: Tuple}
-    @gen_defaults! data begin
-        shape      = const_lift(primitive_shape, p[1])
-        position   = nothing => GLBuffer
-        position_x = p[2][1] => GLBuffer
-        position_y = p[2][2] => GLBuffer
-        position_z = length(p[2]) > 2 ? p[2][3] : 0f0 => GLBuffer
-    end
-    sprites(p, s, data)
-end
-
-
-# To map (scale, scale_x, scale_y, scale_z) -> scale
-combine_scales(scale, x::Nothing, y::Nothing, z::Nothing) = scale
-combine_scales(s::Nothing, x, y, z::Nothing) = Vec2f.(x, y)
-combine_scales(s::Nothing, x, y, z) = Vec3f.(x, y, z)
-
-function char_scale_factor(char, font)
-    # uv * size(ta.data) / Makie.PIXELSIZE_IN_ATLAS[] is the padded glyph size
-    # normalized to the size the glyph was generated as.
-    ta = Makie.get_texture_atlas()
-    lbrt = glyph_uv_width!(ta, char, font)
-    width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
-    width * Vec2f(size(ta.data)) / Makie.PIXELSIZE_IN_ATLAS[]
-end
-
-# This works the same for x being widths and offsets
-rescale_glyph(char::Char, font, x) = x * char_scale_factor(char, font)
-function rescale_glyph(char::Char, font, xs::Vector)
-    f = char_scale_factor(char, font)
-    map(x -> f * x, xs)
-end
-function rescale_glyph(str::String, font, x)
-    [x * char_scale_factor(char, font) for char in collect(str)]
-end
-function rescale_glyph(str::String, font, xs::Vector)
-    map((char, x) -> x * char_scale_factor(char, font), collect(str), xs)
-end
-
 
 """
-Main assemble functions for sprite particles.
+Main assemble functions for scatter particles.
 Sprites are anything like distance fields, images and simple geometries
 """
-function sprites(p, s, data)
+function draw_scatter(p, data)
     rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
     rot = vec2quaternion(rot)
     delete!(data, :rotation)
 
     # Rescale to include glyph padding and shape
     if isa(to_value(p[1]), Char)
-        scale = map(combine_scales,
-            pop!(data, :scale, Observable(nothing)),
-            pop!(data, :scale_x, Observable(nothing)),
-            pop!(data, :scale_y, Observable(nothing)),
-            pop!(data, :scale_z, Observable(nothing))
-        )
+        scale = data[:scale]
         font = get(data, :font, Observable(Makie.defaultfont()))
         offset = get(data, :offset, Observable(Vec2f(0)))
 
@@ -327,16 +245,8 @@ function sprites(p, s, data)
 
     @gen_defaults! data begin
         shape       = const_lift(x-> Int32(primitive_shape(x)), p[1])
-        position    = p[2]    => GLBuffer
-        position_x  = nothing => GLBuffer
-        position_y  = nothing => GLBuffer
-        position_z  = nothing => GLBuffer
-
+        position    = p[2] => GLBuffer
         scale       = const_lift(primitive_scale, p[1]) => GLBuffer
-        scale_x     = nothing => GLBuffer
-        scale_y     = nothing => GLBuffer
-        scale_z     = nothing => GLBuffer
-
         rotation    = rot => GLBuffer
         image       = nothing => Texture
     end
@@ -346,7 +256,7 @@ function sprites(p, s, data)
         intensity       = nothing => GLBuffer
         color_map       = nothing => Texture
         color_norm      = nothing
-        color           = (color_map == nothing ? default(RGBA, s) : nothing) => GLBuffer
+        color           = nothing => GLBuffer
 
         glow_color      = RGBA{Float32}(0,0,0,0) => GLBuffer
         stroke_color    = RGBA{Float32}(0,0,0,0) => GLBuffer
@@ -364,7 +274,7 @@ function sprites(p, s, data)
             "fragment_output.frag", "util.vert", "sprites.geom",
             "sprites.vert", "distance_shape.frag",
             view = Dict(
-                "position_calc" => position_calc(position, position_x, position_y, position_z, GLBuffer),
+                "position_calc" => position_calc(position, nothing, nothing, nothing, GLBuffer),
                 "buffers" => output_buffers(to_value(transparency)),
                 "buffer_writes" => output_buffer_writes(to_value(transparency))
             )
@@ -374,52 +284,8 @@ function sprites(p, s, data)
     end
     # Exception for intensity, to make it possible to handle intensity with a
     # different length compared to position. Intensities will be interpolated in that case
-    if position != nothing
-        data[:intensity] = intensity_convert(intensity, position)
-        data[:len] = const_lift(length, position)
-    else
-        data[:intensity] = intensity_convert(intensity, position_x)
-        data[:len] = const_lift(length, position_x)
-    end
-    return data
+    data[:intensity] = intensity_convert(intensity, position)
+    data[:len] = const_lift(length, position)
+    return assemble_shader(data)
 end
-
-
-"""
-Transforms text into a particle system of sprites, by inferring the
-texture coordinates in the texture atlas, widths and positions of the characters.
-"""
-function _default(main::Tuple{TOrSignal{S}, P}, s::Style, data::Dict) where {S <: AbstractString, P}
-    data[:position] = main[2]
-    _default(main[1], s, data)
-end
-
-function _default(main::TOrSignal{S}, s::Style, data::Dict) where S <: AbstractString
-    @gen_defaults! data begin
-        relative_scale  = 4 #
-        start_position  = Point2f(0)
-        atlas           = get_texture_atlas()
-        distancefield   = get_texture!(atlas)
-        stroke_width    = 0f0
-        glow_width      = 0f0
-        font            = to_font("default")
-        scale_primitive = true
-        position        = const_lift(calc_position, main, start_position, relative_scale, font, atlas)
-        prerender       = () -> begin
-            glDisable(GL_DEPTH_TEST)
-            glDepthMask(GL_TRUE)
-            glDisable(GL_CULL_FACE)
-            enabletransparency()
-        end
-        uv_offset_width = const_lift(main) do str
-            Vec4f[glyph_uv_width!(atlas, c, font) for c = str]
-        end
-    end
-
-    # Rescale to include glyph padding and shape
-    data[:offset] = map(rescale_glyph, main, data[:font], data[:offset])
-    data[:scale] = map(rescale_glyph, main, data[:font], data[:scale])
-
-    delete!(data, :font)
-    _default((DISTANCEFIELD, position), s, data)
-end
+@specialize

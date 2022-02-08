@@ -1,10 +1,42 @@
-"""
-A matrix of colors is interpreted as an image
-"""
-_default(::Observable{Array{RGBA{N0f8}, 2}}, ::Style{:default}, ::Dict{Symbol,Any})
+using .GLAbstraction: StandardPrerender
 
+function to_uvmesh(geom)
+    return NativeMesh(const_lift(GeometryBasics.uv_mesh, geom))
+end
 
-function _default(main::MatTypes{T}, ::Style, data::Dict) where T <: Colorant
+function to_plainmesh(geom)
+    return NativeMesh(const_lift(GeometryBasics.triangle_mesh, geom))
+end
+
+struct VolumePrerender
+    sp::StandardPrerender
+end
+VolumePrerender(a, b) = VolumePrerender(StandardPrerender(a, b))
+
+function (x::VolumePrerender)()
+    x.sp()
+    glEnable(GL_CULL_FACE)
+    glCullFace(GL_FRONT)
+end
+
+vol_depth_init(enable) = enable ? "float depth = 100000.0;" : ""
+vol_depth_default(enable) = enable ? "gl_FragDepth = gl_FragCoord.z;" : ""
+function vol_depth_main(enable)
+    if enable
+        """
+        vec4 frag_coord = projectionview * model * vec4(pos, 1);
+        depth = min(depth, frag_coord.z / frag_coord.w);
+        """
+    else "" end
+end
+function vol_depth_write(enable)
+    if enable
+        "gl_FragDepth = depth == 100000.0 ? gl_FragDepth : 0.5 * depth + 0.5;"
+    else "" end
+end
+
+@nospecialize
+function draw_image(main, data::Dict)
     @gen_defaults! data begin
         spatialorder = "yx"
     end
@@ -38,20 +70,14 @@ function _default(main::MatTypes{T}, ::Style, data::Dict) where T <: Colorant
             )
         )
     end
+    return assemble_shader(data)
 end
 
-function to_uvmesh(geom)
-    return NativeMesh(const_lift(GeometryBasics.uv_mesh, geom))
-end
-
-function to_plainmesh(geom)
-    return NativeMesh(const_lift(GeometryBasics.triangle_mesh, geom))
-end
 
 """
 A matrix of Intensities will result in a contourf kind of plot
 """
-function gl_heatmap(main::MatTypes{T}, data::Dict) where T <: AbstractFloat
+function draw_heatmap(main, data::Dict)
     @gen_defaults! data begin
         intensity = main => Texture
         primitive = Rect2(0f0,0f0,1f0,1f0) => native_triangle_mesh
@@ -73,28 +99,10 @@ function gl_heatmap(main::MatTypes{T}, data::Dict) where T <: AbstractFloat
         )
         fxaa = false
     end
-    return data
+    return assemble_shader(data)
 end
 
-#Volumes
-const VolumeElTypes = Union{Gray, AbstractFloat}
-
-const default_style = Style{:default}()
-
-using .GLAbstraction: StandardPrerender
-
-struct VolumePrerender
-    sp::StandardPrerender
-end
-VolumePrerender(a, b) = VolumePrerender(StandardPrerender(a, b))
-
-function (x::VolumePrerender)()
-    x.sp()
-    glEnable(GL_CULL_FACE)
-    glCullFace(GL_FRONT)
-end
-
-function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: VolumeElTypes
+function draw_volume(main::VolumeTypes, data::Dict)
     @gen_defaults! data begin
         volumedata = main => Texture
         hull = Rect3f(Vec3f(0), Vec3f(1)) => to_plainmesh
@@ -124,46 +132,6 @@ function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: VolumeE
         prerender = VolumePrerender(data[:transparency], data[:overdraw])
         postrender = () -> glDisable(GL_CULL_FACE)
     end
-    return data
+    return assemble_shader(data)
 end
-
-vol_depth_init(enable) = enable ? "float depth = 100000.0;" : ""
-vol_depth_default(enable) = enable ? "gl_FragDepth = gl_FragCoord.z;" : ""
-function vol_depth_main(enable)
-    if enable
-        """
-        vec4 frag_coord = projectionview * model * vec4(pos, 1);
-        depth = min(depth, frag_coord.z / frag_coord.w);
-        """
-    else "" end
-end
-function vol_depth_write(enable)
-    if enable
-        "gl_FragDepth = depth == 100000.0 ? gl_FragDepth : 0.5 * depth + 0.5;"
-    else "" end
-end
-
-function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: RGBA
-    @gen_defaults! data begin
-        volumedata = main => Texture
-        hull = Rect3f(Vec3f(0), Vec3f(1)) => to_plainmesh
-        model = Mat4f(I)
-        modelinv = const_lift(inv, model)
-        # These don't do anything but are needed for type specification in the frag shader
-        color_map = nothing => Texture
-        color_norm = nothing
-        color = color_map === nothing ? default(RGBA, s) : nothing
-
-        algorithm = AbsorptionRGBA
-        transparency = false
-        shader = GLVisualizeShader(
-            "fragment_output.frag", "util.vert", "volume.vert", "volume.frag",
-            view = Dict(
-                "buffers" => output_buffers(to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(to_value(transparency))
-            )
-        )
-        prerender = VolumePrerender(data[:transparency], data[:overdraw])
-        postrender = () -> glDisable(GL_CULL_FACE)
-    end
-end
+@specialize

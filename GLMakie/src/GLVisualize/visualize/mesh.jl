@@ -1,6 +1,6 @@
 
-function _default(mesh::TOrSignal{M}, s::Style, data::Dict) where M <: GeometryBasics.Mesh
-    return @gen_defaults! data begin
+function visualize_mesh(@nospecialize(mesh), data::Dict)
+    @gen_defaults! data begin
         shading = true
         backlight = 0f0
         main = mesh
@@ -22,4 +22,5 @@ function _default(mesh::TOrSignal{M}, s::Style, data::Dict) where M <: GeometryB
             )
         )
     end
+    return assemble_shader(data)
 end

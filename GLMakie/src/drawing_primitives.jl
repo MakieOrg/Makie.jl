@@ -99,6 +99,20 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     robj
 end
 
+function Base.insert!(screen::GLScreen, scene::Scene, @nospecialize(x::Combined))
+    # poll inside functions to make wait on compile less prominent
+    pollevents(screen)
+    if isempty(x.plots) # if no plots inserted, this truly is an atomic
+        draw_atomic(screen, scene, x)
+    else
+        foreach(x.plots) do x
+            # poll inside functions to make wait on compile less prominent
+            pollevents(screen)
+            insert!(screen, scene, x)
+        end
+    end
+end
+
 function remove_automatic!(attributes)
     filter!(attributes) do (k, v)
         to_value(v) != automatic
@@ -174,22 +188,8 @@ function handle_intensities!(attributes)
     end
 end
 
-function Base.insert!(screen::GLScreen, scene::Scene, @nospecialize(x::Combined))
-    # poll inside functions to make wait on compile less prominent
-    pollevents(screen)
-    if isempty(x.plots) # if no plots inserted, this truly is an atomic
-        draw_atomic(screen, scene, x)
-    else
-        foreach(x.plots) do x
-            # poll inside functions to make wait on compile less prominent
-            pollevents(screen)
-            insert!(screen, scene, x)
-        end
-    end
-end
-
 function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Union{Scatter, MeshScatter}))
-    robj = cached_robj!(screen, scene, x) do gl_attributes
+    return cached_robj!(screen, scene, x) do gl_attributes
         # signals not supported for shading yet
         gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
         marker = lift_convert(:marker, pop!(gl_attributes, :marker), x)
@@ -210,16 +210,20 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Union{Scat
                 delete!(gl_attributes, :color_norm)
                 delete!(gl_attributes, :color_map)
             end
-            visualize(positions, Style(:speed), Dict{Symbol, Any}(gl_attributes))
+            return GLVisualize.draw_pixel_scatter(positions, gl_attributes)
         else
             handle_intensities!(gl_attributes)
-            visualize((marker, positions), Style(:default), Dict{Symbol, Any}(gl_attributes))
+            if x isa MeshScatter
+                return GLVisualize.draw_mesh_particle((marker, positions), gl_attributes)
+            else
+                return GLVisualize.draw_scatter((marker, positions), gl_attributes)
+            end
         end
     end
 end
 
 function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Lines))
-    robj = cached_robj!(screen, scene, x) do gl_attributes
+    return cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
         ls = to_value(linestyle)
@@ -232,12 +236,12 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Lines))
         positions = handle_view(x[1], data)
         positions = apply_transform(transform_func_obs(x), positions)
         handle_intensities!(data)
-        visualize(positions, Style(:lines), data)
+        return GLVisualize.draw_lines(positions, data)
     end
 end
 
 function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::LineSegments))
-    robj = cached_robj!(screen, scene, x) do gl_attributes
+    return cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
         ls = to_value(linestyle)
@@ -256,13 +260,10 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::LineSegmen
             delete!(data, :color_map)
             delete!(data, :color_norm)
         end
-        visualize(positions, Style(:linesegment), data)
+
+        return GLVisualize.draw_linesegments(positions, data)
     end
 end
-
-value_or_first(x::AbstractArray) = first(x)
-value_or_first(x::StaticArray) = x
-value_or_first(x) = x
 
 function draw_atomic(screen::GLScreen, scene::Scene,
         x::Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
@@ -343,7 +344,7 @@ function draw_atomic(screen::GLScreen, scene::Scene,
         gl_attributes[:uv_offset_width] = uv_offset_width
         gl_attributes[:distancefield] = get_texture!(atlas)
         gl_attributes[:visible] = x.visible
-        robj = visualize((DISTANCEFIELD, positions), Style(:default), gl_attributes)
+        robj = GLVisualize.draw_scatter((DISTANCEFIELD, positions), gl_attributes)
         # Draw text in screenspace
         if x.space[] == :screen
             robj[:view] = Observable(Mat4f(I))
@@ -402,7 +403,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
         pop!(gl_attributes, :color)
         gl_attributes[:stroke_width] = pop!(gl_attributes, :thickness)
         # gl_attributes[:color_map] = Texture(gl_attributes[:color_map], minfilter=:nearest)
-        GLVisualize.assemble_shader(GLVisualize.gl_heatmap(tex, gl_attributes))
+        return GLVisualize.draw_heatmap(tex, gl_attributes)
     end
 end
 
@@ -432,7 +433,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Image)
         else
             Texture(img, minfilter = interp)
         end
-        visualize(tex, Style(:default), gl_attributes)
+        GLVisualize.draw_image(tex, gl_attributes)
     end
 end
 
@@ -488,7 +489,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, meshplot::Mesh)
             end
             return mesh
         end
-        visualize(mesh, Style(:default), gl_attributes)
+        return GLVisualize.visualize_mesh(mesh, gl_attributes)
     end
 end
 
@@ -543,11 +544,11 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
             args = map((xpos, ypos, mat)) do arg
                 Texture(map(x-> convert(Array, el32convert(x)), arg); minfilter=:nearest)
             end
-            return visualize(args, Style(:surface), gl_attributes)
+            return GLVisualize.draw_surface(args, gl_attributes)
         else
             gl_attributes[:ranges] = to_range.(to_value.(x[1:2]))
             z_data = Texture(el32convert(x[3]); minfilter=:nearest)
-            return visualize(z_data, Style(:surface), gl_attributes)
+            return GLVisualize.draw_surface(z_data, gl_attributes)
         end
     end
     return robj
@@ -569,6 +570,6 @@ function draw_atomic(screen::GLScreen, scene::Scene, vol::Volume)
             )
             return convert(Mat4f, m) * m2
         end
-        return visualize(vol[4], Style(:default), gl_attributes)
+        return GLVisualize.draw_volume(vol[4], gl_attributes)
     end
 end
