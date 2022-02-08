@@ -28,7 +28,8 @@ function _default(main::MatTypes{T}, ::Style, data::Dict) where T <: Colorant
         end => to_uvmesh
         preferred_camera = :orthographic_pixel
         fxaa = false
-        shader = GLVisualizeShader("fragment_output.frag", "image.vert", "texture.frag",
+        shader = GLVisualizeShader(
+            "fragment_output.frag", "image.vert", "texture.frag", "color.frag",
             view = Dict("uv_swizzle" => "o_uv.$(spatialorder)"))
     end
 end
@@ -53,10 +54,16 @@ function gl_heatmap(main::MatTypes{T}, data::Dict) where T <: AbstractFloat
         lowclip = RGBAf(0, 0, 0, 0)
         color_map = nothing => Texture
         color_norm = nothing
+        image = nothing => Texture
+        pattern = nothing => Texture
+        matcap = nothing => Texture
+        uv_scale = Vec2f(1)
         stroke_width::Float32 = 0.0f0
         levels::Float32 = 0f0
         stroke_color = RGBA{Float32}(0,0,0,0)
-        shader = GLVisualizeShader("fragment_output.frag", "heatmap.vert", "intensity.frag")
+        shader = GLVisualizeShader(
+            "fragment_output.frag", "heatmap.vert", "intensity.frag", "color.frag"
+        )
         fxaa = false
     end
     return data
@@ -97,6 +104,7 @@ function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: VolumeE
         enable_depth = true
         shader = GLVisualizeShader(
             "fragment_output.frag", "util.vert", "volume.vert", "volume.frag",
+            "color.frag",
             view = Dict(
                 "depth_init"  => vol_depth_init(to_value(enable_depth)),
                 "depth_main"  => vol_depth_main(to_value(enable_depth)),
@@ -136,7 +144,9 @@ function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: RGBA
         color = color_map === nothing ? default(RGBA, s) : nothing
 
         algorithm = AbsorptionRGBA
-        shader = GLVisualizeShader("fragment_output.frag", "util.vert", "volume.vert", "volume.frag")
+        shader = GLVisualizeShader(
+            "fragment_output.frag", "util.vert", "volume.vert", "volume.frag", "color.frag"
+        )
         prerender = VolumePrerender(data[:transparency], data[:overdraw])
         postrender = () -> glDisable(GL_CULL_FACE)
     end

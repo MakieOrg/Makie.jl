@@ -6,6 +6,7 @@ uniform sampler1D position_y;
 in vec2 vertices;
 
 uniform mat4 projection, view, model;
+uniform mat3 normalmatrix;
 uniform uint objectid;
 uniform float depth_shift;
 
@@ -20,10 +21,6 @@ ivec2 ind2sub(ivec2 dim, int linearindex){
 }
 
 void main(){
-    //Outputs for ssao, which we don't use for 2d shaders like heatmap/image
-    o_view_pos = vec4(0);
-    o_normal = vec3(0);
-
     int index = gl_InstanceID;
     vec2 offset = vertices;
     ivec2 offseti = ivec2(offset);
@@ -38,6 +35,8 @@ void main(){
     float x = texelFetch(position_x, index2D.x, 0).x;
     float y = texelFetch(position_y, index2D.y, 0).x;
 
-    gl_Position = projection * view * model * vec4(x, y, 0, 1);
+    o_normal = normalmatrix * vec3(0, 0, -1);
+    o_view_pos = view * model * vec4(x, y, 0, 1);
+    gl_Position = projection * o_view_pos;
     gl_Position.z += gl_Position.w * depth_shift;
 }

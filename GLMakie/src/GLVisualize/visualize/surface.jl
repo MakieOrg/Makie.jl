@@ -106,7 +106,7 @@ function surface(main, s::Style{:surface}, data::Dict)
         instances = const_lift(x->(size(x,1)-1) * (size(x,2)-1), main) => "number of planes used to render the surface"
         shader = GLVisualizeShader(
             "fragment_output.frag", "util.vert", "surface.vert",
-            "standard.frag",
+            "standard.frag", "color.frag",
             view = Dict(
                 "position_calc" => position_calc(position, position_x, position_y, position_z, Texture),
                 "normal_calc" => normal_calc(normal, to_value(invert_normals)),

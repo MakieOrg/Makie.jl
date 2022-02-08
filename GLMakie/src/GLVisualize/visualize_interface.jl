@@ -168,7 +168,7 @@ function visualize(@nospecialize(main), @nospecialize(s), @nospecialize(data))
         pattern = nothing => Texture
         matcap = nothing => Texture
         color_map = nothing => Texture
-        color_range = nothing => Vec2f
+        color_norm = nothing
         uv_scale = Vec2f(1)
     end
     return assemble_shader(data)

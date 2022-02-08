@@ -107,6 +107,7 @@ function meshparticle(p, s, data)
         backlight = 0f0
         shader = GLVisualizeShader(
             "util.vert", "particles.vert", "fragment_output.frag", "standard.frag",
+            "color.frag",
             view = Dict(
                 "position_calc" => position_calc(position, position_x, position_y, position_z, TextureBuffer),
                 "light_calc" => light_calc(shading)
@@ -143,7 +144,9 @@ function _default(position::VectorTypes{T}, s::style"speed", data::Dict) where T
         color        = (color_map == nothing ? default(RGBA{Float32}, s) : nothing) => GLBuffer
         color_norm   = nothing
         scale        = 2f0
-        shader       = GLVisualizeShader("fragment_output.frag", "dots.vert", "dots.frag")
+        shader       = GLVisualizeShader(
+            "fragment_output.frag", "dots.vert", "dots.frag"
+        )
         gl_primitive = GL_POINTS
     end
     data[:prerender] = PointSizeRender(data[:scale])
@@ -311,7 +314,7 @@ function sprites(p, s, data)
         fxaa             = false
         shader           = GLVisualizeShader(
             "fragment_output.frag", "util.vert", "sprites.geom",
-            "sprites.vert", "colors.frag", "distance_shape.frag",
+            "sprites.vert", "color.frag", "distance_shape.frag",
             view = Dict("position_calc"=>position_calc(position, position_x, position_y, position_z, GLBuffer))
         )
         scale_primitive = true
@@ -319,7 +322,7 @@ function sprites(p, s, data)
     end
     # Exception for intensity, to make it possible to handle intensity with a
     # different length compared to position. Intensities will be interpolated in that case
-    if position != nothing
+    if position !== nothing
         data[:intensity] = intensity_convert(intensity, position)
         data[:len] = const_lift(length, position)
     else

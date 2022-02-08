@@ -68,7 +68,7 @@ function line_visualization(position::Union{VectorTypes{T}, MatTypes{T}}, data::
         intensity           = nothing
         color_map           = nothing => Texture
         color_norm          = nothing
-        color               = (color_map == nothing ? default(RGBA, s) : nothing) => GLBuffer
+        color               = (color_map === nothing ? default(RGBA, s) : nothing) => GLBuffer
         thickness::Float32  = 2f0
         pattern             = nothing
         fxaa                = false
@@ -79,7 +79,10 @@ function line_visualization(position::Union{VectorTypes{T}, MatTypes{T}}, data::
             len0 = length(p) - 1
             return isempty(p) ? Cuint[] : Cuint[0; 0:len0; len0]
         end => to_index_buffer
-        shader              = GLVisualizeShader("fragment_output.frag", "util.vert", "lines.vert", "lines.geom", "lines.frag")
+        shader              = GLVisualizeShader(
+            "fragment_output.frag", "util.vert", "lines.vert", "lines.geom", 
+            "lines.frag"
+        )
         gl_primitive        = GL_LINE_STRIP_ADJACENCY
         valid_vertex        = const_lift(p_vec) do points
             map(p-> Float32(all(isfinite, p)), points)
@@ -115,7 +118,10 @@ function _default(positions::VectorTypes{T}, s::style"linesegment", data::Dict) 
         fxaa                = false
         indices             = const_lift(length, positions) => to_index_buffer
         # TODO update boundingbox
-        shader              = GLVisualizeShader("fragment_output.frag", "util.vert", "line_segment.vert", "line_segment.geom", "lines.frag")
+        shader              = GLVisualizeShader(
+            "fragment_output.frag", "util.vert", "line_segment.vert", 
+            "line_segment.geom", "lines.frag"
+        )
         gl_primitive        = GL_LINES
     end
     if !isa(pattern, Texture) && pattern != nothing

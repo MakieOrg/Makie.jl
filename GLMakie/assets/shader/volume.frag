@@ -8,9 +8,9 @@ in vec3 o_light_dir;
 
 {{volumedata_type}} volumedata;
 
-{{color_map_type}} color_map;
 {{color_type}} color;
-{{color_norm_type}} color_norm;
+// {{color_map_type}} color_map;
+// {{color_norm_type}} color_norm;
 
 uniform float absorption = 1.0;
 uniform vec3 eyeposition;
@@ -26,51 +26,58 @@ uniform float isovalue;
 uniform float isorange;
 
 uniform mat4 model, projectionview;
+uniform mat3 normalmatrix;
 
 const float max_distance = 1.3;
 
 const int num_samples = 200;
 const float step_size = max_distance / float(num_samples);
 
-float _normalize(float val, float from, float to)
-{
-    return (val-from) / (to - from);
-}
+// float _normalize(float val, float from, float to)
+// {
+//     return (val-from) / (to - from);
+// }
 
-vec4 color_lookup(float intensity, Nothing color_map, Nothing norm, vec4 color)
-{
-    return color;
-}
+// vec4 color_lookup(float intensity, Nothing color_map, Nothing norm, vec4 color)
+// {
+//     return color;
+// }
 
-vec4 color_lookup(float intensity, samplerBuffer color_ramp, vec2 norm, Nothing color)
-{
-    return texelFetch(color_ramp, int(_normalize(intensity, norm.x, norm.y)*textureSize(color_ramp)));
-}
+// vec4 color_lookup(float intensity, samplerBuffer color_ramp, vec2 norm, Nothing color)
+// {
+//     return texelFetch(color_ramp, int(_normalize(intensity, norm.x, norm.y)*textureSize(color_ramp)));
+// }
 
-vec4 color_lookup(float intensity, samplerBuffer color_ramp, Nothing norm, Nothing color)
-{
-    return vec4(0);  // stub method
-}
+// vec4 color_lookup(float intensity, samplerBuffer color_ramp, Nothing norm, Nothing color)
+// {
+//     return vec4(0);  // stub method
+// }
 
-vec4 color_lookup(float intensity, sampler1D color_ramp, vec2 norm, Nothing color)
-{
-    return texture(color_ramp, _normalize(intensity, norm.x, norm.y));
-}
+// vec4 color_lookup(float intensity, sampler1D color_ramp, vec2 norm, Nothing color)
+// {
+//     return texture(color_ramp, _normalize(intensity, norm.x, norm.y));
+// }
 
-vec4 color_lookup(samplerBuffer colormap, int index)
-{
-    return texelFetch(colormap, index);
-}
+// vec4 color_lookup(samplerBuffer colormap, int index)
+// {
+//     return texelFetch(colormap, index);
+// }
 
-vec4 color_lookup(sampler1D colormap, int index)
-{
-    return texelFetch(colormap, index, 0);
-}
+// vec4 color_lookup(sampler1D colormap, int index)
+// {
+//     return texelFetch(colormap, index, 0);
+// }
 
-vec4 color_lookup(Nothing colormap, int index)
-{
-    return vec4(0);
-}
+// vec4 color_lookup(Nothing colormap, int index)
+// {
+//     return vec4(0);
+// }
+
+vec4 _color(Nothing c);
+vec4 _color(vec3 c);
+vec4 _color(vec4 c);
+vec4 get_color(vec4 color, float cm_index);
+vec4 get_color(vec4 color, vec3 normal);
 
 vec3 gennormal(vec3 uvw, float d)
 {
@@ -138,7 +145,8 @@ vec4 volume(vec3 front, vec3 dir)
     int i = 0;
     for (i; i < num_samples; ++i) {
         float intensity = texture(volumedata, pos).x;
-        vec4 density = color_lookup(intensity, color_map, color_norm, color);
+        // vec4 density = color_lookup(intensity, color_map, color_norm, color);
+        vec4 density = get_color(_color(color), intensity);
         float opacity = step_size * density.a * absorption;
         T *= 1.0-opacity;
         if (T <= 0.01)
@@ -190,7 +198,8 @@ vec4 volumeindexedrgba(vec3 front, vec3 dir)
     int i = 0;
     for (i; i < num_samples; ++i) {
         int index = int(texture(volumedata, pos).x) - 1;
-        vec4 density = color_lookup(color_map, index);
+        // vec4 density = color_lookup(color_map, index);
+        vec4 density = get_color(_color(color), index);
         float opacity = step_size*density.a;
         Lo += (T*opacity)*density.rgb;
         T *= 1.0 - opacity;
@@ -212,7 +221,8 @@ vec4 contours(vec3 front, vec3 dir)
     // may write: float depth = 100000.0;
     for (i; i < num_samples; ++i) {
         float intensity = texture(volumedata, pos).x;
-        vec4 density = color_lookup(intensity, color_map, color_norm, color);
+        // vec4 density = color_lookup(intensity, color_map, color_norm, color);
+        vec4 density = get_color(_color(color), intensity);
         float opacity = density.a;
         if(opacity > 0.0){
             {{depth_main}}
@@ -221,7 +231,8 @@ vec4 contours(vec3 front, vec3 dir)
             // depth = min(depth, frag_coord.z / frag_coord.w);
             vec3 N = gennormal(pos, step_size);
             vec3 L = normalize(o_light_dir - pos);
-            vec3 opaque = blinnphong(N, camdir, L, density.rgb);
+            vec4 textured = get_color(density, normalmatrix * N);
+            vec3 opaque = blinnphong(N, camdir, L, textured.rgb);
             Lo += (T * opacity) * opaque;
             T *= 1.0 - opacity;
             if (T <= 0.01)
@@ -240,7 +251,8 @@ vec4 isosurface(vec3 front, vec3 dir)
     vec3 pos = front;
     vec4 c = vec4(0.0);
     int i = 0;
-    vec4 diffuse_color = color_lookup(isovalue, color_map, color_norm, color);
+    // vec4 diffuse_color = color_lookup(isovalue, color_map, color_norm, color);
+    vec4 diffuse_color = get_color(_color(color), isovalue);
     vec3 camdir = normalize(-dir);
     {{depth_init}}
     // may write: float depth = 100000.0;
@@ -253,9 +265,10 @@ vec4 isosurface(vec3 front, vec3 dir)
             // depth = min(depth, frag_coord.z / frag_coord.w);
             vec3 N = gennormal(pos, step_size);
             vec3 L = normalize(o_light_dir - pos);
+            vec4 textured = get_color(diffuse_color, normalmatrix * N);
             // back & frontface...
-            vec3 c1 = blinnphong(N, camdir, L, diffuse_color.rgb);
-            vec3 c2 = blinnphong(-N, camdir, L, diffuse_color.rgb);
+            vec3 c1 = blinnphong(N, camdir, L, textured.rgb);
+            vec3 c2 = blinnphong(-N, camdir, L, textured.rgb);
             c = vec4(0.5*c1 + 0.5*c2, diffuse_color.a);
             break;
         }
@@ -277,7 +290,8 @@ vec4 mip(vec3 front, vec3 dir)
         if(maximum < density)
             maximum = density;
     }
-    return color_lookup(maximum, color_map, color_norm, color);
+    // return color_lookup(maximum, color_map, color_norm, color);
+    return get_color(_color(color), maximum);
 }
 
 uniform uint objectid;

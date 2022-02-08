@@ -10,7 +10,7 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 {{pattern_type}} pattern;
 {{matcap_type}} matcap;
 {{color_map_type}}  color_map;
-{{color_range_type}} color_range; 
+{{color_norm_type}} color_norm; 
 
 uniform vec4 highclip;
 uniform vec4 lowclip;
@@ -73,7 +73,7 @@ vec4 _get_colormap_color(sampler1D cm, vec2 colorrange, float cm_index){
 }
 
 vec4 get_colormap_color(float cm_index){
-    return _get_colormap_color(color_map, color_range, cm_index);
+    return _get_colormap_color(color_map, color_norm, cm_index);
 }
 vec4 get_texture_color(vec2 uv){return _texture_color(image, uv);}
 vec4 get_pattern_color(){return _texture_color(pattern, pattern_uv());}
@@ -88,6 +88,12 @@ vec4 get_color(vec4 color, vec2 uv, vec3 normal){
         get_pattern_color() *
         get_matcap_color(normal);
 }
+vec4 get_color(vec4 color, vec3 normal){
+    return color * get_pattern_color() * get_matcap_color(normal);
+}
+vec4 get_color(vec4 color, float cm_index){
+    return color * get_colormap_color(cm_index);
+}
 vec4 get_color(vec4 color, float cm_index, vec2 uv, vec3 normal){
     return 
         color *
@@ -96,3 +102,36 @@ vec4 get_color(vec4 color, float cm_index, vec2 uv, vec3 normal){
         get_pattern_color() *
         get_matcap_color(normal);
 }
+
+/*
+Vertex:
+a) dots.vert           |
+b) line_segments.vert  |
+c) lines.vert          |
+d) particles.vert      |
+e) standard.vert       |
+f) surface.vert        |
+g) util.vert           | 
+*) no vert stuff
+
+Fragment:
+1) distance_shape.frag  | g
+2) intensity.frag       | *
+3) standard.frag        | gc, gd, gf
+4) texture.frag         | *
+5) volume.frag          | g, g
+0) no frag stuff
+
+Plots:
+- image?         *1
+- heatmap?       *2
+- volume-float   g5
+- volume-RGBA    g5
+- lines          gc0 <-
+- linesegments   gc0 <-
+- mesh           ge3 <-
+- meshscatter    gd3 <-
+- fastpixel      a0
+- scatter        g1
+- surface        gf3 <-
+*/
