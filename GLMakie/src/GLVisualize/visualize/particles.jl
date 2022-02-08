@@ -188,6 +188,16 @@ function draw_pixel_scatter(position::VectorTypes, data::Dict)
     return assemble_shader(data)
 end
 
+function draw_scatter(
+        p::Tuple{TOrSignal{Matrix{C}}, VectorTypes{P}}, data::Dict
+    ) where {C <: Colorant, P <: Point}
+    data[:image] = p[1] # we don't want this to be overwritten by user
+    @gen_defaults! data begin
+        scale = lift(x-> Vec2f(size(x)), p[1])
+        offset = Vec2f(0)
+    end
+    draw_scatter((RECTANGLE, p[2]), data)
+end
 
 function draw_scatter(
         p::Tuple{VectorTypes{Matrix{C}}, VectorTypes{P}}, data::Dict
