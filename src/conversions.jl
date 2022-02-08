@@ -218,14 +218,18 @@ end
 Takes an input `Polygon` and decomposes it to points.
 """
 function convert_arguments(PB::PointBased, pol::Polygon)
-    if isempty(pol.interiors)
-        return convert_arguments(PB, pol.exterior)
-    else
-        arr = copy(convert_arguments(PB, pol.exterior)[1])
+    arr = copy(convert_arguments(PB, pol.exterior)[1])
+    push!(arr, arr[1]) # close exterior
+    if !isempty(pol.interiors)
         push!(arr, Point2f(NaN))
-        append!(arr, convert_arguments(PB, pol.interiors)[1])
-        return (arr,)
+        for interior in pol.interiors
+            inter = convert_arguments(PB, interior)[1]
+            append!(arr, inter)
+            # close interior + separate!
+            push!(arr, inter[1], Point2f(NaN))
+        end
     end
+    return (arr,)
 end
 
 """
@@ -583,7 +587,7 @@ function tryrange(F, vec)
 end
 
 # OffsetArrays conversions
-function convert_arguments(sl::SurfaceLike, wm::OffsetArray) 
+function convert_arguments(sl::SurfaceLike, wm::OffsetArray)
   x1, y1 = wm.offsets .+ 1
   nx, ny = size(wm)
   x = range(x1, length = nx)
@@ -642,10 +646,9 @@ function to_triangles(faces::AbstractVector{TriangleFace{T}}) where T
 end
 
 function to_triangles(faces::AbstractMatrix{T}) where T <: Integer
-    let N = Val(size(faces, 2)), lfaces = faces
-        broadcast(1:size(faces, 1), N) do fidx, n
-            to_ndim(GLTriangleFace, ntuple(i-> lfaces[fidx, i], n), 0.0)
-        end
+    @assert size(faces, 2) == 3
+    return broadcast(1:size(faces, 1), 3) do fidx, n
+        GLTriangleFace(ntuple(i-> faces[fidx, i], n))
     end
 end
 
@@ -1246,4 +1249,3 @@ end
 function convert_attribute(value::AbstractGeometry, ::key"marker", ::key"meshscatter")
     return normal_mesh(value)
 end
-

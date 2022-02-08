@@ -147,7 +147,8 @@ function lookat(::Type{T}, eyePos::Vec{3}, lookAt::Vec{3}, up::Vec{3}) where T
 end
 
 function orthographicprojection(wh::Rect2, near::T, far::T) where T
-    orthographicprojection(zero(T), T(wh.w), zero(T), T(wh.h), near, far)
+    w, h = widths(wh)
+    orthographicprojection(zero(T), T(w), zero(T), T(h), near, far)
 end
 
 function orthographicprojection(
@@ -280,8 +281,7 @@ end
 function project(scene::Scene, point::T) where T<:StaticVector
     cam = scene.camera
     return project(
-        cam.projection[] *
-        cam.view[] *
+        cam.projectionview[] *
         transformationmatrix(scene)[],
         Vec2f(widths(pixelarea(scene)[])), point
     )

@@ -1,15 +1,15 @@
 # Lighting
 
-For 3D scenes, `GLMakie` offers several attributes to control the lighting of the scene. These are set per plot.
+For 3D scenes, `GLMakie` offers several attributes to control the lighting of the material.
 
 - `ambient::Vec3f`: Objects should never be completely dark; we use an ambient light to simulate background lighting, and give the object some color. Each element of the vector represents the intensity of color in R, G or B respectively.
 - `diffuse::Vec3f`: Simulates the directional impact which the light source has on the plot object. This is the most visually significant component of the lighting model; the more a part of an object faces the light source, the brighter it becomes. Each element of the vector represents the intensity of color in R, G or B respectively.
 - `specular::Vec3f`: Simulates the bright spot of a light that appears on shiny objects. Specular highlights are more inclined to the color of the light than the color of the object. Each element of the vector represents the intensity of color in R, G or B respectively.
-
 - `shininess::Float32`: Controls the shininess of the object. Higher shininess reduces the size of the highlight, and makes it sharper. This value must be positive.
 - `lightposition::Vec3f`: The location of the main light source; by default, the light source is at the location of the camera.
 
 You can find more information on how these were implemented [here](https://learnopengl.com/Lighting/Basic-Lighting).
+Some usage examples can be found in the [RPRMakie examples](https://makie.juliaplots.org/stable/documentation/backends/rprmakie/) and in the [examples](https://makie.juliaplots.org/stable/documentation/lighting/#examples).
 
 ## SSAO
 
@@ -35,11 +35,19 @@ A matcap (material capture) is a texture which is applied based on the normals o
 
 ## Examples
 
-\begin{examplefigure}{}
+\begin{showhtml}{}
 ```julia
-using GLMakie
-GLMakie.activate!() # hide
+using JSServe
+Page(exportable=true, offline=true)
+```
+\end{showhtml}
 
+\begin{showhtml}{}
+```julia
+using WGLMakie
+using JSServe
+
+WGLMakie.activate!() # hide
 xs = -10:0.1:10
 ys = -10:0.1:10
 zs = [10 * (cos(x) * cos(y)) * (.1 + exp(-(x^2 + y^2 + 1)/10)) for x in xs, y in ys]
@@ -47,20 +55,40 @@ zs = [10 * (cos(x) * cos(y)) * (.1 + exp(-(x^2 + y^2 + 1)/10)) for x in xs, y in
 fig, ax, pl = surface(xs, ys, zs, colormap = (:white, :white),
 
     # Light comes from (0, 0, 15), i.e the sphere
-    lightposition = Vec3f(0, 0, 15),
-    # base light of the plot only illuminates red colors
-    ambient = Vec3f(0.3, 0, 0),
+    axis = (
+        # Light comes from (0, 0, 15), i.e the sphere
+        lightposition = Vec3f(0, 0, 15),
+        # base light of the plot only illuminates red colors
+        ambient = RGBf(0.3, 0, 0),
+    ),
     # light from source (sphere) illuminates yellow colors
     diffuse = Vec3f(0.4, 0.4, 0),
     # reflections illuminate blue colors
     specular = Vec3f(0, 0, 1.0),
     # Reflections are sharp
-    shininess = 128f0
+    shininess = 128f0,
+    figure = (resolution=(1000, 800),)
 )
 mesh!(ax, Sphere(Point3f(0, 0, 15), 1f0), color=RGBf(1, 0.7, 0.3))
-fig
+
+app = JSServe.App() do session
+    light_rotation = JSServe.Slider(1:360)
+    shininess = JSServe.Slider(1:128)
+
+    pointlight = ax.scene.lights[1]
+    ambient = ax.scene.lights[2]
+    on(shininess) do value
+        pl.shininess = value
+    end
+    on(light_rotation) do degree
+        r = deg2rad(degree)
+        pointlight.position[] = Vec3f(sin(r)*10, cos(r)*10, 15)
+    end
+    JSServe.record_states(session, DOM.div(light_rotation, shininess, fig))
+end
+app
 ```
-\end{examplefigure}
+\end{showhtml}
 
 \begin{examplefigure}{}
 ```julia
@@ -70,19 +98,22 @@ GLMakie.enable_SSAO[] = true
 close(GLMakie.global_gl_screen()) # close any open screen
 
 fig = Figure()
-ax = LScene(fig[1, 1], scenekw = (SSAO = (radius = 5.0, blur = 3),))
+ssao = Makie.SSAO(radius = 5.0, blur = 3)
+ax = LScene(fig[1, 1], scenekw = (ssao=ssao,))
 # SSAO attributes are per scene
-ax.scene.theme[:SSAO][:bias][] = 0.025
+ax.scene.ssao.bias[] = 0.025
 
 box = Rect3(Point3f(-0.5), Vec3f(1))
 positions = [Point3f(x, y, rand()) for x in -5:5 for y in -5:5]
 meshscatter!(ax, positions, marker=box, markersize=1, color=:lightblue, ssao=true)
-
-GLMakie.enable_SSAO[] = false # hide
-close(GLMakie.global_gl_screen()) # hide
-fig # hide
+fig
 ```
 \end{examplefigure}
+
+```julia:disable-ssao
+GLMakie.enable_SSAO[] = false # hide
+close(GLMakie.global_gl_screen()) # hide
+```
 
 \begin{examplefigure}{}
 ```julia

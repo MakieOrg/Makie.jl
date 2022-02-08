@@ -13,7 +13,7 @@ uniform float depth_shift;
 out vec2 o_uv;
 flat out uvec2 o_objectid;
 
-out vec4 o_view_pos;
+out vec3 o_view_pos;
 out vec3 o_normal;
 
 ivec2 ind2sub(ivec2 dim, int linearindex){

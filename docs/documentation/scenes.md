@@ -4,7 +4,7 @@
 
 `Scene`s are fundamental building blocks of Makie figures.
 A Scene is like a container for `Plot`s and other `Scene`s.
-`Scenes` have `Plot`s (including an `Axis` if `show_axis = true`) and `Subscenes` associated with them.
+`Scenes` have `Plot`s and `Subscenes` associated with them.
 Every Scene also has a transformation, made up of _scale_, _translation_, and _rotation_.
 
 !!! note
@@ -28,7 +28,7 @@ A subscene is no different than a normal Scene, except that it is linked to a "p
 ## Scene Attributes
 
 * `scene.clear = true`: Scenes are drawn parent first onto the same image. If `clear = true` for a (sub)scene it will clear the previously drawn things in its region to its `backgroundcolor`. Otherwise the plots in `scene` will be drawn on top and the backgroundcolor will be ignored. Note that this is not technically an attribute but just a field of `Scene`.
-* `SSAO = Attributes(bias = 0.025, blur=2, radius=0.5)`: Controls SSAO settings, see lighting documentation.
+* `ssao = SSAO(bias = 0.025, blur=2, radius=0.5)`: Controls SSAO settings, see lighting documentation.
 * `resolution = (800, 600)`: Sets the size of the created window if the scene is the root scene.
 
 ## Modifying A Scene

@@ -1,4 +1,3 @@
-using Colors
 using ShaderAbstractions: InstancedProgram, Program
 using Makie: Key, plotkey
 using Colors: N0f8
@@ -294,22 +293,28 @@ function serialize_three(scene::Scene, plot::AbstractPlot)
     mesh[:uuid] = js_uuid(plot)
     mesh[:transparency] = plot.transparency
     mesh[:overdraw] = plot.overdraw
+
     uniforms = mesh[:uniforms]
     updater = mesh[:uniform_updater]
 
-    delete!(uniforms, :lightposition)
-
-    if haskey(plot, :lightposition)
-        eyepos = scene.camera.eyeposition
-        lightpos = lift(Vec3f, plot.lightposition, eyepos) do pos, eyepos
-            return ifelse(pos == :eyeposition, eyepos, pos)::Vec3f
-        end
-        uniforms[:lightposition] = serialize_three(lightpos[])
-        on(lightpos) do value
+    pointlight = Makie.get_point_light(scene)
+    if !isnothing(pointlight)
+        uniforms[:lightposition] = serialize_three(pointlight.position[])
+        on(pointlight.position) do value
             updater[] = [:lightposition, serialize_three(value)]
             return
         end
     end
+
+    ambientlight = Makie.get_ambient_light(scene)
+    if !isnothing(ambientlight)
+        uniforms[:ambient] = serialize_three(ambientlight.color[])
+        on(ambientlight.color) do value
+            updater[] = [:ambient, serialize_three(value)]
+            return
+        end
+    end
+
     if haskey(plot, :space)
         mesh[:space] = plot.space[]
     end

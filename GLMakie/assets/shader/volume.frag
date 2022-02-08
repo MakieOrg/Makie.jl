@@ -114,11 +114,12 @@ vec3 gennormal(vec3 uvw, float d)
     return normalize(a-b);
 }
 
+// Includes front and back-facing normals (N, -N)
 vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
-    float diff_coeff = max(dot(L, N), 0.0);
+    float diff_coeff = max(dot(L, N), 0.0) + max(dot(L, -N), 0.0);
     // specular coefficient
     vec3 H = normalize(L + V);
-    float spec_coeff = pow(max(dot(H, N), 0.0), shininess);
+    float spec_coeff = pow(max(dot(H, N), 0.0) + max(dot(H, -N), 0.0), shininess);
     if (diff_coeff <= 0.0 || isnan(spec_coeff))
         spec_coeff = 0.0;
     // final lighting model
@@ -266,10 +267,10 @@ vec4 isosurface(vec3 front, vec3 dir)
             vec3 N = gennormal(pos, step_size);
             vec3 L = normalize(o_light_dir - pos);
             vec4 textured = get_color(diffuse_color, normalmatrix * N);
-            // back & frontface...
-            vec3 c1 = blinnphong(N, camdir, L, textured.rgb);
-            vec3 c2 = blinnphong(-N, camdir, L, textured.rgb);
-            c = vec4(0.5*c1 + 0.5*c2, diffuse_color.a);
+            c = vec4(
+                blinnphong(N, camdir, L, textured.rgb),
+                textured.a
+            );
             break;
         }
         pos += dir;
@@ -329,6 +330,8 @@ float min_bigger_0(vec3 v1, vec3 v2){
 
 void main()
 {
+    {{depth_default}}
+    // may write: gl_FragDepth = gl_FragCoord.z;
     vec4 color;
     vec3 eye_unit = vec3(modelinv * vec4(eyeposition, 1));
     vec3 back_position = vec3(modelinv * vec4(frag_vert, 1));

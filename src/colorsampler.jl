@@ -34,9 +34,6 @@ You can use `norm`, to change the range of 0..1 to whatever you want.
 function interpolated_getindex(cmap::AbstractArray, value::Number, norm::VecTypes)
     cmin, cmax = norm
     i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0)
-    if !isfinite(i01)
-        i01 = 0.0
-    end
     return interpolated_getindex(cmap, i01)
 end
 
@@ -46,6 +43,9 @@ end
 Like getindex, but accepts values between 0..1 for `value` and interpolates those to the full range of `cmap`.
 """
 function interpolated_getindex(cmap::AbstractArray{T}, i01::AbstractFloat) where T
+    if !isfinite(i01)
+        error("Looking up a non-finite or NaN value in a colormap is undefined.")
+    end
     i1len = (i01 * (length(cmap) - 1)) + 1
     down = floor(Int, i1len)
     up = ceil(Int, i1len)

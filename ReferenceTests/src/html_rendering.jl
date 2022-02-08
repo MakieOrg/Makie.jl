@@ -52,6 +52,8 @@ function generate_test_summary(path, recorded_root)
     open(path, "w") do io
         for filename in readdir(recorded_root)
             media_recorded = joinpath(recorded_root, filename)
+            fname, ext = splitext(media_recorded)
+            ext == ".html" && continue
             println(io, "<h1> $filename </h1>")
             println(io, """
                 <div>

@@ -98,7 +98,7 @@ export interactions, register_interaction!, deregister_interaction!, activate_in
 export MouseEventTypes, MouseEvent, ScrollEvent, KeysEvent
 export hlines!, vlines!, abline!, hspan!, vspan!
 export Cycle
-
+export Cycled
 
 # from GridLayoutBase
 export GridLayout, GridPosition, GridSubposition

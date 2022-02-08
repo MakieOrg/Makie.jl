@@ -16,6 +16,8 @@ using JSServe: Session
 using JSServe: @js_str, onjs, Dependency, App
 using JSServe.DOM
 
+using RelocatableFolders: @path
+
 using ShaderAbstractions: VertexArray, Buffer, Sampler, AbstractSampler
 using ShaderAbstractions: InstancedProgram
 
@@ -30,8 +32,8 @@ struct WebGL <: ShaderAbstractions.AbstractContext end
 struct WGLBackend <: Makie.AbstractBackend end
 
 const THREE = Dependency(:THREE, ["https://unpkg.com/three@0.130.0/build/three.js"])
-const WGL = Dependency(:WGLMakie, [joinpath(@__DIR__, "wglmakie.js")])
-const WEBGL = Dependency(:WEBGL, [joinpath(@__DIR__, "WEBGL.js")])
+const WGL = Dependency(:WGLMakie, [@path joinpath(@__DIR__, "wglmakie.js")])
+const WEBGL = Dependency(:WEBGL, [@path joinpath(@__DIR__, "WEBGL.js")])
 
 include("three_plot.jl")
 include("serialization.jl")

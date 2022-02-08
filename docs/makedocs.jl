@@ -1,6 +1,8 @@
 using Pkg
+cd(@__DIR__)
 Pkg.activate(".")
-pkg"dev .. ../CairoMakie ../GLMakie ../WGLMakie"
+pkg"dev .. ../MakieCore ../CairoMakie ../GLMakie ../WGLMakie ../RPRMakie"
+pkg"add MeshIO GeometryBasics"
 Pkg.instantiate()
 Pkg.precompile()
 
@@ -19,10 +21,7 @@ cfg = GitHubActions() # this should pick up all details via GHA environment vari
 repo = "github.com/JuliaPlots/Makie.jl.git"
 push_preview = true
 
-deploydecision = deploy_folder(cfg; repo, push_preview,
-    devbranch = "master",
-    devurl = "dev",
-)
+deploydecision = deploy_folder(cfg; repo, push_preview, devbranch="master", devurl="dev")
 
 @info "Setting PREVIEW_FRANKLIN_WEBSITE_URL to $repo"
 ENV["PREVIEW_FRANKLIN_WEBSITE_URL"] = repo
@@ -45,7 +44,6 @@ function make_relative(s, here)
     hereparts = split(here, "/")
     thereparts = split(there, "/")
 
-
     # tutorials/layout-tutorial   tutorials/
     closest_common = 0
     for i in 1:min(length(thereparts), length(hereparts))
@@ -56,7 +54,7 @@ function make_relative(s, here)
         end
     end
     n_up = length(hereparts) - closest_common
-    therepart = join(thereparts[closest_common+1:end], "/")
+    therepart = join(thereparts[(closest_common + 1):end], "/")
     if n_up == 0
         therepart
     else
@@ -74,7 +72,6 @@ Replaces all absolute links in all html files in the __site folder with
 relative links.
 """
 function make_links_relative()
-
     old = pwd()
     try
         cd("__site")
@@ -84,32 +81,28 @@ function make_links_relative()
             html_files = filter(endswith(".html"), files)
             for file in html_files
                 s = read(joinpath(root, file), String)
-                
-                html = parsehtml(s)
-                
-                for e in PreOrderDFS(html.root)
-                    if (e isa HTMLElement{:script} ||
-                        e isa HTMLElement{:img} ||
-                        e isa HTMLElement{:video}) && haskey(e.attributes, "src")
+                s = replace(s, '\0' => "\\0")
 
+                html = parsehtml(s)
+
+                for e in PreOrderDFS(html.root)
+                    if (e isa HTMLElement{:script} || e isa HTMLElement{:img} || e isa HTMLElement{:video}) &&
+                       haskey(e.attributes, "src")
                         link = e.attributes["src"]
                         e.attributes["src"] = make_relative(link, path)
 
-                    elseif (e isa HTMLElement{:link} ||
-                            e isa HTMLElement{:a}) && haskey(e.attributes, "href")
-
+                    elseif (e isa HTMLElement{:link} || e isa HTMLElement{:a}) && haskey(e.attributes, "href")
                         link = e.attributes["href"]
                         e.attributes["href"] = make_relative(link, path)
 
                     elseif e isa HTMLElement{:form} && haskey(e.attributes, "action")
-
                         link = e.attributes["action"]
                         e.attributes["action"] = make_relative(link, path)
                     end
                 end
 
                 open(joinpath(root, file), "w") do f
-                    print(f, html)
+                    return print(f, html)
                 end
             end
         end
@@ -118,9 +111,11 @@ function make_links_relative()
     end
 end
 
-serve(single=true, cleanup=false, fail_on_warning = true)
+serve(; single=true, cleanup=false, fail_on_warning=true)
+# for interactive development of the docs, use:
+# cd(@__DIR__); serve(single=false, cleanup=true, clear=true, fail_on_warning = false)
 lunr()
-optimize(minify=false, prerender=false)
+optimize(; minify=false, prerender=false)
 
 # by making all links relative, we can forgo the `prepath` setting of Franklin
 # which means that files in some `vX.Y.Z` subfolder which happens to be `stable`
@@ -129,8 +124,4 @@ optimize(minify=false, prerender=false)
 @info "Rewriting all absolute links as relative"
 make_links_relative()
 
-deploydocs(;
-    repo,
-    push_preview,
-    target = "__site",
-)
+deploydocs(; repo, push_preview, target="__site")

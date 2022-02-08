@@ -120,9 +120,9 @@ Apply a relative rotation to the Scene, by multiplying by the current rotation.
 rotate!(::Type{T}, scene::Transformable, axis_rot...) where T = rotate!(T, scene, axis_rot)
 
 """
-    rotate!(scene::Transformable, axis_rot::Quaternion)
-    rotate!(scene::Transformable, axis_rot::AbstractFloat)
-    rotate!(scene::Transformable, axis_rot...)
+    rotate!(t::Transformable, axis_rot::Quaternion)
+    rotate!(t::Transformable, axis_rot::AbstractFloat)
+    rotate!(t::Transformable, axis_rot...)
 
 Apply an absolute rotation to the Scene. Rotations are all internally converted to `Quaternion`s.
 """
@@ -170,7 +170,6 @@ translate!(scene::Transformable, xyz...) = translate!(Absolute, scene, xyz)
 Translate the scene relative to its current position.
 """
 translate!(::Type{T}, scene::Transformable, xyz...) where T = translate!(T, scene, xyz)
-
 
 function transform!(scene::Transformable, x::Tuple{Symbol, <: Number})
     plane, dimval = string(x[1]), Float32(x[2])
@@ -318,9 +317,9 @@ struct Symlog10
         new(Float64(low), Float64(high))
     end
 end
-function Symlog10(x)
-    Symlog10(-x, x)
-end
+
+Symlog10(x) = Symlog10(-x, x)
+
 function (s::Symlog10)(x)
     if x > 0
         x <= s.high ? x / s.high * log10(s.high) : log10(x)
@@ -352,7 +351,17 @@ inverse_transform(::typeof(pseudolog10)) = inv_pseudolog10
 inverse_transform(F::Tuple) = map(inverse_transform, F)
 inverse_transform(::typeof(logit)) = logistic
 inverse_transform(s::Symlog10) = x -> inv_symlog10(x, s.low, s.high)
+inverse_transform(s) = nothing
 
 function is_identity_transform(t)
     return t === identity || t isa Tuple && all(x-> x === identity, t)
 end
+
+
+# this is a simplification which will only really work with non-rotated or
+# scaled scene transformations, but for 2D scenes this should work well enough.
+# and this way we can use the z-value as a means to shift the drawing order
+# by translating e.g. the axis spines forward so they are not obscured halfway
+# by heatmaps or images
+zvalue2d(x) = Makie.translation(x)[][3] + zvalue2d(x.parent)
+zvalue2d(::Nothing) = 0f0

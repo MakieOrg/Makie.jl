@@ -1,4 +1,3 @@
-using Observables
 using Observables: AbstractObservable, ObserverFunction, notify
 import Observables: observe, listeners, on, off, notify
 

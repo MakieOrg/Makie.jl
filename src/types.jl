@@ -103,6 +103,16 @@ struct Events
     entered_window::PriorityObservable{Bool}
 end
 
+function Base.show(io::IO, events::Events)
+    println(io, "Events:")
+    fields = propertynames(events)
+    maxlen = maximum(length ∘ string, fields)
+    for field in propertynames(events)
+        pad = maxlen - length(string(field)) + 1
+        println(io, "  $field:", " "^pad, to_value(getproperty(events, field)))
+    end
+end
+
 function Events()
     mousebutton = PriorityObservable(MouseButtonEvent(Mouse.none, Mouse.release))
     mousebuttonstate = Set{Mouse.Button}()
@@ -229,13 +239,48 @@ function Base.getproperty(e::Events, field::Symbol)
     end
 end
 
-mutable struct Camera
+
+"""
+    Camera(pixel_area)
+
+Struct to hold all relevant matrices and additional parameters, to let backends
+apply camera based transformations.
+"""
+struct Camera
+    """
+    projection used to convert pixel to device units
+    """
     pixel_space::Observable{Mat4f}
+
+    """
+    View matrix is usually used to rotate, scale and translate the scene
+    """
     view::Observable{Mat4f}
+
+    """
+    Projection matrix is used for any perspective transformation
+    """
     projection::Observable{Mat4f}
+
+    """
+    just projection * view
+    """
     projectionview::Observable{Mat4f}
+
+    """
+    resolution of the canvas this camera draws to
+    """
     resolution::Observable{Vec2f}
+
+    """
+    Eye position of the camera, sued for e.g. ray tracing.
+    """
     eyeposition::Observable{Vec3f}
+
+    """
+    To make camera interactive, steering observables are connected to the different matrices.
+    We need to keep track of them, so, that we can connect and disconnect them.
+    """
     steering_nodes::Vector{ObserverFunction}
 end
 
@@ -250,7 +295,7 @@ struct Transformation <: Transformable
     scale::Observable{Vec3f}
     rotation::Observable{Quaternionf}
     model::Observable{Mat4f}
-    # data conversion node, for e.g. log / log10 etc
+    # data conversion observable, for e.g. log / log10 etc
     transform_func::Observable{Any}
     function Transformation(translation, scale, rotation, model, transform_func)
         return new(
@@ -325,11 +370,11 @@ struct GlyphCollection
             colors, strokecolors, strokewidths)
 
         n = length(glyphs)
-        @assert length(fonts)  == n
-        @assert length(origins)  == n
-        @assert length(extents)  == n
+        @assert length(fonts) == n
+        @assert length(origins) == n
+        @assert length(extents) == n
         @assert attr_broadcast_length(scales) in (n, 1)
-        @assert attr_broadcast_length(rotations)  in (n, 1)
+        @assert attr_broadcast_length(rotations) in (n, 1)
         @assert attr_broadcast_length(colors) in (n, 1)
 
         rotations = convert_attribute(rotations, key"rotation"())

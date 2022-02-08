@@ -44,7 +44,7 @@ ax = f[1, 1] = Axis(f)
 sl = f[2, 1] = Slider(f)
 ```
 
-## `GridPosition`s and `GridSubposition`s
+## GridPositions and GridSubpositions
 
 The indexing syntax of `Figure` is implemented to work seamlessly with layouting.
 If you index into the figure, a `GridPosition` object that stores this indexing operation is created.

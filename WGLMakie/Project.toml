@@ -1,7 +1,7 @@
-authors = ["SimonDanisch <sdanisch@gmail.com>"]
 name = "WGLMakie"
 uuid = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
-version = "0.4.7"
+authors = ["SimonDanisch <sdanisch@gmail.com>"]
+version = "0.5.2"
 
 [deps]
 Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
@@ -14,6 +14,7 @@ JSServe = "824d6782-a2ef-11e9-3a09-e5662e0c26f9"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 Observables = "510215fc-4207-5dde-b226-833fc4488ee2"
+RelocatableFolders = "05181044-ff0b-4ac5-8273-598c1e38db00"
 ShaderAbstractions = "65257c39-d410-5151-9873-9b3e5be5013e"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
@@ -24,9 +25,10 @@ FreeTypeAbstraction = "0.8, 0.9"
 GeometryBasics = "0.4.1"
 Hyperscript = "0.0.3, 0.0.4"
 ImageMagick = "1.1"
-JSServe = "1.2"
-Makie = "=0.15.3"
+JSServe = "1.2.5"
+Makie = "=0.16.3"
 Observables = "0.4"
+RelocatableFolders = "0.1"
 ShaderAbstractions = "0.2.1"
 StaticArrays = "0.12, 1.0"
 julia = "1.3"

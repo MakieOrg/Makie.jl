@@ -101,7 +101,7 @@ void main(){
     // }else{
     //     color = get_color(image, o_uv, color_norm, color_map, matcap);
     // }
-    color = o_color; //get_color(o_color, o_uv, o_normal);
+    color = get_color(o_color, o_uv, o_normal);
     {{light_calc}}
     write2framebuffer(color, o_id);
 }
