@@ -451,8 +451,6 @@ function draw_atomic(screen::GLScreen, scene::Scene, meshplot::Mesh)
         # signals not supported for shading yet
         gl_attributes[:shading] = to_value(pop!(gl_attributes, :shading))
         color = pop!(gl_attributes, :color)
-        # cmap = get(gl_attributes, :color_map, Observable(nothing)); delete!(gl_attributes, :color_map)
-        # crange = get(gl_attributes, :color_norm, Observable(nothing)); delete!(gl_attributes, :color_norm)
         mesh = meshplot[1]
 
         if to_value(color) isa Colorant
@@ -468,14 +466,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, meshplot::Mesh)
             delete!(gl_attributes, :color_map)
             delete!(gl_attributes, :color_norm)
         elseif to_value(color) isa AbstractMatrix{<: Number}
-            cmap = pop!(gl_attributes, :color_map)
-            crange = pop!(gl_attributes, :color_norm)
-            mesh = lift(mesh, color, cmap, crange) do mesh, color, cmap, crange
-                color_sampler = convert_mesh_color(color, cmap, crange)
-                mesh, uv = GeometryBasics.pop_pointmeta(mesh, :uv)
-                uv_sampler = Makie.sampler(color_sampler, uv)
-                return GeometryBasics.pointmeta(mesh, color=uv_sampler)
-            end
+            gl_attributes[:image] = color
         elseif to_value(color) isa AbstractVector{<: Union{Number, Colorant}}
             mesh = lift(mesh, color) do mesh, color
                 return GeometryBasics.pointmeta(mesh, color=el32convert(color))

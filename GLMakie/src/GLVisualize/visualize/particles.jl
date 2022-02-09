@@ -11,14 +11,6 @@ function to_meshcolor(color)
     color
 end
 
-function to_mesh(mesh::TOrSignal{<: GeometryPrimitive})
-    return NativeMesh(const_lift(GeometryBasics.normal_mesh, mesh))
-end
-
-function to_mesh(mesh::TOrSignal{<: GeometryBasics.Mesh})
-    return NativeMesh(mesh)
-end
-
 using Makie: get_texture_atlas
 
 vec2quaternion(rotation::StaticVector{4}) = rotation
@@ -110,18 +102,10 @@ function draw_mesh_particle(p, data)
     rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
     rot = vec2quaternion(rot)
     delete!(data, :rotation)
+    to_opengl_mesh!(data, p[1])
     @gen_defaults! data begin
-        primitive = p[1] => to_mesh
         position = p[2] => TextureBuffer
-        position_x = nothing => TextureBuffer
-        position_y = nothing => TextureBuffer
-        position_z = nothing => TextureBuffer
-
         scale = Vec3f(1) => TextureBuffer
-        scale_x = nothing => TextureBuffer
-        scale_y = nothing => TextureBuffer
-        scale_z = nothing => TextureBuffer
-
         rotation = rot => TextureBuffer
         texturecoordinates = nothing
         shading = true
@@ -142,7 +126,7 @@ function draw_mesh_particle(p, data)
         shading = true
         transparency = false
         shader = GLVisualizeShader(
-            "util.vert", "particles.vert", "standard.frag", "fragment_output.frag",
+            "util.vert", "particles.vert", "mesh.frag", "fragment_output.frag",
             view = Dict(
                 "position_calc" => position_calc(position, nothing, nothing, nothing, TextureBuffer),
                 "light_calc" => light_calc(shading),
@@ -151,14 +135,9 @@ function draw_mesh_particle(p, data)
             )
         )
     end
-    if Makie.to_value(intensity) != nothing
-        if Makie.to_value(position) != nothing
-            data[:intensity] = intensity_convert_tex(intensity, position)
-            data[:len] = const_lift(length, position)
-        else
-            data[:intensity] = intensity_convert_tex(intensity, position_x)
-            data[:len] = const_lift(length, position_x)
-        end
+    if !isnothing(Makie.to_value(intensity))
+        data[:intensity] = intensity_convert_tex(intensity, position)
+        data[:len] = const_lift(length, position)
     end
     return assemble_shader(data)
 end

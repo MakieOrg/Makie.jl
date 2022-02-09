@@ -1,13 +1,5 @@
 using .GLAbstraction: StandardPrerender
 
-function to_uvmesh(geom)
-    return NativeMesh(const_lift(GeometryBasics.uv_mesh, geom))
-end
-
-function to_plainmesh(geom)
-    return NativeMesh(const_lift(GeometryBasics.triangle_mesh, geom))
-end
-
 struct VolumePrerender
     sp::StandardPrerender
 end
@@ -49,16 +41,17 @@ function draw_image(main, data::Dict)
         end
     end
     delete!(data, :ranges)
+    mesh = const_lift(ranges) do r
+        x, y = minimum(r[1]), minimum(r[2])
+        xmax, ymax = maximum(r[1]), maximum(r[2])
+        return GeometryBasics.uv_mesh(Rect2f(x, y, xmax - x, ymax - y))
+    end
+    to_opengl_mesh!(data, mesh)
+
     @gen_defaults! data begin
         image = main => (Texture, "image, can be a Texture or Array of colors")
         position_x = nothing => Texture
         position_y = nothing => Texture
-        primitive = const_lift(ranges) do r
-            x, y = minimum(r[1]), minimum(r[2])
-            xmax, ymax = maximum(r[1]), maximum(r[2])
-            return Rect2f(x, y, xmax - x, ymax - y)
-        end => to_uvmesh
-        preferred_camera = :orthographic_pixel
         fxaa = false
         transparency = false
         shader = GLVisualizeShader(
@@ -103,9 +96,10 @@ function draw_heatmap(main, data::Dict)
 end
 
 function draw_volume(main::VolumeTypes, data::Dict)
+    geom = Rect3f(Vec3f(0), Vec3f(1))
+    to_opengl_mesh!(data, const_lift(GeometryBasics.triangle_mesh, geom))
     @gen_defaults! data begin
         volumedata = main => Texture
-        hull = Rect3f(Vec3f(0), Vec3f(1)) => to_plainmesh
         model = Mat4f(I)
         modelinv = const_lift(inv, model)
         color_map = default(Vector{RGBA}, s) => Texture

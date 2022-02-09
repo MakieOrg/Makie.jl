@@ -139,7 +139,7 @@ function draw_surface(main, data::Dict)
         transparency = false
         shader = GLVisualizeShader(
             "fragment_output.frag", "util.vert", "surface.vert",
-            "standard.frag",
+            "mesh.frag",
             view = Dict(
                 "position_calc" => position_calc(position, position_x, position_y, position_z, Texture),
                 "normal_calc" => normal_calc(normal, to_value(invert_normals)),
