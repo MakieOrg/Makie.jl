@@ -238,7 +238,6 @@ Main assemble functions for scatter particles.
 Sprites are anything like distance fields, images and simple geometries
 """
 function draw_scatter((marker, position), data)
-    @show to_value(marker)
     rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
     rot = vec2quaternion(rot)
     delete!(data, :rotation)
@@ -293,7 +292,6 @@ function draw_scatter((marker, position), data)
         scale_primitive = true
         gl_primitive = GL_POINTS
     end
-    @show uv_offset_width[]
     # Exception for intensity, to make it possible to handle intensity with a
     # different length compared to position. Intensities will be interpolated in that case
     data[:intensity] = intensity_convert(intensity, position)

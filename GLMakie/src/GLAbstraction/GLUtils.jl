@@ -7,53 +7,6 @@ function print_with_lines(out::IO, text::AbstractString)
 end
 print_with_lines(text::AbstractString) = print_with_lines(stdout, text)
 
-"""
-Style Type, which is used to choose different visualization/editing styles via multiple dispatch
-Usage pattern:
-visualize(::Style{:Default}, ...)           = do something
-visualize(::Style{:MyAwesomeNewStyle}, ...) = do something different
-"""
-struct Style{StyleValue}
-end
-Style(x::Symbol) = Style{x}()
-Style() = Style{:Default}()
-mergedefault!(style::Style{S}, styles, customdata) where {S} = merge!(copy(styles[S]), Dict{Symbol, Any}(customdata))
-macro style_str(string)
-    Style{Symbol(string)}
-end
-export @style_str
-
-"""
-splats keys from a dict into variables
-"""
-macro materialize(dict_splat)
-    keynames, dict = dict_splat.args
-    keynames = isa(keynames, Symbol) ? [keynames] : keynames.args
-    dict_instance = gensym()
-    kd = [:($key = $dict_instance[$(Expr(:quote, key))]) for key in keynames]
-    kdblock = Expr(:block, kd...)
-    expr = quote
-        $dict_instance = $dict # handle if dict is not a variable but an expression
-        $kdblock
-    end
-    esc(expr)
-end
-
-"""
-splats keys from a dict into variables and removes them
-"""
-macro materialize!(dict_splat)
-    keynames, dict = dict_splat.args
-    keynames = isa(keynames, Symbol) ? [keynames] : keynames.args
-    dict_instance = gensym()
-    kd = [:($key = pop!($dict_instance, $(Expr(:quote, key)))) for key in keynames]
-    kdblock = Expr(:block, kd...)
-    expr = quote
-        $dict_instance = $dict # handle if dict is not a variable but an expression
-        $kdblock
-    end
-    esc(expr)
-end
 
 """
 Needed to match the lazy gl_convert exceptions.
@@ -153,10 +106,6 @@ makesignal(v) = Observable(v)
 
 @inline const_lift(f::Union{DataType, Type, Function}, inputs...) = lift(f, map(makesignal, inputs)...)
 export const_lift
-
-isnotempty(x) = !isempty(x)
-AND(a,b) = a&&b
-OR(a,b) = a||b
 
 #Meshtype holding native OpenGL data.
 struct NativeMesh{MeshType <: GeometryBasics.Mesh}

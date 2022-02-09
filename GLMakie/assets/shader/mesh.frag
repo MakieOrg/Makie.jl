@@ -37,6 +37,20 @@ vec4 get_color(sampler2D color, vec2 uv, Nothing color_norm, Nothing color_map, 
     return texture(color, uv);
 }
 
+vec4 color_lookup(float intensity, sampler1D color, vec2 norm);
+vec4 get_color(sampler2D intensity, vec2 uv, vec2 color_norm, sampler1D color_map, Nothing matcap){
+    const float i = texture(intensity, uv).x;
+    vec4 color = color_lookup(i, color_map, color_norm);
+    if (isnan(i)) {
+        color = nan_color;
+    } else if (i < color_norm.x) {
+        color = lowclip;
+    } else if (i > color_norm.y) {
+        color = highclip;
+    }
+    return color;
+}
+
 vec4 matcap_color(sampler2D matcap){
     vec2 muv = o_normal.xy * 0.5 + vec2(0.5, 0.5);
     return texture(matcap, vec2(1.0-muv.y, muv.x));
@@ -51,6 +65,8 @@ vec4 get_color(sampler2D color, vec2 uv, Nothing color_norm, Nothing color_map, 
 vec4 get_color(sampler1D color, vec2 uv, vec2 color_norm, sampler1D color_map, sampler2D matcap){
     return matcap_color(matcap);
 }
+
+
 
 uniform bool fetch_pixel;
 uniform vec2 uv_scale;

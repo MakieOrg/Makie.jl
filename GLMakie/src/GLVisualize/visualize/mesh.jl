@@ -14,7 +14,7 @@ function visualize_mesh(@nospecialize(mesh), data::Dict)
         uv_scale = Vec2f(1)
         transparency = false
         shader = GLVisualizeShader(
-            "util.vert", "standard.vert", "standard.frag", "fragment_output.frag",
+            "util.vert", "mesh.vert", "mesh.frag", "fragment_output.frag",
             view = Dict(
                 "light_calc" => light_calc(shading),
                 "buffers" => output_buffers(to_value(transparency)),
