@@ -46,7 +46,7 @@ end
 """
 returns the Shape for the distancefield algorithm
 """
-primitive_shape(::Char) = DISTANCEFIELD
+primitive_shape(::Union{AbstractString, Char}) = DISTANCEFIELD
 primitive_shape(x::X) where {X} = primitive_shape(X)
 primitive_shape(::Type{T}) where {T <: Circle} = CIRCLE
 primitive_shape(::Type{T}) where {T <: Rect2} = RECTANGLE
@@ -70,6 +70,7 @@ primitive_offset(x, scale) = const_lift(/, scale, -2f0)  # default offset
 Extracts the uv offset and width from a primitive.
 """
 primitive_uv_offset_width(c::Char) = glyph_uv_width!(c)
+primitive_uv_offset_width(str::AbstractString) = map(glyph_uv_width!, collect(str))
 primitive_uv_offset_width(x) = Vec4f(0,0,1,1)
 
 """
@@ -77,7 +78,7 @@ Gets the texture atlas if primitive is a char.
 """
 primitive_distancefield(x) = nothing
 primitive_distancefield(::Char) = get_texture!(get_texture_atlas())
-primitive_distancefield(::Observable{Char}) = get_texture!(get_texture_atlas())
+primitive_distancefield(x::Observable) = primitive_distancefield(x[])
 
 function char_scale_factor(char, font)
     # uv * size(ta.data) / Makie.PIXELSIZE_IN_ATLAS[] is the padded glyph size
@@ -236,33 +237,33 @@ end
 Main assemble functions for scatter particles.
 Sprites are anything like distance fields, images and simple geometries
 """
-function draw_scatter(p, data)
+function draw_scatter((marker, position), data)
+    @show to_value(marker)
     rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
     rot = vec2quaternion(rot)
     delete!(data, :rotation)
-
     # Rescale to include glyph padding and shape
-    if isa(to_value(p[1]), Char)
+    if isa(to_value(marker), Union{AbstractString, Char})
         scale = data[:scale]
         font = get(data, :font, Observable(Makie.defaultfont()))
         offset = get(data, :offset, Observable(Vec2f(0)))
 
         # The same scaling that needs to be applied to scale also needs to apply
         # to offset.
-        data[:offset] = map(rescale_glyph, p[1], font, offset)
-        data[:scale] = map(rescale_glyph, p[1], font, scale)
+        data[:offset] = map(rescale_glyph, marker, font, offset)
+        data[:scale] = map(rescale_glyph, marker, font, scale)
     end
 
     @gen_defaults! data begin
-        shape       = const_lift(x-> Int32(primitive_shape(x)), p[1])
-        position    = p[2] => GLBuffer
-        scale       = const_lift(primitive_scale, p[1]) => GLBuffer
+        shape       = const_lift(x-> Int32(primitive_shape(x)), marker)
+        position    = position => GLBuffer
+        scale       = const_lift(primitive_scale, marker) => GLBuffer
         rotation    = rot => GLBuffer
         image       = nothing => Texture
     end
 
     @gen_defaults! data begin
-        offset          = primitive_offset(p[1], scale) => GLBuffer
+        offset          = primitive_offset(marker, scale) => GLBuffer
         intensity       = nothing => GLBuffer
         color_map       = nothing => Texture
         color_norm      = nothing
@@ -272,10 +273,10 @@ function draw_scatter(p, data)
         stroke_color    = RGBA{Float32}(0,0,0,0) => GLBuffer
         stroke_width    = 0f0
         glow_width      = 0f0
-        uv_offset_width = const_lift(primitive_uv_offset_width, p[1]) => GLBuffer
+        uv_offset_width = const_lift(primitive_uv_offset_width, marker) => GLBuffer
 
-        distancefield   = primitive_distancefield(p[1]) => Texture
-        indices         = const_lift(length, p[2]) => to_index_buffer
+        distancefield   = primitive_distancefield(marker) => Texture
+        indices         = const_lift(length, position) => to_index_buffer
         # rotation and billboard don't go along
         billboard        = rotation == Vec4f(0,0,0,1) => "if `billboard` == true, particles will always face camera"
         fxaa             = false
@@ -292,10 +293,12 @@ function draw_scatter(p, data)
         scale_primitive = true
         gl_primitive = GL_POINTS
     end
+    @show uv_offset_width[]
     # Exception for intensity, to make it possible to handle intensity with a
     # different length compared to position. Intensities will be interpolated in that case
     data[:intensity] = intensity_convert(intensity, position)
     data[:len] = const_lift(length, position)
     return assemble_shader(data)
 end
+
 @specialize

@@ -95,7 +95,7 @@ function draw_surface(main::Tuple{MatTypes{T}, MatTypes{T}, MatTypes{T}}, data::
         position_z = main[3] => (Texture, "z position, must be a `Matrix{Float}`")
         scale = Vec3f(0) => "scale must be 0, for a surfacemesh"
     end
-    return surface(position_z, data)
+    return draw_surface(position_z, data)
 end
 
 # surface(Vector or Range, Vector or Range, ::Matrix)
