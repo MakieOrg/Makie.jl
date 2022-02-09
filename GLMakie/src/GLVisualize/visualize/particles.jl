@@ -77,7 +77,7 @@ primitive_uv_offset_width(x) = Vec4f(0,0,1,1)
 Gets the texture atlas if primitive is a char.
 """
 primitive_distancefield(x) = nothing
-primitive_distancefield(::Char) = get_texture!(get_texture_atlas())
+primitive_distancefield(::Union{AbstractString, Char}) = get_texture!(get_texture_atlas())
 primitive_distancefield(x::Observable) = primitive_distancefield(x[])
 
 function char_scale_factor(char, font)
