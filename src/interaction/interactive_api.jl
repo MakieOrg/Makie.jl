@@ -31,17 +31,7 @@ function onpick(f, scene::SceneLike, plots::AbstractPlot...; range=1)
     end
 end
 
-"""
-    mouse_selection(scene::Scene)
-
-Returns the plot that is under the current mouse position
-"""
-mouse_selection(x) = mouse_selection(get_scene(x))
-mouse_selection(scene::SceneLike) = pick(scene, events(scene).mouseposition[])
-mouse_selection(x, range) = mouse_selection(get_scene(x), range)
-function mouse_selection(scene::SceneLike, range)
-    pick(scene, events(scene).mouseposition[], range)
-end
+@deprecate mouse_selection pick
 
 function flatten_plots(x::Atomic, plots = AbstractPlot[])
     if isempty(x.plots)
