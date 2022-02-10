@@ -1,5 +1,9 @@
 # News
 
+## master
+
+- deprecated `mouse_selection(scene)` for `pick(scene)`
+
 ## v0.16
 
 #### Big Changes
