@@ -412,7 +412,13 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Image)
             r = to_range(x, y)
             x, y = minimum(r[1]), minimum(r[2])
             xmax, ymax = maximum(r[1]), maximum(r[2])
-            return GeometryBasics.uv_mesh(Rect2f(x, y, xmax - x, ymax - y))
+            rect =  Rect2f(x, y, xmax - x, ymax - y)
+            points = decompose(Point2f, rect)
+            faces = decompose(GLTriangleFace, rect)
+            uv = map(decompose_uv(rect)) do uv
+                return 1f0 .- Vec2f(uv[2], uv[1])
+            end
+            return GeometryBasics.Mesh(meta(points; uv=uv), faces)
         end
         gl_attributes[:color] = x[3]
         gl_attributes[:shading] = false

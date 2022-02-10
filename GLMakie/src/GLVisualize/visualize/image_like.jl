@@ -32,9 +32,10 @@ end
 A matrix of Intensities will result in a contourf kind of plot
 """
 function draw_heatmap(main, data::Dict)
+    primitive = triangle_mesh(Rect2(0f0,0f0,1f0,1f0))
+    to_opengl_mesh!(data, primitive)
     @gen_defaults! data begin
         intensity = main => Texture
-        primitive = Rect2(0f0,0f0,1f0,1f0) => native_triangle_mesh
         nan_color = RGBAf(1, 0, 0, 1)
         highclip = RGBAf(0, 0, 0, 0)
         lowclip = RGBAf(0, 0, 0, 0)
@@ -45,7 +46,7 @@ function draw_heatmap(main, data::Dict)
         stroke_color = RGBA{Float32}(0,0,0,0)
         transparency = false
         shader = GLVisualizeShader(
-            "fragment_output.frag", "heatmap.vert", "intensity.frag",
+            "fragment_output.frag", "heatmap.vert", "heatmap.frag",
             view = Dict(
                 "buffers" => output_buffers(to_value(transparency)),
                 "buffer_writes" => output_buffer_writes(to_value(transparency))

@@ -26,8 +26,6 @@ function light_calc(x::Bool)
     end
 end
 
-native_triangle_mesh(mesh) = gl_convert(triangle_mesh(mesh))
-
 function _position_calc(
         position_x::MatTypes{T}, position_y::MatTypes{T}, position_z::MatTypes{T}, target::Type{Texture}
     ) where T<:AbstractFloat
@@ -110,8 +108,9 @@ function draw_surface(main::Tuple{VectorTypes{T}, VectorTypes{T}, MatTypes{T}}, 
 end
 
 function draw_surface(main, data::Dict)
+    primitive = triangle_mesh(Rect2(0f0,0f0,1f0,1f0))
+    to_opengl_mesh!(data, primitive)
     @gen_defaults! data begin
-        primitive = Rect2(0f0,0f0,1f0,1f0) => native_triangle_mesh
         scale = nothing
         position = nothing
         position_x = nothing => Texture
