@@ -1,7 +1,3 @@
-
-
-get_scene(fig::FigureAxisPlot) = get_scene(fig.figure)
-
 struct AxisPlot
     axis
     plot::AbstractPlot
@@ -12,6 +8,8 @@ Base.show(io::IO, ::MIME"text/plain", fap::FigureAxisPlot) = print(io, "FigureAx
 
 Base.iterate(fap::FigureAxisPlot, args...) = iterate((fap.figure, fap.axis, fap.plot), args...)
 Base.iterate(ap::AxisPlot, args...) = iterate((ap.axis, ap.plot), args...)
+
+get_scene(ap::AxisPlot) = get_scene(ap.axis.scene)
 
 function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), kw_attributes...)
     # scene_attributes = extract_scene_attributes!(attributes)
