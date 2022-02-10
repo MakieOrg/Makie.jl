@@ -41,7 +41,7 @@ nothing # hide
 \show{po_code}
 
 
-With only the first listener connected `Low priority: 1` gets printed. In this case the behavior is the same as normal Observables. The second listener we add is a blocking one. Since it has a higher priority than the first one only the second listener will trigger. Thus we get `Medium blocking priority: 2`. The third listener is non-blocking and at yet again higher priority. As such we get a result from both the third and second listener. 
+With only the first listener connected `Low priority: 1` gets printed. In this case the behavior is the same as normal Observables. The second listener we add is a blocking one because it returns `Consume(true)`. Since it has a higher priority than the first one only the second listener will trigger. Thus we get `Medium blocking priority: 2`. The third listener is non-blocking and at yet again higher priority. As such we get a result from both the third and second listener. 
 
 ## The Events struct
 
