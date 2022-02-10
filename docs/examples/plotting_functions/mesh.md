@@ -126,7 +126,7 @@ end
 The uv coordinates that go out of bounds will get repeated per default.
 One can use a `Sampler` object to change that behaviour:
 
-```julia:
+```julia:mesh
 #=
 Possible values:
 :clamp_to_edge (default)
