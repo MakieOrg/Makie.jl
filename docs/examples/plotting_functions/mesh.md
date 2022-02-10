@@ -99,7 +99,7 @@ normals = normalize.(points)
 
 # Now we generate UV coordinates, which map the image (texture) to the vertices.
 # (0, 0) means lower left edge of the image, while (1, 1) means upper right corner.
-function gen_uv(ci, shift)
+function gen_uv(shift)
     return vec(map(CartesianIndices(size(z2))) do ci
         tup = ((ci[1], ci[2]) .- 1) ./ ((size(z2) .* shift) .- 1)
         return Vec2f(reverse(tup))
