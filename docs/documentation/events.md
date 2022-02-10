@@ -73,17 +73,9 @@ There is also `events.mousebuttonstate` which holds all currently held buttons. 
 
 As an example, let us set up a scene where we can draw lines between two points interactively. The first point is selected when the left mouse button gets pressed and the second when it gets released. To simplify things we start with a pixel space scene.
 
-\begin{showhtml}{}
 ```julia
-using JSServe
-Page(exportable=true, offline=true)
-```
-\end{showhtml}
-
-\begin{showhtml}{}
-```julia
-using WGLMakie
-WGLMakie.activate!() # hide
+using GLMakie
+GLMakie.activate!() # hide
 
 points = Observable(Point2f[])
 
@@ -103,16 +95,14 @@ end
 
 scene
 ```
-\end{showhtml}
 
 In simple cases like this we can handle `mousebutton` just like a normal `Observable`. Priority and `Consume()` only become important when multiple interactions react to the same source and need to happen in a specific order or interfere with each other.
 
 To make this example nicer, let us update the second point (the end of the line) whenever the mouse moves. For this we should set both the start and end point on `Mouse.press` and update the end point when `events(scene).mouseposition` changes as long as the mouse button is still pressed. 
 
-\begin{showhtml}{}
 ```julia
-using WGLMakie
-WGLMakie.activate!() # hide
+using GLMakie
+GLMakie.activate!() # hide
 
 points = Observable(Point2f[])
 
@@ -138,14 +128,12 @@ end
 
 scene
 ```
-\end{showhtml}
 
 To give an example on how to use `scroll` let's cycle through colors with the scroll wheel. `scroll` holds two floats describing the last change in x and y direction, typically `+1` or `-1`.
 
-\begin{showhtml}{}
 ```julia
-using WGLMakie
-WGLMakie.activate!() # hide
+using GLMakie
+GLMakie.activate!() # hide
 
 colors = to_colormap(:cyclic_mrybm_35_75_c68_n256)
 idx = Observable(1)
@@ -178,7 +166,6 @@ end
 
 scene
 ```
-\end{showhtml}
 
 ## Keyboard Interaction
 
@@ -186,10 +173,9 @@ You can use `events.keyboardbutton` to react to a `KeyEvent` and `events.unicode
 
 Let's continue our example. Currently we can add points with mouse clicks and change colors by scrolling. A feature we are missing is the deletion of points. Let's implement this with keyboard events. Here we chose `backspace` to delete from the end and `delete` to delete from the start.
 
-\begin{showhtml}{}
 ```julia
-using WGLMakie
-WGLMakie.activate!() # hide
+using GLMakie
+GLMakie.activate!() # hide
 
 colors = to_colormap(:cyclic_mrybm_35_75_c68_n256)
 idx = Observable(1)
@@ -237,7 +223,6 @@ end
 
 scene
 ```
-\end{showhtml}
 
 ## Point Picking
 
@@ -258,15 +243,45 @@ Every other plot is build from these somewhere down the line. For example `fig, 
 
 The index returned by `pick` relates to the main input of the respective primitive plot. For `scatter`, `test` and `meshscatter` it is the index into the position (character) array that matches the clicked marker (symbol). For `lines` and `linesegments` it's end position of the clicked line segment. For other plots it tends less useful. `mesh`, `image` and `surface` return index of the largest vertex in the clicked (triangle) face. `heatmap` and `volume` always return 0.
 
-Let's implement draggable scatter markers as an example. When the left mouse button is pressed we need to check if we are above a scatter marker. If this is true we initiate a "dragging" state, where the marker follows the mouse position. For this we need to know the mouseposition in axis (or scene) space. 
+Let's implement adding, moving and deleting of scatter markers as an example. We could implement adding and deleting with left and right clicks, however that would overwrite existing axis interactions. To avoid this we implement adding as `a + left click` and removing as `d + left click`. Since these settings are more restrictive we want Makie to check if either of them applies first and default back to normal axis interactions otherwise. This means our interactions should have a higher priority than the defaults and block conditionally.
 
-Makie has a convenience function for this - `mouseposition([scene = hovered_scene()])`. There is also a convenience function for the pixel space mouseposition relative to a specific scene `mouseposition_px([scene = hovered_scene()])`. Both of these will usually be different from `events.mouseposition` as that is always in pixel units and always based on the full window. 
+To gauge the priority of the existing axis interaction we can check `events(fig).mousebutton` after creating an `Axis`. The priority observable will report the registered priorities `... at priorities [1,127]`. The latter is an interaction at maximum priority which we can ignore. (This keeps `events(fig).mousebuttonstate` up to date.) This leaves `priority = 1` as the priority to beat. 
 
-Another issue we need to deal with is that `Axis` already defines an interaction with the same inputs - rectangle selection zoom. Our interaction needs to have higher priority and block the other to work as expected. The blocking should only occur if we are initiating a drag so that we can still zoom otherwise. 
+To correctly place a new marker we will also need to get the mouseposition in axis units. Makie provides a function that does just that: `mouseposition([scene = hovered_scene()])`. There is also a convenience function for the pixel space mouseposition relative to a specific scene `mouseposition_px([scene = hovered_scene()])`. Both of these will usually be different from `events.mouseposition` which is always in pixel units and always based on the full window. 
 
-To gauge the priority we need we can check `events(fig).mousebutton` after creating our plot. The priority observable will report the registered priorities `... at priorities [1,127]`. The latter is an interaction at maximum priority which we can ignore. (This keeps `events(fig).mousebuttonstate` up to date.) This leaves `priority = 1` as the priority to beat. 
+Finally for deleting we need to figure out if and which scattered marker the cursor is over. We can do this with the `pick()` function. As mentioned before, `pick(ax)` will return the plot and (for scatter) an index into the position array, matching our marker. With this we can now set up adding and deleting markers.
 
-Knowing this we can set up our example. Note that this only works in GLMakie.
+```julia
+using GLMakie
+
+positions = Observable(rand(Point2f, 10))
+
+fig, ax, p = scatter(positions)
+
+on(events(fig).mousebutton, priority = 2) do event
+    if event.button == Mouse.left && event.action == Mouse.press
+        if Keyboard.d in events(fig).keyboardstate
+            # Delete marker
+            plt, i = pick(fig)
+            if plt == p
+                deleteat!(positions[], i)
+                notify(positions)
+                return Consume(true)
+            end
+        elseif Keyboard.a in events(fig).keyboardstate
+            # Add marker
+            push!(positions[], mouseposition(ax))
+            notify(positions)
+            return Consume(true)
+        end
+    end
+    return Consume(false)
+end
+
+fig
+```
+
+To implement dragging we need to keep track of some state. When we click on a marker we initiate a drag state. While in this state the hovered marker needs follow the cursor position (in axis coordinates). Once the mouse button is released we need to exit the drag state. All of this needs to again take higher priority than the default axis interactions and block them from happening.
 
 ```julia
 using GLMakie
@@ -278,23 +293,38 @@ idx = 1
 fig, ax, p = scatter(positions)
 
 on(events(fig).mousebutton, priority = 2) do event
+    global dragging, idx
     if event.button == Mouse.left
-        global dragging, idx
         if event.action == Mouse.press
             plt, i = pick(fig)
-            dragging = plt == p
-            idx = i
+            if Keyboard.d in events(fig).keyboardstate && plt == p
+                # Delete marker
+                deleteat!(positions[], i)
+                notify(positions)
+                return Consume(true)
+            elseif Keyboard.a in events(fig).keyboardstate
+                # Add marker
+                push!(positions[], mouseposition(ax))
+                notify(positions)
+                return Consume(true)
+            else
+                # Initiate drag
+                dragging = plt == p
+                idx = i
+                return Consume(dragging)
+            end
         elseif event.action == Mouse.release
+            # Exit drag
             dragging = false
+            return Consume(false)
         end
     end
-    return Consume(dragging)
+    return Consume(false)
 end
 
 on(events(fig).mouseposition, priority = 2) do mp
     if dragging
-        pos = mouseposition(ax)
-        positions[][idx] = pos
+        positions[][idx] = mouseposition(ax)
         notify(positions)
         return Consume(true)
     end
@@ -304,13 +334,13 @@ end
 fig
 ```
 
-There are a couple of different methods/functions of or related to `pick`. The base method `pick(scene, pos)` is pixel perfect. For small markers or thin lines this can be annoying. Instead you may want to pick the closest plot element within a given range. This can be done with `pick(scene, position, range)`. You can also get all plot within a range sorted by distance with `pick_sorted(scene, position, range)`. This can be useful if you want to filter certain plots out, for example the background of an `Axis`.
+There are a couple of different methods of and functions related to `pick`. The base method `pick(scene, pos)` picks points exactly. For small markers or thin lines you may instead want to pick the closest plot element within a given range. This can be done with `pick(scene, position, range)`. You can also get all plots and indices within a range sorted by distance with `pick_sorted(scene, position, range)`. This can be useful if you want to filter certain plots out, for example the background of an `Axis`.
 
-If you want to know whether the cursor is on a certain plot or set of plots you can use `mouseover(scene, plots...)`. This will call `Makie.flatten_plots(plots)` to break down all plots into primitive plots and check against pick. If you want continue using the output from pick you can use `onpick(f, scene, plots...; range=1)` which performs this check and calls `f(plot, index)` if it succeeds.
+If you jsut want to know whether the cursor is on a certain plot or set of plots you can use `mouseover(scene, plots...)`. This will call `Makie.flatten_plots(plots)` to break down all plots into primitive plots and check against pick. If you want continue using the output from pick you can use `onpick(f, scene, plots...; range=1)` which performs this check and calls `f(plot, index)` if it succeeds.
 
 ## The `ispressed` function
 
-If you are implementing interactions based on key events you may want these keys to be adjustable without changing your code directly. A simple way to do this would be to have the hotkey saved in a global variable:
+If you are implementing interactions based on key events you may want these keys to be adjustable without changing your code directly. A simple way to do this would be to have the hotkey saved in a variable outside the observer function:
 
 ```julia
 hotkey = Keyboard.a
