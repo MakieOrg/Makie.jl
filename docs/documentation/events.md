@@ -12,6 +12,7 @@ Much like the name suggests a `PriorityObservable` adds a priority to its listen
 To understand how a `PriorityObserable` works you may try this example:
 
 ```julia:po_code
+using Makie
 using Makie: PriorityObservable
 
 po = PriorityObservable(0)
@@ -72,6 +73,14 @@ There is also `events.mousebuttonstate` which holds all currently held buttons. 
 
 As an example, let us set up a scene where we can draw lines between two points interactively. The first point is selected when the left mouse button gets pressed and the second when it gets released. To simplify things we start with a pixel space scene.
 
+\begin{showhtml}{}
+```julia
+using JSServe
+Page(exportable=true, offline=true)
+```
+\end{showhtml}
+
+\begin{showhtml}{}
 ```julia
 using WGLMakie
 WGLMakie.activate!() # hide
@@ -94,11 +103,13 @@ end
 
 scene
 ```
+\end{showhtml}
 
 In simple cases like this we can handle `mousebutton` just like a normal `Observable`. Priority and `Consume()` only become important when multiple interactions react to the same source and need to happen in a specific order or interfere with each other.
 
 To make this example nicer, let us update the second point (the end of the line) whenever the mouse moves. For this we should set both the start and end point on `Mouse.press` and update the end point when `events(scene).mouseposition` changes as long as the mouse button is still pressed. 
 
+\begin{showhtml}{}
 ```julia
 using WGLMakie
 WGLMakie.activate!() # hide
@@ -127,9 +138,11 @@ end
 
 scene
 ```
+\end{showhtml}
 
 To give an example on how to use `scroll` let's cycle through colors with the scroll wheel. `scroll` holds two floats describing the last change in x and y direction, typically `+1` or `-1`.
 
+\begin{showhtml}{}
 ```julia
 using WGLMakie
 WGLMakie.activate!() # hide
@@ -165,7 +178,7 @@ end
 
 scene
 ```
-
+\end{showhtml}
 
 ## Keyboard Interaction
 
@@ -173,6 +186,7 @@ You can use `events.keyboardbutton` to react to a `KeyEvent` and `events.unicode
 
 Let's continue our example. Currently we can add points with mouse clicks and change colors by scrolling. A feature we are missing is the deletion of points. Let's implement this with keyboard events. Here we chose `backspace` to delete from the end and `delete` to delete from the start.
 
+\begin{showhtml}{}
 ```julia
 using WGLMakie
 WGLMakie.activate!() # hide
@@ -223,6 +237,7 @@ end
 
 scene
 ```
+\end{showhtml}
 
 ## Point Picking
 
