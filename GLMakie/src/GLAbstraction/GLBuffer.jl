@@ -45,6 +45,15 @@ function GLBuffer(
 end
 
 function GLBuffer(
+        buffer::ShaderAbstractions.Buffer{T};
+        buffertype::GLenum = GL_ARRAY_BUFFER, usage::GLenum = GL_STATIC_DRAW
+    ) where T <: GLArrayEltypes
+    b = GLBuffer(ShaderAbstractions.data(buffer); buffertype=buffertype, usage=usage)
+    ShaderAbstractions.connect!(buffer, b)
+    return b
+end
+
+function GLBuffer(
         buffer::AbstractVector{T};
         kw_args...
     ) where T <: GLArrayEltypes

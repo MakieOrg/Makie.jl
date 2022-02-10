@@ -28,45 +28,6 @@ function vol_depth_write(enable)
 end
 
 @nospecialize
-function draw_image(main, data::Dict)
-    @gen_defaults! data begin
-        spatialorder = "yx"
-    end
-    if !(spatialorder in ("xy", "yx"))
-        error("Spatial order only accepts \"xy\" or \"yx\" as a value. Found: $spatialorder")
-    end
-    ranges = get(data, :ranges) do
-        const_lift(main, spatialorder) do m, s
-            (0:size(m, s == "xy" ? 1 : 2), 0:size(m, s == "xy" ? 2 : 1))
-        end
-    end
-    delete!(data, :ranges)
-    mesh = const_lift(ranges) do r
-        x, y = minimum(r[1]), minimum(r[2])
-        xmax, ymax = maximum(r[1]), maximum(r[2])
-        return GeometryBasics.uv_mesh(Rect2f(x, y, xmax - x, ymax - y))
-    end
-    to_opengl_mesh!(data, mesh)
-
-    @gen_defaults! data begin
-        image = main => (Texture, "image, can be a Texture or Array of colors")
-        position_x = nothing => Texture
-        position_y = nothing => Texture
-        fxaa = false
-        transparency = false
-        shader = GLVisualizeShader(
-            "fragment_output.frag", "image.vert", "texture.frag",
-            view = Dict(
-                "uv_swizzle" => "o_uv.$(spatialorder)",
-                "buffers" => output_buffers(to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(to_value(transparency))
-            )
-        )
-    end
-    return assemble_shader(data)
-end
-
-
 """
 A matrix of Intensities will result in a contourf kind of plot
 """

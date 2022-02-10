@@ -406,38 +406,19 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
     end
 end
 
-function vec2color(colors, cmap, crange)
-    Makie.interpolated_getindex.((to_colormap(cmap),), colors, (crange,))
-end
-
-function get_image(plot)
-    if isa(plot[:color][], AbstractMatrix{<: Number})
-        lift(vec2color, pop!.(Ref(plot), (:color, :color_map, :color_norm))...)
-    else
-        delete!(plot, :color_norm)
-        delete!(plot, :color_map)
-        return pop!(plot, :color)
-    end
-end
-
 function draw_atomic(screen::GLScreen, scene::Scene, x::Image)
-    robj = cached_robj!(screen, scene, x) do gl_attributes
-        gl_attributes[:ranges] = lift(to_range, x[1], x[2])
-        img = get_image(gl_attributes)
-        interp = to_value(pop!(gl_attributes, :interpolate))
-        interp = interp ? :linear : :nearest
-        img = el32convert(img)
-        tex = if to_value(img) isa Texture
-            to_value(img)
-        else
-            Texture(img, minfilter = interp)
+    return cached_robj!(screen, scene, x) do gl_attributes
+        mesh = const_lift(x[1], x[2]) do x, y
+            r = to_range(x, y)
+            x, y = minimum(r[1]), minimum(r[2])
+            xmax, ymax = maximum(r[1]), maximum(r[2])
+            return GeometryBasics.uv_mesh(Rect2f(x, y, xmax - x, ymax - y))
         end
-        GLVisualize.draw_image(tex, gl_attributes)
+        gl_attributes[:color] = x[3]
+        gl_attributes[:shading] = false
+        return mesh_inner(mesh, transform_func_obs(x), gl_attributes)
     end
 end
-
-convert_mesh_color(c::AbstractArray{<: Number}, cmap, crange) = vec2color(c, cmap, crange)
-convert_mesh_color(c, cmap, crange) = c
 
 function update_positions(mesh::GeometryBasics.Mesh, positions)
     points = coordinates(mesh)
@@ -446,40 +427,44 @@ function update_positions(mesh::GeometryBasics.Mesh, positions)
     return GeometryBasics.Mesh(meta(positions; attr...), faces(mesh))
 end
 
+function mesh_inner(mesh, transfunc, gl_attributes)
+    # signals not supported for shading yet
+    gl_attributes[:shading] = to_value(pop!(gl_attributes, :shading))
+    color = pop!(gl_attributes, :color)
+    interp = to_value(pop!(gl_attributes, :interpolate, true))
+    interp = interp ? :linear : :nearest
+    if to_value(color) isa Colorant
+        gl_attributes[:vertex_color] = color
+        delete!(gl_attributes, :color_map)
+        delete!(gl_attributes, :color_norm)
+    elseif to_value(color) isa Makie.AbstractPattern
+        img = lift(x -> el32convert(Makie.to_image(x)), color)
+        gl_attributes[:image] = ShaderAbstractions.Sampler(img, x_repeat=:repeat, minfilter=:nearest)
+        haskey(gl_attributes, :fetch_pixel) || (gl_attributes[:fetch_pixel] = true)
+    elseif to_value(color) isa AbstractMatrix{<:Colorant}
+        gl_attributes[:image] = Texture(const_lift(el32convert, color), minfilter = interp)
+        delete!(gl_attributes, :color_map)
+        delete!(gl_attributes, :color_norm)
+    elseif to_value(color) isa AbstractMatrix{<: Number}
+        gl_attributes[:image] = Texture(const_lift(el32convert, color), minfilter = interp)
+    elseif to_value(color) isa AbstractVector{<: Union{Number, Colorant}}
+        mesh = lift(mesh, color) do mesh, color
+            return GeometryBasics.pointmeta(mesh, color=el32convert(color))
+        end
+    end
+    mesh = map(mesh, transfunc) do mesh, func
+        if !Makie.is_identity_transform(func)
+            return update_positions(mesh, apply_transform.(Ref(func), mesh.position))
+        end
+        return mesh
+    end
+    return GLVisualize.draw_mesh(mesh, gl_attributes)
+end
+
 function draw_atomic(screen::GLScreen, scene::Scene, meshplot::Mesh)
-    robj = cached_robj!(screen, scene, meshplot) do gl_attributes
-        # signals not supported for shading yet
-        gl_attributes[:shading] = to_value(pop!(gl_attributes, :shading))
-        color = pop!(gl_attributes, :color)
-        mesh = meshplot[1]
-
-        if to_value(color) isa Colorant
-            gl_attributes[:vertex_color] = color
-            delete!(gl_attributes, :color_map)
-            delete!(gl_attributes, :color_norm)
-        elseif to_value(color) isa Makie.AbstractPattern
-            img = lift(x -> el32convert(Makie.to_image(x)), color)
-            gl_attributes[:image] = ShaderAbstractions.Sampler(img, x_repeat=:repeat, minfilter=:nearest)
-            haskey(gl_attributes, :fetch_pixel) || (gl_attributes[:fetch_pixel] = true)
-        elseif to_value(color) isa AbstractMatrix{<:Colorant}
-            gl_attributes[:image] = color
-            delete!(gl_attributes, :color_map)
-            delete!(gl_attributes, :color_norm)
-        elseif to_value(color) isa AbstractMatrix{<: Number}
-            gl_attributes[:image] = color
-        elseif to_value(color) isa AbstractVector{<: Union{Number, Colorant}}
-            mesh = lift(mesh, color) do mesh, color
-                return GeometryBasics.pointmeta(mesh, color=el32convert(color))
-            end
-        end
-
-        mesh = map(mesh, transform_func_obs(meshplot)) do mesh, func
-            if !Makie.is_identity_transform(func)
-                return update_positions(mesh, apply_transform.(Ref(func), mesh.position))
-            end
-            return mesh
-        end
-        return GLVisualize.visualize_mesh(mesh, gl_attributes)
+    return cached_robj!(screen, scene, meshplot) do gl_attributes
+        t = transform_func_obs(meshplot)
+        return mesh_inner(meshplot[1], t, gl_attributes)
     end
 end
 

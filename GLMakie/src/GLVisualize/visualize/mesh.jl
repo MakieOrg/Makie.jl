@@ -32,7 +32,7 @@ function to_opengl_mesh!(result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
     return result
 end
 
-function visualize_mesh(@nospecialize(mesh), data::Dict)
+function draw_mesh(@nospecialize(mesh), data::Dict)
     to_opengl_mesh!(data, mesh)
     @gen_defaults! data begin
         shading = true
