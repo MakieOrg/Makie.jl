@@ -1,27 +1,27 @@
-export mouseover, mouse_selection, mouseposition, hovered_scene
+export mouseover, mouseposition, hovered_scene
 export select_rectangle, select_line, select_point
 
 
 """
-    mouseover(scene::SceneLike, plots::AbstractPlot...)
+    mouseover(fig/ax/scene, plots::AbstractPlot...)
 
 Returns true if the mouse currently hovers any of `plots`.
 """
 mouseover(x, plots::AbstractPlot...) = mouseover(get_scene(x), plots...)
-function mouseover(scene::SceneLike, plots::AbstractPlot...)
-    p, idx = mouse_selection(scene)
+function mouseover(scene::Scene, plots::AbstractPlot...)
+    p, idx = pick(scene)
     return p in flatten_plots(plots)
 end
 
 """
-    onpick(f, scene::SceneLike, plots::AbstractPlot...)
+    onpick(f, fig/ax/scene, plots::AbstractPlot...)
 
 Calls `f(plot, idx)` whenever the mouse is over any of `plots`.
 `idx` is an index, e.g. when over a scatter plot, it will be the index of the
 hovered element
 """
 onpick(f, x, plots::AbstractPlot...; range=1) = onpick(f, get_scene(x), plots..., range = range)
-function onpick(f, scene::SceneLike, plots::AbstractPlot...; range=1)
+function onpick(f, scene::Scene, plots::AbstractPlot...; range=1)
     fplots = flatten_plots(plots)
     args = range == 1 ? (scene,) : (scene, range)
     on(events(scene).mouseposition) do mp
@@ -57,13 +57,13 @@ function flatten_plots(array, plots = AbstractPlot[])
 end
 
 """
-    mouse_in_scene(scene::Scene[, priority = 0])
+    mouse_in_scene(fig/ax/scene[, priority = 0])
 
 Returns a new observable that is true whenever the cursor is inside the given scene.
 
 See also: [`is_mouseinside`](@ref)
 """
-function mouse_in_scene(scene::SceneLike; priority = Int8(0))
+function mouse_in_scene(scene::Scene; priority = Int8(0))
     p = rootparent(scene)
     output = Observable(Vec2(0.0))
     on(events(scene).mouseposition, priority = priority) do mp
@@ -75,37 +75,37 @@ end
 
 
 """
-    pick(scene, x, y)
+    pick(fig/ax/scene, x, y)
 
 Returns the plot under pixel position `(x, y)`.
 """
 pick(obj, x::Number, y::Number) = pick(get_scene(obj), x, y)
-function pick(scene::SceneLike, x::Number, y::Number)
+function pick(scene::Scene, x::Number, y::Number)
     return pick(scene, Vec{2, Float64}(x, y))
 end
 
 
 """
-    pick(scene::Scene, xy::VecLike)
+    pick(fig/ax/scene, xy::VecLike)
 
 Return the plot under pixel position xy.
 """
 pick(obj) = pick(get_scene(obj), mouseposition_px(get_scene(obj)))
 pick(obj, xy::VecTypes{2}) = pick(get_scene(obj), xy)
-function pick(scene::SceneLike, xy::VecTypes{2})
+function pick(scene::Scene, xy::VecTypes{2})
     screen = getscreen(scene)
     screen === nothing && return (nothing, 0)
     pick(scene, screen, Vec{2, Float64}(xy))
 end
 
 """
-    pick(scene::Scene, xy::VecLike, range)
+    pick(fig/ax/scene, xy::VecLike, range)
 
 Return the plot closest to xy within a given range.
 """
 pick(obj, range::Real) = pick(get_scene(obj), mouseposition_px(get_scene(obj)), range)
 pick(obj, xy::VecTypes{2}, range::Real) = pick(get_scene(obj), xy, range)
-function pick(scene::SceneLike, xy::VecTypes{2}, range::Real)
+function pick(scene::Scene, xy::VecTypes{2}, range::Real)
     screen = getscreen(scene)
     screen === nothing && return (nothing, 0)
     pick_closest(scene, screen, xy, range)
@@ -136,18 +136,18 @@ function pick_closest(scene::SceneLike, screen, xy, range)
 end
 
 """
-    pick_sorted(scene::Scene, xy::VecLike, range)
+    pick_sorted(fig/ax/scene, xy::VecLike, range)
 
 Return all `(plot, index)` pairs in a `(xy .- range, xy .+ range)` region
 sorted by distance to `xy`.
 """
-function pick_sorted(scene::SceneLike, xy, range)
+function pick_sorted(scene::Scene, xy, range)
     screen = getscreen(scene)
     screen === nothing && return Tuple{AbstractPlot, Int}[]
     pick_sorted(scene, screen, xy, range)
 end
 
-function pick_sorted(scene::SceneLike, screen, xy, range)
+function pick_sorted(scene::Scene, screen, xy, range)
     w, h = widths(screen)
     if !((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h))
         return Tuple{AbstractPlot, Int}[]
@@ -185,7 +185,7 @@ Return all `(plot, index)` pairs within the given rect. The rect must be within
 screen boundaries.
 """
 pick(x, rect::Rect2i) = pick(get_scene(x), rect)
-function pick(scene::SceneLike, rect::Rect2i)
+function pick(scene::Scene, rect::Rect2i)
     screen = getscreen(scene)
     screen === nothing && return Tuple{AbstractPlot, Int}[]
     return pick(scene, screen, rect)
