@@ -45,7 +45,7 @@ With only the first listener connected `Low priority: 1` gets printed. In this c
 
 ## The Events struct
 
-Events from the backend are stored in PriorityObservables within the `Events` struct. You can access it with `events(x)` where `x` is a `Figure`, `Axis`, `FigureAxisPlot` or `Scene`. It contains the following fields:
+Events from the backend are stored in PriorityObservables within the `Events` struct. You can access it with `events(x)` where `x` is a `Figure`, `Axis`, `Axis3`, `LScene`, `FigureAxisPlot` or `Scene`. Regardless of which source you use here you will always get the same struct. This is also true for accessing it directly via `scene.events`. It contains the following fields:
 
 - `window_area::PriorityObservable{Rect2i}`: Contains the current size of the window in pixels.
 - `window_dpi::PriorityObservable{Float64}`: Contains the DPI of the window.
@@ -336,7 +336,7 @@ fig
 
 There are a couple of different methods of and functions related to `pick`. The base method `pick(scene, pos)` picks points exactly. For small markers or thin lines you may instead want to pick the closest plot element within a given range. This can be done with `pick(scene, position, range)`. You can also get all plots and indices within a range sorted by distance with `pick_sorted(scene, position, range)`. This can be useful if you want to filter certain plots out, for example the background of an `Axis`.
 
-If you jsut want to know whether the cursor is on a certain plot or set of plots you can use `mouseover(scene, plots...)`. This will call `Makie.flatten_plots(plots)` to break down all plots into primitive plots and check against pick. If you want continue using the output from pick you can use `onpick(f, scene, plots...; range=1)` which performs this check and calls `f(plot, index)` if it succeeds.
+If you just want to know whether the cursor is on a certain plot or set of plots you can use `mouseover(scene, plots...)`. This will call `Makie.flatten_plots(plots)` to break down all plots into primitive plots and check against pick. If you want continue using the output from pick you can use `onpick(f, scene, plots...; range=1)` which performs this check and calls `f(plot, index)` if it succeeds.
 
 ## The `ispressed` function
 
@@ -369,7 +369,7 @@ With this `hotkey` can now be
 - A `Tuple`, `Vector` or `Set` of keys and mouse buttons which all must be pressed.
 - A logical expression of keys and mouse buttons with `!`, `&` and `|`. Each key will be checked individually and the result will be combined as the expression dictates.
 
-Furthermore you can wrap any of the above in `Exclusively` to discard matches where additional buttons are pressed. Here are some examples:
+Furthermore you can wrap any of the above in `Exclusively` to discard matches where additional buttons are pressed. All of these options are order independent. Here are some examples:
 
 - `hotkey = Mouse.left` matches any state with the left mouse button pressed.
 - `hotkey = (Keyboard.left_control, Keyboard.a)` matches any state with both left control and a pressed.
