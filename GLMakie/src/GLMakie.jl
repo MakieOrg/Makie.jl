@@ -27,6 +27,8 @@ for name in names(Makie, all=true)
 end
 
 export inline!
+import ShaderAbstractions: Sampler, Buffer
+export Sampler, Buffer
 
 struct GLBackend <: Makie.AbstractBackend
 end
