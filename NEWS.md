@@ -1,5 +1,9 @@
 # News
 
+## Master
+
+- Fix WGLMakie performance bug and add option to set fps via `WGLMakie.activate!(fps=30)`
+
 ## v0.16
 
 #### Big Changes
