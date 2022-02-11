@@ -74,7 +74,9 @@ mesh(
 ```
 \end{examplefigure}
 
-We can also create a mesh, to specify normals, uv coordinates and so forth:
+## Using GeometryBasics.Mesh and Buffer/Sampler type
+
+We can also create a mesh, to specify normals, uv coordinates:
 
 ```julia:mesh
 using GeometryBasics, LinearAlgebra, GLMakie, FileIO
@@ -109,14 +111,12 @@ end
 # We add some shift to demonstrate how UVs work:
 uv = gen_uv(0.0)
 # We can use a Buffer to update single elements in an array directly on the GPU
-# with GLMakie. They work just like normal arrays, but forward any updates written to them to the GPU
+# with GLMakie. They work just like normal arrays, but forward any updates written to them directly to the GPU
 uv_buff = Buffer(uv)
 gb_mesh = GeometryBasics.Mesh(meta(points; uv=uv_buff, normals), faces)
 
 f, ax, pl = mesh(gb_mesh,  color = rand(100, 100), colormap=:blues)
 wireframe!(ax, gb_mesh, color=(:black, 0.2), linewidth=2, transparency=true)
-f
-
 record(f, "uv_mesh.mp4", LinRange(0, 1, 100)) do shift
     uv_buff[1:end] = gen_uv(shift)
 end
