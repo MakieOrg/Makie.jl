@@ -31,7 +31,7 @@ using Makie: inline!
 struct WebGL <: ShaderAbstractions.AbstractContext end
 struct WGLBackend <: Makie.AbstractBackend end
 
-const THREE = Dependency(:THREE, ["https://unpkg.com/three@0.137.0/build/three.js"])
+const THREE = Dependency(:THREE, ["https://unpkg.com/three@0.136.0/build/three.js"])
 const WGL = Dependency(:WGLMakie, [@path joinpath(@__DIR__, "wglmakie.js")])
 const WEBGL = Dependency(:WEBGL, [@path joinpath(@__DIR__, "WEBGL.js")])
 

@@ -600,9 +600,8 @@ const WGLMakie = (function () {
 
     function start_renderloop(renderer, three_scenes, cam, fps) {
         const time_per_frame = (1 / fps) * 1000; // default is 30 fps
-
         // make sure we immediately render the first frame and dont wait 30ms
-        let last_time_stamp = performance.now() - time_per_frame
+        let last_time_stamp = performance.now()
         function renderloop(timestamp) {
             const canvas = renderer.domElement
             if (!document.body.contains(canvas)){
@@ -617,6 +616,8 @@ const WGLMakie = (function () {
             }
             window.requestAnimationFrame(renderloop);
         }
+        // render one time before starting loop, so that we don't wait 30ms before first render
+        render_scenes(renderer, three_scenes, cam);
         renderloop();
     }
 
