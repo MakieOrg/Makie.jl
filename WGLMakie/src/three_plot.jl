@@ -82,7 +82,7 @@ function three_display(session::Session, scene::Scene)
         if ( renderer ) {
             const three_scenes = scenes.map(x=> $(WGL).deserialize_scene(x, canvas))
             const cam = new $(THREE).PerspectiveCamera(45, 1, 0, 100)
-            $(WGL).start_renderloop(renderer, three_scenes, cam)
+            $(WGL).start_renderloop(renderer, three_scenes, cam, $(CONFIG.fps[]))
             JSServe.on_update($canvas_width, w_h => {
                 // `renderer.setSize` correctly updates `canvas` dimensions
                 const pixelRatio = renderer.getPixelRatio();
