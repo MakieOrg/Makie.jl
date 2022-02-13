@@ -575,10 +575,8 @@ function validate_limits_for_scales(lims::Rect, xsc, ysc)
 end
 
 function validate_limits_for_scale(lims, scale)
-    all(x -> begin
-        lims[1] == lims[2] && return false
-        x in defined_interval(scale)
-    end, lims)
+    lims[1] == lims[2] && return false
+    all(x -> x in defined_interval(scale), lims)
 end
 
 palettesyms(cycle::Cycle) = [c[2] for c in cycle.cycle]
