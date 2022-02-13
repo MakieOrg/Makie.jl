@@ -574,7 +574,12 @@ function validate_limits_for_scales(lims::Rect, xsc, ysc)
     nothing
 end
 
-validate_limits_for_scale(lims, scale) = all(x -> x in defined_interval(scale), lims)
+function validate_limits_for_scale(lims, scale)
+    all(x -> begin
+        scale in [log10, log2, log] && lims[1] == lims[2] && return false
+        x in defined_interval(scale)
+    end, lims)
+end
 
 palettesyms(cycle::Cycle) = [c[2] for c in cycle.cycle]
 attrsyms(cycle::Cycle) = [c[1] for c in cycle.cycle]
