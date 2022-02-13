@@ -29,12 +29,29 @@ vec4 get_color(Nothing color, vec2 uv, vec2 color_norm, sampler1D color_map, Not
     return o_color;
 }
 
-vec4 get_color(sampler2D color, vec2 uv, vec2 color_norm, sampler1D color_map, Nothing matcap){
-    return o_color;
-}
-
 vec4 get_color(sampler2D color, vec2 uv, Nothing color_norm, Nothing color_map, Nothing matcap){
     return texture(color, uv);
+}
+
+float _normalize(float val, float from, float to){return (val-from) / (to - from);}
+vec4 color_lookup(float intensity, sampler1D color_ramp, vec2 norm){
+    return texture(color_ramp, _normalize(intensity, norm.x, norm.y));
+}
+
+uniform vec4 highclip;
+uniform vec4 lowclip;
+uniform vec4 nan_color;
+
+vec4 get_color(sampler2D intensity, vec2 uv, vec2 color_norm, sampler1D color_map, Nothing matcap){
+    float i = texture(intensity, uv).x;
+    if (isnan(i)) {
+        return nan_color;
+    } else if (i < color_norm.x) {
+        return lowclip;
+    } else if (i > color_norm.y) {
+        return highclip;
+    }
+    return color_lookup(i, color_map, color_norm);
 }
 
 vec4 matcap_color(sampler2D matcap){

@@ -34,9 +34,4 @@ include(joinpath("visualize", "surface.jl"))
 
 export CIRCLE, RECTANGLE, ROUNDED_RECTANGLE, DISTANCEFIELD, TRIANGLE
 
-if Base.VERSION >= v"1.4.2"
-    include("precompile.jl")
-    _precompile_()
-end
-
 end # module
