@@ -576,7 +576,7 @@ end
 
 function validate_limits_for_scale(lims, scale)
     all(x -> begin
-        scale in [log10, log2, log] && lims[1] == lims[2] && return false
+        lims[1] == lims[2] && return false
         x in defined_interval(scale)
     end, lims)
 end
