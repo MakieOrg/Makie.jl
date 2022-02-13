@@ -773,6 +773,10 @@ function getlimits(la::Axis, dim)
 
     # otherwise start with the first box
     mini, maxi = minimum(boundingbox), maximum(boundingbox)
+
+    # equal limits not allowed
+    mini[dim] == maxi[dim] && return nothing
+
     return (mini[dim], maxi[dim])
 end
 
