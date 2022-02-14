@@ -375,11 +375,7 @@ function Screen(;
         Dict{UInt32, AbstractPlot}(),
     )
 
-    GLFW.SetWindowRefreshCallback(window, window -> begin
-        screen.render_tick[] = nothing
-        render_frame(screen)
-        GLFW.SwapBuffers(window)
-    end)
+    GLFW.SetWindowRefreshCallback(window, window -> refreshwindowcb(window, screen))
 
     screen.rendertask[] = @async((WINDOW_CONFIG.renderloop[])(screen))
     # display window if visible!
@@ -415,6 +411,11 @@ function global_gl_screen(resolution::Tuple, visibility::Bool, tries = 1)
     screen
 end
 
+function refreshwindowcb(window, screen)
+    screen.render_tick[] = nothing
+    render_frame(screen)
+    return GLFW.SwapBuffers(window)
+end
 
 #################################################################################
 ### Point picking
