@@ -622,7 +622,7 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
     # because if there were any, these are looked up directly
     # in the cycler without advancing the counter etc.
     manually_cycled_attributes = filter(keys(allattrs)) do key
-        allattrs[key][] isa Cycled
+        to_value(allattrs[key]) isa Cycled
     end
 
     # if there are any manually cycled attributes, we don't do the normal
@@ -879,14 +879,14 @@ end
 function adjustlimits!(la)
     asp = la.autolimitaspect[]
     target = la.targetlimits[]
+    area = la.scene.px_area[]
 
     # in the simplest case, just update the final limits with the target limits
-    if isnothing(asp)
+    if isnothing(asp) || width(area) == 0 || height(area) == 0
         la.finallimits[] = target
         return
     end
 
-    area = la.scene.px_area[]
     xlims = (left(target), right(target))
     ylims = (bottom(target), top(target))
 
