@@ -50,8 +50,30 @@ function compare_media(a, b; sigma=[1,1])
     end
 end
 
-function compare(test_files::Vector{String}, reference_dir::String; o_refdir=reference_dir, missing_refimages=String[], scores=Dict{String,Float64}())
-    for test_path in test_files
+function record_comparison(base_folder::String; record_folder_name="recorded", reference_folder_name = "reference")
+    record_folder = joinpath(base_folder, record_folder_name)
+    reference_folder = joinpath(base_folder, reference_folder_name)
+    test_paths = joinpath.(record_folder, readdir(record_folder))
+    missing_refimages, scores = compare(test_paths, reference_folder)
+
+    open(joinpath(base_folder, "new_files.txt"), "w") do file
+        for path in missing_refimages
+            println(file, path)
+        end
+    end
+
+    open(joinpath(base_folder, "scores.tsv"), "w") do file
+        paths_scores = sort(collect(pairs(scores)), by = last, rev = true)
+        for (path, score) in paths_scores
+            println(file, score, '\t', path)
+        end
+    end
+
+    return missing_refimages, scores
+end
+
+function compare(test_paths::Vector{String}, reference_dir::String; o_refdir=reference_dir, missing_refimages=String[], scores=Dict{String,Float64}())
+    for test_path in test_paths
         ref_path = joinpath(reference_dir, basename(test_path))
         if isdir(test_path)
             if !isdir(ref_path)
