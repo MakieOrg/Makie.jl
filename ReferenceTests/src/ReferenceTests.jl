@@ -19,6 +19,9 @@ using ImageShow
 using Downloads: download
 import HTTP
 import JSON3
+import ZipFile
+import REPL
+import REPL.TerminalMenus
 
 basedir(files...) = normpath(joinpath(@__DIR__, "..", files...))
 loadasset(files...) = FileIO.load(assetpath(files...))
