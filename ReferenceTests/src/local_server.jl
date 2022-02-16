@@ -60,11 +60,11 @@ end
 
 # function serve_pr_update_page(pr_number)
 #     prinfo = JSON3.read(HTTP.get("https://api.github.com/repos/JuliaPlots/Makie.jl/pulls/$pr_number").body)
-function serve_update_page_for_commit(headsha)
+function serve_update_page_for_commit(headsha; check_run_startswith = "GLMakie Julia 1.6")
     authget(url) = HTTP.get(url, Dict("Authorization" => "token $(ENV["GITHUB_TOKEN"])"))
     # headsha = prinfo["head"]["sha"]
     checksinfo = JSON3.read(authget("https://api.github.com/repos/JuliaPlots/Makie.jl/commits/$headsha/check-runs").body)
-    checkvec = filter(x -> startswith(x["name"], "GLMakie Julia 1.6"), checksinfo["check_runs"])
+    checkvec = filter(x -> startswith(x["name"], check_run_startswith), checksinfo["check_runs"])
     if length(checkvec) == 1
         check = only(checkvec)
     else
