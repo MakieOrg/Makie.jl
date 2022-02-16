@@ -70,6 +70,21 @@ excludes = Set([
 functions = [:volume, :volume!, :uv_mesh]
 database = database_filtered(excludes, functions=functions)
 
-recorded = joinpath(@__DIR__, "recorded")
-rm(recorded; force=true, recursive=true); mkdir(recorded)
-@time ReferenceTests.run_reference_tests(database, recorded)
+basefolder = joinpath(@__DIR__, "reference_test_output")
+rm(basefolder; force=true, recursive=true)
+mkdir(basefolder)
+
+main_refimage_set = "refimages"
+main_tests_root_folder = joinpath(basefolder, main_refimage_set)
+mkdir(main_tests_root_folder)
+
+main_tests_record_folder = joinpath(main_tests_root_folder, "recorded")
+mkdir(main_tests_record_folder)
+
+ReferenceTests.record_tests(ReferenceTests.load_database(), recording_dir = main_tests_record_folder)
+
+main_tests_refimages_download_folder = ReferenceTests.download_refimages(; name=main_refimage_set)
+main_tests_refimages_folder = joinpath(main_tests_root_folder, "reference")
+cp(main_tests_refimages_download_folder, main_tests_refimages_folder)
+
+ReferenceTests.record_comparison(main_tests_root_folder)
