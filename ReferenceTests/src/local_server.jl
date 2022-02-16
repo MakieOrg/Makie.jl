@@ -74,7 +74,8 @@ function serve_update_page_for_commit(headsha; check_run_startswith = "GLMakie J
     run = JSON3.read(authget(job["run_url"]).body)
     artifacts = JSON3.read(authget(run["artifacts_url"]).body)["artifacts"]
     for a in artifacts
-        if a["name"] == "ReferenceImages_ubuntu-18.04_x64_1.6"
+        if endswith(a["name"], "1.6")
+            @info "Choosing artifact $(a["name"])"
             download_url = a["archive_download_url"]
             @info "Downloading artifact from $download_url"
             filepath = Downloads.download(download_url, headers = Dict("Authorization" => "token $(ENV["GITHUB_TOKEN"])"))
