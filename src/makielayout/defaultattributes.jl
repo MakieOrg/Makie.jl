@@ -768,6 +768,8 @@ function default_attributes(::Type{Legend}, scene)
         labelcolor = lift_parent_attribute(scene, :textcolor, :black)
         "The horizontal alignment of the entry labels."
         labelhalign = :left
+        "The justification of the label text. Default is `automatic`, which will set the justification to labelhalign."
+        labeljustification = automatic
         "The vertical alignment of the entry labels."
         labelvalign = :center
         "The additional space between the legend content and the border."

@@ -52,7 +52,7 @@ end
 can_be_current_axis(x) = false
 
 get_top_parent(gp::GridPosition) = GridLayoutBase.top_parent(gp.layout)
-get_top_parent(gp::GridSubposition) = GridLayoutBase.top_parent(gp.parent)
+get_top_parent(gp::GridSubposition) = get_top_parent(gp.parent)
 
 function _layoutable(T::Type{<:Layoutable},
         gp::Union{GridPosition, GridSubposition}, args...; kwargs...)

@@ -4,6 +4,13 @@
 
 - deprecated `mouse_selection(scene)` for `pick(scene)`
 
+##  v0.16.4
+
+- Fix WGLMakie performance bug and add option to set fps via `WGLMakie.activate!(fps=30)`
+- implement `nan_color`, `lowclip`, `highclip` for `image(::Matrix{Float})` in shader
+- clean up mesh shader and implement `nan_color`, `lowclip`, `highclip` for `mesh(m; color::Matrix{Float})` on the shader
+- allow `GLMakie.Buffer` `GLMakie.Sampler` be used in `GeometryBasics.Mesh` to partially update parts of a mesh/texture and different interpolation and clamping modes for the texture.
+
 ## v0.16
 
 #### Big Changes

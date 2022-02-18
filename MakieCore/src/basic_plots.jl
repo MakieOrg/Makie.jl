@@ -156,7 +156,7 @@ Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [Geome
         backlight = 0f0,
         colormap = theme(scene, :colormap),
         colorrange = automatic,
-        interpolate = false,
+        interpolate = true,
         shading = true,
         fxaa = true,
         inspectable = theme(scene, :inspectable),
