@@ -12,7 +12,7 @@ function layoutable(::Type{Legend},
     @extract attrs (
         halign, valign, padding, margin,
         titlefont, titlesize, titlehalign, titlevalign, titlevisible, titlecolor,
-        labelsize, labelfont, labelcolor, labelhalign, labelvalign,
+        labelsize, labelfont, labelcolor, labelhalign, labelvalign, labeljustification,
         bgcolor, framecolor, framewidth, framevisible,
         patchsize, # the side length of the entry patch area
         nbanks,
@@ -223,24 +223,23 @@ function layoutable(::Type{Legend},
                 merge!(e.attributes, preset_attrs)
 
                 # create the label
-                push!(etexts, Label(scene,
-                    text = e.label, textsize = e.labelsize, font = e.labelfont,
-                    color = e.labelcolor, halign = e.labelhalign, valign = e.labelvalign
-                    ))
+                justification = map(labeljustification, e.labelhalign) do lj, lha
+                    return lj isa Automatic ? lha : lj
+                end
+                push!(etexts,
+                      Label(scene; text=e.label, textsize=e.labelsize, font=e.labelfont, justification=justification,
+                            color=e.labelcolor, halign=e.labelhalign, valign=e.labelvalign))
 
                 # create the patch rectangle
-                rect = Box(scene, color = e.patchcolor, strokecolor = e.patchstrokecolor,
-                    strokewidth = e.patchstrokewidth,
-                    width = lift(x -> x[1], e.patchsize),
-                    height = lift(x -> x[2], e.patchsize))
+                rect = Box(scene; color=e.patchcolor, strokecolor=e.patchstrokecolor, strokewidth=e.patchstrokewidth,
+                           width=lift(x -> x[1], e.patchsize), height=lift(x -> x[2], e.patchsize))
                 push!(erects, rect)
 
                 # plot the symbols belonging to this entry
                 symbolplots = AbstractPlot[]
                 for element in e.elements
                     append!(symbolplots,
-                        legendelement_plots!(scene, element,
-                            rect.layoutobservables.computedbbox, e.attributes))
+                            legendelement_plots!(scene, element, rect.layoutobservables.computedbbox, e.attributes))
                 end
 
                 push!(eplots, symbolplots)
