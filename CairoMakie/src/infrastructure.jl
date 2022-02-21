@@ -153,7 +153,8 @@ function cairo_draw(screen::CairoScreen, scene::Scene)
     draw_background(screen, scene)
 
     allplots = get_all_plots(scene)
-    sort!(allplots, by = Makie.zvalue2d)
+    zvals = Makie.zvalue2d.(allplots)
+    permute!(allplots, sortperm(zvals))
 
     last_scene = scene
 
