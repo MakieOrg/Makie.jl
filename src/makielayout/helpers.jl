@@ -268,8 +268,8 @@ macro documented_attributes(exp)
             for (name, exp, _) in vars_and_exps)...)
 
     # make an Attributes instance with of variable_name = variable_expression
-    exp_attrs = Expr(:call, :Attributes,
-        (Expr(:kw, name, exp)
+    exp_attrs = Expr(:call, :Theme,
+        (:($(QuoteNode(name)) => $exp)
             for (name, exp, _) in vars_and_exps)...)
 
     esc(quote
@@ -292,8 +292,8 @@ end
 
 
 function subtheme(scene, key::Symbol)
-    sub = haskey(theme(scene), key) ? theme(scene, key) : Attributes()
-    if !(sub isa Attributes)
+    sub = haskey(theme(scene), key) ? theme(scene, key) : Theme()
+    if !(sub isa Theme)
         error("Subtheme is not of type Attributes but is $sub")
     end
     sub

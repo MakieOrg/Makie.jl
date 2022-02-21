@@ -42,8 +42,8 @@ function LineAxis(parent::Scene; kwargs...)
         linestyle = nothing, visible = minorticksvisible, inspectable = false
     )
     decorations[:minorticklines] = minorticklines
-
-    realticklabelalign = lift(Any, ticklabelalign, pos_extents_horizontal, flipped, ticklabelrotation) do al, (pos, ex, hor), fl, rot
+    realticklabelalign = Observable{Any}()
+    map!(realticklabelalign, ticklabelalign, pos_extents_horizontal, flipped, ticklabelrotation) do al, (pos, ex, hor), fl, rot
         if al !== automatic
             return al
         end
@@ -82,8 +82,8 @@ function LineAxis(parent::Scene; kwargs...)
 
     ticklabelannosnode = Observable(Tuple{AbstractString, Point2f}[])
     ticklabels = nothing
-
-    ticklabel_ideal_space = lift(Float32, ticklabelannosnode, ticklabelalign, ticklabelrotation, ticklabelfont, ticklabelsvisible) do args...
+    ticklabel_ideal_space = Observable{Float32}()
+    map!(ticklabel_ideal_space, ticklabelannosnode, ticklabelalign, ticklabelrotation, ticklabelfont, ticklabelsvisible) do args...
         maxwidth = if pos_extents_horizontal[][3]
                 # height
                 ticklabelsvisible[] ? (ticklabels === nothing ? 0f0 : height(Rect2f(boundingbox(ticklabels)))) : 0f0
@@ -111,8 +111,6 @@ function LineAxis(parent::Scene; kwargs...)
             actual_ticklabelspace[] = s
         end
     end
-
-
 
     tickspace = lift(ticksvisible, ticksize, tickalign) do ticksvisible,
             ticksize, tickalign
