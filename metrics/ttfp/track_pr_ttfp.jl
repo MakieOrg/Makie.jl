@@ -23,17 +23,9 @@ julia_th = "./../../../../julia_th/julia"
 julia_17 = "julia"
 
 result_1_7 = run_bench(julia_17, ".")
-
 result_th = run_bench(julia_th, ".")
-
 result_1_7_tagged = run_bench(julia, "makie-tagged")
 result_th_tagged = run_bench(julia_th, "makie-tagged")
-
-@show result_1_7
-@show result_th
-@show result_1_7_tagged
-@show result_th_tagged
-
 
 using Pkg
 Pkg.activate("./makie-precompile")
@@ -42,3 +34,17 @@ Pkg.precompile("CairoMakie")
 
 result_1_7_precompile = run_bench(julia, "makie-precompile")
 result_th_precompile = run_bench(julia_th, "makie-precompile")
+
+using Serialization
+
+open("./data/julia_19_precompile.jls", "w") do io
+    Serialization.serialize(io, result_th_precompile)
+end
+
+open("./data/julia_19_latency.jls", "w") do io
+    Serialization.serialize(io, result_th)
+end
+
+open("./data/julia_17_latency.jls", "w") do io
+    Serialization.serialize(io, result_1_7)
+end
