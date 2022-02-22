@@ -719,9 +719,9 @@ function draw_mesh3D(
     ns = map(n -> normalize(normalmatrix * n), decompose_normals(mesh))
     cols = per_face_colors(
         color, colormap, colorrange, matcap, vs, fs, ns, uv,
-        get(primitive, :lowclip, nothing) |> to_value |> color_or_nothing,
-        get(primitive, :highclip, nothing) |> to_value |> color_or_nothing,
-        get(primitive, :nan_color, nothing) |> to_value |> color_or_nothing
+        color_or_nothing(to_value(get(primitive, :lowclip, nothing))) ,
+        color_or_nothing(to_value(get(primitive, :highclip, nothing))) ,
+        color_or_nothing(to_value(get(primitive, :nan_color, nothing)))
     )
 
     # Liight math happens in view/camera space
