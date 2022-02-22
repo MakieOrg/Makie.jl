@@ -1,4 +1,4 @@
-function serve_update_page(folder)
+function serve_update_page_from_dir(folder)
 
     folder = realpath(folder)
     @assert isdir(folder) "$folder is not a valid directory."
@@ -68,17 +68,42 @@ function serve_update_page(folder)
 end
 
 # function serve_pr_update_page(pr_number)
-#     prinfo = JSON3.read(HTTP.get("https://api.github.com/repos/JuliaPlots/Makie.jl/pulls/$pr_number").body)
-function serve_update_page_for_commit(headsha; check_run_startswith = "GLMakie Julia 1.6")
+#     
+function serve_update_page(; commit = nothing, pr = nothing)
     authget(url) = HTTP.get(url, Dict("Authorization" => "token $(ENV["GITHUB_TOKEN"])"))
+
+    commit !== nothing && pr !== nothing && error("Keyword arguments `commit` and `pr` can't be set at once.")
+    if pr !== nothing
+        prinfo = JSON3.read(authget("https://api.github.com/repos/JuliaPlots/Makie.jl/pulls/$pr").body)
+        headsha = prinfo["head"]["sha"]
+        @info "PR is $pr, using last commit hash $headsha"
+    elseif commit !== nothing
+        headsha = commit
+    else
+        error("You have to specify either the keyword argument `commit` or `pr`.")
+    end
+
     # headsha = prinfo["head"]["sha"]
     checksinfo = JSON3.read(authget("https://api.github.com/repos/JuliaPlots/Makie.jl/commits/$headsha/check-runs").body)
-    checkvec = filter(x -> startswith(x["name"], check_run_startswith), checksinfo["check_runs"])
-    if length(checkvec) == 1
-        check = only(checkvec)
-    else
-        error("Found not 1 check but $(length(checkvec))")
+    
+    checkruns = filter(checksinfo["check_runs"]) do x
+        any(["GLMakie", "WGLMakie", "CairoMakie"]) do package
+            occursin(package, x["name"]) && occursin("1.6", x["name"])
+        end
     end
+
+    if isempty(checkruns)
+        error("No check runs fit the criteria, check if something about names or versions might have changed.")
+    end
+
+    menu = REPL.TerminalMenus.RadioMenu([x["name"] for x in checkruns])
+    choice = REPL.TerminalMenus.request("Choose a workflow run:", menu)
+
+    if choice == -1
+        error("Cancelled")
+    end
+    check = checkruns[choice]
+    
     job = JSON3.read(authget("https://api.github.com/repos/JuliaPlots/Makie.jl/actions/jobs/$(check["id"])").body)
     run = JSON3.read(authget(job["run_url"]).body)
     artifacts = JSON3.read(authget(run["artifacts_url"]).body)["artifacts"]
@@ -108,7 +133,7 @@ function serve_update_page_for_commit(headsha; check_run_startswith = "GLMakie J
             end
 
             @info "Serving update page for folder $folder."
-            serve_update_page(joinpath(tmpdir, folder))
+            serve_update_page_from_dir(joinpath(tmpdir, folder))
             return 
         end
     end
