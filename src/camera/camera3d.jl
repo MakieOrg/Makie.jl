@@ -604,7 +604,7 @@ function update_cam!(scene::Scene, camera::Camera3D, area3d::Rect)
     @extractvalue camera (lookat, eyeposition, upvector)
     bb = Rect3f(area3d)
     width = widths(bb)
-    half_width = width/2f0
+    half_width = width ./ 2f0
     middle = maximum(bb) - half_width
     old_dir = normalize(eyeposition .- lookat)
     camera.lookat[] = middle
