@@ -39,8 +39,7 @@ main_tests_refimages_download_folder = ReferenceTests.download_refimages(; name=
 main_tests_refimages_folder = joinpath(main_tests_root_folder, "reference")
 cp(main_tests_refimages_download_folder, main_tests_refimages_folder)
 
-ReferenceTests.record_comparison(main_tests_root_folder)
-
+missing_refimages_main, scores_main = ReferenceTests.record_comparison(main_tests_root_folder)
 
 
 
@@ -60,4 +59,14 @@ glmakie_tests_refimages_download_folder = ReferenceTests.download_refimages(; na
 glmakie_tests_refimages_folder = joinpath(glmakie_tests_root_folder, "reference")
 cp(glmakie_tests_refimages_download_folder, glmakie_tests_refimages_folder)
 
-ReferenceTests.record_comparison(glmakie_tests_root_folder)
+missing_refimages_glmakie, scores_glmakie = ReferenceTests.record_comparison(glmakie_tests_root_folder)
+
+@testset "compare refimages" begin
+    @testset "refimages" begin
+        ReferenceTests.test_comparison(missing_refimages_main, scores_main; threshold = 0.032)
+    end
+    @testset "refimages" begin
+        ReferenceTests.test_comparison(missing_refimages_glmakie, scores_glmakie; threshold = 0.001)
+    end
+end
+

@@ -72,6 +72,17 @@ function record_comparison(base_folder::String; record_folder_name="recorded", r
     return missing_refimages, scores
 end
 
+function test_comparison(missing_refimages, scores; threshold)
+    @testset "Comparison scores and missing reference images" begin
+        @test isempty(missing_refimages)
+        for (image, score) in pairs(scores)
+            @testset image begin
+                score <= threshold
+            end
+        end
+    end
+end
+
 function compare(test_paths::Vector{String}, reference_dir::String; o_refdir=reference_dir, missing_refimages=String[], scores=Dict{String,Float64}())
     for test_path in test_paths
         ref_path = joinpath(reference_dir, basename(test_path))

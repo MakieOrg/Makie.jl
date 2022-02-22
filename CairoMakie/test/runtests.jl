@@ -87,4 +87,6 @@ main_tests_refimages_download_folder = ReferenceTests.download_refimages(; name=
 main_tests_refimages_folder = joinpath(main_tests_root_folder, "reference")
 cp(main_tests_refimages_download_folder, main_tests_refimages_folder)
 
-ReferenceTests.record_comparison(main_tests_root_folder)
+missing_refimages, scores = ReferenceTests.record_comparison(main_tests_root_folder)
+ReferenceTests.test_comparison(missing_refimages, scores; threshold = 0.032)
+
