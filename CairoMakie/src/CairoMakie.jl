@@ -1,7 +1,7 @@
 module CairoMakie
 
 using Makie, LinearAlgebra
-using Colors, GeometryBasics, FileIO, StaticArrays
+using Colors, GeometryBasics, FileIO
 import SHA
 import Base64
 import Cairo
