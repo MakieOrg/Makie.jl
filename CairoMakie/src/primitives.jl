@@ -689,9 +689,9 @@ function draw_mesh3D(
     @get_attribute(primitive, (color, shading, diffuse,
         specular, shininess, faceculling))
 
-    colormap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
-    colorrange = get(primitive, :colorrange, nothing) |> to_value
-    matcap = get(primitive, :matcap, nothing) |> to_value
+    colormap = to_colormap(to_value(get(primitive, :colormap, nothing)))
+    colorrange = to_value(get(primitive, :colorrange, nothing))
+    matcap = to_value(get(primitive, :matcap, nothing))
     # Priorize colors of the mesh if present
     color = hasproperty(mesh, :color) ? mesh.color : color
 
@@ -700,7 +700,7 @@ function draw_mesh3D(
     model = primitive.model[]
     view = scene.camera.view[]
     projection = scene.camera.projection[]
-    i = SOneTo(3)
+    i = Vec(1, 2, 3)
     normalmatrix = transpose(inv(view[i, i] * model[i, i]))
 
     # Mesh data
@@ -748,7 +748,7 @@ function draw_mesh3D(
         @inbounds begin
             p = (clip ./ clip[4])[Vec(1, 2)]
             p_yflip = Vec2f(p[1], -p[2])
-            p_0_to_1 = (p_yflip .+ 1f0) / 2f0
+            p_0_to_1 = (p_yflip .+ 1f0) ./ 2f0
         end
         p = p_0_to_1 .* scene.camera.resolution[]
         return Vec3f(p[1], p[2], clip[3])
@@ -770,7 +770,7 @@ function draw_mesh3D(
             map(ns[f], vs[f], cols[k]) do N, v, c
                 L = normalize(lightpos .- v[Vec(1,2,3)])
                 diff_coeff = max(dot(L, N), 0.0)
-                H = normalize(L + normalize(-v[SOneTo(3)]))
+                H = normalize(L + normalize(-v[Vec(1, 2, 3)]))
                 spec_coeff = max(dot(H, N), 0.0)^shininess
                 c = RGBA(c)
                 new_c = (ambient .+ diff_coeff .* diffuse) .* Vec3f(c.r, c.g, c.b) .+
