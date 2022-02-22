@@ -2,7 +2,6 @@ function _precompile_()
     ccall(:jl_generating_output, Cint, ()) == 1 || return nothing
     precompile(Makie.backend_display, (CairoBackend, Scene))
     activate!()
-    println("hiii")
     f, ax1, pl = scatter(1:4)
     f, ax2, pl = lines(1:4)
     Makie.colorbuffer(ax1.scene)
