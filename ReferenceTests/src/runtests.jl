@@ -76,7 +76,7 @@ function test_comparison(missing_refimages, scores; threshold)
     @testset "Comparison scores and missing reference images" begin
         @test isempty(missing_refimages)
         for (image, score) in pairs(scores)
-            @testset image begin
+            @testset "$image" begin
                 score <= threshold
             end
         end
@@ -100,7 +100,7 @@ function compare(test_paths::Vector{String}, reference_dir::String; o_refdir=ref
             else
                 diff = compare_media(test_path, ref_path)
                 name = relpath(ref_path, o_refdir)
-                @info(@sprintf "%1.4f == %s\n" diff name)
+                # @info(@sprintf "%1.4f == %s\n" diff name)
                 scores[name] = diff
             end
         end
