@@ -2,21 +2,24 @@
 <html>
     <head>
         <style>
+            body {
+                font-family: sans-serif;
+            }
             .refimage {
                 display: block;
             }
-            #refimage-list {
+            .image-list {
                 display: flex;
                 flex-wrap: wrap;
             }
-            #refimage-list > div {
+            .image-list > div {
                 margin: 1em;
                 padding: 0.5em;
                 border: 2px solid #eee;
                 border-radius: 1em;
             }
 
-            #refimage-list > div > h3 {
+            .image-list > div > h3 {
                 margin: 0 0 1em 0;  
             }
         </style>
@@ -24,12 +27,14 @@
     </head>
     <body>
         <h1>Reference images</h1>
-        <button id="update-reference">Update reference</button>
+        <button id="update-reference">Update reference images with selection</button>
         <h3 id="update-counter"></h3>
         <ul id="update-list">
         </ul>
-        <div id="refimage-list">
-        </div>
+        <h2>New images without references</h2>
+        <div id="new-images-list" class="image-list"></div>
+        <h2>Images with references</h2>
+        <div id="refimage-list" class="image-list"></div>
     </body>
 
     <script>
@@ -42,15 +47,15 @@
                         return
                     }
                     parts = line.split('\t')
-                    score = parts[0]
+                    score = parseFloat(parts[0])
                     let path = parts[1]
                     
                     div = document.createElement("div")
                     di.append(div)
                     div.innerHTML = `
-                    <input type="checkbox" class="update-checkbox" data-image="${path}">Update reference image</input>
-                    <h3>${path}</h3>
-                    <div>Score: ${score}</div>
+                    <input type="checkbox" class="update-checkbox" data-image="${path}"></input>
+                    <span>${path}</span>
+                    <div>Score: ${score.toFixed(4)}</div>
                     <button class="mode-button">Showing recorded</button>
                     `
                     if (path.endsWith(".png")){
@@ -79,11 +84,38 @@
                 })
             })
 
+        fetch('new_files.txt')
+            .then(response => response.text())
+            .then(data => {
+                di = document.querySelector("#new-images-list")
+                data.split(/\r?\n/).forEach(path => {
+                    if (path == ""){
+                        return
+                    }
+                    
+                    div = document.createElement("div")
+                    di.append(div)
+                    div.innerHTML = `
+                    <input type="checkbox" class="update-checkbox" data-image="${path}"></input>
+                    <span>${path}</span>
+                    `
+                    if (path.endsWith(".png")){
+                        div.innerHTML += `<img class="refimage" data-version="recorded" data-image="${path}" src="recorded/${path}">`
+                    } else if (path.endsWith(".mp4")){
+                        div.innerHTML += `<video class="refimage" data-version="recorded" data-image="${path}" controls src="recorded/${path}">`
+                    }
+                })
+
+                document.querySelectorAll(".update-checkbox").forEach(inp => {
+                    inp.onclick = update_list
+                })
+            })
+
         function update_list(){
             checked = Array.from(document.querySelectorAll(".update-checkbox")).filter(inp => inp.checked)
             n_checked = checked.length
 
-            document.querySelector("#update-counter").innerHTML = `${n_checked} images selected`
+            document.querySelector("#update-counter").innerHTML = `${n_checked} images selected for updating.`
 
             
             listitems = checked.map(c => {
@@ -93,11 +125,17 @@
         }
 
         document.querySelector("#update-reference").onclick = function(){
-            choice = confirm("Do you really want to update the reference images with the selection?")
 
             data = Array.from(document.querySelectorAll(".update-checkbox"))
                 .filter(inp => inp.checked)
                 .map(inp => inp.dataset.image)
+
+            if (data.length == 0){
+                alert("No images selected for update.")
+                return
+            }
+
+            choice = confirm("Do you really want to update the reference images with the selection?")
 
             if (choice){
                 fetch(window.location, {

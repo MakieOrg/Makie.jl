@@ -54,7 +54,7 @@ function serve_update_page(folder)
     HTTP.@register(router, "POST", "/", receive_update)
     HTTP.@register(router, "GET", "/", serve_local_file)
 
-    @info "Starting server"
+    @info "Starting server. Switch to https://localhost:8000 to view."
     HTTP.serve(router, HTTP.Sockets.localhost, 8000)
 end
 
@@ -98,7 +98,7 @@ function serve_update_page_for_commit(headsha; check_run_startswith = "GLMakie J
                 folder = folders[choice]
             end
 
-            @info "Serving update page for folder $folder"
+            @info "Serving update page for folder $folder."
             serve_update_page(joinpath(tmpdir, folder))
             return 
         end
@@ -107,11 +107,11 @@ function serve_update_page_for_commit(headsha; check_run_startswith = "GLMakie J
 end
 
 function unzip(file, exdir = "")
-    @info "Extracting zip file $file"
     fileFullPath = isabspath(file) ?  file : joinpath(pwd(),file)
     basePath = dirname(fileFullPath)
     outPath = (exdir == "" ? basePath : (isabspath(exdir) ? exdir : joinpath(pwd(),exdir)))
     isdir(outPath) ? "" : mkdir(outPath)
+    @info "Extracting zip file $file to $outPath"
     zarchive = ZipFile.Reader(fileFullPath)
     for f in zarchive.files
         fullFilePath = joinpath(outPath,f.name)
