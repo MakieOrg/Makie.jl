@@ -49,7 +49,7 @@ jobs:
       - name: Run the tests
         continue-on-error: true
         run: >
-          julia --project=monorepo -e 'using Pkg; Pkg.test("CairoMakie", coverage=true)'
+          julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("CairoMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV 
       - name: Upload test Artifacts
         uses: actions/upload-artifact@v2
