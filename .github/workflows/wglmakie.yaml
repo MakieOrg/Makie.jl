@@ -15,7 +15,7 @@ on:
     tags: '*'
 
 concurrency: 
-  group: ${{ github.ref }}
+  group: wglmakie-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

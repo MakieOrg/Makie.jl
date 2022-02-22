@@ -9,6 +9,11 @@ on:
     branches:
       - main
       - master
+
+concurrency: 
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest

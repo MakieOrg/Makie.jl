@@ -15,7 +15,7 @@ on:
     tags: '*'
 
 concurrency: 
-  group: ${{ github.ref }}
+  group: cairomakie-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
