@@ -38,6 +38,9 @@
     </body>
 
     <script>
+        // this string should be replaced by the server script with the correct value
+        default_tag = DEFAULT_TAG
+
         fetch('scores.tsv')
             .then(response => response.text())
             .then(data => {
@@ -126,18 +129,22 @@
 
         document.querySelector("#update-reference").onclick = function(){
 
-            data = Array.from(document.querySelectorAll(".update-checkbox"))
+            images = Array.from(document.querySelectorAll(".update-checkbox"))
                 .filter(inp => inp.checked)
                 .map(inp => inp.dataset.image)
 
-            if (data.length == 0){
+            if (images.length == 0){
                 alert("No images selected for update.")
                 return
             }
 
-            choice = confirm("Do you really want to update the reference images with the selection?")
+            chosen_tag = prompt("Do you really want to update the reference images with the selected images? Choose a different tag if needed.", default_tag)
 
-            if (choice){
+            if (chosen_tag != null){
+                data = {
+                    images: images,
+                    tag: chosen_tag,
+                }
                 fetch(window.location, {
                     headers: {
                         'Content-Type': 'application/json'
@@ -145,7 +152,7 @@
                     method: "POST",
                     body: JSON.stringify(data),
                 })
-                alert("Update command sent. Check the Julia REPL for errors.")
+                alert("Update command sent. Check the Julia REPL.")
             }
         }
 

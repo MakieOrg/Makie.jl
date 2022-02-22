@@ -8,23 +8,29 @@ function serve_update_page(folder)
     router = HTTP.Router()
 
     function receive_update(req)
-        images = JSON3.read(req.body)
+        data = JSON3.read(req.body)
+        images = data["images"]
+        tag = data["tag"]
         
         tempdir = tempname()
         recorded_folder = joinpath(folder, "recorded")
         reference_folder = joinpath(folder, "reference")
 
-        @info "Copying reference folder to $tempdir"
+        @info "Copying reference folder to \"$tempdir\""
         cp(reference_folder, tempdir)
 
         for image in images
-            @info "Overwriting $image in new reference folder"
-            cp(joinpath(recorded_folder, image), joinpath(tempdir, image), force = true)
+            @info "Overwriting \"$image\" in new reference folder"
+            copy_filepath = joinpath(tempdir, image)
+            copy_dir = splitdir(copy_filepath)[1]
+            # make the path in case a new refimage is in a not yet existing folder
+            mkpath(copy_dir)
+            cp(joinpath(recorded_folder, image), copy_filepath, force = true)
         end
 
-        @info "Uploading updated reference images"
+        @info "Uploading updated reference images under tag \"$tag\""
         try
-            upload_reference_images(tempdir, "julius-test-tag"; name = refimages_name)
+            upload_reference_images(tempdir, tag; name = refimages_name)
 
             HTTP.Response(200, "Upload successful")
         catch e
@@ -34,8 +40,11 @@ function serve_update_page(folder)
     end
 
     function serve_local_file(req)
-        req.target == "/" && return HTTP.Response(200,
-            read(normpath(joinpath(dirname(pathof(ReferenceTests)), "reference_images.html"))))
+        if req.target == "/"
+            s = read(normpath(joinpath(dirname(pathof(ReferenceTests)), "reference_images.html")), String)
+            s = replace(s, "DEFAULT_TAG" => "'$(last_major_version())'")
+            return HTTP.Response(200, s)
+        end
         file = HTTP.unescapeuri(req.target[2:end])
         filepath = normpath(joinpath(folder, file))
         # check that we don't go outside of the artifact folder
@@ -54,7 +63,7 @@ function serve_update_page(folder)
     HTTP.@register(router, "POST", "/", receive_update)
     HTTP.@register(router, "GET", "/", serve_local_file)
 
-    @info "Starting server. Switch to https://localhost:8000 to view."
+    @info "Starting server. Open localhost:8000 in your browser to view."
     HTTP.serve(router, HTTP.Sockets.localhost, 8000)
 end
 
