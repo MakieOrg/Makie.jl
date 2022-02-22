@@ -77,7 +77,7 @@ function test_comparison(missing_refimages, scores; threshold)
         @test isempty(missing_refimages)
         for (image, score) in pairs(scores)
             @testset "$image" begin
-                score <= threshold
+                @test score <= threshold
             end
         end
     end
