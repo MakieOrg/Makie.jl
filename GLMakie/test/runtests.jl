@@ -65,7 +65,7 @@ missing_refimages_glmakie, scores_glmakie = ReferenceTests.record_comparison(glm
     @testset "refimages" begin
         ReferenceTests.test_comparison(missing_refimages_main, scores_main; threshold = 0.032)
     end
-    @testset "refimages" begin
+    @testset "glmakie_refimages" begin
         ReferenceTests.test_comparison(missing_refimages_glmakie, scores_glmakie; threshold = 0.01)
     end
 end
