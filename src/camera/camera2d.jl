@@ -267,8 +267,6 @@ function reset!(cam, boundingbox, preserveratio = true)
     return
 end
 
-
-
 function add_restriction!(cam, window, rarea::Rect2, minwidths::Vec)
     area_ref = Base.RefValue(cam[Area])
     restrict_action = paused_action(1.0) do t

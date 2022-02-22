@@ -81,7 +81,7 @@ function Camera(px_area)
     view = Observable(Mat4f(I))
     proj = Observable(Mat4f(I))
     proj_view = map(*, proj, view)
-    Camera(
+    return Camera(
         pixel_space,
         view,
         proj,

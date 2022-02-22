@@ -16,7 +16,7 @@ function project_position(scene, point, model, yflip = true)
         # flip y to match cairo
         p_yflip = Vec2f(p[1], (1f0 - 2f0 * yflip) * p[2])
         # normalize to between 0 and 1
-        p_0_to_1 = (p_yflip .+ 1f0) / 2f0
+        p_0_to_1 = (p_yflip .+ 1f0) ./ 2f0
     end
     # multiply with scene resolution for final position
     return p_0_to_1 .* res
