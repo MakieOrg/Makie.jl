@@ -1,6 +1,6 @@
 using Colors, ColorVectorSpace, StaticArrays
 using GeometryBasics, Interpolations
-using ImageView
+using ImageShow
 using Makie: orthographicprojection
 
 @inline function edge_function(a, b, c)
