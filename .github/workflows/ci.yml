@@ -13,6 +13,11 @@ on:
     branches:
       - master
     tags: '*'
+
+concurrency: 
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
