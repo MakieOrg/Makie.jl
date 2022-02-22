@@ -137,7 +137,6 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         projection = Makie.orthographicprojection(
             leftright...,
             bottomtop..., nearclip, farclip)
-
         Makie.set_proj_view!(camera(scene), projection, Makie.Mat4f(Makie.I))
     end
 

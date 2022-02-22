@@ -158,9 +158,9 @@ function orthographicprojection(
 end
 
 function orthographicprojection(
-        left  ::T, right::T,
-        bottom::T, top  ::T,
-        znear ::T, zfar ::T
+        left::T, right::T,
+        bottom::T, top::T,
+        znear::T, zfar::T
     ) where T
     (right==left || bottom==top || znear==zfar) && return Mat{4,4,T}(I)
     T0, T1, T2 = zero(T), one(T), T(2)

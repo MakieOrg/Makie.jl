@@ -741,9 +741,9 @@ convert_attribute(p::Nothing, ::key"lowclip") = p
 convert_attribute(p, ::key"nan_color") = to_color(p)
 
 struct Palette{N}
-   colors::SArray{Tuple{N},RGBA{Float32},1,N}
+   colors::Vec{N, RGBA{Float32}}
    i::Ref{UInt8}
-   Palette(colors) = new{length(colors)}(SVector{length(colors)}(to_color.(colors)), zero(UInt8))
+   Palette(colors) = new{length(colors)}(Vec{length(colors)}(to_color.(colors)), zero(UInt8))
 end
 Palette(name::Union{String, Symbol}, n = 8) = Palette(to_colormap(name, n))
 

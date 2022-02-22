@@ -320,14 +320,12 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text{<:Tuple{
     position = primitive.position[]
     # use cached glyph info
     glyph_collection = to_value(primitive[1])
-
     draw_glyph_collection(scene, ctx, position, glyph_collection, remove_billboard(rotation), model, space, offset)
 
     nothing
 end
 
-
-function draw_glyph_collection(scene, ctx, positions, glyph_collections::AbstractArray, rotation, model::SMatrix, space, offset)
+function draw_glyph_collection(scene, ctx, positions, glyph_collections::AbstractArray, rotation, model::Mat, space, offset)
 
     # TODO: why is the Ref around model necessary? doesn't broadcast_foreach handle staticarrays matrices?
     broadcast_foreach(positions, glyph_collections, rotation,
@@ -404,7 +402,7 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
             glyphpos = let
                 # project without yflip - we need to apply model before that
                 p = project_position(scene, position, Mat4f(I), false)
-                
+
                 # flip for Cairo
                 p += (p3_to_p2(glyphoffset .+ p3_offset))
                 p = (_deref(model) * Vec4f(p[1], p[2], 0, 1))[Vec(1, 2)]
@@ -412,7 +410,7 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
                 p
             end
             # and the scale is just taken as is
-            scale = length(scale) == 2 ? scale : SVector(scale, scale)
+            scale = length(scale) == 2 ? scale : Vec(scale, scale)
 
             mat = let
                 scale_mat = if length(scale) == 2
@@ -597,11 +595,11 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
 
             # Rectangles and polygons that are directly adjacent usually show
             # white lines between them due to anti aliasing. To avoid this we
-            # increase their size slightly. 
+            # increase their size slightly.
 
             if alpha(colors[i, j]) == 1
-                # sign.(p - center) gives the direction in which we need to 
-                # extend the polygon. (Which may change due to rotations in the 
+                # sign.(p - center) gives the direction in which we need to
+                # extend the polygon. (Which may change due to rotations in the
                 # model matrix.) (i!=1) etc is used to avoid increasing the
                 # outer extent of the heatmap.
                 center = 0.25 * (p1 + p2 + p3 + p4)
