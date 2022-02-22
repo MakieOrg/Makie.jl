@@ -1,4 +1,6 @@
-t_using = @elapsed using CairoMakie
-t_plot = @elapsed save("test.png", scatter(1:4))
+
+t_using = (tstart = time(); using CairoMakie; time() - tstart)
+
+t_plot = (tstart = time(); save("test.png", scatter(1:4)); time() - tstart)
 rm("test.png")
-println("($t_using, $t_plot)")
+print("($t_using, $t_plot)")
