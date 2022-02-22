@@ -878,14 +878,14 @@ end
 function adjustlimits!(la)
     asp = la.autolimitaspect[]
     target = la.targetlimits[]
+    area = la.scene.px_area[]
 
     # in the simplest case, just update the final limits with the target limits
-    if isnothing(asp)
+    if isnothing(asp) || width(area) == 0 || height(area) == 0
         la.finallimits[] = target
         return
     end
 
-    area = la.scene.px_area[]
     xlims = (left(target), right(target))
     ylims = (bottom(target), top(target))
 

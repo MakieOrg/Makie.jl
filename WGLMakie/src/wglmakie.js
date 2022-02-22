@@ -598,8 +598,11 @@ const WGLMakie = (function () {
         scenes.forEach((scene) => render_scene(renderer, scene, cam));
     }
 
-    function start_renderloop(renderer, three_scenes, cam) {
-        function renderloop() {
+    function start_renderloop(renderer, three_scenes, cam, fps) {
+        const time_per_frame = (1 / fps) * 1000; // default is 30 fps
+        // make sure we immediately render the first frame and dont wait 30ms
+        let last_time_stamp = performance.now()
+        function renderloop(timestamp) {
             const canvas = renderer.domElement
             if (!document.body.contains(canvas)){
                 console.log("EXITING WGL")
@@ -607,9 +610,14 @@ const WGLMakie = (function () {
                 renderer.dispose()
                 return
             }
-            render_scenes(renderer, three_scenes, cam);
+            if (timestamp - last_time_stamp > time_per_frame){
+                render_scenes(renderer, three_scenes, cam);
+                last_time_stamp = performance.now();
+            }
             window.requestAnimationFrame(renderloop);
         }
+        // render one time before starting loop, so that we don't wait 30ms before first render
+        render_scenes(renderer, three_scenes, cam);
         renderloop();
     }
 
