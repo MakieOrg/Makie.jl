@@ -35,10 +35,7 @@ jobs:
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v1
       - name: Benchmark
-        id: benchmark
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >
           julia ./metrics/ttfp/run-benchmark.jl
-      - name: Create Comment
-        uses: mshick/add-pr-comment@v1
-        with:
-          message: ${{ steps.benchmark.outputs.comment }}

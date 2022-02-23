@@ -1,7 +1,7 @@
-# using Pkg, JSON, Statistics
-# cd(@__DIR__)
-# Pkg.activate(".")
-# pkg"dev ../../MakieCore/ ../../ ../../CairoMakie/; add JSON Statistics"
+cd(@__DIR__)
+Pkg.activate(".")
+pkg"dev ../../MakieCore/ ../../ ../../CairoMakie/; add JSON Statistics GitHub"
+using Pkg, JSON, Statistics, GitHub
 
 # function run_bench(n=10)
 #     results = Tuple{Float64, Float64}[]
@@ -63,5 +63,16 @@ comment = """
 ![]($(plot_url))
 """
 
-println("comment:\n", comment)
-println("::set-output name=comment::$comment")
+repo = GitHub.Repo("JuliaPlots/Makie.jl")
+pr = GitHub.PullRequest(1691)
+auth = GitHub.authenticate(ENV["GITHUB_TOKEN"])
+
+prev_comments, _ = GitHub.comments(repo, pr; auth=auth)
+
+idx = findfirst(x-> occursin("## Compile Times compared to tagged", x.body), prev_comments)
+
+if isnothing(idx)
+    GitHub.create_comment(repo, pr; auth=auth, params=Dict("body"=>comment))
+else
+    GitHub.edit_comment(repo, prev_comments[idx], :pr; auth=auth, params=Dict("body"=>comment))
+end
