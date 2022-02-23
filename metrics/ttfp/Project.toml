@@ -1,5 +1,8 @@
 [deps]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 MakieCore = "20f20a25-4f0e-4fdf-b5d1-57303727442b"
+Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"

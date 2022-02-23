@@ -6,7 +6,6 @@ pkg"dev ../../MakieCore/ ../../ ../../CairoMakie/; add GeometryBasics#sd/no-sarr
 using Pkg
 Pkg.activate("./makie-tagged")
 pkg"add CairoMakie"
-Pkg.precompile("CairoMakie")
 
 function run_bench(julia, project, n=10)
     results = Tuple{Float64, Float64}[]
@@ -35,16 +34,12 @@ Pkg.precompile("CairoMakie")
 result_1_7_precompile = run_bench(julia_17, "makie-precompile")
 result_th_precompile = run_bench(julia_th, "makie-precompile")
 
-using Serialization
 
-open("./data/julia_19_precompile.jls", "w") do io
-    Serialization.serialize(io, result_th_precompile)
-end
+tagged = Dict(
+    "c8d6e5a87da795687ff84d4cebe18fb4d2c2d605" => result_1_7_tagged
+)
 
-open("./data/julia_19_latency.jls", "w") do io
-    Serialization.serialize(io, result_th)
-end
-
-open("./data/julia_17_latency.jls", "w") do io
-    Serialization.serialize(io, result_1_7)
+file = "./data/julia_$(VERSION)_tagged.json"
+open(file, "w") do io
+    JSON.print(io, tagged)
 end
