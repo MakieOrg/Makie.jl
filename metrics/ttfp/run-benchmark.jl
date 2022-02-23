@@ -1,7 +1,9 @@
 cd(@__DIR__)
+using Pkg
 Pkg.activate(".")
-pkg"dev ../../MakieCore/ ../../ ../../CairoMakie/; add JSON Statistics GitHub"
-using Pkg, JSON, Statistics, GitHub
+pkg"add JSON Statistics GitHub"
+# pkg"dev ../../MakieCore/ ../../ ../../CairoMakie/; add JSON Statistics GitHub"
+using JSON, Statistics, GitHub
 
 # function run_bench(n=10)
 #     results = Tuple{Float64, Float64}[]
