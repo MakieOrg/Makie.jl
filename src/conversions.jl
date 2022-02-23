@@ -918,7 +918,7 @@ convert_attribute(c::VecTypes{N}, ::key"position") where N = Point{N, Float32}(c
 convert_attribute(x::Tuple{Symbol, Symbol}, ::key"align") = Vec2f(alignment2num.(x))
 convert_attribute(x::Vec2f, ::key"align") = x
 
-const _font_cache = Dict{String, NativeFont}()
+const FONT_CACHE = Dict{String, NativeFont}()
 
 """
     font conversion
@@ -927,7 +927,7 @@ a string naming a font, e.g. helvetica
 """
 function convert_attribute(x::Union{Symbol, String}, k::key"font")
     str = string(x)
-    get!(_font_cache, str) do
+    get!(FONT_CACHE, str) do
         str == "default" && return to_font("Dejavu Sans")
 
         # check if the string points to a font file and load that

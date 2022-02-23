@@ -269,6 +269,8 @@ function logo()
 end
 
 function __init__()
+    # fonts aren't cacheable by precompilation, so we need to empty it on load!
+    empty!(FONT_CACHE)
     cfg_path = joinpath(homedir(), ".config", "makie", "theme.jl")
     if isfile(cfg_path)
         @warn "The global configuration file is no longer supported." *
@@ -296,5 +298,10 @@ export heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface,
 export heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, surface!, text!, volume!
 
 export PointLight, EnvironmentLight, AmbientLight, SSAO
+
+if Base.VERSION >= v"1.4.2"
+    include("precompiles.jl")
+    _precompile_()
+end
 
 end # module
