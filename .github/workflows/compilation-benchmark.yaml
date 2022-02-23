@@ -1,4 +1,4 @@
-name: CairoMakie CI
+name: Compile Time Benchmark
 on:
   pull_request:
     paths-ignore:
@@ -34,11 +34,12 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v1
-      - name: Run Benchmark
+      - name: Benchmark
+        id: benchmark
         run: >
           julia ./metrics/ttfp/run-benchmark.jl
       - uses: peter-evans/commit-comment@v1
         with:
           body: |
             Compile times:
-            ![](${{ env.benchmark_plot_url }})
+            ![](${{  steps.benchmark.outputs.plot_url }})
