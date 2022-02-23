@@ -39,6 +39,6 @@ jobs:
         run: >
           julia ./metrics/ttfp/run-benchmark.jl
       - name: Create Comment
-        uses: unsplash/comment-on-pr@v1.3.0
+        uses: mshick/add-pr-comment@v1
         with:
-          msg: ${{ steps.benchmark.outputs.comment }}
+          message: ${{ steps.benchmark.outputs.comment }}
