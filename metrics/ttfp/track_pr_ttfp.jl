@@ -24,7 +24,7 @@ julia_17 = "julia"
 
 result_1_7 = run_bench(julia_17, ".")
 result_th = run_bench(julia_th, ".")
-result_1_7_tagged = run_bench(julia, "makie-tagged")
+result_1_7_tagged = run_bench(julia_17, "makie-tagged")
 result_th_tagged = run_bench(julia_th, "makie-tagged")
 
 using Pkg
@@ -32,7 +32,7 @@ Pkg.activate("./makie-precompile")
 pkg"add Makie#sd/more-precompile CairoMakie#sd/more-precompile"
 Pkg.precompile("CairoMakie")
 
-result_1_7_precompile = run_bench(julia, "makie-precompile")
+result_1_7_precompile = run_bench(julia_17, "makie-precompile")
 result_th_precompile = run_bench(julia_th, "makie-precompile")
 
 using Serialization
