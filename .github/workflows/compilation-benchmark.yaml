@@ -38,8 +38,7 @@ jobs:
         id: benchmark
         run: >
           julia ./metrics/ttfp/run-benchmark.jl
-      - uses: peter-evans/commit-comment@v1
+      - name: Create Comment
+        uses: unsplash/comment-on-pr@v1.3.0
         with:
-          body: |
-            Compile times:
-            ![](${{  steps.benchmark.outputs.plot_url }})
+          msg: ${{ steps.benchmark.outputs.comment }}

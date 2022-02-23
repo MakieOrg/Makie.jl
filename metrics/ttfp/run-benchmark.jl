@@ -57,5 +57,11 @@
 
 plot_url = "https://github.com/JuliaPlots/Makie.jl/blob/59f3e42b14015a6fd67c271daac3873d755f7066/metrics/ttfp/data/plots/pr.png?raw=true"
 
-println("setting url: $(plot_url)")
-println("::set-output name=plot_url::$plot_url")
+comment = """
+## Compile Times compared to tagged
+
+![]($(plot_url))
+"""
+
+println("comment:\n", comment)
+println("::set-output name=comment::$comment")
