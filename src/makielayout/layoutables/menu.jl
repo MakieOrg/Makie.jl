@@ -104,10 +104,7 @@ Menu
 function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
 
     topscene = get_topscene(fig_or_scene)
-
-    default_attrs = default_attributes(Menu, topscene).attributes
-    theme_attrs = subtheme(topscene, :Menu)
-    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
+    attrs = merge_theme(Menu, topscene, kwargs)
 
     @extract attrs (halign, valign, i_selected, is_open, cell_color_hover,
         cell_color_inactive_even, cell_color_inactive_odd, dropdown_arrow_color,
@@ -338,7 +335,7 @@ function _reassemble_menu(
             padding = textpadding, visible = is_open
         )
 
-        # translate dropdown elements in the foreground 
+        # translate dropdown elements in the foreground
         for p in values(allrects[i+1].elements)
             translate!(p, Vec3f(0, 0, 4))
         end
@@ -355,10 +352,10 @@ function _reassemble_menu(
 
     resize!(mouseeventhandles, length(alltexts))
     map!(mouseeventhandles, eachindex(allrects), allrects) do i, r
-        # Use base priority for [Menu   v] and high priority for the dropdown 
+        # Use base priority for [Menu   v] and high priority for the dropdown
         # elements that may overlap with out interactive layoutables.
         addmouseevents!(
-            scene, r.layoutobservables.computedbbox, 
+            scene, r.layoutobservables.computedbbox,
             priority = Int8(1) + (i != 1) * Int8(60)
         )
     end

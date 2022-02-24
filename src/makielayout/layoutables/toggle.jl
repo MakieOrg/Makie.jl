@@ -1,10 +1,7 @@
 function layoutable(::Type{Toggle}, fig_or_scene; bbox = nothing, kwargs...)
 
     topscene = get_topscene(fig_or_scene)
-
-    default_attrs = default_attributes(Toggle, topscene).attributes
-    theme_attrs = subtheme(topscene, :Toggle)
-    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
+    attrs = merge_theme(Toggle, topscene, kwargs)
 
     @extract attrs (halign, valign, cornersegments, framecolor_inactive,
         framecolor_active, buttoncolor, active, toggleduration, rimfraction)

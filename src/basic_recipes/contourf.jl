@@ -19,7 +19,7 @@ If you want to show a band from the high edge to `Inf`, set `extendhigh` to `:au
 $(ATTRIBUTES)
 """
 @recipe(Contourf) do scene
-    Theme(
+    Attributes(
         levels = 10,
         mode = :normal,
         colormap = theme(scene, :colormap),

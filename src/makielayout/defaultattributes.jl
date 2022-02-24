@@ -550,40 +550,40 @@ end)
 Button
 
 function default_attributes(::Type{LineAxis})
-    Attributes(
-        endpoints = (Point2f(0, 0), Point2f(100, 0)),
-        trimspine = false,
-        limits = (0f0, 100f0),
-        flipped = false,
-        flip_vertical_label = false,
-        ticksize = 6f0,
-        tickwidth = 1f0,
-        tickcolor = RGBf(0, 0, 0),
-        tickalign = 0f0,
-        ticks = Makie.automatic,
-        tickformat = Makie.automatic,
-        ticklabelalign = (:center, :top),
-        ticksvisible = true,
-        ticklabelrotation = 0f0,
-        ticklabelsize = 20f0,
-        ticklabelcolor = RGBf(0, 0, 0),
-        ticklabelsvisible = true,
-        spinewidth = 1f0,
-        label = "label",
-        labelsize = 20f0,
-        labelcolor = RGBf(0, 0, 0),
-        labelvisible = true,
-        ticklabelspace = Makie.automatic,
-        ticklabelpad = 3f0,
-        labelpadding = 5f0,
-        reversed = false,
-        minorticksvisible = true,
-        minortickalign = 0f0,
-        minorticksize = 4f0,
-        minortickwidth = 1f0,
-        minortickcolor = :black,
-        minorticks = Makie.automatic,
-        scale = identity,
+    Theme(
+        :endpoints => (Point2f(0, 0), Point2f(100, 0)),
+        :trimspine => false,
+        :limits => (0f0, 100f0),
+        :flipped => false,
+        :flip_vertical_label => false,
+        :ticksize => 6f0,
+        :tickwidth => 1f0,
+        :tickcolor => RGBf(0, 0, 0),
+        :tickalign => 0f0,
+        :ticks => Makie.automatic,
+        :tickformat => Makie.automatic,
+        :ticklabelalign => (:center, :top),
+        :ticksvisible => true,
+        :ticklabelrotation => 0f0,
+        :ticklabelsize => 20f0,
+        :ticklabelcolor => RGBf(0, 0, 0),
+        :ticklabelsvisible => true,
+        :spinewidth => 1f0,
+        :label => "label",
+        :labelsize => 20f0,
+        :labelcolor => RGBf(0, 0, 0),
+        :labelvisible => true,
+        :ticklabelspace => Makie.automatic,
+        :ticklabelpad => 3f0,
+        :labelpadding => 5f0,
+        :reversed => false,
+        :minorticksvisible => true,
+        :minortickalign => 0f0,
+        :minorticksize => 4f0,
+        :minortickwidth => 1f0,
+        :minortickcolor => :black,
+        :minorticks => Makie.automatic,
+        :scale => identity,
     )
 end
 
@@ -1222,3 +1222,9 @@ $(let
 end)
 """
 Axis3
+
+function merge_theme(::Type{T}, scene, kwargs) where T
+    default_attrs = default_attributes(T, scene).attributes
+    theme_attrs = subtheme(scene, nameof(T))
+    return Attributes(merge!(default_attrs, merge!(theme_attrs, Theme(kwargs))))
+end

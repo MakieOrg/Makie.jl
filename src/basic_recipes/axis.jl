@@ -66,7 +66,7 @@ $(ATTRIBUTES)
             rotation = axisnames_rotation3d,
             textsize = (6.0, 6.0, 6.0),
             align = axisnames_align3d,
-            font = lift(dim3, theme(scene, :font)),
+            font = dim3(theme(scene, :font)),
             gap = 3
         ),
 
@@ -80,7 +80,7 @@ $(ATTRIBUTES)
             textsize = (tsize, tsize, tsize),
             align = tickalign3d,
             gap = 3,
-            font = lift(dim3, theme(scene, :font)),
+            font = dim3(theme(scene, :font)),
         ),
 
         frame = Attributes(

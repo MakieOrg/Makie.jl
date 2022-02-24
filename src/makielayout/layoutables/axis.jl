@@ -9,9 +9,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
 
     topscene = get_topscene(fig_or_scene)
 
-    default_attrs = default_attributes(Axis, topscene).attributes
-    theme_attrs = subtheme(topscene, :Axis)
-    attrs = Attributes(merge!(merge!(Theme(kwargs), theme_attrs), default_attrs))
+    attrs = merge_theme(Axis, topscene, kwargs)
 
     @extract attrs (
         title, titlefont, titlesize, titlegap, titlevisible, titlealign, titlecolor,

@@ -2,9 +2,7 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
 
     topscene = get_topscene(fig_or_scene)
 
-    attrs = merge!(
-        Attributes(kwargs),
-        default_attributes(Textbox, topscene).attributes)
+    attrs = Attributes(merge!(default_attributes(Textbox, topscene).attributes, Theme(kwargs)))
 
     @extract attrs (halign, valign, textsize, stored_string, placeholder,
         textcolor, textcolor_placeholder, displayed_string,
@@ -28,8 +26,6 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
 
     cursorindex = Observable(0)
     ltextbox = Textbox(fig_or_scene, layoutobservables, attrs, decorations, cursorindex, nothing)
-
-
 
     bbox = lift(Rect2f ∘ Makie.zero_origin, scenearea)
 
