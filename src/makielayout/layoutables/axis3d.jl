@@ -10,10 +10,7 @@ parent.
 function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = nothing, kwargs...)
 
     topscene = get_topscene(fig_or_scene)
-
-    default_attrs = default_attributes(Axis3, topscene).attributes
-    theme_attrs = subtheme(topscene, :Axis3)
-    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
+    attrs = merge_theme(Axis3, topscene, kwargs)
 
     @extract attrs (elevation, azimuth, perspectiveness, aspect, viewmode,
         xlabel, ylabel, zlabel,

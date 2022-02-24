@@ -27,6 +27,7 @@ node_pairs(pairs) = (node_pairs(pair) for pair in pairs)
 
 Attributes(; kw_args...) = Attributes(Dict{Symbol, Observable}(node_pairs(kw_args)))
 Attributes(pairs::Pair...) = Attributes(Dict{Symbol, Observable}(node_pairs(pairs)))
+Attributes(d::Dict) = Attributes(Dict{Symbol, Observable}(node_pairs(d)))
 Attributes(pairs::AbstractVector) = Attributes(Dict{Symbol, Observable}(node_pairs.(pairs)))
 Attributes(pairs::Iterators.Pairs) = Attributes(collect(pairs))
 Attributes(nt::NamedTuple) = Attributes(; nt...)
