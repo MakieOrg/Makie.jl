@@ -1,3 +1,5 @@
+using Pkg
+Pkg.instantiate()
 using JSON, Statistics, GitHub, Base64, SHA, Downloads, Dates
 cd(@__DIR__)
 include("benchmark-library.jl")
