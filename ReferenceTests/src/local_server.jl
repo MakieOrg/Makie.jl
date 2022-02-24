@@ -81,7 +81,6 @@ function serve_update_page(; commit = nothing, pr = nothing)
         error("You have to specify either the keyword argument `commit` or `pr`.")
     end
 
-    # headsha = prinfo["head"]["sha"]
     checksinfo = JSON3.read(authget("https://api.github.com/repos/JuliaPlots/Makie.jl/commits/$headsha/check-runs").body)
     
     checkruns = filter(checksinfo["check_runs"]) do x
