@@ -44,17 +44,18 @@ function make_or_edit_comment(ctx, pr, comment)
     end
 end
 
-function run_bench(commit; n=10)
+function run_bench(commit; n=1)
     @info("run benchmark for $(commit)")
-    mani = "benchmark-project/Manifest.toml"
-    isdir(mani) && rm(mani)
-    Pkg.activate("benchmark-project")
+    project = "benchmark-project"
+    isdir(project) && rm(project; force=true, recursive=true)
+
+    Pkg.activate(project)
     pkgs = ["MakieCore", "Makie", "CairoMakie"]
     pkgs = [PackageSpec(name=pkg, rev=commit) for pkg in pkgs]
     Pkg.add(pkgs)
     results = Vector{Float64}[]
     for i in 1:n
-        result = read(`$(Base.julia_cmd()) --project=benchmark-project ./benchmark-ttfp.jl`, String)
+        result = read(`$(Base.julia_cmd()) --project=$(project) ./benchmark-ttfp.jl`, String)
         tup = eval(Meta.parse(result))
         @show tup
         push!(results, [tup...])
