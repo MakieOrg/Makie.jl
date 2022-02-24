@@ -18,7 +18,7 @@ If you want to plot intervals from low to high values instead of relative errors
 $(ATTRIBUTES)
 """
 @recipe(Errorbars) do scene
-    Theme(
+    Attributes(
         whiskerwidth = 0,
         color = theme(scene, :linecolor),
         linewidth = theme(scene, :linewidth),
@@ -46,7 +46,7 @@ If you want to plot errors relative to a reference value, use `errorbars`.
 $(ATTRIBUTES)
 """
 @recipe(Rangebars) do scene
-    Theme(
+    Attributes(
         whiskerwidth = 0,
         color = theme(scene, :linecolor),
         linewidth = theme(scene, :linewidth),

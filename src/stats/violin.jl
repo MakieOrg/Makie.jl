@@ -13,7 +13,7 @@ Draw a violin plot.
 - `datalimits`: specify values to trim the `violin`. Can be a `Tuple` or a `Function` (e.g. `datalimits=extrema`)
 """
 @recipe(Violin, x, y) do scene
-    Theme(;
+    Attributes(;
         default_theme(scene, Poly)...,
         npoints = 200,
         boundary = automatic,

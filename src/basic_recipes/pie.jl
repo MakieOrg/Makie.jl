@@ -7,7 +7,7 @@ Creates a pie chart with the given `fractions`.
 $(ATTRIBUTES)
 """
 @recipe(Pie, values) do scene
-    Theme(
+    Attributes(
         normalize = true,
         color = :gray,
         strokecolor = :black,
@@ -66,9 +66,9 @@ function plot!(plot::Pie)
 
     # plot pieces as polys
     poly!(
-        plot, polys, 
-        color = plot.color, strokewidth = plot.strokewidth, 
-        strokecolor = plot.strokecolor, inspectable = plot.inspectable, 
+        plot, polys,
+        color = plot.color, strokewidth = plot.strokewidth,
+        strokecolor = plot.strokecolor, inspectable = plot.inspectable,
         visible = plot.visible, transparency = plot.transparency
     )
 

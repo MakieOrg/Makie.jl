@@ -1,5 +1,5 @@
 function theme_dark()
-    Theme(
+    Attributes(
         backgroundcolor = :gray10,
         textcolor = :gray45,
         linecolor = :gray60,
