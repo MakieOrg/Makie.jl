@@ -38,4 +38,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.BENCHMARK_KEY }}
         run: >
-          julia --project=./metrics/ttfp/ ./metrics/ttfp/test-gh-upload.jl
+          julia --project=./metrics/ttfp/ ./metrics/ttfp/run-benchmarks.jl
