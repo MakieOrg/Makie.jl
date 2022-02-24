@@ -206,17 +206,17 @@ export SceneSpace, PixelSpace, Pixel
 
 # camera related
 export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, cam2d!, cam2d
-export campixel!, campixel, cam3d!, cam3d_cad!, old_cam3d!, old_cam3d_cad!
+export campixel!, campixel, cam3d!, cam3d_cad!, old_cam3d!, old_cam3d_cad!, cam_relative!
 export update_cam!, rotate_cam!, translate_cam!, zoom!
 export pixelarea, plots, cameracontrols, cameracontrols!, camera, events
 export to_world
 
 # picking + interactive use cases + events
-export mouseover, onpick, pick, Events, Keyboard, Mouse, mouse_selection
+export mouseover, onpick, pick, Events, Keyboard, Mouse, mouse_selection, is_mouseinside
 export ispressed, Exclusively
 export register_callbacks
-export window_area, window_open, mouse_buttons, mouse_position, scroll,
-       keyboard_buttons, unicode_input, dropped_files, hasfocus, entered_window
+export window_area, window_open, mouse_buttons, mouse_position, mouseposition_px, 
+       scroll, keyboard_buttons, unicode_input, dropped_files, hasfocus, entered_window
 export disconnect!
 export DataInspector
 export Consume

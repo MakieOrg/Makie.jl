@@ -100,7 +100,8 @@ function set_proj_view!(camera::Camera, projection, view)
     camera.projection[] = projection
 end
 
-function is_mouseinside(scene, target)
+is_mouseinside(x, target) = is_mouseinside(get_scene(x), target)
+function is_mouseinside(scene::Scene, target)
     scene === target && return false
     Vec(scene.events.mouseposition[]) in pixelarea(scene)[] || return false
     for child in r.children
@@ -114,7 +115,8 @@ end
 
 Returns true if the current mouseposition is inside the given scene.
 """
-function is_mouseinside(scene)
+is_mouseinside(x) = is_mouseinside(get_scene(x))
+function is_mouseinside(scene::Scene)
     return Vec(scene.events.mouseposition[]) in pixelarea(scene)[]
     # Check that mouse is not inside any other screen
     # for child in scene.children
