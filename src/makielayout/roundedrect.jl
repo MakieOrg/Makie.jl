@@ -1,5 +1,5 @@
 @recipe(RoundedRect) do scene
-    Theme(
+    Attributes(
         rect = BBox(0, 100, 0, 100),
         cornerradius = 5,
         cornersegments = 10,

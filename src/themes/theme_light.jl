@@ -1,5 +1,5 @@
 function theme_light()
-    Theme(
+    Attributes(
         textcolor = :gray50,
         Axis = (
             backgroundcolor = :transparent,

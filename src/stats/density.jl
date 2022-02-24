@@ -32,7 +32,7 @@ note that only 2-element colormaps can work correctly.
 $(ATTRIBUTES)
 """
 @recipe(Density) do scene
-    Theme(
+    Attributes(
         color = theme(scene, :patchcolor),
         colormap = theme(scene, :colormap),
         colorrange = Makie.automatic,

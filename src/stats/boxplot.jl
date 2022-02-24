@@ -28,10 +28,10 @@ The boxplot has 3 components:
     `:match` to match `width`
 - `show_outliers`: show outliers as points
 - `dodge`: vector of `Integer` (length of data) of grouping variable to create multiple side-by-side boxes at the same `x` position
-- `dodge_gap = 0.03`: spacing between dodged boxes 
+- `dodge_gap = 0.03`: spacing between dodged boxes
 """
 @recipe(BoxPlot, x, y) do scene
-    Theme(
+    Attributes(
         color = theme(scene, :patchcolor),
         colormap = theme(scene, :colormap),
         colorrange = automatic,
@@ -188,7 +188,7 @@ function Makie.plot!(plot::BoxPlot)
         c = outliercolor === automatic ? color : outliercolor
         if c isa AbstractVector
             return c[outlier_indices]
-        else 
+        else
             return c
         end
     end

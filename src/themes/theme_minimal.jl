@@ -1,5 +1,5 @@
 function theme_minimal()
-    Theme(
+    Attributes(
         Axis = (
             backgroundcolor = :transparent,
             xgridvisible = false,

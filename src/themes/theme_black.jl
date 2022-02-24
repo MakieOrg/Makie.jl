@@ -1,5 +1,5 @@
 function theme_black()
-    Theme(
+    Attributes(
         backgroundcolor = :black,
         textcolor = :white,
         linecolor = :white,
