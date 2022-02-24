@@ -29,7 +29,7 @@ pr_num = get(ENV, "PR_NUMBER", nothing)
 
 if !isnothing(pr_num)
     @info("Commenting plot on PR $(pr_num)")
-    pr = GitHub.PullRequest(pr_num)
+    pr = GitHub.pull_request(ctx.repo, pr_num)
     make_or_edit_comment(ctx, pr, comment)
 else
     @info("No comment, no PR found")

@@ -101,7 +101,7 @@ function make_or_edit_comment(ctx, pr, comment)
     end
 end
 
-function run_bench(info::BenchInfo; n=1)
+function run_bench(info::BenchInfo; n=10)
     commit = info.commit
     if info.cpu != cpu_key()
         error("Not running on requested CPU. Request: $(info.cpu), actual: $(cpu_key())")
@@ -171,12 +171,12 @@ function github_context()
     )
 end
 
-function plot_benchmark!(ax, data, pos, width=0.9)
+function plot_benchmark!(ax, data, pos; width=0.9, height=0.3, alpha=0.2)
     used = first.(data)
     ttfp = last.(data)
     sum_t = used .+ ttfp
     n = length(data)
-    bplot!(d, c) = scatter!(ax, fill(pos, n), d, marker=Rect, markerspace=:data, markersize=Vec2f(width, 0.2), color=(c, 0.2))
+    bplot!(d, c) = scatter!(ax, fill(pos, n), d, marker=Rect, markerspace=:data, markersize=Vec2f(width, height), color=(c, alpha))
 
     bplot!(used, :darkred)
     bplot!(ttfp, :blue)
