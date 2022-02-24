@@ -36,6 +36,6 @@ jobs:
       - uses: julia-actions/cache@v1
       - name: Benchmark
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.BENCHMARK_KEY }}
         run: >
-          julia ./metrics/ttfp/run-benchmark.jl
+          julia --project=./metrics/ttfp/ ./metrics/ttfp/test-gh-upload.jl
