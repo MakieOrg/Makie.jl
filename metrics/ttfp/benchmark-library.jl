@@ -68,6 +68,11 @@ function BenchInfo(tag::GitHub.Tag; kw...)
     return BenchInfo(info.repo, info.commit; branch=info.name, kw...)
 end
 
+function BenchInfo(branch::GitHub.Branch; kw...)
+    return BenchInfo(branch.commit; branch=branch.name, kw...)
+end
+
+
 function get_file(ctx, repo_path)
     file = GitHub.file(ctx.scratch_repo, repo_path; auth=ctx.auth, handle_error=false)
     if isnothing(file.sha)
@@ -93,7 +98,7 @@ end
 
 function make_or_edit_comment(ctx, pr, comment)
     prev_comments, _ = GitHub.comments(ctx.repo, pr; auth=ctx.auth)
-    idx = findfirst(x-> occursin("## Compile Times compared to tagged", x.body), prev_comments)
+    idx = findfirst(x-> occursin("## Compile Times benchmark", x.body), prev_comments)
     if isnothing(idx)
         GitHub.create_comment(ctx.repo, pr; auth=ctx.auth, params=Dict("body"=>comment))
     else
@@ -101,7 +106,7 @@ function make_or_edit_comment(ctx, pr, comment)
     end
 end
 
-function run_bench(info::BenchInfo; n=10)
+function run_bench(info::BenchInfo; n=5)
     commit = info.commit
     if info.cpu != cpu_key()
         error("Not running on requested CPU. Request: $(info.cpu), actual: $(cpu_key())")

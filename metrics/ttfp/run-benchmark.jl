@@ -7,7 +7,7 @@ using JSON, Statistics, GitHub, Base64, SHA, Downloads, Dates, CairoMakie
 include("benchmark-library.jl")
 
 ctx = github_context()
-bench_infos = bench_info.(Ref(ctx), [GitHub.tag(ctx.repo, "v0.16.5"), current_commit()])
+bench_infos = bench_info.(Ref(ctx), [GitHub.branch(ctx.repo, "master"), current_commit()])
 @info("benchmarking commits $(bench_infos)")
 benchmarks = get_benchmark_data.(Ref(ctx), bench_infos)
 
@@ -20,7 +20,7 @@ name = join(map(best_name, bench_infos), "-vs-")
 image_url = upload_data(ctx, fig, "benchmarks/$(name).png")
 
 comment = """
-## Compile Times compared to tagged
+## Compile Times benchmark
 
 ![]($(image_url))
 """
