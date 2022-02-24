@@ -186,7 +186,7 @@ function plot_benchmark!(ax, data, pos; width=0.9, height=0.3, alpha=0.2)
     return (used, ttfp, sum_t)
 end
 
-function plot_benchmarks(benchmarks)
+function plot_benchmarks(benchmarks, benchmark_infos)
     f = Figure()
     ax = Axis(f[1,1]; ylabel="median time (s)")
     mdata = Vector{Float64}[]
@@ -194,14 +194,26 @@ function plot_benchmarks(benchmarks)
     xticklabels = String[]
     for (i, data) in enumerate(benchmarks)
         pdata = data["results"]
+        info = benchmark_infos[i]
         push!(mdata, plot_benchmark!(ax, pdata, i)...)
         push!(xticks, i)
-        push!(xticklabels, data["branch"])
+        push!(xticklabels, best_name(info))
     end
     medians = median.(mdata)
     medians = unique(round.(median.(mdata)))
     ax.yticks = medians
     ax.xticks = (xticks, xticklabels)
+    legend_elems = [
+        PolyElement(color=:darkred),
+        PolyElement(color=:blue),
+        PolyElement(color=:black)]
+    legend_names = ["using time", "plot time", "total time"]
+    Legend(f[1, 1], legend_elems, legend_names;
+        tellheight = false,
+        tellwidth = false,
+        margin = (10, 10, 10, 10), bgcolor = (:white, 0.5),
+        framewidth = 0.5,
+        halign = :right, valign = :bottom)
     hidexdecorations!(ax, ticklabels=false)
     f
 end
