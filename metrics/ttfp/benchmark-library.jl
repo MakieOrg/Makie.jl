@@ -9,7 +9,64 @@ end
 julia_key() = "julia-" * replace(string(VERSION), "."=>"-")
 tag_commit(ctx, tag) = GitHub.tag(ctx.repo, tag).object["sha"]
 current_commit() =  chomp(read(`git rev-parse HEAD`, String))
-latest_commit(branch) = chomp(read(`git log -n 1 $branch --pretty=format:"%H"`, String))
+latest_commit(ctx, branch) = GitHub.branch(ctx.repo, branch)
+
+struct BenchInfo
+    julia::String
+    cpu::String
+    branch::String
+    commit::String
+    commit_message::String
+    project::String
+end
+
+function best_name(info::BenchInfo)
+    isempty(info.branch) || return info.branch
+    return info.commit[1:5]
+end
+
+function BenchInfo(commit::GitHub.Commit;
+        julia::String=julia_key(),
+        cpu::String=cpu_key(),
+        branch::String="",
+        commit_message::String="",
+        project=""
+    )
+    isnothing(commit.commit) && error("Invalid commit")
+    return BenchInfo(
+        julia,
+        cpu,
+        branch,
+        commit.sha,
+        commit.commit.message,
+        project
+    )
+end
+
+function BenchInfo(repo, commit_sha::AbstractString; kw...)
+    commit = GitHub.commit(repo, commit_sha)
+    return BenchInfo(commit; kw...)
+end
+
+function get_tag_info(tag::GitHub.Tag)
+    str = sprint() do io
+        Downloads.download(tag.object["url"], io)
+    end
+    dict = JSON.parse(str)
+    parts = splitpath(tag.url.path) # why is this not straight-forward?
+    repo = GitHub.Repo(parts[3] * "/" * parts[4])
+    return (
+        commit = dict["object"]["sha"],
+        name = dict["tag"],
+        repo = repo,
+        message = dict["message"],
+    )
+end
+
+function BenchInfo(tag::GitHub.Tag; kw...)
+    info = get_tag_info(tag)
+    return BenchInfo(info.repo, info.commit; branch=info.name, kw...)
+end
 
 function get_file(ctx, repo_path)
     file = GitHub.file(ctx.scratch_repo, repo_path; auth=ctx.auth, handle_error=false)
@@ -44,15 +101,27 @@ function make_or_edit_comment(ctx, pr, comment)
     end
 end
 
-function run_bench(commit; n=1)
-    @info("run benchmark for $(commit)")
-    project = "benchmark-project"
-    isdir(project) && rm(project; force=true, recursive=true)
+function run_bench(info::BenchInfo; n=1)
+    commit = info.commit
+    if info.cpu != cpu_key()
+        error("Not running on requested CPU. Request: $(info.cpu), actual: $(cpu_key())")
+    end
+    if info.julia != julia_key()
+        error("Not running on requested Julia. Requested: $(info.julia), actual: $(julia_key())")
+    end
 
-    Pkg.activate(project)
-    pkgs = ["MakieCore", "Makie", "CairoMakie"]
-    pkgs = [PackageSpec(name=pkg, rev=commit) for pkg in pkgs]
-    Pkg.add(pkgs)
+    @info("run benchmark for $(commit)")
+    if isdir(info.project)
+        project = info.project
+    else
+        project = "benchmark-project"
+        isdir(project) && rm(project; force=true, recursive=true)
+        Pkg.activate(project)
+        pkgs = ["MakieCore", "Makie", "CairoMakie"]
+        pkgs = [PackageSpec(name=pkg, rev=commit) for pkg in pkgs]
+        Pkg.add(pkgs)
+    end
+
     results = Vector{Float64}[]
     for i in 1:n
         result = read(`$(Base.julia_cmd()) --project=$(project) ./benchmark-ttfp.jl`, String)
@@ -64,7 +133,11 @@ function run_bench(commit; n=1)
     return results
 end
 
-function get_benchmark_data(ctx, commit)
+bench_info(ctx, gh_typ::GitHub.GitHubType) = BenchInfo(gh_typ)
+bench_info(ctx, commit_or_smth) = BenchInfo(ctx.repo, commit_or_smth)
+
+function get_benchmark_data(ctx, info::BenchInfo)
+    commit = info.commit
     repo_dir_path = "benchmarks/$(julia_key())/$(cpu_key())"
     repo_base_path = "$(repo_dir_path)/$(commit)"
     repo_data_path = "$(repo_base_path).json"
@@ -75,18 +148,11 @@ function get_benchmark_data(ctx, commit)
         return JSON.parse(String(old_file.content))
     else
         @info("Benchmarkdoesn't exist, run benchmark")
-        global results = run_bench(commit)
-        branch_name = chomp(read(`git describe --all --contains $(commit)`, String))
-        head="$(owner):$(branch_name)"
-        params = Dict("state" => "all", "head" => head);
-        prs, page_data = GitHub.pull_requests(ctx.repo; auth=ctx.auth, params = params);
-        pr_number = isempty(prs) ? nothing : prs[1].number
-        commit_info = GitHub.commit(ctx.repo, commit; handle_error=false)
-        message = isnothing(commit_info.commit) ? "" : commit_info.commit.message
+        global results = run_bench(info)
+
         result_with_info = Dict(
-            "branch" => branch_name,
-            "pr" => pr_number,
-            "message" => message,
+            "branch" => info.branch,
+            "message" => info.commit_message,
             "date" => string(now()),
             "results" => results
         )

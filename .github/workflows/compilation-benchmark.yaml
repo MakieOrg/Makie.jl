@@ -37,5 +37,6 @@ jobs:
       - name: Benchmark
         env:
           GITHUB_TOKEN: ${{ secrets.BENCHMARK_KEY }}
+          PR_NUMBER: ${{ github.event.number }}
         run: >
           julia --project=./metrics/ttfp/ ./metrics/ttfp/run-benchmark.jl
