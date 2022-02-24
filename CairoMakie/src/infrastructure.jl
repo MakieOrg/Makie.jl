@@ -214,7 +214,7 @@ function draw_background(screen::CairoScreen, scene::Scene)
     cr = screen.context
     Cairo.save(cr)
     if scene.clear[]
-        bg = to_color(theme(scene, :backgroundcolor)[])
+        bg = scene.backgroundcolor[]
         Cairo.set_source_rgba(cr, red(bg), green(bg), blue(bg), alpha(bg));
         r = pixelarea(scene)[]
         Cairo.rectangle(cr, origin(r)..., widths(r)...) # background

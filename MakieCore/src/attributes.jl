@@ -1,5 +1,5 @@
 
-const Theme = Attributes
+const Theme = Dict{Symbol, Any}
 
 Base.broadcastable(x::AbstractScene) = Ref(x)
 Base.broadcastable(x::AbstractPlot) = Ref(x)

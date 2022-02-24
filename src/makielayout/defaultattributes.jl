@@ -1,6 +1,6 @@
 function lift_parent_attribute(scene, attr::Symbol, default_value)
     if haskey(scene.theme, attr)
-        lift(identity, scene.theme[attr])
+        lift(identity, convert(Observable, scene.theme[attr]))
     else
         lift_parent_attribute(scene.parent, attr, default_value)
     end

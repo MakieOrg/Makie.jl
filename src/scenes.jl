@@ -31,9 +31,9 @@ end
 
 function SSAO(; radius=nothing, bias=nothing, blur=nothing)
     defaults = theme(nothing, :SSAO)
-    _radius = isnothing(radius) ? defaults.radius[] : radius
-    _bias = isnothing(bias) ? defaults.bias[] : bias
-    _blur = isnothing(blur) ? defaults.blur[] : blur
+    _radius = isnothing(radius) ? defaults[:radius] : radius
+    _bias = isnothing(bias) ? defaults[:bias] : bias
+    _blur = isnothing(blur) ? defaults[:blur] : blur
     return SSAO(_radius, _bias, _blur)
 end
 
@@ -98,7 +98,7 @@ mutable struct Scene <: AbstractScene
     "The plots contained in the Scene."
     plots::Vector{AbstractPlot}
 
-    theme::Attributes
+    theme::Theme
 
     "Children of the Scene inherit its transformation."
     children::Vector{Scene}
@@ -152,7 +152,7 @@ function Scene(;
         camera_controls::AbstractCamera = EmptyCamera(),
         transformation::Transformation = Transformation(transform_func),
         plots::Vector{AbstractPlot} = AbstractPlot[],
-        theme::Attributes = Attributes(),
+        theme = Theme(),
         children::Vector{Scene} = Scene[],
         current_screens::Vector{AbstractScreen} = AbstractScreen[],
         parent = nothing,
@@ -163,13 +163,11 @@ function Scene(;
     )
     m_theme = current_default_theme(; theme..., theme_kw...)
 
-    bg = map(to_color, m_theme.backgroundcolor)
+    bg = map(to_color, Observable(m_theme[:backgroundcolor]))
 
     wasnothing = isnothing(px_area)
     if wasnothing
-        px_area = lift(m_theme.resolution) do res
-            Recti(0, 0, res)
-        end
+        px_area = Observable(Recti(0, 0, m_theme[:resolution]))
     end
 
     cam = camera isa Camera ? camera : Camera(px_area)
@@ -199,7 +197,7 @@ function Scene(;
             position = if lightposition == :eyeposition
                 scene.camera.eyeposition
             else
-                m_theme.lightposition
+                m_theme[:lightposition]
             end
             push!(scene.lights, PointLight(position, RGBf(1, 1, 1)))
         end
