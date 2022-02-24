@@ -20,6 +20,11 @@ struct BenchInfo
     project::String
 end
 
+function Base.show(io::IO, info::BenchInfo)
+    branch = isempty(info.branch) ? "" : " $(info.branch),"
+    print(io, "BenchInfo($(info.julia), $(info.cpu),$(branch) $(info.commit_message))")
+end
+
 function best_name(info::BenchInfo)
     isempty(info.branch) || return info.branch
     return info.commit[1:5]
@@ -98,7 +103,7 @@ end
 
 function make_or_edit_comment(ctx, pr, comment)
     prev_comments, _ = GitHub.comments(ctx.repo, pr; auth=ctx.auth)
-    idx = findfirst(x-> occursin("## Compile Times benchmark", x.body), prev_comments)
+    idx = findfirst(c-> c.user.login == "MakieBot", prev_comments)
     if isnothing(idx)
         GitHub.create_comment(ctx.repo, pr; auth=ctx.auth, params=Dict("body"=>comment))
     else
