@@ -7,7 +7,7 @@ function cpu_key()
     return join(unique(cpus), "")
 end
 julia_key() = "julia-" * replace(string(VERSION), "."=>"-")
-tag_commit(tag) = chomp(read(`git show-ref -s $(tag)`, String))
+tag_commit(ctx, tag) = GitHub.tag(ctx.repo, tag).object["sha"]
 current_commit() =  chomp(read(`git rev-parse HEAD`, String))
 latest_commit(branch) = chomp(read(`git log -n 1 $branch --pretty=format:"%H"`, String))
 

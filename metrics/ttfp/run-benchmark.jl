@@ -1,4 +1,3 @@
-run(`git --version`)
 cd(@__DIR__)
 using Pkg
 Pkg.activate(".")
@@ -8,7 +7,7 @@ using JSON, Statistics, GitHub, Base64, SHA, Downloads, Dates, CairoMakie
 include("benchmark-library.jl")
 
 ctx = github_context()
-commits_to_bench = [tag_commit("v0.16.5"), current_commit()]
+commits_to_bench = [tag_commit(ctx, "v0.16.5"), current_commit()]
 @info("benchmarking commits $(commits_to_bench)")
 benchmarks = get_benchmark_data.(Ref(ctx), commits_to_bench)
 @info("done benchmarking, plotting")
