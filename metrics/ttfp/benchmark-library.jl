@@ -46,7 +46,8 @@ end
 
 function run_bench(commit; n=10)
     @info("run benchmark for $(commit)")
-    rm("benchmark-project/Manifest.toml")
+    mani = "benchmark-project/Manifest.toml"
+    isdir(mani) && rm(mani)
     Pkg.activate("benchmark-project")
     pkgs = ["MakieCore", "Makie", "CairoMakie"]
     pkgs = [PackageSpec(name=pkg, rev=commit) for pkg in pkgs]
