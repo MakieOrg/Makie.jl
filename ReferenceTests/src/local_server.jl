@@ -66,9 +66,7 @@ function serve_update_page_from_dir(folder)
     @info "Starting server. Open localhost:8000 in your browser to view."
     HTTP.serve(router, HTTP.Sockets.localhost, 8000)
 end
-
-# function serve_pr_update_page(pr_number)
-#     
+ 
 function serve_update_page(; commit = nothing, pr = nothing)
     authget(url) = HTTP.get(url, Dict("Authorization" => "token $(ENV["GITHUB_TOKEN"])"))
 
@@ -87,8 +85,20 @@ function serve_update_page(; commit = nothing, pr = nothing)
     checksinfo = JSON3.read(authget("https://api.github.com/repos/JuliaPlots/Makie.jl/commits/$headsha/check-runs").body)
     
     checkruns = filter(checksinfo["check_runs"]) do x
-        any(["GLMakie", "WGLMakie", "CairoMakie"]) do package
+        right_combination = any(["GLMakie", "WGLMakie", "CairoMakie"]) do package
             occursin(package, x["name"]) && occursin("1.6", x["name"])
+        end
+        if right_combination
+            job = JSON3.read(authget("https://api.github.com/repos/JuliaPlots/Makie.jl/actions/jobs/$(x["id"])").body)
+            run = JSON3.read(authget(job["run_url"]).body)
+            if run["status"] != "completed"
+                @info "$(x["name"])'s run hasn't completed yet, no artifacts will be available."
+                false
+            else
+                true
+            end
+        else
+            false
         end
     end
 
@@ -106,6 +116,7 @@ function serve_update_page(; commit = nothing, pr = nothing)
     
     job = JSON3.read(authget("https://api.github.com/repos/JuliaPlots/Makie.jl/actions/jobs/$(check["id"])").body)
     run = JSON3.read(authget(job["run_url"]).body)
+
     artifacts = JSON3.read(authget(run["artifacts_url"]).body)["artifacts"]
     for a in artifacts
         if endswith(a["name"], "1.6")
@@ -137,7 +148,11 @@ function serve_update_page(; commit = nothing, pr = nothing)
             return 
         end
     end
-    error("No GLMakie reference image artifact found for $headsha")
+    error("""
+        Reference image artifacts found for commit $headsha and job id $(check["id"]).
+        This could be because the job's workflow run ($(job["run_url"])) has not completed, yet.
+        Artifacts are only available for complete runs.
+    """)
 end
 
 function unzip(file, exdir = "")

@@ -100,7 +100,6 @@ function compare(test_paths::Vector{String}, reference_dir::String; o_refdir=ref
             else
                 diff = compare_media(test_path, ref_path)
                 name = relpath(ref_path, o_refdir)
-                # @info(@sprintf "%1.4f == %s\n" diff name)
                 scores[name] = diff
             end
         end
@@ -108,39 +107,6 @@ function compare(test_paths::Vector{String}, reference_dir::String; o_refdir=ref
     return missing_refimages, scores
 end
 
-function run_reference_tests(db, recording_folder; difference=0.03, ref_images = download_refimages())
-    record_tests(db, recording_dir=recording_folder)
-    missing_files, scores = compare(joinpath.(recording_folder, readdir(recording_folder)), ref_images)
-    if !isempty(missing_files)
-        @warn("""
-        #################################
-        Newly recorded files found! The tests will pass, but uploading new reference images is required!
-        #################################
-        """)
-    end
-    open(joinpath(recording_folder, "new_files.html"), "w") do io
-        for filename in missing_files
-            println(io, "<h1> $(basename(filename)) </h1>")
-            println(io, """
-                <div>
-                    $(embed_media(filename))
-                </div>
-            """)
-        end
-    end
-
-    generate_test_summary(joinpath(recording_folder, "preview.html"), recording_folder, ref_images, scores)
-    reference_tests(scores; difference=difference)
-end
-
-function reference_tests(scores; difference=0.03)
-    @testset "Reference Image Tests" begin
-        @testset "$name" for (name, score) in scores
-            @test score < difference
-        end
-        return scores
-    end
-end
 
 function record_tests(db=load_database(); recording_dir=basedir("recorded"))
     recorded_files = String[]
@@ -177,8 +143,3 @@ function record_tests(db=load_database(); recording_dir=basedir("recorded"))
     return recorded_files, recording_dir
 end
 
-function run_tests(db=load_database(); ref_images = ReferenceTests.download_refimages(),
-                    recording_dir=joinpath(@__DIR__, "..", "recorded"), difference=0.03)
-    files, dir = record_tests(db, recording_dir=recording_dir)
-    reference_tests(recording_dir, ref_images=ref_images, difference=difference)
-end

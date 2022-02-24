@@ -34,7 +34,6 @@ include("database.jl")
 include("stable_rng.jl")
 include("runtests.jl")
 include("image_download.jl")
-include("html_rendering.jl")
 include("local_server.jl")
 
 end
