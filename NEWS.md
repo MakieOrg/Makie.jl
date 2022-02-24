@@ -1,6 +1,10 @@
 # News
 
-## Master
+## master
+
+- deprecated `mouse_selection(scene)` for `pick(scene)`
+
+##  v0.16.4
 
 - Fix WGLMakie performance bug and add option to set fps via `WGLMakie.activate!(fps=30)`
 - implement `nan_color`, `lowclip`, `highclip` for `image(::Matrix{Float})` in shader

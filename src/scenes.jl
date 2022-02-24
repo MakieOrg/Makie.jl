@@ -397,12 +397,15 @@ function Base.push!(scene::Scene, child::Scene)
     return scene
 end
 
+events(x) = events(get_scene(x))
 events(scene::Scene) = scene.events
 events(scene::SceneLike) = events(scene.parent)
 
+camera(x) = camera(get_scene(x))
 camera(scene::Scene) = scene.camera
 camera(scene::SceneLike) = camera(scene.parent)
 
+cameracontrols(x) = cameracontrols(get_scene(x))
 cameracontrols(scene::Scene) = scene.camera_controls
 cameracontrols(scene::SceneLike) = cameracontrols(scene.parent)
 
@@ -411,10 +414,13 @@ function cameracontrols!(scene::Scene, cam)
     return cam
 end
 cameracontrols!(scene::SceneLike, cam) = cameracontrols!(parent(scene), cam)
+cameracontrols!(x, cam) = cameracontrols!(get_scene(x), cam)
 
+pixelarea(x) = pixelarea(get_scene(x))
 pixelarea(scene::Scene) = scene.px_area
 pixelarea(scene::SceneLike) = pixelarea(scene.parent)
 
+plots(x) = plots(get_scene(x))
 plots(scene::SceneLike) = scene.plots
 
 """
@@ -450,8 +456,10 @@ function insertplots!(screen::AbstractDisplay, scene::Scene)
     foreach(child -> insertplots!(screen, child), scene.children)
 end
 
+update_cam!(x, bb::AbstractCamera, rect) = update_cam!(get_scene(x), bb, rect)
 update_cam!(scene::Scene, bb::AbstractCamera, rect) = nothing
 
+center!(x, padding=0.01) = center!(get_scene(x), padding)
 function center!(scene::Scene, padding=0.01)
     bb = boundingbox(scene)
     bb = transformationmatrix(scene)[] * bb
@@ -462,6 +470,7 @@ function center!(scene::Scene, padding=0.01)
     scene
 end
 
+parent_scene(x) = parent_scene(get_scene(x))
 parent_scene(x::Combined) = parent_scene(parent(x))
 parent_scene(x::Scene) = x
 

@@ -556,3 +556,8 @@ they are broadcast to calculate the final spans.
 """
 vspan!(ax::Axis, x_lows, x_highs; ymin = 0.0, ymax = 1.0, attrs...) =
     hvspan!(ax, 2, x_lows, x_highs, ymin, ymax; attrs...)
+
+
+Makie.get_scene(ax::Axis) = ax.scene
+Makie.get_scene(ax::Axis3) = ax.scene
+Makie.get_scene(ax::LScene) = ax.scene
