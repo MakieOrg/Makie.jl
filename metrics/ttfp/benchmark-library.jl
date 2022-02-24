@@ -69,10 +69,10 @@ function get_benchmark_data(ctx, commit)
     @info("Getting $(repo_data_path)")
     old_file = get_file(ctx, repo_data_path)
     if !isnothing(old_file.content)
-        @info("Benchmark for $(repo_data_path) already exists, loading from file")
+        @info("Benchmark already exists, loading from file")
         return JSON.parse(String(old_file.content))
     else
-        @info("Benchmark $(repo_data_path) doesn't exist")
+        @info("Benchmarkdoesn't exist, run benchmark")
         global results = run_bench(commit)
         branch_name = chomp(read(`git describe --all --contains $(commit)`, String))
         head="$(owner):$(branch_name)"
