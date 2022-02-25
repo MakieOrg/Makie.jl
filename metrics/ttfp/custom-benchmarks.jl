@@ -6,28 +6,37 @@ using JSON, Statistics, GitHub, Base64, SHA, Downloads, Dates, CairoMakie
 
 include("benchmark-library.jl")
 
+
+function create_project_info(branch)
+    project = "current-pr-project/"
+    # It seems, that between julia versions, the manifest must be deleted to not get problems
+    isdir(project) && rm(project; force=true, recursive=true)
+    mkdir(project)
+    Pkg.activate(project)
+    pkgs = [(;path="../../MakieCore"), (;path="../../"), (;path="../../CairoMakie")]
+    if branch in ["sd/better-cm-draw", "sd/no-static-arrays"]
+        push!(pkgs, (;path="../../../GeometryBasics"))
+    end
+    Pkg.develop(pkgs)
+    this_pr = BenchInfo(
+        project=project,
+        branch=branch,
+        commit=string(current_commit())
+    )
+    Pkg.activate(".")
+    return this_pr
+end
+
+
 ctx = github_context()
 
-project = "current-pr-project/"
-# It seems, that between julia versions, the manifest must be deleted to not get problems
-isdir(project) && rm(project; force=true, recursive=true)
-mkdir(project)
+branches = ["sd/better-cm-draw", "sd/no-static-arrays", "master", "sd/remove-lift", "sd/replace-attribute-theme"]
 
-Pkg.activate(project)
-Pkg.develop([(;path="../../MakieCore"), (;path="../../"), (;path="../../CairoMakie"), (;path="../../../GeometryBasics")])
-this_pr = BenchInfo(
-    project=project,
-    branch="current-pr",
-    commit=string(current_commit())
-)
-
-Pkg.activate(".")
-
-get_benchmark_data(ctx, this_pr; n=10, force=true)
-
-plot_url = run_benchmarks(ctx, [GitHub.branch(ctx.repo, "master"), this_pr])
+i1 = BenchInfo(commit="444eae5ce174d23d53c181144b357382bd57afa8", branch="julia1.9+this-pr")
+i2 = BenchInfo(commit="7ccf35e789fccdda2429b39b6b10f4e91adcc5fd", branch="julia1.9+no-static-arrays")
+i3 = BenchInfo(commit="f04ea93cde4384bad3f008bddf291a15ac35774a", branch="julia1.7+more-precompiles")
+i4 = BenchInfo(commit="4a127bfd8dee589bbc3c2da1c91573a73752f36c", branch="julia1.7+v0.16.5")
+i5 = BenchInfo(commit="7841b37e84921c4be8ec028b6aeb6cd12c036650", branch="master-yesterday")
 
 
-i1 = BenchInfo(commit="444eae5ce174d23d53c181144b357382bd57afa8")
-i2 = BenchInfo(commit="7ccf35e789fccdda2429b39b6b10f4e91adcc5fd")
 plot_url = run_benchmarks(ctx, [i2, i1])
