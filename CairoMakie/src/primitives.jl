@@ -320,14 +320,12 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text{<:Tuple{
     position = primitive.position[]
     # use cached glyph info
     glyph_collection = to_value(primitive[1])
-
     draw_glyph_collection(scene, ctx, position, glyph_collection, remove_billboard(rotation), model, space, offset)
 
     nothing
 end
 
-
-function draw_glyph_collection(scene, ctx, positions, glyph_collections::AbstractArray, rotation, model::SMatrix, space, offset)
+function draw_glyph_collection(scene, ctx, positions, glyph_collections::AbstractArray, rotation, model::Mat, space, offset)
 
     # TODO: why is the Ref around model necessary? doesn't broadcast_foreach handle staticarrays matrices?
     broadcast_foreach(positions, glyph_collections, rotation,
@@ -404,7 +402,7 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
             glyphpos = let
                 # project without yflip - we need to apply model before that
                 p = project_position(scene, position, Mat4f(I), false)
-                
+
                 # flip for Cairo
                 p += (p3_to_p2(glyphoffset .+ p3_offset))
                 p = (_deref(model) * Vec4f(p[1], p[2], 0, 1))[Vec(1, 2)]
@@ -412,7 +410,7 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
                 p
             end
             # and the scale is just taken as is
-            scale = length(scale) == 2 ? scale : SVector(scale, scale)
+            scale = length(scale) == 2 ? scale : Vec(scale, scale)
 
             mat = let
                 scale_mat = if length(scale) == 2
@@ -597,11 +595,11 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
 
             # Rectangles and polygons that are directly adjacent usually show
             # white lines between them due to anti aliasing. To avoid this we
-            # increase their size slightly. 
+            # increase their size slightly.
 
             if alpha(colors[i, j]) == 1
-                # sign.(p - center) gives the direction in which we need to 
-                # extend the polygon. (Which may change due to rotations in the 
+                # sign.(p - center) gives the direction in which we need to
+                # extend the polygon. (Which may change due to rotations in the
                 # model matrix.) (i!=1) etc is used to avoid increasing the
                 # outer extent of the heatmap.
                 center = 0.25 * (p1 + p2 + p3 + p4)
@@ -629,35 +627,42 @@ end
 ################################################################################
 
 
-function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Makie.Mesh)
+function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive::Makie.Mesh))
+    mesh = primitive[1][]
     if Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera, Makie.EmptyCamera}
-        draw_mesh2D(scene, screen, primitive)
+        draw_mesh2D(scene, screen, primitive, mesh)
     else
         if !haskey(primitive, :faceculling)
             primitive[:faceculling] = Observable(-10)
         end
-        draw_mesh3D(scene, screen, primitive)
+        draw_mesh3D(scene, screen, primitive, mesh)
     end
     return nothing
 end
 
-function draw_mesh2D(scene, screen, primitive)
-    @get_attribute(primitive, (color,))
+function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
+    @get_attribute(plot, (color,))
+    color = to_color(hasproperty(mesh, :color) ? mesh.color : color)
+    vs =  decompose(Point2f, mesh)::Vector{Point2f}
+    fs = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
+    uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
+    model = plot.model[]::Mat4f
+    colormap = to_colormap(to_value(get(plot, :colormap, nothing)))::Union{Nothing, Vector{RGBAf}}
+    colorrange = to_value(get(plot, :colorrange, nothing))::Union{Nothing, Vec2f}
+    cols = per_face_colors(color, colormap, colorrange, nothing, vs, fs, nothing, uv)
+    return draw_mesh2D(scene, screen, cols, vs, fs, model)
+end
 
-    colormap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
-    colorrange = get(primitive, :colorrange, nothing) |> to_value
+function draw_mesh2D(scene, screen, per_face_cols,
+        vs::Vector{Point2f}, fs::Vector{GLTriangleFace}, model::Mat4f)
+
     ctx = screen.context
-    model = primitive.model[]
-    mesh = GeometryBasics.mesh(primitive[1][])
     # Priorize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
-    color = hasproperty(mesh, :color) ? mesh.color : color
-    vs =  decompose(Point, mesh); fs = decompose(TriangleFace, mesh)
-    uv = hasproperty(mesh, :uv) ? mesh.uv : nothing
+
     pattern = Cairo.CairoPatternMesh()
 
-    cols = per_face_colors(color, colormap, colorrange, nothing, vs, fs, nothing, uv)
-    for (f, (c1, c2, c3)) in zip(fs, cols)
+    for (f, (c1, c2, c3)) in zip(fs, per_face_cols)
         t1, t2, t3 =  project_position.(scene, vs[f], (model,)) #triangle points
         Cairo.mesh_pattern_begin_patch(pattern)
 
@@ -684,25 +689,54 @@ end
 
 nan2zero(x) = !isnan(x) * x
 
-function draw_mesh3D(
-        scene, screen, primitive;
-        mesh = primitive[1][], pos = Vec4f(0), scale = 1f0
+
+function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f0)
+    # Priorize colors of the mesh if present
+    @get_attribute(attributes, (color,))
+
+    colormap = to_colormap(to_value(get(attributes, :colormap, nothing)))
+    colorrange = to_value(get(attributes, :colorrange, nothing))
+    matcap = to_value(get(attributes, :matcap, nothing))
+
+    color = hasproperty(mesh, :color) ? mesh.color : color
+    meshpoints = decompose(Point3f, mesh)::Vector{Point3f}
+    meshfaces = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
+    meshnormals = decompose_normals(mesh)::Vector{Vec3f}
+    meshuvs = texturecoordinates(mesh)::Union{Nothing, Vector{Vec2f}}
+
+    lowclip = color_or_nothing(to_value(get(attributes, :lowclip, nothing)))::Union{Nothing, RGBAf}
+    highclip = color_or_nothing(to_value(get(attributes, :highclip, nothing)))::Union{Nothing, RGBAf}
+    nan_color = color_or_nothing(to_value(get(attributes, :nan_color, nothing)))::Union{Nothing, RGBAf}
+
+    per_face_col = per_face_colors(
+        color, colormap, colorrange, matcap, meshfaces, meshnormals, meshuvs,
+        lowclip, highclip, nan_color
     )
-    @get_attribute(primitive, (color, shading, diffuse,
+
+    @get_attribute(attributes, (shading, diffuse,
         specular, shininess, faceculling))
 
-    colormap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
-    colorrange = get(primitive, :colorrange, nothing) |> to_value
-    matcap = get(primitive, :matcap, nothing) |> to_value
-    # Priorize colors of the mesh if present
-    color = hasproperty(mesh, :color) ? mesh.color : color
+    model = attributes.model[]::Mat4f
+
+    draw_mesh3D(
+        scene, screen, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
+        model, shading::Bool, diffuse::Vec3f,
+        specular::Vec3f, shininess::Float32, faceculling::Bool
+    )
+end
+
+function draw_mesh3D(
+        scene, screen, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
+        model, shading, diffuse,
+        specular, shininess, faceculling
+    )
+
+
 
     ctx = screen.context
-
-    model = primitive.model[]
     view = scene.camera.view[]
     projection = scene.camera.projection[]
-    i = SOneTo(3)
+    i = Vec(1, 2, 3)
     normalmatrix = transpose(inv(view[i, i] * model[i, i]))
 
     # Mesh data
@@ -710,21 +744,14 @@ function draw_mesh3D(
     func = Makie.transform_func_obs(scene)[]
     # pass func as argument to function, so that we get a function barrier
     # and have `func` be fully typed inside closure
-    vs = broadcast(decompose(Point, mesh), (func,)) do v, f
+    vs = broadcast(meshpoints, (func,)) do v, f
         # Should v get a nan2zero?
         v = Makie.apply_transform(f, v)
         p4d = to_ndim(Vec4f, scale .* to_ndim(Vec3f, v, 0f0), 1f0)
         view * (model * p4d .+ to_ndim(Vec4f, pos, 0f0))
     end
-    fs = decompose(GLTriangleFace, mesh)
-    uv = texturecoordinates(mesh)
-    ns = map(n -> normalize(normalmatrix * n), decompose_normals(mesh))
-    cols = per_face_colors(
-        color, colormap, colorrange, matcap, vs, fs, ns, uv,
-        get(primitive, :lowclip, nothing) |> to_value |> color_or_nothing,
-        get(primitive, :highclip, nothing) |> to_value |> color_or_nothing,
-        get(primitive, :nan_color, nothing) |> to_value |> color_or_nothing
-    )
+
+    ns = map(n -> normalize(normalmatrix * n), meshnormals)
 
     # Liight math happens in view/camera space
     pointlight = Makie.get_point_light(scene)
@@ -750,29 +777,29 @@ function draw_mesh3D(
         @inbounds begin
             p = (clip ./ clip[4])[Vec(1, 2)]
             p_yflip = Vec2f(p[1], -p[2])
-            p_0_to_1 = (p_yflip .+ 1f0) / 2f0
+            p_0_to_1 = (p_yflip .+ 1f0) ./ 2f0
         end
         p = p_0_to_1 .* scene.camera.resolution[]
         return Vec3f(p[1], p[2], clip[3])
     end
 
     # Approximate zorder
-    zorder = sortperm(fs, by = f -> average_z(ts, f))
+    zorder = sortperm(meshfaces, by = f -> average_z(ts, f))
 
     # Face culling
-    zorder = filter(i -> any(last.(ns[fs[i]]) .> faceculling), zorder)
+    zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
 
     pattern = Cairo.CairoPatternMesh()
     for k in reverse(zorder)
-        f = fs[k]
+        f = meshfaces[k]
         t1, t2, t3 = ts[f]
 
         # light calculation
         c1, c2, c3 = if shading
-            map(ns[f], vs[f], cols[k]) do N, v, c
+            map(ns[f], vs[f], per_face_col[k]) do N, v, c
                 L = normalize(lightpos .- v[Vec(1,2,3)])
                 diff_coeff = max(dot(L, N), 0.0)
-                H = normalize(L + normalize(-v[SOneTo(3)]))
+                H = normalize(L + normalize(-v[Vec(1, 2, 3)]))
                 spec_coeff = max(dot(H, N), 0.0)^shininess
                 c = RGBA(c)
                 new_c = (ambient .+ diff_coeff .* diffuse) .* Vec3f(c.r, c.g, c.b) .+
@@ -780,7 +807,7 @@ function draw_mesh3D(
                 RGBA(new_c..., c.alpha)
             end
         else
-            cols[k]
+            per_face_col[k]
         end
         # debug normal coloring
         # n1, n2, n3 = Vec3f(0.5) .+ 0.5ns[f]
@@ -822,7 +849,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Makie.Surface
     if !haskey(primitive, :faceculling)
         primitive[:faceculling] = Observable(-10)
     end
-    draw_mesh3D(scene, screen, primitive, mesh=mesh)
+    draw_mesh3D(scene, screen, primitive, mesh)
     primitive[:color] = old
     return nothing
 end
@@ -912,7 +939,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Makie.MeshSca
         scale = markersize isa Vector ? markersize[i] : markersize
 
         draw_mesh3D(
-            scene, screen, submesh, mesh = m, pos = p,
+            scene, screen, submesh, m, pos = p,
             scale = scale isa Real ? Vec3f(scale) : to_ndim(Vec3f, scale, 1f0)
         )
     end

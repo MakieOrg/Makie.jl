@@ -16,7 +16,7 @@ function project_position(scene, point, model, yflip = true)
         # flip y to match cairo
         p_yflip = Vec2f(p[1], (1f0 - 2f0 * yflip) * p[2])
         # normalize to between 0 and 1
-        p_0_to_1 = (p_yflip .+ 1f0) / 2f0
+        p_0_to_1 = (p_yflip .+ 1f0) ./ 2f0
     end
     # multiply with scene resolution for final position
     return p_0_to_1 .* res
@@ -189,10 +189,10 @@ Base.getindex(fi::FaceIterator{:PerFace}, i::Integer) = fi.data[i]
 Base.getindex(fi::FaceIterator{:PerVert}, i::Integer) = fi.data[fi.faces[i]]
 Base.getindex(fi::FaceIterator{:Const}, i::Integer) = ntuple(i-> fi.data, 3)
 
-color_or_nothing(c) = c === nothing ? nothing : to_color(c)
+color_or_nothing(c) = isnothing(c) ? nothing : to_color(c)
 
 function per_face_colors(
-        color, colormap, colorrange, matcap, vertices, faces, normals, uv,
+        color, colormap, colorrange, matcap, faces, normals, uv,
         lowclip=nothing, highclip=nothing, nan_color=nothing
     )
     if matcap !== nothing

@@ -58,7 +58,7 @@ function Base.:(*)(quat::Quaternion, vec::StaticVector{2, T}) where T
     VT(x3[1], x3[2])
 end
 
-function Base.:(*)(quat::Quaternion{T}, vec::StaticVector{3}) where T
+function Base.:(*)(quat::Quaternion{T}, vec::P) where {T, P <: StaticVector{3}}
     num = quat[1] * T(2)
     num2 = quat[2] * T(2)
     num3 = quat[3] * T(2)
@@ -75,8 +75,7 @@ function Base.:(*)(quat::Quaternion{T}, vec::StaticVector{3}) where T
     num11 = quat[4] * num2
     num12 = quat[4] * num3
 
-    VT = similar_type(vec, StaticArrays.Size(3,))
-    return VT(
+    return P(
         (1f0 - (num5 + num6)) * vec[1] + (num7 - num12) * vec[2] + (num8 + num11) * vec[3],
         (num7 + num12) * vec[1] + (1f0 - (num4 + num6)) * vec[2] + (num9 - num10) * vec[3],
         (num8 - num11) * vec[1] + (num9 + num10) * vec[2] + (1f0 - (num4 + num5)) * vec[3]

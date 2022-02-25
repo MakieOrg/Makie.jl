@@ -740,15 +740,16 @@ convert_attribute(p, ::key"lowclip") = to_color(p)
 convert_attribute(p::Nothing, ::key"lowclip") = p
 convert_attribute(p, ::key"nan_color") = to_color(p)
 
-struct Palette{N}
-   colors::SArray{Tuple{N},RGBA{Float32},1,N}
-   i::Ref{UInt8}
-   Palette(colors) = new{length(colors)}(SVector{length(colors)}(to_color.(colors)), zero(UInt8))
+struct Palette
+   colors::Vector{RGBA{Float32}}
+   i::Ref{Int}
+   Palette(colors) = new(to_color.(colors), zero(Int))
 end
 Palette(name::Union{String, Symbol}, n = 8) = Palette(to_colormap(name, n))
 
-function convert_attribute(p::Palette{N}, ::key"color") where {N}
-    p.i[] = p.i[] == N ? one(UInt8) : p.i[] + one(UInt8)
+function convert_attribute(p::Palette, ::key"color")
+    N = length(p.colors)
+    p.i[] = p.i[] == N ? 1 : p.i[] + 1
     p.colors[p.i[]]
 end
 
