@@ -10,6 +10,15 @@ julia_key() = "julia-" * replace(string(VERSION), "."=>"-")
 tag_commit(ctx, tag) = GitHub.tag(ctx.repo, tag).object["sha"]
 current_commit() =  chomp(read(`git rev-parse HEAD`, String))
 latest_commit(ctx, branch) = GitHub.branch(ctx.repo, branch)
+function github_context()
+    owner = "JuliaPlots"
+    return (
+        owner = owner,
+        repo = GitHub.Repo("$(owner)/Makie.jl"),
+        auth = GitHub.authenticate(ENV["GITHUB_TOKEN"]),
+        scratch_repo = GitHub.Repo("MakieOrg/scratch")
+    )
+end
 
 struct BenchInfo
     julia::String
@@ -22,7 +31,8 @@ end
 
 function Base.show(io::IO, info::BenchInfo)
     branch = isempty(info.branch) ? "" : " $(info.branch),"
-    print(io, "BenchInfo($(info.julia), $(info.cpu),$(branch) $(info.commit_message))")
+    msg = info.commit_message[1:min(length(info.commit_message), 20)]
+    print(io, "BenchInfo($(info.julia), $(info.cpu),$(branch) $(msg))")
 end
 
 function best_name(info::BenchInfo)
@@ -30,21 +40,34 @@ function best_name(info::BenchInfo)
     return info.commit[1:5]
 end
 
-function BenchInfo(commit::GitHub.Commit;
+function unique_id(info::BenchInfo)
+    isempty(info.commit) || return info.commit
+    return info.branch
+end
+
+function BenchInfo(;
         julia::String=julia_key(),
         cpu::String=cpu_key(),
         branch::String="",
+        commit::String="",
         commit_message::String="",
         project=""
     )
-    isnothing(commit.commit) && error("Invalid commit")
     return BenchInfo(
         julia,
         cpu,
         branch,
-        commit.sha,
-        commit.commit.message,
+        commit,
+        commit_message,
         project
+    )
+end
+
+function BenchInfo(commit::GitHub.Commit; kw...)
+    isnothing(commit.commit) && error("Invalid commit")
+    return BenchInfo(
+        commit=commit.sha,
+        commit_message=commit.commit.message,
     )
 end
 
@@ -76,7 +99,6 @@ end
 function BenchInfo(branch::GitHub.Branch; kw...)
     return BenchInfo(branch.commit; branch=branch.name, kw...)
 end
-
 
 function get_file(ctx, repo_path)
     file = GitHub.file(ctx.scratch_repo, repo_path; auth=ctx.auth, handle_error=false)
@@ -120,10 +142,11 @@ function run_bench(info::BenchInfo; n=5)
         error("Not running on requested Julia. Requested: $(info.julia), actual: $(julia_key())")
     end
 
-    @info("run benchmark for $(commit)")
     if isdir(info.project)
         project = info.project
+        @info("using $(project)")
     else
+        @info("Creating project for $(commit)")
         project = "benchmark-project"
         isdir(project) && rm(project; force=true, recursive=true)
         Pkg.activate(project)
@@ -143,22 +166,23 @@ function run_bench(info::BenchInfo; n=5)
     return results
 end
 
+bench_info(ctx, info::BenchInfo) = info
 bench_info(ctx, gh_typ::GitHub.GitHubType) = BenchInfo(gh_typ)
 bench_info(ctx, commit_or_smth) = BenchInfo(ctx.repo, commit_or_smth)
 
-function get_benchmark_data(ctx, info::BenchInfo)
-    commit = info.commit
+function get_benchmark_data(ctx, info::BenchInfo; n=10, force=false)
+    uuid = unique_id(info)
     repo_dir_path = "benchmarks/$(julia_key())/$(cpu_key())"
-    repo_base_path = "$(repo_dir_path)/$(commit)"
+    repo_base_path = "$(repo_dir_path)/$(uuid)"
     repo_data_path = "$(repo_base_path).json"
     @info("Getting $(repo_data_path)")
     old_file = get_file(ctx, repo_data_path)
-    if !isnothing(old_file.content)
+    if !force && !isnothing(old_file.content)
         @info("Benchmark already exists, loading from file")
         return JSON.parse(String(old_file.content))
     else
-        @info("Benchmarkdoesn't exist, run benchmark")
-        global results = run_bench(info)
+        @info("Benchmark doesn't exist, run benchmark")
+        global results = run_bench(info; n=n)
 
         result_with_info = Dict(
             "branch" => info.branch,
@@ -166,19 +190,9 @@ function get_benchmark_data(ctx, info::BenchInfo)
             "date" => string(now()),
             "results" => results
         )
-        upload_data(ctx, JSON.json(result_with_info), repo_data_path, "for commit $(commit[1:5])")
+        upload_data(ctx, JSON.json(result_with_info), repo_data_path, "for commit $(uuid[1:5])")
         return result_with_info
     end
-end
-
-function github_context()
-    owner = "JuliaPlots"
-    return (
-        owner = owner,
-        repo = GitHub.Repo("$(owner)/Makie.jl"),
-        auth = GitHub.authenticate(ENV["GITHUB_TOKEN"]),
-        scratch_repo = GitHub.Repo("MakieOrg/scratch")
-    )
 end
 
 function plot_benchmark!(ax, data, pos; width=0.9, height=0.3, alpha=0.2)
@@ -233,4 +247,38 @@ function upload_data(ctx, fig, repo_path)
     show(io, MIME"image/png"(), fig)
     bytes = take!(io)
     upload_data(ctx, bytes, repo_path, "plot")
+end
+
+
+function run_benchmarks(ctx, to_benchmark;
+        n=10, force=false, pr_to_comment=get(ENV, "PR_NUMBER", nothing))
+
+    bench_infos = bench_info.(Ref(ctx), to_benchmark)
+    @info("benchmarking:")
+    display(bench_infos)
+
+    benchmarks = get_benchmark_data.(Ref(ctx), bench_infos)
+
+    @info("done benchmarking, plotting")
+    fig = plot_benchmarks(benchmarks, bench_infos)
+
+    name = join(map(best_name, bench_infos), "-vs-")
+
+    @info("uploading plot $(name) to github")
+    image_url = upload_data(ctx, fig, "benchmarks/$(name).png")
+
+    comment = """
+    ## Compile Times benchmark
+
+    ![]($(image_url))
+    """
+
+    if !isnothing(pr_to_comment)
+        @info("Commenting plot on PR $(pr_to_comment)")
+        pr = GitHub.pull_request(ctx.repo, pr_to_comment)
+        make_or_edit_comment(ctx, pr, comment)
+    else
+        @info("No comment, no PR found")
+    end
+    return fig
 end
