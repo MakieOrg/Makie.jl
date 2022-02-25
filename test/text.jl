@@ -34,7 +34,7 @@
     # This is just repeating code from Makie
     unit_extents = [FreeTypeAbstraction.get_extent(font, char) for char in chars]
     origins = cumsum(20f0 * Float32[
-        -unit_extents[1].horizontal_bearing[1],
+        0,
         unit_extents[1].advance[1],
         unit_extents[2].advance[1],
         unit_extents[3].advance[1]
