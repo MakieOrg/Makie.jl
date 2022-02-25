@@ -244,7 +244,8 @@ function Makie.plot!(
     # we build this colormap out of our `downcolor` and `upcolor`
     # we give the observable element type `Any` so it will not error when we change
     # a color from a symbol like :red to a different type like RGBf(1, 0, 1)
-    colormap = lift(Any, sc.downcolor, sc.upcolor) do dc, uc
+    colormap = Observable{Any}()
+    map!(colormap, sc.downcolor, sc.upcolor) do dc, uc
         [dc, uc]
     end
 
