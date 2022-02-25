@@ -40,6 +40,9 @@ end
 ctx = github_context()
 
 branches = ["sd/better-cm-draw", "sd/no-static-arrays", "master", "sd/remove-lift", "sd/replace-attribute-theme"]
+for branch in branches
+    create_project_info(branch)
+end
 
 i1 = BenchInfo(commit="444eae5ce174d23d53c181144b357382bd57afa8", branch="julia1.9+this-pr")
 i2 = BenchInfo(commit="7ccf35e789fccdda2429b39b6b10f4e91adcc5fd", branch="julia1.9+no-static-arrays")
