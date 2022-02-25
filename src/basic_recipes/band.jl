@@ -39,10 +39,10 @@ function Makie.plot!(plot::Band)
             # points on one side of the band, the colors are mirrored to the other
             # side to make an even band
             if length(c) == length(lowerpoints[])
-                return repeat(to_color(c), 2)::Vector{RGBAf}
+                return repeat(to_color(c), 2)::RGBColors
             # if there's one color for each band vertex, the colors are used directly
             elseif length(c) == 2 * length(lowerpoints[])
-                return to_color(c)::Vector{RGBAf}
+                return to_color(c)::RGBColors
             else
                 error("Wrong number of colors. Must be $(length(lowerpoints[])) or double.")
             end
