@@ -280,5 +280,5 @@ function run_benchmarks(ctx, to_benchmark;
     else
         @info("No comment, no PR found")
     end
-    return image_url
+    return fig
 end
