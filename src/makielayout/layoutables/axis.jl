@@ -608,7 +608,7 @@ function get_cycle_for_plottype(allattrs, P)::Cycle
     end
 end
 
-function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palette::Dict)
+function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palette)
     # check if none of the cycled attributes of this plot
     # were passed manually, because we don't use the cycler
     # if any of the cycled attributes were specified manually
@@ -682,7 +682,7 @@ function Makie.plot!(
     allattrs = merge(attributes, Attributes(kw_attributes))
 
     cycle = get_cycle_for_plottype(allattrs, P)
-    add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette[])
+    add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
 
     plot = Makie.plot!(la.scene, P, allattrs, args...)
 
