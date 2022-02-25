@@ -5,9 +5,7 @@ end
 function layoutable(::Type{Label}, fig_or_scene; bbox = nothing, kwargs...)
 
     topscene = get_topscene(fig_or_scene)
-    default_attrs = default_attributes(Label, topscene).attributes
-    theme_attrs = subtheme(topscene, :Label)
-    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
+    attrs = merge_theme(Label, topscene, kwargs)
 
     @extract attrs (text, textsize, font, color, visible, halign, valign,
         rotation, padding)

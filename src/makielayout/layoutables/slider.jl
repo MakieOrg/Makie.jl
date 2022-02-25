@@ -1,10 +1,7 @@
 function layoutable(::Type{Slider}, fig_or_scene; bbox = nothing, kwargs...)
 
     topscene = get_topscene(fig_or_scene)
-
-    default_attrs = default_attributes(Slider, topscene).attributes
-    theme_attrs = subtheme(topscene, :Slider)
-    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
+    attrs = merge_theme(Slider, topscene, kwargs)
 
     decorations = Dict{Symbol, Any}()
 

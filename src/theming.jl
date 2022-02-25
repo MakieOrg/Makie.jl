@@ -45,59 +45,59 @@ function wong_colors(alpha = 1.0)
     @. RGBAf(red(colors), green(colors), blue(colors), alpha)
 end
 
-const default_palettes = Attributes(
-    color = wong_colors(1),
-    patchcolor = Makie.wong_colors(0.8),
-    marker = [:circle, :utriangle, :cross, :rect, :diamond, :dtriangle, :pentagon, :xcross],
-    linestyle = [nothing, :dash, :dot, :dashdot, :dashdotdot],
-    side = [:left, :right]
+const default_palettes = Theme(
+    :color => wong_colors(1),
+    :patchcolor => Makie.wong_colors(0.8),
+    :marker => [:circle, :utriangle, :cross, :rect, :diamond, :dtriangle, :pentagon, :xcross],
+    :linestyle => [nothing, :dash, :dot, :dashdot, :dashdotdot],
+    :side => [:left, :right]
 )
 
-const minimal_default = Attributes(
-    palette = default_palettes,
-    font = "Dejavu Sans",
-    textcolor = :black,
-    padding = Vec3f(0.05),
-    figure_padding = 16,
-    rowgap = 24,
-    colgap = 24,
-    backgroundcolor = :white,
-    colormap = :viridis,
-    marker = Circle,
-    markersize = 9,
-    markercolor = :black,
-    markerstrokecolor = :black,
-    markerstrokewidth = 0,
-    linecolor = :black,
-    linewidth = 1.5,
-    linestyle = nothing,
-    patchcolor = RGBAf(0, 0, 0, 0.6),
-    patchstrokecolor = :black,
-    patchstrokewidth = 0,
-    resolution = (800, 600), # 4/3 aspect ratio
-    visible = true,
-    axis = Attributes(),
-    axis3d = Attributes(),
-    legend = Attributes(),
-    axis_type = automatic,
-    camera = automatic,
-    limits = automatic,
-    SSAO = Attributes(
+const minimal_default = Theme(
+    :palette => default_palettes,
+    :font => "Dejavu Sans",
+    :textcolor => :black,
+    :padding => Vec3f(0.05),
+    :figure_padding => 16,
+    :rowgap => 24,
+    :colgap => 24,
+    :backgroundcolor => :white,
+    :colormap => :viridis,
+    :marker => Circle,
+    :markersize => 9,
+    :markercolor => :black,
+    :markerstrokecolor => :black,
+    :markerstrokewidth => 0,
+    :linecolor => :black,
+    :linewidth => 1.5,
+    :linestyle => nothing,
+    :patchcolor => RGBAf(0, 0, 0, 0.6),
+    :patchstrokecolor => :black,
+    :patchstrokewidth => 0,
+    :resolution => (800, 600), # 4/3 aspect ratio
+    :visible => true,
+    :axis => Theme(),
+    :axis3d => Theme(),
+    :legend => Theme(),
+    :axis_type => automatic,
+    :camera => automatic,
+    :limits => automatic,
+    :SSAO => Theme(
         # enable = false,
-        bias = 0.025f0,       # z threshhold for occlusion
-        radius = 0.5f0,       # range of sample positions (in world space)
-        blur = Int32(2),      # A (2blur+1) by (2blur+1) range is used for blurring
+        :bias => 0.025f0,       # z threshhold for occlusion
+        :radius => 0.5f0,       # range of sample positions (in world space)
+        :blur => Int32(2),      # A (2blur+1) by (2blur+1) range is used for blurring
         # N_samples = 64,       # number of samples (requires shader reload)
     ),
-    ambient = RGBf(0.55, 0.55, 0.55),
-    lightposition = :eyeposition,
-    inspectable = true
+    :ambient => RGBf(0.55, 0.55, 0.55),
+    :lightposition => :eyeposition,
+    :inspectable => true
 )
 
 const _current_default_theme = deepcopy(minimal_default)
 
 function current_default_theme(; kw_args...)
-    return merge!(Attributes(kw_args), deepcopy(_current_default_theme))
+    return merge!(Theme(kw_args), deepcopy(_current_default_theme))
 end
 
 """
@@ -106,7 +106,7 @@ end
 Set the global default theme to `theme` and add / override any attributes given
 as keyword arguments.
 """
-function set_theme!(new_theme = Theme()::Attributes; kwargs...)
+function set_theme!(new_theme = Dict{Symbol, Any}(); kwargs...)
     empty!(_current_default_theme)
     new_theme = merge!(deepcopy(new_theme), deepcopy(minimal_default))
     new_theme = merge!(Theme(kwargs), new_theme)
@@ -166,8 +166,8 @@ function _update_key!(theme, key::Symbol, content)
     theme[key] = content
 end
 
-function _update_key!(theme, key::Symbol, content::Attributes)
-    if haskey(theme, key) && theme[key] isa Attributes
+function _update_key!(theme, key::Symbol, content::Theme)
+    if haskey(theme, key) && theme[key] isa Theme
         _update_attrs!(theme[key], content)
     else
         theme[key] = content

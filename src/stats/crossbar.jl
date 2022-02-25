@@ -22,7 +22,7 @@ It is most commonly used as part of the `boxplot`.
 - `show_midline=true`: show midline
 """
 @recipe(CrossBar, x, y, ymin, ymax) do scene
-    t = Theme(
+    t = Attributes(
     color=theme(scene, :patchcolor),
     colormap=theme(scene, :colormap),
     colorrange=automatic,

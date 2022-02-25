@@ -1,10 +1,7 @@
 function layoutable(::Type{Button}, fig_or_scene::FigureLike; bbox = nothing, kwargs...)
 
     scene = get_scene(fig_or_scene)
-
-    default_attrs = default_attributes(Button, scene).attributes
-    theme_attrs = subtheme(scene, :Button)
-    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
+    attrs = merge_theme(Button, scene, kwargs)
 
     @extract attrs (padding, textsize, label, font, halign, valign, cornerradius,
         cornersegments, strokewidth, strokecolor, buttoncolor,

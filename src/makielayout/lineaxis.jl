@@ -1,6 +1,6 @@
 function LineAxis(parent::Scene; kwargs...)
 
-    attrs = merge!(Attributes(kwargs), default_attributes(LineAxis))
+    attrs = Attributes(merge!(default_attributes(LineAxis), Theme(kwargs)))
 
     decorations = Dict{Symbol, Any}()
 

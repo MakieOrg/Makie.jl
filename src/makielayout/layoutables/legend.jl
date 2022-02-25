@@ -4,10 +4,7 @@ function layoutable(::Type{Legend},
         bbox = nothing, kwargs...)
 
     topscene = get_topscene(fig_or_scene)
-
-    default_attrs = default_attributes(Legend, topscene).attributes
-    theme_attrs = subtheme(topscene, :Legend)
-    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
+    attrs = merge_theme(Legend, topscene, kwargs)
 
     @extract attrs (
         halign, valign, padding, margin,

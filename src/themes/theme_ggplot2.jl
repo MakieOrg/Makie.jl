@@ -1,5 +1,5 @@
 function theme_ggplot2()
-    Theme(
+    Attributes(
         Axis = (
             backgroundcolor = :gray92,
             xgridcolor = :white,

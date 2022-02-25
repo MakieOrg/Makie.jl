@@ -9,9 +9,7 @@ function layoutable(::Type{Axis}, fig_or_scene::Union{Figure, Scene}; bbox = not
 
     topscene = get_topscene(fig_or_scene)::Scene
 
-    default_attrs = default_attributes(Axis, topscene).attributes
-    theme_attrs = subtheme(topscene, :Axis)
-    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
+    attrs = merge_theme(Axis, topscene, kwargs)
 
     @extract attrs (
         title, titlefont, titlesize, titlegap, titlevisible, titlealign, titlecolor,
@@ -609,7 +607,7 @@ function get_cycle_for_plottype(allattrs, P)::Cycle
     end
 end
 
-function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palette::Attributes)
+function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palette::Dict)
     # check if none of the cycled attributes of this plot
     # were passed manually, because we don't use the cycler
     # if any of the cycled attributes were specified manually
@@ -635,7 +633,7 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
             end
         end
 
-        palettes = [palette[sym][] for sym in palettesyms(cycle)]
+        palettes = [to_value(palette[sym]) for sym in palettesyms(cycle)]
 
         for sym in manually_cycled_attributes
             isym = findfirst(syms -> sym in syms, attrsyms(cycle))
@@ -657,7 +655,7 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
     elseif no_cycle_attribute_passed
         index = get_cycler_index!(cycler, P)
 
-        palettes = [palette[sym][] for sym in palettesyms(cycle)]
+        palettes = [to_value(palette[sym]) for sym in palettesyms(cycle)]
 
         for (isym, syms) in enumerate(attrsyms(cycle))
             for sym in syms
@@ -683,7 +681,7 @@ function Makie.plot!(
     allattrs = merge(attributes, Attributes(kw_attributes))
 
     cycle = get_cycle_for_plottype(allattrs, P)
-    add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
+    add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette[])
 
     plot = Makie.plot!(la.scene, P, allattrs, args...)
 
