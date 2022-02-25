@@ -192,7 +192,7 @@ Base.getindex(fi::FaceIterator{:Const}, i::Integer) = ntuple(i-> fi.data, 3)
 color_or_nothing(c) = isnothing(c) ? nothing : to_color(c)
 
 function per_face_colors(
-        color, colormap, colorrange, matcap, vertices, faces, normals, uv,
+        color, colormap, colorrange, matcap, faces, normals, uv,
         lowclip=nothing, highclip=nothing, nan_color=nothing
     )
     if matcap !== nothing
