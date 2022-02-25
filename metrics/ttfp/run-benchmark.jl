@@ -7,32 +7,20 @@ using JSON, Statistics, GitHub, Base64, SHA, Downloads, Dates, CairoMakie
 include("benchmark-library.jl")
 
 ctx = github_context()
-commit_sha = get(ENV, "GITHUB_SHA", current_commit())
-bench_infos = bench_info.(Ref(ctx), [GitHub.branch(ctx.repo, "master"), commit_sha])
-@info("benchmarking:")
-display(bench_infos)
-benchmarks = get_benchmark_data.(Ref(ctx), bench_infos)
 
-@info("done benchmarking, plotting")
-fig = plot_benchmarks(benchmarks, bench_infos)
+project = "current-pr-project/"
+# It seems, that between julia versions, the manifest must be deleted to not get problems
+isdir(project) && rm(project; force=true, recursive=true)
+mkdir(project)
 
-name = join(map(best_name, bench_infos), "-vs-")
+Pkg.activate(project)
+Pkg.develop([(;path="../../MakieCore"), (;path="../../"), (;path="../../CairoMakie")])
+this_pr = BenchInfo(
+    project=project,
+    branch="current-pr",
+    commit=current_commit()
+)
 
-@info("uploading plot $(name) to github")
-image_url = upload_data(ctx, fig, "benchmarks/$(name).png")
+Pkg.activate(".")
 
-comment = """
-## Compile Times benchmark
-
-![]($(image_url))
-"""
-
-pr_num = get(ENV, "PR_NUMBER", nothing)
-
-if !isnothing(pr_num)
-    @info("Commenting plot on PR $(pr_num)")
-    pr = GitHub.pull_request(ctx.repo, pr_num)
-    make_or_edit_comment(ctx, pr, comment)
-else
-    @info("No comment, no PR found")
-end
+fig = run_benchmarks(ctx, [GitHub.branch(ctx.repo, "master"), this_pr])

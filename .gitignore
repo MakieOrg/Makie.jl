@@ -21,3 +21,5 @@ CairoMakie/src/display.png
 monorepo
 .vscode/settings.json
 docs/documentation/news.md
+
+metrics/ttfp/current-pr-project/
