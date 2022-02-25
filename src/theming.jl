@@ -45,12 +45,12 @@ function wong_colors(alpha = 1.0)
     @. RGBAf(red(colors), green(colors), blue(colors), alpha)
 end
 
-const default_palettes = Theme(
-    :color => wong_colors(1),
-    :patchcolor => Makie.wong_colors(0.8),
-    :marker => [:circle, :utriangle, :cross, :rect, :diamond, :dtriangle, :pentagon, :xcross],
-    :linestyle => [nothing, :dash, :dot, :dashdot, :dashdotdot],
-    :side => [:left, :right]
+const default_palettes = (
+    color = wong_colors(1),
+    patchcolor = Makie.wong_colors(0.8),
+    marker = [:circle, :utriangle, :cross, :rect, :diamond, :dtriangle, :pentagon, :xcross],
+    linestyle = [nothing, :dash, :dot, :dashdot, :dashdotdot],
+    side = [:left, :right]
 )
 
 const minimal_default = Theme(
