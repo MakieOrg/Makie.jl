@@ -12,11 +12,19 @@ function create_project_info(branch)
     # It seems, that between julia versions, the manifest must be deleted to not get problems
     isdir(project) && rm(project; force=true, recursive=true)
     mkdir(project)
+    cd("../../") do
+        println("######################")
+        run(`git status`)
+        run(`git checkout $(branch)`)
+        run(`git status`)
+    end
     Pkg.activate(project)
     pkgs = [(;path="../../MakieCore"), (;path="../../"), (;path="../../CairoMakie")]
     if branch in ["sd/better-cm-draw", "sd/no-static-arrays"]
+        println("checking out GeometryBasics as well")
         push!(pkgs, (;path="../../../GeometryBasics"))
     end
+    @show string(current_commit())
     Pkg.develop(pkgs)
     this_pr = BenchInfo(
         project=project,
@@ -26,6 +34,7 @@ function create_project_info(branch)
     Pkg.activate(".")
     return this_pr
 end
+
 
 
 ctx = github_context()
