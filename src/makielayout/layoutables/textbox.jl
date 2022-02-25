@@ -42,25 +42,28 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
     end
 
     hovering = Observable(false)
+    realbordercolor = Observable{RGBAf}()
 
-    realbordercolor = lift(Any, bordercolor, bordercolor_focused,
+    map!(realbordercolor, bordercolor, bordercolor_focused,
         bordercolor_focused_invalid, bordercolor_hover, focused, displayed_is_valid, hovering) do bc, bcf, bcfi, bch, focused, valid, hovering
-
-        if focused
+        c = if focused
             valid ? bcf : bcfi
         else
             hovering ? bch : bc
         end
+        return to_color(c)
     end
 
-    realboxcolor = lift(Any, boxcolor, boxcolor_focused,
+    realboxcolor = Observable{RGBAf}()
+    map!(realboxcolor, boxcolor, boxcolor_focused,
         boxcolor_focused_invalid, boxcolor_hover, focused, displayed_is_valid, hovering) do bc, bcf, bcfi, bch, focused, valid, hovering
 
-        if focused
+        c = if focused
             valid ? bcf : bcfi
         else
             hovering ? bch : bc
         end
+        return to_color(c)
     end
 
     box = poly!(topscene, roundedrectpoints, strokewidth = borderwidth,
@@ -70,15 +73,12 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
 
     displayed_chars = @lift([c for c in $displayed_string])
 
-    realtextcolor = lift(Any, textcolor, textcolor_placeholder, focused, stored_string, displayed_string) do tc, tcph, foc, cont, disp
+    realtextcolor = Observable{RGBAf}()
+    map!(realtextcolor, textcolor, textcolor_placeholder, focused, stored_string, displayed_string) do tc, tcph, foc, cont, disp
         # the textbox has normal text color if it's focused
         # if it's defocused, the displayed text has to match the stored text in order
         # to be normal colored
-        if foc || cont == disp
-            tc
-        else
-            tcph
-        end
+        return to_color(foc || cont == disp ? tc : tcph)
     end
 
     t = Label(scene, text = displayed_string, bbox = bbox, halign = :left, valign = :top,

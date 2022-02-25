@@ -95,16 +95,17 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
     end
     notify(lowerupper)
 
-    colorobs = lift(Any, plot.color, lowerupper, plot.direction) do c, lu, dir
+    colorobs = Observable{RGBColors}()
+    map!(colorobs, plot.color, lowerupper, plot.direction) do c, lu, dir
         if (dir == :x && c == :x) || (dir == :y && c == :y)
             dim = dir == :x ? 1 : 2
-            [l[dim] for l in lu[1]]
+            return Float32[l[dim] for l in lu[1]]
         elseif (dir == :y && c == :x) || (dir == :x && c == :y)
             o = Float32(plot.offset[])
             dim = dir == :x ? 2 : 1
-            vcat([l[dim] - o for l in lu[1]], [l[dim] - o for l in lu[2]])
+            return vcat(Float32[l[dim] - o for l in lu[1]], Float32[l[dim] - o for l in lu[2]])::Vector{Float32}
         else
-            c
+            return to_color(c)
         end
     end
 

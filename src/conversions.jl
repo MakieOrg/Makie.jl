@@ -764,6 +764,7 @@ convert_attribute(c::AbstractArray, k::key"color") = to_color.(c)
 
 convert_attribute(c::AbstractArray, ::key"color", ::key"heatmap") = el32convert(c)
 
+convert_attribute(c::Number, k::key"color") = Float32(c)
 convert_attribute(c::Tuple, k::key"color") = convert_attribute.(c, k)
 convert_attribute(p::AbstractPattern, k::key"color") = p
 

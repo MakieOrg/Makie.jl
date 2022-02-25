@@ -122,11 +122,15 @@ convert_arguments(::Type{<:QQNorm}, y; qqline = :none) =
 used_attributes(::Type{<:QQNorm}, y) = (:qqline,)
 used_attributes(::Type{<:QQPlot}, x, y) = (:qqline,)
 
-function plot!(p::QQPlot)
+function Makie.plot!(p::QQPlot)
+
     points, line = p[1], p[2]
-    real_markercolor = lift(Any, p.color, p.markercolor) do color, markercolor
-        markercolor === automatic ? color : markercolor
+    real_markercolor = Observable{RGBColors}()
+
+    map!(real_markercolor, p.color, p.markercolor) do color, markercolor
+        return to_color(markercolor === automatic ? color : markercolor)
     end
+
     scatter!(p, points;
         color = real_markercolor,
         strokecolor = p.strokecolor,
