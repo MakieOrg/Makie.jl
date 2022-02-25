@@ -17,9 +17,10 @@ Pkg.activate(project)
 Pkg.develop([(;path="../../MakieCore"), (;path="../../"), (;path="../../CairoMakie")])
 this_pr = BenchInfo(
     project=project,
-    branch="current-pr"
+    branch="current-pr",
+    commit=current_commit()
 )
 
 Pkg.activate(".")
 
-plot_url = run_benchmarks(ctx, [GitHub.branch(ctx.repo, "master"), this_pr])
+fig = run_benchmarks(ctx, [GitHub.branch(ctx.repo, "master"), this_pr])
