@@ -17,6 +17,11 @@ using Pkg.TOML
 using Statistics
 using ImageShow
 using Downloads: download
+import HTTP
+import JSON3
+import ZipFile
+import REPL
+import REPL.TerminalMenus
 
 basedir(files...) = normpath(joinpath(@__DIR__, "..", files...))
 loadasset(files...) = FileIO.load(assetpath(files...))
@@ -29,6 +34,6 @@ include("database.jl")
 include("stable_rng.jl")
 include("runtests.jl")
 include("image_download.jl")
-include("html_rendering.jl")
+include("local_server.jl")
 
 end

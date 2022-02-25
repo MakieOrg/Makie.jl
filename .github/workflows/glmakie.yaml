@@ -13,9 +13,14 @@ on:
     branches:
       - master
     tags: '*'
+
+concurrency: 
+  group: glmakie-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
-    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    name: GLMakie Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -45,15 +50,14 @@ jobs:
       - name: Run the tests
         continue-on-error: true
         run: >
-          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --project=monorepo -e 'using Pkg; Pkg.test("GLMakie", coverage=true)'
+          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("GLMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV 
       - name: Upload test Artifacts
         uses: actions/upload-artifact@v2
         with:
           name: ReferenceImages_${{ matrix.os }}_${{ matrix.arch }}_${{ matrix.version }}
           path: |
-            ./GLMakie/test/recorded
-            ./GLMakie/test/recorded_glmakie
+            ./GLMakie/test/reference_test_output
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
