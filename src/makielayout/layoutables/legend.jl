@@ -123,7 +123,7 @@ function layoutable(::Type{Legend},
             end
 
             rowgap!(subgl, rowgap[])
-            for c in 1:subgl.ncols-1
+            for c in 1:ncols(subgl)-1
                 colgap!(subgl, c, c % 2 == 1 ? patchlabelgap[] : colgap[])
             end
         end
