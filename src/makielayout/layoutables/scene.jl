@@ -45,7 +45,7 @@ function layoutable(::Type{LScene}, fig_or_scene; bbox = nothing, scenekw = Name
     default_attrs = default_attributes(LScene, topscene).attributes
     theme_attrs = subtheme(topscene, :LScene)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
-    layoutobservables = LayoutObservables{LScene}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
+    layoutobservables = LayoutObservables(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         attrs.halign, attrs.valign, attrs.alignmode; suggestedbbox = bbox)
     # pick a camera and draw axis.
     scenekw = merge((clear = false, camera=cam3d!), scenekw)

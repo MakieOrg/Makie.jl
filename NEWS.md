@@ -6,22 +6,23 @@
 
 ##  v0.16.4
 
-- Fix WGLMakie performance bug and add option to set fps via `WGLMakie.activate!(fps=30)`
-- implement `nan_color`, `lowclip`, `highclip` for `image(::Matrix{Float})` in shader
-- clean up mesh shader and implement `nan_color`, `lowclip`, `highclip` for `mesh(m; color::Matrix{Float})` on the shader
-- allow `GLMakie.Buffer` `GLMakie.Sampler` be used in `GeometryBasics.Mesh` to partially update parts of a mesh/texture and different interpolation and clamping modes for the texture.
+- Fixed WGLMakie performance bug and added option to set fps via `WGLMakie.activate!(fps=30)`.
+- Implemented `nan_color`, `lowclip`, `highclip` for `image(::Matrix{Float})` in shader.
+- Cleaned up mesh shader and implemented `nan_color`, `lowclip`, `highclip` for `mesh(m; color::Matrix{Float})` on the shader.
+- Allowed `GLMakie.Buffer` `GLMakie.Sampler` to be used in `GeometryBasics.Mesh` to partially update parts of a mesh/texture and different interpolation and clamping modes for the texture.
+- Bumped `GridLayoutBase` version to `v0.7`, which introduced offset layouts. Now, indexing into row 0 doesn't create a new row 1, but a new row 0, so that all previous content positions stay the same. This makes building complex layouts order-independent.
 
 ## v0.16
 
 #### Big Changes
 
-- add ECDF plot [#1310](https://github.com/JuliaPlots/Makie.jl/pull/1310)
-- add Order Independent Transparency to GLMakie [#1418](https://github.com/JuliaPlots/Makie.jl/pull/1418), [#1506](https://github.com/JuliaPlots/Makie.jl/pull/1506). This type of transparency is now used with `transpareny = true`. The old transparency handling is available with `transparency = false`.
-- fix blurry text in GLMakie and WGLMakie [#1494](https://github.com/JuliaPlots/Makie.jl/pull/1494)
-- A new experimental Backend for ray tracing got introduced: [RPRMakie](https://makie.juliaplots.org/stable/documentation/backends/rprmakie/)
-- **Breaking** Remove `Node` alias [#1307](https://github.com/JuliaPlots/Makie.jl/pull/1307), [#1393](https://github.com/JuliaPlots/Makie.jl/pull/1393). To upgrade, simply replace all occurrences of `Node` with `Observable`
-- **Breaking** clean up Scene type [#1192](https://github.com/JuliaPlots/Makie.jl/pull/1192), [#1393](https://github.com/JuliaPlots/Makie.jl/pull/1393). Long story short, Scene() doesn't create any axes or limits anymore. All keywords like `raw`, `show_axis` have been removed. A scene now always works like when using the deprecated `raw=true`. All the high level functionality like showing an axis and adding a 3d camera has been moved to `LScene`. See the new `Scene` tutorial for more info: https://makie.juliaplots.org/dev/tutorials/scenes/
-- **lights got moved to scene** [lighting docs](https://makie.juliaplots.org/stable/documentation/lighting) and [RPRMakie examples](https://makie.juliaplots.org/stable/documentation/backends/rprmakie/)
+- Added ECDF plot [#1310](https://github.com/JuliaPlots/Makie.jl/pull/1310).
+- Added Order Independent Transparency to GLMakie [#1418](https://github.com/JuliaPlots/Makie.jl/pull/1418), [#1506](https://github.com/JuliaPlots/Makie.jl/pull/1506). This type of transparency is now used with `transpareny = true`. The old transparency handling is available with `transparency = false`.
+- Fixed blurry text in GLMakie and WGLMakie [#1494](https://github.com/JuliaPlots/Makie.jl/pull/1494).
+- Introduced a new experimental backend for ray tracing: [RPRMakie](https://makie.juliaplots.org/stable/documentation/backends/rprmakie/).
+- **Breaking** Removeed `Node` alias [#1307](https://github.com/JuliaPlots/Makie.jl/pull/1307), [#1393](https://github.com/JuliaPlots/Makie.jl/pull/1393). To upgrade, simply replace all occurrences of `Node` with `Observable`.
+- **Breaking** Cleaned up `Scene` type [#1192](https://github.com/JuliaPlots/Makie.jl/pull/1192), [#1393](https://github.com/JuliaPlots/Makie.jl/pull/1393). The `Scene()` constructor doesn't create any axes or limits anymore. All keywords like `raw`, `show_axis` have been removed. A scene now always works like it did when using the deprecated `raw=true`. All the high level functionality like showing an axis and adding a 3d camera has been moved to `LScene`. See the new `Scene` tutorial for more info: https://makie.juliaplots.org/dev/tutorials/scenes/.
+- **Breaking** Lights got moved to `Scene`, see the [lighting docs](https://makie.juliaplots.org/stable/documentation/lighting) and [RPRMakie examples](https://makie.juliaplots.org/stable/documentation/backends/rprmakie/).
 
 
 #### Small Changes
