@@ -475,7 +475,10 @@ function is2d(scene::SceneLike)
     return is2d(lims)
 end
 is2d(lims::Rect2) = true
-is2d(lims::Rect3) = widths(lims)[3] == 0.0
+function is2d(lims::Rect3)
+    w = widths(lims)[3]
+    w == 0.0 || (isinf(w) && w < 0)
+end
 
 #####
 ##### Figure type
