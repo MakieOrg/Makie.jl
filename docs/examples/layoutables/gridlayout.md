@@ -14,6 +14,7 @@ This only really makes sense if there is variable width content in the column or
 \begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
+CairoMakie.activate!() # hide
 
 f = Figure()
 
