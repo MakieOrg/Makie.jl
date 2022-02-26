@@ -1,7 +1,10 @@
 """
-    timeseries(x::Observable{{Union{Number, Point2}}})
+    timeseries(x::Observable{{Union{Number, Point2}}}; kwargs...)
 
 Plots a sampled signal.
+
+The `history::Int=100` argument controls how many data points are tracked.
+
 Usage:
 ```julia
 signal = Observable(1.0)
@@ -40,13 +43,8 @@ function Makie.plot!(plot::TimeSeries)
     points = Observable(fill(Point2f(NaN), plot.history[]))
     buffer = copy(points[])
     lines!(plot, points)
-    start = 0
-    started = false
+    start = time()
     on(plot.signal) do x
-        if !started
-            start = time()
-            started = true
-        end
         points[][end] = signal2point(x, start)
         circshift!(buffer, points[], 1)
         buff_ref = buffer
