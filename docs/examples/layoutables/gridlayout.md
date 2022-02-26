@@ -311,7 +311,7 @@ fig
 \end{examplefigure}
 All spaces can be changed at once by omitting the index of the gap to resize.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 rowgap!(fig.layout, 50)
 
