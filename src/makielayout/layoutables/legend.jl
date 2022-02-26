@@ -30,7 +30,7 @@ function layoutable(::Type{Legend},
     real_tellwidth = @lift $tellwidth === automatic ? $orientation == :vertical : $tellwidth
     real_tellheight = @lift $tellheight === automatic ? $orientation == :horizontal : $tellheight
 
-    layoutobservables = LayoutObservables{Legend}(attrs.width, attrs.height, real_tellwidth, real_tellheight,
+    layoutobservables = LayoutObservables(attrs.width, attrs.height, real_tellwidth, real_tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
     legend_area = lift(round_to_IRect2D, layoutobservables.computedbbox)
