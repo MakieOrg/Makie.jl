@@ -128,7 +128,7 @@ function layoutable(::Type{Legend},
             end
         end
 
-        for r in 1:grid.nrows-1
+        for r in 1:nrows(grid)-1
             if orientation[] == :horizontal
                 if titleposition[] == :left
                     # nothing
@@ -143,7 +143,7 @@ function layoutable(::Type{Legend},
                 end
             end
         end
-        for c in 1:grid.ncols-1
+        for c in 1:ncols(grid)-1
             if orientation[] == :horizontal
                 if titleposition[] == :left
                     colgap!(grid, c, c % 2 == 1 ? titlegap[] : groupgap[])
