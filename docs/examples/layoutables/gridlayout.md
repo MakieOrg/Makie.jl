@@ -265,7 +265,7 @@ ax2 = Axis(f[1, 2], title = "Axis 2")
 f
 ```
 \end{examplefigure}
-Now we decide we'd like the second axis better if it was below the first one.
+Now we decide that we'd like the second axis better if it was below the first one.
 We move it two the new cell, and the old unused column is left blank.
 
 \begin{examplefigure}{svg = true}
