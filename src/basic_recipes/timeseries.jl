@@ -40,8 +40,13 @@ function Makie.plot!(plot::TimeSeries)
     points = Observable(fill(Point2f(NaN), plot.history[]))
     buffer = copy(points[])
     lines!(plot, points)
-    start = time()
+    start = 0
+    started = false
     on(plot.signal) do x
+        if !started
+            start = time()
+            started = true
+        end
         points[][end] = signal2point(x, start)
         circshift!(buffer, points[], 1)
         buff_ref = buffer
