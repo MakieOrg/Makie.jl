@@ -3,6 +3,7 @@
 ## master
 
 - deprecated `mouse_selection(scene)` for `pick(scene)`
+- Added polar plot and polar scatter plot recipes.
 
 ##  v0.16.4
 
