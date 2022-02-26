@@ -147,3 +147,5 @@ function resize_to_layout!(fig::Figure)
     resize!(fig.scene, widths(bbox)...)
     new_size
 end
+
+Base.isopen(fap::FigureAxisPlot) = Base.isopen(fap.plot)
