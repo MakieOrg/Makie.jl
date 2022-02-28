@@ -202,7 +202,7 @@ function Makie.plot!(plot::BoxPlot)
         strokewidth = plot[:outlierstrokewidth],
         outliers,
         inspectable = plot[:inspectable],
-        colorrange = @lift(extrema($boxcolor)), # if only one group has outliers, the colorrange will be width 0 otherwise
+        colorrange = @lift($boxcolor isa AbstractArray{<:Real} ? extrema($boxcolor) : automatic), # if only one group has outliers, the colorrange will be width 0 otherwise, if it's not an array, it shouldn't matter
     )
     linesegments!(
         plot,
