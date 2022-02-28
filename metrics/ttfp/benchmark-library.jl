@@ -258,7 +258,7 @@ function run_benchmarks(ctx, to_benchmark;
     @info("benchmarking:")
     display(bench_infos)
 
-    benchmarks = get_benchmark_data.(Ref(ctx), bench_infos)
+    benchmarks = get_benchmark_data.(Ref(ctx), bench_infos; force=force, n=n)
 
     @info("done benchmarking, plotting")
     fig = plot_benchmarks(benchmarks, bench_infos)
