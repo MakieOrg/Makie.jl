@@ -6,8 +6,8 @@ using JSON, Statistics, GitHub, Base64, SHA, Downloads, Dates, CairoMakie
 
 include("benchmark-library.jl")
 
-try
-    ctx = github_context()
+ctx = try
+     github_context()
 catch e
     @warn "Not authorized" exception=e
     # bad credentials because PR isn't from a contributor
