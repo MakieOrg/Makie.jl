@@ -8,7 +8,7 @@ function cpu_key()
 end
 julia_key() = "julia-" * replace(string(VERSION), "."=>"-")
 tag_commit(ctx, tag) = GitHub.tag(ctx.repo, tag).object["sha"]
-current_commit() =  readchomp(`git rev-parse HEAD`)
+current_commit() =  string(readchomp(`git rev-parse HEAD`))
 latest_commit(ctx, branch) = GitHub.branch(ctx.repo, branch)
 function github_context()
     owner = "JuliaPlots"
