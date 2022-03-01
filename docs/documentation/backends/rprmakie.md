@@ -108,7 +108,7 @@ materials = [glass chrome;
                 emissive plastic]
 
 mesh!(ax, load(Makie.assetpath("matball_floor.obj")); color=:white)
-palette = reshape(Makie.default_palettes.color[][1:6], size(materials))
+palette = reshape(Makie.default_palettes.color[1:6], size(materials))
 
 for i in CartesianIndices(materials)
     x, y = Tuple(i)
@@ -502,7 +502,7 @@ scene = with_theme(theme_dark()) do
     ze = [cos(θ) for θ in θ, φ in φ]
     surface!(ax, xe, ye, ze; color=earth_img)
     meshscatter!(toPoints3D; color=1:length(toPoints3D), markersize=0.005, colormap=:plasma)
-    colors = Makie.default_palettes.color[]
+    colors = Makie.default_palettes.color
     c = Iterators.cycle(colors)
     foreach(((l, c),) -> lines!(ax, l; linewidth=2, color=c), zip(splitLines3D, c))
     ax.scene.camera_controls.eyeposition[] = Vec3f(1.5)
