@@ -32,7 +32,7 @@ using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_s
 struct WebGL <: ShaderAbstractions.AbstractContext end
 struct WGLBackend <: Makie.AbstractBackend end
 
-const THREE = Dependency(:THREE, ["https://unpkg.com/three@0.130.0/build/three.js"])
+const THREE = Dependency(:THREE, ["https://unpkg.com/three@0.136.0/build/three.js"])
 const WGL = Dependency(:WGLMakie, [@path joinpath(@__DIR__, "wglmakie.js")])
 const WEBGL = Dependency(:WEBGL, [@path joinpath(@__DIR__, "WEBGL.js")])
 
@@ -45,7 +45,17 @@ include("meshes.jl")
 include("imagelike.jl")
 include("display.jl")
 
-function activate!()
+const CONFIG = (
+    fps = Ref(30),
+)
+
+"""
+    activate!(; fps=30)
+
+Set fps (frames per second) to a higher number for smoother animations, or to a lower to use less resources.
+"""
+function activate!(; fps=30)
+    CONFIG.fps[] = fps
     b = WGLBackend()
     Makie.register_backend!(b)
     Makie.current_backend[] = b

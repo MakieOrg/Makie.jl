@@ -375,11 +375,7 @@ function Screen(;
         Dict{UInt32, AbstractPlot}(),
     )
 
-    GLFW.SetWindowRefreshCallback(window, window -> begin
-        screen.render_tick[] = nothing
-        render_frame(screen)
-        GLFW.SwapBuffers(window)
-    end)
+    GLFW.SetWindowRefreshCallback(window, window -> refreshwindowcb(window, screen))
 
     screen.rendertask[] = @async((WINDOW_CONFIG.renderloop[])(screen))
     # display window if visible!
@@ -415,6 +411,11 @@ function global_gl_screen(resolution::Tuple, visibility::Bool, tries = 1)
     screen
 end
 
+function refreshwindowcb(window, screen)
+    screen.render_tick[] = nothing
+    render_frame(screen)
+    return GLFW.SwapBuffers(window)
+end
 
 #################################################################################
 ### Point picking
@@ -456,7 +457,7 @@ function pick_native(screen::Screen, xy::Vec{2, Float64})
     return SelectionID{Int}(0, 0)
 end
 
-function Makie.pick(scene::SceneLike, screen::Screen, xy::Vec{2, Float64})
+function Makie.pick(scene::Scene, screen::Screen, xy::Vec{2, Float64})
     sid = pick_native(screen, xy)
     if haskey(screen.cache2plot, sid.id)
         plot = screen.cache2plot[sid.id]
@@ -466,7 +467,7 @@ function Makie.pick(scene::SceneLike, screen::Screen, xy::Vec{2, Float64})
     end
 end
 
-function Makie.pick(scene::SceneLike, screen::Screen, rect::Rect2i)
+function Makie.pick(scene::Scene, screen::Screen, rect::Rect2i)
     map(pick_native(screen, rect)) do sid
         if haskey(screen.cache2plot, sid.id)
             (screen.cache2plot[sid.id], sid.index)
@@ -478,7 +479,7 @@ end
 
 
 # Skips one set of allocations
-function Makie.pick_closest(scene::SceneLike, screen::Screen, xy, range)
+function Makie.pick_closest(scene::Scene, screen::Screen, xy, range)
     isopen(screen) || return (nothing, 0)
     w, h = widths(screen)
     ((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h)) || return (nothing, 0)
@@ -507,7 +508,7 @@ function Makie.pick_closest(scene::SceneLike, screen::Screen, xy, range)
 end
 
 # Skips some allocations
-function Makie.pick_sorted(scene::SceneLike, screen::Screen, xy, range)
+function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     isopen(screen) || return (nothing, 0)
     w, h = widths(screen)
     if !((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h))

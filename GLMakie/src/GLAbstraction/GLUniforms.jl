@@ -7,7 +7,7 @@ const GLSL_COMPATIBLE_NUMBER_TYPES = (GLfloat, GLint, GLuint, GLdouble)
 const NATIVE_TYPES = Union{
     StaticArray, GLSL_COMPATIBLE_NUMBER_TYPES...,
     ZeroIndex{GLint}, ZeroIndex{GLuint},
-    GLBuffer, GPUArray, Shader, GLProgram, NativeMesh
+    GLBuffer, GPUArray, Shader, GLProgram
 }
 
 opengl_prefix(T)  = error("Object $T is not a supported uniform element type")
@@ -185,8 +185,6 @@ gl_promote(x::Type{T}) where {T <: BGR} = BGR{gl_promote(eltype(T))}
 
 
 gl_promote(x::Type{T}) where {T <: StaticVector} = similar_type(T, gl_promote(eltype(T)))
-
-gl_promote(x::Type{T}) where {T <: GeometryBasics.Mesh} = NativeMesh{T}
 
 gl_convert(x::AbstractVector{Vec3f}) = x
 

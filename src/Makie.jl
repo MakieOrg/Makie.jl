@@ -206,17 +206,17 @@ export SceneSpace, PixelSpace, Pixel
 
 # camera related
 export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, cam2d!, cam2d
-export campixel!, campixel, cam3d!, cam3d_cad!, old_cam3d!, old_cam3d_cad!
+export campixel!, campixel, cam3d!, cam3d_cad!, old_cam3d!, old_cam3d_cad!, cam_relative!
 export update_cam!, rotate_cam!, translate_cam!, zoom!
 export pixelarea, plots, cameracontrols, cameracontrols!, camera, events
 export to_world
 
 # picking + interactive use cases + events
-export mouseover, onpick, pick, Events, Keyboard, Mouse, mouse_selection
+export mouseover, onpick, pick, Events, Keyboard, Mouse, mouse_selection, is_mouseinside
 export ispressed, Exclusively
 export register_callbacks
-export window_area, window_open, mouse_buttons, mouse_position, scroll,
-       keyboard_buttons, unicode_input, dropped_files, hasfocus, entered_window
+export window_area, window_open, mouse_buttons, mouse_position, mouseposition_px, 
+       scroll, keyboard_buttons, unicode_input, dropped_files, hasfocus, entered_window
 export disconnect!
 export DataInspector
 export Consume
@@ -269,6 +269,8 @@ function logo()
 end
 
 function __init__()
+    # fonts aren't cacheable by precompilation, so we need to empty it on load!
+    empty!(FONT_CACHE)
     cfg_path = joinpath(homedir(), ".config", "makie", "theme.jl")
     if isfile(cfg_path)
         @warn "The global configuration file is no longer supported." *
@@ -296,5 +298,10 @@ export heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface,
 export heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, surface!, text!, volume!
 
 export PointLight, EnvironmentLight, AmbientLight, SSAO
+
+if Base.VERSION >= v"1.4.2"
+    include("precompiles.jl")
+    _precompile_()
+end
 
 end # module

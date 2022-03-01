@@ -99,18 +99,18 @@ function glyph_collection(str::AbstractString, font_per_char, fontscale_px, hali
     # calculate the x positions of each character in each line
     xs = map(lineinfos) do line
         cumsum([
-            isempty(line) ? 0.0 : -(line[1].hi_bb.origin[1]);
+            0f0;
             [l.hadvance for l in line[1:end-1]]
         ])
     end
 
-    # calculate linewidths as the last origin plus inkwidth for each line
+    # calculate linewidths as the last origin plus hadvance for each line
     linewidths = map(lineinfos, xs) do line, xx
         nchars = length(line)
         # if the last and not the only character is \n, take the previous one
         # to compute the width
         i = (nchars > 1 && line[end].char == '\n') ? nchars - 1 : nchars
-        xx[i] + widths(line[i].hi_bb)[1]
+        xx[i] + line[i].hadvance
     end
 
     # the maximum width is needed for justification

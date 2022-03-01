@@ -44,7 +44,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     decorations = Dict{Symbol, Any}()
 
     protrusions = Observable(GridLayoutBase.RectSides{Float32}(0,0,0,0))
-    layoutobservables = LayoutObservables{Axis}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight, halign, valign, attrs.alignmode;
+    layoutobservables = LayoutObservables(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight, halign, valign, attrs.alignmode;
         suggestedbbox = bbox, protrusions = protrusions)
 
     # initialize either with user limits, or pick defaults based on scales
@@ -881,14 +881,14 @@ end
 function adjustlimits!(la)
     asp = la.autolimitaspect[]
     target = la.targetlimits[]
+    area = la.scene.px_area[]
 
     # in the simplest case, just update the final limits with the target limits
-    if isnothing(asp)
+    if isnothing(asp) || width(area) == 0 || height(area) == 0
         la.finallimits[] = target
         return
     end
 
-    area = la.scene.px_area[]
     xlims = (left(target), right(target))
     ylims = (bottom(target), top(target))
 

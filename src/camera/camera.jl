@@ -56,7 +56,7 @@ end
 When mapping over observables for the camera, we store them in the `steering_node` vector,
 to make it easier to disconnect the camera steering signals later!
 """
-function Observables.on(f::Function, camera::Camera, observables::AbstractObservable...; priority=Int8(0))
+function Observables.on(f, camera::Camera, observables::AbstractObservable...; priority=Int8(0))
     # PriorityObservables don't implement on_any, because that would replace
     # the method in Observables. CameraLift acts as a workaround for now.
     cl = CameraLift(f, observables)
@@ -101,7 +101,8 @@ function set_proj_view!(camera::Camera, projection, view)
     camera.projection[] = projection
 end
 
-function is_mouseinside(scene, target)
+is_mouseinside(x, target) = is_mouseinside(get_scene(x), target)
+function is_mouseinside(scene::Scene, target)
     scene === target && return false
     Vec(scene.events.mouseposition[]) in pixelarea(scene)[] || return false
     for child in r.children
@@ -115,7 +116,8 @@ end
 
 Returns true if the current mouseposition is inside the given scene.
 """
-function is_mouseinside(scene)
+is_mouseinside(x) = is_mouseinside(get_scene(x))
+function is_mouseinside(scene::Scene)
     return Vec(scene.events.mouseposition[]) in pixelarea(scene)[]
     # Check that mouse is not inside any other screen
     # for child in scene.children

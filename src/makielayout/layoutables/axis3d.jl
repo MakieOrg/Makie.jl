@@ -23,7 +23,7 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
 
 
     protrusions = lift(to_protrusions, attrs.protrusions)
-    layoutobservables = LayoutObservables{Axis3}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight, attrs.halign, attrs.valign, attrs.alignmode;
+    layoutobservables = LayoutObservables(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight, attrs.halign, attrs.valign, attrs.alignmode;
         suggestedbbox = bbox, protrusions = protrusions)
 
     notify(protrusions)
@@ -60,17 +60,44 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
     mi2 = @lift(0 <= $azimuth % 2pi < pi)
     mi3 = @lift($elevation > 0)
 
-    add_panel!(scene, 1, 2, 3, finallimits, mi3, attrs)
-    add_panel!(scene, 2, 3, 1, finallimits, mi1, attrs)
-    add_panel!(scene, 1, 3, 2, finallimits, mi2, attrs)
+    xypanel = add_panel!(scene, 1, 2, 3, finallimits, mi3, attrs)
+    xzpanel = add_panel!(scene, 2, 3, 1, finallimits, mi1, attrs)
+    yzpanel = add_panel!(scene, 1, 3, 2, finallimits, mi2, attrs)
+    decorations[:xypanel] = xypanel
+    decorations[:xzpanel] = xzpanel
+    decorations[:yzpanel] = yzpanel
 
-    add_gridlines_and_frames!(topscene, scene, 1, finallimits, ticknode_1, mi1, mi2, mi3, attrs)
-    add_gridlines_and_frames!(topscene, scene, 2, finallimits, ticknode_2, mi2, mi1, mi3, attrs)
-    add_gridlines_and_frames!(topscene, scene, 3, finallimits, ticknode_3, mi3, mi1, mi2, attrs)
+    xgridline1, xgridline2, xframelines =
+        add_gridlines_and_frames!(topscene, scene, 1, finallimits, ticknode_1, mi1, mi2, mi3, attrs)
+    decorations[:xgridline1]  = xgridline1
+    decorations[:xgridline2]  = xgridline2
+    decorations[:xframelines] = xframelines
+    ygridline1, ygridline2, yframelines =
+        add_gridlines_and_frames!(topscene, scene, 2, finallimits, ticknode_2, mi2, mi1, mi3, attrs)
+    decorations[:ygridline1]  = ygridline1
+    decorations[:ygridline2]  = ygridline2
+    decorations[:yframelines] = yframelines
+    zgridline1, zgridline2, zframelines =
+        add_gridlines_and_frames!(topscene, scene, 3, finallimits, ticknode_3, mi3, mi1, mi2, attrs)
+    decorations[:zgridline1]  = zgridline1
+    decorations[:zgridline2]  = zgridline2
+    decorations[:zframelines] = zframelines
 
-    add_ticks_and_ticklabels!(topscene, scene, 1, finallimits, ticknode_1, mi1, mi2, mi3, attrs, azimuth)
-    add_ticks_and_ticklabels!(topscene, scene, 2, finallimits, ticknode_2, mi2, mi1, mi3, attrs, azimuth)
-    add_ticks_and_ticklabels!(topscene, scene, 3, finallimits, ticknode_3, mi3, mi1, mi2, attrs, azimuth)
+    xticks, xticklabels, xlabel =
+        add_ticks_and_ticklabels!(topscene, scene, 1, finallimits, ticknode_1, mi1, mi2, mi3, attrs, azimuth)
+    decorations[:xticks]      = xticks
+    decorations[:xticklabels] = xticklabels
+    decorations[:xlabel]      = xlabel
+    yticks, yticklabels, ylabel =
+        add_ticks_and_ticklabels!(topscene, scene, 2, finallimits, ticknode_2, mi2, mi1, mi3, attrs, azimuth)
+    decorations[:yticks]      = yticks
+    decorations[:yticklabels] = yticklabels
+    decorations[:ylabel]      = ylabel
+    zticks, zticklabels, zlabel =
+        add_ticks_and_ticklabels!(topscene, scene, 3, finallimits, ticknode_3, mi3, mi1, mi2, attrs, azimuth)
+    decorations[:zticks]      = zticks
+    decorations[:zticklabels] = zticklabels
+    decorations[:zlabel]      = zlabel
 
     titlepos = lift(scene.px_area, attrs.titlegap, attrs.titlealign) do a, titlegap, align
 
@@ -388,7 +415,7 @@ function add_gridlines_and_frames!(topscene, scene, dim::Int, limits, ticknode, 
             dpoint(t, f1, mi[d2]), dpoint(t, f1, ma[d2])
         end
     end
-    linesegments!(scene, endpoints, color = attr(:gridcolor),
+    gridline1 = linesegments!(scene, endpoints, color = attr(:gridcolor),
         linewidth = attr(:gridwidth),
         xautolimits = false, yautolimits = false, zautolimits = false, transparency = true,
         visible = attr(:gridvisible), inspectable = false)
@@ -403,7 +430,7 @@ function add_gridlines_and_frames!(topscene, scene, dim::Int, limits, ticknode, 
             dpoint(t, mi[d1], f2), dpoint(t, ma[d1], f2)
         end
     end
-    linesegments!(scene, endpoints2, color = attr(:gridcolor),
+    gridline2 = linesegments!(scene, endpoints2, color = attr(:gridcolor),
         linewidth = attr(:gridwidth),
         xautolimits = false, yautolimits = false, zautolimits = false, transparency = true,
         visible = attr(:gridvisible), inspectable = false)
@@ -431,11 +458,11 @@ function add_gridlines_and_frames!(topscene, scene, dim::Int, limits, ticknode, 
     end
 
     colors = lift(vcat, Any, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3))
-    linesegments!(topscene, framepoints, color = colors, linewidth = attr(:spinewidth),
+    framelines = linesegments!(topscene, framepoints, color = colors, linewidth = attr(:spinewidth),
         # transparency = true,
         visible = attr(:spinesvisible), inspectable = false)
 
-    nothing
+    return gridline1, gridline2, framelines
 end
 
 # this function projects a point from a 3d subscene into the parent space with a really
@@ -500,7 +527,7 @@ function add_ticks_and_ticklabels!(topscene, scene, dim::Int, limits, ticknode, 
         end
     end
 
-    linesegments!(topscene, tick_segments_2dz,
+    ticks = linesegments!(topscene, tick_segments_2dz,
         xautolimits = false, yautolimits = false, zautolimits = false,
         transparency = true, inspectable = false,
         color = attr(:tickcolor), linewidth = attr(:tickwidth), visible = attr(:ticksvisible))
@@ -534,12 +561,12 @@ function add_ticks_and_ticklabels!(topscene, scene, dim::Int, limits, ticknode, 
         end
     end
 
-    ticklabel_obj = text!(topscene, labels_positions, align = align,
+    ticklabels = text!(topscene, labels_positions, align = align,
         color = attr(:ticklabelcolor), textsize = attr(:ticklabelsize),
         font = attr(:ticklabelfont), visible = attr(:ticklabelsvisible), inspectable = false
     )
 
-    translate!(ticklabel_obj, 0, 0, 1000)
+    translate!(ticklabels, 0, 0, 1000)
 
     label_pos_rot_valign = lift(scene.px_area, scene.camera.projectionview,
             limits, miv, min1, min2, attr(:labeloffset),
@@ -609,7 +636,7 @@ function add_ticks_and_ticklabels!(topscene, scene, dim::Int, limits, ticknode, 
             lalign
         end
     end
-    text!(topscene, attr(:label),
+    label = text!(topscene, attr(:label),
         color = attr(:labelcolor),
         textsize = attr(:labelsize),
         font = attr(:labelfont),
@@ -619,7 +646,7 @@ function add_ticks_and_ticklabels!(topscene, scene, dim::Int, limits, ticknode, 
         visible = attr(:labelvisible),
         inspectable = false
     )
-    return
+    return ticks, ticklabels, label
 end
 
 function dim3point(dim1, dim2, dim3, v1, v2, v3)
@@ -660,9 +687,10 @@ function add_panel!(scene, dim1, dim2, dim3, limits, min3, attrs)
 
     faces = [1 2 3; 3 4 1]
 
-    mesh!(scene, vertices, faces, shading = false, inspectable = false,
+    panel = mesh!(scene, vertices, faces, shading = false, inspectable = false,
         xautolimits = false, yautolimits = false, zautolimits = false,
         color = attr(:panelcolor), visible = attr(:panelvisible))
+    return panel
 end
 
 function hidexdecorations!(ax::Axis3;

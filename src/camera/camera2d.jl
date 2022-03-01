@@ -303,20 +303,33 @@ function add_restriction!(cam, window, rarea::Rect2, minwidths::Vec)
 end
 
 struct PixelCamera <: AbstractCamera end
+
+
+struct UpdatePixelCam
+    camera::Camera
+    near::Float32
+    far::Float32
+end
+
+function (cam::UpdatePixelCam)(window_size)
+    w, h = Float32.(widths(window_size))
+    projection = orthographicprojection(0f0, w, 0f0, h, cam.near, cam.far)
+    set_proj_view!(cam.camera, projection, Mat4f(I))
+end
+
 """
     campixel!(scene; nearclip=-1000f0, farclip=1000f0)
 
 Creates a pixel-level camera for the `Scene`.  No controls!
 """
-function campixel!(scene; nearclip=-10_000f0, farclip=10_000f0)
+function campixel!(scene::Scene; nearclip=-10_000f0, farclip=10_000f0)
     disconnect!(camera(scene))
     update_once = Observable(false)
-    on(camera(scene), update_once, pixelarea(scene)) do u, window_size
-        w, h = Float32.(widths(window_size))
-        projection = orthographicprojection(0f0, w, 0f0, h, nearclip, farclip)
-        set_proj_view!(camera(scene), projection, Mat4f(I))
-    end
+    closure = UpdatePixelCam(camera(scene), nearclip, farclip)
+    on(closure, camera(scene), pixelarea(scene))
     cam = PixelCamera()
+    # update once
+    closure(pixelarea(scene)[])
     cameracontrols!(scene, cam)
     update_once[] = true
     return cam
@@ -329,7 +342,7 @@ struct RelativeCamera <: AbstractCamera end
 
 Creates a pixel-level camera for the `Scene`.  No controls!
 """
-function cam_relative!(scene; nearclip=-10_000f0, farclip=10_000f0)
+function cam_relative!(scene::Scene; nearclip=-10_000f0, farclip=10_000f0)
     projection = orthographicprojection(0f0, 1f0, 0f0, 1f0, nearclip, farclip)
     set_proj_view!(camera(scene), projection, Mat4f(I))
     cam = RelativeCamera()
