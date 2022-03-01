@@ -716,14 +716,14 @@ end
     to_color(color)
 Converts a `color` symbol (e.g. `:blue`) to a color RGBA.
 """
-to_color(color) = convert_attribute(color, key"color"())
+convert_attribute(color, ::key"color") = to_color(color)
 
 """
     to_colormap(cm[, N = 20])
 
 Converts a colormap `cm` symbol (e.g. `:Spectral`) to a colormap RGB array, where `N` specifies the number of color points.
 """
-to_colormap(colormap) = convert_attribute(colormap, key"colormap"())
+convert_attribute(colormap, ::key"colormap") = to_colormap(colormap)
 to_rotation(rotation) = convert_attribute(rotation, key"rotation"())
 to_font(font) = convert_attribute(font, key"font"())
 to_align(align) = convert_attribute(align, key"align"())
@@ -747,29 +747,19 @@ struct Palette{N}
 end
 Palette(name::Union{String, Symbol}, n = 8) = Palette(to_colormap(name, n))
 
-function convert_attribute(p::Palette{N}, ::key"color") where {N}
+function to_color(p::Palette{N}) where {N}
     p.i[] = p.i[] == N ? one(UInt8) : p.i[] + one(UInt8)
     p.colors[p.i[]]
 end
 
-convert_attribute(c::Colorant, ::key"color") = convert(RGBA{Float32}, c)
-convert_attribute(c::Symbol, k::key"color") = convert_attribute(string(c), k)
-function convert_attribute(c::String, ::key"color")
-    return parse(RGBA{Float32}, c)
-end
-
-# Do we really need all colors to be RGBAf?!
-convert_attribute(c::AbstractArray{<: Colorant}, k::key"color") = el32convert(c)
-convert_attribute(c::AbstractArray, k::key"color") = to_color.(c)
-
-convert_attribute(c::AbstractArray, ::key"color", ::key"heatmap") = el32convert(c)
-
-convert_attribute(c::Tuple, k::key"color") = convert_attribute.(c, k)
-convert_attribute(p::AbstractPattern, k::key"color") = p
-
-function convert_attribute(c::Tuple{T, F}, k::key"color") where {T, F <: Number}
-    RGBAf(Colors.color(to_color(c[1])), c[2])
-end
+to_color(c::Colorant) = convert(RGBA{Float32}, c)
+to_color(c::Symbol) = to_color(string(c))
+to_color(c::String) = parse(RGBA{Float32}, c)
+to_color(c::AbstractArray{<: Colorant}) = el32convert(c)
+to_color(c::AbstractArray) = to_color.(c)
+to_color(c::Tuple) = to_color.(c)
+to_color(p::AbstractPattern) = p
+to_color(c::Tuple{<: Any,  <: Number}) = RGBAf(Colors.color(to_color(c[1])), c[2])
 
 convert_attribute(b::Billboard{Float32}, ::key"rotations") = to_rotation(b.rotation)
 convert_attribute(b::Billboard{Vector{Float32}}, ::key"rotations") = to_rotation.(b.rotation)
@@ -1028,22 +1018,18 @@ struct Reverse{T}
     data::T
 end
 
-function convert_attribute(r::Reverse, ::key"colormap", n::Integer=20)
-    reverse(to_colormap(r.data, n))
-end
+to_colormap(r::Reverse, n::Integer=20) = reverse(to_colormap(r.data, n))
 
-function convert_attribute(cs::ColorScheme, ::key"colormap", n::Integer=20)
-    return to_colormap(cs.colors, n)
-end
+to_colormap(cs::ColorScheme, n::Integer=20) = to_colormap(cs.colors, n)
 
 """
     to_colormap(b, x)
 
 An `AbstractVector{T}` with any object that [`to_color`](@ref) accepts.
 """
-convert_attribute(cm::AbstractVector, ::key"colormap", n::Int=length(cm)) = to_colormap(to_color.(cm), n)
+to_colormap(cm::AbstractVector, n::Int=length(cm)) = to_colormap(to_color.(cm), n)
 
-function convert_attribute(cm::AbstractVector{<: Colorant}, ::key"colormap", n::Int=length(cm))
+function to_colormap(cm::AbstractVector{<: Colorant}, n::Int=length(cm))
     colormap = length(cm) == n ? cm : resample(cm, n)
     return el32convert(colormap)
 end
@@ -1051,25 +1037,21 @@ end
 """
 Tuple(A, B) or Pair{A, B} with any object that [`to_color`](@ref) accepts
 """
-function convert_attribute(cs::Union{Tuple, Pair}, ::key"colormap", n::Int=2)
-    return to_colormap([to_color.(cs)...], n)
+to_colormap(cs::Union{Tuple, Pair}, n::Int=2) = to_colormap([to_color.(cs)...], n)
+
+function to_colormap(cs::Tuple{<: Union{Reverse, Symbol, AbstractString}, Real}, n::Int=30)
+    return RGBAf.(to_colormap(cs[1], n), cs[2]) # We need to rework this to conform to the backend interface.
 end
 
-function convert_attribute(cs::Tuple{<: Union{Reverse, Symbol, AbstractString}, Real}, ::key"colormap", n::Int=30)
-    return RGBAf.(to_colormap(cs[1]), cs[2]) # We need to rework this to conform to the backend interface.
-end
-
-function convert_attribute(cs::NamedTuple{(:colormap, :alpha, :n), Tuple{Union{Symbol, AbstractString}, Real, Int}}, ::key"colormap")
+function to_colormap(cs::NamedTuple{(:colormap, :alpha, :n), Tuple{Union{Symbol, AbstractString}, Real, Int}})
     return RGBAf.(to_colormap(cs.colormap, cs.n), cs.alpha)
 end
-
-to_colormap(x, n::Integer) = convert_attribute(x, key"colormap"(), n)
 
 """
 A Symbol/String naming the gradient. For more on what names are available please see: `available_gradients()`.
 For now, we support gradients from `PlotUtils` natively.
 """
-function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Integer=40)
+function to_colormap(cs::Union{String, Symbol}, n::Integer=40)
     cs_string = string(cs)
     if cs_string in all_gradient_names
         if cs_string in colorbrewer_8color_names # special handling for 8 color only
@@ -1088,12 +1070,12 @@ function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Intege
     end
 end
 
-function Makie.convert_attribute(cg::PlotUtils.ContinuousColorGradient, ::key"colormap", n::Integer=length(cg.values))
+function to_colormap(cg::PlotUtils.ContinuousColorGradient, n::Integer=length(cg.values))
     # PlotUtils does not always give [0, 1] range, so we adapt to what it has
     return getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), n))
 end
 
-function Makie.convert_attribute(cg::PlotUtils.CategoricalColorGradient, ::key"colormap", n::Integer = length(cg.colors) * 20)
+function to_colormap(cg::PlotUtils.CategoricalColorGradient, n::Integer = length(cg.colors) * 20)
     # PlotUtils does not always give [0, 1] range, so we adapt to what it has
     return vcat(fill.(cg.colors.colors, Ref(n ÷ length(cg.colors)))...)
 end
