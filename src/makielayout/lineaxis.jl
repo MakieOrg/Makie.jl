@@ -197,7 +197,7 @@ function LineAxis(parent::Scene; kwargs...)
     tickstrings = Observable(AbstractString[])
 
     onany(tickvalues_labels_unfiltered) do tickvalues_labels_unfiltered
-
+        
         tickvalues_unfiltered, tickstrings_unfiltered = tickvalues_labels_unfiltered
 
         lim_min, lim_max = limits[]
@@ -209,8 +209,8 @@ function LineAxis(parent::Scene; kwargs...)
              (tv <= lim_max || tv ≈ lim_max)
         end
 
-        tickvalues[] = tickvalues_unfiltered[i_values_within_limits]
         tickstrings[] = tickstrings_unfiltered[i_values_within_limits]
+        tickvalues[] = tickvalues_unfiltered[i_values_within_limits]
     end
 
     onany(pos_extents_horizontal, tickvalues, reversed) do (position, extents_uncorrected, horizontal), tickvalues, reversed
