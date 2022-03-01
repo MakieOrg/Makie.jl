@@ -457,8 +457,8 @@ function add_gridlines_and_frames!(topscene, scene, dim::Int, limits, ticknode, 
         # be cut when they lie directly on the scene boundary
         to_topscene_z_2d.([p1, p2, p3, p4, p5, p6], Ref(scene))
     end
-
-    colors = lift(vcat, Any, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3))
+    colors = Observable{Any}()
+    map!(vcat, colors, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3))
     framelines = linesegments!(topscene, framepoints, color = colors, linewidth = attr(:spinewidth),
         # transparency = true,
         visible = attr(:spinesvisible), inspectable = false)
