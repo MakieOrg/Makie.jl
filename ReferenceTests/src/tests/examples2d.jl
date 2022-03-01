@@ -367,7 +367,8 @@ end
 end
 
 @cell "space 2D autolimits" begin
-    # Same as above but without limits. Comapred to the test above:
+    # Same code as above, but without setting limits. This should look different.
+    # Compared to the test above:
     # - (data -> x) column should be centered in x direction
     # - (data -> x) column: meshes and lines should be stretched in x direction
     # - (data -> not data) column: circles and text should keep aspect
