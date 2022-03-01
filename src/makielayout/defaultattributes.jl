@@ -551,7 +551,7 @@ Button
 
 function default_attributes(::Type{LineAxis})
     Attributes(
-        endpoints = (Point2f(0, 0), Point2f(100, 0)),
+        endpoints = (Point2f(100, 100), Point2f(300, 100)),
         trimspine = false,
         limits = (0f0, 100f0),
         flipped = false,
@@ -582,8 +582,12 @@ function default_attributes(::Type{LineAxis})
         minorticksize = 4f0,
         minortickwidth = 1f0,
         minortickcolor = :black,
-        minorticks = Makie.automatic,
+        minorticks = IntervalsBetween(5),
         scale = identity,
+        spinecolor = :black,
+        labelfont = "Dejavu Sans",
+        ticklabelfont = "Dejavu Sans",
+        spinevisible = true,
     )
 end
 
