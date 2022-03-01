@@ -1,4 +1,8 @@
-using JSON, Statistics, GitHub, Base64, SHA, Downloads, Dates
+using Pkg
+const TTFP_PROJECT = "./dev/Makie/metrics/ttfp"
+Pkg.activate(TTFP_PROJECT)
+Pkg.instantiate()
+using JSON, Statistics, GitHub, Base64, SHA, Downloads, Dates, CairoMakie
 
 function cpu_key()
     cpus = map(Sys.cpu_info()) do cpu
@@ -157,13 +161,14 @@ function run_bench(info::BenchInfo; n=5)
     end
 
     results = Vector{Float64}[]
+    benchfile_path = joinpath(TTFP_PROJECT, "benchmark-ttfp.jl")
     for i in 1:n
-        result = read(`$(Base.julia_cmd()) --project=$(project) ./benchmark-ttfp.jl`, String)
+        result = read(`$(Base.julia_cmd()) --project=$(project) $(benchfile_path)`, String)
         tup = eval(Meta.parse(result))
         @show tup
         push!(results, [tup...])
     end
-    Pkg.activate(".") # activate the main project
+    Pkg.activate(TTFP_PROJECT) # activate the main project
     return results
 end
 

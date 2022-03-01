@@ -11,6 +11,7 @@ using Makie: convert_attribute, @extractvalue, LineSegments, to_ndim, NativeFont
 using Makie: @info, @get_attribute, Combined
 using Makie: to_value, to_colormap, extrema_nan
 using Makie: inline!
+using Makie: Observables
 
 const OneOrVec{T} = Union{
     T,
@@ -64,6 +65,7 @@ end
 if Base.VERSION >= v"1.4.2"
     include("precompiles.jl")
     _precompile_()
+    include("new-precompiles.jl")
 end
 
 
