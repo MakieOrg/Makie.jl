@@ -8,7 +8,7 @@ function cpu_key()
 end
 julia_key() = "julia-" * replace(string(VERSION), "."=>"-")
 tag_commit(ctx, tag) = GitHub.tag(ctx.repo, tag).object["sha"]
-current_commit() =  string(chomp(read(`git rev-parse HEAD`, String)))
+current_commit() =  string(readchomp(`git rev-parse HEAD`))
 latest_commit(ctx, branch) = GitHub.branch(ctx.repo, branch)
 function github_context()
     owner = "JuliaPlots"
@@ -258,7 +258,7 @@ function run_benchmarks(ctx, to_benchmark;
     @info("benchmarking:")
     display(bench_infos)
 
-    benchmarks = get_benchmark_data.(Ref(ctx), bench_infos)
+    benchmarks = get_benchmark_data.(Ref(ctx), bench_infos; force=force, n=n)
 
     @info("done benchmarking, plotting")
     fig = plot_benchmarks(benchmarks, bench_infos)

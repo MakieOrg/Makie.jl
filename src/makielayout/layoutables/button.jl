@@ -10,7 +10,7 @@ function layoutable(::Type{Button}, fig_or_scene::FigureLike; bbox = nothing, kw
 
     decorations = Dict{Symbol, Any}()
 
-    layoutobservables = LayoutObservables{Button}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
+    layoutobservables = LayoutObservables(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
     textpos = Observable(Point2f(0, 0))

@@ -95,7 +95,7 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         h === Makie.automatic ? (v ? nothing : sz) : h
     end
 
-    layoutobservables = LayoutObservables{Colorbar}(_width, _height, attrs.tellwidth, attrs.tellheight,
+    layoutobservables = LayoutObservables(_width, _height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox, protrusions = protrusions)
 
     framebox = @lift(round_to_IRect2D($(layoutobservables.computedbbox)))

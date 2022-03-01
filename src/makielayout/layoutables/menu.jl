@@ -113,7 +113,7 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
 
     decorations = Dict{Symbol, Any}()
 
-    layoutobservables = LayoutObservables{Menu}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
+    layoutobservables = LayoutObservables(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
     halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
 

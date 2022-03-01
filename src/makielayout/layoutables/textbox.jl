@@ -14,7 +14,7 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
 
     decorations = Dict{Symbol, Any}()
 
-    layoutobservables = LayoutObservables{Textbox}(attrs.width, attrs.height,
+    layoutobservables = LayoutObservables(attrs.width, attrs.height,
         attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 

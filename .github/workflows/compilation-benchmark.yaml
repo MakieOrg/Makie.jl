@@ -6,15 +6,8 @@ on:
       - '*.md'
     branches:
       - master
-  push:
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
-    branches:
-      - master
-    tags: '*'
 jobs:
-  test:
+  benchmark:
     name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
     strategy:

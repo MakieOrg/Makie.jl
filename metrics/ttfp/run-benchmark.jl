@@ -6,7 +6,13 @@ using JSON, Statistics, GitHub, Base64, SHA, Downloads, Dates, CairoMakie
 
 include("benchmark-library.jl")
 
-ctx = github_context()
+ctx = try
+     github_context()
+catch e
+    @warn "Not authorized" exception=e
+    # bad credentials because PR isn't from a contributor
+    exit()
+end
 
 project = "current-pr-project/"
 # It seems, that between julia versions, the manifest must be deleted to not get problems
@@ -23,4 +29,8 @@ this_pr = BenchInfo(
 
 Pkg.activate(".")
 
+<<<<<<< HEAD
 fig = run_benchmarks(ctx, [GitHub.branch(ctx.repo, "master"), this_pr])
+=======
+fig = run_benchmarks(ctx, [GitHub.branch(ctx.repo, "master"), this_pr]; force=true, n=5)
+>>>>>>> master

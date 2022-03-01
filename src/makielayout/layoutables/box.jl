@@ -6,7 +6,7 @@ function layoutable(::Type{Box}, fig_or_scene; bbox = nothing, kwargs...)
     @extract attrs (color, visible, valign, halign, padding, strokewidth,
         strokevisible, strokecolor)
 
-    layoutobservables = LayoutObservables{Box}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
+    layoutobservables = LayoutObservables(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
     strokecolor_with_visibility = lift(strokecolor, strokevisible) do col, vis

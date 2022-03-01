@@ -9,7 +9,7 @@ macro Layoutable(name::Symbol, fields::Expr = Expr(:block))
     structdef = quote
         mutable struct $name <: Layoutable
             parent::Union{Figure, Scene, Nothing}
-            layoutobservables::LayoutObservables
+            layoutobservables::LayoutObservables{GridLayout}
             attributes::Attributes
             elements::Dict{Symbol, Any}
         end
