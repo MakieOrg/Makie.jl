@@ -8,7 +8,7 @@ function cpu_key()
 end
 julia_key() = "julia-" * replace(string(VERSION), "."=>"-")
 tag_commit(ctx, tag) = GitHub.tag(ctx.repo, tag).object["sha"]
-current_commit() =  chomp(read(`git rev-parse HEAD`, String))
+current_commit() =  string(readchomp(`git rev-parse HEAD`))
 latest_commit(ctx, branch) = GitHub.branch(ctx.repo, branch)
 function github_context()
     owner = "JuliaPlots"
@@ -65,9 +65,10 @@ end
 
 function BenchInfo(commit::GitHub.Commit; kw...)
     isnothing(commit.commit) && error("Invalid commit")
-    return BenchInfo(
+    return BenchInfo(;
         commit=commit.sha,
         commit_message=commit.commit.message,
+        kw...
     )
 end
 
@@ -172,7 +173,7 @@ bench_info(ctx, commit_or_smth) = BenchInfo(ctx.repo, commit_or_smth)
 
 function get_benchmark_data(ctx, info::BenchInfo; n=10, force=false)
     uuid = unique_id(info)
-    repo_dir_path = "benchmarks/$(julia_key())/$(cpu_key())"
+    repo_dir_path = "benchmarks/$(info.julia)/$(info.cpu)"
     repo_base_path = "$(repo_dir_path)/$(uuid)"
     repo_data_path = "$(repo_base_path).json"
     @info("Getting $(repo_data_path)")
@@ -257,7 +258,7 @@ function run_benchmarks(ctx, to_benchmark;
     @info("benchmarking:")
     display(bench_infos)
 
-    benchmarks = get_benchmark_data.(Ref(ctx), bench_infos)
+    benchmarks = get_benchmark_data.(Ref(ctx), bench_infos; force=force, n=n)
 
     @info("done benchmarking, plotting")
     fig = plot_benchmarks(benchmarks, bench_infos)
