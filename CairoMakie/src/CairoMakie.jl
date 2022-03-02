@@ -62,8 +62,7 @@ function activate!(; inline = _last_inline[], type = _last_type[], px_per_unit=_
 end
 
 if Base.VERSION >= v"1.4.2"
-    include("_all-precompiles.jl")
-    # _precompile_()
+    include("all-precompiles.jl")
 end
 
 
