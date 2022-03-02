@@ -590,7 +590,7 @@ function add_ticks_and_ticklabels!(topscene, scene, dim::Int, limits, ticknode, 
         pp2 = Point2f(o + Makie.project(scene, p2))
 
         # find the midpoint
-        midpoint = (pp1 + pp2) / 2
+        midpoint = (pp1 + pp2) ./ 2
 
         # and the difference vector
         diff = pp2 - pp1

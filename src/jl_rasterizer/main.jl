@@ -1,4 +1,4 @@
-using Colors, ColorVectorSpace, StaticArrays
+using Colors, ColorVectorSpace
 using GeometryBasics, Interpolations
 using ImageShow
 using Makie: orthographicprojection

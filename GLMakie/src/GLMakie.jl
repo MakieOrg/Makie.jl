@@ -1,6 +1,6 @@
 module GLMakie
 
-using ModernGL, FixedPointNumbers, Colors, GeometryBasics, StaticArrays
+using ModernGL, FixedPointNumbers, Colors, GeometryBasics
 using Makie, FileIO
 
 using Makie: @key_str, Key, broadcast_foreach, to_ndim, NativeFont
@@ -11,6 +11,7 @@ using Makie: ClosedInterval, (..)
 using Makie: inline!
 using ShaderAbstractions
 using FreeTypeAbstraction
+using GeometryBasics: StaticVector
 
 using Base: RefValue
 import Base: push!, isopen, show

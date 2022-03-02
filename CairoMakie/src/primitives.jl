@@ -308,7 +308,7 @@ end
 
 function p3_to_p2(p::Point3{T}) where T
     if p[3] == 0 || isnan(p[3])
-        Point2{T}(p[1:2]...)
+        Point2{T}(p[Vec(1,2)]...)
     else
         error("Can't reduce Point3 to Point2 with nonzero third component $(p[3]).")
     end

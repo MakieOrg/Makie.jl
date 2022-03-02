@@ -248,7 +248,7 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
         mp_axscene = Vec4f((e.mouseposition[] .- pa.origin)..., 0, 1)
 
         # first to normal -1..1 space
-        mp_axfraction =  (cam.pixel_space[] * mp_axscene)[1:2] .*
+        mp_axfraction =  (cam.pixel_space[] * mp_axscene)[Vec(1, 2)] .*
             # now to 1..-1 if an axis is reversed to correct zoom point
             (-2 .* ((ax.xreversed[], ax.yreversed[])) .+ 1) .*
             # now to 0..1
@@ -312,7 +312,7 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
 
     mp_axfraction, mp_axfraction_prev = map((mp_axscene, mp_axscene_prev)) do mp
         # first to normal -1..1 space
-        (cam.pixel_space[] * mp)[1:2] .*
+        (cam.pixel_space[] * mp)[Vec(1, 2)] .*
         # now to 1..-1 if an axis is reversed to correct zoom point
         (-2 .* ((ax.xreversed[], ax.yreversed[])) .+ 1) .*
         # now to 0..1

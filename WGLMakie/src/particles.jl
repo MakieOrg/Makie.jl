@@ -191,7 +191,8 @@ function create_shader(scene::Scene, plot::Scatter)
 end
 
 value_or_first(x::AbstractArray) = first(x)
-value_or_first(x::StaticArray) = x
+value_or_first(x::StaticVector) = x
+value_or_first(x::Mat) = x
 value_or_first(x) = x
 
 function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})

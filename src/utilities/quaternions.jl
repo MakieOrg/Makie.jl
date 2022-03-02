@@ -52,10 +52,10 @@ LinearAlgebra.normalize(q::Quaternion) = q / abs(q)
 
 Base.:(/)(q::Quaternion, x::Real) = Quaternion(q[1] / x, q[2] / x, q[3] / x, q[4] / x)
 
-function Base.:(*)(quat::Quaternion, vec::StaticVector{2, T}) where T
+function Base.:(*)(quat::Quaternion, vec::P) where {P <: StaticVector{2}}
+    T = eltype(vec)
     x3 = quat * Vec(vec[1], vec[2], T(0))
-    VT = similar_type(vec, StaticArrays.Size(2,))
-    VT(x3[1], x3[2])
+    return P(x3[1], x3[2])
 end
 
 function Base.:(*)(quat::Quaternion{T}, vec::P) where {T, P <: StaticVector{3}}

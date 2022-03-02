@@ -88,12 +88,12 @@ function view_ray(inv_view_proj, mpos, area::Rect2)
     far = reversed ? 0f0 : 1f0 - 1e-6
 
     origin = inv_view_proj * Vec4f(mp[1], mp[2], near, 1f0)
-    origin = origin[SOneTo(3)] ./ origin[4]
+    origin = origin[Vec(1, 2, 3)] ./ origin[4]
 
     p = inv_view_proj * Vec4f(mp[1], mp[2], far, 1f0)
-    p = p[SOneTo(3)] ./ p[4]
+    p = p[Vec(1, 2, 3)] ./ p[4]
 
-    dir = normalize(p - origin)
+    dir = normalize(p .- origin)
     return origin, dir
 end
 

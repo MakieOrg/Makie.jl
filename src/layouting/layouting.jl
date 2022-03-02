@@ -72,7 +72,6 @@ function glyph_collection(str::AbstractString, font_per_char, fontscale_px, hali
 
     # collect information about every character in the string
     charinfos = broadcast((c for c in str), font_per_char, fontscale_px) do char, font, scale
-        # TODO: scale as SVector not Number
         unscaled_extent = get_extent(font, char)
         lineheight = Float32(font.height / font.units_per_EM * lineheight_factor * scale)
         unscaled_hi_bb = height_insensitive_boundingbox(unscaled_extent, font)

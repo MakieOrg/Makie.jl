@@ -78,7 +78,7 @@ function char_scale_factor(char, font)
     ta = Makie.get_texture_atlas()
     lbrt = glyph_uv_width!(ta, char, font)
     width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
-    width * Vec2f(size(ta.data)) / Makie.PIXELSIZE_IN_ATLAS[]
+    return width .* Vec2f(size(ta.data)) ./ Makie.PIXELSIZE_IN_ATLAS[]
 end
 
 # This works the same for x being widths and offsets
