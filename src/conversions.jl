@@ -712,6 +712,11 @@ end
 #                            Attribute conversions                             #
 ################################################################################
 
+convert_attribute(x, key::Key, ::Key) = convert_attribute(x, key)
+convert_attribute(s::SceneLike, x, key::Key, ::Key) = convert_attribute(s, x, key)
+convert_attribute(s::SceneLike, x, key::Key) = convert_attribute(x, key)
+convert_attribute(x, key::Key) = x
+
 """
     to_color(color)
 Converts a `color` symbol (e.g. `:blue`) to a color RGBA.
@@ -724,15 +729,11 @@ convert_attribute(color, ::key"color") = to_color(color)
 Converts a colormap `cm` symbol (e.g. `:Spectral`) to a colormap RGB array, where `N` specifies the number of color points.
 """
 convert_attribute(colormap, ::key"colormap") = to_colormap(colormap)
-to_rotation(rotation) = convert_attribute(rotation, key"rotation"())
-to_font(font) = convert_attribute(font, key"font"())
-to_align(align) = convert_attribute(align, key"align"())
-to_textsize(textsize) = convert_attribute(textsize, key"textsize"())
+convert_attribute(rotation, ::key"rotation") = to_rotation(rotation)
+convert_attribute(font, ::key"font") = to_font(font)
+convert_attribute(align, ::key"align") = to_align(align)
 
-convert_attribute(x, key::Key, ::Key) = convert_attribute(x, key)
-convert_attribute(s::SceneLike, x, key::Key, ::Key) = convert_attribute(s, x, key)
-convert_attribute(s::SceneLike, x, key::Key) = convert_attribute(x, key)
-convert_attribute(x, key::Key) = x
+
 
 convert_attribute(p, ::key"highclip") = to_color(p)
 convert_attribute(p::Nothing, ::key"highclip") = p
@@ -768,11 +769,7 @@ convert_attribute(r::StaticVector, ::key"rotations") = to_rotation(r)
 convert_attribute(r, ::key"rotations") = to_rotation(r)
 
 convert_attribute(c, ::key"markersize", ::key"scatter") = to_2d_scale(c)
-convert_attribute(c, k1::key"markersize", k2::key"meshscatter") = to_3d_scale(c)
-
-convert_attribute(x, ::key"uv_offset_width") = Vec4f(x)
-convert_attribute(x::AbstractVector{Vec4f}, ::key"uv_offset_width") = x
-
+convert_attribute(c, ::key"markersize", ::key"meshscatter") = to_3d_scale(c)
 to_2d_scale(x::Number) = Vec2f(x)
 to_2d_scale(x::VecTypes) = to_ndim(Vec2f, x, 1)
 to_2d_scale(x::Tuple{<:Number, <:Number}) = to_ndim(Vec2f, x, 1)
@@ -782,10 +779,16 @@ to_3d_scale(x::Number) = Vec3f(x)
 to_3d_scale(x::VecTypes) = to_ndim(Vec3f, x, 1)
 to_3d_scale(x::AbstractVector) = to_3d_scale.(x)
 
+
+convert_attribute(x, ::key"uv_offset_width") = Vec4f(x)
+convert_attribute(x::AbstractVector{Vec4f}, ::key"uv_offset_width") = x
+
+
 convert_attribute(c::Number, ::key"glowwidth") = Float32(c)
+convert_attribute(c::Number, ::key"strokewidth") = Float32(c)
+
 convert_attribute(c, ::key"glowcolor") = to_color(c)
 convert_attribute(c, ::key"strokecolor") = to_color(c)
-convert_attribute(c::Number, ::key"strokewidth") = Float32(c)
 
 convert_attribute(x::Nothing, ::key"linestyle") = x
 
@@ -890,14 +893,6 @@ function convert_gaps(gaps)
   (dot_gap = dot_gap, dash_gap = dash_gap)
 end
 
-function convert_attribute(f::Symbol, ::key"frames")
-    f == :box && return ((true, true), (true, true))
-    f == :semi && return ((true, false), (true, false))
-    f == :none && return ((false, false), (false, false))
-    throw(MethodError("$(string(f)) is not a valid framestyle. Options are `:box`, `:semi` and `:none`"))
-end
-convert_attribute(f::Tuple{Tuple{Bool,Bool},Tuple{Bool,Bool}}, ::key"frames") = f
-
 convert_attribute(c::Tuple{<: Number, <: Number}, ::key"position") = Point2f(c[1], c[2])
 convert_attribute(c::Tuple{<: Number, <: Number, <: Number}, ::key"position") = Point3f(c)
 convert_attribute(c::VecTypes{N}, ::key"position") where N = Point{N, Float32}(c)
@@ -905,8 +900,8 @@ convert_attribute(c::VecTypes{N}, ::key"position") where N = Point{N, Float32}(c
 """
     Text align, e.g.:
 """
-convert_attribute(x::Tuple{Symbol, Symbol}, ::key"align") = Vec2f(alignment2num.(x))
-convert_attribute(x::Vec2f, ::key"align") = x
+to_align(x::Tuple{Symbol, Symbol}) = Vec2f(alignment2num.(x))
+to_align(x::Vec2f) = x
 
 const FONT_CACHE = Dict{String, NativeFont}()
 
@@ -915,7 +910,7 @@ const FONT_CACHE = Dict{String, NativeFont}()
 
 a string naming a font, e.g. helvetica
 """
-function convert_attribute(x::Union{Symbol, String}, k::key"font")
+function to_font(x::Union{Symbol, String})
     str = string(x)
     get!(FONT_CACHE, str) do
         str == "default" && return to_font("Dejavu Sans")
@@ -943,8 +938,8 @@ function convert_attribute(x::Union{Symbol, String}, k::key"font")
         return font
     end
 end
-convert_attribute(x::Vector{String}, k::key"font") = convert_attribute.(x, k)
-convert_attribute(x::NativeFont, k::key"font") = x
+to_font(x::Vector{String}) = to_font.(x)
+to_font(x::NativeFont) = x
 
 """
     rotation accepts:
@@ -952,9 +947,10 @@ convert_attribute(x::NativeFont, k::key"font") = x
     to_rotation(b, tuple_float)
     to_rotation(b, vec4)
 """
-convert_attribute(s::Quaternionf, ::key"rotation") = s
-convert_attribute(s::Quaternion, ::key"rotation") = Quaternionf(s.data...)
-function convert_attribute(s::VecTypes{N}, ::key"rotation") where N
+to_rotation(s::Quaternionf) = s
+to_rotation(s::Quaternion) = Quaternionf(s.data...)
+
+function to_rotation(s::VecTypes{N}) where N
     if N == 4
         Quaternionf(s...)
     elseif N == 3
@@ -966,22 +962,21 @@ function convert_attribute(s::VecTypes{N}, ::key"rotation") where N
     end
 end
 
-function convert_attribute(s::Tuple{VecTypes, AbstractFloat}, ::key"rotation")
-    qrotation(to_ndim(Vec3f, s[1], 0.0), s[2])
-end
-convert_attribute(angle::AbstractFloat, ::key"rotation") = qrotation(Vec3f(0, 0, 1), Float32(angle))
-convert_attribute(r::AbstractVector, k::key"rotation") = to_rotation.(r)
-convert_attribute(r::AbstractVector{<: Quaternionf}, k::key"rotation") = r
+to_rotation(s::Tuple{VecTypes, AbstractFloat}) = qrotation(to_ndim(Vec3f, s[1], 0.0), s[2])
+to_rotation(angle::AbstractFloat) = qrotation(Vec3f(0, 0, 1), Float32(angle))
+to_rotation(r::AbstractVector) = to_rotation.(r)
+to_rotation(r::AbstractVector{<: Quaternionf}) = r
 
+convert_attribute(x, ::key"colorrange") = to_colorrange(x)
+to_colorrange(x) = isnothing(x) ? nothing : Vec2f(x)
 
-convert_attribute(x, k::key"colorrange") = x==nothing ? nothing : Vec2f(x)
+convert_attribute(x, ::key"textsize") = to_textsize(x)
+to_textsize(x::Number) = Float32(x)
+to_textsize(x::AbstractVector{T}) where T <: Number = el32convert(x)
 
-convert_attribute(x, k::key"textsize") = Float32(x)
-convert_attribute(x::AbstractVector, k::key"textsize") = convert_attribute.(x, k)
-convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: Number = el32convert(x)
-convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: VecTypes = elconvert(Vec2f, x)
-convert_attribute(x, k::key"linewidth") = Float32(x)
-convert_attribute(x::AbstractVector, k::key"linewidth") = el32convert(x)
+convert_attribute(x, ::key"linewidth") = to_linewidth(x)
+to_linewidth(x) = Float32(x)
+to_linewidth(x::AbstractVector) = el32convert(x)
 
 # ColorBrewer colormaps that support only 8 colors require special handling on the backend, so we show them here.
 const colorbrewer_8color_names = String.([
@@ -1114,8 +1109,6 @@ function convert_attribute(value::Union{Symbol, String}, k::key"algorithm")
     end, k)
 end
 
-
-
 const _marker_map = Dict(
     :rect => '■',
     :star5 => '★',
@@ -1164,6 +1157,8 @@ For significant faster plotting times for large amount of points.
 Note, that this will draw markers always as 1 pixel.
 """
 struct FastPixel end
+
+@enum MarkerTypes FastPixel Circle Rect
 
 to_spritemarker(x::FastPixel) = x
 to_spritemarker(x::Circle) = x
