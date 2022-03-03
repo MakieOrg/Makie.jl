@@ -89,12 +89,10 @@ end
 
 @testset "Coordinate Systems" begin
     funcs = [Makie.is_data_space, Makie.is_pixel_space, Makie.is_relative_space, Makie.is_clip_space]
-    spaces = [[:data, :world], [:pixel, :screen], [:relative, :unit], [:clip]]
+    spaces = [:data, :pixel, :relative, :clip]
     for (i, f) in enumerate(funcs)
         for j in 1:4
-            for space in spaces[j]
-                @test f(space) == (i == j)
-            end
+            @test f(spaces[j]) == (i == j)
         end
     end
 

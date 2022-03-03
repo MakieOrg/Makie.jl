@@ -11,9 +11,9 @@
 - `transparency::Bool = false` adjusts how the plot deals with transparency. In GLMakie `transparency = true` results in using Order Independent Transparency.
 - `fxaa::Bool = false` adjusts whether the plot is rendered with fxaa (anti-aliasing). Note that text plots already include a different form of anti-aliasing.
 - `inspectable::Bool = true` sets whether this plot should be seen by `DataInspector`.
-- `depth_shift::Float32 = 0f0` adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw). 
+- `depth_shift::Float32 = 0f0` adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw).
 - `model::Makie.Mat4f` sets a model matrix for the plot. This replaces adjustments made with `translate!`, `rotate!` and `scale!`.
-- `color` sets the color of the plot. It can be given as a named color `Symbol` or a `Colors.Colorant`. Transparency can be included either directly as an alpha value in the `Colorant` or as an additional float in a tuple `(color, alpha)`. The color can also be set for each character by passing a `Vector` of colors. 
+- `color` sets the color of the plot. It can be given as a named color `Symbol` or a `Colors.Colorant`. Transparency can be included either directly as an alpha value in the `Colorant` or as an additional float in a tuple `(color, alpha)`. The color can also be set for each character by passing a `Vector` of colors.
 - `space::Symbol = :data` sets the transformation space for text positions. See `Makie.spaces()` for possible inputs.
 
 ### Other
@@ -24,16 +24,16 @@
 - `position::Union{Point2f, Point3f} = Point2f(0)` sets an anchor position for text. Can also be a `Vector` of positions.
 - `rotation::Union{Real, Quaternion}` rotates text around the given position.
 - `textsize::Union{Real, Vec2f}` sets the size of each character.
-- `markerspace::Symbol = :screen` sets the space in which `textsize` acts. See `Makie.spaces()` for possible inputs.
+- `markerspace::Symbol = :pixel` sets the space in which `textsize` acts. See `Makie.spaces()` for possible inputs.
 - `strokewidth::Real = 0` sets the width of the outline around a marker.
 - `strokecolor::Union{Symbol, <:Colorant} = :black` sets the color of the outline around a marker.
 - `glowwidth::Real = 0` sets the size of a glow effect around the marker.
 - `glowcolor::Union{Symbol, <:Colorant} = (:black, 0)` sets the color of the glow effect.
 
 
-## Screen space text
+## Pixel space text
 
-By default, text is drawn in screen space (`space = :screen`).
+By default, text is drawn in pixel space (`space = :pixel`).
 The text anchor is given in data coordinates, but the size of the glyphs is independent of data scaling.
 The boundingbox of the text will include every data point or every text anchor point.
 This also means that `autolimits!` might cut off your text, because the glyphs don't have a meaningful size in data coordinates (the size is independent of zoom level), and you have to take some care to manually place the text or set data limits such that it is fully visible.
@@ -143,7 +143,7 @@ scene
 ## Offset
 
 The offset attribute can be used to shift text away from its position.
-This is especially useful with `space = :screen`, for example to place text together with barplots.
+This is especially useful with `space = :pixel`, for example to place text together with barplots.
 You can specify the end of the barplots in data coordinates, and then offset the text a little bit to the left.
 
 \begin{examplefigure}{}

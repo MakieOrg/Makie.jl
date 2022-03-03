@@ -673,19 +673,10 @@ function draw_mesh3D(
 
     model = primitive.model[]
     space = to_value(get(primitive, :space, :data))
+
     view = ifelse(is_data_space(space), scene.camera.view[], Mat4f(I))
-    projection = if is_data_space(space)
-        scene.camera.projection[]
-    elseif is_pixel_space(space)
-        scene.camera.pixel_space[]
-    elseif is_relative_space(space)
-        Mat4f(2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, -1, -1, 0, 1)
-    elseif is_clip_space(space)
-        Mat4f(I)
-    else
-        error("Space $space not recognized. Must be one of $(spaces())")
-    end
-    i = SOneTo(3)
+    projection = Makie.space_to_clip(scene.camera, space, false)
+    i = Vec(1, 2, 3)
     normalmatrix = transpose(inv(view[i, i] * model[i, i]))
 
     # Mesh data

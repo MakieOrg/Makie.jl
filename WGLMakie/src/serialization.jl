@@ -314,17 +314,9 @@ function serialize_three(scene::Scene, plot::AbstractPlot)
             return
         end
     end
-   
-    mesh[:cam_space] = let 
-        key = haskey(plot, :markerspace) ? (:markerspace) : (:space)
-        space = to_value(get(plot, key, :data))
-        if     is_data_space(space);     :data
-        elseif is_pixel_space(space);    :pixel
-        elseif is_relative_space(space); :relative
-        elseif is_clip_space(space);     :clip
-        else error("Space $space not defined. Must be one of $(spaces())")
-        end
-    end
+
+    key = haskey(plot, :markerspace) ? (:markerspace) : (:space)
+    mesh[:cam_space] = to_value(get(plot, key, :data))
 
     return mesh
 end
