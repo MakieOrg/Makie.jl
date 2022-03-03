@@ -130,7 +130,7 @@ end
         rotation = pi/4:pi/2:7pi/4,
         align = (:left, :center),
         textsize = 30,
-        markerspace = :screen
+        markerspace = :pixel
     )
 
     wireframe!(scene, boundingbox(t2), color = (:red, 0.3))
@@ -160,7 +160,7 @@ end
             rotation = a,
             align = (:left, :center),
             textsize = 30,
-            markerspace = :screen
+            markerspace = :pixel
         )
 
         # these boundingboxes should be invisible because they only enclose the anchor
@@ -207,7 +207,7 @@ end
         position = positions,
         align = (:center, :center),
         textsize = 20,
-        markerspace = :screen,
+        markerspace = :pixel,
         overdraw=false)
     fig
 end

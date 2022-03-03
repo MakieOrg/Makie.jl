@@ -198,7 +198,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Scatter)
         markerspace = to_value(get(primitive, :markerspace, :pixel))
         scale = project_scale(scene, markerspace, markersize, size_model)
         offset = project_scale(scene, markerspace, mo, size_model)
-                          
+
         space = to_value(get(primitive, :space, :data))
         pos = project_position(scene, space, point, model)
         isnan(pos) && return
@@ -275,7 +275,7 @@ function draw_marker(ctx, marker::Circle, pos, scale, strokecolor, strokewidth, 
         Cairo.scale(ctx, scale[1], scale[2])
         Cairo.translate(ctx, pos[1]/scale[1], pos[2]/scale[2])
         Cairo.arc(ctx, 0, 0, 0.5, 0, 2*pi)
-    else 
+    else
         Cairo.arc(ctx, pos[1], pos[2], scale[1]/2, 0, 2*pi)
     end
 
@@ -323,7 +323,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text{<:Tuple{
     glyph_collection = to_value(primitive[1])
 
     draw_glyph_collection(
-        scene, ctx, position, glyph_collection, remove_billboard(rotation), 
+        scene, ctx, position, glyph_collection, remove_billboard(rotation),
         model, space, markerspace, offset
     )
 
@@ -332,12 +332,12 @@ end
 
 
 function draw_glyph_collection(
-        scene, ctx, positions, glyph_collections::AbstractArray, rotation, 
+        scene, ctx, positions, glyph_collections::AbstractArray, rotation,
         model::SMatrix, space, markerspace, offset
     )
 
     # TODO: why is the Ref around model necessary? doesn't broadcast_foreach handle staticarrays matrices?
-    broadcast_foreach(positions, glyph_collections, rotation, Ref(model), space, 
+    broadcast_foreach(positions, glyph_collections, rotation, Ref(model), space,
         markerspace, offset) do pos, glayout, ro, mo, sp, msp, off
 
         draw_glyph_collection(scene, ctx, pos, glayout, ro, mo, sp, msp, off)
@@ -568,11 +568,11 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
 
             # Rectangles and polygons that are directly adjacent usually show
             # white lines between them due to anti aliasing. To avoid this we
-            # increase their size slightly. 
+            # increase their size slightly.
 
             if alpha(colors[i, j]) == 1
-                # sign.(p - center) gives the direction in which we need to 
-                # extend the polygon. (Which may change due to rotations in the 
+                # sign.(p - center) gives the direction in which we need to
+                # extend the polygon. (Which may change due to rotations in the
                 # model matrix.) (i!=1) etc is used to avoid increasing the
                 # outer extent of the heatmap.
                 center = 0.25 * (p1 + p2 + p3 + p4)
@@ -673,14 +673,10 @@ function draw_mesh3D(
 
     model = primitive.model[]
     space = to_value(get(primitive, :space, :data))
+
     view = ifelse(is_data_space(space), scene.camera.view[], Mat4f(I))
-    projection = if is_data_space(space) scene.camera.projection[]
-    elseif is_pixel_space(space) scene.camera.pixel_space[]
-    elseif is_relative_space(space) Mat4f(2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, -1, -1, 0, 1)
-    elseif is_clip_space(space) Mat4f(I)
-    else error("Space $space not recognized. Must be one of $(spaces())") 
-    end
-    i = SOneTo(3)
+    projection = Makie.space_to_clip(scene.camera, space, false)
+    i = Vec(1, 2, 3)
     normalmatrix = transpose(inv(view[i, i] * model[i, i]))
 
     # Mesh data

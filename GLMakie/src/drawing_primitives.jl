@@ -47,42 +47,35 @@ end
 make_context_current(screen::Screen) = GLFW.MakeContextCurrent(to_native(screen))
 
 function connect_camera!(gl_attributes, cam, space = gl_attributes[:space])
-    # (0, 1) x (0, 1) x (0, 1) space
-    rel = Mat4f(2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, -1, -1, 0, 1)
-    # (-1, 1) x (-1, 1) x (0, 1) space 
-    id = Mat4f(I)
-
-    for key in (:pixel_space, :view, :projection, :resolution, :eyeposition, :projectionview)
-        if !haskey(gl_attributes, key)
-            gl_attributes[key] = if key in (:projection, :projectionview)
-                map(getfield(cam, key), getfield(cam, :pixel_space), space) do data, pixel, space
-                    if     is_data_space(space)     return data
-                    elseif is_pixel_space(space)    return pixel
-                    elseif is_relative_space(space) return rel
-                    elseif is_clip_space(space)     return id
-                    else error("Space $space not recognized. Must be one of $(spaces())")
-                    end 
-                end
-            elseif key in (:view, )
-                map(getfield(cam, key), space) do view, space
-                    ifelse(is_data_space(space), view, id)
-                end
-            else # :pixel_space, :resolution, :eyepostion
-                getfield(cam, key)
-            end
+    for key in (:pixel_space, :resolution, :eyeposition)
+        get!(gl_attributes, key, getfield(cam, key))
+    end
+    get!(gl_attributes, :view) do
+        map(cam.view, space) do view, space
+            return is_data_space(space) ? view : Mat4f(I)
         end
     end
-
-    if !haskey(gl_attributes, :normalmatrix)
-        gl_attributes[:normalmatrix] = map(gl_attributes[:view], gl_attributes[:model]) do v, m
-            i = SOneTo(3)
+    get!(gl_attributes, :normalmatrix) do
+        return map(gl_attributes[:view], gl_attributes[:model]) do v, m
+            i = Vec(1, 2, 3)
             return transpose(inv(v[i, i] * m[i, i]))
         end
     end
 
-    haskey(gl_attributes, :space) && delete!(gl_attributes, :space)
-    haskey(gl_attributes, :markerspace) && delete!(gl_attributes, :markerspace)
+    get!(gl_attributes, :projection) do
+        return map(cam.projection, cam.pixel_space, space) do _, _, space
+            return Makie.space_to_clip(cam, space, true)
+        end
+    end
 
+    get!(gl_attributes, :projectionview) do
+        return map(cam.projectionview, cam.pixel_space, space) do _, _, space
+            Makie.space_to_clip(cam, space, true)
+        end
+    end
+
+    delete!(gl_attributes, :space)
+    delete!(gl_attributes, :markerspace)
     return nothing
 end
 
@@ -215,10 +208,10 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Union{Scat
         # signals not supported for shading yet
         gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
         marker = lift_convert(:marker, pop!(gl_attributes, :marker), x)
-        
+
         positions = handle_view(x[1], gl_attributes)
         positions = apply_transform(transform_func_obs(x), positions)
-        
+
         if isa(x, Scatter)
             space = get(gl_attributes, :space, :data)
             mspace = get(gl_attributes, :markerspace, :pixel)
@@ -328,7 +321,7 @@ function draw_atomic(screen::GLScreen, scene::Scene,
             # the actual, new value gets then taken in the below lift with to_value
             gcollection = Observable(glyphcollection)
         end
-       
+
         # calculate quad metrics
         glyph_data = map(pos, gcollection, offset, transfunc) do pos, gc, offset, transfunc
             Makie.text_quads(pos, to_value(gc), offset, transfunc)
@@ -346,7 +339,7 @@ function draw_atomic(screen::GLScreen, scene::Scene,
             !(k in (
                 :position, :space, :markerspace, :font,
                 :textsize, :rotation, :justification
-            )) # space, 
+            )) # space,
         end
 
         gl_attributes[:color] = lift(glyphcollection) do gc
