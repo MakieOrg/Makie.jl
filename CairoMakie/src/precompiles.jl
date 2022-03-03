@@ -6,6 +6,5 @@ function _precompile_()
     f, ax2, pl = lines(1:4)
     Makie.colorbuffer(ax1.scene)
     Makie.colorbuffer(ax2.scene)
-    save("blah.png", f)
     return
 end
