@@ -1043,7 +1043,7 @@ end
 An `AbstractVector{T}` with any object that [`to_color`](@ref) accepts.
 """
 convert_attribute(cm::AbstractVector, ::key"colormap", n::Int=length(cm)) = to_colormap(to_color.(cm), n)
-convert_attribute(cm::Vector{RGBAf}, ::key"colormap", n) = cm
+convert_attribute(cm::Vector{RGBAf}, ::key"colormap", n::Int) = cm
 
 function convert_attribute(cm::AbstractVector{<: Colorant}, ::key"colormap", n::Int=length(cm))
     colormap = length(cm) == n ? cm : resample(cm, n)
