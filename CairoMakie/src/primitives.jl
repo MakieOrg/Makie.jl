@@ -675,7 +675,7 @@ function draw_mesh3D(
     space = to_value(get(primitive, :space, :data))
 
     view = ifelse(is_data_space(space), scene.camera.view[], Mat4f(I))
-    projection = Makie.space_to_clip(scene.camera, space, false)
+    projection = Makie.space_to_clip(scene.camera, space)
     i = Vec(1, 2, 3)
     normalmatrix = transpose(inv(view[i, i] * model[i, i]))
 
