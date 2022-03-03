@@ -11,7 +11,7 @@
 - `transparency::Bool = false` adjusts how the plot deals with transparency. In GLMakie `transparency = true` results in using Order Independent Transparency.
 - `fxaa::Bool = true` adjusts whether the plot is rendered with fxaa (anti-aliasing).
 - `inspectable::Bool = true` sets whether this plot should be seen by `DataInspector`.
-- `depth_shift::Float32 = 0f0` adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw). 
+- `depth_shift::Float32 = 0f0` adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw).
 - `model::Makie.Mat4f` sets a model matrix for the plot. This replaces adjustments made with `translate!`, `rotate!` and `scale!`.
 - `colormap::Union{Symbol, Vector{<:Colorant}} = :viridis` sets the colormap that is sampled for numeric `color`s.
 - `colorrange::Tuple{<:Real, <:Real}` sets the values representing the start and end points of `colormap`.
@@ -20,7 +20,7 @@
 ### Generic 3D
 
 - `shading = true` enables lighting.
-- `diffuse::Vec3f = Vec3f(0.4)` sets how strongly the red, green and blue channel react to diffuse (scattered) light. 
+- `diffuse::Vec3f = Vec3f(0.4)` sets how strongly the red, green and blue channel react to diffuse (scattered) light.
 - `specular::Vec3f = Vec3f(0.2)` sets how strongly the object reflects light in the red, green and blue channels.
 - `shininess::Real = 32.0` sets how sharp the reflection is.
 - `ssao::Bool = false` adjusts whether the plot is rendered with ssao (screen space ambient occlusion). Note that this only makes sense in 3D plots and is only applicable with `fxaa = true`.
@@ -60,7 +60,7 @@ normed = Float32.((brain .- mini) ./ (maxi - mini))
 
 fig = Figure(resolution=(1000, 450))
 # Make a colormap, with the first value being transparent
-colormap = RGBAf.(to_colormap(:plasma), 1.0)
+colormap = to_colormap(:plasma)
 colormap[1] = RGBAf(0,0,0,0)
 volume(fig[1, 1], normed, algorithm = :absorption, absorption=4f0, colormap=colormap, axis=(type=Axis3, title = "Absorption"))
 volume(fig[1, 2], normed, algorithm = :mip, colormap=colormap, axis=(type=Axis3, title="Maximum Intensity Projection"))
