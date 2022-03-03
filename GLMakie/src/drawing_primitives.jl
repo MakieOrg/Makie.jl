@@ -63,14 +63,13 @@ function connect_camera!(gl_attributes, cam, space = gl_attributes[:space])
     end
 
     get!(gl_attributes, :projection) do
-        Makie.space_to_clip_obs(cam, space[], false)
-        return map(cam.projection, space) do _, space
+        return map(cam.projection, cam.pixel_space, space) do _, _, space
             return Makie.space_to_clip(cam, space, true)
         end
     end
 
     get!(gl_attributes, :projectionview) do
-        return map(cam.projectionview, space) do _, space
+        return map(cam.projectionview, cam.pixel_space, space) do _, _, space
             Makie.space_to_clip(cam, space, true)
         end
     end

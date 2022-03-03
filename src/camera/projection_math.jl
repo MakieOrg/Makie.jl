@@ -311,16 +311,11 @@ function transform(model::Mat4, x::T) where T
 end
 
 # project between different coordinate systems/spaces
-
-function space_to_clip(cam::Camera, space::Symbol, projectionview=true)
-    return to_value(space_to_clip_obs(cam::Camera, space::Symbol, projectionview))
-end
-
-function space_to_clip_obs(cam::Camera, space::Symbol, projectionview::Bool)
+function space_to_clip(cam::Camera, space::Symbol, projectionview::Bool=true)
     if is_data_space(space)
-        return projectionview ? cam.projectionview : cam.projection
+        return projectionview ? cam.projectionview[] : cam.projection[]
     elseif is_pixel_space(space)
-        return cam.pixel_space
+        return cam.pixel_space[]
     elseif is_relative_space(space)
         return Mat4f(2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, -1, -1, 0, 1)
     elseif is_clip_space(space)
