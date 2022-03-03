@@ -1043,10 +1043,11 @@ end
 An `AbstractVector{T}` with any object that [`to_color`](@ref) accepts.
 """
 convert_attribute(cm::AbstractVector, ::key"colormap", n::Int=length(cm)) = to_colormap(to_color.(cm), n)
+convert_attribute(cm::Vector{RGBAf}, ::key"colormap", n) = cm
 
 function convert_attribute(cm::AbstractVector{<: Colorant}, ::key"colormap", n::Int=length(cm))
     colormap = length(cm) == n ? cm : resample(cm, n)
-    return el32convert(colormap)
+    return to_color.(colormap)
 end
 
 """
@@ -1089,14 +1090,14 @@ function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Intege
     end
 end
 
-function Makie.convert_attribute(cg::PlotUtils.ContinuousColorGradient, ::key"colormap", n::Integer=length(cg.values))
+function convert_attribute(cg::PlotUtils.ContinuousColorGradient, ::key"colormap", n::Integer=length(cg.values))
     # PlotUtils does not always give [0, 1] range, so we adapt to what it has
-    return getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), n))
+    return to_colormap(getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), n)))
 end
 
-function Makie.convert_attribute(cg::PlotUtils.CategoricalColorGradient, ::key"colormap", n::Integer = length(cg.colors) * 20)
+function convert_attribute(cg::PlotUtils.CategoricalColorGradient, ::key"colormap", n::Integer = length(cg.colors) * 20)
     # PlotUtils does not always give [0, 1] range, so we adapt to what it has
-    return vcat(fill.(cg.colors.colors, Ref(n ÷ length(cg.colors)))...)
+    return to_colormap(vcat(fill.(cg.colors.colors, Ref(n ÷ length(cg.colors)))...))
 end
 
 """

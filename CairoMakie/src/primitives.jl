@@ -650,8 +650,16 @@ function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
     uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
     model = plot.model[]::Mat4f
     colormap = to_colormap(to_value(get(plot, :colormap, nothing)))::Union{Nothing, Vector{RGBAf}}
-    colorrange = to_value(get(plot, :colorrange, nothing))::Union{Nothing, Vec2f}
-    cols = per_face_colors(color, colormap, colorrange, nothing, vs, fs, nothing, uv)
+    colorrange = convert_attribute(to_value(get(plot, :colorrange, nothing)), key"colorrange"())::Union{Nothing, Vec2f}
+
+    lowclip = get_color_attr(plot, :lowclip)
+    highclip = get_color_attr(plot, :highclip)
+    nan_color = get_color_attr(plot, :nan_color)
+
+    cols = per_face_colors(
+        color, colormap, colorrange, nothing, fs, nothing, uv,
+        lowclip, highclip, nan_color)
+
     return draw_mesh2D(scene, screen, cols, vs, fs, model)
 end
 
@@ -661,9 +669,7 @@ function draw_mesh2D(scene, screen, per_face_cols,
     ctx = screen.context
     # Priorize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
-
     pattern = Cairo.CairoPatternMesh()
-
     for (f, (c1, c2, c3)) in zip(fs, per_face_cols)
         t1, t2, t3 =  project_position.(scene, vs[f], (model,)) #triangle points
         Cairo.mesh_pattern_begin_patch(pattern)
@@ -697,7 +703,7 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
     @get_attribute(attributes, (color,))
 
     colormap = to_colormap(to_value(get(attributes, :colormap, nothing)))
-    colorrange = to_value(get(attributes, :colorrange, nothing))
+    colorrange = convert_attribute(to_value(get(attributes, :colorrange, nothing)), key"colorrange"())::Union{Nothing, Vec2f}
     matcap = to_value(get(attributes, :matcap, nothing))
 
     color = hasproperty(mesh, :color) ? mesh.color : color
@@ -706,9 +712,9 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
     meshnormals = decompose_normals(mesh)::Vector{Vec3f}
     meshuvs = texturecoordinates(mesh)::Union{Nothing, Vector{Vec2f}}
 
-    lowclip = color_or_nothing(to_value(get(attributes, :lowclip, nothing)))::Union{Nothing, RGBAf}
-    highclip = color_or_nothing(to_value(get(attributes, :highclip, nothing)))::Union{Nothing, RGBAf}
-    nan_color = color_or_nothing(to_value(get(attributes, :nan_color, nothing)))::Union{Nothing, RGBAf}
+    lowclip = get_color_attr(attributes, :lowclip)
+    highclip = get_color_attr(attributes, :highclip)
+    nan_color = get_color_attr(attributes, :nan_color)
 
     per_face_col = per_face_colors(
         color, colormap, colorrange, matcap, meshfaces, meshnormals, meshuvs,
