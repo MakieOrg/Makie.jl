@@ -719,11 +719,10 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
         specular, shininess, faceculling))
 
     model = attributes.model[]::Mat4f
-
     draw_mesh3D(
         scene, screen, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
         model, shading::Bool, diffuse::Vec3f,
-        specular::Vec3f, shininess::Float32, faceculling::Bool
+        specular::Vec3f, shininess::Float32, faceculling::Int
     )
 end
 

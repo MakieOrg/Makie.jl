@@ -46,7 +46,7 @@ function _precompile_()
         diffuse=Vec3f(1),
         specular=Vec3f(0),
         shininess=2f0,
-        faceculling=true
+        faceculling=-10
     )
 
     CairoMakie.draw_mesh3D(scene, screen, attributes, mesh2)
