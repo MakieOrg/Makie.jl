@@ -33,7 +33,8 @@ ivec3 ind2sub(ivec3 dim, int linearindex);
 {{scale_type}}   scale; // so in the case of distinct x,y,z, there's no chance to unify them under one variable
 
 
-{{offset_type}} offset;
+{{marker_offset_type}} marker_offset;
+{{quad_offset_type}} quad_offset;
 
 {{rotation_type}} rotation;
 
@@ -71,6 +72,7 @@ vec4 _color(Nothing color, sampler1D intensity, sampler1D color_map, vec2 color_
 {{stroke_color_type}} stroke_color;
 {{glow_color_type}} glow_color;
 
+uniform mat4 preprojection;
 uniform uint objectid;
 uniform int len;
 
@@ -92,8 +94,9 @@ void main(){
     g_primitive_index = index;
     vec3 pos;
     {{position_calc}}
-    g_position        = pos;
-    g_offset_width.xy = offset.xy;
+    vec4 p = preprojection * vec4(pos, 1);
+    g_position        = p.xyz / p.w + marker_offset;
+    g_offset_width.xy = quad_offset.xy;
     g_offset_width.zw = scale.xy;
     g_color           = _color(color, intensity, color_map, color_norm, g_primitive_index, len);
     g_rotation        = _rotation(rotation);
