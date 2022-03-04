@@ -3,11 +3,12 @@ Selection of random objects on the screen is realized by rendering an
 object id + plus an arbitrary index into the framebuffer.
 The index can be used for e.g. instanced geometries.
 """
-struct SelectionID{T <: Integer} <: FieldVector{2, T}
+struct SelectionID{T <: Integer}
     id::T
     index::T
 end
-
+Base.convert(::Type{SelectionID{T}}, s::SelectionID) where T = SelectionID{T}(T(s.id), T(s.index))
+Base.zero(::Type{GLMakie.SelectionID{T}}) where T = SelectionID{T}(T(0), T(0))
 
 mutable struct GLFramebuffer
     resolution::Observable{NTuple{2, Int}}
@@ -96,7 +97,7 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
 
     fb_size_node = Observable(fb_size)
 
-    # To allow adding postprocessors in various combinations we need to keep 
+    # To allow adding postprocessors in various combinations we need to keep
     # track of the buffer ids that are already in use. We may also want to reuse
     # buffers so we give them names for easy fetching.
     buffer_ids = Dict(

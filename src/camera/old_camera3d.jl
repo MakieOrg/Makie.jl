@@ -264,7 +264,7 @@ function zoom!(scene, point::VecTypes, zoom_step, shift_lookat::Bool)
     # the offset perpendicular to `eyeposition - lookat`, based on mouse offset ~ ray_dir
     # the offset parallel to `eyeposition - lookat` ~ dir
     ray_eye = inv(scene.camera.projection[]) * Vec4f(point[1],point[2],0,0)
-    ray_eye = Vec4f(ray_eye[1:2]...,0,0)
+    ray_eye = Vec4f(ray_eye[Vec(1, 2)]...,0,0)
     ray_dir = Vec3f((inv(scene.camera.view[]) * ray_eye))
 
     dir = eyeposition - lookat

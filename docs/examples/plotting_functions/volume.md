@@ -16,7 +16,7 @@
 - `colormap::Union{Symbol, Vector{<:Colorant}} = :viridis` sets the colormap that is sampled for numeric `color`s.
 - `colorrange::Tuple{<:Real, <:Real}` sets the values representing the start and end points of `colormap`.
 - `nan_color::Union{Symbol, <:Colorant} = RGBAf(0,0,0,0)` sets a replacement color for `color = NaN`.
-
+- `space::Symbol = :data` sets the transformation space for box encompassing the volume plot. See `Makie.spaces()` for possible inputs.
 ### Generic 3D
 
 - `shading = true` enables lighting.

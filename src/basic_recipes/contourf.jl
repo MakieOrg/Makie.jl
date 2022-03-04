@@ -75,26 +75,27 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
         cgrad(cmap, levels_scaled, categorical = true)
     end
 
-
-    lowcolor = lift(Union{Nothing, RGBAf}, c.extendlow) do el
+    lowcolor = Observable{Union{Nothing, RGBAf}}()
+    map!(lowcolor, c.extendlow) do el
         if el === nothing
-            nothing
+            return nothing
         elseif el === automatic || el == :auto
-            RGBAf(get(c._computed_colormap[], 0))
+            return RGBAf(get(c._computed_colormap[], 0))
         else
-            convert_attribute(el, key"color"())::RGBAf
+            return to_color(el)::RGBAf
         end
     end
     c.attributes[:_computed_extendlow] = lowcolor
     is_extended_low = lift(x -> !isnothing(x), lowcolor)
 
-    highcolor = lift(Union{Nothing, RGBAf}, c.extendhigh) do eh
+    highcolor = Observable{Union{Nothing, RGBAf}}()
+    map!(highcolor, c.extendhigh) do eh
         if eh === nothing
-            nothing
+            return nothing
         elseif eh === automatic || eh == :auto
-            RGBAf(get(c._computed_colormap[], 1))
+            return RGBAf(get(c._computed_colormap[], 1))
         else
-            convert_attribute(eh, key"color"())::RGBAf
+            return to_color(eh)::RGBAf
         end
     end
     c.attributes[:_computed_extendhigh] = highcolor
@@ -134,7 +135,6 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
                 holes = polygroup[2:end]
                 push!(polys[], GeometryBasics.Polygon(outline, holes))
                 # use contour level center value as color
-                center_scaled = (center - colorrange[][1]) / (colorrange[][2] - colorrange[][1])
                 push!(colors[], center)
             end
         end

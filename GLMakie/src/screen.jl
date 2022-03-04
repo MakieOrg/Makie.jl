@@ -520,11 +520,11 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
 
     picks = pick_native(screen, Rect2i(x0, y0, dx, dy))
 
-    selected = filter(x -> x[1] > 0 && haskey(screen.cache2plot, x[1]), unique(vec(picks)))
+    selected = filter(x -> x.id > 0 && haskey(screen.cache2plot, x.id), unique(vec(picks)))
     distances = Float32[range^2 for _ in selected]
     x, y =  xy .+ 1 .- Vec2f(x0, y0)
     for i in 1:dx, j in 1:dy
-        if picks[i, j][1] > 0
+        if picks[i, j].id > 0
             d = (x-i)^2 + (y-j)^2
             i = findfirst(isequal(picks[i, j]), selected)
             if i === nothing
@@ -537,7 +537,7 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
 
     idxs = sortperm(distances)
     permute!(selected, idxs)
-    return map(id -> (screen.cache2plot[id[1]], id[2]), selected)
+    return map(id -> (screen.cache2plot[id.id], id.index), selected)
 end
 
 
