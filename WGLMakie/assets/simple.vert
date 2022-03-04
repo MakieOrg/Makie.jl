@@ -54,17 +54,18 @@ float _determinant(mat2 m) {
 }
 void main(){
     vec2 bbox_signed_radius = 0.5 * get_markersize(); // note; components may be negative.
-    vec2 sprite_bbox_centre = get_marker_offset() + bbox_signed_radius;
+    vec2 sprite_bbox_centre = get_quad_offset() + bbox_signed_radius;
 
     mat4 pview = projection * view;
     // Compute transform for the offset vectors from the central point
     mat4 trans = get_transform_marker() ? model : mat4(1.0);
-    mat4 billtrans = get_use_pixel_marker() ? pixelspace : projection;
-    trans = (get_billboard() ? billtrans : pview) * qmat(get_rotations()) * trans;
+    trans = (get_billboard() ? projection : pview) * qmat(get_rotations()) * trans;
 
     // Compute centre of billboard in clipping coordinates
     vec4 sprite_center = trans * vec4(sprite_bbox_centre, 0, 0);
-    vec4 data_point = pview * model * vec4(tovec3(get_offset()), 1);
+    vec4 data_point = get_preprojection() * vec4(tovec3(get_pos()), 1);
+    data_point = vec4(data_point.xyz / data_point.w + tovec3(get_marker_offset()), 1);
+    data_point = pview * model * data_point;
     vec4 vclip = data_point + sprite_center;
 
     // Extra buffering is required around sprites which are antialiased so that

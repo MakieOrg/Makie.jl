@@ -1,6 +1,5 @@
 module GLAbstraction
 
-using StaticArrays
 using GeometryBasics
 using ModernGL
 using Makie
@@ -12,6 +11,7 @@ using LinearAlgebra
 using Observables
 using ShaderAbstractions
 using ShaderAbstractions: current_context, is_context_active, context_alive
+using GeometryBasics: StaticVector
 
 import FixedPointNumbers: N0f8, N0f16, N0f8, Normed
 
@@ -99,10 +99,5 @@ include("GLInfo.jl")
 export getUniformsInfo
 export getProgramInfo
 export getAttributesInfo
-
-if Base.VERSION >= v"1.4.2"
-    include("precompile.jl")
-    _precompile_()
-end
 
 end # module

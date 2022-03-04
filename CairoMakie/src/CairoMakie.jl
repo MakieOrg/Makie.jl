@@ -1,7 +1,7 @@
 module CairoMakie
 
 using Makie, LinearAlgebra
-using Colors, GeometryBasics, FileIO, StaticArrays
+using Colors, GeometryBasics, FileIO
 import SHA
 import Base64
 import Cairo
@@ -11,6 +11,8 @@ using Makie: convert_attribute, @extractvalue, LineSegments, to_ndim, NativeFont
 using Makie: @info, @get_attribute, Combined
 using Makie: to_value, to_colormap, extrema_nan
 using Makie: inline!
+using Makie: Observables
+using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
 
 const OneOrVec{T} = Union{
     T,

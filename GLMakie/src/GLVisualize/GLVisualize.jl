@@ -5,7 +5,6 @@ using Makie: RaymarchAlgorithm, IsoValue, Absorption, MaximumIntensityProjection
 
 using ..GLMakie.GLFW
 using ModernGL
-using StaticArrays
 using GeometryBasics
 using Colors
 using Makie
@@ -13,6 +12,7 @@ using FixedPointNumbers
 using FileIO
 using Markdown
 using Observables
+using GeometryBasics: StaticVector
 
 import Base: merge, convert, show
 using Base.Iterators: Repeated, repeated
