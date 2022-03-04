@@ -183,3 +183,11 @@ end
          Point2f[[0.32, 0.66], [0.46, 0.59], [0.09, 0.08]]])
     poly(P, color = [:red, :green], strokecolor = [:blue, :red], strokewidth = 2)
 end
+
+@cell "fast pixel marker" begin
+    scatter(rand(Point2f, 10000), marker=Makie.FastPixel())
+end
+
+@cell "axsi3" begin
+    meshscatter(rand(Point3f, 10), axis=(type=Axis3,))
+end

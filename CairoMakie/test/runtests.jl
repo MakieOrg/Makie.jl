@@ -64,7 +64,8 @@ excludes = Set([
     "Unicode Marker",
     "Depth Shift",
     "Order Independent Transparency",
-    "heatmap transparent colormap"
+    "heatmap transparent colormap",
+    "fast pixel marker"
 ])
 
 functions = [:volume, :volume!, :uv_mesh]
@@ -89,4 +90,3 @@ cp(main_tests_refimages_download_folder, main_tests_refimages_folder)
 
 missing_refimages, scores = ReferenceTests.record_comparison(main_tests_root_folder)
 ReferenceTests.test_comparison(missing_refimages, scores; threshold = 0.032)
-

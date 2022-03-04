@@ -219,19 +219,23 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Union{Scat
             gl_attributes[:preprojection] = map(space, mspace, cam.projectionview) do space, mspace, pv
                 Makie.clip_to_space(cam, mspace) * Makie.space_to_clip(cam, space)
             end
-
-            connect_camera!(gl_attributes, cam, mspace)
+            if !(marker[] isa FastPixel)
+                # fast pixel does its own camera setup
+                connect_camera!(gl_attributes, cam, mspace)
+            end
 
             gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.rotations)
-            gl_attributes[:distancefield][] == nothing && delete!(gl_attributes, :distancefield)
+            isnothing(gl_attributes[:distancefield][]) && delete!(gl_attributes, :distancefield)
             gl_attributes[:uv_offset_width][] == Vec4f(0) && delete!(gl_attributes, :uv_offset_width)
         else
             connect_camera!(gl_attributes, scene.camera)
         end
 
         if marker[] isa FastPixel
+            # connect camera
+            connect_camera!(gl_attributes, cam, get(gl_attributes, :space, :data))
             filter!(gl_attributes) do (k, v,)
-                k in (:color_map, :color, :color_norm, :scale, :model)
+                k in (:color_map, :color, :color_norm, :scale, :model, :projectionview)
             end
             if !(gl_attributes[:color][] isa AbstractVector{<: Number})
                 delete!(gl_attributes, :color_norm)
