@@ -273,10 +273,10 @@ function text_quads(position::VecTypes, gc::GlyphCollection, offset, transfunc)
             gc.glyphs[i], gc.fonts[i], gc.scales[i]
         )
         uvs[i] = glyph_uv_width!(atlas, gc.glyphs[i], gc.fonts[i])
-        scales[i] = widths(glyph_bb) .+ gc.scales[i] * 2pad
-        char_offsets[i] = gc.origins[i] + _offset_at(off, i)
-        quad_offsets[i] = minimum(glyph_bb) .- gc.scales[i] * pad
-    end 
+        scales[i] = widths(glyph_bb) .+ gc.scales[i] .* 2pad
+        char_offsets[i] = gc.origins[i] .+ _offset_at(off, i)
+        quad_offsets[i] = minimum(glyph_bb) .- gc.scales[i] .* pad
+    end
 
     # pos is the (space) position given to text (with transfunc applied)
     # char_offsets are 3D offsets in marker space, including:
@@ -309,10 +309,10 @@ function text_quads(position::Vector, gcs::Vector{<: GlyphCollection}, offset, t
         )
         uvs[k] = glyph_uv_width!(atlas, gc.glyphs[i], gc.fonts[i])
         scales[k] = widths(glyph_bb) .+ gc.scales[i] * 2pad
-        char_offsets[k] = gc.origins[i] + _offset_at(off, j)
-        quad_offsets[k] = minimum(glyph_bb) .- gc.scales[i] * pad
+        char_offsets[k] = gc.origins[i] .+ _offset_at(off, j)
+        quad_offsets[k] = minimum(glyph_bb) .- gc.scales[i] .* pad
         k += 1
-    end 
+    end
 
     return pos, char_offsets, quad_offsets, uvs, scales
 end

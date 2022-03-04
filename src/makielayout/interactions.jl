@@ -187,11 +187,10 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
     return Consume(false)
 end
 
-function rectclamp(p::Point, r::Rect)
-    p = map(p, minimum(r), maximum(r)) do pp, mi, ma
-        clamp(pp, mi, ma)
-    end
-    return Point(p)
+function rectclamp(p::Point{N, T}, r::Rect) where {N, T}
+    mi, ma = extrema(r)
+    p = clamp.(p, mi, ma)
+    return Point{N, T}(p)
 end
 
 function process_interaction(r::RectangleZoom, event::KeysEvent, ax::Axis)
