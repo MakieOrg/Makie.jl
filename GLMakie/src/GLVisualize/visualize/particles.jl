@@ -207,7 +207,7 @@ function draw_scatter(
     data[:image] = images # we don't want this to be overwritten by user
     @gen_defaults! data begin
         shape = RECTANGLE
-        offset = Vec2f(0)
+        quad_offset = Vec2f(0)
     end
     return draw_scatter(p, data)
 end
@@ -224,24 +224,27 @@ function draw_scatter((marker, position), data)
     if isa(to_value(marker), Union{AbstractString, Char})
         scale = data[:scale]
         font = get(data, :font, Observable(Makie.defaultfont()))
-        offset = get(data, :offset, Observable(Vec2f(0)))
+        quad_offset = get(data, :quad_offset, Observable(Vec2f(0)))
 
         # The same scaling that needs to be applied to scale also needs to apply
         # to offset.
-        data[:offset] = map(rescale_glyph, marker, font, offset)
+        data[:quad_offset] = map(rescale_glyph, marker, font, quad_offset)
         data[:scale] = map(rescale_glyph, marker, font, scale)
     end
 
     @gen_defaults! data begin
         shape       = const_lift(x-> Int32(primitive_shape(x)), marker)
         position    = position => GLBuffer
+        marker_offset = Vec3f(0) => GLBuffer;
+
         scale       = const_lift(primitive_scale, marker) => GLBuffer
+
         rotation    = rot => GLBuffer
         image       = nothing => Texture
     end
 
     @gen_defaults! data begin
-        offset          = primitive_offset(marker, scale) => GLBuffer
+        quad_offset     = primitive_offset(marker, scale) => GLBuffer
         intensity       = nothing => GLBuffer
         color_map       = nothing => Texture
         color_norm      = nothing

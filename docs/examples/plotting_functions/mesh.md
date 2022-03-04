@@ -17,9 +17,11 @@
 - `colormap::Union{Symbol, Vector{<:Colorant}} = :viridis` sets the colormap that is sampled for numeric `color`s.
 - `colorrange::Tuple{<:Real, <:Real}` sets the values representing the start and end points of `colormap`.
 - `nan_color::Union{Symbol, <:Colorant} = RGBAf(0,0,0,0)` sets a replacement color for `color = NaN`.
+- `space::Symbol = :data` sets the transformation space for vertex positions. See `Makie.spaces()` for possible inputs.
 - `lowclip::Union{Nothing, Symbol, <:Colorant} = nothing` sets a color for any value below the colorrange.
 - `highclip::Union{Nothing, Symbol, <:Colorant} = nothing` sets a color for any value above the colorrange.
 - `interpolate::Bool = true` wether color=Matrix gets interpolated or not
+
 
 ### Generic 3D
 

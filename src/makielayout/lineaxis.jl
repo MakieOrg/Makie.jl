@@ -174,7 +174,7 @@ function LineAxis(parent::Scene; kwargs...)
         parent, label, textsize = labelsize, color = labelcolor,
         position = labelpos, visible = labelvisible,
         align = labelalign, rotation = labelrotation, font = labelfont,
-        space = :data, inspectable = false
+        markerspace = :data, inspectable = false
     )
 
     decorations[:labeltext] = labeltext
@@ -381,7 +381,7 @@ function LineAxis(parent::Scene; kwargs...)
         font = ticklabelfont,
         color = ticklabelcolor,
         visible = ticklabelsvisible,
-        space = :data,
+        markerspace = :data,
         inspectable = false)
     decorations[:ticklabels] = ticklabels
 

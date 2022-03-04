@@ -27,6 +27,7 @@ using Makie: attribute_per_char, glyph_uv_width!, layout_text
 using Makie: MouseButtonEvent, KeyEvent
 using Makie: apply_transform, transform_func_obs
 using Makie: inline!
+using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
 
 struct WebGL <: ShaderAbstractions.AbstractContext end
 struct WGLBackend <: Makie.AbstractBackend end

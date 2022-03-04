@@ -86,3 +86,19 @@ end
     r2 = Rect2f(pa, pb .- pa)
     @test apply_transform(t1, r2) == Rect2f(apply_transform(t1, pa), apply_transform(t1, pb) .- apply_transform(t1, pa) )
 end
+
+@testset "Coordinate Systems" begin
+    funcs = [Makie.is_data_space, Makie.is_pixel_space, Makie.is_relative_space, Makie.is_clip_space]
+    spaces = [:data, :pixel, :relative, :clip]
+    for (i, f) in enumerate(funcs)
+        for j in 1:4
+            @test f(spaces[j]) == (i == j)
+        end
+    end
+
+    scene = Scene(cam = cam3d!)
+    scatter!(scene, [Point3f(-10), Point3f(10)])
+    for space in vcat(spaces...)
+        @test Makie.clip_to_space(scene.camera, space) * Makie.space_to_clip(scene.camera, space) ≈ Mat4f(I)
+    end
+end

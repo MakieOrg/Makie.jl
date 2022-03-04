@@ -27,7 +27,8 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Lines, 
         end
     end
 
-    projected_positions = project_position.(Ref(scene), positions, Ref(model))
+    space = to_value(get(primitive, :space, :data))
+    projected_positions = project_position.(Ref(scene), Ref(space), positions, Ref(model))
 
     if color isa AbstractArray{<: Number}
         color = numbers_to_colors(color, primitive)
@@ -194,22 +195,12 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Scatter)
                       strokewidth, marker, marker_offset, remove_billboard(rotations)) do point, col,
                           markersize, strokecolor, strokewidth, marker, mo, rotation
 
-        # if we give size in pixels, the size is always equal to that value
-        is_pixelspace = haskey(primitive, :markerspace) && primitive.markerspace[] == Makie.Pixel
-        scale = if is_pixelspace
-            Makie.to_2d_scale(markersize)
-        else
-            # otherwise calculate a scaled size
-            project_scale(scene, markersize, size_model)
-        end
-        offset = if is_pixelspace
-            Makie.to_2d_scale(mo)
-        else
-            project_scale(scene, mo, size_model)
-        end
+        markerspace = to_value(get(primitive, :markerspace, :pixel))
+        scale = project_scale(scene, markerspace, markersize, size_model)
+        offset = project_scale(scene, markerspace, mo, size_model)
 
-        pos = project_position(scene, point, model)
-
+        space = to_value(get(primitive, :space, :data))
+        pos = project_position(scene, space, point, model)
         isnan(pos) && return
 
         Cairo.set_source_rgba(ctx, rgbatuple(col)...)
@@ -276,10 +267,18 @@ function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewid
 end
 
 function draw_marker(ctx, marker::Circle, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
-
     marker_offset = marker_offset + scale ./ 2
     pos += Point2f(marker_offset[1], -marker_offset[2])
-    Cairo.arc(ctx, pos[1], pos[2], scale[1]/2, 0, 2*pi)
+
+    if scale[1] != scale[2]
+        old_matrix = Cairo.get_matrix(ctx)
+        Cairo.scale(ctx, scale[1], scale[2])
+        Cairo.translate(ctx, pos[1]/scale[1], pos[2]/scale[2])
+        Cairo.arc(ctx, 0, 0, 0.5, 0, 2*pi)
+    else
+        Cairo.arc(ctx, pos[1], pos[2], scale[1]/2, 0, 2*pi)
+    end
+
     Cairo.fill_preserve(ctx)
 
     Cairo.set_line_width(ctx, Float64(strokewidth))
@@ -287,6 +286,8 @@ function draw_marker(ctx, marker::Circle, pos, scale, strokecolor, strokewidth, 
     sc = to_color(strokecolor)
     Cairo.set_source_rgba(ctx, rgbatuple(sc)...)
     Cairo.stroke(ctx)
+    scale[1] != scale[2] && Cairo.set_matrix(ctx, old_matrix)
+    nothing
 end
 
 function draw_marker(ctx, marker::Rect, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
@@ -316,29 +317,37 @@ end
 
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text{<:Tuple{<:G}}) where G <: Union{AbstractArray{<:Makie.GlyphCollection}, Makie.GlyphCollection}
     ctx = screen.context
-    @get_attribute(primitive, (rotation, model, space, offset))
+    @get_attribute(primitive, (rotation, model, space, markerspace, offset))
     position = primitive.position[]
     # use cached glyph info
     glyph_collection = to_value(primitive[1])
-    draw_glyph_collection(scene, ctx, position, glyph_collection, remove_billboard(rotation), model, space, offset)
+
+    draw_glyph_collection(
+        scene, ctx, position, glyph_collection, remove_billboard(rotation),
+        model, space, markerspace, offset
+    )
 
     nothing
 end
 
-function draw_glyph_collection(scene, ctx, positions, glyph_collections::AbstractArray, rotation, model::Mat, space, offset)
+
+function draw_glyph_collection(
+        scene, ctx, positions, glyph_collections::AbstractArray, rotation,
+        model::Mat, space, markerspace, offset
+    )
 
     # TODO: why is the Ref around model necessary? doesn't broadcast_foreach handle staticarrays matrices?
-    broadcast_foreach(positions, glyph_collections, rotation,
-        Ref(model), space, offset) do pos, glayout, ro, mo, sp, off
+    broadcast_foreach(positions, glyph_collections, rotation, Ref(model), space,
+        markerspace, offset) do pos, glayout, ro, mo, sp, msp, off
 
-        draw_glyph_collection(scene, ctx, pos, glayout, ro, mo, sp, off)
+        draw_glyph_collection(scene, ctx, pos, glayout, ro, mo, sp, msp, off)
     end
 end
 
 _deref(x) = x
 _deref(x::Ref) = x[]
 
-function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation, model, space, offsets)
+function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation, model, space, markerspace, offsets)
 
     glyphs = glyph_collection.glyphs
     glyphoffsets = glyph_collection.origins
@@ -348,6 +357,8 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
     colors = glyph_collection.colors
     strokewidths = glyph_collection.strokewidths
     strokecolors = glyph_collection.strokecolors
+
+    s2ms = Makie.clip_to_space(scene.camera, markerspace) * Makie.space_to_clip(scene.camera, space)
 
     Cairo.save(ctx)
 
@@ -364,73 +375,36 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
         Cairo.save(ctx)
         Cairo.set_source_rgba(ctx, rgbatuple(color)...)
 
-        if space == :data
-            # in data space, the glyph offsets are just added to the string positions
-            # and then projected
+        # offsets and scale apply in markerspace
+        glyph_pos = s2ms * to_ndim(Point4f, to_ndim(Point3f, position, 0), 1)
+        gp3 = glyph_pos[Vec(1, 2, 3)] ./ glyph_pos[4] .+ glyphoffset .+ p3_offset
 
-            # glyph position in data coordinates (offset has rotation applied already)
-            gpos_data = to_ndim(Point3f, position, 0) .+ glyphoffset .+ p3_offset
+        scale3 = scale isa Number ? Point3f(scale, scale, 0) : to_ndim(Point3f, scale, 0)
 
-            scale3 = scale isa Number ? Point3f(scale, scale, 0) : to_ndim(Point3f, scale, 0)
+        # the CairoMatrix is found by transforming the right and up vector
+        # of the character into screen space and then subtracting the projected
+        # origin. The resulting vectors give the directions in which the character
+        # needs to be stretched in order to match the 3D projection
 
-            # this could be done better but it works at least
+        xvec = rotation * (scale3[1] * Point3f(1, 0, 0))
+        yvec = rotation * (scale3[2] * Point3f(0, -1, 0))
 
-            # the CairoMatrix is found by transforming the right and up vector
-            # of the character into screen space and then subtracting the projected
-            # origin. The resulting vectors give the directions in which the character
-            # needs to be stretched in order to match the 3D projection
+        glyphpos = project_position(scene, markerspace, gp3, _deref(model))
+        xproj = project_position(scene, markerspace, gp3 + xvec, _deref(model))
+        yproj = project_position(scene, markerspace, gp3 + yvec, _deref(model))
 
-            xvec = rotation * (scale3[1] * Point3f(1, 0, 0))
-            yvec = rotation * (scale3[2] * Point3f(0, -1, 0))
+        xdiff = xproj - glyphpos
+        ydiff = yproj - glyphpos
 
-            glyphpos = project_position(scene, gpos_data, _deref(model))
-            xproj = project_position(scene, gpos_data + xvec, _deref(model))
-            yproj = project_position(scene, gpos_data + yvec, _deref(model))
-
-            xdiff = xproj - glyphpos
-            ydiff = yproj - glyphpos
-
-            mat = Cairo.CairoMatrix(
-                xdiff[1], xdiff[2],
-                ydiff[1], ydiff[2],
-                0, 0,
-            )
-
-        elseif space == :screen
-            # in screen space, the glyph offsets are added after projecting
-            # the string position into screen space
-            glyphpos = let
-                # project without yflip - we need to apply model before that
-                p = project_position(scene, position, Mat4f(I), false)
-
-                # flip for Cairo
-                p += (p3_to_p2(glyphoffset .+ p3_offset))
-                p = (_deref(model) * Vec4f(p[1], p[2], 0, 1))[Vec(1, 2)]
-                p = (0, 1) .* scene.camera.resolution[] .+ p .* (1, -1)
-                p
-            end
-            # and the scale is just taken as is
-            scale = length(scale) == 2 ? scale : Vec(scale, scale)
-
-            mat = let
-                scale_mat = if length(scale) == 2
-                    Mat2f(scale[1], 0, 0, scale[2])
-                else
-                    Mat2f(scale, 0, 0, scale)
-                end
-                T = _deref(model)[Vec(1, 2), Vec(1, 2)] * scale_mat
-                Cairo.CairoMatrix(T[1, 1], T[1, 2], T[2, 1], T[2, 2], 0, 0)
-            end
-        else
-            error()
-        end
+        mat = Cairo.CairoMatrix(
+            xdiff[1], xdiff[2],
+            ydiff[1], ydiff[2],
+            0, 0,
+        )
 
         Cairo.save(ctx)
         Cairo.move_to(ctx, glyphpos...)
         set_font_matrix(ctx, mat)
-        if space == :screen
-            Cairo.rotate(ctx, to_2d_rotation(rotation))
-        end
         Cairo.show_text(ctx, string(glyph))
         Cairo.restore(ctx)
 
@@ -438,9 +412,6 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
             Cairo.save(ctx)
             Cairo.move_to(ctx, glyphpos...)
             set_font_matrix(ctx, mat)
-            if space == :screen
-                Cairo.rotate(ctx, to_2d_rotation(rotation))
-            end
             Cairo.text_path(ctx, string(glyph))
             Cairo.set_source_rgba(ctx, rgbatuple(strokecolor)...)
             Cairo.set_line_width(ctx, strokewidth)
@@ -546,8 +517,9 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
 
         # find projected image corners
         # this already takes care of flipping the image to correct cairo orientation
-        xy = project_position(scene, Point2f(first.(imsize)), model)
-        xymax = project_position(scene, Point2f(last.(imsize)), model)
+        space = to_value(get(primitive, :space, :data))
+        xy = project_position(scene, space, Point2f(first.(imsize)), model)
+        xymax = project_position(scene, space, Point2f(last.(imsize)), model)
         w, h = xymax .- xy
 
         s = to_cairo_image(image, primitive)
@@ -578,7 +550,8 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
         end
         # find projected image corners
         # this already takes care of flipping the image to correct cairo orientation
-        xys = [project_position(scene, Point2f(x, y), model) for x in xs, y in ys]
+        space = to_value(get(primitive, :space, :data))
+        xys = [project_position(scene, space, Point2f(x, y), model) for x in xs, y in ys]
         colors = to_rgba_image(image, primitive)
 
         # Note: xs and ys should have size ni+1, nj+1
@@ -655,8 +628,9 @@ function draw_mesh2D(scene, screen, primitive)
     pattern = Cairo.CairoPatternMesh()
 
     cols = per_face_colors(color, colormap, colorrange, nothing, vs, fs, nothing, uv)
+    space = to_value(get(primitive, :space, :data))
     for (f, (c1, c2, c3)) in zip(fs, cols)
-        t1, t2, t3 =  project_position.(scene, vs[f], (model,)) #triangle points
+        t1, t2, t3 =  project_position.(scene, space, vs[f], (model,)) #triangle points
         Cairo.mesh_pattern_begin_patch(pattern)
 
         Cairo.mesh_pattern_move_to(pattern, t1...)
@@ -698,8 +672,9 @@ function draw_mesh3D(
     ctx = screen.context
 
     model = primitive.model[]
-    view = scene.camera.view[]
-    projection = scene.camera.projection[]
+    space = to_value(get(primitive, :space, :data))::Symbol
+    view = ifelse(is_data_space(space), scene.camera.view[], Mat4f(I))
+    projection = Makie.space_to_clip(scene.camera, space, false)
     i = Vec(1, 2, 3)
     normalmatrix = transpose(inv(view[i, i] * model[i, i]))
 
