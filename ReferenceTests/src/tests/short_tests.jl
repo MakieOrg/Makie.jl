@@ -185,9 +185,9 @@ end
 end
 
 @cell "fast pixel marker" begin
-    scatter(rand(Point2f, 10000), marker=Makie.FastPixel())
+    scatter(RNG.rand(Point2f, 10000), marker=Makie.FastPixel())
 end
 
 @cell "axsi3" begin
-    meshscatter(rand(Point3f, 10), axis=(type=Axis3,))
+    meshscatter(RNG.rand(Point3f, 10), axis=(type=Axis3,))
 end
