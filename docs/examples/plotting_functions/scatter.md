@@ -17,13 +17,14 @@
 - `colormap::Union{Symbol, Vector{<:Colorant}} = :viridis` sets the colormap that is sampled for numeric `color`s.
 - `colorrange::Tuple{<:Real, <:Real}` sets the values representing the start and end points of `colormap`.
 - `nan_color::Union{Symbol, <:Colorant} = RGBAf(0,0,0,0)` sets a replacement color for `color = NaN`.
-
+- `space::Symbol = :data` sets the transformation space for positions of markers. See `Makie.spaces()` for possible inputs.
+  
 ### Other
 
 - `cycle::Vector{Symbol} = [:color]` sets which attributes to cycle when creating multiple plots.
 - `marker::Union{Symbol, Char, Matrix{<:Colorant}}` sets the scatter marker.
 - `markersize::Union{<:Real, Vec2f} = 9` sets the size of the marker.
-- `markerspace::Union{Type{Pixel}, Type{SceneSpace}} = Pixel` sets the space in which `markersize` is given. (I.e. `Pixel` units or `SceneSpace` (data) units)
+- `markerspace::Symbol = :pixel` sets the space in which `markersize` is given. See `Makie.spaces()` for possible inputs.
 - `strokewidth::Real = 0` sets the width of the outline around a marker.
 - `strokecolor::Union{Symbol, <:Colorant} = :black` sets the color of the outline around a marker.
 - `glowwidth::Real = 0` sets the size of a glow effect around the marker.

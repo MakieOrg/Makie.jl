@@ -49,7 +49,7 @@ function layoutable(::Type{Button}, fig_or_scene::FigureLike; bbox = nothing, kw
     lcolors = (; out = labelcolor, active = labelcolor_active, hover = labelcolor_hover)
     lcolor = lift((s,_...)->lcolors[s][], Any, mousestate, values(lcolors)...)
     labeltext = text!(subscene, label, position = textpos, textsize = textsize, font = font,
-        color = lcolor, align = (:center, :center), space = :data, inspectable = false)
+        color = lcolor, align = (:center, :center), markerspace = :data, inspectable = false)
 
     decorations[:label] = labeltext
 
