@@ -203,23 +203,23 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
 
         screen_to_scene([p for pair in screenendpoints_shifted_pairs for p in pair], scene)
     end
-
-    whiskercolors = lift(Any, color) do color
+    whiskercolors = Observable{RGBColors}()
+    map!(whiskercolors, color) do color
         # we have twice as many linesegments for whiskers as we have errorbars, so we
         # need to duplicate colors if a vector of colors is given
         if color isa AbstractVector
-            repeat(color, inner = 2)
+            return repeat(to_color(color), inner = 2)::RGBColors
         else
-            color
+            return to_color(color)::RGBAf
         end
     end
-
-    whiskerlinewidths = lift(Any, linewidth) do linewidth
+    whiskerlinewidths = Observable{Union{Float32, Vector{Float32}}}()
+    map!(whiskerlinewidths, linewidth) do linewidth
         # same for linewidth
         if linewidth isa AbstractVector
-            repeat(linewidth, inner = 2)
+            return repeat(convert(Vector{Float32}, linewidth), inner = 2)::Vector{Float32}
         else
-            linewidth
+            return convert(Float32, linewidth)
         end
     end
 
