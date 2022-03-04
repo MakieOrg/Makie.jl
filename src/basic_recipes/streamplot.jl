@@ -184,7 +184,7 @@ function plot!(p::StreamPlot)
         rotations = lift(scene.camera.projectionview, scene.px_area, data) do pv, pxa, data
             angles = map(data[1], data[2]) do pos, dir
                 pstart = project(scene, pos)
-                pstop = project(scene, pos + dir)
+                pstop = project(scene, pos .+ dir)
                 pdir = pstop - pstart
                 n = norm(pdir)
                 if n == 0

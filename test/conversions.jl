@@ -28,10 +28,6 @@ end
     V2 = to_vertices(X2)
     @test Float32(X2[7][1]) == V2[7][1]
 
-    X3 = [SVector(rand(3)...) for i = 1:10]
-    V3 = to_vertices(X3)
-    @test Float32(X3[7][1]) == V3[7][1]
-
     X4 = rand(2,10)
     V4 = to_vertices(X4)
     @test Float32(X4[1,7]) == V4[7][1]

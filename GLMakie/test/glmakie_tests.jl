@@ -3,7 +3,6 @@ using GLMakie.GLFW
 using GLMakie.ModernGL
 using GLMakie.ShaderAbstractions
 using GLMakie.ShaderAbstractions: Sampler
-using GLMakie.StaticArrays
 using GLMakie.GeometryBasics
 using ReferenceTests.RNG
 

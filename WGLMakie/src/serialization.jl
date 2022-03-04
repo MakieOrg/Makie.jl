@@ -140,7 +140,8 @@ end
 
 lasset(paths...) = read(joinpath(@__DIR__, "..", "assets", paths...), String)
 
-isscalar(x::StaticArrays.StaticArray) = true
+isscalar(x::StaticVector) = true
+isscalar(x::Mat) = true
 isscalar(x::AbstractArray) = false
 isscalar(x::Billboard) = isscalar(x.rotation)
 isscalar(x::Observable) = isscalar(x[])

@@ -134,7 +134,6 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
                 holes = polygroup[2:end]
                 push!(polys[], GeometryBasics.Polygon(outline, holes))
                 # use contour level center value as color
-                center_scaled = (center - colorrange[][1]) / (colorrange[][2] - colorrange[][1])
                 push!(colors[], center)
             end
         end

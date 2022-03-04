@@ -114,16 +114,16 @@ This is not perfect but works well enough. Check an A vs X to see the difference
 function rotatedrect(rect::Rect{2}, angle)
     ox, oy = rect.origin
     wx, wy = rect.widths
-    points = @SMatrix([
-        ox oy;
-        ox oy+wy;
-        ox+wx oy;
-        ox+wx oy+wy;
-    ])
-    mrot = @SMatrix([
-        cos(angle) -sin(angle);
-        sin(angle) cos(angle);
-    ])
+    points = Mat(
+        ox, oy,
+        ox, oy+wy,
+        ox+wx, oy,
+        ox+wx, oy+wy
+    )
+    mrot = Mat(
+        cos(angle), -sin(angle),
+        sin(angle), cos(angle)
+    )
     rotated = mrot * points'
 
     rmins = minimum(rotated, dims = 2)

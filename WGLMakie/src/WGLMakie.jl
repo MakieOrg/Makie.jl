@@ -10,7 +10,6 @@ using LinearAlgebra
 using GeometryBasics
 using ImageMagick
 using FreeTypeAbstraction
-using StaticArrays
 
 using JSServe: Session
 using JSServe: @js_str, onjs, Dependency, App
@@ -20,6 +19,7 @@ using RelocatableFolders: @path
 
 using ShaderAbstractions: VertexArray, Buffer, Sampler, AbstractSampler
 using ShaderAbstractions: InstancedProgram
+using GeometryBasics: StaticVector
 
 import Makie.FileIO
 using Makie: get_texture_atlas, glyph_uv_width!, SceneSpace, Pixel

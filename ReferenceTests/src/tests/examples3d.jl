@@ -386,7 +386,7 @@ end
     x = loadasset("cat.obj")
     mesh(x, color=:black)
     pos = map(decompose(Point3f, x), GeometryBasics.normals(x)) do p, n
-        p => p .+ (normalize(n) .* 0.05f0)
+        p => p .+ Point(normalize(n) .* 0.05f0)
     end
     linesegments!(pos, color=:blue)
     current_figure()

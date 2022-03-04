@@ -158,9 +158,9 @@ function orthographicprojection(
 end
 
 function orthographicprojection(
-        left  ::T, right::T,
-        bottom::T, top  ::T,
-        znear ::T, zfar ::T
+        left::T, right::T,
+        bottom::T, top::T,
+        znear::T, zfar::T
     ) where T
     (right==left || bottom==top || znear==zfar) && return Mat{4,4,T}(I)
     T0, T1, T2 = zero(T), one(T), T(2)
@@ -283,7 +283,7 @@ function project(scene::Scene, point::T) where T<:StaticVector
     return project(
         cam.projectionview[] *
         transformationmatrix(scene)[],
-        Vec2f(widths(pixelarea(scene)[])), point
+        Vec2f(widths(pixelarea(scene)[])), Point(point)
     )
 end
 
@@ -296,9 +296,9 @@ end
 function project(proj_view::Mat4f, resolution::Vec2, point::Point)
     p4d = to_ndim(Vec4f, to_ndim(Vec3f, point, 0f0), 1f0)
     clip = proj_view * p4d
-    p = (clip / clip[4])[Vec(1, 2)]
+    p = (clip ./ clip[4])[Vec(1, 2)]
     p = Vec2f(p[1], p[2])
-    return (((p .+ 1f0) / 2f0) .* (resolution .- 1f0)) .+ 1f0
+    return (((p .+ 1f0) ./ 2f0) .* (resolution .- 1f0)) .+ 1f0
 end
 
 function project_point2(mat4::Mat4, point2::Point2)

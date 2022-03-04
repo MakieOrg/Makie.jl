@@ -240,28 +240,28 @@ function scene_to_screen(pts, scene)
     p4 = to_ndim.(Vec4f, to_ndim.(Vec3f, pts, 0.0), 1.0)
     p1m1 = Ref(scene.camera.projectionview[]) .* p4
     projected = Ref(inv(scene.camera.pixel_space[])) .* p1m1
-    [Point2.(p[1:2]...) for p in projected]
+    [Point2.(p[Vec(1, 2)]...) for p in projected]
 end
 
 function screen_to_scene(pts, scene)
     p4 = to_ndim.(Vec4f, to_ndim.(Vec3f, pts, 0.0), 1.0)
     p1m1 = Ref(scene.camera.pixel_space[]) .* p4
     projected = Ref(inv(scene.camera.projectionview[])) .* p1m1
-    [Point2.(p[1:2]...) for p in projected]
+    [Point2.(p[Vec(1, 2)]...) for p in projected]
 end
 
 function scene_to_screen(p::T, scene) where T <: Point
     p4 = to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), 1.0)
     p1m1 = scene.camera.projectionview[] * p4
     projected = inv(scene.camera.pixel_space[]) * p1m1
-    T(projected[1:2]...)
+    T(projected[Vec(1, 2)]...)
 end
 
 function screen_to_scene(p::T, scene) where T <: Point
     p4 = to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), 1.0)
     p1m1 = scene.camera.pixel_space[] * p4
     projected = inv(scene.camera.projectionview[]) * p1m1
-    T(projected[1:2]...)
+    T(projected[Vec(1, 2)]...)
 end
 
 

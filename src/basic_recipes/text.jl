@@ -217,7 +217,7 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
     end
 
     xshift = if halign == :center
-        width(bb) / 2
+        width(bb) ./ 2
     elseif halign == :left
         minimum(bb)[1]
     elseif halign == :right
@@ -232,7 +232,7 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
         minimum(bb)[2]
     end
 
-    positions = basepositions .- Ref(Point3f(xshift, yshift, 0))
+    positions = basepositions .- Ref(Vec3f(xshift, yshift, 0))
     positions .= Ref(rot) .* positions
 
     pre_align_gl = GlyphCollection(

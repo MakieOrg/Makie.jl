@@ -245,7 +245,7 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, args.
     axisnames_size = (%) .* axisnames_size
 
     # index of the direction in which ticks and labels are drawn
-    offset_indices = [ifelse(i != 2, mod1(i + 1, N), 1) for i in 1:N]
+    offset_indices = Vec(ntuple(i-> ifelse(i != 2, mod1(i + 1, N), 1), N))
     # These need the real limits, not (%), to be scale-aware
     titlegap = 0.01limit_widths[offset_indices] .* titlegap
     tgap = 0.01limit_widths[offset_indices] .* tgap

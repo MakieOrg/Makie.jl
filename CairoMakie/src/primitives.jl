@@ -309,7 +309,7 @@ end
 
 function p3_to_p2(p::Point3{T}) where T
     if p[3] == 0 || isnan(p[3])
-        Point2{T}(p[1:2]...)
+        Point2{T}(p[Vec(1,2)]...)
     else
         error("Can't reduce Point3 to Point2 with nonzero third component $(p[3]).")
     end
@@ -333,7 +333,7 @@ end
 
 function draw_glyph_collection(
         scene, ctx, positions, glyph_collections::AbstractArray, rotation,
-        model::SMatrix, space, markerspace, offset
+        model::Mat, space, markerspace, offset
     )
 
     # TODO: why is the Ref around model necessary? doesn't broadcast_foreach handle staticarrays matrices?
@@ -377,7 +377,7 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
 
         # offsets and scale apply in markerspace
         glyph_pos = s2ms * to_ndim(Point4f, to_ndim(Point3f, position, 0), 1)
-        gp3 = glyph_pos[SOneTo(3)] ./ glyph_pos[4] .+ glyphoffset .+ p3_offset
+        gp3 = glyph_pos[Vec(1, 2, 3)] ./ glyph_pos[4] .+ glyphoffset .+ p3_offset
 
         scale3 = scale isa Number ? Point3f(scale, scale, 0) : to_ndim(Point3f, scale, 0)
 
@@ -663,16 +663,16 @@ function draw_mesh3D(
     @get_attribute(primitive, (color, shading, diffuse,
         specular, shininess, faceculling))
 
-    colormap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
-    colorrange = get(primitive, :colorrange, nothing) |> to_value
-    matcap = get(primitive, :matcap, nothing) |> to_value
+    colormap = to_colormap(to_value(get(primitive, :colormap, nothing)))
+    colorrange = to_value(get(primitive, :colorrange, nothing))
+    matcap = to_value(get(primitive, :matcap, nothing))
     # Priorize colors of the mesh if present
     color = hasproperty(mesh, :color) ? mesh.color : color
 
     ctx = screen.context
 
     model = primitive.model[]
-    space = to_value(get(primitive, :space, :data))
+    space = to_value(get(primitive, :space, :data))::Symbol
     view = ifelse(is_data_space(space), scene.camera.view[], Mat4f(I))
     projection = Makie.space_to_clip(scene.camera, space, false)
     i = Vec(1, 2, 3)
@@ -694,9 +694,9 @@ function draw_mesh3D(
     ns = map(n -> normalize(normalmatrix * n), decompose_normals(mesh))
     cols = per_face_colors(
         color, colormap, colorrange, matcap, vs, fs, ns, uv,
-        get(primitive, :lowclip, nothing) |> to_value |> color_or_nothing,
-        get(primitive, :highclip, nothing) |> to_value |> color_or_nothing,
-        get(primitive, :nan_color, nothing) |> to_value |> color_or_nothing
+        color_or_nothing(to_value(get(primitive, :lowclip, nothing))) ,
+        color_or_nothing(to_value(get(primitive, :highclip, nothing))) ,
+        color_or_nothing(to_value(get(primitive, :nan_color, nothing)))
     )
 
     # Liight math happens in view/camera space
@@ -723,7 +723,7 @@ function draw_mesh3D(
         @inbounds begin
             p = (clip ./ clip[4])[Vec(1, 2)]
             p_yflip = Vec2f(p[1], -p[2])
-            p_0_to_1 = (p_yflip .+ 1f0) / 2f0
+            p_0_to_1 = (p_yflip .+ 1f0) ./ 2f0
         end
         p = p_0_to_1 .* scene.camera.resolution[]
         return Vec3f(p[1], p[2], clip[3])
@@ -745,7 +745,7 @@ function draw_mesh3D(
             map(ns[f], vs[f], cols[k]) do N, v, c
                 L = normalize(lightpos .- v[Vec(1,2,3)])
                 diff_coeff = max(dot(L, N), 0.0)
-                H = normalize(L + normalize(-v[SOneTo(3)]))
+                H = normalize(L + normalize(-v[Vec(1, 2, 3)]))
                 spec_coeff = max(dot(H, N), 0.0)^shininess
                 c = RGBA(c)
                 new_c = (ambient .+ diff_coeff .* diffuse) .* Vec3f(c.r, c.g, c.b) .+
