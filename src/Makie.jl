@@ -215,7 +215,7 @@ export to_world
 export mouseover, onpick, pick, Events, Keyboard, Mouse, mouse_selection, is_mouseinside
 export ispressed, Exclusively
 export register_callbacks
-export window_area, window_open, mouse_buttons, mouse_position, mouseposition_px, 
+export window_area, window_open, mouse_buttons, mouse_position, mouseposition_px,
        scroll, keyboard_buttons, unicode_input, dropped_files, hasfocus, entered_window
 export disconnect!
 export DataInspector
@@ -292,6 +292,7 @@ end
 include("figureplotting.jl")
 include("basic_recipes/series.jl")
 include("basic_recipes/text.jl")
+include("basic_recipes/raincloud.jl")
 
 export Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter, Surface, Text, Volume
 export heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface, text, volume
