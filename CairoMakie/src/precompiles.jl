@@ -95,7 +95,7 @@ function _precompile_()
     uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
     model = Mat4f(I)
     cols = per_face_colors(color, nothing, nothing, nothing, vs, fs, nothing, uv)
-    CairoMakie.draw_mesh2D(scene, screen, cols, vs, fs, model)
+    CairoMakie.draw_mesh2D(scene, screen, cols, :data, vs, fs, model)
 
     mesh2 = GeometryBasics.normal_mesh(Sphere(Point3f(0), 1f0))
 
@@ -108,7 +108,8 @@ function _precompile_()
         diffuse=Vec3f(1),
         specular=Vec3f(0),
         shininess=2f0,
-        faceculling=-10
+        faceculling=-10,
+        space=:data
     )
 
     CairoMakie.draw_mesh3D(scene, screen, attributes, mesh2)

@@ -698,20 +698,21 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
         specular, shininess, faceculling))
 
     model = attributes.model[]::Mat4f
+    space = to_value(get(attributes, :space, :data))::Symbol
+
     draw_mesh3D(
-        scene, screen, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
+        scene, screen, space, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
         model, shading::Bool, diffuse::Vec3f,
         specular::Vec3f, shininess::Float32, faceculling::Int
     )
 end
 
 function draw_mesh3D(
-        scene, screen, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
+        scene, screen, space, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
         model, shading, diffuse,
         specular, shininess, faceculling
     )
     ctx = screen.context
-    space = to_value(get(primitive, :space, :data))::Symbol
     view = ifelse(is_data_space(space), scene.camera.view[], Mat4f(I))
     projection = Makie.space_to_clip(scene.camera, space, false)
     i = Vec(1, 2, 3)
