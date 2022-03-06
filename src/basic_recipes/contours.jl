@@ -190,7 +190,8 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         lines!(
             plot, lift(first, result);
             color = lift(last, result), linewidth = plot[:linewidth],
-            inspectable = plot[:inspectable]
+            inspectable = plot[:inspectable],
+            transparency = plot[:transparency]
         )
     end
     plot
