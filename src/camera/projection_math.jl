@@ -325,6 +325,24 @@ function space_to_clip(cam::Camera, space::Symbol, projectionview::Bool=true)
     end
 end
 
+function space_to_clip(cam::Camera, spaces::Tuple, projectionview::Bool=true)
+    Mat4f((
+        space_to_clip(cam, get(spaces, i, :data), projectionview)[i, j] 
+        for j in 1:4 for i in 1:4
+    )...)
+end
+
+function space_to_clip_view(cam::Camera, space::Symbol)
+    return is_data_space(space) ? cam.view[] : Mat4f(I)
+end
+
+function space_to_clip_view(cam::Camera, spaces::Tuple)
+    Mat4f((
+        space_to_clip_view(cam, get(spaces, i, :data))[i, j] 
+        for j in 1:4 for i in 1:4
+    )...)
+end
+
 function clip_to_space(cam::Camera, space::Symbol)
     if is_data_space(space)
         return inv(cam.projectionview[])
@@ -340,7 +358,15 @@ function clip_to_space(cam::Camera, space::Symbol)
     end
 end
 
-function project(cam::Camera, input_space::Symbol, output_space::Symbol, pos)
+function clip_to_space(cam::Camera, spaces::Tuple)
+    Mat4f((
+        space_to_clip_view(cam, get(spaces, i, :data))[i, j] 
+        for j in 1:4 for i in 1:4
+    )...)
+end
+
+
+function project(cam::Camera, input_space::Union{Tuple, Symbol}, output_space::Union{Tuple, Symbol}, pos)
     input_space === output_space && return to_ndim(Point3f, pos, 0)
     clip_from_input = space_to_clip(cam, input_space)
     output_from_clip = clip_to_space(cam, output_space)
