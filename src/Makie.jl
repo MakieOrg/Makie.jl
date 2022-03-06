@@ -27,7 +27,6 @@ using Markdown
 using DocStringExtensions # documentation
 using Serialization # serialize events
 using StructArrays
-using StaticArrays
 # Text related packages
 using FreeType
 using FreeTypeAbstraction
@@ -48,7 +47,7 @@ import SparseArrays
 using MakieCore
 using OffsetArrays
 
-using GeometryBasics: widths, positive_widths, VecTypes, AbstractPolygon, value
+using GeometryBasics: widths, positive_widths, VecTypes, AbstractPolygon, value, StaticVector
 using Distributions: Distribution, VariateForm, Discrete, QQPair, pdf, quantile, qqbuild
 
 import FileIO: save

@@ -81,7 +81,7 @@ function Camera(px_area)
     view = Observable(Mat4f(I))
     proj = Observable(Mat4f(I))
     proj_view = map(*, proj, view)
-    Camera(
+    return Camera(
         pixel_space,
         view,
         proj,
@@ -96,7 +96,8 @@ function set_proj_view!(camera::Camera, projection, view)
     # hack, to not double update projectionview
     # TODO, this makes code doing on(view), not work correctly...
     # But nobody should do that, right?
-    camera.view.val = view
+    # GLMakie uses map on view
+    camera.view[] = view
     camera.projection[] = projection
 end
 

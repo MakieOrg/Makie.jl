@@ -10,7 +10,7 @@ end
 
 @cell "char marker scenespace" begin
     f, ax, pl = lines(Rect(0, 0, 1, 1), linewidth=4)
-    scatter!([Point2f(0.5, 0.5)], markersize=1, markerspace=SceneSpace, marker='I')
+    scatter!([Point2f(0.5, 0.5)], markersize=1, markerspace=:data, marker='I')
     f
 end
 
@@ -22,7 +22,7 @@ end
 @cell "scatter rotation" begin
     angles = range(0, stop=2pi, length=20)
     pos = Point2f.(sin.(angles), cos.(angles))
-    f, ax, pl = scatter(pos, markersize=0.2, markerspace=SceneSpace, rotations=-angles, marker='▲', axis=(;aspect = DataAspect()))
+    f, ax, pl = scatter(pos, markersize=0.2, markerspace=:data, rotations=-angles, marker='▲', axis=(;aspect = DataAspect()))
     scatter!(pos, markersize=10, color=:red)
     f
 end
@@ -182,4 +182,12 @@ end
     P = Polygon.([Point2f[[0.45, 0.05], [0.64, 0.15], [0.37, 0.62]],
          Point2f[[0.32, 0.66], [0.46, 0.59], [0.09, 0.08]]])
     poly(P, color = [:red, :green], strokecolor = [:blue, :red], strokewidth = 2)
+end
+
+@cell "fast pixel marker" begin
+    scatter(RNG.rand(Point2f, 10000), marker=Makie.FastPixel())
+end
+
+@cell "axsi3" begin
+    meshscatter(RNG.rand(Point3f, 10), axis=(type=Axis3,))
 end

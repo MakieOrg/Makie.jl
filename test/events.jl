@@ -10,22 +10,22 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
 @testset "PriorityObservable" begin
     po = PriorityObservable(0)
 
-    first = Observable(0.0)
-    second = Observable(0.0)
-    third = Observable(0.0)
+    first = Observable(UInt64(0))
+    second = Observable(UInt64(0))
+    third = Observable(UInt64(0))
 
     on(po, priority=1) do x
         sleep(0)
-        first[] = time()
+        first[] = time_ns()
     end
     on(po, priority=0) do x
         sleep(0)
-        second[] = time()
+        second[] = time_ns()
         return Consume(isodd(x))
     end
     on(po, priority=-1) do x
         sleep(0)
-        third[] = time()
+        third[] = time_ns()
         return Consume(false)
     end
 
