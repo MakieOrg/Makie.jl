@@ -58,56 +58,25 @@ function three_display(session::Session, scene::Scene)
         TEXTURE_ATLAS_CHANGED[] = false
     end
 
-    JSServe.register_resource!(session, serialized)
     window_open = scene.events.window_open
-
     width, height = size(scene)
-
     canvas = DOM.um("canvas", tabindex="0")
     wrapper = DOM.div(canvas)
     comm = Observable(Dict{String,Any}())
-    push!(session, comm)
-
     scene_data = Observable(serialized)
-
     canvas_width = lift(x -> [round.(Int, widths(x))...], pixelarea(scene))
-
-    scene_id = objectid(scene)
     setup = js"""
-    function setup(scenes){
-        const canvas = $(canvas)
-
-        const scene_id = $(scene_id)
-        const renderer = $(WGL).threejs_module(canvas, $comm, $width, $height)
-        if ( renderer ) {
-            const three_scenes = scenes.map(x=> $(WGL).deserialize_scene(x, canvas))
-            const cam = new $(THREE).PerspectiveCamera(45, 1, 0, 100)
-            $(WGL).start_renderloop(renderer, three_scenes, cam, $(CONFIG.fps[]))
-            JSServe.on_update($canvas_width, w_h => {
-                // `renderer.setSize` correctly updates `canvas` dimensions
-                const pixelRatio = renderer.getPixelRatio();
-                renderer.setSize(w_h[0] / pixelRatio, w_h[1] / pixelRatio);
-            })
-        } else {
-            const warning = $(WEBGL).getWebGLErrorMessage();
-            $(wrapper).removeChild(canvas)
-            $(wrapper).appendChild(warning)
-        }
+    function onload(wrapper) {
+        (async () => {
+            const WGLMakie = await $(WGL)
+            WGLMakie.create_scene(wrapper, $canvas, $canvas_width, $scene_data, $comm, $width, $height, $(CONFIG.fps[]))
+        })()
     }
     """
 
-    onjs(session, scene_data, setup)
-    scene_data[] = scene_data[]
+    JSServe.onload(session, wrapper, setup)
+
     connect_scene_events!(scene, comm)
     three = ThreeDisplay(session)
-
-    on(session.on_close) do closed
-        if closed
-            scene_uuids, plot_uuids = all_plots_scenes(scene)
-            WGL.delete_scenes(session, scene_uuids, plot_uuids)
-            window_open[] = false
-        end
-    end
-
     return three, wrapper
 end

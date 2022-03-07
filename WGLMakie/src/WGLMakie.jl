@@ -12,7 +12,7 @@ using ImageMagick
 using FreeTypeAbstraction
 
 using JSServe: Session
-using JSServe: @js_str, onjs, Dependency, App
+using JSServe: @js_str, onjs, App, ES6Module
 using JSServe.DOM
 
 using RelocatableFolders: @path
@@ -32,9 +32,7 @@ using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_s
 struct WebGL <: ShaderAbstractions.AbstractContext end
 struct WGLBackend <: Makie.AbstractBackend end
 
-const THREE = Dependency(:THREE, ["https://unpkg.com/three@0.136.0/build/three.js"])
-const WGL = Dependency(:WGLMakie, [@path joinpath(@__DIR__, "wglmakie.js")])
-const WEBGL = Dependency(:WEBGL, [@path joinpath(@__DIR__, "WEBGL.js")])
+const WGL = ES6Module(@path joinpath(@__DIR__, "wglmakie.js"))
 
 include("three_plot.jl")
 include("serialization.jl")
@@ -68,13 +66,8 @@ const TEXTURE_ATLAS_CHANGED = Ref(false)
 function __init__()
     # Activate WGLMakie as backend!
     activate!()
-    browser_display = JSServe.BrowserDisplay() in Base.Multimedia.displays
-    Makie.inline!(!browser_display)
-    # We need to update the texture atlas whenever it changes!
-    # We do this in three_plot!
-    Makie.font_render_callback!() do sd, uv
-        TEXTURE_ATLAS_CHANGED[] = true
-    end
+    # browser_display = JSServe.BrowserDisplay() in Base.Multimedia.displays
+    # Makie.inline!(!browser_display)
 end
 
 # re-export Makie, including deprecated names
