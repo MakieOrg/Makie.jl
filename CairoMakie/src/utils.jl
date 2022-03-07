@@ -3,7 +3,6 @@
 ################################################################################
 
 function project_position(scene, space, point, model, yflip = true)
-
     # use transform func
     point = Makie.apply_transform(scene.transformation.transform_func[], point)
 
@@ -27,16 +26,16 @@ function project_scale(scene::Scene, space, s::Number, model = Mat4f(I))
 end
 
 function project_scale(scene::Scene, space, s, model = Mat4f(I))
-    if is_data_space(space)
-        p4d = to_ndim(Vec4f, s, 0f0)
-        @inbounds p = (scene.camera.projectionview[] * model * p4d)[Vec(1, 2)]
-        return p .* scene.camera.resolution[] .* 0.5
-    elseif is_pixel_space(space)
+    if is_pixel_space(space)
         return Vec2f(s)
     elseif is_relative_space(space)
         return Vec2f(s) .* scene.camera.resolution[]
-    else # clip
+    elseif is_clip_space(space)
         return Vec2f(s) .* scene.camera.resolution[] .* 0.5f0
+    else # data or mixed space
+        p4d = to_ndim(Vec4f, s, 0f0)
+        @inbounds p = (Makie.space_to_clip(scene.camera, space) * model * p4d)[Vec(1, 2)]
+        return p .* scene.camera.resolution[] .* 0.5
     end
 end
 
