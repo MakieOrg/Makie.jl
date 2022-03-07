@@ -432,56 +432,6 @@ function apply_format(value, formatstring::String)
 end
 
 
-# helper function to create either h or vlines depending on `direction`
-# this works only with Axes because it needs to react to limit changes
-function hvlines!(ax::Axis, direction::Int, datavals, axmins, axmaxs; attributes...)
-
-    datavals, axmins, axmaxs = map(x -> x isa Observable ? x : Observable(x), (datavals, axmins, axmaxs))
-
-    linesegs = lift(ax.finallimits, ax.scene.px_area, datavals, axmins, axmaxs) do lims, pxa,
-            datavals, axmins, axmaxs
-
-        xlims = (minimum(lims)[direction], maximum(lims)[direction])
-        xfrac(f) = xlims[1] + f * (xlims[2] - xlims[1])
-        segs = broadcast(datavals, axmins, axmaxs) do dataval, axmin, axmax
-            if direction == 1
-                (Point2f(xfrac(axmin), dataval), Point2f(xfrac(axmax), dataval))
-            elseif direction == 2
-                (Point2f(dataval, xfrac(axmin)), Point2f(dataval, xfrac(axmax)))
-            else
-                error("direction must be 1 or 2")
-            end
-        end
-        # handle case that none of the inputs is an array, but we need an array for linesegments!
-        if segs isa Tuple
-            segs = [segs]
-        end
-        segs
-    end
-
-    linesegments!(ax, linesegs; xautolimits = direction == 2, yautolimits = direction == 1, attributes...)
-end
-
-"""
-    hlines!(ax::Axis, ys; xmin = 0.0, xmax = 1.0, attrs...)
-
-Create horizontal lines across `ax` at `ys` in data coordinates and `xmin` to `xmax`
-in axis coordinates (0 to 1). All three of these can have single or multiple values because
-they are broadcast to calculate the final line segments.
-"""
-hlines!(ax::Axis, ys; xmin = 0.0, xmax = 1.0, attrs...) =
-    hvlines!(ax, 1, ys, xmin, xmax; attrs...)
-
-"""
-    vlines!(ax::Axis, xs; ymin = 0.0, ymax = 1.0, attrs...)
-
-Create vertical lines across `ax` at `xs` in data coordinates and `ymin` to `ymax`
-in axis coordinates (0 to 1). All three of these can have single or multiple values because
-they are broadcast to calculate the final line segments.
-"""
-vlines!(ax::Axis, xs; ymin = 0.0, ymax = 1.0, attrs...) =
-    hvlines!(ax, 2, xs, ymin, ymax; attrs...)
-
 """
     abline!(axis::Axis, a::Number, b::Number; line_kw_args...)
 Adds a line defined by `f(x) = x * b + a` to the axis.
