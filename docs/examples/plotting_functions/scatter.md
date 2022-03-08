@@ -180,8 +180,7 @@ f
 
 ### Marker space
 
-By default, marker sizes do not scale relative to the data limits.
-You can enable this by setting `markerspace = SceneSpace`.
+By default, marker sizes are given in pixel units. You can adjust this with `markerspace` which can be `:data`, `:pixel`, `:relative` or `:clip`. 
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -193,10 +192,10 @@ f = Figure()
 ax = Axis(f[1, 1])
 limits!(ax, -10, 10, -10, 10)
 
-scatter!(ax, Point2f(0, 0), markersize = 20, markerspace = SceneSpace,
-    marker = '✈', label = "markerspace = SceneSpace")
-scatter!(ax, Point2f(0, 0), markersize = 20, markerspace = Pixel,
-    marker = '✈', label = "markerspace = Pixel")
+scatter!(ax, Point2f(0, 0), markersize = 20, markerspace = :data,
+    marker = '✈', label = "markerspace = :data")
+scatter!(ax, Point2f(0, 0), markersize = 20, markerspace = :pixel,
+    marker = '✈', label = "markerspace = :pixel")
 
 axislegend(ax)
 
