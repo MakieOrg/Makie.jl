@@ -74,7 +74,9 @@ function layoutable(::Type{Axis}, fig_or_scene::Union{Figure, Scene}; bbox = not
 
     scene = Scene(topscene, px_area=scenearea)
 
-    background = mesh!(topscene, scenearea, color = backgroundcolor, inspectable = false, shading=false)
+    # TODO: replace with mesh, however, CairoMakie needs a poly path for this signature
+    # so it doesn't rasterize the scene
+    background = poly!(topscene, scenearea, color = backgroundcolor, inspectable = false, shading = false, strokecolor = :transparent)
     translate!(background, 0, 0, -100)
     decorations[:background] = background
 
