@@ -81,7 +81,3 @@ zs = [1, 2, 3, 4, 5, 6, 7, 8, NaN]
 heatmap(xs, ys, zs)
 ```
 \end{examplefigure}
-
-### Colors
-
-Using the previous example, we can see how to change the color of our plot. You can find additional colors [here](https://makie.juliaplots.org/stable/documentation/colors/index.html#colors).
