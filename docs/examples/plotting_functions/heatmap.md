@@ -94,8 +94,8 @@ using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
 
-xs = range(0, 2π, 100)
-ys = range(0, 2π, 100)
+xs = range(0, 2π, length=100)
+ys = range(0, 2π, length=100)
 zs = [sin(x*y) for x in xs, y in ys]
 
 fig, ax, hm = heatmap(xs, ys, zs)
@@ -123,8 +123,8 @@ using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
 
-xs = range(0, 2π, 100)
-ys = range(0, 2π, 100)
+xs = range(0, 2π, length=100)
+ys = range(0, 2π, length=100)
 zs1 = [sin(x*y) for x in xs, y in ys]
 zs2 = [2sin(x*y) for x in xs, y in ys]
 
