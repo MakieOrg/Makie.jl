@@ -33,6 +33,16 @@ end
     @test isempty(ax.scene.plots)
 end
 
+@testset "zero heatmap" begin
+    xs = LinRange(0, 20, 10)
+    ys = LinRange(0, 15, 10)
+    zs = zeros(length(xs), length(ys))
+    fig = Figure()
+    _, hm = heatmap(fig[1, 1], xs, ys, zs)
+    Colorbar(fig[1, 2], hm)
+    @test true
+end
+
 @testset "Axis limits basics" begin
     f = Figure()
     ax = Axis(f[1, 1], limits = (nothing, nothing))

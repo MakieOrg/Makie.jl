@@ -78,7 +78,8 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         if all(!isnothing, (limits, colorrange))
             error("Both colorrange + limits are set, please only set one, they're aliases. colorrange: $(colorrange), limits: $(limits)")
         end
-        return something(limits, colorrange, (0, 1))
+        lo, hi = lims = something(limits, colorrange, (0, 1))
+        return lo == hi ? (zero(lo), one(hi)) : lims
     end
 
     decorations = Dict{Symbol, Any}()
