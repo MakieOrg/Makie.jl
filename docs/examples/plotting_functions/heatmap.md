@@ -133,9 +133,9 @@ my_limits = extrema(hcat(zs1, zs2))  # Get maximum and minimum for all z-values
 fig, ax1, hm1 = heatmap(xs, ys, zs1,  colorrange = my_limits)
 ax2, hm2 = heatmap(fig[1, end+1], xs, ys, zs2, colorrange = my_limits)
 
-Colorbar(fig[:, end+1], hm1)
-Colorbar(fig[:, end+1], hm2)
-Colorbar(fig[:, end+1], colorrange = my_limits)
+Colorbar(fig[:, end+1], hm1)                     # These three
+Colorbar(fig[:, end+1], hm2)                     # colorbars are
+Colorbar(fig[:, end+1], colorrange = my_limits)  # equivalent
 
 fig
 ```
