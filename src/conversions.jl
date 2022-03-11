@@ -751,12 +751,13 @@ function to_color(p::Palette)
     return p.colors[p.i[]]
 end
 
-
+to_color(c::Nothing) = c # for when color is not used
+to_color(c::Number) = Float32(c)
 to_color(c::Colorant) = convert(RGBA{Float32}, c)
 to_color(c::Symbol) = to_color(string(c))
 to_color(c::String) = parse(RGBA{Float32}, c)
 to_color(c::AbstractArray) = to_color.(c)
-to_color(c::AbstractArray{<: Colorant}) = convert(Vector{RGBAf}, c)
+to_color(c::AbstractArray{<: Colorant, N}) where N = convert(Array{RGBAf, N}, c)
 to_color(p::AbstractPattern) = p
 function to_color(c::Tuple{<: Any,  <: Number})
     col = to_color(c[1])
