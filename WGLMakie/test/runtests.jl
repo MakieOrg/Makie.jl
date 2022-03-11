@@ -37,7 +37,8 @@ excludes = Set([
     "OldAxis + Surface",
     "Order Independent Transparency",
     "Record Video",
-    "fast pixel marker"
+    "fast pixel marker",
+    "Animated surface and wireframe"
 ])
 
 database = database_filtered(excludes)
