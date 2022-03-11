@@ -1013,46 +1013,36 @@ struct Reverse{T}
     data::T
 end
 
-to_colormap(r::Reverse, n::Integer=20) = reverse(to_colormap(r.data, n))
+to_colormap(r::Reverse) = reverse(to_colormap(r.data))
 
-to_colormap(cs::ColorScheme, n::Integer=20) = to_colormap(cs.colors, n)
+to_colormap(cs::ColorScheme) = to_colormap(cs.colors)
 
 """
-    to_colormap(b, x)
+    to_colormap(b)
 
 An `AbstractVector{T}` with any object that [`to_color`](@ref) accepts.
 """
-to_colormap(cm::AbstractVector, n::Int=length(cm)) = to_colormap(to_color.(cm), n)
+to_colormap(cm::AbstractVector) = map(to_color, cm)
+to_colormap(cm::AbstractVector{<: Color3}) = convert(Vector{RGBf}, cm)
+to_colormap(cm::AbstractVector{<: ColorAlpha}) = convert(Vector{RGBAf}, cm)
 
-function to_colormap(cm::AbstractVector{<: Colorant}, n::Int=length(cm))
-    colormap = length(cm) == n ? cm : resample(cm, n)
-    return el32convert(colormap)
-end
-
-"""
-Tuple(A, B) or Pair{A, B} with any object that [`to_color`](@ref) accepts
-"""
-to_colormap(cs::Union{Tuple, Pair}, n::Int=2) = to_colormap([to_color.(cs)...], n)
-
-function to_colormap(cs::Tuple{<: Union{Reverse, Symbol, AbstractString}, Real}, n::Int=30)
-    return RGBAf.(to_colormap(cs[1], n), cs[2]) # We need to rework this to conform to the backend interface.
-end
-
-function to_colormap(cs::NamedTuple{(:colormap, :alpha, :n), Tuple{Union{Symbol, AbstractString}, Real, Int}})
-    return RGBAf.(to_colormap(cs.colormap, cs.n), cs.alpha)
+function to_colormap(cs::Tuple{<: Union{Reverse, Symbol, AbstractString}, Real})
+    cmap = to_colormap(cs[1])
+    return RGBAf.(color.(cmap), alpha.(cmap) .* cs[2]) # We need to rework this to conform to the backend interface.
 end
 
 """
 A Symbol/String naming the gradient. For more on what names are available please see: `available_gradients()`.
 For now, we support gradients from `PlotUtils` natively.
 """
-function to_colormap(cs::Union{String, Symbol}, n::Integer=40)
+function to_colormap(cs::Union{String, Symbol})::Vector{RGBf}
     cs_string = string(cs)
     if cs_string in all_gradient_names
         if cs_string in colorbrewer_8color_names # special handling for 8 color only
-            return to_colormap(ColorBrewer.palette(cs_string, 8), n)
-        else                                    # cs_string must be in plotutils_names
-            return to_colormap(PlotUtils.get_colorscheme(Symbol(cs_string)).colors, n)
+            return to_colormap(ColorBrewer.palette(cs_string, 8))::Vector{RGBf}
+        else
+            # cs_string must be in plotutils_names
+            return to_colormap(PlotUtils.get_colorscheme(Symbol(cs_string)).colors)::Vector{RGBf}
         end
     else
         error(
@@ -1065,14 +1055,21 @@ function to_colormap(cs::Union{String, Symbol}, n::Integer=40)
     end
 end
 
-function to_colormap(cg::PlotUtils.ContinuousColorGradient, n::Integer=length(cg.values))
+function to_colormap(cg::PlotUtils.ContinuousColorGradient)::Vector{RGBf}
     # PlotUtils does not always give [0, 1] range, so we adapt to what it has
-    return getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), n))
+    c_range = LinRange(first(cg.values), last(cg.values), length(cg.values))
+    return RGBf.(getindex.(Ref(cg), c_range))
 end
 
-function to_colormap(cg::PlotUtils.CategoricalColorGradient, n::Integer = length(cg.colors) * 20)
+function to_colormap(cg::PlotUtils.CategoricalColorGradient)::Vector{RGBf}
     # PlotUtils does not always give [0, 1] range, so we adapt to what it has
-    return vcat(fill.(cg.colors.colors, Ref(n ÷ length(cg.colors)))...)
+    nc = length(cg.colors.colors)
+    nrepeat = 20
+    result = Vector{RGBf}(undef, nc * nrepeat)
+    for i in 1:(nc * nrepeat)
+        result[i] = cg.colors.colors[((i-1) ÷ nrepeat) + 1]
+    end
+    return result
 end
 
 """
@@ -1157,8 +1154,6 @@ For significant faster plotting times for large amount of points.
 Note, that this will draw markers always as 1 pixel.
 """
 struct FastPixel end
-
-@enum MarkerTypes FastPixel Circle Rect
 
 to_spritemarker(x::FastPixel) = x
 to_spritemarker(x::Circle) = x
