@@ -1,32 +1,3 @@
-const DEFAULT_RESOLUTION = Ref((1920, 1080))
-
-if Sys.iswindows()
-    function primary_resolution()
-        dc = ccall((:GetDC, :user32), Ptr{Cvoid}, (Ptr{Cvoid},), C_NULL)
-        ntuple(2) do i
-            Int(ccall((:GetDeviceCaps, :gdi32), Cint, (Ptr{Cvoid}, Cint), dc, (2 - i) + 117))
-        end
-    end
-elseif Sys.isapple()
-    const _CoreGraphics = "CoreGraphics.framework/CoreGraphics"
-    function primary_resolution()
-        dispid = ccall((:CGMainDisplayID, _CoreGraphics), UInt32,())
-        height = ccall((:CGDisplayPixelsHigh,_CoreGraphics), Int, (UInt32,), dispid)
-        width = ccall((:CGDisplayPixelsWide,_CoreGraphics), Int, (UInt32,), dispid)
-        return (width, height)
-    end
-else
-    # TODO implement linux
-    primary_resolution() = DEFAULT_RESOLUTION[]
-end
-
-"""
-Returns the resolution of the primary monitor.
-If the primary monitor can't be accessed, returns (1920, 1080) (full hd)
-"""
-function primary_resolution end
-
-
 #=
 Conservative 7-color palette from Points of view: Color blindness, Bang Wong - Nature Methods
 https://www.nature.com/articles/nmeth.1618?WT.ec_id=NMETH-201106
@@ -97,7 +68,7 @@ const minimal_default = Theme(
 const _current_default_theme = deepcopy(minimal_default)
 
 function current_default_theme(; kw_args...)
-    return merge!(Theme(kw_args), deepcopy(_current_default_theme))
+    return merge!(deepcopy(_current_default_theme), Theme(kw_args))
 end
 
 """
@@ -108,8 +79,8 @@ as keyword arguments.
 """
 function set_theme!(new_theme = Dict{Symbol, Any}(); kwargs...)
     empty!(_current_default_theme)
-    new_theme = merge!(deepcopy(new_theme), deepcopy(minimal_default))
-    new_theme = merge!(Theme(kwargs), new_theme)
+    new_theme = merge!(deepcopy(minimal_default), deepcopy(new_theme))
+    new_theme = merge!(new_theme, Theme(kwargs))
     merge!(_current_default_theme, new_theme)
     return
 end
