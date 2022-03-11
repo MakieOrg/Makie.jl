@@ -941,6 +941,7 @@ function to_font(x::Union{Symbol, String})
 end
 to_font(x::Vector{String}) = to_font.(x)
 to_font(x::NativeFont) = x
+to_font(x::Vector{NativeFont}) = x
 
 """
     rotation accepts:
