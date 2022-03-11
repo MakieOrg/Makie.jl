@@ -620,7 +620,7 @@ function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
     fs = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
     uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
     model = plot.model[]::Mat4f
-    colormap = to_colormap(to_value(get(plot, :colormap, nothing)))::Union{Nothing, Vector{RGBAf}}
+    colormap = haskey(plot, :colormap) ? to_colormap(plot.colormap[]) : nothing
     colorrange = convert_attribute(to_value(get(plot, :colorrange, nothing)), key"colorrange"())::Union{Nothing, Vec2f}
 
     lowclip = get_color_attr(plot, :lowclip)
@@ -675,7 +675,7 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
     # Priorize colors of the mesh if present
     @get_attribute(attributes, (color,))
 
-    colormap = to_colormap(to_value(get(attributes, :colormap, nothing)))
+    colormap = haskey(attributes, :colormap) ? to_colormap(attributes.colormap[]) : nothing
     colorrange = convert_attribute(to_value(get(attributes, :colorrange, nothing)), key"colorrange"())::Union{Nothing, Vec2f}
     matcap = to_value(get(attributes, :matcap, nothing))
 

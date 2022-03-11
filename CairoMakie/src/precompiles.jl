@@ -73,7 +73,6 @@ function _precompile_()
     scene = Scene()
     screen = CairoMakie.CairoScreen(scene)
     attributes = Attributes(
-        colormap=nothing,
         colorrange=nothing,
         model=Mat4f(I),
         color=:red,
@@ -100,7 +99,6 @@ function _precompile_()
     mesh2 = GeometryBasics.normal_mesh(Sphere(Point3f(0), 1f0))
 
     attributes = Attributes(
-        colormap=nothing,
         colorrange=nothing,
         model=Mat4f(I),
         color=:red,
