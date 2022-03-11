@@ -123,7 +123,8 @@ end
 end
 
 @cell "Marker sizes" begin
-    scatter(RNG.rand(20), RNG.rand(20), markersize=RNG.rand(20) .* 20, color=to_colormap(:Spectral, 20))
+    colors = Makie.resample(to_colormap(:Spectral), 20)
+    scatter(RNG.rand(20), RNG.rand(20), markersize=RNG.rand(20) .* 20, color=colors)
 end
 
 @cell "Record Video" begin
@@ -534,13 +535,13 @@ end
             linesegments!(ax, ps .+ Point3f(-1, 1, 0), color = color, depth_shift = shift)
             scatter!(ax, ps, color = color, markersize=10, depth_shift = shift)
             text!(ax, "Test", position = Point3f(0, 1, 1.1), color = color, depth_shift = shift)
-            surface!(ax, -1..0, 1..2, mat, colormap = (color, color), depth_shift = shift)
+            surface!(ax, -1..0, 1..2, mat, colormap = [color, color], depth_shift = shift)
             meshscatter!(ax, ps .+ Point3f(-1, 1, 0), color = color, depth_shift = shift)
             # # left side in axis
-            heatmap!(ax, 0..1, 0..1, mat, colormap = (color, color), depth_shift = shift)
+            heatmap!(ax, 0..1, 0..1, mat, colormap = [color, color], depth_shift = shift)
             # # right side in axis
-            image!(ax, -1..0, 1..2, mat, colormap = (color, color), depth_shift = shift)
-            p = volume!(ax, A, colormap = (:white, color), depth_shift = shift)
+            image!(ax, -1..0, 1..2, mat, colormap = [color, color], depth_shift = shift)
+            p = volume!(ax, A, colormap = [:white, color], depth_shift = shift)
             translate!(p, -1, 0, 0)
             scale!(p, 0.25, 0.25, 0.25)
         end
