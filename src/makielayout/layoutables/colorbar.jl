@@ -85,11 +85,13 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
 
     # make the layout width and height settings depend on `size` if they are set to automatic
     # and determine whether they are nothing or `size` depending on colorbar orientation
-    _width = lift(Any, attrs.size, attrs.width, vertical) do sz, w, v
+    _width = Observable{Union{Float64, Nothing}}()
+    map!(_width, attrs.size, attrs.width, vertical) do sz, w, v
         w === Makie.automatic ? (v ? sz : nothing) : w
     end
 
-    _height = lift(Any, attrs.size, attrs.height, vertical) do sz, h, v
+    _height = Observable{Union{Float64, Nothing}}()
+    map!(_height, attrs.size, attrs.height, vertical) do sz, h, v
         h === Makie.automatic ? (v ? nothing : sz) : h
     end
 
@@ -126,20 +128,17 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         end
     end
 
-
-    cgradient = lift(Any, colormap) do cmap
+    cgradient = Observable{PlotUtils.ColorGradient}()
+    map!(cgradient, colormap) do cmap
         if cmap isa PlotUtils.ColorGradient
             # if we have a colorgradient directly, we want to keep it intact
             # to enable correct categorical colormap behavior etc
-            cmap
+            return cmap
         else
             # this is a bit weird, first convert to a vector of colors,
             # then use cgrad, but at least I can use `get` on that later
-            converted = Makie.convert_attribute(
-                cmap,
-                Makie.key"colormap"()
-            )
-            cgrad(converted)
+            converted = Makie.to_colormap(cmap)
+            return cgrad(converted)
         end
     end
 

@@ -245,7 +245,7 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, args.
     axisnames_size = (%) .* axisnames_size
 
     # index of the direction in which ticks and labels are drawn
-    offset_indices = [ifelse(i != 2, mod1(i + 1, N), 1) for i in 1:N]
+    offset_indices = Vec(ntuple(i-> ifelse(i != 2, mod1(i + 1, N), 1), N))
     # These need the real limits, not (%), to be scale-aware
     titlegap = 0.01limit_widths[offset_indices] .* titlegap
     tgap = 0.01limit_widths[offset_indices] .* tgap
@@ -314,7 +314,7 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
     axis = Axis3D(scene, attributes, args)
     # Disable any non linear transform for the axis plot!
     axis.transformation.transform_func[] = identity
-    textbuffer = TextBuffer(axis, Point3, transparency = true, space = :data, inspectable = axis.inspectable)
+    textbuffer = TextBuffer(axis, Point3, transparency = true, markerspace = :data, inspectable = axis.inspectable)
     linebuffer = LinesegmentBuffer(axis, Point3, transparency = true, inspectable = axis.inspectable)
 
     tstyle, ticks, frame = to_value.(getindex.(axis, (:names, :ticks, :frame)))
@@ -334,6 +334,6 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
     return axis
 end
 
-function axis3d!(scene::Scene, lims = data_limits(scene, isaxis); kw...)
+function axis3d!(scene::Scene, lims = data_limits(scene, p -> isaxis(p) || not_in_data_space(p)); kw...)
     axis3d!(scene, Attributes(), lims; ticks = (ranges = automatic, labels = automatic), kw...)
 end

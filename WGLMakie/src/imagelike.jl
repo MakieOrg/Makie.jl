@@ -27,7 +27,7 @@ function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
     get!(uniforms, :ambient, Vec3f(1))
 
     uniforms[:normalmatrix] = map(mscene.camera.view, plot.model) do v, m
-        i = SOneTo(3)
+        i = Vec(1, 2, 3)
         return transpose(inv(v[i, i] * m[i, i]))
     end
 

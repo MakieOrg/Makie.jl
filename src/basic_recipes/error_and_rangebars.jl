@@ -203,23 +203,23 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
 
         screen_to_scene([p for pair in screenendpoints_shifted_pairs for p in pair], scene)
     end
-
-    whiskercolors = lift(Any, color) do color
+    whiskercolors = Observable{RGBColors}()
+    map!(whiskercolors, color) do color
         # we have twice as many linesegments for whiskers as we have errorbars, so we
         # need to duplicate colors if a vector of colors is given
         if color isa AbstractVector
-            repeat(color, inner = 2)
+            return repeat(to_color(color), inner = 2)::RGBColors
         else
-            color
+            return to_color(color)::RGBAf
         end
     end
-
-    whiskerlinewidths = lift(Any, linewidth) do linewidth
+    whiskerlinewidths = Observable{Union{Float32, Vector{Float32}}}()
+    map!(whiskerlinewidths, linewidth) do linewidth
         # same for linewidth
         if linewidth isa AbstractVector
-            repeat(linewidth, inner = 2)
+            return repeat(convert(Vector{Float32}, linewidth), inner = 2)::Vector{Float32}
         else
-            linewidth
+            return convert(Float32, linewidth)
         end
     end
 
@@ -240,28 +240,28 @@ function scene_to_screen(pts, scene)
     p4 = to_ndim.(Vec4f, to_ndim.(Vec3f, pts, 0.0), 1.0)
     p1m1 = Ref(scene.camera.projectionview[]) .* p4
     projected = Ref(inv(scene.camera.pixel_space[])) .* p1m1
-    [Point2.(p[1:2]...) for p in projected]
+    [Point2.(p[Vec(1, 2)]...) for p in projected]
 end
 
 function screen_to_scene(pts, scene)
     p4 = to_ndim.(Vec4f, to_ndim.(Vec3f, pts, 0.0), 1.0)
     p1m1 = Ref(scene.camera.pixel_space[]) .* p4
     projected = Ref(inv(scene.camera.projectionview[])) .* p1m1
-    [Point2.(p[1:2]...) for p in projected]
+    [Point2.(p[Vec(1, 2)]...) for p in projected]
 end
 
 function scene_to_screen(p::T, scene) where T <: Point
     p4 = to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), 1.0)
     p1m1 = scene.camera.projectionview[] * p4
     projected = inv(scene.camera.pixel_space[]) * p1m1
-    T(projected[1:2]...)
+    T(projected[Vec(1, 2)]...)
 end
 
 function screen_to_scene(p::T, scene) where T <: Point
     p4 = to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), 1.0)
     p1m1 = scene.camera.pixel_space[] * p4
     projected = inv(scene.camera.projectionview[]) * p1m1
-    T(projected[1:2]...)
+    T(projected[Vec(1, 2)]...)
 end
 
 

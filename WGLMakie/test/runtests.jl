@@ -36,7 +36,8 @@ excludes = Set([
     "heatmaps & surface",
     "OldAxis + Surface",
     "Order Independent Transparency",
-    "Record Video"
+    "Record Video",
+    "fast pixel marker"
 ])
 
 database = database_filtered(excludes)
@@ -60,4 +61,3 @@ cp(tests_refimages_download_folder, tests_refimages_folder)
 
 missing_refimages, scores = ReferenceTests.record_comparison(tests_root_folder)
 ReferenceTests.test_comparison(missing_refimages, scores; threshold = 0.032)
-

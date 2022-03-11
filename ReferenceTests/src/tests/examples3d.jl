@@ -339,7 +339,7 @@ end
     linepos = view(positions, RNG.rand(1:length(positions), 1000))
     fig, ax, lineplot = lines(linepos, linewidth=0.1, color=:black, transparency=true)
     scatter!(
-        ax, positions, markersize=50,
+        ax, positions, markersize=10,
         strokewidth=2, strokecolor=:white,
         color=RGBAf(0.9, 0.2, 0.4, 0.3), transparency=true,
     )
@@ -350,7 +350,7 @@ end
     scatter(
         1:10, 1:10, RNG.rand(10, 10) .* 10,
         rotations=normalize.(RNG.rand(Quaternionf, 10 * 10)),
-        markersize=1,
+        markersize=20,
         # can also be an array of images for each point
         # need to be the same size for best performance, though
         marker=Makie.logo()
@@ -386,7 +386,7 @@ end
     x = loadasset("cat.obj")
     mesh(x, color=:black)
     pos = map(decompose(Point3f, x), GeometryBasics.normals(x)) do p, n
-        p => p .+ (normalize(n) .* 0.05f0)
+        p => p .+ Point(normalize(n) .* 0.05f0)
     end
     linesegments!(pos, color=:blue)
     current_figure()
@@ -412,7 +412,7 @@ end
 
 @cell "Unicode Marker" begin
     scatter(Point3f[(1, 0, 0), (0, 1, 0), (0, 0, 1)], marker=[:x, :circle, :cross],
-            markersize=100)
+            markersize=35)
 end
 
 @cell "Merged color Mesh" begin
@@ -526,13 +526,13 @@ end
     # without depth_shift (0f0, red) and one at ∓10eps(1f0) (blue, left/right axis).
     # A negative shift should push the plot in the foreground, positive in the background.
     for (i, _shift) in enumerate((-10eps(1f0), 10eps(1f0)))
-        ax = LScene(fig[1, i], scenekw=(show_axis = false,))
+        ax = LScene(fig[1, i], show_axis = false)
 
         for (color, shift) in zip((:red, :blue), (0f0, _shift))
             mesh!(ax, prim, color = color, depth_shift = shift)
             lines!(ax, ps, color = color, depth_shift = shift)
             linesegments!(ax, ps .+ Point3f(-1, 1, 0), color = color, depth_shift = shift)
-            scatter!(ax, ps, color = color, markersize=100, depth_shift = shift)
+            scatter!(ax, ps, color = color, markersize=10, depth_shift = shift)
             text!(ax, "Test", position = Point3f(0, 1, 1.1), color = color, depth_shift = shift)
             surface!(ax, -1..0, 1..2, mat, colormap = (color, color), depth_shift = shift)
             meshscatter!(ax, ps .+ Point3f(-1, 1, 0), color = color, depth_shift = shift)
@@ -544,8 +544,9 @@ end
             translate!(p, -1, 0, 0)
             scale!(p, 0.25, 0.25, 0.25)
         end
-    end
 
+        center!(ax.scene)
+    end
     fig
 end
 
@@ -574,5 +575,18 @@ end
     cam = cameracontrols(ax.scene)
     cam.attributes.fov[] = 22f0
     update_cam!(ax.scene, cam, Vec3f(0.625, 0, 3.5), Vec3f(0.625, 0, 0), Vec3f(0, 1, 0))
+    fig
+end
+
+
+@cell "space 3D" begin
+    fig = Figure()
+    for ax in [LScene(fig[1, 1]), Axis3(fig[1, 2])]
+        mesh!(ax, Rect3(Point3f(-10), Vec3f(20)), color = :orange)
+        mesh!(ax, Rect2f(0.8, 0.1, 0.1, 0.8), space = :relative, color = :blue, shading = false)
+        linesegments!(ax, Rect2f(-0.5, -0.5, 1, 1), space = :clip, color = :cyan, linewidth = 5)
+        text!(ax, "Clip Space", position = Point2f(0, 0.52), align = (:center, :bottom), space = :clip)
+        image!(ax, 0..40, 0..800, [x for x in range(0, 1, length=40), _ in 1:10], space = :pixel)
+    end
     fig
 end

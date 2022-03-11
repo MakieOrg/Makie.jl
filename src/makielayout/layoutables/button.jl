@@ -36,7 +36,9 @@ function layoutable(::Type{Button}, fig_or_scene::FigureLike; bbox = nothing, kw
     mousestate = Observable(:out)
 
     bcolors = (; out = buttoncolor, active = buttoncolor_active, hover = buttoncolor_hover)
-    bcolor = lift((s,_...)->bcolors[s][], Any, mousestate, values(bcolors)...)
+    bcolor = Observable{RGBColors}()
+    map!((s,_...)-> to_color(bcolors[s][]), bcolor, mousestate, values(bcolors)...)
+
     button = poly!(subscene, roundedrectpoints, strokewidth = strokewidth, strokecolor = strokecolor,
         color = bcolor, inspectable = false)
     decorations[:button] = button
@@ -44,9 +46,11 @@ function layoutable(::Type{Button}, fig_or_scene::FigureLike; bbox = nothing, kw
 
 
     lcolors = (; out = labelcolor, active = labelcolor_active, hover = labelcolor_hover)
-    lcolor = lift((s,_...)->lcolors[s][], Any, mousestate, values(lcolors)...)
+    lcolor = Observable{RGBColors}()
+    map!((s,_...)-> to_color(lcolors[s][]), lcolor, mousestate, values(lcolors)...)
+
     labeltext = text!(subscene, label, position = textpos, textsize = textsize, font = font,
-        color = lcolor, align = (:center, :center), space = :data, inspectable = false)
+        color = lcolor, align = (:center, :center), markerspace = :data, inspectable = false)
 
     decorations[:label] = labeltext
 

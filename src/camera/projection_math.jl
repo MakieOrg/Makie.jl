@@ -158,9 +158,9 @@ function orthographicprojection(
 end
 
 function orthographicprojection(
-        left  ::T, right::T,
-        bottom::T, top  ::T,
-        znear ::T, zfar ::T
+        left::T, right::T,
+        bottom::T, top::T,
+        znear::T, zfar::T
     ) where T
     (right==left || bottom==top || znear==zfar) && return Mat{4,4,T}(I)
     T0, T1, T2 = zero(T), one(T), T(2)
@@ -283,7 +283,7 @@ function project(scene::Scene, point::T) where T<:StaticVector
     return project(
         cam.projectionview[] *
         transformationmatrix(scene)[],
-        Vec2f(widths(pixelarea(scene)[])), point
+        Vec2f(widths(pixelarea(scene)[])), Point(point)
     )
 end
 
@@ -296,9 +296,9 @@ end
 function project(proj_view::Mat4f, resolution::Vec2, point::Point)
     p4d = to_ndim(Vec4f, to_ndim(Vec3f, point, 0f0), 1f0)
     clip = proj_view * p4d
-    p = (clip / clip[4])[Vec(1, 2)]
+    p = (clip ./ clip[4])[Vec(1, 2)]
     p = Vec2f(p[1], p[2])
-    return (((p .+ 1f0) / 2f0) .* (resolution .- 1f0)) .+ 1f0
+    return (((p .+ 1f0) ./ 2f0) .* (resolution .- 1f0)) .+ 1f0
 end
 
 function project_point2(mat4::Mat4, point2::Point2)
@@ -308,4 +308,43 @@ end
 function transform(model::Mat4, x::T) where T
     x4d = to_ndim(Vec4f, x, 0.0)
     to_ndim(T, model * x4d, 0.0)
+end
+
+# project between different coordinate systems/spaces
+function space_to_clip(cam::Camera, space::Symbol, projectionview::Bool=true)
+    if is_data_space(space)
+        return projectionview ? cam.projectionview[] : cam.projection[]
+    elseif is_pixel_space(space)
+        return cam.pixel_space[]
+    elseif is_relative_space(space)
+        return Mat4f(2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, -1, -1, 0, 1)
+    elseif is_clip_space(space)
+        return Mat4f(I)
+    else
+        error("Space $space not recognized. Must be one of $(spaces())")
+    end
+end
+
+function clip_to_space(cam::Camera, space::Symbol)
+    if is_data_space(space)
+        return inv(cam.projectionview[])
+    elseif is_pixel_space(space)
+        w, h = cam.resolution[]
+        return Mat4f(0.5w, 0, 0, 0, 0, 0.5h, 0, 0, 0, 0, -10_000, 0, 0.5w, 0.5h, 0, 1) # -10_000
+    elseif is_relative_space(space)
+        return Mat4f(0.5, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 1, 0, 0.5, 0.5, 0, 1)
+    elseif is_clip_space(space)
+        return Mat4f(I)
+    else
+        error("Space $space not recognized. Must be one of $(spaces())")
+    end
+end
+
+function project(cam::Camera, input_space::Symbol, output_space::Symbol, pos)
+    input_space === output_space && return to_ndim(Point3f, pos, 0)
+    clip_from_input = space_to_clip(cam, input_space)
+    output_from_clip = clip_to_space(cam, output_space)
+    p4d = to_ndim(Point4f, to_ndim(Point3f, pos, 0), 1)
+    transformed = output_from_clip * clip_from_input * p4d
+    return Point3f(transformed[Vec(1, 2, 3)] ./ transformed[4])
 end

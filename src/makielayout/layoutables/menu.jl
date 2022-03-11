@@ -121,16 +121,17 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
 
     # the direction is auto-chosen as up if there is too little space below and if the space below
     # is smaller than above
-    _direction = lift(Any, layoutobservables.computedbbox, direction, sceneheight) do bb, dir, sh
+    _direction = Observable{Symbol}()
+    map!(_direction, layoutobservables.computedbbox, direction, sceneheight) do bb, dir, sh
         if dir == Makie.automatic
             pxa = pixelarea(topscene)[]
             if (sh > abs(bottom(pxa) - bottom(bb))) && (abs(bottom(pxa) - bottom(bb)) < abs(top(pxa) - top(bb)))
-                :up
+                return :up
             else
-                :down
+                return :down
             end
         else
-            dir
+            return dir::Symbol
         end
     end
 
