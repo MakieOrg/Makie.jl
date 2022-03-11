@@ -52,13 +52,9 @@
     @test glyph_collection.strokewidths.sv == Float32[0, 0, 0, 0]
 
     # Test quad data
-
-    input_positions = [to_ndim(Point3f, p.position[], 0) + o for o in glyph_collection.origins]
-    positions, offsets, uvs, scales = Makie.text_quads(
-        input_positions, 
-        glyph_collection.glyphs,
-        glyph_collection.fonts,
-        glyph_collection.scales
+    positions, char_offsets, quad_offsets, uvs, scales = Makie.text_quads(
+        to_ndim(Point3f, p.position[], 0), glyph_collection,
+        Vec2f(0), Makie.transform_func_obs(scene)[]
     )
 
     # Also doesn't work 
@@ -71,7 +67,7 @@
     #         Makie.PIXELSIZE_IN_ATLAS[]
     # end
     
-    fta_offsets = map(chars) do c
+    fta_quad_offsets = map(chars) do c
         mini = FreeTypeAbstraction.metrics_bb(c, font, 20.0)[1] |> minimum
         Vec2f(mini .- Makie.GLYPH_PADDING[] * 20.0 / Makie.PIXELSIZE_IN_ATLAS[])
     end
@@ -81,7 +77,8 @@
         Vec2f(mini .+ 2 * Makie.GLYPH_PADDING[] * 20.0 / Makie.PIXELSIZE_IN_ATLAS[])
     end
 
-    @test positions == input_positions
-    @test offsets == fta_offsets
+    @test all(isequal(to_ndim(Point3f, p.position[], 0f0)), positions)
+    @test char_offsets == glyph_collection.origins
+    @test quad_offsets == fta_quad_offsets
     @test scales  == fta_scales
 end

@@ -392,9 +392,11 @@ end
 
 
 function scalar_lift(attr, default)
-    lift(Any, attr, default) do at, def
+    observable = Observable{Any}()
+    map!(observable, attr, default) do at, def
         Makie.is_scalar_attribute(at) ? at : def
     end
+    return observable
 end
 
 function legendelements(plot::Union{Lines, LineSegments}, legend)

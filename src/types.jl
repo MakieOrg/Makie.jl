@@ -385,3 +385,7 @@ struct GlyphCollection
         new(glyphs, fonts, origins, extents, scales, rotations, colors, strokecolors, strokewidths)
     end
 end
+
+
+# The color type we ideally use for most color attributes
+const RGBColors = Union{RGBAf, Vector{RGBAf}, Vector{Float32}}

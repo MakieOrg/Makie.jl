@@ -13,7 +13,8 @@ function default_theme(scene)
         nan_color = RGBAf(0,0,0,0),
         ssao = false,
         inspectable = theme(scene, :inspectable),
-        depth_shift = 0f0
+        depth_shift = 0f0,
+        space = :data
     )
 end
 
@@ -70,9 +71,9 @@ function calculated_attributes!(::Type{<: Scatter}, plot)
     replace_automatic!(plot, :markerspace) do
         lift(plot.markersize) do ms
             if ms isa Pixel || (ms isa AbstractVector && all(x-> ms isa Pixel, ms))
-                return Pixel
+                return :pixel
             else
-                return SceneSpace
+                return :data
             end
         end
     end

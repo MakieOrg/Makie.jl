@@ -733,34 +733,35 @@ convert_attribute(rotation, ::key"rotation") = to_rotation(rotation)
 convert_attribute(font, ::key"font") = to_font(font)
 convert_attribute(align, ::key"align") = to_align(align)
 
-
-
 convert_attribute(p, ::key"highclip") = to_color(p)
 convert_attribute(p::Nothing, ::key"highclip") = p
 convert_attribute(p, ::key"lowclip") = to_color(p)
 convert_attribute(p::Nothing, ::key"lowclip") = p
 convert_attribute(p, ::key"nan_color") = to_color(p)
 
-struct Palette{N}
-   colors::SArray{Tuple{N},RGBA{Float32},1,N}
-   i::Ref{UInt8}
-   Palette(colors) = new{length(colors)}(SVector{length(colors)}(to_color.(colors)), zero(UInt8))
+struct Palette
+   colors::Vector{RGBA{Float32}}
+   i::Ref{Int}
+   Palette(colors) = new(to_color.(colors), zero(Int))
 end
 Palette(name::Union{String, Symbol}, n = 8) = Palette(to_colormap(name, n))
-
-function to_color(p::Palette{N}) where {N}
-    p.i[] = p.i[] == N ? one(UInt8) : p.i[] + one(UInt8)
-    p.colors[p.i[]]
+function to_color(p::Palette)
+    N = length(p.colors)
+    p.i[] = p.i[] == N ? 1 : p.i[] + 1
+    return p.colors[p.i[]]
 end
+
 
 to_color(c::Colorant) = convert(RGBA{Float32}, c)
 to_color(c::Symbol) = to_color(string(c))
 to_color(c::String) = parse(RGBA{Float32}, c)
-to_color(c::AbstractArray{<: Colorant}) = el32convert(c)
 to_color(c::AbstractArray) = to_color.(c)
-to_color(c::Tuple) = to_color.(c)
+to_color(c::AbstractArray{<: Colorant}) = convert(Vector{RGBAf}, c)
 to_color(p::AbstractPattern) = p
-to_color(c::Tuple{<: Any,  <: Number}) = RGBAf(Colors.color(to_color(c[1])), c[2])
+function to_color(c::Tuple{<: Any,  <: Number})
+    col = to_color(c[1])
+    return RGBAf(Colors.color(col), alpha(col) * c[2])
+end
 
 convert_attribute(b::Billboard{Float32}, ::key"rotations") = to_rotation(b.rotation)
 convert_attribute(b::Billboard{Vector{Float32}}, ::key"rotations") = to_rotation.(b.rotation)
@@ -1014,7 +1015,6 @@ struct Reverse{T}
 end
 
 to_colormap(r::Reverse) = reverse(to_colormap(r.data))
-
 to_colormap(cs::ColorScheme) = to_colormap(cs.colors)
 
 """
@@ -1022,11 +1022,10 @@ to_colormap(cs::ColorScheme) = to_colormap(cs.colors)
 
 An `AbstractVector{T}` with any object that [`to_color`](@ref) accepts.
 """
-to_colormap(cm::AbstractVector) = map(to_color, cm)
-to_colormap(cm::AbstractVector{<: Color3}) = convert(Vector{RGBf}, cm)
-to_colormap(cm::AbstractVector{<: ColorAlpha}) = convert(Vector{RGBAf}, cm)
+to_colormap(cm::AbstractVector)::Vector{RGBAf} = map(to_color, cm)
+to_colormap(cm::AbstractVector{<: Colorant}) = convert(Vector{RGBAf}, cm)
 
-function to_colormap(cs::Tuple{<: Union{Reverse, Symbol, AbstractString}, Real})
+function to_colormap(cs::Tuple{<: Union{Reverse, Symbol, AbstractString}, Real})::Vector{RGBAf}
     cmap = to_colormap(cs[1])
     return RGBAf.(color.(cmap), alpha.(cmap) .* cs[2]) # We need to rework this to conform to the backend interface.
 end
@@ -1035,14 +1034,14 @@ end
 A Symbol/String naming the gradient. For more on what names are available please see: `available_gradients()`.
 For now, we support gradients from `PlotUtils` natively.
 """
-function to_colormap(cs::Union{String, Symbol})::Vector{RGBf}
+function to_colormap(cs::Union{String, Symbol})::Vector{RGBAf}
     cs_string = string(cs)
     if cs_string in all_gradient_names
         if cs_string in colorbrewer_8color_names # special handling for 8 color only
-            return to_colormap(ColorBrewer.palette(cs_string, 8))::Vector{RGBf}
+            return to_colormap(ColorBrewer.palette(cs_string, 8))
         else
             # cs_string must be in plotutils_names
-            return to_colormap(PlotUtils.get_colorscheme(Symbol(cs_string)).colors)::Vector{RGBf}
+            return to_colormap(PlotUtils.get_colorscheme(Symbol(cs_string)).colors)
         end
     else
         error(
@@ -1055,21 +1054,11 @@ function to_colormap(cs::Union{String, Symbol})::Vector{RGBf}
     end
 end
 
-function to_colormap(cg::PlotUtils.ContinuousColorGradient)::Vector{RGBf}
-    # PlotUtils does not always give [0, 1] range, so we adapt to what it has
-    c_range = LinRange(first(cg.values), last(cg.values), length(cg.values))
-    return RGBf.(getindex.(Ref(cg), c_range))
-end
+to_colormap(cg::PlotUtils.ContinuousColorGradient)::Vector{RGBAf} = to_colormap(cg.colors)
 
-function to_colormap(cg::PlotUtils.CategoricalColorGradient)::Vector{RGBf}
-    # PlotUtils does not always give [0, 1] range, so we adapt to what it has
-    nc = length(cg.colors.colors)
-    nrepeat = 20
-    result = Vector{RGBf}(undef, nc * nrepeat)
-    for i in 1:(nc * nrepeat)
-        result[i] = cg.colors.colors[((i-1) ÷ nrepeat) + 1]
-    end
-    return result
+function to_colormap(cg::PlotUtils.CategoricalColorGradient)::Vector{RGBAf}
+    colors = to_colormap(cg.colors)
+    return repeat(colors; inner=20)
 end
 
 """
