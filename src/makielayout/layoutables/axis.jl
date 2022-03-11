@@ -130,8 +130,10 @@ function layoutable(::Type{Axis}, fig_or_scene::Union{Figure, Scene}; bbox = not
         nearclip = -10_000f0
         farclip = 10_000f0
 
-        left, bottom = Makie.apply_transform(t, Point(minimum(lims)))
-        right, top = Makie.apply_transform(t, Point(maximum(lims)))
+        tlims = Makie.apply_transform(t, lims)
+
+        left, bottom = minimum(tlims)
+        right, top = maximum(tlims)
 
         leftright = xrev ? (right, left) : (left, right)
         bottomtop = yrev ? (top, bottom) : (bottom, top)
