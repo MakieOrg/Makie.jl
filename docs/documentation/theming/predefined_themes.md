@@ -379,7 +379,8 @@ This theme also works with `Axis3`.
 
 ```julia:demofigstats
 using GLMakie
-GLMakie.activate!(type = "png") # hide, not sure is this works here... ?
+GLMakie.activate!() # hide, not sure is this works here.
+
 function demo3dmix()
     function peaks(; n=49)
         x = LinRange(-3, 3, n)
