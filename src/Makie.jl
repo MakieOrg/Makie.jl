@@ -99,6 +99,7 @@ include("themes/theme_black.jl")
 include("themes/theme_minimal.jl")
 include("themes/theme_light.jl")
 include("themes/theme_dark.jl")
+include("themes/theme_makie.jl")
 include("interfaces.jl")
 include("units.jl")
 include("conversions.jl")
@@ -176,6 +177,7 @@ export theme_black
 export theme_minimal
 export theme_light
 export theme_dark
+export theme_makie
 
 export xticklabels, yticklabels, zticklabels
 export xtickrange, ytickrange, ztickrange
