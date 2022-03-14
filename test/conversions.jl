@@ -7,7 +7,6 @@ using Makie:
     categorical_colors
 
 @testset "Conversions" begin
-
     # NoConversion
     struct NoConversionTestType end
     conversion_trait(::NoConversionTestType) = NoConversion()
@@ -201,4 +200,31 @@ end
     @test_throws ErrorException convert_arguments(Heatmap, x, y, z)
     x = [NaN, 1, 2]
     @test_throws ErrorException convert_arguments(Heatmap, x, y, z)
+end
+
+@testset "to_colormap" begin
+    @test to_colormap([HSL(0, 10, 20)]) isa Vector{RGBAf}
+    @test to_colormap([:red, :green]) isa Vector{RGBAf}
+    @test to_colormap([(:red, 0.1), (:green, 0.2)]) isa Vector{RGBAf}
+    @test to_colormap((:viridis, 0.1)) isa Vector{RGBAf}
+    @test to_colormap(Reverse(:viridis)) isa Vector{RGBAf}
+    @test to_colormap(:cividis) isa Vector{RGBAf}
+    @test to_colormap(cgrad(:cividis, 8, categorical=true)) isa Vector{RGBAf}
+    @test to_colormap(cgrad(:cividis, 8)) isa Vector{RGBAf}
+    @test to_colormap(cgrad(:cividis)) isa Vector{RGBAf}
+    @test alpha(to_colormap(cgrad(:cividis, 8; alpha=0.5))[1]) == 0.5
+    @test alpha(to_colormap(cgrad(:cividis, 8; alpha=0.5, categorical=true))[1]) == 0.5
+
+
+    @inferred to_colormap([HSL(0, 10, 20)])
+    @inferred to_colormap([:red, :green])
+    @inferred to_colormap([(:red, 0.1), (:green, 0.2)])
+    @inferred to_colormap((:viridis, 0.1))
+    @inferred to_colormap(Reverse(:viridis))
+    @inferred to_colormap(:cividis)
+    @inferred to_colormap(cgrad(:cividis, 8, categorical=true))
+    @inferred to_colormap(cgrad(:cividis, 8))
+    @inferred to_colormap(cgrad(:cividis))
+    @inferred to_colormap(cgrad(:cividis, 8; alpha=0.5))
+    @inferred to_colormap(cgrad(:cividis, 8; alpha=0.5, categorical=true))
 end
