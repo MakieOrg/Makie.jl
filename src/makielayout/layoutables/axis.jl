@@ -597,7 +597,7 @@ function get_cycle_for_plottype(allattrs, P)::Cycle
     cycle_raw = if haskey(allattrs, :cycle)
         allattrs.cycle[]
     elseif haskey(cdt, psym) && haskey(cdt[psym], :cycle)
-        cdt[psym].cycle[]
+        cdt[psym].cycle
     else
         haskey(plottheme, :cycle) ? plottheme.cycle[] : nothing
     end
