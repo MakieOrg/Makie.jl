@@ -294,7 +294,7 @@ end
 function subtheme(scene, key::Symbol)
     sub = haskey(theme(scene), key) ? theme(scene, key) : Theme()
     if !(sub isa Theme)
-        error("Subtheme is not of type Attributes but is $sub")
+        error("Subtheme is not of type Theme but is $sub")
     end
     sub
 end
