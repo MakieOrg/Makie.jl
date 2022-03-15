@@ -96,7 +96,7 @@ void main(){
     vec3 pos;
     {{position_calc}}
     vec4 p = preprojection * model * vec4(pos, 1);
-    g_position        = p.xyz / p.w + marker_offset;
+    g_position        = p.xyz / p.w + mat3(model) * marker_offset;
     g_offset_width.xy = quad_offset.xy;
     g_offset_width.zw = scale.xy;
     g_color           = _color(color, intensity, color_map, color_norm, g_primitive_index, len);
