@@ -87,12 +87,12 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
 
     # make the layout width and height settings depend on `size` if they are set to automatic
     # and determine whether they are nothing or `size` depending on colorbar orientation
-    _width = Observable{Union{Float64, Nothing}}()
+    _width = Observable{GridLayoutBase.SizeAttribute}()
     map!(_width, attrs.size, attrs.width, vertical) do sz, w, v
         w === Makie.automatic ? (v ? sz : nothing) : w
     end
 
-    _height = Observable{Union{Float64, Nothing}}()
+    _height = Observable{GridLayoutBase.SizeAttribute}()
     map!(_height, attrs.size, attrs.height, vertical) do sz, h, v
         h === Makie.automatic ? (v ? nothing : sz) : h
     end

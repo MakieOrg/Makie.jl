@@ -600,36 +600,50 @@ end
 ################################################################################
 
 
-function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Makie.Mesh)
+function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive::Makie.Mesh))
+    mesh = primitive[1][]
     if Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera, Makie.EmptyCamera}
-        draw_mesh2D(scene, screen, primitive)
+        draw_mesh2D(scene, screen, primitive, mesh)
     else
         if !haskey(primitive, :faceculling)
             primitive[:faceculling] = Observable(-10)
         end
-        draw_mesh3D(scene, screen, primitive)
+        draw_mesh3D(scene, screen, primitive, mesh)
     end
     return nothing
 end
 
-function draw_mesh2D(scene, screen, primitive)
-    @get_attribute(primitive, (color,))
+function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
+    @get_attribute(plot, (color,))
+    color = to_color(hasproperty(mesh, :color) ? mesh.color : color)
+    vs =  decompose(Point2f, mesh)::Vector{Point2f}
+    fs = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
+    uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
+    model = plot.model[]::Mat4f
+    colormap = haskey(plot, :colormap) ? to_colormap(plot.colormap[]) : nothing
+    colorrange = convert_attribute(to_value(get(plot, :colorrange, nothing)), key"colorrange"())::Union{Nothing, Vec2f}
 
-    colormap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
-    colorrange = get(primitive, :colorrange, nothing) |> to_value
+    lowclip = get_color_attr(plot, :lowclip)
+    highclip = get_color_attr(plot, :highclip)
+    nan_color = get_color_attr(plot, :nan_color)
+
+    cols = per_face_colors(
+        color, colormap, colorrange, nothing, fs, nothing, uv,
+        lowclip, highclip, nan_color)
+
+    space = to_value(get(plot, :space, :data))::Symbol
+    return draw_mesh2D(scene, screen, cols, space, vs, fs, model)
+end
+
+function draw_mesh2D(scene, screen, per_face_cols, space::Symbol,
+        vs::Vector{Point2f}, fs::Vector{GLTriangleFace}, model::Mat4f)
+
     ctx = screen.context
-    model = primitive.model[]
-    mesh = GeometryBasics.mesh(primitive[1][])
     # Priorize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
-    color = hasproperty(mesh, :color) ? mesh.color : color
-    vs =  decompose(Point, mesh); fs = decompose(TriangleFace, mesh)
-    uv = hasproperty(mesh, :uv) ? mesh.uv : nothing
     pattern = Cairo.CairoPatternMesh()
 
-    cols = per_face_colors(color, colormap, colorrange, nothing, vs, fs, nothing, uv)
-    space = to_value(get(primitive, :space, :data))
-    for (f, (c1, c2, c3)) in zip(fs, cols)
+    for (f, (c1, c2, c3)) in zip(fs, per_face_cols)
         t1, t2, t3 =  project_position.(scene, space, vs[f], (model,)) #triangle points
         Cairo.mesh_pattern_begin_patch(pattern)
 
@@ -656,23 +670,49 @@ end
 
 nan2zero(x) = !isnan(x) * x
 
-function draw_mesh3D(
-        scene, screen, primitive;
-        mesh = primitive[1][], pos = Vec4f(0), scale = 1f0
+
+function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f0)
+    # Priorize colors of the mesh if present
+    @get_attribute(attributes, (color,))
+
+    colormap = haskey(attributes, :colormap) ? to_colormap(attributes.colormap[]) : nothing
+    colorrange = convert_attribute(to_value(get(attributes, :colorrange, nothing)), key"colorrange"())::Union{Nothing, Vec2f}
+    matcap = to_value(get(attributes, :matcap, nothing))
+
+    color = hasproperty(mesh, :color) ? mesh.color : color
+    meshpoints = decompose(Point3f, mesh)::Vector{Point3f}
+    meshfaces = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
+    meshnormals = decompose_normals(mesh)::Vector{Vec3f}
+    meshuvs = texturecoordinates(mesh)::Union{Nothing, Vector{Vec2f}}
+
+    lowclip = get_color_attr(attributes, :lowclip)
+    highclip = get_color_attr(attributes, :highclip)
+    nan_color = get_color_attr(attributes, :nan_color)
+
+    per_face_col = per_face_colors(
+        color, colormap, colorrange, matcap, meshfaces, meshnormals, meshuvs,
+        lowclip, highclip, nan_color
     )
-    @get_attribute(primitive, (color, shading, diffuse,
+
+    @get_attribute(attributes, (shading, diffuse,
         specular, shininess, faceculling))
 
-    colormap = to_colormap(to_value(get(primitive, :colormap, nothing)))
-    colorrange = to_value(get(primitive, :colorrange, nothing))
-    matcap = to_value(get(primitive, :matcap, nothing))
-    # Priorize colors of the mesh if present
-    color = hasproperty(mesh, :color) ? mesh.color : color
+    model = attributes.model[]::Mat4f
+    space = to_value(get(attributes, :space, :data))::Symbol
 
+    draw_mesh3D(
+        scene, screen, space, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
+        model, shading::Bool, diffuse::Vec3f,
+        specular::Vec3f, shininess::Float32, faceculling::Int
+    )
+end
+
+function draw_mesh3D(
+        scene, screen, space, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
+        model, shading, diffuse,
+        specular, shininess, faceculling
+    )
     ctx = screen.context
-
-    model = primitive.model[]
-    space = to_value(get(primitive, :space, :data))::Symbol
     view = ifelse(is_data_space(space), scene.camera.view[], Mat4f(I))
     projection = Makie.space_to_clip(scene.camera, space, false)
     i = Vec(1, 2, 3)
@@ -683,22 +723,14 @@ function draw_mesh3D(
     func = Makie.transform_func_obs(scene)[]
     # pass func as argument to function, so that we get a function barrier
     # and have `func` be fully typed inside closure
-    vs = broadcast(decompose(Point, mesh), (func,)) do v, f
+    vs = broadcast(meshpoints, (func,)) do v, f
         # Should v get a nan2zero?
         v = Makie.apply_transform(f, v)
         p4d = to_ndim(Vec4f, scale .* to_ndim(Vec3f, v, 0f0), 1f0)
         view * (model * p4d .+ to_ndim(Vec4f, pos, 0f0))
     end
-    fs = decompose(GLTriangleFace, mesh)
-    uv = texturecoordinates(mesh)
-    ns = map(n -> normalize(normalmatrix * n), decompose_normals(mesh))
-    cols = per_face_colors(
-        color, colormap, colorrange, matcap, vs, fs, ns, uv,
-        color_or_nothing(to_value(get(primitive, :lowclip, nothing))) ,
-        color_or_nothing(to_value(get(primitive, :highclip, nothing))) ,
-        color_or_nothing(to_value(get(primitive, :nan_color, nothing)))
-    )
 
+    ns = map(n -> normalize(normalmatrix * n), meshnormals)
     # Liight math happens in view/camera space
     pointlight = Makie.get_point_light(scene)
     lightposition = if !isnothing(pointlight)
@@ -730,19 +762,19 @@ function draw_mesh3D(
     end
 
     # Approximate zorder
-    zorder = sortperm(fs, by = f -> average_z(ts, f))
+    zorder = sortperm(meshfaces, by = f -> average_z(ts, f))
 
     # Face culling
-    zorder = filter(i -> any(last.(ns[fs[i]]) .> faceculling), zorder)
+    zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
 
     pattern = Cairo.CairoPatternMesh()
     for k in reverse(zorder)
-        f = fs[k]
+        f = meshfaces[k]
         t1, t2, t3 = ts[f]
 
         # light calculation
         c1, c2, c3 = if shading
-            map(ns[f], vs[f], cols[k]) do N, v, c
+            map(ns[f], vs[f], per_face_col[k]) do N, v, c
                 L = normalize(lightpos .- v[Vec(1,2,3)])
                 diff_coeff = max(dot(L, N), 0.0)
                 H = normalize(L + normalize(-v[Vec(1, 2, 3)]))
@@ -753,7 +785,7 @@ function draw_mesh3D(
                 RGBA(new_c..., c.alpha)
             end
         else
-            cols[k]
+            per_face_col[k]
         end
         # debug normal coloring
         # n1, n2, n3 = Vec3f(0.5) .+ 0.5ns[f]
@@ -795,7 +827,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Makie.Surface
     if !haskey(primitive, :faceculling)
         primitive[:faceculling] = Observable(-10)
     end
-    draw_mesh3D(scene, screen, primitive, mesh=mesh)
+    draw_mesh3D(scene, screen, primitive, mesh)
     primitive[:color] = old
     return nothing
 end
@@ -885,7 +917,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Makie.MeshSca
         scale = markersize isa Vector ? markersize[i] : markersize
 
         draw_mesh3D(
-            scene, screen, submesh, mesh = m, pos = p,
+            scene, screen, submesh, m, pos = p,
             scale = scale isa Real ? Vec3f(scale) : to_ndim(Vec3f, scale, 1f0)
         )
     end

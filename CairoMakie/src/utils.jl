@@ -144,7 +144,6 @@ to_rgba_image(img::AbstractMatrix{<: Colorant}, attributes) = RGBAf.(img)
 
 function get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip)
     vmin, vmax = colorrange
-
     if isnan(pixel)
         RGBAf(nan_color)
     elseif pixel < vmin && !isnothing(lowclip)
@@ -193,16 +192,18 @@ function FaceIterator(data::AbstractVector, faces)
     end
 end
 
-
 Base.size(fi::FaceIterator) = size(fi.faces)
 Base.getindex(fi::FaceIterator{:PerFace}, i::Integer) = fi.data[i]
 Base.getindex(fi::FaceIterator{:PerVert}, i::Integer) = fi.data[fi.faces[i]]
 Base.getindex(fi::FaceIterator{:Const}, i::Integer) = ntuple(i-> fi.data, 3)
 
 color_or_nothing(c) = isnothing(c) ? nothing : to_color(c)
+function get_color_attr(attributes, attribute)::Union{Nothing, RGBAf}
+    return color_or_nothing(to_value(get(attributes, attribute, nothing)))
+end
 
 function per_face_colors(
-        color, colormap, colorrange, matcap, vertices, faces, normals, uv,
+        color, colormap, colorrange, matcap, faces, normals, uv,
         lowclip=nothing, highclip=nothing, nan_color=nothing
     )
     if matcap !== nothing
