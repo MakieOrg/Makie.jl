@@ -163,7 +163,7 @@ function Scene(;
     )
     m_theme = current_default_theme(; theme..., theme_kw...)
 
-    bg = map(to_color, Observable(m_theme[:backgroundcolor]))
+    bg = map(to_color, convert(Observable, m_theme[:backgroundcolor]))
 
     wasnothing = isnothing(px_area)
     if wasnothing
