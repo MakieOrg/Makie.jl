@@ -80,7 +80,7 @@ You can also make adjustments to the camera position, rotation and zoom by calli
 - `rotate_cam!(scene, angles)` will rotate the camera around its axes with the corresponding angles. The first angle will rotate around the cameras "right" that is the screens horizontal axis, the second around the up vector/vertical axis or `Vec3f(0, 0, +-1)` if `fixed_axis = true`, and the third will rotate around the view direction i.e. the axis out of the screen. The rotation respects the current `rotation_center` of the camera.
 - `zoom!(scene, zoom_step)` will change the zoom level of the scene without translating or rotating the scene. `zoom_step` applies multiplicatively to `cam.zoom_mult` which is used as a multiplier to the fov (perspective projection) or width and height (orthographic projection).
 """
-function Camera3D(scene; kwargs...)
+function Camera3D(scene::Scene; kwargs...)
     attr = merged_get!(:cam3d, scene, Attributes(kwargs)) do
         Attributes(
             # Keyboard controls
@@ -275,10 +275,10 @@ function add_translation!(scene, cam::Camera3D)
             end
         elseif event.action == Mouse.release && dragging[]
             mousepos = mouseposition_px(scene)
-            diff = compute_diff(last_mousepos[] - mousepos)
+            diff = compute_diff(last_mousepos[] .- mousepos)
             last_mousepos[] = mousepos
             dragging[] = false
-            translate_cam!(scene, cam, translationspeed[] * Vec3f(diff[1], diff[2], 0f0))
+            translate_cam!(scene, cam, translationspeed[] .* Vec3f(diff[1], diff[2], 0f0))
             return Consume(true)
         end
         return Consume(false)
@@ -288,7 +288,7 @@ function add_translation!(scene, cam::Camera3D)
     on(camera(scene), scene.events.mouseposition) do mp
         if dragging[] && ispressed(scene, button[])
             mousepos = screen_relative(scene, mp)
-            diff = compute_diff(last_mousepos[] - mousepos)
+            diff = compute_diff(last_mousepos[] .- mousepos)
             last_mousepos[] = mousepos
             translate_cam!(scene, cam, translationspeed[] * Vec3f(diff[1], diff[2], 0f0))
             return Consume(true)
@@ -325,7 +325,7 @@ function add_rotation!(scene, cam::Camera3D)
             mousepos = mouseposition_px(scene)
             dragging[] = false
             rot_scaling = rotationspeed[] * (e.window_dpi[] * 0.005)
-            mp = (last_mousepos[] - mousepos) * 0.01f0 * rot_scaling
+            mp = (last_mousepos[] .- mousepos) .* 0.01f0 .* rot_scaling
             last_mousepos[] = mousepos
             rotate_cam!(scene, cam, Vec3f(-mp[2], mp[1], 0f0), true)
             return Consume(true)
@@ -604,7 +604,7 @@ function update_cam!(scene::Scene, camera::Camera3D, area3d::Rect)
     @extractvalue camera (lookat, eyeposition, upvector)
     bb = Rect3f(area3d)
     width = widths(bb)
-    half_width = width/2f0
+    half_width = width ./ 2f0
     middle = maximum(bb) - half_width
     old_dir = normalize(eyeposition .- lookat)
     camera.lookat[] = middle

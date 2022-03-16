@@ -24,9 +24,11 @@ function handle_color!(uniform_dict, instance_dict)
     end
 end
 
-const IGNORE_KEYS = Set([:shading, :overdraw, :rotation, :distancefield, :markerspace,
-                         :fxaa, :visible, :transformation, :alpha, :linewidth,
-                         :transparency, :marker, :lightposition, :cycle, :label])
+const IGNORE_KEYS = Set([
+    :shading, :overdraw, :rotation, :distancefield, :space, :markerspace, :fxaa, 
+    :visible, :transformation, :alpha, :linewidth, :transparency, :marker, 
+    :lightposition, :cycle, :label
+])
 
 function create_shader(scene::Scene, plot::MeshScatter)
     # Potentially per instance attributes
@@ -100,14 +102,14 @@ using Makie: to_spritemarker
 
 function scatter_shader(scene::Scene, attributes)
     # Potentially per instance attributes
-    per_instance_keys = (:offset, :rotations, :markersize, :color, :intensity,
-                         :uv_offset_width, :marker_offset)
+    per_instance_keys = (:pos, :rotations, :markersize, :color, :intensity,
+                         :uv_offset_width, :quad_offset, :marker_offset)
     uniform_dict = Dict{Symbol,Any}()
 
     if haskey(attributes, :marker) && attributes[:marker][] isa Union{Char, Vector{Char},String}
         font = get(attributes, :font, Observable(Makie.defaultfont()))
         attributes[:markersize] = map(rescale_glyph, attributes[:marker], font, attributes[:markersize])
-        attributes[:marker_offset] = map(rescale_glyph, attributes[:marker], font, attributes[:marker_offset])
+        attributes[:quad_offset] = map(rescale_glyph, attributes[:marker], font, attributes[:quad_offset])
     end
 
     if haskey(attributes, :marker) && attributes[:marker][] isa Union{Vector{Char},String}
@@ -158,10 +160,6 @@ function scatter_shader(scene::Scene, attributes)
         end
     end
 
-    space = get(uniforms, :markerspace, Observable(SceneSpace))
-    uniform_dict[:use_pixel_marker] = map(space) do space
-        return space == Pixel
-    end
     handle_color!(uniform_dict, per_instance)
 
     instance = uv_mesh(Rect2(-0.5f0, -0.5f0, 1f0, 1f0))
@@ -174,14 +172,22 @@ end
 function create_shader(scene::Scene, plot::Scatter)
     # Potentially per instance attributes
     per_instance_keys = (:offset, :rotations, :markersize, :color, :intensity,
-                         :marker_offset)
+                         :quad_offset)
     per_instance = filter(plot.attributes.attributes) do (k, v)
         return k in per_instance_keys && !(isscalar(v[]))
     end
     attributes = copy(plot.attributes.attributes)
-    attributes[:offset] = apply_transform(transform_func_obs(plot),  plot[1])
+    space = get(attributes, :space, :data)
+    mspace = get(attributes, :markerspace, :pixel)
+    cam = scene.camera
+    attributes[:preprojection] = map(space, mspace, cam.projectionview) do space, mspace, pv
+        Makie.clip_to_space(cam, mspace) * Makie.space_to_clip(cam, space)
+    end
+    attributes[:pos] = apply_transform(transform_func_obs(plot),  plot[1])
+    quad_offset = get(attributes, :marker_offset, Observable(Vec2f(0)))
+    attributes[:marker_offset] = Vec3f(0)
+    attributes[:quad_offset] = quad_offset
     attributes[:billboard] = map(rot -> isa(rot, Billboard), plot.rotations)
-    attributes[:pixelspace] = getfield(scene.camera, :pixel_space)
     attributes[:model] = plot.model
     attributes[:markerspace] = plot.markerspace
     attributes[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
@@ -191,7 +197,8 @@ function create_shader(scene::Scene, plot::Scatter)
 end
 
 value_or_first(x::AbstractArray) = first(x)
-value_or_first(x::StaticArray) = x
+value_or_first(x::StaticVector) = x
+value_or_first(x::Mat) = x
 value_or_first(x) = x
 
 function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
@@ -201,6 +208,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     transfunc =  Makie.transform_func_obs(scene)
     pos = plot.position
     space = plot.space
+    markerspace = plot.markerspace
     offset = plot.offset
 
     # TODO: This is a hack before we get better updating of plot objects and attributes going.
@@ -219,14 +227,15 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         gcollection = Observable(glyphcollection)
     end
 
-    glyph_data = lift(pos, gcollection, space, projview, res, offset, transfunc) do pos, gc, args...
-        Makie.preprojected_glyph_arrays(pos, to_value(gc), args...)
-    end
-    # unpack values from the one signal:
-    positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i
-        lift(getindex, glyph_data, i)
+    glyph_data = map(pos, gcollection, offset, transfunc) do pos, gc, offset, transfunc
+        Makie.text_quads(pos, to_value(gc), offset, transfunc)
     end
 
+    # unpack values from the one signal:
+    positions, char_offset, quad_offset, uv_offset_width, scale = map((1, 2, 3, 4, 5)) do i
+        lift(getindex, glyph_data, i)
+    end
+    
     uniform_color = lift(glyphcollection) do gc
         if gc isa AbstractArray
             reduce(vcat, (Makie.collect_vector(g.colors, length(g.glyphs)) for g in gc),
@@ -245,19 +254,25 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         end
     end
 
+    cam = scene.camera
+    # gl_attributes[:preprojection] = Observable(Mat4f(I))
+    preprojection = map(space, markerspace, cam.projectionview, cam.resolution) do s, ms, pv, res
+        Makie.clip_to_space(cam, ms) * Makie.space_to_clip(cam, s)
+    end
+
     uniforms = Dict(
         :model => plot.model,
         :shape_type => Observable(Cint(3)),
         :color => uniform_color,
         :rotations => uniform_rotation,
+        :pos => positions,
+        :marker_offset => char_offset,
+        :quad_offset => quad_offset,
         :markersize => scale,
-        :markerspace => Observable(Pixel),
-        :marker_offset => offset,
-        :offset => positions,
+        :preprojection => preprojection,
         :uv_offset_width => uv_offset_width,
         :transform_marker => Observable(false),
         :billboard => Observable(false),
-        :pixelspace => getfield(scene.camera, :pixel_space),
         :depth_shift => get(plot, :depth_shift, Observable(0f0))
     )
 

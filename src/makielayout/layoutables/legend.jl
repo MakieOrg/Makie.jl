@@ -30,7 +30,7 @@ function layoutable(::Type{Legend},
     real_tellwidth = @lift $tellwidth === automatic ? $orientation == :vertical : $tellwidth
     real_tellheight = @lift $tellheight === automatic ? $orientation == :horizontal : $tellheight
 
-    layoutobservables = LayoutObservables{Legend}(attrs.width, attrs.height, real_tellwidth, real_tellheight,
+    layoutobservables = LayoutObservables(attrs.width, attrs.height, real_tellwidth, real_tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
     legend_area = lift(round_to_IRect2D, layoutobservables.computedbbox)
@@ -123,12 +123,12 @@ function layoutable(::Type{Legend},
             end
 
             rowgap!(subgl, rowgap[])
-            for c in 1:subgl.ncols-1
+            for c in 1:ncols(subgl)-1
                 colgap!(subgl, c, c % 2 == 1 ? patchlabelgap[] : colgap[])
             end
         end
 
-        for r in 1:grid.nrows-1
+        for r in 1:nrows(grid)-1
             if orientation[] == :horizontal
                 if titleposition[] == :left
                     # nothing
@@ -143,7 +143,7 @@ function layoutable(::Type{Legend},
                 end
             end
         end
-        for c in 1:grid.ncols-1
+        for c in 1:ncols(grid)-1
             if orientation[] == :horizontal
                 if titleposition[] == :left
                     colgap!(grid, c, c % 2 == 1 ? titlegap[] : groupgap[])
@@ -392,9 +392,11 @@ end
 
 
 function scalar_lift(attr, default)
-    lift(Any, attr, default) do at, def
+    observable = Observable{Any}()
+    map!(observable, attr, default) do at, def
         Makie.is_scalar_attribute(at) ? at : def
     end
+    return observable
 end
 
 function legendelements(plot::Union{Lines, LineSegments}, legend)

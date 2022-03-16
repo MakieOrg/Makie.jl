@@ -72,7 +72,6 @@ function glyph_collection(str::AbstractString, font_per_char, fontscale_px, hali
 
     # collect information about every character in the string
     charinfos = broadcast((c for c in str), font_per_char, fontscale_px) do char, font, scale
-        # TODO: scale as SVector not Number
         unscaled_extent = get_extent(font, char)
         lineheight = Float32(font.height / font.units_per_EM * lineheight_factor * scale)
         unscaled_hi_bb = height_insensitive_boundingbox(unscaled_extent, font)
@@ -99,18 +98,18 @@ function glyph_collection(str::AbstractString, font_per_char, fontscale_px, hali
     # calculate the x positions of each character in each line
     xs = map(lineinfos) do line
         cumsum([
-            isempty(line) ? 0.0 : -(line[1].hi_bb.origin[1]);
+            0f0;
             [l.hadvance for l in line[1:end-1]]
         ])
     end
 
-    # calculate linewidths as the last origin plus inkwidth for each line
+    # calculate linewidths as the last origin plus hadvance for each line
     linewidths = map(lineinfos, xs) do line, xx
         nchars = length(line)
         # if the last and not the only character is \n, take the previous one
         # to compute the width
         i = (nchars > 1 && line[end].char == '\n') ? nchars - 1 : nchars
-        xx[i] + widths(line[i].hi_bb)[1]
+        xx[i] + line[i].hadvance
     end
 
     # the maximum width is needed for justification
@@ -224,126 +223,6 @@ function glyph_collection(str::AbstractString, font_per_char, fontscale_px, hali
     )
 end
 
-
-function preprojected_glyph_arrays(
-        position::VecTypes, glyphcollection::Makie.GlyphCollection,
-        space::Symbol, projview, resolution, offset::VecTypes, transfunc
-    )
-    offset = to_ndim(Point3f, offset, 0)
-    pos3f0 = to_ndim(Point3f, position, 0)
-
-    if space == :data
-        positions = apply_transform(transfunc, Point3f[pos3f0 + offset + o for o in glyphcollection.origins])
-    elseif space == :screen
-        projected = Makie.project(projview, resolution, apply_transform(transfunc, pos3f0))
-        positions = Point3f[to_ndim(Point3f, projected, 0) + offset + o for o in glyphcollection.origins]
-    else
-        error("Unknown space $space, only :data or :screen allowed")
-    end
-    text_quads(positions, glyphcollection.glyphs, glyphcollection.fonts, glyphcollection.scales)
-end
-
-function preprojected_glyph_arrays(
-        position::VecTypes, glyphcollection::Makie.GlyphCollection,
-        space::Symbol, projview, resolution, offsets::Vector, transfunc
-    )
-
-    offsets = to_ndim.(Point3f, offsets, 0)
-    pos3f0 = to_ndim(Point3f, position, 0)
-
-    if space == :data
-        positions = apply_transform(transfunc, [pos3f0 + offset + o for (o, offset) in zip(glyphcollection.origins, offsets)])
-    elseif space == :screen
-        projected = Makie.project(projview, resolution, apply_transform(transfunc, pos3f0))
-        positions = Point3f[to_ndim(Point3f, projected, 0) + offset + o for (o, offset) in zip(glyphcollection.origins, offsets)]
-    else
-        error("Unknown space $space, only :data or :screen allowed")
-    end
-
-    text_quads(positions, string, font, textsize)
-end
-
-function preprojected_glyph_arrays(
-        positions::AbstractVector, glyphcollections::AbstractVector{<:GlyphCollection}, space::Symbol, projview, resolution, offset, transfunc
-    )
-
-    if offset isa VecTypes
-        offset = [to_ndim(Point3f, offset, 0)]
-    end
-
-    if space == :data
-        allpos = broadcast(positions, glyphcollections, offset) do pos, glyphcollection, offs
-            p = to_ndim(Point3f, pos, 0)
-            apply_transform(
-                transfunc,
-                Point3f[p .+ to_ndim(Point3f, offs, 0) .+ o for o in glyphcollection.origins]
-            )
-        end
-    elseif space == :screen
-        allpos = broadcast(positions, glyphcollections, offset) do pos, glyphcollection, offs
-            projected = to_ndim(
-                Point3f,
-                Makie.project(
-                    projview,
-                    resolution,
-                    apply_transform(transfunc, to_ndim(Point3f, pos, 0))
-                ),
-                0)
-
-            return Point3f[projected .+ to_ndim(Point3f, offs, 0) + o
-                        for o in glyphcollection.origins]
-        end
-    else
-        error("Unknown space $space, only :data or :screen allowed")
-    end
-
-    text_quads(
-        allpos,
-        [x.glyphs for x in glyphcollections],
-        [x.fonts for x in glyphcollections],
-        [x.scales for x in glyphcollections])
-end
-
-
-function text_quads(positions, glyphs::AbstractVector, fonts::AbstractVector, textsizes::ScalarOrVector{<:Vec2})
-
-    atlas = get_texture_atlas()
-    offsets = Vec2f[]
-    uv = Vec4f[]
-    scales = Vec2f[]
-    pad = GLYPH_PADDING[] / PIXELSIZE_IN_ATLAS[]
-    broadcast_foreach(positions, glyphs, fonts, textsizes) do offs, c, font, pixelsize
-    # for (c, font, pixelsize) in zipx(glyphs, fonts, textsizes)
-        push!(uv, glyph_uv_width!(atlas, c, font))
-        glyph_bb, extent = FreeTypeAbstraction.metrics_bb(c, font, pixelsize)
-
-        push!(scales, widths(glyph_bb) .+ pixelsize * 2pad)
-        push!(offsets, minimum(glyph_bb) .- pixelsize * pad)
-    end
-    return positions, offsets, uv, scales
-end
-
-function text_quads(positions, glyphs, fonts, textsizes::Vector{<:ScalarOrVector})
-
-    atlas = get_texture_atlas()
-    offsets = Vec2f[]
-    uv = Vec4f[]
-    scales = Vec2f[]
-    pad = GLYPH_PADDING[] / PIXELSIZE_IN_ATLAS[]
-
-    broadcast_foreach(positions, glyphs, fonts, textsizes) do positions, glyphs, fonts, textsizes
-        broadcast_foreach(positions, glyphs, fonts, textsizes) do offs, c, font, pixelsize
-            push!(uv, glyph_uv_width!(atlas, c, font))
-            glyph_bb, extent = FreeTypeAbstraction.metrics_bb(c, font, pixelsize)
-            push!(scales, widths(glyph_bb) .+ pixelsize * 2pad)
-            push!(offsets, minimum(glyph_bb) .- pixelsize * pad)
-        end
-    end
-
-    return reduce(vcat, positions, init = Point3f[]), offsets, uv, scales
-end
-
-
 # function to concatenate vectors with a value between every pair
 function padded_vcat(arrs::AbstractVector{T}, fillvalue) where T <: AbstractVector{S} where S
     n = sum(length.(arrs))
@@ -365,4 +244,75 @@ function alignment2num(x::Symbol)
     (x in (:left, :bottom)) && return 0.0f0
     (x in (:right, :top)) && return 1.0f0
     return 0.0f0 # 0 default, or better to error?
+end
+
+
+# Backend data
+
+_offset_to_vec(o::VecTypes) = to_ndim(Vec3f, o, 0)
+_offset_to_vec(o::Vector) = to_ndim.(Vec3f, o, 0)
+_offset_at(o::Vec3f, i) = o
+_offset_at(o::Vector, i) = o[i]
+Base.getindex(x::ScalarOrVector, i) = x.sv isa Vector ? x.sv[i] : x.sv
+
+function text_quads(position::VecTypes, gc::GlyphCollection, offset, transfunc)
+    p = apply_transform(transfunc, position)
+    pos = [to_ndim(Point3f, p, 0) for _ in gc.origins]
+
+    atlas = get_texture_atlas()
+    pad = GLYPH_PADDING[] / PIXELSIZE_IN_ATLAS[]
+    off = _offset_to_vec(offset)
+
+    char_offsets = Vector{Vec3f}(undef, length(pos)) # TODO can this be Vec2f?
+    quad_offsets = Vector{Vec2f}(undef, length(pos))
+    scales = Vector{Vec2f}(undef, length(pos))
+    uvs = Vector{Vec4f}(undef, length(pos))
+
+    for i in eachindex(pos)
+        glyph_bb, extent = FreeTypeAbstraction.metrics_bb(
+            gc.glyphs[i], gc.fonts[i], gc.scales[i]
+        )
+        uvs[i] = glyph_uv_width!(atlas, gc.glyphs[i], gc.fonts[i])
+        scales[i] = widths(glyph_bb) .+ gc.scales[i] .* 2pad
+        char_offsets[i] = gc.origins[i] .+ _offset_at(off, i)
+        quad_offsets[i] = minimum(glyph_bb) .- gc.scales[i] .* pad
+    end
+
+    # pos is the (space) position given to text (with transfunc applied)
+    # char_offsets are 3D offsets in marker space, including:
+    #   - offsets passed to text
+    #   - character origins (relative to the string origin pos)
+    # quad_offsets are 2D offsets of the quad origin to the character origins
+    #   (these transform differently than character offsets, also marker space)
+    # uvs are the texture coordinates of each character
+    # scales is the size of the quad including textsize, character size and texture atlas padding
+    return pos, char_offsets, quad_offsets, uvs, scales
+end
+
+function text_quads(position::Vector, gcs::Vector{<: GlyphCollection}, offset, transfunc)
+    ps = apply_transform(transfunc, position)
+    pos = [to_ndim(Point3f, p, 0) for (p, gc) in zip(ps, gcs) for _ in gc.origins]
+
+    atlas = get_texture_atlas()
+    pad = GLYPH_PADDING[] / PIXELSIZE_IN_ATLAS[]
+    off = _offset_to_vec(offset)
+
+    char_offsets = Vector{Vec3f}(undef, length(pos)) # TODO can this be Vec2f?
+    quad_offsets = Vector{Vec2f}(undef, length(pos))
+    scales = Vector{Vec2f}(undef, length(pos))
+    uvs = Vector{Vec4f}(undef, length(pos))
+
+    k = 1
+    for (j, gc) in enumerate(gcs), i in eachindex(gc.origins)
+        glyph_bb, extent = FreeTypeAbstraction.metrics_bb(
+            gc.glyphs[i], gc.fonts[i], gc.scales[i]
+        )
+        uvs[k] = glyph_uv_width!(atlas, gc.glyphs[i], gc.fonts[i])
+        scales[k] = widths(glyph_bb) .+ gc.scales[i] * 2pad
+        char_offsets[k] = gc.origins[i] .+ _offset_at(off, j)
+        quad_offsets[k] = minimum(glyph_bb) .- gc.scales[i] .* pad
+        k += 1
+    end
+
+    return pos, char_offsets, quad_offsets, uvs, scales
 end

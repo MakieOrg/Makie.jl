@@ -23,7 +23,7 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
 
 
     protrusions = lift(to_protrusions, attrs.protrusions)
-    layoutobservables = LayoutObservables{Axis3}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight, attrs.halign, attrs.valign, attrs.alignmode;
+    layoutobservables = LayoutObservables(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight, attrs.halign, attrs.valign, attrs.alignmode;
         suggestedbbox = bbox, protrusions = protrusions)
 
     notify(protrusions)
@@ -128,7 +128,7 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
         align = titlealignnode,
         font = attrs.titlefont,
         color = attrs.titlecolor,
-        space = :data,
+        markerspace = :data,
         inspectable = false)
     decorations[:title] = titlet
 
@@ -335,22 +335,18 @@ to_protrusions(x::Number) = GridLayoutBase.RectSides{Float32}(x, x, x, x)
 to_protrusions(x::Tuple{Any, Any, Any, Any}) = GridLayoutBase.RectSides{Float32}(x...)
 
 function getlimits(ax::Axis3, dim)
+    dim in (1, 2, 3) || error("Dimension $dim not allowed. Only 1, 2 or 3.")
 
-    plots_with_autolimits = if dim == 1
-        filter(p -> !haskey(p.attributes, :xautolimits) || p.attributes.xautolimits[], ax.scene.plots)
-    elseif dim == 2
-        filter(p -> !haskey(p.attributes, :yautolimits) || p.attributes.yautolimits[], ax.scene.plots)
-    elseif dim == 3
-        filter(p -> !haskey(p.attributes, :zautolimits) || p.attributes.zautolimits[], ax.scene.plots)
-    else
-        error("Dimension $dim not allowed. Only 1, 2 or 3.")
+    filtered_plots = filter(ax.scene.plots) do p
+        attr = p.attributes
+        to_value(get(attr, :visible, true)) &&
+        is_data_space(to_value(get(attr, :space, :data))) &&
+        ifelse(dim == 1, to_value(get(attr, :xautolimits, true)), true) &&
+        ifelse(dim == 2, to_value(get(attr, :yautolimits, true)), true) &&
+        ifelse(dim == 3, to_value(get(attr, :zautolimits, true)), true)
     end
 
-    visible_plots = filter(
-        p -> !haskey(p.attributes, :visible) || p.attributes.visible[],
-        plots_with_autolimits)
-
-    bboxes = Makie.data_limits.(visible_plots)
+    bboxes = Makie.data_limits.(filtered_plots)
     finite_bboxes = filter(Makie.isfinite_rect, bboxes)
 
     isempty(finite_bboxes) && return nothing
@@ -460,8 +456,8 @@ function add_gridlines_and_frames!(topscene, scene, dim::Int, limits, ticknode, 
         # be cut when they lie directly on the scene boundary
         to_topscene_z_2d.([p1, p2, p3, p4, p5, p6], Ref(scene))
     end
-
-    colors = lift(vcat, Any, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3))
+    colors = Observable{Any}()
+    map!(vcat, colors, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3))
     framelines = linesegments!(topscene, framepoints, color = colors, linewidth = attr(:spinewidth),
         # transparency = true,
         visible = attr(:spinesvisible), inspectable = false)
@@ -550,7 +546,8 @@ function add_ticks_and_ticklabels!(topscene, scene, dim::Int, limits, ticknode, 
             tendp + offset
         end
 
-        v = collect(zip(ticklabs, points))
+        N = min(length(ticklabs), length(points))
+        v = [(ticklabs[i], points[i]) for i in 1:N]
         v::Vector{Tuple{String, Point2f}}
     end
 
@@ -590,7 +587,7 @@ function add_ticks_and_ticklabels!(topscene, scene, dim::Int, limits, ticknode, 
         pp2 = Point2f(o + Makie.project(scene, p2))
 
         # find the midpoint
-        midpoint = (pp1 + pp2) / 2
+        midpoint = (pp1 + pp2) ./ 2
 
         # and the difference vector
         diff = pp2 - pp1

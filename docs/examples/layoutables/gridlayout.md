@@ -11,9 +11,10 @@ There are four different types of sizes you can give rows and columns.
 `Fixed(scene_units)` is used to set a column or row to an absolute size, independent of its content.
 This only really makes sense if there is variable width content in the column or row, that can shrink or expand to meet this size. You will probably not need `Fixed` sizes very often.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
+CairoMakie.activate!() # hide
 
 f = Figure()
 
@@ -32,7 +33,7 @@ f
 This is useful, e.g., if you want a column to span 50% of the available width, no matter what other content is there.
 In this case, you would use `Relative(1/2)`. The available width is the width of the GridLayout minus the space taken by row or column gaps including protrusions.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 
@@ -71,7 +72,7 @@ Column 1 has ratio `1` while column 2 has ratio `2`.
 The first column will get `1 / (1 + 2) * 300 == 100` units, while the second column gets `2 / (1 + 2) * 300 == 200` units.
 
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 
@@ -94,7 +95,7 @@ This size is also a little bit trickier to understand. The syntax is `Aspect(ref
 
 Aspect sized columns or rows are very useful when you want to constrain the aspect ratio of a grid cell. For example, a plot that is always supposed to be square. Enforcing the aspect *on the layout level is better* than setting `axis.aspect = AxisAspect(1)` in most cases, because it ensures an *intact layout* where all grid cell borders are aligned visually. An `Axis` with `aspect = AxisAspect(1)` on the other hand simply shrinks so it remains square, but this will break alignment with other grid content.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 
@@ -125,7 +126,7 @@ also are by default set to alignmode Inside which means that the content edges
 are aligned to the grid's bounding box, excluding the outer protrusions. This way,
 plots in nested grids are nicely aligned along their spines.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 
@@ -153,7 +154,7 @@ main GridLayout so that there some space between the window edges and the plots.
 You can see that the normal axis looks the same as the one placed inside the
 grid with Inside alignment, and they are both effectively aligned exactly the same.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 
@@ -179,7 +180,7 @@ Elements in a grid layout can span multiple rows and columns. You can specify
 them with the range syntax and colons for the full width or height. You can
 also use end to specify the last row or column.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 
@@ -201,7 +202,7 @@ error. Instead, the layout automatically resizes to contain the new indices.
 This is very useful if you want to iteratively build a layout, or add super or
 side titles.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 
@@ -215,10 +216,32 @@ end
 
 Label(f[0, :], text = "Super Title", textsize = 50)
 Label(f[end+1, :], text = "Sub Title", textsize = 50)
-Label(f[2:end-1, 0], text = "Left Text", textsize = 50,
+Label(f[1:end-1, 0], text = "Left Text", textsize = 50,
     rotation = pi/2)
-Label(f[2:end-1, end+1], text = "Right Text", textsize = 50,
+Label(f[1:end-1, end+1], text = "Right Text", textsize = 50,
     rotation = -pi/2)
+
+f
+```
+\end{examplefigure}
+
+If you have rows from 1 to 3 and index into row 0, the rows now range from 0 to 3.
+If you then index into row -1, the rows range from -1 to 3 and so on.
+This behavior has changed since GridLayoutBase.jl `v0.7.0`.
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+
+f = Figure(resolution = (800, 800))
+
+for i in 1:3, j in 1:3
+    Axis(f[i, j])
+end
+
+Label(f[0, :], text = "First Supertitle", textsize = 20)
+Label(f[-1, :], text = "Second Supertitle", textsize = 30)
+Label(f[-2, :], text = "Third Supertitle", textsize = 40)
 
 f
 ```
@@ -231,7 +254,7 @@ will remove those for you.
 
 Here we start with two axes:
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 
@@ -243,10 +266,10 @@ ax2 = Axis(f[1, 2], title = "Axis 2")
 f
 ```
 \end{examplefigure}
-Now we decide we'd like the second axis better if it was below the first one.
+Now we decide that we'd like the second axis better if it was below the first one.
 We move it two the new cell, and the old unused column is left blank.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 f[2, 1] = ax2
 
@@ -255,7 +278,7 @@ f
 \end{examplefigure}
 We can get rid of the unused space with `trim!`:
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 trim!(f.layout)
 
@@ -268,7 +291,7 @@ f
 You can use `rowgap!` and `colgap!` to change the spacing between rows or
 columns respectively.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 
@@ -288,7 +311,7 @@ fig
 \end{examplefigure}
 All spaces can be changed at once by omitting the index of the gap to resize.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 rowgap!(fig.layout, 50)
 
