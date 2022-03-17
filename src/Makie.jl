@@ -214,7 +214,7 @@ export to_world
 export mouseover, onpick, pick, Events, Keyboard, Mouse, mouse_selection, is_mouseinside
 export ispressed, Exclusively
 export register_callbacks
-export window_area, window_open, mouse_buttons, mouse_position, mouseposition_px, 
+export window_area, window_open, mouse_buttons, mouse_position, mouseposition_px,
        scroll, keyboard_buttons, unicode_input, dropped_files, hasfocus, entered_window
 export disconnect!
 export DataInspector
@@ -297,10 +297,5 @@ export heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface,
 export heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, surface!, text!, volume!
 
 export PointLight, EnvironmentLight, AmbientLight, SSAO
-
-if Base.VERSION >= v"1.4.2"
-    include("precompiles.jl")
-    _precompile_()
-end
 
 end # module
