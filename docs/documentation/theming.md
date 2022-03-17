@@ -381,17 +381,18 @@ using GLMakie
 GLMakie.activate!() # HIDE
 function demo3dLineScatter()
     a, m, z₀ = 1, 2.1, 0
-    φ = LinRange(0,20π,500)
+    φ = LinRange(0,20π,50)
     r = a*φ
     x, y, z = r .* cos.(φ), r .* sin.(φ), m .* r .+ z₀
     fig = Figure()
     axs = [Axis3(fig[i, j]; aspect=(1, 1, 1)) for i in 1:2 for j in 1:2]
-    [scatter!(axs[1], 4x, -2y .+ i, z .+ 5i) for i in 1:7]
-    [lines!(axs[2], 4x, -2y .+ i, z .+ 5i) for i in 1:7]
-    [scatterlines!(axs[3], 4x, -2y .+ i, z .+ 5i; linestyle=:solid,
-        cycle=Cycle([:color, :strokecolor, :marker]; covary=true)) for i in 1:7]
-    [scatterlines!(axs[4], 4x, -2y .+ i, z .+ 5i; markercolor=:transparent, linestyle=:solid, strokewidth=2,
-        cycle=Cycle([:color, :strokecolor, :marker]; covary=true)) for i in 1:7]
+    [scatter!(axs[1], 4x, -2y .+ i, i*z .+ 5i) for i in 1:2:7]
+    [lines!(axs[2], 4x, -2y .+ i, i*z .+ 5i) for i in 1:2:7]
+    [scatterlines!(axs[3], 4x, -2y .+ i, i*z .+ 5i; linestyle=:solid,
+        cycle=Cycle([:color, :strokecolor, :marker]; covary=true)) for i in 1:2:7]
+    [scatterlines!(axs[4], 4x, -2y .+ i,i*z .+ 5i; markercolor=:transparent,
+        linestyle=:solid,strokewidth=2,
+        cycle=Cycle([:color, :strokecolor, :marker]; covary=true)) for i in 1:2:7]
     return fig
 end
 

@@ -57,8 +57,7 @@ function theme_jlmke()
         ),
         Colorbar=(
             label = "f(x,y)",
-            width = 24,
-            ticksize=20,
+            ticksize=15,
             tickalign=0.5,
             spinewidth=0.0,
             minorticksvisible= true),
