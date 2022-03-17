@@ -281,6 +281,7 @@ with_theme(theme_makie()) do
     demoLinesCycle()
 end
 ```
+\end{examplefigure}
 
 #### Cycle scatters
 
