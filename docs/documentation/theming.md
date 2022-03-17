@@ -277,7 +277,7 @@ function demoLinesCycle()
     axislegend("Label"; merge=true, position=:lt, nbanks=2)
     return fig
 end
-with_theme(theme_makie()) do
+with_theme(theme_jlmke()) do
     demoLinesCycle()
 end
 ```
@@ -464,7 +464,7 @@ function demo2Stats()
     return fig
 end
 
-fig = with_theme(theme_jlmke()) do
+with_theme(theme_jlmke()) do
     return demo2Stats()
 end
 ```
