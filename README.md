@@ -39,6 +39,8 @@ BibTeX entry:
 }
 ```
 
+or [Download the BibTeX file](./assets/DanischKrumbiegel2021.bibtex).
+
 # Installation
 
 Please consider using the backends directly. As explained in the documentation, they re-export all of Makie's functionality.
@@ -64,7 +66,7 @@ using GLMakie
 
 # Quick start
 
-The following examples are supposed to be self-explanatory. For further information [check out the documentation here!](http://makie.juliaplots.org/stable/).
+The following examples are supposed to be self-explanatory. For further information [check out the documentation here!](http://makie.juliaplots.org/stable/)
 
 ### A simple parabola
 
@@ -88,15 +90,15 @@ set_theme!(palette = (; patchcolor = tuple.(to_colormap(:Egypt, 4), 0.65)))
 fig = lines(x, sin.(x); label = L"sin(x)", linewidth = 3, color = :black,
     axis = (; title = "Polynomial approximation of sin(x)",
         xgridstyle = :dash, ygridstyle = :dash,
-        xticksize = 15, yticksize = 15, xtickalign = 1, ytickalign = 1,
+        xticksize = 10, yticksize = 10, xtickalign = 1, ytickalign = 1,
         xticks = (-π:π/2:π, ["π", "-π/2", "0", "π/2", "π"])
     ))
 band!(x, sin.(x), approx .+= x; label = L"n = 0")
 band!(x, sin.(x), approx .+= -x .^ 3 / 6; label = L"n = 1")
 band!(x, sin.(x), approx .+= x .^ 5 / 120; label = L"n = 2")
-band!(x, sin.(x), approx .+= x .^ 7 / 5040; label = L"n = 3")
+band!(x, sin.(x), approx .+= -x .^ 7 / 5040; label = L"n = 3")
 limits!(-3.8, 3.8, -1.5, 1.5)
-axislegend(; position = :ct, bgcolor = (:white,0.75), framecolor = :orange)
+axislegend(; position = :ct, bgcolor = (:white, 0.75), framecolor = :orange)
 save("approxsin.png", fig, resolution = (600, 400))
 fig
 ```
@@ -128,7 +130,7 @@ fig
 
 <img src="./assets/simpleLayout.png">
 
-Warning: When using `set_theme!(...)` don't forget to reset to the default settings by doing `set_theme!()`.
+⚠️WARNING⚠️ When using `set_theme!(...)` don't forget to reset to the default settings by doing `set_theme!()`.
 
 Interactive example by [AlexisRenchon](https://github.com/AlexisRenchon):
 
