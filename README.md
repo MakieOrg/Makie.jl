@@ -57,11 +57,10 @@ You may check the installed version with:
 ]st GLMakie
 ```
 
-Test the package:
+Start using the package:
 
 ```julia
 using GLMakie
-] test GLMakie
 ```
 
 # Quick start
