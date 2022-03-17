@@ -126,3 +126,5 @@ with_theme(demofigure, theme_dark())
 with_theme(demofigure, theme_jlmke())
 ```
 \end{examplefigure}
+
+For Cycling available options with this theme go to [theming](https://makie.juliaplots.org/stable/documentation/theming/index.html#theming).
