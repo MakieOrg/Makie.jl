@@ -130,7 +130,7 @@ fig
 
 <img src="./assets/simpleLayout.png">
 
-⚠️WARNING⚠️ When using `set_theme!(...)` don't forget to reset to the default settings by doing `set_theme!()`.
+⚠️WARNING⚠️. Don't forget to reset to the default Makie settings by doing `set_theme!()`.
 
 Interactive example by [AlexisRenchon](https://github.com/AlexisRenchon):
 
