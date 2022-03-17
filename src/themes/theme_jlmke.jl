@@ -1,4 +1,4 @@
-function theme_makie()
+function theme_jlmke()
     function makie_colors(alpha=1.0)
         colors = [RGB(0.0, 0.0, 0.0), RGB(0.082, 0.643, 0.918), RGB(0.91, 0.122, 0.361),
                   RGB(0.929, 0.773, 0.0), RGB(0.588, 0.196, 0.722), RGB(0.361, 0.722, 0.361),
@@ -14,8 +14,6 @@ function theme_makie()
     cycle4 = Cycle([:color, :linestyle, :strokecolor], covary=true)
     cycle5 = Cycle([:color, :marker, :stemcolor, :stemlinestyle], covary=true)
     Theme(
-        resolution = (900, 600), #1.5 ratio
-        fontsize = 24f0,
         palette=(color=my_colors, marker=my_markers, linestyle=my_linestyle,
             strokecolor=my_colors, patchcolor = my_colors,
             stemcolor = my_colors, stemlinestyle=my_linestyle,
@@ -32,7 +30,6 @@ function theme_makie()
         Stem= (cycle=cycle5,),
         Text = (cycle = [:color],),
         Violin = (cycle = [:color, :strokecolor, :mediancolor],),
-        markersize=15,
         strokewidth=0.5,
         colormap= :plasma,
         Axis = (
