@@ -415,12 +415,12 @@ end
 
     # Check that scale and rotate don't act on the marker for scatter (only the position)
     p2 = scatter!(ax, Point2f(1, 0), marker= 'a', markersize = 50)
-    rotate!(p2, pi/4)
+    Makie.rotate!(p2, pi/4)
     scale!(p2, 0.5, 0.5, 1)
 
     # but do act on glyphs of text
     t2 = text!(ax, "Test", position = Point2f(1, 0), textsize = 50)
-    rotate!(t2, pi/4)
+    Makie.rotate!(t2, pi/4)
     scale!(t2, 0.5, 0.5, 1)
 
     xlims!(ax, -0.2, 0.5)
