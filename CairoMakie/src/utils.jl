@@ -2,46 +2,56 @@
 #                             Projection utilities                             #
 ################################################################################
 
-function project_position(scene, point, model, yflip = true)
+function project_position(scene, space, point, model, yflip = true)
 
     # use transform func
     point = Makie.apply_transform(scene.transformation.transform_func[], point)
 
     res = scene.camera.resolution[]
     p4d = to_ndim(Vec4f, to_ndim(Vec3f, point, 0f0), 1f0)
-    clip = scene.camera.projectionview[] * model * p4d
+    clip = Makie.space_to_clip(scene.camera, space) * model * p4d
     @inbounds begin
-    # between -1 and 1
+        # between -1 and 1
         p = (clip ./ clip[4])[Vec(1, 2)]
         # flip y to match cairo
         p_yflip = Vec2f(p[1], (1f0 - 2f0 * yflip) * p[2])
         # normalize to between 0 and 1
-        p_0_to_1 = (p_yflip .+ 1f0) / 2f0
+        p_0_to_1 = (p_yflip .+ 1f0) ./ 2f0
     end
     # multiply with scene resolution for final position
     return p_0_to_1 .* res
 end
 
-project_scale(scene::Scene, s::Number, model = Mat4f(I)) = project_scale(scene, Vec2f(s), model)
-
-function project_scale(scene::Scene, s, model = Mat4f(I))
-    p4d = to_ndim(Vec4f, s, 0f0)
-    p = @inbounds (scene.camera.projectionview[] * model * p4d)[Vec(1, 2)] ./ 2f0
-    return p .* scene.camera.resolution[]
+function project_scale(scene::Scene, space, s::Number, model = Mat4f(I))
+    project_scale(scene, space, Vec2f(s), model)
 end
 
-function project_rect(scene, rect::Rect, model)
-    mini = project_position(scene, minimum(rect), model)
-    maxi = project_position(scene, maximum(rect), model)
+function project_scale(scene::Scene, space, s, model = Mat4f(I))
+    if is_data_space(space)
+        p4d = to_ndim(Vec4f, s, 0f0)
+        @inbounds p = (scene.camera.projectionview[] * model * p4d)[Vec(1, 2)]
+        return p .* scene.camera.resolution[] .* 0.5
+    elseif is_pixel_space(space)
+        return Vec2f(s)
+    elseif is_relative_space(space)
+        return Vec2f(s) .* scene.camera.resolution[]
+    else # clip
+        return Vec2f(s) .* scene.camera.resolution[] .* 0.5f0
+    end
+end
+
+function project_rect(scene, space, rect::Rect, model)
+    mini = project_position(scene, space, minimum(rect), model)
+    maxi = project_position(scene, space, maximum(rect), model)
     return Rect(mini, maxi .- mini)
 end
 
-function project_polygon(scene, poly::P, model) where P <: Polygon
+function project_polygon(scene, space, poly::P, model) where P <: Polygon
     ext = decompose(Point2f, poly.exterior)
     interiors = decompose.(Point2f, poly.interiors)
     Polygon(
-        Point2f.(project_position.(Ref(scene), ext, Ref(model))),
-        [Point2f.(project_position.(Ref(scene), interior, Ref(model))) for interior in interiors],
+        Point2f.(project_position.(Ref(scene), space, ext, Ref(model))),
+        [Point2f.(project_position.(Ref(scene), space, interior, Ref(model))) for interior in interiors],
     )
 end
 
@@ -134,7 +144,6 @@ to_rgba_image(img::AbstractMatrix{<: Colorant}, attributes) = RGBAf.(img)
 
 function get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip)
     vmin, vmax = colorrange
-
     if isnan(pixel)
         RGBAf(nan_color)
     elseif pixel < vmin && !isnothing(lowclip)
@@ -183,16 +192,18 @@ function FaceIterator(data::AbstractVector, faces)
     end
 end
 
-
 Base.size(fi::FaceIterator) = size(fi.faces)
 Base.getindex(fi::FaceIterator{:PerFace}, i::Integer) = fi.data[i]
 Base.getindex(fi::FaceIterator{:PerVert}, i::Integer) = fi.data[fi.faces[i]]
 Base.getindex(fi::FaceIterator{:Const}, i::Integer) = ntuple(i-> fi.data, 3)
 
-color_or_nothing(c) = c === nothing ? nothing : to_color(c)
+color_or_nothing(c) = isnothing(c) ? nothing : to_color(c)
+function get_color_attr(attributes, attribute)::Union{Nothing, RGBAf}
+    return color_or_nothing(to_value(get(attributes, attribute, nothing)))
+end
 
 function per_face_colors(
-        color, colormap, colorrange, matcap, vertices, faces, normals, uv,
+        color, colormap, colorrange, matcap, faces, normals, uv,
         lowclip=nothing, highclip=nothing, nan_color=nothing
     )
     if matcap !== nothing

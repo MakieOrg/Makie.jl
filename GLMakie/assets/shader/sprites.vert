@@ -26,27 +26,15 @@ struct Grid3D{
 {{uv_offset_width_type}} uv_offset_width;
 //{{uv_x_type}} uv_width;
 {{position_type}} position;
-{{position_x_type}} position_x;
-{{position_y_type}} position_y;
-{{position_z_type}} position_z;
 //Assembling functions for creating the right position from the above inputs. They also indicate the type combinations allowed for the above inputs
 ivec2 ind2sub(ivec2 dim, int linearindex);
 ivec3 ind2sub(ivec3 dim, int linearindex);
 
 {{scale_type}}   scale; // so in the case of distinct x,y,z, there's no chance to unify them under one variable
-{{scale_x_type}} scale_x;
-{{scale_y_type}} scale_y;
-{{scale_z_type}} scale_z;
-vec3 _scale(Nothing scale, Nothing scale_x, Nothing scale_y, Nothing scale_z, int index);
-vec3 _scale(vec3    scale, Nothing scale_x, Nothing scale_y, Nothing scale_z, int index);
-vec3 _scale(vec2    scale, Nothing scale_x, Nothing scale_y, Nothing scale_z, int index);
-vec3 _scale(Nothing scale, float   scale_x, float   scale_y, float   scale_z, int index);
-vec3 _scale(vec3    scale, float   scale_x, float   scale_y, float   scale_z, int index);
-vec3 _scale(vec2    scale, float   scale_x, float   scale_y, float   scale_z, int index);
 
 
-
-{{offset_type}} offset;
+{{marker_offset_type}} marker_offset;
+{{quad_offset_type}} quad_offset;
 
 {{rotation_type}} rotation;
 
@@ -63,14 +51,6 @@ float get_rotation_len(vec4 rotation){
     return 1.0;
 }
 
-vec3 _scale(Nothing scale, float scale_x, float scale_y, Nothing scale_z, int index){
-    float len = get_rotation_len(rotation);
-    return vec3(scale_x,scale_y, len);
-}
-vec3 _scale(vec3 scale, Nothing scale_x, Nothing scale_y, Nothing scale_z, int index){
-    float len = get_rotation_len(rotation);
-    return vec3(scale.xy, scale.z*len);
-}
 
 {{color_type}}        color;
 {{color_map_type}}    color_map;
@@ -88,13 +68,11 @@ vec4 _color(vec3 color, Nothing intensity, Nothing color_map, Nothing color_norm
 vec4 _color(vec4 color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len);
 vec4 _color(Nothing color, float intensity, sampler1D color_map, vec2 color_norm, int index, int len);
 vec4 _color(Nothing color, sampler1D intensity, sampler1D color_map, vec2 color_norm, int index, int len);
-vec4 _color(Nothing color, Nothing intensity, sampler1D color_map, vec2 color_norm, int index, int len){
-    return color_lookup(get_intensity(rotation, position_z, index), color_map, color_norm);
-}
 
 {{stroke_color_type}} stroke_color;
 {{glow_color_type}} glow_color;
 
+uniform mat4 preprojection;
 uniform uint objectid;
 uniform int len;
 
@@ -116,9 +94,10 @@ void main(){
     g_primitive_index = index;
     vec3 pos;
     {{position_calc}}
-    g_position        = pos;
-    g_offset_width.xy = offset.xy;
-    g_offset_width.zw = _scale(scale, scale_x, scale_y, scale_z, g_primitive_index).xy;
+    vec4 p = preprojection * vec4(pos, 1);
+    g_position        = p.xyz / p.w + marker_offset;
+    g_offset_width.xy = quad_offset.xy;
+    g_offset_width.zw = scale.xy;
     g_color           = _color(color, intensity, color_map, color_norm, g_primitive_index, len);
     g_rotation        = _rotation(rotation);
     g_uv_texture_bbox = uv_offset_width;

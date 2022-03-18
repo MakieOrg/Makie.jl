@@ -1,30 +1,4 @@
-# I don't want to use map anymore, it's so ambigious, especially to newcomers.
-# TODO should this become it's own function?
-"""
-    lift(f, o1::Observables.AbstractObservable, rest...)
-
-Create a new `Observable` by applying `f` to all observables in `o1` and `rest...`.
-The initial value is determined by the first function evaluation.
-"""
-function lift(f, o1::Observables.AbstractObservable, rest...; kw...)
-    if !isempty(kw)
-        error("lift(f, obs...; init=f.(obs...), typ=typeof(init)) is deprecated. Use lift(typ, f, obs...), or map!(f, Observable(), obs...) for different init.")
-    end
-    init = f(to_value(o1), to_value.(rest)...)
-    typ = typeof(init)
-    result = Observable{typ}(init)
-    map!(f, result, o1, rest...)
-    return result
-end
-
-function lift(
-        f, ::Type{T}, o1::Observables.AbstractObservable, rest...
-    ) where {T}
-    init = f(to_value(o1), to_value.(rest)...)
-    result = Observable{T}(init)
-    map!(f, result, o1, rest...)
-    return result
-end
+const lift = map
 
 Base.close(obs::Observable) = empty!(obs.listeners)
 

@@ -49,7 +49,6 @@ vec3 _normalize(vec3 val, vec3 from, vec3 to){
     return (val-from) / (to - from);
 }
 
-
 mat4 getmodelmatrix(vec3 xyz, vec3 scale){
    return mat4(
       vec4(scale.x, 0, 0, 0),
@@ -103,8 +102,6 @@ void rotate(samplerBuffer vectors, int index, inout vec3 V, inout vec3 N){
     vec4 r = texelFetch(vectors, index);
     rotate(r, index, V, N);
 }
-
-
 
 mat4 translate_scale(vec3 xyz, vec3 scale){
    return mat4(
@@ -170,32 +167,16 @@ vec4 getindex(sampler3D tex, int index){
 
 
 
-//vec3 _scale(vec3  scale, Nothing scale_x, Nothing scale_y, Nothing scale_z, int index){return scale;}
-vec3 _scale(vec2  scale, Nothing scale_x, Nothing scale_y, Nothing scale_z, int index){return vec3(scale,1);}
-vec3 _scale(float scale, Nothing scale_x, Nothing scale_y, Nothing scale_z, int index){return vec3(scale);}
-vec3 _scale(Nothing  scale, float scale_x, float scale_y, float scale_z, int index){
-    return vec3(scale_x, scale_y, scale_z);
+vec3 _scale(vec2 scale, int index){
+    return vec3(scale.x, scale.y, 1.0);
 }
-vec3 _scale(vec2  scale, float scale_x, float scale_y, float scale_z, int index){
-    return vec3(scale.x*scale_x, scale.y*scale_y, scale_z);
+
+vec3 _scale(vec3  scale, int index){
+    return scale;
 }
-vec3 _scale(vec3  scale, float scale_x, float scale_y, float scale_z, int index){
-    return vec3(scale_x, scale_y, scale_z)*scale;
-}
-vec3 _scale(samplerBuffer scale, Nothing scale_x, Nothing scale_y, Nothing scale_z, int index){
+
+vec3 _scale(samplerBuffer scale, int index){
     return getindex(scale, index).xyz;
-}
-vec3 _scale(vec3 scale, float scale_x, float scale_y, samplerBuffer scale_z, int index){
-    return vec3(scale_x, scale_y, getindex(scale_z, index).x);
-}
-vec3 _scale(Nothing scale, float scale_x, float scale_y, samplerBuffer scale_z, int index){
-    return vec3(scale_x, scale_y, getindex(scale_z, index).x);
-}
-vec3 _scale(vec3 scale, float scale_x, samplerBuffer scale_y, float scale_z, int index){
-    return vec3(scale_x, getindex(scale_y, index).x, scale_z);
-}
-vec3 _scale(Nothing scale, float scale_x, samplerBuffer scale_y, float scale_z, int index){
-    return vec3(scale_x, getindex(scale_y, index).x, scale_z);
 }
 
 vec4 color_lookup(float intensity, vec4 color, vec2 norm){

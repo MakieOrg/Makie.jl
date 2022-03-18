@@ -36,7 +36,8 @@ function draw_poly(scene::Scene, screen::CairoScreen, poly, points::Vector{<:Poi
 end
 
 function draw_poly(scene::Scene, screen::CairoScreen, poly, points::Vector{<:Point2}, color, model, strokecolor, strokewidth)
-    points = project_position.(Ref(scene), points, Ref(model))
+    space = to_value(get(poly, :space, :data))
+    points = project_position.(Ref(scene), space, points, Ref(model))
     Cairo.move_to(screen.context, points[1]...)
     for p in points[2:end]
         Cairo.line_to(screen.context, p...)
@@ -62,7 +63,8 @@ draw_poly(scene::Scene, screen::CairoScreen, poly, rect::Rect2) = draw_poly(scen
 
 function draw_poly(scene::Scene, screen::CairoScreen, poly, rects::Vector{<:Rect2})
     model = poly.model[]
-    projected_rects = project_rect.(Ref(scene), rects, Ref(model))
+    space = to_value(get(poly, :space, :data))
+    projected_rects = project_rect.(Ref(scene), space, rects, Ref(model))
 
     color = poly.color[]
     if color isa AbstractArray{<:Number}
@@ -110,7 +112,8 @@ end
 function draw_poly(scene::Scene, screen::CairoScreen, poly, polygons::AbstractArray{<:Polygon})
     
     model = poly.model[]
-    projected_polys = project_polygon.(Ref(scene), polygons, Ref(model))
+    space = to_value(get(poly, :space, :data))
+    projected_polys = project_polygon.(Ref(scene), space, polygons, Ref(model))
 
     color = poly.color[]
     if color isa AbstractArray{<:Number}
@@ -153,7 +156,8 @@ function draw_plot(scene::Scene, screen::CairoScreen,
         lowerpoints = band[2][]
         points = vcat(lowerpoints, reverse(upperpoints))
         model = band.model[]
-        points = project_position.(Ref(scene), points, Ref(model))
+        space = to_value(get(band, :space, :data))
+        points = project_position.(Ref(scene), space, points, Ref(model))
         Cairo.move_to(screen.context, points[1]...)
         for p in points[2:end]
             Cairo.line_to(screen.context, p...)
