@@ -73,7 +73,7 @@ The following examples are supposed to be self-explanatory. For further informat
 x = 1:10
 fig = lines(x, x.^2; label = "Parabola")
 axislegend()
-save("parabola.png", fig,  resolution = (600,400))
+save("./assets/parabola.png", fig,  resolution = (600,400))
 fig
 ```
 
@@ -85,20 +85,21 @@ fig
 ```julia
 x = -2pi:0.1:2pi
 approx = fill(0.0, length(x))
-set_theme!(palette = (; patchcolor = tuple.(to_colormap(:Egypt, 4), 0.65)))
-fig = lines(x, sin.(x); label = L"sin(x)", linewidth = 3, color = :black,
+set_theme!(palette = (; patchcolor = cgrad(:Egypt, alpha=0.65)))
+fig, axis, lineplot = lines(x, sin.(x); label = L"sin(x)", linewidth = 3, color = :black,
     axis = (; title = "Polynomial approximation of sin(x)",
         xgridstyle = :dash, ygridstyle = :dash,
         xticksize = 10, yticksize = 10, xtickalign = 1, ytickalign = 1,
         xticks = (-π:π/2:π, ["π", "-π/2", "0", "π/2", "π"])
     ))
+translate!(lineplot, 0, 0, 2) # move line to foreground
 band!(x, sin.(x), approx .+= x; label = L"n = 0")
 band!(x, sin.(x), approx .+= -x .^ 3 / 6; label = L"n = 1")
 band!(x, sin.(x), approx .+= x .^ 5 / 120; label = L"n = 2")
 band!(x, sin.(x), approx .+= -x .^ 7 / 5040; label = L"n = 3")
 limits!(-3.8, 3.8, -1.5, 1.5)
 axislegend(; position = :ct, bgcolor = (:white, 0.75), framecolor = :orange)
-save("approxsin.png", fig, resolution = (600, 400))
+save("./assets/approxsin.png", fig, resolution = (600, 400))
 fig
 ```
 
@@ -123,7 +124,7 @@ Colorbar(fig[1, 3], pltobj)
 colsize!(fig.layout, 1, Aspect(1, 1.0))
 colsize!(fig.layout, 2, Aspect(1, 1.0))
 resize_to_layout!(fig)
-save("simpleLayout.png", fig)
+save("./assets/simpleLayout.png", fig)
 fig
 ```
 
