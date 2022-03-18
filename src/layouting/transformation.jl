@@ -274,7 +274,7 @@ function apply_transform(f, itr::ClosedInterval)
     return apply_transform(f, mini) .. apply_transform(f, maxi)
 end
 
-function apply_transform(f::PointTrans, r::Rect)
+function apply_transform(f, r::Rect)
     mi = minimum(r)
     ma = maximum(r)
     mi_t = apply_transform(f, Point(mi))
