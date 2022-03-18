@@ -11,31 +11,54 @@ Base.iterate(ap::AxisPlot, args...) = iterate((ap.axis, ap.plot), args...)
 
 get_scene(ap::AxisPlot) = get_scene(ap.axis.scene)
 
+function is_plot_3d(p::PlotFunc, args...)
+    # First check if the Plot type "knows" wheather it's always 3D
+    result = is_plot_type_3d(p)
+    isnothing(result) || return result
+    # Otherwise, we check the arguments
+    return are_args_3d(to_value.(args)...)
+end
+
+is_plot_type_3d(p::PlotFunc) = is_plot_type_3d(Makie.conversion_trait(p))
+is_plot_type_3d(::Type{<: Union{Surface, Volume}}) = true
+is_plot_type_3d(::Type{<: Contour}) = nothing
+is_plot_type_3d(::VolumeLike) = true
+is_plot_type_3d(x) = nothing
+
+are_args_3d(args...) = any(args) do arg
+    r = are_args_3d(arg)
+    return isnothing(r) ? false : r
+end
+
+are_args_3d(x) = nothing
+are_args_3d(x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Union{AbstractArray{<: Any, 3}, Function}) = true
+are_args_3d(m::AbstractArray{T, 3}) where T = true
+are_args_3d(x::AbstractVector, y::AbstractVector, z::AbstractVector) = true
+function are_args_3d(m::Union{AbstractGeometry, GeometryBasics.Mesh})
+    return ndims(m) == 2 ? false : !is2d(Rect(m))
+end
+are_args_3d(x, y, z, m::AbstractArray{<: Any, 3}) = true
+are_args_3d(xyz::AbstractVector{<: Point3}) = any(x-> x[3] > 0, xyz)
+
+function get_axis_type(p::PlotFunc, args...)
+    result = is_plot_3d(p, args...)
+    # We fallback to Axis 3 if we don't get a definitive answer
+    isnothing(result) && return Axis
+    return result ? LScene : Axis
+end
+
 function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), kw_attributes...)
     # scene_attributes = extract_scene_attributes!(attributes)
     fig = Figure(; figure...)
-
     axis = Dict(pairs(axis))
-    if haskey(axis, :type)
-        axtype = axis[:type]
+    AxType = if haskey(axis, :type)
         pop!(axis, :type)
-        ax = axtype(fig; axis...)
     else
-        proxyscene = Scene()
-        attrs = Attributes(kw_attributes)
-        delete!(attrs, :show_axis)
-        delete!(attrs, :limits)
-        plot!(proxyscene, P, attrs, args...)
-        if is2d(proxyscene)
-            ax = Axis(fig; axis...)
-        else
-            ax = LScene(fig; scenekw = (camera=cam3d!, axis...))
-        end
+        get_axis_type(P, args...)
     end
-
-    fig[1, 1] = ax
+    ax = AxType(fig[1, 1]; axis...)
     p = plot!(ax, P, Attributes(kw_attributes), args...)
-    FigureAxisPlot(fig, ax, p)
+    return FigureAxisPlot(fig, ax, p)
 end
 
 # without scenelike, use current axis of current figure
