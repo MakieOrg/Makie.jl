@@ -296,7 +296,7 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
         Observable(())
     else
         # Remove used attributes from `attributes` and collect them in a `Tuple` to pass them more easily
-        lift((args...)-> Pair.(convert_keys, args), pop!.(attributes, convert_keys)...)::Observable{Tuple}
+        lift((args...)-> Pair.(convert_keys, args), pop!.(attributes, convert_keys)...)
     end
     # call convert_arguments for a first time to get things started
     converted = convert_arguments(PreType, argvalues...; kw_signal[]...)
