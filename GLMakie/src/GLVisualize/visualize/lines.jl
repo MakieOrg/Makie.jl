@@ -47,15 +47,8 @@ function ticks(points, resolution)
     Float16[gappy(x, points) for x = range(first(points), stop=last(points), length=resolution)]
 end
 
-
-# ambigious signature
-function _default(position::VectorTypes{<: Point}, s::style"lines", data::Dict)
-    line_visualization(position, data)
-end
-function _default(position::MatTypes{<:Point}, s::style"lines", data::Dict)
-    line_visualization(position, data)
-end
-function line_visualization(position::Union{VectorTypes{T}, MatTypes{T}}, data::Dict) where T<:Point
+@nospecialize
+function draw_lines(position::Union{VectorTypes{T}, MatTypes{T}}, data::Dict) where T<:Point
     p_vec = if isa(position, GPUArray)
         position
     else
@@ -107,16 +100,16 @@ function line_visualization(position::Union{VectorTypes{T}, MatTypes{T}}, data::
         end
     end
     data[:intensity] = intensity_convert(intensity, vertex)
-    data
+    return assemble_shader(data)
 end
 
-function _default(positions::VectorTypes{T}, s::style"linesegment", data::Dict) where T <: Point
+function draw_linesegments(positions::VectorTypes{T}, data::Dict) where T <: Point
     @gen_defaults! data begin
-        vertex              = positions           => GLBuffer
+        vertex              = positions => GLBuffer
         color               = default(RGBA, s, 1) => GLBuffer
         color_map           = nothing => Texture
         color_norm          = nothing
-        thickness           = 2f0                 => GLBuffer
+        thickness           = 2f0 => GLBuffer
         shape               = RECTANGLE
         pattern             = nothing
         fxaa                = false
@@ -130,7 +123,7 @@ function _default(positions::VectorTypes{T}, s::style"linesegment", data::Dict) 
                 "buffer_writes" => output_buffer_writes(to_value(transparency))
             )
         )
-        gl_primitive        = GL_LINES
+        gl_primitive = GL_LINES
     end
     if !isa(pattern, Texture) && pattern != nothing
         if !isa(pattern, Vector)
@@ -140,5 +133,6 @@ function _default(positions::VectorTypes{T}, s::style"linesegment", data::Dict) 
         data[:pattern] = tex
         data[:pattern_length] = Float32(last(pattern))
     end
-    data
+    return assemble_shader(data)
 end
+@specialize

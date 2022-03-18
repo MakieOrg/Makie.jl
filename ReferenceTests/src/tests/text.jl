@@ -22,7 +22,7 @@ end
         ["0 is the ORIGIN of this", "10 says hi"],
         position = pos,
         axis = (aspect = DataAspect(),),
-        space = :data,
+        markerspace = :data,
         align = (:center, :center),
         textsize = 2)
     scatter!(pos)
@@ -119,7 +119,7 @@ end
         rotation = pi/4:pi/2:7pi/4,
         align = (:left, :center),
         textsize = 30,
-        space = :data
+        markerspace = :data
     )
 
     wireframe!(scene, boundingbox(t1), color = (:blue, 0.3))
@@ -130,7 +130,7 @@ end
         rotation = pi/4:pi/2:7pi/4,
         align = (:left, :center),
         textsize = 30,
-        space = :screen
+        markerspace = :pixel
     )
 
     wireframe!(scene, boundingbox(t2), color = (:red, 0.3))
@@ -149,7 +149,7 @@ end
             rotation = a,
             align = (:left, :center),
             textsize = 30,
-            space = :data
+            markerspace = :data
         )
 
         wireframe!(scene, boundingbox(t), color = (:blue, 0.3))
@@ -160,7 +160,7 @@ end
             rotation = a,
             align = (:left, :center),
             textsize = 30,
-            space = :screen
+            markerspace = :pixel
         )
 
         # these boundingboxes should be invisible because they only enclose the anchor
@@ -178,7 +178,7 @@ end
         color = [cgrad(:viridis)[x] for x in LinRange(0, 1, 7)],
         align = (:left, :baseline),
         textsize = 1,
-        space = :data,
+        markerspace = :data,
         axis=(type=LScene,)
     )
 end
@@ -187,12 +187,12 @@ end
     scene = Scene(camera = campixel!, resolution = (800, 800))
 
     t1 = text!(scene, "Line1\nLine 2\n\nLine4",
-        position = (200, 400), align = (:center, :center), space = :data)
+        position = (200, 400), align = (:center, :center), markerspace = :data)
 
     wireframe!(scene, boundingbox(t1), color = (:red, 0.3))
 
     t2 = text!(scene, "\nLine 2\nLine 3\n\n\nLine6\n\n",
-        position = (400, 400), align = (:center, :center), space = :data)
+        position = (400, 400), align = (:center, :center), markerspace = :data)
 
     wireframe!(scene, boundingbox(t2), color = (:blue, 0.3))
 
@@ -208,7 +208,7 @@ end
         position = positions,
         align = (:center, :center),
         textsize = 20,
-        space = :screen,
+        markerspace = :pixel,
         overdraw=false)
     fig
 end
@@ -230,9 +230,9 @@ end
         rotation = pi/4)
 
     scatter(f[2, 1], Point2f[(0, 0), (10, 0), (20, 10)])
-    text!("ABC", space = :data, offset = (0, 0), color = (:red, 0.3), align = (:left, :baseline))
-    text!("ABC", space = :data, offset = (10, 0), color = (:green, 0.3), align = (:left, :baseline))
-    text!("ABC", space = :data, offset = (20, 10), color = (:blue, 0.3), align = (:left, :baseline))
+    text!("ABC", markerspace = :data, offset = (0, 0), color = (:red, 0.3), align = (:left, :baseline))
+    text!("ABC", markerspace = :data, offset = (10, 0), color = (:green, 0.3), align = (:left, :baseline))
+    text!("ABC", markerspace = :data, offset = (20, 10), color = (:blue, 0.3), align = (:left, :baseline))
 
     LScene(f[2, 2], show_axis=false)
     scatter!(Point3f[(0, 0, 0), (2, 2, 2)])
@@ -270,7 +270,7 @@ end
         L"\sqrt{2}",
         position = (50, 50),
         rotation = pi/2,
-        space = :data)
+        markerspace = :data)
     s
 end
 
@@ -280,7 +280,7 @@ end
         L"\int_0^5x^2+2ab",
         position = Point2f(50, 50),
         rotation = 0.0,
-        space = :data)
+        markerspace = :data)
     wireframe!(s, boundingbox(t))
     s
 end
@@ -295,7 +295,7 @@ end
         textnode,
         position = posnode,
         rotation = 0.0,
-        space = :data)
+        markerspace = :data)
 
     Makie.step!(st)
     ## change lengths
@@ -315,7 +315,7 @@ end
 
     t = text!(s,
         textposnode,
-        space = :data)
+        markerspace = :data)
 
     Makie.step!(st)
     ## change lengths

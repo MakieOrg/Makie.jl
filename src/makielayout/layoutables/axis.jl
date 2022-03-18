@@ -5,9 +5,9 @@ Creates an `Axis` object in the parent `fig_or_scene` which consists of a child 
 with orthographic projection for 2D plots and axis decorations that live in the
 parent.
 """
-function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = nothing, kwargs...)
+function layoutable(::Type{Axis}, fig_or_scene::Union{Figure, Scene}; bbox = nothing, kwargs...)
 
-    topscene = get_topscene(fig_or_scene)
+    topscene = get_topscene(fig_or_scene)::Scene
 
     default_attrs = default_attributes(Axis, topscene).attributes
     theme_attrs = subtheme(topscene, :Axis)
@@ -44,7 +44,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     decorations = Dict{Symbol, Any}()
 
     protrusions = Observable(GridLayoutBase.RectSides{Float32}(0,0,0,0))
-    layoutobservables = LayoutObservables{Axis}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight, halign, valign, attrs.alignmode;
+    layoutobservables = LayoutObservables(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight, halign, valign, attrs.alignmode;
         suggestedbbox = bbox, protrusions = protrusions)
 
     # initialize either with user limits, or pick defaults based on scales
@@ -74,7 +74,9 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
 
     scene = Scene(topscene, px_area=scenearea)
 
-    background = mesh!(topscene, scenearea, color = backgroundcolor, inspectable = false, shading=false)
+    # TODO: replace with mesh, however, CairoMakie needs a poly path for this signature
+    # so it doesn't rasterize the scene
+    background = poly!(topscene, scenearea, color = backgroundcolor, inspectable = false, shading = false, strokecolor = :transparent)
     translate!(background, 0, 0, -100)
     decorations[:background] = background
 
@@ -128,8 +130,10 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         nearclip = -10_000f0
         farclip = 10_000f0
 
-        left, bottom = Makie.apply_transform(t, Point(minimum(lims)))
-        right, top = Makie.apply_transform(t, Point(maximum(lims)))
+        tlims = Makie.apply_transform(t, lims)
+
+        left, bottom = minimum(tlims)
+        right, top = maximum(tlims)
 
         leftright = xrev ? (right, left) : (left, right)
         bottomtop = yrev ? (top, bottom) : (bottom, top)
@@ -137,7 +141,6 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         projection = Makie.orthographicprojection(
             leftright...,
             bottomtop..., nearclip, farclip)
-
         Makie.set_proj_view!(camera(scene), projection, Makie.Mat4f(Makie.I))
     end
 
@@ -329,7 +332,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         align = titlealignnode,
         font = titlefont,
         color = titlecolor,
-        space = :data,
+        markerspace = :data,
         inspectable = false)
     decorations[:title] = titlet
 
@@ -625,7 +628,7 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
     # because if there were any, these are looked up directly
     # in the cycler without advancing the counter etc.
     manually_cycled_attributes = filter(keys(allattrs)) do key
-        allattrs[key][] isa Cycled
+        to_value(allattrs[key]) isa Cycled
     end
 
     # if there are any manually cycled attributes, we don't do the normal
@@ -909,6 +912,8 @@ function getlimits(la::Axis, dim)
     function exclude(plot)
         # only use plots with autolimits = true
         to_value(get(plot, dim == 1 ? :xautolimits : :yautolimits, true)) || return true
+        # only if they use data coordinates
+        is_data_space(to_value(get(plot, :space, :data))) || return true
         # only use visible plots for limits
         return !to_value(get(plot, :visible, true))
     end
@@ -985,7 +990,8 @@ function autolimits(ax::Axis, dim::Integer)
     # try getting x limits for the axis and then union them with linked axes
     lims = getlimits(ax, dim)
 
-    for link in ax.xaxislinks
+    links = dim == 1 ? ax.xaxislinks : ax.yaxislinks
+    for link in links
         if isnothing(lims)
             lims = getlimits(link, dim)
         else
@@ -1029,14 +1035,14 @@ end
 function adjustlimits!(la)
     asp = la.autolimitaspect[]
     target = la.targetlimits[]
+    area = la.scene.px_area[]
 
     # in the simplest case, just update the final limits with the target limits
-    if isnothing(asp)
+    if isnothing(asp) || width(area) == 0 || height(area) == 0
         la.finallimits[] = target
         return
     end
 
-    area = la.scene.px_area[]
     xlims = (left(target), right(target))
     ylims = (bottom(target), top(target))
 

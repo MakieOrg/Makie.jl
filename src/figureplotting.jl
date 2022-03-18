@@ -1,7 +1,3 @@
-
-
-get_scene(fig::FigureAxisPlot) = get_scene(fig.figure)
-
 struct AxisPlot
     axis
     plot::AbstractPlot
@@ -46,6 +42,8 @@ function get_axis_type(p::PlotFunc, args...)
     isnothing(result) && return Axis
     return result ? LScene : Axis
 end
+
+get_scene(ap::AxisPlot) = get_scene(ap.axis.scene)
 
 function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), kw_attributes...)
     # scene_attributes = extract_scene_attributes!(attributes)

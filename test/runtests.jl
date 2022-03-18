@@ -1,5 +1,4 @@
 using Test
-using StaticArrays
 using Makie
 using Makie.Observables
 using Makie.GeometryBasics

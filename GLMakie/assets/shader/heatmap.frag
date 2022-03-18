@@ -34,24 +34,28 @@ float aastep(float threshold1, float value) {
 }
 void write2framebuffer(vec4 color, uvec2 id);
 
-void main(){
-    float i = float(getindex(intensity, o_uv).x);
+vec4 get_color(sampler2D intensity, vec2 uv, vec2 color_norm, sampler1D color_map){
+    float i = float(getindex(intensity, uv).x);
+    if (isnan(i)) {
+        return nan_color;
+    } else if (i < color_norm.x) {
+        return lowclip;
+    } else if (i > color_norm.y) {
+        return highclip;
+    }
     i = range_01(i, color_norm.x, color_norm.y);
     vec4 color = texture(color_map, clamp(i, 0.0, 1.0));
-    if (isnan(i)) {
-        color = nan_color;
-    } else if (i < 0.0) {
-        color = lowclip;
-    } else if (i > 1.0) {
-        color = highclip;
-    } else {
-        if(stroke_width > 0.0){
-            float lines = i * levels;
-            lines = abs(fract(lines - 0.5));
-            float half_stroke = stroke_width * 0.5;
-            lines = aastep(0.5 - half_stroke, 0.5 + half_stroke, lines);
-            color = mix(color, stroke_color, lines);
-        }
+    if(stroke_width > 0.0){
+        float lines = i * levels;
+        lines = abs(fract(lines - 0.5));
+        float half_stroke = stroke_width * 0.5;
+        lines = aastep(0.5 - half_stroke, 0.5 + half_stroke, lines);
+        color = mix(color, stroke_color, lines);
     }
+    return color;
+}
+
+void main(){
+    vec4 color = get_color(intensity, o_uv, color_norm, color_map);
     write2framebuffer(color, uvec2(o_objectid.x, 0));
 }

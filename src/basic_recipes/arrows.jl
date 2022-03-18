@@ -37,7 +37,7 @@ $(ATTRIBUTES)
             colormap = theme(scene, :colormap),
             quality = 32,
             inspectable = theme(scene, :inspectable),
-            markerspace = Pixel,
+            markerspace = :pixel,
         )
     )
     attr[:fxaa] = automatic
@@ -144,7 +144,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
         fxaa_bool = @lift($fxaa == automatic ? false : $fxaa)
         headstart = lift(points, directions, normalize, align, lengthscale) do points, dirs, n, align, s
             map(points, dirs) do p1, dir
-                dir = n ? StaticArrays.normalize(dir) : dir
+                dir = n ? normalize(dir) : dir
                 if align in (:head, :lineend, :tailend, :headstart, :center)
                     shift = s .* dir
                 else
@@ -159,7 +159,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
 
         # for 2D arrows, compute the correct marker rotation given the projection / scene size
         # for the screen-space marker
-        if arrowplot.markerspace[] == Pixel
+        if is_pixel_space(arrowplot.markerspace[])
             rotations = lift(scene.camera.projectionview, scene.px_area, headstart) do pv, pxa, hs
                 angles = map(hs) do (start, stop)
                     pstart = project(scene, start)
@@ -196,9 +196,20 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
         )
     else
         fxaa_bool = @lift($fxaa == automatic ? true : $fxaa)
-        markersize = lift(Any, arrowsize) do as
-            as === automatic ? Vec3f(0.2, 0.2, 0.3) : as
+
+        msize = Observable{Union{Vec3f, Vector{Vec3f}}}()
+        markersize = Observable{Vec3f}()
+        map!(msize, directions, normalize, linewidth, lengthscale, arrowsize) do dirs, n, linewidth, ls, as
+            ms = as isa Automatic ? Vec3f(0.2, 0.2, 0.3) : as
+            markersize[] = to_3d_scale(ms)
+            lw = linewidth isa Automatic ? minimum(ms) * 0.5 : linewidth
+            if n
+                return Vec3f(lw, lw, ls)
+            else
+                return map(dir -> Vec3f(lw, lw, norm(dir) * ls), dirs)
+            end
         end
+
         start = lift(points, directions, align, lengthscale) do points, dirs, align, s
             map(points, dirs) do p, dir
                 if align in (:head, :lineend, :tailend, :headstart, :center)
@@ -213,14 +224,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
             arrowplot,
             start, rotations = directions,
             marker = @lift(arrow_tail(3, $arrowtail, $quality)),
-            markersize = lift(directions, normalize, linewidth, lengthscale, markersize) do dirs, n, linewidth, ls, ms
-                lw = linewidth === automatic ? minimum(ms) * 0.5 : linewidth
-                if n
-                    Vec3f(lw, lw, ls)
-                else
-                    map(dir -> Vec3f(lw, lw, norm(dir) * ls), dirs)
-                end
-            end,
+            markersize = msize,
             color = line_c, colormap = colormap,
             fxaa = fxaa_bool, ssao = ssao,
             diffuse = diffuse,

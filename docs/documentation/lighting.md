@@ -52,7 +52,7 @@ xs = -10:0.1:10
 ys = -10:0.1:10
 zs = [10 * (cos(x) * cos(y)) * (.1 + exp(-(x^2 + y^2 + 1)/10)) for x in xs, y in ys]
 
-fig, ax, pl = surface(xs, ys, zs, colormap = (:white, :white),
+fig, ax, pl = surface(xs, ys, zs, colormap = [:white, :white],
 
     # Light comes from (0, 0, 15), i.e the sphere
     axis = (

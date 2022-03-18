@@ -370,11 +370,11 @@ struct GlyphCollection
             colors, strokecolors, strokewidths)
 
         n = length(glyphs)
-        @assert length(fonts)  == n
-        @assert length(origins)  == n
-        @assert length(extents)  == n
+        @assert length(fonts) == n
+        @assert length(origins) == n
+        @assert length(extents) == n
         @assert attr_broadcast_length(scales) in (n, 1)
-        @assert attr_broadcast_length(rotations)  in (n, 1)
+        @assert attr_broadcast_length(rotations) in (n, 1)
         @assert attr_broadcast_length(colors) in (n, 1)
 
         rotations = convert_attribute(rotations, key"rotation"())
@@ -385,3 +385,7 @@ struct GlyphCollection
         new(glyphs, fonts, origins, extents, scales, rotations, colors, strokecolors, strokewidths)
     end
 end
+
+
+# The color type we ideally use for most color attributes
+const RGBColors = Union{RGBAf, Vector{RGBAf}, Vector{Float32}}

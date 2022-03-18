@@ -36,7 +36,8 @@ $(ATTRIBUTES)
         overdraw = false,
         transparency = false,
         cycle = [:color => :patchcolor],
-        inspectable = theme(scene, :inspectable)
+        inspectable = theme(scene, :inspectable),
+        space = :data
     )
 end
 
@@ -54,11 +55,12 @@ function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}
         plot, plot[1],
         color = plot[:color], colormap = plot[:colormap], colorrange = plot[:colorrange],
         shading = plot[:shading], visible = plot[:visible], overdraw = plot[:overdraw],
-        inspectable = plot[:inspectable], transparency = plot[:transparency]
+        inspectable = plot[:inspectable], transparency = plot[:transparency],
+        space = plot[:space]
     )
     wireframe!(
         plot, plot[1],
-        color = plot[:strokecolor], linestyle = plot[:linestyle],
+        color = plot[:strokecolor], linestyle = plot[:linestyle], space = plot[:space],
         linewidth = plot[:strokewidth], visible = plot[:visible], overdraw = plot[:overdraw],
         inspectable = plot[:inspectable], transparency = plot[:transparency]
     )
@@ -82,8 +84,9 @@ end
 
 function poly_convert(polygons::AbstractVector{<: AbstractVector{<: VecTypes}})
     return map(polygons) do poly
-        s = GeometryBasics.split_intersections(poly)
-        merge(triangle_mesh.(Polygon.(s)))
+        point2f = convert(Vector{Point2f}, poly)
+        faces = GeometryBasics.earcut_triangulate([point2f])
+        return GeometryBasics.Mesh(point2f, faces)
     end
 end
 
@@ -123,7 +126,8 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
         overdraw = plot.overdraw,
         fxaa = plot.fxaa,
         transparency = plot.transparency,
-        inspectable = plot.inspectable
+        inspectable = plot.inspectable,
+        space = plot.space
     )
     outline = lift(to_line_segments, geometries)
     stroke = lift(outline, plot.strokecolor) do outline, sc
@@ -143,7 +147,7 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
     lines!(
         plot, outline, visible = plot.visible,
         color = stroke, linestyle = plot.linestyle,
-        linewidth = plot.strokewidth,
+        linewidth = plot.strokewidth, space = plot.space,
         overdraw = plot.overdraw, transparency = plot.transparency,
         inspectable = plot.inspectable, depth_shift = -1f-5
     )
@@ -154,7 +158,8 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
     color_node = plot.color
     attributes = Attributes(
         visible = plot.visible, shading = plot.shading, fxaa = plot.fxaa,
-        inspectable = plot.inspectable, transparency = plot.transparency
+        inspectable = plot.inspectable, transparency = plot.transparency,
+        space = plot.space
     )
 
     attributes[:colormap] = get(plot, :colormap, nothing)

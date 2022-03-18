@@ -63,15 +63,32 @@ const WGLMakie = (function () {
     function add_plot(scene, plot_data) {
         // fill in the camera uniforms, that we don't sent in serialization per plot
         const cam = scene.wgl_camera;
-        if (plot_data.space == "screen") {
-            plot_data.uniforms.view = new THREE.Uniform(new THREE.Matrix4());
-            plot_data.uniforms.projection = cam.pixel_space;
-            plot_data.uniforms.projectionview = cam.pixel_space;
-        } else {
+        const rel = new THREE.Matrix4()
+        rel.set(
+            2.0, 0.0, 0.0, -1.0,
+            0.0, 2.0, 0.0, -1.0,
+            0.0, 0.0, 1.0,  0.0,
+            0.0, 0.0, 0.0,  1.0
+        );
+        const id = new THREE.Uniform(new THREE.Matrix4());
+        
+        if (plot_data.cam_space == "data") {
             plot_data.uniforms.view = cam.view;
             plot_data.uniforms.projection = cam.projection;
             plot_data.uniforms.projectionview = cam.projectionview;
             plot_data.uniforms.eyeposition = cam.eyeposition;
+        } else if (plot_data.cam_space == "pixel") {
+            plot_data.uniforms.view = id;
+            plot_data.uniforms.projection = cam.pixel_space;
+            plot_data.uniforms.projectionview = cam.pixel_space;
+        } else if (plot_data.cam_space == "relative") {
+            plot_data.uniforms.view = id;
+            plot_data.uniforms.projection = rel;
+            plot_data.uniforms.projectionview = rel;
+        } else { // clip space
+            plot_data.uniforms.view = id;
+            plot_data.uniforms.projection = id;
+            plot_data.uniforms.projectionview = id;
         }
         plot_data.uniforms.resolution = cam.resolution;
 
@@ -598,8 +615,11 @@ const WGLMakie = (function () {
         scenes.forEach((scene) => render_scene(renderer, scene, cam));
     }
 
-    function start_renderloop(renderer, three_scenes, cam) {
-        function renderloop() {
+    function start_renderloop(renderer, three_scenes, cam, fps) {
+        const time_per_frame = (1 / fps) * 1000; // default is 30 fps
+        // make sure we immediately render the first frame and dont wait 30ms
+        let last_time_stamp = performance.now()
+        function renderloop(timestamp) {
             const canvas = renderer.domElement
             if (!document.body.contains(canvas)){
                 console.log("EXITING WGL")
@@ -607,9 +627,14 @@ const WGLMakie = (function () {
                 renderer.dispose()
                 return
             }
-            render_scenes(renderer, three_scenes, cam);
+            if (timestamp - last_time_stamp > time_per_frame){
+                render_scenes(renderer, three_scenes, cam);
+                last_time_stamp = performance.now();
+            }
             window.requestAnimationFrame(renderloop);
         }
+        // render one time before starting loop, so that we don't wait 30ms before first render
+        render_scenes(renderer, three_scenes, cam);
         renderloop();
     }
 

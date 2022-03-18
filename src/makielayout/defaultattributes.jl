@@ -773,6 +773,8 @@ function default_attributes(::Type{Legend}, scene)
         labelcolor = lift_parent_attribute(scene, :textcolor, :black)
         "The horizontal alignment of the entry labels."
         labelhalign = :left
+        "The justification of the label text. Default is `automatic`, which will set the justification to labelhalign."
+        labeljustification = automatic
         "The vertical alignment of the entry labels."
         labelvalign = :center
         "The additional space between the legend content and the border."
@@ -1013,7 +1015,7 @@ function default_attributes(::Type{Axis3}, scene)
         "A number between 0 and 1, where 0 is orthographic, and 1 full perspective"
         perspectiveness = 0f0
         "Aspects of the 3 axes with each other"
-        aspect = (1, 1, 2/3) # :data :equal
+        aspect = (1.0, 1.0, 2/3) # :data :equal
         "The view mode which affects the final projection. `:fit` results in the projection that always fits the limits into the viewport, invariant to rotation. `:fitzoom` keeps the x/y ratio intact but stretches the view so the corners touch the scene viewport. `:stretch` scales separately in both x and y direction to fill the viewport, which can distort the `aspect` that is set."
         viewmode = :fitzoom # :fit :fitzoom :stretch
         "The background color"

@@ -5,7 +5,6 @@ using Makie: RaymarchAlgorithm, IsoValue, Absorption, MaximumIntensityProjection
 
 using ..GLMakie.GLFW
 using ModernGL
-using StaticArrays
 using GeometryBasics
 using Colors
 using Makie
@@ -13,6 +12,7 @@ using FixedPointNumbers
 using FileIO
 using Markdown
 using Observables
+using GeometryBasics: StaticVector
 
 import Base: merge, convert, show
 using Base.Iterators: Repeated, repeated
@@ -33,10 +33,5 @@ include(joinpath("visualize", "particles.jl"))
 include(joinpath("visualize", "surface.jl"))
 
 export CIRCLE, RECTANGLE, ROUNDED_RECTANGLE, DISTANCEFIELD, TRIANGLE
-
-if Base.VERSION >= v"1.4.2"
-    include("precompile.jl")
-    _precompile_()
-end
 
 end # module
