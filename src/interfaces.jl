@@ -312,13 +312,13 @@ function convert_plot_arguments(P::PlotFunc, attributes::Attributes, args, conve
     onany(kw_signal, input_nodes...) do kwargs, args...
         # do the argument conversion inside a lift
         result = convert_func(FinalType, args...; kwargs...)
-        finaltype, argsconverted = apply_convert!(FinalType, attributes, result)
+        finaltype, argsconverted_ = apply_convert!(FinalType, attributes, result)
         if finaltype != FinalType
             error("Plot type changed from $FinalType to $finaltype after conversion.
                 Changing the plot type based on values in convert_arguments is not allowed"
             )
         end
-        converted_node[] = argsconverted
+        converted_node[] = argsconverted_
     end
     return FinalType, attributes, input_nodes, converted_node
 end
