@@ -63,6 +63,23 @@ Start using the package:
 using GLMakie
 ```
 
+## Developing Makie
+
+Makie and its backends all live in the Makie monorepo.
+This makes it easier to change code across all packages.
+Therefore, dev'ing Makie almost works as with other Julia packages, just, that one needs to also dev the sub packages:
+
+```julia
+]dev --local Makie # local will clone the repository at ./dev/Makie
+]dev dev/Makie/MakieCore dev/Makie/GLMakie dev/Makie/CairoMakie dev/Makie/WGLMakie dev/Makie/RPRMakie
+```
+
+To run the tests, you also should add:
+```julia
+]]dev dev/Makie/ReferenceTests
+```
+For more info about ReferenceTests, check out its [README](./ReferenceTests/README.md)
+
 # Quick start
 
 The following examples are supposed to be self-explanatory. For further information [check out the documentation here!](http://makie.juliaplots.org/stable/)
