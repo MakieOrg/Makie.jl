@@ -1,7 +1,7 @@
 using Makie: MouseButtonEvent, KeyEvent
 
 function Makie.register_callbacks(scene::Scene, screen::Screen)
-    @sync begin
+    @sync if length(scene.current_screens) == 0
         ShaderAbstractions.switch_context!(screen.glscreen)
         window_area(scene, screen)
         window_open(scene, screen)
