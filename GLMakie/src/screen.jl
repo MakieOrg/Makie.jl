@@ -239,18 +239,20 @@ function rewrap(robj::RenderObject{Pre}) where Pre
     )
 end
 
-const GLOBAL_GL_SCREEN = Ref{Screen}()
+# const GLOBAL_GL_SCREEN = Ref{Screen}()
 const gl_screens = GLFW.Window[]
 
-function global_gl_screen()
-    screen = if isassigned(GLOBAL_GL_SCREEN) && isopen(GLOBAL_GL_SCREEN[])
-        GLOBAL_GL_SCREEN[]
-    else
-        GLOBAL_GL_SCREEN[] = Screen()
-        GLOBAL_GL_SCREEN[]
-    end
-    return screen
-end
+# TODO REMOVE
+# function global_gl_screen()
+#     error("global_gl_screen 2")
+#     screen = if isassigned(GLOBAL_GL_SCREEN) && isopen(GLOBAL_GL_SCREEN[])
+#         GLOBAL_GL_SCREEN[]
+#     else
+#         GLOBAL_GL_SCREEN[] = Screen()
+#         GLOBAL_GL_SCREEN[]
+#     end
+#     return screen
+# end
 
 """
 Loads the makie loading icon and embedds it in an image the size of resolution
@@ -387,29 +389,30 @@ function Screen(;
     return screen
 end
 
-function global_gl_screen(resolution::Tuple, visibility::Bool, tries = 1)
-    # ugly but easy way to find out if we create new screen.
-    # could just be returned by global_gl_screen, but dont want to change the API
-    isold = isassigned(GLOBAL_GL_SCREEN) && isopen(GLOBAL_GL_SCREEN[])
-    screen = global_gl_screen()
-    empty!(screen)
-    GLFW.set_visibility!(to_native(screen), visibility)
-    resize!(screen, resolution...)
-    new_size = windowsize(to_native(screen))
-    # I'm not 100% sure, if there are platforms where I'm never
-    # able to resize the screen (opengl might just allow that).
-    # so, we guard against that with just trying another resize one time!
-    if (new_size != resolution) && tries == 1
-        # resize failed. This may happen when screen was previously
-        # enlarged to fill screen. WE NEED TO DESTROY!! (I think)
-        destroy!(screen)
-        # try again
-        return global_gl_screen(resolution, visibility, 2)
-    end
-    # show loading image on fresh screen
-    isold || display_loading_image(screen)
-    screen
-end
+# TODO REMOVE
+# function global_gl_screen(resolution::Tuple, visibility::Bool, tries = 1)
+#     # ugly but easy way to find out if we create new screen.
+#     # could just be returned by global_gl_screen, but dont want to change the API
+#     isold = isassigned(GLOBAL_GL_SCREEN) && isopen(GLOBAL_GL_SCREEN[])
+#     screen = global_gl_screen()
+#     empty!(screen)
+#     GLFW.set_visibility!(to_native(screen), visibility)
+#     resize!(screen, resolution...)
+#     new_size = windowsize(to_native(screen))
+#     # I'm not 100% sure, if there are platforms where I'm never
+#     # able to resize the screen (opengl might just allow that).
+#     # so, we guard against that with just trying another resize one time!
+#     if (new_size != resolution) && tries == 1
+#         # resize failed. This may happen when screen was previously
+#         # enlarged to fill screen. WE NEED TO DESTROY!! (I think)
+#         destroy!(screen)
+#         # try again
+#         return global_gl_screen(resolution, visibility, 2)
+#     end
+#     # show loading image on fresh screen
+#     isold || display_loading_image(screen)
+#     screen
+# end
 
 function refreshwindowcb(window, screen)
     screen.render_tick[] = nothing
