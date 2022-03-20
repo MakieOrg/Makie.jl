@@ -68,20 +68,23 @@ function Makie.window_area(scene::Scene, screen::Screen)
     dpievent[] = minimum(props.dpi)
 
     on(screen.render_tick) do _
-        rect = event[]
-        # TODO put back window position, but right now it makes more trouble than it helps#
-        # x, y = GLFW.GetWindowPos(window)
-        # if minimum(rect) != Vec(x, y)
-        #     event[] = Recti(x, y, framebuffer_size(window))
-        # end
-        w, h = GLFW.GetFramebufferSize(window)
-        if Vec(w, h) != widths(rect)
-            monitor = GLFW.GetPrimaryMonitor()
-            props = MonitorProperties(monitor)
-            # dpi of a monitor should be the same in x y direction.
-            # if not, minimum seems to be a fair default
-            dpievent[] = minimum(props.dpi)
-            event[] = Recti(minimum(rect), w, h)
+        @sync begin
+            ShaderAbstractions.switch_context!(screen.glscreen)
+            rect = event[]
+            # TODO put back window position, but right now it makes more trouble than it helps#
+            # x, y = GLFW.GetWindowPos(window)
+            # if minimum(rect) != Vec(x, y)
+            #     event[] = Recti(x, y, framebuffer_size(window))
+            # end
+            w, h = GLFW.GetFramebufferSize(window)
+            if Vec(w, h) != widths(rect)
+                monitor = GLFW.GetPrimaryMonitor()
+                props = MonitorProperties(monitor)
+                # dpi of a monitor should be the same in x y direction.
+                # if not, minimum seems to be a fair default
+                dpievent[] = minimum(props.dpi)
+                event[] = Recti(minimum(rect), w, h)
+            end
         end
     end
     return
