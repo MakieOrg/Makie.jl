@@ -44,8 +44,6 @@ function to_glvisualize_key(k)
     return k
 end
 
-make_context_current(screen::Screen) = GLFW.MakeContextCurrent(to_native(screen))
-
 function connect_camera!(gl_attributes, cam, space = gl_attributes[:space])
     for key in (:pixel_space, :resolution, :eyeposition)
         get!(gl_attributes, key, getfield(cam, key))

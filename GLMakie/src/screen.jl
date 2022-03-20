@@ -106,6 +106,7 @@ end
 function destroy!(screen::Screen)
     screen.window_open[] = false
     empty!(screen)
+    # filter!(win -> win != screen.glscreen, gl_screens)
     destroy!(screen.glscreen)
 end
 
@@ -313,12 +314,12 @@ function Screen(;
         resolution = (10, 10), visible = false, title = WINDOW_CONFIG.title[],
         kw_args...
     )
-    if !isempty(gl_screens)
-        for elem in gl_screens
-            isopen(elem) && destroy!(elem)
-        end
-        empty!(gl_screens)
-    end
+    # if !isempty(gl_screens)
+    #     for elem in gl_screens
+    #         isopen(elem) && destroy!(elem)
+    #     end
+    #     empty!(gl_screens)
+    # end
     # Somehow this constant isn't wrapped by glfw
     GLFW_FOCUS_ON_SHOW = 0x0002000C
     windowhints = [
@@ -557,4 +558,9 @@ end
 
 
 pollevents(::GLScreen) = nothing
-pollevents(::Screen) = GLFW.PollEvents()
+function pollevents(screen::Screen)
+    @sync begin
+        ShaderAbstractions.switch_context!(screen.glscreen)
+        GLFW.PollEvents()
+    end
+end

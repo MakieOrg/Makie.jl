@@ -6,9 +6,11 @@ function vsynced_renderloop(screen)
         if WINDOW_CONFIG.pause_rendering[]
             sleep(0.1)
         else
-            make_context_current(screen)
-            render_frame(screen)
-            GLFW.SwapBuffers(to_native(screen))
+            @sync begin
+                ShaderAbstractions.switch_context!(screen.glscreen)
+                render_frame(screen)
+                GLFW.SwapBuffers(to_native(screen))
+            end
             yield()
         end
     end
@@ -23,9 +25,11 @@ function fps_renderloop(screen::Screen, framerate=WINDOW_CONFIG.framerate[])
         if WINDOW_CONFIG.pause_rendering[]
             sleep(0.1)
         else
-            make_context_current(screen)
-            render_frame(screen)
-            GLFW.SwapBuffers(to_native(screen))
+            @sync begin
+                ShaderAbstractions.switch_context!(screen.glscreen)
+                render_frame(screen)
+                GLFW.SwapBuffers(to_native(screen))
+            end
             t_elapsed = (time_ns() - t) / 1e9
             diff = time_per_frame - t_elapsed
             if diff > 0.001 # can't sleep less than 0.001
