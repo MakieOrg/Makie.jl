@@ -6,20 +6,31 @@ const ScreenArea = Tuple{ScreenID, Scene}
 abstract type GLScreen <: AbstractScreen end
 
 mutable struct Screen <: GLScreen
+    # native screen
     glscreen::GLFW.Window
+    shader_cache::GLAbstraction.ShaderCache
+
+    # Framebuffer(s) for postprocessing
     framebuffer::GLFramebuffer
+    # holds renderloop
     rendertask::RefValue{Task}
     screen2scene::Dict{WeakRef, ScreenID}
+    # list of (ScreenID, Scene) for finding parent scenes
     screens::Vector{ScreenArea}
+    # flat list of all renderobjects generated from plots
     renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}}
+    # list of postprocessor renderobjects to run
     postprocessors::Vector{PostProcessor}
     cache::Dict{UInt64, RenderObject}
     cache2plot::Dict{UInt32, AbstractPlot}
     framecache::Matrix{RGB{N0f8}}
+
     render_tick::Observable{Nothing}
     window_open::Observable{Bool}
+
     function Screen(
             glscreen::GLFW.Window,
+            shader_cache::GLAbstraction.ShaderCache,
             framebuffer::GLFramebuffer,
             rendertask::RefValue{Task},
             screen2scene::Dict{WeakRef, ScreenID},
@@ -31,7 +42,7 @@ mutable struct Screen <: GLScreen
         )
         s = size(framebuffer)
         return new(
-            glscreen, framebuffer, rendertask, screen2scene,
+            glscreen, shader_cache, framebuffer, rendertask, screen2scene,
             screens, renderlist, postprocessors, cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(nothing),
             Observable(true)
@@ -353,21 +364,22 @@ function Screen(;
     # tell GLAbstraction that we created a new context.
     # This is important for resource tracking, and only needed for the first context
     ShaderAbstractions.switch_context!(window)
-    GLAbstraction.empty_shader_cache!()
+    # GLAbstraction.empty_shader_cache!() # TODO
+    shader_cache = GLAbstraction.ShaderCache()
     push!(gl_screens, window)
 
     resize_native!(window, resolution...; wait_for_resize=false)
     fb = GLFramebuffer(resolution)
 
     postprocessors = [
-        enable_SSAO[] ? ssao_postprocessor(fb) : empty_postprocessor(),
-        OIT_postprocessor(fb),
-        enable_FXAA[] ? fxaa_postprocessor(fb) : empty_postprocessor(),
-        to_screen_postprocessor(fb)
+        enable_SSAO[] ? ssao_postprocessor(fb, shader_cache) : empty_postprocessor(),
+        OIT_postprocessor(fb, shader_cache),
+        enable_FXAA[] ? fxaa_postprocessor(fb, shader_cache) : empty_postprocessor(),
+        to_screen_postprocessor(fb, shader_cache)
     ]
 
     screen = Screen(
-        window, fb,
+        window, shader_cache, fb,
         RefValue{Task}(),
         Dict{WeakRef, ScreenID}(),
         ScreenArea[],

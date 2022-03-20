@@ -241,13 +241,13 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Union{Scat
                 delete!(gl_attributes, :color_norm)
                 delete!(gl_attributes, :color_map)
             end
-            return GLVisualize.draw_pixel_scatter(positions, gl_attributes)
+            return GLVisualize.draw_pixel_scatter(screen.shader_cache, positions, gl_attributes)
         else
             handle_intensities!(gl_attributes)
             if x isa MeshScatter
-                return GLVisualize.draw_mesh_particle((marker, positions), gl_attributes)
+                return GLVisualize.draw_mesh_particle(screen.shader_cache, (marker, positions), gl_attributes)
             else
-                return GLVisualize.draw_scatter((marker, positions), gl_attributes)
+                return GLVisualize.draw_scatter(screen.shader_cache, (marker, positions), gl_attributes)
             end
         end
     end
@@ -268,7 +268,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Lines))
         positions = apply_transform(transform_func_obs(x), positions)
         handle_intensities!(data)
         connect_camera!(data, scene.camera)
-        return GLVisualize.draw_lines(positions, data)
+        return GLVisualize.draw_lines(screen.shader_cache, positions, data)
     end
 end
 
@@ -294,7 +294,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::LineSegmen
         end
         connect_camera!(data, scene.camera)
 
-        return GLVisualize.draw_linesegments(positions, data)
+        return GLVisualize.draw_linesegments(screen.shader_cache, positions, data)
     end
 end
 
@@ -386,7 +386,7 @@ function draw_atomic(screen::GLScreen, scene::Scene,
         connect_camera!(gl_attributes, cam, markerspace)
 
         # Avoid julia#15276
-        _robj = GLVisualize.draw_scatter((DISTANCEFIELD, positions), gl_attributes)
+        _robj = GLVisualize.draw_scatter(screen.shader_cache, (DISTANCEFIELD, positions), gl_attributes)
 
         return _robj
     end
@@ -439,7 +439,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
         gl_attributes[:stroke_width] = pop!(gl_attributes, :thickness)
         connect_camera!(gl_attributes, scene.camera)
 
-        return GLVisualize.draw_heatmap(tex, gl_attributes)
+        return GLVisualize.draw_heatmap(screen.shader_cache, tex, gl_attributes)
     end
 end
 
@@ -460,7 +460,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Image)
         gl_attributes[:color] = x[3]
         gl_attributes[:shading] = false
         connect_camera!(gl_attributes, scene.camera)
-        return mesh_inner(mesh, transform_func_obs(x), gl_attributes)
+        return mesh_inner(screen.shader_cache, mesh, transform_func_obs(x), gl_attributes)
     end
 end
 
@@ -471,7 +471,7 @@ function update_positions(mesh::GeometryBasics.Mesh, positions)
     return GeometryBasics.Mesh(meta(positions; attr...), faces(mesh))
 end
 
-function mesh_inner(mesh, transfunc, gl_attributes)
+function mesh_inner(shader_cache, mesh, transfunc, gl_attributes)
     # signals not supported for shading yet
     gl_attributes[:shading] = to_value(pop!(gl_attributes, :shading))
     color = pop!(gl_attributes, :color)
@@ -502,14 +502,14 @@ function mesh_inner(mesh, transfunc, gl_attributes)
         end
         return mesh
     end
-    return GLVisualize.draw_mesh(mesh, gl_attributes)
+    return GLVisualize.draw_mesh(shader_cache, mesh, gl_attributes)
 end
 
 function draw_atomic(screen::GLScreen, scene::Scene, meshplot::Mesh)
     return cached_robj!(screen, scene, meshplot) do gl_attributes
         t = transform_func_obs(meshplot)
         connect_camera!(gl_attributes, scene.camera)
-        return mesh_inner(meshplot[1], t, gl_attributes)
+        return mesh_inner(screen.shader_cache, meshplot[1], t, gl_attributes)
     end
 end
 
@@ -565,11 +565,11 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
             args = map((xpos, ypos, mat)) do arg
                 Texture(map(x-> convert(Array, el32convert(x)), arg); minfilter=:nearest)
             end
-            return GLVisualize.draw_surface(args, gl_attributes)
+            return GLVisualize.draw_surface(screen.shader_cache, args, gl_attributes)
         else
             gl_attributes[:ranges] = to_range.(to_value.(x[1:2]))
             z_data = Texture(el32convert(x[3]); minfilter=:nearest)
-            return GLVisualize.draw_surface(z_data, gl_attributes)
+            return GLVisualize.draw_surface(screen.shader_cache, z_data, gl_attributes)
         end
     end
     return robj
@@ -592,6 +592,6 @@ function draw_atomic(screen::GLScreen, scene::Scene, vol::Volume)
             return convert(Mat4f, m) * m2
         end
         connect_camera!(gl_attributes, scene.camera)
-        return GLVisualize.draw_volume(vol[4], gl_attributes)
+        return GLVisualize.draw_volume(screen.shader_cache, vol[4], gl_attributes)
     end
 end
