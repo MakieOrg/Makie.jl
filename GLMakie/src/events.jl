@@ -1,6 +1,6 @@
 using Makie: MouseButtonEvent, KeyEvent
 
-function register_callbacks(scene::Scene, screen::Screen)
+function Makie.register_callbacks(scene::Scene, screen::Screen)
     @sync begin
         ShaderAbstractions.switch_context!(screen.glscreen)
         window_area(scene, screen)
