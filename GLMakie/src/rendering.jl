@@ -2,7 +2,6 @@
 function vsynced_renderloop(screen)
     while isopen(screen) && !WINDOW_CONFIG.exit_renderloop[]
         pollevents(screen) # GLFW poll
-        screen.render_tick[] = nothing
         if WINDOW_CONFIG.pause_rendering[]
             sleep(0.1)
         else
@@ -21,7 +20,6 @@ function fps_renderloop(screen::Screen, framerate=WINDOW_CONFIG.framerate[])
     while isopen(screen) && !WINDOW_CONFIG.exit_renderloop[]
         t = time_ns()
         pollevents(screen) # GLFW poll
-        screen.render_tick[] = nothing
         if WINDOW_CONFIG.pause_rendering[]
             sleep(0.1)
         else

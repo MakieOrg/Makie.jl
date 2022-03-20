@@ -569,6 +569,7 @@ pollevents(::GLScreen) = nothing
 function pollevents(screen::Screen)
     @sync begin
         ShaderAbstractions.switch_context!(screen.glscreen)
+        notify(screen.render_tick)
         GLFW.PollEvents()
     end
 end
