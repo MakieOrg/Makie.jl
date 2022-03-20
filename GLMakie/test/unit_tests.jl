@@ -9,14 +9,17 @@ end
 @testset "unit tests" begin
     @testset "Window handling" begin
         Makie.inline!(false)
-        screen = GLMakie.global_gl_screen((100, 100), false)
+        screen = GLMakie.Screen(resolution = (100, 100), visible = false)
         @test isopen(screen)
         fig, ax, splot = scatter(1:4);
         screen2 = display(fig)
-        @test screen === screen2
+        @test screen !== screen2
         # TODO overload getscreen for figure
-        @test getscreen(ax.scene) === screen
+        @test getscreen(ax.scene) === screen2
         close(screen)
+        @test !isopen(screen) && isopen(screen2)
+        close(screen2)
+
 
         # assure we correctly close screen and remove it from plot
         @test getscreen(ax.scene) === nothing
@@ -49,5 +52,6 @@ end
         # scatter points should have indices equal to those in 99991:99998
         scatter_plot_idx = filter(pi -> pi[1] isa Scatter, picks)
         @test Set(last.(scatter_plot_idx)) == Set(99991:99998)
+        close(screen)
     end
 end

@@ -111,6 +111,14 @@ function destroy!(screen::Screen)
 end
 
 Base.close(screen::Screen) = destroy!(screen)
+function closeall()
+    if !isempty(gl_screens)
+        for elem in gl_screens
+            isopen(elem) && destroy!(elem)
+        end
+        empty!(gl_screens)
+    end
+end
 
 function resize_native!(window::GLFW.Window, resolution...; wait_for_resize=true)
     if isopen(window)
@@ -365,7 +373,7 @@ function Screen(;
     # tell GLAbstraction that we created a new context.
     # This is important for resource tracking, and only needed for the first context
     ShaderAbstractions.switch_context!(window)
-    # GLAbstraction.empty_shader_cache!() # TODO
+    # GLAbstraction.empty_shader_cache!()
     shader_cache = GLAbstraction.ShaderCache()
     push!(gl_screens, window)
 
