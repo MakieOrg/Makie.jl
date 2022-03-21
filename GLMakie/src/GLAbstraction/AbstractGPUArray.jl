@@ -61,12 +61,13 @@ function setindex!(A::GPUArray{T, N}, value::Array{T, N}, ranges::UnitRange...) 
     nothing
 end
 
+ShaderAbstractions.switch_context!(A) = switch_context!(A.context)
 function update!(A::GPUArray{T, N}, value::AbstractArray{T2, N}) where {T, N, T2}
     update!(A, convert(Array{T, N}, value))
 end
 function update!(A::GPUArray{T, N}, value::AbstractArray{T, N}) where {T, N}
     @sync begin
-        ShaderAbstractions.switch_context!(A.context)
+        switch_context!(A)
         if length(A) != length(value)
             if isa(A, GLBuffer)
                 resize!(A, length(value))
