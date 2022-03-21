@@ -1,4 +1,16 @@
+function clear_current_screens!(scene::Scene)
+    for screen in scene.current_screens
+        if screen isa Screen
+            isopen(screen.glscreen) && destroy!(screen.glscreen)
+            empty!(screen)
+        end
+    end
+    filter!(screen -> !isa(screen, Screen), scene.current_screens)
+    return
+end
+
 function Makie.backend_display(::GLBackend, scene::Scene)
+    # clear_current_screens!(scene)
     # screen = global_gl_screen(size(scene), Makie.use_display[])
     screen = Screen(resolution = size(scene), visible = Makie.use_display[])
     display_loading_image(screen)
