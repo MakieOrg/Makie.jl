@@ -76,7 +76,7 @@ Therefore, dev'ing Makie almost works as with other Julia packages, just, that o
 
 To run the tests, you also should add:
 ```julia
-]]dev dev/Makie/ReferenceTests
+]dev dev/Makie/ReferenceTests
 ```
 For more info about ReferenceTests, check out its [README](./ReferenceTests/README.md)
 
