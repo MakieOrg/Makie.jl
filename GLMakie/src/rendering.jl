@@ -1,4 +1,4 @@
-# TODO process!(scene, RenderTickEvent())
+# TODO add render_tick event to scene events
 function vsynced_renderloop(screen)
     while isopen(screen) && !WINDOW_CONFIG.exit_renderloop[]
         pollevents(screen) # GLFW poll

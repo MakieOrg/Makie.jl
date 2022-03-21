@@ -6,25 +6,17 @@ const ScreenArea = Tuple{ScreenID, Scene}
 abstract type GLScreen <: AbstractScreen end
 
 mutable struct Screen <: GLScreen
-    # native screen
     glscreen::GLFW.Window
     shader_cache::GLAbstraction.ShaderCache
-
-    # Framebuffer(s) for postprocessing
     framebuffer::GLFramebuffer
-    # holds renderloop
     rendertask::RefValue{Task}
     screen2scene::Dict{WeakRef, ScreenID}
-    # list of (ScreenID, Scene) for finding parent scenes
     screens::Vector{ScreenArea}
-    # flat list of all renderobjects generated from plots
     renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}}
-    # list of postprocessor renderobjects to run
     postprocessors::Vector{PostProcessor}
     cache::Dict{UInt64, RenderObject}
     cache2plot::Dict{UInt32, AbstractPlot}
     framecache::Matrix{RGB{N0f8}}
-
     render_tick::Observable{Nothing}
     window_open::Observable{Bool}
 
@@ -106,7 +98,7 @@ end
 function destroy!(screen::Screen)
     screen.window_open[] = false
     empty!(screen)
-    # filter!(win -> win != screen.glscreen, gl_screens)
+    filter!(win -> win != screen.glscreen, gl_screens)
     destroy!(screen.glscreen)
 end
 
@@ -266,20 +258,9 @@ function rewrap(robj::RenderObject{Pre}) where Pre
     )
 end
 
-# const GLOBAL_GL_SCREEN = Ref{Screen}()
+
 const gl_screens = GLFW.Window[]
 
-# TODO REMOVE
-# function global_gl_screen()
-#     error("global_gl_screen 2")
-#     screen = if isassigned(GLOBAL_GL_SCREEN) && isopen(GLOBAL_GL_SCREEN[])
-#         GLOBAL_GL_SCREEN[]
-#     else
-#         GLOBAL_GL_SCREEN[] = Screen()
-#         GLOBAL_GL_SCREEN[]
-#     end
-#     return screen
-# end
 
 """
 Loads the makie loading icon and embedds it in an image the size of resolution
@@ -329,12 +310,6 @@ function Screen(;
         resolution = (10, 10), visible = false, title = WINDOW_CONFIG.title[],
         kw_args...
     )
-    # if !isempty(gl_screens)
-    #     for elem in gl_screens
-    #         isopen(elem) && destroy!(elem)
-    #     end
-    #     empty!(gl_screens)
-    # end
     # Somehow this constant isn't wrapped by glfw
     GLFW_FOCUS_ON_SHOW = 0x0002000C
     windowhints = [
@@ -380,7 +355,6 @@ function Screen(;
     # tell GLAbstraction that we created a new context.
     # This is important for resource tracking, and only needed for the first context
     ShaderAbstractions.switch_context!(window)
-    # GLAbstraction.empty_shader_cache!()
     shader_cache = GLAbstraction.ShaderCache()
     push!(gl_screens, window)
 
@@ -417,30 +391,6 @@ function Screen(;
     return screen
 end
 
-# TODO REMOVE
-# function global_gl_screen(resolution::Tuple, visibility::Bool, tries = 1)
-#     # ugly but easy way to find out if we create new screen.
-#     # could just be returned by global_gl_screen, but dont want to change the API
-#     isold = isassigned(GLOBAL_GL_SCREEN) && isopen(GLOBAL_GL_SCREEN[])
-#     screen = global_gl_screen()
-#     empty!(screen)
-#     GLFW.set_visibility!(to_native(screen), visibility)
-#     resize!(screen, resolution...)
-#     new_size = windowsize(to_native(screen))
-#     # I'm not 100% sure, if there are platforms where I'm never
-#     # able to resize the screen (opengl might just allow that).
-#     # so, we guard against that with just trying another resize one time!
-#     if (new_size != resolution) && tries == 1
-#         # resize failed. This may happen when screen was previously
-#         # enlarged to fill screen. WE NEED TO DESTROY!! (I think)
-#         destroy!(screen)
-#         # try again
-#         return global_gl_screen(resolution, visibility, 2)
-#     end
-#     # show loading image on fresh screen
-#     isold || display_loading_image(screen)
-#     screen
-# end
 
 function refreshwindowcb(window, screen)
     @sync begin
