@@ -61,7 +61,7 @@ function setindex!(A::GPUArray{T, N}, value::Array{T, N}, ranges::UnitRange...) 
     nothing
 end
 
-ShaderAbstractions.switch_context!(A) = switch_context!(A.context)
+ShaderAbstractions.switch_context!(A::GPUArray) = switch_context!(A.context)
 function update!(A::GPUArray{T, N}, value::AbstractArray{T2, N}) where {T, N, T2}
     update!(A, convert(Array{T, N}, value))
 end

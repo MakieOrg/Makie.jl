@@ -190,8 +190,8 @@ function depthbuffer(screen::Screen)
         GLAbstraction.bind(source)
         GLAbstraction.glGetTexImage(source.texturetype, 0, GL_DEPTH_COMPONENT, GL_FLOAT, depth)
         GLAbstraction.bind(source, 0)
+        return depth
     end
-    return depth
 end
 
 function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Makie.JuliaNative)
