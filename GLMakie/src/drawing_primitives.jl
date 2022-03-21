@@ -471,45 +471,20 @@ function update_positions(mesh::GeometryBasics.Mesh, positions)
     return GeometryBasics.Mesh(meta(positions; attr...), faces(mesh))
 end
 
-function mesh_inner(mesh, transfunc, gl_attributes)
+function mesh_inner(vertices, transfunc, gl_attributes)
     # signals not supported for shading yet
     gl_attributes[:shading] = to_value(pop!(gl_attributes, :shading))
-    color = pop!(gl_attributes, :color)
-    interp = to_value(pop!(gl_attributes, :interpolate, true))
-    interp = interp ? :linear : :nearest
-    if to_value(color) isa Colorant
-        gl_attributes[:vertex_color] = color
-        delete!(gl_attributes, :color_map)
-        delete!(gl_attributes, :color_norm)
-    elseif to_value(color) isa Makie.AbstractPattern
-        img = lift(x -> el32convert(Makie.to_image(x)), color)
-        gl_attributes[:image] = ShaderAbstractions.Sampler(img, x_repeat=:repeat, minfilter=:nearest)
-        haskey(gl_attributes, :fetch_pixel) || (gl_attributes[:fetch_pixel] = true)
-    elseif to_value(color) isa AbstractMatrix{<:Colorant}
-        gl_attributes[:image] = Texture(const_lift(el32convert, color), minfilter = interp)
-        delete!(gl_attributes, :color_map)
-        delete!(gl_attributes, :color_norm)
-    elseif to_value(color) isa AbstractMatrix{<: Number}
-        gl_attributes[:image] = Texture(const_lift(el32convert, color), minfilter = interp)
-    elseif to_value(color) isa AbstractVector{<: Union{Number, Colorant}}
-        mesh = lift(mesh, color) do mesh, color
-            return GeometryBasics.pointmeta(mesh, color=el32convert(color))
-        end
+    gl_attributes[:vertices] = map(vertices, transfunc) do vertices, func
+        return apply_transform(func, vertices)
     end
-    mesh = map(mesh, transfunc) do mesh, func
-        if !Makie.is_identity_transform(func)
-            return update_positions(mesh, apply_transform.(Ref(func), mesh.position))
-        end
-        return mesh
-    end
-    return GLVisualize.draw_mesh(mesh, gl_attributes)
+    return GLVisualize.draw_mesh(gl_attributes)
 end
 
 function draw_atomic(screen::GLScreen, scene::Scene, meshplot::Mesh)
     return cached_robj!(screen, scene, meshplot) do gl_attributes
         t = transform_func_obs(meshplot)
         connect_camera!(gl_attributes, scene.camera)
-        return mesh_inner(meshplot[1], t, gl_attributes)
+        return mesh_inner(meshplot.vertices, t, gl_attributes)
     end
 end
 

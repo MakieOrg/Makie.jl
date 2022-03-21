@@ -21,7 +21,6 @@ end
 function color_and_colormap!(plot, intensity = plot[:color])
     if isa(intensity[], AbstractArray{<: Number})
         haskey(plot, :colormap) || error("Plot $(typeof(plot)) needs to have a colormap to allow the attribute color to be an array of numbers")
-
         replace_automatic!(plot, :colorrange) do
             lift(extrema_nan, intensity)
         end
@@ -32,9 +31,59 @@ function color_and_colormap!(plot, intensity = plot[:color])
     end
 end
 
+struct MeshPlot{T, N}
+
+    vertex_colors::Union{Nothing, RGBColors}
+    image::Union{Nothing, Sampler{T}}
+    colormap::Union{Nothing, Vector{RGBAf}}
+    colorrange::Union{Nothing, Vec2f}
+
+    normals::Union{Nothing, Vector{Vec3f}}
+    texturecoordinates::Union{Nothing, Vector{Vec2f}}
+    vertices::Vector{Point{N, Float32}}
+    faces::Vector{GLTriangleFace}
+
+    backlight::Float32
+    shading::Bool
+    fetch_pixel::Bool
+    uv_scale::Vec2f
+    transparency::Bool
+end
+
 function calculated_attributes!(::Type{<: Mesh}, plot)
     need_cmap = color_and_colormap!(plot)
     need_cmap || delete!(plot, :colormap)
+    attributes = plot.attributes
+    color = lift(to_color, attributes.color)
+    interp = to_value(pop!(attributes, :interpolation, true))
+    interp = interp ? :linear : :nearest
+    needs_uv = false
+    if to_value(color) isa Colorant
+        attributes[:vertex_color] = color
+        delete!(attributes, :color_map)
+        delete!(attributes, :color_norm)
+    elseif to_value(color) isa Makie.AbstractPattern
+        img = lift(to_image, color)
+        attributes[:image] = ShaderAbstractions.Sampler(img, x_repeat=:repeat, minfilter=:nearest)
+        get!(attributes, :fetch_pixel, true)
+        needs_uv = true
+    elseif to_value(color) isa AbstractMatrix{<:Colorant}
+        attributes[:image] = ShaderAbstractions.Sampler(lift(to_color, color), minfilter = interp)
+        delete!(attributes, :color_map)
+        delete!(attributes, :color_norm)
+        needs_uv = true
+    elseif to_value(color) isa AbstractMatrix{<: Number}
+        attributes[:image] = ShaderAbstractions.Sampler(lift(el32convert, color), minfilter = interp)
+        needs_uv = true
+    elseif to_value(color) isa AbstractVector{<: Union{Number, Colorant}}
+        attributes[:vertex_color] = color
+    end
+    replace_automatic!(plot, :normals) do
+        return plot.shading[] ? lift(normals, plot.vertices, plot.faces) : nothing
+    end
+    replace_automatic!(plot, :texturecoordinates) do
+        return needs_uv ?  lift(decompose_uv, plot.vertices) : nothing
+    end
     return
 end
 

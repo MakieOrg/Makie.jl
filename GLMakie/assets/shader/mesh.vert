@@ -23,11 +23,12 @@ uniform vec2 uv_scale;
 out vec2 o_uv;
 out vec4 o_color;
 
-vec3 to_3d(vec2 v){return vec3(v, 0);}
+vec3 to_3d(vec2 v){return vec3(v, 0.0);}
 vec3 to_3d(vec3 v){return v;}
 
-vec2 to_2d(float v){return vec2(v, 0);}
+vec2 to_2d(float v){return vec2(v, 0.0);}
 vec2 to_2d(vec2 v){return v;}
+vec2 to_2d(Nothing v){return vec2(0.0, 0.0);}
 
 vec4 to_color(vec3 c, Nothing color_map, Nothing color_norm){
     return vec4(c, 1);

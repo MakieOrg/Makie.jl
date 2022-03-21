@@ -76,6 +76,11 @@ Base.merge(target::Attributes, args::Attributes...) = merge!(copy(target), args.
 
 @generated hasfield(x::T, ::Val{key}) where {T, key} = :($(key in fieldnames(T)))
 
+function Base.propertynames(x::T) where T <: Union{Attributes, Transformable}
+    return (keys(x.attributes)...,)
+end
+
+
 @inline function Base.getproperty(x::T, key::Symbol) where T <: Union{Attributes, Transformable}
     if hasfield(x, Val(key))
         getfield(x, key)

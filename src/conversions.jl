@@ -488,16 +488,18 @@ function convert_arguments(
 end
 
 function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N}) where {N}
-    # Make sure we have normals!
-    if !hasproperty(mesh, :normals)
-        n = normals(mesh)
-        # Normals can be nothing, when it's impossible to calculate the normals (e.g. 2d mesh)
-        if n !== nothing
-            mesh = GeometryBasics.pointmeta(mesh, decompose(Vec3f, n))
-        end
-    end
-    return (GeometryBasics.mesh(mesh, pointtype=Point{N, Float32}, facetype=GLTriangleFace),)
+    points = decompose(Point{N, Float32}, mesh)
+    fs = decompose(GLTriangleFace, mesh)
+    normals = hasproperty(mesh, :normals) ? mesh.normals : automatic
+    uv = hasproperty(mesh, :uv) ? mesh.uv : automatic
+    return PlotSpec{Mesh}(points; faces=fs, normals=normals, texturecoordinates=uv)
 end
+
+convert_attribute(uv::AbstractVector{<:Vec2}, ::key"texturecoordinates") = convert(Vector{Vec2f}, uv)
+convert_attribute(uv::AbstractVector, ::key"texturecoordinates") = decompose_uv(uv)
+convert_attribute(ns::AbstractVector{<:Vec3}, ::key"normals") = convert(Vector{Vec3f}, ns)
+convert_attribute(ns::AbstractVector, ::key"normals") = decompose_normals(ns)
+convert_attribute(faces::AbstractVector, ::key"faces") = decompose(GLTriangleFace, faces)
 
 function convert_arguments(
         MT::Type{<:Mesh},

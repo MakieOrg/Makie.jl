@@ -154,9 +154,14 @@ end
 Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [GeometryBasics.jl](https://github.com/JuliaGeometry/GeometryBasics.jl).
 
 """
-@recipe(Mesh, mesh) do scene
+@recipe(Mesh, vertices) do scene
     Attributes(;
         default_theme(scene)...,
+
+        faces = automatic,
+        normals = automatic,
+        texturecoordinates = automatic,
+
         color = :black,
         backlight = 0f0,
         colormap = theme(scene, :colormap),
@@ -166,7 +171,7 @@ Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [Geome
         fxaa = true,
         inspectable = theme(scene, :inspectable),
         cycle = [:color => :patchcolor],
-        space = :data
+        space = :data,
     )
 end
 
