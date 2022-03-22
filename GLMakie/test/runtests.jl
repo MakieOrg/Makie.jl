@@ -41,8 +41,6 @@ cp(main_tests_refimages_download_folder, main_tests_refimages_folder)
 
 missing_refimages_main, scores_main = ReferenceTests.record_comparison(main_tests_root_folder)
 
-
-
 empty!(ReferenceTests.DATABASE)
 include("glmakie_tests.jl")
 

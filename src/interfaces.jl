@@ -177,8 +177,8 @@ function apply_convert!(P, attributes::Attributes, x::PlotSpec{S}) where S
     # Note that kw_args in the plot spec that are not part of the target plot type
     # will end in the "global plot" kw_args (rest)
     for (k, v) in pairs(kwargs)
-        # Don't overwrite existing attributes with automatic
-        if !(haskey(attributes, k) && v isa Automatic)
+        # Don't overwrite automatic
+        if !(v isa Automatic)
             attributes[k] = v
         end
     end
