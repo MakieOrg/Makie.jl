@@ -113,7 +113,7 @@ function closeall()
 end
 
 function resize_native!(window::GLFW.Window, resolution...; wait_for_resize=true)
-    @sync if isopen(window)
+    if isopen(window)
         ShaderAbstractions.switch_context!(window)
         oldsize = windowsize(window)
         retina_scale = retina_scaling_factor(window)
@@ -173,54 +173,50 @@ heatmap(depth_color, colormap=:grays)
 ```
 """
 function depthbuffer(screen::Screen)
-    @sync begin
-        ShaderAbstractions.switch_context!(screen.glscreen)
-        render_frame(screen, resize_buffers=false) # let it render
-        glFinish() # block until opengl is done rendering
-        source = screen.framebuffer.buffers[:depth]
-        depth = Matrix{Float32}(undef, size(source))
-        GLAbstraction.bind(source)
-        GLAbstraction.glGetTexImage(source.texturetype, 0, GL_DEPTH_COMPONENT, GL_FLOAT, depth)
-        GLAbstraction.bind(source, 0)
-        return depth
-    end
+    ShaderAbstractions.switch_context!(screen.glscreen)
+    render_frame(screen, resize_buffers=false) # let it render
+    glFinish() # block until opengl is done rendering
+    source = screen.framebuffer.buffers[:depth]
+    depth = Matrix{Float32}(undef, size(source))
+    GLAbstraction.bind(source)
+    GLAbstraction.glGetTexImage(source.texturetype, 0, GL_DEPTH_COMPONENT, GL_FLOAT, depth)
+    GLAbstraction.bind(source, 0)
+    return depth
 end
 
 function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Makie.JuliaNative)
     if !isopen(screen)
         error("Screen not open!")
     end
-    @sync begin
-        ShaderAbstractions.switch_context!(screen.glscreen)
-        ctex = screen.framebuffer.buffers[:color]
-        # polling may change window size, when its bigger than monitor!
-        # we still need to poll though, to get all the newest events!
-        # GLFW.PollEvents()
-        # keep current buffer size to allows larger-than-window renders
-        render_frame(screen, resize_buffers=false) # let it render
-        glFinish() # block until opengl is done rendering
-        if size(ctex) != size(screen.framecache)
-            screen.framecache = Matrix{RGB{N0f8}}(undef, size(ctex))
-        end
-        fast_color_data!(screen.framecache, ctex)
-        if format == Makie.GLNative
-            return screen.framecache
-        elseif format == Makie.JuliaNative
-            @static if VERSION < v"1.6"
-                bufc = copy(screen.framecache)
-                ind1, ind2 = axes(bufc)
-                n = first(ind2) + last(ind2)
-                for i in ind1
-                    @simd for j in ind2
-                        @inbounds bufc[i, n-j] = screen.framecache[i, j]
-                    end
+    ShaderAbstractions.switch_context!(screen.glscreen)
+    ctex = screen.framebuffer.buffers[:color]
+    # polling may change window size, when its bigger than monitor!
+    # we still need to poll though, to get all the newest events!
+    # GLFW.PollEvents()
+    # keep current buffer size to allows larger-than-window renders
+    render_frame(screen, resize_buffers=false) # let it render
+    glFinish() # block until opengl is done rendering
+    if size(ctex) != size(screen.framecache)
+        screen.framecache = Matrix{RGB{N0f8}}(undef, size(ctex))
+    end
+    fast_color_data!(screen.framecache, ctex)
+    if format == Makie.GLNative
+        return screen.framecache
+    elseif format == Makie.JuliaNative
+        @static if VERSION < v"1.6"
+            bufc = copy(screen.framecache)
+            ind1, ind2 = axes(bufc)
+            n = first(ind2) + last(ind2)
+            for i in ind1
+                @simd for j in ind2
+                    @inbounds bufc[i, n-j] = screen.framecache[i, j]
                 end
-                screen.framecache = bufc
-            else
-                reverse!(screen.framecache, dims = 2)
             end
-            return PermutedDimsArray(screen.framecache, (2,1))
+            screen.framecache = bufc
+        else
+            reverse!(screen.framecache, dims = 2)
         end
+        return PermutedDimsArray(screen.framecache, (2,1))
     end
 end
 
@@ -393,12 +389,10 @@ end
 
 
 function refreshwindowcb(window, screen)
-    @sync begin
-        ShaderAbstractions.switch_context!(screen.glscreen)
-        screen.render_tick[] = nothing
-        render_frame(screen)
-        return GLFW.SwapBuffers(window)
-    end
+    ShaderAbstractions.switch_context!(screen.glscreen)
+    screen.render_tick[] = nothing
+    render_frame(screen)
+    return GLFW.SwapBuffers(window)
 end
 
 #################################################################################
@@ -407,42 +401,38 @@ end
 
 function pick_native(screen::Screen, rect::Rect2i)
     isopen(screen) || return Matrix{SelectionID{Int}}(undef, 0, 0)
-    @sync begin
-        ShaderAbstractions.switch_context!(screen.glscreen)
-        window_size = widths(screen)
-        fb = screen.framebuffer
-        buff = fb.buffers[:objectid]
-        glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
-        glReadBuffer(GL_COLOR_ATTACHMENT1)
-        rx, ry = minimum(rect)
-        rw, rh = widths(rect)
-        w, h = window_size
-        sid = zeros(SelectionID{UInt32}, widths(rect)...)
-        if rx > 0 && ry > 0 && rx + rw <= w && ry + rh <= h
-            glReadPixels(rx, ry, rw, rh, buff.format, buff.pixeltype, sid)
-            return sid
-        else
-            error("Pick region $rect out of screen bounds ($w, $h).")
-        end
+    ShaderAbstractions.switch_context!(screen.glscreen)
+    window_size = widths(screen)
+    fb = screen.framebuffer
+    buff = fb.buffers[:objectid]
+    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
+    glReadBuffer(GL_COLOR_ATTACHMENT1)
+    rx, ry = minimum(rect)
+    rw, rh = widths(rect)
+    w, h = window_size
+    sid = zeros(SelectionID{UInt32}, widths(rect)...)
+    if rx > 0 && ry > 0 && rx + rw <= w && ry + rh <= h
+        glReadPixels(rx, ry, rw, rh, buff.format, buff.pixeltype, sid)
+        return sid
+    else
+        error("Pick region $rect out of screen bounds ($w, $h).")
     end
 end
 
 function pick_native(screen::Screen, xy::Vec{2, Float64})
     isopen(screen) || return SelectionID{Int}(0, 0)
-    @sync begin
-        ShaderAbstractions.switch_context!(screen.glscreen)
-        sid = Base.RefValue{SelectionID{UInt32}}()
-        window_size = widths(screen)
-        fb = screen.framebuffer
-        buff = fb.buffers[:objectid]
-        glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
-        glReadBuffer(GL_COLOR_ATTACHMENT1)
-        x, y = floor.(Int, xy)
-        w, h = window_size
-        if x > 0 && y > 0 && x <= w && y <= h
-            glReadPixels(x, y, 1, 1, buff.format, buff.pixeltype, sid)
-            return convert(SelectionID{Int}, sid[])
-        end
+    ShaderAbstractions.switch_context!(screen.glscreen)
+    sid = Base.RefValue{SelectionID{UInt32}}()
+    window_size = widths(screen)
+    fb = screen.framebuffer
+    buff = fb.buffers[:objectid]
+    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
+    glReadBuffer(GL_COLOR_ATTACHMENT1)
+    x, y = floor.(Int, xy)
+    w, h = window_size
+    if x > 0 && y > 0 && x <= w && y <= h
+        glReadPixels(x, y, 1, 1, buff.format, buff.pixeltype, sid)
+        return convert(SelectionID{Int}, sid[])
     end
     return SelectionID{Int}(0, 0)
 end
@@ -533,9 +523,7 @@ end
 
 pollevents(::GLScreen) = nothing
 function pollevents(screen::Screen)
-    @sync begin
-        ShaderAbstractions.switch_context!(screen.glscreen)
-        notify(screen.render_tick)
-        GLFW.PollEvents()
-    end
+    ShaderAbstractions.switch_context!(screen.glscreen)
+    notify(screen.render_tick)
+    GLFW.PollEvents()
 end

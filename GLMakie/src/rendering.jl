@@ -5,11 +5,9 @@ function vsynced_renderloop(screen)
         if WINDOW_CONFIG.pause_rendering[]
             sleep(0.1)
         else
-            @sync begin
-                ShaderAbstractions.switch_context!(screen.glscreen)
-                render_frame(screen)
-                GLFW.SwapBuffers(to_native(screen))
-            end
+            ShaderAbstractions.switch_context!(screen.glscreen)
+            render_frame(screen)
+            GLFW.SwapBuffers(to_native(screen))
             yield()
         end
     end
@@ -23,11 +21,9 @@ function fps_renderloop(screen::Screen, framerate=WINDOW_CONFIG.framerate[])
         if WINDOW_CONFIG.pause_rendering[]
             sleep(0.1)
         else
-            @sync begin
-                ShaderAbstractions.switch_context!(screen.glscreen)
-                render_frame(screen)
-                GLFW.SwapBuffers(to_native(screen))
-            end
+            ShaderAbstractions.switch_context!(screen.glscreen)
+            render_frame(screen)
+            GLFW.SwapBuffers(to_native(screen))
             t_elapsed = (time_ns() - t) / 1e9
             diff = time_per_frame - t_elapsed
             if diff > 0.001 # can't sleep less than 0.001
@@ -121,6 +117,12 @@ const selection_queries = Function[]
 Renders a single frame of a `window`
 """
 function render_frame(screen::Screen; resize_buffers=true)
+    nw = to_native(screen)
+    if !ShaderAbstractions.is_context_active(nw)
+        @debug("Current context does not match the current screen.")
+        return
+    end
+    
     function sortby(x)
         robj = x[3]
         plot = screen.cache2plot[robj.id]
@@ -133,8 +135,7 @@ function render_frame(screen::Screen; resize_buffers=true)
     # NOTE
     # The transparent color buffer is reused by SSAO and FXAA. Changing the
     # render order here may introduce artifacts because of that.
-    nw = to_native(screen)
-    ShaderAbstractions.is_context_active(nw) || return
+    
     fb = screen.framebuffer
     if resize_buffers
         wh = Int.(framebuffer_size(nw))

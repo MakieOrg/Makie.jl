@@ -113,18 +113,16 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
 end
 
 function Base.insert!(screen::GLScreen, scene::Scene, @nospecialize(x::Combined))
-    @sync begin
-        ShaderAbstractions.switch_context!(screen.glscreen)
-        # poll inside functions to make wait on compile less prominent
-        pollevents(screen)
-        if isempty(x.plots) # if no plots inserted, this truly is an atomic
-            draw_atomic(screen, scene, x)
-        else
-            foreach(x.plots) do x
-                # poll inside functions to make wait on compile less prominent
-                pollevents(screen)
-                insert!(screen, scene, x)
-            end
+    ShaderAbstractions.switch_context!(screen.glscreen)
+    # poll inside functions to make wait on compile less prominent
+    pollevents(screen)
+    if isempty(x.plots) # if no plots inserted, this truly is an atomic
+        draw_atomic(screen, scene, x)
+    else
+        foreach(x.plots) do x
+            # poll inside functions to make wait on compile less prominent
+            pollevents(screen)
+            insert!(screen, scene, x)
         end
     end
 end
