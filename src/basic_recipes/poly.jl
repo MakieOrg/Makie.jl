@@ -43,7 +43,10 @@ convert_arguments(::Type{<: Poly}, v::AbstractVector{<: PolyElements}) = (v,)
 convert_arguments(::Type{<: Poly}, v::Union{Polygon, MultiPolygon}) = (v,)
 
 convert_arguments(::Type{<: Poly}, args...) = ([convert_arguments(Scatter, args...)[1]],)
-convert_arguments(::Type{<: Poly}, vertices::AbstractArray, indices::AbstractArray) = convert_arguments(Mesh, vertices, indices)
+function convert_arguments(::Type{<: Poly}, vertices::AbstractArray, indices::AbstractArray)
+    m = GeometryBasics.Mesh(to_vertices(vertices), to_triangles(indices))
+    return (m,)
+end
 convert_arguments(::Type{<: Poly}, m::GeometryBasics.Mesh) = (m,)
 
 function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}})
@@ -58,7 +61,8 @@ function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}
         plot, plot[1],
         color = plot[:strokecolor], linestyle = plot[:linestyle], space = plot[:space],
         linewidth = plot[:strokewidth], visible = plot[:visible], overdraw = plot[:overdraw],
-        inspectable = plot[:inspectable], transparency = plot[:transparency]
+        inspectable = plot[:inspectable],
+        transparency = plot[:transparency],
     )
 end
 
@@ -168,6 +172,7 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
         if num_meshes[] != new_lengths
             num_meshes[] = new_lengths
         end
+        return
     end
     mesh_colors = Observable{RGBColors}()
     map!(mesh_colors, plot.color, num_meshes) do colors, num_meshes

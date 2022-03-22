@@ -354,6 +354,7 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
     end
     # call convert_arguments for a first time to get things started
     converted = convert_arguments(PreType, argvalues...; kw_signal[]...)
+
     # convert_arguments can return different things depending on the recipe type
     # apply_conversion deals with that!
 
