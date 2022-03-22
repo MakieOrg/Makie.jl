@@ -32,7 +32,6 @@ function color_and_colormap!(plot, intensity = plot[:color])
 end
 
 struct MeshPlot{T, N}
-
     vertex_colors::Union{Nothing, RGBColors}
     image::Union{Nothing, Sampler{T}}
     colormap::Union{Nothing, Vector{RGBAf}}
@@ -44,6 +43,7 @@ struct MeshPlot{T, N}
     faces::Vector{GLTriangleFace}
 
     backlight::Float32
+    depth_shift::Float32
     shading::Bool
     fetch_pixel::Bool
     uv_scale::Vec2f
@@ -82,7 +82,7 @@ function calculated_attributes!(::Type{<: Mesh}, plot)
         return plot.shading[] ? lift(normals, plot.vertices, plot.faces) : nothing
     end
     replace_automatic!(plot, :texturecoordinates) do
-        return needs_uv ?  lift(decompose_uv, plot.vertices) : nothing
+        return needs_uv ? lift(decompose_uv, plot.vertices) : nothing
     end
     return
 end
@@ -196,7 +196,10 @@ function apply_convert!(P, attributes::Attributes, x::PlotSpec{S}) where S
     # Note that kw_args in the plot spec that are not part of the target plot type
     # will end in the "global plot" kw_args (rest)
     for (k, v) in pairs(kwargs)
-        attributes[k] = v
+        # Don't overwrite existing attributes with automatic
+        if !(haskey(attributes, k) && v isa Automatic)
+            attributes[k] = v
+        end
     end
     return (plottype(S, P), args)
 end
@@ -264,7 +267,6 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     end
     # create the plot, with the full attributes, the input signals, and the final signals.
     plot_obj = FinalType(scene, transformation, plot_attributes, input, seperate_tuple(args))
-
     calculated_attributes!(plot_obj)
     plot_obj
 end
@@ -340,6 +342,9 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
     # plottype will lose the argument types, so we just extract the plot func
     # type and recreate the type with the argument type
     PreType = Combined{plotfunc(PreType), typeof(argvalues)}
+    if isempty(args)
+        return plot!(scene, PreType, attributes, Observable(()), Observable(()))
+    end
     convert_keys = intersect(used_attributes(PreType, argvalues...), keys(attributes))
     kw_signal = if isempty(convert_keys) # lift(f) isn't supported so we need to catch the empty case
         Observable(())
@@ -455,7 +460,6 @@ end
 
 function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, input::NTuple{N,Observable}, args::Observable) where {N}
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
-
     plot_object = P(scene, attributes, input, args)
     # call user defined recipe overload to fill the plot type
     plot!(plot_object)

@@ -265,7 +265,6 @@ function projectionmatrix(viewmatrix, limits, eyepos, radius, azim, elev, angle,
 
         if viewmode in (:fitzoom, :stretch)
             points = decompose(Point3f, limits)
-            # @show points
             projpoints = Ref(pm * viewmatrix) .* to_ndim.(Point4f, points, 1)
 
             maxx = maximum(x -> abs(x[1] / x[4]), projpoints)

@@ -249,7 +249,6 @@ function Makie.plot!(p::BarPlot)
     bars = lift(calculate_bars, p[1], p.fillto, p.offset, p.width, p.dodge, p.n_dodge, p.gap,
                 p.dodge_gap, p.stack, p.direction, p.bar_labels, p.flip_labels_at,
                 p.label_color, p.color_over_background, p.color_over_bar, p.label_formatter, p.label_offset)
-
     poly!(
         p, bars, color = p.color, colormap = p.colormap, colorrange = p.colorrange,
         strokewidth = p.strokewidth, strokecolor = p.strokecolor, visible = p.visible,

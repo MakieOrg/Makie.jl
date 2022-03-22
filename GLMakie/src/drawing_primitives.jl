@@ -3,8 +3,9 @@ using Makie: attribute_per_char, FastPixel, el32convert, Pixel
 using Makie: convert_arguments
 
 Makie.el32convert(x::GLAbstraction.Texture) = x
-Makie.convert_attribute(s::ShaderAbstractions.Sampler{RGBAf}, k::key"color") = s
-function Makie.convert_attribute(s::ShaderAbstractions.Sampler{T, N}, k::key"color") where {T, N}
+Makie.el32convert(x::ShaderAbstractions.Sampler) = x
+Makie.convert_attribute(s::ShaderAbstractions.Sampler{RGBAf}, ::key"color") = s
+function Makie.convert_attribute(s::ShaderAbstractions.Sampler{T, N}, ::key"color") where {T, N}
     ShaderAbstractions.Sampler(
         el32convert(s.data), minfilter = s.minfilter, magfilter = s.magfilter,
         x_repeat = s.repeat[1], y_repeat = s.repeat[min(2, N)], z_repeat = s.repeat[min(3, N)],
@@ -449,26 +450,23 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Image)
             r = to_range(x, y)
             x, y = minimum(r[1]), minimum(r[2])
             xmax, ymax = maximum(r[1]), maximum(r[2])
-            rect =  Rect2f(x, y, xmax - x, ymax - y)
-            points = decompose(Point2f, rect)
-            faces = decompose(GLTriangleFace, rect)
-            uv = map(decompose_uv(rect)) do uv
-                return 1f0 .- Vec2f(uv[2], uv[1])
-            end
-            return GeometryBasics.Mesh(meta(points; uv=uv), faces)
+            rect = Rect2f(x, y, xmax - x, ymax - y)
+            return decompose(Point2f, rect)
         end
-        gl_attributes[:color] = x[3]
+        gl_attributes[:texturecoordinates] = map(decompose_uv(Rect(0, 0, 1, 1))) do uv
+            return 1f0 .- Vec2f(uv[2], uv[1])
+        end
+        gl_attributes[:faces] = decompose(GLTriangleFace, Rect(0, 0, 1, 1))
         gl_attributes[:shading] = false
+        gl_attributes[:vertex_color] = Vec4f(0)
+        gl_attributes[:image] = x[3]
+        if to_value(x[3]) isa AbstractMatrix{<: Colorant}
+            delete!(gl_attributes, :color_map)
+            delete!(gl_attributes, :color_norm)
+        end
         connect_camera!(gl_attributes, scene.camera)
         return mesh_inner(mesh, transform_func_obs(x), gl_attributes)
     end
-end
-
-function update_positions(mesh::GeometryBasics.Mesh, positions)
-    points = coordinates(mesh)
-    attr = GeometryBasics.attributes(points)
-    delete!(attr, :position) # position == metafree(points)
-    return GeometryBasics.Mesh(meta(positions; attr...), faces(mesh))
 end
 
 function mesh_inner(vertices, transfunc, gl_attributes)
@@ -477,6 +475,8 @@ function mesh_inner(vertices, transfunc, gl_attributes)
     gl_attributes[:vertices] = map(vertices, transfunc) do vertices, func
         return apply_transform(func, vertices)
     end
+    # color is only kept for backwards compat (vertex_color/image in shader)
+    delete!(gl_attributes, :color)
     return GLVisualize.draw_mesh(gl_attributes)
 end
 

@@ -492,7 +492,7 @@ function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N}) where {
     fs = decompose(GLTriangleFace, mesh)
     normals = hasproperty(mesh, :normals) ? mesh.normals : automatic
     uv = hasproperty(mesh, :uv) ? mesh.uv : automatic
-    return PlotSpec{Mesh}(points; faces=fs, normals=normals, texturecoordinates=uv)
+    return PlotSpec{Mesh}(; vertices=points, faces=fs, normals=normals, texturecoordinates=uv)
 end
 
 convert_attribute(uv::AbstractVector{<:Vec2}, ::key"texturecoordinates") = convert(Vector{Vec2f}, uv)
@@ -518,11 +518,11 @@ end
 function convert_arguments(MT::Type{<:Mesh}, geom::GeometryPrimitive)
     # we convert to UV mesh as default, because otherwise the uv informations get lost
     # - we can still drop them, but we can't add them later on
-    return (GeometryBasics.uv_normal_mesh(geom),)
+    return convert_arguments(MT, GeometryBasics.uv_normal_mesh(geom))
 end
 
 """
-    convert_arguments(Mesh, x, y, z, indices)::GLNormalMesh
+    convert_arguments(Mesh, x, y, z, indices)
 
 Takes real vectors x, y, z and constructs a triangle mesh out of those, using the
 faces in `indices`, which can be integers (every 3 -> one triangle), or GeometryBasics.NgonFace{N, <: Integer}.
@@ -543,12 +543,12 @@ See [`to_vertices`](@ref) and [`to_triangles`](@ref) for more information about
 accepted types.
 """
 function convert_arguments(
-        ::Type{<:Mesh},
+        MT::Type{<:Mesh},
         vertices::AbstractArray,
         indices::AbstractArray
     )
     m = normal_mesh(to_vertices(vertices), to_triangles(indices))
-    (m,)
+    return convert_arguments(MT, m)
 end
 
 ################################################################################

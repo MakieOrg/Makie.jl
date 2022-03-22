@@ -59,7 +59,13 @@ end
 
 point_iterator(plot::Combined) = point_iterator(plot.plots)
 
-point_iterator(plot::Mesh) = plot.vertices[]
+function point_iterator(plot::Mesh)
+    if isempty(plot.plots)
+        return plot.vertices[]
+    else
+        return point_iterator(plot.plots)
+    end
+end
 
 function br_getindex(vector::AbstractVector, idx::CartesianIndex, dim::Int)
     return vector[Tuple(idx)[dim]]

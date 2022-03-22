@@ -154,7 +154,7 @@ end
 Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [GeometryBasics.jl](https://github.com/JuliaGeometry/GeometryBasics.jl).
 
 """
-@recipe(Mesh, vertices) do scene
+@recipe(Mesh, _vertices) do scene
     Attributes(;
         default_theme(scene)...,
 

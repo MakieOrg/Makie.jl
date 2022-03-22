@@ -27,11 +27,7 @@ $(ATTRIBUTES)
         colorrange = automatic,
         strokewidth = theme(scene, :patchstrokewidth),
         shading = false,
-        # we turn this false for now, since otherwise shapes look transparent
-        # since we use meshes, which are drawn into a different framebuffer because of fxaa
-        # if we use fxaa=false, they're drawn into the same
-        # TODO, I still think this is a bug, since they should still use the same depth buffer!
-        fxaa = false,
+        fxaa = true,
         linestyle = nothing,
         overdraw = false,
         transparency = false,
@@ -165,31 +161,38 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
     attributes[:colormap] = get(plot, :colormap, nothing)
     attributes[:colorrange] = get(plot, :colorrange, nothing)
 
-    bigmesh = if color_node[] isa AbstractVector && length(color_node[]) == length(meshes[])
-        # One color per mesh
-        lift(meshes, color_node, attributes.colormap, attributes.colorrange) do meshes, colors, cmap, crange
-            # Color are reals, so we need to transform it to colors first
-            single_colors = if colors isa AbstractVector{<:Number}
-                interpolated_getindex.((to_colormap(cmap),), colors, (crange,))
-            else
-                to_color.(colors)
-            end
-            real_colors = RGBAf[]
-            # Map one single color per mesh to each vertex
-            for (mesh, color) in zip(meshes, single_colors)
-                append!(real_colors, Iterators.repeated(RGBAf(color), length(coordinates(mesh))))
-            end
-            # real_colors[] = real_colors[]
-            if P <: AbstractPolygon
-                meshes = triangle_mesh.(meshes)
-            end
-            return pointmeta(merge(meshes), color=real_colors)
-        end
-    else
-        attributes[:color] = color_node
-        lift(meshes) do meshes
-            return merge(GeometryBasics.mesh.(meshes))
+    num_meshes = Observable(Int[])
+    map(meshes) do meshes
+        # TODO use change observable!
+        new_lengths = length.(coordinates.(meshes))
+        if num_meshes[] != new_lengths
+            num_meshes[] = new_lengths
         end
     end
-    mesh!(plot, attributes, bigmesh)
+    mesh_colors = Observable{RGBColors}()
+    map!(mesh_colors, plot.color, num_meshes) do colors, num_meshes
+        # one mesh per color
+        c_converted = to_color(colors)
+        if c_converted isa AbstractVector && length(c_converted) == length(num_meshes)
+            result = similar(c_converted, sum(num_meshes))
+            i = 1
+            for (cs, len) in zip(c_converted, num_meshes)
+                for j in 1:len
+                    result[i] = cs
+                    i += 1
+                end
+            end
+            return result
+        else
+            return c_converted
+        end
+    end
+    attributes[:color] = mesh_colors
+    lift(meshes) do meshes
+        m = merge(GeometryBasics.mesh.(meshes))
+        attributes[:faces] = decompose(GLTriangleFace, m)
+        attributes[:vertices] = decompose(Point, m)
+        return
+    end
+    p = mesh!(plot, attributes)
 end
