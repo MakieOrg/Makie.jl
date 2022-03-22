@@ -492,7 +492,8 @@ function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N}) where {
     fs = decompose(GLTriangleFace, mesh)
     normals = hasproperty(mesh, :normals) ? mesh.normals : automatic
     uv = hasproperty(mesh, :uv) ? mesh.uv : automatic
-    return PlotSpec{Mesh}(; vertices=points, faces=fs, normals=normals, texturecoordinates=uv)
+    color = hasproperty(mesh, :color) ? mesh.color : automatic
+    return PlotSpec{Mesh}(; vertices=points, faces=fs, normals=normals, texturecoordinates=uv, color=color)
 end
 
 convert_attribute(uv::AbstractVector{<:Vec2}, ::key"texturecoordinates") = convert(Vector{Vec2f}, uv)

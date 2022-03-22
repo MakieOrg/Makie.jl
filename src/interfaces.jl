@@ -31,25 +31,6 @@ function color_and_colormap!(plot, intensity = plot[:color])
     end
 end
 
-struct MeshPlot{T, N}
-    vertex_colors::Union{Nothing, RGBColors}
-    image::Union{Nothing, Sampler{T}}
-    colormap::Union{Nothing, Vector{RGBAf}}
-    colorrange::Union{Nothing, Vec2f}
-
-    normals::Union{Nothing, Vector{Vec3f}}
-    texturecoordinates::Union{Nothing, Vector{Vec2f}}
-    vertices::Vector{Point{N, Float32}}
-    faces::Vector{GLTriangleFace}
-
-    backlight::Float32
-    depth_shift::Float32
-    shading::Bool
-    fetch_pixel::Bool
-    uv_scale::Vec2f
-    transparency::Bool
-end
-
 function calculated_attributes!(::Type{<: Mesh}, plot)
     need_cmap = color_and_colormap!(plot)
     need_cmap || delete!(plot, :colormap)

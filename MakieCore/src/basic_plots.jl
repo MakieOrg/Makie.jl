@@ -144,6 +144,29 @@ Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
     default_theme(scene, Lines)
 end
 
+
+#=
+It's an ongoing effort to make the type that arrives in the backends to look like this:
+struct MeshPlot{T, N}
+    vertex_colors::RGBColors
+    image::Sampler{T}
+    colormap::Vector{RGBAf}
+    colorrange::Vec2f
+
+    normals::Vector{Vec3f}
+    texturecoordinates::Vector{Vec2f}
+    vertices::Vector{Point{N, Float32}}
+    faces::Vector{GLTriangleFace}
+
+    backlight::Float32
+    depth_shift::Float32
+    shading::Bool
+    fetch_pixel::Bool
+    uv_scale::Vec2f
+    transparency::Bool
+end
+=#
+
 # alternatively, mesh3d? Or having only mesh instead of poly + mesh and figure out 2d/3d via dispatch
 """
     mesh(x, y, z)
