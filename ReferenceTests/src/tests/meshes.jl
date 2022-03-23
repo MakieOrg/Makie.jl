@@ -1,5 +1,5 @@
 using GLMakie, GeometryBasics
-
+using CairoMakie, GeometryBasics
 # basic 2d
 f, ax, pl = mesh(Rect2f(0, 0, 1, 1))
 # basic 3d

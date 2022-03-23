@@ -242,9 +242,13 @@ function Base.setindex!(x::AbstractPlot, value::Observable, key::Symbol)
     end
 end
 
-# a few shortcut functions to make attribute conversion easier
-function get_attribute(dict, key)
-    convert_attribute(to_value(dict[key]), Key{key}())
+"""
+    get_attribute(dictlike, attribute::Symbol)
+
+Get's the attribute, extract it from the observable and convert it via convert_attribute
+"""
+function get_attribute(dict, attribute::Symbol)
+    convert_attribute(to_value(dict[attribute]), Key{attribute}())
 end
 
 function merge_attributes!(input::Attributes, theme::Attributes)

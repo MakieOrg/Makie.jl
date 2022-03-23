@@ -604,24 +604,22 @@ end
 
 
 function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive::Makie.Mesh))
-    mesh = primitive[1][]
     if Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera, Makie.EmptyCamera}
-        draw_mesh2D(scene, screen, primitive, mesh)
+        draw_mesh2D(scene, screen, primitive)
     else
-        if !haskey(primitive, :faceculling)
-            primitive[:faceculling] = Observable(-10)
-        end
-        draw_mesh3D(scene, screen, primitive, mesh)
+        get!(primitive, :faceculling, -10)
+        draw_mesh3D(scene, screen, primitive)
     end
     return nothing
 end
 
-function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
-    @get_attribute(plot, (color,))
-    color = to_color(hasproperty(mesh, :color) ? mesh.color : color)
-    vs =  decompose(Point2f, mesh)::Vector{Point2f}
-    fs = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
-    uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
+using Makie: get_attribute
+
+function draw_mesh2D(scene, screen, @nospecialize(plot))
+    color = get_attribute(plot, :color)::Makie.RGBColors
+    vs =  decompose(Point2f, get_attribute(plot, :vertices))::Vector{Point2f}
+    fs = get_attribute(plot, :faces)::Vector{GLTriangleFace}
+    uv = get_attribute(plot, :texturecoordinates)::Union{Nothing, Vector{Vec2f}}
     model = plot.model[]::Mat4f
     colormap = haskey(plot, :colormap) ? to_colormap(plot.colormap[]) : nothing
     colorrange = convert_attribute(to_value(get(plot, :colorrange, nothing)), key"colorrange"())::Union{Nothing, Vec2f}
@@ -674,19 +672,16 @@ end
 nan2zero(x) = !isnan(x) * x
 
 
-function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f0)
-    # Priorize colors of the mesh if present
-    @get_attribute(attributes, (color,))
-
+function draw_mesh3D(scene, screen, attributes; pos = Vec4f(0), scale = 1f0)
     colormap = haskey(attributes, :colormap) ? to_colormap(attributes.colormap[]) : nothing
     colorrange = convert_attribute(to_value(get(attributes, :colorrange, nothing)), key"colorrange"())::Union{Nothing, Vec2f}
     matcap = to_value(get(attributes, :matcap, nothing))
 
-    color = hasproperty(mesh, :color) ? mesh.color : color
-    meshpoints = decompose(Point3f, mesh)::Vector{Point3f}
-    meshfaces = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
-    meshnormals = decompose_normals(mesh)::Vector{Vec3f}
-    meshuvs = texturecoordinates(mesh)::Union{Nothing, Vector{Vec2f}}
+    color = get_attribute(attributes, :color)::Union{Matrix{Float32}, Matrix{RGBAf}, Makie.RGBColors}
+    meshpoints =  decompose(Point3f, get_attribute(attributes, :vertices))::Vector{Point3f}
+    meshfaces = get_attribute(attributes, :faces)::Vector{GLTriangleFace}
+    meshuvs = get_attribute(attributes, :texturecoordinates)::Union{Nothing, Vector{Vec2f}}
+    meshnormals = get_attribute(attributes, :normals)::Vector{Vec3f}
 
     lowclip = get_color_attr(attributes, :lowclip)
     highclip = get_color_attr(attributes, :highclip)
@@ -819,19 +814,31 @@ end
 #                                   Surface                                    #
 ################################################################################
 
+function decompose_mesh!(attributes, mesh)
+    attributes[:vertices] = decompose(Point, mesh)
+    attributes[:faces] = decompose(GLTriangleFace, mesh)
+    if hasproperty(mesh, :normals)
+        attributes[:normals] = decompose_normals(mesh)
+    else
+        attributes[:normals] = nothing
+    end
+    if hasproperty(mesh, :uv)
+        attributes[:texturecoordinates] = decompose_uv(mesh)
+    else
+        attributes[:texturecoordinates] = nothing
+    end
+end
 
 function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive::Makie.Surface))
     # Pretend the surface plot is a mesh plot and plot that instead
     mesh = surface2mesh(primitive[1][], primitive[2][], primitive[3][])
-    old = primitive[:color]
-    if old[] === nothing
-        primitive[:color] = primitive[3]
+    attributes = copy(primitive.attributes)
+    if isnothing(primitive.color[])
+        attributes[:color] = primitive[3]
     end
-    if !haskey(primitive, :faceculling)
-        primitive[:faceculling] = Observable(-10)
-    end
-    draw_mesh3D(scene, screen, primitive, mesh)
-    primitive[:color] = old
+    get!(attributes, :faceculling, -10)
+    decompose_mesh!(attributes, mesh)
+    draw_mesh3D(scene, screen, attributes)
     return nothing
 end
 
@@ -882,7 +889,6 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
         color = numbers_to_colors(color, primitive)
     end
 
-    m = convert_attribute(marker, key"marker"(), key"meshscatter"())
     pos = primitive[1][]
     # For correct z-ordering we need to be in view/camera or screen space
     model = copy(model)
@@ -907,7 +913,8 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
         submesh[:model] = model * R
     end
     scales = primitive[:markersize][]
-
+    m = convert_attribute(marker, key"marker"(), key"meshscatter"())
+    decompose_mesh!(submesh, m)
     for i in zorder
         p = pos[i]
         if color isa AbstractVector
@@ -920,7 +927,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
         scale = markersize isa Vector ? markersize[i] : markersize
 
         draw_mesh3D(
-            scene, screen, submesh, m, pos = p,
+            scene, screen, submesh, pos = p,
             scale = scale isa Real ? Vec3f(scale) : to_ndim(Vec3f, scale, 1f0)
         )
     end
