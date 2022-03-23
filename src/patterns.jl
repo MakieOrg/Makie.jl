@@ -104,6 +104,8 @@ function Pattern(style::Char = '/'; kwargs...)
     end
 end
 
+to_color(p::LinePattern) = to_image(p)
+
 function to_image(p::LinePattern)
     tilesize = p.tilesize
     full_mask = zeros(tilesize...)

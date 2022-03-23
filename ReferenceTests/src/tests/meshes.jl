@@ -29,3 +29,7 @@ linesegments!(ax,
     [Point2f(50 + i, 50 + i) => Point2f(i + 70, i + 70) for i = 1:100:400], linewidth=8, color=:purple
 )
 fig
+
+
+# with pattern
+f, ax, p = barplot(rand(4), color=Makie.LinePattern())

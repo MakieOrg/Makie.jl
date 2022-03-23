@@ -152,7 +152,10 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
         inspectable = plot.inspectable, depth_shift = -1f-5
     )
 end
-
+function calculated_attributes!(::Type{<:Mesh{<: Tuple{<: AbstractVector{P}}}}, attr) where P <: Union{AbstractMesh, Polygon}
+    # Need to overload this, since the generic version for Mesh isn't needed
+    return nothing
+end
 function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{AbstractMesh, Polygon}
     meshes = plot[1]
     color_node = plot.color
@@ -164,6 +167,10 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
 
     attributes[:colormap] = get(plot, :colormap, nothing)
     attributes[:colorrange] = get(plot, :colorrange, nothing)
+    # needs to happen manually, since we convert patterns to matrix of colors early in recipe
+    attributes[:fetch_pixel] = map(plot.color) do color
+        color isa AbstractPattern
+    end
 
     num_meshes = Observable(Int[])
     map(meshes) do meshes
@@ -174,7 +181,7 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
         end
         return
     end
-    mesh_colors = Observable{RGBColors}()
+    mesh_colors = Observable{Union{Matrix{RGBAf}, RGBColors}}()
     map!(mesh_colors, plot.color, num_meshes) do colors, num_meshes
         # one mesh per color
         c_converted = to_color(colors)

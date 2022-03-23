@@ -678,7 +678,7 @@ function draw_mesh3D(scene, screen, attributes; pos = Vec4f(0), scale = 1f0)
     matcap = to_value(get(attributes, :matcap, nothing))
 
     color = get_attribute(attributes, :color)::Union{Matrix{Float32}, Matrix{RGBAf}, Makie.RGBColors}
-    meshpoints =  decompose(Point3f, get_attribute(attributes, :vertices))::Vector{Point3f}
+    meshpoints = decompose(Point3f, get_attribute(attributes, :vertices))::Vector{Point3f}
     meshfaces = get_attribute(attributes, :faces)::Vector{GLTriangleFace}
     meshuvs = get_attribute(attributes, :texturecoordinates)::Union{Nothing, Vector{Vec2f}}
     meshnormals = get_attribute(attributes, :normals)::Vector{Vec3f}
