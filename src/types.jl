@@ -16,10 +16,10 @@ include("interaction/iodevices.jl")
 
 
 """
-This struct provides accessible `PriorityObservable`s to monitor the events
+This struct provides accessible `Observable`s to monitor the events
 associated with a Scene.
 
-Functions that act on a `PriorityObservable` must return `Consume()` if the function
+Functions that act on a `Observable` must return `Consume()` if the function
 consumes an event. When an event is consumed it does
 not trigger other observer functions. The order in which functions are exectued
 can be controlled via the `priority` keyword (default 0) in `on`.
@@ -42,15 +42,15 @@ struct Events
     """
     The area of the window in pixels, as a `Rect2`.
     """
-    window_area::PriorityObservable{Rect2i}
+    window_area::Observable{Rect2i}
     """
     The DPI resolution of the window, as a `Float64`.
     """
-    window_dpi::PriorityObservable{Float64}
+    window_dpi::Observable{Float64}
     """
     The state of the window (open => true, closed => false).
     """
-    window_open::PriorityObservable{Bool}
+    window_open::Observable{Bool}
 
     """
     Most recently triggered `MouseButtonEvent`. Contains the relevant
@@ -58,7 +58,7 @@ struct Events
 
     See also [`ispressed`](@ref).
     """
-    mousebutton::PriorityObservable{MouseButtonEvent}
+    mousebutton::Observable{MouseButtonEvent}
     """
     A Set of all currently pressed mousebuttons.
     """
@@ -67,11 +67,11 @@ struct Events
     The position of the mouse as a `NTuple{2, Float64}`.
     Updates once per event poll/frame.
     """
-    mouseposition::PriorityObservable{NTuple{2, Float64}} # why no Vec2?
+    mouseposition::Observable{NTuple{2, Float64}} # why no Vec2?
     """
     The direction of scroll
     """
-    scroll::PriorityObservable{NTuple{2, Float64}} # why no Vec2?
+    scroll::Observable{NTuple{2, Float64}} # why no Vec2?
 
     """
     Most recently triggered `KeyEvent`. Contains the relevant `event.key` and
@@ -79,7 +79,7 @@ struct Events
 
     See also [`ispressed`](@ref).
     """
-    keyboardbutton::PriorityObservable{KeyEvent}
+    keyboardbutton::Observable{KeyEvent}
     """
     Contains all currently pressed keys.
     """
@@ -88,19 +88,19 @@ struct Events
     """
     Contains the last typed character.
     """
-    unicode_input::PriorityObservable{Char}
+    unicode_input::Observable{Char}
     """
     Contains a list of filepaths to files dragged into the scene.
     """
-    dropped_files::PriorityObservable{Vector{String}}
+    dropped_files::Observable{Vector{String}}
     """
     Whether the Scene window is in focus or not.
     """
-    hasfocus::PriorityObservable{Bool}
+    hasfocus::Observable{Bool}
     """
     Whether the mouse is inside the window or not.
     """
-    entered_window::PriorityObservable{Bool}
+    entered_window::Observable{Bool}
 end
 
 function Base.show(io::IO, events::Events)
@@ -114,7 +114,7 @@ function Base.show(io::IO, events::Events)
 end
 
 function Events()
-    mousebutton = PriorityObservable(MouseButtonEvent(Mouse.none, Mouse.release))
+    mousebutton = Observable(MouseButtonEvent(Mouse.none, Mouse.release))
     mousebuttonstate = Set{Mouse.Button}()
     on(mousebutton, priority = typemax(Int8)) do event
         set = mousebuttonstate
@@ -129,7 +129,7 @@ function Events()
         return Consume(false)
     end
 
-    keyboardbutton = PriorityObservable(KeyEvent(Keyboard.unknown, Keyboard.release))
+    keyboardbutton = Observable(KeyEvent(Keyboard.unknown, Keyboard.release))
     keyboardstate = Set{Keyboard.Button}()
     on(keyboardbutton, priority = typemax(Int8)) do event
         set = keyboardstate
@@ -149,20 +149,20 @@ function Events()
     end
 
     return Events(
-        PriorityObservable(Recti(0, 0, 0, 0)),
-        PriorityObservable(100.0),
-        PriorityObservable(false),
+        Observable(Recti(0, 0, 0, 0)),
+        Observable(100.0),
+        Observable(false),
 
         mousebutton, mousebuttonstate,
-        PriorityObservable((0.0, 0.0)),
-        PriorityObservable((0.0, 0.0)),
+        Observable((0.0, 0.0)),
+        Observable((0.0, 0.0)),
 
         keyboardbutton, keyboardstate,
 
-        PriorityObservable('\0'),
-        PriorityObservable(String[]),
-        PriorityObservable(false),
-        PriorityObservable(false),
+        Observable('\0'),
+        Observable(String[]),
+        Observable(false),
+        Observable(false),
     )
 end
 

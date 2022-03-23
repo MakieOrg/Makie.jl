@@ -55,7 +55,7 @@ struct MouseEvent
 end
 
 struct MouseEventHandle
-    obs::Makie.PriorityObservable{MouseEvent}
+    obs::Observable{MouseEvent}
     observerfuncs::Vector{<:Observables.ObserverFunction}
 end
 
@@ -126,10 +126,10 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
     Mouse = Makie.Mouse
     dblclick_max_interval = 0.2
 
-    mouseevent = Makie.PriorityObservable{MouseEvent}(
+    mouseevent = Observable{MouseEvent}(
         MouseEvent(MouseEventTypes.out, 0.0, Point2f(0, 0), Point2f(0, 0), 0.0, Point2f(0, 0), Point2f(0, 0))
     )
-
+    mouseevent.use_priority = true
 
     # initialize state variables
     last_mouseevent = Ref{Mouse.Action}(Mouse.release)
@@ -143,7 +143,6 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
     t_last_click = Ref(0.0)
     b_last_click = Ref{Optional{Mouse.Button}}(nothing)
     last_click_was_double = Ref(false)
-
 
     # react to mouse position changes
     mousepos_observerfunc = on(events(scene).mouseposition, priority=priority) do mp
