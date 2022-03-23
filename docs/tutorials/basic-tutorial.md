@@ -67,7 +67,8 @@ Every plotting function has a version with and one without `!`.
 For example, there's `scatter` and `scatter!`, `lines` and `lines!`, etc.
 The functions without a `!` always create a new axis with a plot inside, while the functions with `!` plot into an already existing axis.
 
-Here's how you could plot two lines on top of each other.
+Here's how you could plot two lines on top of each other. Also, notice you can pass a function (`sin` and `cos` in this case) as the
+`y` argument to a plotting function.
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -75,11 +76,9 @@ Here's how you could plot two lines on top of each other.
 using CairoMakie
 
 x = range(0, 10, length=100)
-y1 = sin.(x)
-y2 = cos.(x)
 
-lines(x, y1)
-lines!(x, y2)
+lines(x, sin)
+lines!(x, cos)
 current_figure()
 ```
 \end{examplefigure}
