@@ -309,13 +309,13 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
     onany(kw_signal, lift(tuple, input_nodes...)) do kwargs, args
         # do the argument conversion inside a lift
         result = convert_arguments(FinalType, args...; kwargs...)
-        finaltype, argsconverted = apply_convert!(FinalType, attributes, result)
+        finaltype, argsconverted_ = apply_convert!(FinalType, attributes, result) # avoid a Core.Box (https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-captured)
         if finaltype != FinalType
             error("Plot type changed from $FinalType to $finaltype after conversion.
                 Changing the plot type based on values in convert_arguments is not allowed"
             )
         end
-        converted_node[] = argsconverted
+        converted_node[] = argsconverted_
     end
     plot!(scene, FinalType, attributes, input_nodes, converted_node)
 end

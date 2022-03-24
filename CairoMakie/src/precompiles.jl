@@ -62,9 +62,6 @@ end
 
 function _precompile_()
     ccall(:jl_generating_output, Cint, ()) == 1 || return nothing
-
-    merge(Makie.poly_convert([Point2f[(0, 0), (0.5, 1.0), (1.0, 0.0)] for i in 1:5]))
-
     precompile(Makie.backend_display, (CairoBackend, Scene))
     activate!()
     f, ax1, pl = scatter(1:4)
@@ -114,5 +111,8 @@ function _precompile_()
     )
 
     CairoMakie.draw_mesh3D(scene, screen, attributes, mesh2)
+    mktempdir() do path
+        save(joinpath(path, "test.png"), scatter(1:4))
+    end
     return
 end
