@@ -34,9 +34,10 @@ end
 function height_insensitive_boundingbox_with_advance(ext, font)
     l = 0f0
     r = FreeTypeAbstraction.hadvance(ext)
-    b = FreeTypeAbstraction.descender(font)
-    t = FreeTypeAbstraction.ascender(font)
-    return Rect2f((l, b), (r - l, t - b))
+    hibb = FreeTypeAbstraction.height_insensitive_boundingbox(ext, font)
+    b = origin(hibb)[2]
+    h = widths(hibb)[2]
+    return Rect2f((l, b), (r - l, h))
 end
 
 function boundingbox(glyphcollection::GlyphCollection, position::Point3f, rotation::Quaternion)

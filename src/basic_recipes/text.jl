@@ -194,10 +194,10 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
 
     scales_2d = [Vec2f(x[3] * Vec2f(fs)) for x in els]
 
-    chars = [x[1].char for x in els]
-    fonts = [x[1].font for x in els]
-
-    extents = [FreeTypeAbstraction.get_extent(f, c) for (f, c) in zip(fonts, chars)]
+    texchars = [x[1] for x in els]
+    chars = [texchar.char for texchar in texchars]
+    fonts = [texchar.font for texchar in texchars]
+    extents = texchars  # TeXChar can act as extents
 
     bboxes = map(extents, fonts, scales_2d) do ext, font, scale
         unscaled_hi_bb = FreeTypeAbstraction.height_insensitive_boundingbox(ext, font)

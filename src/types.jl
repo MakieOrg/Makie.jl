@@ -359,7 +359,7 @@ struct GlyphCollection
     glyphs::Vector{Char}
     fonts::Vector{FTFont}
     origins::Vector{Point3f}
-    extents::Vector{FreeTypeAbstraction.FontExtent{Float32}}
+    extents::Union{Vector{FreeTypeAbstraction.FontExtent{Float32}}, Vector{TeXChar}}
     scales::ScalarOrVector{Vec2f}
     rotations::ScalarOrVector{Quaternionf}
     colors::ScalarOrVector{RGBAf}
