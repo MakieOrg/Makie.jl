@@ -133,7 +133,7 @@ end
 end
 
 
-begin
+@cell "BezierPath markers" begin
     f = Figure()
     ax = Axis(f[1, 1])
 
