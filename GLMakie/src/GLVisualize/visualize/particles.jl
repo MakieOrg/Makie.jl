@@ -40,9 +40,11 @@ returns the Shape for the distancefield algorithm
 """
 primitive_shape(::Union{AbstractString, Char}) = DISTANCEFIELD
 primitive_shape(x::X) where {X} = primitive_shape(X)
+primitive_shape(x::Type{DataType}) = error("No primitive shape available for previous type.")
 primitive_shape(::Type{T}) where {T <: Circle} = CIRCLE
 primitive_shape(::Type{T}) where {T <: Rect2} = RECTANGLE
 primitive_shape(x::Shape) = x
+primitive_shape(x::BezierPath) = DISTANCEFIELD
 
 """
 Extracts the scale from a primitive.
@@ -64,6 +66,7 @@ Extracts the uv offset and width from a primitive.
 primitive_uv_offset_width(c::Char) = glyph_uv_width!(c)
 primitive_uv_offset_width(str::AbstractString) = map(glyph_uv_width!, collect(str))
 primitive_uv_offset_width(x) = Vec4f(0,0,1,1)
+primitive_uv_offset_width(b::BezierPath) = glyph_uv_width!(b)
 
 """
 Gets the texture atlas if primitive is a char.
@@ -71,14 +74,28 @@ Gets the texture atlas if primitive is a char.
 primitive_distancefield(x) = nothing
 primitive_distancefield(::Union{AbstractString, Char}) = get_texture!(get_texture_atlas())
 primitive_distancefield(x::Observable) = primitive_distancefield(x[])
+primitive_distancefield(::BezierPath) = get_texture!(get_texture_atlas())
+primitive_distancefield(::Observable{BezierPath}) = get_texture!(get_texture_atlas())
 
+# Calculates the scaling factor from unpadded size -> padded size
+# Here we assume the glyph to be representative of Makie.PIXELSIZE_IN_ATLAS[]
+# regardless of its true size.
 function char_scale_factor(char, font)
-    # uv * size(ta.data) / Makie.PIXELSIZE_IN_ATLAS[] is the padded glyph size
-    # normalized to the size the glyph was generated as.
     ta = Makie.get_texture_atlas()
     lbrt = glyph_uv_width!(ta, char, font)
-    width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
-    return width .* Vec2f(size(ta.data)) ./ Makie.PIXELSIZE_IN_ATLAS[]
+    uv_width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
+    full_pixel_size_in_atlas = uv_width * Vec2f(size(ta.data) .- 1)
+    full_pixel_size_in_atlas / Makie.PIXELSIZE_IN_ATLAS[]
+end
+
+# full_pad / unpadded_atlas_width
+function bezierpath_pad_scale_factor(bp)
+    ta = Makie.get_texture_atlas()
+    lbrt = glyph_uv_width!(bp)
+    uv_width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
+    full_pixel_size_in_atlas = uv_width * Vec2f(size(ta.data) .- 1)
+    full_pad = 2f0 * Makie.GLYPH_PADDING[] # left + right pad
+    full_pad ./ (full_pixel_size_in_atlas .- full_pad)
 end
 
 # This works the same for x being widths and offsets
@@ -93,6 +110,37 @@ end
 function rescale_glyph(str::String, font, xs::Vector)
     map((char, x) -> x * char_scale_factor(char, font), collect(str), xs)
 end
+
+# padded_width = (unpadded_target_width + unpadded_target_width * pad_per_unit)
+function rescale_bezierpath(bp::BezierPath, scale)
+    scale .* (1f0 .+ bezierpath_pad_scale_factor(bp)) .* widths(Makie.bbox(bp))
+end
+function rescale_bezierpath(bp::BezierPath, scale::Vector)
+    pad_scale_factor = bezierpath_pad_scale_factor(bp)
+    [s .* (1f0 .+ pad_scale_factor) .* widths(Makie.bbox(bp)) for s in scale]
+end
+
+function offset_bezierpath(bp::BezierPath, scale, offset)
+    bb = Makie.bbox(bp)
+    pad_offset = (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(bp) .* widths(bb))
+    scale .* pad_offset .+ offset
+end
+function offset_bezierpath(bp::BezierPath, scale::Vector, offset)
+    bb = Makie.bbox(bp)
+    pad_offset = (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(bp) .* widths(bb))
+    [s .* pad_offset .+ offset for s in scale]
+end
+function offset_bezierpath(bp::BezierPath, scale, offsets::Vector)
+    bb = Makie.bbox(bp)
+    pad_offset = scale .* (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(bp) .* widths(bb))
+    [pad_offset .+ offset for offset in offsets]
+end
+function offset_bezierpath(bp::BezierPath, scales::Vector, offsets::Vector)
+    bb = Makie.bbox(bp)
+    pad_offset = (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(bp) .* widths(bb))
+    [s .* pad_offset .+ offset for s in scale]
+end
+
 
 @nospecialize
 """
@@ -212,6 +260,11 @@ function draw_scatter(
     return draw_scatter(p, data)
 end
 
+# To map (scale, scale_x, scale_y, scale_z) -> scale
+combine_scales(scale, x::Nothing, y::Nothing, z::Nothing) = scale
+combine_scales(s::Nothing, x, y, z::Nothing) = Vec2f.(x, y)
+combine_scales(s::Nothing, x, y, z) = Vec3f.(x, y, z)
+
 """
 Main assemble functions for scatter particles.
 Sprites are anything like distance fields, images and simple geometries
@@ -230,6 +283,21 @@ function draw_scatter((marker, position), data)
         # to offset.
         data[:quad_offset] = map(rescale_glyph, marker, font, quad_offset)
         data[:scale] = map(rescale_glyph, marker, font, scale)
+    
+    elseif to_value(marker) isa BezierPath
+        scale = map(combine_scales,
+            pop!(data, :scale, Observable(nothing)),
+            pop!(data, :scale_x, Observable(nothing)),
+            pop!(data, :scale_y, Observable(nothing)),
+            pop!(data, :scale_z, Observable(nothing))
+        )
+        # TODO 
+        # marker_offset should be Vec2f(0) by default for BezierPaths
+        # once that is the case we should switch to this offset
+        # offset = get(data, :offset, Observable(Vec2f(0)))
+        offset = Observable(Vec2f(0))
+        data[:quad_offset] = map(offset_bezierpath, marker, scale, offset)
+        data[:scale] = map(rescale_bezierpath, marker, scale)
     end
 
     @gen_defaults! data begin
