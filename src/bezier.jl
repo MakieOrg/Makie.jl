@@ -68,7 +68,7 @@ scale(c::CurveTo, v::VecTypes{2}) = CurveTo(c.c1 .* v, c.c2 .* v, c.p .* v)
 scale(e::EllipticalArc, v::VecTypes{2}) = EllipticalArc(e.c .* v, e.r1, e.r2, e.angle, e.a1, e.a2)
 scale(c::ClosePath, v::VecTypes{2}) = c
 
-rotmatrix2d(a) = SMatrix{2, 2, Float64}(cos(a), sin(a), -sin(a), cos(a))
+rotmatrix2d(a) = Mat2(cos(a), sin(a), -sin(a), cos(a))
 rotate(m::MoveTo, a) = MoveTo(rotmatrix2d(a) * m.p)
 rotate(c::ClosePath, a) = c
 rotate(l::LineTo, a) = LineTo(rotmatrix2d(a) * l.p)

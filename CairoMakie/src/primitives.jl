@@ -305,24 +305,15 @@ end
 
 function draw_marker(ctx, beziermarker::BezierPath, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
     Cairo.save(ctx)
-
     Cairo.translate(ctx, pos[1], pos[2])
-
-    # Cairo.rotate(ctx, to_2d_rotation(rotation))
-
     Cairo.rotate(ctx, to_2d_rotation(rotation))
     Cairo.scale(ctx, scale[1], -scale[2]) # flip y for cairo
-
     draw_path(ctx, beziermarker)
-
     Cairo.fill_preserve(ctx)
-
     sc = to_color(strokecolor)
-
     Cairo.set_source_rgba(ctx, rgbatuple(sc)...)
     Cairo.set_line_width(ctx, Float64(strokewidth))
     Cairo.stroke(ctx)
-
     Cairo.restore(ctx)
 end
 
