@@ -5,8 +5,8 @@ function parent_transform(x)
     isnothing(p) ? Mat4f(I) : p.model[]
 end
 
-function boundingbox(x)
-    return parent_transform(x) * data_limits(x)
+function boundingbox(x, exclude = (p)-> false)
+    return parent_transform(x) * data_limits(x, exclude)
 end
 
 function project_widths(matrix, vec)
@@ -23,12 +23,20 @@ end
 function gl_bboxes(gl::GlyphCollection)
     scales = gl.scales.sv isa Vec2f ? (gl.scales.sv for _ in gl.extents) : gl.scales.sv
     map(gl.extents, gl.fonts, scales) do ext, font, scale
-        unscaled_hi_bb = height_insensitive_boundingbox(ext, font)
+        unscaled_hi_bb = height_insensitive_boundingbox_with_advance(ext, font)
         hi_bb = Rect2f(
             Makie.origin(unscaled_hi_bb) * scale,
             widths(unscaled_hi_bb) * scale
         )
     end
+end
+
+function height_insensitive_boundingbox_with_advance(ext, font)
+    l = 0f0
+    r = FreeTypeAbstraction.hadvance(ext)
+    b = FreeTypeAbstraction.descender(font)
+    t = FreeTypeAbstraction.ascender(font)
+    return Rect2f((l, b), (r - l, t - b))
 end
 
 function boundingbox(glyphcollection::GlyphCollection, position::Point3f, rotation::Quaternion)
@@ -106,16 +114,16 @@ This is not perfect but works well enough. Check an A vs X to see the difference
 function rotatedrect(rect::Rect{2}, angle)
     ox, oy = rect.origin
     wx, wy = rect.widths
-    points = @SMatrix([
-        ox oy;
-        ox oy+wy;
-        ox+wx oy;
-        ox+wx oy+wy;
-    ])
-    mrot = @SMatrix([
-        cos(angle) -sin(angle);
-        sin(angle) cos(angle);
-    ])
+    points = Mat(
+        ox, oy,
+        ox, oy+wy,
+        ox+wx, oy,
+        ox+wx, oy+wy
+    )
+    mrot = Mat(
+        cos(angle), -sin(angle),
+        sin(angle), cos(angle)
+    )
     rotated = mrot * points'
 
     rmins = minimum(rotated, dims = 2)

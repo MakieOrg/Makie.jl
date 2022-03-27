@@ -242,35 +242,6 @@ function to_vector(x::ClosedInterval, len, T)
     range(a, stop=b, length=len)
 end
 
-
-"""
-Returns (N1, N2) with `N1 x N2 == n`. N2 might become 1
-"""
-function close2square(n::Real)
-    # a cannot be greater than the square root of n
-    # b cannot be smaller than the square root of n
-    # we get the maximum allowed value of a
-    amax = floor(Int, sqrt(n));
-    if 0 == rem(n, amax)
-        # special case where n is a square number
-        return (amax, div(n, amax))
-    end
-    # Get its prime factors of n
-    primeFactors  = factor(n);
-    # Start with a factor 1 in the list of candidates for a
-    candidates = [1]
-    for (f, _) in primeFactors
-        # Add new candidates which are obtained by multiplying
-        # existing candidates with the new prime factor f
-        # Set union ensures that duplicate candidates are removed
-        candidates = union(candidates, f .* candidates)
-        # throw out candidates which are larger than amax
-        filter!(x -> x <= amax, candidates)
-    end
-    # Take the largest factor in the list d
-    (candidates[end], div(n, candidates[end]))
-end
-
 """
 A colorsampler maps numnber values from a certain range to values of a colormap
 ```
@@ -327,19 +298,4 @@ end
 function attribute_names(PlotType)
     # TODO, have all plot types store their attribute names
     return keys(default_theme(nothing, PlotType))
-end
-
-"""
-    attributes_from(PlotType, plot)
-
-Gets the attributes from plot, that are valid for PlotType
-"""
-function attributes_from(PlotType, plot)
-    result = Attributes()
-    for key in attribute_names(PlotType)
-        if haskey(plot, key)
-            result[key] = plot[key]
-        end
-    end
-    return result
 end

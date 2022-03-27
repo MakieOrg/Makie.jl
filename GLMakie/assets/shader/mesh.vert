@@ -43,6 +43,10 @@ vec4 to_color(float c, sampler1D color_map, vec2 color_norm){
     return color_lookup(c, color_map, color_norm);
 }
 
+vec4 to_color(vec4 c, sampler1D color_map, vec2 color_norm){
+    return c;
+}
+
 void main()
 {
     o_id = uvec2(objectid, gl_VertexID+1);

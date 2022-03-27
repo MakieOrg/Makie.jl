@@ -16,7 +16,7 @@ function layoutable(::Type{Slider}, fig_or_scene; bbox = nothing, kwargs...)
     sliderrange = attrs.range
 
     protrusions = Observable(GridLayoutBase.RectSides{Float32}(0, 0, 0, 0))
-    layoutobservables = LayoutObservables{Slider}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
+    layoutobservables = LayoutObservables(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox, protrusions = protrusions)
 
     onany(linewidth, horizontal) do lw, horizontal

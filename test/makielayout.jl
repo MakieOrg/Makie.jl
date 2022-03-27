@@ -129,3 +129,10 @@ end
         @test get_ticks(WilkinsonTicks(5), identity, automatic, 1, 5) == ([1, 2, 3, 4, 5], ["1", "2", "3", "4", "5"])
     end
 end
+
+@testset "Colorbars" begin
+    fig = Figure()
+    hmap = heatmap!(Axis(fig[1, 1]), rand(4, 4))
+    cb1 = Colorbar(fig[1,2], hmap; height = Relative(0.65))
+    @test cb1.height[] == Relative(0.65)
+end

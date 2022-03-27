@@ -41,10 +41,11 @@ end
 
 function backend_display(::Missing, ::Scene)
     error("""
-    No backend available (GLMakie, CairoMakie, WGLMakie)!
-    Maybe you imported GLMakie but it didn't build correctly.
+    No backend available!
+    Make sure to also `import/using` a backend (GLMakie, CairoMakie, WGLMakie).
+
+    If you imported GLMakie, it may have not built correctly.
     In that case, try `]build GLMakie` and watch out for any warnings.
-    If that's not the case, make sure to explicitely import any of the mentioned backends.
     """)
 end
 

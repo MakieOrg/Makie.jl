@@ -1,5 +1,3 @@
-@def reeval = false
-
 # Layout Tutorial
 
 In this tutorial, you will learn how to create a complex figure using Makie's layout tools.

@@ -53,7 +53,8 @@ end
 
 @cell "visible" begin
     fig = Figure()
-    scatter(fig[1, 1], RNG.randn(20), color=to_colormap(:deep, 20), markersize=10, visible=true)
-    scatter(fig[1, 2], RNG.randn(20), color=to_colormap(:deep, 20), markersize=10, visible=false)
+    colors = Makie.resample(to_colormap(:deep), 20)
+    scatter(fig[1, 1], RNG.randn(20), color=colors, markersize=10, visible=true)
+    scatter(fig[1, 2], RNG.randn(20), color=colors, markersize=10, visible=false)
     fig
 end

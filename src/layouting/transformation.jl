@@ -298,6 +298,14 @@ function apply_transform(f, r::Rect)
     ma_t = apply_transform(f, ma)
     Rect(Vec(mi_t), Vec(ma_t .- mi_t))
 end
+function apply_transform(f::PointTrans, r::Rect)
+    mi = minimum(r)
+    ma = maximum(r)
+    mi_t = apply_transform(f, Point(mi))
+    ma_t = apply_transform(f, Point(ma))
+    Rect(Vec(mi_t), Vec(ma_t .- mi_t))
+end
+
 # ambiguity fix
 apply_transform(f::typeof(identity), r::Rect) = r
 apply_transform(f::NTuple{2, typeof(identity)}, r::Rect) = r
@@ -363,5 +371,5 @@ end
 # and this way we can use the z-value as a means to shift the drawing order
 # by translating e.g. the axis spines forward so they are not obscured halfway
 # by heatmaps or images
-zvalue2d(x) = Makie.translation(x)[][3] + zvalue2d(x.parent)
-zvalue2d(::Nothing) = 0f0
+zvalue2d(x)::Float32 = Makie.translation(x)[][3] + zvalue2d(x.parent)
+zvalue2d(::Nothing)::Float32 = 0f0

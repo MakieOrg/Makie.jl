@@ -33,21 +33,22 @@ function plot!(plot::VolumeSlices)
         mx, Mx = extrema(x)
         my, My = extrema(y)
         mz, Mz = extrema(z)
-        Rect3D(mx, my, mz, Mx-mx, My-my, Mz-mz)
+        Rect3(mx, my, mz, Mx-mx, My-my, Mz-mz)
     end
 
     axes = :x, :y, :z
     for (ax, p, r, (X, Y)) ∈ zip(axes, (:yz, :xz, :xy), (x, y, z), ((y, z), (x, z), (x, y)))
-        hmap = heatmap!(plot, attr, X, Y, zeros(length(X[]), length(Y[])))
-        plot[Symbol(:update_, p)] = i -> begin
+        plot[Symbol(:heatmap_, p)] = hmap = heatmap!(
+            plot, attr, X, Y, zeros(length(X[]), length(Y[]))
+        )
+        plot[Symbol(:update_, p)] = update = i -> begin
             transform!(hmap, (p, r[][i]))
             indices = ntuple(Val(3)) do j
                 axes[j] == ax ? i : (:)
             end
             hmap[3][] = view(volume[], indices...)
         end
-        # Trigger once to place heatmaps correctly
-        plot[Symbol(:update_, p)][](1)
+        update(1) # trigger once to place heatmaps correctly
     end
 
     linesegments!(plot, bbox, color = bbox_color, visible = bbox_visible, inspectable = false)
