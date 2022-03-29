@@ -101,10 +101,10 @@ Base.:+(pc::EllipticalArc, p::Point2) = EllipticalArc(pc.c + p, pc.r1, pc.r2, pc
 Base.:+(pc::ClosePath, p::Point2) = pc
 Base.:+(bp::BezierPath, p::Point2) = BezierPath(bp.commands .+ Ref(p))
 
-# markers with unit area
+# markers that fit into a square with sidelength 1 centered on (0, 0)
 
 BezierCircle = let
-    r = sqrt(1/pi)
+    r = 0.5 # sqrt(1/pi)
     BezierPath([
         MoveTo(Point(r, 0.0)),
         EllipticalArc(Point(0.0, 0), r, r, 0.0, 0.0, 2pi),
@@ -114,8 +114,8 @@ end
 
 BezierUTriangle = let
     aspect = 1
-    h = sqrt(aspect) * sqrt(2)
-    w = 1/sqrt(aspect) * sqrt(2)
+    h = 1 # sqrt(aspect) * sqrt(2)
+    w = 1 # 1/sqrt(aspect) * sqrt(2)
     # r = Float32(sqrt(1 / (3 * sqrt(3) / 4)))
     p1 = Point(0, h/2)
     p2 = Point2(-w/2, -h/2)
@@ -135,23 +135,20 @@ BezierRTriangle = rotate(BezierUTriangle, 3pi/2)
 
 
 BezierSquare = let
+    r = sqrt(pi)/2/2 # this gives the same area as the r=0.5 circle
     BezierPath([
-        MoveTo(Point2(0.5, -0.5)),
-        LineTo(Point2(0.5, 0.5)),
-        LineTo(Point2(-0.5, 0.5)),
-        LineTo(Point2(-0.5, -0.5)),
+        MoveTo(Point2(r, -r)),
+        LineTo(Point2(r, r)),
+        LineTo(Point2(-r, r)),
+        LineTo(Point2(-r, -r)),
         ClosePath()
     ])
 end
 
 BezierCross = let
     cutfraction = 2/3
-    # 1 = (2r)^2 - 4 * (r * c) ^ 2
-    # c^2 - 1 != 0, r = 1/(2 sqrt(1 - c^2))
-    # 
-    r = 1/(2 * sqrt(1 - cutfraction^2))
-    # test: (2r)^2 - 4 * (r * cutfraction) ^ 2 ≈ 1
-    ri = r * (1 - cutfraction)
+    r = 0.5 # 1/(2 * sqrt(1 - cutfraction^2))
+    ri = 0.166 #r * (1 - cutfraction)
     
     first_three = Point2[(r, ri), (ri, ri), (ri, r)]
     all = map(0:pi/2:3pi/2) do a
@@ -166,6 +163,27 @@ BezierCross = let
     ])
 end
 
+BezierX = rotate(BezierCross, pi/4)
+
+function bezier_ngon(n, radius, angle)
+    points = [radius * Point2f(cos(a + angle), sin(a + angle))
+        for a in range(0, 2pi, length = n+1)[1:end-1]]
+    BezierPath([
+        MoveTo(points[1]);
+        LineTo.(points[2:end])
+    ])
+end
+
+function bezier_star(n, inner_radius, outer_radius, angle)
+    points = [
+        (isodd(i) ? outer_radius : inner_radius) *
+            Point2f(cos(a + angle), sin(a + angle))
+        for (i, a) in enumerate(range(0, 2pi, length = 2n+1)[1:end-1])]
+    BezierPath([
+        MoveTo(points[1]);
+        LineTo.(points[2:end])
+    ])
+end
 
 function BezierPath(svg::AbstractString; fit = false, bbox = nothing, flipy = false, keep_aspect = true)
     commands = parse_bezier_commands(svg)
@@ -422,9 +440,8 @@ end
 
 
 function render_path(path)
-    # in the outline, 1 unit = 1/64px, so 64px = 4096 units wide,
-
     bitmap_size_px = BEZIERPATH_BITMAP_SIZE[]
+    # in the outline, 1 unit = 1/64px
     scale_factor = bitmap_size_px * 64
 
     # we transform the path into the unit square and we can
@@ -625,8 +642,6 @@ function elliptical_arc_to_beziers(arc::EllipticalArc)
     curves = map(angles[1:end-1], angles[2:end]) do start, stop
         theta = stop - start
         kappa = 4/3 * tan(theta/4)
-
-        a = Point2f(cos(start), sin(start))
         c1 = Point2f(cos(start) - kappa * sin(start), sin(start) + kappa * cos(start))
         c2 = Point2f(cos(stop) + kappa * sin(stop), sin(stop) - kappa * cos(stop))
         b = Point2f(cos(stop), sin(stop))

@@ -1097,26 +1097,26 @@ function convert_attribute(value::Union{Symbol, String}, k::key"algorithm")
     end, k)
 end
 
-const _marker_map = Dict(
+default_marker_map() = Dict(
     :rect => BezierSquare,
-    :star5 => '★',
-    :diamond => '◆',
-    :hexagon => '⬢',
+    :diamond => rotate(BezierSquare, pi/4),
+    :hexagon => bezier_ngon(6, 0.5, pi/2),
     :cross => BezierCross,
-    :xcross => '❌',
+    :xcross => BezierX,
     :utriangle => BezierUTriangle,
     :dtriangle => BezierDTriangle,
     :ltriangle => BezierLTriangle,
     :rtriangle => BezierRTriangle,
-    :pentagon => '⬟',
-    :octagon => '⯄',
-    :star4 => '✦',
-    :star6 => '🟋',
-    :star8 => '✷',
-    :vline => '┃',
-    :hline => '━',
-    :+ => '+',
-    :x => 'x',
+    :pentagon => bezier_ngon(5, 0.5, pi/2),
+    :octagon => bezier_ngon(8, 0.5, pi/2),
+    :star4 => bezier_star(4, 0.25, 0.6, pi/2),
+    :star5 => bezier_star(5, 0.28, 0.6, pi/2),
+    :star6 => bezier_star(6, 0.30, 0.6, pi/2),
+    :star8 => bezier_star(8, 0.33, 0.6, pi/2),
+    :vline => scale(BezierSquare, (0.2, 1.0)),
+    :hline => scale(BezierSquare, (1.0, 0.2)),
+    :+ => BezierCross,
+    :x => BezierX,
     :circle => BezierCircle,
 )
 
@@ -1127,7 +1127,7 @@ Displays all available marker symbols.
 """
 function available_marker_symbols()
     println("Marker Symbols:")
-    for (k, v) in _marker_map
+    for (k, v) in default_marker_map()
         println("    ", k, " => ", v)
     end
 end
@@ -1174,8 +1174,8 @@ to_spritemarker(marker::AbstractMatrix{<: Colorant}) = marker
 A `Symbol` - Available options can be printed with `available_marker_symbols()`
 """
 function to_spritemarker(marker::Symbol)
-    if haskey(_marker_map, marker)
-        return to_spritemarker(_marker_map[marker])
+    if haskey(default_marker_map(), marker)
+        return to_spritemarker(default_marker_map()[marker])
     else
         @warn("Unsupported marker: $marker, using ● instead")
         return '●'
