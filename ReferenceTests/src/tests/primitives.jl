@@ -134,7 +134,7 @@ end
 
 
 @cell "BezierPath markers" begin
-    f = Figure()
+    f = Figure(resolution = (800, 800))
     ax = Axis(f[1, 1])
 
     batman = BezierPath("""
@@ -150,18 +150,29 @@ end
             -26.125 13.886z""", fit = true, flipy = true)
 
     markers = [
-        Makie.BezierSquare,
-        Makie.BezierCircle,
-        Makie.BezierCross,
-        Makie.BezierUTriangle,
-        Makie.BezierDTriangle,
-        Makie.BezierRTriangle,
-        Makie.BezierLTriangle,
-        Makie.scale(batman, 2),
+        :rect,
+        :circle,
+        :cross,
+        :x,
+        :utriangle,
+        :rtriangle,
+        :dtriangle,
+        :ltriangle,
+        :pentagon,
+        :hexagon,
+        :octagon,
+        :star4,
+        :star5,
+        :star6,
+        :star8,
+        Makie.scale(batman, 1.5),
+        :vline,
+        :hline,
     ]
 
     for (i, marker) in enumerate(markers)
-        scatter!(1:5, (1:5).+i, marker = marker, markersize = 20)
+        scatter!(Point2f.(1:5, i), marker = marker, markersize = range(10, 30, length = 5), color = :black)
+        scatter!(Point2f.(1:5, i), markersize = 4, color = :white)
     end
 
     f
