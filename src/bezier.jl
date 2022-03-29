@@ -140,7 +140,7 @@ BezierRTriangle = rotate(BezierUTriangle, 3pi/2)
 
 
 BezierSquare = let
-    r = sqrt(pi)/2/2 # this gives the same area as the r=0.5 circle
+    r = 0.95 * sqrt(pi)/2/2 # this gives a little less area as the r=0.5 circle
     BezierPath([
         MoveTo(Point2(r, -r)),
         LineTo(Point2(r, r)),

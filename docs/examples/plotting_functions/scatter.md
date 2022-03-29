@@ -90,8 +90,8 @@ CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
 
 markers_labels = [
+    (:circle, ":circle"),
     (:rect, ":rect"),
-    (:star5, ":star5"),
     (:diamond, ":diamond"),
     (:hexagon, ":hexagon"),
     (:cross, ":cross"),
@@ -102,12 +102,11 @@ markers_labels = [
     (:rtriangle, ":rtriangle"),
     (:pentagon, ":pentagon"),
     (:star4, ":star4"),
+    (:star5, ":star5"),
+    (:star6, ":star6"),
     (:star8, ":star8"),
     (:vline, ":vline"),
     (:hline, ":hline"),
-    (:x, ":x"),
-    (:+, ":+"),
-    (:circle, ":circle"),
     ('a', "'a'"),
     ('B', "'B'"),
     ('↑', "'\\uparrow'"),
