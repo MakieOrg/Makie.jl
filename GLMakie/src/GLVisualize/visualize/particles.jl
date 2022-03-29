@@ -45,6 +45,13 @@ primitive_shape(::Type{T}) where {T <: Circle} = CIRCLE
 primitive_shape(::Type{T}) where {T <: Rect2} = RECTANGLE
 primitive_shape(x::Shape) = x
 primitive_shape(x::BezierPath) = DISTANCEFIELD
+function primitive_shape(arr::AbstractArray)
+    shapes = unique(primitive_shape(element) for element in arr)
+    if length(shapes) > 1
+        error("Can't use an array of markers that require different primitive_shapes $shapes.")
+    end
+    only(shapes)
+end
 
 """
 Extracts the scale from a primitive.
@@ -67,6 +74,7 @@ primitive_uv_offset_width(c::Char) = glyph_uv_width!(c)
 primitive_uv_offset_width(str::AbstractString) = map(glyph_uv_width!, collect(str))
 primitive_uv_offset_width(x) = Vec4f(0,0,1,1)
 primitive_uv_offset_width(b::BezierPath) = glyph_uv_width!(b)
+primitive_uv_offset_width(x::AbstractArray) = map(glyph_uv_width!, x)
 
 """
 Gets the texture atlas if primitive is a char.
@@ -75,7 +83,7 @@ primitive_distancefield(x) = nothing
 primitive_distancefield(::Union{AbstractString, Char}) = get_texture!(get_texture_atlas())
 primitive_distancefield(x::Observable) = primitive_distancefield(x[])
 primitive_distancefield(::BezierPath) = get_texture!(get_texture_atlas())
-primitive_distancefield(::Observable{BezierPath}) = get_texture!(get_texture_atlas())
+primitive_distancefield(x::AbstractArray) = get_texture!(get_texture_atlas())
 
 # Calculates the scaling factor from unpadded size -> padded size
 # Here we assume the glyph to be representative of Makie.PIXELSIZE_IN_ATLAS[]
@@ -273,12 +281,13 @@ function draw_scatter((marker, position), data)
     rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
     rot = vec2quaternion(rot)
     delete!(data, :rotation)
+
+    font = get(data, :font, Observable(Makie.defaultfont()))
+
     # Rescale to include glyph padding and shape
     if isa(to_value(marker), Union{AbstractString, Char})
         scale = data[:scale]
-        font = get(data, :font, Observable(Makie.defaultfont()))
         quad_offset = get(data, :quad_offset, Observable(Vec2f(0)))
-
         # The same scaling that needs to be applied to scale also needs to apply
         # to offset.
         data[:quad_offset] = map(rescale_glyph, marker, font, quad_offset)
@@ -291,13 +300,33 @@ function draw_scatter((marker, position), data)
             pop!(data, :scale_y, Observable(nothing)),
             pop!(data, :scale_z, Observable(nothing))
         )
-        # TODO 
-        # marker_offset should be Vec2f(0) by default for BezierPaths
-        # once that is the case we should switch to this offset
-        # offset = get(data, :offset, Observable(Vec2f(0)))
         offset = Observable(Vec2f(0))
         data[:quad_offset] = map(offset_bezierpath, marker, scale, offset)
         data[:scale] = map(rescale_bezierpath, marker, scale)
+
+    elseif to_value(marker) isa AbstractArray
+        scale = map(combine_scales,
+            pop!(data, :scale, Observable(nothing)),
+            pop!(data, :scale_x, Observable(nothing)),
+            pop!(data, :scale_y, Observable(nothing)),
+            pop!(data, :scale_z, Observable(nothing))
+        )
+        offset = Observable(Vec2f(0))
+        _offset(x::Union{AbstractString, Char}, scale, offset) = rescale_glyph(x, font[], offset)
+        _offset(x::BezierPath, scale, offset) = offset_bezierpath(x, scale, offset)
+        _scale(x::Union{AbstractString, Char}, scale) = rescale_glyph(x, font[], scale)
+        _scale(x::BezierPath, scale) = rescale_bezierpath(x, scale)
+
+        data[:quad_offset] = map(marker, scale, offset) do m, s, o
+            map(m) do m
+                _offset(m, s, o)
+            end
+        end
+        data[:scale] = map(marker, scale) do m, s
+            map(m) do m
+                _scale(m, s)
+            end
+        end
     end
 
     @gen_defaults! data begin
