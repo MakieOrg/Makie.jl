@@ -1097,28 +1097,42 @@ function convert_attribute(value::Union{Symbol, String}, k::key"algorithm")
     end, k)
 end
 
-default_marker_map() = Dict(
-    :rect => BezierSquare,
-    :diamond => rotate(BezierSquare, pi/4),
-    :hexagon => bezier_ngon(6, 0.5, pi/2),
-    :cross => BezierCross,
-    :xcross => BezierX,
-    :utriangle => BezierUTriangle,
-    :dtriangle => BezierDTriangle,
-    :ltriangle => BezierLTriangle,
-    :rtriangle => BezierRTriangle,
-    :pentagon => bezier_ngon(5, 0.5, pi/2),
-    :octagon => bezier_ngon(8, 0.5, pi/2),
-    :star4 => bezier_star(4, 0.25, 0.6, pi/2),
-    :star5 => bezier_star(5, 0.28, 0.6, pi/2),
-    :star6 => bezier_star(6, 0.30, 0.6, pi/2),
-    :star8 => bezier_star(8, 0.33, 0.6, pi/2),
-    :vline => scale(BezierSquare, (0.2, 1.0)),
-    :hline => scale(BezierSquare, (1.0, 0.2)),
-    :+ => BezierCross,
-    :x => BezierX,
-    :circle => BezierCircle,
-)
+function default_marker_map()
+    # The bezier markers should not look out of place when used together with text
+    # where both markers and text are given the same size, i.e. the marker and textsizes
+    # should correspond approximately in a visual sense.
+
+    # All the basic bezier shapes are approximately built in a 1 by 1 square centered
+    # around the origin, with slight deviations to match them better to each other.
+
+    # An 'x' of DejaVu sans is only about 55pt high at 100pt font size, so if the marker
+    # shapes are just used as is, they look much too large in comparison.
+    # To me, a factor of 0.75 looks ok compared to both uppercase and lowercase letters of Dejavu.
+    size_factor = 0.75
+    shapes = Dict(
+        :rect => BezierSquare,
+        :diamond => rotate(BezierSquare, pi/4),
+        :hexagon => bezier_ngon(6, 0.5, pi/2),
+        :cross => BezierCross,
+        :xcross => BezierX,
+        :utriangle => BezierUTriangle,
+        :dtriangle => BezierDTriangle,
+        :ltriangle => BezierLTriangle,
+        :rtriangle => BezierRTriangle,
+        :pentagon => bezier_ngon(5, 0.5, pi/2),
+        :octagon => bezier_ngon(8, 0.5, pi/2),
+        :star4 => bezier_star(4, 0.25, 0.6, pi/2),
+        :star5 => bezier_star(5, 0.28, 0.6, pi/2),
+        :star6 => bezier_star(6, 0.30, 0.6, pi/2),
+        :star8 => bezier_star(8, 0.33, 0.6, pi/2),
+        :vline => scale(BezierSquare, (0.2, 1.0)),
+        :hline => scale(BezierSquare, (1.0, 0.2)),
+        :+ => BezierCross,
+        :x => BezierX,
+        :circle => BezierCircle,
+    )
+    Dict(key => scale(value, size_factor) for (key, value) in shapes)
+end
 
 """
     available_marker_symbols()

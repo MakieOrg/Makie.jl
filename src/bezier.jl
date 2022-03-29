@@ -65,8 +65,13 @@ translate(c::ClosePath, v::VecTypes{2}) = c
 scale(m::MoveTo, v::VecTypes{2}) = MoveTo(m.p .* v)
 scale(l::LineTo, v::VecTypes{2}) = LineTo(l.p .* v)
 scale(c::CurveTo, v::VecTypes{2}) = CurveTo(c.c1 .* v, c.c2 .* v, c.p .* v)
-scale(e::EllipticalArc, v::VecTypes{2}) = EllipticalArc(e.c .* v, e.r1, e.r2, e.angle, e.a1, e.a2)
 scale(c::ClosePath, v::VecTypes{2}) = c
+function scale(e::EllipticalArc, v::VecTypes{2})
+    a = e.angle
+    r1 = cos(a) * v[1] * e.r1 + -sin(a) * v[2] * e.r1
+    r2 = sin(a) * v[1] * e.r2 +  cos(a) * v[2] * e.r2
+    EllipticalArc(e.c .* v, r1, r2, a, e.a1, e.a2)
+end
 
 rotmatrix2d(a) = Mat2(cos(a), sin(a), -sin(a), cos(a))
 rotate(m::MoveTo, a) = MoveTo(rotmatrix2d(a) * m.p)
