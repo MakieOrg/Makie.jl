@@ -165,7 +165,7 @@ end
         :star5,
         :star6,
         :star8,
-        Makie.scale(batman, 1.5),
+        # Makie.scale(batman, 1.5),
         :vline,
         :hline,
     ]

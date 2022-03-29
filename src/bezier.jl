@@ -104,7 +104,7 @@ Base.:+(bp::BezierPath, p::Point2) = BezierPath(bp.commands .+ Ref(p))
 # markers that fit into a square with sidelength 1 centered on (0, 0)
 
 BezierCircle = let
-    r = 0.5 # sqrt(1/pi)
+    r = 0.47 # sqrt(1/pi)
     BezierPath([
         MoveTo(Point(r, 0.0)),
         EllipticalArc(Point(0.0, 0), r, r, 0.0, 0.0, 2pi),
@@ -114,8 +114,8 @@ end
 
 BezierUTriangle = let
     aspect = 1
-    h = 1 # sqrt(aspect) * sqrt(2)
-    w = 1 # 1/sqrt(aspect) * sqrt(2)
+    h = 0.97 # sqrt(aspect) * sqrt(2)
+    w = 0.97 # 1/sqrt(aspect) * sqrt(2)
     # r = Float32(sqrt(1 / (3 * sqrt(3) / 4)))
     p1 = Point(0, h/2)
     p2 = Point2(-w/2, -h/2)
