@@ -45,12 +45,13 @@ primitive_shape(::Type{T}) where {T <: Circle} = CIRCLE
 primitive_shape(::Type{T}) where {T <: Rect2} = RECTANGLE
 primitive_shape(x::Shape) = x
 primitive_shape(x::BezierPath) = DISTANCEFIELD
+primitive_shape(x::AbstractArray{<:BezierPath}) = DISTANCEFIELD
 function primitive_shape(arr::AbstractArray)
     shapes = unique(primitive_shape(element) for element in arr)
     if length(shapes) > 1
         error("Can't use an array of markers that require different primitive_shapes $shapes.")
     end
-    only(shapes)
+    first(shapes)
 end
 
 """
