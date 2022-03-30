@@ -61,7 +61,7 @@ cp(glmakie_tests_refimages_download_folder, glmakie_tests_refimages_folder)
 
 missing_refimages_glmakie, scores_glmakie = ReferenceTests.record_comparison(glmakie_tests_root_folder)
 
-@testset "compare refimages" begin
+@testset "Reference image tests" begin
     @testset "refimages" begin
         ReferenceTests.test_comparison(missing_refimages_main, scores_main; threshold = 0.032)
     end
