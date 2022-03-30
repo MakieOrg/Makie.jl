@@ -89,17 +89,26 @@ function rotate(e::EllipticalArc, a)
 end
 rotate(b::BezierPath, a) = BezierPath(PathCommand[rotate(c::PathCommand, a) for c in b.commands])
 
+function fit_to_bbox(b::BezierPath, bb_target::Rect2; keep_aspect = true)
+    bb_path = bbox(b)
+    ws_path = widths(bb_path)
+    ws_target = widths(bb_target)
+
+    center_target = origin(bb_target) + 0.5 * widths(bb_target)
+    center_path = origin(bb_path) + 0.5 * widths(bb_path)
+
+    scale_factor = ws_target ./ ws_path
+    scale_factor_aspect = if keep_aspect
+        min.(scale_factor, minimum(scale_factor))
+    else
+        scale_factor
+    end
+
+    bb_t = translate(scale(translate(b, -center_path), scale_factor_aspect), center_target)
+end
+
 function fit_to_unit_square(b::BezierPath, keep_aspect = true)
-    bb = bbox(b)
-    ws = widths(bb)
-    bb_t = translate(b, -(bb.origin + 0.5 * ws))
-    translate(
-        scale(
-            bb_t,
-            keep_aspect ? 1 ./ Vec2f(maximum(ws)) : 1 ./ ws
-        ),
-        Vec2f(0.5, 0.5)
-    )
+    fit_to_bbox(b, Rect2((0.0, 0.0), (1.0, 1.0)), keep_aspect = keep_aspect)
 end
 
 Base.:+(pc::EllipticalArc, p::Point2) = EllipticalArc(pc.c + p, pc.r1, pc.r2, pc.angle, pc.a1, pc.a2)
@@ -193,15 +202,15 @@ end
 function BezierPath(svg::AbstractString; fit = false, bbox = nothing, flipy = false, keep_aspect = true)
     commands = parse_bezier_commands(svg)
     p = BezierPath(commands)
-    if fit
-        if bbox === nothing
-            p = translate(fit_to_unit_square(p, keep_aspect), Vec2f(-0.5, -0.5))
-        else
-            error("Unkown bbox parameter $bbox")
-        end
-    end
     if flipy
         p = scale(p, Vec(1, -1))
+    end
+    if fit
+        if bbox === nothing
+            p = fit_to_bbox(p, Rect2f((-0.5, -0.5), (1.0, 1.0)), keep_aspect = keep_aspect)
+        else
+            p = fit_to_bbox(p, bbox, keep_aspect = keep_aspect)
+        end
     end
     p
 end
