@@ -197,6 +197,11 @@ scatter(1:5,
 
 You can also create a bezier path from an [svg path specification string](https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/d#path_commands).
 You can automatically resize the path to the -1 to 1 square and flip the y-axis with the keywords `fit` and `yflip`.
+By default, the bounding box for the fitted path is a square of width 1 around the origin.
+You can pass a different bounding `Rect` with the `bbox` keyword argument.
+By default, the aspect of the path is left intact, and if it's not matching the new bounding box, the path is centered so it fits inside.
+Set `keep_aspect = false` to squeeze the path into the bounding box, disregarding its original aspect ratio.
+
 Here's an example with an svg string that contains the bat symbol:
 
 \begin{examplefigure}{svg = true}
