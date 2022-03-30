@@ -1,4 +1,4 @@
-function layoutable(::Type{<:Colorbar}, fig_or_scene, plot::AbstractPlot; kwargs...)
+function block(::Type{<:Colorbar}, fig_or_scene, plot::AbstractPlot; kwargs...)
 
     for key in (:colormap, :limits)
         if key in keys(kwargs)
@@ -6,7 +6,7 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene, plot::AbstractPlot; kwargs
         end
     end
 
-    layoutable(Colorbar, fig_or_scene;
+    block(Colorbar, fig_or_scene;
         colormap = plot.colormap,
         limits = plot.colorrange,
         kwargs...
@@ -14,7 +14,7 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene, plot::AbstractPlot; kwargs
 
 end
 
-function layoutable(::Type{<:Colorbar}, fig_or_scene, heatmap::Union{Heatmap, Image}; kwargs...)
+function block(::Type{<:Colorbar}, fig_or_scene, heatmap::Union{Heatmap, Image}; kwargs...)
 
     for key in (:colormap, :limits, :highclip, :lowclip)
         if key in keys(kwargs)
@@ -22,7 +22,7 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene, heatmap::Union{Heatmap, Im
         end
     end
 
-    layoutable(Colorbar, fig_or_scene;
+    block(Colorbar, fig_or_scene;
         colormap = heatmap.colormap,
         limits = heatmap.colorrange,
         highclip = heatmap.highclip,
@@ -31,7 +31,7 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene, heatmap::Union{Heatmap, Im
     )
 end
 
-function layoutable(::Type{<:Colorbar}, fig_or_scene, contourf::Makie.Contourf; kwargs...)
+function block(::Type{<:Colorbar}, fig_or_scene, contourf::Makie.Contourf; kwargs...)
 
     for key in (:colormap, :limits, :highclip, :lowclip)
         if key in keys(kwargs)
@@ -45,7 +45,7 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene, contourf::Makie.Contourf; 
         steps[1], steps[end]
     end
 
-    layoutable(Colorbar, fig_or_scene;
+    block(Colorbar, fig_or_scene;
         colormap = contourf._computed_colormap,
         limits = limits,
         lowclip = contourf._computed_extendlow,
@@ -56,7 +56,7 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene, contourf::Makie.Contourf; 
 end
 
 
-function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
+function block(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
     topscene = get_topscene(fig_or_scene)
 
     default_attrs = default_attributes(Colorbar, topscene).attributes

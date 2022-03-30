@@ -39,7 +39,7 @@ function Makie.plot!(P::Makie.PlotFunc, ls::LScene, args...; kw_attributes...)
     Makie.plot!(ls, P, attributes, args...)
 end
 
-function layoutable(::Type{LScene}, fig_or_scene; bbox = nothing, scenekw = NamedTuple(), kwargs...)
+function block(::Type{LScene}, fig_or_scene; bbox = nothing, scenekw = NamedTuple(), kwargs...)
 
     topscene = get_topscene(fig_or_scene)
     default_attrs = default_attributes(LScene, topscene).attributes

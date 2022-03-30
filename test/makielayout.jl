@@ -1,5 +1,5 @@
 # Minimal sanity checks for MakieLayout
-@testset "Layoutables constructors" begin
+@testset "Blocks constructors" begin
     fig = Figure()
     ax = Axis(fig[1, 1])
     cb = Colorbar(fig[1, 2])

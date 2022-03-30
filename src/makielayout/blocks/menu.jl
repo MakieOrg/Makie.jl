@@ -101,7 +101,7 @@ end)
 Menu
 
 
-function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
+function block(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
 
     topscene = get_topscene(fig_or_scene)
 
@@ -357,7 +357,7 @@ function _reassemble_menu(
     resize!(mouseeventhandles, length(alltexts))
     map!(mouseeventhandles, eachindex(allrects), allrects) do i, r
         # Use base priority for [Menu   v] and high priority for the dropdown
-        # elements that may overlap with out interactive layoutables.
+        # elements that may overlap with out interactive blocks.
         addmouseevents!(
             scene, r.layoutobservables.computedbbox,
             priority = Int8(1) + (i != 1) * Int8(60)

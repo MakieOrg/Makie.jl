@@ -1,4 +1,4 @@
-function layoutable(::Type{Legend},
+function block(::Type{Legend},
         fig_or_scene,
         entry_groups::Observable{Vector{Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}}};
         bbox = nothing, kwargs...)
@@ -474,7 +474,7 @@ one content element. A content element can be an `AbstractPlot`, an array of
 `AbstractPlots`, a `LegendElement`, or any other object for which the
 `legendelements` method is defined.
 """
-function layoutable(::Type{Legend}, fig_or_scene,
+function block(::Type{Legend}, fig_or_scene,
         contents::AbstractArray,
         labels::AbstractArray{<:AbstractString},
         title::Optional{<:AbstractString} = nothing;
@@ -485,7 +485,7 @@ function layoutable(::Type{Legend}, fig_or_scene,
     end
 
     entrygroups = Observable{Vector{EntryGroup}}([])
-    legend = layoutable(Legend, fig_or_scene, entrygroups; kwargs...)
+    legend = block(Legend, fig_or_scene, entrygroups; kwargs...)
     entries = [LegendEntry(label, content, legend) for (content, label) in zip(contents, labels)]
     entrygroups[] = [(title, entries)]
     legend
@@ -509,7 +509,7 @@ Within each group, each content element is associated with one label. A content
 element can be an `AbstractPlot`, an array of `AbstractPlots`, a `LegendElement`,
 or any other object for which the `legendelements` method is defined.
 """
-function layoutable(::Type{Legend}, fig_or_scene,
+function block(::Type{Legend}, fig_or_scene,
         contentgroups::AbstractArray{<:AbstractArray},
         labelgroups::AbstractArray{<:AbstractArray},
         titles::AbstractArray{<:Optional{<:AbstractString}};
@@ -521,7 +521,7 @@ function layoutable(::Type{Legend}, fig_or_scene,
 
 
     entrygroups = Observable{Vector{EntryGroup}}([])
-    legend = layoutable(Legend, fig_or_scene, entrygroups; kwargs...)
+    legend = block(Legend, fig_or_scene, entrygroups; kwargs...)
     entries = [[LegendEntry(l, pg, legend) for (l, pg) in zip(labelgroup, contentgroup)]
         for (labelgroup, contentgroup) in zip(labelgroups, contentgroups)]
     entrygroups[] = [(t, en) for (t, en) in zip(titles, entries)]
@@ -538,10 +538,10 @@ attribute `label` set.
 If `merge` is `true`, all plot objects with the same label will be layered on top of each other into one legend entry.
 If `unique` is `true`, all plot objects with the same plot type and label will be reduced to one occurrence.
 """
-function layoutable(::Type{Legend}, fig_or_scene, axis::Union{Axis, Scene, LScene}, title = nothing; merge = false, unique = false, kwargs...)
+function block(::Type{Legend}, fig_or_scene, axis::Union{Axis, Scene, LScene}, title = nothing; merge = false, unique = false, kwargs...)
     plots, labels = get_labeled_plots(axis, merge = merge, unique = unique)
     isempty(plots) && error("There are no plots with labels in the given axis that can be put in the legend. Supply labels to plotting functions like `plot(args...; label = \"My label\")`")
-    layoutable(Legend, fig_or_scene, plots, labels, title; kwargs...)
+    block(Legend, fig_or_scene, plots, labels, title; kwargs...)
 end
 
 function get_labeled_plots(ax; merge::Bool, unique::Bool)

@@ -1,13 +1,13 @@
 struct OrthographicCamera <: AbstractCamera end
 
 """
-    layoutable(Axis3, fig_or_scene; bbox = nothing, kwargs...)
+    block(Axis3, fig_or_scene; bbox = nothing, kwargs...)
 
 Creates an `Axis3` object in the parent `fig_or_scene` which consists of a child scene
 with orthographic projection for 2D plots and axis decorations that live in the
 parent.
 """
-function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = nothing, kwargs...)
+function block(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = nothing, kwargs...)
 
     topscene = get_topscene(fig_or_scene)
 

@@ -58,7 +58,7 @@ function plot(P::PlotFunc, gp::GridPosition, args...; axis = NamedTuple(), kwarg
         $(c)
 
         If you meant to plot into an axis at this position, use the plotting function with `!` (e.g. `func!` instead of `func`).
-        If you really want to place an axis on top of other layoutables, make your intention clear and create it manually.
+        If you really want to place an axis on top of other blocks, make your intention clear and create it manually.
         """)
     end
 
@@ -104,7 +104,7 @@ function plot(P::PlotFunc, gsp::GridSubposition, args...; axis = NamedTuple(), k
         $(c)
 
         If you meant to plot into an axis at this position, use the plotting function with `!` (e.g. `func!` instead of `func`).
-        If you really want to place an axis on top of other layoutables, make your intention clear and create it manually.
+        If you really want to place an axis on top of other blocks, make your intention clear and create it manually.
         """)
     end
 
