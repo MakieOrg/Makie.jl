@@ -1,65 +1,50 @@
-function block(::Type{Toggle}, fig_or_scene; bbox = nothing, kwargs...)
+function initialize_block!(t::Toggle)
 
-    topscene = get_topscene(fig_or_scene)
+    topscene = t.blockscene
 
-    default_attrs = default_attributes(Toggle, topscene).attributes
-    theme_attrs = subtheme(topscene, :Toggle)
-    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
-
-    @extract attrs (halign, valign, cornersegments, framecolor_inactive,
-        framecolor_active, buttoncolor, active, toggleduration, rimfraction)
-
-    decorations = Dict{Symbol, Any}()
-
-    layoutobservables = LayoutObservables(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
-        halign, valign, attrs.alignmode; suggestedbbox = bbox)
-
-    markersize = lift(layoutobservables.computedbbox) do bbox
+    markersize = lift(t.layoutobservables.computedbbox) do bbox
         min(width(bbox), height(bbox))
     end
 
     button_endpoint_inactive = lift(markersize) do ms
-        bbox = layoutobservables.computedbbox[]
+        bbox = t.layoutobservables.computedbbox[]
         Point2f(left(bbox) + ms / 2, bottom(bbox) + ms / 2)
     end
 
     button_endpoint_active = lift(markersize) do ms
-        bbox = layoutobservables.computedbbox[]
+        bbox = t.layoutobservables.computedbbox[]
         Point2f(right(bbox) - ms / 2, bottom(bbox) + ms / 2)
     end
 
-    buttonvertices = lift(markersize, cornersegments) do ms, cs
-        roundedrectvertices(layoutobservables.computedbbox[], ms * 0.499, cs)
+    buttonvertices = lift(markersize, t.cornersegments) do ms, cs
+        roundedrectvertices(t.layoutobservables.computedbbox[], ms * 0.499, cs)
     end
 
     # trigger bbox
-    layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
+    notify(t.layoutobservables.suggestedbbox)
 
-    framecolor = Observable{Any}(active[] ? framecolor_active[] : framecolor_inactive[])
+    framecolor = Observable{Any}(t.active[] ? t.framecolor_active[] : t.framecolor_inactive[])
     frame = poly!(topscene, buttonvertices, color = framecolor, inspectable = false)
-    decorations[:frame] = frame
 
     animating = Observable(false)
-    buttonpos = Observable(active[] ? [button_endpoint_active[]] : [button_endpoint_inactive[]])
+    buttonpos = Observable(t.active[] ? [button_endpoint_active[]] : [button_endpoint_inactive[]])
 
     # make the button stay in the correct place (and start there)
-    on(layoutobservables.computedbbox) do bbox
+    on(t.layoutobservables.computedbbox) do bbox
         if !animating[]
-            buttonpos[] = active[] ? [button_endpoint_active[]] : [button_endpoint_inactive[]]
+            buttonpos[] = t.active[] ? [button_endpoint_active[]] : [button_endpoint_inactive[]]
         end
     end
 
     buttonfactor = Observable(1.0)
-    buttonsize = lift(markersize, rimfraction, buttonfactor) do ms, rf, bf
+    buttonsize = lift(markersize, t.rimfraction, buttonfactor) do ms, rf, bf
         ms * (1 - rf) * bf
     end
 
     button = scatter!(topscene, buttonpos, markersize = buttonsize,
-        color = buttoncolor, strokewidth = 0, inspectable = false)
-    decorations[:button] = button
+        color = t.buttoncolor, strokewidth = 0, inspectable = false)
 
-
-    mouseevents = addmouseevents!(topscene, layoutobservables.computedbbox)
+    mouseevents = addmouseevents!(topscene, t.layoutobservables.computedbbox)
 
     onmouseleftdown(mouseevents) do event
         if animating[]
@@ -70,23 +55,23 @@ function block(::Type{Toggle}, fig_or_scene; bbox = nothing, kwargs...)
         tstart = time()
 
         anim_posfrac = Animations.Animation(
-            [0, toggleduration[]],
-            active[] ? [1.0, 0.0] : [0.0, 1.0],
+            [0, t.toggleduration[]],
+            t.active[] ? [1.0, 0.0] : [0.0, 1.0],
             Animations.sineio())
         coloranim = Animations.Animation(
-            [0, toggleduration[]],
-            active[] ? [framecolor_active[], framecolor_inactive[]] : [framecolor_inactive[], framecolor_active[]],
+            [0, t.toggleduration[]],
+            t.active[] ? [t.framecolor_active[], t.framecolor_inactive[]] : [t.framecolor_inactive[], t.framecolor_active[]],
             Animations.sineio())
 
-        active[] = !active[]
+        t.active[] = !t.active[]
         @async while true
-            t = time() - tstart
+            tim = time() - tstart
             # request endpoint values in every frame if the layout changes during
             # the animation
-            buttonpos[] = [Animations.linear_interpolate(anim_posfrac(t),
+            buttonpos[] = [Animations.linear_interpolate(anim_posfrac(tim),
                 button_endpoint_inactive[], button_endpoint_active[])]
-            framecolor[] = coloranim(t)
-            if t >= toggleduration[]
+            framecolor[] = coloranim(tim)
+            if tim >= t.toggleduration[]
                 animating[] = false
                 break
             end
@@ -105,6 +90,5 @@ function block(::Type{Toggle}, fig_or_scene; bbox = nothing, kwargs...)
         return Consume(false)
     end
 
-
-    Toggle(fig_or_scene, layoutobservables, attrs, decorations)
+    return
 end
