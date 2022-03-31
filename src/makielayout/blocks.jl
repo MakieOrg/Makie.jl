@@ -403,8 +403,8 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
         # usually the GridLayout executes itself
         on(lobservables.computedbbox) do bb
             GridLayoutBase.align_to_bbox!(b.layout, bb)
+        end
     end
-end
     # forward all layout attributes to the block's layoutobservables
     connect!(layout_width, b.width)
     connect!(layout_height, b.height)
@@ -417,6 +417,21 @@ end
     # in this function, the block specific setup logic is executed and the remaining
     # uninitialized fields are filled
     initialize_block!(b, args...; non_attribute_kwargs...)
+    unassigned_fields = filter(collect(fieldnames(T))) do fieldname
+        try
+            getfield(b, fieldname)
+        catch e
+            if e isa UndefRefError
+                return true
+            else
+                rethrow(e)
+            end
+        end
+        false
+    end
+    if !isempty(unassigned_fields)
+        error("The following fields of $T were not assigned after `initialize_block!`: $unassigned_fields")
+    end
 
     if fig_or_scene isa Figure
         register_in_figure!(fig_or_scene, b)
