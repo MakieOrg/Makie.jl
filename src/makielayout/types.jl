@@ -533,6 +533,31 @@ end
     end
 end
 
+@Block SliderGrid begin
+    @forwarded_layout
+    sliders::Vector{Slider}
+    valuelabels::Vector{Label}
+    labels::Vector{Label}
+    @attributes begin
+        "The horizontal alignment of the block in its suggested bounding box."
+        halign = :center
+        "The vertical alignment of the block in its suggested bounding box."
+        valign = :center
+        "The width setting of the block."
+        width = Auto()
+        "The height setting of the block."
+        height = Auto()
+        "Controls if the parent layout can adjust to this block's width"
+        tellwidth::Bool = true
+        "Controls if the parent layout can adjust to this block's height"
+        tellheight::Bool = true
+        "The align mode of the block in its parent GridLayout."
+        alignmode = Inside()
+        "The width of the value label column. If `automatic`, the width is determined by sampling a few values from the slider ranges and picking the largest label size found."
+        value_column_width = automatic
+    end
+end
+
 @Block IntervalSlider
 
 @Block Button

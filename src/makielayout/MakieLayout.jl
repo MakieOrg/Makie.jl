@@ -66,6 +66,7 @@ include("blocks/axis.jl")
 # include("blocks/colorbar.jl")
 include("blocks/label.jl")
 include("blocks/slider.jl")
+include("blocks/slidergrid.jl")
 # include("blocks/intervalslider.jl")
 # include("blocks/button.jl")
 # include("blocks/box.jl")
@@ -78,6 +79,7 @@ include("blocks/legend.jl")
 export Axis
 export Axis3
 export Slider
+export SliderGrid
 export IntervalSlider
 export Button
 export Colorbar
