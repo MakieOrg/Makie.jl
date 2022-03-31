@@ -1,32 +1,16 @@
-function block(::Type{Button}, fig_or_scene::FigureLike; bbox = nothing, kwargs...)
+function initialize_block!(b::Button)
 
-    scene = get_scene(fig_or_scene)
-
-    default_attrs = default_attributes(Button, scene).attributes
-    theme_attrs = subtheme(scene, :Button)
-    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
-
-    @extract attrs (padding, textsize, label, font, halign, valign, cornerradius,
-        cornersegments, strokewidth, strokecolor, buttoncolor,
-        labelcolor, labelcolor_hover, labelcolor_active,
-        buttoncolor_active, buttoncolor_hover, clicks)
-
-    decorations = Dict{Symbol, Any}()
-
-    layoutobservables = LayoutObservables(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
-        halign, valign, attrs.alignmode; suggestedbbox = bbox)
+    scene = b.blockscene
 
     textpos = Observable(Point2f(0, 0))
 
-    subarea = lift(layoutobservables.computedbbox) do bbox
+    subarea = lift(b.layoutobservables.computedbbox) do bbox
         round_to_IRect2D(bbox)
     end
     subscene = Scene(scene, subarea, camera=campixel!)
 
-
-
     # buttonrect is without the left bottom offset of the bbox
-    buttonrect = lift(layoutobservables.computedbbox) do bbox
+    buttonrect = lift(b.layoutobservables.computedbbox) do bbox
         BBox(0, width(bbox), 0, height(bbox))
     end
 
@@ -34,42 +18,35 @@ function block(::Type{Button}, fig_or_scene::FigureLike; bbox = nothing, kwargs.
         textpos[] = Point2f(left(rect) + 0.5f0 * width(rect), bottom(rect) + 0.5f0 * height(rect))
     end
 
-    roundedrectpoints = lift(roundedrectvertices, buttonrect, cornerradius, cornersegments)
+    roundedrectpoints = lift(roundedrectvertices, buttonrect, b.cornerradius, b.cornersegments)
 
     mousestate = Observable(:out)
 
-    bcolors = (; out = buttoncolor, active = buttoncolor_active, hover = buttoncolor_hover)
+    bcolors = (; out = b.buttoncolor, active = b.buttoncolor_active, hover = b.buttoncolor_hover)
     bcolor = Observable{RGBColors}()
     map!((s,_...)-> to_color(bcolors[s][]), bcolor, mousestate, values(bcolors)...)
 
-    button = poly!(subscene, roundedrectpoints, strokewidth = strokewidth, strokecolor = strokecolor,
+    button = poly!(subscene, roundedrectpoints, strokewidth = b.strokewidth, strokecolor = b.strokecolor,
         color = bcolor, inspectable = false)
-    decorations[:button] = button
 
-
-
-    lcolors = (; out = labelcolor, active = labelcolor_active, hover = labelcolor_hover)
+    lcolors = (; out = b.labelcolor, active = b.labelcolor_active, hover = b.labelcolor_hover)
     lcolor = Observable{RGBColors}()
     map!((s,_...)-> to_color(lcolors[s][]), lcolor, mousestate, values(lcolors)...)
 
-    labeltext = text!(subscene, label, position = textpos, textsize = textsize, font = font,
+    labeltext = text!(subscene, b.label, position = textpos, textsize = b.textsize, font = b.font,
         color = lcolor, align = (:center, :center), markerspace = :data, inspectable = false)
-
-    decorations[:label] = labeltext
 
     # move text in front of background to be sure it's not occluded
     translate!(labeltext, 0, 0, 1)
 
-
-    onany(label, textsize, font, padding) do label, textsize, font, padding
+    onany(b.label, b.textsize, b.font, b.padding) do label, textsize, font, padding
         textbb = Rect2f(boundingbox(labeltext))
         autowidth = width(textbb) + padding[1] + padding[2]
         autoheight = height(textbb) + padding[3] + padding[4]
-        layoutobservables.autosize[] = (autowidth, autoheight)
+        b.layoutobservables.autosize[] = (autowidth, autoheight)
     end
 
-
-    mouseevents = addmouseevents!(scene, layoutobservables.computedbbox)
+    mouseevents = addmouseevents!(scene, b.layoutobservables.computedbbox)
 
     onmouseover(mouseevents) do _
         mousestate[] = :hover
@@ -88,13 +65,13 @@ function block(::Type{Button}, fig_or_scene::FigureLike; bbox = nothing, kwargs.
 
     onmouseleftdown(mouseevents) do _
         mousestate[] = :active
-        clicks[] = clicks[] + 1
+        b.clicks[] = b.clicks[] + 1
         return Consume(true)
     end
 
-    label[] = label[]
+    notify(b.label)
     # trigger bbox
-    layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
+    notify(b.layoutobservables.suggestedbbox)
 
-    Button(fig_or_scene, layoutobservables, attrs, decorations)
+    return
 end
