@@ -821,7 +821,56 @@ end
     end
 end
 
-@Block Menu
+@Block Menu begin
+    @attributes begin
+        "The height setting of the menu."
+        height = Auto()
+        "The width setting of the menu."
+        width = nothing
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth = true
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight = true
+        "The horizontal alignment of the menu in its suggested bounding box."
+        halign = :center
+        "The vertical alignment of the menu in its suggested bounding box."
+        valign = :center
+        "The alignment of the menu in its suggested bounding box."
+        alignmode = Inside()
+        "Index of selected item"
+        i_selected = 0
+        "Selected item value"
+        selection = nothing
+        "Is the menu showing the available options"
+        is_open = false
+        "Cell color when hovered"
+        cell_color_hover = COLOR_ACCENT_DIMMED[]
+        "Cell color when active"
+        cell_color_active = COLOR_ACCENT[]
+        "Cell color when inactive even"
+        cell_color_inactive_even = RGBf(0.97, 0.97, 0.97)
+        "Cell color when inactive odd"
+        cell_color_inactive_odd = RGBf(0.97, 0.97, 0.97)
+        "Selection cell color when inactive"
+        selection_cell_color_inactive = RGBf(0.94, 0.94, 0.94)
+        "Color of the dropdown arrow"
+        dropdown_arrow_color = (:black, 0.2)
+        "Size of the dropdown arrow"
+        dropdown_arrow_size = 12px
+        "The list of options selectable in the menu. This can be any iterable of a mixture of strings and containers with one string and one other value. If an entry is just a string, that string is both label and selection. If an entry is a container with one string and one other value, the string is the label and the other value is the selection."
+        options = ["no options"]
+        "Font size of the cell texts"
+        textsize = lift_parent_attribute(scene, :fontsize, 16f0)
+        "Padding of entry texts"
+        textpadding = (10, 10, 10, 10)
+        "Color of entry texts"
+        textcolor = :black
+        "The opening direction of the menu (:up or :down)"
+        direction = automatic
+        "The default message prompting a selection when i == 0"
+        prompt = "Select..."
+    end
+end
 
 
 abstract type LegendElement end
