@@ -495,7 +495,43 @@ end
 
 @Block Box
 
-@Block Slider
+@Block Slider begin
+    selected_index::Observable{Int}
+    @attributes begin
+        "The horizontal alignment of the element in its suggested bounding box."
+        halign = :center
+        "The vertical alignment of the element in its suggested bounding box."
+        valign = :center
+        "The width setting of the element."
+        width = Auto()
+        "The height setting of the element."
+        height = Auto()
+        "The range of values that the slider can pick from."
+        range = 0:0.01:10
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth::Bool = true
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight::Bool = true
+        "The start value of the slider or the value that is closest in the slider range."
+        startvalue = 0
+        "The current value of the slider. Don't set this manually, use the function `set_close_to!`."
+        value = 0
+        "The width of the slider line"
+        linewidth::Float32 = 15
+        "The color of the slider when the mouse hovers over it."
+        color_active_dimmed::RGBAf = COLOR_ACCENT_DIMMED[]
+        "The color of the slider when the mouse clicks and drags the slider."
+        color_active::RGBAf = COLOR_ACCENT[]
+        "The color of the slider when it is not interacted with."
+        color_inactive::RGBAf = RGBf(0.94, 0.94, 0.94)
+        "Controls if the slider has a horizontal orientation or not."
+        horizontal::Bool = true
+        "The align mode of the slider in its parent GridLayout."
+        alignmode = Inside()
+        "Controls if the button snaps to valid positions or moves freely"
+        snap::Bool = true
+    end
+end
 
 @Block IntervalSlider
 
