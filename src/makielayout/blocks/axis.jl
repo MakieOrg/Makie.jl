@@ -42,6 +42,7 @@ function initialize_block!(ax::Axis)
     decorations[:background] = background
 
     block_limit_linking = Observable(false)
+    setfield!(ax, :block_limit_linking, block_limit_linking)
 
     ax.xaxislinks = Axis[]
     ax.yaxislinks = Axis[]
@@ -179,7 +180,7 @@ function initialize_block!(ax::Axis)
         reversed = ax.xreversed, tickwidth = ax.xtickwidth, tickcolor = ax.xtickcolor,
         minorticksvisible = ax.xminorticksvisible, minortickalign = ax.xminortickalign, minorticksize = ax.xminorticksize, minortickwidth = ax.xminortickwidth, minortickcolor = ax.xminortickcolor, minorticks = ax.xminorticks, scale = ax.xscale,
         )
-    decorations[:xaxis] = xaxis
+    ax.xaxis = xaxis
 
     yaxis = LineAxis(topscene, endpoints = yaxis_endpoints, limits = ylims,
         flipped = yaxis_flipped, ticklabelrotation = ax.yticklabelrotation,
@@ -193,7 +194,7 @@ function initialize_block!(ax::Axis)
         minorticksvisible = ax.yminorticksvisible, minortickalign = ax.yminortickalign, minorticksize = ax.yminorticksize, minortickwidth = ax.yminortickwidth, minortickcolor = ax.yminortickcolor, minorticks = ax.yminorticks, scale = ax.yscale,
         )
 
-    decorations[:yaxis] = yaxis
+    ax.yaxis = yaxis
 
     xoppositelinepoints = lift(scene.px_area, ax.spinewidth, ax.xaxisposition) do r, sw, xaxpos
         if xaxpos == :top

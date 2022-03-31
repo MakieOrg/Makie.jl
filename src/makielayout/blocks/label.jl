@@ -1,38 +1,28 @@
-function block(::Type{Label}, fig_or_scene, text; kwargs...)
-    block(Label, fig_or_scene; text = text, kwargs...)
-end
+Label(x, text; kwargs...) = Label(x; text = text, kwargs...)
 
-function block(::Type{Label}, fig_or_scene; bbox = nothing, kwargs...)
+function initialize_block!(l::Label)
 
-    topscene = get_topscene(fig_or_scene)
-    default_attrs = default_attributes(Label, topscene).attributes
-    theme_attrs = subtheme(topscene, :Label)
-    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
-
-    @extract attrs (text, textsize, font, color, visible, halign, valign,
-        rotation, padding)
-
-    layoutobservables = LayoutObservables(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
-        halign, valign, attrs.alignmode; suggestedbbox = bbox)
+    topscene = l.blockscene
+    layoutobservables = l.layoutobservables
 
     textpos = Observable(Point3f(0, 0, 0))
 
-    t = text!(topscene, text, position = textpos, textsize = textsize, font = font, color = color,
-        visible = visible, align = (:center, :center), rotation = rotation, markerspace = :data,
-        justification = attrs.justification,
-        lineheight = attrs.lineheight,
+    t = text!(topscene, l.text, position = textpos, textsize = l.textsize, font = l.font, color = l.color,
+        visible = l.visible, align = (:center, :center), rotation = l.rotation, markerspace = :data,
+        justification = l.justification,
+        lineheight = l.lineheight,
         inspectable = false)
 
     textbb = Ref(BBox(0, 1, 0, 1))
 
-    onany(text, textsize, font, rotation, padding) do text, textsize, font, rotation, padding
+    onany(l.text, l.textsize, l.font, l.rotation, l.padding) do text, textsize, font, rotation, padding
         textbb[] = Rect2f(boundingbox(t))
         autowidth = width(textbb[]) + padding[1] + padding[2]
         autoheight = height(textbb[]) + padding[3] + padding[4]
         layoutobservables.autosize[] = (autowidth, autoheight)
     end
 
-    onany(layoutobservables.computedbbox, padding) do bbox, padding
+    onany(layoutobservables.computedbbox, l.padding) do bbox, padding
 
         tw = width(textbb[])
         th = height(textbb[])
@@ -40,8 +30,6 @@ function block(::Type{Label}, fig_or_scene; bbox = nothing, kwargs...)
         box = bbox.origin[1]
         boy = bbox.origin[2]
 
-        # this is also part of the hack to improve left alignment until
-        # boundingboxes are perfect
         tx = box + padding[1] + 0.5 * tw
         ty = boy + padding[3] + 0.5 * th
 
@@ -50,11 +38,9 @@ function block(::Type{Label}, fig_or_scene; bbox = nothing, kwargs...)
 
 
     # trigger first update, otherwise bounds are wrong somehow
-    text[] = text[]
+    notify(l.text)
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    lt = Label(fig_or_scene, layoutobservables, attrs, Dict(:text => t))
-
-    lt
+    l
 end

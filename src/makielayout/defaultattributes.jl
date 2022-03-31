@@ -141,53 +141,6 @@ end)
 """
 Colorbar
 
-function default_attributes(::Type{Label}, scene)
-    attrs, docdict, defaultdict = @documented_attributes begin
-        "The displayed text string."
-        text = "Text"
-        "Controls if the text is visible."
-        visible = true
-        "The color of the text."
-        color = lift_parent_attribute(scene, :textcolor, :black)
-        "The font size of the text."
-        textsize = lift_parent_attribute(scene, :fontsize, 16f0)
-        "The font family of the text."
-        font = lift_parent_attribute(scene, :font, "DejaVu Sans")
-        "The justification of the text (:left, :right, :center)."
-        justification = :center
-        "The lineheight multiplier for the text."
-        lineheight = 1.0
-        "The vertical alignment of the text in its suggested boundingbox"
-        valign = :center
-        "The horizontal alignment of the text in its suggested boundingbox"
-        halign = :center
-        "The counterclockwise rotation of the text in radians."
-        rotation = 0f0
-        "The extra space added to the sides of the text boundingbox."
-        padding = (0f0, 0f0, 0f0, 0f0)
-        "The height setting of the text."
-        height = Auto()
-        "The width setting of the text."
-        width = Auto()
-        "Controls if the parent layout can adjust to this element's width"
-        tellwidth = true
-        "Controls if the parent layout can adjust to this element's height"
-        tellheight = true
-        "The align mode of the text in its parent GridLayout."
-        alignmode = Inside()
-    end
-    (attributes = attrs, documentation = docdict, defaults = defaultdict)
-end
-
-@doc """
-Label has the following attributes:
-
-$(let
-    _, docs, defaults = default_attributes(Label, nothing)
-    docvarstring(docs, defaults)
-end)
-"""
-Label
 
 function default_attributes(::Type{Box}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
