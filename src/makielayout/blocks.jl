@@ -113,7 +113,7 @@ function Docs.getdoc(@nospecialize T::Type{<:Block})
     methodstrings = map(methods) do m
         as = _argument_string(m)
         """```julia
-        $T(fig_scene_or_gridpos, $as)
+        $T(fig_scene_or_gridpos$(isempty(as) ? "" : ", ")$as)
         ```"""
     end
 
