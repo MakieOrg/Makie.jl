@@ -9,9 +9,14 @@ function, which must return a `Matrix{<: AbstractRGB}`.
 abstract type AbstractPattern{T} <: AbstractArray{T, 2} end
 
 function Base.show(io::IO, ::MIME"text/plain", p::AbstractPattern)
+    
     println(io, typeof(p))
-    show(io, mime, image(p))
+    print(io, p)
 end
+
+Base.show(io::IO, p::AbstractPattern) = print(io, image(to_image(p)))
+
+
 struct ImagePattern{T<:Colorant} <: AbstractPattern{T}
     img::Matrix{T}
 end
