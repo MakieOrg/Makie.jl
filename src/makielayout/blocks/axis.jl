@@ -957,8 +957,8 @@ function timed_ticklabelspace_reset(ax::Axis, reset_timer::Ref,
         prev_xticklabelspace[] = ax.xticklabelspace[]
         prev_yticklabelspace[] = ax.yticklabelspace[]
 
-        ax.xticklabelspace = ax.elements[:xaxis].attributes.actual_ticklabelspace[]
-        ax.yticklabelspace = ax.elements[:yaxis].attributes.actual_ticklabelspace[]
+        ax.xticklabelspace = Float64(ax.xaxis.attributes.actual_ticklabelspace[])
+        ax.yticklabelspace = Float64(ax.yaxis.attributes.actual_ticklabelspace[])
     end
 
     reset_timer[] = Timer(threshold_sec) do t
