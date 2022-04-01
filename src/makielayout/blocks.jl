@@ -121,8 +121,10 @@ function Docs.getdoc(@nospecialize T::Type{<:Block})
     `$T` is a `Block`.
     It has the following methods defined:
     $(join(methodstrings, "\n"))
-    `$T` has the following attributes:
-    $(join([string('`', k, '`') for k in ks], ", "))
+
+    ## Attributes
+
+    $(join(["  - `$k`: $(_attribute_docs(T)[k])" for k in ks], "\n"))
     """
     Markdown.parse(s)
 end
