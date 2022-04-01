@@ -699,7 +699,8 @@ end
 end
 
 @Block IntervalSlider begin
-    displayed_sliderfractions::Observable{Tuple{Int, Int}}
+    selected_indices::Observable{Tuple{Int, Int}}
+    displayed_sliderfractions::Observable{Tuple{Float64, Float64}}
     @attributes begin
         "The horizontal alignment of the slider in its suggested bounding box."
         halign = :center

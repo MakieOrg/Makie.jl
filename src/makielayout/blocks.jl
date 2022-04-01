@@ -597,6 +597,7 @@ observable_type(x::Type{Observable{T}}) where T = T
 
 convert_for_attribute(t::Type{T}, value::T) where T = value
 convert_for_attribute(t::Type{Float64}, x) = convert(Float64, x)
+convert_for_attribute(t::Type{Float64}, x::Float64) = x
 convert_for_attribute(t::Type{RGBAf}, x) = to_color(x)::RGBAf
 convert_for_attribute(t::Type{RGBAf}, x::RGBAf) = x
 convert_for_attribute(t::Any, x) = x
