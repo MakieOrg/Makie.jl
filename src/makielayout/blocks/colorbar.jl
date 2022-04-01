@@ -1,4 +1,4 @@
-function block(::Type{<:Colorbar}, fig_or_scene, plot::AbstractPlot; kwargs...)
+function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
 
     for key in (:colormap, :limits)
         if key in keys(kwargs)
@@ -6,15 +6,15 @@ function block(::Type{<:Colorbar}, fig_or_scene, plot::AbstractPlot; kwargs...)
         end
     end
 
-    block(Colorbar, fig_or_scene;
+    Colorbar(
+        fig_or_scene;
         colormap = plot.colormap,
         limits = plot.colorrange,
         kwargs...
     )
-
 end
 
-function block(::Type{<:Colorbar}, fig_or_scene, heatmap::Union{Heatmap, Image}; kwargs...)
+function Colorbar(fig_or_scene, heatmap::Union{Heatmap, Image}; kwargs...)
 
     for key in (:colormap, :limits, :highclip, :lowclip)
         if key in keys(kwargs)
@@ -22,7 +22,8 @@ function block(::Type{<:Colorbar}, fig_or_scene, heatmap::Union{Heatmap, Image};
         end
     end
 
-    block(Colorbar, fig_or_scene;
+    Colorbar(
+        fig_or_scene;
         colormap = heatmap.colormap,
         limits = heatmap.colorrange,
         highclip = heatmap.highclip,
@@ -31,7 +32,7 @@ function block(::Type{<:Colorbar}, fig_or_scene, heatmap::Union{Heatmap, Image};
     )
 end
 
-function block(::Type{<:Colorbar}, fig_or_scene, contourf::Makie.Contourf; kwargs...)
+function Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
 
     for key in (:colormap, :limits, :highclip, :lowclip)
         if key in keys(kwargs)
@@ -45,7 +46,8 @@ function block(::Type{<:Colorbar}, fig_or_scene, contourf::Makie.Contourf; kwarg
         steps[1], steps[end]
     end
 
-    block(Colorbar, fig_or_scene;
+    Colorbar(
+        fig_or_scene;
         colormap = contourf._computed_colormap,
         limits = limits,
         lowclip = contourf._computed_extendlow,
