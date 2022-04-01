@@ -23,7 +23,7 @@ function color_and_colormap!(plot, intensity = plot[:color])
         haskey(plot, :colormap) || error("Plot $(typeof(plot)) needs to have a colormap to allow the attribute color to be an array of numbers")
 
         replace_automatic!(plot, :colorrange) do
-            lift(extrema_nan, intensity)
+            lift(distinct_extrema_nan, intensity)
         end
         return true
     else
