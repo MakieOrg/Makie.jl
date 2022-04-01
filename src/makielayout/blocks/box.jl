@@ -1,31 +1,19 @@
-function block(::Type{Box}, fig_or_scene; bbox = nothing, kwargs...)
+function initialize_block!(box::Box)
 
-    topscene = get_topscene(fig_or_scene)
+    blockscene = box.blockscene
 
-    default_attrs = default_attributes(Box, topscene).attributes
-    theme_attrs = subtheme(topscene, :Box)
-    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
-
-    @extract attrs (color, visible, valign, halign, padding, strokewidth,
-        strokevisible, strokecolor)
-
-    layoutobservables = LayoutObservables(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
-        halign, valign, attrs.alignmode; suggestedbbox = bbox)
-
-    strokecolor_with_visibility = lift(strokecolor, strokevisible) do col, vis
+    strokecolor_with_visibility = lift(box.strokecolor, box.strokevisible) do col, vis
         vis ? col : RGBAf(0, 0, 0, 0)
     end
 
-    ibbox = @lift(round_to_IRect2D($(layoutobservables.computedbbox)))
+    ibbox = @lift(round_to_IRect2D($(box.layoutobservables.computedbbox)))
 
-    r = poly!(topscene, ibbox, color = color, visible = visible,
-        strokecolor = strokecolor_with_visibility, strokewidth = strokewidth,
+    poly!(blockscene, ibbox, color = box.color, visible = box.visible,
+        strokecolor = strokecolor_with_visibility, strokewidth = box.strokewidth,
         inspectable = false)
 
-    elements = Dict(:rect => r)
-
     # trigger bbox
-    layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
+    box.layoutobservables.suggestedbbox[] = box.layoutobservables.suggestedbbox[]
 
-    Box(fig_or_scene, layoutobservables, attrs, elements)
+    return
 end
