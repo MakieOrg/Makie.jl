@@ -4,18 +4,18 @@ function Makie.plot!(
         kw_attributes...)
     # We store the show_axis attribute in the LScene
     if haskey(attributes, :show_axis)
-        lscene.attributes[:show_axis] = pop!(attributes, :show_axis)
+        lscene.scene.theme[:show_axis] = pop!(attributes, :show_axis)
     end
 
     if haskey(attributes, :limits)
-        lscene.attributes[:limits] = pop!(attributes, :limits)
+        lscene.scene.theme[:limits] = pop!(attributes, :limits)
     end
 
-    show_axis = get!(lscene.attributes, :show_axis, true)
+    show_axis = get!(lscene.scene.theme, :show_axis, true)
     plot = Makie.plot!(lscene.scene, P, attributes, args...; kw_attributes...)
 
     function get_lims()
-        return get(lscene.attributes, :limits) do
+        return get(lscene.scene.theme, :limits) do
             return data_limits(lscene.scene, p -> Makie.isaxis(p) || Makie.not_in_data_space(p))
         end
     end
@@ -39,18 +39,12 @@ function Makie.plot!(P::Makie.PlotFunc, ls::LScene, args...; kw_attributes...)
     Makie.plot!(ls, P, attributes, args...)
 end
 
-function block(::Type{LScene}, fig_or_scene; bbox = nothing, scenekw = NamedTuple(), kwargs...)
-
-    topscene = get_topscene(fig_or_scene)
-    default_attrs = default_attributes(LScene, topscene).attributes
-    theme_attrs = subtheme(topscene, :LScene)
-    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
-    layoutobservables = LayoutObservables(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
-        attrs.halign, attrs.valign, attrs.alignmode; suggestedbbox = bbox)
+function initialize_block!(ls::LScene; scenekw = NamedTuple())
+    blockscene = ls.blockscene
     # pick a camera and draw axis.
     scenekw = merge((clear = false, camera=cam3d!), scenekw)
-    scene = Scene(topscene, lift(round_to_IRect2D, layoutobservables.computedbbox); scenekw...)
-    return LScene(fig_or_scene, layoutobservables, attrs, Dict{Symbol, Any}(), scene)
+    ls.scene = Scene(blockscene, lift(round_to_IRect2D, ls.layoutobservables.computedbbox); scenekw...)
+    return
 end
 
 function Base.delete!(ax::LScene, plot::AbstractPlot)
