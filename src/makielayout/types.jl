@@ -907,9 +907,9 @@ const EntryGroup = Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}
         "The height setting of the legend."
         height = Auto()
         "Controls if the parent layout can adjust to this element's width"
-        tellwidth = automatic
+        tellwidth = true
         "Controls if the parent layout can adjust to this element's height"
-        tellheight = automatic
+        tellheight = true
         "The font family of the legend group titles."
         titlefont = lift_parent_attribute(scene, :font, "DejaVu Sans")
         "The font size of the legend group titles."

@@ -1,73 +1,49 @@
-function block(::Type{Legend},
-        fig_or_scene,
-        entry_groups::Observable{Vector{Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}}};
-        bbox = nothing, kwargs...)
+function initialize_block!(leg::Legend,
+        entry_groups::Observable{Vector{Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}}})
 
-    topscene = get_topscene(fig_or_scene)
+    blockscene = leg.blockscene
 
-    default_attrs = default_attributes(Legend, topscene).attributes
-    theme_attrs = subtheme(topscene, :Legend)
-    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
-
-    @extract attrs (
-        halign, valign, padding, margin,
-        titlefont, titlesize, titlehalign, titlevalign, titlevisible, titlecolor,
-        labelsize, labelfont, labelcolor, labelhalign, labelvalign, labeljustification,
-        bgcolor, framecolor, framewidth, framevisible,
-        patchsize, # the side length of the entry patch area
-        nbanks,
-        colgap, rowgap, patchlabelgap,
-        titlegap, groupgap,
-        orientation, tellwidth, tellheight,
-        titleposition,
-        gridshalign, gridsvalign,
-    )
-
-    decorations = Dict{Symbol, Any}()
-
+    # TODO: this doesn't work anymore
     # by default, `tellwidth = true` and `tellheight = false` for vertical legends
     # and vice versa for horizontal legends
-    real_tellwidth = @lift $tellwidth === automatic ? $orientation == :vertical : $tellwidth
-    real_tellheight = @lift $tellheight === automatic ? $orientation == :horizontal : $tellheight
+    real_tellwidth = @lift $(leg.tellwidth) === automatic ? $(leg.orientation) == :vertical : $(leg.tellwidth)
+    real_tellheight = @lift $(leg.tellheight) === automatic ? $(leg.orientation) == :horizontal : $(leg.tellheight)
 
-    layoutobservables = LayoutObservables(attrs.width, attrs.height, real_tellwidth, real_tellheight,
-        halign, valign, attrs.alignmode; suggestedbbox = bbox)
+    legend_area = lift(round_to_IRect2D, leg.layoutobservables.computedbbox)
 
-    legend_area = lift(round_to_IRect2D, layoutobservables.computedbbox)
-
-    scene = Scene(topscene, topscene.px_area, camera = campixel!)
+    scene = Scene(blockscene, blockscene.px_area, camera = campixel!)
 
     # the rectangle in which the legend is drawn when margins are removed
     legendrect = @lift begin
-        enlarge($legend_area, -$margin[1], -$margin[2], -$margin[3], -$margin[4])
+        enlarge($legend_area, -$(leg.margin)[1], -$(leg.margin)[2], -$(leg.margin)[3], -$(leg.margin)[4])
     end
 
-    decorations[:frame] = poly!(scene,
+    poly!(scene,
         legendrect,
-        color = bgcolor, strokewidth = framewidth, visible = framevisible,
-        strokecolor = framecolor, inspectable = false)
+        color = leg.bgcolor, strokewidth = leg.framewidth, visible = leg.framevisible,
+        strokecolor = leg.framecolor, inspectable = false)
 
     # the grid containing all content
-    grid = GridLayout(bbox = legendrect, alignmode = Outside(padding[]...))
+    grid = GridLayout(bbox = legendrect, alignmode = Outside(leg.padding[]...))
 
     # while the entries are being manipulated through code, this Ref value is set to
     # true so the GridLayout doesn't update itself to save time
     manipulating_grid = Ref(false)
 
-    on(padding) do p
+    on(leg.padding) do p
         grid.alignmode = Outside(p...)
         relayout()
     end
 
     update_grid = Observable(true)
-    onany(update_grid, margin) do _, margin
+    onany(update_grid, leg.margin) do _, margin
         if manipulating_grid[]
             return
         end
         w = GridLayoutBase.determinedirsize(grid, GridLayoutBase.Col())
         h = GridLayoutBase.determinedirsize(grid, GridLayoutBase.Row())
         if !any(isnothing.((w, h)))
-            layoutobservables.autosize[] = (w + sum(margin[1:2]), h + sum(margin[3:4]))
+            leg.layoutobservables.autosize[] = (w + sum(margin[1:2]), h + sum(margin[3:4]))
         end
     end
 
@@ -77,16 +53,10 @@ function block(::Type{Legend},
     entryplots = [[AbstractPlot[]]]
     entryrects = [Box[]]
 
-    decorations[:titletexts] = titletexts
-    decorations[:entrytexts] = entrytexts
-    decorations[:entryplots] = entryplots
-    decorations[:entryrects] = entryrects
-
-
     function relayout()
         manipulating_grid[] = true
 
-        rowcol(n) = ((n - 1) ÷ nbanks[] + 1, (n - 1) % nbanks[] + 1)
+        rowcol(n) = ((n - 1) ÷ leg.nbanks[] + 1, (n - 1) % leg.nbanks[] + 1)
 
         for i in length(grid.content):-1:1
             GridLayoutBase.remove_from_gridlayout!(grid.content[i])
@@ -98,62 +68,62 @@ function block(::Type{Legend},
             etexts = entrytexts[g]
             erects = entryrects[g]
 
-            subgl = if orientation[] == :vertical
-                if titleposition[] == :left
+            subgl = if leg.orientation[] == :vertical
+                if leg.titleposition[] == :left
                     isnothing(title) || (grid[g, 1] = title)
-                    grid[g, 2] = GridLayout(halign = gridshalign[], valign = gridsvalign[])
-                elseif titleposition[] == :top
+                    grid[g, 2] = GridLayout(halign = leg.gridshalign[], valign = leg.gridsvalign[])
+                elseif leg.titleposition[] == :top
                     isnothing(title) || (grid[2g - 1, 1] = title)
-                    grid[2g, 1] = GridLayout(halign = gridshalign[], valign = gridsvalign[])
+                    grid[2g, 1] = GridLayout(halign = leg.gridshalign[], valign = leg.gridsvalign[])
                 end
-            elseif orientation[] == :horizontal
-                if titleposition[] == :left
+            elseif leg.orientation[] == :horizontal
+                if leg.titleposition[] == :left
                     isnothing(title) || (grid[1, 2g-1] = title)
-                    grid[1, 2g] = GridLayout(halign = gridshalign[], valign = gridsvalign[])
-                elseif titleposition[] == :top
+                    grid[1, 2g] = GridLayout(halign = leg.gridshalign[], valign = leg.gridsvalign[])
+                elseif leg.titleposition[] == :top
                     isnothing(title) || (grid[1, g] = title)
-                    grid[2, g] = GridLayout(halign = gridshalign[], valign = gridsvalign[])
+                    grid[2, g] = GridLayout(halign = leg.gridshalign[], valign = leg.gridsvalign[])
                 end
             end
 
             for (n, (et, er)) in enumerate(zip(etexts, erects))
-                i, j = orientation[] == :vertical ? rowcol(n) : reverse(rowcol(n))
+                i, j = leg.orientation[] == :vertical ? rowcol(n) : reverse(rowcol(n))
                 subgl[i, 2j-1] = er
                 subgl[i, 2j] = et
             end
 
-            rowgap!(subgl, rowgap[])
+            rowgap!(subgl, leg.rowgap[])
             for c in 1:ncols(subgl)-1
-                colgap!(subgl, c, c % 2 == 1 ? patchlabelgap[] : colgap[])
+                colgap!(subgl, c, c % 2 == 1 ? leg.patchlabelgap[] : leg.colgap[])
             end
         end
 
         for r in 1:nrows(grid)-1
-            if orientation[] == :horizontal
-                if titleposition[] == :left
+            if leg.orientation[] == :horizontal
+                if leg.titleposition[] == :left
                     # nothing
-                elseif titleposition[] == :top
-                    rowgap!(grid, r, titlegap[])
+                elseif leg.titleposition[] == :top
+                    rowgap!(grid, r, leg.titlegap[])
                 end
-            elseif orientation[] == :vertical
-                if titleposition[] == :left
-                    rowgap!(grid, r, groupgap[])
-                elseif titleposition[] == :top
-                    rowgap!(grid, r, r % 2 == 1 ? titlegap[] : groupgap[])
+            elseif leg.orientation[] == :vertical
+                if leg.titleposition[] == :left
+                    rowgap!(grid, r, leg.groupgap[])
+                elseif leg.titleposition[] == :top
+                    rowgap!(grid, r, r % 2 == 1 ? leg.titlegap[] : leg.groupgap[])
                 end
             end
         end
         for c in 1:ncols(grid)-1
-            if orientation[] == :horizontal
-                if titleposition[] == :left
-                    colgap!(grid, c, c % 2 == 1 ? titlegap[] : groupgap[])
-                elseif titleposition[] == :top
-                    colgap!(grid, c, groupgap[])
+            if leg.orientation[] == :horizontal
+                if leg.titleposition[] == :left
+                    colgap!(grid, c, c % 2 == 1 ? leg.titlegap[] : leg.groupgap[])
+                elseif leg.titleposition[] == :top
+                    colgap!(grid, c, leg.groupgap[])
                 end
-            elseif orientation[] == :vertical
-                if titleposition[] == :left
-                    colgap!(grid, c, titlegap[])
-                elseif titleposition[] == :top
+            elseif leg.orientation[] == :vertical
+                if leg.titleposition[] == :left
+                    colgap!(grid, c, leg.titlegap[])
+                elseif leg.titleposition[] == :top
                     # nothing here
                 end
             end
@@ -173,8 +143,8 @@ function block(::Type{Legend},
         translate!(scene, (0, 0, 10))
     end
 
-    onany(nbanks, titleposition, rowgap, colgap, patchlabelgap, groupgap, titlegap,
-            titlevisible, orientation, gridshalign, gridsvalign) do args...
+    onany(leg.nbanks, leg.titleposition, leg.rowgap, leg.colgap, leg.patchlabelgap, leg.groupgap, leg.titlegap,
+            leg.titlevisible, leg.orientation, leg.gridshalign, leg.gridsvalign) do args...
         relayout()
     end
 
@@ -203,7 +173,8 @@ function block(::Type{Legend},
 
         # the attributes for legend entries that the legend itself carries
         # these serve as defaults unless the legendentry gets its own value set
-        preset_attrs = extractattributes(attrs, LegendEntry)
+        # TODO: Fix
+        preset_attrs = extractattributes(leg, LegendEntry)
 
         for (title, entries) in entry_groups
 
@@ -211,8 +182,8 @@ function block(::Type{Legend},
                 # in case a group has no title
                 push!(titletexts, nothing)
             else
-                push!(titletexts, Label(scene, text = title, font = titlefont, color = titlecolor,
-                    textsize = titlesize, halign = titlehalign, valign = titlevalign, inspectable = false))
+                push!(titletexts, Label(scene, text = title, font = leg.titlefont, color = leg.titlecolor,
+                    textsize = leg.titlesize, halign = leg.titlehalign, valign = leg.titlevalign, inspectable = false))
             end
 
             etexts = []
@@ -223,7 +194,7 @@ function block(::Type{Legend},
                 merge!(e.attributes, preset_attrs)
 
                 # create the label
-                justification = map(labeljustification, e.labelhalign) do lj, lha
+                justification = map(leg.labeljustification, e.labelhalign) do lj, lha
                     return lj isa Automatic ? lha : lj
                 end
                 push!(etexts,
@@ -253,12 +224,12 @@ function block(::Type{Legend},
 
 
     # trigger suggestedbbox
-    layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
+    notify(leg.layoutobservables.suggestedbbox)
 
-    leg = Legend(fig_or_scene, layoutobservables, attrs, decorations, entry_groups)
-    # trigger first relayout
-    entry_groups[] = entry_groups[]
-    leg
+    setfield!(leg, :entrygroups, entry_groups)
+    notify(entry_groups)
+
+    return
 end
 
 
@@ -474,7 +445,7 @@ one content element. A content element can be an `AbstractPlot`, an array of
 `AbstractPlots`, a `LegendElement`, or any other object for which the
 `legendelements` method is defined.
 """
-function block(::Type{Legend}, fig_or_scene,
+function Legend(fig_or_scene,
         contents::AbstractArray,
         labels::AbstractArray{<:AbstractString},
         title::Optional{<:AbstractString} = nothing;
@@ -485,7 +456,7 @@ function block(::Type{Legend}, fig_or_scene,
     end
 
     entrygroups = Observable{Vector{EntryGroup}}([])
-    legend = block(Legend, fig_or_scene, entrygroups; kwargs...)
+    legend = Legend(fig_or_scene, entrygroups; kwargs...)
     entries = [LegendEntry(label, content, legend) for (content, label) in zip(contents, labels)]
     entrygroups[] = [(title, entries)]
     legend
@@ -509,7 +480,7 @@ Within each group, each content element is associated with one label. A content
 element can be an `AbstractPlot`, an array of `AbstractPlots`, a `LegendElement`,
 or any other object for which the `legendelements` method is defined.
 """
-function block(::Type{Legend}, fig_or_scene,
+function Legend(fig_or_scene,
         contentgroups::AbstractArray{<:AbstractArray},
         labelgroups::AbstractArray{<:AbstractArray},
         titles::AbstractArray{<:Optional{<:AbstractString}};
@@ -521,7 +492,7 @@ function block(::Type{Legend}, fig_or_scene,
 
 
     entrygroups = Observable{Vector{EntryGroup}}([])
-    legend = block(Legend, fig_or_scene, entrygroups; kwargs...)
+    legend = Legend(fig_or_scene, entrygroups; kwargs...)
     entries = [[LegendEntry(l, pg, legend) for (l, pg) in zip(labelgroup, contentgroup)]
         for (labelgroup, contentgroup) in zip(labelgroups, contentgroups)]
     entrygroups[] = [(t, en) for (t, en) in zip(titles, entries)]
@@ -538,10 +509,10 @@ attribute `label` set.
 If `merge` is `true`, all plot objects with the same label will be layered on top of each other into one legend entry.
 If `unique` is `true`, all plot objects with the same plot type and label will be reduced to one occurrence.
 """
-function block(::Type{Legend}, fig_or_scene, axis::Union{Axis, Scene, LScene}, title = nothing; merge = false, unique = false, kwargs...)
+function Legend(fig_or_scene, axis::Union{Axis, Scene, LScene}, title = nothing; merge = false, unique = false, kwargs...)
     plots, labels = get_labeled_plots(axis, merge = merge, unique = unique)
     isempty(plots) && error("There are no plots with labels in the given axis that can be put in the legend. Supply labels to plotting functions like `plot(args...; label = \"My label\")`")
-    block(Legend, fig_or_scene, plots, labels, title; kwargs...)
+    Legend(fig_or_scene, plots, labels, title; kwargs...)
 end
 
 function get_labeled_plots(ax; merge::Bool, unique::Bool)

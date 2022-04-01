@@ -66,3 +66,13 @@ function extractattributes(attributes::Attributes, typ::Type)
     end
     extracted
 end
+
+function extractattributes(leg::Legend, typ::Type)
+    extracted = Attributes()
+    for name in attributenames(typ)
+        if hasproperty(leg, name)
+            extracted[name] = getproperty(leg, name)
+        end
+    end
+    extracted
+end
