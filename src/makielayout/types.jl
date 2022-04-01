@@ -1107,9 +1107,8 @@ end
     keysevents::Observable{KeysEvent}
     interactions::Dict{Symbol, Tuple{Bool, Any}}
     cycler::Cycler
+    palette::Attributes
     @attributes begin
-        "Attributes with one palette per key, for example `color = [:red, :green, :blue]`"
-        palette = scene !== nothing && haskey(scene.theme, :palette) ? deepcopy(scene.theme[:palette]) : Attributes()
         "The height setting of the scene."
         height = nothing
         "The width setting of the scene."

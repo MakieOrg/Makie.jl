@@ -4,7 +4,6 @@ function initialize_block!(ax::Axis3)
 
     blockscene = ax.blockscene
 
-
     on(ax.protrusions) do prot
         ax.layoutobservables.protrusions[] = to_protrusions(prot)
     end
@@ -95,6 +94,7 @@ function initialize_block!(ax::Axis3)
         inspectable = false)
 
     ax.cycler = Cycler()
+    ax.palette = copy(Makie.default_palettes)
 
     ax.mouseeventhandle = addmouseevents!(scene)
     scrollevents = Observable(ScrollEvent(0, 0))
@@ -768,8 +768,8 @@ function xautolimits(ax::Axis3)
         xlims = (ax.targetlimits[].origin[1], ax.targetlimits[].origin[1] + ax.targetlimits[].widths[1])
     else
         xlims = expandlimits(xlims,
-            ax.attributes.xautolimitmargin[][1],
-            ax.attributes.xautolimitmargin[][2],
+            ax.xautolimitmargin[][1],
+            ax.xautolimitmargin[][2],
             identity)
     end
     xlims
@@ -782,8 +782,8 @@ function yautolimits(ax::Axis3)
         ylims = (ax.targetlimits[].origin[2], ax.targetlimits[].origin[2] + ax.targetlimits[].widths[2])
     else
         ylims = expandlimits(ylims,
-            ax.attributes.yautolimitmargin[][1],
-            ax.attributes.yautolimitmargin[][2],
+            ax.yautolimitmargin[][1],
+            ax.yautolimitmargin[][2],
             identity)
     end
     ylims
@@ -796,8 +796,8 @@ function zautolimits(ax::Axis3)
         zlims = (ax.targetlimits[].origin[3], ax.targetlimits[].origin[3] + ax.targetlimits[].widths[3])
     else
         zlims = expandlimits(zlims,
-            ax.attributes.zautolimitmargin[][1],
-            ax.attributes.zautolimitmargin[][2],
+            ax.zautolimitmargin[][1],
+            ax.zautolimitmargin[][2],
             identity)
     end
     zlims

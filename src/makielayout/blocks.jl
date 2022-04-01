@@ -485,7 +485,7 @@ zshift!(b::Block, z) = translate!(b.blockscene, 0, 0, z)
     if hasfield(T, key)
         if fieldtype(T, key) <: Observable
             if value isa Observable
-                error("It is disallowed to set an Observable field of a $T struct to an Observable, because this would replace the existing Observable. If you really want to do this, use `setfield!` instead.")
+                error("It is disallowed to set `$key`, an Observable field of the $T struct, to an Observable with dot notation (`setproperty!`), because this would replace the existing Observable. If you really want to do this, use `setfield!` instead.")
             end
             obs = fieldtype(T, key)
             getfield(x, key)[] = convert_for_attribute(observable_type(obs), value)
