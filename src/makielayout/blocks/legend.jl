@@ -3,11 +3,12 @@ function initialize_block!(leg::Legend,
 
     blockscene = leg.blockscene
 
-    # TODO: this doesn't work anymore
     # by default, `tellwidth = true` and `tellheight = false` for vertical legends
     # and vice versa for horizontal legends
     real_tellwidth = @lift $(leg.tellwidth) === automatic ? $(leg.orientation) == :vertical : $(leg.tellwidth)
     real_tellheight = @lift $(leg.tellheight) === automatic ? $(leg.orientation) == :horizontal : $(leg.tellheight)
+    setfield!(leg, :_tellheight, real_tellheight)
+    setfield!(leg, :_tellwidth, real_tellwidth)
 
     legend_area = lift(round_to_IRect2D, leg.layoutobservables.computedbbox)
 
@@ -25,6 +26,7 @@ function initialize_block!(leg::Legend,
 
     # the grid containing all content
     grid = GridLayout(bbox = legendrect, alignmode = Outside(leg.padding[]...))
+    leg.grid = grid
 
     # while the entries are being manipulated through code, this Ref value is set to
     # true so the GridLayout doesn't update itself to save time
@@ -229,6 +231,19 @@ function initialize_block!(leg::Legend,
     setfield!(leg, :entrygroups, entry_groups)
     notify(entry_groups)
 
+    return
+end
+
+function connect_block_layoutobservables!(leg::Legend, layout_width, layout_height, layout_tellwidth, layout_tellheight, layout_halign, layout_valign, layout_alignmode)
+    connect!(layout_width, leg.width)
+    connect!(layout_height, leg.height)
+    # Legend has special logic for automatic tellwidth and tellheight
+    connect!(layout_tellwidth, leg._tellwidth)
+    connect!(layout_tellheight, leg._tellheight)
+
+    connect!(layout_halign, leg.halign)
+    connect!(layout_valign, leg.valign)
+    connect!(layout_alignmode, leg.alignmode)
     return
 end
 

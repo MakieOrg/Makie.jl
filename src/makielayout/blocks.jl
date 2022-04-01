@@ -414,14 +414,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
             GridLayoutBase.align_to_bbox!(b.layout, bb)
         end
     end
-    # forward all layout attributes to the block's layoutobservables
-    connect!(layout_width, b.width)
-    connect!(layout_height, b.height)
-    connect!(layout_tellwidth, b.tellwidth)
-    connect!(layout_tellheight, b.tellheight)
-    connect!(layout_halign, b.halign)
-    connect!(layout_valign, b.valign)
-    connect!(layout_alignmode, b.alignmode)
+    
 
     # in this function, the block specific setup logic is executed and the remaining
     # uninitialized fields are filled
@@ -441,6 +434,10 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
     if !isempty(unassigned_fields)
         error("The following fields of $T were not assigned after `initialize_block!`: $unassigned_fields")
     end
+
+    # forward all layout attributes to the block's layoutobservables
+    connect_block_layoutobservables!(b, layout_width, layout_height, layout_tellwidth,
+        layout_tellheight, layout_halign, layout_valign, layout_alignmode)
 
     if fig_or_scene isa Figure
         register_in_figure!(fig_or_scene, b)
@@ -474,6 +471,17 @@ function register_in_figure!(fig::Figure, @nospecialize block::Block)
 end
 
 zshift!(b::Block, z) = translate!(b.blockscene, 0, 0, z)
+
+function connect_block_layoutobservables!(@nospecialize(block), layout_width, layout_height, layout_tellwidth, layout_tellheight, layout_halign, layout_valign, layout_alignmode)
+    connect!(layout_width, block.width)
+    connect!(layout_height, block.height)
+    connect!(layout_tellwidth, block.tellwidth)
+    connect!(layout_tellheight, block.tellheight)
+    connect!(layout_halign, block.halign)
+    connect!(layout_valign, block.valign)
+    connect!(layout_alignmode, block.alignmode)
+    return
+end
 
 
 # almost like in Makie
