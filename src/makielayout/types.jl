@@ -527,9 +527,9 @@ end
         "Flips the colorbar label if the axis is vertical."
         flip_vertical_label = false
         "The width setting of the colorbar. Use `size` to set width or height relative to colorbar orientation instead."
-        width = Makie.automatic
+        width = Auto()
         "The height setting of the colorbar."
-        height = Makie.automatic
+        height = Auto()
         "Controls if the parent layout can adjust to this element's width"
         tellwidth = true
         "Controls if the parent layout can adjust to this element's height"
