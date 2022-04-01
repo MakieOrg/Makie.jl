@@ -464,6 +464,8 @@ function register_in_figure!(fig::Figure, @nospecialize block::Block)
     nothing
 end
 
+zshift!(b::Block, z) = translate!(b.blockscene, 0, 0, z)
+
 
 # almost like in Makie
 # make fields type inferrable
