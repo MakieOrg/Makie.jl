@@ -72,7 +72,6 @@ function initialize_block!(m::Menu)
             d == :down ? top(bbox) : bottom(bbox) + h))
     end
 
-
     scene = Scene(topscene, scenearea, camera = campixel!)
     translate!(scene, 0, 0, 21)
 
@@ -82,7 +81,6 @@ function initialize_block!(m::Menu)
 
     selectionrect = Box(scene, width = nothing, height = nothing,
         color = m.selection_cell_color_inactive[], strokewidth = 0)
-
 
     optionstrings = Ref{Vector{String}}(optionlabel.(m.options[]))
 
@@ -97,10 +95,9 @@ function initialize_block!(m::Menu)
     selectiontext = Label(scene, selected_text, tellwidth = false, halign = :left,
         padding = m.textpadding, textsize = m.textsize, color = m.textcolor)
 
-
-    allrects = Vector{Box}(undef, 0)
-    alltexts = Vector{Label}(undef, 0)
-    mouseeventhandles = Vector{MouseEventHandle}(undef, 0)
+    allrects = Box[]
+    alltexts = Label[]
+    mouseeventhandles = MouseEventHandle[]
 
     on(m.options) do options
         # Make sure i_selected is on a valid index when the contentgrid updates
