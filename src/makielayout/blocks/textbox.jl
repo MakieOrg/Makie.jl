@@ -1,51 +1,31 @@
-function block(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
+function initialize_block!(tbox::Textbox)
 
-    topscene = get_topscene(fig_or_scene)
+    topscene = tbox.blockscene
 
-    attrs = merge!(
-        Attributes(kwargs),
-        default_attributes(Textbox, topscene).attributes)
-
-    @extract attrs (halign, valign, textsize, stored_string, placeholder,
-        textcolor, textcolor_placeholder, displayed_string,
-        boxcolor, boxcolor_focused_invalid, boxcolor_focused, boxcolor_hover,
-        bordercolor, textpadding, bordercolor_focused, bordercolor_hover, focused,
-        bordercolor_focused_invalid,
-        borderwidth, cornerradius, cornersegments, boxcolor_focused,
-        validator, restriction, cursorcolor, reset_on_defocus, defocus_on_submit)
-
-    decorations = Dict{Symbol, Any}()
-
-    layoutobservables = LayoutObservables(attrs.width, attrs.height,
-        attrs.tellwidth, attrs.tellheight,
-        halign, valign, attrs.alignmode; suggestedbbox = bbox)
-
-    scenearea = lift(layoutobservables.computedbbox) do bb
+    scenearea = lift(tbox.layoutobservables.computedbbox) do bb
         Rect(round.(Int, bb.origin), round.(Int, bb.widths))
     end
 
     scene = Scene(topscene, scenearea, camera = campixel!)
 
     cursorindex = Observable(0)
-    ltextbox = Textbox(fig_or_scene, layoutobservables, attrs, decorations, cursorindex, nothing)
-
-
+    setfield!(tbox, :cursorindex, cursorindex)
 
     bbox = lift(Rect2f ∘ Makie.zero_origin, scenearea)
 
-    roundedrectpoints = lift(roundedrectvertices, scenearea, cornerradius, cornersegments)
+    roundedrectpoints = lift(roundedrectvertices, scenearea, tbox.cornerradius, tbox.cornersegments)
 
-    displayed_string[] = isnothing(stored_string[]) ? placeholder[] : stored_string[]
+    tbox.displayed_string[] = isnothing(tbox.stored_string[]) ? tbox.placeholder[] : tbox.stored_string[]
 
-    displayed_is_valid = lift(displayed_string, validator) do str, validator
+    displayed_is_valid = lift(tbox.displayed_string, tbox.validator) do str, validator
         valid::Bool = validate_textbox(str, validator)
     end
 
     hovering = Observable(false)
     realbordercolor = Observable{RGBAf}()
 
-    map!(realbordercolor, bordercolor, bordercolor_focused,
-        bordercolor_focused_invalid, bordercolor_hover, focused, displayed_is_valid, hovering) do bc, bcf, bcfi, bch, focused, valid, hovering
+    map!(realbordercolor, tbox.bordercolor, tbox.bordercolor_focused,
+        tbox.bordercolor_focused_invalid, tbox.bordercolor_hover, tbox.focused, displayed_is_valid, hovering) do bc, bcf, bcfi, bch, focused, valid, hovering
         c = if focused
             valid ? bcf : bcfi
         else
@@ -55,8 +35,8 @@ function block(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
     end
 
     realboxcolor = Observable{RGBAf}()
-    map!(realboxcolor, boxcolor, boxcolor_focused,
-        boxcolor_focused_invalid, boxcolor_hover, focused, displayed_is_valid, hovering) do bc, bcf, bcfi, bch, focused, valid, hovering
+    map!(realboxcolor, tbox.boxcolor, tbox.boxcolor_focused,
+        tbox.boxcolor_focused_invalid, tbox.boxcolor_hover, tbox.focused, displayed_is_valid, hovering) do bc, bcf, bcfi, bch, focused, valid, hovering
 
         c = if focused
             valid ? bcf : bcfi
@@ -66,33 +46,34 @@ function block(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
         return to_color(c)
     end
 
-    box = poly!(topscene, roundedrectpoints, strokewidth = borderwidth,
+    box = poly!(topscene, roundedrectpoints, strokewidth = tbox.borderwidth,
         strokecolor = realbordercolor,
         color = realboxcolor, inspectable = false)
-    decorations[:box] = box
 
-    displayed_chars = @lift([c for c in $displayed_string])
+    displayed_chars = @lift([c for c in $(tbox.displayed_string)])
 
     realtextcolor = Observable{RGBAf}()
-    map!(realtextcolor, textcolor, textcolor_placeholder, focused, stored_string, displayed_string) do tc, tcph, foc, cont, disp
+    map!(realtextcolor, tbox.textcolor, tbox.textcolor_placeholder, tbox.focused, tbox.stored_string, tbox.displayed_string) do tc, tcph, foc, cont, disp
         # the textbox has normal text color if it's focused
         # if it's defocused, the displayed text has to match the stored text in order
         # to be normal colored
         return to_color(foc || cont == disp ? tc : tcph)
     end
 
-    t = Label(scene, text = displayed_string, bbox = bbox, halign = :left, valign = :top,
+    t = Label(scene, text = tbox.displayed_string, bbox = bbox, halign = :left, valign = :top,
         width = Auto(true), height = Auto(true), color = realtextcolor,
-        textsize = textsize, padding = textpadding)
+        textsize = tbox.textsize, padding = tbox.textpadding)
 
     displayed_charbbs = lift(t.layoutobservables.reportedsize) do sz
-        charbbs(t.elements[:text])
+        textplot = t.blockscene.plots[1]
+        charbbs(textplot)
     end
 
     cursorpoints = lift(cursorindex, displayed_charbbs) do ci, bbs
 
-
-        glyphcollection = t.elements[:text].plots[1][1][]::Makie.GlyphCollection
+        textplot = t.blockscene.plots[1]
+        charbbs(textplot)
+        glyphcollection = textplot.plots[1][1][]::Makie.GlyphCollection
 
         hadvances = Float32[]
         broadcast_foreach(glyphcollection.extents, glyphcollection.scales) do ex, sc
@@ -115,27 +96,27 @@ function block(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
         end
     end
 
-    cursor = linesegments!(scene, cursorpoints, color = cursorcolor, linewidth = 2, inspectable = false)
+    cursor = linesegments!(scene, cursorpoints, color = tbox.cursorcolor, linewidth = 2, inspectable = false)
 
-    cursoranimtask = nothing
+    tbox.cursoranimtask = nothing
 
     on(t.layoutobservables.reportedsize) do sz
-        layoutobservables.autosize[] = sz
+        tbox.layoutobservables.autosize[] = sz
     end
 
     # trigger text for autosize
-    t.text = displayed_string[]
+    t.text = tbox.displayed_string[]
 
     # trigger bbox
-    layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
+    tbox.layoutobservables.suggestedbbox[] = tbox.layoutobservables.suggestedbbox[]
 
     mouseevents = addmouseevents!(scene)
 
     onmouseleftdown(mouseevents) do state
-        focus!(ltextbox)
+        focus!(tbox)
 
-        if displayed_string[] == placeholder[] || displayed_string[] == " "
-            displayed_string[] = " "
+        if tbox.displayed_string[] == tbox.placeholder[] || tbox.displayed_string[] == " "
+            tbox.displayed_string[] = " "
             cursorindex[] = 0
             return Consume(true)
         end
@@ -165,10 +146,10 @@ function block(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
     end
 
     onmousedownoutside(mouseevents) do state
-        if reset_on_defocus[]
+        if tbox.reset_on_defocus[]
             reset_to_stored()
         end
-        defocus!(ltextbox)
+        defocus!(tbox)
         return Consume(false)
     end
 
@@ -178,12 +159,12 @@ function block(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
             index = 1
         end
         newchars = [displayed_chars[][1:index-1]; c; displayed_chars[][index:end]]
-        displayed_string[] = join(newchars)
+        tbox.displayed_string[] = join(newchars)
         cursorindex[] = index
     end
 
     function appendchar!(c)
-        insertchar!(c, length(displayed_string[]))
+        insertchar!(c, length(tbox.displayed_string[]))
     end
 
     function removechar!(index)
@@ -197,11 +178,11 @@ function block(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
             cursorindex[] = max(0, cursorindex[] - 1)
         end
 
-        displayed_string[] = join(newchars)
+        tbox.displayed_string[] = join(newchars)
     end
 
     on(events(scene).unicode_input, priority = 60) do char
-        if focused[] && is_allowed(char, restriction[])
+        if tbox.focused[] && is_allowed(char, tbox.restriction[])
             insertchar!(char, cursorindex[] + 1)
             return Consume(true)
         end
@@ -211,22 +192,22 @@ function block(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
 
     function submit()
         if displayed_is_valid[]
-            stored_string[] = displayed_string[]
+            tbox.stored_string[] = tbox.displayed_string[]
         end
     end
 
     function reset_to_stored()
         cursorindex[] = 0
-        if isnothing(stored_string[])
-            displayed_string[] = placeholder[]
+        if isnothing(tbox.stored_string[])
+            tbox.displayed_string[] = tbox.placeholder[]
         else
-            displayed_string[] = stored_string[]
+            tbox.displayed_string[] = tbox.stored_string[]
         end
     end
 
     function cursor_forward()
-        if displayed_string[] != " "
-            cursorindex[] = min(length(displayed_string[]), cursorindex[] + 1)
+        if tbox.displayed_string[] != " "
+            cursorindex[] = min(length(tbox.displayed_string[]), cursorindex[] + 1)
         end
     end
 
@@ -236,7 +217,7 @@ function block(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
 
 
     on(events(scene).keyboardbutton, priority = 60) do event
-        if focused[]
+        if tbox.focused[]
             if event.action != Keyboard.release
                 key = event.key
                 if key == Keyboard.backspace
@@ -245,14 +226,14 @@ function block(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
                     removechar!(cursorindex[] + 1)
                 elseif key == Keyboard.enter
                     submit()
-                    if defocus_on_submit[]
-                        defocus!(ltextbox)
+                    if tbox.defocus_on_submit[]
+                        defocus!(tbox)
                     end
                 elseif key == Keyboard.escape
-                    if reset_on_defocus[]
+                    if tbox.reset_on_defocus[]
                         reset_to_stored()
                     end
-                    defocus!(ltextbox)
+                    defocus!(tbox)
                 elseif key == Keyboard.right
                     cursor_forward()
                 elseif key == Keyboard.left
@@ -265,7 +246,7 @@ function block(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
         return Consume(false)
     end
 
-    ltextbox
+    tbox
 end
 
 
