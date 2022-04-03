@@ -333,11 +333,11 @@ function initialize_block!(ax::Axis)
     end
 
     # trigger first protrusions with one of the observables
-    ax.title[] = ax.title[]
+    notify(ax.title)
 
     # trigger bboxnode so the axis layouts itself even if not connected to a
     # layout
-    ax.layoutobservables.suggestedbbox[] = ax.layoutobservables.suggestedbbox[]
+    notify(ax.layoutobservables.suggestedbbox)
 
     mouseeventhandle = addmouseevents!(scene)
     setfield!(ax, :mouseeventhandle, mouseeventhandle)
