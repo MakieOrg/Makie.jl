@@ -93,34 +93,19 @@ function make_attr_dict_expr(::Nothing, sceneattrsym, curthemesym)
     :(Dict())
 end
 
-function _argument_string(@nospecialize meth::Method)
-    s = string(meth)
-    r = Regex("^initialize_block!\\((.*?)\\)")
-    args = match(r, s)[1]
-    args_split = split(args, ",", limit = 2)
-    return if length(args_split) == 1
-        ""
-    else
-        strip(args_split[2])
-    end
-end
-
 function Docs.getdoc(@nospecialize T::Type{<:Block})
 
     ks = sort(collect(keys(default_attribute_values(T, nothing))))
 
-    methods = InteractiveUtils.methodswith(T, initialize_block!)
-    methodstrings = map(methods) do m
-        as = _argument_string(m)
-        """```julia
-        $T(fig_scene_or_gridpos$(isempty(as) ? "" : ", ")$as)
-        ```"""
-    end
+    methods = Base.methods(T)
+    methodstrings = repr.(methods)
 
     s = """
     `$T` is a `Block`.
     It has the following methods defined:
+    ```julia
     $(join(methodstrings, "\n"))
+    ```
 
     ## Attributes
 
