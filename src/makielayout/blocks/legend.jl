@@ -185,7 +185,7 @@ function initialize_block!(leg::Legend,
                 push!(titletexts, nothing)
             else
                 push!(titletexts, Label(scene, text = title, font = leg.titlefont, color = leg.titlecolor,
-                    textsize = leg.titlesize, halign = leg.titlehalign, valign = leg.titlevalign, inspectable = false))
+                    textsize = leg.titlesize, halign = leg.titlehalign, valign = leg.titlevalign))
             end
 
             etexts = []
