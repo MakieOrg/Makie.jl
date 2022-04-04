@@ -220,14 +220,14 @@ function extract_attributes!(body)
             attr_symbol = left.args[1]::Symbol
             type = left.args[2]
         end
-        
+
         (docs = docs, symbol = attr_symbol, type = type, default = default)
     end
 
     attrs = map(extract_attr, args)
 
     lras = map(extract_attr, layout_related_attributes)
-        
+
     for lra in lras
         i = findfirst(x -> x.symbol == lra.symbol, attrs)
         if i === nothing
@@ -363,9 +363,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
         # for this it seems to be necessary to zero-out a possible non-zero
         # origin of the parent
         lift(Makie.zero_origin, topscene.px_area),
-        camera = campixel!,
-        show_axis = false,
-        raw = true
+        camera = campixel!
     )
 
     # create base block with otherwise undefined fields
@@ -401,7 +399,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
             GridLayoutBase.align_to_bbox!(b.layout, bb)
         end
     end
-    
+
 
     # in this function, the block specific setup logic is executed and the remaining
     # uninitialized fields are filled
