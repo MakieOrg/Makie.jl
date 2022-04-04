@@ -129,8 +129,6 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
     mouseevent = Observable{MouseEvent}(
         MouseEvent(MouseEventTypes.out, 0.0, Point2f(0, 0), Point2f(0, 0), 0.0, Point2f(0, 0), Point2f(0, 0))
     )
-    mouseevent.use_priority = true
-
     # initialize state variables
     last_mouseevent = Ref{Mouse.Action}(Mouse.release)
     prev_data = Ref(mouseposition(scene))
