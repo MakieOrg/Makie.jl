@@ -37,6 +37,8 @@ end
 is_plot_type_3d(p::PlotFunc) = is_plot_type_3d(Makie.conversion_trait(p))
 is_plot_type_3d(::Type{<: Union{Surface, Volume}}) = true
 is_plot_type_3d(::Type{<: Contour}) = nothing
+is_plot_type_3d(::Type{<:Image}) = false
+is_plot_type_3d(::Type{<:Heatmap}) = false
 is_plot_type_3d(::VolumeLike) = true
 is_plot_type_3d(x) = nothing
 
