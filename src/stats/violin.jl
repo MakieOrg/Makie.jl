@@ -19,6 +19,7 @@ Draw a violin plot.
         boundary = automatic,
         bandwidth = automatic,
         side = :both,
+        orientation = :vertical,
         width = automatic,
         dodge = automatic,
         n_dodge = automatic,
@@ -47,9 +48,16 @@ end
 function plot!(plot::Violin)
     x, y = plot[1], plot[2]
     args = @extract plot (width, side, color, show_median, npoints, boundary, bandwidth,
-        datalimits, max_density, dodge, n_dodge, gap, dodge_gap)
-    signals = lift(x, y, args...) do x, y, width, vside, color, show_median, n, bound, bw, limits, max_density, dodge, n_dodge, gap, dodge_gap
+        datalimits, max_density, dodge, n_dodge, gap, dodge_gap, orientation)
+    signals = lift(x, y, args...) do x, y, width, vside, color, show_median, n, bound, bw, limits, max_density, dodge, n_dodge, gap, dodge_gap, orientation
         x̂, violinwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
+
+        # for horizontal violin just flip all componentes
+        fpoint, frect = Point2f, Rectf
+        if orientation == :horizontal
+            fpoint = _flip_xy ∘ fpoint
+            frect = _flip_xy ∘ frect
+        end
 
         # Allow `side` to be either scalar or vector
         sides = broadcast(x̂, vside) do _, s
@@ -99,7 +107,7 @@ function plot!(plot::Violin)
             else
                 [spec.x; xr; spec.x; xl], [yr[1]; yr; yl[1]; yl]
             end
-            verts = Point2f.(x_coord, y_coord)
+            verts = fpoint.(x_coord, y_coord)
             push!(vertices, verts)
 
             if show_median
@@ -109,8 +117,8 @@ function plot!(plot::Violin)
                 ym₋, ym₊ = spec.kde.density[ip-1], spec.kde.density[ip]
                 xm₋, xm₊ = spec.kde.x[ip-1], spec.kde.x[ip]
                 ym = (xm * (ym₊ - ym₋) + xm₊ * ym₋ - xm₋ * ym₊) / (xm₊ - xm₋)
-                median_left = Point2f(spec.side == 1 ? spec.x : spec.x - ym * scale, xm)
-                median_right = Point2f(spec.side == -1 ? spec.x : spec.x + ym * scale, xm)
+                median_left = fpoint(spec.side == 1 ? spec.x : spec.x - ym * scale, xm)
+                median_right = fpoint(spec.side == -1 ? spec.x : spec.x + ym * scale, xm)
                 push!(lines, median_left => median_right)
             end
 
