@@ -53,10 +53,9 @@ function plot!(plot::Violin)
         x̂, violinwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
 
         # for horizontal violin just flip all componentes
-        fpoint, frect = Point2f, Rectf
+        point_func = Point2f
         if orientation == :horizontal
-            fpoint = _flip_xy ∘ fpoint
-            frect = _flip_xy ∘ frect
+            point_func = flip_xy ∘ point_func
         end
 
         # Allow `side` to be either scalar or vector
@@ -107,7 +106,7 @@ function plot!(plot::Violin)
             else
                 [spec.x; xr; spec.x; xl], [yr[1]; yr; yl[1]; yl]
             end
-            verts = fpoint.(x_coord, y_coord)
+            verts = point_func.(x_coord, y_coord)
             push!(vertices, verts)
 
             if show_median
@@ -117,8 +116,8 @@ function plot!(plot::Violin)
                 ym₋, ym₊ = spec.kde.density[ip-1], spec.kde.density[ip]
                 xm₋, xm₊ = spec.kde.x[ip-1], spec.kde.x[ip]
                 ym = (xm * (ym₊ - ym₋) + xm₊ * ym₋ - xm₋ * ym₊) / (xm₊ - xm₋)
-                median_left = fpoint(spec.side == 1 ? spec.x : spec.x - ym * scale, xm)
-                median_right = fpoint(spec.side == -1 ? spec.x : spec.x + ym * scale, xm)
+                median_left = point_func(spec.side == 1 ? spec.x : spec.x - ym * scale, xm)
+                median_right = point_func(spec.side == -1 ? spec.x : spec.x + ym * scale, xm)
                 push!(lines, median_left => median_right)
             end
 
