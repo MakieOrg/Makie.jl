@@ -109,7 +109,7 @@ fig
 
 When there are several heatmaps in a single figure, it can be useful
 to have a single colorbar represent all of them. It is important to then 
-have syncronized scales and colormaps for the heatmaps and colorbar. This is done by
+have synchronized scales and colormaps for the heatmaps and colorbar. This is done by
 setting the colorrange explicitly, so that it is independent of the data shown by 
 that particular heatmap.
 
