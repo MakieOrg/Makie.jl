@@ -15,8 +15,23 @@ function is_plot_3d(p::PlotFunc, args...)
     # First check if the Plot type "knows" wheather it's always 3D
     result = is_plot_type_3d(p)
     isnothing(result) || return result
+
     # Otherwise, we check the arguments
-    return are_args_3d(to_value.(args)...)
+    non_obs = to_value.(args)
+    conv = try
+        convert_arguments(p, non_obs...)
+    catch e
+        if e isa MethodError
+            conv = non_obs
+        else
+            rethrow(e)
+        end
+    end
+
+    Typ, args_conv = apply_convert!(p, Attributes(), conv)
+    result = is_plot_type_3d(Typ)
+    isnothing(result) || return result
+    return are_args_3d(args_conv...)
 end
 
 is_plot_type_3d(p::PlotFunc) = is_plot_type_3d(Makie.conversion_trait(p))
@@ -33,12 +48,13 @@ end
 are_args_3d(x) = nothing
 are_args_3d(x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Union{AbstractArray{<: Any, 3}, Function}) = true
 are_args_3d(m::AbstractArray{T, 3}) where T = true
-are_args_3d(x::AbstractVector, y::AbstractVector, z::AbstractVector) = true
+are_args_3d(x::AbstractVector, y::AbstractVector, z::AbstractArray) = true
 function are_args_3d(m::Union{AbstractGeometry, GeometryBasics.Mesh})
     return ndims(m) == 2 ? false : !is2d(Rect3f(m))
 end
 are_args_3d(x, y, z, m::AbstractArray{<: Any, 3}) = true
 are_args_3d(xyz::AbstractVector{<: Point3}) = any(x-> x[3] > 0, xyz)
+are_args_3d(xyz::AbstractArray{<: Number}) = true
 
 function get_axis_type(p::PlotFunc, args...)
     result = is_plot_3d(p, args...)
