@@ -35,7 +35,7 @@ are_args_3d(x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Union{Ab
 are_args_3d(m::AbstractArray{T, 3}) where T = true
 are_args_3d(x::AbstractVector, y::AbstractVector, z::AbstractVector) = true
 function are_args_3d(m::Union{AbstractGeometry, GeometryBasics.Mesh})
-    return ndims(m) == 2 ? false : !is2d(Rect(m))
+    return ndims(m) == 2 ? false : !is2d(Rect3f(m))
 end
 are_args_3d(x, y, z, m::AbstractArray{<: Any, 3}) = true
 are_args_3d(xyz::AbstractVector{<: Point3}) = any(x-> x[3] > 0, xyz)
