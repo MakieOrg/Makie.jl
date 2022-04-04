@@ -112,7 +112,7 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
             end
             tex_elements, glyphcollections, offsets
         else
-            tex_elements, glyphcollection, offset = texelems_and_glyph_collection(latexstring, ts,
+            tex_elements, glyphcollections, offsets = texelems_and_glyph_collection(latexstring, ts,
                 al[1], al[2], rot, color, scolor, swidth)
         end
     end

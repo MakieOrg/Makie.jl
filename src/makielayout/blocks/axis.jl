@@ -468,7 +468,7 @@ function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
             (lo, hi)
         end
     else
-        convert(Tuple{Float32, Float32}, mylims)
+        convert(Tuple{Float32, Float32}, tuple(mylims...))
     end
 
     if ax isa Axis3
@@ -486,7 +486,7 @@ function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
                 (lo, hi)
             end
         else
-            convert(Tuple{Float32, Float32}, mzlims)
+            convert(Tuple{Float32, Float32}, tuple(mzlims...))
         end
     end
 
