@@ -26,7 +26,7 @@ function Makie.plot!(
     else
         # Update limits when plotting new objects
         axis_plot = lscene.scene[OldAxis]
-        axis_plot[1] = get_lims()
+        axis_plot[1] = to_value(get_lims())
     end
     # Make sure axis is always in pos 1
     sort!(lscene.scene.plots, by=!Makie.isaxis)
