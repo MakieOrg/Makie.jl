@@ -53,6 +53,10 @@ function GLBuffer(
     return b
 end
 
+# no-op conversions
+GLBuffer(buffer::GLBuffer) = buffer
+GLBuffer{T}(buffer::GLBuffer{T}) where {T} = buffer
+
 function GLBuffer(
         buffer::AbstractVector{T};
         kw_args...
