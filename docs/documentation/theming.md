@@ -40,7 +40,7 @@ Now we define a theme which changes the default fontsize, activate it, and plot.
 
 \begin{examplefigure}{}
 ```julia
-fontsize_theme = Theme(fontsize = 10)
+fontsize_theme = Theme(:fontsize => 10)
 set_theme!(fontsize_theme)
 
 example_plot()
