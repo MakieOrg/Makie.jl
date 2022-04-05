@@ -17,7 +17,6 @@ $(ATTRIBUTES)
 """
 @recipe(Contour) do scene
     default = default_theme(scene)
-    # pop!(default, :color)
     Attributes(;
         default...,
         color = nothing,
@@ -32,7 +31,7 @@ $(ATTRIBUTES)
 end
 
 """
-    contour3d(x, y, z)
+    contour3dcontour3d(x, y, z)
 
 Creates a 3D contour plot of the plane spanning x::Vector, y::Vector, z::Matrix,
 with z-elevation for each level.
@@ -43,6 +42,8 @@ $(ATTRIBUTES)
 @recipe(Contour3d) do scene
     default_theme(scene, Contour)
 end
+
+is_plot_type_3d(::Type{<:Contour3d}) = true
 
 function contourlines(::Type{<: Contour}, contours, cols)
     result = Point2f[]
