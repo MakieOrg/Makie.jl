@@ -163,14 +163,15 @@ function cairo_draw(screen::CairoScreen, scene::Scene)
         to_value(get(p, :visible, true)) || continue
         # only prepare for scene when it changes
         # this should reduce the number of unnecessary clipping masks etc.
-        if p.parent != last_scene
+        pparent = p.parent::Scene
+        if pparent != last_scene
             Cairo.restore(screen.context)
             Cairo.save(screen.context)
-            prepare_for_scene(screen, p.parent)
-            last_scene = p.parent
+            prepare_for_scene(screen, pparent)
+            last_scene = pparent
         end
         Cairo.save(screen.context)
-        draw_plot(p.parent, screen, p)
+        draw_plot(pparent, screen, p)
         Cairo.restore(screen.context)
     end
 

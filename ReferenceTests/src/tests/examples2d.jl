@@ -405,3 +405,26 @@ end
     end
     fig
 end
+
+@cell "Scatter & Text transformations" begin
+    # Check that transformations apply in `space = :data`
+    fig, ax, p = scatter(Point2f(100, 0.5), marker = 'a', markersize=50)
+    t = text!("Test", position = Point2f(100, 0.5), textsize = 50)
+    translate!(p, -100, 0, 0)
+    translate!(t, -100, 0, 0)
+
+    # Check that scale and rotate don't act on the marker for scatter (only the position)
+    p2 = scatter!(ax, Point2f(1, 0), marker= 'a', markersize = 50)
+    Makie.rotate!(p2, pi/4)
+    scale!(p2, 0.5, 0.5, 1)
+
+    # but do act on glyphs of text
+    t2 = text!(ax, "Test", position = Point2f(1, 0), textsize = 50)
+    Makie.rotate!(t2, pi/4)
+    scale!(t2, 0.5, 0.5, 1)
+
+    xlims!(ax, -0.2, 0.5)
+    ylims!(ax, 0, 1)
+
+    fig
+end

@@ -111,5 +111,8 @@ function _precompile_()
     )
 
     CairoMakie.draw_mesh3D(scene, screen, attributes, mesh2)
+    mktempdir() do path
+        save(joinpath(path, "test.png"), scatter(1:4))
+    end
     return
 end

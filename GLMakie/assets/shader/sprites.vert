@@ -73,6 +73,7 @@ vec4 _color(Nothing color, sampler1D intensity, sampler1D color_map, vec2 color_
 {{glow_color_type}} glow_color;
 
 uniform mat4 preprojection;
+uniform mat4 model;
 uniform uint objectid;
 uniform int len;
 
@@ -94,8 +95,8 @@ void main(){
     g_primitive_index = index;
     vec3 pos;
     {{position_calc}}
-    vec4 p = preprojection * vec4(pos, 1);
-    g_position        = p.xyz / p.w + marker_offset;
+    vec4 p = preprojection * model * vec4(pos, 1);
+    g_position        = p.xyz / p.w + mat3(model) * marker_offset;
     g_offset_width.xy = quad_offset.xy;
     g_offset_width.zw = scale.xy;
     g_color           = _color(color, intensity, color_map, color_norm, g_primitive_index, len);

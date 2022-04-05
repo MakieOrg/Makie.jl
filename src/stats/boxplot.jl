@@ -73,8 +73,8 @@ conversion_trait(x::Type{<:BoxPlot}) = SampleBased()
 _cycle(v::AbstractVector, idx::Integer) = v[mod1(idx, length(v))]
 _cycle(v, idx::Integer) = v
 
-_flip_xy(p::Point2f) = reverse(p)
-_flip_xy(r::Rect{2,T}) where {T} = Rect{2,T}(reverse(r.origin), reverse(r.widths))
+flip_xy(p::Point2f) = reverse(p)
+flip_xy(r::Rect{2,T}) where {T} = Rect{2,T}(reverse(r.origin), reverse(r.widths))
 
 function Makie.plot!(plot::BoxPlot)
     args = @extract plot (width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap)
@@ -152,8 +152,8 @@ function Makie.plot!(plot::BoxPlot)
 
         # for horizontal boxplots just flip all components
         if orientation == :horizontal
-            outlier_points = _flip_xy.(outlier_points)
-            t_segments = _flip_xy.(t_segments)
+            outlier_points = flip_xy.(outlier_points)
+            t_segments = flip_xy.(t_segments)
         elseif orientation != :vertical
             error("Invalid orientation $orientation. Valid options: :horizontal or :vertical.")
         end
