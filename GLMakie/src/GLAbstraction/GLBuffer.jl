@@ -151,6 +151,10 @@ function Base.iterate(buffer::GLBuffer{T}) where T
     length(buffer) < 1 && return nothing
     glBindBuffer(buffer.buffertype, buffer.id)
     ptr = Ptr{T}(glMapBuffer(buffer.buffertype, GL_READ_WRITE))
+    if ptr == C_NULL
+        # XXX: ModernGL.jl should expose glErrorMessage/glCheckError
+        error("GLBuffer iterate: glMapBuffer failed (GL error: $(glGetError()))")
+    end
     return (unsafe_load(ptr, 1), (ptr, 2))
 end
 
