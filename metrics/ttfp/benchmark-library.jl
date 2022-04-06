@@ -157,8 +157,9 @@ function run_bench(info::BenchInfo; n=5)
     end
 
     results = Vector{Float64}[]
+    path = joinpath(@__DIR__, "benchmark-ttfp.jl")
     for i in 1:n
-        result = read(`$(Base.julia_cmd()) --project=$(project) ./benchmark-ttfp.jl`, String)
+        result = read(`$(Base.julia_cmd()) --project=$(project) $path`, String)
         tup = eval(Meta.parse(result))
         @show tup
         push!(results, [tup...])
@@ -191,7 +192,7 @@ function get_benchmark_data(ctx, info::BenchInfo; n=10, force=false)
             "date" => string(now()),
             "results" => results
         )
-        upload_data(ctx, JSON.json(result_with_info), repo_data_path, "for commit $(uuid[1:5])")
+        upload_data(ctx, JSON.json(result_with_info), repo_data_path, "for commit $(uuid)")
         return result_with_info
     end
 end
