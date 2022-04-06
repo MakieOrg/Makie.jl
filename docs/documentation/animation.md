@@ -195,4 +195,4 @@ record(fig, "heatmap_mandelbrot.mp4", 1:7:N) do i
     # yield() -> not required with record
 end
 ```
-\video{heatmap_mandelbrot, autoplay = true}
+\video{heatmap_mandelbrot, autoplay = false}

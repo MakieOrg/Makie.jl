@@ -12,6 +12,7 @@ CairoMakie/src/display.*
 
 WGLMakie/test/recorded/
 GLMakie/test/reference_test_output/
+CairoMakie/test/reference_test_output/
 RPRMakie/test/recorded/
 CairoMakie/test/recorded/
 CairoMakie/src/display.svg

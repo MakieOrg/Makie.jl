@@ -275,10 +275,10 @@ function add_translation!(scene, cam::Camera3D)
             end
         elseif event.action == Mouse.release && dragging[]
             mousepos = mouseposition_px(scene)
-            diff = compute_diff(last_mousepos[] - mousepos)
+            diff = compute_diff(last_mousepos[] .- mousepos)
             last_mousepos[] = mousepos
             dragging[] = false
-            translate_cam!(scene, cam, translationspeed[] * Vec3f(diff[1], diff[2], 0f0))
+            translate_cam!(scene, cam, translationspeed[] .* Vec3f(diff[1], diff[2], 0f0))
             return Consume(true)
         end
         return Consume(false)
@@ -288,7 +288,7 @@ function add_translation!(scene, cam::Camera3D)
     on(camera(scene), scene.events.mouseposition) do mp
         if dragging[] && ispressed(scene, button[])
             mousepos = screen_relative(scene, mp)
-            diff = compute_diff(last_mousepos[] - mousepos)
+            diff = compute_diff(last_mousepos[] .- mousepos)
             last_mousepos[] = mousepos
             translate_cam!(scene, cam, translationspeed[] * Vec3f(diff[1], diff[2], 0f0))
             return Consume(true)
@@ -325,7 +325,7 @@ function add_rotation!(scene, cam::Camera3D)
             mousepos = mouseposition_px(scene)
             dragging[] = false
             rot_scaling = rotationspeed[] * (e.window_dpi[] * 0.005)
-            mp = (last_mousepos[] - mousepos) * 0.01f0 * rot_scaling
+            mp = (last_mousepos[] .- mousepos) .* 0.01f0 .* rot_scaling
             last_mousepos[] = mousepos
             rotate_cam!(scene, cam, Vec3f(-mp[2], mp[1], 0f0), true)
             return Consume(true)
@@ -459,7 +459,7 @@ function _rotate_cam!(scene, cam::Camera3D, angles::VecTypes, from_mouse=false)
     right = cross(viewdir, up)  # +x
 
     x_axis = right
-    y_axis = cam.attributes[:fixed_axis][] ? Vec3f(0, 0, sign(up[3])) : up
+    y_axis = cam.attributes[:fixed_axis][] ? Vec3f(0, 0, ifelse(up[3] < 0, -1, 1)) : up
     z_axis = -viewdir
 
     fix_x = ispressed(scene, cam.attributes[:fix_x_key][])
@@ -604,7 +604,7 @@ function update_cam!(scene::Scene, camera::Camera3D, area3d::Rect)
     @extractvalue camera (lookat, eyeposition, upvector)
     bb = Rect3f(area3d)
     width = widths(bb)
-    half_width = width/2f0
+    half_width = width ./ 2f0
     middle = maximum(bb) - half_width
     old_dir = normalize(eyeposition .- lookat)
     camera.lookat[] = middle

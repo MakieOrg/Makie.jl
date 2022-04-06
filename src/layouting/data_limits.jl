@@ -30,12 +30,18 @@ function extrema_nan(itr)
     return (vmin, vmax)
 end
 
+function distinct_extrema_nan(x)
+    lo, hi = extrema_nan(x)
+    lo == hi ? (lo - 0.5f0, hi + 0.5f0) : (lo, hi)
+end
+
 function point_iterator(plot::Union{Scatter, MeshScatter, Lines, LineSegments})
     return plot.positions[]
 end
 
+# TODO?
 function point_iterator(text::Text{<: Tuple{<: Union{GlyphCollection, AbstractVector{GlyphCollection}}}})
-    if text.space[] == :data
+    if is_data_space(text.markerspace[])
         return decompose(Point, boundingbox(text))
     else
         if text.position[] isa VecTypes

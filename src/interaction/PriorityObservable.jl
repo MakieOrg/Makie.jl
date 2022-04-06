@@ -27,6 +27,15 @@ mutable struct PriorityObservable{T} <: AbstractObservable{T}
     PriorityObservable{Any}(@nospecialize(val)) = new{Any}(Pair{Int8, Vector{PrioCallback}}[], val)
 end
 
+function Base.precompile(observable::PriorityObservable)
+    tf = true
+    T = eltype(observable)
+    for (_, f) in observable.listeners
+        precompile(f, (T,))
+    end
+    return tf
+end
+
 """
     PriorityObservable(value)
 
