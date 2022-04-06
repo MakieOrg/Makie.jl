@@ -192,11 +192,11 @@ end
     yaxis::LineAxis
     @attributes begin
         "The xlabel string."
-        xlabel::String = ""
+        xlabel = ""
         "The ylabel string."
-        ylabel::String = ""
+        ylabel = ""
         "The axis title string."
-        title::String = ""
+        title = ""
         "The font family of the title."
         titlefont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "DejaVu Sans")
         "The title's font size."
