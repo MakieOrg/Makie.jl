@@ -1,6 +1,5 @@
-cd(@__DIR__)
 using Pkg
-Pkg.activate(".")
+Pkg.activate(@__DIR__)
 Pkg.instantiate()
 using JSON, Statistics, GitHub, Base64, SHA, Downloads, Dates, CairoMakie
 
@@ -8,24 +7,26 @@ include("benchmark-library.jl")
 
 ctx = github_context()
 
-project = "current-pr-project/"
-# It seems, that between julia versions, the manifest must be deleted to not get problems
-isdir(project) && rm(project; force=true, recursive=true)
-mkdir(project)
+projects = [
+    "MakieDev" => "prio-obs-precompiles",
+    "Latency" => "all",
+    "MakieMesh" => "mesh-precompiles",
+    "MakieCompiled" => "moah-precompiles]",
+    "MakieMaster" => "master",
+    "MakieAttributes" => "attribute-precompiles",
+    "MakieBlock" => "blocks-precompile",
+]
 
-Pkg.activate(project)
-Pkg.develop([(;path="../../MakieCore"), (;path="../../"), (;path="../../CairoMakie"), (;path="../../../GeometryBasics")])
-this_pr = BenchInfo(
-    project=project,
-    branch="current-pr",
-    commit=string(current_commit())
-)
 
-Pkg.activate(".")
+infos = map(projects) do (name, branch)
+    return BenchInfo(
+        project=joinpath(raw"C:\Users\sdani\SimiWorld\ProgrammerLife", name),
+        branch=branch,
+        commit=branch * "1"
+    )
+end
 
-get_benchmark_data(ctx, this_pr; n=10, force=true)
-
-plot_url = run_benchmarks(ctx, [GitHub.branch(ctx.repo, "master"), this_pr])
+plot_url = run_benchmarks(ctx, [GitHub.branch(ctx.repo, "master"), GitHub.tag(ctx.repo, "v0.16.3"), infos...])
 
 i1 = BenchInfo(commit="444eae5ce174d23d53c181144b357382bd57afa8", branch="julia1.9+this-pr")
 i2 = BenchInfo(commit="7ccf35e789fccdda2429b39b6b10f4e91adcc5fd", branch="julia1.9+no-static-arrays")
