@@ -400,7 +400,6 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
         end
     end
 
-
     # in this function, the block specific setup logic is executed and the remaining
     # uninitialized fields are filled
     initialize_block!(b, args...; non_attribute_kwargs...)
