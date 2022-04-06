@@ -128,14 +128,14 @@ ys = range(0, 2π, length=100)
 zs1 = [sin(x*y) for x in xs, y in ys]
 zs2 = [2sin(x*y) for x in xs, y in ys]
 
-my_limits = (-2, 2)  # choose some good limits for sin / 2sin
+joint_limits = (-2, 2)  # here we pick the limits manually for simplicity instead of computing them
 
-fig, ax1, hm1 = heatmap(xs, ys, zs1,  colorrange = my_limits)
-ax2, hm2 = heatmap(fig[1, end+1], xs, ys, zs2, colorrange = my_limits)
+fig, ax1, hm1 = heatmap(xs, ys, zs1,  colorrange = joint_limits)
+ax2, hm2 = heatmap(fig[1, end+1], xs, ys, zs2, colorrange = joint_limits)
 
 Colorbar(fig[:, end+1], hm1)                     # These three
 Colorbar(fig[:, end+1], hm2)                     # colorbars are
-Colorbar(fig[:, end+1], colorrange = my_limits)  # equivalent
+Colorbar(fig[:, end+1], colorrange = joint_limits)  # equivalent
 
 fig
 ```
