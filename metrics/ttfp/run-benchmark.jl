@@ -26,6 +26,6 @@ this_pr = BenchInfo(
     commit=current_commit()
 )
 
-Pkg.activate(".")
+Pkg.activate(@__DIR__)
 
 fig = run_benchmarks(ctx, [GitHub.branch(ctx.repo, "master"), this_pr]; force=true, n=5)
