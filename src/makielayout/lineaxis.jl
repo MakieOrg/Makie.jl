@@ -51,7 +51,7 @@ function LineAxis(parent::Scene; kwargs...)
     decorations[:minorticklines] = minorticklines
     realticklabelalign = Observable{Tuple{Symbol, Symbol}}()
 
-    map!(realticklabelalign, ticklabelalign, horizontal, flipped, ticklabelrotation) do al, (pos, ex, hor), fl, rot
+    map!(realticklabelalign, ticklabelalign, horizontal, flipped, ticklabelrotation) do al, hor, fl, rot
         if al !== automatic
             return al
         end
@@ -198,7 +198,7 @@ function LineAxis(parent::Scene; kwargs...)
     tickstrings = Observable(AbstractString[])
 
     onany(tickvalues_labels_unfiltered) do tickvalues_labels_unfiltered
-        
+
         tickvalues_unfiltered, tickstrings_unfiltered = tickvalues_labels_unfiltered
 
         lim_min, lim_max = limits[]
