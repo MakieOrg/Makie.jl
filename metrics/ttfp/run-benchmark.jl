@@ -1,6 +1,5 @@
-cd(@__DIR__)
 using Pkg
-Pkg.activate(".")
+Pkg.activate(@__DIR__)
 Pkg.instantiate()
 using JSON, Statistics, GitHub, Base64, SHA, Downloads, Dates, CairoMakie
 
