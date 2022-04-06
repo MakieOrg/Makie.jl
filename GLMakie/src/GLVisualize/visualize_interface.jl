@@ -1,3 +1,5 @@
+using ..GLMakie: enable_SSAO, transparency_weight_scale
+
 @enum Shape CIRCLE RECTANGLE ROUNDED_RECTANGLE DISTANCEFIELD TRIANGLE
 @enum CubeSides TOP BOTTOM FRONT BACK RIGHT LEFT
 
@@ -72,7 +74,7 @@ struct GLVisualizeShader <: AbstractLazyShader
         # TODO properly check what extensions are available
         @static if !Sys.isapple()
             view["GLSL_EXTENSIONS"] = "#extension GL_ARB_conservative_depth: enable"
-            view["SUPPORTED_EXTENSIONS"] = "#define DETPH_LAYOUT"
+            view["SUPPORTED_EXTENSIONS"] = "#define DEPTH_LAYOUT"
         end
         args = Dict{Symbol, Any}(kw_args)
         args[:view] = view
@@ -84,12 +86,9 @@ end
 function assemble_robj(data, program, bb, primitive, pre_fun, post_fun)
     transp = get(data, :transparency, Observable(false))
     overdraw = get(data, :overdraw, Observable(false))
-    pre = if pre_fun != nothing
+    pre = if !isnothing(pre_fun)
         _pre_fun = GLAbstraction.StandardPrerender(transp, overdraw)
-        function ()
-            _pre_fun()
-            pre_fun()
-        end
+        ()->(_pre_fun(); pre_fun())
     else
         GLAbstraction.StandardPrerender(transp, overdraw)
     end
@@ -99,11 +98,8 @@ function assemble_robj(data, program, bb, primitive, pre_fun, post_fun)
     else
         GLAbstraction.StandardPostrender(robj.vertexarray, primitive)
     end
-    robj.postrenderfunction = if post_fun !== nothing
-        () -> begin
-            post()
-            post_fun()
-        end
+    robj.postrenderfunction = if !isnothing(post_fun)
+        () -> (post(); post_fun())
     else
         post
     end
@@ -148,26 +144,10 @@ to_index_buffer(x) = error(
     Please choose from Int, Vector{UnitRange{Int}}, Vector{Int} or a signal of either of them"
 )
 
-"""
-Creates a default visualization for any value.
-The defaults can be customized via the key word arguments and the style parameter.
-The style can change the the look completely (e.g points displayed as lines, or particles),
-while the key word arguments just alter the parameters of one visualization.
-Always returns a context, which can be displayed on a window via view(::Context, [display]).
-"""
-visualize(@nospecialize(main), s::Symbol=:default; kw_args...) = visualize(main, Style{s}(), Dict{Symbol,Any}(kw_args))
-
-
 function visualize(@nospecialize(main), @nospecialize(s), @nospecialize(data))
     data = _default(main, s, copy(data))
-    @gen_defaults! data begin # make sure every object has these!
-        model = Mat4f(I)
-    end
     return assemble_shader(data)
 end
-
-# Make changes to fragment_output to match what's needed for postprocessing
-using ..GLMakie: enable_SSAO, transparency_weight_scale
 
 function output_buffers(transparency = false)
     if transparency
@@ -189,7 +169,7 @@ function output_buffer_writes(transparency = false)
         scale = transparency_weight_scale[]
         """
         float weight = color.a * max(0.01, $scale * pow((1 - gl_FragCoord.z), 3));
-        coverage = color.a;
+        coverage = 1.0 - clamp(color.a, 0.0, 1.0);
         fragment_color.rgb = weight * color.rgb;
         fragment_color.a = weight;
         """

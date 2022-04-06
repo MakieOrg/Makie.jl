@@ -328,3 +328,103 @@ end
 
 	fig
 end
+
+
+@cell "space 2D" begin
+    # This should generate a regular grid with text in a circle in a box. All 
+    # sizes and positions are scaled to be equal across all options.
+    fig = Figure(resolution = (700, 700))
+    ax = Axis(fig[1, 1], width = 600, height = 600)
+    spaces = (:data, :pixel, :relative, :clip)
+    xs = [
+        [0.1, 0.35, 0.6, 0.85], 
+        [0.1, 0.35, 0.6, 0.85] * 600,
+        [0.1, 0.35, 0.6, 0.85],
+        2 .* [0.1, 0.35, 0.6, 0.85] .- 1
+    ]
+    scales = (0.02, 12, 0.02, 0.04)
+    for (i, space) in enumerate(spaces)
+        for (j, mspace) in enumerate(spaces)
+            s = 1.5scales[i]
+            mesh!(
+                ax, Rect2f(xs[i][i] - 2s, xs[i][j] - 2s, 4s, 4s), space = space, 
+                shading = false, color = :blue)
+            lines!(
+                ax, Rect2f(xs[i][i] - 2s, xs[i][j] - 2s, 4s, 4s), 
+                space = space, linewidth = 2, color = :red)
+            scatter!(
+                ax, Point2f(xs[i][i], xs[i][j]), color = :orange,
+                markersize = 5scales[j], space = space, markerspace = mspace)
+            text!(
+                ax, "$space\n$mspace", position = Point2f(xs[i][i], xs[i][j]), 
+                textsize = scales[j], space = space, markerspace = mspace,
+                align = (:center, :center), color = :black)
+        end
+    end
+    xlims!(ax, 0, 1)
+    ylims!(ax, 0, 1)
+    fig
+end
+
+@cell "space 2D autolimits" begin
+    # Same code as above, but without setting limits. This should look different.
+    # Compared to the test above:
+    # - (data -> x) column should be centered in x direction
+    # - (data -> x) column: meshes and lines should be stretched in x direction
+    # - (data -> not data) column: circles and text should keep aspect
+    # - (x -> data) row should have stretched circle and text ain x direction
+    # - (not data -> data) should keep aspect ratio for mesh and lines
+    # - (data -> x) should be slightly missaligned with (not data -> x)
+    fig = Figure(resolution = (700, 700))
+    ax = Axis(fig[1, 1], width = 600, height = 600)
+    spaces = (:data, :pixel, :relative, :clip)
+    xs = [
+        [0.1, 0.35, 0.6, 0.85], 
+        [0.1, 0.35, 0.6, 0.85] * 600,
+        [0.1, 0.35, 0.6, 0.85],
+        2 .* [0.1, 0.35, 0.6, 0.85] .- 1
+    ]
+    scales = (0.02, 12, 0.02, 0.04)
+    for (i, space) in enumerate(spaces)
+        for (j, mspace) in enumerate(spaces)
+            s = 1.5scales[i]
+            mesh!(
+                ax, Rect2f(xs[i][i] - 2s, xs[i][j] - 2s, 4s, 4s), space = space, 
+                shading = false, color = :blue)
+            lines!(
+                ax, Rect2f(xs[i][i] - 2s, xs[i][j] - 2s, 4s, 4s), 
+                space = space, linewidth = 2, color = :red)
+            scatter!(
+                ax, Point2f(xs[i][i], xs[i][j]), color = :orange,
+                markersize = 5scales[j], space = space, markerspace = mspace)
+            text!(
+                ax, "$space\n$mspace", position = Point2f(xs[i][i], xs[i][j]), 
+                textsize = scales[j], space = space, markerspace = mspace,
+                align = (:center, :center), color = :black)
+        end
+    end
+    fig
+end
+
+@cell "Scatter & Text transformations" begin
+    # Check that transformations apply in `space = :data`
+    fig, ax, p = scatter(Point2f(100, 0.5), marker = 'a', markersize=50)
+    t = text!("Test", position = Point2f(100, 0.5), textsize = 50)
+    translate!(p, -100, 0, 0)
+    translate!(t, -100, 0, 0)
+
+    # Check that scale and rotate don't act on the marker for scatter (only the position)
+    p2 = scatter!(ax, Point2f(1, 0), marker= 'a', markersize = 50)
+    Makie.rotate!(p2, pi/4)
+    scale!(p2, 0.5, 0.5, 1)
+
+    # but do act on glyphs of text
+    t2 = text!(ax, "Test", position = Point2f(1, 0), textsize = 50)
+    Makie.rotate!(t2, pi/4)
+    scale!(t2, 0.5, 0.5, 1)
+
+    xlims!(ax, -0.2, 0.5)
+    ylims!(ax, 0, 1)
+
+    fig
+end

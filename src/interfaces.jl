@@ -13,7 +13,8 @@ function default_theme(scene)
         nan_color = RGBAf(0,0,0,0),
         ssao = false,
         inspectable = theme(scene, :inspectable),
-        depth_shift = 0f0
+        depth_shift = 0f0,
+        space = :data
     )
 end
 
@@ -22,7 +23,7 @@ function color_and_colormap!(plot, intensity = plot[:color])
         haskey(plot, :colormap) || error("Plot $(typeof(plot)) needs to have a colormap to allow the attribute color to be an array of numbers")
 
         replace_automatic!(plot, :colorrange) do
-            lift(extrema_nan, intensity)
+            lift(distinct_extrema_nan, intensity)
         end
         return true
     else
@@ -70,9 +71,9 @@ function calculated_attributes!(::Type{<: Scatter}, plot)
     replace_automatic!(plot, :markerspace) do
         lift(plot.markersize) do ms
             if ms isa Pixel || (ms isa AbstractVector && all(x-> ms isa Pixel, ms))
-                return Pixel
+                return :pixel
             else
-                return SceneSpace
+                return :data
             end
         end
     end
@@ -308,13 +309,13 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
     onany(kw_signal, lift(tuple, input_nodes...)) do kwargs, args
         # do the argument conversion inside a lift
         result = convert_arguments(FinalType, args...; kwargs...)
-        finaltype, argsconverted = apply_convert!(FinalType, attributes, result)
+        finaltype, argsconverted_ = apply_convert!(FinalType, attributes, result) # avoid a Core.Box (https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-captured)
         if finaltype != FinalType
             error("Plot type changed from $FinalType to $finaltype after conversion.
                 Changing the plot type based on values in convert_arguments is not allowed"
             )
         end
-        converted_node[] = argsconverted
+        converted_node[] = argsconverted_
     end
     plot!(scene, FinalType, attributes, input_nodes, converted_node)
 end

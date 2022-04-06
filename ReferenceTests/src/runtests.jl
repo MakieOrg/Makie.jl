@@ -50,64 +50,61 @@ function compare_media(a, b; sigma=[1,1])
     end
 end
 
-function compare(test_files::Vector{String}, reference_dir::String; o_refdir=reference_dir, missing_refimages=String[], scores=Dict{String,Float64}())
-    for test_path in test_files
-        ref_path = joinpath(reference_dir, basename(test_path))
-        if isdir(test_path)
-            if !isdir(ref_path)
-                push!(missing_refimages, test_path)
-            else
-                compare(joinpath.(test_path, readdir(test_path)), ref_path; o_refdir=reference_dir, missing_refimages=missing_refimages, scores=scores)
+function get_all_relative_filepaths_recursively(dir)
+    mapreduce(vcat, walkdir(dir)) do (root, dirs, files)
+        relpath.(joinpath.(root, files), dir)
+    end
+end
+
+function record_comparison(base_folder::String; record_folder_name="recorded", reference_folder_name = "reference")
+    record_folder = joinpath(base_folder, record_folder_name)
+    reference_folder = joinpath(base_folder, reference_folder_name)
+    testimage_paths = get_all_relative_filepaths_recursively(record_folder)
+    missing_refimages, scores = compare(testimage_paths, reference_folder, record_folder)
+
+    open(joinpath(base_folder, "new_files.txt"), "w") do file
+        for path in missing_refimages
+            println(file, path)
+        end
+    end
+
+    open(joinpath(base_folder, "scores.tsv"), "w") do file
+        paths_scores = sort(collect(pairs(scores)), by = last, rev = true)
+        for (path, score) in paths_scores
+            println(file, score, '\t', path)
+        end
+    end
+
+    return missing_refimages, scores
+end
+
+function test_comparison(missing_refimages, scores; threshold)
+    @testset "Comparison scores and missing reference images" begin
+        @test isempty(missing_refimages)
+        for (image, score) in pairs(scores)
+            @testset "$image" begin
+                @test score <= threshold
             end
-        elseif isfile(test_path)
-            if !isfile(ref_path)
-                push!(missing_refimages, test_path)
-            elseif endswith(test_path, ".html")
-                # ignore
-            else
-                diff = compare_media(test_path, ref_path)
-                name = relpath(ref_path, o_refdir)
-                @info(@sprintf "%1.4f == %s\n" diff name)
-                scores[name] = diff
-            end
+        end
+    end
+end
+
+function compare(relative_test_paths::Vector{String}, reference_dir::String, record_dir; o_refdir=reference_dir, missing_refimages=String[], scores=Dict{String,Float64}())
+    for relative_test_path in relative_test_paths
+        ref_path = joinpath(reference_dir, relative_test_path)
+        rec_path = joinpath(record_dir, relative_test_path)
+        if !isfile(ref_path)
+            push!(missing_refimages, relative_test_path)
+        elseif endswith(ref_path, ".html")
+            # ignore
+        else
+            diff = compare_media(rec_path, ref_path)
+            scores[relative_test_path] = diff
         end
     end
     return missing_refimages, scores
 end
 
-function run_reference_tests(db, recording_folder; difference=0.03, ref_images = download_refimages())
-    record_tests(db, recording_dir=recording_folder)
-    missing_files, scores = compare(joinpath.(recording_folder, readdir(recording_folder)), ref_images)
-    if !isempty(missing_files)
-        @warn("""
-        #################################
-        Newly recorded files found! The tests will pass, but uploading new reference images is required!
-        #################################
-        """)
-    end
-    open(joinpath(recording_folder, "new_files.html"), "w") do io
-        for filename in missing_files
-            println(io, "<h1> $(basename(filename)) </h1>")
-            println(io, """
-                <div>
-                    $(embed_media(filename))
-                </div>
-            """)
-        end
-    end
-
-    generate_test_summary(joinpath(recording_folder, "preview.html"), recording_folder, ref_images, scores)
-    reference_tests(scores; difference=difference)
-end
-
-function reference_tests(scores; difference=0.03)
-    @testset "Reference Image Tests" begin
-        @testset "$name" for (name, score) in scores
-            @test score < difference
-        end
-        return scores
-    end
-end
 
 function record_tests(db=load_database(); recording_dir=basedir("recorded"))
     recorded_files = String[]
@@ -144,8 +141,3 @@ function record_tests(db=load_database(); recording_dir=basedir("recorded"))
     return recorded_files, recording_dir
 end
 
-function run_tests(db=load_database(); ref_images = ReferenceTests.download_refimages(),
-                    recording_dir=joinpath(@__DIR__, "..", "recorded"), difference=0.03)
-    files, dir = record_tests(db, recording_dir=recording_dir)
-    reference_tests(recording_dir, ref_images=ref_images, difference=difference)
-end

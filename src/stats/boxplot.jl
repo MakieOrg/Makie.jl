@@ -28,7 +28,7 @@ The boxplot has 3 components:
     `:match` to match `width`
 - `show_outliers`: show outliers as points
 - `dodge`: vector of `Integer` (length of data) of grouping variable to create multiple side-by-side boxes at the same `x` position
-- `dodge_gap = 0.03`: spacing between dodged boxes 
+- `dodge_gap = 0.03`: spacing between dodged boxes
 """
 @recipe(BoxPlot, x, y) do scene
     Theme(
@@ -73,8 +73,8 @@ conversion_trait(x::Type{<:BoxPlot}) = SampleBased()
 _cycle(v::AbstractVector, idx::Integer) = v[mod1(idx, length(v))]
 _cycle(v, idx::Integer) = v
 
-_flip_xy(p::Point2f) = reverse(p)
-_flip_xy(r::Rect{2,T}) where {T} = Rect{2,T}(reverse(r.origin), reverse(r.widths))
+flip_xy(p::Point2f) = reverse(p)
+flip_xy(r::Rect{2,T}) where {T} = Rect{2,T}(reverse(r.origin), reverse(r.widths))
 
 function Makie.plot!(plot::BoxPlot)
     args = @extract plot (width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap)
@@ -152,8 +152,8 @@ function Makie.plot!(plot::BoxPlot)
 
         # for horizontal boxplots just flip all components
         if orientation == :horizontal
-            outlier_points = _flip_xy.(outlier_points)
-            t_segments = _flip_xy.(t_segments)
+            outlier_points = flip_xy.(outlier_points)
+            t_segments = flip_xy.(t_segments)
         elseif orientation != :vertical
             error("Invalid orientation $orientation. Valid options: :horizontal or :vertical.")
         end
@@ -188,7 +188,7 @@ function Makie.plot!(plot::BoxPlot)
         c = outliercolor === automatic ? color : outliercolor
         if c isa AbstractVector
             return c[outlier_indices]
-        else 
+        else
             return c
         end
     end
@@ -201,7 +201,8 @@ function Makie.plot!(plot::BoxPlot)
         strokecolor = plot[:outlierstrokecolor],
         strokewidth = plot[:outlierstrokewidth],
         outliers,
-        inspectable = plot[:inspectable]
+        inspectable = plot[:inspectable],
+        colorrange = @lift($boxcolor isa AbstractArray{<:Real} ? extrema($boxcolor) : automatic), # if only one group has outliers, the colorrange will be width 0 otherwise, if it's not an array, it shouldn't matter
     )
     linesegments!(
         plot,

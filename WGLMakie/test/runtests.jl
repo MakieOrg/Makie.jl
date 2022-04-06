@@ -36,11 +36,29 @@ excludes = Set([
     "heatmaps & surface",
     "OldAxis + Surface",
     "Order Independent Transparency",
-    "Record Video"
+    "Record Video",
+    "fast pixel marker",
+    "Animated surface and wireframe"
 ])
 
 database = database_filtered(excludes)
 
-recorded = joinpath(@__DIR__, "recorded")
-rm(recorded; force=true, recursive=true); mkdir(recorded)
-@time ReferenceTests.run_reference_tests(database, recorded; difference=0.032)
+basefolder = joinpath(@__DIR__, "reference_test_output")
+rm(basefolder; force=true, recursive=true)
+mkdir(basefolder)
+
+refimage_set = "refimages"
+tests_root_folder = joinpath(basefolder, refimage_set)
+mkdir(tests_root_folder)
+
+tests_record_folder = joinpath(tests_root_folder, "recorded")
+mkdir(tests_record_folder)
+
+ReferenceTests.record_tests(database, recording_dir = tests_record_folder)
+
+tests_refimages_download_folder = ReferenceTests.download_refimages(; name=refimage_set)
+tests_refimages_folder = joinpath(tests_root_folder, "reference")
+cp(tests_refimages_download_folder, tests_refimages_folder)
+
+missing_refimages, scores = ReferenceTests.record_comparison(tests_root_folder)
+ReferenceTests.test_comparison(missing_refimages, scores; threshold = 0.032)

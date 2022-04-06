@@ -17,18 +17,20 @@
 - `colormap::Union{Symbol, Vector{<:Colorant}} = :viridis` sets the colormap that is sampled for numeric `color`s.
 - `colorrange::Tuple{<:Real, <:Real}` sets the values representing the start and end points of `colormap`.
 - `nan_color::Union{Symbol, <:Colorant} = RGBAf(0,0,0,0)` sets a replacement color for `color = NaN`.
-
+- `space::Symbol = :data` sets the transformation space for positions of markers. See `Makie.spaces()` for possible inputs.
+  
 ### Other
 
 - `cycle::Vector{Symbol} = [:color]` sets which attributes to cycle when creating multiple plots.
 - `marker::Union{Symbol, Char, Matrix{<:Colorant}}` sets the scatter marker.
 - `markersize::Union{<:Real, Vec2f} = 9` sets the size of the marker.
-- `markerspace::Union{Type{Pixel}, Type{SceneSpace}} = Pixel` sets the space in which `markersize` is given. (I.e. `Pixel` units or `SceneSpace` (data) units)
+- `markerspace::Symbol = :pixel` sets the space in which `markersize` is given. See `Makie.spaces()` for possible inputs.
 - `strokewidth::Real = 0` sets the width of the outline around a marker.
 - `strokecolor::Union{Symbol, <:Colorant} = :black` sets the color of the outline around a marker.
 - `glowwidth::Real = 0` sets the size of a glow effect around the marker.
 - `glowcolor::Union{Symbol, <:Colorant} = (:black, 0)` sets the color of the glow effect.
 - `rotations::Union{Real, Billboard, Quaternion} = Billboard(0f0)` sets the rotation of the marker. A `Billboard` rotation is always around the depth axis.
+- `transform_marker::Bool = false` controls whether the model matrix (without translation) applies to the marker itself, rather than just the positions. (If this is true, `scale!` and `rotate!` will affect the marker.)
 
 ## Examples
 
@@ -179,8 +181,7 @@ f
 
 ### Marker space
 
-By default, marker sizes do not scale relative to the data limits.
-You can enable this by setting `markerspace = SceneSpace`.
+By default marker sizes are given in pixel units. You can change this by adjusting `markerspace`. For example, you can have a marker scaled in data units by setting `markerspace = :data`. 
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -192,10 +193,10 @@ f = Figure()
 ax = Axis(f[1, 1])
 limits!(ax, -10, 10, -10, 10)
 
-scatter!(ax, Point2f(0, 0), markersize = 20, markerspace = SceneSpace,
-    marker = '✈', label = "markerspace = SceneSpace")
-scatter!(ax, Point2f(0, 0), markersize = 20, markerspace = Pixel,
-    marker = '✈', label = "markerspace = Pixel")
+scatter!(ax, Point2f(0, 0), markersize = 20, markerspace = :data,
+    marker = '✈', label = "markerspace = :data")
+scatter!(ax, Point2f(0, 0), markersize = 20, markerspace = :pixel,
+    marker = '✈', label = "markerspace = :pixel")
 
 axislegend(ax)
 

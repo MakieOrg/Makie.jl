@@ -2,6 +2,21 @@
 
 [WGLMakie](https://github.com/JuliaPlots/Makie.jl/tree/master/WGLMakie) is the Web-based backend, and is still experimental (though relatively feature-complete). WGLMakie uses [JSServe](https://github.com/SimonDanisch/JSServe.jl) to generate the HTML and JS for the Makie plots.
 
+
+## Activation
+
+Activate the backend by calling `WGLMakie.activate!()` with the following options:
+```julia:docs
+# hideall
+using WGLMakie, Markdown
+println("~~~")
+println(Markdown.html(@doc WGLMakie.activate!))
+println("~~~")
+```
+\textoutput{docs}
+
+## Output
+
 You can use JSServe and WGLMakie in Pluto, IJulia, Webpages and Documenter to create interactive apps and dashboards, serve them on live webpages, or export them to static HTML.
 
 This tutorial will run through the different modes and what kind of limitations to expect.

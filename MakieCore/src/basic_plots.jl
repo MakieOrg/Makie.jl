@@ -27,7 +27,8 @@ Plots an image on range `x, y` (defaults to dimensions).
         fxaa = false,
         lowclip = nothing,
         highclip = nothing,
-        inspectable = theme(scene, :inspectable)
+        inspectable = theme(scene, :inspectable),
+        space = :data
     )
 end
 
@@ -49,7 +50,8 @@ Plots a heatmap as an image on `x, y` (defaults to interpretation as dimensions)
         fxaa = true,
         lowclip = nothing,
         highclip = nothing,
-        inspectable = theme(scene, :inspectable)
+        inspectable = theme(scene, :inspectable),
+        space = :data
     )
 end
 
@@ -76,7 +78,8 @@ Available algorithms are:
         colormap = theme(scene, :colormap),
         colorrange = (0, 1),
         fxaa = true,
-        inspectable = theme(scene, :inspectable)
+        inspectable = theme(scene, :inspectable),
+        space = :data
     )
 end
 
@@ -99,7 +102,8 @@ Plots a surface, where `(x, y)`  define a grid whose heights are the entries in 
         lowclip = nothing,
         highclip = nothing,
         invert_normals = false,
-        inspectable = theme(scene, :inspectable)
+        inspectable = theme(scene, :inspectable),
+        space = :data
     )
 end
 
@@ -123,7 +127,8 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
         linestyle = nothing,
         fxaa = false,
         cycle = [:color],
-        inspectable = theme(scene, :inspectable)
+        inspectable = theme(scene, :inspectable),
+        space = :data
     )
 end
 
@@ -156,11 +161,12 @@ Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [Geome
         backlight = 0f0,
         colormap = theme(scene, :colormap),
         colorrange = automatic,
-        interpolate = false,
+        interpolate = true,
         shading = true,
         fxaa = true,
         inspectable = theme(scene, :inspectable),
         cycle = [:color => :patchcolor],
+        space = :data
     )
 end
 
@@ -191,7 +197,8 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
         transform_marker = false, # Applies the plots transformation to marker
         distancefield = nothing,
         uv_offset_width = (0.0, 0.0, 0.0, 0.0),
-        markerspace = Pixel,
+        space = :data,
+        markerspace = :pixel,
         fxaa = false,
         cycle = [:color],
         inspectable = theme(scene, :inspectable)
@@ -217,7 +224,7 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
         markersize = 0.1,
         rotations = 0.0,
         backlight = 0f0,
-        # markerspace = relative,
+        space = :data,
         shading = true,
         fxaa = true,
         inspectable = theme(scene, :inspectable),
@@ -244,7 +251,8 @@ Plots a text.
         position = (0.0, 0.0),
         justification = automatic,
         lineheight = 1.0,
-        space = :screen, # or :data
+        space = :data,
+        markerspace = :pixel,
         offset = (0.0, 0.0),
         inspectable = theme(scene, :inspectable)
     )

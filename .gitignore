@@ -11,8 +11,8 @@ Manifest.toml
 CairoMakie/src/display.*
 
 WGLMakie/test/recorded/
-GLMakie/test/recorded/
-GLMakie/test/recorded_glmakie/
+GLMakie/test/reference_test_output/
+CairoMakie/test/reference_test_output/
 RPRMakie/test/recorded/
 CairoMakie/test/recorded/
 CairoMakie/src/display.svg
@@ -21,3 +21,5 @@ CairoMakie/src/display.png
 monorepo
 .vscode/settings.json
 docs/documentation/news.md
+
+metrics/ttfp/current-pr-project/

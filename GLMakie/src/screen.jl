@@ -375,11 +375,7 @@ function Screen(;
         Dict{UInt32, AbstractPlot}(),
     )
 
-    GLFW.SetWindowRefreshCallback(window, window -> begin
-        screen.render_tick[] = nothing
-        render_frame(screen)
-        GLFW.SwapBuffers(window)
-    end)
+    GLFW.SetWindowRefreshCallback(window, window -> refreshwindowcb(window, screen))
 
     screen.rendertask[] = @async((WINDOW_CONFIG.renderloop[])(screen))
     # display window if visible!
@@ -415,6 +411,11 @@ function global_gl_screen(resolution::Tuple, visibility::Bool, tries = 1)
     screen
 end
 
+function refreshwindowcb(window, screen)
+    screen.render_tick[] = nothing
+    render_frame(screen)
+    return GLFW.SwapBuffers(window)
+end
 
 #################################################################################
 ### Point picking
@@ -456,7 +457,7 @@ function pick_native(screen::Screen, xy::Vec{2, Float64})
     return SelectionID{Int}(0, 0)
 end
 
-function Makie.pick(scene::SceneLike, screen::Screen, xy::Vec{2, Float64})
+function Makie.pick(scene::Scene, screen::Screen, xy::Vec{2, Float64})
     sid = pick_native(screen, xy)
     if haskey(screen.cache2plot, sid.id)
         plot = screen.cache2plot[sid.id]
@@ -466,7 +467,7 @@ function Makie.pick(scene::SceneLike, screen::Screen, xy::Vec{2, Float64})
     end
 end
 
-function Makie.pick(scene::SceneLike, screen::Screen, rect::Rect2i)
+function Makie.pick(scene::Scene, screen::Screen, rect::Rect2i)
     map(pick_native(screen, rect)) do sid
         if haskey(screen.cache2plot, sid.id)
             (screen.cache2plot[sid.id], sid.index)
@@ -478,7 +479,7 @@ end
 
 
 # Skips one set of allocations
-function Makie.pick_closest(scene::SceneLike, screen::Screen, xy, range)
+function Makie.pick_closest(scene::Scene, screen::Screen, xy, range)
     isopen(screen) || return (nothing, 0)
     w, h = widths(screen)
     ((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h)) || return (nothing, 0)
@@ -507,7 +508,7 @@ function Makie.pick_closest(scene::SceneLike, screen::Screen, xy, range)
 end
 
 # Skips some allocations
-function Makie.pick_sorted(scene::SceneLike, screen::Screen, xy, range)
+function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     isopen(screen) || return (nothing, 0)
     w, h = widths(screen)
     if !((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h))
@@ -519,11 +520,11 @@ function Makie.pick_sorted(scene::SceneLike, screen::Screen, xy, range)
 
     picks = pick_native(screen, Rect2i(x0, y0, dx, dy))
 
-    selected = filter(x -> x[1] > 0 && haskey(screen.cache2plot, x[1]), unique(vec(picks)))
+    selected = filter(x -> x.id > 0 && haskey(screen.cache2plot, x.id), unique(vec(picks)))
     distances = Float32[range^2 for _ in selected]
     x, y =  xy .+ 1 .- Vec2f(x0, y0)
     for i in 1:dx, j in 1:dy
-        if picks[i, j][1] > 0
+        if picks[i, j].id > 0
             d = (x-i)^2 + (y-j)^2
             i = findfirst(isequal(picks[i, j]), selected)
             if i === nothing
@@ -536,7 +537,7 @@ function Makie.pick_sorted(scene::SceneLike, screen::Screen, xy, range)
 
     idxs = sortperm(distances)
     permute!(selected, idxs)
-    return map(id -> (screen.cache2plot[id[1]], id[2]), selected)
+    return map(id -> (screen.cache2plot[id.id], id.index), selected)
 end
 
 

@@ -10,14 +10,16 @@ using LinearAlgebra
 using GeometryBasics
 using ImageMagick
 using FreeTypeAbstraction
-using StaticArrays
 
 using JSServe: Session
 using JSServe: @js_str, onjs, Dependency, App
 using JSServe.DOM
 
+using RelocatableFolders: @path
+
 using ShaderAbstractions: VertexArray, Buffer, Sampler, AbstractSampler
 using ShaderAbstractions: InstancedProgram
+using GeometryBasics: StaticVector
 
 import Makie.FileIO
 using Makie: get_texture_atlas, glyph_uv_width!, SceneSpace, Pixel
@@ -25,13 +27,14 @@ using Makie: attribute_per_char, glyph_uv_width!, layout_text
 using Makie: MouseButtonEvent, KeyEvent
 using Makie: apply_transform, transform_func_obs
 using Makie: inline!
+using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
 
 struct WebGL <: ShaderAbstractions.AbstractContext end
 struct WGLBackend <: Makie.AbstractBackend end
 
-const THREE = Dependency(:THREE, ["https://unpkg.com/three@0.130.0/build/three.js"])
-const WGL = Dependency(:WGLMakie, [joinpath(@__DIR__, "wglmakie.js")])
-const WEBGL = Dependency(:WEBGL, [joinpath(@__DIR__, "WEBGL.js")])
+const THREE = Dependency(:THREE, ["https://unpkg.com/three@0.136.0/build/three.js"])
+const WGL = Dependency(:WGLMakie, [@path joinpath(@__DIR__, "wglmakie.js")])
+const WEBGL = Dependency(:WEBGL, [@path joinpath(@__DIR__, "WEBGL.js")])
 
 include("three_plot.jl")
 include("serialization.jl")
@@ -42,7 +45,17 @@ include("meshes.jl")
 include("imagelike.jl")
 include("display.jl")
 
-function activate!()
+const CONFIG = (
+    fps = Ref(30),
+)
+
+"""
+    activate!(; fps=30)
+
+Set fps (frames per second) to a higher number for smoother animations, or to a lower to use less resources.
+"""
+function activate!(; fps=30)
+    CONFIG.fps[] = fps
     b = WGLBackend()
     Makie.register_backend!(b)
     Makie.current_backend[] = b
