@@ -128,7 +128,7 @@ ys = range(0, 2π, length=100)
 zs1 = [sin(x*y) for x in xs, y in ys]
 zs2 = [2sin(x*y) for x in xs, y in ys]
 
-my_limits = extrema(hcat(zs1, zs2))  # Get maximum and minimum for all z-values
+my_limits = (-2, 2)  # choose some good limits for sin / 2sin
 
 fig, ax1, hm1 = heatmap(xs, ys, zs1,  colorrange = my_limits)
 ax2, hm2 = heatmap(fig[1, end+1], xs, ys, zs2, colorrange = my_limits)
