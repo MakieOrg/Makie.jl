@@ -66,6 +66,7 @@ end
 if Base.VERSION >= v"1.4.2"
     include("precompiles.jl")
     _precompile_()
+    include("all-precompiles.jl")
 end
 
 

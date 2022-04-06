@@ -88,17 +88,22 @@ function create_shader(mscene::Scene, plot::Surface)
     rect = lift(z -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), size(z)), pz)
     faces = Buffer(lift(r -> decompose(GLTriangleFace, r), rect))
     uv = Buffer(lift(decompose_uv, rect))
+    plot_attributes = copy(plot.attributes)
     pcolor = if haskey(plot, :color) && plot.color[] isa AbstractArray
+        if plot.color[] isa AbstractMatrix{<:Colorant}
+            delete!(plot_attributes, :colormap)
+            delete!(plot_attributes, :colorrange)
+        end
         plot.color
     else
         pz
     end
     minfilter = to_value(get(plot, :interpolate, false)) ? :linear : :nearest
-    color = Sampler(lift(x -> el32convert(x'), pcolor), minfilter=minfilter)
+    color = Sampler(lift(x -> el32convert(to_color(permutedims(x))), pcolor), minfilter=minfilter)
     normals = Buffer(lift(surface_normals, px, py, pz))
     vertices = GeometryBasics.meta(positions; uv=uv, normals=normals)
     mesh = GeometryBasics.Mesh(vertices, faces)
-    return draw_mesh(mscene, mesh, plot; uniform_color=color, color=Vec4f(0),
+    return draw_mesh(mscene, mesh, plot_attributes; uniform_color=color, color=Vec4f(0),
                      shading=plot.shading, diffuse=plot.diffuse,
                      specular=plot.specular, shininess=plot.shininess,
                      depth_shift=get(plot, :depth_shift, Observable(0f0)),
