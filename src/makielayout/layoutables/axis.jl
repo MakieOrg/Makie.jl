@@ -633,8 +633,9 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
     if !isempty(manually_cycled_attributes)
         # an attribute given as Cycled needs to be present in the cycler,
         # otherwise there's no cycle in which to look up a value
+        cycle_attrsyms = attrsyms(cycle)
         for k in manually_cycled_attributes
-            if k ∉ palettesyms(cycle)
+            if !any(k .∈ cycle_attrsyms)
                 error("Attribute `$k` was passed with an explicit `Cycled` value, but $k is not specified in the cycler for this plot type $P.")
             end
         end
