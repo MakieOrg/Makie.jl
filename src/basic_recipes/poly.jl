@@ -45,10 +45,10 @@ const PolyElements = Union{Polygon, MultiPolygon, Circle, Rect, AbstractMesh, Ve
 
 convert_arguments(::Type{<: Poly}, v::AbstractVector{<: PolyElements}) = (v,)
 convert_arguments(::Type{<: Poly}, v::Union{Polygon, MultiPolygon}) = (v,)
-
-convert_arguments(::Type{<: Poly}, args...) = ([convert_arguments(Scatter, args...)[1]],)
-convert_arguments(::Type{<: Poly}, vertices::AbstractArray, indices::AbstractArray) = convert_arguments(Mesh, vertices, indices)
 convert_arguments(::Type{<: Poly}, m::GeometryBasics.Mesh) = (m,)
+
+convert_arguments(::Type{<: Poly}, args...) = ([apply_converts(Scatter, args...)[1]],)
+convert_arguments(::Type{<: Poly}, vertices::AbstractArray, indices::AbstractArray) = apply_converts(Mesh, vertices, indices)
 
 function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}})
     mesh!(

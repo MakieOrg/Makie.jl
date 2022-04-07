@@ -299,7 +299,7 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
         lift((args...)-> Pair.(convert_keys, args), pop!.(attributes, convert_keys)...)
     end
     # call convert_arguments for a first time to get things started
-    converted = convert_arguments(PreType, argvalues...; kw_signal[]...)
+    converted = apply_conversions_recursive(PreType, argvalues...; kw_signal[]...)
     # convert_arguments can return different things depending on the recipe type
     # apply_conversion deals with that!
 
@@ -308,7 +308,7 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
     input_nodes =  convert.(Observable, args)
     onany(kw_signal, lift(tuple, input_nodes...)) do kwargs, args
         # do the argument conversion inside a lift
-        result = convert_arguments(FinalType, args...; kwargs...)
+        result = apply_conversions_recursive(FinalType, args...; kwargs...)
         finaltype, argsconverted_ = apply_convert!(FinalType, attributes, result) # avoid a Core.Box (https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-captured)
         if finaltype != FinalType
             error("Plot type changed from $FinalType to $finaltype after conversion.

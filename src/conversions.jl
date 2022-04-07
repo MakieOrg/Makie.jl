@@ -3,69 +3,86 @@
 ################################################################################
 const RangeLike = Union{AbstractRange, AbstractVector, ClosedInterval}
 
-# if no plot type based conversion is defined, we try using a trait
-function convert_arguments(T::PlotFunc, args...; kw...)
-    ct = conversion_trait(T)
-    try
-        convert_arguments(ct, args...; kw...)
-    catch e
-        if e isa MethodError
-            try
-                convert_arguments_individually(T, args...)
-            catch ee
-                if ee isa MethodError
-                    error(
-                        """
-                        `Makie.convert_arguments` for the plot type $T and its conversion trait $ct was unsuccessful.
+@nospecialize
 
-                        The signature that could not be converted was:
-                        $(join("::" .* string.(typeof.(args)), ", "))
+convert_arguments(::ConversionTrait, args...; kw...) = NoConversion()
+convert_arguments(::Type{<:AbstractPlot}, args...; kw...) = NoConversion()
+# if no specific conversion is defined, we don't convert
+convert_single_argument(x) = NoConversion()
 
-                        Makie needs to convert all plot input arguments to types that can be consumed by the backends (typically Arrays with Float32 elements).
-                        You can define a method for `Makie.convert_arguments` (a type recipe) for these types or their supertypes to make this set of arguments convertible (See http://makie.juliaplots.org/stable/documentation/recipes/index.html).
+@specialize
 
-                        Alternatively, you can define `Makie.convert_single_argument` for single arguments which have types that are unknown to Makie but which can be converted to known types and fed back to the conversion pipeline.
-                        """
-                    )
-                else
-                    rethrow(ee)
-                end
-            end
-        else
-            rethrow(e)
-        end
-    end
-end
 
-# in case no trait matches we try to convert each individual argument
-# and reconvert the whole tuple in order to handle missings centrally, e.g.
-function convert_arguments_individually(T::PlotFunc, args...)
-    # convert each single argument until it doesn't change type anymore
-    single_converted = recursively_convert_argument.(args)
-    # if the type of args hasn't changed this function call didn't help and we error
-    if typeof(single_converted) == typeof(args)
-        throw(MethodError(convert_arguments, (T, args...)))
-    end
-    # otherwise we try converting our newly single-converted args again because
-    # now a normal conversion method might work again
-    convert_arguments(T, single_converted...)
-end
-
-function recursively_convert_argument(x)
-    newx = convert_single_argument(x)
-    if typeof(newx) == typeof(x)
-        x
+function recursive_convert(f, args...; kw...)
+    converted = f(args...; kw...)
+    if converted isa NoConversion
+        # No function applies and we haven't converted anything
+        return NoConversion()
+    elseif typeof(converted) == typeof(args)
+        # intentional no conversion, e.g. because a plot type specifically accepts this type
+        # E.g. SubArray, which needs to be defined in order to not get into the conversion for AbstractArray
+        return converted
     else
-        recursively_convert_argument(newx)
+        # we recurse, as long as we don't hit NoConversion or the same types
+        return recursive_convert(f, args...; kw...)
     end
+end
+
+function got_converted(new_args, old_args)
+    # No brainer, if the type is NoConversion
+    new_args isa NoConversion && return false
+    # We still need to check if a conversion method returns the same type
+    # because user may overload it like that, and we can't have an infinite recursion because of that
+    typeof(new_args) === typeof(old_args) && return false
+    return true
+end
+
+function apply_converts(::Type{T}, args...; kw...) where T <: AbstractPlot
+    # Try plot specific converts
+    converted = convert_arguments(T, args...; kw...)
+    got_converted(converted, args) && return converted
+
+    # Try conversion trait
+    ct = conversion_trait(T)
+    converted2 = convert_arguments(ct, args...; kw...)
+    got_converted(converted2, args) && return converted2
+
+    # Try single argument convert
+    converted3 = convert_arguments_individually(T, args...)
+    got_converted(converted3, args) && return converted3
+    return NoConversion()
+end
+
+function apply_conversions_recursive(::Type{T}, args...; kw...) where T
+    # Apply converts as long as there are conversions defined for the result!
+    converted = apply_converts(T, args...; kw...)
+    got_converted(converted, args) && return apply_conversions_recursive(T, converted...; kw...)
+    # If not converted, we return the args!
+    return args
 end
 
 ################################################################################
 #                          Single Argument Conversion                          #
 ################################################################################
 
-# if no specific conversion is defined, we don't convert
-convert_single_argument(x) = x
+# in case no trait matches we try to convert each individual argument
+# and reconvert the whole tuple in order to handle missings centrally, e.g.
+function convert_arguments_individually(T::PlotFunc, args...)
+    # convert each single argument
+    single_converted = convert_single_argument.(args)
+
+    # if the type of args hasn't changed, we didn't apply any conversion
+    typeof(single_converted) === typeof(args) && return NoConversion()
+
+    # Or if all are NoConversion, we also haven't converted anything
+    all(x-> x isa NoConversion, single_converted) && return NoConversion()
+
+    # Else, we converted at least one argument, but we need to make sure that we filter out any not converted arg:
+    return map(single_converted, args) do c_arg, o_arg
+        c_arg isa NoConversion && return o_arg
+        return c_arg
+    end
+end
 
 # replace missings with NaNs
 function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Real}})
@@ -76,6 +93,10 @@ end
 function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Point{N}}}) where N
     [ismissing(x) ? Point{N, Float32}(NaN32) : Point{N, Float32}(x) for x in a]
 end
+
+# Narrow type of Any arrays
+convert_single_argument(a::AbstractVector{Any}) = [x for x in a]
+
 
 ################################################################################
 #                                  PointBased                                  #
