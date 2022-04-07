@@ -5,28 +5,12 @@ const RangeLike = Union{AbstractRange, AbstractVector, ClosedInterval}
 
 @nospecialize
 
-convert_arguments(::ConversionTrait, args...; kw...) = NoConversion()
-convert_arguments(::Type{<:AbstractPlot}, args...; kw...) = NoConversion()
+convert_arguments(::ConversionTrait, args...; kw...) = args
+convert_arguments(::Type{<:AbstractPlot}, args...; kw...) = args
 # if no specific conversion is defined, we don't convert
 convert_single_argument(x) = NoConversion()
 
 @specialize
-
-
-function recursive_convert(f, args...; kw...)
-    converted = f(args...; kw...)
-    if converted isa NoConversion
-        # No function applies and we haven't converted anything
-        return NoConversion()
-    elseif typeof(converted) == typeof(args)
-        # intentional no conversion, e.g. because a plot type specifically accepts this type
-        # E.g. SubArray, which needs to be defined in order to not get into the conversion for AbstractArray
-        return converted
-    else
-        # we recurse, as long as we don't hit NoConversion or the same types
-        return recursive_convert(f, args...; kw...)
-    end
-end
 
 function got_converted(new_args, old_args)
     # No brainer, if the type is NoConversion
@@ -56,6 +40,7 @@ end
 function apply_conversions_recursive(::Type{T}, args...; kw...) where T
     # Apply converts as long as there are conversions defined for the result!
     converted = apply_converts(T, args...; kw...)
+    converted isa PlotSpec && return converted # special case, since it's not a tuple
     got_converted(converted, args) && return apply_conversions_recursive(T, converted...; kw...)
     # If not converted, we return the args!
     return args
@@ -67,7 +52,7 @@ end
 
 # in case no trait matches we try to convert each individual argument
 # and reconvert the whole tuple in order to handle missings centrally, e.g.
-function convert_arguments_individually(T::PlotFunc, args...)
+function convert_arguments_individually(T::Type{<:AbstractPlot}, args...)
     # convert each single argument
     single_converted = convert_single_argument.(args)
 
@@ -574,15 +559,15 @@ end
 #                             Function Conversions                             #
 ################################################################################
 
-function convert_arguments(P::PlotFunc, r::AbstractVector, f::Function)
+function convert_arguments(P::Type{<:AbstractPlot}, r::AbstractVector, f::Function)
     ptype = plottype(P, Lines)
     to_plotspec(ptype, convert_arguments(ptype, r, f.(r)))
 end
 
-function convert_arguments(P::PlotFunc, i::AbstractInterval, f::Function)
+function convert_arguments(P::Type{<:AbstractPlot}, i::AbstractInterval, f::Function)
     x, y = PlotUtils.adapted_grid(f, endpoints(i))
     ptype = plottype(P, Lines)
-    to_plotspec(ptype, convert_arguments(ptype, x, y))
+    to_plotspec(ptype, apply_converts(ptype, x, y))
 end
 
 # The following `tryrange` code was copied from Plots.jl
