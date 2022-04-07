@@ -22,11 +22,19 @@ function Makie.plot!(
 
     if isnothing(lscene.scene[OldAxis])
         # Add axis on first plot!, if requested
-        to_value(show_axis) && Makie.axis3d!(lscene.scene, get_lims())
+        # update limits when scene limits change
+        limits = lift(lscene.scene.theme.limits) do lims
+            if lims === automatic
+                data_limits(lscene.scene, p -> Makie.isaxis(p) || Makie.not_in_data_space(p))
+            else
+                lims
+            end
+        end
+        to_value(show_axis) && Makie.axis3d!(lscene.scene, limits)
     else
-        # Update limits when plotting new objects
-        axis_plot = lscene.scene[OldAxis]
-        axis_plot[1] = to_value(get_lims())
+        # Update limits when plotting new objects by triggering scene limits
+        # (if automatic, new limits will be computed)
+        notify(lscene.scene.theme.limits)
     end
     # Make sure axis is always in pos 1
     sort!(lscene.scene.plots, by=!Makie.isaxis)
