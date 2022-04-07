@@ -1,8 +1,13 @@
-function initialize_block!(ax::Axis)
+function initialize_block!(ax::Axis; palette = nothing)
 
     topscene = ax.blockscene
 
     decorations = Dict{Symbol, Any}()
+
+    if palette === nothing
+        palette = haskey(topscene.theme, :palette) ? deepcopy(topscene.theme[:palette]) : copy(Makie.default_palettes)
+    end
+    ax.palette = palette isa Attributes ? palette : Attributes(palette)
 
     # initialize either with user limits, or pick defaults based on scales
     # so that we don't immediately error
@@ -12,7 +17,6 @@ function initialize_block!(ax::Axis)
     setfield!(ax, :finallimits, finallimits)
 
     ax.cycler = Cycler()
-    ax.palette = copy(Makie.default_palettes)
     
     # the first thing to do when setting a new scale is
     # resetting the limits because simply through expanding they might be invalid for log
