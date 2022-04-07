@@ -25,6 +25,9 @@ node_any(@nospecialize(obj)) = isa(obj, Observable{Any}) ? obj :
 node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (pair[1] => node_any(value_convert(pair[2])))
 node_pairs(pairs) = (node_pairs(pair) for pair in pairs)
 
+Core.convert(::Type{Attributes}, x::Attributes) = x
+precompile(Core.convert, (Type{Attributes}, Attributes))
+
 Attributes(; kw_args...) = Attributes(Dict{Symbol, Observable}(node_pairs(kw_args)))
 Attributes(pairs::Pair...) = Attributes(Dict{Symbol, Observable}(node_pairs(pairs)))
 Attributes(pairs::AbstractVector) = Attributes(Dict{Symbol, Observable}(node_pairs.(pairs)))

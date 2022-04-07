@@ -59,9 +59,23 @@ function precompile_obs(x)
     end
 end
 
+using Makie.MakieLayout: GridLayoutBase
 
 function _precompile_()
     ccall(:jl_generating_output, Cint, ()) == 1 || return nothing
+
+    Core.convert(Observable{Any}, Observable{Any}(1))
+    precompile(Core.convert, (Type{Observable{Any}}, Observable{Any}))
+
+    Makie.MakieLayout.get_ticks(LogTicks(WilkinsonTicks(5)), log10, Makie.automatic, 1.0, 10.0)
+    gl = GridLayoutBase.GridLayout()
+    gl2 = GridLayoutBase.GridLayout()
+    gl[1, 1] = gl2
+    GridLayoutBase.determinedirsize(gl, GridLayoutBase.Row())
+    GridLayoutBase.compute_rowcols(gl, GridLayoutBase.suggestedbboxobservable(gl)[])
+    GridLayoutBase.update!(gl)
+    GridLayoutBase.align_to_bbox!(gl2, GridLayoutBase.suggestedbboxobservable(gl2)[])
+
     precompile(Makie.backend_display, (CairoBackend, Scene))
     activate!()
     f, ax1, pl = scatter(1:4)

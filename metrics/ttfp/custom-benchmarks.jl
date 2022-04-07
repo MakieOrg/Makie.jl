@@ -13,7 +13,7 @@ projects = [
     "MakieMesh" => "mesh-precompiles",
     "MakieCompiled" => "moah-precompiles]",
     "MakieMaster" => "master",
-    "MakieAttributes" => "attribute-precompiles",
+    # "MakieAttributes" => "attribute-precompiles",
     "MakieBlock" => "blocks-precompile",
 ]
 
@@ -38,3 +38,21 @@ fig = run_benchmarks(ctx, [i4, i3, i5, GitHub.branch(ctx.repo, "master"), i2, i1
 
 resize!(fig.scene, (1500, 600))
 fig
+
+b1 = BenchInfo(
+    project=joinpath(@__DIR__, "..", "..", "..", "..") |> normpath,
+    branch="prio-obs-precompiles",
+    commit="prio-obs-precompiles"
+)
+b2 = BenchInfo(
+    project=joinpath(@__DIR__, "..", "..", "..", "..") |> normpath,
+    branch="prio-obs-precompiles-no-sarray",
+    commit="prio-obs-precompiles-no-sarray"
+)
+b3 = BenchInfo(
+    project=joinpath(@__DIR__, "..", "..", "..", "..") |> normpath,
+    branch="prio-obs-max-methods",
+    commit="prio-obs-max-methods"
+)
+
+fig = run_benchmarks(ctx, [b1, GitHub.branch(ctx.repo, "master"), GitHub.tag(ctx.repo, "v0.16.3")])
