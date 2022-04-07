@@ -426,9 +426,9 @@ end
         "The tick locator for the y minor ticks"
         yminorticks = IntervalsBetween(2)
         "The x axis scale"
-        xscale::Function = identity
+        xscale = identity
         "The y axis scale"
-        yscale::Function = identity
+        yscale = identity
     end
 end
 
