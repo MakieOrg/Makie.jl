@@ -908,11 +908,11 @@ function linkxaxes!(a::Axis, others...)
             axa = axes[i]
             axb = axes[j]
 
-            if axa ∉ axb.ax.xaxislinks
-                push!(axb.ax.xaxislinks, axa)
+            if axa ∉ axb.xaxislinks
+                push!(axb.xaxislinks, axa)
             end
-            if axb ∉ axa.ax.xaxislinks
-                push!(axa.ax.xaxislinks, axb)
+            if axb ∉ axa.xaxislinks
+                push!(axa.xaxislinks, axb)
             end
         end
     end
@@ -933,11 +933,11 @@ function linkyaxes!(a::Axis, others...)
             axa = axes[i]
             axb = axes[j]
 
-            if axa ∉ axb.ax.yaxislinks
-                push!(axb.ax.yaxislinks, axa)
+            if axa ∉ axb.yaxislinks
+                push!(axb.yaxislinks, axa)
             end
-            if axb ∉ axa.ax.yaxislinks
-                push!(axa.ax.yaxislinks, axb)
+            if axb ∉ axa.yaxislinks
+                push!(axa.yaxislinks, axb)
             end
         end
     end
