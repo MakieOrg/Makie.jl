@@ -153,12 +153,12 @@ data2 = [sin(x^0.8) * cos(y^1.5) for x in xs, y in ys] .+ 0.1 .* randn.()
 ax1, hm = contourf(gb[1, 1], xs, ys, data1,
     levels = 6)
 ax1.title = "Histological analysis"
-contour!(xs, ys, data1, levels = 5, color = :black)
+contour!(ax1, xs, ys, data1, levels = 5, color = :black)
 hidexdecorations!(ax1)
 
 _, hm2 = contourf(gb[2, 1], xs, ys, data2,
     levels = 6)
-contour!(xs, ys, data2, levels = 5, color = :black)
+contour!(ax1, xs, ys, data2, levels = 5, color = :black)
 
 f
 ```
