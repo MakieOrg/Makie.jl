@@ -156,7 +156,6 @@ function color_per_level(::Nothing, colormap, colorrange, a, levels)
     end
 end
 
-
 function plot!(plot::T) where T <: Union{Contour, Contour3d}
     x, y, z = plot[1:3]
     if to_value(plot[:fillrange])

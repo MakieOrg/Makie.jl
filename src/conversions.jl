@@ -3,46 +3,16 @@
 ################################################################################
 const RangeLike = Union{AbstractRange, AbstractVector, ClosedInterval}
 
-@nospecialize
-
-convert_arguments(::ConversionTrait, args...; kw...) = args
-convert_arguments(::Type{<:AbstractPlot}, args...; kw...) = args
-# if no specific conversion is defined, we don't convert
-convert_single_argument(x) = NoConversion()
-
-@specialize
-
-function got_converted(new_args, old_args)
-    # No brainer, if the type is NoConversion
-    new_args isa NoConversion && return false
-    # We still need to check if a conversion method returns the same type
-    # because user may overload it like that, and we can't have an infinite recursion because of that
-    typeof(new_args) === typeof(old_args) && return false
-    return true
-end
-
-function apply_converts(::Type{T}, args...; kw...) where T <: AbstractPlot
-    # Try plot specific converts
-    converted = convert_arguments(T, args...; kw...)
-    got_converted(converted, args) && return converted
-
+function convert_arguments(T::PlotFunc, args...; kw...)
     # Try conversion trait
     ct = conversion_trait(T)
-    converted2 = convert_arguments(ct, args...; kw...)
-    got_converted(converted2, args) && return converted2
+    converted1 = convert_arguments(ct, args...; kw...)
+    converted1 === args || return converted1
 
     # Try single argument convert
-    converted3 = convert_arguments_individually(T, args...)
-    got_converted(converted3, args) && return converted3
-    return NoConversion()
-end
-
-function apply_conversions_recursive(::Type{T}, args...; kw...) where T
-    # Apply converts as long as there are conversions defined for the result!
-    converted = apply_converts(T, args...; kw...)
-    converted isa PlotSpec && return converted # special case, since it's not a tuple
-    got_converted(converted, args) && return apply_conversions_recursive(T, converted...; kw...)
-    # If not converted, we return the args!
+    converted2 = convert_single_argument.(args)
+    converted2 === args && return converted2
+    # Can't convert!
     return args
 end
 
@@ -50,37 +20,22 @@ end
 #                          Single Argument Conversion                          #
 ################################################################################
 
-# in case no trait matches we try to convert each individual argument
-# and reconvert the whole tuple in order to handle missings centrally, e.g.
-function convert_arguments_individually(T::Type{<:AbstractPlot}, args...)
-    # convert each single argument
-    single_converted = convert_single_argument.(args)
-
-    # if the type of args hasn't changed, we didn't apply any conversion
-    typeof(single_converted) === typeof(args) && return NoConversion()
-
-    # Or if all are NoConversion, we also haven't converted anything
-    all(x-> x isa NoConversion, single_converted) && return NoConversion()
-
-    # Else, we converted at least one argument, but we need to make sure that we filter out any not converted arg:
-    return map(single_converted, args) do c_arg, o_arg
-        c_arg isa NoConversion && return o_arg
-        return c_arg
-    end
-end
+convert_single_argument(@nospecialize(x)) = x
 
 # replace missings with NaNs
-function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Real}})
+function convert_single_argument(a::AbstractArray{Union{Missing, <: Real}})
     [ismissing(x) ? NaN32 : convert(Float32, x) for x in a]
 end
 
 # same for points
-function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Point{N}}}) where N
+function convert_single_argument(a::AbstractArray{Union{Missing, <:Point{N}}}) where N
     [ismissing(x) ? Point{N, Float32}(NaN32) : Point{N, Float32}(x) for x in a]
 end
 
 # Narrow type of Any arrays
 convert_single_argument(a::AbstractVector{Any}) = [x for x in a]
+# Leave concretely typed vectors alone (AbstractArray{<:Union{Missing, <:Real}} also dispatches for `Vector{Float32}`)
+convert_single_argument(a::AbstractVector{T}) where T <: Number = a
 
 
 ################################################################################
@@ -293,6 +248,7 @@ outputs as a `Tuple`.
 function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<: Union{Number, Colorant}})
     return map(el32convert, adjust_axes(SL, x, y, z))
 end
+
 function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<:Number})
     return map(el32convert, adjust_axes(SL, x, y, z))
 end
@@ -567,7 +523,7 @@ end
 function convert_arguments(P::Type{<:AbstractPlot}, i::AbstractInterval, f::Function)
     x, y = PlotUtils.adapted_grid(f, endpoints(i))
     ptype = plottype(P, Lines)
-    to_plotspec(ptype, apply_converts(ptype, x, y))
+    to_plotspec(ptype, convert_arguments(ptype, x, y))
 end
 
 # The following `tryrange` code was copied from Plots.jl
