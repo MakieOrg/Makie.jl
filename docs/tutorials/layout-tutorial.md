@@ -215,8 +215,9 @@ Now, we move on to panel C. This is just an `Axis3` with a colorbar on the side.
 ```julia
 brain = load(assetpath("brain.stl"))
 
-Axis3(gc[1, 1], title = "Brain activation")
+ax3d = Axis3(gc[1, 1], title = "Brain activation")
 m = mesh!(
+    ax3d,
     brain,
     color = [tri[1][2] for tri in brain for i in 1:3],
     colormap = Reverse(:magma),
