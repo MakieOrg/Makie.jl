@@ -3,6 +3,8 @@
 ################################################################################
 const RangeLike = Union{AbstractRange, AbstractVector, ClosedInterval}
 
+convert_arguments(::ConversionTrait, args...; kw...) = args
+
 function convert_arguments(T::PlotFunc, args...; kw...)
     # Try conversion trait
     ct = conversion_trait(T)
@@ -16,7 +18,7 @@ function convert_arguments(T::PlotFunc, args...; kw...)
     else
         # if we converted to something, we need to recurse,
         # since convert_single_argument doesn't do a complete conversion
-        return convert_arguments(T, args...; kw...)
+        return convert_arguments(T, converted2...; kw...)
     end
 end
 
@@ -27,12 +29,12 @@ end
 convert_single_argument(@nospecialize(x)) = x
 
 # replace missings with NaNs
-function convert_single_argument(a::AbstractArray{Union{Missing, <: Real}})
+function convert_single_argument(a::AbstractArray{Union{Missing, T}}) where T <: Real
     [ismissing(x) ? NaN32 : convert(Float32, x) for x in a]
 end
 
 # same for points
-function convert_single_argument(a::AbstractArray{Union{Missing, <:Point{N}}}) where N
+function convert_single_argument(a::AbstractArray{Union{Missing, T}}) where T <:Point{N} where N
     [ismissing(x) ? Point{N, Float32}(NaN32) : Point{N, Float32}(x) for x in a]
 end
 

@@ -154,7 +154,8 @@ end
 @testset "single conversions" begin
     myvector = MyVector(collect(1:10))
     mynestedvector = MyNestedVector(MyVector(collect(11:20)))
-    @test_throws ErrorException convert_arguments(Lines, myvector, mynestedvector)
+    converted = convert_arguments(Lines, myvector, mynestedvector)
+    @test converted === (myvector, mynestedvector)
 
     Makie.convert_single_argument(v::MyNestedVector) = v.v
     Makie.convert_single_argument(v::MyVector) = v.v
@@ -169,6 +170,11 @@ end
     @test isequal(
         convert_arguments(Lines, [Point(1, 2), missing, Point(3, 4)]),
         (Point2f[(1.0, 2.0), (NaN, NaN), (3.0, 4.0)],)
+    )
+
+    @test isequal(
+        convert_arguments(Lines, Any[(1, 2), (3, 4)]),
+        (Point2f[(1.0, 2.0), (3.0, 4.0)],)
     )
 end
 
