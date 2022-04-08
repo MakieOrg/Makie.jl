@@ -11,9 +11,13 @@ function convert_arguments(T::PlotFunc, args...; kw...)
 
     # Try single argument convert
     converted2 = convert_single_argument.(args)
-    converted2 === args && return converted2
-    # Can't convert!
-    return args
+    if converted2 === args
+        return args # can't convert
+    else
+        # if we converted to something, we need to recurse,
+        # since convert_single_argument doesn't do a complete conversion
+        return convert_arguments(T, args...; kw...)
+    end
 end
 
 ################################################################################
