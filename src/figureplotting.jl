@@ -123,7 +123,7 @@ function plot(P::PlotFunc, gsp::GridSubposition, args...; axis = NamedTuple(), k
         if is2d(proxyscene)
             ax = Axis(fig; axis...)
         else
-            ax = LScene(fig; scenekw = (camera = automatic, axis...))
+            ax = LScene(fig; axis..., scenekw = (camera = automatic,))
         end
     end
 

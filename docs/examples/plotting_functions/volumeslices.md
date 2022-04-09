@@ -11,7 +11,7 @@ GLMakie.activate!() # hide
 Makie.inline!(true) # hide
 
 fig = Figure()
-ax = LScene(fig[1, 1], scenekw = (;show_axis=false))
+ax = LScene(fig[1, 1], show_axis=false)
 
 x = LinRange(0, π, 50)
 y = LinRange(0, 2π, 100)

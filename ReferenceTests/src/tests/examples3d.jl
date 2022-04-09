@@ -527,7 +527,7 @@ end
     # without depth_shift (0f0, red) and one at ∓10eps(1f0) (blue, left/right axis).
     # A negative shift should push the plot in the foreground, positive in the background.
     for (i, _shift) in enumerate((-10eps(1f0), 10eps(1f0)))
-        ax = LScene(fig[1, i], scenekw = (; show_axis = false))
+        ax = LScene(fig[1, i], show_axis = false)
 
         for (color, shift) in zip((:red, :blue), (0f0, _shift))
             mesh!(ax, prim, color = color, depth_shift = shift)
