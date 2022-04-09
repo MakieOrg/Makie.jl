@@ -1,45 +1,43 @@
-@doc """
-    Menu(parent::Scene; bbox = nothing, kwargs...)
+function block_docs(::Type{Menu})
+    Markdown.md"""
+    A drop-down menu with multiple selectable options. You can pass options
+    with the keyword argument `options`.
+    
+    Options are given as an iterable of elements.
+    For each element, the option label in the menu is determined with `optionlabel(element)`
+    and the option value with `optionvalue(element)`. These functions can be
+    overloaded for custom types. The default is that tuples of two elements are expected to be label and value,
+    where `string(label)` is used as the label, while for all other objects, label = `string(object)` and value = object.
 
-Create a drop-down menu with multiple selectable options. You can pass options
-with the keyword argument `options`. Options are given as an iterable of elements.
-For each element, the option label in the menu is determined with `optionlabel(element)`
-and the option value with `optionvalue(element)`. These functions can be
-overloaded for custom types. The default is that tuples of two elements are expected to be label and value,
-where `string(label)` is used as the label, while for all other objects, label = `string(object)` and value = object.
+    When an item is selected in the menu, the menu's `selection` attribute is set to
+    `optionvalue(selected_element)`.
 
-When an item is selected in the menu, the menu's `selection` attribute is set to
-`optionvalue(selected_element)`.
+    ## Examples
 
-If the menu is located close to the lower scene border, you can change its open
-direction to `direction = :up`.
+    Menu with string entries:
 
-# Example
+    ```julia
+    menu1 = Menu(scene, options = ["first", "second", "third"])
+    ```
 
-Menu with string entries:
+    Menu with two-element entries, label and function:
 
-```julia
-menu1 = Menu(scene, options = ["first", "second", "third"])
-```
+    ```julia
+    funcs = [sin, cos, tan]
+    labels = ["Sine", "Cosine", "Tangens"]
 
-Menu with two-element entries, label and function:
+    menu2 = Menu(scene, options = zip(labels, funcs))
+    ```
 
-```julia
-funcs = [sin, cos, tan]
-labels = ["Sine", "Cosine", "Tangens"]
+    Executing a function when a selection is made:
 
-menu2 = Menu(scene, options = zip(labels, funcs))
-```
-
-Lifting on the selection value:
-
-```julia
-on(menu2.selection) do func
-    # do something with the selected function
+    ```julia
+    on(menu2.selection) do selected_function
+        # do something with the selected function
+    end
+    ```
+    """
 end
-```
-"""
-Menu
 
 
 function initialize_block!(m::Menu)

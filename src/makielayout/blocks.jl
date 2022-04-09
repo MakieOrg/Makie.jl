@@ -93,25 +93,37 @@ function make_attr_dict_expr(::Nothing, sceneattrsym, curthemesym)
     :(Dict())
 end
 
+block_docs(x) = ""
+
 function Docs.getdoc(@nospecialize T::Type{<:Block})
 
-    ks = sort(collect(keys(default_attribute_values(T, nothing))))
-
-    methods = Base.methods(T)
-    methodstrings = repr.(methods)
-
     s = """
-    `$T` is a `Block`.
-    It has the following methods defined:
-    ```julia
-    $(join(methodstrings, "\n"))
-    ```
+    # `$T <: Block`
+
+    $(block_docs(T))
 
     ## Attributes
 
-    $(join(["  - `$k`: $(_attribute_docs(T)[k])" for k in ks], "\n"))
+    $(_attribute_list(T))
     """
     Markdown.parse(s)
+end
+
+function _attribute_list(T)
+    ks = sort(collect(keys(default_attribute_values(T, nothing))))
+
+    layout_attrs = Set([:tellheight, :tellwidth, :height, :width,
+        :valign, :halign, :alignmode])
+    """
+
+    $T specific attributes:
+
+    $(join(["  - `$k`: $(_attribute_docs(T)[k])" for k in ks if k ∉ layout_attrs], "\n"))
+
+    Default layout-related attributes:
+
+    $(join(["  - `$k`: $(_attribute_docs(T)[k])" for k in ks if k in layout_attrs], "\n"))
+    """
 end
 
 function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
