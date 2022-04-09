@@ -2,42 +2,9 @@ function Makie.plot!(
         lscene::LScene, P::Makie.PlotFunc,
         attributes::Makie.Attributes, args...;
         kw_attributes...)
-    # We store the show_axis attribute in the LScene
-    if haskey(attributes, :show_axis)
-        lscene.scene.theme[:show_axis] = pop!(attributes, :show_axis)
-    end
 
-    if haskey(attributes, :limits)
-        lscene.scene.theme[:limits] = pop!(attributes, :limits)
-    end
-
-    show_axis = get!(lscene.scene.theme, :show_axis, true)
     plot = Makie.plot!(lscene.scene, P, attributes, args...; kw_attributes...)
-
-    function get_lims()
-        return replace_automatic!(lscene.scene.theme, :limits) do
-            return data_limits(lscene.scene, p -> Makie.isaxis(p) || Makie.not_in_data_space(p))
-        end
-    end
-
-    if isnothing(lscene.scene[OldAxis])
-        # Add axis on first plot!, if requested
-        # update limits when scene limits change
-        limits = lift(lscene.scene.theme.limits) do lims
-            if lims === automatic
-                data_limits(lscene.scene, p -> Makie.isaxis(p) || Makie.not_in_data_space(p))
-            else
-                lims
-            end
-        end
-        to_value(show_axis) && Makie.axis3d!(lscene.scene, limits)
-    else
-        # Update limits when plotting new objects by triggering scene limits
-        # (if automatic, new limits will be computed)
-        notify(lscene.scene.theme.limits)
-    end
-    # Make sure axis is always in pos 1
-    sort!(lscene.scene.plots, by=!Makie.isaxis)
+    notify(lscene.scene.theme.limits)
     center!(lscene.scene)
     plot
 end
@@ -52,6 +19,38 @@ function initialize_block!(ls::LScene; scenekw = NamedTuple())
     # pick a camera and draw axis.
     scenekw = merge((clear = false, camera=cam3d!), scenekw)
     ls.scene = Scene(blockscene, lift(round_to_IRect2D, ls.layoutobservables.computedbbox); scenekw...)
+
+    on(ls.show_axis) do show_axis
+        ax = ls.scene[OldAxis]
+        if show_axis
+            if isnothing(ax)
+                # Add axis on first plot!, if requested
+                # update limits when scene limits change
+                limits = lift(ls.scene.theme.limits) do lims
+                    if lims === automatic
+                        dl = data_limits(ls.scene, p -> Makie.isaxis(p) || Makie.not_in_data_space(p))
+                        if any(isinf, widths(dl)) || any(isinf, Makie.origin(dl))
+                            Rect3f((0f0, 0f0, 0f0), (1f0, 1f0, 1f0))
+                        else
+                            dl
+                        end
+                    else
+                        lims
+                    end
+                end
+                Makie.axis3d!(ls.scene, limits)
+                # Make sure axis is always in pos 1
+                sort!(ls.scene.plots, by=!Makie.isaxis)
+            else
+                ax.visible = true
+            end
+        else
+            if !isnothing(ax)
+                ax.visible = false
+            end
+        end
+    end
+    notify(ls.show_axis)
     return
 end
 

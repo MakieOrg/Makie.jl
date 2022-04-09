@@ -1029,6 +1029,8 @@ end
         valign = :center
         "The alignment of the scene in its suggested bounding box."
         alignmode = Inside()
+        "Controls the visibility of the 3D axis plot object."
+        show_axis::Bool = true
     end
 end
 
