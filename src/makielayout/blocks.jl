@@ -259,42 +259,6 @@ function _block(T::Type{<:Block},
     b
 end
 
-# function _block(T::Type{<:Block}, args...; bbox = BBox(100, 400, 100, 400), kwargs...)
-#     blockscene = Scene(camera = campixel!, show_axis = false, raw = true)
-
-#     # create basic layout observables
-#     lobservables = LayoutObservables{T}(
-#         Observable{Any}(nothing),
-#         Observable{Any}(nothing),
-#         Observable(true),
-#         Observable(true),
-#         Observable(:center),
-#         Observable(:center),
-#         Observable(Inside());
-#         suggestedbbox = bbox
-#     )
-
-#     # create base block with otherwise undefined fields
-#     b = T(nothing, lobservables, blockscene)
-
-#     non_attribute_kwargs = Dict(kwargs)
-#     attribute_kwargs = typeof(non_attribute_kwargs)()
-#     for (key, value) in non_attribute_kwargs
-#         if hasfield(T, key) && fieldtype(T, key) <: Observable
-#             attribute_kwargs[key] = pop!(non_attribute_kwargs, key)
-#         end
-#     end
-
-#     initialize_attributes!(b; attribute_kwargs...)
-#     initialize_block!(b, args...)
-#     all_kwargs = Dict(kwargs)
-#     for (key, val) in non_attribute_kwargs
-#         apply_meta_kwarg!(b, Val(key), val, all_kwargs)
-#     end
-
-#     b
-# end
-
 function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
         args...; bbox = nothing, kwargs...)
 
@@ -467,21 +431,6 @@ function connect_block_layoutobservables!(@nospecialize(block), layout_width, la
     return
 end
 
-
-# almost like in Makie
-# make fields type inferrable
-# just access attributes directly instead of via indexing detour
-
-# @generated Base.hasfield(x::T, ::Val{key}) where {T<:Block, key} = :($(key in fieldnames(T)))
-
-# @inline function Base.getproperty(x::T, key::Symbol) where T <: Block
-#     if hasfield(x, Val(key))
-#         getfield(x, key)
-#     else
-#         x.attributes[key]
-#     end
-# end
-
 @inline function Base.setproperty!(x::T, key::Symbol, value) where T <: Block
     if hasfield(T, key)
         if fieldtype(T, key) <: Observable
@@ -499,14 +448,8 @@ end
     end
 end
 
-# propertynames should list fields and attributes
-# function Base.propertynames(block::T) where T <: Block
-#     [fieldnames(T)..., keys(block.attributes)...]
-# end
-
 # treat all blocks as scalars when broadcasting
 Base.Broadcast.broadcastable(l::Block) = Ref(l)
-
 
 function Base.show(io::IO, ::T) where T <: Block
     print(io, "$T()")
