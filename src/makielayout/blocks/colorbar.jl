@@ -1,3 +1,23 @@
+function block_docs(::Type{Colorbar})
+    """
+    Create a colorbar that shows a continuous or categorical colormap with ticks
+    chosen according to the colorrange.
+
+    You can set colorrange and colormap manually, or pass a plot object as the second argument
+    to copy its respective attributes. 
+
+    ## Constructors
+
+    ```julia
+    Colorbar(fig_or_scene; kwargs...)
+    Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
+    Colorbar(fig_or_scene, heatmap::Union{Heatmap, Image}; kwargs...)
+    Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
+    ```
+    """
+end
+
+
 function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
 
     for key in (:colormap, :limits)

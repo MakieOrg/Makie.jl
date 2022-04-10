@@ -1,3 +1,33 @@
+function block_docs(::Type{SliderGrid})
+    """
+    A grid of horizontal `Slider`s, where each slider has one name label on the left,
+    and a value label on the right.
+
+    ## Constructors
+
+    ```julia
+    SliderGrid(fig_or_scene, pairs::Pair...; kwargs...)
+    ```
+
+    ## Examples
+
+    ```julia
+    sg = SliderGrid(fig[1, 1],
+        "Amplitude" => 0:10,
+        "Frequency" => 0:0.5:50 => "{:.1f}Hz",
+        "Phase" => 0:0.01:2pi => x -> string(round(x, digits = 4)))
+    ```
+
+    Working with slider values:
+
+    ```julia
+    on(sg.sliders[1].value) do val
+        # do something with `val`
+    end
+    ```
+    """
+end
+
 function initialize_block!(sg::SliderGrid, pairs::Pair...)
 
     default_format(x) = string(x)
