@@ -45,6 +45,7 @@ $(ATTRIBUTES)
         direction = :x,
         boundary = automatic,
         bandwidth = automatic,
+        weights = automatic,
         cycle = [:color => :patchcolor],
         inspectable = theme(scene, :inspectable)
     )
@@ -54,12 +55,13 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
     x = plot[1]
 
     lowerupper = lift(x, plot.direction, plot.boundary, plot.offset,
-        plot.npoints, plot.bandwidth) do x, dir, bound, offs, n, bw
+        plot.npoints, plot.bandwidth, plot.weights) do x, dir, bound, offs, n, bw, weights
 
         k = KernelDensity.kde(x;
             npoints = n,
             (bound === automatic ? NamedTuple() : (boundary = bound,))...,
             (bw === automatic ? NamedTuple() : (bandwidth = bw,))...,
+            (weights === automatic ? NamedTuple() : (weights = StatsBase.weights(weights),))...
         )
 
         if dir === :x

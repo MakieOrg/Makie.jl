@@ -32,6 +32,7 @@ The boxplot has 3 components:
 """
 @recipe(BoxPlot, x, y) do scene
     Theme(
+        weights = automatic,
         color = theme(scene, :patchcolor),
         colormap = theme(scene, :colormap),
         colorrange = automatic,
@@ -77,14 +78,14 @@ flip_xy(p::Point2f) = reverse(p)
 flip_xy(r::Rect{2,T}) where {T} = Rect{2,T}(reverse(r.origin), reverse(r.widths))
 
 function Makie.plot!(plot::BoxPlot)
-    args = @extract plot (width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap)
+    args = @extract plot (weights, width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap)
 
     signals = lift(
         plot[1],
         plot[2],
         plot[:color],
         args...,
-    ) do x, y, color, width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap
+    ) do x, y, color, weights, width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap
         x̂, boxwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
         if !(whiskerwidth == :match || whiskerwidth >= 0)
             error("whiskerwidth must be :match or a positive number. Found: $whiskerwidth")
@@ -105,7 +106,8 @@ function Makie.plot!(plot::BoxPlot)
             values = view(y, idxs)
 
             # compute quantiles
-            q1, q2, q3, q4, q5 = quantile(values, LinRange(0, 1, 5))
+            w = weights === automatic ? () : (StatsBase.weights(view(weights, idxs)),)
+            q1, q2, q3, q4, q5 = quantile(values, w..., LinRange(0, 1, 5))
 
             # notches
             if show_notch
