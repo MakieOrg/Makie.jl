@@ -24,6 +24,8 @@ Plot a kernel density estimate of `values`.
 shifted with `offset` and the `direction` set to :x or :y.
 `bandwidth` and `boundary` are determined automatically by default.
 
+Statistical weights can be provided via the `weights` keyword argument.
+
 `color` is usually set to a single color, but can also be set to `:x` or
 `:y` to color with a gradient. If you use `:y` when direction = `:x` (or vice versa),
 note that only 2-element colormaps can work correctly.

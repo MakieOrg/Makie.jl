@@ -17,6 +17,7 @@ The boxplot has 3 components:
 - `x`: positions of the categories
 - `y`: variables within the boxes
 # Keywords
+- `weights`: vector of statistical weights (length of data). By default, each observation has weight 1.
 - `orientation=:vertical`: orientation of box (`:vertical` or `:horizontal`)
 - `width=1`: width of the box before shrinking
 - `gap=0.2`: shrinking factor, `width -> width * (1 - gap)`

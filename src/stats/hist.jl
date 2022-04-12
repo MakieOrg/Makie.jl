@@ -26,6 +26,8 @@ can be normalized by setting `normalization`. Possible values are:
    norm 1.
 *  `:none`: Do not normalize.
 
+Statistical weights can be provided via the `weights` keyword argument.
+
 The following attributes can move the histogram around,
 which comes in handy when placing multiple histograms into one plot:
 * offset = 0.0: adds an offset to every value
