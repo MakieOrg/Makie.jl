@@ -91,7 +91,7 @@ radiance = 500
 lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
             PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1))]
 fig = Figure(; resolution=(1500, 700))
-ax = LScene(fig[1, 1]; show_axis=false, scenekw=(lights=lights,))
+ax = LScene(fig[1, 1]; show_axis=false, scenekw=(; lights=lights))
 screen = RPRScreen(ax.scene; plugin=RPR.Northstar, iterations=400)
 
 matsys = screen.matsys
@@ -229,7 +229,7 @@ lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
           PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1))]
 
 fig = Figure(; resolution=(1500, 1000))
-ax = LScene(fig[1, 1]; show_axis=false, scenekw=(lights=lights,))
+ax = LScene(fig[1, 1]; show_axis=false, scenekw=(; lights=lights))
 screen = RPRMakie.RPRScreen(size(ax.scene); plugin=RPR.Tahoe)
 material = RPR.UberMaterial(screen.matsys)
 
@@ -493,7 +493,7 @@ scene = with_theme(theme_dark()) do
     radiance = 30
     lights = [EnvironmentLight(0.5, load(RPR.assetpath("starmap_4k.tif"))),
               PointLight(Vec3f(1, 1, 3), RGBf(radiance, radiance, radiance))]
-    ax = LScene(fig[1, 1]; show_axis=false, scenekw=(lights=lights,))
+    ax = LScene(fig[1, 1]; show_axis=false, scenekw=(;lights=lights))
     n = 1024 ÷ 4 # 2048
     θ = LinRange(0, pi, n)
     φ = LinRange(-pi, pi, 2 * n)

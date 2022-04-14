@@ -7,7 +7,7 @@
     fig
 end
 
-@cell "Figure with Layoutables" begin
+@cell "Figure with Blocks" begin
     fig = Figure(resolution = (900, 900))
     ax, sc = scatter(fig[1, 1][1, 1], randn(100, 2), axis = (;title = "Random Dots", xlabel = "Time"))
     sc2 = scatter!(ax, randn(100, 2) .+ 2, color = :red)

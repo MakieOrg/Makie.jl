@@ -1,35 +1,18 @@
-function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs...)
+function initialize_block!(isl::IntervalSlider)
 
-    topscene = get_topscene(fig_or_scene)
+    blockscene = isl.blockscene
 
-    default_attrs = default_attributes(IntervalSlider, topscene).attributes
-    theme_attrs = subtheme(topscene, :IntervalSlider)
-    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
-
-    decorations = Dict{Symbol, Any}()
-
-    @extract attrs (
-        halign, valign, horizontal, linewidth, snap,
-        startvalues, interval, color_active, color_active_dimmed, color_inactive
-    )
-
-    sliderrange = attrs.range
-
-    protrusions = Observable(GridLayoutBase.RectSides{Float32}(0, 0, 0, 0))
-    layoutobservables = LayoutObservables(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
-        halign, valign, attrs.alignmode; suggestedbbox = bbox, protrusions = protrusions)
-
-    onany(linewidth, horizontal) do lw, horizontal
+    onany(isl.linewidth, isl.horizontal) do lw, horizontal
         if horizontal
-            layoutobservables.autosize[] = (nothing, Float32(lw))
+            isl.layoutobservables.autosize[] = (nothing, Float32(lw))
         else
-            layoutobservables.autosize[] = (Float32(lw), nothing)
+            isl.layoutobservables.autosize[] = (Float32(lw), nothing)
         end
     end
 
-    sliderbox = lift(identity, layoutobservables.computedbbox)
+    sliderbox = lift(identity, isl.layoutobservables.computedbbox)
 
-    endpoints = lift(sliderbox, horizontal) do bb, horizontal
+    endpoints = lift(sliderbox, isl.horizontal) do bb, horizontal
 
         h = height(bb)
         w = width(bb)
@@ -46,14 +29,12 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
     end
 
     # this is the index of the selected value in the slider's range
-    # selected_index = Observable(1)
-    # add the selected index to the attributes so it can be manipulated later
-    attrs.selected_indices = (1, 1)
-    selected_indices = attrs.selected_indices
+    selected_indices = Observable((1, 1))
+    setfield!(isl, :selected_indices, selected_indices)
 
     # the fraction on the slider corresponding to the selected_indices
     # this is only used after dragging
-    sliderfractions = lift(selected_indices, sliderrange) do is, r
+    sliderfractions = lift(isl.selected_indices, isl.range) do is, r
         map(is) do i
             (i - 1) / (length(r) - 1)
         end
@@ -64,6 +45,7 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
     # what the slider actually displays currently (also during dragging when
     # the slider position is in an "invalid" position given the slider's range)
     displayed_sliderfractions = Observable((0.0, 0.0))
+    setfield!(isl, :displayed_sliderfractions, displayed_sliderfractions)
 
     on(sliderfractions) do fracs
         # only update displayed fraction through sliderfraction if not dragging
@@ -74,19 +56,19 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
     end
 
     # when the range is changed, switch to closest interval
-    on(sliderrange) do rng
-        selected_indices[] = closest_index.(Ref(rng), interval[])
+    on(isl.range) do rng
+        isl.selected_indices[] = closest_index.(Ref(rng), isl.interval[])
     end
 
-    on(selected_indices) do is
-        interval[] = getindex.(Ref(sliderrange[]), is)
+    on(isl.selected_indices) do is
+        isl.interval[] = getindex.(Ref(isl.range[]), is)
     end
 
     # initialize slider value with closest from range
-    selected_indices[] = if startvalues[] === Makie.automatic
-        (1, lastindex(sliderrange[]))
+    isl.selected_indices[] = if isl.startvalues[] === Makie.automatic
+        (1, lastindex(isl.range[]))
     else
-        closest_index.(Ref(sliderrange[]), startvalues[])
+        closest_index.(Ref(isl.range[]), isl.startvalues[])
     end
 
     middlepoints = lift(endpoints, displayed_sliderfractions) do ep, sfs
@@ -97,21 +79,19 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
         [eps[1], middles[1], middles[1], middles[2], middles[2], eps[2]]
     end
 
-    linecolors = lift(color_active_dimmed, color_inactive) do ca, ci
+    linecolors = lift(isl.color_active_dimmed, isl.color_inactive) do ca, ci
         [ci, ca, ci]
     end
 
-    endbuttoncolors = lift(color_active_dimmed, color_inactive) do ca, ci
+    endbuttoncolors = lift(isl.color_active_dimmed, isl.color_inactive) do ca, ci
         [ci, ci]
     end
 
-    endbuttons = scatter!(topscene, endpoints, color = endbuttoncolors,
-        markersize = linewidth, strokewidth = 0, inspectable = false)
-    decorations[:endbuttons] = endbuttons
+    endbuttons = scatter!(blockscene, endpoints, color = endbuttoncolors,
+        markersize = isl.linewidth, strokewidth = 0, inspectable = false)
 
-    linesegs = linesegments!(topscene, linepoints, color = linecolors,
-        linewidth = linewidth, inspectable = false)
-    decorations[:linesegments] = linesegs
+    linesegs = linesegments!(blockscene, linepoints, color = linecolors,
+        linewidth = isl.linewidth, inspectable = false)
 
     state = Observable(:none)
     button_magnifications = lift(state) do state
@@ -125,12 +105,11 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
             [1.0, 1.25]
         end
     end
-    buttonsizes = @lift($linewidth .* $button_magnifications)
-    buttons = scatter!(topscene, middlepoints, color = color_active, strokewidth = 0,
+    buttonsizes = @lift($(isl.linewidth) .* $button_magnifications)
+    buttons = scatter!(blockscene, middlepoints, color = isl.color_active, strokewidth = 0,
         markersize = buttonsizes, inspectable = false)
-    decorations[:buttons] = buttons
 
-    mouseevents = addmouseevents!(topscene, layoutobservables.computedbbox)
+    mouseevents = addmouseevents!(blockscene, isl.layoutobservables.computedbbox)
 
     # we need to record where a drag started for the case where the center of the
     # range is shifted, because the difference in indices always needs to stay the same
@@ -142,7 +121,7 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
     onmouseleftdrag(mouseevents) do event
 
         dragging[] = true
-        fraction = if horizontal[]
+        fraction = if isl.horizontal[]
             (event.px[1] - endpoints[][1][1]) / (endpoints[][2][1] - endpoints[][1][1])
         else
             (event.px[2] - endpoints[][1][2]) / (endpoints[][2][2] - endpoints[][1][2])
@@ -150,9 +129,9 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
         fraction = clamp(fraction, 0, 1)
 
         if state[] in (:min, :max)
-            if snap[]
-                snapindex = closest_fractionindex(sliderrange[], fraction)
-                fraction = (snapindex - 1) / (length(sliderrange[]) - 1)
+            if isl.snap[]
+                snapindex = closest_fractionindex(isl.range[], fraction)
+                fraction = (snapindex - 1) / (length(isl.range[]) - 1)
             end
             if state[] == :min
                 # if the mouse crosses over the current max, reverse
@@ -171,32 +150,32 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
                     displayed_sliderfractions[] = (displayed_sliderfractions[][1], fraction)
                 end
             end
-            newindices = closest_fractionindex.(Ref(sliderrange[]), displayed_sliderfractions[])
+            newindices = closest_fractionindex.(Ref(isl.range[]), displayed_sliderfractions[])
 
-            if selected_indices[] != newindices
-                selected_indices[] = newindices
+            if isl.selected_indices[] != newindices
+                isl.selected_indices[] = newindices
             end
         elseif state[] == :both
             fracdif = fraction - startfraction[]
 
             clamped_fracdif = clamp(fracdif, -start_disp_fractions[][1], 1 - start_disp_fractions[][2])
 
-            ntarget = round(Int, length(sliderrange[]) * clamped_fracdif)
+            ntarget = round(Int, length(isl.range[]) * clamped_fracdif)
 
             nlow = -startindices[][1] + 1
-            nhigh = length(sliderrange[]) - startindices[][2]
+            nhigh = length(isl.range[]) - startindices[][2]
             nchange = clamp(ntarget, nlow, nhigh)
 
             newindices = startindices[] .+ nchange
 
-            displayed_sliderfractions[] = if snap[]
-                (newindices .- 1) ./ (length(sliderrange[]) - 1)
+            displayed_sliderfractions[] = if isl.snap[]
+                (newindices .- 1) ./ (length(isl.range[]) - 1)
             else
                 start_disp_fractions[] .+ clamped_fracdif
             end
 
-            if selected_indices[] != newindices
-                selected_indices[] = newindices
+            if isl.selected_indices[] != newindices
+                isl.selected_indices[] = newindices
             end
         end
 
@@ -214,25 +193,25 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
 
         pos = event.px
 
-        dim = horizontal[] ? 1 : 2
+        dim = isl.horizontal[] ? 1 : 2
         frac = clamp(
             (pos[dim] - endpoints[][1][dim]) / (endpoints[][2][dim] - endpoints[][1][dim]),
             0, 1
         )
 
         startfraction[] = frac
-        startindices[] = selected_indices[]
+        startindices[] = isl.selected_indices[]
         start_disp_fractions[] = displayed_sliderfractions[]
 
         if state[] in (:both, :none)
             return Consume(true)
         end
 
-        newindex = closest_fractionindex(sliderrange[], frac)
-        if abs(newindex - selected_indices[][1]) < abs(newindex - selected_indices[][2])
-            selected_indices[] = (newindex, selected_indices[][2])
+        newindex = closest_fractionindex(isl.range[], frac)
+        if abs(newindex - isl.selected_indices[][1]) < abs(newindex - isl.selected_indices[][2])
+            isl.selected_indices[] = (newindex, isl.selected_indices[][2])
         else
-            selected_indices[] = (selected_indices[][1], newindex)
+            isl.selected_indices[] = (isl.selected_indices[][1], newindex)
         end
         # linecolors[] = [color_active[], color_inactive[]]
 
@@ -240,17 +219,17 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
     end
 
     onmouseleftdoubleclick(mouseevents) do event
-        selected_indices[] = selected_indices[] = if startvalues[] === Makie.automatic
-            (1, lastindex(sliderrange[]))
+        isl.selected_indices[] = isl.selected_indices[] = if isl.startvalues[] === Makie.automatic
+            (1, lastindex(isl.range[]))
         else
-            closest_index.(Ref(sliderrange[]), startvalues[])
+            closest_index.(Ref(isl.range[]), isl.startvalues[])
         end
 
         return Consume(true)
     end
 
     onmouseover(mouseevents) do event
-        fraction = if horizontal[]
+        fraction = if isl.horizontal[]
             (event.px[1] - endpoints[][1][1]) / (endpoints[][2][1] - endpoints[][1][1])
         else
             (event.px[2] - endpoints[][1][2]) / (endpoints[][2][2] - endpoints[][1][2])
@@ -276,14 +255,14 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
     end
 
     # trigger autosize through linewidth for first layout
-    linewidth[] = linewidth[]
+    isl.linewidth[] = isl.linewidth[]
 
-    IntervalSlider(fig_or_scene, layoutobservables, attrs, decorations)
+    return
 end
 
 
 """
-Set the `slider` to the values in the slider's range that are closest to `v1` and `v2`, and return those values ordered min, max.
+Set the `slider` to the values in the slider's range that are closest to `v1` and `v2`, and return those values ordered min, misl.
 """
 function set_close_to!(intervalslider::IntervalSlider, v1, v2)
     mima = minmax(v1, v2)

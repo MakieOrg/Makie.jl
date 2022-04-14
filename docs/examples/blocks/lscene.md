@@ -4,7 +4,7 @@
 
 If you need a normal Makie scene in a layout, for example for 3D plots, you have
 to use `LScene` right now. It's just a wrapper around the normal `Scene` that
-makes it layoutable. The underlying Scene is accessible via the `scene` field.
+makes it block. The underlying Scene is accessible via the `scene` field.
 You can plot into the `LScene` directly, though.
 
 You can pass keyword arguments to the underlying `Scene` object to the `scenekw` keyword.
