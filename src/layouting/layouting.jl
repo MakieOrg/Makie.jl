@@ -254,6 +254,7 @@ _offset_to_vec(o::Vector) = to_ndim.(Vec3f, o, 0)
 _offset_at(o::Vec3f, i) = o
 _offset_at(o::Vector, i) = o[i]
 Base.getindex(x::ScalarOrVector, i) = x.sv isa Vector ? x.sv[i] : x.sv
+Base.lastindex(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
 
 function text_quads(position::VecTypes, gc::GlyphCollection, offset, transfunc)
     p = apply_transform(transfunc, position)

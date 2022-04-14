@@ -1,16 +1,17 @@
 function plot!(plot::Text)
     # attach a function to any text that calculates the glyph layout and stores it
     glyphcollection = lift(plot[1], plot.textsize, plot.font, plot.align,
-            plot.rotation, plot.justification, plot.lineheight,
-            plot.color, plot.strokecolor, plot.strokewidth) do str,
-                ts, f, al, rot, jus, lh, col, scol, swi
+            plot.rotation, plot.justification, plot.lineheight, plot.color, 
+            plot.strokecolor, plot.strokewidth, plot.word_wrap_width) do str,
+                ts, f, al, rot, jus, lh, col, scol, swi, www
         ts = to_textsize(ts)
         f = to_font(f)
         rot = to_rotation(rot)
         col = to_color(col)
         scol = to_color(scol)
 
-        layout_text(str, ts, f, al, rot, jus, lh, col, scol, swi)
+        gc = layout_text(str, ts, f, al, rot, jus, lh, col, scol, swi)
+        wrap_words(gc, www, ts, al, rot, jus, lh)
     end
 
     text!(plot, glyphcollection; plot.attributes...)
@@ -30,10 +31,10 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
     position = Observable{Any}(nothing)
     rotation = Observable{Any}(nothing)
 
-    onany(plot[1], plot.textsize, plot.position,
-            plot.font, plot.align, plot.rotation, plot.justification,
-            plot.lineheight, plot.color, plot.strokecolor, plot.strokewidth) do str,
-                    ts, pos, f, al, rot, jus, lh, col, scol, swi
+    onany(plot[1], plot.textsize, plot.position, plot.font, plot.align, 
+            plot.rotation, plot.justification, plot.lineheight, plot.color, 
+            plot.strokecolor, plot.strokewidth, plot.word_wrap_width) do str,
+                    ts, pos, f, al, rot, jus, lh, col, scol, swi, wwws
 
         ts = to_textsize(ts)
         f = to_font(f)
@@ -42,9 +43,10 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
         scol = to_color(scol)
 
         gcs = GlyphCollection[]
-        broadcast_foreach(str, ts, f, al, rot, jus, lh, col, scol, swi) do str,
-                ts, f, al, rot, jus, lh, col, scol, swi
+        broadcast_foreach(str, ts, f, al, rot, jus, lh, col, scol, swi, wwws) do str,
+                ts, f, al, rot, jus, lh, col, scol, swi, www
             subgl = layout_text(str, ts, f, al, rot, jus, lh, col, scol, swi)
+            wrap_words(subgl, www, ts, al, rot, jus, lh)
             push!(gcs, subgl)
         end
         position.val = pos
@@ -251,3 +253,53 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
 end
 
 MakieLayout.iswhitespace(l::LaTeXString) = MakieLayout.iswhitespace(replace(l.s, '$' => ""))
+
+function wrap_words(
+        gc::GlyphCollection, width::Real, 
+        textsize, align, rotation, justification, lineheight
+    )
+    # Interpret negative widths as infinite width
+    width < 0 && return gc
+
+    # Replace last space with a newline if the word before the current space 
+    # overflows. If there is a newline between the last space and the current
+    # space, do not add a newline.
+    # word{space}word{space}word{space}
+    #        ↑      ↑   ↑
+    #        |     i-1  i
+    # last_space_idx
+    last_space_idx = 0
+    newline_offset = gc.origins[1][1]
+    chars = copy(gc.glyphs)
+    for i in eachindex(chars)
+        if chars[i] == ' '
+            if last_space_idx != 0
+                right_edge = gc.origins[i][1] - newline_offset
+                if right_edge > width
+                    newline_offset = gc.origins[last_space_idx + 1][1]
+                    chars[last_space_idx] = '\n'
+                end
+            end
+            last_space_idx = i
+        elseif chars[i] == '\n'
+            last_space_idx = 0
+        end
+    end
+
+    # Handle last word
+    if last_space_idx != 0
+        glyph_bb, extent = FreeTypeAbstraction.metrics_bb(
+            chars[end], gc.fonts[end], gc.scales[end]
+        )
+        right_edge = gc.origins[end][1] + widths(glyph_bb)[1] - newline_offset
+        if right_edge > width
+            chars[last_space_idx] = '\n'
+        end
+    end
+
+    # Recreate the glyphlayout
+    return layout_text(
+        join(chars), textsize, gc.fonts, align, rotation,
+        justification, lineheight, gc.colors.sv, gc.strokecolors.sv, gc.strokewidths.sv
+    )
+end
