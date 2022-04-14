@@ -351,12 +351,9 @@ end
 
 function Base.empty!(scene::Scene)
     _empty_recursion(scene)
-
-    disconnect!(scene.camera)
-    scene.camera_controls = EmptyCamera()
+    
     empty!(scene.theme)
     merge!(scene.theme, _current_default_theme)
-    empty!(scene.children)
 
     return nothing
 end
@@ -365,6 +362,10 @@ function _empty_recursion(scene::Scene)
     for child in reverse(scene.children)
         _empty_recursion(child)
     end
+
+    empty!(scene.children)
+    disconnect!(scene.camera)
+    scene.camera_controls = EmptyCamera()
 
     for plot in reverse(scene.plots)
         for screen in scene.current_screens
