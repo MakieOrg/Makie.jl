@@ -350,13 +350,31 @@ function getindex(scene::Scene, ::Type{OldAxis})
 end
 
 function Base.empty!(scene::Scene)
-    empty!(scene.plots)
+    _empty_recursion(scene)
+
     disconnect!(scene.camera)
-    scene.camera_controls[] = EmptyCamera()
+    scene.camera_controls = EmptyCamera()
     empty!(scene.theme)
     merge!(scene.theme, _current_default_theme)
     empty!(scene.children)
-    empty!(scene.current_screens)
+
+    return nothing
+end
+
+function _empty_recursion(scene::Scene)
+    for child in reverse(scene.children)
+        _empty_recursion(child)
+    end
+
+    for plot in reverse(scene.plots)
+        for screen in scene.current_screens
+            delete!(screen, scene, plot)
+        end
+    end
+
+    empty!(scene.plots)
+
+    return
 end
 
 Base.push!(scene::Combined, subscene) = nothing # Combined plots add themselves uppon creation
