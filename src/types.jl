@@ -114,10 +114,31 @@ function Base.show(io::IO, events::Events)
 end
 
 function Events()
-    mousebutton = PriorityObservable(MouseButtonEvent(Mouse.none, Mouse.release))
-    mousebuttonstate = Set{Mouse.Button}()
-    on(mousebutton, priority = typemax(Int8)) do event
-        set = mousebuttonstate
+    events = Events(
+        PriorityObservable(Recti(0, 0, 0, 0)),
+        PriorityObservable(100.0),
+        PriorityObservable(false),
+
+        PriorityObservable(MouseButtonEvent(Mouse.none, Mouse.release)), 
+        Set{Mouse.Button}(),
+        PriorityObservable((0.0, 0.0)),
+        PriorityObservable((0.0, 0.0)),
+
+        PriorityObservable(KeyEvent(Keyboard.unknown, Keyboard.release)), 
+        Set{Keyboard.Button}(),
+        PriorityObservable('\0'),
+        PriorityObservable(String[]),
+        PriorityObservable(false),
+        PriorityObservable(false),
+    )
+
+    connect_states!(events)
+    return events
+end
+
+function connect_states!(e::Events)
+    on(e.mousebutton, priority = typemax(Int8)) do event
+        set = e.mousebuttonstate
         if event.action == Mouse.press
             push!(set, event.button)
         elseif event.action == Mouse.release
@@ -129,10 +150,8 @@ function Events()
         return Consume(false)
     end
 
-    keyboardbutton = PriorityObservable(KeyEvent(Keyboard.unknown, Keyboard.release))
-    keyboardstate = Set{Keyboard.Button}()
-    on(keyboardbutton, priority = typemax(Int8)) do event
-        set = keyboardstate
+    on(e.keyboardbutton, priority = typemax(Int8)) do event
+        set = e.keyboardstate
         if event.key != Keyboard.unknown
             if event.action == Keyboard.press
                 push!(set, event.key)
@@ -147,23 +166,7 @@ function Events()
         # This never consumes because it just keeps track of the state
         return Consume(false)
     end
-
-    return Events(
-        PriorityObservable(Recti(0, 0, 0, 0)),
-        PriorityObservable(100.0),
-        PriorityObservable(false),
-
-        mousebutton, mousebuttonstate,
-        PriorityObservable((0.0, 0.0)),
-        PriorityObservable((0.0, 0.0)),
-
-        keyboardbutton, keyboardstate,
-
-        PriorityObservable('\0'),
-        PriorityObservable(String[]),
-        PriorityObservable(false),
-        PriorityObservable(false),
-    )
+    return
 end
 
 # Compat only
@@ -247,6 +250,9 @@ function Base.empty!(events::Events)
             off(obs, f)
         end
     end
+    empty!(events.mousebuttonstate)
+    empty!(events.keyboardstate)
+    connect_states!(events)
     return
 end
 
