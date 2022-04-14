@@ -246,13 +246,13 @@ function Base.empty!(events::Events)
     for field in fieldnames(Events)
         field in (:mousebuttonstate, :keyboardstate) && continue
         obs = getfield(events, field)
-        for f in listeners(obs)
-            off(obs, f)
+        for (prio, callbacks) in obs.listeners
+            prio == typemax(Int8) && continue
+            for f in callbacks
+                off(obs, f)
+            end
         end
     end
-    empty!(events.mousebuttonstate)
-    empty!(events.keyboardstate)
-    connect_states!(events)
     return
 end
 
