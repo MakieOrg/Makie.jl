@@ -239,6 +239,17 @@ function Base.getproperty(e::Events, field::Symbol)
     end
 end
 
+function Base.empty!(events::Events)
+    for field in fieldnames(Events)
+        field in (:mousebuttonstate, :keyboardstate) && continue
+        obs = getfield(events, field)
+        for f in listeners(obs)
+            off(obs, f)
+        end
+    end
+    return
+end
+
 
 """
     Camera(pixel_area)
