@@ -113,7 +113,7 @@ function plot!(
     plot = plot!(ax.scene, P, allattrs, category_labels, data_array)
     category_labels, data_array = group_args(category_labels, data_array)
 
-    ax.xticks = (plot.x_positions_of_categories[], category_labels)
+    ax.xticks = (plot.x_positions_of_categories[], string.(category_labels))
     if haskey(allattrs, :title)
         ax.title = allattrs.title[]
     end
@@ -129,9 +129,9 @@ end
 
 function group_args(category_labels, data_array)
     if !(eltype(data_array) isa AbstractVector)
-        grouped = Dict{String, typeof(data_array)}()
+        grouped = Dict{eltype(category_labels), typeof(data_array)}()
         for (label, data) in zip(category_labels, data_array)
-            push!(get!(grouped, string(label), eltype(data_array)[]), data)
+            push!(get!(grouped, label, eltype(data_array)[]), data)
         end
 
         @info "Converting parameters"
