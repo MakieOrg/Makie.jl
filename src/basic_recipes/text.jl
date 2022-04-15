@@ -217,7 +217,8 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
     for i in eachindex(chars)
         basepositions[i] -= newline_offset
         if chars[i] == ' ' || i == length(chars)
-            if last_space_idx != 0 && basepositions[i][1] > word_wrap_width
+            right_pos = basepositions[i][1] + width(bboxes[i])
+            if last_space_idx != 0 && right_pos > word_wrap_width
                 section_offset = basepositions[last_space_idx + 1][1]
                 lineheight = maximum((height(bb) for bb in bboxes[last_newline_idx:last_space_idx]))
                 last_newline_idx = last_space_idx+1

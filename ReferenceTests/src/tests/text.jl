@@ -348,7 +348,7 @@ end
 
     fig = Figure()
     ax = Axis(fig[1, 1])
-    text!(ax, lorem_ipsum, word_wrap_width=250, textsize = 12, align = (:left, :bottom), justification = :left)
+    text!(ax, latexstring(L"$1$ " * lorem_ipsum), word_wrap_width=250, textsize = 12, align = (:left, :bottom), justification = :left)
     text!(ax, lorem_ipsum, word_wrap_width=250, textsize = 12, align = (:left, :top), justification = :right)
     text!(ax, lorem_ipsum, word_wrap_width=250, textsize = 12, align = (:right, :bottom), justification = :center)
     text!(ax, lorem_ipsum, word_wrap_width=200, textsize = 12, align = (:center, :top), position = Point2f(-0.3, 0))
