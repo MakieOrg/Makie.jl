@@ -135,6 +135,15 @@ end
 function plot!(plot::RainClouds)
     category_labels = plot.category_labels[]
     data_array = plot.data_array[]
+    if length(category_labels) == length(data_array) && !(data_array isa AbstractVector{<:AbstractVector})
+        grouped = Dict{String, typeof(data_array)}()
+        for (label, data) in zip(category_labels, data_array)
+            push!(get!(grouped, label, eltype(data_array)[]), data)
+        end
+
+        category_labels = collect(keys(grouped))
+        data_array = collect(values(grouped))
+    end
 
     # Checking kwargs, and assigning defaults if they are not in kwargs
     # General Settings
