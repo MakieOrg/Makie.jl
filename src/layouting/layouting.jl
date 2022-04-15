@@ -113,30 +113,37 @@ function glyph_collection(
         for (i, ci) in enumerate(charinfos)
             push!(xs[end], x)
             x += charinfos[i].hadvance
+            
+            if 0 < word_wrap_width < x && (ci.char == ' ' || i == length(charinfos)) && 
+                    last_space_local_idx != 0
 
-            if ci.char == '\n' || i == length(charinfos)
+                newline_offset = xs[end][last_space_local_idx + 1]
+                push!(xs, xs[end][last_space_local_idx+1:end] .- newline_offset)
+                xs[end-1] = xs[end-1][1:last_space_local_idx]
+                push!(lineinfos, view(charinfos, last_line_start:last_space_global_idx))
+                last_line_start = last_space_global_idx+1
+                x = xs[end][end] + charinfos[i].hadvance
+
+                # TODO Do we need to redo the metrics for newlines?
+                charinfos[last_space_global_idx] = let 
+                    _, font, scale, hadvance, hi_bb, lineheight, extent = charinfos[last_space_global_idx]
+                    (char = '\n', font = font, scale = scale, hadvance = hadvance,
+                        hi_bb = hi_bb, lineheight = lineheight, extent = extent)
+                end
+                
+                if i == length(charinfos)
+                    push!(lineinfos, view(charinfos, last_line_start:i))
+                end
+
+            elseif ci.char == '\n' || i == length(charinfos)
                 push!(xs, Float32[])
                 push!(lineinfos, view(charinfos, last_line_start:i))
                 last_space_local_idx = 0
                 last_line_start = i+1
                 x = 0f0
-            elseif word_wrap_width > 0 && ci.char == ' '
-                if last_space_local_idx != 0 && x > word_wrap_width
-                    newline_offset = xs[end][last_space_local_idx + 1]
-                    push!(xs, xs[end][last_space_local_idx+1:end] .- newline_offset)
-                    xs[end-1] = xs[end-1][1:last_space_local_idx]
-                    push!(lineinfos, view(charinfos, last_line_start:last_space_global_idx))
-                    last_line_start = last_space_global_idx+1
-                    x = xs[end][end] + charinfos[i].hadvance
+            end
 
-                    # TODO Do we need to redo the metrics for newlines?
-                    charinfos[last_space_global_idx] = let 
-                        _, font, scale, hadvance, hi_bb, lineheight, extent = charinfos[last_space_global_idx]
-                        (char = '\n', font = font, scale = scale, hadvance = hadvance,
-                            hi_bb = hi_bb, lineheight = lineheight, extent = extent)
-                    end
-                end
-
+            if 0 < word_wrap_width && ci.char == ' '
                 last_space_local_idx = length(last(xs))
                 last_space_global_idx = i
             end
