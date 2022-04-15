@@ -127,7 +127,7 @@ function glyph_collection(
                     xs[end-1] = xs[end-1][1:last_space_local_idx]
                     push!(lineinfos, view(charinfos, last_line_start:last_space_global_idx))
                     last_line_start = last_space_global_idx+1
-                    x = xs[end][end]
+                    x = xs[end][end] + charinfos[i].hadvance
 
                     # TODO Do we need to redo the metrics for newlines?
                     charinfos[last_space_global_idx] = let 
