@@ -1,3 +1,21 @@
+function block_docs(::Type{Axis})
+    """
+    A 2D axis which can be plotted into.
+
+    ## Constructors
+
+    ```julia
+    Axis(fig_or_scene; palette = nothing, kwargs...)
+    ```
+
+    ## Examples
+
+    ```julia
+    ax = Axis(fig[1, 1])
+    ```
+    """
+end
+
 function initialize_block!(ax::Axis; palette = nothing)
 
     topscene = ax.blockscene

@@ -1,5 +1,5 @@
 function block_docs(::Type{Menu})
-    Markdown.md"""
+    """
     A drop-down menu with multiple selectable options. You can pass options
     with the keyword argument `options`.
     
@@ -12,12 +12,18 @@ function block_docs(::Type{Menu})
     When an item is selected in the menu, the menu's `selection` attribute is set to
     `optionvalue(selected_element)`.
 
+    ## Constructors
+
+    ```julia
+    Menu(fig_or_scene; kwargs...)
+    ```
+
     ## Examples
 
     Menu with string entries:
 
     ```julia
-    menu1 = Menu(scene, options = ["first", "second", "third"])
+    menu1 = Menu(fig[1, 1], options = ["first", "second", "third"])
     ```
 
     Menu with two-element entries, label and function:
@@ -26,7 +32,7 @@ function block_docs(::Type{Menu})
     funcs = [sin, cos, tan]
     labels = ["Sine", "Cosine", "Tangens"]
 
-    menu2 = Menu(scene, options = zip(labels, funcs))
+    menu2 = Menu(fig[1, 1], options = zip(labels, funcs))
     ```
 
     Executing a function when a selection is made:
