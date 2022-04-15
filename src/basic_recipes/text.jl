@@ -210,28 +210,30 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
 
     basepositions = [to_ndim(Vec3f, fs, 0) .* to_ndim(Point3f, x[2], 0) for x in els]
 
-    last_space_idx = 0
-    last_newline_idx = 1
-    newline_offset = Point3f(basepositions[1][1], 0f0, 0)
+    if word_wrap_width > 0
+        last_space_idx = 0
+        last_newline_idx = 1
+        newline_offset = Point3f(basepositions[1][1], 0f0, 0)
 
-    for i in eachindex(chars)
-        basepositions[i] -= newline_offset
-        if chars[i] == ' ' || i == length(chars)
-            right_pos = basepositions[i][1] + width(bboxes[i])
-            if last_space_idx != 0 && right_pos > word_wrap_width
-                section_offset = basepositions[last_space_idx + 1][1]
-                lineheight = maximum((height(bb) for bb in bboxes[last_newline_idx:last_space_idx]))
-                last_newline_idx = last_space_idx+1
-                newline_offset += Point3f(section_offset, lineheight, 0)
+        for i in eachindex(chars)
+            basepositions[i] -= newline_offset
+            if chars[i] == ' ' || i == length(chars)
+                right_pos = basepositions[i][1] + width(bboxes[i])
+                if last_space_idx != 0 && right_pos > word_wrap_width
+                    section_offset = basepositions[last_space_idx + 1][1]
+                    lineheight = maximum((height(bb) for bb in bboxes[last_newline_idx:last_space_idx]))
+                    last_newline_idx = last_space_idx+1
+                    newline_offset += Point3f(section_offset, lineheight, 0)
 
-                chars[last_space_idx] = '\n'
-                for j in last_space_idx+1:i
-                    basepositions[j] -= Point3f(section_offset, lineheight, 0)
+                    chars[last_space_idx] = '\n'
+                    for j in last_space_idx+1:i
+                        basepositions[j] -= Point3f(section_offset, lineheight, 0)
+                    end
                 end
+                last_space_idx = i
+            elseif chars[i] == '\n'
+                last_space_idx = 0
             end
-            last_space_idx = i
-        elseif chars[i] == '\n'
-            last_space_idx = 0
         end
     end
 
