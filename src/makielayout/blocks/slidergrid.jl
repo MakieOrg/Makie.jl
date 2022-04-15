@@ -7,6 +7,9 @@ function block_docs(::Type{SliderGrid})
     and `label`, and optionally a `format` for the value label. Beyond that, you can set
     any keyword that `Slider` takes, such as `startvalue`.
 
+    The `format` keyword can be a `String` with Formatting.jl style, such as "{:.2f}Hz", or
+    a function.
+
     ## Constructors
 
     ```julia

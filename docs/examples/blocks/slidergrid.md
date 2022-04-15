@@ -4,7 +4,7 @@
 
 The column with the value labels is automatically set to a fixed width, so that the layout doesn't jitter when sliders are dragged and the value labels change their widths.
 This width is chosen by setting each slider to a few values and recording the maximum label width.
-Alternatively, you can set the width manually with the keyword argument `value_column_width`.
+Alternatively, you can set the width manually with attribute `value_column_width`.
 
 \begin{examplefigure}{}
 ```julia
