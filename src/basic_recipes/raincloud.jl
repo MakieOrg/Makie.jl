@@ -111,6 +111,7 @@ function plot!(
         allattrs::Attributes, category_labels, data_array)
 
     plot = plot!(ax.scene, P, allattrs, category_labels, data_array)
+    category_labels, data_array = group_args(category_labels, data_array)
 
     ax.xticks = (plot.x_positions_of_categories[], category_labels)
     if haskey(allattrs, :title)
@@ -126,6 +127,20 @@ function plot!(
     return plot
 end
 
+function group_args(category_labels, data_array)
+    if !(eltype(data_array) isa AbstractVector)
+        grouped = Dict{String, typeof(data_array)}()
+        for (label, data) in zip(category_labels, data_array)
+            push!(get!(grouped, string(label), eltype(data_array)[]), data)
+        end
+
+        @info "Converting parameters"
+        category_labels = collect(keys(grouped))
+        data_array = collect(values(grouped))
+    end
+    return category_labels, data_array
+end
+
 function convert_arguments(::Type{<: RainClouds}, category_labels, data_array)
     cloud_plot_check_args(category_labels, data_array)
     return (category_labels, data_array)
@@ -135,15 +150,7 @@ end
 function plot!(plot::RainClouds)
     category_labels = plot.category_labels[]
     data_array = plot.data_array[]
-    if length(category_labels) == length(data_array) && !(data_array isa AbstractVector{<:AbstractVector})
-        grouped = Dict{String, typeof(data_array)}()
-        for (label, data) in zip(category_labels, data_array)
-            push!(get!(grouped, label, eltype(data_array)[]), data)
-        end
-
-        category_labels = collect(keys(grouped))
-        data_array = collect(values(grouped))
-    end
+    category_labels, data_array = group_args(category_labels, data_array)
 
     # Checking kwargs, and assigning defaults if they are not in kwargs
     # General Settings
