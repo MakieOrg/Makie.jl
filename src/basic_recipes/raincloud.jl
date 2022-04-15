@@ -115,8 +115,6 @@ function plot!(
 
     if eltype(category_labels) <: AbstractString
         ax.xticks = (plot.x_positions_of_categories[], string.(category_labels))
-    else
-        ax.xticks = plot.x_positions_of_categories[]
     end
     if haskey(allattrs, :title)
         ax.title = allattrs.title[]
