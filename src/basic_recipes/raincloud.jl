@@ -111,9 +111,13 @@ function plot!(
         allattrs::Attributes, category_labels, data_array)
 
     plot = plot!(ax.scene, P, allattrs, category_labels, data_array)
-    category_labels, data_array = group_args(category_labels, data_array)
+    category_labels, data_array = group_labels(category_labels, data_array)
 
-    ax.xticks = (plot.x_positions_of_categories[], string.(category_labels))
+    if eltype(category_labels) <: AbstractString
+        ax.xticks = (plot.x_positions_of_categories[], string.(category_labels))
+    else
+        ax.xticks = plot.x_positions_of_categories[]
+    end
     if haskey(allattrs, :title)
         ax.title = allattrs.title[]
     end
@@ -127,7 +131,7 @@ function plot!(
     return plot
 end
 
-function group_args(category_labels, data_array)
+function group_labels(category_labels, data_array)
     if !(eltype(data_array) isa AbstractVector)
         grouped = Dict{eltype(category_labels), typeof(data_array)}()
         for (label, data) in zip(category_labels, data_array)
@@ -150,7 +154,7 @@ end
 function plot!(plot::RainClouds)
     category_labels = plot.category_labels[]
     data_array = plot.data_array[]
-    category_labels, data_array = group_args(category_labels, data_array)
+    category_labels, data_array = group_labels(category_labels, data_array)
 
     # Checking kwargs, and assigning defaults if they are not in kwargs
     # General Settings
