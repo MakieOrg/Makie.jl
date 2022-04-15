@@ -24,3 +24,21 @@ end
     fig[5, :] = Textbox(fig)
     fig
 end
+
+@cell "Label with text wrapping" begin
+    fig = Figure(resolution = (1000, 660))
+
+    lbl1 = Label(fig[1, 1:2], "HEADER "^10, textsize = 40, word_wrap = true)
+    mesh!(fig.scene, lbl1.layoutobservables.computedbbox, color = (:red, 0.5))
+
+    lbl2 = Label(fig[2, 1], lorem_ipsum, word_wrap = true, justification = :left)
+    mesh!(fig.scene, lbl2.layoutobservables.computedbbox, color = (:red, 0.5))
+    lbl3 = Label(fig[2, 2], "Smaller label\n <$('-'^12) pad $('-'^12)>")
+    mesh!(fig.scene, lbl3.layoutobservables.computedbbox, color = (:red, 0.5))
+    
+    lbl4 = Label(fig[3, 1], "test", word_wrap = true)
+    mesh!(fig.scene, lbl4.layoutobservables.computedbbox, color = (:red, 0.5))
+    lbl5 = Label(fig[3, 2], lorem_ipsum, word_wrap = true)
+    mesh!(fig.scene, lbl5.layoutobservables.computedbbox, color = (:red, 0.5))
+    fig
+end
