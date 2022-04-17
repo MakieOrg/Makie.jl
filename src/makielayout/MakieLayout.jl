@@ -21,48 +21,50 @@ include("lineaxis.jl")
 include("interactions.jl")
 include("blocks/axis.jl")
 include("blocks/axis3d.jl")
+include("blocks/box.jl")
+include("blocks/button.jl")
 include("blocks/colorbar.jl")
+include("blocks/intervalslider.jl")
 include("blocks/label.jl")
+include("blocks/legend.jl")
+include("blocks/menu.jl")
+include("blocks/polaraxis.jl")
+include("blocks/scene.jl")
 include("blocks/slider.jl")
 include("blocks/slidergrid.jl")
-include("blocks/intervalslider.jl")
-include("blocks/button.jl")
-include("blocks/box.jl")
 include("blocks/toggle.jl")
-include("blocks/legend.jl")
-include("blocks/scene.jl")
-include("blocks/menu.jl")
 include("blocks/textbox.jl")
 
 export Axis
 export Axis3
-export Slider
-export SliderGrid
-export IntervalSlider
+export AxisAspect, DataAspect
+export Box
 export Button
 export Colorbar
-export Label
-export Box
-export Toggle
-export Legend, axislegend
-export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement
-export LScene
-export Menu
-export Textbox
-export linkxaxes!, linkyaxes!, linkaxes!
-export AxisAspect, DataAspect
-export autolimits!, limits!, reset_limits!
-export LinearTicks, WilkinsonTicks, MultiplesTicks, IntervalsBetween, LogTicks
-export hidexdecorations!, hideydecorations!, hidedecorations!, hidespines!
-export tight_xticklabel_spacing!, tight_yticklabel_spacing!, tight_ticklabel_spacing!, tightlimits!
-export set_close_to!
-export labelslider!, labelslidergrid!
-export addmouseevents!
-export interactions, register_interaction!, deregister_interaction!, activate_interaction!, deactivate_interaction!
-export MouseEventTypes, MouseEvent, ScrollEvent, KeysEvent
-# export hlines!, vlines!, abline!, hspan!, vspan!
 export Cycle
 export Cycled
+export IntervalSlider
+export LScene
+export Label
+export Legend, axislegend
+export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement
+export LinearTicks, WilkinsonTicks, MultiplesTicks, IntervalsBetween, LogTicks
+export Menu
+export MouseEventTypes, MouseEvent, ScrollEvent, KeysEvent
+export PolarAxis2
+export Slider
+export SliderGrid
+export Textbox
+export Toggle
+export addmouseevents!
+export autolimits!, limits!, reset_limits!
+export hidexdecorations!, hideydecorations!, hidedecorations!, hidespines!
+export hlines!, vlines!, abline!, hspan!, vspan!
+export interactions, register_interaction!, deregister_interaction!, activate_interaction!, deactivate_interaction!
+export labelslider!, labelslidergrid!
+export linkxaxes!, linkyaxes!, linkaxes!
+export set_close_to!
+export tight_xticklabel_spacing!, tight_yticklabel_spacing!, tight_ticklabel_spacing!, tightlimits!
 
 # from GridLayoutBase
 export GridLayout, GridPosition, GridSubposition
