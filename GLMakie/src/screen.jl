@@ -58,6 +58,34 @@ function Makie.insertplots!(screen::GLScreen, scene::Scene)
     foreach(s-> insertplots!(screen, s), scene.children)
 end
 
+function Base.delete!(screen::Screen, scene::Scene)
+    if !isempty(scene.children)
+        delete!.((screen,), scene.children)
+    end
+    if !isempty(scene.plots)
+        delete!.((screen,), (scene,), scene.plots)
+    end
+
+    deleted_id = pop!(screen.screen2scene, WeakRef(scene))
+
+    # Remap scene IDs to a continuous range
+    if deleted_id - 1 != length(values(screen.screen2scene))
+        key, max_id = first(screen.screen2scene)
+        for p in screen.screen2scene
+            p[2] > max_id && (key, max_id = p)
+        end
+
+        screen.screen2scene[key] = deleted_id
+        for (i, (z, id, robj)) in enumerate(screen.renderlist)
+            if id == max_id
+                screen.renderlist[i] = (z, deleted_id, robj)
+            end
+        end
+    end
+
+    return
+end
+
 function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
     if !isempty(plot.plots)
         # this plot consists of children, so we flatten it and delete the children instead

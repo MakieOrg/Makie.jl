@@ -361,6 +361,9 @@ end
 function _empty_recursion(scene::Scene)
     for child in reverse(scene.children)
         _empty_recursion(child)
+        for screen in scene.current_screens
+            delete!(screen, child)
+        end
     end
 
     empty!(scene.children)
@@ -390,6 +393,10 @@ end
 
 function Base.delete!(screen::AbstractScreen, ::Scene, ::AbstractPlot)
     @warn "Deleting plots not implemented for backend: $(typeof(screen))"
+end
+function Base.delete!(screen::AbstractScreen, ::Scene)
+    # This may not be necessary for every backed
+    @debug "Deleting scenes not implemented for backend: $(typeof(screen))"
 end
 
 function Base.delete!(scene::Scene, plot::AbstractPlot)
