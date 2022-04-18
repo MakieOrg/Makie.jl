@@ -1337,3 +1337,29 @@ end
         zautolimitmargin = (0.05, 0.05)
     end
 end
+
+
+@Block FacetGrid begin
+    axes
+    @forwarded_layout
+    @attributes begin
+        "The height setting of the scene."
+        height = nothing
+        "The width setting of the scene."
+        width = nothing
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth = true
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight = true
+        "The horizontal alignment of the scene in its suggested bounding box."
+        halign = :center
+        "The vertical alignment of the scene in its suggested bounding box."
+        valign = :center
+        "The alignment of the scene in its suggested bounding box."
+        alignmode = Inside()
+        "The labels for the columns."
+        columnlabels = automatic
+        "The labels for the rows."
+        rowlabels = automatic
+    end
+end

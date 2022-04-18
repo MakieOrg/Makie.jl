@@ -63,6 +63,7 @@ include("interactions.jl")
 include("blocks/axis.jl")
 include("blocks/axis3d.jl")
 include("blocks/colorbar.jl")
+include("blocks/facetgrid.jl")
 include("blocks/label.jl")
 include("blocks/slider.jl")
 include("blocks/slidergrid.jl")
@@ -79,6 +80,7 @@ export Axis
 export Axis3
 export Slider
 export SliderGrid
+export FacetGrid
 export IntervalSlider
 export Button
 export Colorbar
