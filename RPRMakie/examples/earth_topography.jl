@@ -50,4 +50,4 @@ cam.lookat[] = Vec3f(0)
 cam.upvector[] = Vec3f(0, 0, 1)
 cam.fov[] = 23
 
-save("earth.png", ax.scene)
+@time display( ax.scene)

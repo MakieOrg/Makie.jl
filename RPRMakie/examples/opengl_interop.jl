@@ -1,4 +1,4 @@
-using GLMakie, GeometryBasics, RPRMakie, RadeonProRender
+using GLMakie, GeometryBasics, RPRMakie
 using Colors, FileIO
 using Colors: N0f8
 

@@ -157,8 +157,9 @@ function run_bench(info::BenchInfo; n=5)
     end
 
     results = Vector{Float64}[]
+    path = joinpath(@__DIR__, "benchmark-ttfp.jl")
     for i in 1:n
-        result = read(`$(Base.julia_cmd()) --project=$(project) ./benchmark-ttfp.jl`, String)
+        result = read(`$(Base.julia_cmd()) --project=$(project) $path`, String)
         tup = eval(Meta.parse(result))
         @show tup
         push!(results, [tup...])
@@ -211,17 +212,18 @@ function plot_benchmark!(ax, data, pos; width=0.9, height=0.3, alpha=0.2)
     return (used, ttfp, sum_t)
 end
 
-function plot_benchmarks(benchmarks, benchmark_infos)
-    f = Figure()
+function plot_benchmarks(benchmarks, benchmark_infos; resolution=(1500, 600))
+    f = Figure(resolution=resolution)
     ax = Axis(f[1,1]; ylabel="median time (s)")
     mdata = Vector{Float64}[]
     xticks = Int[]
     xticklabels = String[]
-    for (i, data) in enumerate(benchmarks)
-        pdata = data["results"]
+    idx = sortperm(benchmarks; by=x-> minimum(last.(x["results"])))
+    for (c, i) in enumerate(idx)
+        pdata = benchmarks[i]["results"]
         info = benchmark_infos[i]
-        push!(mdata, plot_benchmark!(ax, pdata, i)...)
-        push!(xticks, i)
+        push!(mdata, plot_benchmark!(ax, pdata, c)...)
+        push!(xticks, c)
         push!(xticklabels, best_name(info))
     end
     medians = median.(mdata)
