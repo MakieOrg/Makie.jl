@@ -459,29 +459,23 @@ end
 regularly_spaced_array_to_range(arr::AbstractRange) = arr
 
 """
-    interpolation_flag(is_vector, interp, wpx, hpx, w, h)
+    interpolation_flag(interp, wpx, hpx, w, h)
 
-* is_vector: if we're using vector backend
 * interp: does the user want to interpolate?
 * wpx, hpx: projected size of the image in pixels, so the actual width in pixels on screen
 * w, h: size of image in pixels
 """
-function interpolation_flag(is_vector, interp, wpx, hpx, w, h)
-    if interp
-        if is_vector
-            return Cairo.FILTER_BILINEAR
-        else
-            return Cairo.FILTER_BEST
-        end
-    else
-        if wpx < w || hpx < h
-            # if size of image size in pixels is larger then the rectangle it gets drawn into,
+function interpolation_flag(interp, wpx, hpx, w, h)
+    # if size of image size in pixels is larger then the rectangle it gets drawn into,
             # the pixels will be smaller than what ends up on screen, so one won't be able to see rectangles.
             # In that case, we need to apply filtering, or we get artifacts from incorrectly downsampling!
-            return interpolation_flag(is_vector, true, wpx, hpx, w, h)
-        else
-            return Cairo.FILTER_NEAREST
-        end
+    image_resolution_larger_than_surface = wpx < w || hpx < h
+    if interp || image_resolution_larger_than_surface
+        # The FILTER_BEST setting strangely looks like FILTER_NEAREST for bitmaps, and the
+        # same as FILTER_BILINEAR for vector backends
+        return Cairo.FILTER_BILINEAR
+    else
+        return Cairo.FILTER_NEAREST
     end
 end
 
@@ -515,6 +509,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
     is_vector = is_vector_backend(ctx)
     t = Makie.transform_func_obs(primitive)[]
     identity_transform = (t === identity || t isa Tuple && all(x-> x === identity, t)) && (abs(model[1, 2]) < 1e-15)
+
     if fast_path && xs isa AbstractRange && ys isa AbstractRange && !(is_vector && !interp) && identity_transform
         imsize = ((first(xs), last(xs)), (first(ys), last(ys)))
 
@@ -527,8 +522,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
 
         s = to_cairo_image(image, primitive)
 
-        interp_flag = interpolation_flag(is_vector, interp, abs(w), abs(h), s.width, s.height)
-
+        interp_flag = interpolation_flag(interp, abs(w), abs(h), s.width, s.height)
         if s.width > weird_cairo_limit || s.height > weird_cairo_limit
             error("Cairo stops rendering images bigger than $(weird_cairo_limit), which is likely a bug in Cairo. Please resample your image/heatmap with e.g. `ImageTransformations.imresize`")
         end

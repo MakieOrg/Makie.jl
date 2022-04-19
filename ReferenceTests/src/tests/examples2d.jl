@@ -5,6 +5,17 @@
     current_figure()
 end
 
+@reference_test "heatmap_interpolation" begin
+    f = Figure(resolution = (800, 800))
+    data = RNG.rand(32, 32)
+    heatmap(f[1, 1], data, interpolate = false)
+    heatmap(f[1, 2], data, interpolate = true)
+    data_big = RNG.rand(1000, 1000)
+    heatmap(f[2, 1], data_big, interpolate = false)
+    heatmap(f[2, 2], data_big, interpolate = true)
+    f
+end
+
 @reference_test "poly and colormap" begin
     # example by @Paulms from JuliaPlots/Makie.jl#310
     points = Point2f[[0.0, 0.0], [0.1, 0.0], [0.1, 0.1], [0.0, 0.1]]
