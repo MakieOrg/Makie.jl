@@ -72,14 +72,13 @@ function glyph_collection(str::AbstractString, font_per_char, fontscale_px, hali
 
     # collect information about every character in the string
     charinfos = broadcast((c for c in str), font_per_char, fontscale_px) do char, font, scale
-        unscaled_extent = get_extent(font, char)
-        lineheight = Float32(font.height / font.units_per_EM * lineheight_factor * scale)
-        unscaled_hi_bb = height_insensitive_boundingbox(unscaled_extent, font)
-        hi_bb = Rect2f(
-            Makie.origin(unscaled_hi_bb) * scale,
-            widths(unscaled_hi_bb) * scale)
-        (char = char, font = font, scale = scale, hadvance = hadvance(unscaled_extent) * scale,
-            hi_bb = hi_bb, lineheight = lineheight, extent = unscaled_extent)
+        (
+            char = char,
+            font = font,
+            scale = scale,
+            lineheight = Float32(font.height / font.units_per_EM * lineheight_factor * scale),
+            extent = GlyphExtent(font, char)
+        )
     end
 
     # split the character info vector into lines after every \n
@@ -99,7 +98,7 @@ function glyph_collection(str::AbstractString, font_per_char, fontscale_px, hali
     xs = map(lineinfos) do line
         cumsum([
             0f0;
-            [l.hadvance for l in line[1:end-1]]
+            [l.extent.hadvance * l.scale for l in line[1:end-1]]
         ])
     end
 
@@ -109,7 +108,7 @@ function glyph_collection(str::AbstractString, font_per_char, fontscale_px, hali
         # if the last and not the only character is \n, take the previous one
         # to compute the width
         i = (nchars > 1 && line[end].char == '\n') ? nchars - 1 : nchars
-        xx[i] + line[i].hadvance
+        xx[i] + line[i].extent.hadvance * line[i].scale
     end
 
     # the maximum width is needed for justification

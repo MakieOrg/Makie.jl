@@ -197,10 +197,10 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
     texchars = [x[1] for x in els]
     chars = [texchar.char for texchar in texchars]
     fonts = [texchar.font for texchar in texchars]
-    extents = texchars  # TeXChar can act as extents
+    extents = GlyphExtent.(texchars)
 
-    bboxes = map(extents, fonts, scales_2d) do ext, font, scale
-        unscaled_hi_bb = FreeTypeAbstraction.height_insensitive_boundingbox(ext, font)
+    bboxes = map(extents, scales_2d) do ext, scale
+        unscaled_hi_bb = height_insensitive_boundingbox(ext)
         return Rect2f(
             origin(unscaled_hi_bb) * scale,
             widths(unscaled_hi_bb) * scale

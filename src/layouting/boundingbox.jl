@@ -1,5 +1,3 @@
-using FreeTypeAbstraction: height_insensitive_boundingbox
-
 function parent_transform(x)
     p = parent(transformation(x))
     isnothing(p) ? Mat4f(I) : p.model[]
@@ -22,8 +20,8 @@ end
 
 function gl_bboxes(gl::GlyphCollection)
     scales = gl.scales.sv isa Vec2f ? (gl.scales.sv for _ in gl.extents) : gl.scales.sv
-    map(gl.extents, gl.fonts, scales) do ext, font, scale
-        unscaled_hi_bb = height_insensitive_boundingbox_with_advance(ext, font)
+    map(gl.extents, scales) do ext, scale
+        unscaled_hi_bb = height_insensitive_boundingbox_with_advance(ext)
         hi_bb = Rect2f(
             Makie.origin(unscaled_hi_bb) * scale,
             widths(unscaled_hi_bb) * scale
@@ -31,12 +29,19 @@ function gl_bboxes(gl::GlyphCollection)
     end
 end
 
-function height_insensitive_boundingbox_with_advance(ext, font)
+function height_insensitive_boundingbox(ext::GlyphExtent)
+    l = ext.ink_bounding_box.origin[1]
+    w = ext.ink_bounding_box.widths[1]
+    b = ext.descender
+    h = ext.ascender
+    return Rect2f((l, b), (w, h - b))
+end
+
+function height_insensitive_boundingbox_with_advance(ext::GlyphExtent)
     l = 0f0
-    r = FreeTypeAbstraction.hadvance(ext)
-    hibb = FreeTypeAbstraction.height_insensitive_boundingbox(ext, font)
-    b = origin(hibb)[2]
-    h = widths(hibb)[2]
+    r = ext.hadvance
+    b = ext.descender
+    h = ext.ascender
     return Rect2f((l, b), (r - l, h))
 end
 
