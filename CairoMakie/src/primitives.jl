@@ -458,28 +458,6 @@ end
 
 regularly_spaced_array_to_range(arr::AbstractRange) = arr
 
-"""
-    interpolation_flag(interp, wpx, hpx, w, h)
-
-* interp: does the user want to interpolate?
-* wpx, hpx: projected size of the image in pixels, so the actual width in pixels on screen
-* w, h: size of image in pixels
-"""
-function interpolation_flag(interp, wpx, hpx, w, h)
-    # if size of image size in pixels is larger then the rectangle it gets drawn into,
-            # the pixels will be smaller than what ends up on screen, so one won't be able to see rectangles.
-            # In that case, we need to apply filtering, or we get artifacts from incorrectly downsampling!
-    image_resolution_larger_than_surface = wpx < w || hpx < h
-    if interp || image_resolution_larger_than_surface
-        # The FILTER_BEST setting strangely looks like FILTER_NEAREST for bitmaps, and the
-        # same as FILTER_BILINEAR for vector backends
-        return Cairo.FILTER_BILINEAR
-    else
-        return Cairo.FILTER_NEAREST
-    end
-end
-
-
 function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive::Union{Heatmap, Image}))
     ctx = screen.context
     image = primitive[3][]
@@ -499,30 +477,46 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
         ys = regularly_spaced_array_to_range(ys)
     end
     model = primitive[:model][]
-    interp = to_value(get(primitive, :interpolate, true))
-    weird_cairo_limit = (2^15) - 23
+    interp_requested = to_value(get(primitive, :interpolate, true))
 
     # Debug attribute we can set to disable fastpath
     # probably shouldn't really be part of the interface
     fast_path = to_value(get(primitive, :fast_path, true))
+    disable_fast_path = !fast_path
     # Vector backends don't support FILTER_NEAREST for interp == false, so in that case we also need to draw rects
     is_vector = is_vector_backend(ctx)
     t = Makie.transform_func_obs(primitive)[]
     identity_transform = (t === identity || t isa Tuple && all(x-> x === identity, t)) && (abs(model[1, 2]) < 1e-15)
+    regular_grid = xs isa AbstractRange && ys isa AbstractRange
 
-    if fast_path && xs isa AbstractRange && ys isa AbstractRange && !(is_vector && !interp) && identity_transform
-        imsize = ((first(xs), last(xs)), (first(ys), last(ys)))
+    imsize = ((first(xs), last(xs)), (first(ys), last(ys)))
+    # find projected image corners
+    # this already takes care of flipping the image to correct cairo orientation
+    space = to_value(get(primitive, :space, :data))
+    xy = project_position(scene, space, Point2f(first.(imsize)), model)
+    xymax = project_position(scene, space, Point2f(last.(imsize)), model)
+    w, h = xymax .- xy
+    image_resolution_larger_than_surface = abs(w) < length(xs) || abs(h) < length(ys)
+    interpolate = interp_requested || image_resolution_larger_than_surface
 
-        # find projected image corners
-        # this already takes care of flipping the image to correct cairo orientation
-        space = to_value(get(primitive, :space, :data))
-        xy = project_position(scene, space, Point2f(first.(imsize)), model)
-        xymax = project_position(scene, space, Point2f(last.(imsize)), model)
-        w, h = xymax .- xy
+    # We need to draw rectangles for vector backends, or irregular grids
+    if interpolate
+        suggestion = interp_requested ? "Please use interpolate=false for this plot." : "Interpolation was automatically enabled because image size was larger than available resolution."
+        if !regular_grid
+            error("Interpolation with heatmaps/images on non-regular grids isn't supported right now. $suggestion")
+        end
+        if !identity_transform
+            error("Interpolation with heatmaps/images with non-identity transforms isn't supported right now. $suggestion")
+        end
+    end
 
+    can_use_fast_path = !(is_vector && !interpolate) && regular_grid && identity_transform
+    use_fast_path = can_use_fast_path && !disable_fast_path
+
+    if use_fast_path
         s = to_cairo_image(image, primitive)
 
-        interp_flag = interpolation_flag(interp, abs(w), abs(h), s.width, s.height)
+        weird_cairo_limit = (2^15) - 23
         if s.width > weird_cairo_limit || s.height > weird_cairo_limit
             error("Cairo stops rendering images bigger than $(weird_cairo_limit), which is likely a bug in Cairo. Please resample your image/heatmap with e.g. `ImageTransformations.imresize`")
         end
@@ -535,16 +529,11 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
         p = Cairo.get_source(ctx)
         # this is needed to avoid blurry edges
         Cairo.pattern_set_extend(p, Cairo.EXTEND_PAD)
-        # Set filter doesn't work!?
-        Cairo.pattern_set_filter(p, interp_flag)
+        filt = interpolate ? Cairo.FILTER_BILINEAR : Cairo.FILTER_NEAREST
+        Cairo.pattern_set_filter(p, filt)
         Cairo.fill(ctx)
         Cairo.restore(ctx)
-
     else
-        # We need to draw rectangles for vector backends, or irregular grids
-        if interp
-            error("Interpolation for non gridded heatmaps/images isn't supported right now. Please use interpolate=false for this plot")
-        end
         # find projected image corners
         # this already takes care of flipping the image to correct cairo orientation
         space = to_value(get(primitive, :space, :data))

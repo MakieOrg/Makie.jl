@@ -13,6 +13,10 @@ end
     data_big = RNG.rand(1000, 1000)
     heatmap(f[2, 1], data_big, interpolate = false)
     heatmap(f[2, 2], data_big, interpolate = true)
+    xs = (1:32) .^ 1.5
+    ys = (1:32) .^ 1.5
+    data = RNG.rand(32, 32)
+    heatmap(f[3, 1], xs, ys, data, interpolate = false)
     f
 end
 
