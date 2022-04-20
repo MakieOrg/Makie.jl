@@ -373,12 +373,15 @@ function GlyphExtent(font, char)
 end
 
 function GlyphExtent(texchar::TeXChar)
-    ink_bb = MathTeXEngine.inkboundingbox(texchar)
+    l = MathTeXEngine.leftinkbound(texchar)
+    r = MathTeXEngine.rightinkbound(texchar)
+    b = MathTeXEngine.bottominkbound(texchar)
+    t = MathTeXEngine.topinkbound(texchar)
     ascender = MathTeXEngine.ascender(texchar)
     descender = MathTeXEngine.descender(texchar)
     hadvance = MathTeXEngine.hadvance(texchar)
 
-    return GlyphExtent(ink_bb, ascender, descender, hadvance)
+    return GlyphExtent(Rect2f((l, b), (r - l, t - b)), ascender, descender, hadvance)
 end
 
 """
