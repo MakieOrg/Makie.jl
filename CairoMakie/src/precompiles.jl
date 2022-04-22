@@ -42,7 +42,7 @@ end
 function get_obs(x::Axis, visited, obs=Set())
     if x in visited; return; else; push!(visited, x); end
 
-    get_obs(x.attributes, visited, obs)
+    # get_obs(x.attributes, visited, obs)
     get_obs(x.layoutobservables, visited, obs)
     get_obs(x.scene, visited, obs)
     get_obs(x.finallimits, visited, obs)

@@ -22,6 +22,7 @@ using GridLayoutBase
 using GridLayoutBase: GridSubposition
 import Showoff
 using Colors
+import Markdown
 
 const FPS = Observable(30)
 const COLOR_ACCENT = Ref(RGBf(((79, 122, 214) ./ 255)...))
@@ -49,7 +50,7 @@ function __init__()
     end
 end
 
-include("layoutables.jl")
+include("blocks.jl")
 include("geometrybasics_extension.jl")
 include("mousestatemachine.jl")
 include("types.jl")
@@ -59,23 +60,25 @@ include("ticklocators/wilkinson.jl")
 include("defaultattributes.jl")
 include("lineaxis.jl")
 include("interactions.jl")
-include("layoutables/axis.jl")
-include("layoutables/axis3d.jl")
-include("layoutables/colorbar.jl")
-include("layoutables/label.jl")
-include("layoutables/slider.jl")
-include("layoutables/intervalslider.jl")
-include("layoutables/button.jl")
-include("layoutables/box.jl")
-include("layoutables/toggle.jl")
-include("layoutables/legend.jl")
-include("layoutables/scene.jl")
-include("layoutables/menu.jl")
-include("layoutables/textbox.jl")
+include("blocks/axis.jl")
+include("blocks/axis3d.jl")
+include("blocks/colorbar.jl")
+include("blocks/label.jl")
+include("blocks/slider.jl")
+include("blocks/slidergrid.jl")
+include("blocks/intervalslider.jl")
+include("blocks/button.jl")
+include("blocks/box.jl")
+include("blocks/toggle.jl")
+include("blocks/legend.jl")
+include("blocks/scene.jl")
+include("blocks/menu.jl")
+include("blocks/textbox.jl")
 
 export Axis
 export Axis3
 export Slider
+export SliderGrid
 export IntervalSlider
 export Button
 export Colorbar

@@ -54,7 +54,7 @@ end
 
 @cell "volume translated" begin
     r = range(-3pi, stop=3pi, length=100)
-    fig, ax, vplot = Makie.volume(r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), algorithm=:iso, isorange=0.1f0, show_axis=false)
+    fig, ax, vplot = Makie.volume(r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), algorithm=:iso, isorange=0.1f0, axis = (;show_axis=false))
     v2 = volume!(ax, r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), algorithm=:mip,
                  transformation=(translation=Vec3f(6pi, 0, 0),))
     fig

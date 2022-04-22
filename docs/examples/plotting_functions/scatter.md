@@ -121,6 +121,7 @@ ax = Axis(f[1, 1], yreversed = true,
     xautolimitmargin = (0.15, 0.15),
     yautolimitmargin = (0.15, 0.15)
 )
+hidedecorations!(ax)
 
 for (i, (marker, label)) in enumerate(markers_labels)
     p = Point2f(fldmod1(i, 6)...)
