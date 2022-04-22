@@ -262,7 +262,7 @@ end
         scene = Scene(resolution=(800, 600));
         e = events(scene)
         bbox = Observable(Rect2(200, 200, 400, 300))
-        msm = addmouseevents!(scene, bbox, priority=typemax(Int8))
+        msm = addmouseevents!(scene, bbox, priority=typemax(Int))
         eventlog = MouseEvent[]
         on(x -> begin push!(eventlog, x); false end, msm.obs)
 

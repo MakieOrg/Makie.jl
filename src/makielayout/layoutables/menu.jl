@@ -282,7 +282,7 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
     end
 
     # close the menu if the user clicks somewhere else
-    onmousedownoutside(addmouseevents!(scene, priority=Int8(61))) do events
+    onmousedownoutside(addmouseevents!(scene, priority=61)) do events
         if is_open[]
             is_open[] = !is_open[]
         end
@@ -360,7 +360,7 @@ function _reassemble_menu(
         # elements that may overlap with out interactive layoutables.
         addmouseevents!(
             scene, r.layoutobservables.computedbbox,
-            priority = Int8(1) + (i != 1) * Int8(60)
+            priority = 1 + (i != 1) * 60
         )
     end
 
