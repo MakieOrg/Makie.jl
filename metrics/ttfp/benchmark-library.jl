@@ -192,7 +192,7 @@ function get_benchmark_data(ctx, info::BenchInfo; n=10, force=false)
             "date" => string(now()),
             "results" => results
         )
-        upload_data(ctx, JSON.json(result_with_info), repo_data_path, "for commit $(uuid[1:5])")
+        upload_data(ctx, JSON.json(result_with_info), repo_data_path, "for commit $(uuid)")
         return result_with_info
     end
 end
