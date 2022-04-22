@@ -69,11 +69,24 @@ function Base.delete!(screen::Screen, scene::Scene)
     if haskey(screen.screen2scene, WeakRef(scene))
         deleted_id = pop!(screen.screen2scene, WeakRef(scene))
 
-        # Remap scene IDs to a continuous range
+        for i in eachindex(screen.screens)
+            if screen.screens[i][1] == deleted_id
+                deleteat!(screen.screens, i)
+            end
+        end
+
+        # Remap scene IDs to a continuous range by replacing the largest ID 
+        # with the one that got removed
         if deleted_id - 1 != length(values(screen.screen2scene))
             key, max_id = first(screen.screen2scene)
             for p in screen.screen2scene
                 p[2] > max_id && (key, max_id = p)
+            end
+
+            for (i, (id, _scene)) in enumerate(screen.screens)
+                if id == max_id
+                    screen.screens[i] = (deleted_id, _scene)
+                end
             end
 
             screen.screen2scene[key] = deleted_id
