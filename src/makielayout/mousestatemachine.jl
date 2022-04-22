@@ -80,7 +80,7 @@ for eventtype in instances(MouseEventType)
         Executes the function f whenever the `MouseEventHandle`'s observable is set to
         a MouseEvent with `event.type === $($eventtype)`.
         """
-        function $onfunctionname(f, mev::MouseEventHandle; priority = Int8(0))
+        function $onfunctionname(f, mev::MouseEventHandle; priority = 0)
             on(mev.obs, priority = priority) do event
                 if event.type === $eventtype
                     return f(event)
@@ -112,11 +112,11 @@ onmouseleftclick(mouseevents) do event
 end
 ```
 """
-function addmouseevents!(scene, elements...; priority = Int8(1))
+function addmouseevents!(scene, elements...; priority = 1)
     is_mouse_over_relevant_area() = isempty(elements) ? Makie.is_mouseinside(scene) : mouseover(scene, elements...)
     _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
 end
-function addmouseevents!(scene, bbox::Observables.AbstractObservable{<: Rect2}; priority = Int8(1))
+function addmouseevents!(scene, bbox::Observables.AbstractObservable{<: Rect2}; priority = 1)
     is_mouse_over_relevant_area() = Makie.mouseposition_px(scene) in bbox[]
     _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
 end

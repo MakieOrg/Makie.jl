@@ -63,7 +63,7 @@ Returns a new observable that is true whenever the cursor is inside the given sc
 
 See also: [`is_mouseinside`](@ref)
 """
-function mouse_in_scene(scene::Scene; priority = Int8(0))
+function mouse_in_scene(scene::Scene; priority = 0)
     p = rootparent(scene)
     output = Observable(Vec2(0.0))
     on(events(scene).mouseposition, priority = priority) do mp

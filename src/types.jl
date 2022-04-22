@@ -26,7 +26,7 @@ can be controlled via the `priority` keyword (default 0) in `on`.
 
 Example:
 ```
-on(events(scene).mousebutton, priority = Int8(20)) do event
+on(events(scene).mousebutton, priority = 20) do event
     if is_correct_event(event)
         do_something()
         return Consume()
@@ -116,7 +116,7 @@ end
 function Events()
     mousebutton = Observable(MouseButtonEvent(Mouse.none, Mouse.release))
     mousebuttonstate = Set{Mouse.Button}()
-    on(mousebutton, priority = typemax(Int8)) do event
+    on(mousebutton, priority = typemax(Int)) do event
         set = mousebuttonstate
         if event.action == Mouse.press
             push!(set, event.button)
@@ -131,7 +131,7 @@ function Events()
 
     keyboardbutton = Observable(KeyEvent(Keyboard.unknown, Keyboard.release))
     keyboardstate = Set{Keyboard.Button}()
-    on(keyboardbutton, priority = typemax(Int8)) do event
+    on(keyboardbutton, priority = typemax(Int)) do event
         set = keyboardstate
         if event.key != Keyboard.unknown
             if event.action == Keyboard.press
@@ -181,7 +181,7 @@ function Base.getproperty(e::Events, field::Symbol)
             println(stderr)
         end
         mousebuttons = Observable(Set{Mouse.Button}())
-        on(getfield(e, :mousebutton), priority=typemax(Int8)-1) do event
+        on(getfield(e, :mousebutton), priority=typemax(Int)-1) do event
             mousebuttons[] = getfield(e, :mousebuttonstate)
             return Consume(false)
         end
@@ -199,7 +199,7 @@ function Base.getproperty(e::Events, field::Symbol)
             println(stderr)
         end
         keyboardbuttons = Observable(Set{Keyboard.Button}())
-        on(getfield(e, :keyboardbutton), priority=typemax(Int8)-1) do event
+        on(getfield(e, :keyboardbutton), priority=typemax(Int)-1) do event
             keyboardbuttons[] = getfield(e, :keyboardstate)
             return Consume(false)
         end
@@ -217,7 +217,7 @@ function Base.getproperty(e::Events, field::Symbol)
             println(stderr)
         end
         mousedrag = Observable(Mouse.notpressed)
-        on(getfield(e, :mousebutton), priority=typemax(Int8)-1) do event
+        on(getfield(e, :mousebutton), priority=typemax(Int)-1) do event
             if (event.action == Mouse.press) && (length(e.mousebuttonstate) == 1)
                 mousedrag[] = Mouse.down
             elseif mousedrag[] in (Mouse.down, Mouse.pressed)
@@ -225,7 +225,7 @@ function Base.getproperty(e::Events, field::Symbol)
             end
             return Consume(false)
         end
-        on(getfield(e, :mouseposition), priority=typemax(Int8)-1) do pos
+        on(getfield(e, :mouseposition), priority=typemax(Int)-1) do pos
             if mousedrag[] in (Mouse.down, Mouse.pressed)
                 mousedrag[] = Mouse.pressed
             elseif mousedrag[] == Mouse.up
