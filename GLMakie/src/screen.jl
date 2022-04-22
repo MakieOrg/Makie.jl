@@ -66,19 +66,21 @@ function Base.delete!(screen::Screen, scene::Scene)
         delete!.((screen,), (scene,), scene.plots)
     end
 
-    deleted_id = pop!(screen.screen2scene, WeakRef(scene))
+    if haskey(screen.screen2scene, WeakRef(scene))
+        deleted_id = pop!(screen.screen2scene, WeakRef(scene))
 
-    # Remap scene IDs to a continuous range
-    if deleted_id - 1 != length(values(screen.screen2scene))
-        key, max_id = first(screen.screen2scene)
-        for p in screen.screen2scene
-            p[2] > max_id && (key, max_id = p)
-        end
+        # Remap scene IDs to a continuous range
+        if deleted_id - 1 != length(values(screen.screen2scene))
+            key, max_id = first(screen.screen2scene)
+            for p in screen.screen2scene
+                p[2] > max_id && (key, max_id = p)
+            end
 
-        screen.screen2scene[key] = deleted_id
-        for (i, (z, id, robj)) in enumerate(screen.renderlist)
-            if id == max_id
-                screen.renderlist[i] = (z, deleted_id, robj)
+            screen.screen2scene[key] = deleted_id
+            for (i, (z, id, robj)) in enumerate(screen.renderlist)
+                if id == max_id
+                    screen.renderlist[i] = (z, deleted_id, robj)
+                end
             end
         end
     end
