@@ -75,16 +75,19 @@ function Base.delete!(screen::Screen, scene::Scene)
 
         # Remap scene IDs to a continuous range by replacing the largest ID 
         # with the one that got removed
-        if deleted_id - 1 != length(values(screen.screen2scene))
+        if deleted_id-1 != length(screen.screens)
             key, max_id = first(screen.screen2scene)
             for p in screen.screen2scene
-                p[2] > max_id && (key, max_id = p)
+                if p[2] > max_id
+                    key, max_id = p
+                end
             end
 
             i = findfirst(id_scene -> id_scene[1] == max_id, screen.screens)::Int
             screen.screens[i] = (deleted_id, screen.screens[i][2])
 
             screen.screen2scene[key] = deleted_id
+
             for (i, (z, id, robj)) in enumerate(screen.renderlist)
                 if id == max_id
                     screen.renderlist[i] = (z, deleted_id, robj)

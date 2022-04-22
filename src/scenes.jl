@@ -365,6 +365,9 @@ function Base.empty!(scene::Scene)
     empty!(scene.theme)
     merge!(scene.theme, _current_default_theme)
 
+    disconnect!(scene.camera)
+    scene.camera_controls = EmptyCamera()
+
     return nothing
 end
 
