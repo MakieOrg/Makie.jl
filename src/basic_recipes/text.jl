@@ -77,7 +77,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:AbstractString, <:Po
         strs = first.(str_pos)
         poss = to_ndim.(Ref(Point3f), last.(str_pos), 0)
         # first mutate strings without triggering redraw
-        t[1].val != strs && (t[1][] = strs)
+        strings.val != strs && (strings[] = strs)
         # then update positions with trigger
         positions.val != poss && (positions[] = poss)
     end
