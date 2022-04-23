@@ -412,9 +412,8 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
         visible = attr(:gridvisible), inspectable = false)
 
 
-    framepoints = lift(limits, scene.camera.projectionview, scene.px_area) do lims, _, pxa
-        mi1 = min1[]
-        mi2 = min2[]
+    framepoints = lift(limits, scene.camera.projectionview, scene.px_area, min1, min2
+            ) do lims, _, pxa, mi1, mi2
         o = pxa.origin
 
         f(mi) = mi ? minimum : maximum
@@ -609,12 +608,10 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
             lalign
         end
 
-        if label_align[] != align || label_rotation[] != labelrotation
-            label_align.val = align
-            label_rotation[] = labelrotation
-        end
-
+        label_align[] != align && (label_align[] = align)
+        label_rotation[] != labelrotation && (label_rotation[] = labelrotation)
         label_position[] = plus_offset
+
         return
     end
     notify(attr(:labelalign))
