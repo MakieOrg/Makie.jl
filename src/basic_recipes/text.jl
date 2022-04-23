@@ -76,10 +76,10 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:AbstractString, <:Po
     on(strings_and_positions) do str_pos
         strs = first.(str_pos)
         poss = to_ndim.(Ref(Point3f), last.(str_pos), 0)
-        str_changed = strings.val != strs
-        str_changed && (strings.val = strs)
+
+        t[1].val != strs && (t[1][] = strs)
         positions.val != poss && (positions[] = poss)
-        str_changed && notify(strings)
+
         return
     end
     plot
@@ -124,10 +124,13 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
 
     scene = Makie.parent_scene(plot)
 
-    onany(lineels_glyphcollection_offset, scene.camera.projectionview) do (allels, gcs, offs), projview
+    onany(lineels_glyphcollection_offset, plot.position, scene.camera.projectionview
+            ) do (allels, gcs, offs), pos, projview
 
+        if pos isa Vector && (length(pos) != length(allels))
+            return
+        end
         # inv_projview = inv(projview)
-        pos = plot.position[]
         ts = plot.textsize[]
         rot = plot.rotation[]
 
@@ -170,9 +173,10 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
             append!(linepairs.val, first.(pairs))
         end
         notify(linepairs)
+        return
     end
 
-    notify(plot[1])
+    notify(plot.position)
 
     text!(plot, glyphcollection; plot.attributes...)
     linesegments!(
