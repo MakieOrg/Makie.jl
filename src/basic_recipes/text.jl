@@ -25,15 +25,13 @@ plot!(plot::Text{<:Tuple{<:GlyphCollection}}) = plot
 plot!(plot::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}}) = plot
 
 function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
-
     glyphcollections = Observable(GlyphCollection[])
-    position = Observable{Any}(nothing)
     rotation = Observable{Any}(nothing)
 
-    onany(plot[1], plot.textsize, plot.position,
-            plot.font, plot.align, plot.rotation, plot.justification,
-            plot.lineheight, plot.color, plot.strokecolor, plot.strokewidth) do str,
-                    ts, pos, f, al, rot, jus, lh, col, scol, swi
+    onany(plot[1], plot.textsize, plot.font, plot.align, 
+            plot.rotation, plot.justification, plot.lineheight, plot.color, 
+            plot.strokecolor, plot.strokewidth) do str,
+                    ts, f, al, rot, jus, lh, col, scol, swi
 
         ts = to_textsize(ts)
         f = to_font(f)
@@ -47,9 +45,9 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
             subgl = layout_text(str, ts, f, al, rot, jus, lh, col, scol, swi)
             push!(gcs, subgl)
         end
-        position.val = pos
         rotation.val = rot
         glyphcollections[] = gcs
+        return
     end
 
     # run onany once to initialize
@@ -79,9 +77,9 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:AbstractString, <:Po
         strs = first.(str_pos)
         poss = to_ndim.(Ref(Point3f), last.(str_pos), 0)
         # first mutate strings without triggering redraw
-        t[1].val = strs
+        t[1].val != strs && (t[1][] = strs)
         # then update positions with trigger
-        positions[] = poss
+        positions.val != poss && (positions[] = poss)
     end
     plot
 end
