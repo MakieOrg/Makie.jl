@@ -76,10 +76,11 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:AbstractString, <:Po
     on(strings_and_positions) do str_pos
         strs = first.(str_pos)
         poss = to_ndim.(Ref(Point3f), last.(str_pos), 0)
-        # first mutate strings without triggering redraw
-        strings.val != strs && (strings[] = strs)
-        # then update positions with trigger
+        str_changed = strings.val != strs
+        str_changed && (strings.val = strs)
         positions.val != poss && (positions[] = poss)
+        str_changed && notify(strings)
+        return
     end
     plot
 end
@@ -89,8 +90,8 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
 
     # attach a function to any text that calculates the glyph layout and stores it
     lineels_glyphcollection_offset = lift(plot[1], plot.textsize, plot.align, plot.rotation,
-            plot.model, plot.color, plot.strokecolor, plot.strokewidth, plot.position) do latexstring,
-                ts, al, rot, mo, color, scolor, swidth, _
+            plot.model, plot.color, plot.strokecolor, plot.strokewidth) do latexstring,
+                ts, al, rot, mo, color, scolor, swidth
 
         ts = to_textsize(ts)
         rot = to_rotation(rot)
@@ -125,7 +126,7 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
 
     onany(lineels_glyphcollection_offset, scene.camera.projectionview) do (allels, gcs, offs), projview
 
-        inv_projview = inv(projview)
+        # inv_projview = inv(projview)
         pos = plot.position[]
         ts = plot.textsize[]
         rot = plot.rotation[]
@@ -171,7 +172,7 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
         notify(linepairs)
     end
 
-    notify(plot.position)
+    notify(plot[1])
 
     text!(plot, glyphcollection; plot.attributes...)
     linesegments!(
