@@ -29,7 +29,7 @@ struct Attributes
                 result[k] = Attributes(v)
             else
                 obs = Observable{Any}(to_value(v))
-                v isa AbstractObservable && connect!(obs, v)
+                v isa Observables.AbstractObservable && connect!(obs, v)
                 result[k] = obs
             end
         end
