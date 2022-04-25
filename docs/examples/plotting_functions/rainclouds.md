@@ -49,13 +49,13 @@ end
 
 function mockup_categories_and_data_array(num_categories; N = 500)
     category_labels = String[]
-    data_array = Vector{Float64}[]
+    data_array = Float64[]
 
     for _ in 1:num_categories
         category_label, data_points = mockup_distribution(N)
 
-        push!(category_labels, category_label)
-        push!(data_array, data_points)
+        append!(category_labels, fill(category_label, N))
+        append!(data_array, data_points)
     end
     return category_labels, data_array
 end
@@ -101,8 +101,7 @@ fig = rainclouds(more_category_labels, more_data_array;
 
 \begin{examplefigure}{}
 ```julia
-more_category_labels = repeat(category_labels, 3)
-more_data_array = repeat(data_array, 3)
+category_labels, data_array = mockup_categories_and_data_array(6)
 fig = rainclouds(more_category_labels, more_data_array;
     xlabel = "Categories of Distributions",
     ylabel = "Samples", title = "My Title",
@@ -112,8 +111,7 @@ fig = rainclouds(more_category_labels, more_data_array;
 
 \begin{examplefigure}{}
 ```julia
-more_category_labels = repeat(category_labels, 3)
-more_data_array = repeat(data_array, 3)
+category_labels, data_array = mockup_categories_and_data_array(6)
 rainclouds(more_category_labels, more_data_array;
     xlabel = "Categories of Distributions",
     ylabel = "Samples", title = "My Title",
