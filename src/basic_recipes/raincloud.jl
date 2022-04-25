@@ -16,15 +16,14 @@ rand_localized(min, max) = rand_localized(RAINCLOUD_RNG[], min, max)
 rand_localized(RNG::Random.AbstractRNG, min, max) = rand(RNG) * (max - min) .+ min
 
 """
-    rainclouds!(ax, category_labels, combined_data_array; plot_boxplots=true, plot_clouds=true, kwargs...)
+    rainclouds!(ax, category_labels, data_array; plot_boxplots=true, plot_clouds=true, kwargs...)
 
-Plot a scatter, vilin, and boxplot for the `combined_data_array`. Each data array in `combined_data_array` will be labeled using a
-corresponding label from `category_labels`.
+Plot a violin (/histogram), boxplot and individual data points with appropriate spacing between each.
 
 # Arguments
 - `ax`: Axis used to place all these plots onto.
-- `category_labels`: Typically `Vector{String}` used for storing the labels of each category on the x axis of the plot.
-- `combined_data_array`: Typically `Vector{Vector{Float64}}` used for storing the data array in each element of the `combined_data_array`.
+- `category_labels`: Typically `Vector{String}` with a label for each element in `data_array`
+- `data_array`: Typically `Vector{Float64}` used for to represent the datapoints to plot.
 
 # Keywords
 - `plot_boxplots=true`: Boolean to show boxplots to summarize distribution of data.
@@ -156,6 +155,7 @@ end
 
 function ungroup_labels(category_labels, data_array)
     if eltype(data_array) isa AbstractVector
+        @warn "Using a nested array for raincloud is deprected. Read raincloud's documentation and update your usage accordingly."
         data_array_ = reduce(vcat, data_array)
         category_labels_ = similar(category_labels, length(data_array_))
         ix = 0
