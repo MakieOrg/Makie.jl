@@ -5,6 +5,7 @@
 - **Breaking** Added `space` as a generic attribute to switch between data, pixel, relative and clip space for positions. `space` in text has been renamed to `markerspace` because of this. `Pixel` and `SceneSpace` are no longer valid inputs for `space` or `markerspace`.
 - **Breaking** Deprecated `mouse_selection(scene)` for `pick(scene)`.
 - **Breaking** Bumped `GridLayoutBase` version to `v0.7`, which introduced offset layouts. Now, indexing into row 0 doesn't create a new row 1, but a new row 0, so that all previous content positions stay the same. This makes building complex layouts order-independent [#1704](https://github.com/JuliaPlots/Makie.jl/pull/1704).
+- Added `raindclouds` and `raindclouds` [#1725](https://github.com/JuliaPlots/Makie.jl/pull/1725)
 
 ##  v0.16.4
 
@@ -49,7 +50,6 @@ All other changes are collected [in this PR](https://github.com/JuliaPlots/Makie
 - Use [MathTexEngine v0.2](https://github.com/Kolaru/MathTeXEngine.jl/releases/tag/v0.2.0).
 - Depend on new GeometryBasics, which changes all the Vec/Point/Quaternion/RGB/RGBA - f0 aliases to just f. For example, `Vec2f0` is changed to `Vec2f`. Old aliases are still exported, but deprecated and will be removed in the next breaking release. For more details and an upgrade script, visit [GeometryBasics#97](https://github.com/JuliaGeometry/GeometryBasics.jl/pull/97).
 - Added `hspan!` and `vspan!` functions [#1264](https://github.com/JuliaPlots/Makie.jl/pull/1264).
-- Added `raindclouds` and `raindclouds` [#1725](https://github.com/JuliaPlots/Makie.jl/pull/1725)
 
 ## v0.15.1
 - Switched documentation framework to Franklin.jl.
