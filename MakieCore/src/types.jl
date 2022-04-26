@@ -22,14 +22,16 @@ struct Attributes
 
     Attributes(dict::Dict{Symbol, Observable{Any}}) = new(dict)
 
-    function Attributes(iterable_of_pairs)
+    function Attributes(@nospecialize(iterable_of_pairs))
         result = Dict{Symbol, Observable{Any}}()
         for (k::Symbol, v) in iterable_of_pairs
             if v isa NamedTuple
                 result[k] = Attributes(v)
             else
                 obs = Observable{Any}(to_value(v))
-                v isa Observables.AbstractObservable && connect!(obs, v)
+                if v isa Observables.AbstractObservable
+                    on(x-> obs[] = x, v)
+                end
                 result[k] = obs
             end
         end
