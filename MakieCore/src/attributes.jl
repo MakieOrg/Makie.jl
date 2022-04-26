@@ -8,18 +8,16 @@ Base.broadcastable(x::Attributes) = Ref(x)
 #dict interface
 const AttributeOrPlot = Union{AbstractPlot, Attributes}
 
-@nospecialize
+
 Attributes(; kw_args...) = Attributes(kw_args)
 Attributes(pairs::Pair...) = Attributes(pairs)
 Attributes(nt::NamedTuple) = Attributes(pairs(nt))
 
-# Deepcopy with special treatment for observables
-# to deepcopy Attributes
-_deepcopy(x) = x isa Observable ? Observable{Any}(to_value(x)) : deepcopy(x)
+
 
 Base.pop!(x::AttributeOrPlot, args...) = pop!(x.attributes, args...)
-Base.haskey(x::AttributeOrPlot, key) = haskey(x.attributes, key)
-Base.delete!(x::AttributeOrPlot, key) = delete!(x.attributes, key)
+Base.haskey(x::AttributeOrPlot, key::Symbol) = haskey(x.attributes, key)
+Base.delete!(x::AttributeOrPlot, key::Symbol) = delete!(x.attributes, key)
 function Base.get!(f::Function, x::AttributeOrPlot, key::Symbol)
     if haskey(x, key)
         return x[key]
@@ -32,7 +30,6 @@ end
 Base.get!(x::AttributeOrPlot, key::Symbol, default) = get!(()-> default, x, key)
 Base.get(f::Function, x::AttributeOrPlot, key::Symbol) = haskey(x, key) ? x[key] : f()
 Base.get(x::AttributeOrPlot, key::Symbol, default) = get(()-> default, x, key)
-@specialize
 
 
 attributes(x::Attributes) = getfield(x, :attributes)
@@ -42,7 +39,7 @@ Base.values(x::Attributes) = values(x.attributes)
 function Base.iterate(x::Attributes, state...)
     s = iterate(keys(x), state...)
     s === nothing && return nothing
-    return (s[1] => x[s[1]], s[2])
+    return (s[1]::Symbol => x[s[1]], s[2])
 end
 
 function Base.copy(attributes::Attributes)
@@ -54,7 +51,9 @@ function Base.copy(attributes::Attributes)
     return result
 end
 
-
+# Deepcopy with special treatment for observables
+# to deepcopy Attributes
+_deepcopy(x) = x isa Observable ? Observable{Any}(to_value(x)) : deepcopy(x)
 function Base.deepcopy(attributes::Attributes)
     result = Attributes()
     for (k, v) in attributes
