@@ -72,6 +72,8 @@ function CairoScreen(scene::Scene; device_scaling_factor = 1, antialias = Cairo.
 
     ctx = Cairo.CairoContext(surf)
     Cairo.set_antialias(ctx, antialias)
+    # Set the miter limit (when miter transitions to bezel) to mimic GLMakie behaviour
+    @ccall Cairo.libcairo.cairo_set_miter_limit(ctx.ptr::Ptr{Nothing}, 2.0::Cdouble)::Cvoid
 
     return CairoScreen(scene, surf, ctx, nothing)
 end
@@ -114,11 +116,12 @@ function CairoScreen(scene::Scene, path::Union{String, IO}, mode::Symbol; device
     # this sets a scaling factor on the lowest level that is "hidden" so its even
     # enabled when the drawing space is reset for strokes
     # that means it can be used to increase or decrease the image resolution
-    ccall((:cairo_surface_set_device_scale, Cairo.libcairo), Cvoid, (Ptr{Nothing}, Cdouble, Cdouble),
-        surf.ptr, device_scaling_factor, device_scaling_factor)
+    @ccall Cairo.libcairo.cairo_surface_set_device_scale(surf.ptr::Ptr{Nothing}, device_scaling_factor::Cdouble, device_scaling_factor::Cdouble)::Cvoid
 
     ctx = Cairo.CairoContext(surf)
     Cairo.set_antialias(ctx, antialias)
+    # Set the miter limit (when miter transitions to bezel) to mimic GLMakie behaviour
+    @ccall Cairo.libcairo.cairo_set_miter_limit(ctx.ptr::Ptr{Nothing}, 2.0::Cdouble)::Cvoid
 
     return CairoScreen(scene, surf, ctx, nothing)
 end
