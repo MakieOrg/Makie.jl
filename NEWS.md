@@ -8,6 +8,7 @@
 - `Layoutable` was renamed to `Block` and the infrastructure changed such that attributes are fixed fields and each block has its own `Scene` for better encapsulation.
 - Added `SliderGrid` block which replaces the deprecated `labelslider!` and `labelslidergrid!` functions.
 - Changed some code which consistently caused a segfault in `streamplot_impl` on Mac M1.
+- Set the [Cairo miter limit](https://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-miter-limit) to mimic GLMakie behaviour [#1844]
 
 ##  v0.16.4
 
