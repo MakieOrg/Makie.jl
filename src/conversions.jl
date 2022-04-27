@@ -71,6 +71,7 @@ spanning z over the grid spanned by x y
 function convert_arguments(::PointBased, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
     (vec(Point3f.(x, y', z)),)
 end
+
 """
     convert_arguments(P, x, y, z)::(Vector)
 
@@ -86,15 +87,14 @@ convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVector) = (
 Takes an input GeometryPrimitive `x` and decomposes it to points.
 `P` is the plot Type (it is optional).
 """
-convert_arguments(p::PointBased, x::GeometryPrimitive) = convert_arguments(p, decompose(Point, x))
+convert_arguments(p::PointBased, x::GeometryPrimitive{Dim}) where Dim = (decompose(Point{Dim, Float32}, x),)
 
 function convert_arguments(::PointBased, pos::AbstractMatrix{<: Number})
     (to_vertices(pos),)
 end
 
-convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}) = (Point2f.(x, y),)
+convert_arguments(P::PointBased, x::RealVector, y::RealVector) = (Point2f.(x, y),)
 
-convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real}) = (Point3f.(x, y, z),)
 
 """
     convert_arguments(P, y)::Vector
@@ -113,7 +113,6 @@ from `x` and `y`.
 
 `P` is the plot Type (it is optional).
 """
-#convert_arguments(::PointBased, x::RealVector, y::RealVector) = (Point2f.(x, y),)
 convert_arguments(P::PointBased, x::ClosedInterval, y::RealVector) = convert_arguments(P, LinRange(extrema(x)..., length(y)), y)
 convert_arguments(P::PointBased, x::RealVector, y::ClosedInterval) = convert_arguments(P, x, LinRange(extrema(y)..., length(x)))
 
@@ -125,22 +124,13 @@ Takes an input `Rect` `x` and decomposes it to points.
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(P::PointBased, x::Rect2)
-    # TODO fix the order of decompose
-    return convert_arguments(P, decompose(Point2f, x)[[1, 2, 4, 3]])
-end
-
-function convert_arguments(P::PointBased, mesh::AbstractMesh)
-    return convert_arguments(P, decompose(Point3f, mesh))
-end
+convert_arguments(P::PointBased, x::Rect2) = (decompose(Point2f, x)[[1, 2, 4, 3]],) # TODO fix the order of decompose
+convert_arguments(P::PointBased, rect::Rect3) =  (decompose(Point3f, rect),)
+convert_arguments(P::PointBased, mesh::AbstractMesh) = (decompose(Point3f, mesh),)
 
 function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) where {P<:AbstractPoint}
     # TODO FaceView should be natively supported by backends!
     return convert_arguments(PB, collect(reinterpret(P, linesegments)))
-end
-
-function convert_arguments(P::PointBased, rect::Rect3)
-    return (decompose(Point3f, rect),)
 end
 
 function convert_arguments(P::Type{<: LineSegments}, rect::Rect3)
@@ -154,6 +144,7 @@ function convert_arguments(::Type{<: Lines}, rect::Rect3)
     push!(points, Point3f(NaN)) # use to seperate linesegments
     return (points[[1, 2, 3, 4, 1, 5, 6, 2, 9, 6, 8, 3, 9, 5, 7, 4, 9, 7, 8]],)
 end
+
 """
 
     convert_arguments(PB, LineString)
@@ -179,7 +170,6 @@ function convert_arguments(PB::PointBased, linestring::Union{Array{<:LineString}
 end
 
 """
-
     convert_arguments(PB, Polygon)
 
 Takes an input `Polygon` and decomposes it to points.
@@ -200,7 +190,6 @@ function convert_arguments(PB::PointBased, pol::Polygon)
 end
 
 """
-
     convert_arguments(PB, Union{Array{<:Polygon}, MultiPolygon})
 
 Takes an input `Array{Polygon}` or a `MultiPolygon` and decomposes it to points.
@@ -269,7 +258,8 @@ linspaces with size(z, 1/2)
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(P::SurfaceLike, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
-    convert_arguments(P, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
+    # convert_arguments(P, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
+    return (x, y, z)
 end
 
 """
