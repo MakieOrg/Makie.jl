@@ -342,3 +342,28 @@ end
         figure = (fontsize = 16,),
         axis = (xtickformat = (xs -> [L"e^{\sqrt{%$x}}+\sum" for x in xs]), ))
 end
+
+@cell "vertical centering modes" begin
+    s = Scene(camera = campixel!, resolution = (800, 800))
+    distance = 100
+
+    tex_gyre_heros = Makie.assetpath("texgyreheros-regular.otf")
+
+    for (i, valign) in enumerate([:top, :em_top, :center, :bottom, :baseline, :em_center, :ex_center])
+        text!(s, "0123 Test of centering $(repr(valign))",
+            position = Point2f(30, distance * i),
+            align = (:left, valign),
+            textsize = 20,
+            font = tex_gyre_heros,
+        )
+        text!(s, "0123 Test of\ncentering $(repr(valign))",
+            position = Point2f(770, distance * i),
+            align = (:right, valign),
+            textsize = 20,
+            font = tex_gyre_heros,
+        )
+        lines!(s, [0, 800], [distance * i, distance * i], color = (:black, 0.3))
+    end
+
+    s
+end
