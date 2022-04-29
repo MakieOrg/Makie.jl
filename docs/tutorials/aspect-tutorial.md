@@ -153,6 +153,8 @@ As you can see, the whitespace at the sides has been trimmed.
 
 This technique is useful for all kinds of situations where the content should decide the figure size, and not the other way around.
 
+## Example: Facet plot
+
 For example, let's say we have a facet plot with 25 square axes which are all of size 150 by 150.
 We can just make these axes with fixed widths and heights.
 The `Auto` sized columns and rows of the default layout pick up these measurements and adjust themselves accordingly.
@@ -182,3 +184,73 @@ f
 ```
 \end{examplefigure}
 
+## Example: Marginal histogram
+
+
+Marginal histograms compare two variables. The main plot is a 2D histogram, where
+each rectangle represents a count of data points within its area.  Above the main
+plot is a smaller histogram of the first variable, and to the right of the main
+plot is a histogram of the second variable.
+
+We begin by initializing a figure and an internal GridLayout to keep the marginal
+histogram contained.  Then, we create the axes, and set the appropriate sizes for the columns.
+
+\begin{examplefigure}
+```julia
+fig = Figure(resolution = (1000, 1000), backgroundcolor = RGBf(0.98, 0.98, 0.98))
+histogram_gl = fig[1, 1] = GridLayout()
+
+central_axis = Axis(histogram_gl[1, 1])
+
+top_axis = Axis(histogram_gl[0, 1])
+right_axis = Axis(histogram_gl[1, 2])
+
+# Now we set the column and row sizes:
+marginal_plot_width = 0.2
+colsize!(histogram_gl, 2, Relative(marginal_plot_width))
+rowsize!(histogram_gl, 0, Relative(marginal_plot_width))
+
+fig
+```
+\end{examplefigure}
+
+Now, we can remove the decorations and force the axes to be flush against each other:
+
+\begin{examplefigure}
+```julia
+top_axis.xtickalign = 1
+top_axis.ytickalign = 1
+hidedecorations!(top_axis; grid = false, minorgrid = false, ticks = false)
+top_axis.yticklabelsvisible = true
+
+right_axis.xtickalign = 1
+right_axis.ytickalign = 1
+hidedecorations!(right_axis; grid = false, minorgrid = false, ticks = false)
+right_axis.xticklabelsvisible = true
+
+colgap!(histogram_gl, 1, 0)
+rowgap!(histogram_gl, 1, 0)
+fig
+```
+\end{examplefigure}
+
+Finally, we plot to it:
+
+\begin{examplefigure}
+```julia
+import Makie.StatsBase
+
+x_data = randn(500)
+y_data = randn(500)
+
+nbins = 30
+
+central_heatmap = plot!(central_axis, StatsBase.fit(Histogram, (x_data, y_data); nbins = nbins))
+
+# We use Makie's hist recipe for the rest:
+top_hist   = hist!(top_axis, x_data; nbins = nbins, strokewidth = 1, strokecolor = (:black, 0.6))
+right_hist = hist!(right_axis, y_data; nbins = nbins, direction = :x, strokewidth = 1, strokecolor = (:black, 0.6))
+
+fig
+```
+\end{examplefigure}
