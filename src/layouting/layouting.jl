@@ -177,13 +177,26 @@ function glyph_collection(str::AbstractString, font_per_char, fontscale_px, hali
         descender(l.font) * l.scale
     end
 
-    # compute the height of all lines together
-    overall_height = first_line_ascender - ys[end] - last_line_descender
-
     # compute y values after top/center/bottom/baseline alignment
     ys_aligned = if valign == :baseline
-        ys .- first_line_ascender .+ overall_height .+ last_line_descender
+        ys .- ys[end]
+    elseif valign == :em_center
+        first_em = maximum(lineinfos[1]) do l
+            get_extent(l.font, 'M').horizontal_bearing[2] * l.scale
+        end
+        ys .- (ys[end] + first_em)/2
+    elseif valign == :ex_center
+        first_ex = maximum(lineinfos[1]) do l
+            get_extent(l.font, 'x').horizontal_bearing[2] * l.scale
+        end
+        ys .- (ys[end] + first_ex)/2
+    elseif valign == :em_top
+        first_em = maximum(lineinfos[1]) do l
+            get_extent(l.font, 'M').horizontal_bearing[2] * l.scale
+        end
+        ys .- first_em
     else
+        overall_height = first_line_ascender - ys[end] - last_line_descender
         va = if valign isa Number
             Float32(valign)
         elseif valign == :top
