@@ -245,7 +245,7 @@ y_data = randn(500)
 
 nbins = 30
 
-central_heatmap = plot!(central_axis, StatsBase.fit(Histogram, (x_data, y_data); nbins = nbins))
+central_heatmap = plot!(central_axis, StatsBase.fit(StatsBase.Histogram, (x_data, y_data); nbins = nbins); interpolate = true)
 
 # We use Makie's hist recipe for the rest:
 top_hist   = hist!(top_axis, x_data; nbins = nbins, strokewidth = 1, strokecolor = (:black, 0.6))
