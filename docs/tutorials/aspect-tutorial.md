@@ -195,7 +195,7 @@ plot is a histogram of the second variable.
 We begin by initializing a figure and an internal GridLayout to keep the marginal
 histogram contained.  Then, we create the axes, and set the appropriate sizes for the columns.
 
-\begin{examplefigure}
+\begin{examplefigure}{svg = true}
 ```julia
 fig = Figure(resolution = (1000, 1000), backgroundcolor = RGBf(0.98, 0.98, 0.98))
 histogram_gl = fig[1, 1] = GridLayout()
@@ -216,7 +216,7 @@ fig
 
 Now, we can remove the decorations and force the axes to be flush against each other:
 
-\begin{examplefigure}
+\begin{examplefigure}{svg = true}
 ```julia
 top_axis.xtickalign = 1
 top_axis.ytickalign = 1
@@ -236,7 +236,7 @@ fig
 
 Finally, we plot to it:
 
-\begin{examplefigure}
+\begin{examplefigure}{svg = true}
 ```julia
 import Makie.StatsBase
 
@@ -245,7 +245,7 @@ y_data = randn(500)
 
 nbins = 30
 
-central_heatmap = plot!(central_axis, StatsBase.fit(StatsBase.Histogram, (x_data, y_data); nbins = nbins); interpolate = true)
+central_heatmap = plot!(central_axis, StatsBase.fit(StatsBase.Histogram, (x_data, y_data); nbins = nbins); interpolate = false)
 
 # We use Makie's hist recipe for the rest:
 top_hist   = hist!(top_axis, x_data; nbins = nbins, strokewidth = 1, strokecolor = (:black, 0.6))
