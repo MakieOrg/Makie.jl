@@ -11,7 +11,7 @@ using Makie: convert_attribute, @extractvalue, LineSegments, to_ndim, NativeFont
 using Makie: @info, @get_attribute, Combined
 using Makie: to_value, to_colormap, extrema_nan
 using Makie: inline!
-using Makie: Observables
+using Makie.Observables
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
 
 const OneOrVec{T} = Union{
@@ -66,6 +66,11 @@ end
 if Base.VERSION >= v"1.4.2"
     include("precompiles.jl")
     _precompile_()
+    path = joinpath(@__DIR__, "all-precompiles.jl")
+    Base.include_dependency(path)
+    if isfile(path)
+        include("all-precompiles.jl")
+    end
 end
 
 
