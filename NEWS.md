@@ -8,6 +8,7 @@
 - `Layoutable` was renamed to `Block` and the infrastructure changed such that attributes are fixed fields and each block has its own `Scene` for better encapsulation.
 - Added `SliderGrid` block which replaces the deprecated `labelslider!` and `labelslidergrid!` functions.
 - Changed some code which consistently caused a segfault in `streamplot_impl` on Mac M1.
+- Fixed a method ambiguity in `rotatedrect`.
 
 ##  v0.16.4
 
