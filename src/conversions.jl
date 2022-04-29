@@ -3,60 +3,22 @@
 ################################################################################
 const RangeLike = Union{AbstractRange, AbstractVector, ClosedInterval}
 
-# if no plot type based conversion is defined, we try using a trait
+convert_arguments(::ConversionTrait, args...; kw...) = args
+
 function convert_arguments(T::PlotFunc, args...; kw...)
+    # Try conversion trait
     ct = conversion_trait(T)
-    try
-        convert_arguments(ct, args...; kw...)
-    catch e
-        if e isa MethodError
-            try
-                convert_arguments_individually(T, args...)
-            catch ee
-                if ee isa MethodError
-                    error(
-                        """
-                        `Makie.convert_arguments` for the plot type $T and its conversion trait $ct was unsuccessful.
+    converted1 = convert_arguments(ct, args...; kw...)
+    converted1 === args || return converted1
 
-                        The signature that could not be converted was:
-                        $(join("::" .* string.(typeof.(args)), ", "))
-
-                        Makie needs to convert all plot input arguments to types that can be consumed by the backends (typically Arrays with Float32 elements).
-                        You can define a method for `Makie.convert_arguments` (a type recipe) for these types or their supertypes to make this set of arguments convertible (See http://makie.juliaplots.org/stable/documentation/recipes/index.html).
-
-                        Alternatively, you can define `Makie.convert_single_argument` for single arguments which have types that are unknown to Makie but which can be converted to known types and fed back to the conversion pipeline.
-                        """
-                    )
-                else
-                    rethrow(ee)
-                end
-            end
-        else
-            rethrow(e)
-        end
-    end
-end
-
-# in case no trait matches we try to convert each individual argument
-# and reconvert the whole tuple in order to handle missings centrally, e.g.
-function convert_arguments_individually(T::PlotFunc, args...)
-    # convert each single argument until it doesn't change type anymore
-    single_converted = recursively_convert_argument.(args)
-    # if the type of args hasn't changed this function call didn't help and we error
-    if typeof(single_converted) == typeof(args)
-        throw(MethodError(convert_arguments, (T, args...)))
-    end
-    # otherwise we try converting our newly single-converted args again because
-    # now a normal conversion method might work again
-    convert_arguments(T, single_converted...)
-end
-
-function recursively_convert_argument(x)
-    newx = convert_single_argument(x)
-    if typeof(newx) == typeof(x)
-        x
+    # Try single argument convert
+    converted2 = convert_single_argument.(args)
+    if converted2 === args
+        return args # can't convert
     else
-        recursively_convert_argument(newx)
+        # if we converted to something, we need to recurse,
+        # since convert_single_argument doesn't do a complete conversion
+        return convert_arguments(T, converted2...; kw...)
     end
 end
 
@@ -64,18 +26,23 @@ end
 #                          Single Argument Conversion                          #
 ################################################################################
 
-# if no specific conversion is defined, we don't convert
-convert_single_argument(x) = x
+convert_single_argument(@nospecialize(x)) = x
 
 # replace missings with NaNs
-function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Real}})
+function convert_single_argument(a::AbstractArray{Union{Missing, T}}) where T <: Real
     [ismissing(x) ? NaN32 : convert(Float32, x) for x in a]
 end
 
 # same for points
-function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Point{N}}}) where N
+function convert_single_argument(a::AbstractArray{Union{Missing, T}}) where T <:Point{N} where N
     [ismissing(x) ? Point{N, Float32}(NaN32) : Point{N, Float32}(x) for x in a]
 end
+
+# Narrow type of Any arrays
+convert_single_argument(a::AbstractVector{Any}) = [x for x in a]
+# Leave concretely typed vectors alone (AbstractArray{<:Union{Missing, <:Real}} also dispatches for `Vector{Float32}`)
+convert_single_argument(a::AbstractVector{T}) where T <: Number = a
+
 
 ################################################################################
 #                                  PointBased                                  #
@@ -104,6 +71,7 @@ spanning z over the grid spanned by x y
 function convert_arguments(::PointBased, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
     (vec(Point3f.(x, y', z)),)
 end
+
 """
     convert_arguments(P, x, y, z)::(Vector)
 
@@ -119,15 +87,14 @@ convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVector) = (
 Takes an input GeometryPrimitive `x` and decomposes it to points.
 `P` is the plot Type (it is optional).
 """
-convert_arguments(p::PointBased, x::GeometryPrimitive) = convert_arguments(p, decompose(Point, x))
+convert_arguments(p::PointBased, x::GeometryPrimitive{Dim}) where Dim = (decompose(Point{Dim, Float32}, x),)
 
 function convert_arguments(::PointBased, pos::AbstractMatrix{<: Number})
     (to_vertices(pos),)
 end
 
-convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}) = (Point2f.(x, y),)
+convert_arguments(P::PointBased, x::RealVector, y::RealVector) = (Point2f.(x, y),)
 
-convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real}) = (Point3f.(x, y, z),)
 
 """
     convert_arguments(P, y)::Vector
@@ -146,7 +113,6 @@ from `x` and `y`.
 
 `P` is the plot Type (it is optional).
 """
-#convert_arguments(::PointBased, x::RealVector, y::RealVector) = (Point2f.(x, y),)
 convert_arguments(P::PointBased, x::ClosedInterval, y::RealVector) = convert_arguments(P, LinRange(extrema(x)..., length(y)), y)
 convert_arguments(P::PointBased, x::RealVector, y::ClosedInterval) = convert_arguments(P, x, LinRange(extrema(y)..., length(x)))
 
@@ -158,22 +124,13 @@ Takes an input `Rect` `x` and decomposes it to points.
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(P::PointBased, x::Rect2)
-    # TODO fix the order of decompose
-    return convert_arguments(P, decompose(Point2f, x)[[1, 2, 4, 3]])
-end
-
-function convert_arguments(P::PointBased, mesh::AbstractMesh)
-    return convert_arguments(P, decompose(Point3f, mesh))
-end
+convert_arguments(P::PointBased, x::Rect2) = (decompose(Point2f, x)[[1, 2, 4, 3]],) # TODO fix the order of decompose
+convert_arguments(P::PointBased, rect::Rect3) =  (decompose(Point3f, rect),)
+convert_arguments(P::PointBased, mesh::AbstractMesh) = (decompose(Point3f, mesh),)
 
 function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) where {P<:AbstractPoint}
     # TODO FaceView should be natively supported by backends!
     return convert_arguments(PB, collect(reinterpret(P, linesegments)))
-end
-
-function convert_arguments(P::PointBased, rect::Rect3)
-    return (decompose(Point3f, rect),)
 end
 
 function convert_arguments(P::Type{<: LineSegments}, rect::Rect3)
@@ -187,6 +144,7 @@ function convert_arguments(::Type{<: Lines}, rect::Rect3)
     push!(points, Point3f(NaN)) # use to seperate linesegments
     return (points[[1, 2, 3, 4, 1, 5, 6, 2, 9, 6, 8, 3, 9, 5, 7, 4, 9, 7, 8]],)
 end
+
 """
 
     convert_arguments(PB, LineString)
@@ -212,7 +170,6 @@ function convert_arguments(PB::PointBased, linestring::Union{Array{<:LineString}
 end
 
 """
-
     convert_arguments(PB, Polygon)
 
 Takes an input `Polygon` and decomposes it to points.
@@ -233,7 +190,6 @@ function convert_arguments(PB::PointBased, pol::Polygon)
 end
 
 """
-
     convert_arguments(PB, Union{Array{<:Polygon}, MultiPolygon})
 
 Takes an input `Array{Polygon}` or a `MultiPolygon` and decomposes it to points.
@@ -287,6 +243,7 @@ outputs as a `Tuple`.
 function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<: Union{Number, Colorant}})
     return map(el32convert, adjust_axes(SL, x, y, z))
 end
+
 function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<:Number})
     return map(el32convert, adjust_axes(SL, x, y, z))
 end
@@ -301,7 +258,8 @@ linspaces with size(z, 1/2)
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(P::SurfaceLike, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
-    convert_arguments(P, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
+    # convert_arguments(P, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
+    return (x, y, z)
 end
 
 """
@@ -553,12 +511,12 @@ end
 #                             Function Conversions                             #
 ################################################################################
 
-function convert_arguments(P::PlotFunc, r::AbstractVector, f::Function)
+function convert_arguments(P::Type{<:AbstractPlot}, r::AbstractVector, f::Function)
     ptype = plottype(P, Lines)
     to_plotspec(ptype, convert_arguments(ptype, r, f.(r)))
 end
 
-function convert_arguments(P::PlotFunc, i::AbstractInterval, f::Function)
+function convert_arguments(P::Type{<:AbstractPlot}, i::AbstractInterval, f::Function)
     x, y = PlotUtils.adapted_grid(f, endpoints(i))
     ptype = plottype(P, Lines)
     to_plotspec(ptype, convert_arguments(ptype, x, y))
