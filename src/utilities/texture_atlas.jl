@@ -64,7 +64,7 @@ begin
 
     function defaultfont()
         if isempty(_default_font)
-            push!(_default_font, to_font("Dejavu Sans"))
+            push!(_default_font, to_font("tex gyre heros regular"))
         end
         _default_font[]
     end
@@ -72,6 +72,7 @@ begin
     function alternativefonts()
         if isempty(_alternative_fonts)
             alternatives = [
+                "texgyreheros-regular.otf",
                 "DejaVuSans.ttf",
                 "NotoSansCJKkr-Regular.otf",
                 "NotoSansCuneiform-Regular.ttf",

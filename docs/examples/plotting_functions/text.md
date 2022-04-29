@@ -19,7 +19,7 @@
 ### Other
 
 - `align::Tuple{Union{Symbol, Real}, Union{Symbol, Real}} = (:left, :bottom)` sets the alignment of the string w.r.t. `position`. Uses `:left, :center, :right, :top, :bottom, :baseline` or fractions.
-- `font::Union{String, Vector{String}} = "Dejavu Sans"` sets the font for the string or each character.
+- `font::Union{String, Vector{String}} = "tex gyre heros regular"` sets the font for the string or each character.
 - `justification::Union{Real, Symbol} = automatic` sets the alignment of text w.r.t its bounding box. Can be `:left, :center, :right` or a fraction. Will default to the horizontal alignment in `align`.
 - `position::Union{Point2f, Point3f} = Point2f(0)` sets an anchor position for text. Can also be a `Vector` of positions.
 - `rotation::Union{Real, Quaternion}` rotates text around the given position.

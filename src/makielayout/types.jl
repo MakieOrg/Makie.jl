@@ -198,9 +198,9 @@ end
         "The axis title string."
         title = ""
         "The font family of the title."
-        titlefont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "DejaVu Sans")
+        titlefont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "tex gyre heros regular")
         "The title's font size."
-        titlesize::Float64 = @inherit(:fontsize, 16f0)
+        titlesize::Float64 = @inherit(:fontsize, 18f0)
         "The gap between axis and title."
         titlegap::Float64 = 4f0
         "Controls if the title is visible."
@@ -210,17 +210,17 @@ end
         "The color of the title"
         titlecolor::RGBAf = @inherit(:textcolor, :black)
         "The font family of the xlabel."
-        xlabelfont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "DejaVu Sans")
+        xlabelfont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "tex gyre heros regular")
         "The font family of the ylabel."
-        ylabelfont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "DejaVu Sans")
+        ylabelfont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "tex gyre heros regular")
         "The color of the xlabel."
         xlabelcolor::RGBAf = @inherit(:textcolor, :black)
         "The color of the ylabel."
         ylabelcolor::RGBAf = @inherit(:textcolor, :black)
         "The font size of the xlabel."
-        xlabelsize::Float64 = @inherit(:fontsize, 16f0)
+        xlabelsize::Float64 = @inherit(:fontsize, 18f0)
         "The font size of the ylabel."
-        ylabelsize::Float64 = @inherit(:fontsize, 16f0)
+        ylabelsize::Float64 = @inherit(:fontsize, 18f0)
         "Controls if the xlabel is visible."
         xlabelvisible::Bool = true
         "Controls if the ylabel is visible."
@@ -230,17 +230,17 @@ end
         "The padding between the ylabel and the ticks or axis."
         ylabelpadding::Float64 = 5f0 # because of boundingbox inaccuracies of ticklabels
         "The font family of the xticklabels."
-        xticklabelfont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "DejaVu Sans")
+        xticklabelfont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "tex gyre heros regular")
         "The font family of the yticklabels."
-        yticklabelfont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "DejaVu Sans")
+        yticklabelfont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "tex gyre heros regular")
         "The color of xticklabels."
         xticklabelcolor::RGBAf = @inherit(:textcolor, :black)
         "The color of yticklabels."
         yticklabelcolor::RGBAf = @inherit(:textcolor, :black)
         "The font size of the xticklabels."
-        xticklabelsize::Float64 = @inherit(:fontsize, 16f0)
+        xticklabelsize::Float64 = @inherit(:fontsize, 18f0)
         "The font size of the yticklabels."
-        yticklabelsize::Float64 = @inherit(:fontsize, 16f0)
+        yticklabelsize::Float64 = @inherit(:fontsize, 18f0)
         "Controls if the xticklabels are visible."
         xticklabelsvisible::Bool = true
         "Controls if the yticklabels are visible."
@@ -461,17 +461,17 @@ end
         "The label color."
         labelcolor = inherit(scene, :textcolor, :black)
         "The label font family."
-        labelfont = inherit(scene, :font, "DejaVu Sans")
+        labelfont = inherit(scene, :font, "tex gyre heros regular")
         "The label font size."
-        labelsize = inherit(scene, :fontsize, 16f0)
+        labelsize = inherit(scene, :fontsize, 18f0)
         "Controls if the label is visible."
         labelvisible = true
         "The gap between the label and the ticks."
         labelpadding = 5f0
         "The font family of the tick labels."
-        ticklabelfont = inherit(scene, :font, "DejaVu Sans")
+        ticklabelfont = inherit(scene, :font, "tex gyre heros regular")
         "The font size of the tick labels."
-        ticklabelsize = inherit(scene, :fontsize, 16f0)
+        ticklabelsize = inherit(scene, :fontsize, 18f0)
         "Controls if the tick labels are visible."
         ticklabelsvisible = true
         "The color of the tick labels."
@@ -576,9 +576,9 @@ end
         "The color of the text."
         color::RGBAf = inherit(scene, :textcolor, :black)
         "The font size of the text."
-        textsize::Float32 = inherit(scene, :fontsize, 16f0)
+        textsize::Float32 = inherit(scene, :fontsize, 18f0)
         "The font family of the text."
-        font::Makie.FreeTypeAbstraction.FTFont = inherit(scene, :font, "DejaVu Sans")
+        font::Makie.FreeTypeAbstraction.FTFont = inherit(scene, :font, "tex gyre heros regular")
         "The justification of the text (:left, :right, :center)."
         justification = :center
         "The lineheight multiplier for the text."
@@ -746,11 +746,11 @@ end
         "The extra space added to the sides of the button label's boundingbox."
         padding = (10f0, 10f0, 10f0, 10f0)
         "The font size of the button label."
-        textsize = inherit(scene, :fontsize, 16f0)
+        textsize = inherit(scene, :fontsize, 18f0)
         "The text of the button label."
         label = "Button"
         "The font family of the button label."
-        font = inherit(scene, :font, "DejaVu Sans")
+        font = inherit(scene, :font, "tex gyre heros regular")
         "The width setting of the button."
         width = Auto()
         "The height setting of the button."
@@ -861,7 +861,7 @@ end
         "The list of options selectable in the menu. This can be any iterable of a mixture of strings and containers with one string and one other value. If an entry is just a string, that string is both label and selection. If an entry is a container with one string and one other value, the string is the label and the other value is the selection."
         options = ["no options"]
         "Font size of the cell texts"
-        textsize = inherit(scene, :fontsize, 16f0)
+        textsize = inherit(scene, :fontsize, 18f0)
         "Padding of entry texts"
         textpadding = (10, 10, 10, 10)
         "Color of entry texts"
@@ -914,9 +914,9 @@ const EntryGroup = Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}
         "Controls if the parent layout can adjust to this element's height"
         tellheight = automatic
         "The font family of the legend group titles."
-        titlefont = inherit(scene, :font, "DejaVu Sans")
+        titlefont = inherit(scene, :font, "tex gyre heros regular")
         "The font size of the legend group titles."
-        titlesize = inherit(scene, :fontsize, 16f0)
+        titlesize = inherit(scene, :fontsize, 18f0)
         "The horizontal alignment of the legend group titles."
         titlehalign = :center
         "The vertical alignment of the legend group titles."
@@ -928,9 +928,9 @@ const EntryGroup = Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}
         "The group title positions relative to their groups. Can be `:top` or `:left`."
         titleposition = :top
         "The font size of the entry labels."
-        labelsize = inherit(scene, :fontsize, 16f0)
+        labelsize = inherit(scene, :fontsize, 18f0)
         "The font family of the entry labels."
-        labelfont = inherit(scene, :font, "DejaVu Sans")
+        labelfont = inherit(scene, :font, "tex gyre heros regular")
         "The color of the entry labels."
         labelcolor = inherit(scene, :textcolor, :black)
         "The horizontal alignment of the entry labels."
@@ -1063,13 +1063,13 @@ end
         "Controls if the textbox is defocused when a string is submitted."
         defocus_on_submit = true
         "Text size."
-        textsize = inherit(scene, :fontsize, 16f0)
+        textsize = inherit(scene, :fontsize, 18f0)
         "Text color."
         textcolor = inherit(scene, :textcolor, :black)
         "Text color for the placeholder."
         textcolor_placeholder = RGBf(0.5, 0.5, 0.5)
         "Font family."
-        font = inherit(scene, :font, "DejaVu Sans")
+        font = inherit(scene, :font, "tex gyre heros regular")
         "Color of the box."
         boxcolor = :transparent
         "Color of the box when focused."
@@ -1172,17 +1172,17 @@ end
         "Controls if the z ticks are visible"
         zticksvisible = true
         "The x label size"
-        xlabelsize = inherit(scene, :fontsize, 16f0)
+        xlabelsize = inherit(scene, :fontsize, 18f0)
         "The y label size"
-        ylabelsize = inherit(scene, :fontsize, 16f0)
+        ylabelsize = inherit(scene, :fontsize, 18f0)
         "The z label size"
-        zlabelsize = inherit(scene, :fontsize, 16f0)
+        zlabelsize = inherit(scene, :fontsize, 18f0)
         "The x label font"
-        xlabelfont = inherit(scene, :font, "DejaVu Sans")
+        xlabelfont = inherit(scene, :font, "tex gyre heros regular")
         "The y label font"
-        ylabelfont = inherit(scene, :font, "DejaVu Sans")
+        ylabelfont = inherit(scene, :font, "tex gyre heros regular")
         "The z label font"
-        zlabelfont = inherit(scene, :font, "DejaVu Sans")
+        zlabelfont = inherit(scene, :font, "tex gyre heros regular")
         "The x label rotation"
         xlabelrotation = Makie.automatic
         "The y label rotation"
@@ -1208,11 +1208,11 @@ end
         "The z ticklabel color"
         zticklabelcolor = inherit(scene, :textcolor, :black)
         "The x ticklabel size"
-        xticklabelsize = inherit(scene, :fontsize, 16f0)
+        xticklabelsize = inherit(scene, :fontsize, 18f0)
         "The y ticklabel size"
-        yticklabelsize = inherit(scene, :fontsize, 16f0)
+        yticklabelsize = inherit(scene, :fontsize, 18f0)
         "The z ticklabel size"
-        zticklabelsize = inherit(scene, :fontsize, 16f0)
+        zticklabelsize = inherit(scene, :fontsize, 18f0)
         "The x ticklabel pad"
         xticklabelpad = 5
         "The y ticklabel pad"
@@ -1220,11 +1220,11 @@ end
         "The z ticklabel pad"
         zticklabelpad = 10
         "The x ticklabel font"
-        xticklabelfont = inherit(scene, :font, "DejaVu Sans")
+        xticklabelfont = inherit(scene, :font, "tex gyre heros regular")
         "The y ticklabel font"
-        yticklabelfont = inherit(scene, :font, "DejaVu Sans")
+        yticklabelfont = inherit(scene, :font, "tex gyre heros regular")
         "The z ticklabel font"
-        zticklabelfont = inherit(scene, :font, "DejaVu Sans")
+        zticklabelfont = inherit(scene, :font, "tex gyre heros regular")
         "The x grid color"
         xgridcolor = RGBAf(0, 0, 0, 0.12)
         "The y grid color"
@@ -1302,9 +1302,9 @@ end
         "The axis title string."
         title = ""
         "The font family of the title."
-        titlefont = inherit(scene, :font, "DejaVu Sans")
+        titlefont = inherit(scene, :font, "tex gyre heros regular")
         "The title's font size."
-        titlesize = inherit(scene, :fontsize, 16f0)
+        titlesize = inherit(scene, :fontsize, 18f0)
         "The gap between axis and title."
         titlegap = 4f0
         "Controls if the title is visible."
