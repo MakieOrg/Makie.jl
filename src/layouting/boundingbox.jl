@@ -111,16 +111,16 @@ end
 Calculate an approximation of a tight rectangle around a 2D rectangle rotated by `angle` radians.
 This is not perfect but works well enough. Check an A vs X to see the difference.
 """
-function rotatedrect(rect::Rect{2}, angle)
+function rotatedrect(rect::Rect{2, T}, angle)::Rect{2, T} where T
     ox, oy = rect.origin
     wx, wy = rect.widths
-    points = Mat{2, 4}(
+    points = Mat{2, 4, T}(
         ox, oy,
         ox, oy+wy,
         ox+wx, oy,
         ox+wx, oy+wy
     )
-    mrot = Mat{2, 2}(
+    mrot = Mat{2, 2, T}(
         cos(angle), -sin(angle),
         sin(angle), cos(angle)
     )
