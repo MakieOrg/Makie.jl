@@ -23,3 +23,5 @@ monorepo
 docs/documentation/news.md
 
 metrics/ttfp/current-pr-project/
+
+CairoMakie/src/all-precompiles.jl
