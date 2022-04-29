@@ -8,7 +8,7 @@ function initialize_block!(l::Label)
     textpos = Observable(Point3f(0, 0, 0))
 
     t = text!(topscene, l.text, position = textpos, textsize = l.textsize, font = l.font, color = l.color,
-        visible = l.visible, align = (:center, :center), rotation = l.rotation, markerspace = :data,
+        visible = l.visible, align = (:center, :em_center), rotation = l.rotation, markerspace = :data,
         justification = l.justification,
         lineheight = l.lineheight,
         inspectable = false)
