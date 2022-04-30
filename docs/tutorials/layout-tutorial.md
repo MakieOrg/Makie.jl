@@ -19,7 +19,7 @@ If we look at our target figure, we can imagine one box around each of the label
 
 We could say that A and B are in one column, and C and D are in one column. We can have different row heights for both groups by making one big nested `GridLayout` within the second column, in which we place C and D. This way the rows of column 2 are decoupled from column 1.
 
-Ok, let's create the figure first with a gray backgroundcolor, and a predefined font:
+Ok, let's create the figure first with a gray backgroundcolor:
 
 \begin{examplefigure}{}
 ```julia
@@ -27,11 +27,8 @@ using CairoMakie
 using FileIO
 CairoMakie.activate!() # hide
 
-noto_sans = assetpath("fonts", "NotoSans-Regular.ttf")
-noto_sans_bold = assetpath("fonts", "NotoSans-Bold.ttf")
-
 f = Figure(backgroundcolor = RGBf(0.98, 0.98, 0.98),
-    resolution = (1000, 700), font = noto_sans)
+    resolution = (1000, 700))
 ```
 \end{examplefigure}
 
@@ -333,7 +330,7 @@ That will leave all other alignments intact, because we're not creating any new 
 for (label, layout) in zip(["A", "B", "C", "D"], [ga, gb, gc, gd])
     Label(layout[1, 1, TopLeft()], label,
         textsize = 26,
-        font = noto_sans_bold,
+        font = "TeX Gyre Heros Bold",
         padding = (0, 5, 5, 0),
         halign = :right)
 end
