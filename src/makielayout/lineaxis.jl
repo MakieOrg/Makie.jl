@@ -84,19 +84,9 @@ function LineAxis(parent::Scene; kwargs...)
     ticklabelannosnode = Observable(Tuple{AbstractString, Point2f}[])
     ticklabels = nothing
     ticklabel_ideal_space = Observable{Float32}()
+
     map!(ticklabel_ideal_space, ticklabelannosnode, ticklabelalign, ticklabelrotation, ticklabelfont, ticklabelsvisible) do args...
-        maxwidth = if pos_extents_horizontal[][3]
-                # height
-                ticklabelsvisible[] ? (ticklabels === nothing ? 0f0 : height(Rect2f(boundingbox(ticklabels)))) : 0f0
-            else
-                # width
-                ticklabelsvisible[] ? (ticklabels === nothing ? 0f0 : width(Rect2f(boundingbox(ticklabels)))) : 0f0
-        end
-        # in case there is no string in the annotations and the boundingbox comes back all NaN
-        if !isfinite(maxwidth)
-            maxwidth = zero(maxwidth)
-        end
-        maxwidth
+        compute_ticklabelspace(pos_extents_horizontal[], ticklabelsvisible[], ticklabels)
     end
 
     attrs[:actual_ticklabelspace] = 0f0
@@ -401,6 +391,27 @@ function LineAxis(parent::Scene; kwargs...)
     LineAxis(parent, protrusion, attrs, decorations, tickpositions, tickvalues, tickstrings, minortickpositions, minortickvalues)
 end
 
+function compute_ticklabelspace(pos_extents_horizontal, ticklabelsvisible, ticklabels)
+    horizontal = pos_extents_horizontal[3]
+    if !ticklabelsvisible || ticklabels === nothing
+        return 0f0
+    end
+    ticklabel_bbox = Rect2f(boundingbox(ticklabels))
+    # TODO: This doesn't compute the distance that the boundingbox actually covers beyond
+    # the tick positions, so if the ticks are aligned such that the boundingbox is partly inside
+    # the tick positions, the value computed here will be too large and there will be too much
+    # whitespace
+    maxwidth = if horizontal
+            height(ticklabel_bbox)
+        else
+            width(ticklabel_bbox)
+    end
+    # in case there is no string in the annotations and the boundingbox comes back all NaN
+    if !isfinite(maxwidth)
+        maxwidth = 0f0
+    end
+    maxwidth
+end
 
 function tight_ticklabel_spacing!(la::LineAxis)
 
