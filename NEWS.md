@@ -11,6 +11,7 @@
 - Added `SliderGrid` block which replaces the deprecated `labelslider!` and `labelslidergrid!` functions.
 - The default anti-aliasing method can now be set in `CairoMakie.activate!` using the `antialias` keyword.  Available options are `CairoMakie.Cairo.ANTIALIAS_*`.
 - CairoMakie can internally rasterize a `Plot` if `plt.rasterize = true` or `plt.rasterize = scale::Int`.
+- Added an example of a marginal histogram to the documentation.
 - Changed some code which consistently caused a segfault in `streamplot_impl` on Mac M1.
 - Set the [Cairo miter limit](https://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-miter-limit) to mimic GLMakie behaviour [#1844]
 - Fixed a method ambiguity in `rotatedrect`.
