@@ -204,7 +204,7 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
     extents = [FreeTypeAbstraction.get_extent(f, c) for (f, c) in zip(fonts, chars)]
 
     bboxes = map(extents, fonts, scales_2d) do ext, font, scale
-        unscaled_hi_bb = FreeTypeAbstraction.height_insensitive_boundingbox(ext, font)
+        unscaled_hi_bb = height_insensitive_boundingbox_with_advance(ext, font)
         return Rect2f(
             origin(unscaled_hi_bb) * scale,
             widths(unscaled_hi_bb) * scale
@@ -228,12 +228,16 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
         maximum(bb)[1]
     end
 
-    yshift = if valign == :center
+    # TODO: em_center, ex_center, em_top are not correctly implemented yet
+    # and fall back to center / top respectively
+    yshift = if valign in (:center, :em_center, :ex_center)
         maximum(bb)[2] - (height(bb) / 2)
-    elseif valign == :top
+    elseif valign in (:top, :em_top)
         maximum(bb)[2]
-    else
+    elseif valign == :bottom
         minimum(bb)[2]
+    elseif valign == :baseline
+        0.0
     end
 
     positions = basepositions .- Ref(Vec3f(xshift, yshift, 0))
