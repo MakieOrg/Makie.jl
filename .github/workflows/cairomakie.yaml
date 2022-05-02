@@ -14,7 +14,7 @@ on:
       - master
     tags: '*'
 
-concurrency: 
+concurrency:
   group: cairomakie-${{ github.ref }}
   cancel-in-progress: true
 
@@ -45,12 +45,12 @@ jobs:
         run: |
           using Pkg;
           # dev mono repo versions
-          pkg"dev . MakieCore CairoMakie ReferenceTests"
+          pkg"dev . ./MakieCore ./CairoMakie ./ReferenceTests"
       - name: Run the tests
         continue-on-error: true
         run: >
           julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("CairoMakie", coverage=true)'
-          && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV 
+          && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
         uses: actions/upload-artifact@v2
         with:
