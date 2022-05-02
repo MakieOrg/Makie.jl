@@ -39,46 +39,4 @@ fig
 
 ## Labelled sliders and grids
 
-To create a horizontal layout containing a label, a slider, and a value label, use the convenience function \apilink{labelslider!}.
-
-If you need multiple aligned rows of sliders, use \apilink{labelslidergrid!}.
-
-The column with the value labels is automatically set to a fixed width, so that the layout doesn't jitter when sliders are dragged and the value labels change their widths.
-This width is chosen by setting each slider to a few values and recording the maximum label width.
-Alternatively, you can set the width manually with the keyword argument `value_column_width`.
-
-You can pass either format functions or format strings as used by `Formatting.format`.
-
-\begin{examplefigure}{}
-```julia
-using GLMakie
-
-fig = Figure()
-
-ax = Axis(fig[1, 1])
-
-lsgrid = labelslidergrid!(
-    fig,
-    ["Voltage", "Current", "Resistance"],
-    [0:0.1:10, 0:0.1:20, 0:0.1:30];
-    formats = "{:.1f}" .* ["V", "A", "Ω"],
-    width = 350,
-    tellheight = false)
-
-fig[1, 2] = lsgrid.layout
-
-sliderobservables = [s.value for s in lsgrid.sliders]
-bars = lift(sliderobservables...) do slvalues...
-    [slvalues...]
-end
-
-barplot!(ax, bars, color = [:yellow, :orange, :red])
-ylims!(ax, 0, 30)
-
-set_close_to!(lsgrid.sliders[1], 5.3)
-set_close_to!(lsgrid.sliders[2], 10.2)
-set_close_to!(lsgrid.sliders[3], 15.9)
-
-fig
-```
-\end{examplefigure}
+The functions \apilink{labelslider!} and \apilink{labelslidergrid!} are deprecated, use \apilink{SliderGrid} instead.

@@ -109,7 +109,7 @@ to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, c))
 
 function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
 
-    colormap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
+    colormap = haskey(primitive, :colormap) ? to_colormap(primitive.colormap[]) : nothing
     colorrange = get(primitive, :colorrange, nothing) |> to_value
 
     if colorrange === Makie.automatic
