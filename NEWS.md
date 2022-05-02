@@ -9,6 +9,8 @@
 - Added `SliderGrid` block which replaces the deprecated `labelslider!` and `labelslidergrid!` functions.
 - Changed some code which consistently caused a segfault in `streamplot_impl` on Mac M1.
 - Set the [Cairo miter limit](https://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-miter-limit) to mimic GLMakie behaviour [#1844]
+- Fixed a method ambiguity in `rotatedrect`.
+
 
 ##  v0.16.4
 
