@@ -28,5 +28,5 @@ conversion_trait(::Type{<: Union{Surface, Image}}) = ContinuousSurface()
 struct DiscreteSurface <: SurfaceLike end
 conversion_trait(::Type{<: Heatmap}) = DiscreteSurface()
 
-struct VolumeLike end
+struct VolumeLike <: ConversionTrait end
 conversion_trait(::Type{<: Volume}) = VolumeLike()

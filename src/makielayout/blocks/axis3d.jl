@@ -1,42 +1,25 @@
 struct OrthographicCamera <: AbstractCamera end
 
-"""
-    layoutable(Axis3, fig_or_scene; bbox = nothing, kwargs...)
+function initialize_block!(ax::Axis3)
 
-Creates an `Axis3` object in the parent `fig_or_scene` which consists of a child scene
-with orthographic projection for 2D plots and axis decorations that live in the
-parent.
-"""
-function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = nothing, kwargs...)
+    blockscene = ax.blockscene
 
-    topscene = get_topscene(fig_or_scene)
-
-    default_attrs = default_attributes(Axis3, topscene).attributes
-    theme_attrs = subtheme(topscene, :Axis3)
-    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
-
-    @extract attrs (elevation, azimuth, perspectiveness, aspect, viewmode,
-        xlabel, ylabel, zlabel,
-    )
-
-    decorations = Dict{Symbol, Any}()
-
-
-    protrusions = lift(to_protrusions, attrs.protrusions)
-    layoutobservables = LayoutObservables(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight, attrs.halign, attrs.valign, attrs.alignmode;
-        suggestedbbox = bbox, protrusions = protrusions)
-
-    notify(protrusions)
+    on(ax.protrusions) do prot
+        ax.layoutobservables.protrusions[] = to_protrusions(prot)
+    end
+    notify(ax.protrusions)
 
     finallimits = Observable(Rect3f(Vec3f(0f0, 0f0, 0f0), Vec3f(100f0, 100f0, 100f0)))
+    setfield!(ax, :finallimits, finallimits)
 
-    scenearea = lift(round_to_IRect2D, layoutobservables.computedbbox)
+    scenearea = lift(round_to_IRect2D, ax.layoutobservables.computedbbox)
 
-    scene = Scene(topscene, scenearea, clear = false, backgroundcolor = attrs.backgroundcolor)
+    scene = Scene(blockscene, scenearea, clear = false, backgroundcolor = ax.backgroundcolor)
+    ax.scene = scene
     cam = OrthographicCamera()
     cameracontrols!(scene, cam)
 
-    matrices = lift(calculate_matrices, finallimits, scene.px_area, elevation, azimuth, perspectiveness, aspect, viewmode)
+    matrices = lift(calculate_matrices, finallimits, scene.px_area, ax.elevation, ax.azimuth, ax.perspectiveness, ax.aspect, ax.viewmode)
 
     on(matrices) do (view, proj, eyepos)
         cam = camera(scene)
@@ -44,62 +27,41 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
         cam.eyeposition[] = eyepos
     end
 
-    ticknode_1 = lift(finallimits, attrs.xticks, attrs.xtickformat) do lims, ticks, format
+    ticknode_1 = lift(finallimits, ax.xticks, ax.xtickformat) do lims, ticks, format
         tl = get_ticks(ticks, identity, format, minimum(lims)[1], maximum(lims)[1])
     end
 
-    ticknode_2 = lift(finallimits, attrs.yticks, attrs.ytickformat) do lims, ticks, format
+    ticknode_2 = lift(finallimits, ax.yticks, ax.ytickformat) do lims, ticks, format
         tl = get_ticks(ticks, identity, format, minimum(lims)[2], maximum(lims)[2])
     end
 
-    ticknode_3 = lift(finallimits, attrs.zticks, attrs.ztickformat) do lims, ticks, format
+    ticknode_3 = lift(finallimits, ax.zticks, ax.ztickformat) do lims, ticks, format
         tl = get_ticks(ticks, identity, format, minimum(lims)[3], maximum(lims)[3])
     end
 
-    mi1 = @lift(!(pi/2 <= $azimuth % 2pi < 3pi/2))
-    mi2 = @lift(0 <= $azimuth % 2pi < pi)
-    mi3 = @lift($elevation > 0)
+    mi1 = @lift(!(pi/2 <= $(ax.azimuth) % 2pi < 3pi/2))
+    mi2 = @lift(0 <= $(ax.azimuth) % 2pi < pi)
+    mi3 = @lift($(ax.elevation) > 0)
 
-    xypanel = add_panel!(scene, 1, 2, 3, finallimits, mi3, attrs)
-    xzpanel = add_panel!(scene, 2, 3, 1, finallimits, mi1, attrs)
-    yzpanel = add_panel!(scene, 1, 3, 2, finallimits, mi2, attrs)
-    decorations[:xypanel] = xypanel
-    decorations[:xzpanel] = xzpanel
-    decorations[:yzpanel] = yzpanel
+    add_panel!(scene, ax, 1, 2, 3, finallimits, mi3)
+    add_panel!(scene, ax, 2, 3, 1, finallimits, mi1)
+    add_panel!(scene, ax, 1, 3, 2, finallimits, mi2)
 
     xgridline1, xgridline2, xframelines =
-        add_gridlines_and_frames!(topscene, scene, 1, finallimits, ticknode_1, mi1, mi2, mi3, attrs)
-    decorations[:xgridline1]  = xgridline1
-    decorations[:xgridline2]  = xgridline2
-    decorations[:xframelines] = xframelines
+        add_gridlines_and_frames!(blockscene, scene, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3)
     ygridline1, ygridline2, yframelines =
-        add_gridlines_and_frames!(topscene, scene, 2, finallimits, ticknode_2, mi2, mi1, mi3, attrs)
-    decorations[:ygridline1]  = ygridline1
-    decorations[:ygridline2]  = ygridline2
-    decorations[:yframelines] = yframelines
+        add_gridlines_and_frames!(blockscene, scene, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3)
     zgridline1, zgridline2, zframelines =
-        add_gridlines_and_frames!(topscene, scene, 3, finallimits, ticknode_3, mi3, mi1, mi2, attrs)
-    decorations[:zgridline1]  = zgridline1
-    decorations[:zgridline2]  = zgridline2
-    decorations[:zframelines] = zframelines
+        add_gridlines_and_frames!(blockscene, scene, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2)
 
     xticks, xticklabels, xlabel =
-        add_ticks_and_ticklabels!(topscene, scene, 1, finallimits, ticknode_1, mi1, mi2, mi3, attrs, azimuth)
-    decorations[:xticks]      = xticks
-    decorations[:xticklabels] = xticklabels
-    decorations[:xlabel]      = xlabel
+        add_ticks_and_ticklabels!(blockscene, scene, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3, ax.azimuth)
     yticks, yticklabels, ylabel =
-        add_ticks_and_ticklabels!(topscene, scene, 2, finallimits, ticknode_2, mi2, mi1, mi3, attrs, azimuth)
-    decorations[:yticks]      = yticks
-    decorations[:yticklabels] = yticklabels
-    decorations[:ylabel]      = ylabel
+        add_ticks_and_ticklabels!(blockscene, scene, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3, ax.azimuth)
     zticks, zticklabels, zlabel =
-        add_ticks_and_ticklabels!(topscene, scene, 3, finallimits, ticknode_3, mi3, mi1, mi2, attrs, azimuth)
-    decorations[:zticks]      = zticks
-    decorations[:zticklabels] = zticklabels
-    decorations[:zlabel]      = zlabel
+        add_ticks_and_ticklabels!(blockscene, scene, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2, ax.azimuth)
 
-    titlepos = lift(scene.px_area, attrs.titlegap, attrs.titlealign) do a, titlegap, align
+    titlepos = lift(scene.px_area, ax.titlegap, ax.titlealign) do a, titlegap, align
 
         x = if align == :center
             a.origin[1] + a.widths[1] / 2
@@ -116,51 +78,50 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
         Point2(x, yoffset)
     end
 
-    titlealignnode = lift(attrs.titlealign) do align
+    titlealignnode = lift(ax.titlealign) do align
         (align, :bottom)
     end
 
     titlet = text!(
-        topscene, attrs.title,
+        blockscene, ax.title,
         position = titlepos,
-        visible = attrs.titlevisible,
-        textsize = attrs.titlesize,
+        visible = ax.titlevisible,
+        textsize = ax.titlesize,
         align = titlealignnode,
-        font = attrs.titlefont,
-        color = attrs.titlecolor,
+        font = ax.titlefont,
+        color = ax.titlecolor,
         markerspace = :data,
         inspectable = false)
-    decorations[:title] = titlet
 
+    ax.cycler = Cycler()
+    ax.palette = copy(Makie.default_palettes)
 
-    mouseeventhandle = addmouseevents!(scene)
+    ax.mouseeventhandle = addmouseevents!(scene)
     scrollevents = Observable(ScrollEvent(0, 0))
+    setfield!(ax, :scrollevents, scrollevents)
     keysevents = Observable(KeysEvent(Set()))
-
+    setfield!(ax, :keysevents, keysevents)
+    
     on(scene.events.scroll) do s
         if is_mouseinside(scene)
-            scrollevents[] = ScrollEvent(s[1], s[2])
+            ax.scrollevents[] = ScrollEvent(s[1], s[2])
             return Consume(true)
         end
         return Consume(false)
     end
 
     on(scene.events.keyboardbutton) do e
-        keysevents[] = KeysEvent(scene.events.keyboardstate)
+        ax.keysevents[] = KeysEvent(scene.events.keyboardstate)
         return Consume(false)
     end
 
-    interactions = Dict{Symbol, Tuple{Bool, Any}}()
+    ax.interactions = Dict{Symbol, Tuple{Bool, Any}}()
 
-
-    ax = Axis3(fig_or_scene, layoutobservables, attrs, decorations, scene, finallimits,
-        mouseeventhandle, scrollevents, keysevents, interactions, Cycler())
-
-    on(attrs.limits) do lims
+    on(ax.limits) do lims
         reset_limits!(ax)
     end
 
-    on(attrs.targetlimits) do lims
+    on(ax.targetlimits) do lims
         # adjustlimits!(ax)
         # we have no aspect constraints here currently, so just update final limits
         ax.finallimits[] = lims
@@ -176,9 +137,9 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
         return Consume(false)
     end
 
-    on(process_event, mouseeventhandle.obs)
-    on(process_event, scrollevents)
-    on(process_event, keysevents)
+    on(process_event, ax.mouseeventhandle.obs)
+    on(process_event, ax.scrollevents)
+    on(process_event, ax.keysevents)
 
     register_interaction!(ax,
         :dragrotate,
@@ -186,9 +147,9 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
 
 
     # in case the user set limits already
-    notify(attrs.limits)
+    notify(ax.limits)
 
-    ax
+    return
 end
 
 can_be_current_axis(ax3::Axis3) = true
@@ -394,10 +355,10 @@ function dim2(dim)
     end
 end
 
-function add_gridlines_and_frames!(topscene, scene, dim::Int, limits, ticknode, miv, min1, min2, attrs)
+function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, ticknode, miv, min1, min2)
 
     dimsym(sym) = Symbol(string((:x, :y, :z)[dim]) * string(sym))
-    attr(sym) = attrs[dimsym(sym)]
+    attr(sym) = getproperty(ax, dimsym(sym))
 
     dpoint = (v, v1, v2) -> dimpoint(dim, v, v1, v2)
     d1 = dim1(dim)
@@ -475,10 +436,10 @@ function to_topscene_z_2d(p3d, scene)
     Point3f(p2d..., -10000)
 end
 
-function add_ticks_and_ticklabels!(topscene, scene, dim::Int, limits, ticknode, miv, min1, min2, attrs, azimuth)
+function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, ticknode, miv, min1, min2, azimuth)
 
     dimsym(sym) = Symbol(string((:x, :y, :z)[dim]) * string(sym))
-    attr(sym) = attrs[dimsym(sym)]
+    attr(sym) = getproperty(ax, dimsym(sym))
 
     dpoint = (v, v1, v2) -> dimpoint(dim, v, v1, v2)
     d1 = dim1(dim)
@@ -661,11 +622,11 @@ function dim3point(dim1, dim2, dim3, v1, v2, v3)
     end
 end
 
-function add_panel!(scene, dim1, dim2, dim3, limits, min3, attrs)
+function add_panel!(scene, ax, dim1, dim2, dim3, limits, min3)
 
     dimsym(sym) = Symbol(string((:x, :y, :z)[dim1]) *
         string((:x, :y, :z)[dim2]) * string(sym))
-    attr(sym) = attrs[dimsym(sym)]
+    attr(sym) = getproperty(ax, dimsym(sym))
 
     vertices = lift(limits, min3) do lims, mi3
 
@@ -807,8 +768,8 @@ function xautolimits(ax::Axis3)
         xlims = (ax.targetlimits[].origin[1], ax.targetlimits[].origin[1] + ax.targetlimits[].widths[1])
     else
         xlims = expandlimits(xlims,
-            ax.attributes.xautolimitmargin[][1],
-            ax.attributes.xautolimitmargin[][2],
+            ax.xautolimitmargin[][1],
+            ax.xautolimitmargin[][2],
             identity)
     end
     xlims
@@ -821,8 +782,8 @@ function yautolimits(ax::Axis3)
         ylims = (ax.targetlimits[].origin[2], ax.targetlimits[].origin[2] + ax.targetlimits[].widths[2])
     else
         ylims = expandlimits(ylims,
-            ax.attributes.yautolimitmargin[][1],
-            ax.attributes.yautolimitmargin[][2],
+            ax.yautolimitmargin[][1],
+            ax.yautolimitmargin[][2],
             identity)
     end
     ylims
@@ -835,8 +796,8 @@ function zautolimits(ax::Axis3)
         zlims = (ax.targetlimits[].origin[3], ax.targetlimits[].origin[3] + ax.targetlimits[].widths[3])
     else
         zlims = expandlimits(zlims,
-            ax.attributes.zautolimitmargin[][1],
-            ax.attributes.zautolimitmargin[][2],
+            ax.zautolimitmargin[][1],
+            ax.zautolimitmargin[][2],
             identity)
     end
     zlims

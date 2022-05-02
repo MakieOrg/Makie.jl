@@ -30,6 +30,7 @@
 - `glowwidth::Real = 0` sets the size of a glow effect around the marker.
 - `glowcolor::Union{Symbol, <:Colorant} = (:black, 0)` sets the color of the glow effect.
 - `rotations::Union{Real, Billboard, Quaternion} = Billboard(0f0)` sets the rotation of the marker. A `Billboard` rotation is always around the depth axis.
+- `transform_marker::Bool = false` controls whether the model matrix (without translation) applies to the marker itself, rather than just the positions. (If this is true, `scale!` and `rotate!` will affect the marker.)
 
 ## Examples
 
@@ -120,6 +121,7 @@ ax = Axis(f[1, 1], yreversed = true,
     xautolimitmargin = (0.15, 0.15),
     yautolimitmargin = (0.15, 0.15)
 )
+hidedecorations!(ax)
 
 for (i, (marker, label)) in enumerate(markers_labels)
     p = Point2f(fldmod1(i, 6)...)
@@ -180,8 +182,7 @@ f
 
 ### Marker space
 
-By default, marker sizes do not scale relative to the data limits.
-You can enable this by setting `markerspace = SceneSpace`.
+By default marker sizes are given in pixel units. You can change this by adjusting `markerspace`. For example, you can have a marker scaled in data units by setting `markerspace = :data`. 
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -193,10 +194,10 @@ f = Figure()
 ax = Axis(f[1, 1])
 limits!(ax, -10, 10, -10, 10)
 
-scatter!(ax, Point2f(0, 0), markersize = 20, markerspace = SceneSpace,
-    marker = '✈', label = "markerspace = SceneSpace")
-scatter!(ax, Point2f(0, 0), markersize = 20, markerspace = Pixel,
-    marker = '✈', label = "markerspace = Pixel")
+scatter!(ax, Point2f(0, 0), markersize = 20, markerspace = :data,
+    marker = '✈', label = "markerspace = :data")
+scatter!(ax, Point2f(0, 0), markersize = 20, markerspace = :pixel,
+    marker = '✈', label = "markerspace = :pixel")
 
 axislegend(ax)
 

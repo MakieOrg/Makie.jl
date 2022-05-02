@@ -67,7 +67,8 @@ Every plotting function has a version with and one without `!`.
 For example, there's `scatter` and `scatter!`, `lines` and `lines!`, etc.
 The functions without a `!` always create a new axis with a plot inside, while the functions with `!` plot into an already existing axis.
 
-Here's how you could plot two lines on top of each other.
+Here's how you could plot two lines on top of each other. Also, notice you can pass a function (`sin` and `cos` in this case) as the
+`y` argument to a plotting function.
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -75,11 +76,9 @@ Here's how you could plot two lines on top of each other.
 using CairoMakie
 
 x = range(0, 10, length=100)
-y1 = sin.(x)
-y2 = cos.(x)
 
-lines(x, y1)
-lines!(x, y2)
+lines(x, sin)
+lines!(x, cos)
 current_figure()
 ```
 \end{examplefigure}
@@ -303,8 +302,8 @@ fig
 
 ## Legend and Colorbar
 
-We have seen two `Layoutables` so far, the \myreflink{Axis} and the \myreflink{Legend} which was created by the function `axislegend`.
-All `Layoutable`s can be placed into the layout of a figure at arbitrary positions, which makes it easy to assemble complex figures.
+We have seen two `Blocks` so far, the \myreflink{Axis} and the \myreflink{Legend} which was created by the function `axislegend`.
+All `Block`s can be placed into the layout of a figure at arbitrary positions, which makes it easy to assemble complex figures.
 
 In the same way as with the \myreflink{Axis} before, you can also create a \myreflink{Legend} manually and then place it freely, wherever you want, in the figure.
 There are multiple ways to create \myreflink{Legend}s, for one of them you pass one vector of plot objects and one vector of label strings.

@@ -1,5 +1,3 @@
-@def reeval = false
-
 # Layout Tutorial
 
 In this tutorial, you will learn how to create a complex figure using Makie's layout tools.
@@ -155,12 +153,12 @@ data2 = [sin(x^0.8) * cos(y^1.5) for x in xs, y in ys] .+ 0.1 .* randn.()
 ax1, hm = contourf(gb[1, 1], xs, ys, data1,
     levels = 6)
 ax1.title = "Histological analysis"
-contour!(xs, ys, data1, levels = 5, color = :black)
+contour!(ax1, xs, ys, data1, levels = 5, color = :black)
 hidexdecorations!(ax1)
 
-_, hm2 = contourf(gb[2, 1], xs, ys, data2,
+ax2, hm2 = contourf(gb[2, 1], xs, ys, data2,
     levels = 6)
-contour!(xs, ys, data2, levels = 5, color = :black)
+contour!(ax2, xs, ys, data2, levels = 5, color = :black)
 
 f
 ```
@@ -217,8 +215,9 @@ Now, we move on to panel C. This is just an `Axis3` with a colorbar on the side.
 ```julia
 brain = load(assetpath("brain.stl"))
 
-Axis3(gc[1, 1], title = "Brain activation")
+ax3d = Axis3(gc[1, 1], title = "Brain activation")
 m = mesh!(
+    ax3d,
     brain,
     color = [tri[1][2] for tri in brain for i in 1:3],
     colormap = Reverse(:magma),
