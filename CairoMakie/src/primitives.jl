@@ -822,52 +822,119 @@ end
 
 function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive::Makie.Surface))
     # Pretend the surface plot is a mesh plot and plot that instead
-    mesh = surface2mesh(primitive[1][], primitive[2][], primitive[3][])
-    old = primitive[:color]
-    if old[] === nothing
-        primitive[:color] = primitive[3]
+
+    ctx = screen.context
+    image = primitive[3][]
+
+    mat = surface2mat(primitive[1][], primitive[2][], primitive[3][])
+    xs = getindex.(mat, 1)
+    ys = getindex.(mat, 2)
+
+    model = primitive[:model][]
+
+    space = to_value(get(primitive, :space, :data))
+    xys = project_position.(Ref(scene), Ref(space), mat, Ref(model))
+
+    # idxs = LinearIndices(size(xy))
+    # faces = [
+    #   QuadFace(idxs[i, j], idxs[i+1, j], idxs[i+1, j+1], idxs[i, j+1])
+    #   for j in 1:size(image, 2)-1 for i in 1:size(image, 1)-1
+    # ]
+    #
+    # mesh = normal_mesh(mat[:], faces)
+
+
+
+    colors = to_rgba_image(image, primitive)
+    if haskey(primitive, :color) && primitive[:color][] isa AbstractMatrix{<: Colorant}
+        @assert size(colors) == size(image)
+        colors = RGBAf.(primitive[:color][])
     end
-    if !haskey(primitive, :faceculling)
-        primitive[:faceculling] = Observable(-10)
+
+    # Note: xs and ys should have size ni+1, nj+1
+    ni, nj = size(colors)
+    @show ni nj size(xys, 1) size(xys, 2) typeof(xys)
+    @assert ni == size(xys, 1)
+    @assert nj == size(xys, 2)
+    pattern = Cairo.CairoPatternMesh()
+
+    p = fill(Point2f(0),     4)
+    c = fill(RGBAf(0,0,0,0), 4)
+
+    @inbounds for i in 1:(ni-1), j in 1:(nj-1)
+        p[1] = xys[i, j]
+        p[2] = xys[i+1, j]
+        p[3] = xys[i+1, j+1]
+        p[4] = xys[i, j+1]
+
+        c[1] = colors[i, j]
+        c[2] = colors[i+1, j]
+        c[3] = colors[i+1, j+1]
+        c[4] = colors[i, j+1]
+
+        if !all(isfinite.((p1, p2, p3, p4))) # move on if any elements are infinite
+            continue
+        end
+
+        # Rectangles and polygons that are directly adjacent usually show
+        # white lines between them due to anti aliasing. To avoid this we
+        # increase their size slightly.
+
+        # if alpha(colors[i, j]) == 1
+        #     # sign.(p - center) gives the direction in which we need to
+        #     # extend the polygon. (Which may change due to rotations in the
+        #     # model matrix.) (i!=1) etc is used to avoid increasing the
+        #     # outer extent of the heatmap.
+        #     center = 0.25 * (p1 + p2 + p3 + p4)
+        #     p1 += sign.(p1 - center) .* Point2f(0.5(i!=1),  0.5(j!=1))
+        #     p2 += sign.(p2 - center) .* Point2f(0.5(i!=ni), 0.5(j!=1))
+        #     p3 += sign.(p3 - center) .* Point2f(0.5(i!=ni), 0.5(j!=nj))
+        #     p4 += sign.(p4 - center) .* Point2f(0.5(i!=1),  0.5(j!=nj))
+        # end
+
+
+        Cairo.mesh_pattern_begin_patch(pattern)
+
+        Cairo.mesh_pattern_move_to(pattern, p[1][1], p[1][2])
+        Cairo.mesh_pattern_line_to(pattern, p[2][1], p[2][2])
+        Cairo.mesh_pattern_line_to(pattern, p[3][1], p[3][2])
+        Cairo.mesh_pattern_line_to(pattern, p[4][1], p[4][2])
+
+        mesh_pattern_set_corner_color(pattern, 0, c[1])
+        mesh_pattern_set_corner_color(pattern, 1, c[2])
+        mesh_pattern_set_corner_color(pattern, 2, c[3])
+        mesh_pattern_set_corner_color(pattern, 3, c[4])
+
+        Cairo.mesh_pattern_end_patch(pattern)
     end
-    draw_mesh3D(scene, screen, primitive, mesh)
-    primitive[:color] = old
-    return nothing
+    Cairo.set_source(ctx, pattern)
+    Cairo.close_path(ctx)
+    Cairo.paint(ctx)
 end
 
-function surface2mesh(xs::Makie.ClosedInterval, ys, zs::AbstractMatrix)
-    surface2mesh(range(xs.left, xs.right, length = size(zs, 1)), ys, zs)
+function surface2mat(xs::Makie.ClosedInterval, ys, zs::AbstractMatrix)
+    surface2mat(range(xs.left, xs.right, length = size(zs, 1)), ys, zs)
 end
 
-function surface2mesh(xs, ys::Makie.ClosedInterval, zs::AbstractMatrix)
-    surface2mesh(xs, range(ys.left, ys.right, length = size(zs, 2)), zs)
+function surface2mat(xs, ys::Makie.ClosedInterval, zs::AbstractMatrix)
+    surface2mat(xs, range(ys.left, ys.right, length = size(zs, 2)), zs)
 end
 
-function surface2mesh(xs::Makie.ClosedInterval, ys::Makie.ClosedInterval, zs::AbstractMatrix)
-    surface2mesh(
+function surface2mat(xs::Makie.ClosedInterval, ys::Makie.ClosedInterval, zs::AbstractMatrix)
+    surface2mat(
         range(xs.left, xs.right, length = size(zs, 1)),
         range(ys.left, ys.right, length = size(zs, 2)),
         zs)
 end
 
-function surface2mesh(xs::AbstractVector, ys::AbstractVector, zs::AbstractMatrix)
-    ps = [nan2zero.(Point3f(xs[i], ys[j], zs[i, j])) for j in eachindex(ys) for i in eachindex(xs)]
-    idxs = LinearIndices(size(zs))
-    faces = [
-        QuadFace(idxs[i, j], idxs[i+1, j], idxs[i+1, j+1], idxs[i, j+1])
-        for j in 1:size(zs, 2)-1 for i in 1:size(zs, 1)-1
-    ]
-    normal_mesh(ps, faces)
+function surface2mat(xs::AbstractVector, ys::AbstractVector, zs::AbstractMatrix)
+    ps = [nan2zero.(Point3f(xs[i], ys[j], zs[i, j])) for i in eachindex(xs), j in eachindex(ys)]
+    return ps
 end
 
-function surface2mesh(xs::AbstractMatrix, ys::AbstractMatrix, zs::AbstractMatrix)
-    ps = [nan2zero.(Point3f(xs[i, j], ys[i, j], zs[i, j])) for j in 1:size(zs, 2) for i in 1:size(zs, 1)]
-    idxs = LinearIndices(size(zs))
-    faces = [
-        QuadFace(idxs[i, j], idxs[i+1, j], idxs[i+1, j+1], idxs[i, j+1])
-        for j in 1:size(zs, 2)-1 for i in 1:size(zs, 1)-1
-    ]
-    normal_mesh(ps, faces)
+function surface2mat(xs::AbstractMatrix, ys::AbstractMatrix, zs::AbstractMatrix)
+    ps = [nan2zero.(Point3f(xs[i, j], ys[i, j], zs[i, j])) for i in 1:size(zs, 1), j in 1:size(zs, 2)]
+    return ps
 end
 
 ################################################################################
