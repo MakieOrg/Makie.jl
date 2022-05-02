@@ -5,6 +5,7 @@
 - **Breaking** Added `space` as a generic attribute to switch between data, pixel, relative and clip space for positions. `space` in text has been renamed to `markerspace` because of this. `Pixel` and `SceneSpace` are no longer valid inputs for `space` or `markerspace`.
 - **Breaking** Deprecated `mouse_selection(scene)` for `pick(scene)`.
 - **Breaking** Bumped `GridLayoutBase` version to `v0.7`, which introduced offset layouts. Now, indexing into row 0 doesn't create a new row 1, but a new row 0, so that all previous content positions stay the same. This makes building complex layouts order-independent [#1704](https://github.com/JuliaPlots/Makie.jl/pull/1704).
+- Added `raindclouds` and `raindclouds!` [#1725](https://github.com/JuliaPlots/Makie.jl/pull/1725)
 
 ##  v0.16.4
 
