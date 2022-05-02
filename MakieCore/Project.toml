@@ -7,7 +7,7 @@ version = "0.2.1"
 Observables = "510215fc-4207-5dde-b226-833fc4488ee2"
 
 [compat]
-Observables = "0.4"
+Observables = "0.5"
 julia = "1"
 
 [extras]
