@@ -27,7 +27,7 @@ end
 function push_screen!(scene::Scene, display::AbstractDisplay)
     push!(scene.current_screens, display)
     deregister = nothing
-    deregister = on(events(scene).window_open, priority=typemax(Int8)) do is_open
+    deregister = on(events(scene).window_open, priority=typemax(Int)) do is_open
         # when screen closes, it should set the scene isopen event to false
         # so that's when we can remove the display
         if !is_open
@@ -259,7 +259,7 @@ function record_events(f, scene::Scene, path::String)
     for field in fieldnames(Events)
         # These are not Observables
         (field == :mousebuttonstate || field == :keyboardstate) && continue
-        on(getfield(scene.events, field), priority = typemax(Int8)) do value
+        on(getfield(scene.events, field), priority = typemax(Int)) do value
             value = isa(value, Set) ? copy(value) : value
             push!(result, time() => (field => value))
             return Consume(false)

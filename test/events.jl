@@ -1,4 +1,4 @@
-using Makie: PriorityObservable, MouseButtonEvent, KeyEvent
+using Makie: MouseButtonEvent, KeyEvent
 using Makie: Not, And, Or
 
 # rudimentary equality for tests
@@ -6,39 +6,6 @@ Base.:(==)(l::Exclusively, r::Exclusively) = l.x == r.x
 Base.:(==)(l::Not, r::Not) = l.x == r.x
 Base.:(==)(l::And, r::And) = l.left == r.left && l.right == r.right
 Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
-
-@testset "PriorityObservable" begin
-    po = PriorityObservable(0)
-
-    first = Observable(UInt64(0))
-    second = Observable(UInt64(0))
-    third = Observable(UInt64(0))
-
-    on(po, priority=1) do x
-        sleep(0)
-        first[] = time_ns()
-    end
-    on(po, priority=0) do x
-        sleep(0)
-        second[] = time_ns()
-        return Consume(isodd(x))
-    end
-    on(po, priority=-1) do x
-        sleep(0)
-        third[] = time_ns()
-        return Consume(false)
-    end
-
-    x = setindex!(po, 1)
-    @test x == true
-    @test first[] < second[]
-    @test third[] == 0.0
-
-    x = setindex!(po, 2)
-    @test x == false
-    @test first[] < second[] < third[]
-end
-
 
 @testset "Events" begin
     @testset "Mouse and Keyboard state" begin
@@ -262,7 +229,7 @@ end
         scene = Scene(resolution=(800, 600));
         e = events(scene)
         bbox = Observable(Rect2(200, 200, 400, 300))
-        msm = addmouseevents!(scene, bbox, priority=typemax(Int8))
+        msm = addmouseevents!(scene, bbox, priority=typemax(Int))
         eventlog = MouseEvent[]
         on(x -> begin push!(eventlog, x); false end, msm.obs)
 
