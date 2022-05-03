@@ -172,22 +172,22 @@ end
 # Compat only
 function Base.getproperty(e::Events, field::Symbol)
     if field === :mousebuttons
-        error(
-            "`events.mousebuttons` is deprecated. Use `events.mousebutton` to " *
-            "react to `MouseButtonEvent`s instead and ``."
-        )
+        error("""
+            `events.mousebuttons` is deprecated. Use `events.mousebutton` to
+            react to `MouseButtonEvent`s instead.
+        """)
     elseif field === :keyboardbuttons
-        error(
-            "`events.keyboardbuttons` is deprecated. Use " *
-            "`events.keyboardbutton` to react to `KeyEvent`s instead."
-        )
+        error("""
+            `events.keyboardbuttons` is deprecated. Use
+            `events.keyboardbutton` to react to `KeyEvent`s instead.
+        """)
     elseif field === :mousedrag
-        error(
-            "`events.mousedrag` is deprecated. Use `events.mousebutton` or a " *
-            "mouse state machine (`addmouseevents!`) instead."
-        )
+        error("""
+            `events.mousedrag` is deprecated. Use `events.mousebutton` or a
+            mouse state machine (`addmouseevents!`) instead.
+        """)
     else
-        getfield(e, field)
+        return getfield(e, field)
     end
 end
 

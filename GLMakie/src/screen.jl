@@ -59,11 +59,11 @@ function Makie.insertplots!(screen::GLScreen, scene::Scene)
 end
 
 function Base.delete!(screen::Screen, scene::Scene)
-    if !isempty(scene.children)
-        delete!.((screen,), scene.children)
+    for child in scene.children
+        delete!(screen, child)
     end
-    if !isempty(scene.plots)
-        delete!.((screen,), (scene,), scene.plots)
+    for plot in scene.plots
+        delete!(screen, scene, plot)
     end
 
     if haskey(screen.screen2scene, WeakRef(scene))
@@ -73,7 +73,7 @@ function Base.delete!(screen::Screen, scene::Scene)
         i = findfirst(id_scene -> id_scene[1] == deleted_id, screen.screens)
         i !== nothing && deleteat!(screen.screens, i)
 
-        # Remap scene IDs to a continuous range by replacing the largest ID 
+        # Remap scene IDs to a continuous range by replacing the largest ID
         # with the one that got removed
         if deleted_id-1 != length(screen.screens)
             key, max_id = first(screen.screen2scene)
@@ -102,7 +102,9 @@ end
 function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
     if !isempty(plot.plots)
         # this plot consists of children, so we flatten it and delete the children instead
-        delete!.(Ref(screen), Ref(scene), Makie.flatten_plots(plot))
+        for cplot in Makie.flatten_plots(plot)
+            delete!(screen, scene, cplot)
+        end
     else
         renderobject = get(screen.cache, objectid(plot)) do
             error("Could not find $(typeof(subplot)) in current GLMakie screen!")
@@ -118,7 +120,6 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
                 end
             end
         end
-
         filter!(x-> x[3] !== renderobject, screen.renderlist)
     end
 end
