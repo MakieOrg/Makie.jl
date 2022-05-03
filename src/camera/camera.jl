@@ -61,11 +61,7 @@ function Observables.on(f, camera::Camera, observables::AbstractObservable...; p
     # the method in Observables. CameraLift acts as a workaround for now.
     cl = CameraLift(f, observables)
     for n in observables
-        obs = if n isa Observable
-            on(cl, n, priority=priority)
-        else
-            on(cl, n)
-        end
+        obs = on(cl, n, priority=priority)
         push!(camera.steering_nodes, obs)
     end
     return f

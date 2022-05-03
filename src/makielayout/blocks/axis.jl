@@ -35,7 +35,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     setfield!(ax, :finallimits, finallimits)
 
     ax.cycler = Cycler()
-    
+
     # the first thing to do when setting a new scale is
     # resetting the limits because simply through expanding they might be invalid for log
     onany(ax.xscale, ax.yscale) do _, _
@@ -53,7 +53,6 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     scenearea = sceneareanode!(ax.layoutobservables.computedbbox, finallimits, ax.aspect)
-
     scene = Scene(topscene, px_area=scenearea)
     ax.scene = scene
 
