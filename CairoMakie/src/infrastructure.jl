@@ -255,21 +255,9 @@ end
 #   instead of the whole Scene
 # - Recognize when a screen is an image surface, and set scale to render the plot
 #   at the scale of the device pixel
-function draw_plot_as_image(scene::Scene, screen::CairoScreen, primitive::Combined, scale = 1)
-    # you can provide `p.rasterize = scale::Int` or `p.rasterize = true`,
-    @assert scale isa Int || scale isa Bool
+function draw_plot_as_image(scene::Scene, screen::CairoScreen, primitive::Combined, scale::Number = 1)
+    # you can provide `p.rasterize = scale::Int` or `p.rasterize = true`, both of which are numbers
 
-    # If plt.rasterize = true, then we want to rasterize to the exact scale necessary.
-    # So we find the device scaling factor so that we can scale our own rendered
-    # image to that precise scale.
-    if scale == true
-        xscale = Ref(0e0)
-        yscale = Ref(0e0)
-        ccall((:cairo_surface_get_device_scale, Cairo.libcairo), Cvoid, (Ptr{Nothing}, Ptr{Cdouble}, Ptr{Cdouble}),
-            screen.surface.ptr, xscale, yscale)
-
-        scale = max(xscale[], yscale[])
-    end
     # Extract scene width in pixels
     w, h = Int.(scene.px_area[].widths)
     # Create a new Screen which renders directly to an image surface,
@@ -290,7 +278,7 @@ function draw_plot_as_image(scene::Scene, screen::CairoScreen, primitive::Combin
     # this is needed to avoid blurry edges
     Cairo.pattern_set_extend(p, Cairo.EXTEND_PAD)
     # Set filter doesn't work!?
-    Cairo.pattern_set_filter(p, Cairo.FILTER_BEST)
+    Cairo.pattern_set_filter(p, Cairo.FILTER_BILINEAR)
     Cairo.fill(screen.context)
     Cairo.restore(screen.context)
 
