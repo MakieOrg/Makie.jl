@@ -14,6 +14,7 @@ struct CairoBackend <: Makie.AbstractBackend
     path::String
     px_per_unit::Float64
     pt_per_unit::Float64
+    antialias::Int # cairo_antialias_t
 end
 
 """
@@ -29,7 +30,7 @@ struct CairoScreen{S} <: Makie.AbstractScreen
 end
 
 
-function CairoBackend(path::String; px_per_unit=1, pt_per_unit=1)
+function CairoBackend(path::String; px_per_unit=1, pt_per_unit=1, antialias = Cairo.ANTIALIAS_BEST)
     ext = splitext(path)[2]
     typ = if ext == ".png"
         PNG
@@ -42,7 +43,7 @@ function CairoBackend(path::String; px_per_unit=1, pt_per_unit=1)
     else
         error("Unsupported extension: $ext")
     end
-    CairoBackend(typ, path, px_per_unit, pt_per_unit)
+    CairoBackend(typ, path, px_per_unit, pt_per_unit, antialias)
 end
 
 # we render the scene directly, since we have
@@ -276,8 +277,9 @@ Makie.backend_showable(x::CairoBackend, ::MIME"image/png", scene::Scene) = x.typ
 function Makie.backend_show(x::CairoBackend, io::IO, ::MIME"image/svg+xml", scene::Scene)
     proxy_io = IOBuffer()
     pt_per_unit = get(io, :pt_per_unit, x.pt_per_unit)
+    antialias = get(io, :antialias, x.antialias)
 
-    screen = CairoScreen(scene, proxy_io, :svg; device_scaling_factor = pt_per_unit)
+    screen = CairoScreen(scene, proxy_io, :svg; device_scaling_factor = pt_per_unit, antialias = antialias)
     cairo_draw(screen, scene)
     Cairo.flush(screen.surface)
     Cairo.finish(screen.surface)
@@ -312,8 +314,9 @@ end
 function Makie.backend_show(x::CairoBackend, io::IO, ::MIME"application/pdf", scene::Scene)
 
     pt_per_unit = get(io, :pt_per_unit, x.pt_per_unit)
+    antialias = get(io, :antialias, x.antialias)
 
-    screen = CairoScreen(scene, io, :pdf; device_scaling_factor = pt_per_unit)
+    screen = CairoScreen(scene, io, :pdf; device_scaling_factor = pt_per_unit, antialias = antialias)
     cairo_draw(screen, scene)
     Cairo.finish(screen.surface)
     return screen
@@ -323,8 +326,9 @@ end
 function Makie.backend_show(x::CairoBackend, io::IO, ::MIME"application/postscript", scene::Scene)
 
     pt_per_unit = get(io, :pt_per_unit, x.pt_per_unit)
+    antialias = get(io, :antialias, x.antialias)
 
-    screen = CairoScreen(scene, io, :eps; device_scaling_factor = pt_per_unit)
+    screen = CairoScreen(scene, io, :eps; device_scaling_factor = pt_per_unit, antialias = antialias)
 
     cairo_draw(screen, scene)
     Cairo.finish(screen.surface)
@@ -336,8 +340,10 @@ function Makie.backend_show(x::CairoBackend, io::IO, ::MIME"image/png", scene::S
     # multiply the resolution of the png with this factor for more or less detail
     # while relative line and font sizes are unaffected
     px_per_unit = get(io, :px_per_unit, x.px_per_unit)
+    antialias = get(io, :antialias, x.antialias)
+    
     # create an ARGB surface, to speed up drawing ops.
-    screen = CairoScreen(scene; device_scaling_factor = px_per_unit)
+    screen = CairoScreen(scene; device_scaling_factor = px_per_unit, antialias = antialias)
     cairo_draw(screen, scene)
     Cairo.write_to_png(screen.surface, io)
     return screen

@@ -51,15 +51,17 @@ const _last_inline = Ref(true)
 const _last_type = Ref("png")
 const _last_px_per_unit = Ref(1.0)
 const _last_pt_per_unit = Ref(0.75)
+const _last_antialias = Ref(Cairo.ANTIALIAS_BEST)
 
-function activate!(; inline = _last_inline[], type = _last_type[], px_per_unit=_last_px_per_unit[], pt_per_unit=_last_pt_per_unit[])
-    backend = CairoBackend(display_path(type); px_per_unit=px_per_unit, pt_per_unit=pt_per_unit)
+function activate!(; inline = _last_inline[], type = _last_type[], px_per_unit=_last_px_per_unit[], pt_per_unit=_last_pt_per_unit[], antialias = _last_antialias[])
+    backend = CairoBackend(display_path(type); px_per_unit=px_per_unit, pt_per_unit=pt_per_unit, antialias = antialias)
     Makie.current_backend[] = backend
     Makie.use_display[] = !inline
     _last_inline[] = inline
     _last_type[] = type
     _last_px_per_unit[] = px_per_unit
     _last_pt_per_unit[] = pt_per_unit
+    _last_antialias[] = antialias
     return
 end
 
