@@ -53,3 +53,26 @@ dodge = rand(1:2, 1000)
 boxplot(xs, ys, dodge = dodge, show_notch = true, color = map(d->d==1 ? :blue : :red, dodge) , outliercolor = rand([:red, :green, :blue, :black, :yellow], 1000))
 ```
 \end{examplefigure}
+
+#### Using statistical weights
+
+\begin{examplefigure}{}
+```julia
+using CairoMakie, Distributions
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+N = 100_000
+x = rand(1:3, N)
+y = rand(Uniform(-1, 5), N)
+
+w = pdf.(Normal(), x .- y)
+
+fig = Figure()
+
+boxplot(fig[1,1], x, y)
+boxplot(fig[1,2], x, y, weights = w)
+
+fig
+```
+\end{examplefigure}

@@ -7,6 +7,10 @@
 - **Breaking** Bumped `GridLayoutBase` version to `v0.7`, which introduced offset layouts. Now, indexing into row 0 doesn't create a new row 1, but a new row 0, so that all previous content positions stay the same. This makes building complex layouts order-independent [#1704](https://github.com/JuliaPlots/Makie.jl/pull/1704).
 - `Layoutable` was renamed to `Block` and the infrastructure changed such that attributes are fixed fields and each block has its own `Scene` for better encapsulation.
 - Added `SliderGrid` block which replaces the deprecated `labelslider!` and `labelslidergrid!` functions.
+- Changed some code which consistently caused a segfault in `streamplot_impl` on Mac M1.
+- Set the [Cairo miter limit](https://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-miter-limit) to mimic GLMakie behaviour [#1844]
+- Fixed a method ambiguity in `rotatedrect`.
+
 
 ##  v0.16.4
 

@@ -14,7 +14,7 @@ on:
       - master
     tags: '*'
 
-concurrency: 
+concurrency:
   group: ${{ github.ref }}
   cancel-in-progress: true
 
@@ -26,8 +26,8 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.3'
           - '1.6'
+          - '1' # automatically expands to the latest stable 1.x release of Julia
         os:
           - ubuntu-latest
         arch:
@@ -45,7 +45,7 @@ jobs:
         run: |
           using Pkg;
           # dev mono repo versions
-          pkg"dev . MakieCore"
+          pkg"dev . ./MakieCore"
           Pkg.test("Makie"; coverage=true)
 
       - uses: julia-actions/julia-processcoverage@v1

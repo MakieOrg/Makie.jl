@@ -2,7 +2,7 @@ function block_docs(::Type{Menu})
     """
     A drop-down menu with multiple selectable options. You can pass options
     with the keyword argument `options`.
-    
+
     Options are given as an iterable of elements.
     For each element, the option label in the menu is determined with `optionlabel(element)`
     and the option value with `optionvalue(element)`. These functions can be
@@ -209,7 +209,7 @@ function initialize_block!(m::Menu)
     end
 
     # close the menu if the user clicks somewhere else
-    onmousedownoutside(addmouseevents!(scene, priority=Int8(61))) do events
+    onmousedownoutside(addmouseevents!(scene, priority=61)) do events
         if m.is_open[]
             m.is_open[] = !m.is_open[]
         end
@@ -277,7 +277,7 @@ function _reassemble_menu(
         # elements that may overlap with out interactive blocks.
         addmouseevents!(
             scene, r.layoutobservables.computedbbox,
-            priority = Int8(1) + (i != 1) * Int8(60)
+            priority = 1 + (i != 1) * 60
         )
     end
 

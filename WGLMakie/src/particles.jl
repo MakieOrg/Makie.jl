@@ -180,7 +180,7 @@ function create_shader(scene::Scene, plot::Scatter)
     space = get(attributes, :space, :data)
     mspace = get(attributes, :markerspace, :pixel)
     cam = scene.camera
-    attributes[:preprojection] = map(space, mspace, cam.projectionview) do space, mspace, pv
+    attributes[:preprojection] = map(space, mspace, cam.projectionview, cam.resolution) do space, mspace, _, _
         Makie.clip_to_space(cam, mspace) * Makie.space_to_clip(cam, space)
     end
     attributes[:pos] = apply_transform(transform_func_obs(plot),  plot[1])
