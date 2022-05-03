@@ -174,7 +174,7 @@ function Scene(;
 
     cam = camera isa Camera ? camera : Camera(px_area)
     if wasnothing
-        on(events.window_area, priority = typemax(Int8)) do w_area
+        on(events.window_area, priority = typemax(Int)) do w_area
             if !any(x -> x ≈ 0.0, widths(w_area)) && px_area[] != w_area
                 px_area[] = w_area
             end

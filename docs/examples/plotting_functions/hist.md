@@ -56,3 +56,24 @@ end
 fig
 ```
 \end{examplefigure}
+
+#### Using statistical weights
+
+\begin{examplefigure}{}
+```julia
+using CairoMakie, Distributions
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+N = 100_000
+x = rand(Uniform(-5, 5), N)
+
+w = pdf.(Normal(), x)
+
+fig = Figure()
+hist(fig[1,1], x)
+hist(fig[1,2], x, weights = w)
+
+fig
+```
+\end{examplefigure}

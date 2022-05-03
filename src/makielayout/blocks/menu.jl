@@ -1,8 +1,8 @@
 function block_docs(::Type{Menu})
-    Markdown.md"""
+    """
     A drop-down menu with multiple selectable options. You can pass options
     with the keyword argument `options`.
-    
+
     Options are given as an iterable of elements.
     For each element, the option label in the menu is determined with `optionlabel(element)`
     and the option value with `optionvalue(element)`. These functions can be
@@ -12,12 +12,18 @@ function block_docs(::Type{Menu})
     When an item is selected in the menu, the menu's `selection` attribute is set to
     `optionvalue(selected_element)`.
 
+    ## Constructors
+
+    ```julia
+    Menu(fig_or_scene; kwargs...)
+    ```
+
     ## Examples
 
     Menu with string entries:
 
     ```julia
-    menu1 = Menu(scene, options = ["first", "second", "third"])
+    menu1 = Menu(fig[1, 1], options = ["first", "second", "third"])
     ```
 
     Menu with two-element entries, label and function:
@@ -26,7 +32,7 @@ function block_docs(::Type{Menu})
     funcs = [sin, cos, tan]
     labels = ["Sine", "Cosine", "Tangens"]
 
-    menu2 = Menu(scene, options = zip(labels, funcs))
+    menu2 = Menu(fig[1, 1], options = zip(labels, funcs))
     ```
 
     Executing a function when a selection is made:
@@ -203,7 +209,7 @@ function initialize_block!(m::Menu)
     end
 
     # close the menu if the user clicks somewhere else
-    onmousedownoutside(addmouseevents!(scene, priority=Int8(61))) do events
+    onmousedownoutside(addmouseevents!(scene, priority=61)) do events
         if m.is_open[]
             m.is_open[] = !m.is_open[]
         end
@@ -271,7 +277,7 @@ function _reassemble_menu(
         # elements that may overlap with out interactive blocks.
         addmouseevents!(
             scene, r.layoutobservables.computedbbox,
-            priority = Int8(1) + (i != 1) * Int8(60)
+            priority = 1 + (i != 1) * 60
         )
     end
 

@@ -1,12 +1,12 @@
-function lift_parent_attribute(scene, attr::Symbol, default_value)
+function inherit(scene, attr::Symbol, default_value)
     if haskey(scene.theme, attr)
         lift(identity, scene.theme[attr])
     else
-        lift_parent_attribute(scene.parent, attr, default_value)
+        inherit(scene.parent, attr, default_value)
     end
 end
 
-function lift_parent_attribute(::Nothing, attr::Symbol, default_value)
+function inherit(::Nothing, attr::Symbol, default_value)
     default_value
 end
 

@@ -176,7 +176,11 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
     notify(plot.position)
 
     text!(plot, glyphcollection; plot.attributes...)
-    linesegments!(plot, linepairs, linewidth = linewidths, color = plot.color)
+    linesegments!(
+        plot, linepairs, linewidth = linewidths, color = plot.color,
+        visible = plot.visible, inspectable = plot.inspectable, 
+        transparent = plot.transparency
+    )
 
     plot
 end

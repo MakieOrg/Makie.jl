@@ -56,16 +56,12 @@ end
 When mapping over observables for the camera, we store them in the `steering_node` vector,
 to make it easier to disconnect the camera steering signals later!
 """
-function Observables.on(f, camera::Camera, observables::AbstractObservable...; priority=Int8(0))
+function Observables.on(f, camera::Camera, observables::AbstractObservable...; priority=0)
     # PriorityObservables don't implement on_any, because that would replace
     # the method in Observables. CameraLift acts as a workaround for now.
     cl = CameraLift(f, observables)
     for n in observables
-        obs = if n isa PriorityObservable
-            on(cl, n, priority=priority)
-        else
-            on(cl, n)
-        end
+        obs = on(cl, n, priority=priority)
         push!(camera.steering_nodes, obs)
     end
     return f

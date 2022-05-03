@@ -156,9 +156,9 @@ ax1.title = "Histological analysis"
 contour!(ax1, xs, ys, data1, levels = 5, color = :black)
 hidexdecorations!(ax1)
 
-_, hm2 = contourf(gb[2, 1], xs, ys, data2,
+ax2, hm2 = contourf(gb[2, 1], xs, ys, data2,
     levels = 6)
-contour!(ax1, xs, ys, data2, levels = 5, color = :black)
+contour!(ax2, xs, ys, data2, levels = 5, color = :black)
 
 f
 ```
