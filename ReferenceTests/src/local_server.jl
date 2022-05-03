@@ -85,7 +85,7 @@ function serve_update_page(; commit = nothing, pr = nothing)
 
     checkruns = filter(checksinfo["check_runs"]) do x
         right_combination = any(["GLMakie", "WGLMakie", "CairoMakie"]) do package
-            occursin(package, x["name"]) && occursin("1.6", x["name"])
+            occursin(package, x["name"]) && occursin("1", x["name"])
         end
         if right_combination
             job = JSON3.read(authget("https://api.github.com/repos/JuliaPlots/Makie.jl/actions/jobs/$(x["id"])").body)
@@ -118,7 +118,7 @@ function serve_update_page(; commit = nothing, pr = nothing)
 
     artifacts = JSON3.read(authget(run["artifacts_url"]).body)["artifacts"]
     for a in artifacts
-        if endswith(a["name"], "1.6")
+        if endswith(a["name"], "1")
             @info "Choosing artifact $(a["name"])"
             download_url = a["archive_download_url"]
             @info "Downloading artifact from $download_url"

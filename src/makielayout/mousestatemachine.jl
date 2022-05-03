@@ -55,7 +55,7 @@ struct MouseEvent
 end
 
 struct MouseEventHandle
-    obs::Makie.PriorityObservable{MouseEvent}
+    obs::Observable{MouseEvent}
     observerfuncs::Vector{<:Observables.ObserverFunction}
 end
 
@@ -80,7 +80,7 @@ for eventtype in instances(MouseEventType)
         Executes the function f whenever the `MouseEventHandle`'s observable is set to
         a MouseEvent with `event.type === $($eventtype)`.
         """
-        function $onfunctionname(f, mev::MouseEventHandle; priority = Int8(0))
+        function $onfunctionname(f, mev::MouseEventHandle; priority = 0)
             on(mev.obs, priority = priority) do event
                 if event.type === $eventtype
                     return f(event)
@@ -112,11 +112,11 @@ onmouseleftclick(mouseevents) do event
 end
 ```
 """
-function addmouseevents!(scene, elements...; priority = Int8(1))
+function addmouseevents!(scene, elements...; priority = 1)
     is_mouse_over_relevant_area() = isempty(elements) ? Makie.is_mouseinside(scene) : mouseover(scene, elements...)
     _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
 end
-function addmouseevents!(scene, bbox::Observables.AbstractObservable{<: Rect2}; priority = Int8(1))
+function addmouseevents!(scene, bbox::Observables.AbstractObservable{<: Rect2}; priority = 1)
     is_mouse_over_relevant_area() = Makie.mouseposition_px(scene) in bbox[]
     _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
 end
@@ -126,11 +126,9 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
     Mouse = Makie.Mouse
     dblclick_max_interval = 0.2
 
-    mouseevent = Makie.PriorityObservable{MouseEvent}(
+    mouseevent = Observable{MouseEvent}(
         MouseEvent(MouseEventTypes.out, 0.0, Point2f(0, 0), Point2f(0, 0), 0.0, Point2f(0, 0), Point2f(0, 0))
     )
-
-
     # initialize state variables
     last_mouseevent = Ref{Mouse.Action}(Mouse.release)
     prev_data = Ref(mouseposition(scene))
@@ -143,7 +141,6 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
     t_last_click = Ref(0.0)
     b_last_click = Ref{Optional{Mouse.Button}}(nothing)
     last_click_was_double = Ref(false)
-
 
     # react to mouse position changes
     mousepos_observerfunc = on(events(scene).mouseposition, priority=priority) do mp

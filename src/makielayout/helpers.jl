@@ -11,17 +11,13 @@ function round_to_IRect2D(r::Rect{2})
 end
 
 function sceneareanode!(finalbbox, limits, aspect)
-
-    scenearea = Observable(Recti(0, 0, 100, 100))
-
-    onany(finalbbox, limits, aspect) do bbox, limits, aspect
+    return map(finalbbox, limits, aspect; ignore_equal_values=true) do bbox, limits, aspect
 
         w = width(bbox)
         h = height(bbox)
         # as = mw / mh
         as = w / h
         mw, mh = w, h
-
 
         if aspect isa AxisAspect
             aspect = aspect.aspect
@@ -50,16 +46,9 @@ function sceneareanode!(finalbbox, limits, aspect)
         newbbox = BBox(l, l + mw, b, b + mh)
 
         # only update scene if pixel positions change
-        new_scenearea = round_to_IRect2D(newbbox)
-        if new_scenearea != scenearea[]
-            scenearea[] = new_scenearea
-        end
+        return round_to_IRect2D(newbbox)
     end
-
-    scenearea
 end
-
-
 
 function roundedrectvertices(rect, cornerradius, cornersegments)
     cr = cornerradius

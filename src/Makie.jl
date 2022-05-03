@@ -82,7 +82,6 @@ const NativeFont = FreeTypeAbstraction.FTFont
 
 include("documentation/docstringextension.jl")
 include("utilities/quaternions.jl")
-include("interaction/PriorityObservable.jl")
 include("types.jl")
 include("utilities/utilities.jl")
 include("utilities/texture_atlas.jl")
