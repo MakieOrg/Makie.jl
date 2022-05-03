@@ -277,7 +277,7 @@ function _reassemble_menu(
         # elements that may overlap with out interactive blocks.
         addmouseevents!(
             scene, r.layoutobservables.computedbbox,
-            priority = Int8(1) + (i != 1) * Int8(60)
+            priority = 1 + (i != 1) * 60
         )
     end
 
