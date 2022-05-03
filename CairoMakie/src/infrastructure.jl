@@ -257,9 +257,19 @@ end
 #   at the scale of the device pixel
 function draw_plot_as_image(scene::Scene, screen::CairoScreen, primitive::Combined, scale = 1)
     # you can provide `p.rasterize = scale::Int` or `p.rasterize = true`,
-    # if true then scale = 1.
-    scale == true && (scale = 1)
     @assert scale isa Int || scale isa Bool
+
+    # If plt.rasterize = true, then we want to rasterize to the exact scale necessary.
+    # So we find the device scaling factor so that we can scale our own rendered
+    # image to that precise scale.
+    if scale == true
+        xscale = Ref(0e0)
+        yscale = Ref(0e0)
+        ccall((:cairo_surface_get_device_scale, Cairo.libcairo), Cvoid, (Ptr{Nothing}, Ptr{Cdouble}, Ptr{Cdouble}),
+            screen.surface.ptr, xscale, yscale)
+
+        scale = max(xscale[], yscale[])
+    end
     # Extract scene width in pixels
     w, h = Int.(scene.px_area[].widths)
     # Create a new Screen which renders directly to an image surface,
