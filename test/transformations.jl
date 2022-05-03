@@ -102,3 +102,16 @@ end
         @test Makie.clip_to_space(scene.camera, space) * Makie.space_to_clip(scene.camera, space) ≈ Mat4f(I)
     end
 end
+
+@testset "Bounding box utilities" begin
+
+    box = Rect2f(0,0,1,1)
+
+    @test Makie.rotatedrect(box, π) == Rect2f(-1, -1, 1, 1)
+
+    @test Makie.rotatedrect(box, π/2) == Rect2f(0, -1, 1, 1)
+
+    @test all(Makie.rotatedrect(box, π/4).origin .≈ Rect2f(0, -1/(√2f0), √2f0, √2f0).origin)
+    @test all(Makie.rotatedrect(box, π/4).widths .≈ Rect2f(0, -1/(√2f0), √2f0, √2f0).widths)
+
+end
