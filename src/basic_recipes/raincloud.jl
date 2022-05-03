@@ -127,7 +127,7 @@ function plot!(
 
     plot = plot!(ax.scene, P, allattrs, category_labels, data_array)
 
-    if eltype(category_labels) <: AbstractString
+    if any(x -> x isa AbstractString, category_labels)
         ulabels = unique(category_labels)
         ax.xticks = (1:length(ulabels), ulabels)
     end
