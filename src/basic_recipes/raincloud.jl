@@ -36,11 +36,11 @@ Plot a violin (/histogram), boxplot and individual data points with appropriate 
 - `dodge_gap = 0.03`: spacing between dodged boxes
 - `n_dodge`: the number of categories to dodge (defaults to maximum(dodge))
 - `color`: the fill color of the plots (defaults to theme :patchcolor), you can directly
-define colors for all data here, or use the Axis palette property that cycles through integer 
+define colors for all data here, or use the Axis palette property that cycles through integer
 values speciefied in color (see Makie themeing docs)
 
 ## Violin Plot Specific Keywords
-- `cloud_width=1.0`: Determines size of violin plot. Corresponds to `width` keyword arg in 
+- `cloud_width=1.0`: Determines size of violin plot. Corresponds to `width` keyword arg in
 `violin`.
 
 ## Box Plot Specific Keywords
@@ -50,7 +50,7 @@ values speciefied in color (see Makie themeing docs)
 - `show_median=true`: Determines whether or not to have a line should the median value in the boxplot.
 - `boxplot_nudge=0.075`: Determines the distance away the boxplot should be placed from the center line when `center_boxplot` is `false`.
     This is the value used to recentering the boxplot.
-- `show_boxplot_outliers`: show outliers in the boxplot as points (usually confusing when 
+- `show_boxplot_outliers`: show outliers in the boxplot as points (usually confusing when
 paired with the scatter plot so the default is to not show them)
 
 ## Scatter Plot Specific Keywords
@@ -80,7 +80,7 @@ paired with the scatter plot so the default is to not show them)
 
         markersize = 2.0,
         dodge = automatic,
-        n_dodge = automatic, 
+        n_dodge = automatic,
         dodge_gap = 0.03,
 
         plot_boxplots = true,
@@ -185,10 +185,10 @@ function plot!(plot::RainClouds)
     # Checking kwargs, and assigning defaults if they are not in kwargs
     # General Settings
     # Define where categories should lie
-    x_positions = if eltype(category_labels) isa String 
+    x_positions = if eltype(category_labels) isa String
         labels = unique(category_labels)
         pos = Dict(label => i for (i, label) in enumerate(labels))
-        [pos[label] for label in category_labels] 
+        [pos[label] for label in category_labels]
     else
         category_labels
     end
@@ -232,28 +232,28 @@ function plot!(plot::RainClouds)
     plot_boxplots || (recenter_to_boxplot_nudge_value = 0.0)
     # Note: these cloud plots are horizontal
     full_width = jitter_width + side_scatter_nudge +
-        (plot_boxplots ? boxplot_width : 0) + 
+        (plot_boxplots ? boxplot_width : 0) +
         (!isnothing(clouds) ? cloud_width + abs(recenter_to_boxplot_nudge_value) : 0)
-    
-    final_x_positions, width = compute_x_and_width(x_positions .+ recenter_to_boxplot_nudge_value/2, full_width, 
-                                                    plot.gap[], plot.dodge[], 
+
+    final_x_positions, width = compute_x_and_width(x_positions .+ recenter_to_boxplot_nudge_value/2, full_width,
+                                                    plot.gap[], plot.dodge[],
                                                     plot.n_dodge[], plot.dodge_gap[])
     width_ratio = width / full_width
 
-    jitter = create_jitter_array(length(data_array); 
+    jitter = create_jitter_array(length(data_array);
                                     jitter_width = jitter_width*width_ratio)
-        
+
     if !isnothing(clouds)
         if clouds === violin
             violin!(plot, final_x_positions .- recenter_to_boxplot_nudge_value.*width_ratio, data_array;
-                    show_median, side, width=width_ratio*cloud_width, plot.cycle, 
+                    show_median=show_median, side=side, width=width_ratio*cloud_width, plot.cycle,
                     plot.color, gap=0)
         elseif clouds === hist
             for (_, ixs) in group_labels(zip(category_labels, plot.dodge[]), data_array)
                 isempty(ixs) && continue
                 xoffset = final_x_positions[ixs[1]] - recenter_to_boxplot_nudge_value
-                hist!(plot, data_array; direction=:x, offset=xoffset, 
-                        scale_to=-cloud_width*width_ratio, bins=hist_bins, 
+                hist!(plot, data_array; direction=:x, offset=xoffset,
+                        scale_to=-cloud_width*width_ratio, bins=hist_bins,
                         color=getuniquevalue(plot.color, ixs))
             end
         else
@@ -261,22 +261,22 @@ function plot!(plot::RainClouds)
         end
     end
 
-    scatter!(plot, final_x_positions .+ side_scatter_nudge_with_direction.*width_ratio .+ 
-             jitter .- recenter_to_boxplot_nudge_value.*width_ratio, data_array; markersize=markersize, 
+    scatter!(plot, final_x_positions .+ side_scatter_nudge_with_direction.*width_ratio .+
+             jitter .- recenter_to_boxplot_nudge_value.*width_ratio, data_array; markersize=markersize,
              plot.color, plot.cycle)
 
     if plot_boxplots
-        boxplot!(plot, final_x_positions .+ side_boxplot_nudge_with_direction.*width_ratio .- 
-                 recenter_to_boxplot_nudge_value.*width_ratio, 
+        boxplot!(plot, final_x_positions .+ side_boxplot_nudge_with_direction.*width_ratio .-
+                 recenter_to_boxplot_nudge_value.*width_ratio,
                  data_array;
-                 strokewidth, 
-                 whiskerwidth=whiskerwidth*width_ratio, 
-                 width=boxplot_width*width_ratio, 
+                 strokewidth=strokewidth,
+                 whiskerwidth=whiskerwidth*width_ratio,
+                 width=boxplot_width*width_ratio,
                  markersize=markersize,
-                 show_outliers=plot.show_boxplot_outliers[], 
-                 plot.color, 
-                 plot.cycle)
+                 show_outliers=plot.show_boxplot_outliers[],
+                 color=plot.color,
+                 cycle=plot.cycle)
     end
-    
+
     return plot
 end
