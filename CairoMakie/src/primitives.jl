@@ -857,7 +857,7 @@ function surface2mesh(xs::AbstractVector, ys::AbstractVector, zs::AbstractMatrix
         QuadFace(idxs[i, j], idxs[i+1, j], idxs[i+1, j+1], idxs[i, j+1])
         for j in 1:size(zs, 2)-1 for i in 1:size(zs, 1)-1
     ]
-    normal_mesh(ps, faces)
+    GeometryBasics.mesh(normal_mesh(ps, faces); uv = Vec2f)
 end
 
 function surface2mesh(xs::AbstractMatrix, ys::AbstractMatrix, zs::AbstractMatrix)
@@ -867,7 +867,7 @@ function surface2mesh(xs::AbstractMatrix, ys::AbstractMatrix, zs::AbstractMatrix
         QuadFace(idxs[i, j], idxs[i+1, j], idxs[i+1, j+1], idxs[i, j+1])
         for j in 1:size(zs, 2)-1 for i in 1:size(zs, 1)-1
     ]
-    normal_mesh(ps, faces)
+    GeometryBasics.mesh(normal_mesh(ps, faces); uv = Vec2f)
 end
 
 ################################################################################
