@@ -10,9 +10,11 @@ using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
 
-fig, ax, plt = heatmap(rand(10, 10))
-
+fig = Figure()
+ax = Axis(fig[1, 1])
 clip!(ax, Circle(Point2f(5), 3))
+
+plt = heatmap(rand(10, 10))
 
 fig
 ```
