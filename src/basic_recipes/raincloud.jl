@@ -185,7 +185,7 @@ function plot!(plot::RainClouds)
     # Checking kwargs, and assigning defaults if they are not in kwargs
     # General Settings
     # Define where categories should lie
-        x_positions = if any(x -> x isa AbstractString, category_labels)
+    x_positions = if any(x -> x isa AbstractString, category_labels)
         labels = unique(category_labels)
         pos = Dict(label => i for (i, label) in enumerate(labels))
         [pos[label] for label in category_labels]
@@ -249,7 +249,7 @@ function plot!(plot::RainClouds)
                     show_median=show_median, side=side, width=width_ratio*cloud_width, plot.cycle,
                     plot.color, gap=0)
         elseif clouds === hist
-            for (_, ixs) in group_labels(zip(category_labels, plot.dodge[]), data_array)
+            for (_, ixs) in group_labels(category_labels, data_array)
                 isempty(ixs) && continue
                 xoffset = final_x_positions[ixs[1]] - recenter_to_boxplot_nudge_value
                 hist!(plot, data_array; direction=:x, offset=xoffset,
