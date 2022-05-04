@@ -175,7 +175,6 @@ function cairo_draw(screen::CairoScreen, scene::Scene)
             prepare_for_scene(screen, pparent)
             last_scene = pparent
         end
-        Cairo.save(screen.context)
 
         # This is a bit of a hack for now.  When a plot is too large to save with
         # a reasonable file size on a vector backend, the user can choose to
@@ -187,7 +186,6 @@ function cairo_draw(screen::CairoScreen, scene::Scene)
         else # draw vector
             draw_plot(pparent, screen, p)
         end
-        Cairo.restore(screen.context)
     end
 
     return

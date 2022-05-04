@@ -173,3 +173,47 @@ function draw_plot(scene::Scene, screen::CairoScreen,
 
     nothing
 end
+
+################################################################################
+#                                     Clip                                     #
+#      Each backend must implement its own implementation of custom clip.      #
+#                   In CairoMakie, we accept lines to clip.                    #
+################################################################################
+
+
+function draw_plot(scene::Scene, screen::CairoScreen, primitive::Clip)
+
+    @assert to_value(primitive[1]) isa Vector{<:Point2}
+    @assert length(to_value(primitive[1])) ≥ 3
+
+    ctx = screen.context
+    model = primitive[:model][]
+    positions = primitive[1][]
+
+
+    space = to_value(get(primitive, :space, :data))
+    projected_positions = project_position.(Ref(scene), Ref(space), positions, Ref(model))
+
+    Cairo.new_path(ctx)
+
+    n = length(positions)
+    @inbounds for i in 2:n
+        p = projected_positions[i]
+        # only take action for non-NaNs
+        if !isnan(p)
+            # new line segment at beginning or if previously NaN
+            if i == 1 || isnan(projected_positions[i-1])
+                Cairo.move_to(ctx, p[1], p[2])
+            else
+                Cairo.line_to(ctx, p[1], p[2])
+            end
+        end
+    end
+
+    Cairo.close_path(ctx)
+
+    Cairo.clip(ctx)
+
+    Cairo.new_path(ctx)
+
+end
