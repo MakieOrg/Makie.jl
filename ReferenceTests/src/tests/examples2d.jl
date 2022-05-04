@@ -428,3 +428,8 @@ end
 
     fig
 end
+
+@cell "2D surface with explicit color"
+    fig, ax, plt = surface(1:10, 1:10, ones(10, 10); color = [RGBf0(x*y/100, 0, 0) for x in 1:10, y in 1:10], shading = false)
+    fig
+end
