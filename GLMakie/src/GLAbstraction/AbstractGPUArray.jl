@@ -58,7 +58,7 @@ function setindex!(A::GPUArray{T, N}, value::Array{T, N}, ranges::UnitRange...) 
     checkbounds(A, ranges...)
     checkdimensions(value, ranges...)
     gpu_setindex!(A, value, ranges...)
-    nothing
+    return
 end
 
 ShaderAbstractions.switch_context!(A::GPUArray) = switch_context!(A.context)
@@ -80,7 +80,7 @@ function update!(A::GPUArray{T, N}, value::AbstractArray{T, N}) where {T, N}
     end
     dims = map(x-> 1:x, size(A))
     A[dims...] = value
-    nothing
+    return
 end
 update!(A::GPUArray, value::ShaderAbstractions.Sampler) = update!(A, value.data)
 
@@ -107,7 +107,7 @@ function update!(A::GPUVector{T}, value::AbstractVector{T}) where T
     end
     dims = map(x->1:x, size(A))
     A.buffer[dims...] = value
-    return nothing
+    return
 end
 
 length(v::GPUVector)            = prod(size(v))
@@ -177,8 +177,9 @@ function splice!(v::GPUVector{T}, index::UnitRange, x::Vector=T[]) where T
     v.real_length = length(buffer)
     v.size        = (v.real_length,)
     copy!(x, 1, buffer, first(index), length(x)) # copy contents of insertion vector
-    nothing
+    return
 end
+
 splice!(v::GPUVector{T}, index::Int, x::T) where {T} = v[index] = x
 splice!(v::GPUVector{T}, index::Int, x::Vector=T[]) where {T} = splice!(v, index:index, map(T, x))
 

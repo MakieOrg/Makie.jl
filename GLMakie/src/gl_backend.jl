@@ -59,8 +59,8 @@ end
 # enable_SSAO and FXAA adjust the rendering pipeline and are currently per screen
 const enable_SSAO = Ref(false)
 const enable_FXAA = Ref(true)
-# This adjusts a factor in the rendering shaders for order independent 
-# transparency. This should be the same for all of them (within one rendering 
+# This adjusts a factor in the rendering shaders for order independent
+# transparency. This should be the same for all of them (within one rendering
 # pipeline) otherwise depth "order" will be broken.
 const transparency_weight_scale = Ref(1000f0)
 
@@ -70,6 +70,7 @@ using .GLVisualize
 include("glwindow.jl")
 include("postprocessing.jl")
 include("screen.jl")
+include("picking.jl")
 include("rendering.jl")
 include("events.jl")
 include("drawing_primitives.jl")

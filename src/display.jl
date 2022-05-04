@@ -106,9 +106,8 @@ function Base.show(io::IO, m::MIME, scene::Scene)
     ioc = IOContext(io,
         :full_fidelity => true
     )
-    screen = backend_show(current_backend[], ioc, m, scene)
-    push_screen!(scene, screen)
-    return screen
+    backend_show(current_backend[], ioc, m, scene)
+    return
 end
 
 """

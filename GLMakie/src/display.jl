@@ -1,5 +1,5 @@
 function Makie.backend_display(::GLBackend, scene::Scene)
-    screen = Screen(resolution = size(scene), visible = Makie.use_display[])
+    screen = singleton_screen(size(scene))
     display_loading_image(screen)
     Makie.backend_display(screen, scene)
     return screen
@@ -17,8 +17,17 @@ function Makie.backend_display(screen::Screen, scene::Scene)
     pollevents(screen)
     insertplots!(screen, scene)
     pollevents(screen)
-    return
+    return screen
 end
+
+function Base.display(screen::Screen, scenelike::Union{Makie.Figure, Makie.FigureAxisPlot, Scene})
+    scene = Makie.get_scene(scenelike)
+    Base.resize!(screen, size(scene)...)
+    Makie.backend_display(screen, scene)
+    return screen
+end
+
+const SHOW_SCREEN = Base.RefValue{Screen}()
 
 """
     scene2image(scene::Scene)
@@ -26,19 +35,14 @@ end
 Buffers the `scene` in an image buffer.
 """
 function scene2image(scene::Scene)
-    old = WINDOW_CONFIG.pause_rendering[]
-    try
-        WINDOW_CONFIG.pause_rendering[] = true
-        screen = Screen(resolution = size(scene), visible = Makie.use_display[])
-        Makie.backend_display(screen, scene)
-        return Makie.colorbuffer(screen), screen
-    finally
-        WINDOW_CONFIG.pause_rendering[] = old
-    end
+    screen = singleton_screen(size(scene), visible=false, screen_ref=SHOW_SCREEN, start_renderloop=false)
+    empty!(screen)
+    insertplots!(screen, scene)
+    return Makie.colorbuffer(screen)
 end
 
 function Makie.backend_show(::GLBackend, io::IO, m::MIME"image/png", scene::Scene)
-    img, screen = scene2image(scene)
+    img = scene2image(scene)
     # TODO: when FileIO 1.6 is the minimum required version, delete the conditional
     if isdefined(FileIO, :action)   # FileIO 1.6+
         # keep this one
@@ -47,15 +51,15 @@ function Makie.backend_show(::GLBackend, io::IO, m::MIME"image/png", scene::Scen
         # delete this one
         FileIO.save(FileIO.Stream(FileIO.format"PNG", Makie.raw_io(io)), img)
     end
-    return screen
+    return
 end
 
 function Makie.backend_show(::GLBackend, io::IO, m::MIME"image/jpeg", scene::Scene)
-    img, screen = scene2image(scene)
+    img = scene2image(scene)
     if isdefined(FileIO, :action)   # FileIO 1.6+
         FileIO.save(FileIO.Stream{FileIO.format"JPEG"}(Makie.raw_io(io)), img)
     else
         FileIO.save(FileIO.Stream(FileIO.format"JPEG", Makie.raw_io(io)), img)
     end
-    return screen
+    return
 end

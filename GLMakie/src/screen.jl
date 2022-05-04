@@ -43,7 +43,12 @@ mutable struct Screen <: GLScreen
 end
 
 GeometryBasics.widths(x::Screen) = size(x.framebuffer)
-
+pollevents(::GLScreen) = nothing
+function pollevents(screen::Screen)
+    ShaderAbstractions.switch_context!(screen.glscreen)
+    notify(screen.render_tick)
+    GLFW.PollEvents()
+end
 Base.wait(x::Screen) = isassigned(x.rendertask) && wait(x.rendertask[])
 Base.wait(scene::Scene) = wait(Makie.getscreen(scene))
 Base.show(io::IO, screen::Screen) = print(io, "GLMakie.Screen(...)")
@@ -95,20 +100,36 @@ function Base.empty!(screen::Screen)
     empty!(screen.cache2plot)
 end
 
+const GLFW_WINDOWS = GLFW.Window[]
+
+const SINGLETON_SCREEN = Base.RefValue{Screen}()
+
+function singleton_screen(resolution; visible=Makie.use_display[], screen_ref=SINGLETON_SCREEN, start_renderloop=true)
+    if isassigned(screen_ref) && isopen(screen_ref[])
+        screen = screen_ref[]
+        resize!(screen, resolution...)
+        return screen
+    else
+        screen = Screen(; resolution=resolution, visible=visible, start_renderloop=start_renderloop)
+        screen_ref[] = screen
+        return screen
+    end
+end
+
 function destroy!(screen::Screen)
     screen.window_open[] = false
     empty!(screen)
-    filter!(win -> win != screen.glscreen, gl_screens)
+    filter!(win -> win != screen.glscreen, GLFW_WINDOWS)
     destroy!(screen.glscreen)
 end
 
 Base.close(screen::Screen) = destroy!(screen)
 function closeall()
-    if !isempty(gl_screens)
-        for elem in gl_screens
+    if !isempty(GLFW_WINDOWS)
+        for elem in GLFW_WINDOWS
             isopen(elem) && destroy!(elem)
         end
-        empty!(gl_screens)
+        empty!(GLFW_WINDOWS)
     end
 end
 
@@ -254,10 +275,6 @@ function rewrap(robj::RenderObject{Pre}) where Pre
     )
 end
 
-
-const gl_screens = GLFW.Window[]
-
-
 """
 Loads the makie loading icon and embedds it in an image the size of resolution
 """
@@ -303,7 +320,8 @@ end
 
 
 function Screen(;
-        resolution = (10, 10), visible = false, title = WINDOW_CONFIG.title[],
+        resolution = (10, 10), visible = true, title = WINDOW_CONFIG.title[],
+        start_renderloop = true,
         kw_args...
     )
     # Somehow this constant isn't wrapped by glfw
@@ -329,7 +347,7 @@ function Screen(;
 
     window = try
         GLFW.Window(
-            name = title, resolution = (10, 10), # 10, because smaller sizes seem to error on some platforms
+            name = title, resolution = resolution,
             windowhints = windowhints,
             visible = false,
             focus = false,
@@ -352,9 +370,10 @@ function Screen(;
     # This is important for resource tracking, and only needed for the first context
     ShaderAbstractions.switch_context!(window)
     shader_cache = GLAbstraction.ShaderCache()
-    push!(gl_screens, window)
+    push!(GLFW_WINDOWS, window)
 
     resize_native!(window, resolution...; wait_for_resize=false)
+
     fb = GLFramebuffer(resolution)
 
     postprocessors = [
@@ -376,8 +395,9 @@ function Screen(;
     )
 
     GLFW.SetWindowRefreshCallback(window, window -> refreshwindowcb(window, screen))
-
-    screen.rendertask[] = @async((WINDOW_CONFIG.renderloop[])(screen))
+    if start_renderloop
+        screen.rendertask[] = @async((WINDOW_CONFIG.renderloop[])(screen))
+    end
     # display window if visible!
     if visible
         GLFW.ShowWindow(window)
@@ -387,143 +407,20 @@ function Screen(;
     return screen
 end
 
+function Screen(f, resolution)
+    screen = Screen(resolution = resolution, visible = false, start_renderloop=false)
+    try
+        return f(screen)
+    finally
+        destroy!(screen)
+    end
+end
+
 
 function refreshwindowcb(window, screen)
     ShaderAbstractions.switch_context!(screen.glscreen)
     screen.render_tick[] = nothing
     render_frame(screen)
-    return GLFW.SwapBuffers(window)
-end
-
-#################################################################################
-### Point picking
-################################################################################
-
-function pick_native(screen::Screen, rect::Rect2i)
-    isopen(screen) || return Matrix{SelectionID{Int}}(undef, 0, 0)
-    ShaderAbstractions.switch_context!(screen.glscreen)
-    window_size = widths(screen)
-    fb = screen.framebuffer
-    buff = fb.buffers[:objectid]
-    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
-    glReadBuffer(GL_COLOR_ATTACHMENT1)
-    rx, ry = minimum(rect)
-    rw, rh = widths(rect)
-    w, h = window_size
-    sid = zeros(SelectionID{UInt32}, widths(rect)...)
-    if rx > 0 && ry > 0 && rx + rw <= w && ry + rh <= h
-        glReadPixels(rx, ry, rw, rh, buff.format, buff.pixeltype, sid)
-        return sid
-    else
-        error("Pick region $rect out of screen bounds ($w, $h).")
-    end
-end
-
-function pick_native(screen::Screen, xy::Vec{2, Float64})
-    isopen(screen) || return SelectionID{Int}(0, 0)
-    ShaderAbstractions.switch_context!(screen.glscreen)
-    sid = Base.RefValue{SelectionID{UInt32}}()
-    window_size = widths(screen)
-    fb = screen.framebuffer
-    buff = fb.buffers[:objectid]
-    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
-    glReadBuffer(GL_COLOR_ATTACHMENT1)
-    x, y = floor.(Int, xy)
-    w, h = window_size
-    if x > 0 && y > 0 && x <= w && y <= h
-        glReadPixels(x, y, 1, 1, buff.format, buff.pixeltype, sid)
-        return convert(SelectionID{Int}, sid[])
-    end
-    return SelectionID{Int}(0, 0)
-end
-
-function Makie.pick(scene::Scene, screen::Screen, xy::Vec{2, Float64})
-    sid = pick_native(screen, xy)
-    if haskey(screen.cache2plot, sid.id)
-        plot = screen.cache2plot[sid.id]
-        return (plot, sid.index)
-    else
-        return (nothing, 0)
-    end
-end
-
-function Makie.pick(scene::Scene, screen::Screen, rect::Rect2i)
-    map(pick_native(screen, rect)) do sid
-        if haskey(screen.cache2plot, sid.id)
-            (screen.cache2plot[sid.id], sid.index)
-        else
-            (nothing, sid.index)
-        end
-    end
-end
-
-
-# Skips one set of allocations
-function Makie.pick_closest(scene::Scene, screen::Screen, xy, range)
-    isopen(screen) || return (nothing, 0)
-    w, h = widths(screen)
-    ((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h)) || return (nothing, 0)
-
-    x0, y0 = max.(1, floor.(Int, xy .- range))
-    x1, y1 = min.((w, h), floor.(Int, xy .+ range))
-    dx = x1 - x0; dy = y1 - y0
-    sid = pick_native(screen, Rect2i(x0, y0, dx, dy))
-
-    min_dist = range^2
-    id = SelectionID{Int}(0, 0)
-    x, y =  xy .+ 1 .- Vec2f(x0, y0)
-    for i in 1:dx, j in 1:dy
-        d = (x-i)^2 + (y-j)^2
-        if (d < min_dist) && (sid[i, j][1] > 0) && haskey(screen.cache2plot, sid[i, j][1])
-            min_dist = d
-            id = convert(SelectionID{Int}, sid[i, j])
-        end
-    end
-
-    if haskey(screen.cache2plot, id[1])
-        return (screen.cache2plot[id[1]], id[2])
-    else
-        return (nothing, 0)
-    end
-end
-
-# Skips some allocations
-function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
-    isopen(screen) || return (nothing, 0)
-    w, h = widths(screen)
-    if !((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h))
-        return Tuple{AbstractPlot, Int}[]
-    end
-    x0, y0 = max.(1, floor.(Int, xy .- range))
-    x1, y1 = min.([w, h], ceil.(Int, xy .+ range))
-    dx = x1 - x0; dy = y1 - y0
-
-    picks = pick_native(screen, Rect2i(x0, y0, dx, dy))
-
-    selected = filter(x -> x.id > 0 && haskey(screen.cache2plot, x.id), unique(vec(picks)))
-    distances = Float32[range^2 for _ in selected]
-    x, y =  xy .+ 1 .- Vec2f(x0, y0)
-    for i in 1:dx, j in 1:dy
-        if picks[i, j].id > 0
-            d = (x-i)^2 + (y-j)^2
-            i = findfirst(isequal(picks[i, j]), selected)
-            if i === nothing
-                @warn "This shouldn't happen..."
-            elseif distances[i] > d
-                distances[i] = d
-            end
-        end
-    end
-
-    idxs = sortperm(distances)
-    permute!(selected, idxs)
-    return map(id -> (screen.cache2plot[id.id], id.index), selected)
-end
-
-
-pollevents(::GLScreen) = nothing
-function pollevents(screen::Screen)
-    ShaderAbstractions.switch_context!(screen.glscreen)
-    notify(screen.render_tick)
-    GLFW.PollEvents()
+    GLFW.SwapBuffers(window)
+    return
 end
