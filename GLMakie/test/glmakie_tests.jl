@@ -63,7 +63,7 @@ end
         rotations=rot,
         color=color,
         markersize=size,
-        limits=Rect3f(Point3(0), Point3(1))
+        axis = (; scenekw = (;limits=Rect3f(Point3(0), Point3(1))))
     )
     Record(fig, [10, 5, 100, 60, 177]) do i
         makenew[] = i

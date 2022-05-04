@@ -116,3 +116,24 @@ end
 f
 ```
 \end{examplefigure}
+
+#### Using statistical weights
+
+\begin{examplefigure}{}
+```julia
+using CairoMakie, Distributions
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+N = 100_000
+x = rand(Uniform(-2, 2), N)
+
+w = pdf.(Normal(), x)
+
+fig = Figure()
+density(fig[1,1], x)
+density(fig[1,2], x, weights = w)
+
+fig
+```
+\end{examplefigure}

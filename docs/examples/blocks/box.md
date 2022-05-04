@@ -2,7 +2,7 @@
 
 # Box
 
-A simple rectangle poly that is layoutable. This can be useful to make boxes for
+A simple rectangle poly that is block. This can be useful to make boxes for
 facet plots or when a rectangular placeholder is needed.
 
 \begin{examplefigure}{}

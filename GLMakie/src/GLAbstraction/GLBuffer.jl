@@ -53,6 +53,10 @@ function GLBuffer(
     return b
 end
 
+# no-op conversions
+GLBuffer(buffer::GLBuffer) = buffer
+GLBuffer{T}(buffer::GLBuffer{T}) where {T} = buffer
+
 function GLBuffer(
         buffer::AbstractVector{T};
         kw_args...
@@ -147,21 +151,9 @@ function unsafe_copy!(a::GLBuffer{T}, readoffset::Int, b::GLBuffer{T}, writeoffs
     return nothing
 end
 
-function Base.iterate(buffer::GLBuffer{T}) where T
-    length(buffer) < 1 && return nothing
-    glBindBuffer(buffer.buffertype, buffer.id)
-    ptr = Ptr{T}(glMapBuffer(buffer.buffertype, GL_READ_WRITE))
-    return (unsafe_load(ptr, i), (ptr, 1))
-end
-
-function Base.iterate(buffer::GLBuffer{T}, state::Tuple{Ptr{T}, Int}) where T
-    ptr, i = state
-    if i > length(buffer)
-        glUnmapBuffer(buffer.buffertype)
-        return nothing
-    end
-    val = unsafe_load(ptr, i)
-    return (val, (ptr, i + 1))
+function Base.iterate(buffer::GLBuffer{T}, i=1) where T
+    i > length(buffer) && return nothing
+    return gpu_getindex(buffer, i:i)[], i+1
 end
 
 #copy inside one buffer

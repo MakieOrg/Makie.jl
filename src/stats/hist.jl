@@ -26,6 +26,8 @@ can be normalized by setting `normalization`. Possible values are:
    norm 1.
 *  `:none`: Do not normalize.
 
+Statistical weights can be provided via the `weights` keyword argument.
+
 The following attributes can move the histogram around,
 which comes in handy when placing multiple histograms into one plot:
 * offset = 0.0: adds an offset to every value
@@ -45,6 +47,7 @@ $(ATTRIBUTES)
     Attributes(
         bins = 15, # Int or iterable of edges
         normalization = :none,
+        weights = automatic,
         cycle = [:color => :patchcolor],
         color = theme(scene, :patchcolor),
         offset = 0.0,
@@ -84,8 +87,9 @@ function Makie.plot!(plot::Hist)
         end
     end
 
-    points = lift(edges, plot.normalization, plot.scale_to) do edges, normalization, scale_to
-        h = StatsBase.fit(StatsBase.Histogram, values[], edges)
+    points = lift(edges, plot.normalization, plot.scale_to, plot.weights) do edges, normalization, scale_to, wgts
+        w = wgts === automatic ? () : (StatsBase.weights(wgts),)
+        h = StatsBase.fit(StatsBase.Histogram, values[], w..., edges)
         h_norm = StatsBase.normalize(h, mode = normalization)
         centers = edges[1:end-1] .+ (diff(edges) ./ 2)
         weights = h_norm.weights

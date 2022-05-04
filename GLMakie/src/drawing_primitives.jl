@@ -215,7 +215,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Union{Scat
             space = get(gl_attributes, :space, :data)
             mspace = get(gl_attributes, :markerspace, :pixel)
             cam = scene.camera
-            gl_attributes[:preprojection] = map(space, mspace, cam.projectionview) do space, mspace, pv
+            gl_attributes[:preprojection] = map(space, mspace, cam.projectionview, cam.resolution) do space, mspace, _, _
                 return Makie.clip_to_space(cam, mspace) * Makie.space_to_clip(cam, space)
             end
             if !(marker[] isa FastPixel)

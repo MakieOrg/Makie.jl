@@ -1,4 +1,24 @@
-function layoutable(::Type{<:Colorbar}, fig_or_scene, plot::AbstractPlot; kwargs...)
+function block_docs(::Type{Colorbar})
+    """
+    Create a colorbar that shows a continuous or categorical colormap with ticks
+    chosen according to the colorrange.
+
+    You can set colorrange and colormap manually, or pass a plot object as the second argument
+    to copy its respective attributes. 
+
+    ## Constructors
+
+    ```julia
+    Colorbar(fig_or_scene; kwargs...)
+    Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
+    Colorbar(fig_or_scene, heatmap::Union{Heatmap, Image}; kwargs...)
+    Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
+    ```
+    """
+end
+
+
+function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
 
     for key in (:colormap, :limits)
         if key in keys(kwargs)
@@ -6,15 +26,15 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene, plot::AbstractPlot; kwargs
         end
     end
 
-    layoutable(Colorbar, fig_or_scene;
+    Colorbar(
+        fig_or_scene;
         colormap = plot.colormap,
         limits = plot.colorrange,
         kwargs...
     )
-
 end
 
-function layoutable(::Type{<:Colorbar}, fig_or_scene, heatmap::Union{Heatmap, Image}; kwargs...)
+function Colorbar(fig_or_scene, heatmap::Union{Heatmap, Image}; kwargs...)
 
     for key in (:colormap, :limits, :highclip, :lowclip)
         if key in keys(kwargs)
@@ -22,7 +42,8 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene, heatmap::Union{Heatmap, Im
         end
     end
 
-    layoutable(Colorbar, fig_or_scene;
+    Colorbar(
+        fig_or_scene;
         colormap = heatmap.colormap,
         limits = heatmap.colorrange,
         highclip = heatmap.highclip,
@@ -31,7 +52,7 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene, heatmap::Union{Heatmap, Im
     )
 end
 
-function layoutable(::Type{<:Colorbar}, fig_or_scene, contourf::Makie.Contourf; kwargs...)
+function Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
 
     for key in (:colormap, :limits, :highclip, :lowclip)
         if key in keys(kwargs)
@@ -45,7 +66,8 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene, contourf::Makie.Contourf; 
         steps[1], steps[end]
     end
 
-    layoutable(Colorbar, fig_or_scene;
+    Colorbar(
+        fig_or_scene;
         colormap = contourf._computed_colormap,
         limits = limits,
         lowclip = contourf._computed_extendlow,
@@ -56,57 +78,30 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene, contourf::Makie.Contourf; 
 end
 
 
-function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
-    topscene = get_topscene(fig_or_scene)
-
-    default_attrs = default_attributes(Colorbar, topscene).attributes
-    theme_attrs = subtheme(topscene, :Colorbar)
-    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
-
-    @extract attrs (
-        label, labelcolor, labelsize, labelvisible, labelpadding, ticklabelsize,
-        ticklabelspace, labelfont, ticklabelfont, ticklabelcolor, ticklabelrotation,
-        ticklabelsvisible, ticks, tickformat, ticksize, ticksvisible, ticklabelpad, tickalign,
-        tickwidth, tickcolor, spinewidth, topspinevisible,
-        rightspinevisible, leftspinevisible, bottomspinevisible, topspinecolor,
-        leftspinecolor, rightspinecolor, bottomspinecolor, colormap, limits, colorrange,
-        halign, valign, vertical, flipaxis, ticklabelalign, flip_vertical_label,
-        nsteps, highclip, lowclip,
-        minorticksvisible, minortickalign, minorticksize, minortickwidth, minortickcolor, minorticks, scale)
-
-    limits = lift(limits, colorrange) do limits, colorrange
+function initialize_block!(cb::Colorbar)
+    blockscene = cb.blockscene
+    limits = lift(cb.limits, cb.colorrange) do limits, colorrange
         if all(!isnothing, (limits, colorrange))
             error("Both colorrange + limits are set, please only set one, they're aliases. colorrange: $(colorrange), limits: $(limits)")
         end
         return something(limits, colorrange, (0, 1))
     end
 
-    decorations = Dict{Symbol, Any}()
-
-    protrusions = Observable(GridLayoutBase.RectSides{Float32}(0, 0, 0, 0))
-
-    # make the layout width and height settings depend on `size` if they are set to automatic
-    # and determine whether they are nothing or `size` depending on colorbar orientation
-    _width = Observable{GridLayoutBase.SizeAttribute}()
-    map!(_width, attrs.size, attrs.width, vertical) do sz, w, v
-        w === Makie.automatic ? (v ? sz : nothing) : w
+    onany(cb.size, cb.vertical) do sz, vertical
+        if vertical
+            cb.layoutobservables.autosize[] = (sz, nothing)
+        else
+            cb.layoutobservables.autosize[] = (nothing, sz)
+        end
     end
 
-    _height = Observable{GridLayoutBase.SizeAttribute}()
-    map!(_height, attrs.size, attrs.height, vertical) do sz, h, v
-        h === Makie.automatic ? (v ? nothing : sz) : h
-    end
+    framebox = @lift(round_to_IRect2D($(cb.layoutobservables.computedbbox)))
 
-    layoutobservables = LayoutObservables(_width, _height, attrs.tellwidth, attrs.tellheight,
-        halign, valign, attrs.alignmode; suggestedbbox = bbox, protrusions = protrusions)
-
-    framebox = @lift(round_to_IRect2D($(layoutobservables.computedbbox)))
-
-    highclip_tri_visible = lift(x -> !(isnothing(x) || to_color(x) == to_color(:transparent)), highclip)
-    lowclip_tri_visible = lift(x -> !(isnothing(x) || to_color(x) == to_color(:transparent)), lowclip)
+    highclip_tri_visible = lift(x -> !(isnothing(x) || to_color(x) == to_color(:transparent)), cb.highclip)
+    lowclip_tri_visible = lift(x -> !(isnothing(x) || to_color(x) == to_color(:transparent)), cb.lowclip)
 
     tri_heights = lift(highclip_tri_visible, lowclip_tri_visible, framebox) do hv, lv, box
-        if vertical[]
+        if cb.vertical[]
             (lv * width(box), hv * width(box))
         else
             (lv * height(box), hv * height(box))
@@ -114,7 +109,7 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
     end
 
     barsize = lift(tri_heights) do heights
-        if vertical[]
+        if cb.vertical[]
             max(1, height(framebox[]) - sum(heights))
         else
             max(1, width(framebox[]) - sum(heights))
@@ -123,7 +118,7 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
 
     barbox = lift(barsize) do sz
         fbox = framebox[]
-        if vertical[]
+        if cb.vertical[]
             BBox(left(fbox), right(fbox), bottom(fbox) + tri_heights[][1], top(fbox) - tri_heights[][2])
         else
             BBox(left(fbox) + tri_heights[][1], right(fbox) - tri_heights[][2], bottom(fbox), top(fbox))
@@ -131,7 +126,7 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
     end
 
     cgradient = Observable{PlotUtils.ColorGradient}()
-    map!(cgradient, colormap) do cmap
+    map!(cgradient, cb.colormap) do cmap
         if cmap isa PlotUtils.ColorGradient
             # if we have a colorgradient directly, we want to keep it intact
             # to enable correct categorical colormap behavior etc
@@ -146,7 +141,7 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
 
     map_is_categorical = lift(x -> x isa PlotUtils.CategoricalColorGradient, cgradient)
 
-    steps = lift(cgradient, nsteps) do cgradient, n
+    steps = lift(cgradient, cb.nsteps) do cgradient, n
         s = if cgradient isa PlotUtils.CategoricalColorGradient
             cgradient.values
         else
@@ -165,7 +160,7 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
 
     # for categorical colormaps we make a number of rectangle polys
 
-    rects_and_colors = lift(barbox, vertical, steps, cgradient, scale, limits) do bbox, v, steps, gradient, scale, lims
+    rects_and_colors = lift(barbox, cb.vertical, steps, cgradient, cb.scale, limits) do bbox, v, steps, gradient, scale, lims
 
         # we need to convert the 0 to 1 steps into rescaled 0 to 1 steps given the
         # colormap's `scale` attribute
@@ -192,26 +187,25 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
 
     colors = lift(x -> getindex(x, 2), rects_and_colors)
 
-    rects = poly!(topscene,
+    rects = poly!(blockscene,
         lift(x -> getindex(x, 1), rects_and_colors),
         color = colors,
         visible = map_is_categorical,
         inspectable = false
     )
 
-    decorations[:categorical_map] = rects
 
     # for continous colormaps we sample a 1d image
     # to avoid white lines when rendering vector graphics
 
-    continous_pixels = lift(vertical, nsteps, cgradient, limits, scale) do v, n, grad, lims, scale
+    continous_pixels = lift(cb.vertical, cb.nsteps, cgradient, limits, cb.scale) do v, n, grad, lims, scale
 
         s_steps = scaled_steps(LinRange(0, 1, n), scale, lims)
         px = get.(Ref(grad), s_steps)
         v ? reshape(px, 1, n) : reshape(px, n, 1)
     end
 
-    cont_image = image!(topscene,
+    cont_image = image!(blockscene,
         @lift(range(left($barbox), right($barbox), length = 2)),
         @lift(range(bottom($barbox), top($barbox), length = 2)),
         continous_pixels,
@@ -220,10 +214,9 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         inspectable = false
     )
 
-    decorations[:continuous_map] = cont_image
 
-    highclip_tri = lift(barbox, spinewidth) do box, spinewidth
-        if vertical[]
+    highclip_tri = lift(barbox, cb.spinewidth) do box, spinewidth
+        if cb.vertical[]
             lb, rb = topline(box)
             l = lb
             r = rb
@@ -236,21 +229,20 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         end
     end
 
-    highclip_tri_color = Observables.map(highclip) do hc
+    highclip_tri_color = Observables.map(cb.highclip) do hc
         to_color(isnothing(hc) ? :transparent : hc)
     end
 
-    highclip_visible = lift(x -> !(isnothing(x) || to_color(x) == to_color(:transparent)), highclip)
+    highclip_visible = lift(x -> !(isnothing(x) || to_color(x) == to_color(:transparent)), cb.highclip)
 
-    highclip_tri_poly = poly!(topscene, highclip_tri, color = highclip_tri_color,
+    highclip_tri_poly = poly!(blockscene, highclip_tri, color = highclip_tri_color,
         strokecolor = :transparent,
         visible = highclip_visible, inspectable = false)
 
-    decorations[:highclip] = highclip_tri_poly
 
 
-    lowclip_tri = lift(barbox, spinewidth) do box, spinewidth
-        if vertical[]
+    lowclip_tri = lift(barbox, cb.spinewidth) do box, spinewidth
+        if cb.vertical[]
             lb, rb = bottomline(box)
             l = lb
             r = rb
@@ -263,21 +255,20 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         end
     end
 
-    lowclip_tri_color = Observables.map(lowclip) do lc
+    lowclip_tri_color = Observables.map(cb.lowclip) do lc
         to_color(isnothing(lc) ? :transparent : lc)
     end
 
-    lowclip_visible = lift(x -> !(isnothing(x) || to_color(x) == to_color(:transparent)), lowclip)
+    lowclip_visible = lift(x -> !(isnothing(x) || to_color(x) == to_color(:transparent)), cb.lowclip)
 
-    lowclip_tri_poly = poly!(topscene, lowclip_tri, color = lowclip_tri_color,
+    lowclip_tri_poly = poly!(blockscene, lowclip_tri, color = lowclip_tri_color,
         strokecolor = :transparent,
         visible = lowclip_visible, inspectable = false)
 
-    decorations[:lowclip] = lowclip_tri_poly
 
 
     borderpoints = lift(barbox, highclip_visible, lowclip_visible) do bb, hcv, lcv
-        if vertical[]
+        if cb.vertical[]
             points = [bottomright(bb), topright(bb)]
             if hcv
                 push!(points, highclip_tri[][3])
@@ -302,9 +293,9 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         end
     end
 
-    decorations[:spines] = lines!(topscene, borderpoints, linewidth = spinewidth, color = topspinecolor, inspectable = false)
+    lines!(blockscene, borderpoints, linewidth = cb.spinewidth, color = cb.topspinecolor, inspectable = false)
 
-    axispoints = lift(barbox, vertical, flipaxis) do scenearea,
+    axispoints = lift(barbox, cb.vertical, cb.flipaxis) do scenearea,
             vertical, flipaxis
 
         if vertical
@@ -323,24 +314,23 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
 
     end
 
-    axis = LineAxis(topscene, endpoints = axispoints, flipped = flipaxis,
-        limits = limits, ticklabelalign = ticklabelalign, label = label,
-        labelpadding = labelpadding, labelvisible = labelvisible, labelsize = labelsize,
-        labelcolor = labelcolor,
-        labelfont = labelfont, ticklabelfont = ticklabelfont, ticks = ticks, tickformat = tickformat,
-        ticklabelsize = ticklabelsize, ticklabelsvisible = ticklabelsvisible, ticksize = ticksize,
-        ticksvisible = ticksvisible, ticklabelpad = ticklabelpad, tickalign = tickalign,
-        ticklabelrotation = ticklabelrotation,
-        tickwidth = tickwidth, tickcolor = tickcolor, spinewidth = spinewidth,
-        ticklabelspace = ticklabelspace, ticklabelcolor = ticklabelcolor,
-        spinecolor = :transparent, spinevisible = :false, flip_vertical_label = flip_vertical_label,
-        minorticksvisible = minorticksvisible, minortickalign = minortickalign,
-        minorticksize = minorticksize, minortickwidth = minortickwidth,
-        minortickcolor = minortickcolor, minorticks = minorticks, scale = scale)
+    axis = LineAxis(blockscene, endpoints = axispoints, flipped = cb.flipaxis,
+        limits = limits, ticklabelalign = cb.ticklabelalign, label = cb.label,
+        labelpadding = cb.labelpadding, labelvisible = cb.labelvisible, labelsize = cb.labelsize,
+        labelcolor = cb.labelcolor,
+        labelfont = cb.labelfont, ticklabelfont = cb.ticklabelfont, ticks = cb.ticks, tickformat = cb.tickformat,
+        ticklabelsize = cb.ticklabelsize, ticklabelsvisible = cb.ticklabelsvisible, ticksize = cb.ticksize,
+        ticksvisible = cb.ticksvisible, ticklabelpad = cb.ticklabelpad, tickalign = cb.tickalign,
+        ticklabelrotation = cb.ticklabelrotation,
+        tickwidth = cb.tickwidth, tickcolor = cb.tickcolor, spinewidth = cb.spinewidth,
+        ticklabelspace = cb.ticklabelspace, ticklabelcolor = cb.ticklabelcolor,
+        spinecolor = :transparent, spinevisible = :false, flip_vertical_label = cb.flip_vertical_label,
+        minorticksvisible = cb.minorticksvisible, minortickalign = cb.minortickalign,
+        minorticksize = cb.minorticksize, minortickwidth = cb.minortickwidth,
+        minortickcolor = cb.minortickcolor, minorticks = cb.minorticks, scale = cb.scale)
 
-    decorations[:axis] = axis
 
-    onany(axis.protrusion, vertical, flipaxis) do axprotrusion,
+    onany(axis.protrusion, cb.vertical, cb.flipaxis) do axprotrusion,
             vertical, flipaxis
 
 
@@ -360,16 +350,16 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
             end
         end
 
-        protrusions[] = GridLayoutBase.RectSides{Float32}(left, right, bottom, top)
+        cb.layoutobservables.protrusions[] = GridLayoutBase.RectSides{Float32}(left, right, bottom, top)
     end
 
     # trigger protrusions with one of the attributes
-    vertical[] = vertical[]
+    notify(cb.vertical)
 
     # trigger bbox
-    layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
+    notify(cb.layoutobservables.suggestedbbox)
 
-    Colorbar(fig_or_scene, layoutobservables, attrs, decorations)
+    return
 end
 
 function tight_ticklabel_spacing!(lc::Colorbar)

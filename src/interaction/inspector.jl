@@ -431,8 +431,8 @@ Defaults to the current plot when called without arguments.
 - `priority = 100`: The priority of creating a tooltip on a mouse movement or
     scrolling event.
 """
-function DataInspector(fig_or_layoutable; kwargs...)
-    DataInspector(fig_or_layoutable.scene; kwargs...)
+function DataInspector(fig_or_block; kwargs...)
+    DataInspector(fig_or_block.scene; kwargs...)
 end
 
 function DataInspector(scene::Scene; priority = 100, kwargs...)
