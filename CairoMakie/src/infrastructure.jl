@@ -72,6 +72,8 @@ function CairoScreen(scene::Scene; device_scaling_factor = 1, antialias = Cairo.
 
     ctx = Cairo.CairoContext(surf)
     Cairo.set_antialias(ctx, antialias)
+    # Set the miter limit (when miter transitions to bezel) to mimic GLMakie behaviour
+    ccall((:cairo_set_miter_limit, Cairo.libcairo), Cvoid, (Ptr{Nothing}, Cdouble), ctx.ptr, 2.0)
 
     return CairoScreen(scene, surf, ctx, nothing)
 end
@@ -119,6 +121,8 @@ function CairoScreen(scene::Scene, path::Union{String, IO}, mode::Symbol; device
 
     ctx = Cairo.CairoContext(surf)
     Cairo.set_antialias(ctx, antialias)
+    # Set the miter limit (when miter transitions to bezel) to mimic GLMakie behaviour
+    ccall((:cairo_set_miter_limit, Cairo.libcairo), Cvoid, (Ptr{Nothing}, Cdouble), ctx.ptr, 2.0)
 
     return CairoScreen(scene, surf, ctx, nothing)
 end
@@ -355,6 +359,8 @@ function Makie.colorbuffer(screen::CairoScreen)
     surf = Cairo.CairoImageSurface(img)
     # draw the scene onto the image matrix
     ctx = Cairo.CairoContext(surf)
+    ccall((:cairo_set_miter_limit, Cairo.libcairo), Cvoid, (Ptr{Nothing}, Cdouble), ctx.ptr, 2.0)
+    
     scr = CairoScreen(scene, surf, ctx, nothing)
 
     cairo_draw(scr, scene)
