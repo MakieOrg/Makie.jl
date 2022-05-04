@@ -859,7 +859,7 @@ function surface2mesh(xs::AbstractVector, ys::AbstractVector, zs::AbstractMatrix
     ]
     uv = [Vec2f(i, j) for j in LinRange(0, 1, size(zs, 2)) for i in LinRange(0, 1, size(zs, 1))]
     
-    return GeometryBasics.Mesh(GeometryBasics.meta(ps; uv = uv), faces) |> GeometryBasics.normal_mesh
+    return  GeometryBasics.normal_mesh(GeometryBasics.Mesh(GeometryBasics.meta(ps; uv = uv), faces))
 end
 
 function surface2mesh(xs::AbstractMatrix, ys::AbstractMatrix, zs::AbstractMatrix)
@@ -871,7 +871,7 @@ function surface2mesh(xs::AbstractMatrix, ys::AbstractMatrix, zs::AbstractMatrix
     ]
     uv = [Vec2f(i, j) for j in LinRange(0, 1, size(zs, 2)) for i in LinRange(0, 1, size(zs, 1))]
     
-    return GeometryBasics.Mesh(GeometryBasics.meta(ps; uv = uv), faces) |> GeometryBasics.normal_mesh
+    return GeometryBasics.normal_mesh(GeometryBasics.Mesh(GeometryBasics.meta(ps; uv = uv), faces))
 end
 
 ################################################################################
