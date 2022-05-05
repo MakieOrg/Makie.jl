@@ -1,11 +1,11 @@
-function Makie.backend_display(::GLBackend, scene::Scene)
-    screen = singleton_screen(size(scene))
+function Makie.backend_display(::GLBackend, scene::Scene; start_renderloop=true, visible=true, connect=true)
+    screen = singleton_screen(size(scene); start_renderloop=start_renderloop, visible=visible)
     display_loading_image(screen)
-    Makie.backend_display(screen, scene)
+    Makie.backend_display(screen, scene; connect=connect)
     return screen
 end
 
-function Makie.backend_display(screen::Screen, scene::Scene)
+function Makie.backend_display(screen::Screen, scene::Scene; connect=true)
     empty!(screen)
     # So, the GLFW window events are not guarantee to fire
     # when we close a window, so we ensure this here!
@@ -13,21 +13,19 @@ function Makie.backend_display(screen::Screen, scene::Scene)
     on(screen.window_open) do open
         window_open[] = open
     end
-    register_callbacks(scene, screen)
+    connect && connect_screen(scene, screen)
     pollevents(screen)
     insertplots!(screen, scene)
     pollevents(screen)
     return screen
 end
 
-function Base.display(screen::Screen, scenelike::Union{Makie.Figure, Makie.FigureAxisPlot, Scene})
-    scene = Makie.get_scene(scenelike)
+function Base.display(screen::Screen, fig::Makie.FigureLike)
+    scene = Makie.get_scene(fig)
     Base.resize!(screen, size(scene)...)
     Makie.backend_display(screen, scene)
     return screen
 end
-
-const SHOW_SCREEN = Base.RefValue{Screen}()
 
 """
     scene2image(scene::Scene)
@@ -35,7 +33,7 @@ const SHOW_SCREEN = Base.RefValue{Screen}()
 Buffers the `scene` in an image buffer.
 """
 function scene2image(scene::Scene)
-    screen = singleton_screen(size(scene), visible=false, screen_ref=SHOW_SCREEN, start_renderloop=false)
+    screen = singleton_screen(size(scene), visible=false, start_renderloop=false)
     empty!(screen)
     insertplots!(screen, scene)
     return Makie.colorbuffer(screen)

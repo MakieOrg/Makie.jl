@@ -72,7 +72,7 @@ struct WebDisplay <: Makie.AbstractScreen
     display::Any
 end
 
-function Makie.backend_display(::WGLBackend, scene::Scene)
+function Makie.backend_display(::WGLBackend, scene::Scene; kw...)
     # Reference to three object which gets set once we serve this to a browser
     three_ref = Base.RefValue{Any}(nothing)
     app = App() do s, request

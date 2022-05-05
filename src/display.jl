@@ -39,7 +39,14 @@ function push_screen!(scene::Scene, display::AbstractDisplay)
     return
 end
 
-function backend_display(::Missing, ::Scene)
+function delete_screen!(scene::Scene, display::AbstractDisplay)
+    filter!(x-> x !== display, scene.current_screens)
+    return
+end
+
+backend_display(s::FigureLike; kw...) = backend_display(current_backend[], s; kw...)
+
+function backend_display(::Missing, ::Scene; kw...)
     error("""
     No backend available!
     Make sure to also `import/using` a backend (GLMakie, CairoMakie, WGLMakie).
@@ -49,14 +56,12 @@ function backend_display(::Missing, ::Scene)
     """)
 end
 
-Base.display(fap::FigureAxisPlot; kw...) = display(fap.figure; kw...)
-Base.display(fig::Figure; kw...) = display(fig.scene; kw...)
-
-function Base.display(scene::Scene)
+function Base.display(fig::FigureLike; kw...)
+    scene = get_scene(fig)
     if !use_display[]
         return Core.invoke(display, Tuple{Any}, scene)
     else
-        screen = backend_display(current_backend[], scene)
+        screen = backend_display(scene; kw...)
         push_screen!(scene, screen)
         return screen
     end
@@ -103,9 +108,7 @@ Base.show(io::IO, m::MIME, fap::FigureAxisPlot; kw...) = show(io, m, fap.figure;
 Base.show(io::IO, m::MIME, fig::Figure; kw...) = show(io, m, fig.scene; kw...)
 
 function Base.show(io::IO, m::MIME, scene::Scene)
-    ioc = IOContext(io,
-        :full_fidelity => true
-    )
+    ioc = IOContext(io, :full_fidelity => true)
     backend_show(current_backend[], ioc, m, scene)
     return
 end
@@ -315,18 +318,21 @@ struct VideoStream
 end
 
 """
-    VideoStream(scene::Scene, framerate = 24)
+    VideoStream(scene::Scene; framerate = 24, visible=false, connect=false)
 
 Returns a stream and a buffer that you can use, which don't allocate for new frames.
 Use [`recordframe!(stream)`](@ref) to add new video frames to the stream, and
 [`save(path, stream)`](@ref) to save the video.
+
+* visible=false: make window visible or not
+* connect=false: connect window events or not
 """
-function VideoStream(scene::Scene; framerate::Integer = 24)
+function VideoStream(fig::FigureLike; framerate::Integer=24, visible=false, connect=false)
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
     dir = mktempdir()
     path = joinpath(dir, "$(gensym(:video)).mkv")
-    screen = backend_display(current_backend[], scene)
-    push_screen!(scene, screen)
+    scene = get_scene(fig)
+    screen = backend_display(scene; start_renderloop=false, visible=visible, connect=connect)
     _xdim, _ydim = size(scene)
     xdim = iseven(_xdim) ? _xdim : _xdim + 1
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
@@ -398,7 +404,7 @@ function colorbuffer(scene::Scene, format::ImageStorageFormat = JuliaNative)
                 before trying to render a Scene.
                 """)
         else
-            return colorbuffer(backend_display(current_backend[], scene), format)
+            return colorbuffer(backend_display(scene; visible=false, start_renderloop=false, connect=false), format)
         end
     end
     return colorbuffer(screen, format)

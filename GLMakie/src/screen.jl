@@ -103,8 +103,15 @@ end
 const GLFW_WINDOWS = GLFW.Window[]
 
 const SINGLETON_SCREEN = Base.RefValue{Screen}()
+const SINGLETON_SCREEN_NO_RENDERLOOP = Base.RefValue{Screen}()
 
-function singleton_screen(resolution; visible=Makie.use_display[], screen_ref=SINGLETON_SCREEN, start_renderloop=true)
+function singleton_screen(resolution; visible=Makie.use_display[], start_renderloop=true)
+    screen_ref = if start_renderloop
+        SINGLETON_SCREEN
+    else
+        SINGLETON_SCREEN_NO_RENDERLOOP
+    end
+
     if isassigned(screen_ref) && isopen(screen_ref[])
         screen = screen_ref[]
         resize!(screen, resolution...)
@@ -150,6 +157,7 @@ function resize_native!(window::GLFW.Window, resolution...; wait_for_resize=true
         # doesn't help, so we try it a couple of times, to make sure
         # we have the desired size in the end
         for i in 1:100
+            println("resizing window loop")
             isopen(window) || return
             newsize = windowsize(window)
             # we aren't guaranteed to get exactly w & h, since the window
@@ -167,7 +175,7 @@ end
 
 function Base.resize!(screen::Screen, w, h)
     nw = to_native(screen)
-    resize_native!(nw, w, h)
+    resize_native!(nw, w, h; wait_for_resize=false)
     fb = screen.framebuffer
     resize!(fb, (w, h))
 end
@@ -396,6 +404,7 @@ function Screen(;
 
     GLFW.SetWindowRefreshCallback(window, window -> refreshwindowcb(window, screen))
     if start_renderloop
+        println("starting the loeeps")
         screen.rendertask[] = @async((WINDOW_CONFIG.renderloop[])(screen))
     end
     # display window if visible!

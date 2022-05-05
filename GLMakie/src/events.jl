@@ -1,22 +1,5 @@
 using Makie: MouseButtonEvent, KeyEvent
 
-function Makie.register_callbacks(scene::Scene, screen::Screen)
-    if length(scene.current_screens) == 0
-        ShaderAbstractions.switch_context!(screen.glscreen)
-        window_area(scene, screen)
-        window_open(scene, screen)
-        mouse_buttons(scene, screen)
-        mouse_position(scene, screen)
-        scroll(scene, screen)
-        keyboard_buttons(scene, screen)
-        unicode_input(scene, screen)
-        dropped_files(scene, screen)
-        hasfocus(scene, screen)
-        entered_window(scene, screen)
-    end
-    return
-end
-
 macro print_error(expr)
     return quote
         try

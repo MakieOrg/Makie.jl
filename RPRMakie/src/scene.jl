@@ -213,7 +213,7 @@ function Makie.colorbuffer(screen::RPRScreen)
     end
 end
 
-function Makie.backend_display(::RPRBackend, scene::Scene)
+function Makie.backend_display(::RPRBackend, scene::Scene; kw...)
     screen = RPRScreen(scene)
     Makie.backend_display(screen, scene)
     return screen
