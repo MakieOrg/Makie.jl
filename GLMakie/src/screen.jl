@@ -58,10 +58,53 @@ function Makie.insertplots!(screen::GLScreen, scene::Scene)
     foreach(s-> insertplots!(screen, s), scene.children)
 end
 
+function Base.delete!(screen::Screen, scene::Scene)
+    for child in scene.children
+        delete!(screen, child)
+    end
+    for plot in scene.plots
+        delete!(screen, scene, plot)
+    end
+
+    if haskey(screen.screen2scene, WeakRef(scene))
+        deleted_id = pop!(screen.screen2scene, WeakRef(scene))
+
+        # TODO: this should always find something but sometimes doesn't...
+        i = findfirst(id_scene -> id_scene[1] == deleted_id, screen.screens)
+        i !== nothing && deleteat!(screen.screens, i)
+
+        # Remap scene IDs to a continuous range by replacing the largest ID
+        # with the one that got removed
+        if deleted_id-1 != length(screen.screens)
+            key, max_id = first(screen.screen2scene)
+            for p in screen.screen2scene
+                if p[2] > max_id
+                    key, max_id = p
+                end
+            end
+
+            i = findfirst(id_scene -> id_scene[1] == max_id, screen.screens)::Int
+            screen.screens[i] = (deleted_id, screen.screens[i][2])
+
+            screen.screen2scene[key] = deleted_id
+
+            for (i, (z, id, robj)) in enumerate(screen.renderlist)
+                if id == max_id
+                    screen.renderlist[i] = (z, deleted_id, robj)
+                end
+            end
+        end
+    end
+
+    return
+end
+
 function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
     if !isempty(plot.plots)
         # this plot consists of children, so we flatten it and delete the children instead
-        delete!.(Ref(screen), Ref(scene), Makie.flatten_plots(plot))
+        for cplot in Makie.flatten_plots(plot)
+            delete!(screen, scene, cplot)
+        end
     else
         renderobject = get(screen.cache, objectid(plot)) do
             error("Could not find $(typeof(subplot)) in current GLMakie screen!")
@@ -77,7 +120,6 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
                 end
             end
         end
-
         filter!(x-> x[3] !== renderobject, screen.renderlist)
     end
 end
