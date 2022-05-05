@@ -30,7 +30,7 @@ function connect_screen(scene::Scene, screen)
     unicode_input(scene, screen)
     dropped_files(scene, screen)
     hasfocus(scene, screen)
-    entered_window(scene, native_window)
+    entered_window(scene, screen)
 
 end
 
