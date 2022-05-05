@@ -159,12 +159,9 @@ end
 
 @testset "cycling" begin
     fig = Figure()
-    ax = Axis(fig[1, 1], palette=(patchcolor=[:blue, :green],))
-    pl = density!(rand(10); color=Cycled(1))
-    @test pl.color[] == :blue
-
-    fig = Figure()
-    ax = Axis(fig[1, 1], palette=(patchcolor=[:blue, :green],))
-    pl = density!(rand(10); color=Cycled(2))
+    ax = Axis(fig[1, 1], palette = (patchcolor = [:blue, :green],))
+    pl = density!(rand(10); color = Cycled(2))
     @test pl.color[] == :green
+    pl = density!(rand(10); color = Cycled(1))
+    @test pl.color[] == :blue
 end
