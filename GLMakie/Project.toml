@@ -1,6 +1,6 @@
 name = "GLMakie"
 uuid = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
-version = "0.5.5"
+version = "0.6"
 
 [deps]
 ColorTypes = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
