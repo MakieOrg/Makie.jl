@@ -1,11 +1,11 @@
 #=
-Figures are supposed to fill the gap that Scenes in combination with Layoutables leave.
+Figures are supposed to fill the gap that Scenes in combination with Blocks leave.
 A scene is supposed to be a generic canvas on which plot objects can be placed and drawn.
-Layoutables always require one specific type of scene, with a PixelCamera, in order to draw
+Blocks always require one specific type of scene, with a PixelCamera, in order to draw
 their visual components there.
 Figures also have layouts, which scenes do not have.
 This is because every figure needs a layout, while not every scene does.
-Figures keep track of the Layoutables that are created inside them, which scenes don't.
+Figures keep track of the Blocks that are created inside them, which scenes don't.
 
 The idea is there are three types of plotting commands.
 They can return either:
@@ -144,4 +144,14 @@ function resize_to_layout!(fig::Figure)
     new_size = (widths(bbox)...,)
     resize!(fig.scene, widths(bbox)...)
     new_size
+end
+
+function Base.empty!(fig::Figure)
+    empty!(fig.scene)
+    empty!(fig.scene.events)
+    foreach(GridLayoutBase.remove_from_gridlayout!, reverse(fig.layout.content))
+    trim!(fig.layout)
+    empty!(fig.content)
+    fig.current_axis[] = nothing
+    return
 end

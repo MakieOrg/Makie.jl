@@ -174,7 +174,7 @@ function Scene(;
 
     cam = camera isa Camera ? camera : Camera(px_area)
     if wasnothing
-        on(events.window_area, priority = typemax(Int8)) do w_area
+        on(events.window_area, priority = typemax(Int)) do w_area
             if !any(x -> x ≈ 0.0, widths(w_area)) && px_area[] != w_area
                 px_area[] = w_area
             end
@@ -350,13 +350,54 @@ function getindex(scene::Scene, ::Type{OldAxis})
 end
 
 function Base.empty!(scene::Scene)
+    # clear all child scenes
+    foreach(_empty_recursion, scene.children)
+    empty!(scene.children)
+
+    # clear plots of this scenes
+    for plot in reverse(scene.plots)
+        for screen in scene.current_screens
+            delete!(screen, scene, plot)
+        end
+    end
     empty!(scene.plots)
-    disconnect!(scene.camera)
-    scene.camera_controls[] = EmptyCamera()
+    
     empty!(scene.theme)
     merge!(scene.theme, _current_default_theme)
+
+    disconnect!(scene.camera)
+    scene.camera_controls = EmptyCamera()
+
+    return nothing
+end
+
+function _empty_recursion(scene::Scene)
+    # empty all children
+    foreach(_empty_recursion, scene.children)
     empty!(scene.children)
-    empty!(scene.current_screens)
+
+    # remove scene (and all its plots) from the rendering
+    for screen in scene.current_screens
+        delete!(screen, scene)
+    end
+    empty!(scene.plots)
+
+    # clean up some onsverables (there are probably more...)
+    disconnect!(scene.camera)
+    scene.camera_controls = EmptyCamera()
+    
+    # top level scene.px_area needs to remain for GridLayout?
+    off.(scene.px_area.inputs)
+    empty!(scene.px_area.listeners)
+    for fieldname in (:rotation, :translation, :scale, :transform_func, :model)
+        obs = getfield(scene.transformation, fieldname)
+        if isdefined(obs, :inputs)
+            off.(obs.inputs)
+        end
+        empty!(obs.listeners)
+    end
+
+    return
 end
 
 Base.push!(scene::Combined, subscene) = nothing # Combined plots add themselves uppon creation
@@ -371,6 +412,10 @@ end
 
 function Base.delete!(screen::AbstractScreen, ::Scene, ::AbstractPlot)
     @warn "Deleting plots not implemented for backend: $(typeof(screen))"
+end
+function Base.delete!(screen::AbstractScreen, ::Scene)
+    # This may not be necessary for every backed
+    @debug "Deleting scenes not implemented for backend: $(typeof(screen))"
 end
 
 function Base.delete!(scene::Scene, plot::AbstractPlot)

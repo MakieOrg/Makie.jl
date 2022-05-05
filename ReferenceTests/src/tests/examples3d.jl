@@ -5,7 +5,7 @@ using Makie: Record, volume
 
 @cell "Image on Geometry (Moon)" begin
     moon = loadasset("moon.png")
-    fig, ax, meshplot = mesh(Sphere(Point3f(0), 1f0), color=moon, shading=false, show_axis=false)
+    fig, ax, meshplot = mesh(Sphere(Point3f(0), 1f0), color=moon, shading=false, axis = (;show_axis=false))
     update_cam!(ax.scene, Vec3f(-2, 2, 2), Vec3f(0))
     fig
 end
