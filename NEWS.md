@@ -14,7 +14,7 @@
 - Changed some code which consistently caused a segfault in `streamplot_impl` on Mac M1.
 - Set the [Cairo miter limit](https://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-miter-limit) to mimic GLMakie behaviour [#1844]
 - Fixed a method ambiguity in `rotatedrect`.
-
+- Allow weights in statistical recipes [#1816](https://github.com/JuliaPlots/Makie.jl/pull/1816)
 
 ##  v0.16.4
 
