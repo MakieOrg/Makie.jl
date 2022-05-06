@@ -567,9 +567,11 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
             end
             return GLVisualize.draw_surface(args, gl_attributes)
         else
-            gl_attributes[:ranges] = to_range.(to_value.(x[1:2]))
+            Tex(data) = Texture(data; minfilter=:nearest)
+            x_data = Tex(lift((x, z)-> xy_convert(x, size(z, 1)), x[1], x[3]))
+            y_data = Tex(lift((y, z)-> xy_convert(y, size(z, 2)), x[2], x[3]))
             z_data = Texture(el32convert(x[3]); minfilter=:nearest)
-            return GLVisualize.draw_surface(z_data, gl_attributes)
+            return GLVisualize.draw_surface((x_data, y_data, z_data), gl_attributes)
         end
     end
     return robj
