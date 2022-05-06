@@ -83,24 +83,34 @@ function serve_update_page(; commit = nothing, pr = nothing)
 
     checksinfo = JSON3.read(authget("https://api.github.com/repos/JuliaPlots/Makie.jl/commits/$headsha/check-runs").body)
 
-    checkruns = filter(checksinfo["check_runs"]) do x
-        right_combination = any(["GLMakie", "WGLMakie", "CairoMakie"]) do package
-            occursin(package, x["name"]) && occursin("1", x["name"])
+    # Somehow identical artifacts can occur double, but with different ids?
+    # I don't know what happens, but we need to filter them out!
+    unique_artifacts = Set{String}()
+    checkruns = filter(checksinfo["check_runs"]) do checkrun
+        name = checkrun["name"]
+        id = checkrun["id"]
+        right_combination = any(["GLMakie", "CairoMakie", "WGLMakie"]) do package
+            # We need to match the name quite specifically, since we need to keep this synchronized to the CI script anyways.
+            startswith(name, "$package Julia 1.6")
         end
         if right_combination
-            job = JSON3.read(authget("https://api.github.com/repos/JuliaPlots/Makie.jl/actions/jobs/$(x["id"])").body)
+            if name in unique_artifacts
+                return false
+            else
+                push!(unique_artifacts, name)
+            end
+            job = JSON3.read(authget("https://api.github.com/repos/JuliaPlots/Makie.jl/actions/jobs/$(id)").body)
             run = JSON3.read(authget(job["run_url"]).body)
             if run["status"] != "completed"
-                @info "$(x["name"])'s run hasn't completed yet, no artifacts will be available."
-                false
+                @info "$(name)'s run hasn't completed yet, no artifacts will be available."
+                return false
             else
-                true
+                return true
             end
         else
-            false
+            return false
         end
     end
-
     if isempty(checkruns)
         error("No check runs fit the criteria, check if something about names or versions might have changed.")
     end
@@ -117,8 +127,9 @@ function serve_update_page(; commit = nothing, pr = nothing)
     run = JSON3.read(authget(job["run_url"]).body)
 
     artifacts = JSON3.read(authget(run["artifacts_url"]).body)["artifacts"]
+
     for a in artifacts
-        if endswith(a["name"], "1")
+        if endswith(a["name"], "1.6")
             @info "Choosing artifact $(a["name"])"
             download_url = a["archive_download_url"]
             @info "Downloading artifact from $download_url"
