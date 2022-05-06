@@ -1,5 +1,5 @@
 @def order = 99
 
-# API reference
+# API
 
 {{ api_reference }}
