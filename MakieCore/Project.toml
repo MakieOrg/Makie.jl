@@ -1,7 +1,7 @@
 authors = ["Simon Danisch"]
 name = "MakieCore"
 uuid = "20f20a25-4f0e-4fdf-b5d1-57303727442b"
-version = "0.2.1"
+version = "0.3"
 
 [deps]
 Observables = "510215fc-4207-5dde-b226-833fc4488ee2"
