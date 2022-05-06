@@ -1,6 +1,6 @@
 # News
 
-## master
+## v0.17
 
 - **Breaking** Added `space` as a generic attribute to switch between data, pixel, relative and clip space for positions. `space` in text has been renamed to `markerspace` because of this. `Pixel` and `SceneSpace` are no longer valid inputs for `space` or `markerspace`.
 - **Breaking** Deprecated `mouse_selection(scene)` for `pick(scene)`.
