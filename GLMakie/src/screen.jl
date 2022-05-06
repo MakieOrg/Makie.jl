@@ -182,7 +182,7 @@ function closeall()
     end
 end
 
-function resize_native!(window::GLFW.Window, resolution...; wait_for_resize=true)
+function resize_native!(window::GLFW.Window, resolution...)
     if isopen(window)
         ShaderAbstractions.switch_context!(window)
         oldsize = windowsize(window)
@@ -192,32 +192,12 @@ function resize_native!(window::GLFW.Window, resolution...; wait_for_resize=true
             return
         end
         GLFW.SetWindowSize(window, round(Int, w), round(Int, h))
-        # We don't wait for the window to be resized
-        wait_for_resize || return
-        # There is a problem, that window size update seems to take an arbitrary
-        # amount of time - GLFW.WaitEvents() / a single GLFW.PollEvent()
-        # doesn't help, so we try it a couple of times, to make sure
-        # we have the desired size in the end
-        for i in 1:100
-            println("resizing window loop")
-            isopen(window) || return
-            newsize = windowsize(window)
-            # we aren't guaranteed to get exactly w & h, since the window
-            # manager is allowed to restrict the size...
-            # So we can only test, if the size changed, but not if it matches
-            # the desired size!
-            newsize != oldsize && return
-            # There is a bug here, were without `sleep` it doesn't update the size
-            # Not sure who's fault it is, but PollEvents/yield both dont work - only sleep!
-            GLFW.PollEvents()
-            sleep(0.0001)
-        end
     end
 end
 
 function Base.resize!(screen::Screen, w, h)
     nw = to_native(screen)
-    resize_native!(nw, w, h; wait_for_resize=false)
+    resize_native!(nw, w, h)
     fb = screen.framebuffer
     resize!(fb, (w, h))
 end
@@ -422,7 +402,7 @@ function Screen(;
     shader_cache = GLAbstraction.ShaderCache()
     push!(GLFW_WINDOWS, window)
 
-    resize_native!(window, resolution...; wait_for_resize=false)
+    resize_native!(window, resolution...)
 
     fb = GLFramebuffer(resolution)
 

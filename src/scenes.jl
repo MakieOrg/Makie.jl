@@ -361,7 +361,7 @@ function Base.empty!(scene::Scene)
         end
     end
     empty!(scene.plots)
-    
+
     empty!(scene.theme)
     merge!(scene.theme, _current_default_theme)
 
@@ -385,7 +385,7 @@ function _empty_recursion(scene::Scene)
     # clean up some onsverables (there are probably more...)
     disconnect!(scene.camera)
     scene.camera_controls = EmptyCamera()
-    
+
     # top level scene.px_area needs to remain for GridLayout?
     off.(scene.px_area.inputs)
     empty!(scene.px_area.listeners)
