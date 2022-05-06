@@ -263,29 +263,13 @@ const PlotFunc = Union{Type{Any}, Type{<: AbstractPlot}}
 
 
 ######################################################################
-# In this section, the plotting functions have P as the first argument
-# These are called from type recipes
-
-function plot!(P::PlotFunc, scene::SceneLike, args...; kw_attributes...)
-    attributes = Attributes(kw_attributes)
-    plot!(scene, P, attributes, args...)
-end
-
-# with positional attributes
-
-function plot!(P::PlotFunc, scene::SceneLike, attrs::Attributes, args...; kw_attributes...)
-    attributes = merge!(Attributes(kw_attributes), attrs)
-    plot!(scene, P, attributes, args...)
-end
-######################################################################
 
 # plots to scene
 
 """
 Main plotting signatures that plot/plot! route to if no Plot Type is given
 """
-function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attributes, args...; kw_attributes...)
-    attributes = merge!(Attributes(kw_attributes), attributes)
+function plot!(P::PlotFunc, attributes::Attributes, scene::Union{Combined, SceneLike}, args...)
     argvalues = to_value.(args)
     PreType = plottype(P, argvalues...)
     # plottype will lose the argument types, so we just extract the plot func
@@ -317,7 +301,7 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
         end
         converted_node[] = argsconverted_
     end
-    plot!(scene, FinalType, attributes, input_nodes, converted_node)
+    plot!(FinalType, attributes, scene, input_nodes, converted_node)
 end
 
 plot!(p::Combined) = _plot!(p)
@@ -359,54 +343,18 @@ function show_attributes(attributes)
     end
 end
 
-"""
-    extract_scene_attributes!(attributes)
-
-removes all scene attributes from `attributes` and returns them in a new
-Attribute dict.
-"""
-function extract_scene_attributes!(attributes)
-    scene_attributes = (
-        :backgroundcolor,
-        :resolution,
-        :show_axis,
-        :show_legend,
-        :scale_plot,
-        :center,
-        :axis,
-        :axis2d,
-        :axis3d,
-        :legend,
-        :camera,
-        :limits,
-        :padding,
-        :raw,
-        :SSAO
-    )
-    result = Attributes()
-    for k in scene_attributes
-        haskey(attributes, k) && (result[k] = pop!(attributes, k))
-    end
-    return result
-end
-
-function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, input::NTuple{N, Observable}, args::Observable) where {N}
+function plot!(P::PlotFunc, attributes::Attributes, scene::SceneLike, input::NTuple{N, Observable}, args::Observable) where {N}
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
-    scene_attributes = extract_scene_attributes!(attributes)
     plot_object = P(scene, copy(attributes), input, args)
     # transfer the merged attributes from theme and user defined to the scene
-    for (k, v) in scene_attributes
-        error("setting $k for scene via plot attribute not supported anymore")
-    end
     # call user defined recipe overload to fill the plot type
     plot!(plot_object)
     push!(scene, plot_object)
     return plot_object
 end
 
-function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, input::NTuple{N,Observable}, args::Observable) where {N}
+function plot!(P::PlotFunc, attributes::Attributes, scene::Combined, input::NTuple{N,Observable}, args::Observable) where {N}
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
-
     plot_object = P(scene, attributes, input, args)
     # call user defined recipe overload to fill the plot type
     plot!(plot_object)

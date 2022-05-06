@@ -28,5 +28,5 @@ function plot!(p::Arc)
             origin .+ Point2f((cos(angle), sin(angle)) .* radius)
         end
     end
-    lines!(p, Attributes(p), positions)
+    lines!(p, positions; Attributes(p)...)
 end

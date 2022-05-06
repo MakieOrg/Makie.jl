@@ -101,7 +101,7 @@ function initialize_block!(ax::Axis3)
     setfield!(ax, :scrollevents, scrollevents)
     keysevents = Observable(KeysEvent(Set()))
     setfield!(ax, :keysevents, keysevents)
-    
+
     on(scene.events.scroll) do s
         if is_mouseinside(scene)
             ax.scrollevents[] = ScrollEvent(s[1], s[2])
@@ -252,25 +252,14 @@ function projectionmatrix(viewmatrix, limits, eyepos, radius, azim, elev, angle,
 end
 
 
-function Makie.plot!(
-    ax::Axis3, P::Makie.PlotFunc,
-    attributes::Makie.Attributes, args...;
-    kw_attributes...)
+function Makie.plot!(P::Makie.PlotFunc, attributes::Makie.Attributes, ax::Axis3,  args...)
+    cycle = get_cycle_for_plottype(attributes, P)
+    add_cycle_attributes!(attributes, P, cycle, ax.cycler, ax.palette)
 
-    allattrs = merge(attributes, Attributes(kw_attributes))
-
-    cycle = get_cycle_for_plottype(allattrs, P)
-    add_cycle_attributes!(allattrs, P, cycle, ax.cycler, ax.palette)
-
-    plot = Makie.plot!(ax.scene, P, allattrs, args...)
+    plot = Makie.plot!(P, attributes, ax.scene, args...)
 
     reset_limits!(ax)
     plot
-end
-
-function Makie.plot!(P::Makie.PlotFunc, ax::Axis3, args...; kw_attributes...)
-    attributes = Makie.Attributes(kw_attributes)
-    Makie.plot!(ax, P, attributes, args...)
 end
 
 function autolimits!(ax::Axis3)

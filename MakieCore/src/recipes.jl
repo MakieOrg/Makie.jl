@@ -30,11 +30,11 @@ The `Core.@__doc__` macro transfers the docstring given to the Recipe into the f
 function default_plot_signatures(funcname, funcname!, PlotType)
     quote
         Core.@__doc__ function ($funcname)(args...; attributes...)
-            plot($PlotType, args...; attributes...)
+            plot($PlotType, Attributes(attributes), args...)
         end
 
         Core.@__doc__ function ($funcname!)(args...; attributes...)
-            plot!($PlotType, args...; attributes...)
+            plot!($PlotType, Attributes(attributes), args...)
         end
     end
 end
@@ -188,11 +188,13 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     expr
 end
 
-# Register plot / plot! using the Any type as PlotType.
-# This is done so that plot(args...) / plot!(args...) can by default go
-# through a pipeline where the appropriate PlotType is determined
-# from the input arguments themselves.
-eval(default_plot_signatures(:plot, :plot!, :Any))
+function plot(args...; attributes...)
+    plot(plottype(args...), Attributes(attributes), args...)
+end
+
+function plot!(args...; attributes...)
+    plot!(plottype(args...), Attributes(attributes), args...)
+end
 
 """
 Returns the Combined type that represents the signature of `args`.

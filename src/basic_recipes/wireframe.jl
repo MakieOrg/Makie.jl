@@ -37,7 +37,7 @@ function plot!(plot::Wireframe{<: Tuple{<: Any, <: Any, <: AbstractMatrix}})
         faces = decompose(LineFace{GLIndex}, Tesselation(Rect2(0, 0, 1, 1), (M, N)))
         connect(points, faces)
     end
-    linesegments!(plot, Attributes(plot), points_faces)
+    linesegments!(plot, points_faces; Attributes(plot)...)
 end
 
 function plot!(plot::Wireframe{Tuple{T}}) where T
@@ -47,5 +47,5 @@ function plot!(plot::Wireframe{Tuple{T}}) where T
         points = decompose(Point3f, g)
         return connect(points, indices)
     end
-    linesegments!(plot, Attributes(plot), points)
+    linesegments!(plot, points; Attributes(plot)...)
 end

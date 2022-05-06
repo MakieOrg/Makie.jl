@@ -122,7 +122,7 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     attr[:colormap] = cmap
     attr[:algorithm] = 7
     pop!(attr, :levels)
-    volume!(plot, attr, x, y, z, volume)
+    volume!(plot, x, y, z, volume; attr...)
 end
 
 function color_per_level(color, colormap, colorrange, alpha, levels)
@@ -163,7 +163,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         plot[:interpolate] = true
         # TODO normalize linewidth for heatmap
         plot[:linewidth] = map(x-> x ./ 10f0, plot[:linewidth])
-        heatmap!(plot, Attributes(plot), x, y, z)
+        heatmap!(plot, x, y, z; Attributes(plot)...)
     else
         zrange = lift(nan_extrema, z)
         levels = lift(plot[:levels], zrange) do levels, zrange

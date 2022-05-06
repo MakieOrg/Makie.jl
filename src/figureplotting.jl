@@ -11,21 +11,21 @@ Base.iterate(ap::AxisPlot, args...) = iterate((ap.axis, ap.plot), args...)
 
 get_scene(ap::AxisPlot) = get_scene(ap.axis.scene)
 
-function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), kw_attributes...)
+function plot(P::PlotFunc, attributes::Attributes, args...)
     # scene_attributes = extract_scene_attributes!(attributes)
-    fig = Figure(; figure...)
+    axis = get_as_dict(attributes,  :axis)
+    figure = get_as_dict(attributes, :figure)
 
-    axis = Dict(pairs(axis))
+    fig = Figure(; figure...)
     if haskey(axis, :type)
         axtype = axis[:type]
         pop!(axis, :type)
         ax = axtype(fig; axis...)
     else
         proxyscene = Scene()
-        attrs = Attributes(kw_attributes)
-        delete!(attrs, :show_axis)
-        delete!(attrs, :limits)
-        plot!(proxyscene, P, attrs, args...)
+        delete!(attributes, :show_axis)
+        delete!(attributes, :limits)
+        plot!(P, attributes, proxyscene, args...)
         if is2d(proxyscene)
             ax = Axis(fig; axis...)
         else
@@ -34,19 +34,19 @@ function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), 
     end
 
     fig[1, 1] = ax
-    p = plot!(ax, P, Attributes(kw_attributes), args...)
+    p = plot!(P, attributes, ax, args...)
     FigureAxisPlot(fig, ax, p)
 end
 
 # without scenelike, use current axis of current figure
 
-function plot!(P::PlotFunc, args...; kw_attributes...)
+function plot!(P::PlotFunc, attributes::Attributes, args...)
     ax = current_axis(current_figure())
     isnothing(ax) && error("There is no current axis to plot into.")
-    plot!(P, ax, args...; kw_attributes...)
+    plot!(P, attributes, ax, args...)
 end
 
-function plot(P::PlotFunc, gp::GridPosition, args...; axis = NamedTuple(), kwargs...)
+function plot(P::PlotFunc, attributes::Attributes, gp::GridPosition, args...)
 
     f = MakieLayout.get_top_parent(gp)
 
@@ -62,7 +62,7 @@ function plot(P::PlotFunc, gp::GridPosition, args...; axis = NamedTuple(), kwarg
         """)
     end
 
-    axis = Dict(pairs(axis))
+    axis = get_as_dict(attributes, :axis)
 
     if haskey(axis, :type)
         axtype = axis[:type]
@@ -70,7 +70,7 @@ function plot(P::PlotFunc, gp::GridPosition, args...; axis = NamedTuple(), kwarg
         ax = axtype(f; axis...)
     else
         proxyscene = Scene()
-        plot!(proxyscene, P, Attributes(kwargs), args...)
+        plot!(P, attributes, proxyscene, args...)
         if is2d(proxyscene)
             ax = Axis(f; axis...)
         else
@@ -79,21 +79,31 @@ function plot(P::PlotFunc, gp::GridPosition, args...; axis = NamedTuple(), kwarg
     end
 
     gp[] = ax
-    p = plot!(P, ax, args...; kwargs...)
+    p = plot!(P, attributes, ax, args...)
     AxisPlot(ax, p)
 end
 
-function plot!(P::PlotFunc, gp::GridPosition, args...; kwargs...)
-
+function plot!(P::PlotFunc, attributes::Attributes, gp::GridPosition, args...)
     c = contents(gp, exact = true)
     if !(length(c) == 1 && c[1] isa Union{Axis, LScene})
         error("There needs to be a single axis at $(gp.span), $(gp.side) to plot into.\nUse a non-mutating plotting command to create an axis implicitly.")
     end
     ax = first(c)
-    plot!(P, ax, args...; kwargs...)
+    plot!(P, attributes, ax, args...)
 end
 
-function plot(P::PlotFunc, gsp::GridSubposition, args...; axis = NamedTuple(), kwargs...)
+attr_to_dict(obs::Observable) = obs[]
+
+function attr_to_dict(attributes::Union{Attributes, NamedTuple})
+    Dict((k=> attr_to_dict(v)) for (k, v) in attributes)
+end
+
+function get_as_dict(attributes, key)
+    attr = to_value(pop!(attributes, key, Attributes()))
+    return attr_to_dict(attr)
+end
+
+function plot(P::PlotFunc, attributes::Attributes, gsp::GridSubposition, args...)
 
     layout = GridLayoutBase.get_layout_at!(gsp.parent, createmissing = true)
     c = contents(gsp, exact = true)
@@ -109,8 +119,7 @@ function plot(P::PlotFunc, gsp::GridSubposition, args...; axis = NamedTuple(), k
     end
 
     fig = MakieLayout.get_top_parent(gsp)
-
-    axis = Dict(pairs(axis))
+    axis = get_as_dict(attributes, :axis)
 
     if haskey(axis, :type)
         axtype = axis[:type]
@@ -118,8 +127,7 @@ function plot(P::PlotFunc, gsp::GridSubposition, args...; axis = NamedTuple(), k
         ax = axtype(fig; axis...)
     else
         proxyscene = Scene()
-        plot!(proxyscene, P, Attributes(kwargs), args...)
-
+        plot!(P, attributes, proxyscene, args...)
         if is2d(proxyscene)
             ax = Axis(fig; axis...)
         else
@@ -128,11 +136,11 @@ function plot(P::PlotFunc, gsp::GridSubposition, args...; axis = NamedTuple(), k
     end
 
     gsp.parent[gsp.rows, gsp.cols, gsp.side] = ax
-    p = plot!(P, ax, args...; kwargs...)
+    p = plot!(P, attributes, ax, args...)
     AxisPlot(ax, p)
 end
 
-function plot!(P::PlotFunc, gsp::GridSubposition, args...; kwargs...)
+function plot!(P::PlotFunc, attributes::Attributes, gsp::GridSubposition, args...)
 
     layout = GridLayoutBase.get_layout_at!(gsp.parent, createmissing = false)
 
@@ -143,5 +151,5 @@ function plot!(P::PlotFunc, gsp::GridSubposition, args...; kwargs...)
         error("There is not just one axis at $(gp).")
     end
     ax = first(c)
-    plot!(P, ax, args...; kwargs...)
+    plot!(P, attributes, ax, args...)
 end

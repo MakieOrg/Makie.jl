@@ -310,7 +310,7 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, args.
     return
 end
 
-function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args...)
+function plot!(::Type{<: Axis3D}, attributes::Attributes, scene::SceneLike, args...)
     axis = Axis3D(scene, attributes, args)
     # Disable any non linear transform for the axis plot!
     axis.transformation.transform_func[] = identity
@@ -337,5 +337,6 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
 end
 
 function axis3d!(scene::Scene, lims = data_limits(scene, p -> isaxis(p) || not_in_data_space(p)); kw...)
-    axis3d!(scene, Attributes(), lims; ticks = (ranges = automatic, labels = automatic), kw...)
+    attr = Attributes(; ticks = (ranges = automatic, labels = automatic), kw...)
+    plot!(Axis3D, attr, scene, lims)
 end

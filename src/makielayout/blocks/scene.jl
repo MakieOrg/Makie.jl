@@ -1,17 +1,12 @@
 function Makie.plot!(
-        lscene::LScene, P::Makie.PlotFunc,
-        attributes::Makie.Attributes, args...;
-        kw_attributes...)
+        P::Makie.PlotFunc,
+        attributes::Makie.Attributes,
+        lscene::LScene, args...)
 
-    plot = Makie.plot!(lscene.scene, P, attributes, args...; kw_attributes...)
+    plot = Makie.plot!(P, attributes, lscene.scene, args...)
     notify(lscene.scene.theme.limits)
     center!(lscene.scene)
     plot
-end
-
-function Makie.plot!(P::Makie.PlotFunc, ls::LScene, args...; kw_attributes...)
-    attributes = Makie.Attributes(kw_attributes)
-    Makie.plot!(ls, P, attributes, args...)
 end
 
 function initialize_block!(ls::LScene; scenekw = NamedTuple())

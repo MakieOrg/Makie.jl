@@ -191,5 +191,5 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
             return merge(GeometryBasics.mesh.(meshes))
         end
     end
-    mesh!(plot, attributes, bigmesh)
+    mesh!(plot, bigmesh; attributes...)
 end

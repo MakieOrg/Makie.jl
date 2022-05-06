@@ -662,31 +662,23 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
 end
 
 function Makie.plot!(
-        la::Axis, P::Makie.PlotFunc,
-        attributes::Makie.Attributes, args...;
-        kw_attributes...)
+        P::Makie.PlotFunc, attributes::Attributes,
+        la::Axis, args...)
 
-    allattrs = merge(attributes, Attributes(kw_attributes))
+    cycle = get_cycle_for_plottype(attributes, P)
+    add_cycle_attributes!(attributes, P, cycle, la.cycler, la.palette)
 
-    cycle = get_cycle_for_plottype(allattrs, P)
-    add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
-
-    plot = Makie.plot!(la.scene, P, allattrs, args...)
+    plot = Makie.plot!(P, attributes, la.scene, args...)
 
     # some area-like plots basically always look better if they cover the whole plot area.
     # adjust the limit margins in those cases automatically.
     needs_tight_limits(plot) && tightlimits!(la)
 
     reset_limits!(la)
-    plot
+    return plot
 end
 
-function Makie.plot!(P::Makie.PlotFunc, ax::Axis, args...; kw_attributes...)
-    attributes = Makie.Attributes(kw_attributes)
-    Makie.plot!(ax, P, attributes, args...)
-end
-
-needs_tight_limits(@nospecialize any) = false
+needs_tight_limits(@nospecialize(any)) = false
 needs_tight_limits(::Union{Heatmap, Image}) = true
 function needs_tight_limits(c::Contourf)
     # we know that all values are included and the contourf is rectangular
