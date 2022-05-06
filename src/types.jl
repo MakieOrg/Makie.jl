@@ -114,10 +114,31 @@ function Base.show(io::IO, events::Events)
 end
 
 function Events()
-    mousebutton = Observable(MouseButtonEvent(Mouse.none, Mouse.release))
-    mousebuttonstate = Set{Mouse.Button}()
-    on(mousebutton, priority = typemax(Int)) do event
-        set = mousebuttonstate
+    events = Events(
+        Observable(Recti(0, 0, 0, 0)),
+        Observable(100.0),
+        Observable(false),
+
+        Observable(MouseButtonEvent(Mouse.none, Mouse.release)),
+        Set{Mouse.Button}(),
+        Observable((0.0, 0.0)),
+        Observable((0.0, 0.0)),
+
+        Observable(KeyEvent(Keyboard.unknown, Keyboard.release)),
+        Set{Keyboard.Button}(),
+        Observable('\0'),
+        Observable(String[]),
+        Observable(false),
+        Observable(false),
+    )
+
+    connect_states!(events)
+    return events
+end
+
+function connect_states!(e::Events)
+    on(e.mousebutton, priority = typemax(Int)) do event
+        set = e.mousebuttonstate
         if event.action == Mouse.press
             push!(set, event.button)
         elseif event.action == Mouse.release
@@ -129,10 +150,8 @@ function Events()
         return Consume(false)
     end
 
-    keyboardbutton = Observable(KeyEvent(Keyboard.unknown, Keyboard.release))
-    keyboardstate = Set{Keyboard.Button}()
-    on(keyboardbutton, priority = typemax(Int)) do event
-        set = keyboardstate
+    on(e.keyboardbutton, priority = typemax(Int)) do event
+        set = e.keyboardstate
         if event.key != Keyboard.unknown
             if event.action == Keyboard.press
                 push!(set, event.key)
@@ -147,96 +166,32 @@ function Events()
         # This never consumes because it just keeps track of the state
         return Consume(false)
     end
-
-    return Events(
-        Observable(Recti(0, 0, 0, 0)),
-        Observable(100.0),
-        Observable(false),
-
-        mousebutton, mousebuttonstate,
-        Observable((0.0, 0.0)),
-        Observable((0.0, 0.0)),
-
-        keyboardbutton, keyboardstate,
-
-        Observable('\0'),
-        Observable(String[]),
-        Observable(false),
-        Observable(false),
-    )
+    return
 end
 
 # Compat only
 function Base.getproperty(e::Events, field::Symbol)
-    if field == :mousebuttons
-        try
-            error()
-        catch ex
-            bt = catch_backtrace()
-            @warn(
-                "`events.mousebuttons` is deprecated. Use `events.mousebutton` to " *
-                "react to `MouseButtonEvent`s instead and ``."
-            )
-            Base.show_backtrace(stderr, bt)
-            println(stderr)
-        end
-        mousebuttons = Observable(Set{Mouse.Button}())
-        on(getfield(e, :mousebutton), priority=typemax(Int)-1) do event
-            mousebuttons[] = getfield(e, :mousebuttonstate)
-            return Consume(false)
-        end
-        return mousebuttons
-    elseif field == :keyboardbuttons
-        try
-            error()
-        catch ex
-            bt = catch_backtrace()
-            @warn(
-                "`events.keyboardbuttons` is deprecated. Use " *
-                "`events.keyboardbutton` to react to `KeyEvent`s instead."
-            )
-            Base.show_backtrace(stderr, bt)
-            println(stderr)
-        end
-        keyboardbuttons = Observable(Set{Keyboard.Button}())
-        on(getfield(e, :keyboardbutton), priority=typemax(Int)-1) do event
-            keyboardbuttons[] = getfield(e, :keyboardstate)
-            return Consume(false)
-        end
-        return keyboardbuttons
-    elseif field == :mousedrag
-        try
-            error()
-        catch ex
-            bt = catch_backtrace()
-            @warn(
-                "`events.mousedrag` is deprecated. Use `events.mousebutton` or a " *
-                "mouse state machine (`addmouseevents!`) instead."
-            )
-            Base.show_backtrace(stderr, bt)
-            println(stderr)
-        end
-        mousedrag = Observable(Mouse.notpressed)
-        on(getfield(e, :mousebutton), priority=typemax(Int)-1) do event
-            if (event.action == Mouse.press) && (length(e.mousebuttonstate) == 1)
-                mousedrag[] = Mouse.down
-            elseif mousedrag[] in (Mouse.down, Mouse.pressed)
-                mousedrag[] = Mouse.up
-            end
-            return Consume(false)
-        end
-        on(getfield(e, :mouseposition), priority=typemax(Int)-1) do pos
-            if mousedrag[] in (Mouse.down, Mouse.pressed)
-                mousedrag[] = Mouse.pressed
-            elseif mousedrag[] == Mouse.up
-                mousedrag[] = Mouse.notpressed
-            end
-            return Consume(false)
-        end
-        return mousedrag
+    if field === :mousebuttons
+        error("`events.mousebuttons` is deprecated. Use `events.mousebutton` to react to `MouseButtonEvent`s instead.")
+    elseif field === :keyboardbuttons
+        error("`events.keyboardbuttons` is deprecated. Use `events.keyboardbutton` to react to `KeyEvent`s instead.")
+    elseif field === :mousedrag
+        error("`events.mousedrag` is deprecated. Use `events.mousebutton` or a mouse state machine (`addmouseevents!`) instead.")
     else
-        getfield(e, field)
+        return getfield(e, field)
     end
+end
+
+function Base.empty!(events::Events)
+    for field in fieldnames(Events)
+        field in (:mousebuttonstate, :keyboardstate) && continue
+        obs = getfield(events, field)
+        for (prio, f) in obs.listeners
+            prio == typemax(Int) && continue
+            off(obs, f)
+        end
+    end
+    return
 end
 
 

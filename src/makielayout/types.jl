@@ -258,9 +258,9 @@ end
         "The counterclockwise rotation of the yticklabels in radians."
         yticklabelrotation::Float64 = 0f0
         "The horizontal and vertical alignment of the xticklabels."
-        xticklabelalign::Union{Makie.Automatic, Float64} = Makie.automatic
+        xticklabelalign::Union{Makie.Automatic, Tuple{Symbol, Symbol}} = Makie.automatic
         "The horizontal and vertical alignment of the yticklabels."
-        yticklabelalign::Union{Makie.Automatic, Float64} = Makie.automatic
+        yticklabelalign::Union{Makie.Automatic, Tuple{Symbol, Symbol}} = Makie.automatic
         "The size of the xtick marks."
         xticksize::Float64 = 6f0
         "The size of the ytick marks."

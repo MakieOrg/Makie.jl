@@ -75,6 +75,27 @@ end
     @test current_axis() === nothing
 end
 
+@testset "Clearing figures" begin
+    fig = Figure()
+    Label(fig[1, 1], "test")
+    ax = Axis(fig[2, 1])
+    scatter!(ax, rand(10))
+
+    @test !isempty(fig.scene.children)
+    @test !isempty(ax.scene.plots)
+    @test !isempty(fig.layout.content)
+    @test !isempty(fig.content)
+    @test current_axis() === ax
+
+    empty!(fig)
+
+    @test isempty(fig.scene.children)
+    @test isempty(ax.scene.plots)
+    @test isempty(fig.layout.content)
+    @test isempty(fig.content)
+    @test current_axis() === nothing
+end
+
 @testset "Getting figure content" begin
     fig = Figure()
     ax = fig[1, 1] = Axis(fig)
