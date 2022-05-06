@@ -55,6 +55,7 @@ Base.show(io::IO, screen::Screen) = print(io, "GLMakie.Screen(...)")
 Base.size(x::Screen) = size(x.framebuffer)
 
 function Makie.insertplots!(screen::GLScreen, scene::Scene)
+    ShaderAbstractions.switch_context!(screen.glscreen)
     get!(screen.screen2scene, WeakRef(scene)) do
         id = length(screen.screens) + 1
         push!(screen.screens, (id, scene))
