@@ -20,7 +20,7 @@ GLMakie.set_window_config!(;
 # copy NEWS file over to documentation
 cp(
     joinpath(@__DIR__, "..", "NEWS.md"),
-    joinpath(@__DIR__, "documentation", "news.md"),
+    joinpath(@__DIR__, "news.md"),
     force = true)
 
 ############################ Functions ##############################
