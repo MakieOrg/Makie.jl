@@ -258,9 +258,9 @@ end
         "The counterclockwise rotation of the yticklabels in radians."
         yticklabelrotation::Float64 = 0f0
         "The horizontal and vertical alignment of the xticklabels."
-        xticklabelalign::Union{Makie.Automatic, Float64} = Makie.automatic
+        xticklabelalign::Union{Makie.Automatic, Tuple{Symbol, Symbol}} = Makie.automatic
         "The horizontal and vertical alignment of the yticklabels."
-        yticklabelalign::Union{Makie.Automatic, Float64} = Makie.automatic
+        yticklabelalign::Union{Makie.Automatic, Tuple{Symbol, Symbol}} = Makie.automatic
         "The size of the xtick marks."
         xticksize::Float64 = 6f0
         "The size of the ytick marks."
@@ -459,23 +459,23 @@ end
         "The color bar label string."
         label = ""
         "The label color."
-        labelcolor = lift_parent_attribute(scene, :textcolor, :black)
+        labelcolor = inherit(scene, :textcolor, :black)
         "The label font family."
-        labelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        labelfont = inherit(scene, :font, "DejaVu Sans")
         "The label font size."
-        labelsize = lift_parent_attribute(scene, :fontsize, 16f0)
+        labelsize = inherit(scene, :fontsize, 16f0)
         "Controls if the label is visible."
         labelvisible = true
         "The gap between the label and the ticks."
         labelpadding = 5f0
         "The font family of the tick labels."
-        ticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        ticklabelfont = inherit(scene, :font, "DejaVu Sans")
         "The font size of the tick labels."
-        ticklabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
+        ticklabelsize = inherit(scene, :fontsize, 16f0)
         "Controls if the tick labels are visible."
         ticklabelsvisible = true
         "The color of the tick labels."
-        ticklabelcolor = lift_parent_attribute(scene, :textcolor, :black)
+        ticklabelcolor = inherit(scene, :textcolor, :black)
         "The size of the tick marks."
         ticksize = 6f0
         "Controls if the tick marks are visible."
@@ -535,7 +535,7 @@ end
         "Controls if the parent layout can adjust to this element's height"
         tellheight = true
         "The colormap that the colorbar uses."
-        colormap = lift_parent_attribute(scene, :colormap, :viridis)
+        colormap = inherit(scene, :colormap, :viridis)
         "The range of values depicted in the colorbar."
         limits = nothing
         "The range of values depicted in the colorbar."
@@ -574,11 +574,11 @@ end
         "Controls if the text is visible."
         visible::Bool = true
         "The color of the text."
-        color::RGBAf = lift_parent_attribute(scene, :textcolor, :black)
+        color::RGBAf = inherit(scene, :textcolor, :black)
         "The font size of the text."
-        textsize::Float32 = lift_parent_attribute(scene, :fontsize, 16f0)
+        textsize::Float32 = inherit(scene, :fontsize, 16f0)
         "The font family of the text."
-        font::Makie.FreeTypeAbstraction.FTFont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        font::Makie.FreeTypeAbstraction.FTFont = inherit(scene, :font, "DejaVu Sans")
         "The justification of the text (:left, :right, :center)."
         justification = :center
         "The lineheight multiplier for the text."
@@ -746,11 +746,11 @@ end
         "The extra space added to the sides of the button label's boundingbox."
         padding = (10f0, 10f0, 10f0, 10f0)
         "The font size of the button label."
-        textsize = lift_parent_attribute(scene, :fontsize, 16f0)
+        textsize = inherit(scene, :fontsize, 16f0)
         "The text of the button label."
         label = "Button"
         "The font family of the button label."
-        font = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        font = inherit(scene, :font, "DejaVu Sans")
         "The width setting of the button."
         width = Auto()
         "The height setting of the button."
@@ -770,7 +770,7 @@ end
         "The color of the button."
         buttoncolor = RGBf(0.94, 0.94, 0.94)
         "The color of the label."
-        labelcolor = lift_parent_attribute(scene, :textcolor, :black)
+        labelcolor = inherit(scene, :textcolor, :black)
         "The color of the label when the mouse hovers over the button."
         labelcolor_hover = :black
         "The color of the label when the mouse clicks the button."
@@ -861,7 +861,7 @@ end
         "The list of options selectable in the menu. This can be any iterable of a mixture of strings and containers with one string and one other value. If an entry is just a string, that string is both label and selection. If an entry is a container with one string and one other value, the string is the label and the other value is the selection."
         options = ["no options"]
         "Font size of the cell texts"
-        textsize = lift_parent_attribute(scene, :fontsize, 16f0)
+        textsize = inherit(scene, :fontsize, 16f0)
         "Padding of entry texts"
         textpadding = (10, 10, 10, 10)
         "Color of entry texts"
@@ -914,9 +914,9 @@ const EntryGroup = Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}
         "Controls if the parent layout can adjust to this element's height"
         tellheight = automatic
         "The font family of the legend group titles."
-        titlefont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        titlefont = inherit(scene, :font, "DejaVu Sans")
         "The font size of the legend group titles."
-        titlesize = lift_parent_attribute(scene, :fontsize, 16f0)
+        titlesize = inherit(scene, :fontsize, 16f0)
         "The horizontal alignment of the legend group titles."
         titlehalign = :center
         "The vertical alignment of the legend group titles."
@@ -924,15 +924,15 @@ const EntryGroup = Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}
         "Controls if the legend titles are visible."
         titlevisible = true
         "The color of the legend titles"
-        titlecolor = lift_parent_attribute(scene, :textcolor, :black)
+        titlecolor = inherit(scene, :textcolor, :black)
         "The group title positions relative to their groups. Can be `:top` or `:left`."
         titleposition = :top
         "The font size of the entry labels."
-        labelsize = lift_parent_attribute(scene, :fontsize, 16f0)
+        labelsize = inherit(scene, :fontsize, 16f0)
         "The font family of the entry labels."
-        labelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        labelfont = inherit(scene, :font, "DejaVu Sans")
         "The color of the entry labels."
-        labelcolor = lift_parent_attribute(scene, :textcolor, :black)
+        labelcolor = inherit(scene, :textcolor, :black)
         "The horizontal alignment of the entry labels."
         labelhalign = :left
         "The justification of the label text. Default is `automatic`, which will set the justification to labelhalign."
@@ -1063,13 +1063,13 @@ end
         "Controls if the textbox is defocused when a string is submitted."
         defocus_on_submit = true
         "Text size."
-        textsize = lift_parent_attribute(scene, :fontsize, 16f0)
+        textsize = inherit(scene, :fontsize, 16f0)
         "Text color."
-        textcolor = lift_parent_attribute(scene, :textcolor, :black)
+        textcolor = inherit(scene, :textcolor, :black)
         "Text color for the placeholder."
         textcolor_placeholder = RGBf(0.5, 0.5, 0.5)
         "Font family."
-        font = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        font = inherit(scene, :font, "DejaVu Sans")
         "Color of the box."
         boxcolor = :transparent
         "Color of the box when focused."
@@ -1148,11 +1148,11 @@ end
         "The z label"
         zlabel = "z"
         "The x label color"
-        xlabelcolor = lift_parent_attribute(scene, :textcolor, :black)
+        xlabelcolor = inherit(scene, :textcolor, :black)
         "The y label color"
-        ylabelcolor = lift_parent_attribute(scene, :textcolor, :black)
+        ylabelcolor = inherit(scene, :textcolor, :black)
         "The z label color"
-        zlabelcolor = lift_parent_attribute(scene, :textcolor, :black)
+        zlabelcolor = inherit(scene, :textcolor, :black)
         "Controls if the x label is visible"
         xlabelvisible = true
         "Controls if the y label is visible"
@@ -1172,17 +1172,17 @@ end
         "Controls if the z ticks are visible"
         zticksvisible = true
         "The x label size"
-        xlabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
+        xlabelsize = inherit(scene, :fontsize, 16f0)
         "The y label size"
-        ylabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
+        ylabelsize = inherit(scene, :fontsize, 16f0)
         "The z label size"
-        zlabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
+        zlabelsize = inherit(scene, :fontsize, 16f0)
         "The x label font"
-        xlabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        xlabelfont = inherit(scene, :font, "DejaVu Sans")
         "The y label font"
-        ylabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        ylabelfont = inherit(scene, :font, "DejaVu Sans")
         "The z label font"
-        zlabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        zlabelfont = inherit(scene, :font, "DejaVu Sans")
         "The x label rotation"
         xlabelrotation = Makie.automatic
         "The y label rotation"
@@ -1202,17 +1202,17 @@ end
         "The z label offset"
         zlabeloffset = 50
         "The x ticklabel color"
-        xticklabelcolor = lift_parent_attribute(scene, :textcolor, :black)
+        xticklabelcolor = inherit(scene, :textcolor, :black)
         "The y ticklabel color"
-        yticklabelcolor = lift_parent_attribute(scene, :textcolor, :black)
+        yticklabelcolor = inherit(scene, :textcolor, :black)
         "The z ticklabel color"
-        zticklabelcolor = lift_parent_attribute(scene, :textcolor, :black)
+        zticklabelcolor = inherit(scene, :textcolor, :black)
         "The x ticklabel size"
-        xticklabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
+        xticklabelsize = inherit(scene, :fontsize, 16f0)
         "The y ticklabel size"
-        yticklabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
+        yticklabelsize = inherit(scene, :fontsize, 16f0)
         "The z ticklabel size"
-        zticklabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
+        zticklabelsize = inherit(scene, :fontsize, 16f0)
         "The x ticklabel pad"
         xticklabelpad = 5
         "The y ticklabel pad"
@@ -1220,11 +1220,11 @@ end
         "The z ticklabel pad"
         zticklabelpad = 10
         "The x ticklabel font"
-        xticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        xticklabelfont = inherit(scene, :font, "DejaVu Sans")
         "The y ticklabel font"
-        yticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        yticklabelfont = inherit(scene, :font, "DejaVu Sans")
         "The z ticklabel font"
-        zticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        zticklabelfont = inherit(scene, :font, "DejaVu Sans")
         "The x grid color"
         xgridcolor = RGBAf(0, 0, 0, 0.12)
         "The y grid color"
@@ -1302,9 +1302,9 @@ end
         "The axis title string."
         title = ""
         "The font family of the title."
-        titlefont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        titlefont = inherit(scene, :font, "DejaVu Sans")
         "The title's font size."
-        titlesize = lift_parent_attribute(scene, :fontsize, 16f0)
+        titlesize = inherit(scene, :fontsize, 16f0)
         "The gap between axis and title."
         titlegap = 4f0
         "Controls if the title is visible."
@@ -1312,7 +1312,7 @@ end
         "The horizontal alignment of the title."
         titlealign = :center
         "The color of the title"
-        titlecolor = lift_parent_attribute(scene, :textcolor, :black)
+        titlecolor = inherit(scene, :textcolor, :black)
         "The color of the xy panel"
         xypanelcolor = :transparent
         "The color of the yz panel"

@@ -2,6 +2,7 @@ abstract type Block end
 
 function is_attribute end
 function default_attribute_values end
+function attribute_default_expressions end
 function _attribute_docs end
 function has_forwarded_layout end
 
@@ -73,6 +74,16 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
             $(make_attr_dict_expr(attrs, :sceneattrs, :curdeftheme))
         end
 
+        function Makie.MakieLayout.attribute_default_expressions(::Type{$name})
+            $(
+                if attrs === nothing
+                    Dict{Symbol, String}()
+                else
+                    Dict{Symbol, String}([a.symbol => _defaultstring(a.default) for a in attrs])
+                end
+            )
+        end
+
         function Makie.MakieLayout._attribute_docs(::Type{$(name)})
             Dict(
                 $(
@@ -88,6 +99,9 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
 
     esc(q)
 end
+
+_defaultstring(x) = string(x)
+_defaultstring(x::String) = repr(x)
 
 function make_attr_dict_expr(::Nothing, sceneattrsym, curthemesym)
     :(Dict())
@@ -111,18 +125,18 @@ end
 
 function _attribute_list(T)
     ks = sort(collect(keys(default_attribute_values(T, nothing))))
-
+    default_exprs = attribute_default_expressions(T)
     layout_attrs = Set([:tellheight, :tellwidth, :height, :width,
         :valign, :halign, :alignmode])
     """
 
-    $T specific attributes:
+    **$T attributes**:
 
-    $(join(["  - `$k`: $(_attribute_docs(T)[k])" for k in ks if k ∉ layout_attrs], "\n"))
+    $(join(["  - `$k`: $(_attribute_docs(T)[k]) Default: `$(default_exprs[k])`" for k in ks if k ∉ layout_attrs], "\n"))
 
-    Default layout-related attributes:
+    **Layout attributes**:
 
-    $(join(["  - `$k`: $(_attribute_docs(T)[k])" for k in ks if k in layout_attrs], "\n"))
+    $(join(["  - `$k`: $(_attribute_docs(T)[k]) Default: `$(default_exprs[k])`" for k in ks if k in layout_attrs], "\n"))
     """
 end
 
@@ -333,14 +347,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
         suggestedbbox = bbox
     )
 
-    blockscene = Scene(
-        topscene,
-        # the block scene tracks the parent scene exactly
-        # for this it seems to be necessary to zero-out a possible non-zero
-        # origin of the parent
-        lift(Makie.zero_origin, topscene.px_area),
-        camera = campixel!
-    )
+    blockscene = Scene(topscene, camera = campixel!)
 
     # create base block with otherwise undefined fields
     b = T(fig_or_scene, lobservables, blockscene)
