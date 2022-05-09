@@ -45,3 +45,13 @@ CairoMakie as a 2D engine has no concept of z-clipping, therefore its 3D capabil
 The z-values of 3D plots will have no effect and will be projected flat onto the canvas.
 Z-layering is approximated by sorting all plot objects by their z translation value before drawing, after that by parent scene and then insertion order.
 Therefore, if you want to draw something on top of something else, but it ends up below, try translating it forward via `translate!(obj, 0, 0, some_positive_z_value)`.
+
+#### Selective Rasterization
+
+By setting the `rasterize` attribute of a plot, you can tell CairoMakie that this plot needs to be rasterized when saving, even if saving to a vector backend.  This can be very useful for large meshes, surfaces or even heatmaps if on an irregular grid.
+
+Assuming that you have a `Plot` object `plt`, you can set `plt.rasterize = true` for simple rasterization, or you can set `plt.rasterize = scale::Int`, where `scale` represents the scaling factor for the image surface.
+
+For example, if your Scene's resolution is `(800, 600)`, by setting `scale=2`, the rasterized image will have a resolution of `(1600, 1200)`.
+
+You can deactivate this rasterization by setting `plt.rasterize = false`.

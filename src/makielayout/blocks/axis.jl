@@ -612,11 +612,12 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
 
     # if there are any manually cycled attributes, we don't do the normal
     # cycling but only look up exactly the passed attributes
+    cycle_attrsyms = attrsyms(cycle)
     if !isempty(manually_cycled_attributes)
         # an attribute given as Cycled needs to be present in the cycler,
         # otherwise there's no cycle in which to look up a value
         for k in manually_cycled_attributes
-            if k ∉ palettesyms(cycle)
+            if !any(x -> k in x, cycle_attrsyms)
                 error("Attribute `$k` was passed with an explicit `Cycled` value, but $k is not specified in the cycler for this plot type $P.")
             end
         end
@@ -635,7 +636,6 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
                 n = length(cis)
                 k = mod1(index, n)
                 idx = Tuple(cis[k])
-                isym
                 palettes[isym][idx[isym]]
             end
         end

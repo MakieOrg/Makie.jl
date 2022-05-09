@@ -89,7 +89,7 @@ end
 rescale_glyph(char::Char, font, x) = x * char_scale_factor(char, font)
 function rescale_glyph(char::Char, font, xs::Vector)
     f = char_scale_factor(char, font)
-    map(xs -> f * x, xs)
+    map(x -> f * x, xs)
 end
 function rescale_glyph(str::String, font, x)
     [x * char_scale_factor(char, font) for char in collect(str)]
