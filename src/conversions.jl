@@ -1010,7 +1010,7 @@ function available_gradients()
 end
 
 
-to_colormap(cm, categories::Integer) = error("`to_colormap(cm, categories)` is deprecated. Use `Makie.categorical_colors(cm, categories)` instead.")
+to_colormap(cm, categories::Integer) = error("`to_colormap(cm, categories)` is deprecated. Use `Makie.categorical_colors(cm, categories)` for categorical colors, and `resample_cmap(cmap, ncolors)` for continous resampling.")
 
 """
     categorical_colors(colormaplike, categories::Integer)

@@ -186,6 +186,19 @@ end
     @test_throws ArgumentError Makie.categorical_colors(:PuRd, 20) # not enough categories
 end
 
+@testset "resample colormap" begin
+    cs = Makie.resample_cmap(:viridis, 10; alpha=LinRange(0, 1, 10))
+    @test Colors.alpha.(cs) == Float32.(LinRange(0, 1, 10))
+    cs = Makie.resample_cmap(:viridis, 2; alpha=0.5)
+    @test all(x-> x == 0.5, Colors.alpha.(cs))
+    @test Colors.color.(cs) == Colors.color.(Makie.resample(to_colormap(:viridis), 2))
+    cs = Makie.resample_cmap(:Set1, 100)
+    @test all(x-> x == 1.0, Colors.alpha.(cs))
+    @test Colors.color.(cs) == Colors.color.(Makie.resample(to_colormap(:Set1), 100))
+    cs = Makie.resample_cmap(:Set1, 10; alpha=(0, 1))
+    @test Colors.alpha.(cs) == Float32.(LinRange(0, 1, 10))
+end
+
 @testset "colors" begin
     @test to_color(["red", "green"]) isa Vector{RGBAf}
     @test to_color(["red", "green"]) == [to_color("red"), to_color("green")]
