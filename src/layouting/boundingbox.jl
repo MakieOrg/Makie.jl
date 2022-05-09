@@ -103,7 +103,7 @@ function text_bb(str, font, size)
     rot = Quaternionf(0,0,0,1)
     layout = layout_text(
         str, size, font, Vec2f(0), rot, 0.5, 1.0,
-        RGBAf(0, 0, 0, 0), RGBAf(0, 0, 0, 0), 0f0)
+        RGBAf(0, 0, 0, 0), RGBAf(0, 0, 0, 0), 0f0, 0f0)
     return boundingbox(layout, Point3f(0), rot)
 end
 
