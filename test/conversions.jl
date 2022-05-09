@@ -176,7 +176,14 @@ end
     @test categorical_colors([to_color(:red)], 1) == [to_color(:red)]
     @test categorical_colors([:red], 1) == [to_color(:red)]
     @test_throws ErrorException categorical_colors([to_color(:red)], 2)
-    @test categorical_colors(:darktest, 1) == to_color.(Makie.PlotUtils.palette(:darktest))
+    @test categorical_colors(:darktest, 1) == to_color.(Makie.PlotUtils.palette(:darktest))[1:1]
+    @test_throws ErrorException to_colormap(:viridis, 10) # deprecated
+    @test categorical_colors(:darktest, 1) == to_color.(Makie.PlotUtils.palette(:darktest))[1:1]
+    @test categorical_colors(:viridis, 10) == to_colormap(:viridis)[1:10]
+    # TODO why don't they exactly match?
+    @test categorical_colors(:Set1, 9) ≈ to_colormap(:Set1)
+
+    @test_throws ArgumentError Makie.categorical_colors(:PuRd, 20) # not enough categories
 end
 
 @testset "colors" begin
