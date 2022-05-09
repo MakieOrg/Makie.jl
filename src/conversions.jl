@@ -230,6 +230,17 @@ function adjust_axes(::DiscreteSurface, x::AbstractVector{<:Number}, y::Abstract
     return x̂, ŷ, z
 end
 
+function convert_arguments(ds::DiscreteSurface, data::AbstractMatrix)
+    n, m = Float32.(size(data))
+    convert_arguments(ds, edges(1:n), edges(1:m), el32convert(data))
+end
+
+function convert_arguments(P::DiscreteSurface, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
+    xedges = edges(LinRange(extrema(x)..., size(z, 1)))
+    yedges = edges(LinRange(extrema(y)..., size(z, 2)))
+    return (xedges, yedges, el32convert(z))
+end
+
 adjust_axes(::SurfaceLike, x, y, z) = x, y, z
 
 """
@@ -258,7 +269,6 @@ linspaces with size(z, 1/2)
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(P::SurfaceLike, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
-    # convert_arguments(P, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
     return (x, y, z)
 end
 
@@ -273,11 +283,6 @@ and stores the `ClosedInterval` to `n` and `m`, plus the original matrix in a Tu
 function convert_arguments(sl::SurfaceLike, data::AbstractMatrix)
     n, m = Float32.(size(data))
     return convert_arguments(sl, 0f0 .. n, 0f0 .. m, el32convert(data))
-end
-
-function convert_arguments(ds::DiscreteSurface, data::AbstractMatrix)
-    n, m = Float32.(size(data))
-    convert_arguments(ds, edges(1:n), edges(1:m), el32convert(data))
 end
 
 function convert_arguments(SL::SurfaceLike, x::AbstractVector{<:Number}, y::AbstractVector{<:Number}, z::AbstractVector{<:Number})
