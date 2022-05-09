@@ -14,7 +14,7 @@ function convert_arguments(T::PlotFunc, args...; kw...)
                 convert_arguments_individually(T, args...)
             catch ee
                 if ee isa MethodError
-                    error(
+                    throw(MethodError(
                         """
                         `Makie.convert_arguments` for the plot type $T and its conversion trait $ct was unsuccessful.
 
@@ -26,7 +26,7 @@ function convert_arguments(T::PlotFunc, args...; kw...)
 
                         Alternatively, you can define `Makie.convert_single_argument` for single arguments which have types that are unknown to Makie but which can be converted to known types and fed back to the conversion pipeline.
                         """
-                    )
+                    ))
                 else
                     rethrow(ee)
                 end
