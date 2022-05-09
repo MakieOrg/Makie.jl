@@ -154,7 +154,7 @@ end
 @testset "single conversions" begin
     myvector = MyVector(collect(1:10))
     mynestedvector = MyNestedVector(MyVector(collect(11:20)))
-    @test_throws ErrorException convert_arguments(Lines, myvector, mynestedvector)
+    @test_throws MethodError convert_arguments(Lines, myvector, mynestedvector)
 
     Makie.convert_single_argument(v::MyNestedVector) = v.v
     Makie.convert_single_argument(v::MyVector) = v.v
