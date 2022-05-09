@@ -12,7 +12,7 @@ Base.iterate(ap::AxisPlot, args...) = iterate((ap.axis, ap.plot), args...)
 get_scene(ap::AxisPlot) = get_scene(ap.axis.scene)
 
 function is_plot_3d(p::PlotFunc, args...)
-    # First check if the Plot type "knows" wheather it's always 3D
+    # First check if the Plot type "knows" whether it's always 3D
     result = is_plot_type_3d(p)
     isnothing(result) || return result
 
@@ -68,7 +68,7 @@ are_args_3d(xyz::AbstractVector{<: Point3}) = any(x-> x[3] > 0, xyz)
 
 function get_axis_type(p::PlotFunc, args...)
     result = is_plot_3d(p, args...)
-    # We fallback to Axis 3 if we don't get a definitive answer
+    # We fallback to the 2D Axis if we don't get a definitive answer, which seems like the best default.
     isnothing(result) && return Axis
     return result ? LScene : Axis
 end
