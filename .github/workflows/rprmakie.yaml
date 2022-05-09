@@ -6,15 +6,17 @@ on:
       - '*.md'
     branches:
       - master
+      - breaking-release
   push:
     paths-ignore:
       - 'docs/**'
       - '*.md'
     branches:
       - master
+      - breaking-release
     tags: '*'
 
-concurrency: 
+concurrency:
   group: rprmakie-${{ github.ref }}
   cancel-in-progress: true
 
@@ -44,7 +46,7 @@ jobs:
         run: |
           using Pkg;
           # dev mono repo versions
-          pkg"dev . MakieCore RPRMakie ReferenceTests"
+          pkg"dev . ./MakieCore ./RPRMakie ./ReferenceTests"
       - name: Run the tests
         continue-on-error: true
         run: >

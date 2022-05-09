@@ -16,6 +16,7 @@ Pkg.develop(PackageSpec(path = path))
 end
 
 include(joinpath(@__DIR__, "svg_tests.jl"))
+include(joinpath(@__DIR__, "rasterization_tests.jl"))
 
 using ReferenceTests
 using ReferenceTests: database_filtered
