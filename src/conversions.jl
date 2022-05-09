@@ -272,7 +272,7 @@ and stores the `ClosedInterval` to `n` and `m`, plus the original matrix in a Tu
 """
 function convert_arguments(sl::SurfaceLike, data::AbstractMatrix)
     n, m = Float32.(size(data))
-    convert_arguments(sl, 0f0 .. n, 0f0 .. m, el32convert(data))
+    return convert_arguments(sl, 0f0 .. n, 0f0 .. m, el32convert(data))
 end
 
 function convert_arguments(ds::DiscreteSurface, data::AbstractMatrix)
@@ -558,7 +558,7 @@ end
 #                               Helper Functions                               #
 ################################################################################
 
-to_linspace(interval, N) = range(minimum(interval), stop = maximum(interval), length = N)
+to_linspace(interval, N) = range(Float32(minimum(interval)), stop = Float32(maximum(interval)), length = N)
 
 """
 Converts the elemen array type to `T1` without making a copy if the element type matches

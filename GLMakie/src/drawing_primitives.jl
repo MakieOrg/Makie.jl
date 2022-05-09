@@ -568,8 +568,8 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
             return GLVisualize.draw_surface(args, gl_attributes)
         else
             Tex(data) = Texture(data; minfilter=:nearest)
-            x_data = Tex(lift((x, z)-> xy_convert(x, size(z, 1)), x[1], x[3]))
-            y_data = Tex(lift((y, z)-> xy_convert(y, size(z, 2)), x[2], x[3]))
+            x_data = Tex(lift((x, z)-> collect(Makie.to_linspace(x, size(z, 1))), x[1], x[3]))
+            y_data = Tex(lift((y, z)-> collect(Makie.to_linspace(y, size(z, 2))), x[2], x[3]))
             z_data = Texture(el32convert(x[3]); minfilter=:nearest)
             return GLVisualize.draw_surface((x_data, y_data, z_data), gl_attributes)
         end
