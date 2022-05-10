@@ -13,6 +13,28 @@ function resample(A::AbstractVector, len::Integer)
     return interpolated_getindex.((A,), range(0.0, stop=1.0, length=len))
 end
 
+
+"""
+    resample_cmap(cmap, ncolors::Integer; alpha=1.0)
+
+* cmap: anything that `to_colormap` accepts
+* ncolors: number of desired colors
+* alpha: additional alpha applied to each color. Can also be an array, matching `colors`, or a tuple giving a start + stop alpha value.
+"""
+function resample_cmap(cmap, ncolors::Integer; alpha=1.0)
+    cols = to_colormap(cmap)
+    r = range(0.0, stop=1.0, length=ncolors)
+    if alpha isa Tuple{<:Number, <:Number}
+        alphas = LinRange(alpha..., ncolors)
+    else
+        alphas = alpha
+    end
+    return broadcast(r, alphas) do i, a
+        c = interpolated_getindex(cols, i)
+        return RGBAf(Colors.color(c), Colors.alpha(c) *  a)
+    end
+end
+
 """
     resampled_colors(attributes::Attributes, levels::Integer)
 
