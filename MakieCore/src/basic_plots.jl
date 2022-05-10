@@ -107,6 +107,8 @@ Plots a surface, where `(x, y)`  define a grid whose heights are the entries in 
     )
 end
 
+
+
 """
     lines(positions)
     lines(x, y)
@@ -144,7 +146,6 @@ Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
     default_theme(scene, Lines)
 end
 
-# alternatively, mesh3d? Or having only mesh instead of poly + mesh and figure out 2d/3d via dispatch
 """
     mesh(x, y, z)
     mesh(mesh_object)

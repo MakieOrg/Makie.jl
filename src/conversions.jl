@@ -1,3 +1,47 @@
+
+@convert_target struct Surface{N}
+    # Surfaces allow unstructured grids via matrices for x/y
+    # But also allow vectors or ClosedInterval for just ranges.
+    x::Union{ClosedInterval, AbstractArray{Float32, N}}
+    y::Union{ClosedInterval, AbstractArray{Float32, N}}
+    z::AbstractMatrix{Float32}
+end
+
+@convert_target struct Heatmap
+    # Heatmap needs to have x/y on a grid.
+    # Also intervals get converted, since we need for every bin an exact location
+    x::AbstractVector{<: Number}
+    y::AbstractVector{<: Number}
+    data::AbstractMatrix{<: Union{Colorant, Number}}
+end
+
+@convert_target struct Image
+    # Images are defined as just 2D quads, so for x/y we just accept an interval.
+    # Heatmap/Surface should be used for irregularly gridded images
+    x::ClosedInterval{Float32}
+    y::ClosedInterval{Float32}
+    image::AbstractMatrix{<: Union{Number, Colorant}}
+end
+
+@convert_target struct PointBased{N} # We can use the traits as well for conversion targers
+    # all position based traits get converted to a simple vector of points
+    positions::AbstractVector{Point{N, Float32}}
+end
+
+@convert_target struct Mesh
+    # We currently allow Mesh and vector of meshes for the Mesh type.
+    mesh::Union{AbstractVector{<:GeometryBasics.Mesh}, GeometryBasics.Mesh}
+end
+
+@convert_target struct Volume
+    # Volumes also are just defined on a cube, so we only accept intervals.
+    # convert_arguments will convert from ranges etc to intervals
+    x::ClosedInterval
+    y::ClosedInterval
+    z::ClosedInterval
+    volume::AbstractArray{Float32, 3}
+end
+
 ################################################################################
 #                               Type Conversions                               #
 ################################################################################
@@ -47,6 +91,7 @@ convert_single_argument(a::AbstractVector{T}) where T <: Number = a
 ################################################################################
 #                                  PointBased                                  #
 ################################################################################
+
 
 """
 Wrap a single point or equivalent object in a single-element array.
@@ -106,7 +151,7 @@ an arbitrary `x` axis.
 convert_arguments(P::PointBased, y::RealVector) = convert_arguments(P, keys(y), y)
 
 """
-    convert_arguments(P, x, y)::(Vector)
+    convert_arguments(P, x, y)::Vector{Point2f}
 
 Takes vectors `x` and `y` and turns it into a vector of 2D points of the values
 from `x` and `y`.
@@ -205,6 +250,42 @@ end
 
 
 ################################################################################
+#                             Function Conversions                             #
+################################################################################
+
+function convert_arguments(P::PointBased, r::AbstractVector, f::Function)
+    return convert_arguments(P, r, f.(r))
+end
+
+function convert_arguments(P::PointBased, i::AbstractInterval, f::Function)
+    x, y = PlotUtils.adapted_grid(f, endpoints(i))
+    return convert_arguments(P, x, y)
+end
+
+# The following `tryrange` code was copied from Plots.jl
+# https://github.com/JuliaPlots/Plots.jl/blob/15dc61feb57cba1df524ce5d69f68c2c4ea5b942/src/series.jl#L399-L416
+
+# try some intervals over which the function may be defined
+function tryrange(F::AbstractArray, vec)
+    rets = [tryrange(f, vec) for f in F] # get the preferred for each
+    maxind = maximum(indexin(rets, vec)) # get the last attempt that succeeded (most likely to fit all)
+    rets .= [tryrange(f, vec[maxind:maxind]) for f in F] # ensure that all functions compute there
+    rets[1]
+end
+
+function tryrange(F, vec)
+    for v in vec
+        try
+            F(v)
+            return v
+        catch
+        end
+    end
+    error("$F is not a Function, or is not defined at any of the values $vec")
+end
+
+
+################################################################################
 #                                 SurfaceLike                                  #
 ################################################################################
 
@@ -223,6 +304,7 @@ function edges(v::AbstractVector)
     end
 end
 
+adjust_axes(::SurfaceLike, x, y, z) = x, y, z
 function adjust_axes(::DiscreteSurface, x::AbstractVector{<:Number}, y::AbstractVector{<:Number}, z::AbstractMatrix)
     x̂, ŷ = map((x, y), size(z)) do v, sz
         return length(v) == sz ? edges(v) : v
@@ -241,7 +323,16 @@ function convert_arguments(P::DiscreteSurface, x::ClosedInterval, y::ClosedInter
     return (xedges, yedges, el32convert(z))
 end
 
-adjust_axes(::SurfaceLike, x, y, z) = x, y, z
+
+# OffsetArrays conversions
+function convert_arguments(sl::SurfaceLike, wm::OffsetArray)
+    x1, y1 = wm.offsets .+ 1
+    nx, ny = size(wm)
+    x = range(x1, length = nx)
+    y = range(y1, length = ny)
+    v = parent(wm)
+    return convert_arguments(sl, x, y, v)
+  end
 
 """
     convert_arguments(SL::SurfaceLike, x::VecOrMat, y::VecOrMat, z::Matrix)
@@ -345,18 +436,22 @@ function convert_arguments(::VolumeLike, data::AbstractArray{T, 3}) where T
     return (0f0 .. n, 0f0 .. m, 0f0 .. k, el32convert(data))
 end
 
-function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::AbstractArray{T, 3}) where T
-    return (x, y, z, el32convert(data))
+
+to_interval(x::ClosedInterval) = x
+function to_interval(range::AbstractRange)
+    mini, maxi = extrema(range)
+    return mini..maxi
 end
-"""
-    convert_arguments(P, x, y, z, i)::(Vector, Vector, Vector, Matrix)
+function to_interval(vec::AbstractVector)
+    range = regularly_spaced_array_to_range(vec)
+    if range === vec # it leaves it unchanged if not possible to convert
+        error("Irregular spaced vectors can't be used as an interval")
+    end
+    return to_interval(r)
+end
 
-Takes 3 `AbstractVector` `x`, `y`, and `z` and the `AbstractMatrix` `i`, and puts everything in a Tuple.
-
-`P` is the plot Type (it is optional).
-"""
-function convert_arguments(::VolumeLike, x::AbstractVector, y::AbstractVector, z::AbstractVector, i::AbstractArray{T, 3}) where T
-    (x, y, z, el32convert(i))
+function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::AbstractArray{T, 3}) where T
+    return (to_interval(x), to_interval(y), to_interval(z), el32convert(data))
 end
 
 
@@ -368,15 +463,16 @@ spanned by `x`, `y` and `z`, and puts `x`, `y`, `z` and `f(x,y,z)` in a Tuple.
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::VolumeLike, x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function)
+function convert_arguments(V::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, f::Function)
     if !applicable(f, x[1], y[1], z[1])
         error("You need to pass a function with signature f(x, y, z). Found: $f")
     end
-    _x, _y, _z = ntuple(Val(3)) do i
-        A = (x, y, z)[i]
-        reshape(A, ntuple(j-> j != i ? 1 : length(A), Val(3)))
+    xyz = (x, y, z)
+    _x, _y, _z = ntuple(3) do i
+        A = xyz[i]
+        reshape(A, ntuple(j-> j != i ? 1 : length(A), 3))
     end
-    return (x, y, z, el32convert.(f.(_x, _y, _z)))
+    return convert_arguments(V, x, y, z, el32convert.(f.(_x, _y, _z)))
 end
 
 ################################################################################
@@ -406,17 +502,6 @@ function convert_arguments(::Type{<: LineSegments}, x::Rect2)
     points = decompose(Point2f, x)
     return (points[[1, 2, 2, 4, 4, 3, 3, 1]],)
 end
-
-################################################################################
-#                                    <:Text                                    #
-################################################################################
-
-"""
-    convert_arguments(x)::(String)
-
-Takes an input `AbstractString` `x` and converts it to a string.
-"""
-# convert_arguments(::Type{<: Text}, x::AbstractString) = (String(x),)
 
 
 ################################################################################
@@ -512,52 +597,6 @@ function convert_arguments(
     (m,)
 end
 
-################################################################################
-#                             Function Conversions                             #
-################################################################################
-
-function convert_arguments(P::Type{<:AbstractPlot}, r::AbstractVector, f::Function)
-    ptype = plottype(P, Lines)
-    to_plotspec(ptype, convert_arguments(ptype, r, f.(r)))
-end
-
-function convert_arguments(P::Type{<:AbstractPlot}, i::AbstractInterval, f::Function)
-    x, y = PlotUtils.adapted_grid(f, endpoints(i))
-    ptype = plottype(P, Lines)
-    to_plotspec(ptype, convert_arguments(ptype, x, y))
-end
-
-# The following `tryrange` code was copied from Plots.jl
-# https://github.com/JuliaPlots/Plots.jl/blob/15dc61feb57cba1df524ce5d69f68c2c4ea5b942/src/series.jl#L399-L416
-
-# try some intervals over which the function may be defined
-function tryrange(F::AbstractArray, vec)
-    rets = [tryrange(f, vec) for f in F] # get the preferred for each
-    maxind = maximum(indexin(rets, vec)) # get the last attempt that succeeded (most likely to fit all)
-    rets .= [tryrange(f, vec[maxind:maxind]) for f in F] # ensure that all functions compute there
-    rets[1]
-end
-
-function tryrange(F, vec)
-    for v in vec
-        try
-            tmp = F(v)
-            return v
-        catch
-        end
-    end
-    error("$F is not a Function, or is not defined at any of the values $vec")
-end
-
-# OffsetArrays conversions
-function convert_arguments(sl::SurfaceLike, wm::OffsetArray)
-  x1, y1 = wm.offsets .+ 1
-  nx, ny = size(wm)
-  x = range(x1, length = nx)
-  y = range(y1, length = ny)
-  v = parent(wm)
-  return convert_arguments(sl, x, y, v)
-end
 
 ################################################################################
 #                               Helper Functions                               #

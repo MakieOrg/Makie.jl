@@ -33,7 +33,7 @@ mkdir(main_tests_root_folder)
 main_tests_record_folder = joinpath(main_tests_root_folder, "recorded")
 mkdir(main_tests_record_folder)
 
-ReferenceTests.record_tests(ReferenceTests.load_database(), recording_dir = main_tests_record_folder)
+@time ReferenceTests.record_tests(ReferenceTests.load_database(), recording_dir = main_tests_record_folder)
 
 main_tests_refimages_download_folder = ReferenceTests.download_refimages(; name=main_refimage_set)
 main_tests_refimages_folder = joinpath(main_tests_root_folder, "reference")
