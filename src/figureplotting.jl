@@ -18,8 +18,11 @@ function is_plot_3d(p::PlotFunc, args...)
 
     # Otherwise, we check the arguments
     non_obs = to_value.(args)
-    conv = convert_arguments(p, non_obs...)
-    Typ, args_conv = apply_convert!(p, Attributes(), conv)
+    RealP = plottype(p, non_obs...)
+    result = is_plot_type_3d(RealP)
+    isnothing(result) || return result
+    conv = convert_arguments(RealP, non_obs...)
+    Typ, args_conv = apply_convert!(RealP, Attributes(), conv)
     return are_args_3d(Typ, args_conv...)
 end
 
