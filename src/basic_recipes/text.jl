@@ -47,8 +47,6 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
         end
         rotation.val = rot
         glyphcollections[] = gcs
-        # Hack to make GLMakie text update when the glyphcollection changes
-        notify(plot.position)
         return
     end
 
