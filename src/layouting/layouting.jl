@@ -300,7 +300,7 @@ function text_quads(position::Vector, gcs::Vector{<: GlyphCollection}, offset, t
     # To avoid errors due to asynchronous updates of text attributes
     M = min(
         length(gcs), length(position), 
-        ifelse(off isa StaticVector || length(x) == 1, typemax(Int), length(x))
+        ifelse(off isa StaticVector || length(off) == 1, typemax(Int), length(off))
     )
 
     char_offsets = Vector{Vec3f}(undef, length(pos)) # TODO can this be Vec2f?
