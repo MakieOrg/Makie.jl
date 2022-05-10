@@ -420,6 +420,16 @@ function convert_arguments(sl::SurfaceLike, x::AbstractVector{T1}, y::AbstractVe
 end
 
 ################################################################################
+#                                  Image                                       #
+################################################################################
+
+function convert_arguments(sl::Type{<: Image}, x::RangeLike, y::RangeLike, data::AbstractMatrix)
+    return (to_interval(x), to_interval(y), el32convert(data))
+end
+
+
+
+################################################################################
 #                                  VolumeLike                                  #
 ################################################################################
 
@@ -445,7 +455,7 @@ end
 function to_interval(vec::AbstractVector)
     range = regularly_spaced_array_to_range(vec)
     if range === vec # it leaves it unchanged if not possible to convert
-        error("Irregular spaced vectors can't be used as an interval")
+        error("Irregular spaced vectors can't be used for a plot that only supports intervals. Use `min..max`, or a range type.")
     end
     return to_interval(r)
 end

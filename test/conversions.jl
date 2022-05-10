@@ -48,8 +48,7 @@ end
 
 @testset "functions" begin
     x = -pi..pi
-    s = convert_arguments(Lines, x, sin)
-    xy = s.args[1]
+    (xy,) = convert_arguments(Lines, x, sin)
     @test xy[1][1] ≈ -pi
     @test xy[end][1] ≈ pi
     for (val, fval) in xy
@@ -57,8 +56,7 @@ end
     end
 
     x = range(-pi, stop=pi, length=100)
-    s = convert_arguments(Lines, x, sin)
-    xy = s.args[1]
+    (xy,) = convert_arguments(Lines, x, sin)
     @test xy[1][1] ≈ -pi
     @test xy[end][1] ≈ pi
     for (val, fval) in xy
@@ -66,7 +64,7 @@ end
     end
 
     pts = [Point(1, 2), Point(4,5), Point(10, 8), Point(1, 2)]
-    ls=LineString(pts)
+    ls = LineString(pts)
     p = convert_arguments(Makie.PointBased(), ls)
     @test p[1] == pts
 
