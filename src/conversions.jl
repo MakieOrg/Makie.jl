@@ -512,6 +512,25 @@ function convert_arguments(::Type{<: LineSegments}, x::Rect2)
     points = decompose(Point2f, x)
     return (points[[1, 2, 2, 4, 4, 3, 3, 1]],)
 end
+                
+################################################################################
+#                                   <:Arrows                                   #
+################################################################################
+                
+# Allow the user to pass a function to `arrows` which determines the direction
+# and magnitude of the arrows.  The function must accept `Point2f` as input.
+# and return Point2f or Vec2f or some array like structure as output.
+function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, f::Function)
+    points = Point2f.(x, y')
+    f_out = f.(points)
+    return (vec(points), vec(Vec2f.(getindex.(f_out, 1), getindex.(f_out, 2))))
+end
+                    
+function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function)
+    points = [Point3f(x, y, z) for x in x, y in y, z in z]
+    f_out = f.(points)
+    return (vec(points), vec(Vec3f.(getindex.(f_out, 1), getindex.(f_out, 2), getindex.(f_out, 3)))
+end
 
 
 ################################################################################
