@@ -195,3 +195,7 @@ end
 @reference_test "pattern barplot" begin
     barplot(1:5, color=Makie.LinePattern(linecolor=:red, background_color=:orange))
 end
+
+@cell "2D surface with ClosedInterval" begin
+    surface(0..1, 0..2, zeros(10, 5))
+end
