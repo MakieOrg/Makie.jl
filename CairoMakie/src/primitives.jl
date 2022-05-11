@@ -839,7 +839,7 @@ function surface2mesh(xs, ys, zs::AbstractMatrix)
     ps = Makie.matrix_grid(p-> nan2zero.(p), xs, ys, zs)
     rect = Tesselation(Rect2f(0, 0, 1, 1), size(zs))
     faces = decompose(QuadFace{Int}, rect)
-    uv = map(x-> Vec2f(x[2], x[1]), decompose_uv(rect))
+    uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
     uvm = GeometryBasics.Mesh(GeometryBasics.meta(ps; uv=uv), faces)
     return GeometryBasics.normal_mesh(uvm)
 end
