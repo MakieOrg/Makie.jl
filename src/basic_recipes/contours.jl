@@ -17,7 +17,6 @@ $(ATTRIBUTES)
 """
 @recipe(Contour) do scene
     default = default_theme(scene)
-    # pop!(default, :color)
     Attributes(;
         default...,
         color = nothing,
@@ -43,6 +42,8 @@ $(ATTRIBUTES)
 @recipe(Contour3d) do scene
     default_theme(scene, Contour)
 end
+
+is_plot_type_3d(::Type{<:Contour3d}) = true
 
 function contourlines(::Type{<: Contour}, contours, cols)
     result = Point2f[]

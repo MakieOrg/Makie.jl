@@ -35,33 +35,6 @@ Curves can be:
     )
 end
 
-function categorical_colors(cols::AbstractVector{<: Colorant}, categories::Integer)
-    if length(cols) < categories
-        error("Not enough colors for number of categories. Categories: $(categories), colors: $(length(cols))")
-    end
-    return to_colormap(cols)
-end
-
-function categorical_colors(cols::AbstractVector, categories::Integer)
-    return categorical_colors(to_color.(cols), categories)
-end
-
-function categorical_colors(cs::Union{String, Symbol}, categories::Integer)
-    cs_string = string(cs)
-    if cs_string in all_gradient_names
-        cols = PlotUtils.get_colorscheme(Symbol(cs_string)).colors
-        categorical_colors(cols, categories)
-    else
-        error(
-            """
-            There is no color gradient named $cs.
-            See `available_gradients()` for the list of available gradients,
-            or look at http://makie.juliaplots.org/dev/generated/colors#Colormap-reference.
-            """
-        )
-    end
-end
-
 replace_missing(x) = ismissing(x) ? NaN : x
 
 function convert_arguments(T::Type{<: Series}, y::AbstractMatrix)
