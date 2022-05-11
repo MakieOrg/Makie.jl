@@ -55,9 +55,9 @@ function limits_to_uvmesh(plot)
         faces = Buffer(lift(rect -> decompose(GLTriangleFace, rect), rect))
         uv = Buffer(lift(decompose_uv, rect))
     else
-        grid(x, y, z, trans) = Makie.matrix_grid(p-> apply_transform(trans, p), x, y, z)
+        grid(x, y, trans) = Makie.matrix_grid(p-> apply_transform(trans, p), x, y, zeros(length(x), length(y)))
         rect = lift((x, y) -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), (length(x), length(y))), px, py)
-        positions = Buffer(lift(grid, px, py, pz, t))
+        positions = Buffer(lift(grid, px, py, t))
         faces = Buffer(lift(r -> decompose(GLTriangleFace, r), rect))
         uv = Buffer(lift(decompose_uv, rect))
     end
