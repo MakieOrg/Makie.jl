@@ -36,23 +36,20 @@ conversion_trait(::Type{<: Volume}) = VolumeLike()
     convert_arguments_typed(::Type{<: AbstractPlot}, args...)::NamedTuple
 
 Converts the arguments to their correct type for the Plot type.
-Throws apropriate errors if it can't convert!
+Throws appropriate errors if it can't convert.
 """
 function convert_arguments_typed end
 
 
 function convert_arguments_typed(P::Type{<: AbstractPlot}, @nospecialize(args...))
-    convert_arguments_typed(conversion_trait(P), args...)
-end
-
-function convert_arguments_typed(::CT, @nospecialize(args...)) where {CT <: ConversionTrait}
-    return convert_arguments_typed(CT, args...)
+    convert_arguments_typed(typeof(conversion_trait(P)), args...)
 end
 
 function convert_arguments_typed(ct::Type{<: ConversionTrait}, @nospecialize(args...))
     # We currently just fall back to not doing anything if there isn't a convert_arguments_typed defined for certain plot types.
     # This makes `@convert_target` an optional feature right now.
-    # It will require a bit more work to make it mandatory, and we have to think more about how to integrate it with user recipes
+    # It will require a bit more work to error here and request an overload for every plot type.
+    # We will have to think more about how to integrate it with user recipes, because otherwise all user defined recipes would error by default without a convert target.
     return args
 end
 
@@ -61,14 +58,24 @@ convert_arguments_typed(::NoConversion, args...) = args
 """
     @convert_target(expr)
 
-Allows to define a conversion target for a plot type, so that convert_arguments can be checked properly, if it converts to the correct types.
+Allows to define a conversion target for a plot type, so that `convert_arguments` can be checked properly, if it converts to the correct types.
+
 
 Usage:
 ```Julia
-@convert_target struct PointBased{N} # Can be the Plot type or a conversion Trait
+@convert_target struct PointBased{N} # Can be the Plot type or a ConversionTrait
     positions::AbstractVector{Point{N, Float32}}
 end
 ```
+This defines an overload of `convert_arguments_typed` pretty much in this way (error handling etc omitted):
+```Julia
+function convert_arguments_typed(ct::Type{<: PointBased}, positions)
+    converted_positions = convert(AbstractVector{Point{N, Float32}} where N, positions)
+    return (positions = converted_positions,) # returns a NamedTuple corresponding to the layout of the struct
+end
+```
+This way, we can throw nice errors, if `convert_arguments` doesn't convert to `AbstractVector{Point{N, Float32}}`.
+Take a look at Makie/src/conversions.jl, to see a few of the core conversion targets.
 """
 macro convert_target(struct_expr)
     if !Meta.isexpr(struct_expr, :struct)

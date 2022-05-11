@@ -107,8 +107,6 @@ Plots a surface, where `(x, y)`  define a grid whose heights are the entries in 
     )
 end
 
-
-
 """
     lines(positions)
     lines(x, y)
