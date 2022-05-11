@@ -1,5 +1,9 @@
 # News
 
+## master
+
+- Added `linecolormap` and `markercolormap` attributes to Legend.  Line and scatter legend elements will also automatically pick up on the colormap.
+
 ## v0.17
 
 - **Breaking** Added `space` as a generic attribute to switch between data, pixel, relative and clip space for positions. `space` in text has been renamed to `markerspace` because of this. `Pixel` and `SceneSpace` are no longer valid inputs for `space` or `markerspace` [#1596](https://github.com/JuliaPlots/Makie.jl/pull/1596).
