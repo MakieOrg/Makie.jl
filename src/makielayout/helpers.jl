@@ -558,3 +558,10 @@ vspan!(ax::Axis, x_lows, x_highs; ymin = 0.0, ymax = 1.0, attrs...) =
 Makie.get_scene(ax::Axis) = ax.scene
 Makie.get_scene(ax::Axis3) = ax.scene
 Makie.get_scene(ax::LScene) = ax.scene
+
+# Overload some GridLayoutBase methods for Figures
+# Boasically, just forward `f.layout` in place of `f`.
+GridLayoutBase.colgap!(f::Figure, args...) = GridLayoutBase.colgap!(f.layout, args...)
+GridLayoutBase.rowgap!(f::Figure, args...) = GridLayoutBase.rowgap!(f.layout, args...)
+GridLayoutBase.colsize!(f::Figure, args...) = GridLayoutBase.colsize!(f.layout, args...)
+GridLayoutBase.rowsize!(f::Figure, args...) = GridLayoutBase.rowsize!(f.layout, args...)
