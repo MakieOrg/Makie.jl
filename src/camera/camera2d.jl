@@ -52,7 +52,7 @@ update_cam!(scene::SceneLike, area) = update_cam!(scene, cameracontrols(scene), 
 Updates the camera for the given `scene` to cover the limits of the `Scene`.
 Useful when using the `Observable` pipeline.
 """
-update_cam!(scene::SceneLike) = update_cam!(scene, cameracontrols(scene), limits(scene)[])
+update_cam!(scene::SceneLike) = update_cam!(scene, cameracontrols(scene), boundingbox(scene)[])
 
 function update_cam!(scene::Scene, cam::Camera2D, area3d::Rect)
     area = Rect2f(area3d)
