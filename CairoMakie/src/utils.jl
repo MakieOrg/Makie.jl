@@ -249,5 +249,6 @@ function per_face_colors(
     error("Unsupported Color type: $(typeof(color))")
 end
 
-mesh_pattern_set_corner_color(pattern, id, c::Colorant) =
+function mesh_pattern_set_corner_color(pattern, id, c::Colorant)
     Cairo.mesh_pattern_set_corner_color_rgba(pattern, id, rgbatuple(c)...)
+end
