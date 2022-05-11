@@ -239,7 +239,7 @@ function per_face_colors(
             wh = wsize .- 1
             cvec = map(uv) do uv
                 x, y = clamp.(round.(Int, Tuple(uv) .* wh) .+ 1, 1, wh)
-                return color[y , x]
+                return color[end - (y - 1), x]
             end
             # TODO This is wrong and doesn't actually interpolate
             # Inside the triangle sampling the color image
