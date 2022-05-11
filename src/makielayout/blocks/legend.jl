@@ -255,7 +255,7 @@ function legendelement_plots!(scene, element::MarkerElement, bbox::Observable{Re
     fracpoints = attrs.markerpoints
     points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
     scat = scatter!(scene, points, color = attrs.markercolor, marker = attrs.marker,
-        markersize = attrs.markersize,
+        colormap = attrs.markercolormap, markersize = attrs.markersize,
         strokewidth = attrs.markerstrokewidth,
         strokecolor = attrs.markerstrokecolor, inspectable = false)
     [scat]
@@ -268,7 +268,7 @@ function legendelement_plots!(scene, element::LineElement, bbox::Observable{Rect
     fracpoints = attrs.linepoints
     points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
     lin = lines!(scene, points, linewidth = attrs.linewidth, color = attrs.linecolor,
-        linestyle = attrs.linestyle, inspectable = false)
+        colormap = attrs.linecolormap, linestyle = attrs.linestyle, inspectable = false)
     [lin]
 end
 
@@ -348,10 +348,12 @@ end
 _renaming_mapping(::Type{LineElement}) = Dict(
     :points => :linepoints,
     :color => :linecolor,
+    :colormap => :linecolormap,
 )
 _renaming_mapping(::Type{MarkerElement}) = Dict(
     :points => :markerpoints,
     :color => :markercolor,
+    :colormap => :markercolormap,
     :strokewidth => :markerstrokewidth,
     :strokecolor => :markerstrokecolor,
 )
@@ -388,6 +390,7 @@ end
 function legendelements(plot::Union{Lines, LineSegments}, legend)
     LegendElement[LineElement(
         color = scalar_lift(plot.color, legend.linecolor),
+        colormap = scalar_lift(plot.colormap, legend.linecolormap),
         linestyle = scalar_lift(plot.linestyle, legend.linestyle),
         linewidth = scalar_lift(plot.linewidth, legend.linewidth))]
 end
@@ -396,6 +399,7 @@ end
 function legendelements(plot::Scatter, legend)
     LegendElement[MarkerElement(
         color = scalar_lift(plot.color, legend.markercolor),
+        colormap = scalar_lift(plot.colormap, legend.markercolormap),
         marker = scalar_lift(plot.marker, legend.marker),
         markersize = scalar_lift(plot.markersize, legend.markersize),
         strokewidth = scalar_lift(plot.strokewidth, legend.markerstrokewidth),
@@ -584,11 +588,11 @@ The position can be a Symbol where the first letter controls the horizontal
 alignment and can be l, r or c, and the second letter controls the vertical
 alignment and can be t, b or c. Or it can be a tuple where the first
 element is set as the Legend's halign and the second element as its valign.
-                        
-With the keywords merge and unique you can control how plot objects with the 
-same labels are treated. If merge is true, all plot objects with the same 
-label will be layered on top of each other into one legend entry. If unique 
-is true, all plot objects with the same plot type and label will be reduced 
+
+With the keywords merge and unique you can control how plot objects with the
+same labels are treated. If merge is true, all plot objects with the same
+label will be layered on top of each other into one legend entry. If unique
+is true, all plot objects with the same plot type and label will be reduced
 to one occurrence.
 """
 function axislegend(ax, args...; position = :rt, kwargs...)

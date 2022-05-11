@@ -975,12 +975,16 @@ const EntryGroup = Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}
         linewidth = theme(scene, :linewidth)
         "The default line color used for LineElements"
         linecolor = theme(scene, :linecolor)
+        "The default colormap used for LineElements, if `color` is a vector of numbers"
+        linecolormap = theme(scene, :colormap)
         "The default line style used for LineElements"
         linestyle = :solid
-        "The default marker color for MarkerElements"
-        markercolor = theme(scene, :markercolor)
         "The default marker for MarkerElements"
         marker = theme(scene, :marker)
+        "The default marker color for MarkerElements"
+        markercolor = theme(scene, :markercolor)
+        "The default color"
+        markercolormap = theme(scene, :colormap)
         "The default marker points used for MarkerElements in normalized coordinates relative to each label patch."
         markerpoints = [Point2f(0.5, 0.5)]
         "The default marker size used for MarkerElements."
