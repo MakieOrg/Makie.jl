@@ -347,7 +347,14 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
         suggestedbbox = bbox
     )
 
-    blockscene = Scene(topscene, camera = campixel!)
+    blockscene = Scene(
+        topscene,
+        # the block scene tracks the parent scene exactly
+        # for this it seems to be necessary to zero-out a possible non-zero
+        # origin of the parent
+        lift(Makie.zero_origin, topscene.px_area),
+        camera = campixel!
+    )
 
     # create base block with otherwise undefined fields
     b = T(fig_or_scene, lobservables, blockscene)
