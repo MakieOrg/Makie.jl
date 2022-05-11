@@ -5,6 +5,7 @@
 - **Breaking** Added `space` as a generic attribute to switch between data, pixel, relative and clip space for positions. `space` in text has been renamed to `markerspace` because of this. `Pixel` and `SceneSpace` are no longer valid inputs for `space` or `markerspace` [#1596](https://github.com/JuliaPlots/Makie.jl/pull/1596).
 - **Breaking** Deprecated `mouse_selection(scene)` for `pick(scene)`.
 - **Breaking** Bumped `GridLayoutBase` version to `v0.7`, which introduced offset layouts. Now, indexing into row 0 doesn't create a new row 1, but a new row 0, so that all previous content positions stay the same. This makes building complex layouts order-independent [#1704](https://github.com/JuliaPlots/Makie.jl/pull/1704).
+- **Breaking** deprecate `to_colormap(cmap, ncolors)` in favor of `categorical_colors(cmap, ncolors)` and `resample_cmap(cmap, ncolors)` [#1901](https://github.com/JuliaPlots/Makie.jl/pull/1901) [#1723](https://github.com/JuliaPlots/Makie.jl/pull/1723).
 - Added `empty!(fig)` and changed `empty!(scene)` to remove all child plots without detaching windows [#1818](https://github.com/JuliaPlots/Makie.jl/pull/1818).
 - Switched to erroring instead of warning for deprecated events `mousebuttons`, `keyboardbuttons` and `mousedrag`.
 - `Layoutable` was renamed to `Block` and the infrastructure changed such that attributes are fixed fields and each block has its own `Scene` for better encapsulation [#1796](https://github.com/JuliaPlots/Makie.jl/pull/1796).

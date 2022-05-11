@@ -291,7 +291,7 @@ function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::A
     return map(el32convert, adjust_axes(SL, x, y, z))
 end
 
-convert_arguments(::SurfaceLike, x::AbstractMatrix, y::AbstractMatrix) = (x, y, zeros(size(y)))
+convert_arguments(sl::SurfaceLike, x::AbstractMatrix, y::AbstractMatrix) = convert_arguments(sl, x, y, zeros(size(y)))
 
 """
     convert_arguments(P, x, y, z)::Tuple{ClosedInterval, ClosedInterval, Matrix}
@@ -724,9 +724,9 @@ Converts a `color` symbol (e.g. `:blue`) to a color RGBA.
 convert_attribute(color, ::key"color") = to_color(color)
 
 """
-    to_colormap(cm[, N = 20])
+    to_colormap(cm)
 
-Converts a colormap `cm` symbol (e.g. `:Spectral`) to a colormap RGB array, where `N` specifies the number of color points.
+Converts a colormap `cm` symbol/string (e.g. `:Spectral`) to a colormap RGB array.
 """
 convert_attribute(colormap, ::key"colormap") = to_colormap(colormap)
 convert_attribute(rotation, ::key"rotation") = to_rotation(rotation)
@@ -744,7 +744,7 @@ struct Palette
    i::Ref{Int}
    Palette(colors) = new(to_color.(colors), zero(Int))
 end
-Palette(name::Union{String, Symbol}, n = 8) = Palette(to_colormap(name, n))
+Palette(name::Union{String, Symbol}, n = 8) = Palette(categorical_colors(name, n))
 function to_color(p::Palette)
     N = length(p.colors)
     p.i[] = p.i[] == N ? 1 : p.i[] + 1
@@ -1009,6 +1009,45 @@ function available_gradients()
     end
 end
 
+
+to_colormap(cm, categories::Integer) = error("`to_colormap(cm, categories)` is deprecated. Use `Makie.categorical_colors(cm, categories)` for categorical colors, and `resample_cmap(cmap, ncolors)` for continous resampling.")
+
+"""
+    categorical_colors(colormaplike, categories::Integer)
+
+Creates categorical colors and tries to match `categories`.
+Will error if color scheme doesn't contain enough categories. Will drop the n last colors, if request less colors than contained in scheme.
+"""
+function categorical_colors(cols::AbstractVector{<: Colorant}, categories::Integer)
+    if length(cols) < categories
+        error("Not enough colors for number of categories. Categories: $(categories), colors: $(length(cols))")
+    end
+    return cols[1:categories]
+end
+
+function categorical_colors(cols::AbstractVector, categories::Integer)
+    return categorical_colors(to_color.(cols), categories)
+end
+
+function categorical_colors(cs::Union{String, Symbol}, categories::Integer)
+    cs_string = string(cs)
+    if cs_string in all_gradient_names
+        if haskey(ColorBrewer.colorSchemes, cs_string)
+            return to_colormap(ColorBrewer.palette(cs_string, categories))
+        else
+            return categorical_colors(to_colormap(cs_string), categories)
+        end
+    else
+        error(
+            """
+            There is no color gradient named $cs.
+            See `available_gradients()` for the list of available gradients,
+            or look at http://makie.juliaplots.org/dev/generated/colors#Colormap-reference.
+            """
+        )
+    end
+end
+
 """
 Reverses the attribute T upon conversion
 """
@@ -1019,8 +1058,10 @@ end
 to_colormap(r::Reverse) = reverse(to_colormap(r.data))
 to_colormap(cs::ColorScheme) = to_colormap(cs.colors)
 
+
+
 """
-    to_colormap(b)
+    to_colormap(b::AbstractVector)
 
 An `AbstractVector{T}` with any object that [`to_color`](@ref) accepts.
 """
@@ -1033,6 +1074,8 @@ function to_colormap(cs::Tuple{<: Union{Reverse, Symbol, AbstractString}, Real})
 end
 
 """
+    to_colormap(cs::Union{String, Symbol})::Vector{RGBAf}
+
 A Symbol/String naming the gradient. For more on what names are available please see: `available_gradients()`.
 For now, we support gradients from `PlotUtils` natively.
 """
