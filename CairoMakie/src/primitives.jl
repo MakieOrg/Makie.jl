@@ -811,7 +811,7 @@ function draw_mesh3D(
     Cairo.set_source(ctx, pattern)
     Cairo.close_path(ctx)
     Cairo.paint(ctx)
-    return nothing
+    return
 end
 
 
@@ -835,43 +835,13 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
     return nothing
 end
 
-function surface2mesh(xs::Makie.ClosedInterval, ys, zs::AbstractMatrix)
-    surface2mesh(range(xs.left, xs.right, length = size(zs, 1)), ys, zs)
-end
-
-function surface2mesh(xs, ys::Makie.ClosedInterval, zs::AbstractMatrix)
-    surface2mesh(xs, range(ys.left, ys.right, length = size(zs, 2)), zs)
-end
-
-function surface2mesh(xs::Makie.ClosedInterval, ys::Makie.ClosedInterval, zs::AbstractMatrix)
-    surface2mesh(
-        range(xs.left, xs.right, length = size(zs, 1)),
-        range(ys.left, ys.right, length = size(zs, 2)),
-        zs)
-end
-
-function surface2mesh(xs::AbstractVector, ys::AbstractVector, zs::AbstractMatrix)
-    ps = [nan2zero.(Point3f(xs[i], ys[j], zs[i, j])) for j in eachindex(ys) for i in eachindex(xs)]
-    idxs = LinearIndices(size(zs))
-    faces = [
-        QuadFace(idxs[i, j], idxs[i+1, j], idxs[i+1, j+1], idxs[i, j+1])
-        for j in 1:size(zs, 2)-1 for i in 1:size(zs, 1)-1
-    ]
-    uv = [Vec2f(i, j) for j in LinRange(0, 1, size(zs, 2)) for i in LinRange(0, 1, size(zs, 1))]
-    
-    return  GeometryBasics.normal_mesh(GeometryBasics.Mesh(GeometryBasics.meta(ps; uv = uv), faces))
-end
-
-function surface2mesh(xs::AbstractMatrix, ys::AbstractMatrix, zs::AbstractMatrix)
-    ps = [nan2zero.(Point3f(xs[i, j], ys[i, j], zs[i, j])) for j in 1:size(zs, 2) for i in 1:size(zs, 1)]
-    idxs = LinearIndices(size(zs))
-    faces = [
-        QuadFace(idxs[i, j], idxs[i+1, j], idxs[i+1, j+1], idxs[i, j+1])
-        for j in 1:size(zs, 2)-1 for i in 1:size(zs, 1)-1
-    ]
-    uv = [Vec2f(i, j) for j in LinRange(0, 1, size(zs, 2)) for i in LinRange(0, 1, size(zs, 1))]
-    
-    return GeometryBasics.normal_mesh(GeometryBasics.Mesh(GeometryBasics.meta(ps; uv = uv), faces))
+function surface2mesh(xs, ys, zs::AbstractMatrix)
+    ps = Makie.matrix_grid(p-> nan2zero.(p), xs, ys, zs)
+    rect = Tesselation(Rect2f(0, 0, 1, 1), size(zs))
+    faces = decompose(QuadFace{Int}, rect)
+    uv = decompose_uv(rect)
+    uvm = GeometryBasics.Mesh(GeometryBasics.meta(ps; uv=uv), faces)
+    return GeometryBasics.normal_mesh(uvm)
 end
 
 ################################################################################

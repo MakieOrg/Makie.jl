@@ -331,13 +331,13 @@ end
 
 
 @cell "space 2D" begin
-    # This should generate a regular grid with text in a circle in a box. All 
+    # This should generate a regular grid with text in a circle in a box. All
     # sizes and positions are scaled to be equal across all options.
     fig = Figure(resolution = (700, 700))
     ax = Axis(fig[1, 1], width = 600, height = 600)
     spaces = (:data, :pixel, :relative, :clip)
     xs = [
-        [0.1, 0.35, 0.6, 0.85], 
+        [0.1, 0.35, 0.6, 0.85],
         [0.1, 0.35, 0.6, 0.85] * 600,
         [0.1, 0.35, 0.6, 0.85],
         2 .* [0.1, 0.35, 0.6, 0.85] .- 1
@@ -347,16 +347,16 @@ end
         for (j, mspace) in enumerate(spaces)
             s = 1.5scales[i]
             mesh!(
-                ax, Rect2f(xs[i][i] - 2s, xs[i][j] - 2s, 4s, 4s), space = space, 
+                ax, Rect2f(xs[i][i] - 2s, xs[i][j] - 2s, 4s, 4s), space = space,
                 shading = false, color = :blue)
             lines!(
-                ax, Rect2f(xs[i][i] - 2s, xs[i][j] - 2s, 4s, 4s), 
+                ax, Rect2f(xs[i][i] - 2s, xs[i][j] - 2s, 4s, 4s),
                 space = space, linewidth = 2, color = :red)
             scatter!(
                 ax, Point2f(xs[i][i], xs[i][j]), color = :orange,
                 markersize = 5scales[j], space = space, markerspace = mspace)
             text!(
-                ax, "$space\n$mspace", position = Point2f(xs[i][i], xs[i][j]), 
+                ax, "$space\n$mspace", position = Point2f(xs[i][i], xs[i][j]),
                 textsize = scales[j], space = space, markerspace = mspace,
                 align = (:center, :center), color = :black)
         end
@@ -379,7 +379,7 @@ end
     ax = Axis(fig[1, 1], width = 600, height = 600)
     spaces = (:data, :pixel, :relative, :clip)
     xs = [
-        [0.1, 0.35, 0.6, 0.85], 
+        [0.1, 0.35, 0.6, 0.85],
         [0.1, 0.35, 0.6, 0.85] * 600,
         [0.1, 0.35, 0.6, 0.85],
         2 .* [0.1, 0.35, 0.6, 0.85] .- 1
@@ -389,16 +389,16 @@ end
         for (j, mspace) in enumerate(spaces)
             s = 1.5scales[i]
             mesh!(
-                ax, Rect2f(xs[i][i] - 2s, xs[i][j] - 2s, 4s, 4s), space = space, 
+                ax, Rect2f(xs[i][i] - 2s, xs[i][j] - 2s, 4s, 4s), space = space,
                 shading = false, color = :blue)
             lines!(
-                ax, Rect2f(xs[i][i] - 2s, xs[i][j] - 2s, 4s, 4s), 
+                ax, Rect2f(xs[i][i] - 2s, xs[i][j] - 2s, 4s, 4s),
                 space = space, linewidth = 2, color = :red)
             scatter!(
                 ax, Point2f(xs[i][i], xs[i][j]), color = :orange,
                 markersize = 5scales[j], space = space, markerspace = mspace)
             text!(
-                ax, "$space\n$mspace", position = Point2f(xs[i][i], xs[i][j]), 
+                ax, "$space\n$mspace", position = Point2f(xs[i][i], xs[i][j]),
                 textsize = scales[j], space = space, markerspace = mspace,
                 align = (:center, :center), color = :black)
         end
@@ -430,6 +430,6 @@ end
 end
 
 @cell "2D surface with explicit color" begin
-    fig, ax, plt = surface(1:10, 1:10, ones(10, 10); color = [RGBf0(x*y/100, 0, 0) for x in 1:10, y in 1:10], shading = false)
+    fig, ax, plt = surface(1:10, 1:10, ones(10, 10); color = [RGBf(x*y/100, 0, 0) for x in 1:10, y in 1:10], shading = false)
     fig
 end
