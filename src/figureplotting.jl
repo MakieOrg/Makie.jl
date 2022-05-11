@@ -120,8 +120,8 @@ function plot(P::PlotFunc, attributes::Attributes, gp::GridPosition, args...)
     else
         get_axis_type(P, args...)
     end
-
-    gp[] = AxType(f; axis...)
+    ax =  AxType(f; axis...)
+    gp[] = ax
     p = plot!(P, attributes, ax, args...)
     return AxisPlot(ax, p)
 end
@@ -164,23 +164,15 @@ function plot(P::PlotFunc, attributes::Attributes, gsp::GridSubposition, args...
     fig = MakieLayout.get_top_parent(gsp)
     axis = get_as_dict(attributes, :axis)
 
-    if haskey(axis, :type)
-        axtype = axis[:type]
+    AxType = if haskey(axis, :type)
         pop!(axis, :type)
-        ax = axtype(fig; axis...)
     else
-        proxyscene = Scene()
-        plot!(P, attributes, proxyscene, args...)
-        if is2d(proxyscene)
-            ax = Axis(fig; axis...)
-        else
-            ax = LScene(fig; axis..., scenekw = (camera = automatic,))
-        end
+        get_axis_type(P, args...)
     end
-
+    ax =  AxType(fig; axis...)
     gsp.parent[gsp.rows, gsp.cols, gsp.side] = ax
     p = plot!(P, attributes, ax, args...)
-    AxisPlot(ax, p)
+    return AxisPlot(ax, p)
 end
 
 function plot!(P::PlotFunc, attributes::Attributes, gsp::GridSubposition, args...)
