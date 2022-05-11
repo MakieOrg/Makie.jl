@@ -191,3 +191,8 @@ end
 @cell "axsi3" begin
     meshscatter(RNG.rand(Point3f, 10), axis=(type=Axis3,))
 end
+
+
+@cell "2D surface with ClosedInterval" begin
+    surface(0..1, 0..2, zeros(10, 5))
+end
