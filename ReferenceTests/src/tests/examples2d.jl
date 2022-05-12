@@ -441,3 +441,7 @@ end
     markersize = map(img-> Vec2f(reverse(size(img) ./ 10)), images)
     scatter(1:2, 1:2, marker = images, markersize=markersize, axis=(limits=(0.5, 2.5, 0.5, 2.5),))
 end
+
+@cell "2D surface with explicit color" begin
+    surface(1:10, 1:10, ones(10, 10); color = [RGBf(x*y/100, 0, 0) for x in 1:10, y in 1:10], shading = false)
+end

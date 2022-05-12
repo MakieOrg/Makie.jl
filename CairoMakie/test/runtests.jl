@@ -34,6 +34,7 @@ excludes = Set([
     "Hollow pie chart",
     "Record Video",
     "Image on Geometry (Earth)",
+    "Image on Geometry (Moon)",
     "Comparing contours, image, surfaces and heatmaps",
     "Textured Mesh",
     "Simple pie chart",
