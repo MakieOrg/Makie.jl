@@ -71,6 +71,7 @@ get_attribute, plotsym, plotkey, attributes, used_attributes
 import MakieCore: heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface, text, volume
 import MakieCore: heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, surface!, text!, volume!
 import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
+import MakieCore: @convert_target, convert_arguments_typed
 
 export @L_str
 export ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
