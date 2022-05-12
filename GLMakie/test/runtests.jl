@@ -5,11 +5,10 @@ using GeometryBasics: origin
 using Makie
 using ImageMagick
 using Pkg
+
 reference_tests_dir = normpath(joinpath(dirname(pathof(Makie)), "..", "ReferenceTests"))
 Pkg.develop(PackageSpec(path = reference_tests_dir))
-
 using ReferenceTests
-using ReferenceTests: @reference_test
 
 GLMakie.activate!()
 GLMakie.set_window_config!(;

@@ -78,6 +78,7 @@ end
 macro include_reference_tests(path)
     toplevel_folder = dirname(string(__source__.file))
     return esc(quote
+        using ReferenceTests: @reference_test
         name = splitext(basename($(path)))[1]
         include_path = isdir($path) ? $path : joinpath(@__DIR__, "tests", $path)
         recording_dir = joinpath($toplevel_folder, name)
