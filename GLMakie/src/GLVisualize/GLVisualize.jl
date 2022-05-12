@@ -18,7 +18,7 @@ import Base: merge, convert, show
 using Base.Iterators: Repeated, repeated
 using LinearAlgebra
 
-import Makie: to_font, glyph_uv_width!
+import Makie: to_font, glyph_uv_width!, el32convert
 import ..GLMakie: get_texture!, loadshader
 
 const GLBoundingBox = Rect3f

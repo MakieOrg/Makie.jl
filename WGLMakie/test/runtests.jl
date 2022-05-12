@@ -36,7 +36,9 @@ excludes = Set([
     "Order Independent Transparency",
     "Record Video",
     "fast pixel marker",
-    "Animated surface and wireframe"
+    "Animated surface and wireframe",
+    "Array of Images Scatter",
+    "Image Scatter different sizes"
 ])
 
 @testset "refimages" begin
