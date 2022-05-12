@@ -1,6 +1,6 @@
 using ReferenceTests
 using ReferenceTests: RNG, loadasset, @reference_test
-using GeometryBasics
+using ReferenceTests.GeometryBasics
 using ReferenceTests.Statistics
 using ReferenceTests.CategoricalArrays: categorical, levelcode
 using ReferenceTests.LinearAlgebra
