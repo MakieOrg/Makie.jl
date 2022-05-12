@@ -1,6 +1,3 @@
-using GeometryBasics
-using Statistics
-using CategoricalArrays: categorical, levelcode
 
 @cell "Test heatmap + image overlap" begin
     heatmap(RNG.rand(32, 32))

@@ -1,7 +1,3 @@
-using LinearAlgebra
-using FileIO, Colors, GeometryBasics
-using ReferenceTests: loadasset, RNG
-using Makie: Record, volume
 
 @cell "Image on Geometry (Moon)" begin
     moon = loadasset("moon.png")

@@ -1,9 +1,7 @@
-
 function extract_frames(video, frame_folder)
     path = joinpath(frame_folder, "frames%04d.png")
     FFMPEG.ffmpeg_exe(`-loglevel quiet -i $video -y $path`)
 end
-
 
 function get_frames(a, b)
     return (get_frames(a), get_frames(b))
@@ -56,9 +54,9 @@ function get_all_relative_filepaths_recursively(dir)
     end
 end
 
-function record_comparison(base_folder::String; record_folder_name="recorded", reference_folder_name = "reference")
+function record_comparison(base_folder::String; record_folder_name="recorded", reference_name = basename(base_folder), tag=last_major_version())
     record_folder = joinpath(base_folder, record_folder_name)
-    reference_folder = joinpath(base_folder, reference_folder_name)
+    reference_folder = download_refimages(tag; name=reference_name)
     testimage_paths = get_all_relative_filepaths_recursively(record_folder)
     missing_refimages, scores = compare(testimage_paths, reference_folder, record_folder)
 
@@ -104,40 +102,3 @@ function compare(relative_test_paths::Vector{String}, reference_dir::String, rec
     end
     return missing_refimages, scores
 end
-
-
-function record_tests(db=load_database(); recording_dir=basedir("recorded"))
-    recorded_files = String[]
-    @testset "Record tests" begin
-        rm(recording_dir, recursive=true, force=true)
-        mkdir(recording_dir)
-        Makie.inline!(true)
-        no_backend = Makie.current_backend[] === missing
-        for (source_location, entry) in db
-            try
-                Makie.set_theme!(resolution=(500, 500))
-                # we currently can't record anything without a backend!
-                if no_backend && ((:Record in entry.used_functions) || (:Stepper in entry.used_functions))
-                    continue
-                end
-                RNG.seed_rng!()
-                result = Base.invokelatest(entry.func)
-                # only save if we have a backend for saving
-                uname = entry.title
-                if !no_backend
-                    save_result(joinpath(recording_dir, uname), result)
-                end
-                push!(recorded_files, uname)
-                @info("Tested: $(entry.title)")
-                @test true
-            catch e
-                @info("Test: $(entry.title) didn't pass")
-                @test false
-                Base.showerror(stderr, e)
-                Base.show_backtrace(stderr, Base.catch_backtrace())
-            end
-        end
-    end
-    return recorded_files, recording_dir
-end
-

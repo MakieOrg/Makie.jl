@@ -1,5 +1,3 @@
-using LaTeXStrings
-
 @cell "heatmap_with_labels" begin
     fig = Figure(resolution = (600, 600))
     ax = fig[1, 1] = Axis(fig)

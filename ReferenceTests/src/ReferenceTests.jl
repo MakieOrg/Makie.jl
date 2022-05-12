@@ -1,7 +1,6 @@
 module ReferenceTests
 
 
-# Write your package code here.
 using Test
 using MeshIO
 using FileIO
@@ -23,6 +22,11 @@ import ZipFile
 import REPL
 import REPL.TerminalMenus
 
+
+# Deps for tests
+using CategoricalArrays
+
+
 basedir(files...) = normpath(joinpath(@__DIR__, "..", files...))
 loadasset(files...) = FileIO.load(assetpath(files...))
 
@@ -35,5 +39,7 @@ include("stable_rng.jl")
 include("runtests.jl")
 include("image_download.jl")
 include("local_server.jl")
+
+export @include_reference_tests
 
 end

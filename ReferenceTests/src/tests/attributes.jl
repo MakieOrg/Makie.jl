@@ -1,5 +1,3 @@
-using Makie: volume
-
 @cell "align" begin
     fig, ax, sc = scatter(RNG.rand(10), color=:red)
     text!(ax, "adding text", textsize=0.6, align=(:center, :center))
