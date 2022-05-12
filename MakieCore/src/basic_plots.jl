@@ -253,6 +253,7 @@ Plots a text.
         space = :data,
         markerspace = :pixel,
         offset = (0.0, 0.0),
+        word_wrap_width = -1, 
         inspectable = theme(scene, :inspectable)
     )
 end

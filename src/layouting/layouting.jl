@@ -40,7 +40,8 @@ Compute a GlyphCollection for a `string` given textsize, font, align, rotation, 
 """
 function layout_text(
         string::AbstractString, textsize::Union{AbstractVector, Number},
-        font, align, rotation, justification, lineheight, color, strokecolor, strokewidth
+        font, align, rotation, justification, lineheight, color, 
+        strokecolor, strokewidth, word_wrap_width
     )
 
     ft_font = to_font(font)
@@ -50,8 +51,11 @@ function layout_text(
     fontperchar = attribute_per_char(string, ft_font)
     textsizeperchar = attribute_per_char(string, rscale)
 
-    glyphcollection = glyph_collection(string, fontperchar, textsizeperchar, align[1],
-        align[2], lineheight, justification, rot, color, strokecolor, strokewidth)
+    glyphcollection = glyph_collection(
+        string, fontperchar, textsizeperchar, align[1], align[2], 
+        lineheight, justification, rot, color, 
+        strokecolor, strokewidth, word_wrap_width
+    )
 
     return glyphcollection
 end
@@ -63,8 +67,11 @@ Calculate the positions for each glyph in a string given a certain font, font si
 This layout in text coordinates, relative to the anchor point [0,0] can then be translated and
 rotated to wherever it is needed in the plot.
 """
-function glyph_collection(str::AbstractString, font_per_char, fontscale_px, halign, valign,
-        lineheight_factor, justification, rotation, color, strokecolor, strokewidth)
+function glyph_collection(
+        str::AbstractString, font_per_char, fontscale_px, halign, valign,
+        lineheight_factor, justification, rotation, color, 
+        strokecolor, strokewidth, word_wrap_width
+    )
 
     isempty(str) && return GlyphCollection(
         [], [], Point3f[],FreeTypeAbstraction.FontExtent{Float32}[],
@@ -83,24 +90,66 @@ function glyph_collection(str::AbstractString, font_per_char, fontscale_px, hali
     end
 
     # split the character info vector into lines after every \n
-    lineinfos = let
+    lineinfos, xs = let
         last_line_start = 1
         lineinfos = typeof(view(charinfos, last_line_start:last_line_start))[]
+
+        last_space_local_idx = 0
+        last_space_global_idx = 0
+        newline_offset = 0f0
+        x = 0f0
+        xs = [Float32[]]
+
+        # If word_wrap_width > 0:
+        # Whenever a space is hit, record its index in last_space_local_idx and 
+        # last_space_global_index. If there is already a space on record and the 
+        # current word overflows word_wrap_width, replace the last space with 
+        # a newline. newline character unset the last space index
+        # word{space}word{space}word{space}
+        #        ↑      ↑   ↑
+        #        |     i-1  i
+        # last_space_idx
+
         for (i, ci) in enumerate(charinfos)
-            if ci.char == '\n' || i == length(charinfos)
+            push!(xs[end], x)
+            x += charinfos[i].hadvance
+            
+            if 0 < word_wrap_width < x && (ci.char == ' ' || i == length(charinfos)) && 
+                    last_space_local_idx != 0
+
+                newline_offset = xs[end][last_space_local_idx + 1]
+                push!(xs, xs[end][last_space_local_idx+1:end] .- newline_offset)
+                xs[end-1] = xs[end-1][1:last_space_local_idx]
+                push!(lineinfos, view(charinfos, last_line_start:last_space_global_idx))
+                last_line_start = last_space_global_idx+1
+                x = xs[end][end] + charinfos[i].hadvance
+
+                # TODO Do we need to redo the metrics for newlines?
+                charinfos[last_space_global_idx] = let 
+                    _, font, scale, hadvance, hi_bb, lineheight, extent = charinfos[last_space_global_idx]
+                    (char = '\n', font = font, scale = scale, hadvance = hadvance,
+                        hi_bb = hi_bb, lineheight = lineheight, extent = extent)
+                end
+                
+                if i == length(charinfos)
+                    push!(lineinfos, view(charinfos, last_line_start:i))
+                end
+
+            elseif ci.char == '\n' || i == length(charinfos)
+                push!(xs, Float32[])
                 push!(lineinfos, view(charinfos, last_line_start:i))
+                last_space_local_idx = 0
                 last_line_start = i+1
+                x = 0f0
+            end
+
+            if 0 < word_wrap_width && ci.char == ' '
+                last_space_local_idx = length(last(xs))
+                last_space_global_idx = i
             end
         end
-        lineinfos
-    end
 
-    # calculate the x positions of each character in each line
-    xs = map(lineinfos) do line
-        cumsum([
-            0f0;
-            [l.hadvance for l in line[1:end-1]]
-        ])
+        lineinfos, xs
     end
 
     # calculate linewidths as the last origin plus hadvance for each line
@@ -254,6 +303,7 @@ _offset_to_vec(o::Vector) = to_ndim.(Vec3f, o, 0)
 _offset_at(o::Vec3f, i) = o
 _offset_at(o::Vector, i) = o[i]
 Base.getindex(x::ScalarOrVector, i) = x.sv isa Vector ? x.sv[i] : x.sv
+Base.lastindex(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
 
 function text_quads(position::VecTypes, gc::GlyphCollection, offset, transfunc)
     p = apply_transform(transfunc, position)

@@ -601,6 +601,8 @@ end
         tellheight::Bool = true
         "The align mode of the text in its parent GridLayout."
         alignmode = Inside()
+        "Enable word wrapping to the suggested width of the Label."
+        word_wrap::Bool = false
     end
 end
 
