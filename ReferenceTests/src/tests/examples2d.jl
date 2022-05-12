@@ -429,7 +429,19 @@ end
     fig
 end
 
+@cell "Array of Images Scatter" begin
+    img = Makie.logo()
+    scatter(1:2, 1:2, marker = [img, img], markersize=reverse(size(img) ./ 10), axis=(limits=(0.5, 2.5, 0.5, 2.5),))
+end
+
+@cell "Image Scatter different sizes" begin
+    img = Makie.logo()
+    img2 = load(Makie.assetpath("doge.png"))
+    images = [img, img2]
+    markersize = map(img-> Vec2f(reverse(size(img) ./ 10)), images)
+    scatter(1:2, 1:2, marker = images, markersize=markersize, axis=(limits=(0.5, 2.5, 0.5, 2.5),))
+end
+
 @cell "2D surface with explicit color" begin
-    fig, ax, plt = surface(1:10, 1:10, ones(10, 10); color = [RGBf(x*y/100, 0, 0) for x in 1:10, y in 1:10], shading = false)
-    fig
+    surface(1:10, 1:10, ones(10, 10); color = [RGBf(x*y/100, 0, 0) for x in 1:10, y in 1:10], shading = false)
 end
