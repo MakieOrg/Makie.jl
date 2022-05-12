@@ -57,8 +57,8 @@ For example, if your Scene's resolution is `(800, 600)`, by setting `scale=2`, t
 You can deactivate this rasterization by setting `plt.rasterize = false`.
 
 Example: 
-``` 
+\begin{examplefigure}{format=svg}
 fig = Figure()
+v = rand(10000,2)
 scatter(fig[1,1], v[:,1], v[:,2], rasterize = true, markersize = 1.0)
-save("raster_test.pdf", fig)
-```
+\end{examplefigure}
