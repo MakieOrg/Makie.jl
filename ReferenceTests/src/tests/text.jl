@@ -299,7 +299,7 @@ end
 
     Makie.step!(st)
     ## change lengths
-    textnode.val = push!(textnode[], L"\int_0^5x^2+2ab")
+    textnode[] = push!(textnode[], L"\int_0^5x^2+2ab")
     posnode[] = push!(posnode[], Point2f(150, 150))
     Makie.step!(st)
     st

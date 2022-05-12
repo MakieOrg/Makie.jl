@@ -310,24 +310,8 @@ function draw_atomic(screen::GLScreen, scene::Scene,
         markerspace = gl_attributes[:markerspace]
         offset = pop!(gl_attributes, :offset, Vec2f(0))
 
-        # TODO: This is a hack before we get better updating of plot objects and attributes going.
-        # Here we only update the glyphs when the glyphcollection changes, if it's a singular glyphcollection.
-        # The if statement will be compiled away depending on the parameter of Text.
-        # This means that updates of a text vector and a separate position vector will still not work if only the text
-        # vector is triggered, but basically all internal objects use the vector of tuples version, and that triggers
-        # both glyphcollection and position, so it still works
-        if glyphcollection[] isa Makie.GlyphCollection
-            # here we use the glyph collection observable directly
-            gcollection = glyphcollection
-        else
-            # and here we wrap it into another observable
-            # so it doesn't trigger dimension mismatches
-            # the actual, new value gets then taken in the below lift with to_value
-            gcollection = Observable(glyphcollection)
-        end
-
         # calculate quad metrics
-        glyph_data = map(pos, gcollection, offset, transfunc) do pos, gc, offset, transfunc
+        glyph_data = map(pos, glyphcollection, offset, transfunc) do pos, gc, offset, transfunc
             Makie.text_quads(pos, to_value(gc), offset, transfunc)
         end
 
@@ -566,10 +550,17 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
                 Texture(map(x-> convert(Array, el32convert(x)), arg); minfilter=:nearest)
             end
             return GLVisualize.draw_surface(args, gl_attributes)
+        elseif all(T -> T <: Makie.ClosedInterval, types) # all others should be closed intervals
+            # If we only have start and end points for the surface, we can use `Grid` as an optimization,
+            # which will just upload the endpoints to the GPU, and will interpolate the positions between them in the shader.
+            gl_attributes[:position] = map(x[1], x[2]) do x, y
+                GLVisualize.Grid(LinRange(extrema(x)..., 2), LinRange(extrema(y)..., 2))
+            end
+            position_z = Texture(el32convert(x[3]); minfilter=:nearest)
+            gl_attributes[:position_z] = position_z
+            return GLVisualize.draw_surface(position_z, gl_attributes)
         else
-            gl_attributes[:ranges] = to_range.(to_value.(x[1:2]))
-            z_data = Texture(el32convert(x[3]); minfilter=:nearest)
-            return GLVisualize.draw_surface(z_data, gl_attributes)
+            error("x and y need to be Vectors, Matrices or ClosedIntervals. Found: $(types)")
         end
     end
     return robj

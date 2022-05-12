@@ -437,28 +437,6 @@ end
 ################################################################################
 
 """
-    regularly_spaced_array_to_range(arr)
-If possible, converts `arr` to a range.
-If not, returns array unchanged.
-"""
-function regularly_spaced_array_to_range(arr)
-    diffs = unique!(sort!(diff(arr)))
-    step = sum(diffs) ./ length(diffs)
-    if all(x-> x ≈ step, diffs)
-        m, M = extrema(arr)
-        if step < zero(step)
-            m, M = M, m
-        end
-        # don't use stop=M, since that may not include M
-        return range(m; step=step, length=length(arr))
-    else
-        return arr
-    end
-end
-
-regularly_spaced_array_to_range(arr::AbstractRange) = arr
-
-"""
     interpolation_flag(is_vector, interp, wpx, hpx, w, h)
 
 * is_vector: if we're using vector backend
@@ -495,14 +473,14 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
         N = size(image, 1)
         xs = range(l, r, length = N+1)
     else
-        xs = regularly_spaced_array_to_range(xs)
+        xs = Makie.regularly_spaced_array_to_range(xs)
     end
     if !(ys isa AbstractVector)
         l, r = extrema(ys)
         N = size(image, 2)
         ys = range(l, r, length = N+1)
     else
-        ys = regularly_spaced_array_to_range(ys)
+        ys = Makie.regularly_spaced_array_to_range(ys)
     end
     model = primitive[:model][]
     interp = to_value(get(primitive, :interpolate, true))
@@ -811,7 +789,7 @@ function draw_mesh3D(
     Cairo.set_source(ctx, pattern)
     Cairo.close_path(ctx)
     Cairo.paint(ctx)
-    return nothing
+    return
 end
 
 
@@ -835,39 +813,13 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
     return nothing
 end
 
-function surface2mesh(xs::Makie.ClosedInterval, ys, zs::AbstractMatrix)
-    surface2mesh(range(xs.left, xs.right, length = size(zs, 1)), ys, zs)
-end
-
-function surface2mesh(xs, ys::Makie.ClosedInterval, zs::AbstractMatrix)
-    surface2mesh(xs, range(ys.left, ys.right, length = size(zs, 2)), zs)
-end
-
-function surface2mesh(xs::Makie.ClosedInterval, ys::Makie.ClosedInterval, zs::AbstractMatrix)
-    surface2mesh(
-        range(xs.left, xs.right, length = size(zs, 1)),
-        range(ys.left, ys.right, length = size(zs, 2)),
-        zs)
-end
-
-function surface2mesh(xs::AbstractVector, ys::AbstractVector, zs::AbstractMatrix)
-    ps = [nan2zero.(Point3f(xs[i], ys[j], zs[i, j])) for j in eachindex(ys) for i in eachindex(xs)]
-    idxs = LinearIndices(size(zs))
-    faces = [
-        QuadFace(idxs[i, j], idxs[i+1, j], idxs[i+1, j+1], idxs[i, j+1])
-        for j in 1:size(zs, 2)-1 for i in 1:size(zs, 1)-1
-    ]
-    normal_mesh(ps, faces)
-end
-
-function surface2mesh(xs::AbstractMatrix, ys::AbstractMatrix, zs::AbstractMatrix)
-    ps = [nan2zero.(Point3f(xs[i, j], ys[i, j], zs[i, j])) for j in 1:size(zs, 2) for i in 1:size(zs, 1)]
-    idxs = LinearIndices(size(zs))
-    faces = [
-        QuadFace(idxs[i, j], idxs[i+1, j], idxs[i+1, j+1], idxs[i, j+1])
-        for j in 1:size(zs, 2)-1 for i in 1:size(zs, 1)-1
-    ]
-    normal_mesh(ps, faces)
+function surface2mesh(xs, ys, zs::AbstractMatrix)
+    ps = Makie.matrix_grid(p-> nan2zero.(p), xs, ys, zs)
+    rect = Tesselation(Rect2f(0, 0, 1, 1), size(zs))
+    faces = decompose(QuadFace{Int}, rect)
+    uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
+    uvm = GeometryBasics.Mesh(GeometryBasics.meta(ps; uv=uv), faces)
+    return GeometryBasics.normal_mesh(uvm)
 end
 
 ################################################################################
