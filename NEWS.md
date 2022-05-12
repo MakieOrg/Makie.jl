@@ -1,5 +1,8 @@
 # News
 
+## master
+- Added word wrapping. In `Label`, `word_wrap = true` causes it to use the suggested width and wrap text to fit. In `text`, `word_wrap_width > 0` can be used to set a pixel unit line width. Any word (anything between two spaces without a newline) that goes beyond this width gets a newline inserted before it. [#1819](https://github.com/JuliaPlots/Makie.jl/pull/1819)
+
 ## v0.17
 
 - **Breaking** Added `space` as a generic attribute to switch between data, pixel, relative and clip space for positions. `space` in text has been renamed to `markerspace` because of this. `Pixel` and `SceneSpace` are no longer valid inputs for `space` or `markerspace` [#1596](https://github.com/JuliaPlots/Makie.jl/pull/1596).
