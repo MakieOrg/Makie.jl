@@ -550,10 +550,17 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
                 Texture(map(x-> convert(Array, el32convert(x)), arg); minfilter=:nearest)
             end
             return GLVisualize.draw_surface(args, gl_attributes)
+        elseif all(T -> T <: Makie.ClosedInterval, types) # all others should be closed intervals
+            # If we only have start and end points for the surface, we can use `Grid` as an optimization,
+            # which will just upload the endpoints to the GPU, and will interpolate the positions between them in the shader.
+            gl_attributes[:position] = map(x[1], x[2]) do x, y
+                GLVisualize.Grid(LinRange(extrema(x)..., 2), LinRange(extrema(y)..., 2))
+            end
+            position_z = Texture(el32convert(x[3]); minfilter=:nearest)
+            gl_attributes[:position_z] = position_z
+            return GLVisualize.draw_surface(position_z, gl_attributes)
         else
-            gl_attributes[:ranges] = to_range.(to_value.(x[1:2]))
-            z_data = Texture(el32convert(x[3]); minfilter=:nearest)
-            return GLVisualize.draw_surface(z_data, gl_attributes)
+            error("x and y need to be Vectors, Matrices or ClosedIntervals. Found: $(types)")
         end
     end
     return robj

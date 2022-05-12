@@ -1,7 +1,12 @@
+# TODO find an appropriate target and
+# @convert_target struct Text
+#     glyphs::Any
+# end
+
 function plot!(plot::Text)
     # attach a function to any text that calculates the glyph layout and stores it
     glyphcollection = lift(plot[1], plot.textsize, plot.font, plot.align,
-            plot.rotation, plot.justification, plot.lineheight, plot.color, 
+            plot.rotation, plot.justification, plot.lineheight, plot.color,
             plot.strokecolor, plot.strokewidth, plot.word_wrap_width) do str,
                 ts, f, al, rot, jus, lh, col, scol, swi, www
         ts = to_textsize(ts)
@@ -28,8 +33,8 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
     glyphcollections = Observable(GlyphCollection[])
     rotation = Observable{Any}(nothing)
 
-    onany(plot[1], plot.textsize, plot.font, plot.align, 
-            plot.rotation, plot.justification, plot.lineheight, plot.color, 
+    onany(plot[1], plot.textsize, plot.font, plot.align,
+            plot.rotation, plot.justification, plot.lineheight, plot.color,
             plot.strokecolor, plot.strokewidth, plot.word_wrap_width) do str,
                     ts, f, al, rot, jus, lh, col, scol, swi, wwws
 
@@ -54,7 +59,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
     notify(plot[1])
 
     text!(plot, glyphcollections; position = plot.position, rotation = rotation,
-        model = plot.model, offset = plot.offset, markerspace = plot.markerspace, 
+        model = plot.model, offset = plot.offset, markerspace = plot.markerspace,
         visible=plot.visible, space = plot.space)
 
     plot
@@ -90,7 +95,7 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
 
     # attach a function to any text that calculates the glyph layout and stores it
     lineels_glyphcollection_offset = lift(plot[1], plot.textsize, plot.align, plot.rotation,
-            plot.model, plot.color, plot.strokecolor, plot.strokewidth, 
+            plot.model, plot.color, plot.strokecolor, plot.strokewidth,
             plot.word_wrap_width) do latexstring, ts, al, rot, mo, color, scolor, swidth, www
 
         ts = to_textsize(ts)
@@ -182,7 +187,7 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
     text!(plot, glyphcollection; plot.attributes...)
     linesegments!(
         plot, linepairs, linewidth = linewidths, color = plot.color,
-        visible = plot.visible, inspectable = plot.inspectable, 
+        visible = plot.visible, inspectable = plot.inspectable,
         transparent = plot.transparency, space = :pixel
     )
 
