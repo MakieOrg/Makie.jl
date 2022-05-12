@@ -347,21 +347,30 @@ function text_quads(position::Vector, gcs::Vector{<: GlyphCollection}, offset, t
     pad = GLYPH_PADDING[] / PIXELSIZE_IN_ATLAS[]
     off = _offset_to_vec(offset)
 
+    # To avoid errors due to asynchronous updates of text attributes
+    M = min(
+        length(gcs), length(position), 
+        ifelse(off isa StaticVector || length(off) == 1, typemax(Int), length(off))
+    )
+
     char_offsets = Vector{Vec3f}(undef, length(pos)) # TODO can this be Vec2f?
     quad_offsets = Vector{Vec2f}(undef, length(pos))
     scales = Vector{Vec2f}(undef, length(pos))
     uvs = Vector{Vec4f}(undef, length(pos))
 
     k = 1
-    for (j, gc) in enumerate(gcs), i in eachindex(gc.origins)
-        glyph_bb, extent = FreeTypeAbstraction.metrics_bb(
-            gc.glyphs[i], gc.fonts[i], gc.scales[i]
-        )
-        uvs[k] = glyph_uv_width!(atlas, gc.glyphs[i], gc.fonts[i])
-        scales[k] = widths(glyph_bb) .+ gc.scales[i] * 2pad
-        char_offsets[k] = gc.origins[i] .+ _offset_at(off, j)
-        quad_offsets[k] = minimum(glyph_bb) .- gc.scales[i] .* pad
-        k += 1
+    for j in 1:M
+        gc = gcs[j]
+        for i in eachindex(gc.origins)
+            glyph_bb, extent = FreeTypeAbstraction.metrics_bb(
+                gc.glyphs[i], gc.fonts[i], gc.scales[i]
+            )
+            uvs[k] = glyph_uv_width!(atlas, gc.glyphs[i], gc.fonts[i])
+            scales[k] = widths(glyph_bb) .+ gc.scales[i] * 2pad
+            char_offsets[k] = gc.origins[i] .+ _offset_at(off, j)
+            quad_offsets[k] = minimum(glyph_bb) .- gc.scales[i] .* pad
+            k += 1
+        end
     end
 
     return pos, char_offsets, quad_offsets, uvs, scales

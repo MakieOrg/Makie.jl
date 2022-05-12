@@ -34,6 +34,7 @@ excludes = Set([
     "Hollow pie chart",
     "Record Video",
     "Image on Geometry (Earth)",
+    "Image on Geometry (Moon)",
     "Comparing contours, image, surfaces and heatmaps",
     "Textured Mesh",
     "Simple pie chart",
@@ -68,7 +69,9 @@ excludes = Set([
     "Depth Shift",
     "Order Independent Transparency",
     "heatmap transparent colormap",
-    "fast pixel marker"
+    "fast pixel marker",
+    "Array of Images Scatter",
+    "Image Scatter different sizes"
 ])
 
 functions = [:volume, :volume!, :uv_mesh]
