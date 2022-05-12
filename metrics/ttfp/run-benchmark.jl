@@ -23,7 +23,7 @@ function make_or_edit_comment(ctx, pr, comment)
     end
 end
 
-function run_benchmarks(projects; n=5)
+function run_benchmarks(projects; n=7)
     results = Dict{String, Vector{NTuple{2, Float64}}}()
     benchmark_file = joinpath(@__DIR__, "benchmark-ttfp.jl")
     for project in repeat(projects; outer=n)
@@ -76,12 +76,16 @@ function all_stats(io, name, numbers)
 end
 
 function speedup(io, name, master, pr)
-    speedup = round(minimum(pr) / minimum(master), digits=2)
+    speedup = round(mean(master) / mean(pr), digits=1)
     if speedup ≈ 1
         println(io, "This PR does **not** change the $(name) time.")
     else
-        slower_faster = speedup > 1 ? "faster" : "slower"
-        println(io, "This PRs $(name) time is around $(speedup)x **$slower_faster** than master.")
+        slower_faster = if speedup > 1
+            "**$(speedup)x faster**"
+        else
+            "**$(inv(speedup))x slower**"
+        end
+        println(io, "This PRs $(name) time is around $slower_faster than master.")
     end
 end
 
