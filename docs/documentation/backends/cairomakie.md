@@ -59,6 +59,6 @@ You can deactivate this rasterization by setting `plt.rasterize = false`.
 Example: 
 ``` 
 fig = Figure()
-scatter(fig[1,1], v[:,1], v[:,2], rasterize = true, markersize = 1.)
+scatter(fig[1,1], v[:,1], v[:,2], rasterize = true, markersize = 1.0)
 save("raster_test.pdf", fig)
 ```
