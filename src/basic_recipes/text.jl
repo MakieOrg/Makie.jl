@@ -1,3 +1,8 @@
+# TODO find an appropriate target and
+# @convert_target struct Text
+#     glyphs::Any
+# end
+
 function plot!(plot::Text)
     # attach a function to any text that calculates the glyph layout and stores it
     glyphcollection = lift(plot[1], plot.textsize, plot.font, plot.align,
@@ -54,7 +59,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
     notify(plot[1])
 
     text!(plot, glyphcollections; position = plot.position, rotation = rotation,
-        model = plot.model, offset = plot.offset, markerspace = plot.markerspace, 
+        model = plot.model, offset = plot.offset, markerspace = plot.markerspace,
         visible=plot.visible, space = plot.space)
 
     plot
@@ -181,7 +186,7 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
     text!(plot, glyphcollection; plot.attributes...)
     linesegments!(
         plot, linepairs, linewidth = linewidths, color = plot.color,
-        visible = plot.visible, inspectable = plot.inspectable, 
+        visible = plot.visible, inspectable = plot.inspectable,
         transparent = plot.transparency
     )
 
