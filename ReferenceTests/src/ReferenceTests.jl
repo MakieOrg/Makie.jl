@@ -22,10 +22,11 @@ import ZipFile
 import REPL
 import REPL.TerminalMenus
 
-
 # Deps for tests
 using CategoricalArrays
-
+using LinearAlgebra
+using Colors
+using LaTeXStrings
 
 basedir(files...) = normpath(joinpath(@__DIR__, "..", files...))
 loadasset(files...) = FileIO.load(assetpath(files...))

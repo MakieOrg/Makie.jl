@@ -1,12 +1,13 @@
 using ReferenceTests
 using ReferenceTests: RNG, loadasset
 using GeometryBasics
-using Statistics
+using ReferenceTests.Statistics
 using ReferenceTests.CategoricalArrays: categorical, levelcode
-using LinearAlgebra
-using FileIO, Colors
+using ReferenceTests.LinearAlgebra
+using ReferenceTests.FileIO
+using ReferenceTests.Colors
+using ReferenceTests.LaTeXStrings
 using Makie: Record, volume
-using LaTeXStrings
 
 @testset "primitives" begin
     include("primitives.jl")
