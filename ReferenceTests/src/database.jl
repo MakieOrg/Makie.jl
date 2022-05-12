@@ -81,7 +81,7 @@ macro include_reference_tests(path)
         using ReferenceTests: @reference_test
         name = splitext(basename($(path)))[1]
         include_path = isdir($path) ? $path : joinpath(@__DIR__, "tests", $path)
-        recording_dir = joinpath($toplevel_folder, name)
+        recording_dir = joinpath($toplevel_folder, "recorded_reference_images", name)
         if isdir(recording_dir)
             rm(recording_dir; force=true, recursive=true)
         end

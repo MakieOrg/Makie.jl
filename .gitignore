@@ -10,10 +10,9 @@ Manifest.toml
 \.DS_Store
 CairoMakie/src/display.*
 
-WGLMakie/test/refimages/
-GLMakie/test/refimages/
-GLMakie/test/glmakie_refimages/
-CairoMakie/test/refimages/
+WGLMakie/test/recorded_reference_images/
+GLMakie/test/recorded_reference_images/
+CairoMakie/test/recorded_reference_images/
 RPRMakie/test/recorded/
 
 CairoMakie/src/display.svg
