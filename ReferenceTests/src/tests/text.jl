@@ -346,12 +346,13 @@ end
 @cell "Word Wrapping" begin
     lorem_ipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
 
-    fig = Figure()
+    fig = Figure(resolution=(600, 500))
     ax = Axis(fig[1, 1])
-    text!(ax, latexstring(L"$1$ " * lorem_ipsum), word_wrap_width=250, textsize = 12, align = (:left, :bottom), justification = :left)
-    text!(ax, lorem_ipsum, word_wrap_width=250, textsize = 12, align = (:left, :top), justification = :right)
-    text!(ax, lorem_ipsum, word_wrap_width=250, textsize = 12, align = (:right, :bottom), justification = :center)
-    text!(ax, lorem_ipsum, word_wrap_width=200, textsize = 12, align = (:center, :top), position = Point2f(-0.3, 0))
-    xlims!(ax, -1, 1)
+    text!(ax, latexstring(L"$1$ " * lorem_ipsum), word_wrap_width=250, textsize = 12, align = (:left, :bottom), justification = :left, color = :black)
+    text!(ax, lorem_ipsum, word_wrap_width=250, textsize = 12, align = (:left, :top), justification = :right, color = :black)
+    text!(ax, lorem_ipsum, word_wrap_width=250, textsize = 12, align = (:right, :bottom), justification = :center, color = :red)
+    text!(ax, lorem_ipsum, word_wrap_width=200, textsize = 12, align = (:center, :top), position = Point2f(-0.3, 0), color = :blue)
+    xlims!(ax, -0.8, 0.8)
+    ylims!(ax, -0.8, 0.6)
     fig
 end
