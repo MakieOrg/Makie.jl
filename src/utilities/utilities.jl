@@ -294,6 +294,12 @@ function peaks(n=49)
     3 * (1 .- x').^2 .* exp.(-(x'.^2) .- (y .+ 1).^2) .- 10 * (x' / 5 .- x'.^3 .- y.^5) .* exp.(-x'.^2 .- y.^2) .- 1 / 3 * exp.(-(x' .+ 1).^2 .- y.^2)
 end
 
+
+function attribute_names(PlotType)
+    # TODO, have all plot types store their attribute names
+    return keys(default_theme(nothing, PlotType))
+end
+
 get_dim(x, ind, dim, size) = get_dim(LinRange(extrema(x)..., size[dim]), ind, dim, size)
 get_dim(x::AbstractVector, ind, dim, size) = x[Tuple(ind)[dim]]
 get_dim(x::AbstractMatrix, ind, dim, size) = x[ind]
@@ -316,10 +322,21 @@ function surface_normals(x, y, z)
     return vec(map(normal, CartesianIndices(z)))
 end
 
+"""
+    matrix_grid(f, x::AbstractArray, y::AbstractArray, z::AbstractMatrix)::Vector{Point3f}
 
-function attribute_names(PlotType)
-    # TODO, have all plot types store their attribute names
-    return keys(default_theme(nothing, PlotType))
+Creates points on the grid spanned by x, y, z.
+Allows to supply `f`, which gets applied to every point.
+"""
+function matrix_grid(f, x::AbstractArray, y::AbstractArray, z::AbstractMatrix)
+    g = map(CartesianIndices(z)) do i
+        return f(Point3f(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), z[i]))
+    end
+    return vec(g)
+end
+
+function matrix_grid(f, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
+    matrix_grid(f, LinRange(extrema(x)..., size(z, 1)), LinRange(extrema(x)..., size(z, 2)), z)
 end
 
 
