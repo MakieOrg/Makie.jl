@@ -2,11 +2,9 @@
 #                               Type Conversions                               #
 ################################################################################
 const RangeLike = Union{AbstractRange, AbstractVector, ClosedInterval}
-@nospecialize
-convert_arguments(@nospecialize(::ConversionTrait), args...; kw...) = args
 
-function convert_arguments(@nospecialize(T::PlotFunc), @nospecialize(args...); kw...)
-    # Try conversion trait
+# if no plot type based conversion is defined, we try using a trait
+function convert_arguments(T::PlotFunc, args...; kw...)
     ct = conversion_trait(T)
     try
         convert_arguments(ct, args...; kw...)
@@ -66,8 +64,8 @@ end
 #                          Single Argument Conversion                          #
 ################################################################################
 
-convert_single_argument(@nospecialize(x)) = x
-@specialize
+# if no specific conversion is defined, we don't convert
+convert_single_argument(x) = x
 
 # replace missings with NaNs
 function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Real}})
