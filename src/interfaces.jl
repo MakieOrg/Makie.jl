@@ -152,7 +152,8 @@ apply for return type
     (args...,)
 """
 function apply_convert!(P, attributes::Attributes, x::Tuple)
-    return (plottype(P, x...), x)
+    pt = plottype(P, x...)
+    return (pt, values(convert_arguments_typed(pt, x...)))
 end
 
 """
@@ -165,7 +166,8 @@ function apply_convert!(P, attributes::Attributes, x::PlotSpec{S}) where S
     for (k, v) in pairs(kwargs)
         attributes[k] = v
     end
-    return (plottype(S, P), args)
+    pt = plottype(S, P)
+    return (pt, values(convert_arguments_typed(pt, args...)))
 end
 
 function seperate_tuple(args::Observable{<: NTuple{N, Any}}) where N

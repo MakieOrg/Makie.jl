@@ -457,28 +457,6 @@ end
 #                                Heatmap, Image                                #
 ################################################################################
 
-"""
-    regularly_spaced_array_to_range(arr)
-If possible, converts `arr` to a range.
-If not, returns array unchanged.
-"""
-function regularly_spaced_array_to_range(arr)
-    diffs = unique!(sort!(diff(arr)))
-    step = sum(diffs) ./ length(diffs)
-    if all(x-> x ≈ step, diffs)
-        m, M = extrema(arr)
-        if step < zero(step)
-            m, M = M, m
-        end
-        # don't use stop=M, since that may not include M
-        return range(m; step=step, length=length(arr))
-    else
-        return arr
-    end
-end
-
-regularly_spaced_array_to_range(arr::AbstractRange) = arr
-
 function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive::Union{Heatmap, Image}))
     ctx = screen.context
     image = primitive[3][]
@@ -488,14 +466,14 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
         N = size(image, 1)
         xs = range(l, r, length = N+1)
     else
-        xs = regularly_spaced_array_to_range(xs)
+        xs = Makie.regularly_spaced_array_to_range(xs)
     end
     if !(ys isa AbstractVector)
         l, r = extrema(ys)
         N = size(image, 2)
         ys = range(l, r, length = N+1)
     else
-        ys = regularly_spaced_array_to_range(ys)
+        ys = Makie.regularly_spaced_array_to_range(ys)
     end
     model = primitive[:model][]
     interp_requested = to_value(get(primitive, :interpolate, true))

@@ -48,8 +48,7 @@ end
 
 @testset "functions" begin
     x = -pi..pi
-    s = convert_arguments(Lines, x, sin)
-    xy = s.args[1]
+    (xy,) = convert_arguments(Lines, x, sin)
     @test xy[1][1] ≈ -pi
     @test xy[end][1] ≈ pi
     for (val, fval) in xy
@@ -57,8 +56,7 @@ end
     end
 
     x = range(-pi, stop=pi, length=100)
-    s = convert_arguments(Lines, x, sin)
-    xy = s.args[1]
+    (xy,) = convert_arguments(Lines, x, sin)
     @test xy[1][1] ≈ -pi
     @test xy[end][1] ≈ pi
     for (val, fval) in xy
@@ -66,7 +64,7 @@ end
     end
 
     pts = [Point(1, 2), Point(4,5), Point(10, 8), Point(1, 2)]
-    ls=LineString(pts)
+    ls = LineString(pts)
     p = convert_arguments(Makie.PointBased(), ls)
     @test p[1] == pts
 
@@ -154,7 +152,8 @@ end
 @testset "single conversions" begin
     myvector = MyVector(collect(1:10))
     mynestedvector = MyNestedVector(MyVector(collect(11:20)))
-    @test_throws MethodError convert_arguments(Lines, myvector, mynestedvector)
+    converted = convert_arguments(Lines, myvector, mynestedvector)
+    @test converted === (myvector, mynestedvector)
 
     Makie.convert_single_argument(v::MyNestedVector) = v.v
     Makie.convert_single_argument(v::MyVector) = v.v
@@ -169,6 +168,11 @@ end
     @test isequal(
         convert_arguments(Lines, [Point(1, 2), missing, Point(3, 4)]),
         (Point2f[(1.0, 2.0), (NaN, NaN), (3.0, 4.0)],)
+    )
+
+    @test isequal(
+        convert_arguments(Lines, Any[(1, 2), (3, 4)]),
+        (Point2f[(1.0, 2.0), (3.0, 4.0)],)
     )
 end
 
