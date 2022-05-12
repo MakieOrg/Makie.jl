@@ -25,15 +25,13 @@ plot!(plot::Text{<:Tuple{<:GlyphCollection}}) = plot
 plot!(plot::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}}) = plot
 
 function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
-
     glyphcollections = Observable(GlyphCollection[])
-    position = Observable{Any}(nothing)
     rotation = Observable{Any}(nothing)
 
-    onany(plot[1], plot.textsize, plot.position,
-            plot.font, plot.align, plot.rotation, plot.justification,
-            plot.lineheight, plot.color, plot.strokecolor, plot.strokewidth) do str,
-                    ts, pos, f, al, rot, jus, lh, col, scol, swi
+    onany(plot[1], plot.textsize, plot.font, plot.align, 
+            plot.rotation, plot.justification, plot.lineheight, plot.color, 
+            plot.strokecolor, plot.strokewidth) do str,
+                    ts, f, al, rot, jus, lh, col, scol, swi
 
         ts = to_textsize(ts)
         f = to_font(f)
@@ -47,9 +45,9 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
             subgl = layout_text(str, ts, f, al, rot, jus, lh, col, scol, swi)
             push!(gcs, subgl)
         end
-        position.val = pos
         rotation.val = rot
         glyphcollections[] = gcs
+        return
     end
 
     # run onany once to initialize
@@ -78,10 +76,11 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:AbstractString, <:Po
     on(strings_and_positions) do str_pos
         strs = first.(str_pos)
         poss = to_ndim.(Ref(Point3f), last.(str_pos), 0)
-        # first mutate strings without triggering redraw
-        t[1].val = strs
-        # then update positions with trigger
-        positions[] = poss
+
+        t[1].val != strs && (t[1][] = strs)
+        positions.val != poss && (positions[] = poss)
+
+        return
     end
     plot
 end
@@ -91,8 +90,8 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
 
     # attach a function to any text that calculates the glyph layout and stores it
     lineels_glyphcollection_offset = lift(plot[1], plot.textsize, plot.align, plot.rotation,
-            plot.model, plot.color, plot.strokecolor, plot.strokewidth, plot.position) do latexstring,
-                ts, al, rot, mo, color, scolor, swidth, _
+            plot.model, plot.color, plot.strokecolor, plot.strokewidth) do latexstring,
+                ts, al, rot, mo, color, scolor, swidth
 
         ts = to_textsize(ts)
         rot = to_rotation(rot)
@@ -125,10 +124,13 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
 
     scene = Makie.parent_scene(plot)
 
-    onany(lineels_glyphcollection_offset, scene.camera.projectionview) do (allels, gcs, offs), projview
+    onany(lineels_glyphcollection_offset, plot.position, scene.camera.projectionview
+            ) do (allels, gcs, offs), pos, projview
 
-        inv_projview = inv(projview)
-        pos = plot.position[]
+        if pos isa Vector && (length(pos) != length(allels))
+            return
+        end
+        # inv_projview = inv(projview)
         ts = plot.textsize[]
         rot = plot.rotation[]
 
@@ -171,6 +173,7 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
             append!(linepairs.val, first.(pairs))
         end
         notify(linepairs)
+        return
     end
 
     notify(plot.position)
