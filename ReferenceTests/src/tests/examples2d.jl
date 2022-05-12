@@ -434,7 +434,7 @@ end
     scatter(1:2, 1:2, marker = [img, img], markersize=reverse(size(img) ./ 10), axis=(limits=(0.5, 2.5, 0.5, 2.5),))
 end
 
-@cell "Image Scatter" begin
+@cell "Image Scatter different sizes" begin
     img = Makie.logo()
     img2 = load(Makie.assetpath("doge.png"))
     images = [img, img2]

@@ -38,7 +38,9 @@ excludes = Set([
     "Order Independent Transparency",
     "Record Video",
     "fast pixel marker",
-    "Animated surface and wireframe"
+    "Animated surface and wireframe",
+    "Image Scatter",
+    "Image Scatter different sizes"
 ])
 
 database = database_filtered(excludes)
