@@ -9,7 +9,7 @@ reference_tests_dir = normpath(joinpath(dirname(pathof(Makie)), "..", "Reference
 Pkg.develop(PackageSpec(path = reference_tests_dir))
 
 using ReferenceTests
-using ReferenceTests: @cell
+using ReferenceTests: @reference_test
 
 GLMakie.activate!()
 GLMakie.set_window_config!(;

@@ -15,12 +15,18 @@ end
 const REGISTERED_TESTS = Set{String}()
 const RECORDING_DIR = Base.RefValue{String}()
 const SKIP_TITLES = Set{String}()
-const SKIP_FUNCTIONS2 = Set{Symbol}()
+const SKIP_FUNCTIONS = Set{Symbol}()
 
-function cell_expr(name, code, source)
+"""
+    @reference_test(name, code)
+
+Records `code` and saves the result to `joinpath(ReferenceTests.RECORDING_DIR[], "recorded", name)`.
+`RECORDING_DIR` gets set automatically, if tests included via `@include_reference_tests`.
+"""
+macro reference_test(name, code)
     title = string(name)
     funcs = used_functions(code)
-    skip = (title in SKIP_TITLES) || any(x-> x in funcs, SKIP_FUNCTIONS2)
+    skip = (title in SKIP_TITLES) || any(x-> x in funcs, SKIP_FUNCTIONS)
     return quote
         @testset $(title) begin
             if $skip
@@ -40,17 +46,6 @@ function cell_expr(name, code, source)
             end
         end
     end
-end
-
-
-"""
-    @reference_test(name, code)
-
-Records `code` and saves the result to `joinpath(ReferenceTests.RECORDING_DIR[], "recorded", name)`.
-`RECORDING_DIR` gets set automatically, if tests included via `@include_reference_tests`.
-"""
-macro @reference_test(name, code)
-    return cell_expr(name, code, __source__)
 end
 
 """
@@ -75,9 +70,9 @@ end
 
 function mark_broken_tests(title_excludes = []; functions=[])
     empty!(SKIP_TITLES)
-    empty!(SKIP_FUNCTIONS2)
+    empty!(SKIP_FUNCTIONS)
     union!(SKIP_TITLES, title_excludes)
-    union!(SKIP_FUNCTIONS2, functions)
+    union!(SKIP_FUNCTIONS, functions)
 end
 
 macro include_reference_tests(path)
