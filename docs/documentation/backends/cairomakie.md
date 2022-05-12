@@ -55,3 +55,10 @@ Assuming that you have a `Plot` object `plt`, you can set `plt.rasterize = true`
 For example, if your Scene's resolution is `(800, 600)`, by setting `scale=2`, the rasterized image will have a resolution of `(1600, 1200)`.
 
 You can deactivate this rasterization by setting `plt.rasterize = false`.
+
+Example: 
+``` 
+fig = Figure()
+scatter(fig[1,1], v[:,1], v[:,2], rasterize = true, markersize = 1.)
+save("raster_test.pdf", fig)
+```
