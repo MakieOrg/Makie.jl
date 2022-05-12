@@ -65,7 +65,7 @@ function calculated_attributes!(::Type{<: Scatter}, plot)
 
     replace_automatic!(plot, :marker_offset) do
         # default to middle
-        lift(x-> to_2d_scale(x .* (-0.5f0)), plot[:markersize])
+        lift(x-> to_2d_scale(map(x-> x .* -0.5f0, x)), plot[:markersize])
     end
 
     replace_automatic!(plot, :markerspace) do
