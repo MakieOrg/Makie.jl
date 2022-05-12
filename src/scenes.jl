@@ -361,7 +361,7 @@ function Base.empty!(scene::Scene)
         end
     end
     empty!(scene.plots)
-    
+
     empty!(scene.theme)
     merge!(scene.theme, _current_default_theme)
 
@@ -385,7 +385,7 @@ function _empty_recursion(scene::Scene)
     # clean up some onsverables (there are probably more...)
     disconnect!(scene.camera)
     scene.camera_controls = EmptyCamera()
-    
+
     # top level scene.px_area needs to remain for GridLayout?
     off.(scene.px_area.inputs)
     empty!(scene.px_area.listeners)
@@ -559,3 +559,51 @@ struct FigureAxisPlot
 end
 
 const FigureLike = Union{Scene, Figure, FigureAxisPlot}
+
+# Overloads for Figure
+
+# Allow figures to be directly resized by resizing their internal Scene.
+# Layouts are hooked up to this, so there's nothing else to do here.
+"""
+    resize!(fig::FigureLike, x::T, y::T) where T <: Number
+    resize!(fig::FigureLike, (x::T, y::T)) where T <: Number
+    resize!(fig::FigureLike, r::Rect2)
+
+Resizes the given `fig` to the resolution given by the arguments.  `fig` may be a
+`Scene`, a `Figure`, or a `FigureAxisPlot`.
+
+Note that this does not affect the layout of the Figure beyond any constraints which
+are already present; it only changes the figure's physical size.
+
+See also [resize_to_layout!(fig::Figure)](@ref).
+"""
+Makie.resize!(figure::Figure, args...) = resize!(figure.scene, args...)
+Makie.resize!(figure_axis_plot::FigureAxisPlot, args...) = resize!(figure_axis_plot.figure.scene, args...)
+
+
+# Overload some GridLayoutBase methods for Figures
+# Boasically, just forward `f.layout` in place of `f`.
+"""
+    colgap!(f::Figure, ...)
+
+Forwards to `colgap!(f.layout, ...)`.
+"""
+GridLayoutBase.colgap!(f::Figure, args...) = GridLayoutBase.colgap!(f.layout, args...)
+"""
+    rowgap!(f::Figure, ...)
+
+Forwards to `rowgap!(f.layout, ...)`.
+"""
+GridLayoutBase.rowgap!(f::Figure, args...) = GridLayoutBase.rowgap!(f.layout, args...)
+"""
+    colsize!(f::Figure, ...)
+
+Forwards to `colsize!(f.layout, ...)`.
+"""
+GridLayoutBase.colsize!(f::Figure, args...) = GridLayoutBase.colsize!(f.layout, args...)
+"""
+    rowsize!(f::Figure, ...)
+
+Forwards to `rowsize!(f.layout, ...)`.
+"""
+GridLayoutBase.rowsize!(f::Figure, args...) = GridLayoutBase.rowsize!(f.layout, args...)
