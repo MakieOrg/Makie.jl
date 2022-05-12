@@ -39,7 +39,7 @@ excludes = Set([
     "Record Video",
     "fast pixel marker",
     "Animated surface and wireframe",
-    "Image Scatter",
+    "Array of Images Scatter",
     "Image Scatter different sizes"
 ])
 

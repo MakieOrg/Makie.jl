@@ -429,7 +429,7 @@ end
     fig
 end
 
-@cell "Image Scatter" begin
+@cell "Array of Images Scatter" begin
     img = Makie.logo()
     scatter(1:2, 1:2, marker = [img, img], markersize=reverse(size(img) ./ 10), axis=(limits=(0.5, 2.5, 0.5, 2.5),))
 end
