@@ -41,7 +41,7 @@ function make_project_folder(name)
     project = joinpath(@__DIR__, "benchmark-projects", name)
     # It seems, that between julia versions, the manifest must be deleted to not get problems
     isdir(project) && rm(project; force=true, recursive=true)
-    mkdir(project)
+    mkpath(project)
     return project
 end
 
