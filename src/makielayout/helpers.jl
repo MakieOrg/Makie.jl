@@ -565,3 +565,7 @@ GridLayoutBase.colgap!(f::Figure, args...) = GridLayoutBase.colgap!(f.layout, ar
 GridLayoutBase.rowgap!(f::Figure, args...) = GridLayoutBase.rowgap!(f.layout, args...)
 GridLayoutBase.colsize!(f::Figure, args...) = GridLayoutBase.colsize!(f.layout, args...)
 GridLayoutBase.rowsize!(f::Figure, args...) = GridLayoutBase.rowsize!(f.layout, args...)
+
+# Allow figures to be directly resized by resizing their internal Scene.
+# Layouts are hooked up to this, so there's nothing else to do here.
+Makie.resize!(figure::Figure, args...) = resize!(figure.scene, args...)
