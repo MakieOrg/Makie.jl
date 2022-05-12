@@ -62,7 +62,19 @@ Example:
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-v = rand(10000,2)
-scatter(v[:,1], v[:,2], rasterize = true, markersize = 1.0)
+v = rand(10,2)
+scatter(v[:,1], v[:,2], rasterize = true, markersize = 30.0)
 ```
 \end{examplefigure}
+
+If you zoom in, you will see a pretty badly pixelated image - this is because the rasterization density is set to 1 `px` per `pt`.  Setting `rasterize=10` makes this a lot smoother:
+
+\begin{examplefigure}{svg=true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+v = rand(10,2)
+scatter(v[:,1], v[:,2], rasterize = 10, markersize = 30.0)
+```
+\end{examplefigure}
+
