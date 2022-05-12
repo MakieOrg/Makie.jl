@@ -1,8 +1,8 @@
 @enum Shape CIRCLE RECTANGLE ROUNDED_RECTANGLE DISTANCEFIELD TRIANGLE
 @enum CubeSides TOP BOTTOM FRONT BACK RIGHT LEFT
 
-struct Grid{N,T <: AbstractRange}
-    dims::NTuple{N,T}
+struct Grid{N,R<:AbstractRange}
+    dims::NTuple{N,R}
 end
 Base.ndims(::Grid{N,T}) where {N,T} = N
 
@@ -55,6 +55,16 @@ function GLAbstraction.gl_convert_struct(g::Grid{N,T}, uniform_name::Symbol) whe
         Symbol("$uniform_name.dims") => Vec{N,Cint}(map(length, g.dims))
     )
 end
+
+function GLAbstraction.gl_convert_struct(obs::Observable{Grid{N,T}}, uniform_name::Symbol) where {N,T}
+    return Dict{Symbol,Any}(
+        Symbol("$uniform_name.start") => lift(g-> Vec{N,Float32}(minimum.(g.dims)), obs),
+        Symbol("$uniform_name.stop") => lift(g-> Vec{N,Float32}(maximum.(g.dims)), obs),
+        Symbol("$uniform_name.lendiv") => lift(g-> Vec{N,Cint}(length.(g.dims) .- 1), obs),
+        Symbol("$uniform_name.dims") => lift(g-> Vec{N,Cint}(map(length, g.dims)), obs)
+    )
+end
+
 function GLAbstraction.gl_convert_struct(g::Grid{1,T}, uniform_name::Symbol) where T
     x = g.dims[1]
     return Dict{Symbol,Any}(

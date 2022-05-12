@@ -1,3 +1,8 @@
+# TODO find an appropriate target and
+# @convert_target struct Text
+#     glyphs::Any
+# end
+
 function plot!(plot::Text)
     positions = plot[1]
     # attach a function to any text that calculates the glyph layout and stores it
