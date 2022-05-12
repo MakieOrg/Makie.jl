@@ -4,7 +4,7 @@ function block_docs(::Type{Colorbar})
     chosen according to the colorrange.
 
     You can set colorrange and colormap manually, or pass a plot object as the second argument
-    to copy its respective attributes. 
+    to copy its respective attributes.
 
     ## Constructors
 
@@ -206,14 +206,13 @@ function initialize_block!(cb::Colorbar)
     end
 
     cont_image = image!(blockscene,
-        @lift(range(left($barbox), right($barbox), length = 2)),
-        @lift(range(bottom($barbox), top($barbox), length = 2)),
+        @lift(left($barbox)..right($barbox)),
+        @lift(bottom($barbox)..top($barbox)),
         continous_pixels,
         visible = @lift(!$map_is_categorical),
         interpolate = true,
         inspectable = false
     )
-
 
     highclip_tri = lift(barbox, cb.spinewidth) do box, spinewidth
         if cb.vertical[]
