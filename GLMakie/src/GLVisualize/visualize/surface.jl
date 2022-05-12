@@ -1,6 +1,6 @@
 
 function position_calc(x...)
-    _position_calc(Iterators.filter(x->!isa(x, Nothing), x)...)
+    _position_calc(to_value.(Iterators.filter(x->!isa(x, Nothing), x))...)
 end
 
 function normal_calc(x::Bool, invert_normals::Bool = false)
