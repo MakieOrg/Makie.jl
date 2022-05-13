@@ -18,26 +18,31 @@ rand_localized(RNG::Random.AbstractRNG, min, max) = rand(RNG) * (max - min) .+ m
 """
     rainclouds!(ax, category_labels, data_array; plot_boxplots=true, plot_clouds=true, kwargs...)
 
-Plot a violin (/histogram), boxplot and individual data points with appropriate spacing between each.
+Plot a violin (/histogram), boxplot and individual data points with appropriate spacing
+between each.
 
 # Arguments
 - `ax`: Axis used to place all these plots onto.
-- `category_labels`: Typically `Vector{String}` with a label for each element in `data_array`
+- `category_labels`: Typically `Vector{String}` with a label for each element in
+  `data_array`
 - `data_array`: Typically `Vector{Float64}` used for to represent the datapoints to plot.
 
 # Keywords
 - `plot_boxplots=true`: Boolean to show boxplots to summarize distribution of data.
-- `clouds=violin`: [violin, hist, nothing] to show cloud plots either as violin or histogram plot, or no cloud plot.
-- `hist_bins=30`: if `clouds=hist`, this passes down the number of bins to the histogram call.
+- `clouds=violin`: [violin, hist, nothing] to show cloud plots either as violin or histogram
+  plot, or no cloud plot.
+- `hist_bins=30`: if `clouds=hist`, this passes down the number of bins to the histogram
+  call.
 - `gap=0.2`: Distance between elements of x-axis.
-- `side=:left`: Can take values of `:left` or `:right`. Determines which side the violin plot will be on.
-- `center_boxplot=true`: Determines whether or not to have the boxplot be centered in the category.
-- `dodge`: vector of `Integer`` (length of data) of grouping variable to create multiple side-by-side boxes at the same x position
+- `side=:left`: Can take values of `:left` or `:right`. Determines which side the violin
+  plot will be on.
+- `center_boxplot=true`: Determines whether or not to have the boxplot be centered in the
+  category.
+- `dodge`: vector of `Integer`` (length of data) of grouping variable to create multiple
+  side-by-side boxes at the same x position
 - `dodge_gap = 0.03`: spacing between dodged boxes
 - `n_dodge`: the number of categories to dodge (defaults to maximum(dodge))
-- `color`: the fill color of the plots (defaults to theme :patchcolor), you can directly
-define colors for all data here, or use the Axis palette property that cycles through integer
-values speciefied in color (see Makie themeing docs)
+- `color`: a single color, or a vector of colors, one for each point
 
 ## Violin Plot Specific Keywords
 - `cloud_width=1.0`: Determines size of violin plot. Corresponds to `width` keyword arg in
@@ -45,17 +50,21 @@ values speciefied in color (see Makie themeing docs)
 
 ## Box Plot Specific Keywords
 - `boxplot_width=0.1`: Width of the boxplot in category x-axis absolute terms.
-- `whiskerwidth=0.5`: The width of the Q1, Q3 whisker in the boxplot. Value as a portion of the `boxplot_width`.
+- `whiskerwidth=0.5`: The width of the Q1, Q3 whisker in the boxplot. Value as a portion of
+  the `boxplot_width`.
 - `strokewidth=1.0`: Determines the stroke width for the outline of the boxplot.
-- `show_median=true`: Determines whether or not to have a line should the median value in the boxplot.
-- `boxplot_nudge=0.075`: Determines the distance away the boxplot should be placed from the center line when `center_boxplot` is `false`.
-    This is the value used to recentering the boxplot.
+- `show_median=true`: Determines whether or not to have a line should the median value in
+  the boxplot.
+- `boxplot_nudge=0.075`: Determines the distance away the boxplot should be placed from the
+    center line when `center_boxplot` is `false`. This is the value used to recentering the
+    boxplot.
 - `show_boxplot_outliers`: show outliers in the boxplot as points (usually confusing when
 paired with the scatter plot so the default is to not show them)
 
 ## Scatter Plot Specific Keywords
 - `side_nudge`: Default value is 0.02 if `plot_boxplots` is true, otherwise `0.075` default.
-- `jitter_width=0.05`: Determines the width of the scatter-plot bar in category x-axis absolute terms.
+- `jitter_width=0.05`: Determines the width of the scatter-plot bar in category x-axis
+  absolute terms.
 - `markersize=2`: Size of marker used for the scatter plot.
 
 ## Axis General Keywords
@@ -249,12 +258,13 @@ function plot!(plot::RainClouds)
                     show_median=show_median, side=side, width=width_ratio*cloud_width, plot.cycle,
                     plot.color, gap=0)
         elseif clouds === hist
+            edges = pick_hist_edges(data_array, hist_bins)
             for (_, ixs) in group_labels(category_labels, data_array)
                 isempty(ixs) && continue
                 xoffset = final_x_positions[ixs[1]] - recenter_to_boxplot_nudge_value
-                hist!(plot, data_array; direction=:x, offset=xoffset,
-                        scale_to=-cloud_width*width_ratio, bins=hist_bins,
-                        color=getuniquevalue(plot.color, ixs))
+                hist!(plot, view(data_array, ixs); direction=:x, offset=xoffset,
+                        scale_to=-cloud_width*width_ratio, bins=edges,
+                        color=getuniquevalue(plot.color[], ixs))
             end
         else
             error("cloud attribute accepts (violin, hist, nothing), but not: $(clouds)")
