@@ -6,12 +6,11 @@ so that's what they all have in common. This might be better expressed as traits
 """
 abstract type Transformable end
 
-abstract type AbstractPlot{Typ} <: Transformable end
+abstract type AbstractPlot <: Transformable end
 abstract type AbstractScene <: Transformable end
-abstract type ScenePlot{Typ} <: AbstractPlot{Typ} end
 abstract type AbstractScreen <: AbstractDisplay end
 
-const SceneLike = Union{AbstractScene, ScenePlot}
+const SceneLike = Union{AbstractScene, AbstractPlot}
 
 """
 Main structure for holding attributes, for theming plots etc!
@@ -21,13 +20,20 @@ struct Attributes
     attributes::Dict{Symbol, Observable}
 end
 
-struct Combined{Typ, T} <: ScenePlot{Typ}
-    parent::SceneLike
+struct Plot <: AbstractPlot
+    parent::RefValue{Union{Nothing, Scene, Plot}}
+    type::Symbol
+
     transformation::Transformable
+
+    # Unprocessed arguments directly from the user command e.g. `plot(args...; kw...)``
+    kw::Dict{Symbol, Any}
+    args::Vector{Any}
+
+    # Converted and processed arguments
     attributes::Attributes
-    input_args::Tuple
-    converted::Tuple
-    plots::Vector{AbstractPlot}
+
+    plots::Vector{Plot}
 end
 
 function Base.show(io::IO, plot::Combined)
