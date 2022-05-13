@@ -193,6 +193,6 @@ end
 end
 
 
-@cell "2D surface with ClosedInterval" begin
+@reference_test "2D surface with ClosedInterval" begin
     surface(0..1, 0..2, zeros(10, 5))
 end
