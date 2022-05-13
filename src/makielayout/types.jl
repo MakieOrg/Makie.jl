@@ -226,9 +226,9 @@ end
         "Controls if the ylabel is visible."
         ylabelvisible::Bool = true
         "The padding between the xlabel and the ticks or axis."
-        xlabelpadding::Float64 = 3f0
+        xlabelpadding::Float64 = 7f0
         "The padding between the ylabel and the ticks or axis."
-        ylabelpadding::Float64 = 5f0 # because of boundingbox inaccuracies of ticklabels
+        ylabelpadding::Float64 = 7f0
         "The font family of the xticklabels."
         xticklabelfont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "DejaVu Sans")
         "The font family of the yticklabels."
@@ -250,7 +250,7 @@ end
         "The space reserved for the yticklabels."
         yticklabelspace::Union{Makie.Automatic, Float64} = Makie.automatic
         "The space between xticks and xticklabels."
-        xticklabelpad::Float64 = 2f0
+        xticklabelpad::Float64 = 5f0
         "The space between yticks and yticklabels."
         yticklabelpad::Float64 = 4f0
         "The counterclockwise rotation of the xticklabels in radians."
