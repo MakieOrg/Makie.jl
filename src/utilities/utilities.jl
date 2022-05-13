@@ -355,28 +355,4 @@ function regularly_spaced_array_to_range(arr)
     end
 end
 
-<<<<<<< HEAD
-=======
-
-"""
-    regularly_spaced_array_to_range(arr)
-If possible, converts `arr` to a range.
-If not, returns array unchanged.
-"""
-function regularly_spaced_array_to_range(arr)
-    diffs = unique!(sort!(diff(arr)))
-    step = sum(diffs) ./ length(diffs)
-    if all(x-> x ≈ step, diffs)
-        m, M = extrema(arr)
-        if step < zero(step)
-            m, M = M, m
-        end
-        # don't use stop=M, since that may not include M
-        return range(m; step=step, length=length(arr))
-    else
-        return arr
-    end
-end
-
->>>>>>> breaking-release
 regularly_spaced_array_to_range(arr::AbstractRange) = arr
