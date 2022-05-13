@@ -126,7 +126,7 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
     scene = Makie.parent_scene(plot)
 
     onany(lineels_glyphcollection_offset, plot.position, scene.camera.projectionview
-            ) do (allels, gcs, offs), pos, projview
+            ) do (allels, gcs, offs), pos, _
 
         if pos isa Vector && (length(pos) != length(allels))
             return
@@ -147,7 +147,7 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
             allels = [allels]
         end
         broadcast_foreach(allels, offs, pos, ts, rot) do allels, offs, pos, ts, rot
-            offset = Point2f(pos)
+            offset = project(scene.camera, :data, :pixel, Point2f(pos))[Vec(1, 2)]
 
             els = map(allels) do el
                 el[1] isa VLine || el[1] isa HLine || return nothing
@@ -183,7 +183,7 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
     linesegments!(
         plot, linepairs, linewidth = linewidths, color = plot.color,
         visible = plot.visible, inspectable = plot.inspectable, 
-        transparent = plot.transparency
+        transparent = plot.transparency, space = :pixel
     )
 
     plot
