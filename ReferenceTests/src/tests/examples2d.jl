@@ -464,7 +464,10 @@ end
 end
 
 @reference_test "2D surface with explicit color" begin
-    surface(1:10, 1:10, ones(10, 10); color = [RGBf(x*y/100, 0, 0) for x in 1:10, y in 1:10], shading = false)
+    surface(1:10, 1:10, ones(10, 10);
+            color = [RGBf(x*y/100, 0, 0) for x in 1:10, y in 1:10],
+            shading = false,
+            axis=(type=Axis,))
 end
 
 @reference_test "heatmap and image colormap interpolation" begin

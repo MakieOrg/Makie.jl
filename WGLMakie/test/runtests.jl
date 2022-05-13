@@ -39,7 +39,8 @@ excludes = Set([
     "Animated surface and wireframe",
     "Array of Images Scatter",
     "Image Scatter different sizes",
-    "pattern barplot" # not implemented yet
+    "pattern barplot", # not implemented yet
+    "2D surface with ClosedInterval" # Hmpf, shading is just too different
 ])
 
 @testset "refimages" begin
