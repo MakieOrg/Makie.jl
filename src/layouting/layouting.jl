@@ -218,11 +218,11 @@ function glyph_collection(
     # for y alignment, we need the largest ascender of the first line
     # and the largest descender of the last line
     first_line_ascender = maximum(lineinfos[1]) do l
-        ascender(l.font) * l.scale
+        l.scale * height(l.extent.ink_bounding_box)
     end
 
     last_line_descender = minimum(lineinfos[end]) do l
-        descender(l.font) * l.scale
+        l.scale * minimum(l.extent.ink_bounding_box)[2]
     end
 
     # compute the height of all lines together
@@ -243,7 +243,6 @@ function glyph_collection(
         else
             error("Invalid valign $valign. Valid values are <:Number, :bottom, :baseline, :top, and :center.")
         end
-
         ys .- first_line_ascender .+ (1 - va) .* overall_height
     end
 
