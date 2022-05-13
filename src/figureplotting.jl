@@ -40,8 +40,8 @@ function are_args_3d(P::Type, args...)
     return are_args_3d(args...)
 end
 
-are_args_3d(::Type{<: Surface}, x::AbstractArray, y::AbstractArray, z::AbstractArray) = any(x-> x != 0.0, z)
-are_args_3d(::Type{<: Wireframe}, x::AbstractArray, y::AbstractArray, z::AbstractArray) = any(x-> x != 0.0, z)
+are_args_3d(::Type{<: Surface}, x::AbstractArray, y::AbstractArray, z::AbstractArray) = any(x-> x != z[1], z)
+are_args_3d(::Type{<: Wireframe}, x::AbstractArray, y::AbstractArray, z::AbstractArray) = any(x-> x != z[1], z)
 
 function are_args_3d(args...)
     return any(args) do arg

@@ -1,6 +1,4 @@
-using LaTeXStrings
-
-@cell "heatmap_with_labels" begin
+@reference_test "heatmap_with_labels" begin
     fig = Figure(resolution = (600, 600))
     ax = fig[1, 1] = Axis(fig)
     values = RNG.rand(10, 10)
@@ -16,7 +14,7 @@ using LaTeXStrings
     fig
 end
 
-@cell "data space" begin
+@reference_test "data space" begin
     pos = [Point2f(0, 0), Point2f(10, 10)]
     fig = text(
         ["0 is the ORIGIN of this", "10 says hi"],
@@ -29,7 +27,7 @@ end
     fig
 end
 
-@cell "single_strings_single_positions" begin
+@reference_test "single_strings_single_positions" begin
     scene = Scene(camera = campixel!, resolution = (800, 800))
 
     points = [Point(x, y) .* 200 for x in 1:3 for y in 1:3]
@@ -52,7 +50,7 @@ end
 end
 
 
-@cell "multi_strings_multi_positions" begin
+@reference_test "multi_strings_multi_positions" begin
     scene = Scene(camera = campixel!, resolution = (800, 800))
 
     angles = (-pi/6, 0.0, pi/6)
@@ -77,7 +75,7 @@ end
     scene
 end
 
-@cell "single_strings_single_positions_justification" begin
+@reference_test "single_strings_single_positions_justification" begin
     scene = Scene(camera = campixel!, resolution = (800, 800))
 
     points = [Point(x, y) .* 200 for x in 1:3 for y in 1:3]
@@ -110,7 +108,7 @@ end
     scene
 end
 
-@cell "multi_boundingboxes" begin
+@reference_test "multi_boundingboxes" begin
     scene = Scene(camera = campixel!, resolution = (800, 800))
 
     t1 = text!(scene,
@@ -138,7 +136,7 @@ end
     scene
 end
 
-@cell "single_boundingboxes" begin
+@reference_test "single_boundingboxes" begin
     scene = Scene(camera = campixel!, resolution = (800, 800))
 
     for a in pi/4:pi/2:7pi/4
@@ -170,7 +168,7 @@ end
     scene
 end
 
-@cell "text_in_3d_axis" begin
+@reference_test "text_in_3d_axis" begin
     text(
         fill("Makie", 7),
         rotation = [i / 7 * 1.5pi for i in 1:7],
@@ -183,7 +181,7 @@ end
     )
 end
 
-@cell "empty_lines" begin
+@reference_test "empty_lines" begin
     scene = Scene(camera = campixel!, resolution = (800, 800))
 
     t1 = text!(scene, "Line1\nLine 2\n\nLine4",
@@ -200,7 +198,7 @@ end
 end
 
 
-@cell "3D screenspace annotations" begin
+@reference_test "3D screenspace annotations" begin
     positions = RNG.rand(Point3f, 10)
     fig, ax, p = meshscatter(positions, color=:white)
     text!(
@@ -214,7 +212,7 @@ end
 end
 
 
-@cell "Text offset" begin
+@reference_test "Text offset" begin
     f = Figure(resolution = (1000, 1000))
     barplot(f[1, 1], 3:5)
     text!("bar 1", position = (1, 3), offset = (0, 10), align = (:center, :baseline))
@@ -242,7 +240,7 @@ end
 end
 
 
-@cell "Log10 text" begin
+@reference_test "Log10 text" begin
     barplot([1, 10, 100], fillto = 0.1, axis = (yscale = log10,))
     text!(["bar 1", "bar 2", "bar 3"], position = [(1, 1), (2, 10), (3, 100)],
         offset = (0, -10), color = :white, align = (:center, :top))
@@ -250,7 +248,7 @@ end
     current_figure()
 end
 
-@cell "latex strings" begin
+@reference_test "latex strings" begin
     f, ax , l = lines(cumsum(RNG.randn(1000)),
         axis = (
                 title = L"\sum_k{x y_k}",
@@ -264,7 +262,7 @@ end
     f
 end
 
-@cell "latex simple" begin
+@reference_test "latex simple" begin
     s = Scene(camera = campixel!)
     t = text!(s,
         L"\sqrt{2}",
@@ -274,7 +272,7 @@ end
     s
 end
 
-@cell "latex bb" begin
+@reference_test "latex bb" begin
     s = Scene(camera = campixel!)
     t = text!(s,
         L"\int_0^5x^2+2ab",
@@ -285,7 +283,7 @@ end
     s
 end
 
-@cell "latex updates" begin
+@reference_test "latex updates" begin
     s = Scene(camera = campixel!)
     st = Stepper(s)
     textnode = Observable([L"\int_0^5x^2+2ab", L"\int_0^5x^2+2ab"])
@@ -305,7 +303,7 @@ end
     st
 end
 
-@cell "update annotation style" begin
+@reference_test "update annotation style" begin
     s = Scene(camera = campixel!)
     st = Stepper(s)
     textposnode = Observable([
@@ -324,7 +322,7 @@ end
     st
 end
 
-@cell "latex ticks" begin
+@reference_test "latex ticks" begin
     lines(0..25, x -> 4 * sin(x) / (cos(3x) + 4), figure = (fontsize = 25,),
         axis = (
             xticks = (0:10:20, [L"10^{-3.5}", L"10^{-4.5}", L"10^{-5.5}"]),
@@ -338,13 +336,13 @@ end
 end
 
 
-@cell "dynamic latex ticks" begin
+@reference_test "dynamic latex ticks" begin
     lines(0..25, x -> 4 * sin(x) / (cos(3x) + 4),
         figure = (fontsize = 16,),
         axis = (xtickformat = (xs -> [L"e^{\sqrt{%$x}}+\sum" for x in xs]), ))
 end
 
-@cell "Word Wrapping" begin
+@reference_test "Word Wrapping" begin
     lorem_ipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
 
     fig = Figure(resolution=(600, 500))

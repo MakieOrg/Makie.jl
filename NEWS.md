@@ -1,7 +1,13 @@
 # News
 
 ## master
+
+## v0.17.1
 - Added word wrapping. In `Label`, `word_wrap = true` causes it to use the suggested width and wrap text to fit. In `text`, `word_wrap_width > 0` can be used to set a pixel unit line width. Any word (anything between two spaces without a newline) that goes beyond this width gets a newline inserted before it. [#1819](https://github.com/JuliaPlots/Makie.jl/pull/1819)
+- Improved `Axis3`'s interactive performance. [#1835](https://github.com/JuliaPlots/Makie.jl/pull/1835)
+- Fixed errors in GLMakie's `scatter` implementation when markers are given as images. [#1917](https://github.com/JuliaPlots/Makie.jl/pull/1917)
+- Removed some method ambiguities introduced in v0.17. [#1922](https://github.com/JuliaPlots/Makie.jl/pull/1922)
+- Add an empty default label, `""`, to each slider that doesn't have a label in `SliderGrid`. [#1888](https://github.com/JuliaPlots/Makie.jl/pull/1888)
 
 ## v0.17
 
