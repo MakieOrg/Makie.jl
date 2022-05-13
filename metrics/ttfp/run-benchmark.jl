@@ -1,7 +1,7 @@
 using Pkg
 Pkg.activate(@__DIR__)
 Pkg.instantiate()
-using Statistics, GitHub, Printf
+using Statistics, GitHub, Printf, BenchmarkTools
 
 function github_context()
     owner = "JuliaPlots"
@@ -37,6 +37,15 @@ function run_benchmarks(projects; n=7)
     return results
 end
 
+function create_trial(numbers)
+    params = BenchmarkTools.Parameters(gctrial=false, gcsample=false, evals=length(numbers))
+    trial = BenchmarkTools.Trial(params)
+    for number in numbers
+        push!(trial, number * 1e9, 0, 0, 0)
+    end
+    return trial
+end
+
 function make_project_folder(name)
     project = joinpath(@__DIR__, "benchmark-projects", name)
     # It seems, that between julia versions, the manifest must be deleted to not get problems
@@ -70,22 +79,24 @@ results = run_benchmarks(projects)
 function all_stats(io, name, numbers)
     mini = minimum(numbers)
     maxi = maximum(numbers)
-    m = mean(numbers)
+    m = median(numbers)
     s = std(numbers)
     @printf(io, "    %s %.2f < %.2f > %.2f, %.2f+-\n", name, mini, m, maxi, s)
 end
 
 function speedup(io, name, master, pr)
-    speedup = round(mean(master) / mean(pr), digits=1)
-    if speedup ≈ 1
+    t1 = create_trial(master)
+    t2 = create_trial(pr)
+    t = judge(median(t2), median(t1))
+    print(io, "    median:  ", BenchmarkTools.prettydiff(time(ratio(t))), " => ")
+    BenchmarkTools.printtimejudge(io, t)
+    println(io)
+    if t.time == :invariant
         println(io, "This PR does **not** change the $(name) time.")
+    elseif t.time == :improvement
+        println(io, "This PR **improves** the $(name) time.")
     else
-        slower_faster = if speedup > 1
-            "**$(speedup)x faster**"
-        else
-            "**$(inv(speedup))x slower**"
-        end
-        println(io, "This PRs $(name) time is around $slower_faster than master.")
+        println(io, "This PR makes the $(name) time **worse**.")
     end
 end
 
@@ -93,14 +104,16 @@ function print_analysis(io, results)
     master = results["makie-master"]
     pr = results["current-pr"]
     println(io, "### using time")
-    all_stats(io, "master", first.(master))
-    all_stats(io, "pr    ", first.(pr))
+    all_stats(io, "master: ", first.(master))
+    all_stats(io, "pr:     ", first.(pr))
+    all_stats(io, "speedup:", first.(master) ./ first.(pr))
     speedup(io, "using", first.(master), first.(pr))
     println(io)
 
     println(io, "### ttfp time")
-    all_stats(io, "master", last.(master))
-    all_stats(io, "pr    ", last.(pr))
+    all_stats(io, "master  ", last.(master))
+    all_stats(io, "pr      ", last.(pr))
+    all_stats(io, "speedup:", last.(master) ./ last.(pr))
     speedup(io, "ttfp", last.(master), last.(pr))
 end
 
