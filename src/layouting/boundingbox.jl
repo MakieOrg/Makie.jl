@@ -21,10 +21,10 @@ end
 function gl_bboxes(gl::GlyphCollection)
     scales = gl.scales.sv isa Vec2f ? (gl.scales.sv for _ in gl.extents) : gl.scales.sv
     map(gl.extents, scales) do ext, scale
-        unscaled_hi_bb = height_insensitive_boundingbox_with_advance(ext)
-        hi_bb = Rect2f(
-            Makie.origin(unscaled_hi_bb) * scale,
-            widths(unscaled_hi_bb) * scale
+        unscaled_ink_bb = ext.ink_bounding_box
+        Rect2f(
+            Makie.origin(unscaled_ink_bb) * scale,
+            widths(unscaled_ink_bb) * scale
         )
     end
 end
