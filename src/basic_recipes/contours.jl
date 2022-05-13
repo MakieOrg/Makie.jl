@@ -43,7 +43,7 @@ $(ATTRIBUTES)
     default_theme(scene, Contour)
 end
 
-is_plot_type_3d(::Type{<:Contour3d}) = true
+plot_preferred_axis(::Type{<:Contour3d}) = LScene
 
 function contourlines(::Type{<: Contour}, contours, cols)
     result = Point2f[]
