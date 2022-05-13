@@ -1,4 +1,4 @@
-@cell "Figure and Subplots" begin
+@reference_test "Figure and Subplots" begin
     fig, _ = scatter(randn(100, 2), color = :red)
     scatter(fig[1, 2], randn(100, 2), color = :blue)
     scatter(fig[2, 1:2], randn(100, 2), color = :green)
@@ -7,7 +7,7 @@
     fig
 end
 
-@cell "Figure with Blocks" begin
+@reference_test "Figure with Blocks" begin
     fig = Figure(resolution = (900, 900))
     ax, sc = scatter(fig[1, 1][1, 1], randn(100, 2), axis = (;title = "Random Dots", xlabel = "Time"))
     sc2 = scatter!(ax, randn(100, 2) .+ 2, color = :red)
