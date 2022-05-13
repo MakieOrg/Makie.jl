@@ -258,12 +258,12 @@ function plot!(plot::RainClouds)
                     show_median=show_median, side=side, width=width_ratio*cloud_width, plot.cycle,
                     plot.color, gap=0)
         elseif clouds === hist
+            edges = pick_hist_edges(data_array, hist_bins)
             for (_, ixs) in group_labels(category_labels, data_array)
                 isempty(ixs) && continue
                 xoffset = final_x_positions[ixs[1]] - recenter_to_boxplot_nudge_value
                 hist!(plot, view(data_array, ixs); direction=:x, offset=xoffset,
-                        scale_to=-cloud_width*width_ratio, 
-                        bins=pick_hist_edges(data_array, hist_bins),
+                        scale_to=-cloud_width*width_ratio, bins=edges,
                         color=getuniquevalue(plot.color[], ixs))
             end
         else
