@@ -261,9 +261,10 @@ function plot!(plot::RainClouds)
             for (_, ixs) in group_labels(category_labels, data_array)
                 isempty(ixs) && continue
                 xoffset = final_x_positions[ixs[1]] - recenter_to_boxplot_nudge_value
-                hist!(plot, data_array; direction=:x, offset=xoffset,
-                        scale_to=-cloud_width*width_ratio, bins=hist_bins,
-                        color=getuniquevalue(plot.color, ixs))
+                hist!(plot, view(data_array, ixs); direction=:x, offset=xoffset,
+                        scale_to=-cloud_width*width_ratio, 
+                        bins=pick_hist_edges(data_array, hist_bins),
+                        color=getuniquevalue(plot.color[], ixs))
             end
         else
             error("cloud attribute accepts (violin, hist, nothing), but not: $(clouds)")
