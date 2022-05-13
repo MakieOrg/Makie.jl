@@ -103,28 +103,18 @@ function plot(P::PlotFunc, gp::GridPosition, args...; axis = NamedTuple(), kwarg
     end
 
     axis = Dict(pairs(axis))
-
-    if haskey(axis, :type)
-        axtype = axis[:type]
+    AxType = if haskey(axis, :type)
         pop!(axis, :type)
-        ax = axtype(f; axis...)
     else
-        proxyscene = Scene()
-        plot!(proxyscene, P, Attributes(kwargs), args...)
-        if is2d(proxyscene)
-            ax = Axis(f; axis...)
-        else
-            ax = LScene(f; axis...)
-        end
+        preferred_axis_type(P, args...)
     end
-
+    ax = AxType(f; axis...)
     gp[] = ax
     p = plot!(P, ax, args...; kwargs...)
     AxisPlot(ax, p)
 end
 
 function plot!(P::PlotFunc, gp::GridPosition, args...; kwargs...)
-
     c = contents(gp, exact = true)
     if !(length(c) == 1 && c[1] isa Union{Axis, LScene})
         error("There needs to be a single axis at $(gp.span), $(gp.side) to plot into.\nUse a non-mutating plotting command to create an axis implicitly.")
@@ -151,22 +141,12 @@ function plot(P::PlotFunc, gsp::GridSubposition, args...; axis = NamedTuple(), k
     fig = MakieLayout.get_top_parent(gsp)
 
     axis = Dict(pairs(axis))
-
-    if haskey(axis, :type)
-        axtype = axis[:type]
+    AxType = if haskey(axis, :type)
         pop!(axis, :type)
-        ax = axtype(fig; axis...)
     else
-        proxyscene = Scene()
-        plot!(proxyscene, P, Attributes(kwargs), args...)
-
-        if is2d(proxyscene)
-            ax = Axis(fig; axis...)
-        else
-            ax = LScene(fig; axis..., scenekw = (camera = automatic,))
-        end
+        preferred_axis_type(P, args...)
     end
-
+    ax = AxType(fig; axis...)
     gsp.parent[gsp.rows, gsp.cols, gsp.side] = ax
     p = plot!(P, ax, args...; kwargs...)
     AxisPlot(ax, p)

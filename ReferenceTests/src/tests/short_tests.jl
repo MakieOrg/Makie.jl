@@ -112,8 +112,7 @@ end
 end
 
 @reference_test "heatmaps & surface" begin
-    data =
-        hcat(LinRange(2, 3, 4), LinRange(2, 2.5, 4), LinRange(2.5, 3, 4), [1, NaN, NaN, 5])
+    data = hcat(LinRange(2, 3, 4), LinRange(2, 2.5, 4), LinRange(2.5, 3, 4), [1, NaN, NaN, 5])
 
     fig = Figure()
     heatmap(
@@ -124,8 +123,8 @@ end
         lowclip = :black,
         nan_color = (:green, 0.5),
     )
-    surface(
-        fig[1, 2],
+    surface!(
+        Axis(fig[1, 2]),
         zeros(size(data)),
         color = data,
         colorrange = (2, 3),
