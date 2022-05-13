@@ -125,9 +125,9 @@ function glyph_collection(
 
                 # TODO Do we need to redo the metrics for newlines?
                 charinfos[last_space_global_idx] = let 
-                    _, font, scale, hadvance, hi_bb, lineheight, extent = charinfos[last_space_global_idx]
-                    (char = '\n', font = font, scale = scale, hadvance = hadvance,
-                        hi_bb = hi_bb, lineheight = lineheight, extent = extent)
+                    _, font, scale, lineheight, extent = charinfos[last_space_global_idx]
+                    (char = '\n', font = font, scale = scale, 
+                        lineheight = lineheight, extent = extent)
                 end
                 
                 if i == length(charinfos)
