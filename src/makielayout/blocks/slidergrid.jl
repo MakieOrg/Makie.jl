@@ -51,7 +51,7 @@ function initialize_block!(sg::SliderGrid, nts::NamedTuple...)
     extract_range_format(x) = (x, default_format)
 
     for (i, nt) in enumerate(nts)
-        label = nt.label
+        label = haskey(nt, :label) ? nt.label : ""
         range = nt.range
         format = haskey(nt, :format) ? nt.format : default_format
         remaining_pairs = filter(pair -> pair[1] ∉ (:label, :range, :format), pairs(nt))

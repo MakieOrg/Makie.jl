@@ -145,3 +145,13 @@ function resize_to_layout!(fig::Figure)
     resize!(fig.scene, widths(bbox)...)
     new_size
 end
+
+function Base.empty!(fig::Figure)
+    empty!(fig.scene)
+    empty!(fig.scene.events)
+    foreach(GridLayoutBase.remove_from_gridlayout!, reverse(fig.layout.content))
+    trim!(fig.layout)
+    empty!(fig.content)
+    fig.current_axis[] = nothing
+    return
+end

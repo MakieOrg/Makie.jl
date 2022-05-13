@@ -208,7 +208,7 @@ save("topographie.png", ax.scene)
 
 ## GLMakie interop (opengl_interop.jl)
 
-RPRMakie doesn't support layouting and sub scenes yet, but you can replace a single scene with a RPR renedered, interactive window.
+RPRMakie doesn't support layouting and sub scenes yet, but you can replace a single scene with a RPR rendered, interactive window.
 This is especially handy, to show 2d graphics and interactive UI elements next to a ray traced scene and interactively tune camera and material parameters.
 
 ~~~

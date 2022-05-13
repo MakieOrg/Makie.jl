@@ -109,7 +109,7 @@ function text_bb(str, font, size)
     rot = Quaternionf(0,0,0,1)
     layout = layout_text(
         str, size, font, Vec2f(0), rot, 0.5, 1.0,
-        RGBAf(0, 0, 0, 0), RGBAf(0, 0, 0, 0), 0f0)
+        RGBAf(0, 0, 0, 0), RGBAf(0, 0, 0, 0), 0f0, 0f0)
     return boundingbox(layout, Point3f(0), rot)
 end
 
@@ -117,23 +117,23 @@ end
 Calculate an approximation of a tight rectangle around a 2D rectangle rotated by `angle` radians.
 This is not perfect but works well enough. Check an A vs X to see the difference.
 """
-function rotatedrect(rect::Rect{2}, angle)
+function rotatedrect(rect::Rect{2, T}, angle)::Rect{2, T} where T
     ox, oy = rect.origin
     wx, wy = rect.widths
-    points = Mat(
+    points = Mat{2, 4, T}(
         ox, oy,
         ox, oy+wy,
         ox+wx, oy,
         ox+wx, oy+wy
     )
-    mrot = Mat(
+    mrot = Mat{2, 2, T}(
         cos(angle), -sin(angle),
         sin(angle), cos(angle)
     )
-    rotated = mrot * points'
+    rotated = mrot * points
 
-    rmins = minimum(rotated, dims = 2)
-    rmaxs = maximum(rotated, dims = 2)
+    rmins = minimum(rotated; dims=2)
+    rmaxs = maximum(rotated; dims=2)
 
     return Rect2(rmins..., (rmaxs .- rmins)...)
 end

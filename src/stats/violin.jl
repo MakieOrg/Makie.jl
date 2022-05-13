@@ -5,6 +5,7 @@ Draw a violin plot.
 - `x`: positions of the categories
 - `y`: variables whose density is computed
 # Keywords
+- `weights`: vector of statistical weights (length of data). By default, each observation has weight `1`.
 - `orientation=:vertical`: orientation of the violins (`:vertical` or `:horizontal`)
 - `width=1`: width of the box before shrinking
 - `gap=0.2`: shrinking factor, `width -> width * (1 - gap)`
@@ -18,6 +19,7 @@ Draw a violin plot.
         npoints = 200,
         boundary = automatic,
         bandwidth = automatic,
+        weights = automatic,
         side = :both,
         orientation = :vertical,
         width = automatic,
@@ -47,9 +49,9 @@ end
 
 function plot!(plot::Violin)
     x, y = plot[1], plot[2]
-    args = @extract plot (width, side, color, show_median, npoints, boundary, bandwidth,
+    args = @extract plot (width, side, color, show_median, npoints, boundary, bandwidth, weights,
         datalimits, max_density, dodge, n_dodge, gap, dodge_gap, orientation)
-    signals = lift(x, y, args...) do x, y, width, vside, color, show_median, n, bound, bw, limits, max_density, dodge, n_dodge, gap, dodge_gap, orientation
+    signals = lift(x, y, args...) do x, y, width, vside, color, show_median, n, bound, bw, w, limits, max_density, dodge, n_dodge, gap, dodge_gap, orientation
         x̂, violinwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
 
         # for horizontal violin just flip all componentes
@@ -71,6 +73,7 @@ function plot!(plot::Violin)
                 npoints = n,
                 (bound === automatic ? NamedTuple() : (boundary = bound,))...,
                 (bw === automatic ? NamedTuple() : (bandwidth = bw,))...,
+                (w === automatic ? NamedTuple() : (weights = StatsBase.weights(view(w, idxs)),))...
             )
             l1, l2 = limits isa Function ? limits(v) : limits
             i1, i2 = searchsortedfirst(k.x, l1), searchsortedlast(k.x, l2)
