@@ -42,7 +42,7 @@ function height_insensitive_boundingbox_with_advance(ext::GlyphExtent)
     r = ext.hadvance
     b = ext.descender
     h = ext.ascender
-    return Rect2f((l, b), (r - l, h))
+    return Rect2f((l, b), (r - l, h - b))
 end
 
 function boundingbox(glyphcollection::GlyphCollection, position::Point3f, rotation::Quaternion)
