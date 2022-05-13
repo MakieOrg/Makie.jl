@@ -55,7 +55,8 @@ excludes = Set([
     "Image Scatter different sizes",
     "pattern barplot", # not implemented yet
     "scatter with stroke",
-    "scatter with glow"
+    "scatter with glow",
+    "2D surface with ClosedInterval" # Hmpf, shading is just too different
 ])
 
 @testset "refimages" begin
