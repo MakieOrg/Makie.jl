@@ -89,13 +89,15 @@ conversion_trait(::Type{<: Contour{<: Tuple{<: AbstractArray{T, 3}}}}) where T =
 function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     x, y, z, volume = plot[1:4]
     @extract plot (colormap, levels, linewidth, alpha)
-    valuerange = lift(nan_extrema, volume)
+    valuerange = Observable{Vec2f}()
+    map!(nan_extrema, valuerange, volume)
     cliprange = replace_automatic!(plot, :colorrange) do
         valuerange
     end
-    cmap = lift(colormap, levels, alpha, cliprange, valuerange) do _cmap, l, alpha, cliprange, vrange
-        levels = to_levels(l, vrange)
-        nlevels = length(levels)
+    colormap_obs = lift(colormap, levels, alpha, cliprange, valuerange) do _cmap, l, a, cliprange, vrange
+        alpha_num = Float32(a)
+        level_vec = to_levels(l, vrange)
+        nlevels = length(level_vec)
         N = 50 * nlevels
 
         iso_eps = if haskey(plot, :isorange)
@@ -110,17 +112,17 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
             i01 = (i-1) / (N - 1)
             c = Makie.interpolated_getindex(cmap, i01)
             isoval = vrange[1] + (i01 * (vrange[2] - vrange[1]))
-            line = reduce(levels, init = false) do v0, level
+            line = reduce(level_vec, init = false) do v0, level
                 (isoval in v_interval) || return false
                 v0 || (abs(level - isoval) <= iso_eps)
             end
-            return RGBAf(Colors.color(c), line ? alpha : 0.0)
+            return RGBAf(Colors.color(c), line ? alpha_num : 0.0)
         end
     end
 
     attr = Attributes(plot)
     attr[:colorrange] = cliprange
-    attr[:colormap] = cmap
+    attr[:colormap] = colormap_obs
     attr[:algorithm] = 7
     pop!(attr, :levels)
     volume!(plot, attr, x, y, z, volume)
