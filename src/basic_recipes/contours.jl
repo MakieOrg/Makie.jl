@@ -43,7 +43,11 @@ $(ATTRIBUTES)
     default_theme(scene, Contour)
 end
 
+<<<<<<< HEAD
 plot_preferred_axis(::Type{<:Contour3d}) = LScene
+=======
+is_plot_type_3d(::Type{<:Contour3d}) = true
+>>>>>>> breaking-release
 
 function contourlines(::Type{<: Contour}, contours, cols)
     result = Point2f[]
