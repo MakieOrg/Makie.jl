@@ -6,12 +6,14 @@ on:
       - '*.md'
     branches:
       - master
+      - breaking-release
   push:
     paths-ignore:
       - 'docs/**'
       - '*.md'
     branches:
       - master
+      - breaking-release
     tags: '*'
 
 concurrency:
@@ -55,7 +57,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: ReferenceImages_${{ matrix.os }}_${{ matrix.arch }}_${{ matrix.version }}
-          path: ./CairoMakie/test/reference_test_output
+          path: ./CairoMakie/test/recorded_reference_images/
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
