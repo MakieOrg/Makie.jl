@@ -192,7 +192,6 @@ end
     meshscatter(RNG.rand(Point3f, 10), axis=(type=Axis3,))
 end
 
-
 @reference_test "2D surface with ClosedInterval" begin
-    surface(0..1, 0..2, zeros(10, 5))
+    surface(0..1, 0..2, zeros(10, 5); axis=(type=Axis,))
 end
