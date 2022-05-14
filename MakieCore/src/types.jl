@@ -18,7 +18,26 @@ Main structure for holding attributes, for theming plots etc!
 Will turn all values into observables, so that they can be updated.
 """
 struct Attributes
-    attributes::Dict{Symbol, Observable}
+    attributes::Dict{Symbol, Observable{Any}}
+
+    Attributes(dict::Dict{Symbol, Observable{Any}}) = new(dict)
+
+    function Attributes(@nospecialize(iterable_of_pairs))
+        result = Dict{Symbol, Observable{Any}}()
+        for (k::Symbol, v) in iterable_of_pairs
+            if v isa NamedTuple
+                result[k] = Attributes(v)
+            else
+                obs = Observable{Any}(to_value(v))
+                if v isa Observables.AbstractObservable
+                    on(x-> obs[] = x, v)
+                end
+                result[k] = obs
+            end
+        end
+        return new(result)
+    end
+
 end
 
 struct Combined{Typ, T} <: ScenePlot{Typ}
@@ -28,6 +47,22 @@ struct Combined{Typ, T} <: ScenePlot{Typ}
     input_args::Tuple
     converted::Tuple
     plots::Vector{AbstractPlot}
+end
+
+function Base.getproperty(x::Combined, key::Symbol)
+    if hasfield(typeof(x), key)
+        getfield(x, key)
+    else
+        getindex(x, key)
+    end
+end
+
+function Base.setproperty!(x::Combined, key::Symbol, value)
+    if hasfield(typeof(x), key)
+        setfield!(x, key, value)
+    else
+        setindex!(x, value, key)
+    end
 end
 
 function Base.show(io::IO, plot::Combined)
