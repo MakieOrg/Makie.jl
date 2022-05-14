@@ -337,6 +337,7 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
     plot!(scene, FinalType, attributes, input_nodes, converted_node)
 end
 
+@nospecialize
 plot!(p::Combined) = _plot!(p)
 
 _plot!(p::Atomic{T}) where T = p
@@ -344,6 +345,8 @@ _plot!(p::Atomic{T}) where T = p
 function _plot!(p::Combined{fn, T}) where {fn, T}
     throw(PlotMethodError(fn, T))
 end
+@specialize
+
 
 struct PlotMethodError <: Exception
     fn

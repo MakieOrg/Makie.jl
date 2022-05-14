@@ -128,7 +128,7 @@ function initialize_block!(m::Menu; default = nothing)
     end
 
     textpositions = Observable(zeros(Point2f, length(optionstrings[])))
-    
+
     me_selection = addmouseevents!(blockscene, selectiontext, selectionpoly)
     onmouseleftclick(me_selection) do me
         m.is_open[] = !m.is_open[]
@@ -177,12 +177,12 @@ function initialize_block!(m::Menu; default = nothing)
         optionpolycolors.val .= map(eachindex(bbs)) do i
             i == m.i_selected[] ? m.cell_color_active[] :
             iseven(i) ? to_color(m.cell_color_inactive_even[]) :
-                to_color(m.cell_color_inactive_odd[]) 
+                to_color(m.cell_color_inactive_odd[])
         end
         optionrects.val .= map(eachindex(bbs)) do i
             BBox(0, w_bbox, h - heights_cumsum[i+1], h - heights_cumsum[i])
         end
-        
+
         notify(optionrects)
     end
     notify(optionstrings)
@@ -208,7 +208,7 @@ function initialize_block!(m::Menu; default = nothing)
             j == m.i_selected[] ? m.cell_color_active[] :
             i == j ? m.cell_color_hover[] :
                 iseven(i) ? to_color(m.cell_color_inactive_even[]) :
-                to_color(m.cell_color_inactive_odd[]) 
+                to_color(m.cell_color_inactive_odd[])
         end
         return Consume(false)
     end
@@ -217,7 +217,7 @@ function initialize_block!(m::Menu; default = nothing)
         optionpolycolors[] = map(eachindex(optionstrings[])) do i
             i == m.i_selected[] ? m.cell_color_active[] :
             iseven(i) ? to_color(m.cell_color_inactive_even[]) :
-                to_color(m.cell_color_inactive_odd[]) 
+                to_color(m.cell_color_inactive_odd[])
         end
         return Consume(false)
     end
@@ -273,7 +273,7 @@ function initialize_block!(m::Menu; default = nothing)
 
     dropdown_arrow = scatter!(
         blockscene,
-        @lift(mean(rightline($selectionarea)) - Point2f($(m.textpadding)[2], 0)),
+        @lift(mean(rightline($selectionarea)) .- Point2f($(m.textpadding)[2], 0)),
         marker = @lift($(m.is_open) ? '▴' : '▾'),
         markersize = m.dropdown_arrow_size,
         color = m.dropdown_arrow_color,

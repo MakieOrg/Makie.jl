@@ -57,7 +57,12 @@ function _get_isoband_levels(levels::AbstractVector{<:Real}, mi, ma)
     edges
 end
 
-conversion_trait(::Type{<:Contourf}) = ContinuousSurface()
+function convert_arguments(::Type{<: Contourf}, args...)
+    _x, _y, z = convert_arguments(ContinuousSurface(), args...)
+    x = to_vector(_x, size(z, 1), Float32)
+    y = to_vector(_y, size(z, 2), Float32)
+    return (x, y, z)
+end
 
 function _get_isoband_levels(::Val{:normal}, levels, values)
     _get_isoband_levels(levels, extrema_nan(values)...)

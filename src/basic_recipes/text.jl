@@ -1,7 +1,7 @@
 # TODO find an appropriate target and
-# @convert_target struct Text
-#     glyphs::Any
-# end
+@convert_target struct Text
+    glyphs::Any
+end
 
 function plot!(plot::Text)
     positions = plot[1]
@@ -11,9 +11,9 @@ function plot!(plot::Text)
     linewidths = Observable(Float32[])
     linecolors = Observable(RGBAf[])
     lineindices = Ref(Int[])
-    
+
     onany(plot.text, plot.textsize, plot.font, plot.align,
-            plot.rotation, plot.justification, plot.lineheight, plot.color, 
+            plot.rotation, plot.justification, plot.lineheight, plot.color,
             plot.strokecolor, plot.strokewidth, plot.word_wrap_width) do str,
                 ts, f, al, rot, jus, lh, col, scol, swi, www
         ts = to_textsize(ts)
@@ -127,7 +127,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
 end
 
 # overload text plotting for a vector of tuples of a string and a point each
-function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:AbstractString, <:Point}}}})    
+function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:AbstractString, <:Point}}}})
     strings_and_positions = plot[1]
 
     strings = Observable(first.(strings_and_positions[]))
@@ -250,7 +250,7 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
     #     w_ink = width(inkbb)
     #     h_ink = height(inkbb)
     #     ori = inkbb.origin
-        
+
     #     char_scale = Vec2f(w / w_ink, h / h_ink) * fs
 
     #     pos_scaled = fs * Vec2f(position)

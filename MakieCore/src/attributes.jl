@@ -5,38 +5,41 @@ Base.broadcastable(x::AbstractScene) = Ref(x)
 Base.broadcastable(x::AbstractPlot) = Ref(x)
 Base.broadcastable(x::Attributes) = Ref(x)
 
-# The rules that we use to convert values to a Observable in Attributes
-value_convert(x::Observables.AbstractObservable) = Observables.observe(x)
-value_convert(@nospecialize(x)) = x
+#dict interface
+const AttributeOrPlot = Union{AbstractPlot, Attributes}
 
-# We transform a tuple of observables into a Observable(tuple(values...))
-function value_convert(x::NTuple{N, Union{Any, Observables.AbstractObservable}}) where N
-    result = Observable(to_value.(x))
-    onany((args...)-> args, x...)
-    return result
+
+Attributes(; kw_args...) = Attributes(kw_args)
+Attributes(pairs::Pair...) = Attributes(pairs)
+Attributes(nt::NamedTuple) = Attributes(pairs(nt))
+
+
+
+Base.pop!(x::AttributeOrPlot, args...) = pop!(x.attributes, args...)
+Base.haskey(x::AttributeOrPlot, key::Symbol) = haskey(x.attributes, key)
+Base.delete!(x::AttributeOrPlot, key::Symbol) = delete!(x.attributes, key)
+function Base.get!(f::Function, x::AttributeOrPlot, key::Symbol)
+    if haskey(x, key)
+        return x[key]
+    else
+        val = f()
+        x[key] = val
+        return x[key]
+    end
 end
+Base.get!(x::AttributeOrPlot, key::Symbol, default) = get!(()-> default, x, key)
+Base.get(f::Function, x::AttributeOrPlot, key::Symbol) = haskey(x, key) ? x[key] : f()
+Base.get(x::AttributeOrPlot, key::Symbol, default) = get(()-> default, x, key)
 
-value_convert(x::NamedTuple) = Attributes(x)
 
-# Version of `convert(Observable{Any}, obj)` that doesn't require runtime dispatch
-node_any(@nospecialize(obj)) = isa(obj, Observable{Any}) ? obj :
-                               isa(obj, Observable) ? convert(Observable{Any}, obj) : Observable{Any}(obj)
-
-node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (pair[1] => node_any(value_convert(pair[2])))
-node_pairs(pairs) = (node_pairs(pair) for pair in pairs)
-
-Attributes(; kw_args...) = Attributes(Dict{Symbol, Observable}(node_pairs(kw_args)))
-Attributes(pairs::Pair...) = Attributes(Dict{Symbol, Observable}(node_pairs(pairs)))
-Attributes(pairs::AbstractVector) = Attributes(Dict{Symbol, Observable}(node_pairs.(pairs)))
-Attributes(pairs::Iterators.Pairs) = Attributes(collect(pairs))
-Attributes(nt::NamedTuple) = Attributes(; nt...)
 attributes(x::Attributes) = getfield(x, :attributes)
+
 Base.keys(x::Attributes) = keys(x.attributes)
 Base.values(x::Attributes) = values(x.attributes)
 function Base.iterate(x::Attributes, state...)
     s = iterate(keys(x), state...)
     s === nothing && return nothing
-    return (s[1] => x[s[1]], s[2])
+    return (s[1]::Symbol => x[s[1]], s[2])
 end
 
 function Base.copy(attributes::Attributes)
@@ -48,15 +51,14 @@ function Base.copy(attributes::Attributes)
     return result
 end
 
-function Base.deepcopy(obs::Observable)
-    return Observable{Any}(to_value(obs))
-end
-
+# Deepcopy with special treatment for observables
+# to deepcopy Attributes
+_deepcopy(x) = x isa Observable ? Observable{Any}(to_value(x)) : deepcopy(x)
 function Base.deepcopy(attributes::Attributes)
     result = Attributes()
     for (k, v) in attributes
         # We need to create a new Signal to have a real copy
-        result[k] = deepcopy(v)
+        result[k] = _deepcopy(v)
     end
     return result
 end
@@ -74,23 +76,12 @@ end
 
 Base.merge(target::Attributes, args::Attributes...) = merge!(copy(target), args...)
 
-@generated hasfield(x::T, ::Val{key}) where {T, key} = :($(key in fieldnames(T)))
-
-@inline function Base.getproperty(x::T, key::Symbol) where T <: Union{Attributes, Transformable}
-    if hasfield(x, Val(key))
-        getfield(x, key)
-    else
-        getindex(x, key)
-    end
+function Base.getproperty(x::Attributes, key::Symbol)
+    key === :attributes && return getfield(x, :attributes)
+    return getindex(x, key)
 end
 
-@inline function Base.setproperty!(x::T, key::Symbol, value) where T <: Union{Attributes, Transformable}
-    if hasfield(x, Val(key))
-        setfield!(x, key, value)
-    else
-        setindex!(x, value, key)
-    end
-end
+Base.setproperty!(x::Attributes, key::Symbol, @nospecialize(value)) = setindex!(x, value, key)
 
 function Base.getindex(x::Attributes, key::Symbol)
     x = attributes(x)[key]
@@ -99,26 +90,16 @@ function Base.getindex(x::Attributes, key::Symbol)
     return x[] isa Attributes ? x[] : x
 end
 
-function Base.setindex!(x::Attributes, value, key::Symbol)
+function Base.setindex!(x::Attributes, @nospecialize(value), key::Symbol)
     if haskey(x, key)
-        x.attributes[key][] = value
+        attributes(x)[key][] = value
     else
-        x.attributes[key] = node_any(value)
+        attributes(x)[key] = Observable{Any}(value)
     end
 end
 
 function Base.setindex!(x::Attributes, value::Observable, key::Symbol)
-    if haskey(x, key)
-        # error("You're trying to update an attribute Observable with a new Observable. This is not supported right now.
-        # You can do this manually like this:
-        # lift(val-> attributes[$key] = val, Observable::$(typeof(value)))
-        # ")
-        return x.attributes[key] = node_any(value)
-    else
-        #TODO make this error. Attributes should be sort of immutable
-        return x.attributes[key] = node_any(value)
-    end
-    return x
+    return attributes(x)[key] = convert(Observable{Any}, value)
 end
 
 _indent_attrs(s, n) = join(split(s, '\n'), "\n" * " "^n)
@@ -156,23 +137,6 @@ Base.show(io::IO, attr::Attributes) = show(io, MIME"text/plain"(), attr)
 theme(x::AbstractPlot) = x.attributes
 isvisible(x) = haskey(x, :visible) && to_value(x[:visible])
 
-#dict interface
-const AttributeOrPlot = Union{AbstractPlot, Attributes}
-Base.pop!(x::AttributeOrPlot, args...) = pop!(x.attributes, args...)
-Base.haskey(x::AttributeOrPlot, key) = haskey(x.attributes, key)
-Base.delete!(x::AttributeOrPlot, key) = delete!(x.attributes, key)
-function Base.get!(f::Function, x::AttributeOrPlot, key::Symbol)
-    if haskey(x, key)
-        return x[key]
-    else
-        val = f()
-        x[key] = val
-        return x[key]
-    end
-end
-Base.get!(x::AttributeOrPlot, key::Symbol, default) = get!(()-> default, x, key)
-Base.get(f::Function, x::AttributeOrPlot, key::Symbol) = haskey(x, key) ? x[key] : f()
-Base.get(x::AttributeOrPlot, key::Symbol, default) = get(()-> default, x, key)
 
 # This is a bit confusing, since for a plot it returns the attribute from the arguments
 # and not a plot for integer indexing. But, we want to treat plots as "atomic"
@@ -201,13 +165,13 @@ function Base.getindex(x::AttributeOrPlot, key::Symbol, key2::Symbol, rest::Symb
     dict[key2, rest...]
 end
 
-function Base.setindex!(x::AttributeOrPlot, value, key::Symbol, key2::Symbol, rest::Symbol...)
+function Base.setindex!(x::AttributeOrPlot, @nospecialize(value), key::Symbol, key2::Symbol, rest::Symbol...)
     dict = to_value(x[key])
     dict isa Attributes || error("Trying to access $(typeof(dict)) with multiple keys: $key, $key2, $(rest)")
     dict[key2, rest...] = value
 end
 
-function Base.setindex!(x::AbstractPlot, value, key::Symbol)
+function Base.setindex!(x::AbstractPlot, @nospecialize(value), key::Symbol)
     argnames = argument_names(typeof(x), length(x.converted))
     idx = findfirst(isequal(key), argnames)
     if idx === nothing && haskey(x.attributes, key)
