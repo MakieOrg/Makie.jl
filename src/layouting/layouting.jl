@@ -114,7 +114,8 @@ function glyph_collection(
             push!(xs[end], x)
             x += charinfos[i].hadvance
             
-            if 0 < word_wrap_width < x && (ci.char == ' ' || i == length(charinfos)) && 
+            if 0 < word_wrap_width < x &&
+                    ((ci.char == ' ' || ci.char == '\n') || i == length(charinfos)) &&
                     last_space_local_idx != 0
 
                 newline_offset = xs[end][last_space_local_idx + 1]
@@ -133,6 +134,14 @@ function glyph_collection(
                 
                 if i == length(charinfos)
                     push!(lineinfos, view(charinfos, last_line_start:i))
+                end
+
+                if ci.char == '\n'
+                    push!(xs, Float32[])
+                    push!(lineinfos, view(charinfos, last_line_start:i))
+                    last_space_local_idx = 0
+                    last_line_start = i+1
+                    x = 0f0
                 end
 
             elseif ci.char == '\n' || i == length(charinfos)
