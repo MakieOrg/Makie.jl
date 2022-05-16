@@ -135,16 +135,9 @@ function glyph_collection(
                 if i == length(charinfos)
                     push!(lineinfos, view(charinfos, last_line_start:i))
                 end
+            end
 
-                if ci.char == '\n'
-                    push!(xs, Float32[])
-                    push!(lineinfos, view(charinfos, last_line_start:i))
-                    last_space_local_idx = 0
-                    last_line_start = i+1
-                    x = 0f0
-                end
-
-            elseif ci.char == '\n' || i == length(charinfos)
+            if ci.char == '\n' || i == length(charinfos)
                 push!(xs, Float32[])
                 push!(lineinfos, view(charinfos, last_line_start:i))
                 last_space_local_idx = 0
