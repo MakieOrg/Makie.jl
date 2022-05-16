@@ -130,6 +130,7 @@ We can make a title by placing a label across the top two elements.
 \begin{examplefigure}{px_per_unit = 1.5}
 ```julia
 Label(ga[1, 1:2, Top()], "Stimulus ratings", valign = :bottom,
+    font = "TeX Gyre Heros Bold",
     padding = (0, 0, 5, 0))
 
 f
@@ -259,6 +260,7 @@ We can make a little title for the six axes by placing a `Label` in the top prot
 \begin{examplefigure}{px_per_unit = 1.5}
 ```julia
 Label(gd[1, :, Top()], "EEG traces", valign = :bottom,
+    font = "TeX Gyre Heros Bold",
     padding = (0, 0, 5, 0))
 
 f
