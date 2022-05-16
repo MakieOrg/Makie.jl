@@ -198,7 +198,7 @@ end
         "The axis title string."
         title = ""
         "The font family of the title."
-        titlefont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "TeX Gyre Heros Makie")
+        titlefont::Makie.FreeTypeAbstraction.FTFont = "TeX Gyre Heros Makie Bold"
         "The title's font size."
         titlesize::Float64 = @inherit(:fontsize, 16f0)
         "The gap between axis and title."
@@ -916,7 +916,7 @@ const EntryGroup = Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}
         "Controls if the parent layout can adjust to this element's height"
         tellheight = automatic
         "The font family of the legend group titles."
-        titlefont = @inherit(:font, "TeX Gyre Heros Makie")
+        titlefont = "TeX Gyre Heros Makie Bold"
         "The font size of the legend group titles."
         titlesize = @inherit(:fontsize, 16f0)
         "The horizontal alignment of the legend group titles."
@@ -1304,7 +1304,7 @@ end
         "The axis title string."
         title = ""
         "The font family of the title."
-        titlefont = @inherit(:font, "TeX Gyre Heros Makie")
+        titlefont = "TeX Gyre Heros Makie Bold"
         "The title's font size."
         titlesize = @inherit(:fontsize, 16f0)
         "The gap between axis and title."
