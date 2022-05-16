@@ -174,7 +174,7 @@ The `do scene` closure is just a function that returns our default attributes, i
 
 ```julia:eval-env
 @recipe(StockChart) do scene
-    Attributes(
+    Theme(
         downcolor = :red,
         upcolor = :green,
     )
