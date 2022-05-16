@@ -209,6 +209,18 @@ end
         titlealign::Symbol = :center
         "The color of the title"
         titlecolor::RGBAf = @inherit(:textcolor, :black)
+        "The axis subtitle string."
+        subtitle = ""
+        "The font family of the subtitle."
+        subtitlefont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "DejaVu Sans")
+        "The subtitle's font size."
+        subtitlesize::Float64 = @inherit(:fontsize, 16f0)
+        "The gap between subtitle and title."
+        subtitlegap::Float64 = 4f0
+        "Controls if the subtitle is visible."
+        subtitlevisible::Bool = true
+        "The color of the subtitle"
+        subtitlecolor::RGBAf = @inherit(:textcolor, :black)
         "The font family of the xlabel."
         xlabelfont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "TeX Gyre Heros Makie")
         "The font family of the ylabel."
