@@ -86,6 +86,16 @@ f
 ```
 \end{examplefigure}
 
+We can also choose different x ticks with whole numbers.
+
+\begin{examplefigure}{px_per_unit = 1.5}
+```julia
+axmain.xticks = 0:3:9
+
+f
+```
+\end{examplefigure}
+
 ### Legend
 
 We have set the `label` attribute in the scatter call so it's easier to construct the legend. We can just pass `axmain` as the second argument to `Legend`.
