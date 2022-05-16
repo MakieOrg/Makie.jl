@@ -603,8 +603,8 @@ function convert_arguments(
         vertices::AbstractArray,
         indices::AbstractArray
     )
-    m = normal_mesh(to_vertices(vertices), to_triangles(indices))
-    (m,)
+    m = GeometryBasics.Mesh(to_vertices(vertices), to_triangles(indices))
+    (normal_mesh(m),)
 end
 
 
@@ -679,46 +679,21 @@ Converts a representation of vertices `v` to its canonical representation as a
   - if `v` has 2 or 3 rows, it will treat each column as a vertex,
   - otherwise if `v` has 2 or 3 columns, it will treat each row as a vertex.
 """
-function to_vertices(verts::AbstractVector{<: VecTypes{3, T}}) where T
-    vert3f0 = T != Float32 ? Point3f.(verts) : verts
-    return reinterpret(Point3f, vert3f0)
-end
-
-function to_vertices(verts::AbstractVector{<: VecTypes})
-    to_vertices(to_ndim.(Point3f, verts, 0.0))
+function to_vertices(verts::AbstractVector{<: VecTypes{N, T}}) where {N, T}
+    return convert(Vector{Point{N, Float32}}, verts)
 end
 
 function to_vertices(verts::AbstractMatrix{<: Number})
     if size(verts, 1) in (2, 3)
-        to_vertices(verts, Val(1))
+        N = size(verts, 1)
+        return [Point{N, Float32}(view(verts, :, i)) for i in 1:size(verts, 2)]
     elseif size(verts, 2) in (2, 3)
-        to_vertices(verts, Val(2))
+        N = size(verts, 2)
+        return [Point{N, Float32}(view(verts, i, :)) for i in 1:size(verts, 1)]
     else
         error("You are using a matrix for vertices which uses neither dimension to encode the dimension of the space. Please have either size(verts, 1/2) in the range of 2-3. Found: $(size(verts))")
     end
 end
-
-function to_vertices(verts::AbstractMatrix{T}, ::Val{1}) where T <: Number
-    N = size(verts, 1)
-    if T == Float32 && N == 3
-        reinterpret(Point{N, T}, elconvert(T, vec(verts)))
-    else
-        let N = Val(N), lverts = verts
-            broadcast(1:size(verts, 2), N) do vidx, n
-                to_ndim(Point3f, ntuple(i-> lverts[i, vidx], n), 0.0)
-            end
-        end
-    end
-end
-
-function to_vertices(verts::AbstractMatrix{T}, ::Val{2}) where T <: Number
-    let N = Val(size(verts, 2)), lverts = verts
-        broadcast(1:size(verts, 1), N) do vidx, n
-            to_ndim(Point3f, ntuple(i-> lverts[vidx, i], n), 0.0)
-        end
-    end
-end
-
 
 ################################################################################
 #                            Attribute conversions                             #

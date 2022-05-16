@@ -11,75 +11,70 @@ Base.iterate(ap::AxisPlot, args...) = iterate((ap.axis, ap.plot), args...)
 
 get_scene(ap::AxisPlot) = get_scene(ap.axis.scene)
 
-function is_plot_3d(p::PlotFunc, args...)
+plot_preferred_axis(@nospecialize(x)) = nothing # nothing == I dont know
+plot_preferred_axis(p::PlotFunc) = plot_preferred_axis(Makie.conversion_trait(p))
+plot_preferred_axis(::Type{<:Volume}) = LScene
+plot_preferred_axis(::Type{<:Surface}) = LScene
+plot_preferred_axis(::VolumeLike) = LScene
+plot_preferred_axis(::Type{<:Image}) = Axis
+plot_preferred_axis(::Type{<:Heatmap}) = Axis
+
+function args_preferred_axis(P::Type, args...)
+    result = plot_preferred_axis(P)
+    isnothing(result) || return result
+    return args_preferred_axis(args...)
+end
+args_preferred_axis(::Type{<: Surface}, x::AbstractArray, y::AbstractArray, z::AbstractArray) = LScene
+args_preferred_axis(::Type{<: Wireframe}, x::AbstractArray, y::AbstractArray, z::AbstractArray) = LScene
+
+function args_preferred_axis(@nospecialize(args...))
+    # Fallback: check each single arg if they have a favorite axis type
+    for arg in args
+        r = args_preferred_axis(arg)
+        isnothing(r) || return r
+    end
+    return nothing
+end
+
+args_preferred_axis(x) = nothing
+args_preferred_axis(x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function) = LScene
+args_preferred_axis(m::AbstractArray{T, 3}) where T = LScene
+
+function args_preferred_axis(m::Union{AbstractGeometry{DIM}, GeometryBasics.Mesh{DIM}}) where DIM
+    return DIM === 2 ? Axis : LScene
+end
+
+args_preferred_axis(::AbstractVector{<: Point3}) = LScene
+args_preferred_axis(::AbstractVector{<: Point2}) = Axis
+
+function preferred_axis_type(@nospecialize(p::PlotFunc), @nospecialize(args...))
     # First check if the Plot type "knows" whether it's always 3D
-    result = is_plot_type_3d(p)
+    result = plot_preferred_axis(p)
     isnothing(result) || return result
 
     # Otherwise, we check the arguments
     non_obs = to_value.(args)
     RealP = plottype(p, non_obs...)
-    result = is_plot_type_3d(RealP)
+    result = plot_preferred_axis(RealP)
     isnothing(result) || return result
     conv = convert_arguments(RealP, non_obs...)
     Typ, args_conv = apply_convert!(RealP, Attributes(), conv)
-    return are_args_3d(Typ, args_conv...)
+    result = args_preferred_axis(Typ, args_conv...)
+    isnothing(result) && return Axis # Fallback to Axis if nothing found
+    return result
 end
 
-is_plot_type_3d(p::PlotFunc) = is_plot_type_3d(Makie.conversion_trait(p))
-is_plot_type_3d(::Type{<:Volume}) = true
-is_plot_type_3d(::Type{<:Contour}) = nothing
-is_plot_type_3d(::Type{<:Image}) = false
-is_plot_type_3d(::Type{<:Heatmap}) = false
-is_plot_type_3d(::VolumeLike) = true
-is_plot_type_3d(x) = nothing
-
-function are_args_3d(P::Type, args...)
-    result = is_plot_type_3d(P)
-    isnothing(result) || return result
-    return are_args_3d(args...)
-end
-
-are_args_3d(::Type{<: Surface}, x::AbstractArray, y::AbstractArray, z::AbstractArray) = any(x-> x != z[1], z)
-are_args_3d(::Type{<: Wireframe}, x::AbstractArray, y::AbstractArray, z::AbstractArray) = any(x-> x != z[1], z)
-
-function are_args_3d(args...)
-    return any(args) do arg
-        r = are_args_3d(arg)
-        return isnothing(r) ? false : r
-    end
-end
-
-are_args_3d(x) = nothing
-are_args_3d(x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function) = true
-are_args_3d(m::AbstractArray{T, 3}) where T = true
-
-function are_args_3d(m::Union{AbstractGeometry, GeometryBasics.Mesh})
-    return ndims(m) == 2 ? false : !is2d(Rect3f(m))
-end
-
-are_args_3d(xyz::AbstractVector{<: Point3}) = any(x-> x[3] > 0, xyz)
-
-function get_axis_type(p::PlotFunc, args...)
-    result = is_plot_3d(p, args...)
-    # We fallback to the 2D Axis if we don't get a definitive answer, which seems like the best default.
-    isnothing(result) && return Axis
-    return result ? LScene : Axis
-end
-
-function plot(P::PlotFunc, attributes::Attributes, args...)
-    axis = get_as_dict(attributes,  :axis)
-    figure = get_as_dict(attributes, :figure)
-
+function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), kw_attributes...)
+    # scene_attributes = extract_scene_attributes!(attributes)
     fig = Figure(; figure...)
-
+    axis = Dict(pairs(axis))
     AxType = if haskey(axis, :type)
         pop!(axis, :type)
     else
-        get_axis_type(P, args...)
+        preferred_axis_type(P, args...)
     end
     ax = AxType(fig[1, 1]; axis...)
-    p = plot!(P, attributes, ax, args...)
+    p = plot!(ax, P, Attributes(kw_attributes), args...)
     return FigureAxisPlot(fig, ax, p)
 end
 
@@ -107,14 +102,13 @@ function plot(P::PlotFunc, attributes::Attributes, gp::GridPosition, args...)
         """)
     end
 
-    axis = get_as_dict(attributes, :axis)
-
+    axis = Dict(pairs(axis))
     AxType = if haskey(axis, :type)
         pop!(axis, :type)
     else
-        get_axis_type(P, args...)
+        preferred_axis_type(P, args...)
     end
-    ax =  AxType(f; axis...)
+    ax = AxType(f; axis...)
     gp[] = ax
     p = plot!(P, attributes, ax, args...)
     return AxisPlot(ax, p)
@@ -158,12 +152,13 @@ function plot(P::PlotFunc, attributes::Attributes, gsp::GridSubposition, args...
     fig = MakieLayout.get_top_parent(gsp)
     axis = get_as_dict(attributes, :axis)
 
+    axis = Dict(pairs(axis))
     AxType = if haskey(axis, :type)
         pop!(axis, :type)
     else
-        get_axis_type(P, args...)
+        preferred_axis_type(P, args...)
     end
-    ax =  AxType(fig; axis...)
+    ax = AxType(fig; axis...)
     gsp.parent[gsp.rows, gsp.cols, gsp.side] = ax
     p = plot!(P, attributes, ax, args...)
     return AxisPlot(ax, p)
