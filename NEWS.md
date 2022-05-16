@@ -2,6 +2,8 @@
 
 ## master
 
+- Changed the default font from `Dejavu Sans` to `TeX Gyre Heros Makie` which is the same as `TeX Gyre Heros` with slightly decreased descenders and ascenders. Decreasing those metrics reduced unnecessary whitespace and alignment issues. Four fonts in total were added, the styles Regular, Bold, Italic and Bold Italic. Also changed `Axis`, `Axis3` and `Legend` attributes `titlefont` to `TeX Gyre Heros Makie Bold` in order to separate it better from axis labels in multifacet arrangements [#1897](https://github.com/JuliaPlots/Makie.jl/pull/1897).
+
 ## v0.17.1
 - Added word wrapping. In `Label`, `word_wrap = true` causes it to use the suggested width and wrap text to fit. In `text`, `word_wrap_width > 0` can be used to set a pixel unit line width. Any word (anything between two spaces without a newline) that goes beyond this width gets a newline inserted before it. [#1819](https://github.com/JuliaPlots/Makie.jl/pull/1819)
 - Improved `Axis3`'s interactive performance. [#1835](https://github.com/JuliaPlots/Makie.jl/pull/1835)
