@@ -27,11 +27,8 @@ using CairoMakie
 using FileIO
 CairoMakie.activate!() # hide
 
-noto_sans = assetpath("fonts", "NotoSans-Regular.ttf")
-noto_sans_bold = assetpath("fonts", "NotoSans-Bold.ttf")
-
 f = Figure(backgroundcolor = RGBf(0.98, 0.98, 0.98),
-    resolution = (1000, 700), font = noto_sans)
+    resolution = (1000, 700))
 ```
 \end{examplefigure}
 
@@ -333,7 +330,7 @@ That will leave all other alignments intact, because we're not creating any new 
 for (label, layout) in zip(["A", "B", "C", "D"], [ga, gb, gc, gd])
     Label(layout[1, 1, TopLeft()], label,
         textsize = 26,
-        font = noto_sans_bold,
+        font = "TeX Gyre Heros Bold",
         padding = (0, 5, 5, 0),
         halign = :right)
 end
