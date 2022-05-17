@@ -212,7 +212,7 @@ end
         "The axis subtitle string."
         subtitle = ""
         "The font family of the subtitle."
-        subtitlefont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "DejaVu Sans")
+        subtitlefont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "TeX Gyre Heros Makie")
         "The subtitle's font size."
         subtitlesize::Float64 = @inherit(:fontsize, 16f0)
         "The gap between subtitle and title."
