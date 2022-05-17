@@ -347,7 +347,14 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
         suggestedbbox = bbox
     )
 
-    blockscene = Scene(topscene, camera = campixel!)
+    blockscene = Scene(
+        topscene,
+        # the block scene tracks the parent scene exactly
+        # for this it seems to be necessary to zero-out a possible non-zero
+        # origin of the parent
+        lift(Makie.zero_origin, topscene.px_area),
+        camera = campixel!
+    )
 
     # create base block with otherwise undefined fields
     b = T(fig_or_scene, lobservables, blockscene)
@@ -558,10 +565,7 @@ end
 
 observable_type(x::Type{Observable{T}}) where T = T
 
-convert_for_attribute(t::Type{T}, value::T) where T = value
-convert_for_attribute(t::Type{Float64}, x) = convert(Float64, x)
-convert_for_attribute(t::Type{Float64}, x::Float64) = x
-convert_for_attribute(t::Type{RGBAf}, x) = to_color(x)::RGBAf
-convert_for_attribute(t::Type{RGBAf}, x::RGBAf) = x
 convert_for_attribute(t::Any, x) = x
+convert_for_attribute(t::Type{Float64}, x) = convert(Float64, x)
+convert_for_attribute(t::Type{RGBAf}, x) = to_color(x)::RGBAf
 convert_for_attribute(t::Type{Makie.FreeTypeAbstraction.FTFont}, x) = to_font(x)

@@ -683,31 +683,6 @@ h6 {
     font-weight: bold;
 }
 
-h1 {
-    margin-top: 0;
-    font-size: 1.563em;
-}
-
-h2 {
-    font-size: 1.25em;
-}
-
-h3 {
-    font-size: 1em;
-}
-
-h4 {
-    font-size: 0.75em;
-}
-
-h5 {
-    font-size: 0.75em;
-}
-
-h6 {
-    font-size: 0.75em;
-}
-
 small,
 .small {
     font-size: 0.75em;

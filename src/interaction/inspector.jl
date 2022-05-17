@@ -414,7 +414,7 @@ Defaults to the current plot when called without arguments.
     does not affect the alignment of the tooltip relative to the cursor.
 - `textcolor = :black`: Tooltip text color.
 - `textsize = 20`: Tooltip text size.
-- `font = "Dejavu Sans"`: Tooltip font.
+- `font = "TeX Gyre Heros Makie"`: Tooltip font.
 - `background_color = :white`: Background color of the tooltip.
 - `outline_color = :grey`: Outline color of the tooltip.
 - `outline_linestyle = nothing`: Linestyle of the tooltip outline.

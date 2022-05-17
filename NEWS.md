@@ -1,21 +1,39 @@
 # News
 
-## master
+## `master`
 
-- **Breaking** Added `space` as a generic attribute to switch between data, pixel, relative and clip space for positions. `space` in text has been renamed to `markerspace` because of this. `Pixel` and `SceneSpace` are no longer valid inputs for `space` or `markerspace`.
+- Added a tutorial to the docs about creating a marginal histogram plot [#1851](https://github.com/JuliaPlots/Makie.jl/pull/1851).
+
+## v0.17.2
+
+- Changed the default font from `Dejavu Sans` to `TeX Gyre Heros Makie` which is the same as `TeX Gyre Heros` with slightly decreased descenders and ascenders. Decreasing those metrics reduced unnecessary whitespace and alignment issues. Four fonts in total were added, the styles Regular, Bold, Italic and Bold Italic. Also changed `Axis`, `Axis3` and `Legend` attributes `titlefont` to `TeX Gyre Heros Makie Bold` in order to separate it better from axis labels in multifacet arrangements [#1897](https://github.com/JuliaPlots/Makie.jl/pull/1897).
+
+## v0.17.1
+
+- Added word wrapping. In `Label`, `word_wrap = true` causes it to use the suggested width and wrap text to fit. In `text`, `word_wrap_width > 0` can be used to set a pixel unit line width. Any word (anything between two spaces without a newline) that goes beyond this width gets a newline inserted before it [#1819](https://github.com/JuliaPlots/Makie.jl/pull/1819).
+- Improved `Axis3`'s interactive performance [#1835](https://github.com/JuliaPlots/Makie.jl/pull/1835). 
+- Fixed errors in GLMakie's `scatter` implementation when markers are given as images. [#1917](https://github.com/JuliaPlots/Makie.jl/pull/1917)
+- Removed some method ambiguities introduced in v0.17 [#1922](https://github.com/JuliaPlots/Makie.jl/pull/1922).
+- Add an empty default label, `""`, to each slider that doesn't have a label in `SliderGrid` [#1888](https://github.com/JuliaPlots/Makie.jl/pull/1888).
+
+## v0.17
+
+- **Breaking** Added `space` as a generic attribute to switch between data, pixel, relative and clip space for positions. `space` in text has been renamed to `markerspace` because of this. `Pixel` and `SceneSpace` are no longer valid inputs for `space` or `markerspace` [#1596](https://github.com/JuliaPlots/Makie.jl/pull/1596).
 - **Breaking** Deprecated `mouse_selection(scene)` for `pick(scene)`.
 - **Breaking** Bumped `GridLayoutBase` version to `v0.7`, which introduced offset layouts. Now, indexing into row 0 doesn't create a new row 1, but a new row 0, so that all previous content positions stay the same. This makes building complex layouts order-independent [#1704](https://github.com/JuliaPlots/Makie.jl/pull/1704).
-- Added `empty!(fig)` and changed `empty!(scene)` to remove all child plots without detaching windows
-- error for deprecated events `mousebuttons`, `keyboardbuttons`, `mousedrag`, instead of warning
-- `Layoutable` was renamed to `Block` and the infrastructure changed such that attributes are fixed fields and each block has its own `Scene` for better encapsulation.
-- Added `SliderGrid` block which replaces the deprecated `labelslider!` and `labelslidergrid!` functions.
-- The default anti-aliasing method can now be set in `CairoMakie.activate!` using the `antialias` keyword.  Available options are `CairoMakie.Cairo.ANTIALIAS_*`.
-- CairoMakie can internally rasterize a `Plot` if `plt.rasterize = true` or `plt.rasterize = scale::Int`.
-- Added an example of a marginal histogram to the documentation.
-- Changed some code which consistently caused a segfault in `streamplot_impl` on Mac M1.
-- Set the [Cairo miter limit](https://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-miter-limit) to mimic GLMakie behaviour [#1844]
-- Fixed a method ambiguity in `rotatedrect`.
-
+- **Breaking** deprecate `to_colormap(cmap, ncolors)` in favor of `categorical_colors(cmap, ncolors)` and `resample_cmap(cmap, ncolors)` [#1901](https://github.com/JuliaPlots/Makie.jl/pull/1901) [#1723](https://github.com/JuliaPlots/Makie.jl/pull/1723).
+- Added `empty!(fig)` and changed `empty!(scene)` to remove all child plots without detaching windows [#1818](https://github.com/JuliaPlots/Makie.jl/pull/1818).
+- Switched to erroring instead of warning for deprecated events `mousebuttons`, `keyboardbuttons` and `mousedrag`.
+- `Layoutable` was renamed to `Block` and the infrastructure changed such that attributes are fixed fields and each block has its own `Scene` for better encapsulation [#1796](https://github.com/JuliaPlots/Makie.jl/pull/1796).
+- Added `SliderGrid` block which replaces the deprecated `labelslider!` and `labelslidergrid!` functions [#1796](https://github.com/JuliaPlots/Makie.jl/pull/1796).
+- The default anti-aliasing method can now be set in `CairoMakie.activate!` using the `antialias` keyword.  Available options are `CairoMakie.Cairo.ANTIALIAS_*` [#1875](https://github.com/JuliaPlots/Makie.jl/pull/1875).
+- Added ability to rasterize a plot in CairoMakie vector graphics if `plt.rasterize = true` or `plt.rasterize = scale::Int` [#1872](https://github.com/JuliaPlots/Makie.jl/pull/1872).
+- Fixed segfaults in `streamplot_impl` on Mac M1 [#1830](https://github.com/JuliaPlots/Makie.jl/pull/1830).
+- Set the [Cairo miter limit](https://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-miter-limit) to mimic GLMakie behaviour [#1844](https://github.com/JuliaPlots/Makie.jl/pull/1844).
+- Fixed a method ambiguity in `rotatedrect` [#1846](https://github.com/JuliaPlots/Makie.jl/pull/1846).
+- Allow weights in statistical recipes [#1816](https://github.com/JuliaPlots/Makie.jl/pull/1816).
+- Fixed manual cycling of plot attributes [#1873](https://github.com/JuliaPlots/Makie.jl/pull/1873).
+- Fixed type constraints in ticklabelalign attributes [#1882](https://github.com/JuliaPlots/Makie.jl/pull/1882).
 
 ##  v0.16.4
 
