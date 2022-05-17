@@ -83,15 +83,7 @@ function boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotat
     end
 end
 
-function boundingbox(x::Text{<:Tuple{<:GlyphCollection}})
-    boundingbox(
-        x[1][],
-        to_ndim(Point3f, x.position[], 0),
-        to_rotation(x.rotation[])
-    )
-end
-
-function boundingbox(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}})
+function boundingbox(x::Text)
     boundingbox(
         x[1][],
         to_ndim.(Point3f, x.position[], 0),

@@ -28,7 +28,7 @@ $(ATTRIBUTES)
 end
 
 
-function plot!(p::Combined{scatterlines, <:NTuple{N, Any}}) where N
+function plot!(p::PlotObject{scatterlines, <:NTuple{N, Any}}) where N
 
     # markercolor is the same as linecolor if left automatic
     real_markercolor = Observable{Union{Vector{RGBAf}, RGBAf}}()

@@ -84,10 +84,10 @@ end
 This macro expands to several things. Firstly a type definition:
 
 ```julia
-const MyPlot{ArgTypes} = Combined{myplot, ArgTypes}
+const MyPlot{ArgTypes} = PlotObject{myplot, ArgTypes}
 ```
 
-The type parameter of `Combined` contains the function `myplot` instead of e.g. a
+The type parameter of `PlotObject` contains the function `myplot` instead of e.g. a
 symbol `MyPlot`. This way the mapping from `MyPlot` to `myplot` is safer and simpler.
 The following signatures are automatically defined to make `MyPlot` nice to use:
 

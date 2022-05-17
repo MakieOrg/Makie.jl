@@ -141,8 +141,8 @@ isvisible(x) = haskey(x, :visible) && to_value(x[:visible])
 # This is a bit confusing, since for a plot it returns the attribute from the arguments
 # and not a plot for integer indexing. But, we want to treat plots as "atomic"
 # so from an interface point of view, one should assume that a plot doesn't contain subplots
-# Combined plots break this assumption in some way, but the way to look at it is,
-# that the plots contained in a Combined plot are not subplots, but _are_ actually
+# PlotObject plots break this assumption in some way, but the way to look at it is,
+# that the plots contained in a PlotObject plot are not subplots, but _are_ actually
 # the plot itself.
 Base.getindex(plot::AbstractPlot, idx::Integer) = plot.converted[idx]
 Base.getindex(plot::AbstractPlot, idx::UnitRange{<:Integer}) = plot.converted[idx]
@@ -155,7 +155,7 @@ function Base.getindex(x::AbstractPlot, key::Symbol)
     if idx === nothing
         return x.attributes[key]
     else
-        x.converted[idx]
+        return x.converted[idx]
     end
 end
 

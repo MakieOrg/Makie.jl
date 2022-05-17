@@ -40,7 +40,7 @@ function point_iterator(plot::Union{Scatter, MeshScatter, Lines, LineSegments})
 end
 
 # TODO?
-function point_iterator(text::Text{<: Tuple{<: Union{GlyphCollection, AbstractVector{GlyphCollection}}}})
+function point_iterator(text::Text)
     if is_data_space(text.markerspace[])
         return decompose(Point, boundingbox(text))
     else
@@ -52,9 +52,9 @@ function point_iterator(text::Text{<: Tuple{<: Union{GlyphCollection, AbstractVe
     end
 end
 
-function point_iterator(text::Text)
-    return point_iterator(text.plots[1])
-end
+# function point_iterator(text::Text)
+#     return point_iterator(text.plots[1])
+# end
 
 point_iterator(mesh::GeometryBasics.Mesh) = decompose(Point, mesh)
 
@@ -62,7 +62,7 @@ function point_iterator(list::AbstractVector)
     Iterators.flatten((point_iterator(elem) for elem in list))
 end
 
-point_iterator(plot::Combined) = point_iterator(plot.plots)
+point_iterator(plot::PlotObject) = point_iterator(plot.plots)
 
 point_iterator(plot::Mesh) = point_iterator(plot.mesh[])
 
@@ -131,7 +131,7 @@ end
 
 foreach_plot(f, s::Figure) = foreach_plot(f, s.scene)
 foreach_plot(f, s::FigureAxisPlot) = foreach_plot(f, s.figure)
-foreach_plot(f, plot::Combined) = foreach_plot(f, plot.plots)
+foreach_plot(f, plot::PlotObject) = foreach_plot(f, plot.plots)
 foreach_plot(f, list::AbstractVector) = foreach(f, list)
 
 function foreach_transformed(f, point_iterator, model, trans_func)

@@ -8,7 +8,7 @@ import Cairo
 
 using Makie: Scene, Lines, Text, Image, Heatmap, Scatter, @key_str, broadcast_foreach
 using Makie: convert_attribute, @extractvalue, LineSegments, to_ndim, NativeFont
-using Makie: @info, @get_attribute, Combined
+using Makie: @info, @get_attribute, PlotObject
 using Makie: to_value, to_colormap, extrema_nan
 using Makie: inline!
 using Makie.Observables

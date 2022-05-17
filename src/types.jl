@@ -272,7 +272,7 @@ struct PlotSpec{P<:AbstractPlot}
     PlotSpec{P}(args...; kwargs...) where {P<:AbstractPlot} = new{P}(args, values(kwargs))
 end
 
-PlotSpec(args...; kwargs...) = PlotSpec{Combined{Any}}(args...; kwargs...)
+PlotSpec(args...; kwargs...) = PlotSpec{PlotObject{Any}}(args...; kwargs...)
 
 Base.getindex(p::PlotSpec, i::Int) = getindex(p.args, i)
 Base.getindex(p::PlotSpec, i::Symbol) = getproperty(p.kwargs, i)

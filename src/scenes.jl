@@ -361,7 +361,7 @@ function Base.empty!(scene::Scene)
         end
     end
     empty!(scene.plots)
-    
+
     empty!(scene.theme)
     merge!(scene.theme, _current_default_theme)
 
@@ -385,7 +385,7 @@ function _empty_recursion(scene::Scene)
     # clean up some onsverables (there are probably more...)
     disconnect!(scene.camera)
     scene.camera_controls = EmptyCamera()
-    
+
     # top level scene.px_area needs to remain for GridLayout?
     off.(scene.px_area.inputs)
     empty!(scene.px_area.listeners)
@@ -400,11 +400,11 @@ function _empty_recursion(scene::Scene)
     return
 end
 
-Base.push!(scene::Combined, subscene) = nothing # Combined plots add themselves uppon creation
+Base.push!(scene::PlotObject, subscene) = nothing # PlotObject plots add themselves uppon creation
 
 function Base.push!(scene::Scene, plot::AbstractPlot)
     push!(scene.plots, plot)
-    plot isa Combined || (plot.parent[] = scene)
+    plot isa PlotObject || (plot.parent[] = scene)
     for screen in scene.current_screens
         insert!(screen, scene, plot)
     end
@@ -487,7 +487,7 @@ Flattens all the combined plots and returns a Vector of Atomic plots
 """
 function flatten_combined(plots::Vector, flat=AbstractPlot[])
     for elem in plots
-        if (elem isa Combined)
+        if (elem isa PlotObject)
             flatten_combined(elem.plots, flat)
         else
             push!(flat, elem)
@@ -521,7 +521,7 @@ function center!(scene::Scene, padding=0.01, exclude = not_in_data_space)
 end
 
 parent_scene(x) = parent_scene(get_scene(x))
-parent_scene(x::Combined) = parent_scene(parent(x))
+parent_scene(x::PlotObject) = parent_scene(parent(x))
 parent_scene(x::Scene) = x
 
 Base.isopen(x::SceneLike) = events(x).window_open[]
@@ -559,3 +559,29 @@ struct FigureAxisPlot
 end
 
 const FigureLike = Union{Scene, Figure, FigureAxisPlot}
+
+function apply_theme!(scene::Scene, plot::PlotObject)
+    theme = default_theme(scene, plot.type())
+    merge!(plot.attributes, theme)
+end
+
+function apply_theme!(scene, plot::PlotObject)
+    theme = default_theme(scene, plot.type())
+    merge!(plot.attributes, theme)
+end
+
+
+function plot!(scene::Union{PlotObject, Scene}, plot::PlotObject)
+    apply_theme!(scene, plot)
+    convert_arguments!(plot)
+    plot!(plot, plot.type())
+    push!(scene, plot)
+    return plot
+end
+
+function convert_arguments!(plot::PlotObject)
+    nt = convert_arguments(plot.type, map(to_value, plot.args)...)
+    P, converted =  apply_convert!(plot.type(), plot.attributes, nt)
+    @show P converted
+    plot.converted = Observable.(converted)
+end
