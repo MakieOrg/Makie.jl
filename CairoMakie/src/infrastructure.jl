@@ -244,7 +244,7 @@ function draw_plot(scene::Scene, screen::CairoScreen, primitive::PlotObject)
     if to_value(get(primitive, :visible, true))
         if isempty(primitive.plots)
             Cairo.save(screen.context)
-            draw_atomic(scene, screen, primitive)
+            draw_atomic(scene, screen, primitive, primitive.type())
             Cairo.restore(screen.context)
         else
             for plot in primitive.plots

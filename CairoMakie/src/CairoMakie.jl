@@ -23,8 +23,11 @@ const OneOrVec{T} = Union{
 # re-export Makie, including deprecated names
 for name in names(Makie, all=true)
     if Base.isexported(Makie, name)
-        @eval using Makie: $(name)
-        @eval export $(name)
+        try
+            @eval using Makie: $(name)
+            @eval export $(name)
+        catch e
+        end
     end
 end
 export inline!

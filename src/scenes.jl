@@ -400,7 +400,7 @@ function _empty_recursion(scene::Scene)
     return
 end
 
-Base.push!(scene::PlotObject, subscene) = nothing # PlotObject plots add themselves uppon creation
+Base.push!(scene::PlotObject, plot::PlotObject) = push!(scene.plots, plot) # PlotObject plots add themselves uppon creation
 
 function Base.push!(scene::Scene, plot::AbstractPlot)
     push!(scene.plots, plot)
@@ -565,16 +565,17 @@ function apply_theme!(scene::Scene, plot::PlotObject)
     merge!(plot.attributes, theme)
 end
 
-function apply_theme!(scene, plot::PlotObject)
-    theme = default_theme(scene, plot.type())
-    merge!(plot.attributes, theme)
+function plot!(scene::Union{PlotObject, Scene}, P::AbstractPlot, args...)
+    # plot!(scene, P)
 end
 
-
 function plot!(scene::Union{PlotObject, Scene}, plot::PlotObject)
-    apply_theme!(scene, plot)
+    plot.parent = scene
+    apply_theme!(parent_scene(scene), plot)
     convert_arguments!(plot)
-    plot!(plot, plot.type())
+    plot.model = Mat4f(I)
+    calculated_attributes!(plot.type, plot)
+    plot!(plot, plot.type(), map(to_value, plot.converted)...)
     push!(scene, plot)
     return plot
 end
@@ -582,6 +583,5 @@ end
 function convert_arguments!(plot::PlotObject)
     nt = convert_arguments(plot.type, map(to_value, plot.args)...)
     P, converted =  apply_convert!(plot.type(), plot.attributes, nt)
-    @show P converted
     plot.converted = Observable.(converted)
 end

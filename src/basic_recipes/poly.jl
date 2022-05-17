@@ -50,11 +50,8 @@ convert_arguments(::Type{<: Poly}, args...) = ([convert_arguments(Scatter, args.
 convert_arguments(::Type{<: Poly}, vertices::AbstractArray, indices::AbstractArray) = convert_arguments(Mesh, vertices, indices)
 convert_arguments(::Type{<: Poly}, m::GeometryBasics.Mesh) = (m,)
 
-function plot!(plot::PlotObject, ::Poly)
-    plot_poly!(plot, to_value.(plot.converted)...)
-end
 
-function plot_poly!(plot::PlotObject, ::Union{GeometryBasics.Mesh, GeometryPrimitive})
+function plot!(plot::PlotObject, ::Poly, ::Union{GeometryBasics.Mesh, GeometryPrimitive})
     println("hi?")
     mesh!(
         plot, plot[1],
@@ -119,7 +116,7 @@ function to_line_segments(polygon::AbstractVector{<: VecTypes})
     return result
 end
 
-function plot_poly!(plot::PlotObject, ::Union{Polygon, AbstractVector{<: PolyElements}})
+function plot!(plot::PlotObject, ::Poly, ::Union{Polygon, AbstractVector{<: PolyElements}})
     geometries = plot[1]
     meshes = lift(poly_convert, geometries)
     mesh!(plot, meshes;
@@ -158,7 +155,7 @@ function plot_poly!(plot::PlotObject, ::Union{Polygon, AbstractVector{<: PolyEle
     )
 end
 
-function plot!(plot::PlotObject, ::Mesh) #where P <: Union{AbstractMesh, Polygon}
+function plot!(plot::PlotObject, ::Mesh, ::AbstractVector{P}) where P <: Union{AbstractMesh, Polygon}
     meshes = plot[1]
     color_node = plot.color
     attributes = Attributes(
@@ -197,5 +194,5 @@ function plot!(plot::PlotObject, ::Mesh) #where P <: Union{AbstractMesh, Polygon
         end
     end
 
-    mesh!(plot, bigmesh)
+    mesh!(plot, bigmesh; attributes...)
 end
