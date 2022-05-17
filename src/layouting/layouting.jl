@@ -130,10 +130,6 @@ function glyph_collection(
                     (char = '\n', font = font, scale = scale, hadvance = hadvance,
                         hi_bb = hi_bb, lineheight = lineheight, extent = extent)
                 end
-                
-                if i == length(charinfos)
-                    push!(lineinfos, view(charinfos, last_line_start:i))
-                end
             end
 
             if ci.char == '\n'
