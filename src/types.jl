@@ -319,7 +319,7 @@ end
 
 function GlyphExtent(font, char)
     extent = get_extent(font, char)
-    ink_bb = FreeTypeAbstraction.inkboundingbox(extent)
+    ink_bb = FreeTypeAbstraction.height_insensitive_boundingbox(extent, font)
     ascender = FreeTypeAbstraction.ascender(font)
     descender = FreeTypeAbstraction.descender(font)
     hadvance = FreeTypeAbstraction.hadvance(extent)
