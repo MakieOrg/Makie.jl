@@ -269,11 +269,6 @@ function draw_scatter(
     return draw_scatter((RECTANGLE, p[2]), data)
 end
 
-# To map (scale, scale_x, scale_y, scale_z) -> scale
-combine_scales(scale, x::Nothing, y::Nothing, z::Nothing) = scale
-combine_scales(s::Nothing, x, y, z::Nothing) = Vec2f.(x, y)
-combine_scales(s::Nothing, x, y, z) = Vec3f.(x, y, z)
-
 """
 Main assemble functions for scatter particles.
 Sprites are anything like distance fields, images and simple geometries
@@ -293,25 +288,15 @@ function draw_scatter((marker, position), data)
         # to offset.
         data[:quad_offset] = map(rescale_glyph, marker, font, quad_offset)
         data[:scale] = map(rescale_glyph, marker, font, scale)
-    
+
     elseif to_value(marker) isa BezierPath
-        scale = map(combine_scales,
-            pop!(data, :scale, Observable(nothing)),
-            pop!(data, :scale_x, Observable(nothing)),
-            pop!(data, :scale_y, Observable(nothing)),
-            pop!(data, :scale_z, Observable(nothing))
-        )
+        scale = data[:scale]
         offset = Observable(Vec2f(0))
         data[:quad_offset] = map(offset_bezierpath, marker, scale, offset)
         data[:scale] = map(rescale_bezierpath, marker, scale)
 
     elseif to_value(marker) isa AbstractArray
-        scale = map(combine_scales,
-            pop!(data, :scale, Observable(nothing)),
-            pop!(data, :scale_x, Observable(nothing)),
-            pop!(data, :scale_y, Observable(nothing)),
-            pop!(data, :scale_z, Observable(nothing))
-        )
+        scale = data[:scale] # markersize
         offset = Observable(Vec2f(0))
         _offset(x::Union{AbstractString, Char}, scale, offset) = rescale_glyph(x, font[], offset)
         _offset(x::BezierPath, scale, offset) = offset_bezierpath(x, scale, offset)
