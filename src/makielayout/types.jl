@@ -218,7 +218,7 @@ end
         "The subtitle's font size."
         subtitlesize::Float64 = @inherit(:fontsize, 16f0)
         "The gap between subtitle and title."
-        subtitlegap::Float64 = 2
+        subtitlegap::Float64 = 0
         "Controls if the subtitle is visible."
         subtitlevisible::Bool = true
         "The color of the subtitle"
