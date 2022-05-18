@@ -54,13 +54,13 @@ end
 function Makie.backend_show(::WGLBackend, io::IO, m::MIME"image/png",
                                        scene::Scene)
     img = scene2image(scene)
-    return FileIO.save(FileIO.Stream(FileIO.format"PNG", io), img)
+    return FileIO.save(FileIO.Stream{FileIO.format"PNG"}(io), img)
 end
 
 function Makie.backend_show(::WGLBackend, io::IO, m::MIME"image/jpeg",
                                        scene::Scene)
     img = scene2image(scene)
-    return FileIO.save(FileIO.Stream(FileIO.format"JPEG", io), img)
+    return FileIO.save(FileIO.Stream{FileIO.format"JPEG"}(io), img)
 end
 
 function Makie.backend_showable(::WGLBackend, ::T, scene::Scene) where {T<:MIME}

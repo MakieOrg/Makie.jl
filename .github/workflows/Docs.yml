@@ -4,13 +4,15 @@ on:
     branches:
       - main
       - master
+      - breaking-release
     tags: '*'
   pull_request:
     branches:
       - main
       - master
+      - breaking-release
 
-concurrency: 
+concurrency:
   group: docs-${{ github.ref }}
   cancel-in-progress: true
 

@@ -216,7 +216,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Union{Scat
             space = get(gl_attributes, :space, :data)
             mspace = get(gl_attributes, :markerspace, :pixel)
             cam = scene.camera
-            gl_attributes[:preprojection] = map(space, mspace, cam.projectionview) do space, mspace, pv
+            gl_attributes[:preprojection] = map(space, mspace, cam.projectionview, cam.resolution) do space, mspace, _, _
                 return Makie.clip_to_space(cam, mspace) * Makie.space_to_clip(cam, space)
             end
             if !(marker[] isa FastPixel)
@@ -310,24 +310,8 @@ function draw_atomic(screen::GLScreen, scene::Scene,
         markerspace = gl_attributes[:markerspace]
         offset = pop!(gl_attributes, :offset, Vec2f(0))
 
-        # TODO: This is a hack before we get better updating of plot objects and attributes going.
-        # Here we only update the glyphs when the glyphcollection changes, if it's a singular glyphcollection.
-        # The if statement will be compiled away depending on the parameter of Text.
-        # This means that updates of a text vector and a separate position vector will still not work if only the text
-        # vector is triggered, but basically all internal objects use the vector of tuples version, and that triggers
-        # both glyphcollection and position, so it still works
-        if glyphcollection[] isa Makie.GlyphCollection
-            # here we use the glyph collection observable directly
-            gcollection = glyphcollection
-        else
-            # and here we wrap it into another observable
-            # so it doesn't trigger dimension mismatches
-            # the actual, new value gets then taken in the below lift with to_value
-            gcollection = Observable(glyphcollection)
-        end
-
         # calculate quad metrics
-        glyph_data = map(pos, gcollection, offset, transfunc) do pos, gc, offset, transfunc
+        glyph_data = map(pos, glyphcollection, offset, transfunc) do pos, gc, offset, transfunc
             Makie.text_quads(pos, to_value(gc), offset, transfunc)
         end
 

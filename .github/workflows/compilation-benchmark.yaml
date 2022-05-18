@@ -6,6 +6,7 @@ on:
       - '*.md'
     branches:
       - master
+      - breaking-release
 jobs:
   benchmark:
     name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
@@ -28,6 +29,7 @@ jobs:
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v1
       - name: Benchmark
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.BENCHMARK_KEY }}
           PR_NUMBER: ${{ github.event.number }}

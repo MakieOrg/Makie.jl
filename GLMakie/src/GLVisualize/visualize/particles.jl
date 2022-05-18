@@ -239,7 +239,7 @@ end
 function draw_scatter(
         p::Tuple{VectorTypes{Matrix{C}}, VectorTypes{P}}, data::Dict
     ) where {C <: Colorant, P <: Point}
-    images = to_value(p[1])
+    images = map(el32convert, to_value(p[1]))
     isempty(images) && error("Can not display empty vector of images as primitive")
     sizes = map(size, images)
     if !all(x-> x == sizes[1], sizes) # if differently sized
@@ -248,8 +248,8 @@ function draw_scatter(
         rectangles = map(x->Rect2(0, 0, x...), sizes)
         rpack = RectanglePacker(Rect2(0, 0, maxdims...))
         uv_coordinates = [push!(rpack, rect).area for rect in rectangles]
-        max_xy = maximum(maximum.(uv_coordinates))
-        texture_atlas = Texture(C, (max_xy...,))
+        max_xy = mapreduce(maximum, (a,b)-> max.(a, b), uv_coordinates)
+        texture_atlas = Texture(eltype(images[1]), (max_xy...,))
         for (area, img) in zip(uv_coordinates, images)
             texture_atlas[area] = img #transfer to texture atlas
         end
@@ -266,7 +266,7 @@ function draw_scatter(
         shape = RECTANGLE
         quad_offset = Vec2f(0)
     end
-    return draw_scatter(p, data)
+    return draw_scatter((RECTANGLE, p[2]), data)
 end
 
 # To map (scale, scale_x, scale_y, scale_z) -> scale

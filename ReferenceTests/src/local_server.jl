@@ -11,7 +11,7 @@ function serve_update_page_from_dir(folder)
         data = JSON3.read(req.body)
         images = data["images"]
         tag = data["tag"]
-        
+
         tempdir = tempname()
         recorded_folder = joinpath(folder, "recorded")
         reference_folder = joinpath(folder, "reference")
@@ -63,10 +63,10 @@ function serve_update_page_from_dir(folder)
     HTTP.@register(router, "POST", "/", receive_update)
     HTTP.@register(router, "GET", "/", serve_local_file)
 
-    @info "Starting server. Open localhost:8000 in your browser to view."
-    HTTP.serve(router, HTTP.Sockets.localhost, 8000)
+    @info "Starting server. Open http://localhost:8849 in your browser to view."
+    HTTP.serve(router, HTTP.Sockets.localhost, 8849)
 end
- 
+
 function serve_update_page(; commit = nothing, pr = nothing)
     authget(url) = HTTP.get(url, Dict("Authorization" => "token $(ENV["GITHUB_TOKEN"])"))
 
@@ -82,25 +82,35 @@ function serve_update_page(; commit = nothing, pr = nothing)
     end
 
     checksinfo = JSON3.read(authget("https://api.github.com/repos/JuliaPlots/Makie.jl/commits/$headsha/check-runs").body)
-    
-    checkruns = filter(checksinfo["check_runs"]) do x
-        right_combination = any(["GLMakie", "WGLMakie", "CairoMakie"]) do package
-            occursin(package, x["name"]) && occursin("1.6", x["name"])
+
+    # Somehow identical artifacts can occur double, but with different ids?
+    # I don't know what happens, but we need to filter them out!
+    unique_artifacts = Set{String}()
+    checkruns = filter(checksinfo["check_runs"]) do checkrun
+        name = checkrun["name"]
+        id = checkrun["id"]
+        right_combination = any(["GLMakie", "CairoMakie", "WGLMakie"]) do package
+            # We need to match the name quite specifically, since we need to keep this synchronized to the CI script anyways.
+            startswith(name, "$package Julia 1.6")
         end
         if right_combination
-            job = JSON3.read(authget("https://api.github.com/repos/JuliaPlots/Makie.jl/actions/jobs/$(x["id"])").body)
+            if name in unique_artifacts
+                return false
+            else
+                push!(unique_artifacts, name)
+            end
+            job = JSON3.read(authget("https://api.github.com/repos/JuliaPlots/Makie.jl/actions/jobs/$(id)").body)
             run = JSON3.read(authget(job["run_url"]).body)
             if run["status"] != "completed"
-                @info "$(x["name"])'s run hasn't completed yet, no artifacts will be available."
-                false
+                @info "$(name)'s run hasn't completed yet, no artifacts will be available."
+                return false
             else
-                true
+                return true
             end
         else
-            false
+            return false
         end
     end
-
     if isempty(checkruns)
         error("No check runs fit the criteria, check if something about names or versions might have changed.")
     end
@@ -112,11 +122,12 @@ function serve_update_page(; commit = nothing, pr = nothing)
         error("Cancelled")
     end
     check = checkruns[choice]
-    
+
     job = JSON3.read(authget("https://api.github.com/repos/JuliaPlots/Makie.jl/actions/jobs/$(check["id"])").body)
     run = JSON3.read(authget(job["run_url"]).body)
 
     artifacts = JSON3.read(authget(run["artifacts_url"]).body)["artifacts"]
+
     for a in artifacts
         if endswith(a["name"], "1.6")
             @info "Choosing artifact $(a["name"])"
@@ -144,7 +155,7 @@ function serve_update_page(; commit = nothing, pr = nothing)
 
             @info "Serving update page for folder $folder."
             serve_update_page_from_dir(joinpath(tmpdir, folder))
-            return 
+            return
         end
     end
     error("""

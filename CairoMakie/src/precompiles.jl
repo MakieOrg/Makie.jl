@@ -42,7 +42,7 @@ end
 function get_obs(x::Axis, visited, obs=Set())
     if x in visited; return; else; push!(visited, x); end
 
-    get_obs(x.attributes, visited, obs)
+    # get_obs(x.attributes, visited, obs)
     get_obs(x.layoutobservables, visited, obs)
     get_obs(x.scene, visited, obs)
     get_obs(x.finallimits, visited, obs)
@@ -111,5 +111,8 @@ function _precompile_()
     )
 
     CairoMakie.draw_mesh3D(scene, screen, attributes, mesh2)
+    mktempdir() do path
+        save(joinpath(path, "test.png"), scatter(1:4))
+    end
     return
 end

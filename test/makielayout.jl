@@ -1,5 +1,5 @@
 # Minimal sanity checks for MakieLayout
-@testset "Layoutables constructors" begin
+@testset "Blocks constructors" begin
     fig = Figure()
     ax = Axis(fig[1, 1])
     cb = Colorbar(fig[1, 2])
@@ -31,6 +31,26 @@ end
     @test sc ∉ ax.scene.plots
     empty!(ax)
     @test isempty(ax.scene.plots)
+end
+
+@testset "zero heatmap" begin
+    xs = LinRange(0, 20, 10)
+    ys = LinRange(0, 15, 10)
+    zs = zeros(length(xs), length(ys))
+
+    fig = Figure()
+    _, hm = heatmap(fig[1, 1], xs, ys, zs)
+    cb = Colorbar(fig[1, 2], hm)
+
+    @test hm.attributes[:colorrange][] == (-.5, .5)
+    @test cb.limits[] == (-.5, .5)
+
+    hm.attributes[:colorrange][] = Float32.((-1, 1))
+    @test cb.limits[] == (-1, 1)
+
+    # TODO: This doesn't work anymore because colorbar doesn't use the same observable
+    # cb.limits[] = Float32.((-2, 2))
+    # @test hm.attributes[:colorrange][] == (-2, 2)
 end
 
 @testset "Axis limits basics" begin
@@ -71,21 +91,21 @@ end
     @test ax.limits[] == (nothing, nothing)
     @test ax.targetlimits[] == BBox(0, 5, 0, 6)
     @test ax.finallimits[] == BBox(0, 5, 0, 6)
-    xlims!(-10, 10)
-    @test ax.limits[] == ((-10, 10), nothing)
+    xlims!(ax, [-10, 10])
+    @test ax.limits[] == ([-10, 10], nothing)
     @test ax.targetlimits[] == BBox(-10, 10, 0, 6)
     @test ax.finallimits[] == BBox(-10, 10, 0, 6)
     scatter!(Point2f(11, 12))
-    @test ax.limits[] == ((-10, 10), nothing)
+    @test ax.limits[] == ([-10, 10], nothing)
     @test ax.targetlimits[] == BBox(-10, 10, 0, 12)
     @test ax.finallimits[] == BBox(-10, 10, 0, 12)
     autolimits!(ax)
-    ylims!(ax, 5, 7)
-    @test ax.limits[] == (nothing, (5, 7))
+    ylims!(ax, [5, 7])
+    @test ax.limits[] == (nothing, [5, 7])
     @test ax.targetlimits[] == BBox(0, 11, 5, 7)
     @test ax.finallimits[] == BBox(0, 11, 5, 7)
     scatter!(Point2f(-5, -7))
-    @test ax.limits[] == (nothing, (5, 7))
+    @test ax.limits[] == (nothing, [5, 7])
     @test ax.targetlimits[] == BBox(-5, 11, 5, 7)
     @test ax.finallimits[] == BBox(-5, 11, 5, 7)
 end
@@ -135,4 +155,13 @@ end
     hmap = heatmap!(Axis(fig[1, 1]), rand(4, 4))
     cb1 = Colorbar(fig[1,2], hmap; height = Relative(0.65))
     @test cb1.height[] == Relative(0.65)
+end
+
+@testset "cycling" begin
+    fig = Figure()
+    ax = Axis(fig[1, 1], palette = (patchcolor = [:blue, :green],))
+    pl = density!(rand(10); color = Cycled(2))
+    @test pl.color[] == :green
+    pl = density!(rand(10); color = Cycled(1))
+    @test pl.color[] == :blue
 end

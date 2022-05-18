@@ -2,7 +2,7 @@
 #                             Lines, LineSegments                              #
 ################################################################################
 
-function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Lines, LineSegments})
+function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive::Union{Lines, LineSegments}))
     fields = @get_attribute(primitive, (color, linewidth, linestyle))
     linestyle = Makie.convert_attribute(linestyle, Makie.key"linestyle"())
     ctx = screen.context
@@ -173,7 +173,7 @@ end
 #                                   Scatter                                    #
 ################################################################################
 
-function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Scatter)
+function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive::Scatter))
     fields = @get_attribute(primitive, (color, markersize, strokecolor, strokewidth, marker, marker_offset, rotations))
     @get_attribute(primitive, (transform_marker,))
 
@@ -347,7 +347,7 @@ function p3_to_p2(p::Point3{T}) where T
     end
 end
 
-function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text{<:Tuple{<:G}}) where G <: Union{AbstractArray{<:Makie.GlyphCollection}, Makie.GlyphCollection}
+function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive::Text{<:Tuple{<:Union{AbstractArray{<:Makie.GlyphCollection}, Makie.GlyphCollection}}}))
     ctx = screen.context
     @get_attribute(primitive, (rotation, model, space, markerspace, offset))
     position = primitive.position[]
@@ -379,7 +379,7 @@ end
 _deref(x) = x
 _deref(x::Ref) = x[]
 
-function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation, model, space, markerspace, offsets)
+function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation, _model, space, markerspace, offsets)
 
     glyphs = glyph_collection.glyphs
     glyphoffsets = glyph_collection.origins
@@ -391,6 +391,9 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
     strokecolors = glyph_collection.strokecolors
 
     s2ms = Makie.clip_to_space(scene.camera, markerspace) * Makie.space_to_clip(scene.camera, space)
+    model = _deref(_model)
+    model33 = model[Vec(1, 2, 3), Vec(1, 2, 3)]
+    id = Mat4f(I)
 
     Cairo.save(ctx)
 
@@ -408,8 +411,8 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
         Cairo.set_source_rgba(ctx, rgbatuple(color)...)
 
         # offsets and scale apply in markerspace
-        glyph_pos = s2ms * to_ndim(Point4f, to_ndim(Point3f, position, 0), 1)
-        gp3 = glyph_pos[Vec(1, 2, 3)] ./ glyph_pos[4] .+ glyphoffset .+ p3_offset
+        glyph_pos = s2ms * model * to_ndim(Point4f, to_ndim(Point3f, position, 0), 1)
+        gp3 = glyph_pos[Vec(1, 2, 3)] ./ glyph_pos[4] .+ model33 * (glyphoffset .+ p3_offset)
 
         scale3 = scale isa Number ? Point3f(scale, scale, 0) : to_ndim(Point3f, scale, 0)
 
@@ -421,9 +424,9 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
         xvec = rotation * (scale3[1] * Point3f(1, 0, 0))
         yvec = rotation * (scale3[2] * Point3f(0, -1, 0))
 
-        glyphpos = project_position(scene, markerspace, gp3, _deref(model))
-        xproj = project_position(scene, markerspace, gp3 + xvec, _deref(model))
-        yproj = project_position(scene, markerspace, gp3 + yvec, _deref(model))
+        glyphpos = project_position(scene, markerspace, gp3, id)
+        xproj = project_position(scene, markerspace, gp3 + model33 * xvec, id)
+        yproj = project_position(scene, markerspace, gp3 + model33 * yvec, id)
 
         xdiff = xproj - glyphpos
         ydiff = yproj - glyphpos
@@ -515,7 +518,7 @@ function interpolation_flag(is_vector, interp, wpx, hpx, w, h)
 end
 
 
-function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap, Image})
+function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive::Union{Heatmap, Image}))
     ctx = screen.context
     image = primitive[3][]
     xs, ys = primitive[1][], primitive[2][]
@@ -840,7 +843,7 @@ function draw_mesh3D(
     Cairo.set_source(ctx, pattern)
     Cairo.close_path(ctx)
     Cairo.paint(ctx)
-    return nothing
+    return
 end
 
 
@@ -849,7 +852,7 @@ end
 ################################################################################
 
 
-function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Makie.Surface)
+function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive::Makie.Surface))
     # Pretend the surface plot is a mesh plot and plot that instead
     mesh = surface2mesh(primitive[1][], primitive[2][], primitive[3][])
     old = primitive[:color]
@@ -864,39 +867,13 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Makie.Surface
     return nothing
 end
 
-function surface2mesh(xs::Makie.ClosedInterval, ys, zs::AbstractMatrix)
-    surface2mesh(range(xs.left, xs.right, length = size(zs, 1)), ys, zs)
-end
-
-function surface2mesh(xs, ys::Makie.ClosedInterval, zs::AbstractMatrix)
-    surface2mesh(xs, range(ys.left, ys.right, length = size(zs, 2)), zs)
-end
-
-function surface2mesh(xs::Makie.ClosedInterval, ys::Makie.ClosedInterval, zs::AbstractMatrix)
-    surface2mesh(
-        range(xs.left, xs.right, length = size(zs, 1)),
-        range(ys.left, ys.right, length = size(zs, 2)),
-        zs)
-end
-
-function surface2mesh(xs::AbstractVector, ys::AbstractVector, zs::AbstractMatrix)
-    ps = [nan2zero.(Point3f(xs[i], ys[j], zs[i, j])) for j in eachindex(ys) for i in eachindex(xs)]
-    idxs = LinearIndices(size(zs))
-    faces = [
-        QuadFace(idxs[i, j], idxs[i+1, j], idxs[i+1, j+1], idxs[i, j+1])
-        for j in 1:size(zs, 2)-1 for i in 1:size(zs, 1)-1
-    ]
-    normal_mesh(ps, faces)
-end
-
-function surface2mesh(xs::AbstractMatrix, ys::AbstractMatrix, zs::AbstractMatrix)
-    ps = [nan2zero.(Point3f(xs[i, j], ys[i, j], zs[i, j])) for j in 1:size(zs, 2) for i in 1:size(zs, 1)]
-    idxs = LinearIndices(size(zs))
-    faces = [
-        QuadFace(idxs[i, j], idxs[i+1, j], idxs[i+1, j+1], idxs[i, j+1])
-        for j in 1:size(zs, 2)-1 for i in 1:size(zs, 1)-1
-    ]
-    normal_mesh(ps, faces)
+function surface2mesh(xs, ys, zs::AbstractMatrix)
+    ps = Makie.matrix_grid(p-> nan2zero.(p), xs, ys, zs)
+    rect = Tesselation(Rect2f(0, 0, 1, 1), size(zs))
+    faces = decompose(QuadFace{Int}, rect)
+    uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
+    uvm = GeometryBasics.Mesh(GeometryBasics.meta(ps; uv=uv), faces)
+    return GeometryBasics.normal_mesh(uvm)
 end
 
 ################################################################################
@@ -904,7 +881,7 @@ end
 ################################################################################
 
 
-function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Makie.MeshScatter)
+function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive::Makie.MeshScatter))
     @get_attribute(primitive, (color, model, marker, markersize, rotations))
 
     if color isa AbstractArray{<: Number}

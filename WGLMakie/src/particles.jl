@@ -89,7 +89,7 @@ end
 rescale_glyph(char::Char, font, x) = x * char_scale_factor(char, font)
 function rescale_glyph(char::Char, font, xs::Vector)
     f = char_scale_factor(char, font)
-    map(xs -> f * x, xs)
+    map(x -> f * x, xs)
 end
 function rescale_glyph(str::String, font, x)
     [x * char_scale_factor(char, font) for char in collect(str)]
@@ -180,7 +180,7 @@ function create_shader(scene::Scene, plot::Scatter)
     space = get(attributes, :space, :data)
     mspace = get(attributes, :markerspace, :pixel)
     cam = scene.camera
-    attributes[:preprojection] = map(space, mspace, cam.projectionview) do space, mspace, pv
+    attributes[:preprojection] = map(space, mspace, cam.projectionview, cam.resolution) do space, mspace, _, _
         Makie.clip_to_space(cam, mspace) * Makie.space_to_clip(cam, space)
     end
     attributes[:pos] = apply_transform(transform_func_obs(plot),  plot[1])
@@ -271,7 +271,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         :markersize => scale,
         :preprojection => preprojection,
         :uv_offset_width => uv_offset_width,
-        :transform_marker => Observable(false),
+        :transform_marker => get(plot.attributes, :transform_marker, Observable(true)),
         :billboard => Observable(false),
         :depth_shift => get(plot, :depth_shift, Observable(0f0))
     )

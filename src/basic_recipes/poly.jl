@@ -60,7 +60,7 @@ function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}
     )
     wireframe!(
         plot, plot[1],
-        color = plot[:strokecolor], linestyle = plot[:linestyle], space = plot[:space], 
+        color = plot[:strokecolor], linestyle = plot[:linestyle], space = plot[:space],
         linewidth = plot[:strokewidth], visible = plot[:visible], overdraw = plot[:overdraw],
         inspectable = plot[:inspectable], transparency = plot[:transparency]
     )
@@ -84,8 +84,9 @@ end
 
 function poly_convert(polygons::AbstractVector{<: AbstractVector{<: VecTypes}})
     return map(polygons) do poly
-        s = GeometryBasics.split_intersections(poly)
-        merge(triangle_mesh.(Polygon.(s)))
+        point2f = convert(Vector{Point2f}, poly)
+        faces = GeometryBasics.earcut_triangulate([point2f])
+        return GeometryBasics.Mesh(point2f, faces)
     end
 end
 
@@ -146,7 +147,7 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
     lines!(
         plot, outline, visible = plot.visible,
         color = stroke, linestyle = plot.linestyle,
-        linewidth = plot.strokewidth, space = plot.space, 
+        linewidth = plot.strokewidth, space = plot.space,
         overdraw = plot.overdraw, transparency = plot.transparency,
         inspectable = plot.inspectable, depth_shift = -1f-5
     )

@@ -11,17 +11,13 @@ function round_to_IRect2D(r::Rect{2})
 end
 
 function sceneareanode!(finalbbox, limits, aspect)
-
-    scenearea = Observable(Recti(0, 0, 100, 100))
-
-    onany(finalbbox, limits, aspect) do bbox, limits, aspect
+    return map(finalbbox, limits, aspect; ignore_equal_values=true) do bbox, limits, aspect
 
         w = width(bbox)
         h = height(bbox)
         # as = mw / mh
         as = w / h
         mw, mh = w, h
-
 
         if aspect isa AxisAspect
             aspect = aspect.aspect
@@ -50,16 +46,9 @@ function sceneareanode!(finalbbox, limits, aspect)
         newbbox = BBox(l, l + mw, b, b + mh)
 
         # only update scene if pixel positions change
-        new_scenearea = round_to_IRect2D(newbbox)
-        if new_scenearea != scenearea[]
-            scenearea[] = new_scenearea
-        end
+        return round_to_IRect2D(newbbox)
     end
-
-    scenearea
 end
-
-
 
 function roundedrectvertices(rect, cornerradius, cornersegments)
     cr = cornerradius
@@ -304,6 +293,8 @@ end
     labelslider!(scene, label, range; format = string, sliderkw = Dict(),
     labelkw = Dict(), valuekw = Dict(), value_column_width = automatic, layoutkw...)
 
+**`labelslider!` is deprecated, use `SliderGrid` instead**
+
 Construct a horizontal GridLayout with a label, a slider and a value label in `scene`.
 
 Returns a `NamedTuple`:
@@ -332,6 +323,8 @@ function labelslider!(scene, label, range; format = string,
     valuelabel = Label(scene, lift(x -> apply_format(x, format), slider.value); valuekw...)
     layout = hbox!(label, slider, valuelabel; layoutkw...)
 
+    Base.depwarn("labelslider! is deprecated and will be removed in the future. Use SliderGrid instead." , :labelslider!, force = true)
+
     if value_column_width === automatic
         maxwidth = 0.0
         initial_value = slider.value[]
@@ -358,6 +351,8 @@ end
         sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(),
         value_column_width = automatic, layoutkw...)
 
+**`labelslidergrid!` is deprecated, use `SliderGrid` instead**
+
 Construct a GridLayout with a column of label, a column of sliders and a column of value labels in `scene`.
 The argument values are broadcast, so you can use scalars if you want to keep labels, ranges or formats constant across rows.
 
@@ -382,6 +377,8 @@ layout[1, 1] = ls.layout
 """
 function labelslidergrid!(scene, labels, ranges; formats = [string], value_column_width = automatic,
         sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), layoutkw...)
+
+    Base.depwarn("labelslidergrid! is deprecated and will be removed in the future. Use SliderGrid instead." , :labelslidergrid!, force = true)
 
     elements = broadcast(labels, ranges, formats) do label, range, format
         slider = Slider(scene; range = range, sliderkw...)

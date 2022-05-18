@@ -1,4 +1,4 @@
-# @cell "lines and linestyles" begin
+# @reference_test "lines and linestyles" begin
 quote
     # For now disabled until we fix GLMakie linestyle
     s = Scene(resolution = (800, 800), camera = campixel!)
@@ -20,7 +20,7 @@ quote
     s
 end
 
-@cell "lines with gaps" begin
+@reference_test "lines with gaps" begin
     s = Scene(resolution = (800, 800), camera = campixel!)
     points = [
         Point2f[(1, 0), (2, 0.5), (NaN, NaN), (4, 0.5), (5, 0)],
@@ -36,7 +36,7 @@ end
     s
 end
 
-@cell "scatters" begin
+@reference_test "scatters" begin
     s = Scene(resolution = (800, 800), camera = campixel!)
 
     markersizes = 0:2:30
@@ -56,7 +56,7 @@ end
     s
 end
 
-@cell "scatter rotations" begin
+@reference_test "scatter rotations" begin
     s = Scene(resolution = (800, 800), camera = campixel!)
 
     rotations = range(0, 2pi, length = 15)
@@ -80,7 +80,7 @@ end
 end
 
 
-@cell "basic polygon shapes" begin
+@reference_test "basic polygon shapes" begin
     s = Scene(resolution = (800, 800), camera = campixel!)
     scalefactor = 70
     Pol = Makie.GeometryBasics.Polygon
