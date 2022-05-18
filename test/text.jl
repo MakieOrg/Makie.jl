@@ -51,6 +51,13 @@
     @test glyph_collection.strokecolors.sv == [RGBAf(0,0,0,0) for _ in 1:4]
     @test glyph_collection.strokewidths.sv == Float32[0, 0, 0, 0]
 
+    makie_hi_bb = Makie.height_insensitive_boundingbox.(glyph_collection.extents)
+    makie_hi_bb_wa = Makie.height_insensitive_boundingbox_with_advance.(glyph_collection.extents)
+    fta_hi_bb = FreeTypeAbstraction.height_insensitive_boundingbox.(unit_extents, Ref(font))
+    fta_ha = FreeTypeAbstraction.hadvance.(unit_extents)
+    @test makie_hi_bb == fta_hi_bb
+    @test fta_ha == [bb.origin[1] + bb.widths[1] for bb in makie_hi_bb_wa]
+
     # Test quad data
     positions, char_offsets, quad_offsets, uvs, scales = Makie.text_quads(
         to_ndim(Point3f, p.position[], 0), glyph_collection,
