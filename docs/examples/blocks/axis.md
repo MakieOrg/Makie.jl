@@ -160,6 +160,8 @@ You can change titles and subtitles with the `title` and `subtitle` attributes.
 You can set `subtitlefont`, `subtitlefontsize` and `subtitlecolor` separately.
 The alignment of the subtitle follows that of the title.
 
+The gap between title and subtitle is set with `subtitlegap` and the gap between `Axis` and title or subtitle with `titlegap`.
+
 \begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
@@ -179,24 +181,33 @@ Axis(
     subtitle = "This is a longer subtitle",
     titlealign = :left,
     subtitlecolor = :gray50,
-    titlegap = 0,
+    titlegap = 10,
     titlesize = 20,
+    subtitlesize = 15,
 )
 Axis(
     f[2, 1],
     title = "Third Title",
+    titlecolor = :gray50,
+    titlefont = "TeX Gyre Heros Bold Italic Makie",
+    titlealign = :right,
+    titlesize = 25,
 )
 Axis(
     f[2, 2],
-    title = "Fourth Title",
+    title = "Fourth Title\nWith Line Break",
     subtitle = "This is an even longer subtitle,\nthat also has a line break.",
     titlealign = :left,
-    subtitlegap = 5,
-    subtitlefont = "TeX Gyre Heros Italic Makie"
+    subtitlegap = 2,
+    titlegap = 5,
+    subtitlefont = "TeX Gyre Heros Italic Makie",
+    subtitlelineheight = 0.9,
+    titlelineheight = 0.9,
 )
 
 f
 ```
+\end{examplefigure}
 
 ## Modifying ticks
 
