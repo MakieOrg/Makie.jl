@@ -153,6 +153,51 @@ lines(f[1, 2], 0..10, sin, axis = (limits = (0, 10, -1, 1),))
 f
 ```
 \end{examplefigure}
+
+## Titles and subtitles
+
+You can change titles and subtitles with the `title` and `subtitle` attributes.
+You can set `subtitlefont`, `subtitlefontsize` and `subtitlecolor` separately.
+The alignment of the subtitle follows that of the title.
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+f = Figure()
+
+Axis(
+    f[1, 1],
+    title = "First Title",
+    subtitle = "This is a longer subtitle"
+)
+Axis(
+    f[1, 2],
+    title = "Second Title",
+    subtitle = "This is a longer subtitle",
+    titlealign = :left,
+    subtitlecolor = :gray50,
+    titlegap = 0,
+    titlesize = 20,
+)
+Axis(
+    f[2, 1],
+    title = "Third Title",
+)
+Axis(
+    f[2, 2],
+    title = "Fourth Title",
+    subtitle = "This is an even longer subtitle,\nthat also has a line break.",
+    titlealign = :left,
+    subtitlegap = 5,
+    subtitlefont = "TeX Gyre Heros Italic Makie"
+)
+
+f
+```
+
 ## Modifying ticks
 
 To control ticks, you can set the axis attributes `xticks/yticks` and `xtickformat/ytickformat`.
