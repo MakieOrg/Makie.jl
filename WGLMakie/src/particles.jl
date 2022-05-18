@@ -25,8 +25,8 @@ function handle_color!(uniform_dict, instance_dict)
 end
 
 const IGNORE_KEYS = Set([
-    :shading, :overdraw, :rotation, :distancefield, :space, :markerspace, :fxaa, 
-    :visible, :transformation, :alpha, :linewidth, :transparency, :marker, 
+    :shading, :overdraw, :rotation, :distancefield, :space, :markerspace, :fxaa,
+    :visible, :transformation, :alpha, :linewidth, :transparency, :marker,
     :lightposition, :cycle, :label
 ])
 
@@ -75,6 +75,15 @@ primitive_shape(::Type{<:Circle}) = Cint(CIRCLE)
 primitive_shape(::Type{<:Rect2}) = Cint(RECTANGLE)
 primitive_shape(::Type{T}) where {T} = error("Type $(T) not supported")
 primitive_shape(x::Shape) = Cint(x)
+primitive_shape(x::BezierPath) = DISTANCEFIELD
+primitive_shape(x::AbstractArray{<:BezierPath}) = DISTANCEFIELD
+function primitive_shape(arr::AbstractArray)
+    shapes = unique(primitive_shape(element) for element in arr)
+    if length(shapes) > 1
+        error("Can't use an array of markers that require different primitive_shapes $shapes.")
+    end
+    first(shapes)
+end
 
 function char_scale_factor(char, font)
     # uv * size(ta.data) / Makie.PIXELSIZE_IN_ATLAS[] is the padded glyph size
@@ -235,7 +244,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     positions, char_offset, quad_offset, uv_offset_width, scale = map((1, 2, 3, 4, 5)) do i
         lift(getindex, glyph_data, i)
     end
-    
+
     uniform_color = lift(glyphcollection) do gc
         if gc isa AbstractArray
             reduce(vcat, (Makie.collect_vector(g.colors, length(g.glyphs)) for g in gc),
