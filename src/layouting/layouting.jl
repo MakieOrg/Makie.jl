@@ -33,7 +33,7 @@ end
 """
     layout_text(
         string::AbstractString, textsize::Union{AbstractVector, Number},
-        font, align, rotation, justification, lineheight
+        font, align, rotation, justification, lineheight, word_wrap_width
     )
 
 Compute a GlyphCollection for a `string` given textsize, font, align, rotation, model, justification, and lineheight.
@@ -61,7 +61,7 @@ function layout_text(
 end
 
 """
-    glyph_collection(str::AbstractString, font_per_char, fontscale_px, halign, valign, lineheight_factor, justification, rotation, color)
+    glyph_collection(str::AbstractString, font_per_char, fontscale_px, halign, valign, lineheight_factor, justification, rotation, color, word_wrap_width)
 
 Calculate the positions for each glyph in a string given a certain font, font size, alignment, etc.
 This layout in text coordinates, relative to the anchor point [0,0] can then be translated and
