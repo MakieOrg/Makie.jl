@@ -1,6 +1,5 @@
 module ReferenceTests
 
-
 using Test
 using MeshIO
 using FileIO
@@ -9,18 +8,12 @@ using Makie
 using Makie: Record, Stepper, Axis
 using Makie.FFMPEG
 using Printf
-using ghr_jll
 using Tar
 using Downloads
 using Pkg.TOML
 using Statistics
 using ImageShow
 using Downloads: download
-import HTTP
-import JSON3
-import ZipFile
-import REPL
-import REPL.TerminalMenus
 
 # Deps for tests
 using CategoricalArrays
@@ -40,7 +33,6 @@ include("database.jl")
 include("stable_rng.jl")
 include("runtests.jl")
 include("image_download.jl")
-include("local_server.jl")
 
 export @include_reference_tests
 
