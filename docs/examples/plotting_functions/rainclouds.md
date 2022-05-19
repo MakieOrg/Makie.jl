@@ -1,12 +1,12 @@
-
-# raincloud
+# rainclouds
 
 {{doc rainclouds}}
 
 \begin{examplefigure}{}
 ```julia
 using CairoMakie
-CairoMakie.activate!(type = "png")
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
 using Random
 using Makie: rand_localized
 
@@ -64,34 +64,31 @@ end
 category_labels, data_array = mockup_categories_and_data_array(3)
 
 colors = Makie.wong_colors()
-fig = rainclouds(category_labels, data_array;
+rainclouds(category_labels, data_array;
     xlabel = "Categories of Distributions", ylabel = "Samples", title = "My Title",
     plot_boxplots = false, cloud_width=0.5, clouds=hist, hist_bins=50, 
     color = colors[indexin(category_labels, unique(category_labels))])
-fig
 ```
 \end{examplefigure}
 
 
 \begin{examplefigure}{}
 ```julia
-fig = rainclouds(category_labels, data_array;
+rainclouds(category_labels, data_array;
     xlabel = "Categories of Distributions",
     ylabel = "Samples", title = "My Title",
     plot_boxplots = true, cloud_width=0.5, clouds=hist,
     color = colors[indexin(category_labels, unique(category_labels))])
-fig
 ```
 \end{examplefigure}
 
 
 \begin{examplefigure}{}
 ```julia
-fig = rainclouds(category_labels, data_array;
+rainclouds(category_labels, data_array;
     xlabel = "Categories of Distributions", ylabel = "Samples", title = "My Title",
     plot_boxplots = true, cloud_width=0.5, side = :right,
     color = colors[indexin(category_labels, unique(category_labels))])
-fig
 ```
 \end{examplefigure}
 
@@ -99,7 +96,7 @@ fig
 ```julia
 more_category_labels, more_data_array = mockup_categories_and_data_array(6)
 
-fig = rainclouds(more_category_labels, more_data_array;
+rainclouds(more_category_labels, more_data_array;
     xlabel = "Categories of Distributions", ylabel = "Samples", title = "My Title",
     plot_boxplots = true, cloud_width=0.5,
     color = colors[indexin(more_category_labels, unique(more_category_labels))])
@@ -109,7 +106,7 @@ fig = rainclouds(more_category_labels, more_data_array;
 \begin{examplefigure}{}
 ```julia
 category_labels, data_array = mockup_categories_and_data_array(6)
-fig = rainclouds(category_labels, data_array;
+rainclouds(category_labels, data_array;
     xlabel = "Categories of Distributions",
     ylabel = "Samples", title = "My Title",
     plot_boxplots = true, cloud_width=0.5,
