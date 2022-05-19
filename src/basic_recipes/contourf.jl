@@ -15,7 +15,10 @@ This can be used for example to draw bands for the upper 90% while excluding the
 In :normal mode, if you want to show a band from `-Inf` to the low edge, set `extendlow` to `:auto` for the same color as the first level, or specify a different color (default `nothing` means no extended band)
 If you want to show a band from the high edge to `Inf`, set `extendhigh` to `:auto` for the same color as the last level, or specify a different color (default `nothing` means no extended band)
 
-If you specify `levels` as an `AbstractVector{<:Real}`, note that the axis limits will be pulled back from the bounds of the data. This is to avoid unsightly zero margins between an irregular contour and the axis. To undo this behavior, you can use `tightlimits!(ax)` or the other axis limit functions.
+If `levels` is an `Int`, the contour plot will be rectangular as all `zs` will be covered.
+This is why `Axis` defaults to tight limits for such contourf plots.
+If you specify `levels` as an `AbstractVector{<:Real}`, however, note that the axis limits include the default margins because the contourf plot can have an irregular shape.
+You can use `tightlimits!(ax)` to tighten the limits similar to the `Int` behavior.
 
 ## Attributes
 $(ATTRIBUTES)
