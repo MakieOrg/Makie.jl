@@ -31,7 +31,7 @@ function serve_update_page_from_dir(folder)
         @info "Uploading updated reference images under tag \"$tag\""
         try
             upload_reference_images(tempdir, tag; name = refimages_name)
-            @info "Upload successful."
+            @info "Upload successful. You can ctrl+c out now."
             HTTP.Response(200, "Upload successful")
         catch e
             showerror(stdout, e, catch_backtrace())
