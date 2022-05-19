@@ -560,14 +560,16 @@ end
 
 const FigureLike = Union{Scene, Figure, FigureAxisPlot}
 
-function apply_theme!(scene::Scene, plot::PlotObject)
-    theme = default_theme(scene, plot.type())
-    merge!(plot.attributes, theme)
-end
-
 function plot!(scene::Union{PlotObject, Scene}, P::AbstractPlot, args...)
     # plot!(scene, P)
 end
+
+function apply_theme!(scene::Scene, plot::PlotObject)
+    theme = default_theme(scene, plot.type())
+    merge!(plot.attributes, Attributes(plot.kw))
+    merge!(plot.attributes, theme)
+end
+
 
 function plot!(scene::Union{PlotObject, Scene}, plot::PlotObject)
     plot.parent = scene
@@ -581,7 +583,16 @@ function plot!(scene::Union{PlotObject, Scene}, plot::PlotObject)
 end
 
 function convert_arguments!(plot::PlotObject)
-    nt = convert_arguments(plot.type, map(to_value, plot.args)...)
-    P, converted =  apply_convert!(plot.type(), plot.attributes, nt)
-    plot.converted = Observable.(converted)
+    function on_update(args...)
+        nt = convert_arguments(plot.type, args...)
+        P, converted =  apply_convert!(plot.type(), plot.attributes, nt)
+        if isempty(plot.converted)
+            plot.converted = Observable.(converted)
+        end
+        for (obs, new_val) in zip(plot.converted, converted)
+            obs[] = new_val
+        end
+    end
+    on_update(to_value.(plot.args)...)
+    onany(on_update, plot.args...)
 end

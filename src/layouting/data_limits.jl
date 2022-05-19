@@ -42,7 +42,7 @@ end
 # TODO?
 function point_iterator(text::PlotObject, ::Text)
     if is_data_space(text.markerspace[])
-        return decompose(Point, boundingbox(text))
+        return decompose(Point, boundingbox(text, Text()))
     else
         if text.position[] isa VecTypes
             return [to_ndim(Point3f, text.position[], 0.0)]

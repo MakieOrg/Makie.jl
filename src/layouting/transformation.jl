@@ -1,10 +1,11 @@
 Base.parent(t::Transformation) = isassigned(t.parent) ? t.parent[] : nothing
 
 function Observables.connect!(parent::Transformation, child::Transformation)
-    on(parent.model) do m
+    on(parent.model; update=true) do m
         child.parent_model[] = m
     end
     child.transform_func[] = parent.transform_func[]
+    child.parent[] = parent
     return
 end
 

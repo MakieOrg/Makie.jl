@@ -153,9 +153,11 @@ function Base.getindex(x::AbstractPlot, key::Symbol)
     argnames = argument_names(x.type, length(x.converted))
     idx = findfirst(isequal(key), argnames)
     if idx === nothing
-        return x.attributes[key]
+        arr = getfield(x, :attributes)
+        res = arr[key]
+        return res
     else
-        return x.converted[idx]
+        return getfield(x, :converted)[idx]
     end
 end
 

@@ -112,7 +112,6 @@ function initialize_block!(ax::Axis; palette = nothing)
     onany(finallimits, ax.xreversed, ax.yreversed, scene.transformation.transform_func) do lims, xrev, yrev, t
         nearclip = -10_000f0
         farclip = 10_000f0
-
         tlims = Makie.apply_transform(t, lims)
 
         left, bottom = minimum(tlims)
@@ -120,7 +119,6 @@ function initialize_block!(ax::Axis; palette = nothing)
 
         leftright = xrev ? (right, left) : (left, right)
         bottomtop = yrev ? (top, bottom) : (bottom, top)
-
         projection = Makie.orthographicprojection(
             leftright...,
             bottomtop..., nearclip, farclip)

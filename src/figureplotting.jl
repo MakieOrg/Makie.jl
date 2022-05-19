@@ -84,6 +84,7 @@ function create_figurelike(PlotType, attributes::Dict, args...)
     figure_kw = pop!(attributes, :figure, Dict{Symbol, Any}())
     figure = Figure(; figure_kw...)
     ax = create_axis_from_kw(PlotType, figure, attributes, args...)
+    figure[1, 1] = ax
     return FigureAxis(figure, ax), attributes, args
 end
 

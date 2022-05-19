@@ -83,12 +83,16 @@ function boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotat
     end
 end
 
-function boundingbox(x::Text)
-    boundingbox(
-        x[1][],
-        to_ndim.(Point3f, x.position[], 0),
-        to_rotation(x.rotation[])
-    )
+function boundingbox(x, ::Text)
+    if x[1][] isa AbstractVector{<:String} || x[1][] isa String
+        return boundingbox(x.plots[1])
+    else
+        boundingbox(
+            x[1][],
+            to_ndim.(Point3f, x.position[], 0),
+            to_rotation(x.rotation[])
+        )
+    end
 end
 
 function text_bb(str, font, size)

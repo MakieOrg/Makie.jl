@@ -264,7 +264,7 @@ struct Transformation <: Transformable
         transform_func_o = convert(Observable{Any}, transform_func)
         return new(
             RefValue{Transformation}(),
-            translation, scale, rotation, model, parent_model, transform_func_o
+            translation_o, scale_o, rotation_o, model, parent_model, transform_func_o
         )
     end
 end
