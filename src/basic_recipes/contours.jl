@@ -83,8 +83,8 @@ end
 
 conversion_trait(::Type{<: Contour3d}) = ContinuousSurface()
 conversion_trait(::Type{Contour}) = ContinuousSurface()
-conversion_trait(::Type{Contour}) = VolumeLike()
-conversion_trait(::Type{Contour}) = VolumeLike()
+# conversion_trait(::Type{Contour}) = VolumeLike()
+# conversion_trait(::Type{Contour}) = VolumeLike()
 
 function plot!(plot::PlotObject, ::Contour, X, Y, Z, Vol) # 4 arg 3d volume
     x, y, z, volume = plot[1:4]
