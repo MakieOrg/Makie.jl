@@ -27,3 +27,6 @@ end
 @testset "short_tests.jl" begin
     include("short_tests.jl")
 end
+@testset "figures_and_makielayout.jl" begin
+    include("figures_and_makielayout.jl")
+end
