@@ -58,7 +58,6 @@ function draw_poly(scene::Scene, screen::CairoScreen, poly, points_list::Vector{
     end
 end
 
-
 draw_poly(scene::Scene, screen::CairoScreen, poly, rect::Rect2) = draw_poly(scene, screen, poly, [rect])
 
 function draw_poly(scene::Scene, screen::CairoScreen, poly, rects::Vector{<:Rect2})

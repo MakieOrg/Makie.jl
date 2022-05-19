@@ -53,7 +53,7 @@ end
 Each argument can be named for a certain plot type `P`. Falls back to `arg1`, `arg2`, etc.
 """
 function argument_names(plot::P) where {P<:AbstractPlot}
-    argument_names(P, length(plot.converted))
+    argument_names(plot.type, length(plot.converted))
 end
 
 function argument_names(::Type{<:AbstractPlot}, num_args::Integer)

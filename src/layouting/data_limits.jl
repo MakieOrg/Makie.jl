@@ -35,12 +35,12 @@ function distinct_extrema_nan(x)
     lo == hi ? (lo - 0.5f0, hi + 0.5f0) : (lo, hi)
 end
 
-function point_iterator(plot::Union{Scatter, MeshScatter, Lines, LineSegments})
+function point_iterator(plot::PlotObject, ::Union{Scatter, MeshScatter, Lines, LineSegments})
     return plot.positions[]
 end
 
 # TODO?
-function point_iterator(text::Text)
+function point_iterator(text::PlotObject, ::Text)
     if is_data_space(text.markerspace[])
         return decompose(Point, boundingbox(text))
     else
@@ -51,6 +51,7 @@ function point_iterator(text::Text)
         end
     end
 end
+point_iterator(plot::PlotObject, ::Mesh) = point_iterator(plot.mesh[])
 
 # function point_iterator(text::Text)
 #     return point_iterator(text.plots[1])
@@ -62,9 +63,9 @@ function point_iterator(list::AbstractVector)
     Iterators.flatten((point_iterator(elem) for elem in list))
 end
 
-point_iterator(plot::PlotObject) = point_iterator(plot.plots)
+point_iterator(plot::PlotObject, any) = point_iterator(plot.plots)
 
-point_iterator(plot::Mesh) = point_iterator(plot.mesh[])
+point_iterator(plot::PlotObject) = point_iterator(plot, plot.type())
 
 function br_getindex(vector::AbstractVector, idx::CartesianIndex, dim::Int)
     return vector[Tuple(idx)[dim]]
@@ -131,7 +132,13 @@ end
 
 foreach_plot(f, s::Figure) = foreach_plot(f, s.scene)
 foreach_plot(f, s::FigureAxisPlot) = foreach_plot(f, s.figure)
-foreach_plot(f, plot::PlotObject) = foreach_plot(f, plot.plots)
+function foreach_plot(f, plot::PlotObject)
+    if isempty(plot.plots)
+        f(plot)
+    else
+        foreach_plot(f, plot.plots)
+    end
+end
 foreach_plot(f, list::AbstractVector) = foreach(f, list)
 
 function foreach_transformed(f, point_iterator, model, trans_func)
@@ -172,7 +179,7 @@ function update_boundingbox!(bb_ref, bb::Rect)
     return
 end
 
-function data_limits(plot::AbstractPlot)
+function data_limits(plot::AbstractPlot, any)
     # Because of closure inference problems
     # we need to use a ref here which gets updated inplace
     bb_ref = Base.RefValue(Rect3f())
@@ -182,32 +189,32 @@ function data_limits(plot::AbstractPlot)
     return bb_ref[]
 end
 
-function data_limits(scenelike, exclude=(p)-> false)
+function data_limits(scenelike; exclude=(p)-> false)
     bb_ref = Base.RefValue(Rect3f())
     foreach_plot(scenelike) do plot
         if !exclude(plot)
-            update_boundingbox!(bb_ref, data_limits(plot))
+            update_boundingbox!(bb_ref, data_limits(plot, plot.type()))
         end
     end
     return bb_ref[]
 end
 
 # A few overloads for performance
-function data_limits(plot::Surface)
+function data_limits(plot::PlotObject, ::Surface)
     mini_maxi = extrema_nan.((plot.x[], plot.y[], plot.z[]))
     mini = first.(mini_maxi)
     maxi = last.(mini_maxi)
     return Rect3f(mini, maxi .- mini)
 end
 
-function data_limits(plot::Heatmap)
+function data_limits(plot::PlotObject, ::Heatmap)
     mini_maxi = extrema_nan.((plot.x[], plot.y[]))
     mini = Vec3f(first.(mini_maxi)..., 0)
     maxi = Vec3f(last.(mini_maxi)..., 0)
     return Rect3f(mini, maxi .- mini)
 end
 
-function data_limits(plot::Image)
+function data_limits(plot::PlotObject, ::Image)
     mini_maxi = extrema_nan.((plot.x[], plot.y[]))
     mini = Vec3f(first.(mini_maxi)..., 0)
     maxi = Vec3f(last.(mini_maxi)..., 0)

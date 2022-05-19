@@ -58,9 +58,9 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     # TODO: replace with mesh, however, CairoMakie needs a poly path for this signature
     # so it doesn't rasterize the scene
-    background = poly!(topscene, scenearea, color = ax.backgroundcolor, inspectable = false, shading = false, strokecolor = :transparent)
-    translate!(background, 0, 0, -100)
-    decorations[:background] = background
+    # background = poly!(topscene, scenearea, color = ax.backgroundcolor, inspectable = false, shading = false, strokecolor = :transparent)
+    # translate!(background, 0, 0, -100)
+    # decorations[:background] = background
 
     block_limit_linking = Observable(false)
     setfield!(ax, :block_limit_linking, block_limit_linking)
@@ -727,7 +727,7 @@ function getlimits(la::Axis, dim)
         return !to_value(get(plot, :visible, true))
     end
     # get all data limits, minus the excluded plots
-    boundingbox = Makie.data_limits(la.scene, exclude)
+    boundingbox = Makie.data_limits(la.scene; exclude=exclude)
     # if there are no bboxes remaining, `nothing` signals that no limits could be determined
     Makie.isfinite_rect(boundingbox) || return nothing
 

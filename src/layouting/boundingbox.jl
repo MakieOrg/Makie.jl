@@ -6,7 +6,7 @@ function parent_transform(x)
 end
 
 function boundingbox(x, exclude = (p)-> false)
-    return parent_transform(x) * data_limits(x, exclude)
+    return parent_transform(x) * data_limits(x, exclude=exclude)
 end
 
 function project_widths(matrix, vec)

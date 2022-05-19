@@ -213,7 +213,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive, ::Scatter)
         end
         Cairo.restore(ctx)
     end
-    nothing
+    return
 end
 
 function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewidth, marker_offset, rotation)

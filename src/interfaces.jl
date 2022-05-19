@@ -186,11 +186,14 @@ const PlotFunc = Union{Type{Any}, Type{<: AbstractPlot}}
 
 
 function PlotObject(::Type{PlotType}, args::Vector{Any}, kw::Dict{Symbol, Any}) where {PlotType <: AbstractPlot}
-    return PlotObject(
+    t = Transformation()
+    plot = PlotObject(
         PlotType,
-        Transformation(),
+        t,
         # Unprocessed arguments directly from the user command e.g. `plot(args...; kw...)``
         kw,
         args,
     )
+    plot[:model] = transformationmatrix(t)
+    return plot
 end

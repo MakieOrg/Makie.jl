@@ -571,9 +571,9 @@ end
 
 function plot!(scene::Union{PlotObject, Scene}, plot::PlotObject)
     plot.parent = scene
+    connect!(transformation(scene), transformation(plot))
     apply_theme!(parent_scene(scene), plot)
     convert_arguments!(plot)
-    plot.model = Mat4f(I)
     calculated_attributes!(plot.type, plot)
     plot!(plot, plot.type(), map(to_value, plot.converted)...)
     push!(scene, plot)
