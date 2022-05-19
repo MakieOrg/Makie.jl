@@ -66,7 +66,6 @@ function boundingbox(glyphcollection::GlyphCollection, position::Point3f, rotati
 end
 
 function boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotations)
-
     if isempty(layouts)
         Rect3f((0, 0, 0), (0, 0, 0))
     else
@@ -83,15 +82,22 @@ function boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotat
     end
 end
 
-function boundingbox(x, ::Text)
-    if x[1][] isa AbstractVector{<:String} || x[1][] isa String
-        return boundingbox(x.plots[1])
-    else
-        boundingbox(
-            x[1][],
-            to_ndim.(Point3f, x.position[], 0),
-            to_rotation(x.rotation[])
+function boundingbox(plot::TypedPlot{Text})
+    arg1 = plot[1][]
+    if arg1 isa GlyphCollection
+        return boundingbox(
+            plot[1][],
+            to_ndim(Point3f, plot.position[], 0),
+            to_rotation(plot.rotation[])
         )
+    elseif arg1 isa AbstractArray{<:GlyphCollection}
+        return boundingbox(
+            plot[1][],
+            to_ndim.(Point3f, plot.position[], 0),
+            to_rotation(plot.rotation[])
+        )
+    else
+        return boundingbox(plot.plots[1])
     end
 end
 

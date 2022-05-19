@@ -25,7 +25,7 @@ function band_connect(n)
     [GLTriangleFace.(ns, ns .+ 1, ns2); GLTriangleFace.(ns .+ 1, ns2 .+ 1, ns2)]
 end
 
-function Makie.plot!(plot::Band)
+function Makie.plot!(plot::PlotObject, ::Band)
     @extract plot (lowerpoints, upperpoints)
     @lift(@assert length($lowerpoints) == length($upperpoints) "length of lower band is not equal to length of upper band!")
     coordinates = @lift([$lowerpoints; $upperpoints])

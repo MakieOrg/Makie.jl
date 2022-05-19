@@ -75,11 +75,33 @@ function Base.setproperty!(x::PlotObject, key::Symbol, value)
     end
 end
 
+repr_arg(x) = repr(x)
+
 function Base.show(io::IO, plot::PlotObject)
-    print(io, typeof(plot))
+    args = join(map(x-> repr_arg(to_value(x)), plot.args), ", ")
+    if isempty(plot.kw)
+        kw = ""
+    else
+        kw = "; " * join(map(((k,v),)-> "$k=$(repr_arg(to_value(v)))", collect(plot.kw)), ", ")
+    end
+    func = replace(lowercase(string(plot.type)), "makiecore." => "") * "!"
+    print(io, func, "(", args, kw, ")")
 end
 
 Base.parent(x::AbstractPlot) = x.parent
+
+struct TypedPlot{P <: AbstractPlot} <: AbstractPlot
+    plot::PlotObject
+end
+
+TypedPlot(plot::PlotObject) = TypedPlot{plot.type}(plot)
+
+Base.getproperty(@nospecialize(plot::TypedPlot), key::Symbol) = getproperty(getfield(plot, :plot), key)
+Base.getindex(@nospecialize(plot::TypedPlot), key::Integer) = getindex(getfield(plot, :plot), key)
+Base.getindex(@nospecialize(plot::TypedPlot), key::Symbol) = getindex(getfield(plot, :plot), key)
+Base.setproperty!(@nospecialize(plot::TypedPlot), key::Symbol, @nospecialize(value)) = setproperty!(getfield(plot, :plot), key, value)
+Base.setindex!(@nospecialize(plot::TypedPlot), @nospecialize(value), key::Symbol) = setindex!(getfield(plot, :plot), value, key)
+
 
 struct Key{K} end
 macro key_str(arg)

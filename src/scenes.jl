@@ -587,6 +587,7 @@ function convert_arguments!(plot::PlotObject)
         nt = convert_arguments(plot.type, args...)
         P, converted =  apply_convert!(plot.type(), plot.attributes, nt)
         if isempty(plot.converted)
+            # initialize the tuple first for when it was `()`
             plot.converted = Observable.(converted)
         end
         for (obs, new_val) in zip(plot.converted, converted)
@@ -595,4 +596,8 @@ function convert_arguments!(plot::PlotObject)
     end
     on_update(to_value.(plot.args)...)
     onany(on_update, plot.args...)
+    return
 end
+
+MakieCore.repr_arg(x::FreeTypeAbstraction.FTFont) = repr(FreeTypeAbstraction.fontname(x))
+MakieCore.repr_arg(x::Point{N}) where N = "Point$(N)f($(join(x, ", ")))"

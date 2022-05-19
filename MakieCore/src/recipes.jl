@@ -210,6 +210,7 @@ e.g.:
 ```
 """
 plottype(@nospecialize(plot_args...)) = Scatter
+plottype(::Type{P}, @nospecialize(plot_args...)) where P <: AbstractPlot = P
 
 
 function figurelike_return end

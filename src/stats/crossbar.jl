@@ -50,7 +50,7 @@ It is most commonly used as part of the `boxplot`.
     t
 end
 
-function Makie.plot!(plot::CrossBar)
+function Makie.plot!(plot::PlotObject, ::CrossBar)
     args = @extract plot (width, dodge, n_dodge, gap, dodge_gap, show_notch, notchmin, notchmax, notchwidth, orientation)
 
     signals = lift(

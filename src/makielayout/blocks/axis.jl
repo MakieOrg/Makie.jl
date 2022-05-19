@@ -58,9 +58,9 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     # TODO: replace with mesh, however, CairoMakie needs a poly path for this signature
     # so it doesn't rasterize the scene
-    # background = poly!(topscene, scenearea, color = ax.backgroundcolor, inspectable = false, shading = false, strokecolor = :transparent)
-    # translate!(background, 0, 0, -100)
-    # decorations[:background] = background
+    background = poly!(topscene, scenearea, color = ax.backgroundcolor, inspectable = false, shading = false, strokecolor = :transparent)
+    translate!(background, 0, 0, -100)
+    decorations[:background] = background
 
     block_limit_linking = Observable(false)
     setfield!(ax, :block_limit_linking, block_limit_linking)

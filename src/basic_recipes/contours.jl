@@ -82,11 +82,11 @@ function to_levels(n::Integer, cnorm)
 end
 
 conversion_trait(::Type{<: Contour3d}) = ContinuousSurface()
-conversion_trait(::Type{<: Contour}) = ContinuousSurface()
-conversion_trait(::Type{<: Contour{<: Tuple{X, Y, Z, Vol}}}) where {X, Y, Z, Vol} = VolumeLike()
-conversion_trait(::Type{<: Contour{<: Tuple{<: AbstractArray{T, 3}}}}) where T = VolumeLike()
+conversion_trait(::Type{Contour}) = ContinuousSurface()
+conversion_trait(::Type{Contour}) = VolumeLike()
+conversion_trait(::Type{Contour}) = VolumeLike()
 
-function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
+function plot!(plot::PlotObject, ::Contour, X, Y, Z, Vol) # 4 arg 3d volume
     x, y, z, volume = plot[1:4]
     @extract plot (colormap, levels, linewidth, alpha)
     valuerange = Observable{Vec2f}()
@@ -159,7 +159,7 @@ function color_per_level(::Nothing, colormap, colorrange, a, levels)
     end
 end
 
-function plot!(plot::T) where T <: Union{Contour, Contour3d}
+function plot!(plot::PlotObject, ::T) where T <: Union{Contour, Contour3d}
     x, y, z = plot[1:3]
     if to_value(plot[:fillrange])
         plot[:interpolate] = true
@@ -199,8 +199,8 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     plot
 end
 
-function point_iterator(x::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
-    axes = (x[1], x[2])
+function point_iterator(plot::TypedPlot{Contour})
+    axes = (plot[1], plot[2])
     extremata = map(extrema∘to_value, axes)
     minpoint = Point2f(first.(extremata)...)
     widths = last.(extremata) .- first.(extremata)

@@ -29,12 +29,10 @@ end
 
 signal2point(signal::Number, start) = Point2f(time() - start, signal)
 signal2point(signal::Point2, start) = signal
-signal2point(signal, start) = error(""" Signal needs to be of type Number or Point.
-Found: $(typeof(signal))
-""")
+signal2point(signal, start) = error(""" Signal needs to be of type Number or Point. Found: $(typeof(signal))""")
 
 
-function Makie.plot!(plot::TimeSeries)
+function Makie.plot!(plot::PlotObject, ::TimeSeries)
     # normal plotting code, building on any previously defined recipes
     # or atomic plotting operations, and adding to the combined `plot`:
     points = Observable(fill(Point2f(NaN), plot.history[]))

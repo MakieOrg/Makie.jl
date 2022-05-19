@@ -35,23 +35,23 @@ function distinct_extrema_nan(x)
     lo == hi ? (lo - 0.5f0, hi + 0.5f0) : (lo, hi)
 end
 
-function point_iterator(plot::PlotObject, ::Union{Scatter, MeshScatter, Lines, LineSegments})
+function point_iterator(plot::TypedPlot{<: Union{Scatter, MeshScatter, Lines, LineSegments}})
     return plot.positions[]
 end
 
 # TODO?
-function point_iterator(text::PlotObject, ::Text)
-    if is_data_space(text.markerspace[])
-        return decompose(Point, boundingbox(text, Text()))
+function point_iterator(plot::TypedPlot{Text})
+    if is_data_space(plot.markerspace[])
+        return decompose(Point, boundingbox(plot))
     else
-        if text.position[] isa VecTypes
+        if plot.position[] isa VecTypes
             return [to_ndim(Point3f, text.position[], 0.0)]
         else
-            return convert_arguments(PointBased(), text.position[])[1]
+            return convert_arguments(PointBased(), plot.position[])[1]
         end
     end
 end
-point_iterator(plot::PlotObject, ::Mesh) = point_iterator(plot.mesh[])
+point_iterator(plot::TypedPlot{Mesh}) = point_iterator(plot.mesh[])
 
 # function point_iterator(text::Text)
 #     return point_iterator(text.plots[1])
@@ -63,9 +63,9 @@ function point_iterator(list::AbstractVector)
     Iterators.flatten((point_iterator(elem) for elem in list))
 end
 
-point_iterator(plot::PlotObject, any) = point_iterator(plot.plots)
+point_iterator(plot::TypedPlot) = point_iterator(plot.plots)
 
-point_iterator(plot::PlotObject) = point_iterator(plot, plot.type())
+point_iterator(plot::PlotObject) = point_iterator(TypedPlot(plot))
 
 function br_getindex(vector::AbstractVector, idx::CartesianIndex, dim::Int)
     return vector[Tuple(idx)[dim]]
@@ -90,7 +90,7 @@ function get_point_xyz(linear_indx::Int, indices, X, Y)
     return Point(x, y, 0.0)
 end
 
-function point_iterator(plot::Surface)
+function point_iterator(plot::TypedPlot{Surface})
     X = plot.x[]
     Y = plot.y[]
     Z = plot.z[]
@@ -98,7 +98,7 @@ function point_iterator(plot::Surface)
     return (get_point_xyz(idx, indices, X, Y, Z) for idx in 1:length(Z))
 end
 
-function point_iterator(plot::Heatmap)
+function point_iterator(plot::TypedPlot{Heatmap})
     X = plot.x[]
     Y = plot.y[]
     Z = plot[3][]
@@ -107,7 +107,7 @@ function point_iterator(plot::Heatmap)
     return (get_point_xyz(idx, indices, X, Y) for idx in 1:prod(zsize))
 end
 
-function point_iterator(plot::Image)
+function point_iterator(plot::TypedPlot{Image})
     X = plot.x[]
     Y = plot.y[]
     Z = plot[3][]
@@ -116,8 +116,8 @@ function point_iterator(plot::Image)
     return (get_point_xyz(idx, indices, X, Y) for idx in 1:prod(zsize))
 end
 
-function point_iterator(x::Volume)
-    axes = (x[1], x[2], x[3])
+function point_iterator(plot::TypedPlot{Volume})
+    axes = (plot[1], plot[2], plot[3])
     extremata = map(extrema∘to_value, axes)
     minpoint = Point3f(first.(extremata)...)
     widths = last.(extremata) .- first.(extremata)
@@ -179,7 +179,7 @@ function update_boundingbox!(bb_ref, bb::Rect)
     return
 end
 
-function data_limits(plot::AbstractPlot, any)
+function data_limits(plot::AbstractPlot)
     # Because of closure inference problems
     # we need to use a ref here which gets updated inplace
     bb_ref = Base.RefValue(Rect3f())
@@ -193,28 +193,28 @@ function data_limits(scenelike; exclude=(p)-> false)
     bb_ref = Base.RefValue(Rect3f())
     foreach_plot(scenelike) do plot
         if !exclude(plot)
-            update_boundingbox!(bb_ref, data_limits(plot, plot.type()))
+            update_boundingbox!(bb_ref, data_limits(TypedPlot(plot)))
         end
     end
     return bb_ref[]
 end
 
 # A few overloads for performance
-function data_limits(plot::PlotObject, ::Surface)
+function data_limits(plot::TypedPlot{Surface})
     mini_maxi = extrema_nan.((plot.x[], plot.y[], plot.z[]))
     mini = first.(mini_maxi)
     maxi = last.(mini_maxi)
     return Rect3f(mini, maxi .- mini)
 end
 
-function data_limits(plot::PlotObject, ::Heatmap)
+function data_limits(plot::TypedPlot{Heatmap})
     mini_maxi = extrema_nan.((plot.x[], plot.y[]))
     mini = Vec3f(first.(mini_maxi)..., 0)
     maxi = Vec3f(last.(mini_maxi)..., 0)
     return Rect3f(mini, maxi .- mini)
 end
 
-function data_limits(plot::PlotObject, ::Image)
+function data_limits(plot::TypedPlot{Image})
     mini_maxi = extrema_nan.((plot.x[], plot.y[]))
     mini = Vec3f(first.(mini_maxi)..., 0)
     maxi = Vec3f(last.(mini_maxi)..., 0)

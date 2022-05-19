@@ -59,7 +59,7 @@ using Base.Iterators: repeated, drop
 import Base: getindex, setindex!, push!, append!, parent, get, get!, delete!, haskey
 using Observables: listeners, to_value, notify
 
-using MakieCore: SceneLike, AbstractScreen, AbstractScene, AbstractPlot, Transformable, Attributes, PlotObject, Theme
+using MakieCore: SceneLike, AbstractScreen, AbstractScene, AbstractPlot, Transformable, Attributes, PlotObject, TypedPlot, Theme
 using MakieCore: Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter, Surface, Text, Volume
 using MakieCore: ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
 using MakieCore: Key, @key_str, Automatic, automatic, @recipe
@@ -116,25 +116,24 @@ include("camera/old_camera3d.jl")
 
 # basic recipes
 include("basic_recipes/convenience_functions.jl")
-# include("basic_recipes/annotations.jl")
-# include("basic_recipes/arc.jl")
-# include("basic_recipes/arrows.jl")
-# include("basic_recipes/axis.jl")
-# include("basic_recipes/band.jl")
-# include("basic_recipes/barplot.jl")
+include("basic_recipes/arc.jl")
+include("basic_recipes/arrows.jl")
+include("basic_recipes/axis.jl")
+include("basic_recipes/band.jl")
+include("basic_recipes/barplot.jl")
 # include("basic_recipes/buffers.jl")
-# include("basic_recipes/contours.jl")
-# include("basic_recipes/contourf.jl")
-# include("basic_recipes/error_and_rangebars.jl")
-# include("basic_recipes/pie.jl")
+include("basic_recipes/contours.jl")
+include("basic_recipes/contourf.jl")
+include("basic_recipes/error_and_rangebars.jl")
+include("basic_recipes/pie.jl")
 include("basic_recipes/poly.jl")
-# include("basic_recipes/scatterlines.jl")
-# include("basic_recipes/spy.jl")
-# include("basic_recipes/stairs.jl")
-# include("basic_recipes/stem.jl")
-# include("basic_recipes/streamplot.jl")
-# include("basic_recipes/timeseries.jl")
-# include("basic_recipes/volumeslices.jl")
+include("basic_recipes/scatterlines.jl")
+include("basic_recipes/spy.jl")
+include("basic_recipes/stairs.jl")
+include("basic_recipes/stem.jl")
+include("basic_recipes/streamplot.jl")
+include("basic_recipes/timeseries.jl")
+include("basic_recipes/volumeslices.jl")
 include("basic_recipes/wireframe.jl")
 
 # layouting of plots
@@ -144,14 +143,14 @@ include("layouting/layouting.jl")
 include("layouting/boundingbox.jl")
 # more default recipes
 # statistical recipes
-# include("stats/conversions.jl")
-# include("stats/hist.jl")
-# include("stats/density.jl")
-# include("stats/ecdf.jl")
-# include("stats/distributions.jl")
-# include("stats/crossbar.jl")
-# include("stats/boxplot.jl")
-# include("stats/violin.jl")
+include("stats/conversions.jl")
+include("stats/hist.jl")
+include("stats/density.jl")
+include("stats/ecdf.jl")
+include("stats/distributions.jl")
+include("stats/crossbar.jl")
+include("stats/boxplot.jl")
+include("stats/violin.jl")
 
 # Interactiveness
 include("interaction/events.jl")
