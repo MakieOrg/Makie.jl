@@ -27,11 +27,8 @@ using CairoMakie
 using FileIO
 CairoMakie.activate!() # hide
 
-noto_sans = assetpath("fonts", "NotoSans-Regular.ttf")
-noto_sans_bold = assetpath("fonts", "NotoSans-Bold.ttf")
-
 f = Figure(backgroundcolor = RGBf(0.98, 0.98, 0.98),
-    resolution = (1000, 700), font = noto_sans)
+    resolution = (1000, 700))
 ```
 \end{examplefigure}
 
@@ -89,6 +86,16 @@ f
 ```
 \end{examplefigure}
 
+We can also choose different x ticks with whole numbers.
+
+\begin{examplefigure}{px_per_unit = 1.5}
+```julia
+axmain.xticks = 0:3:9
+
+f
+```
+\end{examplefigure}
+
 ### Legend
 
 We have set the `label` attribute in the scatter call so it's easier to construct the legend. We can just pass `axmain` as the second argument to `Legend`.
@@ -133,6 +140,7 @@ We can make a title by placing a label across the top two elements.
 \begin{examplefigure}{px_per_unit = 1.5}
 ```julia
 Label(ga[1, 1:2, Top()], "Stimulus ratings", valign = :bottom,
+    font = "TeX Gyre Heros Bold",
     padding = (0, 0, 5, 0))
 
 f
@@ -262,6 +270,7 @@ We can make a little title for the six axes by placing a `Label` in the top prot
 \begin{examplefigure}{px_per_unit = 1.5}
 ```julia
 Label(gd[1, :, Top()], "EEG traces", valign = :bottom,
+    font = "TeX Gyre Heros Bold",
     padding = (0, 0, 5, 0))
 
 f
@@ -333,7 +342,7 @@ That will leave all other alignments intact, because we're not creating any new 
 for (label, layout) in zip(["A", "B", "C", "D"], [ga, gb, gc, gd])
     Label(layout[1, 1, TopLeft()], label,
         textsize = 26,
-        font = noto_sans_bold,
+        font = "TeX Gyre Heros Bold",
         padding = (0, 5, 5, 0),
         halign = :right)
 end
