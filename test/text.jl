@@ -44,12 +44,18 @@
     @test glyph_collection.glyphs == chars
     @test glyph_collection.fonts == [font for _ in 1:4]
     @test all(isapprox.(glyph_collection.origins, [Point3f(x, 0, 0) for x in origins], atol = 1e-10))
-    @test glyph_collection.extents == unit_extents
     @test glyph_collection.scales.sv == [Vec2f(p.textsize[]) for _ in 1:4]
     @test glyph_collection.rotations.sv == [Quaternionf(0,0,0,1) for _ in 1:4]
     @test glyph_collection.colors.sv == [RGBAf(0,0,0,1) for _ in 1:4]
     @test glyph_collection.strokecolors.sv == [RGBAf(0,0,0,0) for _ in 1:4]
     @test glyph_collection.strokewidths.sv == Float32[0, 0, 0, 0]
+
+    makie_hi_bb = Makie.height_insensitive_boundingbox.(glyph_collection.extents)
+    makie_hi_bb_wa = Makie.height_insensitive_boundingbox_with_advance.(glyph_collection.extents)
+    fta_hi_bb = FreeTypeAbstraction.height_insensitive_boundingbox.(unit_extents, Ref(font))
+    fta_ha = FreeTypeAbstraction.hadvance.(unit_extents)
+    @test makie_hi_bb == fta_hi_bb
+    @test fta_ha == [bb.origin[1] + bb.widths[1] for bb in makie_hi_bb_wa]
 
     # Test quad data
     positions, char_offsets, quad_offsets, uvs, scales = Makie.text_quads(
