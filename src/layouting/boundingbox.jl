@@ -51,15 +51,11 @@ function boundingbox(glyphcollection::GlyphCollection, position::Point3f, rotati
         return Rect3f(position, Vec3f(0, 0, 0))
     end
 
-    chars = glyphcollection.glyphs
     glyphorigins = glyphcollection.origins
     glyphbbs = gl_bboxes(glyphcollection)
 
     bb = Rect3f()
-    for (char, charo, glyphbb) in zip(chars, glyphorigins, glyphbbs)
-        # ignore line breaks
-        # char in ('\r', '\n') && continue
-
+    for (charo, glyphbb) in zip(glyphorigins, glyphbbs)
         charbb = rotate_bbox(Rect3f(glyphbb), rotation) + charo + position
         if !isfinite_rect(bb)
             bb = charbb
