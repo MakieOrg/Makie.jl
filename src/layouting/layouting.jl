@@ -218,11 +218,11 @@ function glyph_collection(
     # for y alignment, we need the largest ascender of the first line
     # and the largest descender of the last line
     first_line_ascender = maximum(lineinfos[1]) do l
-        l.scale * height(l.extent.ink_bounding_box)
+        l.scale * l.extent.ascender
     end
 
     last_line_descender = minimum(lineinfos[end]) do l
-        l.scale * minimum(l.extent.ink_bounding_box)[2]
+        l.scale * l.extent.descender
     end
 
     # compute the height of all lines together
