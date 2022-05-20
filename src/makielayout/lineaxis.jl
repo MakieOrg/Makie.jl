@@ -36,7 +36,7 @@ function LineAxis(parent::Scene; kwargs...)
     decorations[:ticklines] = ticklines
     translate!(ticklines, 0, 0, 10)
 
-    minorticksnode = Observable(Point2f[])
+    minorticksnode = Observable(Point2f[]; ignore_equal_values=true)
     minorticklines = linesegments!(
         parent, minorticksnode, linewidth = minortickwidth, color = minortickcolor,
         linestyle = nothing, visible = minorticksvisible, inspectable = false
@@ -81,9 +81,9 @@ function LineAxis(parent::Scene; kwargs...)
         end
     end
 
-    ticklabelannosnode = Observable(Tuple{AbstractString, Point2f}[])
+    ticklabelannosnode = Observable(Tuple{AbstractString, Point2f}[]; ignore_equal_values=true)
     ticklabels = nothing
-    ticklabel_ideal_space = Observable{Float32}()
+    ticklabel_ideal_space = Observable{Float32}(; ignore_equal_values=true)
     map!(ticklabel_ideal_space, ticklabelannosnode, ticklabelalign, ticklabelrotation, ticklabelfont, ticklabelsvisible) do args...
         maxwidth = if pos_extents_horizontal[][3]
                 # height
@@ -113,44 +113,44 @@ function LineAxis(parent::Scene; kwargs...)
         end
     end
 
-
-
-    tickspace = lift(ticksvisible, ticksize, tickalign) do ticksvisible,
+    tickspace = Observable(0f0; ignore_equal_values=true)
+    map!(tickspace, ticksvisible, ticksize, tickalign) do ticksvisible,
             ticksize, tickalign
 
         ticksvisible ? max(0f0, ticksize * (1f0 - tickalign)) : 0f0
     end
 
-    labelgap = lift(spinewidth, tickspace, ticklabelsvisible, actual_ticklabelspace,
+    labelgap = Observable(0f0; ignore_equal_values=true)
+    map!(labelgap, spinewidth, tickspace, ticklabelsvisible, actual_ticklabelspace,
         ticklabelpad, labelpadding) do spinewidth, tickspace, ticklabelsvisible,
             actual_ticklabelspace, ticklabelpad, labelpadding
 
-
-        spinewidth + tickspace +
+        return spinewidth + tickspace +
             (ticklabelsvisible ? actual_ticklabelspace + ticklabelpad : 0f0) +
             labelpadding
     end
 
-    labelpos = lift(pos_extents_horizontal, flipped, labelgap) do (position, extents, horizontal), flipped, labelgap
-
+    labelpos = Observable{Point2f}(; ignore_equal_values=true)
+    map!(labelpos, pos_extents_horizontal, flipped, labelgap) do (position, extents, horizontal), flipped, labelgap
         # fullgap = tickspace[] + labelgap
-
         middle = extents[1] + 0.5f0 * (extents[2] - extents[1])
 
         x_or_y = flipped ? position + labelgap : position - labelgap
 
         if horizontal
-            Point2(middle, x_or_y)
+            return Point2f(middle, x_or_y)
         else
-            Point2(x_or_y, middle)
+            return Point2f(x_or_y, middle)
         end
     end
+    # Initial values should be overwritten by map!. `ignore_equal_values` doesn't work right now without initial values
+    labelalign = Observable{Tuple{Symbol, Symbol}}((:none, :none); ignore_equal_values=true)
 
-    labelalign = lift(pos_extents_horizontal, flipped, flip_vertical_label) do (position, extents, horizontal), flipped, flip_vertical_label
+    map!(labelalign, pos_extents_horizontal, flipped, flip_vertical_label) do (position, extents, horizontal), flipped, flip_vertical_label
         if horizontal
-            (:center, flipped ? :bottom : :top)
+            return (:center, flipped ? :bottom : :top)
         else
-            (:center, if flipped
+            return (:center, if flipped
                     flip_vertical_label ? :bottom : :top
                 else
                     flip_vertical_label ? :top : :bottom
@@ -159,36 +159,35 @@ function LineAxis(parent::Scene; kwargs...)
         end
     end
 
-    labelrotation = lift(pos_extents_horizontal, flip_vertical_label) do (position, extents, horizontal), flip_vertical_label
+    labelrotation = Observable(0f0; ignore_equal_values=true)
+    map!(labelrotation, pos_extents_horizontal, flip_vertical_label) do (position, extents, horizontal), flip_vertical_label
         if horizontal
-            0f0
+            return 0f0
         else
             if flip_vertical_label
-                Float32(-0.5pi)
+                return Float32(-0.5pi)
             else
-                Float32(0.5pi)
+                return Float32(0.5pi)
             end
         end
     end
 
-    labeltext = text!(
+    decorations[:labeltext] = text!(
         parent, label, textsize = labelsize, color = labelcolor,
         position = labelpos, visible = labelvisible,
         align = labelalign, rotation = labelrotation, font = labelfont,
         markerspace = :data, inspectable = false
     )
 
-    decorations[:labeltext] = labeltext
-
-    tickvalues = Observable(Float32[])
+    tickvalues = Observable(Float32[]; ignore_equal_values=true)
 
     tickvalues_labels_unfiltered = lift(pos_extents_horizontal, limits, ticks, tickformat, attrs.scale) do (position, extents, horizontal),
             limits, ticks, tickformat, scale
         get_ticks(ticks, scale, tickformat, limits...)
     end
 
-    tickpositions = Observable(Point2f[])
-    tickstrings = Observable(AbstractString[])
+    tickpositions = Observable(Point2f[]; ignore_equal_values=true)
+    tickstrings = Observable(AbstractString[]; ignore_equal_values=true)
 
     onany(tickvalues_labels_unfiltered, reversed) do tickvalues_labels_unfiltered, reversed
 
@@ -221,25 +220,27 @@ function LineAxis(parent::Scene; kwargs...)
         tick_scenecoords = px_o .+ px_width .* tick_fractions
 
         tickpos = if horizontal
-            [Point(x, position) for x in tick_scenecoords]
+            [Point2f(x, position) for x in tick_scenecoords]
         else
-            [Point(position, y) for y in tick_scenecoords]
+            [Point2f(position, y) for y in tick_scenecoords]
         end
 
         # now trigger updates
         tickpositions[] = tickpos
 
         tickstrings[] = tickstrings_unfiltered[i_values_within_limits]
+        return
     end
 
-    minortickvalues = Observable(Float32[])
-    minortickpositions = Observable(Point2f[])
+    minortickvalues = Observable(Float32[]; ignore_equal_values=true)
+    minortickpositions = Observable(Point2f[]; ignore_equal_values=true)
 
     onany(tickvalues, minorticks) do tickvalues, minorticks
         minortickvalues[] = get_minor_tickvalues(minorticks, attrs.scale[], tickvalues, limits[]...)
+        return
     end
 
-    onany(minortickvalues) do minortickvalues
+    on(minortickvalues) do minortickvalues
         position, extents_uncorrected, horizontal = pos_extents_horizontal[]
 
         extents = reversed[] ? reverse(extents_uncorrected) : extents_uncorrected
@@ -258,10 +259,11 @@ function LineAxis(parent::Scene; kwargs...)
         tick_scenecoords = px_o .+ px_width .* tick_fractions
 
         minortickpositions[] = if horizontal
-            [Point(x, position) for x in tick_scenecoords]
+            [Point2f(x, position) for x in tick_scenecoords]
         else
-            [Point(position, y) for y in tick_scenecoords]
+            [Point2f(position, y) for y in tick_scenecoords]
         end
+        return
     end
 
     onany(minortickpositions, minortickalign, minorticksize, spinewidth) do tickpositions,
@@ -325,29 +327,32 @@ function LineAxis(parent::Scene; kwargs...)
                 y = position
                 p1 = Point2f(extents[1] - 0.5sw, y)
                 p2 = Point2f(extents[2] + 0.5sw, y)
-                [p1, p2]
+                return [p1, p2]
             else
                 x = position
                 p1 = Point2f(x, extents[1] - 0.5sw)
                 p2 = Point2f(x, extents[2] + 0.5sw)
-                [p1, p2]
+                return [p1, p2]
             end
         else
-            [tickpositions[1], tickpositions[end]] .+ [
+            return [tickpositions[1], tickpositions[end]] .+ [
                 (horizontal ? Point2f(-0.5f0 * tickwidth, 0) : Point2f(0, -0.5f0 * tickwidth)),
                 (horizontal ? Point2f(0.5f0 * tickwidth, 0) : Point2f(0, 0.5f0 * tickwidth)),
             ]
         end
     end
 
-    decorations[:axisline] = lines!(parent, linepoints, linewidth = spinewidth, visible = spinevisible,
+    decorations[:axisline] = linesegments!(parent, linepoints, linewidth = spinewidth, visible = spinevisible,
         color = spinecolor, inspectable = false, linestyle = nothing)
+
     translate!(decorations[:axisline], 0, 0, 20)
 
+    protrusion = Observable(0f0; ignore_equal_values=true)
 
-    protrusion = lift(ticksvisible, label, labelvisible, labelpadding, labelsize, tickalign, tickspace, ticklabelsvisible, actual_ticklabelspace, ticklabelpad, labelfont, ticklabelfont) do ticksvisible,
+    map!(protrusion, ticksvisible, label, labelvisible, labelpadding, labelsize, tickalign, tickspace, ticklabelsvisible, actual_ticklabelspace, ticklabelpad, labelfont, ticklabelfont) do ticksvisible,
             label, labelvisible, labelpadding, labelsize, tickalign, tickspace, ticklabelsvisible,
             actual_ticklabelspace, ticklabelpad, labelfont, ticklabelfont
+
         position, extents, horizontal = pos_extents_horizontal[]
 
         label_is_empty = iswhitespace(label) || isempty(label)
@@ -364,7 +369,7 @@ function LineAxis(parent::Scene; kwargs...)
 
         ticklabelgap = (ticklabelsvisible && actual_ticklabelspace > 0) ? actual_ticklabelspace + ticklabelpad : 0f0
 
-        together = tickspace + ticklabelgap + labelspace
+        return tickspace + ticklabelgap + labelspace
     end
 
     # trigger whole pipeline once to fill tickpositions and tickstrings
@@ -373,7 +378,7 @@ function LineAxis(parent::Scene; kwargs...)
 
     # in order to dispatch to the correct text recipe later (normal text, latex, etc.)
     # we need to have the ticklabelannosnode populated once before adding the annotations
-    ticklabels = text!(
+    decorations[:ticklabels] = text!(
         parent,
         ticklabelannosnode,
         align = realticklabelalign,
@@ -384,21 +389,18 @@ function LineAxis(parent::Scene; kwargs...)
         visible = ticklabelsvisible,
         markerspace = :data,
         inspectable = false)
-    decorations[:ticklabels] = ticklabels
 
     # HACKY: the ticklabels in the string need to be updated
     # before other stuff is triggered by them, which accesses the
     # ticklabel boundingbox (which needs to be updated already)
     # so we move the new listener from text! to the front
-    pushfirst!(
-        ticklabelannosnode.listeners,
-        pop!(ticklabelannosnode.listeners))
+    pushfirst!(ticklabelannosnode.listeners, pop!(ticklabelannosnode.listeners))
 
 
     # trigger calculation of ticklabel width once, now that it's not nothing anymore
     notify(ticklabelsvisible)
 
-    LineAxis(parent, protrusion, attrs, decorations, tickpositions, tickvalues, tickstrings, minortickpositions, minortickvalues)
+    return LineAxis(parent, protrusion, attrs, decorations, tickpositions, tickvalues, tickstrings, minortickpositions, minortickvalues)
 end
 
 
