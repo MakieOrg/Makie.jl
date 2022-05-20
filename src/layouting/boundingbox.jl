@@ -58,11 +58,11 @@ function boundingbox(glyphcollection::GlyphCollection, position::Point3f, rotati
         if !isfinite_rect(bb)
             bb = charbb
         else
-            bb = union(bb, charbb)
+            bb = union(bb, charbb)::Rect3f
         end
     end
     !isfinite_rect(bb) && error("Invalid text boundingbox")
-    bb
+    return bb
 end
 
 function boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotations)
@@ -74,7 +74,7 @@ function boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotat
             if !isfinite_rect(bb)
                 bb = boundingbox(layout, pos, rot)
             else
-                bb = union(bb, boundingbox(layout, pos, rot))
+                bb = union(bb, boundingbox(layout, pos, rot))::Rect3f
             end
         end
         !isfinite_rect(bb) && error("Invalid text boundingbox")

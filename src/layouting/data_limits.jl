@@ -1,6 +1,6 @@
 _isfinite(x) = isfinite(x)
 _isfinite(x::VecTypes) = all(isfinite, x)
-isfinite_rect(x::Rect) = all(isfinite.(minimum(x))) &&  all(isfinite.(maximum(x)))
+isfinite_rect(x::Rect)::Bool = all(isfinite, minimum(x)) && all(isfinite, maximum(x))
 scalarmax(x::Union{Tuple, AbstractArray}, y::Union{Tuple, AbstractArray}) = max.(x, y)
 scalarmax(x, y) = max(x, y)
 scalarmin(x::Union{Tuple, AbstractArray}, y::Union{Tuple, AbstractArray}) = min.(x, y)

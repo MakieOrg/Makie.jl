@@ -570,16 +570,17 @@ function apply_theme!(scene::Scene, plot::PlotObject)
     merge!(plot.attributes, theme)
 end
 
-
-function plot!(scene::Union{PlotObject, Scene}, plot::PlotObject)
-
+function prepare_plot!(scene::Union{PlotObject, Scene}, plot::PlotObject)
     plot.parent = scene
     connect!(transformation(scene), transformation(plot))
     apply_theme!(parent_scene(scene), plot)
     convert_arguments!(plot)
     calculated_attributes!(plot.type, plot)
-
     plot!(plot, plot.type(), map(to_value, plot.converted)...)
+end
+
+function plot!(scene::Union{PlotObject, Scene}, plot::PlotObject)
+    prepare_plot!(scene, plot)
     push!(scene, plot)
     return plot
 end

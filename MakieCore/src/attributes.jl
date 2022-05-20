@@ -39,7 +39,8 @@ Base.values(x::Attributes) = values(x.attributes)
 function Base.iterate(x::Attributes, state...)
     s = iterate(keys(x), state...)
     s === nothing && return nothing
-    return (s[1]::Symbol => x[s[1]], s[2])
+    key = s[1]::Symbol
+    return (key => x[key]::Union{Observable{Any}, Attributes}, s[2])
 end
 
 function Base.copy(attributes::Attributes)
