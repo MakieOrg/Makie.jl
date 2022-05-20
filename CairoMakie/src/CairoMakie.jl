@@ -14,6 +14,10 @@ using Makie: inline!
 using Makie.Observables
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
 
+if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@max_methods"))
+    @eval Base.Experimental.@max_methods 1
+end
+
 const OneOrVec{T} = Union{
     T,
     Vec{N1, T} where N1,
