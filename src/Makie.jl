@@ -82,6 +82,11 @@ const RGBAf = RGBA{Float32}
 const RGBf = RGB{Float32}
 const NativeFont = FreeTypeAbstraction.FTFont
 
+if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@max_methods"))
+    @eval Base.Experimental.@max_methods 1
+end
+
+
 include("documentation/docstringextension.jl")
 include("utilities/quaternions.jl")
 include("types.jl")
