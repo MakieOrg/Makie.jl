@@ -208,7 +208,7 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
     extents = GlyphExtent.(texchars)
 
     bboxes = map(extents, scales_2d) do ext, scale
-        unscaled_hi_bb = height_insensitive_boundingbox(ext)
+        unscaled_hi_bb = height_insensitive_boundingbox_with_advance(ext)
         return Rect2f(
             origin(unscaled_hi_bb) * scale,
             widths(unscaled_hi_bb) * scale

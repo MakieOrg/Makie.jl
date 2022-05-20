@@ -258,7 +258,7 @@ function charbbs(text)
     pos = Point2f(text.position[])
     bbs = Rect2f[]
     broadcast_foreach(gc.extents, gc.scales, gc.origins) do ext, sc, ori
-        bb = Makie.FreeTypeAbstraction.height_insensitive_boundingbox(ext) * sc
+        bb = Makie.FreeTypeAbstraction.height_insensitive_boundingbox_with_advance(ext) * sc
         fr = Rect2f(Point2f(ori) + bb.origin + pos, bb.widths)
         push!(bbs, fr)
     end
