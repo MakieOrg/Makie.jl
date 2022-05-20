@@ -44,7 +44,6 @@
     @test glyph_collection.glyphs == chars
     @test glyph_collection.fonts == [font for _ in 1:4]
     @test all(isapprox.(glyph_collection.origins, [Point3f(x, 0, 0) for x in origins], atol = 1e-10))
-    @test glyph_collection.extents == unit_extents
     @test glyph_collection.scales.sv == [Vec2f(p.textsize[]) for _ in 1:4]
     @test glyph_collection.rotations.sv == [Quaternionf(0,0,0,1) for _ in 1:4]
     @test glyph_collection.colors.sv == [RGBAf(0,0,0,1) for _ in 1:4]
