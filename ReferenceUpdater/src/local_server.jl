@@ -31,7 +31,7 @@ function serve_update_page_from_dir(folder)
         @info "Uploading updated reference images under tag \"$tag\""
         try
             upload_reference_images(tempdir, tag; name = refimages_name)
-
+            @info "Upload successful. You can ctrl+c out now."
             HTTP.Response(200, "Upload successful")
         catch e
             showerror(stdout, e, catch_backtrace())
@@ -41,7 +41,7 @@ function serve_update_page_from_dir(folder)
 
     function serve_local_file(req)
         if req.target == "/"
-            s = read(normpath(joinpath(dirname(pathof(ReferenceTests)), "reference_images.html")), String)
+            s = read(normpath(joinpath(dirname(pathof(ReferenceUpdater)), "reference_images.html")), String)
             s = replace(s, "DEFAULT_TAG" => "'$(last_major_version())'")
             return HTTP.Response(200, s)
         end

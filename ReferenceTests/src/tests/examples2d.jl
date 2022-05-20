@@ -1,14 +1,11 @@
-using GeometryBasics
-using Statistics
-using CategoricalArrays: categorical, levelcode
 
-@cell "Test heatmap + image overlap" begin
+@reference_test "Test heatmap + image overlap" begin
     heatmap(RNG.rand(32, 32))
     image!(map(x -> RGBAf(x, 0.5, 0.5, 0.8), RNG.rand(32, 32)))
     current_figure()
 end
 
-@cell "poly and colormap" begin
+@reference_test "poly and colormap" begin
     # example by @Paulms from JuliaPlots/Makie.jl#310
     points = Point2f[[0.0, 0.0], [0.1, 0.0], [0.1, 0.1], [0.0, 0.1]]
     colors = [0.0 ,0.0, 0.5, 0.0]
@@ -19,12 +16,12 @@ end
     fig
 end
 
-@cell "quiver" begin
+@reference_test "quiver" begin
     x = range(-2, stop=2, length=21)
     arrows(x, x, RNG.rand(21, 21), RNG.rand(21, 21), arrowsize=0.05)
 end
 
-@cell "Arrows on hemisphere" begin
+@reference_test "Arrows on hemisphere" begin
     s = Sphere(Point3f(0), 0.9f0)
     fig, ax, meshplot = mesh(s, transparency=true, alpha=0.05)
     pos = decompose(Point3f, s)
@@ -33,14 +30,14 @@ end
     fig
 end
 
-@cell "image" begin
+@reference_test "image" begin
     fig = Figure()
     image(fig[1,1], Makie.logo(), axis = (; aspect = DataAspect()))
     image(fig[1, 2], RNG.rand(100, 500), axis = (; aspect = DataAspect()))
     fig
 end
 
-@cell "FEM polygon 2D" begin
+@reference_test "FEM polygon 2D" begin
     coordinates = [
         0.0 0.0;
         0.5 0.0;
@@ -66,7 +63,7 @@ end
     poly(coordinates, connectivity, color=color, strokecolor=(:black, 0.6), strokewidth=4)
 end
 
-@cell "FEM mesh 2D" begin
+@reference_test "FEM mesh 2D" begin
     coordinates = [
         0.0 0.0;
         0.5 0.0;
@@ -94,14 +91,14 @@ end
     fig
 end
 
-@cell "colored triangle" begin
+@reference_test "colored triangle" begin
     mesh(
         [(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)], color=[:red, :green, :blue],
         shading=false
     )
 end
 
-@cell "colored triangle with poly" begin
+@reference_test "colored triangle with poly" begin
     poly(
         [(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)],
         color=[:red, :green, :blue],
@@ -109,7 +106,7 @@ end
     )
 end
 
-@cell "scale_plot" begin
+@reference_test "scale_plot" begin
     t = range(0, stop=1, length=500) # time steps
     θ = (6π) .* t    # angles
     x =  # x coords of spiral
@@ -118,7 +115,7 @@ end
         color=t, colormap=:algae, linewidth=8, axis = (; aspect = DataAspect()))
 end
 
-@cell "Polygons" begin
+@reference_test "Polygons" begin
     points = decompose(Point2f, Circle(Point2f(50), 50f0))
     fig, ax, pol = poly(points, color=:gray, strokewidth=10, strokecolor=:red)
     # Optimized forms
@@ -131,7 +128,7 @@ end
     fig
 end
 
-@cell "Text Annotation" begin
+@reference_test "Text Annotation" begin
     text(
         ". This is an annotation!",
         position=(300, 200),
@@ -141,7 +138,7 @@ end
     )
 end
 
-@cell "Text rotation" begin
+@reference_test "Text rotation" begin
     fig = Figure()
     ax = fig[1, 1] = Axis(fig)
     pos = (500, 500)
@@ -160,7 +157,7 @@ end
     fig
 end
 
-@cell "Standard deviation band" begin
+@reference_test "Standard deviation band" begin
     # Sample 100 Brownian motion path and plot the mean trajectory together
     # with a ±1σ band (visualizing uncertainty as marginal standard deviation).
     n, m = 100, 101
@@ -174,7 +171,7 @@ end
     current_figure()
 end
 
-@cell "Streamplot animation" begin
+@reference_test "Streamplot animation" begin
     v(x::Point2{T}, t) where T = Point2{T}(one(T) * x[2] * t, 4 * x[1])
     sf = Observable(Base.Fix2(v, 0e0))
     title_str = Observable("t = 0.00")
@@ -187,7 +184,7 @@ end
 end
 
 
-@cell "Line changing colour" begin
+@reference_test "Line changing colour" begin
     fig, ax, lineplot = lines(RNG.rand(10); linewidth=10)
     N = 20
     Record(fig, 1:N; framerate=20) do i
@@ -202,7 +199,7 @@ let
         γ::T
         β::T
     end
-    @cell "streamplot" begin
+    @reference_test "streamplot" begin
         P = FitzhughNagumo(0.1, 0.0, 1.5, 0.8)
         ff(x, P::FitzhughNagumo) = Point2f(
             (x[1] - x[2] - x[1]^3 + P.s) / P.ϵ,
@@ -213,7 +210,7 @@ let
     end
 end
 
-@cell "Transforming lines" begin
+@reference_test "Transforming lines" begin
     N = 7 # number of colours in default palette
     fig = Figure()
     ax = Axis(fig)
@@ -250,7 +247,7 @@ end
     st
 end
 
-@cell "Errorbars x y low high" begin
+@reference_test "Errorbars x y low high" begin
     x = 1:10
     y = sin.(x)
     fig, ax, scatterplot = scatter(x, y)
@@ -259,7 +256,7 @@ end
     fig
 end
 
-@cell "Rangebars x y low high" begin
+@reference_test "Rangebars x y low high" begin
     vals = -1:0.1:1
 
     lows = zeros(length(vals))
@@ -272,34 +269,34 @@ end
 end
 
 
-@cell "Simple pie chart" begin
+@reference_test "Simple pie chart" begin
     fig = Figure(resolution=(800, 800))
     pie(fig[1, 1], 1:5, color=collect(1:5), axis=(;aspect=DataAspect()))
     fig
 end
 
-@cell "Hollow pie chart" begin
+@reference_test "Hollow pie chart" begin
     pie(1:5, color=collect(1.0:5), radius=2, inner_radius=1, axis=(;aspect=DataAspect()))
 end
 
-@cell "Open pie chart" begin
+@reference_test "Open pie chart" begin
     pie(0.1:0.1:1.0, normalize=false, axis=(;aspect=DataAspect()))
 end
 
-@cell "intersecting polygon" begin
+@reference_test "intersecting polygon" begin
     x = LinRange(0, 2pi, 100)
     poly(Point2f.(zip(sin.(x), sin.(2x))), color = :white, strokecolor = :blue, strokewidth = 10)
 end
 
 
-@cell "Line Function" begin
+@reference_test "Line Function" begin
     x = range(0, stop=3pi)
     fig, ax, lineplot = lines(x, sin.(x))
     lines!(ax, x, cos.(x), color=:blue)
     fig
 end
 
-@cell "Grouped bar" begin
+@reference_test "Grouped bar" begin
 	x1         = ["a_right", "a_right", "a_right", "a_right"]
 	y1         = [2, 3, -3, -2]
 	grp_dodge1 = [2, 2,  1,  1]
@@ -330,7 +327,7 @@ end
 end
 
 
-@cell "space 2D" begin
+@reference_test "space 2D" begin
     # This should generate a regular grid with text in a circle in a box. All
     # sizes and positions are scaled to be equal across all options.
     fig = Figure(resolution = (700, 700))
@@ -366,7 +363,7 @@ end
     fig
 end
 
-@cell "space 2D autolimits" begin
+@reference_test "space 2D autolimits" begin
     # Same code as above, but without setting limits. This should look different.
     # Compared to the test above:
     # - (data -> x) column should be centered in x direction
@@ -406,7 +403,7 @@ end
     fig
 end
 
-@cell "Scatter & Text transformations" begin
+@reference_test "Scatter & Text transformations" begin
     # Check that transformations apply in `space = :data`
     fig, ax, p = scatter(Point2f(100, 0.5), marker = 'a', markersize=50)
     t = text!("Test", position = Point2f(100, 0.5), textsize = 50)
@@ -429,12 +426,12 @@ end
     fig
 end
 
-@cell "Array of Images Scatter" begin
+@reference_test "Array of Images Scatter" begin
     img = Makie.logo()
     scatter(1:2, 1:2, marker = [img, img], markersize=reverse(size(img) ./ 10), axis=(limits=(0.5, 2.5, 0.5, 2.5),))
 end
 
-@cell "Image Scatter different sizes" begin
+@reference_test "Image Scatter different sizes" begin
     img = Makie.logo()
     img2 = load(Makie.assetpath("doge.png"))
     images = [img, img2]
@@ -442,6 +439,6 @@ end
     scatter(1:2, 1:2, marker = images, markersize=markersize, axis=(limits=(0.5, 2.5, 0.5, 2.5),))
 end
 
-@cell "2D surface with explicit color" begin
+@reference_test "2D surface with explicit color" begin
     surface(1:10, 1:10, ones(10, 10); color = [RGBf(x*y/100, 0, 0) for x in 1:10, y in 1:10], shading = false)
 end
