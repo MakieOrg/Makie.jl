@@ -181,6 +181,7 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     expr = quote
         $(funcname)() = not_implemented_for($funcname)
         struct $(PlotType) <: AbstractPlot; end
+        $(PlotType)(args...; kw...) = PlotObject($PlotType, Any[args...], Dict{Symbol, Any}(kw))
         $(MakieCore).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
         $(default_plot_signatures(funcname, funcname!, PlotType))
         $(MakieCore).default_theme(scene, ::$(PlotType)) = $(esc(theme_func))(scene)

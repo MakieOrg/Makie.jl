@@ -572,11 +572,13 @@ end
 
 
 function plot!(scene::Union{PlotObject, Scene}, plot::PlotObject)
+
     plot.parent = scene
     connect!(transformation(scene), transformation(plot))
     apply_theme!(parent_scene(scene), plot)
     convert_arguments!(plot)
     calculated_attributes!(plot.type, plot)
+
     plot!(plot, plot.type(), map(to_value, plot.converted)...)
     push!(scene, plot)
     return plot
@@ -594,7 +596,7 @@ function convert_arguments!(plot::PlotObject)
             obs[] = new_val
         end
     end
-    on_update(to_value.(plot.args)...)
+    on_update(map(to_value, plot.args)...)
     onany(on_update, plot.args...)
     return
 end
