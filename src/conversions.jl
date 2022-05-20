@@ -902,7 +902,7 @@ a string naming a font, e.g. helvetica
 function to_font(x::Union{Symbol, String})
     str = string(x)
     get!(FONT_CACHE, str) do
-        str == "default" && return to_font("Dejavu Sans")
+        str == "default" && return to_font("TeX Gyre Heros Makie")
 
         # check if the string points to a font file and load that
         if isfile(str)
@@ -917,12 +917,12 @@ function to_font(x::Union{Symbol, String})
         fontpath = assetpath("fonts")
         font = FreeTypeAbstraction.findfont(str; additional_fonts=fontpath)
         if font === nothing
-            @warn("Could not find font $str, using Dejavu Sans")
-            if "dejavu sans" == lowercase(str)
-                # since we fall back to dejavu sans, we need to check for recursion
-                error("Recursion encountered; DejaVu Sans cannot be located in the font path $fontpath")
+            @warn("Could not find font $str, using TeX Gyre Heros Makie")
+            if "tex gyre heros makie" == lowercase(str)
+                # since we fall back to TeX Gyre Heros Makie, we need to check for recursion
+                error("Recursion encountered; TeX Gyre Heros Makie cannot be located in the font path $fontpath")
             end
-            return to_font("dejavu sans")
+            return to_font("TeX Gyre Heros Makie")
         end
         return font
     end

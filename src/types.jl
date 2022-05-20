@@ -345,6 +345,40 @@ function collect_vector(sv::ScalarOrVector, n::Int)
 end
 
 """
+    GlyphExtent
+
+Store information about the bounding box of a single glyph.
+"""
+struct GlyphExtent
+    ink_bounding_box::Rect2f
+    ascender::Float32
+    descender::Float32
+    hadvance::Float32
+end
+
+function GlyphExtent(font, char)
+    extent = get_extent(font, char)
+    ink_bb = FreeTypeAbstraction.inkboundingbox(extent)
+    ascender = FreeTypeAbstraction.ascender(font)
+    descender = FreeTypeAbstraction.descender(font)
+    hadvance = FreeTypeAbstraction.hadvance(extent)
+
+    return GlyphExtent(ink_bb, ascender, descender, hadvance)
+end
+
+function GlyphExtent(texchar::TeXChar)
+    l = MathTeXEngine.leftinkbound(texchar)
+    r = MathTeXEngine.rightinkbound(texchar)
+    b = MathTeXEngine.bottominkbound(texchar)
+    t = MathTeXEngine.topinkbound(texchar)
+    ascender = MathTeXEngine.ascender(texchar)
+    descender = MathTeXEngine.descender(texchar)
+    hadvance = MathTeXEngine.hadvance(texchar)
+
+    return GlyphExtent(Rect2f((l, b), (r - l, t - b)), ascender, descender, hadvance)
+end
+
+"""
     GlyphCollection
 
 Stores information about the glyphs in a string that had a layout calculated for them.
@@ -353,7 +387,7 @@ struct GlyphCollection
     glyphs::Vector{Char}
     fonts::Vector{FTFont}
     origins::Vector{Point3f}
-    extents::Vector{FreeTypeAbstraction.FontExtent{Float32}}
+    extents::Vector{GlyphExtent}
     scales::ScalarOrVector{Vec2f}
     rotations::ScalarOrVector{Quaternionf}
     colors::ScalarOrVector{RGBAf}

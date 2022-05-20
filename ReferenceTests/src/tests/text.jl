@@ -253,7 +253,7 @@ end
         axis = (
                 title = L"\sum_k{x y_k}",
                 xlabel = L"\lim_{x →\infty} A^j v_{(a + b)_k}^i \sqrt{23.5} x!= \sqrt{\frac{1+6}{4+a+g}}\int_{0}^{2π} \sin(x) dx",
-                ylabel = L"x + y - sin(x) × tan(y) + \sqrt{2}",
+                ylabel = L"x + y - \sin(x) × \tan(y) + \sqrt{2}",
             ),
         figure = (fontsize = 18,)
     )

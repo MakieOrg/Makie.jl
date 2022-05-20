@@ -283,8 +283,8 @@ function initialize_block!(ax::Axis; palette = nothing)
         yminorgridnode[] = interleave_vectors(tickpos, opposite_tickpos)
     end
 
-    titlepos = lift(scene.px_area, ax.titlegap, ax.titlealign, ax.xaxisposition, xaxis.protrusion) do a,
-            titlegap, align, xaxisposition, xaxisprotrusion
+    subtitlepos = lift(scene.px_area, ax.titlegap, ax.titlealign, ax.xaxisposition, xaxis.protrusion) do a,
+        titlegap, align, xaxisposition, xaxisprotrusion
 
         x = if align == :center
             a.origin[1] + a.widths[1] / 2
@@ -305,6 +305,43 @@ function initialize_block!(ax::Axis; palette = nothing)
         (align, :bottom)
     end
 
+    subtitlet = text!(
+        topscene, ax.subtitle,
+        position = subtitlepos,
+        visible = ax.subtitlevisible,
+        textsize = ax.subtitlesize,
+        align = titlealignnode,
+        font = ax.subtitlefont,
+        color = ax.subtitlecolor,
+        lineheight = ax.subtitlelineheight,
+        markerspace = :data,
+        inspectable = false)
+
+    titlepos = lift(scene.px_area, ax.titlegap, ax.subtitlegap, ax.titlealign, ax.xaxisposition, xaxis.protrusion, ax.subtitlelineheight) do a,
+            titlegap, subtitlegap, align, xaxisposition, xaxisprotrusion, _
+
+        x = if align == :center
+            a.origin[1] + a.widths[1] / 2
+        elseif align == :left
+            a.origin[1]
+        elseif align == :right
+            a.origin[1] + a.widths[1]
+        else
+            error("Title align $align not supported.")
+        end
+
+        subtitlespace = if ax.subtitlevisible[] && !iswhitespace(ax.subtitle[])
+            boundingbox(subtitlet).widths[2] + subtitlegap
+        else
+            0f0
+        end
+
+        yoffset = top(a) + titlegap + (xaxisposition == :top ? xaxisprotrusion : 0f0) +
+            subtitlespace
+
+        Point2(x, yoffset)
+    end
+
     titlet = text!(
         topscene, ax.title,
         position = titlepos,
@@ -313,13 +350,15 @@ function initialize_block!(ax::Axis; palette = nothing)
         align = titlealignnode,
         font = ax.titlefont,
         color = ax.titlecolor,
+        lineheight = ax.titlelineheight,
         markerspace = :data,
         inspectable = false)
     decorations[:title] = titlet
 
     function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidth,
                 topspinevisible, bottomspinevisible, leftspinevisible, rightspinevisible,
-                xaxisprotrusion, yaxisprotrusion, xaxisposition, yaxisposition)
+                xaxisprotrusion, yaxisprotrusion, xaxisposition, yaxisposition,
+                subtitle, subtitlevisible, subtitlesize, subtitlegap, titlelineheight, subtitlelineheight)
 
         left, right, bottom, top = 0f0, 0f0, 0f0, 0f0
 
@@ -329,12 +368,20 @@ function initialize_block!(ax::Axis; palette = nothing)
             top = xaxisprotrusion
         end
 
+        titleheight =  boundingbox(titlet).widths[2] + titlegap
+        subtitleheight =  boundingbox(subtitlet).widths[2] + subtitlegap
+
         titlespace = if !titlevisible || iswhitespace(title)
             0f0
         else
-            boundingbox(titlet).widths[2] + titlegap
+            titleheight
         end
-        top += titlespace
+        subtitlespace = if !subtitlevisible || iswhitespace(subtitle)
+            0f0
+        else
+            subtitleheight
+        end
+        top += titlespace + subtitlespace
 
         if yaxisposition == :left
             left = yaxisprotrusion
@@ -347,7 +394,9 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     onany(ax.title, ax.titlesize, ax.titlegap, ax.titlevisible, ax.spinewidth,
             ax.topspinevisible, ax.bottomspinevisible, ax.leftspinevisible, ax.rightspinevisible,
-            xaxis.protrusion, yaxis.protrusion, ax.xaxisposition, ax.yaxisposition) do args...
+            xaxis.protrusion, yaxis.protrusion, ax.xaxisposition, ax.yaxisposition,
+            ax.subtitle, ax.subtitlevisible, ax.subtitlesize, ax.subtitlegap,
+            ax.titlelineheight, ax.subtitlelineheight) do args...
         ax.layoutobservables.protrusions[] = compute_protrusions(args...)
     end
 

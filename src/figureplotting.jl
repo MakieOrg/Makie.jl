@@ -31,7 +31,7 @@ function args_preferred_axis(P::Type, args...)
     return args_preferred_axis(args...)
 end
 args_preferred_axis(::Type{<: Surface}, x::AbstractArray, y::AbstractArray, z::AbstractArray) = LScene
-# args_preferred_axis(::Type{<: Wireframe}, x::AbstractArray, y::AbstractArray, z::AbstractArray) = LScene
+args_preferred_axis(::Type{<: Wireframe}, x::AbstractArray, y::AbstractArray, z::AbstractArray) = LScene
 
 function args_preferred_axis(@nospecialize(args...))
     # Fallback: check each single arg if they have a favorite axis type

@@ -184,7 +184,6 @@ plottype(::MultiPolygon) = Lines
 # all the plotting functions that get a plot type
 const PlotFunc = Union{Type{Any}, Type{<: AbstractPlot}}
 
-
 function PlotObject(::Type{PlotType}, args::Vector{Any}, kw::Dict{Symbol, Any}) where {PlotType <: AbstractPlot}
     t = Transformation()
     plot = PlotObject(

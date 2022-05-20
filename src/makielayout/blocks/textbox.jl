@@ -77,7 +77,7 @@ function initialize_block!(tbox::Textbox)
 
         hadvances = Float32[]
         broadcast_foreach(glyphcollection.extents, glyphcollection.scales) do ex, sc
-            hadvance = Makie.FreeTypeAbstraction.hadvance(ex) * sc[1]
+            hadvance = ex.hadvance * sc[1]
             push!(hadvances, hadvance)
         end
 
@@ -257,8 +257,8 @@ function charbbs(text)
     end
     pos = Point2f(text.position[])
     bbs = Rect2f[]
-    broadcast_foreach(gc.extents, gc.scales, gc.origins, gc.fonts) do ext, sc, ori, font
-        bb = Makie.FreeTypeAbstraction.height_insensitive_boundingbox(ext, font) * sc
+    broadcast_foreach(gc.extents, gc.scales, gc.origins) do ext, sc, ori
+        bb = Makie.height_insensitive_boundingbox_with_advance(ext) * sc
         fr = Rect2f(Point2f(ori) + bb.origin + pos, bb.widths)
         push!(bbs, fr)
     end
