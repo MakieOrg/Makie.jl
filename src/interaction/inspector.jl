@@ -188,8 +188,8 @@ end
 function Bbox_from_glyphcollection(text, gc)
     bbox = Rect2f(0, 0, 0, 0)
     bboxes = Rect2f[]
-    broadcast_foreach(gc.extents, gc.fonts, gc.scales) do extent, font, scale
-        b = FreeTypeAbstraction.height_insensitive_boundingbox(extent, font) * scale
+    broadcast_foreach(gc.extents, gc.scales) do extent, scale
+        b = height_insensitive_boundingbox_with_advance(extent) * scale
         push!(bboxes, b)
     end
     for (c, o, bb) in zip(text, gc.origins, bboxes)

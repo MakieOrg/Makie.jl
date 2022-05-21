@@ -209,6 +209,22 @@ end
         titlealign::Symbol = :center
         "The color of the title"
         titlecolor::RGBAf = @inherit(:textcolor, :black)
+        "The axis title line height multiplier."
+        titlelineheight::Float64 = 1
+        "The axis subtitle string."
+        subtitle = ""
+        "The font family of the subtitle."
+        subtitlefont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "TeX Gyre Heros Makie")
+        "The subtitle's font size."
+        subtitlesize::Float64 = @inherit(:fontsize, 16f0)
+        "The gap between subtitle and title."
+        subtitlegap::Float64 = 0
+        "Controls if the subtitle is visible."
+        subtitlevisible::Bool = true
+        "The color of the subtitle"
+        subtitlecolor::RGBAf = @inherit(:textcolor, :black)
+        "The axis subtitle line height multiplier."
+        subtitlelineheight::Float64 = 1
         "The font family of the xlabel."
         xlabelfont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "TeX Gyre Heros Makie")
         "The font family of the ylabel."
@@ -228,7 +244,7 @@ end
         "The padding between the xlabel and the ticks or axis."
         xlabelpadding::Float64 = 3f0
         "The padding between the ylabel and the ticks or axis."
-        ylabelpadding::Float64 = 5f0 # because of boundingbox inaccuracies of ticklabels
+        ylabelpadding::Float64 = 5f0 # xlabels usually have some more visual padding because of ascenders, which are larger than the hadvance gaps of ylabels
         "The font family of the xticklabels."
         xticklabelfont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "TeX Gyre Heros Makie")
         "The font family of the yticklabels."

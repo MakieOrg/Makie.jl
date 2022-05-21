@@ -1,21 +1,21 @@
 @reference_test "Figure and Subplots" begin
-    fig, _ = scatter(randn(100, 2), color = :red)
-    scatter(fig[1, 2], randn(100, 2), color = :blue)
-    scatter(fig[2, 1:2], randn(100, 2), color = :green)
-    scatter(fig[1:2, 3][1:2, 1], randn(100, 2), color = :black)
-    scatter(fig[1:2, 3][3, 1], randn(100, 2), color = :gray)
+    fig, _ = scatter(RNG.randn(100, 2), color = :red)
+    scatter(fig[1, 2], RNG.randn(100, 2), color = :blue)
+    scatter(fig[2, 1:2], RNG.randn(100, 2), color = :green)
+    scatter(fig[1:2, 3][1:2, 1], RNG.randn(100, 2), color = :black)
+    scatter(fig[1:2, 3][3, 1], RNG.randn(100, 2), color = :gray)
     fig
 end
 
 @reference_test "Figure with Blocks" begin
     fig = Figure(resolution = (900, 900))
-    ax, sc = scatter(fig[1, 1][1, 1], randn(100, 2), axis = (;title = "Random Dots", xlabel = "Time"))
-    sc2 = scatter!(ax, randn(100, 2) .+ 2, color = :red)
+    ax, sc = scatter(fig[1, 1][1, 1], RNG.randn(100, 2), axis = (;title = "Random Dots", xlabel = "Time"))
+    sc2 = scatter!(ax, RNG.randn(100, 2) .+ 2, color = :red)
     ll = fig[1, 1][1, 2] = Legend(fig, [sc, sc2], ["Scatter", "Other"])
     lines(fig[2, 1:2][1, 3][1, 1], 0..3, sin ∘ exp, axis = (;title = "Exponential Sine"))
-    heatmap(fig[2, 1:2][1, 1], randn(30, 30))
-    heatmap(fig[2, 1:2][1, 2], randn(30, 30), colormap = :grays)
-    lines!(fig[2, 1:2][1, 2], cumsum(rand(30)), color = :red, linewidth = 10)
+    heatmap(fig[2, 1:2][1, 1], RNG.randn(30, 30))
+    heatmap(fig[2, 1:2][1, 2], RNG.randn(30, 30), colormap = :grays)
+    lines!(fig[2, 1:2][1, 2], cumsum(RNG.rand(30)), color = :red, linewidth = 10)
     surface(fig[1, 2], collect(1.0:40), collect(1.0:40), (x, y) -> 10 * cos(x) * sin(y))
     fig[2, 1:2][2, :] = Colorbar(fig, vertical = false,
         height = 20, ticklabelalign = (:center, :top), flipaxis = false)
@@ -42,4 +42,45 @@ end
     lbl5 = Label(fig[3, 2], lorem_ipsum, word_wrap = true)
     mesh!(fig.scene, lbl5.layoutobservables.computedbbox, color = (:red, 0.5))
     fig
+end
+
+@reference_test "Axis titles and subtitles" begin
+    f = Figure()
+
+    Axis(
+        f[1, 1],
+        title = "First Title",
+        subtitle = "This is a longer subtitle"
+    )
+    Axis(
+        f[1, 2],
+        title = "Second Title",
+        subtitle = "This is a longer subtitle",
+        titlealign = :left,
+        subtitlecolor = :gray50,
+        titlegap = 10,
+        titlesize = 20,
+        subtitlesize = 15,
+    )
+    Axis(
+        f[2, 1],
+        title = "Third Title",
+        titlecolor = :gray50,
+        titlefont = "TeX Gyre Heros Bold Italic Makie",
+        titlealign = :right,
+        titlesize = 25,
+    )
+    Axis(
+        f[2, 2],
+        title = "Fourth Title\nWith Line Break",
+        subtitle = "This is an even longer subtitle,\nthat also has a line break.",
+        titlealign = :left,
+        subtitlegap = 2,
+        titlegap = 5,
+        subtitlefont = "TeX Gyre Heros Italic Makie",
+        subtitlelineheight = 0.9,
+        titlelineheight = 0.9,
+    )
+
+    f
 end

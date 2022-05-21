@@ -181,23 +181,25 @@ An example would be a collection of scatter markers that have different sizes bu
 The length of an attribute is determined with `attr_broadcast_length` and elements are accessed with
 `attr_broadcast_getindex`.
 """
-function broadcast_foreach(f, args...)
-    lengths = attr_broadcast_length.(args)
-    maxlen = maximum(lengths)
+@generated function broadcast_foreach(f, args...)
+    N = length(args)
+    quote
+        lengths = Base.Cartesian.@ntuple $N i -> attr_broadcast_length(args[i])
+        maxlen = maximum(lengths)
+        any_wrong_length = Base.Cartesian.@nany $N i -> lengths[i] ∉ (0, 1, maxlen)
+        if any_wrong_length
+            error("All non scalars need same length, Found lengths for each argument: $lengths, $(map(typeof, args))")
+        end
+        # skip if there's a zero length element (like an empty annotations collection, etc)
+        # this differs from standard broadcasting logic in which all non-scalar shapes have to match
+        0 in lengths && return
 
-    # all non scalars should have same length
-    if any(x -> !(x in (0, 1, maxlen)), lengths)
-        error("All non scalars need same length, Found lengths for each argument: $lengths, $(typeof.(args))")
+        for i in 1:maxlen
+            Base.Cartesian.@ncall $N f (j -> attr_broadcast_getindex(args[j], i))
+        end
+
+        return
     end
-
-    # skip if there's a zero length element (like an empty annotations collection, etc)
-    # this differs from standard broadcasting logic in which all non-scalar shapes have to match
-    0 in lengths && return
-
-    for i in 1:maxlen
-        f(attr_broadcast_getindex.(args, i)...)
-    end
-    return
 end
 
 
