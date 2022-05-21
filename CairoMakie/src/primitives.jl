@@ -191,20 +191,28 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
         color
     end
 
-    broadcast_foreach(primitive[1][], colors, markersize, strokecolor,
-                      strokewidth, marker, marker_offset, remove_billboard(rotations)) do point, col,
-                          markersize, strokecolor, strokewidth, marker, mo, rotation
+    markerspace = to_value(get(primitive, :markerspace, :pixel))
+    space = to_value(get(primitive, :space, :data))
 
-        markerspace = to_value(get(primitive, :markerspace, :pixel))
+    transfunc = scene.transformation.transform_func[]
+
+    draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker, marker_offset, rotations, model, positions, size_model, font, markerspace, space)
+end
+
+function draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker, marker_offset, rotations, model, positions, size_model, font, markerspace, space)
+    broadcast_foreach(positions, colors, markersize, strokecolor,
+        strokewidth, marker, marker_offset, remove_billboard(rotations)) do point, col,
+            markersize, strokecolor, strokewidth, marker, mo, rotation
+
         scale = project_scale(scene, markerspace, markersize, size_model)
         offset = project_scale(scene, markerspace, mo, size_model)
 
-        space = to_value(get(primitive, :space, :data))
-        pos = project_position(scene, space, point, model)
+        pos = project_position(scene, transfunc, space, point, model)
         isnan(pos) && return
 
         Cairo.set_source_rgba(ctx, rgbatuple(col)...)
-        m = convert_attribute(marker, key"marker"(), key"scatter"())
+        # m = convert_attribute(marker, key"marker"(), key"scatter"())
+        m = Circle(Point2f(0, 0), 0f0)
         Cairo.save(ctx)
         if m isa Char
             draw_marker(ctx, m, best_font(m, font), pos, scale, strokecolor, strokewidth, offset, rotation)
@@ -213,7 +221,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
         end
         Cairo.restore(ctx)
     end
-    nothing
+    return
 end
 
 function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
