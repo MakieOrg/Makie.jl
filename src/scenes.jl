@@ -582,7 +582,7 @@ Makie.resize!(figure_axis_plot::FigureAxisPlot, args...) = resize!(figure_axis_p
 
 
 # Overload some GridLayoutBase methods for Figures
-# Boasically, just forward `f.layout` in place of `f`.
+# Basically, just forward `f.layout` in place of `f`.
 """
     colgap!(f::Figure, ...)
 
