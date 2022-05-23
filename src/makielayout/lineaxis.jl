@@ -172,12 +172,14 @@ function LineAxis(parent::Scene; kwargs...)
         end
     end
 
-    decorations[:labeltext] = text!(
+    labeltext = text!(
         parent, label, textsize = labelsize, color = labelcolor,
         position = labelpos, visible = labelvisible,
         align = labelalign, rotation = labelrotation, font = labelfont,
         markerspace = :data, inspectable = false
     )
+
+    decorations[:labeltext] = labeltext
 
     tickvalues = Observable(Float32[]; ignore_equal_values=true)
 
