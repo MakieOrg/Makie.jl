@@ -800,7 +800,10 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
 
     for k in reverse(zorder)
         f = meshfaces[k]
-        t1, t2, t3 = ts[f]
+        # avoid SizedVector through Face indexing
+        t1 = ts[f[1]]
+        t2 = ts[f[2]]
+        t3 = ts[f[3]]
 
         facecolors = per_face_col[k]
         # light calculation
