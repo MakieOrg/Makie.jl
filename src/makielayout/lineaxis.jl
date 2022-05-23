@@ -28,7 +28,7 @@ function LineAxis(parent::Scene; kwargs...)
         end
     end
 
-    ticksnode = Observable(Point2f[])
+    ticksnode = Observable(Point2f[]; ignore_equal_values=true)
     ticklines = linesegments!(
         parent, ticksnode, linewidth = tickwidth, color = tickcolor, linestyle = nothing,
         visible = ticksvisible, inspectable = false
@@ -42,7 +42,7 @@ function LineAxis(parent::Scene; kwargs...)
         linestyle = nothing, visible = minorticksvisible, inspectable = false
     )
     decorations[:minorticklines] = minorticklines
-    realticklabelalign = Observable{Tuple{Symbol, Symbol}}()
+    realticklabelalign = Observable{Tuple{Symbol, Symbol}}((:none, :none); ignore_equal_values=true)
 
     map!(realticklabelalign, ticklabelalign, pos_extents_horizontal, flipped, ticklabelrotation) do al, (pos, ex, hor), fl, rot
         if al !== automatic
@@ -82,8 +82,8 @@ function LineAxis(parent::Scene; kwargs...)
     end
 
     ticklabelannosnode = Observable(Tuple{AbstractString, Point2f}[]; ignore_equal_values=true)
-    ticklabels = nothing
-    ticklabel_ideal_space = Observable{Float32}(; ignore_equal_values=true)
+    ticklabels = nothing # this gets overwritten later to be used in the below
+    ticklabel_ideal_space = Observable(0f0; ignore_equal_values=true)
     map!(ticklabel_ideal_space, ticklabelannosnode, ticklabelalign, ticklabelrotation, ticklabelfont, ticklabelsvisible) do args...
         maxwidth = if pos_extents_horizontal[][3]
                 # height
@@ -96,7 +96,7 @@ function LineAxis(parent::Scene; kwargs...)
         if !isfinite(maxwidth)
             maxwidth = zero(maxwidth)
         end
-        maxwidth
+        return maxwidth
     end
 
     attrs[:actual_ticklabelspace] = 0f0
@@ -130,7 +130,7 @@ function LineAxis(parent::Scene; kwargs...)
             labelpadding
     end
 
-    labelpos = Observable{Point2f}(; ignore_equal_values=true)
+    labelpos = Observable(Point2f(NaN); ignore_equal_values=true)
     map!(labelpos, pos_extents_horizontal, flipped, labelgap) do (position, extents, horizontal), flipped, labelgap
         # fullgap = tickspace[] + labelgap
         middle = extents[1] + 0.5f0 * (extents[2] - extents[1])
@@ -144,7 +144,7 @@ function LineAxis(parent::Scene; kwargs...)
         end
     end
     # Initial values should be overwritten by map!. `ignore_equal_values` doesn't work right now without initial values
-    labelalign = Observable{Tuple{Symbol, Symbol}}((:none, :none); ignore_equal_values=true)
+    labelalign = Observable((:none, :none); ignore_equal_values=true)
 
     map!(labelalign, pos_extents_horizontal, flipped, flip_vertical_label) do (position, extents, horizontal), flipped, flip_vertical_label
         if horizontal
@@ -284,7 +284,7 @@ function LineAxis(parent::Scene; kwargs...)
         end
     end
 
-    onany(tickstrings, labelgap, flipped) do tickstrings, labelgap, flipped
+    onany(tickstrings, labelgap, flipped, tickpositions) do tickstrings, labelgap, flipped, tickpos
         # tickspace is always updated before labelgap
         # tickpositions are always updated before tickstrings
         # so we don't need to lift those
@@ -301,7 +301,7 @@ function LineAxis(parent::Scene; kwargs...)
             Point2f(flipped ? ticklabelgap : -ticklabelgap, 0f0)
         end
 
-        ticklabelpositions = tickpositions[] .+ Ref(shift)
+        ticklabelpositions = tickpos .+ Ref(shift)
         ticklabelannosnode[] = collect(zip(tickstrings, ticklabelpositions))
     end
 
@@ -380,7 +380,7 @@ function LineAxis(parent::Scene; kwargs...)
 
     # in order to dispatch to the correct text recipe later (normal text, latex, etc.)
     # we need to have the ticklabelannosnode populated once before adding the annotations
-    decorations[:ticklabels] = text!(
+    ticklabels = text!(
         parent,
         ticklabelannosnode,
         align = realticklabelalign,
@@ -391,7 +391,7 @@ function LineAxis(parent::Scene; kwargs...)
         visible = ticklabelsvisible,
         markerspace = :data,
         inspectable = false)
-
+    decorations[:ticklabels] = ticklabels
     # HACKY: the ticklabels in the string need to be updated
     # before other stuff is triggered by them, which accesses the
     # ticklabel boundingbox (which needs to be updated already)
