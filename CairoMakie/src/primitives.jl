@@ -773,7 +773,8 @@ function draw_mesh3D(
     end
 
     # Approximate zorder
-    zorder = sortperm(meshfaces, by = f -> average_z(ts, f))
+    average_zs = map(f -> average_z(ts, f), meshfaces)
+    zorder = sortperm(average_zs)
 
     # Face culling
     zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
