@@ -778,13 +778,26 @@ function draw_mesh3D(
 
     # Face culling
     zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
-
+    
     draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightpos, shininess, diffuse, ambient, specular)
     return
 end
 
+function _calculate_shaded_vertexcolors(N, v, c, lightpos, ambient, diffuse, specular, shininess)
+    L = normalize(lightpos .- v[Vec(1,2,3)])
+    diff_coeff = max(dot(L, N), 0f0)
+    H = normalize(L + normalize(-v[Vec(1, 2, 3)]))
+    spec_coeff = max(dot(H, N), 0f0)^shininess
+    c = RGBAf(c)
+    # if this is one expression it introduces allocations??
+    new_c_part1 = (ambient .+ diff_coeff .* diffuse) .* Vec3f(c.r, c.g, c.b) #.+
+    new_c = new_c_part1 .+ specular * spec_coeff
+    RGBAf(new_c..., c.alpha)
+end
+
 function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightpos, shininess, diffuse, ambient, specular)
     pattern = Cairo.CairoPatternMesh()
+
     for k in reverse(zorder)
         f = meshfaces[k]
         t1, t2, t3 = ts[f]
@@ -792,15 +805,13 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
         facecolors = per_face_col[k]
         # light calculation
         if shading
-            c1, c2, c3 = map(ns[f], vs[f], facecolors) do N, v, c
-                L = normalize(lightpos .- v[Vec(1,2,3)])
-                diff_coeff = max(dot(L, N), 0f0)
-                H = normalize(L + normalize(-v[Vec(1, 2, 3)]))
-                spec_coeff = max(dot(H, N), 0f0)^shininess
-                c = RGBA(c)
-                new_c = (ambient .+ diff_coeff .* diffuse) .* Vec3f(c.r, c.g, c.b) .+
-                        specular * spec_coeff
-                RGBAf(new_c..., c.alpha)
+            c1, c2, c3 = Base.Cartesian.@ntuple 3 i -> begin
+                # these face index expressions currently allocate for SizedVectors
+                # if done like `ns[f]`
+                N = ns[f[i]]
+                v = vs[f[i]]
+                c = facecolors[i]
+                _calculate_shaded_vertexcolors(N, v, c, lightpos, ambient, diffuse, specular, shininess)
             end
         else
             c1, c2, c3 = facecolors
