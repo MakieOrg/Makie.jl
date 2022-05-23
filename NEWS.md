@@ -1,7 +1,8 @@
 # News
 
-## master
+## v0.17.3
 
+- Switched to `MathTeXEngine v0.4`, which improves the look of LaTeXStrings [#1952](https://github.com/JuliaPlots/Makie.jl/pull/1952).
 - Added subtitle capability to `Axis` [#1859](https://github.com/JuliaPlots/Makie.jl/pull/1859).
 
 ## v0.17.2
