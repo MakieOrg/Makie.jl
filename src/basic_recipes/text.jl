@@ -126,7 +126,7 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
     scene = Makie.parent_scene(plot)
 
     onany(lineels_glyphcollection_offset, plot.position, scene.camera.projectionview
-            ) do (allels, gcs, offs), pos, projview
+            ) do (allels, gcs, offs), pos, _
 
         if pos isa Vector && (length(pos) != length(allels))
             return
@@ -147,7 +147,7 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
             allels = [allels]
         end
         broadcast_foreach(allels, offs, pos, ts, rot) do allels, offs, pos, ts, rot
-            offset = Point2f(pos)
+            offset = project(scene.camera, :data, :pixel, Point2f(pos))[Vec(1, 2)]
 
             els = map(allels) do el
                 el[1] isa VLine || el[1] isa HLine || return nothing
@@ -183,7 +183,7 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
     linesegments!(
         plot, linepairs, linewidth = linewidths, color = plot.color,
         visible = plot.visible, inspectable = plot.inspectable, 
-        transparent = plot.transparency
+        transparent = plot.transparency, space = :pixel
     )
 
     plot
@@ -202,13 +202,13 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
 
     scales_2d = [Vec2f(x[3] * Vec2f(fs)) for x in els]
 
-    chars = [x[1].char for x in els]
-    fonts = [x[1].font for x in els]
+    texchars = [x[1] for x in els]
+    chars = [texchar.char for texchar in texchars]
+    fonts = [texchar.font for texchar in texchars]
+    extents = GlyphExtent.(texchars)
 
-    extents = [FreeTypeAbstraction.get_extent(f, c) for (f, c) in zip(fonts, chars)]
-
-    bboxes = map(extents, fonts, scales_2d) do ext, font, scale
-        unscaled_hi_bb = FreeTypeAbstraction.height_insensitive_boundingbox(ext, font)
+    bboxes = map(extents, scales_2d) do ext, scale
+        unscaled_hi_bb = height_insensitive_boundingbox_with_advance(ext)
         return Rect2f(
             origin(unscaled_hi_bb) * scale,
             widths(unscaled_hi_bb) * scale

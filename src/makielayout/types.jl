@@ -244,7 +244,7 @@ end
         "The padding between the xlabel and the ticks or axis."
         xlabelpadding::Float64 = 3f0
         "The padding between the ylabel and the ticks or axis."
-        ylabelpadding::Float64 = 5f0 # because of boundingbox inaccuracies of ticklabels
+        ylabelpadding::Float64 = 5f0 # xlabels usually have some more visual padding because of ascenders, which are larger than the hadvance gaps of ylabels
         "The font family of the xticklabels."
         xticklabelfont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "TeX Gyre Heros Makie")
         "The font family of the yticklabels."
