@@ -25,16 +25,15 @@ function calculate_protrusion(
         ticksvisible::Bool, label, labelvisible::Bool, labelpadding::Number, tickspace::Number, ticklabelsvisible::Bool,
         actual_ticklabelspace::Number, ticklabelpad::Number, _, _, _, _)
 
-    pos_extents_horizontal, labeltext, ticklabel_annotation_obs = closure_args
+    horizontal, labeltext, ticklabel_annotation_obs = closure_args
 
-    position, extents, horizontal = pos_extents_horizontal[]
 
     local label_is_empty::Bool = iswhitespace(label) || isempty(label)
 
     local real_labelsize::Float32 = if label_is_empty
         0f0
     else
-        horizontal ? boundingbox(labeltext).widths[2] : boundingbox(labeltext).widths[1]
+        horizontal[] ? boundingbox(labeltext).widths[2] : boundingbox(labeltext).widths[1]
     end
 
     local labelspace::Float32 = (labelvisible && !label_is_empty) ? real_labelsize + labelpadding : 0f0
@@ -72,8 +71,8 @@ function create_linepoints(
     end
 end
 
-function calculate_real_ticklabel_align(al, pos_ext_hor, fl::Bool, rot::Number)
-    local hor::Bool = pos_ext_hor[3]
+function calculate_real_ticklabel_align(al, horizontal, fl::Bool, rot::Number)
+    hor = horizontal[]::Bool
     if al isa Automatic
         if rot == 0 || !(rot isa Real)
             if hor
@@ -121,15 +120,13 @@ function update_ticklabel_node(
     # tickpositions are always updated before tickstrings
     # so we don't need to lift those
 
-    pos_extents_horizontal, spinewidth, tickspace, ticklabelpad, tickvalues = closure_args
-
-    horizontal = pos_extents_horizontal[][3]::Bool
+    horizontal, spinewidth, tickspace, ticklabelpad, tickvalues = closure_args
 
     nticks = length(tickvalues[])
 
     local ticklabelgap::Float32 = spinewidth[] + tickspace[] + ticklabelpad[]
 
-    shift = if horizontal
+    shift = if horizontal[]
         Point2f(0f0, flipped ? ticklabelgap : -ticklabelgap)
     else
         Point2f(flipped ? ticklabelgap : -ticklabelgap, 0f0)
@@ -147,11 +144,10 @@ function update_ticklabel_node(
     return
 end
 
-function update_tick_obs(tick_obs, pos_extents_horizontal, flipped::Observable{Bool}, tickpositions, tickalign, ticksize, spinewidth)
-    horizontal = pos_extents_horizontal[][3]::Bool
+function update_tick_obs(tick_obs, horizontal::Observable{Bool}, flipped::Observable{Bool}, tickpositions, tickalign, ticksize, spinewidth)
     result = tick_obs[]
     empty!(result) # re-use allocated array
-    if horizontal
+    if horizontal[]
         for tp in tickpositions
             tstart = tp + (flipped[] ? -1f0 : 1f0) * Point2f(0f0, tickalign * ticksize - 0.5f0 * spinewidth)
             tend = tstart + (flipped[] ? -1f0 : 1f0) * Point2f(0f0, -ticksize)
@@ -253,6 +249,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
         minorticksvisible, minortickalign, minorticksize, minortickwidth, minortickcolor, minorticks)
 
     pos_extents_horizontal = lift(calcualte_horizontal_extends, endpoints; ignore_equal_values=true)
+    horizontal = lift(x-> x[3], pos_extents_horizontal)
 
     limits = lift(x-> convert(Tuple{Float32, Float32}, x), attrs.limits; ignore_equal_values=true)
     flipped = lift(x-> convert(Bool, x), attrs.flipped; ignore_equal_values=true)
@@ -274,7 +271,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
 
     realticklabelalign = Observable{Tuple{Symbol, Symbol}}((:none, :none); ignore_equal_values=true)
 
-    map!(calculate_real_ticklabel_align, realticklabelalign, ticklabelalign, pos_extents_horizontal, flipped, ticklabelrotation)
+    map!(calculate_real_ticklabel_align, realticklabelalign, ticklabelalign, horizontal, flipped, ticklabelrotation)
 
     ticklabel_annotation_obs = Observable(Tuple{AbstractString, Point2f}[]; ignore_equal_values=true)
     ticklabels = nothing # this gets overwritten later to be used in the below
@@ -327,6 +324,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
     end
 
     labelpos = Observable(Point2f(NaN); ignore_equal_values=true)
+
     map!(labelpos, pos_extents_horizontal, flipped, labelgap) do (position, extents, horizontal), flipped, labelgap
         # fullgap = tickspace[] + labelgap
         middle = extents[1] + 0.5f0 * (extents[2] - extents[1])
@@ -342,7 +340,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
     # Initial values should be overwritten by map!. `ignore_equal_values` doesn't work right now without initial values
     labelalign = Observable((:none, :none); ignore_equal_values=true)
 
-    map!(labelalign, pos_extents_horizontal, flipped, flip_vertical_label) do (position, extents, horizontal), flipped, flip_vertical_label
+    map!(labelalign, horizontal, flipped, flip_vertical_label) do horizontal::Bool, flipped::Bool, flip_vertical_label::Bool
         if horizontal
             return (:center, flipped ? :bottom : :top)
         else
@@ -356,7 +354,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
     end
 
     labelrotation = Observable(0f0; ignore_equal_values=true)
-    map!(labelrotation, pos_extents_horizontal, flip_vertical_label) do (position, extents, horizontal), flip_vertical_label::Bool
+    map!(labelrotation, horizontal, flip_vertical_label) do horizontal::Bool, flip_vertical_label::Bool
         if horizontal
             return 0f0
         else
@@ -404,17 +402,17 @@ function LineAxis(parent::Scene, attrs::Attributes)
     end
 
     onany(update_tick_obs,
-        Observable(minorticksnode), Observable(pos_extents_horizontal), Observable(flipped),
+        Observable(minorticksnode), Observable(horizontal), Observable(flipped),
         minortickpositions, minortickalign, minorticksize, spinewidth)
 
     onany(update_ticklabel_node,
         # we don't want to update on these, so we wrap them in an observable:
-        Observable((pos_extents_horizontal, spinewidth, tickspace, ticklabelpad, tickvalues)),
+        Observable((horizontal, spinewidth, tickspace, ticklabelpad, tickvalues)),
         Observable(ticklabel_annotation_obs),
         labelgap, flipped, tickpositions, tickstrings)
 
     onany(update_tick_obs,
-        Observable(ticksnode), Observable(pos_extents_horizontal), Observable(flipped),
+        Observable(ticksnode), Observable(horizontal), Observable(flipped),
         tickpositions, tickalign, ticksize, spinewidth)
 
     linepoints = lift(create_linepoints, pos_extents_horizontal, flipped, spinewidth, trimspine, tickpositions, tickwidth)
@@ -428,7 +426,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
 
     map!(calculate_protrusion, protrusion,
         # We pass these as observables, to not trigger on them
-        Observable((pos_extents_horizontal, labeltext, ticklabel_annotation_obs)),
+        Observable((horizontal, labeltext, ticklabel_annotation_obs)),
         ticksvisible, label, labelvisible, labelpadding, tickspace, ticklabelsvisible, actual_ticklabelspace, ticklabelpad,
         # We don't need these as arguments to calculate it, but we need to pass it because it indirectly influences the protrosion
         labelfont, ticklabelfont, labelsize, tickalign)
