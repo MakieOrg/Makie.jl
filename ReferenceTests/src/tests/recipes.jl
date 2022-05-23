@@ -39,7 +39,7 @@ function Makie.plot!(p::Plot(Simulation))
     # we don't do the conversion 2 times for linesegments!
     linesegments!(p, lift(x -> view(x, indices), meshplot[1]))
 end
-@cell "Type recipe for molecule simulation" begin
+@reference_test "Type recipe for molecule simulation" begin
 
 
     # To write out a video of the whole simulation

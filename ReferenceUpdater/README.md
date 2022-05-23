@@ -1,24 +1,19 @@
-This module contains functions for running reference image tests, computing image different scores, and comparing as well as updating newly created images.
+# ReferenceUpdater
 
-To compare images from the last commit in a PR, or a specific commit, you can use `ReferenceImages.serve_update_page()`.
+This module contains functions to inspect test image artifacts from PRs and commits, as well as update reference images.
+
+You can compare images from the last commit in a PR, or a specific commit.
 You need to have the environment variable `GITHUB_TOKEN` set to a token that has the correct access rights in the Makie repository to read and write artifacts.
 
-Here's an example:
-
 ```julia
-using Pkg
-Pkg.activate("MAKIE_FOLDER/ReferenceTests")
-
-using ReferenceTests
-
-ReferenceTests.serve_update_page(pr = 1234)
-# or ReferenceTests.serve_update_page(commit = "a1b2c3")
+ReferenceUpdater.serve_update_page(commit = "a1b2c3")
+ReferenceUpdater.serve_update_page(pr = 1234)
 ```
 
 You should be given a choice of different backend workflow runs.
 Choose one (usually GLMakie when updating reference images) and confirm.
 If reference images can be found for this run, they will be downloaded and extracted to a temp directory.
-(You can run `ReferenceTests.serve_update_page_from_dir(joinpath(the_temp_dir, reference_set_name))` to restart the process without reloading the zip file.)
+(You can run `ReferenceUpdater.serve_update_page_from_dir(joinpath(the_temp_dir, reference_set_name))` to restart the process without reloading the zip file.)
 A server should start at localhost:8000 and when you open this page in the browser, you should see a list of new reference images (which can be empty), and a list of updated images.
 The updated images can be compared with the reference via button press.
 Checking the box next to an image marks this image for a reference image update.

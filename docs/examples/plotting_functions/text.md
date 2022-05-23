@@ -19,7 +19,7 @@
 ### Other
 
 - `align::Tuple{Union{Symbol, Real}, Union{Symbol, Real}} = (:left, :bottom)` sets the alignment of the string w.r.t. `position`. Uses `:left, :center, :right, :top, :bottom, :baseline` or fractions.
-- `font::Union{String, Vector{String}} = "Dejavu Sans"` sets the font for the string or each character.
+- `font::Union{String, Vector{String}} = "TeX Gyre Heros Makie"` sets the font for the string or each character.
 - `justification::Union{Real, Symbol} = automatic` sets the alignment of text w.r.t its bounding box. Can be `:left, :center, :right` or a fraction. Will default to the horizontal alignment in `align`.
 - `position::Union{Point2f, Point3f} = Point2f(0)` sets an anchor position for text. Can also be a `Vector` of positions.
 - `rotation::Union{Real, Quaternion}` rotates text around the given position.
@@ -29,6 +29,7 @@
 - `strokecolor::Union{Symbol, <:Colorant} = :black` sets the color of the outline around a marker.
 - `glowwidth::Real = 0` sets the size of a glow effect around the marker.
 - `glowcolor::Union{Symbol, <:Colorant} = (:black, 0)` sets the color of the glow effect.
+- `word_wrap_with::Real = -1` specifies a linewidth limit for text. If a word overflows this limit, a newline is inserted before it. Negative numbers disable word wrapping.
 
 
 ## Pixel space text
