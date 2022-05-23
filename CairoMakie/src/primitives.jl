@@ -211,8 +211,7 @@ function draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokeco
         isnan(pos) && return
 
         Cairo.set_source_rgba(ctx, rgbatuple(col)...)
-        # m = convert_attribute(marker, key"marker"(), key"scatter"())
-        m = Circle(Point2f(0, 0), 0f0)
+        m = convert_attribute(marker, key"marker"(), key"scatter"())
         Cairo.save(ctx)
         if m isa Char
             draw_marker(ctx, m, best_font(m, font), pos, scale, strokecolor, strokewidth, offset, rotation)
