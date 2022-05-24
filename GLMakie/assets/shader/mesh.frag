@@ -33,11 +33,6 @@ vec4 get_color(sampler2D color, vec2 uv, Nothing color_norm, Nothing color_map, 
     return texture(color, uv);
 }
 
-float _normalize(float val, float from, float to){return (val-from) / (to - from);}
-vec4 color_lookup(float intensity, sampler1D color_ramp, vec2 norm){
-    return texture(color_ramp, _normalize(intensity, norm.x, norm.y));
-}
-
 uniform vec4 highclip;
 uniform vec4 lowclip;
 uniform vec4 nan_color;

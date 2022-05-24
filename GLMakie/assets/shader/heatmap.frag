@@ -17,9 +17,6 @@ uniform vec4 nan_color;
 
 vec4 getindex(sampler2D image, vec2 uv){return texture(image, vec2(uv.x, 1-uv.y));}
 vec4 getindex(sampler1D image, vec2 uv){return texture(image, uv.y);}
-float range_01(float val, float from, float to){
-    return (val - from) / (to - from);
-}
 
 #define ALIASING_CONST 0.70710678118654757
 #define M_PI 3.1415926535897932384626433832795
