@@ -443,11 +443,6 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Image)
         end
         gl_attributes[:color] = x[3]
         gl_attributes[:shading] = false
-        if gl_attributes[:color_map][] isa Vector
-            cmap = pop!(gl_attributes, :color_map)
-            gl_attributes[:color_map] = Texture(cmap; mipmap=true, minfilter=:linear)
-        end
-
         connect_camera!(gl_attributes, scene.camera)
         return mesh_inner(mesh, transform_func_obs(x), gl_attributes)
     end
