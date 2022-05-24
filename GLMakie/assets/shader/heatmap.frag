@@ -24,15 +24,28 @@ float range_01(float val, float from, float to){
 #define ALIASING_CONST 0.70710678118654757
 #define M_PI 3.1415926535897932384626433832795
 
-float aastep(float threshold1, float threshold2, float value) {
-    float afwidth = length(vec2(dFdx(value), dFdy(value))) * ALIASING_CONST;
-    return smoothstep(threshold1-afwidth, threshold1+afwidth, value)-smoothstep(threshold2-afwidth, threshold2+afwidth, value);
-}
-float aastep(float threshold1, float value) {
-    float afwidth = length(vec2(dFdx(value), dFdy(value))) * ALIASING_CONST;
-    return smoothstep(threshold1-afwidth, threshold1+afwidth, value);
-}
 void write2framebuffer(vec4 color, uvec2 id);
+
+// It seems texture(color_map, i0) doesn't actually correctly interpolate between the values.
+// TODO, further investigate texture, since it's likely not broken, but rather not used correctly.
+// Meanwhile, we interpolate manually from the colormap
+vec4 get_color_from_cmap(float value, sampler1D color_map, vec2 colorrange) {
+    float cmin = colorrange.x;
+    float cmax = colorrange.y;
+    float i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0);
+    int len = textureSize(color_map, 0);
+
+    float i1len = i01 * (len - 1);
+    int down = int(floor(i1len));
+    int up = int(ceil(i1len));
+    if (down == up) {
+        return texelFetch(color_map, up, 0);
+    }
+    float interp_val = i1len - down;
+    vec4 downc = texelFetch(color_map, down, 0);
+    vec4 upc = texelFetch(color_map, up, 0);
+    return mix(downc, upc, interp_val);
+}
 
 vec4 get_color(sampler2D intensity, vec2 uv, vec2 color_norm, sampler1D color_map){
     float i = float(getindex(intensity, uv).x);
@@ -43,16 +56,7 @@ vec4 get_color(sampler2D intensity, vec2 uv, vec2 color_norm, sampler1D color_ma
     } else if (i > color_norm.y) {
         return highclip;
     }
-    i = range_01(i, color_norm.x, color_norm.y);
-    vec4 color = texture(color_map, clamp(i, 0.0, 1.0));
-    if(stroke_width > 0.0){
-        float lines = i * levels;
-        lines = abs(fract(lines - 0.5));
-        float half_stroke = stroke_width * 0.5;
-        lines = aastep(0.5 - half_stroke, 0.5 + half_stroke, lines);
-        color = mix(color, stroke_color, lines);
-    }
-    return color;
+    return get_color_from_cmap(i, color_map, color_norm);
 }
 
 void main(){
