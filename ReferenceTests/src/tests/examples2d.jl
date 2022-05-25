@@ -466,3 +466,23 @@ end
     end
     f
 end
+		
+@reference_test "nonlinear colormap" begin
+    n = 100
+    colormaps = [:viridis, :magma]
+    scales = [exp, identity, log, log10]
+    fig = Figure(resolution = (500, 250))
+    ax  = Axis(fig[1, 1])
+    for (i, cmap) in enumerate(colormaps)
+        for (j, scale) in enumerate(scales)
+            cg = Makie.PlotUtils.cgrad(cmap; scale = scale)
+            x0 = i
+            y0 = j
+            lines!(ax, Point2f.(LinRange(x0+0.1, x0+0.9, n), y0); color = 1:n, colormap = cg, linewidth = 10)
+        end
+    end
+    ax.xticks[] = ((1:length(colormaps)) .+ 0.5, string.(colormaps))
+    ax.yticks[] = ((1:length(scales)), string.(scales))
+    
+    fig
+end
