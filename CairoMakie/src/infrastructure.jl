@@ -240,11 +240,11 @@ function draw_background(screen::CairoScreen, scene::Scene)
     foreach(child_scene-> draw_background(screen, child_scene), scene.children)
 end
 
-function draw_plot(scene::Scene, screen::CairoScreen, primitive::Combined)
+function draw_plot(scene::Scene, screen::CairoScreen, primitive::PlotObject)
     if to_value(get(primitive, :visible, true))
         if isempty(primitive.plots)
             Cairo.save(screen.context)
-            draw_atomic(scene, screen, primitive)
+            draw_atomic(scene, screen, primitive, primitive.type())
             Cairo.restore(screen.context)
         else
             for plot in primitive.plots
@@ -260,7 +260,7 @@ end
 #   instead of the whole Scene
 # - Recognize when a screen is an image surface, and set scale to render the plot
 #   at the scale of the device pixel
-function draw_plot_as_image(scene::Scene, screen::CairoScreen, primitive::Combined, scale::Number = 1)
+function draw_plot_as_image(scene::Scene, screen::CairoScreen, primitive::PlotObject, scale::Number = 1)
     # you can provide `p.rasterize = scale::Int` or `p.rasterize = true`, both of which are numbers
 
     # Extract scene width in pixels
@@ -386,7 +386,7 @@ function Makie.backend_show(x::CairoBackend, io::IO, ::MIME"image/png", scene::S
     # while relative line and font sizes are unaffected
     px_per_unit = get(io, :px_per_unit, x.px_per_unit)
     antialias = get(io, :antialias, x.antialias)
-    
+
     # create an ARGB surface, to speed up drawing ops.
     screen = CairoScreen(scene; device_scaling_factor = px_per_unit, antialias = antialias)
     cairo_draw(screen, scene)
@@ -411,7 +411,7 @@ function Makie.colorbuffer(screen::CairoScreen)
     # draw the scene onto the image matrix
     ctx = Cairo.CairoContext(surf)
     ccall((:cairo_set_miter_limit, Cairo.libcairo), Cvoid, (Ptr{Nothing}, Cdouble), ctx.ptr, 2.0)
-    
+
     scr = CairoScreen(scene, surf, ctx, nothing)
 
     cairo_draw(scr, scene)

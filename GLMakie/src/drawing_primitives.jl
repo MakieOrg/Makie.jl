@@ -114,11 +114,11 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     robj
 end
 
-function Base.insert!(screen::GLScreen, scene::Scene, @nospecialize(x::Combined))
+function Base.insert!(screen::GLScreen, scene::Scene, x::PlotObject)
     # poll inside functions to make wait on compile less prominent
     pollevents(screen)
     if isempty(x.plots) # if no plots inserted, this truly is an atomic
-        draw_atomic(screen, scene, x)
+        draw_atomic(screen, scene, x, x.type())
     else
         foreach(x.plots) do x
             # poll inside functions to make wait on compile less prominent
@@ -203,7 +203,7 @@ function handle_intensities!(attributes)
     end
 end
 
-function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Union{Scatter, MeshScatter}))
+function draw_atomic(screen::GLScreen, scene::Scene, x, ::Union{Scatter, MeshScatter})
     return cached_robj!(screen, scene, x) do gl_attributes
         # signals not supported for shading yet
         gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
@@ -253,7 +253,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Union{Scat
     end
 end
 
-function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Lines))
+function draw_atomic(screen::GLScreen, scene::Scene, x, ::Lines)
     return cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
@@ -272,7 +272,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Lines))
     end
 end
 
-function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::LineSegments))
+function draw_atomic(screen::GLScreen, scene::Scene, x, ::LineSegments)
     return cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
@@ -298,8 +298,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::LineSegmen
     end
 end
 
-function draw_atomic(screen::GLScreen, scene::Scene,
-        x::Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
+function draw_atomic(screen::GLScreen, scene::Scene, x, ::Text)
 
     return cached_robj!(screen, scene, x) do gl_attributes
         glyphcollection = x[1]
@@ -382,7 +381,7 @@ xy_convert(x::AbstractArray{Float32}, n) = copy(x)
 xy_convert(x::AbstractArray, n) = el32convert(x)
 xy_convert(x, n) = Float32[LinRange(extrema(x)..., n + 1);]
 
-function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
+function draw_atomic(screen::GLScreen, scene::Scene, x, ::Heatmap)
     return cached_robj!(screen, scene, x) do gl_attributes
         t = Makie.transform_func_obs(scene)
         mat = x[3]
@@ -427,7 +426,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
     end
 end
 
-function draw_atomic(screen::GLScreen, scene::Scene, x::Image)
+function draw_atomic(screen::GLScreen, scene::Scene, x, ::Image)
     return cached_robj!(screen, scene, x) do gl_attributes
         mesh = const_lift(x[1], x[2]) do x, y
             r = to_range(x, y)
@@ -489,7 +488,7 @@ function mesh_inner(mesh, transfunc, gl_attributes)
     return GLVisualize.draw_mesh(mesh, gl_attributes)
 end
 
-function draw_atomic(screen::GLScreen, scene::Scene, meshplot::Mesh)
+function draw_atomic(screen::GLScreen, scene::Scene, meshplot, ::Mesh)
     return cached_robj!(screen, scene, meshplot) do gl_attributes
         t = transform_func_obs(meshplot)
         connect_camera!(gl_attributes, scene.camera)
@@ -566,7 +565,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
     return robj
 end
 
-function draw_atomic(screen::GLScreen, scene::Scene, vol::Volume)
+function draw_atomic(screen::GLScreen, scene::Scene, vol, ::Volume)
     robj = cached_robj!(screen, scene, vol) do gl_attributes
         model = vol[:model]
         x, y, z = vol[1], vol[2], vol[3]

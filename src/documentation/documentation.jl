@@ -186,7 +186,7 @@ to_func(func::Function) = func
 
 Maps the input of a function name to its cooresponding Type.
 """
-to_type(func::Function) = Combined{func}
+to_type(func::Function) = PlotObject{func}
 
 to_type(Typ::Type{T}) where T <: AbstractPlot = Typ
 

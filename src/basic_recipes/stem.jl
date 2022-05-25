@@ -48,7 +48,7 @@ trunkpoint(stempoint::P, offset::Number) where P <: Point3 = P(stempoint[1], ste
 trunkpoint(stempoint::P, offset::Point3) where P <: Point3 = P(offset...)
 
 
-function plot!(s::Stem{<:Tuple{<:AbstractVector{<:Point}}})
+function plot!(s::PlotObject, ::Stem, ::AbstractVector{<:Point})
     points = s[1]
 
     stemtuples = lift(points, s.offset) do ps, to

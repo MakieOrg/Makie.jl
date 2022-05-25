@@ -13,7 +13,7 @@ function _precompile_()
         foreach(s-> insertplotstype(s), scene.children)
     end
     function inserttype(scene, @nospecialize(x))
-        if isa(x, Combined)
+        if isa(x, PlotObject)
             if isempty(x.plots)
                 precompile(insert!, (Screen, typeof(scene), typeof(x)))
             else

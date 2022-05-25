@@ -122,7 +122,7 @@ convert_arguments(::Type{<:QQNorm}, y; qqline = :none) =
 used_attributes(::Type{<:QQNorm}, y) = (:qqline,)
 used_attributes(::Type{<:QQPlot}, x, y) = (:qqline,)
 
-function Makie.plot!(p::QQPlot)
+function Makie.plot!(p::PlotObject, ::QQPlot)
 
     points, line = p[1], p[2]
     real_markercolor = Observable{RGBColors}()

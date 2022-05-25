@@ -25,7 +25,7 @@ function to_rpr_object(context, matsys, scene, plot)
     return nothing
 end
 
-function insert_plots!(context, matsys, scene, mscene::Makie.Scene, @nospecialize(plot::Combined))
+function insert_plots!(context, matsys, scene, mscene::Makie.Scene, @nospecialize(plot::PlotObject))
     if isempty(plot.plots) # if no plots inserted, this truly is an atomic
         object = to_rpr_object(context, matsys, mscene, plot)
         if !isnothing(object)

@@ -116,7 +116,7 @@ function initialize_block!(ax::Axis3)
     setfield!(ax, :scrollevents, scrollevents)
     keysevents = Observable(KeysEvent(Set()))
     setfield!(ax, :keysevents, keysevents)
-    
+
     on(scene.events.scroll) do s
         if is_mouseinside(scene)
             ax.scrollevents[] = ScrollEvent(s[1], s[2])
@@ -241,7 +241,6 @@ function projectionmatrix(viewmatrix, limits, eyepos, radius, azim, elev, angle,
 
         if viewmode in (:fitzoom, :stretch)
             points = decompose(Point3f, limits)
-            # @show points
             projpoints = Ref(pm * viewmatrix) .* to_ndim.(Point4f, points, 1)
 
             maxx = maximum(x -> abs(x[1] / x[4]), projpoints)
@@ -546,7 +545,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     label_align = Observable((:center, :top))
 
     onany(
-            scene.px_area, scene.camera.projectionview, limits, miv, min1, min2, 
+            scene.px_area, scene.camera.projectionview, limits, miv, min1, min2,
             attr(:labeloffset), attr(:labelrotation), attr(:labelalign)
             ) do pxa, pv, lims, miv, min1, min2, labeloffset, lrotation, lalign
 

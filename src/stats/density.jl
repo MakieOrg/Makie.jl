@@ -53,7 +53,7 @@ $(ATTRIBUTES)
     )
 end
 
-function plot!(plot::Density{<:Tuple{<:AbstractVector}})
+function plot!(plot::PlotObject, ::Density, ::AbstractVector)
     x = plot[1]
 
     lowerupper = lift(x, plot.direction, plot.boundary, plot.offset,
