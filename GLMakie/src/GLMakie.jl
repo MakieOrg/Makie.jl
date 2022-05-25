@@ -23,11 +23,8 @@ using LinearAlgebra
 # re-export Makie, including deprecated names
 for name in names(Makie, all=true)
     if Base.isexported(Makie, name)
-        try
-            @eval using Makie: $(name)
-            @eval export $(name)
-        catch e
-        end
+        @eval using Makie: $(name)
+        @eval export $(name)
     end
 end
 
