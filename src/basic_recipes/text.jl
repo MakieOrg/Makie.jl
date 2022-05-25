@@ -1,4 +1,4 @@
-function plot!(plot::Text)
+function plot!(plot::PlotObject, ::Text)
     positions = plot[1]
     # attach a function to any text that calculates the glyph layout and stores it
     glyphcollections = Observable(GlyphCollection[])
