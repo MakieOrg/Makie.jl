@@ -235,7 +235,7 @@ function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewid
 
     cairoface = set_ft_font(ctx, font)
 
-    charextent = Makie.FreeTypeAbstraction.internal_get_extent(font, marker)
+    charextent = Makie.FreeTypeAbstraction.get_extent(font, marker)
     inkbb = Makie.FreeTypeAbstraction.inkboundingbox(charextent)
 
     # scale normalized bbox by font size
