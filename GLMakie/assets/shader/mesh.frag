@@ -45,7 +45,7 @@ vec4 get_color_from_cmap(float value, sampler1D color_map, vec2 colorrange) {
     // between the colors, we need to scale it, so that the ends are at 1 - (stepsize/2) and 0+(stepsize/2).
     float stepsize = 1.0 / float(textureSize(color_map, 0));
     i01 = (1.0 - stepsize) * i01 + 0.5 * stepsize;
-    return texture(colormap, i01);
+    return texture(color_map, i01);
 }
 
 vec4 get_color(sampler2D intensity, vec2 uv, vec2 color_norm, sampler1D color_map, Nothing matcap){
