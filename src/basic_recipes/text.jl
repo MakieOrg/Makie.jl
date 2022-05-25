@@ -3,7 +3,7 @@
 #     glyphs::Any
 # end
 
-function plot!(plot::Text)
+function plot!(plot::PlotObject, ::Text, ::AbstractString)
     # attach a function to any text that calculates the glyph layout and stores it
     glyphcollection = lift(plot[1], plot.textsize, plot.font, plot.align,
             plot.rotation, plot.justification, plot.lineheight, plot.color,
@@ -26,10 +26,10 @@ end
 # TODO: is this necessary? there seems to be a recursive loop with the above
 # function without these two interceptions, but I didn't need it before merging
 # everything into the monorepo...
-plot!(plot::Text{<:Tuple{<:GlyphCollection}}) = plot
-plot!(plot::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}}) = plot
+# plot!(plot::Text{<:Tuple{<:GlyphCollection}}) = plot
+# plot!(plot::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}}) = plot
 
-function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
+function plot!(plot::PlotObject, ::Text, ::AbstractArray{<:AbstractString})
     glyphcollections = Observable(GlyphCollection[])
     rotation = Observable{Any}(nothing)
 
@@ -66,7 +66,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
 end
 
 # overload text plotting for a vector of tuples of a string and a point each
-function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:AbstractString, <:Point}}}})
+function plot!(plot::PlotObject, ::Text, ::AbstractArray{<:Tuple{<:AbstractString, <:Point}})
     strings_and_positions = plot[1]
 
     strings = Observable(first.(strings_and_positions[]))
@@ -91,7 +91,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:AbstractString, <:Po
 end
 
 
-function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXString}}}})
+function plot!(plot::PlotObject, ::Text, ::Union{LaTeXString, AbstractVector{<:LaTeXString}})
 
     # attach a function to any text that calculates the glyph layout and stores it
     lineels_glyphcollection_offset = lift(plot[1], plot.textsize, plot.align, plot.rotation,

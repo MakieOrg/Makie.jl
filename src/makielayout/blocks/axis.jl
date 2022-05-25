@@ -112,7 +112,6 @@ function initialize_block!(ax::Axis; palette = nothing)
     onany(finallimits, ax.xreversed, ax.yreversed, scene.transformation.transform_func) do lims, xrev, yrev, t
         nearclip = -10_000f0
         farclip = 10_000f0
-
         tlims = Makie.apply_transform(t, lims)
 
         left, bottom = minimum(tlims)
@@ -120,7 +119,6 @@ function initialize_block!(ax::Axis; palette = nothing)
 
         leftright = xrev ? (right, left) : (left, right)
         bottomtop = yrev ? (top, bottom) : (bottom, top)
-
         projection = Makie.orthographicprojection(
             leftright...,
             bottomtop..., nearclip, farclip)
@@ -621,26 +619,14 @@ function get_cycler_index!(c::Cycler, P::Type)
     end
 end
 
-function get_cycle_for_plottype(allattrs, P)::Cycle
-    psym = MakieCore.plotsym(P)
-
-    plottheme = Makie.default_theme(nothing, P)
-
-    cdt = Makie.current_default_theme()
-    cycle_raw = if haskey(allattrs, :cycle)
-        allattrs.cycle[]
-    elseif haskey(cdt, psym) && haskey(cdt[psym], :cycle)
-        cdt[psym].cycle[]
-    else
-        haskey(plottheme, :cycle) ? plottheme.cycle[] : nothing
-    end
-
+function get_cycle_for_plottype(plot)::Cycle
+    cycle_raw = plot.cycle
     if isnothing(cycle_raw)
-        Cycle([])
+        return Cycle([])
     elseif cycle_raw isa Cycle
-        cycle_raw
+        return cycle_raw
     else
-        Cycle(cycle_raw)
+        return Cycle(cycle_raw)
     end
 end
 
@@ -710,38 +696,28 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
     end
 end
 
-function Makie.plot!(
-        la::Axis, P::Makie.PlotFunc,
-        attributes::Makie.Attributes, args...;
-        kw_attributes...)
+function Makie.plot!(ax::Axis, plot::P) where P
 
-    allattrs = merge(attributes, Attributes(kw_attributes))
+    # cycle = get_cycle_for_plottype(plot)
+    # add_cycle_attributes!(plot, cycle, ax.cycler, ax.palette)
 
-    cycle = get_cycle_for_plottype(allattrs, P)
-    add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
-
-    plot = Makie.plot!(la.scene, P, allattrs, args...)
+    plot = Makie.plot!(ax.scene, plot)
 
     # some area-like plots basically always look better if they cover the whole plot area.
     # adjust the limit margins in those cases automatically.
-    needs_tight_limits(plot) && tightlimits!(la)
+    needs_tight_limits(plot) && tightlimits!(ax)
 
-    reset_limits!(la)
-    plot
-end
-
-function Makie.plot!(P::Makie.PlotFunc, ax::Axis, args...; kw_attributes...)
-    attributes = Makie.Attributes(kw_attributes)
-    Makie.plot!(ax, P, attributes, args...)
+    reset_limits!(ax)
+    return plot
 end
 
 needs_tight_limits(@nospecialize any) = false
 needs_tight_limits(::Union{Heatmap, Image}) = true
-function needs_tight_limits(c::Contourf)
-    # we know that all values are included and the contourf is rectangular
-    # otherwise here it could be in an arbitrary shape
-    return c.levels[] isa Int
-end
+# function needs_tight_limits(c::Contourf)
+#     # we know that all values are included and the contourf is rectangular
+#     # otherwise here it could be in an arbitrary shape
+#     return c.levels[] isa Int
+# end
 
 function expandbboxwithfractionalmargins(bb, margins)
     newwidths = bb.widths .* (1f0 .+ margins)
@@ -798,7 +774,7 @@ function getlimits(la::Axis, dim)
         return !to_value(get(plot, :visible, true))
     end
     # get all data limits, minus the excluded plots
-    boundingbox = Makie.data_limits(la.scene, exclude)
+    boundingbox = Makie.data_limits(la.scene; exclude=exclude)
     # if there are no bboxes remaining, `nothing` signals that no limits could be determined
     Makie.isfinite_rect(boundingbox) || return nothing
 

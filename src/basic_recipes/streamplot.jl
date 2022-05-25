@@ -158,7 +158,7 @@ function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize
     )
 end
 
-function plot!(p::StreamPlot)
+function plot!(p::PlotObject, ::StreamPlot)
     data = lift(p.f, p.limits, p.gridsize, p.stepsize, p.maxsteps, p.density) do f, limits, resolution, stepsize, maxsteps, density
         P = if applicable(f, Point2f(0)) || applicable(f, Point3f(0))
             Point

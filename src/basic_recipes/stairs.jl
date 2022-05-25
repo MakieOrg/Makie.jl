@@ -22,7 +22,7 @@ end
 
 conversion_trait(::Type{<:Stairs}) = PointBased()
 
-function plot!(p::Stairs{<:Tuple{<:AbstractVector{<:Point2}}})
+function plot!(p::PlotObject, ::Stairs, ::AbstractVector{<:Point2})
     points = p[1]
 
     steppoints = lift(points, p.step) do points, step
@@ -66,4 +66,3 @@ function plot!(p::Stairs{<:Tuple{<:AbstractVector{<:Point2}}})
     lines!(p, steppoints; [x for x in pairs(p.attributes) if x[1] != :step]...)
     p
 end
-

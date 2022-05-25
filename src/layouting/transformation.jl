@@ -1,48 +1,12 @@
 Base.parent(t::Transformation) = isassigned(t.parent) ? t.parent[] : nothing
 
-function Transformation(transform_func=identity;
-                        scale=Vec3f(1),
-                        translation=Vec3f(0),
-                        rotation=Quaternionf(0, 0, 0, 1))
-
-    scale_o = convert(Observable{Vec3f}, scale)
-    translation_o = convert(Observable{Vec3f}, translation)
-    rotation_o = convert(Observable{Quaternionf}, rotation)
-    model = map(transformationmatrix, translation_o, scale_o, rotation_o)
-    return Transformation(
-        translation_o,
-        scale_o,
-        rotation_o,
-        model,
-        convert(Observable{Any}, transform_func)
-    )
-end
-
-function Transformation(transformable::Transformable;
-                        scale=Vec3f(1),
-                        translation=Vec3f(0),
-                        rotation=Quaternionf(0, 0, 0, 1))
-
-    scale_o = convert(Observable{Vec3f}, scale)
-    translation_o = convert(Observable{Vec3f}, translation)
-    rotation_o = convert(Observable{Quaternionf}, rotation)
-    parent_transform = transformation(transformable)
-
-    pmodel = parent_transform.model
-    model = map(translation_o, scale_o, rotation_o, pmodel) do t, s, r, p
-        return p * transformationmatrix(t, s, r)
+function Observables.connect!(parent::Transformation, child::Transformation)
+    on(parent.model; update=true) do m
+        child.parent_model[] = m
     end
-
-    trans = Transformation(
-        translation_o,
-        scale_o,
-        rotation_o,
-        model,
-        copy(parent_transform.transform_func)
-    )
-
-    trans.parent[] = parent_transform
-    return trans
+    child.transform_func[] = parent.transform_func[]
+    child.parent[] = parent
+    return
 end
 
 function model_transform(transformation::Transformation)

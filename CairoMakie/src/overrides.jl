@@ -58,7 +58,6 @@ function draw_poly(scene::Scene, screen::CairoScreen, poly, points_list::Vector{
     end
 end
 
-
 draw_poly(scene::Scene, screen::CairoScreen, poly, rect::Rect2) = draw_poly(scene, screen, poly, [rect])
 
 function draw_poly(scene::Scene, screen::CairoScreen, poly, rects::Vector{<:Rect2})
@@ -110,7 +109,7 @@ function polypath(ctx, polygon)
 end
 
 function draw_poly(scene::Scene, screen::CairoScreen, poly, polygons::AbstractArray{<:Polygon})
-    
+
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
     projected_polys = project_polygon.(Ref(scene), space, polygons, Ref(model))
@@ -148,28 +147,28 @@ end
 #        gradients as well via `mesh` we have to intercept the poly use        #
 ################################################################################
 
-function draw_plot(scene::Scene, screen::CairoScreen,
-        band::Band{<:Tuple{<:AbstractVector{<:Point2},<:AbstractVector{<:Point2}}})
+# function draw_plot(scene::Scene, screen::CairoScreen,
+#         band::Band{<:Tuple{<:AbstractVector{<:Point2},<:AbstractVector{<:Point2}}})
 
-    if !(band.color[] isa AbstractArray)
-        upperpoints = band[1][]
-        lowerpoints = band[2][]
-        points = vcat(lowerpoints, reverse(upperpoints))
-        model = band.model[]
-        space = to_value(get(band, :space, :data))
-        points = project_position.(Ref(scene), space, points, Ref(model))
-        Cairo.move_to(screen.context, points[1]...)
-        for p in points[2:end]
-            Cairo.line_to(screen.context, p...)
-        end
-        Cairo.close_path(screen.context)
-        Cairo.set_source_rgba(screen.context, rgbatuple(to_color(band.color[]))...)
-        Cairo.fill(screen.context)
-    else
-        for p in band.plots
-            draw_plot(scene, screen, p)
-        end
-    end
+#     if !(band.color[] isa AbstractArray)
+#         upperpoints = band[1][]
+#         lowerpoints = band[2][]
+#         points = vcat(lowerpoints, reverse(upperpoints))
+#         model = band.model[]
+#         space = to_value(get(band, :space, :data))
+#         points = project_position.(Ref(scene), space, points, Ref(model))
+#         Cairo.move_to(screen.context, points[1]...)
+#         for p in points[2:end]
+#             Cairo.line_to(screen.context, p...)
+#         end
+#         Cairo.close_path(screen.context)
+#         Cairo.set_source_rgba(screen.context, rgbatuple(to_color(band.color[]))...)
+#         Cairo.fill(screen.context)
+#     else
+#         for p in band.plots
+#             draw_plot(scene, screen, p)
+#         end
+#     end
 
-    nothing
-end
+#     nothing
+# end

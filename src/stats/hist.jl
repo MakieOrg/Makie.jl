@@ -66,7 +66,7 @@ $(ATTRIBUTES)
     )
 end
 
-function Makie.plot!(plot::Hist)
+function Makie.plot!(plot::PlotObject, ::Hist)
 
     values = plot.values
 
