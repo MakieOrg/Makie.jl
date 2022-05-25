@@ -3,23 +3,17 @@
 #     glyphs::Any
 # end
 
+function create_glyph_collect(str, ts, f, al, rot, jus, lh, col, scol, swi, www)
+    return layout_text(str, to_textsize(ts), to_font(f), al, to_rotation(rot), jus, lh, to_color(col), to_color(scol), swi, www)
+end
+
 function plot!(plot::PlotObject, ::Text, ::AbstractString)
     # attach a function to any text that calculates the glyph layout and stores it
-    glyphcollection = lift(plot[1], plot.textsize, plot.font, plot.align,
+    glyphcollection = lift(create_glyph_collect, plot[1], plot.textsize, plot.font, plot.align,
             plot.rotation, plot.justification, plot.lineheight, plot.color,
-            plot.strokecolor, plot.strokewidth, plot.word_wrap_width) do str,
-                ts, f, al, rot, jus, lh, col, scol, swi, www
-        ts = to_textsize(ts)
-        f = to_font(f)
-        rot = to_rotation(rot)
-        col = to_color(col)
-        scol = to_color(scol)
-
-        layout_text(str, ts, f, al, rot, jus, lh, col, scol, swi, www)
-    end
+            plot.strokecolor, plot.strokewidth, plot.word_wrap_width)
 
     text!(plot, glyphcollection; plot.attributes...)
-
     plot
 end
 
@@ -29,31 +23,30 @@ end
 # plot!(plot::Text{<:Tuple{<:GlyphCollection}}) = plot
 # plot!(plot::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}}) = plot
 
+
+function create_glyph_collect2(str, ts, f, al, rot, jus, lh, col, scol, swi, wwws, rotation_obs)
+    _ts = to_textsize(ts)
+    _f = to_font(f)
+    _rot = to_rotation(rot)
+    _col = to_color(col)
+    _scol = to_color(scol)
+
+    gcs = GlyphCollection[]
+    broadcast_foreach(str, _ts, _f, al, _rot, jus, lh, _col, _scol, swi, wwws) do str, ts, f, al, rot, jus, lh, col, scol, swi, www
+        subgl = layout_text(str, ts, f, al, rot, jus, lh, col, scol, swi, www)
+        push!(gcs, subgl)
+    end
+    rotation_obs.val = rot
+    return gcs
+end
+
 function plot!(plot::PlotObject, ::Text, ::AbstractArray{<:AbstractString})
     glyphcollections = Observable(GlyphCollection[])
     rotation = Observable{Any}(nothing)
 
-    onany(plot[1], plot.textsize, plot.font, plot.align,
+    map!(create_glyph_collect2, glyphcollections, plot[1], plot.textsize, plot.font, plot.align,
             plot.rotation, plot.justification, plot.lineheight, plot.color,
-            plot.strokecolor, plot.strokewidth, plot.word_wrap_width) do str,
-                    ts, f, al, rot, jus, lh, col, scol, swi, wwws
-
-        ts = to_textsize(ts)
-        f = to_font(f)
-        rot = to_rotation(rot)
-        col = to_color(col)
-        scol = to_color(scol)
-
-        gcs = GlyphCollection[]
-        broadcast_foreach(str, ts, f, al, rot, jus, lh, col, scol, swi, wwws) do str,
-                ts, f, al, rot, jus, lh, col, scol, swi, www
-            subgl = layout_text(str, ts, f, al, rot, jus, lh, col, scol, swi, www)
-            push!(gcs, subgl)
-        end
-        rotation.val = rot
-        glyphcollections[] = gcs
-        return
-    end
+            plot.strokecolor, plot.strokewidth, plot.word_wrap_width, Observable(rotation))
 
     # run onany once to initialize
     notify(plot[1])

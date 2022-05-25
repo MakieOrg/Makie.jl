@@ -77,7 +77,17 @@ end
 function _precompile_()
     ccall(:jl_generating_output, Cint, ()) == 1 || return nothing
     precompile(Makie.backend_display, (CairoBackend, Scene))
+
+
     activate!()
+
+    ax = Makie.MakieLayout._block(Axis, Figure())
+    Makie.MakieLayout.initialize_block!(ax)
+    Makie.create_figurelike(Scatter, Dict{Symbol, Any}(), 1:4)
+    Makie.MakieLayout.LineAxis(Scene(); spinecolor=:red, labelfont="Deja vue", ticklabelfont="Deja Vue", spinevisible=false, endpoints=Observable([Point2f(0), Point2f(0, 1)]), minorticks = IntervalsBetween(5))
+    cam = Camera(Observable(IRect(0, 0, 1, 1)))
+    Makie.create_glyph_collect("asdad", 20.0, "Deja Vue", (:center, :center), 0.0, 0.0, 0.0, :black, :black, 0.0, 0.0)
+    Makie.create_glyph_collect2(["asdad"], 20.0, "Deja Vue", (:center, :center), 0.0, 0.0, 0.0, :black, :black, 0.0, 0.0, Observable(0))
     f, ax1, pl = scatter(1:4)
     f, ax2, pl = lines(1:4)
     precompile_obs(ax1)
