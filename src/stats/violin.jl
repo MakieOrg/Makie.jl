@@ -47,7 +47,7 @@ function getuniquevalue(v::AbstractVector, idxs)
     return f
 end
 
-function plot!(plot::Violin)
+function plot!(plot::PlotObject, ::Violin)
     x, y = plot[1], plot[2]
     args = @extract plot (width, side, color, show_median, npoints, boundary, bandwidth, weights,
         datalimits, max_density, dodge, n_dodge, gap, dodge_gap, orientation)

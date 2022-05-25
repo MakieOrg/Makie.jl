@@ -22,7 +22,7 @@ $(ATTRIBUTES)
     )
 end
 
-function plot!(plot::Pie)
+function plot!(plot::PlotObject, ::Pie)
 
     values = plot[1]
 
@@ -66,9 +66,9 @@ function plot!(plot::Pie)
 
     # plot pieces as polys
     poly!(
-        plot, polys, 
-        color = plot.color, strokewidth = plot.strokewidth, 
-        strokecolor = plot.strokecolor, inspectable = plot.inspectable, 
+        plot, polys,
+        color = plot.color, strokewidth = plot.strokewidth,
+        strokecolor = plot.strokecolor, inspectable = plot.inspectable,
         visible = plot.visible, transparency = plot.transparency
     )
 

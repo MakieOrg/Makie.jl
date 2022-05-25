@@ -1,7 +1,13 @@
 struct AxisPlot
-    axis
+    axis::Any
     plot::AbstractPlot
 end
+
+struct FigureAxis
+    figure::Figure
+    axis::Any
+end
+
 
 Base.show(io::IO, fap::FigureAxisPlot) = show(io, fap.figure)
 Base.show(io::IO, ::MIME"text/plain", fap::FigureAxisPlot) = print(io, "FigureAxisPlot()")
@@ -58,110 +64,59 @@ function preferred_axis_type(@nospecialize(p::PlotFunc), @nospecialize(args...))
     result = plot_preferred_axis(RealP)
     isnothing(result) || return result
     conv = convert_arguments(RealP, non_obs...)
-    Typ, args_conv = apply_convert!(RealP, Attributes(), conv)
+    Typ, args_conv = apply_convert!(RealP(), Attributes(), conv)
     result = args_preferred_axis(Typ, args_conv...)
     isnothing(result) && return Axis # Fallback to Axis if nothing found
     return result
 end
 
-function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), kw_attributes...)
-    # scene_attributes = extract_scene_attributes!(attributes)
-    fig = Figure(; figure...)
-    axis = Dict(pairs(axis))
-    AxType = if haskey(axis, :type)
-        pop!(axis, :type)
+function create_axis_from_kw(PlotType, figlike, attributes::Dict, args...)
+    axis_kw = pop!(attributes, :axis, Dict{Symbol, Any}())
+    AxType = if haskey(axis_kw, :type)
+        pop!(axis_kw, :type)
     else
-        preferred_axis_type(P, args...)
+        preferred_axis_type(PlotType, args...)
     end
-    ax = AxType(fig[1, 1]; axis...)
-    p = plot!(ax, P, Attributes(kw_attributes), args...)
-    return FigureAxisPlot(fig, ax, p)
+    return AxType(figlike; axis_kw...)
 end
 
-# without scenelike, use current axis of current figure
+function create_figurelike(PlotType, attributes::Dict, args...)
+    figure_kw = pop!(attributes, :figure, Dict{Symbol, Any}())
+    figure = Figure(; figure_kw...)
+    ax = create_axis_from_kw(PlotType, figure, attributes, args...)
+    figure[1, 1] = ax
+    return FigureAxis(figure, ax), attributes, args
+end
 
-function plot!(P::PlotFunc, args...; kw_attributes...)
+function create_figurelike!(@nospecialize(PlotType), attributes::Dict, @nospecialize(args...))
     ax = current_axis(current_figure())
     isnothing(ax) && error("There is no current axis to plot into.")
-    plot!(P, ax, args...; kw_attributes...)
+    return ax, attributes, args
 end
 
-function plot(P::PlotFunc, gp::GridPosition, args...; axis = NamedTuple(), kwargs...)
-
-    f = MakieLayout.get_top_parent(gp)
-
-    c = contents(gp, exact = true)
-    if !isempty(c)
-        error("""
-        You have used the non-mutating plotting syntax with a GridPosition, which requires an empty GridLayout slot to create an axis in, but there are already the following objects at this layout position:
-
-        $(c)
-
-        If you meant to plot into an axis at this position, use the plotting function with `!` (e.g. `func!` instead of `func`).
-        If you really want to place an axis on top of other blocks, make your intention clear and create it manually.
-        """)
-    end
-
-    axis = Dict(pairs(axis))
-    AxType = if haskey(axis, :type)
-        pop!(axis, :type)
-    else
-        preferred_axis_type(P, args...)
-    end
-    ax = AxType(f; axis...)
-    gp[] = ax
-    p = plot!(P, ax, args...; kwargs...)
-    AxisPlot(ax, p)
-end
-
-function plot!(P::PlotFunc, gp::GridPosition, args...; kwargs...)
+function create_figurelike!(PlotType, attributes::Dict, gp::GridPosition, args...)
     c = contents(gp, exact = true)
     if !(length(c) == 1 && c[1] isa Union{Axis, LScene})
         error("There needs to be a single axis at $(gp.span), $(gp.side) to plot into.\nUse a non-mutating plotting command to create an axis implicitly.")
     end
     ax = first(c)
-    plot!(P, ax, args...; kwargs...)
+    return ax, attributes, args
 end
 
-function plot(P::PlotFunc, gsp::GridSubposition, args...; axis = NamedTuple(), kwargs...)
-
-    layout = GridLayoutBase.get_layout_at!(gsp.parent, createmissing = true)
-    c = contents(gsp, exact = true)
-    if !isempty(c)
-        error("""
-        You have used the non-mutating plotting syntax with a GridSubposition, which requires an empty GridLayout slot to create an axis in, but there are already the following objects at this layout position:
-
-        $(c)
-
-        If you meant to plot into an axis at this position, use the plotting function with `!` (e.g. `func!` instead of `func`).
-        If you really want to place an axis on top of other blocks, make your intention clear and create it manually.
-        """)
-    end
-
-    fig = MakieLayout.get_top_parent(gsp)
-
-    axis = Dict(pairs(axis))
-    AxType = if haskey(axis, :type)
-        pop!(axis, :type)
-    else
-        preferred_axis_type(P, args...)
-    end
-    ax = AxType(fig; axis...)
-    gsp.parent[gsp.rows, gsp.cols, gsp.side] = ax
-    p = plot!(P, ax, args...; kwargs...)
-    AxisPlot(ax, p)
-end
-
-function plot!(P::PlotFunc, gsp::GridSubposition, args...; kwargs...)
-
+function create_figurelike!(PlotType, attributes::Dict, gsp::GridSubposition, args...)
     layout = GridLayoutBase.get_layout_at!(gsp.parent, createmissing = false)
-
     gp = layout[gsp.rows, gsp.cols, gsp.side]
-
     c = contents(gp, exact = true)
     if !(length(c) == 1 && c[1] isa Union{Axis, LScene})
         error("There is not just one axis at $(gp).")
     end
     ax = first(c)
-    plot!(P, ax, args...; kwargs...)
+    return ax, attributes, args
 end
+
+figurelike_return(fa::FigureAxis, plot) = FigureAxisPlot(fa.figure, fa.axis, plot)
+figurelike_return(ax::Axis, plot) = AxisPlot(ax, plot)
+figurelike_return!(ax::Axis, plot) = AxisPlot(ax, plot)
+
+
+plot!(fa::FigureAxis, plot) = plot!(fa.axis, plot)

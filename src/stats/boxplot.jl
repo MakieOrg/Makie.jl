@@ -78,7 +78,7 @@ _cycle(v, idx::Integer) = v
 flip_xy(p::Point2f) = reverse(p)
 flip_xy(r::Rect{2,T}) where {T} = Rect{2,T}(reverse(r.origin), reverse(r.widths))
 
-function Makie.plot!(plot::BoxPlot)
+function Makie.plot!(plot::PlotObject, ::BoxPlot)
     args = @extract plot (weights, width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap)
 
     signals = lift(

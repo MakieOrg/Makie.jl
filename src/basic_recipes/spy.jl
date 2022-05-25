@@ -35,7 +35,7 @@ end
 function calculated_attributes!(::Type{<: Spy}, plot)
 end
 
-function plot!(p::Spy)
+function plot!(p::PlotObject, ::Spy)
     rect = lift(p.x, p.y) do x, y
         xe = extrema(x)
         ye = extrema(y)

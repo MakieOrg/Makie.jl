@@ -52,30 +52,30 @@ function Colorbar(fig_or_scene, heatmap::Union{Heatmap, Image}; kwargs...)
     )
 end
 
-function Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
+# function Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
 
-    for key in (:colormap, :limits, :highclip, :lowclip)
-        if key in keys(kwargs)
-            error("You should not pass the `$key` attribute to the colorbar when constructing it using an existing plot object. This attribute is copied from the plot object, and setting it from the colorbar will make the plot object and the colorbar go out of sync.")
-        end
-    end
+#     for key in (:colormap, :limits, :highclip, :lowclip)
+#         if key in keys(kwargs)
+#             error("You should not pass the `$key` attribute to the colorbar when constructing it using an existing plot object. This attribute is copied from the plot object, and setting it from the colorbar will make the plot object and the colorbar go out of sync.")
+#         end
+#     end
 
-    steps = contourf._computed_levels
+#     steps = contourf._computed_levels
 
-    limits = lift(steps) do steps
-        steps[1], steps[end]
-    end
+#     limits = lift(steps) do steps
+#         steps[1], steps[end]
+#     end
 
-    Colorbar(
-        fig_or_scene;
-        colormap = contourf._computed_colormap,
-        limits = limits,
-        lowclip = contourf._computed_extendlow,
-        highclip = contourf._computed_extendhigh,
-        kwargs...
-    )
+#     Colorbar(
+#         fig_or_scene;
+#         colormap = contourf._computed_colormap,
+#         limits = limits,
+#         lowclip = contourf._computed_extendlow,
+#         highclip = contourf._computed_extendhigh,
+#         kwargs...
+#     )
 
-end
+# end
 
 
 function initialize_block!(cb::Colorbar)

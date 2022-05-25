@@ -6,12 +6,11 @@ so that's what they all have in common. This might be better expressed as traits
 """
 abstract type Transformable end
 
-abstract type AbstractPlot{Typ} <: Transformable end
+abstract type AbstractPlot <: Transformable end
 abstract type AbstractScene <: Transformable end
-abstract type ScenePlot{Typ} <: AbstractPlot{Typ} end
 abstract type AbstractScreen <: AbstractDisplay end
 
-const SceneLike = Union{AbstractScene, ScenePlot}
+const SceneLike = Union{AbstractScene, AbstractScene}
 
 """
 Main structure for holding attributes, for theming plots etc!
@@ -40,16 +39,27 @@ struct Attributes
 
 end
 
-struct Combined{Typ, T} <: ScenePlot{Typ}
-    parent::SceneLike
+mutable struct PlotObject <: AbstractPlot
+    type::Any
     transformation::Transformable
+
+    # Unprocessed arguments directly from the user command e.g. `plot(args...; kw...)``
+    kw::Dict{Symbol, Any}
+    args::Vector{Any}
+    converted::NTuple{N, Observable} where N
+    # Converted and processed arguments
     attributes::Attributes
-    input_args::Tuple
-    converted::Tuple
-    plots::Vector{AbstractPlot}
+
+    plots::Vector{PlotObject}
+    parent::Union{AbstractScene, PlotObject}
+
+    function PlotObject(type, transformation, kw, args)
+        return new(type, transformation, kw, args, (), Attributes(), PlotObject[])
+    end
+
 end
 
-function Base.getproperty(x::Combined, key::Symbol)
+function Base.getproperty(x::PlotObject, key::Symbol)
     if hasfield(typeof(x), key)
         getfield(x, key)
     else
@@ -57,7 +67,7 @@ function Base.getproperty(x::Combined, key::Symbol)
     end
 end
 
-function Base.setproperty!(x::Combined, key::Symbol, value)
+function Base.setproperty!(x::PlotObject, key::Symbol, value)
     if hasfield(typeof(x), key)
         setfield!(x, key, value)
     else
@@ -65,11 +75,33 @@ function Base.setproperty!(x::Combined, key::Symbol, value)
     end
 end
 
-function Base.show(io::IO, plot::Combined)
-    print(io, typeof(plot))
+repr_arg(x) = repr(x)
+
+function Base.show(io::IO, plot::PlotObject)
+    args = join(map(x-> repr_arg(to_value(x)), plot.args), ", ")
+    if isempty(plot.kw)
+        kw = ""
+    else
+        kw = "; " * join(map(((k,v),)-> "$k=$(repr_arg(to_value(v)))", collect(plot.kw)), ", ")
+    end
+    func = replace(lowercase(string(plot.type)), "makiecore." => "") * "!"
+    print(io, func, "(", args, kw, ")")
 end
 
 Base.parent(x::AbstractPlot) = x.parent
+
+struct TypedPlot{P <: AbstractPlot} <: AbstractPlot
+    plot::PlotObject
+end
+
+TypedPlot(plot::PlotObject) = TypedPlot{plot.type}(plot)
+
+Base.getproperty(@nospecialize(plot::TypedPlot), key::Symbol) = getproperty(getfield(plot, :plot), key)
+Base.getindex(@nospecialize(plot::TypedPlot), key::Integer) = getindex(getfield(plot, :plot), key)
+Base.getindex(@nospecialize(plot::TypedPlot), key::Symbol) = getindex(getfield(plot, :plot), key)
+Base.setproperty!(@nospecialize(plot::TypedPlot), key::Symbol, @nospecialize(value)) = setproperty!(getfield(plot, :plot), key, value)
+Base.setindex!(@nospecialize(plot::TypedPlot), @nospecialize(value), key::Symbol) = setindex!(getfield(plot, :plot), value, key)
+
 
 struct Key{K} end
 macro key_str(arg)
