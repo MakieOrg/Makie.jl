@@ -1101,7 +1101,7 @@ end
 
 # Handle inbuilt PlotUtils types
 function to_colormap(cg::PlotUtils.ContinuousColorGradient)::Vector{RGBAf}
-    return to_colormap(getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), n)))
+    return to_colormap(getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), 30)))
 end
 
 function to_colormap(cg::PlotUtils.CategoricalColorGradient)::Vector{RGBAf}
