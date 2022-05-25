@@ -1086,7 +1086,7 @@ function to_colormap(cs::Union{String, Symbol})::Vector{RGBAf}
             return to_colormap(ColorBrewer.palette(cs_string, 8))
         else
             # cs_string must be in plotutils_names
-            return to_colormap(PlotUtils.get_colorscheme(Symbol(cs_string)).colors)
+            return to_colormap(PlotUtils.get_colorscheme(Symbol(cs_string)))
         end
     else
         error(
@@ -1099,11 +1099,14 @@ function to_colormap(cs::Union{String, Symbol})::Vector{RGBAf}
     end
 end
 
-to_colormap(cg::PlotUtils.ContinuousColorGradient)::Vector{RGBAf} = to_colormap(cg.colors)
+# Handle inbuilt PlotUtils types
+function to_colormap(cg::PlotUtils.ContinuousColorGradient)::Vector{RGBAf}
+    return to_colormap(getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), n)))
+end
 
 function to_colormap(cg::PlotUtils.CategoricalColorGradient)::Vector{RGBAf}
-    colors = to_colormap(cg.colors)
-    return repeat(colors; inner=20)
+    n = length(cg.colors)
+    return to_colormap(getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), n*20)))
 end
 
 """
