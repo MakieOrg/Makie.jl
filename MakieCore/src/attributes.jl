@@ -39,7 +39,8 @@ Base.values(x::Attributes) = values(x.attributes)
 function Base.iterate(x::Attributes, state...)
     s = iterate(keys(x), state...)
     s === nothing && return nothing
-    return (s[1]::Symbol => x[s[1]], s[2])
+    key = s[1]::Symbol
+    return (key => x[key]::Union{Observable{Any}, Attributes}, s[2])
 end
 
 function Base.copy(attributes::Attributes)
@@ -141,8 +142,8 @@ isvisible(x) = haskey(x, :visible) && to_value(x[:visible])
 # This is a bit confusing, since for a plot it returns the attribute from the arguments
 # and not a plot for integer indexing. But, we want to treat plots as "atomic"
 # so from an interface point of view, one should assume that a plot doesn't contain subplots
-# Combined plots break this assumption in some way, but the way to look at it is,
-# that the plots contained in a Combined plot are not subplots, but _are_ actually
+# PlotObject plots break this assumption in some way, but the way to look at it is,
+# that the plots contained in a PlotObject plot are not subplots, but _are_ actually
 # the plot itself.
 Base.getindex(plot::AbstractPlot, idx::Integer) = plot.converted[idx]
 Base.getindex(plot::AbstractPlot, idx::UnitRange{<:Integer}) = plot.converted[idx]
@@ -150,12 +151,14 @@ Base.setindex!(plot::AbstractPlot, value, idx::Integer) = (plot.input_args[idx][
 Base.length(plot::AbstractPlot) = length(plot.converted)
 
 function Base.getindex(x::AbstractPlot, key::Symbol)
-    argnames = argument_names(typeof(x), length(x.converted))
+    argnames = argument_names(x.type, length(x.converted))
     idx = findfirst(isequal(key), argnames)
     if idx === nothing
-        return x.attributes[key]
+        arr = getfield(x, :attributes)
+        res = arr[key]
+        return res
     else
-        x.converted[idx]
+        return getfield(x, :converted)[idx]
     end
 end
 

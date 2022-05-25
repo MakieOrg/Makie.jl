@@ -1,26 +1,11 @@
 not_implemented_for(x) = error("Not implemented for $(x). You might want to put:  `using Makie` into your code!")
 
 to_func_name(x::Symbol) = Symbol(lowercase(string(x)))
-# Fallback for Combined ...
+# Fallback for PlotObject ...
 # Will get overloaded by recipe Macro
 plotsym(x) = :plot
 
-function func2string(func::F) where F <: Function
-    string(F.name.mt.name)
-end
-
-plotfunc(::Combined{F}) where F = F
-plotfunc(::Type{<: AbstractPlot{Func}}) where Func = Func
-plotfunc(::T) where T <: AbstractPlot = plotfunc(T)
-plotfunc(f::Function) = f
-
-func2type(x::T) where T = func2type(T)
-func2type(x::Type{<: AbstractPlot}) = x
-func2type(f::Function) = Combined{f}
-
-plotkey(::Type{<: AbstractPlot{Typ}}) where Typ = Symbol(lowercase(func2string(Typ)))
-plotkey(::T) where T <: AbstractPlot = plotkey(T)
-plotkey(::Nothing) = :scatter
+plotkey(plot::PlotObject) where T <: AbstractPlot = Symbol(lowercase(string(plot.type)))
 
 """
      default_plot_signatures(funcname, funcname!, PlotType)
@@ -30,12 +15,36 @@ The `Core.@__doc__` macro transfers the docstring given to the Recipe into the f
 """
 function default_plot_signatures(funcname, funcname!, PlotType)
     quote
-        Core.@__doc__ function ($funcname)(args...; attributes...)
-            plot($PlotType, args...; attributes...)
+        Core.@__doc__ function ($funcname)(args...; kw...)
+            attributes = Dict{Symbol, Any}(kw)
+            P = $(PlotType)
+            figlike, plot_kw, plot_args = create_figurelike(P, attributes, args...)
+            plot = PlotObject(P, Any[plot_args...], plot_kw)
+            plot!(figlike, plot)
+            return figurelike_return(figlike, plot)
         end
 
-        Core.@__doc__ function ($funcname!)(args...; attributes...)
-            plot!($PlotType, args...; attributes...)
+        Core.@__doc__ function ($funcname!)(args...; kw...)
+            attributes = Dict{Symbol, Any}(kw)
+            P = $(PlotType)
+            figlike, plot_kw, plot_args = create_figurelike!(P, attributes, args...)
+            plot = PlotObject(P, Any[plot_args...], plot_kw)
+            plot!(figlike, plot)
+            return figurelike_return!(figlike, plot)
+        end
+
+        function ($funcname!)(scene::AbstractScene, args...; kw...)
+            P = $(PlotType)
+            plot = PlotObject(P, Any[args...], Dict{Symbol, Any}(kw))
+            plot!(scene, plot)
+            return plot
+        end
+
+        function ($funcname!)(obj::PlotObject, args...; kw...)
+            attributes = Dict{Symbol, Any}(kw)
+            plot = PlotObject($(PlotType), Any[args...], attributes)
+            plot!(obj, plot)
+            return plot
         end
     end
 end
@@ -44,7 +53,7 @@ end
 Each argument can be named for a certain plot type `P`. Falls back to `arg1`, `arg2`, etc.
 """
 function argument_names(plot::P) where {P<:AbstractPlot}
-    argument_names(P, length(plot.converted))
+    argument_names(plot.type, length(plot.converted))
 end
 
 function argument_names(::Type{<:AbstractPlot}, num_args::Integer)
@@ -52,7 +61,7 @@ function argument_names(::Type{<:AbstractPlot}, num_args::Integer)
     ntuple(i -> Symbol("arg$i"), num_args)
 end
 
-# Since we can use Combined like a scene in some circumstances, we define this alias
+# Since we can use PlotObject like a scene in some circumstances, we define this alias
 theme(x::SceneLike, args...) = theme(x.parent, args...)
 theme(x::AbstractScene) = x.theme
 theme(x::AbstractScene, key) = deepcopy(x.theme[key])
@@ -102,9 +111,9 @@ We use an example to show how this works:
 
 This macro expands to several things. Firstly a type definition:
 
-    const MyPlot{ArgTypes} = Combined{myplot, ArgTypes}
+    const MyPlot{ArgTypes} = PlotObject{myplot, ArgTypes}
 
-The type parameter of `Combined` contains the function instead of e.g. a
+The type parameter of `PlotObject` contains the function instead of e.g. a
 symbol. This way the mapping from `MyPlot` to `myplot` is safer and simpler.
 (The downside is we always need a function `myplot` - TODO: is this a problem?)
 
@@ -171,10 +180,12 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     funcname = esc(funcname_sym)
     expr = quote
         $(funcname)() = not_implemented_for($funcname)
-        const $(PlotType){$(esc(:ArgType))} = Combined{$funcname,$(esc(:ArgType))}
+        struct $(PlotType) <: AbstractPlot; end
+        $(PlotType)(args...; kw...) = PlotObject($PlotType, Any[args...], Dict{Symbol, Any}(kw))
         $(MakieCore).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
         $(default_plot_signatures(funcname, funcname!, PlotType))
-        $(MakieCore).default_theme(scene, ::Type{<:$PlotType}) = $(esc(theme_func))(scene)
+        $(MakieCore).default_theme(scene, ::$(PlotType)) = $(esc(theme_func))(scene)
+
         export $PlotType, $funcname, $funcname!
     end
     if !isempty(args)
@@ -189,27 +200,6 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     expr
 end
 
-# Register plot / plot! using the Any type as PlotType.
-# This is done so that plot(args...) / plot!(args...) can by default go
-# through a pipeline where the appropriate PlotType is determined
-# from the input arguments themselves.
-eval(default_plot_signatures(:plot, :plot!, :Any))
-
-"""
-Returns the Combined type that represents the signature of `args`.
-"""
-function Plot(args::Vararg{Any,N}) where {N}
-    Combined{Any,<:Tuple{args...}}
-end
-
-Base.@pure function Plot(::Type{T}) where {T}
-    Combined{Any,<:Tuple{T}}
-end
-
-Base.@pure function Plot(::Type{T1}, ::Type{T2}) where {T1,T2}
-    Combined{Any,<:Tuple{T1,T2}}
-end
-
 """
     `plottype(plot_args...)`
 
@@ -220,4 +210,30 @@ e.g.:
     plottype(x::Array{<: AbstractFloat, 3}) = Volume
 ```
 """
-plottype(plot_args...) = Combined{Any, Tuple{typeof.(to_value.(plot_args))...}} # default to dispatch to type recipes!
+plottype(@nospecialize(plot_args...)) = Scatter
+plottype(::Type{P}, @nospecialize(plot_args...)) where P <: AbstractPlot = P
+
+
+function figurelike_return end
+function figurelike_return! end
+
+function create_figurelike end
+function create_figurelike! end
+
+function plot(args...; kw...)
+    P = plottype(args...)
+    attributes = Dict{Symbol, Any}(kw)
+    figlike, plot_kw, plot_args = create_figurelike(P, attributes, args...)
+    plot = PlotObject(P, Any[plot_args...], plot_kw)
+    plot!(figlike, plot)
+    return figurelike_return(figlike, plot)
+end
+
+function plot!(args...; kw...)
+    P = plottype(args...)
+    attributes = Dict{Symbol, Any}(kw)
+    figlike, plot_kw, plot_args = create_figurelike!(P, attributes, args...)
+    plot = PlotObject(P, Any[plot_args...], plot_kw)
+    plot!(figlike, plot)
+    return figurelike_return!(figlike, plot)
+end

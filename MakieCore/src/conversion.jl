@@ -31,6 +31,7 @@ conversion_trait(::Type{<: Heatmap}) = DiscreteSurface()
 
 struct VolumeLike <: ConversionTrait end
 conversion_trait(::Type{<: Volume}) = VolumeLike()
+conversion_trait(::T) where T <: AbstractPlot = conversion_trait(T)
 
 
 """
@@ -42,11 +43,11 @@ Throws appropriate errors if it can't convert.
 function convert_arguments_typed end
 
 
-function convert_arguments_typed(P::Type{<: AbstractPlot}, @nospecialize(args...))
-    convert_arguments_typed(typeof(conversion_trait(P)), args...)
+function convert_arguments_typed(P::AbstractPlot, @nospecialize(args...))
+    convert_arguments_typed(conversion_trait(P), args...)
 end
 
-function convert_arguments_typed(ct::Type{<: ConversionTrait}, @nospecialize(args...))
+function convert_arguments_typed(ct::ConversionTrait, @nospecialize(args...))
     # We currently just fall back to not doing anything if there isn't a convert_arguments_typed defined for certain plot types.
     # This makes `@convert_target` an optional feature right now.
     # It will require a bit more work to error here and request an overload for every plot type.
@@ -129,7 +130,7 @@ macro convert_target(struct_expr)
         end
 
         expr = quote
-            function MakieCore.convert_arguments_typed(::Type{<: $(target_name)}, $(names...))
+            function MakieCore.convert_arguments_typed(::$(target_name), $(names...))
                 $(convert_expr...)
                 return NamedTuple{($(QuoteNode.(names)...),)}(($(converted...),))
             end

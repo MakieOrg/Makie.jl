@@ -21,7 +21,7 @@ $(ATTRIBUTES)
     )
 end
 
-function plot!(p::Arc)
+function plot!(p::PlotObject, ::Arc)
     args = getindex.(p, (:origin, :radius, :start_angle, :stop_angle, :resolution))
     positions = lift(args...) do origin, radius, start_angle, stop_angle, resolution
         map(range(start_angle, stop=stop_angle, length=resolution)) do angle

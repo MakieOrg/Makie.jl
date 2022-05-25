@@ -4,7 +4,7 @@ function parent_transform(x)
 end
 
 function boundingbox(x, exclude = (p)-> false)
-    return parent_transform(x) * data_limits(x, exclude)
+    return parent_transform(x) * data_limits(x, exclude=exclude)
 end
 
 function project_widths(matrix, vec)
@@ -65,7 +65,7 @@ function boundingbox(glyphcollection::GlyphCollection, rotation::Quaternion)
         if !isfinite_rect(bb)
             bb = charbb
         else
-            bb = union(bb, charbb)
+            bb = union(bb, charbb)::Rect3f
         end
     end
     !isfinite_rect(bb) && error("Invalid text boundingbox")
@@ -81,7 +81,7 @@ function boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotat
             if !isfinite_rect(bb)
                 bb = boundingbox(layout, pos, rot)
             else
-                bb = union(bb, boundingbox(layout, pos, rot))
+                bb = union(bb, boundingbox(layout, pos, rot))::Rect3f
             end
         end
         !isfinite_rect(bb) && error("Invalid text boundingbox")
@@ -89,26 +89,29 @@ function boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotat
     end
 end
 
-function boundingbox(x::Text{<:Tuple{<:GlyphCollection}})
-    if x.space[] == x.markerspace[]
-        pos = to_ndim(Point3f, x.position[], 0)
+function boundingbox(plot::TypedPlot{Text})
+    arg1 = plot[1][]
+    if arg1 isa GlyphCollection
+        if plot.space[] == plot.markerspace[]
+            pos = to_ndim(Point3f, plot.position[], 0)
+        else
+            cam = parent_scene(plot).camera
+            transformed = apply_transform(plot.transformation.transform_func[], plot.position[])
+            pos = Makie.project(cam, plot.space[], plot.markerspace[], transformed)
+        end
+        return boundingbox(plot[1][], pos, to_rotation(plot.rotation[]))
+    elseif arg1 isa AbstractArray{<:GlyphCollection}
+        if plot.space[] == plot.markerspace[]
+            pos = to_ndim.(Point3f, x.position[], 0)
+        else
+            cam = (parent_scene(plot).camera,)
+            transformed = apply_transform(plot.transformation.transform_func[], plot.position[])
+            pos = Makie.project.(cam, plot.space[], plot.markerspace[], transformed)
+        end
+        return boundingbox(plot[1][], pos, to_rotation(plot.rotation[]))
     else
-        cam = parent_scene(x).camera
-        transformed = apply_transform(x.transformation.transform_func[], x.position[])
-        pos = Makie.project(cam, x.space[], x.markerspace[], transformed)
+        return boundingbox(plot.plots[1])
     end
-    return boundingbox(x[1][], pos, to_rotation(x.rotation[]))
-end
-
-function boundingbox(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}})
-    if x.space[] == x.markerspace[]
-        pos = to_ndim.(Point3f, x.position[], 0)
-    else
-        cam = (parent_scene(x).camera,)
-        transformed = apply_transform(x.transformation.transform_func[], x.position[])
-        pos = Makie.project.(cam, x.space[], x.markerspace[], transformed)
-    end
-    return boundingbox(x[1][], pos, to_rotation(x.rotation[]))
 end
 
 function boundingbox(plot::Text)
@@ -124,9 +127,9 @@ function boundingbox(plot::Text)
     return bb
 end
 
-_is_latex_string(x::AbstractVector{<:LaTeXString}) = true 
-_is_latex_string(x::LaTeXString) = true 
-_is_latex_string(other) = false 
+_is_latex_string(x::AbstractVector{<:LaTeXString}) = true
+_is_latex_string(x::LaTeXString) = true
+_is_latex_string(other) = false
 
 function text_bb(str, font, size)
     rot = Quaternionf(0,0,0,1)

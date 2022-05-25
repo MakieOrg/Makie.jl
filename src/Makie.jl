@@ -65,14 +65,17 @@ using Base.Iterators: repeated, drop
 import Base: getindex, setindex!, push!, append!, parent, get, get!, delete!, haskey
 using Observables: listeners, to_value, notify
 
-using MakieCore: SceneLike, AbstractScreen, ScenePlot, AbstractScene, AbstractPlot, Transformable, Attributes, Combined, Theme, Plot
+using MakieCore: SceneLike, AbstractScreen, AbstractScene, AbstractPlot, Transformable, Attributes, PlotObject, TypedPlot, Theme
 using MakieCore: Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter, Surface, Text, Volume
 using MakieCore: ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
 using MakieCore: Key, @key_str, Automatic, automatic, @recipe
 using MakieCore: Pixel, px, Unit, Billboard
 using MakieCore: not_implemented_for
-import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, calculated_attributes!,
+import MakieCore: plot, plot!, theme, plottype, merge_attributes!, calculated_attributes!,
 get_attribute, plotsym, plotkey, attributes, used_attributes
+import MakieCore: figurelike_return!, figurelike_return
+import MakieCore: create_figurelike!, create_figurelike
+
 import MakieCore: heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface, text, volume
 import MakieCore: heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, surface!, text!, volume!
 import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
@@ -126,7 +129,7 @@ include("basic_recipes/arrows.jl")
 include("basic_recipes/axis.jl")
 include("basic_recipes/band.jl")
 include("basic_recipes/barplot.jl")
-include("basic_recipes/buffers.jl")
+# include("basic_recipes/buffers.jl")
 include("basic_recipes/contours.jl")
 include("basic_recipes/contourf.jl")
 include("basic_recipes/error_and_rangebars.jl")
@@ -162,10 +165,10 @@ include("stats/violin.jl")
 # Interactiveness
 include("interaction/events.jl")
 include("interaction/interactive_api.jl")
-include("interaction/inspector.jl")
+# include("interaction/inspector.jl")
 
 # documentation and help functions
-include("documentation/documentation.jl")
+# include("documentation/documentation.jl")
 include("display.jl")
 
 # help functions and supporting functions
@@ -173,7 +176,7 @@ export help, help_attributes, help_arguments
 
 # Abstract/Concrete scene + plot types
 export AbstractScene, SceneLike, Scene, AbstractScreen
-export AbstractPlot, Combined, Atomic, OldAxis
+export AbstractPlot, PlotObject, OldAxis
 
 # Theming, working with Plots
 export Attributes, Theme, attributes, default_theme, theme, set_theme!, with_theme, update_theme!

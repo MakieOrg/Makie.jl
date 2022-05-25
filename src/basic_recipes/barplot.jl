@@ -181,7 +181,7 @@ function barplot_labels(xpositions, ypositions, bar_labels, in_y_direction, flip
     end
 end
 
-function Makie.plot!(p::BarPlot)
+function plot!(p::PlotObject, ::BarPlot)
 
     labels = Observable(Tuple{String, Point2f}[])
     label_aligns = Observable(Vec2f[])
