@@ -196,13 +196,19 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
 
     transfunc = scene.transformation.transform_func[]
 
-    draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker, marker_offset, rotations, model, positions, size_model, font, markerspace, space)
+    marker_conv = _marker_convert(marker)
+
+    draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker_conv, marker_offset, rotations, model, positions, size_model, font, markerspace, space)
 end
+
+# an array of markers is converted to string by itself, which is inconvenient for the iteration logic
+_marker_convert(markers::AbstractArray) = map(m -> convert_attribute(m, key"marker"(), key"scatter"()), markers)
+_marker_convert(marker) = convert_attribute(marker, key"marker"(), key"scatter"())
 
 function draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker, marker_offset, rotations, model, positions, size_model, font, markerspace, space)
     broadcast_foreach(positions, colors, markersize, strokecolor,
         strokewidth, marker, marker_offset, remove_billboard(rotations)) do point, col,
-            markersize, strokecolor, strokewidth, marker, mo, rotation
+            markersize, strokecolor, strokewidth, m, mo, rotation
 
         scale = project_scale(scene, markerspace, markersize, size_model)
         offset = project_scale(scene, markerspace, mo, size_model)
@@ -211,7 +217,6 @@ function draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokeco
         isnan(pos) && return
 
         Cairo.set_source_rgba(ctx, rgbatuple(col)...)
-        m = convert_attribute(marker, key"marker"(), key"scatter"())
         Cairo.save(ctx)
         if m isa Char
             draw_marker(ctx, m, best_font(m, font), pos, scale, strokecolor, strokewidth, offset, rotation)
