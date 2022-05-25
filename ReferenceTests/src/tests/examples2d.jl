@@ -442,3 +442,27 @@ end
 @reference_test "2D surface with explicit color" begin
     surface(1:10, 1:10, ones(10, 10); color = [RGBf(x*y/100, 0, 0) for x in 1:10, y in 1:10], shading = false)
 end
+
+@reference_test "heatmap and image colormap interpolation" begin
+    f = Figure(resolution=(500, 500))
+    crange = LinRange(0, 255, 10)
+    len = length(crange)
+    img = zeros(Float32, len, len + 2)
+    img[:, 1] .= 255f0
+    for (i, v) in enumerate(crange)
+        ib = i + 1
+        img[2:end-1, ib] .= v
+        img[1, ib] = 255-v
+        img[end, ib] = 255-v
+    end
+
+    kw(p, interpolate) = (axis=(title="$(p)(interpolate=$(interpolate))", aspect=DataAspect()), interpolate=interpolate, colormap=[:white, :black])
+
+    for (i, p) in enumerate([heatmap, image])
+        for (j, interpolate) in enumerate([true, false])
+            ax, pl = p(f[i,j], img; kw(p, interpolate)...)
+            hidedecorations!(ax)
+        end
+    end
+    f
+end
