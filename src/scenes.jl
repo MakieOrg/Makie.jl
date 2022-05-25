@@ -566,7 +566,10 @@ end
 
 function apply_theme!(scene::Scene, plot::PlotObject)
     theme = default_theme(scene, plot.type())
-    merge!(plot.attributes, Attributes(plot.kw))
+    raw_attr = getfield(plot.attributes, :attributes)
+    for (k, v) in plot.kw
+        raw_attr[k] = convert(Observable{Any}, v)
+    end
     merge!(plot.attributes, theme)
 end
 
@@ -577,6 +580,7 @@ function prepare_plot!(scene::Union{PlotObject, Scene}, plot::PlotObject)
     convert_arguments!(plot)
     calculated_attributes!(plot.type, plot)
     plot!(plot, plot.type(), map(to_value, plot.converted)...)
+    return plot
 end
 
 function plot!(scene::Union{PlotObject, Scene}, plot::PlotObject)
