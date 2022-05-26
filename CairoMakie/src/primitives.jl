@@ -574,38 +574,41 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
         if ni + 1 != length(xs) || nj + 1 != length(ys)
             error("Error in conversion pipeline. xs and ys should have size ni+1, nj+1. Found: xs: $(length(xs)), ys: $(length(ys)), ni: $(ni), nj: $(nj)")
         end
+        _draw_rect_heatmap(ctx, xys, ni, nj, colors)
+    end
+end
 
-        @inbounds for i in 1:ni, j in 1:nj
-            p1 = xys[i, j]
-            p2 = xys[i+1, j]
-            p3 = xys[i+1, j+1]
-            p4 = xys[i, j+1]
+function _draw_rect_heatmap(ctx, xys, ni, nj, colors)
+    @inbounds for i in 1:ni, j in 1:nj
+        p1 = xys[i, j]
+        p2 = xys[i+1, j]
+        p3 = xys[i+1, j+1]
+        p4 = xys[i, j+1]
 
-            # Rectangles and polygons that are directly adjacent usually show
-            # white lines between them due to anti aliasing. To avoid this we
-            # increase their size slightly.
+        # Rectangles and polygons that are directly adjacent usually show
+        # white lines between them due to anti aliasing. To avoid this we
+        # increase their size slightly.
 
-            if alpha(colors[i, j]) == 1
-                # sign.(p - center) gives the direction in which we need to
-                # extend the polygon. (Which may change due to rotations in the
-                # model matrix.) (i!=1) etc is used to avoid increasing the
-                # outer extent of the heatmap.
-                center = 0.25 * (p1 + p2 + p3 + p4)
-                p1 += sign.(p1 - center) .* Point2f(0.5(i!=1),  0.5(j!=1))
-                p2 += sign.(p2 - center) .* Point2f(0.5(i!=ni), 0.5(j!=1))
-                p3 += sign.(p3 - center) .* Point2f(0.5(i!=ni), 0.5(j!=nj))
-                p4 += sign.(p4 - center) .* Point2f(0.5(i!=1),  0.5(j!=nj))
-            end
-
-            Cairo.set_line_width(ctx, 0)
-            Cairo.move_to(ctx, p1[1], p1[2])
-            Cairo.line_to(ctx, p2[1], p2[2])
-            Cairo.line_to(ctx, p3[1], p3[2])
-            Cairo.line_to(ctx, p4[1], p4[2])
-            Cairo.close_path(ctx)
-            Cairo.set_source_rgba(ctx, rgbatuple(colors[i, j])...)
-            Cairo.fill(ctx)
+        if alpha(colors[i, j]) == 1
+            # sign.(p - center) gives the direction in which we need to
+            # extend the polygon. (Which may change due to rotations in the
+            # model matrix.) (i!=1) etc is used to avoid increasing the
+            # outer extent of the heatmap.
+            center = 0.25 * (p1 + p2 + p3 + p4)
+            p1 += sign.(p1 - center) .* Point2f(0.5(i!=1),  0.5(j!=1))
+            p2 += sign.(p2 - center) .* Point2f(0.5(i!=ni), 0.5(j!=1))
+            p3 += sign.(p3 - center) .* Point2f(0.5(i!=ni), 0.5(j!=nj))
+            p4 += sign.(p4 - center) .* Point2f(0.5(i!=1),  0.5(j!=nj))
         end
+
+        Cairo.set_line_width(ctx, 0)
+        Cairo.move_to(ctx, p1[1], p1[2])
+        Cairo.line_to(ctx, p2[1], p2[2])
+        Cairo.line_to(ctx, p3[1], p3[2])
+        Cairo.line_to(ctx, p4[1], p4[2])
+        Cairo.close_path(ctx)
+        Cairo.set_source_rgba(ctx, rgbatuple(colors[i, j])...)
+        Cairo.fill(ctx)
     end
 end
 
