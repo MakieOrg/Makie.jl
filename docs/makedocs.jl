@@ -114,6 +114,51 @@ end
 serve(; single=true, cleanup=false, fail_on_warning=true)
 # for interactive development of the docs, use:
 # cd(@__DIR__); serve(single=false, cleanup=true, clear=true, fail_on_warning = false)
+
+
+function populate_stork_config()
+    wd = pwd()
+    sites = []
+    try
+        cd("__site/")
+        for (root, dirs, files) in walkdir(".")
+            if any(x -> startswith(root, x), ["libs", "css", "assets"])
+                continue
+            end
+            f = filter(endswith(".html"), files)
+            isempty(f) && continue
+            
+            for file in f
+                s = read(joinpath(root, file), String)
+                title = match(r"<title>(.*?)</title>", s)[1]
+                push!(sites, title => joinpath(root, file))
+            end
+        end
+    finally
+        cd(wd)
+    end
+    cp("__site/libs/stork/config.toml", "__site/libs/stork/config_filled.toml", force = true)
+    open("__site/libs/stork/config_filled.toml", "a") do file
+        println(file, "\nfiles = [")
+            for (title, site) in sites[1:end-10]
+                print(file, "    {")
+                print(file, "path = \"$site\", url = \"$site\", title = \"$title\"")
+                println(file, "},")
+            end
+        println(file, "]")
+    end
+    return
+end
+
+populate_stork_config()
+try
+    wd = pwd()
+    cd("__site/libs/stork")
+    run(`$stork build --input config_filled.toml --output index.st`)
+finally
+    cd(wd)
+end
+
 lunr()
 optimize(; minify=false, prerender=false)
 

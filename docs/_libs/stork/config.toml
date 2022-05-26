@@ -1,0 +1,4 @@
+[input]
+base_directory = "../.."
+url_prefix = "https://makie.juliaplots.org/"
+html_selector = ".franklin-content"
