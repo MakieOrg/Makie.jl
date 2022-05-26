@@ -594,11 +594,11 @@ function _draw_rect_heatmap(ctx, xys, ni, nj, colors)
             # extend the polygon. (Which may change due to rotations in the
             # model matrix.) (i!=1) etc is used to avoid increasing the
             # outer extent of the heatmap.
-            center = 0.25 * (p1 + p2 + p3 + p4)
-            p1 += sign.(p1 - center) .* Point2f(0.5(i!=1),  0.5(j!=1))
-            p2 += sign.(p2 - center) .* Point2f(0.5(i!=ni), 0.5(j!=1))
-            p3 += sign.(p3 - center) .* Point2f(0.5(i!=ni), 0.5(j!=nj))
-            p4 += sign.(p4 - center) .* Point2f(0.5(i!=1),  0.5(j!=nj))
+            center = 0.25f0 * (p1 + p2 + p3 + p4)
+            p1 += sign.(p1 - center) .* Point2f(0.5f0 * (i!=1),  0.5f0 * (j!=1))
+            p2 += sign.(p2 - center) .* Point2f(0.5f0 * (i!=ni), 0.5f0 * (j!=1))
+            p3 += sign.(p3 - center) .* Point2f(0.5f0 * (i!=ni), 0.5f0 * (j!=nj))
+            p4 += sign.(p4 - center) .* Point2f(0.5f0 * (i!=1),  0.5f0 * (j!=nj))
         end
 
         Cairo.set_line_width(ctx, 0)
