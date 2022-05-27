@@ -14,7 +14,7 @@ run(`$(npm_cmd()) install cheerio`)
 using Downloads
 stork = Downloads.download("https://files.stork-search.net/releases/v1.4.2/stork-ubuntu-20-04")
 run(`chmod +x $stork`)
-success($stork)
+success(`$stork`)
 
 using Franklin
 using Documenter: deploydocs, deploy_folder, GitHubActions
