@@ -261,7 +261,7 @@ function select_rectangle(scene; blocking = false, priority = 2, strokewidth = 3
     on(events(scene).mousebutton, priority=priority) do event
         if event.button == key
             if event.action == Mouse.press && is_mouseinside(scene)
-                mp = mouseposition(scene)
+                mp = mouseposition_px(scene)
                 waspressed[] = true
                 plotted_rect[:visible] = true # start displaying
                 rect[] = Rectf(mp, 0.0, 0.0)
@@ -286,7 +286,7 @@ function select_rectangle(scene; blocking = false, priority = 2, strokewidth = 3
     end
     on(events(scene).mouseposition, priority=priority) do event
         if waspressed[]
-            mp = mouseposition(scene)
+            mp = mouseposition_px(scene)
             mini = minimum(rect[])
             rect[] = Rectf(mini, mp - mini)
             return Consume(blocking)
@@ -324,7 +324,7 @@ function select_line(scene; blocking = false, priority = 2, kwargs...)
 
     on(events(scene).mousebutton, priority=priority) do event
         if event.button == key && is_mouseinside(scene)
-            mp = mouseposition(scene)
+            mp = mouseposition_px(scene)
             if event.action == Mouse.press
                 waspressed[] = true
                 plotted_line[:visible] = true  # start displaying
@@ -348,7 +348,7 @@ function select_line(scene; blocking = false, priority = 2, kwargs...)
     end
     on(events(scene).mouseposition, priority=priority) do event
         if waspressed[]
-            mp = mouseposition(scene)
+            mp = mouseposition_px(scene)
             line[][2] = mp
             line[] = line[] # actually update observable
             return Consume(blocking)
@@ -386,7 +386,7 @@ function select_point(scene; blocking = false, priority=2, kwargs...)
 
     on(events(scene).mousebutton, priority=priority) do event
         if event.button == key && is_mouseinside(scene)
-            mp = mouseposition(scene)
+            mp = mouseposition_px(scene)
             if event.action == Mouse.press
                 waspressed[] = true
                 plotted_point[:visible] = true  # start displaying
@@ -407,7 +407,7 @@ function select_point(scene; blocking = false, priority=2, kwargs...)
     end
     on(events(scene).mouseposition, priority=priority) do event
         if waspressed[]
-            mp = mouseposition(scene)
+            mp = mouseposition_px(scene)
             point[][1] = mp
             point[] = point[] # actually update observable
             return Consume(blocking)
