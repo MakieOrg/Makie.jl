@@ -1,4 +1,4 @@
 [input]
 base_directory = "../.."
-url_prefix = "https://makie.juliaplots.org/"
+url_prefix = ""
 html_selector = ".franklin-content"
