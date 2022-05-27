@@ -11,10 +11,16 @@ run(`$(npm_cmd()) install highlight.js`)
 run(`$(npm_cmd()) install lunr`)
 run(`$(npm_cmd()) install cheerio`)
 
+using Downloads
+stork = Downloads.download("https://files.stork-search.net/releases/v1.4.2/stork-ubuntu-20-04")
+run(`chmod +x $stork`)
+success($stork)
+
 using Franklin
 using Documenter: deploydocs, deploy_folder, GitHubActions
 using Gumbo
 using AbstractTrees
+using Random
 
 cfg = GitHubActions() # this should pick up all details via GHA environment variables
 
@@ -75,7 +81,7 @@ function make_links_relative()
     old = pwd()
     try
         cd("__site")
-        for (root, dirs, files) in walkdir(".")
+        for (root, _, files) in walkdir(".")
             path = join(splitpath(root)[2:end], "/")
 
             html_files = filter(endswith(".html"), files)
@@ -119,6 +125,10 @@ serve(; single=true, cleanup=false, fail_on_warning=true)
 function populate_stork_config()
     wd = pwd()
     sites = []
+    tempdir = mktempdir()
+
+    _get(el, type) = el.children[findfirst(x -> x isa type, el.children)]
+
     try
         cd("__site/")
         for (root, dirs, files) in walkdir(".")
@@ -130,8 +140,25 @@ function populate_stork_config()
             
             for file in f
                 s = read(joinpath(root, file), String)
-                title = match(r"<title>(.*?)</title>", s)[1]
-                push!(sites, title => joinpath(root, file))
+                s = replace(s, '\0' => "\\0")
+
+                html = parsehtml(s)
+                head = _get(html.root, HTMLElement{:head})
+                title = _get(head, HTMLElement{:title})
+                titletext = _get(title, HTMLText).text
+
+                for e in PreOrderDFS(html.root)
+                    if e isa HTMLElement
+                        filter!(child -> !(child isa HTMLElement{:script}), e.children)
+                    end
+                end
+
+                randfilepath = joinpath(tempdir, Random.randstring(20) * ".html")
+                open(joinpath(tempdir, randfilepath), "w") do io
+                    print(io, html)
+                end
+
+                push!(sites, (title = titletext, path = randfilepath, url = joinpath(root, file)))
             end
         end
     finally
@@ -140,9 +167,9 @@ function populate_stork_config()
     cp("__site/libs/stork/config.toml", "__site/libs/stork/config_filled.toml", force = true)
     open("__site/libs/stork/config_filled.toml", "a") do file
         println(file, "\nfiles = [")
-            for (title, site) in sites[1:end-10]
+            for s in sites
                 print(file, "    {")
-                print(file, "path = \"$site\", url = \"$site\", title = \"$title\"")
+                print(file, "path = \"$(s.path)\", url = \"$(s.url)\", title = \"$(s.title)\"")
                 println(file, "},")
             end
         println(file, "]")
@@ -150,16 +177,20 @@ function populate_stork_config()
     return
 end
 
-populate_stork_config()
-try
+function run_stork()
     wd = pwd()
-    cd("__site/libs/stork")
-    run(`$stork build --input config_filled.toml --output index.st`)
-finally
-    cd(wd)
+    try
+        cd("__site/libs/stork")
+        run(`$stork build --input config_filled.toml --output index.st`)
+    finally
+        cd(wd)
+    end
 end
 
-lunr()
+populate_stork_config()
+run_stork()
+
+# lunr()
 optimize(; minify=false, prerender=false)
 
 # by making all links relative, we can forgo the `prepath` setting of Franklin
