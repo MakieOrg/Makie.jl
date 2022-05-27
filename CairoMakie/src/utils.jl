@@ -120,10 +120,14 @@ function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
         colorrange = extrema(numbers)
     end
 
-    Makie.interpolated_getindex.(
+    raw_colors = Makie.interpolated_getindex.(
         Ref(colormap),
         Float64.(numbers), # ints don't work in interpolated_getindex
         Ref(colorrange))
+
+    !isnothing(primitive.lowclip[])  && (raw_colors[numbers .< colorrange[1]] .= Makie.to_color(primitive.lowclip[]))
+    !isnothing(primitive.highclip[]) && (raw_colors[numbers .< colorrange[2]] .= Makie.to_color(primitive.highclip[]))
+
 end
 
 ########################################
