@@ -126,7 +126,7 @@ function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
         Ref(colorrange))
 
     !isnothing(to_value(get(primitive, :lowclip,  nothing))) && (raw_colors[numbers .< colorrange[1]] .= Makie.to_color(primitive.lowclip[]))
-    !isnothing(to_value(get(primitive, :highclip, nothing))) && (raw_colors[numbers .< colorrange[2]] .= Makie.to_color(primitive.highclip[]))
+    !isnothing(to_value(get(primitive, :highclip, nothing))) && (raw_colors[numbers .> colorrange[2]] .= Makie.to_color(primitive.highclip[]))
 
 end
 
