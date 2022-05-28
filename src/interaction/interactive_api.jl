@@ -103,7 +103,7 @@ end
 
 Return the plot closest to xy within a given range.
 """
-pick(obj, range::Real) = pick(get_scene(obj), get_scene(obj).mouseposition[], range)
+pick(obj, range::Real) = pick(get_scene(obj), events(obj).mouseposition[], range)
 pick(obj, xy::VecTypes{2}, range::Real) = pick(get_scene(obj), xy, range)
 function pick(scene::Scene, xy::VecTypes{2}, range::Real)
     screen = getscreen(scene)
