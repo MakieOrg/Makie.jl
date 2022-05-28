@@ -25,7 +25,7 @@ function onpick(f, scene::Scene, plots::AbstractPlot...; range=1)
     fplots = flatten_plots(plots)
     args = range == 1 ? (scene,) : (scene, range)
     on(events(scene).mouseposition) do mp
-        p, idx = mouse_selection(args...)
+        p, idx = pick(args...)
         (p in fplots) && f(p, idx)
         return Consume(false)
     end
@@ -90,7 +90,7 @@ end
 
 Return the plot under pixel position xy.
 """
-pick(obj) = pick(get_scene(obj), mouseposition_px(get_scene(obj)))
+pick(obj) = pick(get_scene(obj), events(obj).mouseposition[])
 pick(obj, xy::VecTypes{2}) = pick(get_scene(obj), xy)
 function pick(scene::Scene, xy::VecTypes{2})
     screen = getscreen(scene)
@@ -103,7 +103,7 @@ end
 
 Return the plot closest to xy within a given range.
 """
-pick(obj, range::Real) = pick(get_scene(obj), mouseposition_px(get_scene(obj)), range)
+pick(obj, range::Real) = pick(get_scene(obj), events(obj).mouseposition[], range)
 pick(obj, xy::VecTypes{2}, range::Real) = pick(get_scene(obj), xy, range)
 function pick(scene::Scene, xy::VecTypes{2}, range::Real)
     screen = getscreen(scene)
@@ -211,15 +211,12 @@ By default uses the `scene` that the mouse is currently hovering over.
 """
 mouseposition(x) = mouseposition(get_scene(x))
 function mouseposition(scene::Scene = hovered_scene())
-    to_world(scene, mouseposition_px(scene))
+    return to_world(scene, mouseposition_px(scene))
 end
 
 mouseposition_px(x) = mouseposition_px(get_scene(x))
 function mouseposition_px(scene::Scene = hovered_scene())
-    screen_relative(
-        scene,
-        events(scene).mouseposition[]
-    )
+    return screen_relative(scene, events(scene).mouseposition[])
 end
 
 """
