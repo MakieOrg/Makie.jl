@@ -492,7 +492,7 @@ end
     cmap = cgrad([:black,:white,:orange],[0,0.2,1])
     fig = Figure(resolution=(400,200))
     ax = Axis(fig[1,1])
-    x = range(0,1,50)
+    x = range(0,1,length=50)
     scatter!(fig[1,1],Point2.(x,fill(0.,50)),color=x,colormap=cmap)
     hidedecorations!(ax)
     Colorbar(fig[2,1],vertical=false,colormap=cmap)
