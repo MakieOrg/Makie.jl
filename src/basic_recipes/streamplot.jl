@@ -22,6 +22,7 @@ See the function `Makie.streamplot_impl` for implementation details.
             stepsize = 0.01,
             gridsize = (32, 32, 32),
             maxsteps = 500,
+            color_func = norm,
             colormap = theme(scene, :colormap),
             colorrange = Makie.automatic,
             arrow_size = 10,
@@ -51,7 +52,6 @@ function convert_arguments(::Type{<: StreamPlot}, f::Function, limits::Rect)
     return (f, limits)
 end
 
-
 scatterfun(N) = N == 2 ? scatter! : meshscatter!
 
 """
@@ -73,7 +73,7 @@ Links:
 
 [Quasirandom sequences](http://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/)
 """
-function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize, maxsteps=500, dens=1.0) where {N, T}
+function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize, maxsteps=500, dens=1.0, color_func = norm) where {N, T}
     resolution = to_ndim(Vec{N, Int}, resolutionND, last(resolutionND))
     mask = trues(resolution...) # unvisited squares
     arrow_pos = Point{N, Float32}[]
@@ -142,7 +142,7 @@ function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize
                         ccur = idx
                     end
                     push!(line_points, x)
-                    push!(line_colors, pnorm)
+                    push!(line_colors, color_func(point))
                     n_linepoints += 1
                 end
             end
@@ -159,13 +159,13 @@ function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize
 end
 
 function plot!(p::StreamPlot)
-    data = lift(p.f, p.limits, p.gridsize, p.stepsize, p.maxsteps, p.density) do f, limits, resolution, stepsize, maxsteps, density
+    data = lift(p.f, p.limits, p.gridsize, p.stepsize, p.maxsteps, p.density, p.color_func) do f, limits, resolution, stepsize, maxsteps, density, color_func
         P = if applicable(f, Point2f(0)) || applicable(f, Point3f(0))
             Point
         else
             Number
         end
-        streamplot_impl(P, f, limits, resolution, stepsize, maxsteps, density)
+        streamplot_impl(P, f, limits, resolution, stepsize, maxsteps, density, color_func)
     end
     lines!(
         p,
