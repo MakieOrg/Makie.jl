@@ -483,7 +483,7 @@ end
             lines!(ax, Point2f.(LinRange(i+0.1, i+0.9, n), j); color = 1:n, colormap = cg, linewidth = 10)
         end
     end
-    ax.xticks[] = ((1:length(colormaps)) .+ 0.5, ["categorical=false", "categorical=true"])
+    ax.xticks[] = ((1:length(categorical)) .+ 0.5, ["categorical=false", "categorical=true"])
     ax.yticks[] = ((1:length(scales)), string.(scales))
     fig
 end
