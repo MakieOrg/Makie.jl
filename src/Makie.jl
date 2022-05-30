@@ -51,6 +51,7 @@ using GeometryBasics: widths, positive_widths, VecTypes, AbstractPolygon, value,
 using Distributions: Distribution, VariateForm, Discrete, QQPair, pdf, quantile, qqbuild
 
 import FileIO: save
+import FreeTypeAbstraction: height_insensitive_boundingbox
 using Printf: @sprintf
 using StatsFuns: logit, logistic
 # Imports from Base which we don't want to have to qualify
@@ -82,7 +83,6 @@ const NativeFont = FreeTypeAbstraction.FTFont
 
 include("documentation/docstringextension.jl")
 include("utilities/quaternions.jl")
-include("interaction/PriorityObservable.jl")
 include("types.jl")
 include("utilities/utilities.jl")
 include("utilities/texture_atlas.jl")
@@ -193,7 +193,7 @@ export broadcast_foreach, to_vector, replace_automatic!
 
 # conversion infrastructure
 export @key_str, convert_attribute, convert_arguments
-export to_color, to_colormap, to_rotation, to_font, to_align, to_textsize
+export to_color, to_colormap, to_rotation, to_font, to_align, to_textsize, categorical_colors, resample_cmap
 export to_ndim, Reverse
 
 # Transformations
@@ -215,7 +215,7 @@ export to_world
 export mouseover, onpick, pick, Events, Keyboard, Mouse, mouse_selection, is_mouseinside
 export ispressed, Exclusively
 export register_callbacks
-export window_area, window_open, mouse_buttons, mouse_position, mouseposition_px, 
+export window_area, window_open, mouse_buttons, mouse_position, mouseposition_px,
        scroll, keyboard_buttons, unicode_input, dropped_files, hasfocus, entered_window
 export disconnect!
 export DataInspector

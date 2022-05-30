@@ -30,6 +30,7 @@
 - `glowwidth::Real = 0` sets the size of a glow effect around the marker.
 - `glowcolor::Union{Symbol, <:Colorant} = (:black, 0)` sets the color of the glow effect.
 - `rotations::Union{Real, Billboard, Quaternion} = Billboard(0f0)` sets the rotation of the marker. A `Billboard` rotation is always around the depth axis.
+- `transform_marker::Bool = false` controls whether the model matrix (without translation) applies to the marker itself, rather than just the positions. (If this is true, `scale!` and `rotate!` will affect the marker.)
 
 ## Examples
 
@@ -75,13 +76,13 @@ scatter(points, color = 1:30, markersize = range(5, 30, length = 30),
 ### Available markers
 
 As markers, you can use almost any unicode character.
-Currently, such glyphs are picked from the `Dejavu Sans` font, because it offers a wide range of symbols.
+Currently, such glyphs are picked from the `TeX Gyre Heros Makie` font, because it offers a wide range of symbols.
 There is also a number of markers that can be referred to as a symbol, so that it's not necessary to find out the respective unicode character.
 
 The backslash character examples have to be tab-completed in the REPL or editor so they are converted into unicode.
 
 !!! note
-    The scatter markers have the same sizes that the glyphs in Dejavu Sans have. This means that they are not matched in size or area. Currently, Makie does not have the option to use area matched markers, and sometimes manual adjustment might be necessary to achieve a good visual result.
+    The scatter markers have the same sizes that the glyphs in TeX Gyre Heros Makie have. This means that they are not matched in size or area. Currently, Makie does not have the option to use area matched markers, and sometimes manual adjustment might be necessary to achieve a good visual result.
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -120,6 +121,7 @@ ax = Axis(f[1, 1], yreversed = true,
     xautolimitmargin = (0.15, 0.15),
     yautolimitmargin = (0.15, 0.15)
 )
+hidedecorations!(ax)
 
 for (i, (marker, label)) in enumerate(markers_labels)
     p = Point2f(fldmod1(i, 6)...)

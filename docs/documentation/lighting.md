@@ -52,14 +52,16 @@ xs = -10:0.1:10
 ys = -10:0.1:10
 zs = [10 * (cos(x) * cos(y)) * (.1 + exp(-(x^2 + y^2 + 1)/10)) for x in xs, y in ys]
 
-fig, ax, pl = surface(xs, ys, zs, colormap = (:white, :white),
+fig, ax, pl = surface(xs, ys, zs, colormap = [:white, :white],
 
     # Light comes from (0, 0, 15), i.e the sphere
     axis = (
-        # Light comes from (0, 0, 15), i.e the sphere
-        lightposition = Vec3f(0, 0, 15),
-        # base light of the plot only illuminates red colors
-        ambient = RGBf(0.3, 0, 0),
+        scenekw = (
+          # Light comes from (0, 0, 15), i.e the sphere
+          lightposition = Vec3f(0, 0, 15),
+          # base light of the plot only illuminates red colors
+          ambient = RGBf(0.3, 0, 0)
+        ),
     ),
     # light from source (sphere) illuminates yellow colors
     diffuse = Vec3f(0.4, 0.4, 0),

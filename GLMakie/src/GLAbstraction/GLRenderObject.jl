@@ -59,8 +59,8 @@ function (sp::StandardPrerender)()
         glDisablei(1, GL_BLEND)
 
         # buffer 2 is color.a, should do product
-        # destination <- 0 * source + (1 - source) * destination
-        glBlendFunci(2, GL_ZERO, GL_ONE_MINUS_SRC_COLOR)
+        # destination <- 0 * source + (source) * destination
+        glBlendFunci(2, GL_ZERO, GL_SRC_COLOR)
 
     else
         glDepthMask(GL_TRUE)

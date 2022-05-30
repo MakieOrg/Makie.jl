@@ -2,9 +2,9 @@
 #                             Projection utilities                             #
 ################################################################################
 
-function project_position(scene, space, point, model, yflip = true)
+function project_position(scene, transform_func::T, space, point, model, yflip::Bool = true) where T
     # use transform func
-    point = Makie.apply_transform(scene.transformation.transform_func[], point)
+    point = Makie.apply_transform(transform_func, point)
 
     res = scene.camera.resolution[]
     p4d = to_ndim(Vec4f, to_ndim(Vec3f, point, 0f0), 1f0)
@@ -19,6 +19,10 @@ function project_position(scene, space, point, model, yflip = true)
     end
     # multiply with scene resolution for final position
     return p_0_to_1 .* res
+end
+
+function project_position(scene, space, point, model, yflip::Bool = true)
+    project_position(scene, scene.transformation.transform_func[], space, point, model, yflip)
 end
 
 function project_scale(scene::Scene, space, s::Number, model = Mat4f(I))
@@ -108,7 +112,7 @@ to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, c))
 
 function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
 
-    colormap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
+    colormap = haskey(primitive, :colormap) ? to_colormap(primitive.colormap[]) : nothing
     colorrange = get(primitive, :colorrange, nothing) |> to_value
 
     if colorrange === Makie.automatic
@@ -143,7 +147,6 @@ to_rgba_image(img::AbstractMatrix{<: Colorant}, attributes) = RGBAf.(img)
 
 function get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip)
     vmin, vmax = colorrange
-
     if isnan(pixel)
         RGBAf(nan_color)
     elseif pixel < vmin && !isnothing(lowclip)
@@ -192,16 +195,18 @@ function FaceIterator(data::AbstractVector, faces)
     end
 end
 
-
 Base.size(fi::FaceIterator) = size(fi.faces)
 Base.getindex(fi::FaceIterator{:PerFace}, i::Integer) = fi.data[i]
 Base.getindex(fi::FaceIterator{:PerVert}, i::Integer) = fi.data[fi.faces[i]]
 Base.getindex(fi::FaceIterator{:Const}, i::Integer) = ntuple(i-> fi.data, 3)
 
 color_or_nothing(c) = isnothing(c) ? nothing : to_color(c)
+function get_color_attr(attributes, attribute)::Union{Nothing, RGBAf}
+    return color_or_nothing(to_value(get(attributes, attribute, nothing)))
+end
 
 function per_face_colors(
-        color, colormap, colorrange, matcap, vertices, faces, normals, uv,
+        color, colormap, colorrange, matcap, faces, normals, uv,
         lowclip=nothing, highclip=nothing, nan_color=nothing
     )
     if matcap !== nothing
@@ -247,5 +252,6 @@ function per_face_colors(
     error("Unsupported Color type: $(typeof(color))")
 end
 
-mesh_pattern_set_corner_color(pattern, id, c::Colorant) =
+function mesh_pattern_set_corner_color(pattern, id, c::Colorant)
     Cairo.mesh_pattern_set_corner_color_rgba(pattern, id, rgbatuple(c)...)
+end
