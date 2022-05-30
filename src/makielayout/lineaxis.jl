@@ -3,7 +3,7 @@ function LineAxis(parent::Scene; @nospecialize(kwargs...))
     return LineAxis(parent, attrs)
 end
 
-function calcualte_horizontal_extends(endpoints)::Tuple{Float32, NTuple{2, Float32}, Bool}
+function calculate_horizontal_extends(endpoints)::Tuple{Float32, NTuple{2, Float32}, Bool}
     if endpoints[1][2] == endpoints[2][2]
         horizontal = true
         extents = (endpoints[1][1], endpoints[2][1])
@@ -248,7 +248,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
         labelvisible, spinevisible, trimspine, flip_vertical_label, reversed,
         minorticksvisible, minortickalign, minorticksize, minortickwidth, minortickcolor, minorticks)
 
-    pos_extents_horizontal = lift(calcualte_horizontal_extends, endpoints; ignore_equal_values=true)
+    pos_extents_horizontal = lift(calculate_horizontal_extends, endpoints; ignore_equal_values=true)
     horizontal = lift(x-> x[3], pos_extents_horizontal)
 
     limits = lift(x-> convert(Tuple{Float32, Float32}, x), attrs.limits; ignore_equal_values=true)
