@@ -159,7 +159,11 @@ function populate_stork_config(deploydecision)
                     print(io, html)
                 end
 
-                push!(sites, (title = titletext, path = randfilepath, url = joinpath(root, file)))
+                push!(sites, (
+                    title = titletext,
+                    path = randfilepath,
+                    url = normpath(joinpath(root, file)), # remove "./" prefix
+                ))
             end
         end
     finally
@@ -170,7 +174,8 @@ function populate_stork_config(deploydecision)
     toml = TOML.parsefile("__site/libs/stork/config.toml")
     open("__site/libs/stork/config_filled.toml", "w") do io
         toml["input"]["files"] = map(Dict ∘ pairs, sites)
-        toml["input"]["url_prefix"] = deploydecision.subfolder
+        subf = deploydecision.subfolder
+        toml["input"]["url_prefix"] = isempty(subf) ? "" : "/" * subf * "/" # then url without / prefix
         TOML.print(io, toml, sorted = true)
     end
 
