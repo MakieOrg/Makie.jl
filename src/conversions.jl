@@ -1100,13 +1100,11 @@ function to_colormap(cs::Union{String, Symbol})::Vector{RGBAf}
 end
 
 # Handle inbuilt PlotUtils types
-function to_colormap(cg::PlotUtils.ContinuousColorGradient)::Vector{RGBAf}
-    return to_colormap(getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), 30)))
-end
-
-function to_colormap(cg::PlotUtils.CategoricalColorGradient)::Vector{RGBAf}
-    n = length(cg.colors)
-    return to_colormap(getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), n*20)))
+function to_colormap(cg::PlotUtils.ColorGradient)::Vector{RGBAf}
+    # We sample the colormap using cg[val]. This way, we get a concrete representation of
+    # the underlying gradient, like it being categorical or using a log scale.
+    # 256 is just a high enough constant, without being too big to slow things down.
+    return to_colormap(getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), 256)))
 end
 
 """

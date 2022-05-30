@@ -469,23 +469,35 @@ end
 
 @reference_test "nonlinear colormap" begin
     n = 100
-    colormaps = [:viridis, :magma]
+    categorical = [false, true]
     scales = [exp, identity, log, log10]
     fig = Figure(resolution = (500, 250))
-    ax  = Axis(fig[1, 1])
-    for (i, cmap) in enumerate(colormaps)
+    ax = Axis(fig[1, 1])
+    for (i, cat) in enumerate(categorical)
         for (j, scale) in enumerate(scales)
-            cg = Makie.PlotUtils.cgrad(cmap; scale = scale)
-            x0 = i
-            y0 = j
-            lines!(ax, Point2f.(LinRange(x0+0.1, x0+0.9, n), y0); color = 1:n, colormap = cg, linewidth = 10)
+            cg = if cat
+                cgrad(:viridis, 5; scale = scale, categorical=true)
+            else
+                cgrad(:viridis; scale = scale, categorical=nothing)
+            end
+            lines!(ax, Point2f.(LinRange(i+0.1, i+0.9, n), j); color = 1:n, colormap = cg, linewidth = 10)
         end
     end
-    ax.xticks[] = ((1:length(colormaps)) .+ 0.5, string.(colormaps))
+    ax.xticks[] = ((1:length(colormaps)) .+ 0.5, ["categorical=false", "categorical=true"])
     ax.yticks[] = ((1:length(scales)), string.(scales))
     fig
 end
 
+@reference_test "colormap with specific values" begin
+    cmap = cgrad([:black,:white,:orange],[0,0.2,1])
+    fig = Figure(resolution=(400,200))
+    ax = Axis(fig[1,1])
+    x = range(0,1,50)
+    scatter!(fig[1,1],Point2.(x,fill(0.,50)),color=x,colormap=cmap)
+    hidedecorations!(ax)
+    Colorbar(fig[2,1],vertical=false,colormap=cmap)
+    fig
+end
 
 @reference_test "multi rect with poly" begin
     # use thick strokewidth, so it will make tests fail if something is missing

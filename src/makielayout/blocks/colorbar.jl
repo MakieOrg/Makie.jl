@@ -4,7 +4,7 @@ function block_docs(::Type{Colorbar})
     chosen according to the colorrange.
 
     You can set colorrange and colormap manually, or pass a plot object as the second argument
-    to copy its respective attributes. 
+    to copy its respective attributes.
 
     ## Constructors
 
@@ -181,19 +181,16 @@ function initialize_block!(cb::Colorbar)
         end
 
         colors = get.(Ref(gradient), (steps[1:end-1] .+ steps[2:end]) ./2)
-
         rects, colors
     end
 
     colors = lift(x -> getindex(x, 2), rects_and_colors)
-
     rects = poly!(blockscene,
         lift(x -> getindex(x, 1), rects_and_colors),
         color = colors,
         visible = map_is_categorical,
         inspectable = false
     )
-
 
     # for continous colormaps we sample a 1d image
     # to avoid white lines when rendering vector graphics
