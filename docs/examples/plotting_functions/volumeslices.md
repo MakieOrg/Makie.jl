@@ -18,12 +18,13 @@ y = LinRange(0, 2π, 100)
 z = LinRange(0, 3π, 150)
 
 sgrid = SliderGrid(
-    fig,
+    fig[2, 1],
     (label = "yz plane - x axis", range = 1:length(x)),
     (label = "xz plane - y axis", range = 1:length(y)),
     (label = "xy plane - z axis", range = 1:length(z)),
 )
-fig[2, 1] = lo = sgrid.layout
+
+lo = sgrid.layout
 nc = ncols(lo)
 
 vol = [cos(X)*sin(Y)*sin(Z) for X ∈ x, Y ∈ y, Z ∈ z]
