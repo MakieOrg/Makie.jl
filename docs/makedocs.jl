@@ -21,6 +21,7 @@ using Documenter: deploydocs, deploy_folder, GitHubActions
 using Gumbo
 using AbstractTrees
 using Random
+import TOML
 
 cfg = GitHubActions() # this should pick up all details via GHA environment variables
 
@@ -122,7 +123,7 @@ serve(; single=true, cleanup=false, fail_on_warning=true)
 # cd(@__DIR__); serve(single=false, cleanup=true, clear=true, fail_on_warning = false)
 
 
-function populate_stork_config()
+function populate_stork_config(deploydecision)
     wd = pwd()
     sites = []
     tempdir = mktempdir()
@@ -165,15 +166,14 @@ function populate_stork_config()
         cd(wd)
     end
     cp("__site/libs/stork/config.toml", "__site/libs/stork/config_filled.toml", force = true)
-    open("__site/libs/stork/config_filled.toml", "a") do file
-        println(file, "\nfiles = [")
-            for s in sites
-                print(file, "    {")
-                print(file, "path = \"$(s.path)\", url = \"$(s.url)\", title = \"$(s.title)\"")
-                println(file, "},")
-            end
-        println(file, "]")
+
+    toml = TOML.parsefile("__site/libs/stork/config.toml")
+    open("__site/libs/stork/config_filled.toml", "w") do io
+        toml["input"]["files"] = map(Dict ∘ pairs, sites)
+        toml["input"]["url_prefix"] = deploydecision.subfolder
+        TOML.print(io, toml, sorted = true)
     end
+
     return
 end
 
@@ -187,7 +187,7 @@ function run_stork()
     end
 end
 
-populate_stork_config()
+populate_stork_config(deploydecision)
 run_stork()
 
 # lunr()
