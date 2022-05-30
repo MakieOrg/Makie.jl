@@ -191,20 +191,32 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
         color
     end
 
-    broadcast_foreach(primitive[1][], colors, markersize, strokecolor,
-                      strokewidth, marker, marker_offset, remove_billboard(rotations)) do point, col,
-                          markersize, strokecolor, strokewidth, marker, mo, rotation
+    markerspace = to_value(get(primitive, :markerspace, :pixel))
+    space = to_value(get(primitive, :space, :data))
 
-        markerspace = to_value(get(primitive, :markerspace, :pixel))
+    transfunc = scene.transformation.transform_func[]
+
+    marker_conv = _marker_convert(marker)
+
+    draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker_conv, marker_offset, rotations, model, positions, size_model, font, markerspace, space)
+end
+
+# an array of markers is converted to string by itself, which is inconvenient for the iteration logic
+_marker_convert(markers::AbstractArray) = map(m -> convert_attribute(m, key"marker"(), key"scatter"()), markers)
+_marker_convert(marker) = convert_attribute(marker, key"marker"(), key"scatter"())
+
+function draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker, marker_offset, rotations, model, positions, size_model, font, markerspace, space)
+    broadcast_foreach(positions, colors, markersize, strokecolor,
+        strokewidth, marker, marker_offset, remove_billboard(rotations)) do point, col,
+            markersize, strokecolor, strokewidth, m, mo, rotation
+
         scale = project_scale(scene, markerspace, markersize, size_model)
         offset = project_scale(scene, markerspace, mo, size_model)
 
-        space = to_value(get(primitive, :space, :data))
-        pos = project_position(scene, space, point, model)
+        pos = project_position(scene, transfunc, space, point, model)
         isnan(pos) && return
 
         Cairo.set_source_rgba(ctx, rgbatuple(col)...)
-        m = convert_attribute(marker, key"marker"(), key"scatter"())
         Cairo.save(ctx)
         if m isa Char
             draw_marker(ctx, m, best_font(m, font), pos, scale, strokecolor, strokewidth, offset, rotation)
@@ -213,7 +225,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
         end
         Cairo.restore(ctx)
     end
-    nothing
+    return
 end
 
 function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
@@ -228,14 +240,14 @@ function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewid
 
     cairoface = set_ft_font(ctx, font)
 
-    charextent = Makie.FreeTypeAbstraction.internal_get_extent(font, marker)
+    charextent = Makie.FreeTypeAbstraction.get_extent(font, marker)
     inkbb = Makie.FreeTypeAbstraction.inkboundingbox(charextent)
 
     # scale normalized bbox by font size
     inkbb_scaled = Rect2f(origin(inkbb) .* scale, widths(inkbb) .* scale)
 
     # flip y for the centering shift of the character because in Cairo y goes down
-    centering_offset = [1, -1] .* (-origin(inkbb_scaled) .- 0.5 .* widths(inkbb_scaled))
+    centering_offset = Vec2f(1, -1) .* (-origin(inkbb_scaled) .- 0.5f0 .* widths(inkbb_scaled))
     # this is the origin where we actually have to place the glyph so it can be centered
     charorigin = pos .+ Vec2f(marker_offset[1], -marker_offset[2])
     old_matrix = get_font_matrix(ctx)
@@ -243,14 +255,14 @@ function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewid
 
     # First, we translate to the point where the
     # marker is supposed to go.
-    Cairo.translate(ctx, charorigin...)
+    Cairo.translate(ctx, charorigin[1], charorigin[2])
     # Then, we rotate the context by the
     # appropriate amount,
     Cairo.rotate(ctx, to_2d_rotation(rotation))
     # and apply a centering offset to account for
     # the fact that text is shown from the (relative)
     # bottom left corner.
-    Cairo.translate(ctx, centering_offset...)
+    Cairo.translate(ctx, centering_offset[1], centering_offset[2])
 
     Cairo.move_to(ctx, 0, 0)
     Cairo.text_path(ctx, string(marker))
@@ -562,38 +574,41 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
         if ni + 1 != length(xs) || nj + 1 != length(ys)
             error("Error in conversion pipeline. xs and ys should have size ni+1, nj+1. Found: xs: $(length(xs)), ys: $(length(ys)), ni: $(ni), nj: $(nj)")
         end
+        _draw_rect_heatmap(ctx, xys, ni, nj, colors)
+    end
+end
 
-        @inbounds for i in 1:ni, j in 1:nj
-            p1 = xys[i, j]
-            p2 = xys[i+1, j]
-            p3 = xys[i+1, j+1]
-            p4 = xys[i, j+1]
+function _draw_rect_heatmap(ctx, xys, ni, nj, colors)
+    @inbounds for i in 1:ni, j in 1:nj
+        p1 = xys[i, j]
+        p2 = xys[i+1, j]
+        p3 = xys[i+1, j+1]
+        p4 = xys[i, j+1]
 
-            # Rectangles and polygons that are directly adjacent usually show
-            # white lines between them due to anti aliasing. To avoid this we
-            # increase their size slightly.
+        # Rectangles and polygons that are directly adjacent usually show
+        # white lines between them due to anti aliasing. To avoid this we
+        # increase their size slightly.
 
-            if alpha(colors[i, j]) == 1
-                # sign.(p - center) gives the direction in which we need to
-                # extend the polygon. (Which may change due to rotations in the
-                # model matrix.) (i!=1) etc is used to avoid increasing the
-                # outer extent of the heatmap.
-                center = 0.25 * (p1 + p2 + p3 + p4)
-                p1 += sign.(p1 - center) .* Point2f(0.5(i!=1),  0.5(j!=1))
-                p2 += sign.(p2 - center) .* Point2f(0.5(i!=ni), 0.5(j!=1))
-                p3 += sign.(p3 - center) .* Point2f(0.5(i!=ni), 0.5(j!=nj))
-                p4 += sign.(p4 - center) .* Point2f(0.5(i!=1),  0.5(j!=nj))
-            end
-
-            Cairo.set_line_width(ctx, 0)
-            Cairo.move_to(ctx, p1[1], p1[2])
-            Cairo.line_to(ctx, p2[1], p2[2])
-            Cairo.line_to(ctx, p3[1], p3[2])
-            Cairo.line_to(ctx, p4[1], p4[2])
-            Cairo.close_path(ctx)
-            Cairo.set_source_rgba(ctx, rgbatuple(colors[i, j])...)
-            Cairo.fill(ctx)
+        if alpha(colors[i, j]) == 1
+            # sign.(p - center) gives the direction in which we need to
+            # extend the polygon. (Which may change due to rotations in the
+            # model matrix.) (i!=1) etc is used to avoid increasing the
+            # outer extent of the heatmap.
+            center = 0.25f0 * (p1 + p2 + p3 + p4)
+            p1 += sign.(p1 - center) .* Point2f(0.5f0 * (i!=1),  0.5f0 * (j!=1))
+            p2 += sign.(p2 - center) .* Point2f(0.5f0 * (i!=ni), 0.5f0 * (j!=1))
+            p3 += sign.(p3 - center) .* Point2f(0.5f0 * (i!=ni), 0.5f0 * (j!=nj))
+            p4 += sign.(p4 - center) .* Point2f(0.5f0 * (i!=1),  0.5f0 * (j!=nj))
         end
+
+        Cairo.set_line_width(ctx, 0)
+        Cairo.move_to(ctx, p1[1], p1[2])
+        Cairo.line_to(ctx, p2[1], p2[2])
+        Cairo.line_to(ctx, p3[1], p3[2])
+        Cairo.line_to(ctx, p4[1], p4[2])
+        Cairo.close_path(ctx)
+        Cairo.set_source_rgba(ctx, rgbatuple(colors[i, j])...)
+        Cairo.fill(ctx)
     end
 end
 
@@ -765,31 +780,53 @@ function draw_mesh3D(
     end
 
     # Approximate zorder
-    zorder = sortperm(meshfaces, by = f -> average_z(ts, f))
+    average_zs = map(f -> average_z(ts, f), meshfaces)
+    zorder = sortperm(average_zs)
 
     # Face culling
     zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
+    
+    draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightpos, shininess, diffuse, ambient, specular)
+    return
+end
 
+function _calculate_shaded_vertexcolors(N, v, c, lightpos, ambient, diffuse, specular, shininess)
+    L = normalize(lightpos .- v[Vec(1,2,3)])
+    diff_coeff = max(dot(L, N), 0f0)
+    H = normalize(L + normalize(-v[Vec(1, 2, 3)]))
+    spec_coeff = max(dot(H, N), 0f0)^shininess
+    c = RGBAf(c)
+    # if this is one expression it introduces allocations??
+    new_c_part1 = (ambient .+ diff_coeff .* diffuse) .* Vec3f(c.r, c.g, c.b) #.+
+    new_c = new_c_part1 .+ specular * spec_coeff
+    RGBAf(new_c..., c.alpha)
+end
+
+function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightpos, shininess, diffuse, ambient, specular)
     pattern = Cairo.CairoPatternMesh()
+
     for k in reverse(zorder)
         f = meshfaces[k]
-        t1, t2, t3 = ts[f]
+        # avoid SizedVector through Face indexing
+        t1 = ts[f[1]]
+        t2 = ts[f[2]]
+        t3 = ts[f[3]]
 
+        facecolors = per_face_col[k]
         # light calculation
-        c1, c2, c3 = if shading
-            map(ns[f], vs[f], per_face_col[k]) do N, v, c
-                L = normalize(lightpos .- v[Vec(1,2,3)])
-                diff_coeff = max(dot(L, N), 0.0)
-                H = normalize(L + normalize(-v[Vec(1, 2, 3)]))
-                spec_coeff = max(dot(H, N), 0.0)^shininess
-                c = RGBA(c)
-                new_c = (ambient .+ diff_coeff .* diffuse) .* Vec3f(c.r, c.g, c.b) .+
-                        specular * spec_coeff
-                RGBA(new_c..., c.alpha)
+        if shading
+            c1, c2, c3 = Base.Cartesian.@ntuple 3 i -> begin
+                # these face index expressions currently allocate for SizedVectors
+                # if done like `ns[f]`
+                N = ns[f[i]]
+                v = vs[f[i]]
+                c = facecolors[i]
+                _calculate_shaded_vertexcolors(N, v, c, lightpos, ambient, diffuse, specular, shininess)
             end
         else
-            per_face_col[k]
+            c1, c2, c3 = facecolors
         end
+
         # debug normal coloring
         # n1, n2, n3 = Vec3f(0.5) .+ 0.5ns[f]
         # c1 = RGB(n1...)
@@ -811,9 +848,7 @@ function draw_mesh3D(
     Cairo.set_source(ctx, pattern)
     Cairo.close_path(ctx)
     Cairo.paint(ctx)
-    return
 end
-
 
 ################################################################################
 #                                   Surface                                    #

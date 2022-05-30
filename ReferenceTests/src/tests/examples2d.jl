@@ -466,7 +466,7 @@ end
     end
     f
 end
-		
+
 @reference_test "nonlinear colormap" begin
     n = 100
     colormaps = [:viridis, :magma]
@@ -483,6 +483,11 @@ end
     end
     ax.xticks[] = ((1:length(colormaps)) .+ 0.5, string.(colormaps))
     ax.yticks[] = ((1:length(scales)), string.(scales))
-    
     fig
+end
+
+
+@reference_test "multi rect with poly" begin
+    # use thick strokewidth, so it will make tests fail if something is missing
+    poly([Rect2f(0, 0, 1, 1)], color=:green, strokewidth=100, strokecolor=:black)
 end

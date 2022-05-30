@@ -8,9 +8,13 @@
         <div id="overlay"></div>
         <div id="navbar-container">
           <div id="navbar">
-            <form id="lunrSearchForm" name="lunrSearchForm" action="/search/index.html">
+            <!-- <form id="lunrSearchForm" name="lunrSearchForm" action="/search/index.html">
               <input class="search-input" name="q" placeholder="Search docs" type="text">
-            </form>
+            </form> -->
+            <div class="stork-wrapper">
+              <input data-stork="makiesearch" class="stork-input" placeholder="Search documentation"/>
+              <div data-stork="makiesearch-output" class="stork-output"></div>
+            </div>
             <h1>Navigation</h1>
             {{ navigation }}
           </div>
