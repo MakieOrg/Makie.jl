@@ -466,3 +466,9 @@ end
     end
     f
 end
+
+
+@reference_test "multi rect with poly" begin
+    # use thick strokewidth, so it will make tests fail if something is missing
+    poly([Rect2f(0, 0, 1, 1)], color=:green, strokewidth=100, strokecolor=:black)
+end
