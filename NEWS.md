@@ -4,6 +4,7 @@
 
 - Switched to `MathTeXEngine v0.4`, which improves the look of LaTeXStrings [#1952](https://github.com/JuliaPlots/Makie.jl/pull/1952).
 - Added subtitle capability to `Axis` [#1859](https://github.com/JuliaPlots/Makie.jl/pull/1859).
+- Fixed a bug where scaled colormaps constructed using `Makie.cgrad` were not interpreted correctly.
 
 ## v0.17.2
 

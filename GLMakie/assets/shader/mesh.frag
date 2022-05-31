@@ -33,14 +33,20 @@ vec4 get_color(sampler2D color, vec2 uv, Nothing color_norm, Nothing color_map, 
     return texture(color, uv);
 }
 
-float _normalize(float val, float from, float to){return (val-from) / (to - from);}
-vec4 color_lookup(float intensity, sampler1D color_ramp, vec2 norm){
-    return texture(color_ramp, _normalize(intensity, norm.x, norm.y));
-}
-
 uniform vec4 highclip;
 uniform vec4 lowclip;
 uniform vec4 nan_color;
+
+vec4 get_color_from_cmap(float value, sampler1D color_map, vec2 colorrange) {
+    float cmin = colorrange.x;
+    float cmax = colorrange.y;
+    float i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0);
+    // 1/0 corresponds to the corner of the colormap, so to properly interpolate
+    // between the colors, we need to scale it, so that the ends are at 1 - (stepsize/2) and 0+(stepsize/2).
+    float stepsize = 1.0 / float(textureSize(color_map, 0));
+    i01 = (1.0 - stepsize) * i01 + 0.5 * stepsize;
+    return texture(color_map, i01);
+}
 
 vec4 get_color(sampler2D intensity, vec2 uv, vec2 color_norm, sampler1D color_map, Nothing matcap){
     float i = texture(intensity, uv).x;
@@ -51,7 +57,7 @@ vec4 get_color(sampler2D intensity, vec2 uv, vec2 color_norm, sampler1D color_ma
     } else if (i > color_norm.y) {
         return highclip;
     }
-    return color_lookup(i, color_map, color_norm);
+    return get_color_from_cmap(i, color_map, color_norm);
 }
 
 vec4 matcap_color(sampler2D matcap){
