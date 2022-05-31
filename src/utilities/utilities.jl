@@ -231,12 +231,6 @@ function to_ndim(T::Type{<: VecTypes{N,ET}}, vec::VecTypes{N2}, fillval) where {
     end)
 end
 
-dim3(x) = ntuple(i -> x, Val(3))
-dim3(x::NTuple{3,Any}) = x
-
-dim2(x) = ntuple(i -> x, Val(2))
-dim2(x::NTuple{2,Any}) = x
-
 lerp(a::T, b::T, val::AbstractFloat) where {T} = (a .+ (val * (b .- a)))
 
 function merged_get!(defaults::Function, key, scene, input::Vector{Any})

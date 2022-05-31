@@ -165,8 +165,8 @@ function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidt
     return GridLayoutBase.RectSides{Float32}(left, right, bottom, top)
 end
 
-function initialize_block!(ax::Axis; palette = nothing)
-
+function initialize_block!(ax::Axis)
+    palette = nothing
     topscene = ax.blockscene
 
     decorations = Dict{Symbol, Any}()

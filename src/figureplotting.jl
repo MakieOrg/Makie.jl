@@ -48,7 +48,7 @@ end
 
 function plot(P::PlotFunc, gp::GridPosition, args...; axis = NamedTuple(), kwargs...)
 
-    f = MakieLayout.get_top_parent(gp)
+    f = get_top_parent(gp)
 
     c = contents(gp, exact = true)
     if !isempty(c)
@@ -108,7 +108,7 @@ function plot(P::PlotFunc, gsp::GridSubposition, args...; axis = NamedTuple(), k
         """)
     end
 
-    fig = MakieLayout.get_top_parent(gsp)
+    fig = get_top_parent(gsp)
 
     axis = Dict(pairs(axis))
 

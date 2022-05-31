@@ -18,13 +18,11 @@ using Random
 using FFMPEG # get FFMPEG on any system!
 using Observables
 using GeometryBasics
-using IntervalSets
 using PlotUtils
 using ColorBrewer
 using ColorTypes
 using Colors
 using ColorSchemes
-using FixedPointNumbers
 using Packing
 using SignedDistanceFields
 using Markdown
@@ -37,6 +35,8 @@ using FreeTypeAbstraction
 using UnicodeFun
 using LinearAlgebra
 using Statistics
+using MakieCore
+using OffsetArrays
 
 import RelocatableFolders
 import StatsBase
@@ -48,10 +48,11 @@ import GridLayoutBase
 import ImageIO
 import FileIO
 import SparseArrays
-using MakieCore
-using OffsetArrays
 
-using GeometryBasics: widths, positive_widths, VecTypes, AbstractPolygon, value, StaticVector
+using IntervalSets: (..), OpenInterval, ClosedInterval, AbstractInterval, Interval
+using FixedPointNumbers: N0f8
+
+using GeometryBasics: width, widths, height, positive_widths, VecTypes, AbstractPolygon, value, StaticVector
 using Distributions: Distribution, VariateForm, Discrete, QQPair, pdf, quantile, qqbuild
 
 import FileIO: save
@@ -272,6 +273,25 @@ function logo()
 end
 
 function __init__()
+    # Make GridLayoutBase default row and colgaps themeable when using MakieLayout
+    # This mutates module-level state so it could mess up other libraries using
+    # GridLayoutBase at the same time as MakieLayout, which is unlikely, though
+    GridLayoutBase.DEFAULT_COLGAP_GETTER[] = function()
+        ct = Makie.current_default_theme()
+        if haskey(ct, :colgap)
+            ct[:colgap][]
+        else
+            GridLayoutBase.DEFAULT_COLGAP[]
+        end
+    end
+    GridLayoutBase.DEFAULT_ROWGAP_GETTER[] = function()
+        ct = Makie.current_default_theme()
+        if haskey(ct, :rowgap)
+            ct[:rowgap][]
+        else
+            GridLayoutBase.DEFAULT_ROWGAP[]
+        end
+    end
     # fonts aren't cacheable by precompilation, so we need to empty it on load!
     empty!(FONT_CACHE)
     cfg_path = joinpath(homedir(), ".config", "makie", "theme.jl")
@@ -286,12 +306,6 @@ export content
 export resize_to_layout!
 
 include("makielayout/MakieLayout.jl")
-# re-export MakieLayout
-for name in names(MakieLayout)
-    @eval import .MakieLayout: $(name)
-    @eval export $(name)
-end
-
 include("figureplotting.jl")
 include("basic_recipes/series.jl")
 include("basic_recipes/text.jl")
@@ -302,9 +316,6 @@ export heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, s
 
 export PointLight, EnvironmentLight, AmbientLight, SSAO
 
-if Base.VERSION >= v"1.4.2"
-    include("precompiles.jl")
-    _precompile_()
-end
+include("precompiles.jl")
 
 end # module

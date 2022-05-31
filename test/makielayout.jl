@@ -3,7 +3,7 @@
     fig = Figure()
     ax = Axis(fig[1, 1])
     cb = Colorbar(fig[1, 2])
-    gl2 = fig[2, :] = MakieLayout.GridLayout()
+    gl2 = fig[2, :] = Makie.GridLayout()
     bu = gl2[1, 1] = Button(fig)
     sl = gl2[1, 2] = Slider(fig)
 
@@ -130,9 +130,9 @@ end
     automatic = Makie.automatic
     Automatic = Makie.Automatic
 
-    get_ticks = MakieLayout.get_ticks
-    get_tickvalues = MakieLayout.get_tickvalues
-    get_ticklabels = MakieLayout.get_ticklabels
+    get_ticks = Makie.get_ticks
+    get_tickvalues = Makie.get_tickvalues
+    get_ticklabels = Makie.get_ticklabels
 
     for func in [identity, log, log2, log10, Makie.logit]
         tup = ([1, 2, 3], ["a", "b", "c"])
