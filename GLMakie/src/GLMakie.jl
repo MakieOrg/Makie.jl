@@ -10,6 +10,8 @@ using Makie: @get_attribute, to_value, to_colormap, extrema_nan
 using Makie: ClosedInterval, (..)
 using Makie: inline!
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
+import Makie: to_font, glyph_uv_width!, el32convert
+
 using ShaderAbstractions
 using FreeTypeAbstraction
 using GeometryBasics: StaticVector
