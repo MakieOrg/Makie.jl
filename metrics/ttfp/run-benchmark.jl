@@ -62,9 +62,9 @@ catch e
    exit()
 end
 
-project1 = pwd()
+project1 = make_project_folder("current-pr")
 Pkg.activate(project1)
-# Pkg.develop([(; path="./MakieCore"), (; path="."), (; path="./CairoMakie")])
+Pkg.develop([(; path="./MakieCore"), (; path="."), (; path="./CairoMakie")])
 Pkg.precompile()
 
 project2 = make_project_folder("makie-master")
@@ -102,7 +102,7 @@ end
 
 function print_analysis(io, results)
     master = results["makie-master"]
-    pr = results["MakieDev"]
+    pr = results["current-pr"]
     println(io, "### using time")
     all_stats(io, "master: ", first.(master))
     all_stats(io, "pr:     ", first.(pr))
@@ -117,12 +117,12 @@ function print_analysis(io, results)
     speedup(io, "ttfp", last.(master), last.(pr))
 end
 
-c = sprint() do io
+comment = sprint() do io
     println(io, "## Compile Times benchmark\n")
     println(io, "Note, that these numbers may fluctuate on the CI servers, so take them with a grain of salt.\n")
     print_analysis(io, results)
 end
-println(c)
+println(comment)
 pr_to_comment = get(ENV, "PR_NUMBER", nothing)
 if !isnothing(pr_to_comment)
     pr = GitHub.pull_request(ctx.repo, pr_to_comment)
