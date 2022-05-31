@@ -1,6 +1,6 @@
 
 """
-streamplot(f::function, xinterval, yinterval; kwargs...)
+streamplot(f::Function, xinterval, yinterval; color = norm, kwargs...)
 
 f must either accept `f(::Point)` or `f(x::Number, y::Number)`.
 f must return a Point2.
@@ -10,6 +10,11 @@ Example:
 v(x::Point2{T}) where T = Point2f(x[2], 4*x[1])
 streamplot(v, -2..2, -2..2)
 ```
+
+One can choose the color of the lines by passing a function `color_func(dx::Point)` to the `color` attribute.
+By default this is set to `norm`, but can be set to any function or composition of functions.  
+The `dx` which is passed to `color_func` is the output of `f` at the point being colored.
+
 ## Attributes
 $(ATTRIBUTES)
 
@@ -22,7 +27,7 @@ See the function `Makie.streamplot_impl` for implementation details.
             stepsize = 0.01,
             gridsize = (32, 32, 32),
             maxsteps = 500,
-            color_func = norm,
+            color = norm,
             colormap = theme(scene, :colormap),
             colorrange = Makie.automatic,
             arrow_size = 10,
@@ -73,7 +78,7 @@ Links:
 
 [Quasirandom sequences](http://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/)
 """
-function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize, maxsteps=500, dens=1.0, color_func = norm) where {N, T}
+function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize, maxsteps=500, dens=1.0, color = norm) where {N, T}
     resolution = to_ndim(Vec{N, Int}, resolutionND, last(resolutionND))
     mask = trues(resolution...) # unvisited squares
     arrow_pos = Point{N, Float32}[]
@@ -114,7 +119,7 @@ function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize
             pnorm = norm(point)
             push!(arrow_pos, x0)
             push!(arrow_dir, point ./ pnorm)
-            push!(colors, pnorm)
+            push!(colors, color(point))
             mask[c] = false
             n_points += 1
             for d in (-1, 1)
@@ -142,7 +147,7 @@ function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize
                         ccur = idx
                     end
                     push!(line_points, x)
-                    push!(line_colors, color_func(point))
+                    push!(line_colors, color(point))
                     n_linepoints += 1
                 end
             end
@@ -159,13 +164,13 @@ function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize
 end
 
 function plot!(p::StreamPlot)
-    data = lift(p.f, p.limits, p.gridsize, p.stepsize, p.maxsteps, p.density, p.color_func) do f, limits, resolution, stepsize, maxsteps, density, color_func
+    data = lift(p.f, p.limits, p.gridsize, p.stepsize, p.maxsteps, p.density, p.color) do f, limits, resolution, stepsize, maxsteps, density, color
         P = if applicable(f, Point2f(0)) || applicable(f, Point3f(0))
             Point
         else
             Number
         end
-        streamplot_impl(P, f, limits, resolution, stepsize, maxsteps, density, color_func)
+        streamplot_impl(P, f, limits, resolution, stepsize, maxsteps, density, color)
     end
     lines!(
         p,
