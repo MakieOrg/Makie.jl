@@ -1,5 +1,11 @@
 module GLMakie
 
+if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@max_methods"))
+    # GLMakie doesn't do much work, besides assembling shaders.
+    # If it does, code should be 100% inferable, so hopefully shouldn't be influenced by this
+    @eval Base.Experimental.@max_methods 1
+end
+
 using ModernGL, FixedPointNumbers, Colors, GeometryBasics
 using Makie, FileIO
 
