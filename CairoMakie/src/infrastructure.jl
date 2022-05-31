@@ -409,15 +409,22 @@ function Makie.colorbuffer(screen::CairoScreen)
     # extract scene
     scene = screen.scene
     # get resolution
-    w, h = size(scene)
+    w, h = GeometryBasics.widths(screen)
+    scene_w, scene_h = size(scene)
+    @assert w/scene_w ≈ h/scene_h
+
+    device_scaling_factor = w/scene_w
     # preallocate an image matrix
     img = Matrix{ARGB32}(undef, w, h)
     # create an image surface to draw onto the image
     surf = Cairo.CairoImageSurface(img)
+    ccall((:cairo_surface_set_device_scale, Cairo.libcairo), Cvoid, (Ptr{Nothing}, Cdouble, Cdouble),
+        surf.ptr, device_scaling_factor, device_scaling_factor)
+
     # draw the scene onto the image matrix
     ctx = Cairo.CairoContext(surf)
     ccall((:cairo_set_miter_limit, Cairo.libcairo), Cvoid, (Ptr{Nothing}, Cdouble), ctx.ptr, 2.0)
-    
+
     scr = CairoScreen(scene, surf, ctx, nothing)
 
     cairo_draw(scr, scene)

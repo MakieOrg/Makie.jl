@@ -328,7 +328,8 @@ function VideoStream(scene::Scene; framerate::Integer = 24)
     path = joinpath(dir, "$(gensym(:video)).mkv")
     screen = backend_display(current_backend[], scene)
     push_screen!(scene, screen)
-    _xdim, _ydim = size(scene)
+
+    _xdim, _ydim = GeometryBasics.widths(screen)
     xdim = iseven(_xdim) ? _xdim : _xdim + 1
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
     process = @ffmpeg_env open(`$(FFMPEG.ffmpeg) -framerate $(framerate) -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
