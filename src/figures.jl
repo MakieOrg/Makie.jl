@@ -159,14 +159,8 @@ end
 # Allow figures to be directly resized by resizing their internal Scene.
 # Layouts are already hooked up to this, so it's very simple.
 """
-    resize!(fig::FigureLike, x::T, y::T) where T <: Number
-    resize!(fig::FigureLike, (x::T, y::T)) where T <: Number
-    resize!(fig::FigureLike, r::Rect2)
-Resizes the given `fig` to the resolution given by the arguments.  `fig` may be a
-`Scene`, a `Figure`, or a `FigureAxisPlot`.
-Note that this does not affect the layout of the Figure beyond any constraints which
-are already present; it only changes the figure's physical size.
-See also [resize_to_layout!(fig::Figure)](@ref).
+    resize!(fig::Figure, width, height)
+Resizes the given `Figure` to the resolution given by `width` and `height`.
+If you want to resize the figure to its current layout content, use `resize_to_layout!(fig)` instead.
 """
 Makie.resize!(figure::Figure, args...) = resize!(figure.scene, args...)
-Makie.resize!(figure_axis_plot::FigureAxisPlot, args...) = resize!(figure_axis_plot.figure.scene, args...)
