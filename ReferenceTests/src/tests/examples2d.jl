@@ -5,6 +5,23 @@
     current_figure()
 end
 
+@reference_test "heatmap_interpolation" begin
+    f = Figure(resolution = (800, 800))
+    data = RNG.rand(32, 32)
+    # the grayscale heatmap hides the problem that interpolation based on values
+    # in GLMakie looks different than interpolation based on colors in CairoMakie
+    heatmap(f[1, 1], data, interpolate = false, colormap = :grays)
+    heatmap(f[1, 2], data, interpolate = true, colormap = :grays)
+    data_big = RNG.rand(1000, 1000)
+    heatmap(f[2, 1], data_big, interpolate = false, colormap = :grays)
+    heatmap(f[2, 2], data_big, interpolate = true, colormap = :grays)
+    xs = (1:32) .^ 1.5
+    ys = (1:32) .^ 1.5
+    data = RNG.rand(32, 32)
+    heatmap(f[3, 1], xs, ys, data, interpolate = false, colormap = :grays)
+    f
+end
+
 @reference_test "poly and colormap" begin
     # example by @Paulms from JuliaPlots/Makie.jl#310
     points = Point2f[[0.0, 0.0], [0.1, 0.0], [0.1, 0.1], [0.0, 0.1]]
