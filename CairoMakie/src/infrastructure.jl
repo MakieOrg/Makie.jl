@@ -128,6 +128,8 @@ function CairoScreen(scene::Scene, path::Union{String, IO}, mode::Symbol; device
     return CairoScreen(scene, surf, ctx, nothing)
 end
 
+GeometryBasics.widths(screen::CairoScreen) = round.(Int, (screen.surface.width, screen.surface.height))
+
 
 function Base.delete!(screen::CairoScreen, scene::Scene, plot::AbstractPlot)
     # Currently, we rerender every time, so nothing needs
