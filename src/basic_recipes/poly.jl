@@ -90,7 +90,7 @@ function poly_convert(polygons::AbstractVector{<: AbstractVector{<: VecTypes}})
     end
 end
 
-to_line_segments(polygon) = convert_arguments(PointBased(), polygon)[1]
+to_line_segments(polygon) = convert_arguments(LineSegments, polygon)[1]
 # Need to explicitly overload for Mesh, since otherwise, Mesh will dispatch to AbstractVector
 to_line_segments(polygon::GeometryBasics.Mesh) = convert_arguments(PointBased(), polygon)[1]
 

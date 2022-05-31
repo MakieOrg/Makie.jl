@@ -41,17 +41,20 @@ float _normalize(float val, float from, float to){return (val-from) / (to - from
 
 vec4 get_color(sampler2D color, vec2 uv, vec2 colorrange, sampler2D colormap){
     float value = texture(color, uv).x;
-    float normed = _normalize(value, colorrange.x, colorrange.y);
-    vec4 c = texture(colormap, vec2(normed, 0.0));
-
     if (isnan(value)) {
-        c = get_nan_color();
+        return get_nan_color();
     } else if (value < colorrange.x) {
-        c = get_lowclip();
+        return get_lowclip();
     } else if (value > colorrange.y) {
-        c = get_highclip();
+        return get_highclip();
     }
-    return c;
+
+    float normed = _normalize(value, colorrange.x, colorrange.y);
+    // 1/0 corresponds to the corner of the colormap, so to properly interpolate
+    // between the colors, we need to scale it, so that the ends are at 1 - (stepsize/2) and 0+(stepsize/2).
+    float stepsize = 1.0 / float(textureSize(colormap, 0).x);
+    normed = (1.0 - stepsize) * normed + 0.5 * stepsize;
+    return texture(colormap, vec2(normed, 0.0));
 }
 
 vec4 get_color(sampler2D color, vec2 uv, bool colorrange, sampler2D colormap){
