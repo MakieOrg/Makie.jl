@@ -27,4 +27,9 @@ function _precompile_()
     end
     scene = p.figure.scene
     insertplotstype(scene)
+    screen = Screen(; visible=false)
+    fig, ax, pl = scatter(1:4;color=:green, visible=true, markersize=15)
+    Makie.backend_display(screen, fig.scene)
+    Makie.colorbuffer(screen)
+    return
 end
