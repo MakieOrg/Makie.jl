@@ -67,7 +67,7 @@ let
         ax = _block(Axis, Figure())
         initialize_block!(ax)
         LineAxis(Scene(); spinecolor=:red, labelfont="Deja vue", ticklabelfont="Deja Vue", spinevisible=false, endpoints=Observable([Point2f(0), Point2f(0, 1)]), minorticks = IntervalsBetween(5))
-        cam = Camera(Observable(IRect(0, 0, 1, 1)))
+        cam = Camera(Observable(Recti(0, 0, 1, 1)))
         f, ax1, pl = scatter(1:4)
         f, ax2, pl = lines(1:4)
         precompile_obs(ax1)

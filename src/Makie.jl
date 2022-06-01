@@ -49,7 +49,7 @@ import ImageIO
 import FileIO
 import SparseArrays
 
-using IntervalSets: (..), OpenInterval, ClosedInterval, AbstractInterval, Interval
+using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints
 using FixedPointNumbers: N0f8
 
 using GeometryBasics: width, widths, height, positive_widths, VecTypes, AbstractPolygon, value, StaticVector
