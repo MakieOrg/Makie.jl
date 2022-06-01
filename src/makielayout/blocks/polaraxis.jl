@@ -227,6 +227,9 @@ function draw_axis!(po::PolarAxis)
 
 end
 
+# allow it to be plotted to
+# the below causes a stack overflow
+# MakieLayout.can_be_current_axis(po::PolarAxis) = true
 
 function Makie.plot!(
     po::PolarAxis, P::Makie.PlotFunc,
