@@ -274,9 +274,7 @@ function rlims!(po::PolarAxis, rmin::Real, rmax::Real)
 end
 
 
-# Define a method which will perform the correct limit adjustments
-# such that our aspect ratio is 1
-# This is somewhat configurable.
+"Adjust the axis's scene's camera to conform to the given r-limits"
 function adjustcam!(po::PolarAxis, limits)
     scene = po.scene
     # We transform our limits to transformed space, since we can
