@@ -1356,8 +1356,7 @@ end
     end
 end
 
-
-@Block PolarAxis2 begin
+@Block PolarAxis begin
     scene::Scene
     @attributes begin
         "The height setting of the scene."
@@ -1376,5 +1375,71 @@ end
         alignmode = Inside()
         "The numerical limits from center circle to outer radius"
         limits::Tuple{Float32, Float32} = (0.0, 10.0)
+        "The direction of rotation.  Can be -1 (clockwise) or 1 (counterclockwise)."
+        direction = 1
+        "The initial angle offset.  This essentially rotates the axis."
+        θ_0 = 0f0
+        "The width of the spine."
+        spinewidth = 2
+        "The color of the spine."
+        spinecolor = :black
+        "Controls whether the spine is visible."
+        spinevisible = true
+        "The linestyle of the spine."
+        spinestyle = nothing
+        "The specifier for the radial (`r`) ticks, similar to `xticks` for a normal Axis"
+        rticks = LinearTicks(4)
+        "The specifier for the minor `r` ticks."
+        rminorticks = IntervalsBetween(2)
+        "The color of the `r` grid."
+        rgridcolor = (:black, 0.5)
+        "The linewidth of the `r` grid."
+        rgridwidth = 1
+        "The linestyle of the `r` grid."
+        rgridstyle = nothing
+        "Controls if the `r` grid is visible"
+        rgridvisible = true
+        "The formatter for the `r` ticks"
+        rtickformat = Makie.automatic
+        "The fontsize of the `r` tick labels."
+        rticklabelsize = inherit(scene, :fontsize, 16)
+        "The font of the `r` tick labels."
+        rticklabelfont = inherit(scene, :font, Makie.defaultfont())
+        "The color of the `r` tick labels."
+        rticklabelcolor = :black
+        "Controls if the `r` ticks are visible."
+        rticklabelsvisible = true
+        "The specifier for the angular (`θ`) ticks, similar to `xticks` for a normal Axis"
+        θticks = MultiplesTicks(12, π/2, "π/2")
+        "The specifier for the minor `θ` ticks."
+        θminorticks = IntervalsBetween(2)
+        "The color of the `θ` grid."
+        θgridcolor = (:black, 0.5)
+        "The linewidth of the `θ` grid."
+        θgridwidth = 1
+        "The linestyle of the `θ` grid."
+        θgridstyle = nothing
+        "Controls if the `θ` grid is visible."
+        θgridvisible = true
+        "The formatter for the `θ` ticks."
+        θtickformat = Makie.automatic
+        "The fontsize of the `θ` tick labels."
+        θticklabelsize = inherit(scene, :fontsize, 16)
+        "The font of the `θ` tick labels."
+        θticklabelfont = inherit(scene, :font, Makie.defaultfont())
+        "The color of the `θ` tick labels."
+        θticklabelcolor = :black
+        "Controls if the `θ` ticks are visible."
+        θticklabelsvisible = true
+        "The color of the minor grid."
+        minorgridcolor = (:black, 0.2)
+        "The linewidth of the minor grid."
+        minorgridwidth = 1
+        "The linestyle of the minor grid."
+        minorgridstyle = nothing
+        "Controls if the minor grid is visible."
+        minorgridvisible = true
+        "The density at which grid lines are sampled"
+        sample_density = 100
     end
 end
