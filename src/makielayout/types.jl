@@ -1410,7 +1410,7 @@ end
         "Controls if the `r` ticks are visible."
         rticklabelsvisible = true
         "The specifier for the angular (`θ`) ticks, similar to `xticks` for a normal Axis"
-        θticks = MultiplesTicks(12, π/2, "π/2")
+        θticks = MultiplesTicks(12, π, "π")
         "The specifier for the minor `θ` ticks."
         θminorticks = IntervalsBetween(2)
         "The color of the `θ` grid."

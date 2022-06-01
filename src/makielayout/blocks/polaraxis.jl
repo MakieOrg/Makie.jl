@@ -106,6 +106,17 @@ function project_to_pixelspace(scene, points::AbstractVector{Point{N, T}}) where
     )
 end
 
+
+function text_bbox(textstring::AbstractString, textsize::Union{AbstractVector, Number}, font, align, rotation, justification, lineheight, word_wrap_width = -1)
+    glyph_collection = Makie.layout_text(
+            textstring, textsize,
+            font, align, rotation, justification, lineheight,
+            RGBAf(0,0,0,0), RGBAf(0,0,0,0), 0f0, word_wrap_width
+        )
+
+    return Rect2f(Makie.boundingbox(glyph_collection, Point3f(0), Makie.to_rotation(rotation)))
+end
+
 # MakieLayout.can_be_current_axis(ax::PolarAxis) = true
 
 function MakieLayout.initialize_block!(po::PolarAxis)
@@ -143,13 +154,17 @@ end
 
 function draw_axis!(po::PolarAxis)
 
+    θtick_pos_lbl = Observable{Vector{<:Tuple{AbstractString, Point2f}}}()
+
     rgridpoints = Observable{Vector{Makie.GeometryBasics.LineString}}()
     θgridpoints = Observable{Vector{Makie.GeometryBasics.LineString}}()
+
     rminorgridpoints = Observable{Vector{Makie.GeometryBasics.LineString}}()
     θminorgridpoints = Observable{Vector{Makie.GeometryBasics.LineString}}()
+
     spinepoints = Observable{Vector{Point2f}}()
 
-    onany(po.rticks, po.θticks, po.rminorticks, po.θminorticks, po.rtickformat, po.θtickformat, po.limits, po.sample_density, po.scene.px_area) do rticks, θticks, rminorticks, θminorticks, rtickformat, θtickformat, limits, sample_density, pixelarea
+    onany(po.rticks, po.θticks, po.rminorticks, po.θminorticks, po.rtickformat, po.θtickformat, po.limits, po.sample_density, po.scene.px_area, po.scene.transformation.transform_func) do rticks, θticks, rminorticks, θminorticks, rtickformat, θtickformat, limits, sample_density, pixelarea, trans
 
         rs = LinRange(limits..., sample_density)
         θs = LinRange(0, 2π, sample_density)
@@ -157,6 +172,23 @@ function draw_axis!(po::PolarAxis)
         _rtickvalues, _rticklabels = Makie.MakieLayout.get_ticks(rticks, identity, rtickformat, limits...)
         _θtickvalues, _θticklabels = Makie.MakieLayout.get_ticks(θticks, identity, θtickformat, 0, 2π)
 
+        # Since θ=0 is at the same position as θ = 2π, we remove the last tick
+        # if the difference between the first and last tick is exactly 2π
+        # This is a special case, since it's the only possible instance of colocation
+        if (_θtickvalues[end] - _θtickvalues[begin]) == 2π
+            pop!(_θtickvalues)
+            pop!(_θticklabels)
+        end
+
+        θtextbboxes = text_bbox.(
+            _θticklabels, Ref(po.θticklabelsize[]), Ref(po.θticklabelfont[]), Ref((:center, :center)), #=θticklabelrotation=#0f0, #=θticklabeljustification=#0f0, #=θticklabellineheight=#0f0, #=θticklabelword_wrap_width=# -1
+        )
+
+        θdiags = map(sqrt ∘ sum ∘ (x -> x .^ 2), widths.(θtextbboxes))
+
+        θgaps = θdiags ./ 2 .* (x -> Vec2f(cos(x), sin(x))).((_θtickvalues .+ trans.θ_0) .* trans.direction)
+
+        θtickpos = project_to_pixelspace(po.scene, Point2f.(limits[end], _θtickvalues)) .+ θgaps .+ Ref(pixelarea.origin)
 
         _rminortickvalues = Makie.MakieLayout.get_minor_tickvalues(rminorticks, identity, _rtickvalues, limits...)
         _θminortickvalues = Makie.MakieLayout.get_minor_tickvalues(θminorticks, identity, _θtickvalues, 0, 2π)
@@ -166,6 +198,8 @@ function draw_axis!(po::PolarAxis)
 
         _rminorgridpoints = [project_to_pixelspace(po.scene, Point2f.(r, θs)) .+ Ref(pixelarea.origin) for r in _rminortickvalues]
         _θminorgridpoints = [project_to_pixelspace(po.scene, Point2f.(rs, θ)) .+ Ref(pixelarea.origin) for θ in _θminortickvalues]
+
+        θtick_pos_lbl[] = tuple.(_θticklabels, θtickpos)
 
         spinepoints[] = project_to_pixelspace(po.scene, Point2f.(limits[end], θs)) .+ Ref(pixelarea.origin)
 
@@ -223,7 +257,15 @@ function draw_axis!(po::PolarAxis)
         visible = po.minorgridvisible
     )
 
-    translate!.((spineplot, rgridplot, θgridplot, rminorgridplot, θminorgridplot), 0, 0, 100_000)
+    θtickplot = text!(
+        po.blockscene, θtick_pos_lbl;
+        textsize = po.θticklabelsize,
+        font = po.θticklabelfont,
+        color = po.θticklabelcolor,
+        align = (:center, :center),
+    )
+
+    translate!.((spineplot, rgridplot, θgridplot, rminorgridplot, θminorgridplot, θtickplot), 0, 0, 100_000)
 
 end
 
@@ -252,6 +294,7 @@ function Makie.plot!(
     # reset_limits!(po)
     plot
 end
+
 
 function MakieLayout.autolimits!(po::PolarAxis)
     datalims = Rect2f(data_limits(po.scene))
