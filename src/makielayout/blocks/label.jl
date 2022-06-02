@@ -6,25 +6,34 @@ function initialize_block!(l::Label)
     layoutobservables = l.layoutobservables
 
     textpos = Observable(Point3f(0, 0, 0))
+    word_wrap_width = Observable(-1f0)
 
-    t = text!(topscene, l.text, position = textpos, textsize = l.textsize, font = l.font, color = l.color,
+    t = text!(
+        topscene, l.text, position = textpos, textsize = l.textsize, font = l.font, color = l.color,
         visible = l.visible, align = (:center, :center), rotation = l.rotation, markerspace = :data,
-        justification = l.justification,
-        lineheight = l.lineheight,
+        justification = l.justification, lineheight = l.lineheight, word_wrap_width = word_wrap_width, 
         inspectable = false)
 
     textbb = Ref(BBox(0, 1, 0, 1))
 
-    onany(l.text, l.textsize, l.font, l.rotation, l.padding) do text, textsize, font, rotation, padding
+    onany(l.text, l.textsize, l.font, l.rotation, word_wrap_width, l.padding) do _, _, _, _, _, padding
         textbb[] = Rect2f(boundingbox(t))
         autowidth = width(textbb[]) + padding[1] + padding[2]
         autoheight = height(textbb[]) + padding[3] + padding[4]
-        layoutobservables.autosize[] = (autowidth, autoheight)
+        if l.word_wrap[]
+            layoutobservables.autosize[] = (nothing, autoheight)
+        else
+            layoutobservables.autosize[] = (autowidth, autoheight)
+        end
+        return
     end
 
     onany(layoutobservables.computedbbox, l.padding) do bbox, padding
-
-        tw = width(textbb[])
+        if l.word_wrap[]
+            tw = width(bbox) - padding[1] - padding[2]
+        else
+            tw = width(textbb[])
+        end
         th = height(textbb[])
 
         box = bbox.origin[1]
@@ -34,6 +43,12 @@ function initialize_block!(l::Label)
         ty = boy + padding[3] + 0.5 * th
 
         textpos[] = Point3f(tx, ty, 0)
+
+        if l.word_wrap[] && (word_wrap_width[] != tw)
+            word_wrap_width[] = tw
+        end
+
+        return
     end
 
 

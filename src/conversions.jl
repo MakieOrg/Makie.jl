@@ -915,7 +915,7 @@ a string naming a font, e.g. helvetica
 function to_font(x::Union{Symbol, String})
     str = string(x)
     get!(FONT_CACHE, str) do
-        str == "default" && return to_font("Dejavu Sans")
+        str == "default" && return to_font("TeX Gyre Heros Makie")
 
         # check if the string points to a font file and load that
         if isfile(str)
@@ -930,12 +930,12 @@ function to_font(x::Union{Symbol, String})
         fontpath = assetpath("fonts")
         font = FreeTypeAbstraction.findfont(str; additional_fonts=fontpath)
         if font === nothing
-            @warn("Could not find font $str, using Dejavu Sans")
-            if "dejavu sans" == lowercase(str)
-                # since we fall back to dejavu sans, we need to check for recursion
-                error("Recursion encountered; DejaVu Sans cannot be located in the font path $fontpath")
+            @warn("Could not find font $str, using TeX Gyre Heros Makie")
+            if "tex gyre heros makie" == lowercase(str)
+                # since we fall back to TeX Gyre Heros Makie, we need to check for recursion
+                error("Recursion encountered; TeX Gyre Heros Makie cannot be located in the font path $fontpath")
             end
-            return to_font("dejavu sans")
+            return to_font("TeX Gyre Heros Makie")
         end
         return font
     end
@@ -1086,7 +1086,7 @@ function to_colormap(cs::Union{String, Symbol})::Vector{RGBAf}
             return to_colormap(ColorBrewer.palette(cs_string, 8))
         else
             # cs_string must be in plotutils_names
-            return to_colormap(PlotUtils.get_colorscheme(Symbol(cs_string)).colors)
+            return to_colormap(PlotUtils.get_colorscheme(Symbol(cs_string)))
         end
     else
         error(
@@ -1099,11 +1099,12 @@ function to_colormap(cs::Union{String, Symbol})::Vector{RGBAf}
     end
 end
 
-to_colormap(cg::PlotUtils.ContinuousColorGradient)::Vector{RGBAf} = to_colormap(cg.colors)
-
-function to_colormap(cg::PlotUtils.CategoricalColorGradient)::Vector{RGBAf}
-    colors = to_colormap(cg.colors)
-    return repeat(colors; inner=20)
+# Handle inbuilt PlotUtils types
+function to_colormap(cg::PlotUtils.ColorGradient)::Vector{RGBAf}
+    # We sample the colormap using cg[val]. This way, we get a concrete representation of
+    # the underlying gradient, like it being categorical or using a log scale.
+    # 256 is just a high enough constant, without being too big to slow things down.
+    return to_colormap(getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), 256)))
 end
 
 """

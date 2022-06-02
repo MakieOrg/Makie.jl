@@ -1,8 +1,25 @@
 # News
-
 ## master
 
 - **EXPERIMENTAL** Added support for multiple windows in GLMakie [#1771](https://github.com/JuliaPlots/Makie.jl/pull/1771).
+
+## v0.17.3
+
+- Switched to `MathTeXEngine v0.4`, which improves the look of LaTeXStrings [#1952](https://github.com/JuliaPlots/Makie.jl/pull/1952).
+- Added subtitle capability to `Axis` [#1859](https://github.com/JuliaPlots/Makie.jl/pull/1859).
+- Fixed a bug where scaled colormaps constructed using `Makie.cgrad` were not interpreted correctly.
+
+## v0.17.2
+
+- Changed the default font from `Dejavu Sans` to `TeX Gyre Heros Makie` which is the same as `TeX Gyre Heros` with slightly decreased descenders and ascenders. Decreasing those metrics reduced unnecessary whitespace and alignment issues. Four fonts in total were added, the styles Regular, Bold, Italic and Bold Italic. Also changed `Axis`, `Axis3` and `Legend` attributes `titlefont` to `TeX Gyre Heros Makie Bold` in order to separate it better from axis labels in multifacet arrangements [#1897](https://github.com/JuliaPlots/Makie.jl/pull/1897).
+
+## v0.17.1
+
+- Added word wrapping. In `Label`, `word_wrap = true` causes it to use the suggested width and wrap text to fit. In `text`, `word_wrap_width > 0` can be used to set a pixel unit line width. Any word (anything between two spaces without a newline) that goes beyond this width gets a newline inserted before it [#1819](https://github.com/JuliaPlots/Makie.jl/pull/1819).
+- Improved `Axis3`'s interactive performance [#1835](https://github.com/JuliaPlots/Makie.jl/pull/1835). 
+- Fixed errors in GLMakie's `scatter` implementation when markers are given as images. [#1917](https://github.com/JuliaPlots/Makie.jl/pull/1917).
+- Removed some method ambiguities introduced in v0.17 [#1922](https://github.com/JuliaPlots/Makie.jl/pull/1922).
+- Add an empty default label, `""`, to each slider that doesn't have a label in `SliderGrid` [#1888](https://github.com/JuliaPlots/Makie.jl/pull/1888).
 
 ## v0.17
 

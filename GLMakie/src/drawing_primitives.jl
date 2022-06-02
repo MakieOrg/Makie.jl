@@ -240,13 +240,13 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Union{Scat
                 delete!(gl_attributes, :color_norm)
                 delete!(gl_attributes, :color_map)
             end
-            return GLVisualize.draw_pixel_scatter(screen.shader_cache, positions, gl_attributes)
+            return draw_pixel_scatter(screen.shader_cache, positions, gl_attributes)
         else
             handle_intensities!(gl_attributes)
             if x isa MeshScatter
-                return GLVisualize.draw_mesh_particle(screen.shader_cache, (marker, positions), gl_attributes)
+                return draw_mesh_particle(screen.shader_cache, (marker, positions), gl_attributes)
             else
-                return GLVisualize.draw_scatter(screen.shader_cache, (marker, positions), gl_attributes)
+                return draw_scatter(screen.shader_cache, (marker, positions), gl_attributes)
             end
         end
     end
@@ -267,7 +267,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Lines))
         positions = apply_transform(transform_func_obs(x), positions)
         handle_intensities!(data)
         connect_camera!(data, scene.camera)
-        return GLVisualize.draw_lines(screen.shader_cache, positions, data)
+        return draw_lines(screen.shader_cache, positions, data)
     end
 end
 
@@ -293,7 +293,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::LineSegmen
         end
         connect_camera!(data, scene.camera)
 
-        return GLVisualize.draw_linesegments(screen.shader_cache, positions, data)
+        return draw_linesegments(screen.shader_cache, positions, data)
     end
 end
 
@@ -309,24 +309,8 @@ function draw_atomic(screen::GLScreen, scene::Scene,
         markerspace = gl_attributes[:markerspace]
         offset = pop!(gl_attributes, :offset, Vec2f(0))
 
-        # TODO: This is a hack before we get better updating of plot objects and attributes going.
-        # Here we only update the glyphs when the glyphcollection changes, if it's a singular glyphcollection.
-        # The if statement will be compiled away depending on the parameter of Text.
-        # This means that updates of a text vector and a separate position vector will still not work if only the text
-        # vector is triggered, but basically all internal objects use the vector of tuples version, and that triggers
-        # both glyphcollection and position, so it still works
-        if glyphcollection[] isa Makie.GlyphCollection
-            # here we use the glyph collection observable directly
-            gcollection = glyphcollection
-        else
-            # and here we wrap it into another observable
-            # so it doesn't trigger dimension mismatches
-            # the actual, new value gets then taken in the below lift with to_value
-            gcollection = Observable(glyphcollection)
-        end
-
         # calculate quad metrics
-        glyph_data = map(pos, gcollection, offset, transfunc) do pos, gc, offset, transfunc
+        glyph_data = map(pos, glyphcollection, offset, transfunc) do pos, gc, offset, transfunc
             Makie.text_quads(pos, to_value(gc), offset, transfunc)
         end
 
@@ -385,7 +369,7 @@ function draw_atomic(screen::GLScreen, scene::Scene,
         connect_camera!(gl_attributes, cam, markerspace)
 
         # Avoid julia#15276
-        _robj = GLVisualize.draw_scatter(screen.shader_cache, (DISTANCEFIELD, positions), gl_attributes)
+        _robj = draw_scatter(screen.shader_cache, (DISTANCEFIELD, positions), gl_attributes)
 
         return _robj
     end
@@ -438,7 +422,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
         gl_attributes[:stroke_width] = pop!(gl_attributes, :thickness)
         connect_camera!(gl_attributes, scene.camera)
 
-        return GLVisualize.draw_heatmap(screen.shader_cache, tex, gl_attributes)
+        return draw_heatmap(screen.shader_cache, tex, gl_attributes)
     end
 end
 
@@ -501,7 +485,7 @@ function mesh_inner(shader_cache, mesh, transfunc, gl_attributes)
         end
         return mesh
     end
-    return GLVisualize.draw_mesh(shader_cache, mesh, gl_attributes)
+    return draw_mesh(shader_cache, mesh, gl_attributes)
 end
 
 function draw_atomic(screen::GLScreen, scene::Scene, meshplot::Mesh)
@@ -564,11 +548,11 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
             args = map((xpos, ypos, mat)) do arg
                 Texture(map(x-> convert(Array, el32convert(x)), arg); minfilter=:nearest)
             end
-            return GLVisualize.draw_surface(screen.shader_cache, args, gl_attributes)
+            return draw_surface(screen.shader_cache, args, gl_attributes)
         else
             gl_attributes[:ranges] = to_range.(to_value.(x[1:2]))
             z_data = Texture(el32convert(x[3]); minfilter=:nearest)
-            return GLVisualize.draw_surface(screen.shader_cache, z_data, gl_attributes)
+            return draw_surface(screen.shader_cache, z_data, gl_attributes)
         end
     end
     return robj
@@ -591,6 +575,6 @@ function draw_atomic(screen::GLScreen, scene::Scene, vol::Volume)
             return convert(Mat4f, m) * m2
         end
         connect_camera!(gl_attributes, scene.camera)
-        return GLVisualize.draw_volume(screen.shader_cache, vol[4], gl_attributes)
+        return draw_volume(screen.shader_cache, vol[4], gl_attributes)
     end
 end

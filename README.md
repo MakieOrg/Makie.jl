@@ -7,7 +7,8 @@ Data is the gold and silver of our age, so let's spread it out beautifully on th
 
 [Check out the documentation here!](http://makie.juliaplots.org/stable/)
 
-[![][docs-stable-img]][docs-stable-url] [![][docs-master-img]][docs-master-url]
+[![][docs-stable-img]][docs-stable-url] [![][docs-master-img]][docs-master-url] [![](https://img.shields.io/twitter/url/https/twitter.com/cloudposse.svg?style=social&label=Follow%20%40MakiePlots)](https://twitter.com/MakiePlots)
+
 
 [gitlab-img]: https://gitlab.com/JuliaGPU/Makie.jl/badges/master/pipeline.svg
 [gitlab-url]: https://gitlab.com/JuliaGPU/Makie.jl/pipelines

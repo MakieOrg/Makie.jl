@@ -1,16 +1,16 @@
 function plot!(plot::Text)
     # attach a function to any text that calculates the glyph layout and stores it
     glyphcollection = lift(plot[1], plot.textsize, plot.font, plot.align,
-            plot.rotation, plot.justification, plot.lineheight,
-            plot.color, plot.strokecolor, plot.strokewidth) do str,
-                ts, f, al, rot, jus, lh, col, scol, swi
+            plot.rotation, plot.justification, plot.lineheight, plot.color, 
+            plot.strokecolor, plot.strokewidth, plot.word_wrap_width) do str,
+                ts, f, al, rot, jus, lh, col, scol, swi, www
         ts = to_textsize(ts)
         f = to_font(f)
         rot = to_rotation(rot)
         col = to_color(col)
         scol = to_color(scol)
 
-        layout_text(str, ts, f, al, rot, jus, lh, col, scol, swi)
+        layout_text(str, ts, f, al, rot, jus, lh, col, scol, swi, www)
     end
 
     text!(plot, glyphcollection; plot.attributes...)
@@ -25,15 +25,13 @@ plot!(plot::Text{<:Tuple{<:GlyphCollection}}) = plot
 plot!(plot::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}}) = plot
 
 function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
-
     glyphcollections = Observable(GlyphCollection[])
-    position = Observable{Any}(nothing)
     rotation = Observable{Any}(nothing)
 
-    onany(plot[1], plot.textsize, plot.position,
-            plot.font, plot.align, plot.rotation, plot.justification,
-            plot.lineheight, plot.color, plot.strokecolor, plot.strokewidth) do str,
-                    ts, pos, f, al, rot, jus, lh, col, scol, swi
+    onany(plot[1], plot.textsize, plot.font, plot.align, 
+            plot.rotation, plot.justification, plot.lineheight, plot.color, 
+            plot.strokecolor, plot.strokewidth, plot.word_wrap_width) do str,
+                    ts, f, al, rot, jus, lh, col, scol, swi, wwws
 
         ts = to_textsize(ts)
         f = to_font(f)
@@ -42,14 +40,14 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
         scol = to_color(scol)
 
         gcs = GlyphCollection[]
-        broadcast_foreach(str, ts, f, al, rot, jus, lh, col, scol, swi) do str,
-                ts, f, al, rot, jus, lh, col, scol, swi
-            subgl = layout_text(str, ts, f, al, rot, jus, lh, col, scol, swi)
+        broadcast_foreach(str, ts, f, al, rot, jus, lh, col, scol, swi, wwws) do str,
+                ts, f, al, rot, jus, lh, col, scol, swi, www
+            subgl = layout_text(str, ts, f, al, rot, jus, lh, col, scol, swi, www)
             push!(gcs, subgl)
         end
-        position.val = pos
         rotation.val = rot
         glyphcollections[] = gcs
+        return
     end
 
     # run onany once to initialize
@@ -78,10 +76,11 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:AbstractString, <:Po
     on(strings_and_positions) do str_pos
         strs = first.(str_pos)
         poss = to_ndim.(Ref(Point3f), last.(str_pos), 0)
-        # first mutate strings without triggering redraw
-        t[1].val = strs
-        # then update positions with trigger
-        positions[] = poss
+
+        t[1].val != strs && (t[1][] = strs)
+        positions.val != poss && (positions[] = poss)
+
+        return
     end
     plot
 end
@@ -91,8 +90,8 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
 
     # attach a function to any text that calculates the glyph layout and stores it
     lineels_glyphcollection_offset = lift(plot[1], plot.textsize, plot.align, plot.rotation,
-            plot.model, plot.color, plot.strokecolor, plot.strokewidth, plot.position) do latexstring,
-                ts, al, rot, mo, color, scolor, swidth, _
+            plot.model, plot.color, plot.strokecolor, plot.strokewidth, 
+            plot.word_wrap_width) do latexstring, ts, al, rot, mo, color, scolor, swidth, www
 
         ts = to_textsize(ts)
         rot = to_rotation(rot)
@@ -101,19 +100,20 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
             tex_elements = []
             glyphcollections = GlyphCollection[]
             offsets = Point2f[]
-            broadcast_foreach(latexstring, ts, al, rot, color, scolor, swidth) do latexstring,
-                ts, al, rot, color, scolor, swidth
+            broadcast_foreach(latexstring, ts, al, rot, color, scolor, swidth, www) do latexstring,
+                ts, al, rot, color, scolor, swidth, _www
 
                 te, gc, offs = texelems_and_glyph_collection(latexstring, ts,
-                    al[1], al[2], rot, color, scolor, swidth)
+                    al[1], al[2], rot, color, scolor, swidth, www)
                 push!(tex_elements, te)
                 push!(glyphcollections, gc)
                 push!(offsets, offs)
             end
-            tex_elements, glyphcollections, offsets
+            return tex_elements, glyphcollections, offsets
         else
             tex_elements, glyphcollections, offsets = texelems_and_glyph_collection(latexstring, ts,
-                al[1], al[2], rot, color, scolor, swidth)
+                al[1], al[2], rot, color, scolor, swidth, www)
+            return tex_elements, glyphcollections, offsets
         end
     end
 
@@ -125,10 +125,13 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
 
     scene = Makie.parent_scene(plot)
 
-    onany(lineels_glyphcollection_offset, scene.camera.projectionview) do (allels, gcs, offs), projview
+    onany(lineels_glyphcollection_offset, plot.position, scene.camera.projectionview
+            ) do (allels, gcs, offs), pos, _
 
-        inv_projview = inv(projview)
-        pos = plot.position[]
+        if pos isa Vector && (length(pos) != length(allels))
+            return
+        end
+        # inv_projview = inv(projview)
         ts = plot.textsize[]
         rot = plot.rotation[]
 
@@ -144,7 +147,7 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
             allels = [allels]
         end
         broadcast_foreach(allels, offs, pos, ts, rot) do allels, offs, pos, ts, rot
-            offset = Point2f(pos)
+            offset = project(scene.camera, :data, :pixel, Point2f(pos))[Vec(1, 2)]
 
             els = map(allels) do el
                 el[1] isa VLine || el[1] isa HLine || return nothing
@@ -171,6 +174,7 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
             append!(linepairs.val, first.(pairs))
         end
         notify(linepairs)
+        return
     end
 
     notify(plot.position)
@@ -179,14 +183,14 @@ function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXStr
     linesegments!(
         plot, linepairs, linewidth = linewidths, color = plot.color,
         visible = plot.visible, inspectable = plot.inspectable, 
-        transparent = plot.transparency
+        transparent = plot.transparency, space = :pixel
     )
 
     plot
 end
 
 function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, valign,
-        rotation, color, strokecolor, strokewidth)
+        rotation, color, strokecolor, strokewidth, word_wrap_width)
 
     rot = convert_attribute(rotation, key"rotation"())
 
@@ -198,21 +202,47 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
 
     scales_2d = [Vec2f(x[3] * Vec2f(fs)) for x in els]
 
-    chars = [x[1].char for x in els]
-    fonts = [x[1].font for x in els]
+    texchars = [x[1] for x in els]
+    chars = [texchar.char for texchar in texchars]
+    fonts = [texchar.font for texchar in texchars]
+    extents = GlyphExtent.(texchars)
 
-    extents = [FreeTypeAbstraction.get_extent(f, c) for (f, c) in zip(fonts, chars)]
-
-    bboxes = map(extents, fonts, scales_2d) do ext, font, scale
-        unscaled_hi_bb = FreeTypeAbstraction.height_insensitive_boundingbox(ext, font)
+    bboxes = map(extents, scales_2d) do ext, scale
+        unscaled_hi_bb = height_insensitive_boundingbox_with_advance(ext)
         return Rect2f(
             origin(unscaled_hi_bb) * scale,
             widths(unscaled_hi_bb) * scale
         )
     end
 
-    basepositions = [to_ndim(Vec3f, fs, 0) .* to_ndim(Point3f, x[2], 0)
-        for x in els]
+    basepositions = [to_ndim(Vec3f, fs, 0) .* to_ndim(Point3f, x[2], 0) for x in els]
+
+    if word_wrap_width > 0
+        last_space_idx = 0
+        last_newline_idx = 1
+        newline_offset = Point3f(basepositions[1][1], 0f0, 0)
+
+        for i in eachindex(chars)
+            basepositions[i] -= newline_offset
+            if chars[i] == ' ' || i == length(chars)
+                right_pos = basepositions[i][1] + width(bboxes[i])
+                if last_space_idx != 0 && right_pos > word_wrap_width
+                    section_offset = basepositions[last_space_idx + 1][1]
+                    lineheight = maximum((height(bb) for bb in bboxes[last_newline_idx:last_space_idx]))
+                    last_newline_idx = last_space_idx+1
+                    newline_offset += Point3f(section_offset, lineheight, 0)
+
+                    chars[last_space_idx] = '\n'
+                    for j in last_space_idx+1:i
+                        basepositions[j] -= Point3f(section_offset, lineheight, 0)
+                    end
+                end
+                last_space_idx = i
+            elseif chars[i] == '\n'
+                last_space_idx = 0
+            end
+        end
+    end
 
     bb = isempty(bboxes) ? BBox(0, 0, 0, 0) : begin
         mapreduce(union, zip(bboxes, basepositions)) do (b, pos)
@@ -248,7 +278,7 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
         rot,
         color,
         strokecolor,
-        strokewidth,
+        strokewidth
     )
 
     all_els, pre_align_gl, Point2f(xshift, yshift)

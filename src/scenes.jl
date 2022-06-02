@@ -238,9 +238,9 @@ function Scene(
         kw...
     )
     if isnothing(px_area)
-        px_area = lift(zero_origin, parent.px_area)
+        px_area = lift(zero_origin, parent.px_area; ignore_equal_values=true)
     else
-        px_area = lift(pixelarea(parent), convert(Observable, px_area)) do p, a
+        px_area = lift(pixelarea(parent), convert(Observable, px_area); ignore_equal_values=true) do p, a
             # make coordinates relative to parent
             rect = Rect2i(minimum(p) .+ minimum(a), widths(a))
             return rect

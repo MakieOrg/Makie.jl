@@ -2,10 +2,10 @@
 #                             Projection utilities                             #
 ################################################################################
 
-function project_position(scene, space, point, model, yflip = true)
+function project_position(scene, transform_func::T, space, point, model, yflip::Bool = true) where T
 
     # use transform func
-    point = Makie.apply_transform(scene.transformation.transform_func[], point)
+    point = Makie.apply_transform(transform_func, point)
 
     res = scene.camera.resolution[]
     p4d = to_ndim(Vec4f, to_ndim(Vec3f, point, 0f0), 1f0)
@@ -20,6 +20,10 @@ function project_position(scene, space, point, model, yflip = true)
     end
     # multiply with scene resolution for final position
     return p_0_to_1 .* res
+end
+
+function project_position(scene, space, point, model, yflip::Bool = true)
+    project_position(scene, scene.transformation.transform_func[], space, point, model, yflip)
 end
 
 function project_scale(scene::Scene, space, s::Number, model = Mat4f(I))
@@ -249,5 +253,6 @@ function per_face_colors(
     error("Unsupported Color type: $(typeof(color))")
 end
 
-mesh_pattern_set_corner_color(pattern, id, c::Colorant) =
+function mesh_pattern_set_corner_color(pattern, id, c::Colorant)
     Cairo.mesh_pattern_set_corner_color_rgba(pattern, id, rgbatuple(c)...)
+end

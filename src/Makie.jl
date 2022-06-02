@@ -1,5 +1,9 @@
 module Makie
 
+if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@max_methods"))
+    @eval Base.Experimental.@max_methods 1
+end
+
 module ContoursHygiene
     import Contour
 end
@@ -51,6 +55,7 @@ using GeometryBasics: widths, positive_widths, VecTypes, AbstractPolygon, value,
 using Distributions: Distribution, VariateForm, Discrete, QQPair, pdf, quantile, qqbuild
 
 import FileIO: save
+import FreeTypeAbstraction: height_insensitive_boundingbox
 using Printf: @sprintf
 using StatsFuns: logit, logistic
 # Imports from Base which we don't want to have to qualify

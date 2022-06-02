@@ -44,23 +44,12 @@ end
 
 function Makie.backend_show(::GLBackend, io::IO, m::MIME"image/png", scene::Scene)
     img = scene2image(scene)
-    # TODO: when FileIO 1.6 is the minimum required version, delete the conditional
-    if isdefined(FileIO, :action)   # FileIO 1.6+
-        # keep this one
-        FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img)
-    else
-        # delete this one
-        FileIO.save(FileIO.Stream(FileIO.format"PNG", Makie.raw_io(io)), img)
-    end
+    FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img)
     return
 end
 
 function Makie.backend_show(::GLBackend, io::IO, m::MIME"image/jpeg", scene::Scene)
     img = scene2image(scene)
-    if isdefined(FileIO, :action)   # FileIO 1.6+
-        FileIO.save(FileIO.Stream{FileIO.format"JPEG"}(Makie.raw_io(io)), img)
-    else
-        FileIO.save(FileIO.Stream(FileIO.format"JPEG", Makie.raw_io(io)), img)
-    end
+    FileIO.save(FileIO.Stream{FileIO.format"JPEG"}(Makie.raw_io(io)), img)
     return
 end

@@ -1,5 +1,5 @@
 
-#################################################################################
+################################################################################
 ### Point picking
 ################################################################################
 
@@ -71,21 +71,22 @@ function Makie.pick_closest(scene::Scene, screen::Screen, xy, range)
     x0, y0 = max.(1, floor.(Int, xy .- range))
     x1, y1 = min.((w, h), floor.(Int, xy .+ range))
     dx = x1 - x0; dy = y1 - y0
-    sid = pick_native(screen, Rect2i(x0, y0, dx, dy))
+    sids = pick_native(screen, Rect2i(x0, y0, dx, dy))
 
     min_dist = range^2
     id = SelectionID{Int}(0, 0)
     x, y =  xy .+ 1 .- Vec2f(x0, y0)
     for i in 1:dx, j in 1:dy
         d = (x-i)^2 + (y-j)^2
-        if (d < min_dist) && (sid[i, j][1] > 0) && haskey(screen.cache2plot, sid[i, j][1])
+        sid = sids[i, j]
+        if (d < min_dist) && (sid.id > 0) && haskey(screen.cache2plot, sid.id)
             min_dist = d
-            id = convert(SelectionID{Int}, sid[i, j])
+            id = convert(SelectionID{Int}, sid)
         end
     end
 
-    if haskey(screen.cache2plot, id[1])
-        return (screen.cache2plot[id[1]], id[2])
+    if haskey(screen.cache2plot, id.id)
+        return (screen.cache2plot[id.id], id.index)
     else
         return (nothing, 0)
     end
