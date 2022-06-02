@@ -1406,9 +1406,9 @@ end
         "The font of the `r` tick labels."
         rticklabelfont = inherit(scene, :font, Makie.defaultfont())
         "The color of the `r` tick labels."
-        rticklabelcolor = :black
+        rticklabelcolor = inherit(scene, :textcolor, :black)
         "Controls if the `r` ticks are visible."
-        rticklabelsvisible = true
+        rticklabelsvisible = inherit(scene, :xticklabelsvisible, true)
         "The specifier for the angular (`θ`) ticks, similar to `xticks` for a normal Axis"
         θticks = MultiplesTicks(12, π, "π")
         "The specifier for the minor `θ` ticks."
@@ -1428,9 +1428,9 @@ end
         "The font of the `θ` tick labels."
         θticklabelfont = inherit(scene, :font, Makie.defaultfont())
         "The color of the `θ` tick labels."
-        θticklabelcolor = :black
+        θticklabelcolor = inherit(scene, :textcolor, :black)
         "Controls if the `θ` ticks are visible."
-        θticklabelsvisible = true
+        θticklabelsvisible = inherit(scene, :yticklabelsvisible, true)
         "The color of the minor grid."
         minorgridcolor = (:black, 0.2)
         "The linewidth of the minor grid."
