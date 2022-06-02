@@ -8,7 +8,7 @@ end
     x = LinRange(-1, 1, 20)
     y = LinRange(-1, 1, 20)
     z = x .* y'
-    contour(x, y, z, levels=0, linewidth=0, fillrange=true)
+    contour(x, y, z, fillrange=true, linewidth=3, linestyle=:dot, color=:black)
 end
 
 @reference_test "font" begin
