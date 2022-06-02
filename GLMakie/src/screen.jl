@@ -427,7 +427,6 @@ function Screen(;
 
     GLFW.SetWindowRefreshCallback(window, window -> refreshwindowcb(window, screen))
     if start_renderloop
-        println("starting the loeeps")
         screen.rendertask[] = @async((WINDOW_CONFIG.renderloop[])(screen))
     end
     # display window if visible!
