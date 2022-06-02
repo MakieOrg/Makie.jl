@@ -1409,6 +1409,7 @@ end
         rticklabelcolor = inherit(scene, :textcolor, :black)
         "Controls if the `r` ticks are visible."
         rticklabelsvisible = inherit(scene, :xticklabelsvisible, true)
+        rtickangle = 0.0
         "The specifier for the angular (`θ`) ticks, similar to `xticks` for a normal Axis"
         θticks = MultiplesTicks(12, π, "π")
         "The specifier for the minor `θ` ticks."

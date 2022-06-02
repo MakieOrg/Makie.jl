@@ -154,6 +154,7 @@ end
 
 function draw_axis!(po::PolarAxis)
 
+    rtick_pos_lbl = Observable{Vector{<:Tuple{AbstractString, Point2f}}}()
     θtick_pos_lbl = Observable{Vector{<:Tuple{AbstractString, Point2f}}}()
 
     rgridpoints = Observable{Vector{Makie.GeometryBasics.LineString}}()
@@ -164,7 +165,7 @@ function draw_axis!(po::PolarAxis)
 
     spinepoints = Observable{Vector{Point2f}}()
 
-    onany(po.rticks, po.θticks, po.rminorticks, po.θminorticks, po.rtickformat, po.θtickformat, po.limits, po.sample_density, po.scene.px_area, po.scene.transformation.transform_func) do rticks, θticks, rminorticks, θminorticks, rtickformat, θtickformat, limits, sample_density, pixelarea, trans
+    onany(po.rticks, po.θticks, po.rminorticks, po.θminorticks, po.rtickformat, po.θtickformat, po.rtickangle, po.limits, po.sample_density, po.scene.px_area, po.scene.transformation.transform_func) do rticks, θticks, rminorticks, θminorticks, rtickformat, θtickformat, rtickangle, limits, sample_density, pixelarea, trans
 
         rs = LinRange(limits..., sample_density)
         θs = LinRange(0, 2π, sample_density)
@@ -183,6 +184,8 @@ function draw_axis!(po::PolarAxis)
         θtextbboxes = text_bbox.(
             _θticklabels, Ref(po.θticklabelsize[]), Ref(po.θticklabelfont[]), Ref((:center, :center)), #=θticklabelrotation=#0f0, #=θticklabeljustification=#0f0, #=θticklabellineheight=#0f0, #=θticklabelword_wrap_width=# -1
         )
+
+        rtick_pos_lbl[] = tuple.(_rticklabels, project_to_pixelspace(po.scene, Point2f.(_rtickvalues, rtickangle)) .+ Ref(pixelarea.origin))
 
         θdiags = map(sqrt ∘ sum ∘ (x -> x .^ 2), widths.(θtextbboxes))
 
@@ -217,6 +220,8 @@ function draw_axis!(po::PolarAxis)
 
     notify(po.sample_density)
 
+    # plot using the created observables
+    # spine
     spineplot = lines!(
         po.blockscene, spinepoints;
         color = po.spinecolor,
@@ -224,7 +229,7 @@ function draw_axis!(po::PolarAxis)
         linewidth = po.spinewidth,
         visible = po.spinevisible
     )
-
+    # major grids
     rgridplot = lines!(
         po.blockscene, rgridpoints;
         color = po.rgridcolor,
@@ -240,7 +245,7 @@ function draw_axis!(po::PolarAxis)
         linewidth = po.θgridwidth,
         visible = po.θgridvisible
     )
-
+    # minor grids
     rminorgridplot = lines!(
         po.blockscene, rminorgridpoints;
         color = po.minorgridcolor,
@@ -256,8 +261,16 @@ function draw_axis!(po::PolarAxis)
         linewidth = po.minorgridwidth,
         visible = po.minorgridvisible
     )
+    # tick labels
+    rticklabelplot = text!(
+        po.blockscene, rtick_pos_lbl;
+        textsize = po.rticklabelsize,
+        font = po.rticklabelfont,
+        color = po.rticklabelcolor,
+        align = (:center, :top),
+    )
 
-    θtickplot = text!(
+    θticklabelplot = text!(
         po.blockscene, θtick_pos_lbl;
         textsize = po.θticklabelsize,
         font = po.θticklabelfont,
@@ -265,7 +278,9 @@ function draw_axis!(po::PolarAxis)
         align = (:center, :center),
     )
 
-    translate!.((spineplot, rgridplot, θgridplot, rminorgridplot, θminorgridplot, θtickplot), 0, 0, 100_000)
+    translate!.((spineplot, rgridplot, θgridplot, rminorgridplot, θminorgridplot, rticklabelplot, θticklabelplot), 0, 0, 100_000)
+
+    return (spineplot, rgridplot, θgridplot, rminorgridplot, θminorgridplot, rticklabelplot, θticklabelplot)
 
 end
 
