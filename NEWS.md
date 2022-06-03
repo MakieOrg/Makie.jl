@@ -1,7 +1,8 @@
 # News
+
 ## master
 
-- **EXPERIMENTAL** Added support for multiple windows in GLMakie [#1771](https://github.com/JuliaPlots/Makie.jl/pull/1771).
+- **EXPERIMENTAL** Added support for multiple windows in GLMakie through `display(GLMakie.Screen(), figure_or_scene)` [#1771](https://github.com/JuliaPlots/Makie.jl/pull/1771).
 
 ## v0.17.3
 
