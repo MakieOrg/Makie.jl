@@ -27,7 +27,6 @@ $(ATTRIBUTES)
         linewidth = 1.0,
         linestyle = nothing,
         alpha = 1.0,
-        fillrange = false,
         enable_depth = true,
         transparency = false
     )
@@ -176,11 +175,6 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
 
     replace_automatic!(()-> zrange, plot, :colorrange)
 
-    if to_value(plot.fillrange)
-        contourf!(plot, x, y, z;
-            levels=contourf_levels, colorrange=plot.colorrange,
-            colormap=plot.colormap, transparency=plot.transparency)
-    end
     args = @extract plot (color, colormap, colorrange, alpha)
     level_colors = lift(color_per_level, args..., levels)
     result = lift(x, y, z, levels, level_colors) do x, y, z, levels, level_colors

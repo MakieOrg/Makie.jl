@@ -4,13 +4,6 @@
     fig
 end
 
-@reference_test "fillrange" begin
-    x = LinRange(-1, 1, 20)
-    y = LinRange(-1, 1, 20)
-    z = x .* y'
-    contour(x, y, z, fillrange=true, linewidth=3, linestyle=:dot, color=:black)
-end
-
 @reference_test "font" begin
     fig, ax, sc = scatter(RNG.rand(10), color=:red)
     text!(ax, "adding text", textsize=0.6, align=(:center, :center), font="Blackchancery")
