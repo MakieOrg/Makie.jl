@@ -14,6 +14,7 @@ struct CairoBackend <: Makie.AbstractBackend
     path::String
     px_per_unit::Float64
     pt_per_unit::Float64
+    antialias::Int # cairo_antialias_t
 end
 
 """
@@ -29,7 +30,7 @@ struct CairoScreen{S} <: Makie.AbstractScreen
 end
 
 
-function CairoBackend(path::String; px_per_unit=1, pt_per_unit=1)
+function CairoBackend(path::String; px_per_unit=1, pt_per_unit=1, antialias = Cairo.ANTIALIAS_BEST)
     ext = splitext(path)[2]
     typ = if ext == ".png"
         PNG
@@ -42,7 +43,7 @@ function CairoBackend(path::String; px_per_unit=1, pt_per_unit=1)
     else
         error("Unsupported extension: $ext")
     end
-    CairoBackend(typ, path, px_per_unit, pt_per_unit)
+    CairoBackend(typ, path, px_per_unit, pt_per_unit, antialias)
 end
 
 # we render the scene directly, since we have
@@ -72,6 +73,8 @@ function CairoScreen(scene::Scene; device_scaling_factor = 1, antialias = Cairo.
 
     ctx = Cairo.CairoContext(surf)
     Cairo.set_antialias(ctx, antialias)
+    # Set the miter limit (when miter transitions to bezel) to mimic GLMakie behaviour
+    ccall((:cairo_set_miter_limit, Cairo.libcairo), Cvoid, (Ptr{Nothing}, Cdouble), ctx.ptr, 2.0)
 
     return CairoScreen(scene, surf, ctx, nothing)
 end
@@ -119,6 +122,8 @@ function CairoScreen(scene::Scene, path::Union{String, IO}, mode::Symbol; device
 
     ctx = Cairo.CairoContext(surf)
     Cairo.set_antialias(ctx, antialias)
+    # Set the miter limit (when miter transitions to bezel) to mimic GLMakie behaviour
+    ccall((:cairo_set_miter_limit, Cairo.libcairo), Cvoid, (Ptr{Nothing}, Cdouble), ctx.ptr, 2.0)
 
     return CairoScreen(scene, surf, ctx, nothing)
 end
@@ -156,6 +161,10 @@ function cairo_draw(screen::CairoScreen, scene::Scene)
     zvals = Makie.zvalue2d.(allplots)
     permute!(allplots, sortperm(zvals))
 
+    # If the backend is not a vector surface (i.e., PNG/ARGB),
+    # then there is no point in rasterizing twice.
+    should_rasterize = is_vector_backend(screen.surface)
+
     last_scene = scene
 
     Cairo.save(screen.context)
@@ -163,14 +172,25 @@ function cairo_draw(screen::CairoScreen, scene::Scene)
         to_value(get(p, :visible, true)) || continue
         # only prepare for scene when it changes
         # this should reduce the number of unnecessary clipping masks etc.
-        if p.parent != last_scene
+        pparent = p.parent::Scene
+        if pparent != last_scene
             Cairo.restore(screen.context)
             Cairo.save(screen.context)
-            prepare_for_scene(screen, p.parent)
-            last_scene = p.parent
+            prepare_for_scene(screen, pparent)
+            last_scene = pparent
         end
         Cairo.save(screen.context)
-        draw_plot(p.parent, screen, p)
+
+        # This is a bit of a hack for now.  When a plot is too large to save with
+        # a reasonable file size on a vector backend, the user can choose to
+        # rasterize it when plotting to vector backends, by using the `rasterize`
+        # keyword argument.  This can be set to a Bool or an Int which describes
+        # the density of rasterization (in terms of a direct scaling factor.)
+        if to_value(get(p, :rasterize, false)) != false && should_rasterize
+            draw_plot_as_image(pparent, screen, p, p[:rasterize][])
+        else # draw vector
+            draw_plot(pparent, screen, p)
+        end
         Cairo.restore(screen.context)
     end
 
@@ -239,6 +259,41 @@ function draw_plot(scene::Scene, screen::CairoScreen, primitive::Combined)
     return
 end
 
+# Possible improvements for this function:
+# - Obtain the bbox of the plot and draw an image which tightly fits that bbox
+#   instead of the whole Scene
+# - Recognize when a screen is an image surface, and set scale to render the plot
+#   at the scale of the device pixel
+function draw_plot_as_image(scene::Scene, screen::CairoScreen, primitive::Combined, scale::Number = 1)
+    # you can provide `p.rasterize = scale::Int` or `p.rasterize = true`, both of which are numbers
+
+    # Extract scene width in pixels
+    w, h = Int.(scene.px_area[].widths)
+    # Create a new Screen which renders directly to an image surface,
+    # specifically for the plot's parent scene.
+    scr = CairoScreen(scene; device_scaling_factor = scale)
+    # Draw the plot to the screen, in the normal way
+    draw_plot(scene, scr, primitive)
+
+    # Now, we draw the rasterized plot to the main screen.
+    # Since it has already been prepared by `prepare_for_scene`,
+    # we can draw directly to the Screen.
+    Cairo.rectangle(screen.context, 0, 0, w, h)
+    Cairo.save(screen.context)
+    Cairo.translate(screen.context, 0, 0)
+    # Cairo.scale(screen.context, w / scr.surface.width, h / scr.surface.height)
+    Cairo.set_source_surface(screen.context, scr.surface, 0, 0)
+    p = Cairo.get_source(scr.context)
+    # this is needed to avoid blurry edges
+    Cairo.pattern_set_extend(p, Cairo.EXTEND_PAD)
+    # Set filter doesn't work!?
+    Cairo.pattern_set_filter(p, Cairo.FILTER_BILINEAR)
+    Cairo.fill(screen.context)
+    Cairo.restore(screen.context)
+
+    return
+end
+
 function draw_atomic(::Scene, ::CairoScreen, x)
     @warn "$(typeof(x)) is not supported by cairo right now"
 end
@@ -271,8 +326,9 @@ Makie.backend_showable(x::CairoBackend, ::MIME"image/png", scene::Scene) = x.typ
 function Makie.backend_show(x::CairoBackend, io::IO, ::MIME"image/svg+xml", scene::Scene)
     proxy_io = IOBuffer()
     pt_per_unit = get(io, :pt_per_unit, x.pt_per_unit)
+    antialias = get(io, :antialias, x.antialias)
 
-    screen = CairoScreen(scene, proxy_io, :svg; device_scaling_factor = pt_per_unit)
+    screen = CairoScreen(scene, proxy_io, :svg; device_scaling_factor = pt_per_unit, antialias = antialias)
     cairo_draw(screen, scene)
     Cairo.flush(screen.surface)
     Cairo.finish(screen.surface)
@@ -307,8 +363,9 @@ end
 function Makie.backend_show(x::CairoBackend, io::IO, ::MIME"application/pdf", scene::Scene)
 
     pt_per_unit = get(io, :pt_per_unit, x.pt_per_unit)
+    antialias = get(io, :antialias, x.antialias)
 
-    screen = CairoScreen(scene, io, :pdf; device_scaling_factor = pt_per_unit)
+    screen = CairoScreen(scene, io, :pdf; device_scaling_factor = pt_per_unit, antialias = antialias)
     cairo_draw(screen, scene)
     Cairo.finish(screen.surface)
     return screen
@@ -318,8 +375,9 @@ end
 function Makie.backend_show(x::CairoBackend, io::IO, ::MIME"application/postscript", scene::Scene)
 
     pt_per_unit = get(io, :pt_per_unit, x.pt_per_unit)
+    antialias = get(io, :antialias, x.antialias)
 
-    screen = CairoScreen(scene, io, :eps; device_scaling_factor = pt_per_unit)
+    screen = CairoScreen(scene, io, :eps; device_scaling_factor = pt_per_unit, antialias = antialias)
 
     cairo_draw(screen, scene)
     Cairo.finish(screen.surface)
@@ -331,8 +389,10 @@ function Makie.backend_show(x::CairoBackend, io::IO, ::MIME"image/png", scene::S
     # multiply the resolution of the png with this factor for more or less detail
     # while relative line and font sizes are unaffected
     px_per_unit = get(io, :px_per_unit, x.px_per_unit)
+    antialias = get(io, :antialias, x.antialias)
+    
     # create an ARGB surface, to speed up drawing ops.
-    screen = CairoScreen(scene; device_scaling_factor = px_per_unit)
+    screen = CairoScreen(scene; device_scaling_factor = px_per_unit, antialias = antialias)
     cairo_draw(screen, scene)
     Cairo.write_to_png(screen.surface, io)
     return screen
@@ -354,6 +414,8 @@ function Makie.colorbuffer(screen::CairoScreen)
     surf = Cairo.CairoImageSurface(img)
     # draw the scene onto the image matrix
     ctx = Cairo.CairoContext(surf)
+    ccall((:cairo_set_miter_limit, Cairo.libcairo), Cvoid, (Ptr{Nothing}, Cdouble), ctx.ptr, 2.0)
+    
     scr = CairoScreen(scene, surf, ctx, nothing)
 
     cairo_draw(scr, scene)

@@ -1,21 +1,20 @@
 # Events
 
-Interactive backends such as `GLMakie` and `WGLMakie` pass events to PriorityObservables collected in an `Events` struct. By reacting to these one can build up custom interactions.
+Interactive backends such as `GLMakie` and `WGLMakie` pass events to Observables collected in an `Events` struct. By reacting to these one can build up custom interactions.
 
 !!! note
     If you are new to Observables you should first read [Observables & Interaction](\reflink{Observables & Interaction})
 
-## PriorityObservables
+## Observables with priority
 
-Much like the name suggests a `PriorityObservable` adds a priority to its listeners. Furthermore it allows for each listener to stop execution of lower priority listeners by returning `Consume(true)` or simply `Consume()`. Every other return value will be handled as `Consume(false)` meaning that the listener will not block other listeners.
+With Observables, one can add callbacks also with a priority. Furthermore it allows for each listener to stop execution of lower priority listeners by returning `Consume(true)` or simply `Consume()`. Every other return value will be handled as `Consume(false)` meaning that the listener will not block other listeners.
 
 To understand how a `PriorityObserable` works you may try this example:
 
 ```julia:po_code
 using Makie
-using Makie: PriorityObservable
 
-po = PriorityObservable(0)
+po = Observable(0)
 
 println("With low priority listener:")
 on(po, priority = -1) do x
@@ -41,25 +40,25 @@ nothing # hide
 \show{po_code}
 
 
-With only the first listener connected `Low priority: 1` gets printed. In this case the behavior is the same as normal Observables. The second listener we add is a blocking one because it returns `Consume(true)`. Since it has a higher priority than the first one only the second listener will trigger. Thus we get `Medium blocking priority: 2`. The third listener is non-blocking and at yet again higher priority. As such we get a result from both the third and second listener. 
+With only the first listener connected `Low priority: 1` gets printed. In this case the behavior is the same as normal Observables. The second listener we add is a blocking one because it returns `Consume(true)`. Since it has a higher priority than the first one only the second listener will trigger. Thus we get `Medium blocking priority: 2`. The third listener is non-blocking and at yet again higher priority. As such we get a result from both the third and second listener.
 
 ## The Events struct
 
-Events from the backend are stored in PriorityObservables within the `Events` struct. You can access it with `events(x)` where `x` is a `Figure`, `Axis`, `Axis3`, `LScene`, `FigureAxisPlot` or `Scene`. Regardless of which source you use here you will always get the same struct. This is also true for accessing it directly via `scene.events`. It contains the following fields:
+Events from the backend are stored in Observables within the `Events` struct. You can access it with `events(x)` where `x` is a `Figure`, `Axis`, `Axis3`, `LScene`, `FigureAxisPlot` or `Scene`. Regardless of which source you use here you will always get the same struct. This is also true for accessing it directly via `scene.events`. It contains the following fields:
 
-- `window_area::PriorityObservable{Rect2i}`: Contains the current size of the window in pixels.
-- `window_dpi::PriorityObservable{Float64}`: Contains the DPI of the window.
-- `window_open::PriorityObservable{Bool}`: Contains `true` as long as the window is open.
-- `hasfocus::PriorityObservable{Bool}`: Contains `true` if the window is focused (in the foreground).
-- `entered_window::PriorityObservable{Bool}`: Contains true if the mouse is within the window (regardless of whether it is focused), i.e. when it is hovered.
-- `mousebutton::PriorityObservable{MouseButtonEvent}`: Contains the most recent `MouseButtonEvent` which holds the relevant `button::Mouse.Button` and `action::Mouse.Action`.
+- `window_area::Observable{Rect2i}`: Contains the current size of the window in pixels.
+- `window_dpi::Observable{Float64}`: Contains the DPI of the window.
+- `window_open::Observable{Bool}`: Contains `true` as long as the window is open.
+- `hasfocus::Observable{Bool}`: Contains `true` if the window is focused (in the foreground).
+- `entered_window::Observable{Bool}`: Contains true if the mouse is within the window (regardless of whether it is focused), i.e. when it is hovered.
+- `mousebutton::Observable{MouseButtonEvent}`: Contains the most recent `MouseButtonEvent` which holds the relevant `button::Mouse.Button` and `action::Mouse.Action`.
 - `mousebuttonstate::Set{Mouse.Button}`: Contains all currently pressed mouse buttons.
-- `mouseposition::PriorityObservable{NTuple{2, Float64}}`: Contains the most recent cursor position in pixel units relative to the root scene/window.
-- `scroll::PriorityObservable{NTuple{2, Float64}}`: Contains the most recent scroll offset.
-- `keyboardbutton::PriorityObservable{KeyEvent}`: Contains the most recent `KeyEvent` which holds the relevant `key::Keyboard.Button` and `action::Keyboard.Action`.
-- `keyboardstate::PriorityObservable{Keyboard.Button}`: Contains all currently pressed keys.
-- `unicode_input::PriorityObservable{Char}`: Contains the most recently typed character.
-- `dropped_files::PriorityObservable{Vector{String}}`: Contains a list of filepaths to a collection files dragged into the window.
+- `mouseposition::Observable{NTuple{2, Float64}}`: Contains the most recent cursor position in pixel units relative to the root scene/window.
+- `scroll::Observable{NTuple{2, Float64}}`: Contains the most recent scroll offset.
+- `keyboardbutton::Observable{KeyEvent}`: Contains the most recent `KeyEvent` which holds the relevant `key::Keyboard.Button` and `action::Keyboard.Action`.
+- `keyboardstate::Observable{Keyboard.Button}`: Contains all currently pressed keys.
+- `unicode_input::Observable{Char}`: Contains the most recently typed character.
+- `dropped_files::Observable{Vector{String}}`: Contains a list of filepaths to a collection files dragged into the window.
 
 ## Mouse Interaction
 
@@ -96,9 +95,9 @@ end
 scene
 ```
 
-In simple cases like this we can handle `mousebutton` just like a normal `Observable`. Priority and `Consume()` only become important when multiple interactions react to the same source and need to happen in a specific order or interfere with each other.
+In simple cases like this we don't need a to use a priority for registering our callback to `mousebutton`. Priority and `Consume()` only become important when multiple interactions react to the same source and need to happen in a specific order or interfere with each other.
 
-To make this example nicer, let us update the second point (the end of the line) whenever the mouse moves. For this we should set both the start and end point on `Mouse.press` and update the end point when `events(scene).mouseposition` changes as long as the mouse button is still pressed. 
+To make this example nicer, let us update the second point (the end of the line) whenever the mouse moves. For this we should set both the start and end point on `Mouse.press` and update the end point when `events(scene).mouseposition` changes as long as the mouse button is still pressed.
 
 ```julia
 using GLMakie
@@ -119,7 +118,7 @@ on(events(scene).mousebutton) do event
 end
 
 on(events(scene).mouseposition) do mp
-    mb = events(scene).mousebutton[] 
+    mb = events(scene).mousebutton[]
     if mb.button == Mouse.left && (mb.action == Mouse.press || mb.action == Mouse.repeat)
         points[][end] = mp
         notify(points)
@@ -153,7 +152,7 @@ on(events(scene).mousebutton) do event
 end
 
 on(events(scene).mouseposition) do mp
-    mb = events(scene).mousebutton[] 
+    mb = events(scene).mousebutton[]
     if mb.button == Mouse.left && (mb.action == Mouse.press || mb.action == Mouse.repeat)
         points[][end] = mp
         notify(points)
@@ -195,7 +194,7 @@ on(events(scene).mousebutton) do event
 end
 
 on(events(scene).mouseposition) do mp
-    mb = events(scene).mousebutton[] 
+    mb = events(scene).mousebutton[]
     if mb.button == Mouse.left && (mb.action == Mouse.press || mb.action == Mouse.repeat)
         points[][end] = mp
         notify(points)
@@ -245,9 +244,9 @@ The index returned by `pick` relates to the main input of the respective primiti
 
 Let's implement adding, moving and deleting of scatter markers as an example. We could implement adding and deleting with left and right clicks, however that would overwrite existing axis interactions. To avoid this we implement adding as `a + left click` and removing as `d + left click`. Since these settings are more restrictive we want Makie to check if either of them applies first and default back to normal axis interactions otherwise. This means our interactions should have a higher priority than the defaults and block conditionally.
 
-To gauge the priority of the existing axis interaction we can check `events(fig).mousebutton` after creating an `Axis`. The priority observable will report the registered priorities `... at priorities [1,127]`. The latter is an interaction at maximum priority which we can ignore. (This keeps `events(fig).mousebuttonstate` up to date.) This leaves `priority = 1` as the priority to beat. 
+To gauge the priority of the existing axis interaction we can check `Observables.listeners(events(fig).mousebutton)` after creating an `Axis`. This will show the registered callbacks with their priority. The one with the big number (typemax(Int)) is an interaction at maximum priority which we can ignore. (This keeps `events(fig).mousebuttonstate` up to date.) This leaves `priority = 1` as the priority to beat.
 
-To correctly place a new marker we will also need to get the mouseposition in axis units. Makie provides a function that does just that: `mouseposition([scene = hovered_scene()])`. There is also a convenience function for the pixel space mouseposition relative to a specific scene `mouseposition_px([scene = hovered_scene()])`. Both of these will usually be different from `events.mouseposition` which is always in pixel units and always based on the full window. 
+To correctly place a new marker we will also need to get the mouseposition in axis units. Makie provides a function that does just that: `mouseposition([scene = hovered_scene()])`. There is also a convenience function for the pixel space mouseposition relative to a specific scene `mouseposition_px([scene = hovered_scene()])`. Both of these will usually be different from `events.mouseposition` which is always in pixel units and always based on the full window.
 
 Finally for deleting we need to figure out if and which scattered marker the cursor is over. We can do this with the `pick()` function. As mentioned before, `pick(ax)` will return the plot and (for scatter) an index into the position array, matching our marker. With this we can now set up adding and deleting markers.
 
@@ -379,7 +378,7 @@ Furthermore you can wrap any of the above in `Exclusively` to discard matches wh
 
 ## Interactive Widgets
 
-Makie has a couple of useful interactive widgets like sliders, buttons and menus, which you can read about in the \myreflink{Layoutables} section.
+Makie has a couple of useful interactive widgets like sliders, buttons and menus, which you can read about in the \myreflink{Blocks} section.
 
 ## Recording Animations with Interactions
 

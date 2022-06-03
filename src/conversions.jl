@@ -291,7 +291,7 @@ function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::A
     return map(el32convert, adjust_axes(SL, x, y, z))
 end
 
-convert_arguments(::SurfaceLike, x::AbstractMatrix, y::AbstractMatrix) = (x, y, zeros(size(y)))
+convert_arguments(sl::SurfaceLike, x::AbstractMatrix, y::AbstractMatrix) = convert_arguments(sl, x, y, zeros(size(y)))
 
 """
     convert_arguments(P, x, y, z)::Tuple{ClosedInterval, ClosedInterval, Matrix}
@@ -712,27 +712,26 @@ end
 #                            Attribute conversions                             #
 ################################################################################
 
-"""
-    to_color(color)
-Converts a `color` symbol (e.g. `:blue`) to a color RGBA.
-"""
-to_color(color) = convert_attribute(color, key"color"())
-
-"""
-    to_colormap(cm[, N = 20])
-
-Converts a colormap `cm` symbol (e.g. `:Spectral`) to a colormap RGB array, where `N` specifies the number of color points.
-"""
-to_colormap(colormap) = convert_attribute(colormap, key"colormap"())
-to_rotation(rotation) = convert_attribute(rotation, key"rotation"())
-to_font(font) = convert_attribute(font, key"font"())
-to_align(align) = convert_attribute(align, key"align"())
-to_textsize(textsize) = convert_attribute(textsize, key"textsize"())
-
 convert_attribute(x, key::Key, ::Key) = convert_attribute(x, key)
 convert_attribute(s::SceneLike, x, key::Key, ::Key) = convert_attribute(s, x, key)
 convert_attribute(s::SceneLike, x, key::Key) = convert_attribute(x, key)
 convert_attribute(x, key::Key) = x
+
+"""
+    to_color(color)
+Converts a `color` symbol (e.g. `:blue`) to a color RGBA.
+"""
+convert_attribute(color, ::key"color") = to_color(color)
+
+"""
+    to_colormap(cm)
+
+Converts a colormap `cm` symbol/string (e.g. `:Spectral`) to a colormap RGB array.
+"""
+convert_attribute(colormap, ::key"colormap") = to_colormap(colormap)
+convert_attribute(rotation, ::key"rotation") = to_rotation(rotation)
+convert_attribute(font, ::key"font") = to_font(font)
+convert_attribute(align, ::key"align") = to_align(align)
 
 convert_attribute(p, ::key"highclip") = to_color(p)
 convert_attribute(p::Nothing, ::key"highclip") = p
@@ -745,32 +744,24 @@ struct Palette
    i::Ref{Int}
    Palette(colors) = new(to_color.(colors), zero(Int))
 end
-Palette(name::Union{String, Symbol}, n = 8) = Palette(to_colormap(name, n))
-
-function convert_attribute(p::Palette, ::key"color")
+Palette(name::Union{String, Symbol}, n = 8) = Palette(categorical_colors(name, n))
+function to_color(p::Palette)
     N = length(p.colors)
     p.i[] = p.i[] == N ? 1 : p.i[] + 1
     return p.colors[p.i[]]
 end
 
-convert_attribute(c::Colorant, ::key"color") = convert(RGBA{Float32}, c)
-convert_attribute(c::Symbol, k::key"color") = convert_attribute(string(c), k)
-function convert_attribute(c::String, ::key"color")
-    return parse(RGBA{Float32}, c)
-end
-
-# Do we really need all colors to be RGBAf?!
-convert_attribute(c::AbstractArray{<: Colorant}, k::key"color") = el32convert(c)
-convert_attribute(c::AbstractArray, k::key"color") = to_color.(c)
-
-convert_attribute(c::AbstractArray, ::key"color", ::key"heatmap") = el32convert(c)
-
-convert_attribute(c::Number, k::key"color") = Float32(c)
-convert_attribute(c::Tuple, k::key"color") = convert_attribute.(c, k)
-convert_attribute(p::AbstractPattern, k::key"color") = p
-
-function convert_attribute(c::Tuple{T, F}, k::key"color") where {T, F <: Number}
-    RGBAf(Colors.color(to_color(c[1])), c[2])
+to_color(c::Nothing) = c # for when color is not used
+to_color(c::Number) = Float32(c)
+to_color(c::Colorant) = convert(RGBA{Float32}, c)
+to_color(c::Symbol) = to_color(string(c))
+to_color(c::String) = parse(RGBA{Float32}, c)
+to_color(c::AbstractArray) = to_color.(c)
+to_color(c::AbstractArray{<: Colorant, N}) where N = convert(Array{RGBAf, N}, c)
+to_color(p::AbstractPattern) = p
+function to_color(c::Tuple{<: Any,  <: Number})
+    col = to_color(c[1])
+    return RGBAf(Colors.color(col), alpha(col) * c[2])
 end
 
 convert_attribute(b::Billboard{Float32}, ::key"rotations") = to_rotation(b.rotation)
@@ -780,11 +771,7 @@ convert_attribute(r::StaticVector, ::key"rotations") = to_rotation(r)
 convert_attribute(r, ::key"rotations") = to_rotation(r)
 
 convert_attribute(c, ::key"markersize", ::key"scatter") = to_2d_scale(c)
-convert_attribute(c, k1::key"markersize", k2::key"meshscatter") = to_3d_scale(c)
-
-convert_attribute(x, ::key"uv_offset_width") = Vec4f(x)
-convert_attribute(x::AbstractVector{Vec4f}, ::key"uv_offset_width") = x
-
+convert_attribute(c, ::key"markersize", ::key"meshscatter") = to_3d_scale(c)
 to_2d_scale(x::Number) = Vec2f(x)
 to_2d_scale(x::VecTypes) = to_ndim(Vec2f, x, 1)
 to_2d_scale(x::Tuple{<:Number, <:Number}) = to_ndim(Vec2f, x, 1)
@@ -794,10 +781,16 @@ to_3d_scale(x::Number) = Vec3f(x)
 to_3d_scale(x::VecTypes) = to_ndim(Vec3f, x, 1)
 to_3d_scale(x::AbstractVector) = to_3d_scale.(x)
 
+
+convert_attribute(x, ::key"uv_offset_width") = Vec4f(x)
+convert_attribute(x::AbstractVector{Vec4f}, ::key"uv_offset_width") = x
+
+
 convert_attribute(c::Number, ::key"glowwidth") = Float32(c)
+convert_attribute(c::Number, ::key"strokewidth") = Float32(c)
+
 convert_attribute(c, ::key"glowcolor") = to_color(c)
 convert_attribute(c, ::key"strokecolor") = to_color(c)
-convert_attribute(c::Number, ::key"strokewidth") = Float32(c)
 
 convert_attribute(x::Nothing, ::key"linestyle") = x
 
@@ -902,14 +895,6 @@ function convert_gaps(gaps)
   (dot_gap = dot_gap, dash_gap = dash_gap)
 end
 
-function convert_attribute(f::Symbol, ::key"frames")
-    f == :box && return ((true, true), (true, true))
-    f == :semi && return ((true, false), (true, false))
-    f == :none && return ((false, false), (false, false))
-    throw(MethodError("$(string(f)) is not a valid framestyle. Options are `:box`, `:semi` and `:none`"))
-end
-convert_attribute(f::Tuple{Tuple{Bool,Bool},Tuple{Bool,Bool}}, ::key"frames") = f
-
 convert_attribute(c::Tuple{<: Number, <: Number}, ::key"position") = Point2f(c[1], c[2])
 convert_attribute(c::Tuple{<: Number, <: Number, <: Number}, ::key"position") = Point3f(c)
 convert_attribute(c::VecTypes{N}, ::key"position") where N = Point{N, Float32}(c)
@@ -917,8 +902,8 @@ convert_attribute(c::VecTypes{N}, ::key"position") where N = Point{N, Float32}(c
 """
     Text align, e.g.:
 """
-convert_attribute(x::Tuple{Symbol, Symbol}, ::key"align") = Vec2f(alignment2num.(x))
-convert_attribute(x::Vec2f, ::key"align") = x
+to_align(x::Tuple{Symbol, Symbol}) = Vec2f(alignment2num.(x))
+to_align(x::Vec2f) = x
 
 const FONT_CACHE = Dict{String, NativeFont}()
 
@@ -927,10 +912,10 @@ const FONT_CACHE = Dict{String, NativeFont}()
 
 a string naming a font, e.g. helvetica
 """
-function convert_attribute(x::Union{Symbol, String}, k::key"font")
+function to_font(x::Union{Symbol, String})
     str = string(x)
     get!(FONT_CACHE, str) do
-        str == "default" && return to_font("Dejavu Sans")
+        str == "default" && return to_font("TeX Gyre Heros Makie")
 
         # check if the string points to a font file and load that
         if isfile(str)
@@ -945,18 +930,19 @@ function convert_attribute(x::Union{Symbol, String}, k::key"font")
         fontpath = assetpath("fonts")
         font = FreeTypeAbstraction.findfont(str; additional_fonts=fontpath)
         if font === nothing
-            @warn("Could not find font $str, using Dejavu Sans")
-            if "dejavu sans" == lowercase(str)
-                # since we fall back to dejavu sans, we need to check for recursion
-                error("Recursion encountered; DejaVu Sans cannot be located in the font path $fontpath")
+            @warn("Could not find font $str, using TeX Gyre Heros Makie")
+            if "tex gyre heros makie" == lowercase(str)
+                # since we fall back to TeX Gyre Heros Makie, we need to check for recursion
+                error("Recursion encountered; TeX Gyre Heros Makie cannot be located in the font path $fontpath")
             end
-            return to_font("dejavu sans")
+            return to_font("TeX Gyre Heros Makie")
         end
         return font
     end
 end
-convert_attribute(x::Vector{String}, k::key"font") = convert_attribute.(x, k)
-convert_attribute(x::NativeFont, k::key"font") = x
+to_font(x::Vector{String}) = to_font.(x)
+to_font(x::NativeFont) = x
+to_font(x::Vector{NativeFont}) = x
 
 """
     rotation accepts:
@@ -964,9 +950,10 @@ convert_attribute(x::NativeFont, k::key"font") = x
     to_rotation(b, tuple_float)
     to_rotation(b, vec4)
 """
-convert_attribute(s::Quaternionf, ::key"rotation") = s
-convert_attribute(s::Quaternion, ::key"rotation") = Quaternionf(s.data...)
-function convert_attribute(s::VecTypes{N}, ::key"rotation") where N
+to_rotation(s::Quaternionf) = s
+to_rotation(s::Quaternion) = Quaternionf(s.data...)
+
+function to_rotation(s::VecTypes{N}) where N
     if N == 4
         Quaternionf(s...)
     elseif N == 3
@@ -978,22 +965,21 @@ function convert_attribute(s::VecTypes{N}, ::key"rotation") where N
     end
 end
 
-function convert_attribute(s::Tuple{VecTypes, AbstractFloat}, ::key"rotation")
-    qrotation(to_ndim(Vec3f, s[1], 0.0), s[2])
-end
-convert_attribute(angle::AbstractFloat, ::key"rotation") = qrotation(Vec3f(0, 0, 1), Float32(angle))
-convert_attribute(r::AbstractVector, k::key"rotation") = to_rotation.(r)
-convert_attribute(r::AbstractVector{<: Quaternionf}, k::key"rotation") = r
+to_rotation(s::Tuple{VecTypes, Number}) = qrotation(to_ndim(Vec3f, s[1], 0.0), s[2])
+to_rotation(angle::Number) = qrotation(Vec3f(0, 0, 1), angle)
+to_rotation(r::AbstractVector) = to_rotation.(r)
+to_rotation(r::AbstractVector{<: Quaternionf}) = r
 
+convert_attribute(x, ::key"colorrange") = to_colorrange(x)
+to_colorrange(x) = isnothing(x) ? nothing : Vec2f(x)
 
-convert_attribute(x, k::key"colorrange") = x==nothing ? nothing : Vec2f(x)
+convert_attribute(x, ::key"textsize") = to_textsize(x)
+to_textsize(x::Number) = Float32(x)
+to_textsize(x::AbstractVector{T}) where T <: Number = el32convert(x)
 
-convert_attribute(x, k::key"textsize") = Float32(x)
-convert_attribute(x::AbstractVector, k::key"textsize") = convert_attribute.(x, k)
-convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: Number = el32convert(x)
-convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: VecTypes = elconvert(Vec2f, x)
-convert_attribute(x, k::key"linewidth") = Float32(x)
-convert_attribute(x::AbstractVector, k::key"linewidth") = el32convert(x)
+convert_attribute(x, ::key"linewidth") = to_linewidth(x)
+to_linewidth(x) = Float32(x)
+to_linewidth(x::AbstractVector) = el32convert(x)
 
 # ColorBrewer colormaps that support only 8 colors require special handling on the backend, so we show them here.
 const colorbrewer_8color_names = String.([
@@ -1023,6 +1009,45 @@ function available_gradients()
     end
 end
 
+
+to_colormap(cm, categories::Integer) = error("`to_colormap(cm, categories)` is deprecated. Use `Makie.categorical_colors(cm, categories)` for categorical colors, and `resample_cmap(cmap, ncolors)` for continous resampling.")
+
+"""
+    categorical_colors(colormaplike, categories::Integer)
+
+Creates categorical colors and tries to match `categories`.
+Will error if color scheme doesn't contain enough categories. Will drop the n last colors, if request less colors than contained in scheme.
+"""
+function categorical_colors(cols::AbstractVector{<: Colorant}, categories::Integer)
+    if length(cols) < categories
+        error("Not enough colors for number of categories. Categories: $(categories), colors: $(length(cols))")
+    end
+    return cols[1:categories]
+end
+
+function categorical_colors(cols::AbstractVector, categories::Integer)
+    return categorical_colors(to_color.(cols), categories)
+end
+
+function categorical_colors(cs::Union{String, Symbol}, categories::Integer)
+    cs_string = string(cs)
+    if cs_string in all_gradient_names
+        if haskey(ColorBrewer.colorSchemes, cs_string)
+            return to_colormap(ColorBrewer.palette(cs_string, categories))
+        else
+            return categorical_colors(to_colormap(cs_string), categories)
+        end
+    else
+        error(
+            """
+            There is no color gradient named $cs.
+            See `available_gradients()` for the list of available gradients,
+            or look at http://makie.juliaplots.org/dev/generated/colors#Colormap-reference.
+            """
+        )
+    end
+end
+
 """
 Reverses the attribute T upon conversion
 """
@@ -1030,54 +1055,38 @@ struct Reverse{T}
     data::T
 end
 
-function convert_attribute(r::Reverse, ::key"colormap", n::Integer=20)
-    reverse(to_colormap(r.data, n))
-end
+to_colormap(r::Reverse) = reverse(to_colormap(r.data))
+to_colormap(cs::ColorScheme) = to_colormap(cs.colors)
 
-function convert_attribute(cs::ColorScheme, ::key"colormap", n::Integer=20)
-    return to_colormap(cs.colors, n)
-end
+
 
 """
-    to_colormap(b, x)
+    to_colormap(b::AbstractVector)
 
 An `AbstractVector{T}` with any object that [`to_color`](@ref) accepts.
 """
-convert_attribute(cm::AbstractVector, ::key"colormap", n::Int=length(cm)) = to_colormap(to_color.(cm), n)
+to_colormap(cm::AbstractVector)::Vector{RGBAf} = map(to_color, cm)
+to_colormap(cm::AbstractVector{<: Colorant}) = convert(Vector{RGBAf}, cm)
 
-function convert_attribute(cm::AbstractVector{<: Colorant}, ::key"colormap", n::Int=length(cm))
-    colormap = length(cm) == n ? cm : resample(cm, n)
-    return el32convert(colormap)
+function to_colormap(cs::Tuple{<: Union{Reverse, Symbol, AbstractString}, Real})::Vector{RGBAf}
+    cmap = to_colormap(cs[1])
+    return RGBAf.(color.(cmap), alpha.(cmap) .* cs[2]) # We need to rework this to conform to the backend interface.
 end
 
 """
-Tuple(A, B) or Pair{A, B} with any object that [`to_color`](@ref) accepts
-"""
-function convert_attribute(cs::Union{Tuple, Pair}, ::key"colormap", n::Int=2)
-    return to_colormap([to_color.(cs)...], n)
-end
+    to_colormap(cs::Union{String, Symbol})::Vector{RGBAf}
 
-function convert_attribute(cs::Tuple{<: Union{Reverse, Symbol, AbstractString}, Real}, ::key"colormap", n::Int=30)
-    return RGBAf.(to_colormap(cs[1]), cs[2]) # We need to rework this to conform to the backend interface.
-end
-
-function convert_attribute(cs::NamedTuple{(:colormap, :alpha, :n), Tuple{Union{Symbol, AbstractString}, Real, Int}}, ::key"colormap")
-    return RGBAf.(to_colormap(cs.colormap, cs.n), cs.alpha)
-end
-
-to_colormap(x, n::Integer) = convert_attribute(x, key"colormap"(), n)
-
-"""
 A Symbol/String naming the gradient. For more on what names are available please see: `available_gradients()`.
 For now, we support gradients from `PlotUtils` natively.
 """
-function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Integer=40)
+function to_colormap(cs::Union{String, Symbol})::Vector{RGBAf}
     cs_string = string(cs)
     if cs_string in all_gradient_names
         if cs_string in colorbrewer_8color_names # special handling for 8 color only
-            return to_colormap(ColorBrewer.palette(cs_string, 8), n)
-        else                                    # cs_string must be in plotutils_names
-            return to_colormap(PlotUtils.get_colorscheme(Symbol(cs_string)).colors, n)
+            return to_colormap(ColorBrewer.palette(cs_string, 8))
+        else
+            # cs_string must be in plotutils_names
+            return to_colormap(PlotUtils.get_colorscheme(Symbol(cs_string)))
         end
     else
         error(
@@ -1090,14 +1099,12 @@ function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Intege
     end
 end
 
-function Makie.convert_attribute(cg::PlotUtils.ContinuousColorGradient, ::key"colormap", n::Integer=length(cg.values))
-    # PlotUtils does not always give [0, 1] range, so we adapt to what it has
-    return getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), n))
-end
-
-function Makie.convert_attribute(cg::PlotUtils.CategoricalColorGradient, ::key"colormap", n::Integer = length(cg.colors) * 20)
-    # PlotUtils does not always give [0, 1] range, so we adapt to what it has
-    return vcat(fill.(cg.colors.colors, Ref(n ÷ length(cg.colors)))...)
+# Handle inbuilt PlotUtils types
+function to_colormap(cg::PlotUtils.ColorGradient)::Vector{RGBAf}
+    # We sample the colormap using cg[val]. This way, we get a concrete representation of
+    # the underlying gradient, like it being categorical or using a log scale.
+    # 256 is just a high enough constant, without being too big to slow things down.
+    return to_colormap(getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), 256)))
 end
 
 """
@@ -1133,8 +1140,6 @@ function convert_attribute(value::Union{Symbol, String}, k::key"algorithm")
         error("$value is not a valid volume algorithm. It must be one of $(keys(vals))")
     end, k)
 end
-
-
 
 const _marker_map = Dict(
     :rect => '■',

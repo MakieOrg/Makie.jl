@@ -1,6 +1,6 @@
 # Figures
 
-The `Figure` object contains a top-level `Scene` and a `GridLayout`, as well as a list of layoutables that have been placed into it, like `Axis`, `Colorbar`, `Slider`, `Legend`, etc.
+The `Figure` object contains a top-level `Scene` and a `GridLayout`, as well as a list of blocks that have been placed into it, like `Axis`, `Colorbar`, `Slider`, `Legend`, etc.
 
 
 ## Creating a `Figure`
@@ -34,9 +34,9 @@ You can pass arguments to the created figure in a dict-like object to the specia
 scatter(rand(100, 2), figure = (resolution = (600, 400),))
 ```
 
-## Placing layoutables into a `Figure`
+## Placing blocks into a `Figure`
 
-All layoutables take their parent figure as the first argument, then you can place them in the figure layout via indexing syntax.
+All blocks take their parent figure as the first argument, then you can place them in the figure layout via indexing syntax.
 
 ```julia
 f = Figure()

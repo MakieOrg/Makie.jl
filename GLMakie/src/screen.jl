@@ -58,10 +58,53 @@ function Makie.insertplots!(screen::GLScreen, scene::Scene)
     foreach(s-> insertplots!(screen, s), scene.children)
 end
 
+function Base.delete!(screen::Screen, scene::Scene)
+    for child in scene.children
+        delete!(screen, child)
+    end
+    for plot in scene.plots
+        delete!(screen, scene, plot)
+    end
+
+    if haskey(screen.screen2scene, WeakRef(scene))
+        deleted_id = pop!(screen.screen2scene, WeakRef(scene))
+
+        # TODO: this should always find something but sometimes doesn't...
+        i = findfirst(id_scene -> id_scene[1] == deleted_id, screen.screens)
+        i !== nothing && deleteat!(screen.screens, i)
+
+        # Remap scene IDs to a continuous range by replacing the largest ID
+        # with the one that got removed
+        if deleted_id-1 != length(screen.screens)
+            key, max_id = first(screen.screen2scene)
+            for p in screen.screen2scene
+                if p[2] > max_id
+                    key, max_id = p
+                end
+            end
+
+            i = findfirst(id_scene -> id_scene[1] == max_id, screen.screens)::Int
+            screen.screens[i] = (deleted_id, screen.screens[i][2])
+
+            screen.screen2scene[key] = deleted_id
+
+            for (i, (z, id, robj)) in enumerate(screen.renderlist)
+                if id == max_id
+                    screen.renderlist[i] = (z, deleted_id, robj)
+                end
+            end
+        end
+    end
+
+    return
+end
+
 function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
     if !isempty(plot.plots)
         # this plot consists of children, so we flatten it and delete the children instead
-        delete!.(Ref(screen), Ref(scene), Makie.flatten_plots(plot))
+        for cplot in Makie.flatten_plots(plot)
+            delete!(screen, scene, cplot)
+        end
     else
         renderobject = get(screen.cache, objectid(plot)) do
             error("Could not find $(typeof(subplot)) in current GLMakie screen!")
@@ -77,7 +120,6 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
                 end
             end
         end
-
         filter!(x-> x[3] !== renderobject, screen.renderlist)
     end
 end
@@ -487,21 +529,22 @@ function Makie.pick_closest(scene::Scene, screen::Screen, xy, range)
     x0, y0 = max.(1, floor.(Int, xy .- range))
     x1, y1 = min.((w, h), floor.(Int, xy .+ range))
     dx = x1 - x0; dy = y1 - y0
-    sid = pick_native(screen, Rect2i(x0, y0, dx, dy))
+    sids = pick_native(screen, Rect2i(x0, y0, dx, dy))
 
     min_dist = range^2
     id = SelectionID{Int}(0, 0)
     x, y =  xy .+ 1 .- Vec2f(x0, y0)
     for i in 1:dx, j in 1:dy
         d = (x-i)^2 + (y-j)^2
-        if (d < min_dist) && (sid[i, j][1] > 0) && haskey(screen.cache2plot, sid[i, j][1])
+        sid = sids[i, j]
+        if (d < min_dist) && (sid.id > 0) && haskey(screen.cache2plot, sid.id)
             min_dist = d
-            id = convert(SelectionID{Int}, sid[i, j])
+            id = convert(SelectionID{Int}, sid)
         end
     end
 
-    if haskey(screen.cache2plot, id[1])
-        return (screen.cache2plot[id[1]], id[2])
+    if haskey(screen.cache2plot, id.id)
+        return (screen.cache2plot[id.id], id.index)
     else
         return (nothing, 0)
     end

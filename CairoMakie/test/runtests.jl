@@ -15,10 +15,10 @@ Pkg.develop(PackageSpec(path = path))
     end
 end
 
-using ReferenceTests
-using ReferenceTests: database_filtered
+include(joinpath(@__DIR__, "svg_tests.jl"))
+include(joinpath(@__DIR__, "rasterization_tests.jl"))
 
-CairoMakie.activate!(type = "png")
+using ReferenceTests
 
 excludes = Set([
     "Colored Mesh",
@@ -31,6 +31,7 @@ excludes = Set([
     "Hollow pie chart",
     "Record Video",
     "Image on Geometry (Earth)",
+    "Image on Geometry (Moon)",
     "Comparing contours, image, surfaces and heatmaps",
     "Textured Mesh",
     "Simple pie chart",
@@ -65,28 +66,17 @@ excludes = Set([
     "Depth Shift",
     "Order Independent Transparency",
     "heatmap transparent colormap",
-    "fast pixel marker"
+    "fast pixel marker",
+    "Array of Images Scatter",
+    "Image Scatter different sizes"
 ])
 
 functions = [:volume, :volume!, :uv_mesh]
-database = database_filtered(excludes, functions=functions)
 
-basefolder = joinpath(@__DIR__, "reference_test_output")
-rm(basefolder; force=true, recursive=true)
-mkdir(basefolder)
-
-main_refimage_set = "refimages"
-main_tests_root_folder = joinpath(basefolder, main_refimage_set)
-mkdir(main_tests_root_folder)
-
-main_tests_record_folder = joinpath(main_tests_root_folder, "recorded")
-mkdir(main_tests_record_folder)
-
-ReferenceTests.record_tests(database, recording_dir = main_tests_record_folder)
-
-main_tests_refimages_download_folder = ReferenceTests.download_refimages(; name=main_refimage_set)
-main_tests_refimages_folder = joinpath(main_tests_root_folder, "reference")
-cp(main_tests_refimages_download_folder, main_tests_refimages_folder)
-
-missing_refimages, scores = ReferenceTests.record_comparison(main_tests_root_folder)
-ReferenceTests.test_comparison(missing_refimages, scores; threshold = 0.032)
+@testset "refimages" begin
+    CairoMakie.activate!(type = "png")
+    ReferenceTests.mark_broken_tests(excludes, functions=functions)
+    recorded_files, recording_dir = @include_reference_tests "refimages.jl"
+    missing_images, scores = ReferenceTests.record_comparison(recording_dir)
+    ReferenceTests.test_comparison(missing_images, scores; threshold = 0.032)
+end

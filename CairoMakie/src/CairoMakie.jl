@@ -11,7 +11,7 @@ using Makie: convert_attribute, @extractvalue, LineSegments, to_ndim, NativeFont
 using Makie: @info, @get_attribute, Combined
 using Makie: to_value, to_colormap, extrema_nan
 using Makie: inline!
-using Makie: Observables
+using Makie.Observables
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
 
 const OneOrVec{T} = Union{
@@ -51,15 +51,17 @@ const _last_inline = Ref(true)
 const _last_type = Ref("png")
 const _last_px_per_unit = Ref(1.0)
 const _last_pt_per_unit = Ref(0.75)
+const _last_antialias = Ref(Cairo.ANTIALIAS_BEST)
 
-function activate!(; inline = _last_inline[], type = _last_type[], px_per_unit=_last_px_per_unit[], pt_per_unit=_last_pt_per_unit[])
-    backend = CairoBackend(display_path(type); px_per_unit=px_per_unit, pt_per_unit=pt_per_unit)
+function activate!(; inline = _last_inline[], type = _last_type[], px_per_unit=_last_px_per_unit[], pt_per_unit=_last_pt_per_unit[], antialias = _last_antialias[])
+    backend = CairoBackend(display_path(type); px_per_unit=px_per_unit, pt_per_unit=pt_per_unit, antialias = antialias)
     Makie.current_backend[] = backend
     Makie.use_display[] = !inline
     _last_inline[] = inline
     _last_type[] = type
     _last_px_per_unit[] = px_per_unit
     _last_pt_per_unit[] = pt_per_unit
+    _last_antialias[] = antialias
     return
 end
 
@@ -67,6 +69,5 @@ if Base.VERSION >= v"1.4.2"
     include("precompiles.jl")
     _precompile_()
 end
-
 
 end

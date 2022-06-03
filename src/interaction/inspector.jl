@@ -188,8 +188,8 @@ end
 function Bbox_from_glyphcollection(text, gc)
     bbox = Rect2f(0, 0, 0, 0)
     bboxes = Rect2f[]
-    broadcast_foreach(gc.extents, gc.fonts, gc.scales) do extent, font, scale
-        b = FreeTypeAbstraction.height_insensitive_boundingbox(extent, font) * scale
+    broadcast_foreach(gc.extents, gc.scales) do extent, scale
+        b = height_insensitive_boundingbox_with_advance(extent) * scale
         push!(bboxes, b)
     end
     for (c, o, bb) in zip(text, gc.origins, bboxes)
@@ -414,7 +414,7 @@ Defaults to the current plot when called without arguments.
     does not affect the alignment of the tooltip relative to the cursor.
 - `textcolor = :black`: Tooltip text color.
 - `textsize = 20`: Tooltip text size.
-- `font = "Dejavu Sans"`: Tooltip font.
+- `font = "TeX Gyre Heros Makie"`: Tooltip font.
 - `background_color = :white`: Background color of the tooltip.
 - `outline_color = :grey`: Outline color of the tooltip.
 - `outline_linestyle = nothing`: Linestyle of the tooltip outline.
@@ -431,8 +431,8 @@ Defaults to the current plot when called without arguments.
 - `priority = 100`: The priority of creating a tooltip on a mouse movement or
     scrolling event.
 """
-function DataInspector(fig_or_layoutable; kwargs...)
-    DataInspector(fig_or_layoutable.scene; kwargs...)
+function DataInspector(fig_or_block; kwargs...)
+    DataInspector(fig_or_block.scene; kwargs...)
 end
 
 function DataInspector(scene::Scene; priority = 100, kwargs...)

@@ -7,9 +7,7 @@ using WGLMakie, Makie, Test
 using Pkg
 path = normpath(joinpath(dirname(pathof(Makie)), "..", "ReferenceTests"))
 Pkg.develop(PackageSpec(path = path))
-WGLMakie.activate!()
 using ReferenceTests
-using ReferenceTests: database_filtered
 
 excludes = Set([
     "Streamplot animation",
@@ -37,27 +35,16 @@ excludes = Set([
     "OldAxis + Surface",
     "Order Independent Transparency",
     "Record Video",
-    "fast pixel marker"
+    "fast pixel marker",
+    "Animated surface and wireframe",
+    "Array of Images Scatter",
+    "Image Scatter different sizes"
 ])
 
-database = database_filtered(excludes)
-
-basefolder = joinpath(@__DIR__, "reference_test_output")
-rm(basefolder; force=true, recursive=true)
-mkdir(basefolder)
-
-refimage_set = "refimages"
-tests_root_folder = joinpath(basefolder, refimage_set)
-mkdir(tests_root_folder)
-
-tests_record_folder = joinpath(tests_root_folder, "recorded")
-mkdir(tests_record_folder)
-
-ReferenceTests.record_tests(database, recording_dir = tests_record_folder)
-
-tests_refimages_download_folder = ReferenceTests.download_refimages(; name=refimage_set)
-tests_refimages_folder = joinpath(tests_root_folder, "reference")
-cp(tests_refimages_download_folder, tests_refimages_folder)
-
-missing_refimages, scores = ReferenceTests.record_comparison(tests_root_folder)
-ReferenceTests.test_comparison(missing_refimages, scores; threshold = 0.032)
+@testset "refimages" begin
+    WGLMakie.activate!()
+    ReferenceTests.mark_broken_tests(excludes)
+    recorded_files, recording_dir = @include_reference_tests "refimages.jl"
+    missing_images, scores = ReferenceTests.record_comparison(recording_dir)
+    ReferenceTests.test_comparison(missing_images, scores; threshold = 0.032)
+end
