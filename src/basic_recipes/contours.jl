@@ -160,13 +160,10 @@ end
 function plot!(plot::T) where T <: Union{Contour, Contour3d}
     x, y, z = plot[1:3]
     zrange = lift(nan_extrema, z)
-    contourf_levels = Observable{Union{Int, Vector{Float64}}}()
     levels = lift(plot.levels, zrange) do levels, zrange
         if levels isa AbstractVector{<: Number}
-            contourf_levels[] = levels
             return levels
         elseif levels isa Integer
-            contourf_levels[] = levels + 1
             to_levels(levels, zrange)
         else
             error("Level needs to be Vector of iso values, or a single integer to for a number of automatic levels")
