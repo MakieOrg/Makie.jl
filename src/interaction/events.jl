@@ -34,6 +34,7 @@ function connect_screen(scene::Scene, screen)
 
 end
 
+to_native(window::AbstractScreen) = error("to_native(window) not implemented for $(typeof(window)).")
 disconnect!(window::AbstractScreen, signal) = disconnect!(to_native(window), signal)
 
 function disconnect_screen(scene::Scene, screen)
@@ -41,34 +42,34 @@ function disconnect_screen(scene::Scene, screen)
     e = events(scene)
 
     disconnect!(screen, window_area)
-    disconnect!(e.window_area)
+    # disconnect!(e.window_area)
 
     disconnect!(screen, window_open)
-    disconnect!(e.window_open)
+    # disconnect!(e.window_open)
 
     disconnect!(screen, mouse_buttons)
-    disconnect!(e.mouse_buttons)
+    # disconnect!(e.mouse_buttons)
 
     disconnect!(screen, mouse_position)
-    disconnect!(e.mouse_position)
+    # disconnect!(e.mouse_position)
 
     disconnect!(screen, scroll)
-    disconnect!(e.scroll)
+    # disconnect!(e.scroll)
 
     disconnect!(screen, keyboard_buttons)
-    disconnect!(e.keyboard_buttons)
+    # disconnect!(e.keyboard_buttons)
 
     disconnect!(screen, unicode_input)
-    disconnect!(e.unicode_input)
+    # disconnect!(e.unicode_input)
 
     disconnect!(screen, dropped_files)
-    disconnect!(e.dropped_files)
+    # disconnect!(e.dropped_files)
 
     disconnect!(screen, hasfocus)
-    disconnect!(e.hasfocus)
+    # disconnect!(e.hasfocus)
 
     disconnect!(screen, entered_window)
-    disconnect!(e.entered_window)
+    # disconnect!(e.entered_window)
 end
 
 """

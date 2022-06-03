@@ -288,7 +288,7 @@ function Base.push!(screen::GLScreen, scene::Scene, robj)
     return robj
 end
 
-to_native(x::Screen) = x.glscreen
+Makie.to_native(x::Screen) = x.glscreen
 
 """
 OpenGL shares all data containers between shared contexts, but not vertexarrays -.-
