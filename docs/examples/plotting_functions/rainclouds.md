@@ -15,7 +15,7 @@ using Makie: rand_localized
 ####
 
 function mockup_distribution(N)
-    all_possible_labels = ["Single Mode", "Double Mode", "Single Mode", "Double Mode", "Random Exp", "Uniform"]
+    all_possible_labels = ["Single Mode", "Double Mode", "Double Mode", "Random Exp", "Uniform"]
     category_label = rand(all_possible_labels)
 
     if category_label == "Single Mode"
