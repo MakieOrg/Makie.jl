@@ -28,19 +28,19 @@ end
 @reference_test "Label with text wrapping" begin
     lorem_ipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
     fig = Figure(resolution = (1000, 660))
-
+    m!(fig, lbl) = mesh!(fig.scene, lbl.layoutobservables.computedbbox, color = (:red, 0.5), shading=false)
     lbl1 = Label(fig[1, 1:2], "HEADER "^10, textsize = 40, word_wrap = true)
-    mesh!(fig.scene, lbl1.layoutobservables.computedbbox, color = (:red, 0.5))
+    m!(fig, lbl1)
 
     lbl2 = Label(fig[2, 1], lorem_ipsum, word_wrap = true, justification = :left)
-    mesh!(fig.scene, lbl2.layoutobservables.computedbbox, color = (:red, 0.5))
+    m!(fig, lbl2)
     lbl3 = Label(fig[2, 2], "Smaller label\n <$('-'^12) pad $('-'^12)>")
-    mesh!(fig.scene, lbl3.layoutobservables.computedbbox, color = (:red, 0.5))
+    m!(fig, lbl3)
 
     lbl4 = Label(fig[3, 1], "test", word_wrap = true)
-    mesh!(fig.scene, lbl4.layoutobservables.computedbbox, color = (:red, 0.5))
+    m!(fig, lbl4)
     lbl5 = Label(fig[3, 2], lorem_ipsum, word_wrap = true)
-    mesh!(fig.scene, lbl5.layoutobservables.computedbbox, color = (:red, 0.5))
+    m!(fig, lbl5)
     fig
 end
 
