@@ -161,6 +161,10 @@ function cairo_draw(screen::CairoScreen, scene::Scene)
     zvals = Makie.zvalue2d.(allplots)
     permute!(allplots, sortperm(zvals))
 
+    # If the backend is not a vector surface (i.e., PNG/ARGB),
+    # then there is no point in rasterizing twice.
+    should_rasterize = is_vector_backend(screen.surface)
+
     last_scene = scene
 
     Cairo.save(screen.context)
@@ -182,7 +186,7 @@ function cairo_draw(screen::CairoScreen, scene::Scene)
         # rasterize it when plotting to vector backends, by using the `rasterize`
         # keyword argument.  This can be set to a Bool or an Int which describes
         # the density of rasterization (in terms of a direct scaling factor.)
-        if to_value(get(p, :rasterize, false)) != false
+        if to_value(get(p, :rasterize, false)) != false && should_rasterize
             draw_plot_as_image(pparent, screen, p, p[:rasterize][])
         else # draw vector
             draw_plot(pparent, screen, p)
