@@ -226,6 +226,10 @@ function draw_axis!(po::PolarAxis)
 
     end
 
+    # on() do i
+    #     adjustcam!(po, po.limits[])
+    # end
+
     # on(po.scene.px_area) do pxarea
     #     adjustcam!(po)
     # end
@@ -326,7 +330,9 @@ end
 function MakieLayout.autolimits!(po::PolarAxis)
     datalims = Rect2f(data_limits(po.scene))
     projected_datalims = Makie.apply_transform(po.scene.transformation.transform_func[], datalims)
+    # @show projected_datalims
     po.limits[] = (datalims.origin[1], datalims.origin[1] + datalims.widths[1])
+    # @show po.limits[]
     adjustcam!(po, po.limits[])
     notify(po.limits)
 end
@@ -345,12 +351,14 @@ end
 
 
 "Adjust the axis's scene's camera to conform to the given r-limits"
-function adjustcam!(po::PolarAxis, limits)
+function adjustcam!(po::PolarAxis, limits::NTuple{2, <: Real})
+    @assert limits[1] ≤ limits[2]
     scene = po.scene
     # We transform our limits to transformed space, since we can
     # operate linearly there
     # @show boundingbox(scene)
     target = Makie.apply_transform((scene.transformation.transform_func[]), BBox(limits..., 0, 2π))
+    # @show target
     area = scene.px_area[]
     Makie.update_cam!(scene, target)
     return
