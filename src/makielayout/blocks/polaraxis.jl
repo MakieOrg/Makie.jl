@@ -133,6 +133,8 @@ function MakieLayout.initialize_block!(po::PolarAxis)
 
     scene = Scene(po.blockscene, square, camera = cam2d!, backgroundcolor = :white)
 
+    translate!(scene, 0, 0, -100)
+
     Makie.Observables.connect!(
         scene.transformation.transform_func,
         @lift(PolarAxisTransformation($(po.θ_0), $(po.direction)))
@@ -278,7 +280,7 @@ function draw_axis!(po::PolarAxis)
         align = (:center, :center),
     )
 
-    translate!.((spineplot, rgridplot, θgridplot, rminorgridplot, θminorgridplot, rticklabelplot, θticklabelplot), 0, 0, 100_000)
+    translate!.((spineplot, rgridplot, θgridplot, rminorgridplot, θminorgridplot, rticklabelplot, θticklabelplot), 0, 0, 100)
 
     return (spineplot, rgridplot, θgridplot, rminorgridplot, θminorgridplot, rticklabelplot, θticklabelplot)
 
