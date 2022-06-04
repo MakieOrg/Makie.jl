@@ -51,8 +51,8 @@ function connect_camera!(gl_attributes, cam, space = gl_attributes[:space])
         get!(gl_attributes, key, getfield(cam, key))
     end
     get!(gl_attributes, :view) do
-        return map(cam.view, space) do view, space
-            return is_data_space(space) ? view : Mat4f(I)
+        return map(cam.view, space) do _, _space
+            return Makie.space_to_clip_view(cam, _space)
         end
     end
     get!(gl_attributes, :normalmatrix) do
@@ -63,14 +63,14 @@ function connect_camera!(gl_attributes, cam, space = gl_attributes[:space])
     end
 
     get!(gl_attributes, :projection) do
-        return map(cam.projection, cam.pixel_space, space) do _, _, space
-            return Makie.space_to_clip(cam, space, false)
+        return map(cam.projection, cam.pixel_space, space) do _, _, _space
+            return Makie.space_to_clip(cam, _space, false)
         end
     end
 
     get!(gl_attributes, :projectionview) do
-        return map(cam.projectionview, cam.pixel_space, space) do _, _, space
-            Makie.space_to_clip(cam, space, true)
+        return map(cam.projectionview, cam.pixel_space, space) do _, _, _space
+            Makie.space_to_clip(cam, _space, true)
         end
     end
 

@@ -182,7 +182,7 @@ f
 
 ### Marker space
 
-By default marker sizes are given in pixel units. You can change this by adjusting `markerspace`. For example, you can have a marker scaled in data units by setting `markerspace = :data`. 
+By default, marker sizes are given in pixel units. You can adjust this with `markerspace` which can be `:data`, `:pixel`, `:relative` or `:clip`. 
 
 \begin{examplefigure}{svg = true}
 ```julia

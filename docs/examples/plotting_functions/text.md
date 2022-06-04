@@ -70,7 +70,7 @@ f
 
 ## Data space text
 
-For text whose dimensions are meaningful in data space, set `space = :data`.
+For text whose dimensions are meaningful in data space, set `markerspace = :data`.
 This means that the boundingbox of the text in data coordinates will include every glyph.
 
 \begin{examplefigure}{}
@@ -89,7 +89,7 @@ text!(
     color = [cgrad(:viridis)[x] for x in LinRange(0, 1, 7)],
     align = (:left, :baseline),
     textsize = 1,
-    space = :data
+    markerspace = :data
 )
 
 f

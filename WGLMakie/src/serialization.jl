@@ -317,7 +317,26 @@ function serialize_three(scene::Scene, plot::AbstractPlot)
     end
 
     key = haskey(plot, :markerspace) ? (:markerspace) : (:space)
-    mesh[:cam_space] = to_value(get(plot, key, :data))
+    space = get(plot, key, :data)
+    cam = scene.camera
+
+    uniforms[:view] = serialize_three(Makie.space_to_clip_view(cam, space[]))
+    onany(cam.view, space) do _, _space
+        updater[] = [:view, Makie.space_to_clip_view(cam, _space)]
+        return
+    end
+
+    uniforms[:projection] = serialize_three(Makie.space_to_clip(cam, space[], false))
+    onany(cam.projection, cam.pixel_space, space) do _, _, _space
+        updater[] = [:projection, Makie.space_to_clip(cam, _space, false)]
+        return
+    end
+
+    uniforms[:projectionview] = serialize_three(Makie.space_to_clip(cam, space[], true))
+    onany(cam.projectionview, cam.pixel_space, space) do _, _, _space
+        updater[] = [:projectionview, Makie.space_to_clip(cam, _space, true)]
+        return
+    end
 
     return mesh
 end
