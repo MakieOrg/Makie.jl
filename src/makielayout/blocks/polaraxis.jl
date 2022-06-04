@@ -49,8 +49,8 @@ function Makie.apply_transform(f::PolarAxisTransformation, r::Rect2{T}) where {T
         rmax = xmax
         # the diagonal of a square is sqrt(2) * side
         # the radius of a circle inscribed within that square is side/2
-        mins = Point2f(-rmax * sqrt(2))#Makie.apply_transform(f, Point2f(xmin, ymin))
-        maxs = Point2f(rmax * sqrt(2) * 2)#Makie.apply_transform(f, Point2f(xmax - xmin, prevfloat(2f0π)))
+        mins = Point2f(-rmax)#Makie.apply_transform(f, Point2f(xmin, ymin))
+        maxs = Point2f(rmax*2)#Makie.apply_transform(f, Point2f(xmax - xmin, prevfloat(2f0π)))
         @show(mins, maxs)
         return Rect2f(mins,maxs)
     end
@@ -72,6 +72,10 @@ end
 Makie.inverse_transform(trans::PolarAxisTransformation) = Makie.PointTrans{2}() do point
     Point2f(hypot(point[1], point[2]), -trans.direction * (atan(point[2], point[1]) - trans.θ_0))
 end
+
+# End transform code
+
+# Some useful code to transform from data (transformed) space to pixelspace
 
 function project_to_pixelspace(scene, point::Point{N, T}) where {N, T}
     @assert N ≤ 3
@@ -106,6 +110,7 @@ function project_to_pixelspace(scene, points::AbstractVector{Point{N, T}}) where
     )
 end
 
+# A function which redoes text layouting, to provide a bbox for arbitrary text.
 
 function text_bbox(textstring::AbstractString, textsize::Union{AbstractVector, Number}, font, align, rotation, justification, lineheight, word_wrap_width = -1)
     glyph_collection = Makie.layout_text(
@@ -123,11 +128,16 @@ function MakieLayout.initialize_block!(po::PolarAxis)
     cb = po.layoutobservables.computedbbox
 
     square = lift(cb) do cb
+        # find the widths of the computed bbox
         ws = widths(cb)
+        # get the minimum width
         min_w = minimum(ws)
+        # the scene must be a square, so the width must be the same
         new_ws = Vec2f(min_w, min_w)
-        diff = ws - new_ws
-        new_o = cb.origin + 0.5diff
+        # center the scene
+        diff = new_ws - ws
+        new_o = cb.origin - 0.5diff
+        new_o =
         Rect(round.(Int, new_o), round.(Int, new_ws))
     end
 
