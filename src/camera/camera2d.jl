@@ -64,7 +64,7 @@ function update_cam!(scene::Scene, cam::Camera2D, area3d::Rect)
     px_wh = normalize(widths(pa))
     wh = normalize(widths(area))
     ratio = px_wh ./ wh
-    if ratio ≈ Vec(1.0, 1.0)
+    if ratio ≈ Vec(1f0, 1f0)
         cam.area[] = area
     else
         # we only want to make the area bigger, to at least show what was selected
