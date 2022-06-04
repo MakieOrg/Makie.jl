@@ -25,16 +25,18 @@ function push_screen!(scene::Scene, display)
 end
 
 function push_screen!(scene::Scene, display::AbstractDisplay)
-    push!(scene.current_screens, display)
-    deregister = nothing
-    deregister = on(events(scene).window_open, priority=typemax(Int)) do is_open
-        # when screen closes, it should set the scene isopen event to false
-        # so that's when we can remove the display
-        if !is_open
-            filter!(x-> x !== display, scene.current_screens)
-            deregister !== nothing && off(deregister)
+    if !any(x -> x === display, scene.current_screens)
+        push!(scene.current_screens, display)
+        deregister = nothing
+        deregister = on(events(scene).window_open, priority=typemax(Int)) do is_open
+            # when screen closes, it should set the scene isopen event to false
+            # so that's when we can remove the display
+            if !is_open
+                filter!(x-> x !== display, scene.current_screens)
+                deregister !== nothing && off(deregister)
+            end
+            return Consume(false)
         end
-        return Consume(false)
     end
     return
 end

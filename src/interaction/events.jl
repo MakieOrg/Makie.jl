@@ -12,14 +12,13 @@ hasfocus(scene, native_window) = not_implemented_for(native_window)
 entered_window(scene, native_window) = not_implemented_for(native_window)
 
 function connect_screen(scene::Scene, screen)
-    current_screen = Makie.getscreen(scene)
-    # Already on same screen, nothing to register!
-    current_screen === screen && return
-
-    # different screen, doesn't work yet, since then it would be registered to multiple events
-    if current_screen isa AbstractScreen
-        disconnect_screen(scene, current_screen)
+    while !isempty(scene.current_screens)
+        old_screen = pop!(scene.current_screens)
+        disconnect_screen(scene, old_screen)
+        old_screen !== screen && close(old_screen)
     end
+
+    push_screen!(scene, screen)
 
     window_area(scene, screen)
     window_open(scene, screen)
@@ -32,6 +31,7 @@ function connect_screen(scene::Scene, screen)
     hasfocus(scene, screen)
     entered_window(scene, screen)
 
+    return
 end
 
 to_native(window::AbstractScreen) = error("to_native(window) not implemented for $(typeof(window)).")
