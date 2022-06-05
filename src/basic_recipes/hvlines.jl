@@ -57,7 +57,7 @@ function Makie.plot!(p::Union{HLines, VLines})
         empty!(points[])
         min_x, min_y = minimum(lims)
         max_x, max_y = maximum(lims)
-        for val in vals
+        broadcast_foreach(vals, mi, ma) do val, mi, ma
             if p isa HLines
                 x_mi = min_x + (max_x - min_x) * mi
                 x_ma = min_x + (max_x - min_x) * ma
