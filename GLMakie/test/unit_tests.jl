@@ -48,6 +48,19 @@ end
         @test getscreen(ax.scene) === nothing
         @test !events(ax.scene).window_open[]
         @test isempty(events(ax.scene).window_open.listeners)
+
+        # Test singleton screen replacement
+        fig, ax, p = scatter(1:4);
+        screen = display(fig)
+        ptr = deepcopy(screen.glscreen.handle)
+        @test length(GLMakie.GLFW_WINDOWS) == 1 && (GLMakie.GLFW_WINDOWS[1] == screen.glscreen)
+        @test isopen(screen) && (screen === GLMakie.SINGLETON_SCREEN[])
+        fig2, ax2, p2 = scatter(4:-1:1);
+        screen2 = display(fig2)
+        @test length(GLMakie.GLFW_WINDOWS) == 1 && (GLMakie.GLFW_WINDOWS[1] == screen2.glscreen)
+        @test isopen(screen2) && (screen2 === GLMakie.SINGLETON_SCREEN[])
+        @test screen === screen2
+        @test screen2.glscreen.handle == ptr
     end
 
     @testset "Pick a plot element or plot elements inside a rectangle" begin
