@@ -1,9 +1,7 @@
-# hlines! and vlines!
+# hlines and vlines
 
-{{doc hlines!}}
-{{doc vlines!}}
-
-These functions are not plot types / recipes and only work with `Axis`.
+{{doc hlines}}
+{{doc vlines}}
 
 \begin{examplefigure}{}
 ```julia
