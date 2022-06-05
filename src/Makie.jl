@@ -247,6 +247,7 @@ export widths, decompose
 export PlotSpec
 
 export plot!, plot
+export abline! # until deprecation removal
 
 
 export Stepper, replay_events, record_events, RecordEvents, record, VideoStream
