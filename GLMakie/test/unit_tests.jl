@@ -26,7 +26,7 @@ end
         fig, ax, splot = scatter(1:4);
         screen2 = display(fig)
         @test screen !== screen2
-        @test length(GLMakie.GLFW_WINDOWS) == 2 && (GLMakie.GLFW_WINDOWS[1] === [screen.glscreen, screen2.glscreen])
+        @test length(GLMakie.GLFW_WINDOWS) == 2 && (GLMakie.GLFW_WINDOWS == [screen.glscreen, screen2.glscreen])
         @test isassigned(GLMakie.SINGLETON_SCREEN) && (GLMakie.SINGLETON_SCREEN[] === screen2)
         @test !isassigned(GLMakie.SINGLETON_SCREEN_NO_RENDERLOOP)
 
