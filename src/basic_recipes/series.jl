@@ -92,6 +92,6 @@ function plot!(plot::Series)
     end
 end
 
-function MakieLayout.get_plots(plot::Series)
+function Makie.get_plots(plot::Series)
     return plot.plots
 end

@@ -653,7 +653,7 @@ get_ticklabels(formatstring::AbstractString, values) = [Formatting.format(format
 function get_ticks(m::MultiplesTicks, any_scale, ::Automatic, vmin, vmax)
     dvmin = vmin / m.multiple
     dvmax = vmax / m.multiple
-    multiples = MakieLayout.get_tickvalues(LinearTicks(m.n_ideal), dvmin, dvmax)
+    multiples = Makie.get_tickvalues(LinearTicks(m.n_ideal), dvmin, dvmax)
 
     multiples .* m.multiple, Showoff.showoff(multiples) .* m.suffix
 end

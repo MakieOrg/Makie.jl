@@ -20,6 +20,13 @@ module Formatters
 end
 using .Formatters
 
+
+to_3tuple(x) = ntuple(i -> x, Val(3))
+to_3tuple(x::NTuple{3,Any}) = x
+
+to_2tuple(x) = ntuple(i -> x, Val(2))
+to_2tuple(x::NTuple{2,Any}) = x
+
 """
     $(SIGNATURES)
 
@@ -66,7 +73,7 @@ $(ATTRIBUTES)
             rotation = axisnames_rotation3d,
             textsize = (6.0, 6.0, 6.0),
             align = axisnames_align3d,
-            font = lift(dim3, theme(scene, :font)),
+            font = lift(to_3tuple, theme(scene, :font)),
             gap = 3
         ),
 
@@ -80,7 +87,7 @@ $(ATTRIBUTES)
             textsize = (tsize, tsize, tsize),
             align = tickalign3d,
             gap = 3,
-            font = lift(dim3, theme(scene, :font)),
+            font = lift(to_3tuple, theme(scene, :font)),
         ),
 
         frame = Attributes(
