@@ -4,7 +4,7 @@
 {{doc vspan}}
 
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide

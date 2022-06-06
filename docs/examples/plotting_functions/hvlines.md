@@ -3,7 +3,7 @@
 {{doc hlines}}
 {{doc vlines}}
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
