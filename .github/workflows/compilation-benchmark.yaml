@@ -10,16 +10,10 @@ on:
 jobs:
   benchmark:
     name: ${{ matrix.package }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        version:
-          - 'nightly'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
         package:
           - CairoMakie
           - GLMakie
@@ -31,14 +25,13 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
       - uses: julia-actions/setup-julia@v1
         with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
+          version: nightly
+          arch: x64
       - uses: julia-actions/cache@v1
       - name: Benchmark
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.BENCHMARK_KEY }}
           PR_NUMBER: ${{ github.event.number }}
-      - name: Benchmark
         run: >
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --project=./metrics/ttfp/ ./metrics/ttfp/run-benchmark.jl ${{ matrix.package }}
