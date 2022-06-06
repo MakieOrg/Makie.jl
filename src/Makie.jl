@@ -273,9 +273,9 @@ function logo()
 end
 
 function __init__()
-    # Make GridLayoutBase default row and colgaps themeable when using MakieLayout
+    # Make GridLayoutBase default row and colgaps themeable when using Makie
     # This mutates module-level state so it could mess up other libraries using
-    # GridLayoutBase at the same time as MakieLayout, which is unlikely, though
+    # GridLayoutBase at the same time as Makie, which is unlikely, though
     GridLayoutBase.DEFAULT_COLGAP_GETTER[] = function()
         ct = Makie.current_default_theme()
         if haskey(ct, :colgap)

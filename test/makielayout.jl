@@ -1,4 +1,4 @@
-# Minimal sanity checks for MakieLayout
+# Minimal sanity checks for Makie Layout
 @testset "Blocks constructors" begin
     fig = Figure()
     ax = Axis(fig[1, 1])
