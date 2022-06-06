@@ -523,17 +523,17 @@ end
 
 @reference_test "minor grid & scales" begin
     data = LinRange(0.01, 0.99, 200)
-
     f = Figure(resolution = (800, 800))
-
     for (i, scale) in enumerate([log10, log2, log, sqrt, Makie.logit, identity])
         row, col = fldmod1(i, 2)
         Axis(f[row, col], yscale = scale, title = string(scale),
             yminorticksvisible = true, yminorgridvisible = true,
-            yminorticks = IntervalsBetween(8))
+            xminorticksvisible = true, xminorgridvisible = true,
+            yminortickwidth = 4.0, xminortickwidth = 4.0,
+            yminorgridwidth = 6.0, xminorgridwidth = 6.0,
+            yminorticks = IntervalsBetween(3))
 
         lines!(data, color = :blue)
     end
-
     f
 end
