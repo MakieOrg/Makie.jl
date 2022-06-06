@@ -520,3 +520,20 @@ end
     # use thick strokewidth, so it will make tests fail if something is missing
     poly([Rect2f(0, 0, 1, 1)], color=:green, strokewidth=100, strokecolor=:black)
 end
+
+@reference_test "minor grid & scales" begin
+    data = LinRange(0.01, 0.99, 200)
+
+    f = Figure(resolution = (800, 800))
+
+    for (i, scale) in enumerate([log10, log2, log, sqrt, Makie.logit, identity])
+        row, col = fldmod1(i, 2)
+        Axis(f[row, col], yscale = scale, title = string(scale),
+            yminorticksvisible = true, yminorgridvisible = true,
+            yminorticks = IntervalsBetween(8))
+
+        lines!(data, color = :blue)
+    end
+
+    f
+end
