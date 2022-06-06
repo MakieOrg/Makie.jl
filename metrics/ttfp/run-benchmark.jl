@@ -102,14 +102,14 @@ function make_or_edit_comment(ctx, pr, package_name, pr_bench, master_bench)
         println(comment)
         GitHub.create_comment(ctx.repo, pr; auth=ctx.auth, params=Dict("body"=>comment))
     else
-        old_comment = prev_comments[idx]
+        old_comment = prev_comments[idx].body
         comment = update_comment(old_comment, package_name, pr_bench, master_bench)
         println(comment)
         GitHub.edit_comment(ctx.repo, prev_comments[idx], :pr; auth=ctx.auth, params=Dict("body" => comment))
     end
 end
 
-function run_benchmarks(projects; n=2)
+function run_benchmarks(projects; n=7)
     benchmark_file = joinpath(@__DIR__, "benchmark-ttfp.jl")
     for project in repeat(projects; outer=n)
         run(`$(Base.julia_cmd()) --startup-file=no --project=$(project) $benchmark_file $Package`)
