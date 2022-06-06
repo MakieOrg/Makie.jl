@@ -1,11 +1,9 @@
-# hlines! and vlines!
+# hlines and vlines
 
-{{doc hlines!}}
-{{doc vlines!}}
+{{doc hlines}}
+{{doc vlines}}
 
-These functions are not plot types / recipes and only work with `Axis`.
-
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide

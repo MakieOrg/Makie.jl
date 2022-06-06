@@ -117,6 +117,7 @@ include("camera/old_camera3d.jl")
 
 # basic recipes
 include("basic_recipes/convenience_functions.jl")
+include("basic_recipes/ablines.jl")
 include("basic_recipes/annotations.jl")
 include("basic_recipes/arc.jl")
 include("basic_recipes/arrows.jl")
@@ -127,6 +128,8 @@ include("basic_recipes/buffers.jl")
 include("basic_recipes/contours.jl")
 include("basic_recipes/contourf.jl")
 include("basic_recipes/error_and_rangebars.jl")
+include("basic_recipes/hvlines.jl")
+include("basic_recipes/hvspan.jl")
 include("basic_recipes/pie.jl")
 include("basic_recipes/poly.jl")
 include("basic_recipes/scatterlines.jl")
@@ -244,6 +247,7 @@ export widths, decompose
 export PlotSpec
 
 export plot!, plot
+export abline! # until deprecation removal
 
 
 export Stepper, replay_events, record_events, RecordEvents, record, VideoStream
@@ -295,6 +299,7 @@ end
 include("figureplotting.jl")
 include("basic_recipes/series.jl")
 include("basic_recipes/text.jl")
+include("basic_recipes/raincloud.jl")
 
 export Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter, Surface, Text, Volume
 export heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface, text, volume
