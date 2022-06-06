@@ -5,7 +5,7 @@ Recipes allow you to extend `Makie` with your own custom types and plotting comm
 !!! note
     If you're a package developer, it's possible to add recipes without adding all of
     `Makie.jl` as a dependency. Instead, you can use the `MakieCore` package, which
-    is a lightweight packages which provides all the necessary elements to create a recipe,
+    is a lightweight package which provides all the necessary elements to create a recipe,
     such as the `@recipe` macro, `convert_arguments` and `convert_attributes` functions,
     and even some basic plot type definitions.
 
