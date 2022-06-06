@@ -29,8 +29,8 @@ jobs:
       matrix:
         version:
           - '1.6'
-          - '1.7'
-          - '1.8'
+          - '1'
+          - '~1.8.0-0'
         os:
           - ubuntu-latest
         arch:
