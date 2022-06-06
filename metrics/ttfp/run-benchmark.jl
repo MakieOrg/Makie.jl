@@ -4,23 +4,22 @@ Pkg.instantiate()
 using Statistics, GitHub, Printf, BenchmarkTools, Markdown
 using BenchmarkTools.JSON
 Package = ARGS[1]
-Package = "CairoMakie"
 @info("Benchmarking $(Package)")
 
 COMMENT_TEMPLATE = """
 ## Compile Times benchmark
 
-Note, that these numbers may fluctuate on the CI servers, so take them with a grain of salt, especially precompile times.
+Note, that these numbers may fluctuate on the CI servers, so take them with a grain of salt.
 All benchmark results are based on the mean time and negative percent mean faster than master.
 
-|            |precompile| using     | ttfp     | runtime  |
-|------------|----------|-----------|----------|----------|
-| GLMakie    | --       | --        | --       | --       |
-| vs master  | --       | --        | --       | --       |
-| CairoMakie | --       | --        | --       | --       |
-| vs master  | --       | --        | --       | --       |
-| WGLMakie   | --       | --        | --       | --       |
-| vs master  | --       | --        | --       | --       |
+|               | using     | ttfp     | runtime  |
+|--------------:|:----------|:---------|:---------|
+| PR GLMakie    | --        | --       | --       |
+|    master     | --        | --       | --       |
+| PR CairoMakie | --        | --       | --       |
+|    master     | --        | --       | --       |
+| PR WGLMakie   | --        | --       | --       |
+|    master     | --        | --       | --       |
 """
 
 function github_context()
@@ -33,10 +32,25 @@ function github_context()
     )
 end
 
+function prettytime(trial)
+    t = time(median(trial))
+    # Taken from Benchmarktools, since we only want two digits
+    if t < 1e3
+        value, units = t, "ns"
+    elseif t < 1e6
+        value, units = t / 1e3, "μs"
+    elseif t < 1e9
+        value, units = t / 1e6, "ms"
+    else
+        value, units = t / 1e9, "s"
+    end
+    return string(@sprintf("%.2f", value), units)
+end
+
 function speedup(t1, t2)
     t = judge(median(t2), median(t1))
     return sprint() do io
-        print(io, BenchmarkTools.prettydiff(time(ratio(t))), "-> ")
+        print(io, prettytime(t2), " ", BenchmarkTools.prettydiff(time(ratio(t))), " ")
         if t.time == :invariant
             print(io, "**invariant**")
         elseif t.time == :improvement
@@ -48,16 +62,12 @@ function speedup(t1, t2)
 end
 
 function get_row_values(results_pr, results_m)
-    master_row = ["$(round(results_pr[1], digits=1))s"]
-    pr_row = ["$(round(results_m[1], digits=1))s"]
+    master_row = []
+    pr_row = []
     n = length(results_pr)
-    for i in 2:n
-        if i == n
-            push!(pr_row, string(round(time(mean(results_pr[i])) / 1e6, digits=2), "ms"))
-        else
-            push!(pr_row, string(round(time(mean(results_pr[i])) / 1e9, digits=2), "s"))
-        end
-        push!(master_row, speedup(results_m[i], results_pr[i]))
+    for i in 1:n
+        push!(pr_row, speedup(results_m[i], results_pr[i]))
+        push!(master_row, prettytime(results_m[i]))
     end
 
     return pr_row, master_row
@@ -69,7 +79,7 @@ function update_comment(old_comment, package_name, pr_bench, master_bench)
     idx = findfirst(rows) do row
         cell = first(row)
         isempty(cell) && return false
-        return first(cell) == package_name
+        return first(cell) == "PR " * package_name
     end
     if isnothing(idx)
         @warn("Could not find $package_name in $(md). Not updating benchmarks")
@@ -99,7 +109,7 @@ function make_or_edit_comment(ctx, pr, package_name, pr_bench, master_bench)
     end
 end
 
-function run_benchmarks(projects; n=7)
+function run_benchmarks(projects; n=2)
     benchmark_file = joinpath(@__DIR__, "benchmark-ttfp.jl")
     for project in repeat(projects; outer=n)
         run(`$(Base.julia_cmd()) --startup-file=no --project=$(project) $benchmark_file $Package`)
@@ -130,8 +140,7 @@ function load_results(name)
     runtime_file = "$name-runtime-result.json"
     runtime = BenchmarkTools.load(runtime_file)[1]
     ttfp = JSON.parse(read(result, String))
-    precompile = name == "current-pr" ? precompile_pr : precompile_master
-    return [precompile, create_trial(first.(ttfp)), create_trial(last.(ttfp)), runtime]
+    return [create_trial(first.(ttfp)), create_trial(last.(ttfp)), runtime]
 end
 
 ctx = try
@@ -144,12 +153,16 @@ end
 
 project1 = make_project_folder("current-pr")
 Pkg.activate(project1)
-Pkg.develop([(; path="./MakieCore"), (; path="."), (; path="./$Package"), (;name="BenchmarkTools")])
+pkgs = [(; path="./MakieCore"), (; path="."), (; path="./$Package"), (;name="BenchmarkTools")]
+Package == "WGLMakie" && push!(pkgs, (; name="ElectronDisplay"))
+Pkg.develop(pkgs)
 precompile_pr = @elapsed Pkg.precompile()
 
 project2 = make_project_folder("makie-master")
 Pkg.activate(project2)
-Pkg.add([(; rev="master", name="MakieCore"), (; rev="master", name="Makie"), (; rev="master", name="CairoMakie"), (;name="BenchmarkTools")])
+pkgs = [(; rev="master", name="MakieCore"), (; rev="master", name="Makie"), (; rev="master", name="$Package"), (;name="BenchmarkTools")]
+Package == "WGLMakie" && push!(pkgs, (; name="ElectronDisplay"))
+Pkg.add(pkgs)
 precompile_master = @elapsed Pkg.precompile()
 
 projects = [project1, project2]

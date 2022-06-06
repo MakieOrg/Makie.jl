@@ -1,6 +1,11 @@
 Package = Symbol(ARGS[1])
 t_using = (tstart = time(); @eval using $Package; time() - tstart)
-
+if Package == :WGLMakie
+    using ElectronDisplay
+    ElectronDisplay.CONFIG.showable = showable
+    ElectronDisplay.CONFIG.single_window = true
+    ElectronDisplay.CONFIG.focus = false
+end
 function test()
     Makie.inline!(false) # needed for cairomakie to return a screen
     screen = display(scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true))

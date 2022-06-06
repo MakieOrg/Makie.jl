@@ -1,4 +1,4 @@
-name: Compile Time Benchmark
+name: Benchmark
 on:
   pull_request:
     paths-ignore:
