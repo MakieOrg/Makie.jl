@@ -20,6 +20,10 @@ jobs:
           - ubuntu-latest
         arch:
           - x64
+        package:
+          - CairoMakie
+          - GLMakie
+          - WGLMakie
     steps:
       - name: Checkout
         uses: actions/checkout@v2

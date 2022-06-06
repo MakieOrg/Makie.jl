@@ -1,7 +1,27 @@
 using Pkg
 Pkg.activate(@__DIR__)
 Pkg.instantiate()
-using Statistics, GitHub, Printf, BenchmarkTools
+using Statistics, GitHub, Printf, BenchmarkTools, Markdown
+using BenchmarkTools.JSON
+Package = ARGS[1]
+Package = "CairoMakie"
+@info("Benchmarking $(Package)")
+
+COMMENT_TEMPLATE = """
+## Compile Times benchmark
+
+Note, that these numbers may fluctuate on the CI servers, so take them with a grain of salt, especially precompile times.
+All benchmark results are based on the mean time and negative percent mean faster than master.
+
+|            |precompile| using     | ttfp     | runtime  |
+|------------|----------|-----------|----------|----------|
+| GLMakie    | --       | --        | --       | --       |
+| vs master  | --       | --        | --       | --       |
+| CairoMakie | --       | --        | --       | --       |
+| vs master  | --       | --        | --       | --       |
+| WGLMakie   | --       | --        | --       | --       |
+| vs master  | --       | --        | --       | --       |
+"""
 
 function github_context()
     owner = "JuliaPlots"
@@ -13,28 +33,79 @@ function github_context()
     )
 end
 
-function make_or_edit_comment(ctx, pr, comment)
+function speedup(t1, t2)
+    t = judge(median(t2), median(t1))
+    return sprint() do io
+        print(io, BenchmarkTools.prettydiff(time(ratio(t))), "-> ")
+        if t.time == :invariant
+            print(io, "**invariant**")
+        elseif t.time == :improvement
+            print(io, "**improvement** :)")
+        else
+            print(io, "**worse**")
+        end
+    end
+end
+
+function get_row_values(results_pr, results_m)
+    master_row = ["$(round(results_pr[1], digits=1))s"]
+    pr_row = ["$(round(results_m[1], digits=1))s"]
+    n = length(results_pr)
+    for i in 2:n
+        if i == n
+            push!(pr_row, string(round(time(mean(results_pr[i])) / 1e6, digits=2), "ms"))
+        else
+            push!(pr_row, string(round(time(mean(results_pr[i])) / 1e9, digits=2), "s"))
+        end
+        push!(master_row, speedup(results_m[i], results_pr[i]))
+    end
+
+    return pr_row, master_row
+end
+
+function update_comment(old_comment, package_name, pr_bench, master_bench)
+    md = Markdown.parse(old_comment)
+    rows = md.content[end].rows
+    idx = findfirst(rows) do row
+        cell = first(row)
+        isempty(cell) && return false
+        return first(cell) == package_name
+    end
+    if isnothing(idx)
+        @warn("Could not find $package_name in $(md). Not updating benchmarks")
+        return old_comment
+    end
+    for (i, value) in enumerate(pr_bench)
+        rows[idx][i + 1] = [value]
+    end
+    for (i, value) in enumerate(master_bench)
+        rows[idx + 1][i + 1] = [value]
+    end
+    return sprint(show, md)
+end
+
+function make_or_edit_comment(ctx, pr, package_name, pr_bench, master_bench)
     prev_comments, _ = GitHub.comments(ctx.repo, pr; auth=ctx.auth)
     idx = findfirst(c-> c.user.login == "MakieBot", prev_comments)
     if isnothing(idx)
+        comment = update_comment(COMMENT_TEMPLATE, package_name, pr_bench, master_bench)
+        println(comment)
         GitHub.create_comment(ctx.repo, pr; auth=ctx.auth, params=Dict("body"=>comment))
     else
-        GitHub.edit_comment(ctx.repo, prev_comments[idx], :pr; auth=ctx.auth, params=Dict("body"=>comment))
+        old_comment = prev_comments[idx]
+        comment = update_comment(old_comment, package_name, pr_bench, master_bench)
+        println(comment)
+        GitHub.edit_comment(ctx.repo, prev_comments[idx], :pr; auth=ctx.auth, params=Dict("body" => comment))
     end
 end
 
 function run_benchmarks(projects; n=7)
-    results = Dict{String, Vector{NTuple{2, Float64}}}()
     benchmark_file = joinpath(@__DIR__, "benchmark-ttfp.jl")
     for project in repeat(projects; outer=n)
-        result = read(`$(Base.julia_cmd()) --startup-file=no --project=$(project) $benchmark_file`, String)
-        tup = eval(Meta.parse(result))
+        run(`$(Base.julia_cmd()) --startup-file=no --project=$(project) $benchmark_file $Package`)
         project_name = basename(project)
-        println("$project_name: $(tup)")
-        result = get!(results, project_name, NTuple{2, Float64}[])
-        push!(result, tup)
     end
-    return results
+    return
 end
 
 function create_trial(numbers)
@@ -54,6 +125,15 @@ function make_project_folder(name)
     return project
 end
 
+function load_results(name)
+    result = "$name-ttfp-result.json"
+    runtime_file = "$name-runtime-result.json"
+    runtime = BenchmarkTools.load(runtime_file)[1]
+    ttfp = JSON.parse(read(result, String))
+    precompile = name == "current-pr" ? precompile_pr : precompile_master
+    return [precompile, create_trial(first.(ttfp)), create_trial(last.(ttfp)), runtime]
+end
+
 ctx = try
     github_context()
 catch e
@@ -64,69 +144,29 @@ end
 
 project1 = make_project_folder("current-pr")
 Pkg.activate(project1)
-Pkg.develop([(; path="./MakieCore"), (; path="."), (; path="./CairoMakie")])
-Pkg.precompile()
+Pkg.develop([(; path="./MakieCore"), (; path="."), (; path="./$Package"), (;name="BenchmarkTools")])
+precompile_pr = @elapsed Pkg.precompile()
 
 project2 = make_project_folder("makie-master")
 Pkg.activate(project2)
-Pkg.add([(; rev="master", name="MakieCore"), (; rev="master", name="Makie"), (; rev="master", name="CairoMakie")])
-Pkg.precompile()
+Pkg.add([(; rev="master", name="MakieCore"), (; rev="master", name="Makie"), (; rev="master", name="CairoMakie"), (;name="BenchmarkTools")])
+precompile_master = @elapsed Pkg.precompile()
 
 projects = [project1, project2]
 
-results = run_benchmarks(projects)
+run_benchmarks(projects)
 
-function all_stats(io, name, numbers)
-    mini = minimum(numbers)
-    maxi = maximum(numbers)
-    m = median(numbers)
-    s = std(numbers)
-    @printf(io, "    %s %.2f < %.2f > %.2f, %.2f+-\n", name, mini, m, maxi, s)
-end
+results_pr = load_results(basename(project1))
+results_m = load_results(basename(project2))
 
-function speedup(io, name, master, pr)
-    t1 = create_trial(master)
-    t2 = create_trial(pr)
-    t = judge(median(t2), median(t1))
-    print(io, "    median:  ", BenchmarkTools.prettydiff(time(ratio(t))), " => ")
-    BenchmarkTools.printtimejudge(io, t)
-    println(io)
-    if t.time == :invariant
-        println(io, "This PR does **not** change the $(name) time.")
-    elseif t.time == :improvement
-        println(io, "This PR **improves** the $(name) time.")
-    else
-        println(io, "This PR makes the $(name) time **worse**.")
-    end
-end
+pr_bench, master_bench = get_row_values(results_pr, results_m)
+println(update_comment(COMMENT_TEMPLATE, Package, pr_bench, master_bench))
 
-function print_analysis(io, results)
-    master = results["makie-master"]
-    pr = results["current-pr"]
-    println(io, "### using time")
-    all_stats(io, "master: ", first.(master))
-    all_stats(io, "pr:     ", first.(pr))
-    all_stats(io, "speedup:", first.(master) ./ first.(pr))
-    speedup(io, "using", first.(master), first.(pr))
-    println(io)
-
-    println(io, "### ttfp time")
-    all_stats(io, "master  ", last.(master))
-    all_stats(io, "pr      ", last.(pr))
-    all_stats(io, "speedup:", last.(master) ./ last.(pr))
-    speedup(io, "ttfp", last.(master), last.(pr))
-end
-
-comment = sprint() do io
-    println(io, "## Compile Times benchmark\n")
-    println(io, "Note, that these numbers may fluctuate on the CI servers, so take them with a grain of salt.\n")
-    print_analysis(io, results)
-end
-println(comment)
 pr_to_comment = get(ENV, "PR_NUMBER", nothing)
+
 if !isnothing(pr_to_comment)
     pr = GitHub.pull_request(ctx.repo, pr_to_comment)
-    make_or_edit_comment(ctx, pr, comment)
+    make_or_edit_comment(ctx, pr, Package, pr_bench, master_bench)
 else
     @info("Not commenting, no PR found")
 end
