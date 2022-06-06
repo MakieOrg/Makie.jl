@@ -216,9 +216,9 @@ To control ticks, you can set the axis attributes `xticks/yticks` and `xtickform
 You can overload one or more of these three functions to implement custom ticks:
 
 ```julia
-tickvalues, ticklabels = MakieLayout.get_ticks(ticks, scale, formatter, vmin, vmax)
-tickvalues = MakieLayout.get_tickvalues(ticks, vmin, vmax)
-ticklabels = MakieLayout.get_ticklabels(formatter, tickvalues)
+tickvalues, ticklabels = Makie.get_ticks(ticks, scale, formatter, vmin, vmax)
+tickvalues = Makie.get_tickvalues(ticks, vmin, vmax)
+ticklabels = Makie.get_ticklabels(formatter, tickvalues)
 ```
 
 If you overload `get_ticks`, you have to compute both tickvalues and ticklabels directly as a vector of floats and strings, respectively.
@@ -302,7 +302,7 @@ f
 You can show minor ticks and grids by setting `x/yminorticksvisible = true` and `x/yminorgridvisible = true` which are off by default.
 You can set size, color, width, align etc. like for the normal ticks, but there are no labels.
 The `x/yminorticks` attributes control how minor ticks are computed given major ticks and axis limits.
-For that purpose you can create your own minortick type and overload `MakieLayout.get_minor_tickvalues(minorticks, tickvalues, vmin, vmax)`.
+For that purpose you can create your own minortick type and overload `Makie.get_minor_tickvalues(minorticks, tickvalues, vmin, vmax)`.
 
 The default minor tick type is `IntervalsBetween(n, mirror = true)` where `n` gives the number of intervals each gap between major ticks is divided into with minor ticks, and `mirror` decides if outside of the major ticks there are more minor ticks with the same intervals as the adjacent gaps.
 
@@ -794,7 +794,7 @@ mutable struct MyInteraction
     allow_right_click::Bool
 end
 
-function MakieLayout.process_interaction(interaction::MyInteraction, event::MouseEvent, axis)
+function Makie.process_interaction(interaction::MyInteraction, event::MouseEvent, axis)
     if interaction.use_left_click && event.type === MouseEventTypes.leftclick
         println("Left click in correct mode")
     end
@@ -803,7 +803,7 @@ function MakieLayout.process_interaction(interaction::MyInteraction, event::Mous
     end
 end
 
-function MakieLayout.process_interaction(interaction::MyInteraction, event::KeysEvent, axis)
+function Makie.process_interaction(interaction::MyInteraction, event::KeysEvent, axis)
     interaction.allow_left_click = Keyboard.l in event.keys
     interaction.allow_right_click = Keyboard.r in event.keys
 end

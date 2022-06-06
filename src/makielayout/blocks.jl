@@ -14,9 +14,9 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
     end
 
     structdef = quote
-        mutable struct $name <: Makie.MakieLayout.Block
+        mutable struct $name <: Makie.Block
             parent::Union{Figure, Scene, Nothing}
-            layoutobservables::Makie.MakieLayout.LayoutObservables{GridLayout}
+            layoutobservables::Makie.LayoutObservables{GridLayout}
             blockscene::Scene
         end
     end
@@ -63,18 +63,18 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
 
         export $name
 
-        function Makie.MakieLayout.is_attribute(::Type{$(name)}, sym::Symbol)
+        function Makie.is_attribute(::Type{$(name)}, sym::Symbol)
             sym in ($((attrs !== nothing ? [QuoteNode(a.symbol) for a in attrs] : [])...),)
         end
 
-        function Makie.MakieLayout.default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
+        function Makie.default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
             sceneattrs = scene === nothing ? Attributes() : theme(scene)
             curdeftheme = Makie.current_default_theme()
 
             $(make_attr_dict_expr(attrs, :sceneattrs, :curdeftheme))
         end
 
-        function Makie.MakieLayout.attribute_default_expressions(::Type{$name})
+        function Makie.attribute_default_expressions(::Type{$name})
             $(
                 if attrs === nothing
                     Dict{Symbol, String}()
@@ -84,7 +84,7 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
             )
         end
 
-        function Makie.MakieLayout._attribute_docs(::Type{$(name)})
+        function Makie._attribute_docs(::Type{$(name)})
             Dict(
                 $(
                     (attrs !== nothing ?
@@ -94,7 +94,7 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
             )
         end
 
-        Makie.MakieLayout.has_forwarded_layout(::Type{$name}) = $has_forwarded_layout
+        Makie.has_forwarded_layout(::Type{$name}) = $has_forwarded_layout
     end
 
     esc(q)
@@ -385,9 +385,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
         empty!(b.layout.layoutobservables.computedbbox.listeners)
         # connect the block's layoutobservables.computedbbox to the align action that
         # usually the GridLayout executes itself
-        on(lobservables.computedbbox) do bb
-            GridLayoutBase.align_to_bbox!(b.layout, bb)
-        end
+        onany(GridLayoutBase.align_to_bbox!, b.layout, lobservables.computedbbox)
     end
 
     # in this function, the block specific setup logic is executed and the remaining
