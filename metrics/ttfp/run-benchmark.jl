@@ -121,7 +121,7 @@ function update_comment(old_comment, package_name, (pr_bench, master_bench, eval
     return sprint(show, md)
 end
 
-function make_or_edit_comment(ctx, pr, benchmarks)
+function make_or_edit_comment(ctx, pr, package_name, benchmarks)
     prev_comments, _ = GitHub.comments(ctx.repo, pr; auth=ctx.auth)
     idx = findfirst(c-> c.user.login == "MakieBot", prev_comments)
     if isnothing(idx)
@@ -136,7 +136,7 @@ function make_or_edit_comment(ctx, pr, benchmarks)
     end
 end
 
-function run_benchmarks(projects; n=2)
+function run_benchmarks(projects; n=10)
     benchmark_file = joinpath(@__DIR__, "benchmark-ttfp.jl")
     for project in repeat(projects; outer=n)
         run(`$(Base.julia_cmd()) --startup-file=no --project=$(project) $benchmark_file $Package`)
@@ -193,6 +193,7 @@ results_m = load_results(basename(project2))
 benchmark_rows = get_row_values(results_pr, results_m)
 
 pr_to_comment = get(ENV, "PR_NUMBER", nothing)
+pr_to_comment = 2026#get(ENV, "PR_NUMBER", nothing)
 
 if !isnothing(pr_to_comment)
     pr = GitHub.pull_request(ctx.repo, pr_to_comment)
