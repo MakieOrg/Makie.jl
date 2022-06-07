@@ -1,5 +1,8 @@
 # rainclouds
 
+"Raincloud" plots are a combination of a (half) violin plot, box plot and scatter plots, the
+three together can make an appealing visual, particularly for large N datasets.
+
 {{doc rainclouds}}
 
 \begin{examplefigure}{}
@@ -70,6 +73,17 @@ rainclouds(category_labels, data_array;
 ```
 \end{examplefigure}
 
+
+\begin{examplefigure}{}
+```julia
+rainclouds(category_labels, data_array;
+    xlabel = "Categories of Distributions",
+    ylabel = "Samples", title = "My Title",
+    orientation = :horizontal,
+    plot_boxplots = true, cloud_width=0.5, clouds=hist,
+    color = colors[indexin(category_labels, unique(category_labels))])
+```
+\end{examplefigure}
 
 \begin{examplefigure}{}
 ```julia

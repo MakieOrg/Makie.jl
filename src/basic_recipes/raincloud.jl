@@ -28,14 +28,15 @@ between each.
 - `data_array`: Typically `Vector{Float64}` used for to represent the datapoints to plot.
 
 # Keywords
+- `orientation=:vertical` orientation of raindclouds (`:vertical` or `:horizontal`)
 - `plot_boxplots=true`: Boolean to show boxplots to summarize distribution of data.
 - `clouds=violin`: [violin, hist, nothing] to show cloud plots either as violin or histogram
   plot, or no cloud plot.
 - `hist_bins=30`: if `clouds=hist`, this passes down the number of bins to the histogram
   call.
 - `gap=0.2`: Distance between elements of x-axis.
-- `side=:left`: Can take values of `:left` or `:right`. Determines which side the violin
-  plot will be on.
+- `side=:left`: Can take values of `:left`, `:right`, determines where the violin plot will
+  be, relative to the scatter points
 - `center_boxplot=true`: Determines whether or not to have the boxplot be centered in the
   category.
 - `dodge`: vector of `Integer`` (length of data) of grouping variable to create multiple
@@ -75,6 +76,7 @@ paired with the scatter plot so the default is to not show them)
 @recipe(RainClouds, category_labels, data_array) do scene
     return Attributes(
         side = :left,
+        orientation = :vertical,
         center_boxplot = true,
         # Cloud plot
         cloud_width = 0.75,
@@ -90,7 +92,7 @@ paired with the scatter plot so the default is to not show them)
         markersize = 2.0,
         dodge = automatic,
         n_dodge = automatic,
-        dodge_gap = 0.03,
+        dodge_gap = 0.01,
 
         plot_boxplots = true,
         show_boxplot_outliers = false,
@@ -138,7 +140,11 @@ function plot!(
 
     if any(x -> x isa AbstractString, category_labels)
         ulabels = unique(category_labels)
-        ax.xticks = (1:length(ulabels), ulabels)
+        if !haskey(allattrs, :orientation) || allattrs.orientation[] == :vertical
+            ax.xticks = (1:length(ulabels), ulabels)
+        else
+            ax.yticks = (1:length(ulabels), ulabels)
+        end
     end
     if haskey(allattrs, :title)
         ax.title = allattrs.title[]
@@ -232,6 +238,10 @@ function plot!(plot::RainClouds)
 
 
     # Set-up
+    if plot.orientation[] == :horizontal
+        # flip side to when horizontal
+        side = side == :left ? :right : :left
+    end
     (side == :left) && (side_nudge_direction = 1.0)
     (side == :right) && (side_nudge_direction = -1.0)
     side_scatter_nudge_with_direction = side_scatter_nudge * side_nudge_direction
@@ -242,7 +252,7 @@ function plot!(plot::RainClouds)
     # Note: these cloud plots are horizontal
     full_width = jitter_width + side_scatter_nudge +
         (plot_boxplots ? boxplot_width : 0) +
-        (!isnothing(clouds) ? cloud_width + abs(recenter_to_boxplot_nudge_value) : 0)
+        (!isnothing(clouds) ? 1 + abs(recenter_to_boxplot_nudge_value) : 0)
 
     final_x_positions, width = compute_x_and_width(x_positions .+ recenter_to_boxplot_nudge_value/2, full_width,
                                                     plot.gap[], plot.dodge[],
@@ -256,14 +266,19 @@ function plot!(plot::RainClouds)
         if clouds === violin
             violin!(plot, final_x_positions .- recenter_to_boxplot_nudge_value.*width_ratio, data_array;
                     show_median=show_median, side=side, width=width_ratio*cloud_width, plot.cycle,
-                    plot.color, gap=0)
+                    plot.color, gap=0, orientation=plot.orientation[])
         elseif clouds === hist
             edges = pick_hist_edges(data_array, hist_bins)
-            for (_, ixs) in group_labels(category_labels, data_array)
+            # dodge belongs below: it ensure that the histogram groups labels by both dodge
+            # and category (so there is a separate histogram for each dodge group)
+            for (_, ixs) in group_labels(zip(category_labels, plot.dodge[]), data_array)
                 isempty(ixs) && continue
                 xoffset = final_x_positions[ixs[1]] - recenter_to_boxplot_nudge_value
-                hist!(plot, view(data_array, ixs); direction=:x, offset=xoffset,
-                        scale_to=-cloud_width*width_ratio, bins=edges,
+                hist!(plot, view(data_array, ixs); offset=xoffset,
+                        scale_to=(side == :left ? -1 : 1)*cloud_width*width_ratio, bins=edges,
+                        # yes, we really do want :x when orientation is :vertical
+                        # an :x directed histogram has a vertical orientation
+                        direction=plot.orientation[] == :vertical ? :x : :y, 
                         color=getuniquevalue(plot.color[], ixs))
             end
         else
@@ -271,14 +286,19 @@ function plot!(plot::RainClouds)
         end
     end
 
-    scatter!(plot, final_x_positions .+ side_scatter_nudge_with_direction.*width_ratio .+
-             jitter .- recenter_to_boxplot_nudge_value.*width_ratio, data_array; markersize=markersize,
-             plot.color, plot.cycle)
+    scatter_x = final_x_positions .+ side_scatter_nudge_with_direction.*width_ratio .+
+                jitter .- recenter_to_boxplot_nudge_value.*width_ratio
+    if plot.orientation[] == :vertical
+        scatter!(plot, scatter_x, data_array; markersize=markersize, plot.color, plot.cycle)
+    else
+        scatter!(plot, data_array, scatter_x; markersize=markersize, plot.color, plot.cycle)
+    end
 
     if plot_boxplots
         boxplot!(plot, final_x_positions .+ side_boxplot_nudge_with_direction.*width_ratio .-
                  recenter_to_boxplot_nudge_value.*width_ratio,
                  data_array;
+                 plot.orientation,
                  strokewidth=strokewidth,
                  whiskerwidth=whiskerwidth*width_ratio,
                  width=boxplot_width*width_ratio,
