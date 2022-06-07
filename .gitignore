@@ -24,5 +24,4 @@ docs/documentation/news.md
 
 metrics/ttfp/current-pr-project/
 metrics/ttfp/benchmark-projects/*
-*runtime-result.json
-*ttfp-result.json
+*benchmark.json

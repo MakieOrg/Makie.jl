@@ -4,7 +4,7 @@ macro ctime(x)
     return quote
         tstart = time_ns()
         $(esc(x))
-        (time_ns() - tstart) / 1e9
+        Float64(time_ns() - tstart)
     end
 end
 t_using = @ctime @eval using $Package
@@ -27,26 +27,26 @@ using Pkg
 
 project_name = basename(dirname(Pkg.project().path))
 
-result = "$(project_name)-ttfp-result.json"
+result = "$(project_name)-benchmark.json"
 old = isfile(result) ? JSON.parse(read(result, String)) : [[], [], []]
 @show [t_using, create_time, display_time]
-push!.(old, [t_using, create_time, display_time])
-open(io-> JSON.print(io, old), result, "w")
-
-runtime_file = "$(project_name)-runtime-result.json"
-# Only benchmark one time!
+push!.(old[1:3], [t_using, create_time, display_time])
 
 function runtime_bench()
     fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
     Makie.colorbuffer(display(fig))
 end
 
-if !isfile(runtime_file)
+# Only benchmark one time!
+if !isfile(result)
     println("Benchmarking runtime")
     b1 = @benchmark fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
     b2 = @benchmark Makie.colorbuffer(display(fig))
-    BenchmarkTools.save(runtime_file, b1, b2)
+    push!(old, b1.times)
+    push!(old, b2.times)
 end
+
+open(io-> JSON.print(io, old), result, "w")
 
 try
     rm("test.png")
