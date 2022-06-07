@@ -357,7 +357,7 @@ In this example we define a very simple tick locator for time values that has it
 Therefore, we define only `Makie.get_ticks` for the case where the formatter is set to `automatic`.
 
 Let's say that we're plotting data in a resolution of seconds, and want to switch between seconds, minutes and hours.
-The idea is to not actually implement new tick finding, just rescale the values to use with the default tick locator and appending the appropriate time suffix.
+The idea is to not actually implement new tick finding, just to rescale the values to use with the default tick locator and append the appropriate unit suffix.
 
 \begin{examplefigure}{svg = true}
 ```julia
