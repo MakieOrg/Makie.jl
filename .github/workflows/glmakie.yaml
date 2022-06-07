@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   test:
-    name: Julia ${{ matrix.version }}
+    name: GLMakie Julia ${{ matrix.version }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
