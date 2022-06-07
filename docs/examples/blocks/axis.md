@@ -14,7 +14,7 @@ CairoMakie.activate!() # hide
 
 f = Figure()
 
-Axis(f[1, 1], xlabel = "x label", ylabel = "y label",
+ax = Axis(f[1, 1], xlabel = "x label", ylabel = "y label",
     title = "Title")
 
 f
