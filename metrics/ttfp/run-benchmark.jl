@@ -61,16 +61,14 @@ end
 
 function analyze(pr, master)
     f, unit = best_unit(pr[1])
-    method = length(pr) > 100 ? minimum : median
-    pr_res = method(Float64.(pr) ./ f)
-    master_res = method(Float64.(master) ./ f)
+    master_res = median(Float64.(master) ./ f)
     percent = (1 - pr_res / master_res) * 100
     result = if abs(percent) < 2
         "*invariant*"
     else
         percent > 0 ? "**worse**❌" : "**improvement**✅"
     end
-    return @sprintf("%s: %s%.2f%s, %s", string(method), percent > 0 ? "+" : "-", abs(percent), "%", result)
+    return @sprintf("median: %s%.2f%s, %s", percent > 0 ? "+" : "-", abs(percent), "%", result)
 end
 
 
