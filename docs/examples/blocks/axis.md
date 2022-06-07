@@ -283,6 +283,27 @@ lines(0..20, sin, axis = (xticks = (values, labels),))
 ```
 \end{examplefigure}
 
+#### LogTicks
+
+{{doc LogTicks}}
+
+For example, you could combine `LogTicks` with a custom tick locator that just returns all integers between the limits.
+This can be useful for log plots where all powers of 10 should be shown.
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+struct IntegerTicks end
+
+Makie.get_tickvalues(::IntegerTicks, vmin, vmax) = ceil(Int, vmin) : floor(Int, vmax)
+
+lines(10 .^ (0:0.01:10), axis = (yscale = log10, yticks = LogTicks(IntegerTicks())))
+```
+\end{examplefigure}
+
 ### Predefined tick formatters
 
 By default, Makie uses `Showoff.showoff` to display the vector of tick values.
