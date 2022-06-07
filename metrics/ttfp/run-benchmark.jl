@@ -12,15 +12,26 @@ COMMENT_TEMPLATE = """
 Note, that these numbers may fluctuate on the CI servers, so take them with a grain of salt.
 All benchmark results are based on the mean time and negative percent mean faster than master.
 Note, that GLMakie + WGLMakie run on an emulated GPU, so the runtime benchmark is much slower.
+Results are from running:
 
-|               | using     | ttfp     | runtime  |
-|--------------:|:----------|:---------|:---------|
-| PR GLMakie    | --        | --       | --       |
-|    master     | --        | --       | --       |
-| PR CairoMakie | --        | --       | --       |
-|    master     | --        | --       | --       |
-| PR WGLMakie   | --        | --       | --       |
-|    master     | --        | --       | --       |
+```julia
+using_time = @ctime using Backend
+# Compile time
+create_time = @ctime fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
+display_time = @ctime Makie.colorbuffer(display(fig))
+# Runtime
+create_time = @benchmark fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
+display_time = @benchmark Makie.colorbuffer(display(fig))
+```
+
+|               | using     | create   | display  | create   | display  |
+|--------------:|:----------|:---------|:---------|:---------|:---------|
+| PR GLMakie    | --        | --       | --       | --       | --       |
+|    master     | --        | --       | --       | --       | --       |
+| PR CairoMakie | --        | --       | --       | --       | --       |
+|    master     | --        | --       | --       | --       | --       |
+| PR WGLMakie   | --        | --       | --       | --       | --       |
+|    master     | --        | --       | --       | --       | --       |
 """
 
 function github_context()
@@ -110,7 +121,7 @@ function make_or_edit_comment(ctx, pr, package_name, pr_bench, master_bench)
     end
 end
 
-function run_benchmarks(projects; n=7)
+function run_benchmarks(projects; n=2)
     benchmark_file = joinpath(@__DIR__, "benchmark-ttfp.jl")
     for project in repeat(projects; outer=n)
         run(`$(Base.julia_cmd()) --startup-file=no --project=$(project) $benchmark_file $Package`)
@@ -120,7 +131,7 @@ function run_benchmarks(projects; n=7)
 end
 
 function create_trial(numbers)
-    params = BenchmarkTools.Parameters(gctrial=false, gcsample=false, evals=length(numbers))
+    params = BenchmarkTools.Parameters(gctrial=false, gcsample=false, evals=length(numbers), time_tolerance=0.05)
     trial = BenchmarkTools.Trial(params)
     for number in numbers
         push!(trial, number * 1e9, 0, 0, 0)
@@ -139,9 +150,9 @@ end
 function load_results(name)
     result = "$name-ttfp-result.json"
     runtime_file = "$name-runtime-result.json"
-    runtime = BenchmarkTools.load(runtime_file)[1]
-    ttfp = JSON.parse(read(result, String))
-    return [create_trial(first.(ttfp)), create_trial(last.(ttfp)), runtime]
+    runtime = BenchmarkTools.load(runtime_file)
+    compiletime = JSON.parse(read(result, String))
+    return [create_trial.(compiletime)..., runtime...]
 end
 
 ctx = try
