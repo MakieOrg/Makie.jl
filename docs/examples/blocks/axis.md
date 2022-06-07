@@ -14,7 +14,7 @@ CairoMakie.activate!() # hide
 
 f = Figure()
 
-ax = Axis(f[1, 1], xlabel = "x label", ylabel = "y label",
+Axis(f[1, 1], xlabel = "x label", ylabel = "y label",
     title = "Title")
 
 f
@@ -209,34 +209,18 @@ f
 ```
 \end{examplefigure}
 
-## Modifying ticks
+## Major and minor ticks
 
-To control ticks, you can set the axis attributes `xticks/yticks` and `xtickformat/ytickformat`.
+To control major ticks, you can set the axis attributes `xticks` and `yticks` as well as `xtickformat` and `ytickformat`.
+By default, tick locator and tick format are set to `automatic` and depend on the axis scale.
+For a normal linear scale, `WilkinsonTicks` are used and for log scales a variant that additionally formats the labels with exponents.
 
-You can overload one or more of these three functions to implement custom ticks:
+### Predefined tick locators
 
-```julia
-tickvalues, ticklabels = Makie.get_ticks(ticks, scale, formatter, vmin, vmax)
-tickvalues = Makie.get_tickvalues(ticks, vmin, vmax)
-ticklabels = Makie.get_ticklabels(formatter, tickvalues)
-```
+#### WilkinsonTicks
 
-If you overload `get_ticks`, you have to compute both tickvalues and ticklabels directly as a vector of floats and strings, respectively.
-Otherwise the result of `get_tickvalues` is passed to `get_ticklabels` by default.
-The limits of the respective axis are passed as `vmin` and `vmax`.
-
-A couple of behaviors are implemented by default.
-You can specify static ticks by passing an iterable of numbers.
-You can also pass a tuple with tick values and tick labels directly, bypassing the formatting step.
-
-As a third option you can pass a function taking minimum and maximum axis value as arguments and returning either a vector of tickvalues which are then passed to the current formatter, or a tuple with tickvalues and ticklabels which are then used directly.
-
-For formatting, you can pass a function which takes a vector of numbers and outputs a vector of strings.
-You can also pass a format string which is passed to `Formatting.format` from [Formatting.jl](https://github.com/JuliaIO/Formatting.jl), where you can mix the formatted numbers with other text like in `"{:.2f}ms"`.
-
-### Predefined ticks
-
-The default tick type is `LinearTicks(n)`, where `n` is the target number of ticks which the algorithm tries to return.
+Here is an example how different numbers affect the ticks chosen by the default tick locator, `WilkinsonTicks`.
+Note that the number is only a target, the actual number of ticks can be higher or lower depending on how the algorithm evaluates the options.
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -245,13 +229,19 @@ CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
 
 fig = Figure()
-for (i, n) in enumerate([2, 5, 9])
-    lines(fig[i, 1], 0..20, sin, axis = (xticks = LinearTicks(n),))
+for (i, n) in enumerate([2, 4, 6])
+    Axis(fig[i, 1],
+        xticks = WilkinsonTicks(n),
+        title = "WilkinsonTicks($n)",
+        yticksvisible = false,
+        yticklabelsvisible = false,
+    )
 end
 fig
 ```
 \end{examplefigure}
-There's also `WilkinsonTicks` which uses the alternative Wilkinson algorithm.
+
+#### MultiplesTicks
 
 `MultiplesTicks` can be used when an axis should be marked at multiples of a certain number.
 A common scenario is plotting a trigonometric function which should be marked at pi intervals.
@@ -265,7 +255,72 @@ Makie.inline!(true) # hide
 lines(0..20, sin, axis = (xticks = MultiplesTicks(4, pi, "π"),))
 ```
 \end{examplefigure}
-Here are a couple of examples that show off different settings for ticks and formats.
+
+#### AbstractVector of numbers
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+lines(0..20, sin, axis = (xticks = 0:3:18,))
+```
+\end{examplefigure}
+
+#### Tuple of tick values and tick labels
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+values = [0, 5, 10, 15, 20]
+labels = ["zero", "five", "ten", "fifteen", "twenty"]
+
+lines(0..20, sin, axis = (xticks = (values, labels),))
+```
+\end{examplefigure}
+
+### Predefined tick formatters
+
+By default, Makie uses `Showoff.showoff` to display the vector of tick values.
+There are other options you can use to define the format of your ticks.
+
+#### Functions
+
+You can use any function as tick formatter that receives a vector of ticks and returns a vector of labels.
+
+For example, you could append "k" for numbers larger than one thousand:
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+function k_suffix(values)
+    map(values) do v
+        if v >= 1000
+            "$(v/1000)k"
+        else
+            "$v"
+        end
+    end
+end
+
+f = Figure()
+Axis(f[1, 1], xtickformat = k_suffix, limits = ((450, 1550), nothing))
+f
+```
+\end{examplefigure}
+
+#### Format strings
+
+You can use a format string which is passed to `Formatting.format` from [Formatting.jl](https://github.com/JuliaIO/Formatting.jl), where you can mix the formatted numbers with other text like in `"{:.2f}ms"`.
+
+Here are the same ticks with different format strings:
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -274,29 +329,79 @@ CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
 
 f = Figure()
-
-axes = [Axis(f[i, j]) for i in 1:2, j in 1:2]
-
-xs = LinRange(0, 2pi, 50)
-for (i, ax) in enumerate(axes)
-    ax.title = "Axis $i"
-    lines!(ax, xs, sin.(xs))
+for (i, str) in enumerate(["{:.1f}", "{:.2f}", "t = {:.4f}ms"])
+    Axis(f[i, 1],
+        xticks = 2:2:8,
+        xtickformat = str,
+        title = str,
+        yticklabelsvisible = false,
+        yticksvisible = false
+    )
 end
-
-axes[1].xticks = 0:6
-
-axes[2].xticks = 0:pi:2pi
-axes[2].xtickformat = xs -> ["$(x/pi)π" for x in xs]
-
-axes[3].xticks = (0:pi:2pi, ["start", "middle", "end"])
-
-axes[4].xticks = 0:pi:2pi
-axes[4].xtickformat = "{:.2f}ms"
-axes[4].xlabel = "Time"
-
 f
 ```
 \end{examplefigure}
+
+### Custom tick locators and formatters
+
+The general logic to find ticks and tick labels is this:
+First, it's checked if `tickvalues, ticklabels = Makie.get_ticks(ticklocator, scale, formatter, vmin, vmax)` has a specific method for the current tick locator, axis scale, tick formatter, and axis limits vmin and vmax.
+If so, use the resulting tick values and tick labels directly.
+If not, run `tickvalues = Makie.get_tickvalues(ticklocator, scale, vmin, vmax)` and then `ticklabels = Makie.get_ticklabels(formatter, tickvalues)`.
+
+Therefore, you can overload one or more of these functions to implement custom tick locators and / or formatters.
+
+#### Example: Time ticks
+
+In this example we define a very simple tick locator for time values that has its own formatting logic.
+Therefore, we define only `Makie.get_ticks` for the case where the formatter is set to `automatic`.
+
+Let's say that we're plotting data in a resolution of seconds, and want to switch between seconds, minutes and hours.
+The idea is to not actually implement new tick finding, just rescale the values to use with the default tick locator and appending the appropriate time suffix.
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+struct TimeTicks end
+
+function Makie.get_ticks(::TimeTicks, any_scale, ::Makie.Automatic, vmin, vmax)
+    if vmax >= 3600
+        # divide limits by 3600 before finding standard ticks
+        vals_h = Makie.get_tickvalues(
+            Makie.automatic, any_scale, vmin/3600, vmax/3600)
+        labels = string.(vals_h, "h")
+        # rescale tick values to seconds
+        vals_s = vals_h .* 3600
+    elseif vmax >= 60
+        vals_min = Makie.get_tickvalues(
+            Makie.automatic, any_scale, vmin/60, vmax/60)
+        labels = string.(vals_min, "min")
+        vals_s = vals_min .* 60
+    else
+        vals_s = Makie.get_tickvalues(
+            Makie.automatic, any_scale, vmin, vmax)
+        labels = string.(vals_s, "s")
+    end
+    vals_s, labels
+end
+
+f = Figure()
+for (i, limits) in enumerate([(1, 55), (1, 350), (1, 8000)])
+    Axis(f[i, 1],
+        xticks = TimeTicks(),
+        title = "$limits",
+        yticklabelsvisible = false,
+        yticksvisible = false,
+        limits = (limits, nothing)
+    )
+end
+f
+```
+\end{examplefigure}
+
 ## Minor ticks and grids
 
 You can show minor ticks and grids by setting `x/yminorticksvisible = true` and `x/yminorgridvisible = true` which are off by default.
