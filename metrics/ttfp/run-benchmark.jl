@@ -152,19 +152,21 @@ catch e
    exit()
 end
 
+ENV["JULIA_PKG_PRECOMPILE_AUTO"] = 0
+
 project1 = make_project_folder("current-pr")
 Pkg.activate(project1)
 pkgs = [(; path="./MakieCore"), (; path="."), (; path="./$Package"), (;name="BenchmarkTools")]
 Package == "WGLMakie" && push!(pkgs, (; name="ElectronDisplay"))
 Pkg.develop(pkgs)
-precompile_pr = @elapsed Pkg.precompile()
+@time Pkg.precompile()
 
 project2 = make_project_folder("makie-master")
 Pkg.activate(project2)
 pkgs = [(; rev="master", name="MakieCore"), (; rev="master", name="Makie"), (; rev="master", name="$Package"), (;name="BenchmarkTools")]
 Package == "WGLMakie" && push!(pkgs, (; name="ElectronDisplay"))
 Pkg.add(pkgs)
-precompile_master = @elapsed Pkg.precompile()
+@time Pkg.precompile()
 
 projects = [project1, project2]
 
