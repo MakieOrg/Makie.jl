@@ -1,5 +1,4 @@
 Package = Symbol(ARGS[1])
-Package = :CairoMakie
 macro ctime(x)
     return quote
         tstart = time_ns()
