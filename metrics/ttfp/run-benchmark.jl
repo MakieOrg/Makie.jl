@@ -10,7 +10,7 @@ COMMENT_TEMPLATE = """
 ## Compile Times benchmark
 
 Note, that these numbers may fluctuate on the CI servers, so take them with a grain of salt.
-All benchmark results are based on the mean time and negative percent mean faster than master.
+All benchmark results are based on the median time and negative percent mean faster than master.
 Note, that GLMakie + WGLMakie run on an emulated GPU, so the runtime benchmark is much slower.
 Results are from running:
 
