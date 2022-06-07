@@ -208,11 +208,9 @@ function update_tickpos_string(closure_args, tickvalues_labels_unfiltered, rever
     return
 end
 
-function update_minor_ticks(minortickpositions, limits_obs, pos_extents_horizontal, minortickvalues, scale, reversed::Bool)
+function update_minor_ticks(minortickpositions, limits::Tuple{Float32, Float32}, pos_extents_horizontal, minortickvalues, scale, reversed::Bool)
 
-    limits = limits_obs[]::Tuple{Float32, Float32}
-
-    position::Float32, extents_uncorrected::NTuple{2, Float32}, horizontal::Bool = pos_extents_horizontal[]
+    position::Float32, extents_uncorrected::NTuple{2, Float32}, horizontal::Bool = pos_extents_horizontal
 
     extents = reversed ? reverse(extents_uncorrected) : extents_uncorrected
 
@@ -397,8 +395,8 @@ function LineAxis(parent::Scene, attrs::Attributes)
         return
     end
 
-    on(minortickvalues) do mtv
-        update_minor_ticks(minortickpositions, limits, pos_extents_horizontal, mtv, attrs.scale[], reversed[])
+    onany(minortickvalues, limits, pos_extents_horizontal) do mtv, limits, peh
+        update_minor_ticks(minortickpositions, limits, peh, mtv, attrs.scale[], reversed[])
     end
 
     onany(update_tick_obs,
