@@ -77,8 +77,8 @@ rainclouds(category_labels, data_array;
 \begin{examplefigure}{}
 ```julia
 rainclouds(category_labels, data_array;
-    xlabel = "Categories of Distributions",
-    ylabel = "Samples", title = "My Title",
+    ylabel = "Categories of Distributions",
+    xlabel = "Samples", title = "My Title",
     orientation = :horizontal,
     plot_boxplots = true, cloud_width=0.5, clouds=hist,
     color = colors[indexin(category_labels, unique(category_labels))])

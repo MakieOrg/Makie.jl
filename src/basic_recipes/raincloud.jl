@@ -271,7 +271,12 @@ function plot!(plot::RainClouds)
             edges = pick_hist_edges(data_array, hist_bins)
             # dodge belongs below: it ensure that the histogram groups labels by both dodge
             # and category (so there is a separate histogram for each dodge group)
-            for (_, ixs) in group_labels(zip(category_labels, plot.dodge[]), data_array)
+            groupings = if plot.dodge[] isa MakieCore.Automatic 
+                category_labels 
+            else 
+                zip(category_labels, plot.dodge[])
+            end
+            for (_, ixs) in group_labels(groupings, data_array)
                 isempty(ixs) && continue
                 xoffset = final_x_positions[ixs[1]] - recenter_to_boxplot_nudge_value
                 hist!(plot, view(data_array, ixs); offset=xoffset,
