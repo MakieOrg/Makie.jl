@@ -122,9 +122,9 @@ function text_bbox(textstring::AbstractString, textsize::Union{AbstractVector, N
     return Rect2f(Makie.boundingbox(glyph_collection, Point3f(0), Makie.to_rotation(rotation)))
 end
 
-# MakieLayout.can_be_current_axis(ax::PolarAxis) = true
+# Makie.can_be_current_axis(ax::PolarAxis) = true
 
-function MakieLayout.initialize_block!(po::PolarAxis)
+function Makie.initialize_block!(po::PolarAxis)
     cb = po.layoutobservables.computedbbox
 
     square = lift(cb) do cb
@@ -182,8 +182,8 @@ function draw_axis!(po::PolarAxis)
         rs = LinRange(limits..., sample_density)
         θs = LinRange(0, 2π, sample_density)
 
-        _rtickvalues, _rticklabels = Makie.MakieLayout.get_ticks(rticks, identity, rtickformat, limits...)
-        _θtickvalues, _θticklabels = Makie.MakieLayout.get_ticks(θticks, identity, θtickformat, 0, 2π)
+        _rtickvalues, _rticklabels = Makie.get_ticks(rticks, identity, rtickformat, limits...)
+        _θtickvalues, _θticklabels = Makie.get_ticks(θticks, identity, θtickformat, 0, 2π)
 
         # Since θ=0 is at the same position as θ = 2π, we remove the last tick
         # if the difference between the first and last tick is exactly 2π
@@ -205,8 +205,8 @@ function draw_axis!(po::PolarAxis)
 
         θtickpos = project_to_pixelspace(po.scene, Point2f.(limits[end], _θtickvalues)) .+ θgaps .+ Ref(pixelarea.origin)
 
-        _rminortickvalues = Makie.MakieLayout.get_minor_tickvalues(rminorticks, identity, _rtickvalues, limits...)
-        _θminortickvalues = Makie.MakieLayout.get_minor_tickvalues(θminorticks, identity, _θtickvalues, 0, 2π)
+        _rminortickvalues = Makie.get_minor_tickvalues(rminorticks, identity, _rtickvalues, limits...)
+        _θminortickvalues = Makie.get_minor_tickvalues(θminorticks, identity, _θtickvalues, 0, 2π)
 
         _rgridpoints = [project_to_pixelspace(po.scene, Point2f.(r, θs)) .+ Ref(pixelarea.origin) for r in _rtickvalues]
         _θgridpoints = [project_to_pixelspace(po.scene, Point2f.(rs, θ)) .+ Ref(pixelarea.origin) for θ in _θtickvalues]
@@ -302,7 +302,7 @@ end
 
 # allow it to be plotted to
 # the below causes a stack overflow
-# MakieLayout.can_be_current_axis(po::PolarAxis) = true
+# Makie.can_be_current_axis(po::PolarAxis) = true
 
 function Makie.plot!(
     po::PolarAxis, P::Makie.PlotFunc,
@@ -327,7 +327,7 @@ function Makie.plot!(
 end
 
 
-function MakieLayout.autolimits!(po::PolarAxis)
+function Makie.autolimits!(po::PolarAxis)
     datalims = Rect2f(data_limits(po.scene))
     projected_datalims = Makie.apply_transform(po.scene.transformation.transform_func[], datalims)
     # @show projected_datalims
