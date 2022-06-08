@@ -4,10 +4,8 @@ function alpha_colorbuffer(scene)
     bg = scene.backgroundcolor[]
     scene.backgroundcolor[] = RGBAf(0, 0, 0, 1)
     b1 = copy(Makie.colorbuffer(scene))
-    FileIO.save("hi-white.png", b1)
     scene.backgroundcolor[] = RGBAf(1, 1, 1, 1)
     b2 = Makie.colorbuffer(scene)
-    FileIO.save("hi-black.png", b2)
     CairoMakie.activate!()
     scene.backgroundcolor[] = bg
     return map(infer_alphacolor, b1, b2)
