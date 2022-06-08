@@ -1,33 +1,3 @@
-
-function gl_alpha_colorbuffer(scene::Scene)
-    GLMakie.activate!()
-    # Makie.inline!(true)
-    bg = scene.backgroundcolor[]
-    scene.backgroundcolor[] = RGBf(0, 0, 0)
-    screen = display(scene)
-    println("Screen")
-    @show size(scene) GeometryBasics.widths(screen)
-    b1 = Makie.colorbuffer(screen)
-    # b1, screen1 = GLMakie.scene2image(scene)
-    save("hi-white.png", b1)
-    b1 = deepcopy(b1)
-    println("White")
-    @show size(scene) GeometryBasics.widths(screen) size(b1)
-    scene.backgroundcolor[] = RGBf(1, 1, 1)
-    screen = display(scene)
-    b2 = Makie.colorbuffer(screen)
-    # b2, screen2 = GLMakie.scene2image(scene)
-    save("hi-black.png", b2)
-    println("Black")
-    @show size(scene) GeometryBasics.widths(screen) size(b2)
-    scene.backgroundcolor[] = bg
-    CairoMakie.activate!()
-    # Makie.inline!(!Makie.use_display[])
-    c= infer_alphacolor.(b1, b2)
-    @show typeof(c)
-    c
-end
-
 function alpha_colorbuffer(scene)
     GLMakie.activate!()
     display(scene)
