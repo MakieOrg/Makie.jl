@@ -5,6 +5,13 @@
     current_figure()
 end
 
+@reference_test "Test RGB heatmaps" begin
+    fig = Figure()
+    heatmap(fig[1, 1], RNG.rand(RGBf, 32, 32))
+    heatmap(fig[1, 2], RNG.rand(RGBAf, 32, 32))
+    fig
+end
+
 @reference_test "heatmap_interpolation" begin
     f = Figure(resolution = (800, 800))
     data = RNG.rand(32, 32)
