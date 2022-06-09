@@ -4,6 +4,7 @@
 
 - The functions `hlines!`, `vlines!`, `hspan!`, `vspan!` and `abline!` were reimplemented as recipes. This allows using them without an `Axis` argument in first position and also as visuals in AlgebraOfGraphics.jl. Also, `abline!` is now called `ablines!` for consistency, `abline!` is still exported but deprecated and will be removed in the future. [#2023](https://github.com/JuliaPlots/Makie.jl/pulls/2023).
 - Added `rainclouds` and `rainclouds!` [#1725](https://github.com/JuliaPlots/Makie.jl/pull/1725)
+- Added support for RGB matrices in `heatmap` with GLMakie [#2036](https://github.com/JuliaPlots/Makie.jl/pull/2036)
 
 ## v0.17.3
 
