@@ -5,47 +5,50 @@ function ylims! end
 function zlims! end
 
 """
-    xlabel!([axis,] xlabel)
+    xlabel!([scene,] xlabel)
 
-Set the x-axis label for the given Axis.
-Defaults to using the current Axis.
+Set the x-axis label for the given Scene.
+Defaults to using the current Scene.
 """
-function xlabel!(axis::Axis, xlabel::AbstractString)
-    axis.xlabel = xlabel
+function xlabel!(scene::Scene, xlabel::AbstractString)
+    axis = scene[OldAxis]
+    @assert !isnothing(axis) "The Scene does not have an axis!"
+    scene[OldAxis][:names][:axisnames][] = (xlabel, scene[OldAxis][:names][:axisnames][][2:end]...)
+    nothing
 end
 
-xlabel(figure::Figure, xlabel::AbstractString) = xlabel!(current_axis(figure), xlabel)
-xlabel(xlabel::AbstractString) = xlabel!(current_axis(), xlabel)
-
 """
-    ylabel!([axis,] ylabel)
+    ylabel!([scene,] ylabel)
 
-Set the y-axis label for the given Axis.
-Defaults to using the current Axis.
+Set the y-axis label for the given Scene.
+Defaults to using the current Scene.
 """
-function ylabel!(axis::Axis, ylabel::AbstractString)
-    axis.ylabel = ylabel
+function ylabel!(scene::Scene, ylabel::AbstractString)
+    axis = scene[OldAxis]
+    @assert !isnothing(axis) "The Scene does not have an axis!"
+    if axis isa Axis3D
+        scene[OldAxis][:names][:axisnames][] = (scene[OldAxis][:names][:axisnames][][1], ylabel, scene[OldAxis][:names][:axisnames][][3])
+    else
+        @error("Unknown axis type $(typeof(axis)).")
+    end
+    nothing
 end
 
-ylabel(figure::Figure, ylabel::AbstractString) = ylabel!(current_axis(figure), ylabel)
-ylabel(ylabel::AbstractString) = ylabel!(current_axis(), ylabel)
-
 """
-    zlabel!([axis,] zlabel)
+    zlabel!([scene,] zlabel)
 
-Set the z-axis label for the given Axis.
-Defaults to using the current Axis.
+Set the z-axis label for the given Scene.
+Defaults to using the current Scene.
 !!! warning
     The Scene must have an Axis3D.  If not, then this function will error.
 """
-function zlabel!(axis::Axis, zlabel::AbstractString)
-    @assert axis isa Axis3D "The scene does not have a z-axis!"
-    axis.zlabel = zlabel
+function zlabel!(scene::Scene, zlabel::AbstractString)
+    axis = scene[OldAxis]
+    @assert !isnothing(axis) "The Scene does not have an axis!"
+    @assert axis isa Axis3D "The scene does not have a z-axis"
+    scene[OldAxis][:names][:axisnames][] = (scene[OldAxis][:names][:axisnames][][1], scene[OldAxis][:names][:axisnames][][2], zlabel)
     return
 end
-
-zlabel(figure::Figure, zlabel::AbstractString) = zlabel!(current_axis(figure), zlabel)
-zlabel(zlabel::AbstractString) = zlabel!(current_axis(), zlabel)
 
 ################################################################################
 """
