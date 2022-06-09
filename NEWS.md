@@ -2,8 +2,19 @@
 
 ## master
 
+## v0.17.4
+
 - The functions `hlines!`, `vlines!`, `hspan!`, `vspan!` and `abline!` were reimplemented as recipes. This allows using them without an `Axis` argument in first position and also as visuals in AlgebraOfGraphics.jl. Also, `abline!` is now called `ablines!` for consistency, `abline!` is still exported but deprecated and will be removed in the future. [#2023](https://github.com/JuliaPlots/Makie.jl/pulls/2023).
-- Added `rainclouds` and `rainclouds!` [#1725](https://github.com/JuliaPlots/Makie.jl/pull/1725)
+- Added `rainclouds` and `rainclouds!` [#1725](https://github.com/JuliaPlots/Makie.jl/pull/1725).
+- Improve CairoMakie performance [#1964](https://github.com/JuliaPlots/Makie.jl/pull/1964) [#1981](https://github.com/JuliaPlots/Makie.jl/pull/1981).
+- Interpolate colormap correctly [#1973](https://github.com/JuliaPlots/Makie.jl/pull/1973).
+- Fix picking [#1993](https://github.com/JuliaPlots/Makie.jl/pull/1993).
+- Improve compile time latency [#1968](https://github.com/JuliaPlots/Makie.jl/pull/1968) [#2000](https://github.com/JuliaPlots/Makie.jl/pull/2000).
+- Fix multi poly with rects [#1999](https://github.com/JuliaPlots/Makie.jl/pull/1999).
+- Respect scale and nonlinear values in PlotUtils cgrads [#1979](https://github.com/JuliaPlots/Makie.jl/pull/1979).
+- Fix CairoMakie heatmap filtering [#1828](https://github.com/JuliaPlots/Makie.jl/pull/1828).
+- Remove GLVisualize and MakieLayout module [#2007](https://github.com/JuliaPlots/Makie.jl/pull/2007) [#2008](https://github.com/JuliaPlots/Makie.jl/pull/2008).
+- Add linestyle and default to extrema(z) for contour, remove bitrotten fillrange [#2008](https://github.com/JuliaPlots/Makie.jl/pull/2008).
 
 ## v0.17.3
 
@@ -18,7 +29,7 @@
 ## v0.17.1
 
 - Added word wrapping. In `Label`, `word_wrap = true` causes it to use the suggested width and wrap text to fit. In `text`, `word_wrap_width > 0` can be used to set a pixel unit line width. Any word (anything between two spaces without a newline) that goes beyond this width gets a newline inserted before it [#1819](https://github.com/JuliaPlots/Makie.jl/pull/1819).
-- Improved `Axis3`'s interactive performance [#1835](https://github.com/JuliaPlots/Makie.jl/pull/1835). 
+- Improved `Axis3`'s interactive performance [#1835](https://github.com/JuliaPlots/Makie.jl/pull/1835).
 - Fixed errors in GLMakie's `scatter` implementation when markers are given as images. [#1917](https://github.com/JuliaPlots/Makie.jl/pull/1917).
 - Removed some method ambiguities introduced in v0.17 [#1922](https://github.com/JuliaPlots/Makie.jl/pull/1922).
 - Add an empty default label, `""`, to each slider that doesn't have a label in `SliderGrid` [#1888](https://github.com/JuliaPlots/Makie.jl/pull/1888).
