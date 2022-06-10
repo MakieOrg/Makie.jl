@@ -198,6 +198,11 @@ gl_convert(s::Vector{Matrix{T}}) where {T<:Colorant} = Texture(s)
 gl_convert(s::Nothing) = s
 
 
+# special overloads for rasterization
+gl_convert(s::Module) = nothing
+gl_convert(s::Tuple{Module, Any}) = nothing
+
+
 isa_gl_struct(x::AbstractArray) = false
 isa_gl_struct(x::NATIVE_TYPES) = false
 isa_gl_struct(x::Colorant) = false
