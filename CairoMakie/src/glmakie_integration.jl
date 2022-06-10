@@ -1,18 +1,28 @@
 # Upstreamable code
 
 # TODO: make this function more efficient!
-function alpha_colorbuffer(scene)
-    GLMakie.activate!()
-    display(scene)
-    bg = scene.backgroundcolor[]
-    scene.backgroundcolor[] = RGBAf(0, 0, 0, 1)
-    b1 = copy(Makie.colorbuffer(scene))
-    scene.backgroundcolor[] = RGBAf(1, 1, 1, 1)
-    b2 = Makie.colorbuffer(scene)
-    CairoMakie.activate!()
-    scene.backgroundcolor[] = bg
-    return map(infer_alphacolor, b1, b2)
+function alpha_colorbuffer(Backend, scene::Scene)
+    img = try
+        Backend.activate!()
+        display(scene)
+        bg = scene.backgroundcolor[]
+        scene.backgroundcolor[] = RGBAf(0, 0, 0, 1)
+        b1 = copy(Makie.colorbuffer(scene))
+        scene.backgroundcolor[] = RGBAf(1, 1, 1, 1)
+        b2 = Makie.colorbuffer(scene)
+        scene.backgroundcolor[] = bg
+        map(infer_alphacolor, b1, b2)
+    catch e
+        println("Error: something failed in alpha colorbuffer!")
+        rethrow(e)
+    finally
+        CairoMakie.activate!()
+    end
+
+    return img
 end
+
+alpha_colorbuffer(scene::Scene)
 
 
 function infer_alphacolor(rgb1, rgb2)
@@ -31,8 +41,10 @@ function create_render_scene(plot::Combined; scale::Real = 1)
     w, h = Int.(scene.px_area[].widths)
 
     # We create a dummy scene to render to, which inherits its parent's
-    # transformation and camera
-
+    # transformation and camera.
+    # WARNING: lights, SSAO and axis do not update when the original Scene's
+    # attributes do.  This is because they are stored as fields in the Scene
+    # struct, not as attributes.
     render_scene = Makie.Scene(
         camera = Makie.camera(scene),
         lights = scene.lights,
@@ -59,26 +71,31 @@ function create_render_scene(plot::Combined; scale::Real = 1)
     return render_scene
 
 end
-function plot2img(plot::Combined; scale::Real = 1, use_backgroundcolor = false)
+
+"""
+    plot2img(backend::Makie.AbstractBackend, plot::Combined; scale::Real = 1, use_backgroundcolor = false)
+"""
+function plot2img(Backend, plot::Combined; scale::Real = 1, use_backgroundcolor = false)
     parent = Makie.parent_scene(plot)
+    # obtain or create the render scene
     render_scene = if haskey(parent.theme, :_render_scenes) && haskey(parent.theme._render_scenes.val, plot)
-        parent.theme._render_scenes.val[plot]
+        @show keys(parent.theme._render_scenes[])
+        parent.theme._render_scenes[][plot]
     else # we have to create a render scene
         println("Rerendering")
         scene = create_render_scene(plot; scale = scale)
 
         # set up cache
         rs_dict = get!(parent.theme.attributes, :_render_scenes, Dict{Union{Makie.AbstractPlot, Makie.Combined}, Makie.Scene}())
-        rs_dict.val[plot] = scene
+        rs_dict[][plot] = scene
 
         scene
     end
 
-
     img = if use_backgroundcolor
         Makie.colorbuffer(render_scene)
     else # render with transparency, using the alpha-colorbuffer hack
-        alpha_colorbuffer(render_scene)
+        alpha_colorbuffer(Backend, render_scene)
     end
 
     return img
@@ -102,25 +119,60 @@ purge_render_cache!(fig::Figure) = purge_render_cache!(fig.scene)
 # This retrieval
 
 
-function CairoMakie.draw_atomic(scene::Scene, screen::CairoMakie.CairoScreen, primitive::Volume, scale::Real = 10)
+function CairoMakie.draw_atomic(scene::Scene, screen::CairoMakie.CairoScreen, primitive::Volume)
+    draw_plot_as_image_with_backend(GLMakie, scene, screen, primitive)
+end
 
+
+function draw_plot_as_image_with_backend(Backend, scene::Scene, screen::CairoScreen, plot)
+
+        w, h = Int.(scene.px_area[].widths)
+
+        img = plot2img(Backend, primitive; scale = scale, use_backgroundcolor = false)
+        Makie.save("hi.png", img) # cache for debugging
+
+        surf = Cairo.CairoARGBSurface(to_uint32_color.(img))
+
+        Cairo.rectangle(screen.context, 0, 0, w, h)
+        Cairo.save(screen.context)
+        Cairo.scale(screen.context, w / surf.width, h / surf.height)
+        Cairo.set_source_surface(screen.context, surf, 0, 0)
+        p = Cairo.get_source(screen.context)
+        Cairo.pattern_set_extend(p, Cairo.EXTEND_PAD) # avoid blurry edges
+        Cairo.pattern_set_filter(p, Cairo.FILTER_NEAREST)
+        Cairo.fill(screen.context)
+        Cairo.restore(screen.context)
+
+        return
+
+end
+
+function draw_scene_as_image(Backend, scene::Scene, screen::CairoScreen; scale = 1)
     w, h = Int.(scene.px_area[].widths)
 
-    img = plot2img(primitive; scale = scale, use_backgroundcolor = false)
+    render_scene = create_render_scene(scene.plots[begin]; scale = scale)
+    if length(scene.plots) > 1
+        push!.(Ref(render_scene), scene.plots[(begin+1):end])
+    end
+
+    img = if Makie.to_color(scene.backgroundcolor[]) == RGBAf(0,0,0,0)
+        alpha_colorbuffer(Backend, scene)
+    else
+        Makie.colorbuffer(scene)
+    end
+
     Makie.save("hi.png", img) # cache for debugging
 
-    surf = CairoMakie.Cairo.CairoARGBSurface(CairoMakie.to_uint32_color.(img))
+    surf = Cairo.CairoARGBSurface(to_uint32_color.(img))
 
-    CairoMakie.Cairo.rectangle(screen.context, 0, 0, w, h)
-    CairoMakie.Cairo.save(screen.context)
-    CairoMakie.Cairo.scale(screen.context, w / surf.width, h / surf.height)
-    CairoMakie.Cairo.set_source_surface(screen.context, surf, 0, 0)
-    p = CairoMakie.Cairo.get_source(screen.context)
-    CairoMakie.Cairo.pattern_set_extend(p, CairoMakie.Cairo.EXTEND_PAD) # avoid blurry edges
-    CairoMakie.Cairo.pattern_set_filter(p, CairoMakie.Cairo.FILTER_NEAREST)
-    CairoMakie.Cairo.fill(screen.context)
-    CairoMakie.Cairo.restore(screen.context)
-
-    return
+    Cairo.rectangle(screen.context, 0, 0, w, h)
+    Cairo.save(screen.context)
+    Cairo.scale(screen.context, w / surf.width, h / surf.height)
+    Cairo.set_source_surface(screen.context, surf, 0, 0)
+    p = Cairo.get_source(screen.context)
+    Cairo.pattern_set_extend(p, Cairo.EXTEND_PAD) # avoid blurry edges
+    Cairo.pattern_set_filter(p, Cairo.FILTER_NEAREST)
+    Cairo.fill(screen.context)
+    Cairo.restore(screen.context)
 
 end
