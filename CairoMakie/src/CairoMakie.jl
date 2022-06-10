@@ -29,6 +29,7 @@ include("infrastructure.jl")
 include("utils.jl")
 include("primitives.jl")
 include("overrides.jl")
+include("glmakie_integration.jl")
 
 function __init__()
     activate!()
