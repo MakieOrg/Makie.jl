@@ -84,3 +84,28 @@ end
 
     f
 end
+
+@testset "Linked axes" begin
+    # this tests a bug in 0.17.4 where the first axis targetlimits
+    # don't change because the second axis has limits contained inside those
+    # of the first, so the axis linking didn't proliferate
+    f = Figure()
+    ax1 = Axis(f[1, 1], xautolimitmargin = (0, 0), yautolimitmargin = (0, 0))
+    ax2 = Axis(f[2, 1], xautolimitmargin = (0, 0), yautolimitmargin = (0, 0))
+    scatter!(ax1, 1:5, 2:6)
+    scatter!(ax2, 2:3, 3:4)
+    @test first.(extrema(ax1.finallimits[])) == (1, 5)
+    @test last.(extrema(ax1.finallimits[])) == (2, 6)
+    @test first.(extrema(ax2.finallimits[])) == (2, 3)
+    @test last.(extrema(ax2.finallimits[])) == (3, 4)
+    linkxaxes!(ax1, ax2)
+    @test first.(extrema(ax1.finallimits[])) == (1, 5)
+    @test last.(extrema(ax1.finallimits[])) == (2, 6)
+    @test first.(extrema(ax2.finallimits[])) == (1, 5)
+    @test last.(extrema(ax2.finallimits[])) == (3, 4)
+    linkyaxes!(ax1, ax2)
+    @test first.(extrema(ax1.finallimits[])) == (1, 5)
+    @test last.(extrema(ax1.finallimits[])) == (2, 6)
+    @test first.(extrema(ax2.finallimits[])) == (1, 5)
+    @test last.(extrema(ax2.finallimits[])) == (2, 6)
+end
