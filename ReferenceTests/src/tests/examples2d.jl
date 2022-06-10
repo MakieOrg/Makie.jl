@@ -5,6 +5,23 @@
     current_figure()
 end
 
+@reference_test "heatmap_interpolation" begin
+    f = Figure(resolution = (800, 800))
+    data = RNG.rand(32, 32)
+    # the grayscale heatmap hides the problem that interpolation based on values
+    # in GLMakie looks different than interpolation based on colors in CairoMakie
+    heatmap(f[1, 1], data, interpolate = false, colormap = :grays)
+    heatmap(f[1, 2], data, interpolate = true, colormap = :grays)
+    data_big = RNG.rand(1000, 1000)
+    heatmap(f[2, 1], data_big, interpolate = false, colormap = :grays)
+    heatmap(f[2, 2], data_big, interpolate = true, colormap = :grays)
+    xs = (1:32) .^ 1.5
+    ys = (1:32) .^ 1.5
+    data = RNG.rand(32, 32)
+    heatmap(f[3, 1], xs, ys, data, interpolate = false, colormap = :grays)
+    f
+end
+
 @reference_test "poly and colormap" begin
     # example by @Paulms from JuliaPlots/Makie.jl#310
     points = Point2f[[0.0, 0.0], [0.1, 0.0], [0.1, 0.1], [0.0, 0.1]]
@@ -441,4 +458,82 @@ end
 
 @reference_test "2D surface with explicit color" begin
     surface(1:10, 1:10, ones(10, 10); color = [RGBf(x*y/100, 0, 0) for x in 1:10, y in 1:10], shading = false)
+end
+
+@reference_test "heatmap and image colormap interpolation" begin
+    f = Figure(resolution=(500, 500))
+    crange = LinRange(0, 255, 10)
+    len = length(crange)
+    img = zeros(Float32, len, len + 2)
+    img[:, 1] .= 255f0
+    for (i, v) in enumerate(crange)
+        ib = i + 1
+        img[2:end-1, ib] .= v
+        img[1, ib] = 255-v
+        img[end, ib] = 255-v
+    end
+
+    kw(p, interpolate) = (axis=(title="$(p)(interpolate=$(interpolate))", aspect=DataAspect()), interpolate=interpolate, colormap=[:white, :black])
+
+    for (i, p) in enumerate([heatmap, image])
+        for (j, interpolate) in enumerate([true, false])
+            ax, pl = p(f[i,j], img; kw(p, interpolate)...)
+            hidedecorations!(ax)
+        end
+    end
+    f
+end
+
+@reference_test "nonlinear colormap" begin
+    n = 100
+    categorical = [false, true]
+    scales = [exp, identity, log, log10]
+    fig = Figure(resolution = (500, 250))
+    ax = Axis(fig[1, 1])
+    for (i, cat) in enumerate(categorical)
+        for (j, scale) in enumerate(scales)
+            cg = if cat
+                cgrad(:viridis, 5; scale = scale, categorical=true)
+            else
+                cgrad(:viridis; scale = scale, categorical=nothing)
+            end
+            lines!(ax, Point2f.(LinRange(i+0.1, i+0.9, n), j); color = 1:n, colormap = cg, linewidth = 10)
+        end
+    end
+    ax.xticks[] = ((1:length(categorical)) .+ 0.5, ["categorical=false", "categorical=true"])
+    ax.yticks[] = ((1:length(scales)), string.(scales))
+    fig
+end
+
+@reference_test "colormap with specific values" begin
+    cmap = cgrad([:black,:white,:orange],[0,0.2,1])
+    fig = Figure(resolution=(400,200))
+    ax = Axis(fig[1,1])
+    x = range(0,1,length=50)
+    scatter!(fig[1,1],Point2.(x,fill(0.,50)),color=x,colormap=cmap)
+    hidedecorations!(ax)
+    Colorbar(fig[2,1],vertical=false,colormap=cmap)
+    fig
+end
+
+@reference_test "multi rect with poly" begin
+    # use thick strokewidth, so it will make tests fail if something is missing
+    poly([Rect2f(0, 0, 1, 1)], color=:green, strokewidth=100, strokecolor=:black)
+end
+
+@reference_test "minor grid & scales" begin
+    data = LinRange(0.01, 0.99, 200)
+    f = Figure(resolution = (800, 800))
+    for (i, scale) in enumerate([log10, log2, log, sqrt, Makie.logit, identity])
+        row, col = fldmod1(i, 2)
+        Axis(f[row, col], yscale = scale, title = string(scale),
+            yminorticksvisible = true, yminorgridvisible = true,
+            xminorticksvisible = true, xminorgridvisible = true,
+            yminortickwidth = 4.0, xminortickwidth = 4.0,
+            yminorgridwidth = 6.0, xminorgridwidth = 6.0,
+            yminorticks = IntervalsBetween(3))
+
+        lines!(data, color = :blue)
+    end
+    f
 end

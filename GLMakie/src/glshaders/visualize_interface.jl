@@ -1,5 +1,3 @@
-using ..GLMakie: enable_SSAO, transparency_weight_scale
-
 @enum Shape CIRCLE RECTANGLE ROUNDED_RECTANGLE DISTANCEFIELD TRIANGLE
 @enum CubeSides TOP BOTTOM FRONT BACK RIGHT LEFT
 

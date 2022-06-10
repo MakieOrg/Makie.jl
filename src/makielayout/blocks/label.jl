@@ -16,7 +16,7 @@ function initialize_block!(l::Label)
 
     textbb = Ref(BBox(0, 1, 0, 1))
 
-    onany(l.text, l.textsize, l.font, l.rotation, l.padding) do text, textsize, font, rotation, padding
+    onany(l.text, l.textsize, l.font, l.rotation, word_wrap_width, l.padding) do _, _, _, _, _, padding
         textbb[] = Rect2f(boundingbox(t))
         autowidth = width(textbb[]) + padding[1] + padding[2]
         autoheight = height(textbb[]) + padding[3] + padding[4]
@@ -30,7 +30,7 @@ function initialize_block!(l::Label)
 
     onany(layoutobservables.computedbbox, l.padding) do bbox, padding
         if l.word_wrap[]
-            tw = width(layoutobservables.suggestedbbox[]) - padding[1] - padding[2]
+            tw = width(bbox) - padding[1] - padding[2]
         else
             tw = width(textbb[])
         end
@@ -43,10 +43,11 @@ function initialize_block!(l::Label)
         ty = boy + padding[3] + 0.5 * th
 
         textpos[] = Point3f(tx, ty, 0)
+
         if l.word_wrap[] && (word_wrap_width[] != tw)
             word_wrap_width[] = tw
-            notify(l.text)
         end
+
         return
     end
 

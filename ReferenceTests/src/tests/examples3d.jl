@@ -153,7 +153,7 @@ end
     xm, ym, zm = minimum(data_limits(c))
     contour!(ax, x, x, map(v -> v[1, :, :], c[4]), transformation=(:xy, zm), linewidth=2)
     heatmap!(ax, x, x, map(v -> v[:, 1, :], c[4]), transformation=(:xz, ym))
-    contour!(ax, x, x, map(v -> v[:, :, 1], c[4]), fillrange=true, transformation=(:yz, xm))
+    contourf!(ax, x, x, map(v -> v[:, :, 1], c[4]), transformation=(:yz, xm))
     # reorder plots for transparency
     ax.scene.plots[:] = ax.scene.plots[[1, 3, 4, 5, 2]]
     fig
