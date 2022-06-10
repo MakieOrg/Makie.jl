@@ -193,7 +193,7 @@ function cairo_draw(screen::CairoScreen, scene::Scene)
             elseif p.rasterize[] isa Union{<: Module, Tuple{<: Module, Int}}
                 backend = p.rasterize[] isa Module ? p.rasterize[] : p.rasterize[][1]
                 scale   = p.rasterize[] isa Module ? 1 : p.rasterize[][2]
-                draw_plot_as_image_with_backend(backend, pparent, screen, p; scale = scale, use_backgroundcolor = false)
+                draw_plot_as_image_with_backend(backend, pparent, screen, p; scale = scale)
             else # rasterization option was not recognized, or should_rasterize
                  # was false and backend was not selected.
                 draw_plot(pparent, screen, p)
@@ -401,7 +401,7 @@ function Makie.backend_show(x::CairoBackend, io::IO, ::MIME"image/png", scene::S
     # while relative line and font sizes are unaffected
     px_per_unit = get(io, :px_per_unit, x.px_per_unit)
     antialias = get(io, :antialias, x.antialias)
-    
+
     # create an ARGB surface, to speed up drawing ops.
     screen = CairoScreen(scene; device_scaling_factor = px_per_unit, antialias = antialias)
     cairo_draw(screen, scene)
