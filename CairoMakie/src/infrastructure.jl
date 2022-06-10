@@ -48,7 +48,7 @@ function cairo_draw(screen::Screen, scene::Scene)
             elseif p.rasterize[] isa Union{<: Module, Tuple{<: Module, Int}}
                 backend = p.rasterize[] isa Module ? p.rasterize[] : p.rasterize[][1]
                 scale   = p.rasterize[] isa Module ? 1 : p.rasterize[][2]
-                draw_plot_as_image_with_backend(backend, pparent, screen, p; scale = scale, use_backgroundcolor = false)
+                draw_plot_as_image_with_backend(backend, pparent, screen, p; scale = scale)
             else # rasterization option was not recognized, or should_rasterize
                  # was false and backend was not selected.
                 draw_plot(pparent, screen, p)

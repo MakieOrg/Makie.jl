@@ -22,9 +22,6 @@ function alpha_colorbuffer(Backend, scene::Scene)
     return img
 end
 
-alpha_colorbuffer(scene::Scene)
-
-
 function infer_alphacolor(rgb1, rgb2)
     rgb1 == rgb2 && return RGBAf(rgb1.r, rgb1.g, rgb1.b, 1)
     c1 = Float64.((rgb1.r, rgb1.g, rgb1.b))
@@ -118,17 +115,18 @@ purge_render_cache!(fig::Figure) = purge_render_cache!(fig.scene)
 # which we set in the previous step to contain the scene.
 # This retrieval
 
+function draw_plot_as_image_with_backend(Backend, scene::Scene, screen::CairoScreen, plot; scale = 1)
 
-function CairoMakie.draw_atomic(scene::Scene, screen::CairoMakie.CairoScreen, primitive::Volume)
-    draw_plot_as_image_with_backend(GLMakie, scene, screen, primitive)
-end
-
-
-function draw_plot_as_image_with_backend(Backend, scene::Scene, screen::CairoScreen, plot)
+        # special case if CairoMakie is the backend, since
+        # we don't want an infinite loop.
+        if Backend == @__MODULE__
+            draw_plot_as_image(scene, screen, plot, scale)
+            return
+        end
 
         w, h = Int.(scene.px_area[].widths)
 
-        img = plot2img(Backend, primitive; scale = scale, use_backgroundcolor = false)
+        img = plot2img(Backend, plot; scale = scale, use_backgroundcolor = false)
         Makie.save("hi.png", img) # cache for debugging
 
         surf = Cairo.CairoARGBSurface(to_uint32_color.(img))
@@ -155,7 +153,7 @@ function draw_scene_as_image(Backend, scene::Scene, screen::CairoScreen; scale =
         push!.(Ref(render_scene), scene.plots[(begin+1):end])
     end
 
-    img = if Makie.to_color(scene.backgroundcolor[]) == RGBAf(0,0,0,0)
+    img = if RGBAf(Makie.to_color(scene.backgroundcolor[])) == RGBAf(0,0,0,0)
         alpha_colorbuffer(Backend, scene)
     else
         Makie.colorbuffer(scene)
