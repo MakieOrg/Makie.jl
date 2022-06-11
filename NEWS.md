@@ -2,6 +2,8 @@
 
 ## master
 
+- `Textbox` doesn't defocus anymore on trying to submit invalid input [#2041](https://github.com/JuliaPlots/Makie.jl/pull/2041).
+
 ## v0.17.5
 
 - Fixed a regression with `linkaxes!` [#2039](https://github.com/JuliaPlots/Makie.jl/pull/2039). 
