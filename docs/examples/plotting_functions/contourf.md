@@ -2,20 +2,19 @@
 
 {{doc contourf}}
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
+using DelimitedFiles
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
 
-xs = LinRange(0, 10, 100)
-ys = LinRange(0, 10, 100)
-zs = [cos(x) * sin(y) for x in xs, y in ys]
+volcano = readdlm(Makie.assetpath("volcano.csv"), ',', Float64)
 
 f = Figure()
 Axis(f[1, 1])
 
-co = contourf!(xs, ys, zs, levels = 10)
+co = contourf!(volcano, levels = 10)
 
 Colorbar(f[1, 2], co)
 
@@ -23,7 +22,7 @@ f
 ```
 \end{examplefigure}
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
@@ -45,7 +44,7 @@ f
 ```
 \end{examplefigure}
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
@@ -74,24 +73,22 @@ Sometimes it's beneficial to drop one part of the range of values, usually towar
 Rather than specifying the levels to include manually, you can set the `mode` attribute
 to `:relative` and specify the levels from 0 to 1, relative to the current minimum and maximum value.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
+using DelimitedFiles
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
 
+volcano = readdlm(Makie.assetpath("volcano.csv"), ',', Float64)
 
-using Makie.KernelDensity
+f = Figure(resolution = (800, 400))
 
-k = kde([randn() + rand([0, 5]) for i in 1:10000, j in 1:2])
-
-f = Figure(resolution = (800, 500))
-
-Axis(f[1, 1], title = "Relative mode, drop lowest 10%")
-contourf!(k, levels = 0.1:0.1:1, mode = :relative)
+Axis(f[1, 1], title = "Relative mode, drop lowest 30%")
+contourf!(volcano, levels = 0.3:0.1:1, mode = :relative)
 
 Axis(f[1, 2], title = "Normal mode")
-contourf!(k, levels = 10)
+contourf!(volcano, levels = 10)
 
 f
 ```
