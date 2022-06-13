@@ -25,6 +25,7 @@ f
 \begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
+using DelimitedFiles
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
 
@@ -48,6 +49,7 @@ f
 \begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
+using DelimitedFiles
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
 
