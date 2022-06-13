@@ -537,7 +537,3 @@ end
     end
     f
 end
-
-@reference_test "mock_test" begin
-    lines(1:10)
-end
