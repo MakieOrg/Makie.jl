@@ -28,15 +28,16 @@ using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
 
-xs = LinRange(0, 10, 100)
-ys = LinRange(0, 10, 100)
-zs = [cos(x) * sin(y) for x in xs, y in ys]
+volcano = readdlm(Makie.assetpath("volcano.csv"), ',', Float64)
 
 f = Figure()
-Axis(f[1, 1])
+ax = Axis(f[1, 1])
 
-co = contourf!(xs, ys, zs, levels = -0.75:0.25:0.5,
+co = contourf!(volcano,
+    levels = range(100, 180, length = 10),
     extendlow = :cyan, extendhigh = :magenta)
+
+tightlimits!(ax)
 
 Colorbar(f[1, 2], co)
 
@@ -50,16 +51,16 @@ using CairoMakie
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
 
-xs = LinRange(0, 10, 100)
-ys = LinRange(0, 10, 100)
-zs = [cos(x) * sin(y) for x in xs, y in ys]
+volcano = readdlm(Makie.assetpath("volcano.csv"), ',', Float64)
 
 f = Figure()
-Axis(f[1, 1])
+ax = Axis(f[1, 1])
 
-co = contourf!(xs, ys, zs,
-    levels = -0.75:0.25:0.5,
+co = contourf!(volcano,
+    levels = range(100, 180, length = 10),
     extendlow = :auto, extendhigh = :auto)
+
+tightlimits!(ax)
 
 Colorbar(f[1, 2], co)
 
