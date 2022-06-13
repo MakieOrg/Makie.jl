@@ -55,15 +55,15 @@ jobs:
         run: >
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("GLMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
-      - name: Fail run with missing refimages
-        uses: Sibz/github-status-action@v1
+      - name: Comment if there are missing refimages
         if: matrix.version == '1' && steps.referencetests.outputs.n_missing_refimages != '0'
-        with: 
-          authToken: ${{secrets.GITHUB_TOKEN}}
-          context: 'Missing reference images'
-          description: 'Found ${{steps.referencetests.outputs.n_missing_refimages}} images without references.'
-          state: 'failure'
-          sha: ${{github.event.pull_request.head.sha || github.sha}}
+        uses: mshick/add-pr-comment@v1
+        with:
+          message: |
+            ## Missing reference images
+            Found ${{steps.referencetests.outputs.n_missing_refimages}} new images without existing references.
+            Upload new reference images before merging this PR.
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload test Artifacts
         uses: actions/upload-artifact@v2
         with:
