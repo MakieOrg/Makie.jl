@@ -59,7 +59,7 @@ Makie.inline!(true) # hide
 volcano = readdlm(Makie.assetpath("volcano.csv"), ',', Float64)
 
 surface(volcano,
-    colormap = :terrain,
+    colormap = :darkterrain,
     colorrange = (80, 190),
     axis=(type=Axis3, azimuth = pi/4))
 ```
