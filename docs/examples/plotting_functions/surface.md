@@ -51,6 +51,22 @@ surface(xs, ys, zs, axis=(type=Axis3,))
 
 \begin{examplefigure}{}
 ```julia
+using GLMakie
+using DelimitedFiles
+GLMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+volcano = readdlm(Makie.assetpath("volcano.csv"), ',', Float64)
+
+surface(volcano,
+    colormap = :terrain,
+    colorrange = (80, 190),
+    axis=(type=Axis3, azimuth = pi/4))
+```
+\end{examplefigure}
+
+\begin{examplefigure}{}
+```julia
 using SparseArrays
 using LinearAlgebra
 using GLMakie
