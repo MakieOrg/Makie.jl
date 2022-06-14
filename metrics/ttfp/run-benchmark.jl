@@ -69,7 +69,7 @@ function analyze(pr, master)
     f, unit = best_unit(pr[1])
     master_res = median(Float64.(master)) / f
     pr_res = median(Float64.(pr)) / f
-    percent = (1 - (pr_res / master_res)) * 100
+    percent = (1 - (master_res / pr_res)) * 100
     result = if abs(percent) < 5
         "*invariant*"
     else
