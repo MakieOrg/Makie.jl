@@ -61,10 +61,10 @@ end
 
 function analyze(pr, master)
     f, unit = best_unit(pr[1])
-    master_res = median(Float64.(master) ./ f)
-    pr_res = median(Float64.(pr) ./ f)
+    master_res = median(Float64.(master)) / f
+    pr_res = median(Float64.(pr)) / f
     percent = (1 - (pr_res / master_res)) * 100
-    result = if abs(percent) < 3
+    result = if abs(percent) < 5
         "*invariant*"
     else
         percent > 0 ? "**worse**❌" : "**improvement**✅"
@@ -73,12 +73,12 @@ function analyze(pr, master)
 end
 
 function summarize_stats(timings)
-    m = median(timings)
-    f, unit = best_unit(m)
-    mini = minimum(timings ./ f)
-    maxi = maximum(timings ./ f)
-    s = std(timings ./ f)
-    @sprintf("%.2f%s (%.2f, %.2f) %.2f+-", m / f, unit, mini, maxi, s)
+    f, unit = best_unit(timings[1])
+    m = median(timings) / f
+    mini = minimum(timings) /  f
+    maxi = maximum(timings) / f
+    s = std(timings) / f
+    @sprintf("%.2f%s (%.2f, %.2f) %.2f+-", m, unit, mini, maxi, s)
 end
 
 function get_row_values(results_pr, results_m)
@@ -91,7 +91,6 @@ function get_row_values(results_pr, results_m)
         push!(master_row, summarize_stats(results_m[i]))
         push!(evaluation_row, analyze(results_pr[i], results_m[i]))
     end
-
     return pr_row, master_row, evaluation_row
 end
 

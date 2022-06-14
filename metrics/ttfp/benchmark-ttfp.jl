@@ -27,23 +27,14 @@ using Pkg
 project_name = basename(dirname(Pkg.project().path))
 
 result = "$(project_name)-benchmark.json"
-old = isfile(result) ? JSON.parse(read(result, String)) : [[], [], []]
+old = isfile(result) ? JSON.parse(read(result, String)) : [[], [], [], [], []]
 @show [t_using, create_time, display_time]
 push!.(old[1:3], [t_using, create_time, display_time])
 
-function runtime_bench()
-    fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
-    Makie.colorbuffer(display(fig))
-end
-
-# Only benchmark one time!
-if !isfile(result)
-    println("Benchmarking runtime")
-    b1 = @benchmark fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
-    b2 = @benchmark Makie.colorbuffer(display(fig))
-    push!(old, b1.times)
-    push!(old, b2.times)
-end
+b1 = @benchmark fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
+b2 = @benchmark Makie.colorbuffer(display(fig))
+append!(old[4], b1.times)
+append!(old[5], b2.times)
 
 open(io-> JSON.print(io, old), result, "w")
 
