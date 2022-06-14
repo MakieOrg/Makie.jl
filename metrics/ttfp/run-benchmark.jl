@@ -134,7 +134,7 @@ function make_or_edit_comment(ctx, pr, package_name, benchmarks)
     end
 end
 
-function run_benchmarks(projects; n=2)
+function run_benchmarks(projects; n=5)
     benchmark_file = joinpath(@__DIR__, "benchmark-ttfp.jl")
     for project in repeat(projects; outer=n)
         run(`$(Base.julia_cmd()) --startup-file=no --project=$(project) $benchmark_file $Package`)
