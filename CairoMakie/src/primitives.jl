@@ -370,10 +370,18 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
     strokewidths = glyph_collection.strokewidths
     strokecolors = glyph_collection.strokecolors
 
-    s2ms = Makie.clip_to_space(scene.camera, markerspace) * Makie.space_to_clip(scene.camera, space)
     model = _deref(_model)
     model33 = model[Vec(1, 2, 3), Vec(1, 2, 3)]
     id = Mat4f(I)
+
+    glyph_pos = let
+        transform_func = scene.transformation.transform_func[]
+        p = Makie.apply_transform(transform_func, position)
+
+        Makie.clip_to_space(scene.camera, markerspace) * 
+        Makie.space_to_clip(scene.camera, space) * 
+        model * to_ndim(Point4f, to_ndim(Point3f, p, 0), 1)
+    end
 
     Cairo.save(ctx)
 
@@ -391,11 +399,6 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
         Cairo.set_source_rgba(ctx, rgbatuple(color)...)
 
         # offsets and scale apply in markerspace
-        glyph_pos = let
-            transform_func = scene.transformation.transform_func[]
-            p = Makie.apply_transform(transform_func, position)
-            s2ms * model * to_ndim(Point4f, to_ndim(Point3f, p, 0), 1)
-        end
         gp3 = glyph_pos[Vec(1, 2, 3)] ./ glyph_pos[4] .+ model33 * (glyphoffset .+ p3_offset)
 
         scale3 = scale isa Number ? Point3f(scale, scale, 0) : to_ndim(Point3f, scale, 0)
