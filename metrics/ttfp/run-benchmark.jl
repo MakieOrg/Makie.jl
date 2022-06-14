@@ -62,15 +62,15 @@ end
 function analyze(pr, master)
     f, unit = best_unit(pr[1])
     master_res = median(Float64.(master) ./ f)
-    percent = (1 - pr_res / master_res) * 100
-    result = if abs(percent) < 2
+    pr_res = median(Float64.(pr) ./ f)
+    percent = (1 - (pr_res / master_res)) * 100
+    result = if abs(percent) < 3
         "*invariant*"
     else
         percent > 0 ? "**worse**❌" : "**improvement**✅"
     end
-    return @sprintf("median: %s%.2f%s, %s", percent > 0 ? "+" : "-", abs(percent), "%", result)
+    return @sprintf("%s%.2f%s, %s", percent > 0 ? "+" : "-", abs(percent), "%", result)
 end
-
 
 function summarize_stats(timings)
     m = median(timings)
@@ -134,7 +134,7 @@ function make_or_edit_comment(ctx, pr, package_name, benchmarks)
     end
 end
 
-function run_benchmarks(projects; n=10)
+function run_benchmarks(projects; n=2)
     benchmark_file = joinpath(@__DIR__, "benchmark-ttfp.jl")
     for project in repeat(projects; outer=n)
         run(`$(Base.julia_cmd()) --startup-file=no --project=$(project) $benchmark_file $Package`)
@@ -191,7 +191,6 @@ results_m = load_results(basename(project2))
 benchmark_rows = get_row_values(results_pr, results_m)
 
 pr_to_comment = get(ENV, "PR_NUMBER", nothing)
-pr_to_comment = 2026#get(ENV, "PR_NUMBER", nothing)
 
 if !isnothing(pr_to_comment)
     pr = GitHub.pull_request(ctx.repo, pr_to_comment)
