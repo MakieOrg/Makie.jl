@@ -2,6 +2,7 @@
 
 ## master
 
+- Added support for RGB matrices in `heatmap` with GLMakie [#2036](https://github.com/JuliaPlots/Makie.jl/pull/2036)
 - `Textbox` doesn't defocus anymore on trying to submit invalid input [#2041](https://github.com/JuliaPlots/Makie.jl/pull/2041).
 
 ## v0.17.5
