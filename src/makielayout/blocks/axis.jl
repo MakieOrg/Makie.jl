@@ -178,7 +178,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     # initialize either with user limits, or pick defaults based on scales
     # so that we don't immediately error
-    targetlimits = Observable{Rect2f}(defaultlimits(ax.limits[], ax.xscale[], ax.yscale[]); ignore_equal_values=true)
+    targetlimits = Observable{Rect2f}(defaultlimits(ax.limits[], ax.xscale[], ax.yscale[]))
     finallimits = Observable{Rect2f}(targetlimits[]; ignore_equal_values=true)
     setfield!(ax, :targetlimits, targetlimits)
     setfield!(ax, :finallimits, finallimits)

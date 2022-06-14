@@ -95,7 +95,7 @@ We use an example to show how this works:
     # arguments (x, y, z) && theme are optional
     @recipe(MyPlot, x, y, z) do scene
         Attributes(
-            plot_color => :red
+            plot_color = :red
         )
     end
 
@@ -133,7 +133,7 @@ plots `MyPlot`:
 
     function default_theme(scene, ::MyPlot)
         Attributes(
-            plot_color => :red
+            plot_color = :red
         )
     end
 

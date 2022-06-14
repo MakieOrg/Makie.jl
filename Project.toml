@@ -1,7 +1,7 @@
 name = "Makie"
 uuid = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 authors = ["Simon Danisch", "Julius Krumbiegel"]
-version = "0.17.3"
+version = "0.17.5"
 
 [deps]
 Animations = "27a7e980-b3e6-11e9-2bcd-0b925532e340"
@@ -65,7 +65,7 @@ Formatting = "0.4"
 FreeType = "3.0, 4.0"
 FreeTypeAbstraction = "0.8, 0.9"
 GeometryBasics = "0.4.2"
-GridLayoutBase = "0.7.1"
+GridLayoutBase = "0.7.6"
 ImageIO = "0.2, 0.3, 0.4, 0.5, 0.6"
 IntervalSets = "0.3, 0.4, 0.5, 0.6, 0.7"
 Isoband = "0.1"
