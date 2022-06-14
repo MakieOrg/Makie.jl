@@ -3,7 +3,12 @@
 ## master
 
 - Added support for RGB matrices in `heatmap` with GLMakie [#2036](https://github.com/JuliaPlots/Makie.jl/pull/2036)
- 
+- `Textbox` doesn't defocus anymore on trying to submit invalid input [#2041](https://github.com/JuliaPlots/Makie.jl/pull/2041).
+
+## v0.17.5
+
+- Fixed a regression with `linkaxes!` [#2039](https://github.com/JuliaPlots/Makie.jl/pull/2039). 
+
 ## v0.17.4
 
 - The functions `hlines!`, `vlines!`, `hspan!`, `vspan!` and `abline!` were reimplemented as recipes. This allows using them without an `Axis` argument in first position and also as visuals in AlgebraOfGraphics.jl. Also, `abline!` is now called `ablines!` for consistency, `abline!` is still exported but deprecated and will be removed in the future. [#2023](https://github.com/JuliaPlots/Makie.jl/pulls/2023).
