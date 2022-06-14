@@ -411,9 +411,9 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
         xvec = rotation * (scale3[1] * Point3f(1, 0, 0))
         yvec = rotation * (scale3[2] * Point3f(0, -1, 0))
 
-        glyphpos = project_position(scene, identity, markerspace, gp3, id)
-        xproj = project_position(scene, identity, markerspace, gp3 + model33 * xvec, id)
-        yproj = project_position(scene, identity, markerspace, gp3 + model33 * yvec, id)
+        glyphpos = _project_position(scene, markerspace, gp3, id, true)
+        xproj = _project_position(scene, markerspace, gp3 + model33 * xvec, id, true)
+        yproj = _project_position(scene, markerspace, gp3 + model33 * yvec, id, true)
 
         xdiff = xproj - glyphpos
         ydiff = yproj - glyphpos
