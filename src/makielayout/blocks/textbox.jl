@@ -189,13 +189,6 @@ function initialize_block!(tbox::Textbox)
         return Consume(false)
     end
 
-
-    function submit()
-        if displayed_is_valid[]
-            tbox.stored_string[] = tbox.displayed_string[]
-        end
-    end
-
     function reset_to_stored()
         cursorindex[] = 0
         if isnothing(tbox.stored_string[])
@@ -225,9 +218,13 @@ function initialize_block!(tbox::Textbox)
                 elseif key == Keyboard.delete
                     removechar!(cursorindex[] + 1)
                 elseif key == Keyboard.enter
-                    submit()
-                    if tbox.defocus_on_submit[]
-                        defocus!(tbox)
+                    # don't do anything for invalid input which should stay red
+                    if displayed_is_valid[]
+                        # submit the written text
+                        tbox.stored_string[] = tbox.displayed_string[]
+                        if tbox.defocus_on_submit[]
+                            defocus!(tbox)
+                        end
                     end
                 elseif key == Keyboard.escape
                     if tbox.reset_on_defocus[]
