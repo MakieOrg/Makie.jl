@@ -1,3 +1,9 @@
+#= TODOs
+1) Use one GH-Action job in the end to merge all results and comment in one go (instead of merging with existing comment)
+2) Improve analysis of benchmark resutls to account for the variance in the benchmarks.
+3) Upload raw benchmark data as artifacts to e.g. create plots from It
+=#
+
 using Pkg
 Pkg.activate(@__DIR__)
 Pkg.instantiate()
@@ -133,7 +139,7 @@ function make_or_edit_comment(ctx, pr, package_name, benchmarks)
     end
 end
 
-function run_benchmarks(projects; n=5)
+function run_benchmarks(projects; n=10)
     benchmark_file = joinpath(@__DIR__, "benchmark-ttfp.jl")
     for project in repeat(projects; outer=n)
         run(`$(Base.julia_cmd()) --startup-file=no --project=$(project) $benchmark_file $Package`)
