@@ -37,10 +37,10 @@ $(ATTRIBUTES)
     )
 end
 
-const PolyElements = Union{Polygon, MultiPolygon, Circle, Rect, AbstractMesh, VecTypes, AbstractVector{<:VecTypes}}
+const PolyElements = Union{Polygon, Circle, Rect, AbstractMesh, VecTypes, AbstractVector{<:VecTypes}}
 
 convert_arguments(::Type{<: Poly}, v::AbstractVector{<: PolyElements}) = (v,)
-convert_arguments(::Type{<: Poly}, v::Union{Polygon, MultiPolygon}) = (v,)
+convert_arguments(::Type{<: Poly}, v::Polygon) = (v,)
 
 convert_arguments(::Type{<: Poly}, args...) = ([convert_arguments(Scatter, args...)[1]],)
 convert_arguments(::Type{<: Poly}, vertices::AbstractArray, indices::AbstractArray) = convert_arguments(Mesh, vertices, indices)
@@ -69,9 +69,9 @@ function poly_convert(geometries)
 end
 poly_convert(meshes::AbstractVector{<:AbstractMesh}) = meshes
 poly_convert(polys::AbstractVector{<:Polygon}) = triangle_mesh.(polys)
-function poly_convert(multipolygons::AbstractVector{<:MultiPolygon})
-    return [merge(triangle_mesh.(multipoly.polygons)) for multipoly in multipolygons]
-end
+# function poly_convert(multipolygons::AbstractVector{<:MultiPolygon})
+#     return [merge(triangle_mesh.(multipoly.polygons)) for multipoly in multipolygons]
+# end
 
 poly_convert(mesh::GeometryBasics.Mesh) = mesh
 

@@ -30,7 +30,7 @@ end
 
 @convert_target struct Mesh
     # We currently allow Mesh and vector of meshes for the Mesh type.
-    mesh::Union{AbstractVector{<:GeometryBasics.Mesh}, GeometryBasics.Mesh}
+    mesh::Union{AbstractVector{<:GeometryBasics.AbstractMesh}, GeometryBasics.AbstractMesh}
 end
 
 @convert_target struct Volume
@@ -181,10 +181,10 @@ convert_arguments(P::PointBased, x::Rect2) = (decompose(Point2f, x)[[1, 2, 4, 3]
 convert_arguments(P::PointBased, rect::Rect3) =  (decompose(Point3f, rect),)
 convert_arguments(P::PointBased, mesh::AbstractMesh) = (decompose(Point3f, mesh),)
 
-function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) where {P<:AbstractPoint}
-    # TODO FaceView should be natively supported by backends!
-    return convert_arguments(PB, collect(reinterpret(P, linesegments)))
-end
+# function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) where {P<:AbstractPoint}
+#     # TODO FaceView should be natively supported by backends!
+#     return convert_arguments(PB, collect(reinterpret(P, linesegments)))
+# end
 
 function convert_arguments(P::Type{<: LineSegments}, rect::Rect3)
     f = decompose(LineFace{Int}, rect)
@@ -204,23 +204,23 @@ end
 
 Takes an input `LineString` and decomposes it to points.
 """
-function convert_arguments(PB::PointBased, linestring::LineString)
-    return convert_arguments(PB, decompose(Point, linestring))
-end
+# function convert_arguments(PB::PointBased, linestring::LineString)
+#     return convert_arguments(PB, decompose(Point, linestring))
+# end
 
 """
     convert_arguments(PB, Union{Array{<:LineString}, MultiLineString})
 
 Takes an input `Array{LineString}` or a `MultiLineString` and decomposes it to points.
 """
-function convert_arguments(PB::PointBased, linestring::Union{Array{<:LineString}, MultiLineString})
-    arr = copy(convert_arguments(PB, linestring[1])[1])
-    for ls in 2:length(linestring)
-        push!(arr, Point2f(NaN))
-        append!(arr, convert_arguments(PB, linestring[ls])[1])
-    end
-    return (arr,)
-end
+# function convert_arguments(PB::PointBased, linestring::Union{Array{<:LineString}, MultiLineString})
+#     arr = copy(convert_arguments(PB, linestring[1])[1])
+#     for ls in 2:length(linestring)
+#         push!(arr, Point2f(NaN))
+#         append!(arr, convert_arguments(PB, linestring[ls])[1])
+#     end
+#     return (arr,)
+# end
 
 """
     convert_arguments(PB, Polygon)
@@ -247,14 +247,14 @@ end
 
 Takes an input `Array{Polygon}` or a `MultiPolygon` and decomposes it to points.
 """
-function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon}, MultiPolygon})
-    arr = copy(convert_arguments(PB, mp[1])[1])
-    for p in 2:length(mp)
-        push!(arr, Point2f(NaN))
-        append!(arr, convert_arguments(PB, mp[p])[1])
-    end
-    return (arr,)
-end
+# function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon}, MultiPolygon})
+#     arr = copy(convert_arguments(PB, mp[1])[1])
+#     for p in 2:length(mp)
+#         push!(arr, Point2f(NaN))
+#         append!(arr, convert_arguments(PB, mp[p])[1])
+#     end
+#     return (arr,)
+# end
 
 
 ################################################################################
@@ -574,7 +574,7 @@ end
 
 function convert_arguments(
         MT::Type{<:Mesh},
-        xyz::Union{AbstractPolygon, AbstractVector{<: AbstractPoint{2}}}
+        xyz::Union{AbstractPolygon, AbstractVector{<: Point{2}}}
     )
     return convert_arguments(MT, triangle_mesh(xyz))
 end
