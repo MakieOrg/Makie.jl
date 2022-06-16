@@ -480,6 +480,7 @@ function tight_ticklabel_spacing!(la::LineAxis)
             tls.visible[] ? width(Rect2f(boundingbox(tls))) : 0f0
     end
     la.attributes.ticklabelspace = maxwidth
+    return Float64(maxwidth)
 end
 
 
