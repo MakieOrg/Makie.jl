@@ -508,6 +508,15 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
     identity_transform = (t === identity || t isa Tuple && all(x-> x === identity, t)) && (abs(model[1, 2]) < 1e-15)
     regular_grid = xs isa AbstractRange && ys isa AbstractRange
 
+    if interp_requested
+        if !regular_grid
+            error("heatmap / image with interpolate = true with a non-regular grid is not supported right now.")
+        end
+        if !identity_transform
+            error("heatmap / image with interpolate = true with a non-identity transform is not supported right now.")
+        end
+    end
+
     imsize = ((first(xs), last(xs)), (first(ys), last(ys)))
     # find projected image corners
     # this already takes care of flipping the image to correct cairo orientation
@@ -516,19 +525,9 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
     xymax = project_position(scene, space, Point2f(last.(imsize)), model)
     w, h = xymax .- xy
     image_resolution_larger_than_surface = abs(w) < length(xs) || abs(h) < length(ys)
-    should_be_interpolated = regular_grid & identity_transform & image_resolution_larger_than_surface
-    interpolate = interp_requested || should_be_interpolated
-
-    # We need to draw rectangles for vector backends, or irregular grids
-    if interpolate
-        suggestion = interp_requested ? "Please use interpolate=false for this plot." : "Interpolation was automatically enabled because image size was larger than available resolution."
-        if !regular_grid
-            error("Interpolation with heatmaps/images on non-regular grids isn't supported right now. $suggestion")
-        end
-        if !identity_transform
-            error("Interpolation with heatmaps/images with non-identity transforms isn't supported right now. $suggestion")
-        end
-    end
+    automatic_interpolation = image_resolution_larger_than_surface & regular_grid & identity_transform 
+    
+    interpolate = interp_requested || automatic_interpolation
 
     can_use_fast_path = !(is_vector && !interpolate) && regular_grid && identity_transform
     use_fast_path = can_use_fast_path && !disable_fast_path
