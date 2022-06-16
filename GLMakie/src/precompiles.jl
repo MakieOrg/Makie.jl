@@ -1,5 +1,5 @@
 function _precompile_()
-    ccall(:jl_generating_output, Cint, ()) == 1 || return nothing
+    ccall(:jl_generating_output, Cint, ()) == 1 || return
     precompile(Makie.backend_display, (GLBackend, Scene))
 
     activate!()
@@ -31,9 +31,9 @@ function _precompile_()
     fig, ax1, pl = scatter(1:4;color=:green, visible=true, markersize=15)
     Makie.backend_display(screen, fig.scene)
     Makie.colorbuffer(screen)
-
     f, ax2, pl = lines(1:4)
     Makie.precompile_obs(ax1)
     Makie.precompile_obs(ax2)
+    closeall()
     return
 end

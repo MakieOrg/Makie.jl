@@ -33,8 +33,11 @@ push!.(old[1:3], [t_using, create_time, display_time])
 
 b1 = @benchmark fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
 b2 = @benchmark Makie.colorbuffer(display(fig))
-append!(old[4], b1.times)
-append!(old[5], b2.times)
+
+using Statistics
+
+push!(old[4], mean(b1.times))
+push!(old[5], mean(b2.times))
 
 open(io-> JSON.print(io, old), result, "w")
 

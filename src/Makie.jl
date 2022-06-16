@@ -221,7 +221,7 @@ export to_world
 # picking + interactive use cases + events
 export mouseover, onpick, pick, Events, Keyboard, Mouse, mouse_selection, is_mouseinside
 export ispressed, Exclusively
-export register_callbacks
+export connect_screen
 export window_area, window_open, mouse_buttons, mouse_position, mouseposition_px,
        scroll, keyboard_buttons, unicode_input, dropped_files, hasfocus, entered_window
 export disconnect!

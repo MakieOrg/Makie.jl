@@ -98,7 +98,7 @@ end
 """
 This is the main function to assemble particles with a GLNormalMesh as a primitive
 """
-function draw_mesh_particle(p, data)
+function draw_mesh_particle(shader_cache, p, data)
     rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
     rot = vec2quaternion(rot)
     delete!(data, :rotation)
@@ -126,6 +126,7 @@ function draw_mesh_particle(p, data)
         shading = true
         transparency = false
         shader = GLVisualizeShader(
+            shader_cache,
             "util.vert", "particles.vert", "mesh.frag", "fragment_output.frag",
             view = Dict(
                 "position_calc" => position_calc(position, nothing, nothing, nothing, TextureBuffer),
@@ -147,7 +148,7 @@ end
 This is the most primitive particle system, which uses simple points as primitives.
 This is supposed to be the fastest way of displaying particles!
 """
-function draw_pixel_scatter(position::VectorTypes, data::Dict)
+function draw_pixel_scatter(shader_cache, position::VectorTypes, data::Dict)
     @gen_defaults! data begin
         vertex       = position => GLBuffer
         color_map    = nothing  => Texture
@@ -156,6 +157,7 @@ function draw_pixel_scatter(position::VectorTypes, data::Dict)
         scale        = 2f0
         transparency = false
         shader       = GLVisualizeShader(
+            shader_cache,
             "fragment_output.frag", "dots.vert", "dots.frag",
             view = Dict(
                 "buffers" => output_buffers(to_value(transparency)),
@@ -169,18 +171,18 @@ function draw_pixel_scatter(position::VectorTypes, data::Dict)
 end
 
 function draw_scatter(
-        p::Tuple{TOrSignal{Matrix{C}}, VectorTypes{P}}, data::Dict
+    shader_cache, p::Tuple{TOrSignal{Matrix{C}}, VectorTypes{P}}, data::Dict
     ) where {C <: Colorant, P <: Point}
     data[:image] = p[1] # we don't want this to be overwritten by user
     @gen_defaults! data begin
         scale = lift(x-> Vec2f(size(x)), p[1])
         offset = Vec2f(0)
     end
-    draw_scatter((RECTANGLE, p[2]), data)
+    draw_scatter(shader_cache, (RECTANGLE, p[2]), data)
 end
 
 function draw_scatter(
-        p::Tuple{VectorTypes{Matrix{C}}, VectorTypes{P}}, data::Dict
+        shader_cache, p::Tuple{VectorTypes{Matrix{C}}, VectorTypes{P}}, data::Dict
     ) where {C <: Colorant, P <: Point}
     images = map(el32convert, to_value(p[1]))
     isempty(images) && error("Can not display empty vector of images as primitive")
@@ -209,14 +211,14 @@ function draw_scatter(
         shape = RECTANGLE
         quad_offset = Vec2f(0)
     end
-    return draw_scatter((RECTANGLE, p[2]), data)
+    return draw_scatter(shader_cache, (RECTANGLE, p[2]), data)
 end
 
 """
 Main assemble functions for scatter particles.
 Sprites are anything like distance fields, images and simple geometries
 """
-function draw_scatter((marker, position), data)
+function draw_scatter(shader_cache, (marker, position), data)
     rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
     rot = vec2quaternion(rot)
     delete!(data, :rotation)
@@ -263,6 +265,7 @@ function draw_scatter((marker, position), data)
         fxaa             = false
         transparency     = false
         shader           = GLVisualizeShader(
+            shader_cache,
             "fragment_output.frag", "util.vert", "sprites.geom",
             "sprites.vert", "distance_shape.frag",
             view = Dict(

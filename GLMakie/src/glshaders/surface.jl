@@ -86,28 +86,28 @@ end
 
 @nospecialize
 # surface(::Matrix, ::Matrix, ::Matrix)
-function draw_surface(main::Tuple{MatTypes{T}, MatTypes{T}, MatTypes{T}}, data::Dict) where T <: AbstractFloat
+function draw_surface(shader_cache, main::Tuple{MatTypes{T}, MatTypes{T}, MatTypes{T}}, data::Dict) where T <: AbstractFloat
     @gen_defaults! data begin
         position_x = main[1] => (Texture, "x position, must be a `Matrix{Float}`")
         position_y = main[2] => (Texture, "y position, must be a `Matrix{Float}`")
         position_z = main[3] => (Texture, "z position, must be a `Matrix{Float}`")
         scale = Vec3f(0) => "scale must be 0, for a surfacemesh"
     end
-    return draw_surface(position_z, data)
+    return draw_surface(shader_cache, position_z, data)
 end
 
 # surface(Vector or Range, Vector or Range, ::Matrix)
-function draw_surface(main::Tuple{VectorTypes{T}, VectorTypes{T}, MatTypes{T}}, data::Dict) where T <: AbstractFloat
+function draw_surface(shader_cache, main::Tuple{VectorTypes{T}, VectorTypes{T}, MatTypes{T}}, data::Dict) where T <: AbstractFloat
     @gen_defaults! data begin
         position_x = main[1] => (Texture, "x position, must be a `Vector{Float}`")
         position_y = main[2] => (Texture, "y position, must be a `Vector{Float}`")
         position_z = main[3] => (Texture, "z position, must be a `Matrix{Float}`")
         scale = Vec3f(0) => "scale must be 0, for a surfacemesh"
     end
-    return draw_surface(position_z, data)
+    return draw_surface(shader_cache, position_z, data)
 end
 
-function draw_surface(main, data::Dict)
+function draw_surface(shader_cache, main, data::Dict)
     primitive = triangle_mesh(Rect2(0f0,0f0,1f0,1f0))
     to_opengl_mesh!(data, primitive)
     @gen_defaults! data begin
@@ -137,6 +137,7 @@ function draw_surface(main, data::Dict)
         instances = const_lift(x->(size(x,1)-1) * (size(x,2)-1), main) => "number of planes used to render the surface"
         transparency = false
         shader = GLVisualizeShader(
+            shader_cache,
             "fragment_output.frag", "util.vert", "surface.vert",
             "mesh.frag",
             view = Dict(

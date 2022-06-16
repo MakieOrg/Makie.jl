@@ -7,7 +7,7 @@
 using Pkg
 Pkg.activate(@__DIR__)
 Pkg.instantiate()
-using Statistics, GitHub, Printf, BenchmarkTools, Markdown
+using Statistics, GitHub, Printf, BenchmarkTools, Markdown, HypothesisTests
 using BenchmarkTools.JSON
 Package = ARGS[1]
 @info("Benchmarking $(Package)")
@@ -16,7 +16,7 @@ COMMENT_TEMPLATE = """
 ## Compile Times benchmark
 
 Note, that these numbers may fluctuate on the CI servers, so take them with a grain of salt.
-All benchmark results are based on the median time and negative percent mean faster than master.
+All benchmark results are based on the mean time and negative percent mean faster than master.
 Note, that GLMakie + WGLMakie run on an emulated GPU, so the runtime benchmark is much slower.
 Results are from running:
 
@@ -65,22 +65,43 @@ function best_unit(m)
     end
 end
 
+function cohen_d(x, y)
+    nx = length(x); ny = length(y)
+    ddof = nx + ny - 2
+    poolsd = sqrt(((nx - 1) * var(x) + (ny - 1) * var(y)) / ddof)
+    d = (mean(x) - mean(y)) / poolsd
+end
+
 function analyze(pr, master)
     f, unit = best_unit(pr[1])
-    master_res = median(Float64.(master)) / f
-    pr_res = median(Float64.(pr)) / f
-    percent = (1 - (pr_res / master_res)) * 100
-    result = if abs(percent) < 5
-        "*invariant*"
+    pr, master = Float64.(pr) ./ f, Float64.(master) ./ f
+    tt = UnequalVarianceTTest(pr, master)
+    d = cohen_d(pr, master)
+    std_p = (std(pr) + std(master)) / 2
+    m_pr = mean(pr)
+    m_m = mean(master)
+    mean_diff = mean(m_pr) - mean(m_m)
+    percent = (1 - (m_m / m_pr)) * 100
+    p = pvalue(tt)
+    mean_diff_str = string(round(mean_diff; digits=2), unit)
+    result = if p < 0.05
+        if abs(d) > 0.2
+            d < 0 ? "faster✅" : "worse❌"
+        else
+            "*invariant*"
+        end
     else
-        percent > 0 ? "**worse**❌" : "**improvement**✅"
+        "*noisy*🤷‍♀️"
     end
-    return @sprintf("%s%.2f%s, %s", percent > 0 ? "+" : "-", abs(percent), "%", result)
+    if abs(percent) < 5
+        result = "*invariant*"
+    end
+    return @sprintf("%s%.2f%s, %s %s (%.2fd, %.2fp, %.2fstd)", percent > 0 ? "+" : "-", abs(percent), "%", mean_diff_str, result, d, p, std_p)
 end
 
 function summarize_stats(timings)
     f, unit = best_unit(timings[1])
-    m = median(timings) / f
+    m = mean(timings) / f
     mini = minimum(timings) /  f
     maxi = maximum(timings) / f
     s = std(timings) / f
