@@ -2,6 +2,7 @@
 
 ## master
 
+- **EXPERIMENTAL** Added support for multiple windows in GLMakie through `display(GLMakie.Screen(), figure_or_scene)` [#1771](https://github.com/JuliaPlots/Makie.jl/pull/1771).
 - Added support for RGB matrices in `heatmap` with GLMakie [#2036](https://github.com/JuliaPlots/Makie.jl/pull/2036)
 - `Textbox` doesn't defocus anymore on trying to submit invalid input [#2041](https://github.com/JuliaPlots/Makie.jl/pull/2041).
 

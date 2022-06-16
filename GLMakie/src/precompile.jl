@@ -31,5 +31,6 @@ function _precompile_()
     fig, ax, pl = scatter(1:4;color=:green, visible=true, markersize=15)
     Makie.backend_display(screen, fig.scene)
     Makie.colorbuffer(screen)
+    closeall()
     return
 end

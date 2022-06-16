@@ -311,7 +311,7 @@ end
 # Backend interface to Makie #
 #########################################
 
-function Makie.backend_display(x::CairoBackend, scene::Scene)
+function Makie.backend_display(x::CairoBackend, scene::Scene; kw...)
     return open(x.path, "w") do io
         Makie.backend_show(x, io, to_mime(x), scene)
     end
@@ -415,7 +415,7 @@ function Makie.colorbuffer(screen::CairoScreen)
     # draw the scene onto the image matrix
     ctx = Cairo.CairoContext(surf)
     ccall((:cairo_set_miter_limit, Cairo.libcairo), Cvoid, (Ptr{Nothing}, Cdouble), ctx.ptr, 2.0)
-    
+
     scr = CairoScreen(scene, surf, ctx, nothing)
 
     cairo_draw(scr, scene)

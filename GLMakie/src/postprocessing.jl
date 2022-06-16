@@ -28,10 +28,11 @@ function empty_postprocessor(args...; kwargs...)
 end
 
 
-function OIT_postprocessor(framebuffer)
+function OIT_postprocessor(framebuffer, shader_cache)
     # Based on https://jcgt.org/published/0002/02/09/, see #1390
     # OIT setup
     shader = LazyShader(
+        shader_cache,
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/OIT_blend.frag")
     )
@@ -77,7 +78,7 @@ end
 
 
 
-function ssao_postprocessor(framebuffer)
+function ssao_postprocessor(framebuffer, shader_cache)
     # Add missing buffers
     if !haskey(framebuffer, :position)
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
@@ -112,6 +113,7 @@ function ssao_postprocessor(framebuffer)
 
     # compute occlusion
     shader1 = LazyShader(
+        shader_cache,
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/SSAO.frag"),
         view = Dict(
@@ -137,6 +139,7 @@ function ssao_postprocessor(framebuffer)
 
     # blur occlusion and combine with color
     shader2 = LazyShader(
+        shader_cache,
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/SSAO_blur.frag")
     )
@@ -199,7 +202,7 @@ end
 
 Returns a PostProcessor that handles fxaa.
 """
-function fxaa_postprocessor(framebuffer)
+function fxaa_postprocessor(framebuffer, shader_cache)
     # Add missing buffers
     if !haskey(framebuffer, :color_luma)
         if !haskey(framebuffer, :HDR_color)
@@ -215,6 +218,7 @@ function fxaa_postprocessor(framebuffer)
 
     # calculate luma for FXAA
     shader1 = LazyShader(
+        shader_cache,
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/postprocess.frag")
     )
@@ -227,6 +231,7 @@ function fxaa_postprocessor(framebuffer)
 
     # perform FXAA
     shader2 = LazyShader(
+        shader_cache,
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/fxaa.frag")
     )
@@ -265,9 +270,10 @@ end
 Sets up a Postprocessor which copies the color buffer to the screen. Used as a
 final step for displaying the screen.
 """
-function to_screen_postprocessor(framebuffer)
+function to_screen_postprocessor(framebuffer, shader_cache)
     # draw color buffer
     shader = LazyShader(
+        shader_cache,
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/copy.frag")
     )

@@ -22,6 +22,11 @@ set_window_config!(;
 )
 ```
 
+#### Multiple Windows
+
+GLMakie has experimental support for displaying multiple independent figures (or scenes). To open a new window, use `display(GLMakie.Screen(), figure_or_scene)`.
+
+
 ## Forcing Dedicated GPU Use In Linux
 
 Normally the dedicated GPU is used for rendering.
