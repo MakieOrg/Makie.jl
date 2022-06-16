@@ -471,6 +471,7 @@ function RectangleZoom(ax::Axis; kw...)
 end
 
 @Block Colorbar begin
+    axis::LineAxis
     @attributes begin
         "The color bar label string."
         label = ""

@@ -649,6 +649,8 @@ it necessarily has to break the layout a little bit.
 ```julia
 using CairoMakie
 using FileIO
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
 using Random # hide
 Random.seed!(1) # hide
 
@@ -763,6 +765,8 @@ separately.
 \begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
 
 f = Figure()
 
@@ -790,6 +794,48 @@ end
 f
 ```
 \end{examplefigure}
+
+## Aligning neighboring axis labels
+
+When placing axes with different ticks next to each other it can be desirable to visually align the labels of these axes.
+By default, the space allocated for the ticklabels is minimized.
+This value can be fixed by using the functions \apilink{tight_xticklabel_spacing!}, \apilink{tight_yticklabel_spacing!} or \apilink{tight_ticklabel_spacing!} for both.
+
+Note how x and y labels are misaligned in this figure due to different tick label lengths.
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+f = Figure()
+
+ax1 = Axis(f[1, 1], title = "Axis 1", ylabel = "y label", ytickformat = "{:.3f}")
+ax2 = Axis(f[2, 1], title = "Axis 2", ylabel = "y label", xlabel = "x label")
+ax3 = Axis(f[2, 2], title = "Axis 3", xlabel = "x label", xtickformat = "{:.3f}", xticklabelrotation = pi/4)
+
+f
+```
+\end{examplefigure}
+
+To align the labels, we can set the `xticklabelspace` or `yticklabelspace` attributes of the linked axes to the maximum space.
+
+\begin{examplefigure}{svg = true}
+```julia
+yspace = maximum(tight_yticklabel_spacing!, [ax1, ax2])
+xspace = maximum(tight_xticklabel_spacing!, [ax2, ax3])
+
+ax1.yticklabelspace = yspace
+ax2.yticklabelspace = yspace
+
+ax2.xticklabelspace = xspace
+ax3.xticklabelspace = xspace
+
+f
+```
+\end{examplefigure}
+
 ## Changing x and y axis position
 
 By default, the x axis is at the bottom, and the y axis at the left side.
