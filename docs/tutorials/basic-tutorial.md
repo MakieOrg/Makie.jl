@@ -4,26 +4,26 @@
 
 Here is a quick tutorial to get you started with Makie!
 
-We assume you have [Julia](https://julialang.org/) and `CairoMakie.jl` (or one of the other backends, i.e. `GLMakie.jl` or `WGLMakie.jl`) installed already.
+Makie is the name of the whole plotting ecosystem and `Makie.jl` is the main package that describes how plots work.
+To actually render and save plots, we need a backend that knows how to translate plots into images or vector graphics.
+
+There are three main backends which you can use to render plots (for more information, have a look at \myreflink{Backends & Output}):
+
+- `CairoMakie.jl` if you want to render vector graphics or high quality 2D images and don't need interactivity or true 3D rendering.
+- `GLMakie.jl` if you need interactive windows and true 3D rendering but no vector output.
+- Or `WGLMakie.jl` which is similar to `GLMakie` but works in web browsers, not native windows.
 
 This tutorial uses CairoMakie, but the code can be executed with any backend.
-CairoMakie can output beautiful static vector graphics, but it doesn't have the native ability to open interactive windows.
+Note that CairoMakie can _create_ images but it cannot _display_ them.
 
 To see the output of plotting commands when using CairoMakie, we recommend you either use an IDE which supports png or svg output, such as VSCode, Atom/Juno, Jupyter, Pluto, etc., or try using a viewer package such as [ElectronDisplay.jl](https://github.com/queryverse/ElectronDisplay.jl), or alternatively save your plots to files directly.
 The Julia REPL by itself does not have the ability to show the plots.
 
-GLMakie can open interactive plot windows, also from the Julia REPL, or alternatively display bitmaps inline if `Makie.inline!(true)` is called
-and if it is supported by the environment.
-
-WGLMakie shows interactive plots in environments that support interactive html displays, such as VSCode, Atom/Juno, Jupyter, Pluto, etc.
-
-For more information, have a look at \myreflink{Backends & Output}.
-
 Ok, now that this is out of the way, let's get started!
 
-## First plot
+## Importing
 
-First, we import CairoMakie.
+First, we import CairoMakie. This makes all the exported symbols from `Makie.jl` available as well.
 
 ```julia:setup
 using CairoMakie
@@ -32,34 +32,156 @@ Makie.inline!(true) # hide
 nothing # hide
 ```
 
-Makie has many different plotting functions, one of the most common ones is \myreflink{lines}.
-You can just call such a function and your plot will appear if your coding environment can show png or svg files.
+## An empty figure
 
-!!! note
-    Objects such as [Figure](\reflink{Figures}), `FigureAxisPlot` or `Scene` are usually displayed whenever they are returned in global scope (e.g. in the REPL).
-    To display such objects from within a local scope, like from within a function, you can directly call `display(figure)`, for example.
+The basic container object in Makie is the \apilink{Figure}.
+It is a canvas onto which we can add objects like axes and colorbars.
+
+Let's create one and give it a background color so we can see something.
+Returning a `Figure` from an expression will `display` it if your coding environment can show images.
 
 \begin{examplefigure}{svg = true}
 ```julia
+f = Figure(backgroundcolor = :tomato)
+```
+\end{examplefigure}
 
+Another common thing to do is to give a figure a different size or resolution.
+The default is 800x600, let's try halving the height:
+
+\begin{examplefigure}{svg = true}
+```julia
+f = Figure(backgroundcolor = :tomato, resolution = (800, 300))
+```
+\end{examplefigure}
+
+## Adding an Axis
+
+The most common object you can add to a figure which you need for most plotting is the [Axis](\reflink{Axis}).
+The usual syntax for adding such an object to a figure is to specify a position in the `Figure`'s layout as the first argument.
+We'll learn more about layouts later, but for now the position `f[1, 1]` will just fill the whole figure.
+
+\begin{examplefigure}{svg = true}
+```julia
+f = Figure()
+ax = Axis(f[1, 1])
+f
+```
+\end{examplefigure}
+
+The default axis has no title or labels, you can pass those as keyword arguments.
+For a whole list of available attributes, check the docstring for \apilink{Axis} (you can also do that by running `?Axis` in the REPL).
+Be warned, it's very long!
+
+```julia
+f = Figure()
+ax = Axis(f[1, 1],
+    title = "A Makie Axis",
+    xlabel = "The x label",
+    ylabel = "The y label"
+)
+f
+```
+
+Now we're ready to actually plot something!
+
+## First line plot
+
+Makie has many different plotting functions, the first we will learn about is \myreflink{lines}.
+Let's try plotting a sine function:
+
+\begin{examplefigure}{svg = true}
+```julia
 x = range(0, 10, length=100)
 y = sin.(x)
 lines(x, y)
 ```
 \end{examplefigure}
 
-Another common function is \myreflink{scatter}.
+There we have our first line plot, that was easy.
+
+The return type of `lines(x, y)` is `FigureAxisPlot`.
+You remember that we looked at making a `Figure` and an `Axis` first.
+The `lines` function first creates a `Figure`, then puts an `Axis` into it and finally adds plot of type `Lines` to that axis.
+
+Because these three objects are created at once, the function returns all three, just bundled up into one `FigureAxisPlot` object.
+That's just so we can overload the `display` behavior for that type to match `Figure`, which would be a bit weird to do with a `Tuple`, which would be the normal way in Julia to return multiple values from a function.
+
+If you need the objects, for example to add more things to the figure later and edit axis and plot attributes, you can destructure the return value:
 
 \begin{examplefigure}{svg = true}
 ```julia
+figure, axis, lineplot = lines(x, y)
+figure
+```
+\end{examplefigure}
 
-using CairoMakie
+As you can see, the output of returning the extracted figure is the same.
 
+## Scatter plot
+
+Another common function is \myreflink{scatter}.
+It works very similar to `lines` but shows separate markers for each input point.
+
+\begin{examplefigure}{svg = true}
+```julia
 x = range(0, 10, length=100)
 y = sin.(x)
 scatter(x, y)
 ```
 \end{examplefigure}
+
+## Passing Figure and Axis styles
+
+You might wonder how to specify a different resolution for this scatter plot, or set an axis title and labels.
+Because a normal plotting function like `lines` or `scatter` creates these objects before it creates the plot, you can pass special keyword arguments to it called `axis` and `figure`.
+You can pass any kind of object with symbol-value pairs and these will be used as keyword arguments for `Figure` and `Axis`, respectively.
+
+\begin{examplefigure}{svg = true}
+```julia
+x = range(0, 10, length=100)
+y = sin.(x)
+scatter(x, y;
+    figure = (; resolution = (400, 400)),
+    axis = (; title = "Scatter plot", xlabel = "x label")
+)
+```
+\end{examplefigure}
+
+The `;` in `(; resolution = (400, 400))` is nothing special, it just clarifies that we want a one-element `NamedTuple` and not a variable called `resolution`.
+It's good habit to include it but it's not needed for `NamedTuple`s with more than one entry.
+
+## Argument conversions
+
+So far we have called `lines` and `scatter` with `x` and `y` arguments, where `x` was a range object and `y` vector of numbers.
+Most plotting functions have different options how you can call them.
+The input arguments are converted internally to one or more target representations that can be handled by the rendering backends.
+
+Here are a few different examples of what you can use with `lines`:
+
+An interval and a function:
+
+\begin{examplefigure}{svg = true}
+```julia
+lines(0..10, sin)
+```
+
+A collection of numbers and a function:
+
+\begin{examplefigure}{svg = true}
+```julia
+lines(0:1:10, cos)
+```
+\end{examplefigure}
+
+A collection of `Point`s from `GeometryBasics.jl` (which supplies most geometric primitives in Makie):
+
+\begin{examplefigure}{svg = true}
+```julia
+lines([Point(0, 0), Point(5, 10), Point(10, 5)])
+```
+\end{examplefigure}
+
 
 ## Multiple plots
 
