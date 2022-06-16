@@ -221,7 +221,7 @@ The lines in the previous example have colors from Makie's default palette, but 
 There are multiple ways you can specify colors, but common ones are:
 
 - By name, like `:red` or `"red"`
-- By hex string, like `"#ffccbk"
+- By hex string, like `"#ffccbk"`
 - With color types like the Makie-exported `RGBf(0.5, 0, 0.6)` or `RGBAf(0.3, 0.8, 0.2, 0.8)`
 - As a tuple where the first part is a color and the second an alpha value to make it transparent, like `(:red, 0.5)`
 
