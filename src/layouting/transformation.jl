@@ -232,11 +232,11 @@ end
 # PointTrans{N}(func::F) where {N, F} = PointTrans{N, F}(func)
 Base.broadcastable(x::PointTrans) = (x,)
 
-function apply_transform(f::PointTrans{N}, point::Point{N}) where N
+function apply_transform(f::PointTrans{N}, point::VecTypes{N}) where N
     return f.f(point)
 end
 
-function apply_transform(f::PointTrans{N1}, point::Point{N2}) where {N1, N2}
+function apply_transform(f::PointTrans{N1}, point::VecTypes{N2}) where {N1, N2}
     p_dim = to_ndim(Point{N1, Float32}, point, 0.0)
     p_trans = f.f(p_dim)
     if N1 < N2
@@ -246,6 +246,53 @@ function apply_transform(f::PointTrans{N1}, point::Point{N2}) where {N1, N2}
         return to_ndim(Point{N2, Float32}, p_trans, 0.0)
     end
 end
+
+# The following methods are based on logic from the PROJ library,
+# which essentially try to find the true bounding box of the given
+# rectangle after transformation, by sampling from a regular grid
+# bounded by the rectangle in input space.
+
+const _DEFAULT_RECT_TRANSFORM_DENSITY = Ref{Int}(21)
+function apply_transform(f::PointTrans{2}, rect::Rect{2, T}) where T
+    N = _DEFAULT_RECT_TRANSFORM_DENSITY[]
+    umins = fill(T(Inf),  2)
+    umaxs = fill(T(-Inf), 2)
+    xmins = minimum(rect)
+    xmaxs = maximum(rect)
+    for x in range(xmins[1], xmaxs[2]; length = N)
+        for y in range(xmins[2], xmaxs[2]; length = N)
+            u = Makie.apply_transform(f, Point(x, y))
+            for i in 1:2
+                umins[i] = min(umins[i], u[i])
+                umaxs[i] = max(umaxs[i], u[i])
+            end
+        end
+    end
+
+    return Rect(Vec2(umins), Vec2(umaxs .- umins))
+end
+
+function apply_transform(f::PointTrans{3}, rect::Rect{3, T}) where T
+    N = _DEFAULT_RECT_TRANSFORM_DENSITY[]
+    umins = fill(T(Inf),  3)
+    umaxs = fill(T(-Inf), 3)
+    xmins = minimum(rect)
+    xmaxs = maximum(rect)
+    for x in range(xmins[1], xmaxs[2]; length = N)
+        for y in range(xmins[2], xmaxs[2]; length = N)
+            for z in range(xmins[3], xmaxs[3]; length = N)
+                u = Makie.apply_transform(f, Point(x, y, z))
+                for i in 1:3
+                    umins[i] = min(umins[i], u[i])
+                    umaxs[i] = max(umaxs[i], u[i])
+                end
+            end
+        end
+    end
+
+    return Rect(Vec3(umins), Vec3(umaxs .- umins))
+end
+
 
 function apply_transform(f, data::AbstractArray)
     map(point-> apply_transform(f, point), data)
