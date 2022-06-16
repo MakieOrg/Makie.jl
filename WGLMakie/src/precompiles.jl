@@ -9,5 +9,6 @@ function _precompile_()
     s = JSServe.Session()
     JSServe.jsrender(s, f1)
     JSServe.jsrender(s, f2)
+    close(serv)
     return
 end

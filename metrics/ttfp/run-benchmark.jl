@@ -199,6 +199,7 @@ Pkg.activate(project1)
 pkgs = [(; path="./MakieCore"), (; path="."), (; path="./$Package"), (;name="BenchmarkTools")]
 Package == "WGLMakie" && push!(pkgs, (; name="ElectronDisplay"))
 Pkg.develop(pkgs)
+Package == "WGLMakie" && Pkg.add([(; name="JSServe", rev="sd/compiles")])
 @time Pkg.precompile()
 
 project2 = make_project_folder("makie-master")
