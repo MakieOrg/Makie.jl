@@ -510,10 +510,10 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
 
     if interp_requested
         if !regular_grid
-            error("heatmap / image with interpolate = true with a non-regular grid is not supported right now.")
+            error("$(typeof(primitive).parameters[1]) with interpolate = true with a non-regular grid is not supported right now.")
         end
         if !identity_transform
-            error("heatmap / image with interpolate = true with a non-identity transform is not supported right now.")
+            error("$(typeof(primitive).parameters[1]) with interpolate = true with a non-identity transform is not supported right now.")
         end
     end
 
