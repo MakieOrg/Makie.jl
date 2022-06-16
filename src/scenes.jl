@@ -444,7 +444,7 @@ function Base.push!(scene::Scene, child::Scene)
     child.parent = scene
     return scene
 end
-@nospecialize
+@specialize
 
 events(x) = events(get_scene(x))
 events(scene::Scene) = scene.events
