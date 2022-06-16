@@ -63,7 +63,7 @@ end
 export set_window_config!
 
 if Base.VERSION >= v"1.4.2"
-    include("precompile.jl")
+    include("precompiles.jl")
     _precompile_()
 end
 
