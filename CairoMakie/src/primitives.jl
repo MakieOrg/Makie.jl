@@ -516,7 +516,8 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
     xymax = project_position(scene, space, Point2f(last.(imsize)), model)
     w, h = xymax .- xy
     image_resolution_larger_than_surface = abs(w) < length(xs) || abs(h) < length(ys)
-    interpolate = interp_requested || (identity_transform && image_resolution_larger_than_surface)
+    should_be_interpolated = regular_grid & identity_transform & image_resolution_larger_than_surface
+    interpolate = interp_requested || should_be_interpolated
 
     # We need to draw rectangles for vector backends, or irregular grids
     if interpolate
