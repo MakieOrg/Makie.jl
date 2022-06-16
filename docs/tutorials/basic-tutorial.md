@@ -185,85 +185,87 @@ lines([Point(0, 0), Point(5, 10), Point(10, 5)])
 
 ## Multiple plots
 
-Every plotting function has a version with and one without `!`.
+Every plotting function has a version with and one without `!` at the end.
 For example, there's `scatter` and `scatter!`, `lines` and `lines!`, etc.
-The functions without a `!` always create a new axis with a plot inside, while the functions with `!` plot into an already existing axis.
 
-Here's how you could plot two lines on top of each other. Also, notice you can pass a function (`sin` and `cos` in this case) as the
-`y` argument to a plotting function.
+The functions without a `!` always create a new axis with a plot inside.
+
+The functions with `!` mutate (plot into) an already existing axis.
+Having functions ending with `!` that mutate one of their arguments is a common Julia convention.
+
+To plot two things into the same axis, you can use the mutating plotting functions.
+For example, here's how you could plot two lines on top of each other:
 
 \begin{examplefigure}{svg = true}
 ```julia
-
-using CairoMakie
-
 x = range(0, 10, length=100)
 
-lines(x, sin)
-lines!(x, cos)
-current_figure()
+f, ax, l1 = lines(x, sin)
+l2 = lines!(ax, x, cos)
+f
 ```
 \end{examplefigure}
 
 The second `lines!` call plots into the axis created by the first `lines` call.
-If you don't specify an axis to plot into, it's as if you had called `lines!(current_axis(), ...)`.
+It's colored differently because the `Axis` keeps track of what has been plotted into it and cycles colors for similar plotting functions.
 
-The call to `current_figure` is necessary here, because functions with `!` return only the newly created plot object, but this alone does not cause the figure to display when returned.
+Note that you cannot pass `figure` and `axis` keywords to mutating plotting functions like `lines!` or `scatter!`.
+That's because they don't create an `Figure` and `Axis`, and we chose not to allow modification of the existing objects in plotting calls so it's clearer what is going on.
 
 ## Attributes
 
 Every plotting function has attributes which you can set through keyword arguments.
-The lines in the previous example both have the same default color, which we can change easily.
+The lines in the previous example have colors from Makie's default palette, but we can easily specify our own.
+
+There are multiple ways you can specify colors, but common ones are:
+
+- By name, like `:red` or `"red"`
+- By hex string, like `"#ffccbk"
+- With color types like the Makie-exported `RGBf(0.5, 0, 0.6)` or `RGBAf(0.3, 0.8, 0.2, 0.8)`
+- As a tuple where the first part is a color and the second an alpha value to make it transparent, like `(:red, 0.5)`
+
+You can read more about colors at [juliagraphics.github.io/Colors.jl](https://juliagraphics.github.io/Colors.jl).
+
+Here's a plot with one named color and one where we use `RGBf`:
 
 \begin{examplefigure}{svg = true}
 ```julia
-
-using CairoMakie
-
 x = range(0, 10, length=100)
-y1 = sin.(x)
-y2 = cos.(x)
 
-lines(x, y1, color = :red)
-lines!(x, y2, color = :blue)
-current_figure()
+f, ax, l1 = lines(x, sin, color = :tomato)
+l2 = lines!(ax, x, cos, color = RGBf(0.2, 0.7, 0.9))
+f
 ```
 \end{examplefigure}
 
 Other plotting functions have different attributes.
 The function `scatter`, for example, does not only have the `color` attribute, but also a `markersize` attribute.
 
+You can read about all possible attributes by running `?scatter` in the REPL, and examples are shown on the page \reflink{scatter}.
+
 \begin{examplefigure}{svg = true}
 ```julia
-
-using CairoMakie
-
 x = range(0, 10, length=100)
-y1 = sin.(x)
-y2 = cos.(x)
 
-scatter(x, y1, color = :red, markersize = 5)
-scatter!(x, y2, color = :blue, markersize = 10)
-current_figure()
+f, ax, sc1 = scatter(x, sin, color = :red, markersize = 5)
+sc2 = scatter!(ax, x, cos, color = :blue, markersize = 10)
+f
 ```
 \end{examplefigure}
 
-If you save the plot object returned from a call like `scatter!`, you can also manipulate its attributes later with the syntax `plot.attribute = new_value`.
+You can also manipulate most plot attributes afterwards with the syntax `plot.attribute = new_value`.
 
 \begin{examplefigure}{svg = true}
 ```julia
+sc1.marker = :utriangle
+sc1.markersize = 20
 
-using CairoMakie
+sc2.color = :transparent
+sc2.markersize = 20
+sc2.strokewidth = 1
+sc2.strokecolor = :purple
 
-x = range(0, 10, length=100)
-y1 = sin.(x)
-y2 = cos.(x)
-
-scatter(x, y1, color = :red, markersize = 5)
-sc = scatter!(x, y2, color = :blue, markersize = 10)
-sc.color = :green
-sc.markersize = 20
-current_figure()
+f
 ```
 \end{examplefigure}
 
