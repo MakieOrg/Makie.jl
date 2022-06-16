@@ -3,10 +3,12 @@
 ################################################################################
 
 function project_position(scene, transform_func::T, space, point, model, yflip::Bool = true) where T
-
     # use transform func
     point = Makie.apply_transform(transform_func, point)
+    _project_position(scene, space, point, model, yflip)
+end
 
+function _project_position(scene, space, point, model, yflip)
     res = scene.camera.resolution[]
     p4d = to_ndim(Vec4f, to_ndim(Vec3f, point, 0f0), 1f0)
     clip = Makie.space_to_clip(scene.camera, space) * model * p4d
