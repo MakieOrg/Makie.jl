@@ -88,3 +88,15 @@
     @test quad_offsets == fta_quad_offsets
     @test scales  == fta_scales
 end
+
+
+@testset "old text syntax" begin
+    text("text", position = Point2f(0, 0))
+    text(["text"], position = [Point2f(0, 0)])
+    text(["text", "text"], position = [Point2f(0, 0), Point2f(1, 1)])
+    text(collect(zip(["text", "text"], [Point2f(0, 0), Point2f(1, 1)])))
+    text(L"text", position = Point2f(0, 0))
+    text([L"text"], position = [Point2f(0, 0)])
+    text([L"text", L"text"], position = [Point2f(0, 0), Point2f(1, 1)])
+    text(collect(zip([L"text", L"text"], [Point2f(0, 0), Point2f(1, 1)])))
+end
