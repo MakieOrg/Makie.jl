@@ -66,6 +66,26 @@ f
 ```
 \end{examplefigure}
 
+## Alignment
+
+Text can be aligned with the horizontal alignments `:left`, `:center`, `:right` and the vertical alignments `:bottom`, `:baseline`, `:center`, `:top`.
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+aligns = [(h, v) for v in [:bottom, :baseline, :center, :top]
+                 for h in [:left, :center, :right]]
+x = repeat(1:3, 4)
+y = repeat(1:4, inner = 3)
+scatter(x, y)
+text!(x, y, text = string.(aligns), align = aligns)
+current_figure()
+```
+\end{examplefigure}
+
 ## Justification
 
 By default, justification of multiline text follows alignment.
