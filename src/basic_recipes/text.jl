@@ -43,7 +43,7 @@ function plot!(plot::Text)
 
     sc = parent_scene(plot)
 
-    onany(linesegs, positions, sc.camera.projectionview, transform_func_obs(sc)) do segs, pos, _, transf
+    onany(linesegs, positions, sc.camera.projectionview, sc.px_area, transform_func_obs(sc)) do segs, pos, _, _, transf
         pos_transf = scene_to_screen(apply_transform(transf, pos), sc)
         linesegs_shifted[] = map(segs, lineindices[]) do seg, index
             seg + attr_broadcast_getindex(pos_transf, index)
