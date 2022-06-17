@@ -1137,17 +1137,33 @@ function hidespines!(la::Axis, spines::Symbol... = (:l, :r, :b, :t)...)
     end
 end
 
-function tight_yticklabel_spacing!(la::Axis)
-    tight_ticklabel_spacing!(la.elements[:yaxis])
+"""
+    space = tight_xticklabel_spacing!(ax::Axis)
+    
+Sets the space allocated for the xticklabels of the `Axis` to the minimum that is needed and returns that value.
+"""
+function tight_yticklabel_spacing!(ax::Axis)
+    space = tight_ticklabel_spacing!(ax.yaxis)
+    return space
 end
 
-function tight_xticklabel_spacing!(la::Axis)
-    tight_ticklabel_spacing!(la.elements[:xaxis])
+"""
+    space = tight_xticklabel_spacing!(ax::Axis)
+    
+Sets the space allocated for the yticklabels of the `Axis` to the minimum that is needed and returns that value.
+"""
+function tight_xticklabel_spacing!(ax::Axis)
+    space = tight_ticklabel_spacing!(ax.xaxis)
+    return space
 end
 
-function tight_ticklabel_spacing!(la::Axis)
-    tight_xticklabel_spacing!(la)
-    tight_yticklabel_spacing!(la)
+"""
+Sets the space allocated for the xticklabels and yticklabels of the `Axis` to the minimum that is needed.
+"""
+function tight_ticklabel_spacing!(ax::Axis)
+    tight_xticklabel_spacing!(ax)
+    tight_yticklabel_spacing!(ax)
+    return
 end
 
 function Base.show(io::IO, ::MIME"text/plain", ax::Axis)

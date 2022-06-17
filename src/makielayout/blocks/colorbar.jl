@@ -326,6 +326,8 @@ function initialize_block!(cb::Colorbar)
         minorticksize = cb.minorticksize, minortickwidth = cb.minortickwidth,
         minortickcolor = cb.minortickcolor, minorticks = cb.minorticks, scale = cb.scale)
 
+    cb.axis = axis
+
 
     onany(axis.protrusion, cb.vertical, cb.flipaxis) do axprotrusion,
             vertical, flipaxis
@@ -359,8 +361,14 @@ function initialize_block!(cb::Colorbar)
     return
 end
 
-function tight_ticklabel_spacing!(lc::Colorbar)
-    tight_ticklabel_spacing!(lc.elements[:axis])
+"""
+    space = tight_ticklabel_spacing!(cb::Colorbar)
+    
+Sets the space allocated for the ticklabels of the `Colorbar` to the minimum that is needed and returns that value.
+"""
+function tight_ticklabel_spacing!(cb::Colorbar)
+    space = tight_ticklabel_spacing!(cb.axis)
+    return space
 end
 
 function scaled_steps(steps, scale, lims)
