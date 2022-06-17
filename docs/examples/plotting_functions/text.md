@@ -11,7 +11,7 @@ This also means that `autolimits!` might cut off your text, because the glyphs d
 
 You can either plot one string with one position, or a vector of strings with a vector of positions.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
@@ -43,7 +43,7 @@ f
 For text whose dimensions are meaningful in data space, set `markerspace = :data`.
 This means that the boundingbox of the text in data coordinates will include every glyph.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
@@ -72,7 +72,7 @@ By default, justification of multiline text follows alignment.
 Text that is left aligned is also left justified.
 You can override this with the `justification` attribute.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
@@ -118,7 +118,7 @@ The offset attribute can be used to shift text away from its position.
 This is especially useful with `space = :pixel`, for example to place text together with barplots.
 You can specify the end of the barplots in data coordinates, and then offset the text a little bit to the left.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
@@ -145,7 +145,7 @@ f
 
 Makie can render LaTeX strings from the LaTeXStrings.jl package using [MathTeXEngine.jl](https://github.com/Kolaru/MathTeXEngine.jl/).
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
@@ -160,7 +160,7 @@ current_figure()
 
 You can also pass L-strings to many objects that use text, for example as labels in the legend.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
