@@ -9,8 +9,8 @@
     
     scene = Scene()
     campixel!(scene)
-    p = text!(scene, str, position = Point2f(30, 37), align = (:left, :baseline))
-    glyph_collection = p.plots[1][1][]
+    p = text!(scene, Point2f(30, 37), text = str, align = (:left, :baseline))
+    glyph_collection = p.plots[1][1][][]
     
     # This doesn't work well because FreeTypeAbstraction doesn't quite scale 
     # linearly
