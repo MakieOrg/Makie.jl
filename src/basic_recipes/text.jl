@@ -267,8 +267,32 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
         minimum(bb)[2]
     end
 
-    positions = basepositions .- Ref(Vec3f(xshift, yshift, 0))
+    shift = Vec3f(xshift, yshift, 0)
+    positions = basepositions .- Ref(shift)
     positions .= Ref(rot) .* positions
+
+
+    for (el, position, scale) in all_els
+        el isa MathTeXEngine.VLine || el isa MathTeXEngine.HLine || continue
+        if el isa MathTeXEngine.HLine
+            w, thick = el.width, el.thickness
+            # just for testing
+            font = to_font("TeX Gyre Heros Makie")
+            c = '_'
+            ext = GlyphExtent(font, c)
+            fext = get_extent(font, c)
+            inkbb = FreeTypeAbstraction.inkboundingbox(fext)
+            w_ink = width(inkbb)
+            h_ink = height(inkbb)
+            ori = inkbb.origin
+            push!(chars, c)
+            push!(fonts, font)
+            push!(positions, rot * (to_ndim(Vec3f, fs, 0) .* (Vec3f(position..., 0) - Vec3f(ori..., 0) - Vec3f(0, h_ink / 2, 0)) - shift))
+            push!(extents, GlyphExtent(font, c))
+            push!(scales_2d, Vec2f(w / w_ink, thick / h_ink) * fs)
+        end
+    end
+
 
     pre_align_gl = GlyphCollection(
         chars,
