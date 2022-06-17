@@ -65,7 +65,7 @@ function plot!(plot::Text)
     plot
 end
 
-function _get_glyphcollection_and_linesegments(string::String, index, ts, f, al, rot, jus, lh, col, scol, swi, www)
+function _get_glyphcollection_and_linesegments(string::AbstractString, index, ts, f, al, rot, jus, lh, col, scol, swi, www)
     gc = layout_text(string, ts, f, al, rot, jus, lh, col, scol, swi, www)
     gc, Point2f[], Float32[], RGBAf[], Int[]
 end
