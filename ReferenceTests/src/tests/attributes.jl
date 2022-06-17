@@ -1,15 +1,3 @@
-@reference_test "align" begin
-    fig, ax, sc = scatter(RNG.rand(10), color=:red)
-    text!(ax, "adding text", textsize=0.6, align=(:center, :center))
-    fig
-end
-
-@reference_test "font" begin
-    fig, ax, sc = scatter(RNG.rand(10), color=:red)
-    text!(ax, "adding text", textsize=0.6, align=(:center, :center), font="Blackchancery")
-    fig
-end
-
 @reference_test "glowcolor, glowwidth" begin
     scatter(RNG.randn(10), color=:blue, glowcolor=:orange, glowwidth=10)
 end
