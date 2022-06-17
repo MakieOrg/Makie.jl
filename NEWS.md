@@ -5,6 +5,7 @@
 - **EXPERIMENTAL** Added support for multiple windows in GLMakie through `display(GLMakie.Screen(), figure_or_scene)` [#1771](https://github.com/JuliaPlots/Makie.jl/pull/1771).
 - Added support for RGB matrices in `heatmap` with GLMakie [#2036](https://github.com/JuliaPlots/Makie.jl/pull/2036)
 - `Textbox` doesn't defocus anymore on trying to submit invalid input [#2041](https://github.com/JuliaPlots/Makie.jl/pull/2041).
+- `text` now takes the position as the first argument(s) like `scatter` and most other plotting functions, it is invoked `text(x, y, [z], text = "text")`. Because it is now of conversion type `PointBased`, the positions can be given in all the usual different ways which are implemented as conversion methods. All old invocation styles such as `text("text", position = Point(x, y))` still work to maintain backwards compatibility.
 
 ## v0.17.5
 
