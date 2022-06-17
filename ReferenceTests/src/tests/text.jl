@@ -69,7 +69,7 @@ end
     scatter!(scene, points, marker = :circle, markersize = 10px)
 
 
-    text!(scene, strings, position = points, align = aligns, rotation = rotations,
+    text!(scene, points, text = strings, align = aligns, rotation = rotations,
         color = [(:black, alpha) for alpha in LinRange(0.3, 0.7, length(points))])
 
     scene
@@ -96,12 +96,12 @@ end
     end
 
     for (p, al) in zip(points[3:3:end], (:left, :center, :right))
-        text!(scene, "align :" * string(al), position = p .+ (0, 80),
+        text!(scene, p .+ (0, 80), text = "align :" * string(al),
             align = (:center, :baseline))
     end
 
     for (p, al) in zip(points[7:9], (:left, :center, :right))
-        text!(scene, "justification\n:" * string(al), position = p .+ (80, 0),
+        text!(scene, p .+ (80, 0), text = "justification\n:" * string(al),
             align = (:center, :top), rotation = pi/2)
     end
 
@@ -215,7 +215,7 @@ end
     f = Figure(resolution = (1000, 1000))
     barplot(f[1, 1], 3:5)
     text!(1, 3, text = "bar 1", offset = (0, 10), align = (:center, :baseline))
-    text!(["bar 2", "bar 3"], position = [(2, 4), (3, 5)],
+    text!([(2, 4), (3, 5)], text = ["bar 2", "bar 3"],
         offset = [(0, -10), (0, -20)],
         align = (:center, :top), color = :white)
 
@@ -241,7 +241,7 @@ end
 
 @reference_test "Log10 text" begin
     barplot([1, 10, 100], fillto = 0.1, axis = (yscale = log10,))
-    text!(["bar 1", "bar 2", "bar 3"], position = [(1, 1), (2, 10), (3, 100)],
+    text!([(1, 1), (2, 10), (3, 100)], text = ["bar 1", "bar 2", "bar 3"],
         offset = (0, -10), color = :white, align = (:center, :top))
     tightlimits!(current_axis(), Bottom())
     current_figure()
@@ -351,10 +351,10 @@ end
 
     fig = Figure(resolution=(600, 500))
     ax = Axis(fig[1, 1])
-    text!(ax, latexstring(L"$1$ " * lorem_ipsum), word_wrap_width=250, textsize = 12, align = (:left, :bottom), justification = :left, color = :black)
-    text!(ax, lorem_ipsum, word_wrap_width=250, textsize = 12, align = (:left, :top), justification = :right, color = :black)
-    text!(ax, lorem_ipsum, word_wrap_width=250, textsize = 12, align = (:right, :bottom), justification = :center, color = :red)
-    text!(ax, lorem_ipsum, word_wrap_width=200, textsize = 12, align = (:center, :top), position = Point2f(-0.3, 0), color = :blue)
+    text!(ax, 0, 0, text = latexstring(L"$1$ " * lorem_ipsum), word_wrap_width=250, textsize = 12, align = (:left, :bottom), justification = :left, color = :black)
+    text!(ax, 0, 0, text = lorem_ipsum, word_wrap_width=250, textsize = 12, align = (:left, :top), justification = :right, color = :black)
+    text!(ax, 0, 0, text = lorem_ipsum, word_wrap_width=250, textsize = 12, align = (:right, :bottom), justification = :center, color = :red)
+    text!(ax, -0.3, 0, text = lorem_ipsum, word_wrap_width=200, textsize = 12, align = (:center, :top), color = :blue)
     xlims!(ax, -0.8, 0.8)
     ylims!(ax, -0.8, 0.6)
     fig
