@@ -282,17 +282,23 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
             # just for testing
             font = to_font("TeX Gyre Heros Makie")
             c = '_'
-            ext = GlyphExtent(font, c)
             fext = get_extent(font, c)
             inkbb = FreeTypeAbstraction.inkboundingbox(fext)
             w_ink = width(inkbb)
             h_ink = height(inkbb)
             ori = inkbb.origin
+            
+            char_scale = Vec3f((Vec2f(w / w_ink, thick / h_ink) * fs)..., 1)
+
+            _pos = Vec3f(fs..., 1) * Vec3f(position..., 0)
+            _pos_inkshifted = _pos - char_scale * (Vec3f(ori..., 0) - Vec3f(0, h_ink / 2, 0))
+            pos_final = rot * (_pos_inkshifted - shift)
+
+            push!(positions, pos_final)
             push!(chars, c)
             push!(fonts, font)
-            push!(positions, rot * (to_ndim(Vec3f, fs, 0) .* (Vec3f(position..., 0) - Vec3f(ori..., 0) - Vec3f(0, h_ink / 2, 0)) - shift))
             push!(extents, GlyphExtent(font, c))
-            push!(scales_2d, Vec2f(w / w_ink, thick / h_ink) * fs)
+            push!(scales_2d, char_scale[1:2])
         end
     end
 
