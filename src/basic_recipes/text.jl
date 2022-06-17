@@ -23,6 +23,7 @@ function plot!(plot::Text)
 
     attrs = copy(plot.attributes)
     pop!(attrs, :position)
+    pop!(attrs, :text)
 
     text!(plot, glyphcollections; attrs..., position = positions)
 
