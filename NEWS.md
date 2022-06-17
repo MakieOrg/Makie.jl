@@ -1,6 +1,6 @@
 # News
 
-## master
+## v0.17.6
 
 - **EXPERIMENTAL** Added support for multiple windows in GLMakie through `display(GLMakie.Screen(), figure_or_scene)` [#1771](https://github.com/JuliaPlots/Makie.jl/pull/1771).
 - Added support for RGB matrices in `heatmap` with GLMakie [#2036](https://github.com/JuliaPlots/Makie.jl/pull/2036)
