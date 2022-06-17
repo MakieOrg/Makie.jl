@@ -400,7 +400,6 @@ function _empty_recursion(scene::Scene)
     return
 end
 
-@nospecialize
 Base.push!(scene::Combined, subscene) = nothing # Combined plots add themselves uppon creation
 
 function Base.push!(scene::Scene, plot::AbstractPlot)
@@ -444,7 +443,6 @@ function Base.push!(scene::Scene, child::Scene)
     child.parent = scene
     return scene
 end
-@specialize
 
 events(x) = events(get_scene(x))
 events(scene::Scene) = scene.events
