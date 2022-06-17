@@ -365,7 +365,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
     end
 
     labeltext = text!(
-        parent, labelpos, text = "label", textsize = labelsize, color = labelcolor,
+        parent, labelpos, text = label, textsize = labelsize, color = labelcolor,
         visible = labelvisible,
         align = labelalign, rotation = labelrotation, font = labelfont,
         markerspace = :data, inspectable = false
