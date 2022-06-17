@@ -112,7 +112,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     robj
 end
 
-function Base.insert!(screen::GLScreen, scene::Scene, @nospecialize(x::Combined))
+function Base.insert!(screen::GLScreen, scene::Scene, x::Combined)
     ShaderAbstractions.switch_context!(screen.glscreen)
     # poll inside functions to make wait on compile less prominent
     pollevents(screen)
