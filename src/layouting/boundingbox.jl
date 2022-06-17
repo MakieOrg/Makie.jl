@@ -18,11 +18,10 @@ function rotate_bbox(bb::Rect3f, rot)
     Rect3f(Ref(rot) .* points)
 end
 
-function gl_bboxes(gl::GlyphCollection; height_insensitive::Bool)
-    bbfunc = height_insensitive ? height_insensitive_boundingbox_with_advance : _inkboundingbox
+function gl_bboxes(gl::GlyphCollection)
     scales = gl.scales.sv isa Vec2f ? (gl.scales.sv for _ in gl.extents) : gl.scales.sv
     map(gl.extents, scales) do ext, scale
-        hi_bb = bbfunc(ext)
+        hi_bb = height_insensitive_boundingbox_with_advance(ext)
         Rect2f(
             Makie.origin(hi_bb) * scale,
             widths(hi_bb) * scale
@@ -48,14 +47,14 @@ end
 
 _inkboundingbox(ext::GlyphExtent) = ext.ink_bounding_box
 
-function boundingbox(glyphcollection::GlyphCollection, position::Point3f, rotation::Quaternion; height_insensitive)
+function boundingbox(glyphcollection::GlyphCollection, position::Point3f, rotation::Quaternion)
 
     if isempty(glyphcollection.glyphs)
         return Rect3f(position, Vec3f(0, 0, 0))
     end
 
     glyphorigins = glyphcollection.origins
-    glyphbbs = gl_bboxes(glyphcollection; height_insensitive = height_insensitive)
+    glyphbbs = gl_bboxes(glyphcollection)
 
     bb = Rect3f()
     for (charo, glyphbb) in zip(glyphorigins, glyphbbs)
@@ -70,7 +69,7 @@ function boundingbox(glyphcollection::GlyphCollection, position::Point3f, rotati
     bb
 end
 
-function boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotations; height_insensitive)
+function boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotations)
 
     if isempty(layouts)
         Rect3f((0, 0, 0), (0, 0, 0))
@@ -78,9 +77,9 @@ function boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotat
         bb = Rect3f()
         broadcast_foreach(layouts, positions, rotations) do layout, pos, rot
             if !isfinite_rect(bb)
-                bb = boundingbox(layout, pos, rot; height_insensitive = height_insensitive)
+                bb = boundingbox(layout, pos, rot)
             else
-                bb = union(bb, boundingbox(layout, pos, rot; height_insensitive = height_insensitive))
+                bb = union(bb, boundingbox(layout, pos, rot))
             end
         end
         !isfinite_rect(bb) && error("Invalid text boundingbox")
@@ -88,21 +87,19 @@ function boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotat
     end
 end
 
-function boundingbox(x::Text{<:Tuple{<:GlyphCollection}}; height_insensitive = true)
+function boundingbox(x::Text{<:Tuple{<:GlyphCollection}})
     boundingbox(
         x[1][],
         to_ndim(Point3f, x.position[], 0),
         to_rotation(x.rotation[]);
-        height_insensitive = height_insensitive
     )
 end
 
-function boundingbox(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}}; height_insensitive = true)
+function boundingbox(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}})
     boundingbox(
         x[1][],
         to_ndim.(Point3f, x.position[], 0),
         to_rotation(x.rotation[]);
-        height_insensitive = height_insensitive
     )
 end
 
@@ -110,29 +107,12 @@ _is_latex_string(x::AbstractVector{<:LaTeXString}) = true
 _is_latex_string(x::LaTeXString) = true 
 _is_latex_string(other) = false 
 
-function boundingbox(x::Text; height_insensitive::Union{Bool, Nothing} = nothing)
-    # use tight boundingbox for LaTeXString text because
-    # they don't follow the normal text behavior anyway with differently
-    # sized glyphs and weird placement
-
-    # also, using underscore as a hline character etc. (the workaround to not
-    # need extra linesegments which makes switching between LaTeXString and normal text harder)
-    # messes up boundaries otherwise
-    # for example when used as the top line of a square root there
-    # really shouldn't be used any more space above.
-    if haskey(x, :text) && _is_latex_string(x.text[])
-        boundingbox(x.plots[1]; height_insensitive = height_insensitive === nothing ? false : height_insensitive)
-    else
-        boundingbox(x.plots[1]; height_insensitive = height_insensitive === nothing ? true : height_insensitive)
-    end
-end
-
 function text_bb(str, font, size)
     rot = Quaternionf(0,0,0,1)
     layout = layout_text(
         str, size, font, Vec2f(0), rot, 0.5, 1.0,
         RGBAf(0, 0, 0, 0), RGBAf(0, 0, 0, 0), 0f0, 0f0)
-    return boundingbox(layout, Point3f(0), rot; height_insensitive = true)
+    return boundingbox(layout, Point3f(0), rot)
 end
 
 """
