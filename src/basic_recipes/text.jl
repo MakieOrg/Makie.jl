@@ -170,34 +170,35 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
     positions = basepositions .- Ref(shift)
     positions .= Ref(rot) .* positions
 
-
-    for (el, position, scale) in all_els
+    # we replace VLine and HLine with characters that are specifically scaled and positioned
+    # such that they match line length and thickness
+    for (el, position, _) in all_els
         el isa MathTeXEngine.VLine || el isa MathTeXEngine.HLine || continue
         if el isa MathTeXEngine.HLine
-            w, thick = el.width, el.thickness
-            # just for testing
-            font = to_font("TeX Gyre Heros Makie")
-            c = '_'
-            fext = get_extent(font, c)
-            inkbb = FreeTypeAbstraction.inkboundingbox(fext)
-            w_ink = width(inkbb)
-            h_ink = height(inkbb)
-            ori = inkbb.origin
-            
-            char_scale = Vec3f((Vec2f(w / w_ink, thick / h_ink) * fs)..., 1)
-
-            _pos = Vec3f(fs..., 1) * Vec3f(position..., 0)
-            _pos_inkshifted = _pos - char_scale * (Vec3f(ori..., 0) - Vec3f(0, h_ink / 2, 0))
-            pos_final = rot * (_pos_inkshifted - shift)
-
-            push!(positions, pos_final)
-            push!(chars, c)
-            push!(fonts, font)
-            push!(extents, GlyphExtent(font, c))
-            push!(scales_2d, char_scale[1:2])
+            w, h = el.width, el.thickness
+        else
+            w, h = el.thickness, el.height
         end
-    end
+        font = to_font("TeX Gyre Heros Makie")
+        c = el isa MathTeXEngine.HLine ? '_' : '|'
+        fext = get_extent(font, c)
+        inkbb = FreeTypeAbstraction.inkboundingbox(fext)
+        w_ink = width(inkbb)
+        h_ink = height(inkbb)
+        ori = inkbb.origin
+        
+        char_scale = Vec2f(w / w_ink, h / h_ink) * fs
 
+        pos_scaled = fs * Vec2f(position)
+        pos_inkshifted = pos_scaled - char_scale * ori - Vec2f(0, h_ink / 2) # TODO fix for VLine
+        pos_final = rot * Vec3f((pos_inkshifted - Vec2f(shift[Vec(1, 2)]))..., 0)
+
+        push!(positions, pos_final)
+        push!(chars, c)
+        push!(fonts, font)
+        push!(extents, GlyphExtent(font, c))
+        push!(scales_2d, char_scale)
+    end
 
     pre_align_gl = GlyphCollection(
         chars,
