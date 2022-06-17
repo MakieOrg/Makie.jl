@@ -261,6 +261,11 @@ end
     f
 end
 
+@reference_test "latex hlines in axis" begin
+    text(1, 1, text = L"\frac{\sqrt{x + y}}{\sqrt{x + y}}", textsize = 50, rotation = pi/4,
+        align = (:center, :center))
+end
+
 @reference_test "latex simple" begin
     s = Scene(camera = campixel!)
     t = text!(s,
