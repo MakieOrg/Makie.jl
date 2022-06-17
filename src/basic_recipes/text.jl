@@ -2,6 +2,10 @@ function plot!(plot::Text)
     positions = plot[1]
     # attach a function to any text that calculates the glyph layout and stores it
     glyphcollections = Observable(GlyphCollection[])
+    linesegs = Observable(Point2f[])
+    linewidths = Observable(Float32[])
+    linecolors = Observable(RGBAf[])
+    lineindices = Ref(Int[])
     
     onany(plot.text, plot.textsize, plot.font, plot.align,
             plot.rotation, plot.justification, plot.lineheight, plot.color, 
@@ -14,9 +18,36 @@ function plot!(plot::Text)
         scol = to_color(scol)
 
         gcs = GlyphCollection[]
-        func = (gc -> push!(gcs, gc)) ∘ _get_glyphcollection
-        broadcast_foreach(func, str, ts, f, al, rot, jus, lh, col, scol, swi, www)
+        lsegs = Point2f[]
+        lwidths = Float32[]
+        lcolors = RGBAf[]
+        lindices = Int[]
+        function push_args((gc, ls, lw, lc, lindex))
+            push!(gcs, gc)
+            append!(lsegs, ls)
+            append!(lwidths, lw)
+            append!(lcolors, lc)
+            append!(lindices, lindex)
+            return
+        end
+        func = push_args ∘ _get_glyphcollection_and_linesegments
+        broadcast_foreach(func, str, 1:attr_broadcast_length(str), ts, f, al, rot, jus, lh, col, scol, swi, www)
         glyphcollections[] = gcs
+        linewidths[] = lwidths
+        linecolors[] = lcolors
+        lineindices[] = lindices
+        linesegs[] = lsegs
+    end
+
+    linesegs_shifted = Observable(Point2f[])
+
+    sc = parent_scene(plot)
+
+    onany(linesegs, positions, sc.camera.projectionview, transform_func_obs(sc)) do segs, pos, _, transf
+        pos_transf = scene_to_screen(apply_transform(transf, pos), sc)
+        linesegs_shifted[] = map(segs, lineindices[]) do seg, index
+            seg + attr_broadcast_getindex(pos_transf, index)
+        end
     end
 
     notify(plot.text)
@@ -29,16 +60,42 @@ function plot!(plot::Text)
     pop!(attrs, :color)
 
     text!(plot, glyphcollections; attrs..., position = positions)
+    linesegments!(plot, linesegs_shifted; linewidth = linewidths, color = linecolors, space = :pixel)
 
     plot
 end
 
-_get_glyphcollection(string::String, ts, f, al, rot, jus, lh, col, scol, swi, www) = layout_text(string, ts, f, al, rot, jus, lh, col, scol, swi, www)
-function _get_glyphcollection(latexstring::LaTeXString, ts, f, al, rot, jus, lh, col, scol, swi, www)
-    tex_elements, glyphcollections, offsets = texelems_and_glyph_collection(latexstring, ts,
+function _get_glyphcollection_and_linesegments(string::String, index, ts, f, al, rot, jus, lh, col, scol, swi, www)
+    gc = layout_text(string, ts, f, al, rot, jus, lh, col, scol, swi, www)
+    gc, Point2f[], Float32[], RGBAf[], Int[]
+end
+function _get_glyphcollection_and_linesegments(latexstring::LaTeXString, index, ts, f, al, rot, jus, lh, col, scol, swi, www)
+    tex_elements, glyphcollections, offset = texelems_and_glyph_collection(latexstring, ts,
                 al[1], al[2], rot, col, scol, swi, www)
 
-    glyphcollections
+    linesegs = Point2f[]
+    linewidths = Float32[]
+    linecolors = RGBAf[]
+    lineindices = Int[]
+
+    rotate_2d(quat, point2) = Point2f(quat * to_ndim(Point3f, point2, 0))
+
+    for (element, position, _) in tex_elements
+        if element isa MathTeXEngine.HLine
+            h = element
+            x, y = position
+            push!(linesegs, rotate_2d(rot, ts * Point2f(x, y) - offset))
+            push!(linesegs, rotate_2d(rot, ts * Point2f(x + h.width, y) - offset))
+            push!(linewidths, ts * h.thickness)
+            push!(linewidths, ts * h.thickness)
+            push!(linecolors, col) # TODO how to specify color better?
+            push!(linecolors, col)
+            push!(lineindices, index)
+            push!(lineindices, index)
+        end
+    end
+
+    glyphcollections, linesegs, linewidths, linecolors, lineindices
 end
 
 function plot!(plot::Text{<:Tuple{<:AbstractString}})
@@ -170,35 +227,35 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
     positions = basepositions .- Ref(shift)
     positions .= Ref(rot) .* positions
 
-    # we replace VLine and HLine with characters that are specifically scaled and positioned
-    # such that they match line length and thickness
-    for (el, position, _) in all_els
-        el isa MathTeXEngine.VLine || el isa MathTeXEngine.HLine || continue
-        if el isa MathTeXEngine.HLine
-            w, h = el.width, el.thickness
-        else
-            w, h = el.thickness, el.height
-        end
-        font = to_font("TeX Gyre Heros Makie")
-        c = el isa MathTeXEngine.HLine ? '_' : '|'
-        fext = get_extent(font, c)
-        inkbb = FreeTypeAbstraction.inkboundingbox(fext)
-        w_ink = width(inkbb)
-        h_ink = height(inkbb)
-        ori = inkbb.origin
+    # # we replace VLine and HLine with characters that are specifically scaled and positioned
+    # # such that they match line length and thickness
+    # for (el, position, _) in all_els
+    #     el isa MathTeXEngine.VLine || el isa MathTeXEngine.HLine || continue
+    #     if el isa MathTeXEngine.HLine
+    #         w, h = el.width, el.thickness
+    #     else
+    #         w, h = el.thickness, el.height
+    #     end
+    #     font = to_font("TeX Gyre Heros Makie")
+    #     c = el isa MathTeXEngine.HLine ? '_' : '|'
+    #     fext = get_extent(font, c)
+    #     inkbb = FreeTypeAbstraction.inkboundingbox(fext)
+    #     w_ink = width(inkbb)
+    #     h_ink = height(inkbb)
+    #     ori = inkbb.origin
         
-        char_scale = Vec2f(w / w_ink, h / h_ink) * fs
+    #     char_scale = Vec2f(w / w_ink, h / h_ink) * fs
 
-        pos_scaled = fs * Vec2f(position)
-        pos_inkshifted = pos_scaled - char_scale * ori - Vec2f(0, h_ink / 2) # TODO fix for VLine
-        pos_final = rot * Vec3f((pos_inkshifted - Vec2f(shift[Vec(1, 2)]))..., 0)
+    #     pos_scaled = fs * Vec2f(position)
+    #     pos_inkshifted = pos_scaled - char_scale * ori - Vec2f(0, h_ink / 2) # TODO fix for VLine
+    #     pos_final = rot * Vec3f((pos_inkshifted - Vec2f(shift[Vec(1, 2)]))..., 0)
 
-        push!(positions, pos_final)
-        push!(chars, c)
-        push!(fonts, font)
-        push!(extents, GlyphExtent(font, c))
-        push!(scales_2d, char_scale)
-    end
+    #     push!(positions, pos_final)
+    #     push!(chars, c)
+    #     push!(fonts, font)
+    #     push!(extents, GlyphExtent(font, c))
+    #     push!(scales_2d, char_scale)
+    # end
 
     pre_align_gl = GlyphCollection(
         chars,
