@@ -1,7 +1,10 @@
 function plot!(plot::Text)
+    positions = plot[1]
     # attach a function to any text that calculates the glyph layout and stores it
-    glyphcollection = lift(plot[1], plot.textsize, plot.font, plot.align,
-            plot.rotation, plot.justification, plot.lineheight, plot.color,
+    glyphcollections = Observable(GlyphCollection[])
+    
+    onany(plot.text, plot.textsize, plot.font, plot.align,
+            plot.rotation, plot.justification, plot.lineheight, plot.color, 
             plot.strokecolor, plot.strokewidth, plot.word_wrap_width) do str,
                 ts, f, al, rot, jus, lh, col, scol, swi, www
         ts = to_textsize(ts)
@@ -10,13 +13,41 @@ function plot!(plot::Text)
         col = to_color(col)
         scol = to_color(scol)
 
-        layout_text(str, ts, f, al, rot, jus, lh, col, scol, swi, www)
+        gcs = GlyphCollection[]
+        func = (gc -> push!(gcs, gc)) ∘ _get_glyphcollection
+        broadcast_foreach(func, str, ts, f, al, rot, jus, lh, col, scol, swi, www)
+        glyphcollections[] = gcs
     end
 
-    text!(plot, glyphcollection; plot.attributes...)
+    notify(plot.text)
+
+    attrs = copy(plot.attributes)
+    pop!(attrs, :position)
+
+    text!(plot, glyphcollections; attrs..., position = positions)
 
     plot
 end
+
+_get_glyphcollection(string::String, ts, f, al, rot, jus, lh, col, scol, swi, www) = layout_text(string, ts, f, al, rot, jus, lh, col, scol, swi, www)
+function _get_glyphcollection(latexstring::LaTeXString, ts, f, al, rot, jus, lh, col, scol, swi, www)
+    tex_elements, glyphcollections, offsets = texelems_and_glyph_collection(latexstring, ts,
+                al[1], al[2], rot, col, scol, swi, www)
+
+    glyphcollections
+end
+
+function plot!(plot::Text{<:Tuple{<:AbstractString}})
+    text!(plot, plot.position; text = plot[1], plot.attributes...)
+    plot
+end
+
+# conversion stopper for previous methods
+convert_arguments(::Type{<: Text}, gcs::AbstractVector{<:GlyphCollection}) = (gcs,)
+convert_arguments(::Type{<: Text}, gc::GlyphCollection) = (gc,)
+convert_arguments(::Type{<: Text}, vec::AbstractVector{<:Tuple{<:AbstractString, <:Point}}) = (vec,)
+convert_arguments(::Type{<: Text}, strings::AbstractVector{<:AbstractString}) = (strings,)
+convert_arguments(::Type{<: Text}, string::AbstractString) = (string,)
 
 # TODO: is this necessary? there seems to be a recursive loop with the above
 # function without these two interceptions, but I didn't need it before merging
@@ -25,43 +56,12 @@ plot!(plot::Text{<:Tuple{<:GlyphCollection}}) = plot
 plot!(plot::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}}) = plot
 
 function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
-    glyphcollections = Observable(GlyphCollection[])
-    rotation = Observable{Any}(nothing)
-
-    onany(plot[1], plot.textsize, plot.font, plot.align,
-            plot.rotation, plot.justification, plot.lineheight, plot.color,
-            plot.strokecolor, plot.strokewidth, plot.word_wrap_width) do str,
-                    ts, f, al, rot, jus, lh, col, scol, swi, wwws
-
-        ts = to_textsize(ts)
-        f = to_font(f)
-        rot = to_rotation(rot)
-        col = to_color(col)
-        scol = to_color(scol)
-
-        gcs = GlyphCollection[]
-        broadcast_foreach(str, ts, f, al, rot, jus, lh, col, scol, swi, wwws) do str,
-                ts, f, al, rot, jus, lh, col, scol, swi, www
-            subgl = layout_text(str, ts, f, al, rot, jus, lh, col, scol, swi, www)
-            push!(gcs, subgl)
-        end
-        rotation.val = rot
-        glyphcollections[] = gcs
-        return
-    end
-
-    # run onany once to initialize
-    notify(plot[1])
-
-    text!(plot, glyphcollections; position = plot.position, rotation = rotation,
-        model = plot.model, offset = plot.offset, markerspace = plot.markerspace,
-        visible=plot.visible, space = plot.space)
-
+    text!(plot, plot.position; text = plot[1], plot.attributes...)
     plot
 end
 
 # overload text plotting for a vector of tuples of a string and a point each
-function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:AbstractString, <:Point}}}})
+function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:AbstractString, <:Point}}}})    
     strings_and_positions = plot[1]
 
     strings = Observable(first.(strings_and_positions[]))
@@ -70,14 +70,14 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:AbstractString, <:Po
     attrs = plot.attributes
     pop!(attrs, :position)
 
-    t = text!(plot, strings; position = positions, attrs...)
+    text!(plot, positions; text = strings, attrs...)
 
     # update both text and positions together
     on(strings_and_positions) do str_pos
         strs = first.(str_pos)
         poss = to_ndim.(Ref(Point3f), last.(str_pos), 0)
 
-        t[1].val != strs && (t[1][] = strs)
+        strings.val != strs && (strings[] = strs)
         positions.val != poss && (positions[] = poss)
 
         return
@@ -86,108 +86,108 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:AbstractString, <:Po
 end
 
 
-function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXString}}}})
+# function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXString}}}})
+    
+#     # attach a function to any text that calculates the glyph layout and stores it
+#     lineels_glyphcollection_offset = lift(plot[1], plot.textsize, plot.align, plot.rotation,
+#             plot.model, plot.color, plot.strokecolor, plot.strokewidth, 
+#             plot.word_wrap_width) do latexstring, ts, al, rot, mo, color, scolor, swidth, www
 
-    # attach a function to any text that calculates the glyph layout and stores it
-    lineels_glyphcollection_offset = lift(plot[1], plot.textsize, plot.align, plot.rotation,
-            plot.model, plot.color, plot.strokecolor, plot.strokewidth,
-            plot.word_wrap_width) do latexstring, ts, al, rot, mo, color, scolor, swidth, www
+#         ts = to_textsize(ts)
+#         rot = to_rotation(rot)
 
-        ts = to_textsize(ts)
-        rot = to_rotation(rot)
+#         if latexstring isa AbstractVector
+#             tex_elements = []
+#             glyphcollections = GlyphCollection[]
+#             offsets = Point2f[]
+#             broadcast_foreach(latexstring, ts, al, rot, color, scolor, swidth, www) do latexstring,
+#                 ts, al, rot, color, scolor, swidth, _www
 
-        if latexstring isa AbstractVector
-            tex_elements = []
-            glyphcollections = GlyphCollection[]
-            offsets = Point2f[]
-            broadcast_foreach(latexstring, ts, al, rot, color, scolor, swidth, www) do latexstring,
-                ts, al, rot, color, scolor, swidth, _www
+#                 te, gc, offs = texelems_and_glyph_collection(latexstring, ts,
+#                     al[1], al[2], rot, color, scolor, swidth, www)
+#                 push!(tex_elements, te)
+#                 push!(glyphcollections, gc)
+#                 push!(offsets, offs)
+#             end
+#             return tex_elements, glyphcollections, offsets
+#         else
+#             tex_elements, glyphcollections, offsets = texelems_and_glyph_collection(latexstring, ts,
+#                 al[1], al[2], rot, color, scolor, swidth, www)
+#             return tex_elements, glyphcollections, offsets
+#         end
+#     end
 
-                te, gc, offs = texelems_and_glyph_collection(latexstring, ts,
-                    al[1], al[2], rot, color, scolor, swidth, www)
-                push!(tex_elements, te)
-                push!(glyphcollections, gc)
-                push!(offsets, offs)
-            end
-            return tex_elements, glyphcollections, offsets
-        else
-            tex_elements, glyphcollections, offsets = texelems_and_glyph_collection(latexstring, ts,
-                al[1], al[2], rot, color, scolor, swidth, www)
-            return tex_elements, glyphcollections, offsets
-        end
-    end
-
-    glyphcollection = @lift($lineels_glyphcollection_offset[2])
+#     glyphcollection = @lift($lineels_glyphcollection_offset[2])
 
 
-    linepairs = Observable(Tuple{Point2f, Point2f}[])
-    linewidths = Observable(Float32[])
+#     linepairs = Observable(Tuple{Point2f, Point2f}[])
+#     linewidths = Observable(Float32[])
 
-    scene = Makie.parent_scene(plot)
+#     scene = Makie.parent_scene(plot)
 
-    onany(lineels_glyphcollection_offset, plot.position, scene.camera.projectionview
-            ) do (allels, gcs, offs), pos, _
+#     onany(lineels_glyphcollection_offset, plot.position, scene.camera.projectionview
+#             ) do (allels, gcs, offs), pos, _
 
-        if pos isa Vector && (length(pos) != length(allels))
-            return
-        end
-        # inv_projview = inv(projview)
-        ts = plot.textsize[]
-        rot = plot.rotation[]
+#         if pos isa Vector && (length(pos) != length(allels))
+#             return
+#         end
+#         # inv_projview = inv(projview)
+#         ts = plot.textsize[]
+#         rot = plot.rotation[]
 
-        ts = to_textsize(ts)
-        rot = convert_attribute(rot, key"rotation"())
+#         ts = to_textsize(ts)
+#         rot = convert_attribute(rot, key"rotation"())
 
-        empty!(linepairs.val)
-        empty!(linewidths.val)
+#         empty!(linepairs.val)
+#         empty!(linewidths.val)
 
-        # for the vector case, allels is a vector of vectors
-        # so for broadcasting the single vector needs to be wrapped in Ref
-        if gcs isa GlyphCollection
-            allels = [allels]
-        end
-        broadcast_foreach(allels, offs, pos, ts, rot) do allels, offs, pos, ts, rot
-            offset = project(scene.camera, :data, :pixel, Point2f(pos))[Vec(1, 2)]
+#         # for the vector case, allels is a vector of vectors
+#         # so for broadcasting the single vector needs to be wrapped in Ref
+#         if gcs isa GlyphCollection
+#             allels = [allels]
+#         end
+#         broadcast_foreach(allels, offs, pos, ts, rot) do allels, offs, pos, ts, rot
+#             offset = project(scene.camera, :data, :pixel, Point2f(pos))[Vec(1, 2)]
 
-            els = map(allels) do el
-                el[1] isa VLine || el[1] isa HLine || return nothing
+#             els = map(allels) do el
+#                 el[1] isa VLine || el[1] isa HLine || return nothing
 
-                t = el[1].thickness * ts
-                p = el[2]
+#                 t = el[1].thickness * ts
+#                 p = el[2]
 
-                ps = if el[1] isa VLine
-                    h = el[1].height
-                    (Point2f(p[1], p[2]) .* ts, Point2f(p[1], p[2] + h) .* ts) .- Ref(offs)
-                else
-                    w = el[1].width
-                    (Point2f(p[1], p[2]) .* ts, Point2f(p[1] + w, p[2]) .* ts) .- Ref(offs)
-                end
-                ps = Ref(rot) .* to_ndim.(Point3f, ps, 0)
-                # TODO the points need to be projected to work inside Axis
-                # ps = project ps with projview somehow
+#                 ps = if el[1] isa VLine
+#                     h = el[1].height
+#                     (Point2f(p[1], p[2]) .* ts, Point2f(p[1], p[2] + h) .* ts) .- Ref(offs)
+#                 else
+#                     w = el[1].width
+#                     (Point2f(p[1], p[2]) .* ts, Point2f(p[1] + w, p[2]) .* ts) .- Ref(offs)
+#                 end
+#                 ps = Ref(rot) .* to_ndim.(Point3f, ps, 0)
+#                 # TODO the points need to be projected to work inside Axis
+#                 # ps = project ps with projview somehow
 
-                ps = Point2f.(ps) .+ Ref(offset)
-                ps, t
-            end
-            pairs = filter(!isnothing, els)
-            append!(linewidths.val, repeat(last.(pairs), inner = 2))
-            append!(linepairs.val, first.(pairs))
-        end
-        notify(linepairs)
-        return
-    end
+#                 ps = Point2f.(ps) .+ Ref(offset)
+#                 ps, t
+#             end
+#             pairs = filter(!isnothing, els)
+#             append!(linewidths.val, repeat(last.(pairs), inner = 2))
+#             append!(linepairs.val, first.(pairs))
+#         end
+#         notify(linepairs)
+#         return
+#     end
 
-    notify(plot.position)
+#     notify(plot.position)
 
-    text!(plot, glyphcollection; plot.attributes...)
-    linesegments!(
-        plot, linepairs, linewidth = linewidths, color = plot.color,
-        visible = plot.visible, inspectable = plot.inspectable,
-        transparent = plot.transparency, space = :pixel
-    )
+#     text!(plot, glyphcollection; plot.attributes...)
+#     linesegments!(
+#         plot, linepairs, linewidth = linewidths, color = plot.color,
+#         visible = plot.visible, inspectable = plot.inspectable, 
+#         transparent = plot.transparency, space = :pixel
+#     )
 
-    plot
-end
+#     plot
+# end
 
 function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, valign,
         rotation, color, strokecolor, strokewidth, word_wrap_width)

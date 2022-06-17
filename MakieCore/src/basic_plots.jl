@@ -264,12 +264,12 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
 end
 
 """
-    text(string)
+    text(positions)
 
 Plots a text.
 
 """
-@recipe(Text, text) do scene
+@recipe(Text, positions) do scene
     Attributes(;
         default_theme(scene)...,
         color = theme(scene, :textcolor),
