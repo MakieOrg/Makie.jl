@@ -22,7 +22,7 @@ f = Figure()
 Axis(f[1, 1], aspect = DataAspect(), backgroundcolor = :gray50)
 
 scatter!(Point2f(0, 0))
-text!("center", position = (0, 0), align = (:center, :center))
+text!(0, 0, text = "center", align = (:center, :center))
 
 circlepoints = [(cos(a), sin(a)) for a in LinRange(0, 2pi, 16)[1:end-1]]
 scatter!(circlepoints)
