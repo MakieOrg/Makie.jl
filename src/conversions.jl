@@ -84,6 +84,14 @@ end
 """
 Wrap a single point or equivalent object in a single-element array.
 """
+function convert_arguments(::PointBased, x::Real, y::Real)
+    ([Point2f(x, y)],)
+end
+
+function convert_arguments(::PointBased, x::Real, y::Real, z::Real)
+    ([Point3f(x, y, z)],)
+end
+
 function convert_arguments(::PointBased, position::VecTypes{N, <: Number}) where N
     ([convert(Point{N, Float32}, position)],)
 end

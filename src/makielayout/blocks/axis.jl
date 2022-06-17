@@ -428,8 +428,8 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     subtitlet = text!(
-        topscene, ax.subtitle,
-        position = subtitlepos,
+        topscene, subtitlepos,
+        text = ax.subtitle,
         visible = ax.subtitlevisible,
         textsize = ax.subtitlesize,
         align = titlealignnode,
@@ -443,8 +443,8 @@ function initialize_block!(ax::Axis; palette = nothing)
         ax.titlealign, ax.xaxisposition, xaxis.protrusion, ax.subtitlelineheight, ax, subtitlet; ignore_equal_values=true)
 
     titlet = text!(
-        topscene, ax.title,
-        position = titlepos,
+        topscene, titlepos,
+        text = ax.title,
         visible = ax.titlevisible,
         textsize = ax.titlesize,
         align = titlealignnode,

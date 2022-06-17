@@ -127,7 +127,7 @@ for (i, (marker, label)) in enumerate(markers_labels)
     p = Point2f(fldmod1(i, 6)...)
 
     scatter!(p, marker = marker, markersize = 20, color = :black)
-    text!(label, position = p, color = :gray70, offset = (0, 20),
+    text!(p, text = label, color = :gray70, offset = (0, 20),
         align = (:center, :bottom))
 end
 
