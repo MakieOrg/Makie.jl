@@ -256,7 +256,7 @@ end
             ),
         figure = (fontsize = 18,)
     )
-    text!(L"\int_{0}^{2π} \sin(x) dx", position = (500, 0))
+    text!(500, 0, text = L"\int_{0}^{2π} \sin(x) dx")
     Legend(f[1, 2], [l, l, l], [L"\sum{xy}", L"a\int_0^5x^2+2ab", L"||x-y||^2"])
     f
 end
