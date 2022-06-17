@@ -22,8 +22,11 @@ function plot!(plot::Text)
     notify(plot.text)
 
     attrs = copy(plot.attributes)
+    # remove attributes that are already in the glyphcollection
     pop!(attrs, :position)
     pop!(attrs, :text)
+    pop!(attrs, :align)
+    pop!(attrs, :color)
 
     text!(plot, glyphcollections; attrs..., position = positions)
 
