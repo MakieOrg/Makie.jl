@@ -90,23 +90,23 @@ function boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotat
 end
 
 function boundingbox(x::Text{<:Tuple{<:GlyphCollection}})
-    if x.space[] == :pixel
+    if x.space[] == x.markerspace[]
         pos = to_ndim(Point3f, x.position[], 0)
     else
         cam = parent_scene(x).camera
         transformed = apply_transform(x.transformation.transform_func[], x.position[])
-        pos = Makie.project(cam, x.space[], :pixel, transformed)
+        pos = Makie.project(cam, x.space[], x.markerspace[], transformed)
     end
     return boundingbox(x[1][], pos, to_rotation(x.rotation[]))
 end
 
 function boundingbox(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}})
-    if x.space[] == :pixel
+    if x.space[] == x.markerspace[]
         pos = to_ndim.(Point3f, x.position[], 0)
     else
         cam = (parent_scene(x).camera,)
         transformed = apply_transform(x.transformation.transform_func[], x.position[])
-        pos = Makie.project.(cam, x.space[], :pixel, transformed)
+        pos = Makie.project.(cam, x.space[], x.markerspace[], transformed)
     end
     return boundingbox(x[1][], pos, to_rotation(x.rotation[]))
 end
