@@ -739,7 +739,7 @@ function show_imagelike(inspector, plot, name, edge_based)
         a._display_text[] = color2text(name, mpos[1], mpos[2], z)
     else
         a._bbox2D[] = _pixelated_image_bbox(plot[1][], plot[2][], plot[3][], i, j, edge_based)
-        if inspector.selection != plot || !(inspector.temp_plots[1][1][] isa Rect2)
+        if inspector.selection != plot || isempty(inspector.temp_plots) || !(inspector.temp_plots[1][1][] isa Rect2)
             clear_temporary_plots!(inspector, plot)
             p = wireframe!(
                 scene, a._bbox2D, model = a._model, color = a.indicator_color,
