@@ -1,5 +1,9 @@
 # News
 
+## master
+
+- Improved `Menu` performance, now it should me much harder to reach the boundary of 255 scenes in GLMakie. `Menu` also takes a `default` keyword argument now and can be scrolled if there is too little space available.
+
 ## v0.17.6
 
 - **EXPERIMENTAL** Added support for multiple windows in GLMakie through `display(GLMakie.Screen(), figure_or_scene)` [#1771](https://github.com/JuliaPlots/Makie.jl/pull/1771).
