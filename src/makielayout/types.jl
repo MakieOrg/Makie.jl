@@ -859,7 +859,7 @@ end
         alignmode = Inside()
         "Index of selected item. Should not be set by the user."
         i_selected = 0
-        "Selected item value. This is the output observable that you should listen to to react to menu interaction. Can be set to one of the option labels when initizalizing the Menu to start with that value selected."
+        "Selected item value. This is the output observable that you should listen to to react to menu interaction. Should not be set by the user."
         selection = nothing
         "Is the menu showing the available options"
         is_open = false

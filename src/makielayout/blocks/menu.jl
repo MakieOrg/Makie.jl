@@ -10,20 +10,22 @@ function block_docs(::Type{Menu})
     where `string(label)` is used as the label, while for all other objects, label = `string(object)` and value = object.
 
     When an item is selected in the menu, the menu's `selection` attribute is set to
-    `optionvalue(selected_element)`.
+    `optionvalue(selected_element)`. When nothing is selected, that value is `nothing`.
+
+    You can set the initial selection by passing one of the labels with the `default` keyword.
 
     ## Constructors
 
     ```julia
-    Menu(fig_or_scene; kwargs...)
+    Menu(fig_or_scene; default = nothing, kwargs...)
     ```
 
     ## Examples
 
-    Menu with string entries:
+    Menu with string entries, second preselected:
 
     ```julia
-    menu1 = Menu(fig[1, 1], options = ["first", "second", "third"])
+    menu1 = Menu(fig[1, 1], options = ["first", "second", "third"], default = "second")
     ```
 
     Menu with two-element entries, label and function:
@@ -46,7 +48,7 @@ function block_docs(::Type{Menu})
 end
 
 
-function initialize_block!(m::Menu)
+function initialize_block!(m::Menu; default = nothing)
     blockscene = m.blockscene
 
     listheight = Observable(0.0)
@@ -264,18 +266,6 @@ function initialize_block!(m::Menu)
         inspectable = false)
     translate!(dropdown_arrow, 0, 0, 1)
 
-    # # trigger size without triggering selection
-    m.i_selected[] = if m.selection[] === nothing
-        0
-    else
-        i = findfirst(x -> x == m.selection[], optionstrings[])
-        if i === nothing
-            error("Initial menu selection was set to $(m.selection[]) but that was not found in the option names.")
-        end
-        i
-    end
-    m.is_open[] = m.is_open[]
-
     on(m.i_selected) do i
         if i == 0
             m.selection[] = nothing
@@ -293,6 +283,17 @@ function initialize_block!(m::Menu)
             end
         end
     end
+
+    m.i_selected[] = if default === nothing
+        0
+    else
+        i = findfirst(x -> x == default, optionstrings[])
+        if i === nothing
+            error("Initial menu selection was set to $(default) but that was not found in the option names.")
+        end
+        i
+    end
+    m.is_open[] = m.is_open[]
 
     # trigger bbox
     notify(m.layoutobservables.suggestedbbox)
