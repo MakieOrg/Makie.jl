@@ -105,7 +105,8 @@ You remember that we looked at making a `Figure` and an `Axis` first.
 The `lines` function first creates a `Figure`, then puts an `Axis` into it and finally adds plot of type `Lines` to that axis.
 
 Because these three objects are created at once, the function returns all three, just bundled up into one `FigureAxisPlot` object.
-That's just so we can overload the `display` behavior for that type to match `Figure`, which would be a bit weird to do with a `Tuple`, which would be the normal way in Julia to return multiple values from a function.
+That's just so we can overload the `display` behavior for that type to match `Figure`.
+Normally, multiple return values are returned as `Tuple`s in Julia but it's uncommon to overload `display` for `Tuple` types.
 
 If you need the objects, for example to add more things to the figure later and edit axis and plot attributes, you can destructure the return value:
 
