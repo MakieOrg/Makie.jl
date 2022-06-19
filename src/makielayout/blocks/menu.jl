@@ -53,18 +53,17 @@ function initialize_block!(m::Menu)
 
     # the direction is auto-chosen as up if there is too little space below and if the space below
     # is smaller than above
-    _direction = Observable{Symbol}(:down)
+    _direction = Observable{Symbol}()
     map!(_direction, m.layoutobservables.computedbbox, m.direction) do bb, dir
         if dir == Makie.automatic
             pxa = pixelarea(blockscene)[]
             bottomspace = abs(bottom(pxa) - bottom(bb))
             topspace = abs(top(pxa) - top(bb))
-            if _direction[] == :up && bottomspace > topspace + 10
+            # slight preference for down
+            if bottomspace >= listheight[] || bottomspace > topspace
                 return :down
-            elseif _direction[] == :down && topspace > bottomspace + 10
-                return :up
             else
-                return _direction[]
+                return :up
             end
         else
             return dir::Symbol
@@ -229,38 +228,28 @@ function initialize_block!(m::Menu)
     # alltexts = Label[]
     # mouseeventhandles = MouseEventHandle[]
 
-    # on(m.options) do options
-    #     # Make sure i_selected is on a valid index when the contentgrid updates
-    #     old_selection = m.selection[]
-    #     old_selected_text = selected_text[]
-    #     should_search = m.i_selected[] > 0
-    #     m.i_selected.val = 0
+    on(m.options) do options
+        # Make sure i_selected is on a valid index when the contentgrid updates
+        old_selection = m.selection[]
+        old_selected_text = selected_text[]
+        should_search = m.i_selected[] > 0
+        m.i_selected.val = 0
 
-    #     # update string ref before reassembly
-    #     optionstrings[] = optionlabel.(options)
+        new_i = 0 # default to nothing selected
+        # if there is a current selection, check if it still exists in the new options
+        if should_search
+            for (i, o) in enumerate(options)
+                # if one of the new options is equivalent to the old options, we choose it for continuity
+                if old_selection == optionvalue(o) && old_selected_text == optionlabel(o)
+                    new_i = i
+                    break
+                end
+            end
+        end
 
-    #     _reassemble_menu(
-    #         m, scene, selectionrect, selectiontext,
-    #         allrects, alltexts, mouseeventhandles,
-    #         contentgrid, optionstrings
-    #     )
-
-
-    #     new_i = 0 # default to nothing selected
-    #     # if there is a current selection, check if it still exists in the new options
-    #     if should_search
-    #         for (i, o) in enumerate(options)
-    #             # if one of the new options is equivalent to the old options, we choose it for continuity
-    #             if old_selection == optionvalue(o) && old_selected_text == optionlabel(o)
-    #                 new_i = i
-    #                 break
-    #             end
-    #         end
-    #     end
-
-    #     # trigger eventual selection actions
-    #     m.i_selected[] = new_i
-    # end
+        # trigger eventual selection actions
+        m.i_selected[] = new_i
+    end
 
     # # reassemble for the first time
     # _reassemble_menu(
@@ -270,13 +259,14 @@ function initialize_block!(m::Menu)
     # )
 
 
-    # dropdown_arrow = scatter!(menuscene,
-    #     lift(x -> [Point2f(width(x) - 20, (top(x) + bottom(x)) / 2)], selectionrect.layoutobservables.computedbbox),
-    #     marker = @lift($(m.is_open) ? '▴' : '▾'),
-    #     markersize = m.dropdown_arrow_size,
-    #     color = m.dropdown_arrow_color,
-    #     strokecolor = :transparent,
-    #     inspectable = false)
+    dropdown_arrow = scatter!(
+        blockscene,
+        @lift(mean(rightline($selectionarea)) - Point2f($(m.textpadding)[2], 0)),
+        marker = @lift($(m.is_open) ? '▴' : '▾'),
+        markersize = m.dropdown_arrow_size,
+        color = m.dropdown_arrow_color,
+        strokecolor = :transparent,
+        inspectable = false)
     # translate!(dropdown_arrow, 0, 0, 1)
 
 
