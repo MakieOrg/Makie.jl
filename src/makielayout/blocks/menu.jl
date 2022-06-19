@@ -148,12 +148,16 @@ function initialize_block!(m::Menu)
     optiontexts = text!(menuscene, textpositions, text = optionstrings, align = (:left, :center),
         textsize = m.textsize)
 
+    # the y boundaries of the list rectangles
+    list_y_bounds = Ref(Float32[])
+
     onany(optionstrings, m.textpadding, m.layoutobservables.computedbbox) do _, pad, bbox
         gcs = optiontexts.plots[1][1][]::Vector{GlyphCollection}
         bbs = map(x -> boundingbox(x, zero(Point3f), Quaternion(0, 0, 0, 0)), gcs)
         heights = map(bb -> height(bb) + pad[3] + pad[4], bbs)
         heights_cumsum = [zero(eltype(heights)); cumsum(heights)]
         h = sum(heights)
+        list_y_bounds[] = h .- heights_cumsum
         texts_y = @views h .- 0.5 .* (heights_cumsum[1:end-1] .+ heights_cumsum[2:end])
         textpositions[] = Point2f.(pad[1], texts_y)
         listheight[] = h
@@ -172,9 +176,16 @@ function initialize_block!(m::Menu)
     mouseevents = addmouseevents!(menuscene, optionpolys, optiontexts)
 
     function pick_entry(me)
-        obj, idx = pick(menuscene, me.px + menuscene.px_area[].origin)
-        i = div(idx - 1, 4) + 1
-        return i
+        # determine which rectangle in the list the mouse is in
+        # we do this geometrically and not by picking because it's hard to calculate the index
+        # of the text from the picking value returned
+        y = me.px[2]
+        # translation due to scrolling has to be removed first
+        ytrans = y - translation(menuscene)[][2]
+        i = argmin(
+            i -> abs(ytrans - 0.5 * (list_y_bounds[][i+1] + list_y_bounds[][i])),
+            1:length(list_y_bounds[])-1
+        )
     end
 
     onmouseover(mouseevents) do me
