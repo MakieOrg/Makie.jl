@@ -223,6 +223,7 @@ f, ax, l1 = lines(x, sin)
 lines!(x, cos)
 f
 ```
+\end{examplefigure}
 
 Note that you cannot pass `figure` and `axis` keywords to mutating plotting functions like `lines!` or `scatter!`.
 That's because they don't create an `Figure` and `Axis`, and we chose not to allow modification of the existing objects in plotting calls so it's clearer what is going on.
