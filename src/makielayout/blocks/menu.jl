@@ -141,14 +141,14 @@ function initialize_block!(m::Menu)
     end
 
     optionrects = Observable([Rect2f(0, 0, 0, 0)])
-    optionpolycolors = Observable(RGBAf[RGBA(0.5, 0.5, 0.5, 1)])
+    optionpolycolors = Observable(RGBAf[RGBAf(0.5, 0.5, 0.5, 1)])
+
+    # the y boundaries of the list rectangles
+    list_y_bounds = Ref(Float32[])
 
     optionpolys = poly!(menuscene, optionrects, color = optionpolycolors)
     optiontexts = text!(menuscene, textpositions, text = optionstrings, align = (:left, :center),
         textsize = m.textsize)
-
-    # the y boundaries of the list rectangles
-    list_y_bounds = Ref(Float32[])
 
     onany(optionstrings, m.textpadding, m.layoutobservables.computedbbox) do _, pad, bbox
         gcs = optiontexts.plots[1][1][]::Vector{GlyphCollection}
@@ -161,17 +161,22 @@ function initialize_block!(m::Menu)
         textpositions[] = Point2f.(pad[1], texts_y)
         listheight[] = h
         w_bbox = width(bbox)
-        optionpolycolors.val = map(eachindex(bbs)) do i
-            iseven(i) ? to_color(m.cell_color_inactive_even[]) : to_color(m.cell_color_inactive_odd[]) 
+        # need to manipulate the vectors themselves, otherwise update errors when lengths change
+        resize!(optionpolycolors.val, length(bbs))
+        resize!(optionrects.val, length(bbs))
+        optionpolycolors.val .= map(eachindex(bbs)) do i
+            i == m.i_selected[] ? m.cell_color_active[] :
+            iseven(i) ? to_color(m.cell_color_inactive_even[]) :
+                to_color(m.cell_color_inactive_odd[]) 
         end
-        optionrects.val = map(eachindex(bbs)) do i
+        optionrects.val .= map(eachindex(bbs)) do i
             BBox(0, w_bbox, h - heights_cumsum[i+1], h - heights_cumsum[i])
         end
-        notify(optionpolycolors)
+        
         notify(optionrects)
     end
     notify(optionstrings)
-    
+
     mouseevents = addmouseevents!(menuscene, optionpolys, optiontexts)
 
     function pick_entry(me)
@@ -190,6 +195,7 @@ function initialize_block!(m::Menu)
     onmouseover(mouseevents) do me
         i = pick_entry(me)
         optionpolycolors[] = map(eachindex(optionstrings[])) do j
+            j == m.i_selected[] ? m.cell_color_active[] :
             i == j ? m.cell_color_hover[] :
                 iseven(i) ? to_color(m.cell_color_inactive_even[]) :
                 to_color(m.cell_color_inactive_odd[]) 
@@ -198,6 +204,7 @@ function initialize_block!(m::Menu)
 
     onmouseout(mouseevents) do me
         optionpolycolors[] = map(eachindex(optionstrings[])) do i
+            i == m.i_selected[] ? m.cell_color_active[] :
             iseven(i) ? to_color(m.cell_color_inactive_even[]) :
                 to_color(m.cell_color_inactive_odd[]) 
         end
