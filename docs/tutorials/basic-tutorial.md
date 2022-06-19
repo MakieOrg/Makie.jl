@@ -185,7 +185,7 @@ lines([Point(0, 0), Point(5, 10), Point(10, 5)])
 \end{examplefigure}
 
 The input arguments you can use with `lines` and `scatter` are mostly the same because they have the same conversion trait `PointBased`.
-Other plotting functions have different conversion traits, \reflink{heatmap} for example expects two-dimensional grid data.
+Other plotting functions have different conversion traits, \myreflink{heatmap} for example expects two-dimensional grid data.
 The respective trait is called `DiscreteSurface`.
 
 ## Layering multiple plots
@@ -193,9 +193,9 @@ The respective trait is called `DiscreteSurface`.
 Every plotting function has a version with and one without `!` at the end.
 For example, there's `scatter` and `scatter!`, `lines` and `lines!`, etc.
 
-The functions without a `!` always create a new axis with a plot inside.
+The functions without a `!` like `lines` and `scatter` always create a new axis with a plot inside.
 
-The functions with `!` mutate (plot into) an already existing axis.
+The functions with `!` like `lines!` and `scatter!` mutate (plot into) an already existing axis.
 Having functions ending with `!` that mutate one of their arguments is a common Julia convention.
 
 To plot two things into the same axis, you can use the mutating plotting functions.
@@ -213,6 +213,16 @@ f
 
 The second `lines!` call plots into the axis created by the first `lines` call.
 It's colored differently because the `Axis` keeps track of what has been plotted into it and cycles colors for similar plotting functions.
+
+You can also leave out the axis argument for convenience, then the axis being used is the `current_axis()`.
+\begin{examplefigure}{svg = true}
+```julia
+x = range(0, 10, length=100)
+
+f, ax, l1 = lines(x, sin)
+lines!(x, cos)
+f
+```
 
 Note that you cannot pass `figure` and `axis` keywords to mutating plotting functions like `lines!` or `scatter!`.
 That's because they don't create an `Figure` and `Axis`, and we chose not to allow modification of the existing objects in plotting calls so it's clearer what is going on.
@@ -246,7 +256,7 @@ f
 Other plotting functions have different attributes.
 The function `scatter`, for example, does not only have the `color` attribute, but also a `markersize` attribute.
 
-You can read about all possible attributes by running `?scatter` in the REPL, and examples are shown on the page \reflink{scatter}.
+You can read about all possible attributes by running `?scatter` in the REPL, and examples are shown on the page \myreflink{scatter}.
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -330,7 +340,7 @@ scatter(x, sin, color = colors, markersize = 20)
 
 ## Simple legend
 
-If you add label attributes to your plots, you can call the `axislegend` function to add a legend with all labeled plots to the current axis.
+If you add label attributes to your plots, you can call the `axislegend` function to add a legend with all labeled plots to the current axis, or optionally to one you pass as the first argument.
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -464,7 +474,7 @@ fig
 
 We've only looked at a small subset of Makie's functionality here.
 
-You can read about the different available plotting functions with examples in the Plotting Functions section.
+You can read about the different available plotting functions with examples in the \myreflink{Plotting Functions} section.
 
 If you want to learn about making complex figures with nested sublayouts, have a look at the \myreflink{Layout Tutorial} section.
 
