@@ -334,11 +334,9 @@ If you add label attributes to your plots, you can call the `axislegend` functio
 using CairoMakie
 
 x = range(0, 10, length=100)
-y1 = sin.(x)
-y2 = cos.(x)
 
-lines(x, y1, color = :red, label = "sin")
-lines!(x, y2, color = :blue, label = "cos")
+lines(x, sin, color = :red, label = "sin")
+lines!(x, cos, color = :blue, label = "cos")
 axislegend()
 current_figure()
 ```
@@ -347,10 +345,8 @@ current_figure()
 ## Subplots
 
 Makie uses a powerful layout system under the hood, which allows you to create very complex figures with many subplots.
-For the easiest way to do this, we need a [Figure](\reflink{Figures}) object.
-So far, we haven't seen this explicitly, it was created in the background in the first plotting function call.
+So far, we have only used the default position [1, 1], where the Axis is created in a standard plotting call.
 
-We can also create a [Figure](\reflink{Figures}) directly and then continue working with it.
 We can make subplots by giving the location of the subplot in our layout grid as the first argument to our plotting function.
 The basic syntax for specifying the location in a figure is `fig[row, col]`.
 
@@ -373,13 +369,7 @@ fig
 
 Each `lines` call creates a new axis in the position given as the first argument, that's why we use `lines` and not `lines!` here.
 
-## Constructing axes manually
-
-Like [Figure](\reflink{Figures})s, we can also create axes manually.
-This is useful if we want to prepare an empty axis to then plot into it later.
-
-The default 2D axis that we have created implicitly so far is called \myreflink{Axis} and can also be created in a specific position in the figure by passing that position as the first argument.
-
+We can also create a couple of axes manually at first and then plot into them later.
 For example, we can create a figure with three axes.
 
 \begin{examplefigure}{svg = true}
@@ -403,24 +393,6 @@ And then we can continue to plot into these empty axes.
 lines!(ax1, 0..10, sin)
 lines!(ax2, 0..10, cos)
 lines!(ax3, 0..10, sqrt)
-fig
-```
-\end{examplefigure}
-
-Note, the notation `0..10` above creates a closed interval from `0` to `10` (see [`IntervalSets.jl`](https://github.com/JuliaMath/IntervalSets.jl) for further details).
-
-Axes also have many attributes that you can set, for example to give them a title, or labels.
-
-\begin{examplefigure}{svg = true}
-```julia
-
-ax1.title = "sin"
-ax2.title = "cos"
-ax3.title = "sqrt"
-
-ax1.ylabel = "amplitude"
-ax3.ylabel = "amplitude"
-ax3.xlabel = "time"
 fig
 ```
 \end{examplefigure}
@@ -483,27 +455,6 @@ Colorbar(fig[1, 2], hm)
 fig
 ```
 \end{examplefigure}
-
-## Passing attributes to Figure and Axis
-
-For one-off plots, it can be convenient to set axis or figure settings directly with the plotting command.
-You can do this using the plotting functions without the `!` suffix, like `lines` or `scatter`, because these always create a new axis and also create a new figure if they are not plotting onto an existing one. This is explained further under \myreflink{Plot Method Signatures}.
-
-You can pass axis attributes under the keyword `axis` and figure attributes under the keyword `figure`.
-
-\begin{examplefigure}{svg = true}
-```julia
-
-using CairoMakie
-
-heatmap(randn(20, 20),
-    figure = (backgroundcolor = :pink,),
-    axis = (aspect = 1, xlabel = "x axis", ylabel = "y axis")
-)
-```
-\end{examplefigure}
-
-If you set only one attribute, be careful to do `axis = (key = value,)` (note the trailing comma), otherwise you're not creating a `NamedTuple` but a local variable `key`.
 
 ## Next steps
 
