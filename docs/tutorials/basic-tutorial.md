@@ -73,6 +73,7 @@ The default axis has no title or labels, you can pass those as keyword arguments
 For a whole list of available attributes, check the docstring for \apilink{Axis} (you can also do that by running `?Axis` in the REPL).
 Be warned, it's very long!
 
+\begin{examplefigure}{svg = true}
 ```julia
 f = Figure()
 ax = Axis(f[1, 1],
@@ -82,6 +83,7 @@ ax = Axis(f[1, 1],
 )
 f
 ```
+\end{examplefigure}
 
 Now we're ready to actually plot something!
 
