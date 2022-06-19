@@ -231,10 +231,6 @@ function initialize_block!(m::Menu)
         translate!(menuscene, t[1], new_y, t[3])
     end
 
-    # allrects = Box[]
-    # alltexts = Label[]
-    # mouseeventhandles = MouseEventHandle[]
-
     on(m.options) do options
         # Make sure i_selected is on a valid index when the contentgrid updates
         old_selection = m.selection[]
@@ -258,14 +254,6 @@ function initialize_block!(m::Menu)
         m.i_selected[] = new_i
     end
 
-    # # reassemble for the first time
-    # _reassemble_menu(
-    #     m, scene, selectionrect, selectiontext,
-    #     allrects, alltexts, mouseeventhandles,
-    #     contentgrid, optionstrings
-    # )
-
-
     dropdown_arrow = scatter!(
         blockscene,
         @lift(mean(rightline($selectionarea)) - Point2f($(m.textpadding)[2], 0)),
@@ -274,30 +262,18 @@ function initialize_block!(m::Menu)
         color = m.dropdown_arrow_color,
         strokecolor = :transparent,
         inspectable = false)
-    # translate!(dropdown_arrow, 0, 0, 1)
-
-
-    # onany(m.i_selected, m.is_open, contentgrid.layoutobservables.autosize) do i, open, gridautosize
-
-    #     h = if i == 0
-    #         selectiontext.layoutobservables.autosize[][2]
-    #     else
-    #         alltexts[i+1].layoutobservables.autosize[][2]
-    #     end
-    #     m.layoutobservables.autosize[] = (nothing, h)
-    #     autosize = m.layoutobservables.autosize[]
-
-    #     (isnothing(gridautosize[2]) || isnothing(autosize[2])) && return
-
-    #     if open
-    #         sceneheight[] = gridautosize[2]
-    #     else
-    #         sceneheight[] = alltexts[2].layoutobservables.autosize[][2]
-    #     end
-    # end
+    translate!(dropdown_arrow, 0, 0, 1)
 
     # # trigger size without triggering selection
-    m.i_selected[] = m.i_selected[]
+    m.i_selected[] = if m.selection[] === nothing
+        0
+    else
+        i = findfirst(x -> x == m.selection[], optionstrings[])
+        if i === nothing
+            error("Initial menu selection was set to $(m.selection[]) but that was not found in the option names.")
+        end
+        i
+    end
     m.is_open[] = m.is_open[]
 
     on(m.i_selected) do i
@@ -318,9 +294,8 @@ function initialize_block!(m::Menu)
         end
     end
 
-    # # trigger bbox
-    # notify(m.layoutobservables.suggestedbbox)
-    # # notify(direction)
+    # trigger bbox
+    notify(m.layoutobservables.suggestedbbox)
 
     return
 end

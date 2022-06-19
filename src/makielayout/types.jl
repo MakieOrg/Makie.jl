@@ -857,9 +857,9 @@ end
         valign = :center
         "The alignment of the menu in its suggested bounding box."
         alignmode = Inside()
-        "Index of selected item"
+        "Index of selected item. Should not be set by the user."
         i_selected = 0
-        "Selected item value"
+        "Selected item value. This is the output observable that you should listen to to react to menu interaction. Can be set to one of the option labels when initizalizing the Menu to start with that value selected."
         selection = nothing
         "Is the menu showing the available options"
         is_open = false
