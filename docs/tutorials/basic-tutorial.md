@@ -184,8 +184,11 @@ lines([Point(0, 0), Point(5, 10), Point(10, 5)])
 ```
 \end{examplefigure}
 
+The input arguments you can use with `lines` and `scatter` are mostly the same because they have the same conversion trait `PointBased`.
+Other plotting functions have different conversion traits, \reflink{heatmap} for example expects two-dimensional grid data.
+The respective trait is called `DiscreteSurface`.
 
-## Multiple plots
+## Layering multiple plots
 
 Every plotting function has a version with and one without `!` at the end.
 For example, there's `scatter` and `scatter!`, `lines` and `lines!`, etc.
