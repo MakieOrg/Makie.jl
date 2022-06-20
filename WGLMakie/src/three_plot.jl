@@ -7,7 +7,7 @@ JSServe.session(td::ThreeDisplay) = td.session
 # We use objectid to find objects on the js side
 js_uuid(object) = string(objectid(object))
 
-function Base.insert!(td::ThreeDisplay, scene::Scene, @nospecialize(plot::Combined))
+function Base.insert!(td::ThreeDisplay, scene::Scene, plot::Combined)
     plot_data = serialize_plots(scene, [plot])
     WGL.insert_plot(td.session, js_uuid(scene), plot_data)
     return

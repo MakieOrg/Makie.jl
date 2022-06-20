@@ -2,8 +2,6 @@ using ShaderAbstractions: InstancedProgram, Program
 using Makie: Key, plotkey
 using Colors: N0f8
 
-Makie.plotkey(::Nothing) = :scatter
-
 function lift_convert(key, value, plot)
     val = lift(value) do value
         return wgl_convert(value, Key{key}(), Key{plotkey(plot)}())

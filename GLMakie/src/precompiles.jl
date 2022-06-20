@@ -4,7 +4,6 @@ function _precompile_()
 
     activate!()
     precompile(refreshwindowcb, (GLFW.Window, Screen))
-    p = plot(rand(10))
     # Mimic `display(p)` without actually creating a display
     function insertplotstype(scene)
         for elem in scene.plots
@@ -25,10 +24,11 @@ function _precompile_()
             precompile(insert!, (Screen, typeof(scene), typeof(x)))
         end
     end
-    scene = p.figure.scene
-    insertplotstype(scene)
-    screen = Screen(; visible=false)
     fig, ax1, pl = scatter(1:4;color=:green, visible=true, markersize=15)
+    insertplotstype(f.scene)
+    insertplotstype(ax1.scene)
+    insertplotstype(ax1.blockscene)
+    screen = Screen(; visible=false)
     Makie.backend_display(screen, fig.scene)
     Makie.colorbuffer(screen)
     f, ax2, pl = lines(1:4)
