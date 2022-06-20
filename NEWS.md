@@ -1,5 +1,9 @@
 # News
 
+## master
+
+- Allow `scatter` to render image markers to PDF [#2080](https://github.com/JuliaPlots/Makie.jl/pull/2080).
+
 ## v0.17.7
 
 - Improved `Menu` performance, now it should me much harder to reach the boundary of 255 scenes in GLMakie. `Menu` also takes a `default` keyword argument now and can be scrolled if there is too little space available.
