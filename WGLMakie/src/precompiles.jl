@@ -38,7 +38,7 @@ function _precompile_()
     insertplotstype(ax1.scene)
     insertplotstype(ax1.blockscene)
     three_display(screen.session, fig.scene);
-    Makie.insert_plot!(fig.scene, pl)
+    push!(fig.scene, pl)
     serialize_scene(fig.scene)
     Makie.MakieCore.plot!(fig.scene, Scatter, Attributes(color=:green, visible=true, markersize=15), 1:4)
     @assert precompile(insert!, (WGLMakie.ThreeDisplay, Scene, Scatter{Tuple{Vector{Point{2, Float32}}}}))
