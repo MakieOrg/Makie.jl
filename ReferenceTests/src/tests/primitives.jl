@@ -80,6 +80,28 @@ end
 end
 
 
+@reference_test "scatter image markers" begin
+    s = Scene(resolution = (700, 400), camera = campixel!)
+
+    rotations = range(0, 2pi, length = 6)
+    pixel_types = [ RGBA, RGBA{Float16}, ARGB, ARGB{Float16}, RGB, RGB{Float16} ]
+    filename = normpath(joinpath(@__DIR__, "..", "..", "..", "assets", "icon_transparent.png"))
+    marker_image = FileIO.load(filename)
+
+    for (i, (rot, pxtype)) in enumerate(zip(rotations, pixel_types))
+        marker = convert.(pxtype, marker_image)
+        p = Point2f((i-1) * 100 + 100, 200)
+        scatter!(s,
+            p,
+            marker = marker,
+            markersize = 100,
+            rotations = rot,
+        )
+    end
+    s
+end
+
+
 @reference_test "basic polygon shapes" begin
     s = Scene(resolution = (800, 800), camera = campixel!)
     scalefactor = 70
