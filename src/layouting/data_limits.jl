@@ -56,7 +56,7 @@ function point_iterator(text::Text)
     return point_iterator(text.plots[1])
 end
 
-point_iterator(mesh::GeometryBasics.Mesh) = decompose(Point, mesh)
+point_iterator(mesh::GeometryBasics.AbstractMesh) = decompose(Point, mesh)
 
 function point_iterator(list::AbstractVector)
     Iterators.flatten((point_iterator(elem) for elem in list))

@@ -163,36 +163,36 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
 
     attributes[:colormap] = get(plot, :colormap, nothing)
     attributes[:colorrange] = get(plot, :colorrange, nothing)
+    # needs to happen manually, since we convert patterns to matrix of colors early in recipe
+    attributes[:fetch_pixel] = map(plot.color) do color
+        color isa AbstractPattern
+    end
 
-    bigmesh = if color_node[] isa AbstractVector && length(color_node[]) == length(meshes[])
-        # One color per mesh
-        lift(meshes, color_node, attributes.colormap, attributes.colorrange) do meshes, colors, cmap, crange
-            # Color are reals, so we need to transform it to colors first
-            single_colors = if colors isa AbstractVector{<:Number}
-                interpolated_getindex.((to_colormap(cmap),), colors, (crange,))
-            else
-                to_color.(colors)
+    num_meshes = lift(meshes; ignore_equal_values=true) do meshes
+        return length.(coordinates.(meshes))
+    end
+    mesh_colors = Observable{Union{Matrix{RGBAf}, RGBColors}}()
+    map!(mesh_colors, plot.color, num_meshes) do colors, num_meshes
+        # one mesh per color
+        c_converted = to_color(colors)
+        if c_converted isa AbstractVector && length(c_converted) == length(num_meshes)
+            result = similar(c_converted, sum(num_meshes))
+            i = 1
+            for (cs, len) in zip(c_converted, num_meshes)
+                for j in 1:len
+                    result[i] = cs
+                    i += 1
+                end
             end
-            real_colors = RGBAf[]
-            # Map one single color per mesh to each vertex
-            for (mesh, color) in zip(meshes, single_colors)
-                append!(real_colors, Iterators.repeated(RGBAf(color), length(coordinates(mesh))))
-            end
-            # real_colors[] = real_colors[]
-            if P <: AbstractPolygon
-                meshes = triangle_mesh.(meshes)
-            end
-            return pointmeta(merge(meshes), color=real_colors)
-        end
-    else
-        attributes[:color] = color_node
-        lift(meshes) do meshes
-            if isempty(meshes)
-                return GeometryBasics.Mesh(Point2f[], GLTriangleFace[])
-            else
-                return merge(GeometryBasics.mesh.(meshes))
-            end
+            return result
+        else
+            return c_converted
         end
     end
-    mesh!(plot, attributes, bigmesh)
+    attributes[:color] = mesh_colors
+    m = lift(meshes) do meshes
+        return merge(GeometryBasics.mesh.(meshes))
+    end
+    mesh!(plot, attributes, m)
+    return
 end

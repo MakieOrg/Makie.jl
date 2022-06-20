@@ -48,7 +48,7 @@ jobs:
           using Pkg;
           # dev mono repo versions
           pkg"dev . ./MakieCore ./CairoMakie ./ReferenceTests"
-          pkg"add GeometryBasics#sd/simple-mesh"
+          pkg"add GeometryBasics#sd/simple-mesh MeshIO#sd/lightweight-geometry"
       - name: Run the tests
         continue-on-error: true
         run: >
