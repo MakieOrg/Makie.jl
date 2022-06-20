@@ -126,8 +126,8 @@ function Makie.colorbuffer(screen::WebDisplay)
     return session2image(get_three(screen))
 end
 
-# function Base.insert!(td::WebDisplay, scene::Scene, plot::Combined)
-#     disp = get_three(td)
-#     disp === nothing && error("Plot needs to be displayed to insert additional plots")
-#     insert!(disp, scene, plot)
-# end
+function Base.insert!(td::WebDisplay, scene::Scene, plot::Combined)
+    disp = get_three(td)
+    disp === nothing && error("Plot needs to be displayed to insert additional plots")
+    insert!(disp, scene, plot)
+end

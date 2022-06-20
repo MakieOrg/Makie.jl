@@ -25,7 +25,7 @@ function _precompile_()
         end
     end
     fig, ax1, pl = scatter(1:4;color=:green, visible=true, markersize=15)
-    insertplotstype(f.scene)
+    insertplotstype(fig.scene)
     insertplotstype(ax1.scene)
     insertplotstype(ax1.blockscene)
     screen = Screen(; visible=false)
