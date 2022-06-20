@@ -19,6 +19,7 @@ convert_arguments(::NoConversion, args...) = args
 
 struct PointBased <: ConversionTrait end
 conversion_trait(::Type{<: XYBased}) = PointBased()
+conversion_trait(::Type{<: Text}) = PointBased()
 
 abstract type SurfaceLike <: ConversionTrait end
 

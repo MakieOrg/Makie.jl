@@ -430,7 +430,7 @@ end
 @reference_test "Scatter & Text transformations" begin
     # Check that transformations apply in `space = :data`
     fig, ax, p = scatter(Point2f(100, 0.5), marker = 'a', markersize=50)
-    t = text!("Test", position = Point2f(100, 0.5), textsize = 50)
+    t = text!(Point2f(100, 0.5), text = "Test", textsize = 50)
     translate!(p, -100, 0, 0)
     translate!(t, -100, 0, 0)
 
@@ -440,7 +440,7 @@ end
     scale!(p2, 0.5, 0.5, 1)
 
     # but do act on glyphs of text
-    t2 = text!(ax, "Test", position = Point2f(1, 0), textsize = 50)
+    t2 = text!(ax, 1, 0, text = "Test", textsize = 50)
     Makie.rotate!(t2, pi/4)
     scale!(t2, 0.5, 0.5, 1)
 

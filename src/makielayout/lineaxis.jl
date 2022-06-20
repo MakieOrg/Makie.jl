@@ -365,8 +365,8 @@ function LineAxis(parent::Scene, attrs::Attributes)
     end
 
     labeltext = text!(
-        parent, label, textsize = labelsize, color = labelcolor,
-        position = labelpos, visible = labelvisible,
+        parent, labelpos, text = label, textsize = labelsize, color = labelcolor,
+        visible = labelvisible,
         align = labelalign, rotation = labelrotation, font = labelfont,
         markerspace = :data, inspectable = false
     )
@@ -480,6 +480,7 @@ function tight_ticklabel_spacing!(la::LineAxis)
             tls.visible[] ? width(Rect2f(boundingbox(tls))) : 0f0
     end
     la.attributes.ticklabelspace = maxwidth
+    return Float64(maxwidth)
 end
 
 

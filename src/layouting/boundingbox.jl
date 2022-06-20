@@ -45,6 +45,8 @@ function height_insensitive_boundingbox_with_advance(ext::GlyphExtent)
     return Rect2f((l, b), (r - l, h - b))
 end
 
+_inkboundingbox(ext::GlyphExtent) = ext.ink_bounding_box
+
 function boundingbox(glyphcollection::GlyphCollection, position::Point3f, rotation::Quaternion)
 
     if isempty(glyphcollection.glyphs)
@@ -89,7 +91,7 @@ function boundingbox(x::Text{<:Tuple{<:GlyphCollection}})
     boundingbox(
         x[1][],
         to_ndim(Point3f, x.position[], 0),
-        to_rotation(x.rotation[])
+        to_rotation(x.rotation[]);
     )
 end
 
@@ -97,9 +99,13 @@ function boundingbox(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}})
     boundingbox(
         x[1][],
         to_ndim.(Point3f, x.position[], 0),
-        to_rotation(x.rotation[])
+        to_rotation(x.rotation[]);
     )
 end
+
+_is_latex_string(x::AbstractVector{<:LaTeXString}) = true 
+_is_latex_string(x::LaTeXString) = true 
+_is_latex_string(other) = false 
 
 function text_bb(str, font, size)
     rot = Quaternionf(0,0,0,1)

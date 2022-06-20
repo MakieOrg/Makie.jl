@@ -73,7 +73,7 @@ function initialize_block!(tbox::Textbox)
 
         textplot = t.blockscene.plots[1]
         charbbs(textplot)
-        glyphcollection = textplot.plots[1][1][]::Makie.GlyphCollection
+        glyphcollection = textplot.plots[1][1][][]::Makie.GlyphCollection
 
         hadvances = Float32[]
         broadcast_foreach(glyphcollection.extents, glyphcollection.scales) do ex, sc
@@ -248,7 +248,7 @@ end
 
 
 function charbbs(text)
-    gc = text.plots[1][1][]
+    gc = text.plots[1][1][][]
     if !(gc isa Makie.GlyphCollection)
         error("Expected a single GlyphCollection from the textbox string, got a $(typeof(gc)).")
     end
