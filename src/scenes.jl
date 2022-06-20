@@ -402,16 +402,12 @@ end
 
 Base.push!(scene::Combined, subscene) = nothing # Combined plots add themselves uppon creation
 
-@noinline function insert_plot!(scene, plot)
-    for screen in scene.current_screens
-        insert!(screen, scene, plot)
-    end
-end
-
 function Base.push!(scene::Scene, plot::AbstractPlot)
     push!(scene.plots, plot)
     plot isa Combined || (plot.parent[] = scene)
-    insert_plot!(scene, plot)
+    for screen in scene.current_screens
+        insert!(screen, scene, plot)
+    end
 end
 
 function Base.delete!(screen::AbstractScreen, ::Scene, ::AbstractPlot)
