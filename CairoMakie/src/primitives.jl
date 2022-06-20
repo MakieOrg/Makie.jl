@@ -204,10 +204,13 @@ end
 # an array of markers is converted to string by itself, which is inconvenient for the iteration logic
 _marker_convert(markers::AbstractArray) = map(m -> convert_attribute(m, key"marker"(), key"scatter"()), markers)
 _marker_convert(marker) = convert_attribute(marker, key"marker"(), key"scatter"())
+# image arrays need to be converted as a whole
+_marker_convert(marker::AbstractArray{<:Colorant}) = convert_attribute(marker, key"marker"(), key"scatter"())
 
 function draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker, marker_offset, rotations, model, positions, size_model, font, markerspace, space)
     broadcast_foreach(positions, colors, markersize, strokecolor,
-        strokewidth, marker, marker_offset, remove_billboard(rotations)) do point, col,
+            strokewidth, marker isa AbstractArray{<:Colorant} ? [marker] : marker,
+            marker_offset, remove_billboard(rotations)) do point, col,
             markersize, strokecolor, strokewidth, m, mo, rotation
 
         scale = project_scale(scene, markerspace, markersize, size_model)
