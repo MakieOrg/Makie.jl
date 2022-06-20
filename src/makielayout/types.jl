@@ -471,6 +471,7 @@ function RectangleZoom(ax::Axis; kw...)
 end
 
 @Block Colorbar begin
+    axis::LineAxis
     @attributes begin
         "The color bar label string."
         label = ""
@@ -856,9 +857,9 @@ end
         valign = :center
         "The alignment of the menu in its suggested bounding box."
         alignmode = Inside()
-        "Index of selected item"
+        "Index of selected item. Should not be set by the user."
         i_selected = 0
-        "Selected item value"
+        "Selected item value. This is the output observable that you should listen to to react to menu interaction. Should not be set by the user."
         selection = nothing
         "Is the menu showing the available options"
         is_open = false
@@ -875,7 +876,7 @@ end
         "Color of the dropdown arrow"
         dropdown_arrow_color = (:black, 0.2)
         "Size of the dropdown arrow"
-        dropdown_arrow_size = 12px
+        dropdown_arrow_size = 20
         "The list of options selectable in the menu. This can be any iterable of a mixture of strings and containers with one string and one other value. If an entry is just a string, that string is both label and selection. If an entry is a container with one string and one other value, the string is the label and the other value is the selection."
         options = ["no options"]
         "Font size of the cell texts"
