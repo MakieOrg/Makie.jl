@@ -54,7 +54,7 @@ begin
 
     function get_cache_path()
         return abspath(
-            first(Base.DEPOT_PATH), "makie", 
+            first(Base.DEPOT_PATH), "makie",
             "texture_atlas_$(CACHE_RESOLUTION_PREFIX[])_$(VERSION).jls"
         )
     end
@@ -197,17 +197,17 @@ end
 
 function insert_glyph!(atlas::TextureAtlas, glyph::Char, font::NativeFont)
     return get!(atlas.mapping, (glyph, FreeTypeAbstraction.fontname(font))) do
-        # We save glyphs as signed distance fields, i.e. we save the distance 
+        # We save glyphs as signed distance fields, i.e. we save the distance
         # a pixel is away from the edge of a symbol (continuous at the edge).
-        # To get accurate distances we want to draw the symbol at high 
+        # To get accurate distances we want to draw the symbol at high
         # resolution and then downsample to the PIXELSIZE_IN_ATLAS.
-        downsample = 5 
+        downsample = 5
         # To draw a symbol from a sdf we essentially do `color * (sdf > 0)`. For
-        # antialiasing we smooth out the step function `sdf > 0`. That means we 
-        # need a few values outside the symbol. To guarantee that we have those 
+        # antialiasing we smooth out the step function `sdf > 0`. That means we
+        # need a few values outside the symbol. To guarantee that we have those
         # at all relevant scales we add padding to the rendered bitmap and the
         # resulting sdf.
-        pad = GLYPH_PADDING[] 
+        pad = GLYPH_PADDING[]
 
         uv_pixel = render(atlas, glyph, font, downsample, pad)
         tex_size = Vec2f(size(atlas.data) .- 1) # starts at 1
@@ -215,7 +215,7 @@ function insert_glyph!(atlas::TextureAtlas, glyph::Char, font::NativeFont)
         # 0 based
         idx_left_bottom = minimum(uv_pixel)
         idx_right_top = maximum(uv_pixel)
-        
+
         # transform to normalized texture coordinates
         # -1 for indexing offset
         uv_left_bottom_pad = (idx_left_bottom) ./ tex_size
