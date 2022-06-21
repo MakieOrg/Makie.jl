@@ -38,7 +38,8 @@ excludes = Set([
     "fast pixel marker",
     "Animated surface and wireframe",
     "Array of Images Scatter",
-    "Image Scatter different sizes"
+    "Image Scatter different sizes",
+    "scatter image markers"
 ])
 
 @testset "refimages" begin
