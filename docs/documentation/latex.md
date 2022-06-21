@@ -47,35 +47,3 @@ Axis(f[1,1], title=L"Some %$(t) and some math: $\frac{2\alpha+1}{y}$")
 f
 ```
 \end{examplefigure}
-
-
-## Caveats
-
-You can currently not change a text object which has been instantiated with a normal `String` input to use a `LaTeXString`. If you do this, the `LaTeXString` is converted to a `String` implicitly, losing its special properties. Instead it appears with `$` signs wrapped around.
-
-Notice how the second axis loses its LaTeX title. You have to pass the L-string at axis construction.
-
-\begin{examplefigure}{svg = true}
-```julia
-using CairoMakie
-CairoMakie.activate!() # hide
-
-f = Figure(fontsize = 18)
-
-Axis(f[1, 1], title = L"\frac{x + y}{\sin(k^2)}")
-ax2 = Axis(f[1, 2])
-ax2.title = L"\frac{x + y}{\sin(k^2)}"
-
-f
-```
-\end{examplefigure}
-
-
-For implicitly created axes, you can do this via the `axis` keyword argument.
-
-
-\begin{examplefigure}{svg = true}
-```julia
-scatter(randn(50, 2), axis = (; title = L"\frac{x + y}{\sin(k^2)}"))
-```
-\end{examplefigure}

@@ -370,10 +370,18 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
     strokewidths = glyph_collection.strokewidths
     strokecolors = glyph_collection.strokecolors
 
-    s2ms = Makie.clip_to_space(scene.camera, markerspace) * Makie.space_to_clip(scene.camera, space)
     model = _deref(_model)
     model33 = model[Vec(1, 2, 3), Vec(1, 2, 3)]
     id = Mat4f(I)
+
+    glyph_pos = let
+        transform_func = scene.transformation.transform_func[]
+        p = Makie.apply_transform(transform_func, position)
+
+        Makie.clip_to_space(scene.camera, markerspace) * 
+        Makie.space_to_clip(scene.camera, space) * 
+        model * to_ndim(Point4f, to_ndim(Point3f, p, 0), 1)
+    end
 
     Cairo.save(ctx)
 
@@ -391,7 +399,6 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
         Cairo.set_source_rgba(ctx, rgbatuple(color)...)
 
         # offsets and scale apply in markerspace
-        glyph_pos = s2ms * model * to_ndim(Point4f, to_ndim(Point3f, position, 0), 1)
         gp3 = glyph_pos[Vec(1, 2, 3)] ./ glyph_pos[4] .+ model33 * (glyphoffset .+ p3_offset)
 
         scale3 = scale isa Number ? Point3f(scale, scale, 0) : to_ndim(Point3f, scale, 0)
@@ -404,9 +411,9 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
         xvec = rotation * (scale3[1] * Point3f(1, 0, 0))
         yvec = rotation * (scale3[2] * Point3f(0, -1, 0))
 
-        glyphpos = project_position(scene, markerspace, gp3, id)
-        xproj = project_position(scene, markerspace, gp3 + model33 * xvec, id)
-        yproj = project_position(scene, markerspace, gp3 + model33 * yvec, id)
+        glyphpos = _project_position(scene, markerspace, gp3, id, true)
+        xproj = _project_position(scene, markerspace, gp3 + model33 * xvec, id, true)
+        yproj = _project_position(scene, markerspace, gp3 + model33 * yvec, id, true)
 
         xdiff = xproj - glyphpos
         ydiff = yproj - glyphpos
@@ -501,6 +508,15 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
     identity_transform = (t === identity || t isa Tuple && all(x-> x === identity, t)) && (abs(model[1, 2]) < 1e-15)
     regular_grid = xs isa AbstractRange && ys isa AbstractRange
 
+    if interp_requested
+        if !regular_grid
+            error("$(typeof(primitive).parameters[1]) with interpolate = true with a non-regular grid is not supported right now.")
+        end
+        if !identity_transform
+            error("$(typeof(primitive).parameters[1]) with interpolate = true with a non-identity transform is not supported right now.")
+        end
+    end
+
     imsize = ((first(xs), last(xs)), (first(ys), last(ys)))
     # find projected image corners
     # this already takes care of flipping the image to correct cairo orientation
@@ -509,18 +525,9 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
     xymax = project_position(scene, space, Point2f(last.(imsize)), model)
     w, h = xymax .- xy
     image_resolution_larger_than_surface = abs(w) < length(xs) || abs(h) < length(ys)
-    interpolate = interp_requested || image_resolution_larger_than_surface
-
-    # We need to draw rectangles for vector backends, or irregular grids
-    if interpolate
-        suggestion = interp_requested ? "Please use interpolate=false for this plot." : "Interpolation was automatically enabled because image size was larger than available resolution."
-        if !regular_grid
-            error("Interpolation with heatmaps/images on non-regular grids isn't supported right now. $suggestion")
-        end
-        if !identity_transform
-            error("Interpolation with heatmaps/images with non-identity transforms isn't supported right now. $suggestion")
-        end
-    end
+    automatic_interpolation = image_resolution_larger_than_surface & regular_grid & identity_transform 
+    
+    interpolate = interp_requested || automatic_interpolation
 
     can_use_fast_path = !(is_vector && !interpolate) && regular_grid && identity_transform
     use_fast_path = can_use_fast_path && !disable_fast_path

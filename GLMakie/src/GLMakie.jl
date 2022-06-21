@@ -14,7 +14,7 @@ using Makie: Scene, Lines, Text, Image, Heatmap, Scatter
 using Makie: convert_attribute, @extractvalue, LineSegments
 using Makie: @get_attribute, to_value, to_colormap, extrema_nan
 using Makie: ClosedInterval, (..)
-using Makie: inline!
+using Makie: inline!, to_native
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
 import Makie: to_font, glyph_uv_width!, el32convert
 
@@ -63,7 +63,7 @@ end
 export set_window_config!
 
 if Base.VERSION >= v"1.4.2"
-    include("precompile.jl")
+    include("precompiles.jl")
     _precompile_()
 end
 

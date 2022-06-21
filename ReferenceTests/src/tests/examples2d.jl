@@ -5,6 +5,13 @@
     current_figure()
 end
 
+@reference_test "Test RGB heatmaps" begin
+    fig = Figure()
+    heatmap(fig[1, 1], RNG.rand(RGBf, 32, 32))
+    heatmap(fig[1, 2], RNG.rand(RGBAf, 32, 32))
+    fig
+end
+
 @reference_test "heatmap_interpolation" begin
     f = Figure(resolution = (800, 800))
     data = RNG.rand(32, 32)
@@ -423,7 +430,7 @@ end
 @reference_test "Scatter & Text transformations" begin
     # Check that transformations apply in `space = :data`
     fig, ax, p = scatter(Point2f(100, 0.5), marker = 'a', markersize=50)
-    t = text!("Test", position = Point2f(100, 0.5), textsize = 50)
+    t = text!(Point2f(100, 0.5), text = "Test", textsize = 50)
     translate!(p, -100, 0, 0)
     translate!(t, -100, 0, 0)
 
@@ -433,7 +440,7 @@ end
     scale!(p2, 0.5, 0.5, 1)
 
     # but do act on glyphs of text
-    t2 = text!(ax, "Test", position = Point2f(1, 0), textsize = 50)
+    t2 = text!(ax, 1, 0, text = "Test", textsize = 50)
     Makie.rotate!(t2, pi/4)
     scale!(t2, 0.5, 0.5, 1)
 
@@ -519,4 +526,21 @@ end
 @reference_test "multi rect with poly" begin
     # use thick strokewidth, so it will make tests fail if something is missing
     poly([Rect2f(0, 0, 1, 1)], color=:green, strokewidth=100, strokecolor=:black)
+end
+
+@reference_test "minor grid & scales" begin
+    data = LinRange(0.01, 0.99, 200)
+    f = Figure(resolution = (800, 800))
+    for (i, scale) in enumerate([log10, log2, log, sqrt, Makie.logit, identity])
+        row, col = fldmod1(i, 2)
+        Axis(f[row, col], yscale = scale, title = string(scale),
+            yminorticksvisible = true, yminorgridvisible = true,
+            xminorticksvisible = true, xminorgridvisible = true,
+            yminortickwidth = 4.0, xminortickwidth = 4.0,
+            yminorgridwidth = 6.0, xminorgridwidth = 6.0,
+            yminorticks = IntervalsBetween(3))
+
+        lines!(data, color = :blue)
+    end
+    f
 end

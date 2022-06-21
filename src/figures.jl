@@ -111,6 +111,7 @@ function Base.setindex!(fig::Figure, obj::AbstractArray, rows, cols)
 end
 
 Base.lastindex(f::Figure, i) = lastindex(f.layout, i)
+Base.firstindex(f::Figure, i) = firstindex(f.layout, i)
 
 # for now just redirect figure display/show to the internal scene
 Base.show(io::IO, fig::Figure) = show(io, fig.scene)

@@ -12,8 +12,12 @@ You can also set the `mode` attribute to `:relative`.
 In this mode you specify edges by the fraction between minimum and maximum value of `zs`.
 This can be used for example to draw bands for the upper 90% while excluding the lower 10% with `levels = 0.1:0.1:1.0, mode = :relative`.
 
-In :normal mode, if you want to show a band from `-Inf` to the low edge, set `extendlow` to `:auto` for the same color as the first level, or specify a different color (default `nothing` means no extended band)
-If you want to show a band from the high edge to `Inf`, set `extendhigh` to `:auto` for the same color as the last level, or specify a different color (default `nothing` means no extended band)
+In :normal mode, if you want to show a band from `-Inf` to the low edge,
+set `extendlow` to `:auto` for the same color as the first level,
+or specify a different color (default `nothing` means no extended band)
+If you want to show a band from the high edge to `Inf`, set `extendhigh`
+to `:auto` for the same color as the last level, or specify a different color
+(default `nothing` means no extended band).
 
 If `levels` is an `Int`, the contour plot will be rectangular as all `zs` will be covered.
 This is why `Axis` defaults to tight limits for such contourf plots.

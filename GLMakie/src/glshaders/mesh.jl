@@ -32,7 +32,7 @@ function to_opengl_mesh!(result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
     return result
 end
 
-function draw_mesh(@nospecialize(mesh), data::Dict)
+function draw_mesh(shader_cache, @nospecialize(mesh), data::Dict)
     to_opengl_mesh!(data, mesh)
     @gen_defaults! data begin
         shading = true
@@ -47,6 +47,7 @@ function draw_mesh(@nospecialize(mesh), data::Dict)
         uv_scale = Vec2f(1)
         transparency = false
         shader = GLVisualizeShader(
+            shader_cache,
             "util.vert", "mesh.vert", "mesh.frag", "fragment_output.frag",
             view = Dict(
                 "light_calc" => light_calc(shading),

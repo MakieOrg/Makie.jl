@@ -7,6 +7,7 @@ abstract type GLScreen <: AbstractScreen end
 
 mutable struct Screen <: GLScreen
     glscreen::GLFW.Window
+    shader_cache::GLAbstraction.ShaderCache
     framebuffer::GLFramebuffer
     rendertask::RefValue{Task}
     screen2scene::Dict{WeakRef, ScreenID}
@@ -18,8 +19,10 @@ mutable struct Screen <: GLScreen
     framecache::Matrix{RGB{N0f8}}
     render_tick::Observable{Nothing}
     window_open::Observable{Bool}
+
     function Screen(
             glscreen::GLFW.Window,
+            shader_cache::GLAbstraction.ShaderCache,
             framebuffer::GLFramebuffer,
             rendertask::RefValue{Task},
             screen2scene::Dict{WeakRef, ScreenID},
@@ -31,7 +34,7 @@ mutable struct Screen <: GLScreen
         )
         s = size(framebuffer)
         return new(
-            glscreen, framebuffer, rendertask, screen2scene,
+            glscreen, shader_cache, framebuffer, rendertask, screen2scene,
             screens, renderlist, postprocessors, cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(nothing),
             Observable(true)
@@ -40,13 +43,19 @@ mutable struct Screen <: GLScreen
 end
 
 GeometryBasics.widths(x::Screen) = size(x.framebuffer)
-
+pollevents(::GLScreen) = nothing
+function pollevents(screen::Screen)
+    ShaderAbstractions.switch_context!(screen.glscreen)
+    notify(screen.render_tick)
+    GLFW.PollEvents()
+end
 Base.wait(x::Screen) = isassigned(x.rendertask) && wait(x.rendertask[])
 Base.wait(scene::Scene) = wait(Makie.getscreen(scene))
 Base.show(io::IO, screen::Screen) = print(io, "GLMakie.Screen(...)")
 Base.size(x::Screen) = size(x.framebuffer)
 
 function Makie.insertplots!(screen::GLScreen, scene::Scene)
+    ShaderAbstractions.switch_context!(screen.glscreen)
     get!(screen.screen2scene, WeakRef(scene)) do
         id = length(screen.screens) + 1
         push!(screen.screens, (id, scene))
@@ -134,16 +143,49 @@ function Base.empty!(screen::Screen)
     empty!(screen.cache2plot)
 end
 
+const GLFW_WINDOWS = GLFW.Window[]
+
+const SINGLETON_SCREEN = Base.RefValue{Screen}()
+const SINGLETON_SCREEN_NO_RENDERLOOP = Base.RefValue{Screen}()
+
+function singleton_screen(resolution; visible=Makie.use_display[], start_renderloop=true)
+    screen_ref = if start_renderloop
+        SINGLETON_SCREEN
+    else
+        SINGLETON_SCREEN_NO_RENDERLOOP
+    end
+
+    if isassigned(screen_ref) && isopen(screen_ref[])
+        screen = screen_ref[]
+        resize!(screen, resolution...)
+        return screen
+    else
+        screen = Screen(; resolution=resolution, visible=visible, start_renderloop=start_renderloop)
+        screen_ref[] = screen
+        return screen
+    end
+end
+
 function destroy!(screen::Screen)
     screen.window_open[] = false
     empty!(screen)
+    filter!(win -> win != screen.glscreen, GLFW_WINDOWS)
     destroy!(screen.glscreen)
 end
 
 Base.close(screen::Screen) = destroy!(screen)
+function closeall()
+    if !isempty(GLFW_WINDOWS)
+        for elem in GLFW_WINDOWS
+            isopen(elem) && destroy!(elem)
+        end
+        empty!(GLFW_WINDOWS)
+    end
+end
 
-function resize_native!(window::GLFW.Window, resolution...; wait_for_resize=true)
+function resize_native!(window::GLFW.Window, resolution...)
     if isopen(window)
+        ShaderAbstractions.switch_context!(window)
         oldsize = windowsize(window)
         retina_scale = retina_scaling_factor(window)
         w, h = resolution ./ retina_scale
@@ -151,25 +193,6 @@ function resize_native!(window::GLFW.Window, resolution...; wait_for_resize=true
             return
         end
         GLFW.SetWindowSize(window, round(Int, w), round(Int, h))
-        # We don't wait for the window to be resized
-        wait_for_resize || return
-        # There is a problem, that window size update seems to take an arbitrary
-        # amount of time - GLFW.WaitEvents() / a single GLFW.PollEvent()
-        # doesn't help, so we try it a couple of times, to make sure
-        # we have the desired size in the end
-        for i in 1:100
-            isopen(window) || return
-            newsize = windowsize(window)
-            # we aren't guaranteed to get exactly w & h, since the window
-            # manager is allowed to restrict the size...
-            # So we can only test, if the size changed, but not if it matches
-            # the desired size!
-            newsize != oldsize && return
-            # There is a bug here, were without `sleep` it doesn't update the size
-            # Not sure who's fault it is, but PollEvents/yield both dont work - only sleep!
-            GLFW.PollEvents()
-            sleep(0.0001)
-        end
     end
 end
 
@@ -202,6 +225,7 @@ heatmap(depth_color, colormap=:grays)
 ```
 """
 function depthbuffer(screen::Screen)
+    ShaderAbstractions.switch_context!(screen.glscreen)
     render_frame(screen, resize_buffers=false) # let it render
     glFinish() # block until opengl is done rendering
     source = screen.framebuffer.buffers[:depth]
@@ -216,6 +240,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     if !isopen(screen)
         error("Screen not open!")
     end
+    ShaderAbstractions.switch_context!(screen.glscreen)
     ctex = screen.framebuffer.buffers[:color]
     # polling may change window size, when its bigger than monitor!
     # we still need to poll though, to get all the newest events!
@@ -263,7 +288,7 @@ function Base.push!(screen::GLScreen, scene::Scene, robj)
     return robj
 end
 
-to_native(x::Screen) = x.glscreen
+Makie.to_native(x::Screen) = x.glscreen
 
 """
 OpenGL shares all data containers between shared contexts, but not vertexarrays -.-
@@ -279,19 +304,6 @@ function rewrap(robj::RenderObject{Pre}) where Pre
         robj.postrenderfunction,
         robj.boundingbox,
     )
-end
-
-const GLOBAL_GL_SCREEN = Ref{Screen}()
-const gl_screens = GLFW.Window[]
-
-function global_gl_screen()
-    screen = if isassigned(GLOBAL_GL_SCREEN) && isopen(GLOBAL_GL_SCREEN[])
-        GLOBAL_GL_SCREEN[]
-    else
-        GLOBAL_GL_SCREEN[] = Screen()
-        GLOBAL_GL_SCREEN[]
-    end
-    return screen
 end
 
 """
@@ -339,15 +351,10 @@ end
 
 
 function Screen(;
-        resolution = (10, 10), visible = false, title = WINDOW_CONFIG.title[],
+        resolution = (10, 10), visible = true, title = WINDOW_CONFIG.title[],
+        start_renderloop = true,
         kw_args...
     )
-    if !isempty(gl_screens)
-        for elem in gl_screens
-            isopen(elem) && destroy!(elem)
-        end
-        empty!(gl_screens)
-    end
     # Somehow this constant isn't wrapped by glfw
     GLFW_FOCUS_ON_SHOW = 0x0002000C
     windowhints = [
@@ -371,7 +378,7 @@ function Screen(;
 
     window = try
         GLFW.Window(
-            name = title, resolution = (10, 10), # 10, because smaller sizes seem to error on some platforms
+            name = title, resolution = resolution,
             windowhints = windowhints,
             visible = false,
             focus = false,
@@ -393,21 +400,22 @@ function Screen(;
     # tell GLAbstraction that we created a new context.
     # This is important for resource tracking, and only needed for the first context
     ShaderAbstractions.switch_context!(window)
-    GLAbstraction.empty_shader_cache!()
-    push!(gl_screens, window)
+    shader_cache = GLAbstraction.ShaderCache()
+    push!(GLFW_WINDOWS, window)
 
-    resize_native!(window, resolution...; wait_for_resize=false)
+    resize_native!(window, resolution...)
+
     fb = GLFramebuffer(resolution)
 
     postprocessors = [
-        enable_SSAO[] ? ssao_postprocessor(fb) : empty_postprocessor(),
-        OIT_postprocessor(fb),
-        enable_FXAA[] ? fxaa_postprocessor(fb) : empty_postprocessor(),
-        to_screen_postprocessor(fb)
+        enable_SSAO[] ? ssao_postprocessor(fb, shader_cache) : empty_postprocessor(),
+        OIT_postprocessor(fb, shader_cache),
+        enable_FXAA[] ? fxaa_postprocessor(fb, shader_cache) : empty_postprocessor(),
+        to_screen_postprocessor(fb, shader_cache)
     ]
 
     screen = Screen(
-        window, fb,
+        window, shader_cache, fb,
         RefValue{Task}(),
         Dict{WeakRef, ScreenID}(),
         ScreenArea[],
@@ -418,8 +426,9 @@ function Screen(;
     )
 
     GLFW.SetWindowRefreshCallback(window, window -> refreshwindowcb(window, screen))
-
-    screen.rendertask[] = @async((WINDOW_CONFIG.renderloop[])(screen))
+    if start_renderloop
+        screen.rendertask[] = @async((WINDOW_CONFIG.renderloop[])(screen))
+    end
     # display window if visible!
     if visible
         GLFW.ShowWindow(window)
@@ -429,160 +438,20 @@ function Screen(;
     return screen
 end
 
-function global_gl_screen(resolution::Tuple, visibility::Bool, tries = 1)
-    # ugly but easy way to find out if we create new screen.
-    # could just be returned by global_gl_screen, but dont want to change the API
-    isold = isassigned(GLOBAL_GL_SCREEN) && isopen(GLOBAL_GL_SCREEN[])
-    screen = global_gl_screen()
-    empty!(screen)
-    GLFW.set_visibility!(to_native(screen), visibility)
-    resize!(screen, resolution...)
-    new_size = windowsize(to_native(screen))
-    # I'm not 100% sure, if there are platforms where I'm never
-    # able to resize the screen (opengl might just allow that).
-    # so, we guard against that with just trying another resize one time!
-    if (new_size != resolution) && tries == 1
-        # resize failed. This may happen when screen was previously
-        # enlarged to fill screen. WE NEED TO DESTROY!! (I think)
+function Screen(f, resolution)
+    screen = Screen(resolution = resolution, visible = false, start_renderloop=false)
+    try
+        return f(screen)
+    finally
         destroy!(screen)
-        # try again
-        return global_gl_screen(resolution, visibility, 2)
     end
-    # show loading image on fresh screen
-    isold || display_loading_image(screen)
-    screen
 end
+
 
 function refreshwindowcb(window, screen)
+    ShaderAbstractions.switch_context!(screen.glscreen)
     screen.render_tick[] = nothing
     render_frame(screen)
-    return GLFW.SwapBuffers(window)
+    GLFW.SwapBuffers(window)
+    return
 end
-
-#################################################################################
-### Point picking
-################################################################################
-
-function pick_native(screen::Screen, rect::Rect2i)
-    isopen(screen) || return Matrix{SelectionID{Int}}(undef, 0, 0)
-    window_size = widths(screen)
-    fb = screen.framebuffer
-    buff = fb.buffers[:objectid]
-    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
-    glReadBuffer(GL_COLOR_ATTACHMENT1)
-    rx, ry = minimum(rect)
-    rw, rh = widths(rect)
-    w, h = window_size
-    sid = zeros(SelectionID{UInt32}, widths(rect)...)
-    if rx > 0 && ry > 0 && rx + rw <= w && ry + rh <= h
-        glReadPixels(rx, ry, rw, rh, buff.format, buff.pixeltype, sid)
-        return sid
-    else
-        error("Pick region $rect out of screen bounds ($w, $h).")
-    end
-end
-
-function pick_native(screen::Screen, xy::Vec{2, Float64})
-    isopen(screen) || return SelectionID{Int}(0, 0)
-    sid = Base.RefValue{SelectionID{UInt32}}()
-    window_size = widths(screen)
-    fb = screen.framebuffer
-    buff = fb.buffers[:objectid]
-    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
-    glReadBuffer(GL_COLOR_ATTACHMENT1)
-    x, y = floor.(Int, xy)
-    w, h = window_size
-    if x > 0 && y > 0 && x <= w && y <= h
-        glReadPixels(x, y, 1, 1, buff.format, buff.pixeltype, sid)
-        return convert(SelectionID{Int}, sid[])
-    end
-    return SelectionID{Int}(0, 0)
-end
-
-function Makie.pick(scene::Scene, screen::Screen, xy::Vec{2, Float64})
-    sid = pick_native(screen, xy)
-    if haskey(screen.cache2plot, sid.id)
-        plot = screen.cache2plot[sid.id]
-        return (plot, sid.index)
-    else
-        return (nothing, 0)
-    end
-end
-
-function Makie.pick(scene::Scene, screen::Screen, rect::Rect2i)
-    map(pick_native(screen, rect)) do sid
-        if haskey(screen.cache2plot, sid.id)
-            (screen.cache2plot[sid.id], sid.index)
-        else
-            (nothing, sid.index)
-        end
-    end
-end
-
-
-# Skips one set of allocations
-function Makie.pick_closest(scene::Scene, screen::Screen, xy, range)
-    isopen(screen) || return (nothing, 0)
-    w, h = widths(screen)
-    ((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h)) || return (nothing, 0)
-
-    x0, y0 = max.(1, floor.(Int, xy .- range))
-    x1, y1 = min.((w, h), floor.(Int, xy .+ range))
-    dx = x1 - x0; dy = y1 - y0
-    sids = pick_native(screen, Rect2i(x0, y0, dx, dy))
-
-    min_dist = range^2
-    id = SelectionID{Int}(0, 0)
-    x, y =  xy .+ 1 .- Vec2f(x0, y0)
-    for i in 1:dx, j in 1:dy
-        d = (x-i)^2 + (y-j)^2
-        sid = sids[i, j]
-        if (d < min_dist) && (sid.id > 0) && haskey(screen.cache2plot, sid.id)
-            min_dist = d
-            id = convert(SelectionID{Int}, sid)
-        end
-    end
-
-    if haskey(screen.cache2plot, id.id)
-        return (screen.cache2plot[id.id], id.index)
-    else
-        return (nothing, 0)
-    end
-end
-
-# Skips some allocations
-function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
-    isopen(screen) || return (nothing, 0)
-    w, h = widths(screen)
-    if !((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h))
-        return Tuple{AbstractPlot, Int}[]
-    end
-    x0, y0 = max.(1, floor.(Int, xy .- range))
-    x1, y1 = min.([w, h], ceil.(Int, xy .+ range))
-    dx = x1 - x0; dy = y1 - y0
-
-    picks = pick_native(screen, Rect2i(x0, y0, dx, dy))
-
-    selected = filter(x -> x.id > 0 && haskey(screen.cache2plot, x.id), unique(vec(picks)))
-    distances = Float32[range^2 for _ in selected]
-    x, y =  xy .+ 1 .- Vec2f(x0, y0)
-    for i in 1:dx, j in 1:dy
-        if picks[i, j].id > 0
-            d = (x-i)^2 + (y-j)^2
-            i = findfirst(isequal(picks[i, j]), selected)
-            if i === nothing
-                @warn "This shouldn't happen..."
-            elseif distances[i] > d
-                distances[i] = d
-            end
-        end
-    end
-
-    idxs = sortperm(distances)
-    permute!(selected, idxs)
-    return map(id -> (screen.cache2plot[id.id], id.index), selected)
-end
-
-
-pollevents(::GLScreen) = nothing
-pollevents(::Screen) = GLFW.PollEvents()

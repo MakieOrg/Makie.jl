@@ -43,8 +43,6 @@ After the page got displayed by the frontend, we can start with creating plots a
 ```julia
 using WGLMakie
 WGLMakie.activate!()
-# Set the default resolution to something that fits the Documenter theme
-set_theme!(resolution=(800, 400))
 scatter(1:4, color=1:4)
 ```
 \end{showhtml}

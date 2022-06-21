@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   test:
-    name: RPRMakie Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    name: RPRMakie Julia ${{ matrix.version }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
