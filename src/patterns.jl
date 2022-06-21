@@ -12,8 +12,9 @@ function Base.show(io::IO, ::MIME"text/plain", p::AbstractPattern)
     println(io, typeof(p))
     show(io, mime, image(p))
 end
-struct ImagePattern{T<:Colorant} <: AbstractPattern{T}
-    img::Matrix{T}
+
+struct ImagePattern <: AbstractPattern{RGBAf}
+    img::Matrix{RGBAf}
 end
 
 """
@@ -27,20 +28,20 @@ interpolated.
 """
 Pattern(img::Array{<: Colorant, 2}) = ImagePattern(img)
 
-function Pattern(mask::Matrix{<: Real}; color1=RGBA(0,0,0,1), color2=RGBA(1,1,1,0))
+function Pattern(mask::Matrix{<: Real}; color1=RGBAf(0,0,0,1), color2=RGBAf(1,1,1,0))
     img = map(x -> to_color(color1) * x + to_color(color2) * (1-x), mask)
     return ImagePattern(img)
 end
 
 to_image(p::ImagePattern) = p.img
 
-struct LinePattern{T} <: AbstractPattern{T}
-    dirs::Vector{Vec2}
-    widths::Vector{AbstractFloat}
-    shifts::Vector{Vec2}
+struct LinePattern <: AbstractPattern{RGBAf}
+    dirs::Vector{Vec2f}
+    widths::Vector{Float32}
+    shifts::Vector{Vec2f}
 
-    tilesize::NTuple{2, Integer}
-    colors::NTuple{2, T}
+    tilesize::NTuple{2, Int}
+    colors::NTuple{2, RGBAf}
 end
 
 """
@@ -61,19 +62,19 @@ complex patterns, e.g. a cross-hatching pattern.
 function LinePattern(;
         direction = Vec2f(1), width = 2f0, tilesize = (10,10),
         shift = map(w -> Vec2f(0.5 - 0.5(w%2)), width),
-        linecolor = RGBA(0,0,0,1), background_color = RGBA(1,1,1,0)
+        linecolor = RGBAf(0,0,0,1), background_color = RGBAf(1,1,1,0)
     )
     N = 1
     direction isa Vector{<:Vec2} && (N = length(direction))
     width isa Vector && (length(width) > N) && (N = length(width))
     shift isa Vector{<:Vec2} && (length(shift) > N) && (N = length(shift))
 
-    dirs = direction isa Vector{<:Vec2} ? direction : [direction for _ in 1:N]
-    widths = width isa Vector ? width : [width for _ in 1:N]
-    shifts = shift isa Vector{<:Vec2} ? shift : [shift for _ in 1:N]
+    dirs = direction isa Vector{<:Vec2} ? direction : Vec2f[direction for _ in 1:N]
+    widths = width isa Vector ? width : Float32[width for _ in 1:N]
+    shifts = shift isa Vector{<:Vec2} ? shift : Vec2f[shift for _ in 1:N]
     colors = (to_color(linecolor), to_color(background_color))
 
-    return LinePattern{eltype(colors)}(dirs, widths, shifts, tilesize, colors)
+    return LinePattern(dirs, widths, shifts, tilesize, colors)
 end
 
 """
@@ -102,6 +103,8 @@ function Pattern(style::Char = '/'; kwargs...)
         LinePattern(; kwargs...)
     end
 end
+
+to_color(p::LinePattern) = to_image(p)
 
 function to_image(p::LinePattern)
     tilesize = p.tilesize
@@ -138,6 +141,6 @@ function to_image(p::LinePattern)
     end
 
     return map(full_mask) do x
-        p.colors[1] * clamp(x, 0, 1) + p.colors[2] * (1-clamp(x, 0, 1))
+        return convert(RGBAf, p.colors[1] * clamp(x, 0, 1) + p.colors[2] * (1-clamp(x, 0, 1)))
     end
 end
