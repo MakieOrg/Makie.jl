@@ -4,6 +4,14 @@ end
 
 JSServe.session(td::ThreeDisplay) = td.session
 
+function GeometryBasics.widths(screen::ThreeDisplay)
+    # look at d.qs().clientWidth for displayed width
+    width = Int(WGLMakie.JSServe.evaljs_value(screen.session, WGLMakie.JSServe.js"document.querySelector('canvas').width"; time_out=100))
+    height = Int(WGLMakie.JSServe.evaljs_value(screen.session, WGLMakie.JSServe.js"document.querySelector('canvas').height"; time_out=100))
+
+    return (width, height)
+end
+
 # We use objectid to find objects on the js side
 js_uuid(object) = string(objectid(object))
 
