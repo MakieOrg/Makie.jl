@@ -2,7 +2,7 @@
 
 ## master
 
-- Allow `scatter` to render image markers to PDF [#2080](https://github.com/JuliaPlots/Makie.jl/pull/2080).
+- Allow `CairoMakie` to render `scatter` with images as markers [#2080](https://github.com/JuliaPlots/Makie.jl/pull/2080).
 
 ## v0.17.7
 
