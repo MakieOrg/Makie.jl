@@ -321,7 +321,21 @@ export heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, s
 
 export PointLight, EnvironmentLight, AmbientLight, SSAO
 
-include("precompiles.jl")
+
+########
+######## get_texture_atlas doesn't get cached no matter what
+########
+
+function _precompile_()
+    ccall(:jl_generating_output, Cint, ()) == 1 || return
+    get_texture_atlas()
+    @assert precompile(get_texture_atlas, ())
+    # empty fonts so they dont get serialized
+    empty!(_default_font)
+    empty!(_alternative_fonts)
+    println("precompile done")
+end
+
 _precompile_()
 
 end # module

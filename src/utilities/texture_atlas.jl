@@ -49,97 +49,57 @@ function TextureAtlas(initial_size = TEXTURE_RESOLUTION[])
     )
 end
 
-begin
-    # basically a singleton for the textureatlas
+const _default_font = NativeFont[]
+const _alternative_fonts = NativeFont[]
 
-    function get_cache_path()
-        return abspath(
-            first(Base.DEPOT_PATH), "makie",
-            "texture_atlas_$(CACHE_RESOLUTION_PREFIX[])_$(VERSION).jls"
-        )
+function defaultfont()
+    if isempty(_default_font)
+        push!(_default_font, to_font("TeX Gyre Heros Makie"))
     end
+    _default_font[]
+end
 
-    const _default_font = NativeFont[]
-    const _alternative_fonts = NativeFont[]
-
-    function defaultfont()
-        if isempty(_default_font)
-            push!(_default_font, to_font("TeX Gyre Heros Makie"))
-        end
-        _default_font[]
-    end
-
-    function alternativefonts()
-        if isempty(_alternative_fonts)
-            alternatives = [
-                "TeXGyreHerosMakie-Regular.otf",
-                "DejaVuSans.ttf",
-                "NotoSansCJKkr-Regular.otf",
-                "NotoSansCuneiform-Regular.ttf",
-                "NotoSansSymbols-Regular.ttf",
-                "FiraMono-Medium.ttf"
-            ]
-            for font in alternatives
-                push!(_alternative_fonts, NativeFont(assetpath("fonts", font)))
-            end
-        end
-        return _alternative_fonts
-    end
-
-    function load_ascii_chars!(atlas)
-        # for c in '\u0000':'\u00ff' #make sure all ascii is mapped linearly
-        #     insert_glyph!(atlas, c, defaultfont())
-        # end
-        for c in '0':'9' #make sure all ascii is mapped linearly
-            insert_glyph!(atlas, c, defaultfont())
-        end
-        for c in 'A':'Z' #make sure all ascii is mapped linearly
-            insert_glyph!(atlas, c, defaultfont())
+function alternativefonts()
+    if isempty(_alternative_fonts)
+        alternatives = [
+            "TeXGyreHerosMakie-Regular.otf",
+            "DejaVuSans.ttf",
+            "NotoSansCJKkr-Regular.otf",
+            "NotoSansCuneiform-Regular.ttf",
+            "NotoSansSymbols-Regular.ttf",
+            "FiraMono-Medium.ttf"
+        ]
+        for font in alternatives
+            push!(_alternative_fonts, NativeFont(assetpath("fonts", font)))
         end
     end
+    return _alternative_fonts
+end
 
-    function cached_load()
-        if isfile(get_cache_path())
-            try
-                return open(get_cache_path()) do io
-                    dict = Serialization.deserialize(io)
-                    fields = map(fieldnames(TextureAtlas)) do n
-                        v = dict[n]
-                        isa(v, Vector) ? copy(v) : v # otherwise there seems to be a problem with resizing
-                    end
-                    TextureAtlas(fields...)
-                end
-            catch e
-                @info("You can likely ignore the following warning, if you just switched Julia versions for Makie")
-                @warn(e)
-                rm(get_cache_path())
-            end
-        end
-        atlas = TextureAtlas()
-        @info("Makie is caching fonts, this may take a while. Needed only on first run!")
-        load_ascii_chars!(atlas)
-        to_cache(atlas) # cache it
-        return atlas
+function load_ascii_chars!(atlas)
+    # for c in '\u0000':'\u00ff' #make sure all ascii is mapped linearly
+    #     insert_glyph!(atlas, c, defaultfont())
+    # end
+    for c in '0':'9' #make sure all ascii is mapped linearly
+        insert_glyph!(atlas, c, defaultfont())
     end
-
-    function to_cache(atlas)
-        if !ispath(dirname(get_cache_path()))
-            mkpath(dirname(get_cache_path()))
-        end
-        open(get_cache_path(), "w") do io
-            dict = Dict(map(fieldnames(typeof(atlas))) do name
-                name => getfield(atlas, name)
-            end)
-            Serialization.serialize(io, dict)
-        end
+    for c in 'A':'Z' #make sure all ascii is mapped linearly
+        insert_glyph!(atlas, c, defaultfont())
     end
+end
 
-    const global_texture_atlas = Dict{Int, TextureAtlas}()
+function cached_load()
+    atlas = TextureAtlas()
+    @info("Makie is caching fonts, this may take a while. Needed only on first run!")
+    load_ascii_chars!(atlas)
+    return atlas
+end
 
-    function get_texture_atlas()
-        return get!(global_texture_atlas, PIXELSIZE_IN_ATLAS[]) do
-            return cached_load() # initialize only on demand
-        end
+const global_texture_atlas = Dict{Int, TextureAtlas}()
+
+function get_texture_atlas()
+    return get!(global_texture_atlas, PIXELSIZE_IN_ATLAS[]) do
+        return cached_load() # initialize only on demand
     end
 end
 
