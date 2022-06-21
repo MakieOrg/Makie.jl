@@ -71,6 +71,8 @@ struct WebDisplay <: Makie.AbstractScreen
     three::Base.RefValue{ThreeDisplay}
     display::Any
 end
+            
+GeometryBasics.widths(screen::WebDisplay) = GeometryBasics.widths(screen.three[])
 
 function Makie.backend_display(::WGLBackend, scene::Scene; kw...)
     # Reference to three object which gets set once we serve this to a browser
