@@ -6,22 +6,13 @@ import Base: resize!
 import Base: setindex!
 import Base: getindex
 import Base: map
-import Base: length
-import Base: eltype
-import Base: lastindex
-import Base: ndims
 import Base: size
 import Base: iterate
 using Serialization
 
 abstract type GPUArray{T, NDim} <: AbstractArray{T, NDim} end
 
-length(A::GPUArray) = prod(size(A))
-eltype(b::GPUArray{T, NDim}) where {T, NDim} = T
-lastindex(A::GPUArray) = length(A)
-ndims(A::GPUArray{T, NDim}) where {T, NDim} = NDim
 size(A::GPUArray) = A.size
-size(A::GPUArray, i::Integer) = i <= ndims(A) ? A.size[i] : 1
 
 function checkdimensions(value::Array, ranges::Union{Integer, UnitRange}...)
     array_size   = size(value)
@@ -110,19 +101,10 @@ function update!(A::GPUVector{T}, value::AbstractVector{T}) where T
     return
 end
 
-length(v::GPUVector)            = prod(size(v))
-size(v::GPUVector)              = v.size
-size(v::GPUVector, i::Integer)  = v.size[i]
-ndims(::GPUVector)              = 1
-eltype(::GPUVector{T}) where {T}       = T
-lastindex(A::GPUVector)             = length(A)
-
-
+size(v::GPUVector) = v.size
 iterate(b::GPUVector, state = 1) = iterate(b.buffer, state)
-
-gpu_data(A::GPUVector)          = A.buffer[1:length(A)]
-
-getindex(v::GPUVector, index::Int)       = v.buffer[index]
+gpu_data(A::GPUVector) = A.buffer[1:length(A)]
+getindex(v::GPUVector, index::Int) = v.buffer[index]
 getindex(v::GPUVector, index::UnitRange) = v.buffer[index]
 setindex!(v::GPUVector{T}, value::T, index::Int) where {T} = v.buffer[index] = value
 setindex!(v::GPUVector{T}, value::T, index::UnitRange) where {T} = v.buffer[index] = value

@@ -205,11 +205,6 @@ Creates a texture from an Image
 #    Texture(mapslices(reverse, data, ndims(data)), texture_properties)
 #end
 
-
-GeometryBasics.width(t::Texture)  = size(t, 1)
-GeometryBasics.height(t::Texture) = size(t, 2)
-depth(t::Texture)  = size(t, 3)
-
 # AbstractArrays default show assumes `getindex`. Try to catch all calls
 # https://discourse.julialang.org/t/overload-show-for-array-of-custom-types/9589
 
