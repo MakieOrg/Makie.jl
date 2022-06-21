@@ -64,15 +64,14 @@ function initialize_block!(tbox::Textbox)
         width = Auto(true), height = Auto(true), color = realtextcolor,
         textsize = tbox.textsize, padding = tbox.textpadding)
 
-    displayed_charbbs = lift(t.layoutobservables.reportedsize) do sz
-        textplot = t.blockscene.plots[1]
+    textplot = t.blockscene.plots[1]
+    displayed_charbbs = lift(textplot.text, textplot[1]) do _, _
         charbbs(textplot)
     end
 
     cursorpoints = lift(cursorindex, displayed_charbbs) do ci, bbs
 
         textplot = t.blockscene.plots[1]
-        charbbs(textplot)
         glyphcollection = textplot.plots[1][1][][]::Makie.GlyphCollection
 
         hadvances = Float32[]
@@ -252,10 +251,11 @@ function charbbs(text)
     if !(gc isa Makie.GlyphCollection)
         error("Expected a single GlyphCollection from the textbox string, got a $(typeof(gc)).")
     end
-    pos = Point2f(text.position[])
+    pos = Point2f(text[1][][1])
     bbs = Rect2f[]
     broadcast_foreach(gc.extents, gc.scales, gc.origins) do ext, sc, ori
-        bb = Makie.height_insensitive_boundingbox_with_advance(ext) * sc
+        bb = Makie.height_insensitive_boundingbox_with_advance(ext) 
+        bb = bb * sc
         fr = Rect2f(Point2f(ori) + bb.origin + pos, bb.widths)
         push!(bbs, fr)
     end
