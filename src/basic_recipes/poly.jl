@@ -27,11 +27,7 @@ $(ATTRIBUTES)
         colorrange = automatic,
         strokewidth = theme(scene, :patchstrokewidth),
         shading = false,
-        # we turn this false for now, since otherwise shapes look transparent
-        # since we use meshes, which are drawn into a different framebuffer because of fxaa
-        # if we use fxaa=false, they're drawn into the same
-        # TODO, I still think this is a bug, since they should still use the same depth buffer!
-        fxaa = false,
+        fxaa = true,
         linestyle = nothing,
         overdraw = false,
         transparency = false,
