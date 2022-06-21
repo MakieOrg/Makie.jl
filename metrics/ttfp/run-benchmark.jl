@@ -102,7 +102,7 @@ function analyze(pr, master)
         "*noisy*🤷‍♀️"
     end
     if abs(percent) < 5
-        result = "*under 5%*" * (percent < 0 "✓" : "x")
+        result = "*under 5%*" * (percent < 0 ? "✓" : "x")
     end
     return @sprintf("%s%.2f%s, %s %s (%.2fd, %.2fp, %.2fstd)", percent > 0 ? "+" : "-", abs(percent), "%", mean_diff_str, result, d, p, std_p)
 end
