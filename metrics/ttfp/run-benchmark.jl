@@ -94,14 +94,19 @@ function analyze(pr, master)
 
     result = if p < 0.05
         if abs(d) > 0.2
-            d < 0 ? "faster✅" : "worse❌"
+            s = abs(percent) < 5 ? ["✓", "X"] : ["✅", "❌"]
+            d < 0 ? "**faster**$(s[1])" : "**worse**$(s[2])"
         else
             "*invariant*"
         end
     else
-        "*noisy*🤷‍♀️"
+        if abs(percent) < 5
+            "*invariant*"
+        else
+            "*noisy*🤷‍♀️"
+        end
     end
-    
+
     return @sprintf("%s%.2f%s, %s %s (%.2fd, %.2fp, %.2fstd)", percent > 0 ? "+" : "-", abs(percent), "%", mean_diff_str, result, d, p, std_p)
 end
 
