@@ -252,19 +252,8 @@ end
 # rectangle after transformation, by sampling from a regular grid
 # bounded by the rectangle in input space.
 
-"""
-    Makie._DEFAULT_RECT_TRANSFORM_DENSITY = Ref{Int}(21)
-
-This controls the density of the grid within the default implementation of
-`apply_transform(f::PointTrans{2}, rect::Rect{2, T})`.  Set it by:
-```julia
-Makie._DEFAULT_RECT_TRANSFORM_DENSITY[] = new_transform_density::Int
-```
-"""
-const _DEFAULT_RECT_TRANSFORM_DENSITY = Ref{Int}(21)
-
 function apply_transform(f::PointTrans{2}, rect::Rect{2, T}) where T
-    N = _DEFAULT_RECT_TRANSFORM_DENSITY[]
+    N = 21 # TODO: spin this into PointTrans or out into a method
     umins = fill(T(Inf),  2)
     umaxs = fill(T(-Inf), 2)
     xmins = minimum(rect)
