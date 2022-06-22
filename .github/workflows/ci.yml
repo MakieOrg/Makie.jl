@@ -48,6 +48,7 @@ jobs:
           using Pkg;
           # dev mono repo versions
           pkg"dev . ./MakieCore"
+          pkg"add GeometryBasics#sd/simple-mesh MeshIO#sd/lightweight-geometry"
           Pkg.test("Makie"; coverage=true)
 
       - uses: julia-actions/julia-processcoverage@v1
