@@ -297,8 +297,7 @@ function __init__()
             GridLayoutBase.DEFAULT_ROWGAP[]
         end
     end
-    # fonts aren't cacheable by precompilation, so we need to empty it on load!
-    empty!(FONT_CACHE)
+
     cfg_path = joinpath(homedir(), ".config", "makie", "theme.jl")
     if isfile(cfg_path)
         @warn "The global configuration file is no longer supported." *
