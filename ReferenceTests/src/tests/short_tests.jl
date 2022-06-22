@@ -194,7 +194,7 @@ end
 
 @reference_test "DataInspector" begin
     fig, ax, p = scatter(Point2f(0))
-    DataInspector()
+    DataInspector(fig)
     p = Makie.project(ax.scene, Point2f(0)) + minimum(ax.blockscene.children[1].px_area[])
     events(fig).mouseposition[] = (p[1], p[2])
     fig
