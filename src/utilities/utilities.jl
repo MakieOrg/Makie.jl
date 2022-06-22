@@ -167,6 +167,7 @@ attr_broadcast_getindex(x::ScalarOrVector, i) = x.sv isa Vector ? x.sv[i] : x.sv
 
 is_vector_attribute(x::AbstractArray) = true
 is_vector_attribute(x::NativeFont) = false
+is_vector_attribute(x::Quaternion) = false
 is_vector_attribute(x::VecTypes) = false
 is_vector_attribute(x) = false
 
