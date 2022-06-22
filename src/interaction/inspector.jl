@@ -929,7 +929,7 @@ function show_poly(inspector, plot, idx, source)
     scene = parent_scene(plot)
 
     idx = vertexindex2poly(plot[1][], idx)
-    m = GeometryBasics.mesh(plot[1][][idx])
+    m = GeometryBasics.triangle_mesh(plot[1][][idx])
 
     clear_temporary_plots!(inspector, plot)
     ext = plot[1][][idx].exterior

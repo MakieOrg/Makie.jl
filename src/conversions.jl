@@ -30,7 +30,7 @@ end
 
 @convert_target struct Mesh
     # We currently allow Mesh and vector of meshes for the Mesh type.
-    mesh::Union{AbstractVector{<:GeometryBasics.AbstractMesh}, GeometryBasics.AbstractMesh}
+    mesh::Union{Vector{<:GeometryBasics.TriangleMesh}, GeometryBasics.TriangleMesh}
 end
 
 @convert_target struct Volume
@@ -526,6 +526,11 @@ end
 #                                    <:Mesh                                    #
 ################################################################################
 
+
+function convert_arguments(::Type{<:Mesh}, geom::AbstractGeometry)
+    return (triangle_mesh(geom),)
+end
+
 """
     convert_arguments(Mesh, x, y, z)::GLNormalMesh
 
@@ -553,36 +558,24 @@ function convert_arguments(
     return convert_arguments(MT, xyz, collect(faces))
 end
 
-function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N}) where {N}
-    # Make sure we have normals!
-    if !hasproperty(mesh, :normals)
-        n = normals(mesh)
-        # Normals can be nothing, when it's impossible to calculate the normals (e.g. 2d mesh)
-        if n !== nothing
-            mesh = GeometryBasics.pointmeta(mesh, decompose(Vec3f, n))
-        end
-    end
-    return (GeometryBasics.mesh(mesh, pointtype=Point{N, Float32}, facetype=GLTriangleFace),)
-end
-
-function convert_arguments(
-        MT::Type{<:Mesh},
-        meshes::AbstractVector{<: Union{AbstractMesh, AbstractPolygon}}
-    )
-    return (meshes,)
+function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.MetaMesh{N}) where {N}
+    normals = hasproperty(mesh, :normals) ? mesh.normals : automatic
+    uv = hasproperty(mesh, :uv) ? mesh.uv : automatic
+    color = hasproperty(mesh, :color) ? mesh.color : automatic
+    return PlotSpec{Mesh}(GeometryBasics.Mesh(mesh); normals=normals, texturecoordinates=uv, color=color)
 end
 
 function convert_arguments(
         MT::Type{<:Mesh},
         xyz::Union{AbstractPolygon, AbstractVector{<: Point{2}}}
     )
-    return convert_arguments(MT, triangle_mesh(xyz))
+    return convert_arguments(MT, GeometryBasics.Mesh(xyz))
 end
 
 function convert_arguments(MT::Type{<:Mesh}, geom::GeometryPrimitive)
     # we convert to UV mesh as default, because otherwise the uv informations get lost
     # - we can still drop them, but we can't add them later on
-    return (GeometryBasics.uv_normal_mesh(geom),)
+    return convert_arguments(MT, GeometryBasics.uv_normal_mesh(geom))
 end
 
 """
@@ -611,8 +604,7 @@ function convert_arguments(
         vertices::AbstractArray,
         indices::AbstractArray
     )
-    m = GeometryBasics.Mesh(to_vertices(vertices), to_triangles(indices))
-    (normal_mesh(m),)
+    return (GeometryBasics.Mesh(to_vertices(vertices), to_triangles(indices)),)
 end
 
 
