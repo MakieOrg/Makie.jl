@@ -17,6 +17,8 @@ struct ImagePattern <: AbstractPattern{RGBAf}
     img::Matrix{RGBAf}
 end
 
+Base.size(pattern::ImagePattern) = size(pattern.img)
+
 """
     Pattern(image)
     Pattern(mask[; color1, color2])
@@ -43,6 +45,9 @@ struct LinePattern <: AbstractPattern{RGBAf}
     tilesize::NTuple{2, Int}
     colors::NTuple{2, RGBAf}
 end
+
+Base.size(pattern::LinePattern) = pattern.tilesize
+
 
 """
     LinePattern([; kwargs...])
@@ -103,8 +108,6 @@ function Pattern(style::Char = '/'; kwargs...)
         LinePattern(; kwargs...)
     end
 end
-
-to_color(p::LinePattern) = to_image(p)
 
 function to_image(p::LinePattern)
     tilesize = p.tilesize

@@ -68,7 +68,8 @@ excludes = Set([
     "heatmap transparent colormap",
     "fast pixel marker",
     "Array of Images Scatter",
-    "Image Scatter different sizes"
+    "Image Scatter different sizes",
+    "pattern barplot" # not implemented yet
 ])
 
 functions = [:volume, :volume!, :uv_mesh]
