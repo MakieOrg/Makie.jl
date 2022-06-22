@@ -23,7 +23,7 @@ COMMENT_TEMPLATE = """
 ## Compile Times benchmark
 
 Note, that these numbers may fluctuate on the CI servers, so take them with a grain of salt.
-All benchmark results are based on the mean time and negative percent mean faster than master.
+All benchmark results are based on the mean time and negative percent mean faster than the base branch.
 Note, that GLMakie + WGLMakie run on an emulated GPU, so the runtime benchmark is much slower.
 Results are from running:
 
@@ -40,13 +40,13 @@ display_time = @benchmark Makie.colorbuffer(display(fig))
 |               | using     | create   | display  | create   | display  |
 |--------------:|:----------|:---------|:---------|:---------|:---------|
 | GLMakie       | --        | --       | --       | --       | --       |
-| master        | --        | --       | --       | --       | --       |
+| $base_branch  | --        | --       | --       | --       | --       |
 | evaluation    | --        | --       | --       | --       | --       |
 | CairoMakie    | --        | --       | --       | --       | --       |
-| master        | --        | --       | --       | --       | --       |
+| $base_branch  | --        | --       | --       | --       | --       |
 | evaluation    | --        | --       | --       | --       | --       |
 | WGLMakie      | --        | --       | --       | --       | --       |
-| master        | --        | --       | --       | --       | --       |
+| $base_branch  | --        | --       | --       | --       | --       |
 | evaluation    | --        | --       | --       | --       | --       |
 """
 
@@ -94,8 +94,8 @@ function analyze(pr, master)
 
     result = if p < 0.05
         if abs(d) > 0.2
-            s = abs(percent) < 5 ? ["✓", "X"] : ["✅", "❌"]
-            d < 0 ? "**faster**$(s[1])" : "**worse**$(s[2])"
+            indicator = abs(percent) < 5 ? ["faster ✓", "slower X"] : ["**faster**✅", "**slower**❌"]
+            indicator[d < 0 ? 1 : 2]
         else
             "*invariant*"
         end
