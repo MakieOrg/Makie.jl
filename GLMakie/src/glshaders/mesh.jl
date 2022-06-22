@@ -1,6 +1,6 @@
-function to_opengl_mesh!(result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
+function to_opengl_mesh!(result, mesh_obs::TOrSignal{<: GeometryBasics.AbstractMesh})
     m_attr = map(convert(Observable, mesh_obs)) do m
-        return (m, GeometryBasics.attributes(m))
+        return (m, GeometryBasics.meta(m))
     end
 
     result[:faces] = indexbuffer(map(((m,_),)-> faces(m), m_attr))
@@ -15,7 +15,7 @@ function to_opengl_mesh!(result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
                 val = map(((m, a),)-> a[name], m_attr)
             end
             if val[] isa AbstractVector
-                result[target] = GLBuffer(map(metafree, val))
+                result[target] = GLBuffer(val)
             elseif val[] isa AbstractMatrix
                 result[target] = Texture(val)
             else

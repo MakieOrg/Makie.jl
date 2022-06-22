@@ -650,7 +650,7 @@ function to_triangles(x::AbstractVector{Int})
 end
 
 function to_triangles(idx0::AbstractVector{UInt32})
-    reinterpret(GLTriangleFace, idx0)
+    collect(reinterpret(GLTriangleFace, idx0))
 end
 
 function to_triangles(faces::AbstractVector{TriangleFace{T}}) where T

@@ -68,7 +68,7 @@ end
     f, ax, pl = mesh(uv_mesh(Sphere(Point3f(0), 1f0)), color=RNG.rand(50, 50))
     # ugh, bug In GeometryTypes for UVs of non unit spheres.
     s2 = uv_mesh(Sphere(Point3f(0), 1f0))
-    s2.position .= s2.position .+ (Point3f(0, 2, 0),)
+    GeometryBasics.Mesh(s2).vertices .= GeometryBasics.Mesh(s2).vertices .+ (Point3f(0, 2, 0),)
     mesh!(s2, color=RNG.rand(RGBAf, 50, 50))
     f
 end

@@ -16,7 +16,7 @@ end
     function colormesh((geometry, color))
         mesh1 = normal_mesh(geometry)
         npoints = length(GeometryBasics.coordinates(mesh1))
-        return GeometryBasics.pointmeta(mesh1; color=fill(color, npoints))
+        return MetaMesh(mesh1; color=fill(color, npoints))
     end
     # create an array of differently colored boxes in the direction of the 3 axes
     x = Vec3f(0); baselen = 0.2f0; dirlen = 1f0
