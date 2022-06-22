@@ -293,7 +293,7 @@ function plot!(plot::_Inspector)
 
     # tooltip background and frame
     background = mesh!(
-        plot, bbox, color = background_color, shading = false, #fxaa = false,
+        plot, bbox, color = background_color, shading = false,
         # TODO with fxaa here the text above becomes seethrough on a heatmap
         visible = _visible, inspectable = false, space = :pixel
     )
