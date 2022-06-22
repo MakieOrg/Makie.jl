@@ -191,11 +191,3 @@ end
 @reference_test "axsi3" begin
     meshscatter(RNG.rand(Point3f, 10), axis=(type=Axis3,))
 end
-
-@reference_test "DataInspector" begin
-    fig, ax, p = scatter(Point2f(0))
-    DataInspector(fig)
-    p = Makie.project(ax.scene, Point2f(0)) + minimum(ax.blockscene.children[1].px_area[])
-    events(fig).mouseposition[] = (p[1], p[2])
-    fig
-end
