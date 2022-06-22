@@ -47,6 +47,5 @@ function _precompile_()
     Makie.get_texture_atlas()
     atlas = Makie.TextureAtlas()
     Makie.load_ascii_chars!(atlas)
-    println("done")
     return
 end

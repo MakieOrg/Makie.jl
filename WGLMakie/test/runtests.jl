@@ -39,7 +39,8 @@ excludes = Set([
     "Animated surface and wireframe",
     "Array of Images Scatter",
     "Image Scatter different sizes",
-    "scatter image markers"
+    "scatter image markers",
+    "pattern barplot", # not implemented yet
 ])
 
 @testset "refimages" begin

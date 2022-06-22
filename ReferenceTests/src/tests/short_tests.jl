@@ -191,3 +191,7 @@ end
 @reference_test "axsi3" begin
     meshscatter(RNG.rand(Point3f, 10), axis=(type=Axis3,))
 end
+
+@reference_test "pattern barplot" begin
+    barplot(1:5, color=Makie.LinePattern(linecolor=:red, background_color=:orange))
+end

@@ -165,3 +165,13 @@ end
     pl = density!(rand(10); color = Cycled(1))
     @test pl.color[] == :blue
 end
+
+@testset "briefly empty ticklabels" begin
+    # issue 2079, for some reason at Axis initialization briefly there would be a zero-element
+    # ticklabel/position array and this would be split into a Vector{Any} for the positions,
+    # triggering a conversion error
+    # So we just check that the same scenario doesn't error again
+    f = Figure()
+    ax = Axis(f[1,1], xticks = 20:10:80)
+    scatter!(ax, 30:10:100, rand(Float64, 8), color = :red)
+end
