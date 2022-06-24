@@ -245,7 +245,7 @@ function initialize_block!(m::Menu; default = nothing)
         t = translation(menuscene)[]
         new_y = max(min(t[2] - y, 0), height(menuscene.px_area[]) - listheight[])
         translate!(menuscene, t[1], new_y, t[3])
-        # return Consume(true)
+        return Consume(true)
     end
 
     on(m.options) do options
