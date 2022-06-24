@@ -137,14 +137,17 @@ function initialize_block!(m::Menu; default = nothing)
             y_for_top_align = height(menuscene.px_area[]) - listheight[]
             translate!(menuscene, t[1], y_for_top_align, t[3])
         end
+        return Consume(true)
     end
 
     onmouseover(me_selection) do me
         selectionpoly.color = m.cell_color_hover[]
+        return Consume(false)
     end
 
     onmouseout(me_selection) do me
         selectionpoly.color = m.selection_cell_color_inactive[]
+        return Consume(false)
     end
 
     optionrects = Observable([Rect2f(0, 0, 0, 0)])
@@ -184,7 +187,7 @@ function initialize_block!(m::Menu; default = nothing)
     end
     notify(optionstrings)
 
-    mouseevents = addmouseevents!(menuscene, optionpolys, optiontexts)
+    mouseevents = addmouseevents!(menuscene, optionpolys, optiontexts, priority = 61)
 
     function pick_entry(me)
         # determine which rectangle in the list the mouse is in
@@ -207,6 +210,7 @@ function initialize_block!(m::Menu; default = nothing)
                 iseven(i) ? to_color(m.cell_color_inactive_even[]) :
                 to_color(m.cell_color_inactive_odd[]) 
         end
+        return Consume(false)
     end
 
     onmouseout(mouseevents) do me
@@ -215,13 +219,18 @@ function initialize_block!(m::Menu; default = nothing)
             iseven(i) ? to_color(m.cell_color_inactive_even[]) :
                 to_color(m.cell_color_inactive_odd[]) 
         end
+        return Consume(false)
     end
 
     onmouseleftclick(mouseevents) do me
         i = pick_entry(me)
         m.i_selected[] = i
         m.is_open[] = false
+        return Consume(true)
     end
+
+    # To stop other things from triggering on left down inside the dropdown menu
+    onmouseleftdown(_ -> Consume(true), mouseevents)
 
     # close the menu if the user clicks somewhere else
     # the logic is a bit convoluted because menuscene and selection poly have to be checked at the same time
@@ -236,6 +245,7 @@ function initialize_block!(m::Menu; default = nothing)
         t = translation(menuscene)[]
         new_y = max(min(t[2] - y, 0), height(menuscene.px_area[]) - listheight[])
         translate!(menuscene, t[1], new_y, t[3])
+        # return Consume(true)
     end
 
     on(m.options) do options
