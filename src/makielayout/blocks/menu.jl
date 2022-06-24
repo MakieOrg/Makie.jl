@@ -104,11 +104,16 @@ function initialize_block!(m::Menu; default = nothing)
 
     selectionarea = Observable(Rect2f(0, 0, 0, 0))
 
-    selectionpoly = poly!(blockscene, selectionarea, color = m.selection_cell_color_inactive[])
+    selectionpoly = poly!(
+        blockscene, selectionarea, color = m.selection_cell_color_inactive[];
+        inspectable = false
+    )
 
     selectiontextpos = Observable(Point2f(0, 0))
-    selectiontext = text!(blockscene, selectiontextpos, text = selected_text, align = (:left, :center),
-        textsize = m.textsize, color = m.textcolor, markerspace = :data)
+    selectiontext = text!(
+        blockscene, selectiontextpos, text = selected_text, align = (:left, :center),
+        textsize = m.textsize, color = m.textcolor, markerspace = :data, inspectable = false
+    )
 
     onany(selected_text, m.textsize, m.textpadding) do _, _, (l, r, b, t)
         bb = boundingbox(selectiontext)
@@ -148,9 +153,9 @@ function initialize_block!(m::Menu; default = nothing)
     # the y boundaries of the list rectangles
     list_y_bounds = Ref(Float32[])
 
-    optionpolys = poly!(menuscene, optionrects, color = optionpolycolors)
+    optionpolys = poly!(menuscene, optionrects, color = optionpolycolors, inspectable = false)
     optiontexts = text!(menuscene, textpositions, text = optionstrings, align = (:left, :center),
-        textsize = m.textsize)
+        textsize = m.textsize, inspectable = false)
 
     onany(optionstrings, m.textpadding, m.layoutobservables.computedbbox) do _, pad, bbox
         gcs = optiontexts.plots[1][1][]::Vector{GlyphCollection}
