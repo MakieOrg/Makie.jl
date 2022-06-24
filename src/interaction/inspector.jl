@@ -405,7 +405,7 @@ function DataInspector(scene::Scene; priority = 100, kwargs...)
     parent = root(scene)
     @assert origin(pixelarea(parent)[]) == Vec2f(0)
 
-    plot = _inspector!(parent, 1, kwargs...)
+    plot = _inspector!(parent, 1; kwargs...)
     inspector = DataInspector(parent, plot)
 
     e = events(parent)
