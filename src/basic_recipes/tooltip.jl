@@ -16,9 +16,10 @@ $(ATTRIBUTES)
         depth_shift = 0f0,
         transparency = false,
         visible = true,
+        inspectable = false,
 
         # Text
-        textpadding = (4, 4, 2, 2), # LRBT
+        textpadding = (4, 4, 4, 4), # LRBT
         textcolor = theme(scene, :textcolor),
         textsize = 16,
         font = theme(scene, :font),
@@ -57,7 +58,8 @@ function plot!(p::Tooltip)
         p, bbox, shading = false, space = :pixel,
         color = p.backgroundcolor, fxaa = false,
         transparency = p.transparency, visible = p.visible, 
-        overdraw = p.overdraw, depth_shift = p.depth_shift
+        overdraw = p.overdraw, depth_shift = p.depth_shift,
+        inspectable = p.inspectable
     )
 
     # Triangle mesh
@@ -71,7 +73,8 @@ function plot!(p::Tooltip)
         p, triangle, shading = false, space = :pixel,
         color = p.backgroundcolor, 
         transparency = p.transparency, visible = p.visible,
-        overdraw = p.overdraw, depth_shift = p.depth_shift
+        overdraw = p.overdraw, depth_shift = p.depth_shift,
+        inspectable = p.inspectable
     )
     onany(bbox, p.triangle_size, p.placement) do bb, s, placement
         o = origin(bb)
@@ -148,7 +151,8 @@ function plot!(p::Tooltip)
         color = p.outline_color, space = :pixel, 
         linewidth = p.outline_linewidth, linestyle = p.outline_linestyle,
         transparency = p.transparency, visible = p.visible,
-        overdraw = p.overdraw, depth_shift = p.depth_shift
+        overdraw = p.overdraw, depth_shift = p.depth_shift,
+        inspectable = p.inspectable
     )
 
     # Text
@@ -191,7 +195,8 @@ function plot!(p::Tooltip)
         color = p.textcolor, font = p.font, fxaa = false,
         strokewidth = p.strokewidth, strokecolor = p.strokecolor,
         transparency = p.transparency, visible = p.visible,
-        overdraw = p.overdraw, depth_shift = p.depth_shift
+        overdraw = p.overdraw, depth_shift = p.depth_shift,
+        inspectable = p.inspectable
     )
 
     onany(
