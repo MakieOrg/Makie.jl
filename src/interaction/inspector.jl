@@ -813,7 +813,9 @@ function show_data(inspector::DataInspector, plot::Contourf, idx, source::Mesh)
     idx, ext = show_poly(inspector, plot.plots[1], idx, source)
     level = plot.plots[1].color[][idx]
 
-    tt[1][] = Point2f(mouseposition_px(inspector.root))
+    mpos = Point2f(mouseposition_px(inspector.root))
+    update_tooltip_alignment!(inspector, mpos)
+    tt[1][] = mpos
     tt[2][] = @sprintf("level = %0.3f", level)
     tt.visible[] = true
 
