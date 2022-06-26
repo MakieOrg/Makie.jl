@@ -133,7 +133,7 @@ function plot!(p::Tooltip)
         else
             @error "Tooltip placement $placement invalid. Assuming :above"
             [
-                VEc2f(0), Vec2f(0, w[2]), w, Vec2f(w[1], 0), 
+                Vec2f(0), Vec2f(0, w[2]), w, Vec2f(w[1], 0), 
                 Vec2f(0.5 * (w[1] + s), 0), Vec2f(0.5w[1], -s), 
                 Vec2f(0.5 * (w[1] - s), 0), Vec2f(0)
             ]
