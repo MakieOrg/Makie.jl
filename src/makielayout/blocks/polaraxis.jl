@@ -154,7 +154,37 @@ function Makie.initialize_block!(po::PolarAxis)
 
     po.scene = scene
 
-    draw_axis!(po)
+    (spineplot, rgridplot, θgridplot, rminorgridplot, θminorgridplot, rticklabelplot, θticklabelplot) = draw_axis!(po)
+
+    old_input = Ref(θticklabelplot[1][])
+
+    θticklabelprotrusions = Observable{GridLayoutBase.RectSides{Float32}}()
+    on(θticklabelplot[1]) do input
+        # Only if the tick labels have changed, should we recompute the tick label
+        # protrusions.
+        # This should be changed by removing the call to `first`
+        # when the call types are changed to the text, position=positions format
+        # introduced in #.
+        if all(first.(input) .== first.(old_input[]))
+            return
+        else
+            px_area = pixelarea(scene)[]
+            box = boundingbox(θticklabelplot)
+            box = Rect2(to_ndim(Point2f, box.origin, 0), to_ndim(Point2f, box.widths, 0))
+            θticklabelprotrusions[] = GridLayoutBase.RectSides(
+                max(0, left(box) - left(px_area)),
+                max(0, right(box) - right(px_area)),
+                max(0, bottom(box) - bottom(px_area)),
+                max(0, top(box) - top(px_area))
+            )
+        end
+    end
+
+    notify(θticklabelplot[1])
+
+    protrusions = θticklabelprotrusions
+
+    connect!(po.layoutobservables.protrusions, protrusions)
 
     # debug statements
     # @show boundingbox(scene) data_limits(scene)
