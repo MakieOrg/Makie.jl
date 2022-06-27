@@ -25,9 +25,6 @@ flat in uvec2 o_id;
 vec4 get_color(Nothing image, vec2 uv, Nothing color_norm, Nothing color_map, Nothing matcap){
     return o_color;
 }
-vec4 get_color(Nothing color, vec2 uv, vec2 color_norm, sampler1D color_map, Nothing matcap){
-    return o_color;
-}
 
 vec4 get_color(sampler2D color, vec2 uv, Nothing color_norm, Nothing color_map, Nothing matcap){
     return texture(color, uv);
@@ -40,6 +37,13 @@ uniform vec4 nan_color;
 vec4 get_color_from_cmap(float value, sampler1D color_map, vec2 colorrange) {
     float cmin = colorrange.x;
     float cmax = colorrange.y;
+    if (isnan(value)) {
+        return nan_color;
+    } else if (value < cmin) {
+        return lowclip;
+    } else if (value > cmax) {
+        return highclip;
+    }
     float i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0);
     // 1/0 corresponds to the corner of the colormap, so to properly interpolate
     // between the colors, we need to scale it, so that the ends are at 1 - (stepsize/2) and 0+(stepsize/2).
@@ -48,15 +52,22 @@ vec4 get_color_from_cmap(float value, sampler1D color_map, vec2 colorrange) {
     return texture(color_map, i01);
 }
 
+// JEEZ I Hate OpenGL...No real NaN or Inf support
+const float Inf = 1.0 / 0.0;
+
+vec4 get_color(Nothing color, vec2 uv, vec2 color_norm, sampler1D color_map, Nothing matcap){
+    // Since we can't really switch the color output type, we store single
+    // colors in the red channel,
+    // and use Inf as a sentinel in the other values to signal that we just have one valid value.
+    if(o_color.g == Inf && o_color.b == Inf && o_color.a == Inf) {
+        return get_color_from_cmap(o_color.r, color_map, color_norm);
+    } else {
+        return o_color;
+    }
+}
+
 vec4 get_color(sampler2D intensity, vec2 uv, vec2 color_norm, sampler1D color_map, Nothing matcap){
     float i = texture(intensity, uv).x;
-    if (isnan(i)) {
-        return nan_color;
-    } else if (i < color_norm.x) {
-        return lowclip;
-    } else if (i > color_norm.y) {
-        return highclip;
-    }
     return get_color_from_cmap(i, color_map, color_norm);
 }
 

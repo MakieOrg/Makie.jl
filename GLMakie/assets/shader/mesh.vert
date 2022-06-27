@@ -37,10 +37,14 @@ vec4 to_color(vec4 c, Nothing color_map, Nothing color_norm){
     return c;
 }
 
-vec4 color_lookup(float intensity, sampler1D color_ramp, vec2 norm);
+// JEEZ I Hate OpenGL...No real NaN or Inf support
+const float Inf = 1.0 / 0.0;
 
 vec4 to_color(float c, sampler1D color_map, vec2 color_norm){
-    return color_lookup(c, color_map, color_norm);
+    // Since we can't really switch the color output type, we store single
+    // colors in the red channel,
+    // and use Inf as a sentinel in the other values to signal that we just have one valid value.
+    return vec4(c, Inf, Inf, Inf);
 }
 
 vec4 to_color(vec4 c, sampler1D color_map, vec2 color_norm){
