@@ -357,6 +357,10 @@ function Makie.plot!(
 end
 
 
+function Makie.plot!(P::Makie.PlotFunc, po::PolarAxis, args...; kw_attributes...)
+    attributes = Makie.Attributes(kw_attributes)
+    Makie.plot!(po, P, attributes, args...)
+end
 function Makie.autolimits!(po::PolarAxis)
     datalims = Rect2f(data_limits(po.scene))
     projected_datalims = Makie.apply_transform(po.scene.transformation.transform_func[], datalims)
