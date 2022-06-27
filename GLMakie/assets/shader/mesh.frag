@@ -59,8 +59,8 @@ vec4 get_color(Nothing color, vec2 uv, vec2 color_norm, sampler1D color_map, Not
     // Since we can't really switch the color output type, we store single
     // colors in the red channel,
     // and use Inf as a sentinel in the other values to signal that we just have one valid value.
-    if(o_color.g == Inf && o_color.b == Inf && o_color.a == Inf) {
-        return get_color_from_cmap(o_color.r, color_map, color_norm);
+    if(o_color.y == Inf && o_color.z == Inf && o_color.w == Inf) {
+        return get_color_from_cmap(o_color.x, color_map, color_norm);
     } else {
         return o_color;
     }

@@ -165,20 +165,6 @@ end
 to_vec4(val::RGB) = RGBAf(val, 1.0)
 to_vec4(val::RGBA) = RGBAf(val)
 
-function lift_convert_inner(value, ::key"highclip", plot_key, plot)
-    return lift(value, plot.colormap) do value, cmap
-        val = value === nothing ? to_colormap(cmap)[end] : to_color(value)
-        return to_vec4(val)
-    end
-end
-
-function lift_convert_inner(value, ::key"lowclip", plot_key, plot)
-    return lift(value, plot.colormap) do value, cmap
-        val = value === nothing ? to_colormap(cmap)[1] : to_color(value)
-        return to_vec4(val)
-    end
-end
-
 pixel2world(scene, msize::Number) = pixel2world(scene, Point2f(msize))[1]
 
 function pixel2world(scene, msize::StaticVector{2})
