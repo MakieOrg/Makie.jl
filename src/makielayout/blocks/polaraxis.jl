@@ -158,7 +158,7 @@ function Makie.initialize_block!(po::PolarAxis)
 
 
     on(po.limits) do lims
-        adjustcam!(po, lims, (0.0, 2π))
+        adjustcam!(po, lims, (0.0, π))
     end
 
 
@@ -247,7 +247,7 @@ function draw_axis!(po::PolarAxis)
 
     spinepoints = Observable{Vector{Point2f}}()
 
-    θlims = (0, 2π)
+    θlims = (0.0, 2π)
 
     onany(po.rticks, po.θticks, po.rminorticks, po.θminorticks, po.rtickformat, po.θtickformat, po.rtickangle, po.limits, po.sample_density, po.scene.px_area, po.scene.transformation.transform_func, po.scene.camera_controls.area) do rticks, θticks, rminorticks, θminorticks, rtickformat, θtickformat, rtickangle, limits, sample_density, pixelarea, trans, area
 
