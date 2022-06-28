@@ -77,9 +77,10 @@ end
 
 # Some useful code to transform from data (transformed) space to pixelspace
 
-function project_to_pixelspace(scene, point::Point{N, T}) where {N, T}
+function project_to_pixelspace(scene, point::VecTypes{N, T}) where {N, T}
     @assert N ≤ 3
-    return Point{N, T}(
+    return to_ndim(
+        typeof(point),
         Makie.project(
             # obtain the camera of the Scene which will project to its screenspace
             camera(scene),
@@ -90,12 +91,14 @@ function project_to_pixelspace(scene, point::Point{N, T}) where {N, T}
                 scene.transformation.transform_func[],
                 point
             )
-        )
+        ),
+        0.0
     )
 end
 
 function project_to_pixelspace(scene, points::AbstractVector{Point{N, T}}) where {N, T}
-    Point{N, T}.(
+    to_ndim.(
+        Ref(eltype(points)),
         Makie.project.(
             # obtain the camera of the Scene which will project to its screenspace
             Ref(Makie.camera(scene)),
@@ -106,7 +109,8 @@ function project_to_pixelspace(scene, points::AbstractVector{Point{N, T}}) where
                 scene.transformation.transform_func[],
                 points
             )
-        )
+        ),
+        Ref(0.0)
     )
 end
 
@@ -152,35 +156,71 @@ function Makie.initialize_block!(po::PolarAxis)
 
     notify(po.limits)
 
+
+    on(po.limits) do lims
+        adjustcam!(po, lims, (0.0, 2π))
+    end
+
+
     po.scene = scene
 
+    # Outsource to `draw_axis` function
     (spineplot, rgridplot, θgridplot, rminorgridplot, θminorgridplot, rticklabelplot, θticklabelplot) = draw_axis!(po)
 
-    old_input = Ref(θticklabelplot[1][])
+    # Handle protrusions
 
-    θticklabelprotrusions = Observable{GridLayoutBase.RectSides{Float32}}()
-    on(θticklabelplot[1]) do input
+    θticklabelprotrusions = Observable(GridLayoutBase.RectSides(
+        0f0,0f0,0f0,0f0
+        )
+    )
+
+    old_input = Ref(θticklabelplot[1][])
+    pop!(old_input[])
+
+    onany(θticklabelplot[1]) do input
         # Only if the tick labels have changed, should we recompute the tick label
         # protrusions.
         # This should be changed by removing the call to `first`
         # when the call types are changed to the text, position=positions format
         # introduced in #.
-        if all(first.(input) .== first.(old_input[]))
+        if length(old_input[]) == length(input) && all(first.(input) .== first.(old_input[]))
             return
         else
-            px_area = pixelarea(scene)[]
-            box = boundingbox(θticklabelplot)
-            box = Rect2(to_ndim(Point2f, box.origin, 0), to_ndim(Point2f, box.widths, 0))
+            # px_area = pixelarea(scene)[]
+            # calculate text boundingboxes individually and select the maximum boundingbox
+            text_bboxes = text_bbox.(
+                first.(θticklabelplot[1][]),
+                Ref(θticklabelplot.textsize[]),
+                θticklabelplot.font[],
+                θticklabelplot.align[] isa Tuple ? Ref(θticklabelplot.align[]) : θticklabelplot.align[],
+                θticklabelplot.rotation[],
+                0.0,
+                0.0,
+                θticklabelplot.word_wrap_width[]
+            )
+            maxbox = maximum(widths.(text_bboxes))
+            # box = data_limits(θticklabelplot)
+            # @show maxbox px_area
+            # box = Rect2(
+            #     to_ndim(Point2f, project_to_pixelspace(po.blockscene, box.origin), 0),
+            #     to_ndim(Point2f, project_to_pixelspace(po.blockscene, box.widths), 0)
+            # )
+            # @show box
+            old_input[] = input
+
+
             θticklabelprotrusions[] = GridLayoutBase.RectSides(
-                max(0, left(box) - left(px_area)),
-                max(0, right(box) - right(px_area)),
-                max(0, bottom(box) - bottom(px_area)),
-                max(0, top(box) - top(px_area))
+                maxbox[1],#max(0, left(box) - left(px_area)),
+                maxbox[1],#max(0, right(box) - right(px_area)),
+                maxbox[2],#max(0, bottom(box) - bottom(px_area)),
+                maxbox[2],#max(0, top(box) - top(px_area))
             )
         end
     end
 
+
     notify(θticklabelplot[1])
+
 
     protrusions = θticklabelprotrusions
 
@@ -188,7 +228,7 @@ function Makie.initialize_block!(po::PolarAxis)
 
     # debug statements
     # @show boundingbox(scene) data_limits(scene)
-    # @infiltrate
+    # Main.@infiltrate
     # display(scene)
 
     return
@@ -207,16 +247,18 @@ function draw_axis!(po::PolarAxis)
 
     spinepoints = Observable{Vector{Point2f}}()
 
+    θlims = (0, 2π)
+
     onany(po.rticks, po.θticks, po.rminorticks, po.θminorticks, po.rtickformat, po.θtickformat, po.rtickangle, po.limits, po.sample_density, po.scene.px_area, po.scene.transformation.transform_func, po.scene.camera_controls.area) do rticks, θticks, rminorticks, θminorticks, rtickformat, θtickformat, rtickangle, limits, sample_density, pixelarea, trans, area
 
         rs = LinRange(limits..., sample_density)
-        θs = LinRange(0, 2π, sample_density)
+        θs = LinRange(θlims..., sample_density)
 
         _rtickvalues, _rticklabels = Makie.get_ticks(rticks, identity, rtickformat, limits...)
-        _θtickvalues, _θticklabels = Makie.get_ticks(θticks, identity, θtickformat, 0, 2π)
+        _θtickvalues, _θticklabels = Makie.get_ticks(θticks, identity, θtickformat, θlims...)
 
-        # Since θ=0 is at the same position as θ = 2π, we remove the last tick
-        # if the difference between the first and last tick is exactly 2π
+        # Since θ = 0 is at the same position as θ = 2π, we remove the last tick
+        # iff the difference between the first and last tick is exactly 2π
         # This is a special case, since it's the only possible instance of colocation
         if (_θtickvalues[end] - _θtickvalues[begin]) == 2π
             pop!(_θtickvalues)
@@ -236,7 +278,7 @@ function draw_axis!(po::PolarAxis)
         θtickpos = project_to_pixelspace(po.scene, Point2f.(limits[end], _θtickvalues)) .+ θgaps .+ Ref(pixelarea.origin)
 
         _rminortickvalues = Makie.get_minor_tickvalues(rminorticks, identity, _rtickvalues, limits...)
-        _θminortickvalues = Makie.get_minor_tickvalues(θminorticks, identity, _θtickvalues, 0, 2π)
+        _θminortickvalues = Makie.get_minor_tickvalues(θminorticks, identity, _θtickvalues, θlims...)
 
         _rgridpoints = [project_to_pixelspace(po.scene, Point2f.(r, θs)) .+ Ref(pixelarea.origin) for r in _rtickvalues]
         _θgridpoints = [project_to_pixelspace(po.scene, Point2f.(rs, θ)) .+ Ref(pixelarea.origin) for θ in _θtickvalues]
@@ -314,6 +356,8 @@ function draw_axis!(po::PolarAxis)
         font = po.rticklabelfont,
         color = po.rticklabelcolor,
         align = (:center, :top),
+        space = :pixel,
+        markerspace = :pixel
     )
 
     θticklabelplot = text!(
@@ -322,6 +366,8 @@ function draw_axis!(po::PolarAxis)
         font = po.θticklabelfont,
         color = po.θticklabelcolor,
         align = (:center, :center),
+        space = :pixel,
+        markerspace = :pixel
     )
 
     translate!.((spineplot, rgridplot, θgridplot, rminorgridplot, θminorgridplot, rticklabelplot, θticklabelplot), 0, 0, 100)
@@ -363,35 +409,31 @@ function Makie.plot!(P::Makie.PlotFunc, po::PolarAxis, args...; kw_attributes...
 end
 function Makie.autolimits!(po::PolarAxis)
     datalims = Rect2f(data_limits(po.scene))
-    projected_datalims = Makie.apply_transform(po.scene.transformation.transform_func[], datalims)
+    # projected_datalims = Makie.apply_transform(po.scene.transformation.transform_func[], datalims)
     # @show projected_datalims
     po.limits[] = (datalims.origin[1], datalims.origin[1] + datalims.widths[1])
     # @show po.limits[]
-    adjustcam!(po, po.limits[])
-    notify(po.limits)
+    # adjustcam!(po, po.limits[])
+    # notify(po.limits)
 end
 
 function rlims!(po::PolarAxis, rs::NTuple{2, <: Real})
     po.limits[] = rs
-    adjustcam!(po, po.limits[])
-    notify(po.limits)
 end
 
 function rlims!(po::PolarAxis, rmin::Real, rmax::Real)
     po.limits[] = (rmin, rmax)
-    adjustcam!(po, po.limits[])
-    notify(po.limits)
 end
 
 
 "Adjust the axis's scene's camera to conform to the given r-limits"
-function adjustcam!(po::PolarAxis, limits::NTuple{2, <: Real})
+function adjustcam!(po::PolarAxis, limits::NTuple{2, <: Real}, θlims::NTuple{2, <: Real} = (0.0, 2π))
     @assert limits[1] ≤ limits[2]
     scene = po.scene
     # We transform our limits to transformed space, since we can
     # operate linearly there
     # @show boundingbox(scene)
-    target = Makie.apply_transform((scene.transformation.transform_func[]), BBox(limits..., 0, 2π))
+    target = Makie.apply_transform((scene.transformation.transform_func[]), BBox(limits..., θlims...))
     # @show target
     area = scene.px_area[]
     Makie.update_cam!(scene, target)
