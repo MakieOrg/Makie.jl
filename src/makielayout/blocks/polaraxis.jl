@@ -9,6 +9,7 @@ end
 Base.broadcastable(x::PolarAxisTransformation) = (x,)
 
 # original implementation - somewhat inflexible
+# this defined inside initialize_block! for PolarAxis
 # PolarAxisTransformation = Makie.PointTrans{2}() do point
 #     #@assert point isa Point2
 #     y, x = point[1] .* sincos((point[2] + trans.θ_0) * trans.direction)
@@ -344,10 +345,6 @@ function draw_axis!(po::PolarAxis)
     #     adjustcam!(po, po.limits[])
     # end
 
-    # on(po.scene.px_area) do pxarea
-    #     adjustcam!(po)
-    # end
-
     notify(po.sample_density)
 
     # plot using the created observables
@@ -397,7 +394,7 @@ function draw_axis!(po::PolarAxis)
         textsize = po.rticklabelsize,
         font = po.rticklabelfont,
         color = po.rticklabelcolor,
-        align = (:center, :top),
+        align = (:left, :bottom),
         space = :pixel,
         markerspace = :pixel
     )
