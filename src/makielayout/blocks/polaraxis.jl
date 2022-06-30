@@ -126,6 +126,20 @@ function text_bbox(textstring::AbstractString, textsize::Union{AbstractVector, N
     return Rect2f(Makie.boundingbox(glyph_collection, Point3f(0), Makie.to_rotation(rotation)))
 end
 
+function text_bbox(plot::Text)
+    return text_bbox(
+        plot.text[],
+        plot.textsize[],
+        plot.font[],
+        plot.align[],
+        plot.rotation[],
+        plot.justification[],
+        plot.lineheight[],
+        RGBAf(0,0,0,0), RGBAf(0,0,0,0), 0f0,
+        plot.word_wrap_width[]
+    )
+end
+
 # Makie.can_be_current_axis(ax::PolarAxis) = true
 
 function Makie.initialize_block!(po::PolarAxis)
