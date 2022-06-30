@@ -236,7 +236,35 @@ function Makie.initialize_block!(po::PolarAxis)
     notify(θticklabelplot[1])
 
 
-    protrusions = θticklabelprotrusions
+    # Set up the title position
+    title_position = lift(pixelarea(scene), po.titlegap, po.titlealign, θticklabelprotrusions) do area, titlegap, titlealign, θtlprot
+        calculate_polar_title_position(area, titlegap, titlealign, θtlprot)
+    end
+
+    titleplot = text!(
+        po.blockscene,
+        title_position;
+        text = po.title,
+        font = po.titlefont,
+        fontsize = po.titlesize,
+        color = po.titlecolor,
+        align = @lift(($(po.titlealign), :center)),
+        visible = po.titlevisible
+    )
+
+    # We only need to update the title protrusion calculation when some parameter
+    # which affects the glyph collection changes.  But, we don't want to update
+    # the protrusion when the position changes.
+    title_update_obs = lift((x...) -> true, po.title, po.titlefont, po.titlegap, po.titlealign, po.titlevisible, po.titlesize)
+    #
+    protrusions = lift(θticklabelprotrusions, title_update_obs) do θtlprot, _
+        GridLayoutBase.RectSides(
+            θtlprot.left,
+            θtlprot.right,
+            θtlprot.bottom,
+            (title_position[][2] + boundingbox(titleplot).widths[2]/2 - top(pixelarea(scene)[])),
+        )
+    end
 
     connect!(po.layoutobservables.protrusions, protrusions)
 
@@ -388,6 +416,29 @@ function draw_axis!(po::PolarAxis)
 
     return (spineplot, rgridplot, θgridplot, rminorgridplot, θminorgridplot, rticklabelplot, θticklabelplot)
 
+end
+
+function calculate_polar_title_position(area, titlegap, align, θaxisprotrusion)
+    local x::Float32 = if align === :center
+        area.origin[1] + area.widths[1] / 2
+    elseif align === :left
+        area.origin[1]
+    elseif align === :right
+        area.origin[1] + area.widths[1]
+    else
+        error("Title align $align not supported.")
+    end
+
+    # local subtitlespace::Float32 = if ax.subtitlevisible[] && !iswhitespace(ax.subtitle[])
+    #     boundingbox(subtitlet).widths[2] + subtitlegap
+    # else
+    #     0f0
+    # end
+
+    local yoffset::Float32 = top(area) + titlegap + θaxisprotrusion.top #=+
+        subtitlespace=#
+
+    return Point2f(x, yoffset)
 end
 
 # allow it to be plotted to
