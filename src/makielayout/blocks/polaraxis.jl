@@ -158,7 +158,7 @@ function Makie.initialize_block!(po::PolarAxis)
 
 
     on(po.limits) do lims
-        adjustcam!(po, lims, (0.0, π))
+        adjustcam!(po, lims, (0.0, 2π))
     end
 
 
