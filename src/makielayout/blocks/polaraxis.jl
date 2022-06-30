@@ -378,18 +378,18 @@ function draw_axis!(po::PolarAxis)
     # minor grids
     rminorgridplot = lines!(
         po.blockscene, rminorgridpoints;
-        color = po.minorgridcolor,
-        linestyle = po.minorgridstyle,
-        linewidth = po.minorgridwidth,
-        visible = po.minorgridvisible
+        color = po.rminorgridcolor,
+        linestyle = po.rminorgridstyle,
+        linewidth = po.rminorgridwidth,
+        visible = po.rminorgridvisible
     )
 
     θminorgridplot = lines!(
         po.blockscene, θminorgridpoints;
-        color = po.minorgridcolor,
-        linestyle = po.minorgridstyle,
-        linewidth = po.minorgridwidth,
-        visible = po.minorgridvisible
+        color = po.θminorgridcolor,
+        linestyle = po.θminorgridstyle,
+        linewidth = po.θminorgridwidth,
+        visible = po.θminorgridvisible
     )
     # tick labels
     rticklabelplot = text!(
