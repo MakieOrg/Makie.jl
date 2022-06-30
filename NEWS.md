@@ -1,8 +1,14 @@
 # News
 
+## master
+
+- Added a new Axis type, `PolarAxis`, which is an axis with a polar projection.  Input is in `(r, theta)` coordinates and is transformed to `(x, y)` coordinates using the standard polar-to-cartesian transformation.  Generally, its attributes are very similar to the usual `Axis` attributes, but `x` is replaced by `r` and `y` by `θ`.  It also inherits from the theme of `Axis` in this manner, so should work seamlessly with Makie themes. [#2014](https://www.github.com/JuliaPlots/Makie.jl/pull/2014)
+- `inherit` now has a new signature `inherit(scene, attrs::NTuple{N, Symbol}, default_value)`, allowing recipe authors to access nested attributes when trying to inherit from the parent Scene.  For example, one could inherit from `scene.Axis.yticks` by `inherit(scene, (:Axis, :yticks), $default_value)`. [#2014](https://www.github.com/JuliaPlots/Makie.jl/pull/2014)
+- Fixed `update_cam!(scene::Scene)` by changing the internal call to `limits` to a call to `boundingbox`. [#2014](https://www.github.com/JuliaPlots/Makie.jl/pull/2014)
+
 ## v0.17.7
 
-- Improved `Menu` performance, now it should me much harder to reach the boundary of 255 scenes in GLMakie. `Menu` also takes a `default` keyword argument now and can be scrolled if there is too little space available.
+- Improved `Menu` performance, now it should be much harder to reach the boundary of 255 scenes in GLMakie. `Menu` also takes a `default` keyword argument now and can be scrolled if there is too little space available.
 
 ## v0.17.6
 
@@ -13,7 +19,7 @@
 
 ## v0.17.5
 
-- Fixed a regression with `linkaxes!` [#2039](https://github.com/JuliaPlots/Makie.jl/pull/2039). 
+- Fixed a regression with `linkaxes!` [#2039](https://github.com/JuliaPlots/Makie.jl/pull/2039).
 
 ## v0.17.4
 
