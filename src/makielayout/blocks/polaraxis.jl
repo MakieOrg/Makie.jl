@@ -160,7 +160,7 @@ function Makie.initialize_block!(po::PolarAxis)
         Rect(round.(Int, new_o), round.(Int, new_ws))
     end
 
-    scene = Scene(po.blockscene, square, camera = cam2d!, backgroundcolor = :white)
+    scene = Scene(po.blockscene, square, camera = cam2d!, backgroundcolor = :transparent)
 
     translate!(scene, 0, 0, -100)
 
@@ -412,7 +412,37 @@ function draw_axis!(po::PolarAxis)
         markerspace = :pixel
     )
 
+    clippoints = lift(spinepoints) do spinepoints
+        area = pixelarea(po.scene)[]
+        ext_points = Point2f[
+            (left(area), bottom(area)),
+            (right(area), bottom(area)),
+            (right(area), top(area)),
+            (left(area), top(area)),
+        ]
+        return GeometryBasics.Polygon(ext_points, [spinepoints])
+    end
+
+    clipcolor = lift(parent(po.blockscene).theme.backgroundcolor) do bgc
+        bgc = to_color(bgc)
+        if alpha(bgc) == 0f0
+            return to_color(:white)
+        else
+            return RGBf(red(bgc), blue(bgc), green(bgc))
+        end
+    end
+
+    clipplot = poly!(
+        po.blockscene,
+        clippoints,
+        color = clipcolor,
+        space = :pixel,
+        strokewidth = 0,
+        visible = po.clip,
+    )
+
     translate!.((spineplot, rgridplot, θgridplot, rminorgridplot, θminorgridplot, rticklabelplot, θticklabelplot), 0, 0, 100)
+    translate!(clipplot, 0, 0, 99)
 
     return (spineplot, rgridplot, θgridplot, rminorgridplot, θminorgridplot, rticklabelplot, θticklabelplot)
 

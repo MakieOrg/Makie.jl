@@ -1463,7 +1463,9 @@ end
         θminorgridstyle = inherit(scene, (:Axis, :yminorgridstyle), nothing)
         "Controls if the `θ` minor grid is visible."
         θminorgridvisible = inherit(scene, (:Axis, :yminorgridvisible), true)
-        "The density at which grid lines are sampled"
+        "The density at which grid lines are sampled."
         sample_density = 100
+        "Controls whether to activate the nonlinear clip feature.  Note that this should not be used when the background is ultimately transparent."
+        clip = true
     end
 end
