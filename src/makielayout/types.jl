@@ -1410,7 +1410,7 @@ end
         "Controls if the `r` ticks are visible."
         rticklabelsvisible = inherit(scene, (:Axis, :xticklabelsvisible), true)
         "The angle in radians along which the `r` ticks are printed."
-        rtickangle = 0.0
+        rtickangle = π/8
         "The specifier for the angular (`θ`) ticks, similar to `yticks` for a normal Axis."
         θticks = MultiplesTicks(12, π, "π")
         "The specifier for the minor `θ` ticks."
