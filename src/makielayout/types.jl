@@ -1387,59 +1387,82 @@ end
         spinevisible = true
         "The linestyle of the spine."
         spinestyle = nothing
-        "The specifier for the radial (`r`) ticks, similar to `xticks` for a normal Axis"
+        "The specifier for the radial (`r`) ticks, similar to `xticks` for a normal Axis."
         rticks = LinearTicks(4)
         "The specifier for the minor `r` ticks."
         rminorticks = IntervalsBetween(2)
         "The color of the `r` grid."
-        rgridcolor = (:black, 0.5)
+        rgridcolor = inherit(scene, (:Axis, :xgridcolor), (:black, 0.5))
         "The linewidth of the `r` grid."
-        rgridwidth = 1
+        rgridwidth = inherit(scene, (:Axis, :xgridwidth), 1)
         "The linestyle of the `r` grid."
-        rgridstyle = nothing
-        "Controls if the `r` grid is visible"
-        rgridvisible = true
+        rgridstyle = inherit(scene, (:Axis, :xgridstyle), nothing)
+        "Controls if the `r` grid is visible."
+        rgridvisible = inherit(scene, (:Axis, :xgridvisible), true)
         "The formatter for the `r` ticks"
         rtickformat = Makie.automatic
         "The fontsize of the `r` tick labels."
-        rticklabelsize = inherit(scene, :fontsize, 16)
+        rticklabelsize = inherit(scene, (:Axis, :xticklabelsize), 16)
         "The font of the `r` tick labels."
-        rticklabelfont = inherit(scene, :font, Makie.defaultfont())
+        rticklabelfont = inherit(scene, (:Axis, :xticklabelfont), inherit(scene, :font, Makie.defaultfont()))
         "The color of the `r` tick labels."
-        rticklabelcolor = inherit(scene, :textcolor, :black)
+        rticklabelcolor = inherit(scene, (:Axis, :xticklabelcolor), inherit(scene, :textcolor, :black))
         "Controls if the `r` ticks are visible."
-        rticklabelsvisible = inherit(scene, :xticklabelsvisible, true)
+        rticklabelsvisible = inherit(scene, (:Axis, :xticklabelsvisible), true)
+        "The angle in radians along which the `r` ticks are printed."
         rtickangle = 0.0
-        "The specifier for the angular (`θ`) ticks, similar to `xticks` for a normal Axis"
+        "The specifier for the angular (`θ`) ticks, similar to `yticks` for a normal Axis."
         θticks = MultiplesTicks(12, π, "π")
         "The specifier for the minor `θ` ticks."
         θminorticks = IntervalsBetween(2)
         "The color of the `θ` grid."
-        θgridcolor = (:black, 0.5)
+        θgridcolor = inherit(scene, (:Axis, :ygridcolor), (:black, 0.5))
         "The linewidth of the `θ` grid."
-        θgridwidth = 1
+        θgridwidth = inherit(scene, (:Axis, :ygridwidth), 1)
         "The linestyle of the `θ` grid."
-        θgridstyle = nothing
+        θgridstyle = inherit(scene, (:Axis, :ygridstyle), nothing)
         "Controls if the `θ` grid is visible."
-        θgridvisible = true
+        θgridvisible = inherit(scene, (:Axis, :ygridvisible), true)
         "The formatter for the `θ` ticks."
         θtickformat = Makie.automatic
         "The fontsize of the `θ` tick labels."
-        θticklabelsize = inherit(scene, :fontsize, 16)
+        θticklabelsize = inherit(scene, (:Axis, :yticklabelsize), 16)
         "The font of the `θ` tick labels."
-        θticklabelfont = inherit(scene, :font, Makie.defaultfont())
+        θticklabelfont = inherit(scene, (:Axis, :yticklabelfont), inherit(scene, :font, Makie.defaultfont()))
         "The color of the `θ` tick labels."
-        θticklabelcolor = inherit(scene, :textcolor, :black)
+        θticklabelcolor = inherit(scene, (:Axis, :yticklabelcolor), inherit(scene, :textcolor, :black))
         "Controls if the `θ` ticks are visible."
-        θticklabelsvisible = inherit(scene, :yticklabelsvisible, true)
-        "The color of the minor grid."
-        minorgridcolor = (:black, 0.2)
-        "The linewidth of the minor grid."
-        minorgridwidth = 1
-        "The linestyle of the minor grid."
-        minorgridstyle = nothing
-        "Controls if the minor grid is visible."
-        minorgridvisible = true
+        θticklabelsvisible = inherit(scene, (:Axis, :yticklabelsvisible), true)
+        "The title of the plot"
+        title = " "
+        "The gap between the title and the top of the axis"
+        titlegap = inherit(scene, (:Axis, :titlesize), inherit(scene, :fontsize, 16) / 2)
+        "The alignment of the title.  Can be any of `:center`, `:left`, or `:right`."
+        titlealign = :center
+        "The fontsize of the title."
+        titlesize = inherit(scene, (:Axis, :titlesize), inherit(scene, :fontsize, 16) * 1.2)
+        "The font of the title."
+        titlefont = inherit(scene, (:Axis, :titlefont), inherit(scene, :font, Makie.defaultfont()))
+        "The color of the title."
+        titlecolor = inherit(scene, (:Axis, :titlecolor), inherit(scene, :textcolor, :black))
+        "Controls if the title is visible."
+        titlevisible = inherit(scene, (:Axis, :titlevisible), true)
+        "The color of the `r` minor grid."
+        rminorgridcolor = inherit(scene, (:Axis, :xminorgridcolor), (:black, 0.2))
+        "The linewidth of the `r` minor grid."
+        rminorgridwidth = inherit(scene, (:Axis, :xminorgridwidth), 1)
+        "The linestyle of the `r` minor grid."
+        rminorgridstyle = inherit(scene, (:Axis, :xminorgridstyle), nothing)
+        "Controls if the `r` minor grid is visible."
+        rminorgridvisible = inherit(scene, (:Axis, :xminorgridvisible), true)
+        "The color of the `θ` minor grid."
+        θminorgridcolor = inherit(scene, (:Axis, :yminorgridcolor), (:black, 0.2))
+        "The linewidth of the `θ` minor grid."
+        θminorgridwidth = inherit(scene, (:Axis, :yminorgridwidth), 1)
+        "The linestyle of the `θ` minor grid."
+        θminorgridstyle = inherit(scene, (:Axis, :yminorgridstyle), nothing)
+        "Controls if the `θ` minor grid is visible."
+        θminorgridvisible = inherit(scene, (:Axis, :yminorgridvisible), true)
         "The density at which grid lines are sampled"
         sample_density = 100
     end
