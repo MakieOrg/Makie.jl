@@ -172,7 +172,9 @@ function Makie.initialize_block!(po::PolarAxis)
     notify(po.limits)
 
 
-    on(po.limits) do lims
+    # Whenever the limits change or the scene is resized,
+    # update the camera.
+    onany(po.limits, scene.px_area) do lims, px_area
         adjustcam!(po, lims, (0.0, 2π))
     end
 
@@ -268,6 +270,7 @@ function Makie.initialize_block!(po::PolarAxis)
     end
 
     connect!(po.layoutobservables.protrusions, protrusions)
+
 
     # debug statements
     # @show boundingbox(scene) data_limits(scene)
@@ -499,5 +502,6 @@ function adjustcam!(po::PolarAxis, limits::NTuple{2, <: Real}, θlims::NTuple{2,
     # @show target
     area = scene.px_area[]
     Makie.update_cam!(scene, target)
+    notify(scene.camera_controls.area)
     return
 end
