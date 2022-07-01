@@ -44,7 +44,8 @@ function TextureAtlas(initial_size = TEXTURE_RESOLUTION[])
         RectanglePacker(Rect2(0, 0, initial_size...)),
         Dict{Tuple{Char, String}, Int}(),
         1,
-        zeros(Float16, initial_size...),
+        # We use float max here to avoid texture bleed. See #2096
+        fill(floatmax(Float16), initial_size...),
         Vec4f[],
     )
 end
