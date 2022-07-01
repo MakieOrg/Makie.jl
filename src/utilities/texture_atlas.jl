@@ -45,7 +45,7 @@ function TextureAtlas(initial_size = TEXTURE_RESOLUTION[])
         Dict{Tuple{Char, String}, Int}(),
         1,
         # We use float max here to avoid texture bleed. See #2096
-        fill(floatmax(Float16), initial_size...),
+        fill(Float16(0.5PIXELSIZE_IN_ATLAS[] + GLYPH_PADDING[]), initial_size...),
         Vec4f[],
     )
 end
