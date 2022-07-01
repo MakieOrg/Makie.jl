@@ -1,20 +1,24 @@
 # First, define the polar-to-cartesian transformation as a Makie transformation
 # which is fully compliant with the interface
 
+"""
+    PolarAxisTransformation(θ_0::Float64, direction::Int)
+
+This struct defines a general polar-to-cartesian transformation, i.e.,
+```math
+(r, θ) -> (r \\cos(direction * (θ + θ_0)), r \\sin(direction * (θ + θ_0)))
+```
+
+where θ is assumed to be in radians.
+
+`direction` should be either -1 or +1, and `θ_0` may be any value.
+"""
 struct PolarAxisTransformation
     θ_0::Float64
     direction::Int
 end
 
 Base.broadcastable(x::PolarAxisTransformation) = (x,)
-
-# original implementation - somewhat inflexible
-# this defined inside initialize_block! for PolarAxis
-# PolarAxisTransformation = Makie.PointTrans{2}() do point
-#     #@assert point isa Point2
-#     y, x = point[1] .* sincos((point[2] + trans.θ_0) * trans.direction)
-#     return Point2f(x, y)
-# end
 
 function Makie.apply_transform(trans::PolarAxisTransformation, point::VecTypes{2, T}) where T <: Real
     y, x = point[1] .* sincos((point[2] + trans.θ_0) * trans.direction)
@@ -99,19 +103,19 @@ end
 
 function project_to_pixelspace(scene, points::AbstractVector{Point{N, T}}) where {N, T}
     to_ndim.(
-        Ref(eltype(points)),
+        (eltype(points),),
         Makie.project.(
             # obtain the camera of the Scene which will project to its screenspace
-            Ref(Makie.camera(scene)),
+            (Makie.camera(scene),),
             # go from dataspace (transformation applied to inputspace) to pixelspace
-            Ref(:data), Ref(:pixel),
+            (:data,), (:pixel,),
             # apply the transform to go from inputspace to dataspace
             Makie.apply_transform(
                 scene.transformation.transform_func[],
                 points
             )
         ),
-        Ref(0.0)
+        (0.0,)
     )
 end
 
@@ -141,7 +145,7 @@ function text_bbox(plot::Text)
     )
 end
 
-# Makie.can_be_current_axis(ax::PolarAxis) = true
+Makie.can_be_current_axis(ax::PolarAxis) = true
 
 function Makie.initialize_block!(po::PolarAxis)
     cb = po.layoutobservables.computedbbox
@@ -164,7 +168,7 @@ function Makie.initialize_block!(po::PolarAxis)
 
     translate!(scene, 0, 0, -100)
 
-    Makie.Observables.connect!(
+    Observables.connect!(
         scene.transformation.transform_func,
         @lift(PolarAxisTransformation($(po.θ_0), $(po.direction)))
     )
@@ -312,7 +316,7 @@ function draw_axis!(po::PolarAxis)
         end
 
         θtextbboxes = text_bbox.(
-            _θticklabels, Ref(po.θticklabelsize[]), Ref(po.θticklabelfont[]), Ref((:center, :center)), #=θticklabelrotation=#0f0, #=θticklabeljustification=#0f0, #=θticklabellineheight=#0f0, #=θticklabelword_wrap_width=# -1
+            _θticklabels, (po.θticklabelsize[],), (po.θticklabelfont[],), ((:center, :center),), 0f0, 0f0, 0f0, -1
         )
 
         rtick_pos_lbl[] = tuple.(_rticklabels, project_to_pixelspace(po.scene, Point2f.(_rtickvalues, rtickangle)) .+ Ref(pixelarea.origin))
@@ -398,8 +402,6 @@ function draw_axis!(po::PolarAxis)
         font = po.rticklabelfont,
         color = po.rticklabelcolor,
         align = (:left, :bottom),
-        space = :pixel,
-        markerspace = :pixel
     )
 
     θticklabelplot = text!(
@@ -408,8 +410,6 @@ function draw_axis!(po::PolarAxis)
         font = po.θticklabelfont,
         color = po.θticklabelcolor,
         align = (:center, :center),
-        space = :pixel,
-        markerspace = :pixel
     )
 
     clippoints = lift(spinepoints) do spinepoints
@@ -449,7 +449,7 @@ function draw_axis!(po::PolarAxis)
 end
 
 function calculate_polar_title_position(area, titlegap, align, θaxisprotrusion)
-    local x::Float32 = if align === :center
+    x::Float32 = if align === :center
         area.origin[1] + area.widths[1] / 2
     elseif align === :left
         area.origin[1]
@@ -465,7 +465,7 @@ function calculate_polar_title_position(area, titlegap, align, θaxisprotrusion)
     #     0f0
     # end
 
-    local yoffset::Float32 = top(area) + titlegap + θaxisprotrusion.top #=+
+    yoffset::Float32 = top(area) + titlegap + θaxisprotrusion.top #=+
         subtitlespace=#
 
     return Point2f(x, yoffset)
