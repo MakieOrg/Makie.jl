@@ -79,7 +79,7 @@ end
     s
 end
 
-@reference_test "scatter rotations" begin
+@reference_test "scatter stroke and glow" begin
     s = Scene(resolution = (700, 700), camera = campixel!)
 
     # half stroke, half glow
