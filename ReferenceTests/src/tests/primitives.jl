@@ -79,6 +79,45 @@ end
     s
 end
 
+@reference_test "scatter rotations" begin
+    s = Scene(resolution = (700, 700), camera = campixel!)
+
+    # half stroke, half glow
+    strokes = vcat(range(1, 4, length=7), zeros(7))
+    glows = vcat(zeros(7), range(4, 1, length=7))
+    outline_colors = vcat(
+        [:red, :green, :blue, :yellow, :purple, :cyan, :black],
+        [:red, :green, :blue, :yellow, :purple, :cyan, :black]
+    )
+    colors = [
+        :red, :green, :blue,
+        :yellow, :purple, :cyan,
+        :white, :black,
+        RGBAf(1, 0, 0, 0), RGBAf(0, 1, 0, 0), RGBAf(0, 0, 1, 0),
+        RGBAf(1, 0, 1, 0), RGBAf(0, 1, 1, 0), RGBAf(1, 1, 0, 0),
+    ]
+
+    markers = [:circle, :rect, :cross, :utriangle, :dtriangle,
+        'a', 'x', 'h', 'g', 'Y', 'J', 'α', '↑', 'o'
+    ]
+
+    for i in eachindex(strokes)
+        oc = outline_colors[i]
+        strokewidth = strokes[i]
+        glowwidth = glows[i]
+        for (j, (m, c)) in enumerate(zip(markers, colors))
+            p = Point2f(i, j) .* 45
+            scatter!(s,
+                p,
+                marker = m, markersize = 30, color = c,
+                strokewidth = strokewidth, strokecolor = oc,
+                glowwidth = glowwidth, glowcolor = oc,
+            )
+        end
+    end
+    s
+end
+
 
 @reference_test "basic polygon shapes" begin
     s = Scene(resolution = (800, 800), camera = campixel!)
