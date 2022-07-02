@@ -33,9 +33,10 @@ Creates a tooltip pointing at `position` displaying the given `string`
 - `strokecolor = :white` sets the text outline color.
 - `justification = :left` sets whether text is aligned to the `:left`, `:center` or `:right` within its bounding box.
 """
-@recipe(Tooltip, position, str) do scene
+@recipe(Tooltip, position) do scene
     Attributes(;
-        # General    
+        # General   
+        text = "", 
         offset = 10,
         placement = :above,
         xautolimits = false, 
@@ -67,10 +68,15 @@ Creates a tooltip pointing at `position` displaying the given `string`
     )
 end
 
-convert_arguments(::Type{<: Tooltip}, x, y, str) = (Point2f(x, y), str)
+convert_arguments(::Type{<: Tooltip}, x::Real, y::Real, str::AbstractString) = (Point2f(x, y), str)
+convert_arguments(::Type{<: Tooltip}, x::Real, y::Real) = (Point2f(x, y),)
+function plot!(plot::Tooltip{<:Tuple{<:VecTypes, <:AbstractString}})
+    plot.attributes[:text]  = plot[2]
+    tooltip!(plot, plot[1]; plot.attributes...)
+    plot
+end
 
-
-function plot!(p::Tooltip)
+function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     scene = parent_scene(p)
     bbox = Observable(Rect2f(0,0,1,1))
     textpadding = map(p.textpadding) do pad
@@ -222,7 +228,7 @@ function plot!(p::Tooltip)
     end
 
     tp = text!(
-        p, p[1], text = p[2], justification = p.justification,
+        p, p[1], text = p.text, justification = p.justification,
         align = text_align, offset = text_offset, textsize = p.textsize,
         color = p.textcolor, font = p.font, fxaa = false,
         strokewidth = p.strokewidth, strokecolor = p.strokecolor,
@@ -233,7 +239,7 @@ function plot!(p::Tooltip)
 
     onany(
             scene.camera.projectionview, scene.camera.resolution, 
-            p[1], p[2], text_align, text_offset, textpadding
+            p[1], p.text, text_align, text_offset, textpadding
         ) do pv, res, p, s, align, o, pad
         l, r, b, t = pad
         bb = Rect2f(boundingbox(tp)) + o

@@ -283,7 +283,7 @@ function DataInspector(scene::Scene; priority = 100, kwargs...)
         default_offset = get(attrib_dict, :offset, 10f0),
     )
 
-    plot = tooltip!(parent, Observable(Point2f(0)), Observable(""); attrib_dict...)
+    plot = tooltip!(parent, Observable(Point2f(0)), text = Observable(""); attrib_dict...)
     on(z -> translate!(plot, 0, 0, z), base_attrib.depth)
     notify(base_attrib.depth)
 
@@ -409,7 +409,7 @@ function show_data(inspector::DataInspector, plot::Scatter, idx)
     ms = plot.markersize[]
 
     tt.offset[] = 0.5ms + 2
-    tt[2][] = position2string(plot[1][][idx])
+    tt.text[] = position2string(plot[1][][idx])
     tt.visible[] = true
 
     return true
@@ -429,6 +429,8 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
         )
 
         if inspector.selection != plot
+            clear_temporary_plots!(inspector, plot)
+
             cc = cameracontrols(scene)
             if cc isa Camera3D
                 eyeposition = cc.eyeposition[]
@@ -440,7 +442,6 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
                 plot.marker[], Key{:marker}(), Key{Makie.plotkey(plot)}()
             ))
         
-            clear_temporary_plots!(inspector, plot)
             p = wireframe!(
                 scene, a.bbox3D, model = a.model, color = a.indicator_color,
                 linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
@@ -458,7 +459,7 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
     proj_pos = shift_project(scene, plot, to_ndim(Point3f, plot[1][][idx], 0))
     update_tooltip_alignment!(inspector, proj_pos)
 
-    tt[2][] = position2string(plot[1][][idx])
+    tt.text[] = position2string(plot[1][][idx])
     tt.visible[] = true
 
     return true
@@ -480,7 +481,7 @@ function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, i
     update_tooltip_alignment!(inspector, proj_pos)
 
     tt.offset[] = lw + 2
-    tt[2][] = position2string(typeof(p0)(pos))
+    tt.text[] = position2string(typeof(p0)(pos))
     tt.visible[] = true
 
     return true
@@ -500,6 +501,8 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
         a.bbox3D[] = bbox
 
         if inspector.selection != plot
+            clear_temporary_plots!(inspector, plot)
+
             cc = cameracontrols(scene)
             if cc isa Camera3D
                 eyeposition = cc.eyeposition[]
@@ -507,7 +510,6 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
                 upvector = cc.upvector[]
             end
 
-            clear_temporary_plots!(inspector, plot)
             p = wireframe!(
                 scene, a.bbox3D, color = a.indicator_color,
                 linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
@@ -523,7 +525,7 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
     end
     
     tt[1][] = proj_pos
-    tt[2][] = bbox2string(bbox)
+    tt.text[] = bbox2string(bbox)
     tt.visible[] = true
 
     return true
@@ -573,7 +575,7 @@ function show_data(inspector::DataInspector, plot::Surface, idx)
 
     if !isnan(pos)
         tt[1][] = proj_pos
-        tt[2][] = position2string(pos)
+        tt.text[] = position2string(pos)
         a.indicator_visible[] = true
         tt.visible[] = true
         tt.offset[] = 0f0
@@ -620,9 +622,7 @@ function show_imagelike(inspector, plot, name, edge_based)
 
     if a.enable_indicators[]
         if plot.interpolate[]
-            if inspector.selection != plot || isempty(inspector.temp_plots) || 
-                !(inspector.temp_plots[1] isa Scatter)
-
+            if inspector.selection != plot
                 clear_temporary_plots!(inspector, plot)
                 p = scatter!(
                     scene, a.position, color = a.color,
@@ -630,22 +630,15 @@ function show_imagelike(inspector, plot, name, edge_based)
                     inspectable = false,
                     marker=:rect, markersize = map(r -> 3r, a.range),
                     strokecolor = a.indicator_color,
-                    strokewidth = a.indicator_linewidth #, linestyle = a.indicator_linestyle no?
+                    strokewidth = a.indicator_linewidth
                 )
                 translate!(p, Vec3f(0, 0, a.depth[]-1))
                 push!(inspector.temp_plots, p)
-                # Hacky?
-                push!(
-                    inspector.obsfuncs,
-                    Observables.ObserverFunction(a.position.listeners[end], a.position, false)
-                )
             end
-            tt[2][] = color2text(name, mpos[1], mpos[2], z)
+            tt.text[] = color2text(name, mpos[1], mpos[2], z)
         else
             a.bbox2D[] = _pixelated_image_bbox(plot[1][], plot[2][], plot[3][], i, j, edge_based)
-            if inspector.selection != plot || isempty(inspector.temp_plots) || 
-                !(inspector.temp_plots[1][1][] isa Rect2)
-
+            if inspector.selection != plot
                 clear_temporary_plots!(inspector, plot)
                 p = wireframe!(
                     scene, a.bbox2D, model = a.model, color = a.indicator_color,
@@ -655,7 +648,7 @@ function show_imagelike(inspector, plot, name, edge_based)
                 translate!(p, Vec3f(0, 0, a.depth[]-1))
                 push!(inspector.temp_plots, p)
             end
-            tt[2][] = color2text(name, i, j, z)
+            tt.text[] = color2text(name, i, j, z)
         end
 
         a.indicator_visible[] = true
@@ -780,7 +773,7 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
         a.indicator_visible[] = true
     end
 
-    tt[2][] = position2string(pos)
+    tt.text[] = position2string(pos)
     tt.visible[] = true
 
     return true
@@ -804,7 +797,7 @@ function show_data(inspector::DataInspector, plot::Arrows, idx, source)
     v = vec2string(plot[2][][idx])
 
     tt[1][] = mpos
-    tt[2][] = "Position:\n  $p\nDirection:\n  $v"
+    tt.text[] = "Position:\n  $p\nDirection:\n  $v"
     tt.visible[] = true
 
     return true
@@ -822,7 +815,7 @@ function show_data(inspector::DataInspector, plot::Contourf, idx, source::Mesh)
     mpos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, mpos)
     tt[1][] = mpos
-    tt[2][] = @sprintf("level = %0.3f", level)
+    tt.text[] = @sprintf("level = %0.3f", level)
     tt.visible[] = true
 
     return true
@@ -916,7 +909,7 @@ function show_data(inspector::DataInspector, plot::VolumeSlices, idx, child::Hea
         val = data[i, j]
 
         tt[1][] = proj_pos
-        tt[2][] = @sprintf(
+        tt.text[] = @sprintf(
             "x: %0.6f\ny: %0.6f\nz: %0.6f\n%0.6f0",
             pos[1], pos[2], pos[3], val
         )
