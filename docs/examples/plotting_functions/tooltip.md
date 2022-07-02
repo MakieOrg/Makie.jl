@@ -8,6 +8,10 @@
 
 \begin{examplefigure}{svg = true}
 ```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
 fig, ax, p = scatter(Point2f(0), marker = 'x', markersize = 20)
 # p[1] is the first argument of the scatter plot, i.e. Point2f(0), wrapped in
 # an Observable.
