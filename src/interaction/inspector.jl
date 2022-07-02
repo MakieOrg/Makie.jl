@@ -401,6 +401,7 @@ end
 
 # TODO: better 3D scaling
 function show_data(inspector::DataInspector, plot::Scatter, idx)
+    a = inspector.attributes
     tt = inspector.plot
     scene = parent_scene(plot)
 
@@ -411,6 +412,7 @@ function show_data(inspector::DataInspector, plot::Scatter, idx)
     tt.offset[] = 0.5ms + 2
     tt.text[] = position2string(plot[1][][idx])
     tt.visible[] = true
+    a.indicator_visible[] && (a.indicator_visible[] = false)
 
     return true
 end
@@ -467,7 +469,7 @@ end
 
 
 function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, idx)
-    # a = inspector.attributes
+    a = inspector.attributes
     tt = inspector.plot
     scene = parent_scene(plot)
 
@@ -483,6 +485,7 @@ function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, i
     tt.offset[] = lw + 2
     tt.text[] = position2string(typeof(p0)(pos))
     tt.visible[] = true
+    a.indicator_visible[] && (a.indicator_visible[] = false)
 
     return true
 end
@@ -576,13 +579,12 @@ function show_data(inspector::DataInspector, plot::Surface, idx)
     if !isnan(pos)
         tt[1][] = proj_pos
         tt.text[] = position2string(pos)
-        a.indicator_visible[] = true
         tt.visible[] = true
         tt.offset[] = 0f0
     else
-        a.indicator_visible[] = false
         tt.visible[] = false
     end
+    a.indicator_visible[] && (a.indicator_visible[] = false)
 
     return true
 end
@@ -783,13 +785,9 @@ function show_data(inspector::DataInspector, plot::Arrows, idx, ::LineSegments)
     return show_data(inspector, plot, div(idx+1, 2), nothing)
 end
 function show_data(inspector::DataInspector, plot::Arrows, idx, source)
-    # a = inspector.plot.attributes
+    a = inspector.plot.attributes
     tt = inspector.plot
-    scene = parent_scene(plot)
-
     pos = plot[1][][idx]
-    proj_pos = shift_project(scene, plot, to_ndim(Point3f, pos, 0))
-
     mpos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, mpos)
 
@@ -799,6 +797,7 @@ function show_data(inspector::DataInspector, plot::Arrows, idx, source)
     tt[1][] = mpos
     tt.text[] = "Position:\n  $p\nDirection:\n  $v"
     tt.visible[] = true
+    a.indicator_visible[] && (a.indicator_visible[] = false)
 
     return true
 end
@@ -806,9 +805,7 @@ end
 # This should work if contourf would place computed levels in colors and let the
 # backend handle picking colors from a colormap
 function show_data(inspector::DataInspector, plot::Contourf, idx, source::Mesh)
-    # a = inspector.plot.attributes
     tt = inspector.plot
-    scene = parent_scene(plot)
     idx = show_poly(inspector, plot.plots[1], idx, source)
     level = plot.plots[1].color[][idx]
 
@@ -836,30 +833,27 @@ function show_poly(inspector, plot, idx, source)
     idx = vertexindex2poly(plot[1][], idx)
 
     if a.enable_indicators[]
-        scene = parent_scene(plot)
-        ext = convert_arguments(PointBased(), plot[1][][idx].exterior)[1]
         
-        # TODO: This leaves behind extra indicators if the mouse is moved quickly
-        if !a.indicator_visible[] || isempty(inspector.temp_plots) || (ext != inspector.temp_plots[1][1][])
+        line_collection = copy(convert_arguments(PointBased(), plot[1][][idx].exterior)[1])
+        for int in plot[1][][idx].interiors
+            push!(line_collection, Point2f(NaN))
+            append!(line_collection, convert_arguments(PointBased(), int)[1])
+        end
+        
+        if inspector.selection != plot
+            scene = parent_scene(plot)
             clear_temporary_plots!(inspector, plot)
 
             p = lines!(
-                scene, ext, color = a.indicator_color,
+                scene, line_collection, color = a.indicator_color,
                 strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
                 visible = a.indicator_visible, inspectable = false
             )
             translate!(p, Vec3f(0, 0, a.depth[]-1))
             push!(inspector.temp_plots, p)
 
-            for int in plot[1][][idx].interiors
-                p = lines!(
-                    scene, int, color = a.indicator_color,
-                    strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
-                    visible = a.indicator_visible, inspectable = false
-                )
-                translate!(p, Vec3f(0,0,a.depth[]-1))
-                push!(inspector.temp_plots, p)
-            end
+        elseif !isempty(inspector.temp_plots)
+            inspector.temp_plots[1][1][] = line_collection
         end
 
         a.indicator_visible[] = true
@@ -869,7 +863,7 @@ function show_poly(inspector, plot, idx, source)
 end
 
 function show_data(inspector::DataInspector, plot::VolumeSlices, idx, child::Heatmap)
-    # a = inspector.plot.attributes
+    a = inspector.attributes
     tt = inspector.plot
     scene = parent_scene(plot)
 
@@ -917,6 +911,7 @@ function show_data(inspector::DataInspector, plot::VolumeSlices, idx, child::Hea
     else
         tt.visible[] = false
     end
+    a.indicator_visible[] && (a.indicator_visible[] = false)
 
     return true
 end
