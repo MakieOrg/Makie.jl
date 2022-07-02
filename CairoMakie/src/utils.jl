@@ -240,6 +240,9 @@ function per_face_colors(
                 end
             end
             return FaceIterator(cvec, faces)
+        elseif color isa Makie.AbstractPattern
+            # let next level extend and fill with CairoPattern
+            return color
         elseif color isa AbstractMatrix{<: Colorant} && uv !== nothing
             wsize = reverse(size(color))
             wh = wsize .- 1
@@ -257,4 +260,13 @@ end
 
 function mesh_pattern_set_corner_color(pattern, id, c::Colorant)
     Cairo.mesh_pattern_set_corner_color_rgba(pattern, id, rgbatuple(c)...)
+end
+
+# not piracy
+function Cairo.CairoPattern(color::Makie.AbstractPattern)
+    # the Cairo left and right are fliped
+    bitmappattern = reverse(ARGB32.(Makie.to_image(color)); dims=2)
+    cairoimage = Cairo.CairoImageSurface(bitmappattern)
+    cairopattern = Cairo.CairoPattern(cairoimage)
+    return cairopattern
 end
