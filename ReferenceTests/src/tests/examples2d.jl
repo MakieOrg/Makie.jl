@@ -544,3 +544,19 @@ end
     end
     f
 end
+
+@reference_test "Tooltip" begin
+    fig, ax, p = scatter(Point2f(0,0))
+    xlims!(ax, -10, 10)
+    ylims!(ax, -5, 5)
+    tt = tooltip!(ax, Point2f(0), "left", placement = :left)
+    tt.backgroundcolor[] = :red
+    tooltip!(ax, Point2f(0), "above\nnewline", placement = :above, textpadding = (8, 5, 7, 2))
+    tooltip!(ax, Point2f(0), "below", placement = :below, outline_color = :red, outline_linestyle = :dash)
+    tooltip!(
+        ax, Point2f(0), "right", placement = :right, textsize = 30, 
+        outline_linewidth = 5, offset = 30, triangle_size = 15,
+        strokewidth = 2f0
+    )
+    fig
+end
