@@ -9,11 +9,11 @@ function, which must return a `Matrix{<: AbstractRGB}`.
 abstract type AbstractPattern{T} <: AbstractArray{T, 2} end
 
 # for print_array because we defined it as <: AbstratArray
-function Base.show(io::IO, p::Makie.AbstractPattern)
+function Base.show(io::IO, p::AbstractPattern)
     print(io, typeof(p))
 end
 
-function Base.show(io::IO, ::MIME"text/plain", p::Makie.AbstractPattern)
+function Base.show(io::IO, ::MIME"text/plain", p::AbstractPattern)
     print(io, typeof(p))
 end
 
