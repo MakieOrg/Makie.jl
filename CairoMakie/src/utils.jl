@@ -264,7 +264,7 @@ end
 
 # not piracy
 function Cairo.CairoPattern(color::Makie.AbstractPattern)
-    # the Cairo left and right are fliped
+    # the Cairo y-coordinate are fliped
     bitmappattern = reverse!(ARGB32.(Makie.to_image(color)); dims=2)
     cairoimage = Cairo.CairoImageSurface(bitmappattern)
     cairopattern = Cairo.CairoPattern(cairoimage)
