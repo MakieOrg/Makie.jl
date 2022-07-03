@@ -520,15 +520,19 @@ function mirror_ticks(tickpositions, ticksize, tickalign, px_area, side, axispos
         sign = axisposition == :left ? 1 : -1
     end
     d = ticksize * sign
+    points = Vector{Point2f}(undef, 2*length(tickpositions))
     if side == :x
-        map(tickpositions) do (x, _)
-            (Point2f(x, opp - d * tickalign), Point2f(x, opp + d - d * tickalign))
+        for (i, (x, _)) in enumerate(tickpositions)
+            points[2i-1] = Point2f(x, opp - d * tickalign)
+            points[2i] = Point2f(x, opp + d - d * tickalign)
         end
     else
-        map(tickpositions) do (_, y)
-            (Point2f(opp - d * tickalign, y), Point2f(opp + d - d * tickalign, y))
+        for (i, (_, y)) in enumerate(tickpositions)
+            points[2i-1] = Point2f(opp - d * tickalign, y)
+            points[2i] = Point2f(opp + d - d * tickalign, y)
         end
     end
+    return points
 end
 
 """
