@@ -2,7 +2,7 @@
 
 ## v0.17.9
 
-- `Makie.AbstractPattern` is now supported by `CairoMakie` in poly plot that doesn't involve mesh, such as `bar, poly` [#2106].
+- `Makie.AbstractPattern` is now supported by `CairoMakie` in poly plot that doesn't involve mesh, such as `bar, poly` [#2106](https://github.com/JuliaPlots/Makie.jl/pull/2106/).
 
 ## v0.17.7
 
