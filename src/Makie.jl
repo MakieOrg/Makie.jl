@@ -89,12 +89,12 @@ const NativeFont = FreeTypeAbstraction.FTFont
 include("documentation/docstringextension.jl")
 include("utilities/quaternions.jl")
 include("types.jl")
-include("utilities/utilities.jl")
 include("utilities/texture_atlas.jl")
 include("interaction/observables.jl")
 include("interaction/liftmacro.jl")
 include("colorsampler.jl")
 include("patterns.jl")
+include("utilities/utilities.jl") # need Makie.AbstractPattern
 # Basic scene/plot/recipe interfaces + types
 include("scenes.jl")
 
