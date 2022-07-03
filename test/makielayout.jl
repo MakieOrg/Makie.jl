@@ -175,3 +175,13 @@ end
     ax = Axis(f[1,1], xticks = 20:10:80)
     scatter!(ax, 30:10:100, rand(Float64, 8), color = :red)
 end
+
+# issues 1958 and 2006
+@testset "axislegend number align" begin
+    f = Figure()
+    ax = Axis(f[1,1], xticks = 20:10:80)
+    lines!(ax, 1:10, label = "A line")
+    leg = axislegend(ax, position = (0.4, 0.8))
+    @test leg.halign[] == 0.4
+    @test leg.valign[] == 0.8
+end

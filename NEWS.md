@@ -3,6 +3,8 @@
 ## master
 
 - `Makie.AbstractPattern` is now supported by `CairoMakie` in poly plot that doesn't involve mesh, such as `bar, poly` [#2106](https://github.com/JuliaPlots/Makie.jl/pull/2106/).
+- Fixed regression where `Block` alignments could not be specified as numbers anymore [#2108](https://github.com/JuliaPlots/Makie.jl/pull/2108).
+
 
 ## v0.17.7
 
