@@ -2,7 +2,8 @@
 
 ## master
 
-- Add `tooltip` as a plot recipe and refactor DataInspector to use it [#2095](https://github.com/JuliaPlots/Makie.jl/pull/2095)
+- Add `tooltip` as a plot recipe [#2095](https://github.com/JuliaPlots/Makie.jl/pull/2095)
+- **Breaking** Refactor `DataInspector` to use `tooltip`. This results in changes in the attributes of DataInspector. See pr [#2095](https://github.com/JuliaPlots/Makie.jl/pull/2095)
 
 ## v0.17.7
 
