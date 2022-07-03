@@ -1,5 +1,9 @@
 # News
 
+## v0.17.9
+
+- `Makie.AbstractPattern` is now supported by `CairoMakie` in poly plot that doesn't involve mesh, such as `bar, poly` [#2106].
+
 ## v0.17.7
 
 - Improved `Menu` performance, now it should me much harder to reach the boundary of 255 scenes in GLMakie. `Menu` also takes a `default` keyword argument now and can be scrolled if there is too little space available.
