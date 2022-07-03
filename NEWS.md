@@ -3,6 +3,7 @@
 ## master
 
 - Fixed regression where `Block` alignments could not be specified as numbers anymore [#2108](https://github.com/JuliaPlots/Makie.jl/pull/2108).
+- Added the option to show mirrored ticks on the other side of an Axis using the attributes `xticksmirrored` and `yticksmirrored` [#2105](https://github.com/JuliaPlots/Makie.jl/pull/2105).
 
 ## v0.17.7
 
