@@ -267,20 +267,20 @@ function DataInspector(scene::Scene; priority = 100, kwargs...)
 
     attrib_dict = Dict(kwargs)
     base_attrib = Attributes(
+        # General DataInspector settings
         range = pop!(attrib_dict, :range, 10),
         enabled = pop!(attrib_dict, :enabled, true),
-        position = Point3f(0),
-        color = RGBAf(0,0,0,0),
-        bbox2D = Rect2f(),
-        bbox3D = Rect3f(),
-        model = Mat4f(I),
+        depth = pop!(attrib_dict, :depth, 9e3),
+        enable_indicators = pop!(attrib_dict, :show_bbox_indicators, true),
+        offset = get(attrib_dict, :offset, 10f0),
+        
+        # Settings for indicators (plots that highlight the current selection)
         indicator_color = pop!(attrib_dict, :indicator_color, :red),
         indicator_linewidth = pop!(attrib_dict, :indicator_linewidth, 2),
         indicator_linestyle = pop!(attrib_dict, :indicator_linestyle, nothing),
-        depth = pop!(attrib_dict, :depth, 9e3),
+        
+        # Reusable values for creating indicators
         indicator_visible = false,
-        enable_indicators = pop!(attrib_dict, :show_bbox_indicators, true),
-        default_offset = get(attrib_dict, :offset, 10f0),
     )
 
     plot = tooltip!(parent, Observable(Point2f(0)), text = Observable(""); attrib_dict...)
@@ -327,7 +327,7 @@ function on_hover(inspector)
     if should_clear
         inspector.plot.visible[] = false
         inspector.attributes.indicator_visible[] = false
-        inspector.plot.offset.val = inspector.attributes.default_offset[]
+        inspector.plot.offset.val = inspector.attributes.offset[]
     end
 
     return Consume(false)
@@ -366,8 +366,8 @@ function clear_temporary_plots!(inspector::DataInspector, plot)
 
     # clear attributes which are reused for indicator plots
     for key in (
-            :bbox2D, :bbox3D, :color, :indicator_color, :indicator_linestyle,
-            :indicator_linewidth, :indicator_visible, :model, :position
+            :indicator_color, :indicator_linestyle,
+            :indicator_linewidth, :indicator_visible
         )
         empty!(inspector.attributes[key].listeners)
     end
@@ -424,7 +424,7 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
     scene = parent_scene(plot)
 
     if a.enable_indicators[]
-        a.model[] = transformationmatrix(
+        T = transformationmatrix(
             plot[1][][idx],
             _to_scale(plot.markersize[], idx),
             _to_rotation(plot.rotations[], idx)
@@ -440,12 +440,12 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
                 upvector = cc.upvector[]
             end
 
-            a.bbox3D[] = Rect{3, Float32}(convert_attribute(
+            bbox = Rect{3, Float32}(convert_attribute(
                 plot.marker[], Key{:marker}(), Key{Makie.plotkey(plot)}()
             ))
         
             p = wireframe!(
-                scene, a.bbox3D, model = a.model, color = a.indicator_color,
+                scene, bbox, model = T, color = a.indicator_color,
                 linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
                 visible = a.indicator_visible, inspectable = false
             )
@@ -453,8 +453,14 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
 
             # Restore camera
             cc isa Camera3D && update_cam!(scene, eyeposition, lookat, upvector)
+
+        elseif !isempty(inspector.temp_plots)
+            p = inspector.temp_plots[1]
+            p.model[] = T
+
         end
 
+        
         a.indicator_visible[] = true
     end
 
@@ -501,8 +507,6 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
     update_tooltip_alignment!(inspector, proj_pos)
 
     if a.enable_indicators[]
-        a.bbox3D[] = bbox
-
         if inspector.selection != plot
             clear_temporary_plots!(inspector, plot)
 
@@ -514,7 +518,7 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
             end
 
             p = wireframe!(
-                scene, a.bbox3D, color = a.indicator_color,
+                scene, bbox, color = a.indicator_color,
                 linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
                 visible = a.indicator_visible, inspectable = false
             )
@@ -522,6 +526,9 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
 
             # Restore camera
             cc isa Camera3D && update_cam!(scene, eyeposition, lookat, upvector)
+        elseif !isempty(inspector.temp_plots)
+            p = inspector.temp_plots[1]
+            p[1][] = bbox
         end
 
         a.indicator_visible[] = true
@@ -603,13 +610,15 @@ function show_imagelike(inspector, plot, name, edge_based)
     scene = parent_scene(plot)
     mpos = mouseposition(scene)
 
-    i, j, z = if plot.interpolate[]
-        _interpolated_getindex(plot[1][], plot[2][], plot[3][], mpos)
+    if plot.interpolate[]
+        i, j, z = _interpolated_getindex(plot[1][], plot[2][], plot[3][], mpos)
+        tt.text[] = color2text(name, mpos[1], mpos[2], z)
     else
-        _pixelated_getindex(plot[1][], plot[2][], plot[3][], mpos, edge_based)
+        i, j, z = _pixelated_getindex(plot[1][], plot[2][], plot[3][], mpos, edge_based)
+        tt.text[] = color2text(name, i, j, z)
     end
 
-    a.color[] = if z isa AbstractFloat
+    color = if z isa AbstractFloat
         interpolated_getindex(
             to_colormap(plot.colormap[]), z,
             to_value(get(plot.attributes, :colorrange, (0, 1)))
@@ -618,7 +627,7 @@ function show_imagelike(inspector, plot, name, edge_based)
         z
     end
 
-    a.position[] = to_ndim(Point3f, mpos, 0)
+    position = to_ndim(Point3f, mpos, 0)
     proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
 
@@ -627,7 +636,7 @@ function show_imagelike(inspector, plot, name, edge_based)
             if inspector.selection != plot
                 clear_temporary_plots!(inspector, plot)
                 p = scatter!(
-                    scene, a.position, color = a.color,
+                    scene, position, color = color,
                     visible = a.indicator_visible,
                     inspectable = false,
                     marker=:rect, markersize = map(r -> 3r, a.range),
@@ -636,21 +645,27 @@ function show_imagelike(inspector, plot, name, edge_based)
                 )
                 translate!(p, Vec3f(0, 0, a.depth[]-1))
                 push!(inspector.temp_plots, p)
+            elseif !isempty(inspector.temp_plots)
+                p = inspector.temp_plots[1]
+                p[1].val[1] = position
+                notify(p[1])
+                p.color[] = color
             end
-            tt.text[] = color2text(name, mpos[1], mpos[2], z)
         else
-            a.bbox2D[] = _pixelated_image_bbox(plot[1][], plot[2][], plot[3][], i, j, edge_based)
+            bbox = _pixelated_image_bbox(plot[1][], plot[2][], plot[3][], i, j, edge_based)
             if inspector.selection != plot
                 clear_temporary_plots!(inspector, plot)
                 p = wireframe!(
-                    scene, a.bbox2D, model = a.model, color = a.indicator_color,
+                    scene, bbox, color = a.indicator_color,
                     strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
                     visible = a.indicator_visible, inspectable = false
                 )
                 translate!(p, Vec3f(0, 0, a.depth[]-1))
                 push!(inspector.temp_plots, p)
+            elseif !isempty(inspector.temp_plots)
+                p = inspector.temp_plots[1]
+                p[1][] = bbox
             end
-            tt.text[] = color2text(name, i, j, z)
         end
 
         a.indicator_visible[] = true
@@ -758,18 +773,22 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
     update_tooltip_alignment!(inspector, proj_pos)
 
     if a.enable_indicators[]
-        a.model[] = plot.model[]
-        a.bbox2D[] = plot.plots[1][1][][idx]
+        model = plot.model[]
+        bbox = plot.plots[1][1][][idx]
 
         if inspector.selection != plot
             clear_temporary_plots!(inspector, plot)
             p = wireframe!(
-                scene, a.bbox2D, model = a.model, color = a.indicator_color,
+                scene, bbox, model = model, color = a.indicator_color,
                 strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
                 visible = a.indicator_visible, inspectable = false
             )
             translate!(p, Vec3f(0, 0, a.depth[]))
             push!(inspector.temp_plots, p)
+        elseif !isempty(inspector.temp_plots)
+            p = inspector.temp_plots[1]
+            p[1][] = bbox
+            p.model[] = model
         end
 
         a.indicator_visible[] = true
