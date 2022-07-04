@@ -14,7 +14,7 @@ get_scene(ap::AxisPlot) = get_scene(ap.axis.scene)
 function _validate_nt_like_keyword(@nospecialize(kw), name)
     if !(kw isa NamedTuple || kw isa AbstractDict{Symbol} || kw isa Attributes)
         throw(ArgumentError("""
-            The $name keyword argument received an unexpected value $(kw).
+            The $name keyword argument received an unexpected value $(repr(kw)).
             The $name keyword expects a collection of Symbol => value pairs, such as NamedTuple, Attributes, or AbstractDict{Symbol}.
             The most common cause of this error is trying to create a one-element NamedTuple like (key = value) which instead creates a variable `key` with value `value`.
             Write (key = value,) or (; key = value) instead."""
