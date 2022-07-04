@@ -4,6 +4,7 @@
 
 - Add `tooltip` as a plot recipe [#2095](https://github.com/JuliaPlots/Makie.jl/pull/2095)
 - **Breaking** Refactor `DataInspector` to use `tooltip`. This results in changes in the attributes of DataInspector. See pr [#2095](https://github.com/JuliaPlots/Makie.jl/pull/2095)
+- Fixed regression where `Block` alignments could not be specified as numbers anymore [#2108](https://github.com/JuliaPlots/Makie.jl/pull/2108).
 
 ## v0.17.7
 
