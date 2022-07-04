@@ -61,8 +61,6 @@ end
 # without scenelike, use current axis of current figure
 
 function plot!(P::PlotFunc, args...; kw_attributes...)
-    _disallow_keyword(:axis, kw_attributes)
-    _disallow_keyword(:figure, kw_attributes)
     ax = current_axis(current_figure())
     isnothing(ax) && error("There is no current axis to plot into.")
     plot!(P, ax, args...; kw_attributes...)
@@ -70,7 +68,6 @@ end
 
 function plot(P::PlotFunc, gp::GridPosition, args...; axis = NamedTuple(), kwargs...)
 
-    _disallow_keyword(:figure, kwargs)
     _validate_nt_like_keyword(axis, "axis")
 
     f = get_top_parent(gp)
@@ -109,12 +106,10 @@ function plot(P::PlotFunc, gp::GridPosition, args...; axis = NamedTuple(), kwarg
 end
 
 function plot!(P::PlotFunc, gp::GridPosition, args...; kwargs...)
-    _disallow_keyword(:axis, kwargs)
-    _disallow_keyword(:figure, kwargs)
 
     c = contents(gp, exact = true)
-    if !(length(c) == 1 && c[1] isa Union{Axis, LScene})
-        error("There needs to be a single axis at $(gp.span), $(gp.side) to plot into.\nUse a non-mutating plotting command to create an axis implicitly.")
+    if !(length(c) == 1 && can_be_current_axis(c[1]))
+        error("There needs to be a single axis-like object at $(gp.span), $(gp.side) to plot into.\nUse a non-mutating plotting command to create an axis implicitly.")
     end
     ax = first(c)
     plot!(P, ax, args...; kwargs...)
@@ -122,7 +117,6 @@ end
 
 function plot(P::PlotFunc, gsp::GridSubposition, args...; axis = NamedTuple(), kwargs...)
 
-    _disallow_keyword(:figure, kwargs)
     _validate_nt_like_keyword(axis, "axis")
     
     layout = GridLayoutBase.get_layout_at!(gsp.parent, createmissing = true)
@@ -163,15 +157,13 @@ function plot(P::PlotFunc, gsp::GridSubposition, args...; axis = NamedTuple(), k
 end
 
 function plot!(P::PlotFunc, gsp::GridSubposition, args...; kwargs...)
-    _disallow_keyword(:axis, kwargs)
-    _disallow_keyword(:figure, kwargs)
 
     layout = GridLayoutBase.get_layout_at!(gsp.parent, createmissing = false)
 
     gp = layout[gsp.rows, gsp.cols, gsp.side]
 
     c = contents(gp, exact = true)
-    if !(length(c) == 1 && c[1] isa Union{Axis, LScene})
+    if !(length(c) == 1 && can_be_current_axis(c[1]))
         error("There is not just one axis at $(gp).")
     end
     ax = first(c)
