@@ -35,7 +35,9 @@ function draw_poly(scene::Scene, screen::CairoScreen, poly, points::Vector{<:Poi
     draw_poly(scene, screen, poly, points, poly.color[], poly.model[], poly.strokecolor[], poly.strokewidth[])
 end
 
-function draw_poly(scene::Scene, screen::CairoScreen, poly, points::Vector{<:Point2}, color, model, strokecolor, strokewidth)
+# when color is a Makie.AbstractPattern, we don't need to go to Mesh
+function draw_poly(scene::Scene, screen::CairoScreen, poly, points::Vector{<:Point2}, color::Union{Symbol, Colorant, Makie.AbstractPattern},
+        model, strokecolor, strokewidth)
     space = to_value(get(poly, :space, :data))
     points = project_position.(Ref(scene), space, points, Ref(model))
     Cairo.move_to(screen.context, points[1]...)
@@ -43,7 +45,14 @@ function draw_poly(scene::Scene, screen::CairoScreen, poly, points::Vector{<:Poi
         Cairo.line_to(screen.context, p...)
     end
     Cairo.close_path(screen.context)
-    Cairo.set_source_rgba(screen.context, rgbatuple(to_color(color))...)
+    if color isa Makie.AbstractPattern
+        cairopattern = Cairo.CairoPattern(color)
+        Cairo.pattern_set_extend(cairopattern, Cairo.EXTEND_REPEAT);
+        Cairo.set_source(screen.context, cairopattern)
+    else
+        Cairo.set_source_rgba(screen.context, rgbatuple(to_color(color))...)
+    end
+
     Cairo.fill_preserve(screen.context)
     Cairo.set_source_rgba(screen.context, rgbatuple(to_color(strokecolor))...)
     Cairo.set_line_width(screen.context, strokewidth)
@@ -72,6 +81,9 @@ function draw_poly(scene::Scene, screen::CairoScreen, poly, rects::Vector{<:Rect
     elseif color isa String
         # string is erroneously broadcasted as chars otherwise
         color = to_color(color)
+    elseif color isa Makie.AbstractPattern
+        cairopattern = Cairo.CairoPattern(color)
+        Cairo.pattern_set_extend(cairopattern, Cairo.EXTEND_REPEAT);
     end
     strokecolor = poly.strokecolor[]
     if strokecolor isa AbstractArray{<:Number}
@@ -83,7 +95,11 @@ function draw_poly(scene::Scene, screen::CairoScreen, poly, rects::Vector{<:Rect
 
     broadcast_foreach(projected_rects, color, strokecolor, poly.strokewidth[]) do r, c, sc, sw
         Cairo.rectangle(screen.context, origin(r)..., widths(r)...)
-        Cairo.set_source_rgba(screen.context, rgbatuple(to_color(c))...)
+        if c isa Makie.AbstractPattern
+            Cairo.set_source(screen.context, cairopattern)
+        else
+            Cairo.set_source_rgba(screen.context, rgbatuple(to_color(c))...)
+        end
         Cairo.fill_preserve(screen.context)
         Cairo.set_source_rgba(screen.context, rgbatuple(to_color(sc))...)
         Cairo.set_line_width(screen.context, sw)
