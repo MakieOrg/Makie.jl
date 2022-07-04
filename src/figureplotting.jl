@@ -11,8 +11,23 @@ Base.iterate(ap::AxisPlot, args...) = iterate((ap.axis, ap.plot), args...)
 
 get_scene(ap::AxisPlot) = get_scene(ap.axis.scene)
 
+function _validate_nt_like_keyword(@nospecialize(kw), name)
+    if !(kw isa NamedTuple || kw isa AbstractDict{Symbol} || kw isa Attributes)
+        throw(ArgumentError("The $name keyword argument received an unexpected \
+            value $(kw). The $name keyword expects a collection \
+            of Symbol => value pairs, such as NamedTuple, Attributes, or \
+            AbstractDict{Symbol}. The most common root of this error is trying to create \
+            a one-element NamedTuple like (key = value) which instead creates a variable `key` \
+            with value `value`. Write (key = value,) or (; key = value) instead."
+        ))
+    end
+end
+
 function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), kw_attributes...)
-    # scene_attributes = extract_scene_attributes!(attributes)
+    
+    _validate_nt_like_keyword(axis, "axis")
+    _validate_nt_like_keyword(figure, "figure")
+
     fig = Figure(; figure...)
 
     axis = Dict(pairs(axis))
@@ -48,6 +63,8 @@ end
 
 function plot(P::PlotFunc, gp::GridPosition, args...; axis = NamedTuple(), kwargs...)
 
+    _validate_nt_like_keyword(axis, "axis")
+    
     f = get_top_parent(gp)
 
     c = contents(gp, exact = true)
@@ -95,6 +112,8 @@ end
 
 function plot(P::PlotFunc, gsp::GridSubposition, args...; axis = NamedTuple(), kwargs...)
 
+    _validate_nt_like_keyword(axis, "axis")
+    
     layout = GridLayoutBase.get_layout_at!(gsp.parent, createmissing = true)
     c = contents(gsp, exact = true)
     if !isempty(c)
