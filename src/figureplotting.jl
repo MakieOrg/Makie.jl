@@ -22,6 +22,12 @@ function _validate_nt_like_keyword(@nospecialize(kw), name)
     end
 end
 
+function _disallow_keyword(kw, @nospecialize(attributes))
+    if haskey(attributes, kw)
+        throw(ArgumentError("You cannot pass `$kw` as a keyword argument to this plotting function. Note that `axis` can only be passed to non-mutating plotting functions (not ending with a `!`) that implicitly create an axis, and `figure` only to those that implicitly create a `Figure`."))
+    end
+end
+
 function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), kw_attributes...)
     
     _validate_nt_like_keyword(axis, "axis")
@@ -55,6 +61,8 @@ end
 # without scenelike, use current axis of current figure
 
 function plot!(P::PlotFunc, args...; kw_attributes...)
+    _disallow_keyword(:axis, kw_attributes)
+    _disallow_keyword(:figure, kw_attributes)
     ax = current_axis(current_figure())
     isnothing(ax) && error("There is no current axis to plot into.")
     plot!(P, ax, args...; kw_attributes...)
@@ -62,8 +70,9 @@ end
 
 function plot(P::PlotFunc, gp::GridPosition, args...; axis = NamedTuple(), kwargs...)
 
+    _disallow_keyword(:figure, kwargs)
     _validate_nt_like_keyword(axis, "axis")
-    
+
     f = get_top_parent(gp)
 
     c = contents(gp, exact = true)
@@ -100,6 +109,8 @@ function plot(P::PlotFunc, gp::GridPosition, args...; axis = NamedTuple(), kwarg
 end
 
 function plot!(P::PlotFunc, gp::GridPosition, args...; kwargs...)
+    _disallow_keyword(:axis, kwargs)
+    _disallow_keyword(:figure, kwargs)
 
     c = contents(gp, exact = true)
     if !(length(c) == 1 && c[1] isa Union{Axis, LScene})
@@ -111,6 +122,7 @@ end
 
 function plot(P::PlotFunc, gsp::GridSubposition, args...; axis = NamedTuple(), kwargs...)
 
+    _disallow_keyword(:figure, kwargs)
     _validate_nt_like_keyword(axis, "axis")
     
     layout = GridLayoutBase.get_layout_at!(gsp.parent, createmissing = true)
@@ -151,6 +163,8 @@ function plot(P::PlotFunc, gsp::GridSubposition, args...; axis = NamedTuple(), k
 end
 
 function plot!(P::PlotFunc, gsp::GridSubposition, args...; kwargs...)
+    _disallow_keyword(:axis, kwargs)
+    _disallow_keyword(:figure, kwargs)
 
     layout = GridLayoutBase.get_layout_at!(gsp.parent, createmissing = false)
 

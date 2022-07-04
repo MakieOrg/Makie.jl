@@ -185,3 +185,19 @@ end
     @test leg.halign[] == 0.4
     @test leg.valign[] == 0.8
 end
+
+@testset "invalid plotting function keyword arguments" begin
+    f = Figure()
+    kw = (; backgroundcolor = :red)
+    @test_throws ArgumentError lines(f[1, 1], 1:10, figure = kw)
+    @test_nowarn               lines(f[1, 1], 1:10, axis = kw)
+    @test_throws ArgumentError lines(f[1, 1][1, 1], 1:10, figure = kw)
+    @test_nowarn               lines(f[1, 1][1, 1], 1:10, axis = kw)
+    ax = Axis(f[1, 2])
+    @test_throws ArgumentError lines!(1:10, axis = kw)
+    @test_throws ArgumentError lines!(1:10, figure = kw)
+    @test_nowarn               lines!(1:10)
+    @test_throws ArgumentError lines!(f[1, 2], 1:10, figure = kw)
+    @test_throws ArgumentError lines!(f[1, 2], 1:10, axis = kw)
+    @test_nowarn               lines!(f[1, 2], 1:10)
+end
