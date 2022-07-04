@@ -22,7 +22,7 @@ function _validate_nt_like_keyword(@nospecialize(kw), name)
     end
 end
 
-function _disallow_keyword(kw, @nospecialize(attributes))
+function _disallow_keyword(kw, attributes)
     if haskey(attributes, kw)
         throw(ArgumentError("You cannot pass `$kw` as a keyword argument to this plotting function. Note that `axis` can only be passed to non-mutating plotting functions (not ending with a `!`) that implicitly create an axis, and `figure` only to those that implicitly create a `Figure`."))
     end
