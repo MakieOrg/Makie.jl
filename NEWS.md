@@ -3,6 +3,7 @@
 ## master
 
 - Fixed a issue where nonzero `strokewidth` results in a thin outline of the wrong color if `color` and `strokecolor` didn't match and weren't transparent. [#2096](https://github.com/JuliaPlots/Makie.jl/pull/2096)
+- Fixed regression where `Block` alignments could not be specified as numbers anymore [#2108](https://github.com/JuliaPlots/Makie.jl/pull/2108).
 
 ## v0.17.7
 
