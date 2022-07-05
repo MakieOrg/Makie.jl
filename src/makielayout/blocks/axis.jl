@@ -369,17 +369,17 @@ function initialize_block!(ax::Axis; palette = nothing)
         end
     end
 
-    _xticksmirrored = lift(mirror_ticks, xaxis.tickpositions, ax.xticksize, ax.xtickalign, Ref(scene.px_area), :x, ax.xaxisposition[])
-    linesegments!(topscene, _xticksmirrored, visible = ax.xticksmirrored,
+    xticksmirrored = lift(mirror_ticks, xaxis.tickpositions, ax.xticksize, ax.xtickalign, Ref(scene.px_area), :x, ax.xaxisposition[])
+    linesegments!(topscene, xticksmirrored, visible = ax.xticksmirrored,
         linewidth = ax.xtickwidth, color = ax.xtickcolor)
-    _yticksmirrored = lift(mirror_ticks, yaxis.tickpositions, ax.yticksize, ax.ytickalign, Ref(scene.px_area), :y, ax.yaxisposition[])
-    linesegments!(topscene, _yticksmirrored, visible = ax.yticksmirrored,
+    yticksmirrored = lift(mirror_ticks, yaxis.tickpositions, ax.yticksize, ax.ytickalign, Ref(scene.px_area), :y, ax.yaxisposition[])
+    linesegments!(topscene, yticksmirrored, visible = ax.yticksmirrored,
         linewidth = ax.ytickwidth, color = ax.ytickcolor)
-    _xminorticksmirrored = lift(mirror_ticks, xaxis.minortickpositions, ax.xminorticksize, ax.xminortickalign, Ref(scene.px_area), :x, ax.xaxisposition[])
-    linesegments!(topscene, _xminorticksmirrored, visible = ax.xticksmirrored,
+    xminorticksmirrored = lift(mirror_ticks, xaxis.minortickpositions, ax.xminorticksize, ax.xminortickalign, Ref(scene.px_area), :x, ax.xaxisposition[])
+    linesegments!(topscene, xminorticksmirrored, visible = ax.xticksmirrored,
         linewidth = ax.xminortickwidth, color = ax.xminortickcolor)
-    _yminorticksmirrored = lift(mirror_ticks, yaxis.minortickpositions, ax.yminorticksize, ax.yminortickalign, Ref(scene.px_area), :y, ax.yaxisposition[])
-    linesegments!(topscene, _yminorticksmirrored, visible = ax.yticksmirrored,
+    yminorticksmirrored = lift(mirror_ticks, yaxis.minortickpositions, ax.yminorticksize, ax.yminortickalign, Ref(scene.px_area), :y, ax.yaxisposition[])
+    linesegments!(topscene, yminorticksmirrored, visible = ax.yticksmirrored,
         linewidth = ax.yminortickwidth, color = ax.yminortickcolor)
 
     xoppositeline = linesegments!(topscene, xoppositelinepoints, linewidth = ax.spinewidth,
