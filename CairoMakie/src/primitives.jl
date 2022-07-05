@@ -400,8 +400,8 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
         transform_func = scene.transformation.transform_func[]
         p = Makie.apply_transform(transform_func, position)
 
-        Makie.clip_to_space(scene.camera, markerspace) * 
-        Makie.space_to_clip(scene.camera, space) * 
+        Makie.clip_to_space(scene.camera, markerspace) *
+        Makie.space_to_clip(scene.camera, space) *
         model * to_ndim(Point4f, to_ndim(Point3f, p, 0), 1)
     end
 
@@ -450,6 +450,9 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
         Cairo.move_to(ctx, glyphpos...)
         set_font_matrix(ctx, mat)
         Cairo.show_text(ctx, string(glyph))
+        # show_text makes an implicite move_to at the end, which starts a new one point path.
+        # `new_path` clears that path so it doesn't end up as an artifact in the next stroke call
+        Cairo.new_path(ctx)
         Cairo.restore(ctx)
 
         if strokewidth > 0 && strokecolor != RGBAf(0, 0, 0, 0)
@@ -469,8 +472,7 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
     end
 
     Cairo.restore(ctx)
-
-    nothing
+    return
 end
 
 ################################################################################
@@ -547,8 +549,8 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
     xymax = project_position(scene, space, Point2f(last.(imsize)), model)
     w, h = xymax .- xy
     image_resolution_larger_than_surface = abs(w) < length(xs) || abs(h) < length(ys)
-    automatic_interpolation = image_resolution_larger_than_surface & regular_grid & identity_transform 
-    
+    automatic_interpolation = image_resolution_larger_than_surface & regular_grid & identity_transform
+
     interpolate = interp_requested || automatic_interpolation
 
     can_use_fast_path = !(is_vector && !interpolate) && regular_grid && identity_transform
@@ -797,7 +799,7 @@ function draw_mesh3D(
 
     # Face culling
     zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
-    
+
     draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightpos, shininess, diffuse, ambient, specular)
     return
 end

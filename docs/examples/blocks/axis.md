@@ -337,6 +337,34 @@ f
 ```
 \end{examplefigure}
 
+### Mirrored ticks
+
+To display minor and major ticks on both sides of the axis, set `xticksmirrored` or `yticksmirrored` to `true`.
+Color, size and alignment of the mirrored ticks are the same as for the normal ticks.
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+f = Figure()
+Axis(f[1, 1],
+    xticks = 0:10,
+    yticks = 0:10,
+    xticksmirrored = true,
+    yticksmirrored = true,
+    xminorticksvisible = true,
+    yminorticksvisible = true,
+    xminortickalign = 1,
+    yminortickalign = 1,
+    xtickalign = 1,
+    ytickalign = 1,
+)
+f
+```
+\end{examplefigure}
+
 #### Format strings
 
 You can use a format string which is passed to `Formatting.format` from [Formatting.jl](https://github.com/JuliaIO/Formatting.jl), where you can mix the formatted numbers with other text like in `"{:.2f}ms"`.
