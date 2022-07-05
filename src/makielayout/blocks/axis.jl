@@ -369,6 +369,19 @@ function initialize_block!(ax::Axis; palette = nothing)
         end
     end
 
+    xticksmirrored = lift(mirror_ticks, xaxis.tickpositions, ax.xticksize, ax.xtickalign, Ref(scene.px_area), :x, ax.xaxisposition[])
+    linesegments!(topscene, xticksmirrored, visible = ax.xticksmirrored,
+        linewidth = ax.xtickwidth, color = ax.xtickcolor)
+    yticksmirrored = lift(mirror_ticks, yaxis.tickpositions, ax.yticksize, ax.ytickalign, Ref(scene.px_area), :y, ax.yaxisposition[])
+    linesegments!(topscene, yticksmirrored, visible = ax.yticksmirrored,
+        linewidth = ax.ytickwidth, color = ax.ytickcolor)
+    xminorticksmirrored = lift(mirror_ticks, xaxis.minortickpositions, ax.xminorticksize, ax.xminortickalign, Ref(scene.px_area), :x, ax.xaxisposition[])
+    linesegments!(topscene, xminorticksmirrored, visible = ax.xticksmirrored,
+        linewidth = ax.xminortickwidth, color = ax.xminortickcolor)
+    yminorticksmirrored = lift(mirror_ticks, yaxis.minortickpositions, ax.yminorticksize, ax.yminortickalign, Ref(scene.px_area), :y, ax.yaxisposition[])
+    linesegments!(topscene, yminorticksmirrored, visible = ax.yticksmirrored,
+        linewidth = ax.yminortickwidth, color = ax.yminortickcolor)
+
     xoppositeline = linesegments!(topscene, xoppositelinepoints, linewidth = ax.spinewidth,
         visible = xoppositespinevisible, color = xoppositespinecolor, inspectable = false,
         linestyle = nothing)
@@ -495,6 +508,31 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     return ax
+end
+
+function mirror_ticks(tickpositions, ticksize, tickalign, px_area, side, axisposition)
+    a = px_area[][]
+    if side == :x
+        opp = axisposition == :bottom ? top(a) : bottom(a)
+        sign =  axisposition == :bottom ? 1 : -1
+    else
+        opp = axisposition == :left ? right(a) : left(a)
+        sign = axisposition == :left ? 1 : -1
+    end
+    d = ticksize * sign
+    points = Vector{Point2f}(undef, 2*length(tickpositions))
+    if side == :x
+        for (i, (x, _)) in enumerate(tickpositions)
+            points[2i-1] = Point2f(x, opp - d * tickalign)
+            points[2i] = Point2f(x, opp + d - d * tickalign)
+        end
+    else
+        for (i, (_, y)) in enumerate(tickpositions)
+            points[2i-1] = Point2f(opp - d * tickalign, y)
+            points[2i] = Point2f(opp + d - d * tickalign, y)
+        end
+    end
+    return points
 end
 
 """
