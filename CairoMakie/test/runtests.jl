@@ -69,7 +69,6 @@ excludes = Set([
     "fast pixel marker",
     "Array of Images Scatter",
     "Image Scatter different sizes",
-    "pattern barplot", # not implemented yet
     "scatter with glow"
 ])
 

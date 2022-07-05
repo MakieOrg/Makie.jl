@@ -8,9 +8,13 @@ function, which must return a `Matrix{<: AbstractRGB}`.
 """
 abstract type AbstractPattern{T} <: AbstractArray{T, 2} end
 
+# for print_array because we defined it as <: Base.AbstractArray
+function Base.show(io::IO, p::AbstractPattern)
+    print(io, typeof(p))
+end
+
 function Base.show(io::IO, ::MIME"text/plain", p::AbstractPattern)
-    println(io, typeof(p))
-    show(io, mime, image(p))
+    print(io, typeof(p))
 end
 
 struct ImagePattern <: AbstractPattern{RGBAf}
