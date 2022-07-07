@@ -1008,56 +1008,41 @@ function adjustlimits!(la)
     return
 end
 
+function linkaxes!(dir::Union{Val{:x}, Val{:y}}, a::Axis, others...)
+    axes = Axis[a; others...]
+
+    all_links = Set{Axis}(axes)
+    for ax in axes
+        links = dir isa Val{:x} ? ax.xaxislinks : ax.yaxislinks
+        for ax in links
+            push!(all_links, ax)
+        end
+    end
+
+    for ax in all_links
+        links = (dir isa Val{:x} ? ax.xaxislinks : ax.yaxislinks)
+        for linked_ax in all_links
+            if linked_ax !== ax && linked_ax ∉ links
+                push!(links, linked_ax)
+            end
+        end
+    end
+    reset_limits!(a)
+end
+
 """
     linkxaxes!(a::Axis, others...)
 
 Link the x axes of all given `Axis` so that they stay synchronized.
 """
-function linkxaxes!(a::Axis, others...)
-    axes = Axis[a; others...]
-
-    for i in 1:length(axes)-1
-        for j in i+1:length(axes)
-            axa = axes[i]
-            axb = axes[j]
-
-            if axa ∉ axb.xaxislinks
-                push!(axb.xaxislinks, axa)
-            end
-            if axb ∉ axa.xaxislinks
-                push!(axa.xaxislinks, axb)
-            end
-        end
-    end
-    # update limits because users will expect to see the effect
-    reset_limits!(a)
-end
+linkxaxes!(a::Axis, others...) = linkaxes!(Val(:x), a, others...)
 
 """
     linkyaxes!(a::Axis, others...)
 
 Link the y axes of all given `Axis` so that they stay synchronized.
 """
-function linkyaxes!(a::Axis, others...)
-    axes = Axis[a; others...]
-
-    for i in 1:length(axes)-1
-        for j in i+1:length(axes)
-            axa = axes[i]
-            axb = axes[j]
-
-            if axa ∉ axb.yaxislinks
-                push!(axb.yaxislinks, axa)
-            end
-            if axb ∉ axa.yaxislinks
-                push!(axa.yaxislinks, axb)
-            end
-        end
-    end
-    # update limits because users will expect to see the effect
-    reset_limits!(a)
-end
-
+linkyaxes!(a::Axis, others...) = linkaxes!(Val(:y), a, others...)
 
 """
 Keeps the ticklabelspace static for a short duration and then resets it to its previous
