@@ -22,6 +22,12 @@ function _validate_nt_like_keyword(@nospecialize(kw), name)
     end
 end
 
+function _disallow_keyword(kw, attributes)
+    if haskey(attributes, kw)
+        throw(ArgumentError("You cannot pass `$kw` as a keyword argument to this plotting function. Note that `axis` can only be passed to non-mutating plotting functions (not ending with a `!`) that implicitly create an axis, and `figure` only to those that implicitly create a `Figure`."))
+    end
+end
+
 function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), kw_attributes...)
     
     _validate_nt_like_keyword(axis, "axis")
@@ -63,7 +69,7 @@ end
 function plot(P::PlotFunc, gp::GridPosition, args...; axis = NamedTuple(), kwargs...)
 
     _validate_nt_like_keyword(axis, "axis")
-    
+
     f = get_top_parent(gp)
 
     c = contents(gp, exact = true)
@@ -102,8 +108,8 @@ end
 function plot!(P::PlotFunc, gp::GridPosition, args...; kwargs...)
 
     c = contents(gp, exact = true)
-    if !(length(c) == 1 && c[1] isa Union{Axis, LScene})
-        error("There needs to be a single axis at $(gp.span), $(gp.side) to plot into.\nUse a non-mutating plotting command to create an axis implicitly.")
+    if !(length(c) == 1 && can_be_current_axis(c[1]))
+        error("There needs to be a single axis-like object at $(gp.span), $(gp.side) to plot into.\nUse a non-mutating plotting command to create an axis implicitly.")
     end
     ax = first(c)
     plot!(P, ax, args...; kwargs...)
@@ -157,7 +163,7 @@ function plot!(P::PlotFunc, gsp::GridSubposition, args...; kwargs...)
     gp = layout[gsp.rows, gsp.cols, gsp.side]
 
     c = contents(gp, exact = true)
-    if !(length(c) == 1 && c[1] isa Union{Axis, LScene})
+    if !(length(c) == 1 && can_be_current_axis(c[1]))
         error("There is not just one axis at $(gp).")
     end
     ax = first(c)
