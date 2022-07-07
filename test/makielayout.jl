@@ -218,8 +218,8 @@ end
     ax1 = Axis(f[1, 1])
     ax2 = Axis(f[1, 2])
     ax3 = Axis(f[1, 3])
+    
     linkaxes!(ax2, ax3)
-    _contains(links, axes...) = all(x -> contains(links, x), axes)
     @test Set(ax1.xaxislinks) == Set([])
     @test Set(ax2.xaxislinks) == Set([ax3])
     @test Set(ax3.xaxislinks) == Set([ax2])
