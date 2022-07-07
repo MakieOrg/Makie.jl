@@ -370,16 +370,16 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     xticksmirrored = lift(mirror_ticks, xaxis.tickpositions, ax.xticksize, ax.xtickalign, Ref(scene.px_area), :x, ax.xaxisposition[])
-    linesegments!(topscene, xticksmirrored, visible = ax.xticksmirrored,
+    linesegments!(topscene, xticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xticksvisible)),
         linewidth = ax.xtickwidth, color = ax.xtickcolor)
     yticksmirrored = lift(mirror_ticks, yaxis.tickpositions, ax.yticksize, ax.ytickalign, Ref(scene.px_area), :y, ax.yaxisposition[])
-    linesegments!(topscene, yticksmirrored, visible = ax.yticksmirrored,
+    linesegments!(topscene, yticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yticksvisible)),
         linewidth = ax.ytickwidth, color = ax.ytickcolor)
     xminorticksmirrored = lift(mirror_ticks, xaxis.minortickpositions, ax.xminorticksize, ax.xminortickalign, Ref(scene.px_area), :x, ax.xaxisposition[])
-    linesegments!(topscene, xminorticksmirrored, visible = ax.xticksmirrored,
+    linesegments!(topscene, xminorticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xminorticksvisible)),
         linewidth = ax.xminortickwidth, color = ax.xminortickcolor)
     yminorticksmirrored = lift(mirror_ticks, yaxis.minortickpositions, ax.yminorticksize, ax.yminortickalign, Ref(scene.px_area), :y, ax.yaxisposition[])
-    linesegments!(topscene, yminorticksmirrored, visible = ax.yticksmirrored,
+    linesegments!(topscene, yminorticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yminorticksvisible)),
         linewidth = ax.yminortickwidth, color = ax.yminortickcolor)
 
     xoppositeline = linesegments!(topscene, xoppositelinepoints, linewidth = ax.spinewidth,
