@@ -231,3 +231,28 @@ end
     @test first.(extrema(ax2.finallimits[])) == (1, 5)
     @test last.(extrema(ax2.finallimits[])) == (2, 6)
 end
+
+# issue 1718
+@testset "Linked axes of linked axes" begin
+    # check that if linking axis A and B, where B has already been linked to C, A and C are also linked
+    f = Figure()
+    ax1 = Axis(f[1, 1])
+    ax2 = Axis(f[1, 2])
+    ax3 = Axis(f[1, 3])
+    
+    linkaxes!(ax2, ax3)
+    @test Set(ax1.xaxislinks) == Set([])
+    @test Set(ax2.xaxislinks) == Set([ax3])
+    @test Set(ax3.xaxislinks) == Set([ax2])
+    @test Set(ax1.yaxislinks) == Set([])
+    @test Set(ax2.yaxislinks) == Set([ax3])
+    @test Set(ax3.yaxislinks) == Set([ax2])
+
+    linkaxes!(ax1, ax2)
+    @test Set(ax1.xaxislinks) == Set([ax2, ax3])
+    @test Set(ax2.xaxislinks) == Set([ax1, ax3])
+    @test Set(ax3.xaxislinks) == Set([ax1, ax2])
+    @test Set(ax1.yaxislinks) == Set([ax2, ax3])
+    @test Set(ax2.yaxislinks) == Set([ax1, ax3])
+    @test Set(ax3.yaxislinks) == Set([ax1, ax2])
+end
