@@ -1,6 +1,6 @@
 _isfinite(x) = isfinite(x)
 _isfinite(x::VecTypes) = all(isfinite, x)
-isfinite_rect(x::Rect) = all(isfinite.(minimum(x))) &&  all(isfinite.(maximum(x)))
+isfinite_rect(x::Rect) = all(isfinite, x.origin) &&  all(isfinite, x.widths)
 scalarmax(x::Union{Tuple, AbstractArray}, y::Union{Tuple, AbstractArray}) = max.(x, y)
 scalarmax(x, y) = max(x, y)
 scalarmin(x::Union{Tuple, AbstractArray}, y::Union{Tuple, AbstractArray}) = min.(x, y)
@@ -152,6 +152,18 @@ function foreach_transformed(f, plot)
     foreach_transformed(f, points, model, identity)
 end
 
+function iterate_transformed(plot)
+    points = point_iterator(plot)
+    t = transformation(plot)
+    model = model_transform(t)
+    trans_func = t.transform_func[]
+    iterate_transformed(points, model, trans_func)
+end
+
+function iterate_transformed(points, model, trans_func)
+    (to_ndim(Point3f, project(model, apply_transform(trans_func, point)), 0f0) for point in points)
+end
+
 function update_boundingbox!(bb_ref, point)
     if all(isfinite, point)
         vec = to_ndim(Vec3f, point, 0.0)
@@ -173,13 +185,24 @@ function update_boundingbox!(bb_ref, bb::Rect)
 end
 
 function data_limits(plot::AbstractPlot)
-    # Because of closure inference problems
-    # we need to use a ref here which gets updated inplace
-    bb_ref = Base.RefValue(Rect3f())
-    foreach_transformed(plot) do point
-        update_boundingbox!(bb_ref, point)
+    limits_from_transformed_points(iterate_transformed(plot))
+end
+
+function _update_rect(rect::Rect{N, T}, point::Point{N, T}) where {N, T}
+    mi = minimum(rect)
+    ma = maximum(rect)
+    mis_mas = map(mi, ma, point) do _mi, _ma, _p
+        (isnan(_mi) ? _p : _p < _mi ? _p : _mi), (isnan(_ma) ? _p : _p > _ma ? _p : _ma)
     end
-    return bb_ref[]
+    new_o = map(first, mis_mas)
+    new_w = map((-) ∘ Base.splat(-), mis_mas)
+    typeof(rect)(new_o, new_w)
+end
+
+function limits_from_transformed_points(points_iterator)
+    first, rest = Iterators.peel(points_iterator)
+    bb = foldl(_update_rect, rest, init = Rect3f(first, zero(first)))
+    return bb
 end
 
 function data_limits(scenelike, exclude=(p)-> false)
