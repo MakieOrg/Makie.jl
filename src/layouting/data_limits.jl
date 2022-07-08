@@ -200,6 +200,7 @@ function _update_rect(rect::Rect{N, T}, point::Point{N, T}) where {N, T}
 end
 
 function limits_from_transformed_points(points_iterator)
+    isempty(points_iterator) && return Rect3f()
     first, rest = Iterators.peel(points_iterator)
     bb = foldl(_update_rect, rest, init = Rect3f(first, zero(first)))
     return bb
