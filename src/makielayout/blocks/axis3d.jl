@@ -282,7 +282,9 @@ function Makie.plot!(
 
     plot = Makie.plot!(ax.scene, P, allattrs, args...)
 
-    reset_limits!(ax)
+    if ax.reset_limits_on_plot[]
+        reset_limits!(ax)
+    end
     plot
 end
 

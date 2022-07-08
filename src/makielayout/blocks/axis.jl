@@ -776,7 +776,9 @@ function Makie.plot!(
     # adjust the limit margins in those cases automatically.
     needs_tight_limits(plot) && tightlimits!(la)
 
-    reset_limits!(la)
+    if la.reset_limits_on_plot[]
+        reset_limits!(la)
+    end
     plot
 end
 

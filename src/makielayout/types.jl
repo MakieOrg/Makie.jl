@@ -449,6 +449,8 @@ end
         xscale = identity
         "The y axis scale"
         yscale = identity
+        "Controls if `reset_limits!` is called when a plot is added. Can be disabled when it is anticipated that many plots will be added sequentially, to avoid recomputing all limits with every new plot."
+        reset_limits_on_plot::Bool = true
     end
 end
 
@@ -1357,5 +1359,7 @@ end
         yautolimitmargin = (0.05, 0.05)
         "The relative margins added to the autolimits in z direction."
         zautolimitmargin = (0.05, 0.05)
+        "Controls if `reset_limits!` is called when a plot is added. Can be disabled when it is anticipated that many plots will be added sequentially, to avoid recomputing all limits with every new plot."
+        reset_limits_on_plot::Bool = true
     end
 end
