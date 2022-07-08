@@ -46,7 +46,10 @@ function delete_screen!(scene::Scene, display::AbstractDisplay)
     return
 end
 
-backend_display(s::FigureLike; kw...) = backend_display(current_backend[], s; kw...)
+function backend_display(s::FigureLike; kw...)
+    update_state_before_display!(s)
+    backend_display(current_backend[], get_scene(s); kw...)
+end
 
 function backend_display(::Missing, ::Scene; kw...)
     error("""
@@ -61,12 +64,12 @@ end
 update_state_before_display!(_) = nothing
 
 function Base.display(fig::FigureLike; kw...)
-    update_state_before_display!(fig)
     scene = get_scene(fig)
     if !use_display[]
+        update_state_before_display!(fig)
         return Core.invoke(display, Tuple{Any}, scene)
     else
-        screen = backend_display(scene; kw...)
+        screen = backend_display(fig; kw...)
         push_screen!(scene, screen)
         return screen
     end
@@ -226,6 +229,7 @@ function FileIO.save(
         pt_per_unit = 0.75,
         px_per_unit = 1.0,
     )
+    update_state_before_display!(fig)
     scene = get_scene(fig)
     if resolution != size(scene)
         resize!(scene, resolution)
@@ -400,7 +404,9 @@ or RGBA.
 - `format = GLNative` : Returns a more efficient format buffer for GLMakie which can be directly
                         used in FFMPEG without conversion
 """
-function colorbuffer(scene::Scene, format::ImageStorageFormat = JuliaNative)
+function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative)
+    update_state_before_display!(fig)
+    scene = get_scene(fig)
     screen = getscreen(scene)
     if isnothing(screen)
         if ismissing(current_backend[])
