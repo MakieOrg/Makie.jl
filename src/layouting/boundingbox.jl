@@ -89,42 +89,47 @@ function boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotat
     end
 end
 
-# function boundingbox(plot::TypedPlot{Text})
-#     arg1 = plot[1][]
-#     if arg1 isa GlyphCollection
-#         if plot.space[] == plot.markerspace[]
-#             pos = to_ndim(Point3f, plot.position[], 0)
-#         else
-#             cam = parent_scene(plot).camera
-#             transformed = apply_transform(plot.transformation.transform_func[], plot.position[])
-#             pos = Makie.project(cam, plot.space[], plot.markerspace[], transformed)
-#         end
-#         return boundingbox(plot[1][], pos, to_rotation(plot.rotation[]))
-#     elseif arg1 isa AbstractArray{<:GlyphCollection}
-#         if plot.space[] == plot.markerspace[]
-#             pos = to_ndim.(Point3f, x.position[], 0)
-#         else
-#             cam = (parent_scene(plot).camera,)
-#             transformed = apply_transform(plot.transformation.transform_func[], plot.position[])
-#             pos = Makie.project.(cam, plot.space[], plot.markerspace[], transformed)
-#         end
-#         return boundingbox(plot[1][], pos, to_rotation(plot.rotation[]))
-#     else
-#         return boundingbox(plot.plots[1])
-#     end
-# end
 
-function boundingbox(plot::TypedPlot{Text})
-    bb = Rect3f()
-    for p in plot.plots
-        _bb = boundingbox(p)
-        if !isfinite_rect(bb)
-            bb = _bb
-        elseif isfinite_rect(_bb)
-            bb = union(bb, _bb)
+function boundingbox_text(plot)
+    arg1 = plot[1][]
+    if arg1 isa GlyphCollection
+        if plot.space[] == plot.markerspace[]
+            pos = to_ndim(Point3f, plot.position[], 0)
+        else
+            cam = parent_scene(plot).camera
+            transformed = apply_transform(plot.transformation.transform_func[], plot.position[])
+            pos = Makie.project(cam, plot.space[], plot.markerspace[], transformed)
         end
+        return boundingbox(plot[1][], pos, to_rotation(plot.rotation[]))
+    elseif arg1 isa AbstractArray{<:GlyphCollection}
+        if plot.space[] == plot.markerspace[]
+            pos = to_ndim.(Point3f, plot.position[], 0)
+        else
+            cam = (parent_scene(plot).camera,)
+            transformed = apply_transform(plot.transformation.transform_func[], plot.position[])
+            pos = Makie.project.(cam, plot.space[], plot.markerspace[], transformed)
+        end
+        return boundingbox(plot[1][], pos, to_rotation(plot.rotation[]))
+    else
+        return boundingbox(plot.plots[1])
     end
-    return bb
+end
+
+function boundingbox(plot::PlotObject)
+    if plot.type <: Text
+        boundingbox_text(plot)
+    else
+        bb = Rect3f()
+        for p in plot.plots
+            _bb = boundingbox(p)
+            if !isfinite_rect(bb)
+                bb = _bb
+            elseif isfinite_rect(_bb)
+                bb = union(bb, _bb)
+            end
+        end
+        return bb
+    end
 end
 
 _is_latex_string(x::AbstractVector{<:LaTeXString}) = true

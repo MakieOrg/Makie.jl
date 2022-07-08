@@ -202,7 +202,7 @@ function handle_intensities!(attributes)
     end
 end
 
-function draw_atomic(screen::GLScreen, scene::Scene, x, ::Union{Scatter, MeshScatter})
+function draw_atomic(screen::GLScreen, scene::Scene, x, pt::Union{Scatter, MeshScatter})
     return cached_robj!(screen, scene, x) do gl_attributes
         # signals not supported for shading yet
         gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
@@ -210,8 +210,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x, ::Union{Scatter, MeshSca
 
         positions = handle_view(x[1], gl_attributes)
         positions = apply_transform(transform_func_obs(x), positions)
-
-        if isa(x, Scatter)
+        if pt isa Scatter
             space = get(gl_attributes, :space, :data)
             mspace = get(gl_attributes, :markerspace, :pixel)
             cam = scene.camera
