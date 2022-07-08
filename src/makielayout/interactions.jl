@@ -108,15 +108,19 @@ end
 ############################################################################
 
 function _chosen_limits(rz, ax)
+    abs_px = abs.((rz.to_px - rz.from_px))
+    restrict_limit_px = 25
+    restrict_x = rz.restrict_x || !ax.xrectzoom[] || abs_px[1] < restrict_limit_px
+    restrict_y = rz.restrict_y || !ax.yrectzoom[] || abs_px[2] < restrict_limit_px
 
     r = positivize(Rect2f(rz.from, rz.to .- rz.from))
     lims = ax.finallimits[]
     # restrict to y change
-    if rz.restrict_x || !ax.xrectzoom[]
+    if restrict_x
         r = Rect2f(lims.origin[1], r.origin[2], widths(lims)[1], widths(r)[2])
     end
     # restrict to x change
-    if rz.restrict_y || !ax.yrectzoom[]
+    if restrict_y
         r = Rect2f(r.origin[1], lims.origin[2], widths(r)[1], widths(lims)[2])
     end
     return r
@@ -161,6 +165,8 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
 
         r.from = prev_data
         r.to = data
+        r.from_px = event.prev_px
+        r.to_px = event.px
         r.rectnode[] = _chosen_limits(r, ax)
         r.active[] = true
         return Consume(true)
@@ -171,6 +177,7 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
         data = Makie.apply_transform(inv_transf, rectclamp(event.data, rect))
 
         r.to = data
+        r.to_px = event.px
         r.rectnode[] = _chosen_limits(r, ax)
         return Consume(true)
 
