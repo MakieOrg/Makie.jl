@@ -5,7 +5,7 @@ to_func_name(x::Symbol) = Symbol(lowercase(string(x)))
 # Will get overloaded by recipe Macro
 plotsym(x) = :plot
 
-plotkey(plot::PlotObject) where T <: AbstractPlot = Symbol(lowercase(string(plot.type)))
+plotkey(plot::PlotObject) where T <: AbstractPlot = Symbol(lowercase(string(nameof(plot.type))))
 
 """
      default_plot_signatures(funcname, funcname!, PlotType)
