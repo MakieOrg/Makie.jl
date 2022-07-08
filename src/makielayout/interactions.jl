@@ -113,6 +113,8 @@ function _chosen_limits(rz, ax)
     restrict_x = rz.restrict_x || !ax.xrectzoom[] || abs_px[1] < restrict_limit_px
     restrict_y = rz.restrict_y || !ax.yrectzoom[] || abs_px[2] < restrict_limit_px
 
+    restrict_x && restrict_y && return Rect2f(rz.from, Point2f(0))
+
     r = positivize(Rect2f(rz.from, rz.to .- rz.from))
     lims = ax.finallimits[]
     # restrict to y change
