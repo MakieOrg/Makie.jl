@@ -6,6 +6,7 @@
 - Fixed regression where `Block` alignments could not be specified as numbers anymore [#2108](https://github.com/JuliaPlots/Makie.jl/pull/2108).
 - Added the option to show mirrored ticks on the other side of an Axis using the attributes `xticksmirrored` and `yticksmirrored` [#2105](https://github.com/JuliaPlots/Makie.jl/pull/2105).
 - Fixed a bug where a set of `Axis` wouldn't be correctly linked together if they were only linked in pairs instead of all at the same time [#2116](https://github.com/JuliaPlots/Makie.jl/pull/2116).
+- Changed the rectangle zoom behavior in Axis such that at very narrow rectangle selections, the narrow side is expanded to full width. This makes it much easier to narrow the field of view in one direction [#2120](https://github.com/JuliaPlots/Makie.jl/pull/2120).
 
 ## v0.17.7
 
