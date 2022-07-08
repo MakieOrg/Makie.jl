@@ -1,4 +1,8 @@
-function plot!(plot::PlotObject, ::Text)
+@convert_target struct Text
+    glyphs::Any
+end
+
+function plot!(plot::PlotObject, ::Text, ::AbstractVector)
     positions = plot[1]
     # attach a function to any text that calculates the glyph layout and stores it
     glyphcollections = Observable(GlyphCollection[])
@@ -114,15 +118,15 @@ convert_arguments(::Type{<: Text}, string::AbstractString) = (string,)
 # function without these two interceptions, but I didn't need it before merging
 # everything into the monorepo...
 plot!(plot::PlotObject, ::Text, ::GlyphCollection) = plot
-plot!(plot::PlotObject, ::Text, ::AbstractArray{<:GlyphCollection}) = plot
+plot!(plot::PlotObject, ::Text, ::AbstractVector{<:GlyphCollection}) = plot
 
-function plot!(plot::PlotObject, ::Text, ::AbstractArray{<:AbstractString})
+function plot!(plot::PlotObject, ::Text, ::AbstractVector{<:AbstractString})
     text!(plot, plot.position; text = plot[1], plot.attributes...)
     plot
 end
 
 # overload text plotting for a vector of tuples of a string and a point each
-function plot!(plot::PlotObject, ::Text, ::AbstractArray{<:Tuple{<:AbstractString, <:Point}})
+function plot!(plot::PlotObject, ::Text, ::AbstractVector{<:Tuple{<:AbstractString, <:Point}})
     strings_and_positions = plot[1]
 
     strings = Observable(first.(strings_and_positions[]))

@@ -89,32 +89,32 @@ function boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotat
     end
 end
 
-function boundingbox(plot::TypedPlot{Text})
-    arg1 = plot[1][]
-    if arg1 isa GlyphCollection
-        if plot.space[] == plot.markerspace[]
-            pos = to_ndim(Point3f, plot.position[], 0)
-        else
-            cam = parent_scene(plot).camera
-            transformed = apply_transform(plot.transformation.transform_func[], plot.position[])
-            pos = Makie.project(cam, plot.space[], plot.markerspace[], transformed)
-        end
-        return boundingbox(plot[1][], pos, to_rotation(plot.rotation[]))
-    elseif arg1 isa AbstractArray{<:GlyphCollection}
-        if plot.space[] == plot.markerspace[]
-            pos = to_ndim.(Point3f, x.position[], 0)
-        else
-            cam = (parent_scene(plot).camera,)
-            transformed = apply_transform(plot.transformation.transform_func[], plot.position[])
-            pos = Makie.project.(cam, plot.space[], plot.markerspace[], transformed)
-        end
-        return boundingbox(plot[1][], pos, to_rotation(plot.rotation[]))
-    else
-        return boundingbox(plot.plots[1])
-    end
-end
+# function boundingbox(plot::TypedPlot{Text})
+#     arg1 = plot[1][]
+#     if arg1 isa GlyphCollection
+#         if plot.space[] == plot.markerspace[]
+#             pos = to_ndim(Point3f, plot.position[], 0)
+#         else
+#             cam = parent_scene(plot).camera
+#             transformed = apply_transform(plot.transformation.transform_func[], plot.position[])
+#             pos = Makie.project(cam, plot.space[], plot.markerspace[], transformed)
+#         end
+#         return boundingbox(plot[1][], pos, to_rotation(plot.rotation[]))
+#     elseif arg1 isa AbstractArray{<:GlyphCollection}
+#         if plot.space[] == plot.markerspace[]
+#             pos = to_ndim.(Point3f, x.position[], 0)
+#         else
+#             cam = (parent_scene(plot).camera,)
+#             transformed = apply_transform(plot.transformation.transform_func[], plot.position[])
+#             pos = Makie.project.(cam, plot.space[], plot.markerspace[], transformed)
+#         end
+#         return boundingbox(plot[1][], pos, to_rotation(plot.rotation[]))
+#     else
+#         return boundingbox(plot.plots[1])
+#     end
+# end
 
-function boundingbox(plot::Text)
+function boundingbox(plot::TypedPlot{Text})
     bb = Rect3f()
     for p in plot.plots
         _bb = boundingbox(p)

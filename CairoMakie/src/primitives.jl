@@ -333,7 +333,6 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::TypedPlot{<: 
     position = primitive.position[]
     # use cached glyph info
     glyph_collection = to_value(primitive[1])
-
     draw_glyph_collection(
         scene, ctx, position, glyph_collection, remove_billboard(rotation),
         model, space, markerspace, offset
@@ -360,7 +359,6 @@ _deref(x) = x
 _deref(x::Ref) = x[]
 
 function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation, _model, space, markerspace, offsets)
-
     glyphs = glyph_collection.glyphs
     glyphoffsets = glyph_collection.origins
     fonts = glyph_collection.fonts
