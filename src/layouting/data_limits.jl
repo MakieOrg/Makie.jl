@@ -156,7 +156,9 @@ function iterate_transformed(plot)
     points = point_iterator(plot)
     t = transformation(plot)
     model = model_transform(t)
-    trans_func = t.transform_func[]
+    # TODO: For some reason this was identity before and limit calculations in Axis with log scale are wrong if not, because they're already log transformed. What's the right behavior?
+    # trans_func = t.transform_func[]
+    trans_func = identity
     iterate_transformed(points, model, trans_func)
 end
 
