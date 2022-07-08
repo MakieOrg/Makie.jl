@@ -58,7 +58,10 @@ function backend_display(::Missing, ::Scene; kw...)
     """)
 end
 
+update_state_before_display!(_) = nothing
+
 function Base.display(fig::FigureLike; kw...)
+    update_state_before_display!(fig)
     scene = get_scene(fig)
     if !use_display[]
         return Core.invoke(display, Tuple{Any}, scene)
