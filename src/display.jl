@@ -341,19 +341,12 @@ function VideoStream(fig::FigureLike; framerate::Integer=24, visible=false, conn
     dir = mktempdir()
     path = joinpath(dir, "$(gensym(:video)).mkv")
     scene = get_scene(fig)
-    screen = backend_display(scene; start_renderloop=false, visible=visible, connect=connect)
+    screen = backend_display(fig; start_renderloop=false, visible=visible, connect=connect)
     _xdim, _ydim = size(scene)
     xdim = iseven(_xdim) ? _xdim : _xdim + 1
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
     process = @ffmpeg_env open(`$(FFMPEG.ffmpeg) -framerate $(framerate) -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
     return VideoStream(process.in, process, screen, abspath(path))
-end
-
-function VideoStream(fig::FigureAxisPlot; kw...)
-    VideoStream(fig.figure; kw...)
-end
-function VideoStream(fig::Figure; kw...)
-    VideoStream(fig.scene; kw...)
 end
 
 # This has to be overloaded by the backend for its screen type.
@@ -585,24 +578,24 @@ end
                               only applies to `.mp4`. Defaults to `yuv444p` for
                               `profile = high444`.
 """
-function record(func, scene, path; framerate::Int = 24, kwargs...)
-    io = Record(func, scene, framerate = framerate)
+function record(func, figlike, path; framerate::Int = 24, kwargs...)
+    io = Record(func, figlike, framerate = framerate)
     save(path, io, framerate = framerate; kwargs...)
 end
 
-function Record(func, scene; framerate=24)
-    io = VideoStream(scene; framerate = framerate)
+function Record(func, figlike; framerate=24)
+    io = VideoStream(figlike; framerate = framerate)
     func(io)
     return io
 end
 
-function record(func, scene, path, iter; framerate::Int = 24, kwargs...)
-    io = Record(func, scene, iter; framerate=framerate)
+function record(func, figlike, path, iter; framerate::Int = 24, kwargs...)
+    io = Record(func, figlike, iter; framerate=framerate)
     save(path, io, framerate = framerate; kwargs...)
 end
 
-function Record(func, scene, iter; framerate::Int = 24)
-    io = VideoStream(scene; framerate=framerate)
+function Record(func, figlike, iter; framerate::Int = 24)
+    io = VideoStream(figlike; framerate=framerate)
     for i in iter
         func(i)
         recordframe!(io)
