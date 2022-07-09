@@ -134,24 +134,24 @@ Notice that the relevant `Makie.step!` is not
 exported and should be accessed by module name.
 """
 mutable struct FolderStepper
-    scene::Scene
+    figlike::FigureLike
     folder::String
     format::Symbol
     step::Int
 end
 
 mutable struct RamStepper
-    scene::Scene
+    figlike::FigureLike
     images::Vector{Matrix{RGBf}}
     format::Symbol
 end
 
-Stepper(scene::FigureLike, path::String, step::Int; format=:png) = FolderStepper(get_scene(scene), path, format, step)
-Stepper(scene::FigureLike; format=:png) = RamStepper(get_scene(scene), Matrix{RGBf}[], format)
+Stepper(figlike::FigureLike, path::String, step::Int; format=:png) = FolderStepper(figlike, path, format, step)
+Stepper(figlike::FigureLike; format=:png) = RamStepper(figlike, Matrix{RGBf}[], format)
 
-function Stepper(scene::FigureLike, path::String; format = :png)
+function Stepper(figlike::FigureLike, path::String; format = :png)
     ispath(path) || mkpath(path)
-    FolderStepper(get_scene(scene), path, format, 1)
+    FolderStepper(figlike, path, format, 1)
 end
 
 """
@@ -161,13 +161,13 @@ steps through a `Makie.Stepper` and outputs a file with filename `filename-step.
 This is useful for generating progressive plot examples.
 """
 function step!(s::FolderStepper)
-    FileIO.save(joinpath(s.folder, basename(s.folder) * "-$(s.step).$(s.format)"), s.scene)
+    FileIO.save(joinpath(s.folder, basename(s.folder) * "-$(s.step).$(s.format)"), s.figlike)
     s.step += 1
     return s
 end
 
 function step!(s::RamStepper)
-    img = convert(Matrix{RGBf}, colorbuffer(s.scene))
+    img = convert(Matrix{RGBf}, colorbuffer(s.figlike))
     push!(s.images, img)
     return s
 end
