@@ -751,8 +751,7 @@ function Makie.plot!(ax::Axis, plot::P) where P
     # add_cycle_attributes!(plot, cycle, ax.cycler, ax.palette)
     # _disallow_keyword(:axis, allattrs)
     # _disallow_keyword(:figure, allattrs)
-
-    plot = Makie.plot!(ax.scene, plot)
+    Makie.plot!(ax.scene, plot)
 
     # some area-like plots basically always look better if they cover the whole plot area.
     # adjust the limit margins in those cases automatically.
