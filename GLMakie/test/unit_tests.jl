@@ -67,7 +67,7 @@ end
         N = 100000
         fig, ax, splot = scatter(1:N, 1:N)
         limits!(ax, 99990,100000, 99990,100000)
-        screen = display(fig)
+        screen = display(GLMakie.Screen(visible = false), fig)
         # we don't really need the color buffer here, but this should be the best way right now to really
         # force a full render to happen
         GLMakie.Makie.colorbuffer(screen)

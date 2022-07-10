@@ -181,30 +181,6 @@ function ncoords(poly::Polygon)
     N
 end
 
-
-### Text bounding box
-########################################
-
-function Bbox_from_glyphcollection(text, gc)
-    bbox = Rect2f(0, 0, 0, 0)
-    bboxes = Rect2f[]
-    broadcast_foreach(gc.extents, gc.scales) do extent, scale
-        b = height_insensitive_boundingbox_with_advance(extent) * scale
-        push!(bboxes, b)
-    end
-    for (c, o, bb) in zip(text, gc.origins, bboxes)
-        c == '\n' && continue
-        bbox2 = Rect2f(o[Vec(1,2)] .+ origin(bb), widths(bb))
-        if bbox == Rect2f(0, 0, 0, 0)
-            bbox = bbox2
-        else
-            bbox = union(bbox, bbox2)
-        end
-    end
-    bbox
-end
-
-
 ## Shifted projection
 ########################################
 
@@ -255,7 +231,6 @@ end
         enabled = true,
         range = 10,
 
-        _root_px_projection = Mat4f(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1),
         _model = Mat4f(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1),
         _visible = true,
         _tooltip_align = (:center, :top),
@@ -273,31 +248,24 @@ function plot!(plot::_Inspector)
         indicator_linestyle, indicator_linewidth, indicator_color,
         tooltip_offset, depth,
         _display_text, _text_position, _bbox2D, _px_bbox_visible,
-        _tooltip_align, _root_px_projection, _visible
+        _tooltip_align, _visible
     )
 
     # tooltip text
     _aligned_text_position = Observable(Point2f(0))
-    id = Mat4f(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1)
-    text_plot = text!(plot, _display_text,
-        position = _aligned_text_position, visible = _visible, align = text_align,
+    text_plot = text!(plot, _aligned_text_position, text = _display_text,
+        visible = _visible, align = text_align,
         color = textcolor, font = font, textsize = textsize,
-        inspectable = false,
-        # with https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie/pull/183 this should
-        # allow the tooltip to work in any scene.
-        space = :data,
-        projection = _root_px_projection, view = id, projectionview = _root_px_projection
+        inspectable = false, space = :pixel
     )
 
     # compute text boundingbox and adjust _aligned_text_position
-    bbox = map(text_plot.plots[1][1], text_plot.position, text_padding) do gc, pos, pad
-        rect = Bbox_from_glyphcollection(_display_text[], gc)
+    bbox = map(_display_text, _aligned_text_position, text_padding) do _, _, pad
+        rect = Rect2f(boundingbox(text_plot))
         l, r, b, t = pad
-        Rect2f(
-            origin(rect) .+ Vec2f(pos[1] - l, pos[2] - b),
-            widths(rect) .+ Vec2f(l + r, b + t)
-        )
+        Rect2f(origin(rect) .- Vec2f(l, b), widths(rect) .+ Vec2f(l + r, b + t))
     end
+
     onany(_text_position, _tooltip_align, tooltip_offset, bbox) do pos, align, offset, bbox
         halign, valign = align
         ox, oy = offset
@@ -325,16 +293,15 @@ function plot!(plot::_Inspector)
 
     # tooltip background and frame
     background = mesh!(
-        plot, bbox, color = background_color, shading = false, #fxaa = false,
+        plot, bbox, color = background_color, shading = false,
         # TODO with fxaa here the text above becomes seethrough on a heatmap
-        visible = _visible, inspectable = false,
-        projection = _root_px_projection, view = id, projectionview = _root_px_projection
+        visible = _visible, inspectable = false, space = :pixel
     )
     outline = wireframe!(
         plot, bbox,
         color = outline_color, visible = _visible, inspectable = false,
         linestyle = outline_linestyle, linewidth = outline_linewidth,
-        projection = _root_px_projection, view = id, projectionview = _root_px_projection
+        space = :pixel
     )
 
     # pixel-space marker for selected element (not always used)
@@ -342,8 +309,7 @@ function plot!(plot::_Inspector)
         plot, _bbox2D,
         color = indicator_color, linewidth = indicator_linewidth,
         linestyle = indicator_linestyle, visible = _px_bbox_visible,
-        inspectable = false,
-        projection = _root_px_projection, view = id, projectionview = _root_px_projection
+        inspectable = false, space = :pixel
     )
 
     # To make sure inspector plots end up in front
@@ -439,11 +405,7 @@ function DataInspector(scene::Scene; priority = 100, kwargs...)
     parent = root(scene)
     @assert origin(pixelarea(parent)[]) == Vec2f(0)
 
-    plot = _inspector!(
-        parent, 1,
-        _root_px_projection = camera(parent).pixel_space;
-        kwargs...
-    )
+    plot = _inspector!(parent, 1, kwargs...)
     inspector = DataInspector(parent, plot)
 
     e = events(parent)
@@ -777,7 +739,7 @@ function show_imagelike(inspector, plot, name, edge_based)
         a._display_text[] = color2text(name, mpos[1], mpos[2], z)
     else
         a._bbox2D[] = _pixelated_image_bbox(plot[1][], plot[2][], plot[3][], i, j, edge_based)
-        if inspector.selection != plot || !(inspector.temp_plots[1][1][] isa Rect2)
+        if inspector.selection != plot || isempty(inspector.temp_plots) || !(inspector.temp_plots[1][1][] isa Rect2)
             clear_temporary_plots!(inspector, plot)
             p = wireframe!(
                 scene, a._bbox2D, model = a._model, color = a.indicator_color,

@@ -126,7 +126,9 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:AbstractString, <:Po
     strings_and_positions = plot[1]
 
     strings = Observable(first.(strings_and_positions[]))
-    positions = Observable(to_ndim.(Ref(Point3f), last.(strings_and_positions[]), 0))
+    positions = Observable(
+        Point3f[to_ndim(Point3f, last(x), 0) for x in  strings_and_positions[]] # avoid Any for zero elements
+    )
 
     attrs = plot.attributes
     pop!(attrs, :position)

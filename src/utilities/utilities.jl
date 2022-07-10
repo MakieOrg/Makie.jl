@@ -156,17 +156,20 @@ end
 attr_broadcast_length(x::NativeFont) = 1 # these are our rules, and for what we do, Vecs are usually scalars
 attr_broadcast_length(x::VecTypes) = 1 # these are our rules, and for what we do, Vecs are usually scalars
 attr_broadcast_length(x::AbstractArray) = length(x)
+attr_broadcast_length(x::AbstractPattern) = 1
 attr_broadcast_length(x) = 1
 attr_broadcast_length(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
 
 attr_broadcast_getindex(x::NativeFont, i) = x # these are our rules, and for what we do, Vecs are usually scalars
 attr_broadcast_getindex(x::VecTypes, i) = x # these are our rules, and for what we do, Vecs are usually scalars
 attr_broadcast_getindex(x::AbstractArray, i) = x[i]
+attr_broadcast_getindex(x::AbstractPattern, i) = x
 attr_broadcast_getindex(x, i) = x
 attr_broadcast_getindex(x::ScalarOrVector, i) = x.sv isa Vector ? x.sv[i] : x.sv
 
 is_vector_attribute(x::AbstractArray) = true
 is_vector_attribute(x::NativeFont) = false
+is_vector_attribute(x::Quaternion) = false
 is_vector_attribute(x::VecTypes) = false
 is_vector_attribute(x) = false
 

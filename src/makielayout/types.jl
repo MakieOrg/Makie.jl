@@ -297,6 +297,10 @@ end
         xtickcolor::RGBAf = RGBf(0, 0, 0)
         "The color of the ytick marks."
         ytickcolor::RGBAf = RGBf(0, 0, 0)
+        "Controls if the x ticks and minor ticks are mirrored on the other side of the Axis."
+        xticksmirrored::Bool = false
+        "Controls if the y ticks and minor ticks are mirrored on the other side of the Axis."
+        yticksmirrored::Bool = false
         "Locks interactive panning in the x direction."
         xpanlock::Bool = false
         "Locks interactive panning in the y direction."
@@ -453,9 +457,8 @@ function RectangleZoom(f::Function, ax::Axis; kw...)
     selection_vertices = lift(_selection_vertices, ax.finallimits, r.rectnode)
     # manually specify correct faces for a rectangle with a rectangle hole inside
     faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
-    # fxaa false seems necessary for correct transparency
     mesh = mesh!(ax.scene, selection_vertices, faces, color = (:black, 0.2), shading = false,
-                 fxaa = false, inspectable = false, visible=r.active, transparency=true)
+                 inspectable = false, visible=r.active, transparency=true)
     # translate forward so selection mesh and frame are never behind data
     translate!(mesh, 0, 0, 100)
     return r
