@@ -6,6 +6,7 @@
 - Fixed regression where `Block` alignments could not be specified as numbers anymore [#2108](https://github.com/JuliaPlots/Makie.jl/pull/2108).
 - Added the option to show mirrored ticks on the other side of an Axis using the attributes `xticksmirrored` and `yticksmirrored` [#2105](https://github.com/JuliaPlots/Makie.jl/pull/2105).
 - Fixed a bug where a set of `Axis` wouldn't be correctly linked together if they were only linked in pairs instead of all at the same time [#2116](https://github.com/JuliaPlots/Makie.jl/pull/2116).
+- Recording and colorbuffers use screen size instead of scene size, allowing e.g. the `px_per_unit` argument in CairoMakie to take effect.  It is sufficient to set the global `px_per_unit` setting by calling `CairoMakie.activate!(px_per_unit=3)` or whichever scaling factor is desired.  GLMakie and WGLMakie are currently unaffected by this. [#2012](https://github.com/JuliaPlots/Makie.jl/pull/2116).
 
 ## v0.17.7
 
