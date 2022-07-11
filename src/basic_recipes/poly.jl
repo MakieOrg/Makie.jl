@@ -63,7 +63,10 @@ function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}
 end
 
 # Poly conversion
-poly_convert(geometries) = triangle_mesh.(geometries)
+function poly_convert(geometries)
+    isempty(geometries) && return typeof(GeometryBasics.Mesh(Point2f[], GLTriangleFace[]))[]
+    return triangle_mesh.(geometries)
+end
 poly_convert(meshes::AbstractVector{<:AbstractMesh}) = meshes
 poly_convert(polys::AbstractVector{<:Polygon}) = triangle_mesh.(polys)
 function poly_convert(multipolygons::AbstractVector{<:MultiPolygon})
@@ -184,7 +187,11 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
     else
         attributes[:color] = color_node
         lift(meshes) do meshes
-            return merge(GeometryBasics.mesh.(meshes))
+            if isempty(meshes)
+                return GeometryBasics.Mesh(Point2f[], GLTriangleFace[])
+            else
+                return merge(GeometryBasics.mesh.(meshes))
+            end
         end
     end
     mesh!(plot, attributes, bigmesh)
