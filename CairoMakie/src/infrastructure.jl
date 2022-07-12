@@ -315,7 +315,7 @@ end
 
 function Makie.backend_display(x::CairoBackend, scene::Scene; kw...)
     return open(x.path, "w") do io
-        Makie.backend_show(x, io, to_mime(x), scene)
+        Makie.backend_show(x, IOContext(io, kw), to_mime(x), scene)
     end
 end
 
