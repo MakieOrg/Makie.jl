@@ -326,12 +326,10 @@ function draw_marker(ctx, marker::Matrix{T}, pos, scale,
     argb32_marker = permutedims(argb32_marker, (2,1)) # swap x-y for Cairo
     marker_surf   = Cairo.CairoImageSurface(argb32_marker)
 
-    px_scale = scale ./ size(marker)
-    Cairo.scale(ctx, px_scale[1], px_scale[2])
-    px_pos   = pos ./ px_scale
-    px_pos   = Vec2f(px_pos[1] + marker_offset[1], px_pos[2] - marker_offset[2])
-    Cairo.translate(ctx, px_pos[1], px_pos[2])
+    Cairo.translate(ctx, pos[1]+marker_offset[1], pos[2]+marker_offset[2])
     Cairo.rotate(ctx, to_2d_rotation(rotation))
+    px_scale = scale ./ size(argb32_marker)
+    Cairo.scale(ctx, px_scale[1], px_scale[2])
     Cairo.set_source_surface(ctx, marker_surf, 0, 0)
     Cairo.paint(ctx)
 end
