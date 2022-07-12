@@ -320,7 +320,7 @@ struct VideoStream
 end
 
 """
-    VideoStream(scene::Scene; framerate = 24, visible=false, connect=false)
+    VideoStream(scene::Scene; framerate = 24, visible=false, connect=false, backend_kw...)
 
 Returns a stream and a buffer that you can use, which don't allocate for new frames.
 Use [`recordframe!(stream)`](@ref) to add new video frames to the stream, and
@@ -329,12 +329,12 @@ Use [`recordframe!(stream)`](@ref) to add new video frames to the stream, and
 * visible=false: make window visible or not
 * connect=false: connect window events or not
 """
-function VideoStream(fig::FigureLike; framerate::Integer=24, visible=false, connect=false)
+function VideoStream(fig::FigureLike; framerate::Integer=24, visible=false, connect=false, backend_kw...)
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
     dir = mktempdir()
     path = joinpath(dir, "$(gensym(:video)).mkv")
     scene = get_scene(fig)
-    screen = backend_display(scene; start_renderloop=false, visible=visible, connect=connect)
+    screen = backend_display(scene; start_renderloop=false, visible=visible, connect=connect, backend_kw...)
     push_screen!(scene, screen)
 
     _xdim, _ydim = GeometryBasics.widths(screen)
@@ -465,7 +465,8 @@ If you want a simpler interface, consider using [`record`](@ref).
 function save(
         path::String, io::VideoStream;
         framerate::Int = 24, compression = 20, profile = "high422",
-        pixel_format = profile == "high444" ? "yuv444p" : "yuv420p"
+        pixel_format = profile == "high444" ? "yuv444p" : "yuv420p",
+        kwargs...
     )
 
     close(io.process)
@@ -579,24 +580,24 @@ end
                               only applies to `.mp4`. Defaults to `yuv444p` for
                               `profile = high444`.
 """
-function record(func, scene, path; framerate::Int = 24, kwargs...)
-    io = Record(func, scene, framerate = framerate)
-    save(path, io, framerate = framerate; kwargs...)
+function record(func, scene, path; framerate::Int = 24, backend_kw...)
+    io = Record(func, scene, framerate = framerate, backend_kw...)
+    save(path, io, framerate = framerate; backend_kw...)
 end
 
-function Record(func, scene; framerate=24)
-    io = VideoStream(scene; framerate = framerate)
+function Record(func, scene; framerate=24, backend_kw...)
+    io = VideoStream(scene; framerate = framerate, backend_kw...)
     func(io)
     return io
 end
 
-function record(func, scene, path, iter; framerate::Int = 24, kwargs...)
-    io = Record(func, scene, iter; framerate=framerate)
-    save(path, io, framerate = framerate; kwargs...)
+function record(func, scene, path, iter; framerate::Int = 24, backend_kw...)
+    io = Record(func, scene, iter; framerate=framerate, backend_kw...)
+    save(path, io, framerate = framerate; backend_kw...)
 end
 
-function Record(func, scene, iter; framerate::Int = 24)
-    io = VideoStream(scene; framerate=framerate)
+function Record(func, scene, iter; framerate::Int = 24, backend_kw...)
+    io = VideoStream(scene; framerate=framerate, backend_kw...)
     for i in iter
         func(i)
         recordframe!(io)
