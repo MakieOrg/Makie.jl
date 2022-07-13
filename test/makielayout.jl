@@ -175,3 +175,84 @@ end
     ax = Axis(f[1,1], xticks = 20:10:80)
     scatter!(ax, 30:10:100, rand(Float64, 8), color = :red)
 end
+
+# issues 1958 and 2006
+@testset "axislegend number align" begin
+    f = Figure()
+    ax = Axis(f[1,1], xticks = 20:10:80)
+    lines!(ax, 1:10, label = "A line")
+    leg = axislegend(ax, position = (0.4, 0.8))
+    @test leg.halign[] == 0.4
+    @test leg.valign[] == 0.8
+end
+
+# issue 2005
+@testset "invalid plotting function keyword arguments" begin
+    for T in [Axis, Axis3, LScene]
+        f = Figure()
+        kw = (; backgroundcolor = :red)
+        @test_throws ArgumentError lines(f[1, 1], 1:10, figure = kw)
+        @test_nowarn               lines(f[1, 2], 1:10, axis = kw)
+        @test_throws ArgumentError lines(f[1, 3][1, 1], 1:10, figure = kw)
+        @test_nowarn               lines(f[1, 4][1, 2], 1:10, axis = kw)
+        ax = T(f[1, 5])
+        @test_throws ArgumentError lines!(ax, 1:10, axis = kw)
+        @test_throws ArgumentError lines!(ax, 1:10, axis = kw)
+        @test_throws ArgumentError lines!(1:10, axis = kw)
+        @test_throws ArgumentError lines!(1:10, figure = kw)
+        @test_nowarn               lines!(1:10)
+        @test_throws ArgumentError lines!(f[1, 5], 1:10, figure = kw)
+        @test_throws ArgumentError lines!(f[1, 5], 1:10, axis = kw)
+        @test_nowarn               lines!(f[1, 5], 1:10)
+    end
+end
+
+@testset "Linked axes" begin
+    # this tests a bug in 0.17.4 where the first axis targetlimits
+    # don't change because the second axis has limits contained inside those
+    # of the first, so the axis linking didn't proliferate
+    f = Figure()
+    ax1 = Axis(f[1, 1], xautolimitmargin = (0, 0), yautolimitmargin = (0, 0))
+    ax2 = Axis(f[2, 1], xautolimitmargin = (0, 0), yautolimitmargin = (0, 0))
+    scatter!(ax1, 1:5, 2:6)
+    scatter!(ax2, 2:3, 3:4)
+    @test first.(extrema(ax1.finallimits[])) == (1, 5)
+    @test last.(extrema(ax1.finallimits[])) == (2, 6)
+    @test first.(extrema(ax2.finallimits[])) == (2, 3)
+    @test last.(extrema(ax2.finallimits[])) == (3, 4)
+    linkxaxes!(ax1, ax2)
+    @test first.(extrema(ax1.finallimits[])) == (1, 5)
+    @test last.(extrema(ax1.finallimits[])) == (2, 6)
+    @test first.(extrema(ax2.finallimits[])) == (1, 5)
+    @test last.(extrema(ax2.finallimits[])) == (3, 4)
+    linkyaxes!(ax1, ax2)
+    @test first.(extrema(ax1.finallimits[])) == (1, 5)
+    @test last.(extrema(ax1.finallimits[])) == (2, 6)
+    @test first.(extrema(ax2.finallimits[])) == (1, 5)
+    @test last.(extrema(ax2.finallimits[])) == (2, 6)
+end
+
+# issue 1718
+@testset "Linked axes of linked axes" begin
+    # check that if linking axis A and B, where B has already been linked to C, A and C are also linked
+    f = Figure()
+    ax1 = Axis(f[1, 1])
+    ax2 = Axis(f[1, 2])
+    ax3 = Axis(f[1, 3])
+    
+    linkaxes!(ax2, ax3)
+    @test Set(ax1.xaxislinks) == Set([])
+    @test Set(ax2.xaxislinks) == Set([ax3])
+    @test Set(ax3.xaxislinks) == Set([ax2])
+    @test Set(ax1.yaxislinks) == Set([])
+    @test Set(ax2.yaxislinks) == Set([ax3])
+    @test Set(ax3.yaxislinks) == Set([ax2])
+
+    linkaxes!(ax1, ax2)
+    @test Set(ax1.xaxislinks) == Set([ax2, ax3])
+    @test Set(ax2.xaxislinks) == Set([ax1, ax3])
+    @test Set(ax3.xaxislinks) == Set([ax1, ax2])
+    @test Set(ax1.yaxislinks) == Set([ax2, ax3])
+    @test Set(ax2.yaxislinks) == Set([ax1, ax3])
+    @test Set(ax3.yaxislinks) == Set([ax1, ax2])
+end

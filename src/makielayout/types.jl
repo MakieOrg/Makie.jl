@@ -297,6 +297,10 @@ end
         xtickcolor::RGBAf = RGBf(0, 0, 0)
         "The color of the ytick marks."
         ytickcolor::RGBAf = RGBf(0, 0, 0)
+        "Controls if the x ticks and minor ticks are mirrored on the other side of the Axis."
+        xticksmirrored::Bool = false
+        "Controls if the y ticks and minor ticks are mirrored on the other side of the Axis."
+        yticksmirrored::Bool = false
         "Locks interactive panning in the x direction."
         xpanlock::Bool = false
         "Locks interactive panning in the y direction."
