@@ -269,7 +269,7 @@ function plot!(plot::RainClouds)
         if clouds === violin
             violin!(plot, final_x_positions .- recenter_to_boxplot_nudge_value.*width_ratio, data_array;
                     show_median=show_median, side=side, width=width_ratio*cloud_width, plot.cycle,
-                    violin_limits=plot.datalimits, plot.color, gap=0, orientation=plot.orientation[])
+                    datalimits=plot.violin_limits, plot.color, gap=0, orientation=plot.orientation[])
         elseif clouds === hist
             edges = pick_hist_edges(data_array, hist_bins)
             # dodge belongs below: it ensure that the histogram groups labels by both dodge
