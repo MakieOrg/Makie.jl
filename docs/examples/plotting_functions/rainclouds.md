@@ -101,7 +101,7 @@ rainclouds(category_labels, data_array;
 rainclouds(category_labels, data_array;
     xlabel = "Categories of Distributions", ylabel = "Samples", title = "My Title",
     plot_boxplots = true, cloud_width=0.5, side = :right,
-    datalimits = extrema, color = colors[indexin(category_labels, unique(category_labels))])
+    violin_limits = extrema, color = colors[indexin(category_labels, unique(category_labels))])
 ```
 \end{examplefigure}
 
