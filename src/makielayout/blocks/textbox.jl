@@ -99,8 +99,8 @@ function initialize_block!(tbox::Textbox)
 
     tbox.cursoranimtask = nothing
 
-    on(t.layoutobservables.reportedsize) do sz
-        tbox.layoutobservables.autosize[] = sz
+    on(t.layoutobservables.reporteddimensions) do dims
+        tbox.layoutobservables.autosize[] = dims.inner
     end
 
     # trigger text for autosize
