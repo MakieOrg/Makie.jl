@@ -3,6 +3,8 @@
 ## v0.17.10
 
 - Bumped compatibility bound of `GridLayoutBase.jl` to `v0.9.0` which fixed a regression with `Mixed` and `Outside` alignmodes in nested `GridLayout`s [#2135](https://github.com/JuliaPlots/Makie.jl/pull/2135).
+- `rainclouds`(!) now supports `violin_limits` keyword argument, serving the same
+role as `datalimits` in `violin` [#2137](https://github.com/JuliaPlots/Makie.jl/pull/2137).
 
 ## v0.17.9
 
