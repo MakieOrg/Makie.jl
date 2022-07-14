@@ -425,9 +425,8 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
         )
 
         Cairo.save(ctx)
-        Cairo.move_to(ctx, glyphpos...)
         set_font_matrix(ctx, mat)
-        Cairo.show_text(ctx, string(glyph))
+        show_glyph(ctx, glyph, glyphpos...)
         # show_text makes an implicite move_to at the end, which starts a new one point path.
         # `new_path` clears that path so it doesn't end up as an artifact in the next stroke call
         Cairo.new_path(ctx)
@@ -437,7 +436,7 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
             Cairo.save(ctx)
             Cairo.move_to(ctx, glyphpos...)
             set_font_matrix(ctx, mat)
-            Cairo.text_path(ctx, string(glyph))
+            glyph_path(ctx, glyph, glyphpos...)
             Cairo.set_source_rgba(ctx, rgbatuple(strokecolor)...)
             Cairo.set_line_width(ctx, strokewidth)
             Cairo.stroke(ctx)
@@ -451,6 +450,25 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
 
     Cairo.restore(ctx)
     return
+end
+
+struct CairoGlyph
+    index::Culong
+    x::Cdouble
+    y::Cdouble
+end
+
+function show_glyph(ctx, glyph::Culong, x, y)
+    cg = Ref(CairoGlyph(glyph, x, y))
+    ccall((:cairo_show_glyphs, Cairo.libcairo),
+            Nothing, (Ptr{Nothing}, Ptr{CairoGlyph}, Cint),
+            ctx.ptr, cg, 1)
+end
+function glyph_path(ctx, glyph::Culong, x, y)
+    cg = Ref(CairoGlyph(glyph, x, y))
+    ccall((:cairo_glyph_path, Cairo.libcairo),
+            Nothing, (Ptr{Nothing}, Ptr{CairoGlyph}, Cint),
+            ctx.ptr, cg, 1)
 end
 
 ################################################################################
