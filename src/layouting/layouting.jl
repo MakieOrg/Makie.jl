@@ -257,7 +257,7 @@ function glyph_collection(
     # interactive features that need to know where characters begin and end
     per_char(attr) = collect(attribute_per_char(str, attr)) # attribute_per_char returns generators
     return GlyphCollection(
-        [x.char for x in charinfos],
+        [glyph_index(x.char, x.font) for x in charinfos],
         [x.font for x in charinfos],
         reduce(vcat, charorigins),
         [x.extent for x in charinfos],
@@ -267,6 +267,10 @@ function glyph_collection(
         per_char(strokecolor),
         per_char(strokewidth)
     )
+end
+
+function glyph_index(char::Char, font)
+    FreeType.FT_Get_Char_Index(font, char)
 end
 
 # function to concatenate vectors with a value between every pair
