@@ -427,9 +427,6 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
         Cairo.save(ctx)
         set_font_matrix(ctx, mat)
         show_glyph(ctx, glyph, glyphpos...)
-        # show_text makes an implicite move_to at the end, which starts a new one point path.
-        # `new_path` clears that path so it doesn't end up as an artifact in the next stroke call
-        Cairo.new_path(ctx)
         Cairo.restore(ctx)
 
         if strokewidth > 0 && strokecolor != RGBAf(0, 0, 0, 0)
