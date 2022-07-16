@@ -231,7 +231,7 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
 
     pre_align_gl = GlyphCollection(
         glyphindices,
-        @show(fonts),
+        fonts,
         Point3f.(positions),
         extents,
         scales_2d,
