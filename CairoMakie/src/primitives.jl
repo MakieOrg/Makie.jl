@@ -393,6 +393,7 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
 
         p3_offset = to_ndim(Point3f, offset, 0)
 
+        @show glyph
         glyph in ('\r', '\n') && return
 
         Cairo.save(ctx)
@@ -456,7 +457,7 @@ struct CairoGlyph
 end
 
 function show_glyph(ctx, glyph::Culong, x, y)
-    cg = Ref(CairoGlyph(glyph, x, y))
+    cg = Ref(CairoGlyph(5930, x, y))
     ccall((:cairo_show_glyphs, Cairo.libcairo),
             Nothing, (Ptr{Nothing}, Ptr{CairoGlyph}, Cint),
             ctx.ptr, cg, 1)

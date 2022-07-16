@@ -231,7 +231,7 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
 
     pre_align_gl = GlyphCollection(
         glyphindices,
-        fonts,
+        @show(fonts),
         Point3f.(positions),
         extents,
         scales_2d,
@@ -245,7 +245,8 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
 end
 
 function glyph_index(t::TeXChar)
-    error("Correct glyph index needs to be picked on MathTeXEngine's side and returned here")
+    Culong(5930)
+    # error("Correct glyph index needs to be picked on MathTeXEngine's side and returned here")
 end
 
 iswhitespace(l::LaTeXString) = iswhitespace(replace(l.s, '$' => ""))
