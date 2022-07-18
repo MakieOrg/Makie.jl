@@ -21,7 +21,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 [compat]
 Colors = "0.11, 0.12"
 FileIO = "1.1"
-FreeTypeAbstraction = "0.8, 0.9"
+FreeTypeAbstraction = "0.8, 0.9, 0.10"
 GeometryBasics = "0.4.1"
 Hyperscript = "0.0.3, 0.0.4"
 ImageMagick = "1.1"
