@@ -1,5 +1,3 @@
-using FreeTypeAbstraction: iter_or_array
-
 mutable struct TextureAtlas
     rectangle_packer::RectanglePacker
     mapping::Dict{Tuple{UInt64, String}, Int} # styled glyph to index in sprite_attributes
