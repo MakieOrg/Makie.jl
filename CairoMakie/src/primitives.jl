@@ -456,8 +456,8 @@ struct CairoGlyph
     y::Cdouble
 end
 
-function show_glyph(ctx, glyph::Culong, x, y)
-    cg = Ref(CairoGlyph(5930, x, y))
+function show_glyph(ctx, glyph, x, y)
+    cg = Ref(CairoGlyph(glyph, x, y))
     ccall((:cairo_show_glyphs, Cairo.libcairo),
             Nothing, (Ptr{Nothing}, Ptr{CairoGlyph}, Cint),
             ctx.ptr, cg, 1)
