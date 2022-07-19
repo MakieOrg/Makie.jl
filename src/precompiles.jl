@@ -59,7 +59,6 @@ function precompile_obs(x)
     end
 end
 
-
 const verbose = Ref(false)    # if true, prints all the precompiles
 const have_inference_tracking = isdefined(Core.Compiler, :__set_measure_typeinf)
 const have_force_compile = isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("#@force_compile"))
@@ -118,29 +117,22 @@ macro precompile_calls(args...)
     return esc(ex)
 end
 
+macro compile(block)
+    return quote
+        let
+            $(esc(block))
+        end
+    end
+end
+
 let
     @precompile_calls begin
-        precompile(Makie.initialize_block!, (Axis,))
-        ax = Axis(Figure()[1,1])
-        ax = _block(Axis, Figure())
-        initialize_block!(ax)
-        LineAxis(Scene(); spinecolor=:red, labelfont="Deja vue", ticklabelfont="Deja Vue", spinevisible=false, endpoints=Observable([Point2f(0), Point2f(0, 1)]), minorticks = IntervalsBetween(5))
-        cam = Camera(Observable(Recti(0, 0, 1, 1)))
-        convert(ColorTypes.RGBA{Float32}, RGB{N0f8}(0, 0, 0))
-        f, ax1, pl = scatter(1:4)
-        f, ax2, pl = lines(1:4)
-        precompile_obs(ax1)
-        precompile_obs(ax2)
-        convert_arguments(Mesh{Tuple{Vector{Point{2, Float32}}, Matrix{Int64}}}, rand(Point2f, 10), [1 2 3; 4 3 2])
-        @assert precompile(Legend, (Scene, Observable{Vector{Tuple{Optional{String}, Vector{LegendEntry}}}}))
-        # @assert precompile(Legend, (Scene, AbstractArray, Vector{String}))
-        @assert precompile(Colorbar, (Scene,))
-        # @assert precompile(Axis, (Scene,))
-        # @assert precompile(Core.kwfunc(Type), (NamedTuple{(:title,), Tuple{String}}, Type{Axis}, Scene))
-        @assert precompile(LineAxis, (Scene,))
-        @assert precompile(Menu, (Scene,))
-        @assert precompile(Button, (Scene,))
-        @assert precompile(Slider, (Scene,))
-        @assert precompile(Textbox, (Scene,))
+        base_path = normpath(joinpath(dirname(pathof(Makie)), "..", "precompile"))
+        shared_precompile = joinpath(base_path, "shared-precompile.jl")
+        include(shared_precompile)
+        empty!(FONT_CACHE)
+        empty!(_default_font)
+        empty!(_alternative_fonts)
     end
+    nothing
 end

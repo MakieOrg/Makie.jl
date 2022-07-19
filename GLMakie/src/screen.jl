@@ -145,8 +145,8 @@ end
 
 const GLFW_WINDOWS = GLFW.Window[]
 
-const SINGLETON_SCREEN = Base.RefValue{Screen}()
-const SINGLETON_SCREEN_NO_RENDERLOOP = Base.RefValue{Screen}()
+const SINGLETON_SCREEN = Screen[]
+const SINGLETON_SCREEN_NO_RENDERLOOP = Screen[]
 
 function singleton_screen(resolution; visible=Makie.use_display[], start_renderloop=true)
     screen_ref = if start_renderloop
@@ -155,13 +155,16 @@ function singleton_screen(resolution; visible=Makie.use_display[], start_renderl
         SINGLETON_SCREEN_NO_RENDERLOOP
     end
 
-    if isassigned(screen_ref) && isopen(screen_ref[])
-        screen = screen_ref[]
+    if length(screen_ref) == 1 && isopen(screen_ref[1])
+        screen = screen_ref[1]
         resize!(screen, resolution...)
         return screen
     else
+        if !isempty(screen_ref)
+            closeall(screen_ref)
+        end
         screen = Screen(; resolution=resolution, visible=visible, start_renderloop=start_renderloop)
-        screen_ref[] = screen
+        push!(screen_ref, screen)
         return screen
     end
 end
@@ -174,12 +177,12 @@ function destroy!(screen::Screen)
 end
 
 Base.close(screen::Screen) = destroy!(screen)
-function closeall()
-    if !isempty(GLFW_WINDOWS)
-        for elem in GLFW_WINDOWS
+function closeall(windows=GLFW_WINDOWS)
+    if !isempty(windows)
+        for elem in windows
             isopen(elem) && destroy!(elem)
         end
-        empty!(GLFW_WINDOWS)
+        empty!(windows)
     end
 end
 
