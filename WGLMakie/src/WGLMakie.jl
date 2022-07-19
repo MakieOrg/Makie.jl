@@ -86,9 +86,6 @@ for name in names(Makie, all=true)
 end
 export inline!
 
-if Base.VERSION >= v"1.4.2"
-    include("precompiles.jl")
-    _precompile_()
-end
+include("precompiles.jl")
 
 end # module

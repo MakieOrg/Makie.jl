@@ -168,7 +168,3 @@ end
 @compile begin
     meshscatter(rand(Point3f, 10), axis=(type=Axis3,))
 end
-
-@compile begin
-    barplot(1:5, color=Makie.LinePattern(linecolor=:red, background_color=:orange))
-end
