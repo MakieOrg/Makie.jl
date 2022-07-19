@@ -704,12 +704,11 @@ function show_imagelike(inspector, plot, name, edge_based)
         _pixelated_getindex(plot[1][], plot[2][], plot[3][], mpos, edge_based)
     end
 
-    # we might hover over NaN values
+    # in case we hover over NaN values
     if isnan(z)
-        # a._bbox_visible[] = false
-        # a._px_bbox_visible[] = false
         a._visible[] = false
-        return true
+        # return false and this plot is not processed and we have to process other plots from the figure; see @show_data_recursion
+        return false
     end
 
     # from this line down, z is not a NaN
