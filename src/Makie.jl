@@ -1,5 +1,9 @@
 module Makie
 
+if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@max_methods"))
+    @eval Base.Experimental.@max_methods 1
+end
+
 module ContoursHygiene
     import Contour
 end
@@ -14,13 +18,11 @@ using Random
 using FFMPEG # get FFMPEG on any system!
 using Observables
 using GeometryBasics
-using IntervalSets
 using PlotUtils
 using ColorBrewer
 using ColorTypes
 using Colors
 using ColorSchemes
-using FixedPointNumbers
 using Packing
 using SignedDistanceFields
 using Markdown
@@ -33,6 +35,8 @@ using FreeTypeAbstraction
 using UnicodeFun
 using LinearAlgebra
 using Statistics
+using MakieCore
+using OffsetArrays
 
 import RelocatableFolders
 import StatsBase
@@ -44,13 +48,15 @@ import GridLayoutBase
 import ImageIO
 import FileIO
 import SparseArrays
-using MakieCore
-using OffsetArrays
 
-using GeometryBasics: widths, positive_widths, VecTypes, AbstractPolygon, value, StaticVector
+using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints
+using FixedPointNumbers: N0f8
+
+using GeometryBasics: width, widths, height, positive_widths, VecTypes, AbstractPolygon, value, StaticVector
 using Distributions: Distribution, VariateForm, Discrete, QQPair, pdf, quantile, qqbuild
 
 import FileIO: save
+import FreeTypeAbstraction: height_insensitive_boundingbox
 using Printf: @sprintf
 using StatsFuns: logit, logistic
 # Imports from Base which we don't want to have to qualify
@@ -82,14 +88,13 @@ const NativeFont = FreeTypeAbstraction.FTFont
 
 include("documentation/docstringextension.jl")
 include("utilities/quaternions.jl")
-include("interaction/PriorityObservable.jl")
 include("types.jl")
-include("utilities/utilities.jl")
 include("utilities/texture_atlas.jl")
 include("interaction/observables.jl")
 include("interaction/liftmacro.jl")
 include("colorsampler.jl")
 include("patterns.jl")
+include("utilities/utilities.jl") # need Makie.AbstractPattern
 # Basic scene/plot/recipe interfaces + types
 include("scenes.jl")
 
@@ -113,6 +118,7 @@ include("camera/old_camera3d.jl")
 
 # basic recipes
 include("basic_recipes/convenience_functions.jl")
+include("basic_recipes/ablines.jl")
 include("basic_recipes/annotations.jl")
 include("basic_recipes/arc.jl")
 include("basic_recipes/arrows.jl")
@@ -123,6 +129,8 @@ include("basic_recipes/buffers.jl")
 include("basic_recipes/contours.jl")
 include("basic_recipes/contourf.jl")
 include("basic_recipes/error_and_rangebars.jl")
+include("basic_recipes/hvlines.jl")
+include("basic_recipes/hvspan.jl")
 include("basic_recipes/pie.jl")
 include("basic_recipes/poly.jl")
 include("basic_recipes/scatterlines.jl")
@@ -192,7 +200,7 @@ export broadcast_foreach, to_vector, replace_automatic!
 
 # conversion infrastructure
 export @key_str, convert_attribute, convert_arguments
-export to_color, to_colormap, to_rotation, to_font, to_align, to_textsize
+export to_color, to_colormap, to_rotation, to_font, to_align, to_textsize, categorical_colors, resample_cmap
 export to_ndim, Reverse
 
 # Transformations
@@ -213,8 +221,8 @@ export to_world
 # picking + interactive use cases + events
 export mouseover, onpick, pick, Events, Keyboard, Mouse, mouse_selection, is_mouseinside
 export ispressed, Exclusively
-export register_callbacks
-export window_area, window_open, mouse_buttons, mouse_position, mouseposition_px, 
+export connect_screen
+export window_area, window_open, mouse_buttons, mouse_position, mouseposition_px,
        scroll, keyboard_buttons, unicode_input, dropped_files, hasfocus, entered_window
 export disconnect!
 export DataInspector
@@ -240,6 +248,7 @@ export widths, decompose
 export PlotSpec
 
 export plot!, plot
+export abline! # until deprecation removal
 
 
 export Stepper, replay_events, record_events, RecordEvents, record, VideoStream
@@ -268,6 +277,25 @@ function logo()
 end
 
 function __init__()
+    # Make GridLayoutBase default row and colgaps themeable when using Makie
+    # This mutates module-level state so it could mess up other libraries using
+    # GridLayoutBase at the same time as Makie, which is unlikely, though
+    GridLayoutBase.DEFAULT_COLGAP_GETTER[] = function()
+        ct = Makie.current_default_theme()
+        if haskey(ct, :colgap)
+            ct[:colgap][]
+        else
+            GridLayoutBase.DEFAULT_COLGAP[]
+        end
+    end
+    GridLayoutBase.DEFAULT_ROWGAP_GETTER[] = function()
+        ct = Makie.current_default_theme()
+        if haskey(ct, :rowgap)
+            ct[:rowgap][]
+        else
+            GridLayoutBase.DEFAULT_ROWGAP[]
+        end
+    end
     # fonts aren't cacheable by precompilation, so we need to empty it on load!
     empty!(FONT_CACHE)
     cfg_path = joinpath(homedir(), ".config", "makie", "theme.jl")
@@ -282,15 +310,10 @@ export content
 export resize_to_layout!
 
 include("makielayout/MakieLayout.jl")
-# re-export MakieLayout
-for name in names(MakieLayout)
-    @eval import .MakieLayout: $(name)
-    @eval export $(name)
-end
-
 include("figureplotting.jl")
 include("basic_recipes/series.jl")
 include("basic_recipes/text.jl")
+include("basic_recipes/raincloud.jl")
 
 export Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter, Surface, Text, Volume
 export heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface, text, volume
@@ -298,9 +321,7 @@ export heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, s
 
 export PointLight, EnvironmentLight, AmbientLight, SSAO
 
-if Base.VERSION >= v"1.4.2"
-    include("precompiles.jl")
-    _precompile_()
-end
+include("precompiles.jl")
+_precompile_()
 
 end # module

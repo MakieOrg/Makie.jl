@@ -2,6 +2,13 @@
 
 Recipes allow you to extend `Makie` with your own custom types and plotting commands.
 
+!!! note
+    If you're a package developer, it's possible to add recipes without adding all of
+    `Makie.jl` as a dependency. Instead, you can use the `MakieCore` package, which
+    is a lightweight package which provides all the necessary elements to create a recipe,
+    such as the `@recipe` macro, `convert_arguments` and `convert_attributes` functions,
+    and even some basic plot type definitions.
+
 There are two types of recipes:
 
 - _Type recipes_ define a simple mapping from a user defined type to an existing plot type
@@ -26,6 +33,9 @@ Plotting of a `Circle` for example can be defined via a conversion into a vector
 
 ```julia
 Makie.convert_arguments(x::Circle) = (decompose(Point2f, x),)
+
+# or if you picked up MakieCore as a light-weight recipe system dependency
+MakieCore.convert_arguments(x::Circle) = (decompose(Point2f, x),)
 ```
 
 !!! warning

@@ -27,11 +27,7 @@ $(ATTRIBUTES)
         colorrange = automatic,
         strokewidth = theme(scene, :patchstrokewidth),
         shading = false,
-        # we turn this false for now, since otherwise shapes look transparent
-        # since we use meshes, which are drawn into a different framebuffer because of fxaa
-        # if we use fxaa=false, they're drawn into the same
-        # TODO, I still think this is a bug, since they should still use the same depth buffer!
-        fxaa = false,
+        fxaa = true,
         linestyle = nothing,
         overdraw = false,
         transparency = false,
@@ -67,7 +63,10 @@ function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}
 end
 
 # Poly conversion
-poly_convert(geometries) = triangle_mesh.(geometries)
+function poly_convert(geometries)
+    isempty(geometries) && return typeof(GeometryBasics.Mesh(Point2f[], GLTriangleFace[]))[]
+    return triangle_mesh.(geometries)
+end
 poly_convert(meshes::AbstractVector{<:AbstractMesh}) = meshes
 poly_convert(polys::AbstractVector{<:Polygon}) = triangle_mesh.(polys)
 function poly_convert(multipolygons::AbstractVector{<:MultiPolygon})
@@ -90,7 +89,7 @@ function poly_convert(polygons::AbstractVector{<: AbstractVector{<: VecTypes}})
     end
 end
 
-to_line_segments(polygon) = convert_arguments(PointBased(), polygon)[1]
+to_line_segments(polygon) = convert_arguments(LineSegments, polygon)[1]
 # Need to explicitly overload for Mesh, since otherwise, Mesh will dispatch to AbstractVector
 to_line_segments(polygon::GeometryBasics.Mesh) = convert_arguments(PointBased(), polygon)[1]
 
@@ -188,7 +187,11 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
     else
         attributes[:color] = color_node
         lift(meshes) do meshes
-            return merge(GeometryBasics.mesh.(meshes))
+            if isempty(meshes)
+                return GeometryBasics.Mesh(Point2f[], GLTriangleFace[])
+            else
+                return merge(GeometryBasics.mesh.(meshes))
+            end
         end
     end
     mesh!(plot, attributes, bigmesh)

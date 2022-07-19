@@ -257,3 +257,7 @@ function merge_attributes!(input::Attributes, theme::Attributes)
     end
     return input
 end
+
+function Base.propertynames(x::T) where T <: Union{Attributes, Transformable}
+    return (keys(x.attributes)...,)
+end

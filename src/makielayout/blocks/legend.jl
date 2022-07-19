@@ -19,10 +19,11 @@ function initialize_block!(leg::Legend,
         enlarge($legend_area, -$(leg.margin)[1], -$(leg.margin)[2], -$(leg.margin)[3], -$(leg.margin)[4])
     end
 
-    poly!(scene,
+    bg = poly!(scene,
         legendrect,
         color = leg.bgcolor, strokewidth = leg.framewidth, visible = leg.framevisible,
         strokecolor = leg.framecolor, inspectable = false)
+    translate!(bg, 0, 0, -7) # bg behind patches but before content at 0 (legend is at +10)
 
     # the grid containing all content
     grid = GridLayout(bbox = legendrect, alignmode = Outside(leg.padding[]...))
@@ -207,6 +208,7 @@ function initialize_block!(leg::Legend,
                 rect = Box(scene; color=e.patchcolor, strokecolor=e.patchstrokecolor, strokewidth=e.patchstrokewidth,
                            width=lift(x -> x[1], e.patchsize), height=lift(x -> x[2], e.patchsize))
                 push!(erects, rect)
+                translate!(rect.blockscene, 0, 0, -5) # patches before background but behind legend elements (legend is at +10)
 
                 # plot the symbols belonging to this entry
                 symbolplots = AbstractPlot[]
@@ -584,6 +586,12 @@ The position can be a Symbol where the first letter controls the horizontal
 alignment and can be l, r or c, and the second letter controls the vertical
 alignment and can be t, b or c. Or it can be a tuple where the first
 element is set as the Legend's halign and the second element as its valign.
+                        
+With the keywords merge and unique you can control how plot objects with the 
+same labels are treated. If merge is true, all plot objects with the same 
+label will be layered on top of each other into one legend entry. If unique 
+is true, all plot objects with the same plot type and label will be reduced 
+to one occurrence.
 """
 function axislegend(ax, args...; position = :rt, kwargs...)
     Legend(ax.parent, args...;

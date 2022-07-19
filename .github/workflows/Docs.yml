@@ -4,15 +4,19 @@ on:
     branches:
       - main
       - master
+      - breaking-release
     tags: '*'
   pull_request:
     branches:
       - main
       - master
+      - breaking-release
 
-concurrency: 
-  group: docs-${{ github.ref }}
-  cancel-in-progress: true
+concurrency:
+  # Skip intermediate builds: all builds except for builds on the `master` or `release-*` branches
+  # Cancel intermediate builds: only pull request builds
+  group: docs-${{ github.workflow }}-${{ github.ref }}-${{ github.ref != 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release-') || github.run_number }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 
 jobs:
   build-and-deploy:

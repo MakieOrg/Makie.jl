@@ -111,6 +111,7 @@ function Base.setindex!(fig::Figure, obj::AbstractArray, rows, cols)
 end
 
 Base.lastindex(f::Figure, i) = lastindex(f.layout, i)
+Base.firstindex(f::Figure, i) = firstindex(f.layout, i)
 
 # for now just redirect figure display/show to the internal scene
 Base.show(io::IO, fig::Figure) = show(io, fig.scene)
@@ -145,3 +146,22 @@ function resize_to_layout!(fig::Figure)
     resize!(fig.scene, widths(bbox)...)
     new_size
 end
+
+function Base.empty!(fig::Figure)
+    empty!(fig.scene)
+    empty!(fig.scene.events)
+    foreach(GridLayoutBase.remove_from_gridlayout!, reverse(fig.layout.content))
+    trim!(fig.layout)
+    empty!(fig.content)
+    fig.current_axis[] = nothing
+    return
+end
+
+# Allow figures to be directly resized by resizing their internal Scene.
+# Layouts are already hooked up to this, so it's very simple.
+"""
+    resize!(fig::Figure, width, height)
+Resizes the given `Figure` to the resolution given by `width` and `height`.
+If you want to resize the figure to its current layout content, use `resize_to_layout!(fig)` instead.
+"""
+Makie.resize!(figure::Figure, args...) = resize!(figure.scene, args...)

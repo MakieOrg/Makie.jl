@@ -19,6 +19,25 @@ function initialize_block!(ax::Axis3)
     cam = OrthographicCamera()
     cameracontrols!(scene, cam)
 
+    mi1 = Observable(!(pi/2 <= ax.azimuth[] % 2pi < 3pi/2))
+    mi2 = Observable(0 <= ax.azimuth[] % 2pi < pi)
+    mi3 = Observable(ax.elevation[] > 0)
+
+    on(ax.azimuth) do x
+        b = !(pi/2 <= x % 2pi < 3pi/2)
+        mi1.val == b || (mi1[] = b)
+        return
+    end
+    on(ax.azimuth) do x
+        b = 0 <= x % 2pi < pi
+        mi2.val == b || (mi2[] = b)
+        return
+    end
+    on(ax.elevation) do x
+        mi3.val == (x > 0) || (mi3[] = x > 0)
+        return
+    end
+
     matrices = lift(calculate_matrices, finallimits, scene.px_area, ax.elevation, ax.azimuth, ax.perspectiveness, ax.aspect, ax.viewmode)
 
     on(matrices) do (view, proj, eyepos)
@@ -38,10 +57,6 @@ function initialize_block!(ax::Axis3)
     ticknode_3 = lift(finallimits, ax.zticks, ax.ztickformat) do lims, ticks, format
         tl = get_ticks(ticks, identity, format, minimum(lims)[3], maximum(lims)[3])
     end
-
-    mi1 = @lift(!(pi/2 <= $(ax.azimuth) % 2pi < 3pi/2))
-    mi2 = @lift(0 <= $(ax.azimuth) % 2pi < pi)
-    mi3 = @lift($(ax.elevation) > 0)
 
     add_panel!(scene, ax, 1, 2, 3, finallimits, mi3)
     add_panel!(scene, ax, 2, 3, 1, finallimits, mi1)
@@ -101,7 +116,7 @@ function initialize_block!(ax::Axis3)
     setfield!(ax, :scrollevents, scrollevents)
     keysevents = Observable(KeysEvent(Set()))
     setfield!(ax, :keysevents, keysevents)
-    
+
     on(scene.events.scroll) do s
         if is_mouseinside(scene)
             ax.scrollevents[] = ScrollEvent(s[1], s[2])
@@ -259,6 +274,9 @@ function Makie.plot!(
 
     allattrs = merge(attributes, Attributes(kw_attributes))
 
+    _disallow_keyword(:axis, allattrs)
+    _disallow_keyword(:figure, allattrs)
+
     cycle = get_cycle_for_plottype(allattrs, P)
     add_cycle_attributes!(allattrs, P, cycle, ax.cycler, ax.palette)
 
@@ -397,9 +415,8 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
         visible = attr(:gridvisible), inspectable = false)
 
 
-    framepoints = lift(limits, min1, min2,
-            scene.camera.projectionview, scene.px_area) do lims, mi1, mi2, pview, pxa
-
+    framepoints = lift(limits, scene.camera.projectionview, scene.px_area, min1, min2
+            ) do lims, _, pxa, mi1, mi2
         o = pxa.origin
 
         f(mi) = mi ? minimum : maximum
@@ -451,7 +468,6 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     tick_segments = lift(limits, tickvalues, miv, min1, min2,
             scene.camera.projectionview, scene.px_area) do lims, ticks, miv, min1, min2,
                 pview, pxa
-
         f1 = !min1 ? minimum(lims)[d1] : maximum(lims)[d1]
         f2 = min2 ? minimum(lims)[d2] : maximum(lims)[d2]
 
@@ -481,8 +497,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     # we are going to transform the 3d tick segments into 2d of the topscene
     # because otherwise they
     # be cut when they extend beyond the scene boundary
-    tick_segments_2dz = lift(tick_segments,
-            scene.camera.projectionview, scene.px_area) do ts, _, _
+    tick_segments_2dz = lift(tick_segments, scene.camera.projectionview, scene.px_area) do ts, _, _
         map(ts) do p1_p2
             to_topscene_z_2d.(p1_p2, Ref(scene))
         end
@@ -529,10 +544,14 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
 
     translate!(ticklabels, 0, 0, 1000)
 
-    label_pos_rot_valign = lift(scene.px_area, scene.camera.projectionview,
-            limits, miv, min1, min2, attr(:labeloffset),
-            attr(:labelrotation)) do pxa, pv, lims, miv, min1, min2,
-                labeloffset, lrotation
+    label_position = Observable(Point2f(0))
+    label_rotation = Observable(0f0)
+    label_align = Observable((:center, :top))
+
+    onany(
+            scene.px_area, scene.camera.projectionview, limits, miv, min1, min2,
+            attr(:labeloffset), attr(:labelrotation), attr(:labelalign)
+            ) do pxa, pv, lims, miv, min1, min2, labeloffset, lrotation, lalign
 
         o = pxa.origin
 
@@ -586,27 +605,32 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         end
 
         valign = offset_vec[2] > 0 || slight_flip ? :bottom : :top
-
-        plus_offset, labelrotation, valign
-    end
-
-    labelalign = lift(label_pos_rot_valign, attr(:labelalign)) do (_, _, valign), lalign
-        if lalign == Makie.automatic
+        align = if lalign == Makie.automatic
             (:center, valign)
         else
             lalign
         end
+
+        label_align[] != align && (label_align[] = align)
+        label_rotation[] != labelrotation && (label_rotation[] = labelrotation)
+        label_position[] = plus_offset
+
+        return
     end
+    notify(attr(:labelalign))
+
     label = text!(topscene, attr(:label),
         color = attr(:labelcolor),
         textsize = attr(:labelsize),
         font = attr(:labelfont),
-        position = @lift($label_pos_rot_valign[1]),
-        rotation = @lift($label_pos_rot_valign[2]),
-        align = labelalign,
+        position = label_position,
+        rotation = label_rotation,
+        align = label_align,
         visible = attr(:labelvisible),
         inspectable = false
     )
+
+
     return ticks, ticklabels, label
 end
 

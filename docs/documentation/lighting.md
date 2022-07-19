@@ -97,7 +97,7 @@ app
 using GLMakie
 GLMakie.activate!() # hide
 GLMakie.enable_SSAO[] = true
-close(GLMakie.global_gl_screen()) # close any open screen
+GLMakie.closeall() # close any open screen
 
 fig = Figure()
 ssao = Makie.SSAO(radius = 5.0, blur = 3)
@@ -114,7 +114,7 @@ fig
 
 ```julia:disable-ssao
 GLMakie.enable_SSAO[] = false # hide
-close(GLMakie.global_gl_screen()) # hide
+GLMakie.closeall() # hide
 ```
 
 \begin{examplefigure}{}

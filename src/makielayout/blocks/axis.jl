@@ -16,6 +16,155 @@ function block_docs(::Type{Axis})
     """
 end
 
+function update_gridlines!(grid_obs::Observable{Vector{Point2f}}, offset::Point2f, tickpositions::Vector{Point2f})
+    result = grid_obs[]
+    empty!(result) # reuse array for less allocations
+    for gridstart in tickpositions
+        opposite_tickpos = gridstart .+ offset
+        push!(result, gridstart, opposite_tickpos)
+    end
+    notify(grid_obs)
+    return
+end
+
+function process_axis_event(ax, event)
+    for (active, interaction) in values(ax.interactions)
+        if active
+            maybe_consume = process_interaction(interaction, event, ax)
+            maybe_consume == Consume(true) && return Consume(true)
+        end
+    end
+    return Consume(false)
+end
+
+function register_events!(ax, scene)
+
+    mouseeventhandle = addmouseevents!(scene)
+    setfield!(ax, :mouseeventhandle, mouseeventhandle)
+    scrollevents = Observable(ScrollEvent(0, 0))
+    setfield!(ax, :scrollevents, scrollevents)
+    keysevents = Observable(KeysEvent(Set()))
+    setfield!(ax, :keysevents, keysevents)
+    evs = events(scene)
+    on(evs.scroll) do s
+        if is_mouseinside(scene)
+            scrollevents[] = ScrollEvent(s[1], s[2])
+            return Consume(true)
+        end
+        return Consume(false)
+    end
+
+    # TODO this should probably just forward KeyEvent from Makie
+    on(evs.keyboardbutton) do e
+        keysevents[] = KeysEvent(evs.keyboardstate)
+        return Consume(false)
+    end
+
+    interactions = Dict{Symbol, Tuple{Bool, Any}}()
+    setfield!(ax, :interactions, interactions)
+
+    onany(process_axis_event, ax, mouseeventhandle.obs)
+    onany(process_axis_event, ax, scrollevents)
+    onany(process_axis_event, ax, keysevents)
+
+    register_interaction!(ax, :rectanglezoom, RectangleZoom(ax))
+
+    register_interaction!(ax, :limitreset, LimitReset())
+
+    register_interaction!(ax,
+        :scrollzoom,
+        ScrollZoom(0.1, Ref{Any}(nothing), Ref{Any}(0), Ref{Any}(0), 0.2))
+
+    register_interaction!(ax,
+        :dragpan,
+        DragPan(Ref{Any}(nothing), Ref{Any}(0), Ref{Any}(0), 0.2))
+
+    return
+end
+
+function update_axis_camera(camera::Camera, t, lims, xrev::Bool, yrev::Bool)
+    nearclip = -10_000f0
+    farclip = 10_000f0
+
+    tlims = Makie.apply_transform(t, lims)
+
+    left, bottom = minimum(tlims)
+    right, top = maximum(tlims)
+
+    leftright = xrev ? (right, left) : (left, right)
+    bottomtop = yrev ? (top, bottom) : (bottom, top)
+
+    projection = Makie.orthographicprojection(
+        leftright...,
+        bottomtop..., nearclip, farclip)
+
+    Makie.set_proj_view!(camera, projection, Makie.Mat4f(Makie.I))
+    return
+end
+
+
+function calculate_title_position(area, titlegap, subtitlegap, align, xaxisposition, xaxisprotrusion, _, ax, subtitlet)
+    local x::Float32 = if align === :center
+        area.origin[1] + area.widths[1] / 2
+    elseif align === :left
+        area.origin[1]
+    elseif align === :right
+        area.origin[1] + area.widths[1]
+    else
+        error("Title align $align not supported.")
+    end
+
+    local subtitlespace::Float32 = if ax.subtitlevisible[] && !iswhitespace(ax.subtitle[])
+        boundingbox(subtitlet).widths[2] + subtitlegap
+    else
+        0f0
+    end
+
+    local yoffset::Float32 = top(area) + titlegap + (xaxisposition === :top ? xaxisprotrusion : 0f0) +
+        subtitlespace
+
+    return Point2f(x, yoffset)
+end
+
+function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidth,
+        topspinevisible, bottomspinevisible, leftspinevisible, rightspinevisible,
+        xaxisprotrusion, yaxisprotrusion, xaxisposition, yaxisposition,
+        subtitle, subtitlevisible, subtitlesize, subtitlegap, titlelineheight, subtitlelineheight,
+        subtitlet, titlet)
+
+    local left::Float32, right::Float32, bottom::Float32, top::Float32 = 0f0, 0f0, 0f0, 0f0
+
+    if xaxisposition === :bottom
+        bottom = xaxisprotrusion
+    else
+        top = xaxisprotrusion
+    end
+
+    titleheight = boundingbox(titlet).widths[2] + titlegap
+    subtitleheight = boundingbox(subtitlet).widths[2] + subtitlegap
+
+    titlespace = if !titlevisible || iswhitespace(title)
+        0f0
+    else
+        titleheight
+    end
+    subtitlespace = if !subtitlevisible || iswhitespace(subtitle)
+        0f0
+    else
+        subtitleheight
+    end
+
+    top += titlespace + subtitlespace
+
+    if yaxisposition == :left
+        left = yaxisprotrusion
+    else
+        right = yaxisprotrusion
+    end
+
+    return GridLayoutBase.RectSides{Float32}(left, right, bottom, top)
+end
+
 function initialize_block!(ax::Axis; palette = nothing)
 
     topscene = ax.blockscene
@@ -30,12 +179,12 @@ function initialize_block!(ax::Axis; palette = nothing)
     # initialize either with user limits, or pick defaults based on scales
     # so that we don't immediately error
     targetlimits = Observable{Rect2f}(defaultlimits(ax.limits[], ax.xscale[], ax.yscale[]))
-    finallimits = Observable{Rect2f}(targetlimits[])
+    finallimits = Observable{Rect2f}(targetlimits[]; ignore_equal_values=true)
     setfield!(ax, :targetlimits, targetlimits)
     setfield!(ax, :finallimits, finallimits)
 
     ax.cycler = Cycler()
-    
+
     # the first thing to do when setting a new scale is
     # resetting the limits because simply through expanding they might be invalid for log
     onany(ax.xscale, ax.yscale) do _, _
@@ -59,7 +208,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     # TODO: replace with mesh, however, CairoMakie needs a poly path for this signature
     # so it doesn't rasterize the scene
-    background = poly!(topscene, scenearea, color = ax.backgroundcolor, inspectable = false, shading = false, strokecolor = :transparent)
+    background = poly!(topscene, scenearea; color=ax.backgroundcolor, inspectable=false, shading=false, strokecolor=:transparent)
     translate!(background, 0, 0, -100)
     decorations[:background] = background
 
@@ -69,7 +218,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     ax.xaxislinks = Axis[]
     ax.yaxislinks = Axis[]
 
-    xgridnode = Observable(Point2f[])
+    xgridnode = Observable(Point2f[]; ignore_equal_values=true)
     xgridlines = linesegments!(
         topscene, xgridnode, linewidth = ax.xgridwidth, visible = ax.xgridvisible,
         color = ax.xgridcolor, linestyle = ax.xgridstyle, inspectable = false
@@ -78,7 +227,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     translate!(xgridlines, 0, 0, -10)
     decorations[:xgridlines] = xgridlines
 
-    xminorgridnode = Observable(Point2f[])
+    xminorgridnode = Observable(Point2f[]; ignore_equal_values=true)
     xminorgridlines = linesegments!(
         topscene, xminorgridnode, linewidth = ax.xminorgridwidth, visible = ax.xminorgridvisible,
         color = ax.xminorgridcolor, linestyle = ax.xminorgridstyle, inspectable = false
@@ -87,7 +236,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     translate!(xminorgridlines, 0, 0, -10)
     decorations[:xminorgridlines] = xminorgridlines
 
-    ygridnode = Observable(Point2f[])
+    ygridnode = Observable(Point2f[]; ignore_equal_values=true)
     ygridlines = linesegments!(
         topscene, ygridnode, linewidth = ax.ygridwidth, visible = ax.ygridvisible,
         color = ax.ygridcolor, linestyle = ax.ygridstyle, inspectable = false
@@ -96,7 +245,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     translate!(ygridlines, 0, 0, -10)
     decorations[:ygridlines] = ygridlines
 
-    yminorgridnode = Observable(Point2f[])
+    yminorgridnode = Observable(Point2f[]; ignore_equal_values=true)
     yminorgridlines = linesegments!(
         topscene, yminorgridnode, linewidth = ax.yminorgridwidth, visible = ax.yminorgridvisible,
         color = ax.yminorgridcolor, linestyle = ax.yminorgridstyle, inspectable = false
@@ -107,89 +256,63 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     onany(ax.xscale, ax.yscale) do xsc, ysc
         scene.transformation.transform_func[] = (xsc, ysc)
+        return
     end
+
     notify(ax.xscale)
 
-    onany(finallimits, ax.xreversed, ax.yreversed, scene.transformation.transform_func) do lims, xrev, yrev, t
-        nearclip = -10_000f0
-        farclip = 10_000f0
+    onany(update_axis_camera, camera(scene), scene.transformation.transform_func, finallimits, ax.xreversed, ax.yreversed)
 
-        tlims = Makie.apply_transform(t, lims)
-
-        left, bottom = minimum(tlims)
-        right, top = maximum(tlims)
-
-        leftright = xrev ? (right, left) : (left, right)
-        bottomtop = yrev ? (top, bottom) : (bottom, top)
-
-        projection = Makie.orthographicprojection(
-            leftright...,
-            bottomtop..., nearclip, farclip)
-        Makie.set_proj_view!(camera(scene), projection, Makie.Mat4f(Makie.I))
-    end
-
-    xaxis_endpoints = lift(ax.xaxisposition, scene.px_area) do xaxisposition, area
+    xaxis_endpoints = lift(ax.xaxisposition, scene.px_area; ignore_equal_values=true) do xaxisposition, area
         if xaxisposition == :bottom
-            bottomline(Rect2f(area))
+            return bottomline(Rect2f(area))
         elseif xaxisposition == :top
-            topline(Rect2f(area))
+            return topline(Rect2f(area))
         else
             error("Invalid xaxisposition $xaxisposition")
         end
     end
 
-    yaxis_endpoints = lift(ax.yaxisposition, scene.px_area) do yaxisposition, area
+    yaxis_endpoints = lift(ax.yaxisposition, scene.px_area; ignore_equal_values=true) do yaxisposition, area
         if yaxisposition == :left
-            leftline(Rect2f(area))
+            return leftline(Rect2f(area))
         elseif yaxisposition == :right
-            rightline(Rect2f(area))
+            return rightline(Rect2f(area))
         else
             error("Invalid yaxisposition $yaxisposition")
         end
     end
 
-    xaxis_flipped = lift(x->x == :top, ax.xaxisposition)
-    yaxis_flipped = lift(x->x == :right, ax.yaxisposition)
+    xaxis_flipped = lift(x->x == :top, ax.xaxisposition; ignore_equal_values=true)
+    yaxis_flipped = lift(x->x == :right, ax.yaxisposition; ignore_equal_values=true)
 
-    xspinevisible = lift(xaxis_flipped, ax.bottomspinevisible, ax.topspinevisible) do xflip, bv, tv
+    xspinevisible = lift(xaxis_flipped, ax.bottomspinevisible, ax.topspinevisible; ignore_equal_values=true) do xflip, bv, tv
         xflip ? tv : bv
     end
-    xoppositespinevisible = lift(xaxis_flipped, ax.bottomspinevisible, ax.topspinevisible) do xflip, bv, tv
+    xoppositespinevisible = lift(xaxis_flipped, ax.bottomspinevisible, ax.topspinevisible; ignore_equal_values=true) do xflip, bv, tv
         xflip ? bv : tv
     end
-    yspinevisible = lift(yaxis_flipped, ax.leftspinevisible, ax.rightspinevisible) do yflip, lv, rv
+    yspinevisible = lift(yaxis_flipped, ax.leftspinevisible, ax.rightspinevisible; ignore_equal_values=true) do yflip, lv, rv
         yflip ? rv : lv
     end
-    yoppositespinevisible = lift(yaxis_flipped, ax.leftspinevisible, ax.rightspinevisible) do yflip, lv, rv
+    yoppositespinevisible = lift(yaxis_flipped, ax.leftspinevisible, ax.rightspinevisible; ignore_equal_values=true) do yflip, lv, rv
         yflip ? lv : rv
     end
-    xspinecolor = lift(xaxis_flipped, ax.bottomspinecolor, ax.topspinecolor) do xflip, bc, tc
+    xspinecolor = lift(xaxis_flipped, ax.bottomspinecolor, ax.topspinecolor; ignore_equal_values=true) do xflip, bc, tc
         xflip ? tc : bc
     end
-    xoppositespinecolor = lift(xaxis_flipped, ax.bottomspinecolor, ax.topspinecolor) do xflip, bc, tc
+    xoppositespinecolor = lift(xaxis_flipped, ax.bottomspinecolor, ax.topspinecolor; ignore_equal_values=true) do xflip, bc, tc
         xflip ? bc : tc
     end
-    yspinecolor = lift(yaxis_flipped, ax.leftspinecolor, ax.rightspinecolor) do yflip, lc, rc
+    yspinecolor = lift(yaxis_flipped, ax.leftspinecolor, ax.rightspinecolor; ignore_equal_values=true) do yflip, lc, rc
         yflip ? rc : lc
     end
-    yoppositespinecolor = lift(yaxis_flipped, ax.leftspinecolor, ax.rightspinecolor) do yflip, lc, rc
+    yoppositespinecolor = lift(yaxis_flipped, ax.leftspinecolor, ax.rightspinecolor; ignore_equal_values=true) do yflip, lc, rc
         yflip ? lc : rc
     end
 
-    xlims = Observable(xlimits(finallimits[]))
-    ylims = Observable(ylimits(finallimits[]))
-
-    on(finallimits) do lims
-        nxl = xlimits(lims)
-        nyl = ylimits(lims)
-
-        if nxl != xlims[]
-            xlims[] = nxl
-        end
-        if nyl != ylims[]
-            ylims[] = nyl
-        end
-    end
+    xlims = lift(xlimits, finallimits; ignore_equal_values=true)
+    ylims = lift(ylimits, finallimits; ignore_equal_values=true)
 
     xaxis = LineAxis(topscene, endpoints = xaxis_endpoints, limits = xlims,
         flipped = xaxis_flipped, ticklabelrotation = ax.xticklabelrotation,
@@ -218,76 +341,85 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     ax.yaxis = yaxis
 
-    xoppositelinepoints = lift(scene.px_area, ax.spinewidth, ax.xaxisposition) do r, sw, xaxpos
+    xoppositelinepoints = lift(scene.px_area, ax.spinewidth, ax.xaxisposition; ignore_equal_values=true) do r, sw, xaxpos
         if xaxpos == :top
             y = bottom(r)
-            p1 = Point2(left(r) - 0.5sw, y)
-            p2 = Point2(right(r) + 0.5sw, y)
-            [p1, p2]
+            p1 = Point2f(left(r) - 0.5sw, y)
+            p2 = Point2f(right(r) + 0.5sw, y)
+            return [p1, p2]
         else
             y = top(r)
-            p1 = Point2(left(r) - 0.5sw, y)
-            p2 = Point2(right(r) + 0.5sw, y)
-            [p1, p2]
+            p1 = Point2f(left(r) - 0.5sw, y)
+            p2 = Point2f(right(r) + 0.5sw, y)
+            return [p1, p2]
         end
     end
 
-    yoppositelinepoints = lift(scene.px_area, ax.spinewidth, ax.yaxisposition) do r, sw, yaxpos
+    yoppositelinepoints = lift(scene.px_area, ax.spinewidth, ax.yaxisposition; ignore_equal_values=true) do r, sw, yaxpos
         if yaxpos == :right
             x = left(r)
-            p1 = Point2(x, bottom(r) - 0.5sw)
-            p2 = Point2(x, top(r) + 0.5sw)
-            [p1, p2]
+            p1 = Point2f(x, bottom(r) - 0.5sw)
+            p2 = Point2f(x, top(r) + 0.5sw)
+            return [p1, p2]
         else
             x = right(r)
-            p1 = Point2(x, bottom(r) - 0.5sw)
-            p2 = Point2(x, top(r) + 0.5sw)
-            [p1, p2]
+            p1 = Point2f(x, bottom(r) - 0.5sw)
+            p2 = Point2f(x, top(r) + 0.5sw)
+            return [p1, p2]
         end
     end
 
-    xoppositeline = lines!(topscene, xoppositelinepoints, linewidth = ax.spinewidth,
+    xticksmirrored = lift(mirror_ticks, xaxis.tickpositions, ax.xticksize, ax.xtickalign, Ref(scene.px_area), :x, ax.xaxisposition[])
+    linesegments!(topscene, xticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xticksvisible)),
+        linewidth = ax.xtickwidth, color = ax.xtickcolor)
+    yticksmirrored = lift(mirror_ticks, yaxis.tickpositions, ax.yticksize, ax.ytickalign, Ref(scene.px_area), :y, ax.yaxisposition[])
+    linesegments!(topscene, yticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yticksvisible)),
+        linewidth = ax.ytickwidth, color = ax.ytickcolor)
+    xminorticksmirrored = lift(mirror_ticks, xaxis.minortickpositions, ax.xminorticksize, ax.xminortickalign, Ref(scene.px_area), :x, ax.xaxisposition[])
+    linesegments!(topscene, xminorticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xminorticksvisible)),
+        linewidth = ax.xminortickwidth, color = ax.xminortickcolor)
+    yminorticksmirrored = lift(mirror_ticks, yaxis.minortickpositions, ax.yminorticksize, ax.yminortickalign, Ref(scene.px_area), :y, ax.yaxisposition[])
+    linesegments!(topscene, yminorticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yminorticksvisible)),
+        linewidth = ax.yminortickwidth, color = ax.yminortickcolor)
+
+    xoppositeline = linesegments!(topscene, xoppositelinepoints, linewidth = ax.spinewidth,
         visible = xoppositespinevisible, color = xoppositespinecolor, inspectable = false,
         linestyle = nothing)
     decorations[:xoppositeline] = xoppositeline
     translate!(xoppositeline, 0, 0, 20)
-    yoppositeline = lines!(topscene, yoppositelinepoints, linewidth = ax.spinewidth,
+
+    yoppositeline = linesegments!(topscene, yoppositelinepoints, linewidth = ax.spinewidth,
         visible = yoppositespinevisible, color = yoppositespinecolor, inspectable = false,
         linestyle = nothing)
     decorations[:yoppositeline] = yoppositeline
     translate!(yoppositeline, 0, 0, 20)
 
-
-    on(xaxis.tickpositions) do tickpos
-        pxheight = height(scene.px_area[])
-        offset = ax.xaxisposition[] == :bottom ? pxheight : -pxheight
-        opposite_tickpos = tickpos .+ Ref(Point2f(0, offset))
-        xgridnode[] = interleave_vectors(tickpos, opposite_tickpos)
+    onany(xaxis.tickpositions, scene.px_area) do tickpos, area
+        local pxheight::Float32 = height(area)
+        local offset::Float32 = ax.xaxisposition[] === :bottom ? pxheight : -pxheight
+        update_gridlines!(xgridnode, Point2f(0, offset), tickpos)
     end
 
-    on(yaxis.tickpositions) do tickpos
-        pxwidth = width(scene.px_area[])
-        offset = ax.yaxisposition[] == :left ? pxwidth : -pxwidth
-        opposite_tickpos = tickpos .+ Ref(Point2f(offset, 0))
-        ygridnode[] = interleave_vectors(tickpos, opposite_tickpos)
+    onany(yaxis.tickpositions, scene.px_area) do tickpos, area
+        local pxwidth::Float32 = width(area)
+        local offset::Float32 = ax.yaxisposition[] === :left ? pxwidth : -pxwidth
+        update_gridlines!(ygridnode, Point2f(offset, 0), tickpos)
     end
 
     on(xaxis.minortickpositions) do tickpos
-        pxheight = height(scene.px_area[])
-        offset = ax.xaxisposition[] == :bottom ? pxheight : -pxheight
-        opposite_tickpos = tickpos .+ Ref(Point2f(0, offset))
-        xminorgridnode[] = interleave_vectors(tickpos, opposite_tickpos)
+        local pxheight::Float32 = height(scene.px_area[])
+        local offset::Float32 = ax.xaxisposition[] == :bottom ? pxheight : -pxheight
+        update_gridlines!(xminorgridnode, Point2f(0, offset), tickpos)
     end
 
     on(yaxis.minortickpositions) do tickpos
-        pxwidth = width(scene.px_area[])
-        offset = ax.yaxisposition[] == :left ? pxwidth : -pxwidth
-        opposite_tickpos = tickpos .+ Ref(Point2f(offset, 0))
-        yminorgridnode[] = interleave_vectors(tickpos, opposite_tickpos)
+        local pxwidth::Float32 = width(scene.px_area[])
+        local offset::Float32 = ax.yaxisposition[] == :left ? pxwidth : -pxwidth
+        update_gridlines!(yminorgridnode, Point2f(offset, 0), tickpos)
     end
 
-    titlepos = lift(scene.px_area, ax.titlegap, ax.titlealign, ax.xaxisposition, xaxis.protrusion) do a,
-            titlegap, align, xaxisposition, xaxisprotrusion
+    subtitlepos = lift(scene.px_area, ax.titlegap, ax.titlealign, ax.xaxisposition, xaxis.protrusion; ignore_equal_values=true) do a,
+        titlegap, align, xaxisposition, xaxisprotrusion
 
         x = if align == :center
             a.origin[1] + a.widths[1] / 2
@@ -301,59 +433,46 @@ function initialize_block!(ax::Axis; palette = nothing)
 
         yoffset = top(a) + titlegap + (xaxisposition == :top ? xaxisprotrusion : 0f0)
 
-        Point2(x, yoffset)
+        return Point2f(x, yoffset)
     end
 
-    titlealignnode = lift(ax.titlealign) do align
+    titlealignnode = lift(ax.titlealign; ignore_equal_values=true) do align
         (align, :bottom)
     end
 
+    subtitlet = text!(
+        topscene, subtitlepos,
+        text = ax.subtitle,
+        visible = ax.subtitlevisible,
+        textsize = ax.subtitlesize,
+        align = titlealignnode,
+        font = ax.subtitlefont,
+        color = ax.subtitlecolor,
+        lineheight = ax.subtitlelineheight,
+        markerspace = :data,
+        inspectable = false)
+
+    titlepos = lift(calculate_title_position, scene.px_area, ax.titlegap, ax.subtitlegap,
+        ax.titlealign, ax.xaxisposition, xaxis.protrusion, ax.subtitlelineheight, ax, subtitlet; ignore_equal_values=true)
+
     titlet = text!(
-        topscene, ax.title,
-        position = titlepos,
+        topscene, titlepos,
+        text = ax.title,
         visible = ax.titlevisible,
         textsize = ax.titlesize,
         align = titlealignnode,
         font = ax.titlefont,
         color = ax.titlecolor,
+        lineheight = ax.titlelineheight,
         markerspace = :data,
         inspectable = false)
     decorations[:title] = titlet
 
-    function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidth,
-                topspinevisible, bottomspinevisible, leftspinevisible, rightspinevisible,
-                xaxisprotrusion, yaxisprotrusion, xaxisposition, yaxisposition)
-
-        left, right, bottom, top = 0f0, 0f0, 0f0, 0f0
-
-        if xaxisposition == :bottom
-            bottom = xaxisprotrusion
-        else
-            top = xaxisprotrusion
-        end
-
-        titlespace = if !titlevisible || iswhitespace(title)
-            0f0
-        else
-            boundingbox(titlet).widths[2] + titlegap
-        end
-        top += titlespace
-
-        if yaxisposition == :left
-            left = yaxisprotrusion
-        else
-            right = yaxisprotrusion
-        end
-
-        GridLayoutBase.RectSides{Float32}(left, right, bottom, top)
-    end
-
-    onany(ax.title, ax.titlesize, ax.titlegap, ax.titlevisible, ax.spinewidth,
+    map!(compute_protrusions, ax.layoutobservables.protrusions, ax.title, ax.titlesize, ax.titlegap, ax.titlevisible, ax.spinewidth,
             ax.topspinevisible, ax.bottomspinevisible, ax.leftspinevisible, ax.rightspinevisible,
-            xaxis.protrusion, yaxis.protrusion, ax.xaxisposition, ax.yaxisposition) do args...
-        ax.layoutobservables.protrusions[] = compute_protrusions(args...)
-    end
-
+            xaxis.protrusion, yaxis.protrusion, ax.xaxisposition, ax.yaxisposition,
+            ax.subtitle, ax.subtitlevisible, ax.subtitlesize, ax.subtitlegap,
+            ax.titlelineheight, ax.subtitlelineheight, subtitlet, titlet)
     # trigger first protrusions with one of the observables
     notify(ax.title)
 
@@ -361,56 +480,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     # layout
     notify(ax.layoutobservables.suggestedbbox)
 
-    mouseeventhandle = addmouseevents!(scene)
-    setfield!(ax, :mouseeventhandle, mouseeventhandle)
-    scrollevents = Observable(ScrollEvent(0, 0))
-    setfield!(ax, :scrollevents, scrollevents)
-    keysevents = Observable(KeysEvent(Set()))
-    setfield!(ax, :keysevents, keysevents)
-
-    on(scene.events.scroll) do s
-        if is_mouseinside(scene)
-            scrollevents[] = ScrollEvent(s[1], s[2])
-            return Consume(true)
-        end
-        return Consume(false)
-    end
-
-    # TODO this should probably just forward KeyEvent from Makie
-    on(scene.events.keyboardbutton) do e
-        keysevents[] = KeysEvent(scene.events.keyboardstate)
-        return Consume(false)
-    end
-
-    interactions = Dict{Symbol, Tuple{Bool, Any}}()
-    setfield!(ax, :interactions, interactions)
-
-    function process_event(event)
-        for (active, interaction) in values(ax.interactions)
-            if active
-                maybe_consume = process_interaction(interaction, event, ax)
-                maybe_consume == Consume(true) && return Consume(true)
-            end
-        end
-        return Consume(false)
-    end
-
-    on(process_event, mouseeventhandle.obs)
-    on(process_event, scrollevents)
-    on(process_event, keysevents)
-
-    register_interaction!(ax, :rectanglezoom, RectangleZoom(ax))
-
-    register_interaction!(ax, :limitreset, LimitReset())
-
-    register_interaction!(ax,
-        :scrollzoom,
-        ScrollZoom(0.1, Ref{Any}(nothing), Ref{Any}(0), Ref{Any}(0), 0.2))
-
-    register_interaction!(ax,
-        :dragpan,
-        DragPan(Ref{Any}(nothing), Ref{Any}(0), Ref{Any}(0), 0.2))
-
+    register_events!(ax, scene)
 
     # these are the user defined limits
     on(ax.limits) do mlims
@@ -437,7 +507,32 @@ function initialize_block!(ax::Axis; palette = nothing)
         notify(finallimits)
     end
 
-    ax
+    return ax
+end
+
+function mirror_ticks(tickpositions, ticksize, tickalign, px_area, side, axisposition)
+    a = px_area[][]
+    if side == :x
+        opp = axisposition == :bottom ? top(a) : bottom(a)
+        sign =  axisposition == :bottom ? 1 : -1
+    else
+        opp = axisposition == :left ? right(a) : left(a)
+        sign = axisposition == :left ? 1 : -1
+    end
+    d = ticksize * sign
+    points = Vector{Point2f}(undef, 2*length(tickpositions))
+    if side == :x
+        for (i, (x, _)) in enumerate(tickpositions)
+            points[2i-1] = Point2f(x, opp - d * tickalign)
+            points[2i] = Point2f(x, opp + d - d * tickalign)
+        end
+    else
+        for (i, (_, y)) in enumerate(tickpositions)
+            points[2i-1] = Point2f(opp - d * tickalign, y)
+            points[2i] = Point2f(opp + d - d * tickalign, y)
+        end
+    end
+    return points
 end
 
 """
@@ -613,11 +708,12 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
 
     # if there are any manually cycled attributes, we don't do the normal
     # cycling but only look up exactly the passed attributes
+    cycle_attrsyms = attrsyms(cycle)
     if !isempty(manually_cycled_attributes)
         # an attribute given as Cycled needs to be present in the cycler,
         # otherwise there's no cycle in which to look up a value
         for k in manually_cycled_attributes
-            if k ∉ palettesyms(cycle)
+            if !any(x -> k in x, cycle_attrsyms)
                 error("Attribute `$k` was passed with an explicit `Cycled` value, but $k is not specified in the cycler for this plot type $P.")
             end
         end
@@ -636,7 +732,6 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
                 n = length(cis)
                 k = mod1(index, n)
                 idx = Tuple(cis[k])
-                isym
                 palettes[isym][idx[isym]]
             end
         end
@@ -668,6 +763,9 @@ function Makie.plot!(
         kw_attributes...)
 
     allattrs = merge(attributes, Attributes(kw_attributes))
+
+    _disallow_keyword(:axis, allattrs)
+    _disallow_keyword(:figure, allattrs)
 
     cycle = get_cycle_for_plottype(allattrs, P)
     add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
@@ -913,56 +1011,41 @@ function adjustlimits!(la)
     return
 end
 
+function linkaxes!(dir::Union{Val{:x}, Val{:y}}, a::Axis, others...)
+    axes = Axis[a; others...]
+
+    all_links = Set{Axis}(axes)
+    for ax in axes
+        links = dir isa Val{:x} ? ax.xaxislinks : ax.yaxislinks
+        for ax in links
+            push!(all_links, ax)
+        end
+    end
+
+    for ax in all_links
+        links = (dir isa Val{:x} ? ax.xaxislinks : ax.yaxislinks)
+        for linked_ax in all_links
+            if linked_ax !== ax && linked_ax ∉ links
+                push!(links, linked_ax)
+            end
+        end
+    end
+    reset_limits!(a)
+end
+
 """
     linkxaxes!(a::Axis, others...)
 
 Link the x axes of all given `Axis` so that they stay synchronized.
 """
-function linkxaxes!(a::Axis, others...)
-    axes = Axis[a; others...]
-
-    for i in 1:length(axes)-1
-        for j in i+1:length(axes)
-            axa = axes[i]
-            axb = axes[j]
-
-            if axa ∉ axb.xaxislinks
-                push!(axb.xaxislinks, axa)
-            end
-            if axb ∉ axa.xaxislinks
-                push!(axa.xaxislinks, axb)
-            end
-        end
-    end
-    # update limits because users will expect to see the effect
-    reset_limits!(a)
-end
+linkxaxes!(a::Axis, others...) = linkaxes!(Val(:x), a, others...)
 
 """
     linkyaxes!(a::Axis, others...)
 
 Link the y axes of all given `Axis` so that they stay synchronized.
 """
-function linkyaxes!(a::Axis, others...)
-    axes = Axis[a; others...]
-
-    for i in 1:length(axes)-1
-        for j in i+1:length(axes)
-            axa = axes[i]
-            axb = axes[j]
-
-            if axa ∉ axb.yaxislinks
-                push!(axb.yaxislinks, axa)
-            end
-            if axb ∉ axa.yaxislinks
-                push!(axa.yaxislinks, axb)
-            end
-        end
-    end
-    # update limits because users will expect to see the effect
-    reset_limits!(a)
-end
-
+linkyaxes!(a::Axis, others...) = linkaxes!(Val(:y), a, others...)
 
 """
 Keeps the ticklabelspace static for a short duration and then resets it to its previous
@@ -1080,17 +1163,33 @@ function hidespines!(la::Axis, spines::Symbol... = (:l, :r, :b, :t)...)
     end
 end
 
-function tight_yticklabel_spacing!(la::Axis)
-    tight_ticklabel_spacing!(la.elements[:yaxis])
+"""
+    space = tight_xticklabel_spacing!(ax::Axis)
+    
+Sets the space allocated for the xticklabels of the `Axis` to the minimum that is needed and returns that value.
+"""
+function tight_yticklabel_spacing!(ax::Axis)
+    space = tight_ticklabel_spacing!(ax.yaxis)
+    return space
 end
 
-function tight_xticklabel_spacing!(la::Axis)
-    tight_ticklabel_spacing!(la.elements[:xaxis])
+"""
+    space = tight_xticklabel_spacing!(ax::Axis)
+    
+Sets the space allocated for the yticklabels of the `Axis` to the minimum that is needed and returns that value.
+"""
+function tight_xticklabel_spacing!(ax::Axis)
+    space = tight_ticklabel_spacing!(ax.xaxis)
+    return space
 end
 
-function tight_ticklabel_spacing!(la::Axis)
-    tight_xticklabel_spacing!(la)
-    tight_yticklabel_spacing!(la)
+"""
+Sets the space allocated for the xticklabels and yticklabels of the `Axis` to the minimum that is needed.
+"""
+function tight_ticklabel_spacing!(ax::Axis)
+    tight_xticklabel_spacing!(ax)
+    tight_yticklabel_spacing!(ax)
+    return
 end
 
 function Base.show(io::IO, ::MIME"text/plain", ax::Axis)

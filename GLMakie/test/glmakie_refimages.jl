@@ -7,7 +7,7 @@ using GLMakie.GeometryBasics
 using ReferenceTests.RNG
 
 # A test case for wide lines and mitering at joints
-@cell "Miter Joints for line rendering" begin
+@reference_test "Miter Joints for line rendering" begin
     scene = Scene()
     cam2d!(scene)
     r = 4
@@ -29,7 +29,7 @@ using ReferenceTests.RNG
     scene
 end
 
-@cell "Sampler type" begin
+@reference_test "Sampler type" begin
     # Directly access texture parameters:
     x = Sampler(fill(to_color(:yellow), 100, 100), minfilter=:nearest)
     scene = image(x)
@@ -45,7 +45,7 @@ end
 end
 
 # Test for resizing of TextureBuffer
-@cell "Dynamically adjusting number of particles in a meshscatter" begin
+@reference_test "Dynamically adjusting number of particles in a meshscatter" begin
     pos = Observable(RNG.rand(Point3f, 2))
     rot = Observable(RNG.rand(Vec3f, 2))
     color = Observable(RNG.rand(RGBf, 2))
@@ -70,7 +70,7 @@ end
     end
 end
 
-@cell "Explicit frame rendering" begin
+@reference_test "Explicit frame rendering" begin
     set_window_config!(renderloop=(screen) -> nothing)
     function update_loop(m, buff, screen)
         for i = 1:20
@@ -90,10 +90,10 @@ end
     fig
 end
 
-@cell "Contour and isosurface with correct depth" begin
+@reference_test "Contour and isosurface with correct depth" begin
     # Make sure shaders can recompile
-    close(GLMakie.global_gl_screen())
-
+    GLMakie.closeall()
+    
     fig = Figure()
     left = LScene(fig[1, 1])
     contour!(left, [sin(i+j) * sin(j+k) * sin(i+k) for i in 1:10, j in 1:10, k in 1:10], enable_depth = true)

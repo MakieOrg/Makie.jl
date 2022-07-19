@@ -4,7 +4,7 @@ function block_docs(::Type{Colorbar})
     chosen according to the colorrange.
 
     You can set colorrange and colormap manually, or pass a plot object as the second argument
-    to copy its respective attributes. 
+    to copy its respective attributes.
 
     ## Constructors
 
@@ -181,19 +181,16 @@ function initialize_block!(cb::Colorbar)
         end
 
         colors = get.(Ref(gradient), (steps[1:end-1] .+ steps[2:end]) ./2)
-
         rects, colors
     end
 
     colors = lift(x -> getindex(x, 2), rects_and_colors)
-
     rects = poly!(blockscene,
         lift(x -> getindex(x, 1), rects_and_colors),
         color = colors,
         visible = map_is_categorical,
         inspectable = false
     )
-
 
     # for continous colormaps we sample a 1d image
     # to avoid white lines when rendering vector graphics
@@ -329,6 +326,8 @@ function initialize_block!(cb::Colorbar)
         minorticksize = cb.minorticksize, minortickwidth = cb.minortickwidth,
         minortickcolor = cb.minortickcolor, minorticks = cb.minorticks, scale = cb.scale)
 
+    cb.axis = axis
+
 
     onany(axis.protrusion, cb.vertical, cb.flipaxis) do axprotrusion,
             vertical, flipaxis
@@ -362,8 +361,14 @@ function initialize_block!(cb::Colorbar)
     return
 end
 
-function tight_ticklabel_spacing!(lc::Colorbar)
-    tight_ticklabel_spacing!(lc.elements[:axis])
+"""
+    space = tight_ticklabel_spacing!(cb::Colorbar)
+    
+Sets the space allocated for the ticklabels of the `Colorbar` to the minimum that is needed and returns that value.
+"""
+function tight_ticklabel_spacing!(cb::Colorbar)
+    space = tight_ticklabel_spacing!(cb.axis)
+    return space
 end
 
 function scaled_steps(steps, scale, lims)

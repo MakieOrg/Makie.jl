@@ -1,12 +1,6 @@
-
-
 # Menu
 
-A dropdown menu with `options`, where each element's label is determined with `optionlabel(element)`
-and the value with `optionvalue(element)`. The default behavior is to treat a 2-element tuple
-as `(label, value)` and any other object as `value`, where `label = string(value)`.
-
-The attribute `selection` is set to `optionvalue(element)` when the element's entry is selected.
+{{doc Menu}}
 
 \begin{examplefigure}{}
 ```julia
@@ -14,11 +8,13 @@ using GLMakie
 GLMakie.activate!() # hide
 fig = Figure()
 
-menu = Menu(fig, options = ["viridis", "heat", "blues"])
+menu = Menu(fig, options = ["viridis", "heat", "blues"], default = "blues")
 
 funcs = [sqrt, x->x^2, sin, cos]
 
-menu2 = Menu(fig, options = zip(["Square Root", "Square", "Sine", "Cosine"], funcs))
+menu2 = Menu(fig,
+    options = zip(["Square Root", "Square", "Sine", "Cosine"], funcs),
+    default = "Square")
 
 fig[1, 1] = vgrid!(
     Label(fig, "Colormap", width = nothing),
@@ -41,11 +37,13 @@ cb = Colorbar(fig[1, 3], scat)
 on(menu.selection) do s
     scat.colormap = s
 end
+notify(menu.selection)
 
 on(menu2.selection) do s
     func[] = s
     autolimits!(ax)
 end
+notify(menu2.selection)
 
 menu2.is_open = true
 

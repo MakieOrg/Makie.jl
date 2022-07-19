@@ -84,6 +84,14 @@ end
 """
 Wrap a single point or equivalent object in a single-element array.
 """
+function convert_arguments(::PointBased, x::Real, y::Real)
+    ([Point2f(x, y)],)
+end
+
+function convert_arguments(::PointBased, x::Real, y::Real, z::Real)
+    ([Point3f(x, y, z)],)
+end
+
 function convert_arguments(::PointBased, position::VecTypes{N, <: Number}) where N
     ([convert(Point{N, Float32}, position)],)
 end
@@ -291,7 +299,7 @@ function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::A
     return map(el32convert, adjust_axes(SL, x, y, z))
 end
 
-convert_arguments(::SurfaceLike, x::AbstractMatrix, y::AbstractMatrix) = (x, y, zeros(size(y)))
+convert_arguments(sl::SurfaceLike, x::AbstractMatrix, y::AbstractMatrix) = convert_arguments(sl, x, y, zeros(size(y)))
 
 """
     convert_arguments(P, x, y, z)::Tuple{ClosedInterval, ClosedInterval, Matrix}
@@ -724,9 +732,9 @@ Converts a `color` symbol (e.g. `:blue`) to a color RGBA.
 convert_attribute(color, ::key"color") = to_color(color)
 
 """
-    to_colormap(cm[, N = 20])
+    to_colormap(cm)
 
-Converts a colormap `cm` symbol (e.g. `:Spectral`) to a colormap RGB array, where `N` specifies the number of color points.
+Converts a colormap `cm` symbol/string (e.g. `:Spectral`) to a colormap RGB array.
 """
 convert_attribute(colormap, ::key"colormap") = to_colormap(colormap)
 convert_attribute(rotation, ::key"rotation") = to_rotation(rotation)
@@ -744,7 +752,7 @@ struct Palette
    i::Ref{Int}
    Palette(colors) = new(to_color.(colors), zero(Int))
 end
-Palette(name::Union{String, Symbol}, n = 8) = Palette(to_colormap(name, n))
+Palette(name::Union{String, Symbol}, n = 8) = Palette(categorical_colors(name, n))
 function to_color(p::Palette)
     N = length(p.colors)
     p.i[] = p.i[] == N ? 1 : p.i[] + 1
@@ -915,7 +923,7 @@ a string naming a font, e.g. helvetica
 function to_font(x::Union{Symbol, String})
     str = string(x)
     get!(FONT_CACHE, str) do
-        str == "default" && return to_font("Dejavu Sans")
+        str == "default" && return to_font("TeX Gyre Heros Makie")
 
         # check if the string points to a font file and load that
         if isfile(str)
@@ -930,12 +938,12 @@ function to_font(x::Union{Symbol, String})
         fontpath = assetpath("fonts")
         font = FreeTypeAbstraction.findfont(str; additional_fonts=fontpath)
         if font === nothing
-            @warn("Could not find font $str, using Dejavu Sans")
-            if "dejavu sans" == lowercase(str)
-                # since we fall back to dejavu sans, we need to check for recursion
-                error("Recursion encountered; DejaVu Sans cannot be located in the font path $fontpath")
+            @warn("Could not find font $str, using TeX Gyre Heros Makie")
+            if "tex gyre heros makie" == lowercase(str)
+                # since we fall back to TeX Gyre Heros Makie, we need to check for recursion
+                error("Recursion encountered; TeX Gyre Heros Makie cannot be located in the font path $fontpath")
             end
-            return to_font("dejavu sans")
+            return to_font("TeX Gyre Heros Makie")
         end
         return font
     end
@@ -965,8 +973,8 @@ function to_rotation(s::VecTypes{N}) where N
     end
 end
 
-to_rotation(s::Tuple{VecTypes, AbstractFloat}) = qrotation(to_ndim(Vec3f, s[1], 0.0), s[2])
-to_rotation(angle::AbstractFloat) = qrotation(Vec3f(0, 0, 1), Float32(angle))
+to_rotation(s::Tuple{VecTypes, Number}) = qrotation(to_ndim(Vec3f, s[1], 0.0), s[2])
+to_rotation(angle::Number) = qrotation(Vec3f(0, 0, 1), angle)
 to_rotation(r::AbstractVector) = to_rotation.(r)
 to_rotation(r::AbstractVector{<: Quaternionf}) = r
 
@@ -1009,6 +1017,45 @@ function available_gradients()
     end
 end
 
+
+to_colormap(cm, categories::Integer) = error("`to_colormap(cm, categories)` is deprecated. Use `Makie.categorical_colors(cm, categories)` for categorical colors, and `resample_cmap(cmap, ncolors)` for continous resampling.")
+
+"""
+    categorical_colors(colormaplike, categories::Integer)
+
+Creates categorical colors and tries to match `categories`.
+Will error if color scheme doesn't contain enough categories. Will drop the n last colors, if request less colors than contained in scheme.
+"""
+function categorical_colors(cols::AbstractVector{<: Colorant}, categories::Integer)
+    if length(cols) < categories
+        error("Not enough colors for number of categories. Categories: $(categories), colors: $(length(cols))")
+    end
+    return cols[1:categories]
+end
+
+function categorical_colors(cols::AbstractVector, categories::Integer)
+    return categorical_colors(to_color.(cols), categories)
+end
+
+function categorical_colors(cs::Union{String, Symbol}, categories::Integer)
+    cs_string = string(cs)
+    if cs_string in all_gradient_names
+        if haskey(ColorBrewer.colorSchemes, cs_string)
+            return to_colormap(ColorBrewer.palette(cs_string, categories))
+        else
+            return categorical_colors(to_colormap(cs_string), categories)
+        end
+    else
+        error(
+            """
+            There is no color gradient named $cs.
+            See `available_gradients()` for the list of available gradients,
+            or look at http://makie.juliaplots.org/dev/generated/colors#Colormap-reference.
+            """
+        )
+    end
+end
+
 """
 Reverses the attribute T upon conversion
 """
@@ -1019,8 +1066,10 @@ end
 to_colormap(r::Reverse) = reverse(to_colormap(r.data))
 to_colormap(cs::ColorScheme) = to_colormap(cs.colors)
 
+
+
 """
-    to_colormap(b)
+    to_colormap(b::AbstractVector)
 
 An `AbstractVector{T}` with any object that [`to_color`](@ref) accepts.
 """
@@ -1033,6 +1082,8 @@ function to_colormap(cs::Tuple{<: Union{Reverse, Symbol, AbstractString}, Real})
 end
 
 """
+    to_colormap(cs::Union{String, Symbol})::Vector{RGBAf}
+
 A Symbol/String naming the gradient. For more on what names are available please see: `available_gradients()`.
 For now, we support gradients from `PlotUtils` natively.
 """
@@ -1043,7 +1094,7 @@ function to_colormap(cs::Union{String, Symbol})::Vector{RGBAf}
             return to_colormap(ColorBrewer.palette(cs_string, 8))
         else
             # cs_string must be in plotutils_names
-            return to_colormap(PlotUtils.get_colorscheme(Symbol(cs_string)).colors)
+            return to_colormap(PlotUtils.get_colorscheme(Symbol(cs_string)))
         end
     else
         error(
@@ -1056,11 +1107,12 @@ function to_colormap(cs::Union{String, Symbol})::Vector{RGBAf}
     end
 end
 
-to_colormap(cg::PlotUtils.ContinuousColorGradient)::Vector{RGBAf} = to_colormap(cg.colors)
-
-function to_colormap(cg::PlotUtils.CategoricalColorGradient)::Vector{RGBAf}
-    colors = to_colormap(cg.colors)
-    return repeat(colors; inner=20)
+# Handle inbuilt PlotUtils types
+function to_colormap(cg::PlotUtils.ColorGradient)::Vector{RGBAf}
+    # We sample the colormap using cg[val]. This way, we get a concrete representation of
+    # the underlying gradient, like it being categorical or using a log scale.
+    # 256 is just a high enough constant, without being too big to slow things down.
+    return to_colormap(getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), 256)))
 end
 
 """
