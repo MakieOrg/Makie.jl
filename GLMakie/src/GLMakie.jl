@@ -67,6 +67,8 @@ if Base.VERSION >= v"1.4.2"
     Base.include_dependency(path)
     if isfile(path)
         include(path)
+    else
+        @warn "No precompiles found, please run Pkg.build(\"GLMakie\")"
     end
 end
 
