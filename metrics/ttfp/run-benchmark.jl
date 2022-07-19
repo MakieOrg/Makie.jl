@@ -195,13 +195,13 @@ function load_results(name)
     return JSON.parse(read(result, String))
 end
 
-# ctx = try
-#     github_context()
-# catch e
-#    @warn "Not authorized" exception=e
-#    # bad credentials because PR isn't from a contributor
-#    exit()
-# end
+ctx = try
+    github_context()
+catch e
+   @warn "Not authorized" exception=e
+   # bad credentials because PR isn't from a contributor
+   exit()
+end
 
 ENV["JULIA_PKG_PRECOMPILE_AUTO"] = 0
 
@@ -230,8 +230,10 @@ benchmark_rows = get_row_values(results_pr, results_m)
 
 pr_to_comment = get(ENV, "PR_NUMBER", nothing)
 
-
-@info("Not commenting, no PR found")
-comment = update_comment(COMMENT_TEMPLATE, Package, benchmark_rows)
-println(comment)
-write("comment.md", comment)
+if !isnothing(pr_to_comment)
+    pr = GitHub.pull_request(ctx.repo, pr_to_comment)
+    make_or_edit_comment(ctx, pr, Package, benchmark_rows)
+else
+    @info("Not commenting, no PR found")
+    println(update_comment(COMMENT_TEMPLATE, Package, benchmark_rows))
+end
