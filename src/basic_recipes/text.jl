@@ -162,7 +162,7 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
     scales_2d = [Vec2f(x[3] * Vec2f(fs)) for x in els]
 
     texchars = [x[1] for x in els]
-    glyphindices = [glyph_index(texchar) for texchar in texchars]
+    glyphindices = [FreeTypeAbstraction.glyph_index(texchar) for texchar in texchars]
     fonts = [texchar.font for texchar in texchars]
     extents = GlyphExtent.(texchars)
 
@@ -242,11 +242,6 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
     )
 
     all_els, pre_align_gl, Point2f(xshift, yshift)
-end
-
-function glyph_index(t::TeXChar)
-    Culong(5930)
-    # error("Correct glyph index needs to be picked on MathTeXEngine's side and returned here")
 end
 
 iswhitespace(l::LaTeXString) = iswhitespace(replace(l.s, '$' => ""))
