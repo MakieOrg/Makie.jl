@@ -707,13 +707,9 @@ function show_imagelike(inspector, plot, name, edge_based)
     # in case we hover over NaN values
     if isnan(z)
         a._visible[] = false
-        # return false as this plot is not processed (due to NaN) 
-        # and we have to process other plots from the figure
-        # see @show_data_recursion
-        return false
+        return true
     end
 
-    # from this line down, z is not a NaN
     a._color[] = if z isa AbstractFloat
         interpolated_getindex(
             to_colormap(plot.colormap[]), z,
