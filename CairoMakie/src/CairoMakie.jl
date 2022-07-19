@@ -66,12 +66,10 @@ function activate!(; inline = _last_inline[], type = _last_type[], px_per_unit=_
 end
 
 if Base.VERSION >= v"1.4.2"
-    include("precompiles.jl")
-    _precompile_()
-    path = joinpath(@__DIR__, "all-precompiles.jl")
+    path = joinpath(@__DIR__, "..", "deps", "precompiles.jl")
     Base.include_dependency(path)
     if isfile(path)
-        include("all-precompiles.jl")
+        include(path)
     end
 end
 
