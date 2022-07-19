@@ -24,6 +24,8 @@ docs/documentation/news.md
 
 metrics/ttfp/current-pr-project/
 
-CairoMakie/src/all-precompiles.jl
+**/deps/build.log
+**/deps/precompiles.jl
+
 metrics/ttfp/benchmark-projects/*
 *benchmark.json
