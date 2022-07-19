@@ -707,7 +707,9 @@ function show_imagelike(inspector, plot, name, edge_based)
     # in case we hover over NaN values
     if isnan(z)
         a._visible[] = false
-        # return false and this plot is not processed and we have to process other plots from the figure; see @show_data_recursion
+        # return false as this plot is not processed (due to NaN) 
+        # and we have to process other plots from the figure
+        # see @show_data_recursion
         return false
     end
 
