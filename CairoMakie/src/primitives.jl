@@ -393,7 +393,6 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
 
         p3_offset = to_ndim(Point3f, offset, 0)
 
-        @show glyph
         glyph in ('\r', '\n') && return
 
         Cairo.save(ctx)
