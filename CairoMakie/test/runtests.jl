@@ -69,7 +69,8 @@ excludes = Set([
     "fast pixel marker",
     "Array of Images Scatter",
     "Image Scatter different sizes",
-    "scatter with glow"
+    "scatter with glow",
+    "scatter with stroke"
 ])
 
 functions = [:volume, :volume!, :uv_mesh]
