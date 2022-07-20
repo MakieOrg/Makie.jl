@@ -3,6 +3,19 @@
 ## master
 
 - Allow `CairoMakie` to render `scatter` with images as markers [#2080](https://github.com/JuliaPlots/Makie.jl/pull/2080).
+- `rainclouds`(!) now supports `violin_limits` keyword argument, serving the same.
+role as `datalimits` in `violin` [#2137](https://github.com/JuliaPlots/Makie.jl/pull/2137).
+- Fixed a issue where nonzero `strokewidth` results in a thin outline of the wrong color if `color` and `strokecolor` didn't match and weren't transparent. [#2096](https://github.com/JuliaPlots/Makie.jl/pull/2096).
+- Improve performance around Axis(3) limits [#2115](https://github.com/JuliaPlots/Makie.jl/pull/2115).
+- Cleanup stroke artifacts in scatter and text [#2096](https://github.com/JuliaPlots/Makie.jl/pull/2096).
+- compile time improvements [#2153](https://github.com/JuliaPlots/Makie.jl/pull/2153).
+
+## v0.17.10
+
+- Bumped compatibility bound of `GridLayoutBase.jl` to `v0.9.0` which fixed a regression with `Mixed` and `Outside` alignmodes in nested `GridLayout`s [#2135](https://github.com/JuliaPlots/Makie.jl/pull/2135).
+
+## v0.17.9
+
 - Patterns (`Makie.AbstractPattern`) are now supported by `CairoMakie` in `poly` plots that don't involve `mesh`, such as `bar` and `poly` [#2106](https://github.com/JuliaPlots/Makie.jl/pull/2106/).
 - Fixed regression where `Block` alignments could not be specified as numbers anymore [#2108](https://github.com/JuliaPlots/Makie.jl/pull/2108).
 - Added the option to show mirrored ticks on the other side of an Axis using the attributes `xticksmirrored` and `yticksmirrored` [#2105](https://github.com/JuliaPlots/Makie.jl/pull/2105).

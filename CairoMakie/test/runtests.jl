@@ -67,6 +67,8 @@ excludes = Set([
     "Order Independent Transparency",
     "heatmap transparent colormap",
     "fast pixel marker",
+    "scatter with glow",
+    "scatter with stroke"
 ])
 
 functions = [:volume, :volume!, :uv_mesh]
