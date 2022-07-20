@@ -36,6 +36,7 @@ uniform int len;
 flat out uvec2 o_id;
 out vec4 o_color;
 out vec2 o_uv;
+flat out int color_value_in_x;
 
 {{position_type}} position;
 
@@ -95,15 +96,16 @@ vec2 get_uv(vec2 x){return vec2(1.0 - x.y, x.x);}
 
 void main(){
     int index = gl_InstanceID;
-    o_id      = uvec2(objectid, index+1);
+    o_id = uvec2(objectid, index+1);
     vec3 s = _scale(scale, index);
-    vec3 V    = vertices * s;
+    vec3 V = vertices * s;
     vec3 N = normals;
     vec3 pos;
     {{position_calc}}
     o_color = _color(color, intensity, color_map, color_norm, index, len);
     o_color = o_color * to_color(vertex_color);
     o_uv = get_uv(texturecoordinates);
+    color_value_in_x = 0;
     rotate(rotation, index, V, N);
     render(model * vec4(pos + V, 1), N, view, projection, lightposition);
 }
