@@ -110,17 +110,27 @@ end
 block_docs(x) = ""
 
 function Docs.getdoc(@nospecialize T::Type{<:Block})
+    if T === Block
+        Markdown.parse("""
+            abstract type Block
 
-    s = """
-    # `$T <: Block`
+        `Block` is an abstract type that groups objects which can be placed in a `Figure`
+        and positioned in its `GridLayout` as rectangular objects.
 
-    $(block_docs(T))
+        Concrete `Block` types should only be defined via the `@Block` macro.
+        """)
+    else
+        s = """
+        # `$T <: Block`
 
-    ## Attributes
+        $(block_docs(T))
 
-    $(_attribute_list(T))
-    """
-    Markdown.parse(s)
+        ## Attributes
+
+        $(_attribute_list(T))
+        """
+        Markdown.parse(s)
+    end
 end
 
 function _attribute_list(T)
@@ -332,8 +342,8 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
     layout_height = Observable{Any}(nothing)
     layout_tellwidth = Observable(true)
     layout_tellheight = Observable(true)
-    layout_halign = Observable(:center)
-    layout_valign = Observable(:center)
+    layout_halign = Observable{Union{Symbol, Float64}}(:center)
+    layout_valign = Observable{Union{Symbol, Float64}}(:center)
     layout_alignmode = Observable{Any}(Inside())
 
     lobservables = LayoutObservables(

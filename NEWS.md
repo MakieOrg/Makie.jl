@@ -1,5 +1,18 @@
 # News
 
+## v0.17.10
+
+- Bumped compatibility bound of `GridLayoutBase.jl` to `v0.9.0` which fixed a regression with `Mixed` and `Outside` alignmodes in nested `GridLayout`s [#2135](https://github.com/JuliaPlots/Makie.jl/pull/2135).
+- `rainclouds`(!) now supports `violin_limits` keyword argument, serving the same
+role as `datalimits` in `violin` [#2137](https://github.com/JuliaPlots/Makie.jl/pull/2137).
+
+## v0.17.9
+
+- Patterns (`Makie.AbstractPattern`) are now supported by `CairoMakie` in `poly` plots that don't involve `mesh`, such as `bar` and `poly` [#2106](https://github.com/JuliaPlots/Makie.jl/pull/2106/).
+- Fixed regression where `Block` alignments could not be specified as numbers anymore [#2108](https://github.com/JuliaPlots/Makie.jl/pull/2108).
+- Added the option to show mirrored ticks on the other side of an Axis using the attributes `xticksmirrored` and `yticksmirrored` [#2105](https://github.com/JuliaPlots/Makie.jl/pull/2105).
+- Fixed a bug where a set of `Axis` wouldn't be correctly linked together if they were only linked in pairs instead of all at the same time [#2116](https://github.com/JuliaPlots/Makie.jl/pull/2116).
+
 ## v0.17.7
 
 - Improved `Menu` performance, now it should me much harder to reach the boundary of 255 scenes in GLMakie. `Menu` also takes a `default` keyword argument now and can be scrolled if there is too little space available.
