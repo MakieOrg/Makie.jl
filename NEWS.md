@@ -1,6 +1,12 @@
 # News
 
-## master
+## v0.17.10
+
+- Bumped compatibility bound of `GridLayoutBase.jl` to `v0.9.0` which fixed a regression with `Mixed` and `Outside` alignmodes in nested `GridLayout`s [#2135](https://github.com/JuliaPlots/Makie.jl/pull/2135).
+- `rainclouds`(!) now supports `violin_limits` keyword argument, serving the same
+role as `datalimits` in `violin` [#2137](https://github.com/JuliaPlots/Makie.jl/pull/2137).
+
+## v0.17.9
 
 - Fixed a issue where nonzero `strokewidth` results in a thin outline of the wrong color if `color` and `strokecolor` didn't match and weren't transparent. [#2096](https://github.com/JuliaPlots/Makie.jl/pull/2096)
 - Patterns (`Makie.AbstractPattern`) are now supported by `CairoMakie` in `poly` plots that don't involve `mesh`, such as `bar` and `poly` [#2106](https://github.com/JuliaPlots/Makie.jl/pull/2106/).

@@ -704,6 +704,12 @@ function show_imagelike(inspector, plot, name, edge_based)
         _pixelated_getindex(plot[1][], plot[2][], plot[3][], mpos, edge_based)
     end
 
+    # in case we hover over NaN values
+    if isnan(z)
+        a._visible[] = false
+        return true
+    end
+
     a._color[] = if z isa AbstractFloat
         interpolated_getindex(
             to_colormap(plot.colormap[]), z,
