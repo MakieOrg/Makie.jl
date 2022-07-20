@@ -112,12 +112,14 @@ function Base.show(io::IO, ::MIME"text/plain", scene::Scene; kw...)
     show(io, scene; kw...)
 end
 
-Base.show(io::IO, m::MIME, fap::FigureAxisPlot; kw...) = show(io, m, fap.figure; kw...)
-Base.show(io::IO, m::MIME, fig::Figure; kw...) = show(io, m, fig.scene; kw...)
+function backend_show(backend, io::IO, m::MIME, figlike::FigureLike)
+    update_state_before_display!(figlike)
+    backend_show(backend, io, m, get_scene(figlike))
+end
 
-function Base.show(io::IO, m::MIME, scene::Scene)
+function Base.show(io::IO, m::MIME, figlike::FigureLike)
     ioc = IOContext(io, :full_fidelity => true)
-    backend_show(current_backend[], ioc, m, scene)
+    backend_show(current_backend[], ioc, m, figlike)
     return
 end
 
@@ -229,7 +231,6 @@ function FileIO.save(
         pt_per_unit = 0.75,
         px_per_unit = 1.0,
     )
-    update_state_before_display!(fig)
     scene = get_scene(fig)
     if resolution != size(scene)
         resize!(scene, resolution)
@@ -251,7 +252,7 @@ function FileIO.save(
             :pt_per_unit => pt_per_unit,
             :px_per_unit => px_per_unit
         )
-        show(iocontext, format2mime(F), scene)
+        show(iocontext, format2mime(F), fig)
     end
 end
 
@@ -398,7 +399,6 @@ or RGBA.
                         used in FFMPEG without conversion
 """
 function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative)
-    update_state_before_display!(fig)
     scene = get_scene(fig)
     screen = getscreen(scene)
     if isnothing(screen)
@@ -408,7 +408,7 @@ function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative)
                 before trying to render a Scene.
                 """)
         else
-            return colorbuffer(backend_display(scene; visible=false, start_renderloop=false, connect=false), format)
+            return colorbuffer(backend_display(fig; visible=false, start_renderloop=false, connect=false), format)
         end
     end
     return colorbuffer(screen, format)
