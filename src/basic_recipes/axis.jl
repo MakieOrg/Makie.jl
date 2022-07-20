@@ -349,6 +349,7 @@ function axis3d!(scene::Scene, args...; attributes...)
     return axis
 end
 
-function axis3d!(scene::Scene, lims = data_limits(scene, p -> isaxis(p) || not_in_data_space(p)); kw...)
+function axis3d!(scene::Scene; kw...)
+    lims = data_limits(scene, exclude=(p -> isaxis(p) || not_in_data_space(p)))
     axis3d!(scene, lims; ticks = (ranges = automatic, labels = automatic), kw...)
 end

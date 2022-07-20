@@ -52,80 +52,80 @@ end
     streamplot(v, -2..2, -2..2, arrow_size=10)
 end
 
-@compile meshscatter(rand(10), rand(10), rand(10), color=rand(10))
-@compile meshscatter(rand(10), rand(10), rand(10), color=rand(RGBAf, 10), transparency=true)
+# @compile meshscatter(rand(10), rand(10), rand(10), color=rand(10))
+# @compile meshscatter(rand(10), rand(10), rand(10), color=rand(RGBAf, 10), transparency=true)
 
 function xy_data(x, y)
     r = sqrt(x^2 + y^2)
     r == 0.0 ? 1f0 : (sin(r) / r)
 end
 
-@compile begin
-    NL = 15
-    NR = 31
+# @compile begin
+#     NL = 15
+#     NR = 31
 
-    lspace = range(-10, stop=10, length=NL)
-    rspace = range(-10, stop=10, length=NR)
+#     lspace = range(-10, stop=10, length=NL)
+#     rspace = range(-10, stop=10, length=NR)
 
-    z = Float32[xy_data(x, y) for x in lspace, y in rspace]
-    l = range(0, stop=3, length=NL)
-    r = range(0, stop=3, length=NR)
-    surface(
-        l, r, z,
-        colormap=:Spectral
-    )
-end
+#     z = Float32[xy_data(x, y) for x in lspace, y in rspace]
+#     l = range(0, stop=3, length=NL)
+#     r = range(0, stop=3, length=NR)
+#     surface(
+#         l, r, z,
+#         colormap=:Spectral
+#     )
+# end
 
-@compile begin
-    NL = 30
-    NR = 31
+# @compile begin
+#     NL = 30
+#     NR = 31
 
-    lspace = range(-10, stop=10, length=NL)
-    rspace = range(-10, stop=10, length=NR)
+#     lspace = range(-10, stop=10, length=NL)
+#     rspace = range(-10, stop=10, length=NR)
 
-    z = Float32[xy_data(x, y) for x in lspace, y in rspace]
-    l = range(0, stop=3, length=NL)
-    r = range(0, stop=3, length=NR)
-    surface(
-        [l for l in l, r in r], [r for l in l, r in r], z,
-        colormap=:Spectral
-    )
-end
+#     z = Float32[xy_data(x, y) for x in lspace, y in rspace]
+#     l = range(0, stop=3, length=NL)
+#     r = range(0, stop=3, length=NR)
+#     surface(
+#         [l for l in l, r in r], [r for l in l, r in r], z,
+#         colormap=:Spectral
+#     )
+# end
 
-@compile begin
-    data =
-        hcat(LinRange(2, 3, 4), LinRange(2, 2.5, 4), LinRange(2.5, 3, 4), [1, NaN, NaN, 5])
+# @compile begin
+#     data =
+#         hcat(LinRange(2, 3, 4), LinRange(2, 2.5, 4), LinRange(2.5, 3, 4), [1, NaN, NaN, 5])
 
-    fig = Figure()
-    heatmap(
-        fig[1, 1],
-        data,
-        colorrange = (2, 3),
-        highclip = :red,
-        lowclip = :black,
-        nan_color = (:green, 0.5),
-    )
-    surface(
-        fig[1, 2],
-        zeros(size(data)),
-        color = data,
-        colorrange = (2, 3),
-        highclip = :red,
-        lowclip = :black,
-        nan_color = (:green, 0.5),
-        shading = false,
-    )
-    surface!(
-        Axis(fig[2, 2]),
-        data,
-        colorrange = (2, 3),
-        highclip = :red,
-        lowclip = :black,
-        nan_color = (:green, 0.5),
-        shading = false,
-    )
-    fig
-end
+#     fig = Figure()
+#     heatmap(
+#         fig[1, 1],
+#         data,
+#         colorrange = (2, 3),
+#         highclip = :red,
+#         lowclip = :black,
+#         nan_color = (:green, 0.5),
+#     )
+#     surface(
+#         fig[1, 2],
+#         zeros(size(data)),
+#         color = data,
+#         colorrange = (2, 3),
+#         highclip = :red,
+#         lowclip = :black,
+#         nan_color = (:green, 0.5),
+#         shading = false,
+#     )
+#     surface!(
+#         Axis(fig[2, 2]),
+#         data,
+#         colorrange = (2, 3),
+#         highclip = :red,
+#         lowclip = :black,
+#         nan_color = (:green, 0.5),
+#         shading = false,
+#     )
+#     fig
+# end
 
 @compile begin
     heatmap(rand(10, 5), axis = (yscale = log10, xscale=log10))
@@ -165,6 +165,6 @@ end
     poly(P, color = [:red, :green], strokecolor = [:blue, :red], strokewidth = 2)
 end
 
-@compile begin
-    meshscatter(rand(Point3f, 10), axis=(type=Axis3,))
-end
+# @compile begin
+#     meshscatter(rand(Point3f, 10), axis=(type=Axis3,))
+# end
