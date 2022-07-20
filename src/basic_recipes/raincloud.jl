@@ -28,29 +28,31 @@ between each.
 - `data_array`: Typically `Vector{Float64}` used for to represent the datapoints to plot.
 
 # Keywords
-- `orientation=:vertical` orientation of raindclouds (`:vertical` or `:horizontal`)
-- `plot_boxplots=true`: Boolean to show boxplots to summarize distribution of data.
-- `clouds=violin`: [violin, hist, nothing] to show cloud plots either as violin or histogram
-  plot, or no cloud plot.
-- `hist_bins=30`: if `clouds=hist`, this passes down the number of bins to the histogram
-  call.
 - `gap=0.2`: Distance between elements of x-axis.
 - `side=:left`: Can take values of `:left`, `:right`, determines where the violin plot will
   be, relative to the scatter points
-- `center_boxplot=true`: Determines whether or not to have the boxplot be centered in the
-  category.
 - `dodge`: vector of `Integer`` (length of data) of grouping variable to create multiple
   side-by-side boxes at the same x position
 - `dodge_gap = 0.03`: spacing between dodged boxes
 - `n_dodge`: the number of categories to dodge (defaults to maximum(dodge))
 - `color`: a single color, or a vector of colors, one for each point
 
-## Violin Plot Specific Keywords
+## Violin/Histogram Plot Specific Keywords
+- `clouds=violin`: [violin, hist, nothing] to show cloud plots either as violin or histogram
+  plot, or no cloud plot.
+- `hist_bins=30`: if `clouds=hist`, this passes down the number of bins to the histogram
+  call.
 - `cloud_width=1.0`: Determines size of violin plot. Corresponds to `width` keyword arg in
 `violin`.
+- `orientation=:vertical` orientation of raindclouds (`:vertical` or `:horizontal`)
+- `violin_limits=(-Inf, Inf)`: specify values to trim the `violin`. Can be a `Tuple` or a
+  `Function` (e.g. `datalimits=extrema`)
 
 ## Box Plot Specific Keywords
+- `plot_boxplots=true`: Boolean to show boxplots to summarize distribution of data.
 - `boxplot_width=0.1`: Width of the boxplot in category x-axis absolute terms.
+- `center_boxplot=true`: Determines whether or not to have the boxplot be centered in the
+  category.
 - `whiskerwidth=0.5`: The width of the Q1, Q3 whisker in the boxplot. Value as a portion of
   the `boxplot_width`.
 - `strokewidth=1.0`: Determines the stroke width for the outline of the boxplot.
@@ -80,6 +82,7 @@ paired with the scatter plot so the default is to not show them)
         center_boxplot = true,
         # Cloud plot
         cloud_width = 0.75,
+        violin_limits = (-Inf, Inf),
         # Box Plot Settings
         boxplot_width = 0.1,
         whiskerwidth =  0.5,
@@ -266,7 +269,7 @@ function plot!(plot::RainClouds)
         if clouds === violin
             violin!(plot, final_x_positions .- recenter_to_boxplot_nudge_value.*width_ratio, data_array;
                     show_median=show_median, side=side, width=width_ratio*cloud_width, plot.cycle,
-                    plot.color, gap=0, orientation=plot.orientation[])
+                    datalimits=plot.violin_limits, plot.color, gap=0, orientation=plot.orientation[])
         elseif clouds === hist
             edges = pick_hist_edges(data_array, hist_bins)
             # dodge belongs below: it ensure that the histogram groups labels by both dodge
