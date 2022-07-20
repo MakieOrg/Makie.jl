@@ -13,7 +13,6 @@ on:
       - '*.md'
     branches:
       - master
-      - breaking-release
     tags: '*'
 
 concurrency:
