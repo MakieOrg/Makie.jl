@@ -1,5 +1,6 @@
 in vec2 frag_uv;
 in vec4 frag_color;
+flat in int sample_frag_color;
 
 in vec3 o_normal;
 in vec3 o_camdir;
@@ -22,11 +23,11 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
 }
 
 vec4 get_color(vec3 color, vec2 uv, bool colorrange, bool colormap){
-    return vec4(color, 1.0); // we must prohibit uv from getting into dead variable removal
+    return vec4(color, 1.0);
 }
 
 vec4 get_color(vec4 color, vec2 uv, bool colorrange, bool colormap){
-    return color; // we must prohibit uv from getting into dead variable removal
+    return color;
 }
 
 vec4 get_color(bool color, vec2 uv, bool colorrange, bool colormap){
@@ -39,24 +40,32 @@ vec4 get_color(sampler2D color, vec2 uv, bool colorrange, bool colormap){
 
 float _normalize(float val, float from, float to){return (val-from) / (to - from);}
 
-vec4 get_color(sampler2D color, vec2 uv, vec2 colorrange, sampler2D colormap){
-    float value = texture(color, uv).x;
+vec4 get_color_from_cmap(float value, sampler2D color_map, vec2 colorrange) {
+    float cmin = colorrange.x;
+    float cmax = colorrange.y;
     if (isnan(value)) {
         return get_nan_color();
-    } else if (value < colorrange.x) {
+    } else if (value < cmin) {
         return get_lowclip();
-    } else if (value > colorrange.y) {
+    } else if (value > cmax) {
         return get_highclip();
     }
-
-    float normed = _normalize(value, colorrange.x, colorrange.y);
+    float i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0);
     // 1/0 corresponds to the corner of the colormap, so to properly interpolate
     // between the colors, we need to scale it, so that the ends are at 1 - (stepsize/2) and 0+(stepsize/2).
-    float stepsize = 1.0 / float(textureSize(colormap, 0).x);
-    normed = (1.0 - stepsize) * normed + 0.5 * stepsize;
-    return texture(colormap, vec2(normed, 0.0));
+    float stepsize = 1.0 / float(textureSize(color_map, 0));
+    i01 = (1.0 - stepsize) * i01 + 0.5 * stepsize;
+    return texture(color_map, vec2(i01, 0.0));
 }
 
+vec4 get_color(bool color, vec2 uv, vec2 colorrange, sampler2D colormap){
+    float value = frag_color.x;
+    return get_color_from_cmap(value, colormap, colorrange);
+}
+vec4 get_color(sampler2D values, vec2 uv, vec2 colorrange, sampler2D colormap){
+    float value = texture(values, uv).x;
+    return get_color_from_cmap(value, colormap, colorrange);
+}
 vec4 get_color(sampler2D color, vec2 uv, bool colorrange, sampler2D colormap){
     return texture(color, uv);
 }

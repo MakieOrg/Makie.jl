@@ -16,6 +16,7 @@ in vec3 o_camdir;
 in vec4 o_color;
 in vec2 o_uv;
 flat in uvec2 o_id;
+flat in int color_value_in_x;
 
 {{matcap_type}} matcap;
 {{image_type}} image;
@@ -52,14 +53,11 @@ vec4 get_color_from_cmap(float value, sampler1D color_map, vec2 colorrange) {
     return texture(color_map, i01);
 }
 
-// JEEZ I Hate OpenGL...No real NaN or Inf support
-const float Inf = 1.0 / 0.0;
-
 vec4 get_color(Nothing color, vec2 uv, vec2 color_norm, sampler1D color_map, Nothing matcap){
     // Since we can't really switch the color output type, we store single
     // colors in the red channel,
-    // and use Inf as a sentinel in the other values to signal that we just have one valid value.
-    if(o_color.y == Inf && o_color.z == Inf && o_color.w == Inf) {
+    // and set color_value_in_x to 1
+    if(color_value_in_x == 1) {
         return get_color_from_cmap(o_color.x, color_map, color_norm);
     } else {
         return o_color;

@@ -85,7 +85,7 @@ function create_shader(mscene::Scene, plot::Surface)
     else
         pz
     end
-    minfilter = to_value(get(plot, :interpolate, false)) ? :linear : :nearest
+    minfilter = to_value(get(plot, :interpolate, true)) ? :linear : :nearest
     color = Sampler(lift(x -> el32convert(to_color(permutedims(x))), pcolor), minfilter=minfilter)
     normals = Buffer(lift(surface_normals, px, py, pz))
     vertices = GeometryBasics.meta(positions; uv=uv, normals=normals)
