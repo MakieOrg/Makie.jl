@@ -62,27 +62,26 @@ vec3 _scale(samplerBuffer scale, int index);
 vec3 _scale(vec3          scale, int index);
 vec3 _scale(vec2          scale, int index);
 
-{{color_type}}      color;
-{{color_map_type}}  color_map;
-{{intensity_type}}  intensity;
+{{color_type}} color;
+{{color_map_type}} color_map;
+{{intensity_type}} intensity;
 {{color_norm_type}} color_norm;
 {{vertex_color_type}} vertex_color;
 vec4 to_color(Nothing c){return vec4(1, 1, 1, 1);}
 vec4 to_color(vec3 c){return vec4(c, 1);}
 vec4 to_color(vec4 c){return c;}
+vec4 color_lookup(float intensity, sampler1D color_ramp, vec2 norm);
 
 // constant color!
 vec4 _color(vec4 color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len);
-vec4 _color(vec3 color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len);
 // only a samplerBuffer, this means we have a color per particle
 vec4 _color(samplerBuffer color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len);
-// no color, but intensities a color map and color norm. Color will be based on intensity!
-vec4 _color(Nothing color, sampler1D intensity, sampler1D color_map, vec2 color_norm, int index, int len);
-vec4 _color(Nothing color, samplerBuffer intensity, sampler1D color_map, vec2 color_norm, int index, int len);
 // no color, no intensities a color map and color norm. Color will be based on z_position or rotation!
 vec4 _color(Nothing color, Nothing intensity, sampler1D color_map, vec2 color_norm, int index, int len);
 
-vec4 color_lookup(float intensity, sampler1D color_ramp, vec2 norm);
+// TODO
+// we now sample the color in the fragment shader from the color_map, which is kind of insane performance wise
+vec4 _color(Nothing color, samplerBuffer intensity, sampler1D color_map, vec2 color_norm, int index, int len);
 
 vec4 _color(sampler2D color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len){
     return vec4(0);
