@@ -450,7 +450,7 @@ See the docs of [`VideoStream`](@ref) for how to create a VideoStream.
 If you want a simpler interface, consider using [`record`](@ref).
 
 ### Keyword Arguments:
-- `framrate = 24`: The target framerate.
+- `framerate = 24`: The target framerate.
 - `compression = 0`: Controls the video compression with `0` being lossless and
                      `51` being the highest compression. Note that `compression = 0`
                      only works with `.mp4` if `profile = high444`.
@@ -567,7 +567,7 @@ end
 ```
 
 ### Keyword Arguments:
-- `framrate = 24`: The target framerate.
+- `framerate = 24`: The target framerate.
 - `compression = 0`: Controls the video compression with `0` being lossless and
                      `51` being the highest compression. Note that `compression = 0`
                      only works with `.mp4` if `profile = high444`.
