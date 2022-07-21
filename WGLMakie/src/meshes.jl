@@ -64,19 +64,16 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
         end
 
         if color isa AbstractArray
-            c_converted = if color isa AbstractArray{<:Colorant}
-                color_signal
-            elseif color isa AbstractArray{<:Number}
-                lift(array2color, color_signal, plot.colormap, plot.colorrange)
+            if color_signal[] isa AbstractVector
+                attributes[:color] = Buffer(color_signal) # per vertex colors
             else
-                error("Unsupported color type: $(typeof(color))")
-            end
-            if c_converted[] isa AbstractVector
-                attributes[:color] = Buffer(c_converted) # per vertex colors
-            else
-                uniforms[:uniform_color] = Sampler(c_converted) # Texture
+                uniforms[:uniform_color] = Sampler(color_signal) # Texture
                 !haskey(attributes, :uv) &&
                     @warn "Mesh doesn't use Texturecoordinates, but has a Texture. Colors won't map"
+            end
+            if eltype(color_signal[]) <: Number
+                uniforms[:colorrange] = converted_attribute(plot, :colorrange)
+                uniforms[:colormap] = Sampler(converted_attribute(plot, :colormap))
             end
         elseif color isa Colorant && !haskey(attributes, :color)
             uniforms[:uniform_color] = color_signal

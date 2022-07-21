@@ -62,12 +62,16 @@ function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray
         for (key, value) in program.uniformloc
             if haskey(renderobject.uniforms, key)
                 # uniform_name_type(program, value[1])
-                if length(value) == 1
-                    gluniform(value[1], renderobject.uniforms[key])
-                elseif length(value) == 2
-                    gluniform(value[1], value[2], renderobject.uniforms[key])
-                else
-                    error("Uniform tuple too long: $(length(value))")
+                try
+                    if length(value) == 1
+                        gluniform(value[1], renderobject.uniforms[key])
+                    elseif length(value) == 2
+                        gluniform(value[1], value[2], renderobject.uniforms[key])
+                    else
+                        error("Uniform tuple too long: $(length(value))")
+                    end
+                catch e
+                    error("uniform $key doesn't work with value $(renderobject.uniforms[key])")
                 end
             end
         end
