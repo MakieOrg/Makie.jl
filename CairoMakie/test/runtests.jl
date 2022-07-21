@@ -70,7 +70,8 @@ excludes = Set([
     "Array of Images Scatter",
     "Image Scatter different sizes",
     "scatter with glow",
-    "scatter with stroke"
+    "scatter with stroke",
+    "heatmaps & surface"
 ])
 
 functions = [:volume, :volume!, :uv_mesh]
