@@ -22,7 +22,6 @@ flat out uvec2 o_id;
 uniform vec2 uv_scale;
 out vec2 o_uv;
 out vec4 o_color;
-flat out int color_value_in_x;
 
 vec3 to_3d(vec2 v){return vec3(v, 0);}
 vec3 to_3d(vec3 v){return v;}
@@ -39,12 +38,15 @@ vec4 to_color(vec4 c, Nothing color_map, Nothing color_norm){
 }
 
 vec4 to_color(float c, sampler1D color_map, vec2 color_norm){
-    color_value_in_x = 1;
     return vec4(c, 0.0, 0.0, 0.0);
 }
 
-vec4 to_color(vec4 c, sampler1D color_map, vec2 color_norm){
-    return c;
+vec4 to_color(Nothing c, sampler1D color_map, vec2 color_norm){
+    return vec4(0.0);
+}
+
+vec4 to_color(Nothing c, Nothing cm, Nothing cn) {
+    return vec4(0.0);
 }
 
 void main()

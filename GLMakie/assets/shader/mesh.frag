@@ -16,20 +16,11 @@ in vec3 o_camdir;
 in vec4 o_color;
 in vec2 o_uv;
 flat in uvec2 o_id;
-flat in int color_value_in_x;
 
 {{matcap_type}} matcap;
 {{image_type}} image;
 {{color_map_type}} color_map;
 {{color_norm_type}} color_norm;
-
-vec4 get_color(Nothing image, vec2 uv, Nothing color_norm, Nothing color_map, Nothing matcap){
-    return o_color;
-}
-
-vec4 get_color(sampler2D color, vec2 uv, Nothing color_norm, Nothing color_map, Nothing matcap){
-    return texture(color, uv);
-}
 
 uniform vec4 highclip;
 uniform vec4 lowclip;
@@ -38,12 +29,16 @@ uniform vec4 nan_color;
 vec4 get_color_from_cmap(float value, sampler1D color_map, vec2 colorrange) {
     float cmin = colorrange.x;
     float cmax = colorrange.y;
-    if (isnan(value)) {
-        return nan_color;
+    if (value <= cmax && value >= cmin) {
+        // in value range, continue!
     } else if (value < cmin) {
         return lowclip;
     } else if (value > cmax) {
         return highclip;
+    } else {
+        // isnan CAN be broken (of course) -.-
+        // so if outside value range and not smaller/bigger min/max we assume NaN
+        return nan_color;
     }
     float i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0);
     // 1/0 corresponds to the corner of the colormap, so to properly interpolate
@@ -53,27 +48,23 @@ vec4 get_color_from_cmap(float value, sampler1D color_map, vec2 colorrange) {
     return texture(color_map, i01);
 }
 
-vec4 get_color(Nothing color, vec2 uv, vec2 color_norm, sampler1D color_map, Nothing matcap){
-    // Since we can't really switch the color output type, we store single
-    // colors in the red channel,
-    // and set color_value_in_x to 1
-    if(color_value_in_x == 1) {
-        return get_color_from_cmap(o_color.x, color_map, color_norm);
-    } else {
-        return o_color;
-    }
+vec4 get_color(Nothing image, vec2 uv, Nothing color_norm, Nothing color_map, Nothing matcap){
+    return o_color;
 }
-
+vec4 get_color(sampler2D color, vec2 uv, Nothing color_norm, Nothing color_map, Nothing matcap){
+    return texture(color, uv);
+}
+vec4 get_color(Nothing color, vec2 uv, vec2 color_norm, sampler1D color_map, Nothing matcap){
+    return get_color_from_cmap(o_color.x, color_map, color_norm);
+}
 vec4 get_color(sampler2D intensity, vec2 uv, vec2 color_norm, sampler1D color_map, Nothing matcap){
     float i = texture(intensity, uv).x;
     return get_color_from_cmap(i, color_map, color_norm);
 }
-
 vec4 matcap_color(sampler2D matcap){
     vec2 muv = o_normal.xy * 0.5 + vec2(0.5, 0.5);
     return texture(matcap, vec2(1.0-muv.y, muv.x));
 }
-
 vec4 get_color(Nothing image, vec2 uv, Nothing color_norm, Nothing color_map, sampler2D matcap){
     return matcap_color(matcap);
 }

@@ -54,24 +54,6 @@ uniform vec2 uv_scale;
 flat out uvec2 o_id;
 out vec4 o_color;
 out vec2 o_uv;
-flat out int color_value_in_x;
-
-// color = float, with colormap lookup
-vec4 get_color(sampler2D color, float _intensity, sampler1D color_map, vec2 color_norm, ivec2 index){
-    float value = texelFetch(color, index, 0).r;
-    color_value_in_x = 1;
-    return vec4(value, 0.0, 0.0, 0.0);
-}
-
-vec4 get_color(Nothing _, float value, sampler1D color_map, vec2 color_norm, ivec2 index){
-    color_value_in_x = 1;
-    return vec4(value, 0.0, 0.0, 0.0);
-}
-
-vec4 get_color(sampler2D color, float _intensity, Nothing b, Nothing c, ivec2 index){
-    color_value_in_x = 0;
-    return vec4(0); // we fetch the color in fragment shader
-}
 
 void main()
 {
@@ -81,13 +63,15 @@ void main()
     ivec2 dims = textureSize(position_z, 0);
     vec3 pos;
     {{position_calc}}
-    if (isnan(pos.z)) {
-        pos.z = 0.0;
-    }
+
     o_id = uvec2(objectid, index1D+1);
     o_uv = index01 * uv_scale;
     vec3 normalvec = {{normal_calc}};
-    o_color = get_color(image, pos.z, color_map, color_norm, index2D);
 
+    o_color = vec4(0.0);
+    // we still want to render NaN values... TODO: make value customizable?
+    if (isnan(pos.z)) {
+        pos.z = 0.0;
+    }
     render(model * vec4(pos, 1), normalvec, view, projection, lightposition);
 }

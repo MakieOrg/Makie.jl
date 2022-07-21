@@ -36,7 +36,6 @@ uniform int len;
 flat out uvec2 o_id;
 out vec4 o_color;
 out vec2 o_uv;
-flat out int color_value_in_x;
 
 {{position_type}} position;
 
@@ -105,7 +104,6 @@ void main(){
     o_color = _color(color, intensity, color_map, color_norm, index, len);
     o_color = o_color * to_color(vertex_color);
     o_uv = get_uv(texturecoordinates);
-    color_value_in_x = 0;
     rotate(rotation, index, V, N);
     render(model * vec4(pos + V, 1), N, view, projection, lightposition);
 }

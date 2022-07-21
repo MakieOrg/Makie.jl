@@ -40,15 +40,20 @@ vec4 get_color(sampler2D color, vec2 uv, bool colorrange, bool colormap){
 
 float _normalize(float val, float from, float to){return (val-from) / (to - from);}
 
+
 vec4 get_color_from_cmap(float value, sampler2D color_map, vec2 colorrange) {
     float cmin = colorrange.x;
     float cmax = colorrange.y;
-    if (isnan(value)) {
-        return get_nan_color();
+    if (value <= cmax && value >= cmin) {
+        // in value range, continue!
     } else if (value < cmin) {
         return get_lowclip();
     } else if (value > cmax) {
         return get_highclip();
+    } else {
+        // isnan is broken (of course) -.-
+        // so if outside value range and not smaller/bigger min/max we assume NaN
+        return get_nan_color();
     }
     float i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0);
     // 1/0 corresponds to the corner of the colormap, so to properly interpolate
