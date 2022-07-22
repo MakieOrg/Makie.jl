@@ -2,19 +2,19 @@ name: RPRMakie CI
 on:
   pull_request:
     paths-ignore:
-      - 'docs/**'
-      - '*.md'
+      - "docs/**"
+      - "*.md"
     branches:
       - master
       - breaking-release
   push:
     paths-ignore:
-      - 'docs/**'
-      - '*.md'
+      - "docs/**"
+      - "*.md"
     branches:
       - master
       - breaking-release
-    tags: '*'
+    tags: "*"
 
 concurrency:
   group: rprmakie-${{ github.ref }}
@@ -28,7 +28,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1' # automatically expands to the latest stable 1.x release of Julia
+          - "1" # automatically expands to the latest stable 1.x release of Julia
         os:
           - ubuntu-latest
         arch:
@@ -46,6 +46,7 @@ jobs:
         run: |
           using Pkg;
           # dev mono repo versions
+          pkg"add MathTeXEngine#full_unicode_font"
           pkg"dev . ./MakieCore ./RPRMakie ./ReferenceTests"
       - name: Run the tests
         continue-on-error: true
