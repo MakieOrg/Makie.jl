@@ -90,7 +90,6 @@ function Base.showable(mime::MIME"application/json", fig::FigureLike)
     backend_showable(current_backend[], mime, get_scene(fig))
 end
 
-
 function backend_showable(::Backend, ::Mime, ::Scene) where {Backend, Mime <: MIME}
     hasmethod(backend_show, Tuple{Backend, IO, Mime, Scene})
 end
@@ -112,14 +111,10 @@ function Base.show(io::IO, ::MIME"text/plain", scene::Scene; kw...)
     show(io, scene; kw...)
 end
 
-function backend_show(backend, io::IO, m::MIME, figlike::FigureLike)
-    update_state_before_display!(figlike)
-    backend_show(backend, io, m, get_scene(figlike))
-end
-
 function Base.show(io::IO, m::MIME, figlike::FigureLike)
     ioc = IOContext(io, :full_fidelity => true)
-    backend_show(current_backend[], ioc, m, figlike)
+    update_state_before_display!(figlike)
+    backend_show(current_backend[], ioc, m, get_scene(figlike))
     return
 end
 
