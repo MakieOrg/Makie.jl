@@ -67,6 +67,14 @@ function limits_to_uvmesh(plot)
     return GeometryBasics.Mesh(vertices, faces)
 end
 
+function get_color(plot, key::Symbol)::Observable{RGBAf}
+    if haskey(plot, key)
+        return lift(to_color, plot[key])
+    else
+        return Observable(RGBAf(0, 0, 0, 0))
+    end
+end
+
 function create_shader(mscene::Scene, plot::Surface)
     # TODO OWN OPTIMIZED SHADER ... Or at least optimize this a bit more ...
     px, py, pz = plot[1], plot[2], plot[3]
@@ -85,7 +93,7 @@ function create_shader(mscene::Scene, plot::Surface)
     else
         pz
     end
-    minfilter = to_value(get(plot, :interpolate, false)) ? :linear : :nearest
+    minfilter = to_value(get(plot, :interpolate, true)) ? :linear : :nearest
     color = Sampler(lift(x -> el32convert(to_color(permutedims(x))), pcolor), minfilter=minfilter)
     normals = Buffer(lift(surface_normals, px, py, pz))
     vertices = GeometryBasics.meta(positions; uv=uv, normals=normals)
@@ -95,9 +103,9 @@ function create_shader(mscene::Scene, plot::Surface)
                      specular=plot.specular, shininess=plot.shininess,
                      depth_shift=get(plot, :depth_shift, Observable(0f0)),
                      backlight=plot.backlight,
-                     highclip=lift(nothing_or_color, plot.highclip),
-                     lowclip=lift(nothing_or_color, plot.lowclip),
-                     nan_color=lift(nothing_or_color, plot.nan_color))
+                     highclip=get_color(plot, :highclip),
+                     lowclip=get_color(plot, :lowclip),
+                     nan_color=get_color(plot, :nan_color))
 end
 
 function create_shader(mscene::Scene, plot::Union{Heatmap,Image})
@@ -111,9 +119,9 @@ function create_shader(mscene::Scene, plot::Union{Heatmap,Image})
                      diffuse=plot.diffuse, specular=plot.specular,
                      colorrange=haskey(plot, :colorrange) ? plot.colorrange : false,
                      shininess=plot.shininess,
-                     highclip=lift(nothing_or_color, plot.highclip),
-                     lowclip=lift(nothing_or_color, plot.lowclip),
-                     nan_color=lift(nothing_or_color, plot.nan_color),
+                     highclip=get_color(plot, :highclip),
+                     lowclip=get_color(plot, :lowclip),
+                     nan_color=get_color(plot, :nan_color),
                      backlight=0f0,
                      depth_shift = get(plot, :depth_shift, Observable(0f0)))
 end

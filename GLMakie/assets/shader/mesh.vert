@@ -37,14 +37,16 @@ vec4 to_color(vec4 c, Nothing color_map, Nothing color_norm){
     return c;
 }
 
-vec4 color_lookup(float intensity, sampler1D color_ramp, vec2 norm);
-
 vec4 to_color(float c, sampler1D color_map, vec2 color_norm){
-    return color_lookup(c, color_map, color_norm);
+    return vec4(c, 0.0, 0.0, 0.0);
 }
 
-vec4 to_color(vec4 c, sampler1D color_map, vec2 color_norm){
-    return c;
+vec4 to_color(Nothing c, sampler1D color_map, vec2 color_norm){
+    return vec4(0.0);
+}
+
+vec4 to_color(Nothing c, Nothing cm, Nothing cn) {
+    return vec4(0.0);
 }
 
 void main()

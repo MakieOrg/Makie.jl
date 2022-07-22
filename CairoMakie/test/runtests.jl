@@ -68,7 +68,10 @@ excludes = Set([
     "heatmap transparent colormap",
     "fast pixel marker",
     "Array of Images Scatter",
-    "Image Scatter different sizes"
+    "Image Scatter different sizes",
+    "scatter with glow",
+    "scatter with stroke",
+    "heatmaps & surface"
 ])
 
 functions = [:volume, :volume!, :uv_mesh]
