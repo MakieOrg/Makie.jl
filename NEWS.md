@@ -2,6 +2,8 @@
 
 ## master
 
+- `Axis` does now accept both a `Bool` and a `Tuple{Bool, Bool}` as values for `xtrimspine` and `ytrimspine` to trim only one end of the spine.
+
 ## v0.17.11
 
 - `rainclouds`(!) now supports `violin_limits` keyword argument, serving the same.
