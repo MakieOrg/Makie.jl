@@ -734,7 +734,7 @@ function show_imagelike(inspector, plot, name, edge_based)
                 strokecolor = a.indicator_color,
                 strokewidth = a.indicator_linewidth #, linestyle = a.indicator_linestyle no?
             )
-            translate!(p, Vec3f(0   , 0, a.depth[]))
+            translate!(p, Vec3f(0, 0, a.depth[]))
             push!(inspector.temp_plots, p)
             # Hacky?
             push!(
