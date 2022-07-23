@@ -734,7 +734,7 @@ function show_imagelike(inspector, plot, name, edge_based)
                 strokecolor = a.indicator_color,
                 strokewidth = a.indicator_linewidth #, linestyle = a.indicator_linestyle no?
             )
-            translate!(p, Vec3f(0, 0, a.depth[]))
+            translate!(p, Vec3f(0   , 0, a.depth[]))
             push!(inspector.temp_plots, p)
             # Hacky?
             push!(
@@ -742,7 +742,7 @@ function show_imagelike(inspector, plot, name, edge_based)
                 Observables.ObserverFunction(a._position.listeners[end], a._position, false)
             )
         end
-        a._display_text[] = color2text(name, mpos[1], mpos[2], z)
+        a._display_text[] = color2text(name, mpos[2], mpos[1], z)
     else
         a._bbox2D[] = _pixelated_image_bbox(plot[1][], plot[2][], plot[3][], i, j, edge_based)
         if inspector.selection != plot || isempty(inspector.temp_plots) || !(inspector.temp_plots[1][1][] isa Rect2)
@@ -755,7 +755,7 @@ function show_imagelike(inspector, plot, name, edge_based)
             translate!(p, Vec3f(0, 0, a.depth[]))
             push!(inspector.temp_plots, p)
         end
-        a._display_text[] = color2text(name, i, j, z)
+        a._display_text[] = color2text(name, j, i, z)
     end
 
     a._bbox_visible[] = true
