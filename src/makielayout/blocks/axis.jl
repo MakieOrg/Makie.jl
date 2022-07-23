@@ -776,9 +776,14 @@ function Makie.plot!(
     # adjust the limit margins in those cases automatically.
     needs_tight_limits(plot) && tightlimits!(la)
 
-    reset_limits!(la)
+    if is_open_or_any_parent(la.scene)
+        reset_limits!(la)
+    end
     plot
 end
+
+is_open_or_any_parent(s::Scene) = isopen(s) || is_open_or_any_parent(s.parent)
+is_open_or_any_parent(::Nothing) = false
 
 function Makie.plot!(P::Makie.PlotFunc, ax::Axis, args...; kw_attributes...)
     attributes = Makie.Attributes(kw_attributes)
@@ -1341,3 +1346,8 @@ defined_interval(::typeof(sqrt)) = Interval{:closed,:open}(0, Inf)
 defined_interval(::typeof(Makie.logit)) = OpenInterval(0.0, 1.0)
 defined_interval(::typeof(Makie.pseudolog10)) = OpenInterval(-Inf, Inf)
 defined_interval(::Makie.Symlog10) = OpenInterval(-Inf, Inf)
+
+function update_state_before_display!(ax::Axis)
+    reset_limits!(ax)
+    return
+end

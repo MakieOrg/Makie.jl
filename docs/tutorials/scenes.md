@@ -20,7 +20,7 @@ scene = Scene(;
 )
 ```
 
-A scene is doing three things:
+A scene is doing four things:
 
 * holds a local theme, that gets applied to all plot objects in that scene
 * manages the camera, projection and transformation matrices

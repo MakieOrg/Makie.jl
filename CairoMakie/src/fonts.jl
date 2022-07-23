@@ -29,8 +29,6 @@ function set_ft_font(ctx, font)
     return font_face
 end
 
-
-
 """
 Finds a font that can represent the unicode character!
 Returns Makie.defaultfont() if not representable!

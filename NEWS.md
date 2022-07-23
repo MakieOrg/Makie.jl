@@ -1,5 +1,17 @@
 # News
 
+## master
+
+## v0.17.11
+
+- `rainclouds`(!) now supports `violin_limits` keyword argument, serving the same.
+role as `datalimits` in `violin` [#2137](https://github.com/JuliaPlots/Makie.jl/pull/2137).
+- Fixed a issue where nonzero `strokewidth` results in a thin outline of the wrong color if `color` and `strokecolor` didn't match and weren't transparent. [#2096](https://github.com/JuliaPlots/Makie.jl/pull/2096).
+- Improve performance around Axis(3) limits [#2115](https://github.com/JuliaPlots/Makie.jl/pull/2115).
+- Cleanup stroke artifacts in scatter and text [#2096](https://github.com/JuliaPlots/Makie.jl/pull/2096).
+- Compile time improvements [#2153](https://github.com/JuliaPlots/Makie.jl/pull/2153).
+- Mesh and Surface now interpolate between values instead of interpolating between colors for WGLMakie + GLMakie [#2097](https://github.com/JuliaPlots/Makie.jl/pull/2097).
+
 ## v0.17.10
 
 - Bumped compatibility bound of `GridLayoutBase.jl` to `v0.9.0` which fixed a regression with `Mixed` and `Outside` alignmodes in nested `GridLayout`s [#2135](https://github.com/JuliaPlots/Makie.jl/pull/2135).
@@ -24,7 +36,7 @@
 
 ## v0.17.5
 
-- Fixed a regression with `linkaxes!` [#2039](https://github.com/JuliaPlots/Makie.jl/pull/2039). 
+- Fixed a regression with `linkaxes!` [#2039](https://github.com/JuliaPlots/Makie.jl/pull/2039).
 
 ## v0.17.4
 

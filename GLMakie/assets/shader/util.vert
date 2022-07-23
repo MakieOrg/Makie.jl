@@ -200,7 +200,7 @@ vec4 _color(Nothing color, sampler1D intensity, sampler1D color_map, vec2 color_
     return color_lookup(texture(intensity, float(index)/float(len-1)).x, color_map, color_norm);
 }
 vec4 _color(Nothing color, samplerBuffer intensity, sampler1D color_map, vec2 color_norm, int index, int len){
-    return color_lookup(texelFetch(intensity, index).x, color_map, color_norm);
+    return vec4(texelFetch(intensity, index).x, 0.0, 0.0, 0.0);
 }
 vec4 _color(Nothing color, float intensity, sampler1D color_map, vec2 color_norm, int index, int len){
     return color_lookup(intensity, color_map, color_norm);

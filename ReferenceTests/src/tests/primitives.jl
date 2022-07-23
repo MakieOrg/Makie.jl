@@ -79,6 +79,72 @@ end
     s
 end
 
+@reference_test "scatter with stroke" begin
+    s = Scene(resolution = (350, 700), camera = campixel!)
+
+    # half stroke, half glow
+    strokes = range(1, 4, length=7)
+    outline_colors = [:red, :green, :blue, :yellow, :purple, :cyan, :black]
+    colors = [
+        :red, :green, :blue,
+        :yellow, :purple, :cyan,
+        :white, :black,
+        RGBAf(1, 0, 0, 0), RGBAf(0, 1, 0, 0), RGBAf(0, 0, 1, 0),
+        RGBAf(1, 0, 1, 0), RGBAf(0, 1, 1, 0), RGBAf(1, 1, 0, 0),
+    ]
+
+    markers = [:circle, :rect, :cross, :utriangle, :dtriangle,
+        'a', 'x', 'h', 'g', 'Y', 'J', 'α', '↑', 'o'
+    ]
+
+    for i in eachindex(strokes)
+        oc = outline_colors[i]
+        strokewidth = strokes[i]
+        for (j, (m, c)) in enumerate(zip(markers, colors))
+            p = Point2f(i, j) .* 45
+            scatter!(s,
+                p,
+                marker = m, markersize = 30, color = c,
+                strokewidth = strokewidth, strokecolor = oc,
+            )
+        end
+    end
+    s
+end
+
+@reference_test "scatter with glow" begin
+    s = Scene(resolution = (350, 700), camera = campixel!)
+
+    # half stroke, half glow
+    glows = range(4, 1, length=7)
+    outline_colors = [:red, :green, :blue, :yellow, :purple, :cyan, :black]
+    colors = [
+        :red, :green, :blue,
+        :yellow, :purple, :cyan,
+        :white, :black,
+        RGBAf(1, 0, 0, 0), RGBAf(0, 1, 0, 0), RGBAf(0, 0, 1, 0),
+        RGBAf(1, 0, 1, 0), RGBAf(0, 1, 1, 0), RGBAf(1, 1, 0, 0),
+    ]
+
+    markers = [:circle, :rect, :cross, :utriangle, :dtriangle,
+        'a', 'x', 'h', 'g', 'Y', 'J', 'α', '↑', 'o'
+    ]
+
+    for i in eachindex(glows)
+        oc = outline_colors[i]
+        glowwidth = glows[i]
+        for (j, (m, c)) in enumerate(zip(markers, colors))
+            p = Point2f(i, j) .* 45
+            scatter!(s,
+                p,
+                marker = m, markersize = 30, color = c,
+                glowwidth = glowwidth, glowcolor = oc,
+            )
+        end
+    end
+    s
+end
+
 
 @reference_test "basic polygon shapes" begin
     s = Scene(resolution = (800, 800), camera = campixel!)
