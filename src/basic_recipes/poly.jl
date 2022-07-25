@@ -190,8 +190,10 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
                 to_color.(colors)
             end
             # Consider low- and highclips
-            single_colors[colors .< crange[1]] .= parse(RGBA, lclip)
-            single_colors[colors .> crange[2]] .= parse(RGBA, hclip)
+            if isa(crange, Tuple)
+                single_colors[colors .< crange[1]] .= to_color(lclip)
+                single_colors[colors .> crange[2]] .= to_color(hclip)
+            end
             real_colors = RGBAf[]
             # Map one single color per mesh to each vertex
             for (mesh, color) in zip(meshes, single_colors)
