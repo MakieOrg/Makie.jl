@@ -25,6 +25,9 @@ $(ATTRIBUTES)
         strokecolor = theme(scene, :patchstrokecolor),
         colormap = theme(scene, :colormap),
         colorrange = automatic,
+        lowclip = automatic,
+        highclip = automatic,
+        nan_color = :transparent,
         strokewidth = theme(scene, :patchstrokewidth),
         shading = false,
         fxaa = true,
@@ -49,9 +52,17 @@ convert_arguments(::Type{<: Poly}, m::GeometryBasics.Mesh) = (m,)
 function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}})
     mesh!(
         plot, plot[1],
-        color = plot[:color], colormap = plot[:colormap], colorrange = plot[:colorrange],
-        shading = plot[:shading], visible = plot[:visible], overdraw = plot[:overdraw],
-        inspectable = plot[:inspectable], transparency = plot[:transparency],
+        color = plot[:color],
+        colormap = plot[:colormap],
+        colorrange = plot[:colorrange],
+        lowclip = plot[:lowclip],
+        highclip = plot[:highclip],
+        nan_color = plot[:nan_color],
+        shading = plot[:shading],
+        visible = plot[:visible],
+        overdraw = plot[:overdraw],
+        inspectable = plot[:inspectable],
+        transparency = plot[:transparency],
         space = plot[:space]
     )
     wireframe!(
@@ -122,6 +133,9 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
         color = plot.color,
         colormap = plot.colormap,
         colorrange = plot.colorrange,
+        lowclip = plot.lowclip,
+        highclip = plot.highclip,
+        nan_color = plot.nan_color,
         overdraw = plot.overdraw,
         fxaa = plot.fxaa,
         transparency = plot.transparency,
@@ -163,16 +177,21 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
 
     attributes[:colormap] = get(plot, :colormap, nothing)
     attributes[:colorrange] = get(plot, :colorrange, nothing)
+    attributes[:lowclip] = get(plot, :lowclip, automatic)
+    attributes[:highclip] = get(plot, :highclip, automatic)
 
     bigmesh = if color_node[] isa AbstractVector && length(color_node[]) == length(meshes[])
         # One color per mesh
-        lift(meshes, color_node, attributes.colormap, attributes.colorrange) do meshes, colors, cmap, crange
+        lift(meshes, color_node, attributes.colormap, attributes.colorrange, attributes.lowclip, attributes.highclip) do meshes, colors, cmap, crange, lclip, hclip
             # Color are reals, so we need to transform it to colors first
             single_colors = if colors isa AbstractVector{<:Number}
                 interpolated_getindex.((to_colormap(cmap),), colors, (crange,))
             else
                 to_color.(colors)
             end
+            # Consider low- and highclips
+            single_colors[colors .< crange[1]] .= parse(RGBA, lclip)
+            single_colors[colors .> crange[2]] .= parse(RGBA, hclip)
             real_colors = RGBAf[]
             # Map one single color per mesh to each vertex
             for (mesh, color) in zip(meshes, single_colors)
