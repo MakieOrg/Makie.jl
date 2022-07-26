@@ -44,8 +44,13 @@ function plot!(plot::Wireframe{Tuple{T}}) where T
     points = lift(plot[1]) do g
         # get the point representation of the geometry
         indices = decompose(LineFace{GLIndex}, g)
-        points = decompose(Point3f, g)
-        return connect(points, indices)
+        points = decompose(Point, g)
+        if isnothing(indices)
+            # Some primitives don't have line faces defined, so we just connect each line segment
+            return collect(reinterpret(eltype(points), connect(points, Line, 1)))
+        else
+            return connect(points, indices)
+        end
     end
     linesegments!(plot, Attributes(plot), points)
 end

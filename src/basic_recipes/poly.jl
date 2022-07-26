@@ -48,11 +48,11 @@ convert_arguments(::Type{<: Poly}, v::Union{Polygon, MultiPolygon}) = (v,)
 convert_arguments(::Type{<: Poly}, args...) = ([convert_arguments(Scatter, args...)[1]],)
 convert_arguments(::Type{<: Poly}, vertices::AbstractArray, indices::AbstractArray) = convert_arguments(Mesh, vertices, indices)
 convert_arguments(::Type{<: Poly}, m::GeometryBasics.Mesh) = (m,)
-convert_arguments(::Type{<: Poly}, m::GeometryBasics.AbstractGeometry) = (m,)
+convert_arguments(::Type{<: Poly}, m::GeometryBasics.GeometryPrimitive) = (m,)
 
 function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}})
     mesh!(
-        plot, plot[1],
+        plot, lift(triangle_mesh, plot[1]),
         color = plot[:color],
         colormap = plot[:colormap],
         colorrange = plot[:colorrange],
