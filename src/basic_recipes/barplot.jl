@@ -19,6 +19,9 @@ $(ATTRIBUTES)
         color = theme(scene, :patchcolor),
         colormap = theme(scene, :colormap),
         colorrange = automatic,
+        lowclip = automatic,
+        highclip = automatic,
+        nan_color = :transparent,
         dodge = automatic,
         n_dodge = automatic,
         gap = 0.2,
@@ -253,7 +256,10 @@ function Makie.plot!(p::BarPlot)
     poly!(
         p, bars, color = p.color, colormap = p.colormap, colorrange = p.colorrange,
         strokewidth = p.strokewidth, strokecolor = p.strokecolor, visible = p.visible,
-        inspectable = p.inspectable, transparency = p.transparency
+        inspectable = p.inspectable, transparency = p.transparency,
+        highclip = p.highclip,
+        lowclip = p.lowclip,
+        nan_color = p.nan_color,
     )
     if !isnothing(p.bar_labels[])
         text!(p, labels; align=label_aligns, offset=label_offsets, color=label_colors, font=p.label_font, textsize=p.label_size, rotation=p.label_rotation)

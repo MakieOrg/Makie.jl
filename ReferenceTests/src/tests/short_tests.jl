@@ -197,7 +197,7 @@ end
 end
 
 
-@reference_test "poly + lowclip, highclip, nan_color" begin
+@reference_test "poly: lowclip + highclip + nan_color" begin
     poly(
         [
             Point2f[(2, 0), (4, 0), (4, 1), (2, 1)],
@@ -213,4 +213,8 @@ end
         nan_color = :green,
         strokewidth=2,
     )
+end
+
+@reference_test "barplot: lowclip + highclip + nan_color" begin
+    barplot(1:4, color=[1, 2, NaN, 4], colorrange=(2, 3), highclip = :red, lowclip=:green, nan_color=:black)
 end
