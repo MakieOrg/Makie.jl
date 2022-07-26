@@ -139,12 +139,18 @@ end
 
 function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
 
-    colormap = Makie.get_attribute(primitive, :colormap)
-    colorrange = Makie.get_attribute(primitive, :colorrange)
+    colormap = get_attribute(primitive, :colormap)::Vector{RGBAf}
+    _colorrange = get_attribute(primitive, :colorrange)::Union{Automatic, Vec2f}
+    if _colorrange isa Automatic
+        # TODO, plot primitive should always expand automatic values
+        colorrange = Vec2f(extrema_nan(numbers))
+    else
+        colorrange = _colorrange
+    end
 
-    lowclip = Makie.get_attribute(primitive, :lowclip)
-    highclip = Makie.get_attribute(primitive, :highclip)
-    nan_color = Makie.get_attribute(primitive, :nan_color, RGBAf(0,0,0,0))
+    lowclip = get_attribute(primitive, :lowclip)
+    highclip = get_attribute(primitive, :highclip)
+    nan_color = get_attribute(primitive, :nan_color, RGBAf(0,0,0,0))
     cmin, cmax = colorrange::Vec2f
 
     return map(numbers) do number
@@ -155,7 +161,7 @@ function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
         elseif !isnothing(highclip) && number > cmax
             return highclip
         end
-        return Makie.interpolated_getindex(
+        return interpolated_getindex(
             colormap,
             Float64(number), # ints don't work in interpolated_getindex
             (cmin, cmax))

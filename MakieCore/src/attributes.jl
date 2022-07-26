@@ -240,7 +240,9 @@ end
 # a few shortcut functions to make attribute conversion easier
 function get_attribute(dict, key, default=nothing)
     if haskey(dict, key)
-        convert_attribute(to_value(dict[key]), Key{key}())
+        value = to_value(dict[key])
+        value isa Automatic && return value
+        return convert_attribute(to_value(dict[key]), Key{key}())
     else
         return default
     end

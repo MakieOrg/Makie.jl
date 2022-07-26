@@ -126,7 +126,7 @@ function polypath(ctx, polygon)
 end
 
 function draw_poly(scene::Scene, screen::CairoScreen, poly, polygons::AbstractArray{<:Polygon})
-    
+
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
     projected_polys = project_polygon.(Ref(scene), space, polygons, Ref(model))
