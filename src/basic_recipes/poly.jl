@@ -48,6 +48,7 @@ convert_arguments(::Type{<: Poly}, v::Union{Polygon, MultiPolygon}) = (v,)
 convert_arguments(::Type{<: Poly}, args...) = ([convert_arguments(Scatter, args...)[1]],)
 convert_arguments(::Type{<: Poly}, vertices::AbstractArray, indices::AbstractArray) = convert_arguments(Mesh, vertices, indices)
 convert_arguments(::Type{<: Poly}, m::GeometryBasics.Mesh) = (m,)
+convert_arguments(::Type{<: Poly}, m::GeometryBasics.AbstractGeometry) = (m,)
 
 function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}})
     mesh!(
@@ -172,47 +173,43 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
     attributes = Attributes(
         visible = plot.visible, shading = plot.shading, fxaa = plot.fxaa,
         inspectable = plot.inspectable, transparency = plot.transparency,
-        space = plot.space
+        space = plot.space,
+        lowclip = get(plot, :lowclip, automatic),
+        highclip = get(plot, :highclip, automatic),
+        nan_color = get(plot, :nan_color, :transparent),
+        colormap = get(plot, :colormap, nothing),
+        colorrange = get(plot, :colorrange, automatic)
     )
 
-    attributes[:colormap] = get(plot, :colormap, nothing)
-    attributes[:colorrange] = get(plot, :colorrange, nothing)
-    attributes[:lowclip] = get(plot, :lowclip, automatic)
-    attributes[:highclip] = get(plot, :highclip, automatic)
+    num_meshes = lift(meshes; ignore_equal_values=true) do meshes
+        return Int[length(coordinates(m)) for m in meshes]
+    end
 
-    bigmesh = if color_node[] isa AbstractVector && length(color_node[]) == length(meshes[])
-        # One color per mesh
-        lift(meshes, color_node, attributes.colormap, attributes.colorrange, attributes.lowclip, attributes.highclip) do meshes, colors, cmap, crange, lclip, hclip
-            # Color are reals, so we need to transform it to colors first
-            single_colors = if colors isa AbstractVector{<:Number}
-                interpolated_getindex.((to_colormap(cmap),), colors, (crange,))
-            else
-                to_color.(colors)
+    mesh_colors = Observable{Union{AbstractPattern, Matrix{RGBAf}, RGBColors}}()
+
+    map!(mesh_colors, plot.color, num_meshes) do colors, num_meshes
+        # one mesh per color
+        c_converted = to_color(colors)
+        if c_converted isa AbstractVector && length(c_converted) == length(num_meshes)
+            result = similar(c_converted, sum(num_meshes))
+            i = 1
+            for (cs, len) in zip(c_converted, num_meshes)
+                for j in 1:len
+                    result[i] = cs
+                    i += 1
+                end
             end
-            # Consider low- and highclips
-            if isa(crange, Tuple)
-                single_colors[colors .< crange[1]] .= to_color(lclip)
-                single_colors[colors .> crange[2]] .= to_color(hclip)
-            end
-            real_colors = RGBAf[]
-            # Map one single color per mesh to each vertex
-            for (mesh, color) in zip(meshes, single_colors)
-                append!(real_colors, Iterators.repeated(RGBAf(color), length(coordinates(mesh))))
-            end
-            # real_colors[] = real_colors[]
-            if P <: AbstractPolygon
-                meshes = triangle_mesh.(meshes)
-            end
-            return pointmeta(merge(meshes), color=real_colors)
+            return result
+        else
+            return c_converted
         end
-    else
-        attributes[:color] = color_node
-        lift(meshes) do meshes
-            if isempty(meshes)
-                return GeometryBasics.Mesh(Point2f[], GLTriangleFace[])
-            else
-                return merge(GeometryBasics.mesh.(meshes))
-            end
+    end
+    attributes[:color] = mesh_colors
+    bigmesh = lift(meshes) do meshes
+        if isempty(meshes)
+            return GeometryBasics.Mesh(Point2f[], GLTriangleFace[])
+        else
+            return merge(GeometryBasics.triangle_mesh.(meshes))
         end
     end
     mesh!(plot, attributes, bigmesh)

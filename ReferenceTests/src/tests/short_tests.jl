@@ -195,3 +195,22 @@ end
 @reference_test "pattern barplot" begin
     barplot(1:5, color=Makie.LinePattern(linecolor=:red, background_color=:orange))
 end
+
+
+@reference_test "poly + lowclip, highclip, nan_color" begin
+    poly(
+        [
+            Point2f[(2, 0), (4, 0), (4, 1), (2, 1)],
+            Point2f[(0, 0), (2, 0), (2, 1), (0, 1)],
+            Point2f[(2, 1), (4, 1), (4, 2), (2, 2)],
+            Point2f[(0, 1), (2, 1), (2, 2), (0, 2)],
+        ];
+        color=[1, 2, NaN, 4],
+        colormap=:viridis,
+        colorrange=(2, 3),
+        lowclip=:white,
+        highclip=:black,
+        nan_color = :green,
+        strokewidth=2,
+    )
+end
