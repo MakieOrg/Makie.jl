@@ -135,3 +135,29 @@ function sampler(cmap::Matrix{<: Colorant}, uv::AbstractVector{Vec2f};
                  alpha=1.0, interpolation=Linear)
     return Sampler(cmap, uv, alpha, interpolation, Scaling())
 end
+
+
+function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
+
+    colormap = Makie.get_attribute(primitive, :colormap)
+    colorrange = Makie.get_attribute(primitive, :colorrange)
+
+    lowclip = Makie.get_attribute(primitive, :lowclip)
+    highclip = Makie.get_attribute(primitive, :highclip)
+    nan_color = Makie.get_attribute(primitive, :nan_color, RGBAf(0,0,0,0))
+    cmin, cmax = colorrange::Vec2f
+
+    return map(numbers) do number
+        if isnan(number)
+            return nan_color
+        elseif !isnothing(lowclip) && number < cmin
+            return lowclip
+        elseif !isnothing(highclip) && number > cmax
+            return highclip
+        end
+        return Makie.interpolated_getindex(
+            colormap,
+            Float64(number), # ints don't work in interpolated_getindex
+            (cmin, cmax))
+    end
+end
