@@ -97,8 +97,8 @@ function initialize_block!(cb::Colorbar)
 
     framebox = @lift(round_to_IRect2D($(cb.layoutobservables.computedbbox)))
 
-    highclip_tri_visible = lift(x -> !(isnothing(x) || to_color(x) == to_color(:transparent)), cb.highclip)
-    lowclip_tri_visible = lift(x -> !(isnothing(x) || to_color(x) == to_color(:transparent)), cb.lowclip)
+    highclip_tri_visible = lift(x -> !(x isa Automatic || to_color(x) == to_color(:transparent)), cb.highclip)
+    lowclip_tri_visible = lift(x -> !(x isa Automatic || to_color(x) == to_color(:transparent)), cb.lowclip)
 
     tri_heights = lift(highclip_tri_visible, lowclip_tri_visible, framebox) do hv, lv, box
         if cb.vertical[]
@@ -230,7 +230,7 @@ function initialize_block!(cb::Colorbar)
         to_color(isnothing(hc) ? :transparent : hc)
     end
 
-    highclip_visible = lift(x -> !(isnothing(x) || to_color(x) == to_color(:transparent)), cb.highclip)
+    highclip_visible = lift((x, cm) -> to_color(x) != cm[end], cb.highclip, cgradient)
 
     highclip_tri_poly = poly!(blockscene, highclip_tri, color = highclip_tri_color,
         strokecolor = :transparent,
@@ -256,7 +256,7 @@ function initialize_block!(cb::Colorbar)
         to_color(isnothing(lc) ? :transparent : lc)
     end
 
-    lowclip_visible = lift(x -> !(isnothing(x) || to_color(x) == to_color(:transparent)), cb.lowclip)
+    lowclip_visible = lift((x, cm) -> to_color(x) != cm[1], cb.lowclip, cgradient)
 
     lowclip_tri_poly = poly!(blockscene, lowclip_tri, color = lowclip_tri_color,
         strokecolor = :transparent,
@@ -363,7 +363,7 @@ end
 
 """
     space = tight_ticklabel_spacing!(cb::Colorbar)
-    
+
 Sets the space allocated for the ticklabels of the `Colorbar` to the minimum that is needed and returns that value.
 """
 function tight_ticklabel_spacing!(cb::Colorbar)
