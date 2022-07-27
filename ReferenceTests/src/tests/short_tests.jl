@@ -237,12 +237,13 @@ end
     )
     meshscatter(f[2, 1], 1:4, zeros(4), 1:4, color=[-Inf, NaN, 1, Inf], colorrange=(0, 1), nan_color=:red, highclip=:green, lowclip=:black)
     volcano = readdlm(Makie.assetpath("volcano.csv"), ',', Float64)
-    contourf(f[2, 2], volcano, levels = range(100, 180, length = 10), extendlow = :cyan, extendhigh = :magenta)
+    ax, cf = contourf(f[2, 2], volcano, levels = range(100, 180, length = 10), extendlow = :cyan, extendhigh = :magenta)
+    Colorbar(f[:, 3], cf)
     f
 end
 
 @reference_test "Colorbar" begin
     f = Figure()
-    Colorbar(f[1, 1])
+    Colorbar(f[1, 1]; size = 200)
     f
 end
