@@ -1,3 +1,5 @@
+using DelimitedFiles
+
 @reference_test "thick arc" arc(Point2f(0), 10f0, 0f0, pi, linewidth=20)
 
 @reference_test "stroked rect poly" poly(Recti(0, 0, 200, 200), strokewidth=20, strokecolor=:red, color=(:black, 0.4))
@@ -215,5 +217,32 @@ end
 end
 
 @reference_test "barplot lowclip highclip nan_color" begin
-    barplot(1:4, color=[1, 2, NaN, 4], colorrange=(2, 3), highclip = :red, lowclip=:green, nan_color=:black)
+    f = Figure()
+    barplot(f[1, 1], 1:4, color=[1, 2, NaN, 4], colorrange=(2, 3), highclip = :red, lowclip=:green, nan_color=:black)
+    poly(
+        f[1, 2],
+        [
+            Point2f[(2, 0), (4, 0), (4, 1), (2, 1)],
+            Point2f[(0, 0), (2, 0), (2, 1), (0, 1)],
+            Point2f[(2, 1), (4, 1), (4, 2), (2, 2)],
+            Point2f[(0, 1), (2, 1), (2, 2), (0, 2)],
+        ];
+        color=[-Inf, 2, NaN, Inf],
+        colormap=:viridis,
+        colorrange=(2, 3),
+        lowclip=:white,
+        highclip=:black,
+        nan_color = :green,
+        strokewidth=2,
+    )
+    meshscatter(f[2, 1], 1:4, zeros(4), 1:4, color=[-Inf, NaN, 1, Inf], colorrange=(0, 1), nan_color=:red, highclip=:green, lowclip=:black)
+    volcano = readdlm(Makie.assetpath("volcano.csv"), ',', Float64)
+    contourf(f[2, 2], volcano, levels = range(100, 180, length = 10), extendlow = :cyan, extendhigh = :magenta)
+    f
+end
+
+@reference_test "Colorbar" begin
+    f = Figure()
+    Colorbar(f[1, 1])
+    f
 end
