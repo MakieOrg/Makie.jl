@@ -274,18 +274,28 @@ function Makie.plot!(
 
     allattrs = merge(attributes, Attributes(kw_attributes))
 
+    _disallow_keyword(:axis, allattrs)
+    _disallow_keyword(:figure, allattrs)
+
     cycle = get_cycle_for_plottype(allattrs, P)
     add_cycle_attributes!(allattrs, P, cycle, ax.cycler, ax.palette)
 
     plot = Makie.plot!(ax.scene, P, allattrs, args...)
 
-    reset_limits!(ax)
+    if is_open_or_any_parent(ax.scene)
+        reset_limits!(ax)
+    end
     plot
 end
 
 function Makie.plot!(P::Makie.PlotFunc, ax::Axis3, args...; kw_attributes...)
     attributes = Makie.Attributes(kw_attributes)
     Makie.plot!(ax, P, attributes, args...)
+end
+
+function update_state_before_display!(ax::Axis3)
+    reset_limits!(ax)
+    return
 end
 
 function autolimits!(ax::Axis3)

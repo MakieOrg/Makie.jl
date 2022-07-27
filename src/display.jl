@@ -46,7 +46,10 @@ function delete_screen!(scene::Scene, display::AbstractDisplay)
     return
 end
 
-backend_display(s::FigureLike; kw...) = backend_display(current_backend[], s; kw...)
+function backend_display(s::FigureLike; kw...)
+    update_state_before_display!(s)
+    backend_display(current_backend[], get_scene(s); kw...)
+end
 
 function backend_display(::Missing, ::Scene; kw...)
     error("""
@@ -58,12 +61,15 @@ function backend_display(::Missing, ::Scene; kw...)
     """)
 end
 
+update_state_before_display!(_) = nothing
+
 function Base.display(fig::FigureLike; kw...)
     scene = get_scene(fig)
     if !use_display[]
+        update_state_before_display!(fig)
         return Core.invoke(display, Tuple{Any}, scene)
     else
-        screen = backend_display(scene; kw...)
+        screen = backend_display(fig; kw...)
         push_screen!(scene, screen)
         return screen
     end
@@ -83,7 +89,6 @@ end
 function Base.showable(mime::MIME"application/json", fig::FigureLike)
     backend_showable(current_backend[], mime, get_scene(fig))
 end
-
 
 function backend_showable(::Backend, ::Mime, ::Scene) where {Backend, Mime <: MIME}
     hasmethod(backend_show, Tuple{Backend, IO, Mime, Scene})
@@ -106,12 +111,10 @@ function Base.show(io::IO, ::MIME"text/plain", scene::Scene; kw...)
     show(io, scene; kw...)
 end
 
-Base.show(io::IO, m::MIME, fap::FigureAxisPlot; kw...) = show(io, m, fap.figure; kw...)
-Base.show(io::IO, m::MIME, fig::Figure; kw...) = show(io, m, fig.scene; kw...)
-
-function Base.show(io::IO, m::MIME, scene::Scene)
+function Base.show(io::IO, m::MIME, figlike::FigureLike)
     ioc = IOContext(io, :full_fidelity => true)
-    backend_show(current_backend[], ioc, m, scene)
+    update_state_before_display!(figlike)
+    backend_show(current_backend[], ioc, m, get_scene(figlike))
     return
 end
 
@@ -128,24 +131,24 @@ Notice that the relevant `Makie.step!` is not
 exported and should be accessed by module name.
 """
 mutable struct FolderStepper
-    scene::Scene
+    figlike::FigureLike
     folder::String
     format::Symbol
     step::Int
 end
 
 mutable struct RamStepper
-    scene::Scene
+    figlike::FigureLike
     images::Vector{Matrix{RGBf}}
     format::Symbol
 end
 
-Stepper(scene::FigureLike, path::String, step::Int; format=:png) = FolderStepper(get_scene(scene), path, format, step)
-Stepper(scene::FigureLike; format=:png) = RamStepper(get_scene(scene), Matrix{RGBf}[], format)
+Stepper(figlike::FigureLike, path::String, step::Int; format=:png) = FolderStepper(figlike, path, format, step)
+Stepper(figlike::FigureLike; format=:png) = RamStepper(figlike, Matrix{RGBf}[], format)
 
-function Stepper(scene::FigureLike, path::String; format = :png)
+function Stepper(figlike::FigureLike, path::String; format = :png)
     ispath(path) || mkpath(path)
-    FolderStepper(get_scene(scene), path, format, 1)
+    FolderStepper(figlike, path, format, 1)
 end
 
 """
@@ -155,13 +158,13 @@ steps through a `Makie.Stepper` and outputs a file with filename `filename-step.
 This is useful for generating progressive plot examples.
 """
 function step!(s::FolderStepper)
-    FileIO.save(joinpath(s.folder, basename(s.folder) * "-$(s.step).$(s.format)"), s.scene)
+    FileIO.save(joinpath(s.folder, basename(s.folder) * "-$(s.step).$(s.format)"), s.figlike)
     s.step += 1
     return s
 end
 
 function step!(s::RamStepper)
-    img = convert(Matrix{RGBf}, colorbuffer(s.scene))
+    img = convert(Matrix{RGBf}, colorbuffer(s.figlike))
     push!(s.images, img)
     return s
 end
@@ -244,7 +247,7 @@ function FileIO.save(
             :pt_per_unit => pt_per_unit,
             :px_per_unit => px_per_unit
         )
-        show(iocontext, format2mime(F), scene)
+        show(iocontext, format2mime(F), fig)
     end
 end
 
@@ -334,19 +337,12 @@ function VideoStream(fig::FigureLike; framerate::Integer=24, visible=false, conn
     dir = mktempdir()
     path = joinpath(dir, "$(gensym(:video)).mkv")
     scene = get_scene(fig)
-    screen = backend_display(scene; start_renderloop=false, visible=visible, connect=connect)
+    screen = backend_display(fig; start_renderloop=false, visible=visible, connect=connect)
     _xdim, _ydim = size(scene)
     xdim = iseven(_xdim) ? _xdim : _xdim + 1
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
     process = @ffmpeg_env open(`$(FFMPEG.ffmpeg) -framerate $(framerate) -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
     return VideoStream(process.in, process, screen, abspath(path))
-end
-
-function VideoStream(fig::FigureAxisPlot; kw...)
-    VideoStream(fig.figure; kw...)
-end
-function VideoStream(fig::Figure; kw...)
-    VideoStream(fig.scene; kw...)
 end
 
 # This has to be overloaded by the backend for its screen type.
@@ -397,7 +393,8 @@ or RGBA.
 - `format = GLNative` : Returns a more efficient format buffer for GLMakie which can be directly
                         used in FFMPEG without conversion
 """
-function colorbuffer(scene::Scene, format::ImageStorageFormat = JuliaNative)
+function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative)
+    scene = get_scene(fig)
     screen = getscreen(scene)
     if isnothing(screen)
         if ismissing(current_backend[])
@@ -406,7 +403,7 @@ function colorbuffer(scene::Scene, format::ImageStorageFormat = JuliaNative)
                 before trying to render a Scene.
                 """)
         else
-            return colorbuffer(backend_display(scene; visible=false, start_renderloop=false, connect=false), format)
+            return colorbuffer(backend_display(fig; visible=false, start_renderloop=false, connect=false), format)
         end
     end
     return colorbuffer(screen, format)
@@ -448,7 +445,7 @@ See the docs of [`VideoStream`](@ref) for how to create a VideoStream.
 If you want a simpler interface, consider using [`record`](@ref).
 
 ### Keyword Arguments:
-- `framrate = 24`: The target framerate.
+- `framerate = 24`: The target framerate.
 - `compression = 0`: Controls the video compression with `0` being lossless and
                      `51` being the highest compression. Note that `compression = 0`
                      only works with `.mp4` if `profile = high444`.
@@ -565,7 +562,7 @@ end
 ```
 
 ### Keyword Arguments:
-- `framrate = 24`: The target framerate.
+- `framerate = 24`: The target framerate.
 - `compression = 0`: Controls the video compression with `0` being lossless and
                      `51` being the highest compression. Note that `compression = 0`
                      only works with `.mp4` if `profile = high444`.
@@ -576,24 +573,24 @@ end
                               only applies to `.mp4`. Defaults to `yuv444p` for
                               `profile = high444`.
 """
-function record(func, scene, path; framerate::Int = 24, kwargs...)
-    io = Record(func, scene, framerate = framerate)
+function record(func, figlike, path; framerate::Int = 24, kwargs...)
+    io = Record(func, figlike, framerate = framerate)
     save(path, io, framerate = framerate; kwargs...)
 end
 
-function Record(func, scene; framerate=24)
-    io = VideoStream(scene; framerate = framerate)
+function Record(func, figlike; framerate=24)
+    io = VideoStream(figlike; framerate = framerate)
     func(io)
     return io
 end
 
-function record(func, scene, path, iter; framerate::Int = 24, kwargs...)
-    io = Record(func, scene, iter; framerate=framerate)
+function record(func, figlike, path, iter; framerate::Int = 24, kwargs...)
+    io = Record(func, figlike, iter; framerate=framerate)
     save(path, io, framerate = framerate; kwargs...)
 end
 
-function Record(func, scene, iter; framerate::Int = 24)
-    io = VideoStream(scene; framerate=framerate)
+function Record(func, figlike, iter; framerate::Int = 24)
+    io = VideoStream(figlike; framerate=framerate)
     for i in iter
         func(i)
         recordframe!(io)

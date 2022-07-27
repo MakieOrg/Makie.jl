@@ -11,6 +11,8 @@ end
 
 function Makie.plot!(P::Makie.PlotFunc, ls::LScene, args...; kw_attributes...)
     attributes = Makie.Attributes(kw_attributes)
+    _disallow_keyword(:axis, attributes)
+    _disallow_keyword(:figure, attributes)
     Makie.plot!(ls, P, attributes, args...)
 end
 

@@ -32,12 +32,19 @@ Makie.inline!(true) # hide
 nothing # hide
 ```
 
+## Important objects
+
+The objects most important for our first steps with Makie are the `Figure`, the `Axis` and plots.
+In a normal Makie plot you will usually find a `Figure` which contains an `Axis` which contains one or more plot objects like `Lines` or `Scatter`.
+
+In the next steps, we will take a look at how we can create these objects.
+
 ## An empty figure
 
 The basic container object in Makie is the \apilink{Figure}.
-It is a canvas onto which we can add objects like axes and colorbars.
+It is a canvas onto which we can add objects like `Axis`, `Colorbar`, `Legend` and others.
 
-Let's create one and give it a background color so we can see something.
+Let's create a `Figure` and give it a background color other than the default white so we can see it.
 Returning a `Figure` from an expression will `display` it if your coding environment can show images.
 
 \begin{examplefigure}{svg = true}
@@ -85,12 +92,52 @@ f
 ```
 \end{examplefigure}
 
-Now we're ready to actually plot something!
+## Adding a plot to an Axis
 
-## First line plot
+Now we're ready to actually plot something into an `Axis`!
 
-Makie has many different plotting functions, the first we will learn about is \myreflink{lines}.
-Let's try plotting a sine function:
+Makie has many different plotting functions, the first we will learn about is \myreflink{lines!}.
+Let's try plotting a sine function into an `Axis`, by passing it as the first argument:
+
+\begin{examplefigure}{svg = true}
+```julia
+f = Figure()
+ax = Axis(f[1, 1])
+x = range(0, 10, length=100)
+y = sin.(x)
+lines!(ax, x, y)
+f
+```
+\end{examplefigure}
+
+There we have our first line plot.
+
+## Scatter plot
+
+Another common function is \myreflink{scatter!}.
+It works very similar to `lines!` but shows separate markers for each input point.
+
+\begin{examplefigure}{svg = true}
+```julia
+f = Figure()
+ax = Axis(f[1, 1])
+x = range(0, 10, length=100)
+y = sin.(x)
+scatter!(ax, x, y)
+f
+```
+\end{examplefigure}
+
+## Creating Figure, Axis and plot in one call
+
+So far we have seen how to plot into an existing `Axis` with `lines!` and `scatter!`.
+
+However, it would be nice if we didn't have to explicitly create `Figure` and `Axis` for every plot that we're making.
+
+That's why every plotting function comes in a pair, one version that plots into an existing `Axis` and one that creates its own `Axis` implicitly for convenience.
+For example, `lines!` mutates an existing `Axis`, `lines` creates an implicit one, `scatter!` mutates, `scatter` does not, and so on.
+
+Let's see how to make a line plot without creating `Figure` and `Axis` ourselves first.
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -100,17 +147,14 @@ lines(x, y)
 ```
 \end{examplefigure}
 
-There we have our first line plot, that was easy.
-
 The return type of `lines(x, y)` is `FigureAxisPlot`.
-You remember that we looked at making a `Figure` and an `Axis` first.
-The `lines` function first creates a `Figure`, then puts an `Axis` into it and finally adds plot of type `Lines` to that axis.
+The `lines` function first creates a `Figure`, then puts an `Axis` into it and finally adds a plot of type `Lines` to that axis.
 
 Because these three objects are created at once, the function returns all three, just bundled up into one `FigureAxisPlot` object.
 That's just so we can overload the `display` behavior for that type to match `Figure`.
 Normally, multiple return values are returned as `Tuple`s in Julia but it's uncommon to overload `display` for `Tuple` types.
 
-If you need the objects, for example to add more things to the figure later and edit axis and plot attributes, you can destructure the return value:
+If you need the objects, for example to add more things to the figure later and edit axis and plot attributes, you could destructure the return value:
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -120,19 +164,6 @@ figure
 \end{examplefigure}
 
 As you can see, the output of returning the extracted figure is the same.
-
-## Scatter plot
-
-Another common function is \myreflink{scatter}.
-It works very similar to `lines` but shows separate markers for each input point.
-
-\begin{examplefigure}{svg = true}
-```julia
-x = range(0, 10, length=100)
-y = sin.(x)
-scatter(x, y)
-```
-\end{examplefigure}
 
 ## Passing Figure and Axis styles
 
@@ -192,15 +223,10 @@ The respective trait is called `DiscreteSurface`.
 
 ## Layering multiple plots
 
-Every plotting function has a version with and one without `!` at the end.
+As we've seen above, every plotting function has a version with and one without `!` at the end.
 For example, there's `scatter` and `scatter!`, `lines` and `lines!`, etc.
 
-The functions without a `!` like `lines` and `scatter` always create a new axis with a plot inside.
-
-The functions with `!` like `lines!` and `scatter!` mutate (plot into) an already existing axis.
-Having functions ending with `!` that mutate one of their arguments is a common Julia convention.
-
-To plot two things into the same axis, you can use the mutating plotting functions.
+To plot two things into the same axis, you can use the mutating plotting functions like `lines!` and `scatter!`.
 For example, here's how you could plot two lines on top of each other:
 
 \begin{examplefigure}{svg = true}
@@ -216,7 +242,8 @@ f
 The second `lines!` call plots into the axis created by the first `lines` call.
 It's colored differently because the `Axis` keeps track of what has been plotted into it and cycles colors for similar plotting functions.
 
-You can also leave out the axis argument for convenience, then the axis being used is the `current_axis()`.
+You can also leave out the axis argument for convenience, then the axis being used is the `current_axis()`, which is usually just the axis that was created last.
+
 \begin{examplefigure}{svg = true}
 ```julia
 x = range(0, 10, length=100)
@@ -343,7 +370,7 @@ scatter(x, sin, color = colors, markersize = 20)
 
 ## Simple legend
 
-If you add label attributes to your plots, you can call the `axislegend` function to add a legend with all labeled plots to the current axis, or optionally to one you pass as the first argument.
+If you add label attributes to your plots, you can call the `axislegend` function to add a `Legend` with all labeled plots to the current `Axis`, or optionally to one you pass as the first argument.
 
 \begin{examplefigure}{svg = true}
 ```julia
