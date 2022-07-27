@@ -14,11 +14,12 @@ Creates a tooltip pointing at `position` displaying the given `string`
 - `inspectable::Bool = true` sets whether this plot should be seen by `DataInspector`.
 - `depth_shift::Float32 = 0f0` adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw).
 - `space::Symbol = :data` sets the transformation space for positions of markers. See `Makie.spaces()` for possible inputs.
-    
+
 ### Tooltip specific
 
 - `offset = 10` sets the offset between the given `position` and the tip of the triangle pointing at that position.
 - `placement = :above` sets where the tooltipü should be placed relative to `position`. Can be `:above`, `:below`, `:left`, `:right`.
+- `align = 0.5` sets the alignment of the tooltip relative `position`. With `align = 0.5` the tooltip is centered above/below/left/right the `position`.
 - `backgroundcolor = :white` sets the background color of the tooltip.
 - `triangle_size = 10` sets the size of the triangle pointing at `position`.
 - `outline_color = :black` sets the color of the tooltip outline.
@@ -39,6 +40,7 @@ Creates a tooltip pointing at `position` displaying the given `string`
         text = "", 
         offset = 10,
         placement = :above,
+        align = 0.5,
         xautolimits = false, 
         yautolimits = false, 
         zautolimits = false,
@@ -76,9 +78,17 @@ function plot!(plot::Tooltip{<:Tuple{<:VecTypes, <:AbstractString}})
     plot
 end
 
+
 function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
+    # TODO align
+
     scene = parent_scene(p)
-    bbox = Observable(Rect2f(0,0,1,1))
+    px_pos = map(scene.camera.projectionview, scene.camera.resolution, p[1]) do _, _, p
+        project(scene, p)
+    end
+
+    # Text
+
     textpadding = map(p.textpadding) do pad
         if pad isa Real
             return (pad, pad, pad, pad)
@@ -86,8 +96,60 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
             return pad
         else
             @error "Failed to parse $pad as (left, right, bottom, top). Using defaults"
-            return (4, 4, 2, 2)
+            return (4, 4, 4, 4)
         end
+    end
+
+    text_offset = map(p.offset, textpadding, p.triangle_size, p.placement, p.align) do o, pad, ts, placement, align
+        l, r, b, t = pad
+
+        if placement == :left 
+            return Vec2f(-o - r - ts, b - align * (b + t))
+        elseif placement == :right
+            return Vec2f( o + l + ts, b - align * (b + t))
+        elseif placement in (:below, :down, :bottom)
+            return Vec2f(l - align * (l + r), -o - t - ts)
+        elseif placement in (:above, :up, :top)
+            return Vec2f(l - align * (l + r),  o + b + ts)
+        else
+            @error "Tooltip placement $placement invalid. Assuming :above"
+            return Vec2f(0, o + b + ts)
+        end
+    end
+
+    text_align = map(p.placement, p.align) do placement, align
+        if placement == :left 
+            return (1.0, align)
+        elseif placement == :right
+            return (0.0, align)
+        elseif placement in (:below, :down, :bottom)
+            return (align, 1.0)
+        elseif placement in (:above, :up, :top)
+            return (align, 0.0)
+        else
+            @error "Tooltip placement $placement invalid. Assuming :above"
+            return (align, 0.0)
+        end
+    end
+
+    tp = text!(
+        p, px_pos, text = p.text, justification = p.justification,
+        align = text_align, offset = text_offset, textsize = p.textsize,
+        color = p.textcolor, font = p.font, fxaa = false,
+        strokewidth = p.strokewidth, strokecolor = p.strokecolor,
+        transparency = p.transparency, visible = p.visible,
+        overdraw = p.overdraw, depth_shift = p.depth_shift,
+        inspectable = p.inspectable, space = :pixel
+    )
+    translate!(tp, 0, 0, 1)
+
+    # TODO react to glyphcollection instead
+    bbox = map(
+            px_pos, p.text, text_align, text_offset, textpadding, p.align
+        ) do p, s, _, o, pad, align
+        bb = Rect2f(boundingbox(tp)) + o
+        l, r, b, t = pad
+        return Rect2f(origin(bb) .- (l, b), widths(bb) .+ (l+r, b+t))
     end
 
     # Text background mesh
@@ -114,26 +176,25 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         overdraw = p.overdraw, depth_shift = p.depth_shift,
         inspectable = p.inspectable
     )
-    onany(bbox, p.triangle_size, p.placement) do bb, s, placement
-        o = origin(bb)
-        w = widths(bb)
+    onany(bbox, p.triangle_size, p.placement, p.align) do bb, s, placement, align
+        o = origin(bb); w = widths(bb)
         scale!(mp, s, s, s)
         
         if placement == :left 
-            translate!(mp, Vec3f(o[1] + w[1], o[2] + 0.5w[2], 0))
+            translate!(mp, Vec3f(o[1] + w[1], o[2] + align * w[2], 0))
             rotate!(mp, qrotation(Vec3f(0,0,1), 0.5pi))
         elseif placement == :right
-            translate!(mp, Vec3f(o[1], o[2] + 0.5w[2], 0))
+            translate!(mp, Vec3f(o[1], o[2] + align * w[2], 0))
             rotate!(mp, qrotation(Vec3f(0,0,1), -0.5pi))
         elseif placement in (:below, :down, :bottom)
-            translate!(mp, Vec3f(o[1] + 0.5w[1], o[2] + w[2], 0))
+            translate!(mp, Vec3f(o[1] + align * w[1], o[2] + w[2], 0))
             rotate!(mp, Quaternionf(0,0,1,0)) # pi
         elseif placement in (:above, :up, :top)
-            translate!(mp, Vec3f(o[1] + 0.5w[1], o[2], 0))
+            translate!(mp, Vec3f(o[1] + align * w[1], o[2], 0))
             rotate!(mp, Quaternionf(0,0,0,1)) # 0
         else
             @error "Tooltip placement $placement invalid. Assuming :above"
-            translate!(mp, Vec3f(o[1] + 0.5w[1], o[2], 0))
+            translate!(mp, Vec3f(o[1] + align * w[1], o[2], 0))
             rotate!(mp, Quaternionf(0,0,0,1))
         end
         return
@@ -141,44 +202,57 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
 
     # Outline
 
-    outline = map(bbox, p.triangle_size, p.placement) do bb, s, placement
-        o = origin(bb); w = widths(bb)
+    outline = map(bbox, p.triangle_size, p.placement, p.align) do bb, s, placement, align
+        l, b = origin(bb); w, h = widths(bb)
+        r, t = (l, b) .+ (w, h)
+
+        # We start/end at half width/height here to avoid corners like this:
+        #     ______
+        #   _|
+        #  |    ____
+        #  |   |
 
         shift = if placement == :left 
-            [
-                Vec2f(0, 0.5w[2]), Vec2f(0, w[2]), w, Vec2f(w[1], 0.5(w[2] + s)), 
-                Vec2f(w[1] + s, 0.5w[2]), Vec2f(w[1], 0.5(w[2] - s)),
-                Vec2f(w[1], 0), Vec2f(0), Vec2f(0, 0.5w[2])
+            Vec2f[
+                (l, b + 0.5h), (l, t), (r, t), 
+                (r,     b + align * h + 0.5s), 
+                (r + s, b + align * h), 
+                (r,     b + align * h - 0.5s),
+                (r, b), (l, b), (l, b + 0.5h)
             ]
         elseif placement == :right
-            [
-                Vec2f(0.5w[1], 0), Vec2f(0), Vec2f(0, 0.5(w[2] - s)), 
-                Vec2f(-s, 0.5w[2]), Vec2f(0, 0.5(w[2] + s)),
-                Vec2f(0, w[2]), w, Vec2f(w[1], 0), Vec2f(0.5w[1], 0)
+            Vec2f[
+                (l + 0.5w, b), (l, b), 
+                (l,   b + align * h - 0.5s), 
+                (l-s, b + align * h), 
+                (l,   b + align * h + 0.5s),
+                (l, t), (r, t), (r, b), (l + 0.5w, b)
             ]
         elseif placement in (:below, :down, :bottom)
-            [
-                Vec2f(0, 0.5w[2]), Vec2f(0, w[2]), Vec2f(0.5 * (w[1] - s), w[2]), 
-                Vec2f(0.5w[1], w[2]+s), Vec2f(0.5 * (w[1] + s), w[2]), 
-                w, Vec2f(w[1], 0), Vec2f(0), Vec2f(0, 0.5w[2])
+            Vec2f[
+                (l, b + 0.5w), (l, t), 
+                (l + align * w - 0.5s, t), 
+                (l + align * w,        t+s), 
+                (l + align * w + 0.5s, t), 
+                (r, t), (r, b), (l, b), (l, b + 0.5h)
             ]
         elseif placement in (:above, :up, :top)
-            [
-                Vec2f(0, 0.5w[2]), Vec2f(0, w[2]), w, Vec2f(w[1], 0), 
-                Vec2f(0.5 * (w[1] + s), 0), Vec2f(0.5w[1], -s), 
-                Vec2f(0.5 * (w[1] - s), 0), Vec2f(0), Vec2f(0, 0.5w[2])
+            Vec2f[
+                (l, b + 0.5h), (l, t), (r, t), (r, b), 
+                (l + align * w + 0.5s, b), 
+                (l + align * w,        b-s), 
+                (l + align * w - 0.5s, b), 
+                (l, b), (l, b + 0.5h)
             ]
         else
             @error "Tooltip placement $placement invalid. Assuming :above"
-            [
-                Vec2f(0), Vec2f(0, w[2]), w, Vec2f(w[1], 0), 
-                Vec2f(0.5 * (w[1] + s), 0), Vec2f(0.5w[1], -s), 
-                Vec2f(0.5 * (w[1] - s), 0), Vec2f(0)
+            Vec2f[
+                (l, b + 0.5h), (l, t), (r, t), (r, b), 
+                (l + align * w + 0.5s, b), 
+                (l + align * w,        b-s), 
+                (l + align * w - 0.5s, b), 
+                (l, b), (l, b + 0.5h)
             ]
-        end
-        
-        for i in eachindex(shift)
-            shift[i] = shift[i] + o
         end
 
         return shift
@@ -192,60 +266,6 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         overdraw = p.overdraw, depth_shift = p.depth_shift,
         inspectable = p.inspectable
     )
-
-    # Text
-
-    text_offset = map(p.offset, textpadding, p.triangle_size, p.placement) do o, pad, ts, placement
-        l, r, b, t = pad
-
-        if placement == :left 
-            return Vec2f(-o - r - ts, 0)
-        elseif placement == :right
-            return Vec2f(o + l + ts, 0)
-        elseif placement in (:below, :down, :bottom)
-            return Vec2f(0, -o - t - ts)
-        elseif placement in (:above, :up, :top)
-            return Vec2f(0, o + b + ts)
-        else
-            @error "Tooltip placement $placement invalid. Assuming :above"
-            return Vec2f(0, o + b + ts)
-        end
-    end
-
-    text_align = map(p.placement) do placement
-        if placement == :left 
-            return (:right, :center)
-        elseif placement == :right
-            return (:left, :center)
-        elseif placement in (:below, :down, :bottom)
-            return (:center, :top)
-        elseif placement in (:above, :up, :top)
-            return (:center, :bottom)
-        else
-            @error "Tooltip placement $placement invalid. Assuming :above"
-            return (:center, :bottom)
-        end
-    end
-
-    tp = text!(
-        p, p[1], text = p.text, justification = p.justification,
-        align = text_align, offset = text_offset, textsize = p.textsize,
-        color = p.textcolor, font = p.font, fxaa = false,
-        strokewidth = p.strokewidth, strokecolor = p.strokecolor,
-        transparency = p.transparency, visible = p.visible,
-        overdraw = p.overdraw, depth_shift = p.depth_shift,
-        inspectable = p.inspectable
-    )
-
-    onany(
-            scene.camera.projectionview, scene.camera.resolution, 
-            p[1], p.text, text_align, text_offset, textpadding
-        ) do pv, res, p, s, align, o, pad
-        l, r, b, t = pad
-        bb = Rect2f(boundingbox(tp)) + o
-        bbox[] = Rect2f(origin(bb) .- (l, b), widths(bb) .+ (l+r, b+t))
-        return nothing
-    end
 
     notify(p[1])
 
