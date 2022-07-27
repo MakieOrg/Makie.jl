@@ -78,18 +78,18 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
     colorrange = lift(c._computed_levels) do levels
         minimum(levels), maximum(levels)
     end
-
-    c.attributes[:_computed_colormap] = lift(c._computed_levels, c.colormap) do levels, cmap
+    computed_colormap = lift(c._computed_levels, c.colormap) do levels, cmap
         levels_scaled = (levels .- minimum(levels)) ./ (maximum(levels) - minimum(levels))
-        cgrad(cmap, levels_scaled, categorical = true)
+        return cgrad(cmap, levels_scaled, categorical = true)
     end
+    c.attributes[:_computed_colormap] = computed_colormap
 
-    lowcolor = Observable{Union{Nothing, RGBAf}}()
-    map!(lowcolor, c.extendlow) do el
-        if el === nothing
-            return nothing
+    lowcolor = Observable{RGBAf}()
+    map!(lowcolor, c.extendlow, computed_colormap) do el, cmap
+        if isnothing(el)
+            return RGBAf(0, 0, 0, 0)
         elseif el === automatic || el == :auto
-            return RGBAf(get(c._computed_colormap[], 0))
+            return RGBAf(get(cmap, 0))
         else
             return to_color(el)::RGBAf
         end
@@ -97,12 +97,12 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
     c.attributes[:_computed_extendlow] = lowcolor
     is_extended_low = lift(x -> !isnothing(x), lowcolor)
 
-    highcolor = Observable{Union{Nothing, RGBAf}}()
-    map!(highcolor, c.extendhigh) do eh
-        if eh === nothing
-            return nothing
+    highcolor = Observable{RGBAf}()
+    map!(highcolor, c.extendhigh, computed_colormap) do eh, cmap
+        if isnothing(eh)
+            return RGBAf(0, 0, 0, 0)
         elseif eh === automatic || eh == :auto
-            return RGBAf(get(c._computed_colormap[], 1))
+            return RGBAf(get(cmap, 1))
         else
             return to_color(eh)::RGBAf
         end
