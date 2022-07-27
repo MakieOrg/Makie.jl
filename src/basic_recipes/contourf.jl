@@ -78,18 +78,33 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
     colorrange = lift(c._computed_levels) do levels
         minimum(levels), maximum(levels)
     end
-    computed_colormap = lift(c._computed_levels, c.colormap) do levels, cmap
+    computed_colormap = lift(c._computed_levels, c.colormap, c.extendlow,
+                             c.extendhigh) do levels, cmap, elow, ehigh
         levels_scaled = (levels .- minimum(levels)) ./ (maximum(levels) - minimum(levels))
-        return cgrad(cmap, levels_scaled, categorical = true)
+        n = length(levels_scaled)
+
+        if elow == :auto && !(ehigh == :auto)
+            cm_base = cgrad(cmap, n + 1; categorical=true)[2:end]
+            cm = cgrad(cm_base, levels_scaled; categorical=true)
+        elseif ehigh == :auto && !(elow == :auto)
+            cm_base = cgrad(cmap, n + 1; categorical=true)[1:(end - 1)]
+            cm = cgrad(cm_base, levels_scaled; categorical=true)
+        elseif ehigh == :auto && elow == :auto
+            cm_base = cgrad(cmap, n + 2; categorical=true)[2:(end - 1)]
+            cm = cgrad(cm_base, levels_scaled; categorical=true)
+        else
+            cm = cgrad(cmap, levels_scaled; categorical=true)
+        end
+        return cm
     end
     c.attributes[:_computed_colormap] = computed_colormap
 
     lowcolor = Observable{RGBAf}()
-    map!(lowcolor, c.extendlow, computed_colormap) do el, cmap
+    map!(lowcolor, c.extendlow, c.colormap) do el, cmap
         if isnothing(el)
             return RGBAf(0, 0, 0, 0)
         elseif el === automatic || el == :auto
-            return RGBAf(get(cmap, 0))
+            return RGBAf(to_colormap(cmap)[begin])
         else
             return to_color(el)::RGBAf
         end
@@ -98,11 +113,11 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
     is_extended_low = lift(x -> !isnothing(x), lowcolor)
 
     highcolor = Observable{RGBAf}()
-    map!(highcolor, c.extendhigh, computed_colormap) do eh, cmap
+    map!(highcolor, c.extendhigh, c.colormap) do eh, cmap
         if isnothing(eh)
             return RGBAf(0, 0, 0, 0)
         elseif eh === automatic || eh == :auto
-            return RGBAf(get(cmap, 1))
+            return RGBAf(to_colormap(cmap)[end])
         else
             return to_color(eh)::RGBAf
         end
