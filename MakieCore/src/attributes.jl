@@ -241,7 +241,7 @@ end
 function get_attribute(dict, key, default=nothing)
     if haskey(dict, key)
         value = to_value(dict[key])
-        value isa Automatic && return value
+        value isa Automatic && return default
         return convert_attribute(to_value(dict[key]), Key{key}())
     else
         return default

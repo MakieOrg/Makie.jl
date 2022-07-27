@@ -160,6 +160,8 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
         polys,
         colormap = c._computed_colormap,
         colorrange = colorrange,
+        highclip = highcolor,
+        lowclip = lowcolor,
         color = colors,
         strokewidth = 0,
         strokecolor = :transparent,

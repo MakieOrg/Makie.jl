@@ -140,8 +140,8 @@ end
 function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
 
     colormap = get_attribute(primitive, :colormap)::Vector{RGBAf}
-    _colorrange = get_attribute(primitive, :colorrange)::Union{Automatic, Vec2f}
-    if _colorrange isa Automatic
+    _colorrange = get_attribute(primitive, :colorrange)::Union{Nothing, Vec2f}
+    if isnothing(_colorrange)
         # TODO, plot primitive should always expand automatic values
         colorrange = Vec2f(extrema_nan(numbers))
     else
