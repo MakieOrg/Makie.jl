@@ -1,5 +1,3 @@
-using DelimitedFiles
-
 @reference_test "thick arc" arc(Point2f(0), 10f0, 0f0, pi, linewidth=20)
 
 @reference_test "stroked rect poly" poly(Recti(0, 0, 200, 200), strokewidth=20, strokecolor=:red, color=(:black, 0.4))
