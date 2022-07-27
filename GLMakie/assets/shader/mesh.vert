@@ -10,12 +10,15 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 
 {{color_map_type}} color_map;
 {{color_norm_type}} color_norm;
+uniform bool interpolate_in_fragment_shader = false;
 
 in vec3 normals;
 
 uniform vec3 lightposition;
 uniform mat4 projection, view, model;
+
 void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 lightposition);
+vec4 get_color_from_cmap(float value, sampler1D color_map, vec2 colorrange);
 
 uniform uint objectid;
 flat out uvec2 o_id;
@@ -38,7 +41,11 @@ vec4 to_color(vec4 c, Nothing color_map, Nothing color_norm){
 }
 
 vec4 to_color(float c, sampler1D color_map, vec2 color_norm){
-    return vec4(c, 0.0, 0.0, 0.0);
+    if (interpolate_in_fragment_shader) {
+        return vec4(c, 0.0, 0.0, 0.0);
+    } else {
+        return get_color_from_cmap(c, color_map, color_norm);
+    }
 }
 
 vec4 to_color(Nothing c, sampler1D color_map, vec2 color_norm){

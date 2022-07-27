@@ -212,5 +212,7 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
             return merge(GeometryBasics.triangle_mesh.(meshes))
         end
     end
+    # For GLMakie (right now), to not interpolate between the colors (which are meant to be per mesh)
+    attributes[:interpolate_in_fragment_shader] = false
     mesh!(plot, attributes, bigmesh)
 end

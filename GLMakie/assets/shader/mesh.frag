@@ -22,6 +22,8 @@ flat in uvec2 o_id;
 {{color_map_type}} color_map;
 {{color_norm_type}} color_norm;
 
+uniform bool interpolate_in_fragment_shader;
+
 uniform vec4 highclip;
 uniform vec4 lowclip;
 uniform vec4 nan_color;
@@ -55,7 +57,11 @@ vec4 get_color(sampler2D color, vec2 uv, Nothing color_norm, Nothing color_map, 
     return texture(color, uv);
 }
 vec4 get_color(Nothing color, vec2 uv, vec2 color_norm, sampler1D color_map, Nothing matcap){
-    return get_color_from_cmap(o_color.x, color_map, color_norm);
+    if (interpolate_in_fragment_shader) {
+        return get_color_from_cmap(o_color.x, color_map, color_norm);
+    } else {
+        return o_color;
+    }
 }
 vec4 get_color(sampler2D intensity, vec2 uv, vec2 color_norm, sampler1D color_map, Nothing matcap){
     float i = texture(intensity, uv).x;
