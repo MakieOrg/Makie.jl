@@ -40,7 +40,6 @@ vec4 get_color(sampler2D color, vec2 uv, bool colorrange, bool colormap){
 
 float _normalize(float val, float from, float to){return (val-from) / (to - from);}
 
-
 vec4 get_color_from_cmap(float value, sampler2D color_map, vec2 colorrange) {
     float cmin = colorrange.x;
     float cmax = colorrange.y;
@@ -64,13 +63,18 @@ vec4 get_color_from_cmap(float value, sampler2D color_map, vec2 colorrange) {
 }
 
 vec4 get_color(bool color, vec2 uv, vec2 colorrange, sampler2D colormap){
-    float value = frag_color.x;
-    return get_color_from_cmap(value, colormap, colorrange);
+    if (get_interpolate_in_fragment_shader()) {
+        return get_color_from_cmap(frag_color.x, colormap, colorrange);
+    } else {
+        return frag_color;
+    }
 }
+
 vec4 get_color(sampler2D values, vec2 uv, vec2 colorrange, sampler2D colormap){
     float value = texture(values, uv).x;
     return get_color_from_cmap(value, colormap, colorrange);
 }
+
 vec4 get_color(sampler2D color, vec2 uv, bool colorrange, sampler2D colormap){
     return texture(color, uv);
 }

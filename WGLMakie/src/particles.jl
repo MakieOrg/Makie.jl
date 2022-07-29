@@ -13,20 +13,37 @@ function handle_color!(uniform_dict, instance_dict)
         delete!(uniform_dict, :colormap)
     elseif color isa AbstractArray{<:Real}
         udict[:color] = lift(x -> convert(Vector{Float32}, x), udict[:color])
-        # udict[:color] = lift(x -> convert(Vector{Float32}, x), udict[:color])
         uniform_dict[:color_getter] = """
             vec4 get_color(){
                 vec2 norm = get_colorrange();
-                float normed = (color - norm.x) / (norm.y - norm.x);
-                return texture(colormap, vec2(normed, 0));
+                float cmin = norm.x;
+                float cmax = norm.y;
+                float value = color;
+                if (value <= cmax && value >= cmin) {
+                    // in value range, continue!
+                } else if (value < cmin) {
+                    return get_lowclip();
+                } else if (value > cmax) {
+                    return get_highclip();
+                } else {
+                    // isnan is broken (of course) -.-
+                    // so if outside value range and not smaller/bigger min/max we assume NaN
+                    return get_nan_color();
+                }
+                float i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0);
+                // 1/0 corresponds to the corner of the colormap, so to properly interpolate
+                // between the colors, we need to scale it, so that the ends are at 1 - (stepsize/2) and 0+(stepsize/2).
+                float stepsize = 1.0 / float(textureSize(colormap, 0));
+                i01 = (1.0 - stepsize) * i01 + 0.5 * stepsize;
+                return texture(colormap, vec2(i01, 0.0));
             }
         """
     end
 end
 
 const IGNORE_KEYS = Set([
-    :shading, :overdraw, :rotation, :distancefield, :space, :markerspace, :fxaa, 
-    :visible, :transformation, :alpha, :linewidth, :transparency, :marker, 
+    :shading, :overdraw, :rotation, :distancefield, :space, :markerspace, :fxaa,
+    :visible, :transformation, :alpha, :linewidth, :transparency, :marker,
     :lightposition, :cycle, :label
 ])
 
@@ -62,6 +79,14 @@ function create_shader(scene::Scene, plot::MeshScatter)
     uniform_dict[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
     uniform_dict[:backlight] = plot.backlight
     get!(uniform_dict, :ambient, Vec3f(1))
+
+    for key in (:nan_color, :highclip, :lowclip)
+        if haskey(plot, key)
+            uniforms[key] = converted_attribute(plot, key)
+        else
+            uniforms[key] = RGBAf(0, 0, 0, 0)
+        end
+    end
 
     return InstancedProgram(WebGL(), lasset("particles.vert"), lasset("particles.frag"),
                             instance, VertexArray(; per_instance...); uniform_dict...)
@@ -235,7 +260,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     positions, char_offset, quad_offset, uv_offset_width, scale = map((1, 2, 3, 4, 5)) do i
         lift(getindex, glyph_data, i)
     end
-    
+
     uniform_color = lift(glyphcollection) do gc
         if gc isa AbstractArray
             reduce(vcat, (Makie.collect_vector(g.colors, length(g.glyphs)) for g in gc),

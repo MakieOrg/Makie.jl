@@ -38,6 +38,8 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
     uniforms = Dict{Symbol,Any}()
     attributes = Dict{Symbol,Any}()
 
+    uniforms[:interpolate_in_fragment_shader] = get(plot, :interpolate_in_fragment_shader, true)
+
     for (key, default) in (:uv => Vec2f(0), :normals => Vec3f(0))
         if haskey(data, key)
             attributes[key] = Buffer(get_attribute(mesh_signal, key))
@@ -102,9 +104,13 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
     get!(uniforms, :lightposition, Vec3f(1))
     get!(uniforms, :ambient, Vec3f(1))
 
-    get!(uniforms, :nan_color, RGBAf(0, 0, 0, 0))
-    get!(uniforms, :highclip, RGBAf(0, 0, 0, 0))
-    get!(uniforms, :lowclip, RGBAf(0, 0, 0, 0))
+    for key in (:nan_color, :highclip, :lowclip)
+        if haskey(plot, key)
+            uniforms[key] = converted_attribute(plot, key)
+        else
+            uniforms[key] = RGBAf(0, 0, 0, 0)
+        end
+    end
 
     uniforms[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
 
