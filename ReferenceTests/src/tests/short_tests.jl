@@ -198,7 +198,8 @@ end
 
 @reference_test "barplot lowclip highclip nan_color" begin
     f = Figure()
-    barplot(f[1, 1], 1:4, color=[1, 2, NaN, 4], colorrange=(2, 3), highclip = :red, lowclip=:green, nan_color=:black)
+    attrs = (color=[-Inf, 2, NaN, Inf], colorrange=(2, 3), highclip = :red, lowclip=:green, nan_color=:black)
+    barplot(f[1, 1], 1:4; attrs...)
     poly(
         f[1, 2],
         [
@@ -207,17 +208,11 @@ end
             Point2f[(2, 1), (4, 1), (4, 2), (2, 2)],
             Point2f[(0, 1), (2, 1), (2, 2), (0, 2)],
         ];
-        color=[-Inf, 2, NaN, Inf],
-        colormap=:viridis,
-        colorrange=(2, 3),
-        lowclip=:white,
-        highclip=:black,
-        nan_color = :green,
-        strokewidth=2,
+        strokewidth=2, attrs...
     )
-    meshscatter(f[2, 1], 1:4, zeros(4), 1:4, color=[-Inf, NaN, 1, Inf], colorrange=(0, 1), nan_color=:red, highclip=:green, lowclip=:black)
+    meshscatter(f[2, 1], 1:4, zeros(4), 1:4; attrs...)
     volcano = readdlm(Makie.assetpath("volcano.csv"), ',', Float64)
-    ax, cf = contourf(f[2, 2], volcano, levels = range(100, 180, length = 10), extendlow = :cyan, extendhigh = :magenta)
+    ax, cf = contourf(f[2, 2], volcano, levels = range(100, 180, length = 10), extendlow = :green, extendhigh = :red, nan_color=:black)
     Colorbar(f[:, 3], cf)
     f
 end

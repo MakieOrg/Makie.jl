@@ -138,7 +138,6 @@ end
 
 
 function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
-
     colormap = get_attribute(primitive, :colormap)::Vector{RGBAf}
     _colorrange = get_attribute(primitive, :colorrange)::Union{Nothing, Vec2f}
     if isnothing(_colorrange)
@@ -151,6 +150,7 @@ function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
     lowclip = get_attribute(primitive, :lowclip)
     highclip = get_attribute(primitive, :highclip)
     nan_color = get_attribute(primitive, :nan_color, RGBAf(0,0,0,0))
+
     cmin, cmax = colorrange::Vec2f
 
     return map(numbers) do number

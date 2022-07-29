@@ -34,6 +34,8 @@ $(ATTRIBUTES)
         colormap = theme(scene, :colormap),
         extendlow = nothing,
         extendhigh = nothing,
+        # TODO, Isoband doesn't seem to support nans?
+        nan_color = :transparent,
         inspectable = theme(scene, :inspectable),
         transparency = false
     )
@@ -177,6 +179,7 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
         colorrange = colorrange,
         highclip = highcolor,
         lowclip = lowcolor,
+        nan_color = c.nan_color,
         color = colors,
         strokewidth = 0,
         strokecolor = :transparent,
