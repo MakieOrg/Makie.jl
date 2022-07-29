@@ -84,8 +84,9 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
             error("Unsupported color type: $(typeof(color))")
         end
     end
-
-    get!(uniforms, :color, false) # make sure we have a color attribute
+    if !haskey(attributes, :color)
+        get!(uniforms, :color, false) # make sure we have a color attribute, if not in instance attributes
+    end
 
     uniforms[:shading] = plot.shading
 
