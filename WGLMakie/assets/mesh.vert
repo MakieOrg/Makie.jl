@@ -42,11 +42,17 @@ vec4 get_color_from_cmap(float value, sampler2D color_map, vec2 colorrange) {
 vec4 vertex_color(vec3 color, bool colorrange, bool colormap){
     return vec4(color, 1.0);
 }
-
 vec4 vertex_color(vec4 color, bool colorrange, bool colormap){
     return color;
 }
-
+vec4 vertex_color(bool color, bool colorrange, bool colormap){
+    // color sampling happens in fragment shader
+    return vec4(0.0, 0.0, 0.0, 0.0);
+}
+vec4 vertex_color(bool value, vec2 colorrange, sampler2D colormap){
+    // color sampling happens in fragment shader
+    return vec4(0.0, 0.0, 0.0, 0.0);
+}
 vec4 vertex_color(float value, vec2 colorrange, sampler2D colormap){
     if (get_interpolate_in_fragment_shader()) {
         return vec4(value, 0.0, 0.0, 0.0);

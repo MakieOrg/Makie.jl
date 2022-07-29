@@ -25,7 +25,7 @@ function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
     get!(uniforms, :depth_shift, 0f0)
     get!(uniforms, :lightposition, Vec3f(1))
     get!(uniforms, :ambient, Vec3f(1))
-
+    get!(uniforms, :interpolate_in_fragment_shader, true)
     uniforms[:normalmatrix] = map(mscene.camera.view, plot.model) do v, m
         i = Vec(1, 2, 3)
         return transpose(inv(v[i, i] * m[i, i]))
@@ -98,7 +98,7 @@ function create_shader(mscene::Scene, plot::Surface)
     normals = Buffer(lift(surface_normals, px, py, pz))
     vertices = GeometryBasics.meta(positions; uv=uv, normals=normals)
     mesh = GeometryBasics.Mesh(vertices, faces)
-    return draw_mesh(mscene, mesh, plot_attributes; uniform_color=color, color=Vec4f(0),
+    return draw_mesh(mscene, mesh, plot_attributes; uniform_color=color, color=false,
                      shading=plot.shading, diffuse=plot.diffuse,
                      specular=plot.specular, shininess=plot.shininess,
                      depth_shift=get(plot, :depth_shift, Observable(0f0)),
@@ -108,13 +108,19 @@ function create_shader(mscene::Scene, plot::Surface)
                      nan_color=get_color(plot, :nan_color))
 end
 
-function create_shader(mscene::Scene, plot::Union{Heatmap,Image})
+function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
     image = plot[3]
     color = Sampler(map(x -> el32convert(x'), image);
                     minfilter=to_value(get(plot, :interpolate, false)) ? :linear : :nearest)
     mesh = limits_to_uvmesh(plot)
+    plot_attributes = copy(plot.attributes)
+    if eltype(color) <: Colorant
+        delete!(plot_attributes, :colormap)
+        delete!(plot_attributes, :colorrange)
+    end
 
-    return draw_mesh(mscene, mesh, plot; uniform_color=color, color=Vec4f(0),
+    return draw_mesh(mscene, mesh, plot_attributes;
+                     uniform_color=color, color=false,
                      normals=Vec3f(0), shading=false,
                      diffuse=plot.diffuse, specular=plot.specular,
                      colorrange=haskey(plot, :colorrange) ? plot.colorrange : false,
