@@ -70,6 +70,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
                 attributes[:color] = Buffer(color_signal) # per vertex colors
             else
                 uniforms[:uniform_color] = Sampler(color_signal) # Texture
+                uniforms[:color] = false
                 !haskey(attributes, :uv) &&
                     @warn "Mesh doesn't use Texturecoordinates, but has a Texture. Colors won't map"
             end
@@ -84,9 +85,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
         end
     end
 
-    if !haskey(attributes, :color)
-        uniforms[:color] = Vec4f(0) # make sure we have a color attribute
-    end
+    get!(uniforms, :color, false) # make sure we have a color attribute
 
     uniforms[:shading] = plot.shading
 
