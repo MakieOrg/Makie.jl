@@ -7,6 +7,7 @@ using ReferenceTests.LinearAlgebra
 using ReferenceTests.FileIO
 using ReferenceTests.Colors
 using ReferenceTests.LaTeXStrings
+using ReferenceTests.DelimitedFiles
 using Makie: Record, volume
 
 @testset "primitives" begin
