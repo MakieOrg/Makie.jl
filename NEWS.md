@@ -7,6 +7,7 @@
 - Fix boundingboxes [#2184](https://github.com/JuliaPlots/Makie.jl/pull/2184).
 - Fix highclip/lowclip in meshscatter, poly, contourf, barplot [#2183](https://github.com/JuliaPlots/Makie.jl/pull/2183).
 - fix gridline updates [#2196](https://github.com/JuliaPlots/Makie.jl/pull/2196).
+- fix glDisablei argument order, which crashed some Intel drivers
 
 ## v0.17.12
 
