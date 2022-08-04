@@ -2,6 +2,16 @@
 
 ## master
 
+## v0.17.13
+
+- Fix boundingboxes [#2184](https://github.com/JuliaPlots/Makie.jl/pull/2184).
+- Fix highclip/lowclip in meshscatter, poly, contourf, barplot [#2183](https://github.com/JuliaPlots/Makie.jl/pull/2183).
+- fix gridline updates [#2196](https://github.com/JuliaPlots/Makie.jl/pull/2196).
+
+## v0.17.12
+
+- Fix stackoverflow in show [#2167](https://github.com/JuliaPlots/Makie.jl/pull/2167)
+
 ## v0.17.11
 
 - `rainclouds`(!) now supports `violin_limits` keyword argument, serving the same.
