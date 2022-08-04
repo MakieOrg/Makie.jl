@@ -56,7 +56,7 @@ function (sp::StandardPrerender)()
         glBlendFunci(0, GL_ONE, GL_ONE)
 
         # buffer 1 is objectid, do nothing
-        glDisablei(1, GL_BLEND)
+        glDisablei(GL_BLEND, 1)
 
         # buffer 2 is color.a, should do product
         # destination <- 0 * source + (source) * destination
