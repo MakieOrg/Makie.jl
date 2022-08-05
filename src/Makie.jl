@@ -47,6 +47,7 @@ import PolygonOps
 import GridLayoutBase
 import ImageIO
 import FileIO
+using NearestNeighbors
 import SparseArrays
 
 using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints
@@ -157,6 +158,8 @@ include("stats/distributions.jl")
 include("stats/crossbar.jl")
 include("stats/boxplot.jl")
 include("stats/violin.jl")
+include("stats/hexbin.jl")
+
 
 # Interactiveness
 include("interaction/events.jl")
