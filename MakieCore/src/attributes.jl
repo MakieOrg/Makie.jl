@@ -8,12 +8,9 @@ Base.broadcastable(x::Attributes) = Ref(x)
 #dict interface
 const AttributeOrPlot = Union{AbstractPlot, Attributes}
 
-
 Attributes(; kw_args...) = Attributes(kw_args)
 Attributes(pairs::Pair...) = Attributes(pairs)
 Attributes(nt::NamedTuple) = Attributes(pairs(nt))
-
-
 
 Base.pop!(x::AttributeOrPlot, args...) = pop!(x.attributes, args...)
 Base.haskey(x::AttributeOrPlot, key::Symbol) = haskey(x.attributes, key)
@@ -30,7 +27,6 @@ end
 Base.get!(x::AttributeOrPlot, key::Symbol, default) = get!(()-> default, x, key)
 Base.get(f::Function, x::AttributeOrPlot, key::Symbol) = haskey(x, key) ? x[key] : f()
 Base.get(x::AttributeOrPlot, key::Symbol, default) = get(()-> default, x, key)
-
 
 attributes(x::Attributes) = getfield(x, :attributes)
 

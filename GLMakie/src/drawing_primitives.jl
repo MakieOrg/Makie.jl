@@ -418,63 +418,35 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Image)
             r = to_range(x, y)
             x, y = minimum(r[1]), minimum(r[2])
             xmax, ymax = maximum(r[1]), maximum(r[2])
-            rect =  Rect2f(x, y, xmax - x, ymax - y)
-            points = decompose(Point2f, rect)
-            faces = decompose(GLTriangleFace, rect)
-            uv = map(decompose_uv(rect)) do uv
-                return 1f0 .- Vec2f(uv[2], uv[1])
-            end
-            return GeometryBasics.Mesh(meta(points; uv=uv), faces)
+            rect = Rect2f(x, y, xmax - x, ymax - y)
+            return triangle_mesh(rect)
         end
-        gl_attributes[:color] = x[3]
+        gl_attributes[:texturecoordinates] = map(decompose_uv(Rect(0, 0, 1, 1))) do uv
+            return 1f0 .- Vec2f(uv[2], uv[1])
+        end
+        gl_attributes[:faces] =
         gl_attributes[:shading] = false
+        gl_attributes[:vertex_color] = Vec4f(0)
+        gl_attributes[:image] = x[3]
+        if to_value(x[3]) isa AbstractMatrix{<: Colorant}
+            delete!(gl_attributes, :color_map)
+            delete!(gl_attributes, :color_norm)
+        end
         connect_camera!(gl_attributes, scene.camera)
         return mesh_inner(screen.shader_cache, mesh, transform_func_obs(x), gl_attributes)
     end
 end
 
-function update_positions(mesh::GeometryBasics.Mesh, positions)
-    points = coordinates(mesh)
-    attr = GeometryBasics.attributes(points)
-    delete!(attr, :position) # position == metafree(points)
-    return GeometryBasics.Mesh(meta(positions; attr...), faces(mesh))
-end
-
 function mesh_inner(shader_cache, mesh, transfunc, gl_attributes)
     # signals not supported for shading yet
     gl_attributes[:shading] = to_value(pop!(gl_attributes, :shading))
-    color = pop!(gl_attributes, :color)
-    interp = to_value(pop!(gl_attributes, :interpolate, true))
-    interp = interp ? :linear : :nearest
-    if to_value(color) isa Colorant
-        gl_attributes[:vertex_color] = color
-        delete!(gl_attributes, :color_map)
-        delete!(gl_attributes, :color_norm)
-    elseif to_value(color) isa Makie.AbstractPattern
-        img = lift(x -> el32convert(Makie.to_image(x)), color)
-        gl_attributes[:image] = ShaderAbstractions.Sampler(img, x_repeat=:repeat, minfilter=:nearest)
-        haskey(gl_attributes, :fetch_pixel) || (gl_attributes[:fetch_pixel] = true)
-    elseif to_value(color) isa AbstractMatrix{<:Colorant}
-        gl_attributes[:image] = Texture(const_lift(el32convert, color), minfilter = interp)
-        delete!(gl_attributes, :color_map)
-        delete!(gl_attributes, :color_norm)
-    elseif to_value(color) isa AbstractMatrix{<: Number}
-        gl_attributes[:image] = Texture(const_lift(el32convert, color), minfilter = interp)
-        gl_attributes[:color] = nothing
-    elseif to_value(color) isa AbstractVector{<: Union{Number, Colorant}}
-        mesh = lift(mesh, color) do mesh, color
-            return GeometryBasics.pointmeta(mesh, color=el32convert(color))
-        end
-    else
-        error("Unsupported color type: $(typeof(to_value(color)))")
+    gl_attributes[:vertices] = lift(mesh, transfunc) do mesh, func
+        return apply_transform(func, decompose(Pointf, mesh))
     end
-    mesh = map(mesh, transfunc) do mesh, func
-        if !Makie.is_identity_transform(func)
-            return update_positions(mesh, apply_transform.(Ref(func), mesh.position))
-        end
-        return mesh
-    end
-    return draw_mesh(shader_cache, mesh, gl_attributes)
+    gl_attributes[:faces] = lift(faces, mesh)
+    # color is only kept for backwards compat (vertex_color/image in shader)
+    delete!(gl_attributes, :color)
+    return GLVisualize.draw_mesh(shader_cache, gl_attributes)
 end
 
 function draw_atomic(screen::GLScreen, scene::Scene, meshplot::Mesh)

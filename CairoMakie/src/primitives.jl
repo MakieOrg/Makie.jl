@@ -746,7 +746,7 @@ function draw_mesh3D(
             p_0_to_1 = (p_yflip .+ 1f0) ./ 2f0
         end
         p = p_0_to_1 .* scene.camera.resolution[]
-        return Vec3f(p[1], p[2], clip[3])
+        return Point3f(p[1], p[2], clip[3])
     end
 
     # Approximate zorder
@@ -845,8 +845,8 @@ function surface2mesh(xs, ys, zs::AbstractMatrix)
     rect = Tesselation(Rect2f(0, 0, 1, 1), size(zs))
     faces = decompose(QuadFace{Int}, rect)
     uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
-    uvm = GeometryBasics.Mesh(GeometryBasics.meta(ps; uv=uv), faces)
-    return GeometryBasics.normal_mesh(uvm)
+    m = GeometryBasics.Mesh(ps, faces)
+    return MetaMesh(m, (uv=uv, normals=decompose_normals(m)))
 end
 
 ################################################################################
@@ -864,7 +864,6 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
     m = convert_attribute(marker, key"marker"(), key"meshscatter"())
     pos = primitive[1][]
     # For correct z-ordering we need to be in view/camera or screen space
-    model = copy(model)
     view = scene.camera.view[]
 
     zorder = sortperm(pos, by = p -> begin

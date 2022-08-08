@@ -211,6 +211,8 @@ pkgs = [(; path="./MakieCore"), (; path="."), (; path="./$Package"), (;name="Ben
 Package == "WGLMakie" && push!(pkgs, (; name="ElectronDisplay"))
 # cd("dev/Makie")
 Pkg.develop(pkgs)
+Package == "WGLMakie" && Pkg.add([(; name="JSServe", rev="sd/compiles")])
+Pkg.add([(; name="GeometryBasics", rev="sd/simple-mesh")])
 @time Pkg.precompile()
 
 project2 = make_project_folder(base_branch)

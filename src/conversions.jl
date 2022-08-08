@@ -30,7 +30,7 @@ end
 
 @convert_target struct Mesh
     # We currently allow Mesh and vector of meshes for the Mesh type.
-    mesh::Union{AbstractVector{<:GeometryBasics.Mesh}, GeometryBasics.Mesh}
+    mesh::Union{Vector{<:GeometryBasics.TriangleMesh}, GeometryBasics.TriangleMesh}
 end
 
 @convert_target struct Volume
@@ -181,10 +181,10 @@ convert_arguments(P::PointBased, x::Rect2) = (decompose(Point2f, x)[[1, 2, 4, 3]
 convert_arguments(P::PointBased, rect::Rect3) =  (decompose(Point3f, rect),)
 convert_arguments(P::PointBased, mesh::AbstractMesh) = (decompose(Point3f, mesh),)
 
-function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) where {P<:AbstractPoint}
-    # TODO FaceView should be natively supported by backends!
-    return convert_arguments(PB, collect(reinterpret(P, linesegments)))
-end
+# function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) where {P<:AbstractPoint}
+#     # TODO FaceView should be natively supported by backends!
+#     return convert_arguments(PB, collect(reinterpret(P, linesegments)))
+# end
 
 function convert_arguments(P::Type{<: LineSegments}, rect::Rect3)
     f = decompose(LineFace{Int}, rect)
@@ -204,23 +204,23 @@ end
 
 Takes an input `LineString` and decomposes it to points.
 """
-function convert_arguments(PB::PointBased, linestring::LineString)
-    return convert_arguments(PB, decompose(Point, linestring))
-end
+# function convert_arguments(PB::PointBased, linestring::LineString)
+#     return convert_arguments(PB, decompose(Point, linestring))
+# end
 
 """
     convert_arguments(PB, Union{Array{<:LineString}, MultiLineString})
 
 Takes an input `Array{LineString}` or a `MultiLineString` and decomposes it to points.
 """
-function convert_arguments(PB::PointBased, linestring::Union{Array{<:LineString}, MultiLineString})
-    arr = copy(convert_arguments(PB, linestring[1])[1])
-    for ls in 2:length(linestring)
-        push!(arr, Point2f(NaN))
-        append!(arr, convert_arguments(PB, linestring[ls])[1])
-    end
-    return (arr,)
-end
+# function convert_arguments(PB::PointBased, linestring::Union{Array{<:LineString}, MultiLineString})
+#     arr = copy(convert_arguments(PB, linestring[1])[1])
+#     for ls in 2:length(linestring)
+#         push!(arr, Point2f(NaN))
+#         append!(arr, convert_arguments(PB, linestring[ls])[1])
+#     end
+#     return (arr,)
+# end
 
 """
     convert_arguments(PB, Polygon)
@@ -247,13 +247,49 @@ end
 
 Takes an input `Array{Polygon}` or a `MultiPolygon` and decomposes it to points.
 """
-function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon}, MultiPolygon})
-    arr = copy(convert_arguments(PB, mp[1])[1])
-    for p in 2:length(mp)
-        push!(arr, Point2f(NaN))
-        append!(arr, convert_arguments(PB, mp[p])[1])
+# function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon}, MultiPolygon})
+#     arr = copy(convert_arguments(PB, mp[1])[1])
+#     for p in 2:length(mp)
+#         push!(arr, Point2f(NaN))
+#         append!(arr, convert_arguments(PB, mp[p])[1])
+#     end
+#     return (arr,)
+# end
+
+
+################################################################################
+#                             Function Conversions                             #
+################################################################################
+
+function convert_arguments(P::PointBased, r::AbstractVector, f::Function)
+    return convert_arguments(P, r, f.(r))
+end
+
+function convert_arguments(P::PointBased, i::AbstractInterval, f::Function)
+    x, y = PlotUtils.adapted_grid(f, endpoints(i))
+    return convert_arguments(P, x, y)
+end
+
+# The following `tryrange` code was copied from Plots.jl
+# https://github.com/JuliaPlots/Plots.jl/blob/15dc61feb57cba1df524ce5d69f68c2c4ea5b942/src/series.jl#L399-L416
+
+# try some intervals over which the function may be defined
+function tryrange(F::AbstractArray, vec)
+    rets = [tryrange(f, vec) for f in F] # get the preferred for each
+    maxind = maximum(indexin(rets, vec)) # get the last attempt that succeeded (most likely to fit all)
+    rets .= [tryrange(f, vec[maxind:maxind]) for f in F] # ensure that all functions compute there
+    rets[1]
+end
+
+function tryrange(F, vec)
+    for v in vec
+        try
+            F(v)
+            return v
+        catch
+        end
     end
-    return (arr,)
+    error("$F is not a Function, or is not defined at any of the values $vec")
 end
 
 
@@ -526,6 +562,11 @@ end
 #                                    <:Mesh                                    #
 ################################################################################
 
+
+function convert_arguments(::Type{<:Mesh}, geom::AbstractGeometry)
+    return (triangle_mesh(geom),)
+end
+
 """
     convert_arguments(Mesh, x, y, z)::GLNormalMesh
 
@@ -553,36 +594,24 @@ function convert_arguments(
     return convert_arguments(MT, xyz, collect(faces))
 end
 
-function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N}) where {N}
-    # Make sure we have normals!
-    if !hasproperty(mesh, :normals)
-        n = normals(mesh)
-        # Normals can be nothing, when it's impossible to calculate the normals (e.g. 2d mesh)
-        if n !== nothing
-            mesh = GeometryBasics.pointmeta(mesh, decompose(Vec3f, n))
-        end
-    end
-    return (GeometryBasics.mesh(mesh, pointtype=Point{N, Float32}, facetype=GLTriangleFace),)
+function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.MetaMesh{N}) where {N}
+    normals = hasproperty(mesh, :normals) ? mesh.normals : automatic
+    uv = hasproperty(mesh, :uv) ? mesh.uv : automatic
+    color = hasproperty(mesh, :color) ? mesh.color : automatic
+    return PlotSpec{Mesh}(GeometryBasics.Mesh(mesh); normals=normals, texturecoordinates=uv, color=color)
 end
 
 function convert_arguments(
         MT::Type{<:Mesh},
-        meshes::AbstractVector{<: Union{AbstractMesh, AbstractPolygon}}
+        xyz::Union{AbstractPolygon, AbstractVector{<: Point{2}}}
     )
-    return (meshes,)
-end
-
-function convert_arguments(
-        MT::Type{<:Mesh},
-        xyz::Union{AbstractPolygon, AbstractVector{<: AbstractPoint{2}}}
-    )
-    return convert_arguments(MT, triangle_mesh(xyz))
+    return convert_arguments(MT, GeometryBasics.Mesh(xyz))
 end
 
 function convert_arguments(MT::Type{<:Mesh}, geom::GeometryPrimitive)
     # we convert to UV mesh as default, because otherwise the uv informations get lost
     # - we can still drop them, but we can't add them later on
-    return (GeometryBasics.uv_normal_mesh(geom),)
+    return convert_arguments(MT, GeometryBasics.uv_normal_mesh(geom))
 end
 
 """
@@ -611,8 +640,7 @@ function convert_arguments(
         vertices::AbstractArray,
         indices::AbstractArray
     )
-    m = GeometryBasics.Mesh(to_vertices(vertices), to_triangles(indices))
-    (normal_mesh(m),)
+    return (GeometryBasics.Mesh(to_vertices(vertices), to_triangles(indices)),)
 end
 
 
@@ -658,7 +686,7 @@ function to_triangles(x::AbstractVector{Int})
 end
 
 function to_triangles(idx0::AbstractVector{UInt32})
-    reinterpret(GLTriangleFace, idx0)
+    collect(reinterpret(GLTriangleFace, idx0))
 end
 
 function to_triangles(faces::AbstractVector{TriangleFace{T}}) where T

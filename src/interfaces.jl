@@ -51,6 +51,38 @@ function calculated_attributes!(T::Type{<: Mesh}, plot)
     color = haskey(mesha[], :color) ? lift(x-> x[:color], mesha) : plot.color
     need_cmap = color_and_colormap!(plot, color)
     need_cmap || delete!(plot, :colormap)
+    attributes = plot.attributes
+    color = lift(to_color, attributes.color)
+    interp = to_value(pop!(attributes, :interpolation, true))
+    interp = interp ? :linear : :nearest
+    needs_uv = false
+    if to_value(color) isa Colorant
+        attributes[:vertex_color] = color
+        delete!(attributes, :color_map)
+        delete!(attributes, :color_norm)
+    elseif to_value(color) isa Makie.AbstractPattern
+        img = lift(to_image, color)
+        attributes[:image] = ShaderAbstractions.Sampler(img, x_repeat=:repeat, minfilter=:nearest)
+        get!(attributes, :fetch_pixel, true)
+        needs_uv = true
+    elseif to_value(color) isa AbstractMatrix{<:Colorant}
+        attributes[:image] = ShaderAbstractions.Sampler(lift(to_color, color), minfilter = interp)
+        delete!(attributes, :color_map)
+        delete!(attributes, :color_norm)
+        needs_uv = true
+    elseif to_value(color) isa AbstractMatrix{<: Number}
+        attributes[:image] = ShaderAbstractions.Sampler(lift(el32convert, color), minfilter = interp)
+        needs_uv = true
+    elseif to_value(color) isa AbstractVector{<: Union{Number, Colorant}}
+        attributes[:vertex_color] = color
+    end
+    replace_automatic!(plot, :normals) do
+        return plot.shading[] ? lift(decompose_normals, plot.mesh) : nothing
+    end
+    replace_automatic!(plot, :texturecoordinates) do
+        return needs_uv ? lift(decompose_uv, plot.mesh) : Vec2f(0)
+    end
+
     return
 end
 
@@ -164,7 +196,10 @@ function apply_convert!(P, attributes::Attributes, x::PlotSpec{S}) where S
     # Note that kw_args in the plot spec that are not part of the target plot type
     # will end in the "global plot" kw_args (rest)
     for (k, v) in pairs(kwargs)
-        attributes[k] = v
+        # Don't set value when automatic, to leave it up to the theme etc
+        if !(v isa Automatic)
+            attributes[k] = v
+        end
     end
     pt = plottype(S, P)
     return (pt, values(convert_arguments_typed(pt, args...)))
@@ -252,14 +287,14 @@ plottype(::AbstractMatrix{<: Real}) = Heatmap
 plottype(::Array{<: AbstractFloat, 3}) = Volume
 plottype(::AbstractString) = Text
 
-plottype(::LineString) = Lines
-plottype(::AbstractVector{<:LineString}) = Lines
-plottype(::MultiLineString) = Lines
+# plottype(::LineString) = Lines
+# plottype(::AbstractVector{<:LineString}) = Lines
+# plottype(::MultiLineString) = Lines
 
 plottype(::Polygon) = Poly
 plottype(::GeometryBasics.AbstractPolygon) = Poly
 plottype(::AbstractVector{<:GeometryBasics.AbstractPolygon}) = Poly
-plottype(::MultiPolygon) = Lines
+# plottype(::MultiPolygon) = Lines
 
 """
     plottype(P1::Type{<: Combined{T1}}, P2::Type{<: Combined{T2}})

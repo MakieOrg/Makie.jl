@@ -48,6 +48,7 @@ jobs:
           using Pkg;
           # dev mono repo versions
           pkg"dev . ./MakieCore ./WGLMakie ./ReferenceTests"
+          pkg"add GeometryBasics#sd/simple-mesh"
       - name: Run the tests
         continue-on-error: true
         run: >

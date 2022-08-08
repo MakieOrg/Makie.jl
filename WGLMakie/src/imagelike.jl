@@ -134,7 +134,7 @@ end
 
 function create_shader(mscene::Scene, plot::Volume)
     x, y, z, vol = plot[1], plot[2], plot[3], plot[4]
-    box = GeometryBasics.mesh(Rect3f(Vec3f(0), Vec3f(1)))
+    box = GeometryBasics.triangle_mesh(Rect3f(Vec3f(0), Vec3f(1)))
     cam = cameracontrols(mscene)
     model2 = lift(plot.model, x, y, z) do m, xyz...
         mi = minimum.(xyz)
