@@ -126,7 +126,7 @@ end
 ### the two plotting functions create linesegpairs in two different ways
 ### and then hit the same underlying implementation in `_plot_bars!`
 
-function Makie.plot!(plot::Errorbars{T}) where T <: Tuple{AbstractVector{<:VecTypes{4}}}
+function Makie.plot!(plot::PlotObject, ::Errorbars, ::AbstractVector{<:VecTypes{4}})
 
     x_y_low_high = plot[1]
 
@@ -153,7 +153,7 @@ function Makie.plot!(plot::Errorbars{T}) where T <: Tuple{AbstractVector{<:VecTy
 end
 
 
-function Makie.plot!(plot::Rangebars{T}) where T <: Tuple{AbstractVector{<:VecTypes{3}}}
+function Makie.plot!(plot::PlotObject, ::Rangebars, ::AbstractVector{<:VecTypes{3}})
 
     val_low_high = plot[1]
 

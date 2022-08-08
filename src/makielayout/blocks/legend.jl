@@ -405,18 +405,18 @@ function legendelements(plot::Scatter, legend)
     )]
 end
 
-function legendelements(plot::Union{Poly, Violin, BoxPlot, CrossBar, Density}, legend)
-    LegendElement[PolyElement(
-        color = scalar_lift(plot.color, legend.polycolor),
-        strokecolor = scalar_lift(plot.strokecolor, legend.polystrokecolor),
-        strokewidth = scalar_lift(plot.strokewidth, legend.polystrokewidth),
-    )]
-end
+# function legendelements(plot::Union{Poly, Violin, BoxPlot, CrossBar, Density}, legend)
+#     LegendElement[PolyElement(
+#         color = scalar_lift(plot.color, legend.polycolor),
+#         strokecolor = scalar_lift(plot.strokecolor, legend.polystrokecolor),
+#         strokewidth = scalar_lift(plot.strokewidth, legend.polystrokewidth),
+#     )]
+# end
 
-function legendelements(plot::Band, legend)
-    # there seems to be no stroke for Band, so we set it invisible
-    LegendElement[PolyElement(polycolor = scalar_lift(plot.color, legend.polystrokecolor), polystrokecolor = :transparent, polystrokewidth = 0)]
-end
+# function legendelements(plot::Band, legend)
+#     # there seems to be no stroke for Band, so we set it invisible
+#     LegendElement[PolyElement(polycolor = scalar_lift(plot.color, legend.polystrokecolor), polystrokecolor = :transparent, polystrokewidth = 0)]
+# end
 
 # if there is no specific overload available, we go through the child plots and just stack
 # those together as a simple fallback
@@ -586,11 +586,11 @@ The position can be a Symbol where the first letter controls the horizontal
 alignment and can be l, r or c, and the second letter controls the vertical
 alignment and can be t, b or c. Or it can be a tuple where the first
 element is set as the Legend's halign and the second element as its valign.
-                        
-With the keywords merge and unique you can control how plot objects with the 
-same labels are treated. If merge is true, all plot objects with the same 
-label will be layered on top of each other into one legend entry. If unique 
-is true, all plot objects with the same plot type and label will be reduced 
+
+With the keywords merge and unique you can control how plot objects with the
+same labels are treated. If merge is true, all plot objects with the same
+label will be layered on top of each other into one legend entry. If unique
+is true, all plot objects with the same plot type and label will be reduced
 to one occurrence.
 """
 function axislegend(ax, args...; position = :rt, kwargs...)

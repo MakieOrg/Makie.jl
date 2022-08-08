@@ -83,10 +83,10 @@ function pick_hist_edges(vals, bins)
     end
 end
 
-function Makie.plot!(plot::Hist)
+function Makie.plot!(plot::PlotObject, ::Hist)
 
     values = plot.values
-    edges = lift(pick_hist_edges, values, plot.bins) 
+    edges = lift(pick_hist_edges, values, plot.bins)
 
     points = lift(edges, plot.normalization, plot.scale_to, plot.weights) do edges, normalization, scale_to, wgts
         w = wgts === automatic ? () : (StatsBase.weights(wgts),)

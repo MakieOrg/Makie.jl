@@ -33,18 +33,11 @@ end
 
 @deprecate mouse_selection pick
 
-function flatten_plots(x::Atomic, plots = AbstractPlot[])
+function flatten_plots(x::PlotObject, plots = AbstractPlot[])
     if isempty(x.plots)
         push!(plots, x)
     else
         flatten_plots(x.plots, plots)
-    end
-    plots
-end
-
-function flatten_plots(x::Combined, plots = AbstractPlot[])
-    for elem in x.plots
-        flatten_plots(elem, plots)
     end
     plots
 end

@@ -28,7 +28,7 @@ xvector(x::AbstractMatrix, len) = x
 yvector(x, len) = xvector(x, len)'
 yvector(x::AbstractMatrix, len) = x
 
-function plot!(plot::Wireframe{<: Tuple{<: Any, <: Any, <: AbstractMatrix}})
+function plot!(plot, ::Wireframe)
     points_faces = lift(plot[1:3]...) do x, y, z
         M, N = size(z)
         points = vec(Point3f.(xvector(x, M), yvector(y, N), z))
@@ -40,7 +40,7 @@ function plot!(plot::Wireframe{<: Tuple{<: Any, <: Any, <: AbstractMatrix}})
     linesegments!(plot, Attributes(plot), points_faces)
 end
 
-function plot!(plot::Wireframe{Tuple{T}}) where T
+function plot!(plot::PlotObject, ::Wireframe)
     points = lift(plot[1]) do g
         # get the point representation of the geometry
         indices = decompose(LineFace{GLIndex}, g)

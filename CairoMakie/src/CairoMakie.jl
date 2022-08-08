@@ -8,12 +8,13 @@ import Cairo
 
 using Makie: Scene, Lines, Text, Image, Heatmap, Scatter, @key_str, broadcast_foreach
 using Makie: convert_attribute, @extractvalue, LineSegments, to_ndim, NativeFont
-using Makie: @info, @get_attribute, Combined
+using Makie: @info, @get_attribute, PlotObject
 using Makie: to_value, to_colormap, extrema_nan
 using Makie: inline!
 using Makie.Observables
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
 using Makie: numbers_to_colors
+using Makie: TypedPlot
 
 const OneOrVec{T} = Union{
     T,
@@ -24,8 +25,11 @@ const OneOrVec{T} = Union{
 # re-export Makie, including deprecated names
 for name in names(Makie, all=true)
     if Base.isexported(Makie, name)
-        @eval using Makie: $(name)
-        @eval export $(name)
+        try
+            @eval using Makie: $(name)
+            @eval export $(name)
+        catch e
+        end
     end
 end
 export inline!

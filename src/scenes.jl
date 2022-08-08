@@ -400,11 +400,11 @@ function _empty_recursion(scene::Scene)
     return
 end
 
-Base.push!(scene::Combined, subscene) = nothing # Combined plots add themselves uppon creation
+Base.push!(scene::PlotObject, plot::PlotObject) = push!(scene.plots, plot) # PlotObject plots add themselves uppon creation
 
 function Base.push!(scene::Scene, plot::AbstractPlot)
     push!(scene.plots, plot)
-    plot isa Combined || (plot.parent[] = scene)
+    plot isa PlotObject || (plot.parent[] = scene)
     for screen in scene.current_screens
         insert!(screen, scene, plot)
     end
@@ -487,7 +487,7 @@ Flattens all the combined plots and returns a Vector of Atomic plots
 """
 function flatten_combined(plots::Vector, flat=AbstractPlot[])
     for elem in plots
-        if (elem isa Combined)
+        if (elem isa PlotObject)
             flatten_combined(elem.plots, flat)
         else
             push!(flat, elem)
@@ -521,7 +521,7 @@ function center!(scene::Scene, padding=0.01, exclude = not_in_data_space)
 end
 
 parent_scene(x) = parent_scene(get_scene(x))
-parent_scene(x::Combined) = parent_scene(parent(x))
+parent_scene(x::PlotObject) = parent_scene(parent(x))
 parent_scene(x::Scene) = x
 
 Base.isopen(x::SceneLike) = events(x).window_open[]
@@ -559,3 +559,52 @@ struct FigureAxisPlot
 end
 
 const FigureLike = Union{Scene, Figure, FigureAxisPlot}
+
+function plot!(scene::Union{PlotObject, Scene}, P::AbstractPlot, args...)
+    # plot!(scene, P)
+end
+
+function apply_theme!(scene::Scene, plot::PlotObject)
+    theme = default_theme(scene, plot.type())
+    raw_attr = getfield(plot.attributes, :attributes)
+    for (k, v) in plot.kw
+        raw_attr[k] = convert(Observable{Any}, v)
+    end
+    merge!(plot.attributes, theme)
+end
+
+function prepare_plot!(scene::Union{PlotObject, Scene}, plot::PlotObject)
+    plot.parent = scene
+    connect!(transformation(scene), transformation(plot))
+    apply_theme!(parent_scene(scene), plot)
+    convert_arguments!(plot)
+    calculated_attributes!(plot.type, plot)
+    plot!(plot, plot.type(), map(to_value, plot.converted)...)
+    return plot
+end
+
+function plot!(scene::Union{PlotObject, Scene}, plot::PlotObject)
+    prepare_plot!(scene, plot)
+    push!(scene, plot)
+    return plot
+end
+
+function convert_arguments!(plot::PlotObject)
+    function on_update(args...)
+        nt = convert_arguments(plot.type, args...)
+        P, converted =  apply_convert!(plot.type(), plot.attributes, nt)
+        if isempty(plot.converted)
+            # initialize the tuple first for when it was `()`
+            plot.converted = Observable.(converted)
+        end
+        for (obs, new_val) in zip(plot.converted, converted)
+            obs[] = new_val
+        end
+    end
+    on_update(map(to_value, plot.args)...)
+    onany(on_update, plot.args...)
+    return
+end
+
+MakieCore.repr_arg(x::FreeTypeAbstraction.FTFont) = repr(FreeTypeAbstraction.fontname(x))
+MakieCore.repr_arg(x::Point{N}) where N = "Point$(N)f($(join(x, ", ")))"

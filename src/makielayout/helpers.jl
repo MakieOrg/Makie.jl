@@ -12,7 +12,6 @@ end
 
 function sceneareanode!(finalbbox, limits, aspect)
     return map(finalbbox, limits, aspect; ignore_equal_values=true) do bbox, limits, aspect
-
         w = width(bbox)
         h = height(bbox)
         # as = mw / mh

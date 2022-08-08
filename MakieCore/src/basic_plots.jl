@@ -293,7 +293,7 @@ Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
 - `space::Symbol = :data` sets the transformation space for line position. See `Makie.spaces()` for possible inputs.
 """
 @recipe(LineSegments, positions) do scene
-    default_theme(scene, Lines)
+    default_theme(scene, Lines())
 end
 
 """

@@ -317,8 +317,14 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, args.
     return
 end
 
-function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args...)
-    axis = Axis3D(scene, attributes, args)
+function axis3d!(scene::Scene, args...; attributes...)
+    axis = PlotObject(Axis3D, Any[args...], Dict{Symbol, Any}(attributes))
+    # TODO make this a connect function
+    axis.parent = scene
+    connect!(transformation(scene), transformation(axis))
+    apply_theme!(parent_scene(scene), axis)
+    convert_arguments!(axis)
+
     # Disable any non linear transform for the axis plot!
     axis.transformation.transform_func[] = identity
     textbuffer = TextBuffer(axis, Point3, transparency = true, markerspace = :data,
@@ -343,6 +349,7 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
     return axis
 end
 
-function axis3d!(scene::Scene, lims = data_limits(scene, p -> isaxis(p) || not_in_data_space(p)); kw...)
-    axis3d!(scene, Attributes(), lims; ticks = (ranges = automatic, labels = automatic), kw...)
+function axis3d!(scene::Scene; kw...)
+    lims = data_limits(scene, exclude=(p -> isaxis(p) || not_in_data_space(p)))
+    axis3d!(scene, lims; ticks = (ranges = automatic, labels = automatic), kw...)
 end

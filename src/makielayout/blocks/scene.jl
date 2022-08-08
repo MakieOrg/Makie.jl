@@ -30,7 +30,7 @@ function initialize_block!(ls::LScene; scenekw = NamedTuple())
                 # update limits when scene limits change
                 limits = lift(ls.scene.theme.limits) do lims
                     if lims === automatic
-                        dl = data_limits(ls.scene, p -> Makie.isaxis(p) || Makie.not_in_data_space(p))
+                        dl = data_limits(ls.scene, exclude = (p -> Makie.isaxis(p) || Makie.not_in_data_space(p)))
                         if any(isinf, widths(dl)) || any(isinf, Makie.origin(dl))
                             Rect3f((0f0, 0f0, 0f0), (1f0, 1f0, 1f0))
                         else

@@ -1,9 +1,8 @@
-# TODO find an appropriate target and
 @convert_target struct Text
     glyphs::Any
 end
 
-function plot!(plot::Text)
+function plot!(plot::PlotObject, ::Text, ::AbstractVector)
     positions = plot[1]
     # attach a function to any text that calculates the glyph layout and stores it
     glyphcollections = Observable(GlyphCollection[])
@@ -103,7 +102,7 @@ function _get_glyphcollection_and_linesegments(latexstring::LaTeXString, index, 
     glyphcollections, linesegs, linewidths, linecolors, lineindices
 end
 
-function plot!(plot::Text{<:Tuple{<:AbstractString}})
+function plot!(plot::PlotObject, ::Text, ::AbstractString)
     text!(plot, plot.position; text = plot[1], plot.attributes...)
     plot
 end
@@ -118,16 +117,16 @@ convert_arguments(::Type{<: Text}, string::AbstractString) = (string,)
 # TODO: is this necessary? there seems to be a recursive loop with the above
 # function without these two interceptions, but I didn't need it before merging
 # everything into the monorepo...
-plot!(plot::Text{<:Tuple{<:GlyphCollection}}) = plot
-plot!(plot::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}}) = plot
+plot!(plot::PlotObject, ::Text, ::GlyphCollection) = plot
+plot!(plot::PlotObject, ::Text, ::AbstractVector{<:GlyphCollection}) = plot
 
-function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
+function plot!(plot::PlotObject, ::Text, ::AbstractVector{<:AbstractString})
     text!(plot, plot.position; text = plot[1], plot.attributes...)
     plot
 end
 
 # overload text plotting for a vector of tuples of a string and a point each
-function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:AbstractString, <:Point}}}})
+function plot!(plot::PlotObject, ::Text, ::AbstractVector{<:Tuple{<:AbstractString, <:Point}})
     strings_and_positions = plot[1]
 
     strings = Observable(first.(strings_and_positions[]))

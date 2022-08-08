@@ -18,7 +18,7 @@ Plots polygons, which are defined by
 ## Attributes
 $(ATTRIBUTES)
 """
-@recipe(Poly) do scene
+@recipe(Poly, polygon) do scene
     Attributes(;
         color = theme(scene, :patchcolor),
         visible = theme(scene, :visible),
@@ -49,7 +49,7 @@ convert_arguments(::Type{<: Poly}, args...) = ([convert_arguments(Scatter, args.
 convert_arguments(::Type{<: Poly}, vertices::AbstractArray, indices::AbstractArray) = convert_arguments(Mesh, vertices, indices)
 convert_arguments(::Type{<: Poly}, m::GeometryBasics.AbstractGeometry) = (m,)
 
-function plot!(plot::Poly{<: Tuple{GeometryBasics.AbstractGeometry}})
+function plot!(plot::PlotObject, ::Poly, ::GeometryBasics.AbstractGeometry)
     mesh!(
         plot, lift(triangle_mesh, plot[1]),
         color = plot[:color],
@@ -65,12 +65,12 @@ function plot!(plot::Poly{<: Tuple{GeometryBasics.AbstractGeometry}})
         transparency = plot[:transparency],
         space = plot[:space]
     )
-    wireframe!(
-        plot, plot[1],
-        color = plot[:strokecolor], linestyle = plot[:linestyle], space = plot[:space],
-        linewidth = plot[:strokewidth], visible = plot[:visible], overdraw = plot[:overdraw],
-        inspectable = plot[:inspectable], transparency = plot[:transparency]
-    )
+    # wireframe!(
+    #     plot, plot[1],
+    #     color = plot[:strokecolor], linestyle = plot[:linestyle], space = plot[:space],
+    #     linewidth = plot[:strokewidth], visible = plot[:visible], overdraw = plot[:overdraw],
+    #     inspectable = plot[:inspectable], transparency = plot[:transparency]
+    # )
 end
 
 # Poly conversion
@@ -123,7 +123,7 @@ function to_line_segments(polygon::AbstractVector{<: VecTypes})
     return result
 end
 
-function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyElements}}}})
+function plot!(plot::PlotObject, ::Poly, ::Union{Polygon, AbstractVector{<: PolyElements}})
     geometries = plot[1]
     meshes = lift(poly_convert, geometries)
     mesh!(plot, meshes;
@@ -172,7 +172,7 @@ function convert_arguments(
     return ([triangle_mesh(m) for m in meshes],)
 end
 
-function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractGeometry
+function plot!(plot::PlotObject, ::Mesh, ::AbstractVector{P}) where P <: AbstractGeometry
     meshes = plot[1]
     color_node = plot.color
 
@@ -222,6 +222,7 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractGe
             return merge(GeometryBasics.triangle_mesh.(meshes))
         end
     end
-    mesh!(plot, attributes, bigmesh)
+    mesh!(plot, bigmesh; attributes...)
     return
+
 end

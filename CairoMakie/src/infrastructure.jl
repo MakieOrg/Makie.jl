@@ -189,7 +189,7 @@ function cairo_draw(screen::CairoScreen, scene::Scene)
         if to_value(get(p, :rasterize, false)) != false && should_rasterize
             draw_plot_as_image(pparent, screen, p, p[:rasterize][])
         else # draw vector
-            draw_plot(pparent, screen, p)
+            draw_plot(pparent, screen, TypedPlot(p))
         end
         Cairo.restore(screen.context)
     end
@@ -244,19 +244,18 @@ function draw_background(screen::CairoScreen, scene::Scene)
     foreach(child_scene-> draw_background(screen, child_scene), scene.children)
 end
 
-function draw_plot(scene::Scene, screen::CairoScreen, primitive::Combined)
-    if to_value(get(primitive, :visible, true))
-        if isempty(primitive.plots)
-            Cairo.save(screen.context)
-            draw_atomic(scene, screen, primitive)
-            Cairo.restore(screen.context)
-        else
-            for plot in primitive.plots
-                draw_plot(scene, screen, plot)
-            end
+function draw_plot(scene::Scene, screen::CairoScreen, primitive::AbstractPlot)
+    # don't draw invisible plots
+    to_value(get(primitive, :visible, true)) || return
+    if isempty(primitive.plots)
+        Cairo.save(screen.context)
+        draw_atomic(scene, screen, primitive)
+        Cairo.restore(screen.context)
+    else
+        for plot in primitive.plots
+            draw_plot(scene, screen, TypedPlot(plot))
         end
     end
-    return
 end
 
 # Possible improvements for this function:
@@ -264,7 +263,7 @@ end
 #   instead of the whole Scene
 # - Recognize when a screen is an image surface, and set scale to render the plot
 #   at the scale of the device pixel
-function draw_plot_as_image(scene::Scene, screen::CairoScreen, primitive::Combined, scale::Number = 1)
+function draw_plot_as_image(scene::Scene, screen::CairoScreen, primitive::PlotObject, scale::Number = 1)
     # you can provide `p.rasterize = scale::Int` or `p.rasterize = true`, both of which are numbers
 
     # Extract scene width in pixels
@@ -273,7 +272,7 @@ function draw_plot_as_image(scene::Scene, screen::CairoScreen, primitive::Combin
     # specifically for the plot's parent scene.
     scr = CairoScreen(scene; device_scaling_factor = scale)
     # Draw the plot to the screen, in the normal way
-    draw_plot(scene, scr, primitive)
+    draw_plot(scene, scr, TypedPlot(primitive))
 
     # Now, we draw the rasterized plot to the main screen.
     # Since it has already been prepared by `prepare_for_scene`,
@@ -390,7 +389,7 @@ function Makie.backend_show(x::CairoBackend, io::IO, ::MIME"image/png", scene::S
     # while relative line and font sizes are unaffected
     px_per_unit = get(io, :px_per_unit, x.px_per_unit)
     antialias = get(io, :antialias, x.antialias)
-    
+
     # create an ARGB surface, to speed up drawing ops.
     screen = CairoScreen(scene; device_scaling_factor = px_per_unit, antialias = antialias)
     cairo_draw(screen, scene)

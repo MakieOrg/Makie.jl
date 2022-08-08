@@ -17,7 +17,7 @@ $(ATTRIBUTES)
     )
 end
 
-function plot!(plot::VolumeSlices)
+function plot!(plot::PlotObject, ::VolumeSlices)
     @extract plot (x, y, z, volume)
     replace_automatic!(plot, :colorrange) do
         map(extrema, volume)
