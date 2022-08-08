@@ -1,6 +1,7 @@
 # News
 
 ## master
+- `hexbin` is now available as a recipe [#368] (https://github.com/JuliaPlots/Makie.jl/pull/2201)
 
 ## v0.17.13
 

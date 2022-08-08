@@ -16,8 +16,8 @@ Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
     Attributes(;
     colormap = theme(scene, :colormap),
     colorrange=Makie.automatic,
-    gridsize::Int=20,
-    mincnt::Int = 0,
+    gridsize = 20,
+    mincnt = 0,
     scale=identity)
 end
 
