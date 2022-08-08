@@ -46,10 +46,8 @@ function color_and_colormap!(plot, intensity = plot[:color])
     end
 end
 
-function calculated_attributes!(T::Type{<: Mesh}, plot)
-    mesha = lift(GeometryBasics.attributes, plot.mesh)
-    color = haskey(mesha[], :color) ? lift(x-> x[:color], mesha) : plot.color
-    need_cmap = color_and_colormap!(plot, color)
+function calculated_attributes!(::Type{<: Mesh}, plot)
+    need_cmap = color_and_colormap!(plot)
     need_cmap || delete!(plot, :colormap)
     attributes = plot.attributes
     color = lift(to_color, attributes.color)

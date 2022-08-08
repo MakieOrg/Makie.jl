@@ -105,8 +105,8 @@ end
         lowclip = :black,
         nan_color = (:green, 0.5),
     )
-    surface(
-        fig[1, 2],
+    surface!(
+        Axis(fig[1, 2]),
         zeros(size(data)),
         color = data,
         colorrange = (2, 3),

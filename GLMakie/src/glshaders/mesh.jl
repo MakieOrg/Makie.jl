@@ -39,14 +39,14 @@ function draw_mesh(shader_cache, data::Dict)
         faces = nothing => indexbuffer
         vertices = nothing => GLBuffer
         normals = nothing => GLBuffer
-        backlight = 0f0
-        vertex_color = nothing
-        texturecoordinates = Vec2f(0)
+        vertex_color = nothing => GLBuffer
+        texturecoordinates = Vec2f(0) => GLBuffer
         image = nothing => Texture
         matcap = nothing => Texture
         color_map = nothing => Texture
         color_norm = nothing
         fetch_pixel = false
+        backlight = 0f0
         uv_scale = Vec2f(1)
         transparency = false
         interpolate_in_fragment_shader = true

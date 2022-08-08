@@ -294,42 +294,6 @@ end
 
 
 ################################################################################
-#                             Function Conversions                             #
-################################################################################
-
-function convert_arguments(P::PointBased, r::AbstractVector, f::Function)
-    return convert_arguments(P, r, f.(r))
-end
-
-function convert_arguments(P::PointBased, i::AbstractInterval, f::Function)
-    x, y = PlotUtils.adapted_grid(f, endpoints(i))
-    return convert_arguments(P, x, y)
-end
-
-# The following `tryrange` code was copied from Plots.jl
-# https://github.com/JuliaPlots/Plots.jl/blob/15dc61feb57cba1df524ce5d69f68c2c4ea5b942/src/series.jl#L399-L416
-
-# try some intervals over which the function may be defined
-function tryrange(F::AbstractArray, vec)
-    rets = [tryrange(f, vec) for f in F] # get the preferred for each
-    maxind = maximum(indexin(rets, vec)) # get the last attempt that succeeded (most likely to fit all)
-    rets .= [tryrange(f, vec[maxind:maxind]) for f in F] # ensure that all functions compute there
-    rets[1]
-end
-
-function tryrange(F, vec)
-    for v in vec
-        try
-            F(v)
-            return v
-        catch
-        end
-    end
-    error("$F is not a Function, or is not defined at any of the values $vec")
-end
-
-
-################################################################################
 #                                 SurfaceLike                                  #
 ################################################################################
 

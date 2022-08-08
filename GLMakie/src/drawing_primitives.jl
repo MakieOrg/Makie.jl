@@ -521,6 +521,9 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
             end
             position_z = Texture(el32convert(x[3]); minfilter=:nearest)
             gl_attributes[:position_z] = position_z
+            if isnothing(img)
+                gl_attributes[:image] = position_z
+            end
             return draw_surface(screen.shader_cache, position_z, gl_attributes)
         else
             error("x and y need to be Vectors, Matrices or ClosedIntervals. Found: $(types)")

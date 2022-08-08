@@ -104,7 +104,7 @@ export @gen_defaults!
 makesignal(s::Observable) = s
 makesignal(v) = Observable(v)
 
-@inline const_lift(f::Union{DataType, Type, Function}, inputs...) = lift(f, map(makesignal, inputs)...)
+const_lift(f::Union{DataType, Type, Function}, inputs...) = lift(f, map(makesignal, inputs)...)
 export const_lift
 
 convert_texcoordinates(uv::AbstractVector{Vec2f}) = uv
