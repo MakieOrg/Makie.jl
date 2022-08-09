@@ -9,6 +9,10 @@ using GeometryBasics
     f
 end
 
+@compile begin
+    scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
+end
+
 @compile scatter(0..1, rand(10), markersize=rand(10) .* 20)
 @compile scatter(LinRange(0, 1, 10), rand(10))
 @compile scatter(-1..1, x -> x^2)
@@ -36,21 +40,21 @@ end
 
 @compile heatmap(rand(50, 50), colormap=(:RdBu, 0.2))
 
-@compile contour(rand(10, 100))
-@compile contour(rand(100, 10))
-@compile contour(randn(100, 90), levels=3)
-@compile contour(randn(100, 90), levels=[0.1, 0.5, 0.8])
-@compile contour(randn(33, 30), levels=[0.1, 0.5, 0.9], color=[:black, :green, (:blue, 0.4)], linewidth=2)
-@compile contour(
-    rand(33, 30) .* 6 .- 3, levels=[-2.5, 0.4, 0.5, 0.6, 2.5],
-    colormap=[(:black, 0.2), :red, :blue, :green, (:black, 0.2)],
-    colorrange=(0.2, 0.8)
-)
+# @compile contour(rand(10, 100))
+# @compile contour(rand(100, 10))
+# @compile contour(randn(100, 90), levels=3)
+# @compile contour(randn(100, 90), levels=[0.1, 0.5, 0.8])
+# @compile contour(randn(33, 30), levels=[0.1, 0.5, 0.9], color=[:black, :green, (:blue, 0.4)], linewidth=2)
+# @compile contour(
+#     rand(33, 30) .* 6 .- 3, levels=[-2.5, 0.4, 0.5, 0.6, 2.5],
+#     colormap=[(:black, 0.2), :red, :blue, :green, (:black, 0.2)],
+#     colorrange=(0.2, 0.8)
+# )
 
-@compile begin
-    v(x::Point2{T}) where T = Point2{T}(x[2], 4 * x[1])
-    streamplot(v, -2..2, -2..2, arrow_size=10)
-end
+# @compile begin
+#     v(x::Point2{T}) where T = Point2{T}(x[2], 4 * x[1])
+#     streamplot(v, -2..2, -2..2, arrow_size=10)
+# end
 
 # @compile meshscatter(rand(10), rand(10), rand(10), color=rand(10))
 # @compile meshscatter(rand(10), rand(10), rand(10), color=rand(RGBAf, 10), transparency=true)

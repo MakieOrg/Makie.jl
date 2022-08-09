@@ -133,7 +133,7 @@ end
 foreach_plot(f, s::Figure) = foreach_plot(f, s.scene)
 foreach_plot(f, s::FigureAxisPlot) = foreach_plot(f, s.figure)
 foreach_plot(f, list::AbstractVector) = foreach(f, list)
-function foreach_plot(f, plot::Combined)
+function foreach_plot(f, plot::PlotObject)
     if isempty(plot.plots)
         f(plot)
     else

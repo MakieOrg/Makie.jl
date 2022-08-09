@@ -755,10 +755,10 @@ function Makie.plot!(ax::Axis, plot::P) where P
 
     # some area-like plots basically always look better if they cover the whole plot area.
     # adjust the limit margins in those cases automatically.
-    needs_tight_limits(plot) && tightlimits!(la)
+    needs_tight_limits(plot) && tightlimits!(ax)
 
-    if is_open_or_any_parent(la.scene)
-        reset_limits!(la)
+    if is_open_or_any_parent(ax.scene)
+        reset_limits!(ax)
     end
     plot
 end
