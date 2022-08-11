@@ -16,6 +16,7 @@ Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 Observables = "510215fc-4207-5dde-b226-833fc4488ee2"
 RelocatableFolders = "05181044-ff0b-4ac5-8273-598c1e38db00"
 ShaderAbstractions = "65257c39-d410-5151-9873-9b3e5be5013e"
+SnoopPrecompile = "66db9d55-30c0-4569-8b51-7e840670fc0c"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
