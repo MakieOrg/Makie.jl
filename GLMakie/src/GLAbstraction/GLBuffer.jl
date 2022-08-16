@@ -34,14 +34,18 @@ function GLBuffer(
         buffer::Union{Base.ReinterpretArray{T, 1}, DenseVector{T}};
         buffertype::GLenum = GL_ARRAY_BUFFER, usage::GLenum = GL_STATIC_DRAW
     ) where T <: GLArrayEltypes
-    GLBuffer{T}(pointer(buffer), length(buffer), buffertype, usage)
+    GC.@preserve buffer begin
+        return GLBuffer{T}(pointer(buffer), length(buffer), buffertype, usage)
+    end
 end
 
 function GLBuffer(
         buffer::DenseVector{T};
         buffertype::GLenum = GL_ARRAY_BUFFER, usage::GLenum = GL_STATIC_DRAW
     ) where T <: GLArrayEltypes
-    GLBuffer{T}(pointer(buffer), length(buffer), buffertype, usage)
+    GC.@preserve buffer begin
+        return GLBuffer{T}(pointer(buffer), length(buffer), buffertype, usage)
+    end
 end
 
 function GLBuffer(

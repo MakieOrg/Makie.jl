@@ -26,6 +26,7 @@ using LinearAlgebra
 using Colors
 using LaTeXStrings
 using GeometryBasics
+using DelimitedFiles
 
 basedir(files...) = normpath(joinpath(@__DIR__, "..", files...))
 loadasset(files...) = FileIO.load(assetpath(files...))

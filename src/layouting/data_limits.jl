@@ -131,8 +131,14 @@ end
 
 foreach_plot(f, s::Figure) = foreach_plot(f, s.scene)
 foreach_plot(f, s::FigureAxisPlot) = foreach_plot(f, s.figure)
-foreach_plot(f, plot::Combined) = foreach_plot(f, plot.plots)
 foreach_plot(f, list::AbstractVector) = foreach(f, list)
+function foreach_plot(f, plot::Combined)
+    if isempty(plot.plots)
+        f(plot)
+    else
+        foreach_plot(f, plot.plots)
+    end
+end
 
 function foreach_transformed(f, point_iterator, model, trans_func)
     for point in point_iterator

@@ -16,6 +16,14 @@ GLMakie.set_window_config!(;
     pause_rendering = true
 )
 
+@testset "mimes" begin
+    f, ax, pl = scatter(1:4)
+    @test showable("image/png", f)
+    @test showable("image/jpeg", f)
+    # see https://github.com/JuliaPlots/Makie.jl/pull/2167
+    @test !showable("blaaa", f)
+end
+
 # run the unit test suite
 include("unit_tests.jl")
 
