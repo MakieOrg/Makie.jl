@@ -148,16 +148,17 @@ cannot cycle markers). This is exemplified in the following code blocks.
 
 \begin{examplefigure}{}
 ```julia
-set_theme!(
-    palette = (color = [:red, :blue], marker = [:circle, :xcross]), 
-    Scatter = (cycle = [:color, :marker],)
-)
-scatter(fill(1, 10))
-scatter!(fill(2, 10))
-scatter!(fill(3, 10))
-scatter!(fill(4, 10))
-scatter!(fill(5, 10))
-current_figure()
+with_theme(Theme(
+        palette = (color = [:red, :blue], marker = [:circle, :xcross]), 
+        Scatter = (cycle = [:color, :marker],)
+    ) do 
+    scatter(fill(1, 10))
+    scatter!(fill(2, 10))
+    scatter!(fill(3, 10))
+    scatter!(fill(4, 10))
+    scatter!(fill(5, 10))
+    current_figure()
+end
 ```
 \end{examplefigure}
 
@@ -188,16 +189,17 @@ For example
 
 \begin{examplefigure}{}
 ```julia
-set_theme!(
-    palette = (color = [:red, :blue], linestyle = [:dash, :dot]), 
-    Lines = (cycle = Cycle([:color, :linestyle], covary = true),)
-)
-lines(fill(5, 10))
-lines!(fill(4, 10))
-lines!(fill(3, 10))
-lines!(fill(2, 10))
-lines!(fill(1, 10))
-current_figure()
+with_theme(Theme(
+        palette = (color = [:red, :blue], linestyle = [:dash, :dot]), 
+        Lines = (cycle = Cycle([:color, :linestyle], covary = true),)
+    )
+    lines(fill(5, 10))
+    lines!(fill(4, 10))
+    lines!(fill(3, 10))
+    lines!(fill(2, 10))
+    lines!(fill(1, 10))
+    current_figure()
+end
 ```
 \end{examplefigure}
 
