@@ -692,6 +692,8 @@ end
         alignmode = Inside()
         "Controls if the button snaps to valid positions or moves freely"
         snap::Bool = true
+        "Controls if observables are triggered while dragging or when mouse is released"
+        drag_update::Bool = true
     end
 end
 

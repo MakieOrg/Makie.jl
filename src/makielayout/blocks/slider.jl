@@ -93,21 +93,17 @@ function initialize_block!(sl::Slider)
 
     onmouseleftdrag(mouseevents) do event
         dragging[] = true
-        dif = event.px - event.prev_px
-        fraction = clamp(if sl.horizontal[]
-            (event.px[1] - endpoints[][1][1]) / (endpoints[][2][1] - endpoints[][1][1])
-        else
-            (event.px[2] - endpoints[][1][2]) / (endpoints[][2][2] - endpoints[][1][2])
-        end, 0, 1)
+        # Can we remove this line?
+        # dif = event.px - event.prev_px
 
-        newindex = closest_fractionindex(sliderrange[], fraction)
-        if sl.snap[]
-            fraction = (newindex - 1) / (length(sliderrange[]) - 1)
-        end
+        fraction = current_sliderfraction(sl, event, endpoints, sliderrange)
         displayed_sliderfraction[] = fraction
 
-        if selected_index[] != newindex
-            selected_index[] = newindex
+        if sl.drag_update[]
+            newindex = closest_fractionindex(sliderrange[], fraction)
+            if selected_index[] != newindex
+                selected_index[] = newindex
+            end
         end
 
         return Consume(true)
@@ -115,8 +111,18 @@ function initialize_block!(sl::Slider)
 
     onmouseleftdragstop(mouseevents) do event
         dragging[] = false
+        if !sl.drag_update[]
+            fraction = current_sliderfraction(sl, event, endpoints, sliderrange)
+            displayed_sliderfraction[] = fraction
+
+            newindex = closest_fractionindex(sliderrange[], fraction)
+            if selected_index[] != newindex
+                selected_index[] = newindex
+            end
+        end
         # adjust slider to closest legal value
-        sliderfraction[] = sliderfraction[]
+        ## is this line needed?
+        # sliderfraction[] = sliderfraction[]
         linecolors[] = [sl.color_active_dimmed[], sl.color_inactive[]]
         return Consume(true)
     end
@@ -149,6 +155,23 @@ function initialize_block!(sl::Slider)
     # trigger autosize through linewidth for first layout
     sl.linewidth[] = sl.linewidth[]
     sl
+end
+
+
+function current_sliderfraction(sl, event, endpoints, sliderrange)
+    fraction = clamp(if sl.horizontal[]
+        (event.px[1] - endpoints[][1][1]) / (endpoints[][2][1] - endpoints[][1][1])
+        else
+             (event.px[2] - endpoints[][1][2]) / (endpoints[][2][2] - endpoints[][1][2])
+              end, 0, 1
+    )
+
+    newindex = closest_fractionindex(sliderrange[], fraction)
+    if sl.snap[]
+        fraction = (newindex - 1) / (length(sliderrange[]) - 1)
+    end
+
+    return fraction
 end
 
 function valueindex(sliderrange, value)

@@ -13,6 +13,8 @@ You can double-click the slider to reset it (approximately) to the value present
 
 If you set the attribute `snap = false`, the slider will move continously while dragging and only jump to the closest available value when releasing the mouse.
 
+If you assign the attribute `drag_update = false`, the plot will not update while the slider is dragged, but the displayed graph will update when releasing the mouse.
+
 \begin{examplefigure}{}
 ```julia
 using GLMakie
