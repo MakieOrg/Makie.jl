@@ -48,6 +48,8 @@ import GridLayoutBase
 import ImageIO
 import FileIO
 import SparseArrays
+import TriplotBase
+import Triangulate
 
 using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints
 using FixedPointNumbers: N0f8

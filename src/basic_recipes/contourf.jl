@@ -143,14 +143,9 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
         lows = levels[1:end-1]
         highs = levels[2:end]
 
-        nbands = length(lows)
-
         # zs needs to be transposed to match rest of makie
         isos = Isoband.isobands(xs, ys, zs', lows, highs)
 
-        allvertices = Point2f[]
-        allfaces = NgonFace{3,OffsetInteger{-1,UInt32}}[]
-        allids = Int[]
         levelcenters = (highs .+ lows) ./ 2
 
         for (i, (center, group)) in enumerate(zip(levelcenters, isos))
@@ -262,4 +257,179 @@ function _group_polys(points, ids)
         containment_matrix = containment_matrix[to_keep, to_keep]
     end
     groups
+end
+
+
+
+"""
+    tricontourf(xs, ys, zs; kwargs...)
+
+Plots a filled contour of the height information in `zs` at horizontal grid positions `xs`
+and vertical grid positions `ys`.
+
+The attribute `levels` can be either
+- an `Int` that produces n equally wide levels or bands
+- an `AbstractVector{<:Real}` that lists n consecutive edges from low to high, which result in n-1 levels or bands
+
+You can also set the `mode` attribute to `:relative`.
+In this mode you specify edges by the fraction between minimum and maximum value of `zs`.
+This can be used for example to draw bands for the upper 90% while excluding the lower 10% with `levels = 0.1:0.1:1.0, mode = :relative`.
+
+In :normal mode, if you want to show a band from `-Inf` to the low edge,
+set `extendlow` to `:auto` for the same color as the first level,
+or specify a different color (default `nothing` means no extended band)
+If you want to show a band from the high edge to `Inf`, set `extendhigh`
+to `:auto` for the same color as the last level, or specify a different color
+(default `nothing` means no extended band).
+
+If `levels` is an `Int`, the contour plot will be rectangular as all `zs` will be covered.
+This is why `Axis` defaults to tight limits for such tricontourf plots.
+If you specify `levels` as an `AbstractVector{<:Real}`, however, note that the axis limits include the default margins because the contourf plot can have an irregular shape.
+You can use `tightlimits!(ax)` to tighten the limits similar to the `Int` behavior.
+
+## Attributes
+$(ATTRIBUTES)
+"""
+@recipe(Tricontourf) do scene
+    Theme(
+        levels = 10,
+        mode = :normal,
+        colormap = theme(scene, :colormap),
+        extendlow = nothing,
+        extendhigh = nothing,
+        # TODO, Isoband doesn't seem to support nans?
+        nan_color = :transparent,
+        inspectable = theme(scene, :inspectable),
+        transparency = false
+    )
+end
+
+function Makie.convert_arguments(::Type{<:Tricontourf}, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real})
+    map(x -> elconvert(Float32, x), (x, y, z))
+end
+
+
+function Makie.plot!(c::Tricontourf)
+    xs, ys, zs = c[1:3]
+
+    c.attributes[:_computed_levels] = lift(zs, c.levels, c.mode) do zs, levels, mode
+        _get_isoband_levels(Val(mode), levels, vec(zs))
+    end
+
+    colorrange = lift(c._computed_levels) do levels
+        minimum(levels), maximum(levels)
+    end
+    computed_colormap = lift(c._computed_levels, c.colormap, c.extendlow,
+                             c.extendhigh) do levels, cmap, elow, ehigh
+        levels_scaled = (levels .- minimum(levels)) ./ (maximum(levels) - minimum(levels))
+        n = length(levels_scaled)
+
+        if elow == :auto && !(ehigh == :auto)
+            cm_base = cgrad(cmap, n + 1; categorical=true)[2:end]
+            cm = cgrad(cm_base, levels_scaled; categorical=true)
+        elseif ehigh == :auto && !(elow == :auto)
+            cm_base = cgrad(cmap, n + 1; categorical=true)[1:(end - 1)]
+            cm = cgrad(cm_base, levels_scaled; categorical=true)
+        elseif ehigh == :auto && elow == :auto
+            cm_base = cgrad(cmap, n + 2; categorical=true)[2:(end - 1)]
+            cm = cgrad(cm_base, levels_scaled; categorical=true)
+        else
+            cm = cgrad(cmap, levels_scaled; categorical=true)
+        end
+        return cm
+    end
+    c.attributes[:_computed_colormap] = computed_colormap
+
+    lowcolor = Observable{RGBAf}()
+    map!(lowcolor, c.extendlow, c.colormap) do el, cmap
+        if isnothing(el)
+            return RGBAf(0, 0, 0, 0)
+        elseif el === automatic || el == :auto
+            return RGBAf(to_colormap(cmap)[begin])
+        else
+            return to_color(el)::RGBAf
+        end
+    end
+    c.attributes[:_computed_extendlow] = lowcolor
+    is_extended_low = lift(x -> !isnothing(x), c.extendlow)
+
+    highcolor = Observable{RGBAf}()
+    map!(highcolor, c.extendhigh, c.colormap) do eh, cmap
+        if isnothing(eh)
+            return RGBAf(0, 0, 0, 0)
+        elseif eh === automatic || eh == :auto
+            return RGBAf(to_colormap(cmap)[end])
+        else
+            return to_color(eh)::RGBAf
+        end
+    end
+    c.attributes[:_computed_extendhigh] = highcolor
+    is_extended_high = lift(x -> !isnothing(x), c.extendhigh)
+
+    PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
+
+    polys = Observable(PolyType[])
+    colors = Observable(Float64[])
+
+    function calculate_polys(xs, ys, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)
+        empty!(polys[])
+        empty!(colors[])
+
+        levels = copy(levels)
+        levels[1] = prevfloat(levels[1]) # levels seem to be lower-exclusive otherwise
+        @assert issorted(levels)
+        is_extended_low && pushfirst!(levels, -Inf)
+        is_extended_high && push!(levels, Inf)
+        lows = levels[1:end-1]
+        highs = levels[2:end]
+
+        @show levels
+        @show extrema(zs)
+
+        triin=Triangulate.TriangulateIO()
+        triin.pointlist=[xs'; ys']
+        (triout, vorout) = Triangulate.triangulate("Q", triin)
+        trianglelist = triout.trianglelist
+
+        filledcontours = TriplotBase.tricontourf(xs, ys, zs, trianglelist, levels)
+
+        levelcenters = (highs .+ lows) ./ 2
+
+        for (fc, lc) in zip(filledcontours, levelcenters)
+            pointvecs = map(fc.polylines) do vecs
+                map(vecs) do tupl
+                    Point2f(tupl...)
+                end
+            end
+            if isempty(pointvecs)
+                continue
+            end
+            
+            p = Makie.Polygon(pointvecs[1], pointvecs[2:end])
+            push!(polys[], p)
+            push!(colors[], lc)
+        end
+        notify(polys)
+        return
+    end
+
+    onany(calculate_polys, xs, ys, zs, c._computed_levels, is_extended_low, is_extended_high)
+    # onany doesn't get called without a push, so we call
+    # it on a first run!
+    calculate_polys(xs[], ys[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[])
+
+    poly!(c,
+        polys,
+        colormap = c._computed_colormap,
+        colorrange = colorrange,
+        highclip = highcolor,
+        lowclip = lowcolor,
+        nan_color = c.nan_color,
+        color = colors,
+        strokewidth = 0,
+        strokecolor = :transparent,
+        shading = false,
+        inspectable = c.inspectable,
+        transparency = c.transparency
+    )
 end
