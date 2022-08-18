@@ -376,19 +376,15 @@ function Makie.plot!(c::Tricontourf)
         empty!(colors[])
 
         levels = copy(levels)
-        levels[1] = prevfloat(levels[1]) # levels seem to be lower-exclusive otherwise
         @assert issorted(levels)
         is_extended_low && pushfirst!(levels, -Inf)
         is_extended_high && push!(levels, Inf)
         lows = levels[1:end-1]
         highs = levels[2:end]
 
-        @show levels
-        @show extrema(zs)
-
         vertices = [xs'; ys']
         trianglelist = MiniQhull.delaunay(vertices)
-        filledcontours = TriplotBase.tricontourf(xs, ys, zs, trianglelist, levels)
+        filledcontours = filled_tricontours(xs, ys, zs, trianglelist, levels)
 
         levelcenters = (highs .+ lows) ./ 2
 
@@ -429,4 +425,23 @@ function Makie.plot!(c::Tricontourf)
         inspectable = c.inspectable,
         transparency = c.transparency
     )
+end
+
+
+# FIXME: TriplotBase augments levels so here the implementation is just repeated without that step
+function filled_tricontours(x, y, z, t, levels)
+    m = TriplotBase.TriMesh(x, y, t)
+    filled_tricontours(m, z, levels)
+end
+
+function filled_tricontours(m::TriplotBase.TriMesh, z, levels)
+    @assert issorted(levels)
+    nlevels = length(levels)
+    filled_contours = TriplotBase.FilledContour{eltype(levels)}[]
+    for i=1:nlevels-1
+        lower = levels[i]
+        upper = levels[i+1]
+        push!(filled_contours, TriplotBase.generate_filled_contours(m, z, lower, upper))
+    end
+    filled_contours
 end
