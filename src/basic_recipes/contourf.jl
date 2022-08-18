@@ -386,11 +386,8 @@ function Makie.plot!(c::Tricontourf)
         @show levels
         @show extrema(zs)
 
-        triin=Triangulate.TriangulateIO()
-        triin.pointlist=[xs'; ys']
-        (triout, vorout) = Triangulate.triangulate("Q", triin)
-        trianglelist = triout.trianglelist
-
+        vertices = [xs'; ys']
+        trianglelist = MiniQhull.delaunay(vertices)
         filledcontours = TriplotBase.tricontourf(xs, ys, zs, trianglelist, levels)
 
         levelcenters = (highs .+ lows) ./ 2

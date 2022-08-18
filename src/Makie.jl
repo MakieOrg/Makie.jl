@@ -49,7 +49,7 @@ import ImageIO
 import FileIO
 import SparseArrays
 import TriplotBase
-import Triangulate
+import MiniQhull
 
 using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints
 using FixedPointNumbers: N0f8
