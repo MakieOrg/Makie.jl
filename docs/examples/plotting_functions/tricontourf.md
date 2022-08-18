@@ -22,6 +22,24 @@ current_figure()
 ```
 \end{examplefigure}
 
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+using Random
+Random.seed!(1234)
+
+x = randn(200)
+y = randn(200)
+z = x .* y
+
+Makie.tricontourf(x, y, z, colormap = :batlow)
+scatter!(x, y, color = z, colormap = :batlow, strokewidth = 1, strokecolor = :black)
+current_figure()
+```
+\end{examplefigure}
+
 #### Relative mode
 
 Sometimes it's beneficial to drop one part of the range of values, usually towards the outer boundary.
