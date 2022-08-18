@@ -264,8 +264,8 @@ end
 """
     tricontourf(xs, ys, zs; kwargs...)
 
-Plots a filled contour of the height information in `zs` at horizontal grid positions `xs`
-and vertical grid positions `ys`.
+Plots a filled tricontour of the height information in `zs` at horizontal positions `xs`
+and vertical positions `ys`.
 
 The attribute `levels` can be either
 - an `Int` that produces n equally wide levels or bands
@@ -282,11 +282,6 @@ If you want to show a band from the high edge to `Inf`, set `extendhigh`
 to `:auto` for the same color as the last level, or specify a different color
 (default `nothing` means no extended band).
 
-If `levels` is an `Int`, the contour plot will be rectangular as all `zs` will be covered.
-This is why `Axis` defaults to tight limits for such tricontourf plots.
-If you specify `levels` as an `AbstractVector{<:Real}`, however, note that the axis limits include the default margins because the contourf plot can have an irregular shape.
-You can use `tightlimits!(ax)` to tighten the limits similar to the `Int` behavior.
-
 ## Attributes
 $(ATTRIBUTES)
 """
@@ -297,7 +292,6 @@ $(ATTRIBUTES)
         colormap = theme(scene, :colormap),
         extendlow = nothing,
         extendhigh = nothing,
-        # TODO, Isoband doesn't seem to support nans?
         nan_color = :transparent,
         inspectable = theme(scene, :inspectable),
         transparency = false
