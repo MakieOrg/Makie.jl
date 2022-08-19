@@ -310,15 +310,47 @@ end
 
 Base.display(re::RecordEvents) = display(re.scene)
 
+struct VideoStreamOptions
+    format::String
+    framerate::Int
+    compression::Int
+    profile::Union{Nothing,String}
+    pix_fmt::Union{Nothing,String}
+end
+
+function VideoStreamOptions(; format::AbstractString="mkv", framerate::Int=24, compression=20,
+                            profile=nothing, pix_fmt=nothing)
+    if format == "mp4"
+        profile = @something profile "high422"
+        pix_fmt = @something pix_fmt (profile == "high444" ? "yuv444p" : "yuv420p")
+    else
+        mp4_only_kwargs = (("profile", profile), ("pix_fmt", pix_fmt))
+        for (name, kwarg) in mp4_only_kwargs
+            if kwarg !== nothing
+                @eval @warn(string('`',
+                                   $name,
+                                   "` was passed to VideoStreamOptions, yet `format` was not \"mp4\". `",
+                                   $name,
+                                   "` will be ignored."),
+                            format,
+                            $name = $kwarg)
+            end
+        end
+    end
+
+    return VideoStreamOptions(format, framerate, compression, profile, pix_fmt)
+end
+
 struct VideoStream
     io::Any
     process::Any
     screen::Any
     path::String
+    options::VideoStreamOptions
 end
 
 """
-    VideoStream(scene::Scene; framerate = 24, visible=false, connect=false)
+    VideoStream(scene::Scene; framerate = 24, visible=false, connect=false, options=VideoStreamOptions())
 
 Returns a stream and a buffer that you can use, which don't allocate for new frames.
 Use [`recordframe!(stream)`](@ref) to add new video frames to the stream, and
@@ -327,18 +359,84 @@ Use [`recordframe!(stream)`](@ref) to add new video frames to the stream, and
 * visible=false: make window visible or not
 * connect=false: connect window events or not
 """
-function VideoStream(fig::FigureLike; framerate::Integer=24, visible=false, connect=false)
+function VideoStream(fig::FigureLike; visible=false, connect=false,
+                     options::VideoStreamOptions=VideoStreamOptions())
+
+    # namedtuple unsplatting, `(; format, framerate, etc) = options`, requires Julia 1.7+
+    (format, framerate, profile, compression, pix_fmt) = getproperty.(Ref(options),
+                                                                      (:format,
+                                                                       :framerate,
+                                                                       :profile,
+                                                                       :compression,
+                                                                       :pix_fmt))
+    show(options)
+
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
     dir = mktempdir()
-    path = joinpath(dir, "$(gensym(:video)).mkv")
+    path = joinpath(dir, "$(gensym(:video)).$(format)")
     scene = get_scene(fig)
     screen = backend_display(fig; start_renderloop=false, visible=visible, connect=connect)
     _xdim, _ydim = size(scene)
     xdim = iseven(_xdim) ? _xdim : _xdim + 1
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
-    process = @ffmpeg_env open(`$(FFMPEG.ffmpeg) -framerate $(framerate) -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`,
-                               "w")
-    return VideoStream(process.in, process, screen, abspath(path))
+
+    ffmpeg_prefix = `
+        $(FFMPEG.ffmpeg)
+        -y
+        -f rawvideo
+        -framerate $(framerate)
+        -pixel_format rgb24
+        -r $(framerate)
+        -s:v $(xdim)x$(ydim)
+    `
+
+    ffmpeg_args = if format == "mkv"
+        `$(ffmpeg_prefix)
+         -i pipe:0
+         -vf vflip
+        `
+    elseif format == "mp4"
+        `$(ffmpeg_prefix)
+         -i pipe:0
+         -profile:v $(profile)
+         -vf scale=$(xdim):$(ydim),vflip
+         -crf $(compression)
+         -preset slow
+         -c:v libx264
+         -pix_fmt $(pix_fmt)
+         -c:a libvo_aacenc
+         -b:a 128k
+        `
+    elseif format == "webm"
+        `$(ffmpeg_prefix)
+         -threads 16
+         -i pipe:0
+         -vf scale=$(xdim):$(ydim),vflip
+         -crf $(compression)
+         -c:v libvpx-vp9
+         -b:v 2000k
+         -c:a libvorbis
+         -threads 16
+        `
+    elseif format == "gif"
+        # from https://superuser.com/a/556031
+        # avoids creating a PNG file of the palette
+        `$(ffmpeg_prefix)
+         -i pipe:0
+         -vf "vflip,fps=$(framerate),scale=$(xdim):-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse"
+        `
+    else
+        error("Video type $(format) not known")
+    end
+
+    @info "ffmpeg" ffmpeg_args `$ffmpeg_args $path` options
+    process = @ffmpeg_env open(`$ffmpeg_args $path`, "w")
+
+    # process = @ffmpeg_env open(`$(FFMPEG.ffmpeg) -framerate $(framerate) -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`,
+    #                            "w")
+    @info "process" process
+
+    return VideoStream(process.in, process, screen, abspath(path), options)
 end
 
 # This has to be overloaded by the backend for its screen type.
@@ -453,37 +551,42 @@ If you want a simpler interface, consider using [`record`](@ref).
                               only applies to `.mp4`. Defaults to `yuv444p` for
                               `profile = high444`.
 """
-function save(path::String, io::VideoStream;
-              framerate::Int=24, compression=20, profile="high422",
-              pixel_format=profile == "high444" ? "yuv444p" : "yuv420p")
+function save(path::String, io::VideoStream)
     close(io.process)
     wait(io.process)
     p, typ = splitext(path)
-    if typ == ".mkv"
-        cp(io.path, path; force=true)
-    else
-        mktempdir() do dir
-            out = joinpath(dir, "out$(typ)")
-            if typ == ".mp4"
-                # ffmpeg_exe(`-loglevel quiet -i $(io.path) -crf $compression -c:v libx264 -preset slow -r $framerate -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $out`)
-                ffmpeg_exe(`-loglevel quiet -i $(io.path) -crf $compression -c:v libx264 -preset slow -r $framerate -profile:v $profile -pix_fmt $pixel_format -c:a libvo_aacenc -b:a 128k -y $out`)
-            elseif typ == ".webm"
-                ffmpeg_exe(`-loglevel quiet -i $(io.path) -crf $compression -c:v libvpx-vp9 -threads 16 -b:v 2000k -c:a libvorbis -threads 16 -r $framerate -vf scale=iw:ih -y $out`)
-            elseif typ == ".gif"
-                filters = "fps=$framerate,scale=iw:ih:flags=lanczos"
-                palette_path = dirname(io.path)
-                pname = joinpath(palette_path, "palette.bmp")
-                isfile(pname) && rm(pname; force=true)
-                ffmpeg_exe(`-loglevel quiet -i $(io.path) -vf "$filters,palettegen" -y $pname`)
-                ffmpeg_exe(`-loglevel quiet -i $(io.path) -i $pname -lavfi "$filters [x]; [x][1:v] paletteuse" -y $out`)
-                rm(pname; force=true)
-            else
-                rm(io.path)
-                error("Video type $typ not known")
-            end
-            return cp(out, path; force=true)
-        end
+
+    io_format = io.options.format
+    if typ != ".$(io.options.format)"
+        error("invalid `path`; the video stream was created for `$(io_format)`, but the provided path had extension `$(typ)`")
     end
+
+    cp(io.path, path; force=true)
+    # if typ == ".mkv"
+    #     cp(io.path, path; force=true)
+    # else
+    #     mktempdir() do dir
+    #         out = joinpath(dir, "out$(typ)")
+    #         if typ == ".mp4"
+    #             # ffmpeg_exe(`-loglevel quiet -i $(io.path) -crf $compression -c:v libx264 -preset slow -r $framerate -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $out`)
+    #             ffmpeg_exe(`-loglevel quiet -i $(io.path) -crf $compression -c:v libx264 -preset slow -r $framerate -profile:v $profile -pix_fmt $pixel_format -c:a libvo_aacenc -b:a 128k -y $out`)
+    #         elseif typ == ".webm"
+    #             ffmpeg_exe(`-loglevel quiet -i $(io.path) -crf $compression -c:v libvpx-vp9 -threads 16 -b:v 2000k -c:a libvorbis -threads 16 -r $framerate -vf scale=iw:ih -y $out`)
+    #         elseif typ == ".gif"
+    #             filters = "fps=$framerate,scale=iw:ih:flags=lanczos"
+    #             palette_path = dirname(io.path)
+    #             pname = joinpath(palette_path, "palette.bmp")
+    #             isfile(pname) && rm(pname; force=true)
+    #             ffmpeg_exe(`-loglevel quiet -i $(io.path) -vf "$filters,palettegen" -y $pname`)
+    #             ffmpeg_exe(`-loglevel quiet -i $(io.path) -i $pname -lavfi "$filters [x]; [x][1:v] paletteuse" -y $out`)
+    #             rm(pname; force=true)
+    #         else
+    #             rm(io.path)
+    #             error("Video type $typ not known")
+    #         end
+    #         return cp(out, path; force=true)
+    #     end
+    # end
     rm(io.path)
     return path
 end
@@ -567,24 +670,26 @@ end
                               only applies to `.mp4`. Defaults to `yuv444p` for
                               `profile = high444`.
 """
-function record(func, figlike, path; framerate::Int=24, kwargs...)
-    io = Record(func, figlike; framerate=framerate)
-    return save(path, io; framerate=framerate, kwargs...)
+function record(func, figlike, path; kwargs...)
+    format = lstrip(splitext(path)[2], '.')
+    io = Record(func, figlike; format, kwargs...)
+    return save(path, io)
 end
 
-function Record(func, figlike; framerate=24)
-    io = VideoStream(figlike; framerate=framerate)
+function Record(func, figlike; kwargs...)
+    io = VideoStream(figlike; options=VideoStreamOptions(; kwargs...))
     func(io)
     return io
 end
 
-function record(func, figlike, path, iter; framerate::Int=24, kwargs...)
-    io = Record(func, figlike, iter; framerate=framerate)
-    return save(path, io; framerate=framerate, kwargs...)
+function record(func, figlike, path, iter; kwargs...)
+    format = lstrip(splitext(path)[2], '.')
+    io = Record(func, figlike, iter; format, kwargs...)
+    return save(path, io)
 end
 
-function Record(func, figlike, iter; framerate::Int=24)
-    io = VideoStream(figlike; framerate=framerate)
+function Record(func, figlike, iter; kwargs...)
+    io = VideoStream(figlike; options=VideoStreamOptions(; kwargs...))
     for i in iter
         func(i)
         recordframe!(io)
