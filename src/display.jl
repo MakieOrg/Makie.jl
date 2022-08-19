@@ -324,10 +324,14 @@ _VIDEO_STREAM_OPTIONS_FORMAT_DESC = """
 
 _VIDEO_STREAM_OPTIONS_KWARGS_DESC = """
 - `framerate = 24`: The target framerate.
-- `compression = 20`: Controls the video compression with `0` being lossless and higher
-  numbers giving higher compression. `51` is the maximum for `mp4`; `63` is the maximum for
-  `webm`. Has no effect on `mkv` and `gif` outputs. Note that `compression = 0` only works
-  with `mp4` if `profile = high444`.
+- `compression = 20`: Controls the video compression via `ffmpeg`'s `-crf` option, with
+  smaller numbers giving higher quality and larger file sizes (lower compression), and and
+  higher numbers giving lower quality and smaller file sizes (higher compression). The
+  minimum value is `0` (lossless encoding).
+    - For `mp4`, `51` is the maximum. Note that `compression = 0` only works with `mp4` if
+      `profile = high444`.
+    - For `webm`, `63` is the maximum.
+    - `compression` has no effect on `mkv` and `gif` outputs.
 - `profile = "high422"`: A ffmpeg compatible profile. Currently only applies to `mp4`. If
   you have issues playing a video, try `profile = "high"` or `profile = "main"`.
 - `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (`-pix_fmt`). Currently only
@@ -339,7 +343,8 @@ _VIDEO_STREAM_OPTIONS_KWARGS_DESC = """
 
 Holds the options that will be used for encoding a `VideoStream`. `profile` and
 `pixel_format` are only used when `format` is `"mp4"`; a warning will be issued if `format`
-is not `"mp4"` and those two arguments are not `nothing`.
+is not `"mp4"` and those two arguments are not `nothing`. Similarly, `compression` is only
+valid when `format` is `"mp4"` or `"webm"`.
 
 You should not create a `VideoStreamOptions` directly; instead, pass its keyword args to the
 `VideoStream` constructor. See the docs of [`VideoStream`](@ref) for how to create a
@@ -428,7 +433,8 @@ function VideoStream(fig::FigureLike; visible=false, connect=false,
     xdim = iseven(_xdim) ? _xdim : _xdim + 1
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
 
-    # explanation of ffmpeg args
+    # explanation of ffmpeg args. note that the order of args is important; args pertaining
+    # to the input have to go before -i and args pertaining to the output have to go after.
     # -y: "yes", overwrite any existing without confirmation
     # -f: format is raw video (from frames)
     # -framerate: set the input framerate
@@ -442,6 +448,7 @@ function VideoStream(fig::FigureLike; visible=false, connect=false,
     #   maximum compression)
     # -pix_fmt: (mp4 only) the output pixel format
     # -profile:v: (mp4 only) the output video profile
+    # -an: no audio in output
 
     ffmpeg_prefix = `
         $(FFMPEG.ffmpeg)
@@ -458,6 +465,7 @@ function VideoStream(fig::FigureLike; visible=false, connect=false,
         `$(ffmpeg_prefix)
          -i pipe:0
          -vf vflip
+         -an
         `
     elseif format == "mp4"
         `$(ffmpeg_prefix)
@@ -468,18 +476,18 @@ function VideoStream(fig::FigureLike; visible=false, connect=false,
          -preset slow
          -c:v libx264
          -pix_fmt $(pixel_format)
-         -c:a libvo_aacenc
-         -b:a 128k
+         -an
         `
     elseif format == "webm"
+        # this may need improvement, see here: https://trac.ffmpeg.org/wiki/Encode/VP9
         `$(ffmpeg_prefix)
          -threads 16
          -i pipe:0
          -vf scale=$(xdim):$(ydim),vflip
          -crf $(compression)
          -c:v libvpx-vp9
-         -b:v 2000k
-         -c:a libvorbis
+         -b:v 0
+         -an
          -threads 16
         `
     elseif format == "gif"
