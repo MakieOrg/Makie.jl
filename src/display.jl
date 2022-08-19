@@ -436,6 +436,7 @@ function VideoStream(fig::FigureLike; visible=false, connect=false,
     ffmpeg_prefix = `
         $(FFMPEG.ffmpeg)
         -y
+        -loglevel quiet
         -f rawvideo
         -framerate $(framerate)
         -pixel_format rgb24
