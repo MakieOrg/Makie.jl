@@ -2,6 +2,11 @@
 
 ## master
 
+- Updated `VideoStream` and `record` to encode directly to their output format instead
+  of first passing through `mkv`. This should have no user-facing consequences except
+  that `record` and `save(path, video_stream)` become faster and produce outputs of
+  higher quality.
+
 ## v0.17.13
 
 - Fix boundingboxes [#2184](https://github.com/JuliaPlots/Makie.jl/pull/2184).
@@ -100,7 +105,7 @@ role as `datalimits` in `violin` [#2137](https://github.com/JuliaPlots/Makie.jl/
 - Fixed manual cycling of plot attributes [#1873](https://github.com/JuliaPlots/Makie.jl/pull/1873).
 - Fixed type constraints in ticklabelalign attributes [#1882](https://github.com/JuliaPlots/Makie.jl/pull/1882).
 
-##  v0.16.4
+## v0.16.4
 
 - Fixed WGLMakie performance bug and added option to set fps via `WGLMakie.activate!(fps=30)`.
 - Implemented `nan_color`, `lowclip`, `highclip` for `image(::Matrix{Float})` in shader.
@@ -110,7 +115,7 @@ role as `datalimits` in `violin` [#2137](https://github.com/JuliaPlots/Makie.jl/
 ## v0.16
 
 - **Breaking** Removed `Node` alias [#1307](https://github.com/JuliaPlots/Makie.jl/pull/1307), [#1393](https://github.com/JuliaPlots/Makie.jl/pull/1393). To upgrade, simply replace all occurrences of `Node` with `Observable`.
-- **Breaking** Cleaned up `Scene` type [#1192](https://github.com/JuliaPlots/Makie.jl/pull/1192), [#1393](https://github.com/JuliaPlots/Makie.jl/pull/1393). The `Scene()` constructor doesn't create any axes or limits anymore. All keywords like `raw`, `show_axis` have been removed. A scene now always works like it did when using the deprecated `raw=true`. All the high level functionality like showing an axis and adding a 3d camera has been moved to `LScene`. See the new `Scene` tutorial for more info: https://makie.juliaplots.org/dev/tutorials/scenes/.
+- **Breaking** Cleaned up `Scene` type [#1192](https://github.com/JuliaPlots/Makie.jl/pull/1192), [#1393](https://github.com/JuliaPlots/Makie.jl/pull/1393). The `Scene()` constructor doesn't create any axes or limits anymore. All keywords like `raw`, `show_axis` have been removed. A scene now always works like it did when using the deprecated `raw=true`. All the high level functionality like showing an axis and adding a 3d camera has been moved to `LScene`. See the new `Scene` tutorial for more info: <https://makie.juliaplots.org/dev/tutorials/scenes/>.
 - **Breaking** Lights got moved to `Scene`, see the [lighting docs](https://makie.juliaplots.org/stable/documentation/lighting) and [RPRMakie examples](https://makie.juliaplots.org/stable/documentation/backends/rprmakie/).
 - Added ECDF plot [#1310](https://github.com/JuliaPlots/Makie.jl/pull/1310).
 - Added Order Independent Transparency to GLMakie [#1418](https://github.com/JuliaPlots/Makie.jl/pull/1418), [#1506](https://github.com/JuliaPlots/Makie.jl/pull/1506). This type of transparency is now used with `transpareny = true`. The old transparency handling is available with `transparency = false`.
@@ -135,16 +140,19 @@ role as `datalimits` in `violin` [#2137](https://github.com/JuliaPlots/Makie.jl/
 All other changes are collected [in this PR](https://github.com/JuliaPlots/Makie.jl/pull/1521) and in the [release notes](https://github.com/JuliaPlots/Makie.jl/releases/tag/v0.16.0).
 
 ## v0.15.3
+
 - The functions `labelslidergrid!` and `labelslider!` now set fixed widths for the value column with a heuristic. It is possible now to pass `Formatting.format` format strings as format specifiers in addition to the previous functions.
 - Fixed 2D arrow rotations in `streamplot` [#1352](https://github.com/JuliaPlots/Makie.jl/pull/1352).
 
 ## v0.15.2
+
 - Reenabled Julia 1.3 support.
 - Use [MathTexEngine v0.2](https://github.com/Kolaru/MathTeXEngine.jl/releases/tag/v0.2.0).
 - Depend on new GeometryBasics, which changes all the Vec/Point/Quaternion/RGB/RGBA - f0 aliases to just f. For example, `Vec2f0` is changed to `Vec2f`. Old aliases are still exported, but deprecated and will be removed in the next breaking release. For more details and an upgrade script, visit [GeometryBasics#97](https://github.com/JuliaGeometry/GeometryBasics.jl/pull/97).
 - Added `hspan!` and `vspan!` functions [#1264](https://github.com/JuliaPlots/Makie.jl/pull/1264).
 
 ## v0.15.1
+
 - Switched documentation framework to Franklin.jl.
 - Added a specialization for `volumeslices` to DataInspector.
 - Fixed 1 element `hist` [#1238](https://github.com/JuliaPlots/Makie.jl/pull/1238) and make it easier to move `hist` [#1150](https://github.com/JuliaPlots/Makie.jl/pull/1150).
