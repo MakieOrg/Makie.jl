@@ -408,6 +408,11 @@ $_VIDEO_STREAM_OPTIONS_KWARGS_DESC
 """
 function VideoStream(fig::FigureLike; visible=false, connect=false,
                      format="mkv", framerate=24, compression=20, profile=nothing, pixel_format=nothing)
+    options = VideoStreamOptions(; format, framerate, compression, profile, pixel_format)
+
+    (format, framerate, compression, profile, pixel_format) = let o = options
+        (o.format, o.framerate, o.compression, o.profile, o.pixel_format)
+    end
 
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
     dir = mktempdir()
@@ -485,8 +490,7 @@ function VideoStream(fig::FigureLike; visible=false, connect=false,
 
     process = @ffmpeg_env open(`$ffmpeg_args $path`, "w")
 
-    return VideoStream(process.in, process, screen, abspath(path),
-                       VideoStreamOptions(; format, framerate, compression, profile, pixel_format))
+    return VideoStream(process.in, process, screen, abspath(path), options)
 end
 
 # This has to be overloaded by the backend for its screen type.
