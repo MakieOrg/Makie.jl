@@ -324,15 +324,14 @@ _VIDEO_STREAM_OPTIONS_FORMAT_DESC = """
 
 _VIDEO_STREAM_OPTIONS_KWARGS_DESC = """
 - `framerate = 24`: The target framerate.
-- `compression = 20`: Controls the video compression with `0` being lossless and `51` being
-                     the highest compression. Note that `compression = 0` only works with
-                     `mp4` if `profile = high444`.
+- `compression = 20`: Controls the video compression with `0` being lossless and higher
+  numbers giving higher compression. `51` is the maximum for `mp4`; `63` is the maximum for
+  `webm`. Has no effect on `mkv` and `gif` outputs. Note that `compression = 0` only works
+  with `mp4` if `profile = high444`.
 - `profile = "high422"`: A ffmpeg compatible profile. Currently only applies to `mp4`. If
-                         you have issues playing a video, try `profile = "high"` or `profile
-                         = "main"`.
+  you have issues playing a video, try `profile = "high"` or `profile = "main"`.
 - `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (`-pix_fmt`). Currently only
-                              applies to `mp4`. Defaults to `yuv444p` for `profile =
-                              high444`.
+  applies to `mp4`. Defaults to `yuv444p` for `profile = high444`.
 """
 
 """
@@ -361,18 +360,24 @@ struct VideoStreamOptions
         if format == "mp4"
             profile = @something profile "high422"
             pixel_format = @something pixel_format (profile == "high444" ? "yuv444p" : "yuv420p")
-        else
-            mp4_only_kwargs = (("profile", profile), ("pixel_format", pixel_format))
-            for (name, kwarg) in mp4_only_kwargs
-                if kwarg !== nothing
-                    @eval @warn(string('`',
-                                       $name,
-                                       "` was passed to VideoStreamOptions, yet `format` was not \"mp4\". `",
-                                       $name,
-                                       "` will be ignored."),
-                                format,
-                                $name = $kwarg)
-                end
+        end
+
+        # items are name, value, allowed_formats
+        allowed_kwargs = [("compression", compression, ("mp4", "webm")),
+                          ("profile", profile, ("mp4",)),
+                          ("pixel_format", pixel_format, ("mp4",))]
+
+        for (name, value, allowed_formats) in allowed_kwargs
+            if !(format in allowed_formats) && value !== nothing
+                @eval @warn(string('`',
+                                   $name,
+                                   "` was passed to VideoStreamOptions, yet `format` was not one of ",
+                                   $allowed_formats,
+                                   ". `",
+                                   $name,
+                                   "` will be ignored."),
+                            format = $format,
+                            $name = $value)
             end
         end
 
