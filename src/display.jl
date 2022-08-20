@@ -357,14 +357,20 @@ $_VIDEO_STREAM_OPTIONS_KWARGS_DESC
 struct VideoStreamOptions
     format::String
     framerate::Int
-    compression::Int
+    compression::Union{Nothing,Int}
     profile::Union{Nothing,String}
     pixel_format::Union{Nothing,String}
 
     function VideoStreamOptions(format, framerate, compression, profile, pixel_format)
+        (framerate === nothing) && (framerate = 24)
+
         if format == "mp4"
-            profile = @something profile "high422"
-            pixel_format = @something pixel_format (profile == "high444" ? "yuv444p" : "yuv420p")
+            (profile === nothing) && (profile = "high422")
+            (pixel_format === nothing) && (pixel_format = (profile == "high444" ? "yuv444p" : "yuv420p"))
+        end
+
+        if format in ("mp4", "webm")
+            (compression === nothing) && (compression = 20)
         end
 
         # items are name, value, allowed_formats
@@ -388,11 +394,11 @@ struct VideoStreamOptions
 
         return new(format, framerate, compression, profile, pixel_format)
     end
+end
 
-    function VideoStreamOptions(; format="mkv", framerate=24, compression=20,
-                                profile=nothing, pixel_format=nothing)
-        return VideoStreamOptions(format, framerate, compression, profile, pixel_format)
-    end
+function VideoStreamOptions(; format="mkv", framerate=nothing, compression=nothing,
+                            profile=nothing, pixel_format=nothing)
+    return VideoStreamOptions(format, framerate, compression, profile, pixel_format)
 end
 
 struct VideoStream
