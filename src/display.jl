@@ -9,7 +9,7 @@ Current backend
 const current_backend = Ref{Union{Missing,AbstractBackend}}(missing)
 const use_display = Ref{Bool}(true)
 
-function inline!(inline=true)
+function inline!(inline = true)
     use_display[] = !inline
     return
 end
@@ -28,11 +28,11 @@ function push_screen!(scene::Scene, display::AbstractDisplay)
     if !any(x -> x === display, scene.current_screens)
         push!(scene.current_screens, display)
         deregister = nothing
-        deregister = on(events(scene).window_open; priority=typemax(Int)) do is_open
+        deregister = on(events(scene).window_open, priority=typemax(Int)) do is_open
             # when screen closes, it should set the scene isopen event to false
             # so that's when we can remove the display
             if !is_open
-                filter!(x -> x !== display, scene.current_screens)
+                filter!(x-> x !== display, scene.current_screens)
                 deregister !== nothing && off(deregister)
             end
             return Consume(false)
@@ -42,23 +42,23 @@ function push_screen!(scene::Scene, display::AbstractDisplay)
 end
 
 function delete_screen!(scene::Scene, display::AbstractDisplay)
-    filter!(x -> x !== display, scene.current_screens)
+    filter!(x-> x !== display, scene.current_screens)
     return
 end
 
 function backend_display(s::FigureLike; kw...)
     update_state_before_display!(s)
-    return backend_display(current_backend[], get_scene(s); kw...)
+    backend_display(current_backend[], get_scene(s); kw...)
 end
 
 function backend_display(::Missing, ::Scene; kw...)
-    return error("""
-           No backend available!
-           Make sure to also `import/using` a backend (GLMakie, CairoMakie, WGLMakie).
+    error("""
+    No backend available!
+    Make sure to also `import/using` a backend (GLMakie, CairoMakie, WGLMakie).
 
-           If you imported GLMakie, it may have not built correctly.
-           In that case, try `]build GLMakie` and watch out for any warnings.
-           """)
+    If you imported GLMakie, it may have not built correctly.
+    In that case, try `]build GLMakie` and watch out for any warnings.
+    """)
 end
 
 update_state_before_display!(_) = nothing
@@ -75,23 +75,23 @@ function Base.display(fig::FigureLike; kw...)
     end
 end
 
-function Base.showable(mime::MIME{M}, scene::Scene) where {M}
-    return backend_showable(current_backend[], mime, scene)
+function Base.showable(mime::MIME{M}, scene::Scene) where M
+    backend_showable(current_backend[], mime, scene)
 end
 # ambig
 function Base.showable(mime::MIME"application/json", scene::Scene)
-    return backend_showable(current_backend[], mime, scene)
+    backend_showable(current_backend[], mime, scene)
 end
-function Base.showable(mime::MIME{M}, fig::FigureLike) where {M}
-    return backend_showable(current_backend[], mime, get_scene(fig))
+function Base.showable(mime::MIME{M}, fig::FigureLike) where M
+    backend_showable(current_backend[], mime, get_scene(fig))
 end
 # ambig
 function Base.showable(mime::MIME"application/json", fig::FigureLike)
-    return backend_showable(current_backend[], mime, get_scene(fig))
+    backend_showable(current_backend[], mime, get_scene(fig))
 end
 
-function backend_showable(::Backend, ::Mime, ::Scene) where {Backend,Mime<:MIME}
-    return hasmethod(backend_show, Tuple{Backend,IO,Mime,Scene})
+function backend_showable(::Backend, ::Mime, ::Scene) where {Backend, Mime <: MIME}
+    hasmethod(backend_show, Tuple{Backend, IO, Mime, Scene})
 end
 
 # fallback show when no backend is selected
@@ -108,7 +108,7 @@ function backend_show(backend, io::IO, ::MIME"text/plain", scene::Scene)
 end
 
 function Base.show(io::IO, ::MIME"text/plain", scene::Scene; kw...)
-    return show(io, scene; kw...)
+    show(io, scene; kw...)
 end
 
 function Base.show(io::IO, m::MIME, figlike::FigureLike)
@@ -143,14 +143,12 @@ mutable struct RamStepper
     format::Symbol
 end
 
-function Stepper(figlike::FigureLike, path::String, step::Int; format=:png)
-    return FolderStepper(figlike, path, format, step)
-end
+Stepper(figlike::FigureLike, path::String, step::Int; format=:png) = FolderStepper(figlike, path, format, step)
 Stepper(figlike::FigureLike; format=:png) = RamStepper(figlike, Matrix{RGBf}[], format)
 
-function Stepper(figlike::FigureLike, path::String; format=:png)
+function Stepper(figlike::FigureLike, path::String; format = :png)
     ispath(path) || mkpath(path)
-    return FolderStepper(figlike, path, format, 1)
+    FolderStepper(figlike, path, format, 1)
 end
 
 """
@@ -180,18 +178,19 @@ function FileIO.save(dir::String, s::RamStepper)
     end
 end
 
-format2mime(::Type{FileIO.format"PNG"}) = MIME("image/png")
-format2mime(::Type{FileIO.format"SVG"}) = MIME("image/svg+xml")
+format2mime(::Type{FileIO.format"PNG"})  = MIME("image/png")
+format2mime(::Type{FileIO.format"SVG"})  = MIME("image/svg+xml")
 format2mime(::Type{FileIO.format"JPEG"}) = MIME("image/jpeg")
 format2mime(::Type{FileIO.format"TIFF"}) = MIME("image/tiff")
 format2mime(::Type{FileIO.format"BMP"}) = MIME("image/bmp")
-format2mime(::Type{FileIO.format"PDF"}) = MIME("application/pdf")
-format2mime(::Type{FileIO.format"TEX"}) = MIME("application/x-tex")
-format2mime(::Type{FileIO.format"EPS"}) = MIME("application/postscript")
+format2mime(::Type{FileIO.format"PDF"})  = MIME("application/pdf")
+format2mime(::Type{FileIO.format"TEX"})  = MIME("application/x-tex")
+format2mime(::Type{FileIO.format"EPS"})  = MIME("application/postscript")
 format2mime(::Type{FileIO.format"HTML"}) = MIME("text/html")
 
-filetype(::FileIO.File{F}) where {F} = F
+filetype(::FileIO.File{F}) where F = F
 # Allow format to be overridden with first argument
+
 
 """
     FileIO.save(filename, scene; resolution = size(scene), pt_per_unit = 0.75, px_per_unit = 1.0)
@@ -215,14 +214,18 @@ Save a `Scene` with the specified filename and format.
 - `pt_per_unit`: The size of one scene unit in `pt` when exporting to a vector format.
 - `px_per_unit`: The size of one scene unit in `px` when exporting to a bitmap format. This provides a mechanism to export the same scene with higher or lower resolution.
 """
-function FileIO.save(filename::String, fig::FigureLike; args...)
-    return FileIO.save(FileIO.query(filename), fig; args...)
+function FileIO.save(
+        filename::String, fig::FigureLike; args...
+    )
+    FileIO.save(FileIO.query(filename), fig; args...)
 end
 
-function FileIO.save(file::FileIO.Formatted, fig::FigureLike;
-                     resolution=size(get_scene(fig)),
-                     pt_per_unit=0.75,
-                     px_per_unit=1.0)
+function FileIO.save(
+        file::FileIO.Formatted, fig::FigureLike;
+        resolution = size(get_scene(fig)),
+        pt_per_unit = 0.75,
+        px_per_unit = 1.0,
+    )
     scene = get_scene(fig)
     if resolution != size(scene)
         resize!(scene, resolution)
@@ -240,10 +243,11 @@ function FileIO.save(file::FileIO.Formatted, fig::FigureLike;
 
     open(filename, "w") do s
         iocontext = IOContext(s,
-                              :full_fidelity => true,
-                              :pt_per_unit => pt_per_unit,
-                              :px_per_unit => px_per_unit)
-        return show(iocontext, format2mime(F), fig)
+            :full_fidelity => true,
+            :pt_per_unit => pt_per_unit,
+            :px_per_unit => px_per_unit
+        )
+        show(iocontext, format2mime(F), fig)
     end
 end
 
@@ -258,11 +262,11 @@ for `scene` and serializes them to `path`.
 """
 function record_events(f, scene::Scene, path::String)
     display(scene)
-    result = Vector{Pair{Float64,Pair{Symbol,Any}}}()
+    result = Vector{Pair{Float64, Pair{Symbol, Any}}}()
     for field in fieldnames(Events)
         # These are not Observables
         (field == :mousebuttonstate || field == :keyboardstate) && continue
-        on(getfield(scene.events, field); priority=typemax(Int)) do value
+        on(getfield(scene.events, field), priority = typemax(Int)) do value
             value = isa(value, Set) ? copy(value) : value
             push!(result, time() => (field => value))
             return Consume(false)
@@ -270,9 +274,10 @@ function record_events(f, scene::Scene, path::String)
     end
     f()
     open(path, "w") do io
-        return serialize(io, result)
+        serialize(io, result)
     end
 end
+
 
 """
     replay_events(f, scene::Scene, path::String)
@@ -280,15 +285,15 @@ end
 
 Replays the serialized events recorded with `record_events` in `path` in `scene`.
 """
-replay_events(scene::Scene, path::String) = replay_events(() -> nothing, scene, path)
+replay_events(scene::Scene, path::String) = replay_events(()-> nothing, scene, path)
 function replay_events(f, scene::Scene, path::String)
-    events = open(io -> deserialize(io), path)
-    sort!(events; by=first)
+    events = open(io-> deserialize(io), path)
+    sort!(events, by = first)
     for i in 1:length(events)
         t1, (field, value) = events[i]
         (field == :mousebuttonstate || field == :keyboardstate) && continue
         Base.invokelatest() do
-            return getfield(scene.events, field)[] = value
+            getfield(scene.events, field)[] = value
         end
         f()
         if i < length(events)
@@ -402,9 +407,9 @@ function VideoStreamOptions(; format="mkv", framerate=nothing, compression=nothi
 end
 
 struct VideoStream
-    io::Any
-    process::Any
-    screen::Any
+    io
+    process
+    screen
     path::String
     options::VideoStreamOptions
 end
@@ -514,7 +519,7 @@ end
 
 # This has to be overloaded by the backend for its screen type.
 function colorbuffer(x::AbstractScreen)
-    return error("colorbuffer not implemented for screen $(typeof(x))")
+    error("colorbuffer not implemented for screen $(typeof(x))")
 end
 
 function jl_to_gl_format(image)
@@ -525,7 +530,7 @@ function jl_to_gl_format(image)
         n = first(ind1) + last(ind1)
         for i in ind1
             @simd for j in ind2
-                @inbounds bufc[j, n - i] = image[i, j]
+                @inbounds bufc[j, n-i] = image[i, j]
             end
         end
         return bufc
@@ -536,11 +541,11 @@ function jl_to_gl_format(image)
 end
 
 # less specific for overloading by backends
-function colorbuffer(screen::Any, format::ImageStorageFormat=JuliaNative)
+function colorbuffer(screen::Any, format::ImageStorageFormat = JuliaNative)
     image = colorbuffer(screen)
     if format == GLNative
         if string(typeof(screen)) == "GLMakie.Screen"
-            @warn "Inefficient re-conversion back to GLNative buffer format. Update GLMakie to support direct buffer access" maxlog = 1
+            @warn "Inefficient re-conversion back to GLNative buffer format. Update GLMakie to support direct buffer access" maxlog=1
         end
         return jl_to_gl_format(image)
     elseif format == JuliaNative
@@ -560,7 +565,7 @@ or RGBA.
 - `format = GLNative` : Returns a more efficient format buffer for GLMakie which can be directly
                         used in FFMPEG without conversion
 """
-function colorbuffer(fig::FigureLike, format::ImageStorageFormat=JuliaNative)
+function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative)
     scene = get_scene(fig)
     screen = getscreen(scene)
     if isnothing(screen)
@@ -570,8 +575,7 @@ function colorbuffer(fig::FigureLike, format::ImageStorageFormat=JuliaNative)
                 before trying to render a Scene.
                 """)
         else
-            return colorbuffer(backend_display(fig; visible=false, start_renderloop=false, connect=false),
-                               format)
+            return colorbuffer(backend_display(fig; visible=false, start_renderloop=false, connect=false), format)
         end
     end
     return colorbuffer(screen, format)
@@ -710,7 +714,7 @@ function Record(func, figlike, iter; format, framerate, compression, profile, pi
     for i in iter
         func(i)
         recordframe!(io)
-        @debug "Recording" progress = i / length(iter)
+        @debug "Recording" progress=i/length(iter)
         yield()
     end
     return io
@@ -719,9 +723,11 @@ end
 function Base.show(io::IO, ::MIME"text/html", vs::VideoStream)
     mktempdir() do dir
         path = save(joinpath(dir, "video.mp4"), vs)
-        return print(io,
-                     """<video autoplay controls><source src="data:video/x-m4v;base64,""",
-                     base64encode(open(read, path)),
-                     """" type="video/mp4"></video>""")
+        print(
+            io,
+            """<video autoplay controls><source src="data:video/x-m4v;base64,""",
+            base64encode(open(read, path)),
+            """" type="video/mp4"></video>"""
+        )
     end
 end
