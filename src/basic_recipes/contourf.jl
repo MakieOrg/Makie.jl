@@ -259,7 +259,7 @@ function _group_polys(points, ids)
     groups
 end
 
-
+struct DelaunayTriangulation end
 
 """
     tricontourf(xs, ys, zs; kwargs...)
@@ -294,7 +294,8 @@ $(ATTRIBUTES)
         extendhigh = nothing,
         nan_color = :transparent,
         inspectable = theme(scene, :inspectable),
-        transparency = false
+        transparency = false,
+        triangles = DelaunayTriangulation()
     )
 end
 
@@ -365,7 +366,7 @@ function Makie.plot!(c::Tricontourf)
     polys = Observable(PolyType[])
     colors = Observable(Float64[])
 
-    function calculate_polys(xs, ys, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)
+    function calculate_polys(xs, ys, zs, levels::Vector{Float32}, is_extended_low, is_extended_high, triangles)
         empty!(polys[])
         empty!(colors[])
 
@@ -376,8 +377,7 @@ function Makie.plot!(c::Tricontourf)
         lows = levels[1:end-1]
         highs = levels[2:end]
 
-        vertices = [xs'; ys']
-        trianglelist = MiniQhull.delaunay(vertices)
+        trianglelist = compute_triangles(triangles, xs, ys)
         filledcontours = filled_tricontours(xs, ys, zs, trianglelist, levels)
 
         levelcenters = (highs .+ lows) ./ 2
@@ -400,10 +400,10 @@ function Makie.plot!(c::Tricontourf)
         return
     end
 
-    onany(calculate_polys, xs, ys, zs, c._computed_levels, is_extended_low, is_extended_high)
+    onany(calculate_polys, xs, ys, zs, c._computed_levels, is_extended_low, is_extended_high, c.triangles)
     # onany doesn't get called without a push, so we call
     # it on a first run!
-    calculate_polys(xs[], ys[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[])
+    calculate_polys(xs[], ys[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[], c.triangles[])
 
     poly!(c,
         polys,
@@ -421,6 +421,12 @@ function Makie.plot!(c::Tricontourf)
     )
 end
 
+function compute_triangles(::DelaunayTriangulation, xs, ys)
+    vertices = [xs'; ys']
+    return MiniQhull.delaunay(vertices)
+end
+
+compute_triangles(triangles::AbstractMatrix{<:Int}, xs, ys) = triangles
 
 # FIXME: TriplotBase augments levels so here the implementation is just repeated without that step
 function filled_tricontours(x, y, z, t, levels)
