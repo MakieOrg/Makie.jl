@@ -16,8 +16,9 @@ x = randn(50)
 y = randn(50)
 z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* randn.()
 
-Makie.tricontourf(x, y, z)
+f, ax, tr = tricontourf(x, y, z)
 scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
+Colorbar(f[1, 2], tr)
 current_figure()
 ```
 \end{examplefigure}
@@ -34,8 +35,9 @@ x = randn(200)
 y = randn(200)
 z = x .* y
 
-Makie.tricontourf(x, y, z, colormap = :batlow)
+f, ax, tr = tricontourf(x, y, z, colormap = :batlow)
 scatter!(x, y, color = z, colormap = :batlow, strokewidth = 1, strokecolor = :black)
+Colorbar(f[1, 2], tr)
 current_figure()
 ```
 \end{examplefigure}
@@ -58,8 +60,9 @@ x = randn(50)
 y = randn(50)
 z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* randn.()
 
-Makie.tricontourf(x, y, z, mode = :relative, levels = 0.2:0.1:1)
+f, ax, tr = tricontourf(x, y, z, mode = :relative, levels = 0.2:0.1:1)
 scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
+Colorbar(f[1, 2], tr)
 current_figure()
 ```
 \end{examplefigure}
