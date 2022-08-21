@@ -29,4 +29,5 @@ using Makie: volume
     include("events.jl")
     include("text.jl")
     include("boundingboxes.jl")
+    include("record.jl")
 end

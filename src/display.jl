@@ -385,15 +385,17 @@ struct VideoStreamOptions
 
         for (name, value, allowed_formats) in allowed_kwargs
             if !(format in allowed_formats) && value !== nothing
-                @eval @warn(string('`',
+                @eval @warn(string("`",
                                    $name,
-                                   "` was passed to VideoStreamOptions, yet `format` was not one of ",
-                                   $allowed_formats,
-                                   ". `",
+                                   "` (with value `",
+                                   $(repr(value)),
+                                   "`) was passed as a keyword argument to `record` or `VideoStream`, which only has an effect when the output video's format is one of ",
+                                   $(collect(allowed_formats)),
+                                   ". But the actual video format was \"",
+                                   $format,
+                                   "\". Keyword arg `",
                                    $name,
-                                   "` will be ignored."),
-                            format = $format,
-                            $name = $value)
+                                   "` will be ignored."))
             end
         end
 
@@ -428,7 +430,7 @@ $_VIDEO_STREAM_OPTIONS_FORMAT_DESC
 $_VIDEO_STREAM_OPTIONS_KWARGS_DESC
 """
 function VideoStream(fig::FigureLike; visible=false, connect=false,
-                     format="mkv", framerate=24, compression=20, profile=nothing, pixel_format=nothing)
+                     format="mkv", framerate=nothing, compression=nothing, profile=nothing, pixel_format=nothing)
     options = VideoStreamOptions(; format, framerate, compression, profile, pixel_format)
 
     (format, framerate, compression, profile, pixel_format) = let o = options
@@ -688,7 +690,7 @@ record(fig, "test.gif", 1:255) do i
 end
 ```
 """
-function record(func, figlike, path; framerate=24, compression=20, profile=nothing, pixel_format=nothing)
+function record(func, figlike, path; framerate=nothing, compression=nothing, profile=nothing, pixel_format=nothing)
     format = lstrip(splitext(path)[2], '.')
     io = Record(func, figlike; format, framerate, compression, profile, pixel_format)
     return save(path, io)
@@ -701,7 +703,7 @@ function Record(func, figlike; format, framerate, compression, profile, pixel_fo
     return io
 end
 
-function record(func, figlike, path, iter; framerate=24, compression=20, profile=nothing,
+function record(func, figlike, path, iter; framerate=nothing, compression=nothing, profile=nothing,
                 pixel_format=nothing)
     format = lstrip(splitext(path)[2], '.')
     io = Record(func, figlike, iter; format, framerate, compression, profile, pixel_format)
