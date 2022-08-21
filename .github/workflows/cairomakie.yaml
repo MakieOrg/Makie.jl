@@ -47,7 +47,6 @@ jobs:
         run: |
           using Pkg;
           # dev mono repo versions
-          pkg"add MathTeXEngine#full_unicode_font"
           pkg"dev . ./MakieCore ./CairoMakie ./ReferenceTests"
       - name: Run the tests
         continue-on-error: true
