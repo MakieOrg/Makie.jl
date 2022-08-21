@@ -568,9 +568,9 @@ end
 end
 
 @reference_test "tricontourf relative mode" begin
-    x = randn(50)
-    y = randn(50)
-    z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* randn.()
+    x = RNG.randn(50)
+    y = RNG.randn(50)
+    z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* RNG.randn.()
 
     f, ax, tr = tricontourf(x, y, z, mode = :relative, levels = 0.2:0.1:1, colormap = :batlow)
     scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black, colormap = :batlow)
