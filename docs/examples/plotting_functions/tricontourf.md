@@ -19,7 +19,7 @@ z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* randn.()
 f, ax, tr = tricontourf(x, y, z)
 scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
 Colorbar(f[1, 2], tr)
-current_figure()
+f
 ```
 \end{examplefigure}
 
@@ -38,7 +38,7 @@ z = x .* y
 f, ax, tr = tricontourf(x, y, z, colormap = :batlow)
 scatter!(x, y, color = z, colormap = :batlow, strokewidth = 1, strokecolor = :black)
 Colorbar(f[1, 2], tr)
-current_figure()
+f
 ```
 \end{examplefigure}
 
@@ -63,6 +63,6 @@ z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* randn.()
 f, ax, tr = tricontourf(x, y, z, mode = :relative, levels = 0.2:0.1:1)
 scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
 Colorbar(f[1, 2], tr)
-current_figure()
+f
 ```
 \end{examplefigure}

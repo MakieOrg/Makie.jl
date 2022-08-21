@@ -544,3 +544,36 @@ end
     end
     f
 end
+
+@reference_test "tricontourf" begin
+    x = RNG.randn(50)
+    y = RNG.randn(50)
+    z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* RNG.randn.()
+
+    f, ax, tr = tricontourf(x, y, z)
+    scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
+    Colorbar(f[1, 2], tr)
+    f
+end
+
+@reference_test "tricontourf extendhigh extendlow" begin
+    x = RNG.randn(50)
+    y = RNG.randn(50)
+    z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* RNG.randn.()
+
+    f, ax, tr = tricontourf(x, y, z, levels = -1.8:0.2:-0.4, extendhigh = :red, extendlow = :orange)
+    scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
+    Colorbar(f[1, 2], tr)
+    f
+end
+
+@reference_test "tricontourf relative mode" begin
+    x = randn(50)
+    y = randn(50)
+    z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* randn.()
+
+    f, ax, tr = tricontourf(x, y, z, mode = :relative, levels = 0.2:0.1:1, colormap = :batlow)
+    scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black, colormap = :batlow)
+    Colorbar(f[1, 2], tr)
+    f
+end
