@@ -38,6 +38,7 @@ jobs:
           end)
 
           stale_previews = setdiff(pr_previews, open_within_threshold)
+          @info "Found $(length(stale_previews)) stale previews"
 
           if isempty(stale_previews)
               @info "No stale previews"
@@ -47,7 +48,7 @@ jobs:
           for pr in stale_previews
               path = joinpath("previews", "PR$pr")
               @info "Removing $path"
-              rm(path, recursive = true)
+              run(`git rm -rf $path`)
           end
       - name: Push changes
         run: |
