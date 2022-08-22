@@ -23,5 +23,3 @@ jobs:
               git branch gh-pages-new $(echo "delete history" | git commit-tree HEAD^{tree})
               # git push --force origin gh-pages-new:gh-pages
             fi
-        env:
-            PRNUM: ${{ github.event.number }}
