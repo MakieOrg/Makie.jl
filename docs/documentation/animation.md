@@ -53,10 +53,13 @@ record(change_function, fig, "color_animation.mp4", hue_iterator; framerate = fr
 Video files are created with [`FFMPEG.jl`](https://github.com/JuliaIO/FFMPEG.jl).
 You can choose from the following file formats:
 
-- `.mkv` (the default, doesn't need to convert)
+- `.mkv` (open standard, the default)
 - `.mp4` (good for web, widely supported)
 - `.webm` (smallest file size)
-- `.gif` (lowest quality with largest file size)
+- `.gif` (lowest quality with largest file size; should only be used as a last resort)
+
+See the docs for
+[`VideoStream`](https://makie.juliaplots.org/stable/api/index.html#VideoStream) for more details.
 
 ## Animations using `Observables`
 

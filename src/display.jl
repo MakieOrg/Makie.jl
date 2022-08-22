@@ -317,7 +317,7 @@ Base.display(re::RecordEvents) = display(re.scene)
 
 _VIDEO_STREAM_OPTIONS_FORMAT_DESC = """
 - `format = "mkv"`: The format of the video. Can be one of the following:
-    * `"mkv"`  (the default)
+    * `"mkv"`  (open standard, the default)
     * `"mp4"`  (good for Web, most supported format)
     * `"webm"` (smallest file size)
     * `"gif"`  (largest file size for the same quality)

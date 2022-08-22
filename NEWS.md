@@ -3,10 +3,15 @@
 ## master
 
 - Updated `VideoStream` and `record` to encode directly to their output format instead
-  of first passing through `mkv`. This should have no user-facing consequences except
-  that `record` and `save(path, video_stream)` become faster and produce outputs of
-  higher quality.
-
+  of first encoding to `mkv` and then re-encoding to the desired format. Changes:
+  - `VideoStream` now takes keyword arguments controlling how encoding is to be
+    performed. These are the same keyword arguments that `record` takes.
+  - `save(path, video_stream)` no longer takes any keyword arguments. Instead, pass
+    those arguments to the `VideoStream` constructor.
+  - No changes need to be made to uses of `record`.
+  - Recording animations to formats other than `mkv` should generally be faster due to
+    not needing to encode twice.
+  
 ## v0.17.13
 
 - Fix boundingboxes [#2184](https://github.com/JuliaPlots/Makie.jl/pull/2184).
