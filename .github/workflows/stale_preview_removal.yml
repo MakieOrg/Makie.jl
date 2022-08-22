@@ -56,4 +56,4 @@ jobs:
           git config user.email "documenter@juliadocs.github.io"
           git commit -m "delete preview"
           git branch gh-pages-new $(echo "delete history" | git commit-tree HEAD^{tree})
-          # git push --force origin gh-pages-new:gh-pages
+          git push --force origin gh-pages-new:gh-pages
