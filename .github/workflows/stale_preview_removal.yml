@@ -37,7 +37,7 @@ jobs:
               return pr.state == "open" && Dates.days(now() - time) <= retention_days
           end)
 
-          stale_previews = setdiff(pr_previews, open)
+          stale_previews = setdiff(pr_previews, open_within_threshold)
 
           if isempty(stale_previews)
               @info "No stale previews"
