@@ -1,8 +1,6 @@
 name: Doc Preview Cleanup
 
-on:
-  pull_request:
-    types: [closed]
+on: push
 
 jobs:
   doc-preview-cleanup:
@@ -12,15 +10,18 @@ jobs:
         uses: actions/checkout@v2
         with:
           ref: gh-pages
-      - name: Delete preview and history + push changes
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: '1'
+      - name: Check for stale PR previews
+        run: julia gha_scripts/remove_stale_pr_previews.jl
+      - name: Push changes
         run: |
-            if [ -d "previews/PR$PRNUM" ]; then
               git config user.name "Documenter.jl"
               git config user.email "documenter@juliadocs.github.io"
-              git rm -rf "previews/PR$PRNUM"
               git commit -m "delete preview"
               git branch gh-pages-new $(echo "delete history" | git commit-tree HEAD^{tree})
-              git push --force origin gh-pages-new:gh-pages
+              # git push --force origin gh-pages-new:gh-pages
             fi
         env:
             PRNUM: ${{ github.event.number }}
