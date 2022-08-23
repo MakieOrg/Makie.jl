@@ -678,6 +678,8 @@ end
         startvalue = 0
         "The current value of the slider. Don't set this manually, use the function `set_close_to!`."
         value = 0
+        "Value of slider when mouse is released after dragging."
+        value_dragstop = 0
         "The width of the slider line"
         linewidth::Float32 = 15
         "The color of the slider when the mouse hovers over it."
@@ -692,8 +694,6 @@ end
         alignmode = Inside()
         "Controls if the button snaps to valid positions or moves freely"
         snap::Bool = true
-        "Controls if observables are triggered while dragging or when mouse is released"
-        drag_update::Bool = true
     end
 end
 

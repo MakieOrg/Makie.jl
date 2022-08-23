@@ -61,6 +61,9 @@ function initialize_block!(sl::Slider)
 
     on(selected_index) do i
         sl.value[] = sliderrange[][i]
+        if !dragging[]
+            sl.value_dragstop[] = sliderrange[][i]
+        end
     end
 
     # initialize slider value with closest from range
@@ -93,17 +96,20 @@ function initialize_block!(sl::Slider)
 
     onmouseleftdrag(mouseevents) do event
         dragging[] = true
-        # Can we remove this line?
+        # dif is never used?
         # dif = event.px - event.prev_px
 
         fraction = current_sliderfraction(sl, event, endpoints, sliderrange)
         displayed_sliderfraction[] = fraction
 
-        if sl.drag_update[]
-            newindex = closest_fractionindex(sliderrange[], fraction)
-            if selected_index[] != newindex
-                selected_index[] = newindex
-            end
+        newindex = closest_fractionindex(sliderrange[], fraction)
+        if sl.snap[]
+            fraction = (newindex - 1) / (length(sliderrange[]) - 1)
+        end
+
+        newindex = closest_fractionindex(sliderrange[], fraction)
+        if selected_index[] != newindex
+            selected_index[] = newindex
         end
 
         return Consume(true)
@@ -111,17 +117,10 @@ function initialize_block!(sl::Slider)
 
     onmouseleftdragstop(mouseevents) do event
         dragging[] = false
-        if !sl.drag_update[]
-            fraction = current_sliderfraction(sl, event, endpoints, sliderrange)
-            displayed_sliderfraction[] = fraction
-
-            newindex = closest_fractionindex(sliderrange[], fraction)
-            if selected_index[] != newindex
-                selected_index[] = newindex
-            end
-        end
+        # selected_index should be set correctly in onmouseleftdrag
+        sl.value_dragstop = sliderrange[][selected_index[]]
         # adjust slider to closest legal value
-        ## is this line needed?
+        # This line is not necessary?
         # sliderfraction[] = sliderfraction[]
         linecolors[] = [sl.color_active_dimmed[], sl.color_inactive[]]
         return Consume(true)
@@ -132,6 +131,7 @@ function initialize_block!(sl::Slider)
         dim = sl.horizontal[] ? 1 : 2
         frac = (pos[dim] - endpoints[][1][dim]) / (endpoints[][2][dim] - endpoints[][1][dim])
         selected_index[] = closest_fractionindex(sliderrange[], frac)
+        sl.value_dragstop = sliderrange[][selected_index[]]
         # linecolors[] = [color_active[], color_inactive[]]
         return Consume(true)
     end
@@ -220,4 +220,5 @@ function set_close_to!(slider::Slider, value)
     closest = closest_index(slider.range[], value)
     slider.selected_index = closest
     slider.range[][closest]
+    slider.value_dragstop = slider.range[][closest]
 end
