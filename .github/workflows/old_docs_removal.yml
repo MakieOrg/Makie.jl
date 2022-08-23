@@ -51,11 +51,11 @@ jobs:
               @info "symlinking to $sym from $path"
               Base.Filesystem.symlink(sym, path)
           end
-      # - name: Push changes
-      #   run: |
-      #     git config user.name "Documenter.jl"
-      #     git config user.email "documenter@juliadocs.github.io"
-      #     git add -A
-      #     git commit -m "delete stale patch versions"
-      #     git branch gh-pages-new $(echo "delete history" | git commit-tree HEAD^{tree})
-      #     git push --force origin gh-pages-new:gh-pages
+      - name: Push changes
+        run: |
+          git config user.name "Documenter.jl"
+          git config user.email "documenter@juliadocs.github.io"
+          git add -A
+          git commit -m "delete stale patch versions"
+          git branch gh-pages-new $(echo "delete history" | git commit-tree HEAD^{tree})
+          git push --force origin gh-pages-new:gh-pages
