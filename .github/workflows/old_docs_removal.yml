@@ -1,0 +1,61 @@
+name: Stale docs patch version removal
+
+on: push
+
+jobs:
+  old-docs-removal:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v2
+        with:
+          ref: gh-pages
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: '1'
+      - name: Remove old docs
+        shell: julia {0}
+        run: |
+          docdir = "."
+          versiondirs = map(VersionNumber, filter(readdir(docdir)) do dir
+              path = joinpath(docdir, dir)
+              islink(path) && return false
+              !isdir(path) && return false
+              try
+                  VersionNumber(dir)
+                  return true
+              catch
+                  return false
+              end
+          end)
+
+          to_delete = filter(versiondirs) do dir
+              any(versiondirs) do dir2
+                  dir2.major == dir.major &&
+                  dir2.minor == dir.minor &&
+                  dir2.patch > dir.patch
+              end
+          end
+
+          if isempty(to_delete)
+              @info "Nothing to delete"
+              exit(1)
+          end
+
+          @info "Deleting: $to_delete"
+
+          for d in to_delete
+              path = joinpath(docdir, string("v", d))
+              run(`rm -rf $path`)
+              sym = joinpath(docdir, string("v", d.major, ".", d.minor))
+              @info "symlinking to $sym from $path"
+              Base.Filesystem.symlink(sym, path)
+          end
+      # - name: Push changes
+      #   run: |
+      #     git config user.name "Documenter.jl"
+      #     git config user.email "documenter@juliadocs.github.io"
+      #     git add -A
+      #     git commit -m "delete stale patch versions"
+      #     git branch gh-pages-new $(echo "delete history" | git commit-tree HEAD^{tree})
+      #     git push --force origin gh-pages-new:gh-pages
