@@ -2,6 +2,8 @@
 
 ## master
 
+- Added the `tricontourf` plotting function [#2226](https://github.com/JuliaPlots/Makie.jl/pull/2226).
+
 ## v0.17.13
 
 - Fix boundingboxes [#2184](https://github.com/JuliaPlots/Makie.jl/pull/2184).
