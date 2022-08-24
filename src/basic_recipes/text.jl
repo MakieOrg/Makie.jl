@@ -162,7 +162,7 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
     scales_2d = [Vec2f(x[3] * Vec2f(fs)) for x in els]
 
     texchars = [x[1] for x in els]
-    chars = [texchar.char for texchar in texchars]
+    glyphindices = [FreeTypeAbstraction.glyph_index(texchar) for texchar in texchars]
     fonts = [texchar.font for texchar in texchars]
     extents = GlyphExtent.(texchars)
 
@@ -181,9 +181,9 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
         last_newline_idx = 1
         newline_offset = Point3f(basepositions[1][1], 0f0, 0)
 
-        for i in eachindex(chars)
+        for i in eachindex(texchars)
             basepositions[i] -= newline_offset
-            if chars[i] == ' ' || i == length(chars)
+            if texchars[i].represented_char == ' ' || i == length(texchars)
                 right_pos = basepositions[i][1] + width(bboxes[i])
                 if last_space_idx != 0 && right_pos > word_wrap_width
                     section_offset = basepositions[last_space_idx + 1][1]
@@ -191,13 +191,14 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
                     last_newline_idx = last_space_idx+1
                     newline_offset += Point3f(section_offset, lineheight, 0)
 
-                    chars[last_space_idx] = '\n'
+                    # TODO: newlines don't really need to represented at all?
+                    # chars[last_space_idx] = '\n'
                     for j in last_space_idx+1:i
                         basepositions[j] -= Point3f(section_offset, lineheight, 0)
                     end
                 end
                 last_space_idx = i
-            elseif chars[i] == '\n'
+            elseif texchars[i].represented_char == '\n'
                 last_space_idx = 0
             end
         end
@@ -229,38 +230,8 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
     positions = basepositions .- Ref(shift)
     positions .= Ref(rot) .* positions
 
-    # # we replace VLine and HLine with characters that are specifically scaled and positioned
-    # # such that they match line length and thickness
-    # for (el, position, _) in all_els
-    #     el isa MathTeXEngine.VLine || el isa MathTeXEngine.HLine || continue
-    #     if el isa MathTeXEngine.HLine
-    #         w, h = el.width, el.thickness
-    #     else
-    #         w, h = el.thickness, el.height
-    #     end
-    #     font = to_font("TeX Gyre Heros Makie")
-    #     c = el isa MathTeXEngine.HLine ? '_' : '|'
-    #     fext = get_extent(font, c)
-    #     inkbb = FreeTypeAbstraction.inkboundingbox(fext)
-    #     w_ink = width(inkbb)
-    #     h_ink = height(inkbb)
-    #     ori = inkbb.origin
-        
-    #     char_scale = Vec2f(w / w_ink, h / h_ink) * fs
-
-    #     pos_scaled = fs * Vec2f(position)
-    #     pos_inkshifted = pos_scaled - char_scale * ori - Vec2f(0, h_ink / 2) # TODO fix for VLine
-    #     pos_final = rot * Vec3f((pos_inkshifted - Vec2f(shift[Vec(1, 2)]))..., 0)
-
-    #     push!(positions, pos_final)
-    #     push!(chars, c)
-    #     push!(fonts, font)
-    #     push!(extents, GlyphExtent(font, c))
-    #     push!(scales_2d, char_scale)
-    # end
-
     pre_align_gl = GlyphCollection(
-        chars,
+        glyphindices,
         fonts,
         Point3f.(positions),
         extents,

@@ -1,8 +1,6 @@
-using FreeTypeAbstraction: iter_or_array
-
 mutable struct TextureAtlas
     rectangle_packer::RectanglePacker
-    mapping::Dict{Tuple{Char, String}, Int} # styled glyph to index in sprite_attributes
+    mapping::Dict{Tuple{UInt64, String}, Int} # styled glyph to index in sprite_attributes
     index::Int
     data::Matrix{Float16}
     # rectangles we rendered our glyphs into in normalized uv coordinates
@@ -42,7 +40,7 @@ end
 function TextureAtlas(initial_size = TEXTURE_RESOLUTION[])
     return TextureAtlas(
         RectanglePacker(Rect2(0, 0, initial_size...)),
-        Dict{Tuple{Char, String}, Int}(),
+        Dict{Tuple{UInt64, String}, Int}(),
         1,
         # We use float max here to avoid texture bleed. See #2096
         fill(Float16(0.5PIXELSIZE_IN_ATLAS[] + GLYPH_PADDING[]), initial_size...),
@@ -150,54 +148,42 @@ end
 Finds the best font for a character from a list of fallback fonts, that get chosen
 if `font` can't represent char `c`
 """
-function find_font_for_char(c::Char, font::NativeFont)
-    FT_Get_Char_Index(font, c) != 0 && return font
+function find_font_for_char(glyph, font::NativeFont)
+    FreeTypeAbstraction.glyph_index(font, glyph) != 0 && return font
     # it seems that linebreaks are not found which messes up font metrics
     # if another font is selected just for those chars
-    c in ('\n', '\r', '\t') && return font
+    glyph in ('\n', '\r', '\t') && return font
     for afont in alternativefonts()
-        if FT_Get_Char_Index(afont, c) != 0
+        if FreeTypeAbstraction.glyph_index(afont, glyph) != 0
             return afont
         end
     end
-    error("Can't represent character $(c) with any fallback font nor $(font.family_name)!")
+    error("Can't represent character $(glyph) with any fallback font nor $(font.family_name)!")
 end
 
-function glyph_index!(atlas::TextureAtlas, c::Char, font::NativeFont)
-    if FT_Get_Char_Index(font, c) == 0
+function glyph_index!(atlas::TextureAtlas, glyph, font::NativeFont)
+    if FreeTypeAbstraction.glyph_index(font, glyph) == 0
         for afont in alternativefonts()
-            if FT_Get_Char_Index(afont, c) != 0
+            if FreeTypeAbstraction.glyph_index(afont, glyph) != 0
                 font = afont
             end
         end
     end
-    return insert_glyph!(atlas, c, font)
+    return insert_glyph!(atlas, glyph, font)
 end
 
 
-function glyph_uv_width!(atlas::TextureAtlas, c::Char, font::NativeFont)
-    return atlas.uv_rectangles[glyph_index!(atlas, c, font)]
+function glyph_uv_width!(atlas::TextureAtlas, glyph, font::NativeFont)
+    return atlas.uv_rectangles[glyph_index!(atlas, glyph, font)]
 end
 
-function glyph_uv_width!(c::Char)
-    return glyph_uv_width!(get_texture_atlas(), c, defaultfont())
+function glyph_uv_width!(glyph)
+    return glyph_uv_width!(get_texture_atlas(), glyph, defaultfont())
 end
 
-# function glyph_boundingbox(c::Char, font::NativeFont, pixelsize)
-#     if FT_Get_Char_Index(font, c) == 0
-#         for afont in alternativefonts()
-#             if FT_Get_Char_Index(afont, c) != 0
-#                 font = afont
-#                 break
-#             end
-#         end
-#     end
-#     bb, ext = FreeTypeAbstraction.metrics_bb(c, font, pixelsize)
-#     return bb
-# end
-
-function insert_glyph!(atlas::TextureAtlas, glyph::Char, font::NativeFont)
-    return get!(atlas.mapping, (glyph, FreeTypeAbstraction.fontname(font))) do
+function insert_glyph!(atlas::TextureAtlas, glyph, font::NativeFont)
+    glyphindex = FreeTypeAbstraction.glyph_index(font, glyph)
+    return get!(atlas.mapping, (glyphindex, FreeTypeAbstraction.fontname(font))) do
         # We save glyphs as signed distance fields, i.e. we save the distance
         # a pixel is away from the edge of a symbol (continuous at the edge).
         # To get accurate distances we want to draw the symbol at high
@@ -210,7 +196,7 @@ function insert_glyph!(atlas::TextureAtlas, glyph::Char, font::NativeFont)
         # resulting sdf.
         pad = GLYPH_PADDING[]
 
-        uv_pixel = render(atlas, glyph, font, downsample, pad)
+        uv_pixel = render(atlas, glyphindex, font, downsample, pad)
         tex_size = Vec2f(size(atlas.data) .- 1) # starts at 1
 
         # 0 based
@@ -269,11 +255,12 @@ function remove_font_render_callback!(f)
     end
 end
 
-function render(atlas::TextureAtlas, glyph::Char, font, downsample=5, pad=6)
-    #select_font_face(cc, font)
-    if glyph == '\n' # don't render  newline
+function render(atlas::TextureAtlas, glyph, font, downsample=5, pad=6)
+    # TODO: Is this needed or should newline be filtered before this?
+    if FreeTypeAbstraction.glyph_index(font, glyph) == FreeTypeAbstraction.glyph_index(font, '\n') # don't render  newline
         glyph = ' '
     end
+
     # the target pixel size of our distance field
     pixelsize = PIXELSIZE_IN_ATLAS[]
     # we render the font `downsample` sizes times bigger
