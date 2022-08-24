@@ -1,3 +1,5 @@
+using SnoopPrecompile
+
 macro compile(block)
     return quote
         let
@@ -11,7 +13,7 @@ macro compile(block)
 end
 
 let
-    Makie.@precompile_calls begin
+    @precompile_all_calls begin
         GLMakie.activate!()
         GLMakie.inline!(false)
         base_path = normpath(joinpath(dirname(pathof(Makie)), "..", "precompile"))

@@ -384,7 +384,7 @@ end
 Stores information about the glyphs in a string that had a layout calculated for them.
 """
 struct GlyphCollection
-    glyphs::Vector{Char}
+    glyphs::Vector{UInt64}
     fonts::Vector{FTFont}
     origins::Vector{Point3f}
     extents::Vector{GlyphExtent}
