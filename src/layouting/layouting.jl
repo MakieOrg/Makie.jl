@@ -257,7 +257,7 @@ function glyph_collection(
     # interactive features that need to know where characters begin and end
     per_char(attr) = collect(attribute_per_char(str, attr)) # attribute_per_char returns generators
     return GlyphCollection(
-        [FreeTypeAbstraction.glyph_index(x.char, x.font) for x in charinfos],
+        [FreeTypeAbstraction.glyph_index(x.font, x.char) for x in charinfos],
         [x.font for x in charinfos],
         reduce(vcat, charorigins),
         [x.extent for x in charinfos],
