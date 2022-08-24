@@ -209,6 +209,22 @@ end
         titlealign::Symbol = :center
         "The color of the title"
         titlecolor::RGBAf = @inherit(:textcolor, :black)
+        "The axis title line height multiplier."
+        titlelineheight::Float64 = 1
+        "The axis subtitle string."
+        subtitle = ""
+        "The font family of the subtitle."
+        subtitlefont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "TeX Gyre Heros Makie")
+        "The subtitle's font size."
+        subtitlesize::Float64 = @inherit(:fontsize, 16f0)
+        "The gap between subtitle and title."
+        subtitlegap::Float64 = 0
+        "Controls if the subtitle is visible."
+        subtitlevisible::Bool = true
+        "The color of the subtitle"
+        subtitlecolor::RGBAf = @inherit(:textcolor, :black)
+        "The axis subtitle line height multiplier."
+        subtitlelineheight::Float64 = 1
         "The font family of the xlabel."
         xlabelfont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "TeX Gyre Heros Makie")
         "The font family of the ylabel."
@@ -228,7 +244,7 @@ end
         "The padding between the xlabel and the ticks or axis."
         xlabelpadding::Float64 = 3f0
         "The padding between the ylabel and the ticks or axis."
-        ylabelpadding::Float64 = 5f0 # because of boundingbox inaccuracies of ticklabels
+        ylabelpadding::Float64 = 5f0 # xlabels usually have some more visual padding because of ascenders, which are larger than the hadvance gaps of ylabels
         "The font family of the xticklabels."
         xticklabelfont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "TeX Gyre Heros Makie")
         "The font family of the yticklabels."
@@ -281,6 +297,10 @@ end
         xtickcolor::RGBAf = RGBf(0, 0, 0)
         "The color of the ytick marks."
         ytickcolor::RGBAf = RGBf(0, 0, 0)
+        "Controls if the x ticks and minor ticks are mirrored on the other side of the Axis."
+        xticksmirrored::Bool = false
+        "Controls if the y ticks and minor ticks are mirrored on the other side of the Axis."
+        yticksmirrored::Bool = false
         "Locks interactive panning in the x direction."
         xpanlock::Bool = false
         "Locks interactive panning in the y direction."
@@ -437,9 +457,8 @@ function RectangleZoom(f::Function, ax::Axis; kw...)
     selection_vertices = lift(_selection_vertices, ax.finallimits, r.rectnode)
     # manually specify correct faces for a rectangle with a rectangle hole inside
     faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
-    # fxaa false seems necessary for correct transparency
     mesh = mesh!(ax.scene, selection_vertices, faces, color = (:black, 0.2), shading = false,
-                 fxaa = false, inspectable = false, visible=r.active, transparency=true)
+                 inspectable = false, visible=r.active, transparency=true)
     # translate forward so selection mesh and frame are never behind data
     translate!(mesh, 0, 0, 100)
     return r
@@ -455,6 +474,7 @@ function RectangleZoom(ax::Axis; kw...)
 end
 
 @Block Colorbar begin
+    axis::LineAxis
     @attributes begin
         "The color bar label string."
         label = ""
@@ -840,9 +860,9 @@ end
         valign = :center
         "The alignment of the menu in its suggested bounding box."
         alignmode = Inside()
-        "Index of selected item"
+        "Index of selected item. Should not be set by the user."
         i_selected = 0
-        "Selected item value"
+        "Selected item value. This is the output observable that you should listen to to react to menu interaction. Should not be set by the user."
         selection = nothing
         "Is the menu showing the available options"
         is_open = false
@@ -859,7 +879,7 @@ end
         "Color of the dropdown arrow"
         dropdown_arrow_color = (:black, 0.2)
         "Size of the dropdown arrow"
-        dropdown_arrow_size = 12px
+        dropdown_arrow_size = 20
         "The list of options selectable in the menu. This can be any iterable of a mixture of strings and containers with one string and one other value. If an entry is just a string, that string is both label and selection. If an entry is a container with one string and one other value, the string is the label and the other value is the selection."
         options = ["no options"]
         "Font size of the cell texts"

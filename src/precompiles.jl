@@ -1,8 +1,21 @@
-function _precompile_()
-    ccall(:jl_generating_output, Cint, ()) == 1 || return nothing
-    f, ax1, pl = scatter(1:4)
-    f, ax2, pl = lines(1:4)
-    f = Figure()
-    Axis(f[1,1])
-    return
+using SnoopPrecompile
+
+macro compile(block)
+    return quote
+        let
+            $(esc(block))
+        end
+    end
+end
+
+let
+    @precompile_all_calls begin
+        base_path = normpath(joinpath(dirname(pathof(Makie)), "..", "precompile"))
+        shared_precompile = joinpath(base_path, "shared-precompile.jl")
+        include(shared_precompile)
+        empty!(FONT_CACHE)
+        empty!(_default_font)
+        empty!(_alternative_fonts)
+    end
+    nothing
 end

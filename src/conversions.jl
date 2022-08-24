@@ -84,6 +84,14 @@ end
 """
 Wrap a single point or equivalent object in a single-element array.
 """
+function convert_arguments(::PointBased, x::Real, y::Real)
+    ([Point2f(x, y)],)
+end
+
+function convert_arguments(::PointBased, x::Real, y::Real, z::Real)
+    ([Point3f(x, y, z)],)
+end
+
 function convert_arguments(::PointBased, position::VecTypes{N, <: Number}) where N
     ([convert(Point{N, Float32}, position)],)
 end
@@ -1086,7 +1094,7 @@ function to_colormap(cs::Union{String, Symbol})::Vector{RGBAf}
             return to_colormap(ColorBrewer.palette(cs_string, 8))
         else
             # cs_string must be in plotutils_names
-            return to_colormap(PlotUtils.get_colorscheme(Symbol(cs_string)).colors)
+            return to_colormap(PlotUtils.get_colorscheme(Symbol(cs_string)))
         end
     else
         error(
@@ -1099,11 +1107,12 @@ function to_colormap(cs::Union{String, Symbol})::Vector{RGBAf}
     end
 end
 
-to_colormap(cg::PlotUtils.ContinuousColorGradient)::Vector{RGBAf} = to_colormap(cg.colors)
-
-function to_colormap(cg::PlotUtils.CategoricalColorGradient)::Vector{RGBAf}
-    colors = to_colormap(cg.colors)
-    return repeat(colors; inner=20)
+# Handle inbuilt PlotUtils types
+function to_colormap(cg::PlotUtils.ColorGradient)::Vector{RGBAf}
+    # We sample the colormap using cg[val]. This way, we get a concrete representation of
+    # the underlying gradient, like it being categorical or using a log scale.
+    # 256 is just a high enough constant, without being too big to slow things down.
+    return to_colormap(getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), 256)))
 end
 
 """

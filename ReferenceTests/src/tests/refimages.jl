@@ -7,6 +7,7 @@ using ReferenceTests.LinearAlgebra
 using ReferenceTests.FileIO
 using ReferenceTests.Colors
 using ReferenceTests.LaTeXStrings
+using ReferenceTests.DelimitedFiles
 using Makie: Record, volume
 
 @testset "primitives" begin
@@ -26,4 +27,7 @@ end
 end
 @testset "short_tests.jl" begin
     include("short_tests.jl")
+end
+@testset "figures_and_makielayout.jl" begin
+    include("figures_and_makielayout.jl")
 end

@@ -19,10 +19,11 @@ function initialize_block!(leg::Legend,
         enlarge($legend_area, -$(leg.margin)[1], -$(leg.margin)[2], -$(leg.margin)[3], -$(leg.margin)[4])
     end
 
-    poly!(scene,
+    bg = poly!(scene,
         legendrect,
         color = leg.bgcolor, strokewidth = leg.framewidth, visible = leg.framevisible,
         strokecolor = leg.framecolor, inspectable = false)
+    translate!(bg, 0, 0, -7) # bg behind patches but before content at 0 (legend is at +10)
 
     # the grid containing all content
     grid = GridLayout(bbox = legendrect, alignmode = Outside(leg.padding[]...))
@@ -207,6 +208,7 @@ function initialize_block!(leg::Legend,
                 rect = Box(scene; color=e.patchcolor, strokecolor=e.patchstrokecolor, strokewidth=e.patchstrokewidth,
                            width=lift(x -> x[1], e.patchsize), height=lift(x -> x[2], e.patchsize))
                 push!(erects, rect)
+                translate!(rect.blockscene, 0, 0, -5) # patches before background but behind legend elements (legend is at +10)
 
                 # plot the symbols belonging to this entry
                 symbolplots = AbstractPlot[]
@@ -524,7 +526,7 @@ attribute `label` set.
 If `merge` is `true`, all plot objects with the same label will be layered on top of each other into one legend entry.
 If `unique` is `true`, all plot objects with the same plot type and label will be reduced to one occurrence.
 """
-function Legend(fig_or_scene, axis::Union{Axis, Scene, LScene}, title = nothing; merge = false, unique = false, kwargs...)
+function Legend(fig_or_scene, axis::Union{Axis, Axis3, Scene, LScene}, title = nothing; merge = false, unique = false, kwargs...)
     plots, labels = get_labeled_plots(axis, merge = merge, unique = unique)
     isempty(plots) && error("There are no plots with labels in the given axis that can be put in the legend. Supply labels to plotting functions like `plot(args...; label = \"My label\")`")
     Legend(fig_or_scene, plots, labels, title; kwargs...)
@@ -557,7 +559,7 @@ function get_labeled_plots(ax; merge::Bool, unique::Bool)
 end
 
 get_plots(p::AbstractPlot) = [p]
-get_plots(ax::Axis) = get_plots(ax.scene)
+get_plots(ax::Union{Axis, Axis3}) = get_plots(ax.scene)
 get_plots(lscene::LScene) = get_plots(lscene.scene)
 function get_plots(scene::Scene)
     plots = AbstractPlot[]

@@ -22,11 +22,16 @@ set_window_config!(;
 )
 ```
 
+#### Multiple Windows
+
+GLMakie has experimental support for displaying multiple independent figures (or scenes). To open a new window, use `display(GLMakie.Screen(), figure_or_scene)`.
+
+
 ## Forcing Dedicated GPU Use In Linux
 
 Normally the dedicated GPU is used for rendering.
 If instead an integrated GPU is used, one can tell Julia to use the dedicated GPU while launching julia as `$ sudo DRI_PRIME=1 julia` in the bash terminal.
-
+To have it permanently used, add the line `export DRI_PRIME=1` in  your `.bashrc` or `.zshrc` file.
 
 ## Troubleshooting OpenGL
 

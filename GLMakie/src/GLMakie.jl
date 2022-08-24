@@ -1,5 +1,11 @@
 module GLMakie
 
+if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@max_methods"))
+    # GLMakie doesn't do much work, besides assembling shaders.
+    # If it does, code should be 100% inferable, so hopefully shouldn't be influenced by this
+    @eval Base.Experimental.@max_methods 1
+end
+
 using ModernGL, FixedPointNumbers, Colors, GeometryBasics
 using Makie, FileIO
 
@@ -8,8 +14,10 @@ using Makie: Scene, Lines, Text, Image, Heatmap, Scatter
 using Makie: convert_attribute, @extractvalue, LineSegments
 using Makie: @get_attribute, to_value, to_colormap, extrema_nan
 using Makie: ClosedInterval, (..)
-using Makie: inline!
+using Makie: inline!, to_native
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
+import Makie: to_font, glyph_uv_width!, el32convert
+
 using ShaderAbstractions
 using FreeTypeAbstraction
 using GeometryBasics: StaticVector
@@ -54,9 +62,6 @@ end
 
 export set_window_config!
 
-if Base.VERSION >= v"1.4.2"
-    include("precompile.jl")
-    _precompile_()
-end
+include("precompiles.jl")
 
 end

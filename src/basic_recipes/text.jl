@@ -1,6 +1,13 @@
 function plot!(plot::Text)
+    positions = plot[1]
     # attach a function to any text that calculates the glyph layout and stores it
-    glyphcollection = lift(plot[1], plot.textsize, plot.font, plot.align,
+    glyphcollections = Observable(GlyphCollection[])
+    linesegs = Observable(Point2f[])
+    linewidths = Observable(Float32[])
+    linecolors = Observable(RGBAf[])
+    lineindices = Ref(Int[])
+    
+    onany(plot.text, plot.textsize, plot.font, plot.align,
             plot.rotation, plot.justification, plot.lineheight, plot.color, 
             plot.strokecolor, plot.strokewidth, plot.word_wrap_width) do str,
                 ts, f, al, rot, jus, lh, col, scol, swi, www
@@ -10,13 +17,98 @@ function plot!(plot::Text)
         col = to_color(col)
         scol = to_color(scol)
 
-        layout_text(str, ts, f, al, rot, jus, lh, col, scol, swi, www)
+        gcs = GlyphCollection[]
+        lsegs = Point2f[]
+        lwidths = Float32[]
+        lcolors = RGBAf[]
+        lindices = Int[]
+        function push_args((gc, ls, lw, lc, lindex))
+            push!(gcs, gc)
+            append!(lsegs, ls)
+            append!(lwidths, lw)
+            append!(lcolors, lc)
+            append!(lindices, lindex)
+            return
+        end
+        func = push_args ∘ _get_glyphcollection_and_linesegments
+        broadcast_foreach(func, str, 1:attr_broadcast_length(str), ts, f, al, rot, jus, lh, col, scol, swi, www)
+        glyphcollections[] = gcs
+        linewidths[] = lwidths
+        linecolors[] = lcolors
+        lineindices[] = lindices
+        linesegs[] = lsegs
     end
 
-    text!(plot, glyphcollection; plot.attributes...)
+    linesegs_shifted = Observable(Point2f[])
+
+    sc = parent_scene(plot)
+
+    onany(linesegs, positions, sc.camera.projectionview, sc.px_area, transform_func_obs(sc)) do segs, pos, _, _, transf
+        pos_transf = scene_to_screen(apply_transform(transf, pos), sc)
+        linesegs_shifted[] = map(segs, lineindices[]) do seg, index
+            seg + attr_broadcast_getindex(pos_transf, index)
+        end
+    end
+
+    notify(plot.text)
+
+    attrs = copy(plot.attributes)
+    # remove attributes that are already in the glyphcollection
+    pop!(attrs, :position)
+    pop!(attrs, :text)
+    pop!(attrs, :align)
+    pop!(attrs, :color)
+
+    text!(plot, glyphcollections; attrs..., position = positions)
+    linesegments!(plot, linesegs_shifted; linewidth = linewidths, color = linecolors, space = :pixel)
 
     plot
 end
+
+function _get_glyphcollection_and_linesegments(str::AbstractString, index, ts, f, al, rot, jus, lh, col, scol, swi, www)
+    gc = layout_text(string(str), ts, f, al, rot, jus, lh, col, scol, swi, www)
+    gc, Point2f[], Float32[], RGBAf[], Int[]
+end
+function _get_glyphcollection_and_linesegments(latexstring::LaTeXString, index, ts, f, al, rot, jus, lh, col, scol, swi, www)
+    tex_elements, glyphcollections, offset = texelems_and_glyph_collection(latexstring, ts,
+                al[1], al[2], rot, col, scol, swi, www)
+
+    linesegs = Point2f[]
+    linewidths = Float32[]
+    linecolors = RGBAf[]
+    lineindices = Int[]
+
+    rotate_2d(quat, point2) = Point2f(quat * to_ndim(Point3f, point2, 0))
+
+    for (element, position, _) in tex_elements
+        if element isa MathTeXEngine.HLine
+            h = element
+            x, y = position
+            push!(linesegs, rotate_2d(rot, ts * Point2f(x, y) - offset))
+            push!(linesegs, rotate_2d(rot, ts * Point2f(x + h.width, y) - offset))
+            push!(linewidths, ts * h.thickness)
+            push!(linewidths, ts * h.thickness)
+            push!(linecolors, col) # TODO how to specify color better?
+            push!(linecolors, col)
+            push!(lineindices, index)
+            push!(lineindices, index)
+        end
+    end
+
+    glyphcollections, linesegs, linewidths, linecolors, lineindices
+end
+
+function plot!(plot::Text{<:Tuple{<:AbstractString}})
+    text!(plot, plot.position; text = plot[1], plot.attributes...)
+    plot
+end
+
+# conversion stopper for previous methods
+convert_arguments(::Type{<: Text}, gcs::AbstractVector{<:GlyphCollection}) = (gcs,)
+convert_arguments(::Type{<: Text}, gc::GlyphCollection) = (gc,)
+convert_arguments(::Type{<: Text}, vec::AbstractVector{<:Tuple{<:AbstractString, <:Point}}) = (vec,)
+convert_arguments(::Type{<: Text}, strings::AbstractVector{<:AbstractString}) = (strings,)
+convert_arguments(::Type{<: Text}, string::AbstractString) = (string,)
 
 # TODO: is this necessary? there seems to be a recursive loop with the above
 # function without these two interceptions, but I didn't need it before merging
@@ -25,167 +117,34 @@ plot!(plot::Text{<:Tuple{<:GlyphCollection}}) = plot
 plot!(plot::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}}) = plot
 
 function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
-    glyphcollections = Observable(GlyphCollection[])
-    rotation = Observable{Any}(nothing)
-
-    onany(plot[1], plot.textsize, plot.font, plot.align, 
-            plot.rotation, plot.justification, plot.lineheight, plot.color, 
-            plot.strokecolor, plot.strokewidth, plot.word_wrap_width) do str,
-                    ts, f, al, rot, jus, lh, col, scol, swi, wwws
-
-        ts = to_textsize(ts)
-        f = to_font(f)
-        rot = to_rotation(rot)
-        col = to_color(col)
-        scol = to_color(scol)
-
-        gcs = GlyphCollection[]
-        broadcast_foreach(str, ts, f, al, rot, jus, lh, col, scol, swi, wwws) do str,
-                ts, f, al, rot, jus, lh, col, scol, swi, www
-            subgl = layout_text(str, ts, f, al, rot, jus, lh, col, scol, swi, www)
-            push!(gcs, subgl)
-        end
-        rotation.val = rot
-        glyphcollections[] = gcs
-        return
-    end
-
-    # run onany once to initialize
-    notify(plot[1])
-
-    text!(plot, glyphcollections; position = plot.position, rotation = rotation,
-        model = plot.model, offset = plot.offset, markerspace = plot.markerspace, 
-        visible=plot.visible, space = plot.space)
-
+    text!(plot, plot.position; text = plot[1], plot.attributes...)
     plot
 end
 
 # overload text plotting for a vector of tuples of a string and a point each
-function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:AbstractString, <:Point}}}})
+function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:AbstractString, <:Point}}}})    
     strings_and_positions = plot[1]
 
     strings = Observable(first.(strings_and_positions[]))
-    positions = Observable(to_ndim.(Ref(Point3f), last.(strings_and_positions[]), 0))
+    positions = Observable(
+        Point3f[to_ndim(Point3f, last(x), 0) for x in  strings_and_positions[]] # avoid Any for zero elements
+    )
 
     attrs = plot.attributes
     pop!(attrs, :position)
 
-    t = text!(plot, strings; position = positions, attrs...)
+    text!(plot, positions; text = strings, attrs...)
 
     # update both text and positions together
     on(strings_and_positions) do str_pos
         strs = first.(str_pos)
         poss = to_ndim.(Ref(Point3f), last.(str_pos), 0)
 
-        t[1].val != strs && (t[1][] = strs)
+        strings.val != strs && (strings[] = strs)
         positions.val != poss && (positions[] = poss)
 
         return
     end
-    plot
-end
-
-
-function plot!(plot::Text{<:Tuple{<:Union{LaTeXString, AbstractVector{<:LaTeXString}}}})
-
-    # attach a function to any text that calculates the glyph layout and stores it
-    lineels_glyphcollection_offset = lift(plot[1], plot.textsize, plot.align, plot.rotation,
-            plot.model, plot.color, plot.strokecolor, plot.strokewidth, 
-            plot.word_wrap_width) do latexstring, ts, al, rot, mo, color, scolor, swidth, www
-
-        ts = to_textsize(ts)
-        rot = to_rotation(rot)
-
-        if latexstring isa AbstractVector
-            tex_elements = []
-            glyphcollections = GlyphCollection[]
-            offsets = Point2f[]
-            broadcast_foreach(latexstring, ts, al, rot, color, scolor, swidth, www) do latexstring,
-                ts, al, rot, color, scolor, swidth, _www
-
-                te, gc, offs = texelems_and_glyph_collection(latexstring, ts,
-                    al[1], al[2], rot, color, scolor, swidth, www)
-                push!(tex_elements, te)
-                push!(glyphcollections, gc)
-                push!(offsets, offs)
-            end
-            return tex_elements, glyphcollections, offsets
-        else
-            tex_elements, glyphcollections, offsets = texelems_and_glyph_collection(latexstring, ts,
-                al[1], al[2], rot, color, scolor, swidth, www)
-            return tex_elements, glyphcollections, offsets
-        end
-    end
-
-    glyphcollection = @lift($lineels_glyphcollection_offset[2])
-
-
-    linepairs = Observable(Tuple{Point2f, Point2f}[])
-    linewidths = Observable(Float32[])
-
-    scene = Makie.parent_scene(plot)
-
-    onany(lineels_glyphcollection_offset, plot.position, scene.camera.projectionview
-            ) do (allels, gcs, offs), pos, projview
-
-        if pos isa Vector && (length(pos) != length(allels))
-            return
-        end
-        # inv_projview = inv(projview)
-        ts = plot.textsize[]
-        rot = plot.rotation[]
-
-        ts = to_textsize(ts)
-        rot = convert_attribute(rot, key"rotation"())
-
-        empty!(linepairs.val)
-        empty!(linewidths.val)
-
-        # for the vector case, allels is a vector of vectors
-        # so for broadcasting the single vector needs to be wrapped in Ref
-        if gcs isa GlyphCollection
-            allels = [allels]
-        end
-        broadcast_foreach(allels, offs, pos, ts, rot) do allels, offs, pos, ts, rot
-            offset = Point2f(pos)
-
-            els = map(allels) do el
-                el[1] isa VLine || el[1] isa HLine || return nothing
-
-                t = el[1].thickness * ts
-                p = el[2]
-
-                ps = if el[1] isa VLine
-                    h = el[1].height
-                    (Point2f(p[1], p[2]) .* ts, Point2f(p[1], p[2] + h) .* ts) .- Ref(offs)
-                else
-                    w = el[1].width
-                    (Point2f(p[1], p[2]) .* ts, Point2f(p[1] + w, p[2]) .* ts) .- Ref(offs)
-                end
-                ps = Ref(rot) .* to_ndim.(Point3f, ps, 0)
-                # TODO the points need to be projected to work inside Axis
-                # ps = project ps with projview somehow
-
-                ps = Point2f.(ps) .+ Ref(offset)
-                ps, t
-            end
-            pairs = filter(!isnothing, els)
-            append!(linewidths.val, repeat(last.(pairs), inner = 2))
-            append!(linepairs.val, first.(pairs))
-        end
-        notify(linepairs)
-        return
-    end
-
-    notify(plot.position)
-
-    text!(plot, glyphcollection; plot.attributes...)
-    linesegments!(
-        plot, linepairs, linewidth = linewidths, color = plot.color,
-        visible = plot.visible, inspectable = plot.inspectable, 
-        transparent = plot.transparency
-    )
-
     plot
 end
 
@@ -202,13 +161,13 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
 
     scales_2d = [Vec2f(x[3] * Vec2f(fs)) for x in els]
 
-    chars = [x[1].char for x in els]
-    fonts = [x[1].font for x in els]
+    texchars = [x[1] for x in els]
+    chars = [texchar.char for texchar in texchars]
+    fonts = [texchar.font for texchar in texchars]
+    extents = GlyphExtent.(texchars)
 
-    extents = [FreeTypeAbstraction.get_extent(f, c) for (f, c) in zip(fonts, chars)]
-
-    bboxes = map(extents, fonts, scales_2d) do ext, font, scale
-        unscaled_hi_bb = FreeTypeAbstraction.height_insensitive_boundingbox(ext, font)
+    bboxes = map(extents, scales_2d) do ext, scale
+        unscaled_hi_bb = height_insensitive_boundingbox_with_advance(ext)
         return Rect2f(
             origin(unscaled_hi_bb) * scale,
             widths(unscaled_hi_bb) * scale
@@ -266,8 +225,39 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
         minimum(bb)[2]
     end
 
-    positions = basepositions .- Ref(Vec3f(xshift, yshift, 0))
+    shift = Vec3f(xshift, yshift, 0)
+    positions = basepositions .- Ref(shift)
     positions .= Ref(rot) .* positions
+
+    # # we replace VLine and HLine with characters that are specifically scaled and positioned
+    # # such that they match line length and thickness
+    # for (el, position, _) in all_els
+    #     el isa MathTeXEngine.VLine || el isa MathTeXEngine.HLine || continue
+    #     if el isa MathTeXEngine.HLine
+    #         w, h = el.width, el.thickness
+    #     else
+    #         w, h = el.thickness, el.height
+    #     end
+    #     font = to_font("TeX Gyre Heros Makie")
+    #     c = el isa MathTeXEngine.HLine ? '_' : '|'
+    #     fext = get_extent(font, c)
+    #     inkbb = FreeTypeAbstraction.inkboundingbox(fext)
+    #     w_ink = width(inkbb)
+    #     h_ink = height(inkbb)
+    #     ori = inkbb.origin
+        
+    #     char_scale = Vec2f(w / w_ink, h / h_ink) * fs
+
+    #     pos_scaled = fs * Vec2f(position)
+    #     pos_inkshifted = pos_scaled - char_scale * ori - Vec2f(0, h_ink / 2) # TODO fix for VLine
+    #     pos_final = rot * Vec3f((pos_inkshifted - Vec2f(shift[Vec(1, 2)]))..., 0)
+
+    #     push!(positions, pos_final)
+    #     push!(chars, c)
+    #     push!(fonts, font)
+    #     push!(extents, GlyphExtent(font, c))
+    #     push!(scales_2d, char_scale)
+    # end
 
     pre_align_gl = GlyphCollection(
         chars,
@@ -284,4 +274,4 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
     all_els, pre_align_gl, Point2f(xshift, yshift)
 end
 
-MakieLayout.iswhitespace(l::LaTeXString) = MakieLayout.iswhitespace(replace(l.s, '$' => ""))
+iswhitespace(l::LaTeXString) = iswhitespace(replace(l.s, '$' => ""))

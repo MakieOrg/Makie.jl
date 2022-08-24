@@ -68,13 +68,13 @@ function Makie.backend_showable(::WGLBackend, ::T, scene::Scene) where {T<:MIME}
 end
 
 struct WebDisplay <: Makie.AbstractScreen
-    three::Base.RefValue{Any}
+    three::Base.RefValue{ThreeDisplay}
     display::Any
 end
 
-function Makie.backend_display(::WGLBackend, scene::Scene)
+function Makie.backend_display(::WGLBackend, scene::Scene; kw...)
     # Reference to three object which gets set once we serve this to a browser
-    three_ref = Base.RefValue{Any}(nothing)
+    three_ref = Base.RefValue{ThreeDisplay}()
     app = App() do s, request
         three, canvas = three_display(s, scene)
         three_ref[] = three
@@ -101,12 +101,12 @@ function Makie.colorbuffer(screen::ThreeDisplay)
     return session2image(screen)
 end
 
-function get_three(screen::WebDisplay; timeout = 30)
+function get_three(screen::WebDisplay; timeout = 30)::Union{Nothing, ThreeDisplay}
     # WebDisplay is not guaranteed to get displayed in the browser, so we wait a while
     # to see if anything gets displayed!
     tstart = time()
     while time() - tstart < timeout
-        if screen.three[] !== nothing
+        if isassigned(screen.three)
             three = screen.three[]
             session = JSServe.session(three)
             if isready(session.js_fully_loaded)
@@ -126,7 +126,7 @@ function Makie.colorbuffer(screen::WebDisplay)
     return session2image(get_three(screen))
 end
 
-function Base.insert!(td::WebDisplay, scene::Scene, plot::AbstractPlot)
+function Base.insert!(td::WebDisplay, scene::Scene, plot::Combined)
     disp = get_three(td)
     disp === nothing && error("Plot needs to be displayed to insert additional plots")
     insert!(disp, scene, plot)

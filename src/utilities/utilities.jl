@@ -156,17 +156,20 @@ end
 attr_broadcast_length(x::NativeFont) = 1 # these are our rules, and for what we do, Vecs are usually scalars
 attr_broadcast_length(x::VecTypes) = 1 # these are our rules, and for what we do, Vecs are usually scalars
 attr_broadcast_length(x::AbstractArray) = length(x)
+attr_broadcast_length(x::AbstractPattern) = 1
 attr_broadcast_length(x) = 1
 attr_broadcast_length(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
 
 attr_broadcast_getindex(x::NativeFont, i) = x # these are our rules, and for what we do, Vecs are usually scalars
 attr_broadcast_getindex(x::VecTypes, i) = x # these are our rules, and for what we do, Vecs are usually scalars
 attr_broadcast_getindex(x::AbstractArray, i) = x[i]
+attr_broadcast_getindex(x::AbstractPattern, i) = x
 attr_broadcast_getindex(x, i) = x
 attr_broadcast_getindex(x::ScalarOrVector, i) = x.sv isa Vector ? x.sv[i] : x.sv
 
 is_vector_attribute(x::AbstractArray) = true
 is_vector_attribute(x::NativeFont) = false
+is_vector_attribute(x::Quaternion) = false
 is_vector_attribute(x::VecTypes) = false
 is_vector_attribute(x) = false
 
@@ -181,23 +184,25 @@ An example would be a collection of scatter markers that have different sizes bu
 The length of an attribute is determined with `attr_broadcast_length` and elements are accessed with
 `attr_broadcast_getindex`.
 """
-function broadcast_foreach(f, args...)
-    lengths = attr_broadcast_length.(args)
-    maxlen = maximum(lengths)
+@generated function broadcast_foreach(f, args...)
+    N = length(args)
+    quote
+        lengths = Base.Cartesian.@ntuple $N i -> attr_broadcast_length(args[i])
+        maxlen = maximum(lengths)
+        any_wrong_length = Base.Cartesian.@nany $N i -> lengths[i] ∉ (0, 1, maxlen)
+        if any_wrong_length
+            error("All non scalars need same length, Found lengths for each argument: $lengths, $(map(typeof, args))")
+        end
+        # skip if there's a zero length element (like an empty annotations collection, etc)
+        # this differs from standard broadcasting logic in which all non-scalar shapes have to match
+        0 in lengths && return
 
-    # all non scalars should have same length
-    if any(x -> !(x in (0, 1, maxlen)), lengths)
-        error("All non scalars need same length, Found lengths for each argument: $lengths, $(typeof.(args))")
+        for i in 1:maxlen
+            Base.Cartesian.@ncall $N f (j -> attr_broadcast_getindex(args[j], i))
+        end
+
+        return
     end
-
-    # skip if there's a zero length element (like an empty annotations collection, etc)
-    # this differs from standard broadcasting logic in which all non-scalar shapes have to match
-    0 in lengths && return
-
-    for i in 1:maxlen
-        f(attr_broadcast_getindex.(args, i)...)
-    end
-    return
 end
 
 
@@ -228,12 +233,6 @@ function to_ndim(T::Type{<: VecTypes{N,ET}}, vec::VecTypes{N2}, fillval) where {
         @inbounds return vec[i]
     end)
 end
-
-dim3(x) = ntuple(i -> x, Val(3))
-dim3(x::NTuple{3,Any}) = x
-
-dim2(x) = ntuple(i -> x, Val(2))
-dim2(x::NTuple{2,Any}) = x
 
 lerp(a::T, b::T, val::AbstractFloat) where {T} = (a .+ (val * (b .- a)))
 
