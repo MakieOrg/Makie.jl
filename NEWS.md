@@ -4,10 +4,72 @@
 
 - Added `linecolormap` and `markercolormap` attributes to Legend.  Line and scatter legend elements will also automatically pick up on the colormap.
 
+## v0.17.13
+
+- Fix boundingboxes [#2184](https://github.com/JuliaPlots/Makie.jl/pull/2184).
+- Fix highclip/lowclip in meshscatter, poly, contourf, barplot [#2183](https://github.com/JuliaPlots/Makie.jl/pull/2183).
+- fix gridline updates [#2196](https://github.com/JuliaPlots/Makie.jl/pull/2196).
+- fix glDisablei argument order, which crashed some Intel drivers
+
+## v0.17.12
+
+- Fix stackoverflow in show [#2167](https://github.com/JuliaPlots/Makie.jl/pull/2167)
+
+## v0.17.11
+
+- `rainclouds`(!) now supports `violin_limits` keyword argument, serving the same.
+role as `datalimits` in `violin` [#2137](https://github.com/JuliaPlots/Makie.jl/pull/2137).
+- Fixed a issue where nonzero `strokewidth` results in a thin outline of the wrong color if `color` and `strokecolor` didn't match and weren't transparent. [#2096](https://github.com/JuliaPlots/Makie.jl/pull/2096).
+- Improve performance around Axis(3) limits [#2115](https://github.com/JuliaPlots/Makie.jl/pull/2115).
+- Cleanup stroke artifacts in scatter and text [#2096](https://github.com/JuliaPlots/Makie.jl/pull/2096).
+- Compile time improvements [#2153](https://github.com/JuliaPlots/Makie.jl/pull/2153).
+- Mesh and Surface now interpolate between values instead of interpolating between colors for WGLMakie + GLMakie [#2097](https://github.com/JuliaPlots/Makie.jl/pull/2097).
+
+## v0.17.10
+
+- Bumped compatibility bound of `GridLayoutBase.jl` to `v0.9.0` which fixed a regression with `Mixed` and `Outside` alignmodes in nested `GridLayout`s [#2135](https://github.com/JuliaPlots/Makie.jl/pull/2135).
+
+## v0.17.9
+
+- Patterns (`Makie.AbstractPattern`) are now supported by `CairoMakie` in `poly` plots that don't involve `mesh`, such as `bar` and `poly` [#2106](https://github.com/JuliaPlots/Makie.jl/pull/2106/).
+- Fixed regression where `Block` alignments could not be specified as numbers anymore [#2108](https://github.com/JuliaPlots/Makie.jl/pull/2108).
+- Added the option to show mirrored ticks on the other side of an Axis using the attributes `xticksmirrored` and `yticksmirrored` [#2105](https://github.com/JuliaPlots/Makie.jl/pull/2105).
+- Fixed a bug where a set of `Axis` wouldn't be correctly linked together if they were only linked in pairs instead of all at the same time [#2116](https://github.com/JuliaPlots/Makie.jl/pull/2116).
+
+## v0.17.7
+
+- Improved `Menu` performance, now it should me much harder to reach the boundary of 255 scenes in GLMakie. `Menu` also takes a `default` keyword argument now and can be scrolled if there is too little space available.
+
+## v0.17.6
+
+- **EXPERIMENTAL** Added support for multiple windows in GLMakie through `display(GLMakie.Screen(), figure_or_scene)` [#1771](https://github.com/JuliaPlots/Makie.jl/pull/1771).
+- Added support for RGB matrices in `heatmap` with GLMakie [#2036](https://github.com/JuliaPlots/Makie.jl/pull/2036)
+- `Textbox` doesn't defocus anymore on trying to submit invalid input [#2041](https://github.com/JuliaPlots/Makie.jl/pull/2041).
+- `text` now takes the position as the first argument(s) like `scatter` and most other plotting functions, it is invoked `text(x, y, [z], text = "text")`. Because it is now of conversion type `PointBased`, the positions can be given in all the usual different ways which are implemented as conversion methods. All old invocation styles such as `text("text", position = Point(x, y))` still work to maintain backwards compatibility [#2020](https://github.com/JuliaPlots/Makie.jl/pull/2020).
+
+## v0.17.5
+
+- Fixed a regression with `linkaxes!` [#2039](https://github.com/JuliaPlots/Makie.jl/pull/2039).
+
+## v0.17.4
+
+- The functions `hlines!`, `vlines!`, `hspan!`, `vspan!` and `abline!` were reimplemented as recipes. This allows using them without an `Axis` argument in first position and also as visuals in AlgebraOfGraphics.jl. Also, `abline!` is now called `ablines!` for consistency, `abline!` is still exported but deprecated and will be removed in the future. [#2023](https://github.com/JuliaPlots/Makie.jl/pulls/2023).
+- Added `rainclouds` and `rainclouds!` [#1725](https://github.com/JuliaPlots/Makie.jl/pull/1725).
+- Improve CairoMakie performance [#1964](https://github.com/JuliaPlots/Makie.jl/pull/1964) [#1981](https://github.com/JuliaPlots/Makie.jl/pull/1981).
+- Interpolate colormap correctly [#1973](https://github.com/JuliaPlots/Makie.jl/pull/1973).
+- Fix picking [#1993](https://github.com/JuliaPlots/Makie.jl/pull/1993).
+- Improve compile time latency [#1968](https://github.com/JuliaPlots/Makie.jl/pull/1968) [#2000](https://github.com/JuliaPlots/Makie.jl/pull/2000).
+- Fix multi poly with rects [#1999](https://github.com/JuliaPlots/Makie.jl/pull/1999).
+- Respect scale and nonlinear values in PlotUtils cgrads [#1979](https://github.com/JuliaPlots/Makie.jl/pull/1979).
+- Fix CairoMakie heatmap filtering [#1828](https://github.com/JuliaPlots/Makie.jl/pull/1828).
+- Remove GLVisualize and MakieLayout module [#2007](https://github.com/JuliaPlots/Makie.jl/pull/2007) [#2008](https://github.com/JuliaPlots/Makie.jl/pull/2008).
+- Add linestyle and default to extrema(z) for contour, remove bitrotten fillrange [#2008](https://github.com/JuliaPlots/Makie.jl/pull/2008).
+
 ## v0.17.3
 
 - Switched to `MathTeXEngine v0.4`, which improves the look of LaTeXStrings [#1952](https://github.com/JuliaPlots/Makie.jl/pull/1952).
 - Added subtitle capability to `Axis` [#1859](https://github.com/JuliaPlots/Makie.jl/pull/1859).
+- Fixed a bug where scaled colormaps constructed using `Makie.cgrad` were not interpreted correctly.
 
 ## v0.17.2
 
@@ -16,7 +78,7 @@
 ## v0.17.1
 
 - Added word wrapping. In `Label`, `word_wrap = true` causes it to use the suggested width and wrap text to fit. In `text`, `word_wrap_width > 0` can be used to set a pixel unit line width. Any word (anything between two spaces without a newline) that goes beyond this width gets a newline inserted before it [#1819](https://github.com/JuliaPlots/Makie.jl/pull/1819).
-- Improved `Axis3`'s interactive performance [#1835](https://github.com/JuliaPlots/Makie.jl/pull/1835). 
+- Improved `Axis3`'s interactive performance [#1835](https://github.com/JuliaPlots/Makie.jl/pull/1835).
 - Fixed errors in GLMakie's `scatter` implementation when markers are given as images. [#1917](https://github.com/JuliaPlots/Makie.jl/pull/1917).
 - Removed some method ambiguities introduced in v0.17 [#1922](https://github.com/JuliaPlots/Makie.jl/pull/1922).
 - Add an empty default label, `""`, to each slider that doesn't have a label in `SliderGrid` [#1888](https://github.com/JuliaPlots/Makie.jl/pull/1888).

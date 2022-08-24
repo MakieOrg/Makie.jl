@@ -370,10 +370,18 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
     strokewidths = glyph_collection.strokewidths
     strokecolors = glyph_collection.strokecolors
 
-    s2ms = Makie.clip_to_space(scene.camera, markerspace) * Makie.space_to_clip(scene.camera, space)
     model = _deref(_model)
     model33 = model[Vec(1, 2, 3), Vec(1, 2, 3)]
     id = Mat4f(I)
+
+    glyph_pos = let
+        transform_func = scene.transformation.transform_func[]
+        p = Makie.apply_transform(transform_func, position)
+
+        Makie.clip_to_space(scene.camera, markerspace) *
+        Makie.space_to_clip(scene.camera, space) *
+        model * to_ndim(Point4f, to_ndim(Point3f, p, 0), 1)
+    end
 
     Cairo.save(ctx)
 
@@ -391,7 +399,6 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
         Cairo.set_source_rgba(ctx, rgbatuple(color)...)
 
         # offsets and scale apply in markerspace
-        glyph_pos = s2ms * model * to_ndim(Point4f, to_ndim(Point3f, position, 0), 1)
         gp3 = glyph_pos[Vec(1, 2, 3)] ./ glyph_pos[4] .+ model33 * (glyphoffset .+ p3_offset)
 
         scale3 = scale isa Number ? Point3f(scale, scale, 0) : to_ndim(Point3f, scale, 0)
@@ -404,9 +411,9 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
         xvec = rotation * (scale3[1] * Point3f(1, 0, 0))
         yvec = rotation * (scale3[2] * Point3f(0, -1, 0))
 
-        glyphpos = project_position(scene, markerspace, gp3, id)
-        xproj = project_position(scene, markerspace, gp3 + model33 * xvec, id)
-        yproj = project_position(scene, markerspace, gp3 + model33 * yvec, id)
+        glyphpos = _project_position(scene, markerspace, gp3, id, true)
+        xproj = _project_position(scene, markerspace, gp3 + model33 * xvec, id, true)
+        yproj = _project_position(scene, markerspace, gp3 + model33 * yvec, id, true)
 
         xdiff = xproj - glyphpos
         ydiff = yproj - glyphpos
@@ -418,16 +425,15 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
         )
 
         Cairo.save(ctx)
-        Cairo.move_to(ctx, glyphpos...)
         set_font_matrix(ctx, mat)
-        Cairo.show_text(ctx, string(glyph))
+        show_glyph(ctx, glyph, glyphpos...)
         Cairo.restore(ctx)
 
         if strokewidth > 0 && strokecolor != RGBAf(0, 0, 0, 0)
             Cairo.save(ctx)
             Cairo.move_to(ctx, glyphpos...)
             set_font_matrix(ctx, mat)
-            Cairo.text_path(ctx, string(glyph))
+            glyph_path(ctx, glyph, glyphpos...)
             Cairo.set_source_rgba(ctx, rgbatuple(strokecolor)...)
             Cairo.set_line_width(ctx, strokewidth)
             Cairo.stroke(ctx)
@@ -440,8 +446,26 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
     end
 
     Cairo.restore(ctx)
+    return
+end
 
-    nothing
+struct CairoGlyph
+    index::Culong
+    x::Cdouble
+    y::Cdouble
+end
+
+function show_glyph(ctx, glyph, x, y)
+    cg = Ref(CairoGlyph(glyph, x, y))
+    ccall((:cairo_show_glyphs, Cairo.libcairo),
+            Nothing, (Ptr{Nothing}, Ptr{CairoGlyph}, Cint),
+            ctx.ptr, cg, 1)
+end
+function glyph_path(ctx, glyph::Culong, x, y)
+    cg = Ref(CairoGlyph(glyph, x, y))
+    ccall((:cairo_glyph_path, Cairo.libcairo),
+            Nothing, (Ptr{Nothing}, Ptr{CairoGlyph}, Cint),
+            ctx.ptr, cg, 1)
 end
 
 ################################################################################
@@ -470,34 +494,6 @@ end
 
 regularly_spaced_array_to_range(arr::AbstractRange) = arr
 
-"""
-    interpolation_flag(is_vector, interp, wpx, hpx, w, h)
-
-* is_vector: if we're using vector backend
-* interp: does the user want to interpolate?
-* wpx, hpx: projected size of the image in pixels, so the actual width in pixels on screen
-* w, h: size of image in pixels
-"""
-function interpolation_flag(is_vector, interp, wpx, hpx, w, h)
-    if interp
-        if is_vector
-            return Cairo.FILTER_BILINEAR
-        else
-            return Cairo.FILTER_BEST
-        end
-    else
-        if wpx < w || hpx < h
-            # if size of image size in pixels is larger then the rectangle it gets drawn into,
-            # the pixels will be smaller than what ends up on screen, so one won't be able to see rectangles.
-            # In that case, we need to apply filtering, or we get artifacts from incorrectly downsampling!
-            return interpolation_flag(is_vector, true, wpx, hpx, w, h)
-        else
-            return Cairo.FILTER_NEAREST
-        end
-    end
-end
-
-
 function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive::Union{Heatmap, Image}))
     ctx = screen.context
     image = primitive[3][]
@@ -517,30 +513,46 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
         ys = regularly_spaced_array_to_range(ys)
     end
     model = primitive[:model][]
-    interp = to_value(get(primitive, :interpolate, true))
-    weird_cairo_limit = (2^15) - 23
+    interp_requested = to_value(get(primitive, :interpolate, true))
 
     # Debug attribute we can set to disable fastpath
     # probably shouldn't really be part of the interface
     fast_path = to_value(get(primitive, :fast_path, true))
+    disable_fast_path = !fast_path
     # Vector backends don't support FILTER_NEAREST for interp == false, so in that case we also need to draw rects
     is_vector = is_vector_backend(ctx)
     t = Makie.transform_func_obs(primitive)[]
     identity_transform = (t === identity || t isa Tuple && all(x-> x === identity, t)) && (abs(model[1, 2]) < 1e-15)
-    if fast_path && xs isa AbstractRange && ys isa AbstractRange && !(is_vector && !interp) && identity_transform
-        imsize = ((first(xs), last(xs)), (first(ys), last(ys)))
+    regular_grid = xs isa AbstractRange && ys isa AbstractRange
 
-        # find projected image corners
-        # this already takes care of flipping the image to correct cairo orientation
-        space = to_value(get(primitive, :space, :data))
-        xy = project_position(scene, space, Point2f(first.(imsize)), model)
-        xymax = project_position(scene, space, Point2f(last.(imsize)), model)
-        w, h = xymax .- xy
+    if interp_requested
+        if !regular_grid
+            error("$(typeof(primitive).parameters[1]) with interpolate = true with a non-regular grid is not supported right now.")
+        end
+        if !identity_transform
+            error("$(typeof(primitive).parameters[1]) with interpolate = true with a non-identity transform is not supported right now.")
+        end
+    end
 
+    imsize = ((first(xs), last(xs)), (first(ys), last(ys)))
+    # find projected image corners
+    # this already takes care of flipping the image to correct cairo orientation
+    space = to_value(get(primitive, :space, :data))
+    xy = project_position(scene, space, Point2f(first.(imsize)), model)
+    xymax = project_position(scene, space, Point2f(last.(imsize)), model)
+    w, h = xymax .- xy
+    image_resolution_larger_than_surface = abs(w) < length(xs) || abs(h) < length(ys)
+    automatic_interpolation = image_resolution_larger_than_surface & regular_grid & identity_transform
+
+    interpolate = interp_requested || automatic_interpolation
+
+    can_use_fast_path = !(is_vector && !interpolate) && regular_grid && identity_transform
+    use_fast_path = can_use_fast_path && !disable_fast_path
+
+    if use_fast_path
         s = to_cairo_image(image, primitive)
 
-        interp_flag = interpolation_flag(is_vector, interp, abs(w), abs(h), s.width, s.height)
-
+        weird_cairo_limit = (2^15) - 23
         if s.width > weird_cairo_limit || s.height > weird_cairo_limit
             error("Cairo stops rendering images bigger than $(weird_cairo_limit), which is likely a bug in Cairo. Please resample your image/heatmap with e.g. `ImageTransformations.imresize`")
         end
@@ -553,16 +565,11 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
         p = Cairo.get_source(ctx)
         # this is needed to avoid blurry edges
         Cairo.pattern_set_extend(p, Cairo.EXTEND_PAD)
-        # Set filter doesn't work!?
-        Cairo.pattern_set_filter(p, interp_flag)
+        filt = interpolate ? Cairo.FILTER_BILINEAR : Cairo.FILTER_NEAREST
+        Cairo.pattern_set_filter(p, filt)
         Cairo.fill(ctx)
         Cairo.restore(ctx)
-
     else
-        # We need to draw rectangles for vector backends, or irregular grids
-        if interp
-            error("Interpolation for non gridded heatmaps/images isn't supported right now. Please use interpolate=false for this plot")
-        end
         # find projected image corners
         # this already takes care of flipping the image to correct cairo orientation
         space = to_value(get(primitive, :space, :data))
@@ -785,7 +792,7 @@ function draw_mesh3D(
 
     # Face culling
     zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
-    
+
     draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightpos, shininess, diffuse, ambient, specular)
     return
 end

@@ -3,10 +3,12 @@
 ################################################################################
 
 function project_position(scene, transform_func::T, space, point, model, yflip::Bool = true) where T
-
     # use transform func
     point = Makie.apply_transform(transform_func, point)
+    _project_position(scene, space, point, model, yflip)
+end
 
+function _project_position(scene, space, point, model, yflip)
     res = scene.camera.resolution[]
     p4d = to_ndim(Vec4f, to_ndim(Vec3f, point, 0f0), 1f0)
     clip = Makie.space_to_clip(scene.camera, space) * model * p4d
@@ -110,21 +112,6 @@ function rgbatuple(c)
 end
 
 to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, c))
-
-function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
-
-    colormap = haskey(primitive, :colormap) ? to_colormap(primitive.colormap[]) : nothing
-    colorrange = get(primitive, :colorrange, nothing) |> to_value
-
-    if colorrange === Makie.automatic
-        colorrange = extrema(numbers)
-    end
-
-    Makie.interpolated_getindex.(
-        Ref(colormap),
-        Float64.(numbers), # ints don't work in interpolated_getindex
-        Ref(colorrange))
-end
 
 ########################################
 #     Image/heatmap -> ARGBSurface     #
@@ -238,6 +225,9 @@ function per_face_colors(
                 end
             end
             return FaceIterator(cvec, faces)
+        elseif color isa Makie.AbstractPattern
+            # let next level extend and fill with CairoPattern
+            return color
         elseif color isa AbstractMatrix{<: Colorant} && uv !== nothing
             wsize = reverse(size(color))
             wh = wsize .- 1
@@ -255,4 +245,13 @@ end
 
 function mesh_pattern_set_corner_color(pattern, id, c::Colorant)
     Cairo.mesh_pattern_set_corner_color_rgba(pattern, id, rgbatuple(c)...)
+end
+
+# not piracy
+function Cairo.CairoPattern(color::Makie.AbstractPattern)
+    # the Cairo y-coordinate are fliped
+    bitmappattern = reverse!(ARGB32.(Makie.to_image(color)); dims=2)
+    cairoimage = Cairo.CairoImageSurface(bitmappattern)
+    cairopattern = Cairo.CairoPattern(cairoimage)
+    return cairopattern
 end

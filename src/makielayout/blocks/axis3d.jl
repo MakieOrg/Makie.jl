@@ -116,7 +116,7 @@ function initialize_block!(ax::Axis3)
     setfield!(ax, :scrollevents, scrollevents)
     keysevents = Observable(KeysEvent(Set()))
     setfield!(ax, :keysevents, keysevents)
-    
+
     on(scene.events.scroll) do s
         if is_mouseinside(scene)
             ax.scrollevents[] = ScrollEvent(s[1], s[2])
@@ -274,18 +274,28 @@ function Makie.plot!(
 
     allattrs = merge(attributes, Attributes(kw_attributes))
 
+    _disallow_keyword(:axis, allattrs)
+    _disallow_keyword(:figure, allattrs)
+
     cycle = get_cycle_for_plottype(allattrs, P)
     add_cycle_attributes!(allattrs, P, cycle, ax.cycler, ax.palette)
 
     plot = Makie.plot!(ax.scene, P, allattrs, args...)
 
-    reset_limits!(ax)
+    if is_open_or_any_parent(ax.scene)
+        reset_limits!(ax)
+    end
     plot
 end
 
 function Makie.plot!(P::Makie.PlotFunc, ax::Axis3, args...; kw_attributes...)
     attributes = Makie.Attributes(kw_attributes)
     Makie.plot!(ax, P, attributes, args...)
+end
+
+function update_state_before_display!(ax::Axis3)
+    reset_limits!(ax)
+    return
 end
 
 function autolimits!(ax::Axis3)
@@ -546,7 +556,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     label_align = Observable((:center, :top))
 
     onany(
-            scene.px_area, scene.camera.projectionview, limits, miv, min1, min2, 
+            scene.px_area, scene.camera.projectionview, limits, miv, min1, min2,
             attr(:labeloffset), attr(:labelrotation), attr(:labelalign)
             ) do pxa, pv, lims, miv, min1, min2, labeloffset, lrotation, lalign
 

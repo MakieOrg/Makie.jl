@@ -86,4 +86,6 @@ for name in names(Makie, all=true)
 end
 export inline!
 
+include("precompiles.jl")
+
 end # module

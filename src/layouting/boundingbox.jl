@@ -20,11 +20,11 @@ end
 
 function gl_bboxes(gl::GlyphCollection)
     scales = gl.scales.sv isa Vec2f ? (gl.scales.sv for _ in gl.extents) : gl.scales.sv
-    map(gl.extents, scales) do ext, scale
+    map(gl.glyphs, gl.extents, scales) do c, ext, scale
         hi_bb = height_insensitive_boundingbox_with_advance(ext)
         Rect2f(
             Makie.origin(hi_bb) * scale,
-            widths(hi_bb) * scale
+            (c != '\n') * widths(hi_bb) * scale
         )
     end
 end
@@ -45,10 +45,15 @@ function height_insensitive_boundingbox_with_advance(ext::GlyphExtent)
     return Rect2f((l, b), (r - l, h - b))
 end
 
-function boundingbox(glyphcollection::GlyphCollection, position::Point3f, rotation::Quaternion)
+_inkboundingbox(ext::GlyphExtent) = ext.ink_bounding_box
 
+function boundingbox(glyphcollection::GlyphCollection, position::Point3f, rotation::Quaternion)
+    return boundingbox(glyphcollection, rotation) + position
+end
+
+function boundingbox(glyphcollection::GlyphCollection, rotation::Quaternion)
     if isempty(glyphcollection.glyphs)
-        return Rect3f(position, Vec3f(0, 0, 0))
+        return Rect3f(Point3f(0), Vec3f(0))
     end
 
     glyphorigins = glyphcollection.origins
@@ -56,7 +61,7 @@ function boundingbox(glyphcollection::GlyphCollection, position::Point3f, rotati
 
     bb = Rect3f()
     for (charo, glyphbb) in zip(glyphorigins, glyphbbs)
-        charbb = rotate_bbox(Rect3f(glyphbb), rotation) + charo + position
+        charbb = rotate_bbox(Rect3f(glyphbb), rotation) + charo
         if !isfinite_rect(bb)
             bb = charbb
         else
@@ -64,13 +69,12 @@ function boundingbox(glyphcollection::GlyphCollection, position::Point3f, rotati
         end
     end
     !isfinite_rect(bb) && error("Invalid text boundingbox")
-    bb
+    return bb
 end
 
 function boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotations)
-
     if isempty(layouts)
-        Rect3f((0, 0, 0), (0, 0, 0))
+        return Rect3f((0, 0, 0), (0, 0, 0))
     else
         bb = Rect3f()
         broadcast_foreach(layouts, positions, rotations) do layout, pos, rot
@@ -81,25 +85,48 @@ function boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotat
             end
         end
         !isfinite_rect(bb) && error("Invalid text boundingbox")
-        bb
+        return bb
     end
 end
 
 function boundingbox(x::Text{<:Tuple{<:GlyphCollection}})
-    boundingbox(
-        x[1][],
-        to_ndim(Point3f, x.position[], 0),
-        to_rotation(x.rotation[])
-    )
+    if x.space[] == x.markerspace[]
+        pos = to_ndim(Point3f, x.position[], 0)
+    else
+        cam = parent_scene(x).camera
+        transformed = apply_transform(x.transformation.transform_func[], x.position[])
+        pos = Makie.project(cam, x.space[], x.markerspace[], transformed)
+    end
+    return boundingbox(x[1][], pos, to_rotation(x.rotation[]))
 end
 
 function boundingbox(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}})
-    boundingbox(
-        x[1][],
-        to_ndim.(Point3f, x.position[], 0),
-        to_rotation(x.rotation[])
-    )
+    if x.space[] == x.markerspace[]
+        pos = to_ndim.(Point3f, x.position[], 0)
+    else
+        cam = (parent_scene(x).camera,)
+        transformed = apply_transform(x.transformation.transform_func[], x.position[])
+        pos = Makie.project.(cam, x.space[], x.markerspace[], transformed)
+    end
+    return boundingbox(x[1][], pos, to_rotation(x.rotation[]))
 end
+
+function boundingbox(plot::Text)
+    bb = Rect3f()
+    for p in plot.plots
+        _bb = boundingbox(p)
+        if !isfinite_rect(bb)
+            bb = _bb
+        elseif isfinite_rect(_bb)
+            bb = union(bb, _bb)
+        end
+    end
+    return bb
+end
+
+_is_latex_string(x::AbstractVector{<:LaTeXString}) = true 
+_is_latex_string(x::LaTeXString) = true 
+_is_latex_string(other) = false 
 
 function text_bb(str, font, size)
     rot = Quaternionf(0,0,0,1)

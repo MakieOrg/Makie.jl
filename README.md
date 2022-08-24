@@ -7,7 +7,8 @@ Data is the gold and silver of our age, so let's spread it out beautifully on th
 
 [Check out the documentation here!](http://makie.juliaplots.org/stable/)
 
-[![][docs-stable-img]][docs-stable-url] [![][docs-master-img]][docs-master-url]
+[![][docs-stable-img]][docs-stable-url] [![][docs-master-img]][docs-master-url] [![](https://img.shields.io/twitter/url/https/twitter.com/cloudposse.svg?style=social&label=Follow%20%40MakiePlots)](https://twitter.com/MakiePlots)
+
 
 [gitlab-img]: https://gitlab.com/JuliaGPU/Makie.jl/badges/master/pipeline.svg
 [gitlab-url]: https://gitlab.com/JuliaGPU/Makie.jl/pipelines
@@ -82,7 +83,7 @@ For more info about ReferenceTests, check out its [README](./ReferenceTests/READ
 
 # Quick start
 
-The following examples are supposed to be self-explanatory. For further information [check out the documentation here!](http://makie.juliaplots.org/stable/)
+The following examples are supposed to be self-explanatory. For further information [check out the documentation!](http://makie.juliaplots.org/stable/)
 
 ### A simple parabola
 
@@ -90,7 +91,7 @@ The following examples are supposed to be self-explanatory. For further informat
 x = 1:10
 fig = lines(x, x.^2; label = "Parabola")
 axislegend()
-save("./assets/parabola.png", fig,  resolution = (600,400))
+save("./assets/parabola.png", fig, resolution = (600, 400))
 fig
 ```
 

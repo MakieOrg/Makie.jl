@@ -1,5 +1,3 @@
-using ..GLMakie: enable_SSAO, transparency_weight_scale
-
 @enum Shape CIRCLE RECTANGLE ROUNDED_RECTANGLE DISTANCEFIELD TRIANGLE
 @enum CubeSides TOP BOTTOM FRONT BACK RIGHT LEFT
 
@@ -68,9 +66,13 @@ function GLAbstraction.gl_convert_struct(g::Grid{1,T}, uniform_name::Symbol) whe
 end
 
 struct GLVisualizeShader <: AbstractLazyShader
+    shader_cache::GLAbstraction.ShaderCache
     paths::Tuple
     kw_args::Dict{Symbol,Any}
-    function GLVisualizeShader(paths::String...; view=Dict{String,String}(), kw_args...)
+    function GLVisualizeShader(
+            shader_cache::GLAbstraction.ShaderCache, paths::String...; 
+            view = Dict{String,String}(), kw_args...
+        )
         # TODO properly check what extensions are available
         @static if !Sys.isapple()
             view["GLSL_EXTENSIONS"] = "#extension GL_ARB_conservative_depth: enable"
@@ -79,8 +81,11 @@ struct GLVisualizeShader <: AbstractLazyShader
         args = Dict{Symbol, Any}(kw_args)
         args[:view] = view
         args[:fragdatalocation] = [(0, "fragment_color"), (1, "fragment_groupid")]
-        new(map(x -> loadshader(x), paths), args)
+        new(shader_cache, map(x -> loadshader(x), paths), args)
     end
+end
+function GLAbstraction.gl_convert(shader::GLVisualizeShader, data)
+    GLAbstraction.gl_convert(shader.shader_cache, shader, data)
 end
 
 function assemble_robj(data, program, bb, primitive, pre_fun, post_fun)

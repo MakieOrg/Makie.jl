@@ -78,9 +78,8 @@ function record_comparison(base_folder::String; record_folder_name="recorded", r
     return missing_refimages, scores
 end
 
-function test_comparison(missing_refimages, scores; threshold)
-    @testset "Comparison scores and missing reference images" begin
-        @test isempty(missing_refimages)
+function test_comparison(scores; threshold)
+    @testset "Comparison scores" begin
         for (image, score) in pairs(scores)
             @testset "$image" begin
                 @test score <= threshold

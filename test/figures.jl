@@ -153,3 +153,18 @@ end
 @testset "Not implemented error" begin
     @test_throws ErrorException("Not implemented for scatter. You might want to put:  `using Makie` into your code!") scatter()
 end
+
+@testset "Figure and axis kwargs validation" begin
+    @test_throws ArgumentError lines(1:10, axis = (aspect = DataAspect()), figure = (resolution = (100, 100)))
+    @test_throws ArgumentError lines(1:10, figure = (resolution = (100, 100)))
+    @test_throws ArgumentError lines(1:10, axis = (aspect = DataAspect()))
+    
+    # these just shouldn't error
+    lines(1:10, axis = (aspect = DataAspect(),))
+    lines(1:10, axis = Attributes(aspect = DataAspect()))
+    lines(1:10, axis = Dict(:aspect => DataAspect()))
+
+    f = Figure()
+    @test_throws ArgumentError lines(f[1, 1], 1:10, axis = (aspect = DataAspect()))
+    @test_throws ArgumentError lines(f[1, 1][2, 2], 1:10, axis = (aspect = DataAspect()))
+end

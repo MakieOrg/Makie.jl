@@ -248,3 +248,15 @@ end
     @inferred to_colormap(cgrad(:cividis, 8; alpha=0.5))
     @inferred to_colormap(cgrad(:cividis, 8; alpha=0.5, categorical=true))
 end
+
+
+@testset "empty poly" begin
+    f, ax, pl = poly(Rect2f[]);
+    pl[1] = [Rect2f(0, 0, 1, 1)];
+    @test pl.plots[1][1][] == [GeometryBasics.triangle_mesh(Rect2f(0, 0, 1, 1))]
+
+    f, ax, pl = poly(Vector{Point2f}[])
+    points = decompose(Point2f, Circle(Point2f(0),1))
+    pl[1] = [points]
+    @test pl.plots[1][1][] == Makie.poly_convert(points)
+end
