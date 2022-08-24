@@ -256,14 +256,10 @@ function remove_font_render_callback!(f)
 end
 
 function render(atlas::TextureAtlas, glyph, font, downsample=5, pad=6)
-    #select_font_face(cc, font)
-
     # TODO: Is this needed or should newline be filtered before this?
-    # It's hard to filter if we have only glyph indices
-
-    # if glyph == '\n' # don't render  newline
-    #     glyph = ' '
-    # end
+    if FreeTypeAbstraction.glyph_index(font, glyph) == FreeTypeAbstraction.glyph_index(font, '\n') # don't render  newline
+        glyph = ' '
+    end
 
     # the target pixel size of our distance field
     pixelsize = PIXELSIZE_IN_ATLAS[]
