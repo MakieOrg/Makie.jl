@@ -195,3 +195,30 @@ end
 @reference_test "pattern barplot" begin
     barplot(1:5, color=Makie.LinePattern(linecolor=:red, background_color=:orange))
 end
+
+@reference_test "barplot lowclip highclip nan_color" begin
+    f = Figure()
+    attrs = (color=[-Inf, 2, NaN, Inf], colorrange=(2, 3), highclip = :red, lowclip=:green, nan_color=:black)
+    barplot(f[1, 1], 1:4; attrs...)
+    poly(
+        f[1, 2],
+        [
+            Point2f[(2, 0), (4, 0), (4, 1), (2, 1)],
+            Point2f[(0, 0), (2, 0), (2, 1), (0, 1)],
+            Point2f[(2, 1), (4, 1), (4, 2), (2, 2)],
+            Point2f[(0, 1), (2, 1), (2, 2), (0, 2)],
+        ];
+        strokewidth=2, attrs...
+    )
+    meshscatter(f[2, 1], 1:4, zeros(4), 1:4; attrs...)
+    volcano = readdlm(Makie.assetpath("volcano.csv"), ',', Float64)
+    ax, cf = contourf(f[2, 2], volcano, levels = range(100, 180, length = 10), extendlow = :green, extendhigh = :red, nan_color=:black)
+    Colorbar(f[:, 3], cf)
+    f
+end
+
+@reference_test "Colorbar" begin
+    f = Figure()
+    Colorbar(f[1, 1]; size = 200)
+    f
+end

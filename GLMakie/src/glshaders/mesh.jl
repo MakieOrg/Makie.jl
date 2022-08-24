@@ -45,6 +45,7 @@ function draw_mesh(shader_cache, @nospecialize(mesh), data::Dict)
         fetch_pixel = false
         uv_scale = Vec2f(1)
         transparency = false
+        interpolate_in_fragment_shader = true
         shader = GLVisualizeShader(
             shader_cache,
             "util.vert", "mesh.vert", "mesh.frag", "fragment_output.frag",
