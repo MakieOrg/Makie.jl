@@ -126,7 +126,6 @@ function polypath(ctx, polygon)
 end
 
 function draw_poly(scene::Scene, screen::CairoScreen, poly, polygons::AbstractArray{<:Polygon})
-    
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
     projected_polys = project_polygon.(Ref(scene), space, polygons, Ref(model))
@@ -145,12 +144,11 @@ function draw_poly(scene::Scene, screen::CairoScreen, poly, polygons::AbstractAr
         # string is erroneously broadcasted as chars otherwise
         strokecolor = to_color(strokecolor)
     end
-
     broadcast_foreach(projected_polys, color, strokecolor, poly.strokewidth[]) do po, c, sc, sw
         polypath(screen.context, po)
-        Cairo.set_source_rgba(screen.context, rgbatuple(to_color(c))...)
+        Cairo.set_source_rgba(screen.context, rgbatuple(c)...)
         Cairo.fill_preserve(screen.context)
-        Cairo.set_source_rgba(screen.context, rgbatuple(to_color(sc))...)
+        Cairo.set_source_rgba(screen.context, rgbatuple(sc)...)
         Cairo.set_line_width(screen.context, sw)
         Cairo.stroke(screen.context)
     end

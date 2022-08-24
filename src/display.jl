@@ -90,7 +90,6 @@ function Base.showable(mime::MIME"application/json", fig::FigureLike)
     backend_showable(current_backend[], mime, get_scene(fig))
 end
 
-
 function backend_showable(::Backend, ::Mime, ::Scene) where {Backend, Mime <: MIME}
     hasmethod(backend_show, Tuple{Backend, IO, Mime, Scene})
 end
@@ -112,14 +111,10 @@ function Base.show(io::IO, ::MIME"text/plain", scene::Scene; kw...)
     show(io, scene; kw...)
 end
 
-function backend_show(backend, io::IO, m::MIME, figlike::FigureLike)
-    update_state_before_display!(figlike)
-    backend_show(backend, io, m, get_scene(figlike))
-end
-
 function Base.show(io::IO, m::MIME, figlike::FigureLike)
     ioc = IOContext(io, :full_fidelity => true)
-    backend_show(current_backend[], ioc, m, figlike)
+    update_state_before_display!(figlike)
+    backend_show(current_backend[], ioc, m, get_scene(figlike))
     return
 end
 
@@ -450,7 +445,7 @@ See the docs of [`VideoStream`](@ref) for how to create a VideoStream.
 If you want a simpler interface, consider using [`record`](@ref).
 
 ### Keyword Arguments:
-- `framrate = 24`: The target framerate.
+- `framerate = 24`: The target framerate.
 - `compression = 0`: Controls the video compression with `0` being lossless and
                      `51` being the highest compression. Note that `compression = 0`
                      only works with `.mp4` if `profile = high444`.
@@ -567,7 +562,7 @@ end
 ```
 
 ### Keyword Arguments:
-- `framrate = 24`: The target framerate.
+- `framerate = 24`: The target framerate.
 - `compression = 0`: Controls the video compression with `0` being lossless and
                      `51` being the highest compression. Note that `compression = 0`
                      only works with `.mp4` if `profile = high444`.

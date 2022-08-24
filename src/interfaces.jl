@@ -18,6 +18,8 @@ function default_theme(scene)
     )
 end
 
+
+
 function color_and_colormap!(plot, intensity = plot[:color])
     if isa(intensity[], AbstractArray{<: Number})
         haskey(plot, :colormap) || error("Plot $(typeof(plot)) needs to have a colormap to allow the attribute color to be an array of numbers")
@@ -25,15 +27,29 @@ function color_and_colormap!(plot, intensity = plot[:color])
         replace_automatic!(plot, :colorrange) do
             lift(distinct_extrema_nan, intensity)
         end
+        replace_automatic!(plot, :highclip) do
+            lift(plot.colormap) do cmap
+                return to_colormap(cmap)[end]
+            end
+        end
+        replace_automatic!(plot, :lowclip) do
+            lift(plot.colormap) do cmap
+                return to_colormap(cmap)[1]
+            end
+        end
         return true
     else
+        delete!(plot, :highclip)
+        delete!(plot, :lowclip)
         delete!(plot, :colorrange)
         return false
     end
 end
 
-function calculated_attributes!(::Type{<: Mesh}, plot)
-    need_cmap = color_and_colormap!(plot)
+function calculated_attributes!(T::Type{<: Mesh}, plot)
+    mesha = lift(GeometryBasics.attributes, plot.mesh)
+    color = haskey(mesha[], :color) ? lift(x-> x[:color], mesha) : plot.color
+    need_cmap = color_and_colormap!(plot, color)
     need_cmap || delete!(plot, :colormap)
     return
 end
@@ -215,7 +231,6 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     end
     # create the plot, with the full attributes, the input signals, and the final signals.
     plot_obj = FinalType(scene, transformation, plot_attributes, input, seperate_tuple(args))
-
     calculated_attributes!(plot_obj)
     plot_obj
 end
