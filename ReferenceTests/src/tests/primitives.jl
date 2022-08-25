@@ -199,7 +199,7 @@ end
 end
 
 
-@cell "BezierPath markers" begin
+@reference_test "BezierPath markers" begin
     f = Figure(resolution = (800, 800))
     ax = Axis(f[1, 1])
 
@@ -235,7 +235,7 @@ end
 end
 
 
-@cell "complex_bezier_markers" begin
+@reference_test "complex_bezier_markers" begin
     f = Figure(resolution = (800, 800))
     ax = Axis(f[1, 1])
 
