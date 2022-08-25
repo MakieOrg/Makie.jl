@@ -25,7 +25,8 @@ end
 function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Any},<:AbstractVector{<:Any}}})
     x, y = hb[1:2]
 
-    polys = Observable(Polygon[])
+    P = typeof(Polygon(Point2f[(0, 0)]))
+    polys = Observable(P[])
     count_hex = Observable(Float64[])
     function calculate_grid(x, y, grid_size, mincnt, scale)
         empty!(polys[])
@@ -78,18 +79,14 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Any},<:AbstractVector
 
         xe = sin.(0:(pi / 3):(5 / 3 * pi))
         ys = cos.(0:(pi / 3):(5 / 3 * pi))
-        hex_points = Point2f[]
-        for (a, b) in zip(xe, ys)
-            push!(hex_points, Point2f(a * r * 1 / scaling_x, b * r * 1 / scaling_y))
+        hex_points = [Point2f(a * r * 1 / scaling_x, b * r * 1 / scaling_y) for (a, b) in zip(xe, ys)]
+        for gridpoint in grid_points
+            poly_points = Ref(Point2f(1 / scaling_x, 1 / scaling_y) * gridpoint) .+ hex_points
+            push!(polys[], Polygon(poly_points))
         end
-        hex = [Polygon(hex_points .+ p * Point2f(1 / scaling_x, 1 / scaling_y)) for p in grid_points]
+        append!(count_hex[], amount_hex)
 
-        for b in hex
-            push!(polys[], b)
-        end
-        for a in amount_hex
-            push!(count_hex[], a)
-        end
+        notify(polys)
     end
     onany(calculate_grid, x, y, hb.gridsize, hb.mincnt, hb.scale)
     calculate_grid(x[], y[], hb.gridsize[], hb.mincnt[], hb.scale[])
