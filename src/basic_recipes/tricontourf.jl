@@ -117,6 +117,9 @@ function Makie.plot!(c::Tricontourf)
         empty!(colors[])
 
         levels = copy(levels)
+        # adjust outer levels to be inclusive
+        levels[1] = prevfloat(levels[1])
+        levels[end] = nextfloat(levels[end])
         @assert issorted(levels)
         is_extended_low && pushfirst!(levels, -Inf)
         is_extended_high && push!(levels, Inf)
@@ -138,9 +141,11 @@ function Makie.plot!(c::Tricontourf)
                 continue
             end
             
-            p = Makie.Polygon(pointvecs[1], pointvecs[2:end])
-            push!(polys[], p)
-            push!(colors[], lc)
+            for pointvec in pointvecs
+                p = Makie.Polygon(pointvec)
+                push!(polys[], p)
+                push!(colors[], lc)
+            end
         end
         notify(polys)
         return
