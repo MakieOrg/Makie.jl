@@ -1,3 +1,5 @@
+using SnoopPrecompile
+
 macro compile(block)
     return quote
         figlike = $(esc(block))
@@ -10,7 +12,7 @@ macro compile(block)
 end
 
 let
-    Makie.@precompile_calls begin
+    @precompile_all_calls begin
         WGLMakie.activate!()
         base_path = normpath(joinpath(dirname(pathof(Makie)), "..", "precompile"))
         shared_precompile = joinpath(base_path, "shared-precompile.jl")

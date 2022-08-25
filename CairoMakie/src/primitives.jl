@@ -204,10 +204,12 @@ end
 # an array of markers is converted to string by itself, which is inconvenient for the iteration logic
 _marker_convert(markers::AbstractArray) = map(m -> convert_attribute(m, key"marker"(), key"scatter"()), markers)
 _marker_convert(marker) = convert_attribute(marker, key"marker"(), key"scatter"())
+# image arrays need to be converted as a whole
+_marker_convert(marker::AbstractMatrix{<:Colorant}) = [ convert_attribute(marker, key"marker"(), key"scatter"()) ]
 
 function draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker, marker_offset, rotations, model, positions, size_model, font, markerspace, space)
     broadcast_foreach(positions, colors, markersize, strokecolor,
-        strokewidth, marker, marker_offset, remove_billboard(rotations)) do point, col,
+            strokewidth, marker, marker_offset, remove_billboard(rotations)) do point, col,
             markersize, strokecolor, strokewidth, m, mo, rotation
 
         scale = project_scale(scene, markerspace, markersize, size_model)
@@ -312,6 +314,24 @@ function draw_marker(ctx, marker::Rect, pos, scale, strokecolor, strokewidth, ma
     sc = to_color(strokecolor)
     Cairo.set_source_rgba(ctx, rgbatuple(sc)...)
     Cairo.stroke(ctx)
+end
+
+
+function draw_marker(ctx, marker::Matrix{T}, pos, scale,
+        strokecolor #= unused =#, strokewidth #= unused =#,
+        marker_offset, rotation) where T<:Colorant
+
+    # convert marker to Cairo compatible image data
+    argb32_marker = convert.(ARGB32, marker)
+    argb32_marker = permutedims(argb32_marker, (2,1)) # swap x-y for Cairo
+    marker_surf   = Cairo.CairoImageSurface(argb32_marker)
+
+    Cairo.translate(ctx, pos[1]+marker_offset[1], pos[2]+marker_offset[2])
+    Cairo.rotate(ctx, to_2d_rotation(rotation))
+    px_scale = scale ./ size(argb32_marker)
+    Cairo.scale(ctx, px_scale[1], px_scale[2])
+    Cairo.set_source_surface(ctx, marker_surf, 0, 0)
+    Cairo.paint(ctx)
 end
 
 
@@ -425,19 +445,15 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
         )
 
         Cairo.save(ctx)
-        Cairo.move_to(ctx, glyphpos...)
         set_font_matrix(ctx, mat)
-        Cairo.show_text(ctx, string(glyph))
-        # show_text makes an implicite move_to at the end, which starts a new one point path.
-        # `new_path` clears that path so it doesn't end up as an artifact in the next stroke call
-        Cairo.new_path(ctx)
+        show_glyph(ctx, glyph, glyphpos...)
         Cairo.restore(ctx)
 
         if strokewidth > 0 && strokecolor != RGBAf(0, 0, 0, 0)
             Cairo.save(ctx)
             Cairo.move_to(ctx, glyphpos...)
             set_font_matrix(ctx, mat)
-            Cairo.text_path(ctx, string(glyph))
+            glyph_path(ctx, glyph, glyphpos...)
             Cairo.set_source_rgba(ctx, rgbatuple(strokecolor)...)
             Cairo.set_line_width(ctx, strokewidth)
             Cairo.stroke(ctx)
@@ -451,6 +467,25 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
 
     Cairo.restore(ctx)
     return
+end
+
+struct CairoGlyph
+    index::Culong
+    x::Cdouble
+    y::Cdouble
+end
+
+function show_glyph(ctx, glyph, x, y)
+    cg = Ref(CairoGlyph(glyph, x, y))
+    ccall((:cairo_show_glyphs, Cairo.libcairo),
+            Nothing, (Ptr{Nothing}, Ptr{CairoGlyph}, Cint),
+            ctx.ptr, cg, 1)
+end
+function glyph_path(ctx, glyph::Culong, x, y)
+    cg = Ref(CairoGlyph(glyph, x, y))
+    ccall((:cairo_glyph_path, Cairo.libcairo),
+            Nothing, (Ptr{Nothing}, Ptr{CairoGlyph}, Cint),
+            ctx.ptr, cg, 1)
 end
 
 ################################################################################
