@@ -101,7 +101,6 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Any},<:AbstractVector
             (minimum(count_hex[]), maximum(count_hex[]))
         end
     end
-    if !isempty(polys[])
-        poly!(hb, polys; color=count_hex, colormap=hb.colormap)
-    end
+
+    poly!(hb, polys; color=count_hex, colormap=hb.colormap)
 end
