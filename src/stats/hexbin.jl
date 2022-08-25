@@ -29,35 +29,12 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Any}, <:AbstractVecto
     function calculate_grid(x,y,grid_size,mincnt,scale)
         empty!(polys[])
         empty!(count_hex[])
-        if (length(x)==0)|(length(y)==0)
-            return
-        end
-        axis = current_axis()
-        x_axis = false
-        y_axis = false
-        if isnothing(axis)
-            x_diff = maximum(x)-minimum(x)
-            y_diff = maximum(y)-minimum(y)
-        else
-            if ! isnothing(axis.limits[][1])& ! isnothing(axis.limits[][2])
-            x_diff = axis.limits[][2]- axis.limits[][1]
-            x_axis = true
-            y = y[(x.<=axis.limits[][2]).&(x.>=axis.limits[][1])]
-            x = x[(x.<=axis.limits[][2]).&(x.>=axis.limits[][1])]
-            else
-            x_diff = maximum(x)-minimum(x)
 
-            end
-            if (length(axis.limits[])==4) ! isnothing(axis.limits[][3])& ! isnothing(axis.limits[][4])
-                y_diff = axis.limits[][4]- axis.limits[][3]
-                y_axis=true
-                x = x[(y.<=axis.limits[][4]).&(y.>=axis.limits[][3])]
-                y = y[(y.<=axis.limits[][4]).&(y.>=axis.limits[][3])]
-            else
-                y_diff = maximum(y)-minimum(y)
-            end
-        end
-        
+        any(isempty, (x, y)) && return
+
+        x_diff = maximum(x)-minimum(x)
+        y_diff = maximum(y)-minimum(y)
+    
         scaling_x = 1
         scaling_y = 1
         if x_diff>y_diff
@@ -67,16 +44,10 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Any}, <:AbstractVecto
         end
         y_copy = y.*scaling_y
         x_copy = x.*scaling_x
-        if x_axis
-            min_x,max_x = axis.limits[][1:2]
-        else
-            min_x,max_x =extrema(x_copy)
-        end
-        if y_axis
-            min_y,max_y = axis.limits[][3:4]
-        else
-            min_y,max_y = extrema(y_copy)
-        end
+        
+        min_x, max_x = extrema(x_copy)
+        min_y, max_y = extrema(y_copy)
+
         r = (max_x-min_x)/((grid_size-2)*2) 
         x_odd_grid =min_x-r:sin(pi/3)*2*r:max_x-r
         x_even_grid = min_x+sin(pi/3)*r:sin(pi/3)*2*r:max_x-r
@@ -95,7 +66,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Any}, <:AbstractVecto
         end
         values = Point2f.(x_copy,y_copy)
         tree = KDTree(grid_points)
-        ind,dist = nn(tree,values)
+        ind, dist = nn(tree,values)
         amount_hex = zeros(size(grid_points))
         for i in ind
             amount_hex[i]+=1
