@@ -337,12 +337,13 @@ path_command(ctx, c::CurveTo) = Cairo.curve_to(ctx, c.c1..., c.c2..., c.p...)
 path_command(ctx, ::ClosePath) = Cairo.close_path(ctx)
 function path_command(ctx, c::EllipticalArc)
     Cairo.save(ctx)
+    Cairo.translate(ctx, c.c...)
     Cairo.rotate(ctx, c.angle)
     Cairo.scale(ctx, 1, c.r2 / c.r1)
     if c.a2 > c.a1
-        Cairo.arc(ctx, c.c..., c.r1, c.a1, c.a2)
+        Cairo.arc(ctx, 0, 0, c.r1, c.a1, c.a2)
     else
-        Cairo.arc_negative(ctx, c.c..., c.r1, c.a1, c.a2)
+        Cairo.arc_negative(ctx, 0, 0, c.r1, c.a1, c.a2)
     end
     Cairo.restore(ctx)
 end

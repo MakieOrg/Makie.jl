@@ -67,10 +67,20 @@ scale(l::LineTo, v::VecTypes{2}) = LineTo(l.p .* v)
 scale(c::CurveTo, v::VecTypes{2}) = CurveTo(c.c1 .* v, c.c2 .* v, c.p .* v)
 scale(c::ClosePath, v::VecTypes{2}) = c
 function scale(e::EllipticalArc, v::VecTypes{2})
-    a = e.angle
-    r1 = cos(a) * v[1] * e.r1 + -sin(a) * v[2] * e.r1
-    r2 = sin(a) * v[1] * e.r2 +  cos(a) * v[2] * e.r2
-    EllipticalArc(e.c .* v, r1, r2, a, e.a1, e.a2)
+    x, y = v
+    if abs(x) != abs(y)
+        throw(ArgumentError("Currently you can only scale EllipticalArc such that abs(x) == abs(y) if the angle != 0"))
+    end
+    ang, a1, a2 = if x > 0 && y > 0
+        e.angle, e.a1, e.a2
+    elseif x < 0 && y < 0
+        e.angle + pi, e.a1, e.a2
+    elseif x < 0 && y > 0
+        pi - e.angle, -e.a1, -e.a2
+    else
+        pi - e.angle, pi-e.a1, pi-e.a2
+    end
+    EllipticalArc(e.c .* v, e.r1 * abs(x), e.r2 * abs(y), ang, a1, a2)
 end
 
 rotmatrix2d(a) = Mat2(cos(a), sin(a), -sin(a), cos(a))
