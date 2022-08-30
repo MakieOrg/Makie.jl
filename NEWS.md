@@ -4,6 +4,7 @@
 
 - Allow `CairoMakie` to render `scatter` with images as markers [#2080](https://github.com/JuliaPlots/Makie.jl/pull/2080).
 - Reworked text drawing and added ability to draw special characters via glyph indices in order to draw more LaTeX math characters with MathTeXEngine v0.5 [#2139](https://github.com/JuliaPlots/Makie.jl/pull/2139).
+- Fix per character attributes in text [#2244](https://github.com/JuliaPlots/Makie.jl/pull/2244)
 
 ## v0.17.13
 
