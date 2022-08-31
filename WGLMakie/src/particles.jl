@@ -100,14 +100,14 @@ primitive_shape(::Type{<:Circle}) = Cint(CIRCLE)
 primitive_shape(::Type{<:Rect2}) = Cint(RECTANGLE)
 primitive_shape(::Type{T}) where {T} = error("Type $(T) not supported")
 primitive_shape(x::Shape) = Cint(x)
-primitive_shape(x::BezierPath) = DISTANCEFIELD
-primitive_shape(x::AbstractArray{<:BezierPath}) = DISTANCEFIELD
+primitive_shape(x::BezierPath) = Cint(DISTANCEFIELD)
+primitive_shape(x::AbstractArray{<:BezierPath}) = Cint(DISTANCEFIELD)
 function primitive_shape(arr::AbstractArray)
     shapes = unique(primitive_shape(element) for element in arr)
     if length(shapes) > 1
         error("Can't use an array of markers that require different primitive_shapes $shapes.")
     end
-    first(shapes)
+    return first(shapes)
 end
 
 function char_scale_factor(char, font)
@@ -120,15 +120,15 @@ function char_scale_factor(char, font)
 end
 
 # This works the same for x being widths and offsets
-rescale_glyph(char::Char, font, x) = x * char_scale_factor(char, font)
-function rescale_glyph(char::Char, font, xs::Vector)
+rescale_glyph(char::Char, font, x::StaticVector) = x .* char_scale_factor(char, font)
+function rescale_glyph(char::Char, font, xs::AbstractVector)
     f = char_scale_factor(char, font)
     map(x -> f * x, xs)
 end
-function rescale_glyph(str::String, font, x)
+function rescale_glyph(str::AbstractVector{Char}, font, x)
     [x * char_scale_factor(char, font) for char in collect(str)]
 end
-function rescale_glyph(str::String, font, xs::Vector)
+function rescale_glyph(str::AbstractVector{Char}, font, xs::AbstractVector)
     map((char, x) -> x * char_scale_factor(char, font), collect(str), xs)
 end
 
@@ -140,13 +140,14 @@ function scatter_shader(scene::Scene, attributes)
                          :uv_offset_width, :quad_offset, :marker_offset)
     uniform_dict = Dict{Symbol,Any}()
 
-    if haskey(attributes, :marker) && attributes[:marker][] isa Union{Char, Vector{Char},String}
+    TextMarkerTypes = Union{Char, AbstractVector{Char}}
+    if haskey(attributes, :marker) && attributes[:marker][] isa TextMarkerTypes
         font = get(attributes, :font, Observable(Makie.defaultfont()))
-        attributes[:markersize] = map(rescale_glyph, attributes[:marker], font, attributes[:markersize])
+        attributes[:markersize] = map(rescale_glyph, attributes[:marker], font, lift(Makie.to_2d_scale, attributes[:markersize]))
         attributes[:quad_offset] = map(rescale_glyph, attributes[:marker], font, attributes[:quad_offset])
     end
 
-    if haskey(attributes, :marker) && attributes[:marker][] isa Union{Vector{Char},String}
+    if haskey(attributes, :marker) && attributes[:marker][] isa Union{AbstractVector{Char}, AbstractVector{BezierPath}}
         x = pop!(attributes, :marker)
         attributes[:uv_offset_width] = lift(x -> Makie.glyph_uv_width!.(collect(x)), x)
         uniform_dict[:shape_type] = Cint(3)
@@ -168,7 +169,6 @@ function scatter_shader(scene::Scene, attributes)
         k in IGNORE_KEYS && continue
         uniform_dict[k] = lift_convert(k, v, nothing)
     end
-
     get!(uniform_dict, :shape_type) do
         return lift(x -> primitive_shape(to_spritemarker(x)), attributes[:marker])
     end
@@ -185,7 +185,7 @@ function scatter_shader(scene::Scene, attributes)
     if !haskey(per_instance, :uv_offset_width)
         get!(uniform_dict, :uv_offset_width) do
             return if haskey(attributes, :marker) &&
-                      to_spritemarker(attributes[:marker][]) isa Char
+                      to_spritemarker(attributes[:marker][]) isa Union{BezierPath, Char}
                 lift(x -> Makie.glyph_uv_width!(to_spritemarker(x)),
                      attributes[:marker])
             else

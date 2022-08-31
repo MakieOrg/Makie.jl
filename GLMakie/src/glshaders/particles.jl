@@ -284,7 +284,7 @@ function draw_scatter(shader_cache, (marker, position), data)
     font = get(data, :font, Observable(Makie.defaultfont()))
 
     # Rescale to include glyph padding and shape
-    if isa(to_value(marker), Union{AbstractString, Char})
+    if isa(to_value(marker), Union{AbstractVector{Char}, Char})
         scale = data[:scale]
         quad_offset = get(data, :quad_offset, Observable(Vec2f(0)))
         # The same scaling that needs to be applied to scale also needs to apply
