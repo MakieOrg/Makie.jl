@@ -88,7 +88,9 @@ function Makie.plot!(plot::CrossBar)
                 fpoint.(l, ymax),
                 fpoint.(l, nmax),
                 fpoint.(m .- nw .* hw, y), # notch left
-                fpoint.(l, nmin),)))
+                fpoint.(l, nmin),
+                fpoint.(l, ymin)
+               )))
             boxes = if points isa AbstractVector{<: Point} # poly
                 [GeometryBasics.triangle_mesh(points)]
             else # multiple polys (Vector{Vector{<:Point}})
