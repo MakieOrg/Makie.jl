@@ -204,10 +204,12 @@ end
 # an array of markers is converted to string by itself, which is inconvenient for the iteration logic
 _marker_convert(markers::AbstractArray) = map(m -> convert_attribute(m, key"marker"(), key"scatter"()), markers)
 _marker_convert(marker) = convert_attribute(marker, key"marker"(), key"scatter"())
+# image arrays need to be converted as a whole
+_marker_convert(marker::AbstractMatrix{<:Colorant}) = [ convert_attribute(marker, key"marker"(), key"scatter"()) ]
 
 function draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker, marker_offset, rotations, model, positions, size_model, font, markerspace, space)
     broadcast_foreach(positions, colors, markersize, strokecolor,
-        strokewidth, marker, marker_offset, remove_billboard(rotations)) do point, col,
+            strokewidth, marker, marker_offset, remove_billboard(rotations)) do point, col,
             markersize, strokecolor, strokewidth, m, mo, rotation
 
         scale = project_scale(scene, markerspace, markersize, size_model)
@@ -346,6 +348,24 @@ function path_command(ctx, c::EllipticalArc)
         Cairo.arc_negative(ctx, 0, 0, c.r1, c.a1, c.a2)
     end
     Cairo.restore(ctx)
+end
+
+
+function draw_marker(ctx, marker::Matrix{T}, pos, scale,
+        strokecolor #= unused =#, strokewidth #= unused =#,
+        marker_offset, rotation) where T<:Colorant
+
+    # convert marker to Cairo compatible image data
+    argb32_marker = convert.(ARGB32, marker)
+    argb32_marker = permutedims(argb32_marker, (2,1)) # swap x-y for Cairo
+    marker_surf   = Cairo.CairoImageSurface(argb32_marker)
+
+    Cairo.translate(ctx, pos[1]+marker_offset[1], pos[2]+marker_offset[2])
+    Cairo.rotate(ctx, to_2d_rotation(rotation))
+    px_scale = scale ./ size(argb32_marker)
+    Cairo.scale(ctx, px_scale[1], px_scale[2])
+    Cairo.set_source_surface(ctx, marker_surf, 0, 0)
+    Cairo.paint(ctx)
 end
 
 
