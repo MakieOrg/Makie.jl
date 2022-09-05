@@ -120,7 +120,7 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
         end
 
         # These need explicit clean up because (some of) the source observables
-        # remain when the plot is deleated.
+        # remain when the plot is deleted.
         for k in (:normalmatrix, )
             if haskey(renderobject.uniforms, k)
                 n = renderobject.uniforms[k]
