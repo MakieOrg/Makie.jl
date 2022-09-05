@@ -22,48 +22,35 @@ end
 
 conversion_trait(::Type{<:Stairs}) = PointBased()
 
-function plot!(p::Stairs{<:Tuple{<:AbstractVector{<:Point2}}})
-    points = p[1]
-
-    steppoints = lift(points, p.step) do points, step
-        if step == :pre
-            s_points = Vector{Point2f}(undef, length(points) * 2 - 1)
-            s_points[1] = point = points[1]
-            for i in 1:length(points)-1
-                nextpoint = points[i + 1]
-                s_points[2i] = Point2f(point[1], nextpoint[2])
-                s_points[2i + 1] = nextpoint
-                point = nextpoint
-            end
-            s_points
-        elseif step == :post
-            s_points = Vector{Point2f}(undef, length(points) * 2 - 1)
-            s_points[1] = point = points[1]
-            for i in 1:length(points)-1
-                nextpoint = points[i+1]
-                s_points[2i] = Point2f(nextpoint[1], point[2])
-                s_points[2i + 1] = nextpoint
-                point = nextpoint
-            end
-            s_points
-        elseif step == :center
-            s_points = Vector{Point2f}(undef, length(points) * 2)
-            s_points[1] = point = points[1]
-            for i in 1:length(points)-1
-                nextpoint = points[i+1]
+function plot!(plot::Stairs{<:Tuple{<:AbstractVector{<:Point2}}})
+    s_points = Point2f[]
+    steppoints = lift(plot[1], plot.step) do points, step
+        empty!(s_points)
+        sizehint!(s_points, length(points) * 2)
+        point = points[1]
+        push!(s_points, point)
+        for i in 2:length(points)
+            nextpoint = points[i]
+            if step == :pre
+                p = Point2f(point[1], nextpoint[2])
+                push!(s_points, p, p, nextpoint, nextpoint)
+            elseif step == :post
+                p = Point2f(nextpoint[1], point[2])
+                push!(s_points, p, p, nextpoint, nextpoint)
+            elseif step == :center
                 halfx = (point[1] + nextpoint[1]) / 2
-                s_points[2i] = Point2f(halfx, point[2])
-                s_points[2i + 1] = Point2f(halfx, nextpoint[2])
-                point = nextpoint
+                p1 = Point2f(halfx, point[2])
+                p2 = Point2f(halfx, nextpoint[2])
+                push!(s_points, p1, p1, p2, p2)
+            else
+                error("Invalid step $step. Valid options are :pre, :post and :center")
             end
-            s_points[end] = point
-            s_points
-        else
-            error("Invalid step $step. Valid options are :pre, :post and :center")
+            point = nextpoint
         end
+        if step == :center
+            push!(s_points, point)
+        end
+        return s_points
     end
-
-    lines!(p, steppoints; [x for x in pairs(p.attributes) if x[1] != :step]...)
-    p
+    linesegments!(plot, steppoints; [x for x in pairs(plot.attributes) if x[1] != :step]...)
 end
-
