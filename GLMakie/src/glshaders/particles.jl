@@ -35,120 +35,6 @@ struct PointSizeRender
 end
 (x::PointSizeRender)() = glPointSize(to_pointsize(x.size[]))
 
-"""
-returns the Shape for the distancefield algorithm
-"""
-primitive_shape(::Union{AbstractString, Char}) = DISTANCEFIELD
-primitive_shape(x::X) where {X} = primitive_shape(X)
-primitive_shape(x::Type{DataType}) = error("No primitive shape available for previous type.")
-primitive_shape(::Type{T}) where {T <: Circle} = CIRCLE
-primitive_shape(::Type{T}) where {T <: Rect2} = RECTANGLE
-primitive_shape(x::Shape) = x
-primitive_shape(x::BezierPath) = DISTANCEFIELD
-primitive_shape(x::AbstractArray{<:BezierPath}) = DISTANCEFIELD
-function primitive_shape(arr::AbstractArray)
-    shapes = unique(primitive_shape(element) for element in arr)
-    if length(shapes) > 1
-        error("Can't use an array of markers that require different primitive_shapes $shapes.")
-    end
-    first(shapes)
-end
-
-"""
-Extracts the scale from a primitive.
-"""
-primitive_scale(prim::GeometryPrimitive) = Vec2f(widths(prim))
-primitive_scale(::Union{Shape, Char}) = Vec2f(40)
-primitive_scale(c) = Vec2f(0.1)
-
-"""
-Extracts the offset from a primitive.
-"""
-primitive_offset(x, scale::Nothing) = Vec2f(0) # default offset
-primitive_offset(x, scale) = const_lift(/, scale, -2f0)  # default offset
-
-
-"""
-Extracts the uv offset and width from a primitive.
-"""
-primitive_uv_offset_width(c::Char) = glyph_uv_width!(c)
-primitive_uv_offset_width(str::AbstractString) = map(glyph_uv_width!, collect(str))
-primitive_uv_offset_width(x) = Vec4f(0,0,1,1)
-primitive_uv_offset_width(b::BezierPath) = glyph_uv_width!(b)
-primitive_uv_offset_width(x::AbstractArray) = map(glyph_uv_width!, x)
-
-"""
-Gets the texture atlas if primitive is a char.
-"""
-primitive_distancefield(x) = nothing
-primitive_distancefield(::Union{AbstractString, Char}) = get_texture!(get_texture_atlas())
-primitive_distancefield(x::Observable) = primitive_distancefield(x[])
-primitive_distancefield(::BezierPath) = get_texture!(get_texture_atlas())
-primitive_distancefield(x::AbstractArray) = get_texture!(get_texture_atlas())
-
-# Calculates the scaling factor from unpadded size -> padded size
-# Here we assume the glyph to be representative of Makie.PIXELSIZE_IN_ATLAS[]
-# regardless of its true size.
-function char_scale_factor(char, font)
-    ta = Makie.get_texture_atlas()
-    lbrt = glyph_uv_width!(ta, char, font)
-    uv_width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
-    full_pixel_size_in_atlas = uv_width * Vec2f(size(ta.data) .- 1)
-    full_pixel_size_in_atlas / Makie.PIXELSIZE_IN_ATLAS[]
-end
-
-# full_pad / unpadded_atlas_width
-function bezierpath_pad_scale_factor(bp)
-    ta = Makie.get_texture_atlas()
-    lbrt = glyph_uv_width!(bp)
-    uv_width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
-    full_pixel_size_in_atlas = uv_width * Vec2f(size(ta.data) .- 1)
-    full_pad = 2f0 * Makie.GLYPH_PADDING[] # left + right pad
-    full_pad ./ (full_pixel_size_in_atlas .- full_pad)
-end
-
-# This works the same for x being widths and offsets
-rescale_glyph(char::Char, font, x) = x * char_scale_factor(char, font)
-function rescale_glyph(char::Char, font, xs::Vector)
-    f = char_scale_factor(char, font)
-    map(x -> f * x, xs)
-end
-function rescale_glyph(str::String, font, x)
-    [x * char_scale_factor(char, font) for char in collect(str)]
-end
-function rescale_glyph(str::String, font, xs::Vector)
-    map((char, x) -> x * char_scale_factor(char, font), collect(str), xs)
-end
-
-# padded_width = (unpadded_target_width + unpadded_target_width * pad_per_unit)
-function rescale_bezierpath(bp::BezierPath, scale)
-    scale .* (1f0 .+ bezierpath_pad_scale_factor(bp)) .* widths(Makie.bbox(bp))
-end
-function rescale_bezierpath(bp::BezierPath, scale::Vector)
-    pad_scale_factor = bezierpath_pad_scale_factor(bp)
-    [s .* (1f0 .+ pad_scale_factor) .* widths(Makie.bbox(bp)) for s in scale]
-end
-
-function offset_bezierpath(bp::BezierPath, scale, offset)
-    bb = Makie.bbox(bp)
-    pad_offset = (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(bp) .* widths(bb))
-    scale .* pad_offset .+ offset
-end
-function offset_bezierpath(bp::BezierPath, scale::Vector, offset)
-    bb = Makie.bbox(bp)
-    pad_offset = (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(bp) .* widths(bb))
-    [s .* pad_offset .+ offset for s in scale]
-end
-function offset_bezierpath(bp::BezierPath, scale, offsets::Vector)
-    bb = Makie.bbox(bp)
-    pad_offset = scale .* (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(bp) .* widths(bb))
-    [pad_offset .+ offset for offset in offsets]
-end
-function offset_bezierpath(bp::BezierPath, scales::Vector, offsets::Vector)
-    bb = Makie.bbox(bp)
-    pad_offset = (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(bp) .* widths(bb))
-    [s .* pad_offset .+ offset for s in scale]
-end
 
 
 @nospecialize
@@ -319,11 +205,11 @@ function draw_scatter(shader_cache, (marker, position), data)
     end
 
     @gen_defaults! data begin
-        shape       = const_lift(x-> Int32(primitive_shape(x)), marker)
+        shape       = const_lift(x-> Int32(marker_to_sdf_shape(x)), marker)
         position    = position => GLBuffer
         marker_offset = Vec3f(0) => GLBuffer;
 
-        scale       = const_lift(primitive_scale, marker) => GLBuffer
+        scale       = Vec2f(0) => GLBuffer
 
         rotation    = rot => GLBuffer
         image       = nothing => Texture

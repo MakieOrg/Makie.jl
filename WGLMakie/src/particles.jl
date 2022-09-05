@@ -92,18 +92,17 @@ function create_shader(scene::Scene, plot::MeshScatter)
                             instance, VertexArray(; per_instance...); uniform_dict...)
 end
 
-@enum Shape CIRCLE RECTANGLE ROUNDED_RECTANGLE DISTANCEFIELD TRIANGLE
 
-primitive_shape(::Union{String,Char,Vector{Char}}) = Cint(DISTANCEFIELD)
-primitive_shape(x::X) where {X} = Cint(primitive_shape(X))
-primitive_shape(::Type{<:Circle}) = Cint(CIRCLE)
-primitive_shape(::Type{<:Rect2}) = Cint(RECTANGLE)
-primitive_shape(::Type{T}) where {T} = error("Type $(T) not supported")
-primitive_shape(x::Shape) = Cint(x)
-primitive_shape(x::BezierPath) = Cint(DISTANCEFIELD)
-primitive_shape(x::AbstractArray{<:BezierPath}) = Cint(DISTANCEFIELD)
-function primitive_shape(arr::AbstractArray)
-    shapes = unique(primitive_shape(element) for element in arr)
+marker_to_sdf_shape(::Union{String,Char,Vector{Char}}) = Cint(DISTANCEFIELD)
+marker_to_sdf_shape(x::X) where {X} = Cint(marker_to_sdf_shape(X))
+marker_to_sdf_shape(::Type{<:Circle}) = Cint(CIRCLE)
+marker_to_sdf_shape(::Type{<:Rect2}) = Cint(RECTANGLE)
+marker_to_sdf_shape(::Type{T}) where {T} = error("Type $(T) not supported")
+marker_to_sdf_shape(x::Shape) = Cint(x)
+marker_to_sdf_shape(x::BezierPath) = Cint(DISTANCEFIELD)
+marker_to_sdf_shape(x::AbstractArray{<:BezierPath}) = Cint(DISTANCEFIELD)
+function marker_to_sdf_shape(arr::AbstractArray)
+    shapes = unique(marker_to_sdf_shape(element) for element in arr)
     if length(shapes) > 1
         error("Can't use an array of markers that require different primitive_shapes $shapes.")
     end
@@ -170,7 +169,7 @@ function scatter_shader(scene::Scene, attributes)
         uniform_dict[k] = lift_convert(k, v, nothing)
     end
     get!(uniform_dict, :shape_type) do
-        return lift(x -> primitive_shape(to_spritemarker(x)), attributes[:marker])
+        return lift(x -> marker_to_sdf_shape(to_spritemarker(x)), attributes[:marker])
     end
     if uniform_dict[:shape_type][] == 3
         atlas = Makie.get_texture_atlas()

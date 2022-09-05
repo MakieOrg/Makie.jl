@@ -226,17 +226,17 @@ end
 
 function insert_glyph!(atlas::TextureAtlas, path::BezierPath)
     return get!(atlas.mapping, path) do
-        # We save glyphs as signed distance fields, i.e. we save the distance 
+        # We save glyphs as signed distance fields, i.e. we save the distance
         # a pixel is away from the edge of a symbol (continuous at the edge).
-        # To get accurate distances we want to draw the symbol at high 
+        # To get accurate distances we want to draw the symbol at high
         # resolution and then downsample to the PIXELSIZE_IN_ATLAS.
-        downsample = 5 
+        downsample = 5
         # To draw a symbol from a sdf we essentially do `color * (sdf > 0)`. For
-        # antialiasing we smooth out the step function `sdf > 0`. That means we 
-        # need a few values outside the symbol. To guarantee that we have those 
+        # antialiasing we smooth out the step function `sdf > 0`. That means we
+        # need a few values outside the symbol. To guarantee that we have those
         # at all relevant scales we add padding to the rendered bitmap and the
         # resulting sdf.
-        pad = GLYPH_PADDING[] 
+        pad = GLYPH_PADDING[]
 
         uv_pixel = render(atlas, path, downsample, pad)
         tex_size = Vec2f(size(atlas.data) .- 1) # starts at 1
@@ -244,7 +244,7 @@ function insert_glyph!(atlas::TextureAtlas, path::BezierPath)
         # 0 based
         idx_left_bottom = minimum(uv_pixel)
         idx_right_top = maximum(uv_pixel)
-        
+
         # transform to normalized texture coordinates
         # -1 for indexing offset
         uv_left_bottom_pad = (idx_left_bottom) ./ tex_size
@@ -342,3 +342,155 @@ function render(atlas::TextureAtlas, b::BezierPath, downsample=5, pad=6)
     # return the area we rendered into!
     return uv.area
 end
+
+
+
+
+# The marker types whos signed distancefield get looked up in the texture atlas
+const TextureAtlasShape = Union{Char, BezierPath, AbstractVector{Char}, AbstractVector{BezierPath}}
+# The marker types, which have a distancefield defined in the shader via a geometric function
+const GeometryShape = Union{Circle, Rect2, AbstractVector{Char}, AbstractVector{BezierPath}}
+
+@enum Shape CIRCLE RECTANGLE ROUNDED_RECTANGLE DISTANCEFIELD TRIANGLE
+
+"""
+returns the Shape type for the distancefield shader
+"""
+marker_to_sdf_shape(x) = error("$(x) is not a valid scatter marker shape.")
+
+marker_to_sdf_shape(::Union{BezierPath, Char}) = DISTANCEFIELD
+marker_to_sdf_shape(::Type{T}) where {T <: Circle} = CIRCLE
+marker_to_sdf_shape(::Type{T}) where {T <: Rect2} = RECTANGLE
+marker_to_sdf_shape(x::Shape) = x
+function marker_to_sdf_shape(arr::AbstractVector)
+    isempty(arr) && error("Marker array can't be empty")
+    shape1 = first(arr)
+    for elem in arr
+        shape2 = marker_to_sdf_shape(elem)
+        shape1 !== shape2 && error("Can't use an array of markers that require different primitive_shapes $shapes.")
+    end
+    return shape1
+end
+
+function marker_to_sdf_shape(marker::Observable)
+    return lift(marker; ignore_equal_values=true) do marker
+        return marker_to_sdf_shape(to_marker(marker))
+    end
+end
+
+"""
+Gets the texture atlas if primitive shape needs it.
+"""
+function primitive_distancefield(shape::Shape)
+    if shape === DISTANCEFIELD
+        return get_texture_atlas()
+    else
+        return nothing
+    end
+end
+
+"""
+Extracts the offset from a primitive.
+"""
+primitive_offset(x, scale::Nothing) = Vec2f(0) # default offset
+primitive_offset(x, scale) = scale ./ -2f0  # default offset
+
+"""
+Extracts the uv offset and width from a primitive.
+"""
+primitive_uv_offset_width(x) = Vec4f(0,0,0,0)
+primitive_uv_offset_width(b::Union{Char, BezierPath}) = glyph_uv_width!(b)
+primitive_uv_offset_width(x::AbstractArray) = map(glyph_uv_width!, x)
+function primitive_uv_offset_width(marker::Observable)
+    return lift(primitive_uv_offset_width, marker; ignore_equal_values=true)
+end
+
+broadcastable(x::StaticArray) = (x,)
+broadcastable(x::AbstractVector) = x
+
+# Calculates the scaling factor from unpadded size -> padded size
+# Here we assume the glyph to be representative of Makie.PIXELSIZE_IN_ATLAS[]
+# regardless of its true size.
+function char_scale_factor(char, font)
+    ta = Makie.get_texture_atlas()
+    lbrt = glyph_uv_width!(ta, char, font)
+    uv_width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
+    full_pixel_size_in_atlas = uv_width .* Vec2f(size(ta.data) .- 1)
+    return full_pixel_size_in_atlas ./ Makie.PIXELSIZE_IN_ATLAS[]
+end
+
+# full_pad / unpadded_atlas_width
+function bezierpath_pad_scale_factor(bp)
+    ta = Makie.get_texture_atlas()
+    lbrt = glyph_uv_width!(bp)
+    uv_width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
+    full_pixel_size_in_atlas = uv_width * Vec2f(size(ta.data) .- 1)
+    full_pad = 2f0 * Makie.GLYPH_PADDING[] # left + right pad
+    return full_pad ./ (full_pixel_size_in_atlas .- full_pad)
+end
+
+function marker_scale_factor(path::BezierPath)
+    # padded_width = (unpadded_target_width + unpadded_target_width * pad_per_unit)
+    path_width = widths(Makie.bbox(path))
+    return (1f0 .+ bezierpath_pad_scale_factor(path)) .* path_width
+end
+
+marker_scale_factor((char::Char, font)) = char_scale_factor(char, font)
+
+function rescale_marker(marker, markersize)
+    return markersize .* marker_scale_factor(marker)
+end
+
+function rescale_marker(marker::AbstractVector, markersize)
+    return markersize .* marker_scale_factor.(marker)
+end
+
+rescale_marker(marker::BezierPath, font, scaling) = rescale_marker(marker, scaling)
+rescale_marker(marker::Char, font, scaling) = rescale_marker((marker, font), scaling)
+
+function offset_bezierpath(bp::BezierPath, scale, offset)
+    bb = Makie.bbox(bp)
+    pad_offset = (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(bp) .* widths(bb))
+    scale .* pad_offset .+ offset
+end
+
+function offset_bezierpath(bp::BezierPath, scale::Vector, offset)
+    bb = Makie.bbox(bp)
+    pad_offset = (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(bp) .* widths(bb))
+    [s .* pad_offset .+ offset for s in scale]
+end
+
+function offset_bezierpath(bp::BezierPath, scale, offsets::Vector)
+    bb = Makie.bbox(bp)
+    pad_offset = scale .* (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(bp) .* widths(bb))
+    [pad_offset .+ offset for offset in offsets]
+end
+
+function offset_bezierpath(bp::BezierPath, scales::Vector, offsets::Vector)
+    bb = Makie.bbox(bp)
+    pad_offset = (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(bp) .* widths(bb))
+    [s .* pad_offset .+ offset for s in scale]
+end
+
+function marker_attributes(marker, markersize, font, marker_offset)
+    sdf_shape = lift(marker; ignore_equal_values=true) do marker
+        return Cint(marker_to_sdf_shape(marker))
+    end
+    uv_offset_width = lift(primitive_uv_offset_width, marker; ignore_equal_values=true)
+    scale = Observable{Union{Vector{Vec2f}, Vec2f}}(Vec2f(0); ignore_equal_values=true)
+    quad_offset = Observable{Union{Vector{Vec2f}, Vec2f}}(Vec2f(0); ignore_equal_values=true)
+
+    onany(marker, markersize, font) do marker, markersize, font
+        scale[] = rescale_marker(marker, font, markersize)
+        # The same scaling that needs to be applied to scale also needs to apply
+        quad_offset[] = rescale_marker(marker, font, marker_offset)
+
+    elseif to_value(marker) isa BezierPath
+        scale = data[:scale]
+        offset = Observable(Vec2f(0))
+        data[:quad_offset] = map(offset_bezierpath, marker, scale, offset)
+        data[:scale] = map(rescale_bezierpath, marker, scale)
+
+    elseif to_value(marker) isa AbstractArray
+        scale = data[:scale] # markersize
+        offset = Observable(Vec2f(0))df
