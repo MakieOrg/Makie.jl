@@ -116,11 +116,11 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
         end
     else
         renderobject = get(screen.cache, objectid(plot)) do
-            error("Could not find $(typeof(subplot)) in current GLMakie screen!")
+            error("Could not find $(typeof(plot)) in current GLMakie screen!")
         end
 
         # These need explicit clean up because (some of) the source observables
-        # remain whe the plot is deleated.
+        # remain when the plot is deleated.
         for k in (:normalmatrix, )
             if haskey(renderobject.uniforms, k)
                 n = renderobject.uniforms[k]
