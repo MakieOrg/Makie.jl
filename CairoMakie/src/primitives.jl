@@ -281,7 +281,7 @@ function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewid
     set_font_matrix(ctx, old_matrix)
 end
 
-function draw_marker(ctx, marker::Circle, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
+function draw_marker(ctx, ::Type{<: Circle}, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
     marker_offset = marker_offset + scale ./ 2
     pos += Point2f(marker_offset[1], -marker_offset[2])
 
@@ -305,8 +305,8 @@ function draw_marker(ctx, marker::Circle, pos, scale, strokecolor, strokewidth, 
     nothing
 end
 
-function draw_marker(ctx, marker::Rect, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
-    s2 = Point2((widths(marker) .* scale .* (1, -1))...)
+function draw_marker(ctx, ::Type{<: Rect}, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
+    s2 = Point2((scale .* (1, -1))...)
     pos = pos .+ Point2f(marker_offset[1], -marker_offset[2])
     Cairo.rotate(ctx, to_2d_rotation(rotation))
     Cairo.rectangle(ctx, pos[1], pos[2], s2...)
