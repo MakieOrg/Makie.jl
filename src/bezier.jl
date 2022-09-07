@@ -46,10 +46,11 @@ end
 # and we don't create the same texture atlas entry twice
 Base.:(==)(b1::BezierPath, b2::BezierPath) = b1.commands == b2.commands
 Base.hash(b::BezierPath) = hash(b.commands)
+Base.broadcastable(b::BezierPath) = Ref(b)
 
 function Base.:+(pc::P, p::Point2) where P <: PathCommand
     fnames = fieldnames(P)
-    P(map(f -> getfield(pc, f) + p, fnames)...)
+    return P(map(f -> getfield(pc, f) + p, fnames)...)
 end
 
 scale(bp::BezierPath, s::Real) = BezierPath([scale(x, Vec(s, s)) for x in bp.commands])
@@ -173,7 +174,7 @@ BezierCross = let
     cutfraction = 2/3
     r = 0.5 # 1/(2 * sqrt(1 - cutfraction^2))
     ri = 0.166 #r * (1 - cutfraction)
-    
+
     first_three = Point2[(r, ri), (ri, ri), (ri, r)]
     all = map(0:pi/2:3pi/2) do a
         m = Mat2f0(sin(a), cos(a), cos(a), -sin(a))
@@ -423,45 +424,32 @@ function make_outline(path)
     @assert n_points == length(points) == length(tags)
     @assert n_contours == length(contours)
     push!(contours, n_points)
-
-    outline_ref = Ref{FT_Outline}()
-    finalizer(outline_ref) do r
-        FT_Outline_Done(Makie.FreeTypeAbstraction.FREE_FONT_LIBRARY[], outline_ref)
-    end
-    
-    FT_Outline_New(
-        Makie.FreeTypeAbstraction.FREE_FONT_LIBRARY[],
-        n_points,
+    # Manually create outline, since FT_Outline_New seems to be problematic on windows somehow
+    outline = FT_Outline(
         n_contours,
-        outline_ref
+        n_points,
+        pointer(points),
+        pointer(tags),
+        pointer(contours),
+        0
     )
-
-    for i in 1:length(points)
-        unsafe_store!(outline_ref[].points, points[i], i)
-    end
-    for i in 1:length(tags)
-        unsafe_store!(outline_ref[].tags, tags[i], i)
-    end
-    for i in 1:length(contours)
-        unsafe_store!(outline_ref[].contours, contours[i], i)
-    end
-    outline_ref
+    # Return Ref + arrays that went into outline, so the GC doesn't abandon them
+    return (Ref(outline), points, tags, contours)
 end
 
 ftvec(p) = FT_Vector(round(Int, p[1]), round(Int, p[2]))
 
 function convert_command(m::MoveTo)
-    true, 1, ftvec.([m.p]), [FT_Curve_Tag_On] 
+    true, 1, ftvec.([m.p]), [FT_Curve_Tag_On]
 end
 
 function convert_command(l::LineTo)
-    false, 1, ftvec.([l.p]), [FT_Curve_Tag_On] 
+    false, 1, ftvec.([l.p]), [FT_Curve_Tag_On]
 end
 
 function convert_command(c::CurveTo)
-    false, 3, ftvec.([c.c1, c.c2, c.p]), [FT_Curve_Tag_Cubic, FT_Curve_Tag_Cubic, FT_Curve_Tag_On] 
+    false, 3, ftvec.([c.c1, c.c2, c.p]), [FT_Curve_Tag_Cubic, FT_Curve_Tag_Cubic, FT_Curve_Tag_On]
 end
-
 
 function render_path(path)
     bitmap_size_px = BEZIERPATH_BITMAP_SIZE[]
@@ -502,7 +490,7 @@ function render_path(path)
 
     FT_Outline_Get_Bitmap(
         Makie.FreeTypeAbstraction.FREE_FONT_LIBRARY[],
-        outline_ref,
+        outline_ref[1],
         bitmap_ref,
     )
 
