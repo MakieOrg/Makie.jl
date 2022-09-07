@@ -167,56 +167,16 @@ function draw_scatter(shader_cache, (marker, position), data)
     rot = vec2quaternion(rot)
     delete!(data, :rotation)
 
-    font = get(data, :font, Observable(Makie.defaultfont()))
-
-    # Rescale to include glyph padding and shape
-    if isa(to_value(marker), Union{AbstractVector{Char}, Char})
-        scale = data[:scale]
-        quad_offset = get(data, :quad_offset, Observable(Vec2f(0)))
-        # The same scaling that needs to be applied to scale also needs to apply
-        # to offset.
-        data[:quad_offset] = map(rescale_glyph, marker, font, quad_offset)
-        data[:scale] = map(rescale_glyph, marker, font, scale)
-
-    elseif to_value(marker) isa BezierPath
-        scale = data[:scale]
-        offset = Observable(Vec2f(0))
-        data[:quad_offset] = map(offset_bezierpath, marker, scale, offset)
-        data[:scale] = map(rescale_bezierpath, marker, scale)
-
-    elseif to_value(marker) isa AbstractArray
-        scale = data[:scale] # markersize
-        offset = Observable(Vec2f(0))
-        _offset(x::Union{AbstractString, Char}, scale, offset) = rescale_glyph(x, font[], offset)
-        _offset(x::BezierPath, scale, offset) = offset_bezierpath(x, scale, offset)
-        _scale(x::Union{AbstractString, Char}, scale) = rescale_glyph(x, font[], scale)
-        _scale(x::BezierPath, scale) = rescale_bezierpath(x, scale)
-
-        data[:quad_offset] = map(marker, scale, offset) do m, s, o
-            map(m) do m
-                _offset(m, s, o)
-            end
-        end
-        data[:scale] = map(marker, scale) do m, s
-            map(m) do m
-                _scale(m, s)
-            end
-        end
-    end
-
     @gen_defaults! data begin
-        shape       = const_lift(x-> Int32(marker_to_sdf_shape(x)), marker)
+        shape       = Makie.marker_to_sdf_shape(marker)
         position    = position => GLBuffer
         marker_offset = Vec3f(0) => GLBuffer;
-
         scale       = Vec2f(0) => GLBuffer
-
         rotation    = rot => GLBuffer
         image       = nothing => Texture
     end
-
     @gen_defaults! data begin
-        quad_offset     = primitive_offset(marker, scale) => GLBuffer
+        quad_offset     = Vec2f(0) => GLBuffer
         intensity       = nothing => GLBuffer
         color_map       = nothing => Texture
         color_norm      = nothing
@@ -226,9 +186,9 @@ function draw_scatter(shader_cache, (marker, position), data)
         stroke_color    = RGBA{Float32}(0,0,0,0) => GLBuffer
         stroke_width    = 0f0
         glow_width      = 0f0
-        uv_offset_width = const_lift(primitive_uv_offset_width, marker) => GLBuffer
+        uv_offset_width = Makie.primitive_uv_offset_width(marker) => GLBuffer
 
-        distancefield   = primitive_distancefield(marker) => Texture
+        distancefield   = get_texture!(Makie.primitive_distancefield(to_value(shape))) => Texture
         indices         = const_lift(length, position) => to_index_buffer
         # rotation and billboard don't go along
         billboard        = rotation == Vec4f(0,0,0,1) => "if `billboard` == true, particles will always face camera"

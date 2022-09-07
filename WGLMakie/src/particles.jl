@@ -92,45 +92,6 @@ function create_shader(scene::Scene, plot::MeshScatter)
                             instance, VertexArray(; per_instance...); uniform_dict...)
 end
 
-
-marker_to_sdf_shape(::Union{String,Char,Vector{Char}}) = Cint(DISTANCEFIELD)
-marker_to_sdf_shape(x::X) where {X} = Cint(marker_to_sdf_shape(X))
-marker_to_sdf_shape(::Type{<:Circle}) = Cint(CIRCLE)
-marker_to_sdf_shape(::Type{<:Rect2}) = Cint(RECTANGLE)
-marker_to_sdf_shape(::Type{T}) where {T} = error("Type $(T) not supported")
-marker_to_sdf_shape(x::Shape) = Cint(x)
-marker_to_sdf_shape(x::BezierPath) = Cint(DISTANCEFIELD)
-marker_to_sdf_shape(x::AbstractArray{<:BezierPath}) = Cint(DISTANCEFIELD)
-function marker_to_sdf_shape(arr::AbstractArray)
-    shapes = unique(marker_to_sdf_shape(element) for element in arr)
-    if length(shapes) > 1
-        error("Can't use an array of markers that require different primitive_shapes $shapes.")
-    end
-    return first(shapes)
-end
-
-function char_scale_factor(char, font)
-    # uv * size(ta.data) / Makie.PIXELSIZE_IN_ATLAS[] is the padded glyph size
-    # normalized to the size the glyph was generated as.
-    ta = Makie.get_texture_atlas()
-    lbrt = glyph_uv_width!(ta, char, font)
-    width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
-    width * Vec2f(size(ta.data)) / Makie.PIXELSIZE_IN_ATLAS[]
-end
-
-# This works the same for x being widths and offsets
-rescale_glyph(char::Char, font, x::StaticVector) = x .* char_scale_factor(char, font)
-function rescale_glyph(char::Char, font, xs::AbstractVector)
-    f = char_scale_factor(char, font)
-    map(x -> f * x, xs)
-end
-function rescale_glyph(str::AbstractVector{Char}, font, x)
-    [x * char_scale_factor(char, font) for char in collect(str)]
-end
-function rescale_glyph(str::AbstractVector{Char}, font, xs::AbstractVector)
-    map((char, x) -> x * char_scale_factor(char, font), collect(str), xs)
-end
-
 using Makie: to_spritemarker
 
 function scatter_shader(scene::Scene, attributes)
@@ -139,17 +100,14 @@ function scatter_shader(scene::Scene, attributes)
                          :uv_offset_width, :quad_offset, :marker_offset)
     uniform_dict = Dict{Symbol,Any}()
 
-    TextMarkerTypes = Union{Char, AbstractVector{Char}}
-    if haskey(attributes, :marker) && attributes[:marker][] isa TextMarkerTypes
+    if haskey(attributes, :marker)
         font = get(attributes, :font, Observable(Makie.defaultfont()))
-        attributes[:markersize] = map(rescale_glyph, attributes[:marker], font, lift(Makie.to_2d_scale, attributes[:markersize]))
-        attributes[:quad_offset] = map(rescale_glyph, attributes[:marker], font, attributes[:quad_offset])
-    end
-
-    if haskey(attributes, :marker) && attributes[:marker][] isa Union{AbstractVector{Char}, AbstractVector{BezierPath}}
-        x = pop!(attributes, :marker)
-        attributes[:uv_offset_width] = lift(x -> Makie.glyph_uv_width!.(collect(x)), x)
-        uniform_dict[:shape_type] = Cint(3)
+        marker = lift(Makie.to_spritemarker, attributes[:marker])
+        markersize = lift(Makie.to_2d_scale, attributes[:markersize])
+        msize, offset = Makie.marker_attributes(marker, markersize, font, attributes[:quad_offset])
+        attributes[:markersize] = msize
+        attributes[:quad_offset] = offset
+        attributes[:uv_offset_width] = Makie.primitive_uv_offset_width(marker)
     end
 
     per_instance = filter(attributes) do (k, v)
@@ -168,9 +126,11 @@ function scatter_shader(scene::Scene, attributes)
         k in IGNORE_KEYS && continue
         uniform_dict[k] = lift_convert(k, v, nothing)
     end
+
     get!(uniform_dict, :shape_type) do
-        return lift(x -> marker_to_sdf_shape(to_spritemarker(x)), attributes[:marker])
+        return Makie.marker_to_sdf_shape(attributes[:marker])
     end
+
     if uniform_dict[:shape_type][] == 3
         atlas = Makie.get_texture_atlas()
         uniform_dict[:distancefield] = Sampler(atlas.data, minfilter=:linear,
@@ -179,18 +139,6 @@ function scatter_shader(scene::Scene, attributes)
     else
         uniform_dict[:atlas_texture_size] = 0f0
         uniform_dict[:distancefield] = Observable(false)
-    end
-
-    if !haskey(per_instance, :uv_offset_width)
-        get!(uniform_dict, :uv_offset_width) do
-            return if haskey(attributes, :marker) &&
-                      to_spritemarker(attributes[:marker][]) isa Union{BezierPath, Char}
-                lift(x -> Makie.glyph_uv_width!(to_spritemarker(x)),
-                     attributes[:marker])
-            else
-                Vec4f(0)
-            end
-        end
     end
 
     handle_color!(uniform_dict, per_instance)

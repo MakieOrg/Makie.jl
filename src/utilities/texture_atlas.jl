@@ -362,6 +362,7 @@ marker_to_sdf_shape(::Union{BezierPath, Char}) = DISTANCEFIELD
 marker_to_sdf_shape(::Type{T}) where {T <: Circle} = CIRCLE
 marker_to_sdf_shape(::Type{T}) where {T <: Rect2} = RECTANGLE
 marker_to_sdf_shape(x::Shape) = x
+
 function marker_to_sdf_shape(arr::AbstractVector)
     isempty(arr) && error("Marker array can't be empty")
     shape1 = first(arr)
@@ -374,21 +375,24 @@ end
 
 function marker_to_sdf_shape(marker::Observable)
     return lift(marker; ignore_equal_values=true) do marker
-        return marker_to_sdf_shape(to_marker(marker))
+        return Cint(marker_to_sdf_shape(to_spritemarker(marker)))
     end
 end
 
 """
 Gets the texture atlas if primitive shape needs it.
 """
-function primitive_distancefield(shape::Shape)
-    if shape === DISTANCEFIELD
+function primitive_distancefield(shape)
+    if Cint(shape) === Cint(DISTANCEFIELD)
         return get_texture_atlas()
     else
         return nothing
     end
 end
 
+function primitive_distancefield(marker::Observable)
+    return lift(primitive_distancefield, marker; ignore_equal_values=true)
+end
 """
 Extracts the offset from a primitive.
 """
@@ -405,13 +409,13 @@ function primitive_uv_offset_width(marker::Observable)
     return lift(primitive_uv_offset_width, marker; ignore_equal_values=true)
 end
 
-broadcastable(x::StaticArray) = (x,)
-broadcastable(x::AbstractVector) = x
+_bcast(x::Vec) = (x,)
+_bcast(x) = x
 
 # Calculates the scaling factor from unpadded size -> padded size
 # Here we assume the glyph to be representative of Makie.PIXELSIZE_IN_ATLAS[]
 # regardless of its true size.
-function char_scale_factor(char, font)
+function marker_scale_factor(char::Char, font)
     ta = Makie.get_texture_atlas()
     lbrt = glyph_uv_width!(ta, char, font)
     uv_width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
@@ -435,62 +439,47 @@ function marker_scale_factor(path::BezierPath)
     return (1f0 .+ bezierpath_pad_scale_factor(path)) .* path_width
 end
 
-marker_scale_factor((char::Char, font)) = char_scale_factor(char, font)
-
-function rescale_marker(marker, markersize)
-    return markersize .* marker_scale_factor(marker)
+function rescale_marker(pathmarker::BezierPath, font, markersize)
+    return markersize .* marker_scale_factor(pathmarker)
 end
 
-function rescale_marker(marker::AbstractVector, markersize)
-    return markersize .* marker_scale_factor.(marker)
+function rescale_marker(pathmarker::AbstractVector{T}, font, markersize) where T <: BezierPath
+    return _bcast(markersize) .* marker_scale_factor.(pathmarker)
 end
 
-rescale_marker(marker::BezierPath, font, scaling) = rescale_marker(marker, scaling)
-rescale_marker(marker::Char, font, scaling) = rescale_marker((marker, font), scaling)
+# Rect / Circle dont need no rescaling
+rescale_marker(char, font, markersize) = markersize
+
+function rescale_marker(char::AbstractVector{Char}, font, markersize)
+    return _bcast(markersize) .* marker_scale_factor.(char, font)
+end
+
+function rescale_marker(char::Char, font, markersize)
+    factor = marker_scale_factor.(char, font)
+    return markersize .* factor
+end
+
+function offset_bezierpath(bp::BezierPath, markersize::Vec2, markeroffset::Vec2)
+    bb = Makie.bbox(bp)
+    pad_offset = (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(bp) .* widths(bb))
+    return markersize .* pad_offset
+end
 
 function offset_bezierpath(bp::BezierPath, scale, offset)
-    bb = Makie.bbox(bp)
-    pad_offset = (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(bp) .* widths(bb))
-    scale .* pad_offset .+ offset
+    return offset_bezierpath.(bp, _bcast(scale), _bcast(offset))
 end
 
-function offset_bezierpath(bp::BezierPath, scale::Vector, offset)
-    bb = Makie.bbox(bp)
-    pad_offset = (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(bp) .* widths(bb))
-    [s .* pad_offset .+ offset for s in scale]
+function offset_marker(marker::Union{T, AbstractVector{T}}, font, markersize, markeroffset) where T <: BezierPath
+    return offset_bezierpath(marker, markersize, markeroffset)
 end
 
-function offset_bezierpath(bp::BezierPath, scale, offsets::Vector)
-    bb = Makie.bbox(bp)
-    pad_offset = scale .* (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(bp) .* widths(bb))
-    [pad_offset .+ offset for offset in offsets]
-end
-
-function offset_bezierpath(bp::BezierPath, scales::Vector, offsets::Vector)
-    bb = Makie.bbox(bp)
-    pad_offset = (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(bp) .* widths(bb))
-    [s .* pad_offset .+ offset for s in scale]
+function offset_marker(marker::Union{T, AbstractVector{T}}, font, markersize, markeroffset) where T
+    return markeroffset
 end
 
 function marker_attributes(marker, markersize, font, marker_offset)
-    sdf_shape = lift(marker; ignore_equal_values=true) do marker
-        return Cint(marker_to_sdf_shape(marker))
-    end
-    uv_offset_width = lift(primitive_uv_offset_width, marker; ignore_equal_values=true)
-    scale = Observable{Union{Vector{Vec2f}, Vec2f}}(Vec2f(0); ignore_equal_values=true)
-    quad_offset = Observable{Union{Vector{Vec2f}, Vec2f}}(Vec2f(0); ignore_equal_values=true)
+    scale = map(rescale_marker, marker, font, markersize; ignore_equal_values=true)
+    quad_offset = map(offset_marker, marker, font, markersize, marker_offset; ignore_equal_values=true)
 
-    onany(marker, markersize, font) do marker, markersize, font
-        scale[] = rescale_marker(marker, font, markersize)
-        # The same scaling that needs to be applied to scale also needs to apply
-        quad_offset[] = rescale_marker(marker, font, marker_offset)
-
-    elseif to_value(marker) isa BezierPath
-        scale = data[:scale]
-        offset = Observable(Vec2f(0))
-        data[:quad_offset] = map(offset_bezierpath, marker, scale, offset)
-        data[:scale] = map(rescale_bezierpath, marker, scale)
-
-    elseif to_value(marker) isa AbstractArray
-        scale = data[:scale] # markersize
-        offset = Observable(Vec2f(0))df
+    return scale, quad_offset
+end

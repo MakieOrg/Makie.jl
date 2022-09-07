@@ -1214,8 +1214,8 @@ struct FastPixel end
 
 to_spritemarker(x::FastPixel) = x
 to_spritemarker(x::Circle) = x
-to_spritemarker(::Type{<: Circle}) = Circle(Point2f(0), 1f0)
-to_spritemarker(::Type{<: Rect}) = Rect(Vec2f(0), Vec2f(1))
+to_spritemarker(::Type{<: Circle}) = Circle
+to_spritemarker(::Type{<: Rect}) = Rect
 to_spritemarker(x::Rect) = x
 to_spritemarker(b::BezierPath) = b
 
