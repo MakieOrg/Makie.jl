@@ -365,10 +365,10 @@ marker_to_sdf_shape(x::Shape) = x
 
 function marker_to_sdf_shape(arr::AbstractVector)
     isempty(arr) && error("Marker array can't be empty")
-    shape1 = first(arr)
+    shape1 = marker_to_sdf_shape(first(arr))
     for elem in arr
         shape2 = marker_to_sdf_shape(elem)
-        shape1 !== shape2 && error("Can't use an array of markers that require different primitive_shapes $shapes.")
+        shape1 !== shape2 && error("Can't use an array of markers that require different primitive_shapes $(typeof.(arr)).")
     end
     return shape1
 end
@@ -465,7 +465,7 @@ function offset_bezierpath(bp::BezierPath, markersize::Vec2, markeroffset::Vec2)
     return markersize .* pad_offset
 end
 
-function offset_bezierpath(bp::BezierPath, scale, offset)
+function offset_bezierpath(bp, scale, offset)
     return offset_bezierpath.(bp, _bcast(scale), _bcast(offset))
 end
 
@@ -473,9 +473,11 @@ function offset_marker(marker::Union{T, AbstractVector{T}}, font, markersize, ma
     return offset_bezierpath(marker, markersize, markeroffset)
 end
 
-function offset_marker(marker::Union{T, AbstractVector{T}}, font, markersize, markeroffset) where T
-    return markeroffset
+function offset_marker(marker::Union{T, AbstractVector{T}}, font, markersize, markeroffset) where T <: Char
+    return rescale_marker(marker, font, markeroffset)
 end
+
+offset_marker(marker, font, markersize, markeroffset) = markeroffset
 
 function marker_attributes(marker, markersize, font, marker_offset)
     scale = map(rescale_marker, marker, font, markersize; ignore_equal_values=true)
