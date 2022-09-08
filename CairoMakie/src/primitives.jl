@@ -446,7 +446,8 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
 
         p3_offset = to_ndim(Point3f, offset, 0)
 
-        glyph in ('\r', '\n') && return
+        newlines = Makie.FreeTypeAbstraction.glyph_index.(font, ('\r', '\n'))
+        glyph in newlines && return
 
         Cairo.save(ctx)
         Cairo.set_source_rgba(ctx, rgbatuple(color)...)
