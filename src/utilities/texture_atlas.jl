@@ -402,7 +402,7 @@ primitive_offset(x, scale) = scale ./ -2f0  # default offset
 """
 Extracts the uv offset and width from a primitive.
 """
-primitive_uv_offset_width(x) = Vec4f(0,0,0,0)
+primitive_uv_offset_width(x) = Vec4f(0,0,1,1)
 primitive_uv_offset_width(b::Union{Char, BezierPath}) = glyph_uv_width!(b)
 primitive_uv_offset_width(x::AbstractArray) = map(glyph_uv_width!, x)
 function primitive_uv_offset_width(marker::Observable)

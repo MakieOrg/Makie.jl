@@ -158,6 +158,12 @@ function draw_scatter(
     return draw_scatter(shader_cache, (RECTANGLE, p[2]), data)
 end
 
+function texture_distancefield(shape)
+    df = Makie.primitive_distancefield(to_value(shape))
+    isnothing(df) && return nothing
+    return get_texture!(df)
+end
+
 """
 Main assemble functions for scatter particles.
 Sprites are anything like distance fields, images and simple geometries
@@ -175,6 +181,7 @@ function draw_scatter(shader_cache, (marker, position), data)
         rotation    = rot => GLBuffer
         image       = nothing => Texture
     end
+
     @gen_defaults! data begin
         quad_offset     = Vec2f(0) => GLBuffer
         intensity       = nothing => GLBuffer
@@ -188,7 +195,7 @@ function draw_scatter(shader_cache, (marker, position), data)
         glow_width      = 0f0
         uv_offset_width = Makie.primitive_uv_offset_width(marker) => GLBuffer
 
-        distancefield   = get_texture!(Makie.primitive_distancefield(to_value(shape))) => Texture
+        distancefield   = texture_distancefield(shape) => Texture
         indices         = const_lift(length, position) => to_index_buffer
         # rotation and billboard don't go along
         billboard        = rotation == Vec4f(0,0,0,1) => "if `billboard` == true, particles will always face camera"
