@@ -446,8 +446,9 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
 
         p3_offset = to_ndim(Point3f, offset, 0)
 
-        newlines = Makie.FreeTypeAbstraction.glyph_index.(font, ('\r', '\n'))
-        glyph in newlines && return
+        # Not renderable by font (e.g. '\n')
+        # TODO, filter out \n in GlyphCollection, and render unrenderables as box
+        glyph == 0 && return
 
         Cairo.save(ctx)
         Cairo.set_source_rgba(ctx, rgbatuple(color)...)

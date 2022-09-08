@@ -297,10 +297,11 @@ function remove_font_render_callback!(f)
     end
 end
 
-function render(atlas::TextureAtlas, glyph, font, downsample=5, pad=6)
+function render(atlas::TextureAtlas, glyph_index, font, downsample=5, pad=6)
     # TODO: Is this needed or should newline be filtered before this?
-    if FreeTypeAbstraction.glyph_index(font, glyph) == FreeTypeAbstraction.glyph_index(font, '\n') # don't render  newline
-        glyph = ' '
+    if glyph_index == 0 # don't render  newline and others
+        # TODO, render them as box and filter out newlines in GlyphCollection
+        glyph_index = FreeTypeAbstraction.glyph_index(font, ' ')
     end
 
     # the target pixel size of our distance field
@@ -308,7 +309,7 @@ function render(atlas::TextureAtlas, glyph, font, downsample=5, pad=6)
     # we render the font `downsample` sizes times bigger
     # Make sure the font doesn't have a mutated font matrix from e.g. Cairo
     FreeTypeAbstraction.FreeType.FT_Set_Transform(font, C_NULL, C_NULL)
-    bitmap, extent = renderface(font, glyph, pixelsize * downsample)
+    bitmap, extent = renderface(font, glyph_index, pixelsize * downsample)
     # Our downsampeld & padded distancefield
     sd = sdistancefield(bitmap, downsample, pad)
     rect = Rect2(0, 0, size(sd)...)
