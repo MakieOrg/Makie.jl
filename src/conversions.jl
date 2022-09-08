@@ -1149,6 +1149,8 @@ function convert_attribute(value::Union{Symbol, String}, k::key"algorithm")
     end, k)
 end
 
+const DEFAULT_MAKER_MAP = Dict{Symbol, BezierPath}()
+
 function default_marker_map()
     # The bezier markers should not look out of place when used together with text
     # where both markers and text are given the same size, i.e. the marker and textsizes
@@ -1160,30 +1162,30 @@ function default_marker_map()
     # An 'x' of DejaVu sans is only about 55pt high at 100pt font size, so if the marker
     # shapes are just used as is, they look much too large in comparison.
     # To me, a factor of 0.75 looks ok compared to both uppercase and lowercase letters of Dejavu.
-    size_factor = 0.75
-    shapes = Dict(
-        :rect => BezierSquare,
-        :diamond => rotate(BezierSquare, pi/4),
-        :hexagon => bezier_ngon(6, 0.5, pi/2),
-        :cross => BezierCross,
-        :xcross => BezierX,
-        :utriangle => BezierUTriangle,
-        :dtriangle => BezierDTriangle,
-        :ltriangle => BezierLTriangle,
-        :rtriangle => BezierRTriangle,
-        :pentagon => bezier_ngon(5, 0.5, pi/2),
-        :octagon => bezier_ngon(8, 0.5, pi/2),
-        :star4 => bezier_star(4, 0.25, 0.6, pi/2),
-        :star5 => bezier_star(5, 0.28, 0.6, pi/2),
-        :star6 => bezier_star(6, 0.30, 0.6, pi/2),
-        :star8 => bezier_star(8, 0.33, 0.6, pi/2),
-        :vline => scale(BezierSquare, (0.2, 1.0)),
-        :hline => scale(BezierSquare, (1.0, 0.2)),
-        :+ => BezierCross,
-        :x => BezierX,
-        :circle => BezierCircle,
-    )
-    Dict(key => scale(value, size_factor) for (key, value) in shapes)
+    if isempty(DEFAULT_MAKER_MAP)
+        size_factor = 0.75
+        DEFAULT_MAKER_MAP[:rect] = scale(BezierSquare, size_factor)
+        DEFAULT_MAKER_MAP[:diamond] = scale(rotate(BezierSquare, pi/4), size_factor)
+        DEFAULT_MAKER_MAP[:hexagon] = scale(bezier_ngon(6, 0.5, pi/2), size_factor)
+        DEFAULT_MAKER_MAP[:cross] = scale(BezierCross, size_factor)
+        DEFAULT_MAKER_MAP[:xcross] = scale(BezierX, size_factor)
+        DEFAULT_MAKER_MAP[:utriangle] = scale(BezierUTriangle, size_factor)
+        DEFAULT_MAKER_MAP[:dtriangle] = scale(BezierDTriangle, size_factor)
+        DEFAULT_MAKER_MAP[:ltriangle] = scale(BezierLTriangle, size_factor)
+        DEFAULT_MAKER_MAP[:rtriangle] = scale(BezierRTriangle, size_factor)
+        DEFAULT_MAKER_MAP[:pentagon] = scale(bezier_ngon(5, 0.5, pi/2), size_factor)
+        DEFAULT_MAKER_MAP[:octagon] = scale(bezier_ngon(8, 0.5, pi/2), size_factor)
+        DEFAULT_MAKER_MAP[:star4] = scale(bezier_star(4, 0.25, 0.6, pi/2), size_factor)
+        DEFAULT_MAKER_MAP[:star5] = scale(bezier_star(5, 0.28, 0.6, pi/2), size_factor)
+        DEFAULT_MAKER_MAP[:star6] = scale(bezier_star(6, 0.30, 0.6, pi/2), size_factor)
+        DEFAULT_MAKER_MAP[:star8] = scale(bezier_star(8, 0.33, 0.6, pi/2), size_factor)
+        DEFAULT_MAKER_MAP[:vline] = scale(scale(BezierSquare, (0.2, 1.0)), size_factor)
+        DEFAULT_MAKER_MAP[:hline] = scale(scale(BezierSquare, (1.0, 0.2)), size_factor)
+        DEFAULT_MAKER_MAP[:+] = scale(BezierCross, size_factor)
+        DEFAULT_MAKER_MAP[:x] = scale(BezierX, size_factor)
+        DEFAULT_MAKER_MAP[:circle] = scale(BezierCircle, size_factor)
+    end
+    return DEFAULT_MAKER_MAP
 end
 
 """
@@ -1194,7 +1196,7 @@ Displays all available marker symbols.
 function available_marker_symbols()
     println("Marker Symbols:")
     for (k, v) in default_marker_map()
-        println("    ", k, " => ", v)
+        println("    :", k)
     end
 end
 
@@ -1225,7 +1227,11 @@ to_spritemarker(::Type{<: Rect}) = Rect
 to_spritemarker(x::Rect) = x
 to_spritemarker(b::BezierPath) = b
 to_spritemarker(b::Polygon) = poly2bezier(b)
+to_spritemarker(b) = error("Not a valid scatter marker: $(typeof(b))")
 
+function to_spritemarker(str::String)
+    error("Using strings for multiple char markers is deprecated. Use `collect(string)` or `['x', 'o', ...]` instead. Found: $(str)")
+end
 
 """
     to_spritemarker(b, marker::Char)

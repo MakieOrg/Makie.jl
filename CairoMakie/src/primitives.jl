@@ -221,10 +221,11 @@ function draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokeco
         Cairo.set_source_rgba(ctx, rgbatuple(col)...)
 
         Cairo.save(ctx)
-        if m isa Char
-            draw_marker(ctx, m, best_font(m, font), pos, scale, strokecolor, strokewidth, offset, rotation)
+        marker_converted = Makie.to_spritemarker(m)
+        if marker_converted isa Char
+            draw_marker(ctx, marker_converted, best_font(m, font), pos, scale, strokecolor, strokewidth, offset, rotation)
         else
-            draw_marker(ctx, m, pos, scale, strokecolor, strokewidth, offset, rotation)
+            draw_marker(ctx, marker_converted, pos, scale, strokecolor, strokewidth, offset, rotation)
         end
         Cairo.restore(ctx)
     end
