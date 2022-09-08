@@ -190,6 +190,20 @@ scatter(1:10, marker = batsymbol, markersize = 50, color = :black)
 ```
 \end{examplefigure}
 
+One can also use `GeometryBasics.Polgyon` as a marker:
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+p_big = decompose(Point2f, Circle(Point2f(0), 1))
+p_small = decompose(Point2f, Circle(Point2f(0), 0.5))
+scatter(1:4, fill(0, 4), marker=Polygon(p_big, [p_small]), markersize=100, color=1:4, axis=(limits=(0, 5, -1, 1),))
+```
+\end{examplefigure}
+
 ### Marker rotation
 
 Markers can be rotated using the `rotations` attribute, which also allows to pass a vector.
@@ -237,7 +251,7 @@ f
 
 ### Marker space
 
-By default marker sizes are given in pixel units. You can change this by adjusting `markerspace`. For example, you can have a marker scaled in data units by setting `markerspace = :data`. 
+By default marker sizes are given in pixel units. You can change this by adjusting `markerspace`. For example, you can have a marker scaled in data units by setting `markerspace = :data`.
 
 \begin{examplefigure}{svg = true}
 ```julia

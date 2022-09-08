@@ -128,7 +128,7 @@ Base.:+(bp::BezierPath, p::Point2) = BezierPath(bp.commands .+ Ref(p))
 
 # markers that fit into a square with sidelength 1 centered on (0, 0)
 
-BezierCircle = let
+const BezierCircle = let
     r = 0.47 # sqrt(1/pi)
     BezierPath([
         MoveTo(Point(r, 0.0)),
@@ -137,7 +137,7 @@ BezierCircle = let
     ])
 end
 
-BezierUTriangle = let
+const BezierUTriangle = let
     aspect = 1
     h = 0.97 # sqrt(aspect) * sqrt(2)
     w = 0.97 # 1/sqrt(aspect) * sqrt(2)
@@ -154,12 +154,12 @@ BezierUTriangle = let
     ])
 end
 
-BezierLTriangle = rotate(BezierUTriangle, pi/2)
-BezierDTriangle = rotate(BezierUTriangle, pi)
-BezierRTriangle = rotate(BezierUTriangle, 3pi/2)
+const BezierLTriangle = rotate(BezierUTriangle, pi/2)
+const BezierDTriangle = rotate(BezierUTriangle, pi)
+const BezierRTriangle = rotate(BezierUTriangle, 3pi/2)
 
 
-BezierSquare = let
+const BezierSquare = let
     r = 0.95 * sqrt(pi)/2/2 # this gives a little less area as the r=0.5 circle
     BezierPath([
         MoveTo(Point2(r, -r)),
@@ -170,7 +170,7 @@ BezierSquare = let
     ])
 end
 
-BezierCross = let
+const BezierCross = let
     cutfraction = 2/3
     r = 0.5 # 1/(2 * sqrt(1 - cutfraction^2))
     ri = 0.166 #r * (1 - cutfraction)
@@ -188,7 +188,7 @@ BezierCross = let
     ])
 end
 
-BezierX = rotate(BezierCross, pi/4)
+const BezierX = rotate(BezierCross, pi/4)
 
 function bezier_ngon(n, radius, angle)
     points = [radius * Point2f(cos(a + angle), sin(a + angle))
@@ -209,6 +209,31 @@ function bezier_star(n, inner_radius, outer_radius, angle)
         LineTo.(points[2:end])
     ])
 end
+
+function poly2bezier(poly)
+    commands = Makie.PathCommand[]
+    points = reinterpret(Point2f, poly.exterior)
+    ext_direction = sign(area(points)) #signed area gives us clockwise / anti-clockwise
+    push!(commands, MoveTo(points[1]))
+    for i in 2:length(points)
+        push!(commands, LineTo(points[i]))
+    end
+
+    for inter in poly.interiors
+        points = reinterpret(Point2f, inter)
+        # holes, in bezierpath, always need to have the opposite winding order
+        if sign(area(points)) == ext_direction
+            points = reverse(points)
+        end
+        push!(commands, MoveTo(points[1]))
+        for i in 2:length(points)
+            push!(commands, LineTo(points[i]))
+        end
+    end
+    push!(commands, ClosePath())
+    return BezierPath(commands)
+end
+
 
 function BezierPath(svg::AbstractString; fit = false, bbox = nothing, flipy = false, keep_aspect = true)
     commands = parse_bezier_commands(svg)

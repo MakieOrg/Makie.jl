@@ -1212,12 +1212,20 @@ Note, that this will draw markers always as 1 pixel.
 """
 struct FastPixel end
 
+"""
+Vector of anything that is accepted as a single marker will give each point it's own marker.
+Note that it needs to be a uniform vector with the same element type!
+"""
+to_spritemarker(marker::AbstractVector) = map(to_spritemarker, marker)
+to_spritemarker(marker::AbstractVector{Char}) = marker # Don't dispatch to the above!
 to_spritemarker(x::FastPixel) = x
 to_spritemarker(x::Circle) = x
 to_spritemarker(::Type{<: Circle}) = Circle
 to_spritemarker(::Type{<: Rect}) = Rect
 to_spritemarker(x::Rect) = x
 to_spritemarker(b::BezierPath) = b
+to_spritemarker(b::Polygon) = poly2bezier(b)
+
 
 """
     to_spritemarker(b, marker::Char)
@@ -1248,21 +1256,8 @@ function to_spritemarker(marker::Symbol)
     end
 end
 
-to_spritemarker(marker::String) = marker
-to_spritemarker(marker::AbstractVector{Char}) = String(marker)
 
-"""
-Vector of anything that is accepted as a single marker will give each point it's own marker.
-Note that it needs to be a uniform vector with the same element type!
-"""
-function to_spritemarker(marker::AbstractVector)
-    marker = to_spritemarker.(marker)
-    if isa(marker, AbstractVector{Char})
-        String(marker)
-    else
-        marker
-    end
-end
+
 
 convert_attribute(value, ::key"marker", ::key"scatter") = to_spritemarker(value)
 convert_attribute(value, ::key"isovalue", ::key"volume") = Float32(value)

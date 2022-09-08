@@ -321,3 +321,10 @@ end
 
     f
 end
+
+@reference_test "polygon markers" begin
+    p_big = decompose(Point2f, Circle(Point2f(0), 1))
+    p_small = decompose(Point2f, Circle(Point2f(0), 0.5))
+    marker = [Polygon(p_big, [p_small]), Polygon(reverse(p_big), [p_small]), Polygon(p_big, [reverse(p_small)]), Polygon(reverse(p_big), [reverse(p_small)])]
+    scatter(1:4, fill(0, 4), marker=marker, markersize=100, color=1:4, axis=(limits=(0, 5, -1, 1),))
+end
