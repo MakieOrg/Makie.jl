@@ -544,3 +544,11 @@ end
     end
     f
 end
+
+@reference_test "marker offset in data space" begin
+    f = Figure()
+    ax = Axis(f[1, 1]; xticks=0:1, yticks=0:10)
+    scatter!(ax, fill(0, 10), 0:9, marker=Rect, marker_offset=Vec2f(0,0), transform_marker=true, markerspace=:data, markersize=Vec2f.(1, LinRange(0.1, 1, 10)))
+    lines!(ax, Rect(0, 0, 1, 10), color=:red)
+    f
+end
