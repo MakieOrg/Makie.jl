@@ -358,9 +358,10 @@ returns the Shape type for the distancefield shader
 """
 marker_to_sdf_shape(x) = error("$(x) is not a valid scatter marker shape.")
 
+marker_to_sdf_shape(::AbstractMatrix) = RECTANGLE # Image marker
 marker_to_sdf_shape(::Union{BezierPath, Char}) = DISTANCEFIELD
 marker_to_sdf_shape(::Type{T}) where {T <: Circle} = CIRCLE
-marker_to_sdf_shape(::Type{T}) where {T <: Rect2} = RECTANGLE
+marker_to_sdf_shape(::Type{T}) where {T <: Rect} = RECTANGLE
 marker_to_sdf_shape(x::Shape) = x
 
 function marker_to_sdf_shape(arr::AbstractVector)
@@ -404,7 +405,7 @@ Extracts the uv offset and width from a primitive.
 """
 primitive_uv_offset_width(x) = Vec4f(0,0,1,1)
 primitive_uv_offset_width(b::Union{Char, BezierPath}) = glyph_uv_width!(b)
-primitive_uv_offset_width(x::AbstractArray) = map(glyph_uv_width!, x)
+primitive_uv_offset_width(x::AbstractVector) = map(primitive_uv_offset_width, x)
 function primitive_uv_offset_width(marker::Observable)
     return lift(primitive_uv_offset_width, marker; ignore_equal_values=true)
 end

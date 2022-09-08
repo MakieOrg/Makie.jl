@@ -99,7 +99,7 @@ function scatter_shader(scene::Scene, attributes)
     per_instance_keys = (:pos, :rotations, :markersize, :color, :intensity,
                          :uv_offset_width, :quad_offset, :marker_offset)
     uniform_dict = Dict{Symbol,Any}()
-
+    uniform_dict[:image] = false
     if haskey(attributes, :marker)
         font = get(attributes, :font, Observable(Makie.defaultfont()))
         marker = lift(Makie.to_spritemarker, attributes[:marker])
@@ -108,6 +108,9 @@ function scatter_shader(scene::Scene, attributes)
         attributes[:markersize] = msize
         attributes[:quad_offset] = offset
         attributes[:uv_offset_width] = Makie.primitive_uv_offset_width(marker)
+        if to_value(marker) isa AbstractMatrix
+            uniform_dict[:image] = Sampler(lift(el32convert, marker))
+        end
     end
 
     per_instance = filter(attributes) do (k, v)
