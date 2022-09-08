@@ -194,7 +194,7 @@ One can also use `GeometryBasics.Polgyon` as a marker:
 
 \begin{examplefigure}{svg = true}
 ```julia
-using CairoMakie
+using CairoMakie, GeometryBasics
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
 
