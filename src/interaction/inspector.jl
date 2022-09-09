@@ -410,7 +410,11 @@ function show_data(inspector::DataInspector, plot::Scatter, idx)
     ms = plot.markersize[]
 
     tt.offset[] = 0.5ms + 2
-    tt.text[] = position2string(plot[1][][idx])
+    if haskey(plot, :inspector_label)
+        tt.text[] = plot[:inspector_label][](plot, idx, plot[1][][idx])
+    else
+        tt.text[] = position2string(plot[1][][idx])
+    end
     tt.visible[] = true
     a.indicator_visible[] && (a.indicator_visible[] = false)
 
@@ -467,7 +471,11 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
     proj_pos = shift_project(scene, plot, to_ndim(Point3f, plot[1][][idx], 0))
     update_tooltip_alignment!(inspector, proj_pos)
 
-    tt.text[] = position2string(plot[1][][idx])
+    if haskey(plot, :inspector_label)
+        tt.text[] = plot[:inspector_label][](plot, idx, plot[1][][idx])
+    else
+        tt.text[] = position2string(plot[1][][idx])
+    end
     tt.visible[] = true
 
     return true
@@ -489,7 +497,11 @@ function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, i
     update_tooltip_alignment!(inspector, proj_pos)
 
     tt.offset[] = lw + 2
-    tt.text[] = position2string(typeof(p0)(pos))
+    if haskey(plot, :inspector_label)
+        tt.text[] = plot[:inspector_label][](plot, idx, typeof(p0)(pos))
+    else
+        tt.text[] = position2string(typeof(p0)(pos))
+    end
     tt.visible[] = true
     a.indicator_visible[] && (a.indicator_visible[] = false)
 
@@ -535,7 +547,11 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
     end
     
     tt[1][] = proj_pos
-    tt.text[] = bbox2string(bbox)
+    if haskey(plot, :inspector_label)
+        tt.text[] = plot[:inspector_label][](plot, idx, bbox)
+    else
+        tt.text[] = bbox2string(bbox)
+    end
     tt.visible[] = true
 
     return true
@@ -585,7 +601,11 @@ function show_data(inspector::DataInspector, plot::Surface, idx)
 
     if !isnan(pos)
         tt[1][] = proj_pos
-        tt.text[] = position2string(pos)
+        if haskey(plot, :inspector_label)
+            tt.text[] = plot[:inspector_label][](plot, idx, pos)
+        else
+            tt.text[] = position2string(pos)
+        end
         tt.visible[] = true
         tt.offset[] = 0f0
     else
@@ -612,10 +632,16 @@ function show_imagelike(inspector, plot, name, edge_based)
 
     if plot.interpolate[]
         i, j, z = _interpolated_getindex(plot[1][], plot[2][], plot[3][], mpos)
-        tt.text[] = color2text(name, mpos[1], mpos[2], z)
+        x, y = mpos
     else
         i, j, z = _pixelated_getindex(plot[1][], plot[2][], plot[3][], mpos, edge_based)
-        tt.text[] = color2text(name, i, j, z)
+        x = i; y = j
+    end
+
+    if haskey(plot, :inspector_label)
+        tt.text[] = plot[:inspector_label][](plot, (i, j), Point3f(mpos[1], mpos[2], z))
+    else
+        tt.text[] = color2text(name, x, y, z)
     end
 
     # in case we hover over NaN values
@@ -801,7 +827,11 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
         a.indicator_visible[] = true
     end
 
-    tt.text[] = position2string(pos)
+    if haskey(plot, :inspector_label)
+        tt.text[] = plot[:inspector_label][](plot, idx, pos)
+    else
+        tt.text[] = position2string(pos)
+    end
     tt.visible[] = true
 
     return true
@@ -821,7 +851,11 @@ function show_data(inspector::DataInspector, plot::Arrows, idx, source)
     v = vec2string(plot[2][][idx])
 
     tt[1][] = mpos
-    tt.text[] = "Position:\n  $p\nDirection:\n  $v"
+    if haskey(plot, :inspector_label)
+        tt.text[] = plot[:inspector_label][](plot, idx, mpos)
+    else
+        tt.text[] = "Position:\n  $p\nDirection:\n  $v"
+    end
     tt.visible[] = true
     a.indicator_visible[] && (a.indicator_visible[] = false)
 
@@ -838,7 +872,11 @@ function show_data(inspector::DataInspector, plot::Contourf, idx, source::Mesh)
     mpos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, mpos)
     tt[1][] = mpos
-    tt.text[] = @sprintf("level = %0.3f", level)
+    if haskey(plot, :inspector_label)
+        tt.text[] = plot[:inspector_label][](plot, idx, mpos)
+    else
+        tt.text[] = @sprintf("level = %0.3f", level)
+    end
     tt.visible[] = true
 
     return true
@@ -929,10 +967,14 @@ function show_data(inspector::DataInspector, plot::VolumeSlices, idx, child::Hea
         val = data[i, j]
 
         tt[1][] = proj_pos
-        tt.text[] = @sprintf(
+        if haskey(plot, :inspector_label)
+            tt.text[] = plot[:inspector_label][](plot, (i, j), pos)
+        else
+            tt.text[] = @sprintf(
             "x: %0.6f\ny: %0.6f\nz: %0.6f\n%0.6f0",
             pos[1], pos[2], pos[3], val
         )
+        end
         tt.visible[] = true
     else
         tt.visible[] = false
