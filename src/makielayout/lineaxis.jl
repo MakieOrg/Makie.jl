@@ -633,7 +633,7 @@ end
 
 Gets tick labels by applying `Showoff.showoff` to `values`.
 """
-get_ticklabels(::Automatic, values) = Showoff.showoff(values)
+get_ticklabels(::Automatic, values) = convert(Vector{AbstractString}, Showoff.showoff(values))
 
 """
     get_ticklabels(formatfunction::Function, values)
