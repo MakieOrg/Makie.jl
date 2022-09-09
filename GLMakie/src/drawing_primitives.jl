@@ -84,7 +84,8 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         filtered = filter(x.attributes) do (k, v)
             !in(k, (
                 :transformation, :tickranges, :ticklabels, :raw, :SSAO, 
-                :lightposition, :material, :inspector_label
+                :lightposition, :material, 
+                :inspector_label, :inspector_hover, :inspector_clear
             ))
         end
 

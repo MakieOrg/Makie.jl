@@ -325,6 +325,10 @@ function on_hover(inspector)
     end
 
     if should_clear
+        plot = inspector.selection
+        if haskey(plot, :inspector_clear)
+            plot[:inspector_clear][](inspector, plot)
+        end
         inspector.plot.visible[] = false
         inspector.attributes.indicator_visible[] = false
         inspector.plot.offset.val = inspector.attributes.offset[]
@@ -339,7 +343,20 @@ function show_data_recursion(inspector, plot, idx)
     if processed
         return true
     else
-        return show_data(inspector, plot, idx)
+        # Some show_data methods use the current selection to tell whether the 
+        # temporary plots (indicator plots) are theirs or not, so we want to 
+        # reset after processing them. We also don't want to reset when the 
+        processed = if haskey(plot, :inspector_hover)
+            plot[:inspector_hover][](inspector, plot, idx)
+        else
+            show_data(inspector, plot, idx)
+        end
+
+        if processed
+            inspector.selection = plot
+        end
+
+        return processed
     end
 end
 show_data_recursion(inspector, plot, idx, source) = false
@@ -348,7 +365,20 @@ function show_data_recursion(inspector, plot::AbstractPlot, idx, source)
     if processed
         return true
     else
-        return show_data(inspector, plot, idx, source)
+        # Some show_data methods use the current selection to tell whether the 
+        # temporary plots (indicator plots) are theirs or not, so we want to 
+        # reset after processing them. We also don't want to reset when the 
+        processed = if haskey(plot, :inspector_hover)
+            plot[:inspector_hover][](inspector, plot, idx, source)
+        else
+            show_data(inspector, plot, idx, source)
+        end
+
+        if processed
+            inspector.selection = plot
+        end
+        
+        return processed
     end
 end
 
