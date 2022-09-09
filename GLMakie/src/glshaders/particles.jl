@@ -120,6 +120,7 @@ function draw_mesh_particle(shader_cache, p, data)
         vertex_color = Vec4f(1)
         matcap = nothing => Texture
         fetch_pixel = false
+        interpolate_in_fragment_shader = false
         uv_scale = Vec2f(1)
 
         instances = const_lift(length, position)

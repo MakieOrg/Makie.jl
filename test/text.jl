@@ -41,7 +41,7 @@
     ])
 
     @test glyph_collection isa Makie.GlyphCollection
-    @test glyph_collection.glyphs == chars
+    @test glyph_collection.glyphs == FreeTypeAbstraction.glyph_index.(font, chars)
     @test glyph_collection.fonts == [font for _ in 1:4]
     @test all(isapprox.(glyph_collection.origins, [Point3f(x, 0, 0) for x in origins], atol = 1e-10))
     @test glyph_collection.scales.sv == [Vec2f(p.textsize[]) for _ in 1:4]

@@ -70,20 +70,24 @@ vec3 _scale(vec2          scale, int index);
 vec4 to_color(Nothing c){return vec4(1, 1, 1, 1);}
 vec4 to_color(vec3 c){return vec4(c, 1);}
 vec4 to_color(vec4 c){return c;}
-vec4 color_lookup(float intensity, sampler1D color_ramp, vec2 norm);
+
+vec4 get_color_from_cmap(float value, sampler1D color_map, vec2 colorrange);
 
 // constant color!
-vec4 _color(vec4 color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len);
-// only a samplerBuffer, this means we have a color per particle
-vec4 _color(samplerBuffer color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len);
-// no color, no intensities a color map and color norm. Color will be based on z_position or rotation!
-vec4 _color(Nothing color, Nothing intensity, sampler1D color_map, vec2 color_norm, int index, int len);
+vec4 get_particle_color(vec4 color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len){
+    return color;
+}
+// only a samplerBuffer, this means we have one color per particle
+vec4 get_particle_color(samplerBuffer color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len){
+    return texelFetch(color, index);
+}
+// only a samplerBuffer, this means we have one color (as float) per particle
+vec4 get_particle_color(Nothing color, samplerBuffer intensity, sampler1D color_map, vec2 color_norm, int index, int len){
+    // always look up color in vertex_shader (mesh.frag can switch)
+    return get_color_from_cmap(texelFetch(intensity, index).x, color_map, color_norm);
+}
 
-// TODO
-// we now sample the color in the fragment shader from the color_map, which is kind of insane performance wise
-vec4 _color(Nothing color, samplerBuffer intensity, sampler1D color_map, vec2 color_norm, int index, int len);
-
-vec4 _color(sampler2D color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len){
+vec4 get_particle_color(sampler2D color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len){
     return vec4(0);
 }
 
@@ -100,7 +104,7 @@ void main(){
     vec3 N = normals;
     vec3 pos;
     {{position_calc}}
-    o_color = _color(color, intensity, color_map, color_norm, index, len);
+    o_color = get_particle_color(color, intensity, color_map, color_norm, index, len);
     o_color = o_color * to_color(vertex_color);
     o_uv = get_uv(texturecoordinates);
     rotate(rotation, index, V, N);

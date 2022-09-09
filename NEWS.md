@@ -2,8 +2,22 @@
 
 ## master
 
+- Allow `CairoMakie` to render `scatter` with images as markers [#2080](https://github.com/JuliaPlots/Makie.jl/pull/2080).
+- Reworked text drawing and added ability to draw special characters via glyph indices in order to draw more LaTeX math characters with MathTeXEngine v0.5 [#2139](https://github.com/JuliaPlots/Makie.jl/pull/2139).
 - Add `tooltip` as a plot recipe [#2095](https://github.com/JuliaPlots/Makie.jl/pull/2095)
 - **Breaking** Refactor `DataInspector` to use `tooltip`. This results in changes in the attributes of DataInspector. See pr [#2095](https://github.com/JuliaPlots/Makie.jl/pull/2095)
+
+## v0.17.13
+
+- Fix boundingboxes [#2184](https://github.com/JuliaPlots/Makie.jl/pull/2184).
+- Fix highclip/lowclip in meshscatter, poly, contourf, barplot [#2183](https://github.com/JuliaPlots/Makie.jl/pull/2183).
+- fix gridline updates [#2196](https://github.com/JuliaPlots/Makie.jl/pull/2196).
+- fix glDisablei argument order, which crashed some Intel drivers
+
+## v0.17.12
+
+- Fix stackoverflow in show [#2167](https://github.com/JuliaPlots/Makie.jl/pull/2167)
+
 ## v0.17.11
 
 - `rainclouds`(!) now supports `violin_limits` keyword argument, serving the same.

@@ -238,8 +238,14 @@ function Base.setindex!(x::AbstractPlot, value::Observable, key::Symbol)
 end
 
 # a few shortcut functions to make attribute conversion easier
-function get_attribute(dict, key)
-    convert_attribute(to_value(dict[key]), Key{key}())
+function get_attribute(dict, key, default=nothing)
+    if haskey(dict, key)
+        value = to_value(dict[key])
+        value isa Automatic && return default
+        return convert_attribute(to_value(dict[key]), Key{key}())
+    else
+        return default
+    end
 end
 
 function merge_attributes!(input::Attributes, theme::Attributes)

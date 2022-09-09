@@ -146,6 +146,26 @@ end
 end
 
 
+@reference_test "scatter image markers" begin
+    pixel_types = [ RGBA, RGBAf, RGBA{Float16}, ARGB, ARGB{Float16}, RGB, RGBf, RGB{Float16} ]
+    rotations = [ 2pi/3 * (i-1) for i = 1:length(pixel_types) ]
+    s = Scene(resolution = (100+100*length(pixel_types), 400), camera = campixel!)
+    filename = Makie.assetpath("icon_transparent.png")
+    marker_image = FileIO.load(filename)
+    for (i, (rot, pxtype)) in enumerate(zip(rotations, pixel_types))
+        marker = convert.(pxtype, marker_image)
+        p = Point2f((i-1) * 100 + 100, 200)
+        scatter!(s,
+            p,
+            marker = marker,
+            markersize = 75,
+            rotations = rot,
+        )
+    end
+    s
+end
+
+
 @reference_test "basic polygon shapes" begin
     s = Scene(resolution = (800, 800), camera = campixel!)
     scalefactor = 70

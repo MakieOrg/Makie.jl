@@ -241,11 +241,15 @@ function initialize_block!(m::Menu; default = nothing)
         return Consume(false)
     end
 
-    on(menuscene.events.scroll) do (x, y)
-        t = translation(menuscene)[]
-        new_y = max(min(t[2] - y, 0), height(menuscene.px_area[]) - listheight[])
-        translate!(menuscene, t[1], new_y, t[3])
-        return Consume(true)
+    on(menuscene.events.scroll, priority=61) do (x, y)
+        if is_mouseinside(menuscene)
+            t = translation(menuscene)[]
+            new_y = max(min(t[2] - y, 0), height(menuscene.px_area[]) - listheight[])
+            translate!(menuscene, t[1], new_y, t[3])
+            return Consume(true)
+        else
+            return Consume(false)
+        end
     end
 
     on(m.options) do options

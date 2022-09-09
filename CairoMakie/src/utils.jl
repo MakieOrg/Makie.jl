@@ -113,21 +113,6 @@ end
 
 to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, c))
 
-function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
-
-    colormap = haskey(primitive, :colormap) ? to_colormap(primitive.colormap[]) : nothing
-    colorrange = get(primitive, :colorrange, nothing) |> to_value
-
-    if colorrange === Makie.automatic
-        colorrange = extrema(numbers)
-    end
-
-    Makie.interpolated_getindex.(
-        Ref(colormap),
-        Float64.(numbers), # ints don't work in interpolated_getindex
-        Ref(colorrange))
-end
-
 ########################################
 #     Image/heatmap -> ARGBSurface     #
 ########################################

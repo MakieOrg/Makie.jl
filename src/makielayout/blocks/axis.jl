@@ -406,13 +406,13 @@ function initialize_block!(ax::Axis; palette = nothing)
         update_gridlines!(ygridnode, Point2f(offset, 0), tickpos)
     end
 
-    on(xaxis.minortickpositions) do tickpos
+    onany(xaxis.minortickpositions, scene.px_area) do tickpos, area
         local pxheight::Float32 = height(scene.px_area[])
         local offset::Float32 = ax.xaxisposition[] == :bottom ? pxheight : -pxheight
         update_gridlines!(xminorgridnode, Point2f(0, offset), tickpos)
     end
 
-    on(yaxis.minortickpositions) do tickpos
+    onany(yaxis.minortickpositions, scene.px_area) do tickpos, area
         local pxwidth::Float32 = width(scene.px_area[])
         local offset::Float32 = ax.yaxisposition[] == :left ? pxwidth : -pxwidth
         update_gridlines!(yminorgridnode, Point2f(offset, 0), tickpos)
@@ -1170,7 +1170,7 @@ end
 
 """
     space = tight_xticklabel_spacing!(ax::Axis)
-    
+
 Sets the space allocated for the xticklabels of the `Axis` to the minimum that is needed and returns that value.
 """
 function tight_yticklabel_spacing!(ax::Axis)
@@ -1180,7 +1180,7 @@ end
 
 """
     space = tight_xticklabel_spacing!(ax::Axis)
-    
+
 Sets the space allocated for the yticklabels of the `Axis` to the minimum that is needed and returns that value.
 """
 function tight_xticklabel_spacing!(ax::Axis)
