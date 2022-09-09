@@ -230,7 +230,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
             ]
         elseif placement in (:below, :down, :bottom)
             Vec2f[
-                (l, b + 0.5w), (l, t), 
+                (l, b + 0.5h), (l, t), 
                 (l + align * w - 0.5s, t), 
                 (l + align * w,        t+s), 
                 (l + align * w + 0.5s, t), 
