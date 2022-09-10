@@ -62,6 +62,6 @@ end
 
 export set_window_config!
 
-# include("precompiles.jl")
+include("precompiles.jl")
 
 end
