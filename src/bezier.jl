@@ -210,7 +210,7 @@ function bezier_star(n, inner_radius, outer_radius, angle)
     ])
 end
 
-function poly2bezier(poly)
+function BezierPath(poly::Polygon)
     commands = Makie.PathCommand[]
     points = reinterpret(Point2f, poly.exterior)
     ext_direction = sign(area(points)) #signed area gives us clockwise / anti-clockwise
@@ -233,7 +233,6 @@ function poly2bezier(poly)
     push!(commands, ClosePath())
     return BezierPath(commands)
 end
-
 
 function BezierPath(svg::AbstractString; fit = false, bbox = nothing, flipy = false, keep_aspect = true)
     commands = parse_bezier_commands(svg)
