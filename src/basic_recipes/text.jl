@@ -125,9 +125,7 @@ end
 function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:AbstractString, <:Point}}}})    
     strings_and_positions = plot[1]
 
-    strings = Observable(
-        convert(Vector{AbstractString}, first.(strings_and_positions[]))
-    )
+    strings = Observable{Vector{AbstractString}}(first.(strings_and_positions[]))
 
     positions = Observable(
         Point3f[to_ndim(Point3f, last(x), 0) for x in  strings_and_positions[]] # avoid Any for zero elements
