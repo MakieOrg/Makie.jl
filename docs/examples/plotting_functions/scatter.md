@@ -106,11 +106,16 @@ f
 
 ### Bezier path markers
 
-You can also use bezier paths as markers.
-A bezier path marker should fit into the square from -1 to 1 in x and y to be comparable in size to other default markers and to be correctly rendered by GLMakie, because here the path has to be rendered to a bitmap first .
-In CairoMakie, paths are drawn as they are without an intermediate bitmap, so every size is possible.
+You can use bezier paths as markers.
+Bezier paths are the basis for vector graphic formats such as svg and pdf and consist of a couple different operations that can define complex shapes.
 
 A `BezierPath` contains a vector of path commands, these are `MoveTo`, `LineTo`, `CurveTo`, `EllipticalArc` and `ClosePath`.
+A filled shape should start with `MoveTo` and end with `ClosePath`.
+
+!!! note
+    Unfilled markers (like a single line or curve) are possible in CairoMakie but not in GLMakie and WGLMakie, because these backends have to render the marker as a filled shape to a texture first.
+    If no filling can be rendered, the marker will be invisible.
+    CairoMakie, on the other hand can stroke such markers without problem.
 
 Here is an example with a simple arrow that is centered on its tip, built from path elements.
 
@@ -140,9 +145,11 @@ scatter(1:5,
 ```
 \end{examplefigure}
 
+#### Holes
+
 Paths can have holes, just start a new subpath with `MoveTo` that is inside the main path.
 The holes have to be in clockwise direction if the outside is in anti-clockwise direction, or vice versa.
-For example, a circle with a square cut out can be made by one `EllipticalArc` that goes anticlockwise, and a square inside that goes clockwise:
+For example, a circle with a square cut out can be made by one `EllipticalArc` that goes anticlockwise, and a square inside which goes clockwise:
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -167,8 +174,10 @@ scatter(1:5,
 ```
 \end{examplefigure}
 
+#### Construction from svg path strings
+
 You can also create a bezier path from an [svg path specification string](https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/d#path_commands).
-You can automatically resize the path and flip the y-axis (many svgs have a coordinate system where y increases downwards) with the keywords `fit` and `yflip`.
+You can automatically resize the path and flip the y-axis (svgs usually have a coordinate system where y increases downwards) with the keywords `fit` and `yflip`.
 By default, the bounding box for the fitted path is a square of width 1 centered on zero.
 You can pass a different bounding `Rect` with the `bbox` keyword argument.
 By default, the aspect of the path is left intact, and if it's not matching the new bounding box, the path is centered so it fits inside.
@@ -190,7 +199,13 @@ scatter(1:10, marker = batsymbol, markersize = 50, color = :black)
 ```
 \end{examplefigure}
 
-One can also use `GeometryBasics.Polgyon` as a marker:
+### Polygon markers
+
+One can also use `GeometryBasics.Polgyon` as a marker.
+A polygon always needs one vector of points which forms the outline.
+It can also take an optional vector of vectors of points, each of which forms a hole in the outlined shape.
+
+In this example, a small circle is cut out of a larger circle:
 
 \begin{examplefigure}{svg = true}
 ```julia
