@@ -43,16 +43,19 @@ scatter(points, color = 1:30, markersize = range(5, 30, length = 30),
 ```
 \end{examplefigure}
 
-### Available markers
+### Markers
 
-As markers, you can use almost any unicode character.
-Currently, such glyphs are picked from the `TeX Gyre Heros Makie` font, because it offers a wide range of symbols.
-There is also a number of markers that can be referred to as a symbol, so that it's not necessary to find out the respective unicode character.
+There are a couple different categories of markers you can use with `scatter`:
 
-The backslash character examples have to be tab-completed in the REPL or editor so they are converted into unicode.
+- `Char`s like `'x'` or `'α'`. The glyphs are taken from Makie's default font `TeX Gyre Heros Makie`.
+- `BezierPath` objects which can be used to create custom marker shapes. Most default markers which are accessed by symbol such as `:circle` or `:rect` convert to `BezierPath`s internally.
+- `Polygon`s, which are equivalent to constructing `BezierPath`s exclusively out of `LineTo` commands.
+- `Matrix{<:Colorant}` objects which are plotted as image scatters.
+- Special markers like `Circle` and `Rect` which have their own backend implementations and can be faster to display.
 
-!!! note
-    The scatter markers have the same sizes that the glyphs in TeX Gyre Heros Makie have. This means that they are not matched in size or area. Currently, Makie does not have the option to use area matched markers, and sometimes manual adjustment might be necessary to achieve a good visual result.
+#### Default markers
+
+Here is an example plot showing different shapes that are accessible by `Symbol`s, as well as a few characters.
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -104,9 +107,72 @@ f
 ```
 \end{examplefigure}
 
+#### Markersize
+
+The `markersize` attribute scales the scatter size relative to the scatter marker's base size.
+Therefore, `markersize` cannot be directly understood in terms of a unit like `px`, it depends on _what_ is scaled.
+
+For `Char` markers, `markersize` is equivalent to the font size when displaying the same characters using `text`.
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+f, ax, sc = scatter(1, 1, marker = 'A', markersize = 50)
+text!(2, 1, text = "A", textsize = 50, align = (:center, :center))
+xlims!(ax, -1, 4)
+f
+```
+\end{examplefigure}
+
+The default `BezierPath` markers like `:circle`, `:rect`, `:utriangle`, etc. have been chosen such that they approximately match `Char` markers of the same markersize.
+This makes it easier to switch out markers without the overall look changing too much.
+However, both `Char` and `BezierPath` markers are not exactly `markersize` high or wide.
+We can visualize this by plotting some `Char`s, `BezierPath`s, `Circle` and `Rect` in front of a line of width `50`.
+You can see that only the special markers `Circle` and `Rect` match the line width because their base size is 1 x 1, however they don't match the `Char`s or `BezierPath`s very well.
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+f, ax, l = lines([0, 1], [1, 1], linewidth = 50, color = :gray80)
+for (marker, x) in zip(['X', 'x', :circle, :rect, :utriangle, Circle, Rect], range(0.1, 0.9, length = 7))
+    scatter!(ax, x, 1, marker = marker, markersize = 50, color = :black)
+end
+f
+```
+\end{examplefigure}
+
+If you need a marker that has some exact base size, so that you can match it with lines or other plot objects of known size, or because you want to use the marker in data space, you can construct it yourself using `BezierPath` or `Polygon`.
+A marker with a base size of 1 x 1, e.g., will be scaled like `lines` when `markersize` and `linewidth` are the same, just like `Circle` and `Rect` markers.
+
+Here, we construct a hexagon polygon with radius `1`, which we can then use to tile a surface in data coordinates by setting `markerspace = :data`.
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+hexagon = Makie.Polygon([Point2f(cos(a), sin(a)) for a in range(1/6 * pi, 13/6 * pi, length = 7)])
+
+points = Point2f[(0, 0), (sqrt(3), 0), (sqrt(3)/2, 1.5)]
+
+scatter(points,
+    marker = hexagon,
+    markersize = 1,
+    markerspace = :data,
+    color = 1:3,
+    axis = (; aspect = 1, limits = (-2, 4, -2, 4)))
+```
+\end{examplefigure}
+
 ### Bezier path markers
 
-You can use bezier paths as markers.
 Bezier paths are the basis for vector graphic formats such as svg and pdf and consist of a couple different operations that can define complex shapes.
 
 A `BezierPath` contains a vector of path commands, these are `MoveTo`, `LineTo`, `CurveTo`, `EllipticalArc` and `ClosePath`.
