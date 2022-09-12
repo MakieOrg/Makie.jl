@@ -1149,7 +1149,7 @@ function convert_attribute(value::Union{Symbol, String}, k::key"algorithm")
     end, k)
 end
 
-const DEFAULT_MAKER_MAP = Dict{Symbol, BezierPath}()
+const DEFAULT_MARKER_MAP  = Dict{Symbol, BezierPath}()
 
 function default_marker_map()
     # The bezier markers should not look out of place when used together with text
@@ -1162,30 +1162,30 @@ function default_marker_map()
     # An 'x' of DejaVu sans is only about 55pt high at 100pt font size, so if the marker
     # shapes are just used as is, they look much too large in comparison.
     # To me, a factor of 0.75 looks ok compared to both uppercase and lowercase letters of Dejavu.
-    if isempty(DEFAULT_MAKER_MAP)
+    if isempty(DEFAULT_MARKER_MAP )
         size_factor = 0.75
-        DEFAULT_MAKER_MAP[:rect] = scale(BezierSquare, size_factor)
-        DEFAULT_MAKER_MAP[:diamond] = scale(rotate(BezierSquare, pi/4), size_factor)
-        DEFAULT_MAKER_MAP[:hexagon] = scale(bezier_ngon(6, 0.5, pi/2), size_factor)
-        DEFAULT_MAKER_MAP[:cross] = scale(BezierCross, size_factor)
-        DEFAULT_MAKER_MAP[:xcross] = scale(BezierX, size_factor)
-        DEFAULT_MAKER_MAP[:utriangle] = scale(BezierUTriangle, size_factor)
-        DEFAULT_MAKER_MAP[:dtriangle] = scale(BezierDTriangle, size_factor)
-        DEFAULT_MAKER_MAP[:ltriangle] = scale(BezierLTriangle, size_factor)
-        DEFAULT_MAKER_MAP[:rtriangle] = scale(BezierRTriangle, size_factor)
-        DEFAULT_MAKER_MAP[:pentagon] = scale(bezier_ngon(5, 0.5, pi/2), size_factor)
-        DEFAULT_MAKER_MAP[:octagon] = scale(bezier_ngon(8, 0.5, pi/2), size_factor)
-        DEFAULT_MAKER_MAP[:star4] = scale(bezier_star(4, 0.25, 0.6, pi/2), size_factor)
-        DEFAULT_MAKER_MAP[:star5] = scale(bezier_star(5, 0.28, 0.6, pi/2), size_factor)
-        DEFAULT_MAKER_MAP[:star6] = scale(bezier_star(6, 0.30, 0.6, pi/2), size_factor)
-        DEFAULT_MAKER_MAP[:star8] = scale(bezier_star(8, 0.33, 0.6, pi/2), size_factor)
-        DEFAULT_MAKER_MAP[:vline] = scale(scale(BezierSquare, (0.2, 1.0)), size_factor)
-        DEFAULT_MAKER_MAP[:hline] = scale(scale(BezierSquare, (1.0, 0.2)), size_factor)
-        DEFAULT_MAKER_MAP[:+] = scale(BezierCross, size_factor)
-        DEFAULT_MAKER_MAP[:x] = scale(BezierX, size_factor)
-        DEFAULT_MAKER_MAP[:circle] = scale(BezierCircle, size_factor)
+        DEFAULT_MARKER_MAP [:rect] = scale(BezierSquare, size_factor)
+        DEFAULT_MARKER_MAP [:diamond] = scale(rotate(BezierSquare, pi/4), size_factor)
+        DEFAULT_MARKER_MAP [:hexagon] = scale(bezier_ngon(6, 0.5, pi/2), size_factor)
+        DEFAULT_MARKER_MAP [:cross] = scale(BezierCross, size_factor)
+        DEFAULT_MARKER_MAP [:xcross] = scale(BezierX, size_factor)
+        DEFAULT_MARKER_MAP [:utriangle] = scale(BezierUTriangle, size_factor)
+        DEFAULT_MARKER_MAP [:dtriangle] = scale(BezierDTriangle, size_factor)
+        DEFAULT_MARKER_MAP [:ltriangle] = scale(BezierLTriangle, size_factor)
+        DEFAULT_MARKER_MAP [:rtriangle] = scale(BezierRTriangle, size_factor)
+        DEFAULT_MARKER_MAP [:pentagon] = scale(bezier_ngon(5, 0.5, pi/2), size_factor)
+        DEFAULT_MARKER_MAP [:octagon] = scale(bezier_ngon(8, 0.5, pi/2), size_factor)
+        DEFAULT_MARKER_MAP [:star4] = scale(bezier_star(4, 0.25, 0.6, pi/2), size_factor)
+        DEFAULT_MARKER_MAP [:star5] = scale(bezier_star(5, 0.28, 0.6, pi/2), size_factor)
+        DEFAULT_MARKER_MAP [:star6] = scale(bezier_star(6, 0.30, 0.6, pi/2), size_factor)
+        DEFAULT_MARKER_MAP [:star8] = scale(bezier_star(8, 0.33, 0.6, pi/2), size_factor)
+        DEFAULT_MARKER_MAP [:vline] = scale(scale(BezierSquare, (0.2, 1.0)), size_factor)
+        DEFAULT_MARKER_MAP [:hline] = scale(scale(BezierSquare, (1.0, 0.2)), size_factor)
+        DEFAULT_MARKER_MAP [:+] = scale(BezierCross, size_factor)
+        DEFAULT_MARKER_MAP [:x] = scale(BezierX, size_factor)
+        DEFAULT_MARKER_MAP [:circle] = scale(BezierCircle, size_factor)
     end
-    return DEFAULT_MAKER_MAP
+    return DEFAULT_MARKER_MAP
 end
 
 """
