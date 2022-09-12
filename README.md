@@ -166,5 +166,5 @@ You can follow Makie on [twitter](https://twitter.com/MakiePlots) to get the lat
 
 ## Sponsors
 
-<img src="https://github.com/JuliaPlots/Makie.jl/blob/master/assets/BMBF_gefoerdert_2017_en.jpg?raw=true" width="300"/>
+<img src="https://github.com/MakieOrg/Makie.jl/blob/master/assets/BMBF_gefoerdert_2017_en.jpg?raw=true" width="300"/>
 Förderkennzeichen: 01IS10S27, 2020

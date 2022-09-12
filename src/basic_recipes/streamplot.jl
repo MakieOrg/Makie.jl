@@ -58,7 +58,7 @@ scatterfun(N) = N == 2 ? scatter! : meshscatter!
 streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize)
 
 Code adapted from an example implementation by Moritz Schauer (@mschauer)
-from https://github.com/JuliaPlots/Makie.jl/issues/355#issuecomment-504449775
+from https://github.com/MakieOrg/Makie.jl/issues/355#issuecomment-504449775
 
 Background: The algorithm puts an arrow somewhere and extends the
 streamline in both directions from there. Then, it chooses a new

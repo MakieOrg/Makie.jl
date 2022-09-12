@@ -573,7 +573,7 @@ function convert_arguments(P::PlotFunc, i::AbstractInterval, f::Function)
 end
 
 # The following `tryrange` code was copied from Plots.jl
-# https://github.com/JuliaPlots/Plots.jl/blob/15dc61feb57cba1df524ce5d69f68c2c4ea5b942/src/series.jl#L399-L416
+# https://github.com/MakieOrg/Plots.jl/blob/15dc61feb57cba1df524ce5d69f68c2c4ea5b942/src/series.jl#L399-L416
 
 # try some intervals over which the function may be defined
 function tryrange(F::AbstractArray, vec)

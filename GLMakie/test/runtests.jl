@@ -20,7 +20,7 @@ GLMakie.set_window_config!(;
     f, ax, pl = scatter(1:4)
     @test showable("image/png", f)
     @test showable("image/jpeg", f)
-    # see https://github.com/JuliaPlots/Makie.jl/pull/2167
+    # see https://github.com/MakieOrg/Makie.jl/pull/2167
     @test !showable("blaaa", f)
 end
 

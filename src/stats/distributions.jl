@@ -1,5 +1,5 @@
 #=
-Taken from https://github.com/JuliaPlots/StatsMakie.jl/blob/master/src/typerecipes/distribution.jl
+Taken from https://github.com/MakieOrg/StatsMakie.jl/blob/master/src/typerecipes/distribution.jl
 The StatMakie.jl package is licensed under the MIT "Expat" License:
     Copyright (c) 2018: Pietro Vertechi. =#
 

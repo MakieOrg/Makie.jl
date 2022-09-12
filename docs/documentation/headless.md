@@ -9,7 +9,7 @@ For CairoMakie, there shouldn't be any difference in using it on a remote or loc
 
 ## GLMakie
 
-For [GLMakie](https://github.com/JuliaPlots/GLMakie.jl) you can either use X11 forwarding to render on the local
+For [GLMakie](https://github.com/MakieOrg/GLMakie.jl) you can either use X11 forwarding to render on the local
 host or use [VirtualGL](https://www.virtualgl.org/) to render on the remote server.
 
 ### GLMakie with X11 forwarding
@@ -42,7 +42,7 @@ and then you will have to start julia via VirtualGL
 ### GLMakie in CI
 
 You can also use GLMakie on CI or servers without a GPU by using `xvfb` for software rendering.
-This procedure is used in the [GLMakie tests](https://github.com/JuliaPlots/GLMakie.jl/blob/8954fc34354a09ceb11159a8e8e35429c05a710f/.github/workflows/ci.yml#L41-L42).
+This procedure is used in the [GLMakie tests](https://github.com/MakieOrg/GLMakie.jl/blob/8954fc34354a09ceb11159a8e8e35429c05a710f/.github/workflows/ci.yml#L41-L42).
 
 ## WGLMakie
 

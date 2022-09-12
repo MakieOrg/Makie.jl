@@ -1,4 +1,4 @@
-WGLMakie is a WebGL backend for the [Makie.jl](https://www.github.com/JuliaPlots/Makie.jl) plotting package, implemented using Three.js.
+WGLMakie is a WebGL backend for the [Makie.jl](https://www.github.com/MakieOrg/Makie.jl) plotting package, implemented using Three.js.
 
 Read the docs for Makie and it's backends [here](http://makie.juliaplots.org/dev)
 
@@ -33,5 +33,5 @@ app = JSServe.Server(dom_handler, "127.0.0.1", 8082)
 
 ## Sponsors
 
-<img src="https://github.com/JuliaPlots/Makie.jl/blob/master/assets/BMBF_gefoerdert_2017_en.jpg?raw=true" width="300"/>
+<img src="https://github.com/MakieOrg/Makie.jl/blob/master/assets/BMBF_gefoerdert_2017_en.jpg?raw=true" width="300"/>
 Förderkennzeichen: 01IS10S27, 2020
