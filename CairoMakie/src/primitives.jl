@@ -226,11 +226,11 @@ function draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokeco
         # At least it stops drawing any marker afterwards
         # TODO, maybe there's something wrong somewhere else?
         if !(norm(scale) ≈ 0.0)
-        if marker_converted isa Char
-            draw_marker(ctx, marker_converted, best_font(m, font), pos, scale, strokecolor, strokewidth, offset, rotation)
-        else
-            draw_marker(ctx, marker_converted, pos, scale, strokecolor, strokewidth, offset, rotation)
-        end
+            if marker_converted isa Char
+                draw_marker(ctx, marker_converted, best_font(m, font), pos, scale, strokecolor, strokewidth, offset, rotation)
+            else
+                draw_marker(ctx, marker_converted, pos, scale, strokecolor, strokewidth, offset, rotation)
+            end
         end
         Cairo.restore(ctx)
     end
