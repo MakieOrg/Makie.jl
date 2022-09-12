@@ -51,7 +51,7 @@ void fill(bool image, vec4 fillcolor, vec2 uv, float infill, inout vec4 color){
 }
 
 void fill(sampler2D image, vec4 fillcolor, vec2 uv, float infill, inout vec4 color){
-    vec4 im_color = texture(image, uv);
+    vec4 im_color = texture(image, uv.yx);
     color = mix(color, im_color, infill);
 }
 
