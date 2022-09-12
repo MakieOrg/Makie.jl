@@ -1,6 +1,6 @@
 The OpenGL backend for [Makie](https://github.com/MakieOrg/Makie.jl)
 
-Read the docs for Makie and its backends [here](http://makie.juliaplots.org/dev)
+Read the docs for Makie and its backends [here](http://docs.makie.org/dev)
 
 ## Issues
 Please file all issues in [Makie.jl](https://github.com/MakieOrg/Makie.jl/issues/new), and mention GLMakie in the issue text!

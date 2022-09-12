@@ -1,6 +1,6 @@
 WGLMakie is a WebGL backend for the [Makie.jl](https://www.github.com/MakieOrg/Makie.jl) plotting package, implemented using Three.js.
 
-Read the docs for Makie and it's backends [here](http://makie.juliaplots.org/dev)
+Read the docs for Makie and it's backends [here](http://docs.makie.org/dev)
 
 # Usage
 

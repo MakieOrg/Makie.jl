@@ -22,7 +22,7 @@ function convert_arguments(T::PlotFunc, args...; kw...)
                         $(join("::" .* string.(typeof.(args)), ", "))
 
                         Makie needs to convert all plot input arguments to types that can be consumed by the backends (typically Arrays with Float32 elements).
-                        You can define a method for `Makie.convert_arguments` (a type recipe) for these types or their supertypes to make this set of arguments convertible (See http://makie.juliaplots.org/stable/documentation/recipes/index.html).
+                        You can define a method for `Makie.convert_arguments` (a type recipe) for these types or their supertypes to make this set of arguments convertible (See http://docs.makie.org/stable/documentation/recipes/index.html).
 
                         Alternatively, you can define `Makie.convert_single_argument` for single arguments which have types that are unknown to Makie but which can be converted to known types and fed back to the conversion pipeline.
                         """
@@ -1050,7 +1050,7 @@ function categorical_colors(cs::Union{String, Symbol}, categories::Integer)
             """
             There is no color gradient named $cs.
             See `available_gradients()` for the list of available gradients,
-            or look at http://makie.juliaplots.org/dev/generated/colors#Colormap-reference.
+            or look at http://docs.makie.org/dev/generated/colors#Colormap-reference.
             """
         )
     end
@@ -1101,7 +1101,7 @@ function to_colormap(cs::Union{String, Symbol})::Vector{RGBAf}
             """
             There is no color gradient named $cs.
             See `Makie.available_gradients()` for the list of available gradients,
-            or look at http://makie.juliaplots.org/dev/generated/colors#Colormap-reference.
+            or look at http://docs.makie.org/dev/generated/colors#Colormap-reference.
             """
         )
     end
