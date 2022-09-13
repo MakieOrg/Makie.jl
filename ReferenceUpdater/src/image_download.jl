@@ -15,6 +15,6 @@ function upload_reference_images(path=basedir("recorded"), tag=last_major_versio
     mktempdir() do dir
         tarfile = joinpath(dir, "$(name).tar")
         Tar.create(path, tarfile)
-        upload_release("JuliaPlots", "Makie.jl", ENV["GITHUB_TOKEN"], tag, tarfile)
+        upload_release("MakieOrg", "Makie.jl", ENV["GITHUB_TOKEN"], tag, tarfile)
     end
 end

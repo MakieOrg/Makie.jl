@@ -15,10 +15,10 @@ using ReferenceTests
         @test showable(mime(), f)
     end
     # I guess we explicitely don't say we can show those since it's highly Inefficient compared to html
-    # See: https://github.com/JuliaPlots/Makie.jl/blob/master/WGLMakie/src/display.jl#L66-L68=
+    # See: https://github.com/MakieOrg/Makie.jl/blob/master/WGLMakie/src/display.jl#L66-L68=
     @test !showable("image/png", f)
     @test !showable("image/jpeg", f)
-    # see https://github.com/JuliaPlots/Makie.jl/pull/2167
+    # see https://github.com/MakieOrg/Makie.jl/pull/2167
     @test !showable("blaaa", f)
 end
 
