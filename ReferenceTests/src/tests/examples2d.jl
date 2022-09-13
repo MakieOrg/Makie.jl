@@ -374,7 +374,7 @@ end
                 ax, Rect2f(xs[i][i] - 2s, xs[i][j] - 2s, 4s, 4s),
                 space = space, linewidth = 2, color = :red)
             scatter!(
-                ax, Point2f(xs[i][i], xs[i][j]), color = :orange,
+                ax, Point2f(xs[i][i], xs[i][j]), color = :orange, marker = Circle,
                 markersize = 5scales[j], space = space, markerspace = mspace)
             text!(
                 ax, "$space\n$mspace", position = Point2f(xs[i][i], xs[i][j]),
@@ -416,7 +416,7 @@ end
                 ax, Rect2f(xs[i][i] - 2s, xs[i][j] - 2s, 4s, 4s),
                 space = space, linewidth = 2, color = :red)
             scatter!(
-                ax, Point2f(xs[i][i], xs[i][j]), color = :orange,
+                ax, Point2f(xs[i][i], xs[i][j]), color = :orange, marker = Circle,
                 markersize = 5scales[j], space = space, markerspace = mspace)
             text!(
                 ax, "$space\n$mspace", position = Point2f(xs[i][i], xs[i][j]),
