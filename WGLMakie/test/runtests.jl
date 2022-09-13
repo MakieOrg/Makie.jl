@@ -44,7 +44,6 @@ excludes = Set([
     "UnicodeMarker",
     # Not sure, looks pretty similar to me! Maybe blend mode?
     "Test heatmap + image overlap",
-    "Stars",
     "heatmaps & surface",
     "OldAxis + Surface",
     "Order Independent Transparency",

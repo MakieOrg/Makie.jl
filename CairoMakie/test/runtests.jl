@@ -66,7 +66,6 @@ excludes = Set([
     "Image on Surface Sphere",
     "FEM mesh 2D",
     "Hbox",
-    "Stars",
     "Subscenes",
     "Arrows 3D",
     "Layouting",
