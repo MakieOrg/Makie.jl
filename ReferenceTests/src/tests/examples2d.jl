@@ -30,7 +30,7 @@ end
 end
 
 @reference_test "poly and colormap" begin
-    # example by @Paulms from JuliaPlots/Makie.jl#310
+    # example by @Paulms from MakieOrg/Makie.jl#310
     points = Point2f[[0.0, 0.0], [0.1, 0.0], [0.1, 0.1], [0.0, 0.1]]
     colors = [0.0 ,0.0, 0.5, 0.0]
     fig, ax, polyplot = poly(points, color=colors, colorrange=(0.0, 1.0))

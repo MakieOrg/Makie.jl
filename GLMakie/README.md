@@ -1,9 +1,9 @@
-The OpenGL backend for [Makie](https://github.com/JuliaPlots/Makie.jl)
+The OpenGL backend for [Makie](https://github.com/MakieOrg/Makie.jl)
 
-Read the docs for Makie and its backends [here](http://makie.juliaplots.org/dev)
+Read the docs for Makie and its backends [here](http://docs.makie.org/dev)
 
 ## Issues
-Please file all issues in [Makie.jl](https://github.com/JuliaPlots/Makie.jl/issues/new), and mention GLMakie in the issue text!
+Please file all issues in [Makie.jl](https://github.com/MakieOrg/Makie.jl/issues/new), and mention GLMakie in the issue text!
 
 
 ## Troubleshooting OpenGL
@@ -24,13 +24,13 @@ You can find instructions to set that up in:
 https://nextjournal.com/sdanisch/GLMakie-nogpu
 And for a headless github action:
 
-https://github.com/JuliaPlots/Makie.jl/blob/master/.github/workflows/glmakie.yaml
+https://github.com/MakieOrg/Makie.jl/blob/master/.github/workflows/glmakie.yaml
 If none of these work for you, there is also a Cairo and WebGL backend
 for Makie which you can use:
 
-https://github.com/JuliaPlots/Makie.jl/tree/master/CairoMakie.
+https://github.com/MakieOrg/Makie.jl/tree/master/CairoMakie.
 
-https://github.com/JuliaPlots/Makie.jl/tree/master/WGLMakie.
+https://github.com/MakieOrg/Makie.jl/tree/master/WGLMakie.
 
 If you get an error pointing to [GLFW.jl](https://github.com/JuliaGL/GLFW.jl), please look into the existing [GLFW issues](https://github.com/JuliaGL/GLFW.jl/issues), and also google for those errors. This is then very likely something that needs fixing in the  [glfw c library](https://github.com/glfw/glfw) or in the GPU drivers.
 
