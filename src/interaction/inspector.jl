@@ -363,7 +363,7 @@ disable!(inspector::DataInspector) = inspector.plot.enabled[] = false
 
 """
     DataInspector(figure; kwargs...)
-    DataInspector( ; kwargs...)
+    DataInspector(; kwargs...)
 
 Creates a data inspector which will show relevant information in a tooltip
 when you hover over a plot. If you wish to exclude a plot you may set
