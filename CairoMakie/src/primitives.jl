@@ -219,11 +219,18 @@ function draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokeco
         isnan(pos) && return
 
         Cairo.set_source_rgba(ctx, rgbatuple(col)...)
+
         Cairo.save(ctx)
-        if m isa Char
-            draw_marker(ctx, m, best_font(m, font), pos, scale, strokecolor, strokewidth, offset, rotation)
-        else
-            draw_marker(ctx, m, pos, scale, strokecolor, strokewidth, offset, rotation)
+        marker_converted = Makie.to_spritemarker(m)
+        # Setting a markersize of 0.0 somehow seems to break Cairos global state?
+        # At least it stops drawing any marker afterwards
+        # TODO, maybe there's something wrong somewhere else?
+        if !(norm(scale) ≈ 0.0)
+            if marker_converted isa Char
+                draw_marker(ctx, marker_converted, best_font(m, font), pos, scale, strokecolor, strokewidth, offset, rotation)
+            else
+                draw_marker(ctx, marker_converted, pos, scale, strokecolor, strokewidth, offset, rotation)
+            end
         end
         Cairo.restore(ctx)
     end
@@ -280,7 +287,7 @@ function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewid
     set_font_matrix(ctx, old_matrix)
 end
 
-function draw_marker(ctx, marker::Circle, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
+function draw_marker(ctx, ::Type{<: Circle}, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
     marker_offset = marker_offset + scale ./ 2
     pos += Point2f(marker_offset[1], -marker_offset[2])
 
@@ -304,8 +311,8 @@ function draw_marker(ctx, marker::Circle, pos, scale, strokecolor, strokewidth, 
     nothing
 end
 
-function draw_marker(ctx, marker::Rect, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
-    s2 = Point2((widths(marker) .* scale .* (1, -1))...)
+function draw_marker(ctx, ::Type{<: Rect}, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
+    s2 = Point2((scale .* (1, -1))...)
     pos = pos .+ Point2f(marker_offset[1], -marker_offset[2])
     Cairo.rotate(ctx, to_2d_rotation(rotation))
     Cairo.rectangle(ctx, pos[1], pos[2], s2...)
@@ -314,6 +321,38 @@ function draw_marker(ctx, marker::Rect, pos, scale, strokecolor, strokewidth, ma
     sc = to_color(strokecolor)
     Cairo.set_source_rgba(ctx, rgbatuple(sc)...)
     Cairo.stroke(ctx)
+end
+
+function draw_marker(ctx, beziermarker::BezierPath, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
+    Cairo.save(ctx)
+    Cairo.translate(ctx, pos[1], pos[2])
+    Cairo.rotate(ctx, to_2d_rotation(rotation))
+    Cairo.scale(ctx, scale[1], -scale[2]) # flip y for cairo
+    draw_path(ctx, beziermarker)
+    Cairo.fill_preserve(ctx)
+    sc = to_color(strokecolor)
+    Cairo.set_source_rgba(ctx, rgbatuple(sc)...)
+    Cairo.set_line_width(ctx, Float64(strokewidth))
+    Cairo.stroke(ctx)
+    Cairo.restore(ctx)
+end
+
+draw_path(ctx, bp::BezierPath) = foreach(x -> path_command(ctx, x), bp.commands)
+path_command(ctx, c::MoveTo) = Cairo.move_to(ctx, c.p...)
+path_command(ctx, c::LineTo) = Cairo.line_to(ctx, c.p...)
+path_command(ctx, c::CurveTo) = Cairo.curve_to(ctx, c.c1..., c.c2..., c.p...)
+path_command(ctx, ::ClosePath) = Cairo.close_path(ctx)
+function path_command(ctx, c::EllipticalArc)
+    Cairo.save(ctx)
+    Cairo.translate(ctx, c.c...)
+    Cairo.rotate(ctx, c.angle)
+    Cairo.scale(ctx, 1, c.r2 / c.r1)
+    if c.a2 > c.a1
+        Cairo.arc(ctx, 0, 0, c.r1, c.a1, c.a2)
+    else
+        Cairo.arc_negative(ctx, 0, 0, c.r1, c.a1, c.a2)
+    end
+    Cairo.restore(ctx)
 end
 
 
@@ -413,7 +452,9 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
 
         p3_offset = to_ndim(Point3f, offset, 0)
 
-        glyph in ('\r', '\n') && return
+        # Not renderable by font (e.g. '\n')
+        # TODO, filter out \n in GlyphCollection, and render unrenderables as box
+        glyph == 0 && return
 
         Cairo.save(ctx)
         Cairo.set_source_rgba(ctx, rgbatuple(color)...)
