@@ -2,6 +2,7 @@
 
 ## master
 
+- Added ability to hide and show individual plot elements by clicking their corresponding `Legend` entry.
 - Added `BezierPath` which can be constructed from SVG like command list, SVG string or from a `Polygon`.
   Added ability to use `BezierPath` and `Polgyon` as scatter markers.
   Replaced default symbol markers like `:cross` which converted to characters before with more precise `BezierPaths` and adjusted default markersize to 12.
