@@ -212,6 +212,11 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Union{Scat
             gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.rotations)
             isnothing(gl_attributes[:distancefield][]) && delete!(gl_attributes, :distancefield)
             gl_attributes[:uv_offset_width][] == Vec4f(0) && delete!(gl_attributes, :uv_offset_width)
+
+            font = get(gl_attributes, :font, Observable(Makie.defaultfont()))
+            scale, quad_offset = Makie.marker_attributes(marker, gl_attributes[:scale], font, gl_attributes[:quad_offset])
+            gl_attributes[:scale] = scale
+            gl_attributes[:quad_offset] = quad_offset
         else
             connect_camera!(gl_attributes, scene.camera)
         end
