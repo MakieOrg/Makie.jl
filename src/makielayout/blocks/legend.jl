@@ -241,7 +241,10 @@ function initialize_block!(leg::Legend,
                 events = addmouseevents!(blockscene, shade.layoutobservables.computedbbox)
                 onmouseleftdown(events) do event
                     for el in e.elements
-                        el.plot.visible[] = !el.plot.visible[]
+                        isnothing(el) && continue
+                        if hasproperty(el.plot, :visible)
+                            el.plot.visible[] = !el.plot.visible[]
+                        end
                     end
                     shade.visible[] = !shade.visible[]
                     return Consume(true)
