@@ -44,7 +44,6 @@ excludes = Set([
     "UnicodeMarker",
     # Not sure, looks pretty similar to me! Maybe blend mode?
     "Test heatmap + image overlap",
-    "Stars",
     "heatmaps & surface",
     "OldAxis + Surface",
     "Order Independent Transparency",
@@ -53,7 +52,6 @@ excludes = Set([
     "Animated surface and wireframe",
     "Array of Images Scatter",
     "Image Scatter different sizes",
-    "scatter image markers",
     "pattern barplot", # not implemented yet
     "scatter with stroke",
     "scatter with glow"
