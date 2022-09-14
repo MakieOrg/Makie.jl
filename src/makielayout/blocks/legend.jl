@@ -360,15 +360,15 @@ function LegendEntry(label::AbstractString, contentelement, legend; kwargs...)
 end
 
 
-function LineElement(plot; kwargs...)
+function LineElement(; plot=nothing, kwargs...)
     _legendelement(LineElement, plot, Attributes(kwargs))
 end
 
-function MarkerElement(plot; kwargs...)
+function MarkerElement(; plot=nothing, kwargs...)
     _legendelement(MarkerElement, plot, Attributes(kwargs))
 end
 
-function PolyElement(plot; kwargs...)
+function PolyElement(; plot=nothing, kwargs...)
     _legendelement(PolyElement, plot, Attributes(kwargs))
 end
 
@@ -418,7 +418,8 @@ function scalar_lift(attr, default)
 end
 
 function legendelements(plot::Union{Lines, LineSegments}, legend)
-    LegendElement[LineElement(plot,
+    LegendElement[LineElement(
+        plot = plot,
         color = scalar_lift(plot.color, legend.linecolor),
         linestyle = scalar_lift(plot.linestyle, legend.linestyle),
         linewidth = scalar_lift(plot.linewidth, legend.linewidth))]
@@ -426,7 +427,8 @@ end
 
 
 function legendelements(plot::Scatter, legend)
-    LegendElement[MarkerElement(plot,
+    LegendElement[MarkerElement(
+        plot = plot,
         color = scalar_lift(plot.color, legend.markercolor),
         marker = scalar_lift(plot.marker, legend.marker),
         markersize = scalar_lift(plot.markersize, legend.markersize),
@@ -436,7 +438,8 @@ function legendelements(plot::Scatter, legend)
 end
 
 function legendelements(plot::Union{Poly, Violin, BoxPlot, CrossBar, Density}, legend)
-    LegendElement[PolyElement(plot,
+    LegendElement[PolyElement(
+        plot = plot,
         color = scalar_lift(plot.color, legend.polycolor),
         strokecolor = scalar_lift(plot.strokecolor, legend.polystrokecolor),
         strokewidth = scalar_lift(plot.strokewidth, legend.polystrokewidth),
@@ -445,7 +448,11 @@ end
 
 function legendelements(plot::Band, legend)
     # there seems to be no stroke for Band, so we set it invisible
-    LegendElement[PolyElement(plot, polycolor = scalar_lift(plot.color, legend.polystrokecolor), polystrokecolor = :transparent, polystrokewidth = 0)]
+    LegendElement[PolyElement(
+        plot = plot,
+        polycolor = scalar_lift(plot.color, legend.polystrokecolor),
+        polystrokecolor = :transparent, polystrokewidth = 0
+    )]
 end
 
 # if there is no specific overload available, we go through the child plots and just stack
