@@ -56,5 +56,6 @@ function draw_mesh(shader_cache, @nospecialize(mesh), data::Dict)
             )
         )
     end
+
     return assemble_shader(data)
 end
