@@ -214,9 +214,9 @@ function initialize_block!(leg::Legend,
                 justification = map(leg.labeljustification, e.labelhalign) do lj, lha
                     return lj isa Automatic ? lha : lj
                 end
-                label = Label(scene; text=e.label, textsize=e.labelsize, font=e.labelfont, justification=justification,
-                              color=e.labelcolor, halign=e.labelhalign, valign=e.labelvalign)
-                push!(etexts, label)
+                push!(etexts,
+                      Label(scene; text=e.label, textsize=e.labelsize, font=e.labelfont, justification=justification,
+                            color=e.labelcolor, halign=e.labelhalign, valign=e.labelvalign))
 
                 # create the patch rectangle
                 rect = Box(scene; color=e.patchcolor, strokecolor=e.patchstrokecolor, strokewidth=e.patchstrokewidth,
@@ -238,7 +238,7 @@ function initialize_block!(leg::Legend,
                 push!(eshades, shade)
 
                 # add mouseevent to hide/show elements
-                events = addmouseevents!(label.blockscene, label.layoutobservables.computedbbox)
+                events = addmouseevents!(blockscene, shade.layoutobservables.computedbbox)
                 onmouseleftdown(events) do event
                     for el in e.elements
                         el.plot.visible[] = !el.plot.visible[]
