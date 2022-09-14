@@ -899,14 +899,17 @@ end
 abstract type LegendElement end
 
 struct LineElement <: LegendElement
+    plot::AbstractPlot
     attributes::Attributes
 end
 
 struct MarkerElement <: LegendElement
+    plot::AbstractPlot
     attributes::Attributes
 end
 
 struct PolyElement <: LegendElement
+    plot::AbstractPlot
     attributes::Attributes
 end
 

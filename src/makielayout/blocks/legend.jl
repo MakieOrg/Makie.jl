@@ -55,6 +55,8 @@ function initialize_block!(leg::Legend,
     entrytexts = [Label[]]
     entryplots = [[AbstractPlot[]]]
     entryrects = [Box[]]
+    entryevents = [MouseEventHandle[]]
+    entryshades = [Box[]]
 
     function relayout()
         manipulating_grid[] = true
@@ -70,6 +72,7 @@ function initialize_block!(leg::Legend,
             title = titletexts[g]
             etexts = entrytexts[g]
             erects = entryrects[g]
+            eshades = entryshades[g]
 
             subgl = if leg.orientation[] == :vertical
                 if leg.titleposition[] == :left
@@ -89,10 +92,11 @@ function initialize_block!(leg::Legend,
                 end
             end
 
-            for (n, (et, er)) in enumerate(zip(etexts, erects))
+            for (n, (et, er, es)) in enumerate(zip(etexts, erects, eshades))
                 i, j = leg.orientation[] == :vertical ? rowcol(n) : reverse(rowcol(n))
                 subgl[i, 2j-1] = er
                 subgl[i, 2j] = et
+                subgl[i, 2j-1:2j] = es
             end
 
             rowgap!(subgl, leg.rowgap[])
@@ -174,6 +178,14 @@ function initialize_block!(leg::Legend,
         end
         empty!(entryplots)
 
+        for events in entryevents
+            clear!.(events)
+        end
+        empty!(entryevents)
+
+        [delete!.(eshades) for eshades in entryshades]
+        empty!(entryshades)
+
         # the attributes for legend entries that the legend itself carries
         # these serve as defaults unless the legendentry gets its own value set
         # TODO: Fix
@@ -192,6 +204,8 @@ function initialize_block!(leg::Legend,
             etexts = []
             erects = []
             eplots = []
+            eevents = []
+            eshades = []
             for (i, e) in enumerate(entries)
                 # fill missing entry attributes with those carried by the legend
                 merge!(e.attributes, preset_attrs)
@@ -200,9 +214,9 @@ function initialize_block!(leg::Legend,
                 justification = map(leg.labeljustification, e.labelhalign) do lj, lha
                     return lj isa Automatic ? lha : lj
                 end
-                push!(etexts,
-                      Label(scene; text=e.label, textsize=e.labelsize, font=e.labelfont, justification=justification,
-                            color=e.labelcolor, halign=e.labelhalign, valign=e.labelvalign))
+                label = Label(scene; text=e.label, textsize=e.labelsize, font=e.labelfont, justification=justification,
+                              color=e.labelcolor, halign=e.labelhalign, valign=e.labelvalign)
+                push!(etexts, label)
 
                 # create the patch rectangle
                 rect = Box(scene; color=e.patchcolor, strokecolor=e.patchstrokecolor, strokewidth=e.patchstrokewidth,
@@ -216,16 +230,32 @@ function initialize_block!(leg::Legend,
                     append!(symbolplots,
                             legendelement_plots!(scene, element, rect.layoutobservables.computedbbox, e.attributes))
                 end
-
                 push!(eplots, symbolplots)
+
+                # create a shade above label and marker to indicate hidden plots
+                shade = Box(scene; color=RGBAf(0.9,0.9,0.9,0.6), visible=false,
+                            strokewidth=0)
+                push!(eshades, shade)
+
+                # add mouseevent to hide/show elements
+                events = addmouseevents!(label.blockscene, label.layoutobservables.computedbbox)
+                onmouseleftdown(events) do event
+                    for el in e.elements
+                        el.plot.visible[] = !el.plot.visible[]
+                    end
+                    shade.visible[] = !shade.visible[]
+                    return Consume(true)
+                end
+                push!(eevents, events)
             end
             push!(entrytexts, etexts)
             push!(entryrects, erects)
             push!(entryplots, eplots)
+            push!(entryevents, eevents)
+            push!(entryshades, eshades)
         end
         relayout()
     end
-
 
     # trigger suggestedbbox
     notify(leg.layoutobservables.suggestedbbox)
@@ -330,21 +360,21 @@ function LegendEntry(label::AbstractString, contentelement, legend; kwargs...)
 end
 
 
-function LineElement(;kwargs...)
-    _legendelement(LineElement, Attributes(kwargs))
+function LineElement(plot; kwargs...)
+    _legendelement(LineElement, plot, Attributes(kwargs))
 end
 
-function MarkerElement(;kwargs...)
-    _legendelement(MarkerElement, Attributes(kwargs))
+function MarkerElement(plot; kwargs...)
+    _legendelement(MarkerElement, plot, Attributes(kwargs))
 end
 
-function PolyElement(;kwargs...)
-    _legendelement(PolyElement, Attributes(kwargs))
+function PolyElement(plot; kwargs...)
+    _legendelement(PolyElement, plot, Attributes(kwargs))
 end
 
-function _legendelement(T::Type{<:LegendElement}, a::Attributes)
+function _legendelement(T::Type{<:LegendElement}, plot, a::Attributes)
     _rename_attributes!(T, a)
-    T(a)
+    T(plot, a)
 end
 
 _renaming_mapping(::Type{LineElement}) = Dict(
@@ -388,7 +418,7 @@ function scalar_lift(attr, default)
 end
 
 function legendelements(plot::Union{Lines, LineSegments}, legend)
-    LegendElement[LineElement(
+    LegendElement[LineElement(plot,
         color = scalar_lift(plot.color, legend.linecolor),
         linestyle = scalar_lift(plot.linestyle, legend.linestyle),
         linewidth = scalar_lift(plot.linewidth, legend.linewidth))]
@@ -396,7 +426,7 @@ end
 
 
 function legendelements(plot::Scatter, legend)
-    LegendElement[MarkerElement(
+    LegendElement[MarkerElement(plot,
         color = scalar_lift(plot.color, legend.markercolor),
         marker = scalar_lift(plot.marker, legend.marker),
         markersize = scalar_lift(plot.markersize, legend.markersize),
@@ -406,7 +436,7 @@ function legendelements(plot::Scatter, legend)
 end
 
 function legendelements(plot::Union{Poly, Violin, BoxPlot, CrossBar, Density}, legend)
-    LegendElement[PolyElement(
+    LegendElement[PolyElement(plot,
         color = scalar_lift(plot.color, legend.polycolor),
         strokecolor = scalar_lift(plot.strokecolor, legend.polystrokecolor),
         strokewidth = scalar_lift(plot.strokewidth, legend.polystrokewidth),
@@ -415,7 +445,7 @@ end
 
 function legendelements(plot::Band, legend)
     # there seems to be no stroke for Band, so we set it invisible
-    LegendElement[PolyElement(polycolor = scalar_lift(plot.color, legend.polystrokecolor), polystrokecolor = :transparent, polystrokewidth = 0)]
+    LegendElement[PolyElement(plot, polycolor = scalar_lift(plot.color, legend.polystrokecolor), polystrokecolor = :transparent, polystrokewidth = 0)]
 end
 
 # if there is no specific overload available, we go through the child plots and just stack
