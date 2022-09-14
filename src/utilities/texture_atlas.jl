@@ -344,14 +344,6 @@ function render(atlas::TextureAtlas, b::BezierPath, downsample=5, pad=6)
     return uv.area
 end
 
-
-
-
-# The marker types whos signed distancefield get looked up in the texture atlas
-const TextureAtlasShape = Union{Char, BezierPath, AbstractVector{Char}, AbstractVector{BezierPath}}
-# The marker types, which have a distancefield defined in the shader via a geometric function
-const GeometryShape = Union{Circle, Rect2, AbstractVector{Char}, AbstractVector{BezierPath}}
-
 @enum Shape CIRCLE RECTANGLE ROUNDED_RECTANGLE DISTANCEFIELD TRIANGLE
 
 """
