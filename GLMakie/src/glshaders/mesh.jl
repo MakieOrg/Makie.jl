@@ -36,7 +36,7 @@ function draw_mesh(shader_cache, @nospecialize(mesh), data::Dict)
     @gen_defaults! data begin
         shading = true
         backlight = 0f0
-        vertex_color = nothing
+        vertex_color = nothing => GLBuffer
         texturecoordinates = Vec2f(0)
         image = nothing => Texture
         matcap = nothing => Texture

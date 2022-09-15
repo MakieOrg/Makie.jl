@@ -467,9 +467,7 @@ function mesh_inner(shader_cache, mesh, transfunc, gl_attributes)
         gl_attributes[:image] = Texture(const_lift(el32convert, color), minfilter = interp)
         gl_attributes[:color] = nothing
     elseif to_value(color) isa AbstractVector{<: Union{Number, Colorant}}
-        mesh = lift(mesh, color) do mesh, color
-            return GeometryBasics.pointmeta(mesh, color=el32convert(color))
-        end
+        gl_attributes[:vertex_color] = lift(el32convert, color)
     else
         error("Unsupported color type: $(typeof(to_value(color)))")
     end
