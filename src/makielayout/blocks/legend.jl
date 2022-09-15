@@ -232,7 +232,7 @@ function initialize_block!(leg::Legend,
                 end
                 push!(eplots, symbolplots)
 
-                # create a shade above label and marker to indicate hidden plots
+                # create a shade on top of label and marker to indicate hidden plots
                 shade = Box(scene; color=RGBAf(0.9,0.9,0.9,0.65), visible=false, strokewidth=0)
                 push!(eshades, shade)
 
@@ -241,14 +241,7 @@ function initialize_block!(leg::Legend,
                 events = if has_plots
                     events = addmouseevents!(blockscene, shade.layoutobservables.computedbbox)
                     onmouseleftdown(events) do _
-                        for el in e.elements
-                            isnothing(el) && continue
-                            for plot in el.plots
-                                !hasproperty(plot, :visible) && continue
-                                plot.visible[] = !plot.visible[]
-                            end
-                        end
-                        shade.visible[] = !shade.visible[]
+                        toggle_visiblity!(e, shade)
                         return Consume(true)
                     end
                     events
@@ -264,6 +257,17 @@ function initialize_block!(leg::Legend,
             push!(entryshades, eshades)
         end
         relayout()
+    end
+
+    # add mouseevent to toggle all registered legend entries at once
+    events = addmouseevents!(blockscene, leg.layoutobservables.computedbbox)
+    onmouserightdown(events) do event
+        for ((_, entries), shades) in zip(entry_groups[], entryshades)
+            for (e, s) in zip(entries, shades)
+                toggle_visiblity!(e, s)
+            end
+        end
+        return Consume(true)
     end
 
     # trigger suggestedbbox
@@ -672,4 +676,15 @@ end
 
 function legend_position_to_aligns(t::Tuple{Any, Any})
     (halign = t[1], valign = t[2])
+end
+
+function toggle_visiblity!(entry, shade)
+    for el in entry.elements
+        isnothing(el) && continue
+        for plot in el.plots
+            !hasproperty(plot, :visible) && continue
+            plot.visible[] = !plot.visible[]
+        end
+    end
+    shade.visible[] = !shade.visible[]
 end
