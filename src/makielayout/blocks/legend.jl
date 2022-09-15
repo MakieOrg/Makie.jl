@@ -240,7 +240,7 @@ function initialize_block!(leg::Legend,
                 has_plots = any(el -> !isnothing(el.plots), e.elements)
                 events = if has_plots
                     events = addmouseevents!(blockscene, shade.layoutobservables.computedbbox)
-                    onmouseleftdown(events) do _
+                    onmouseleftclick(events) do _
                         toggle_visiblity!(e, shade)
                         return Consume(true)
                     end
@@ -261,7 +261,7 @@ function initialize_block!(leg::Legend,
 
     # add mouseevent to toggle all registered legend entries at once
     events = addmouseevents!(blockscene, leg.layoutobservables.computedbbox)
-    onmouserightdown(events) do event
+    onmouserightclick(events) do event
         for ((_, entries), shades) in zip(entry_groups[], entryshades)
             for (e, s) in zip(entries, shades)
                 toggle_visiblity!(e, s)
