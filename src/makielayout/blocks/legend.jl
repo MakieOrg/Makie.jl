@@ -55,7 +55,7 @@ function initialize_block!(leg::Legend,
     entrytexts = [Label[]]
     entryplots = [[AbstractPlot[]]]
     entryrects = [Box[]]
-    entryevents = [MouseEventHandle[]]
+    entryevents = [Optional{MouseEventHandle}[]]
     entryshades = [Box[]]
 
     function relayout()
@@ -233,21 +233,25 @@ function initialize_block!(leg::Legend,
                 push!(eplots, symbolplots)
 
                 # create a shade above label and marker to indicate hidden plots
-                shade = Box(scene; color=RGBAf(0.9,0.9,0.9,0.6), visible=false,
-                            strokewidth=0)
+                shade = Box(scene; color=RGBAf(0.9,0.9,0.9,0.65), visible=false, strokewidth=0)
                 push!(eshades, shade)
 
                 # add mouseevent to hide/show elements
-                events = addmouseevents!(blockscene, shade.layoutobservables.computedbbox)
-                onmouseleftdown(events) do event
-                    for el in e.elements
-                        isnothing(el) && continue
-                        if hasproperty(el.plot, :visible)
+                has_plots = any(el -> !isnothing(el.plot), e.elements)
+                events = if has_plots
+                    events = addmouseevents!(blockscene, shade.layoutobservables.computedbbox)
+                    onmouseleftdown(events) do _
+                        for el in e.elements
+                            isnothing(el) && continue
+                            !hasproperty(el.plot, :visible) && continue
                             el.plot.visible[] = !el.plot.visible[]
                         end
+                        shade.visible[] = !shade.visible[]
+                        return Consume(true)
                     end
-                    shade.visible[] = !shade.visible[]
-                    return Consume(true)
+                    events
+                else
+                    nothing
                 end
                 push!(eevents, events)
             end
