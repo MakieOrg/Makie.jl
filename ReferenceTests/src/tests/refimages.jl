@@ -31,3 +31,6 @@ end
 @testset "figures_and_makielayout.jl" begin
     include("figures_and_makielayout.jl")
 end
+@testset "updating_plots" begin
+    include("updating.jl")
+end
