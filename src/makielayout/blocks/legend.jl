@@ -241,7 +241,8 @@ function initialize_block!(leg::Legend,
                 events = if has_plots
                     events = addmouseevents!(blockscene, shade.layoutobservables.computedbbox)
                     onmouseleftclick(events) do _
-                        toggle_visiblity!(e, shade)
+                        set_visiblity!(e, shade.visible[])
+                        set_visiblity!(shade, !shade.visible[])
                         return Consume(true)
                     end
                     events
@@ -264,7 +265,31 @@ function initialize_block!(leg::Legend,
     onmouserightclick(events) do event
         for ((_, entries), shades) in zip(entry_groups[], entryshades)
             for (e, s) in zip(entries, shades)
-                toggle_visiblity!(e, s)
+                set_visiblity!(e, s.visible[])
+                set_visiblity!(s, !s.visible[])
+            end
+        end
+        return Consume(true)
+    end
+    onmousemiddleclick(events) do event
+
+        # determine number of currently visible entries
+        n_visible, n_total = 0, 0
+        for shades in entryshades
+            for shade in shades
+                n_visible += Int64(!shade.visible[])
+                n_total += 1;
+            end
+        end
+
+        n_total == 0 && return
+        # if already synced we switch to toggle mode
+        sync = !(n_visible == 0 || n_visible == n_total)
+
+        for ((_, entries), shades) in zip(entry_groups[], entryshades)
+            for (e, s) in zip(entries, shades)
+                set_visiblity!(e, sync ? true : s.visible[])
+                set_visiblity!(s, !(sync ? true : s.visible[]))
             end
         end
         return Consume(true)
@@ -678,13 +703,16 @@ function legend_position_to_aligns(t::Tuple{Any, Any})
     (halign = t[1], valign = t[2])
 end
 
-function toggle_visiblity!(entry, shade)
+function set_visiblity!(entry::LegendEntry, visible)
     for el in entry.elements
         isnothing(el) && continue
         for plot in el.plots
             !hasproperty(plot, :visible) && continue
-            plot.visible[] = !plot.visible[]
+            plot.visible[] = visible
         end
     end
-    shade.visible[] = !shade.visible[]
+end
+
+function set_visiblity!(shade::Box, visible)
+    shade.visible[] = visible
 end
