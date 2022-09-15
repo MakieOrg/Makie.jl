@@ -40,9 +40,9 @@ function project_scale(scene::Scene, space, s, model = Mat4f(I))
     elseif is_pixel_space(space)
         return p4d[Vec(1, 2)]
     elseif is_relative_space(space)
-        return p4d .* scene.camera.resolution[]
+        return p4d[Vec(1, 2)] .* scene.camera.resolution[]
     else # clip
-        return p4d .* scene.camera.resolution[] .* 0.5f0
+        return p4d[Vec(1, 2)] .* scene.camera.resolution[] .* 0.5f0
     end
 end
 
