@@ -241,8 +241,8 @@ function initialize_block!(leg::Legend,
                 events = if has_plots
                     events = addmouseevents!(blockscene, shade.layoutobservables.computedbbox)
                     onmouseleftclick(events) do _
-                        set_visiblity!(e, shade.visible[])
-                        set_visiblity!(shade, !shade.visible[])
+                        toggle_visiblity!(e)
+                        toggle_visiblity!(shade)
                         return Consume(true)
                     end
                     events
@@ -265,8 +265,8 @@ function initialize_block!(leg::Legend,
     onmouserightclick(events) do event
         for ((_, entries), shades) in zip(entry_groups[], entryshades)
             for (e, s) in zip(entries, shades)
-                set_visiblity!(e, s.visible[])
-                set_visiblity!(s, !s.visible[])
+                toggle_visiblity!(e)
+                toggle_visiblity!(s)
             end
         end
         return Consume(true)
@@ -288,8 +288,8 @@ function initialize_block!(leg::Legend,
 
         for ((_, entries), shades) in zip(entry_groups[], entryshades)
             for (e, s) in zip(entries, shades)
-                set_visiblity!(e, sync ? true : s.visible[])
-                set_visiblity!(s, !(sync ? true : s.visible[]))
+                toggle_visiblity!(e, sync)
+                toggle_visiblity!(s, sync)
             end
         end
         return Consume(true)
@@ -703,16 +703,16 @@ function legend_position_to_aligns(t::Tuple{Any, Any})
     (halign = t[1], valign = t[2])
 end
 
-function set_visiblity!(entry::LegendEntry, visible)
+function toggle_visiblity!(entry::LegendEntry, sync=false)
     for el in entry.elements
         isnothing(el) && continue
         for plot in el.plots
             !hasproperty(plot, :visible) && continue
-            plot.visible[] = visible
+            plot.visible[] = sync ? true : !plot.visible[]
         end
     end
 end
 
-function set_visiblity!(shade::Box, visible)
-    shade.visible[] = visible
+function toggle_visiblity!(shade::Box, sync=false)
+    shade.visible[] = sync ? false : !shade.visible[]
 end
