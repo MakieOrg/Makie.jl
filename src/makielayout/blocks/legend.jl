@@ -237,14 +237,16 @@ function initialize_block!(leg::Legend,
                 push!(eshades, shade)
 
                 # add mouseevent to hide/show elements
-                has_plots = any(el -> !isnothing(el.plot), e.elements)
+                has_plots = any(el -> !isnothing(el.plots), e.elements)
                 events = if has_plots
                     events = addmouseevents!(blockscene, shade.layoutobservables.computedbbox)
                     onmouseleftdown(events) do _
                         for el in e.elements
                             isnothing(el) && continue
-                            !hasproperty(el.plot, :visible) && continue
-                            el.plot.visible[] = !el.plot.visible[]
+                            for plot in el.plots
+                                !hasproperty(plot, :visible) && continue
+                                plot.visible[] = !plot.visible[]
+                            end
                         end
                         shade.visible[] = !shade.visible[]
                         return Consume(true)
@@ -366,17 +368,19 @@ function LegendEntry(label::AbstractString, contentelement, legend; kwargs...)
     LegendEntry(elems, attrs)
 end
 
-
-function LineElement(; plot=nothing, kwargs...)
-    _legendelement(LineElement, plot, Attributes(kwargs))
+function LineElement(; plots=nothing, kwargs...)
+    ps = isnothing(plots) ? nothing : plots isa AbstractVector ? plots : [plots]
+    _legendelement(LineElement, ps, Attributes(kwargs))
 end
 
-function MarkerElement(; plot=nothing, kwargs...)
-    _legendelement(MarkerElement, plot, Attributes(kwargs))
+function MarkerElement(; plots=nothing, kwargs...)
+    ps = isnothing(plots) ? nothing : plots isa AbstractVector ? plots : [plots]
+    _legendelement(MarkerElement, ps, Attributes(kwargs))
 end
 
-function PolyElement(; plot=nothing, kwargs...)
-    _legendelement(PolyElement, plot, Attributes(kwargs))
+function PolyElement(; plots=nothing, kwargs...)
+    ps = isnothing(plots) ? nothing : plots isa AbstractVector ? plots : [plots]
+    _legendelement(PolyElement, ps, Attributes(kwargs))
 end
 
 function _legendelement(T::Type{<:LegendElement}, plot, a::Attributes)
@@ -426,7 +430,7 @@ end
 
 function legendelements(plot::Union{Lines, LineSegments}, legend)
     LegendElement[LineElement(
-        plot = plot,
+        plots = plot,
         color = scalar_lift(plot.color, legend.linecolor),
         linestyle = scalar_lift(plot.linestyle, legend.linestyle),
         linewidth = scalar_lift(plot.linewidth, legend.linewidth))]
@@ -435,7 +439,7 @@ end
 
 function legendelements(plot::Scatter, legend)
     LegendElement[MarkerElement(
-        plot = plot,
+        plots = plot,
         color = scalar_lift(plot.color, legend.markercolor),
         marker = scalar_lift(plot.marker, legend.marker),
         markersize = scalar_lift(plot.markersize, legend.markersize),
@@ -446,7 +450,7 @@ end
 
 function legendelements(plot::Union{Poly, Violin, BoxPlot, CrossBar, Density}, legend)
     LegendElement[PolyElement(
-        plot = plot,
+        plots = plot,
         color = scalar_lift(plot.color, legend.polycolor),
         strokecolor = scalar_lift(plot.strokecolor, legend.polystrokecolor),
         strokewidth = scalar_lift(plot.strokewidth, legend.polystrokewidth),
@@ -456,7 +460,7 @@ end
 function legendelements(plot::Band, legend)
     # there seems to be no stroke for Band, so we set it invisible
     LegendElement[PolyElement(
-        plot = plot,
+        plots = plot,
         polycolor = scalar_lift(plot.color, legend.polystrokecolor),
         polystrokecolor = :transparent, polystrokewidth = 0
     )]
