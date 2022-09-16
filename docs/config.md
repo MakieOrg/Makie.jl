@@ -18,7 +18,7 @@ generate_rss = true
 website_title = "Franklin Template"
 website_descr = "Example website using Franklin"
 prepath = get(ENV, "PREVIEW_FRANKLIN_PREPATH", "")
-website_url = get(ENV, "PREVIEW_FRANKLIN_WEBSITE_URL", "makie.juliaplots.org")
+website_url = get(ENV, "PREVIEW_FRANKLIN_WEBSITE_URL", "docs.makie.org")
 +++
 
 <!--

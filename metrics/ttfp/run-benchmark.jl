@@ -51,7 +51,7 @@ display_time = @benchmark Makie.colorbuffer(display(fig))
 """
 
 function github_context()
-    owner = "JuliaPlots"
+    owner = "MakieOrg"
     return (
         owner = owner,
         repo = GitHub.Repo("$(owner)/Makie.jl"),

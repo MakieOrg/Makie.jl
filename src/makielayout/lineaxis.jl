@@ -281,6 +281,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
         linestyle = nothing, visible = minorticksvisible, inspectable = false
     )
     decorations[:minorticklines] = minorticklines
+    translate!(minorticklines, 0, 0, 10)
 
     realticklabelalign = Observable{Tuple{Symbol, Symbol}}((:none, :none); ignore_equal_values=true)
 
