@@ -760,7 +760,7 @@ function to_color(p::Palette)
 end
 
 to_color(c::Nothing) = c # for when color is not used
-to_color(c::Number) = Float32(c)
+to_color(c::Real) = Float32(c)
 to_color(c::Colorant) = convert(RGBA{Float32}, c)
 to_color(c::Symbol) = to_color(string(c))
 to_color(c::String) = parse(RGBA{Float32}, c)
