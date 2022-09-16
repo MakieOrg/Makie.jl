@@ -21,7 +21,7 @@ using ReferenceTests
     st
 end
 
-@reference_test "updating contourf" begin
+@reference_test "updating multiple meshes" begin
     points = Observable(Point3f[(1,0,0), (0,1,0), (0,0,1)])
 
     meshes = map(p->Makie.normal_mesh(Sphere(p, 0.2)), points[])
