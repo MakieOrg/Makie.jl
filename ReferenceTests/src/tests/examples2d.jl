@@ -552,3 +552,23 @@ end
     lines!(ax, Rect(0, 0, 1, 10), color=:red)
     f
 end
+
+@reference_test "trimspine" begin
+    with_theme(Axis = (limits = (0.5, 5.5, 0.3, 3.4), spinewidth = 8, topspinevisible = false, rightspinevisible = false)) do
+        f = Figure(resolution = (800, 800))
+    
+        for (i, ts) in enumerate([(true, true), (true, false), (false, true), (false, false)])
+            Label(f[0, i], string(ts), tellwidth = false)
+            Axis(f[1, i], xtrimspine = ts)
+            Axis(f[2, i], ytrimspine = ts)
+            Axis(f[3, i], xtrimspine = ts, xreversed = true)
+            Axis(f[4, i], ytrimspine = ts, yreversed = true)
+        end
+    
+        for (i, l) in enumerate(["x", "y", "x reversed", "y reversed"])
+            Label(f[i, 5], l, tellheight = false)
+        end
+    
+        f
+    end
+end
