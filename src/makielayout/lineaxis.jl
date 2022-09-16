@@ -69,18 +69,21 @@ function create_linepoints(
             return [p1, p2]
         end
     else
+        extents_oriented = last(tickpositions) > first(tickpositions) ? extents : reverse(extents)
         if horizontal
             y = position
             pstart = Point2f(-0.5f0 * tickwidth, 0)
             pend = Point2f(0.5f0 * tickwidth, 0)
-            return [trimspine[1] ? tickpositions[1] .+ pstart : Point2f(extents[1] - 0.5spine_width, y), 
-                    trimspine[2] ? tickpositions[end] .+ pend : Point2f(extents[2] + 0.5spine_width, y)]
+            from = trimspine[1] ? tickpositions[1] .+ pstart : Point2f(extents_oriented[1] - 0.5spine_width, y)
+            to = trimspine[2] ? tickpositions[end] .+ pend : Point2f(extents_oriented[2] + 0.5spine_width, y)
+            return [from, to]
         else
             x = position
             pstart = Point2f(-0.5f0 * tickwidth, 0)
             pend = Point2f(0.5f0 * tickwidth, 0)
-            return [trimspine[1] ? tickpositions[1] .+ pstart : Point2f(x, extents[1] - 0.5spine_width), 
-                    trimspine[2] ? tickpositions[end] .+ pend : Point2f(x, extents[2] + 0.5spine_width)]
+            from = trimspine[1] ? tickpositions[1] .+ pstart : Point2f(x, extents_oriented[1] - 0.5spine_width)
+            to = trimspine[2] ? tickpositions[end] .+ pend : Point2f(x, extents_oriented[2] + 0.5spine_width)
+            return [from, to]
         end
     end
     
