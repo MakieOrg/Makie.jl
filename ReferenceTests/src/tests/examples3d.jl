@@ -393,20 +393,6 @@ end
     mesh(Sphere(Point3f(0), 1f0), color=:blue)
 end
 
-@reference_test "Stars" begin
-    stars = 100_000
-    scene = Scene(backgroundcolor=:black, camera=cam2d!)
-    scatter!(
-        scene,
-        map(i -> (RNG.randn(Point3f) .- 0.5) .* 10, 1:stars),
-        color=RNG.rand(stars),
-        colormap=[(:white, 0.4), (:blue, 0.4), (:yellow, 0.4)], strokewidth=0,
-        markersize=RNG.rand(range(2, stop=8, length=100), stars),
-    )
-    update_cam!(scene, Rect3f(Vec3f(-5), Vec3f(10)))
-    scene
-end
-
 @reference_test "Unicode Marker" begin
     scatter(Point3f[(1, 0, 0), (0, 1, 0), (0, 0, 1)], marker=[:x, :circle, :cross],
             markersize=35)

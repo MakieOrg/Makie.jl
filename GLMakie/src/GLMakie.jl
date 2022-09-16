@@ -16,7 +16,7 @@ using Makie: @get_attribute, to_value, to_colormap, extrema_nan
 using Makie: ClosedInterval, (..)
 using Makie: inline!, to_native
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
-import Makie: to_font, glyph_uv_width!, el32convert
+import Makie: to_font, glyph_uv_width!, el32convert, Shape, CIRCLE, RECTANGLE, ROUNDED_RECTANGLE, DISTANCEFIELD, TRIANGLE
 
 using ShaderAbstractions
 using FreeTypeAbstraction

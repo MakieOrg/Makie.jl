@@ -33,7 +33,19 @@ jobs:
               parse(Int, match(r"PR(\d*)", dir)[1])
           end
 
-          prs = JSON3.read(HTTP.get("https://api.github.com/repos/$repo/pulls").body)
+          function all_prs()
+              query_prs(page) = JSON3.read(HTTP.get("https://api.github.com/repos/$repo/pulls?per_page=100;page=$(page)").body)
+              prs = []
+              page = 1
+              while true
+                  page_prs = query_prs(page)
+                  isempty(page_prs) && break
+                  append!(prs, page_prs)
+                  page += 1
+              end
+              return prs
+          end
+          prs = all_prs()
           open_within_threshold = map(x -> x.number, filter(prs) do pr
               time = DateTime(pr.updated_at[1:19], ISODateTimeFormat)
               return pr.state == "open" && Dates.days(now() - time) <= retention_days

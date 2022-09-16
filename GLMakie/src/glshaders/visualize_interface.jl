@@ -1,4 +1,3 @@
-@enum Shape CIRCLE RECTANGLE ROUNDED_RECTANGLE DISTANCEFIELD TRIANGLE
 @enum CubeSides TOP BOTTOM FRONT BACK RIGHT LEFT
 
 struct Grid{N,R<:AbstractRange}
@@ -80,7 +79,7 @@ struct GLVisualizeShader <: AbstractLazyShader
     paths::Tuple
     kw_args::Dict{Symbol,Any}
     function GLVisualizeShader(
-            shader_cache::GLAbstraction.ShaderCache, paths::String...; 
+            shader_cache::GLAbstraction.ShaderCache, paths::String...;
             view = Dict{String,String}(), kw_args...
         )
         # TODO properly check what extensions are available

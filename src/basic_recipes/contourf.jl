@@ -149,7 +149,6 @@ function Makie.plot!(c::PlotObject, ::Contourf, ::AbstractVector{<:Real}, ::Abst
         highs = levels[2:end]
 
         nbands = length(lows)
-
         # zs needs to be transposed to match rest of makie
         isos = Isoband.isobands(xs, ys, zs', lows, highs)
 

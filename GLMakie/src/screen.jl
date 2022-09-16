@@ -116,11 +116,11 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
         end
     else
         renderobject = get(screen.cache, objectid(plot)) do
-            error("Could not find $(typeof(subplot)) in current GLMakie screen!")
+            error("Could not find $(typeof(plot)) in current GLMakie screen!")
         end
 
         # These need explicit clean up because (some of) the source observables
-        # remain whe the plot is deleated.
+        # remain when the plot is deleted.
         for k in (:normalmatrix, )
             if haskey(renderobject.uniforms, k)
                 n = renderobject.uniforms[k]
@@ -393,7 +393,7 @@ function Screen(;
             This likely means, you don't have an OpenGL capable Graphic Card,
             or you don't have an OpenGL 3.3 capable video driver installed.
             Have a look at the troubleshooting section in the GLMakie readme:
-            https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie#troubleshooting-opengl.
+            https://github.com/MakieOrg/Makie.jl/tree/master/GLMakie#troubleshooting-opengl.
         """)
         rethrow(e)
     end

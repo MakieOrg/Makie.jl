@@ -370,17 +370,21 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     xticksmirrored = lift(mirror_ticks, xaxis.tickpositions, ax.xticksize, ax.xtickalign, Ref(scene.px_area), :x, ax.xaxisposition[])
-    linesegments!(topscene, xticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xticksvisible)),
+    xticksmirrored_lines = linesegments!(topscene, xticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xticksvisible)),
         linewidth = ax.xtickwidth, color = ax.xtickcolor)
+    translate!(xticksmirrored_lines, 0, 0, 10)
     yticksmirrored = lift(mirror_ticks, yaxis.tickpositions, ax.yticksize, ax.ytickalign, Ref(scene.px_area), :y, ax.yaxisposition[])
-    linesegments!(topscene, yticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yticksvisible)),
+    yticksmirrored_lines = linesegments!(topscene, yticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yticksvisible)),
         linewidth = ax.ytickwidth, color = ax.ytickcolor)
+    translate!(yticksmirrored_lines, 0, 0, 10)
     xminorticksmirrored = lift(mirror_ticks, xaxis.minortickpositions, ax.xminorticksize, ax.xminortickalign, Ref(scene.px_area), :x, ax.xaxisposition[])
-    linesegments!(topscene, xminorticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xminorticksvisible)),
+    xminorticksmirrored_lines = linesegments!(topscene, xminorticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xminorticksvisible)),
         linewidth = ax.xminortickwidth, color = ax.xminortickcolor)
+    translate!(xminorticksmirrored_lines, 0, 0, 10)
     yminorticksmirrored = lift(mirror_ticks, yaxis.minortickpositions, ax.yminorticksize, ax.yminortickalign, Ref(scene.px_area), :y, ax.yaxisposition[])
-    linesegments!(topscene, yminorticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yminorticksvisible)),
+    yminorticksmirrored_lines = linesegments!(topscene, yminorticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yminorticksvisible)),
         linewidth = ax.yminortickwidth, color = ax.yminortickcolor)
+    translate!(yminorticksmirrored_lines, 0, 0, 10)
 
     xoppositeline = linesegments!(topscene, xoppositelinepoints, linewidth = ax.spinewidth,
         visible = xoppositespinevisible, color = xoppositespinecolor, inspectable = false,

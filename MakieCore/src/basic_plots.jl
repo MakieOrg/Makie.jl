@@ -365,7 +365,7 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
 ### Specific to `Scatter`
 
 - `cycle::Vector{Symbol} = [:color]` sets which attributes to cycle when creating multiple plots.
-- `marker::Union{Symbol, Char, Matrix{<:Colorant}}` sets the scatter marker.
+- `marker::Union{Symbol, Char, Matrix{<:Colorant}, BezierPath, Polygon}` sets the scatter marker.
 - `markersize::Union{<:Real, Vec2f} = 9` sets the size of the marker.
 - `markerspace::Symbol = :pixel` sets the space in which `markersize` is given. See `Makie.spaces()` for possible inputs.
 - `strokewidth::Real = 0` sets the width of the outline around a marker.
