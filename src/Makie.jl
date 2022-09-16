@@ -143,6 +143,9 @@ include("basic_recipes/timeseries.jl")
 include("basic_recipes/volumeslices.jl")
 include("basic_recipes/wireframe.jl")
 
+# include figure recipes
+include("figure_recipes/figure_recipes.jl")
+
 # layouting of plots
 include("layouting/transformation.jl")
 include("layouting/data_limits.jl")
