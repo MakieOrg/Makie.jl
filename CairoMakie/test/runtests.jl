@@ -28,7 +28,7 @@ include(joinpath(@__DIR__, "rasterization_tests.jl"))
     @test showable("image/svg+xml", f)
     CairoMakie.activate!(type="png")
     @test showable("image/png", f)
-    # see https://github.com/JuliaPlots/Makie.jl/pull/2167
+    # see https://github.com/MakieOrg/Makie.jl/pull/2167
     @test !showable("blaaa", f)
 end
 
@@ -66,7 +66,6 @@ excludes = Set([
     "Image on Surface Sphere",
     "FEM mesh 2D",
     "Hbox",
-    "Stars",
     "Subscenes",
     "Arrows 3D",
     "Layouting",

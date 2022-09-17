@@ -30,7 +30,7 @@ end
 end
 
 @reference_test "poly and colormap" begin
-    # example by @Paulms from JuliaPlots/Makie.jl#310
+    # example by @Paulms from MakieOrg/Makie.jl#310
     points = Point2f[[0.0, 0.0], [0.1, 0.0], [0.1, 0.1], [0.0, 0.1]]
     colors = [0.0 ,0.0, 0.5, 0.0]
     fig, ax, polyplot = poly(points, color=colors, colorrange=(0.0, 1.0))
@@ -374,7 +374,7 @@ end
                 ax, Rect2f(xs[i][i] - 2s, xs[i][j] - 2s, 4s, 4s),
                 space = space, linewidth = 2, color = :red)
             scatter!(
-                ax, Point2f(xs[i][i], xs[i][j]), color = :orange,
+                ax, Point2f(xs[i][i], xs[i][j]), color = :orange, marker = Circle,
                 markersize = 5scales[j], space = space, markerspace = mspace)
             text!(
                 ax, "$space\n$mspace", position = Point2f(xs[i][i], xs[i][j]),
@@ -416,7 +416,7 @@ end
                 ax, Rect2f(xs[i][i] - 2s, xs[i][j] - 2s, 4s, 4s),
                 space = space, linewidth = 2, color = :red)
             scatter!(
-                ax, Point2f(xs[i][i], xs[i][j]), color = :orange,
+                ax, Point2f(xs[i][i], xs[i][j]), color = :orange, marker = Circle,
                 markersize = 5scales[j], space = space, markerspace = mspace)
             text!(
                 ax, "$space\n$mspace", position = Point2f(xs[i][i], xs[i][j]),
@@ -598,4 +598,32 @@ end
     scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
 
     f
+end
+
+@reference_test "marker offset in data space" begin
+    f = Figure()
+    ax = Axis(f[1, 1]; xticks=0:1, yticks=0:10)
+    scatter!(ax, fill(0, 10), 0:9, marker=Rect, marker_offset=Vec2f(0,0), transform_marker=true, markerspace=:data, markersize=Vec2f.(1, LinRange(0.1, 1, 10)))
+    lines!(ax, Rect(0, 0, 1, 10), color=:red)
+    f
+end
+
+@reference_test "trimspine" begin
+    with_theme(Axis = (limits = (0.5, 5.5, 0.3, 3.4), spinewidth = 8, topspinevisible = false, rightspinevisible = false)) do
+        f = Figure(resolution = (800, 800))
+    
+        for (i, ts) in enumerate([(true, true), (true, false), (false, true), (false, false)])
+            Label(f[0, i], string(ts), tellwidth = false)
+            Axis(f[1, i], xtrimspine = ts)
+            Axis(f[2, i], ytrimspine = ts)
+            Axis(f[3, i], xtrimspine = ts, xreversed = true)
+            Axis(f[4, i], ytrimspine = ts, yreversed = true)
+        end
+    
+        for (i, l) in enumerate(["x", "y", "x reversed", "y reversed"])
+            Label(f[i, 5], l, tellheight = false)
+        end
+    
+        f
+    end
 end

@@ -90,6 +90,7 @@ const NativeFont = FreeTypeAbstraction.FTFont
 
 include("documentation/docstringextension.jl")
 include("utilities/quaternions.jl")
+include("bezier.jl")
 include("types.jl")
 include("utilities/texture_atlas.jl")
 include("interaction/observables.jl")
@@ -169,6 +170,9 @@ include("interaction/inspector.jl")
 # documentation and help functions
 include("documentation/documentation.jl")
 include("display.jl")
+
+# bezier paths
+export BezierPath, MoveTo, LineTo, CurveTo, EllipticalArc, ClosePath
 
 # help functions and supporting functions
 export help, help_attributes, help_arguments

@@ -404,9 +404,9 @@ end
         "The position of the y axis (`:left` or `:right`)."
         yaxisposition::Symbol = :left
         "Controls if the x spine is limited to the furthest tick marks or not."
-        xtrimspine::Bool = false
+        xtrimspine::Union{Bool, Tuple{Bool,Bool}}  = false
         "Controls if the y spine is limited to the furthest tick marks or not."
-        ytrimspine::Bool = false
+        ytrimspine::Union{Bool, Tuple{Bool,Bool}} = false
         "The background color of the axis."
         backgroundcolor::RGBAf = :white
         "Controls if the ylabel's rotation is flipped."

@@ -3,8 +3,8 @@
     contour(x, y, z)
     contour(z::Matrix)
 
-Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix
-If only `z::Matrix` is supplied, the indices of the elements in `z` will be used as the x and y locations when plotting the contour.
+Creates a contour plot of the plane spanning `x::Vector`, `y::Vector`, `z::Matrix`.
+If only `z::Matrix` is supplied, the indices of the elements in `z` will be used as the `x` and `y` locations when plotting the contour.
 
 The attribute levels can be either
 
