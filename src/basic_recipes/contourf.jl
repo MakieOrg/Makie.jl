@@ -144,7 +144,6 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
         highs = levels[2:end]
 
         nbands = length(lows)
-
         # zs needs to be transposed to match rest of makie
         isos = Isoband.isobands(xs, ys, zs', lows, highs)
 
