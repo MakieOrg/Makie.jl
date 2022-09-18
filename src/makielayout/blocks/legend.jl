@@ -57,6 +57,7 @@ function initialize_block!(leg::Legend,
     entryrects = [Box[]]
     entryevents = [Optional{MouseEventHandle}[]]
     entryshades = [Box[]]
+    entryhalfshades = [Box[]]
 
     function relayout()
         manipulating_grid[] = true
@@ -73,6 +74,7 @@ function initialize_block!(leg::Legend,
             etexts = entrytexts[g]
             erects = entryrects[g]
             eshades = entryshades[g]
+            ehalfshades = entryhalfshades[g]
 
             subgl = if leg.orientation[] == :vertical
                 if leg.titleposition[] == :left
@@ -92,11 +94,12 @@ function initialize_block!(leg::Legend,
                 end
             end
 
-            for (n, (et, er, es)) in enumerate(zip(etexts, erects, eshades))
+            for (n, (et, er, es, ehs)) in enumerate(zip(etexts, erects, eshades, ehalfshades))
                 i, j = leg.orientation[] == :vertical ? rowcol(n) : reverse(rowcol(n))
                 subgl[i, 2j-1] = er
                 subgl[i, 2j] = et
                 subgl[i, 2j-1:2j] = es
+                subgl[i, 2j-1:2j] = ehs
             end
 
             rowgap!(subgl, leg.rowgap[])
@@ -155,6 +158,11 @@ function initialize_block!(leg::Legend,
         relayout()
     end
 
+    shade_color = RGBAf(0.9,0.9,0.9,0.65)
+    hatch_width = leg.labelsize[]
+    halfshade_color = LinePattern(direction=Vec2f(1), width=hatch_width/2,
+            tilesize=(hatch_width,hatch_width), linecolor=shade_color)
+
     on(entry_groups) do entry_groups
         # first delete all existing labels and patches
 
@@ -185,6 +193,8 @@ function initialize_block!(leg::Legend,
 
         [delete!.(eshades) for eshades in entryshades]
         empty!(entryshades)
+        [delete!.(ehalfshades) for ehalfshades in entryhalfshades]
+        empty!(entryhalfshades)
 
         # the attributes for legend entries that the legend itself carries
         # these serve as defaults unless the legendentry gets its own value set
@@ -206,6 +216,7 @@ function initialize_block!(leg::Legend,
             eplots = []
             eevents = []
             eshades = []
+            ehalfshades = []
             for (i, e) in enumerate(entries)
                 # fill missing entry attributes with those carried by the legend
                 merge!(e.attributes, preset_attrs)
@@ -232,17 +243,37 @@ function initialize_block!(leg::Legend,
                 end
                 push!(eplots, symbolplots)
 
+                # listen to visibilty attributes of plot elements to toggle shades below
+                visibilities = get_plot_visibilities(e)
+                shade_visible = Observable{Bool}(false)
+                halfshade_visible = Observable{Bool}(false)
+                onany(visibilities...) do vis...
+                    mode = shade_visible_mode(vis)
+                    shade_vis = mode === :show
+                    shade_visible[] != shade_vis && (shade_visible[] = shade_vis)
+                    halfshade_vis = mode === :halfshow
+                    halfshade_visible[] != halfshade_vis && (halfshade_visible[] = halfshade_vis)
+                end
+
                 # create a shade on top of label and marker to indicate hidden plots
-                shade = Box(scene; color=RGBAf(0.9,0.9,0.9,0.65), visible=false, strokewidth=0)
+                shade = Box(scene; color=shade_color, visible=shade_visible, strokewidth=0)
                 push!(eshades, shade)
+                halfshade = Box(scene; color=halfshade_color, visible=halfshade_visible, strokewidth=0)
+                push!(ehalfshades, halfshade)
 
                 # add mouseevent to hide/show elements
                 has_plots = any(el -> !isnothing(el.plots), e.elements)
                 events = if has_plots
                     events = addmouseevents!(blockscene, shade.layoutobservables.computedbbox)
                     onmouseleftclick(events) do _
-                        toggle_visiblity!(e)
-                        toggle_visiblity!(shade)
+                        # determine number of currently visible plot elements
+                        visibilities = [ v[] for v in get_plot_visibilities(e) if !isnothing(v) ]
+                        n_visible = sum(s -> Int64(s), visibilities)
+                        n_total = length(visibilities)
+                        n_total == 0 && return Consume(true)
+                        # if not all attached plots have the same state we sync them first
+                        sync = !(n_visible == 0 || n_visible == n_total)
+                        toggle_visibility!(e, sync)
                         return Consume(true)
                     end
                     events
@@ -256,40 +287,26 @@ function initialize_block!(leg::Legend,
             push!(entryplots, eplots)
             push!(entryevents, eevents)
             push!(entryshades, eshades)
+            push!(entryhalfshades, ehalfshades)
         end
         relayout()
     end
 
-    # add mouseevent to toggle all registered legend entries at once
+    # reset visibilities of all plot eleemnts with a right click
     events = addmouseevents!(blockscene, leg.layoutobservables.computedbbox)
     onmouserightclick(events) do event
-        for ((_, entries), shades) in zip(entry_groups[], entryshades)
-            for (e, s) in zip(entries, shades)
-                toggle_visiblity!(e)
-                toggle_visiblity!(s)
+        visibilities = Bool[]
+        for (_, entries) in entry_groups[]
+            for e in entries
+                foreach(v -> !isnothing(v) && push!(visibilities, v[]), visibilities)
             end
         end
-        return Consume(true)
-    end
-    onmousemiddleclick(events) do event
-
-        # determine number of currently visible entries
-        n_visible, n_total = 0, 0
-        for shades in entryshades
-            for shade in shades
-                n_visible += Int64(!shade.visible[])
-                n_total += 1;
-            end
-        end
-
-        n_total == 0 && return
-        # if already synced we switch to toggle mode
-        sync = !(n_visible == 0 || n_visible == n_total)
-
-        for ((_, entries), shades) in zip(entry_groups[], entryshades)
-            for (e, s) in zip(entries, shades)
-                toggle_visiblity!(e, sync)
-                toggle_visiblity!(s, sync)
+        n_visible = sum(s -> Int64(s), visibilities)
+        n_total = length(visibilities)
+        n_visible == n_total && return Consume(true)
+        for (_, entries) in entry_groups[]
+            for e in entries
+                toggle_visibility!(e, true)
             end
         end
         return Consume(true)
@@ -703,7 +720,7 @@ function legend_position_to_aligns(t::Tuple{Any, Any})
     (halign = t[1], valign = t[2])
 end
 
-function toggle_visiblity!(entry::LegendEntry, sync=false)
+function toggle_visibility!(entry::LegendEntry, sync=false)
     for el in entry.elements
         isnothing(el) && continue
         for plot in el.plots
@@ -713,6 +730,27 @@ function toggle_visiblity!(entry::LegendEntry, sync=false)
     end
 end
 
-function toggle_visiblity!(shade::Box, sync=false)
-    shade.visible[] = sync ? false : !shade.visible[]
+function get_plot_visibilities(entry::LegendEntry)
+    visibilities = Observable{Bool}[]
+    for element in entry.elements
+        isnothing(element) && continue
+        for plot in element.plots
+            !hasproperty(plot, :visible) && continue
+            push!(visibilities, plot.visible)
+        end
+    end
+    return visibilities
+end
+
+function shade_visible_mode(visibilities)
+    n_visible = sum(s -> Int64(s), visibilities)
+    n_total = length(visibilities)
+    # ignore shade if there is nothing to hide
+    n_total == 0 && return :hide
+    # hide shade if all are visible
+    n_visible == n_total && return :hide
+    # show shade if all are invisible
+    n_visible == 0 && return :show
+    # partly show shade if some but not all are visible
+    return :halfshow
 end
