@@ -1,5 +1,6 @@
-using Makie: MouseButtonEvent, KeyEvent
+using Makie: MouseButtonEvent, KeyEvent, Figure, Textbox
 using Makie: Not, And, Or
+using InteractiveUtils: clipboard
 
 # rudimentary equality for tests
 Base.:(==)(l::Exclusively, r::Exclusively) = l.x == r.x
@@ -124,6 +125,59 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
             @test false | x == x
             @test x | false == x
         end
+    end
+
+    @testset "copy_paste" begin
+        f = Figure(resolution=(640,480))
+
+        tb = Textbox(f[1,1], placeholder="Copy/paste into me")
+        tb.focused = true
+
+        e = events(f.scene)
+
+        display(f)
+
+        # Select textbox
+        e.mouseposition[] = (320, 240)
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.release)
+
+        # Fill clipboard with a string
+        clipboard("test string")
+
+        # Trigger left ctrl+v
+        e.keyboardbutton[] = KeyEvent(Keyboard.left_control, Keyboard.press)
+        e.keyboardbutton[] = KeyEvent(Keyboard.v, Keyboard.press)
+        e.keyboardbutton[] = KeyEvent(Keyboard.v, Keyboard.release)
+        e.keyboardbutton[] = KeyEvent(Keyboard.left_control, Keyboard.release)
+        e.keyboardbutton[] = KeyEvent(Keyboard.enter, Keyboard.press)
+        e.keyboardbutton[] = KeyEvent(Keyboard.enter, Keyboard.release)
+
+        @test tb.stored_string == "test string"
+
+        # Refresh figure to test right control + v combination
+        empty!(f)
+
+        f = Figure(resolution=(640,480))
+        tb = Textbox(f[1,1], placeholder="Copy/paste into me")
+
+        display(f)
+        clipboard("test string2")
+
+        # Re-select textbox
+        e.mouseposition[] = (320, 240)
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.release)
+
+        # Trigger right ctrl+v
+        e.keyboardbutton[] = KeyEvent(Keyboard.right_control, Keyboard.press)
+        e.keyboardbutton[] = KeyEvent(Keyboard.v, Keyboard.press)
+        e.keyboardbutton[] = KeyEvent(Keyboard.v, Keyboard.release)
+        e.keyboardbutton[] = KeyEvent(Keyboard.right_control, Keyboard.release)
+        e.keyboardbutton[] = KeyEvent(Keyboard.enter, Keyboard.press)
+        e.keyboardbutton[] = KeyEvent(Keyboard.enter, Keyboard.release)
+
+        @test tb.stored_string == "test string2"
     end
 
     # This testset is based on the results the current camera system has. If
