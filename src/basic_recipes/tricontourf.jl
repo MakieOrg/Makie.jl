@@ -50,7 +50,7 @@ function Makie.convert_arguments(::Type{<:Tricontourf}, x::AbstractVector{<:Real
 end
 
 
-function Makie.plot!(c::Tricontourf)
+function Makie.plot!(c::Tricontourf{<:Tuple{<:AbstractVector{<:Real},<:AbstractVector{<:Real},<:AbstractVector{<:Real}}})
     xs, ys, zs = c[1:3]
 
     c.attributes[:_computed_levels] = lift(zs, c.levels, c.mode) do zs, levels, mode
