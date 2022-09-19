@@ -133,9 +133,7 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:AbstractVector{<:Real},<:AbstractV
 
         for (fc, lc) in zip(filledcontours, levelcenters)
             pointvecs = map(fc.polylines) do vecs
-                map(vecs) do tupl
-                    Point2f(tupl...)
-                end
+                map(Point2f, vecs)
             end
             if isempty(pointvecs)
                 continue
