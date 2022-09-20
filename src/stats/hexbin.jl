@@ -52,34 +52,54 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Any},<:AbstractVector
         min_y, max_y = extrema(y_copy)
 
         r = (max_x - min_x) / ((grid_size - 2) * 2)
-        x_odd_grid = (min_x - r):(sin(pi / 3) * 2 * r):(max_x - r)
-        x_even_grid = (min_x + sin(pi / 3) * r):(sin(pi / 3) * 2 * r):(max_x - r)
-        y_odd_grid = min_y:(3 * r):max_y
-        y_even_grid = (min_y + 3 / 2 * r):(3 * r):(max_y - 3 / 2 * r)
-        grid_points = Point2f[]
-        for i in x_odd_grid
-            for j in y_odd_grid
-                push!(grid_points, Point2f(i + r, j))
-            end
-        end
-        for i in x_even_grid
-            for j in y_even_grid
-                push!(grid_points, Point2f(i, j))
-            end
-        end
-        values = Point2f.(x_copy, y_copy)
-        tree = KDTree(grid_points)
-        ind, dist = nn(tree, values)
-        amount_hex = zeros(size(grid_points))
-        for i in ind
-            amount_hex[i] += 1
-        end
-        grid_points = grid_points[amount_hex .>= mincnt]
-        amount_hex = amount_hex[amount_hex .>= mincnt]
-        amount_hex = scale.(amount_hex)
+        # x_odd_grid = (min_x - r):(sin(pi / 3) * 2 * r):(max_x - r)
+        # x_even_grid = (min_x + sin(pi / 3) * r):(sin(pi / 3) * 2 * r):(max_x - r)
+        # y_odd_grid = min_y:(3 * r):max_y
+        # y_even_grid = (min_y + 3 / 2 * r):(3 * r):(max_y - 3 / 2 * r)
+        # grid_points = Point2f[]
+        # for i in x_odd_grid
+        #     for j in y_odd_grid
+        #         push!(grid_points, Point2f(i + r, j))
+        #     end
+        # end
+        # for i in x_even_grid
+        #     for j in y_even_grid
+        #         push!(grid_points, Point2f(i, j))
+        #     end
+        # end
+        # values = Point2f.(x_copy, y_copy)
+        # tree = KDTree(grid_points)
+        # ind, dist = nn(tree, values)
+        # amount_hex = zeros(size(grid_points))
+        # for i in ind
+        #     amount_hex[i] += 1
+        # end
+        # grid_points = grid_points[amount_hex .>= mincnt]
+        # amount_hex = amount_hex[amount_hex .>= mincnt]
+        # amount_hex = scale.(amount_hex)
 
-        append!(points[], grid_points)
-        append!(count_hex[], amount_hex)
+        d = Dict{Point2f, Int}()
+
+        for (_x, _y) in zip(x, y)
+            nx, nxs = nearest_center(_x, 2r)
+            ny, nys = nearest_center(_y, 2r * sqrt(3))
+
+            d1 = ((_x - nx) ^ 2 + (_y - ny) ^ 2)
+            d2 = ((_x - nxs) ^ 2 + (_y - nys) ^ 2)
+
+            bin = if d1 > d2
+                Point2f(nxs, nys)
+            else
+                Point2f(nx, ny)
+            end
+
+            d[bin] = get(d, bin, 0) + 1
+        end
+
+        for (p, c) in pairs(d)
+            push!(points[], p)
+            push!(count_hex[], c)
+        end
 
         markersize[] = r
         notify(points)
@@ -98,4 +118,11 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Any},<:AbstractVector
     hexmarker = Polygon(Point2f[(cos(a), sin(a)) for a in range(pi/6, 13pi/6, length = 7)[1:6]])
 
     scatter!(hb, points; color=count_hex, colormap=hb.colormap, marker = hexmarker, markersize = markersize, markerspace = :data)
+end
+
+function nearest_center(val, scale)
+    dv = Int(fld(val, scale / 2))
+    rounded = scale / 2 * (dv + (isodd(dv) ? 1 : 0))
+    rounded_scaled = scale / 2 * (dv + (iseven(dv) ? 1 : 0))
+    return (rounded, rounded_scaled)
 end
