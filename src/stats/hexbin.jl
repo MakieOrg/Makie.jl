@@ -52,6 +52,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Any},<:AbstractVector
         min_y, max_y = extrema(y_copy)
 
         r = (max_x - min_x) / ((grid_size - 2) * 2)
+        xdist = sin(pi / 3) * 2 * r
         # x_odd_grid = (min_x - r):(sin(pi / 3) * 2 * r):(max_x - r)
         # x_even_grid = (min_x + sin(pi / 3) * r):(sin(pi / 3) * 2 * r):(max_x - r)
         # y_odd_grid = min_y:(3 * r):max_y
@@ -81,8 +82,8 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Any},<:AbstractVector
         d = Dict{Point2f, Int}()
 
         for (_x, _y) in zip(x, y)
-            nx, nxs = nearest_center(_x, 2r)
-            ny, nys = nearest_center(_y, 2r * sqrt(3))
+            nx, nxs = nearest_center(_x, xdist)
+            ny, nys = nearest_center(_y, xdist * sqrt(3))
 
             d1 = ((_x - nx) ^ 2 + (_y - ny) ^ 2)
             d2 = ((_x - nxs) ^ 2 + (_y - nys) ^ 2)
@@ -103,6 +104,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Any},<:AbstractVector
 
         markersize[] = r
         notify(points)
+        notify(count_hex)
     end
     onany(calculate_grid, x, y, hb.gridsize, hb.mincnt, hb.scale)
     calculate_grid(x[], y[], hb.gridsize[], hb.mincnt[], hb.scale[])
