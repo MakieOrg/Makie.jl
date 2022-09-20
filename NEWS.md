@@ -2,27 +2,35 @@
 
 ## master
 
+- Fix per character attributes in text [#2244](https://github.com/JuliaPlots/Makie.jl/pull/2244)
+- `Axis` does now accept both a `Bool` and a `Tuple{Bool, Bool}` as values for `xtrimspine` and `ytrimspine` to trim only one end of the spine [#2171](https://github.com/JuliaPlots/Makie.jl/pull/2171).
+- Added `BezierPath` which can be constructed from SVG like command list, SVG string or from a `Polygon`.
+  Added ability to use `BezierPath` and `Polgyon` as scatter markers.
+  Replaced default symbol markers like `:cross` which converted to characters before with more precise `BezierPaths` and adjusted default markersize to 12.
+  **Deprecated** using `String` to specify multiple char markers (`scatter(1:4, marker="abcd")`).
+  **Deprecated** concrete geometries as markers like `Circle(Point2f(0), 1.5)` in favor of using the type like `Circle` for dispatch to special backend methods.
+  Added single image marker support to WGLMakie [#979](https://github.com/MakieOrg/Makie.jl/pull/979).
 - Allow `CairoMakie` to render `scatter` with images as markers [#2080](https://github.com/MakieOrg/Makie.jl/pull/2080).
 - Reworked text drawing and added ability to draw special characters via glyph indices in order to draw more LaTeX math characters with MathTeXEngine v0.5 [#2139](https://github.com/MakieOrg/Makie.jl/pull/2139).
 
 ## v0.17.13
 
-- Fix boundingboxes [#2184](https://github.com/MakieOrg/Makie.jl/pull/2184).
-- Fix highclip/lowclip in meshscatter, poly, contourf, barplot [#2183](https://github.com/MakieOrg/Makie.jl/pull/2183).
-- fix gridline updates [#2196](https://github.com/MakieOrg/Makie.jl/pull/2196).
-- fix glDisablei argument order, which crashed some Intel drivers
+- Fixed boundingboxes [#2184](https://github.com/MakieOrg/Makie.jl/pull/2184).
+- Fixed highclip/lowclip in meshscatter, poly, contourf, barplot [#2183](https://github.com/MakieOrg/Makie.jl/pull/2183).
+- Fixed gridline updates [#2196](https://github.com/MakieOrg/Makie.jl/pull/2196).
+- Fixed glDisablei argument order, which crashed some Intel drivers.
 
 ## v0.17.12
 
-- Fix stackoverflow in show [#2167](https://github.com/MakieOrg/Makie.jl/pull/2167)
+- Fixed stackoverflow in show [#2167](https://github.com/MakieOrg/Makie.jl/pull/2167).
 
 ## v0.17.11
 
 - `rainclouds`(!) now supports `violin_limits` keyword argument, serving the same.
 role as `datalimits` in `violin` [#2137](https://github.com/MakieOrg/Makie.jl/pull/2137).
-- Fixed a issue where nonzero `strokewidth` results in a thin outline of the wrong color if `color` and `strokecolor` didn't match and weren't transparent. [#2096](https://github.com/MakieOrg/Makie.jl/pull/2096).
-- Improve performance around Axis(3) limits [#2115](https://github.com/MakieOrg/Makie.jl/pull/2115).
-- Cleanup stroke artifacts in scatter and text [#2096](https://github.com/MakieOrg/Makie.jl/pull/2096).
+- Fixed an issue where nonzero `strokewidth` results in a thin outline of the wrong color if `color` and `strokecolor` didn't match and weren't transparent. [#2096](https://github.com/MakieOrg/Makie.jl/pull/2096).
+- Improved performance around Axis(3) limits [#2115](https://github.com/MakieOrg/Makie.jl/pull/2115).
+- Cleaned up stroke artifacts in scatter and text [#2096](https://github.com/MakieOrg/Makie.jl/pull/2096).
 - Compile time improvements [#2153](https://github.com/MakieOrg/Makie.jl/pull/2153).
 - Mesh and Surface now interpolate between values instead of interpolating between colors for WGLMakie + GLMakie [#2097](https://github.com/MakieOrg/Makie.jl/pull/2097).
 
@@ -43,7 +51,7 @@ role as `datalimits` in `violin` [#2137](https://github.com/MakieOrg/Makie.jl/pu
 
 ## v0.17.6
 
-- **EXPERIMENTAL** Added support for multiple windows in GLMakie through `display(GLMakie.Screen(), figure_or_scene)` [#1771](https://github.com/MakieOrg/Makie.jl/pull/1771).
+- **EXPERIMENTAL**: Added support for multiple windows in GLMakie through `display(GLMakie.Screen(), figure_or_scene)` [#1771](https://github.com/MakieOrg/Makie.jl/pull/1771).
 - Added support for RGB matrices in `heatmap` with GLMakie [#2036](https://github.com/MakieOrg/Makie.jl/pull/2036)
 - `Textbox` doesn't defocus anymore on trying to submit invalid input [#2041](https://github.com/MakieOrg/Makie.jl/pull/2041).
 - `text` now takes the position as the first argument(s) like `scatter` and most other plotting functions, it is invoked `text(x, y, [z], text = "text")`. Because it is now of conversion type `PointBased`, the positions can be given in all the usual different ways which are implemented as conversion methods. All old invocation styles such as `text("text", position = Point(x, y))` still work to maintain backwards compatibility [#2020](https://github.com/MakieOrg/Makie.jl/pull/2020).

@@ -46,8 +46,13 @@ float rounded_rectangle(vec2 uv, vec2 tl, vec2 br){
     return -((length(max(vec2(0.0), d)) + min(0.0, max(d.x, d.y)))-tl.x);
 }
 
-void fill(vec4 fillcolor, vec2 uv, float infill, inout vec4 color){
+void fill(bool image, vec4 fillcolor, vec2 uv, float infill, inout vec4 color){
     color = mix(color, fillcolor, infill);
+}
+
+void fill(sampler2D image, vec4 fillcolor, vec2 uv, float infill, inout vec4 color){
+    vec4 im_color = texture(image, uv.yx);
+    color = mix(color, im_color, infill);
 }
 
 in float frag_uvscale;
@@ -84,6 +89,6 @@ void main() {
     signed_distance *= frag_uvscale;
     float inside = aastep(0.0, signed_distance);
     vec4 final_color = vec4(frag_color.xyz, 0);
-    fill(frag_color, frag_uv, inside, final_color);
+    fill(image, frag_color, frag_uv, inside, final_color);
     fragment_color = final_color;
 }
