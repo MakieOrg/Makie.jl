@@ -25,11 +25,12 @@ end
 function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Any},<:AbstractVector{<:Any}}})
     x, y = hb[1:2]
 
-    P = typeof(Polygon(Point2f[(0, 0)]))
-    polys = Observable(P[])
+    points = Observable(Point2f[])
     count_hex = Observable(Float64[])
+    markersize = Observable(1.0)
+
     function calculate_grid(x, y, grid_size, mincnt, scale)
-        empty!(polys[])
+        empty!(points[])
         empty!(count_hex[])
 
         any(isempty, (x, y)) && return
@@ -77,16 +78,11 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Any},<:AbstractVector
         amount_hex = amount_hex[amount_hex .>= mincnt]
         amount_hex = scale.(amount_hex)
 
-        xe = sin.(0:(pi / 3):(5 / 3 * pi))
-        ys = cos.(0:(pi / 3):(5 / 3 * pi))
-        hex_points = [Point2f(a * r * 1 / scaling_x, b * r * 1 / scaling_y) for (a, b) in zip(xe, ys)]
-        for gridpoint in grid_points
-            poly_points = Ref(Point2f(1 / scaling_x, 1 / scaling_y) * gridpoint) .+ hex_points
-            push!(polys[], Polygon(poly_points))
-        end
+        append!(points[], grid_points)
         append!(count_hex[], amount_hex)
 
-        notify(polys)
+        markersize[] = r
+        notify(points)
     end
     onany(calculate_grid, x, y, hb.gridsize, hb.mincnt, hb.scale)
     calculate_grid(x[], y[], hb.gridsize[], hb.mincnt[], hb.scale[])
@@ -99,5 +95,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Any},<:AbstractVector
         end
     end
 
-    poly!(hb, polys; color=count_hex, colormap=hb.colormap)
+    hexmarker = Polygon(Point2f[(cos(a), sin(a)) for a in range(pi/6, 13pi/6, length = 7)[1:6]])
+
+    scatter!(hb, points; color=count_hex, colormap=hb.colormap, marker = hexmarker, markersize = markersize, markerspace = :data)
 end
