@@ -21,7 +21,8 @@ $(ATTRIBUTES)
         colorrange = automatic,
         framecolor = :black,
         framesize = 1,
-        inspectable = theme(scene, :inspectable)
+        inspectable = theme(scene, :inspectable),
+        visible = theme(scene, :visible)
     )
 end
 
