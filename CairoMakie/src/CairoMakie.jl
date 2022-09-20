@@ -15,12 +15,6 @@ using Makie.Observables
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
 using Makie: numbers_to_colors
 
-const OneOrVec{T} = Union{
-    T,
-    Vec{N1, T} where N1,
-    NTuple{N2, T} where N2,
-}
-
 # re-export Makie, including deprecated names
 for name in names(Makie, all=true)
     if Base.isexported(Makie, name)

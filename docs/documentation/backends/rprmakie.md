@@ -72,7 +72,7 @@ context, task = RPRMakie.replace_scene_rpr!(ax.scene, screen; refresh=refresh)
 
 
 There are several examples showing different aspects of how to use RPRMakie.
-The examples are in [RPRMakie/examples](https://github.com/JuliaPlots/Makie.jl/tree/master/RPRMakie/examples)
+The examples are in [RPRMakie/examples](https://github.com/MakieOrg/Makie.jl/tree/master/RPRMakie/examples)
 
 ## MaterialX and predefined materials (materials.jl)
 
