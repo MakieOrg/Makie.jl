@@ -75,8 +75,9 @@ function plot!(p::Spy)
         p,
         lift(first, xycol), color = lift(last, xycol),
         marker = marker, markersize = markersize, colorrange = p.colorrange,
-        colormap = p.colormap, inspectable = p.inspectable
+        colormap = p.colormap, inspectable = p.inspectable, visible = p.visible
     )
 
-    lines!(p, rect, color = p.framecolor, linewidth = p.framesize, inspectable = p.inspectable)
+    lines!(p, rect, color = p.framecolor, linewidth = p.framesize, inspectable = p.inspectable,
+           visible = p.visible)
 end
