@@ -216,21 +216,19 @@ function initialize_block!(tbox::Textbox)
             ctrl_v = (Keyboard.left_control | Keyboard.right_control) & Keyboard.v
             if ispressed(scene, ctrl_v)
                 local content::String = ""
-                local no_err::Bool = true
                 try
                     content = clipboard()
-                finally
-                    for char in content
-                        if is_allowed(char, tbox.restriction[])
-                            insertchar!(char, cursorindex[] + 1)
-                        else
-                            no_err = false
-                            break
-                        end
-                    end
+                catch err
+                    @warn "Pasting failed: $err"
+                    return Consume(false)
                 end
 
-                return Consume(no_err)
+                if all(char -> is_allowed(char, tbox.restriction[]), content)
+                    foreach(char -> insertchar!(char, cursorindex[] + 1), content)
+                    return Consume(true)
+                else
+                    return Consume(false)
+                end
             end
 
             if event.action != Keyboard.release
