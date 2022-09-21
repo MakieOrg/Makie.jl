@@ -623,5 +623,5 @@ function legend_position_to_aligns(s::Symbol)
 end
 
 function legend_position_to_aligns(t::Tuple{Any, Any})
-    (halign = t[1], valign = t[2])
+    (halign = Float64(t[1]), valign = Float64(t[2]))
 end
