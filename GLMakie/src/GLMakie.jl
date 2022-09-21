@@ -44,7 +44,7 @@ export Sampler, Buffer
 struct GLBackend <: Makie.AbstractBackend
 end
 
-const GL_ASSET_DIR = RelocatableFolders.@path joinpath(@__DIR__, "../assets")
+const GL_ASSET_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
 const SHADER_DIR = RelocatableFolders.@path joinpath(GL_ASSET_DIR, "shader")
 loadshader(name) = joinpath(SHADER_DIR, name)
 
