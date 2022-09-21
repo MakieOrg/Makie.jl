@@ -5,7 +5,6 @@ Makie can render LaTeX strings from the [LaTeXStrings.jl](https://github.com/ste
 While this engine is responsive enough for use in GLMakie, it only supports a subset of LaTeX's most used commands.
 
 !!! note
-
     Makie is able to render the subset of Latex strings supported by [MathTeXEngine.jl](https://github.com/Kolaru/MathTeXEngine.jl/).
     Alternative scripts like ``\mathcal{X}`` or ``\mathbb{R}`` are not supported as of `MathTeXEngine.jl` `v0.5.1`.
     In many cases, these characters can be replaced by unicode equivalents, e.g. ``ℝ`` for ``\mathcal{R}``.
