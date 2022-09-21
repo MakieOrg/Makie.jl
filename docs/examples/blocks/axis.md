@@ -557,7 +557,7 @@ f
 
 ## Trimmed spines
 
-The attributes `xtrimspine` and `ytrimspine` can be used to limit the respective spines to the range of the outermost major ticks.
+The attributes `xtrimspine` and `ytrimspine` can be used to limit the respective spines to the range of the outermost major ticks. A tuple of Boolean values can be given to trim only one end of the spine.
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -570,7 +570,7 @@ hist(randn(100) ./ 4 .+ 5,
     strokecolor = :black,
     axis = (
         xtrimspine = true,
-        ytrimspine = true,
+        ytrimspine = (false, true),
         topspinevisible = false,
         rightspinevisible = false,
         title = "Trimmed spines",

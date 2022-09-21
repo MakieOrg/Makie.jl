@@ -224,7 +224,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x, pt::Union{Scatter, MeshS
             # connect camera
             connect_camera!(gl_attributes, cam, get(gl_attributes, :space, :data))
             filter!(gl_attributes) do (k, v,)
-                k in (:color_map, :color, :color_norm, :scale, :model, :projectionview)
+                k in (:color_map, :color, :color_norm, :scale, :model, :projectionview, :visible)
             end
             if !(gl_attributes[:color][] isa AbstractVector{<: Number})
                 delete!(gl_attributes, :color_norm)

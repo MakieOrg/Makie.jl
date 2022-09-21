@@ -34,6 +34,18 @@ https://github.com/MakieOrg/Makie.jl/tree/master/WGLMakie.
 
 If you get an error pointing to [GLFW.jl](https://github.com/JuliaGL/GLFW.jl), please look into the existing [GLFW issues](https://github.com/JuliaGL/GLFW.jl/issues), and also google for those errors. This is then very likely something that needs fixing in the  [glfw c library](https://github.com/glfw/glfw) or in the GPU drivers.
 
+## More troubleshooting with remote ssh
+
+Errors which can occur:
+```
+libGL error: MESA-LOADER: failed to open swrast: /usr/lib/dri/swrast_dri.so: cannot open shared object file: No such file or directory (search paths /usr/lib/x86_64-linux-gnu/dri:\$${ORIGIN}/dri:/usr/lib/dri, suffix _dri)
+ERROR: GLFWError (VERSION_UNAVAILABLE): GLX: Failed to create context: GLXBadFBConfig
+```
+It happens because a libc library mismatch. In these scenarios starting julia with this could help:
+```
+LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6 julia
+```
+The github issue about this problem: [https://github.com/JuliaGL/GLFW.jl/issues/211](https://github.com/JuliaGL/GLFW.jl/issues/211)
 
 ## WSL setup or X-forwarding
 

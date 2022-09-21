@@ -2,6 +2,8 @@
 
 ## master
 
+- Fix per character attributes in text [#2244](https://github.com/JuliaPlots/Makie.jl/pull/2244)
+- `Axis` does now accept both a `Bool` and a `Tuple{Bool, Bool}` as values for `xtrimspine` and `ytrimspine` to trim only one end of the spine [#2171](https://github.com/JuliaPlots/Makie.jl/pull/2171).
 - Added `BezierPath` which can be constructed from SVG like command list, SVG string or from a `Polygon`.
   Added ability to use `BezierPath` and `Polgyon` as scatter markers.
   Replaced default symbol markers like `:cross` which converted to characters before with more precise `BezierPaths` and adjusted default markersize to 12.

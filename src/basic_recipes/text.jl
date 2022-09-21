@@ -35,7 +35,18 @@ function plot!(plot::PlotObject, ::Text, ::AbstractVector)
             return
         end
         func = push_args ∘ _get_glyphcollection_and_linesegments
-        broadcast_foreach(func, str, 1:attr_broadcast_length(str), ts, f, al, rot, jus, lh, col, scol, swi, www)
+        if str isa Vector
+            # If we have a Vector of strings, Vector arguments are interpreted 
+            # as per string.
+            broadcast_foreach(
+                func, 
+                str, 1:attr_broadcast_length(str), ts, f, al, rot, jus, lh, col, scol, swi, www
+            )
+        else
+            # Otherwise Vector arguments are interpreted by layout_text/
+            # glyph_collection as per character.
+            func(str, 1, ts, f, al, rot, jus, lh, col, scol, swi, www)
+        end
         glyphcollections[] = gcs
         linewidths[] = lwidths
         linecolors[] = lcolors

@@ -80,6 +80,7 @@ end
 
 Base.setproperty!(x::Attributes, key::Symbol, @nospecialize(value)) = setindex!(x, value, key)
 
+
 function Base.getindex(x::Attributes, key::Symbol)
     x = attributes(x)[key]
     # We unpack Attributes, even though, for consistency, we store them as Observables
@@ -227,6 +228,6 @@ function merge_attributes!(input::Attributes, theme::Attributes)
     return input
 end
 
-function Base.propertynames(x::T) where T <: Union{Attributes, Transformable}
+function Base.propertynames(x::Union{Attributes, AbstractPlot})
     return (keys(x.attributes)...,)
 end
