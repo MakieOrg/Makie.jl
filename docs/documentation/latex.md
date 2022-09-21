@@ -23,7 +23,7 @@ CairoMakie.activate!() # hide
 f = Figure(fontsize = 18)
 
 Axis(f[1, 1],
-    title = L"For \mathcal{X} \in \mathbb{R} \quad \frac{x + y}{\sin(k^2)}",
+    title = L"\forall \mathcal{X} \in \mathbb{R} \quad \frac{x + y}{\sin(k^2)}",
     xlabel = L"\sum_a^b{xy}",
     ylabel = L"\sqrt{\frac{a}{b}}"
 )
