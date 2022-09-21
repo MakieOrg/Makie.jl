@@ -8,7 +8,7 @@ While this engine is responsive enough for use in GLMakie, it only supports a su
     Makie is able to render the subset of Latex strings supported by [MathTeXEngine.jl](https://github.com/Kolaru/MathTeXEngine.jl/).
     Alternative scripts like ``\mathcal{X}`` or ``\mathbb{R}`` are not supported as of `MathTeXEngine.jl` `v0.5.1`.
     In many cases, these characters can be replaced by unicode equivalents, e.g. ``ℝ`` for ``\mathcal{R}``.
-    A full list of Unicode replacements can be found [here](http://milde.users.sourceforge.net/LUCR/Math/unimathsymbols.pdf).
+    A full list of Unicode replacements can be found at <http://milde.users.sourceforge.net/LUCR/Math/unimathsymbols.pdf>.
 
 ## Using L-strings
 
