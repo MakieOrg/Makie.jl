@@ -1,6 +1,6 @@
 # CairoMakie
 
-[CairoMakie](https://github.com/JuliaPlots/Makie.jl/tree/master/CairoMakie) uses Cairo.jl to draw vector graphics to SVG and PDF.
+[CairoMakie](https://github.com/MakieOrg/Makie.jl/tree/master/CairoMakie) uses Cairo.jl to draw vector graphics to SVG and PDF.
 You should use it if you want to achieve the highest-quality plots for publications, as the rendering process of the GL backends works via bitmaps and is geared more towards speed than pixel-perfection.
 
 ### Special CairoMakie Properties
@@ -56,7 +56,7 @@ For example, if your Scene's resolution is `(800, 600)`, by setting `scale=2`, t
 
 You can deactivate this rasterization by setting `plt.rasterize = false`.
 
-Example: 
+Example:
 
 \begin{examplefigure}{svg=true}
 ```julia
@@ -77,4 +77,3 @@ v = rand(10,2)
 scatter(v[:,1], v[:,2], rasterize = 10, markersize = 30.0)
 ```
 \end{examplefigure}
-

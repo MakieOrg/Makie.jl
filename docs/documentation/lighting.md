@@ -9,7 +9,7 @@ For 3D scenes, `GLMakie` offers several attributes to control the lighting of th
 - `lightposition::Vec3f`: The location of the main light source; by default, the light source is at the location of the camera.
 
 You can find more information on how these were implemented [here](https://learnopengl.com/Lighting/Basic-Lighting).
-Some usage examples can be found in the [RPRMakie examples](https://makie.juliaplots.org/stable/documentation/backends/rprmakie/) and in the [examples](https://makie.juliaplots.org/stable/documentation/lighting/#examples).
+Some usage examples can be found in the [RPRMakie examples](https://docs.makie.org/stable/documentation/backends/rprmakie/) and in the [examples](https://docs.makie.org/stable/documentation/lighting/#examples).
 
 ## SSAO
 
