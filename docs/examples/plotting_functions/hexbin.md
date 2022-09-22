@@ -88,5 +88,6 @@ ax4=Axis(fig[2,2],title="Log scale")
 hb2 = hexbin!(ax4,x,y,colormap=:rainbow, gridsize=50,mincnt=1,scale=Makie.pseudolog10)
 cb=Colorbar(fig[3,2],hb2,vertical=false, scale=Makie.pseudolog10)
 cb.tickformat=x->"10^".*string.(x)
+fig
 ```
 \end{examplefigure}
