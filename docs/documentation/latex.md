@@ -24,8 +24,8 @@ f = Figure(fontsize = 18)
 
 Axis(f[1, 1],
     title = L"\forall \mathcal{X} \in \mathbb{R} \quad \frac{x + y}{\sin(k^2)}",
-    xlabel = L"\sum_a^b{xy}",
-    ylabel = L"\sqrt{\frac{a}{b}}"
+    xlabel = L"\sum_a^b{xy} + \mathscr{L}",
+    ylabel = L"\sqrt{\frac{a}{b}} - \mathfrak{W}"
 )
 
 f
