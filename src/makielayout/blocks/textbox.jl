@@ -1,3 +1,6 @@
+using InteractiveUtils: clipboard
+
+
 function initialize_block!(tbox::Textbox)
 
     topscene = tbox.blockscene
@@ -210,6 +213,24 @@ function initialize_block!(tbox::Textbox)
 
     on(events(scene).keyboardbutton, priority = 60) do event
         if tbox.focused[]
+            ctrl_v = (Keyboard.left_control | Keyboard.right_control) & Keyboard.v
+            if ispressed(scene, ctrl_v)
+                local content::String = ""
+                try
+                    content = clipboard()
+                catch err
+                    @warn "Pasting failed: $err"
+                    return Consume(false)
+                end
+
+                if all(char -> is_allowed(char, tbox.restriction[]), content)
+                    foreach(char -> insertchar!(char, cursorindex[] + 1), content)
+                    return Consume(true)
+                else
+                    return Consume(false)
+                end
+            end
+
             if event.action != Keyboard.release
                 key = event.key
                 if key == Keyboard.backspace

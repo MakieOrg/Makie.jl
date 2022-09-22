@@ -12,6 +12,7 @@
   Added single image marker support to WGLMakie [#979](https://github.com/MakieOrg/Makie.jl/pull/979).
 - Allow `CairoMakie` to render `scatter` with images as markers [#2080](https://github.com/MakieOrg/Makie.jl/pull/2080).
 - Reworked text drawing and added ability to draw special characters via glyph indices in order to draw more LaTeX math characters with MathTeXEngine v0.5 [#2139](https://github.com/MakieOrg/Makie.jl/pull/2139).
+- Allow text to be copy/pasted into textbox [#2281](https://github.com/MakieOrg/Makie.jl/pull/2281)
 
 ## v0.17.13
 
