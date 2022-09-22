@@ -273,17 +273,17 @@ function DataInspector(scene::Scene; priority = 100, kwargs...)
         depth = pop!(attrib_dict, :depth, 9e3),
         enable_indicators = pop!(attrib_dict, :show_bbox_indicators, true),
         offset = get(attrib_dict, :offset, 10f0),
-        
+
         # Settings for indicators (plots that highlight the current selection)
         indicator_color = pop!(attrib_dict, :indicator_color, :red),
         indicator_linewidth = pop!(attrib_dict, :indicator_linewidth, 2),
         indicator_linestyle = pop!(attrib_dict, :indicator_linestyle, nothing),
-        
+
         # Reusable values for creating indicators
         indicator_visible = false,
     )
 
-    plot = tooltip!(parent, Observable(Point2f(0)), text = Observable(""); attrib_dict...)
+    plot = tooltip!(parent, Observable(Point2f(0)), text = Observable(""); visible=false, attrib_dict...)
     on(z -> translate!(plot, 0, 0, z), base_attrib.depth)
     notify(base_attrib.depth)
 
@@ -443,7 +443,7 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
             bbox = Rect{3, Float32}(convert_attribute(
                 plot.marker[], Key{:marker}(), Key{Makie.plotkey(plot)}()
             ))
-        
+
             p = wireframe!(
                 scene, bbox, model = T, color = a.indicator_color,
                 linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
@@ -460,7 +460,7 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
 
         end
 
-        
+
         a.indicator_visible[] = true
     end
 
@@ -533,7 +533,7 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
 
         a.indicator_visible[] = true
     end
-    
+
     tt[1][] = proj_pos
     tt.text[] = bbox2string(bbox)
     tt.visible[] = true
@@ -859,13 +859,13 @@ function show_poly(inspector, plot, idx, source)
     idx = vertexindex2poly(plot[1][], idx)
 
     if a.enable_indicators[]
-        
+
         line_collection = copy(convert_arguments(PointBased(), plot[1][][idx].exterior)[1])
         for int in plot[1][][idx].interiors
             push!(line_collection, Point2f(NaN))
             append!(line_collection, convert_arguments(PointBased(), int)[1])
         end
-        
+
         if inspector.selection != plot
             scene = parent_scene(plot)
             clear_temporary_plots!(inspector, plot)
@@ -900,7 +900,7 @@ function show_data(inspector::DataInspector, plot::VolumeSlices, idx, child::Hea
     ps = extrema(child[2][])
     data = child[3][]
     T = child.transformation.model[]
-    
+
     vs = [ # clockwise
         Point3f(T * Point4f(qs[1], ps[1], 0, 1)),
         Point3f(T * Point4f(qs[1], ps[2], 0, 1)),
