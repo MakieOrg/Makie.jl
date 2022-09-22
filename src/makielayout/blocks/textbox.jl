@@ -219,7 +219,7 @@ function initialize_block!(tbox::Textbox)
                 try
                     content = clipboard()
                 catch err
-                    @warn "Pasting failed: $err"
+                    @warn "Accessing the clipboard failed: $err"
                     return Consume(false)
                 end
 
@@ -275,7 +275,7 @@ function charbbs(text)
     pos = Point2f(text[1][][1])
     bbs = Rect2f[]
     broadcast_foreach(gc.extents, gc.scales, gc.origins) do ext, sc, ori
-        bb = Makie.height_insensitive_boundingbox_with_advance(ext) 
+        bb = Makie.height_insensitive_boundingbox_with_advance(ext)
         bb = bb * sc
         fr = Rect2f(Point2f(ori) + bb.origin + pos, bb.widths)
         push!(bbs, fr)
