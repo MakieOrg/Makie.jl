@@ -90,7 +90,8 @@ void fill(vec4 c, sampler2DArray image, vec2 uv, float infill, inout vec4 color)
 void stroke(vec4 strokecolor, float signed_distance, float width, inout vec4 color){
     if (width != 0.0){
         float t = aastep(min(width, 0.0), max(width, 0.0), signed_distance);
-        color = mix(color, strokecolor, t);
+        vec4 bg_color = mix(color, vec4(strokecolor.rgb, 0), float(signed_distance < 0.5 * width));
+        color = mix(bg_color, strokecolor, t);
     }
 }
 

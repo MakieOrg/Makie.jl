@@ -5,7 +5,7 @@ catch e
         OpenGL/GLFW wasn't loaded correctly or couldn't be initialized.
         This likely means, you're on a headless server without having OpenGL support setup correctly.
         Have a look at the troubleshooting section in the readme:
-        https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie#troubleshooting-opengl.
+        https://github.com/MakieOrg/Makie.jl/tree/master/GLMakie#troubleshooting-opengl.
     """)
     rethrow(e)
 end

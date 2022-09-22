@@ -363,12 +363,12 @@ disable!(inspector::DataInspector) = inspector.plot.enabled[] = false
 
 """
     DataInspector(figure; kwargs...)
-    DataInspector()
+    DataInspector(; kwargs...)
 
 Creates a data inspector which will show relevant information in a tooltip
 when you hover over a plot. If you wish to exclude a plot you may set
 `plot.inspectable[] = false`.
-Defaults to the current plot when called without arguments.
+The `figure` argument defaults to `current_figure()`.
 
 ### Keyword Arguments:
 - `range = 10`: Controls the snapping range for selecting an element of a plot.
@@ -405,7 +405,7 @@ function DataInspector(scene::Scene; priority = 100, kwargs...)
     parent = root(scene)
     @assert origin(pixelarea(parent)[]) == Vec2f(0)
 
-    plot = _inspector!(parent, 1, kwargs...)
+    plot = _inspector!(parent, 1; kwargs...)
     inspector = DataInspector(parent, plot)
 
     e = events(parent)
@@ -702,6 +702,12 @@ function show_imagelike(inspector, plot, name, edge_based)
         _interpolated_getindex(plot[1][], plot[2][], plot[3][], mpos)
     else
         _pixelated_getindex(plot[1][], plot[2][], plot[3][], mpos, edge_based)
+    end
+
+    # in case we hover over NaN values
+    if isnan(z)
+        a._visible[] = false
+        return true
     end
 
     a._color[] = if z isa AbstractFloat

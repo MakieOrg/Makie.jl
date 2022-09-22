@@ -18,6 +18,20 @@ end
 include(joinpath(@__DIR__, "svg_tests.jl"))
 include(joinpath(@__DIR__, "rasterization_tests.jl"))
 
+@testset "mimes" begin
+    f, ax, pl = scatter(1:4)
+    CairoMakie.activate!(type="pdf")
+    @test showable("application/pdf", f)
+    CairoMakie.activate!(type="eps")
+    @test showable("application/postscript", f)
+    CairoMakie.activate!(type="svg")
+    @test showable("image/svg+xml", f)
+    CairoMakie.activate!(type="png")
+    @test showable("image/png", f)
+    # see https://github.com/MakieOrg/Makie.jl/pull/2167
+    @test !showable("blaaa", f)
+end
+
 using ReferenceTests
 
 excludes = Set([
@@ -52,7 +66,6 @@ excludes = Set([
     "Image on Surface Sphere",
     "FEM mesh 2D",
     "Hbox",
-    "Stars",
     "Subscenes",
     "Arrows 3D",
     "Layouting",
@@ -67,8 +80,9 @@ excludes = Set([
     "Order Independent Transparency",
     "heatmap transparent colormap",
     "fast pixel marker",
-    "Array of Images Scatter",
-    "Image Scatter different sizes"
+    "scatter with glow",
+    "scatter with stroke",
+    "heatmaps & surface"
 ])
 
 functions = [:volume, :volume!, :uv_mesh]

@@ -1,39 +1,27 @@
-function _precompile_()
-    ccall(:jl_generating_output, Cint, ()) == 1 || return
-    precompile(Makie.backend_display, (GLBackend, Scene))
+using SnoopPrecompile
 
-    activate!()
-    precompile(refreshwindowcb, (GLFW.Window, Screen))
-    # Mimic `display(p)` without actually creating a display
-    function insertplotstype(scene)
-        for elem in scene.plots
-            inserttype(scene, elem)
-        end
-        foreach(s-> insertplotstype(s), scene.children)
-    end
-    function inserttype(scene, @nospecialize(x))
-        if isa(x, Combined)
-            if isempty(x.plots)
-                precompile(insert!, (Screen, typeof(scene), typeof(x)))
-            else
-                foreach(x.plots) do x
-                    inserttype(scene, x)
-                end
-            end
-        else
-            precompile(insert!, (Screen, typeof(scene), typeof(x)))
+macro compile(block)
+    return quote
+        let
+            figlike = $(esc(block))
+            screen = Screen(visible=false)
+            Makie.backend_display(screen, Makie.get_scene(figlike))
+            Makie.colorbuffer(screen)
+            close(screen)
         end
     end
-    fig, ax1, pl = scatter(1:4;color=:green, visible=true, markersize=15)
-    insertplotstype(fig.scene)
-    insertplotstype(ax1.scene)
-    insertplotstype(ax1.blockscene)
-    screen = Screen(; visible=false)
-    Makie.backend_display(screen, fig.scene)
-    Makie.colorbuffer(screen)
-    f, ax2, pl = lines(1:4)
-    Makie.precompile_obs(ax1)
-    Makie.precompile_obs(ax2)
-    closeall()
-    return
+end
+
+let
+    @precompile_all_calls begin
+        GLMakie.activate!()
+        GLMakie.inline!(false)
+        base_path = normpath(joinpath(dirname(pathof(Makie)), "..", "precompile"))
+        shared_precompile = joinpath(base_path, "shared-precompile.jl")
+        include(shared_precompile)
+    end
+    closeall(GLFW_WINDOWS)
+    closeall(SINGLETON_SCREEN)
+    closeall(SINGLETON_SCREEN_NO_RENDERLOOP)
+    nothing
 end

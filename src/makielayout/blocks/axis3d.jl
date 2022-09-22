@@ -282,13 +282,20 @@ function Makie.plot!(
 
     plot = Makie.plot!(ax.scene, P, allattrs, args...)
 
-    reset_limits!(ax)
+    if is_open_or_any_parent(ax.scene)
+        reset_limits!(ax)
+    end
     plot
 end
 
 function Makie.plot!(P::Makie.PlotFunc, ax::Axis3, args...; kw_attributes...)
     attributes = Makie.Attributes(kw_attributes)
     Makie.plot!(ax, P, attributes, args...)
+end
+
+function update_state_before_display!(ax::Axis3)
+    reset_limits!(ax)
+    return
 end
 
 function autolimits!(ax::Axis3)

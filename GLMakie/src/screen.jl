@@ -116,11 +116,11 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
         end
     else
         renderobject = get(screen.cache, objectid(plot)) do
-            error("Could not find $(typeof(subplot)) in current GLMakie screen!")
+            error("Could not find $(typeof(plot)) in current GLMakie screen!")
         end
 
         # These need explicit clean up because (some of) the source observables
-        # remain whe the plot is deleated.
+        # remain when the plot is deleted.
         for k in (:normalmatrix, )
             if haskey(renderobject.uniforms, k)
                 n = renderobject.uniforms[k]
@@ -145,8 +145,8 @@ end
 
 const GLFW_WINDOWS = GLFW.Window[]
 
-const SINGLETON_SCREEN = Base.RefValue{Screen}()
-const SINGLETON_SCREEN_NO_RENDERLOOP = Base.RefValue{Screen}()
+const SINGLETON_SCREEN = Screen[]
+const SINGLETON_SCREEN_NO_RENDERLOOP = Screen[]
 
 function singleton_screen(resolution; visible=Makie.use_display[], start_renderloop=true)
     screen_ref = if start_renderloop
@@ -155,13 +155,16 @@ function singleton_screen(resolution; visible=Makie.use_display[], start_renderl
         SINGLETON_SCREEN_NO_RENDERLOOP
     end
 
-    if isassigned(screen_ref) && isopen(screen_ref[])
-        screen = screen_ref[]
+    if length(screen_ref) == 1 && isopen(screen_ref[1])
+        screen = screen_ref[1]
         resize!(screen, resolution...)
         return screen
     else
+        if !isempty(screen_ref)
+            closeall(screen_ref)
+        end
         screen = Screen(; resolution=resolution, visible=visible, start_renderloop=start_renderloop)
-        screen_ref[] = screen
+        push!(screen_ref, screen)
         return screen
     end
 end
@@ -174,12 +177,12 @@ function destroy!(screen::Screen)
 end
 
 Base.close(screen::Screen) = destroy!(screen)
-function closeall()
-    if !isempty(GLFW_WINDOWS)
-        for elem in GLFW_WINDOWS
+function closeall(windows=GLFW_WINDOWS)
+    if !isempty(windows)
+        for elem in windows
             isopen(elem) && destroy!(elem)
         end
-        empty!(GLFW_WINDOWS)
+        empty!(windows)
     end
 end
 
@@ -390,7 +393,7 @@ function Screen(;
             This likely means, you don't have an OpenGL capable Graphic Card,
             or you don't have an OpenGL 3.3 capable video driver installed.
             Have a look at the troubleshooting section in the GLMakie readme:
-            https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie#troubleshooting-opengl.
+            https://github.com/MakieOrg/Makie.jl/tree/master/GLMakie#troubleshooting-opengl.
         """)
         rethrow(e)
     end

@@ -169,3 +169,12 @@ function plot!(P::PlotFunc, gsp::GridSubposition, args...; kwargs...)
     ax = first(c)
     plot!(P, ax, args...; kwargs...)
 end
+
+update_state_before_display!(f::FigureAxisPlot) = update_state_before_display!(f.figure)
+
+function update_state_before_display!(f::Figure)
+    for c in f.content
+        update_state_before_display!(c)
+    end
+    return
+end

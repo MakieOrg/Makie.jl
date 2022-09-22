@@ -33,16 +33,16 @@ function project_scale(scene::Scene, space, s::Number, model = Mat4f(I))
 end
 
 function project_scale(scene::Scene, space, s, model = Mat4f(I))
+    p4d = model * to_ndim(Vec4f, s, 0f0)
     if is_data_space(space)
-        p4d = to_ndim(Vec4f, s, 0f0)
-        @inbounds p = (scene.camera.projectionview[] * model * p4d)[Vec(1, 2)]
+        @inbounds p = (scene.camera.projectionview[] * p4d)[Vec(1, 2)]
         return p .* scene.camera.resolution[] .* 0.5
     elseif is_pixel_space(space)
-        return Vec2f(s)
+        return p4d[Vec(1, 2)]
     elseif is_relative_space(space)
-        return Vec2f(s) .* scene.camera.resolution[]
+        return p4d[Vec(1, 2)] .* scene.camera.resolution[]
     else # clip
-        return Vec2f(s) .* scene.camera.resolution[] .* 0.5f0
+        return p4d[Vec(1, 2)] .* scene.camera.resolution[] .* 0.5f0
     end
 end
 
@@ -112,21 +112,6 @@ function rgbatuple(c)
 end
 
 to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, c))
-
-function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
-
-    colormap = haskey(primitive, :colormap) ? to_colormap(primitive.colormap[]) : nothing
-    colorrange = get(primitive, :colorrange, nothing) |> to_value
-
-    if colorrange === Makie.automatic
-        colorrange = extrema(numbers)
-    end
-
-    Makie.interpolated_getindex.(
-        Ref(colormap),
-        Float64.(numbers), # ints don't work in interpolated_getindex
-        Ref(colorrange))
-end
 
 ########################################
 #     Image/heatmap -> ARGBSurface     #

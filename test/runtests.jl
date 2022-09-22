@@ -18,6 +18,7 @@ using Makie: volume
         @test all(hi .>= (8,8,10))
     end
 
+    include("scenes.jl")
     include("conversions.jl")
     include("quaternions.jl")
     include("projection_math.jl")
@@ -28,4 +29,5 @@ using Makie: volume
     include("stack.jl")
     include("events.jl")
     include("text.jl")
+    include("boundingboxes.jl")
 end

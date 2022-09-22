@@ -9,6 +9,20 @@ path = normpath(joinpath(dirname(pathof(Makie)), "..", "ReferenceTests"))
 Pkg.develop(PackageSpec(path = path))
 using ReferenceTests
 
+@testset "mimes" begin
+    f, ax, pl = scatter(1:4)
+    @testset for mime in WGLMakie.WEB_MIMES
+        @test showable(mime(), f)
+    end
+    # I guess we explicitely don't say we can show those since it's highly Inefficient compared to html
+    # See: https://github.com/MakieOrg/Makie.jl/blob/master/WGLMakie/src/display.jl#L66-L68=
+    @test !showable("image/png", f)
+    @test !showable("image/jpeg", f)
+    # see https://github.com/MakieOrg/Makie.jl/pull/2167
+    @test !showable("blaaa", f)
+end
+
+
 excludes = Set([
     "Streamplot animation",
     "Transforming lines",
@@ -30,7 +44,6 @@ excludes = Set([
     "UnicodeMarker",
     # Not sure, looks pretty similar to me! Maybe blend mode?
     "Test heatmap + image overlap",
-    "Stars",
     "heatmaps & surface",
     "OldAxis + Surface",
     "Order Independent Transparency",
@@ -39,7 +52,9 @@ excludes = Set([
     "Animated surface and wireframe",
     "Array of Images Scatter",
     "Image Scatter different sizes",
-    "pattern barplot" # not implemented yet
+    "pattern barplot", # not implemented yet
+    "scatter with stroke",
+    "scatter with glow"
 ])
 
 @testset "refimages" begin

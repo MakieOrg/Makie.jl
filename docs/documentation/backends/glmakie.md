@@ -1,6 +1,6 @@
 # GLMakie
 
-[GLMakie](https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie) is the native, desktop-based backend, and is the most feature-complete.
+[GLMakie](https://github.com/MakieOrg/Makie.jl/tree/master/GLMakie) is the native, desktop-based backend, and is the most feature-complete.
 It requires an OpenGL enabled graphics card with OpenGL version 3.3 or higher.
 
 ### Special GLMakie Properties
@@ -48,7 +48,7 @@ proper graphics drivers.
 
 You can find a demo on how to set that up in this [nextjournal article](https://nextjournal.com/sdanisch/GLMakie-nogpu).
 
-GLMakie's CI has no GPU, so you can also look at [.github/workflows/glmakie.yaml](https://github.com/JuliaPlots/Makie.jl/blob/master/.github/workflows/glmakie.yaml) for a working setup.
+GLMakie's CI has no GPU, so you can also look at [.github/workflows/glmakie.yaml](https://github.com/MakieOrg/Makie.jl/blob/master/.github/workflows/glmakie.yaml) for a working setup.
 
 If none of these work for you, take a look at the other [backends](/documentation/backends/), which all work without a GPU.
 

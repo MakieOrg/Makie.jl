@@ -13,12 +13,7 @@ using Makie: to_value, to_colormap, extrema_nan
 using Makie: inline!
 using Makie.Observables
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
-
-const OneOrVec{T} = Union{
-    T,
-    Vec{N1, T} where N1,
-    NTuple{N2, T} where N2,
-}
+using Makie: numbers_to_colors
 
 # re-export Makie, including deprecated names
 for name in names(Makie, all=true)
@@ -65,9 +60,7 @@ function activate!(; inline = _last_inline[], type = _last_type[], px_per_unit=_
     return
 end
 
-if Base.VERSION >= v"1.4.2"
-    include("precompiles.jl")
-    _precompile_()
-end
+include("precompiles.jl")
+
 
 end

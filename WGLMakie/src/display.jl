@@ -5,8 +5,9 @@ function JSServe.jsrender(session::Session, scene::Scene)
     return canvas
 end
 
-function JSServe.jsrender(session::Session, scene::Makie.FigureLike)
-    return JSServe.jsrender(session, Makie.get_scene(scene))
+function JSServe.jsrender(session::Session, fig::Makie.FigureLike)
+    Makie.update_state_before_display!(fig)
+    return JSServe.jsrender(session, Makie.get_scene(fig))
 end
 
 const WEB_MIMES = (MIME"text/html", MIME"application/vnd.webio.application+html",
