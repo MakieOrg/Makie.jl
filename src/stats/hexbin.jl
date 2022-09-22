@@ -40,8 +40,7 @@ function spacings_offsets_nbins(bins, binsizes::Tuple{Real, Real}, xmi, xma, ymi
     xspacing = binsizes[1]/2
     yspacing = binsizes[2]*3/4
     (nx, restx), (ny, resty) = fldmod.((x_diff, y_diff), (xspacing, yspacing))
-
-    xspacing, yspacing, xmi - (restx > 0 ? xspacing/2 : 0), ymi - (resty > 0 ? yspacing/2 : 0), nx + (restx > 0), ny + (resty > 0)
+    xspacing, yspacing, xmi - (restx > 0 ? (xspacing-restx)/2 : 0), ymi - (resty > 0 ? (yspacing-resty)/2 : 0), nx + (restx > 0), ny + (resty > 0)
 end
 
 Makie.conversion_trait(::Type{<:Hexbin}) = PointBased()
