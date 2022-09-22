@@ -160,6 +160,14 @@ end
     hmap = heatmap!(Axis(fig[1, 1]), rand(4, 4))
     cb1 = Colorbar(fig[1,2], hmap; height = Relative(0.65))
     @test cb1.height[] == Relative(0.65)
+    @testset "conversion" begin
+        # https://github.com/MakieOrg/Makie.jl/issues/2278
+        fig = Figure()
+        cbar = Colorbar(fig[1,1], colormap=:viridis, colorrange=Vec2f(0, 1))
+        ticklabel_strings = first.(cbar.axis.elements[:ticklabels][1][])
+        @test ticklabel_strings[1] == "0.0"
+        @test ticklabel_strings[end] == "1.0"
+    end
 end
 
 @testset "cycling" begin
@@ -246,7 +254,7 @@ end
     ax1 = Axis(f[1, 1])
     ax2 = Axis(f[1, 2])
     ax3 = Axis(f[1, 3])
-    
+
     linkaxes!(ax2, ax3)
     @test Set(ax1.xaxislinks) == Set([])
     @test Set(ax2.xaxislinks) == Set([ax3])
