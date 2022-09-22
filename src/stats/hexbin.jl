@@ -44,6 +44,8 @@ function spacings_offsets_nbins(bins, binsizes::Tuple{Real, Real}, xmi, xma, ymi
     xspacing, yspacing, xmi - (restx > 0 ? xspacing/2 : 0), ymi - (resty > 0 ? yspacing/2 : 0), nx + (restx > 0), ny + (resty > 0)
 end
 
+Makie.conversion_trait(::Type{<:Hexbin}) = PointBased()
+
 function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
     xy = hb[1]
 
@@ -97,28 +99,39 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             d[_xy] = get(d, _xy, 0) + 1
         end
 
-        for ix in 0:2:nbinsx-1
-            for iy in 0:2:nbinsy-1
-                _x = center_value(ix, xspacing, xoff, false)
-                _y = center_value(iy, yspacing, yoff, false)
-                c = get(d, (_x, _y), 0)
-                if c >= mincnt
-                    push!(points[], Point2f(_x, _y))
-                    push!(count_hex[], c)
-                end
-            end
+        # this iteration scheme misses points at the edges and I don't understand why
+        # for plotting a whole field
+        # with zeros something like this would be needed, though..
+        #
+        # for ix in 0:2:nbinsx
+        #     for iy in 0:2:nbinsy
+        #         _x = center_value(ix, xspacing, xoff, false)
+        #         _y = center_value(iy, yspacing, yoff, false)
+        #         c = get(d, (_x, _y), 0)
+        #         if c >= mincnt
+        #             push!(points[], Point2f(_x, _y))
+        #             push!(count_hex[], c)
+        #         end
+        #     end
+        # end
+        # for ix in 1:2:nbinsx
+        #     for iy in 1:2:nbinsy
+        #         _x = center_value(ix, xspacing, xoff, true)
+        #         _y = center_value(iy, yspacing, yoff, true)
+        #         c = get(d, (_x, _y), 0)
+        #         if c >= mincnt
+        #             push!(points[], Point2f(_x, _y))
+        #             push!(count_hex[], c)
+        #         end
+        #     end
+        # end
+
+        for (key, value) in d
+            push!(points[], key)
+            push!(count_hex[], value)
         end
-        for ix in 1:2:nbinsx-1
-            for iy in 1:2:nbinsy-1
-                _x = center_value(ix, xspacing, xoff, true)
-                _y = center_value(iy, yspacing, yoff, true)
-                c = get(d, (_x, _y), 0)
-                if c >= mincnt
-                    push!(points[], Point2f(_x, _y))
-                    push!(count_hex[], c)
-                end
-            end
-        end
+
+        sum(count_hex[]) != length(xy) && error("Length of points mismatching count vector")
 
         markersize[] = Vec2f(rx, ry)
         notify(points)
@@ -136,8 +149,6 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         end
     end
 
-    # @show sum(count_hex[])
-
     hexmarker = Polygon(Point2f[(cos(a), sin(a)) for a in range(pi/6, 13pi/6, length = 7)[1:6]])
 
     scatter!(hb, points; colorrange = hb.colorrange, color=count_hex, colormap=hb.colormap, marker = hexmarker, markersize = markersize, markerspace = :data)
@@ -145,9 +156,9 @@ end
 
 function center_value(dv, spacing, offset, is_grid1)
     if is_grid1
-        offset + spacing * (dv + (isodd(dv) ? 1 : 0))
+        offset + spacing * (dv + isodd(dv))
     else
-        offset + spacing * (dv + (iseven(dv) ? 1 : 0))
+        offset + spacing * (dv + iseven(dv))
     end
 end
 
