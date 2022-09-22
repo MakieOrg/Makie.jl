@@ -47,7 +47,6 @@ import PolygonOps
 import GridLayoutBase
 import ImageIO
 import FileIO
-using NearestNeighbors
 import SparseArrays
 
 using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints
