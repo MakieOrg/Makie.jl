@@ -52,7 +52,7 @@ function Colorbar(fig_or_scene, heatmap::Union{Heatmap, Image}; kwargs...)
     )
 end
 
-function Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
+function Colorbar(fig_or_scene, contourf::Union{Contourf, Tricontourf}; kwargs...)
 
     for key in (:colormap, :limits, :highclip, :lowclip)
         if key in keys(kwargs)

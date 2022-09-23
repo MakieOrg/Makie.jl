@@ -72,7 +72,6 @@ end
 function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}})
     xs, ys, zs = c[1:3]
 
-
     c.attributes[:_computed_levels] = lift(zs, c.levels, c.mode) do zs, levels, mode
         _get_isoband_levels(Val(mode), levels, vec(zs))
     end
@@ -80,52 +79,19 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
     colorrange = lift(c._computed_levels) do levels
         minimum(levels), maximum(levels)
     end
-    computed_colormap = lift(c._computed_levels, c.colormap, c.extendlow,
-                             c.extendhigh) do levels, cmap, elow, ehigh
-        levels_scaled = (levels .- minimum(levels)) ./ (maximum(levels) - minimum(levels))
-        n = length(levels_scaled)
-
-        if elow == :auto && !(ehigh == :auto)
-            cm_base = cgrad(cmap, n + 1; categorical=true)[2:end]
-            cm = cgrad(cm_base, levels_scaled; categorical=true)
-        elseif ehigh == :auto && !(elow == :auto)
-            cm_base = cgrad(cmap, n + 1; categorical=true)[1:(end - 1)]
-            cm = cgrad(cm_base, levels_scaled; categorical=true)
-        elseif ehigh == :auto && elow == :auto
-            cm_base = cgrad(cmap, n + 2; categorical=true)[2:(end - 1)]
-            cm = cgrad(cm_base, levels_scaled; categorical=true)
-        else
-            cm = cgrad(cmap, levels_scaled; categorical=true)
-        end
-        return cm
-    end
+    computed_colormap = lift(compute_contourf_colormap, c._computed_levels, c.colormap, c.extendlow,
+                             c.extendhigh)
     c.attributes[:_computed_colormap] = computed_colormap
 
     lowcolor = Observable{RGBAf}()
-    map!(lowcolor, c.extendlow, c.colormap) do el, cmap
-        if isnothing(el)
-            return RGBAf(0, 0, 0, 0)
-        elseif el === automatic || el == :auto
-            return RGBAf(to_colormap(cmap)[begin])
-        else
-            return to_color(el)::RGBAf
-        end
-    end
+    map!(compute_lowcolor, lowcolor, c.extendlow, c.colormap)
     c.attributes[:_computed_extendlow] = lowcolor
-    is_extended_low = lift(x -> !isnothing(x), lowcolor)
+    is_extended_low = lift(!isnothing, lowcolor)
 
     highcolor = Observable{RGBAf}()
-    map!(highcolor, c.extendhigh, c.colormap) do eh, cmap
-        if isnothing(eh)
-            return RGBAf(0, 0, 0, 0)
-        elseif eh === automatic || eh == :auto
-            return RGBAf(to_colormap(cmap)[end])
-        else
-            return to_color(eh)::RGBAf
-        end
-    end
+    map!(compute_highcolor, highcolor, c.extendhigh, c.colormap)
     c.attributes[:_computed_extendhigh] = highcolor
-    is_extended_high = lift(x -> !isnothing(x), highcolor)
+    is_extended_high = lift(!isnothing, highcolor)
 
     PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
 
@@ -143,13 +109,9 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
         lows = levels[1:end-1]
         highs = levels[2:end]
 
-        nbands = length(lows)
         # zs needs to be transposed to match rest of makie
         isos = Isoband.isobands(xs, ys, zs', lows, highs)
 
-        allvertices = Point2f[]
-        allfaces = NgonFace{3,OffsetInteger{-1,UInt32}}[]
-        allids = Int[]
         levelcenters = (highs .+ lows) ./ 2
 
         for (i, (center, group)) in enumerate(zip(levelcenters, isos))
