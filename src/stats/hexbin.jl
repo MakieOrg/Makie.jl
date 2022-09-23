@@ -4,13 +4,17 @@
 Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
 
 ## Attributes
+
 ### Specific to `Hexbin`
-* `gridsize::Int = 20` sets the number of bins in x-direction
-* `mincnt::Int = 0` sets the minimal number of observations in the bin to be shown. If 0 all bins are shown, if 1 all with at least 1 observation.
-* `scale = identity` scales the number of data in the bins, eg. log10.
+
+- `bins = 20`: If an `Int`, sets the number of bins in x and y direction. If a `Tuple{Int, Int}`, sets the number of bins for x and y separately.
+- `threshold::Int = 1`: The minimal number of observations in the bin to be shown.
+- `scale = identity`: A function to scale the number of observations in a bin, eg. log10.
+
 ### Generic
-* `colormap::Union{Symbol, Vector{<:Colorant}} = :viridis` sets the colormap that is sampled for numeric colors.
-* `colorrange::Tuple(<:Real,<:Real} = Makie.automatic`  sets the values representing the start and end points of `colormap`.
+
+- `colormap::Union{Symbol, Vector{<:Colorant}} = :viridis`
+- `colorrange::Tuple(<:Real,<:Real} = Makie.automatic`  sets the values representing the start and end points of `colormap`.
 """
 @recipe(Hexbin) do scene
     return Attributes(;
@@ -18,7 +22,7 @@ Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
         colorrange=Makie.automatic,
         bins=20,
         binsize=nothing,
-        mincnt=1,
+        threshold=1,
         scale=identity
     )
 end
@@ -37,13 +41,25 @@ spacings_offsets_nbins(bins::Int, binsize::Nothing, xmi, xma, ymi, yma) = spacin
 function spacings_offsets_nbins(bins, binsizes::Tuple{Real, Real}, xmi, xma, ymi, yma)
     x_diff = xma - xmi
     y_diff = yma - ymi
-    xspacing = binsizes[1]/2
-    yspacing = binsizes[2]*3/4
+    xspacing = binsizes[1]
+    yspacing = binsizes[2]*3/2
     (nx, restx), (ny, resty) = fldmod.((x_diff, y_diff), (xspacing, yspacing))
     xspacing, yspacing, xmi - (restx > 0 ? (xspacing-restx)/2 : 0), ymi - (resty > 0 ? (yspacing-resty)/2 : 0), nx + (restx > 0), ny + (resty > 0)
 end
 
 Makie.conversion_trait(::Type{<:Hexbin}) = PointBased()
+
+function data_limits(hb::Hexbin)
+    bb = Rect3f(hb.plots[1][1][])
+    fn(num::Real) = Float32(num)
+    fn(tup::Union{Tuple, Vec2}) = Vec2f(tup...)
+
+    ms = 2 .* fn(hb.plots[1].markersize[])
+    nw = widths(bb) .+ (ms..., 0f0)
+    no = bb.origin .- ((ms ./ 2f0)..., 0f0)
+
+    return Rect3f(no, nw)
+end
 
 function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
     xy = hb[1]
@@ -52,7 +68,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
     count_hex = Observable(Float64[])
     markersize = Observable(Vec2f(1, 1))
 
-    function calculate_grid(xy, bins, binsize, mincnt, scale)
+    function calculate_grid(xy, bins, binsize, threshold, scale)
         empty!(points[])
         empty!(count_hex[])
 
@@ -107,7 +123,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         #         _x = center_value(ix, xspacing, xoff, false)
         #         _y = center_value(iy, yspacing, yoff, false)
         #         c = get(d, (_x, _y), 0)
-        #         if c >= mincnt
+        #         if c >= threshold
         #             push!(points[], Point2f(_x, _y))
         #             push!(count_hex[], c)
         #         end
@@ -118,7 +134,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         #         _x = center_value(ix, xspacing, xoff, true)
         #         _y = center_value(iy, yspacing, yoff, true)
         #         c = get(d, (_x, _y), 0)
-        #         if c >= mincnt
+        #         if c >= threshold
         #             push!(points[], Point2f(_x, _y))
         #             push!(count_hex[], c)
         #         end
@@ -126,17 +142,17 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         # end
 
         for (key, value) in d
-            push!(points[], key)
-            push!(count_hex[], value)
+            if value >= threshold
+                push!(points[], key)
+                push!(count_hex[], scale(value))
+            end
         end
-
-        sum(count_hex[]) != length(xy) && error("Length of points mismatching count vector")
 
         markersize[] = Vec2f(rx, ry)
         notify(points)
         notify(count_hex)
     end
-    onany(calculate_grid, xy, hb.bins, hb.binsize, hb.mincnt, hb.scale)
+    onany(calculate_grid, xy, hb.bins, hb.binsize, hb.threshold, hb.scale)
     # trigger once
     notify(hb.bins)
 
