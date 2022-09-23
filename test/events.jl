@@ -1,5 +1,6 @@
-using Makie: MouseButtonEvent, KeyEvent
+using Makie: MouseButtonEvent, KeyEvent, Figure, Textbox
 using Makie: Not, And, Or
+using InteractiveUtils: clipboard
 
 # rudimentary equality for tests
 Base.:(==)(l::Exclusively, r::Exclusively) = l.x == r.x
@@ -124,6 +125,65 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
             @test false | x == x
             @test x | false == x
         end
+    end
+
+    @testset "copy_paste" begin
+        f = Figure(resolution=(640,480))
+        tb = Textbox(f[1,1], placeholder="Copy/paste into me")
+        e = events(f.scene)
+
+        # Initial state
+        @test !tb.focused[]
+        @test tb.stored_string[] === nothing
+
+        # Select textbox
+        e.mouseposition[] = (320, 240)
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.release)
+        @test tb.focused[]
+
+        # Fill clipboard with a string
+        clipboard("test string")
+
+        # Trigger left ctrl+v
+        e.keyboardbutton[] = KeyEvent(Keyboard.left_control, Keyboard.press)
+        e.keyboardbutton[] = KeyEvent(Keyboard.v, Keyboard.press)
+        e.keyboardbutton[] = KeyEvent(Keyboard.v, Keyboard.release)
+        e.keyboardbutton[] = KeyEvent(Keyboard.left_control, Keyboard.release)
+        e.keyboardbutton[] = KeyEvent(Keyboard.enter, Keyboard.press)
+        e.keyboardbutton[] = KeyEvent(Keyboard.enter, Keyboard.release)
+
+        @test tb.stored_string[] == "test string"
+
+        
+        # Refresh figure to test right control + v combination
+        empty!(f)
+
+        f = Figure(resolution=(640,480))
+        tb = Textbox(f[1,1], placeholder="Copy/paste into me")
+        e = events(f.scene)
+
+        # Initial state
+        @test !tb.focused[]
+        @test tb.stored_string[] === nothing
+
+        # Re-select textbox
+        e.mouseposition[] = (320, 240)
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.release)
+        @test tb.focused[]
+
+        clipboard("test string2")
+
+        # Trigger right ctrl+v
+        e.keyboardbutton[] = KeyEvent(Keyboard.right_control, Keyboard.press)
+        e.keyboardbutton[] = KeyEvent(Keyboard.v, Keyboard.press)
+        e.keyboardbutton[] = KeyEvent(Keyboard.v, Keyboard.release)
+        e.keyboardbutton[] = KeyEvent(Keyboard.right_control, Keyboard.release)
+        e.keyboardbutton[] = KeyEvent(Keyboard.enter, Keyboard.press)
+        e.keyboardbutton[] = KeyEvent(Keyboard.enter, Keyboard.release)
+
+        @test tb.stored_string[] == "test string2"
     end
 
     # This testset is based on the results the current camera system has. If
@@ -323,7 +383,7 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
             empty!(eventlog)
         end
 
-        # TODO: This should probably be:
+        # TODO: This should probably produce:
         # left down > right down > right click > right up > left up
         e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)
         e.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.press)
@@ -347,7 +407,7 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
         @test eventlog[4].type == MouseEventTypes.leftup
         empty!(eventlog)
 
-        # This should probably be a leftdragstop on right down
+        # This should probably produce a leftdragstop on right down instead of left up
         e.mouseposition[] = (300, 300)
         empty!(eventlog)
         e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)

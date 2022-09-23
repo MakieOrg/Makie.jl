@@ -313,7 +313,7 @@ end
 # Backend interface to Makie #
 #########################################
 
-function Makie.backend_display(x::CairoBackend, scene::Scene; kw...)
+function Makie.backend_display(x::CairoBackend, scene::Scene; pt_per_unit=x.pt_per_unit, antialias=x.antialias)
     return open(x.path, "w") do io
         Makie.backend_show(x, IOContext(io, collect(kw)...), to_mime(x), scene)
     end
@@ -323,7 +323,6 @@ Makie.backend_showable(x::CairoBackend, ::MIME"image/svg+xml", scene::Scene) = x
 Makie.backend_showable(x::CairoBackend, ::MIME"application/pdf", scene::Scene) = x.typ == PDF
 Makie.backend_showable(x::CairoBackend, ::MIME"application/postscript", scene::Scene) = x.typ == EPS
 Makie.backend_showable(x::CairoBackend, ::MIME"image/png", scene::Scene) = x.typ == PNG
-
 
 function Makie.backend_show(x::CairoBackend, io::IO, ::MIME"image/svg+xml", scene::Scene)
     proxy_io = IOBuffer()
@@ -392,7 +391,7 @@ function Makie.backend_show(x::CairoBackend, io::IO, ::MIME"image/png", scene::S
     # while relative line and font sizes are unaffected
     px_per_unit = get(io, :px_per_unit, x.px_per_unit)
     antialias = get(io, :antialias, x.antialias)
-    
+
     # create an ARGB surface, to speed up drawing ops.
     screen = CairoScreen(scene; device_scaling_factor = px_per_unit, antialias = antialias)
     cairo_draw(screen, scene)

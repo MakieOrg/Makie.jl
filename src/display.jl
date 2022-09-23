@@ -63,13 +63,27 @@ end
 
 update_state_before_display!(_) = nothing
 
-function Base.display(fig::FigureLike; kw...)
+
+"""
+
+
+# GLMakie
+start_renderloop=true
+visible=true
+connect=true
+
+# CairoMakie
+pt_per_unit=x.pt_per_unit
+px_per_unit=x.px_per_unit
+antialias=x.antialias
+"""
+function Base.display(fig::FigureLike; display_attributes...)
     scene = get_scene(fig)
     if !use_display[]
         update_state_before_display!(fig)
         return Core.invoke(display, Tuple{Any}, scene)
     else
-        screen = backend_display(fig; kw...)
+        screen = backend_display(fig; display_attributes...)
         push_screen!(scene, screen)
         return screen
     end
