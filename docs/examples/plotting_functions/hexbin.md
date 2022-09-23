@@ -173,3 +173,30 @@ hexbin(f[1, 2], x, y, bins = 40, scale=log10,
 f
 ```
 \end{examplefigure}
+
+### Airports example
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+using DelimitedFiles
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+a = map(Point2f, eachrow(readdlm(assetpath("airportlocations.csv"))))
+
+f, ax, hb = hexbin(a,
+    binsize = 2,
+    axis = (; aspect = DataAspect()),
+    scale = log10)
+
+Colorbar(f[1, 2], hb,
+    label = "Number of airports",
+    tickformat = xs -> string.(Int.(10 .^ xs)),
+    height = Relative(0.5)
+)
+f
+```
+\end{examplefigure}
