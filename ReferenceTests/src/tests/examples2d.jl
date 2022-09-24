@@ -579,8 +579,8 @@ end
     x = RNG.rand(300)
     y = RNG.rand(300)
 
-    for i in 1:4
-        ax = Axis(f[fldmod1(i, 2)...], title = "bins = $i", aspect = DataAspect())
+    for i in 2:5
+        ax = Axis(f[fldmod1(i-1, 2)...], title = "bins = $i", aspect = DataAspect())
         hexbin!(ax, x, y, bins = i)
         wireframe!(ax, Rect2f(Point2f.(x, y)), color = :red)
         scatter!(ax, x, y, color = :red, markersize = 5)
@@ -595,8 +595,8 @@ end
     x = RNG.rand(300)
     y = RNG.rand(300)
 
-    for i in 1:4
-        ax = Axis(f[fldmod1(i, 2)...], title = "bins = (3, $i)", aspect = DataAspect())
+    for i in 2:5
+        ax = Axis(f[fldmod1(i-1, 2)...], title = "bins = (3, $i)", aspect = DataAspect())
         hexbin!(ax, x, y, bins = (3, i))
         wireframe!(ax, Rect2f(Point2f.(x, y)), color = :red)
         scatter!(ax, x, y, color = :red, markersize = 5)
@@ -607,15 +607,15 @@ end
 
 
 
-@reference_test "hexbin two binsizes" begin
+@reference_test "hexbin two cellsizes" begin
     f = Figure(resolution = (800, 800))
 
     x = RNG.rand(300)
     y = RNG.rand(300)
 
-    for (i, binsize) in enumerate([0.1, 0.15, 0.2, 0.25])
-        ax = Axis(f[fldmod1(i, 2)...], title = "binsize = ($binsize, $binsize)", aspect = DataAspect())
-        hexbin!(ax, x, y, binsize = (binsize, binsize))
+    for (i, cellsize) in enumerate([0.1, 0.15, 0.2, 0.25])
+        ax = Axis(f[fldmod1(i, 2)...], title = "cellsize = ($cellsize, $cellsize)", aspect = DataAspect())
+        hexbin!(ax, x, y, cellsize = (cellsize, cellsize))
         wireframe!(ax, Rect2f(Point2f.(x, y)), color = :red)
         scatter!(ax, x, y, color = :red, markersize = 5)
     end
@@ -623,15 +623,15 @@ end
     f
 end
 
-@reference_test "hexbin one binsize" begin
+@reference_test "hexbin one cellsize" begin
     f = Figure(resolution = (800, 800))
 
     x = RNG.rand(300)
     y = RNG.rand(300)
     
-    for (i, binsize) in enumerate([0.1, 0.15, 0.2, 0.25])
-        ax = Axis(f[fldmod1(i, 2)...], title = "binsize = $binsize", aspect = DataAspect())
-        hexbin!(ax, x, y, binsize = binsize)
+    for (i, cellsize) in enumerate([0.1, 0.15, 0.2, 0.25])
+        ax = Axis(f[fldmod1(i, 2)...], title = "cellsize = $cellsize", aspect = DataAspect())
+        hexbin!(ax, x, y, cellsize = cellsize)
         wireframe!(ax, Rect2f(Point2f.(x, y)), color = :red)
         scatter!(ax, x, y, color = :red, markersize = 5)
     end
@@ -647,7 +647,7 @@ end
 
     for (i, threshold) in enumerate([1, 10, 100, 500])
         ax = Axis(f[fldmod1(i, 2)...], title = "threshold = $threshold", aspect = DataAspect())
-        hexbin!(ax, x, y, binsize = 0.4, threshold = threshold)
+        hexbin!(ax, x, y, cellsize = 0.4, threshold = threshold)
     end
     f
 end

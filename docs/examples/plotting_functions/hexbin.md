@@ -6,9 +6,8 @@
 
 ### Setting the number of bins
 
-Due to the way that hexagonal grids work, one "bin" is understood as one step from a hexagon center to an adjacent hexagon center, which means two hexagons, not one.
-
 Setting `bins` to an integer sets the number of bins to this value for both x and y.
+The minimum number of bins in one dimension is 2.
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -23,8 +22,8 @@ f = Figure(resolution = (800, 800))
 x = rand(300)
 y = rand(300)
 
-for i in 1:4
-    ax = Axis(f[fldmod1(i, 2)...], title = "bins = $i", aspect = DataAspect())
+for i in 2:5
+    ax = Axis(f[fldmod1(i-1, 2)...], title = "bins = $i", aspect = DataAspect())
     hexbin!(ax, x, y, bins = i)
     wireframe!(ax, Rect2f(Point2f.(x, y)), color = :red)
     scatter!(ax, x, y, color = :red, markersize = 5)
@@ -49,8 +48,8 @@ f = Figure(resolution = (800, 800))
 x = rand(300)
 y = rand(300)
 
-for i in 1:4
-    ax = Axis(f[fldmod1(i, 2)...], title = "bins = (3, $i)", aspect = DataAspect())
+for i in 2:5
+    ax = Axis(f[fldmod1(i-1, 2)...], title = "bins = (3, $i)", aspect = DataAspect())
     hexbin!(ax, x, y, bins = (3, i))
     wireframe!(ax, Rect2f(Point2f.(x, y)), color = :red)
     scatter!(ax, x, y, color = :red, markersize = 5)
@@ -60,12 +59,12 @@ f
 ```
 \end{examplefigure}
 
-### Setting the size of bins
+### Setting the size of cells
 
-You can also control the bin size directly by setting the `binsize` keyword.
+You can also control the cell size directly by setting the `cellsize` keyword.
 In this case, the `bins` setting is ignored.
 
-In a hexagonal grid, the step size from hexagon center to adjacent hexagon center is not the same in x and y direction.
+The height of a hexagon is larger than its width.
 This is why setting the same size for x and y will result in uneven hexagons.
 
 \begin{examplefigure}{svg = true}
@@ -81,9 +80,9 @@ f = Figure(resolution = (800, 800))
 x = rand(300)
 y = rand(300)
 
-for (i, binsize) in enumerate([0.1, 0.15, 0.2, 0.25])
-    ax = Axis(f[fldmod1(i, 2)...], title = "binsize = ($binsize, $binsize)", aspect = DataAspect())
-    hexbin!(ax, x, y, binsize = (binsize, binsize))
+for (i, cellsize) in enumerate([0.1, 0.15, 0.2, 0.25])
+    ax = Axis(f[fldmod1(i, 2)...], title = "cellsize = ($cellsize, $cellsize)", aspect = DataAspect())
+    hexbin!(ax, x, y, cellsize = (cellsize, cellsize))
     wireframe!(ax, Rect2f(Point2f.(x, y)), color = :red)
     scatter!(ax, x, y, color = :red, markersize = 5)
 end
@@ -92,13 +91,9 @@ f
 ```
 \end{examplefigure}
 
-To get evenly sized hexagons, set the bin size to a single number.
-This number defines the step size in x, the y step size will be computed as `2 * step_x / sqrt(3)`.
+To get evenly sized hexagons, set the cell size to a single number.
+This number defines the cell width, the height will be computed as `2 * step_x / sqrt(3)`.
 Note that the visual appearance of the hexagons will only be even if the x and y axis have the same scaling, which is why we use `aspect = DataAspect()` in these examples.
-
-Note how the x dimension in the following example is neatly split into ten steps for `binsize = 0.1`, five steps for `binsize = 0.2` and four steps for `binsize = 0.25` because those numbers all divide 1.
-For `binsize = 0.15`, the coverage in x is not perfect.
-The coverage in y is never perfect because of the `sqrt(3)` division.
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -113,9 +108,9 @@ f = Figure(resolution = (800, 800))
 x = rand(300)
 y = rand(300)
 
-for (i, binsize) in enumerate([0.1, 0.15, 0.2, 0.25])
-    ax = Axis(f[fldmod1(i, 2)...], title = "binsize = $binsize", aspect = DataAspect())
-    hexbin!(ax, x, y, binsize = binsize)
+for (i, cellsize) in enumerate([0.1, 0.15, 0.2, 0.25])
+    ax = Axis(f[fldmod1(i, 2)...], title = "cellsize = $cellsize", aspect = DataAspect())
+    hexbin!(ax, x, y, cellsize = cellsize)
     wireframe!(ax, Rect2f(Point2f.(x, y)), color = :red)
     scatter!(ax, x, y, color = :red, markersize = 5)
 end
@@ -143,7 +138,7 @@ y = randn(100000)
 
 for (i, threshold) in enumerate([1, 10, 100, 500])
     ax = Axis(f[fldmod1(i, 2)...], title = "threshold = $threshold", aspect = DataAspect())
-    hexbin!(ax, x, y, binsize = 0.4, threshold = threshold)
+    hexbin!(ax, x, y, cellsize = 0.4, threshold = threshold)
 end
 f
 ```
@@ -188,7 +183,7 @@ Makie.inline!(true) # hide
 a = map(Point2f, eachrow(readdlm(assetpath("airportlocations.csv"))))
 
 f, ax, hb = hexbin(a,
-    binsize = 2,
+    cellsize = 4,
     axis = (; aspect = DataAspect()),
     scale = log10)
 

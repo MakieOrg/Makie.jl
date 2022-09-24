@@ -8,6 +8,7 @@ Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
 ### Specific to `Hexbin`
 
 - `bins = 20`: If an `Int`, sets the number of bins in x and y direction. If a `Tuple{Int, Int}`, sets the number of bins for x and y separately.
+- `cellsize = nothing`: If a `Real`, makes equally-sided hexagons with width `cellsize`. If a `Tuple{Real, Real}` specifies hexagon width and height separately.
 - `threshold::Int = 1`: The minimal number of observations in the bin to be shown.
 - `scale = identity`: A function to scale the number of observations in a bin, eg. log10.
 
@@ -23,7 +24,7 @@ Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
                       colormap=theme(scene, :colormap),
                       colorrange=Makie.automatic,
                       bins=20,
-                      binsize=nothing,
+                      cellsize=nothing,
                       threshold=1,
                       scale=identity,
                       highclip=nothing,
@@ -32,26 +33,27 @@ Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
                       strokecolor=:black)
 end
 
-function spacings_offsets_nbins(bins::Tuple{Int,Int}, binsize::Nothing, xmi, xma, ymi, yma)
+function spacings_offsets_nbins(bins::Tuple{Int,Int}, cellsize::Nothing, xmi, xma, ymi, yma)
+    any(<(2), bins) && error("Minimum number of bins in one direction is 2, got $bins.")
     x_diff = xma - xmi
     y_diff = yma - ymi
 
-    xspacing, yspacing = (x_diff, y_diff) ./ bins
+    xspacing, yspacing = (x_diff, y_diff) ./ (bins .- 1)
     return xspacing, yspacing, xmi, ymi, bins...
 end
 
-function spacings_offsets_nbins(bins, binsize::Real, xmi, xma, ymi, yma)
-    return spacings_offsets_nbins(bins, (binsize, binsize * 2 / sqrt(3)), xmi, xma, ymi, yma)
+function spacings_offsets_nbins(bins, cellsize::Real, xmi, xma, ymi, yma)
+    return spacings_offsets_nbins(bins, (cellsize, cellsize * 2 / sqrt(3)), xmi, xma, ymi, yma)
 end
-function spacings_offsets_nbins(bins::Int, binsize::Nothing, xmi, xma, ymi, yma)
-    return spacings_offsets_nbins((bins, bins), binsize, xmi, xma, ymi, yma)
+function spacings_offsets_nbins(bins::Int, cellsize::Nothing, xmi, xma, ymi, yma)
+    return spacings_offsets_nbins((bins, bins), cellsize, xmi, xma, ymi, yma)
 end
 
-function spacings_offsets_nbins(bins, binsizes::Tuple{Real,Real}, xmi, xma, ymi, yma)
+function spacings_offsets_nbins(bins, cellsizes::Tuple{<:Real,<:Real}, xmi, xma, ymi, yma)
     x_diff = xma - xmi
     y_diff = yma - ymi
-    xspacing = binsizes[1]
-    yspacing = binsizes[2] * 3 / 2
+    xspacing = cellsizes[1] / 2
+    yspacing = cellsizes[2] * 3 / 4
     (nx, restx), (ny, resty) = fldmod.((x_diff, y_diff), (xspacing, yspacing))
     return xspacing, yspacing, xmi - (restx > 0 ? (xspacing - restx) / 2 : 0),
            ymi - (resty > 0 ? (yspacing - resty) / 2 : 0), nx + (restx > 0), ny + (resty > 0)
@@ -78,7 +80,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
     count_hex = Observable(Float64[])
     markersize = Observable(Vec2f(1, 1))
 
-    function calculate_grid(xy, bins, binsize, threshold, scale)
+    function calculate_grid(xy, bins, cellsize, threshold, scale)
         empty!(points[])
         empty!(count_hex[])
 
@@ -95,7 +97,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         x_diff = xma - xmi
         y_diff = yma - ymi
 
-        xspacing, yspacing, xoff, yoff, nbinsx, nbinsy = spacings_offsets_nbins(bins, binsize, xmi, xma, ymi,
+        xspacing, yspacing, xoff, yoff, nbinsx, nbinsy = spacings_offsets_nbins(bins, cellsize, xmi, xma, ymi,
                                                                                 yma)
 
         ysize = yspacing / 3 * 4
@@ -163,7 +165,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         notify(points)
         return notify(count_hex)
     end
-    onany(calculate_grid, xy, hb.bins, hb.binsize, hb.threshold, hb.scale)
+    onany(calculate_grid, xy, hb.bins, hb.cellsize, hb.threshold, hb.scale)
     # trigger once
     notify(hb.bins)
 
