@@ -314,7 +314,7 @@ Loads the makie loading icon and embedds it in an image the size of resolution
 """
 function get_loading_image(resolution)
     icon = Matrix{N0f8}(undef, 192, 192)
-    open(joinpath(@__DIR__, "..", "assets", "loading.bin")) do io
+    open(joinpath(GL_ASSET_DIR, "loading.bin")) do io
         read!(io, icon)
     end
     img = zeros(RGBA{N0f8}, resolution...)
