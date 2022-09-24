@@ -15,36 +15,46 @@ Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
 
 - `colormap::Union{Symbol, Vector{<:Colorant}} = :viridis`
 - `colorrange::Tuple(<:Real,<:Real} = Makie.automatic`  sets the values representing the start and end points of `colormap`.
+- `highclip = nothing`: Color above the upper color range limit.
+- `lowclip = nothing`: Color below the upper color range limit.
 """
 @recipe(Hexbin) do scene
     return Attributes(;
-        colormap=theme(scene, :colormap),
-        colorrange=Makie.automatic,
-        bins=20,
-        binsize=nothing,
-        threshold=1,
-        scale=identity
-    )
+                      colormap=theme(scene, :colormap),
+                      colorrange=Makie.automatic,
+                      bins=20,
+                      binsize=nothing,
+                      threshold=1,
+                      scale=identity,
+                      highclip=nothing,
+                      lowclip=nothing,
+                      strokewidth=0,
+                      strokecolor=:black)
 end
 
-function spacings_offsets_nbins(bins::Tuple{Int, Int}, binsize::Nothing, xmi, xma, ymi, yma)
+function spacings_offsets_nbins(bins::Tuple{Int,Int}, binsize::Nothing, xmi, xma, ymi, yma)
     x_diff = xma - xmi
     y_diff = yma - ymi
 
     xspacing, yspacing = (x_diff, y_diff) ./ bins
-    xspacing, yspacing, xmi, ymi, bins...
+    return xspacing, yspacing, xmi, ymi, bins...
 end
 
-spacings_offsets_nbins(bins, binsize::Real, xmi, xma, ymi, yma) = spacings_offsets_nbins(bins, (binsize, binsize*2/sqrt(3)), xmi, xma, ymi, yma)
-spacings_offsets_nbins(bins::Int, binsize::Nothing, xmi, xma, ymi, yma) = spacings_offsets_nbins((bins, bins), binsize, xmi, xma, ymi, yma)
+function spacings_offsets_nbins(bins, binsize::Real, xmi, xma, ymi, yma)
+    return spacings_offsets_nbins(bins, (binsize, binsize * 2 / sqrt(3)), xmi, xma, ymi, yma)
+end
+function spacings_offsets_nbins(bins::Int, binsize::Nothing, xmi, xma, ymi, yma)
+    return spacings_offsets_nbins((bins, bins), binsize, xmi, xma, ymi, yma)
+end
 
-function spacings_offsets_nbins(bins, binsizes::Tuple{Real, Real}, xmi, xma, ymi, yma)
+function spacings_offsets_nbins(bins, binsizes::Tuple{Real,Real}, xmi, xma, ymi, yma)
     x_diff = xma - xmi
     y_diff = yma - ymi
     xspacing = binsizes[1]
-    yspacing = binsizes[2]*3/2
+    yspacing = binsizes[2] * 3 / 2
     (nx, restx), (ny, resty) = fldmod.((x_diff, y_diff), (xspacing, yspacing))
-    xspacing, yspacing, xmi - (restx > 0 ? (xspacing-restx)/2 : 0), ymi - (resty > 0 ? (yspacing-resty)/2 : 0), nx + (restx > 0), ny + (resty > 0)
+    return xspacing, yspacing, xmi - (restx > 0 ? (xspacing - restx) / 2 : 0),
+           ymi - (resty > 0 ? (yspacing - resty) / 2 : 0), nx + (restx > 0), ny + (resty > 0)
 end
 
 Makie.conversion_trait(::Type{<:Hexbin}) = PointBased()
@@ -52,11 +62,11 @@ Makie.conversion_trait(::Type{<:Hexbin}) = PointBased()
 function data_limits(hb::Hexbin)
     bb = Rect3f(hb.plots[1][1][])
     fn(num::Real) = Float32(num)
-    fn(tup::Union{Tuple, Vec2}) = Vec2f(tup...)
+    fn(tup::Union{Tuple,Vec2}) = Vec2f(tup...)
 
     ms = 2 .* fn(hb.plots[1].markersize[])
-    nw = widths(bb) .+ (ms..., 0f0)
-    no = bb.origin .- ((ms ./ 2f0)..., 0f0)
+    nw = widths(bb) .+ (ms..., 0.0f0)
+    no = bb.origin .- ((ms ./ 2.0f0)..., 0.0f0)
 
     return Rect3f(no, nw)
 end
@@ -85,7 +95,8 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         x_diff = xma - xmi
         y_diff = yma - ymi
 
-        xspacing, yspacing, xoff, yoff, nbinsx, nbinsy = spacings_offsets_nbins(bins, binsize, xmi, xma, ymi, yma)
+        xspacing, yspacing, xoff, yoff, nbinsx, nbinsy = spacings_offsets_nbins(bins, binsize, xmi, xma, ymi,
+                                                                                yma)
 
         ysize = yspacing / 3 * 4
         ry = ysize / 2
@@ -93,7 +104,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         xsize = xspacing * 2
         rx = xsize / sqrt3
 
-        d = Dict{Tuple{Float64, Float64}, Int}()
+        d = Dict{Tuple{Float64,Float64},Int}()
 
         # for the distance measurement, the y dimension must be weighted relative to the x
         # dimension according to the different sizes in each, otherwise the attribution to hexagonal
@@ -104,8 +115,8 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             nx, nxs, dvx = nearest_center(_x, xspacing, xoff)
             ny, nys, dvy = nearest_center(_y, yspacing, yoff)
 
-            d1 = ((_x - nx) ^ 2 + (yweight * (_y - ny)) ^ 2)
-            d2 = ((_x - nxs) ^ 2 + (yweight * (_y - nys)) ^ 2)
+            d1 = ((_x - nx)^2 + (yweight * (_y - ny))^2)
+            d2 = ((_x - nxs)^2 + (yweight * (_y - nys))^2)
 
             is_grid1 = d1 < d2
 
@@ -150,7 +161,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
 
         markersize[] = Vec2f(rx, ry)
         notify(points)
-        notify(count_hex)
+        return notify(count_hex)
     end
     onany(calculate_grid, xy, hb.bins, hb.binsize, hb.threshold, hb.scale)
     # trigger once
@@ -164,9 +175,19 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         end
     end
 
-    hexmarker = Polygon(Point2f[(cos(a), sin(a)) for a in range(pi/6, 13pi/6, length = 7)[1:6]])
+    hexmarker = Polygon(Point2f[(cos(a), sin(a)) for a in range(pi / 6, 13pi / 6; length=7)[1:6]])
 
-    scatter!(hb, points; colorrange = hb.colorrange, color=count_hex, colormap=hb.colormap, marker = hexmarker, markersize = markersize, markerspace = :data)
+    return scatter!(hb, points;
+                    colorrange=hb.colorrange,
+                    color=count_hex,
+                    colormap=hb.colormap,
+                    marker=hexmarker,
+                    markersize=markersize,
+                    markerspace=:data,
+                    highclip=hb.highclip,
+                    lowclip=hb.lowclip,
+                    strokewidth=hb.strokewidth,
+                    strokecolor=hb.strokecolor)
 end
 
 function center_value(dv, spacing, offset, is_grid1)

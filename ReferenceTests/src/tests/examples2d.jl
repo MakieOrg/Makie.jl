@@ -572,3 +572,109 @@ end
         f
     end
 end
+
+@reference_test "hexbin bin int" begin
+    f = Figure(resolution = (800, 800))
+
+    x = RNG.rand(300)
+    y = RNG.rand(300)
+
+    for i in 1:4
+        ax = Axis(f[fldmod1(i, 2)...], title = "bins = $i", aspect = DataAspect())
+        hexbin!(ax, x, y, bins = i)
+        wireframe!(ax, Rect2f(Point2f.(x, y)), color = :red)
+        scatter!(ax, x, y, color = :red, markersize = 5)
+    end
+
+    f
+end
+
+@reference_test "hexbin bin tuple" begin
+    f = Figure(resolution = (800, 800))
+
+    x = RNG.rand(300)
+    y = RNG.rand(300)
+
+    for i in 1:4
+        ax = Axis(f[fldmod1(i, 2)...], title = "bins = (3, $i)", aspect = DataAspect())
+        hexbin!(ax, x, y, bins = (3, i))
+        wireframe!(ax, Rect2f(Point2f.(x, y)), color = :red)
+        scatter!(ax, x, y, color = :red, markersize = 5)
+    end
+
+    f
+end
+
+
+
+@reference_test "hexbin two binsizes" begin
+    f = Figure(resolution = (800, 800))
+
+    x = RNG.rand(300)
+    y = RNG.rand(300)
+
+    for (i, binsize) in enumerate([0.1, 0.15, 0.2, 0.25])
+        ax = Axis(f[fldmod1(i, 2)...], title = "binsize = ($binsize, $binsize)", aspect = DataAspect())
+        hexbin!(ax, x, y, binsize = (binsize, binsize))
+        wireframe!(ax, Rect2f(Point2f.(x, y)), color = :red)
+        scatter!(ax, x, y, color = :red, markersize = 5)
+    end
+
+    f
+end
+
+@reference_test "hexbin one binsize" begin
+    f = Figure(resolution = (800, 800))
+
+    x = RNG.rand(300)
+    y = RNG.rand(300)
+    
+    for (i, binsize) in enumerate([0.1, 0.15, 0.2, 0.25])
+        ax = Axis(f[fldmod1(i, 2)...], title = "binsize = $binsize", aspect = DataAspect())
+        hexbin!(ax, x, y, binsize = binsize)
+        wireframe!(ax, Rect2f(Point2f.(x, y)), color = :red)
+        scatter!(ax, x, y, color = :red, markersize = 5)
+    end
+    
+    f
+end
+
+@reference_test "hexbin threshold" begin
+    f = Figure(resolution = (800, 800))
+
+    x = RNG.randn(100000)
+    y = RNG.randn(100000)
+
+    for (i, threshold) in enumerate([1, 10, 100, 500])
+        ax = Axis(f[fldmod1(i, 2)...], title = "threshold = $threshold", aspect = DataAspect())
+        hexbin!(ax, x, y, binsize = 0.4, threshold = threshold)
+    end
+    f
+end
+
+@reference_test "hexbin scale" begin
+    x = RNG.randn(100000)
+    y = RNG.randn(100000)
+
+    f = Figure()
+    hexbin(f[1, 1], x, y, bins = 40,
+        axis = (aspect = DataAspect(), title = "scale = identity"))
+    hexbin(f[1, 2], x, y, bins = 40, scale=log10,
+        axis = (aspect = DataAspect(), title = "scale = log10"))
+    f
+end
+
+@reference_test "hexbin colorrange highclip lowclip" begin
+    x = RNG.randn(100000)
+    y = RNG.randn(100000)
+
+    hexbin(x, y,
+        bins = 40,
+        axis = (aspect = DataAspect(),),
+        colorrange = (10, 300),
+        highclip = :red,
+        lowclip = :pink,
+        strokewidth = 1,
+        strokecolor = :gray30
+    )
+end
