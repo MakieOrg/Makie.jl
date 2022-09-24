@@ -48,14 +48,15 @@ function block_docs(::Type{Menu})
 end
 
 
-function initialize_block!(m::Menu; default = nothing)
+function initialize_block!(m::Menu; default = 1)
     blockscene = m.blockscene
 
-    listheight = Observable(0.0)
+    listheight = Observable(0.0; ignore_equal_values=true)
 
     # the direction is auto-chosen as up if there is too little space below and if the space below
     # is smaller than above
-    _direction = Observable{Symbol}()
+    _direction = Observable{Symbol}(:none; ignore_equal_values=true)
+
     map!(_direction, m.layoutobservables.computedbbox, m.direction) do bb, dir
         if dir == Makie.automatic
             pxa = pixelarea(blockscene)[]
@@ -72,7 +73,7 @@ function initialize_block!(m::Menu; default = nothing)
         end
     end
 
-    scenearea = lift(m.layoutobservables.computedbbox, listheight, _direction, m.is_open) do bbox, h, d, open
+    scenearea = lift(m.layoutobservables.computedbbox, listheight, _direction, m.is_open; ignore_equal_values=true) do bbox, h, d, open
         !open ?
             round_to_IRect2D(BBox(left(bbox), right(bbox), 0, 0)) :
             round_to_IRect2D(BBox(
@@ -82,8 +83,8 @@ function initialize_block!(m::Menu; default = nothing)
                 d == :down ? bottom(bbox) : min(top(bbox) + h, top(blockscene.px_area[]))))
     end
 
-    menuscene = Scene(blockscene, scenearea, camera = campixel!)
-    translate!(menuscene, 0, 0, 21)
+    menuscene = Scene(blockscene, scenearea, camera = campixel!, clear=true, backgroundcolor=:black)
+    translate!(menuscene, 0, 0, 200)
 
     onany(scenearea, listheight) do area, listheight
         t = translation(menuscene)[]
@@ -92,9 +93,9 @@ function initialize_block!(m::Menu; default = nothing)
         translate!(menuscene, t[1], new_y, t[3])
     end
 
-    optionstrings = lift(o -> optionlabel.(o), m.options)
+    optionstrings = lift(o -> optionlabel.(o), m.options; ignore_equal_values=true)
 
-    selected_text = lift(m.prompt, m.i_selected) do prompt, i_selected
+    selected_text = lift(m.prompt, m.i_selected; ignore_equal_values=true) do prompt, i_selected
         if i_selected == 0
             prompt
         else
@@ -102,14 +103,14 @@ function initialize_block!(m::Menu; default = nothing)
         end
     end
 
-    selectionarea = Observable(Rect2f(0, 0, 0, 0))
+    selectionarea = Observable(Rect2f(0, 0, 0, 0); ignore_equal_values=true)
 
     selectionpoly = poly!(
         blockscene, selectionarea, color = m.selection_cell_color_inactive[];
         inspectable = false
     )
 
-    selectiontextpos = Observable(Point2f(0, 0))
+    selectiontextpos = Observable(Point2f(0, 0); ignore_equal_values=true)
     selectiontext = text!(
         blockscene, selectiontextpos, text = selected_text, align = (:left, :center),
         textsize = m.textsize, color = m.textcolor, markerspace = :data, inspectable = false
@@ -127,31 +128,10 @@ function initialize_block!(m::Menu; default = nothing)
         selectiontextpos[] = cbb.origin + Point2f(m.textpadding[][1], ch/2)
     end
 
-    textpositions = Observable(zeros(Point2f, length(optionstrings[])))
-    
-    me_selection = addmouseevents!(blockscene, selectiontext, selectionpoly)
-    onmouseleftclick(me_selection) do me
-        m.is_open[] = !m.is_open[]
-        if m.is_open[]
-            t = translation(menuscene)[]
-            y_for_top_align = height(menuscene.px_area[]) - listheight[]
-            translate!(menuscene, t[1], y_for_top_align, t[3])
-        end
-        return Consume(true)
-    end
+    textpositions = Observable(zeros(Point2f, length(optionstrings[])); ignore_equal_values=true)
 
-    onmouseover(me_selection) do me
-        selectionpoly.color = m.cell_color_hover[]
-        return Consume(false)
-    end
-
-    onmouseout(me_selection) do me
-        selectionpoly.color = m.selection_cell_color_inactive[]
-        return Consume(false)
-    end
-
-    optionrects = Observable([Rect2f(0, 0, 0, 0)])
-    optionpolycolors = Observable(RGBAf[RGBAf(0.5, 0.5, 0.5, 1)])
+    optionrects = Observable([Rect2f(0, 0, 0, 0)]; ignore_equal_values=true)
+    optionpolycolors = Observable(RGBAf[RGBAf(0.5, 0.5, 0.5, 1)]; ignore_equal_values=true)
 
     # the y boundaries of the list rectangles
     list_y_bounds = Ref(Float32[])
@@ -177,23 +157,20 @@ function initialize_block!(m::Menu; default = nothing)
         optionpolycolors.val .= map(eachindex(bbs)) do i
             i == m.i_selected[] ? m.cell_color_active[] :
             iseven(i) ? to_color(m.cell_color_inactive_even[]) :
-                to_color(m.cell_color_inactive_odd[]) 
+                to_color(m.cell_color_inactive_odd[])
         end
         optionrects.val .= map(eachindex(bbs)) do i
             BBox(0, w_bbox, h - heights_cumsum[i+1], h - heights_cumsum[i])
         end
-        
+
         notify(optionrects)
     end
     notify(optionstrings)
 
-    mouseevents = addmouseevents!(menuscene, optionpolys, optiontexts, priority = 61)
-
-    function pick_entry(me)
+    function pick_entry(y)
         # determine which rectangle in the list the mouse is in
         # we do this geometrically and not by picking because it's hard to calculate the index
         # of the text from the picking value returned
-        y = me.px[2]
         # translation due to scrolling has to be removed first
         ytrans = y - translation(menuscene)[][2]
         i = argmin(
@@ -202,41 +179,58 @@ function initialize_block!(m::Menu; default = nothing)
         )
     end
 
-    onmouseover(mouseevents) do me
-        i = pick_entry(me)
-        optionpolycolors[] = map(eachindex(optionstrings[])) do j
-            j == m.i_selected[] ? m.cell_color_active[] :
-            i == j ? m.cell_color_hover[] :
-                iseven(i) ? to_color(m.cell_color_inactive_even[]) :
-                to_color(m.cell_color_inactive_odd[]) 
-        end
-        return Consume(false)
-    end
-
-    onmouseout(mouseevents) do me
-        optionpolycolors[] = map(eachindex(optionstrings[])) do i
-            i == m.i_selected[] ? m.cell_color_active[] :
-            iseven(i) ? to_color(m.cell_color_inactive_even[]) :
-                to_color(m.cell_color_inactive_odd[]) 
-        end
-        return Consume(false)
-    end
-
-    onmouseleftclick(mouseevents) do me
-        i = pick_entry(me)
-        m.i_selected[] = i
-        m.is_open[] = false
-        return Consume(true)
-    end
-
-    # To stop other things from triggering on left down inside the dropdown menu
-    onmouseleftdown(_ -> Consume(true), mouseevents)
-
-    # close the menu if the user clicks somewhere else
-    # the logic is a bit convoluted because menuscene and selection poly have to be checked at the same time
-    on(blockscene.events.mousebutton, priority=61) do butt
-        if butt.action === Mouse.release && !is_mouseinside(menuscene) && !(mouseposition_px(blockscene) in selectionarea[])
-            m.is_open[] = false
+    was_inside_options = false
+    was_inside_button = false
+    e = menuscene.events
+    onany(e.mouseposition, e.mousebutton, priority=typemax(Int)) do position, butt
+        mp = screen_relative(menuscene, position)
+        if Makie.is_mouseinside(menuscene)
+            is_over = mouseover(menuscene, optionpolys, optiontexts)
+            pressed = ispressed(menuscene, Mouse.left)
+            if is_over
+                was_inside_options = true
+                if pressed
+                    i = pick_entry(mp[2])
+                    m.i_selected[] = i
+                    m.is_open[] = false
+                    return Consume(true)
+                else
+                    i = pick_entry(mp[2])
+                    optionpolycolors[] = map(eachindex(optionstrings[])) do j
+                        j == m.i_selected[] ? m.cell_color_active[] :
+                        i == j ? m.cell_color_hover[] :
+                            iseven(i) ? to_color(m.cell_color_inactive_even[]) :
+                            to_color(m.cell_color_inactive_odd[])
+                    end
+                end
+            elseif was_inside_options
+                was_inside_options = false
+                optionpolycolors[] = map(eachindex(optionstrings[])) do i
+                    i == m.i_selected[] ? m.cell_color_active[] :
+                    iseven(i) ? to_color(m.cell_color_inactive_even[]) :
+                        to_color(m.cell_color_inactive_odd[])
+                end
+            end
+        elseif Makie.is_mouseinside(blockscene)
+            is_over = mouseover(blockscene, selectiontext, selectionpoly)
+            pressed = ispressed(blockscene, Mouse.left)
+            if is_over
+                was_inside_button = true
+                if pressed
+                    m.is_open[] = !m.is_open[]
+                    if m.is_open[]
+                        t = translation(menuscene)[]
+                        y_for_top_align = height(menuscene.px_area[]) - listheight[]
+                        translate!(menuscene, t[1], y_for_top_align, t[3])
+                    end
+                    return Consume(true)
+                else
+                    selectionpoly.color = m.cell_color_hover[]
+                end
+            elseif was_inside_button
+                was_inside_button = false
+                selectionpoly.color = m.selection_cell_color_inactive[]
+            end
         end
         return Consume(false)
     end
@@ -283,6 +277,7 @@ function initialize_block!(m::Menu; default = nothing)
         color = m.dropdown_arrow_color,
         strokecolor = :transparent,
         inspectable = false)
+
     translate!(dropdown_arrow, 0, 0, 1)
 
     on(m.i_selected) do i
@@ -305,6 +300,9 @@ function initialize_block!(m::Menu; default = nothing)
 
     m.i_selected[] = if default === nothing
         0
+    elseif default isa Integer
+        Base.checkbounds(optionstrings[], default)
+        m.i_selected[] = default
     else
         i = findfirst(x -> x == default, optionstrings[])
         if i === nothing
