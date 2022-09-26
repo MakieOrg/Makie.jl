@@ -52,7 +52,7 @@ function spacings_offsets_nbins(bins, cellsizes::Tuple{<:Real,<:Real}, xmi, xma,
     yspacing = cellsizes[2] * 3 / 4
     (nx, restx), (ny, resty) = fldmod.((x_diff, y_diff), (xspacing, yspacing))
     return xspacing, yspacing, xmi - (restx > 0 ? (xspacing - restx) / 2 : 0),
-           ymi - (resty > 0 ? (yspacing - resty) / 2 : 0), nx + (restx > 0), ny + (resty > 0)
+           ymi - (resty > 0 ? (yspacing - resty) / 2 : 0), Int(nx) + (restx > 0), Int(ny) + (resty > 0)
 end
 
 Makie.conversion_trait(::Type{<:Hexbin}) = PointBased()
@@ -138,7 +138,6 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         # this iteration scheme misses points at the edges and I don't understand why
         # for plotting a whole field
         # with zeros something like this would be needed, though..
-
         if threshold == 0
             for iy in 0:nbinsy-1
                 _nx = isodd(iy) ? fld(nbinsx, 2) : cld(nbinsx, 2)
