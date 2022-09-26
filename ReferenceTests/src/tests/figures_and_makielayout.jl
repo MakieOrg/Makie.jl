@@ -25,6 +25,29 @@ end
     fig
 end
 
+@reference_test "menus" begin
+    fig = Figure()
+    menu1 = Menu(fig, options = ["viridis", "heat", "blues"], default = 1)
+    menu2 = Menu(fig,
+        options = zip(["Square Root", "Square", "Sine", "Cosine"], funcs),
+        default = "Square")
+    menu3 = Menu(fig,
+        options = zip(["Square Root", "Square", "Sine", "Cosine"], funcs), default=nothing)
+    menu4 = Menu(fig,
+        options = zip(["Square Root", "Square", "Sine", "Cosine"], funcs), default=nothing)
+    fig[1, 1] = grid!(
+        [
+            Label(fig, "A", width = nothing) Label(fig, "C", width = nothing);
+            menu1                            menu3;
+            Label(fig, "B", width = nothing) Label(fig, "D", width = nothing);
+            menu2                            menu4;
+        ]
+    )
+    menu2.is_open = true
+    menu4.is_open = true
+    fig
+end
+
 @reference_test "Label with text wrapping" begin
     lorem_ipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
     fig = Figure(resolution = (1000, 660))
@@ -97,4 +120,4 @@ end
         Legend(f[1, 2], ax, patchcolor = :gray80, patchsize = (100, 100), bgcolor = :gray50);
         f
     end
-end 
+end

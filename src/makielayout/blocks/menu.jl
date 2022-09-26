@@ -133,6 +133,25 @@ function initialize_block!(m::Menu; default = 1)
     optionrects = Observable([Rect2f(0, 0, 0, 0)]; ignore_equal_values=true)
     optionpolycolors = Observable(RGBAf[RGBAf(0.5, 0.5, 0.5, 1)]; ignore_equal_values=true)
 
+    function update_option_colors!(hovered)
+        n = length(optionstrings[])
+        resize!(optionpolycolors.val, n)
+        map!(optionpolycolors.val, 1:n) do idx
+            if idx == m.i_selected[]
+                return m.cell_color_active[]
+            elseif idx == hovered
+                return m.cell_color_hover[]
+            else
+                if iseven(idx)
+                    to_color(m.cell_color_inactive_even[])
+                else
+                    to_color(m.cell_color_inactive_odd[])
+                end
+            end
+        end
+        notify(optionpolycolors)
+    end
+
     # the y boundaries of the list rectangles
     list_y_bounds = Ref(Float32[])
 
@@ -152,18 +171,13 @@ function initialize_block!(m::Menu; default = 1)
         listheight[] = h
         w_bbox = width(bbox)
         # need to manipulate the vectors themselves, otherwise update errors when lengths change
-        resize!(optionpolycolors.val, length(bbs))
         resize!(optionrects.val, length(bbs))
 
-        optionpolycolors.val .= map(eachindex(bbs)) do i
-            i == m.i_selected[] ? m.cell_color_active[] :
-            iseven(i) ? to_color(m.cell_color_inactive_even[]) :
-                to_color(m.cell_color_inactive_odd[])
-        end
         optionrects.val .= map(eachindex(bbs)) do i
             BBox(0, w_bbox, h - heights_cumsum[i+1], h - heights_cumsum[i])
         end
-        notify(optionpolycolors)
+
+        update_option_colors!(0)
         notify(optionrects)
     end
     notify(optionstrings)
@@ -224,13 +238,8 @@ function initialize_block!(m::Menu; default = 1)
                     m.is_open[] = false
                     return Consume(true)
                 else # HOVER
-                    i = pick_entry(mp[2])
-                    optionpolycolors[] = map(eachindex(optionstrings[])) do j
-                        j == m.i_selected[] ? m.cell_color_active[] :
-                        i == j ? m.cell_color_hover[] :
-                            iseven(i) ? to_color(m.cell_color_inactive_even[]) :
-                            to_color(m.cell_color_inactive_odd[])
-                    end
+                    idx_hovered = pick_entry(mp[2])
+                    update_option_colors!(idx_hovered)
                 end
             else
                 # If not inside anymore, invalidate was_pressed
@@ -267,11 +276,7 @@ function initialize_block!(m::Menu; default = 1)
         # clean up hovers if we're outside
         if !is_over_options && was_inside_options # going from being inside to outside
             was_inside_options = false
-            optionpolycolors[] = map(eachindex(optionstrings[])) do i
-                i == m.i_selected[] ? m.cell_color_active[] :
-                iseven(i) ? to_color(m.cell_color_inactive_even[]) :
-                    to_color(m.cell_color_inactive_odd[])
-            end
+            update_option_colors!(0)
         end
         if !is_over_button && was_inside_button
             was_inside_button = false
