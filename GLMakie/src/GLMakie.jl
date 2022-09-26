@@ -37,12 +37,8 @@ for name in names(Makie, all=true)
     end
 end
 
-export inline!
 import ShaderAbstractions: Sampler, Buffer
 export Sampler, Buffer
-
-struct GLBackend <: Makie.AbstractBackend
-end
 
 const GL_ASSET_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
 const SHADER_DIR = RelocatableFolders.@path joinpath(GL_ASSET_DIR, "shader")
@@ -51,12 +47,9 @@ loadshader(name) = joinpath(SHADER_DIR, name)
 # don't put this into try catch, to not mess with normal errors
 include("gl_backend.jl")
 
-function activate!(use_display=true)
-    b = GLBackend()
-    Makie.register_backend!(b)
+function activate!()
+    Makie.register_backend!(GLMakie)
     Makie.set_glyph_resolution!(Makie.High)
-    Makie.current_backend[] = b
-    Makie.inline!(!use_display)
 end
 
 function __init__()

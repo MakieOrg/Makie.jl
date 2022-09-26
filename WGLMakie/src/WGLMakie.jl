@@ -45,9 +45,10 @@ include("meshes.jl")
 include("imagelike.jl")
 include("display.jl")
 
-const CONFIG = (
-    fps = Ref(30),
-)
+
+const SCREEN_CONFIG = Ref((
+    fps = 30,
+))
 
 """
     activate!(; fps=30)
@@ -55,10 +56,8 @@ const CONFIG = (
 Set fps (frames per second) to a higher number for smoother animations, or to a lower to use less resources.
 """
 function activate!(; fps=30)
-    CONFIG.fps[] = fps
-    b = WGLBackend()
-    Makie.register_backend!(b)
-    Makie.current_backend[] = b
+    SCREEN_CONFIG[] = merge(SCREEN_CONFIG[], (fps=fps,))
+    Makie.register_backend!(WGLMakie)
     Makie.set_glyph_resolution!(Makie.Low)
     return
 end
@@ -68,8 +67,6 @@ const TEXTURE_ATLAS_CHANGED = Ref(false)
 function __init__()
     # Activate WGLMakie as backend!
     activate!()
-    browser_display = JSServe.BrowserDisplay() in Base.Multimedia.displays
-    Makie.inline!(!browser_display)
     # We need to update the texture atlas whenever it changes!
     # We do this in three_plot!
     Makie.font_render_callback!() do sd, uv
@@ -84,7 +81,6 @@ for name in names(Makie, all=true)
         @eval export $(name)
     end
 end
-export inline!
 
 include("precompiles.jl")
 

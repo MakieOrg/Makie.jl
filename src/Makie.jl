@@ -167,6 +167,7 @@ include("interaction/inspector.jl")
 # documentation and help functions
 include("documentation/documentation.jl")
 include("display.jl")
+include("event-recorder.jl")
 
 # bezier paths
 export BezierPath, MoveTo, LineTo, CurveTo, EllipticalArc, ClosePath

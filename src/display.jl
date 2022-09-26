@@ -1,27 +1,23 @@
-abstract type AbstractBackend end
-function backend_display end
-
 @enum ImageStorageFormat JuliaNative GLNative
+
+update_state_before_display!(_) = nothing
+
+function backend_display end
+function backend_show end
+
 
 """
 Current backend
 """
-const current_backend = Ref{Union{Missing,AbstractBackend}}(missing)
-const use_display = Ref{Bool}(true)
+const current_backend = Ref{Union{Missing, Module}}(missing)
 
-function inline!(inline = true)
-    use_display[] = !inline
-    return
-end
-
-function register_backend!(backend::AbstractBackend)
+function register_backend!(backend::Module)
     current_backend[] = backend
     return
 end
 
 function push_screen!(scene::Scene, display)
-    # Ok lets leave a warning here until we fix CairoMakie!
-    @debug("Backend doesn't return screen from show methods. This needs fixing!")
+    error("$(display) not a valid Makie display.")
 end
 
 function push_screen!(scene::Scene, display::AbstractDisplay)
@@ -46,12 +42,26 @@ function delete_screen!(scene::Scene, display::AbstractDisplay)
     return
 end
 
-function backend_display(s::FigureLike; kw...)
-    update_state_before_display!(s)
-    backend_display(current_backend[], get_scene(s); kw...)
+function set_screen_config!(config::RefValue, new_values)
+    config_attributes = propertynames(config)
+    for (k, v) in pairs(new_values)
+        if !(k in config_attributes)
+            error("$k is not a valid screen config. Applicable options: $(config_attributes)")
+        end
+    end
+    config[] = merge(config[], new_values)
 end
 
-function backend_display(::Missing, ::Scene; kw...)
+function backend_display(figlike::FigureLike; screen_kw...)
+    update_state_before_display!(figlike)
+    Backend = current_backend[]
+    scene = get_scene(figlike)
+    screen = Backend.Screen(scene; screen_kw...)
+    backend_display(screen, scene)
+    return screen
+end
+
+function backend_display(::Missing, ::Scene; screen_kw...)
     error("""
     No backend available!
     Make sure to also `import/using` a backend (GLMakie, CairoMakie, WGLMakie).
@@ -61,7 +71,6 @@ function backend_display(::Missing, ::Scene; kw...)
     """)
 end
 
-update_state_before_display!(_) = nothing
 
 
 """
@@ -77,35 +86,28 @@ pt_per_unit=x.pt_per_unit
 px_per_unit=x.px_per_unit
 antialias=x.antialias
 """
-function Base.display(fig::FigureLike; display_attributes...)
-    scene = get_scene(fig)
-    if !use_display[]
-        update_state_before_display!(fig)
-        return Core.invoke(display, Tuple{Any}, scene)
-    else
-        screen = backend_display(fig; display_attributes...)
-        push_screen!(scene, screen)
-        return screen
-    end
+function Base.display(fig::FigureLike; screen_kw...)
+    return backend_display(fig; screen_kw...)
 end
 
 function Base.showable(mime::MIME{M}, scene::Scene) where M
-    backend_showable(current_backend[], mime, scene)
+    backend_showable(current_backend[].Screen, mime, scene)
 end
+
 # ambig
 function Base.showable(mime::MIME"application/json", scene::Scene)
-    backend_showable(current_backend[], mime, scene)
+    backend_showable(current_backend[].Screen, mime, scene)
 end
 function Base.showable(mime::MIME{M}, fig::FigureLike) where M
-    backend_showable(current_backend[], mime, get_scene(fig))
+    backend_showable(current_backend[].Screen, mime, get_scene(fig))
 end
 # ambig
 function Base.showable(mime::MIME"application/json", fig::FigureLike)
-    backend_showable(current_backend[], mime, get_scene(fig))
+    backend_showable(current_backend[].Screen, mime, get_scene(fig))
 end
 
-function backend_showable(::Backend, ::Mime, ::Scene) where {Backend, Mime <: MIME}
-    hasmethod(backend_show, Tuple{Backend, IO, Mime, Scene})
+function backend_showable(::Type{Screen}, ::Mime, ::Scene) where {Screen, Mime <: MIME}
+    hasmethod(backend_show, Tuple{Screen, IO, Mime, Scene})
 end
 
 # fallback show when no backend is selected
@@ -121,14 +123,15 @@ function backend_show(backend, io::IO, ::MIME"text/plain", scene::Scene)
     return
 end
 
-function Base.show(io::IO, ::MIME"text/plain", scene::Scene; kw...)
-    show(io, scene; kw...)
+function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
+    show(io, scene)
 end
 
 function Base.show(io::IO, m::MIME, figlike::FigureLike)
     ioc = IOContext(io, :full_fidelity => true)
     update_state_before_display!(figlike)
-    backend_show(current_backend[], ioc, m, get_scene(figlike))
+    scene = get_scene(figlike)
+    backend_show(current_backend[].Screen(scene), ioc, m, scene)
     return
 end
 
@@ -192,19 +195,18 @@ function FileIO.save(dir::String, s::RamStepper)
     end
 end
 
-format2mime(::Type{FileIO.format"PNG"})  = MIME("image/png")
-format2mime(::Type{FileIO.format"SVG"})  = MIME("image/svg+xml")
+format2mime(::Type{FileIO.format"PNG"}) = MIME("image/png")
+format2mime(::Type{FileIO.format"SVG"}) = MIME("image/svg+xml")
 format2mime(::Type{FileIO.format"JPEG"}) = MIME("image/jpeg")
 format2mime(::Type{FileIO.format"TIFF"}) = MIME("image/tiff")
 format2mime(::Type{FileIO.format"BMP"}) = MIME("image/bmp")
-format2mime(::Type{FileIO.format"PDF"})  = MIME("application/pdf")
-format2mime(::Type{FileIO.format"TEX"})  = MIME("application/x-tex")
-format2mime(::Type{FileIO.format"EPS"})  = MIME("application/postscript")
+format2mime(::Type{FileIO.format"PDF"}) = MIME("application/pdf")
+format2mime(::Type{FileIO.format"TEX"}) = MIME("application/x-tex")
+format2mime(::Type{FileIO.format"EPS"}) = MIME("application/postscript")
 format2mime(::Type{FileIO.format"HTML"}) = MIME("text/html")
 
 filetype(::FileIO.File{F}) where F = F
 # Allow format to be overridden with first argument
-
 
 """
     FileIO.save(filename, scene; resolution = size(scene), pt_per_unit = 0.75, px_per_unit = 1.0)
@@ -240,7 +242,9 @@ function FileIO.save(
         pt_per_unit = 0.75,
         px_per_unit = 1.0,
     )
+
     scene = get_scene(fig)
+
     if resolution != size(scene)
         resize!(scene, resolution)
     end
@@ -267,67 +271,6 @@ end
 
 raw_io(io::IO) = io
 raw_io(io::IOContext) = raw_io(io.io)
-
-"""
-    record_events(f, scene::Scene, path::String)
-
-Records all window events that happen while executing function `f`
-for `scene` and serializes them to `path`.
-"""
-function record_events(f, scene::Scene, path::String)
-    display(scene)
-    result = Vector{Pair{Float64, Pair{Symbol, Any}}}()
-    for field in fieldnames(Events)
-        # These are not Observables
-        (field == :mousebuttonstate || field == :keyboardstate) && continue
-        on(getfield(scene.events, field), priority = typemax(Int)) do value
-            value = isa(value, Set) ? copy(value) : value
-            push!(result, time() => (field => value))
-            return Consume(false)
-        end
-    end
-    f()
-    open(path, "w") do io
-        serialize(io, result)
-    end
-end
-
-
-"""
-    replay_events(f, scene::Scene, path::String)
-    replay_events(scene::Scene, path::String)
-
-Replays the serialized events recorded with `record_events` in `path` in `scene`.
-"""
-replay_events(scene::Scene, path::String) = replay_events(()-> nothing, scene, path)
-function replay_events(f, scene::Scene, path::String)
-    events = open(io-> deserialize(io), path)
-    sort!(events, by = first)
-    for i in 1:length(events)
-        t1, (field, value) = events[i]
-        (field == :mousebuttonstate || field == :keyboardstate) && continue
-        Base.invokelatest() do
-            getfield(scene.events, field)[] = value
-        end
-        f()
-        if i < length(events)
-            t2, (field, value) = events[i + 1]
-            # min sleep time 0.001
-            if (t2 - t1 > 0.001)
-                sleep(t2 - t1)
-            else
-                yield()
-            end
-        end
-    end
-end
-
-struct RecordEvents
-    scene::Scene
-    path::String
-end
-
-Base.display(re::RecordEvents) = display(re.scene)
 
 struct VideoStream
     io
@@ -357,70 +300,6 @@ function VideoStream(fig::FigureLike; framerate::Integer=24, visible=false, conn
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
     process = @ffmpeg_env open(`$(FFMPEG.ffmpeg) -framerate $(framerate) -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
     return VideoStream(process.in, process, screen, abspath(path))
-end
-
-# This has to be overloaded by the backend for its screen type.
-function colorbuffer(x::AbstractScreen)
-    error("colorbuffer not implemented for screen $(typeof(x))")
-end
-
-function jl_to_gl_format(image)
-    @static if VERSION < v"1.6"
-        d1, d2 = size(image)
-        bufc = Array{eltype(image)}(undef, d2, d1) #permuted
-        ind1, ind2 = axes(image)
-        n = first(ind1) + last(ind1)
-        for i in ind1
-            @simd for j in ind2
-                @inbounds bufc[j, n-i] = image[i, j]
-            end
-        end
-        return bufc
-    else
-        reverse!(image; dims=1)
-        return collect(PermutedDimsArray(image, (2, 1)))
-    end
-end
-
-# less specific for overloading by backends
-function colorbuffer(screen::Any, format::ImageStorageFormat = JuliaNative)
-    image = colorbuffer(screen)
-    if format == GLNative
-        if string(typeof(screen)) == "GLMakie.Screen"
-            @warn "Inefficient re-conversion back to GLNative buffer format. Update GLMakie to support direct buffer access" maxlog=1
-        end
-        return jl_to_gl_format(image)
-    elseif format == JuliaNative
-        return image
-    end
-end
-
-"""
-    colorbuffer(scene, format::ImageStorageFormat = JuliaNative)
-    colorbuffer(screen, format::ImageStorageFormat = JuliaNative)
-
-Returns the content of the given scene or screen rasterised to a Matrix of
-Colors. The return type is backend-dependent, but will be some form of RGB
-or RGBA.
-
-- `format = JuliaNative` : Returns a buffer in the format of standard julia images (dims permuted and one reversed)
-- `format = GLNative` : Returns a more efficient format buffer for GLMakie which can be directly
-                        used in FFMPEG without conversion
-"""
-function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative)
-    scene = get_scene(fig)
-    screen = getscreen(scene)
-    if isnothing(screen)
-        if ismissing(current_backend[])
-            error("""
-                You have not loaded a backend.  Please load one (`using GLMakie` or `using CairoMakie`)
-                before trying to render a Scene.
-                """)
-        else
-            return colorbuffer(backend_display(fig; visible=false, start_renderloop=false, connect=false), format)
-        end
-    end
-    return colorbuffer(screen, format)
 end
 
 """
@@ -625,4 +504,70 @@ function Base.show(io::IO, ::MIME"text/html", vs::VideoStream)
             """" type="video/mp4"></video>"""
         )
     end
+end
+
+
+
+# This has to be overloaded by the backend for its screen type.
+function colorbuffer(x::AbstractScreen)
+    error("colorbuffer not implemented for screen $(typeof(x))")
+end
+
+function jl_to_gl_format(image)
+    @static if VERSION < v"1.6"
+        d1, d2 = size(image)
+        bufc = Array{eltype(image)}(undef, d2, d1) #permuted
+        ind1, ind2 = axes(image)
+        n = first(ind1) + last(ind1)
+        for i in ind1
+            @simd for j in ind2
+                @inbounds bufc[j, n-i] = image[i, j]
+            end
+        end
+        return bufc
+    else
+        reverse!(image; dims=1)
+        return collect(PermutedDimsArray(image, (2, 1)))
+    end
+end
+
+# less specific for overloading by backends
+function colorbuffer(screen::Any, format::ImageStorageFormat = JuliaNative)
+    image = colorbuffer(screen)
+    if format == GLNative
+        if string(typeof(screen)) == "GLMakie.Screen"
+            @warn "Inefficient re-conversion back to GLNative buffer format. Update GLMakie to support direct buffer access" maxlog=1
+        end
+        return jl_to_gl_format(image)
+    elseif format == JuliaNative
+        return image
+    end
+end
+
+"""
+    colorbuffer(scene, format::ImageStorageFormat = JuliaNative)
+    colorbuffer(screen, format::ImageStorageFormat = JuliaNative)
+
+Returns the content of the given scene or screen rasterised to a Matrix of
+Colors. The return type is backend-dependent, but will be some form of RGB
+or RGBA.
+
+- `format = JuliaNative` : Returns a buffer in the format of standard julia images (dims permuted and one reversed)
+- `format = GLNative` : Returns a more efficient format buffer for GLMakie which can be directly
+                        used in FFMPEG without conversion
+"""
+function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative)
+    scene = get_scene(fig)
+    screen = getscreen(scene)
+    if isnothing(screen)
+        if ismissing(current_backend[])
+            error("""
+                You have not loaded a backend.  Please load one (`using GLMakie` or `using CairoMakie`)
+                before trying to render a Scene.
+                """)
+        else
+            return colorbuffer(backend_display(fig; visible=false, start_renderloop=false, connect=false), format)
+        end
+    end
+    return colorbuffer(screen, format)
 end
