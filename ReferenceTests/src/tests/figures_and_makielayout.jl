@@ -27,14 +27,14 @@ end
 
 @reference_test "menus" begin
     fig = Figure()
+    funcs = [sqrt, x->x^2, sin, cos]
+    options = zip(["Square Root", "Square", "Sine", "Cosine"], funcs)
+
     menu1 = Menu(fig, options = ["viridis", "heat", "blues"], default = 1)
-    menu2 = Menu(fig,
-        options = zip(["Square Root", "Square", "Sine", "Cosine"], funcs),
-        default = "Square")
-    menu3 = Menu(fig,
-        options = zip(["Square Root", "Square", "Sine", "Cosine"], funcs), default=nothing)
-    menu4 = Menu(fig,
-        options = zip(["Square Root", "Square", "Sine", "Cosine"], funcs), default=nothing)
+    menu2 = Menu(fig, options = options, default = "Square")
+    menu3 = Menu(fig, options = options, default = nothing)
+    menu4 = Menu(fig, options = options, default = nothing)
+
     fig[1, 1] = grid!(
         [
             Label(fig, "A", width = nothing) Label(fig, "C", width = nothing);
