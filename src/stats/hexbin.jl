@@ -16,8 +16,6 @@ Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
 
 - `colormap::Union{Symbol, Vector{<:Colorant}} = :viridis`
 - `colorrange::Tuple(<:Real,<:Real} = Makie.automatic`  sets the values representing the start and end points of `colormap`.
-- `highclip = nothing`: Color above the upper color range limit.
-- `lowclip = nothing`: Color below the upper color range limit.
 """
 @recipe(Hexbin) do scene
     return Attributes(;
@@ -27,8 +25,6 @@ Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
                       cellsize=nothing,
                       threshold=1,
                       scale=identity,
-                      highclip=nothing,
-                      lowclip=nothing,
                       strokewidth=0,
                       strokecolor=:black)
 end
@@ -191,8 +187,6 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
                     marker=hexmarker,
                     markersize=markersize,
                     markerspace=:data,
-                    highclip=hb.highclip,
-                    lowclip=hb.lowclip,
                     strokewidth=hb.strokewidth,
                     strokecolor=hb.strokecolor)
 end
