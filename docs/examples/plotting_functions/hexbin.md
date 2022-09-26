@@ -169,7 +169,10 @@ f
 ```
 \end{examplefigure}
 
-### Airports example
+### Showing zero count hexagons
+
+By setting `threshold = 0`, all hexagons that fit into the limits of the input data are shown.
+In this example, we add a transparent color to the start of the colormap and stroke each hexagon so the empty hexagons are visible but not too distracting.
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -183,13 +186,17 @@ Makie.inline!(true) # hide
 a = map(Point2f, eachrow(readdlm(assetpath("airportlocations.csv"))))
 
 f, ax, hb = hexbin(a,
-    cellsize = 4,
+    cellsize = 6,
     axis = (; aspect = DataAspect()),
-    scale = log10)
+    threshold = 0,
+    colormap = [Makie.to_color(:transparent); Makie.to_colormap(:viridis)],
+    strokewidth = 0.5,
+    strokecolor = :gray50,
+    scale = Makie.pseudolog10)
 
 Colorbar(f[1, 2], hb,
     label = "Number of airports",
-    tickformat = xs -> string.(Int.(10 .^ xs)),
+    ticks = (0:3, ["0", "10", "100", "1000"]),
     height = Relative(0.5)
 )
 f
