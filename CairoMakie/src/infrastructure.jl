@@ -6,9 +6,6 @@
 #                                    Types                                     #
 ################################################################################
 
-function get_type(surface::Cairo.CairoSurface)
-    return ccall((:cairo_surface_get_type, Cairo.libcairo), Cint, (Ptr{Nothing},), surface.ptr)
-end
 
 is_vector_backend(ctx::Cairo.CairoContext) = is_vector_backend(ctx.surface)
 
@@ -17,15 +14,6 @@ function is_vector_backend(surf::Cairo.CairoSurface)
     return typ in (Cairo.CAIRO_SURFACE_TYPE_PDF, Cairo.CAIRO_SURFACE_TYPE_PS, Cairo.CAIRO_SURFACE_TYPE_SVG)
 end
 
-
-"Convert a rendering type to a MIME type"
-function to_mime(x::RenderType)
-    x == SVG && return MIME("image/svg+xml")
-    x == PDF && return MIME("application/pdf")
-    x == EPS && return MIME("application/postscript")
-    return MIME("image/png")
-end
-to_mime(x::CairoBackend) = to_mime(x.typ)
 
 ################################################################################
 #                              Rendering pipeline                              #

@@ -142,7 +142,7 @@ end
 
 struct RPRBackend <: Makie.AbstractBackend end
 
-mutable struct RPRScreen <: Makie.AbstractScreen
+mutable struct RPRScreen <: Makie.MakieScreen
     context::RPR.Context
     matsys::RPR.MaterialSystem
     framebuffer1::RPR.FrameBuffer

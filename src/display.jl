@@ -1,17 +1,34 @@
 @enum ImageStorageFormat JuliaNative GLNative
 
+"""
+    MakieScreen(scene::Scene; screen_attributes...)
+    MakieScreen(scene::Scene, io::IO; screen_attributes...)
+
+Interface:
+```julia
+# Needs to be overload:
+size(screen) # Size in pixel
+
+# Optional
+wait(screen) # waits as long window is open
+
+# Provided by Makie:
+push_screen!(scene, screen)
+```
+"""
+abstract type MakieScreen <: AbstractDisplay end
+
 update_state_before_display!(_) = nothing
 
 function backend_display end
 function backend_show end
-
 
 """
 Current backend
 """
 const current_backend = Ref{Union{Missing, Module}}(missing)
 
-function register_backend!(backend::Module)
+function set_active_backend!(backend::Module)
     current_backend[] = backend
     return
 end
@@ -72,7 +89,6 @@ function backend_display(::Missing, ::Scene; screen_kw...)
 end
 
 
-
 """
 
 
@@ -128,10 +144,9 @@ function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
 end
 
 function Base.show(io::IO, m::MIME, figlike::FigureLike)
-    ioc = IOContext(io, :full_fidelity => true)
     update_state_before_display!(figlike)
     scene = get_scene(figlike)
-    backend_show(current_backend[].Screen(scene), ioc, m, scene)
+    backend_show(current_backend[].Screen(scene, io), m, scene)
     return
 end
 
@@ -280,7 +295,7 @@ struct VideoStream
 end
 
 """
-    VideoStream(scene::Scene; framerate = 24, visible=false, connect=false, backend_kw...)
+    VideoStream(scene::Scene; framerate = 24, visible=false, connect=false, screen_kw...)
 
 Returns a stream and a buffer that you can use, which don't allocate for new frames.
 Use [`recordframe!(stream)`](@ref) to add new video frames to the stream, and
@@ -289,7 +304,7 @@ Use [`recordframe!(stream)`](@ref) to add new video frames to the stream, and
 * visible=false: make window visible or not
 * connect=false: connect window events or not
 """
-function VideoStream(fig::FigureLike; framerate::Integer=24, visible=false, connect=false, backend_kw...)
+function VideoStream(fig::FigureLike; framerate::Integer=24, visible=false, connect=false, screen_kw...)
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
     dir = mktempdir()
     path = joinpath(dir, "$(gensym(:video)).mkv")
@@ -509,7 +524,7 @@ end
 
 
 # This has to be overloaded by the backend for its screen type.
-function colorbuffer(x::AbstractScreen)
+function colorbuffer(x::MakieScreen)
     error("colorbuffer not implemented for screen $(typeof(x))")
 end
 

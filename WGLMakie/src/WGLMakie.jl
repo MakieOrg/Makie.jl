@@ -57,7 +57,7 @@ Set fps (frames per second) to a higher number for smoother animations, or to a 
 """
 function activate!(; fps=30)
     SCREEN_CONFIG[] = merge(SCREEN_CONFIG[], (fps=fps,))
-    Makie.register_backend!(WGLMakie)
+    Makie.set_active_backend!(WGLMakie)
     Makie.set_glyph_resolution!(Makie.Low)
     return
 end

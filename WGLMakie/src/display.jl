@@ -68,11 +68,11 @@ function Makie.backend_showable(::WGLBackend, ::T, scene::Scene) where {T<:MIME}
     return T in WEB_MIMES
 end
 
-struct WebDisplay <: Makie.AbstractScreen
+struct WebDisplay <: Makie.MakieScreen
     three::Base.RefValue{ThreeDisplay}
     display::Any
 end
-            
+
 GeometryBasics.widths(screen::WebDisplay) = GeometryBasics.widths(screen.three[])
 
 function Makie.backend_display(::WGLBackend, scene::Scene; kw...)

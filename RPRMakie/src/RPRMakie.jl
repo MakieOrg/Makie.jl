@@ -37,7 +37,7 @@ function activate!(; iterations=200, resource=RENDER_RESOURCE[], plugin=RENDER_P
     NUM_ITERATIONS[] = iterations
     RENDER_RESOURCE[] = resource
     RENDER_PLUGIN[] = plugin
-    Makie.register_backend!(RPRMakie)
+    Makie.set_active_backend!(RPRMakie)
     return
 end
 

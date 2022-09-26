@@ -65,7 +65,7 @@ using Base.Iterators: repeated, drop
 import Base: getindex, setindex!, push!, append!, parent, get, get!, delete!, haskey
 using Observables: listeners, to_value, notify
 
-using MakieCore: SceneLike, AbstractScreen, ScenePlot, AbstractScene, AbstractPlot, Transformable, Attributes, Combined, Theme, Plot
+using MakieCore: SceneLike, MakieScreen, ScenePlot, AbstractScene, AbstractPlot, Transformable, Attributes, Combined, Theme, Plot
 using MakieCore: Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter, Surface, Text, Volume
 using MakieCore: ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
 using MakieCore: Key, @key_str, Automatic, automatic, @recipe
@@ -176,7 +176,7 @@ export BezierPath, MoveTo, LineTo, CurveTo, EllipticalArc, ClosePath
 export help, help_attributes, help_arguments
 
 # Abstract/Concrete scene + plot types
-export AbstractScene, SceneLike, Scene, AbstractScreen
+export AbstractScene, SceneLike, Scene, MakieScreen
 export AbstractPlot, Combined, Atomic, OldAxis
 
 # Theming, working with Plots

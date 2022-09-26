@@ -3,10 +3,10 @@ const ZIndex = Int
 # ID, Area, clear, is visible, background color
 const ScreenArea = Tuple{ScreenID, Scene}
 
-abstract type GLScreen <: AbstractScreen end
+abstract type GLScreen <: MakieScreen end
 
-mutable struct Screen <: GLScreen
-    glscreen::GLFW.Window
+mutable struct Screen{GLWindow} <: GLScreen
+    glscreen::GLWindow
     shader_cache::GLAbstraction.ShaderCache
     framebuffer::GLFramebuffer
     rendertask::RefValue{Task}
@@ -21,7 +21,7 @@ mutable struct Screen <: GLScreen
     window_open::Observable{Bool}
 
     function Screen(
-            glscreen::GLFW.Window,
+            glscreen::GLWindow,
             shader_cache::GLAbstraction.ShaderCache,
             framebuffer::GLFramebuffer,
             rendertask::RefValue{Task},
@@ -31,7 +31,7 @@ mutable struct Screen <: GLScreen
             postprocessors::Vector{PostProcessor},
             cache::Dict{UInt64, RenderObject},
             cache2plot::Dict{UInt32, AbstractPlot},
-        )
+        ) where {GLWindow}
         s = size(framebuffer)
         return new(
             glscreen, shader_cache, framebuffer, rendertask, screen2scene,
@@ -42,16 +42,19 @@ mutable struct Screen <: GLScreen
     end
 end
 
-GeometryBasics.widths(x::Screen) = size(x.framebuffer)
 pollevents(::GLScreen) = nothing
 function pollevents(screen::Screen)
     ShaderAbstractions.switch_context!(screen.glscreen)
     notify(screen.render_tick)
     GLFW.PollEvents()
 end
+
 Base.wait(x::Screen) = isassigned(x.rendertask) && wait(x.rendertask[])
 Base.wait(scene::Scene) = wait(Makie.getscreen(scene))
+
 Base.show(io::IO, screen::Screen) = print(io, "GLMakie.Screen(...)")
+
+Base.isopen(x::Screen) = isopen(x.glscreen)
 Base.size(x::Screen) = size(x.framebuffer)
 
 function Makie.insertplots!(screen::GLScreen, scene::Scene)
@@ -104,7 +107,6 @@ function Base.delete!(screen::Screen, scene::Scene)
             end
         end
     end
-
     return
 end
 
@@ -276,7 +278,6 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
 end
 
 
-Base.isopen(x::Screen) = isopen(x.glscreen)
 function Base.push!(screen::GLScreen, scene::Scene, robj)
     # filter out gc'ed elements
     filter!(screen.screen2scene) do (k, v)
@@ -352,9 +353,10 @@ function display_loading_image(screen::Screen)
     end
 end
 
-
 function Screen(;
-        resolution = (10, 10), visible = true, title = WINDOW_CONFIG.title[],
+        resolution = (10, 10),
+        visible = true,
+        title = WINDOW_CONFIG.title[],
         start_renderloop = true,
         kw_args...
     )
@@ -440,16 +442,6 @@ function Screen(;
     end
     return screen
 end
-
-function Screen(f, resolution)
-    screen = Screen(resolution = resolution, visible = false, start_renderloop=false)
-    try
-        return f(screen)
-    finally
-        destroy!(screen)
-    end
-end
-
 
 function refreshwindowcb(window, screen)
     ShaderAbstractions.switch_context!(screen.glscreen)

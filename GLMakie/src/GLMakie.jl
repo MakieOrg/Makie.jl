@@ -48,7 +48,7 @@ loadshader(name) = joinpath(SHADER_DIR, name)
 include("gl_backend.jl")
 
 function activate!()
-    Makie.register_backend!(GLMakie)
+    Makie.set_active_backend!(GLMakie)
     Makie.set_glyph_resolution!(Makie.High)
 end
 

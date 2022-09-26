@@ -22,11 +22,12 @@ for name in names(Makie, all=true)
         @eval export $(name)
     end
 end
-export inline!
 
+include("cairo-extension.jl")
+include("screen.jl")
+include("display.jl")
 include("infrastructure.jl")
 include("utils.jl")
-include("fonts.jl")
 include("primitives.jl")
 include("overrides.jl")
 
@@ -42,6 +43,5 @@ function display_path(type::String)
 end
 
 include("precompiles.jl")
-
 
 end
