@@ -194,6 +194,8 @@ f, ax, hb = hexbin(a,
     strokecolor = :gray50,
     scale = Makie.pseudolog10)
 
+tightlimits!(ax)
+
 Colorbar(f[1, 2], hb,
     label = "Number of airports",
     ticks = (0:3, ["0", "10", "100", "1000"]),
