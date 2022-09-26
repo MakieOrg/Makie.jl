@@ -154,6 +154,7 @@ function initialize_block!(m::Menu; default = 1)
         # need to manipulate the vectors themselves, otherwise update errors when lengths change
         resize!(optionpolycolors.val, length(bbs))
         resize!(optionrects.val, length(bbs))
+
         optionpolycolors.val .= map(eachindex(bbs)) do i
             i == m.i_selected[] ? m.cell_color_active[] :
             iseven(i) ? to_color(m.cell_color_inactive_even[]) :
@@ -162,7 +163,7 @@ function initialize_block!(m::Menu; default = 1)
         optionrects.val .= map(eachindex(bbs)) do i
             BBox(0, w_bbox, h - heights_cumsum[i+1], h - heights_cumsum[i])
         end
-
+        notify(optionpolycolors)
         notify(optionrects)
     end
     notify(optionstrings)
@@ -181,20 +182,42 @@ function initialize_block!(m::Menu; default = 1)
 
     was_inside_options = false
     was_inside_button = false
+    was_pressed_options = Ref(false)
+    was_pressed_button = Ref(false)
     e = menuscene.events
-    onany(e.mouseposition, e.mousebutton, priority=typemax(Int)) do position, butt
+
+    function mouse_up(butt, was_pressed)
+        if butt.button == Mouse.left
+            if butt.action == Mouse.press
+                was_pressed[] = true
+                return false
+            elseif butt.action == Mouse.release && was_pressed[]
+                was_pressed[] = false
+                return true
+            end
+        end
+        was_pressed[] = false
+        return false
+    end
+
+    onany(e.mouseposition, e.mousebutton, priority=64) do position, butt
         mp = screen_relative(menuscene, position)
+        is_over_options = false
+        is_over_button = false
+
         if Makie.is_mouseinside(menuscene)
+            # Is inside the expanded menu selection
             is_over = mouseover(menuscene, optionpolys, optiontexts)
-            pressed = ispressed(menuscene, Mouse.left)
             if is_over
+                is_over_options = true
                 was_inside_options = true
-                if pressed
+                ipr = mouse_up(butt, was_pressed_options)
+                if ipr# Clicked on entry
                     i = pick_entry(mp[2])
                     m.i_selected[] = i
                     m.is_open[] = false
                     return Consume(true)
-                else
+                elseif butt.action == Mouse.release # Hover entry
                     i = pick_entry(mp[2])
                     optionpolycolors[] = map(eachindex(optionstrings[])) do j
                         j == m.i_selected[] ? m.cell_color_active[] :
@@ -203,20 +226,15 @@ function initialize_block!(m::Menu; default = 1)
                             to_color(m.cell_color_inactive_odd[])
                     end
                 end
-            elseif was_inside_options
-                was_inside_options = false
-                optionpolycolors[] = map(eachindex(optionstrings[])) do i
-                    i == m.i_selected[] ? m.cell_color_active[] :
-                    iseven(i) ? to_color(m.cell_color_inactive_even[]) :
-                        to_color(m.cell_color_inactive_odd[])
-                end
+            else
+                was_pressed_options[] = false
             end
         elseif Makie.is_mouseinside(blockscene)
             is_over = mouseover(blockscene, selectiontext, selectionpoly)
-            pressed = ispressed(blockscene, Mouse.left)
             if is_over
+                is_over_button = true
                 was_inside_button = true
-                if pressed
+                if mouse_up(butt, was_pressed_button)
                     m.is_open[] = !m.is_open[]
                     if m.is_open[]
                         t = translation(menuscene)[]
@@ -224,13 +242,31 @@ function initialize_block!(m::Menu; default = 1)
                         translate!(menuscene, t[1], y_for_top_align, t[3])
                     end
                     return Consume(true)
-                else
+                elseif butt.action == Mouse.release # hovering
                     selectionpoly.color = m.cell_color_hover[]
                 end
-            elseif was_inside_button
-                was_inside_button = false
-                selectionpoly.color = m.selection_cell_color_inactive[]
+            else
+                was_pressed_button[] = false
             end
+        end
+        if butt.action == Mouse.release
+            was_pressed_options[] = false
+            was_pressed_button[] = false
+        end
+        if !is_over_options && was_inside_options # going from being inside to outside
+            was_inside_options = false
+            optionpolycolors[] = map(eachindex(optionstrings[])) do i
+                i == m.i_selected[] ? m.cell_color_active[] :
+                iseven(i) ? to_color(m.cell_color_inactive_even[]) :
+                    to_color(m.cell_color_inactive_odd[])
+            end
+        end
+        if !is_over_button && was_inside_button
+            was_inside_button = false
+            selectionpoly.color = m.selection_cell_color_inactive[]
+        end
+        if !is_over_button && !is_over_options && butt.button == Mouse.left && butt.action == Mouse.press
+            m.is_open[] = false
         end
         return Consume(false)
     end
@@ -298,8 +334,8 @@ function initialize_block!(m::Menu; default = 1)
         end
     end
 
-    m.i_selected[] = if default === nothing
-        0
+    if default === nothing
+        m.i_selected[] = 0
     elseif default isa Integer
         Base.checkbounds(optionstrings[], default)
         m.i_selected[] = default
@@ -308,9 +344,9 @@ function initialize_block!(m::Menu; default = 1)
         if i === nothing
             error("Initial menu selection was set to $(default) but that was not found in the option names.")
         end
-        i
+        m.i_selected[] =  i
     end
-    m.is_open[] = m.is_open[]
+    notify(m.is_open)
 
     # trigger bbox
     notify(m.layoutobservables.suggestedbbox)
