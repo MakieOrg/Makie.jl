@@ -98,7 +98,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         y_diff = yma - ymi
 
         xspacing, yspacing, xoff, yoff, nbinsx, nbinsy = spacings_offsets_nbins(bins, cellsize, xmi, xma, ymi,
-                                                                                yma)
+                                                                                yma)                                                                     
 
         ysize = yspacing / 3 * 4
         ry = ysize / 2
@@ -106,7 +106,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         xsize = xspacing * 2
         rx = xsize / sqrt3
 
-        d = Dict{Tuple{Float64,Float64},Int}()
+        d = Dict{Tuple{Int,Int},Int}()
 
         # for the distance measurement, the y dimension must be weighted relative to the x
         # dimension according to the different sizes in each, otherwise the attribution to hexagonal
@@ -122,42 +122,47 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
 
             is_grid1 = d1 < d2
 
-            _xy = is_grid1 ? (nx, ny) : (nxs, nys)
+            # _xy = is_grid1 ? (nx, ny) : (nxs, nys)
+            
+            id = if is_grid1
+                (
+                    cld(dvx, 2),
+                    iseven(dvy) ? dvy : dvy+1
+                )
+            else
+                (
+                    fld(dvx, 2),
+                    iseven(dvy) ? dvy+1 : dvy,
+                )
+            end
 
-            d[_xy] = get(d, _xy, 0) + 1
+            d[id] = get(d, id, 0) + 1
         end
 
         # this iteration scheme misses points at the edges and I don't understand why
         # for plotting a whole field
         # with zeros something like this would be needed, though..
-        #
-        # for ix in 0:2:nbinsx
-        #     for iy in 0:2:nbinsy
-        #         _x = center_value(ix, xspacing, xoff, false)
-        #         _y = center_value(iy, yspacing, yoff, false)
-        #         c = get(d, (_x, _y), 0)
-        #         if c >= threshold
-        #             push!(points[], Point2f(_x, _y))
-        #             push!(count_hex[], c)
-        #         end
-        #     end
-        # end
-        # for ix in 1:2:nbinsx
-        #     for iy in 1:2:nbinsy
-        #         _x = center_value(ix, xspacing, xoff, true)
-        #         _y = center_value(iy, yspacing, yoff, true)
-        #         c = get(d, (_x, _y), 0)
-        #         if c >= threshold
-        #             push!(points[], Point2f(_x, _y))
-        #             push!(count_hex[], c)
-        #         end
-        #     end
-        # end
 
-        for (key, value) in d
-            if value >= threshold
-                push!(points[], key)
-                push!(count_hex[], scale(value))
+        if threshold == 0
+            for iy in 0:nbinsy-1
+                _nx = isodd(iy) ? fld(nbinsx, 2) : cld(nbinsx, 2)
+                for ix in 0:_nx-1
+                    _x = xoff + 2 * ix * xspacing + (isodd(iy) * xspacing)
+                    _y = yoff + iy * yspacing
+                    c = get(d, (ix, iy), 0)
+                    push!(points[], Point2f(_x, _y))
+                    push!(count_hex[], scale(c))
+                end
+            end
+        else
+            # we only need to iterate dict values if we don't plot zero cells
+            for ((ix, iy), value) in d
+                if value >= threshold
+                    _x = xoff + 2 * ix * xspacing + (isodd(iy) * xspacing)
+                    _y = yoff + iy * yspacing
+                    push!(points[], Point2f(_x, _y))
+                    push!(count_hex[], scale(value))
+                end
             end
         end
 
