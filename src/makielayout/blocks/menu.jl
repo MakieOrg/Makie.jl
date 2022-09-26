@@ -182,10 +182,16 @@ function initialize_block!(m::Menu; default = 1)
 
     was_inside_options = false
     was_inside_button = false
-    was_pressed_options = Ref(false)
-    was_pressed_button = Ref(false)
+
     e = menuscene.events
 
+    # Up events are notoriusly hard,
+    # especially if we want to react only to presses that went down inside an element & went up inside
+    # was pressed needs to be tracked per item, and also needs to be invalidated outside `mouse_up`
+    # which makes the state handling especially annoying
+    # TODO, move this back to mousestatemachine, which does exactly this
+    was_pressed_options = Ref(false)
+    was_pressed_button = Ref(false)
     function mouse_up(butt, was_pressed)
         if butt.button == Mouse.left
             if butt.action == Mouse.press
@@ -202,22 +208,22 @@ function initialize_block!(m::Menu; default = 1)
 
     onany(e.mouseposition, e.mousebutton, priority=64) do position, butt
         mp = screen_relative(menuscene, position)
+        # track if we have been inside menu/options to clean up if we haven't been
         is_over_options = false
         is_over_button = false
 
-        if Makie.is_mouseinside(menuscene)
+        if Makie.is_mouseinside(menuscene) # the whole scene containing all options
             # Is inside the expanded menu selection
-            is_over = mouseover(menuscene, optionpolys, optiontexts)
-            if is_over
+            if mouseover(menuscene, optionpolys, optiontexts)
                 is_over_options = true
                 was_inside_options = true
-                ipr = mouse_up(butt, was_pressed_options)
-                if ipr# Clicked on entry
+                # we either clicked on an item or hover it
+                if mouse_up(butt, was_pressed_options) # PRESSED
                     i = pick_entry(mp[2])
                     m.i_selected[] = i
                     m.is_open[] = false
                     return Consume(true)
-                elseif butt.action == Mouse.release # Hover entry
+                else # HOVER
                     i = pick_entry(mp[2])
                     optionpolycolors[] = map(eachindex(optionstrings[])) do j
                         j == m.i_selected[] ? m.cell_color_active[] :
@@ -227,14 +233,16 @@ function initialize_block!(m::Menu; default = 1)
                     end
                 end
             else
+                # If not inside anymore, invalidate was_pressed
                 was_pressed_options[] = false
             end
-        elseif Makie.is_mouseinside(blockscene)
-            is_over = mouseover(blockscene, selectiontext, selectionpoly)
-            if is_over
+        else
+            # If not inside menuscene, we check the state for the menu button
+            if mouseover(blockscene, selectiontext, selectionpoly)
+                # If over, we either click it to open/close the menu, or we just hover it
                 is_over_button = true
                 was_inside_button = true
-                if mouse_up(butt, was_pressed_button)
+                if mouse_up(butt, was_pressed_button) # PRESSED
                     m.is_open[] = !m.is_open[]
                     if m.is_open[]
                         t = translation(menuscene)[]
@@ -242,17 +250,21 @@ function initialize_block!(m::Menu; default = 1)
                         translate!(menuscene, t[1], y_for_top_align, t[3])
                     end
                     return Consume(true)
-                elseif butt.action == Mouse.release # hovering
+                else # HOVER
                     selectionpoly.color = m.cell_color_hover[]
                 end
             else
+                # If not inside anymore, invalidate was_pressed
                 was_pressed_button[] = false
             end
         end
+        # Make sure we clean up all was_pressed states, if mouse got released
         if butt.action == Mouse.release
             was_pressed_options[] = false
             was_pressed_button[] = false
         end
+
+        # clean up hovers if we're outside
         if !is_over_options && was_inside_options # going from being inside to outside
             was_inside_options = false
             optionpolycolors[] = map(eachindex(optionstrings[])) do i
@@ -265,6 +277,7 @@ function initialize_block!(m::Menu; default = 1)
             was_inside_button = false
             selectionpoly.color = m.selection_cell_color_inactive[]
         end
+        # if mouse got over anything else, we close the menu
         if !is_over_button && !is_over_options && butt.button == Mouse.left && butt.action == Mouse.press
             m.is_open[] = false
         end
@@ -304,7 +317,6 @@ function initialize_block!(m::Menu; default = 1)
         # trigger eventual selection actions
         m.i_selected[] = new_i
     end
-
     dropdown_arrow = scatter!(
         blockscene,
         @lift(mean(rightline($selectionarea)) - Point2f($(m.textpadding)[2], 0)),
