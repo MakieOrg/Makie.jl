@@ -181,12 +181,14 @@ steps through a `Makie.Stepper` and outputs a file with filename `filename-step.
 This is useful for generating progressive plot examples.
 """
 function step!(s::FolderStepper)
+    update_state_before_display!(s.figlike)
     FileIO.save(joinpath(s.folder, basename(s.folder) * "-$(s.step).$(s.format)"), colorbuffer(s.screen))
     s.step += 1
     return s
 end
 
 function step!(s::RamStepper)
+    update_state_before_display!(s.figlike)
     img = convert(Matrix{RGBf}, colorbuffer(s.screen))
     push!(s.images, img)
     return s

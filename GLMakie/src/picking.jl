@@ -6,7 +6,7 @@
 function pick_native(screen::Screen, rect::Rect2i)
     isopen(screen) || return Matrix{SelectionID{Int}}(undef, 0, 0)
     ShaderAbstractions.switch_context!(screen.glscreen)
-    window_size = widths(screen)
+    window_size = size(screen)
     fb = screen.framebuffer
     buff = fb.buffers[:objectid]
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
@@ -27,7 +27,7 @@ function pick_native(screen::Screen, xy::Vec{2, Float64})
     isopen(screen) || return SelectionID{Int}(0, 0)
     ShaderAbstractions.switch_context!(screen.glscreen)
     sid = Base.RefValue{SelectionID{UInt32}}()
-    window_size = widths(screen)
+    window_size = size(screen)
     fb = screen.framebuffer
     buff = fb.buffers[:objectid]
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
@@ -65,7 +65,7 @@ end
 # Skips one set of allocations
 function Makie.pick_closest(scene::Scene, screen::Screen, xy, range)
     isopen(screen) || return (nothing, 0)
-    w, h = widths(screen)
+    w, h = size(screen)
     ((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h)) || return (nothing, 0)
 
     x0, y0 = max.(1, floor.(Int, xy .- range))
@@ -95,7 +95,7 @@ end
 # Skips some allocations
 function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     isopen(screen) || return (nothing, 0)
-    w, h = widths(screen)
+    w, h = size(screen)
     if !((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h))
         return Tuple{AbstractPlot, Int}[]
     end
