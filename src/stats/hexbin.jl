@@ -135,9 +135,6 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             d[id] = get(d, id, 0) + 1
         end
 
-        # this iteration scheme misses points at the edges and I don't understand why
-        # for plotting a whole field
-        # with zeros something like this would be needed, though..
         if threshold == 0
             for iy in 0:nbinsy-1
                 _nx = isodd(iy) ? fld(nbinsx, 2) : cld(nbinsx, 2)
