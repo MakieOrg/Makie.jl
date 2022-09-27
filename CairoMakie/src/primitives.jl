@@ -557,6 +557,14 @@ end
 
 regularly_spaced_array_to_range(arr::AbstractRange) = arr
 
+function premultiplied_rgba(a::AbstractArray{<:ColorAlpha})
+    map(premultiplied_rgba, a)
+end
+premultiplied_rgba(a::AbstractArray{<:Color}) = RGBA.(a)
+
+premultiplied_rgba(r::RGBA) = RGBA(r.r * r.alpha, r.g * r.alpha, r.b * r.alpha, r.alpha)
+premultiplied_rgba(c::Colorant) = premultiplied_rgba(RGBA(c))
+
 function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive::Union{Heatmap, Image}))
     ctx = screen.context
     image = primitive[3][]
