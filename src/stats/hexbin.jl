@@ -150,7 +150,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
                 end
             end
         else
-            # we only need to iterate dict values if we don't plot zero cells
+            # If we don't plot zero cells, we only have to iterate the sparse entries in the dict
             for ((ix, iy), value) in d
                 if value >= threshold
                     _x = xoff + 2 * ix * xspacing + (isodd(iy) * xspacing)
