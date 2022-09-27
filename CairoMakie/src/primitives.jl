@@ -635,10 +635,10 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
         Cairo.set_source_surface(ctx, s, 0, 0)
         p = Cairo.get_source(ctx)
         # this is needed to avoid blurry edges
-        # Cairo.pattern_set_extend(p, Cairo.EXTEND_PAD)
+        Cairo.pattern_set_extend(p, Cairo.EXTEND_PAD)
         filt = interpolate ? Cairo.FILTER_BILINEAR : Cairo.FILTER_NEAREST
         Cairo.pattern_set_filter(p, filt)
-        Cairo.paint(ctx)
+        Cairo.fill(ctx)
         Cairo.restore(ctx)
     else
         # find projected image corners
