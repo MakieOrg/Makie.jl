@@ -220,7 +220,7 @@ function gl_convert(cache::ShaderCache, lazyshader::AbstractLazyShader, data)
     # Tuple(Source, ShaderType)
     if all(paths) do x
             isa(x, Tuple) && length(x) == 2 &&
-            isa(first(x), String) &&
+            isa(first(x), AbstractString) &&
             isa(last(x), GLenum)
         end
         # we don't cache view & templates for shader strings!
@@ -231,7 +231,7 @@ function gl_convert(cache::ShaderCache, lazyshader::AbstractLazyShader, data)
         end
         return compile_program([shaders...], fragdatalocation)
     end
-    if !all(x-> isa(x, String), paths)
+    if !all(x -> isa(x, AbstractString), paths)
         error("Please supply only paths or tuples of (source, typ) for Lazy Shader
             Found: $paths"
         )

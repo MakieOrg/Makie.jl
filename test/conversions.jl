@@ -18,6 +18,14 @@ using Makie:
 
 end
 
+@testset "changing input types" begin
+    input = Observable{Any}(decompose(Point2f, Circle(Point2f(0), 2f0)))
+    f, ax, pl = mesh(input)
+    m = Makie.triangle_mesh(Circle(Point2f(0), 1f0))
+    input[] = m
+    @test pl[1][] == m
+end
+
 @testset "to_vertices" begin
     X1 = [Point(rand(3)...) for i = 1:10]
     V1 = to_vertices(X1)

@@ -321,7 +321,7 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
     FinalType, argsconverted = apply_convert!(PreType, attributes, converted)
     converted_node = Observable(argsconverted)
     input_nodes =  convert.(Observable, args)
-    onany(kw_signal, lift(tuple, input_nodes...)) do kwargs, args
+    onany(kw_signal, input_nodes...) do kwargs, args...
         # do the argument conversion inside a lift
         result = convert_arguments(FinalType, args...; kwargs...)
         finaltype, argsconverted_ = apply_convert!(FinalType, attributes, result) # avoid a Core.Box (https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-captured)
