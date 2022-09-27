@@ -557,6 +557,14 @@ end
 
 regularly_spaced_array_to_range(arr::AbstractRange) = arr
 
+function premultiplied_rgba(a::AbstractArray{<:ColorAlpha})
+    map(premultiplied_rgba, a)
+end
+premultiplied_rgba(a::AbstractArray{<:Color}) = RGBA.(a)
+
+premultiplied_rgba(r::RGBA) = RGBA(r.r * r.alpha, r.g * r.alpha, r.b * r.alpha, r.alpha)
+premultiplied_rgba(c::Colorant) = premultiplied_rgba(RGBA(c))
+
 function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive::Union{Heatmap, Image}))
     ctx = screen.context
     image = primitive[3][]
@@ -627,10 +635,10 @@ function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive:
         Cairo.set_source_surface(ctx, s, 0, 0)
         p = Cairo.get_source(ctx)
         # this is needed to avoid blurry edges
-        Cairo.pattern_set_extend(p, Cairo.EXTEND_PAD)
+        # Cairo.pattern_set_extend(p, Cairo.EXTEND_PAD)
         filt = interpolate ? Cairo.FILTER_BILINEAR : Cairo.FILTER_NEAREST
         Cairo.pattern_set_filter(p, filt)
-        Cairo.fill(ctx)
+        Cairo.paint(ctx)
         Cairo.restore(ctx)
     else
         # find projected image corners
