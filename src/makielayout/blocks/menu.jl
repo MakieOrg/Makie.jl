@@ -83,7 +83,7 @@ function initialize_block!(m::Menu; default = 1)
                 d == :down ? bottom(bbox) : min(top(bbox) + h, top(blockscene.px_area[]))))
     end
 
-    menuscene = Scene(blockscene, scenearea, camera = campixel!, clear=true, backgroundcolor=:black)
+    menuscene = Scene(blockscene, scenearea, camera = campixel!, clear=true)
     translate!(menuscene, 0, 0, 200)
 
     onany(scenearea, listheight) do area, listheight
