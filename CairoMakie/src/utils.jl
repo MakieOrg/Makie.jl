@@ -111,7 +111,7 @@ function rgbatuple(c)
     return rgbatuple(colorant)
 end
 
-to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, c))
+to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, premultiplied_rgba(c)))
 
 ########################################
 #     Image/heatmap -> ARGBSurface     #
