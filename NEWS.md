@@ -1,6 +1,7 @@
 # News
 
 ## master
+- `hexbin` is now available as a recipe [#368] (https://github.com/JuliaPlots/Makie.jl/pull/2201)
 
 - Added the `tricontourf` plotting function [#2226](https://github.com/JuliaPlots/Makie.jl/pull/2226).
 - Fix per character attributes in text [#2244](https://github.com/JuliaPlots/Makie.jl/pull/2244)
