@@ -10,6 +10,30 @@ abstract type AbstractPlot{Typ} <: Transformable end
 abstract type AbstractScene <: Transformable end
 abstract type ScenePlot{Typ} <: AbstractPlot{Typ} end
 
+"""
+Constructors:
+
+    `MakieScreen(scene::Scene; screen_attributes...)`
+Constructor aimed at showing the plot in a window.
+    `MakieScreen(scene::Scene, io::IO, mime; screen_attributes...)`
+Screen that writes out a mime to an io
+    `MakieScreen(scene::Scene, img::Matrix{<: Colorant}; screen_attributes...)`
+Screen optimized for `colorbuffer(screen)`.
+
+Interface:
+```julia
+# Needs to be overload:
+size(screen) # Size in pixel
+
+# Optional
+wait(screen) # waits as long window is open
+
+# Provided by Makie:
+push_screen!(scene, screen)
+```
+"""
+abstract type MakieScreen <: AbstractDisplay end
+
 const SceneLike = Union{AbstractScene, ScenePlot}
 
 """

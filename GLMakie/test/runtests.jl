@@ -11,10 +11,10 @@ Pkg.develop(PackageSpec(path = reference_tests_dir))
 using ReferenceTests
 
 GLMakie.activate!()
-GLMakie.set_window_config!(;
-    framerate = 1.0,
-    pause_rendering = true
-)
+# GLMakie.set_window_config!(;
+#     framerate = 1.0,
+#     pause_rendering = true
+# )
 
 @testset "mimes" begin
     f, ax, pl = scatter(1:4)

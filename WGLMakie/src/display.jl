@@ -15,7 +15,7 @@ const WEB_MIMES = (MIME"text/html", MIME"application/vnd.webio.application+html"
 
 for M in WEB_MIMES
     @eval begin
-        function Makie.backend_show(::WGLBackend, io::IO, m::$M, scene::Scene)
+        function Makie.backend_show(::Screen, io::IO, m::$M, scene::Scene)
             three = nothing
             inline_display = App() do session::Session
                 three, canvas = three_display(session, scene)
@@ -28,54 +28,18 @@ for M in WEB_MIMES
     end
 end
 
-function scene2image(scene::Scene)
-    if !JSServe.has_html_display()
-        error("""
-        There is no Display that can show HTML.
-        If in the REPL and you have a browser,
-        you can always run `JSServe.browser_display()` to show plots in the browser
-        """)
-    end
-    three = nothing
-    session = nothing
-    app = App() do s::Session
-        session = s
-        three, canvas = three_display(s, scene)
-        return canvas
-    end
-    # display in current
-    display(app)
-    done = Base.timedwait(()-> isready(session.js_fully_loaded), 30.0)
-    if done == :timed_out
-        error("JS Session not ready after 30s waiting, possibly errored while displaying")
-    end
-    return Makie.colorbuffer(three)
-end
-
-function Makie.backend_show(::WGLBackend, io::IO, m::MIME"image/png",
-                                       scene::Scene)
-    img = scene2image(scene)
-    return FileIO.save(FileIO.Stream{FileIO.format"PNG"}(io), img)
-end
-
-function Makie.backend_show(::WGLBackend, io::IO, m::MIME"image/jpeg",
-                                       scene::Scene)
-    img = scene2image(scene)
-    return FileIO.save(FileIO.Stream{FileIO.format"JPEG"}(io), img)
-end
-
-function Makie.backend_showable(::WGLBackend, ::T, scene::Scene) where {T<:MIME}
+function Makie.backend_showable(::Type{Screen}, ::T, scene::Scene) where {T<:MIME}
     return T in WEB_MIMES
 end
 
-struct WebDisplay <: Makie.MakieScreen
+struct Screen <: Makie.MakieScreen
     three::Base.RefValue{ThreeDisplay}
     display::Any
 end
 
-GeometryBasics.widths(screen::WebDisplay) = GeometryBasics.widths(screen.three[])
+Base.size(screen::Screen) = size(screen.three[])
 
-function Makie.backend_display(::WGLBackend, scene::Scene; kw...)
+function display(::Screen, scene::Scene; kw...)
     # Reference to three object which gets set once we serve this to a browser
     three_ref = Base.RefValue{ThreeDisplay}()
     app = App() do s, request
@@ -84,10 +48,10 @@ function Makie.backend_display(::WGLBackend, scene::Scene; kw...)
         return canvas
     end
     actual_display = display(app)
-    return WebDisplay(three_ref, actual_display)
+    return Screen(three_ref, actual_display)
 end
 
-function Base.delete!(td::WebDisplay, scene::Scene, plot::AbstractPlot)
+function Base.delete!(td::Screen, scene::Scene, plot::AbstractPlot)
     delete!(get_three(td), scene, plot)
 end
 
@@ -104,8 +68,13 @@ function Makie.colorbuffer(screen::ThreeDisplay)
     return session2image(screen)
 end
 
-function get_three(screen::WebDisplay; timeout = 30)::Union{Nothing, ThreeDisplay}
-    # WebDisplay is not guaranteed to get displayed in the browser, so we wait a while
+function Makie.colorbuffer(screen::Screen)
+    return session2image(get_three(screen))
+end
+
+
+function get_three(screen::Screen; timeout = 30)::Union{Nothing, ThreeDisplay}
+    # Screen is not guaranteed to get displayed in the browser, so we wait a while
     # to see if anything gets displayed!
     tstart = time()
     while time() - tstart < timeout
@@ -125,11 +94,7 @@ function get_three(screen::WebDisplay; timeout = 30)::Union{Nothing, ThreeDispla
     return nothing
 end
 
-function Makie.colorbuffer(screen::WebDisplay)
-    return session2image(get_three(screen))
-end
-
-function Base.insert!(td::WebDisplay, scene::Scene, plot::Combined)
+function Base.insert!(td::Screen, scene::Scene, plot::Combined)
     disp = get_three(td)
     disp === nothing && error("Plot needs to be displayed to insert additional plots")
     insert!(disp, scene, plot)

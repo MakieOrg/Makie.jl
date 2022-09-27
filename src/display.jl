@@ -1,35 +1,17 @@
 @enum ImageStorageFormat JuliaNative GLNative
 
-"""
-    MakieScreen(scene::Scene; screen_attributes...)
-    MakieScreen(scene::Scene, io::IO; screen_attributes...)
-
-Interface:
-```julia
-# Needs to be overload:
-size(screen) # Size in pixel
-
-# Optional
-wait(screen) # waits as long window is open
-
-# Provided by Makie:
-push_screen!(scene, screen)
-```
-"""
-abstract type MakieScreen <: AbstractDisplay end
-
 update_state_before_display!(_) = nothing
 
-function backend_display end
 function backend_show end
 
 """
 Current backend
 """
-const current_backend = Ref{Union{Missing, Module}}(missing)
+const CURRENT_BACKEND = Ref{Union{Missing, Module}}(missing)
+current_backend() = CURRENT_BACKEND[]
 
 function set_active_backend!(backend::Module)
-    current_backend[] = backend
+    CURRENT_BACKEND[] = backend
     return
 end
 
@@ -60,7 +42,7 @@ function delete_screen!(scene::Scene, display::AbstractDisplay)
 end
 
 function set_screen_config!(config::RefValue, new_values)
-    config_attributes = propertynames(config)
+    config_attributes = propertynames(config[])
     for (k, v) in pairs(new_values)
         if !(k in config_attributes)
             error("$k is not a valid screen config. Applicable options: $(config_attributes)")
@@ -68,26 +50,6 @@ function set_screen_config!(config::RefValue, new_values)
     end
     config[] = merge(config[], new_values)
 end
-
-function backend_display(figlike::FigureLike; screen_kw...)
-    update_state_before_display!(figlike)
-    Backend = current_backend[]
-    scene = get_scene(figlike)
-    screen = Backend.Screen(scene; screen_kw...)
-    backend_display(screen, scene)
-    return screen
-end
-
-function backend_display(::Missing, ::Scene; screen_kw...)
-    error("""
-    No backend available!
-    Make sure to also `import/using` a backend (GLMakie, CairoMakie, WGLMakie).
-
-    If you imported GLMakie, it may have not built correctly.
-    In that case, try `]build GLMakie` and watch out for any warnings.
-    """)
-end
-
 
 """
 
@@ -102,28 +64,46 @@ pt_per_unit=x.pt_per_unit
 px_per_unit=x.px_per_unit
 antialias=x.antialias
 """
-function Base.display(fig::FigureLike; screen_kw...)
-    return backend_display(fig; screen_kw...)
+function Base.display(figlike::FigureLike; screen_kw...)
+    Backend = current_backend()
+    if ismissing(Backend)
+        error("""
+        No backend available!
+        Make sure to also `import/using` a backend (GLMakie, CairoMakie, WGLMakie).
+
+        If you imported GLMakie, it may have not built correctly.
+        In that case, try `]build GLMakie` and watch out for any warnings.
+        """)
+    end
+    screen = Backend.Screen(get_scene(figlike); screen_kw...)
+    return display(screen, figlike)
+end
+
+function Base.display(screen::MakieScreen, figlike::FigureLike; display_attributes...)
+    update_state_before_display!(figlike)
+    scene = get_scene(figlike)
+    display(screen, scene; display_attributes...)
+    return screen
 end
 
 function Base.showable(mime::MIME{M}, scene::Scene) where M
-    backend_showable(current_backend[].Screen, mime, scene)
+    backend_showable(current_backend().Screen, mime, scene)
 end
 
 # ambig
 function Base.showable(mime::MIME"application/json", scene::Scene)
-    backend_showable(current_backend[].Screen, mime, scene)
+    backend_showable(current_backend().Screen, mime, scene)
 end
 function Base.showable(mime::MIME{M}, fig::FigureLike) where M
-    backend_showable(current_backend[].Screen, mime, get_scene(fig))
+    backend_showable(current_backend().Screen, mime, get_scene(fig))
 end
 # ambig
 function Base.showable(mime::MIME"application/json", fig::FigureLike)
-    backend_showable(current_backend[].Screen, mime, get_scene(fig))
+    backend_showable(current_backend().Screen, mime, get_scene(fig))
 end
 
 function backend_showable(::Type{Screen}, ::Mime, ::Scene) where {Screen, Mime <: MIME}
-    hasmethod(backend_show, Tuple{Screen, IO, Mime, Scene})
+    hasmethod(backend_show, Tuple{<: Screen, IO, Mime, Scene})
 end
 
 # fallback show when no backend is selected
@@ -146,7 +126,7 @@ end
 function Base.show(io::IO, m::MIME, figlike::FigureLike)
     update_state_before_display!(figlike)
     scene = get_scene(figlike)
-    backend_show(current_backend[].Screen(scene, io), m, scene)
+    backend_show(current_backend().Screen(scene, io, m), io, m, scene)
     return
 end
 
@@ -164,6 +144,7 @@ exported and should be accessed by module name.
 """
 mutable struct FolderStepper
     figlike::FigureLike
+    screen::MakieScreen
     folder::String
     format::Symbol
     step::Int
@@ -171,16 +152,26 @@ end
 
 mutable struct RamStepper
     figlike::FigureLike
+    screen::MakieScreen
     images::Vector{Matrix{RGBf}}
     format::Symbol
 end
 
-Stepper(figlike::FigureLike, path::String, step::Int; format=:png) = FolderStepper(figlike, path, format, step)
-Stepper(figlike::FigureLike; format=:png) = RamStepper(figlike, Matrix{RGBf}[], format)
+function Stepper(figlike::FigureLike; backend=current_backend(), format=:png, visible=false, connect=false, srceen_kw...)
+    screen = backend.Screen(get_scene(figlike), JuliaNative; visible=visible, start_renderloop=false, srceen_kw...)
+    display(screen, figlike; connect=connect)
+    return RamStepper(figlike, screen, Matrix{RGBf}[], format)
+end
 
-function Stepper(figlike::FigureLike, path::String; format = :png)
+function Stepper(figlike::FigureLike, path::String, step::Int; format=:png, backend=current_backend(), visible=false, connect=false, screen_kw...)
+    screen = backend.Screen(get_scene(figlike), JuliaNative; visible=visible, start_renderloop=false, screen_kw...)
+    display(screen, figlike; connect=connect)
+    return FolderStepper(figlike, screen, path, format, step)
+end
+
+function Stepper(figlike::FigureLike, path::String; kw...)
     ispath(path) || mkpath(path)
-    FolderStepper(figlike, path, format, 1)
+    return Stepper(figlike, path, 1; kw...)
 end
 
 """
@@ -190,13 +181,13 @@ steps through a `Makie.Stepper` and outputs a file with filename `filename-step.
 This is useful for generating progressive plot examples.
 """
 function step!(s::FolderStepper)
-    FileIO.save(joinpath(s.folder, basename(s.folder) * "-$(s.step).$(s.format)"), s.figlike)
+    FileIO.save(joinpath(s.folder, basename(s.folder) * "-$(s.step).$(s.format)"), colorbuffer(s.screen))
     s.step += 1
     return s
 end
 
 function step!(s::RamStepper)
-    img = convert(Matrix{RGBf}, colorbuffer(s.figlike))
+    img = convert(Matrix{RGBf}, colorbuffer(s.screen))
     push!(s.images, img)
     return s
 end
@@ -289,8 +280,8 @@ raw_io(io::IOContext) = raw_io(io.io)
 
 struct VideoStream
     io
-    process
-    screen
+    process::Base.Process
+    screen::MakieScreen
     path::String
 end
 
@@ -304,13 +295,14 @@ Use [`recordframe!(stream)`](@ref) to add new video frames to the stream, and
 * visible=false: make window visible or not
 * connect=false: connect window events or not
 """
-function VideoStream(fig::FigureLike; framerate::Integer=24, visible=false, connect=false, screen_kw...)
+function VideoStream(fig::FigureLike; framerate::Integer=24, visible=false, connect=false, backend=current_backend(), screen_kw...)
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
     dir = mktempdir()
     path = joinpath(dir, "$(gensym(:video)).mkv")
     scene = get_scene(fig)
-    screen = backend_display(fig; start_renderloop=false, visible=visible, connect=connect)
-    _xdim, _ydim = GeometryBasics.widths(screen)
+    screen = backend.Screen(scene, GLNative; visible=visible, start_renderloop=false, screen_kw...)
+    display(screen, fig; connect=connect)
+    _xdim, _ydim = size(screen)
     xdim = iseven(_xdim) ? _xdim : _xdim + 1
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
     process = @ffmpeg_env open(`$(FFMPEG.ffmpeg) -framerate $(framerate) -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
@@ -571,18 +563,36 @@ or RGBA.
 - `format = GLNative` : Returns a more efficient format buffer for GLMakie which can be directly
                         used in FFMPEG without conversion
 """
-function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative)
+function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; backend = current_backend())
     scene = get_scene(fig)
     screen = getscreen(scene)
     if isnothing(screen)
-        if ismissing(current_backend[])
+        if ismissing(CURRENT_BACKEND[])
             error("""
                 You have not loaded a backend.  Please load one (`using GLMakie` or `using CairoMakie`)
                 before trying to render a Scene.
                 """)
         else
-            return colorbuffer(backend_display(fig; visible=false, start_renderloop=false, connect=false), format)
+            screen = backend.Screen(scene, format; start_renderloop=false, visible=false)
+            display(screen, fig; connect=false)
+            return colorbuffer(screen, format)
         end
     end
     return colorbuffer(screen, format)
+end
+
+
+# Fallback for any backend that will just use colorbuffer to write out an image
+function backend_show(screen::MakieScreen, io::IO, m::MIME"image/png", scene::Scene)
+    display(screen, scene; connect=false)
+    img = colorbuffer(screen)
+    FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img)
+    return
+end
+
+function backend_show(screen::MakieScreen, io::IO, m::MIME"image/jpeg", scene::Scene)
+    display(screen, scene; connect=false)
+    img = colorbuffer(scene)
+    FileIO.save(FileIO.Stream{FileIO.format"JPEG"}(Makie.raw_io(io)), img)
+    return
 end

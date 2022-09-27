@@ -14,7 +14,7 @@ using Makie: Scene, Lines, Text, Image, Heatmap, Scatter
 using Makie: convert_attribute, @extractvalue, LineSegments
 using Makie: @get_attribute, to_value, to_colormap, extrema_nan
 using Makie: ClosedInterval, (..)
-using Makie: inline!, to_native
+using Makie: to_native
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
 import Makie: to_font, glyph_uv_width!, el32convert, Shape, CIRCLE, RECTANGLE, ROUNDED_RECTANGLE, DISTANCEFIELD, TRIANGLE
 import Makie: RelocatableFolders
@@ -47,17 +47,10 @@ loadshader(name) = joinpath(SHADER_DIR, name)
 # don't put this into try catch, to not mess with normal errors
 include("gl_backend.jl")
 
-function activate!()
-    Makie.set_active_backend!(GLMakie)
-    Makie.set_glyph_resolution!(Makie.High)
-end
-
 function __init__()
     activate!()
 end
 
-export set_window_config!
-
-include("precompiles.jl")
+# include("precompiles.jl")
 
 end

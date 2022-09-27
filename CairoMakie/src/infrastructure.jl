@@ -7,12 +7,6 @@
 ################################################################################
 
 
-is_vector_backend(ctx::Cairo.CairoContext) = is_vector_backend(ctx.surface)
-
-function is_vector_backend(surf::Cairo.CairoSurface)
-    typ = get_type(surf)
-    return typ in (Cairo.CAIRO_SURFACE_TYPE_PDF, Cairo.CAIRO_SURFACE_TYPE_PS, Cairo.CAIRO_SURFACE_TYPE_SVG)
-end
 
 
 ################################################################################
@@ -104,7 +98,7 @@ function draw_background(screen::Screen, scene::Scene)
     cr = screen.context
     Cairo.save(cr)
     if scene.clear[]
-        bg = to_color(theme(scene, :backgroundcolor)[])
+        bg = scene.backgroundcolor[]
         Cairo.set_source_rgba(cr, red(bg), green(bg), blue(bg), alpha(bg));
         r = pixelarea(scene)[]
         Cairo.rectangle(cr, origin(r)..., widths(r)...) # background
@@ -166,13 +160,4 @@ end
 
 function draw_atomic(::Scene, ::Screen, x)
     @warn "$(typeof(x)) is not supported by cairo right now"
-end
-
-function clear(screen::Screen)
-    ctx = screen.ctx
-    Cairo.save(ctx)
-    Cairo.set_operator(ctx, Cairo.OPERATOR_SOURCE)
-    Cairo.set_source_rgba(ctx, rgbatuple(screen.scene[:backgroundcolor])...);
-    Cairo.paint(ctx)
-    Cairo.restore(ctx)
 end

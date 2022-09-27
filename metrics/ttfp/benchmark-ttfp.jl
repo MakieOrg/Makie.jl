@@ -7,8 +7,6 @@ macro ctime(x)
     end
 end
 t_using = @ctime @eval using $Package
-Makie.inline!(false) # needed for cairomakie to return a screen
-
 
 if Package == :WGLMakie
     using ElectronDisplay

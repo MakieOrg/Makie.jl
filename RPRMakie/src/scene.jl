@@ -203,7 +203,7 @@ end
 
 function Makie.colorbuffer(screen::RPRScreen)
     if !screen.setup_scene
-        Makie.backend_display(screen, screen.scene)
+        display(screen, screen.scene)
     end
     data_1d = RPR.get_data(render(screen))
     r = reverse(reshape(data_1d, screen.fb_size), dims=2)
@@ -213,13 +213,13 @@ function Makie.colorbuffer(screen::RPRScreen)
     end
 end
 
-function Makie.backend_display(::RPRBackend, scene::Scene; kw...)
+function display(::RPRBackend, scene::Scene; kw...)
     screen = RPRScreen(scene)
-    Makie.backend_display(screen, scene)
+    display(screen, scene)
     return screen
 end
 
-function Makie.backend_display(screen::RPRScreen, scene::Scene)
+function display(screen::RPRScreen, scene::Scene)
     screen.scene = scene
     rpr_scene = to_rpr_scene(screen.context, screen.matsys, scene)
     screen.rpr_scene = rpr_scene
@@ -241,7 +241,7 @@ function Base.insert!(screen::RPRScreen, scene::Scene, plot::AbstractPlot)
 end
 
 function Makie.backend_show(b::RPRBackend, io::IO, ::MIME"image/png", scene::Scene)
-    screen = Makie.backend_display(b, scene)
+    screen = display(b, scene)
     img = Makie.colorbuffer(screen)
     FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img)
     return screen

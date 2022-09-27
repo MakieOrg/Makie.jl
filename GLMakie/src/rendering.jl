@@ -1,8 +1,8 @@
 # TODO add render_tick event to scene events
 function vsynced_renderloop(screen)
-    while isopen(screen) && !WINDOW_CONFIG.exit_renderloop[]
+    while isopen(screen) && !SCREEN_CONFIG[].exit_renderloop
         pollevents(screen) # GLFW poll
-        if WINDOW_CONFIG.pause_rendering[]
+        if SCREEN_CONFIG[].pause_rendering
             sleep(0.1)
         else
             ShaderAbstractions.switch_context!(screen.glscreen)
@@ -13,12 +13,12 @@ function vsynced_renderloop(screen)
     end
 end
 
-function fps_renderloop(screen::Screen, framerate=WINDOW_CONFIG.framerate[])
+function fps_renderloop(screen::Screen, framerate=SCREEN_CONFIG[].framerate)
     time_per_frame = 1.0 / framerate
-    while isopen(screen) && !WINDOW_CONFIG.exit_renderloop[]
+    while isopen(screen) && !SCREEN_CONFIG[].exit_renderloop
         t = time_ns()
         pollevents(screen) # GLFW poll
-        if WINDOW_CONFIG.pause_rendering[]
+        if SCREEN_CONFIG[].pause_rendering
             sleep(0.1)
         else
             ShaderAbstractions.switch_context!(screen.glscreen)
@@ -35,10 +35,10 @@ function fps_renderloop(screen::Screen, framerate=WINDOW_CONFIG.framerate[])
     end
 end
 
-function renderloop(screen; framerate=WINDOW_CONFIG.framerate[])
+function renderloop(screen; framerate=SCREEN_CONFIG[].framerate)
     isopen(screen) || error("Screen most be open to run renderloop!")
     try
-        if WINDOW_CONFIG.vsync[]
+        if SCREEN_CONFIG[].vsync
             GLFW.SwapInterval(1)
             vsynced_renderloop(screen)
         else
@@ -54,40 +54,10 @@ function renderloop(screen; framerate=WINDOW_CONFIG.framerate[])
     end
 end
 
-const WINDOW_CONFIG = (renderloop = Ref{Function}(renderloop),
-    vsync = Ref(false),
-    framerate = Ref(30.0),
-    float = Ref(false),
-    pause_rendering = Ref(false),
-    focus_on_show = Ref(false),
-    decorated = Ref(true),
-    title = Ref("Makie"),
-    exit_renderloop = Ref(false),)
-
-"""
-    set_window_config!(;
-        renderloop = renderloop,
-        vsync = false,
-        framerate = 30.0,
-        float = false,
-        pause_rendering = false,
-        focus_on_show = false,
-        decorated = true,
-        title = "Makie"
-    )
-Updates the screen configuration, will only go into effect after closing the current
-window and opening a new one!
-"""
-function set_window_config!(; kw...)
-    for (key, value) in kw
-        getfield(WINDOW_CONFIG, key)[] = value
-    end
-end
-
 function setup!(screen)
     glEnable(GL_SCISSOR_TEST)
     if isopen(screen)
-        glScissor(0, 0, widths(screen)...)
+        glScissor(0, 0, size(screen)...)
         glClearColor(1, 1, 1, 1)
         glClear(GL_COLOR_BUFFER_BIT)
         for (id, scene) in screen.screens
@@ -122,7 +92,7 @@ function render_frame(screen::Screen; resize_buffers=true)
         @debug("Current context does not match the current screen.")
         return
     end
-    
+
     function sortby(x)
         robj = x[3]
         plot = screen.cache2plot[robj.id]
@@ -135,7 +105,7 @@ function render_frame(screen::Screen; resize_buffers=true)
     # NOTE
     # The transparent color buffer is reused by SSAO and FXAA. Changing the
     # render order here may introduce artifacts because of that.
-    
+
     fb = screen.framebuffer
     if resize_buffers
         wh = Int.(framebuffer_size(nw))

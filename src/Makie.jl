@@ -326,6 +326,6 @@ export heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, scatter!, s
 
 export PointLight, EnvironmentLight, AmbientLight, SSAO
 
-include("precompiles.jl")
+# include("precompiles.jl")
 
 end # module

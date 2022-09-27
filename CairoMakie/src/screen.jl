@@ -1,14 +1,24 @@
-@enum RenderType SVG PNG PDF EPS
+@enum RenderType SVG IMAGE PDF EPS
 
+"""
+    Screen(;
+        type = IMAGE,
+        px_per_unit = 1.0,
+        pt_per_unit = 0.75,
+        antialias = Cairo.ANTIALIAS_BEST
+    )
+
+
+"""
 const SCREEN_CONFIG = Ref((
-    type = "png",
+    type = IMAGE,
     px_per_unit = 1.0,
     pt_per_unit = 0.75,
     antialias = Cairo.ANTIALIAS_BEST
 ))
 
-function activate!(; screen_config...)
-    Makie.set_screen_config!(SCREEN_CONFIG, screen_config)
+function activate!(; screen_attributes...)
+    Makie.set_screen_config!(SCREEN_CONFIG, screen_attributes)
     Makie.set_active_backend!(CairoMakie)
     return
 end
@@ -18,14 +28,13 @@ end
 A "screen" type for CairoMakie, which encodes a surface
 and a context which are used to draw a Scene.
 """
-struct Screen{S} <: Makie.MakieScreen
+struct Screen{SurfaceRenderType} <: Makie.MakieScreen
     scene::Scene
-    surface::S
+    surface::Cairo.CairoSurface
     context::Cairo.CairoContext
     device_scaling_factor::Float64
     antialias::Int # cairo_antialias_t
-    image::Union{Nothing, Matrix{<: Colorant}}
-    pane::Nothing # TODO: GtkWindowLeaf
+    visible::Bool
 end
 
 Base.size(screen::Screen) = round.(Int, (screen.surface.width, screen.surface.height))
@@ -40,23 +49,26 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
 end
 
 function Base.show(io::IO, ::MIME"text/plain", screen::Screen{S}) where S
-    println(io, "Screen{$S} with surface:")
-    println(io, screen.surface)
+    println(io, "CairoMakie.Screen{$S}")
+end
+
+function Base.convert(::Type{RenderType}, type::String)
+    if type == "png"
+        return IMAGE
+    elseif type == "svg"
+        return SVG
+    elseif type == "pdf"
+        return PDF
+    elseif type == "eps"
+        return EPS
+    else
+        error("Unsupported cairo render type: $type")
+    end
 end
 
 function path_to_type(path)
-    ext = splitext(path)[2]
-    if ext == ".png"
-        return PNG
-    elseif ext == ".svg"
-        return SVG
-    elseif ext == ".pdf"
-        return PDF
-    elseif ext == ".eps"
-        return EPS
-    else
-        error("Unsupported extension: $ext")
-    end
+    type = splitext(path)[2][2:end]
+    return convert(RenderType, type)
 end
 
 "Convert a rendering type to a MIME type"
@@ -71,7 +83,7 @@ to_mime(screen::Screen) = to_mime(screen.typ)
 "convert a mime to a RenderType"
 function mime_to_rendertype(mime::Symbol)::RenderType
     if mime == Symbol("image/png")
-        return PNG
+        return IMAGE
     elseif mime == Symbol("image/svg+xml")
         return SVG
     elseif mime == Symbol("application/pdf")
@@ -88,7 +100,7 @@ function surface_from_output_type(mime::MIME{M}, io, w, h) where M
 end
 
 function surface_from_output_type(mime::Symbol, io, w, h)
-    surface_from_output_type(mime_to_rendertype(mime, io, w, h))
+    surface_from_output_type(mime_to_rendertype(mime), io, w, h)
 end
 
 function surface_from_output_type(type::RenderType, io, w, h)
@@ -98,7 +110,7 @@ function surface_from_output_type(type::RenderType, io, w, h)
         return Cairo.CairoPDFSurface(io, w, h)
     elseif type === EPS
         return Cairo.CairoEPSSurface(io, w, h)
-    elseif type === PNG
+    elseif type === IMAGE
         return Cairo.CairoARGBSurface(w, h)
     else
         error("No available Cairo surface for mode $type")
@@ -117,9 +129,9 @@ end
 
 Create a Screen backed by an image surface.
 """
-Screen(scene::Scene; screen_attributes...) = Screen(scene, nothing, PNG; screen_attributes...)
+Screen(scene::Scene; screen_attributes...) = Screen(scene, nothing, IMAGE; screen_attributes...)
 
-function Screen(scene::Scene, io_or_path::Union{Nothing, String, IO}, typ::Union{MIME, Symbol, RenderType}; screen_attributes...)
+function Screen(scene::Scene, io_or_path::Union{Nothing, String, IO}, typ::Union{MIME, Symbol, RenderType}; device_scaling_factor=1.0, screen_attributes...)
     # the surface size is the scene size scaled by the device scaling factor
     w, h = round.(Int, size(scene) .* device_scaling_factor)
     surface = surface_from_output_type(typ, io_or_path, w, h)
@@ -129,17 +141,26 @@ end
 function Screen(scene::Scene, image::Matrix{<: Colorant}; screen_attributes...)
     img = Matrix{ARGB32}(undef, reverse(size(image))...)
     # create an image surface to draw onto the image
-    surf = Cairo.CairoImageSurface(img)
-    return Screen(scene, surf)
+    surface = Cairo.CairoImageSurface(img)
+    screen = Screen(scene, surface; screen_attributes...)
+    screen.surface_image = img
+    return screen
 end
 
-function Screen(scene::Scene, surface::Cairo.CairoSurface; screen_attributes...)
+function Screen(scene::Scene, ::Makie.ImageStorageFormat; screen_attributes...)
+    # create an image surface to draw onto the image
+    img = Matrix{ARGB32}(undef, size(scene)...)
+    surface = Cairo.CairoImageSurface(img)
+    return Screen(scene, surface; screen_attributes...)
+end
+
+function Screen(scene::Scene, surface::Cairo.CairoSurface; device_scaling_factor=1.0, antialias=Cairo.ANTIALIAS_BEST, visible=true, start_renderloop=false)
     # the surface size is the scene size scaled by the device scaling factor
-    surface_set_device_scale(surf, device_scaling_factor)
-    ctx = Cairo.CairoContext(surf)
+    surface_set_device_scale(surface, device_scaling_factor)
+    ctx = Cairo.CairoContext(surface)
     Cairo.set_antialias(ctx, antialias)
     set_miter_limit(ctx, 2.0)
-    return Screen(scene, surf, ctx, nothing, px_per_unit, pt_per_unit, antialias)
+    return Screen{get_render_type(surface)}(scene, surface, ctx, device_scaling_factor, antialias, visible)
 end
 
 ########################################
@@ -151,18 +172,18 @@ function Makie.colorbuffer(screen::Screen)
     scene = screen.scene
     # get resolution
     w, h = size(screen)
-    scene_w, scene_h = size(scene)
-
-    @assert w/scene_w ≈ h/scene_h
-    device_scaling_factor = w/scene_w
     # preallocate an image matrix
     img = Matrix{ARGB32}(undef, w, h)
     # create an image surface to draw onto the image
     surf = Cairo.CairoImageSurface(img)
-    screen = Screen(scene, surf)
-    # draw the scene onto the image matrix
-    cairo_draw(screen, scene)
-
-    # x and y are flipped - return the transpose
-    return permutedims(img)
+    screen = Screen(scene, surf; device_scaling_factor=screen.device_scaling_factor, antialias=screen.antialias)
+    return colorbuffer(screen)
 end
+
+function Makie.colorbuffer(screen::Screen{IMAGE})
+    cairo_draw(screen, screen.scene)
+    return permutedims(screen.surface.data)
+end
+
+is_vector_backend(ctx::Cairo.CairoContext) = is_vector_backend(ctx.surface)
+is_vector_backend(surf::Cairo.CairoSurface) = get_render_type(surf) in (PDF, EPS, SVG)

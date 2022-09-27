@@ -1,4 +1,4 @@
-using GLMakie.Makie: backend_display, getscreen
+using GLMakie.Makie: getscreen
 
 function project_sp(scene, point)
     point_px = Makie.project(scene, point)
@@ -14,14 +14,13 @@ end
         @test !isassigned(GLMakie.SINGLETON_SCREEN_NO_RENDERLOOP)
 
         # A raw screen should be tracked in GLFW_WINDOWS
-        Makie.inline!(false)
         screen = GLMakie.Screen(resolution = (100, 100), visible = false)
         @test isopen(screen)
         @test length(GLMakie.GLFW_WINDOWS) == 1 && (GLMakie.GLFW_WINDOWS[1] === screen.glscreen)
         @test !isassigned(GLMakie.SINGLETON_SCREEN)
         @test !isassigned(GLMakie.SINGLETON_SCREEN_NO_RENDERLOOP)
 
-        # A displayed figure should create a singleton screen and leave other 
+        # A displayed figure should create a singleton screen and leave other
         # screens untouched
         fig, ax, splot = scatter(1:4);
         screen2 = display(fig)

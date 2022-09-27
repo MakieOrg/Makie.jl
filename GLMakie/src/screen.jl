@@ -3,6 +3,40 @@ const ZIndex = Int
 # ID, Area, clear, is visible, background color
 const ScreenArea = Tuple{ScreenID, Scene}
 
+function renderloop end
+
+const SCREEN_CONFIG = Ref((
+    renderloop = renderloop,
+    vsync = false,
+    framerate = 30.0,
+    float = false,
+    pause_rendering = false,
+    focus_on_show = false,
+    decorated = true,
+    title = "Makie",
+    exit_renderloop = false,))
+
+"""
+    set_window_config!(;
+        renderloop = renderloop,
+        vsync = false,
+        framerate = 30.0,
+        float = false,
+        pause_rendering = false,
+        focus_on_show = false,
+        decorated = true,
+        title = "Makie"
+    )
+Updates the screen configuration, will only go into effect after closing the current
+window and opening a new one!
+"""
+function activate!(; screen_config...)
+    Makie.set_screen_config!(SCREEN_CONFIG, screen_config)
+    Makie.set_active_backend!(GLMakie)
+    Makie.set_glyph_resolution!(Makie.High)
+    return
+end
+
 abstract type GLScreen <: MakieScreen end
 
 mutable struct Screen{GLWindow} <: GLScreen
@@ -33,7 +67,7 @@ mutable struct Screen{GLWindow} <: GLScreen
             cache2plot::Dict{UInt32, AbstractPlot},
         ) where {GLWindow}
         s = size(framebuffer)
-        return new(
+        return new{GLWindow}(
             glscreen, shader_cache, framebuffer, rendertask, screen2scene,
             screens, renderlist, postprocessors, cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(nothing),
@@ -150,7 +184,7 @@ const GLFW_WINDOWS = GLFW.Window[]
 const SINGLETON_SCREEN = Screen[]
 const SINGLETON_SCREEN_NO_RENDERLOOP = Screen[]
 
-function singleton_screen(resolution; visible=Makie.use_display[], start_renderloop=true)
+function singleton_screen(resolution; visible=true, start_renderloop=true)
     screen_ref = if start_renderloop
         SINGLETON_SCREEN
     else
@@ -356,7 +390,7 @@ end
 function Screen(;
         resolution = (10, 10),
         visible = true,
-        title = WINDOW_CONFIG.title[],
+        title = SCREEN_CONFIG[].title,
         start_renderloop = true,
         kw_args...
     )
@@ -375,9 +409,9 @@ function Screen(;
 
         (GLFW.STENCIL_BITS, 0),
         (GLFW.AUX_BUFFERS,  0),
-        (GLFW_FOCUS_ON_SHOW, WINDOW_CONFIG.focus_on_show[]),
-        (GLFW.DECORATED, WINDOW_CONFIG.decorated[]),
-        (GLFW.FLOATING, WINDOW_CONFIG.float[]),
+        (GLFW_FOCUS_ON_SHOW, SCREEN_CONFIG[].focus_on_show),
+        (GLFW.DECORATED, SCREEN_CONFIG[].decorated),
+        (GLFW.FLOATING, SCREEN_CONFIG[].float),
         # (GLFW.TRANSPARENT_FRAMEBUFFER, true)
     ]
 
@@ -432,7 +466,7 @@ function Screen(;
 
     GLFW.SetWindowRefreshCallback(window, window -> refreshwindowcb(window, screen))
     if start_renderloop
-        screen.rendertask[] = @async((WINDOW_CONFIG.renderloop[])(screen))
+        screen.rendertask[] = @async((SCREEN_CONFIG[].renderloop)(screen))
     end
     # display window if visible!
     if visible
@@ -449,4 +483,14 @@ function refreshwindowcb(window, screen)
     render_frame(screen)
     GLFW.SwapBuffers(window)
     return
+end
+
+Screen(scene::Scene; screen_attributes...) = singleton_screen(size(scene); visible=true, start_renderloop=true)
+
+function Screen(scene::Scene, io_or_path::Union{Nothing, String, IO}, typ::MIME; screen_attributes...)
+    return singleton_screen(size(scene); visible=false, start_renderloop=false)
+end
+
+function Screen(scene::Scene, ::Makie.ImageStorageFormat; screen_attributes...)
+    return singleton_screen(size(scene); visible=false, start_renderloop=false)
 end
