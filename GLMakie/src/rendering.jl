@@ -37,6 +37,7 @@ end
 
 function renderloop(screen; framerate=SCREEN_CONFIG[].framerate)
     isopen(screen) || error("Screen most be open to run renderloop!")
+    ShaderAbstractions.switch_context!(screen.glscreen)
     try
         if SCREEN_CONFIG[].vsync
             GLFW.SwapInterval(1)

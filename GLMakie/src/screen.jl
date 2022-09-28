@@ -191,18 +191,20 @@ function singleton_screen(resolution; visible=true, start_renderloop=true)
         SINGLETON_SCREEN_NO_RENDERLOOP
     end
 
-    if length(screen_ref) == 1 && isopen(screen_ref[1])
+    screen = if length(screen_ref) == 1 && isopen(screen_ref[1])
         screen = screen_ref[1]
         resize!(screen, resolution...)
-        return screen
+        screen
     else
         if !isempty(screen_ref)
             closeall(screen_ref)
         end
         screen = Screen(; resolution=resolution, visible=visible, start_renderloop=start_renderloop)
         push!(screen_ref, screen)
-        return screen
+        screen
     end
+    ShaderAbstractions.switch_context!(screen.glscreen)
+    return screen
 end
 
 function destroy!(screen::Screen)
