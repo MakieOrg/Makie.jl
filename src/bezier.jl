@@ -177,7 +177,7 @@ const BezierCross = let
 
     first_three = Point2[(r, ri), (ri, ri), (ri, r)]
     all = map(0:pi/2:3pi/2) do a
-        m = Mat2f0(sin(a), cos(a), cos(a), -sin(a))
+        m = Mat2f(sin(a), cos(a), cos(a), -sin(a))
         Ref(m) .* first_three
     end |> x -> reduce(vcat, x)
 
