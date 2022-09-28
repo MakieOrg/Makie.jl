@@ -6,6 +6,10 @@ function project_sp(scene, point)
     return point_px .+ offset
 end
 
+GLMakie.closeall(GLMakie.GLFW_WINDOWS)
+GLMakie.closeall(GLMakie.SINGLETON_SCREEN)
+GLMakie.closeall(GLMakie.SINGLETON_SCREEN_NO_RENDERLOOP)
+
 @testset "unit tests" begin
     @testset "Window handling" begin
         # Without previous windows/figures everything should be empty/unassigned
@@ -60,6 +64,8 @@ end
         @test isopen(screen2) && (screen2 === GLMakie.SINGLETON_SCREEN[])
         @test screen === screen2
         @test screen2.glscreen.handle == ptr
+        close(screen)
+        close(screen2)
     end
 
     @testset "Pick a plot element or plot elements inside a rectangle" begin
