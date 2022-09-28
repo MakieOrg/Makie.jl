@@ -1,7 +1,3 @@
-using ReferenceTests
-using LinearAlgebra
-using ReferenceTests: @reference_test
-
 @reference_test "updating 2d primitives" begin
     fig = Figure()
     t = Observable(1)

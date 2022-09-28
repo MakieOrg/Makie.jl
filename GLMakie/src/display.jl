@@ -1,5 +1,4 @@
 function Base.display(screen::Screen, scene::Scene; connect=true)
-    ShaderAbstractions.switch_context!(screen.glscreen)
     empty!(screen)
     resize!(screen, size(scene)...)
     # So, the GLFW window events are not guarantee to fire
@@ -9,6 +8,7 @@ function Base.display(screen::Screen, scene::Scene; connect=true)
         window_open[] = open
     end
     connect && connect_screen(scene, screen)
+    ShaderAbstractions.switch_context!(screen.glscreen)
     pollevents(screen)
     insertplots!(screen, scene)
     pollevents(screen)

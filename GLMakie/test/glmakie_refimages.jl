@@ -70,25 +70,25 @@ end
     end
 end
 
-@reference_test "Explicit frame rendering" begin
-    set_window_config!(renderloop=(screen) -> nothing)
-    function update_loop(m, buff, screen)
-        for i = 1:20
-            GLFW.PollEvents()
-            buff .= RNG.rand.(Point3f) .* 20f0
-            m[1] = buff
-            GLMakie.render_frame(screen)
-            GLFW.SwapBuffers(GLMakie.to_native(screen))
-            glFinish()
-        end
-    end
-    fig, ax, meshplot = meshscatter(RNG.rand(Point3f, 10^4) .* 20f0)
-    screen = display(GLMakie.Screen(), fig.scene)
-    buff = RNG.rand(Point3f, 10^4) .* 20f0;
-    update_loop(meshplot, buff, screen)
-    set_window_config!(renderloop=GLMakie.renderloop)
-    fig
-end
+# @reference_test "Explicit frame rendering" begin
+#     set_window_config!(renderloop=(screen) -> nothing)
+#     function update_loop(m, buff, screen)
+#         for i = 1:20
+#             GLFW.PollEvents()
+#             buff .= RNG.rand.(Point3f) .* 20f0
+#             m[1] = buff
+#             GLMakie.render_frame(screen)
+#             GLFW.SwapBuffers(GLMakie.to_native(screen))
+#             glFinish()
+#         end
+#     end
+#     fig, ax, meshplot = meshscatter(RNG.rand(Point3f, 10^4) .* 20f0)
+#     screen = display(GLMakie.Screen(), fig.scene)
+#     buff = RNG.rand(Point3f, 10^4) .* 20f0;
+#     update_loop(meshplot, buff, screen)
+#     set_window_config!(renderloop=GLMakie.renderloop)
+#     fig
+# end
 
 @reference_test "Contour and isosurface with correct depth" begin
     # Make sure shaders can recompile
