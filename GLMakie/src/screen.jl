@@ -441,7 +441,7 @@ function Screen(;
     # tell GLAbstraction that we created a new context.
     # This is important for resource tracking, and only needed for the first context
     ShaderAbstractions.switch_context!(window)
-    shader_cache = GLAbstraction.ShaderCache()
+    shader_cache = GLAbstraction.ShaderCache(window)
     push!(GLFW_WINDOWS, window)
 
     resize_native!(window, resolution...)
