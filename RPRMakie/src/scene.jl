@@ -161,6 +161,7 @@ function Screen(scene::Scene; kw...)
 end
 
 Screen(scene::Scene, ::IO, ::MIME; kw...) = Screen(scene; kw...)
+Screen(scene::Scene, ::Makie.ImageStorageFormat; kw...) = Screen(scene; kw...)
 
 function Screen(fb_size::NTuple{2,<:Integer};
                    iterations=NUM_ITERATIONS[],

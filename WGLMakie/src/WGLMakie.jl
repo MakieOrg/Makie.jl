@@ -29,7 +29,6 @@ using Makie: apply_transform, transform_func_obs
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
 
 struct WebGL <: ShaderAbstractions.AbstractContext end
-struct WGLBackend <: Makie.AbstractBackend end
 
 const THREE = Dependency(:THREE, ["https://unpkg.com/three@0.136.0/build/three.js"])
 const WGL = Dependency(:WGLMakie, [@path joinpath(@__DIR__, "wglmakie.js")])
@@ -81,6 +80,6 @@ for name in names(Makie, all=true)
     end
 end
 
-include("precompiles.jl")
+# include("precompiles.jl")
 
 end # module

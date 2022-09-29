@@ -10,12 +10,20 @@ function JSServe.jsrender(session::Session, fig::Makie.FigureLike)
     return JSServe.jsrender(session, Makie.get_scene(fig))
 end
 
-const WEB_MIMES = (MIME"text/html", MIME"application/vnd.webio.application+html",
-                   MIME"application/prs.juno.plotpane+html", MIME"juliavscode/html")
+const WEB_MIMES = (
+    MIME"text/html",
+    MIME"application/vnd.webio.application+html",
+    MIME"application/prs.juno.plotpane+html",
+    MIME"juliavscode/html")
+
+mutable struct Screen <: Makie.MakieScreen
+    three::Union{Nothing, ThreeDisplay}
+    display::Any
+end
 
 for M in WEB_MIMES
     @eval begin
-        function Makie.backend_show(::Screen, io::IO, m::$M, scene::Scene)
+        function Makie.backend_show(screen::Screen, io::IO, m::$M, scene::Scene)
             three = nothing
             inline_display = App() do session::Session
                 three, canvas = three_display(session, scene)
@@ -23,7 +31,8 @@ for M in WEB_MIMES
                 return canvas
             end
             Base.show(io, m, inline_display)
-            return three
+            screen.three = three
+            return screen
         end
     end
 end
@@ -32,23 +41,36 @@ function Makie.backend_showable(::Type{Screen}, ::T, scene::Scene) where {T<:MIM
     return T in WEB_MIMES
 end
 
-struct Screen <: Makie.MakieScreen
-    three::Base.RefValue{ThreeDisplay}
-    display::Any
+function Base.size(screen::Screen)
+    return size(get_three(screen))
 end
 
-Base.size(screen::Screen) = size(screen.three[])
+function get_three(screen::Screen)::ThreeDisplay
+    if isnothing(screen.three)
+        error("WGLMakie screen not yet shown in browser.")
+    end
+    return screen.three
+end
 
-function display(::Screen, scene::Scene; kw...)
+Screen() = Screen(nothing, nothing)
+
+# TODO, create optimized screens, forward more options to JS/WebGL
+Screen(::Scene; kw...) = Screen()
+Screen(::Scene, ::IO, ::MIME; kw...) = Screen()
+Screen(::Scene, ::Makie.ImageStorageFormat; kw...) = Screen()
+
+function Base.display(screen::Screen, scene::Scene; kw...)
     # Reference to three object which gets set once we serve this to a browser
     three_ref = Base.RefValue{ThreeDisplay}()
-    app = App() do s, request
-        three, canvas = three_display(s, scene)
+    app = App() do session, request
+        three, canvas = three_display(session, scene)
         three_ref[] = three
         return canvas
     end
     actual_display = display(app)
-    return Screen(three_ref, actual_display)
+    screen.three = wait_for_three(three_ref)
+    screen.display = actual_display
+    return screen
 end
 
 function Base.delete!(td::Screen, scene::Scene, plot::AbstractPlot)
@@ -72,14 +94,13 @@ function Makie.colorbuffer(screen::Screen)
     return session2image(get_three(screen))
 end
 
-
-function get_three(screen::Screen; timeout = 30)::Union{Nothing, ThreeDisplay}
+function wait_for_three(three_ref::Base.RefValue{ThreeDisplay}; timeout = 30)::Union{Nothing, ThreeDisplay}
     # Screen is not guaranteed to get displayed in the browser, so we wait a while
     # to see if anything gets displayed!
     tstart = time()
     while time() - tstart < timeout
-        if isassigned(screen.three)
-            three = screen.three[]
+        if isassigned(three_ref)
+            three = three_ref[]
             session = JSServe.session(three)
             if isready(session.js_fully_loaded)
                 # Error on js during init! We can't continue like this :'(
