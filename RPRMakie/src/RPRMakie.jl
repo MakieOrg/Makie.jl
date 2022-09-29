@@ -53,6 +53,6 @@ for name in names(Makie; all=true)
     end
 end
 
-export RPRScreen, RPR, colorbuffer
+export RPR, colorbuffer
 
 end

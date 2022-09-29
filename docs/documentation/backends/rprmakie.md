@@ -42,9 +42,9 @@ lights = [
 ax = LScene(fig[1, 1]; scenekw=(lights=lights,))
 
 # to create materials, one needs access to the RPR context.
-# Note, if you create an RPRScreen manually, don't display the scene or fig anymore, since that would create a new RPR context, in which resources from the manually created Context would be invalid. Since RPRs error handling is pretty bad, this usually results in Segfaults.
+# Note, if you create an Screen manually, don't display the scene or fig anymore, since that would create a new RPR context, in which resources from the manually created Context would be invalid. Since RPRs error handling is pretty bad, this usually results in Segfaults.
 # See below how to render a picture with a manually created context
-screen = RPRScreen(ax.scene; iterations=10, plugin=RPR.Northstar)
+screen = Screen(ax.scene; iterations=10, plugin=RPR.Northstar)
 matsys = screen.matsys
 context = screen.context
 # You can use lots of materials from RPR.
@@ -55,7 +55,7 @@ mat = RPR.Chrome(matsys)
 mesh!(ax, Sphere(Point3f, 0), material=mat)
 
 # There are three main ways to turn a Makie scene into a picture:
-# Get the colorbuffer of the RPRScreen. RPRScreen also has `show` overloaded for the mime `image\png` so it should display in IJulia/Jupyter/VSCode.
+# Get the colorbuffer of the Screen. Screen also has `show` overloaded for the mime `image\png` so it should display in IJulia/Jupyter/VSCode.
 image = colorbuffer(screen)::Matrix{RGB{N0f8}}
 # Replace a specific (sub) LScene with RPR, and display the whole scene interactively in GLMakie
 using GLMakie
@@ -64,7 +64,7 @@ GLMakie.activate!(); display(fig) # Make sure to display scene first in GLMakie
 # Replace the scene with an interactively rendered RPR output.
 # See more about this in the GLMakie interop example
 context, task = RPRMakie.replace_scene_rpr!(ax.scene, screen; refresh=refresh)
-# If one doesn't create the RPRScreen manually to create custom materials,
+# If one doesn't create the Screen manually to create custom materials,
 # display(ax.scene), show(io, MIME"image/png", ax.scene), save("rpr.png", ax.scene)
 # Should work just like with other backends.
 # Note, that only the scene from LScene can be displayed directly, but soon, `display(fig)` should also work.
@@ -92,7 +92,7 @@ lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
             PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1))]
 fig = Figure(; resolution=(1500, 700))
 ax = LScene(fig[1, 1]; show_axis=false, scenekw=(; lights=lights))
-screen = RPRScreen(ax.scene; plugin=RPR.Northstar, iterations=400)
+screen = Screen(ax.scene; plugin=RPR.Northstar, iterations=400)
 
 matsys = screen.matsys
 emissive = RPR.EmissiveMaterial(matsys)
@@ -230,7 +230,7 @@ lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
 
 fig = Figure(; resolution=(1500, 1000))
 ax = LScene(fig[1, 1]; show_axis=false, scenekw=(; lights=lights))
-screen = RPRMakie.RPRScreen(size(ax.scene); plugin=RPR.Tahoe)
+screen = RPRMakie.Screen(size(ax.scene); plugin=RPR.Tahoe)
 material = RPR.UberMaterial(screen.matsys)
 
 surface!(ax, f.(u, v'), g.(u, v'), h.(u, v'); ambient=Vec3f(0.5), diffuse=Vec3f(1), specular=0.5,
