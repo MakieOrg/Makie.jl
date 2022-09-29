@@ -10,7 +10,7 @@ It requires an OpenGL enabled graphics card with OpenGL version 3.3 or higher.
 You can set parameters of the window with the function `set_window_config!` which only takes effect when opening a new window.
 
 ```julia
-set_window_config!(;
+activate!(;
     renderloop = renderloop,
     vsync = false,
     framerate = 30.0,

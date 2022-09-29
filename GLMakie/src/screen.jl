@@ -17,7 +17,7 @@ const SCREEN_CONFIG = Ref((
     exit_renderloop = false,))
 
 """
-    set_window_config!(;
+    activate!(;
         renderloop = renderloop,
         vsync = false,
         framerate = 30.0,
@@ -311,7 +311,6 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
         return PermutedDimsArray(screen.framecache, (2,1))
     end
 end
-
 
 function Base.push!(screen::GLScreen, scene::Scene, robj)
     # filter out gc'ed elements

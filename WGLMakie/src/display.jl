@@ -60,6 +60,7 @@ Screen(::Scene, ::IO, ::MIME; kw...) = Screen()
 Screen(::Scene, ::Makie.ImageStorageFormat; kw...) = Screen()
 
 function Base.display(screen::Screen, scene::Scene; kw...)
+    Makie.push_screen!(scene, screen)
     # Reference to three object which gets set once we serve this to a browser
     three_ref = Base.RefValue{ThreeDisplay}()
     app = App() do session, request
@@ -78,8 +79,13 @@ function Base.delete!(td::Screen, scene::Scene, plot::AbstractPlot)
 end
 
 function session2image(sessionlike)
+    yield()
     s = JSServe.session(sessionlike)
-    to_data = js"document.querySelector('canvas').toDataURL()"
+    to_data = js"""function (){
+        $(WGL).current_renderloop()
+        return document.querySelector('canvas').toDataURL()
+    }()
+    """
     picture_base64 = JSServe.evaljs_value(s, to_data; time_out=100)
     picture_base64 = replace(picture_base64, "data:image/png;base64," => "")
     bytes = JSServe.Base64.base64decode(picture_base64)

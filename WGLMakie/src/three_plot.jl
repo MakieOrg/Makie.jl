@@ -15,7 +15,9 @@ js_uuid(object) = string(objectid(object))
 
 function Base.insert!(td::ThreeDisplay, scene::Scene, plot::Combined)
     plot_data = serialize_plots(scene, [plot])
-    WGL.insert_plot(td.session, js_uuid(scene), plot_data)
+    JSServe.evaljs_value(td.session, js"""
+        $(WGL).insert_plot($(js_uuid(scene)), $plot_data)
+    """)
     return
 end
 
