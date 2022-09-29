@@ -6,10 +6,6 @@ function project_sp(scene, point)
     return point_px .+ offset
 end
 
-GLMakie.closeall(GLMakie.GLFW_WINDOWS)
-GLMakie.closeall(GLMakie.SINGLETON_SCREEN)
-GLMakie.closeall(GLMakie.SINGLETON_SCREEN_NO_RENDERLOOP)
-
 @testset "unit tests" begin
     @testset "Window handling" begin
         # Without previous windows/figures everything should be empty/unassigned

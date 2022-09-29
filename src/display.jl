@@ -28,7 +28,7 @@ function push_screen!(scene::Scene, display::AbstractDisplay)
             # so that's when we can remove the display
             if !is_open
                 filter!(x-> x !== display, scene.current_screens)
-                deregister !== nothing && off(deregister)
+                !isnothing(deregister) && off(deregister)
             end
             return Consume(false)
         end
