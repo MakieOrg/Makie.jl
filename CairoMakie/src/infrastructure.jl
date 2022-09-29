@@ -19,6 +19,7 @@
 
 # The main entry point into the drawing pipeline
 function cairo_draw(screen::Screen, scene::Scene)
+    Cairo.save(screen.context)
     draw_background(screen, scene)
 
     allplots = get_all_plots(scene)
@@ -57,7 +58,7 @@ function cairo_draw(screen::Screen, scene::Scene)
         end
         Cairo.restore(screen.context)
     end
-
+    Cairo.restore(screen.context)
     return
 end
 

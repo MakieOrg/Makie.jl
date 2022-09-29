@@ -135,14 +135,15 @@ function Screen(scene::Scene, io_or_path::Union{Nothing, String, IO}, typ::Union
     # the surface size is the scene size scaled by the device scaling factor
     w, h = round.(Int, size(scene) .* device_scaling_factor)
     surface = surface_from_output_type(typ, io_or_path, w, h)
-    return Screen(scene, surface; screen_attributes...)
+    return Screen(scene, surface; device_scaling_factor=device_scaling_factor, screen_attributes...)
 end
 
-function Screen(scene::Scene, image::Matrix{<: Colorant}; screen_attributes...)
-    img = Matrix{ARGB32}(undef, reverse(size(image))...)
+function Screen(scene::Scene, image::Matrix{<: Colorant}; device_scaling_factor=1.0, screen_attributes...)
+    w, h = round.(Int, size(scene) .* device_scaling_factor)
+    img = Matrix{ARGB32}(undef, h, w)
     # create an image surface to draw onto the image
     surface = Cairo.CairoImageSurface(img)
-    screen = Screen(scene, surface; screen_attributes...)
+    screen = Screen(scene, surface; device_scaling_factor=device_scaling_factor, screen_attributes...)
     screen.surface_image = img
     return screen
 end
@@ -176,8 +177,8 @@ function Makie.colorbuffer(screen::Screen)
     img = Matrix{ARGB32}(undef, w, h)
     # create an image surface to draw onto the image
     surf = Cairo.CairoImageSurface(img)
-    screen = Screen(scene, surf; device_scaling_factor=screen.device_scaling_factor, antialias=screen.antialias)
-    return colorbuffer(screen)
+    s = Screen(scene, surf; device_scaling_factor=screen.device_scaling_factor, antialias=screen.antialias)
+    return colorbuffer(s)
 end
 
 function Makie.colorbuffer(screen::Screen{IMAGE})
