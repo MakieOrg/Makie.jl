@@ -272,7 +272,6 @@ function Base.show(io::IO, vao::GLVertexArray)
     println(io, "\nGLVertexArray $(vao.id) indices: ", vao.indices)
 end
 
-
 ##################################################################################
 
 const RENDER_OBJECT_ID_COUNTER = Ref(zero(UInt32))
@@ -283,17 +282,16 @@ function pack_bool(id, bool)
 end
 
 mutable struct RenderObject{Pre}
-    main                 # main object
+    context # OpenGL context
     uniforms::Dict{Symbol,Any}
     vertexarray::GLVertexArray
     prerenderfunction::Pre
     postrenderfunction
     id::UInt32
-    boundingbox # TODO, remove, basicaly deprecated
     function RenderObject{Pre}(
-            main, uniforms::Dict{Symbol,Any}, vertexarray::GLVertexArray,
-            prerenderfunctions, postrenderfunctions,
-            boundingbox
+            context,
+            uniforms::Dict{Symbol,Any}, vertexarray::GLVertexArray,
+            prerenderfunctions, postrenderfunctions
         ) where Pre
         fxaa = to_value(pop!(uniforms, :fxaa, true))
         RENDER_OBJECT_ID_COUNTER[] += one(UInt32)
@@ -304,20 +302,22 @@ mutable struct RenderObject{Pre}
         # and since this is a UUID, it shouldn't matter
         id = pack_bool(RENDER_OBJECT_ID_COUNTER[], fxaa)
         new(
-            main, uniforms, vertexarray,
+            context,
+            uniforms, vertexarray,
             prerenderfunctions, postrenderfunctions,
-            id, boundingbox
+            id
         )
     end
 end
 
-
 function RenderObject(
         data::Dict{Symbol,Any}, program,
         pre::Pre, post,
-        bbs=Observable(Rect3f(Vec3f(0), Vec3f(1))),
-        main=nothing
+        context=current_context()
     ) where Pre
+
+    switch_context!(context)
+
     targets = get(data, :gl_convert_targets, Dict())
     delete!(data, :gl_convert_targets)
     passthrough = Dict{Symbol,Any}() # we also save a few non opengl related values in data
@@ -352,12 +352,11 @@ function RenderObject(
     p = gl_convert(to_value(program), data) # "compile" lazyshader
     vertexarray = GLVertexArray(Dict(buffers), p)
     robj = RenderObject{Pre}(
-        main,
+        context,
         data,
         vertexarray,
         pre,
         post,
-        bbs
     )
     # automatically integrate object ID, will be discarded if shader doesn't use it
     robj[:objectid] = robj.id

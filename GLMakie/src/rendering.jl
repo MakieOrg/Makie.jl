@@ -5,7 +5,6 @@ function vsynced_renderloop(screen)
         if SCREEN_CONFIG[].pause_rendering
             sleep(0.1)
         else
-            ShaderAbstractions.switch_context!(screen.glscreen)
             render_frame(screen)
             GLFW.SwapBuffers(to_native(screen))
             yield()
@@ -21,7 +20,6 @@ function fps_renderloop(screen::Screen, framerate=SCREEN_CONFIG[].framerate)
         if SCREEN_CONFIG[].pause_rendering
             sleep(0.1)
         else
-            ShaderAbstractions.switch_context!(screen.glscreen)
             render_frame(screen)
             GLFW.SwapBuffers(to_native(screen))
             t_elapsed = (time_ns() - t) / 1e9
@@ -37,7 +35,6 @@ end
 
 function renderloop(screen; framerate=SCREEN_CONFIG[].framerate)
     isopen(screen) || error("Screen most be open to run renderloop!")
-    ShaderAbstractions.switch_context!(screen.glscreen)
     try
         if SCREEN_CONFIG[].vsync
             GLFW.SwapInterval(1)
@@ -89,11 +86,7 @@ Renders a single frame of a `window`
 """
 function render_frame(screen::Screen; resize_buffers=true)
     nw = to_native(screen)
-    if !ShaderAbstractions.is_context_active(nw)
-        @debug("Current context does not match the current screen.")
-        return
-    end
-
+    ShaderAbstractions.switch_context!(nw)
     function sortby(x)
         robj = x[3]
         plot = screen.cache2plot[robj.id]

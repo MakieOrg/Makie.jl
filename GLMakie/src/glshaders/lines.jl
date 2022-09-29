@@ -118,7 +118,7 @@ function draw_linesegments(shader_cache, positions::VectorTypes{T}, data::Dict) 
         # TODO update boundingbox
         transparency = false
         shader              = GLVisualizeShader(
-            shader_cache, 
+            shader_cache,
             "fragment_output.frag", "util.vert", "line_segment.vert", "line_segment.geom", "lines.frag",
             view = Dict(
                 "buffers" => output_buffers(to_value(transparency)),

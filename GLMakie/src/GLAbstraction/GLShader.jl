@@ -144,7 +144,7 @@ function get_shader!(cache::ShaderCache, path, template_replacement)
     return get!(shader_dict, template_replacement) do
         template_source = read(path, String)
         source = mustache_replace(template_replacement, template_source)
-        @assert cache.context === ShaderAbstractions.current_context()
+        ShaderAbstractions.switch_context!(cache.context)
         return compile_shader(path, source)
     end::Shader
 end
@@ -215,7 +215,7 @@ function gl_convert(cache::ShaderCache, lazyshader::AbstractLazyShader, data)
     paths = lazyshader.paths
     if all(x-> isa(x, Shader), paths)
         fragdatalocation = get(kw_dict, :fragdatalocation, Tuple{Int, String}[])
-        @assert cache.context === ShaderAbstractions.current_context()
+        ShaderAbstractions.switch_context!(cache.context)
         return compile_program([paths...], fragdatalocation)
     end
     v = get_view(kw_dict)
@@ -231,10 +231,10 @@ function gl_convert(cache::ShaderCache, lazyshader::AbstractLazyShader, data)
         shaders = map(paths) do source_typ
             source, typ = source_typ
             src, _ = template2source(source, v, data)
-            @assert cache.context === ShaderAbstractions.current_context()
+            ShaderAbstractions.switch_context!(cache.context)
             compile_shader(Vector{UInt8}(src), typ, :from_string)
         end
-        @assert cache.context === ShaderAbstractions.current_context()
+        ShaderAbstractions.switch_context!(cache.context)
         return compile_program([shaders...], fragdatalocation)
     end
     if !all(x -> isa(x, AbstractString), paths)
@@ -257,6 +257,7 @@ function gl_convert(cache::ShaderCache, lazyshader::AbstractLazyShader, data)
             tr = Dict(zip(template_keys[i], replacements[i]))
             shaders[i] = get_shader!(cache, path, tr)
         end
+        ShaderAbstractions.switch_context!(cache.context)
         compile_program(shaders, fragdatalocation)
     end
 end

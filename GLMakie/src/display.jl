@@ -8,7 +8,6 @@ function Base.display(screen::Screen, scene::Scene; connect=true)
         window_open[] = open
     end
     connect && connect_screen(scene, screen)
-    ShaderAbstractions.switch_context!(screen.glscreen)
     pollevents(screen)
     insertplots!(screen, scene)
     pollevents(screen)

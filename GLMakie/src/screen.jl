@@ -180,7 +180,6 @@ function Base.empty!(screen::Screen)
 end
 
 const GLFW_WINDOWS = GLFW.Window[]
-
 const SINGLETON_SCREEN = Screen[]
 const SINGLETON_SCREEN_NO_RENDERLOOP = Screen[]
 
@@ -337,12 +336,11 @@ specific context.
 """
 function rewrap(robj::RenderObject{Pre}) where Pre
     RenderObject{Pre}(
-        robj.main,
+        robj.context,
         robj.uniforms,
         GLVertexArray(robj.vertexarray),
         robj.prerenderfunction,
         robj.postrenderfunction,
-        robj.boundingbox,
     )
 end
 
@@ -480,7 +478,6 @@ function Screen(;
 end
 
 function refreshwindowcb(window, screen)
-    ShaderAbstractions.switch_context!(screen.glscreen)
     screen.render_tick[] = nothing
     render_frame(screen)
     GLFW.SwapBuffers(window)

@@ -83,42 +83,42 @@ struct GLVisualizeShader <: AbstractLazyShader
         new(shader_cache, map(x -> loadshader(x), paths), args)
     end
 end
+
 function GLAbstraction.gl_convert(shader::GLVisualizeShader, data)
     GLAbstraction.gl_convert(shader.shader_cache, shader, data)
 end
 
-function assemble_robj(data, program, bb, primitive, pre_fun, post_fun)
+function assemble_shader(data)
+    shader = data[:shader]::GLVisualizeShader
+    delete!(data, :shader)
+    primitive = get(data, :gl_primitive, GL_TRIANGLES)
+    pre_fun = get(data, :prerender, nothing)
+    post_fun = get(data, :postrender, nothing)
+
     transp = get(data, :transparency, Observable(false))
     overdraw = get(data, :overdraw, Observable(false))
+
     pre = if !isnothing(pre_fun)
         _pre_fun = GLAbstraction.StandardPrerender(transp, overdraw)
         ()->(_pre_fun(); pre_fun())
     else
         GLAbstraction.StandardPrerender(transp, overdraw)
     end
-    robj = RenderObject(data, program, pre, nothing, bb, nothing)
+
+    robj = RenderObject(data, shader, pre, shader.shader_cache.context)
+
     post = if haskey(data, :instances)
         GLAbstraction.StandardPostrenderInstanced(data[:instances], robj.vertexarray, primitive)
     else
         GLAbstraction.StandardPostrender(robj.vertexarray, primitive)
     end
+
     robj.postrenderfunction = if !isnothing(post_fun)
         () -> (post(); post_fun())
     else
         post
     end
-    robj
-end
-
-function assemble_shader(data)
-    shader = data[:shader]
-    delete!(data, :shader)
-    glp = get(data, :gl_primitive, GL_TRIANGLES)
-    return assemble_robj(
-        data, shader, Rect3f(), glp,
-        get(data, :prerender, nothing),
-        get(data, :postrender, nothing)
-    )
+    return robj
 end
 
 """
@@ -147,11 +147,6 @@ to_index_buffer(x) = error(
     "Not a valid index type: $(typeof(x)).
     Please choose from Int, Vector{UnitRange{Int}}, Vector{Int} or a signal of either of them"
 )
-
-function visualize(@nospecialize(main), @nospecialize(s), @nospecialize(data))
-    data = _default(main, s, copy(data))
-    return assemble_shader(data)
-end
 
 function output_buffers(transparency = false)
     if transparency
