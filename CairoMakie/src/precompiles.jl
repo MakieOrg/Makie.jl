@@ -3,8 +3,7 @@ using SnoopPrecompile
 macro compile(block)
     return quote
         figlike = $(esc(block))
-        screen = display(Makie.get_scene(figlike))
-        Makie.colorbuffer(screen)
+        Makie.colorbuffer(figlike)
     end
 end
 

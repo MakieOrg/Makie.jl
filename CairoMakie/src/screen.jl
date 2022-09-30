@@ -111,7 +111,8 @@ function surface_from_output_type(type::RenderType, io, w, h)
     elseif type === EPS
         return Cairo.CairoEPSSurface(io, w, h)
     elseif type === IMAGE
-        return Cairo.CairoARGBSurface(w, h)
+        img = Matrix{ARGB32}(undef, w, h)
+        return Cairo.CairoImageSurface(img)
     else
         error("No available Cairo surface for mode $type")
     end
@@ -136,16 +137,6 @@ function Screen(scene::Scene, io_or_path::Union{Nothing, String, IO}, typ::Union
     w, h = round.(Int, size(scene) .* device_scaling_factor)
     surface = surface_from_output_type(typ, io_or_path, w, h)
     return Screen(scene, surface; device_scaling_factor=device_scaling_factor, screen_attributes...)
-end
-
-function Screen(scene::Scene, image::Matrix{<: Colorant}; device_scaling_factor=1.0, screen_attributes...)
-    w, h = round.(Int, size(scene) .* device_scaling_factor)
-    img = Matrix{ARGB32}(undef, h, w)
-    # create an image surface to draw onto the image
-    surface = Cairo.CairoImageSurface(img)
-    screen = Screen(scene, surface; device_scaling_factor=device_scaling_factor, screen_attributes...)
-    screen.surface_image = img
-    return screen
 end
 
 function Screen(scene::Scene, ::Makie.ImageStorageFormat; screen_attributes...)

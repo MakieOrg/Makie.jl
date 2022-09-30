@@ -5,7 +5,7 @@ macro compile(block)
         let
             figlike = $(esc(block))
             screen = Screen(visible=false)
-            display(screen, Makie.get_scene(figlike))
+            display(screen, figlike)
             Makie.colorbuffer(screen)
             close(screen)
         end
