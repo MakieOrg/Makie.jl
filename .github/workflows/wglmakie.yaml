@@ -23,24 +23,10 @@ concurrency:
 jobs:
   test:
     name: WGLMakie Julia ${{ matrix.version }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - '1.6'
-          - '1' # automatically expands to the latest stable 1.x release of Julia
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
+    runs-on: self-hosted
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - uses: julia-actions/setup-julia@v1
-        with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v1
       - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
       - name: Install Julia dependencies
