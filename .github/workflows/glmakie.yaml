@@ -32,7 +32,6 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v1
-      - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
       - name: Install Julia dependencies
         shell: julia --project=monorepo {0}
         run: |
@@ -42,9 +41,7 @@ jobs:
       - name: Run the tests
         id: referencetests
         continue-on-error: true
-        run: >
-          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("GLMakie", coverage=true)'
-          && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
+        run: julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("GLMakie", coverage=true)'
       - name: Comment if there are missing refimages
         if: matrix.version == '1' && steps.referencetests.outputs.n_missing_refimages != '0'
         uses: mshick/add-pr-comment@v1

@@ -36,9 +36,7 @@ jobs:
           pkg"dev . ./MakieCore ./CairoMakie ./ReferenceTests"
       - name: Run the tests
         continue-on-error: true
-        run: >
-          julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("CairoMakie", coverage=true)'
-          && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
+        run: julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("CairoMakie", coverage=true)'
       - name: Upload test Artifacts
         uses: actions/upload-artifact@v2
         with:
