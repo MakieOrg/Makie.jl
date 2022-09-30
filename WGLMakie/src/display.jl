@@ -37,7 +37,7 @@ for M in WEB_MIMES
     end
 end
 
-function Makie.backend_showable(::Type{Screen}, ::T, scene::Scene) where {T<:MIME}
+function Makie.backend_showable(::Type{Screen}, ::T) where {T<:MIME}
     return T in WEB_MIMES
 end
 

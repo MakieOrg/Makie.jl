@@ -17,7 +17,10 @@ const SCREEN_CONFIG = Ref((
     antialias = Cairo.ANTIALIAS_BEST
 ))
 
-function activate!(; screen_attributes...)
+function activate!(; type="png", screen_attributes...)
+
+    Makie.set_preferred_mime!(to_mime(convert(RenderType, type)))
+
     Makie.set_screen_config!(SCREEN_CONFIG, screen_attributes)
     Makie.set_active_backend!(CairoMakie)
     return

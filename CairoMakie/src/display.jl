@@ -99,7 +99,7 @@ function Makie.backend_show(screen::Screen{IMAGE}, io::IO, ::MIME"image/png", sc
     return screen
 end
 
-Makie.backend_showable(::Type{Screen}, ::MIME"image/svg+xml", scene::Scene) = true
-Makie.backend_showable(::Type{Screen}, ::MIME"application/pdf", scene::Scene) = true
-Makie.backend_showable(::Type{Screen}, ::MIME"application/postscript", scene::Scene) = true
-Makie.backend_showable(::Type{Screen}, ::MIME"image/png", scene::Scene) = true
+Makie.backend_showable(::Type{Screen}, ::MIME"image/svg+xml") = true
+Makie.backend_showable(::Type{Screen}, ::MIME"application/pdf") = true
+Makie.backend_showable(::Type{Screen}, ::MIME"application/postscript") = true
+Makie.backend_showable(::Type{Screen}, ::MIME"image/png") = true

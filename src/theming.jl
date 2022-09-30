@@ -91,7 +91,32 @@ const minimal_default = Attributes(
     ),
     ambient = RGBf(0.55, 0.55, 0.55),
     lightposition = :eyeposition,
-    inspectable = true
+    inspectable = true,
+
+    CairoMakie = Attributes(
+        type = "png",
+        px_per_unit = 1.0,
+        pt_per_unit = 0.75,
+        antialias = :best
+    ),
+    GLMakie = Attributes(
+        renderloop = automatic,
+        vsync = false,
+        framerate = 30.0,
+        float = false,
+        pause_rendering = false,
+        focus_on_show = false,
+        decorated = true,
+        title = "Makie",
+    ),
+    WGLMakie = Attributes(
+        framerate = 30.0
+    ),
+    RPRMakie = Attributes(
+        iterations = 200,
+        resource = automatic,
+        plugin = automatic
+    )
 )
 
 const _current_default_theme = deepcopy(minimal_default)

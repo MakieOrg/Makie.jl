@@ -14,3 +14,5 @@ function Base.display(screen::Screen, scene::Scene; connect=true)
     pollevents(screen)
     return screen
 end
+
+Makie.backend_showable(::Type{Screen}, ::Union{MIME"image/jpeg", MIME"image/png"}) = true
