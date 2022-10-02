@@ -11,13 +11,13 @@ using Makie: stack_grouped_from_to
     grp_stack2 = [3, 4,  3,  4]
     y2         = [2, 3, -3, -2]
 
-    from, to = stack_grouped_from_to(grp_stack1, y1, (; x1 = x1, grp_dodge1 = grp_dodge1))
+    from, to = stack_grouped_from_to(grp_stack1, y1, (; x1 = x1, grp_dodge1 = grp_dodge1, is_pos = y1 .> 0))
     from1 = [0.0, 2.0,  0.0, -3.0]
     to1   = [2.0, 5.0, -3.0, -5.0]
     @test from == from1
     @test to   == to1
 
-    from, to = stack_grouped_from_to(grp_stack2, y2, (; x2 = x2, grp_dodge2 = grp_dodge2))
+    from, to = stack_grouped_from_to(grp_stack2, y2, (; x2 = x2, grp_dodge2 = grp_dodge2, is_pos = y2 .> 0))
     from2 = [0.0,  0.0,  0.0,  0.0]
     to2   = [2.0,  3.0, -3.0, -2.0]
     @test from == from2
@@ -32,7 +32,7 @@ using Makie: stack_grouped_from_to
     from_test = [from1; from2][perm]
     to_test = [to1; to2][perm]
 
-    from, to = stack_grouped_from_to(grp_stack, y, (; x = x, grp_dodge = grp_dodge))
+    from, to = stack_grouped_from_to(grp_stack, y, (; x = x, grp_dodge = grp_dodge, is_pos = y .> 0))
     @test from == from_test
     @test to == to_test
 end
