@@ -110,7 +110,7 @@ function stack_grouped_from_to(i_stack, y, grp)
     from = Array{Float64}(undef, length(y))
     to   = Array{Float64}(undef, length(y))
 
-    groupby = StructArray((; grp..., is_pos = y .> 0))
+    groupby = StructArray(grp)
 
     grps = StructArrays.finduniquesorted(groupby)
 
@@ -219,18 +219,25 @@ function Makie.plot!(p::BarPlot)
             if fillto === automatic
                 fillto = offset
             end
-        elseif eltype(stack) <: Integer
+        elseif eltype(stack) <: Integer || stack === :dodge || stack === :waterfall
             fillto === automatic || @warn "Ignore keyword fillto when keyword stack is provided"
             if !iszero(offset)
                 @warn "Ignore keyword offset when keyword stack is provided"
                 offset = 0.0
             end
-            i_stack = stack
 
-            from, to = stack_grouped_from_to(i_stack, y, (x = x̂,))
+            i_stack, grp = if stack === :dodge
+                dodge, (x = x,)
+            elseif stack === :waterfall
+                x, (x = dodge === automatic ? fill(1, length(x)) : dodge,)
+            else
+                stack, (x = x̂, is_pos = y .> 0)
+            end
+
+            from, to = stack_grouped_from_to(i_stack, y, grp)
             y, fillto = to, from
         else
-            ArgumentError("The keyword argument `stack` currently supports only `AbstractVector{<: Integer}`") |> throw
+            ArgumentError("The keyword argument `stack` currently supports only `AbstractVector{<: Integer}`, `:dodge` and `:waterfall`") |> throw
         end
 
         # --------------------------------
