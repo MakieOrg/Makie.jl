@@ -82,6 +82,30 @@ barplot(tbl.x, tbl.height,
 \end{examplefigure}
 
 \begin{examplefigure}{}
+
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+green, red = Makie.wong_colors()[[3, 6]]
+
+y = [3, 2, 1, -4, 1, -3, -2, 4, -1, 3]
+c = map(v -> v < 0 ? red : green, y) # color bars by sign
+
+fig = Figure()
+waterfall_ax = Axis(fig[1, 1], title="stack=:waterfall")
+barplot!(waterfall_ax, y, color=c, stack=:waterfall)
+
+x = repeat(1:2, inner=5)
+dodge = repeat(1:5, outer=2)
+
+dodge_ax = Axis(fig[2, 1], title="stack=:dodge")
+barplot!(dodge_ax, x, y, color=c, dodge=dodge, stack=:dodge)
+
+fig
+
+\end{examplefigure}
+
+\begin{examplefigure}{}
 ```julia
 colors = Makie.wong_colors()
 
