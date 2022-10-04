@@ -9,9 +9,22 @@ using FileIO
 const RPR = RadeonProRender
 using Makie: colorbuffer
 
-const NUM_ITERATIONS = Ref(200)
-const RENDER_RESOURCE = Ref(RPR.RPR_CREATION_FLAGS_ENABLE_GPU0)
-const RENDER_PLUGIN = Ref(RPR.Tahoe)
+struct ScreenConfig
+    iterations::Int
+    max_recursion::Int
+    resource::RPR.rpr_creation_flags_t
+    plugin::RPR.PluginType
+end
+
+function ScreenConfig(iterations::Int, max_recursion::Int, render_resource, render_plugin)
+    return ScreenConfig(
+        iterations,
+        max_recursion,
+        render_resource isa Makie.Automatic ? RPR.RPR_CREATION_FLAGS_ENABLE_GPU0 : render_resource,
+        render_plugin isa Makie.Automatic ? RPR.Tahoe : render_plugin
+    )
+end
+
 
 include("scene.jl")
 include("lines.jl")
@@ -33,10 +46,8 @@ include("volume.jl")
     * `RPR.HybridPro`: The same as Hybrid, but works only for Radeon GPUs, using AMDs own hardware acceleration API.
 
 """
-function activate!(; iterations=200, resource=RENDER_RESOURCE[], plugin=RENDER_PLUGIN[])
-    NUM_ITERATIONS[] = iterations
-    RENDER_RESOURCE[] = resource
-    RENDER_PLUGIN[] = plugin
+function activate!(; screen_config...)
+    Makie.set_screen_config!(RPRMakie, screen_config)
     Makie.set_active_backend!(RPRMakie)
     return
 end

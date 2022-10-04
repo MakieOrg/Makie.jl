@@ -54,7 +54,6 @@ function get_texture!(atlas)
     return tex
 end
 
-# TODO
 # find a better way to handle this
 # enable_SSAO and FXAA adjust the rendering pipeline and are currently per screen
 const enable_SSAO = Ref(false)

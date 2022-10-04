@@ -41,14 +41,32 @@ function delete_screen!(scene::Scene, display::AbstractDisplay)
     return
 end
 
-function set_screen_config!(config::RefValue, new_values)
-    config_attributes = propertynames(config[])
+function set_screen_config!(backend::Module, new_values)
+    key = nameof(backend)
+    backend_defaults = CURRENT_DEFAULT_THEME[key]
+    bkeys = keys(backend_defaults)
     for (k, v) in pairs(new_values)
-        if !(k in config_attributes)
-            error("$k is not a valid screen config. Applicable options: $(config_attributes)")
+        if !(k in bkeys)
+            error("$k is not a valid screen config. Applicable options: $(keys(backend_defaults)). For help, check `?$(backend).ScreenCofig`")
+        end
+        backend_defaults[k] = v
+    end
+    return
+end
+
+function merge_screen_config(::Type{Config}, screen_config_kw) where Config
+    backend = parentmodule(Config)
+    key = nameof(backend)
+    backend_defaults = CURRENT_DEFAULT_THEME[key]
+    kw_nt = values(screen_config_kw)
+    arguments = map(fieldnames(Config)) do name
+        if haskey(kw_nt, name)
+            return getfield(kw_nt, name)
+        else
+            return to_value(backend_defaults[name])
         end
     end
-    config[] = merge(config[], new_values)
+    return Config(arguments...)
 end
 
 """
@@ -64,7 +82,7 @@ pt_per_unit=x.pt_per_unit
 px_per_unit=x.px_per_unit
 antialias=x.antialias
 """
-function Base.display(figlike::FigureLike; screen_kw...)
+function Base.display(figlike::FigureLike; screen_config...)
     Backend = current_backend()
     if ismissing(Backend)
         error("""
@@ -75,7 +93,7 @@ function Base.display(figlike::FigureLike; screen_kw...)
         In that case, try `]build GLMakie` and watch out for any warnings.
         """)
     end
-    screen = Backend.Screen(get_scene(figlike); screen_kw...)
+    screen = Backend.Screen(get_scene(figlike); screen_config...)
     return display(screen, figlike)
 end
 
@@ -199,8 +217,8 @@ function Stepper(figlike::FigureLike; backend=current_backend(), format=:png, vi
     return RamStepper(figlike, screen, Matrix{RGBf}[], format)
 end
 
-function Stepper(figlike::FigureLike, path::String, step::Int; format=:png, backend=current_backend(), visible=false, connect=false, screen_kw...)
-    screen = backend.Screen(get_scene(figlike), JuliaNative; visible=visible, start_renderloop=false, screen_kw...)
+function Stepper(figlike::FigureLike, path::String, step::Int; format=:png, backend=current_backend(), visible=false, connect=false, screen_config...)
+    screen = backend.Screen(get_scene(figlike), JuliaNative; visible=visible, start_renderloop=false, screen_config...)
     display(screen, figlike; connect=connect)
     return FolderStepper(figlike, screen, path, format, step)
 end
@@ -324,7 +342,7 @@ struct VideoStream
 end
 
 """
-    VideoStream(scene::Scene; framerate = 24, visible=false, connect=false, screen_kw...)
+    VideoStream(scene::Scene; framerate = 24, visible=false, connect=false, screen_config...)
 
 Returns a stream and a buffer that you can use, which don't allocate for new frames.
 Use [`recordframe!(stream)`](@ref) to add new video frames to the stream, and
@@ -333,12 +351,12 @@ Use [`recordframe!(stream)`](@ref) to add new video frames to the stream, and
 * visible=false: make window visible or not
 * connect=false: connect window events or not
 """
-function VideoStream(fig::FigureLike; framerate::Integer=24, visible=false, connect=false, backend=current_backend(), screen_kw...)
+function VideoStream(fig::FigureLike; framerate::Integer=24, visible=false, connect=false, backend=current_backend(), screen_config...)
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
     dir = mktempdir()
     path = joinpath(dir, "$(gensym(:video)).mkv")
     scene = get_scene(fig)
-    screen = backend.Screen(scene, GLNative; visible=visible, start_renderloop=false, screen_kw...)
+    screen = backend.Screen(scene, GLNative; visible=visible, start_renderloop=false, screen_config...)
     display(screen, fig; connect=connect)
     _xdim, _ydim = size(screen)
     xdim = iseven(_xdim) ? _xdim : _xdim + 1

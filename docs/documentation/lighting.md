@@ -27,7 +27,7 @@ GLMakie also implements [_screen-space ambient occlusion_](https://learnopengl.c
   a good compromise.
 
 !!! note
-    The SSAO postprocessor is turned off by default to save on resources. To turn it on, set `GLMakie.enable_SSAO[] = true`, close any existing GLMakie window and reopen it.
+    The SSAO postprocessor is turned off by default to save on resources. To turn it on, set `GLMakie.activate!(ssao=true)`, close any existing GLMakie window and reopen it.
 
 ## Matcap
 
@@ -95,8 +95,7 @@ app
 \begin{examplefigure}{}
 ```julia
 using GLMakie
-GLMakie.activate!() # hide
-GLMakie.enable_SSAO[] = true
+GLMakie.activate!(ssao=true) # hide
 GLMakie.closeall() # close any open screen
 
 fig = Figure()
@@ -113,7 +112,7 @@ fig
 \end{examplefigure}
 
 ```julia:disable-ssao
-GLMakie.enable_SSAO[] = false # hide
+GLMakie.activate!(ssao=false) hide
 GLMakie.closeall() # hide
 ```
 

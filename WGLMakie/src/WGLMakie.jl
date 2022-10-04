@@ -44,18 +44,14 @@ include("imagelike.jl")
 include("display.jl")
 
 
-const SCREEN_CONFIG = Ref((
-    fps = 30,
-))
-
 """
     activate!(; fps=30)
 
 Set fps (frames per second) to a higher number for smoother animations, or to a lower to use less resources.
 """
-function activate!(; fps=30)
-    SCREEN_CONFIG[] = merge(SCREEN_CONFIG[], (fps=fps,))
+function activate!(; screen_config...)
     Makie.set_active_backend!(WGLMakie)
+    Makie.set_screen_config!(WGLMakie, screen_config)
     Makie.set_glyph_resolution!(Makie.Low)
     return
 end
@@ -80,6 +76,6 @@ for name in names(Makie, all=true)
     end
 end
 
-include("precompiles.jl")
+# include("precompiles.jl")
 
 end # module

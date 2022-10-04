@@ -1,27 +1,25 @@
 @enum RenderType SVG IMAGE PDF EPS
 
-"""
-    Screen(;
-        type = IMAGE,
-        px_per_unit = 1.0,
-        pt_per_unit = 0.75,
-        antialias = Cairo.ANTIALIAS_BEST
-    )
+struct ScreenConfig
+    type::RenderType # = IMAGE,
+    px_per_unit::Float64 # = 1.0,
+    pt_per_unit::Float64 # = 0.75,
+    antialias::Symbol # = Cairo.ANTIALIAS_BEST
+    visible::Bool
+    start_renderloop::Bool
+end
 
+function device_scaling_factor(sc::ScreenConfig)
+    if is_vector_backend(sc.type)
+        return sc.pt_per_unit
+    else
+        return sc.px_per_unit
+    end
+end
 
-"""
-const SCREEN_CONFIG = Ref((
-    type = IMAGE,
-    px_per_unit = 1.0,
-    pt_per_unit = 0.75,
-    antialias = Cairo.ANTIALIAS_BEST
-))
-
-function activate!(; type="png", screen_attributes...)
-
+function activate!(; type="png", screen_config...)
     Makie.set_preferred_mime!(to_mime(convert(RenderType, type)))
-
-    Makie.set_screen_config!(SCREEN_CONFIG, screen_attributes)
+    Makie.set_screen_config!(CairoMakie, screen_config)
     Makie.set_active_backend!(CairoMakie)
     return
 end
@@ -125,37 +123,49 @@ end
 #    Constructor                       #
 ########################################
 
+function to_cairo_antialias(sym::Symbol)
+    sym == :best && return Cairo.ANTIALIAS_BEST
+    sym == :good && return Cairo.ANTIALIAS_GOOD
+    sym == :subpixel && return Cairo.ANTIALIAS_SUBPIXEL
+    sym == :none && return Cairo.ANTIALIAS_NONE
+    error("Wrong antialias setting: $(sym). Allowed: :best, :good, :subpixel, :none")
+end
+to_cairo_antialias(aa::Int) = aa
 
 # Default to ARGB Surface as backing device
-# TODO: integrate Gtk into this, so we can have an interactive display
 """
-    Screen(scene::Scene; screen_attributes...)
+    Screen(scene::Scene; screen_config...)
 
 Create a Screen backed by an image surface.
 """
-Screen(scene::Scene; screen_attributes...) = Screen(scene, nothing, IMAGE; screen_attributes...)
+Screen(scene::Scene; screen_config...) = Screen(scene, nothing, IMAGE; screen_config...)
 
-function Screen(scene::Scene, io_or_path::Union{Nothing, String, IO}, typ::Union{MIME, Symbol, RenderType}; device_scaling_factor=1.0, screen_attributes...)
+function Screen(scene::Scene, io_or_path::Union{Nothing, String, IO}, typ::Union{MIME, Symbol, RenderType}; screen_config...)
+    config = Makie.merge_screen_config(ScreenConfig, screen_config)
     # the surface size is the scene size scaled by the device scaling factor
-    w, h = round.(Int, size(scene) .* device_scaling_factor)
+    w, h = round.(Int, size(scene) .* device_scaling_factor(config))
     surface = surface_from_output_type(typ, io_or_path, w, h)
-    return Screen(scene, surface; device_scaling_factor=device_scaling_factor, screen_attributes...)
+    return Screen(scene, surface, config)
 end
 
-function Screen(scene::Scene, ::Makie.ImageStorageFormat; screen_attributes...)
+function Screen(scene::Scene, ::Makie.ImageStorageFormat; screen_config...)
+    config = Makie.merge_screen_config(ScreenConfig, screen_config)
+    w, h = round.(Int, size(scene) .* device_scaling_factor(config))
     # create an image surface to draw onto the image
-    img = Matrix{ARGB32}(undef, size(scene)...)
+    img = Matrix{ARGB32}(undef, w, h)
     surface = Cairo.CairoImageSurface(img)
-    return Screen(scene, surface; screen_attributes...)
+    return Screen(scene, surface, config)
 end
 
-function Screen(scene::Scene, surface::Cairo.CairoSurface; device_scaling_factor=1.0, antialias=Cairo.ANTIALIAS_BEST, visible=true, start_renderloop=false)
+function Screen(scene::Scene, surface::Cairo.CairoSurface, config::ScreenConfig)
     # the surface size is the scene size scaled by the device scaling factor
-    surface_set_device_scale(surface, device_scaling_factor)
+    dsf = device_scaling_factor(config)
+    surface_set_device_scale(surface, dsf)
     ctx = Cairo.CairoContext(surface)
-    Cairo.set_antialias(ctx, antialias)
+    aa = to_cairo_antialias(config.antialias)
+    Cairo.set_antialias(ctx, aa)
     set_miter_limit(ctx, 2.0)
-    return Screen{get_render_type(surface)}(scene, surface, ctx, device_scaling_factor, antialias, visible)
+    return Screen{get_render_type(surface)}(scene, surface, ctx, dsf, aa, config.visible)
 end
 
 ########################################
@@ -176,9 +186,17 @@ function Makie.colorbuffer(screen::Screen)
 end
 
 function Makie.colorbuffer(screen::Screen{IMAGE})
+    ctx = screen.context
+    Cairo.save(ctx)
+    Cairo.set_source_rgba(ctx, 0.0, 0.0, 0.0, 0.0)
+    Cairo.set_operator(ctx, Cairo.OPERATOR_CLEAR)
+    Cairo.rectangle(ctx, 0, 0, size(screen)...)
+    Cairo.paint_with_alpha(ctx, 1.0)
+    Cairo.restore(ctx)
     cairo_draw(screen, screen.scene)
-    return permutedims(screen.surface.data)
+    return permutedims(RGBf.(screen.surface.data))
 end
 
 is_vector_backend(ctx::Cairo.CairoContext) = is_vector_backend(ctx.surface)
-is_vector_backend(surf::Cairo.CairoSurface) = get_render_type(surf) in (PDF, EPS, SVG)
+is_vector_backend(surf::Cairo.CairoSurface) = is_vector_backend(get_render_type(surf))
+is_vector_backend(rt::RenderType) = rt in (PDF, EPS, SVG)

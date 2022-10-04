@@ -58,7 +58,14 @@ function JSServe.print_js_code(io::IO, plot::AbstractPlot, context)
     JSServe.print_js_code(io, js"$(WGL).find_plots($(uuids))", context)
 end
 
-function three_display(session::Session, scene::Scene; framerate=30.0)
+struct ScreenConfig
+    framerate::Float64 # =30.0
+end
+
+function three_display(session::Session, scene::Scene; screen_config...)
+
+    config = Makie.merge_screen_config(ScreenConfig, screen_config)::ScreenConfig
+
     serialized = serialize_scene(scene)
 
     if TEXTURE_ATLAS_CHANGED[]
@@ -90,7 +97,7 @@ function three_display(session::Session, scene::Scene; framerate=30.0)
         if ( renderer ) {
             const three_scenes = scenes.map(x=> $(WGL).deserialize_scene(x, canvas))
             const cam = new $(THREE).PerspectiveCamera(45, 1, 0, 100)
-            $(WGL).start_renderloop(renderer, three_scenes, cam, $(framerate))
+            $(WGL).start_renderloop(renderer, three_scenes, cam, $(config.framerate))
             JSServe.on_update($canvas_width, w_h => {
                 // `renderer.setSize` correctly updates `canvas` dimensions
                 const pixelRatio = renderer.getPixelRatio();

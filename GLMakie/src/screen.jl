@@ -5,16 +5,50 @@ const ScreenArea = Tuple{ScreenID, Scene}
 
 function renderloop end
 
-const SCREEN_CONFIG = Ref((
-    renderloop = renderloop,
-    vsync = false,
-    framerate = 30.0,
-    float = false,
-    pause_rendering = false,
-    focus_on_show = false,
-    decorated = true,
-    title = "Makie",
-    exit_renderloop = false,))
+"""
+    ScreenConfig(
+        # Renderloop
+        renderloop::Union{Makie.Automatic, Function} = automatic,
+        pause_renderloop::Bool = false,
+        vsync::Bool = false,
+        framerate::Float64 = 30.0,
+
+        # GLFW window attributes
+        float::Bool = false,
+        focus_on_show::Bool = false,
+        decorated::Bool = true,
+        title::String = "Makie",
+        fullscreen::Bool = false,
+        debugging::Bool = false,
+        monitor::Union{Nothing, GLFW.Monitor} = nothing,
+
+        # Preproccessor
+        oit::Bool = true,
+        fxaa::Bool = true,
+        ssao::Bool = true)
+
+"""
+struct ScreenConfig
+    # Renderloop
+    renderloop::Union{Makie.Automatic, Function}# = automatic,
+    pause_renderloop::Bool
+    vsync::Bool# = false,
+    framerate::Float64# = 30.0,
+
+    # GLFW window attributes
+    float::Bool# = false,
+    focus_on_show::Bool# = false,
+    decorated::Bool# = true,
+    title::String# = "Makie",
+    fullscreen::Bool# = false,
+    debugging::Bool# = false,
+    monitor::Union{Nothing, GLFW.Monitor}# = nothing,
+
+    # Preproccessor
+    oit::Bool# = true,
+    fxaa::Bool# = true,
+    ssao::Bool# = true
+end
 
 """
     activate!(;
@@ -31,7 +65,10 @@ Updates the screen configuration, will only go into effect after closing the cur
 window and opening a new one!
 """
 function activate!(; screen_config...)
-    Makie.set_screen_config!(SCREEN_CONFIG, screen_config)
+    if haskey(screen_config, :pause_rendering)
+        error("pause_rendering got renamed to pause_renderloop.")
+    end
+    Makie.set_screen_config!(GLMakie, screen_config)
     Makie.set_active_backend!(GLMakie)
     Makie.set_glyph_resolution!(Makie.High)
     return
@@ -43,7 +80,14 @@ mutable struct Screen{GLWindow} <: GLScreen
     glscreen::GLWindow
     shader_cache::GLAbstraction.ShaderCache
     framebuffer::GLFramebuffer
+
+    renderloop::Function
+    stop_renderloop::Bool
+    pause_renderloop::Bool
+    vsync::Bool
+    framerate::Float64
     rendertask::RefValue{Task}
+
     screen2scene::Dict{WeakRef, ScreenID}
     screens::Vector{ScreenArea}
     renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}}
@@ -58,7 +102,14 @@ mutable struct Screen{GLWindow} <: GLScreen
             glscreen::GLWindow,
             shader_cache::GLAbstraction.ShaderCache,
             framebuffer::GLFramebuffer,
+
+            renderloop::Function,
+            stop_renderloop::Bool,
+            pause_renderloop::Bool,
+            vsync::Bool,
+            framerate::Float64,
             rendertask::RefValue{Task},
+
             screen2scene::Dict{WeakRef, ScreenID},
             screens::Vector{ScreenArea},
             renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}},
@@ -68,7 +119,10 @@ mutable struct Screen{GLWindow} <: GLScreen
         ) where {GLWindow}
         s = size(framebuffer)
         return new{GLWindow}(
-            glscreen, shader_cache, framebuffer, rendertask, screen2scene,
+            glscreen, shader_cache, framebuffer,
+            renderloop, stop_renderloop, pause_renderloop, vsync, framerate,
+            rendertask,
+            screen2scene,
             screens, renderlist, postprocessors, cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(nothing),
             Observable(true)
@@ -389,12 +443,15 @@ end
 function Screen(;
         resolution = (10, 10),
         visible = true,
-        title = SCREEN_CONFIG[].title,
         start_renderloop = true,
-        kw_args...
+        screen_config...
     )
+    # Screen config is managed by the current active theme, so managed by Makie
+    config = Makie.merge_screen_config(ScreenConfig, screen_config)
+
     # Somehow this constant isn't wrapped by glfw
     GLFW_FOCUS_ON_SHOW = 0x0002000C
+
     windowhints = [
         (GLFW.SAMPLES,      0),
         (GLFW.DEPTH_BITS,   0),
@@ -408,19 +465,23 @@ function Screen(;
 
         (GLFW.STENCIL_BITS, 0),
         (GLFW.AUX_BUFFERS,  0),
-        (GLFW_FOCUS_ON_SHOW, SCREEN_CONFIG[].focus_on_show),
-        (GLFW.DECORATED, SCREEN_CONFIG[].decorated),
-        (GLFW.FLOATING, SCREEN_CONFIG[].float),
+        (GLFW_FOCUS_ON_SHOW, config.focus_on_show),
+        (GLFW.DECORATED, config.decorated),
+        (GLFW.FLOATING, config.float),
         # (GLFW.TRANSPARENT_FRAMEBUFFER, true)
     ]
 
     window = try
         GLFW.Window(
-            name = title, resolution = resolution,
+            resolution = resolution,
             windowhints = windowhints,
             visible = false,
-            focus = false,
-            kw_args...
+            # from config
+            name = config.title,
+            focus = config.focus_on_show,
+            fullscreen = config.fullscreen,
+            debugging = config.debugging,
+            monitor = config.monitor
         )
     catch e
         @warn("""
@@ -444,17 +505,23 @@ function Screen(;
     resize_native!(window, resolution...)
 
     fb = GLFramebuffer(resolution)
-
     postprocessors = [
-        enable_SSAO[] ? ssao_postprocessor(fb, shader_cache) : empty_postprocessor(),
-        OIT_postprocessor(fb, shader_cache),
-        enable_FXAA[] ? fxaa_postprocessor(fb, shader_cache) : empty_postprocessor(),
+        config.ssao ? ssao_postprocessor(fb, shader_cache) : empty_postprocessor(),
+        config.oit ? OIT_postprocessor(fb, shader_cache) : empty_postprocessor(),
+        config.fxaa ? fxaa_postprocessor(fb, shader_cache) : empty_postprocessor(),
         to_screen_postprocessor(fb, shader_cache)
     ]
 
     screen = Screen(
         window, shader_cache, fb,
+
+        config.renderloop isa Makie.Automatic ? renderloop : config.renderloop,
+        !start_renderloop,
+        config.pause_renderloop,
+        config.vsync,
+        config.framerate,
         RefValue{Task}(),
+
         Dict{WeakRef, ScreenID}(),
         ScreenArea[],
         Tuple{ZIndex, ScreenID, RenderObject}[],
@@ -464,16 +531,54 @@ function Screen(;
     )
 
     GLFW.SetWindowRefreshCallback(window, window -> refreshwindowcb(window, screen))
+
     if start_renderloop
-        screen.rendertask[] = @async((SCREEN_CONFIG[].renderloop)(screen))
+        start_renderloop!(screen)
     end
+
     # display window if visible!
     if visible
         GLFW.ShowWindow(window)
     else
         GLFW.HideWindow(window)
     end
+
     return screen
+end
+
+function renderloop_running(screen::Screen)
+    return !screen.stop_renderloop && isassigned(screen.rendertask) && !istaskdone(screen.rendertask[])
+end
+
+function start_renderloop!(screen::Screen)
+    if renderloop_running(screen)
+        screen.pause_renderloop = false
+        return
+    else
+        screen.stop_renderloop = false
+        task = @async screen.renderloop(screen)
+        yield()
+        if istaskstarted(task)
+            screen.rendertask[] = task
+        elseif istaskfailed(task)
+            fetch(task)
+        else
+            error("What's up with task $(task)")
+        end
+    end
+end
+
+function pause_renderloop!(screen::Screen)
+    screen.pause_renderloop = true
+end
+
+function stop_renderloop!(screen::Screen)
+    screen.stop_renderloop = true
+    wait(screen.rendertask[]) # Make sure we quit!
+end
+
+function set_framerate!(screen::Screen, fps=30)
+    screen.framerate = fps
 end
 
 function refreshwindowcb(window, screen)
@@ -483,12 +588,69 @@ function refreshwindowcb(window, screen)
     return
 end
 
+# Open an interactive window
 Screen(scene::Scene; screen_attributes...) = singleton_screen(size(scene); visible=true, start_renderloop=true)
 
+# Screen to save a png/jpeg to file or io
 function Screen(scene::Scene, io_or_path::Union{Nothing, String, IO}, typ::MIME; screen_attributes...)
     return singleton_screen(size(scene); visible=false, start_renderloop=false)
 end
 
+# Screen that is efficient for `colorbuffer(screen)`
 function Screen(scene::Scene, ::Makie.ImageStorageFormat; screen_attributes...)
     return singleton_screen(size(scene); visible=false, start_renderloop=false)
+end
+
+# TODO add render_tick event to scene events
+function vsynced_renderloop(screen)
+    while isopen(screen) && !screen.stop_renderloop
+        if screen.pause_renderloop
+            pollevents(screen); sleep(0.1)
+            continue
+        end
+        pollevents(screen) # GLFW poll
+        render_frame(screen)
+        GLFW.SwapBuffers(to_native(screen))
+        yield()
+    end
+end
+
+function fps_renderloop(screen::Screen)
+    while isopen(screen) && !screen.stop_renderloop
+        if screen.pause_renderloop
+            pollevents(screen); sleep(0.1)
+            continue
+        end
+        time_per_frame = 1.0 / screen.framerate
+        t = time_ns()
+        pollevents(screen) # GLFW poll
+        render_frame(screen)
+        GLFW.SwapBuffers(to_native(screen))
+        t_elapsed = (time_ns() - t) / 1e9
+        diff = time_per_frame - t_elapsed
+        if diff > 0.001 # can't sleep less than 0.001
+            sleep(diff)
+        else # if we don't sleep, we still need to yield explicitely to other tasks
+            yield()
+        end
+    end
+end
+
+function renderloop(screen)
+    isopen(screen) || error("Screen most be open to run renderloop!")
+    try
+        if screen.vsync
+            GLFW.SwapInterval(1)
+            vsynced_renderloop(screen)
+        else
+            GLFW.SwapInterval(0)
+            fps_renderloop(screen)
+        end
+    catch e
+        showerror(stderr, e, catch_backtrace())
+        println(stderr)
+        rethrow(e)
+    finally
+        destroy!(screen)
+    end
 end

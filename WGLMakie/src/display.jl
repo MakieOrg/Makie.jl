@@ -1,6 +1,6 @@
 
 function JSServe.jsrender(session::Session, scene::Scene)
-    three, canvas = WGLMakie.three_display(session, scene)
+    three, canvas = three_display(session, scene)
     Makie.push_screen!(scene, three)
     return canvas
 end

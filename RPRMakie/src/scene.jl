@@ -153,29 +153,36 @@ mutable struct Screen <: Makie.MakieScreen
     cleared::Bool
 end
 
-function Screen(scene::Scene; kw...)
+Base.size(screen::Screen) = screen.fb_size
+
+function Base.show(io::IO, ::MIME"image/png", screen::Screen)
+    img = colorbuffer(screen)
+    FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img)
+end
+
+function Screen(scene::Scene; screen_config...)
     fb_size = size(scene)
-    screen = Screen(fb_size; kw...)
+    screen = Screen(fb_size; screen_config...)
     screen.scene = scene
     return screen
 end
 
-Screen(scene::Scene, ::IO, ::MIME; kw...) = Screen(scene; kw...)
-Screen(scene::Scene, ::Makie.ImageStorageFormat; kw...) = Screen(scene; kw...)
+Screen(scene::Scene, ::IO, ::MIME; screen_config...) = Screen(scene; screen_config...)
+Screen(scene::Scene, ::Makie.ImageStorageFormat; screen_config...) = Screen(scene; screen_config...)
 
-function Screen(fb_size::NTuple{2,<:Integer};
-                   iterations=NUM_ITERATIONS[],
-                   resource=RENDER_RESOURCE[],
-                   plugin=RENDER_PLUGIN[], max_recursion=10)
-    context = RPR.Context(; resource=resource, plugin=plugin)
+function Screen(fb_size::NTuple{2,<:Integer}; screen_config...)
+    config = Makie.merge_screen_config(ScreenConfig, screen_config)
+    context = RPR.Context(; resource=config.resource, plugin=config.plugin)
     matsys = RPR.MaterialSystem(context, 0)
     set_standard_tonemapping!(context)
-    set!(context, RPR.RPR_CONTEXT_MAX_RECURSION, UInt(max_recursion))
+    set!(context, RPR.RPR_CONTEXT_MAX_RECURSION, UInt(config.max_recursion))
     framebuffer1 = RPR.FrameBuffer(context, RGBA, fb_size)
     framebuffer2 = RPR.FrameBuffer(context, RGBA, fb_size)
     set!(context, RPR.RPR_AOV_COLOR, framebuffer1)
-    return Screen(context, matsys, framebuffer1, framebuffer2, fb_size, nothing, false, nothing,
-                     iterations, false)
+    return Screen(
+        context, matsys, framebuffer1, framebuffer2, fb_size,
+        nothing, false, nothing,
+        config.iterations, false)
 end
 
 function render(screen; clear=true, iterations=screen.iterations)
@@ -234,3 +241,5 @@ function Base.insert!(screen::Screen, scene::Scene, plot::AbstractPlot)
     insert_plots!(context, matsys, rpr_scene, scene, plot)
     return screen
 end
+
+Makie.backend_showable(::Type{Screen}, ::Union{MIME"image/jpeg", MIME"image/png"}) = true

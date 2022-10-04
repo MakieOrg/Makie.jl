@@ -106,6 +106,7 @@ In GLMakie, we can actually take a look at the depthbuffer, to see how it looks 
 GLMakie.activate!() # hide
 screen = display(scene) # use display, to get a reference to the screen object
 depth_color = GLMakie.depthbuffer(screen)
+close(screen)
 # Look at result:
 f, ax, pl = heatmap(depth_color)
 Colorbar(f[1, 2], pl)

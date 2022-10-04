@@ -13,14 +13,19 @@ abstract type ScenePlot{Typ} <: AbstractPlot{Typ} end
 """
 Constructors:
 
-    `MakieScreen(scene::Scene; screen_attributes...)`
-Constructor aimed at showing the plot in a window.
-    `MakieScreen(scene::Scene, io::IO, mime; screen_attributes...)`
-Screen that writes out a mime to an io
-    `MakieScreen(scene::Scene, img::Matrix{<: Colorant}; screen_attributes...)`
-Screen optimized for `colorbuffer(screen)`.
+```julia
+# Constructor aimed at showing the plot in a window.
+MakieScreen(scene::Scene; screen_attributes...)
+
+# Screen to save a png/jpeg to file or io
+MakieScreen(scene::Scene, io::IO, mime; screen_attributes...)
+
+# Screen that is efficient for `colorbuffer(screen, format)`
+MakieScreen(scene::Scene, format::Makie.ImageStorageFormat; screen_attributes...)
+```
 
 Interface:
+
 ```julia
 # Needs to be overload:
 size(screen) # Size in pixel
