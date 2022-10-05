@@ -41,6 +41,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
+      - name: install xclip
         run: sudo apt-get -y install xclip
       - uses: julia-actions/cache@v1
       - name: Install Julia dependencies
