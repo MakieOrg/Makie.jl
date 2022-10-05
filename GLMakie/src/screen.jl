@@ -302,7 +302,7 @@ function fast_color_data!(dest::Array{RGB{N0f8}, 2}, source::Texture{T, 2}) wher
     glPixelStorei(GL_PACK_ALIGNMENT, 1)
     glGetTexImage(source.texturetype, 0, GL_RGB, GL_UNSIGNED_BYTE, dest)
     GLAbstraction.bind(source, 0)
-    nothing
+    return
 end
 
 """
@@ -349,20 +349,8 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     if format == Makie.GLNative
         return screen.framecache
     elseif format == Makie.JuliaNative
-        @static if VERSION < v"1.6"
-            bufc = copy(screen.framecache)
-            ind1, ind2 = axes(bufc)
-            n = first(ind2) + last(ind2)
-            for i in ind1
-                @simd for j in ind2
-                    @inbounds bufc[i, n-j] = screen.framecache[i, j]
-                end
-            end
-            screen.framecache = bufc
-        else
-            reverse!(screen.framecache, dims = 2)
-        end
-        return PermutedDimsArray(screen.framecache, (2,1))
+        img = screen.framecache
+        return PermutedDimsArray(view(img, :, size(img, 2):-1:1), (2, 1))
     end
 end
 

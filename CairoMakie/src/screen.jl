@@ -188,13 +188,14 @@ end
 function Makie.colorbuffer(screen::Screen{IMAGE})
     ctx = screen.context
     Cairo.save(ctx)
-    Cairo.set_source_rgba(ctx, 0.0, 0.0, 0.0, 0.0)
+    bg = rgbatuple(screen.scene.backgroundcolor[])
+    Cairo.set_source_rgba(ctx, bg...)
     Cairo.set_operator(ctx, Cairo.OPERATOR_CLEAR)
     Cairo.rectangle(ctx, 0, 0, size(screen)...)
     Cairo.paint_with_alpha(ctx, 1.0)
     Cairo.restore(ctx)
     cairo_draw(screen, screen.scene)
-    return permutedims(RGBf.(screen.surface.data))
+    return PermutedDimsArray(screen.surface.data, (2, 1))
 end
 
 is_vector_backend(ctx::Cairo.CairoContext) = is_vector_backend(ctx.surface)
