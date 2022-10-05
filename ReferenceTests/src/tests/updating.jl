@@ -39,3 +39,16 @@ end
     notify(points)
     Makie.step!(st)
 end
+
+@reference_test "record test" begin
+    points = Observable(Point2f[])
+    color = Observable(RGBAf[])
+    N = 3
+    f, ax, pl = scatter(points, color=color, markersize=1.0, marker=Circle, markerspace=:data, axis=(type=Axis, aspect=DataAspect(), limits=(0.4, N + 0.6, 0.4, N + 0.6),), figure=(resolution=(800, 800),))
+    Record(f, CartesianIndices((N, N))) do ij
+        push!(points.val, Point2f(Tuple(ij)))
+        push!(color.val, RGBAf((Tuple(ij)./N)..., 0, 1))
+        notify(color)
+        notify(points)
+    end
+end

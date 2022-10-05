@@ -301,16 +301,13 @@ end
 function FileIO.save(
         file::FileIO.Formatted, fig::FigureLike;
         resolution = size(get_scene(fig)),
-        pt_per_unit = 0.75,
-        px_per_unit = 1.0,
+        backend = current_backend(),
+        screen_config...
     )
-
     scene = get_scene(fig)
-
     if resolution != size(scene)
         resize!(scene, resolution)
     end
-
     filename = FileIO.filename(file)
     # Delete previous file if it exists and query only the file string for type.
     # We overwrite existing files anyway, so this doesn't change the behavior.
@@ -320,256 +317,20 @@ function FileIO.save(
     isfile(filename) && rm(filename)
     # query the filetype only from the file extension
     F = filetype(file)
-
-    open(filename, "w") do s
-        iocontext = IOContext(s,
-            :full_fidelity => true,
-            :pt_per_unit => pt_per_unit,
-            :px_per_unit => px_per_unit
-        )
-        show(iocontext, format2mime(F), fig)
+    mime = format2mime(F)
+    open(filename, "w") do io
+        # If the scene already got displayed, we get the current screen its displayed on
+        # Else, we create a new scene and update the state of the fig
+        screen = getscreen(scene, backend) do
+            update_state_before_display!(fig)
+            return backend.Screen(scene, io, mime; screen_config...)
+        end
+        backend_show(screen, io, mime, scene)
     end
 end
 
 raw_io(io::IO) = io
 raw_io(io::IOContext) = raw_io(io.io)
-
-struct VideoStream
-    io
-    process::Base.Process
-    screen::MakieScreen
-    path::String
-end
-
-"""
-    VideoStream(scene::Scene; framerate = 24, visible=false, connect=false, screen_config...)
-
-Returns a stream and a buffer that you can use, which don't allocate for new frames.
-Use [`recordframe!(stream)`](@ref) to add new video frames to the stream, and
-[`save(path, stream)`](@ref) to save the video.
-
-* visible=false: make window visible or not
-* connect=false: connect window events or not
-"""
-function VideoStream(fig::FigureLike; framerate::Integer=24, visible=false, connect=false, backend=current_backend(), screen_config...)
-    #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
-    dir = mktempdir()
-    path = joinpath(dir, "$(gensym(:video)).mkv")
-    scene = get_scene(fig)
-    screen = backend.Screen(scene, GLNative; visible=visible, start_renderloop=false, screen_config...)
-    display(screen, fig; connect=connect)
-    _xdim, _ydim = size(screen)
-    xdim = iseven(_xdim) ? _xdim : _xdim + 1
-    ydim = iseven(_ydim) ? _ydim : _ydim + 1
-    process = @ffmpeg_env open(`$(FFMPEG.ffmpeg) -framerate $(framerate) -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
-    return VideoStream(process.in, process, screen, abspath(path))
-end
-
-"""
-    recordframe!(io::VideoStream)
-
-Adds a video frame to the VideoStream `io`.
-"""
-function recordframe!(io::VideoStream)
-    frame = convert(Matrix{RGB{N0f8}}, colorbuffer(io.screen, GLNative))
-    _xdim, _ydim = size(frame)
-    if isodd(_xdim) || isodd(_ydim)
-        xdim = iseven(_xdim) ? _xdim : _xdim + 1
-        ydim = iseven(_ydim) ? _ydim : _ydim + 1
-        padded = fill(zero(eltype(frame)), (xdim, ydim))
-        padded[1:_xdim, 1:_ydim] = frame
-        frame = padded
-    end
-    write(io.io, frame)
-    return
-end
-
-"""
-    save(path::String, io::VideoStream[; kwargs...])
-
-Flushes the video stream and converts the file to the extension found in `path`,
-which can be one of the following:
-- `.mkv`  (the default, doesn't need to convert)
-- `.mp4`  (good for Web, most supported format)
-- `.webm` (smallest file size)
-- `.gif`  (largest file size for the same quality)
-
-`.mp4` and `.mk4` are marginally bigger and `.gif`s are up to
-6 times bigger with the same quality!
-
-See the docs of [`VideoStream`](@ref) for how to create a VideoStream.
-If you want a simpler interface, consider using [`record`](@ref).
-
-### Keyword Arguments:
-- `framerate = 24`: The target framerate.
-- `compression = 0`: Controls the video compression with `0` being lossless and
-                     `51` being the highest compression. Note that `compression = 0`
-                     only works with `.mp4` if `profile = high444`.
-- `profile = "high422"`: A ffmpeg compatible profile. Currently only applies to
-                         `.mp4`. If you have issues playing a video, try
-                         `profile = "high"` or `profile = "main"`.
-- `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (pix_fmt). Currently
-                              only applies to `.mp4`. Defaults to `yuv444p` for
-                              `profile = high444`.
-"""
-function save(
-        path::String, io::VideoStream;
-        framerate::Int = 24, compression = 20, profile = "high422",
-        pixel_format = profile == "high444" ? "yuv444p" : "yuv420p",
-        kwargs...
-    )
-
-    close(io.process)
-    wait(io.process)
-    p, typ = splitext(path)
-    if typ == ".mkv"
-        cp(io.path, path, force=true)
-    else
-        mktempdir() do dir
-            out = joinpath(dir, "out$(typ)")
-            if typ == ".mp4"
-                # ffmpeg_exe(`-loglevel quiet -i $(io.path) -crf $compression -c:v libx264 -preset slow -r $framerate -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $out`)
-                ffmpeg_exe(`-loglevel quiet -i $(io.path) -crf $compression -c:v libx264 -preset slow -r $framerate -profile:v $profile -pix_fmt $pixel_format -c:a libvo_aacenc -b:a 128k -y $out`)
-            elseif typ == ".webm"
-                ffmpeg_exe(`-loglevel quiet -i $(io.path) -crf $compression -c:v libvpx-vp9 -threads 16 -b:v 2000k -c:a libvorbis -threads 16 -r $framerate -vf scale=iw:ih -y $out`)
-            elseif typ == ".gif"
-                filters = "fps=$framerate,scale=iw:ih:flags=lanczos"
-                palette_path = dirname(io.path)
-                pname = joinpath(palette_path, "palette.bmp")
-                isfile(pname) && rm(pname, force = true)
-                ffmpeg_exe(`-loglevel quiet -i $(io.path) -vf "$filters,palettegen" -y $pname`)
-                ffmpeg_exe(`-loglevel quiet -i $(io.path) -i $pname -lavfi "$filters [x]; [x][1:v] paletteuse" -y $out`)
-                rm(pname, force = true)
-            else
-                rm(io.path)
-                error("Video type $typ not known")
-            end
-            cp(out, path, force=true)
-        end
-    end
-    rm(io.path)
-    return path
-end
-
-"""
-    record(func, figure, path; framerate = 24, compression = 20, kwargs...)
-    record(func, figure, path, iter; framerate = 24, compression = 20, kwargs...)
-
-The first signature provides `func` with a VideoStream, which it should call
-`recordframe!(io)` on when recording a frame.
-
-The second signature iterates `iter`, calling `recordframe!(io)` internally
-after calling `func` with the current iteration element.
-
-Both notations require a Figure, FigureAxisPlot or Scene `figure` to work.
-
-The animation is then saved to `path`, with the format determined by `path`'s
-extension.  Allowable extensions are:
-- `.mkv`  (the default, doesn't need to convert)
-- `.mp4`  (good for Web, most supported format)
-- `.webm` (smallest file size)
-- `.gif`  (largest file size for the same quality)
-
-`.mp4` and `.mk4` are marginally bigger than `webm` and `.gif`s are up to
-6 times bigger with the same quality!
-
-The `compression` argument controls the compression ratio; `51` is the
-highest compression, and `0` or `1` is the lowest (with `0` being lossless).
-
-Typical usage patterns would look like:
-
-```julia
-record(figure, "video.mp4", itr) do i
-    func(i) # or some other manipulation of the figure
-end
-```
-
-or, for more tweakability,
-
-```julia
-record(figure, "test.gif") do io
-    for i = 1:100
-        func!(figure)     # animate figure
-        recordframe!(io)  # record a new frame
-    end
-end
-```
-
-If you want a more tweakable interface, consider using [`VideoStream`](@ref) and
-[`save`](@ref).
-
-## Extended help
-### Examples
-
-```julia
-fig, ax, p = lines(rand(10))
-record(fig, "test.gif") do io
-    for i in 1:255
-        p[:color] = RGBf(i/255, (255 - i)/255, 0) # animate figure
-        recordframe!(io)
-    end
-end
-```
-or
-```julia
-fig, ax, p = lines(rand(10))
-record(fig, "test.gif", 1:255) do i
-    p[:color] = RGBf(i/255, (255 - i)/255, 0) # animate figure
-end
-```
-
-### Keyword Arguments:
-- `framerate = 24`: The target framerate.
-- `compression = 0`: Controls the video compression with `0` being lossless and
-                     `51` being the highest compression. Note that `compression = 0`
-                     only works with `.mp4` if `profile = high444`.
-- `profile = "high422`: A ffmpeg compatible profile. Currently only applies to
-                        `.mp4`. If you have issues playing a video, try
-                        `profile = "high"` or `profile = "main"`.
-- `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (pix_fmt). Currently
-                              only applies to `.mp4`. Defaults to `yuv444p` for
-                              `profile = high444`.
-"""
-function record(func, figlike, path; framerate::Int = 24, kwargs...)
-    io = Record(func, figlike, framerate = framerate)
-    save(path, io, framerate = framerate; kwargs...)
-end
-
-function Record(func, figlike; framerate=24)
-    io = VideoStream(figlike; framerate = framerate)
-    func(io)
-    return io
-end
-
-function record(func, figlike, path, iter; framerate::Int = 24, kwargs...)
-    io = Record(func, figlike, iter; framerate=framerate)
-    save(path, io, framerate = framerate; kwargs...)
-end
-
-function Record(func, figlike, iter; framerate::Int = 24)
-    io = VideoStream(figlike; framerate=framerate)
-    for i in iter
-        func(i)
-        recordframe!(io)
-        @debug "Recording" progress=i/length(iter)
-        yield()
-    end
-    return io
-end
-
-function Base.show(io::IO, ::MIME"text/html", vs::VideoStream)
-    mktempdir() do dir
-        path = save(joinpath(dir, "video.mp4"), vs)
-        print(
-            io,
-            """<video autoplay controls><source src="data:video/x-m4v;base64,""",
-            base64encode(open(read, path)),
-            """" type="video/mp4"></video>"""
-        )
-    end
-end
-
-
 
 # This has to be overloaded by the backend for its screen type.
 function colorbuffer(x::MakieScreen)
@@ -590,20 +351,32 @@ function jl_to_gl_format(image)
         return bufc
     else
         reverse!(image; dims=1)
-        return collect(PermutedDimsArray(image, (2, 1)))
+        return PermutedDimsArray(image, (2, 1))
     end
 end
 
 # less specific for overloading by backends
-function colorbuffer(screen::Any, format::ImageStorageFormat = JuliaNative)
+function colorbuffer(screen::MakieScreen, format::ImageStorageFormat)
     image = colorbuffer(screen)
     if format == GLNative
-        if string(typeof(screen)) == "GLMakie.Screen"
-            @warn "Inefficient re-conversion back to GLNative buffer format. Update GLMakie to support direct buffer access" maxlog=1
-        end
         return jl_to_gl_format(image)
     elseif format == JuliaNative
         return image
+    end
+end
+
+function getscreen(f::Function, scene::Scene, backend::Module)
+    screen = getscreen(scene)
+    if !isnothing(screen) && parentmodule(typeof(screen)) == backend
+        return screen
+    end
+    if ismissing(backend)
+        error("""
+            You have not loaded a backend.  Please load one (`using GLMakie` or `using CairoMakie`)
+            before trying to render a Scene.
+            """)
+    else
+        return f()
     end
 end
 
@@ -619,24 +392,15 @@ or RGBA.
 - `format = GLNative` : Returns a more efficient format buffer for GLMakie which can be directly
                         used in FFMPEG without conversion
 """
-function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; backend = current_backend())
+function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; backend = current_backend(), screen_config...)
     scene = get_scene(fig)
-    screen = getscreen(scene)
-    if isnothing(screen)
-        if ismissing(CURRENT_BACKEND[])
-            error("""
-                You have not loaded a backend.  Please load one (`using GLMakie` or `using CairoMakie`)
-                before trying to render a Scene.
-                """)
-        else
-            screen = backend.Screen(scene, format; start_renderloop=false, visible=false)
-            display(screen, fig; connect=false)
-            return colorbuffer(screen, format)
-        end
+    screen = getscreen(scene, backend) do
+        screen = backend.Screen(scene, format; start_renderloop=false, visible=false, screen_config...)
+        display(screen, fig; connect=false)
+        return screen
     end
     return colorbuffer(screen, format)
 end
-
 
 # Fallback for any backend that will just use colorbuffer to write out an image
 function backend_show(screen::MakieScreen, io::IO, m::MIME"image/png", scene::Scene)
@@ -651,4 +415,326 @@ function backend_show(screen::MakieScreen, io::IO, m::MIME"image/jpeg", scene::S
     img = colorbuffer(scene)
     FileIO.save(FileIO.Stream{FileIO.format"JPEG"}(Makie.raw_io(io)), img)
     return
+end
+
+const VIDEO_STREAM_OPTIONS_FORMAT_DESC = """
+- `format = "mkv"`: The format of the video. Can be one of the following:
+    * `"mkv"`  (open standard, the default)
+    * `"mp4"`  (good for Web, most supported format)
+    * `"webm"` (smallest file size)
+    * `"gif"`  (largest file size for the same quality)
+
+  `mp4` and `mk4` are marginally bigger than `webm`. `gif`s can be significantly (as much as
+  6x) larger with worse quality (due to the limited color palette) and only should be used
+  as a last resort, for playing in a context where videos aren't supported.
+"""
+
+const VIDEO_STREAM_OPTIONS_KWARGS_DESC = """
+- `framerate = 24`: The target framerate.
+- `compression = 20`: Controls the video compression via `ffmpeg`'s `-crf` option, with
+  smaller numbers giving higher quality and larger file sizes (lower compression), and and
+  higher numbers giving lower quality and smaller file sizes (higher compression). The
+  minimum value is `0` (lossless encoding).
+    - For `mp4`, `51` is the maximum. Note that `compression = 0` only works with `mp4` if
+      `profile = high444`.
+    - For `webm`, `63` is the maximum.
+    - `compression` has no effect on `mkv` and `gif` outputs.
+- `profile = "high422"`: A ffmpeg compatible profile. Currently only applies to `mp4`. If
+  you have issues playing a video, try `profile = "high"` or `profile = "main"`.
+- `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (`-pix_fmt`). Currently only
+  applies to `mp4`. Defaults to `yuv444p` for `profile = high444`.
+"""
+
+"""
+    VideoStreamOptions(; format="mkv", framerate=24, compression=20, profile=nothing, pixel_format=nothing)
+
+Holds the options that will be used for encoding a `VideoStream`. `profile` and
+`pixel_format` are only used when `format` is `"mp4"`; a warning will be issued if `format`
+is not `"mp4"` and those two arguments are not `nothing`. Similarly, `compression` is only
+valid when `format` is `"mp4"` or `"webm"`.
+
+You should not create a `VideoStreamOptions` directly; instead, pass its keyword args to the
+`VideoStream` constructor. See the docs of [`VideoStream`](@ref) for how to create a
+`VideoStream`. If you want a simpler interface, consider using [`record`](@ref).
+
+### Keyword Arguments:
+$VIDEO_STREAM_OPTIONS_FORMAT_DESC
+$VIDEO_STREAM_OPTIONS_KWARGS_DESC
+"""
+struct VideoStreamOptions
+    format::String
+    framerate::Int
+    compression::Union{Nothing,Int}
+    profile::Union{Nothing,String}
+    pixel_format::Union{Nothing,String}
+
+    function VideoStreamOptions(format::AbstractString, framerate::Integer, compression, profile, pixel_format)
+
+        if format == "mp4"
+            (profile === nothing) && (profile = "high422")
+            (pixel_format === nothing) && (pixel_format = (profile == "high444" ? "yuv444p" : "yuv420p"))
+        end
+
+        if format in ("mp4", "webm")
+            (compression === nothing) && (compression = 20)
+        end
+
+        # items are name, value, allowed_formats
+        allowed_kwargs = [("compression", compression, ("mp4", "webm")),
+                          ("profile", profile, ("mp4",)),
+                          ("pixel_format", pixel_format, ("mp4",))]
+
+        for (name, value, allowed_formats) in allowed_kwargs
+            if !(format in allowed_formats) && value !== nothing
+                @warn("""`$name`, with value $(repr(value))
+                    was passed as a keyword argument to `record` or `VideoStream`,
+                    which only has an effect when the output video's format is one of: $(collect(allowed_formats)).
+                    But the actual video format was $(repr(format)).
+                    Keyword arg `$name` will be ignored.
+                    """)
+            end
+        end
+        return new(format, framerate, compression, profile, pixel_format)
+    end
+end
+
+function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer, ydim::Integer)
+    # explanation of ffmpeg args. note that the order of args is important; args pertaining
+    # to the input have to go before -i and args pertaining to the output have to go after.
+    # -y: "yes", overwrite any existing without confirmation
+    # -f: format is raw video (from frames)
+    # -framerate: set the input framerate
+    # -pixel_format: the buffer we're sending ffmpeg via stdin contains rgb24 pixels
+    # -s:v: sets the dimensions of the input to xdim × ydim
+    # -i: read input from stdin (pipe:0)
+    # -vf: video filter for the output
+    # -c:v, -c:a: video and audio codec, respectively
+    # -b:v, -b:a: video and audio bitrate, respectively
+    # -crf: "constant rate factor", the lower the better the quality (0 is lossless, 51 is
+    #   maximum compression)
+    # -pix_fmt: (mp4 only) the output pixel format
+    # -profile:v: (mp4 only) the output video profile
+    # -an: no audio in output
+    (format, framerate, compression, profile, pixel_format) = (vso.format, vso.framerate, vso.compression, vso.profile, vso.pixel_format)
+    ffmpeg_prefix = `
+        $(FFMPEG.ffmpeg)
+        -y
+        -loglevel quiet
+        -f rawvideo
+        -framerate $(framerate)
+        -pixel_format rgb24
+        -r $(framerate)
+        -s:v $(xdim)x$(ydim)
+    `
+
+    ffmpeg_options = if format == "mkv"
+        `-i pipe:0
+         -vf vflip
+         -an
+        `
+    elseif format == "mp4"
+        `-i pipe:0
+         -profile:v $(profile)
+         -vf scale=$(xdim):$(ydim),vflip
+         -crf $(compression)
+         -preset slow
+         -c:v libx264
+         -pix_fmt $(pixel_format)
+         -an
+        `
+    elseif format == "webm"
+        # this may need improvement, see here: https://trac.ffmpeg.org/wiki/Encode/VP9
+        `-threads 16
+         -i pipe:0
+         -vf scale=$(xdim):$(ydim),vflip
+         -crf $(compression)
+         -c:v libvpx-vp9
+         -b:v 0
+         -an
+        `
+    elseif format == "gif"
+        # from https://superuser.com/a/556031
+        # avoids creating a PNG file of the palette
+        `-i pipe:0
+         -vf "vflip,fps=$(framerate),scale=$(xdim):-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse"
+        `
+    else
+        error("Video type $(format) not known")
+    end
+
+    return `$(ffmpeg_prefix) $(ffmpeg_options)`
+end
+
+struct VideoStream
+    io
+    process::Base.Process
+    screen::MakieScreen
+    buffer::Matrix{RGB{N0f8}}
+    path::String
+    options::VideoStreamOptions
+end
+
+"""
+    VideoStream(scene::Scene; framerate = 24, visible=false, connect=false, screen_config...)
+
+Returns a stream and a buffer that you can use, which don't allocate for new frames.
+Use [`recordframe!(stream)`](@ref) to add new video frames to the stream, and
+[`save(path, stream)`](@ref) to save the video.
+
+* visible=false: make window visible or not
+* connect=false: connect window events or not
+"""
+function VideoStream(fig::FigureLike;
+        format="mp4", framerate=24, compression=nothing, profile=nothing, pixel_format=nothing,
+        visible=false, connect=false, backend=current_backend(),
+        screen_config...)
+
+    dir = mktempdir()
+    path = joinpath(dir, "$(gensym(:video)).$(format)")
+    scene = get_scene(fig)
+    screen = backend.Screen(scene, GLNative; visible=visible, start_renderloop=false, screen_config...)
+    display(screen, fig; connect=connect)
+    _xdim, _ydim = size(screen)
+    xdim = iseven(_xdim) ? _xdim : _xdim + 1
+    ydim = iseven(_ydim) ? _ydim : _ydim + 1
+    buffer = Matrix{RGB{N0f8}}(undef, xdim, ydim)
+    vso = VideoStreamOptions(format, framerate, compression, profile, pixel_format)
+    cmd = to_ffmpeg_cmd(vso, xdim, ydim)
+    process = @ffmpeg_env open(`$cmd $path`, "w")
+    return VideoStream(process.in, process, screen, buffer, abspath(path), vso)
+end
+
+"""
+    recordframe!(io::VideoStream)
+
+Adds a video frame to the VideoStream `io`.
+"""
+function recordframe!(io::VideoStream)
+    glnative = colorbuffer(io.screen, GLNative)
+    # Make no copy if already Matrix{RGB{N0f8}}
+    # There may be a 1px padding for odd dimensions
+    xdim, ydim = size(glnative)
+    copy!(view(io.buffer, 1:xdim, 1:ydim), glnative)
+    write(io.io, io.buffer)
+    return
+end
+
+"""
+    save(path::String, io::VideoStream)
+
+Flushes the video stream and saves it to `path`. `path`'s file extension must be the same as
+the format that the `VideoStream` was created with (e.g., if created with format "mp4" then
+`path`'s file extension must be ".mp4"). If using [`record`](@ref) then this is handled for
+you, as the `VideoStream`'s format is deduced from the file extension of the path passed to
+`record`.
+"""
+function save(path::String, io::VideoStream)
+    close(io.process)
+    wait(io.process)
+    p, typ = splitext(path)
+    video_fmt = io.options.format
+    if typ != ".$(video_fmt)"
+        error("invalid `path`; the video stream was created for `$(video_fmt)`, but the provided path had extension `$(typ)`")
+    end
+    cp(io.path, path; force=true)
+    rm(io.path)
+    return path
+end
+
+"""
+    record(func, figurelike, path; kwargs...)
+    record(func, figurelike, path, iter; kwargs...)
+
+The first signature provides `func` with a VideoStream, which it should call
+`recordframe!(io)` on when recording a frame.
+
+The second signature iterates `iter`, calling `recordframe!(io)` internally
+after calling `func` with the current iteration element.
+
+Both notations require a Figure, FigureAxisPlot or Scene `figure` to work.
+The animation is then saved to `path`, with the format determined by `path`'s
+extension.
+
+$VIDEO_STREAM_OPTIONS_FORMAT_DESC
+
+### Keyword Arguments:
+$VIDEO_STREAM_OPTIONS_KWARGS_DESC
+
+
+Typical usage patterns would look like:
+```julia
+record(figure, "video.mp4", itr) do i
+    func(i) # or some other manipulation of the figure
+end
+```
+or, for more tweakability,
+```julia
+record(figure, "test.gif") do io
+    for i = 1:100
+        func!(figure)     # animate figure
+        recordframe!(io)  # record a new frame
+    end
+end
+```
+If you want a more tweakable interface, consider using [`VideoStream`](@ref) and
+[`save`](@ref).
+## Extended help
+### Examples
+```julia
+fig, ax, p = lines(rand(10))
+record(fig, "test.gif") do io
+    for i in 1:255
+        p[:color] = RGBf(i/255, (255 - i)/255, 0) # animate figure
+        recordframe!(io)
+    end
+end
+```
+or
+```julia
+fig, ax, p = lines(rand(10))
+record(fig, "test.gif", 1:255) do i
+    p[:color] = RGBf(i/255, (255 - i)/255, 0) # animate figure
+end
+```
+"""
+function record(func, figlike::FigureLike, path::AbstractString; record_kw...)
+    format = lstrip(splitext(path)[2], '.')
+    io = Record(func, figlike; format=format, record_kw...)
+    save(path, io)
+end
+
+function record(func, figlike::FigureLike, path::AbstractString, iter; record_kw...)
+    format = lstrip(splitext(path)[2], '.')
+    io = Record(func, figlike, iter; format=format, record_kw...)
+    save(path, io)
+end
+
+
+function Record(func, figlike; videostream_kw...)
+    io = VideoStream(figlike; videostream_kw...)
+    func(io)
+    return io
+end
+
+function Record(func, figlike, iter; videostream_kw...)
+    io = VideoStream(figlike; videostream_kw...)
+    for i in iter
+        func(i)
+        recordframe!(io)
+        @debug "Recording" progress=i/length(iter)
+        yield()
+    end
+    return io
+end
+
+function Base.show(io::IO, ::MIME"text/html", vs::VideoStream)
+    mktempdir() do dir
+        path = save(joinpath(dir, "video.mp4"), vs)
+        print(
+            io,
+            """<video autoplay controls><source src="data:video/x-m4v;base64,""",
+            base64encode(open(read, path)),
+            """" type="video/mp4"></video>"""
+        )
+    end
 end
