@@ -29,6 +29,7 @@ Interface:
 ```julia
 # Needs to be overload:
 size(screen) # Size in pixel
+empty!(screen) # empties screen state to reuse the screen, or to close it
 
 # Optional
 wait(screen) # waits as long window is open

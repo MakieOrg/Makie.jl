@@ -38,6 +38,17 @@ struct Screen{SurfaceRenderType} <: Makie.MakieScreen
     visible::Bool
 end
 
+function Base.empty!(screen::Screen)
+    ctx = screen.context
+    Cairo.save(ctx)
+    bg = rgbatuple(screen.scene.backgroundcolor[])
+    Cairo.set_source_rgba(ctx, bg...)
+    Cairo.set_operator(ctx, Cairo.OPERATOR_CLEAR)
+    Cairo.rectangle(ctx, 0, 0, size(screen)...)
+    Cairo.paint_with_alpha(ctx, 1.0)
+    Cairo.restore(ctx)
+end
+
 Base.size(screen::Screen) = round.(Int, (screen.surface.width, screen.surface.height))
 # we render the scene directly, since we have
 # no screen dependent state like in e.g. opengl
@@ -186,14 +197,7 @@ function Makie.colorbuffer(screen::Screen)
 end
 
 function Makie.colorbuffer(screen::Screen{IMAGE})
-    ctx = screen.context
-    Cairo.save(ctx)
-    bg = rgbatuple(screen.scene.backgroundcolor[])
-    Cairo.set_source_rgba(ctx, bg...)
-    Cairo.set_operator(ctx, Cairo.OPERATOR_CLEAR)
-    Cairo.rectangle(ctx, 0, 0, size(screen)...)
-    Cairo.paint_with_alpha(ctx, 1.0)
-    Cairo.restore(ctx)
+    empty!(screen)
     cairo_draw(screen, screen.scene)
     return PermutedDimsArray(screen.surface.data, (2, 1))
 end

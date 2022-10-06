@@ -40,15 +40,64 @@ end
     Makie.step!(st)
 end
 
-@reference_test "record test" begin
+function generate_plot(N = 3)
     points = Observable(Point2f[])
     color = Observable(RGBAf[])
-    N = 3
-    f, ax, pl = scatter(points, color=color, markersize=1.0, marker=Circle, markerspace=:data, axis=(type=Axis, aspect=DataAspect(), limits=(0.4, N + 0.6, 0.4, N + 0.6),), figure=(resolution=(800, 800),))
-    Record(f, CartesianIndices((N, N))) do ij
+    fig, ax, pl = scatter(points, color=color, markersize=1.0, marker=Circle, markerspace=:data, axis=(type=Axis, aspect=DataAspect(), limits=(0.4, N + 0.6, 0.4, N + 0.6),), figure=(resolution=(800, 800),))
+    function update_func(ij)
         push!(points.val, Point2f(Tuple(ij)))
         push!(color.val, RGBAf((Tuple(ij)./N)..., 0, 1))
         notify(color)
         notify(points)
+    end
+    return fig, CartesianIndices((N, N)), update_func
+end
+
+@reference_test "record test" begin
+    fig, iter, func = generate_plot(3)
+    Record(func, fig, iter)
+end
+
+function load_frames(video, dir)
+    framedir = joinpath(dir, "frames")
+    isdir(framedir) && rm(framedir; recursive=true, force=true)
+    mkdir(framedir)
+    Makie.extract_frames(video, framedir)
+    return map(readdir(framedir; join=true)) do path
+        return convert(Matrix{RGB{N0f8}}, load(path))
+    end
+end
+
+function compare_videos(reference, vpath, dir)
+    to_compare = load_frames(vpath, dir)
+    n = length(to_compare)
+    @test n == length(reference)
+
+    @test all(1:n) do i
+        v = ReferenceTests.compare_media(reference[i], to_compare[i])
+        return v < 0.02
+    end
+end
+
+# To not spam our reference image comparison with lots of frames, we do a manual frame comparison between the formats and only add the mkv reference to the reference image tests
+@reference_test "record test formats" begin
+    mktempdir() do dir
+        fig, iter, func = generate_plot(2)
+        record(func, fig, joinpath(dir, "reference.mkv"), iter)
+        reference = load_frames(joinpath(dir, "reference.mkv"), dir)
+        @testset "$format" for format in ["mp4", "mkv", "webm"]
+            path = joinpath(dir, "test.$format")
+            fig, iter, func = generate_plot(2)
+            record(func, fig, path, iter)
+            compare_videos(reference, path, dir)
+
+            fig, iter, func = generate_plot(2)
+            vso = Makie.Record(func, fig, iter; format="mkv")
+            path = joinpath(dir, "test.$format")
+            save(path, vso)
+            compare_videos(reference, path, dir)
+        end
+        # We re-use ramstepper, to add our array of frames to the reference image comparison
+        return Makie.RamStepper(fig, Makie.current_backend().Screen(fig.scene), reference, :png)
     end
 end

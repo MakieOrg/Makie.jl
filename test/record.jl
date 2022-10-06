@@ -1,5 +1,19 @@
 using Logging
 
+module VideoBackend
+    using Makie
+    struct Screen <: MakieScreen
+        size::Tuple{Int, Int}
+    end
+    Base.size(screen::Screen) = screen.size
+    Screen(scene::Scene, ::Makie.ImageStorageFormat; screen_config...) = Screen(size(scene))
+    Makie.backend_showable(::Type{Screen}, ::MIME"text/html") = true
+    Makie.backend_showable(::Type{Screen}, ::MIME"image/png") = true
+    Makie.colorbuffer(screen::Screen) = zeros(RGBf, reverse(screen.size)...)
+    Base.display(::Screen, ::Scene; kw...) = nothing
+end
+Makie.set_active_backend!(VideoBackend)
+
 mktempdir() do tempdir
     @testset "Video encoding" begin
         n = 2
@@ -8,7 +22,7 @@ mktempdir() do tempdir
         # test for no throwing when encoding
         @testset "Encoding" begin
             for fmt in ("mkv", "mp4", "webm", "gif")
-                dst = joinpath(tempdir2, "out.$fmt")
+                dst = joinpath(tempdir, "out.$fmt")
                 @test begin
                     record(fig, dst, 1:n) do i
                         lines!(ax, sin.(i .* x))
@@ -45,15 +59,16 @@ mktempdir() do tempdir
                 warning_re = Regex("^`$(kwarg)`, with value $(repr(value))")
 
                 for fmt in warn_fmts
-                    dst = joinpath(tempdir2, "out.$fmt")
+                    dst = joinpath(tempdir, "out.$fmt")
                     @test_logs (:warn, warning_re) run_record(dst; kwargs...)
                 end
 
                 for fmt in no_warn_fmts
-                    dst = joinpath(tempdir2, "out.$fmt")
+                    dst = joinpath(tempdir, "out.$fmt")
                     @test_logs min_level = Logging.Warn run_record(dst; kwargs...)
                 end
             end
         end
     end
 end
+Makie.set_active_backend!(missing)

@@ -1,8 +1,3 @@
-function extract_frames(video, frame_folder)
-    path = joinpath(frame_folder, "frames%04d.png")
-    FFMPEG.ffmpeg_exe(`-loglevel quiet -i $video -y $path`)
-end
-
 function get_frames(a, b)
     return (get_frames(a), get_frames(b))
 end
@@ -11,7 +6,7 @@ function get_frames(video)
     mktempdir() do folder
         afolder = joinpath(folder, "a")
         mkpath(afolder)
-        extract_frames(video, afolder)
+        Makie.extract_frames(video, afolder)
         aframes = joinpath.(afolder, readdir(afolder))
         if length(aframes) > 10
             # we don't want to compare too many frames since it's time costly

@@ -24,12 +24,14 @@ end
 @testset "with Backend + preferred mime" begin
     Makie.set_active_backend!(TestBackend)
     Makie.set_preferred_mime!("text/html")
+    s = Scene();
     @test Base.showable("text/html", s)
     @test !Base.showable("image/png", s)
 end
 
 @testset "without preferred mime, backend capabilities should be returned" begin
     Makie.set_preferred_mime!()
+    s = Scene();
     @test Base.showable("text/html", s)
     @test Base.showable("image/png", s)
     @test !Base.showable("text/plain", s)
@@ -38,6 +40,7 @@ end
 
 @testset "only plain for missing backend" begin
     Makie.set_active_backend!(missing)
+    s = Scene();
     @test Base.showable("text/plain", s)
     @test !Base.showable("image/png", s)
     @test !Base.showable("text/html", s)
@@ -45,5 +48,6 @@ end
 
 @testset "preferred mime without backend should return false" begin
     Makie.set_preferred_mime!("text/html")
+    s = Scene();
     @test !Base.showable("text/html", s)
 end

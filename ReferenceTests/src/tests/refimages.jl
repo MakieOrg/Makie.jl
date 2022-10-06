@@ -8,7 +8,9 @@ using ReferenceTests.FileIO
 using ReferenceTests.Colors
 using ReferenceTests.LaTeXStrings
 using ReferenceTests.DelimitedFiles
+using ReferenceTests.Test
 using Makie: Record, volume
+using Colors: RGB, N0f8
 
 @testset "primitives" begin
     include("primitives.jl")

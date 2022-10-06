@@ -172,6 +172,8 @@ include("interaction/inspector.jl")
 # documentation and help functions
 include("documentation/documentation.jl")
 include("display.jl")
+include("ffmpeg-util.jl")
+include("recording.jl")
 include("event-recorder.jl")
 
 # bezier paths

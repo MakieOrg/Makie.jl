@@ -58,6 +58,9 @@ Screen() = Screen(nothing, nothing)
 Screen(::Scene; kw...) = Screen()
 Screen(::Scene, ::IO, ::MIME; kw...) = Screen()
 Screen(::Scene, ::Makie.ImageStorageFormat; kw...) = Screen()
+function Base.empty!(::WGLMakie.Screen)
+    # TODO, empty state in JS, to be able to reuse screen
+end
 
 function Base.display(screen::Screen, scene::Scene; kw...)
     Makie.push_screen!(scene, screen)
