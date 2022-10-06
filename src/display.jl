@@ -19,15 +19,16 @@ function push_screen!(scene::Scene, display)
     error("$(display) not a valid Makie display.")
 end
 
-function push_screen!(scene::Scene, display::AbstractDisplay)
-    if !any(x -> x === display, scene.current_screens)
-        push!(scene.current_screens, display)
+function push_screen!(scene::Scene, screen::MakieScreen)
+    if !any(x -> x === screen, scene.current_screens)
+        push!(scene.current_screens, screen)
         deregister = nothing
         deregister = on(events(scene).window_open, priority=typemax(Int)) do is_open
             # when screen closes, it should set the scene isopen event to false
-            # so that's when we can remove the display
+            # so that's when we can remove the screen
             if !is_open
-                filter!(x-> x !== display, scene.current_screens)
+                delete_screen!(scene, screen)
+                # deregister itself
                 !isnothing(deregister) && off(deregister)
             end
             return Consume(false)
@@ -36,8 +37,10 @@ function push_screen!(scene::Scene, display::AbstractDisplay)
     return
 end
 
-function delete_screen!(scene::Scene, display::AbstractDisplay)
-    filter!(x-> x !== display, scene.current_screens)
+function delete_screen!(scene::Scene, screen::MakieScreen)
+    delete!(screen, scene)
+    empty!(screen)
+    filter!(x-> x !== screen, scene.current_screens)
     return
 end
 

@@ -198,6 +198,28 @@ function Base.delete!(screen::Screen, scene::Scene)
     return
 end
 
+
+function destroy!(rob::RenderObject)
+    # These need explicit clean up because (some of) the source observables
+    # remain when the plot is deleted.
+    GLAbstraction.switch_context!(rob.context)
+    for (k, v) in rob.uniforms
+        if v isa Observable
+            for input in v.inputs
+                off(input)
+            end
+        elseif v isa GPUArray
+            GLAbstraction.free(v)
+        end
+    end
+    for obs in rob.observables
+        for input in obs.inputs
+            off(input)
+        end
+    end
+    GLAbstraction.free(rob.vertexarray)
+end
+
 function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
     if !isempty(plot.plots)
         # this plot consists of children, so we flatten it and delete the children instead
@@ -205,21 +227,13 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
             delete!(screen, scene, cplot)
         end
     else
-        renderobject = get(screen.cache, objectid(plot)) do
-            error("Could not find $(typeof(plot)) in current GLMakie screen!")
+        # I think we can double delete renderobjects, so this may be ok
+        # TODO, is it?
+        renderobject = get(screen.cache, objectid(plot), nothing)
+        if !isnothing(renderobject)
+            destroy!(renderobject)
+            filter!(x-> x[3] !== renderobject, screen.renderlist)
         end
-
-        # These need explicit clean up because (some of) the source observables
-        # remain when the plot is deleted.
-        for k in (:normalmatrix, )
-            if haskey(renderobject.uniforms, k)
-                n = renderobject.uniforms[k]
-                for input in n.inputs
-                    off(input)
-                end
-            end
-        end
-        filter!(x-> x[3] !== renderobject, screen.renderlist)
     end
 end
 
@@ -369,21 +383,6 @@ function Base.push!(screen::GLScreen, scene::Scene, robj)
 end
 
 Makie.to_native(x::Screen) = x.glscreen
-
-"""
-OpenGL shares all data containers between shared contexts, but not vertexarrays -.-
-So to share a robjs between a context, we need to rewrap the vertexarray into a new one for that
-specific context.
-"""
-function rewrap(robj::RenderObject{Pre}) where Pre
-    RenderObject{Pre}(
-        robj.context,
-        robj.uniforms,
-        GLVertexArray(robj.vertexarray),
-        robj.prerenderfunction,
-        robj.postrenderfunction,
-    )
-end
 
 """
 Loads the makie loading icon and embedds it in an image the size of resolution

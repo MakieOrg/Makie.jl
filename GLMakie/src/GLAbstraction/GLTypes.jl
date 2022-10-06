@@ -284,13 +284,15 @@ end
 mutable struct RenderObject{Pre}
     context # OpenGL context
     uniforms::Dict{Symbol,Any}
+    observables::Vector{Observable} # for clean up
     vertexarray::GLVertexArray
     prerenderfunction::Pre
     postrenderfunction
     id::UInt32
     function RenderObject{Pre}(
             context,
-            uniforms::Dict{Symbol,Any}, vertexarray::GLVertexArray,
+            uniforms::Dict{Symbol,Any}, observables::Vector{Observable},
+            vertexarray::GLVertexArray,
             prerenderfunctions, postrenderfunctions
         ) where Pre
         fxaa = to_value(pop!(uniforms, :fxaa, true))
@@ -303,7 +305,7 @@ mutable struct RenderObject{Pre}
         id = pack_bool(RENDER_OBJECT_ID_COUNTER[], fxaa)
         new(
             context,
-            uniforms, vertexarray,
+            uniforms, observables, vertexarray,
             prerenderfunctions, postrenderfunctions,
             id
         )
@@ -321,7 +323,9 @@ function RenderObject(
     targets = get(data, :gl_convert_targets, Dict())
     delete!(data, :gl_convert_targets)
     passthrough = Dict{Symbol,Any}() # we also save a few non opengl related values in data
+    observables = Observable[]
     for (k, v) in data # convert everything to OpenGL compatible types
+        v isa Observable && push!(observables, v) # save for clean up
         if haskey(targets, k)
             # glconvert is designed to just convert everything to a fitting opengl datatype, but sometimes exceptions are needed
             # e.g. Texture{T,1} and GLBuffer{T} are both usable as an native conversion canditate for a Julia's Array{T, 1} type.
@@ -354,6 +358,7 @@ function RenderObject(
     robj = RenderObject{Pre}(
         context,
         data,
+        observables,
         vertexarray,
         pre,
         post,
