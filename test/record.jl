@@ -44,8 +44,8 @@ mktempdir() do tempdir
 
             # kwarg => (value, (should_warn => format))
             warn_tests = [
-                (kwarg=:compression, value=20, warn_fmts=["mkv", "gif"], no_warn_fmts=["mp4", "webm"]),
-                (kwarg=:profile, value="high422", warn_fmts=["mkv", "webm", "gif"], no_warn_fmts=["mp4"]),
+                (:compression, 20, ["mkv", "gif"], ["mp4", "webm"]),
+                (:profile, "high422", ["mkv", "webm", "gif"], ["mp4"]),
                 (
                     kwarg=:pixel_format,
                     value="yuv420p",
@@ -54,7 +54,7 @@ mktempdir() do tempdir
                 ),
             ]
 
-            for (; kwarg, value, warn_fmts, no_warn_fmts) in warn_tests
+            for (kwarg, value, warn_fmts, no_warn_fmts) in warn_tests
                 kwargs = Dict(kwarg => value)
                 warning_re = Regex("^`$(kwarg)`, with value $(repr(value))")
 
