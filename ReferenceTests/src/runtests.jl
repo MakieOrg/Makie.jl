@@ -37,6 +37,13 @@ function compare_media(a, b; sigma=[1,1])
         return compare_media(conv(imga), conv(imgb), sigma=sigma)
     elseif ext in (".mp4", ".gif")
         aframes, bframes = get_frames(a, b)
+        # Frames can differ in length, which usually shouldn't be the case but can happen
+        # when the implementation of record changes, or when the example changes its number of frames
+        # In that case, we just return inf + warn
+        if length(aframes) != length(bframes)
+            @warn "not the same number of frames in video, difference will be Inf"
+            return Inf
+        end
         return mean(compare_media.(aframes, bframes; sigma=sigma))
     else
         error("Unknown media extension: $ext")
