@@ -107,6 +107,9 @@ function Base.display(figlike::FigureLike; backend=current_backend(), screen_con
     return display(screen, figlike)
 end
 
+# Backends overload display(::Backend.Screen, scene::Scene), while Makie overloads the below,
+# so that they don't need to worry
+# about stuff like `update_state_before_display!`
 function Base.display(screen::MakieScreen, figlike::FigureLike; display_attributes...)
     update_state_before_display!(figlike)
     scene = get_scene(figlike)
