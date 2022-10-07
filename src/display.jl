@@ -83,8 +83,6 @@ function merge_screen_config(::Type{Config}, screen_config_kw) where Config
 end
 
 """
-
-
 # GLMakie
 start_renderloop=true
 visible=true
@@ -95,9 +93,8 @@ pt_per_unit=x.pt_per_unit
 px_per_unit=x.px_per_unit
 antialias=x.antialias
 """
-function Base.display(figlike::FigureLike; screen_config...)
-    Backend = current_backend()
-    if ismissing(Backend)
+function Base.display(figlike::FigureLike; backend=current_backend(), screen_config...)
+    if ismissing(backend)
         error("""
         No backend available!
         Make sure to also `import/using` a backend (GLMakie, CairoMakie, WGLMakie).
@@ -106,7 +103,7 @@ function Base.display(figlike::FigureLike; screen_config...)
         In that case, try `]build GLMakie` and watch out for any warnings.
         """)
     end
-    screen = Backend.Screen(get_scene(figlike); screen_config...)
+    screen = backend.Screen(get_scene(figlike); screen_config...)
     return display(screen, figlike)
 end
 
@@ -191,9 +188,15 @@ function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
 end
 
 function Base.show(io::IO, m::MIME, figlike::FigureLike)
-    update_state_before_display!(figlike)
     scene = get_scene(figlike)
-    backend_show(current_backend().Screen(scene, io, m), io, m, scene)
+    backend = current_backend()
+    # get current screen the scene is already displayed on, or create a new screen
+    screen = getscreen(scene, backend) do
+        # only update fig if not already displayed
+        update_state_before_display!(figlike)
+        return backend.Screen(scene, io, m)
+    end
+    backend_show(screen, io, m, scene)
     return
 end
 
