@@ -14,7 +14,9 @@ Note, that most GPUs, even 8 year old integrated ones, support OpenGL 3.3.
 On Linux, you can find out your OpenGL version with:
 `glxinfo | grep "OpenGL version"`
 
-If you're using an AMD or Intel gpu on linux, you may run into [GLFW#198](https://github.com/JuliaGL/GLFW.jl/issues/198).
+If you're using an AMD or Intel gpu on linux, you may run into [GLFW#198](https://github.com/JuliaGL/GLFW.jl/issues/198). A potential fix is then to 
+delete `libstdc++.so.6`. An example path to this file on a system using `juliaup` and version `1.8.2` is `/home/username/.julia/juliaup/julia-1.8.2+0.x64/lib/julia/libstdc++.so.6`.
+
 
 If you're on a headless server, you still need to install x-server and
 proper graphics drivers.
