@@ -54,15 +54,9 @@ function get_texture!(atlas)
     return tex
 end
 
-# find a better way to handle this
-# enable_SSAO and FXAA adjust the rendering pipeline and are currently per screen
-const enable_SSAO = Ref(false)
-const enable_FXAA = Ref(true)
-# This adjusts a factor in the rendering shaders for order independent
-# transparency. This should be the same for all of them (within one rendering
-# pipeline) otherwise depth "order" will be broken.
-const transparency_weight_scale = Ref(1000f0)
-
+include("glwindow.jl")
+include("postprocessing.jl")
+include("screen.jl")
 include("glshaders/visualize_interface.jl")
 include("glshaders/lines.jl")
 include("glshaders/image_like.jl")
@@ -70,9 +64,6 @@ include("glshaders/mesh.jl")
 include("glshaders/particles.jl")
 include("glshaders/surface.jl")
 
-include("glwindow.jl")
-include("postprocessing.jl")
-include("screen.jl")
 include("picking.jl")
 include("rendering.jl")
 include("events.jl")

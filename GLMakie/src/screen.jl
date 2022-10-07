@@ -28,9 +28,9 @@ function renderloop end
         ssao::Bool = true)
 
 """
-struct ScreenConfig
+mutable struct ScreenConfig
     # Renderloop
-    renderloop::Union{Makie.Automatic, Function}# = automatic,
+    renderloop::Function # GLMakie.renderloop,
     pause_renderloop::Bool
     vsync::Bool# = false,
     framerate::Float64# = 30.0,
@@ -48,7 +48,50 @@ struct ScreenConfig
     oit::Bool# = true,
     fxaa::Bool# = true,
     ssao::Bool# = true
+    transparency_weight_scale::Float32
+
+    function ScreenConfig(
+            # Renderloop
+            renderloop::Union{Makie.Automatic, Function},
+            pause_renderloop::Bool,
+            vsync::Bool,
+            framerate::Number,
+            # GLFW window attributes
+            float::Bool,
+            focus_on_show::Bool,
+            decorated::Bool,
+            title::AbstractString,
+            fullscreen::Bool,
+            debugging::Bool,
+            monitor::Union{Nothing, GLFW.Monitor},
+            # Preproccessor
+            oit::Bool,
+            fxaa::Bool,
+            ssao::Bool,
+            transparency_weight_scale::Number)
+
+        return new(
+            # Renderloop
+            renderloop isa Makie.Automatic ? GLMakie.renderloop : renderloop,
+            pause_renderloop,
+            vsync,
+            framerate,
+            # GLFW window attributes
+            float,
+            focus_on_show,
+            decorated,
+            title,
+            fullscreen,
+            debugging,
+            monitor,
+            # Preproccessor
+            oit,
+            fxaa,
+            ssao,
+            transparency_weight_scale)
+    end
 end
+
 
 """
     activate!(;
@@ -74,18 +117,12 @@ function activate!(; screen_config...)
     return
 end
 
-abstract type GLScreen <: MakieScreen end
-
-mutable struct Screen{GLWindow} <: GLScreen
+mutable struct Screen{GLWindow} <: MakieScreen
     glscreen::GLWindow
     shader_cache::GLAbstraction.ShaderCache
     framebuffer::GLFramebuffer
-
-    renderloop::Function
+    config::ScreenConfig
     stop_renderloop::Bool
-    pause_renderloop::Bool
-    vsync::Bool
-    framerate::Float64
     rendertask::RefValue{Task}
 
     screen2scene::Dict{WeakRef, ScreenID}
@@ -102,12 +139,8 @@ mutable struct Screen{GLWindow} <: GLScreen
             glscreen::GLWindow,
             shader_cache::GLAbstraction.ShaderCache,
             framebuffer::GLFramebuffer,
-
-            renderloop::Function,
+            config::ScreenConfig,
             stop_renderloop::Bool,
-            pause_renderloop::Bool,
-            vsync::Bool,
-            framerate::Float64,
             rendertask::RefValue{Task},
 
             screen2scene::Dict{WeakRef, ScreenID},
@@ -117,11 +150,11 @@ mutable struct Screen{GLWindow} <: GLScreen
             cache::Dict{UInt64, RenderObject},
             cache2plot::Dict{UInt32, AbstractPlot},
         ) where {GLWindow}
+
         s = size(framebuffer)
         return new{GLWindow}(
             glscreen, shader_cache, framebuffer,
-            renderloop, stop_renderloop, pause_renderloop, vsync, framerate,
-            rendertask,
+            config, stop_renderloop, rendertask,
             screen2scene,
             screens, renderlist, postprocessors, cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(nothing),
@@ -130,7 +163,106 @@ mutable struct Screen{GLWindow} <: GLScreen
     end
 end
 
-pollevents(::GLScreen) = nothing
+function Screen(;
+        resolution = (10, 10),
+        visible = true,
+        start_renderloop = true,
+        screen_config...
+    )
+    # Screen config is managed by the current active theme, so managed by Makie
+    config = Makie.merge_screen_config(ScreenConfig, screen_config)
+
+    # Somehow this constant isn't wrapped by glfw
+    GLFW_FOCUS_ON_SHOW = 0x0002000C
+
+    windowhints = [
+        (GLFW.SAMPLES,      0),
+        (GLFW.DEPTH_BITS,   0),
+
+        # SETTING THE ALPHA BIT IS REALLY IMPORTANT ON OSX, SINCE IT WILL JUST KEEP SHOWING A BLACK SCREEN
+        # WITHOUT ANY ERROR -.-
+        (GLFW.ALPHA_BITS,   8),
+        (GLFW.RED_BITS,     8),
+        (GLFW.GREEN_BITS,   8),
+        (GLFW.BLUE_BITS,    8),
+
+        (GLFW.STENCIL_BITS, 0),
+        (GLFW.AUX_BUFFERS,  0),
+        (GLFW_FOCUS_ON_SHOW, config.focus_on_show),
+        (GLFW.DECORATED, config.decorated),
+        (GLFW.FLOATING, config.float),
+        # (GLFW.TRANSPARENT_FRAMEBUFFER, true)
+    ]
+
+    window = try
+        GLFW.Window(
+            resolution = resolution,
+            windowhints = windowhints,
+            visible = false,
+            # from config
+            name = config.title,
+            focus = config.focus_on_show,
+            fullscreen = config.fullscreen,
+            debugging = config.debugging,
+            monitor = config.monitor
+        )
+    catch e
+        @warn("""
+            GLFW couldn't create an OpenGL window.
+            This likely means, you don't have an OpenGL capable Graphic Card,
+            or you don't have an OpenGL 3.3 capable video driver installed.
+            Have a look at the troubleshooting section in the GLMakie readme:
+            https://github.com/MakieOrg/Makie.jl/tree/master/GLMakie#troubleshooting-opengl.
+        """)
+        rethrow(e)
+    end
+
+    GLFW.SetWindowIcon(window, Makie.icon())
+
+    # tell GLAbstraction that we created a new context.
+    # This is important for resource tracking, and only needed for the first context
+    ShaderAbstractions.switch_context!(window)
+    shader_cache = GLAbstraction.ShaderCache(window)
+    push!(GLFW_WINDOWS, window)
+
+    resize_native!(window, resolution...)
+
+    fb = GLFramebuffer(resolution)
+    postprocessors = [
+        config.ssao ? ssao_postprocessor(fb, shader_cache) : empty_postprocessor(),
+        config.oit ? OIT_postprocessor(fb, shader_cache) : empty_postprocessor(),
+        config.fxaa ? fxaa_postprocessor(fb, shader_cache) : empty_postprocessor(),
+        to_screen_postprocessor(fb, shader_cache)
+    ]
+
+    screen = Screen(
+        window, shader_cache, fb,
+        config, !start_renderloop,
+        RefValue{Task}(),
+        Dict{WeakRef, ScreenID}(),
+        ScreenArea[],
+        Tuple{ZIndex, ScreenID, RenderObject}[],
+        postprocessors,
+        Dict{UInt64, RenderObject}(),
+        Dict{UInt32, AbstractPlot}(),
+    )
+
+    GLFW.SetWindowRefreshCallback(window, window -> refreshwindowcb(window, screen))
+
+    if start_renderloop
+        start_renderloop!(screen)
+    end
+
+    # display window if visible!
+    if visible
+        GLFW.ShowWindow(window)
+    else
+        GLFW.HideWindow(window)
+    end
+
+    return screen
+end
+
 function pollevents(screen::Screen)
     ShaderAbstractions.switch_context!(screen.glscreen)
     notify(screen.render_tick)
@@ -145,7 +277,7 @@ Base.show(io::IO, screen::Screen) = print(io, "GLMakie.Screen(...)")
 Base.isopen(x::Screen) = isopen(x.glscreen)
 Base.size(x::Screen) = size(x.framebuffer)
 
-function Makie.insertplots!(screen::GLScreen, scene::Scene)
+function Makie.insertplots!(screen::Screen, scene::Scene)
     ShaderAbstractions.switch_context!(screen.glscreen)
     get!(screen.screen2scene, WeakRef(scene)) do
         id = length(screen.screens) + 1
@@ -368,7 +500,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     end
 end
 
-function Base.push!(screen::GLScreen, scene::Scene, robj)
+function Base.push!(screen::Screen, scene::Scene, robj)
     # filter out gc'ed elements
     filter!(screen.screen2scene) do (k, v)
         k.value !== nothing
@@ -427,123 +559,17 @@ function display_loading_image(screen::Screen)
     end
 end
 
-function Screen(;
-        resolution = (10, 10),
-        visible = true,
-        start_renderloop = true,
-        screen_config...
-    )
-    # Screen config is managed by the current active theme, so managed by Makie
-    config = Makie.merge_screen_config(ScreenConfig, screen_config)
-
-    # Somehow this constant isn't wrapped by glfw
-    GLFW_FOCUS_ON_SHOW = 0x0002000C
-
-    windowhints = [
-        (GLFW.SAMPLES,      0),
-        (GLFW.DEPTH_BITS,   0),
-
-        # SETTING THE ALPHA BIT IS REALLY IMPORTANT ON OSX, SINCE IT WILL JUST KEEP SHOWING A BLACK SCREEN
-        # WITHOUT ANY ERROR -.-
-        (GLFW.ALPHA_BITS,   8),
-        (GLFW.RED_BITS,     8),
-        (GLFW.GREEN_BITS,   8),
-        (GLFW.BLUE_BITS,    8),
-
-        (GLFW.STENCIL_BITS, 0),
-        (GLFW.AUX_BUFFERS,  0),
-        (GLFW_FOCUS_ON_SHOW, config.focus_on_show),
-        (GLFW.DECORATED, config.decorated),
-        (GLFW.FLOATING, config.float),
-        # (GLFW.TRANSPARENT_FRAMEBUFFER, true)
-    ]
-
-    window = try
-        GLFW.Window(
-            resolution = resolution,
-            windowhints = windowhints,
-            visible = false,
-            # from config
-            name = config.title,
-            focus = config.focus_on_show,
-            fullscreen = config.fullscreen,
-            debugging = config.debugging,
-            monitor = config.monitor
-        )
-    catch e
-        @warn("""
-            GLFW couldn't create an OpenGL window.
-            This likely means, you don't have an OpenGL capable Graphic Card,
-            or you don't have an OpenGL 3.3 capable video driver installed.
-            Have a look at the troubleshooting section in the GLMakie readme:
-            https://github.com/MakieOrg/Makie.jl/tree/master/GLMakie#troubleshooting-opengl.
-        """)
-        rethrow(e)
-    end
-
-    GLFW.SetWindowIcon(window, Makie.icon())
-
-    # tell GLAbstraction that we created a new context.
-    # This is important for resource tracking, and only needed for the first context
-    ShaderAbstractions.switch_context!(window)
-    shader_cache = GLAbstraction.ShaderCache(window)
-    push!(GLFW_WINDOWS, window)
-
-    resize_native!(window, resolution...)
-
-    fb = GLFramebuffer(resolution)
-    postprocessors = [
-        config.ssao ? ssao_postprocessor(fb, shader_cache) : empty_postprocessor(),
-        config.oit ? OIT_postprocessor(fb, shader_cache) : empty_postprocessor(),
-        config.fxaa ? fxaa_postprocessor(fb, shader_cache) : empty_postprocessor(),
-        to_screen_postprocessor(fb, shader_cache)
-    ]
-
-    screen = Screen(
-        window, shader_cache, fb,
-
-        config.renderloop isa Makie.Automatic ? renderloop : config.renderloop,
-        !start_renderloop,
-        config.pause_renderloop,
-        config.vsync,
-        config.framerate,
-        RefValue{Task}(),
-
-        Dict{WeakRef, ScreenID}(),
-        ScreenArea[],
-        Tuple{ZIndex, ScreenID, RenderObject}[],
-        postprocessors,
-        Dict{UInt64, RenderObject}(),
-        Dict{UInt32, AbstractPlot}(),
-    )
-
-    GLFW.SetWindowRefreshCallback(window, window -> refreshwindowcb(window, screen))
-
-    if start_renderloop
-        start_renderloop!(screen)
-    end
-
-    # display window if visible!
-    if visible
-        GLFW.ShowWindow(window)
-    else
-        GLFW.HideWindow(window)
-    end
-
-    return screen
-end
-
 function renderloop_running(screen::Screen)
     return !screen.stop_renderloop && isassigned(screen.rendertask) && !istaskdone(screen.rendertask[])
 end
 
 function start_renderloop!(screen::Screen)
     if renderloop_running(screen)
-        screen.pause_renderloop = false
+        screen.config.pause_renderloop = false
         return
     else
         screen.stop_renderloop = false
-        task = @async screen.renderloop(screen)
+        task = @async screen.config.renderloop(screen)
         yield()
         if istaskstarted(task)
             screen.rendertask[] = task
@@ -556,7 +582,7 @@ function start_renderloop!(screen::Screen)
 end
 
 function pause_renderloop!(screen::Screen)
-    screen.pause_renderloop = true
+    screen.config.pause_renderloop = true
 end
 
 function stop_renderloop!(screen::Screen)
@@ -565,7 +591,7 @@ function stop_renderloop!(screen::Screen)
 end
 
 function set_framerate!(screen::Screen, fps=30)
-    screen.framerate = fps
+    screen.config.framerate = fps
 end
 
 function refreshwindowcb(window, screen)
@@ -591,7 +617,7 @@ end
 # TODO add render_tick event to scene events
 function vsynced_renderloop(screen)
     while isopen(screen) && !screen.stop_renderloop
-        if screen.pause_renderloop
+        if screen.config.pause_renderloop
             pollevents(screen); sleep(0.1)
             continue
         end
@@ -604,11 +630,11 @@ end
 
 function fps_renderloop(screen::Screen)
     while isopen(screen) && !screen.stop_renderloop
-        if screen.pause_renderloop
+        if screen.config.pause_renderloop
             pollevents(screen); sleep(0.1)
             continue
         end
-        time_per_frame = 1.0 / screen.framerate
+        time_per_frame = 1.0 / screen.config.framerate
         t = time_ns()
         pollevents(screen) # GLFW poll
         render_frame(screen)
@@ -626,7 +652,7 @@ end
 function renderloop(screen)
     isopen(screen) || error("Screen most be open to run renderloop!")
     try
-        if screen.vsync
+        if screen.config.vsync
             GLFW.SwapInterval(1)
             vsynced_renderloop(screen)
         else

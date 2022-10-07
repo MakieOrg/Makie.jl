@@ -130,7 +130,7 @@ function id2scene(screen, id1)
     return false, nothing
 end
 
-function GLAbstraction.render(filter_elem_func, screen::GLScreen)
+function GLAbstraction.render(filter_elem_func, screen::Screen)
     # Somehow errors in here get ignored silently!?
     try
         for (zindex, screenid, elem) in screen.renderlist

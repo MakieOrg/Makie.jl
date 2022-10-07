@@ -121,7 +121,11 @@ const minimal_default = Attributes(
         # Preproccessor
         oit = true,
         fxaa = true,
-        ssao = false
+        ssao = false,
+        # This adjusts a factor in the rendering shaders for order independent
+        # transparency. This should be the same for all of them (within one rendering
+        # pipeline) otherwise depth "order" will be broken.
+        transparency_weight_scale = 1000f0
     ),
 
     WGLMakie = Attributes(

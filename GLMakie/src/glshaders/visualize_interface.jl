@@ -65,11 +65,11 @@ function GLAbstraction.gl_convert_struct(g::Grid{1,T}, uniform_name::Symbol) whe
 end
 
 struct GLVisualizeShader <: AbstractLazyShader
-    shader_cache::GLAbstraction.ShaderCache
+    screen::Screen
     paths::Tuple
     kw_args::Dict{Symbol,Any}
     function GLVisualizeShader(
-            shader_cache::GLAbstraction.ShaderCache, paths::String...;
+            screen::Screen, paths::String...;
             view = Dict{String,String}(), kw_args...
         )
         # TODO properly check what extensions are available
@@ -80,12 +80,12 @@ struct GLVisualizeShader <: AbstractLazyShader
         args = Dict{Symbol, Any}(kw_args)
         args[:view] = view
         args[:fragdatalocation] = [(0, "fragment_color"), (1, "fragment_groupid")]
-        new(shader_cache, map(x -> loadshader(x), paths), args)
+        new(screen, map(x -> loadshader(x), paths), args)
     end
 end
 
 function GLAbstraction.gl_convert(shader::GLVisualizeShader, data)
-    GLAbstraction.gl_convert(shader.shader_cache, shader, data)
+    GLAbstraction.gl_convert(shader.screen.shader_cache, shader, data)
 end
 
 function assemble_shader(data)
@@ -105,7 +105,7 @@ function assemble_shader(data)
         GLAbstraction.StandardPrerender(transp, overdraw)
     end
 
-    robj = RenderObject(data, shader, pre, shader.shader_cache.context)
+    robj = RenderObject(data, shader, pre, shader.screen.glscreen)
 
     post = if haskey(data, :instances)
         GLAbstraction.StandardPostrenderInstanced(data[:instances], robj.vertexarray, primitive)
@@ -148,12 +148,12 @@ to_index_buffer(x) = error(
     Please choose from Int, Vector{UnitRange{Int}}, Vector{Int} or a signal of either of them"
 )
 
-function output_buffers(transparency = false)
+function output_buffers(screen::Screen, transparency = false)
     if transparency
         """
         layout(location=2) out float coverage;
         """
-    elseif enable_SSAO[]
+    elseif screen.config.ssao
         """
         layout(location=2) out vec3 fragment_position;
         layout(location=3) out vec3 fragment_normal_occlusion;
@@ -163,16 +163,16 @@ function output_buffers(transparency = false)
     end
 end
 
-function output_buffer_writes(transparency = false)
+function output_buffer_writes(screen::Screen, transparency = false)
     if transparency
-        scale = transparency_weight_scale[]
+        scale = screen.config.transparency_weight_scale
         """
         float weight = color.a * max(0.01, $scale * pow((1 - gl_FragCoord.z), 3));
         coverage = 1.0 - clamp(color.a, 0.0, 1.0);
         fragment_color.rgb = weight * color.rgb;
         fragment_color.a = weight;
         """
-    elseif enable_SSAO[]
+    elseif screen.config.ssao
         """
         fragment_color = color;
         fragment_position = o_view_pos;
