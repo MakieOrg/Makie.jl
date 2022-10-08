@@ -281,6 +281,9 @@ function DataInspector(scene::Scene; priority = 100, kwargs...)
         
         # Reusable values for creating indicators
         indicator_visible = false,
+
+        # General reusable
+        _color = RGBAf(0,0,0,0),
     )
 
     plot = tooltip!(parent, Observable(Point2f(0)), text = Observable(""); attrib_dict...)
@@ -699,7 +702,7 @@ function show_imagelike(inspector, plot, name, edge_based)
             if inspector.selection != plot
                 clear_temporary_plots!(inspector, plot)
                 p = scatter!(
-                    scene, position, color = color,
+                    scene, position, color = a._color,
                     visible = a.indicator_visible,
                     inspectable = false,
                     marker=:rect, markersize = map(r -> 3r, a.range),
@@ -712,7 +715,6 @@ function show_imagelike(inspector, plot, name, edge_based)
                 p = inspector.temp_plots[1]
                 p[1].val[1] = position
                 notify(p[1])
-                p.color[] = color
             end
         else
             bbox = _pixelated_image_bbox(plot[1][], plot[2][], plot[3][], i, j, edge_based)
