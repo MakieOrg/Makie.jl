@@ -257,3 +257,137 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
 end
 
 iswhitespace(l::LaTeXString) = iswhitespace(replace(l.s, '$' => ""))
+
+
+
+
+
+
+struct RTFNode4 <: AbstractString
+    type::Symbol
+    children::Vector{Union{RTFNode4,String}}
+    attributes::Dict{Symbol, Any}
+    function RTFNode4(type, children...; kwargs...)
+        cs = Union{RTFNode4,String}[children...]
+        typeof(cs)
+        new(type, cs, Dict(kwargs))
+    end
+end
+
+##
+function Makie._get_glyphcollection_and_linesegments(rtf::RTFNode4, index, ts, f, al, rot, jus, lh, col, scol, swi, www)
+    gc = Makie.layout_text(rtf, ts, f, al, rot, jus, lh)
+    gc, Point2f[], Float32[], Makie.RGBAf[], Int[]
+end
+
+struct GlyphState2
+    x::Float32
+    baseline::Float32
+    size::Vec2f
+    font::Makie.FreeTypeAbstraction.FTFont
+    color::RGBAf
+end
+
+struct GlyphInfo2
+    glyph::Int
+    font::Makie.FreeTypeAbstraction.FTFont
+    origin::Point2f
+    extent::Makie.GlyphExtent
+    size::Vec2f
+    rotation::Makie.Quaternion
+    color::RGBAf
+    strokecolor::RGBAf
+    strokewidth::Float32
+end
+
+function Makie.GlyphCollection(v::Vector{GlyphInfo2})
+    Makie.GlyphCollection(
+        [i.glyph for i in v],
+        [i.font for i in v],
+        [Point3f(i.origin..., 0) for i in v],
+        [i.extent for i in v],
+        [i.size for i in v],
+        [i.rotation for i in v],
+        [i.color for i in v],
+        [i.strokecolor for i in v],
+        [i.strokewidth for i in v],
+    )
+end
+
+
+function Makie.layout_text(rtf::RTFNode4, ts, f, al, rot, jus, lh)
+
+    stack = [GlyphState2(0, 0, Vec2f(ts), f, RGBAf(0, 0, 0, 1))]
+
+    lines = [GlyphInfo2[]]
+    
+    process_rtf_node!(stack, lines, rtf)
+
+    Makie.GlyphCollection(reduce(vcat, lines))
+end
+
+function process_rtf_node!(stack, lines, rtf::RTFNode4)
+    push!(stack, new_glyphstate(stack[end], rtf, Val(rtf.type)))
+    for c in rtf.children
+        process_rtf_node!(stack, lines, c)
+    end
+    gs = pop!(stack)
+    gs_top = stack[end]
+    # x needs to continue even if going a level up
+    stack[end] = GlyphState2(gs.x, gs_top.baseline, gs_top.size, gs_top.font, gs_top.color)
+    return
+end
+
+function process_rtf_node!(stack, lines, s::String)
+    gs = stack[end]
+    y = gs.baseline
+    x = gs.x
+    for char in s
+        gi = Makie.FreeTypeAbstraction.glyph_index(gs.font, char)
+        gext = Makie.GlyphExtent(gs.font, char)
+        ori = Point2f(x, y)
+        push!(lines[end], GlyphInfo2(
+            gi,
+            gs.font,
+            ori,
+            gext,
+            gs.size,
+            Makie.to_rotation(0),
+            gs.color,
+            RGBAf(0, 0, 0, 0),
+            0f0,
+        ))
+        x = x + gext.hadvance * gs.size[1]
+    end
+    stack[end] = GlyphState2(x, y, gs.size, gs.font, gs.color)
+    return
+end
+
+function new_glyphstate(gs::GlyphState2, rtf::RTFNode4, val::Val)
+    gs
+end
+
+_get_color(attributes, default)::RGBAf = haskey(attributes, :color) ? Makie.to_color(attributes[:color]) : default
+
+function new_glyphstate(gs::GlyphState2, rtf::RTFNode4, val::Val{:sup})
+    att = rtf.attributes
+    GlyphState2(
+        gs.x,
+        gs.baseline + 0.4 * gs.size[2],
+        gs.size * 0.6,
+        gs.font,
+        _get_color(att, gs.color),
+    )
+end
+
+function new_glyphstate(gs::GlyphState2, rtf::RTFNode4, val::Val{:sub})
+    GlyphState2(
+        gs.x,
+        gs.baseline - 0.1 * gs.size[2],
+        gs.size * 0.6,
+        gs.font,
+        gs.color,
+    )
+end
+
+Makie.iswhitespace(::RTFNode4) = false
