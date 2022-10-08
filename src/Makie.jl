@@ -48,6 +48,8 @@ import GridLayoutBase
 import ImageIO
 import FileIO
 import SparseArrays
+import TriplotBase
+import MiniQhull
 
 using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints
 using FixedPointNumbers: N0f8
@@ -140,6 +142,7 @@ include("basic_recipes/stairs.jl")
 include("basic_recipes/stem.jl")
 include("basic_recipes/streamplot.jl")
 include("basic_recipes/timeseries.jl")
+include("basic_recipes/tricontourf.jl")
 include("basic_recipes/volumeslices.jl")
 include("basic_recipes/wireframe.jl")
 
@@ -158,6 +161,8 @@ include("stats/distributions.jl")
 include("stats/crossbar.jl")
 include("stats/boxplot.jl")
 include("stats/violin.jl")
+include("stats/hexbin.jl")
+
 
 # Interactiveness
 include("interaction/events.jl")
