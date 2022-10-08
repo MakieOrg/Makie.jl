@@ -342,8 +342,8 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
     layout_height = Observable{Any}(nothing)
     layout_tellwidth = Observable(true)
     layout_tellheight = Observable(true)
-    layout_halign = Observable{Union{Symbol, Float64}}(:center)
-    layout_valign = Observable{Union{Symbol, Float64}}(:center)
+    layout_halign = Observable{GridLayoutBase.HorizontalAlignment}(:center)
+    layout_valign = Observable{GridLayoutBase.VerticalAlignment}(:center)
     layout_alignmode = Observable{Any}(Inside())
 
     lobservables = LayoutObservables(

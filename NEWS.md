@@ -1,7 +1,9 @@
 # News
 
 ## master
+- `hexbin` is now available as a recipe [#368] (https://github.com/JuliaPlots/Makie.jl/pull/2201)
 
+- Added the `tricontourf` plotting function [#2226](https://github.com/JuliaPlots/Makie.jl/pull/2226).
 - Fix per character attributes in text [#2244](https://github.com/JuliaPlots/Makie.jl/pull/2244)
 - `Axis` does now accept both a `Bool` and a `Tuple{Bool, Bool}` as values for `xtrimspine` and `ytrimspine` to trim only one end of the spine [#2171](https://github.com/JuliaPlots/Makie.jl/pull/2171).
 - Added `BezierPath` which can be constructed from SVG like command list, SVG string or from a `Polygon`.
@@ -14,6 +16,7 @@
 - Reworked text drawing and added ability to draw special characters via glyph indices in order to draw more LaTeX math characters with MathTeXEngine v0.5 [#2139](https://github.com/MakieOrg/Makie.jl/pull/2139).
 - Add `tooltip` as a plot recipe [#2095](https://github.com/JuliaPlots/Makie.jl/pull/2095)
 - **Breaking** Refactor `DataInspector` to use `tooltip`. This results in changes in the attributes of DataInspector. See pr [#2095](https://github.com/JuliaPlots/Makie.jl/pull/2095)
+- Allow text to be copy/pasted into textbox [#2281](https://github.com/MakieOrg/Makie.jl/pull/2281)
 
 ## v0.17.13
 
