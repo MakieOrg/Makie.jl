@@ -235,13 +235,15 @@ enable!(inspector::DataInspector) = inspector.attributes.enabled[] = true
 disable!(inspector::DataInspector) = inspector.attributes.enabled[] = false
 
 """
-    DataInspector(figure; kwargs...)
-    DataInspector(; kwargs...)
+    DataInspector(figure_axis_or_scene = current_figure(); kwargs...)
 
 Creates a data inspector which will show relevant information in a tooltip
-when you hover over a plot. If you wish to exclude a plot you may set
-`plot.inspectable[] = false`.
-The `figure` argument defaults to `current_figure()`.
+when you hover over a plot.
+
+This functionality can eb disabled on a per-plot basis by setting 
+`plot.inspectable[] = false`. The displayed text can be adjusted by setting 
+`plot.inspector_label` to a function `(plot, index, position) -> "my_label"`
+returning a label. See Makie documentation for more detail.
 
 ### Keyword Arguments:
 - `range = 10`: Controls the snapping range for selecting an element of a plot.
