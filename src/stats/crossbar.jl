@@ -1,5 +1,5 @@
 #=
-S. Axen implementation from https://github.com/JuliaPlots/StatsMakie.jl/blob/master/src/recipes/crossbar.jl#L22
+S. Axen implementation from https://github.com/MakieOrg/StatsMakie.jl/blob/master/src/recipes/crossbar.jl#L22
 The StatMakie.jl package is licensed under the MIT "Expat" License:
     Copyright (c) 2018: Pietro Vertechi. =#
 """
@@ -88,7 +88,9 @@ function Makie.plot!(plot::CrossBar)
                 fpoint.(l, ymax),
                 fpoint.(l, nmax),
                 fpoint.(m .- nw .* hw, y), # notch left
-                fpoint.(l, nmin),)))
+                fpoint.(l, nmin),
+                fpoint.(l, ymin)
+               )))
             boxes = if points isa AbstractVector{<: Point} # poly
                 [GeometryBasics.triangle_mesh(points)]
             else # multiple polys (Vector{Vector{<:Point}})

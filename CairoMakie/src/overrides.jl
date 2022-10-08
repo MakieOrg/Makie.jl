@@ -67,7 +67,6 @@ function draw_poly(scene::Scene, screen::CairoScreen, poly, points_list::Vector{
     end
 end
 
-
 draw_poly(scene::Scene, screen::CairoScreen, poly, rect::Rect2) = draw_poly(scene, screen, poly, [rect])
 
 function draw_poly(scene::Scene, screen::CairoScreen, poly, rects::Vector{<:Rect2})
@@ -186,4 +185,39 @@ function draw_plot(scene::Scene, screen::CairoScreen,
     end
 
     nothing
+end
+
+#################################################################################
+#                                  Tricontourf                                  #
+# Tricontourf creates many disjoint polygons that are adjacent and form contour #
+#  bands, however, at the gaps we see white antialiasing artifacts. Therefore   #
+#               we override behavior and draw each band in one go               #
+#################################################################################
+
+function draw_plot(scene::Scene, screen::CairoScreen, tric::Tricontourf)
+
+    pol = only(tric.plots)::Poly
+    colornumbers = pol.color[]
+    colors = numbers_to_colors(colornumbers, pol)
+
+    polygons = pol[1][]
+
+    model = pol.model[]
+    space = to_value(get(pol, :space, :data))
+    projected_polys = project_polygon.(Ref(scene), space, polygons, Ref(model))
+
+    function draw_tripolys(polys, colornumbers, colors)
+        for (i, (pol, colnum, col)) in enumerate(zip(polys, colornumbers, colors))
+            polypath(screen.context, pol)
+            if i == length(colornumbers) || colnum != colornumbers[i+1]
+                Cairo.set_source_rgba(screen.context, rgbatuple(col)...)
+                Cairo.fill(screen.context)
+            end
+        end
+        return
+    end
+
+    draw_tripolys(projected_polys, colornumbers, colors)
+
+    return
 end

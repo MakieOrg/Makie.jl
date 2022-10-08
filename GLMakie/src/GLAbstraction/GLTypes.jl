@@ -333,7 +333,12 @@ function RenderObject(
             if isa_gl_struct(v)
                 merge!(data, gl_convert_struct(v, k))
             elseif applicable(gl_convert, v) # if can't be converted to an OpenGL datatype,
-                data[k] = gl_convert(v)
+                try
+                    data[k] = gl_convert(v)
+                catch e
+                    @warn("Can't convert $(typeof(v)) to opengl, for attribute $(k)")
+                    rethrow(e)
+                end
             else # put it in passthrough
                 delete!(data, k)
                 passthrough[k] = v

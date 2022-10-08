@@ -48,6 +48,8 @@ import GridLayoutBase
 import ImageIO
 import FileIO
 import SparseArrays
+import TriplotBase
+import MiniQhull
 
 using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints
 using FixedPointNumbers: N0f8
@@ -88,6 +90,7 @@ const NativeFont = FreeTypeAbstraction.FTFont
 
 include("documentation/docstringextension.jl")
 include("utilities/quaternions.jl")
+include("bezier.jl")
 include("types.jl")
 include("utilities/texture_atlas.jl")
 include("interaction/observables.jl")
@@ -139,6 +142,7 @@ include("basic_recipes/stairs.jl")
 include("basic_recipes/stem.jl")
 include("basic_recipes/streamplot.jl")
 include("basic_recipes/timeseries.jl")
+include("basic_recipes/tricontourf.jl")
 include("basic_recipes/volumeslices.jl")
 include("basic_recipes/wireframe.jl")
 include("basic_recipes/tooltip.jl")
@@ -158,6 +162,8 @@ include("stats/distributions.jl")
 include("stats/crossbar.jl")
 include("stats/boxplot.jl")
 include("stats/violin.jl")
+include("stats/hexbin.jl")
+
 
 # Interactiveness
 include("interaction/events.jl")
@@ -167,6 +173,9 @@ include("interaction/inspector.jl")
 # documentation and help functions
 include("documentation/documentation.jl")
 include("display.jl")
+
+# bezier paths
+export BezierPath, MoveTo, LineTo, CurveTo, EllipticalArc, ClosePath
 
 # help functions and supporting functions
 export help, help_attributes, help_arguments

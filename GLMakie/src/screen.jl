@@ -314,7 +314,7 @@ Loads the makie loading icon and embedds it in an image the size of resolution
 """
 function get_loading_image(resolution)
     icon = Matrix{N0f8}(undef, 192, 192)
-    open(joinpath(@__DIR__, "..", "assets", "loading.bin")) do io
+    open(joinpath(GL_ASSET_DIR, "loading.bin")) do io
         read!(io, icon)
     end
     img = zeros(RGBA{N0f8}, resolution...)
@@ -393,7 +393,7 @@ function Screen(;
             This likely means, you don't have an OpenGL capable Graphic Card,
             or you don't have an OpenGL 3.3 capable video driver installed.
             Have a look at the troubleshooting section in the GLMakie readme:
-            https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie#troubleshooting-opengl.
+            https://github.com/MakieOrg/Makie.jl/tree/master/GLMakie#troubleshooting-opengl.
         """)
         rethrow(e)
     end
