@@ -8,6 +8,7 @@ nothing_or_color(c::Nothing) = RGBAf(0, 0, 0, 1)
 
 function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
     uniforms = Dict(uniforms)
+    filter!(kv -> !(kv[2] isa Function), uniforms)
 
     colormap = if haskey(plot, :colormap)
         cmap = lift(el32convert ∘ to_colormap, plot.colormap)
