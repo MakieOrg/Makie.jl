@@ -324,7 +324,88 @@ function Makie.layout_text(rtf::RTFNode4, ts, f, al, rot, jus, lh)
     
     process_rtf_node!(stack, lines, rtf)
 
+    apply_lineheight!(lines, lh)
+    apply_alignment_and_justification!(lines, jus, al)
+
     Makie.GlyphCollection(reduce(vcat, lines))
+end
+
+function apply_lineheight!(lines, lh)
+    for (i, line) in enumerate(lines)
+        for j in eachindex(line)
+            l = line[j]
+            l = Setfield.@set l.origin[2] -= (i-1) * 20 # TODO: Lineheight
+            line[j] = l
+        end
+    end
+    return
+end
+
+function apply_alignment_and_justification!(lines, ju, al)
+    max_xs = map(lines) do line
+        maximum(line, init = 0f0) do ginfo
+            ginfo.origin[1] + ginfo.extent.hadvance * ginfo.size[1]
+        end
+    end
+    max_x = maximum(max_xs)
+
+    top_y = maximum(lines[1]) do ginfo
+        ginfo.origin[2] + ginfo.extent.ascender * ginfo.size[2]
+    end
+    bottom_y = minimum(lines[end]) do ginfo
+        ginfo.origin[2] + ginfo.extent.descender * ginfo.size[2]
+    end
+
+    al_offset_x = if al[1] == :center
+        max_x / 2
+    else
+        0
+    end
+
+    al_offset_y = if al[2] == :center
+        0.5 * (top_y - bottom_y)
+    elseif al[2] == :bottom
+        bottom_y
+    elseif al[2] == :top
+        top_y
+    else
+        0f0
+    end
+
+    fju = float_justification(ju, al)
+    
+    for (i, line) in enumerate(lines)
+        ju_offset = fju * (max_x - max_xs[i])
+        for j in eachindex(line)
+            l = line[j]
+            l = Setfield.@set l.origin -= Point2f(al_offset_x - ju_offset, al_offset_y)
+            line[j] = l
+        end
+    end
+    return
+end
+
+function float_justification(ju, al)::Float32
+    halign = al[1]
+    float_justification = if ju === automatic
+        if halign == :left || halign == 0
+            0.0f0
+        elseif halign == :right || halign == 1
+            1.0f0
+        elseif halign == :center || halign == 0.5
+            0.5f0
+        else
+            0.5f0
+        end
+    elseif ju == :left
+        0.0f0
+    elseif ju == :right
+        1.0f0
+    elseif ju == :center
+        0.5f0
+    else
+        Float32(ju)
+    end
 end
 
 function process_rtf_node!(stack, lines, rtf::RTFNode4)
@@ -344,21 +425,26 @@ function process_rtf_node!(stack, lines, s::String)
     y = gs.baseline
     x = gs.x
     for char in s
-        gi = Makie.FreeTypeAbstraction.glyph_index(gs.font, char)
-        gext = Makie.GlyphExtent(gs.font, char)
-        ori = Point2f(x, y)
-        push!(lines[end], GlyphInfo2(
-            gi,
-            gs.font,
-            ori,
-            gext,
-            gs.size,
-            Makie.to_rotation(0),
-            gs.color,
-            RGBAf(0, 0, 0, 0),
-            0f0,
-        ))
-        x = x + gext.hadvance * gs.size[1]
+        if char === '\n'
+            x = 0
+            push!(lines, GlyphInfo2[])
+        else
+            gi = Makie.FreeTypeAbstraction.glyph_index(gs.font, char)
+            gext = Makie.GlyphExtent(gs.font, char)
+            ori = Point2f(x, y)
+            push!(lines[end], GlyphInfo2(
+                gi,
+                gs.font,
+                ori,
+                gext,
+                gs.size,
+                Makie.to_rotation(0),
+                gs.color,
+                RGBAf(0, 0, 0, 0),
+                0f0,
+            ))
+            x = x + gext.hadvance * gs.size[1]
+        end
     end
     stack[end] = GlyphState2(x, y, gs.size, gs.font, gs.color)
     return
