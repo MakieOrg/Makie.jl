@@ -126,7 +126,7 @@ mutable struct LineAxis
     elements::Dict{Symbol, Any}
     tickpositions::Observable{Vector{Point2f}}
     tickvalues::Observable{Vector{Float32}}
-    ticklabels::Observable{Vector{String}}
+    ticklabels::Observable{Vector{AbstractString}}
     minortickpositions::Observable{Vector{Point2f}}
     minortickvalues::Observable{Vector{Float32}}
 end
