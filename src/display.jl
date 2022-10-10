@@ -114,54 +114,13 @@ function Base.display(screen::MakieScreen, figlike::FigureLike; display_attribut
     return screen
 end
 
-const PREFERRED_MIME = Base.RefValue{Union{Automatic, String}}(automatic)
-
-"""
-    set_preferred_mime!(mime::Union{String, Symbol, MIME, Automatic}=automatic)
-
-The default is automatic, which lets the display system figure out the best mime.
-If set to any other valid mime, will result in `showable(any_other_mime, figurelike)` to return false and only return true for `showable(preferred_mime, figurelike)`.
-Depending on the display system used, this may result in nothing getting displayed.
-"""
-function set_preferred_mime!(mime::Union{String, Symbol, MIME, Automatic}=automatic)
-    if mime isa Automatic
-        PREFERRED_MIME[] = mime
-        return
-    end
-    # Mimes supported accross Makie backends
-    # TODO, make this dynamic and backends can register their mimes?
-    supported_mimes = Set([
-        "text/html",
-        "application/vnd.webio.application+html",
-        "application/prs.juno.plotpane+html",
-        "juliavscode/html",
-        "image/svg+xml",
-        "application/pdf",
-        "application/postscript",
-        "image/png",
-        "image/jpeg"])
-
-    mime_str = string(mime)
-
-    if mime_str in supported_mimes
-        PREFERRED_MIME[] = mime_str
-    else
-        error("Mime not supported: $(mime_str). Supported mimes: $(supported_mimes)")
-    end
-    return
-end
 
 function _backend_showable(mime::MIME{SYM}) where SYM
     Backend = current_backend()
     if ismissing(Backend)
         return Symbol("text/plain") == SYM
     end
-    backend_support = backend_showable(Backend.Screen, mime)
-    if PREFERRED_MIME[] isa Automatic
-        return backend_support
-    else
-        return backend_support && string(SYM) == PREFERRED_MIME[]
-    end
+    return backend_showable(Backend.Screen, mime)
 end
 Base.showable(mime::MIME, fig::FigureLike) = _backend_showable(mime)
 

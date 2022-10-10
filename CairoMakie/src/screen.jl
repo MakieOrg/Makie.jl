@@ -112,7 +112,19 @@ $(Base.doc(ScreenConfig))
 """
 function activate!(; screen_config...)
     config = Makie.set_screen_config!(CairoMakie, screen_config)
-    Makie.set_preferred_mime!(to_mime(convert(RenderType, config.type[])))
+    type = config.type[]
+
+    if type == "png"
+        # So this is a bit counter intuitive, since the display system doesn't let us prefer a mime.
+        # Instead, any IDE with rich output usually has a priority list of mimes, which it iterates to figure out the best mime.
+        # So, if we want to prefer the png mime, we disable the mimes that are usually higher up in the stack.
+        disable_mime!("svg", "pdf")
+    elseif type == "svg"
+        # SVG is usually pretty high up the priority, so we can just enable all mimes
+        # If we implement html display for CairoMakie, we might need to disable that.
+        disable_mime!()
+    end
+
     Makie.set_active_backend!(CairoMakie)
     return
 end

@@ -99,7 +99,51 @@ function Makie.backend_show(screen::Screen{IMAGE}, io::IO, ::MIME"image/png", sc
     return screen
 end
 
-Makie.backend_showable(::Type{Screen}, ::MIME"image/svg+xml") = true
-Makie.backend_showable(::Type{Screen}, ::MIME"application/pdf") = true
-Makie.backend_showable(::Type{Screen}, ::MIME"application/postscript") = true
-Makie.backend_showable(::Type{Screen}, ::MIME"image/png") = true
+# Disabling mimes and showable
+
+const DISABLED_MIMES = Set{String}()
+const SUPPORTED_MIMES = Set([
+    "image/svg+xml",
+    "application/pdf",
+    "application/postscript",
+    "image/png"
+])
+
+function Makie.backend_showable(::Type{Screen}, ::MIME{SYM}) where SYM
+    supported_mimes = Base.setdiff(SUPPORTED_MIMES, DISABLED_MIMES)
+    return string(SYM) in supported_mimes
+end
+
+"""
+    disable_mime!(mime::Union{String, Symbol, MIME}...)
+
+The default is automatic, which lets the display system figure out the best mime.
+If set to any other valid mime, will result in `showable(any_other_mime, figurelike)` to return false and only return true for `showable(preferred_mime, figurelike)`.
+Depending on the display system used, this may result in nothing getting displayed.
+"""
+function disable_mime!(mimes::Union{String, Symbol, MIME}...)
+    empty!(DISABLED_MIMES) # always start from 0
+    if isempty(mimes)
+        # Reset disabled mimes when called with no arguments
+        return
+    end
+    mime_strings = Set{String}()
+    for mime in mimes
+        if mime isa MIME
+            mime_str = string(mime)
+            if !(mime_str in SUPPORTED_MIMES)
+                error("Mime $(mime) not supported by CairoMakie")
+            end
+        else
+            mime_str = string(mime)
+            if !(mime_str in SUPPORTED_MIMES)
+                mime_str = string(to_mime(convert(RenderType, mime_str)))
+            end
+        end
+        push!(mime_strings, mime_str)
+    end
+
+
+    union!(DISABLED_MIMES, mime_strings)
+    return
+end
