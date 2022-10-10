@@ -264,7 +264,7 @@ export abline! # until deprecation removal
 
 
 export Stepper, replay_events, record_events, RecordEvents, record, VideoStream
-export VideoStream, recordframe!, record
+export VideoStream, recordframe!, record, Record
 export save
 
 # colormap stuff from PlotUtils, and showgradients

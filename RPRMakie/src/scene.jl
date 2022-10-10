@@ -140,6 +140,18 @@ function replace_scene_rpr!(scene::Makie.Scene, screen=Screen(scene); refresh=Ob
     return context, task, rpr_scene
 end
 
+
+"""
+    Screen(args...; screen_config...)
+
+# Arguments one can pass via `screen_config`:
+
+$(Base.doc(ScreenConfig))
+
+# Constructors:
+
+$(Base.doc(MakieScreen))
+"""
 mutable struct Screen <: Makie.MakieScreen
     context::RPR.Context
     matsys::RPR.MaterialSystem

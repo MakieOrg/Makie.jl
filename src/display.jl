@@ -64,7 +64,7 @@ function set_screen_config!(backend::Module, new_values)
         end
         backend_defaults[k] = v
     end
-    return
+    return backend_defaults
 end
 
 function merge_screen_config(::Type{Config}, screen_config_kw) where Config
@@ -83,15 +83,12 @@ function merge_screen_config(::Type{Config}, screen_config_kw) where Config
 end
 
 """
-# GLMakie
-start_renderloop=true
-visible=true
-connect=true
+    Base.display(figlike::FigureLike; backend=current_backend(), screen_config...)
 
-# CairoMakie
-pt_per_unit=x.pt_per_unit
-px_per_unit=x.px_per_unit
-antialias=x.antialias
+Displays the figurelike in a window or the browser, depending on the backend.
+
+The parameters for `screen_config` are backend dependend,
+see `?Backend.Screen` or `Base.doc(Backend.Screen)` for applicable options.
 """
 function Base.display(figlike::FigureLike; backend=current_backend(), screen_config...)
     if ismissing(backend)

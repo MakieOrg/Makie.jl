@@ -52,14 +52,9 @@ function find_plots(session::Session, plot::AbstractPlot)
     return WGL.find_plots(session, uuids)
 end
 
-
 function JSServe.print_js_code(io::IO, plot::AbstractPlot, context)
     uuids = js_uuid.(Makie.flatten_plots(plot))
     JSServe.print_js_code(io, js"$(WGL).find_plots($(uuids))", context)
-end
-
-struct ScreenConfig
-    framerate::Float64 # =30.0
 end
 
 function three_display(session::Session, scene::Scene; screen_config...)

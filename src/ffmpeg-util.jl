@@ -1,48 +1,34 @@
 # TODO move to something like FFMPEGUtil.jl ?
 
-const VIDEO_STREAM_OPTIONS_FORMAT_DESC = """
-- `format = "mkv"`: The format of the video. Can be one of the following:
+"""
+- `format = "mkv"`: The format of the video. If a path is present, will be inferred form the file extension.
+    Can be one of the following:
     * `"mkv"`  (open standard, the default)
     * `"mp4"`  (good for Web, most supported format)
     * `"webm"` (smallest file size)
     * `"gif"`  (largest file size for the same quality)
 
-  `mp4` and `mk4` are marginally bigger than `webm`. `gif`s can be significantly (as much as
-  6x) larger with worse quality (due to the limited color palette) and only should be used
-  as a last resort, for playing in a context where videos aren't supported.
-"""
-
-const VIDEO_STREAM_OPTIONS_KWARGS_DESC = """
+    `mp4` and `mk4` are marginally bigger than `webm`. `gif`s can be significantly (as much as
+    6x) larger with worse quality (due to the limited color palette) and only should be used
+    as a last resort, for playing in a context where videos aren't supported.
 - `framerate = 24`: The target framerate.
 - `compression = 20`: Controls the video compression via `ffmpeg`'s `-crf` option, with
-  smaller numbers giving higher quality and larger file sizes (lower compression), and and
-  higher numbers giving lower quality and smaller file sizes (higher compression). The
-  minimum value is `0` (lossless encoding).
+    smaller numbers giving higher quality and larger file sizes (lower compression), and and
+    higher numbers giving lower quality and smaller file sizes (higher compression). The
+    minimum value is `0` (lossless encoding).
     - For `mp4`, `51` is the maximum. Note that `compression = 0` only works with `mp4` if
-      `profile = high444`.
+    `profile = high444`.
     - For `webm`, `63` is the maximum.
     - `compression` has no effect on `mkv` and `gif` outputs.
 - `profile = "high422"`: A ffmpeg compatible profile. Currently only applies to `mp4`. If
-  you have issues playing a video, try `profile = "high"` or `profile = "main"`.
+you have issues playing a video, try `profile = "high"` or `profile = "main"`.
 - `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (`-pix_fmt`). Currently only
-  applies to `mp4`. Defaults to `yuv444p` for `profile = high444`.
-"""
+applies to `mp4`. Defaults to `yuv444p` for `profile = high444`.
 
-"""
-    VideoStreamOptions(; format="mkv", framerate=24, compression=20, profile=nothing, pixel_format=nothing, loglevel="quiet", input="pipe:0", rawvideo=true)
-
-Holds the options that will be used for encoding a `VideoStream`. `profile` and
-`pixel_format` are only used when `format` is `"mp4"`; a warning will be issued if `format`
-is not `"mp4"` and those two arguments are not `nothing`. Similarly, `compression` is only
-valid when `format` is `"mp4"` or `"webm"`.
-
-You should not create a `VideoStreamOptions` directly; instead, pass its keyword args to the
-`VideoStream` constructor. See the docs of [`VideoStream`](@ref) for how to create a
-`VideoStream`. If you want a simpler interface, consider using [`record`](@ref).
-
-### Keyword Arguments:
-$VIDEO_STREAM_OPTIONS_FORMAT_DESC
-$VIDEO_STREAM_OPTIONS_KWARGS_DESC
+    !!! warning
+    `profile` and `pixel_format` are only used when `format` is `"mp4"`; a warning will be issued if `format`
+    is not `"mp4"` and those two arguments are not `nothing`. Similarly, `compression` is only
+    valid when `format` is `"mp4"` or `"webm"`.
 """
 struct VideoStreamOptions
     format::String
@@ -180,6 +166,7 @@ function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer=0, ydim::Integer=0
     return `$(ffmpeg_prefix) $(ffmpeg_options)`
 end
 
+
 struct VideoStream
     io::Base.PipeEndpoint
     process::Base.Process
@@ -190,15 +177,26 @@ struct VideoStream
 end
 
 """
-    VideoStream(scene::Scene; framerate = 24, visible=false, connect=false, screen_config...)
+    VideoStream(fig::FigureLike;
+            format="mp4", framerate=24, compression=nothing, profile=nothing, pixel_format=nothing, loglevel="quiet",
+            visible=false, connect=false, backend=current_backend(),
+            screen_config...)
 
 Returns a `VideoStream` which can pipe new frames into the ffmpeg process with few allocations via [`recordframe!(stream)`](@ref).
 When done, use [`save(path, stream)`](@ref) to write the video out to a file.
 
-* visible=false: make window visible or not
-* connect=false: connect window events or not
-* backend=current_backend(): backend used to record frames
-* screen_config... : Have a look at `?Backend.Screen` for infos about applicable configurations.
+# Arguments
+
+## Video options
+
+$(Base.doc(VideoStreamOptions))
+
+## Backend options
+
+* `backend=current_backend()`: backend used to record frames
+* `visible=false`: make window visible or not
+* `connect=false`: connect window events or not
+* `screen_config...`: See `?Backend.Screen` or `Base.doc(Backend.Screen)` for applicable options that can be passed and forwarded to the backend.
 """
 function VideoStream(fig::FigureLike;
         format="mp4", framerate=24, compression=nothing, profile=nothing, pixel_format=nothing, loglevel="quiet",

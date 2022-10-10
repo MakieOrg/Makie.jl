@@ -73,8 +73,8 @@ function FileIO.save(dir::String, s::RamStepper)
 end
 
 """
-    record(func, figurelike, path; kwargs...)
-    record(func, figurelike, path, iter; kwargs...)
+    record(func, figurelike, path; backend=current_backend(), kwargs...)
+    record(func, figurelike, path, iter; backend=current_backend(), kwargs...)
 
 The first signature provides `func` with a VideoStream, which it should call
 `recordframe!(io)` on when recording a frame.
@@ -86,13 +86,22 @@ Both notations require a Figure, FigureAxisPlot or Scene `figure` to work.
 The animation is then saved to `path`, with the format determined by `path`'s
 extension.
 
-$VIDEO_STREAM_OPTIONS_FORMAT_DESC
+Under the hood, `record` is just `video_io = Record(func, figurelike, [iter]; same_kw...); save(path, video_io)`.
+`Record` can be used directly as well to do the saving at a later point, or to inline a video directly into a Notebook (the video supports, `show(video_io, "text/html")` for that purpose).
 
-### Keyword Arguments:
-$VIDEO_STREAM_OPTIONS_KWARGS_DESC
+# Options one can pass via `kwargs...`:
 
+* `backend::Module = current_backend()`: set the backend to write out video, can be set to `CairoMakie`, `GLMakie`, `WGLMakie`, `RPRMakie`.
+### Backend options
 
-Typical usage patterns would look like:
+See `?Backend.Screen` or `Base.doc(Backend.Screen)` for applicable options that can be passed and forwarded to the backend.
+
+### Video options
+
+$(Base.doc(VideoStreamOptions))
+
+# Typical usage
+
 ```julia
 record(figure, "video.mp4", itr) do i
     func(i) # or some other manipulation of the figure
@@ -128,26 +137,32 @@ record(fig, "test.gif", 1:255) do i
 end
 ```
 """
-function record(func, figlike::FigureLike, path::AbstractString; record_kw...)
+function record(func, figlike::FigureLike, path::AbstractString; kw_args...)
     format = lstrip(splitext(path)[2], '.')
-    io = Record(func, figlike; format=format, record_kw...)
+    io = Record(func, figlike; format=format, kw_args...)
     save(path, io)
 end
 
-function record(func, figlike::FigureLike, path::AbstractString, iter; record_kw...)
+function record(func, figlike::FigureLike, path::AbstractString, iter; kw_args...)
     format = lstrip(splitext(path)[2], '.')
-    io = Record(func, figlike, iter; format=format, record_kw...)
+    io = Record(func, figlike, iter; format=format, kw_args...)
     save(path, io)
 end
 
-function Record(func, figlike; videostream_kw...)
-    io = VideoStream(figlike; videostream_kw...)
+
+"""
+    Record(func, figlike, [iter]; kw_args...)
+
+Check [`Makie.record`](@ref) for documentation.
+"""
+function Record(func, figlike; kw_args...)
+    io = VideoStream(figlike; kw_args...)
     func(io)
     return io
 end
 
-function Record(func, figlike, iter; videostream_kw...)
-    io = VideoStream(figlike; videostream_kw...)
+function Record(func, figlike, iter; kw_args...)
+    io = VideoStream(figlike; kw_args...)
     for i in iter
         func(i)
         recordframe!(io)

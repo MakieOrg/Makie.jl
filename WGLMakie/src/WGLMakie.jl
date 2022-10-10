@@ -45,9 +45,14 @@ include("display.jl")
 
 
 """
-    activate!(; fps=30)
+    WGLMakie.activate!(; screen_config...)
 
-Set fps (frames per second) to a higher number for smoother animations, or to a lower to use less resources.
+Sets WGLMakie as the currently active backend and also allows to quickly set the `screen_config`.
+Note, that the `screen_config` can also be set via permanently via `Makie.set_theme!(WGLMakie=(screen_config...,))`.
+
+# Arguments one can pass via `screen_config`:
+
+$(Base.doc(ScreenConfig))
 """
 function activate!(; screen_config...)
     Makie.set_active_backend!(WGLMakie)

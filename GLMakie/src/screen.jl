@@ -6,26 +6,32 @@ const ScreenArea = Tuple{ScreenID, Scene}
 function renderloop end
 
 """
-    ScreenConfig(
-        # Renderloop
-        renderloop::Union{Makie.Automatic, Function} = automatic,
-        pause_renderloop::Bool = false,
-        vsync::Bool = false,
-        framerate::Float64 = 30.0,
+## Renderloop
 
-        # GLFW window attributes
-        float::Bool = false,
-        focus_on_show::Bool = false,
-        decorated::Bool = true,
-        title::String = "Makie",
-        fullscreen::Bool = false,
-        debugging::Bool = false,
-        monitor::Union{Nothing, GLFW.Monitor} = nothing,
+* `renderloop = GLMakie.renderloop`: sets a function `renderloop(::GLMakie.Screen)` which starts a renderloop for the screen.
 
-        # Preproccessor
-        oit::Bool = true,
-        fxaa::Bool = true,
-        ssao::Bool = true)
+
+    !!! warning
+    The below are not effective if renderloop isn't set to `GLMakie.renderloop`, unless implemented in custom renderloop:
+
+
+* `pause_renderloop = false`: creates a screen with paused renderlooop. Can be started with `GLMakie.start_renderloop!(screen)` or paused again with `GLMakie.pause_renderloop!(screen)`.
+* `vsync = false`: enables vsync for the window.
+* `framerate = 30.0`: sets the currently rendered frames per second.
+
+## GLFW window attributes
+* `float = false`: Lets the opened window float above anything else.
+* `focus_on_show = false`: Focusses the window when newly opened.
+* `decorated = true`: shows the window decorations or not.
+* `title::String = "Makie"`: Sets the window title.
+* `fullscreen = false`: Starts the window in fullscreen.
+* `debugging = false`: Starts the GLFW.Window/OpenGL context with debug output.
+* `monitor::Union{Nothing, GLFW.Monitor} = nothing`: Sets the monitor on which the Window should be opened.
+
+## Preproccessor
+* `oit = true`: Enles order independent transparency for the window.
+* `fxaa = true`: Enables fxaa (anti-aliasing) for the window.
+* `ssao = true`: Enables screen space occlusion, which gives 3D meshes a soft shadow towards their edges.
 
 """
 mutable struct ScreenConfig
@@ -92,20 +98,15 @@ mutable struct ScreenConfig
     end
 end
 
-
 """
-    activate!(;
-        renderloop = renderloop,
-        vsync = false,
-        framerate = 30.0,
-        float = false,
-        pause_rendering = false,
-        focus_on_show = false,
-        decorated = true,
-        title = "Makie"
-    )
-Updates the screen configuration, will only go into effect after closing the current
-window and opening a new one!
+    GLMakie.activate!(; screen_config...)
+
+Sets GLMakie as the currently active backend and also allows to quickly set the `screen_config`.
+Note, that the `screen_config` can also be set via permanently via `Makie.set_theme!(GLMakie=(screen_config...,))`.
+
+# Arguments one can pass via `screen_config`:
+
+$(Base.doc(ScreenConfig))
 """
 function activate!(; screen_config...)
     if haskey(screen_config, :pause_rendering)
@@ -118,6 +119,18 @@ function activate!(; screen_config...)
     return
 end
 
+
+"""
+    Screen(; screen_config...)
+
+# Arguments one can pass via `screen_config`:
+
+$(Base.doc(ScreenConfig))
+
+# Constructors:
+
+$(Base.doc(MakieScreen))
+"""
 mutable struct Screen{GLWindow} <: MakieScreen
     glscreen::GLWindow
     shader_cache::GLAbstraction.ShaderCache
@@ -603,15 +616,15 @@ function refreshwindowcb(window, screen)
 end
 
 # Open an interactive window
-Screen(scene::Scene; screen_attributes...) = singleton_screen(size(scene); visible=true, start_renderloop=true)
+Screen(scene::Scene; screen_config...) = singleton_screen(size(scene); visible=true, start_renderloop=true)
 
 # Screen to save a png/jpeg to file or io
-function Screen(scene::Scene, io_or_path::Union{Nothing, String, IO}, typ::MIME; screen_attributes...)
+function Screen(scene::Scene, io_or_path::Union{Nothing, String, IO}, typ::MIME; screen_config...)
     return singleton_screen(size(scene); visible=false, start_renderloop=false)
 end
 
 # Screen that is efficient for `colorbuffer(screen)`
-function Screen(scene::Scene, ::Makie.ImageStorageFormat; screen_attributes...)
+function Screen(scene::Scene, ::Makie.ImageStorageFormat; screen_config...)
     return singleton_screen(size(scene); visible=false, start_renderloop=false)
 end
 

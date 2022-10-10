@@ -16,6 +16,25 @@ const WEB_MIMES = (
     MIME"application/prs.juno.plotpane+html",
     MIME"juliavscode/html")
 
+
+"""
+* `framerate = 30`: Set framerate (frames per second) to a higher number for smoother animations, or to a lower to use less resources.
+"""
+struct ScreenConfig
+    framerate::Float64 # =30.0
+end
+
+"""
+    Screen(args...; screen_config...)
+
+# Arguments one can pass via `screen_config`:
+
+$(Base.doc(ScreenConfig))
+
+# Constructors:
+
+$(Base.doc(MakieScreen))
+"""
 mutable struct Screen <: Makie.MakieScreen
     three::Union{Nothing, ThreeDisplay}
     display::Any

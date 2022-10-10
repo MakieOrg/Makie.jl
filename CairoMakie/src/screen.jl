@@ -1,68 +1,6 @@
+using Base.Docs: doc
+
 @enum RenderType SVG IMAGE PDF EPS
-
-struct ScreenConfig
-    type::RenderType # = IMAGE,
-    px_per_unit::Float64 # = 1.0,
-    pt_per_unit::Float64 # = 0.75,
-    antialias::Symbol # = Cairo.ANTIALIAS_BEST
-    visible::Bool
-    start_renderloop::Bool
-end
-
-function device_scaling_factor(sc::ScreenConfig)
-    if is_vector_backend(sc.type)
-        return sc.pt_per_unit
-    else
-        return sc.px_per_unit
-    end
-end
-
-function activate!(; type="png", screen_config...)
-    Makie.set_preferred_mime!(to_mime(convert(RenderType, type)))
-    Makie.set_screen_config!(CairoMakie, screen_config)
-    Makie.set_active_backend!(CairoMakie)
-    return
-end
-
-"""
-    struct Screen{S} <: MakieScreen
-A "screen" type for CairoMakie, which encodes a surface
-and a context which are used to draw a Scene.
-"""
-struct Screen{SurfaceRenderType} <: Makie.MakieScreen
-    scene::Scene
-    surface::Cairo.CairoSurface
-    context::Cairo.CairoContext
-    device_scaling_factor::Float64
-    antialias::Int # cairo_antialias_t
-    visible::Bool
-end
-
-function Base.empty!(screen::Screen)
-    ctx = screen.context
-    Cairo.save(ctx)
-    bg = rgbatuple(screen.scene.backgroundcolor[])
-    Cairo.set_source_rgba(ctx, bg...)
-    Cairo.set_operator(ctx, Cairo.OPERATOR_CLEAR)
-    Cairo.rectangle(ctx, 0, 0, size(screen)...)
-    Cairo.paint_with_alpha(ctx, 1.0)
-    Cairo.restore(ctx)
-end
-
-Base.size(screen::Screen) = round.(Int, (screen.surface.width, screen.surface.height))
-# we render the scene directly, since we have
-# no screen dependent state like in e.g. opengl
-Base.insert!(screen::Screen, scene::Scene, plot) = nothing
-function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
-    # Currently, we rerender every time, so nothing needs
-    # to happen here.  However, in the event that changes,
-    # e.g. if we integrate a Gtk window, we may need to
-    # do something here.
-end
-
-function Base.show(io::IO, ::MIME"text/plain", screen::Screen{S}) where S
-    println(io, "CairoMakie.Screen{$S}")
-end
 
 function Base.convert(::Type{RenderType}, type::String)
     if type == "png"
@@ -78,11 +16,6 @@ function Base.convert(::Type{RenderType}, type::String)
     end
 end
 
-function path_to_type(path)
-    type = splitext(path)[2][2:end]
-    return convert(RenderType, type)
-end
-
 "Convert a rendering type to a MIME type"
 function to_mime(type::RenderType)
     type == SVG && return MIME("image/svg+xml")
@@ -90,7 +23,6 @@ function to_mime(type::RenderType)
     type == EPS && return MIME("application/postscript")
     return MIME("image/png")
 end
-to_mime(screen::Screen) = to_mime(screen.typ)
 
 "convert a mime to a RenderType"
 function mime_to_rendertype(mime::Symbol)::RenderType
@@ -130,10 +62,9 @@ function surface_from_output_type(type::RenderType, io, w, h)
     end
 end
 
-########################################
-#    Constructor                       #
-########################################
-
+"""
+Supported options: `[:best => Cairo.ANTIALIAS_BEST, :good => Cairo.ANTIALIAS_GOOD, :subpixel => Cairo.ANTIALIAS_SUBPIXEL, :none => Cairo.ANTIALIAS_NONE]`
+"""
 function to_cairo_antialias(sym::Symbol)
     sym == :best && return Cairo.ANTIALIAS_BEST
     sym == :good && return Cairo.ANTIALIAS_GOOD
@@ -143,12 +74,107 @@ function to_cairo_antialias(sym::Symbol)
 end
 to_cairo_antialias(aa::Int) = aa
 
-# Default to ARGB Surface as backing device
 """
-    Screen(scene::Scene; screen_config...)
+* `px_per_unit = 1.0`: see [figure size docs](https://docs.makie.org/v0.17.13/documentation/figure_size/index.html).
+* `pt_per_unit = 0.75`: see [figure size docs](https://docs.makie.org/v0.17.13/documentation/figure_size/index.html).
+* `antialias::Union{Symbol, Int} = :best`: antialias modus Cairo uses to draw. Applicable options: `[:best => Cairo.ANTIALIAS_BEST, :good => Cairo.ANTIALIAS_GOOD, :subpixel => Cairo.ANTIALIAS_SUBPIXEL, :none => Cairo.ANTIALIAS_NONE]`.
+* `visible::Bool`: if true, a browser/image viewer will open to display rendered output.
+"""
+struct ScreenConfig
+    type::RenderType
+    px_per_unit::Float64
+    pt_per_unit::Float64
+    antialias::Symbol
+    visible::Bool
+    start_renderloop::Bool
+    function ScreenConfig(type, px_per_unit::Number, pt_per_unit::Number, anitalias::Symbol, visible::Bool, start_renderloop::Bool)
+        return new(convert(RenderType, type), px_per_unit, pt_per_unit, anitalias, visible, start_renderloop)
+    end
+end
 
-Create a Screen backed by an image surface.
+function device_scaling_factor(sc::ScreenConfig)
+    if is_vector_backend(sc.type)
+        return sc.pt_per_unit
+    else
+        return sc.px_per_unit
+    end
+end
+
 """
+    CairoMakie.activate!(; screen_config...)
+
+Sets CairoMakie as the currently active backend and also allows to quickly set the `screen_config`.
+Note, that the `screen_config` can also be set via permanently via `Makie.set_theme!(CairoMakie=(screen_config...,))`.
+
+# Arguments one can pass via `screen_config`:
+
+$(Base.doc(ScreenConfig))
+"""
+function activate!(; screen_config...)
+    config = Makie.set_screen_config!(CairoMakie, screen_config)
+    Makie.set_preferred_mime!(to_mime(convert(RenderType, config.type[])))
+    Makie.set_active_backend!(CairoMakie)
+    return
+end
+
+"""
+    Screen(; screen_config...)
+
+# Arguments one can pass via `screen_config`:
+
+$(Base.doc(ScreenConfig))
+
+# Constructors:
+
+$(Base.doc(MakieScreen))
+"""
+struct Screen{SurfaceRenderType} <: Makie.MakieScreen
+    scene::Scene
+    surface::Cairo.CairoSurface
+    context::Cairo.CairoContext
+    device_scaling_factor::Float64
+    antialias::Int # cairo_antialias_t
+    visible::Bool
+end
+
+function Base.empty!(screen::Screen)
+    ctx = screen.context
+    Cairo.save(ctx)
+    bg = rgbatuple(screen.scene.backgroundcolor[])
+    Cairo.set_source_rgba(ctx, bg...)
+    Cairo.set_operator(ctx, Cairo.OPERATOR_CLEAR)
+    Cairo.rectangle(ctx, 0, 0, size(screen)...)
+    Cairo.paint_with_alpha(ctx, 1.0)
+    Cairo.restore(ctx)
+end
+
+Base.size(screen::Screen) = round.(Int, (screen.surface.width, screen.surface.height))
+# we render the scene directly, since we have
+# no screen dependent state like in e.g. opengl
+Base.insert!(screen::Screen, scene::Scene, plot) = nothing
+function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
+    # Currently, we rerender every time, so nothing needs
+    # to happen here.  However, in the event that changes,
+    # e.g. if we integrate a Gtk window, we may need to
+    # do something here.
+end
+
+function Base.show(io::IO, ::MIME"text/plain", screen::Screen{S}) where S
+    println(io, "CairoMakie.Screen{$S}")
+end
+
+
+function path_to_type(path)
+    type = splitext(path)[2][2:end]
+    return convert(RenderType, type)
+end
+to_mime(screen::Screen) = to_mime(screen.typ)
+
+
+########################################
+#    Constructor                       #
+########################################
+
 Screen(scene::Scene; screen_config...) = Screen(scene, nothing, IMAGE; screen_config...)
 
 function Screen(scene::Scene, io_or_path::Union{Nothing, String, IO}, typ::Union{MIME, Symbol, RenderType}; screen_config...)

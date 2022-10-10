@@ -11,20 +11,20 @@ abstract type AbstractScene <: Transformable end
 abstract type ScenePlot{Typ} <: AbstractPlot{Typ} end
 
 """
-Constructors:
+Screen constructors implemented by all backends:
 
 ```julia
 # Constructor aimed at showing the plot in a window.
-MakieScreen(scene::Scene; screen_attributes...)
+Screen(scene::Scene; screen_config...)
 
 # Screen to save a png/jpeg to file or io
-MakieScreen(scene::Scene, io::IO, mime; screen_attributes...)
+Screen(scene::Scene, io::IO, mime; screen_config...)
 
 # Screen that is efficient for `colorbuffer(screen, format)`
-MakieScreen(scene::Scene, format::Makie.ImageStorageFormat; screen_attributes...)
+Screen(scene::Scene, format::Makie.ImageStorageFormat; screen_config...)
 ```
 
-Interface:
+Interface implemented by all backends:
 
 ```julia
 # Needs to be overload:
