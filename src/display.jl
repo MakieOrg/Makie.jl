@@ -114,7 +114,6 @@ function Base.display(screen::MakieScreen, figlike::FigureLike; display_attribut
     return screen
 end
 
-
 function _backend_showable(mime::MIME{SYM}) where SYM
     Backend = current_backend()
     if ismissing(Backend)

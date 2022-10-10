@@ -13,7 +13,6 @@ using ReferenceTests
 GLMakie.activate!(framerate=1.0)
 
 @testset "mimes" begin
-    Makie.set_preferred_mime!()
     f, ax, pl = scatter(1:4)
     @test showable("image/png", f)
     @test showable("image/jpeg", f)

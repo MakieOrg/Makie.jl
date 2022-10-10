@@ -112,7 +112,6 @@ function activate!(; screen_config...)
     if haskey(screen_config, :pause_rendering)
         error("pause_rendering got renamed to pause_renderloop.")
     end
-    Makie.set_preferred_mime!() # reset mime
     Makie.set_screen_config!(GLMakie, screen_config)
     Makie.set_active_backend!(GLMakie)
     Makie.set_glyph_resolution!(Makie.High)
