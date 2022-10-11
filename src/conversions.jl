@@ -920,7 +920,7 @@ const FONT_CACHE = Dict{String, NativeFont}()
 
 a string naming a font, e.g. helvetica
 """
-function to_font(x::Union{Symbol, String})
+function to_font(x::String)
     str = string(x)
     get!(FONT_CACHE, str) do
         str == "default" && return to_font("TeX Gyre Heros Makie")
@@ -951,6 +951,10 @@ end
 to_font(x::Vector{String}) = to_font.(x)
 to_font(x::NativeFont) = x
 to_font(x::Vector{NativeFont}) = x
+
+to_font(fs::FontSet6, s::Symbol) = fs[s]
+to_font(fs::FontSet6, x) = to_font(x)
+
 
 """
     rotation accepts:

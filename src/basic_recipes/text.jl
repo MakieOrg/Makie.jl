@@ -7,12 +7,12 @@ function plot!(plot::Text)
     linecolors = Observable(RGBAf[])
     lineindices = Ref(Int[])
     
-    onany(plot.text, plot.textsize, plot.font, plot.align,
+    onany(plot.text, plot.textsize, plot.font, plot.fontset, plot.align,
             plot.rotation, plot.justification, plot.lineheight, plot.color, 
             plot.strokecolor, plot.strokewidth, plot.word_wrap_width) do str,
-                ts, f, al, rot, jus, lh, col, scol, swi, www
+                ts, f, fs, al, rot, jus, lh, col, scol, swi, www
         ts = to_textsize(ts)
-        f = to_font(f)
+        f = to_font(fs, f)
         rot = to_rotation(rot)
         col = to_color(col)
         scol = to_color(scol)
@@ -36,12 +36,12 @@ function plot!(plot::Text)
             # as per string.
             broadcast_foreach(
                 func, 
-                str, 1:attr_broadcast_length(str), ts, f, al, rot, jus, lh, col, scol, swi, www
+                str, 1:attr_broadcast_length(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www
             )
         else
             # Otherwise Vector arguments are interpreted by layout_text/
             # glyph_collection as per character.
-            func(str, 1, ts, f, al, rot, jus, lh, col, scol, swi, www)
+            func(str, 1, ts, f, fs, al, rot, jus, lh, col, scol, swi, www)
         end
         glyphcollections[] = gcs
         linewidths[] = lwidths
@@ -76,11 +76,11 @@ function plot!(plot::Text)
     plot
 end
 
-function _get_glyphcollection_and_linesegments(str::AbstractString, index, ts, f, al, rot, jus, lh, col, scol, swi, www)
-    gc = layout_text(string(str), ts, f, al, rot, jus, lh, col, scol, swi, www)
+function _get_glyphcollection_and_linesegments(str::AbstractString, index, ts, f, fs, al, rot, jus, lh, col, scol, swi, www)
+    gc = layout_text(string(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www)
     gc, Point2f[], Float32[], RGBAf[], Int[]
 end
-function _get_glyphcollection_and_linesegments(latexstring::LaTeXString, index, ts, f, al, rot, jus, lh, col, scol, swi, www)
+function _get_glyphcollection_and_linesegments(latexstring::LaTeXString, index, ts, f, fs, al, rot, jus, lh, col, scol, swi, www)
     tex_elements, glyphcollections, offset = texelems_and_glyph_collection(latexstring, ts,
                 al[1], al[2], rot, col, scol, swi, www)
 
@@ -264,26 +264,26 @@ iswhitespace(l::LaTeXString) = iswhitespace(replace(l.s, '$' => ""))
 
 
 
-struct RT <: AbstractString
+struct FormattedText <: AbstractString
     type::Symbol
-    children::Vector{Union{RT,String}}
+    children::Vector{Union{FormattedText,String}}
     attributes::Dict{Symbol, Any}
-    function RT(type::Symbol, children...; kwargs...)
-        cs = Union{RT,String}[children...]
+    function FormattedText(type::Symbol, children...; kwargs...)
+        cs = Union{FormattedText,String}[children...]
         typeof(cs)
         new(type, cs, Dict(kwargs))
     end
 end
 
-span(args...; kwargs...) = RT(:span, args...; kwargs...)
-subscript(args...; kwargs...) = RT(:sub, args...; kwargs...)
-superscript(args...; kwargs...) = RT(:sup, args...; kwargs...)
+formatted(args...; kwargs...) = FormattedText(:span, args...; kwargs...)
+subscript(args...; kwargs...) = FormattedText(:sub, args...; kwargs...)
+superscript(args...; kwargs...) = FormattedText(:sup, args...; kwargs...)
 
-export span, subscript, superscript
+export formatted, subscript, superscript
 
 ##
-function Makie._get_glyphcollection_and_linesegments(rt::RT, index, ts, f, al, rot, jus, lh, col, scol, swi, www)
-    gc = Makie.layout_text(rt, ts, f, al, rot, jus, lh, col)
+function Makie._get_glyphcollection_and_linesegments(rt::FormattedText, index, ts, f, fset, al, rot, jus, lh, col, scol, swi, www)
+    gc = Makie.layout_text(rt, ts, f, fset, al, rot, jus, lh, col)
     gc, Point2f[], Float32[], Makie.RGBAf[], Int[]
 end
 
@@ -322,13 +322,15 @@ function Makie.GlyphCollection(v::Vector{GlyphInfo2})
 end
 
 
-function Makie.layout_text(rt::RT, ts, f, al, rot, jus, lh, col)
+function Makie.layout_text(rt::FormattedText, ts, f, fset, al, rot, jus, lh, col)
 
-    stack = [GlyphState2(0, 0, Vec2f(ts), f, Makie.to_color(col))]
+    _f = to_font(fset, f)
+
+    stack = [GlyphState2(0, 0, Vec2f(ts), _f, Makie.to_color(col))]
 
     lines = [GlyphInfo2[]]
     
-    process_rt_node!(stack, lines, rt)
+    process_rt_node!(stack, lines, rt, fset)
 
     apply_lineheight!(lines, lh)
     apply_alignment_and_justification!(lines, jus, al)
@@ -364,8 +366,12 @@ function apply_alignment_and_justification!(lines, ju, al)
 
     al_offset_x = if al[1] == :center
         max_x / 2
+    elseif al[1] == :left
+        0f0
+    elseif al[1] == :right
+        max_x
     else
-        0
+        0f0
     end
 
     al_offset_y = if al[2] == :center
@@ -414,11 +420,11 @@ function float_justification(ju, al)::Float32
     end
 end
 
-function process_rt_node!(stack, lines, rt::RT)
+function process_rt_node!(stack, lines, rt::FormattedText, fontset)
     _type(x) = nothing
-    _type(r::RT) = r.type
+    _type(r::FormattedText) = r.type
 
-    push!(stack, new_glyphstate(stack[end], rt, Val(rt.type)))
+    push!(stack, new_glyphstate(stack[end], rt, Val(rt.type), fontset))
     sup_x = 0f0
     for (i, c) in enumerate(rt.children)
         if _type(c) == :sup
@@ -434,13 +440,13 @@ function process_rt_node!(stack, lines, rt::RT)
             sup_x_end = gs.x
             gs_modified = Setfield.@set gs.x = sup_x
             stack[end] = gs_modified
-            process_rt_node!(stack, lines, c)
+            process_rt_node!(stack, lines, c, fontset)
             gs = stack[end]
             max_x = max(sup_x_end, gs.x)
             gs_max_x = Setfield.@set gs.x = max_x
             stack[end] = gs_max_x
         else
-            process_rt_node!(stack, lines, c)
+            process_rt_node!(stack, lines, c, fontset)
         end
     end
     gs = pop!(stack)
@@ -450,7 +456,7 @@ function process_rt_node!(stack, lines, rt::RT)
     return
 end
 
-function process_rt_node!(stack, lines, s::String)
+function process_rt_node!(stack, lines, s::String, _)
     gs = stack[end]
     y = gs.baseline
     x = gs.x
@@ -480,43 +486,44 @@ function process_rt_node!(stack, lines, s::String)
     return
 end
 
-function new_glyphstate(gs::GlyphState2, rt::RT, val::Val)
+function new_glyphstate(gs::GlyphState2, rt::FormattedText, val::Val, fontset)
     gs
 end
 
 _get_color(attributes, default)::RGBAf = haskey(attributes, :color) ? Makie.to_color(attributes[:color]) : default
+_get_font(attributes, default::NativeFont, fontset)::NativeFont = haskey(attributes, :font) ? Makie.to_font(fontset, attributes[:font]) : default
 
-function new_glyphstate(gs::GlyphState2, rt::RT, val::Val{:sup})
+function new_glyphstate(gs::GlyphState2, rt::FormattedText, val::Val{:sup}, fontset)
     att = rt.attributes
     GlyphState2(
         gs.x,
         gs.baseline + 0.4 * gs.size[2],
         gs.size * 0.66,
-        gs.font,
+        _get_font(att, gs.font, fontset),
         _get_color(att, gs.color),
     )
 end
 
-function new_glyphstate(gs::GlyphState2, rt::RT, val::Val{:span})
+function new_glyphstate(gs::GlyphState2, rt::FormattedText, val::Val{:span}, fontset)
     att = rt.attributes
     GlyphState2(
         gs.x,
         gs.baseline,
         gs.size,
-        gs.font,
+        _get_font(att, gs.font, fontset),
         _get_color(att, gs.color),
     )
 end
 
-function new_glyphstate(gs::GlyphState2, rt::RT, val::Val{:sub})
+function new_glyphstate(gs::GlyphState2, rt::FormattedText, val::Val{:sub}, fontset)
     att = rt.attributes
     GlyphState2(
         gs.x,
         gs.baseline - 0.15 * gs.size[2],
         gs.size * 0.66,
-        gs.font,
+        _get_font(att, gs.font, fontset),
         _get_color(att, gs.color),
     )
 end
 
-Makie.iswhitespace(::RT) = false
+Makie.iswhitespace(::FormattedText) = false

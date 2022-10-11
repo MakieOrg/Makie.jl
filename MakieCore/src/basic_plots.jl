@@ -517,6 +517,7 @@ Plots one or multiple texts passed via the `text` keyword.
         default_theme(scene)...,
         color = theme(scene, :textcolor),
         font = theme(scene, :font),
+        fontset = theme(scene, :fontset),
         strokecolor = (:black, 0.0),
         strokewidth = 0,
         align = (:left, :bottom),
