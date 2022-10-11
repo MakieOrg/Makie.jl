@@ -123,6 +123,8 @@ function activate!(; screen_config...)
         # SVG is usually pretty high up the priority, so we can just enable all mimes
         # If we implement html display for CairoMakie, we might need to disable that.
         disable_mime!()
+    else
+        enable_only_mime!(type)
     end
 
     Makie.set_active_backend!(CairoMakie)

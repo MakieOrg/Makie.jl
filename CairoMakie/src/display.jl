@@ -115,6 +115,27 @@ function Makie.backend_showable(::Type{Screen}, ::MIME{SYM}) where SYM
 end
 
 """
+    to_mime_string(mime::Union{String, Symbol, MIME})
+
+Converts anything like `"png", :png, "image/png", MIME"image/png"()` to `"image/png`.
+"""
+function to_mime_string(mime::Union{String, Symbol, MIME})
+    if mime isa MIME
+        mime_str = string(mime)
+        if !(mime_str in SUPPORTED_MIMES)
+            error("Mime $(mime) not supported by CairoMakie")
+        end
+        return mime_str
+    else
+        mime_str = string(mime)
+        if !(mime_str in SUPPORTED_MIMES)
+            mime_str = string(to_mime(convert(RenderType, mime_str)))
+        end
+        return mime_str
+    end
+end
+
+"""
     disable_mime!(mime::Union{String, Symbol, MIME}...)
 
 The default is automatic, which lets the display system figure out the best mime.
@@ -129,21 +150,22 @@ function disable_mime!(mimes::Union{String, Symbol, MIME}...)
     end
     mime_strings = Set{String}()
     for mime in mimes
-        if mime isa MIME
-            mime_str = string(mime)
-            if !(mime_str in SUPPORTED_MIMES)
-                error("Mime $(mime) not supported by CairoMakie")
-            end
-        else
-            mime_str = string(mime)
-            if !(mime_str in SUPPORTED_MIMES)
-                mime_str = string(to_mime(convert(RenderType, mime_str)))
-            end
-        end
-        push!(mime_strings, mime_str)
+        push!(mime_strings, to_mime_string(mime))
     end
-
-
     union!(DISABLED_MIMES, mime_strings)
+    return
+end
+
+function enable_only_mime!(mimes::Union{String, Symbol, MIME}...)
+    empty!(DISABLED_MIMES) # always start from 0
+    if isempty(mimes)
+        # Reset disabled mimes when called with no arguments
+        return
+    end
+    mime_strings = Set{String}()
+    for mime in mimes
+        push!(mime_strings, to_mime_string(mime))
+    end
+    union!(DISABLED_MIMES, setdiff(SUPPORTED_MIMES, mime_strings))
     return
 end
