@@ -11,10 +11,9 @@ using RadeonProRender
 RadeonProRender.Context()
 ```
 
-## Activating and working with RPMakie
+## Activation and screen config
 
-To use the backend, just call `activate!` like with all other backends. There are a few extra parameters for RPRMakie:
-
+Activate the backend by calling `RPRMakie.activate!()` with the following options:
 ```julia:docs
 # hideall
 using RPRMakie, Markdown
@@ -57,12 +56,12 @@ mesh!(ax, Sphere(Point3f, 0), material=mat)
 # There are three main ways to turn a Makie scene into a picture:
 # Get the colorbuffer of the Screen. Screen also has `show` overloaded for the mime `image\png` so it should display in IJulia/Jupyter/VSCode.
 image = colorbuffer(screen)::Matrix{RGB{N0f8}}
-# Replace a specific (sub) LScene with RPR, and display the whole scene interactively in GLMakie
-using GLMakie
+# Replace a specific (sub) LScene with RPR, and display the whole scene interactively in RPRMakie
+using RPRMakie
 refres = Observable(nothing) # Optional observable that triggers
-GLMakie.activate!(); display(fig) # Make sure to display scene first in GLMakie
+RPRMakie.activate!(); display(fig) # Make sure to display scene first in RPRMakie
 # Replace the scene with an interactively rendered RPR output.
-# See more about this in the GLMakie interop example
+# See more about this in the RPRMakie interop example
 context, task = RPRMakie.replace_scene_rpr!(ax.scene, screen; refresh=refresh)
 # If one doesn't create the Screen manually to create custom materials,
 # display(ax.scene), show(io, MIME"image/png", ax.scene), save("rpr.png", ax.scene)
@@ -206,7 +205,7 @@ save("topographie.png", ax.scene)
 <img src="/assets/topographie.png">
 ~~~
 
-## GLMakie interop (opengl_interop.jl)
+## RPRMakie interop (opengl_interop.jl)
 
 RPRMakie doesn't support layouting and sub scenes yet, but you can replace a single scene with a RPR rendered, interactive window.
 This is especially handy, to show 2d graphics and interactive UI elements next to a ray traced scene and interactively tune camera and material parameters.
@@ -215,7 +214,7 @@ This is especially handy, to show 2d graphics and interactive UI elements next t
 <input id="hidecode3" class="hidecode" type="checkbox">
 ~~~
 ```julia
-using GLMakie, GeometryBasics, RPRMakie, RadeonProRender
+using RPRMakie, GeometryBasics, RPRMakie, RadeonProRender
 using Colors, FileIO
 using Colors: N0f8
 
@@ -286,7 +285,7 @@ for (key, (obs, input)) in pairs(sliders)
 end
 
 fig[1, 2] = grid!(hcat(labels, inputs); width=500)
-GLMakie.activate!()
+RPRMakie.activate!()
 
 cam = cameracontrols(ax.scene)
 cam.eyeposition[] = Vec3f(22, 0, 17)
