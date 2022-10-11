@@ -94,7 +94,6 @@ const minimal_default = Attributes(
     inspectable = true,
 
     CairoMakie = Attributes(
-        type = "png",
         px_per_unit = 1.0,
         pt_per_unit = 0.75,
         antialias = :best,

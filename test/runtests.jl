@@ -19,7 +19,6 @@ using Makie: volume
     end
 
     include("record.jl")
-    include("display.jl")
     include("scenes.jl")
     include("conversions.jl")
     include("quaternions.jl")

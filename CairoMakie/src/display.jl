@@ -117,7 +117,7 @@ end
 """
     to_mime_string(mime::Union{String, Symbol, MIME})
 
-Converts anything like `"png", :png, "image/png", MIME"image/png"()` to `"image/png`.
+Converts anything like `"png", :png, "image/png", MIME"image/png"()` to `"image/png"`.
 """
 function to_mime_string(mime::Union{String, Symbol, MIME})
     if mime isa MIME

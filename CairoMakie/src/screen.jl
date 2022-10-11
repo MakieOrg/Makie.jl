@@ -2,6 +2,7 @@ using Base.Docs: doc
 
 @enum RenderType SVG IMAGE PDF EPS
 
+Base.convert(::Type{RenderType}, ::MIME{SYM}) where SYM = mime_to_rendertype(SYM)
 function Base.convert(::Type{RenderType}, type::String)
     if type == "png"
         return IMAGE
@@ -81,39 +82,34 @@ to_cairo_antialias(aa::Int) = aa
 * `visible::Bool`: if true, a browser/image viewer will open to display rendered output.
 """
 struct ScreenConfig
-    type::RenderType
     px_per_unit::Float64
     pt_per_unit::Float64
     antialias::Symbol
     visible::Bool
-    start_renderloop::Bool
-    function ScreenConfig(type, px_per_unit::Number, pt_per_unit::Number, anitalias::Symbol, visible::Bool, start_renderloop::Bool)
-        return new(convert(RenderType, type), px_per_unit, pt_per_unit, anitalias, visible, start_renderloop)
-    end
+    start_renderloop::Bool # Only used to satisfy the interface for record using `Screen(...; start_renderloop=false)` for GLMakie
 end
 
-function device_scaling_factor(sc::ScreenConfig)
-    if is_vector_backend(sc.type)
-        return sc.pt_per_unit
-    else
-        return sc.px_per_unit
-    end
+function device_scaling_factor(rendertype, sc::ScreenConfig)
+    isv = is_vector_backend(convert(RenderType, rendertype))
+    return isv ? sc.pt_per_unit : sc.px_per_unit
+end
+
+function device_scaling_factor(surface::Cairo.CairoSurface, sc::ScreenConfig)
+    return is_vector_backend(surface) ? sc.pt_per_unit : sc.px_per_unit
 end
 
 """
     CairoMakie.activate!(; screen_config...)
 
 Sets CairoMakie as the currently active backend and also allows to quickly set the `screen_config`.
-Note, that the `screen_config` can also be set via permanently via `Makie.set_theme!(CairoMakie=(screen_config...,))`.
+Note, that the `screen_config` can also be set permanently via `Makie.set_theme!(CairoMakie=(screen_config...,))`.
 
 # Arguments one can pass via `screen_config`:
 
 $(Base.doc(ScreenConfig))
 """
-function activate!(; screen_config...)
-    config = Makie.set_screen_config!(CairoMakie, screen_config)
-    type = config.type[]
-
+function activate!(; type="png", screen_config...)
+    Makie.set_screen_config!(CairoMakie, screen_config)
     if type == "png"
         # So this is a bit counter intuitive, since the display system doesn't let us prefer a mime.
         # Instead, any IDE with rich output usually has a priority list of mimes, which it iterates to figure out the best mime.
@@ -194,14 +190,14 @@ Screen(scene::Scene; screen_config...) = Screen(scene, nothing, IMAGE; screen_co
 function Screen(scene::Scene, io_or_path::Union{Nothing, String, IO}, typ::Union{MIME, Symbol, RenderType}; screen_config...)
     config = Makie.merge_screen_config(ScreenConfig, screen_config)
     # the surface size is the scene size scaled by the device scaling factor
-    w, h = round.(Int, size(scene) .* device_scaling_factor(config))
+    w, h = round.(Int, size(scene) .* device_scaling_factor(typ, config))
     surface = surface_from_output_type(typ, io_or_path, w, h)
     return Screen(scene, surface, config)
 end
 
 function Screen(scene::Scene, ::Makie.ImageStorageFormat; screen_config...)
     config = Makie.merge_screen_config(ScreenConfig, screen_config)
-    w, h = round.(Int, size(scene) .* device_scaling_factor(config))
+    w, h = round.(Int, size(scene) .* config.px_per_unit)
     # create an image surface to draw onto the image
     img = Matrix{ARGB32}(undef, w, h)
     surface = Cairo.CairoImageSurface(img)
@@ -210,7 +206,7 @@ end
 
 function Screen(scene::Scene, surface::Cairo.CairoSurface, config::ScreenConfig)
     # the surface size is the scene size scaled by the device scaling factor
-    dsf = device_scaling_factor(config)
+    dsf = device_scaling_factor(surface, config)
     surface_set_device_scale(surface, dsf)
     ctx = Cairo.CairoContext(surface)
     aa = to_cairo_antialias(config.antialias)

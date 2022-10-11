@@ -48,7 +48,7 @@ include("display.jl")
     WGLMakie.activate!(; screen_config...)
 
 Sets WGLMakie as the currently active backend and also allows to quickly set the `screen_config`.
-Note, that the `screen_config` can also be set via permanently via `Makie.set_theme!(WGLMakie=(screen_config...,))`.
+Note, that the `screen_config` can also be set permanently via `Makie.set_theme!(WGLMakie=(screen_config...,))`.
 
 # Arguments one can pass via `screen_config`:
 

@@ -44,7 +44,7 @@ include("volume.jl")
 
 
 Sets RPRMakie as the currently active backend and also allows to quickly set the `screen_config`.
-Note, that the `screen_config` can also be set via permanently via `Makie.set_theme!(RPRMakie=(screen_config...,))`.
+Note, that the `screen_config` can also be set permanently via `Makie.set_theme!(RPRMakie=(screen_config...,))`.
 
 # Arguments one can pass via `screen_config`:
 
