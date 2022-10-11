@@ -275,9 +275,11 @@ struct RT <: AbstractString
     end
 end
 
-RT(args...; kwargs...) = RT(:span, args...; kwargs...)
+span(args...; kwargs...) = RT(:span, args...; kwargs...)
+subscript(args...; kwargs...) = RT(:sub, args...; kwargs...)
+superscript(args...; kwargs...) = RT(:sup, args...; kwargs...)
 
-export RT
+export span, subscript, superscript
 
 ##
 function Makie._get_glyphcollection_and_linesegments(rt::RT, index, ts, f, al, rot, jus, lh, col, scol, swi, www)
@@ -486,7 +488,7 @@ function new_glyphstate(gs::GlyphState2, rt::RT, val::Val{:sub})
     att = rt.attributes
     GlyphState2(
         gs.x,
-        gs.baseline - 0.1 * gs.size[2],
+        gs.baseline - 0.15 * gs.size[2],
         gs.size * 0.66,
         gs.font,
         _get_color(att, gs.color),
