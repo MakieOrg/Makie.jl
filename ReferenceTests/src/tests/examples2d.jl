@@ -735,3 +735,10 @@ end
 #     )
 # end
 
+@reference_test "Latex labels after the fact" begin
+    f = Figure(fontsize = 50)
+    ax = Axis(f[1, 1])
+    ax.xticks = ([3, 6, 9], [L"x" , L"y" , L"z"])
+    ax.yticks = ([3, 6, 9], [L"x" , L"y" , L"z"])
+    f
+end
