@@ -281,7 +281,7 @@ export RT
 
 ##
 function Makie._get_glyphcollection_and_linesegments(rt::RT, index, ts, f, al, rot, jus, lh, col, scol, swi, www)
-    gc = Makie.layout_text(rt, ts, f, al, rot, jus, lh)
+    gc = Makie.layout_text(rt, ts, f, al, rot, jus, lh, col)
     gc, Point2f[], Float32[], Makie.RGBAf[], Int[]
 end
 
@@ -320,9 +320,9 @@ function Makie.GlyphCollection(v::Vector{GlyphInfo2})
 end
 
 
-function Makie.layout_text(rt::RT, ts, f, al, rot, jus, lh)
+function Makie.layout_text(rt::RT, ts, f, al, rot, jus, lh, col)
 
-    stack = [GlyphState2(0, 0, Vec2f(ts), f, RGBAf(0, 0, 0, 1))]
+    stack = [GlyphState2(0, 0, Vec2f(ts), f, Makie.to_color(col))]
 
     lines = [GlyphInfo2[]]
     
@@ -471,13 +471,25 @@ function new_glyphstate(gs::GlyphState2, rt::RT, val::Val{:sup})
     )
 end
 
+function new_glyphstate(gs::GlyphState2, rt::RT, val::Val{:span})
+    att = rt.attributes
+    GlyphState2(
+        gs.x,
+        gs.baseline,
+        gs.size,
+        gs.font,
+        _get_color(att, gs.color),
+    )
+end
+
 function new_glyphstate(gs::GlyphState2, rt::RT, val::Val{:sub})
+    att = rt.attributes
     GlyphState2(
         gs.x,
         gs.baseline - 0.1 * gs.size[2],
         gs.size * 0.66,
         gs.font,
-        gs.color,
+        _get_color(att, gs.color),
     )
 end
 
