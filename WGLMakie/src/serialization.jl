@@ -255,6 +255,7 @@ function serialize_scene(scene::Scene, serialized_scenes=[])
     else
         nothing
     end
+
     serialized = Dict(:pixelarea => pixel_area,
                       :backgroundcolor => lift(hexcolor, scene.backgroundcolor),
                       :clearscene => scene.clear,

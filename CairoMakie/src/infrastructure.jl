@@ -173,6 +173,7 @@ function cairo_draw(screen::CairoScreen, scene::Scene)
         # only prepare for scene when it changes
         # this should reduce the number of unnecessary clipping masks etc.
         pparent = p.parent::Scene
+        pparent.visible[] || continue
         if pparent != last_scene
             Cairo.restore(screen.context)
             Cairo.save(screen.context)
@@ -390,7 +391,7 @@ function Makie.backend_show(x::CairoBackend, io::IO, ::MIME"image/png", scene::S
     # while relative line and font sizes are unaffected
     px_per_unit = get(io, :px_per_unit, x.px_per_unit)
     antialias = get(io, :antialias, x.antialias)
-    
+
     # create an ARGB surface, to speed up drawing ops.
     screen = CairoScreen(scene; device_scaling_factor = px_per_unit, antialias = antialias)
     cairo_draw(screen, scene)

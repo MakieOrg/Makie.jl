@@ -227,7 +227,7 @@ function GLAbstraction.render(filter_elem_func, screen::GLScreen)
 
             found, scene = id2scene(screen, screenid)
             found || continue
-
+            scene.visible[] || continue
             a = pixelarea(scene)[]
             glViewport(minimum(a)..., widths(a)...)
             if scene.clear
