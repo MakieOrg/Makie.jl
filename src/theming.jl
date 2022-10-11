@@ -53,6 +53,31 @@ const default_palettes = Attributes(
     side = [:left, :right]
 )
 
+struct FontSet5{N <: NamedTuple}
+    fonts::N
+    function FontSet5(; kwargs...)
+        d = Dict([key => Makie.to_font(value) for (key, value) in kwargs])
+        if !haskey(d, :regular)
+            d[:regular] = Makie.to_font("TeX Gyre Heros Makie")
+        end
+        if !haskey(d, :bold)
+            d[:bold] = Makie.to_font("TeX Gyre Heros Makie Bold")
+        end
+        if !haskey(d, :italic)
+            d[:italic] = Makie.to_font("TeX Gyre Heros Makie Italic")
+        end
+        nt = NamedTuple(d)
+        return new{typeof(nt)}(nt)
+    end
+end
+
+function Base.show(io::IO, f::FontSet5)
+    println(io, "FontSet")
+    for (key, value) in pairs(f.fonts)
+        println(io, "  ", key, ": ", value)
+    end
+end
+
 const minimal_default = Attributes(
     palette = default_palettes,
     font = "TeX Gyre Heros Makie",
