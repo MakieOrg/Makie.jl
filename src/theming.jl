@@ -55,23 +55,23 @@ const default_palettes = Attributes(
 
 struct FontSet6{N <: NamedTuple}
     fonts::N
-    function FontSet6(; kwargs...)
-        d = Dict([key => Makie.to_font(value) for (key, value) in kwargs])
-        if !haskey(d, :regular)
-            d[:regular] = Makie.to_font("TeX Gyre Heros Makie")
-        end
-        if !haskey(d, :bold)
-            d[:bold] = Makie.to_font("TeX Gyre Heros Makie Bold")
-        end
-        if !haskey(d, :italic)
-            d[:italic] = Makie.to_font("TeX Gyre Heros Makie Italic")
-        end
-        if !haskey(d, :bold_italic)
-            d[:bold_italic] = Makie.to_font("TeX Gyre Heros Makie Bold Italic")
-        end
-        nt = NamedTuple(d)
-        return new{typeof(nt)}(nt)
+end
+
+function FontSet6(; kwargs...)
+    d = Dict([key => Makie.to_font(value) for (key, value) in kwargs])
+    if !haskey(d, :regular)
+        d[:regular] = Makie.to_font("TeX Gyre Heros Makie")
     end
+    if !haskey(d, :bold)
+        d[:bold] = Makie.to_font("TeX Gyre Heros Makie Bold")
+    end
+    if !haskey(d, :italic)
+        d[:italic] = Makie.to_font("TeX Gyre Heros Makie Italic")
+    end
+    if !haskey(d, :bold_italic)
+        d[:bold_italic] = Makie.to_font("TeX Gyre Heros Makie Bold Italic")
+    end
+    return FontSet6(NamedTuple(d))
 end
 
 function Base.show(io::IO, f::FontSet6)
