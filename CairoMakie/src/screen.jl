@@ -173,7 +173,6 @@ function Base.show(io::IO, ::MIME"text/plain", screen::Screen{S}) where S
     println(io, "CairoMakie.Screen{$S}")
 end
 
-
 function path_to_type(path)
     type = splitext(path)[2][2:end]
     return convert(RenderType, type)
@@ -199,7 +198,7 @@ function Screen(scene::Scene, ::Makie.ImageStorageFormat; screen_config...)
     config = Makie.merge_screen_config(ScreenConfig, screen_config)
     w, h = round.(Int, size(scene) .* config.px_per_unit)
     # create an image surface to draw onto the image
-    img = Matrix{ARGB32}(undef, w, h)
+    img = fill(ARGB32(0, 0, 0, 0), w, h)
     surface = Cairo.CairoImageSurface(img)
     return Screen(scene, surface, config)
 end
@@ -225,7 +224,7 @@ function Makie.colorbuffer(screen::Screen)
     # get resolution
     w, h = size(screen)
     # preallocate an image matrix
-    img = Matrix{ARGB32}(undef, w, h)
+    img = fill(ARGB32(0, 0, 0, 0), w, h)
     # create an image surface to draw onto the image
     surf = Cairo.CairoImageSurface(img)
     s = Screen(scene, surf; device_scaling_factor=screen.device_scaling_factor, antialias=screen.antialias)
