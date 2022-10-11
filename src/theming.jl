@@ -58,18 +58,18 @@ struct FontSet6{N <: NamedTuple}
 end
 
 function FontSet6(; kwargs...)
-    d = Dict([key => Makie.to_font(value) for (key, value) in kwargs])
+    d = Dict([key => to_font(value) for (key, value) in kwargs])
     if !haskey(d, :regular)
-        d[:regular] = Makie.to_font("TeX Gyre Heros Makie")
+        d[:regular] = to_font("TeX Gyre Heros Makie")
     end
     if !haskey(d, :bold)
-        d[:bold] = Makie.to_font("TeX Gyre Heros Makie Bold")
+        d[:bold] = to_font("TeX Gyre Heros Makie Bold")
     end
     if !haskey(d, :italic)
-        d[:italic] = Makie.to_font("TeX Gyre Heros Makie Italic")
+        d[:italic] = to_font("TeX Gyre Heros Makie Italic")
     end
     if !haskey(d, :bold_italic)
-        d[:bold_italic] = Makie.to_font("TeX Gyre Heros Makie Bold Italic")
+        d[:bold_italic] = to_font("TeX Gyre Heros Makie Bold Italic")
     end
     return FontSet6(NamedTuple(d))
 end
