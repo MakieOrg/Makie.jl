@@ -264,20 +264,24 @@ iswhitespace(l::LaTeXString) = iswhitespace(replace(l.s, '$' => ""))
 
 
 
-struct RTFNode4 <: AbstractString
+struct RT <: AbstractString
     type::Symbol
-    children::Vector{Union{RTFNode4,String}}
+    children::Vector{Union{RT,String}}
     attributes::Dict{Symbol, Any}
-    function RTFNode4(type, children...; kwargs...)
-        cs = Union{RTFNode4,String}[children...]
+    function RT(type::Symbol, children...; kwargs...)
+        cs = Union{RT,String}[children...]
         typeof(cs)
         new(type, cs, Dict(kwargs))
     end
 end
 
+RT(args...; kwargs...) = RT(:span, args...; kwargs...)
+
+export RT
+
 ##
-function Makie._get_glyphcollection_and_linesegments(rtf::RTFNode4, index, ts, f, al, rot, jus, lh, col, scol, swi, www)
-    gc = Makie.layout_text(rtf, ts, f, al, rot, jus, lh)
+function Makie._get_glyphcollection_and_linesegments(rt::RT, index, ts, f, al, rot, jus, lh, col, scol, swi, www)
+    gc = Makie.layout_text(rt, ts, f, al, rot, jus, lh)
     gc, Point2f[], Float32[], Makie.RGBAf[], Int[]
 end
 
@@ -316,13 +320,13 @@ function Makie.GlyphCollection(v::Vector{GlyphInfo2})
 end
 
 
-function Makie.layout_text(rtf::RTFNode4, ts, f, al, rot, jus, lh)
+function Makie.layout_text(rt::RT, ts, f, al, rot, jus, lh)
 
     stack = [GlyphState2(0, 0, Vec2f(ts), f, RGBAf(0, 0, 0, 1))]
 
     lines = [GlyphInfo2[]]
     
-    process_rtf_node!(stack, lines, rtf)
+    process_rt_node!(stack, lines, rt)
 
     apply_lineheight!(lines, lh)
     apply_alignment_and_justification!(lines, jus, al)
@@ -408,10 +412,10 @@ function float_justification(ju, al)::Float32
     end
 end
 
-function process_rtf_node!(stack, lines, rtf::RTFNode4)
-    push!(stack, new_glyphstate(stack[end], rtf, Val(rtf.type)))
-    for c in rtf.children
-        process_rtf_node!(stack, lines, c)
+function process_rt_node!(stack, lines, rt::RT)
+    push!(stack, new_glyphstate(stack[end], rt, Val(rt.type)))
+    for c in rt.children
+        process_rt_node!(stack, lines, c)
     end
     gs = pop!(stack)
     gs_top = stack[end]
@@ -420,7 +424,7 @@ function process_rtf_node!(stack, lines, rtf::RTFNode4)
     return
 end
 
-function process_rtf_node!(stack, lines, s::String)
+function process_rt_node!(stack, lines, s::String)
     gs = stack[end]
     y = gs.baseline
     x = gs.x
@@ -450,31 +454,31 @@ function process_rtf_node!(stack, lines, s::String)
     return
 end
 
-function new_glyphstate(gs::GlyphState2, rtf::RTFNode4, val::Val)
+function new_glyphstate(gs::GlyphState2, rt::RT, val::Val)
     gs
 end
 
 _get_color(attributes, default)::RGBAf = haskey(attributes, :color) ? Makie.to_color(attributes[:color]) : default
 
-function new_glyphstate(gs::GlyphState2, rtf::RTFNode4, val::Val{:sup})
-    att = rtf.attributes
+function new_glyphstate(gs::GlyphState2, rt::RT, val::Val{:sup})
+    att = rt.attributes
     GlyphState2(
         gs.x,
         gs.baseline + 0.4 * gs.size[2],
-        gs.size * 0.6,
+        gs.size * 0.66,
         gs.font,
         _get_color(att, gs.color),
     )
 end
 
-function new_glyphstate(gs::GlyphState2, rtf::RTFNode4, val::Val{:sub})
+function new_glyphstate(gs::GlyphState2, rt::RT, val::Val{:sub})
     GlyphState2(
         gs.x,
         gs.baseline - 0.1 * gs.size[2],
-        gs.size * 0.6,
+        gs.size * 0.66,
         gs.font,
         gs.color,
     )
 end
 
-Makie.iswhitespace(::RTFNode4) = false
+Makie.iswhitespace(::RT) = false
