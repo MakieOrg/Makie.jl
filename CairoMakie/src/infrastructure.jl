@@ -2,17 +2,6 @@
 #                                          Infrastructure                                          #
 ####################################################################################################
 
-################################################################################
-#                                    Types                                     #
-################################################################################
-
-
-
-
-################################################################################
-#                              Rendering pipeline                              #
-################################################################################
-
 ########################################
 #           Drawing pipeline           #
 ########################################
@@ -38,6 +27,7 @@ function cairo_draw(screen::Screen, scene::Scene)
         # only prepare for scene when it changes
         # this should reduce the number of unnecessary clipping masks etc.
         pparent = p.parent::Scene
+        pparent.visible[] || continue
         if pparent != last_scene
             Cairo.restore(screen.context)
             Cairo.save(screen.context)

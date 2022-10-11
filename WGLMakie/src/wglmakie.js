@@ -449,7 +449,7 @@ const WGLMakie = (function () {
         scene.pixelarea = data.pixelarea;
         scene.backgroundcolor = data.backgroundcolor;
         scene.clearscene = data.clearscene;
-
+        scene.visible = data.visible;
         const cam = {
             view: new THREE.Uniform(new THREE.Matrix4()),
             projection: new THREE.Uniform(new THREE.Matrix4()),
@@ -602,7 +602,7 @@ const WGLMakie = (function () {
     function render_scene(renderer, scene, cam) {
         renderer.autoClear = scene.clearscene;
         const area = JSServe.get_observable(scene.pixelarea);
-        if (area) {
+        if (area && JSServe.get_observable(scene.visible)) {
             const [x, y, w, h] = area.map(t => t / pixelRatio);
             renderer.setViewport(x, y, w, h);
             renderer.setScissor(x, y, w, h);
