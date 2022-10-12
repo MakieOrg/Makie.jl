@@ -2,23 +2,23 @@
 
 ## master
 
-- `hexbin` is now available as a recipe [#368] (https://github.com/JuliaPlots/Makie.jl/pull/2201)
+- Added the `hexbin` plotting function [#2201](https://github.com/JuliaPlots/Makie.jl/pull/2201).
 - Added the `tricontourf` plotting function [#2226](https://github.com/JuliaPlots/Makie.jl/pull/2226).
-- Fix per character attributes in text [#2244](https://github.com/JuliaPlots/Makie.jl/pull/2244)
-- `Axis` does now accept both a `Bool` and a `Tuple{Bool, Bool}` as values for `xtrimspine` and `ytrimspine` to trim only one end of the spine [#2171](https://github.com/JuliaPlots/Makie.jl/pull/2171).
+- Fixed per character attributes in text [#2244](https://github.com/JuliaPlots/Makie.jl/pull/2244).
+- `Axis` now accepts a `Tuple{Bool, Bool}` for `xtrimspine` and `ytrimspine` to trim only one end of the spine [#2171](https://github.com/JuliaPlots/Makie.jl/pull/2171).
 - Added `BezierPath` which can be constructed from SVG like command list, SVG string or from a `Polygon`.
   Added ability to use `BezierPath` and `Polgyon` as scatter markers.
   Replaced default symbol markers like `:cross` which converted to characters before with more precise `BezierPaths` and adjusted default markersize to 12.
   **Deprecated** using `String` to specify multiple char markers (`scatter(1:4, marker="abcd")`).
   **Deprecated** concrete geometries as markers like `Circle(Point2f(0), 1.5)` in favor of using the type like `Circle` for dispatch to special backend methods.
   Added single image marker support to WGLMakie [#979](https://github.com/MakieOrg/Makie.jl/pull/979).
-- Allow `CairoMakie` to render `scatter` with images as markers [#2080](https://github.com/MakieOrg/Makie.jl/pull/2080).
+- Allowed `CairoMakie` to render `scatter` with images as markers [#2080](https://github.com/MakieOrg/Makie.jl/pull/2080).
 - Reworked text drawing and added ability to draw special characters via glyph indices in order to draw more LaTeX math characters with MathTeXEngine v0.5 [#2139](https://github.com/MakieOrg/Makie.jl/pull/2139).
-- Add `tooltip` as a plot recipe [#2095](https://github.com/JuliaPlots/Makie.jl/pull/2095)
+- Added `tooltip` as a plot recipe [#2095](https://github.com/JuliaPlots/Makie.jl/pull/2095).
 - **Breaking** Refactor `DataInspector` to use `tooltip`. This results in changes in the attributes of DataInspector. See pr [#2095](https://github.com/JuliaPlots/Makie.jl/pull/2095)
-- Add `inspector_label`, `inspector_hover` and `inspector_clear` as optional attributes. [#2095](https://github.com/JuliaPlots/Makie.jl/pull/2095)
-- Allow text to be copy/pasted into textbox [#2281](https://github.com/MakieOrg/Makie.jl/pull/2281)
-- refactor `display`, `record`, `colorbuffer` and `screens` to be faster and more consistent [#2306](https://github.com/MakieOrg/Makie.jl/pull/2306#issuecomment-1275918061).
+- Added `inspector_label`, `inspector_hover` and `inspector_clear` as optional attributes. [#2095](https://github.com/JuliaPlots/Makie.jl/pull/2095)
+- Allowed text to be copy/pasted into `Textbox` [#2281](https://github.com/MakieOrg/Makie.jl/pull/2281)
+- Refactored `display`, `record`, `colorbuffer` and `screens` to be faster and more consistent [#2306](https://github.com/MakieOrg/Makie.jl/pull/2306#issuecomment-1275918061).
 
 
 ## v0.17.13
