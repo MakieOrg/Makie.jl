@@ -13,7 +13,7 @@ end
 # We use objectid to find objects on the js side
 js_uuid(object) = string(objectid(object))
 
-function Base.insert!(td::ThreeDisplay, scene::Scene, plot::Combined)
+function Base.insert!(td::ThreeDisplay, scene::Scene, plot::PlotObject)
     plot_data = serialize_plots(scene, [plot])
     JSServe.evaljs_value(td.session, js"""
         $(WGL).insert_plot($(js_uuid(scene)), $plot_data)
@@ -21,7 +21,7 @@ function Base.insert!(td::ThreeDisplay, scene::Scene, plot::Combined)
     return
 end
 
-function Base.delete!(td::ThreeDisplay, scene::Scene, plot::Combined)
+function Base.delete!(td::ThreeDisplay, scene::Scene, plot::PlotObject)
     uuids = js_uuid.(Makie.flatten_plots(plot))
     WGL.delete_plots(td.session, js_uuid(scene), uuids)
     return

@@ -36,13 +36,13 @@ Creates a tooltip pointing at `position` displaying the given `string`
 """
 @recipe(Tooltip, position) do scene
     Attributes(;
-        # General   
-        text = "", 
+        # General
+        text = "",
         offset = 10,
         placement = :above,
         align = 0.5,
-        xautolimits = false, 
-        yautolimits = false, 
+        xautolimits = false,
+        yautolimits = false,
         zautolimits = false,
         overdraw = false,
         depth_shift = 0f0,
@@ -62,7 +62,7 @@ Creates a tooltip pointing at `position` displaying the given `string`
         # Background
         backgroundcolor = :white,
         triangle_size = 10,
-        
+
         # Outline
         outline_color = :black,
         outline_linewidth = 2f0,
@@ -72,14 +72,15 @@ end
 
 convert_arguments(::Type{<: Tooltip}, x::Real, y::Real, str::AbstractString) = (Point2f(x, y), str)
 convert_arguments(::Type{<: Tooltip}, x::Real, y::Real) = (Point2f(x, y),)
-function plot!(plot::Tooltip{<:Tuple{<:VecTypes, <:AbstractString}})
+
+function plot!(plot::PlotObject, ::Tooltip, ::VecTypes, ::AbstractString)
     plot.attributes[:text]  = plot[2]
     tooltip!(plot, plot[1]; plot.attributes...)
     plot
 end
 
 
-function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
+function plot!(p::PlotObject, ::Tooltip, ::VecTypes)
     # TODO align
 
     scene = parent_scene(p)
@@ -103,7 +104,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     text_offset = map(p.offset, textpadding, p.triangle_size, p.placement, p.align) do o, pad, ts, placement, align
         l, r, b, t = pad
 
-        if placement == :left 
+        if placement == :left
             return Vec2f(-o - r - ts, b - align * (b + t))
         elseif placement == :right
             return Vec2f( o + l + ts, b - align * (b + t))
@@ -118,7 +119,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     end
 
     text_align = map(p.placement, p.align) do placement, align
-        if placement == :left 
+        if placement == :left
             return (1.0, align)
         elseif placement == :right
             return (0.0, align)
@@ -157,7 +158,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     mesh!(
         p, bbox, shading = false, space = :pixel,
         color = p.backgroundcolor, fxaa = false,
-        transparency = p.transparency, visible = p.visible, 
+        transparency = p.transparency, visible = p.visible,
         overdraw = p.overdraw, depth_shift = p.depth_shift,
         inspectable = p.inspectable
     )
@@ -171,7 +172,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
 
     mp = mesh!(
         p, triangle, shading = false, space = :pixel,
-        color = p.backgroundcolor, 
+        color = p.backgroundcolor,
         transparency = p.transparency, visible = p.visible,
         overdraw = p.overdraw, depth_shift = p.depth_shift,
         inspectable = p.inspectable
@@ -179,8 +180,8 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     onany(bbox, p.triangle_size, p.placement, p.align) do bb, s, placement, align
         o = origin(bb); w = widths(bb)
         scale!(mp, s, s, s)
-        
-        if placement == :left 
+
+        if placement == :left
             translate!(mp, Vec3f(o[1] + w[1], o[2] + align * w[2], 0))
             rotate!(mp, qrotation(Vec3f(0,0,1), 0.5pi))
         elseif placement == :right
@@ -212,45 +213,45 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         #  |    ____
         #  |   |
 
-        shift = if placement == :left 
+        shift = if placement == :left
             Vec2f[
-                (l, b + 0.5h), (l, t), (r, t), 
-                (r,     b + align * h + 0.5s), 
-                (r + s, b + align * h), 
+                (l, b + 0.5h), (l, t), (r, t),
+                (r,     b + align * h + 0.5s),
+                (r + s, b + align * h),
                 (r,     b + align * h - 0.5s),
                 (r, b), (l, b), (l, b + 0.5h)
             ]
         elseif placement == :right
             Vec2f[
-                (l + 0.5w, b), (l, b), 
-                (l,   b + align * h - 0.5s), 
-                (l-s, b + align * h), 
+                (l + 0.5w, b), (l, b),
+                (l,   b + align * h - 0.5s),
+                (l-s, b + align * h),
                 (l,   b + align * h + 0.5s),
                 (l, t), (r, t), (r, b), (l + 0.5w, b)
             ]
         elseif placement in (:below, :down, :bottom)
             Vec2f[
-                (l, b + 0.5h), (l, t), 
-                (l + align * w - 0.5s, t), 
-                (l + align * w,        t+s), 
-                (l + align * w + 0.5s, t), 
+                (l, b + 0.5h), (l, t),
+                (l + align * w - 0.5s, t),
+                (l + align * w,        t+s),
+                (l + align * w + 0.5s, t),
                 (r, t), (r, b), (l, b), (l, b + 0.5h)
             ]
         elseif placement in (:above, :up, :top)
             Vec2f[
-                (l, b + 0.5h), (l, t), (r, t), (r, b), 
-                (l + align * w + 0.5s, b), 
-                (l + align * w,        b-s), 
-                (l + align * w - 0.5s, b), 
+                (l, b + 0.5h), (l, t), (r, t), (r, b),
+                (l + align * w + 0.5s, b),
+                (l + align * w,        b-s),
+                (l + align * w - 0.5s, b),
                 (l, b), (l, b + 0.5h)
             ]
         else
             @error "Tooltip placement $placement invalid. Assuming :above"
             Vec2f[
-                (l, b + 0.5h), (l, t), (r, t), (r, b), 
-                (l + align * w + 0.5s, b), 
-                (l + align * w,        b-s), 
-                (l + align * w - 0.5s, b), 
+                (l, b + 0.5h), (l, t), (r, t), (r, b),
+                (l + align * w + 0.5s, b),
+                (l + align * w,        b-s),
+                (l + align * w - 0.5s, b),
                 (l, b), (l, b + 0.5h)
             ]
         end
@@ -259,8 +260,8 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     end
 
     lines!(
-        p, outline, 
-        color = p.outline_color, space = :pixel, 
+        p, outline,
+        color = p.outline_color, space = :pixel,
         linewidth = p.outline_linewidth, linestyle = p.outline_linestyle,
         transparency = p.transparency, visible = p.visible,
         overdraw = p.overdraw, depth_shift = p.depth_shift,

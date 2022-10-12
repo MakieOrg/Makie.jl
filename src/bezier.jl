@@ -84,7 +84,7 @@ function scale(e::EllipticalArc, v::VecTypes{2})
     EllipticalArc(e.c .* v, e.r1 * abs(x), e.r2 * abs(y), ang, a1, a2)
 end
 
-rotmatrix2d(a) = Mat2(cos(a), sin(a), -sin(a), cos(a))
+rotmatrix2d(a) = Mat2{Float64}(cos(a), sin(a), -sin(a), cos(a))
 rotate(m::MoveTo, a) = MoveTo(rotmatrix2d(a) * m.p)
 rotate(c::ClosePath, a) = c
 rotate(l::LineTo, a) = LineTo(rotmatrix2d(a) * l.p)

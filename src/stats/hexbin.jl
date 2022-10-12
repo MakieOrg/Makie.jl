@@ -69,7 +69,7 @@ function data_limits(hb::Hexbin)
     return Rect3f(no, nw)
 end
 
-function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
+function Makie.plot!(hb::PlotObject, ::Hexbin, ::AbstractVector{<:Point2})
     xy = hb[1]
 
     points = Observable(Point2f[])
@@ -94,7 +94,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         y_diff = yma - ymi
 
         xspacing, yspacing, xoff, yoff, nbinsx, nbinsy = spacings_offsets_nbins(bins, cellsize, xmi, xma, ymi,
-                                                                                yma)                                                                     
+                                                                                yma)
 
         ysize = yspacing / 3 * 4
         ry = ysize / 2
@@ -119,7 +119,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             is_grid1 = d1 < d2
 
             # _xy = is_grid1 ? (nx, ny) : (nxs, nys)
-            
+
             id = if is_grid1
                 (
                     cld(dvx, 2),

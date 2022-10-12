@@ -90,7 +90,7 @@ function compute_highcolor(eh, cmap)
     end
 end
 
-function Makie.plot!(c::Tricontourf{<:Tuple{<:AbstractVector{<:Real},<:AbstractVector{<:Real},<:AbstractVector{<:Real}}})
+function Makie.plot!(c::PlotObject, ::Tricontourf, ::AbstractVector{<:Real}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real})
     xs, ys, zs = c[1:3]
 
     c.attributes[:_computed_levels] = lift(zs, c.levels, c.mode) do zs, levels, mode
@@ -145,7 +145,7 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:AbstractVector{<:Real},<:AbstractV
             if isempty(pointvecs)
                 continue
             end
-            
+
             for pointvec in pointvecs
                 p = Makie.Polygon(pointvec)
                 push!(polys[], p)

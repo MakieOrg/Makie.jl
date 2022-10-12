@@ -143,7 +143,7 @@ function wait_for_three(three_ref::Base.RefValue{ThreeDisplay}; timeout = 30)::U
     return nothing
 end
 
-function Base.insert!(td::Screen, scene::Scene, plot::Combined)
+function Base.insert!(td::Screen, scene::Scene, plot::PlotObject)
     disp = get_three(td)
     disp === nothing && error("Plot needs to be displayed to insert additional plots")
     insert!(disp, scene, plot)
