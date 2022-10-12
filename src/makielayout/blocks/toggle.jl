@@ -42,7 +42,7 @@ function initialize_block!(t::Toggle)
     end
 
     button = scatter!(topscene, buttonpos, markersize = buttonsize,
-        color = t.buttoncolor, strokewidth = 0, inspectable = false)
+        color = t.buttoncolor, strokewidth = 0, inspectable = false, marker = Circle)
 
     mouseevents = addmouseevents!(topscene, t.layoutobservables.computedbbox)
 
