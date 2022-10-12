@@ -8,7 +8,7 @@
 ```julia
 using GLMakie
 GLMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 xs = LinRange(0, 10, 100)
 ys = LinRange(0, 15, 100)
@@ -23,7 +23,7 @@ surface(xs, ys, zs, axis=(type=Axis3,))
 using GLMakie
 using DelimitedFiles
 GLMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 volcano = readdlm(Makie.assetpath("volcano.csv"), ',', Float64)
 
@@ -40,7 +40,7 @@ using SparseArrays
 using LinearAlgebra
 using GLMakie
 GLMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 # This example was provided by Moritz Schauer (@mschauer).
 

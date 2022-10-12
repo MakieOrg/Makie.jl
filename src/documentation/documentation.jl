@@ -32,7 +32,7 @@ function _help(io::IO, input::Type{T}; extended = false) where T <: AbstractPlot
     str = to_string(input)
 
     # Print docstrings
-    println(io, Base.Docs.doc(func))
+    println(io, Base.doc(func))
 
     # Arguments
     help_arguments(io, func)

@@ -8,7 +8,7 @@
 
 ### Generic
 
-- `normalize = true` sets whether the data will be normalized to the range [0, 2π]. 
+- `normalize = true` sets whether the data will be normalized to the range [0, 2π].
 - `color` sets the color of the pie segments. It can be given as a single named color or a vector of the same length as the input data
 - `strokecolor = :black` sets the color of the outline around the segments.
 - `strokewidth = 1` sets the width of the outline around the segments.
@@ -29,7 +29,7 @@ Set the axis properties `autolimitaspect = 1` or `aspect = DataAspect()` to ensu
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 data   = [36, 12, 68, 5, 42, 27]
 colors = [:yellow, :orange, :red, :blue, :purple, :green]
@@ -40,7 +40,7 @@ f, ax, plt = pie(data,
                  inner_radius = 2,
                  strokecolor = :white,
                  strokewidth = 5,
-                 axis = (autolimitaspect = 1, ) 
+                 axis = (autolimitaspect = 1, )
                 )
 
 f
@@ -52,7 +52,7 @@ f
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f, ax, plt = pie([π/2, 2π/3, π/4],
                 normalize=false,

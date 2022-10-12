@@ -630,7 +630,7 @@ end
 @reference_test "trimspine" begin
     with_theme(Axis = (limits = (0.5, 5.5, 0.3, 3.4), spinewidth = 8, topspinevisible = false, rightspinevisible = false)) do
         f = Figure(resolution = (800, 800))
-    
+
         for (i, ts) in enumerate([(true, true), (true, false), (false, true), (false, false)])
             Label(f[0, i], string(ts), tellwidth = false)
             Axis(f[1, i], xtrimspine = ts)
@@ -638,11 +638,11 @@ end
             Axis(f[3, i], xtrimspine = ts, xreversed = true)
             Axis(f[4, i], ytrimspine = ts, yreversed = true)
         end
-    
+
         for (i, l) in enumerate(["x", "y", "x reversed", "y reversed"])
             Label(f[i, 5], l, tellheight = false)
         end
-    
+
         f
     end
 end
@@ -702,14 +702,14 @@ end
 
     x = RNG.rand(300)
     y = RNG.rand(300)
-    
+
     for (i, cellsize) in enumerate([0.1, 0.15, 0.2, 0.25])
         ax = Axis(f[fldmod1(i, 2)...], title = "cellsize = $cellsize", aspect = DataAspect())
         hexbin!(ax, x, y, cellsize = cellsize)
         wireframe!(ax, Rect2f(Point2f.(x, y)), color = :red)
         scatter!(ax, x, y, color = :red, markersize = 5)
     end
-    
+
     f
 end
 

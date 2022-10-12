@@ -52,6 +52,10 @@ Base.length(t::TextureBuffer) = length(t.buffer)
 bind(t::Texture) = glBindTexture(t.texturetype, t.id)
 bind(t::Texture, id) = glBindTexture(t.texturetype, id)
 ShaderAbstractions.switch_context!(t::TextureBuffer) = switch_context!(t.texture.context)
+function unsafe_free(tb::TextureBuffer)
+    unsafe_free(tb.texture)
+    unsafe_free(tb.buffer)
+end
 
 is_texturearray(t::Texture) = t.texturetype == GL_TEXTURE_2D_ARRAY
 is_texturebuffer(t::Texture) = t.texturetype == GL_TEXTURE_BUFFER

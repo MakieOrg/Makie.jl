@@ -18,6 +18,8 @@
 - **Breaking** Refactor `DataInspector` to use `tooltip`. This results in changes in the attributes of DataInspector. See pr [#2095](https://github.com/JuliaPlots/Makie.jl/pull/2095)
 - Add `inspector_label`, `inspector_hover` and `inspector_clear` as optional attributes. [#2095](https://github.com/JuliaPlots/Makie.jl/pull/2095)
 - Allow text to be copy/pasted into textbox [#2281](https://github.com/MakieOrg/Makie.jl/pull/2281)
+- refactor `display`, `record`, `colorbuffer` and `screens` to be faster and more consistent [#2306](https://github.com/MakieOrg/Makie.jl/pull/2306#issuecomment-1275918061).
+
 
 ## v0.17.13
 

@@ -1,10 +1,14 @@
-using GLMakie.Makie: backend_display, getscreen
+using GLMakie.Makie: getscreen
 
 function project_sp(scene, point)
     point_px = Makie.project(scene, point)
     offset = Point2f(minimum(pixelarea(scene)[]))
     return point_px .+ offset
 end
+
+GLMakie.closeall(GLMakie.GLFW_WINDOWS)
+GLMakie.closeall(GLMakie.SINGLETON_SCREEN)
+GLMakie.closeall(GLMakie.SINGLETON_SCREEN_NO_RENDERLOOP)
 
 @testset "unit tests" begin
     @testset "Window handling" begin
@@ -14,14 +18,13 @@ end
         @test !isassigned(GLMakie.SINGLETON_SCREEN_NO_RENDERLOOP)
 
         # A raw screen should be tracked in GLFW_WINDOWS
-        Makie.inline!(false)
         screen = GLMakie.Screen(resolution = (100, 100), visible = false)
         @test isopen(screen)
         @test length(GLMakie.GLFW_WINDOWS) == 1 && (GLMakie.GLFW_WINDOWS[1] === screen.glscreen)
         @test !isassigned(GLMakie.SINGLETON_SCREEN)
         @test !isassigned(GLMakie.SINGLETON_SCREEN_NO_RENDERLOOP)
 
-        # A displayed figure should create a singleton screen and leave other 
+        # A displayed figure should create a singleton screen and leave other
         # screens untouched
         fig, ax, splot = scatter(1:4);
         screen2 = display(fig)
@@ -61,6 +64,8 @@ end
         @test isopen(screen2) && (screen2 === GLMakie.SINGLETON_SCREEN[])
         @test screen === screen2
         @test screen2.glscreen.handle == ptr
+        close(screen)
+        close(screen2)
     end
 
     @testset "Pick a plot element or plot elements inside a rectangle" begin

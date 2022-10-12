@@ -8,7 +8,6 @@ Manifest.toml
 /build
 
 \.DS_Store
-CairoMakie/src/display.*
 
 WGLMakie/test/recorded_reference_images/
 GLMakie/test/recorded_reference_images/
