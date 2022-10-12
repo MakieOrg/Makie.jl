@@ -2,7 +2,7 @@
 
 Makie can render LaTeX strings from the [LaTeXStrings.jl](https://github.com/stevengj/LaTeXStrings.jl) package using [MathTeXEngine.jl](https://github.com/Kolaru/MathTeXEngine.jl/).
 
-This engine supports a subset of LaTeX's most used commands, which are rendered quickly enough for responsive use in GLMakie.
+While this engine is responsive enough for use in GLMakie, it only supports a subset of LaTeX's most used commands.
 
 ## Using L-strings
 
@@ -23,9 +23,9 @@ CairoMakie.activate!() # hide
 f = Figure(fontsize = 18)
 
 Axis(f[1, 1],
-    title = L"\frac{x + y}{\sin(k^2)}",
-    xlabel = L"\sum_a^b{xy}",
-    ylabel = L"\sqrt{\frac{a}{b}}"
+    title = L"\forall \mathcal{X} \in \mathbb{R} \quad \frac{x + y}{\sin(k^2)}",
+    xlabel = L"\sum_a^b{xy} + \mathscr{L}",
+    ylabel = L"\sqrt{\frac{a}{b}} - \mathfrak{W}"
 )
 
 f

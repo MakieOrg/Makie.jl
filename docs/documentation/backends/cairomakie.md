@@ -3,7 +3,17 @@
 [CairoMakie](https://github.com/MakieOrg/Makie.jl/tree/master/CairoMakie) uses Cairo.jl to draw vector graphics to SVG and PDF.
 You should use it if you want to achieve the highest-quality plots for publications, as the rendering process of the GL backends works via bitmaps and is geared more towards speed than pixel-perfection.
 
-### Special CairoMakie Properties
+## Activation and screen config
+
+Activate the backend by calling `CairoMakie.activate!()` with the following options:
+```julia:docs
+# hideall
+using CairoMakie, Markdown
+println("~~~")
+println(Markdown.html(@doc CairoMakie.activate!))
+println("~~~")
+```
+\textoutput{docs}
 
 #### Inline Plot Type
 

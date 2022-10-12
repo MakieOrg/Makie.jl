@@ -52,8 +52,7 @@ function Colorbar(fig_or_scene, heatmap::Union{Heatmap, Image}; kwargs...)
     )
 end
 
-# function Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
-
+# function Colorbar(fig_or_scene, contourf::Union{Contourf, Tricontourf}; kwargs...)
 #     for key in (:colormap, :limits, :highclip, :lowclip)
 #         if key in keys(kwargs)
 #             error("You should not pass the `$key` attribute to the colorbar when constructing it using an existing plot object. This attribute is copied from the plot object, and setting it from the colorbar will make the plot object and the colorbar go out of sync.")

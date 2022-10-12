@@ -2,7 +2,7 @@
 #                             Lines, LineSegments                              #
 ################################################################################
 
-function draw_atomic(scene::Scene, screen::CairoScreen, primitive::TypedPlot{<: Union{Lines, LineSegments}})
+function draw_atomic(scene::Scene, screen::Screen, primitive::TypedPlot{<: Union{Lines, LineSegments}})
     fields = @get_attribute(primitive, (color, linewidth, linestyle))
     linestyle = Makie.convert_attribute(linestyle, Makie.key"linestyle"())
     ctx = screen.context
@@ -173,7 +173,7 @@ end
 #                                   Scatter                                    #
 ################################################################################
 
-function draw_atomic(scene::Scene, screen::CairoScreen, primitive::TypedPlot{<: Scatter})
+function draw_atomic(scene::Scene, screen::Screen, primitive::TypedPlot{<: Scatter})
     fields = @get_attribute(primitive, (color, markersize, strokecolor, strokewidth, marker, marker_offset, rotations))
     @get_attribute(primitive, (transform_marker,))
 
@@ -388,7 +388,7 @@ function p3_to_p2(p::Point3{T}) where T
     end
 end
 
-function draw_atomic(scene::Scene, screen::CairoScreen, primitive::TypedPlot{<: Text})
+function draw_atomic(scene::Scene, screen::Screen, primitive::TypedPlot{<: Text})
     ctx = screen.context
     @get_attribute(primitive, (rotation, model, space, markerspace, offset))
     position = primitive.position[]
@@ -510,30 +510,41 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
     return
 end
 
-struct CairoGlyph
-    index::Culong
-    x::Cdouble
-    y::Cdouble
-end
-
-function show_glyph(ctx, glyph, x, y)
-    cg = Ref(CairoGlyph(glyph, x, y))
-    ccall((:cairo_show_glyphs, Cairo.libcairo),
-            Nothing, (Ptr{Nothing}, Ptr{CairoGlyph}, Cint),
-            ctx.ptr, cg, 1)
-end
-function glyph_path(ctx, glyph::Culong, x, y)
-    cg = Ref(CairoGlyph(glyph, x, y))
-    ccall((:cairo_glyph_path, Cairo.libcairo),
-            Nothing, (Ptr{Nothing}, Ptr{CairoGlyph}, Cint),
-            ctx.ptr, cg, 1)
-end
-
 ################################################################################
 #                                Heatmap, Image                                #
 ################################################################################
 
-function draw_atomic(scene::Scene, screen::CairoScreen, primitive::TypedPlot{<: Union{Heatmap, Image}})
+"""
+    regularly_spaced_array_to_range(arr)
+If possible, converts `arr` to a range.
+If not, returns array unchanged.
+"""
+function regularly_spaced_array_to_range(arr)
+    diffs = unique!(sort!(diff(arr)))
+    step = sum(diffs) ./ length(diffs)
+    if all(x-> x ≈ step, diffs)
+        m, M = extrema(arr)
+        if step < zero(step)
+            m, M = M, m
+        end
+        # don't use stop=M, since that may not include M
+        return range(m; step=step, length=length(arr))
+    else
+        return arr
+    end
+end
+
+regularly_spaced_array_to_range(arr::AbstractRange) = arr
+
+function premultiplied_rgba(a::AbstractArray{<:ColorAlpha})
+    map(premultiplied_rgba, a)
+end
+premultiplied_rgba(a::AbstractArray{<:Color}) = RGBA.(a)
+
+premultiplied_rgba(r::RGBA) = RGBA(r.r * r.alpha, r.g * r.alpha, r.b * r.alpha, r.alpha)
+premultiplied_rgba(c::Colorant) = premultiplied_rgba(RGBA(c))
+
+function draw_atomic(scene::Scene, screen::Screen, primitive::TypedPlot{<: Union{Heatmap, Image}})
     ctx = screen.context
     image = primitive[3][]
     xs, ys = primitive[1][], primitive[2][]
@@ -664,7 +675,7 @@ end
 ################################################################################
 
 
-function draw_atomic(scene::Scene, screen::CairoScreen, primitive::TypedPlot{<: Makie.Mesh})
+function draw_atomic(scene::Scene, screen::Screen, primitive::TypedPlot{<: Makie.Mesh})
     mesh = primitive[1][]
     if Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera, Makie.EmptyCamera}
         draw_mesh2D(scene, screen, primitive, mesh)
@@ -901,7 +912,7 @@ end
 ################################################################################
 
 
-function draw_atomic(scene::Scene, screen::CairoScreen, primitive::TypedPlot{<: Makie.Surface})
+function draw_atomic(scene::Scene, screen::Screen, primitive::TypedPlot{<: Makie.Surface})
     # Pretend the surface plot is a mesh plot and plot that instead
     mesh = surface2mesh(primitive[1][], primitive[2][], primitive[3][])
     old = primitive[:color]
@@ -930,7 +941,7 @@ end
 ################################################################################
 
 
-function draw_atomic(scene::Scene, screen::CairoScreen, primitive::TypedPlot{<: Makie.MeshScatter})
+function draw_atomic(scene::Scene, screen::Screen, primitive::TypedPlot{<: Makie.MeshScatter})
     @get_attribute(primitive, (color, model, marker, markersize, rotations))
 
     if color isa AbstractArray{<: Number}

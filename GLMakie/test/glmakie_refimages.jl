@@ -71,7 +71,6 @@ end
 end
 
 @reference_test "Explicit frame rendering" begin
-    set_window_config!(renderloop=(screen) -> nothing)
     function update_loop(m, buff, screen)
         for i = 1:20
             GLFW.PollEvents()
@@ -83,17 +82,18 @@ end
         end
     end
     fig, ax, meshplot = meshscatter(RNG.rand(Point3f, 10^4) .* 20f0)
-    screen = Makie.backend_display(GLMakie.GLBackend(), fig.scene)
+    screen = display(GLMakie.Screen(;renderloop=(screen) -> nothing, start_renderloop=false), fig.scene)
     buff = RNG.rand(Point3f, 10^4) .* 20f0;
     update_loop(meshplot, buff, screen)
-    set_window_config!(renderloop=GLMakie.renderloop)
+    @test !isassigned(screen.rendertask)
+    GLMakie.destroy!(screen)
     fig
 end
 
 @reference_test "Contour and isosurface with correct depth" begin
     # Make sure shaders can recompile
     GLMakie.closeall()
-    
+
     fig = Figure()
     left = LScene(fig[1, 1])
     contour!(left, [sin(i+j) * sin(j+k) * sin(i+k) for i in 1:10, j in 1:10, k in 1:10], enable_depth = true)

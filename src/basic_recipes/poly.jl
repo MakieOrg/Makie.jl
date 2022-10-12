@@ -179,7 +179,7 @@ function plot!(plot::PlotObject, ::Mesh, ::AbstractVector{P}) where P <: Abstrac
     attributes = Attributes(
         visible = plot.visible, shading = plot.shading, fxaa = plot.fxaa,
         inspectable = plot.inspectable, transparency = plot.transparency,
-        space = plot.space,
+        space = plot.space, ssao = plot.ssao,
         lowclip = get(plot, :lowclip, automatic),
         highclip = get(plot, :highclip, automatic),
         nan_color = get(plot, :nan_color, :transparent),

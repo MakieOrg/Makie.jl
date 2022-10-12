@@ -106,7 +106,7 @@ mutable struct Scene <: AbstractScene
     """
     The Screens which the Scene is displayed to.
     """
-    current_screens::Vector{AbstractScreen}
+    current_screens::Vector{MakieScreen}
 
     # Attributes
     backgroundcolor::Observable{RGBAf}
@@ -154,7 +154,7 @@ function Scene(;
         plots::Vector{AbstractPlot} = AbstractPlot[],
         theme::Attributes = Attributes(),
         children::Vector{Scene} = Scene[],
-        current_screens::Vector{AbstractScreen} = AbstractScreen[],
+        current_screens::Vector{MakieScreen} = MakieScreen[],
         parent = nothing,
         visible = Observable(true),
         ssao = SSAO(),
@@ -363,7 +363,7 @@ function Base.empty!(scene::Scene)
     empty!(scene.plots)
 
     empty!(scene.theme)
-    merge!(scene.theme, _current_default_theme)
+    merge!(scene.theme, CURRENT_DEFAULT_THEME)
 
     disconnect!(scene.camera)
     scene.camera_controls = EmptyCamera()
@@ -410,10 +410,10 @@ function Base.push!(scene::Scene, plot::AbstractPlot)
     end
 end
 
-function Base.delete!(screen::AbstractScreen, ::Scene, ::AbstractPlot)
+function Base.delete!(screen::MakieScreen, ::Scene, ::AbstractPlot)
     @warn "Deleting plots not implemented for backend: $(typeof(screen))"
 end
-function Base.delete!(screen::AbstractScreen, ::Scene)
+function Base.delete!(screen::MakieScreen, ::Scene)
     # This may not be necessary for every backed
     @debug "Deleting scenes not implemented for backend: $(typeof(screen))"
 end

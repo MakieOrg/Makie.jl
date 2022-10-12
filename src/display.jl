@@ -1,39 +1,40 @@
-abstract type AbstractBackend end
-function backend_display end
-
 @enum ImageStorageFormat JuliaNative GLNative
+
+update_state_before_display!(_) = nothing
+
+function backend_show end
 
 """
 Current backend
 """
-const current_backend = Ref{Union{Missing,AbstractBackend}}(missing)
-const use_display = Ref{Bool}(true)
+const CURRENT_BACKEND = Ref{Union{Missing, Module}}(missing)
+current_backend() = CURRENT_BACKEND[]
 
-function inline!(inline = true)
-    use_display[] = !inline
-    return
-end
-
-function register_backend!(backend::AbstractBackend)
-    current_backend[] = backend
+function set_active_backend!(backend::Union{Missing, Module})
+    CURRENT_BACKEND[] = backend
     return
 end
 
 function push_screen!(scene::Scene, display)
-    # Ok lets leave a warning here until we fix CairoMakie!
-    @debug("Backend doesn't return screen from show methods. This needs fixing!")
+    error("$(display) not a valid Makie display.")
 end
 
-function push_screen!(scene::Scene, display::AbstractDisplay)
-    if !any(x -> x === display, scene.current_screens)
-        push!(scene.current_screens, display)
+"""
+    push_screen!(scene::Scene, screen::MakieScreen)
+
+Adds a screen to the scene and registeres a clean up event when screen closes.
+"""
+function push_screen!(scene::Scene, screen::MakieScreen)
+    if !any(x -> x === screen, scene.current_screens)
+        push!(scene.current_screens, screen)
         deregister = nothing
         deregister = on(events(scene).window_open, priority=typemax(Int)) do is_open
             # when screen closes, it should set the scene isopen event to false
-            # so that's when we can remove the display
+            # so that's when we can remove the screen
             if !is_open
-                filter!(x-> x !== display, scene.current_screens)
-                deregister !== nothing && off(deregister)
+                delete_screen!(scene, screen)
+                # deregister itself
+                !isnothing(deregister) && off(deregister)
             end
             return Consume(false)
         end
@@ -41,58 +42,91 @@ function push_screen!(scene::Scene, display::AbstractDisplay)
     return
 end
 
-function delete_screen!(scene::Scene, display::AbstractDisplay)
-    filter!(x-> x !== display, scene.current_screens)
+"""
+    delete_screen!(scene::Scene, screen::MakieScreen)
+
+Removes screen from scene and cleans up screen
+"""
+function delete_screen!(scene::Scene, screen::MakieScreen)
+    delete!(screen, scene)
+    empty!(screen)
+    filter!(x-> x !== screen, scene.current_screens)
     return
 end
 
-function backend_display(s::FigureLike; kw...)
-    update_state_before_display!(s)
-    backend_display(current_backend[], get_scene(s); kw...)
-end
-
-function backend_display(::Missing, ::Scene; kw...)
-    error("""
-    No backend available!
-    Make sure to also `import/using` a backend (GLMakie, CairoMakie, WGLMakie).
-
-    If you imported GLMakie, it may have not built correctly.
-    In that case, try `]build GLMakie` and watch out for any warnings.
-    """)
-end
-
-update_state_before_display!(_) = nothing
-
-function Base.display(fig::FigureLike; kw...)
-    scene = get_scene(fig)
-    if !use_display[]
-        update_state_before_display!(fig)
-        return Core.invoke(display, Tuple{Any}, scene)
-    else
-        screen = backend_display(fig; kw...)
-        push_screen!(scene, screen)
-        return screen
+function set_screen_config!(backend::Module, new_values)
+    key = nameof(backend)
+    backend_defaults = CURRENT_DEFAULT_THEME[key]
+    bkeys = keys(backend_defaults)
+    for (k, v) in pairs(new_values)
+        if !(k in bkeys)
+            error("$k is not a valid screen config. Applicable options: $(keys(backend_defaults)). For help, check `?$(backend).ScreenCofig`")
+        end
+        backend_defaults[k] = v
     end
+    return backend_defaults
 end
 
-function Base.showable(mime::MIME{M}, scene::Scene) where M
-    backend_showable(current_backend[], mime, scene)
-end
-# ambig
-function Base.showable(mime::MIME"application/json", scene::Scene)
-    backend_showable(current_backend[], mime, scene)
-end
-function Base.showable(mime::MIME{M}, fig::FigureLike) where M
-    backend_showable(current_backend[], mime, get_scene(fig))
-end
-# ambig
-function Base.showable(mime::MIME"application/json", fig::FigureLike)
-    backend_showable(current_backend[], mime, get_scene(fig))
+function merge_screen_config(::Type{Config}, screen_config_kw) where Config
+    backend = parentmodule(Config)
+    key = nameof(backend)
+    backend_defaults = CURRENT_DEFAULT_THEME[key]
+    kw_nt = values(screen_config_kw)
+    arguments = map(fieldnames(Config)) do name
+        if haskey(kw_nt, name)
+            return getfield(kw_nt, name)
+        else
+            return to_value(backend_defaults[name])
+        end
+    end
+    return Config(arguments...)
 end
 
-function backend_showable(::Backend, ::Mime, ::Scene) where {Backend, Mime <: MIME}
-    hasmethod(backend_show, Tuple{Backend, IO, Mime, Scene})
+"""
+    Base.display(figlike::FigureLike; backend=current_backend(), screen_config...)
+
+Displays the figurelike in a window or the browser, depending on the backend.
+
+The parameters for `screen_config` are backend dependend,
+see `?Backend.Screen` or `Base.doc(Backend.Screen)` for applicable options.
+"""
+function Base.display(figlike::FigureLike; backend=current_backend(), screen_config...)
+    if ismissing(backend)
+        error("""
+        No backend available!
+        Make sure to also `import/using` a backend (GLMakie, CairoMakie, WGLMakie).
+
+        If you imported GLMakie, it may have not built correctly.
+        In that case, try `]build GLMakie` and watch out for any warnings.
+        """)
+    end
+    screen = backend.Screen(get_scene(figlike); screen_config...)
+    return display(screen, figlike)
 end
+
+# Backends overload display(::Backend.Screen, scene::Scene), while Makie overloads the below,
+# so that they don't need to worry
+# about stuff like `update_state_before_display!`
+function Base.display(screen::MakieScreen, figlike::FigureLike; display_attributes...)
+    update_state_before_display!(figlike)
+    scene = get_scene(figlike)
+    display(screen, scene; display_attributes...)
+    return screen
+end
+
+function _backend_showable(mime::MIME{SYM}) where SYM
+    Backend = current_backend()
+    if ismissing(Backend)
+        return Symbol("text/plain") == SYM
+    end
+    return backend_showable(Backend.Screen, mime)
+end
+Base.showable(mime::MIME, fig::FigureLike) = _backend_showable(mime)
+
+# need to define this to resolve ambiguoity issue
+Base.showable(mime::MIME"application/json", fig::FigureLike) = _backend_showable(mime)
+
+backend_showable(@nospecialize(screen), @nospecialize(mime)) = false
 
 # fallback show when no backend is selected
 function backend_show(backend, io::IO, ::MIME"text/plain", scene::Scene)
@@ -107,90 +141,35 @@ function backend_show(backend, io::IO, ::MIME"text/plain", scene::Scene)
     return
 end
 
-function Base.show(io::IO, ::MIME"text/plain", scene::Scene; kw...)
-    show(io, scene; kw...)
+function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
+    show(io, scene)
 end
 
 function Base.show(io::IO, m::MIME, figlike::FigureLike)
-    ioc = IOContext(io, :full_fidelity => true)
-    update_state_before_display!(figlike)
-    backend_show(current_backend[], ioc, m, get_scene(figlike))
+    scene = get_scene(figlike)
+    backend = current_backend()
+    # get current screen the scene is already displayed on, or create a new screen
+    screen = getscreen(scene, backend) do
+        # only update fig if not already displayed
+        update_state_before_display!(figlike)
+        return backend.Screen(scene, io, m)
+    end
+    backend_show(screen, io, m, scene)
     return
 end
 
-"""
-    Stepper(scene, path; format = :jpg)
-
-Creates a Stepper for generating progressive plot examples.
-
-Each "step" is saved as a separate file in the folder
-pointed to by `path`, and the format is customizable by
-`format`, which can be any output type your backend supports.
-
-Notice that the relevant `Makie.step!` is not
-exported and should be accessed by module name.
-"""
-mutable struct FolderStepper
-    figlike::FigureLike
-    folder::String
-    format::Symbol
-    step::Int
-end
-
-mutable struct RamStepper
-    figlike::FigureLike
-    images::Vector{Matrix{RGBf}}
-    format::Symbol
-end
-
-Stepper(figlike::FigureLike, path::String, step::Int; format=:png) = FolderStepper(figlike, path, format, step)
-Stepper(figlike::FigureLike; format=:png) = RamStepper(figlike, Matrix{RGBf}[], format)
-
-function Stepper(figlike::FigureLike, path::String; format = :png)
-    ispath(path) || mkpath(path)
-    FolderStepper(figlike, path, format, 1)
-end
-
-"""
-    step!(s::Stepper)
-
-steps through a `Makie.Stepper` and outputs a file with filename `filename-step.jpg`.
-This is useful for generating progressive plot examples.
-"""
-function step!(s::FolderStepper)
-    FileIO.save(joinpath(s.folder, basename(s.folder) * "-$(s.step).$(s.format)"), s.figlike)
-    s.step += 1
-    return s
-end
-
-function step!(s::RamStepper)
-    img = convert(Matrix{RGBf}, colorbuffer(s.figlike))
-    push!(s.images, img)
-    return s
-end
-
-function FileIO.save(dir::String, s::RamStepper)
-    if !isdir(dir)
-        mkpath(dir)
-    end
-    for (i, img) in enumerate(s.images)
-        FileIO.save(joinpath(dir, "step-$i.$(s.format)"), img)
-    end
-end
-
-format2mime(::Type{FileIO.format"PNG"})  = MIME("image/png")
-format2mime(::Type{FileIO.format"SVG"})  = MIME("image/svg+xml")
+format2mime(::Type{FileIO.format"PNG"}) = MIME("image/png")
+format2mime(::Type{FileIO.format"SVG"}) = MIME("image/svg+xml")
 format2mime(::Type{FileIO.format"JPEG"}) = MIME("image/jpeg")
 format2mime(::Type{FileIO.format"TIFF"}) = MIME("image/tiff")
 format2mime(::Type{FileIO.format"BMP"}) = MIME("image/bmp")
-format2mime(::Type{FileIO.format"PDF"})  = MIME("application/pdf")
-format2mime(::Type{FileIO.format"TEX"})  = MIME("application/x-tex")
-format2mime(::Type{FileIO.format"EPS"})  = MIME("application/postscript")
+format2mime(::Type{FileIO.format"PDF"}) = MIME("application/pdf")
+format2mime(::Type{FileIO.format"TEX"}) = MIME("application/x-tex")
+format2mime(::Type{FileIO.format"EPS"}) = MIME("application/postscript")
 format2mime(::Type{FileIO.format"HTML"}) = MIME("text/html")
 
 filetype(::FileIO.File{F}) where F = F
 # Allow format to be overridden with first argument
-
 
 """
     FileIO.save(filename, scene; resolution = size(scene), pt_per_unit = 0.75, px_per_unit = 1.0)
@@ -223,14 +202,13 @@ end
 function FileIO.save(
         file::FileIO.Formatted, fig::FigureLike;
         resolution = size(get_scene(fig)),
-        pt_per_unit = 0.75,
-        px_per_unit = 1.0,
+        backend = current_backend(),
+        screen_config...
     )
     scene = get_scene(fig)
     if resolution != size(scene)
         resize!(scene, resolution)
     end
-
     filename = FileIO.filename(file)
     # Delete previous file if it exists and query only the file string for type.
     # We overwrite existing files anyway, so this doesn't change the behavior.
@@ -240,113 +218,24 @@ function FileIO.save(
     isfile(filename) && rm(filename)
     # query the filetype only from the file extension
     F = filetype(file)
-
-    open(filename, "w") do s
-        iocontext = IOContext(s,
-            :full_fidelity => true,
-            :pt_per_unit => pt_per_unit,
-            :px_per_unit => px_per_unit
-        )
-        show(iocontext, format2mime(F), fig)
+    mime = format2mime(F)
+    open(filename, "w") do io
+        # If the scene already got displayed, we get the current screen its displayed on
+        # Else, we create a new scene and update the state of the fig
+        screen = getscreen(scene, backend) do
+            update_state_before_display!(fig)
+            return backend.Screen(scene, io, mime; screen_config...)
+        end
+        backend_show(screen, io, mime, scene)
     end
 end
 
+# Methods are used in backends to unwrap
 raw_io(io::IO) = io
 raw_io(io::IOContext) = raw_io(io.io)
 
-"""
-    record_events(f, scene::Scene, path::String)
-
-Records all window events that happen while executing function `f`
-for `scene` and serializes them to `path`.
-"""
-function record_events(f, scene::Scene, path::String)
-    display(scene)
-    result = Vector{Pair{Float64, Pair{Symbol, Any}}}()
-    for field in fieldnames(Events)
-        # These are not Observables
-        (field == :mousebuttonstate || field == :keyboardstate) && continue
-        on(getfield(scene.events, field), priority = typemax(Int)) do value
-            value = isa(value, Set) ? copy(value) : value
-            push!(result, time() => (field => value))
-            return Consume(false)
-        end
-    end
-    f()
-    open(path, "w") do io
-        serialize(io, result)
-    end
-end
-
-
-"""
-    replay_events(f, scene::Scene, path::String)
-    replay_events(scene::Scene, path::String)
-
-Replays the serialized events recorded with `record_events` in `path` in `scene`.
-"""
-replay_events(scene::Scene, path::String) = replay_events(()-> nothing, scene, path)
-function replay_events(f, scene::Scene, path::String)
-    events = open(io-> deserialize(io), path)
-    sort!(events, by = first)
-    for i in 1:length(events)
-        t1, (field, value) = events[i]
-        (field == :mousebuttonstate || field == :keyboardstate) && continue
-        Base.invokelatest() do
-            getfield(scene.events, field)[] = value
-        end
-        f()
-        if i < length(events)
-            t2, (field, value) = events[i + 1]
-            # min sleep time 0.001
-            if (t2 - t1 > 0.001)
-                sleep(t2 - t1)
-            else
-                yield()
-            end
-        end
-    end
-end
-
-struct RecordEvents
-    scene::Scene
-    path::String
-end
-
-Base.display(re::RecordEvents) = display(re.scene)
-
-struct VideoStream
-    io
-    process
-    screen
-    path::String
-end
-
-"""
-    VideoStream(scene::Scene; framerate = 24, visible=false, connect=false)
-
-Returns a stream and a buffer that you can use, which don't allocate for new frames.
-Use [`recordframe!(stream)`](@ref) to add new video frames to the stream, and
-[`save(path, stream)`](@ref) to save the video.
-
-* visible=false: make window visible or not
-* connect=false: connect window events or not
-"""
-function VideoStream(fig::FigureLike; framerate::Integer=24, visible=false, connect=false)
-    #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
-    dir = mktempdir()
-    path = joinpath(dir, "$(gensym(:video)).mkv")
-    scene = get_scene(fig)
-    screen = backend_display(fig; start_renderloop=false, visible=visible, connect=connect)
-    _xdim, _ydim = size(scene)
-    xdim = iseven(_xdim) ? _xdim : _xdim + 1
-    ydim = iseven(_ydim) ? _ydim : _ydim + 1
-    process = @ffmpeg_env open(`$(FFMPEG.ffmpeg) -framerate $(framerate) -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
-    return VideoStream(process.in, process, screen, abspath(path))
-end
-
 # This has to be overloaded by the backend for its screen type.
-function colorbuffer(x::AbstractScreen)
+function colorbuffer(x::MakieScreen)
     error("colorbuffer not implemented for screen $(typeof(x))")
 end
 
@@ -364,25 +253,37 @@ function jl_to_gl_format(image)
         return bufc
     else
         reverse!(image; dims=1)
-        return collect(PermutedDimsArray(image, (2, 1)))
+        return PermutedDimsArray(image, (2, 1))
     end
 end
 
 # less specific for overloading by backends
-function colorbuffer(screen::Any, format::ImageStorageFormat = JuliaNative)
+function colorbuffer(screen::MakieScreen, format::ImageStorageFormat)
     image = colorbuffer(screen)
     if format == GLNative
-        if string(typeof(screen)) == "GLMakie.Screen"
-            @warn "Inefficient re-conversion back to GLNative buffer format. Update GLMakie to support direct buffer access" maxlog=1
-        end
         return jl_to_gl_format(image)
     elseif format == JuliaNative
         return image
     end
 end
 
+function getscreen(f::Function, scene::Scene, backend::Module)
+    screen = getscreen(scene)
+    if !isnothing(screen) && parentmodule(typeof(screen)) == backend
+        return screen
+    end
+    if ismissing(backend)
+        error("""
+            You have not loaded a backend.  Please load one (`using GLMakie` or `using CairoMakie`)
+            before trying to render a Scene.
+            """)
+    else
+        return f()
+    end
+end
+
 """
-    colorbuffer(scene, format::ImageStorageFormat = JuliaNative)
+    colorbuffer(scene, format::ImageStorageFormat = JuliaNative; backend=current_backend(), screen_config...)
     colorbuffer(screen, format::ImageStorageFormat = JuliaNative)
 
 Returns the content of the given scene or screen rasterised to a Matrix of
@@ -392,222 +293,29 @@ or RGBA.
 - `format = JuliaNative` : Returns a buffer in the format of standard julia images (dims permuted and one reversed)
 - `format = GLNative` : Returns a more efficient format buffer for GLMakie which can be directly
                         used in FFMPEG without conversion
+- `screen_config`: Backend dependend, look up via `?Backend.Screen`/`Base.doc(Backend.Screen)`
 """
-function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative)
+function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; backend = current_backend(), screen_config...)
     scene = get_scene(fig)
-    screen = getscreen(scene)
-    if isnothing(screen)
-        if ismissing(current_backend[])
-            error("""
-                You have not loaded a backend.  Please load one (`using GLMakie` or `using CairoMakie`)
-                before trying to render a Scene.
-                """)
-        else
-            return colorbuffer(backend_display(fig; visible=false, start_renderloop=false, connect=false), format)
-        end
+    screen = getscreen(scene, backend) do
+        screen = backend.Screen(scene, format; start_renderloop=false, visible=false, screen_config...)
+        display(screen, fig; connect=false)
+        return screen
     end
     return colorbuffer(screen, format)
 end
 
-"""
-    recordframe!(io::VideoStream)
-
-Adds a video frame to the VideoStream `io`.
-"""
-function recordframe!(io::VideoStream)
-    frame = convert(Matrix{RGB{N0f8}}, colorbuffer(io.screen, GLNative))
-    _xdim, _ydim = size(frame)
-    if isodd(_xdim) || isodd(_ydim)
-        xdim = iseven(_xdim) ? _xdim : _xdim + 1
-        ydim = iseven(_ydim) ? _ydim : _ydim + 1
-        padded = fill(zero(eltype(frame)), (xdim, ydim))
-        padded[1:_xdim, 1:_ydim] = frame
-        frame = padded
-    end
-    write(io.io, frame)
+# Fallback for any backend that will just use colorbuffer to write out an image
+function backend_show(screen::MakieScreen, io::IO, m::MIME"image/png", scene::Scene)
+    display(screen, scene; connect=false)
+    img = colorbuffer(screen)
+    FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img)
     return
 end
 
-"""
-    save(path::String, io::VideoStream[; kwargs...])
-
-Flushes the video stream and converts the file to the extension found in `path`,
-which can be one of the following:
-- `.mkv`  (the default, doesn't need to convert)
-- `.mp4`  (good for Web, most supported format)
-- `.webm` (smallest file size)
-- `.gif`  (largest file size for the same quality)
-
-`.mp4` and `.mk4` are marginally bigger and `.gif`s are up to
-6 times bigger with the same quality!
-
-See the docs of [`VideoStream`](@ref) for how to create a VideoStream.
-If you want a simpler interface, consider using [`record`](@ref).
-
-### Keyword Arguments:
-- `framerate = 24`: The target framerate.
-- `compression = 0`: Controls the video compression with `0` being lossless and
-                     `51` being the highest compression. Note that `compression = 0`
-                     only works with `.mp4` if `profile = high444`.
-- `profile = "high422"`: A ffmpeg compatible profile. Currently only applies to
-                         `.mp4`. If you have issues playing a video, try
-                         `profile = "high"` or `profile = "main"`.
-- `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (pix_fmt). Currently
-                              only applies to `.mp4`. Defaults to `yuv444p` for
-                              `profile = high444`.
-"""
-function save(
-        path::String, io::VideoStream;
-        framerate::Int = 24, compression = 20, profile = "high422",
-        pixel_format = profile == "high444" ? "yuv444p" : "yuv420p"
-    )
-
-    close(io.process)
-    wait(io.process)
-    p, typ = splitext(path)
-    if typ == ".mkv"
-        cp(io.path, path, force=true)
-    else
-        mktempdir() do dir
-            out = joinpath(dir, "out$(typ)")
-            if typ == ".mp4"
-                # ffmpeg_exe(`-loglevel quiet -i $(io.path) -crf $compression -c:v libx264 -preset slow -r $framerate -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $out`)
-                ffmpeg_exe(`-loglevel quiet -i $(io.path) -crf $compression -c:v libx264 -preset slow -r $framerate -profile:v $profile -pix_fmt $pixel_format -c:a libvo_aacenc -b:a 128k -y $out`)
-            elseif typ == ".webm"
-                ffmpeg_exe(`-loglevel quiet -i $(io.path) -crf $compression -c:v libvpx-vp9 -threads 16 -b:v 2000k -c:a libvorbis -threads 16 -r $framerate -vf scale=iw:ih -y $out`)
-            elseif typ == ".gif"
-                filters = "fps=$framerate,scale=iw:ih:flags=lanczos"
-                palette_path = dirname(io.path)
-                pname = joinpath(palette_path, "palette.bmp")
-                isfile(pname) && rm(pname, force = true)
-                ffmpeg_exe(`-loglevel quiet -i $(io.path) -vf "$filters,palettegen" -y $pname`)
-                ffmpeg_exe(`-loglevel quiet -i $(io.path) -i $pname -lavfi "$filters [x]; [x][1:v] paletteuse" -y $out`)
-                rm(pname, force = true)
-            else
-                rm(io.path)
-                error("Video type $typ not known")
-            end
-            cp(out, path, force=true)
-        end
-    end
-    rm(io.path)
-    return path
-end
-
-"""
-    record(func, figure, path; framerate = 24, compression = 20, kwargs...)
-    record(func, figure, path, iter; framerate = 24, compression = 20, kwargs...)
-
-The first signature provides `func` with a VideoStream, which it should call
-`recordframe!(io)` on when recording a frame.
-
-The second signature iterates `iter`, calling `recordframe!(io)` internally
-after calling `func` with the current iteration element.
-
-Both notations require a Figure, FigureAxisPlot or Scene `figure` to work.
-
-The animation is then saved to `path`, with the format determined by `path`'s
-extension.  Allowable extensions are:
-- `.mkv`  (the default, doesn't need to convert)
-- `.mp4`  (good for Web, most supported format)
-- `.webm` (smallest file size)
-- `.gif`  (largest file size for the same quality)
-
-`.mp4` and `.mk4` are marginally bigger than `webm` and `.gif`s are up to
-6 times bigger with the same quality!
-
-The `compression` argument controls the compression ratio; `51` is the
-highest compression, and `0` or `1` is the lowest (with `0` being lossless).
-
-Typical usage patterns would look like:
-
-```julia
-record(figure, "video.mp4", itr) do i
-    func(i) # or some other manipulation of the figure
-end
-```
-
-or, for more tweakability,
-
-```julia
-record(figure, "test.gif") do io
-    for i = 1:100
-        func!(figure)     # animate figure
-        recordframe!(io)  # record a new frame
-    end
-end
-```
-
-If you want a more tweakable interface, consider using [`VideoStream`](@ref) and
-[`save`](@ref).
-
-## Extended help
-### Examples
-
-```julia
-fig, ax, p = lines(rand(10))
-record(fig, "test.gif") do io
-    for i in 1:255
-        p[:color] = RGBf(i/255, (255 - i)/255, 0) # animate figure
-        recordframe!(io)
-    end
-end
-```
-or
-```julia
-fig, ax, p = lines(rand(10))
-record(fig, "test.gif", 1:255) do i
-    p[:color] = RGBf(i/255, (255 - i)/255, 0) # animate figure
-end
-```
-
-### Keyword Arguments:
-- `framerate = 24`: The target framerate.
-- `compression = 0`: Controls the video compression with `0` being lossless and
-                     `51` being the highest compression. Note that `compression = 0`
-                     only works with `.mp4` if `profile = high444`.
-- `profile = "high422`: A ffmpeg compatible profile. Currently only applies to
-                        `.mp4`. If you have issues playing a video, try
-                        `profile = "high"` or `profile = "main"`.
-- `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (pix_fmt). Currently
-                              only applies to `.mp4`. Defaults to `yuv444p` for
-                              `profile = high444`.
-"""
-function record(func, figlike, path; framerate::Int = 24, kwargs...)
-    io = Record(func, figlike, framerate = framerate)
-    save(path, io, framerate = framerate; kwargs...)
-end
-
-function Record(func, figlike; framerate=24)
-    io = VideoStream(figlike; framerate = framerate)
-    func(io)
-    return io
-end
-
-function record(func, figlike, path, iter; framerate::Int = 24, kwargs...)
-    io = Record(func, figlike, iter; framerate=framerate)
-    save(path, io, framerate = framerate; kwargs...)
-end
-
-function Record(func, figlike, iter; framerate::Int = 24)
-    io = VideoStream(figlike; framerate=framerate)
-    for i in iter
-        func(i)
-        recordframe!(io)
-        @debug "Recording" progress=i/length(iter)
-        yield()
-    end
-    return io
-end
-
-function Base.show(io::IO, ::MIME"text/html", vs::VideoStream)
-    mktempdir() do dir
-        path = save(joinpath(dir, "video.mp4"), vs)
-        print(
-            io,
-            """<video autoplay controls><source src="data:video/x-m4v;base64,""",
-            base64encode(open(read, path)),
-            """" type="video/mp4"></video>"""
-        )
-    end
+function backend_show(screen::MakieScreen, io::IO, m::MIME"image/jpeg", scene::Scene)
+    display(screen, scene; connect=false)
+    img = colorbuffer(scene)
+    FileIO.save(FileIO.Stream{FileIO.format"JPEG"}(Makie.raw_io(io)), img)
+    return
 end

@@ -225,3 +225,13 @@ end
 @reference_test "2D surface with ClosedInterval" begin
     surface(0..1, 0..2, zeros(10, 5); axis=(type=Axis,))
 end
+
+@reference_test "scene visibility" begin
+    f, ax, pl = scatter(1:4, markersize=200)
+    ax2, pl = scatter(f[1, 2][1, 1], 1:4, color=1:4, markersize=200)
+    ax3, pl = scatter(f[1, 2][2, 1], 1:4, color=1:4, markersize=200)
+    ax3.scene.visible[] = false
+    ax2.scene.visible[] = false
+    ax2.blockscene.visible[] = false
+    f
+end
