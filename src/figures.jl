@@ -141,6 +141,11 @@ Once resized, all content should fit the available space, including
 the `Figure`'s outer padding.
 """
 function resize_to_layout!(fig::Figure)
+    # it is assumed that all plot objects have been added at this point,
+    # but it's possible the limits have not been updated, yet,
+    # so without `update_state_before_display!` it's possible that the layout
+    # is optimized for the wrong ticks 
+    update_state_before_display!(fig)
     bbox = GridLayoutBase.tight_bbox(fig.layout)
     new_size = (widths(bbox)...,)
     resize!(fig.scene, widths(bbox)...)
