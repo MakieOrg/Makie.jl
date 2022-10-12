@@ -44,7 +44,8 @@ end
 const IGNORE_KEYS = Set([
     :shading, :overdraw, :rotation, :distancefield, :space, :markerspace, :fxaa,
     :visible, :transformation, :alpha, :linewidth, :transparency, :marker,
-    :lightposition, :cycle, :label
+    :lightposition, :cycle, :label, :inspector_clear, :inspector_hover, 
+    :inspector_label
 ])
 
 function create_shader(scene::Scene, plot::MeshScatter)
@@ -177,6 +178,7 @@ function create_shader(scene::Scene, plot::Scatter)
     attributes[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
 
     delete!(attributes, :uv_offset_width)
+    filter!(kv -> !(kv[2] isa Function), attributes)
     return scatter_shader(scene, attributes)
 end
 
