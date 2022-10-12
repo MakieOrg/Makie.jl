@@ -13,7 +13,7 @@ The minimum number of bins in one dimension is 2.
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 using Random
 Random.seed!(1234)
 
@@ -39,7 +39,7 @@ You can also pass a tuple of integers to control x and y separately.
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 using Random
 Random.seed!(1234)
 
@@ -71,7 +71,7 @@ This is why setting the same size for x and y will result in uneven hexagons.
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 using Random
 Random.seed!(1234)
 
@@ -99,7 +99,7 @@ Note that the visual appearance of the hexagons will only be even if the x and y
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 using Random
 Random.seed!(1234)
 
@@ -127,7 +127,7 @@ All hexagons with a count lower than `threshold` will be removed:
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 using Random
 Random.seed!(1234)
 
@@ -153,7 +153,7 @@ You can pass a scale function to via the `scale` keyword, which will be applied 
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 using Random
 Random.seed!(1234)
 
@@ -178,10 +178,10 @@ In this example, we add a transparent color to the start of the colormap and str
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 using DelimitedFiles
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 a = map(Point2f, eachrow(readdlm(assetpath("airportlocations.csv"))))
 

@@ -8,7 +8,7 @@
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 Axis(f[1, 1])
@@ -29,7 +29,7 @@ Omitting the `xs` and `ys` results in the indices of `zs` being used. We can als
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 Axis(f[1, 1])

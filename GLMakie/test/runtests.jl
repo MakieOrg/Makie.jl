@@ -10,11 +10,7 @@ reference_tests_dir = normpath(joinpath(dirname(pathof(Makie)), "..", "Reference
 Pkg.develop(PackageSpec(path = reference_tests_dir))
 using ReferenceTests
 
-GLMakie.activate!()
-GLMakie.set_window_config!(;
-    framerate = 1.0,
-    pause_rendering = true
-)
+GLMakie.activate!(framerate=1.0)
 
 @testset "mimes" begin
     f, ax, pl = scatter(1:4)

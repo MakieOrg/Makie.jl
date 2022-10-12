@@ -8,7 +8,7 @@
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 using Random
 Random.seed!(1234)
 
@@ -27,7 +27,7 @@ f
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 using Random
 Random.seed!(1234)
 
@@ -48,7 +48,7 @@ f
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 using Random
 Random.seed!(123)
 
@@ -84,7 +84,7 @@ to `:relative` and specify the levels from 0 to 1, relative to the current minim
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 using Random
 Random.seed!(1234)
 

@@ -41,7 +41,6 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-        run: sudo apt-get -y install xclip
       - uses: julia-actions/cache@v1
       - name: Install Julia dependencies
         shell: julia --project=monorepo {0}

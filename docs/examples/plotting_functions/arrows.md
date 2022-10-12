@@ -40,7 +40,7 @@
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure(resolution = (800, 800))
 Axis(f[1, 1], backgroundcolor = "black")
@@ -62,7 +62,7 @@ f
 ```julia
 using GLMakie
 GLMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 ps = [Point3f(x, y, z) for x in -5:2:5 for y in -5:2:5 for z in -5:2:5]
 ns = map(p -> 0.1 * Vec3f(p[2], p[3], p[1]), ps)
@@ -79,7 +79,7 @@ arrows(
 ```julia
 using GLMakie
 GLMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 using LinearAlgebra
 
 ps = [Point3f(x, y, z) for x in -5:2:5 for y in -5:2:5 for z in -5:2:5]
