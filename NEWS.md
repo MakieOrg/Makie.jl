@@ -2,23 +2,30 @@
 
 ## master
 
-- `hexbin` is now available as a recipe [#368] (https://github.com/JuliaPlots/Makie.jl/pull/2201)
-- Added the `tricontourf` plotting function [#2226](https://github.com/JuliaPlots/Makie.jl/pull/2226).
-- Fix per character attributes in text [#2244](https://github.com/JuliaPlots/Makie.jl/pull/2244)
-- `Axis` does now accept both a `Bool` and a `Tuple{Bool, Bool}` as values for `xtrimspine` and `ytrimspine` to trim only one end of the spine [#2171](https://github.com/JuliaPlots/Makie.jl/pull/2171).
-- Added `BezierPath` which can be constructed from SVG like command list, SVG string or from a `Polygon`.
+## v0.18
+
+- **Breaking** Added `BezierPath` which can be constructed from SVG like command list, SVG string or from a `Polygon`.
   Added ability to use `BezierPath` and `Polgyon` as scatter markers.
   Replaced default symbol markers like `:cross` which converted to characters before with more precise `BezierPaths` and adjusted default markersize to 12.
   **Deprecated** using `String` to specify multiple char markers (`scatter(1:4, marker="abcd")`).
   **Deprecated** concrete geometries as markers like `Circle(Point2f(0), 1.5)` in favor of using the type like `Circle` for dispatch to special backend methods.
   Added single image marker support to WGLMakie [#979](https://github.com/MakieOrg/Makie.jl/pull/979).
+- **Breaking** Refactor `display`, `record`, `colorbuffer` and `screens` to be faster and more consistent [#2306](https://github.com/MakieOrg/Makie.jl/pull/2306#issuecomment-1275918061).
+- **Breaking** Refactor `DataInspector` to use `tooltip`. This results in changes in the attributes of DataInspector. Add `inspector_label`, `inspector_hover` and `inspector_clear` as optional attributes [#2095](https://github.com/JuliaPlots/Makie.jl/pull/2095).
+- `hexbin` is now available as a recipe [#2201] (https://github.com/JuliaPlots/Makie.jl/pull/2201).
+- Added the `tricontourf` plotting function [#2226](https://github.com/JuliaPlots/Makie.jl/pull/2226).
+- Fix per character attributes in text [#2244](https://github.com/JuliaPlots/Makie.jl/pull/2244).
+- `Axis` does now accept both a `Bool` and a `Tuple{Bool, Bool}` as values for `xtrimspine` and `ytrimspine` to trim only one end of the spine [#2171](https://github.com/JuliaPlots/Makie.jl/pull/2171).
 - Allow `CairoMakie` to render `scatter` with images as markers [#2080](https://github.com/MakieOrg/Makie.jl/pull/2080).
 - Reworked text drawing and added ability to draw special characters via glyph indices in order to draw more LaTeX math characters with MathTeXEngine v0.5 [#2139](https://github.com/MakieOrg/Makie.jl/pull/2139).
-- Add `tooltip` as a plot recipe [#2095](https://github.com/JuliaPlots/Makie.jl/pull/2095)
-- **Breaking** Refactor `DataInspector` to use `tooltip`. This results in changes in the attributes of DataInspector. See pr [#2095](https://github.com/JuliaPlots/Makie.jl/pull/2095)
-- Add `inspector_label`, `inspector_hover` and `inspector_clear` as optional attributes. [#2095](https://github.com/JuliaPlots/Makie.jl/pull/2095)
-- Allow text to be copy/pasted into textbox [#2281](https://github.com/MakieOrg/Makie.jl/pull/2281)
-- refactor `display`, `record`, `colorbuffer` and `screens` to be faster and more consistent [#2306](https://github.com/MakieOrg/Makie.jl/pull/2306#issuecomment-1275918061).
+- Allow text to be copy/pasted into textbox [#2281](https://github.com/MakieOrg/Makie.jl/pull/2281).
+- Fix updates for multiple meshes [#2277](https://github.com/MakieOrg/Makie.jl/pull/2277).
+- Fix broadcasting for linewidth, lengthscale & arrowsize in `arrow` recipe [#2273](https://github.com/MakieOrg/Makie.jl/pull/2273).
+- Make GLMakie relocatable [#2282](https://github.com/MakieOrg/Makie.jl/pull/2282).
+- Fix changing input types in plot arguments [#2297](https://github.com/MakieOrg/Makie.jl/pull/2297).
+- Better performance for Menus and fix clicks on items [#2299](https://github.com/MakieOrg/Makie.jl/pull/2299).
+- Use premultiplied alpha for cairo argb surfaces [#2304](https://github.com/MakieOrg/Makie.jl/pull/2304).
+- Fix `scene.visible[] = false` not working [#2317](https://github.com/MakieOrg/Makie.jl/pull/2317).
 
 
 ## v0.17.13
