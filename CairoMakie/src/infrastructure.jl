@@ -126,7 +126,7 @@ function draw_plot_as_image(scene::Scene, screen::Screen, primitive::Combined, s
     w, h = Int.(scene.px_area[].widths)
     # Create a new Screen which renders directly to an image surface,
     # specifically for the plot's parent scene.
-    scr = Screen(scene; device_scaling_factor = scale)
+    scr = Screen(scene; px_per_unit = scale)
     # Draw the plot to the screen, in the normal way
     draw_plot(scene, scr, primitive)
 

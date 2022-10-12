@@ -28,32 +28,33 @@ function renderloop end
 * `debugging = false`: Starts the GLFW.Window/OpenGL context with debug output.
 * `monitor::Union{Nothing, GLFW.Monitor} = nothing`: Sets the monitor on which the Window should be opened.
 
-## Preproccessor
-* `oit = true`: Enles order independent transparency for the window.
+## Postprocessor
+* `oit = false`: Enles order independent transparency for the window.
 * `fxaa = true`: Enables fxaa (anti-aliasing) for the window.
-* `ssao = true`: Enables screen space occlusion, which gives 3D meshes a soft shadow towards their edges.
-
+* `ssao = true`: Enables screen space ambient occlusion, which simulates natural shadowing at inner edges and crevices.
+* `transparency_weight_scale = 1000f0`: This adjusts a factor in the rendering shaders for order independent transparency.
+    This should be the same for all of them (within one rendering pipeline) otherwise depth "order" will be broken.
 """
 mutable struct ScreenConfig
     # Renderloop
-    renderloop::Function # GLMakie.renderloop,
+    renderloop::Function
     pause_renderloop::Bool
-    vsync::Bool# = false,
-    framerate::Float64# = 30.0,
+    vsync::Bool
+    framerate::Float64
 
     # GLFW window attributes
-    float::Bool# = false,
-    focus_on_show::Bool# = false,
-    decorated::Bool# = true,
-    title::String# = "Makie",
-    fullscreen::Bool# = false,
-    debugging::Bool# = false,
-    monitor::Union{Nothing, GLFW.Monitor}# = nothing,
+    float::Bool
+    focus_on_show::Bool
+    decorated::Bool
+    title::String
+    fullscreen::Bool
+    debugging::Bool
+    monitor::Union{Nothing, GLFW.Monitor}
 
-    # Preproccessor
-    oit::Bool# = true,
-    fxaa::Bool# = true,
-    ssao::Bool# = true
+    # Postprocessor
+    oit::Bool
+    fxaa::Bool
+    ssao::Bool
     transparency_weight_scale::Float32
 
     function ScreenConfig(

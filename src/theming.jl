@@ -117,7 +117,7 @@ const minimal_default = Attributes(
         debugging = false,
         monitor = nothing,
 
-        # Preproccessor
+        # Postproccessor
         oit = true,
         fxaa = true,
         ssao = false,

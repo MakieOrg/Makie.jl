@@ -158,6 +158,15 @@ function Base.empty!(screen::Screen)
     Cairo.restore(ctx)
 end
 
+# function clear(screen::Screen)
+#     ctx = screen.context
+#     Cairo.save(ctx)
+#     Cairo.set_operator(ctx, Cairo.OPERATOR_SOURCE)
+#     Cairo.set_source_rgba(ctx, rgbatuple(screen.scene.backgroundcolor[])...)
+#     Cairo.paint_with_alpha(ctx, 0.0)
+#     Cairo.restore(ctx)
+# end
+
 Base.size(screen::Screen) = round.(Int, (screen.surface.width, screen.surface.height))
 # we render the scene directly, since we have
 # no screen dependent state like in e.g. opengl
