@@ -56,7 +56,7 @@ function surface_from_output_type(type::RenderType, io, w, h)
     elseif type === EPS
         return Cairo.CairoEPSSurface(io, w, h)
     elseif type === IMAGE
-        img = Matrix{ARGB32}(undef, w, h)
+        img = fill(ARGB32(0, 0, 0, 0), w, h)
         return Cairo.CairoImageSurface(img)
     else
         error("No available Cairo surface for mode $type")
