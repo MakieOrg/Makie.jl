@@ -14,10 +14,9 @@
   Added single image marker support to WGLMakie [#979](https://github.com/MakieOrg/Makie.jl/pull/979).
 - Allow `CairoMakie` to render `scatter` with images as markers [#2080](https://github.com/MakieOrg/Makie.jl/pull/2080).
 - Reworked text drawing and added ability to draw special characters via glyph indices in order to draw more LaTeX math characters with MathTeXEngine v0.5 [#2139](https://github.com/MakieOrg/Makie.jl/pull/2139).
-- Recording and colorbuffers use screen size instead of scene size, allowing e.g. the `px_per_unit` argument in CairoMakie to take effect.
-  It is sufficient to set the global `px_per_unit` setting by calling `CairoMakie.activate!(px_per_unit=3)` or whichever scaling factor is desired.
-  GLMakie and WGLMakie are currently unaffected by this. [#2012](https://github.com/JuliaPlots/Makie.jl/pull/2116).
 - Allow text to be copy/pasted into textbox [#2281](https://github.com/MakieOrg/Makie.jl/pull/2281)
+- refactor `display`, `record`, `colorbuffer` and `screens` to be faster and more consistent [#2306](https://github.com/MakieOrg/Makie.jl/pull/2306#issuecomment-1275918061).
+
 
 ## v0.17.13
 

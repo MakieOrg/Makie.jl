@@ -283,7 +283,7 @@ function getscreen(f::Function, scene::Scene, backend::Module)
 end
 
 """
-    colorbuffer(scene, format::ImageStorageFormat = JuliaNative)
+    colorbuffer(scene, format::ImageStorageFormat = JuliaNative; backend=current_backend(), screen_config...)
     colorbuffer(screen, format::ImageStorageFormat = JuliaNative)
 
 Returns the content of the given scene or screen rasterised to a Matrix of
@@ -293,6 +293,7 @@ or RGBA.
 - `format = JuliaNative` : Returns a buffer in the format of standard julia images (dims permuted and one reversed)
 - `format = GLNative` : Returns a more efficient format buffer for GLMakie which can be directly
                         used in FFMPEG without conversion
+- `screen_config`: Backend dependend, look up via `?Backend.Screen`/`Base.doc(Backend.Screen)`
 """
 function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; backend = current_backend(), screen_config...)
     scene = get_scene(fig)
