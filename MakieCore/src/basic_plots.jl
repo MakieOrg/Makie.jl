@@ -552,7 +552,28 @@ Plots polygons, which are defined by
 
 ## Attributes
 
-TODO
+### Specific to `Poly`
+
+- `lowclip::Union{Nothing, Symbol, <:Colorant} = nothing` sets a color for any value below the colorrange.
+- `highclip::Union{Nothing, Symbol, <:Colorant} = nothing` sets a color for any value above the colorrange.
+- `strokecolor::Union{Symbol, <:Colorant} = :black` sets the color of the outline around a marker.
+- `strokewidth::Real = 0` sets the width of the outline around a marker.
+- `linestyle::Union{Nothing, Symbol, Vector} = nothing` sets the pattern of the line (e.g. `:solid`, `:dot`, `:dashdot`)
+
+### Generic
+
+- `visible::Bool = true` sets whether the plot will be rendered or not.
+- `overdraw::Bool = false` sets whether the plot will draw over other plots. This specifically means ignoring depth checks in GL backends.
+- `transparency::Bool = false` adjusts how the plot deals with transparency. In GLMakie `transparency = true` results in using Order Independent Transparency.
+- `fxaa::Bool = true` adjusts whether the plot is rendered with fxaa (anti-aliasing).
+- `inspectable::Bool = true` sets whether this plot should be seen by `DataInspector`.
+- `color` is set by the plot.
+- `colormap::Union{Symbol, Vector{<:Colorant}} = [:black, :white` sets the colormap that is sampled for numeric `color`s.
+- `colorrange::Tuple{<:Real, <:Real}` sets the values representing the start and end points of `colormap`.
+- `nan_color::Union{Symbol, <:Colorant} = RGBAf(0,0,0,0)` sets a replacement color for `color = NaN`.
+- `space::Symbol = :data` sets the transformation space for the position of the image. See `Makie.spaces()` for possible inputs.
+- `cycle::Vector{Symbol} = [:color => :patchcolor]` sets which attributes to cycle when creating multiple plots.
+- `shading = false` enables lighting.
 """
 @recipe(Poly) do scene
     Attributes(;
