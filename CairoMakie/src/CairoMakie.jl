@@ -31,7 +31,7 @@ include("primitives.jl")
 include("overrides.jl")
 
 function __init__()
-    activate!()
+    activate!(; px_per_unit=2)
 end
 
 include("precompiles.jl")
