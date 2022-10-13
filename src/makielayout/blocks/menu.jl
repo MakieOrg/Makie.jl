@@ -235,7 +235,6 @@ function initialize_block!(m::Menu; default = 1)
                     i = pick_entry(mp[2])
                     m.i_selected[] = i
                     m.is_open[] = false
-                    return Consume(true)
                 else # HOVER
                     idx_hovered = pick_entry(mp[2])
                     update_option_colors!(idx_hovered)
@@ -244,6 +243,7 @@ function initialize_block!(m::Menu; default = 1)
                 # If not inside anymore, invalidate was_pressed
                 was_pressed_options[] = false
             end
+            return Consume(true)
         else
             # If not inside menuscene, we check the state for the menu button
             if mouseover(blockscene, selectiontext, selectionpoly)

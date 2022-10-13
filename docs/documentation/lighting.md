@@ -95,7 +95,7 @@ app
 \begin{examplefigure}{}
 ```julia
 using GLMakie
-GLMakie.activate!(ssao=true) # hide
+GLMakie.activate!(ssao=true)
 GLMakie.closeall() # close any open screen
 
 fig = Figure()
