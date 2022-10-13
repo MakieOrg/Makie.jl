@@ -19656,7 +19656,7 @@ const mod = {
     sRGBEncoding: Oi
 };
 function getWebGLErrorMessage() {
-    return getErrorMessage(2);
+    return getErrorMessage(1);
 }
 function getErrorMessage(version) {
     var names = {
@@ -19900,7 +19900,7 @@ function deserialize_three1(data) {
             return new window[data.type](data.data);
         }
     }
-    if (JSServe.is_list(data)) {
+    if (Array.isArray(data)) {
         if (data.length == 2) {
             return new mod.Vector2().fromArray(data);
         }
@@ -20001,8 +20001,8 @@ function create_material(program) {
         fragmentShader: deserialize_three1(program.fragment_source),
         side: is_volume ? mod.BackSide : mod.DoubleSide,
         transparent: true,
-        depthTest: !JSServe.get_observable(program.overdraw),
-        depthWrite: !JSServe.get_observable(program.transparency)
+        depthTest: !program.overdraw.value,
+        depthWrite: !program.transparency.value
     });
 }
 function create_mesh(program) {
@@ -20032,14 +20032,14 @@ function deserialize_plot(data) {
         mesh.visible = v;
         return;
     };
-    update_visible(JSServe.get_observable(data.visible));
-    JSServe.on_update(data.visible, update_visible);
+    update_visible(data.visible.value);
+    data.visible.on(update_visible);
     connect_uniforms(mesh, data.uniform_updater);
     connect_attributes(mesh, data.attribute_updater);
     return mesh;
 }
 function deserialize_scene1(data, canvas) {
-    scene = new mod.Scene();
+    const scene = new mod.Scene();
     add_scene(data.uuid, scene);
     scene.frustumCulled = false;
     scene.pixelarea = data.pixelarea;
@@ -20056,19 +20056,20 @@ function deserialize_scene1(data, canvas) {
     scene.wgl_camera = cam;
     function update_cam(camera) {
         const [view, projection, projectionview, resolution, eyepos, pixel_space, ] = camera;
-        const resolution_scaled = JSServe.deserialize_js(resolution);
+        const resolution_scaled = resolution;
         cam.view.value.fromArray(view);
         cam.projection.value.fromArray(projection);
         cam.projectionview.value.fromArray(projectionview);
         cam.pixel_space.value.fromArray(pixel_space);
         cam.resolution.value.fromArray(resolution_scaled);
-        cam.eyeposition.value.fromArray(JSServe.deserialize_js(eyepos));
+        cam.eyeposition.value.fromArray(eyepos);
     }
-    update_cam(JSServe.get_observable(data.camera));
+    console.log(data.camera);
+    update_cam(data.camera.value);
     if (data.cam3d_state) {
         attach_3d_camera(canvas, cam, data.cam3d_state);
     } else {
-        JSServe.on_update(data.camera, update_cam);
+        data.camera.on(update_cam);
     }
     data.plots.forEach((plot_data)=>{
         add_plot(scene, plot_data);
@@ -20076,12 +20077,12 @@ function deserialize_scene1(data, canvas) {
     return scene;
 }
 function connect_uniforms(mesh, updater) {
-    JSServe.on_update(updater, ([name, data])=>{
+    updater.on(([name, data])=>{
         if (name === "none") {
             return;
         }
         const uniform = mesh.material.uniforms[name];
-        const deserialized = deserialize_three1(JSServe.deserialize_js(data));
+        const deserialized = deserialize_three1(data);
         if (uniform.value.isTexture) {
             uniform.value.image.data.set(deserialized);
             uniform.value.needsUpdate = true;
@@ -20125,9 +20126,9 @@ function connect_attributes(mesh, updater) {
         real_geometry_length[0] = first_geometry_buffer.count;
     }
     re_assign_buffers();
-    JSServe.on_update(updater, ([name, array, length])=>{
+    updater.on(([name, array, length])=>{
         if (length > 0) {
-            const new_values = deserialize_three1(JSServe.deserialize_js(array));
+            const new_values = deserialize_three1(array);
             const buffer = mesh.geometry.attributes[name];
             let buffers;
             let real_length;
@@ -20162,14 +20163,14 @@ function connect_attributes(mesh, updater) {
 }
 function render_scene(renderer, scene, cam) {
     renderer.autoClear = scene.clearscene;
-    const area = JSServe.get_observable(scene.pixelarea);
+    const area = scene.pixelarea.value;
     if (area) {
         const [x, y, w, h] = area.map((t)=>t / pixelRatio
         );
         renderer.setViewport(x, y, w, h);
         renderer.setScissor(x, y, w, h);
         renderer.setScissorTest(true);
-        renderer.setClearColor(JSServe.get_observable(scene.backgroundcolor));
+        renderer.setClearColor(scene.backgroundcolor.value);
         renderer.render(scene, cam);
     }
 }
@@ -20223,7 +20224,7 @@ function threejs_module1(canvas, comm, width, height) {
         var rect = canvas.getBoundingClientRect();
         var x = (event.clientX - rect.left) * pixelRatio;
         var y = (event.clientY - rect.top) * pixelRatio;
-        JSServe.update_obs(comm, {
+        comm.notify({
             mouseposition: [
                 x,
                 y
@@ -20233,21 +20234,21 @@ function threejs_module1(canvas, comm, width, height) {
     }
     canvas.addEventListener("mousemove", mousemove);
     function mousedown(event) {
-        JSServe.update_obs(comm, {
+        comm.notify({
             mousedown: event.buttons
         });
         return false;
     }
     canvas.addEventListener("mousedown", mousedown);
     function mouseup(event) {
-        JSServe.update_obs(comm, {
+        comm.notify({
             mouseup: event.buttons
         });
         return false;
     }
     canvas.addEventListener("mouseup", mouseup);
     function wheel(event) {
-        JSServe.update_obs(comm, {
+        comm.notify({
             scroll: [
                 event.deltaX,
                 -event.deltaY
@@ -20258,21 +20259,21 @@ function threejs_module1(canvas, comm, width, height) {
     }
     canvas.addEventListener("wheel", wheel);
     function keydown(event) {
-        JSServe.update_obs(comm, {
+        comm.notify({
             keydown: event.code
         });
         return false;
     }
     canvas.addEventListener("keydown", keydown);
     function keyup(event) {
-        JSServe.update_obs(comm, {
+        comm.notify({
             keyup: event.code
         });
         return false;
     }
     canvas.addEventListener("keyup", keyup);
     function contextmenu(event) {
-        JSServe.update_obs(comm, {
+        comm.notify({
             keyup: "delete_keys"
         });
         return false;
@@ -20285,6 +20286,7 @@ function threejs_module1(canvas, comm, width, height) {
 function create_scene1(wrapper, canvas, canvas_width, scenes, comm, width, height, fps) {
     const renderer = threejs_module1(canvas, comm, width, height);
     if (renderer) {
+        console.log(scenes);
         const three_scenes = scenes.map((x)=>deserialize_scene1(x, canvas)
         );
         const cam = new mod.PerspectiveCamera(45, 1, 0, 100);
@@ -20295,7 +20297,6 @@ function create_scene1(wrapper, canvas, canvas_width, scenes, comm, width, heigh
         });
     } else {
         const warning = getWebGLErrorMessage();
-        wrapper.removeChild(canvas);
         wrapper.appendChild(warning);
     }
 }

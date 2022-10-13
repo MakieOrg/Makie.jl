@@ -1,7 +1,7 @@
 // Taken from THREEJS documentation
 
 export function getWebGLErrorMessage() {
-    return getErrorMessage(2);
+    return getErrorMessage(1);
 }
 
 function getErrorMessage(version) {

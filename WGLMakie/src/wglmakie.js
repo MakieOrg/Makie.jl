@@ -272,7 +272,7 @@ function deserialize_three(data) {
         }
     }
 
-    if (JSServe.is_list(data)) {
+    if (Array.isArray(data)) {
         if (data.length == 2) {
             return new THREE.Vector2().fromArray(data);
         }
@@ -399,8 +399,8 @@ function create_material(program) {
         fragmentShader: deserialize_three(program.fragment_source),
         side: is_volume ? THREE.BackSide : THREE.DoubleSide,
         transparent: true,
-        depthTest: !JSServe.get_observable(program.overdraw),
-        depthWrite: !JSServe.get_observable(program.transparency)
+        depthTest: !program.overdraw.value,
+        depthWrite: !program.transparency.value
     });
 }
 
@@ -434,15 +434,15 @@ function deserialize_plot(data) {
         // don't return anything, since that will disable on_update callback
         return
     };
-    update_visible(JSServe.get_observable(data.visible));
-    JSServe.on_update(data.visible, update_visible);
+    update_visible(data.visible.value);
+    data.visible.on(update_visible);
     connect_uniforms(mesh, data.uniform_updater);
     connect_attributes(mesh, data.attribute_updater);
     return mesh;
 }
 
 function deserialize_scene(data, canvas) {
-    scene = new THREE.Scene();
+    const scene = new THREE.Scene();
     add_scene(data.uuid, scene)
     scene.frustumCulled = false;
     scene.pixelarea = data.pixelarea;
@@ -469,21 +469,21 @@ function deserialize_scene(data, canvas) {
             eyepos,
             pixel_space,
         ] = camera;
-        const resolution_scaled = JSServe.deserialize_js(resolution)
+        const resolution_scaled = resolution
         cam.view.value.fromArray(view);
         cam.projection.value.fromArray(projection);
         cam.projectionview.value.fromArray(projectionview);
         cam.pixel_space.value.fromArray(pixel_space);
         cam.resolution.value.fromArray(resolution_scaled);
-        cam.eyeposition.value.fromArray(JSServe.deserialize_js(eyepos));
+        cam.eyeposition.value.fromArray(eyepos);
     }
-
-    update_cam(JSServe.get_observable(data.camera));
+    console.log(data.camera)
+    update_cam(data.camera.value);
 
     if (data.cam3d_state) {
         attach_3d_camera(canvas, cam, data.cam3d_state);
     } else {
-        JSServe.on_update(data.camera, update_cam);
+        data.camera.on(update_cam);
     }
 
     data.plots.forEach((plot_data) => {
@@ -493,14 +493,14 @@ function deserialize_scene(data, canvas) {
 }
 
 function connect_uniforms(mesh, updater) {
-    JSServe.on_update(updater, ([name, data]) => {
+    updater.on(([name, data]) => {
         // this is the initial value, which shouldn't end up getting updated -
         // TODO, figure out why this gets pushed!!
         if (name === "none"){
             return
         }
         const uniform = mesh.material.uniforms[name];
-        const deserialized = deserialize_three(JSServe.deserialize_js(data));
+        const deserialized = deserialize_three(data);
 
         if (uniform.value.isTexture) {
             uniform.value.image.data.set(deserialized);
@@ -545,10 +545,10 @@ function connect_attributes(mesh, updater) {
 
     re_assign_buffers();
 
-    JSServe.on_update(updater, ([name, array, length]) => {
+    updater.on(([name, array, length]) => {
         // TODO, why are these called with the initial values!?
         if (length > 0) {
-            const new_values = deserialize_three(JSServe.deserialize_js(array));
+            const new_values = deserialize_three(array);
             const buffer = mesh.geometry.attributes[name];
             let buffers;
             let first_buffer;
@@ -600,14 +600,14 @@ function connect_attributes(mesh, updater) {
 
 function render_scene(renderer, scene, cam) {
     renderer.autoClear = scene.clearscene;
-    const area = JSServe.get_observable(scene.pixelarea);
+    const area = scene.pixelarea.value;
     if (area) {
         const [x, y, w, h] = area.map(t => t / pixelRatio);
         renderer.setViewport(x, y, w, h);
         renderer.setScissor(x, y, w, h);
         renderer.setScissorTest(true);
         renderer.setClearColor(
-            JSServe.get_observable(scene.backgroundcolor)
+            scene.backgroundcolor.value
         );
         renderer.render(scene, cam);
     }
@@ -673,7 +673,7 @@ function threejs_module(canvas, comm, width, height) {
         var rect = canvas.getBoundingClientRect();
         var x = (event.clientX - rect.left) * pixelRatio;
         var y = (event.clientY - rect.top) * pixelRatio;
-        JSServe.update_obs(comm, {
+        comm.notify({
             mouseposition: [x, y],
         });
         return false;
@@ -682,7 +682,7 @@ function threejs_module(canvas, comm, width, height) {
     canvas.addEventListener("mousemove", mousemove);
 
     function mousedown(event) {
-        JSServe.update_obs(comm, {
+        comm.notify({
             mousedown: event.buttons,
         });
         return false;
@@ -690,7 +690,7 @@ function threejs_module(canvas, comm, width, height) {
     canvas.addEventListener("mousedown", mousedown);
 
     function mouseup(event) {
-        JSServe.update_obs(comm, {
+        comm.notify({
             mouseup: event.buttons,
         });
         return false;
@@ -699,7 +699,7 @@ function threejs_module(canvas, comm, width, height) {
     canvas.addEventListener("mouseup", mouseup);
 
     function wheel(event) {
-        JSServe.update_obs(comm, {
+        comm.notify({
             scroll: [event.deltaX, -event.deltaY],
         });
         event.preventDefault();
@@ -708,7 +708,7 @@ function threejs_module(canvas, comm, width, height) {
     canvas.addEventListener("wheel", wheel);
 
     function keydown(event) {
-        JSServe.update_obs(comm, {
+        comm.notify({
             keydown: event.code,
         });
         return false;
@@ -717,7 +717,7 @@ function threejs_module(canvas, comm, width, height) {
     canvas.addEventListener("keydown", keydown);
 
     function keyup(event) {
-        JSServe.update_obs(comm, {
+        comm.notify({
             keyup: event.code,
         });
         return false;
@@ -731,7 +731,7 @@ function threejs_module(canvas, comm, width, height) {
     // set... Only option I found is to actually listen to the contextmenu
     // and remove all keys if its opened.
     function contextmenu(event) {
-        JSServe.update_obs(comm, {
+        comm.notify({
             keyup: "delete_keys",
         });
         return false;
@@ -746,6 +746,7 @@ function threejs_module(canvas, comm, width, height) {
 function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height, fps){
     const renderer = threejs_module(canvas, comm, width, height)
     if ( renderer ) {
+        console.log(scenes)
         const three_scenes = scenes.map(x=> deserialize_scene(x, canvas))
         const cam = new THREE.PerspectiveCamera(45, 1, 0, 100)
         start_renderloop(renderer, three_scenes, cam, fps);
@@ -756,7 +757,7 @@ function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height
         })
     } else {
         const warning = getWebGLErrorMessage();
-        wrapper.removeChild(canvas)
+        // wrapper.removeChild(canvas)
         wrapper.appendChild(warning)
     }
 }

@@ -51,7 +51,7 @@ function JSServe.print_js_code(io::IO, plot::AbstractPlot, context)
 end
 
 function three_display(session::Session, scene::Scene)
-    serialized = serialize_scene(scene)
+    scene_data = serialize_scene(scene)
 
     if TEXTURE_ATLAS_CHANGED[]
         JSServe.update_cached_value!(session, Makie.get_texture_atlas().data)
@@ -63,14 +63,18 @@ function three_display(session::Session, scene::Scene)
     canvas = DOM.um("canvas", tabindex="0")
     wrapper = DOM.div(canvas)
     comm = Observable(Dict{String,Any}())
-    scene_data = Observable(serialized)
     canvas_width = lift(x -> [round.(Int, widths(x))...], pixelarea(scene))
+
     setup = js"""
-    function onload(wrapper) {
-        (async () => {
-            const WGLMakie = await $(WGL)
-            WGLMakie.create_scene(wrapper, $canvas, $canvas_width, $scene_data, $comm, $width, $height, $(CONFIG.fps[]))
-        })()
+    (wrapper)=>{
+        console.log("registering windows onloaaaad!");
+        const canvas = $canvas;
+        console.log(canvas);
+        const func = (async () => {
+            const WGLMakie = await $(WGL);
+            WGLMakie.create_scene($wrapper, canvas, $canvas_width, $scene_data, $comm, $width, $height, $(CONFIG.fps[]))
+        })
+        setTimeout(func, 2000)
     }
     """
 
