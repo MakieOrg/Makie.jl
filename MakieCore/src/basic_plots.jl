@@ -532,3 +532,46 @@ Plots one or multiple texts passed via the `text` keyword.
         inspectable = theme(scene, :inspectable)
     )
 end
+
+"""
+    poly(vertices, indices; kwargs...)
+    poly(points; kwargs...)
+    poly(shape; kwargs...)
+    poly(mesh; kwargs...)
+
+Plots a polygon based on the arguments given.
+When vertices and indices are given, it functions similarly to `mesh`.
+When points are given, it draws one polygon that connects all the points in order.
+When a shape is given (essentially anything decomposable by `GeometryBasics`), it will plot `decompose(shape)`.
+
+    poly(coordinates, connectivity; kwargs...)
+
+Plots polygons, which are defined by
+`coordinates` (the coordinates of the vertices) and
+`connectivity` (the edges between the vertices).
+
+## Attributes
+
+TODO
+"""
+@recipe(Poly) do scene
+    Attributes(;
+        color = theme(scene, :patchcolor),
+        visible = theme(scene, :visible),
+        strokecolor = theme(scene, :patchstrokecolor),
+        colormap = theme(scene, :colormap),
+        colorrange = automatic,
+        lowclip = automatic,
+        highclip = automatic,
+        nan_color = :transparent,
+        strokewidth = theme(scene, :patchstrokewidth),
+        shading = false,
+        fxaa = true,
+        linestyle = nothing,
+        overdraw = false,
+        transparency = false,
+        cycle = [:color => :patchcolor],
+        inspectable = theme(scene, :inspectable),
+        space = :data
+    )
+end
