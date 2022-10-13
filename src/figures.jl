@@ -1,11 +1,11 @@
 #=
-Figures are supposed to fill the gap that Scenes in combination with Layoutables leave.
+Figures are supposed to fill the gap that Scenes in combination with Blocks leave.
 A scene is supposed to be a generic canvas on which plot objects can be placed and drawn.
-Layoutables always require one specific type of scene, with a PixelCamera, in order to draw
+Blocks always require one specific type of scene, with a PixelCamera, in order to draw
 their visual components there.
 Figures also have layouts, which scenes do not have.
 This is because every figure needs a layout, while not every scene does.
-Figures keep track of the Layoutables that are created inside them, which scenes don't.
+Figures keep track of the Blocks that are created inside them, which scenes don't.
 
 The idea is there are three types of plotting commands.
 They can return either:
@@ -111,6 +111,7 @@ function Base.setindex!(fig::Figure, obj::AbstractArray, rows, cols)
 end
 
 Base.lastindex(f::Figure, i) = lastindex(f.layout, i)
+Base.firstindex(f::Figure, i) = firstindex(f.layout, i)
 
 # for now just redirect figure display/show to the internal scene
 Base.show(io::IO, fig::Figure) = show(io, fig.scene)
@@ -140,8 +141,32 @@ Once resized, all content should fit the available space, including
 the `Figure`'s outer padding.
 """
 function resize_to_layout!(fig::Figure)
+    # it is assumed that all plot objects have been added at this point,
+    # but it's possible the limits have not been updated, yet,
+    # so without `update_state_before_display!` it's possible that the layout
+    # is optimized for the wrong ticks 
+    update_state_before_display!(fig)
     bbox = GridLayoutBase.tight_bbox(fig.layout)
     new_size = (widths(bbox)...,)
     resize!(fig.scene, widths(bbox)...)
     new_size
 end
+
+function Base.empty!(fig::Figure)
+    empty!(fig.scene)
+    empty!(fig.scene.events)
+    foreach(GridLayoutBase.remove_from_gridlayout!, reverse(fig.layout.content))
+    trim!(fig.layout)
+    empty!(fig.content)
+    fig.current_axis[] = nothing
+    return
+end
+
+# Allow figures to be directly resized by resizing their internal Scene.
+# Layouts are already hooked up to this, so it's very simple.
+"""
+    resize!(fig::Figure, width, height)
+Resizes the given `Figure` to the resolution given by `width` and `height`.
+If you want to resize the figure to its current layout content, use `resize_to_layout!(fig)` instead.
+"""
+Makie.resize!(figure::Figure, args...) = resize!(figure.scene, args...)

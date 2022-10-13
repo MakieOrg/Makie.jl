@@ -2,8 +2,6 @@ using ShaderAbstractions: InstancedProgram, Program
 using Makie: Key, plotkey
 using Colors: N0f8
 
-Makie.plotkey(::Nothing) = :scatter
-
 function lift_convert(key, value, plot)
     val = lift(value) do value
         return wgl_convert(value, Key{key}(), Key{plotkey(plot)}())
@@ -19,9 +17,9 @@ function Base.pairs(mesh::GeometryBasics.Mesh)
     return (kv for kv in GeometryBasics.attributes(mesh))
 end
 
-function GeometryBasics.faces(x::VertexArray)
-    return GeometryBasics.faces(getfield(x, :data))
-end
+# Don't overload faces to not invalidate
+_faces(x::VertexArray) = GeometryBasics.faces(getfield(x, :data))
+_faces(x) = GeometryBasics.faces(x)
 
 tlength(T) = length(T)
 tlength(::Type{<:Real}) = 1
@@ -234,7 +232,7 @@ function serialize_three(ip::InstancedProgram)
 end
 
 function serialize_three(program::Program)
-    indices = GeometryBasics.faces(program.vertexarray)
+    indices = _faces(program.vertexarray)
     indices = reinterpret(UInt32, indices)
     uniforms = serialize_uniforms(program.uniforms)
     attribute_updater = Observable(["", [], 0])
@@ -257,6 +255,7 @@ function serialize_scene(scene::Scene, serialized_scenes=[])
     else
         nothing
     end
+
     serialized = Dict(:pixelarea => pixel_area,
                       :backgroundcolor => lift(hexcolor, scene.backgroundcolor),
                       :clearscene => scene.clear,

@@ -1,19 +1,27 @@
-struct ThreeDisplay <: Makie.AbstractScreen
+struct ThreeDisplay <: Makie.MakieScreen
     session::JSServe.Session
 end
 
 JSServe.session(td::ThreeDisplay) = td.session
 
+function Base.size(screen::ThreeDisplay)
+    # look at d.qs().clientWidth for displayed width
+    width, height = round.(Int, WGLMakie.JSServe.evaljs_value(screen.session, WGLMakie.JSServe.js"[document.querySelector('canvas').width, document.querySelector('canvas').height]"; time_out=100))
+    return (width, height)
+end
+
 # We use objectid to find objects on the js side
 js_uuid(object) = string(objectid(object))
 
-function Base.insert!(td::ThreeDisplay, scene::Scene, plot::AbstractPlot)
+function Base.insert!(td::ThreeDisplay, scene::Scene, plot::Combined)
     plot_data = serialize_plots(scene, [plot])
-    WGL.insert_plot(td.session, js_uuid(scene), plot_data)
+    JSServe.evaljs_value(td.session, js"""
+        $(WGL).insert_plot($(js_uuid(scene)), $plot_data)
+    """)
     return
 end
 
-function Base.delete!(td::ThreeDisplay, scene::Scene, plot::AbstractPlot)
+function Base.delete!(td::ThreeDisplay, scene::Scene, plot::Combined)
     uuids = js_uuid.(Makie.flatten_plots(plot))
     WGL.delete_plots(td.session, js_uuid(scene), uuids)
     return
@@ -44,13 +52,15 @@ function find_plots(session::Session, plot::AbstractPlot)
     return WGL.find_plots(session, uuids)
 end
 
-
 function JSServe.print_js_code(io::IO, plot::AbstractPlot, context)
     uuids = js_uuid.(Makie.flatten_plots(plot))
     JSServe.print_js_code(io, js"$(WGL).find_plots($(uuids))", context)
 end
 
-function three_display(session::Session, scene::Scene)
+function three_display(session::Session, scene::Scene; screen_config...)
+
+    config = Makie.merge_screen_config(ScreenConfig, screen_config)::ScreenConfig
+
     scene_data = serialize_scene(scene)
 
     if TEXTURE_ATLAS_CHANGED[]
@@ -72,7 +82,7 @@ function three_display(session::Session, scene::Scene)
         console.log(canvas);
         const func = (async () => {
             const WGLMakie = await $(WGL);
-            WGLMakie.create_scene($wrapper, canvas, $canvas_width, $scene_data, $comm, $width, $height, $(CONFIG.fps[]))
+            WGLMakie.create_scene($wrapper, canvas, $canvas_width, $scene_data, $comm, $width, $height, $(config.framerate))
         })
         setTimeout(func, 2000)
     }

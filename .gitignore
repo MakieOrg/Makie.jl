@@ -8,12 +8,12 @@ Manifest.toml
 /build
 
 \.DS_Store
-CairoMakie/src/display.*
 
-WGLMakie/test/recorded/
-GLMakie/test/reference_test_output/
+WGLMakie/test/recorded_reference_images/
+GLMakie/test/recorded_reference_images/
+CairoMakie/test/recorded_reference_images/
 RPRMakie/test/recorded/
-CairoMakie/test/recorded/
+
 CairoMakie/src/display.svg
 CairoMakie/src/display.pdf
 CairoMakie/src/display.png
@@ -22,3 +22,5 @@ monorepo
 docs/documentation/news.md
 
 metrics/ttfp/current-pr-project/
+metrics/ttfp/benchmark-projects/*
+*benchmark.json

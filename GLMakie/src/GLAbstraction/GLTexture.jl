@@ -51,6 +51,11 @@ Base.size(t::TextureBuffer, i::Integer) = size(t.buffer, i)
 Base.length(t::TextureBuffer) = length(t.buffer)
 bind(t::Texture) = glBindTexture(t.texturetype, t.id)
 bind(t::Texture, id) = glBindTexture(t.texturetype, id)
+ShaderAbstractions.switch_context!(t::TextureBuffer) = switch_context!(t.texture.context)
+function unsafe_free(tb::TextureBuffer)
+    unsafe_free(tb.texture)
+    unsafe_free(tb.buffer)
+end
 
 is_texturearray(t::Texture) = t.texturetype == GL_TEXTURE_2D_ARRAY
 is_texturebuffer(t::Texture) = t.texturetype == GL_TEXTURE_BUFFER
@@ -203,11 +208,6 @@ Creates a texture from an Image
 #    data = image.data
 #    Texture(mapslices(reverse, data, ndims(data)), texture_properties)
 #end
-
-
-GeometryBasics.width(t::Texture)  = size(t, 1)
-GeometryBasics.height(t::Texture) = size(t, 2)
-depth(t::Texture)  = size(t, 3)
 
 # AbstractArrays default show assumes `getindex`. Try to catch all calls
 # https://discourse.julialang.org/t/overload-show-for-array-of-custom-types/9589

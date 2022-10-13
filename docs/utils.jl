@@ -10,17 +10,10 @@ using Pkg
 
 include("colormap_generation.jl")
 
-# Pause renderloop for slow software rendering.
-# This way, we only render if we actualy save e.g. an image
-GLMakie.set_window_config!(;
-    framerate = 1.0,
-    pause_rendering = true
-)
-
 # copy NEWS file over to documentation
 cp(
     joinpath(@__DIR__, "..", "NEWS.md"),
-    joinpath(@__DIR__, "documentation", "news.md"),
+    joinpath(@__DIR__, "news.md"),
     force = true)
 
 ############################ Functions ##############################
@@ -78,8 +71,10 @@ function env_examplefigure(com, _)
 
     kwargs = eval(Meta.parse("Dict(pairs((;" * Franklin.content(com.braces[1]) * ")))"))
 
-    name = get(kwargs, :name, "example_" * string(hash(content)))
-    svg = get(kwargs, :svg, false)
+    name = pop!(kwargs, :name, "example_" * string(hash(content)))
+    svg = pop!(kwargs, :svg, false)
+
+    rest_kwargs_str = join(("$key = $(repr(val))" for (key, val) in kwargs), ", ")
 
     pngfile = "$name.png"
     svgfile = "$name.svg"
@@ -95,8 +90,8 @@ function env_examplefigure(com, _)
     __result = begin # hide
         $code
     end # hide
-    save(joinpath(@OUTPUT, "$pngfile"), __result) # hide
-    $(svg ? "save(joinpath(@OUTPUT, \"$svgfile\"), __result) # hide" : "")
+    save(joinpath(@OUTPUT, "$pngfile"), __result; $rest_kwargs_str) # hide
+    $(svg ? "save(joinpath(@OUTPUT, \"$svgfile\"), __result; $rest_kwargs_str) # hide" : "")
     nothing # hide
     ```
     ~~~

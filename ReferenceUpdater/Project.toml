@@ -1,0 +1,17 @@
+name = "ReferenceUpdater"
+uuid = "0b7a0440-c633-4ac4-9779-d1266ef64952"
+authors = ["Julius Krumbiegel <julius.krumbiegel@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+Downloads = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
+HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
+JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
+REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
+TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
+Tar = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
+ZipFile = "a5390f91-8eb1-5f08-bee0-b1d1ffed6cea"
+ghr_jll = "07c12ed4-43bc-5495-8a2a-d5838ef8d533"
+
+[compat]
+HTTP = "1"
