@@ -578,6 +578,7 @@ function renderloop_running(screen::Screen)
 end
 
 function start_renderloop!(screen::Screen)
+    @info "start_renderloop"
     if renderloop_running(screen)
         screen.config.pause_renderloop = false
         return
@@ -642,7 +643,20 @@ function vsynced_renderloop(screen)
     end
 end
 
+function requires_update(screen::Screen)
+    for (_, _, robj) in screen.renderlist
+        visible = Bool(to_value(get(robj.uniforms, :visible, true)))
+        if visible && robj.requires_update
+            return true
+        end
+    end
+    return false
+end
+
+const UPDATES = Ref(0)
+
 function fps_renderloop(screen::Screen)
+    UPDATES[] = 0
     while isopen(screen) && !screen.stop_renderloop
         if screen.config.pause_renderloop
             pollevents(screen); sleep(0.1)
@@ -651,8 +665,11 @@ function fps_renderloop(screen::Screen)
         time_per_frame = 1.0 / screen.config.framerate
         t = time_ns()
         pollevents(screen) # GLFW poll
-        render_frame(screen)
-        GLFW.SwapBuffers(to_native(screen))
+        if requires_update(screen)
+            UPDATES[] += 1
+            render_frame(screen)
+            GLFW.SwapBuffers(to_native(screen))
+        end
         t_elapsed = (time_ns() - t) / 1e9
         diff = time_per_frame - t_elapsed
         if diff > 0.001 # can't sleep less than 0.001

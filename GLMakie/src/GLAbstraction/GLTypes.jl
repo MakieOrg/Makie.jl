@@ -289,6 +289,7 @@ mutable struct RenderObject{Pre}
     prerenderfunction::Pre
     postrenderfunction
     id::UInt32
+    requires_update::Bool
     function RenderObject{Pre}(
             context,
             uniforms::Dict{Symbol,Any}, observables::Vector{Observable},
@@ -303,12 +304,25 @@ mutable struct RenderObject{Pre}
         # But with this implementation, the fxaa flag can't be changed,
         # and since this is a UUID, it shouldn't matter
         id = pack_bool(RENDER_OBJECT_ID_COUNTER[], fxaa)
-        new(
+        @info "RenderObject $id with $(length(uniforms)) uniforms"
+        robj = new(
             context,
             uniforms, observables, vertexarray,
             prerenderfunctions, postrenderfunctions,
-            id
+            id, true
         )
+        # Checking each robj.requires_update after polling events seems like 
+        # a better idea than having an observable chain...
+        for (key, maybe_obs) in uniforms
+            if maybe_obs isa Observable
+                obsfunc = on(maybe_obs) do _
+                    @info "Requesting update of $id $key"
+                    robj.requires_update = true
+                end
+            end
+        end
+
+        return robj
     end
 end
 

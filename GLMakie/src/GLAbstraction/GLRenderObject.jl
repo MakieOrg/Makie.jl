@@ -3,7 +3,10 @@ function Base.show(io::IO, obj::RenderObject)
 end
 
 Base.getindex(obj::RenderObject, symbol::Symbol) = obj.uniforms[symbol]
-Base.setindex!(obj::RenderObject, value, symbol::Symbol) = obj.uniforms[symbol] = value
+function Base.setindex!(obj::RenderObject, value, symbol::Symbol)
+    @info "Adding uniform $symbol" 
+    obj.uniforms[symbol] = value
+end
 
 Base.getindex(obj::RenderObject, symbol::Symbol, x::Function) = getindex(obj, Val(symbol), x)
 Base.getindex(obj::RenderObject, ::Val{:prerender}, x::Function) = obj.prerenderfunctions[x]

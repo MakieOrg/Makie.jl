@@ -56,6 +56,8 @@ a lot of objects.
 """
 function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray)
     if Bool(to_value(renderobject.uniforms[:visible]))
+        renderobject.requires_update = false
+        
         renderobject.prerenderfunction()
         program = vertexarray.program
         glUseProgram(program.id)
