@@ -10,7 +10,7 @@
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 
 xs = range(0, 10, length = 25)
@@ -27,7 +27,7 @@ heatmap(xs, ys, zs)
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 function mandelbrot(x, y)
     z = c = x + y*im
@@ -47,7 +47,7 @@ There must be no duplicate combinations of x and y, but it is allowed to leave o
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 
 xs = [1, 2, 3, 1, 2, 3, 1, 2, 3]
@@ -60,15 +60,15 @@ heatmap(xs, ys, zs)
 
 ### Colorbar for single heatmap
 
-To get a scale for what the colors represent, add a colorbar. The colorbar is 
-placed within the figure in the first argument, and the scale and colormap can be 
+To get a scale for what the colors represent, add a colorbar. The colorbar is
+placed within the figure in the first argument, and the scale and colormap can be
 conveniently set by passing the relevant heatmap to it.
 
 \begin{examplefigure}{}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 xs = range(0, 2π, length=100)
 ys = range(0, 2π, length=100)
@@ -84,20 +84,20 @@ fig
 ### Colorbar for multiple heatmaps
 
 When there are several heatmaps in a single figure, it can be useful
-to have a single colorbar represent all of them. It is important to then 
+to have a single colorbar represent all of them. It is important to then
 have synchronized scales and colormaps for the heatmaps and colorbar. This is done by
-setting the colorrange explicitly, so that it is independent of the data shown by 
+setting the colorrange explicitly, so that it is independent of the data shown by
 that particular heatmap.
 
-Since the heatmaps in the example below have the same colorrange and colormap, any of them 
-can be passed to `Colorbar` to give the colorbar the same attributes. Alternativly, 
+Since the heatmaps in the example below have the same colorrange and colormap, any of them
+can be passed to `Colorbar` to give the colorbar the same attributes. Alternativly,
 the colorbar attributes can be set explicitly.
 
 \begin{examplefigure}{}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 xs = range(0, 2π, length=100)
 ys = range(0, 2π, length=100)

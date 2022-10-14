@@ -22,7 +22,7 @@ Let's create a plot with the default theme:
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 function example_plot()
     f = Figure()
@@ -152,7 +152,7 @@ with_theme(
     Theme(
         palette = (color = [:red, :blue], marker = [:circle, :xcross]),
         Scatter = (cycle = [:color, :marker],)
-    )) do 
+    )) do
     scatter(fill(1, 10))
     scatter!(fill(2, 10))
     scatter!(fill(3, 10))
@@ -192,7 +192,7 @@ For example
 ```julia
 with_theme(
     Theme(
-        palette = (color = [:red, :blue], linestyle = [:dash, :dot]), 
+        palette = (color = [:red, :blue], linestyle = [:dash, :dot]),
         Lines = (cycle = Cycle([:color, :linestyle], covary = true),)
     )) do
     lines(fill(5, 10))
@@ -217,7 +217,7 @@ The cycler's internal counter is not advanced when using `Cycled` for any attrib
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 
@@ -247,7 +247,7 @@ Here's an example that shows how density plots react to different palette option
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 set_theme!() # hide
 

@@ -28,7 +28,7 @@ First, we import CairoMakie. This makes all the exported symbols from `Makie.jl`
 ```julia:setup
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 nothing # hide
 ```
 

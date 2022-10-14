@@ -31,7 +31,18 @@ function plot!(plot::Text)
             return
         end
         func = push_args ∘ _get_glyphcollection_and_linesegments
-        broadcast_foreach(func, str, 1:attr_broadcast_length(str), ts, f, al, rot, jus, lh, col, scol, swi, www)
+        if str isa Vector
+            # If we have a Vector of strings, Vector arguments are interpreted 
+            # as per string.
+            broadcast_foreach(
+                func, 
+                str, 1:attr_broadcast_length(str), ts, f, al, rot, jus, lh, col, scol, swi, www
+            )
+        else
+            # Otherwise Vector arguments are interpreted by layout_text/
+            # glyph_collection as per character.
+            func(str, 1, ts, f, al, rot, jus, lh, col, scol, swi, www)
+        end
         glyphcollections[] = gcs
         linewidths[] = lwidths
         linecolors[] = lcolors
@@ -125,7 +136,8 @@ end
 function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:AbstractString, <:Point}}}})    
     strings_and_positions = plot[1]
 
-    strings = Observable(first.(strings_and_positions[]))
+    strings = Observable{Vector{AbstractString}}(first.(strings_and_positions[]))
+
     positions = Observable(
         Point3f[to_ndim(Point3f, last(x), 0) for x in  strings_and_positions[]] # avoid Any for zero elements
     )

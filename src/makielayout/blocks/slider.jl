@@ -79,7 +79,7 @@ function initialize_block!(sl::Slider)
     end
 
     endbuttons = scatter!(topscene, endpoints, color = linecolors,
-        markersize = sl.linewidth, strokewidth = 0, inspectable = false)
+        markersize = sl.linewidth, strokewidth = 0, inspectable = false, marker=Circle)
 
     linesegs = linesegments!(topscene, linepoints, color = linecolors,
         linewidth = sl.linewidth, inspectable = false)
@@ -87,7 +87,7 @@ function initialize_block!(sl::Slider)
     button_magnification = Observable(1.0)
     buttonsize = @lift($(sl.linewidth) * $button_magnification)
     button = scatter!(topscene, middlepoint, color = sl.color_active, strokewidth = 0,
-        markersize = buttonsize, inspectable = false)
+        markersize = buttonsize, inspectable = false, marker=Circle)
 
     mouseevents = addmouseevents!(topscene, sl.layoutobservables.computedbbox)
 

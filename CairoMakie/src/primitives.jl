@@ -2,7 +2,7 @@
 #                             Lines, LineSegments                              #
 ################################################################################
 
-function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive::Union{Lines, LineSegments}))
+function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Union{Lines, LineSegments}))
     fields = @get_attribute(primitive, (color, linewidth, linestyle))
     linestyle = Makie.convert_attribute(linestyle, Makie.key"linestyle"())
     ctx = screen.context
@@ -173,7 +173,7 @@ end
 #                                   Scatter                                    #
 ################################################################################
 
-function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive::Scatter))
+function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scatter))
     fields = @get_attribute(primitive, (color, markersize, strokecolor, strokewidth, marker, marker_offset, rotations))
     @get_attribute(primitive, (transform_marker,))
 
@@ -388,7 +388,7 @@ function p3_to_p2(p::Point3{T}) where T
     end
 end
 
-function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive::Text{<:Tuple{<:Union{AbstractArray{<:Makie.GlyphCollection}, Makie.GlyphCollection}}}))
+function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text{<:Tuple{<:Union{AbstractArray{<:Makie.GlyphCollection}, Makie.GlyphCollection}}}))
     ctx = screen.context
     @get_attribute(primitive, (rotation, model, space, markerspace, offset))
     position = primitive.position[]
@@ -512,25 +512,6 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
     return
 end
 
-struct CairoGlyph
-    index::Culong
-    x::Cdouble
-    y::Cdouble
-end
-
-function show_glyph(ctx, glyph, x, y)
-    cg = Ref(CairoGlyph(glyph, x, y))
-    ccall((:cairo_show_glyphs, Cairo.libcairo),
-            Nothing, (Ptr{Nothing}, Ptr{CairoGlyph}, Cint),
-            ctx.ptr, cg, 1)
-end
-function glyph_path(ctx, glyph::Culong, x, y)
-    cg = Ref(CairoGlyph(glyph, x, y))
-    ccall((:cairo_glyph_path, Cairo.libcairo),
-            Nothing, (Ptr{Nothing}, Ptr{CairoGlyph}, Cint),
-            ctx.ptr, cg, 1)
-end
-
 ################################################################################
 #                                Heatmap, Image                                #
 ################################################################################
@@ -557,7 +538,15 @@ end
 
 regularly_spaced_array_to_range(arr::AbstractRange) = arr
 
-function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive::Union{Heatmap, Image}))
+function premultiplied_rgba(a::AbstractArray{<:ColorAlpha})
+    map(premultiplied_rgba, a)
+end
+premultiplied_rgba(a::AbstractArray{<:Color}) = RGBA.(a)
+
+premultiplied_rgba(r::RGBA) = RGBA(r.r * r.alpha, r.g * r.alpha, r.b * r.alpha, r.alpha)
+premultiplied_rgba(c::Colorant) = premultiplied_rgba(RGBA(c))
+
+function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Union{Heatmap, Image}))
     ctx = screen.context
     image = primitive[3][]
     xs, ys = primitive[1][], primitive[2][]
@@ -688,7 +677,7 @@ end
 ################################################################################
 
 
-function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive::Makie.Mesh))
+function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Mesh))
     mesh = primitive[1][]
     if Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera, Makie.EmptyCamera}
         draw_mesh2D(scene, screen, primitive, mesh)
@@ -925,7 +914,7 @@ end
 ################################################################################
 
 
-function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive::Makie.Surface))
+function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Surface))
     # Pretend the surface plot is a mesh plot and plot that instead
     mesh = surface2mesh(primitive[1][], primitive[2][], primitive[3][])
     old = primitive[:color]
@@ -954,7 +943,7 @@ end
 ################################################################################
 
 
-function draw_atomic(scene::Scene, screen::CairoScreen, @nospecialize(primitive::Makie.MeshScatter))
+function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.MeshScatter))
     @get_attribute(primitive, (color, model, marker, markersize, rotations))
 
     if color isa AbstractArray{<: Number}

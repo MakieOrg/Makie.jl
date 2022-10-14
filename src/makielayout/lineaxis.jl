@@ -86,7 +86,7 @@ function create_linepoints(
             return [from, to]
         end
     end
-    
+
 end
 
 function calculate_real_ticklabel_align(al, horizontal, fl::Bool, rot::Number)
@@ -266,8 +266,8 @@ function LineAxis(parent::Scene, attrs::Attributes)
 
     pos_extents_horizontal = lift(calculate_horizontal_extends, endpoints; ignore_equal_values=true)
     horizontal = lift(x-> x[3], pos_extents_horizontal)
-
-    limits = lift(x-> convert(Tuple{Float32, Float32}, x), attrs.limits; ignore_equal_values=true)
+    # Tuple constructor converts more than `convert(Tuple{Float32, Float32}, x)` but we still need the conversion to Float32 tuple:
+    limits = lift(x-> convert(Tuple{Float32, Float32}, Tuple(x)), attrs.limits; ignore_equal_values=true)
     flipped = lift(x-> convert(Bool, x), attrs.flipped; ignore_equal_values=true)
 
     ticksnode = Observable(Point2f[]; ignore_equal_values=true)
@@ -394,7 +394,8 @@ function LineAxis(parent::Scene, attrs::Attributes)
 
     tickvalues = Observable(Float32[]; ignore_equal_values=true)
 
-    tickvalues_labels_unfiltered = lift(pos_extents_horizontal, limits, ticks, tickformat, attrs.scale) do (position, extents, horizontal),
+    tickvalues_labels_unfiltered = Observable{Tuple{Vector{Float32},Vector{AbstractString}}}()
+    map!(tickvalues_labels_unfiltered, pos_extents_horizontal, limits, ticks, tickformat, attrs.scale) do (position, extents, horizontal),
             limits, ticks, tickformat, scale
         get_ticks(ticks, scale, tickformat, limits...)
     end

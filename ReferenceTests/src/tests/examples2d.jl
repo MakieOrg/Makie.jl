@@ -545,6 +545,80 @@ end
     f
 end
 
+@reference_test "Tooltip" begin
+    fig, ax, p = scatter(Point2f(0,0))
+    xlims!(ax, -10, 10)
+    ylims!(ax, -5, 5)
+    tt = tooltip!(ax, Point2f(0), text = "left", placement = :left)
+    tt.backgroundcolor[] = :red
+    tooltip!(
+        ax, 0, 0, "above with \nnewline\nand offset", 
+        placement = :above, textpadding = (8, 5, 3, 2), align = 0.8
+    )
+    tooltip!(ax, Point2f(0), "below", placement = :below, outline_color = :red, outline_linestyle = :dot)
+    tooltip!(
+        ax, 0, 0, text = "right", placement = :right, textsize = 30, 
+        outline_linewidth = 5, offset = 30, triangle_size = 15,
+        strokewidth = 2f0, strokecolor = :cyan
+    )
+    fig
+end
+
+@reference_test "tricontourf" begin
+    x = RNG.randn(50)
+    y = RNG.randn(50)
+    z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* RNG.randn.()
+
+    f, ax, tr = tricontourf(x, y, z)
+    scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
+    Colorbar(f[1, 2], tr)
+    f
+end
+
+@reference_test "tricontourf extendhigh extendlow" begin
+    x = RNG.randn(50)
+    y = RNG.randn(50)
+    z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* RNG.randn.()
+
+    f, ax, tr = tricontourf(x, y, z, levels = -1.8:0.2:-0.4, extendhigh = :red, extendlow = :orange)
+    scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
+    Colorbar(f[1, 2], tr)
+    f
+end
+
+@reference_test "tricontourf relative mode" begin
+    x = RNG.randn(50)
+    y = RNG.randn(50)
+    z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* RNG.randn.()
+
+    f, ax, tr = tricontourf(x, y, z, mode = :relative, levels = 0.2:0.1:1, colormap = :batlow)
+    scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black, colormap = :batlow)
+    Colorbar(f[1, 2], tr)
+    f
+end
+
+@reference_test "tricontourf manual vs delaunay" begin
+    n = 20
+    angles = range(0, 2pi, length = n+1)[1:end-1]
+    x = [cos.(angles); 2 .* cos.(angles .+ pi/n)]
+    y = [sin.(angles); 2 .* sin.(angles .+ pi/n)]
+    z = (x .- 0.5).^2 + (y .- 0.5).^2 .+ 0.5 .* RNG.randn.()
+
+    triangulation_inner = reduce(hcat, map(i -> [0, 1, n] .+ i, 1:n))
+    triangulation_outer = reduce(hcat, map(i -> [n-1, n, 0] .+ i, 1:n))
+    triangulation = hcat(triangulation_inner, triangulation_outer)
+
+    f, ax, _ = tricontourf(x, y, z, triangulation = triangulation,
+        axis = (; aspect = 1, title = "Manual triangulation"))
+    scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
+
+    tricontourf(f[1, 2], x, y, z, triangulation = Makie.DelaunayTriangulation(),
+        axis = (; aspect = 1, title = "Delaunay triangulation"))
+    scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
+
+    f
+end
+
 @reference_test "marker offset in data space" begin
     f = Figure()
     ax = Axis(f[1, 1]; xticks=0:1, yticks=0:10)
@@ -556,7 +630,7 @@ end
 @reference_test "trimspine" begin
     with_theme(Axis = (limits = (0.5, 5.5, 0.3, 3.4), spinewidth = 8, topspinevisible = false, rightspinevisible = false)) do
         f = Figure(resolution = (800, 800))
-    
+
         for (i, ts) in enumerate([(true, true), (true, false), (false, true), (false, false)])
             Label(f[0, i], string(ts), tellwidth = false)
             Axis(f[1, i], xtrimspine = ts)
@@ -564,11 +638,126 @@ end
             Axis(f[3, i], xtrimspine = ts, xreversed = true)
             Axis(f[4, i], ytrimspine = ts, yreversed = true)
         end
-    
+
         for (i, l) in enumerate(["x", "y", "x reversed", "y reversed"])
             Label(f[i, 5], l, tellheight = false)
         end
-    
+
         f
     end
+end
+
+@reference_test "hexbin bin int" begin
+    f = Figure(resolution = (800, 800))
+
+    x = RNG.rand(300)
+    y = RNG.rand(300)
+
+    for i in 2:5
+        ax = Axis(f[fldmod1(i-1, 2)...], title = "bins = $i", aspect = DataAspect())
+        hexbin!(ax, x, y, bins = i)
+        wireframe!(ax, Rect2f(Point2f.(x, y)), color = :red)
+        scatter!(ax, x, y, color = :red, markersize = 5)
+    end
+
+    f
+end
+
+@reference_test "hexbin bin tuple" begin
+    f = Figure(resolution = (800, 800))
+
+    x = RNG.rand(300)
+    y = RNG.rand(300)
+
+    for i in 2:5
+        ax = Axis(f[fldmod1(i-1, 2)...], title = "bins = (3, $i)", aspect = DataAspect())
+        hexbin!(ax, x, y, bins = (3, i))
+        wireframe!(ax, Rect2f(Point2f.(x, y)), color = :red)
+        scatter!(ax, x, y, color = :red, markersize = 5)
+    end
+
+    f
+end
+
+
+
+@reference_test "hexbin two cellsizes" begin
+    f = Figure(resolution = (800, 800))
+
+    x = RNG.rand(300)
+    y = RNG.rand(300)
+
+    for (i, cellsize) in enumerate([0.1, 0.15, 0.2, 0.25])
+        ax = Axis(f[fldmod1(i, 2)...], title = "cellsize = ($cellsize, $cellsize)", aspect = DataAspect())
+        hexbin!(ax, x, y, cellsize = (cellsize, cellsize))
+        wireframe!(ax, Rect2f(Point2f.(x, y)), color = :red)
+        scatter!(ax, x, y, color = :red, markersize = 5)
+    end
+
+    f
+end
+
+@reference_test "hexbin one cellsize" begin
+    f = Figure(resolution = (800, 800))
+
+    x = RNG.rand(300)
+    y = RNG.rand(300)
+
+    for (i, cellsize) in enumerate([0.1, 0.15, 0.2, 0.25])
+        ax = Axis(f[fldmod1(i, 2)...], title = "cellsize = $cellsize", aspect = DataAspect())
+        hexbin!(ax, x, y, cellsize = cellsize)
+        wireframe!(ax, Rect2f(Point2f.(x, y)), color = :red)
+        scatter!(ax, x, y, color = :red, markersize = 5)
+    end
+
+    f
+end
+
+@reference_test "hexbin threshold" begin
+    f = Figure(resolution = (800, 800))
+
+    x = RNG.randn(100000)
+    y = RNG.randn(100000)
+
+    for (i, threshold) in enumerate([1, 10, 100, 500])
+        ax = Axis(f[fldmod1(i, 2)...], title = "threshold = $threshold", aspect = DataAspect())
+        hexbin!(ax, x, y, cellsize = 0.4, threshold = threshold)
+    end
+    f
+end
+
+@reference_test "hexbin scale" begin
+    x = RNG.randn(100000)
+    y = RNG.randn(100000)
+
+    f = Figure()
+    hexbin(f[1, 1], x, y, bins = 40,
+        axis = (aspect = DataAspect(), title = "scale = identity"))
+    hexbin(f[1, 2], x, y, bins = 40, scale=log10,
+        axis = (aspect = DataAspect(), title = "scale = log10"))
+    f
+end
+
+# Scatter needs working highclip/lowclip first
+# @reference_test "hexbin colorrange highclip lowclip" begin
+#     x = RNG.randn(100000)
+#     y = RNG.randn(100000)
+
+#     hexbin(x, y,
+#         bins = 40,
+#         axis = (aspect = DataAspect(),),
+#         colorrange = (10, 300),
+#         highclip = :red,
+#         lowclip = :pink,
+#         strokewidth = 1,
+#         strokecolor = :gray30
+#     )
+# end
+
+@reference_test "Latex labels after the fact" begin
+    f = Figure(fontsize = 50)
+    ax = Axis(f[1, 1])
+    ax.xticks = ([3, 6, 9], [L"x" , L"y" , L"z"])
+    ax.yticks = ([3, 6, 9], [L"x" , L"y" , L"z"])
+    f
 end

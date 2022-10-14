@@ -30,6 +30,29 @@ include(joinpath(@__DIR__, "rasterization_tests.jl"))
     @test showable("image/png", f)
     # see https://github.com/MakieOrg/Makie.jl/pull/2167
     @test !showable("blaaa", f)
+
+    CairoMakie.activate!(type="png")
+    @test showable("image/png", Scene())
+    @test !showable("image/svg+xml", Scene())
+    # setting svg should leave png as showable, since it's usually lower in the display stack priority
+    CairoMakie.activate!(type="svg")
+    @test showable("image/png", Scene())
+    @test showable("image/svg+xml", Scene())
+end
+
+@testset "VideoStream & screen options" begin
+    N = 3
+    points = Observable(Point2f[])
+    f, ax, pl = scatter(points, axis=(type=Axis, aspect=DataAspect(), limits=(0.4, N + 0.6, 0.4, N + 0.6),), figure=(resolution=(600, 800),))
+    vio = Makie.VideoStream(f; format="mp4", px_per_unit=2.0, backend=CairoMakie)
+    @test vio.screen isa CairoMakie.Screen{CairoMakie.IMAGE}
+    @test size(vio.screen) == size(f.scene) .* 2
+    @test vio.screen.device_scaling_factor == 2.0
+
+    Makie.recordframe!(vio)
+    save("test.mp4", vio)
+    @test isfile("test.mp4") # Make sure no error etc
+    rm("test.mp4")
 end
 
 using ReferenceTests

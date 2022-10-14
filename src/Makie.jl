@@ -48,6 +48,8 @@ import GridLayoutBase
 import ImageIO
 import FileIO
 import SparseArrays
+import TriplotBase
+import MiniQhull
 
 using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints
 using FixedPointNumbers: N0f8
@@ -65,7 +67,7 @@ using Base.Iterators: repeated, drop
 import Base: getindex, setindex!, push!, append!, parent, get, get!, delete!, haskey
 using Observables: listeners, to_value, notify
 
-using MakieCore: SceneLike, AbstractScreen, ScenePlot, AbstractScene, AbstractPlot, Transformable, Attributes, Combined, Theme, Plot
+using MakieCore: SceneLike, MakieScreen, ScenePlot, AbstractScene, AbstractPlot, Transformable, Attributes, Combined, Theme, Plot
 using MakieCore: Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter, Surface, Text, Volume
 using MakieCore: ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
 using MakieCore: Key, @key_str, Automatic, automatic, @recipe
@@ -140,8 +142,10 @@ include("basic_recipes/stairs.jl")
 include("basic_recipes/stem.jl")
 include("basic_recipes/streamplot.jl")
 include("basic_recipes/timeseries.jl")
+include("basic_recipes/tricontourf.jl")
 include("basic_recipes/volumeslices.jl")
 include("basic_recipes/wireframe.jl")
+include("basic_recipes/tooltip.jl")
 
 # layouting of plots
 include("layouting/transformation.jl")
@@ -158,6 +162,8 @@ include("stats/distributions.jl")
 include("stats/crossbar.jl")
 include("stats/boxplot.jl")
 include("stats/violin.jl")
+include("stats/hexbin.jl")
+
 
 # Interactiveness
 include("interaction/events.jl")
@@ -167,6 +173,9 @@ include("interaction/inspector.jl")
 # documentation and help functions
 include("documentation/documentation.jl")
 include("display.jl")
+include("ffmpeg-util.jl")
+include("recording.jl")
+include("event-recorder.jl")
 
 # bezier paths
 export BezierPath, MoveTo, LineTo, CurveTo, EllipticalArc, ClosePath
@@ -175,7 +184,7 @@ export BezierPath, MoveTo, LineTo, CurveTo, EllipticalArc, ClosePath
 export help, help_attributes, help_arguments
 
 # Abstract/Concrete scene + plot types
-export AbstractScene, SceneLike, Scene, AbstractScreen
+export AbstractScene, SceneLike, Scene, MakieScreen
 export AbstractPlot, Combined, Atomic, OldAxis
 
 # Theming, working with Plots
@@ -256,7 +265,7 @@ export abline! # until deprecation removal
 
 
 export Stepper, replay_events, record_events, RecordEvents, record, VideoStream
-export VideoStream, recordframe!, record
+export VideoStream, recordframe!, record, Record
 export save
 
 # colormap stuff from PlotUtils, and showgradients
@@ -318,6 +327,7 @@ include("figureplotting.jl")
 include("basic_recipes/series.jl")
 include("basic_recipes/text.jl")
 include("basic_recipes/raincloud.jl")
+include("deprecated.jl")
 
 export Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Scatter, Surface, Text, Volume
 export heatmap, image, lines, linesegments, mesh, meshscatter, scatter, surface, text, volume

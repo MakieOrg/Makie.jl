@@ -8,7 +8,7 @@
 ```julia
 using GLMakie
 GLMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 vertices = [
     0.0 0.0;
@@ -33,7 +33,7 @@ scene = mesh(vertices, faces, color = colors, shading = false)
 using FileIO
 using GLMakie
 GLMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 brain = load(assetpath("brain.stl"))
 
@@ -53,7 +53,7 @@ We can also create a mesh, to specify normals, uv coordinates:
 ```julia:mesh
 using GeometryBasics, LinearAlgebra, GLMakie, FileIO
 GLMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 # Create vertices for a Sphere
 r = 0.5f0

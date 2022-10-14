@@ -111,7 +111,7 @@ function rgbatuple(c)
     return rgbatuple(colorant)
 end
 
-to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, c))
+to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, premultiplied_rgba(c)))
 
 ########################################
 #     Image/heatmap -> ARGBSurface     #
@@ -254,4 +254,20 @@ function Cairo.CairoPattern(color::Makie.AbstractPattern)
     cairoimage = Cairo.CairoImageSurface(bitmappattern)
     cairopattern = Cairo.CairoPattern(cairoimage)
     return cairopattern
+end
+
+"""
+Finds a font that can represent the unicode character!
+Returns Makie.defaultfont() if not representable!
+"""
+function best_font(c::Char, font = Makie.defaultfont())
+    if Makie.FreeType.FT_Get_Char_Index(font, c) == 0
+        for afont in Makie.alternativefonts()
+            if Makie.FreeType.FT_Get_Char_Index(afont, c) != 0
+                return afont
+            end
+        end
+        return Makie.defaultfont()
+    end
+    return font
 end

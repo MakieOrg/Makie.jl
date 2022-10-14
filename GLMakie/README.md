@@ -14,7 +14,9 @@ Note, that most GPUs, even 8 year old integrated ones, support OpenGL 3.3.
 On Linux, you can find out your OpenGL version with:
 `glxinfo | grep "OpenGL version"`
 
-If you're using an AMD or Intel gpu on linux, you may run into [GLFW#198](https://github.com/JuliaGL/GLFW.jl/issues/198).
+If you're using an AMD or Intel gpu on linux, you may run into [GLFW#198](https://github.com/JuliaGL/GLFW.jl/issues/198). A potential fix is then to 
+delete `libstdc++.so.6`. An example path to this file on a system using `juliaup` and version `1.8.2` is `/home/username/.julia/juliaup/julia-1.8.2+0.x64/lib/julia/libstdc++.so.6`.
+
 
 If you're on a headless server, you still need to install x-server and
 proper graphics drivers.
@@ -34,6 +36,18 @@ https://github.com/MakieOrg/Makie.jl/tree/master/WGLMakie.
 
 If you get an error pointing to [GLFW.jl](https://github.com/JuliaGL/GLFW.jl), please look into the existing [GLFW issues](https://github.com/JuliaGL/GLFW.jl/issues), and also google for those errors. This is then very likely something that needs fixing in the  [glfw c library](https://github.com/glfw/glfw) or in the GPU drivers.
 
+## More troubleshooting with remote ssh
+
+Errors which can occur:
+```
+libGL error: MESA-LOADER: failed to open swrast: /usr/lib/dri/swrast_dri.so: cannot open shared object file: No such file or directory (search paths /usr/lib/x86_64-linux-gnu/dri:\$${ORIGIN}/dri:/usr/lib/dri, suffix _dri)
+ERROR: GLFWError (VERSION_UNAVAILABLE): GLX: Failed to create context: GLXBadFBConfig
+```
+It happens because a libc library mismatch. In these scenarios starting julia with this could help:
+```
+LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6 julia
+```
+The github issue about this problem: [https://github.com/JuliaGL/GLFW.jl/issues/211](https://github.com/JuliaGL/GLFW.jl/issues/211)
 
 ## WSL setup or X-forwarding
 
