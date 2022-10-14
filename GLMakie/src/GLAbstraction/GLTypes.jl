@@ -174,9 +174,18 @@ mutable struct GLVertexArray{T}
     buffers::Dict{String,GLBuffer}
     indices::T
     context::GLContext
+    requires_update::Observable{Bool}
 
     function GLVertexArray{T}(program, id, bufferlength, buffers, indices) where T
-        new(program, id, bufferlength, buffers, indices, current_context())
+        va = new(program, id, bufferlength, buffers, indices, current_context(), true)
+        for (name, buffer) in buffers
+            on(buffer.requires_update) do _ # only triggers true anyway
+                @info "VertexArray buffer $name update"
+                va.requires_update[] = true
+            end
+        end
+
+        return va
     end
 end
 
@@ -315,12 +324,13 @@ mutable struct RenderObject{Pre}
         # a better idea than having an observable chain...
         for (key, maybe_obs) in uniforms
             if maybe_obs isa Observable
-                obsfunc = on(maybe_obs) do _
+                on(maybe_obs) do _
                     @info "Requesting update of $id $key"
                     robj.requires_update = true
                 end
             end
         end
+        on(_ -> robj.requires_update = true, vertexarray.requires_update)
 
         return robj
     end

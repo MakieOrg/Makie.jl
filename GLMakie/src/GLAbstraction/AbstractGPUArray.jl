@@ -194,7 +194,11 @@ max_dim(t)       = error("max_dim not implemented for: $(typeof(t)). This happen
 function (::Type{T})(x::Observable; kw...) where T <: GPUArray
     @info "contructor"
     gpu_mem = T(x[]; kw...)
-    on(x-> update!(gpu_mem, x), x)
+    on(x) do x
+        @info "Update $T"
+        gpu_mem.requires_update[] = true
+        update!(gpu_mem, x) 
+    end
     gpu_mem
 end
 

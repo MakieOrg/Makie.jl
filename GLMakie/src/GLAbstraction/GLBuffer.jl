@@ -4,6 +4,8 @@ mutable struct GLBuffer{T} <: GPUArray{T, 1}
     buffertype  ::GLenum
     usage       ::GLenum
     context     ::GLContext
+    # TODO maybe also delay upload to when render happens?
+    requires_update::Observable{Bool}
 
     function GLBuffer{T}(ptr::Ptr{T}, buff_length::Int, buffertype::GLenum, usage::GLenum) where T
         id = glGenBuffers()
@@ -13,7 +15,7 @@ mutable struct GLBuffer{T} <: GPUArray{T, 1}
         glBufferData(buffertype, buff_length * sizeof(T), ptr, usage)
         glBindBuffer(buffertype, 0)
 
-        obj = new(id, (buff_length,), buffertype, usage, current_context())
+        obj = new(id, (buff_length,), buffertype, usage, current_context(), Observable(true))
         finalizer(free, obj)
         obj
     end
