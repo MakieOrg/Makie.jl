@@ -17,6 +17,7 @@ function renderloop end
 
 * `pause_renderloop = false`: creates a screen with paused renderlooop. Can be started with `GLMakie.start_renderloop!(screen)` or paused again with `GLMakie.pause_renderloop!(screen)`.
 * `vsync = false`: enables vsync for the window.
+* `render_on_demand = true`: renders the scene only if something has changed in it.
 * `framerate = 30.0`: sets the currently rendered frames per second.
 
 ## GLFW window attributes
@@ -40,6 +41,7 @@ mutable struct ScreenConfig
     renderloop::Function
     pause_renderloop::Bool
     vsync::Bool
+    render_on_demand::Bool
     framerate::Float64
 
     # GLFW window attributes
@@ -62,6 +64,7 @@ mutable struct ScreenConfig
             renderloop::Union{Makie.Automatic, Function},
             pause_renderloop::Bool,
             vsync::Bool,
+            render_on_demand::Bool,
             framerate::Number,
             # GLFW window attributes
             float::Bool,
@@ -82,6 +85,7 @@ mutable struct ScreenConfig
             renderloop isa Makie.Automatic ? GLMakie.renderloop : renderloop,
             pause_renderloop,
             vsync,
+            render_on_demand,
             framerate,
             # GLFW window attributes
             float,
@@ -642,6 +646,28 @@ function vsynced_renderloop(screen)
     end
 end
 
+function fps_renderloop(screen::Screen)
+    while isopen(screen) && !screen.stop_renderloop
+        if screen.config.pause_renderloop
+            pollevents(screen); sleep(0.1)
+            continue
+        end
+        time_per_frame = 1.0 / screen.config.framerate
+        t = time_ns()
+        pollevents(screen) # GLFW poll
+        render_frame(screen)
+        GLFW.SwapBuffers(to_native(screen))
+        t_elapsed = (time_ns() - t) / 1e9
+        diff = time_per_frame - t_elapsed
+        if diff > 0.001 # can't sleep less than 0.001
+            sleep(diff)
+        else # if we don't sleep, we still need to yield explicitely to other tasks
+            yield()
+        end
+    end
+end
+
+
 function requires_update(screen::Screen)
     for (_, _, robj) in screen.renderlist
         visible = Bool(to_value(get(robj.uniforms, :visible, true)))
@@ -654,21 +680,19 @@ end
 
 const UPDATES = Ref(0)
 
-function fps_renderloop(screen::Screen)
+function on_demand_renderloop(screen::Screen)
     UPDATES[] = 0
     while isopen(screen) && !screen.stop_renderloop
-        if screen.config.pause_renderloop
-            pollevents(screen); sleep(0.1)
-            continue
-        end
-        time_per_frame = 1.0 / screen.config.framerate
         t = time_ns()
+        time_per_frame = 1.0 / screen.config.framerate
         pollevents(screen) # GLFW poll
-        if requires_update(screen)
+
+        if !screen.config.pause_renderloop && requires_update(screen)
             UPDATES[] += 1
             render_frame(screen)
             GLFW.SwapBuffers(to_native(screen))
         end
+
         t_elapsed = (time_ns() - t) / 1e9
         diff = time_per_frame - t_elapsed
         if diff > 0.001 # can't sleep less than 0.001
@@ -682,7 +706,10 @@ end
 function renderloop(screen)
     isopen(screen) || error("Screen most be open to run renderloop!")
     try
-        if screen.config.vsync
+        if screen.config.render_on_demand
+            GLFW.SwapInterval(0)
+            on_demand_renderloop(screen)
+        elseif screen.config.vsync
             GLFW.SwapInterval(1)
             vsynced_renderloop(screen)
         else
