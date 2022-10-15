@@ -578,7 +578,6 @@ function renderloop_running(screen::Screen)
 end
 
 function start_renderloop!(screen::Screen)
-    @info "start_renderloop"
     if renderloop_running(screen)
         screen.config.pause_renderloop = false
         return

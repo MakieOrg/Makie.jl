@@ -88,6 +88,10 @@ mutable struct GPUVector{T} <: GPUArray{T, 1}
     buffer
     size
     real_length
+
+    function GPUVector{T}(buffer, size, real_length) where T
+        new{T}(buffer, size, real_length)
+    end
 end
 
 GPUVector(x::GPUArray) = GPUVector{eltype(x)}(x, size(x), length(x))
@@ -192,10 +196,8 @@ max_dim(t)       = error("max_dim not implemented for: $(typeof(t)). This happen
 
 
 function (::Type{T})(x::Observable; kw...) where T <: GPUArray
-    @info "contructor"
     gpu_mem = T(x[]; kw...)
     on(x) do x
-        @info "Update $T"
         gpu_mem.requires_update[] = true
         update!(gpu_mem, x) 
     end

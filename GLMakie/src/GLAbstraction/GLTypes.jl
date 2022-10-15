@@ -180,7 +180,6 @@ mutable struct GLVertexArray{T}
         va = new(program, id, bufferlength, buffers, indices, current_context(), true)
         for (name, buffer) in buffers
             on(buffer.requires_update) do _ # only triggers true anyway
-                @info "VertexArray buffer $name update"
                 va.requires_update[] = true
             end
         end
@@ -313,7 +312,6 @@ mutable struct RenderObject{Pre}
         # But with this implementation, the fxaa flag can't be changed,
         # and since this is a UUID, it shouldn't matter
         id = pack_bool(RENDER_OBJECT_ID_COUNTER[], fxaa)
-        @info "RenderObject $id with $(length(uniforms)) uniforms"
         robj = new(
             context,
             uniforms, observables, vertexarray,
@@ -325,12 +323,10 @@ mutable struct RenderObject{Pre}
         for (key, uniform) in uniforms
             if uniform isa Observable
                 on(uniform) do _
-                    @info "Requesting update of $id $key"
                     robj.requires_update = true
                 end
             elseif uniform isa Union{Texture, TextureBuffer, GLBuffer}
                 on(uniform.requires_update) do _
-                    @info "Requesting update of $id $key"
                     robj.requires_update = true
                 end
             end

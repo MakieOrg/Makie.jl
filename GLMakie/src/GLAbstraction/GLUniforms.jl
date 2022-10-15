@@ -248,7 +248,6 @@ gl_convert(::Type{<: GPUArray}, a::Observable{<: StaticVector}) = gl_convert(a)
 function gl_convert(::Type{T}, a::Observable{<: AbstractArray{X, N}}; kw_args...) where {T <: GPUArray, X, N}
     TGL = gl_promote(X)
     s = (X == TGL) ? a : lift(x-> convert(Array{TGL, N}, x), a)
-    @info TGL
     T(s; kw_args...)
 end
 
