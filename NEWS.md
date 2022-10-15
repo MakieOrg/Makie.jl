@@ -2,7 +2,11 @@
 
 ## master
 
-- `hexbin` is now available as a recipe [#368] (https://github.com/JuliaPlots/Makie.jl/pull/2201)
+- Add "render_on_demand" flag for GLMakie. Setting this to `true` will skip rendering until plots get updated. [#2336](https://github.com/MakieOrg/Makie.jl/pull/2336)
+
+## v0.18.0
+
+- `hexbin` is now available as a recipe [#2201](https://github.com/JuliaPlots/Makie.jl/pull/2201)
 - Added the `tricontourf` plotting function [#2226](https://github.com/JuliaPlots/Makie.jl/pull/2226).
 - Fix per character attributes in text [#2244](https://github.com/JuliaPlots/Makie.jl/pull/2244)
 - `Axis` does now accept both a `Bool` and a `Tuple{Bool, Bool}` as values for `xtrimspine` and `ytrimspine` to trim only one end of the spine [#2171](https://github.com/JuliaPlots/Makie.jl/pull/2171).
