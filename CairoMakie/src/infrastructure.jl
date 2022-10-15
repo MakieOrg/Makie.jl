@@ -106,8 +106,9 @@ function draw_plot(scene::Scene, screen::Screen, primitive::Combined)
             draw_atomic(scene, screen, primitive)
             Cairo.restore(screen.context)
         else
-            for plot in primitive.plots
-                draw_plot(scene, screen, plot)
+            zvals = Makie.zvalue2d.(primitive.plots)
+            for idx in sortperm(zvals)
+                draw_plot(scene, screen, primitive.plots[idx])
             end
         end
     end
