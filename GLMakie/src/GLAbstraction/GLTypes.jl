@@ -322,9 +322,14 @@ mutable struct RenderObject{Pre}
         )
         # Checking each robj.requires_update after polling events seems like 
         # a better idea than having an observable chain...
-        for (key, maybe_obs) in uniforms
-            if maybe_obs isa Observable
-                on(maybe_obs) do _
+        for (key, uniform) in uniforms
+            if uniform isa Observable
+                on(uniform) do _
+                    @info "Requesting update of $id $key"
+                    robj.requires_update = true
+                end
+            elseif uniform isa Union{Texture, TextureBuffer, GLBuffer}
+                on(uniform.requires_update) do _
                     @info "Requesting update of $id $key"
                     robj.requires_update = true
                 end

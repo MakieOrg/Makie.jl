@@ -17,6 +17,7 @@ mutable struct Texture{T <: GLArrayEltypes, NDIM} <: OpenglTexture{T, NDIM}
     parameters      ::TextureParameters{NDIM}
     size            ::NTuple{NDIM, Int}
     context         ::GLContext
+    requires_update ::Observable{Bool}
     function Texture{T, NDIM}(
             id              ::GLuint,
             texturetype     ::GLenum,
@@ -34,7 +35,8 @@ mutable struct Texture{T <: GLArrayEltypes, NDIM} <: OpenglTexture{T, NDIM}
             format,
             parameters,
             size,
-            current_context()
+            current_context(),
+            Observable(true)
         )
         finalizer(free, tex)
         tex
@@ -45,6 +47,13 @@ end
 mutable struct TextureBuffer{T <: GLArrayEltypes} <: OpenglTexture{T, 1}
     texture::Texture{T, 1}
     buffer::GLBuffer{T}
+    requires_update::Observable{Bool}
+
+    function TextureBuffer(texture::Texture{T, 1}, buffer::GLBuffer{T}) where T
+        # do we need to listen to texture changes or is buffer enough?
+        x = map((_, _) -> true, buffer.requires_update, texture.requires_update)
+        new{T}(texture, buffer, x)
+    end
 end
 Base.size(t::TextureBuffer) = size(t.buffer)
 Base.size(t::TextureBuffer, i::Integer) = size(t.buffer, i)
