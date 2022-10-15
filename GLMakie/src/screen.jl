@@ -678,17 +678,13 @@ function requires_update(screen::Screen)
     return false
 end
 
-const UPDATES = Ref(0)
-
 function on_demand_renderloop(screen::Screen)
-    UPDATES[] = 0
     while isopen(screen) && !screen.stop_renderloop
         t = time_ns()
         time_per_frame = 1.0 / screen.config.framerate
         pollevents(screen) # GLFW poll
 
         if !screen.config.pause_renderloop && requires_update(screen)
-            UPDATES[] += 1
             render_frame(screen)
             GLFW.SwapBuffers(to_native(screen))
         end

@@ -318,9 +318,9 @@ mutable struct RenderObject{Pre}
             prerenderfunctions, postrenderfunctions,
             id, true
         )
-        # Checking each robj.requires_update after polling events seems like 
-        # a better idea than having an observable chain...
-        for (key, uniform) in uniforms
+
+        # gather update requests for polling in renderloop
+        for uniform in values(uniforms)
             if uniform isa Observable
                 on(uniform) do _
                     robj.requires_update = true

@@ -88,10 +88,6 @@ mutable struct GPUVector{T} <: GPUArray{T, 1}
     buffer
     size
     real_length
-
-    function GPUVector{T}(buffer, size, real_length) where T
-        new{T}(buffer, size, real_length)
-    end
 end
 
 GPUVector(x::GPUArray) = GPUVector{eltype(x)}(x, size(x), length(x))

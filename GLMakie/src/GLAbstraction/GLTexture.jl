@@ -50,7 +50,6 @@ mutable struct TextureBuffer{T <: GLArrayEltypes} <: OpenglTexture{T, 1}
     requires_update::Observable{Bool}
 
     function TextureBuffer(texture::Texture{T, 1}, buffer::GLBuffer{T}) where T
-        # do we need to listen to texture changes or is buffer enough?
         x = map((_, _) -> true, buffer.requires_update, texture.requires_update)
         new{T}(texture, buffer, x)
     end
