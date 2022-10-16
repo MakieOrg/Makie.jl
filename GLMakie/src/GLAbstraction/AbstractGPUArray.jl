@@ -193,11 +193,10 @@ max_dim(t)       = error("max_dim not implemented for: $(typeof(t)). This happen
 
 function (::Type{T})(x::Observable; kw...) where T <: GPUArray
     gpu_mem = T(x[]; kw...)
-    on(x) do x
-        gpu_mem.requires_update[] = true
-        update!(gpu_mem, x) 
-    end
-    gpu_mem
+    # TODO merge these and handle update tracking during contruction
+    map!(_ -> true, gpu_mem.requires_update, x)
+    on(x -> update!(gpu_mem, x), x)
+    return gpu_mem
 end
 
 const BaseSerializer = Serialization.AbstractSerializer

@@ -298,11 +298,13 @@ mutable struct RenderObject{Pre}
     postrenderfunction
     id::UInt32
     requires_update::Bool
+
     function RenderObject{Pre}(
             context,
             uniforms::Dict{Symbol,Any}, observables::Vector{Observable},
             vertexarray::GLVertexArray,
-            prerenderfunctions, postrenderfunctions
+            prerenderfunctions, postrenderfunctions,
+            track_updates = true
         ) where Pre
         fxaa = to_value(pop!(uniforms, :fxaa, true))
         RENDER_OBJECT_ID_COUNTER[] += one(UInt32)
@@ -319,19 +321,37 @@ mutable struct RenderObject{Pre}
             id, true
         )
 
-        # gather update requests for polling in renderloop
-        for uniform in values(uniforms)
-            if uniform isa Observable
-                on(uniform) do _
-                    robj.requires_update = true
-                end
-            elseif uniform isa Union{Texture, TextureBuffer, GLBuffer}
-                on(uniform.requires_update) do _
-                    robj.requires_update = true
+        if track_updates
+            # gather update requests for polling in renderloop
+            for uniform in values(uniforms)
+                if uniform isa Observable
+                    on(uniform) do _
+                        robj.requires_update = true
+                    end
+                elseif uniform isa GPUArray
+                    on(uniform.requires_update) do _
+                        robj.requires_update = true
+                    end
                 end
             end
+            on(_ -> robj.requires_update = true, vertexarray.requires_update)
+        else
+            # remove tracking from GPUArrays
+            for uniform in values(uniforms)
+                if uniform isa GPUArray
+                    foreach(off, uniform.requires_update.inputs)
+                    empty!(uniform.requires_update.inputs)
+                end
+            end
+            for buffer in vertexarray.buffers
+                if buffer isa GPUArray
+                    foreach(off, buffer.requires_update.inputs)
+                    empty!(buffer.requires_update.inputs)
+                end
+            end
+            foreach(off, vertexarray.requires_update.inputs)
+            empty!(vertexarray.requires_update.inputs)
         end
-        on(_ -> robj.requires_update = true, vertexarray.requires_update)
 
         return robj
     end
@@ -344,6 +364,11 @@ function RenderObject(
     ) where Pre
 
     switch_context!(context)
+
+    # This is a lazy workaround for disabling updates of `requires_update` when
+    # not rendering on demand. A cleaner implementation should probably go 
+    # through @gen_defaults! and adjust constructors instead.
+    track_updates = to_value(pop!(data, :track_updates, true))
 
     targets = get(data, :gl_convert_targets, Dict())
     delete!(data, :gl_convert_targets)
@@ -387,6 +412,7 @@ function RenderObject(
         vertexarray,
         pre,
         post,
+        track_updates
     )
     # automatically integrate object ID, will be discarded if shader doesn't use it
     robj[:objectid] = robj.id
