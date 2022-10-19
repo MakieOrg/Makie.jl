@@ -175,8 +175,8 @@ app = App() do session::Session
         const scatter_plot = plots[0]
 
         // change first point x + y value
-        scatter_plot.geometry.attributes.offset.array[0] = (new_value/100) * 4
-        scatter_plot.geometry.attributes.offset.array[1] = (new_value/100) * 4
+        scatter_plot.geometry.attributes.pos.array[0] = (new_value/100) * 4
+        scatter_plot.geometry.attributes.pos.array[1] = (new_value/100) * 4
         // this always needs to be set of geometry attributes after an update
         scatter_plot.geometry.attributes.offset.needsUpdate = true
     }
