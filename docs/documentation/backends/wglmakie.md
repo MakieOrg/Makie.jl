@@ -178,7 +178,7 @@ app = App() do session::Session
         scatter_plot.geometry.attributes.pos.array[0] = (new_value/100) * 4
         scatter_plot.geometry.attributes.pos.array[1] = (new_value/100) * 4
         // this always needs to be set of geometry attributes after an update
-        scatter_plot.geometry.attributes.offset.needsUpdate = true
+        scatter_plot.geometry.attributes.pos.needsUpdate = true
     }
     """)
     # and for got measures, add a slider to change the color:
