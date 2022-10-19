@@ -31,8 +31,8 @@ serialize_three(val::Vec4f) = convert(Vector{Float32}, val)
 serialize_three(val::Quaternion) = convert(Vector{Float32}, collect(val.data))
 serialize_three(val::RGB) = Float32[red(val), green(val), blue(val)]
 serialize_three(val::RGBA) = Float32[red(val), green(val), blue(val), alpha(val)]
-serialize_three(val::Mat4f) = vec(val)
-serialize_three(val::Mat3) = vec(val)
+serialize_three(val::Mat4f) = collect(vec(val))
+serialize_three(val::Mat3) = collect(vec(val))
 
 function serialize_three(observable::Observable)
     return Dict(:type => "Observable", :id => observable.id,
@@ -47,29 +47,12 @@ function serialize_three(array::Buffer)
     return serialize_three(flatten_buffer(array))
 end
 
-function serialize_three(array::AbstractArray{UInt8})
-    return Dict(:type => "Uint8Array", :data => array)
-end
-
-function serialize_three(array::AbstractArray{Int32})
-    return Dict(:type => "Int32Array", :data => array)
-end
-
-function serialize_three(array::AbstractArray{UInt32})
-    return Dict(:type => "Uint32Array", :data => array)
-end
-
-function serialize_three(array::AbstractArray{Float32})
-    return Dict(:type => "Float32Array", :data => array)
-end
-
-function serialize_three(array::AbstractArray{Float16})
-    return Dict(:type => "Float32Array", :data => array)
-end
-
-function serialize_three(array::AbstractArray{Float64})
-    return Dict(:type => "Float64Array", :data => array)
-end
+serialize_three(array::AbstractArray{UInt8}) = vec(array)
+serialize_three(array::AbstractArray{Int32}) = vec(array)
+serialize_three(array::AbstractArray{UInt32}) = vec(array)
+serialize_three(array::AbstractArray{Float32}) = vec(array)
+serialize_three(array::AbstractArray{Float16}) = vec(array)
+serialize_three(array::AbstractArray{Float64}) = vec(array)
 
 function serialize_three(color::Sampler{T,N}) where {T,N}
     tex = Dict(:type => "Sampler", :data => serialize_three(color.data),

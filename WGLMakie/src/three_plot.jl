@@ -80,11 +80,10 @@ function three_display(session::Session, scene::Scene; screen_config...)
         console.log("registering windows onloaaaad!");
         const canvas = $canvas;
         console.log(canvas);
-        const func = (async () => {
-            const WGLMakie = await $(WGL);
-            WGLMakie.create_scene($wrapper, canvas, $canvas_width, $scene_data, $comm, $width, $height, $(config.framerate))
+        $(WGL).then(WGL => {
+            WGL.create_scene($wrapper, canvas, $canvas_width, $scene_data, $comm, $width, $height, $(config.framerate))
         })
-        setTimeout(func, 2000)
+
     }
     """
 

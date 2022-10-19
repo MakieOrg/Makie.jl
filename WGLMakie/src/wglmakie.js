@@ -1,6 +1,6 @@
 import * as THREE from "https://cdn.esm.sh/v66/three@0.136/es2021/three.js";
 import { getWebGLErrorMessage } from './WEBGL.js'
-
+window.THREE = THREE
 const pixelRatio = window.devicePixelRatio || 1.0;
 // global scene cache to look them up for dynamic operations in Makie
 // e.g. insert!(scene, plot) / delete!(scene, plot)
@@ -205,7 +205,7 @@ function attach_3d_camera(domElement, camera_matrices, cam3d) {
 }
 
 function create_texture(data) {
-    const buffer = deserialize_three(data.data);
+    const buffer = data.data;
     if (data.size.length == 3) {
         const tex = new THREE.DataTexture3D(
             buffer,
@@ -250,7 +250,26 @@ const typed_array_names = [
     "Float32Array",
 ];
 
+function to_uniform(data) {
+    if (data.length == 2) {
+        return new THREE.Vector2().fromArray(data);
+    }
+    if (data.length == 3) {
+        return new THREE.Vector3().fromArray(data);
+    }
+    if (data.length == 4) {
+        return new THREE.Vector4().fromArray(data);
+    }
+    if (data.length == 16) {
+        const mat = new THREE.Matrix4();
+        mat.fromArray(data);
+        return mat;
+    }
+    return data
+}
+
 function deserialize_three(data) {
+
     if (typeof data === "number") {
         return data;
     }
@@ -260,7 +279,7 @@ function deserialize_three(data) {
     }
 
     if (typed_array_names.includes(data.constructor.name)) {
-        return data;
+        return to_uniform(data);
     }
 
     if (data.type !== undefined) {
@@ -273,36 +292,20 @@ function deserialize_three(data) {
     }
 
     if (Array.isArray(data)) {
-        if (data.length == 2) {
-            return new THREE.Vector2().fromArray(data);
-        }
-        if (data.length == 3) {
-            return new THREE.Vector3().fromArray(data);
-        }
-        if (data.length == 4) {
-            return new THREE.Vector4().fromArray(data);
-        }
-        if (data.length == 16) {
-            const mat = new THREE.Matrix4();
-            mat.fromArray(data);
-            return mat;
-        }
-        return data;
+        return to_uniform(data)
     }
     return data; // we just leave data we dont know alone!
 }
 
 function BufferAttribute(buffer) {
-    const buff = deserialize_three(buffer.flat);
-    const jsbuff = new THREE.BufferAttribute(buff, buffer.type_length);
+    const jsbuff = new THREE.BufferAttribute(buffer.flat, buffer.type_length);
     jsbuff.setUsage(THREE.DynamicDrawUsage);
     return jsbuff;
 }
 
 function InstanceBufferAttribute(buffer) {
-    const buff = deserialize_three(buffer.flat);
     const jsbuff = new THREE.InstancedBufferAttribute(
-        buff,
+        buffer.flat,
         buffer.type_length
     );
     jsbuff.setUsage(THREE.DynamicDrawUsage);
@@ -377,11 +380,13 @@ function update_buffer(mesh, buffer) {
 
 function deserialize_uniforms(data) {
     const result = {};
+    // Threejs changes constructor names from some version to another..so...
+    const uniform_constructor = (new THREE.Uniform(2)).constructor.name
     for (const name in data) {
         const value = data[name];
         // this is already a uniform - happens when we attach additional
         // uniforms like the camera matrices in a later stage!
-        if (value.constructor.name == "Uniform") {
+        if (value.constructor.name == uniform_constructor) {
             result[name] = value;
         } else {
             const ser = deserialize_three(value);
@@ -395,8 +400,8 @@ function create_material(program) {
     const is_volume = "volumedata" in program.uniforms;
     return new THREE.RawShaderMaterial({
         uniforms: deserialize_uniforms(program.uniforms),
-        vertexShader: deserialize_three(program.vertex_source),
-        fragmentShader: deserialize_three(program.fragment_source),
+        vertexShader: program.vertex_source,
+        fragmentShader: program.fragment_source,
         side: is_volume ? THREE.BackSide : THREE.DoubleSide,
         transparent: true,
         depthTest: !program.overdraw.value,
@@ -406,14 +411,16 @@ function create_material(program) {
 
 function create_mesh(program) {
     const buffer_geometry = new THREE.BufferGeometry();
-    attach_geometry(buffer_geometry, program.vertexarrays, program.faces);
+    const faces = new THREE.BufferAttribute(program.faces, 1)
+    attach_geometry(buffer_geometry, program.vertexarrays, faces);
     const material = create_material(program);
     return new THREE.Mesh(buffer_geometry, material);
 }
 
 function create_instanced_mesh(program) {
     const buffer_geometry = new THREE.InstancedBufferGeometry();
-    attach_geometry(buffer_geometry, program.vertexarrays, program.faces);
+    const faces = new THREE.BufferAttribute(program.faces, 1)
+    attach_geometry(buffer_geometry, program.vertexarrays, faces);
     attach_instanced_geometry(buffer_geometry, program.instance_attributes);
     const material = create_material(program);
     return new THREE.Mesh(buffer_geometry, material);
@@ -477,9 +484,7 @@ function deserialize_scene(data, canvas) {
         cam.resolution.value.fromArray(resolution_scaled);
         cam.eyeposition.value.fromArray(eyepos);
     }
-    console.log(data.camera)
     update_cam(data.camera.value);
-
     if (data.cam3d_state) {
         attach_3d_camera(canvas, cam, data.cam3d_state);
     } else {
@@ -489,6 +494,7 @@ function deserialize_scene(data, canvas) {
     data.plots.forEach((plot_data) => {
         add_plot(scene, plot_data);
     });
+    console.log(scene)
     return scene;
 }
 
@@ -525,7 +531,6 @@ function connect_attributes(mesh, updater) {
 
     function re_assign_buffers() {
         const attributes = mesh.geometry.attributes;
-        const buffers = Object.values(attributes);
         Object.keys(attributes).forEach((name) => {
             const buffer = attributes[name];
             if (buffer.isInstancedBufferAttribute) {
@@ -545,10 +550,9 @@ function connect_attributes(mesh, updater) {
 
     re_assign_buffers();
 
-    updater.on(([name, array, length]) => {
+    updater.on(([name, new_values, length]) => {
         // TODO, why are these called with the initial values!?
         if (length > 0) {
-            const new_values = deserialize_three(array);
             const buffer = mesh.geometry.attributes[name];
             let buffers;
             let first_buffer;
@@ -746,9 +750,10 @@ function threejs_module(canvas, comm, width, height) {
 function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height, fps){
     const renderer = threejs_module(canvas, comm, width, height)
     if ( renderer ) {
-        console.log(scenes)
         const three_scenes = scenes.map(x=> deserialize_scene(x, canvas))
+        console.log(three_scenes)
         const cam = new THREE.PerspectiveCamera(45, 1, 0, 100)
+        cam.updateProjectionMatrix()
         start_renderloop(renderer, three_scenes, cam, fps);
         canvas_width.on(w_h => {
             // `renderer.setSize` correctly updates `canvas` dimensions
