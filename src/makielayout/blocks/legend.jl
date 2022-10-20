@@ -213,6 +213,7 @@ function initialize_block!(leg::Legend,
                 # plot the symbols belonging to this entry
                 symbolplots = AbstractPlot[]
                 for element in e.elements
+                    element isa DefaultElement && continue
                     append!(symbolplots,
                             legendelement_plots!(scene, element, rect.layoutobservables.computedbbox, e.attributes))
                 end
@@ -285,6 +286,11 @@ function legendelement_plots!(scene, element::PolyElement, bbox::Observable{Rect
     [pol]
 end
 
+
+function legendelement_plots!(scene, element::DefaultElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
+    # we don't plot anything
+end
+
 function Base.getproperty(lentry::LegendEntry, s::Symbol)
     if s in fieldnames(LegendEntry)
         getfield(lentry, s)
@@ -342,6 +348,10 @@ function PolyElement(;kwargs...)
     _legendelement(PolyElement, Attributes(kwargs))
 end
 
+function DefaultElement(;kwargs...)
+    _legendelement(DefaultElement, Attributes(kwargs))
+end
+
 function _legendelement(T::Type{<:LegendElement}, a::Attributes)
     _rename_attributes!(T, a)
     T(a)
@@ -363,6 +373,7 @@ _renaming_mapping(::Type{PolyElement}) = Dict(
     :strokewidth => :polystrokewidth,
     :strokecolor => :polystrokecolor,
 )
+_renaming_mapping(::Type{DefaultElement}) = Dict{Symbol,Symbol}()
 
 function _rename_attributes!(T, a)
     m = _renaming_mapping(T)
@@ -416,6 +427,10 @@ end
 function legendelements(plot::Band, legend)
     # there seems to be no stroke for Band, so we set it invisible
     LegendElement[PolyElement(polycolor = scalar_lift(plot.color, legend.polystrokecolor), polystrokecolor = :transparent, polystrokewidth = 0)]
+end
+
+function legendelements(plot::AbstractPlot, legend)
+    LegendElement[DefaultElement()]
 end
 
 # if there is no specific overload available, we go through the child plots and just stack

@@ -898,6 +898,10 @@ end
 
 abstract type LegendElement end
 
+struct DefaultElement <: LegendElement
+    attributes::Attributes
+end
+
 struct LineElement <: LegendElement
     attributes::Attributes
 end
