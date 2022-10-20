@@ -1,6 +1,6 @@
 using Base.Docs: doc
 
-@enum RenderType SVG IMAGE PDF EPS
+@enum RenderType SVG IMAGE PDF EPS HTML
 
 Base.convert(::Type{RenderType}, ::MIME{SYM}) where SYM = mime_to_rendertype(SYM)
 function Base.convert(::Type{RenderType}, type::String)
@@ -22,6 +22,7 @@ function to_mime(type::RenderType)
     type == SVG && return MIME("image/svg+xml")
     type == PDF && return MIME("application/pdf")
     type == EPS && return MIME("application/postscript")
+    type == HTML && return MIME("text/html")
     return MIME("image/png")
 end
 
@@ -35,6 +36,8 @@ function mime_to_rendertype(mime::Symbol)::RenderType
         return PDF
     elseif mime == Symbol("application/postscript")
         return EPS
+    elseif mime in (Symbol("text/html"), Symbol("text/html"), Symbol("application/vnd.webio.application+html"), Symbol("application/prs.juno.plotpane+html"), Symbol("juliavscode/html"))
+        return HTML
     else
         error("Unsupported mime: $mime")
     end
@@ -55,7 +58,7 @@ function surface_from_output_type(type::RenderType, io, w, h)
         return Cairo.CairoPDFSurface(io, w, h)
     elseif type === EPS
         return Cairo.CairoEPSSurface(io, w, h)
-    elseif type === IMAGE
+    elseif type === IMAGE || type === HTML
         img = fill(ARGB32(0, 0, 0, 0), w, h)
         return Cairo.CairoImageSurface(img)
     else
@@ -116,9 +119,7 @@ function activate!(; type="png", screen_config...)
         # So, if we want to prefer the png mime, we disable the mimes that are usually higher up in the stack.
         disable_mime!("svg", "pdf")
     elseif type == "svg"
-        # SVG is usually pretty high up the priority, so we can just enable all mimes
-        # If we implement html display for CairoMakie, we might need to disable that.
-        disable_mime!()
+        disable_mime!("html", "png")
     else
         enable_only_mime!(type)
     end
