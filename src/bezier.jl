@@ -19,7 +19,7 @@ struct CurveTo
 end
 
 CurveTo(cx1, cy1, cx2, cy2, p1, p2) = CurveTo(
-    Point(cx1, cy1), Point(cx2, cy2), Point(p1, p1)
+    Point(cx1, cy1), Point(cx2, cy2), Point(p1, p2)
 )
 
 struct EllipticalArc
