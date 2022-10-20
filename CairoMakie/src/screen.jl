@@ -12,6 +12,8 @@ function Base.convert(::Type{RenderType}, type::String)
         return PDF
     elseif type == "eps"
         return EPS
+    elseif type == "html"
+        return HTML
     else
         error("Unsupported cairo render type: $type")
     end
