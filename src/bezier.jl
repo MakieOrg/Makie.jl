@@ -372,6 +372,11 @@ function parse_bezier_commands(svg)
             l = lastp()
             push!(commands, LineTo(Point2(l[1], l[2] + dy)))
             i += 2
+        elseif comm == "V"
+            y = parse(Float64, args[i+1])
+            l = lastp()
+            push!(commands, LineTo(Point2(l[1], y)))
+            i += 2
         else
             for c in commands
                 println(c)
