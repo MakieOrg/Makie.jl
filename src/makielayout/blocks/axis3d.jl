@@ -470,10 +470,11 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
 
     tickvalues = @lift($ticknode[1])
     ticklabels = @lift($ticknode[2])
+    ticksize = attr(:ticksize)
 
     tick_segments = lift(limits, tickvalues, miv, min1, min2,
-            scene.camera.projectionview, scene.px_area) do lims, ticks, miv, min1, min2,
-                pview, pxa
+            scene.camera.projectionview, scene.px_area, ticksize) do lims, ticks, miv, min1, min2,
+                pview, pxa, tsize
         f1 = !min1 ? minimum(lims)[d1] : maximum(lims)[d1]
         f2 = min2 ? minimum(lims)[d2] : maximum(lims)[d2]
 
@@ -488,12 +489,12 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
             p2 = if dim == 3
                 # special case the z axis, here it depends on azimuth in which direction the ticks go
                 if 45 <= (rad2deg(azimuth[]) % 180) <= 135
-                    dpoint(t, f1 + 0.03 * diff_f1, f2)
+                    dpoint(t, f1 + tsize * diff_f1, f2)
                 else
-                    dpoint(t, f1, f2 + 0.03 * diff_f2)
+                    dpoint(t, f1, f2 + tsize * diff_f2)
                 end
             else
-                dpoint(t, f1 + 0.03 * diff_f1, f2)
+                dpoint(t, f1 + tsize * diff_f1, f2)
             end
 
             (p1, p2)
