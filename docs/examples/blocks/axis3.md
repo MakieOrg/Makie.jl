@@ -9,7 +9,7 @@ The two attributes `azimuth` and `elevation` control the angles from which the p
 using GLMakie
 using FileIO
 GLMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 
@@ -52,7 +52,7 @@ You can also set it to a three-tuple, where each number gives the relative lengt
 using GLMakie
 using FileIO
 GLMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 
@@ -88,7 +88,7 @@ On the other hand, it uses the available space most efficiently.
 ```julia
 using GLMakie
 GLMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 
@@ -122,7 +122,7 @@ A value of 0 looks like an orthographic projection (it is only approximate to a 
 ```julia
 using GLMakie
 GLMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure(resolution = (1200, 800), fontsize = 14)
 

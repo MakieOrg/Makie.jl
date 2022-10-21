@@ -4,6 +4,9 @@ const WGLMakie = (function () {
     // e.g. insert!(scene, plot) / delete!(scene, plot)
     const scene_cache = {};
     const plot_cache = {};
+    let current_renderloop = () => 0;
+
+    const exports = {current_renderloop};
 
     function add_scene(scene_id, three_scene) {
         scene_cache[scene_id] = three_scene;
@@ -71,7 +74,7 @@ const WGLMakie = (function () {
             0.0, 0.0, 0.0,  1.0
         );
         const id = new THREE.Uniform(new THREE.Matrix4());
-        
+
         if (plot_data.cam_space == "data") {
             plot_data.uniforms.view = cam.view;
             plot_data.uniforms.projection = cam.projection;
@@ -446,7 +449,7 @@ const WGLMakie = (function () {
         scene.pixelarea = data.pixelarea;
         scene.backgroundcolor = data.backgroundcolor;
         scene.clearscene = data.clearscene;
-
+        scene.visible = data.visible;
         const cam = {
             view: new THREE.Uniform(new THREE.Matrix4()),
             projection: new THREE.Uniform(new THREE.Matrix4()),
@@ -599,7 +602,7 @@ const WGLMakie = (function () {
     function render_scene(renderer, scene, cam) {
         renderer.autoClear = scene.clearscene;
         const area = JSServe.get_observable(scene.pixelarea);
-        if (area) {
+        if (area && JSServe.get_observable(scene.visible)) {
             const [x, y, w, h] = area.map(t => t / pixelRatio);
             renderer.setViewport(x, y, w, h);
             renderer.setScissor(x, y, w, h);
@@ -635,6 +638,9 @@ const WGLMakie = (function () {
         }
         // render one time before starting loop, so that we don't wait 30ms before first render
         render_scenes(renderer, three_scenes, cam);
+        exports.current_renderloop = function (){
+            render_scenes(renderer, three_scenes, cam);
+        }
         renderloop();
     }
 
@@ -741,19 +747,18 @@ const WGLMakie = (function () {
         return renderer;
     }
 
-    return {
-        deserialize_scene,
-        threejs_module,
-        start_renderloop,
-        deserialize_three,
-        render_scenes,
-        delete_plots,
-        insert_plot,
-        find_plots,
-        delete_scene,
-        find_scene,
-        scene_cache,
-        plot_cache,
-        delete_scenes,
-    };
+    exports.deserialize_scene = deserialize_scene;
+    exports.threejs_module = threejs_module;
+    exports.start_renderloop = start_renderloop;
+    exports.deserialize_three = deserialize_three;
+    exports.render_scenes = render_scenes;
+    exports.delete_plots = delete_plots;
+    exports.insert_plot = insert_plot;
+    exports.find_plots = find_plots;
+    exports.delete_scene = delete_scene;
+    exports.find_scene = find_scene;
+    exports.scene_cache = scene_cache;
+    exports.plot_cache = plot_cache;
+    exports.delete_scenes = delete_scenes;
+    return exports
 })();

@@ -32,7 +32,7 @@ Plots an image on range `x, y` (defaults to dimensions).
 - `transparency::Bool = false` adjusts how the plot deals with transparency. In GLMakie `transparency = true` results in using Order Independent Transparency.
 - `fxaa::Bool = false` adjusts whether the plot is rendered with fxaa (anti-aliasing).
 - `inspectable::Bool = true` sets whether this plot should be seen by `DataInspector`.
-- `depth_shift::Float32 = 0f0` adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw). 
+- `depth_shift::Float32 = 0f0` adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw).
 - `model::Makie.Mat4f` sets a model matrix for the plot. This replaces adjustments made with `translate!`, `rotate!` and `scale!`.
 - `color` is set by the plot.
 - `colormap::Union{Symbol, Vector{<:Colorant}} = [:black, :white` sets the colormap that is sampled for numeric `color`s.
@@ -238,7 +238,7 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
 - `transparency::Bool = false` adjusts how the plot deals with transparency. In GLMakie `transparency = true` results in using Order Independent Transparency.
 - `fxaa::Bool = false` adjusts whether the plot is rendered with fxaa (anti-aliasing). Note that line plots already use a different form of anti-aliasing.
 - `inspectable::Bool = true` sets whether this plot should be seen by `DataInspector`.
-- `depth_shift::Float32 = 0f0` adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw). 
+- `depth_shift::Float32 = 0f0` adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw).
 - `model::Makie.Mat4f` sets a model matrix for the plot. This replaces adjustments made with `translate!`, `rotate!` and `scale!`.
 - `color` sets the color of the plot. It can be given as a named color `Symbol` or a `Colors.Colorant`. Transparency can be included either directly as an alpha value in the `Colorant` or as an additional float in a tuple `(color, alpha)`. The color can also be set for each point in the line by passing a `Vector` of colors or be used to index the `colormap` by passing a `Real` number or `Vector{<: Real}`.
 - `colormap::Union{Symbol, Vector{<:Colorant}} = :viridis` sets the colormap that is sampled for numeric `color`s.
@@ -284,9 +284,9 @@ Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
 - `transparency::Bool = false` adjusts how the plot deals with transparency. In GLMakie `transparency = true` results in using Order Independent Transparency.
 - `fxaa::Bool = false` adjusts whether the plot is rendered with fxaa (anti-aliasing). Note that line plots already use a different form of anti-aliasing.
 - `inspectable::Bool = true` sets whether this plot should be seen by `DataInspector`.
-- `depth_shift::Float32 = 0f0` adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw). 
+- `depth_shift::Float32 = 0f0` adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw).
 - `model::Makie.Mat4f` sets a model matrix for the plot. This replaces adjustments made with `translate!`, `rotate!` and `scale!`.
-- `color` sets the color of the plot. It can be given as a named color `Symbol` or a `Colors.Colorant`. Transparency can be included either directly as an alpha value in the `Colorant` or as an additional float in a tuple `(color, alpha)`. The color can also be set for each point in the line by passing a `Vector` or be used to index the `colormap` by passing a `Real` number or `Vector{<: Real}`. 
+- `color` sets the color of the plot. It can be given as a named color `Symbol` or a `Colors.Colorant`. Transparency can be included either directly as an alpha value in the `Colorant` or as an additional float in a tuple `(color, alpha)`. The color can also be set for each point in the line by passing a `Vector` or be used to index the `colormap` by passing a `Real` number or `Vector{<: Real}`.
 - `colormap::Union{Symbol, Vector{<:Colorant}} = :viridis` sets the colormap that is sampled for numeric `color`s.
 - `colorrange::Tuple{<:Real, <:Real}` sets the values representing the start and end points of `colormap`.
 - `nan_color::Union{Symbol, <:Colorant} = RGBAf(0,0,0,0)` sets a replacement color for `color = NaN`.
@@ -364,7 +364,7 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
 ### Specific to `Scatter`
 
 - `cycle::Vector{Symbol} = [:color]` sets which attributes to cycle when creating multiple plots.
-- `marker::Union{Symbol, Char, Matrix{<:Colorant}}` sets the scatter marker.
+- `marker::Union{Symbol, Char, Matrix{<:Colorant}, BezierPath, Polygon}` sets the scatter marker.
 - `markersize::Union{<:Real, Vec2f} = 9` sets the size of the marker.
 - `markerspace::Symbol = :pixel` sets the space in which `markersize` is given. See `Makie.spaces()` for possible inputs.
 - `strokewidth::Real = 0` sets the width of the outline around a marker.
@@ -440,9 +440,9 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
 - `transparency::Bool = false` adjusts how the plot deals with transparency. In GLMakie `transparency = true` results in using Order Independent Transparency.
 - `fxaa::Bool = true` adjusts whether the plot is rendered with fxaa (anti-aliasing).
 - `inspectable::Bool = true` sets whether this plot should be seen by `DataInspector`.
-- `depth_shift::Float32 = 0f0` adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw). 
+- `depth_shift::Float32 = 0f0` adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw).
 - `model::Makie.Mat4f` sets a model matrix for the plot. This replaces adjustments made with `translate!`, `rotate!` and `scale!`.
-- `color` sets the color of the plot. It can be given as a named color `Symbol` or a `Colors.Colorant`. Transparency can be included either directly as an alpha value in the `Colorant` or as an additional float in a tuple `(color, alpha)`. The color can also be set for each scattered mesh by passing a `Vector` of colors or be used to index the `colormap` by passing a `Real` number or `Vector{<: Real}`. 
+- `color` sets the color of the plot. It can be given as a named color `Symbol` or a `Colors.Colorant`. Transparency can be included either directly as an alpha value in the `Colorant` or as an additional float in a tuple `(color, alpha)`. The color can also be set for each scattered mesh by passing a `Vector` of colors or be used to index the `colormap` by passing a `Real` number or `Vector{<: Real}`.
 - `colormap::Union{Symbol, Vector{<:Colorant}} = :viridis` sets the colormap that is sampled for numeric `color`s.
 - `colorrange::Tuple{<:Real, <:Real}` sets the values representing the start and end points of `colormap`.
 - `nan_color::Union{Symbol, <:Colorant} = RGBAf(0,0,0,0)` sets a replacement color for `color = NaN`.
@@ -451,7 +451,7 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
 ### Generic 3D
 
 - `shading = true` enables lighting.
-- `diffuse::Vec3f = Vec3f(0.4)` sets how strongly the red, green and blue channel react to diffuse (scattered) light. 
+- `diffuse::Vec3f = Vec3f(0.4)` sets how strongly the red, green and blue channel react to diffuse (scattered) light.
 - `specular::Vec3f = Vec3f(0.2)` sets how strongly the object reflects light in the red, green and blue channels.
 - `shininess::Real = 32.0` sets how sharp the reflection is.
 - `ssao::Bool = false` adjusts whether the plot is rendered with ssao (screen space ambient occlusion). Note that this only makes sense in 3D plots and is only applicable with `fxaa = true`.
@@ -530,5 +530,69 @@ Plots one or multiple texts passed via the `text` keyword.
         offset = (0.0, 0.0),
         word_wrap_width = -1,
         inspectable = theme(scene, :inspectable)
+    )
+end
+
+"""
+    poly(vertices, indices; kwargs...)
+    poly(points; kwargs...)
+    poly(shape; kwargs...)
+    poly(mesh; kwargs...)
+
+Plots a polygon based on the arguments given.
+When vertices and indices are given, it functions similarly to `mesh`.
+When points are given, it draws one polygon that connects all the points in order.
+When a shape is given (essentially anything decomposable by `GeometryBasics`), it will plot `decompose(shape)`.
+
+    poly(coordinates, connectivity; kwargs...)
+
+Plots polygons, which are defined by
+`coordinates` (the coordinates of the vertices) and
+`connectivity` (the edges between the vertices).
+
+## Attributes
+
+### Specific to `Poly`
+
+- `lowclip::Union{Nothing, Symbol, <:Colorant} = nothing` sets a color for any value below the colorrange.
+- `highclip::Union{Nothing, Symbol, <:Colorant} = nothing` sets a color for any value above the colorrange.
+- `strokecolor::Union{Symbol, <:Colorant} = :black` sets the color of the outline around a marker.
+- `strokewidth::Real = 0` sets the width of the outline around a marker.
+- `linestyle::Union{Nothing, Symbol, Vector} = nothing` sets the pattern of the line (e.g. `:solid`, `:dot`, `:dashdot`)
+
+### Generic
+
+- `visible::Bool = true` sets whether the plot will be rendered or not.
+- `overdraw::Bool = false` sets whether the plot will draw over other plots. This specifically means ignoring depth checks in GL backends.
+- `transparency::Bool = false` adjusts how the plot deals with transparency. In GLMakie `transparency = true` results in using Order Independent Transparency.
+- `fxaa::Bool = true` adjusts whether the plot is rendered with fxaa (anti-aliasing).
+- `inspectable::Bool = true` sets whether this plot should be seen by `DataInspector`.
+- `color` is set by the plot.
+- `colormap::Union{Symbol, Vector{<:Colorant}} = [:black, :white` sets the colormap that is sampled for numeric `color`s.
+- `colorrange::Tuple{<:Real, <:Real}` sets the values representing the start and end points of `colormap`.
+- `nan_color::Union{Symbol, <:Colorant} = RGBAf(0,0,0,0)` sets a replacement color for `color = NaN`.
+- `space::Symbol = :data` sets the transformation space for the position of the image. See `Makie.spaces()` for possible inputs.
+- `cycle::Vector{Symbol} = [:color => :patchcolor]` sets which attributes to cycle when creating multiple plots.
+- `shading = false` enables lighting.
+"""
+@recipe(Poly) do scene
+    Attributes(;
+        color = theme(scene, :patchcolor),
+        visible = theme(scene, :visible),
+        strokecolor = theme(scene, :patchstrokecolor),
+        colormap = theme(scene, :colormap),
+        colorrange = automatic,
+        lowclip = automatic,
+        highclip = automatic,
+        nan_color = :transparent,
+        strokewidth = theme(scene, :patchstrokewidth),
+        shading = false,
+        fxaa = true,
+        linestyle = nothing,
+        overdraw = false,
+        transparency = false,
+        cycle = [:color => :patchcolor],
+        inspectable = theme(scene, :inspectable),
+        space = :data
     )
 end

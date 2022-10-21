@@ -25,7 +25,7 @@ import TOML
 
 cfg = GitHubActions() # this should pick up all details via GHA environment variables
 
-repo = "github.com/JuliaPlots/Makie.jl.git"
+repo = "github.com/MakieOrg/Makie.jl.git"
 push_preview = true
 
 deploydecision = deploy_folder(cfg; repo, push_preview, devbranch="master", devurl="dev")
@@ -118,6 +118,9 @@ function make_links_relative()
     end
 end
 
+using GLMakie
+GLMakie.activate!(pause_renderloop=true)
+
 serve(; single=true, cleanup=false, fail_on_warning=true)
 # for interactive development of the docs, use:
 # cd(@__DIR__); serve(single=false, cleanup=true, clear=true, fail_on_warning = false)
@@ -138,7 +141,7 @@ function populate_stork_config(deploydecision)
             end
             f = filter(endswith(".html"), files)
             isempty(f) && continue
-            
+
             for file in f
                 s = read(joinpath(root, file), String)
                 s = replace(s, '\0' => "\\0")

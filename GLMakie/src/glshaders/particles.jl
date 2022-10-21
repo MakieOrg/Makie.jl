@@ -35,70 +35,13 @@ struct PointSizeRender
 end
 (x::PointSizeRender)() = glPointSize(to_pointsize(x.size[]))
 
-"""
-returns the Shape for the distancefield algorithm
-"""
-primitive_shape(::Union{AbstractString, Char}) = DISTANCEFIELD
-primitive_shape(x::X) where {X} = primitive_shape(X)
-primitive_shape(::Type{T}) where {T <: Circle} = CIRCLE
-primitive_shape(::Type{T}) where {T <: Rect2} = RECTANGLE
-primitive_shape(x::Shape) = x
 
-"""
-Extracts the scale from a primitive.
-"""
-primitive_scale(prim::GeometryPrimitive) = Vec2f(widths(prim))
-primitive_scale(::Union{Shape, Char}) = Vec2f(40)
-primitive_scale(c) = Vec2f(0.1)
-
-"""
-Extracts the offset from a primitive.
-"""
-primitive_offset(x, scale::Nothing) = Vec2f(0) # default offset
-primitive_offset(x, scale) = const_lift(/, scale, -2f0)  # default offset
-
-
-"""
-Extracts the uv offset and width from a primitive.
-"""
-primitive_uv_offset_width(c::Char) = glyph_uv_width!(c)
-primitive_uv_offset_width(str::AbstractString) = map(glyph_uv_width!, collect(str))
-primitive_uv_offset_width(x) = Vec4f(0,0,1,1)
-
-"""
-Gets the texture atlas if primitive is a char.
-"""
-primitive_distancefield(x) = nothing
-primitive_distancefield(::Union{AbstractString, Char}) = get_texture!(get_texture_atlas())
-primitive_distancefield(x::Observable) = primitive_distancefield(x[])
-
-function char_scale_factor(char, font)
-    # uv * size(ta.data) / Makie.PIXELSIZE_IN_ATLAS[] is the padded glyph size
-    # normalized to the size the glyph was generated as.
-    ta = Makie.get_texture_atlas()
-    lbrt = glyph_uv_width!(ta, char, font)
-    width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
-    return width .* Vec2f(size(ta.data)) ./ Makie.PIXELSIZE_IN_ATLAS[]
-end
-
-# This works the same for x being widths and offsets
-rescale_glyph(char::Char, font, x) = x * char_scale_factor(char, font)
-function rescale_glyph(char::Char, font, xs::Vector)
-    f = char_scale_factor(char, font)
-    map(x -> f * x, xs)
-end
-function rescale_glyph(str::String, font, x)
-    [x * char_scale_factor(char, font) for char in collect(str)]
-end
-function rescale_glyph(str::String, font, xs::Vector)
-    map((char, x) -> x * char_scale_factor(char, font), collect(str), xs)
-end
 
 @nospecialize
 """
 This is the main function to assemble particles with a GLNormalMesh as a primitive
 """
-function draw_mesh_particle(shader_cache, p, data)
+function draw_mesh_particle(screen, p, data)
     rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
     rot = vec2quaternion(rot)
     delete!(data, :rotation)
@@ -127,13 +70,13 @@ function draw_mesh_particle(shader_cache, p, data)
         shading = true
         transparency = false
         shader = GLVisualizeShader(
-            shader_cache,
+            screen,
             "util.vert", "particles.vert", "mesh.frag", "fragment_output.frag",
             view = Dict(
                 "position_calc" => position_calc(position, nothing, nothing, nothing, TextureBuffer),
                 "light_calc" => light_calc(shading),
-                "buffers" => output_buffers(to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(to_value(transparency))
+                "buffers" => output_buffers(screen, to_value(transparency)),
+                "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
             )
         )
     end
@@ -149,7 +92,7 @@ end
 This is the most primitive particle system, which uses simple points as primitives.
 This is supposed to be the fastest way of displaying particles!
 """
-function draw_pixel_scatter(shader_cache, position::VectorTypes, data::Dict)
+function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
     @gen_defaults! data begin
         vertex       = position => GLBuffer
         color_map    = nothing  => Texture
@@ -158,11 +101,11 @@ function draw_pixel_scatter(shader_cache, position::VectorTypes, data::Dict)
         scale        = 2f0
         transparency = false
         shader       = GLVisualizeShader(
-            shader_cache,
+            screen,
             "fragment_output.frag", "dots.vert", "dots.frag",
             view = Dict(
-                "buffers" => output_buffers(to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(to_value(transparency))
+                "buffers" => output_buffers(screen, to_value(transparency)),
+                "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
             )
         )
         gl_primitive = GL_POINTS
@@ -172,18 +115,18 @@ function draw_pixel_scatter(shader_cache, position::VectorTypes, data::Dict)
 end
 
 function draw_scatter(
-    shader_cache, p::Tuple{TOrSignal{Matrix{C}}, VectorTypes{P}}, data::Dict
+    screen, p::Tuple{TOrSignal{Matrix{C}}, VectorTypes{P}}, data::Dict
     ) where {C <: Colorant, P <: Point}
     data[:image] = p[1] # we don't want this to be overwritten by user
     @gen_defaults! data begin
         scale = lift(x-> Vec2f(size(x)), p[1])
         offset = Vec2f(0)
     end
-    draw_scatter(shader_cache, (RECTANGLE, p[2]), data)
+    draw_scatter(screen, (RECTANGLE, p[2]), data)
 end
 
 function draw_scatter(
-        shader_cache, p::Tuple{VectorTypes{Matrix{C}}, VectorTypes{P}}, data::Dict
+        screen, p::Tuple{VectorTypes{Matrix{C}}, VectorTypes{P}}, data::Dict
     ) where {C <: Colorant, P <: Point}
     images = map(el32convert, to_value(p[1]))
     isempty(images) && error("Can not display empty vector of images as primitive")
@@ -212,42 +155,35 @@ function draw_scatter(
         shape = RECTANGLE
         quad_offset = Vec2f(0)
     end
-    return draw_scatter(shader_cache, (RECTANGLE, p[2]), data)
+    return draw_scatter(screen, (RECTANGLE, p[2]), data)
+end
+
+function texture_distancefield(shape)
+    df = Makie.primitive_distancefield(to_value(shape))
+    isnothing(df) && return nothing
+    return get_texture!(df)
 end
 
 """
 Main assemble functions for scatter particles.
 Sprites are anything like distance fields, images and simple geometries
 """
-function draw_scatter(shader_cache, (marker, position), data)
+function draw_scatter(screen, (marker, position), data)
     rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
     rot = vec2quaternion(rot)
     delete!(data, :rotation)
-    # Rescale to include glyph padding and shape
-    if isa(to_value(marker), Union{AbstractString, Char})
-        scale = data[:scale]
-        font = get(data, :font, Observable(Makie.defaultfont()))
-        quad_offset = get(data, :quad_offset, Observable(Vec2f(0)))
-
-        # The same scaling that needs to be applied to scale also needs to apply
-        # to offset.
-        data[:quad_offset] = map(rescale_glyph, marker, font, quad_offset)
-        data[:scale] = map(rescale_glyph, marker, font, scale)
-    end
 
     @gen_defaults! data begin
-        shape       = const_lift(x-> Int32(primitive_shape(x)), marker)
+        shape       = Makie.marker_to_sdf_shape(marker)
         position    = position => GLBuffer
         marker_offset = Vec3f(0) => GLBuffer;
-
-        scale       = const_lift(primitive_scale, marker) => GLBuffer
-
+        scale       = Vec2f(0) => GLBuffer
         rotation    = rot => GLBuffer
         image       = nothing => Texture
     end
 
     @gen_defaults! data begin
-        quad_offset     = primitive_offset(marker, scale) => GLBuffer
+        quad_offset     = Vec2f(0) => GLBuffer
         intensity       = nothing => GLBuffer
         color_map       = nothing => Texture
         color_norm      = nothing
@@ -257,22 +193,22 @@ function draw_scatter(shader_cache, (marker, position), data)
         stroke_color    = RGBA{Float32}(0,0,0,0) => GLBuffer
         stroke_width    = 0f0
         glow_width      = 0f0
-        uv_offset_width = const_lift(primitive_uv_offset_width, marker) => GLBuffer
+        uv_offset_width = Makie.primitive_uv_offset_width(marker) => GLBuffer
 
-        distancefield   = primitive_distancefield(marker) => Texture
+        distancefield   = texture_distancefield(shape) => Texture
         indices         = const_lift(length, position) => to_index_buffer
         # rotation and billboard don't go along
         billboard        = rotation == Vec4f(0,0,0,1) => "if `billboard` == true, particles will always face camera"
         fxaa             = false
         transparency     = false
         shader           = GLVisualizeShader(
-            shader_cache,
+            screen,
             "fragment_output.frag", "util.vert", "sprites.geom",
             "sprites.vert", "distance_shape.frag",
             view = Dict(
                 "position_calc" => position_calc(position, nothing, nothing, nothing, GLBuffer),
-                "buffers" => output_buffers(to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(to_value(transparency))
+                "buffers" => output_buffers(screen, to_value(transparency)),
+                "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
             )
         )
         scale_primitive = true

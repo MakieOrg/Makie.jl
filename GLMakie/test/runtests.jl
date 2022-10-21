@@ -10,17 +10,13 @@ reference_tests_dir = normpath(joinpath(dirname(pathof(Makie)), "..", "Reference
 Pkg.develop(PackageSpec(path = reference_tests_dir))
 using ReferenceTests
 
-GLMakie.activate!()
-GLMakie.set_window_config!(;
-    framerate = 1.0,
-    pause_rendering = true
-)
+GLMakie.activate!(framerate=1.0)
 
 @testset "mimes" begin
     f, ax, pl = scatter(1:4)
     @test showable("image/png", f)
     @test showable("image/jpeg", f)
-    # see https://github.com/JuliaPlots/Makie.jl/pull/2167
+    # see https://github.com/MakieOrg/Makie.jl/pull/2167
     @test !showable("blaaa", f)
 end
 

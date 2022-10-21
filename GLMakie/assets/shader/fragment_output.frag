@@ -7,7 +7,7 @@ layout(location=1) out uvec2 fragment_groupid;
 // // if transparency == true
 // layout(location=2) out float coverage;
 
-// // if transparency == false && enable_SSAO[] = true
+// // if transparency == false && ssao = true
 // layout(location=2) out vec3 fragment_position;
 // layout(location=3) out vec3 fragment_normal_occlusion;
 
@@ -31,7 +31,7 @@ void write2framebuffer(vec4 color, uvec2 id){
     // fragment_color.rgb = weight * color.rgb;
     // fragment_color.a = weight;
 
-    // // if transparency == false && enable_SSAO[] = true
+    // // if transparency == false && ssao = true
     // fragment_color = color;
     // fragment_position = o_view_pos;
     // fragment_normal_occlusion.xyz = o_normal;

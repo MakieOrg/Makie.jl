@@ -48,11 +48,15 @@ end
 
 function create_linepoints(
         pos_ext_hor,
-        flipped::Bool, spine_width::Number, trimspine::Bool, tickpositions::Vector{Point2f}, tickwidth::Number)
+        flipped::Bool, spine_width::Number, trimspine::Union{Bool, Tuple{Bool, Bool}}, tickpositions::Vector{Point2f}, tickwidth::Number)
 
     (position::Float32, extents::Tuple{Float32, Float32}, horizontal::Bool) = pos_ext_hor
 
-    if !trimspine || length(tickpositions) < 2
+    if trimspine isa Bool
+        trimspine = (trimspine, trimspine)
+    end
+
+    if trimspine == (false, false) || length(tickpositions) < 2
         if horizontal
             y = position
             p1 = Point2f(extents[1] - 0.5spine_width, y)
@@ -65,10 +69,24 @@ function create_linepoints(
             return [p1, p2]
         end
     else
-        pstart = horizontal ? Point2f(-0.5f0 * tickwidth, 0) : Point2f(0, -0.5f0 * tickwidth)
-        pend = horizontal ? Point2f(0.5f0 * tickwidth, 0) : Point2f(0, 0.5f0 * tickwidth)
-        return [tickpositions[1] .+ pstart, tickpositions[end] .+ pend]
+        extents_oriented = last(tickpositions) > first(tickpositions) ? extents : reverse(extents)
+        if horizontal
+            y = position
+            pstart = Point2f(-0.5f0 * tickwidth, 0)
+            pend = Point2f(0.5f0 * tickwidth, 0)
+            from = trimspine[1] ? tickpositions[1] .+ pstart : Point2f(extents_oriented[1] - 0.5spine_width, y)
+            to = trimspine[2] ? tickpositions[end] .+ pend : Point2f(extents_oriented[2] + 0.5spine_width, y)
+            return [from, to]
+        else
+            x = position
+            pstart = Point2f(-0.5f0 * tickwidth, 0)
+            pend = Point2f(0.5f0 * tickwidth, 0)
+            from = trimspine[1] ? tickpositions[1] .+ pstart : Point2f(x, extents_oriented[1] - 0.5spine_width)
+            to = trimspine[2] ? tickpositions[end] .+ pend : Point2f(x, extents_oriented[2] + 0.5spine_width)
+            return [from, to]
+        end
     end
+
 end
 
 function calculate_real_ticklabel_align(al, horizontal, fl::Bool, rot::Number)
@@ -248,8 +266,8 @@ function LineAxis(parent::Scene, attrs::Attributes)
 
     pos_extents_horizontal = lift(calculate_horizontal_extends, endpoints; ignore_equal_values=true)
     horizontal = lift(x-> x[3], pos_extents_horizontal)
-
-    limits = lift(x-> convert(Tuple{Float32, Float32}, x), attrs.limits; ignore_equal_values=true)
+    # Tuple constructor converts more than `convert(Tuple{Float32, Float32}, x)` but we still need the conversion to Float32 tuple:
+    limits = lift(x-> convert(Tuple{Float32, Float32}, Tuple(x)), attrs.limits; ignore_equal_values=true)
     flipped = lift(x-> convert(Bool, x), attrs.flipped; ignore_equal_values=true)
 
     ticksnode = Observable(Point2f[]; ignore_equal_values=true)
@@ -266,6 +284,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
         linestyle = nothing, visible = minorticksvisible, inspectable = false
     )
     decorations[:minorticklines] = minorticklines
+    translate!(minorticklines, 0, 0, 10)
 
     realticklabelalign = Observable{Tuple{Symbol, Symbol}}((:none, :none); ignore_equal_values=true)
 
@@ -375,7 +394,8 @@ function LineAxis(parent::Scene, attrs::Attributes)
 
     tickvalues = Observable(Float32[]; ignore_equal_values=true)
 
-    tickvalues_labels_unfiltered = lift(pos_extents_horizontal, limits, ticks, tickformat, attrs.scale) do (position, extents, horizontal),
+    tickvalues_labels_unfiltered = Observable{Tuple{Vector{Float32},Vector{AbstractString}}}()
+    map!(tickvalues_labels_unfiltered, pos_extents_horizontal, limits, ticks, tickformat, attrs.scale) do (position, extents, horizontal),
             limits, ticks, tickformat, scale
         get_ticks(ticks, scale, tickformat, limits...)
     end

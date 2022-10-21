@@ -7,7 +7,7 @@
 Special method for polys so we don't fall back to atomic meshes, which are much more
 complex and slower to draw than standard paths with single color.
 """
-function draw_plot(scene::Scene, screen::CairoScreen, poly::Poly)
+function draw_plot(scene::Scene, screen::Screen, poly::Poly)
     # dispatch on input arguments to poly to use smarter drawing methods than
     # meshes if possible
     draw_poly(scene, screen, poly, to_value.(poly.input_args)...)
@@ -16,7 +16,7 @@ end
 """
 Fallback method for args without special treatment.
 """
-function draw_poly(scene::Scene, screen::CairoScreen, poly, args...)
+function draw_poly(scene::Scene, screen::Screen, poly, args...)
     draw_poly_as_mesh(scene, screen, poly)
 end
 
@@ -27,16 +27,16 @@ end
 
 
 # in the rare case of per-vertex colors redirect to mesh drawing
-function draw_poly(scene::Scene, screen::CairoScreen, poly, points::Vector{<:Point2}, color::AbstractArray, model, strokecolor, strokewidth)
+function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::AbstractArray, model, strokecolor, strokewidth)
     draw_poly_as_mesh(scene, screen, poly)
 end
 
-function draw_poly(scene::Scene, screen::CairoScreen, poly, points::Vector{<:Point2})
+function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2})
     draw_poly(scene, screen, poly, points, poly.color[], poly.model[], poly.strokecolor[], poly.strokewidth[])
 end
 
 # when color is a Makie.AbstractPattern, we don't need to go to Mesh
-function draw_poly(scene::Scene, screen::CairoScreen, poly, points::Vector{<:Point2}, color::Union{Symbol, Colorant, Makie.AbstractPattern},
+function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::Union{Symbol, Colorant, Makie.AbstractPattern},
         model, strokecolor, strokewidth)
     space = to_value(get(poly, :space, :data))
     points = project_position.(Ref(scene), space, points, Ref(model))
@@ -59,7 +59,7 @@ function draw_poly(scene::Scene, screen::CairoScreen, poly, points::Vector{<:Poi
     Cairo.stroke(screen.context)
 end
 
-function draw_poly(scene::Scene, screen::CairoScreen, poly, points_list::Vector{<:Vector{<:Point2}})
+function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vector{<:Point2}})
     broadcast_foreach(points_list, poly.color[],
         poly.strokecolor[], poly.strokewidth[]) do points, color, strokecolor, strokewidth
 
@@ -67,10 +67,9 @@ function draw_poly(scene::Scene, screen::CairoScreen, poly, points_list::Vector{
     end
 end
 
+draw_poly(scene::Scene, screen::Screen, poly, rect::Rect2) = draw_poly(scene, screen, poly, [rect])
 
-draw_poly(scene::Scene, screen::CairoScreen, poly, rect::Rect2) = draw_poly(scene, screen, poly, [rect])
-
-function draw_poly(scene::Scene, screen::CairoScreen, poly, rects::Vector{<:Rect2})
+function draw_poly(scene::Scene, screen::Screen, poly, rects::Vector{<:Rect2})
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
     projected_rects = project_rect.(Ref(scene), space, rects, Ref(model))
@@ -125,7 +124,7 @@ function polypath(ctx, polygon)
     end
 end
 
-function draw_poly(scene::Scene, screen::CairoScreen, poly, polygons::AbstractArray{<:Polygon})
+function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<:Polygon})
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
     projected_polys = project_polygon.(Ref(scene), space, polygons, Ref(model))
@@ -162,7 +161,7 @@ end
 #        gradients as well via `mesh` we have to intercept the poly use        #
 ################################################################################
 
-function draw_plot(scene::Scene, screen::CairoScreen,
+function draw_plot(scene::Scene, screen::Screen,
         band::Band{<:Tuple{<:AbstractVector{<:Point2},<:AbstractVector{<:Point2}}})
 
     if !(band.color[] isa AbstractArray)
@@ -186,4 +185,39 @@ function draw_plot(scene::Scene, screen::CairoScreen,
     end
 
     nothing
+end
+
+#################################################################################
+#                                  Tricontourf                                  #
+# Tricontourf creates many disjoint polygons that are adjacent and form contour #
+#  bands, however, at the gaps we see white antialiasing artifacts. Therefore   #
+#               we override behavior and draw each band in one go               #
+#################################################################################
+
+function draw_plot(scene::Scene, screen::Screen, tric::Tricontourf)
+
+    pol = only(tric.plots)::Poly
+    colornumbers = pol.color[]
+    colors = numbers_to_colors(colornumbers, pol)
+
+    polygons = pol[1][]
+
+    model = pol.model[]
+    space = to_value(get(pol, :space, :data))
+    projected_polys = project_polygon.(Ref(scene), space, polygons, Ref(model))
+
+    function draw_tripolys(polys, colornumbers, colors)
+        for (i, (pol, colnum, col)) in enumerate(zip(polys, colornumbers, colors))
+            polypath(screen.context, pol)
+            if i == length(colornumbers) || colnum != colornumbers[i+1]
+                Cairo.set_source_rgba(screen.context, rgbatuple(col)...)
+                Cairo.fill(screen.context)
+            end
+        end
+        return
+    end
+
+    draw_tripolys(projected_polys, colornumbers, colors)
+
+    return
 end

@@ -222,3 +222,13 @@ end
     Colorbar(f[1, 1]; size = 200)
     f
 end
+
+@reference_test "scene visibility" begin
+    f, ax, pl = scatter(1:4, markersize=200)
+    ax2, pl = scatter(f[1, 2][1, 1], 1:4, color=1:4, markersize=200)
+    ax3, pl = scatter(f[1, 2][2, 1], 1:4, color=1:4, markersize=200)
+    ax3.scene.visible[] = false
+    ax2.scene.visible[] = false
+    ax2.blockscene.visible[] = false
+    f
+end

@@ -148,7 +148,7 @@ function pick_sorted(scene::Scene, xy, range)
 end
 
 function pick_sorted(scene::Scene, screen, xy, range)
-    w, h = widths(screen)
+    w, h = widths(events(scene).window_area[])
     if !((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h))
         return Tuple{AbstractPlot, Int}[]
     end
@@ -158,16 +158,14 @@ function pick_sorted(scene::Scene, screen, xy, range)
 
     picks = pick(scene, screen, Rect2i(x0, y0, dx, dy))
 
-    selected = filter(x -> x[1] != nothing, unique(vec(picks)))
+    selected = filter(x -> x[1] !== nothing, unique(vec(picks)))
     distances = [range^2 for _ in selected]
     x, y =  xy .+ 1 .- Vec2f(x0, y0)
     for i in 1:dx, j in 1:dy
-        if picks[i, j][1] != nothing
+        if picks[i, j][1] !== nothing
             d = (x-i)^2 + (y-j)^2
-            i = findfirst(isequal(picks[i, j]), selected)
-            if i === nothing
-                @warn "This shouldn't happen..."
-            elseif distances[i] > d
+            i = findfirst(isequal(picks[i, j]), selected)::Int
+            if distances[i] > d
                 distances[i] = d
             end
         end

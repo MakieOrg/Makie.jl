@@ -8,7 +8,7 @@
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 xs = rand(1:3, 1000)
 ys = randn(1000)
@@ -21,7 +21,7 @@ boxplot(xs, ys)
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 xs = rand(1:3, 1000)
 ys = randn(1000)
@@ -44,7 +44,7 @@ same color as their box, as shown above.
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 xs = rand(1:3, 1000)
 ys = randn(1000)
@@ -60,7 +60,7 @@ boxplot(xs, ys, dodge = dodge, show_notch = true, color = map(d->d==1 ? :blue : 
 ```julia
 using CairoMakie, Distributions
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 N = 100_000
 x = rand(1:3, N)

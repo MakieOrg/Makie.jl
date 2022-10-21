@@ -1,45 +1,3 @@
-"""
-    poly(vertices, indices; kwargs...)
-    poly(points; kwargs...)
-    poly(shape; kwargs...)
-    poly(mesh; kwargs...)
-
-Plots a polygon based on the arguments given.
-When vertices and indices are given, it functions similarly to `mesh`.
-When points are given, it draws one polygon that connects all the points in order.
-When a shape is given (essentially anything decomposable by `GeometryBasics`), it will plot `decompose(shape)`.
-
-    poly(coordinates, connectivity; kwargs...)
-
-Plots polygons, which are defined by
-`coordinates` (the coordinates of the vertices) and
-`connectivity` (the edges between the vertices).
-
-## Attributes
-$(ATTRIBUTES)
-"""
-@recipe(Poly) do scene
-    Attributes(;
-        color = theme(scene, :patchcolor),
-        visible = theme(scene, :visible),
-        strokecolor = theme(scene, :patchstrokecolor),
-        colormap = theme(scene, :colormap),
-        colorrange = automatic,
-        lowclip = automatic,
-        highclip = automatic,
-        nan_color = :transparent,
-        strokewidth = theme(scene, :patchstrokewidth),
-        shading = false,
-        fxaa = true,
-        linestyle = nothing,
-        overdraw = false,
-        transparency = false,
-        cycle = [:color => :patchcolor],
-        inspectable = theme(scene, :inspectable),
-        space = :data
-    )
-end
-
 const PolyElements = Union{Polygon, MultiPolygon, Circle, Rect, AbstractMesh, VecTypes, AbstractVector{<:VecTypes}}
 
 convert_arguments(::Type{<: Poly}, v::AbstractVector{<: PolyElements}) = (v,)
@@ -173,7 +131,7 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
     attributes = Attributes(
         visible = plot.visible, shading = plot.shading, fxaa = plot.fxaa,
         inspectable = plot.inspectable, transparency = plot.transparency,
-        space = plot.space,
+        space = plot.space, ssao = plot.ssao,
         lowclip = get(plot, :lowclip, automatic),
         highclip = get(plot, :highclip, automatic),
         nan_color = get(plot, :nan_color, :transparent),
