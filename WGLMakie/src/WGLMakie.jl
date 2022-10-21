@@ -66,6 +66,9 @@ const TEXTURE_ATLAS_CHANGED = Ref(false)
 function __init__()
     # Activate WGLMakie as backend!
     activate!()
+    # if there is a browserdisplay in stack, dont inline plots
+    browser_display = JSServe.BrowserDisplay() in Base.Multimedia.displays
+    Makie.inline!(!browser_display)
     # We need to update the texture atlas whenever it changes!
     # We do this in three_plot!
     Makie.font_render_callback!() do sd, uv
