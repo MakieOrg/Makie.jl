@@ -95,6 +95,7 @@ function update_axis_camera(camera::Camera, t, lims, xrev::Bool, yrev::Bool)
     bottomtop = yrev ? (top, bottom) : (bottom, top)
 
     projection = Makie.orthographicprojection(
+        Float32,
         leftright...,
         bottomtop..., nearclip, farclip)
 
