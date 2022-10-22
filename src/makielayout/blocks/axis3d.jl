@@ -484,36 +484,37 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         diff_f1 = f1 - f1_oppo
         diff_f2 = f2 - f2_oppo
 
+        o = pxa.origin
+
         map(ticks) do t
             p1 = dpoint(t, f1, f2)
             p2 = if dim == 3
                 # special case the z axis, here it depends on azimuth in which direction the ticks go
                 if 45 <= (rad2deg(azimuth[]) % 180) <= 135
-                    dpoint(t, f1 + tsize * diff_f1, f2)
+                    dpoint(t, f1 + diff_f1, f2)
                 else
-                    dpoint(t, f1, f2 + tsize * diff_f2)
+                    dpoint(t, f1, f2 + diff_f2)
                 end
             else
-                dpoint(t, f1 + tsize * diff_f1, f2)
+                dpoint(t, f1 + diff_f1, f2)
             end
 
-            (p1, p2)
+            pp1 = Point2f(o + Makie.project(scene, p1))
+            pp2 = Point2f(o + Makie.project(scene, p2))
+            diff_pp = Makie.GeometryBasics.normalize(Point2f(pp2 - pp1))
+
+            (pp1, pp1 .+ Float32(tsize) .* diff_pp)
         end
     end
 
-    # we are going to transform the 3d tick segments into 2d of the topscene
-    # because otherwise they
-    # be cut when they extend beyond the scene boundary
-    tick_segments_2dz = lift(tick_segments, scene.camera.projectionview, scene.px_area) do ts, _, _
-        map(ts) do p1_p2
-            to_topscene_z_2d.(p1_p2, Ref(scene))
-        end
-    end
-
-    ticks = linesegments!(topscene, tick_segments_2dz,
+    ticks = linesegments!(topscene, tick_segments,
         xautolimits = false, yautolimits = false, zautolimits = false,
         transparency = true, inspectable = false,
-        color = attr(:tickcolor), linewidth = attr(:tickwidth), visible = attr(:ticksvisible))
+        color = attr(:tickcolor), linewidth = attr(:tickwidth), visible = attr(:ticksvisible),
+        space = :pixel)
+    # -10000 is an arbitrary weird constant that in preliminary testing didn't seem
+    # to clip into plot objects anymore
+    translate!(ticks, 0, 0, -10000)
 
     labels_positions = lift(scene.px_area, scene.camera.projectionview,
             tick_segments, ticklabels, attr(:ticklabelpad)) do pxa, pv, ticksegs, ticklabs, pad
@@ -521,12 +522,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         o = pxa.origin
 
         points = map(ticksegs) do (tstart, tend)
-            tstartp = Point2f(o + Makie.project(scene, tstart))
-            tendp = Point2f(o + Makie.project(scene, tend))
-
-            offset = pad * Makie.GeometryBasics.normalize(
-                Point2f(tendp - tstartp))
-            tendp + offset
+            offset = pad * Makie.GeometryBasics.normalize(Point2f(tend - tstart))
+            tend + offset
         end
 
         N = min(length(ticklabs), length(points))
@@ -546,7 +543,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
 
     ticklabels = text!(topscene, labels_positions, align = align,
         color = attr(:ticklabelcolor), textsize = attr(:ticklabelsize),
-        font = attr(:ticklabelfont), visible = attr(:ticklabelsvisible), inspectable = false
+        font = attr(:ticklabelfont), visible = attr(:ticklabelsvisible), inspectable = false,
+        space = :pixel
     )
 
     translate!(ticklabels, 0, 0, 1000)

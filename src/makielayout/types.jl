@@ -1272,11 +1272,11 @@ end
         "The z tick width"
         ztickwidth = 1
         "The size of the xtick marks."
-        xticksize::Float64 = 0.03
+        xticksize::Float64 = 12f0
         "The size of the ytick marks."
-        yticksize::Float64 = 0.03
+        yticksize::Float64 = 12f0
         "The size of the ztick marks."
-        zticksize::Float64 = 0.03
+        zticksize::Float64 = 12f0
         "The color of x spine 1 where the ticks are displayed"
         xspinecolor_1 = :black
         "The color of y spine 1 where the ticks are displayed"
