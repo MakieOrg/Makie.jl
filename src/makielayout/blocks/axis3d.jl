@@ -601,7 +601,6 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         if slight_flip
             offset_ang_90deg_alwaysup += pi
         end
-        offset_ang_90deg_alwaysup
 
         labelrotation = if lrotation == Makie.automatic
             offset_ang_90deg_alwaysup
