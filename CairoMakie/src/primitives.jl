@@ -34,6 +34,10 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         color = numbers_to_colors(color, primitive)
     end
 
+    if primitive isa Lines && primitive.input_args[1][] isa BezierPath
+        return draw_bezierpath_lines(ctx, primitive.input_args[1][], scene, color, space, model)
+    end
+
     # color is now a color or an array of colors
     # if it's an array of colors, each segment must be stroked separately
 
@@ -71,6 +75,34 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     end
     nothing
 end
+
+function draw_bezierpath_lines(ctx, bezierpath::BezierPath, scene, color, space, model)
+    for c in bezierpath.commands
+        proj_comm = project_command(c, scene, space, model)
+        path_command(ctx, proj_comm)
+    end
+    Cairo.set_source_rgba(ctx, rgbatuple(color)...)
+    Cairo.stroke(ctx)
+    return
+end
+
+function project_command(m::MoveTo, scene, space, model)
+    MoveTo(project_position(scene, space, m.p, model))
+end
+
+function project_command(l::LineTo, scene, space, model)
+    LineTo(project_position(scene, space, l.p, model))
+end
+
+function project_command(c::CurveTo, scene, space, model)
+    CurveTo(
+        project_position(scene, space, c.c1, model),
+        project_position(scene, space, c.c2, model),
+        project_position(scene, space, c.p, model),
+    )
+end
+
+project_command(c::ClosePath, scene, space, model) = c
 
 function draw_single(primitive::Lines, ctx, positions)
     n = length(positions)
