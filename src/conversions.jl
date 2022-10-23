@@ -960,7 +960,7 @@ function to_font(fonts::Attributes, s::Symbol)
         end
         return to_font(fonts[s][])
     end
-    error("The symbol $(repr(s)) is not present in the fonts collection: $fonts.")
+    error("The symbol $(repr(s)) is not present in the fonts collection:\n$fonts.")
 end
 
 to_font(fonts::Attributes, x) = to_font(x)
