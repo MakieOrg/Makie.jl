@@ -952,8 +952,18 @@ to_font(x::Vector{String}) = to_font.(x)
 to_font(x::NativeFont) = x
 to_font(x::Vector{NativeFont}) = x
 
-to_font(fs::FontSet6, s::Symbol) = fs[s]
-to_font(fs::FontSet6, x) = to_font(x)
+function to_font(fonts::Attributes, s::Symbol)
+    if haskey(fonts, s)
+        f = fonts[s][]
+        if f isa Symbol
+            error("The value for font $(repr(s)) was Symbol $(repr(f)), which is not allowed. The value for a font in the fonts collection cannot be another Symbol and must be resolvable via `to_font(x)`.")
+        end
+        return to_font(fonts[s][])
+    end
+    error("The symbol $(repr(s)) is not present in the fonts collection: $fonts.")
+end
+
+to_font(fonts::Attributes, x) = to_font(x)
 
 
 """

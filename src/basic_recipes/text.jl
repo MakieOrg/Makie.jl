@@ -7,7 +7,7 @@ function plot!(plot::Text)
     linecolors = Observable(RGBAf[])
     lineindices = Ref(Int[])
     
-    onany(plot.text, plot.textsize, plot.font, plot.fontset, plot.align,
+    onany(plot.text, plot.textsize, plot.font, plot.fonts, plot.align,
             plot.rotation, plot.justification, plot.lineheight, plot.color, 
             plot.strokecolor, plot.strokewidth, plot.word_wrap_width) do str,
                 ts, f, fs, al, rot, jus, lh, col, scol, swi, www
@@ -420,11 +420,11 @@ function float_justification(ju, al)::Float32
     end
 end
 
-function process_rt_node!(stack, lines, rt::FormattedText, fontset)
+function process_rt_node!(stack, lines, rt::FormattedText, fonts)
     _type(x) = nothing
     _type(r::FormattedText) = r.type
 
-    push!(stack, new_glyphstate(stack[end], rt, Val(rt.type), fontset))
+    push!(stack, new_glyphstate(stack[end], rt, Val(rt.type), fonts))
     sup_x = 0f0
     for (i, c) in enumerate(rt.children)
         if _type(c) == :sup
@@ -440,13 +440,13 @@ function process_rt_node!(stack, lines, rt::FormattedText, fontset)
             sup_x_end = gs.x
             gs_modified = Setfield.@set gs.x = sup_x
             stack[end] = gs_modified
-            process_rt_node!(stack, lines, c, fontset)
+            process_rt_node!(stack, lines, c, fonts)
             gs = stack[end]
             max_x = max(sup_x_end, gs.x)
             gs_max_x = Setfield.@set gs.x = max_x
             stack[end] = gs_max_x
         else
-            process_rt_node!(stack, lines, c, fontset)
+            process_rt_node!(stack, lines, c, fonts)
         end
     end
     gs = pop!(stack)
@@ -486,42 +486,42 @@ function process_rt_node!(stack, lines, s::String, _)
     return
 end
 
-function new_glyphstate(gs::GlyphState2, rt::FormattedText, val::Val, fontset)
+function new_glyphstate(gs::GlyphState2, rt::FormattedText, val::Val, fonts)
     gs
 end
 
 _get_color(attributes, default)::RGBAf = haskey(attributes, :color) ? Makie.to_color(attributes[:color]) : default
-_get_font(attributes, default::NativeFont, fontset)::NativeFont = haskey(attributes, :font) ? Makie.to_font(fontset, attributes[:font]) : default
+_get_font(attributes, default::NativeFont, fonts)::NativeFont = haskey(attributes, :font) ? Makie.to_font(fonts, attributes[:font]) : default
 
-function new_glyphstate(gs::GlyphState2, rt::FormattedText, val::Val{:sup}, fontset)
+function new_glyphstate(gs::GlyphState2, rt::FormattedText, val::Val{:sup}, fonts)
     att = rt.attributes
     GlyphState2(
         gs.x,
         gs.baseline + 0.4 * gs.size[2],
         gs.size * 0.66,
-        _get_font(att, gs.font, fontset),
+        _get_font(att, gs.font, fonts),
         _get_color(att, gs.color),
     )
 end
 
-function new_glyphstate(gs::GlyphState2, rt::FormattedText, val::Val{:span}, fontset)
+function new_glyphstate(gs::GlyphState2, rt::FormattedText, val::Val{:span}, fonts)
     att = rt.attributes
     GlyphState2(
         gs.x,
         gs.baseline,
         gs.size,
-        _get_font(att, gs.font, fontset),
+        _get_font(att, gs.font, fonts),
         _get_color(att, gs.color),
     )
 end
 
-function new_glyphstate(gs::GlyphState2, rt::FormattedText, val::Val{:sub}, fontset)
+function new_glyphstate(gs::GlyphState2, rt::FormattedText, val::Val{:sub}, fonts)
     att = rt.attributes
     GlyphState2(
         gs.x,
         gs.baseline - 0.15 * gs.size[2],
         gs.size * 0.66,
-        _get_font(att, gs.font, fontset),
+        _get_font(att, gs.font, fonts),
         _get_color(att, gs.color),
     )
 end

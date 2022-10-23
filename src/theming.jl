@@ -53,43 +53,15 @@ const default_palettes = Attributes(
     side = [:left, :right]
 )
 
-struct FontSet6{N <: NamedTuple}
-    fonts::N
-end
-
-function FontSet6(; kwargs...)
-    d = Dict([key => to_font(value) for (key, value) in kwargs])
-    if !haskey(d, :regular)
-        d[:regular] = to_font("TeX Gyre Heros Makie")
-    end
-    if !haskey(d, :bold)
-        d[:bold] = to_font("TeX Gyre Heros Makie Bold")
-    end
-    if !haskey(d, :italic)
-        d[:italic] = to_font("TeX Gyre Heros Makie Italic")
-    end
-    if !haskey(d, :bold_italic)
-        d[:bold_italic] = to_font("TeX Gyre Heros Makie Bold Italic")
-    end
-    return FontSet6(NamedTuple(d))
-end
-
-function Base.show(io::IO, f::FontSet6)
-    println(io, "FontSet")
-    for (key, value) in pairs(f.fonts)
-        println(io, "  ", key, ": ", value)
-    end
-end
-
-function Base.getindex(fs::FontSet6, s::Symbol)
-    haskey(fs.fonts, s) && return fs.fonts[s]
-    error("FontSet does not have a key $(repr(s)). Available keys are $(keys(fs.fonts))")
-end
-
 const minimal_default = Attributes(
     palette = default_palettes,
     font = "TeX Gyre Heros Makie",
-    fontset = FontSet6(),
+    fonts = Attributes(
+        :regular => "TeX Gyre Heros Makie",
+        :bold => "TeX Gyre Heros Makie Bold",
+        :italic => "TeX Gyre Heros Makie Italic",
+        :bold_italic => "TeX Gyre Heros Makie Bold Italic",
+    ),
     textcolor = :black,
     padding = Vec3f(0.05),
     figure_padding = 16,
