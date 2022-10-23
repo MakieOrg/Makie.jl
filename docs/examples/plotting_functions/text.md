@@ -15,7 +15,7 @@ You can either plot one string with one position, or a vector of strings with a 
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 
@@ -47,7 +47,7 @@ This means that the boundingbox of the text in data coordinates will include eve
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 LScene(f[1, 1])
@@ -74,7 +74,7 @@ Text can be aligned with the horizontal alignments `:left`, `:center`, `:right` 
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 aligns = [(h, v) for v in [:bottom, :baseline, :center, :top]
                  for h in [:left, :center, :right]]
@@ -96,7 +96,7 @@ You can override this with the `justification` attribute.
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 scene = Scene(camera = campixel!, resolution = (800, 800))
 
@@ -107,7 +107,7 @@ symbols = (:left, :center, :right)
 
 for ((justification, halign), point) in zip(Iterators.product(symbols, symbols), points)
 
-    t = text!(scene, 
+    t = text!(scene,
         point,
         text = "a\nshort\nparagraph",
         color = (:black, 0.5),
@@ -142,7 +142,7 @@ You can specify the end of the barplots in data coordinates, and then offset the
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 
@@ -169,7 +169,7 @@ Makie can render LaTeX strings from the LaTeXStrings.jl package using [MathTeXEn
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 lines(0.5..20, x -> sin(x) / sqrt(x), color = :black)
 text!(7, 0.38, text = L"\frac{\sin(x)}{\sqrt{x}}", color = :black)
@@ -184,7 +184,7 @@ You can also pass L-strings to many objects that use text, for example as labels
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 ax = Axis(f[1, 1])

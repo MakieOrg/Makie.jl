@@ -26,11 +26,9 @@ using Makie: get_texture_atlas, glyph_uv_width!, SceneSpace, Pixel
 using Makie: attribute_per_char, glyph_uv_width!, layout_text
 using Makie: MouseButtonEvent, KeyEvent
 using Makie: apply_transform, transform_func_obs
-using Makie: inline!
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
 
 struct WebGL <: ShaderAbstractions.AbstractContext end
-struct WGLBackend <: Makie.AbstractBackend end
 
 const THREE = Dependency(:THREE, ["https://unpkg.com/three@0.136.0/build/three.js"])
 const WGL = Dependency(:WGLMakie, [@path joinpath(@__DIR__, "wglmakie.js")])
@@ -45,20 +43,20 @@ include("meshes.jl")
 include("imagelike.jl")
 include("display.jl")
 
-const CONFIG = (
-    fps = Ref(30),
-)
 
 """
-    activate!(; fps=30)
+    WGLMakie.activate!(; screen_config...)
 
-Set fps (frames per second) to a higher number for smoother animations, or to a lower to use less resources.
+Sets WGLMakie as the currently active backend and also allows to quickly set the `screen_config`.
+Note, that the `screen_config` can also be set permanently via `Makie.set_theme!(WGLMakie=(screen_config...,))`.
+
+# Arguments one can pass via `screen_config`:
+
+$(Base.doc(ScreenConfig))
 """
-function activate!(; fps=30)
-    CONFIG.fps[] = fps
-    b = WGLBackend()
-    Makie.register_backend!(b)
-    Makie.current_backend[] = b
+function activate!(; screen_config...)
+    Makie.set_active_backend!(WGLMakie)
+    Makie.set_screen_config!(WGLMakie, screen_config)
     Makie.set_glyph_resolution!(Makie.Low)
     return
 end
@@ -68,8 +66,6 @@ const TEXTURE_ATLAS_CHANGED = Ref(false)
 function __init__()
     # Activate WGLMakie as backend!
     activate!()
-    browser_display = JSServe.BrowserDisplay() in Base.Multimedia.displays
-    Makie.inline!(!browser_display)
     # We need to update the texture atlas whenever it changes!
     # We do this in three_plot!
     Makie.font_render_callback!() do sd, uv
@@ -84,7 +80,6 @@ for name in names(Makie, all=true)
         @eval export $(name)
     end
 end
-export inline!
 
 include("precompiles.jl")
 

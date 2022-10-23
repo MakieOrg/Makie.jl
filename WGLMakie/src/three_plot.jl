@@ -1,15 +1,23 @@
-struct ThreeDisplay <: Makie.AbstractScreen
+struct ThreeDisplay <: Makie.MakieScreen
     session::JSServe.Session
 end
 
 JSServe.session(td::ThreeDisplay) = td.session
+
+function Base.size(screen::ThreeDisplay)
+    # look at d.qs().clientWidth for displayed width
+    width, height = round.(Int, WGLMakie.JSServe.evaljs_value(screen.session, WGLMakie.JSServe.js"[document.querySelector('canvas').width, document.querySelector('canvas').height]"; time_out=100))
+    return (width, height)
+end
 
 # We use objectid to find objects on the js side
 js_uuid(object) = string(objectid(object))
 
 function Base.insert!(td::ThreeDisplay, scene::Scene, plot::Combined)
     plot_data = serialize_plots(scene, [plot])
-    WGL.insert_plot(td.session, js_uuid(scene), plot_data)
+    JSServe.evaljs_value(td.session, js"""
+        $(WGL).insert_plot($(js_uuid(scene)), $plot_data)
+    """)
     return
 end
 
@@ -44,13 +52,15 @@ function find_plots(session::Session, plot::AbstractPlot)
     return WGL.find_plots(session, uuids)
 end
 
-
 function JSServe.print_js_code(io::IO, plot::AbstractPlot, context)
     uuids = js_uuid.(Makie.flatten_plots(plot))
     JSServe.print_js_code(io, js"$(WGL).find_plots($(uuids))", context)
 end
 
-function three_display(session::Session, scene::Scene)
+function three_display(session::Session, scene::Scene; screen_config...)
+
+    config = Makie.merge_screen_config(ScreenConfig, screen_config)::ScreenConfig
+
     serialized = serialize_scene(scene)
 
     if TEXTURE_ATLAS_CHANGED[]
@@ -82,7 +92,7 @@ function three_display(session::Session, scene::Scene)
         if ( renderer ) {
             const three_scenes = scenes.map(x=> $(WGL).deserialize_scene(x, canvas))
             const cam = new $(THREE).PerspectiveCamera(45, 1, 0, 100)
-            $(WGL).start_renderloop(renderer, three_scenes, cam, $(CONFIG.fps[]))
+            $(WGL).start_renderloop(renderer, three_scenes, cam, $(config.framerate))
             JSServe.on_update($canvas_width, w_h => {
                 // `renderer.setSize` correctly updates `canvas` dimensions
                 const pixelRatio = renderer.getPixelRatio();

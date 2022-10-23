@@ -34,8 +34,8 @@ function connect_screen(scene::Scene, screen)
     return
 end
 
-to_native(window::AbstractScreen) = error("to_native(window) not implemented for $(typeof(window)).")
-disconnect!(window::AbstractScreen, signal) = disconnect!(to_native(window), signal)
+to_native(window::MakieScreen) = error("to_native(window) not implemented for $(typeof(window)).")
+disconnect!(window::MakieScreen, signal) = disconnect!(to_native(window), signal)
 
 function disconnect_screen(scene::Scene, screen)
     delete_screen!(scene, screen)
@@ -59,6 +59,11 @@ end
 Picks a mouse position.  Implemented by the backend.
 """
 function pick end
+
+function pick(::Scene, ::Screen, xy) where Screen
+    @warn "Picking not supported yet by $(parentmodule(Screen))" maxlog=1
+    return nothing, 0
+end
 
 """
     onpick(func, plot)

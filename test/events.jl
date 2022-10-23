@@ -1,6 +1,6 @@
 using Makie: MouseButtonEvent, KeyEvent, Figure, Textbox
 using Makie: Not, And, Or
-using InteractiveUtils: clipboard
+using InteractiveUtils
 
 # rudimentary equality for tests
 Base.:(==)(l::Exclusively, r::Exclusively) = l.x == r.x
@@ -126,7 +126,14 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
             @test x | false == x
         end
     end
-
+    # Okay, this is hacky,
+    # but we're not going to install a whole linux desktop environment on the CI just to test the clipboard
+    # (what the hell xclip, y u need all that)
+    @eval InteractiveUtils begin
+        const CLIP = Ref{String}()
+        clipboard(str::String) = (CLIP[] = str)
+        clipboard() = CLIP[]
+    end
     @testset "copy_paste" begin
         f = Figure(resolution=(640,480))
         tb = Textbox(f[1,1], placeholder="Copy/paste into me")
@@ -155,7 +162,7 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
 
         @test tb.stored_string[] == "test string"
 
-        
+
         # Refresh figure to test right control + v combination
         empty!(f)
 

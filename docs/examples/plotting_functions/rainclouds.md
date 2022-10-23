@@ -9,7 +9,7 @@ three together can make an appealing and informative visual, particularly for la
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 using Random
 using Makie: rand_localized
 
@@ -68,7 +68,7 @@ category_labels, data_array = mockup_categories_and_data_array(3)
 colors = Makie.wong_colors()
 rainclouds(category_labels, data_array;
     xlabel = "Categories of Distributions", ylabel = "Samples", title = "My Title",
-    plot_boxplots = false, cloud_width=0.5, clouds=hist, hist_bins=50, 
+    plot_boxplots = false, cloud_width=0.5, clouds=hist, hist_bins=50,
     color = colors[indexin(category_labels, unique(category_labels))])
 ```
 \end{examplefigure}

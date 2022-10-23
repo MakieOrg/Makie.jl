@@ -3,7 +3,7 @@
 [WGLMakie](https://github.com/MakieOrg/Makie.jl/tree/master/WGLMakie) is the Web-based backend, and is still experimental (though relatively feature-complete). WGLMakie uses [JSServe](https://github.com/SimonDanisch/JSServe.jl) to generate the HTML and JS for the Makie plots.
 
 
-## Activation
+## Activation and screen config
 
 Activate the backend by calling `WGLMakie.activate!()` with the following options:
 ```julia:docs
@@ -175,10 +175,10 @@ app = App() do session::Session
         const scatter_plot = plots[0]
 
         // change first point x + y value
-        scatter_plot.geometry.attributes.offset.array[0] = (new_value/100) * 4
-        scatter_plot.geometry.attributes.offset.array[1] = (new_value/100) * 4
+        scatter_plot.geometry.attributes.pos.array[0] = (new_value/100) * 4
+        scatter_plot.geometry.attributes.pos.array[1] = (new_value/100) * 4
         // this always needs to be set of geometry attributes after an update
-        scatter_plot.geometry.attributes.offset.needsUpdate = true
+        scatter_plot.geometry.attributes.pos.needsUpdate = true
     }
     """)
     # and for got measures, add a slider to change the color:

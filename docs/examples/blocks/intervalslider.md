@@ -21,7 +21,7 @@ If you set the attribute `snap = false`, the slider will move continously while 
 \begin{examplefigure}{}
 ```julia
 using CairoMakie
-Makie.inline!(true) # hide
+
 CairoMakie.activate!() # hide
 
 f = Figure()

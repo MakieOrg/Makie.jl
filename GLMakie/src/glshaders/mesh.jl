@@ -31,7 +31,7 @@ function to_opengl_mesh!(result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
     return result
 end
 
-function draw_mesh(shader_cache, @nospecialize(mesh), data::Dict)
+function draw_mesh(screen, @nospecialize(mesh), data::Dict)
     to_opengl_mesh!(data, mesh)
     @gen_defaults! data begin
         shading = true
@@ -47,12 +47,12 @@ function draw_mesh(shader_cache, @nospecialize(mesh), data::Dict)
         transparency = false
         interpolate_in_fragment_shader = true
         shader = GLVisualizeShader(
-            shader_cache,
+            screen,
             "util.vert", "mesh.vert", "mesh.frag", "fragment_output.frag",
             view = Dict(
                 "light_calc" => light_calc(shading),
-                "buffers" => output_buffers(to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(to_value(transparency))
+                "buffers" => output_buffers(screen, to_value(transparency)),
+                "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
             )
         )
     end
