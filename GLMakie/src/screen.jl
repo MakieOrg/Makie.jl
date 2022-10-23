@@ -670,10 +670,7 @@ end
 
 function requires_update(screen::Screen)
     for (_, _, robj) in screen.renderlist
-        visible = Bool(to_value(get(robj.uniforms, :visible, true)))
-        if visible && robj.requires_update
-            return true
-        end
+        robj.requires_update && return true
     end
     return false
 end

@@ -15,7 +15,7 @@ function render(list::Vector{RenderObject{Pre}}) where Pre
     glUseProgram(program.id)
     glBindVertexArray(vertexarray.id)
     for renderobject in list
-        Bool(to_value(renderobject.uniforms[:visible])) || continue # skip invisible
+        renderobject.visible || continue # skip invisible
         # make sure we only bind new programs and vertexarray when it is actually
         # different from the previous one
         if renderobject.vertexarray != vertexarray
@@ -55,7 +55,7 @@ So rewriting this function could get us a lot of performance for scenes with
 a lot of objects.
 """
 function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray)
-    if Bool(to_value(renderobject.uniforms[:visible]))
+    if renderobject.visible
         renderobject.requires_update = false
         
         renderobject.prerenderfunction()

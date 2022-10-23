@@ -298,6 +298,7 @@ mutable struct RenderObject{Pre}
     postrenderfunction
     id::UInt32
     requires_update::Bool
+    visible::Bool
 
     function RenderObject{Pre}(
             context,
@@ -318,24 +319,42 @@ mutable struct RenderObject{Pre}
             context,
             uniforms, observables, vertexarray,
             prerenderfunctions, postrenderfunctions,
-            id, true
+            id, true, true
         )
 
+        visible = pop!(uniforms, :visible, Observable(true))
+
         if track_updates
+            # visible changes should always trigger updates so that plots 
+            # actually become invisible when visible is changed.
+            # Other uniforms and buffers don't need to trigger updates when 
+            # visible = false
+            on(visible) do visible
+                robj.requires_update = true
+                robj.visible = visible
+            end
+
+            function request_update(_::Any)
+                if robj.visible 
+                    robj.requires_update = true
+                end
+                return
+            end
+
             # gather update requests for polling in renderloop
             for uniform in values(uniforms)
                 if uniform isa Observable
-                    on(uniform) do _
-                        robj.requires_update = true
-                    end
+                    on(request_update, uniform)
                 elseif uniform isa GPUArray
-                    on(uniform.requires_update) do _
-                        robj.requires_update = true
-                    end
+                    on(request_update, uniform.requires_update)
                 end
             end
-            on(_ -> robj.requires_update = true, vertexarray.requires_update)
+            on(request_update, vertexarray.requires_update)
         else
+            on(visible) do visible
+                robj.visible = visible
+            end
+
             # remove tracking from GPUArrays
             for uniform in values(uniforms)
                 if uniform isa GPUArray
@@ -401,7 +420,7 @@ function RenderObject(
     end
     buffers = filter(((key, value),) -> isa(value, GLBuffer) || key == :indices, data)
     uniforms = filter(((key, value),) -> !isa(value, GLBuffer) && key != :indices, data)
-    get!(data, :visible, true) # make sure, visibility is set
+    get!(data, :visible, Observable(true)) # make sure this exists
     merge!(data, passthrough) # in the end, we insert back the non opengl data, to keep things simple
     p = gl_convert(to_value(program), data) # "compile" lazyshader
     vertexarray = GLVertexArray(Dict(buffers), p)
