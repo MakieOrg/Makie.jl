@@ -510,8 +510,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     ticks = linesegments!(topscene, tick_segments,
         xautolimits = false, yautolimits = false, zautolimits = false,
         transparency = true, inspectable = false,
-        color = attr(:tickcolor), linewidth = attr(:tickwidth), visible = attr(:ticksvisible),
-        space = :pixel)
+        color = attr(:tickcolor), linewidth = attr(:tickwidth), visible = attr(:ticksvisible))
     # -10000 is an arbitrary weird constant that in preliminary testing didn't seem
     # to clip into plot objects anymore
     translate!(ticks, 0, 0, -10000)
@@ -543,9 +542,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
 
     ticklabels = text!(topscene, labels_positions, align = align,
         color = attr(:ticklabelcolor), textsize = attr(:ticklabelsize),
-        font = attr(:ticklabelfont), visible = attr(:ticklabelsvisible), inspectable = false,
-        space = :pixel
-    )
+        font = attr(:ticklabelfont), visible = attr(:ticklabelsvisible), inspectable = false)
 
     translate!(ticklabels, 0, 0, 1000)
 
