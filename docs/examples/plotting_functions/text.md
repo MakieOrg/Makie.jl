@@ -200,10 +200,10 @@ f
 ```
 \end{examplefigure}
 
-## Formatted text
+## Rich text
 
-With formatted text, you can build text using different colors or fonts, as well as subscripts and superscripts.
-You can build formatted text using the functions `formatted`, `superscript` and `subscript`.
+With rich text, you can build text using different colors or fonts, as well as subscripts and superscripts.
+You can build rich text using the functions `rich`, `superscript` and `subscript`.
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -214,21 +214,17 @@ Makie.inline!(true) # hide
 f = Figure(fontsize = 30)
 Label(
     f[1, 1],
-    formatted(
+    rich(
         "H", subscript("2"), "O is the formula for ",
-        formatted("water", color = :blue, font = :italic)
+        rich("water", color = :blue, font = :italic)
     )
 )
 
 str = "A beautiful rainbow"
 rainbow = cgrad(:rainbow, length(str), categorical = true)
+rainbow_chars = [rich("$c", color = rainbow[i]) for (i, c) in enumerate(str)]
 
-Label(
-    f[2, 1],
-    formatted(
-        [formatted("$c", color = rainbow[i]) for (i, c) in enumerate(str)]...
-    )
-)
+Label(f[2, 1], rich(rainbow_chars...))
 
 f
 ```

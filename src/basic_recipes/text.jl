@@ -264,25 +264,25 @@ iswhitespace(l::LaTeXString) = iswhitespace(replace(l.s, '$' => ""))
 
 
 
-struct FormattedText <: AbstractString
+struct RichText <: AbstractString
     type::Symbol
-    children::Vector{Union{FormattedText,String}}
+    children::Vector{Union{RichText,String}}
     attributes::Dict{Symbol, Any}
-    function FormattedText(type::Symbol, children...; kwargs...)
-        cs = Union{FormattedText,String}[children...]
+    function RichText(type::Symbol, children...; kwargs...)
+        cs = Union{RichText,String}[children...]
         typeof(cs)
         new(type, cs, Dict(kwargs))
     end
 end
 
-formatted(args...; kwargs...) = FormattedText(:span, args...; kwargs...)
-subscript(args...; kwargs...) = FormattedText(:sub, args...; kwargs...)
-superscript(args...; kwargs...) = FormattedText(:sup, args...; kwargs...)
+rich(args...; kwargs...) = RichText(:span, args...; kwargs...)
+subscript(args...; kwargs...) = RichText(:sub, args...; kwargs...)
+superscript(args...; kwargs...) = RichText(:sup, args...; kwargs...)
 
-export formatted, subscript, superscript
+export rich, subscript, superscript
 
 ##
-function Makie._get_glyphcollection_and_linesegments(rt::FormattedText, index, ts, f, fset, al, rot, jus, lh, col, scol, swi, www)
+function Makie._get_glyphcollection_and_linesegments(rt::RichText, index, ts, f, fset, al, rot, jus, lh, col, scol, swi, www)
     gc = Makie.layout_text(rt, ts, f, fset, al, rot, jus, lh, col)
     gc, Point2f[], Float32[], Makie.RGBAf[], Int[]
 end
@@ -322,7 +322,7 @@ function Makie.GlyphCollection(v::Vector{GlyphInfo2})
 end
 
 
-function Makie.layout_text(rt::FormattedText, ts, f, fset, al, rot, jus, lh, col)
+function Makie.layout_text(rt::RichText, ts, f, fset, al, rot, jus, lh, col)
 
     _f = to_font(fset, f)
 
@@ -420,9 +420,9 @@ function float_justification(ju, al)::Float32
     end
 end
 
-function process_rt_node!(stack, lines, rt::FormattedText, fonts)
+function process_rt_node!(stack, lines, rt::RichText, fonts)
     _type(x) = nothing
-    _type(r::FormattedText) = r.type
+    _type(r::RichText) = r.type
 
     push!(stack, new_glyphstate(stack[end], rt, Val(rt.type), fonts))
     sup_x = 0f0
@@ -486,14 +486,14 @@ function process_rt_node!(stack, lines, s::String, _)
     return
 end
 
-function new_glyphstate(gs::GlyphState2, rt::FormattedText, val::Val, fonts)
+function new_glyphstate(gs::GlyphState2, rt::RichText, val::Val, fonts)
     gs
 end
 
 _get_color(attributes, default)::RGBAf = haskey(attributes, :color) ? Makie.to_color(attributes[:color]) : default
 _get_font(attributes, default::NativeFont, fonts)::NativeFont = haskey(attributes, :font) ? Makie.to_font(fonts, attributes[:font]) : default
 
-function new_glyphstate(gs::GlyphState2, rt::FormattedText, val::Val{:sup}, fonts)
+function new_glyphstate(gs::GlyphState2, rt::RichText, val::Val{:sup}, fonts)
     att = rt.attributes
     GlyphState2(
         gs.x,
@@ -504,7 +504,7 @@ function new_glyphstate(gs::GlyphState2, rt::FormattedText, val::Val{:sup}, font
     )
 end
 
-function new_glyphstate(gs::GlyphState2, rt::FormattedText, val::Val{:span}, fonts)
+function new_glyphstate(gs::GlyphState2, rt::RichText, val::Val{:span}, fonts)
     att = rt.attributes
     GlyphState2(
         gs.x,
@@ -515,7 +515,7 @@ function new_glyphstate(gs::GlyphState2, rt::FormattedText, val::Val{:span}, fon
     )
 end
 
-function new_glyphstate(gs::GlyphState2, rt::FormattedText, val::Val{:sub}, fonts)
+function new_glyphstate(gs::GlyphState2, rt::RichText, val::Val{:sub}, fonts)
     att = rt.attributes
     GlyphState2(
         gs.x,
@@ -526,4 +526,4 @@ function new_glyphstate(gs::GlyphState2, rt::FormattedText, val::Val{:sub}, font
     )
 end
 
-Makie.iswhitespace(::FormattedText) = false
+Makie.iswhitespace(::RichText) = false
