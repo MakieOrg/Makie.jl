@@ -202,8 +202,12 @@ f
 
 ## Rich text
 
-With rich text, you can build text using different colors or fonts, as well as subscripts and superscripts.
-You can build rich text using the functions `rich`, `superscript` and `subscript`.
+With rich text, you can conveniently plot text whose parts have different colors or fonts, and you can position sections as subscripts and superscripts.
+You can create such rich text objects using the functions `rich`, `superscript` and `subscript`, all of which create `RichText` objects.
+
+Each of these functions takes a variable number of arguments, each of which can be a `String` or `RichText`.
+Each can also take keyword arguments such as `color` or `font`, to set these attributes for the given part.
+The top-level settings for font, color, etc. are taken from the `text` attributes as usual.
 
 \begin{examplefigure}{svg = true}
 ```julia
@@ -216,7 +220,7 @@ Label(
     f[1, 1],
     rich(
         "H", subscript("2"), "O is the formula for ",
-        rich("water", color = :blue, font = :italic)
+        rich("water", color = :cornflowerblue, font = :italic)
     )
 )
 
@@ -224,7 +228,7 @@ str = "A beautiful rainbow"
 rainbow = cgrad(:rainbow, length(str), categorical = true)
 rainbow_chars = [rich("$c", color = rainbow[i]) for (i, c) in enumerate(str)]
 
-Label(f[2, 1], rich(rainbow_chars...))
+Label(f[2, 1], rich(rainbow_chars...), font = :bold)
 
 f
 ```
