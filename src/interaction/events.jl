@@ -60,6 +60,11 @@ Picks a mouse position.  Implemented by the backend.
 """
 function pick end
 
+function pick(::Scene, ::Screen, xy) where Screen
+    @warn "Picking not supported yet by $(parentmodule(Screen))" maxlog=1
+    return nothing, 0
+end
+
 """
     onpick(func, plot)
 Calls `func` if one clicks on `plot`.  Implemented by the backend.

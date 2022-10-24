@@ -98,6 +98,8 @@ function device_scaling_factor(surface::Cairo.CairoSurface, sc::ScreenConfig)
     return is_vector_backend(surface) ? sc.pt_per_unit : sc.px_per_unit
 end
 
+const LAST_INLINE = Ref(true)
+
 """
     CairoMakie.activate!(; screen_config...)
 
@@ -108,7 +110,9 @@ Note, that the `screen_config` can also be set permanently via `Makie.set_theme!
 
 $(Base.doc(ScreenConfig))
 """
-function activate!(; type="png", screen_config...)
+function activate!(; inline=LAST_INLINE[], type="png", screen_config...)
+    Makie.inline!(inline)
+    LAST_INLINE[] = inline
     Makie.set_screen_config!(CairoMakie, screen_config)
     if type == "png"
         # So this is a bit counter intuitive, since the display system doesn't let us prefer a mime.

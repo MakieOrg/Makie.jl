@@ -82,6 +82,22 @@ function merge_screen_config(::Type{Config}, screen_config_kw) where Config
     return Config(arguments...)
 end
 
+
+const ALWAYS_INLINE_PLOTS = Ref{Bool}(false)
+
+"""
+    inline!(inline=true)
+
+Prevents opening a window when e.g. in the REPL.
+Usually, Makie opens a window when displaying a plot.
+Only case Makie always shows the plot inside the plotpane is when using VSCode eval.
+If you want to always force inlining the plot into the plotpane, set `inline!(true)` (E.g. when run in the VSCode REPL).
+In other cases `inline!(true/false)` won't do anything.
+"""
+function inline!(inline=true)
+    ALWAYS_INLINE_PLOTS[] = inline
+end
+
 """
     Base.display(figlike::FigureLike; backend=current_backend(), screen_config...)
 
@@ -100,8 +116,12 @@ function Base.display(figlike::FigureLike; backend=current_backend(), screen_con
         In that case, try `]build GLMakie` and watch out for any warnings.
         """)
     end
-    screen = backend.Screen(get_scene(figlike); screen_config...)
-    return display(screen, figlike)
+    if ALWAYS_INLINE_PLOTS[]
+        Core.invoke(display, Tuple{Any}, figlike)
+    else
+        screen = backend.Screen(get_scene(figlike); screen_config...)
+        return display(screen, figlike)
+    end
 end
 
 # Backends overload display(::Backend.Screen, scene::Scene), while Makie overloads the below,

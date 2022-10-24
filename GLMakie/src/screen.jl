@@ -103,6 +103,8 @@ mutable struct ScreenConfig
     end
 end
 
+const LAST_INLINE = Ref(false)
+
 """
     GLMakie.activate!(; screen_config...)
 
@@ -113,10 +115,12 @@ Note, that the `screen_config` can also be set permanently via `Makie.set_theme!
 
 $(Base.doc(ScreenConfig))
 """
-function activate!(; screen_config...)
+function activate!(; inline=LAST_INLINE[], screen_config...)
     if haskey(screen_config, :pause_rendering)
         error("pause_rendering got renamed to pause_renderloop.")
     end
+    Makie.inline!(inline)
+    LAST_INLINE[] = inline
     Makie.set_screen_config!(GLMakie, screen_config)
     Makie.set_active_backend!(GLMakie)
     Makie.set_glyph_resolution!(Makie.High)

@@ -203,7 +203,9 @@ function _update_rect(rect::Rect{N, T}, point::Point{N, T}) where {N, T}
         (isnan(_mi) ? _p : _p < _mi ? _p : _mi), (isnan(_ma) ? _p : _p > _ma ? _p : _ma)
     end
     new_o = map(first, mis_mas)
-    new_w = map((-) ∘ Base.splat(-), mis_mas)
+    new_w = map(mis_mas) do (mi, ma)
+        ma - mi
+    end
     typeof(rect)(new_o, new_w)
 end
 
