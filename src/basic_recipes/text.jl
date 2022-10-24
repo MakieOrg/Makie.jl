@@ -70,7 +70,10 @@ function plot!(plot::Text)
     pop!(attrs, :align)
     pop!(attrs, :color)
 
-    text!(plot, glyphcollections; attrs..., position = positions)
+    t = text!(plot, glyphcollections; attrs..., position = positions)
+    # remove attributes that the backends will choke on
+    pop!(t.attributes, :font)
+    pop!(t.attributes, :fonts)
     linesegments!(plot, linesegs_shifted; linewidth = linewidths, color = linecolors, space = :pixel)
 
     plot
