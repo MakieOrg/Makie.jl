@@ -55,7 +55,7 @@ const default_palettes = Attributes(
 
 const minimal_default = Attributes(
     palette = default_palettes,
-    font = "TeX Gyre Heros Makie",
+    font = :regular,
     fonts = Attributes(
         :regular => "TeX Gyre Heros Makie",
         :bold => "TeX Gyre Heros Makie Bold",

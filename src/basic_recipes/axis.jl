@@ -66,7 +66,7 @@ $(ATTRIBUTES)
         scale = Vec3f(1),
         padding = 0.1,
         inspectable = false,
-
+        fonts = theme(scene, :fonts),
         names = Attributes(
             axisnames = ("x", "y", "z"),
             textcolor = (:black, :black, :black),
@@ -222,7 +222,7 @@ to3tuple(x::Tuple{Any, Any}) = (x[1], x[2], x[2])
 to3tuple(x::Tuple{Any, Any, Any}) = x
 to3tuple(x) = ntuple(i-> x, Val(3))
 
-function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, args...)
+function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts, args...)
     # make sure we extend all args to 3D
     ranges, ticklabels = ranges_labels
     args3d = to3tuple.(args)
@@ -284,7 +284,7 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, args.
                 end
             end
             if !isempty(axisnames[i])
-                font = to_font(tfont[i])
+                font = to_font(fonts, tfont[i])
                 tick_widths = maximum(ticklabels[i]) do label
                     widths(text_bb(label, font, ttextsize[i]))[1]
                 end / scale[j]
@@ -337,7 +337,7 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
     map_once(
         draw_axis3d,
         Observable(textbuffer), Observable(linebuffer), scale(scene),
-        axis[1], axis.ticks.ranges_labels, args...
+        axis[1], axis.ticks.ranges_labels, Observable(axis.fonts), args...
     )
     push!(scene, axis)
     return axis
