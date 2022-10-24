@@ -262,11 +262,6 @@ end
 
 iswhitespace(l::LaTeXString) = iswhitespace(replace(l.s, '$' => ""))
 
-
-
-
-
-
 struct RichText <: AbstractString
     type::Symbol
     children::Vector{Union{RichText,String}}
@@ -276,6 +271,10 @@ struct RichText <: AbstractString
         typeof(cs)
         new(type, cs, Dict(kwargs))
     end
+end
+
+function Base.:(==)(r1::RichText, r2::RichText)
+    r1.type == r2.type && r1.children == r2.children && r1.attributes == r2.attributes
 end
 
 rich(args...; kwargs...) = RichText(:span, args...; kwargs...)

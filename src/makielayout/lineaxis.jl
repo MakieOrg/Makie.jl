@@ -587,7 +587,7 @@ function get_ticks(l::LogTicks, scale::Union{typeof(log10), typeof(log2), typeof
         xs -> Showoff.showoff(xs, :plain),
         ticks_scaled
     )
-    labels = _logbase(scale) .* Makie.UnicodeFun.to_superscript.(labels_scaled)
+    labels = rich.(_logbase(scale), superscript.(labels_scaled))
 
     (ticks, labels)
 end
