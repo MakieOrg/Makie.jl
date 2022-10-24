@@ -19,6 +19,7 @@ If you want to find out what exact font your string was resolved as, you can exe
 using Makie
 Makie.to_font("Blackchancery")
 ```
+\show{fonts1}
 
 ## Symbol
 
@@ -29,6 +30,7 @@ The default theme has the following fonts set:
 using Makie
 Makie.current_default_theme()[:fonts]
 ```
+\show{fonts2}
 
 Therefore, you can pick a font from this set by setting, for example, `font = :bold_italic`.
 The advantage of this is that you can set your fonts not by hardcoding specific ones at every place where you use `text`, but by setting the fonts at the top level.
