@@ -9,8 +9,8 @@ If you pass a `String` as a font, this can either be resolved as a file name for
 Font name matching is case insensitive and accepts partial matches.
 
 ```julia
-font_path = "/some/path/to/a/font_file.ttf"
-font_name = "TeX Gyre Heros Makie"
+font_by_path = "/some/path/to/a/font_file.ttf"
+font_by_name = "TeX Gyre Heros Makie"
 ```
 
 If you want to find out what exact font your string was resolved as, you can execute `Makie.to_font(the_string)`:
@@ -47,6 +47,7 @@ Axis(f[1, 1], title = "A title", xlabel = "An x label", xlabelfont = :weird)
 
 f
 ```
+\end{examplefigure}
 
 ## Emoji and color fonts
 
