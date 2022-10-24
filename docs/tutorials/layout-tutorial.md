@@ -55,7 +55,7 @@ colgap!(ga, 10)
 rowgap!(ga, 10)
 
 Label(ga[1, 1:2, Top()], "Stimulus ratings", valign = :bottom,
-    font = "TeX Gyre Heros Bold",
+    font = :bold,
     padding = (0, 0, 5, 0))
 
 xs = LinRange(0.5, 6, 50)
@@ -111,7 +111,7 @@ axs[3, 1].xlabel = "Day 1"
 axs[3, 2].xlabel = "Day 2"
 
 Label(gd[1, :, Top()], "EEG traces", valign = :bottom,
-    font = "TeX Gyre Heros Bold",
+    font = :bold,
     padding = (0, 0, 5, 0))
 
 rowgap!(gd, 10)
@@ -133,7 +133,7 @@ colsize!(gd, 2, Auto(n_day_2))
 for (label, layout) in zip(["A", "B", "C", "D"], [ga, gb, gc, gd])
     Label(layout[1, 1, TopLeft()], label,
         textsize = 26,
-        font = "TeX Gyre Heros Bold",
+        font = :bold,
         padding = (0, 5, 5, 0),
         halign = :right)
 end
@@ -283,7 +283,7 @@ We can make a title by placing a label across the top two elements.
 \begin{examplefigure}{px_per_unit = 1.5}
 ```julia
 Label(ga[1, 1:2, Top()], "Stimulus ratings", valign = :bottom,
-    font = "TeX Gyre Heros Bold",
+    font = :bold,
     padding = (0, 0, 5, 0))
 
 f
@@ -413,7 +413,7 @@ We can make a little title for the six axes by placing a `Label` in the top prot
 \begin{examplefigure}{px_per_unit = 1.5}
 ```julia
 Label(gd[1, :, Top()], "EEG traces", valign = :bottom,
-    font = "TeX Gyre Heros Bold",
+    font = :bold,
     padding = (0, 0, 5, 0))
 
 f
@@ -485,7 +485,7 @@ That will leave all other alignments intact, because we're not creating any new 
 for (label, layout) in zip(["A", "B", "C", "D"], [ga, gb, gc, gd])
     Label(layout[1, 1, TopLeft()], label,
         textsize = 26,
-        font = "TeX Gyre Heros Bold",
+        font = :bold,
         padding = (0, 5, 5, 0),
         halign = :right)
 end
