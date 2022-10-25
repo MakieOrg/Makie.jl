@@ -96,3 +96,40 @@ GLMakie.closeall(GLMakie.SINGLETON_SCREEN_NO_RENDERLOOP)
         close(screen)
     end
 end
+
+@testset "emtpy!(fig)" begin
+    GLMakie.closeall()
+    fig = Figure()
+    ax = Axis(fig[1,1])
+    heatmap!(ax, rand(4, 4))
+    lines!(ax, 1:5, rand(5); linewidth=3)
+    text!(ax, [Point2f(2)], text=["hi"])
+    screen = display(fig)
+    empty!(fig)
+    @testset "all got freed" begin
+        for (_, _, robj) in screen.renderlist
+            for (k, v) in robj.uniforms
+                if v isa GLMakie.GPUArray
+                    @test v.id == 0
+                end
+            end
+            @test robj.vertexarray.id == 0
+        end
+    end
+    ax = Axis(fig[1,1])
+    heatmap!(ax, rand(4, 4))
+    lines!(ax, 1:5, rand(5); linewidth=3)
+    text!(ax, [Point2f(2)], text=["hi"])
+    @testset "no freed object after replotting" begin
+        for (_, _, robj) in screen.renderlist
+            for (k, v) in robj.uniforms
+                if v isa GLMakie.GPUArray
+                    @test v.id != 0
+                end
+            end
+            @test robj.vertexarray.id != 0
+        end
+    end
+    close(screen)
+    @test isempty(screen.renderlist)
+end
