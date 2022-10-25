@@ -487,7 +487,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
             p1 = dpoint(t, f1, f2)
             p2 = if dim == 3
                 # special case the z axis, here it depends on azimuth in which direction the ticks go
-                if 45 <= (rad2deg(azimuth[]) % 180) <= 135
+                if 45 <= mod1(rad2deg(azimuth[]), 180) <= 135
                     dpoint(t, f1 + 0.03 * diff_f1, f2)
                 else
                     dpoint(t, f1, f2 + 0.03 * diff_f2)
