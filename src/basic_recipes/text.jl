@@ -377,7 +377,7 @@ function apply_alignment_and_justification!(lines, ju, al)
     end
 
     al_offset_y = if al[2] == :center
-        0.5 * (top_y - bottom_y)
+        0.5 * (top_y + bottom_y)
     elseif al[2] == :bottom
         bottom_y
     elseif al[2] == :top
