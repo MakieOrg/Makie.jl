@@ -19,17 +19,17 @@ function initialize_block!(ax::Axis3)
     cam = OrthographicCamera()
     cameracontrols!(scene, cam)
 
-    mi1 = Observable(!(pi/2 <= ax.azimuth[] % 2pi < 3pi/2))
-    mi2 = Observable(0 <= ax.azimuth[] % 2pi < pi)
+    mi1 = Observable(!(pi/2 <= mod1(ax.azimuth[], 2pi) < 3pi/2))
+    mi2 = Observable(0 <= mod1(ax.azimuth[], 2pi) < pi)
     mi3 = Observable(ax.elevation[] > 0)
 
     on(ax.azimuth) do x
-        b = !(pi/2 <= x % 2pi < 3pi/2)
+        b = !(pi/2 <= mod1(x, 2pi) < 3pi/2)
         mi1.val == b || (mi1[] = b)
         return
     end
     on(ax.azimuth) do x
-        b = 0 <= x % 2pi < pi
+        b = 0 <= mod1(x, 2pi) < pi
         mi2.val == b || (mi2[] = b)
         return
     end
