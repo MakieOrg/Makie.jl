@@ -315,14 +315,14 @@ mutable struct RenderObject{Pre}
         # But with this implementation, the fxaa flag can't be changed,
         # and since this is a UUID, it shouldn't matter
         id = pack_bool(RENDER_OBJECT_ID_COUNTER[], fxaa)
+        visible = pop!(uniforms, :visible, Observable(true))
+
         robj = new(
             context,
             uniforms, observables, vertexarray,
             prerenderfunctions, postrenderfunctions,
-            id, true, true
+            id, true, visible[]
         )
-
-        visible = pop!(uniforms, :visible, Observable(true))
 
         if track_updates
             # visible changes should always trigger updates so that plots 
@@ -330,8 +330,8 @@ mutable struct RenderObject{Pre}
             # Other uniforms and buffers don't need to trigger updates when 
             # visible = false
             on(visible) do visible
-                robj.requires_update = true
                 robj.visible = visible
+                robj.requires_update = true
             end
 
             function request_update(_::Any)
