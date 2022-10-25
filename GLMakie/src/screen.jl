@@ -353,12 +353,19 @@ function destroy!(rob::RenderObject)
     # These need explicit clean up because (some of) the source observables
     # remain when the plot is deleted.
     GLAbstraction.switch_context!(rob.context)
+    tex = get_texture!(get_texture_atlas())
     for (k, v) in rob.uniforms
         if v isa Observable
             for input in v.inputs
                 off(input)
             end
-        elseif v isa GPUArray
+        elseif v isa GPUArray && v !== tex
+            # We usually don't share gpu data and it should be hard for users to share buffers..
+            # but we do share the texture atlas, so we check v !== tex, since we can't just free shared resources
+
+            # TODO, refcounting, or leaving freeing to GC...
+            # GC is a bit tricky with active contexts, so immediate free is prefered.
+            # I guess as long as we make it hard for users to share buffers directly, this should be fine!
             GLAbstraction.free(v)
         end
     end
@@ -669,6 +676,8 @@ end
 
 function renderloop(screen)
     isopen(screen) || error("Screen most be open to run renderloop!")
+    # Context needs to be current for GLFW.SwapInterval
+    ShaderAbstractions.switch_context!(screen.glscreen)
     try
         if screen.config.vsync
             GLFW.SwapInterval(1)
