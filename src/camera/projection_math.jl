@@ -280,10 +280,14 @@ end
 
 function project(scene::Scene, point::T) where T<:StaticVector
     cam = scene.camera
+    area = pixelarea(scene)[]
+    # TODO, I think we need  .+ minimum(area)
+    # Which would be semi breaking at this point though, I suppose
     return project(
         cam.projectionview[] *
         transformationmatrix(scene)[],
-        Vec2f(widths(pixelarea(scene)[])), Point(point)
+        Vec2f(widths(area)),
+        Point(point)
     )
 end
 

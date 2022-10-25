@@ -6,11 +6,10 @@ function project_sp(scene, point)
     return point_px .+ offset
 end
 
-GLMakie.closeall(GLMakie.GLFW_WINDOWS)
-GLMakie.closeall(GLMakie.SINGLETON_SCREEN)
-GLMakie.closeall(GLMakie.SINGLETON_SCREEN_NO_RENDERLOOP)
-
 @testset "unit tests" begin
+    GLMakie.closeall(GLMakie.GLFW_WINDOWS)
+    GLMakie.closeall(GLMakie.SINGLETON_SCREEN)
+    GLMakie.closeall(GLMakie.SINGLETON_SCREEN_NO_RENDERLOOP)
     @testset "Window handling" begin
         # Without previous windows/figures everything should be empty/unassigned
         @test isempty(GLMakie.GLFW_WINDOWS)
@@ -117,6 +116,49 @@ end
         end
     end
     ax = Axis(fig[1,1])
+    heatmap!(ax, rand(4, 4))
+    lines!(ax, 1:5, rand(5); linewidth=3)
+    text!(ax, [Point2f(2)], text=["hi"])
+    @testset "no freed object after replotting" begin
+        for (_, _, robj) in screen.renderlist
+            for (k, v) in robj.uniforms
+                if v isa GLMakie.GPUArray
+                    @test v.id != 0
+                end
+            end
+            @test robj.vertexarray.id != 0
+        end
+    end
+    close(screen)
+    @test isempty(screen.renderlist)
+end
+
+
+@testset "empty!(ax)" begin
+    GLMakie.closeall()
+    fig = Figure()
+    ax = Axis(fig[1,1])
+    hmp = heatmap!(ax, rand(4, 4))
+    lp = lines!(ax, 1:5, rand(5); linewidth=3)
+    tp = text!(ax, [Point2f(2)], text=["hi"])
+    screen = display(fig)
+
+    @test ax.scene.plots == [hmp, lp, tp]
+
+    robjs = map(x-> screen.cache[objectid(x)], [hmp, lp, tp.plots...])
+
+    empty!(ax)
+
+    tex_atlas = GLMakie.get_texture!(Makie.get_texture_atlas())
+    for robj in robjs
+        for (k, v) in robj.uniforms
+            if (v isa GLMakie.GPUArray) && (v !== tex_atlas)
+                @test v.id == 0
+            end
+        end
+        @test robj.vertexarray.id == 0
+    end
+
     heatmap!(ax, rand(4, 4))
     lines!(ax, 1:5, rand(5); linewidth=3)
     text!(ax, [Point2f(2)], text=["hi"])
