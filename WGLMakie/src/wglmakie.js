@@ -407,7 +407,7 @@ const WGLMakie = (function () {
 
     function create_mesh(program) {
         const buffer_geometry = new THREE.BufferGeometry();
-        const faces = new THREE.BufferAttribute(program.faces, 1)
+        const faces = new THREE.BufferAttribute(new Uint32Array(program.faces), 1)
         attach_geometry(buffer_geometry, program.vertexarrays, faces);
         const material = create_material(program);
         return new THREE.Mesh(buffer_geometry, material);
@@ -415,7 +415,7 @@ const WGLMakie = (function () {
 
     function create_instanced_mesh(program) {
         const buffer_geometry = new THREE.InstancedBufferGeometry();
-        const faces = new THREE.BufferAttribute(program.faces, 1)
+        const faces = new THREE.BufferAttribute(new Uint32Array(program.faces), 1)
         attach_geometry(buffer_geometry, program.vertexarrays, faces);
         attach_instanced_geometry(buffer_geometry, program.instance_attributes);
         const material = create_material(program);
