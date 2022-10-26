@@ -18,8 +18,6 @@ function default_theme(scene)
     )
 end
 
-
-
 function color_and_colormap!(plot, intensity = plot[:color])
     if isa(intensity[], AbstractArray{<: Number})
         haskey(plot, :colormap) || error("Plot $(typeof(plot)) needs to have a colormap to allow the attribute color to be an array of numbers")
@@ -81,7 +79,7 @@ function calculated_attributes!(::Type{<: Scatter}, plot)
 
     replace_automatic!(plot, :marker_offset) do
         # default to middle
-        lift(x-> to_2d_scale(map(x-> x .* -0.5f0, x)), plot[:markersize])
+        return lift(x-> to_2d_scale(map(x-> x .* -0.5f0, x)), plot.markersize)
     end
 
     replace_automatic!(plot, :markerspace) do
@@ -102,8 +100,10 @@ function calculated_attributes!(::Type{T}, plot) where {T<:Union{Lines, LineSegm
     if T <: LineSegments
         for attr in [:color, :linewidth]
             # taken from @edljk  in PR #77
+
             if haskey(plot, attr) && isa(plot[attr][], AbstractVector) && (length(pos) ÷ 2) == length(plot[attr][])
-                plot[attr] = lift(plot[attr]) do cols
+                obs = pop!(plot, attr)
+                plot[attr] = lift(obs) do cols
                     map(i -> cols[(i + 1) ÷ 2], 1:(length(cols) * 2))
                 end
             end
@@ -231,6 +231,7 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     end
     # create the plot, with the full attributes, the input signals, and the final signals.
     plot_obj = FinalType(scene, transformation, plot_attributes, input, seperate_tuple(args))
+
     calculated_attributes!(plot_obj)
     plot_obj
 end

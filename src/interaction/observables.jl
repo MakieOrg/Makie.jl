@@ -1,6 +1,11 @@
 const lift = map
 
-Base.close(obs::Observable) = empty!(obs.listeners)
+function Base.close(obs::Observable)
+    for input in obs.inputs
+        off(input)
+    end
+    empty!(obs.listeners)
+end
 
 """
 Observables.off but without throwing an error

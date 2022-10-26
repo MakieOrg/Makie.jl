@@ -46,8 +46,15 @@ const SceneLike = Union{AbstractScene, ScenePlot}
 Main structure for holding attributes, for theming plots etc!
 Will turn all values into observables, so that they can be updated.
 """
-struct Attributes
-    attributes::Dict{Symbol, Observable}
+mutable struct Attributes
+    attributes::Dict{Symbol, Any}
+    observables::Dict{Symbol, Observable}
+    convert::Bool
+    plotkey::Symbol
+end
+
+function Attributes(attr::Dict{Symbol, Any})
+    Attributes(attr, Dict{Symbol, Observable}(), false, :nothing)
 end
 
 struct Combined{Typ, T} <: ScenePlot{Typ}

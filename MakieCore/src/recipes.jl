@@ -58,7 +58,7 @@ theme(x::AbstractScene) = x.theme
 theme(x::AbstractScene, key) = deepcopy(x.theme[key])
 theme(x::AbstractPlot, key) = deepcopy(x.attributes[key])
 
-Attributes(x::AbstractPlot) = x.attributes
+Attributes(x::AbstractPlot) = attributes(x)
 
 default_theme(scene, T) = Attributes()
 

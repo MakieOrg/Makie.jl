@@ -11,24 +11,24 @@ convert_arguments(::Type{<: Poly}, m::GeometryBasics.GeometryPrimitive) = (m,)
 function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}})
     mesh!(
         plot, lift(triangle_mesh, plot[1]),
-        color = plot[:color],
-        colormap = plot[:colormap],
-        colorrange = plot[:colorrange],
-        lowclip = plot[:lowclip],
-        highclip = plot[:highclip],
-        nan_color = plot[:nan_color],
-        shading = plot[:shading],
-        visible = plot[:visible],
-        overdraw = plot[:overdraw],
-        inspectable = plot[:inspectable],
-        transparency = plot[:transparency],
-        space = plot[:space]
+        color = plot.color,
+        colormap = plot.colormap,
+        colorrange = plot.colorrange,
+        lowclip = plot.lowclip,
+        highclip = plot.highclip,
+        nan_color = plot.nan_color,
+        shading = plot.shading,
+        visible = plot.visible,
+        overdraw = plot.overdraw,
+        inspectable = plot.inspectable,
+        transparency = plot.transparency,
+        space = plot.space
     )
     wireframe!(
         plot, plot[1],
-        color = plot[:strokecolor], linestyle = plot[:linestyle], space = plot[:space],
-        linewidth = plot[:strokewidth], visible = plot[:visible], overdraw = plot[:overdraw],
-        inspectable = plot[:inspectable], transparency = plot[:transparency]
+        color = plot.strokecolor, linestyle = plot.linestyle, space = plot.space,
+        linewidth = plot.strokewidth, visible = plot.visible, overdraw = plot.overdraw,
+        inspectable = plot.inspectable, transparency = plot.transparency
     )
 end
 

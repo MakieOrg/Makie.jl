@@ -59,8 +59,11 @@ value is nothing
 function replace_automatic!(f, dict, key)
     haskey(dict, key) || return (dict[key] = f())
     val = dict[key]
-    to_value(val) == automatic && return (dict[key] = f())
-    val
+    if to_value(val) == automatic
+        delete!(dict, key)
+        dict[key] = f()
+    end
+    return val
 end
 
 is_unitrange(x) = (false, 0:0)

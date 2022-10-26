@@ -77,24 +77,26 @@ function connect_camera!(gl_attributes, cam, space = gl_attributes[:space])
     return nothing
 end
 
-function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
+function cached_robj!(robj_func, screen, scene, @nospecialize(x::AbstractPlot))
     # poll inside functions to make wait on compile less prominent
     pollevents(screen)
+    ignore = Set([
+        :transformation, :tickranges, :ticklabels, :raw, :SSAO,
+        :lightposition, :material,
+        :inspector_label, :inspector_hover, :inspector_clear
+    ])
     robj = get!(screen.cache, objectid(x)) do
-        filtered = filter(x.attributes) do (k, v)
-            !in(k, (
-                :transformation, :tickranges, :ticklabels, :raw, :SSAO, 
-                :lightposition, :material, 
-                :inspector_label, :inspector_hover, :inspector_clear
-            ))
-        end
+        gl_attributes = Dict{Symbol, Any}()
+        plot_attributes = attributes(x)
+        setfield!(plot_attributes, :convert, true)
+        setfield!(plot_attributes, :plotkey, plotkey(x))
+        empty!(getfield(plot_attributes, :observables))
 
-        gl_attributes = Dict{Symbol, Any}(map(filtered) do key_value
-            key, value = key_value
+        for (key, value) in plot_attributes
+            key in ignore && continue
             gl_key = to_glvisualize_key(key)
-            gl_value = lift_convert(key, value, x)
-            gl_key => gl_value
-        end)
+            gl_attributes[gl_key] = value
+        end
 
         pointlight = Makie.get_point_light(scene)
         if !isnothing(pointlight)
