@@ -12,7 +12,6 @@ function handle_color!(uniform_dict, instance_dict)
               color === nothing
         delete!(uniform_dict, :colormap)
     elseif color isa AbstractArray{<:Real}
-        udict[:color] = lift(x -> convert(Vector{Float32}, x), udict[:color])
         uniform_dict[:color_getter] = """
             vec4 get_color(){
                 vec2 norm = get_colorrange();
@@ -44,7 +43,7 @@ end
 const IGNORE_KEYS = Set([
     :shading, :overdraw, :rotation, :distancefield, :space, :markerspace, :fxaa,
     :visible, :transformation, :alpha, :linewidth, :transparency, :marker,
-    :lightposition, :cycle, :label, :inspector_clear, :inspector_hover, 
+    :lightposition, :cycle, :label, :inspector_clear, :inspector_hover,
     :inspector_label
 ])
 
