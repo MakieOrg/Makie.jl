@@ -16,12 +16,9 @@ The attribute levels can be either
 $(ATTRIBUTES)
 """
 @recipe(Contour) do scene
-    default = default_theme(scene)
-    # pop!(default, :color)
     Attributes(;
-        default...,
         color = nothing,
-        colormap = theme(scene, :colormap),
+        colormap = :viridis,
         colorrange = Makie.automatic,
         levels = 5,
         linewidth = 1.0,

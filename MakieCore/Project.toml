@@ -1,9 +1,10 @@
-authors = ["Simon Danisch"]
 name = "MakieCore"
 uuid = "20f20a25-4f0e-4fdf-b5d1-57303727442b"
+authors = ["Simon Danisch"]
 version = "0.5.1"
 
 [deps]
+GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
 Observables = "510215fc-4207-5dde-b226-833fc4488ee2"
 
 [compat]

@@ -22,29 +22,24 @@ grid.
 $(ATTRIBUTES)
 """
 @recipe(Arrows, points, directions) do scene
-    attr = merge!(
-        default_theme(scene),
-        Attributes(
-            arrowhead = automatic,
-            arrowtail = automatic,
-            color = :black,
-            linecolor = automatic,
-            arrowsize = automatic,
-            linestyle = nothing,
-            align = :origin,
-            normalize = false,
-            lengthscale = 1f0,
-            colormap = theme(scene, :colormap),
-            quality = 32,
-            inspectable = theme(scene, :inspectable),
-            markerspace = :pixel,
-        )
+    Attributes(;
+        arrowhead = automatic,
+        arrowtail = automatic,
+        color = :black,
+        linecolor = automatic,
+        arrowcolor = automatic,
+        arrowsize = automatic,
+        linewidth = automatic,
+        linestyle = nothing,
+        align = :origin,
+        normalize = false,
+        lengthscale = 1f0,
+        colormap = :viridis,
+        quality = 32,
+        markerspace = :pixel,
+
+        fxaa = automatic,
     )
-    attr[:fxaa] = automatic
-    attr[:linewidth] = automatic
-    # connect arrow + linecolor by default
-    get!(attr, :arrowcolor, attr[:linecolor])
-    attr
 end
 
 # For the matlab/matplotlib users

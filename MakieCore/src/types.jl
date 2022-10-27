@@ -64,6 +64,21 @@ struct Combined{Typ, T} <: ScenePlot{Typ}
     input_args::Tuple
     converted::Tuple
     plots::Vector{AbstractPlot}
+
+    model::Observable{Mat4f}
+    inspectable::Observable{Bool}
+    transparency::Observable{Bool}
+    visible::Observable{Bool}
+end
+
+function Combined{Typ, T}(
+        parent, transformation, attributes, input_args, converted, plots;
+        inspectable=true, transparency=false, visible=true) where {Typ, T}
+
+    return Combined{Typ, T}(
+        parent, transformation, attributes, input_args, converted, plots,
+        transformation.model, inspectable, transparency, visible)
+
 end
 
 function Base.show(io::IO, plot::Combined)

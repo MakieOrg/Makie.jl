@@ -8,7 +8,7 @@ end
 using Observables
 using Observables: to_value
 using Base: RefValue
-
+using GeometryBasics
 
 include("types.jl")
 include("attributes.jl")

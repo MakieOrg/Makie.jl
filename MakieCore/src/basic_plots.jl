@@ -42,16 +42,18 @@ Plots an image on range `x, y` (defaults to dimensions).
 """
 @recipe(Image, x, y, image) do scene
     Attributes(;
-        default_theme(scene)...,
+        fxaa = true,
+        space = :data,
+        overdraw = false,
+        depth_shift = 0f0,
+
         colormap = [:black, :white],
         colorrange = automatic,
         lowclip = automatic,
         highclip = automatic,
         nan_color = :transparent,
+
         interpolate = true,
-        fxaa = false,
-        inspectable = theme(scene, :inspectable),
-        space = :data
     )
 end
 
@@ -86,18 +88,20 @@ Plots a heatmap as an image on `x, y` (defaults to interpretation as dimensions)
 """
 @recipe(Heatmap, x, y, values) do scene
     Attributes(;
-        default_theme(scene)...,
-        colormap = theme(scene, :colormap),
+        fxaa = true,
+        space = :data,
+        overdraw = false,
+        depth_shift = 0f0,
+
+        colormap = :viridis,
         colorrange = automatic,
         lowclip = automatic,
         highclip = automatic,
         nan_color = :transparent,
+
         linewidth = 0.0,
         interpolate = false,
         levels = 1,
-        fxaa = true,
-        inspectable = theme(scene, :inspectable),
-        space = :data
     )
 end
 
@@ -145,16 +149,22 @@ Available algorithms are:
 """
 @recipe(Volume, x, y, z, volume) do scene
     Attributes(;
-        default_theme(scene)...,
+        fxaa = true,
+        space = :data,
+        overdraw = false,
+        depth_shift = 0f0,
+        ssao = false,
+
         algorithm = :mip,
         isovalue = 0.5,
         isorange = 0.05,
         color = nothing,
-        colormap = theme(scene, :colormap),
+        colormap = :viridis,
         colorrange = (0, 1),
-        fxaa = true,
-        inspectable = theme(scene, :inspectable),
-        space = :data
+
+        diffuse = Vec3f(0.4),
+        specular = Vec3f(0.2),
+        shininess = 32f0,
     )
 end
 
@@ -198,19 +208,25 @@ Plots a surface, where `(x, y)`  define a grid whose heights are the entries in 
 """
 @recipe(Surface, x, y, z) do scene
     Attributes(;
-        default_theme(scene)...,
+        fxaa = true,
+        space = :data,
+        overdraw = false,
+        depth_shift = 0f0,
+        ssao = false,
+
         backlight = 0f0,
         color = nothing,
-        colormap = theme(scene, :colormap),
+        colormap = :viridis,
         colorrange = automatic,
         lowclip = automatic,
         highclip = automatic,
         nan_color = :transparent,
         shading = true,
-        fxaa = true,
         invert_normals = false,
-        inspectable = theme(scene, :inspectable),
-        space = :data
+
+        diffuse = Vec3f(0.4),
+        specular = Vec3f(0.2),
+        shininess = 32f0,
     )
 end
 
@@ -248,16 +264,18 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
 """
 @recipe(Lines, positions) do scene
     Attributes(;
-        default_theme(scene)...,
-        linewidth = theme(scene, :linewidth),
-        color = theme(scene, :linecolor),
-        colormap = theme(scene, :colormap),
+        fxaa = false,
+        space = :data,
+        overdraw = false,
+        depth_shift = 0f0,
+
+        linewidth = 1,
+        color = :black,
+        colormap = :viridis,
         colorrange = automatic,
         linestyle = nothing,
-        fxaa = false,
+
         cycle = [:color],
-        inspectable = theme(scene, :inspectable),
-        space = :data
     )
 end
 
@@ -335,20 +353,28 @@ Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [Geome
 """
 @recipe(Mesh, mesh) do scene
     Attributes(;
-        default_theme(scene)...,
+        fxaa = true,
+        space = :data,
+        overdraw = false,
+        depth_shift = 0f0,
+        ssao = false,
+
         color = :black,
         backlight = 0f0,
-        colormap = theme(scene, :colormap),
+
+        colormap = :viridis,
         colorrange = automatic,
         lowclip = automatic,
         highclip = automatic,
         nan_color = :transparent,
+
+        diffuse = Vec3f(0.4),
+        specular = Vec3f(0.2),
+        shininess = 32f0,
+
         interpolate = true,
         shading = true,
-        fxaa = true,
-        inspectable = theme(scene, :inspectable),
         cycle = [:color => :patchcolor],
-        space = :data
     )
 end
 
@@ -391,12 +417,18 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
 """
 @recipe(Scatter, positions) do scene
     Attributes(;
-        default_theme(scene)...,
+        fxaa = false,
+        space = :data,
+        markerspace = :pixel,
+        overdraw = false,
+        depth_shift = 0f0,
+        ssao = false,
+
         color = theme(scene, :markercolor),
-        colormap = theme(scene, :colormap),
+        colormap = :viridis,
         colorrange = automatic,
-        marker = theme(scene, :marker),
-        markersize = theme(scene, :markersize),
+        marker = :circle,
+        markersize = 12,
 
         strokecolor = theme(scene, :markerstrokecolor),
         strokewidth = theme(scene, :markerstrokewidth),
@@ -408,11 +440,7 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
         transform_marker = false, # Applies the plots transformation to marker
         distancefield = nothing,
         uv_offset_width = (0.0, 0.0, 0.0, 0.0),
-        space = :data,
-        markerspace = :pixel,
-        fxaa = false,
         cycle = [:color],
-        inspectable = theme(scene, :inspectable)
     )
 end
 
@@ -458,18 +486,25 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
 """
 @recipe(MeshScatter, positions) do scene
     Attributes(;
-        default_theme(scene)...,
+        fxaa = true,
+        space = :data,
+        overdraw = false,
+        depth_shift = 0f0,
+        ssao = false,
+
         color = :black,
-        colormap = theme(scene, :colormap),
+        colormap = :viridis,
         colorrange = automatic,
+
+        diffuse = Vec3f(0.4),
+        specular = Vec3f(0.2),
+        shininess = 32f0,
+
         marker = :Sphere,
         markersize = 0.1,
         rotations = 0.0,
         backlight = 0f0,
-        space = :data,
         shading = true,
-        fxaa = true,
-        inspectable = theme(scene, :inspectable),
         cycle = [:color],
     )
 end
@@ -514,9 +549,15 @@ Plots one or multiple texts passed via the `text` keyword.
 """
 @recipe(Text, positions) do scene
     Attributes(;
-        default_theme(scene)...,
+        fxaa = false,
+        space = :data,
+        markerspace = :pixel,
+        overdraw = false,
+        depth_shift = 0f0,
+
         color = theme(scene, :textcolor),
-        font = theme(scene, :font),
+        font = "TeX Gyre Heros Makie",
+
         strokecolor = (:black, 0.0),
         strokewidth = 0,
         align = (:left, :bottom),
@@ -525,11 +566,8 @@ Plots one or multiple texts passed via the `text` keyword.
         position = (0.0, 0.0),
         justification = automatic,
         lineheight = 1.0,
-        space = :data,
-        markerspace = :pixel,
         offset = (0.0, 0.0),
         word_wrap_width = -1,
-        inspectable = theme(scene, :inspectable)
     )
 end
 
@@ -577,22 +615,22 @@ Plots polygons, which are defined by
 """
 @recipe(Poly) do scene
     Attributes(;
+        fxaa = true,
+        space = :data,
+        overdraw = false,
+
         color = theme(scene, :patchcolor),
-        visible = theme(scene, :visible),
         strokecolor = theme(scene, :patchstrokecolor),
-        colormap = theme(scene, :colormap),
+        strokewidth = theme(scene, :patchstrokewidth),
+
+        colormap = :viridis,
         colorrange = automatic,
         lowclip = automatic,
         highclip = automatic,
         nan_color = :transparent,
-        strokewidth = theme(scene, :patchstrokewidth),
+
         shading = false,
-        fxaa = true,
         linestyle = nothing,
-        overdraw = false,
-        transparency = false,
         cycle = [:color => :patchcolor],
-        inspectable = theme(scene, :inspectable),
-        space = :data
     )
 end

@@ -1,20 +1,21 @@
 function default_theme(scene)
     Attributes(
         # color = theme(scene, :color),
-        linewidth = 1,
+        inspectable = theme(scene, :inspectable),
         transformation = automatic,
         model = automatic,
-        visible = true,
         transparency = false,
+        visible = true,
         overdraw = false,
+        space = :data,
+        nan_color = RGBAf(0,0,0,0),
+
+        linewidth = 1,
         diffuse = Vec3f(0.4),
         specular = Vec3f(0.2),
         shininess = 32f0,
-        nan_color = RGBAf(0,0,0,0),
         ssao = false,
-        inspectable = theme(scene, :inspectable),
         depth_shift = 0f0,
-        space = :data
     )
 end
 
