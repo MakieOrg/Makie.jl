@@ -46,28 +46,28 @@ end
 
 function connect_camera!(gl_attributes, cam, space = gl_attributes[:space])
     for key in (:pixel_space, :resolution, :eyeposition)
-        get!(gl_attributes, key, getfield(cam, key))
+        get!(gl_attributes, key, copy(getfield(cam, key)))
     end
     get!(gl_attributes, :view) do
-        return map(cam.view, space) do view, space
+        return lift(cam.view, space) do view, space
             return is_data_space(space) ? view : Mat4f(I)
         end
     end
     get!(gl_attributes, :normalmatrix) do
-        return map(gl_attributes[:view], gl_attributes[:model]) do v, m
+        return lift(gl_attributes[:view], gl_attributes[:model]) do v, m
             i = Vec(1, 2, 3)
             return transpose(inv(v[i, i] * m[i, i]))
         end
     end
 
     get!(gl_attributes, :projection) do
-        return map(cam.projection, cam.pixel_space, space) do _, _, space
+        return lift(cam.projection, cam.pixel_space, space) do _, _, space
             return Makie.space_to_clip(cam, space, false)
         end
     end
 
     get!(gl_attributes, :projectionview) do
-        return map(cam.projectionview, cam.pixel_space, space) do _, _, space
+        return lift(cam.projectionview, cam.pixel_space, space) do _, _, space
             Makie.space_to_clip(cam, space, true)
         end
     end

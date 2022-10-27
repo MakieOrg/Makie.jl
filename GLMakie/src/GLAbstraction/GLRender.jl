@@ -13,7 +13,7 @@ function render(list::Vector{RenderObject{Pre}}) where Pre
     vertexarray = first(list).vertexarray
     program = vertexarray.program
     glUseProgram(program.id)
-    glBindVertexArray(vertexarray.id)
+    bind(vertexarray)
     for renderobject in list
         Bool(to_value(renderobject.uniforms[:visible])) || continue # skip invisible
         # make sure we only bind new programs and vertexarray when it is actually
@@ -24,7 +24,7 @@ function render(list::Vector{RenderObject{Pre}}) where Pre
                 program = renderobject.vertexarray.program
                 glUseProgram(program.id)
             end
-            glBindVertexArray(vertexarray.id)
+            bind(vertexarray)
         end
         for (key, value) in program.uniformloc
             if haskey(renderobject.uniforms, key)
@@ -75,7 +75,7 @@ function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray
                 end
             end
         end
-        glBindVertexArray(vertexarray.id)
+        bind(vertexarray)
         renderobject.postrenderfunction()
         glBindVertexArray(0)
     end

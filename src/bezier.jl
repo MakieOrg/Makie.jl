@@ -19,7 +19,7 @@ struct CurveTo
 end
 
 CurveTo(cx1, cy1, cx2, cy2, p1, p2) = CurveTo(
-    Point(cx1, cy1), Point(cx2, cy2), Point(p1, p1)
+    Point(cx1, cy1), Point(cx2, cy2), Point(p1, p2)
 )
 
 struct EllipticalArc
@@ -371,6 +371,11 @@ function parse_bezier_commands(svg)
             dy = parse(Float64, args[i+1])
             l = lastp()
             push!(commands, LineTo(Point2(l[1], l[2] + dy)))
+            i += 2
+        elseif comm == "V"
+            y = parse(Float64, args[i+1])
+            l = lastp()
+            push!(commands, LineTo(Point2(l[1], y)))
             i += 2
         else
             for c in commands

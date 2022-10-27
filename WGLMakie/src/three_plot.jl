@@ -3,6 +3,8 @@ struct ThreeDisplay <: Makie.MakieScreen
 end
 
 JSServe.session(td::ThreeDisplay) = td.session
+Base.empty!(::ThreeDisplay) = nothing # TODO implement
+
 
 function Base.size(screen::ThreeDisplay)
     # look at d.qs().clientWidth for displayed width

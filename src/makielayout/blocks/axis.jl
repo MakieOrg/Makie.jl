@@ -95,6 +95,7 @@ function update_axis_camera(camera::Camera, t, lims, xrev::Bool, yrev::Bool)
     bottomtop = yrev ? (top, bottom) : (bottom, top)
 
     projection = Makie.orthographicprojection(
+        Float32,
         leftright...,
         bottomtop..., nearclip, farclip)
 
@@ -1287,8 +1288,8 @@ function Base.delete!(ax::Axis, plot::AbstractPlot)
 end
 
 function Base.empty!(ax::Axis)
-    for plot in copy(ax.scene.plots)
-        delete!(ax, plot)
+    while !isempty(ax.scene.plots)
+        delete!(ax, ax.scene.plots[end])
     end
     ax
 end

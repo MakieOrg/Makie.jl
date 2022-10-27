@@ -2,6 +2,13 @@
 
 ## master
 
+## v0.18.1
+
+- fix heatmap interpolation [#2343](https://github.com/MakieOrg/Makie.jl/pull/2343).
+- move poly to MakieCore [#2334](https://github.com/MakieOrg/Makie.jl/pull/2334)
+- Fix picking warning and update_axis_camera [#2352](https://github.com/MakieOrg/Makie.jl/pull/2352).
+- bring back inline!, to not open a window in VSCode repl [#2353](https://github.com/MakieOrg/Makie.jl/pull/2353).
+
 ## v0.18
 
 - **Breaking** Added `BezierPath` which can be constructed from SVG like command list, SVG string or from a `Polygon`.
