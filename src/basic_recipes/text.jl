@@ -506,13 +506,13 @@ end
 
 _get_color(attributes, default)::RGBAf = haskey(attributes, :color) ? Makie.to_color(attributes[:color]) : default
 _get_font(attributes, default::NativeFont, fonts)::NativeFont = haskey(attributes, :font) ? Makie.to_font(fonts, attributes[:font]) : default
-
+_get_fontsize(attributes, default)::Vec2f = haskey(attributes, :fontsize) ? Vec2f(Makie.to_textsize(attributes[:fontsize])) : default
 function new_glyphstate(gs::GlyphState2, rt::RichText, val::Val{:sup}, fonts)
     att = rt.attributes
     GlyphState2(
         gs.x,
         gs.baseline + 0.4 * gs.size[2],
-        gs.size * 0.66,
+        _get_fontsize(att, gs.size * 0.66),
         _get_font(att, gs.font, fonts),
         _get_color(att, gs.color),
     )
@@ -523,7 +523,7 @@ function new_glyphstate(gs::GlyphState2, rt::RichText, val::Val{:span}, fonts)
     GlyphState2(
         gs.x,
         gs.baseline,
-        gs.size,
+        _get_fontsize(att, gs.size),
         _get_font(att, gs.font, fonts),
         _get_color(att, gs.color),
     )
@@ -534,7 +534,7 @@ function new_glyphstate(gs::GlyphState2, rt::RichText, val::Val{:sub}, fonts)
     GlyphState2(
         gs.x,
         gs.baseline - 0.15 * gs.size[2],
-        gs.size * 0.66,
+        _get_fontsize(att, gs.size * 0.66),
         _get_font(att, gs.font, fonts),
         _get_color(att, gs.color),
     )
