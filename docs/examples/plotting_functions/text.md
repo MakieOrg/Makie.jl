@@ -226,9 +226,48 @@ Label(
 
 str = "A beautiful rainbow"
 rainbow = cgrad(:rainbow, length(str), categorical = true)
-rainbow_chars = [rich("$c", color = rainbow[i]) for (i, c) in enumerate(str)]
+fontsizes = 30 .+ 10 .* sin.(range(0, 3pi, length = length(str)))
+
+rainbow_chars = map(enumerate(str)) do (i, c)
+    rich("$c", color = rainbow[i], fontsize = fontsizes[i])
+end
 
 Label(f[2, 1], rich(rainbow_chars...), font = :bold)
+
+f
+```
+\end{examplefigure}
+
+### Tweaking offsets
+
+Sometimes, when using regular and italic fonts next to each other, the gaps between glyphs are too narrow or too wide.
+You can use the `offset` value for rich text to shift glyphs by an amount proportional to the fontsize.
+
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+f = Figure(fontsize = 30)
+Label(
+    f[1, 1],
+    rich(
+        "ITALIC",
+        superscript("Regular without x offset", font = :regular),
+        font = :italic
+    )
+)
+
+Label(
+    f[2, 1],
+    rich(
+        "ITALIC",
+        superscript("Regular with x offset", font = :regular, offset = (0.15, 0)),
+        font = :italic
+    )
+)
 
 f
 ```
