@@ -281,6 +281,8 @@ function Base.String(r::RichText)
     end
 end
 
+Base.ncodeunits(r::RichText) = ncodeunits(String(r)) # needed for isempty
+
 function Base.show(io::IO, ::MIME"text/plain", r::RichText)
     print(io, "RichText: \"$(String(r))\"")
 end
@@ -349,7 +351,12 @@ function Makie.layout_text(rt::RichText, ts, f, fset, al, rot, jus, lh, col)
     apply_lineheight!(lines, lh)
     apply_alignment_and_justification!(lines, jus, al)
 
-    Makie.GlyphCollection(reduce(vcat, lines))
+    gc = Makie.GlyphCollection(reduce(vcat, lines))
+    quat = Makie.to_rotation(rot)::Quaternionf
+    gc.origins .= Ref(quat) .* gc.origins
+    @assert gc.rotations.sv isa Vector # should always be a vector because that's how the glyphcollection is created
+    gc.rotations.sv .= Ref(quat) .* gc.rotations.sv
+    gc
 end
 
 function apply_lineheight!(lines, lh)
