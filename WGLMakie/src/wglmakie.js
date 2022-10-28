@@ -1,6 +1,9 @@
 import * as THREE from "https://cdn.esm.sh/v66/three@0.136/es2021/three.js";
 import { getWebGLErrorMessage } from './WEBGL.js'
 window.THREE = THREE
+
+const TEXTURE_ATLAS = [undefined]
+
 const pixelRatio = window.devicePixelRatio || 1.0;
 // global scene cache to look them up for dynamic operations in Makie
 // e.g. insert!(scene, plot) / delete!(scene, plot)
@@ -62,6 +65,65 @@ function delete_plots(scene_id, plot_uuids) {
     });
 }
 
+function to_world(scene, x, y) {
+
+    const proj_inv = scene.wgl_camera.projectionview.value.clone().invert()
+    const [_x, _y, w, h] = JSServe.get_observable(scene.pixelarea)
+    const pix_space = new THREE.Vector4(
+        (((x - _x) / w) * 2) - 1,
+        (((y - _y) / h) * 2) - 1,
+        0, 1.0
+    )
+    pix_space.applyMatrix4(proj_inv)
+    return new THREE.Vector2(pix_space.x / pix_space.w, pix_space.y /pix_space.w)
+}
+
+function clip_to_space(cam, space) {
+    if (space == 'data'){
+        return cam.projectionview.value.clone().invert()
+    } else if (space == 'pixel') {
+        const [w, h] = cam.resolution.value
+        const mati = new THREE.Matrix4()
+        mati.fromArray([0.5 * w, 0, 0, 0, 0, 0.5 * h, 0, 0, 0, 0, -10_000, 0, 0.5 * w, 0.5 * h, 0, 1])
+        return mati
+    } else if (space == 'relative') {
+        const mati2 = new THREE.Matrix4()
+        mati2.fromArray([0.5, 0.0, 0.0, 0.0,
+                  0.0, 0.5, 0.0, 0.0,
+                  0.0, 0.0, 1.0, 0.0,
+                  0.5, 0.5, 0.0, 1.0])
+        return mati2
+    } else if (space == 'clip') {
+        return new THREE.Matrix4()
+    } else {
+        throw new Error(`Space ${space} not recognized`)
+    }
+}
+
+function space_to_clip(cam, space) {
+    if (space == 'data'){
+        return cam.projectionview.value
+    } else if (space == 'pixel') {
+        return cam.pixel_space.value
+    } else if (space == 'relative') {
+        const mati = new THREE.Matrix4()
+        mati.fromArray([2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, -1, -1, 0, 1])
+        return mati
+    } else if (space == 'clip') {
+        return new THREE.Matrix4()
+    } else {
+        throw new Error(`Space ${space} not recognized`)
+    }
+}
+
+function preprojection_matrix(cam, space, mspace) {
+    const cp = clip_to_space(cam, mspace)
+    const sc = space_to_clip(cam, space)
+    const result = cp.clone()
+    result.multiply(sc)
+    return result
+}
+
 function add_plot(scene, plot_data) {
     // fill in the camera uniforms, that we don't sent in serialization per plot
     const cam = scene.wgl_camera;
@@ -94,6 +156,14 @@ function add_plot(scene, plot_data) {
     }
     plot_data.uniforms.resolution = cam.resolution;
 
+    if (plot_data.uniforms.preprojection) {
+        const { space, markerspace } = plot_data
+        const preprojection = new THREE.Uniform(preprojection_matrix(cam, space.value, markerspace.value));
+        plot_data.uniforms.preprojection = preprojection
+        cam.cam_uniform.on(new_cam_data => {
+            preprojection.value = preprojection_matrix(cam, space.value, markerspace.value)
+        })
+    }
     const p = deserialize_plot(plot_data);
     plot_cache[plot_data.uuid] = p;
     scene.add(p);
@@ -217,8 +287,10 @@ function create_texture(data) {
         tex.type = THREE[data.three_type];
         return tex;
     } else {
+        // a little optimization to not send the texture atlas over & over again
+        const tex_data = buffer == "texture_atlas" ? TEXTURE_ATLAS[0].value : buffer
         return new THREE.DataTexture(
-            buffer,
+            tex_data,
             data.size[0],
             data.size[1],
             THREE[data.three_format],
@@ -362,22 +434,6 @@ function recreate_instanced_geometry(mesh) {
     mesh.needsUpdate = true;
 }
 
-function recreate_geometry(mesh, vertexarrays, faces) {
-    const buffer_geometry = new THREE.BufferGeometry();
-    attach_geometry(buffer_geometry, vertexarrays, faces);
-    mesh.geometry = buffer_geometry;
-    mesh.needsUpdate = true;
-}
-
-function update_buffer(mesh, buffer) {
-    const { name, flat, len } = buffer;
-    const geometry = mesh.geometry;
-    const jsb = geometry.attributes[name];
-    jsb.set(flat, 0);
-    jsb.needsUpdate = true;
-    geometry.instanceCount = len;
-}
-
 function deserialize_uniforms(data) {
     const result = {};
     // Threejs changes constructor names from some version to another..so...
@@ -463,6 +519,7 @@ function deserialize_scene(data, canvas) {
         pixel_space: new THREE.Uniform(new THREE.Matrix4()),
         resolution: new THREE.Uniform(new THREE.Vector2()),
         eyeposition: new THREE.Uniform(new THREE.Vector3()),
+        cam_uniform: data.camera
     };
 
     scene.wgl_camera = cam;
@@ -484,17 +541,17 @@ function deserialize_scene(data, canvas) {
         cam.resolution.value.fromArray(resolution_scaled);
         cam.eyeposition.value.fromArray(eyepos);
     }
+
     update_cam(data.camera.value);
+
     if (data.cam3d_state) {
         attach_3d_camera(canvas, cam, data.cam3d_state);
     } else {
         data.camera.on(update_cam);
     }
-
     data.plots.forEach((plot_data) => {
         add_plot(scene, plot_data);
     });
-    console.log(scene)
     return scene;
 }
 
@@ -551,7 +608,6 @@ function connect_attributes(mesh, updater) {
     re_assign_buffers();
 
     updater.on(([name, new_values, length]) => {
-        // TODO, why are these called with the initial values!?
         if (length > 0) {
             const buffer = mesh.geometry.attributes[name];
             let buffers;
@@ -747,11 +803,12 @@ function threejs_module(canvas, comm, width, height) {
     return renderer;
 }
 
-function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height, fps){
+function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height, fps, texture_atlas_obs){
     const renderer = threejs_module(canvas, comm, width, height)
+    TEXTURE_ATLAS[0] = texture_atlas_obs
+
     if ( renderer ) {
         const three_scenes = scenes.map(x=> deserialize_scene(x, canvas))
-        console.log(three_scenes)
         const cam = new THREE.PerspectiveCamera(45, 1, 0, 100)
         cam.updateProjectionMatrix()
         start_renderloop(renderer, three_scenes, cam, fps);

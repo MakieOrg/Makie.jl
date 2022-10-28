@@ -63,27 +63,23 @@ function three_display(session::Session, scene::Scene; screen_config...)
 
     scene_data = serialize_scene(scene)
 
-    if TEXTURE_ATLAS_CHANGED[]
-        JSServe.update_cached_value!(session, Makie.get_texture_atlas().data)
-        TEXTURE_ATLAS_CHANGED[] = false
-    end
-
     window_open = scene.events.window_open
     width, height = size(scene)
     canvas = DOM.um("canvas", tabindex="0")
     wrapper = DOM.div(canvas)
     comm = Observable(Dict{String,Any}())
     canvas_width = lift(x -> [round.(Int, widths(x))...], pixelarea(scene))
-
+    done_init = Observable(false)
+    texture_atlas = Observable(vec(get_texture_atlas().data))
     setup = js"""
     (wrapper)=>{
         console.log("registering windows onloaaaad!");
         const canvas = $canvas;
         console.log(canvas);
         $(WGL).then(WGL => {
-            WGL.create_scene($wrapper, canvas, $canvas_width, $scene_data, $comm, $width, $height, $(config.framerate))
+            WGL.create_scene($wrapper, canvas, $canvas_width, $scene_data, $comm, $width, $height, $(config.framerate), $(texture_atlas))
         })
-
+        $(done_init).notify(true)
     }
     """
 
@@ -91,5 +87,5 @@ function three_display(session::Session, scene::Scene; screen_config...)
 
     connect_scene_events!(scene, comm)
     three = ThreeDisplay(session)
-    return three, wrapper
+    return three, wrapper, done_init
 end

@@ -297,6 +297,10 @@ function serialize_three(scene::Scene, plot::AbstractPlot)
             return
         end
     end
+    if haskey(plot, :markerspace)
+        mesh[:markerspace] = plot.markerspace
+    end
+    mesh[:space] = plot.space
 
     key = haskey(plot, :markerspace) ? (:markerspace) : (:space)
     mesh[:cam_space] = to_value(get(plot, key, :data))
