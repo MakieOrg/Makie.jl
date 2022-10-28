@@ -273,7 +273,7 @@ struct RichText <: AbstractString
     end
 end
 
-function get_text(r::RichText)
+function Base.String(r::RichText)
     fn(io, x::RichText) = foreach(x -> fn(io, x), x.children)
     fn(io, s::String) = print(io, s)
     sprint() do io
@@ -282,7 +282,7 @@ function get_text(r::RichText)
 end
 
 function Base.show(io::IO, ::MIME"text/plain", r::RichText)
-    print(io, "RichText: \"$(get_text(r))\"")
+    print(io, "RichText: \"$(String(r))\"")
 end
 
 function Base.:(==)(r1::RichText, r2::RichText)
@@ -540,4 +540,4 @@ function new_glyphstate(gs::GlyphState2, rt::RichText, val::Val{:sub}, fonts)
     )
 end
 
-Makie.iswhitespace(r::RichText) = iswhitespace(get_text(r))
+Makie.iswhitespace(r::RichText) = iswhitespace(String(r))
