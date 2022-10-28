@@ -762,8 +762,7 @@ end
     f
 end
 
-@reference_test "Rich text"
-begin
+@reference_test "Rich text" begin
     f = Figure(fontsize = 30)
     ax = Axis(f[1, 1],
         limits = (1, 100, 0.001, 1),
