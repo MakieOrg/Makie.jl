@@ -285,6 +285,7 @@ If you don't want this, you can place an empty string inbetween, for example.
 
 In the example below, the third `Label` also has adjusted baselines for the super/subscripts, as some conventions require a larger distance between the two than Makie's default setting.
 
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
