@@ -507,17 +507,15 @@ end
 _get_color(attributes, default)::RGBAf = haskey(attributes, :color) ? Makie.to_color(attributes[:color]) : default
 _get_font(attributes, default::NativeFont, fonts)::NativeFont = haskey(attributes, :font) ? Makie.to_font(fonts, attributes[:font]) : default
 _get_fontsize(attributes, default)::Vec2f = haskey(attributes, :fontsize) ? Vec2f(Makie.to_textsize(attributes[:fontsize])) : default
-_get_xshift(attributes, default)::Float32 = haskey(attributes, :xshift) ? Float32(attributes[:xshift]) : default
-_get_yshift(attributes, default)::Float32 = haskey(attributes, :yshift) ? Float32(attributes[:yshift]) : default
+_get_offset(attributes, default)::Vec2f = haskey(attributes, :offset) ? Vec2f(attributes[:offset]) : default
 
 function new_glyphstate(gs::GlyphState2, rt::RichText, val::Val{:sup}, fonts)
     att = rt.attributes
     fontsize = _get_fontsize(att, gs.size * 0.66)
-    xshift = _get_xshift(att, 0f0) * fontsize[1]
-    yshift = _get_yshift(att, 0f0) * fontsize[2]
+    offset = _get_offset(att, Vec2f(0)) .* fontsize
     GlyphState2(
-        gs.x + xshift,
-        gs.baseline + 0.4 * gs.size[2] + yshift,
+        gs.x + offset[1],
+        gs.baseline + 0.4 * gs.size[2] + offset[2],
         fontsize,
         _get_font(att, gs.font, fonts),
         _get_color(att, gs.color),
@@ -527,11 +525,10 @@ end
 function new_glyphstate(gs::GlyphState2, rt::RichText, val::Val{:span}, fonts)
     att = rt.attributes
     fontsize = _get_fontsize(att, gs.size)
-    xshift = _get_xshift(att, 0f0) * fontsize[1]
-    yshift = _get_yshift(att, 0f0) * fontsize[2]
+    offset = _get_offset(att, Vec2f(0)) .* fontsize
     GlyphState2(
-        gs.x + xshift,
-        gs.baseline + yshift,
+        gs.x + offset[1],
+        gs.baseline + offset[2],
         fontsize,
         _get_font(att, gs.font, fonts),
         _get_color(att, gs.color),
@@ -541,11 +538,10 @@ end
 function new_glyphstate(gs::GlyphState2, rt::RichText, val::Val{:sub}, fonts)
     att = rt.attributes
     fontsize = _get_fontsize(att, gs.size * 0.66)
-    xshift = _get_xshift(att, 0f0) * fontsize[1]
-    yshift = _get_yshift(att, 0f0) * fontsize[2]
+    offset = _get_offset(att, Vec2f(0)) .* fontsize
     GlyphState2(
-        gs.x + xshift,
-        gs.baseline - 0.15 * gs.size[2] + yshift,
+        gs.x + offset[1],
+        gs.baseline - 0.15 * gs.size[2] + offset[2],
         fontsize,
         _get_font(att, gs.font, fonts),
         _get_color(att, gs.color),

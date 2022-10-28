@@ -587,7 +587,7 @@ function get_ticks(l::LogTicks, scale::Union{typeof(log10), typeof(log2), typeof
         xs -> Showoff.showoff(xs, :plain),
         ticks_scaled
     )
-    labels = rich.(_logbase(scale), superscript.(labels_scaled))
+    labels = rich.(_logbase(scale), superscript.(labels_scaled, offset = Vec2f(0.1f0, 0f0)))
 
     (ticks, labels)
 end
