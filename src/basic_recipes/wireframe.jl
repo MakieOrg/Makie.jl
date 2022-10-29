@@ -1,4 +1,3 @@
-
 """
     wireframe(x, y, z)
     wireframe(positions)
@@ -9,13 +8,12 @@ Draws a wireframe, either interpreted as a surface or as a mesh.
 ## Attributes
 $(ATTRIBUTES)
 """
-@recipe(Wireframe) do scene
-    # default_theme(scene, LineSegments)
-    Attributes(;
-        default_theme(scene, LineSegments)...,
-        depth_shift = -1f-5,
-    )
-end
+wireframe
+
+"""
+See [`wireframe`](@ref).
+"""
+wireframe!
 
 function convert_arguments(::Type{<: Wireframe}, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
     (ngrid(x, y)..., z)
