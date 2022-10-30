@@ -264,6 +264,14 @@ function GLVertexArray(program::GLProgram, buffers::Buffer, triangles::AbstractV
     return obj
 end
 
+function bind(va::GLVertexArray)
+    if va.id == 0
+        error("Binding freed VertexArray")
+    end
+    glBindVertexArray(va.id)
+end
+
+
 function Base.show(io::IO, vao::GLVertexArray)
     show(io, vao.program)
     println(io, "GLVertexArray $(vao.id):")
@@ -384,29 +392,37 @@ end
 # OpenGL has the annoying habit of reusing id's when creating a new context
 # We need to make sure to only free the current one
 function unsafe_free(x::GLProgram)
+    x.id == 0 && return
     is_context_active(x.context) || return
     glDeleteProgram(x.id)
     return
 end
 
 function unsafe_free(x::GLBuffer)
+    # don't free if already freed
+    x.id == 0 && return
     # don't free from other context
     is_context_active(x.context) || return
     id = Ref(x.id)
     glDeleteBuffers(1, id)
+    x.id = 0
     return
 end
 
 function unsafe_free(x::Texture)
+    x.id == 0 && return
     is_context_active(x.context) || return
     id = Ref(x.id)
     glDeleteTextures(x.id)
+    x.id = 0
     return
 end
 
 function unsafe_free(x::GLVertexArray)
+    x.id == 0 && return
     is_context_active(x.context) || return
     id = Ref(x.id)
     glDeleteVertexArrays(1, id)
+    x.id = 0
     return
 end

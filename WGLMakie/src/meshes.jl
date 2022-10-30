@@ -66,7 +66,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
         end
 
         if color isa AbstractArray
-            if color_signal[] isa AbstractVector
+            if color isa AbstractVector
                 attributes[:color] = Buffer(color_signal) # per vertex colors
             else
                 uniforms[:uniform_color] = Sampler(color_signal) # Texture

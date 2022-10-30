@@ -49,7 +49,13 @@ end
 Base.size(t::TextureBuffer) = size(t.buffer)
 Base.size(t::TextureBuffer, i::Integer) = size(t.buffer, i)
 Base.length(t::TextureBuffer) = length(t.buffer)
-bind(t::Texture) = glBindTexture(t.texturetype, t.id)
+function bind(t::Texture)
+    if t.id == 0
+        error("Binding freed Texture{$(eltype(t))}")
+    end
+    glBindTexture(t.texturetype, t.id)
+end
+
 bind(t::Texture, id) = glBindTexture(t.texturetype, id)
 ShaderAbstractions.switch_context!(t::TextureBuffer) = switch_context!(t.texture.context)
 function unsafe_free(tb::TextureBuffer)
@@ -238,41 +244,43 @@ end
 # GPUArray interface:
 function unsafe_copy!(a::Vector{T}, readoffset::Int, b::TextureBuffer{T}, writeoffset::Int, len::Int) where T
     copy!(a, readoffset, b.buffer, writeoffset, len)
-    glBindTexture(b.texture.texturetype, b.texture.id)
+    bind(b.texture)
     glTexBuffer(b.texture.texturetype, b.texture.internalformat, b.buffer.id) # update texture
 end
 
 function unsafe_copy!(a::TextureBuffer{T}, readoffset::Int, b::Vector{T}, writeoffset::Int, len::Int) where T
     copy!(a.buffer, readoffset, b, writeoffset, len)
-    glBindTexture(a.texture.texturetype, a.texture.id)
+    bind(a.texture)
     glTexBuffer(a.texture.texturetype, a.texture.internalformat, a.buffer.id) # update texture
 end
 
 function unsafe_copy!(a::TextureBuffer{T}, readoffset::Int, b::TextureBuffer{T}, writeoffset::Int, len::Int) where T
     unsafe_copy!(a.buffer, readoffset, b.buffer, writeoffset, len)
 
-    glBindTexture(a.texture.texturetype, a.texture.id)
+    bind(a.texture)
     glTexBuffer(a.texture.texturetype, a.texture.internalformat, a.buffer.id) # update texture
 
-    glBindTexture(b.texture.texturetype, btexture..id)
+    bind(b.texture)
     glTexBuffer(b.texture.texturetype, b.texture.internalformat, b.buffer.id) # update texture
-    glBindTexture(t.texture.texturetype, 0)
+    bind(t.texture, 0)
 end
+
 function gpu_setindex!(t::TextureBuffer{T}, newvalue::Vector{T}, indexes::UnitRange{I}) where {T, I <: Integer}
-    glBindTexture(t.texture.texturetype, t.texture.id)
+    bind(t.texture)
     t.buffer[indexes] = newvalue # set buffer indexes
     glTexBuffer(t.texture.texturetype, t.texture.internalformat, t.buffer.id) # update texture
-    glBindTexture(t.texture.texturetype, 0)
+    bind(t.texture, 0)
 end
+
 function gpu_setindex!(t::Texture{T, 1}, newvalue::Array{T, 1}, indexes::UnitRange{I}) where {T, I <: Integer}
-    glBindTexture(t.texturetype, t.id)
+    bind(t)
     texsubimage(t, newvalue, indexes)
-    glBindTexture(t.texturetype, 0)
+    bind(t, 0)
 end
 function gpu_setindex!(t::Texture{T, N}, newvalue::Array{T, N}, indexes::Union{UnitRange,Integer}...) where {T, N}
-    glBindTexture(t.texturetype, t.id)
+    bind(t)
     texsubimage(t, newvalue, indexes...)
-    glBindTexture(t.texturetype, 0)
+    bind(t, 0)
 end
 
 
@@ -340,10 +348,10 @@ end
 # Resize Texture
 function gpu_resize!(t::TextureBuffer{T}, newdims::NTuple{1, Int}) where T
     resize!(t.buffer, newdims)
-    glBindTexture(t.texture.texturetype, t.texture.id)
+    bind(t.texture)
     glTexBuffer(t.texture.texturetype, t.texture.internalformat, t.buffer.id) #update data in texture
     t.texture.size  = newdims
-    glBindTexture(t.texture.texturetype, 0)
+    bind(t.texture, 0)
     t
 end
 # Resize Texture
@@ -379,9 +387,9 @@ Base.iterate(t::TextureBuffer{T}) where {T} = iterate(t.buffer)
 function Base.iterate(t::TextureBuffer{T}, state::Tuple{Ptr{T}, Int}) where T
     v_idx = iterate(t.buffer, state)
     if v_idx === nothing
-        glBindTexture(t.texturetype, t.id)
+        bind(t)
         glTexBuffer(t.texturetype, t.internalformat, t.buffer.id)
-        glBindTexture(t.texturetype, 0)
+        bind(t, 0)
     end
     v_idx
 end
