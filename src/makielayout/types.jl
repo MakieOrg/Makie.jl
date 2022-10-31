@@ -598,7 +598,7 @@ end
         "The color of the text."
         color::RGBAf = @inherit(:textcolor, :black)
         "The font size of the text."
-        textsize::Float32 = @inherit(:fontsize, 16f0)
+        fontsize::Float32 = @inherit(:fontsize, 16f0)
         "The font family of the text."
         font::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "TeX Gyre Heros Makie")
         "The justification of the text (:left, :right, :center)."
@@ -770,7 +770,7 @@ end
         "The extra space added to the sides of the button label's boundingbox."
         padding = (10f0, 10f0, 10f0, 10f0)
         "The font size of the button label."
-        textsize = @inherit(:fontsize, 16f0)
+        fontsize = @inherit(:fontsize, 16f0)
         "The text of the button label."
         label = "Button"
         "The font family of the button label."
@@ -885,7 +885,7 @@ end
         "The list of options selectable in the menu. This can be any iterable of a mixture of strings and containers with one string and one other value. If an entry is just a string, that string is both label and selection. If an entry is a container with one string and one other value, the string is the label and the other value is the selection."
         options = ["no options"]
         "Font size of the cell texts"
-        textsize = @inherit(:fontsize, 16f0)
+        fontsize = @inherit(:fontsize, 16f0)
         "Padding of entry texts"
         textpadding = (10, 10, 10, 10)
         "Color of entry texts"
@@ -1087,7 +1087,7 @@ end
         "Controls if the textbox is defocused when a string is submitted."
         defocus_on_submit = true
         "Text size."
-        textsize = @inherit(:fontsize, 16f0)
+        fontsize = @inherit(:fontsize, 16f0)
         "Text color."
         textcolor = @inherit(:textcolor, :black)
         "Text color for the placeholder."

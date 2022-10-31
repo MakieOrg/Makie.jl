@@ -2,6 +2,9 @@
 
 ## master
 
+- **Breaking** The attribute `textsize` has been removed everywhere in favor of the attribute `fontsize` which had also been in use.
+  To migrate, search and replace all uses of `textsize` to `fontsize`.
+
 ## v0.18.1
 
 - fix heatmap interpolation [#2343](https://github.com/MakieOrg/Makie.jl/pull/2343).

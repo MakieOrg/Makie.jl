@@ -132,7 +132,7 @@ colsize!(gd, 2, Auto(n_day_2))
 
 for (label, layout) in zip(["A", "B", "C", "D"], [ga, gb, gc, gd])
     Label(layout[1, 1, TopLeft()], label,
-        textsize = 26,
+        fontsize = 26,
         font = "TeX Gyre Heros Bold",
         padding = (0, 5, 5, 0),
         halign = :right)
@@ -484,7 +484,7 @@ That will leave all other alignments intact, because we're not creating any new 
 ```julia
 for (label, layout) in zip(["A", "B", "C", "D"], [ga, gb, gc, gd])
     Label(layout[1, 1, TopLeft()], label,
-        textsize = 26,
+        fontsize = 26,
         font = "TeX Gyre Heros Bold",
         padding = (0, 5, 5, 0),
         halign = :right)
