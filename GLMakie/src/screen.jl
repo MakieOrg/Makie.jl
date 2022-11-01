@@ -1,4 +1,4 @@
-const ScreenID = UInt8
+const ScreenID = UInt16
 const ZIndex = Int
 # ID, Area, clear, is visible, background color
 const ScreenArea = Tuple{ScreenID, Scene}
