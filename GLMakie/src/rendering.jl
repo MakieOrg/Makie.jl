@@ -10,14 +10,11 @@ function setup!(screen)
                 a = pixelarea(scene)[]
                 rt = (minimum(a)..., widths(a)...)
                 glViewport(rt...)
-                # bits = GL_STENCIL_BUFFER_BIT
-                # glClearStencil(id)
                 if scene.clear
                     c = scene.backgroundcolor[]
                     glScissor(rt...)
                     glClearColor(red(c), green(c), blue(c), alpha(c))
-                    bits = GL_COLOR_BUFFER_BIT
-                    glClear(bits)
+                    glClear(GL_COLOR_BUFFER_BIT)
                 end
             end
         end
@@ -55,13 +52,8 @@ function render_frame(screen::Screen; resize_buffers=true)
     w, h = size(fb)
 
     # prepare stencil (for sub-scenes)
-    # glEnable(GL_STENCIL_TEST)
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id)
     glDrawBuffers(length(fb.render_buffer_ids), fb.render_buffer_ids)
-    # glEnable(GL_STENCIL_TEST)
-    # glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
-    # glStencilMask(0xff)
-    # glClearStencil(0)
     glClearColor(0, 0, 0, 0)
     glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
 
@@ -71,8 +63,6 @@ function render_frame(screen::Screen; resize_buffers=true)
 
     # render with SSAO
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
-    # glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
-    # glStencilMask(0x00)
     GLAbstraction.render(screen) do robj
         return !Bool(robj[:transparency][]) && Bool(robj[:ssao][])
     end
@@ -81,14 +71,10 @@ function render_frame(screen::Screen; resize_buffers=true)
 
     # render no SSAO
     glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
-    # glEnable(GL_STENCIL_TEST)
-    # glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
-    # glStencilMask(0x00)
     # render all non ssao
     GLAbstraction.render(screen) do robj
         return !Bool(robj[:transparency][]) && !Bool(robj[:ssao][])
     end
-    # glDisable(GL_STENCIL_TEST)
 
     # TRANSPARENT RENDER
     # clear sums to 0
@@ -101,14 +87,10 @@ function render_frame(screen::Screen; resize_buffers=true)
     glClear(GL_COLOR_BUFFER_BIT)
     # draw
     glDrawBuffers(3, [GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT3])
-    # glEnable(GL_STENCIL_TEST)
-    # glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
-    # glStencilMask(0x00)
     # Render only transparent objects
     GLAbstraction.render(screen) do robj
         return Bool(robj[:transparency][])
     end
-    # glDisable(GL_STENCIL_TEST)
 
     # TRANSPARENT BLEND
     screen.postprocessors[2].render(screen)
@@ -141,15 +123,6 @@ function GLAbstraction.render(filter_elem_func, screen::Screen)
             scene.visible[] || continue
             a = pixelarea(scene)[]
             glViewport(minimum(a)..., widths(a)...)
-            # if scene.clear
-            #     glStencilFunc(GL_EQUAL, screenid, 0xff)
-            # else
-            #     # if we don't clear, that means we have a screen that is overlaid
-            #     # on top of another, which means it doesn't have a stencil value
-            #     # so we can't do the stencil test
-            #     glStencilFunc(GL_ALWAYS, screenid, 0xff)
-            # end
-
             render(elem)
         end
     catch e
