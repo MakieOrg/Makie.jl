@@ -173,7 +173,7 @@ vec4 isosurface(vec3 front, vec3 dir)
             vec3 N = gennormal(pos, step_size);
             vec3 L = normalize(o_light_dir - pos);
             c = vec4(
-                blinnphong(N, camdir, L, diffuse_color.rgb), 
+                blinnphong(N, camdir, L, diffuse_color.rgb),
                 diffuse_color.a
             );
             break;
@@ -229,6 +229,15 @@ float min_bigger_0(vec3 v1, vec3 v2){
     return min(x, min(y, z));
 }
 
+vec4 pack_int(uint id, uint index) {
+    vec4 unpack;
+    unpack.x = float((id & uint(0xff00)) >> 8) / 255.0;
+    unpack.y = float((id & uint(0x00ff)) >> 0) / 255.0;
+    unpack.z = float((index & uint(0xff00)) >> 8) / 255.0;
+    unpack.w = float((index & uint(0x00ff)) >> 0) / 255.0;
+    return unpack;
+}
+
 void main()
 {
     vec4 color;
@@ -260,5 +269,11 @@ void main()
     else
         color = contours(start, step_in_dir);
 
+    if (picking) {
+        if (color.a > 0.1) {
+            fragment_color = pack_int(object_id, 0);
+        }
+        return;
+    }
     fragment_color = color;
 }

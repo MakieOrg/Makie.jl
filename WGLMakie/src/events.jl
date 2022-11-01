@@ -51,57 +51,61 @@ end
 function connect_scene_events!(scene::Scene, comm::Observable)
     e = events(scene)
     on(comm) do msg
-        @handle msg.mouseposition begin
-            x, y = Float64.((mouseposition...,))
-            e.mouseposition[] = (x, size(scene)[2] - y)
-        end
-        @handle msg.mousedown begin
-            # This can probably be done better from the JS side?
-            state = e.mousebuttonstate
-            if mousedown & 1 != 0 && !(Mouse.left in state)
-                setindex!(e.mousebutton, MouseButtonEvent(Mouse.left, Mouse.press))
+        @async try
+            @handle msg.mouseposition begin
+                x, y = Float64.((mouseposition...,))
+                e.mouseposition[] = (x, size(scene)[2] - y)
             end
-            if mousedown & 2 != 0 && !(Mouse.right in state)
-                setindex!(e.mousebutton, MouseButtonEvent(Mouse.right, Mouse.press))
-            end
-            if mousedown & 4 != 0 && !(Mouse.middle in state)
-                setindex!(e.mousebutton, MouseButtonEvent(Mouse.middle, Mouse.press))
-            end
-        end
-        @handle msg.mouseup begin
-            state = e.mousebuttonstate
-            if mouseup & 1 == 0 && (Mouse.left in state)
-                setindex!(e.mousebutton, MouseButtonEvent(Mouse.left, Mouse.release))
-            end
-            if mouseup & 2 == 0 && (Mouse.right in state)
-                setindex!(e.mousebutton, MouseButtonEvent(Mouse.right, Mouse.release))
-            end
-            if mouseup & 4 == 0 && (Mouse.middle in state)
-                setindex!(e.mousebutton, MouseButtonEvent(Mouse.middle, Mouse.release))
-            end
-        end
-        @handle msg.scroll begin
-            e.scroll[] = Float64.((sign.(scroll)...,))
-        end
-        @handle msg.keydown begin
-            button = code_to_keyboard(keydown)
-            # don't add unknown buttons...we can't work with them
-            # and they won't get removed
-            if button != Keyboard.unknown
-                e.keyboardbutton[] = KeyEvent(button, Keyboard.press)
-            end
-        end
-        @handle msg.keyup begin
-            if keyup == "delete_keys"
-                # this works fine
-                for key in e.keyboardstate
-                    e.keyboardbutton[] = KeyEvent(key, Keyboard.release)
+            @handle msg.mousedown begin
+                # This can probably be done better from the JS side?
+                state = e.mousebuttonstate
+                if mousedown & 1 != 0 && !(Mouse.left in state)
+                    setindex!(e.mousebutton, MouseButtonEvent(Mouse.left, Mouse.press))
                 end
-            else
-                e.keyboardbutton[] = KeyEvent(code_to_keyboard(keyup), Keyboard.release)
+                if mousedown & 2 != 0 && !(Mouse.right in state)
+                    setindex!(e.mousebutton, MouseButtonEvent(Mouse.right, Mouse.press))
+                end
+                if mousedown & 4 != 0 && !(Mouse.middle in state)
+                    setindex!(e.mousebutton, MouseButtonEvent(Mouse.middle, Mouse.press))
+                end
             end
+            @handle msg.mouseup begin
+                state = e.mousebuttonstate
+                if mouseup & 1 == 0 && (Mouse.left in state)
+                    setindex!(e.mousebutton, MouseButtonEvent(Mouse.left, Mouse.release))
+                end
+                if mouseup & 2 == 0 && (Mouse.right in state)
+                    setindex!(e.mousebutton, MouseButtonEvent(Mouse.right, Mouse.release))
+                end
+                if mouseup & 4 == 0 && (Mouse.middle in state)
+                    setindex!(e.mousebutton, MouseButtonEvent(Mouse.middle, Mouse.release))
+                end
+            end
+            @handle msg.scroll begin
+                e.scroll[] = Float64.((sign.(scroll)...,))
+            end
+            @handle msg.keydown begin
+                button = code_to_keyboard(keydown)
+                # don't add unknown buttons...we can't work with them
+                # and they won't get removed
+                if button != Keyboard.unknown
+                    e.keyboardbutton[] = KeyEvent(button, Keyboard.press)
+                end
+            end
+            @handle msg.keyup begin
+                if keyup == "delete_keys"
+                    # this works fine
+                    for key in e.keyboardstate
+                        e.keyboardbutton[] = KeyEvent(key, Keyboard.release)
+                    end
+                else
+                    e.keyboardbutton[] = KeyEvent(code_to_keyboard(keyup), Keyboard.release)
+                end
+            end
+            return
+        catch err
+            @warn "Error in window event callback" exception=(err, Base.catch_backtrace())
         end
-        return
     end
     return
 end

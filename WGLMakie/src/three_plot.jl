@@ -59,6 +59,10 @@ function JSServe.print_js_code(io::IO, plot::AbstractPlot, context)
     JSServe.print_js_code(io, js"$(WGL).find_plots($(uuids))", context)
 end
 
+function JSServe.print_js_code(io::IO, scene::Scene, context)
+    JSServe.print_js_code(io, js"$(WGL).find_scene($(js_uuid(scene)))", context)
+end
+
 function three_display(session::Session, scene::Scene; screen_config...)
 
     config = Makie.merge_screen_config(ScreenConfig, screen_config)::ScreenConfig
@@ -84,17 +88,27 @@ function three_display(session::Session, scene::Scene; screen_config...)
 
     canvas_width = lift(x -> [round.(Int, widths(x))...], pixelarea(scene))
 
-    scene_id = objectid(scene)
     setup = js"""
     function setup(scenes){
         const canvas = $(canvas)
 
-        const scene_id = $(scene_id)
         const renderer = $(WGL).threejs_module(canvas, $comm, $width, $height)
+        window.renderer = renderer
         if ( renderer ) {
-            const three_scenes = scenes.map(x=> $(WGL).deserialize_scene(x, canvas))
-            const cam = new $(THREE).PerspectiveCamera(45, 1, 0, 100)
-            $(WGL).start_renderloop(renderer, three_scenes, cam, $(config.framerate))
+            const camera = new $(THREE).PerspectiveCamera(45, 1, 0, 100)
+            const size = new THREE.Vector2()
+            renderer.getDrawingBufferSize(size)
+            const picking_target = new THREE.WebGLRenderTarget(size.x, size.y);
+            const screen = {renderer, picking_target, camera}
+
+            const three_scenes = scenes.map(x=> {
+                const three_scene = $(WGL).deserialize_scene(x)
+                console.log(screen)
+                three_scene.screen = screen
+                return three_scene
+            })
+
+            $(WGL).start_renderloop(renderer, three_scenes, camera, $(config.framerate))
             JSServe.on_update($canvas_width, w_h => {
                 // `renderer.setSize` correctly updates `canvas` dimensions
                 const pixelRatio = renderer.getPixelRatio();
@@ -122,4 +136,25 @@ function three_display(session::Session, scene::Scene; screen_config...)
     end
 
     return three, wrapper
+end
+
+function wgl_pick(scene::Scene, screen::ThreeDisplay, rect::Rect2i)
+    task = @async begin
+        (x, y) = minimum(rect)
+        (w, h) = widths(rect)
+        plot_ids = JSServe.evaljs_value(screen.session, js"""
+            $(WGL).pick_native_uuid([$(scene)], $x, $y, $w, $h)
+        """)
+        if isempty(plot_ids)
+            return Tuple{AbstractPlot, Int}[]
+        else
+            all_children = Makie.flatten_plots(scene.plots)
+            lookup = Dict(Pair.(js_uuid.(all_children), all_children))
+            return map(plot_ids) do (uuid, index)
+                !haskey(lookup, uuid) && error("Internal error, should always be able to lookup found plots")
+                return (lookup[uuid], Int(index) + 1)
+            end
+        end
+    end
+    return fetch(task)
 end

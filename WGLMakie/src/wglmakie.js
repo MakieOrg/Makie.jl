@@ -360,22 +360,6 @@ const WGLMakie = (function () {
         mesh.needsUpdate = true;
     }
 
-    function recreate_geometry(mesh, vertexarrays, faces) {
-        const buffer_geometry = new THREE.BufferGeometry();
-        attach_geometry(buffer_geometry, vertexarrays, faces);
-        mesh.geometry = buffer_geometry;
-        mesh.needsUpdate = true;
-    }
-
-    function update_buffer(mesh, buffer) {
-        const { name, flat, len } = buffer;
-        const geometry = mesh.geometry;
-        const jsb = geometry.attributes[name];
-        jsb.set(flat, 0);
-        jsb.needsUpdate = true;
-        geometry.instanceCount = len;
-    }
-
     function deserialize_uniforms(data) {
         const result = {};
         for (const name in data) {
@@ -428,6 +412,7 @@ const WGLMakie = (function () {
             mesh = create_mesh(data);
         }
         mesh.name = data.name;
+        mesh.uuid = data.uuid;
         mesh.frustumCulled = false;
         mesh.matrixAutoUpdate = false;
         const update_visible = (v) => {
@@ -747,6 +732,110 @@ const WGLMakie = (function () {
         return renderer;
     }
 
+    function to_world(scene, x, y) {
+        const proj_inv = scene.wgl_camera.projectionview.value.clone().invert()
+        const [_x, _y, w, h] = JSServe.get_observable(scene.pixelarea)
+        const pix_space = new THREE.Vector4(
+            (((x - _x) / w) * 2) - 1,
+            (((y - _y) / h) * 2) - 1,
+            0, 1.0
+        )
+        pix_space.applyMatrix4(proj_inv)
+        return new THREE.Vector2(pix_space.x / pix_space.w, pix_space.y /pix_space.w)
+    }
+
+    function event2scene_pixel(scene, event) {
+        const canvas = scene.screen.renderer.domElement
+        const rect = canvas.getBoundingClientRect();
+        const pixelRatio = window.devicePixelRatio || 1.0;
+        const x = (event.clientX - rect.left) * pixelRatio;
+        const y = (rect.height - ((event.clientY - rect.top))) * pixelRatio;
+        return [x, y]
+    }
+
+    function set_picking_uniforms(scene, last_id, picking, picked_plots, plots) {
+        scene.children.forEach((plot, index) => {
+            const {material} = plot
+            const {uniforms} = material
+            if (picking) {
+                uniforms.object_id.value = last_id + index
+                uniforms.picking.value = true
+                material.blending = THREE.NoBlending
+            } else {
+                // clean up after picking
+                uniforms.picking.value = false
+                material.blending = THREE.NormalBlending
+                // we also collect the picked/matched plots as part of the clean up
+                const id = uniforms.object_id.value
+                if (id in picked_plots) {
+                    plots.push([plot, picked_plots[id]])
+                }
+            }
+        })
+        return last_id + scene.children.length
+    }
+
+    function pick_native(scenes, x, y, w, h) {
+
+        const {renderer, camera, picking_target} = scenes[0].screen
+            // render the scene
+        renderer.setRenderTarget(picking_target)
+
+        const pixelRatio = window.devicePixelRatio || 1.0;
+
+        let last_id = 1
+        scenes.forEach(scene => {
+
+            last_id = set_picking_uniforms(scene, last_id, true)
+
+            const area = JSServe.get_observable(scene.pixelarea);
+            const [_x, _y, _w, _h] = area.map(t => t / pixelRatio);
+            renderer.autoClear = true
+            renderer.setViewport(_x, _y, _w, _h);
+            renderer.setScissor(_x, _y, _w, _h);
+            renderer.setScissorTest(true);
+            renderer.setClearAlpha(0)
+            renderer.setClearColor(new THREE.Color(0), 0.0);
+            renderer.render(scene, camera);
+        })
+
+        renderer.setRenderTarget(null); // reset render target
+
+        const nbytes = w * h * 4
+        const pixel_bytes = new Uint8Array(nbytes);
+
+        //read the pixel
+        renderer.readRenderTargetPixels(
+            picking_target,
+            x,   // x
+            y,   // y
+            w,   // width
+            h,   // height
+            pixel_bytes);
+
+        const picked_plots = {}
+        const reinterpret_view = new DataView(pixel_bytes.buffer);
+
+        for (let i = 0; i < pixel_bytes.length / 4; i++) {
+            const id = reinterpret_view.getUint16(i*4)
+            const index = reinterpret_view.getUint16(i*4 + 2)
+            picked_plots[id] = index
+        }
+        // dict of plot_uuid => primitive_index (e.g. instance id or triangle index)
+        const plots = []
+        scenes.forEach(scene => set_picking_uniforms(scene, 0, false, picked_plots, plots))
+        return plots
+    }
+
+    function pick_native_uuid(scenes, x, y, w, h) {
+        const picked_plots = pick_native(scenes, x, y, w, h)
+        return picked_plots.map(x=> [x[0].uuid, x[1]])
+    }
+
+    exports.pick_native_uuid = pick_native_uuid;
+    exports.event2scene_pixel = event2scene_pixel;
+    exports.to_world = to_world;
+    exports.pick_native = pick_native;
     exports.deserialize_scene = deserialize_scene;
     exports.threejs_module = threejs_module;
     exports.start_renderloop = start_renderloop;

@@ -119,5 +119,9 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
         return transpose(inv(v[i, i] * m[i, i]))
     end
 
+    # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
+    uniforms[:picking] = false
+    uniforms[:object_id] = UInt32(0)
+
     return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), instance; uniforms...)
 end

@@ -79,6 +79,16 @@ vec4 get_color(sampler2D color, vec2 uv, bool colorrange, sampler2D colormap){
     return texture(color, uv);
 }
 
+flat in uint frag_instance_id;
+vec4 pack_int(uint id, uint index) {
+    vec4 unpack;
+    unpack.x = float((id & uint(0xff00)) >> 8) / 255.0;
+    unpack.y = float((id & uint(0x00ff)) >> 0) / 255.0;
+    unpack.z = float((index & uint(0xff00)) >> 8) / 255.0;
+    unpack.w = float((index & uint(0x00ff)) >> 0) / 255.0;
+    return unpack;
+}
+
 void main() {
     vec4 real_color = get_color(uniform_color, frag_uv, get_colorrange(), colormap);
     vec3 shaded_color = real_color.rgb;
@@ -89,6 +99,13 @@ void main() {
         vec3 light1 = blinnphong(N, o_camdir, L, real_color.rgb);
         vec3 light2 = blinnphong(N, o_camdir, -L, real_color.rgb);
         shaded_color = get_ambient() * real_color.rgb + light1 + get_backlight() * light2;
+    }
+
+    if (picking) {
+        if (real_color.a > 0.1) {
+            fragment_color = pack_int(object_id, frag_instance_id);
+        }
+        return;
     }
     fragment_color = vec4(shaded_color, real_color.a);
 }
