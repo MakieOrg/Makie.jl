@@ -224,7 +224,7 @@ Label(
     )
 )
 
-str = "A beautiful rainbow"
+str = "A BEAUTIFUL RAINBOW"
 rainbow = cgrad(:rainbow, length(str), categorical = true)
 fontsizes = 30 .+ 10 .* sin.(range(0, 3pi, length = length(str)))
 
