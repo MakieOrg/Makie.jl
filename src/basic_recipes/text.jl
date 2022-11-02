@@ -297,34 +297,33 @@ superscript(args...; kwargs...) = RichText(:sup, args...; kwargs...)
 
 export rich, subscript, superscript
 
-##
-function Makie._get_glyphcollection_and_linesegments(rt::RichText, index, ts, f, fset, al, rot, jus, lh, col, scol, swi, www)
-    gc = Makie.layout_text(rt, ts, f, fset, al, rot, jus, lh, col)
-    gc, Point2f[], Float32[], Makie.RGBAf[], Int[]
+function _get_glyphcollection_and_linesegments(rt::RichText, index, ts, f, fset, al, rot, jus, lh, col, scol, swi, www)
+    gc = layout_text(rt, ts, f, fset, al, rot, jus, lh, col)
+    gc, Point2f[], Float32[], RGBAf[], Int[]
 end
 
-struct GlyphState2
+struct GlyphState
     x::Float32
     baseline::Float32
     size::Vec2f
-    font::Makie.FreeTypeAbstraction.FTFont
+    font::FreeTypeAbstraction.FTFont
     color::RGBAf
 end
 
-struct GlyphInfo2
+struct GlyphInfo
     glyph::Int
-    font::Makie.FreeTypeAbstraction.FTFont
+    font::FreeTypeAbstraction.FTFont
     origin::Point2f
-    extent::Makie.GlyphExtent
+    extent::GlyphExtent
     size::Vec2f
-    rotation::Makie.Quaternion
+    rotation::Quaternion
     color::RGBAf
     strokecolor::RGBAf
     strokewidth::Float32
 end
 
-function Makie.GlyphCollection(v::Vector{GlyphInfo2})
-    Makie.GlyphCollection(
+function GlyphCollection(v::Vector{GlyphInfo})
+    GlyphCollection(
         [i.glyph for i in v],
         [i.font for i in v],
         [Point3f(i.origin..., 0) for i in v],
@@ -338,21 +337,21 @@ function Makie.GlyphCollection(v::Vector{GlyphInfo2})
 end
 
 
-function Makie.layout_text(rt::RichText, ts, f, fset, al, rot, jus, lh, col)
+function layout_text(rt::RichText, ts, f, fset, al, rot, jus, lh, col)
 
     _f = to_font(fset, f)
 
-    stack = [GlyphState2(0, 0, Vec2f(ts), _f, Makie.to_color(col))]
+    stack = [GlyphState(0, 0, Vec2f(ts), _f, to_color(col))]
 
-    lines = [GlyphInfo2[]]
+    lines = [GlyphInfo[]]
     
     process_rt_node!(stack, lines, rt, fset)
 
     apply_lineheight!(lines, lh)
     apply_alignment_and_justification!(lines, jus, al)
 
-    gc = Makie.GlyphCollection(reduce(vcat, lines))
-    quat = Makie.to_rotation(rot)::Quaternionf
+    gc = GlyphCollection(reduce(vcat, lines))
+    quat = to_rotation(rot)::Quaternionf
     gc.origins .= Ref(quat) .* gc.origins
     @assert gc.rotations.sv isa Vector # should always be a vector because that's how the glyphcollection is created
     gc.rotations.sv .= Ref(quat) .* gc.rotations.sv
@@ -473,7 +472,7 @@ function process_rt_node!(stack, lines, rt::RichText, fonts)
     gs = pop!(stack)
     gs_top = stack[end]
     # x needs to continue even if going a level up
-    stack[end] = GlyphState2(gs.x, gs_top.baseline, gs_top.size, gs_top.font, gs_top.color)
+    stack[end] = GlyphState(gs.x, gs_top.baseline, gs_top.size, gs_top.font, gs_top.color)
     return
 end
 
@@ -484,18 +483,18 @@ function process_rt_node!(stack, lines, s::String, _)
     for char in s
         if char === '\n'
             x = 0
-            push!(lines, GlyphInfo2[])
+            push!(lines, GlyphInfo[])
         else
-            gi = Makie.FreeTypeAbstraction.glyph_index(gs.font, char)
-            gext = Makie.GlyphExtent(gs.font, char)
+            gi = FreeTypeAbstraction.glyph_index(gs.font, char)
+            gext = GlyphExtent(gs.font, char)
             ori = Point2f(x, y)
-            push!(lines[end], GlyphInfo2(
+            push!(lines[end], GlyphInfo(
                 gi,
                 gs.font,
                 ori,
                 gext,
                 gs.size,
-                Makie.to_rotation(0),
+                to_rotation(0),
                 gs.color,
                 RGBAf(0, 0, 0, 0),
                 0f0,
@@ -503,24 +502,24 @@ function process_rt_node!(stack, lines, s::String, _)
             x = x + gext.hadvance * gs.size[1]
         end
     end
-    stack[end] = GlyphState2(x, y, gs.size, gs.font, gs.color)
+    stack[end] = GlyphState(x, y, gs.size, gs.font, gs.color)
     return
 end
 
-function new_glyphstate(gs::GlyphState2, rt::RichText, val::Val, fonts)
+function new_glyphstate(gs::GlyphState, rt::RichText, val::Val, fonts)
     gs
 end
 
-_get_color(attributes, default)::RGBAf = haskey(attributes, :color) ? Makie.to_color(attributes[:color]) : default
-_get_font(attributes, default::NativeFont, fonts)::NativeFont = haskey(attributes, :font) ? Makie.to_font(fonts, attributes[:font]) : default
-_get_fontsize(attributes, default)::Vec2f = haskey(attributes, :fontsize) ? Vec2f(Makie.to_textsize(attributes[:fontsize])) : default
+_get_color(attributes, default)::RGBAf = haskey(attributes, :color) ? to_color(attributes[:color]) : default
+_get_font(attributes, default::NativeFont, fonts)::NativeFont = haskey(attributes, :font) ? to_font(fonts, attributes[:font]) : default
+_get_fontsize(attributes, default)::Vec2f = haskey(attributes, :fontsize) ? Vec2f(to_textsize(attributes[:fontsize])) : default
 _get_offset(attributes, default)::Vec2f = haskey(attributes, :offset) ? Vec2f(attributes[:offset]) : default
 
-function new_glyphstate(gs::GlyphState2, rt::RichText, val::Val{:sup}, fonts)
+function new_glyphstate(gs::GlyphState, rt::RichText, val::Val{:sup}, fonts)
     att = rt.attributes
     fontsize = _get_fontsize(att, gs.size * 0.66)
     offset = _get_offset(att, Vec2f(0)) .* fontsize
-    GlyphState2(
+    GlyphState(
         gs.x + offset[1],
         gs.baseline + 0.4 * gs.size[2] + offset[2],
         fontsize,
@@ -529,11 +528,11 @@ function new_glyphstate(gs::GlyphState2, rt::RichText, val::Val{:sup}, fonts)
     )
 end
 
-function new_glyphstate(gs::GlyphState2, rt::RichText, val::Val{:span}, fonts)
+function new_glyphstate(gs::GlyphState, rt::RichText, val::Val{:span}, fonts)
     att = rt.attributes
     fontsize = _get_fontsize(att, gs.size)
     offset = _get_offset(att, Vec2f(0)) .* fontsize
-    GlyphState2(
+    GlyphState(
         gs.x + offset[1],
         gs.baseline + offset[2],
         fontsize,
@@ -542,11 +541,11 @@ function new_glyphstate(gs::GlyphState2, rt::RichText, val::Val{:span}, fonts)
     )
 end
 
-function new_glyphstate(gs::GlyphState2, rt::RichText, val::Val{:sub}, fonts)
+function new_glyphstate(gs::GlyphState, rt::RichText, val::Val{:sub}, fonts)
     att = rt.attributes
     fontsize = _get_fontsize(att, gs.size * 0.66)
     offset = _get_offset(att, Vec2f(0)) .* fontsize
-    GlyphState2(
+    GlyphState(
         gs.x + offset[1],
         gs.baseline - 0.15 * gs.size[2] + offset[2],
         fontsize,
@@ -555,4 +554,4 @@ function new_glyphstate(gs::GlyphState2, rt::RichText, val::Val{:sub}, fonts)
     )
 end
 
-Makie.iswhitespace(r::RichText) = iswhitespace(String(r))
+iswhitespace(r::RichText) = iswhitespace(String(r))
