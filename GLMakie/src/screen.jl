@@ -352,7 +352,6 @@ function Base.delete!(screen::Screen, scene::Scene)
     return
 end
 
-
 function destroy!(rob::RenderObject)
     # These need explicit clean up because (some of) the source observables
     # remain when the plot is deleted.
@@ -360,9 +359,7 @@ function destroy!(rob::RenderObject)
     tex = get_texture!(get_texture_atlas())
     for (k, v) in rob.uniforms
         if v isa Observable
-            for input in v.inputs
-                off(input)
-            end
+            Observables.clear(v)
         elseif v isa GPUArray && v !== tex
             # We usually don't share gpu data and it should be hard for users to share buffers..
             # but we do share the texture atlas, so we check v !== tex, since we can't just free shared resources
@@ -374,9 +371,7 @@ function destroy!(rob::RenderObject)
         end
     end
     for obs in rob.observables
-        for input in obs.inputs
-            off(input)
-        end
+        Observables.clear(obs)
     end
     GLAbstraction.free(rob.vertexarray)
 end

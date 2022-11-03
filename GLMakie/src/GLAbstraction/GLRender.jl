@@ -57,7 +57,7 @@ a lot of objects.
 function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray)
     if renderobject.visible
         renderobject.requires_update = false
-        
+
         renderobject.prerenderfunction()
         program = vertexarray.program
         glUseProgram(program.id)
@@ -73,7 +73,7 @@ function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray
                         error("Uniform tuple too long: $(length(value))")
                     end
                 catch e
-                    error("uniform $key doesn't work with value $(renderobject.uniforms[key])")
+                    @warn error("uniform $key doesn't work with value $(renderobject.uniforms[key])") exception=(e, Base.catch_backtrace())
                 end
             end
         end

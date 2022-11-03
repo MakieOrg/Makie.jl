@@ -1,11 +1,12 @@
 mutable struct GLBuffer{T} <: GPUArray{T, 1}
-    id          ::GLuint
-    size        ::NTuple{1, Int}
-    buffertype  ::GLenum
-    usage       ::GLenum
-    context     ::GLContext
+    id::GLuint
+    size::NTuple{1, Int}
+    buffertype::GLenum
+    usage::GLenum
+    context::GLContext
     # TODO maybe also delay upload to when render happens?
     requires_update::Observable{Bool}
+    observers::Vector{Observables.ObserverFunction}
 
     function GLBuffer{T}(ptr::Ptr{T}, buff_length::Int, buffertype::GLenum, usage::GLenum) where T
         id = glGenBuffers()
@@ -15,7 +16,10 @@ mutable struct GLBuffer{T} <: GPUArray{T, 1}
         glBufferData(buffertype, buff_length * sizeof(T), ptr, usage)
         glBindBuffer(buffertype, 0)
 
-        obj = new(id, (buff_length,), buffertype, usage, current_context(), Observable(true))
+        obj = new(
+            id, (buff_length,), buffertype, usage, current_context(),
+            Observable(true), Observables.ObserverFunction[])
+
         finalizer(free, obj)
         obj
     end
@@ -61,7 +65,8 @@ function GLBuffer(
         buffertype::GLenum = GL_ARRAY_BUFFER, usage::GLenum = GL_STATIC_DRAW
     ) where T <: GLArrayEltypes
     b = GLBuffer(ShaderAbstractions.data(buffer); buffertype=buffertype, usage=usage)
-    ShaderAbstractions.connect!(buffer, b)
+    obsfunc = ShaderAbstractions.connect!(buffer, b)
+    push!(b.observers, obsfunc)
     return b
 end
 

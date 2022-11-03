@@ -333,9 +333,9 @@ mutable struct RenderObject{Pre}
         )
 
         if track_updates
-            # visible changes should always trigger updates so that plots 
+            # visible changes should always trigger updates so that plots
             # actually become invisible when visible is changed.
-            # Other uniforms and buffers don't need to trigger updates when 
+            # Other uniforms and buffers don't need to trigger updates when
             # visible = false
             on(visible) do visible
                 robj.visible = visible
@@ -343,7 +343,7 @@ mutable struct RenderObject{Pre}
             end
 
             function request_update(_::Any)
-                if robj.visible 
+                if robj.visible
                     robj.requires_update = true
                 end
                 return
@@ -393,7 +393,7 @@ function RenderObject(
     switch_context!(context)
 
     # This is a lazy workaround for disabling updates of `requires_update` when
-    # not rendering on demand. A cleaner implementation should probably go 
+    # not rendering on demand. A cleaner implementation should probably go
     # through @gen_defaults! and adjust constructors instead.
     track_updates = to_value(pop!(data, :track_updates, true))
 
@@ -459,11 +459,20 @@ function free(x)
     end
 end
 
+function clean_up_observables(x::T) where T
+    if hasfield(T, :observers)
+        foreach(off, x.observers)
+        empty!(x.observers)
+    end
+    Observables.clear(x.requires_update)
+end
+
 # OpenGL has the annoying habit of reusing id's when creating a new context
 # We need to make sure to only free the current one
 function unsafe_free(x::GLProgram)
     x.id == 0 && return
-    is_context_active(x.context) || return
+    GLAbstraction.context_alive(x.context) || return
+    GLAbstraction.switch_context!(x.context)
     glDeleteProgram(x.id)
     return
 end
@@ -471,8 +480,10 @@ end
 function unsafe_free(x::GLBuffer)
     # don't free if already freed
     x.id == 0 && return
+    clean_up_observables(x)
     # don't free from other context
-    is_context_active(x.context) || return
+    GLAbstraction.context_alive(x.context) || return
+    GLAbstraction.switch_context!(x.context)
     id = Ref(x.id)
     glDeleteBuffers(1, id)
     x.id = 0
@@ -481,7 +492,9 @@ end
 
 function unsafe_free(x::Texture)
     x.id == 0 && return
-    is_context_active(x.context) || return
+    clean_up_observables(x)
+    GLAbstraction.context_alive(x.context) || return
+    GLAbstraction.switch_context!(x.context)
     id = Ref(x.id)
     glDeleteTextures(x.id)
     x.id = 0
@@ -490,7 +503,14 @@ end
 
 function unsafe_free(x::GLVertexArray)
     x.id == 0 && return
-    is_context_active(x.context) || return
+    GLAbstraction.context_alive(x.context) || return
+    GLAbstraction.switch_context!(x.context)
+    for (key, buffer) in x.buffers
+        free(buffer)
+    end
+    if x.indices isa GPUArray
+        free(x.indices)
+    end
     id = Ref(x.id)
     glDeleteVertexArrays(1, id)
     x.id = 0

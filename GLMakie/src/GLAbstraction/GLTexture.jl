@@ -18,6 +18,7 @@ mutable struct Texture{T <: GLArrayEltypes, NDIM} <: OpenglTexture{T, NDIM}
     size            ::NTuple{NDIM, Int}
     context         ::GLContext
     requires_update ::Observable{Bool}
+    observers       ::Vector{Observables.ObserverFunction}
     function Texture{T, NDIM}(
             id              ::GLuint,
             texturetype     ::GLenum,
@@ -36,7 +37,8 @@ mutable struct Texture{T <: GLArrayEltypes, NDIM} <: OpenglTexture{T, NDIM}
             parameters,
             size,
             current_context(),
-            Observable(true)
+            Observable(true),
+            Observables.ObserverFunction[]
         )
         finalizer(free, tex)
         tex
@@ -66,9 +68,11 @@ end
 
 bind(t::Texture, id) = glBindTexture(t.texturetype, id)
 ShaderAbstractions.switch_context!(t::TextureBuffer) = switch_context!(t.texture.context)
+
 function unsafe_free(tb::TextureBuffer)
     unsafe_free(tb.texture)
     unsafe_free(tb.buffer)
+    Observables.clear(tb.requires_update)
 end
 
 is_texturearray(t::Texture) = t.texturetype == GL_TEXTURE_2D_ARRAY
@@ -140,7 +144,8 @@ function Texture(s::ShaderAbstractions.Sampler{T, N}; kwargs...) where {T, N}
         x_repeat = s.repeat[1], y_repeat = s.repeat[min(2, N)], z_repeat = s.repeat[min(3, N)],
         anisotropic = s.anisotropic; kwargs...
     )
-    ShaderAbstractions.connect!(s, tex)
+    obsfunc = ShaderAbstractions.connect!(s, tex)
+    push!(tex.observers, obsfunc)
     return tex
 end
 
