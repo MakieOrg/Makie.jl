@@ -243,10 +243,22 @@ function FileIO.save(
         # If the scene already got displayed, we get the current screen its displayed on
         # Else, we create a new scene and update the state of the fig
         screen = getscreen(scene, backend) do
-            update_state_before_display!(fig)
-            return backend.Screen(scene, io, mime; screen_config...)
+            screen = backend.Screen(scene, io, mime; visible=false, screen_config...)
+            display(screen, fig)
+            return screen
         end
-        backend_show(screen, io, mime, scene)
+        # TODO, we kind of misusing display + backend_show, so
+        # calling backend_show for all cases is slower and bad for GLMakie
+        # Also this happens if always calling backend_show, since it calls empty!(screen):
+        # https://github.com/MakieOrg/Makie.jl/issues/2380
+        # I think we need figure out more strategically where to place `display` (i don't think it should be in backend_show)
+        # Maybe Screen(scene, ...) should just do what display does in GLMakie right now (adding all plots to the screen).
+        if F == FileIO.format"PNG" || F == FileIO.format"JPEG"
+            img = colorbuffer(screen)
+            FileIO.save(FileIO.Stream{F}(io), img)
+        else
+            backend_show(screen, io, mime, scene)
+        end
     end
 end
 

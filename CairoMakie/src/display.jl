@@ -38,6 +38,11 @@ function display_path(type::String)
     return abspath(joinpath(@__DIR__, "display." * type))
 end
 
+function Base.display(screen::Screen, scene::Scene; connect=false)
+    # Nothing to do, since drawing is done in the other functions
+    # TODO write to file and implement upenurl
+end
+
 function Base.display(screen::Screen{IMAGE}, scene::Scene; connect=false)
     path = display_path("png")
     cairo_draw(screen, scene)

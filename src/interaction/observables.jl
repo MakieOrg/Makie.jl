@@ -1,5 +1,6 @@
 const lift = map
 
+# TODO remove?
 Base.close(obs::Observable) = empty!(obs.listeners)
 
 """
