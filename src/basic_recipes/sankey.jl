@@ -398,7 +398,10 @@ end
 using .SankeyPlots: SankeyPlots
 
 @recipe(Sankey) do scene
-    Attributes()
+    Attributes(
+        align = :center,
+        dy = 12,
+    )
 end
 
 function Makie.plot!(p::Sankey)
@@ -428,15 +431,37 @@ function Makie.plot!(p::Sankey)
         return nodelist, linklist
     end
 
-    nodes_and_links = lift(nodelist_linklist) do (nodelist, linklist)    
+    nodes_and_links_pre_solve = lift(nodelist_linklist) do (nodelist, linklist)    
         nodes, links = SankeyPlots.compute_node_links(nodelist, linklist)
         SankeyPlots.compute_node_value!.(nodes)
         SankeyPlots.compute_node_depths!(nodes)
         SankeyPlots.compute_node_heights!(nodes)
-        settings = SankeyPlots.SankeySettings(align = SankeyPlots.align_center, x1 = sz[1], y1 = sz[2], dy = 40, dx = 10, iterations = 6)
+
+        return nodes, links
+    end
+
+    nodes_and_links = lift(nodes_and_links_pre_solve, p.align, p.dy) do (nodes, links), align, dy
+        align_func = if align === :center
+            SankeyPlots.align_center
+        elseif align === :left
+            SankeyPlots.align_left
+        elseif align === :right
+            SankeyPlots.align_right
+        elseif align === :justify
+            SankeyPlots.justify
+        else
+            error("Unknown alignment value $(repr(align)). Options are :center, :left, :right, :justify.")
+        end
+        settings = SankeyPlots.SankeySettings(
+            align = align_func,
+            x1 = sz[1],
+            y1 = sz[2],
+            dy = dy,
+            dx = 10,
+            iterations = 6
+        )
         SankeyPlots.compute_node_breadths!(nodes, settings)
         SankeyPlots.compute_link_breadths!(nodes)
-
         return nodes, links
     end
 
