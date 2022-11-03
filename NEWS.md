@@ -2,6 +2,14 @@
 
 ## master
 
+## v0.18.2
+
+- Fix Axis3 tick flipping with negative azimuth [#2364](https://github.com/MakieOrg/Makie.jl/pull/2364).
+- Fix empty!(fig) and empty!(ax) [#2374](https://github.com/MakieOrg/Makie.jl/pull/2374)., [#2375](https://github.com/MakieOrg/Makie.jl/pull/2375).)
+- Remove stencil buffer [#2389](https://github.com/MakieOrg/Makie.jl/pull/2389).
+- Move Arrows and Wireframe to MakieCore [#2384](https://github.com/MakieOrg/Makie.jl/pull/2384).
+- Skip legend entry if label is nothing [#2350](https://github.com/MakieOrg/Makie.jl/pull/2350).
+
 ## v0.18.1
 
 - fix heatmap interpolation [#2343](https://github.com/MakieOrg/Makie.jl/pull/2343).
