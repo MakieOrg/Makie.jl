@@ -394,18 +394,25 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
         if !isnothing(renderobject)
             destroy!(renderobject)
             filter!(x-> x[3] !== renderobject, screen.renderlist)
+            delete!(screen.cache2plot, renderobject.id)
         end
+        delete!(screen.cache, objectid(plot))
     end
 end
 
 function Base.empty!(screen::Screen)
     empty!(screen.render_tick.listeners)
     empty!(screen.window_open.listeners)
-    empty!(screen.renderlist)
+
+    for plot in collect(values(screen.cache2plot))
+        delete!(screen, Makie.rootparent(plot), plot)
+    end
+    @assert isempty(screen.renderlist)
+    @assert isempty(screen.cache2plot)
+    @assert isempty(screen.cache)
+
     empty!(screen.screen2scene)
     empty!(screen.screens)
-    empty!(screen.cache)
-    empty!(screen.cache2plot)
 end
 
 const GLFW_WINDOWS = GLFW.Window[]
