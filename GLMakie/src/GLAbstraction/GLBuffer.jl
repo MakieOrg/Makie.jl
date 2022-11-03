@@ -21,7 +21,13 @@ mutable struct GLBuffer{T} <: GPUArray{T, 1}
     end
 end
 
-bind(buffer::GLBuffer) = glBindBuffer(buffer.buffertype, buffer.id)
+function bind(buffer::GLBuffer)
+    if buffer.id == 0
+        error("Binding freed GLBuffer{$(eltype(buffer))}")
+    end
+    glBindBuffer(buffer.buffertype, buffer.id)
+end
+
 #used to reset buffer target
 bind(buffer::GLBuffer, other_target) = glBindBuffer(buffer.buffertype, other_target)
 
@@ -144,6 +150,7 @@ end
 # could be a setindex! operation, with subarrays for buffers
 function unsafe_copy!(a::GLBuffer{T}, readoffset::Int, b::GLBuffer{T}, writeoffset::Int, len::Int) where T
     multiplicator = sizeof(T)
+    @assert a.id != 0 & b.id != 0
     glBindBuffer(GL_COPY_READ_BUFFER, a.id)
     glBindBuffer(GL_COPY_WRITE_BUFFER, b.id)
     glCopyBufferSubData(
