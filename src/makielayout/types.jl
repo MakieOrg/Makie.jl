@@ -150,18 +150,27 @@ end
 
 struct ScrollZoom
     speed::Float32
-    reset_timer::Ref{Any}
-    prev_xticklabelspace::Ref{Any}
-    prev_yticklabelspace::Ref{Any}
+    reset_timer::RefValue{Union{Nothing, Timer}}
+    prev_xticklabelspace::RefValue{Float64}
+    prev_yticklabelspace::RefValue{Float64}
     reset_delay::Float32
 end
 
+function ScrollZoom(speed, reset_delay)
+    return ScrollZoom(speed, RefValue{Union{Nothing, Timer}}(nothing), RefValue{Float64}(0), RefValue{Float64}(0), reset_delay)
+end
+
 struct DragPan
-    reset_timer::Ref{Any}
-    prev_xticklabelspace::Ref{Any}
-    prev_yticklabelspace::Ref{Any}
+    reset_timer::RefValue{Union{Nothing, Timer}}
+    prev_xticklabelspace::RefValue{Float64}
+    prev_yticklabelspace::RefValue{Float64}
     reset_delay::Float32
 end
+
+function DragPan(reset_delay)
+    return DragPan(RefValue{Union{Nothing, Timer}}(nothing), RefValue{Float64}(0), RefValue{Float64}(0), reset_delay)
+end
+
 
 struct DragRotate
 end
