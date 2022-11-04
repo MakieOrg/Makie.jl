@@ -51,10 +51,16 @@ f
 ```
 \end{examplefigure}
 
+### Font families
+
+Makie also exposes the `FontFamily` interface for simplicity.  This is constructed as `FontFamily("family_name_here")`, and basically acts as an automatically populated version of the `NamedTuple` passed to the `fonts` option above.  It will usually create at least the `:regular`, `:bold`, `:italic`, and `:bold_italic` styles, if they can be found within the font.
+
+Alternatively, you can simply provide the family name as a String to `fonts`, e.g., `fonts = "Computer Modern"`; however, this may be somewhat slower, as a search will be run every time a font style has to be fetched.
+
+Internally, the `FontFamily` interface uses Fontconfig (via `Fontconfig.jl`) to find and categorize fonts.
+
 ## Emoji and color fonts
 
 Currently, Makie does not have the ability to draw emoji or other color fonts.
 This is due to the implementation of text drawing in GLMakie and WGLMakie, which relies on signed distance fields that can only be used to render monochrome glyphs, but not arbitrary bitmaps.
 If you want to use emoji as scatter markers, consider using images (you will need to find suitable images separately, you cannot easily extract emoji from fonts with Makie).
-
-
