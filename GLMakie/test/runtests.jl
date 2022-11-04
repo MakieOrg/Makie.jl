@@ -6,6 +6,11 @@ using Makie
 using ImageMagick
 using Pkg
 
+if !GLMakie.ModernGL.enable_opengl_debugging
+    # can't error, since we can't enable debugging for users
+    @warn("TESTING WITHOUT OPENGL DEBUGGING")
+end
+
 reference_tests_dir = normpath(joinpath(dirname(pathof(Makie)), "..", "ReferenceTests"))
 Pkg.develop(PackageSpec(path = reference_tests_dir))
 using ReferenceTests
