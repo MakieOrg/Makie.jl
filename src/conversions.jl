@@ -968,6 +968,24 @@ end
 
 to_font(fonts::Attributes, x) = to_font(x)
 
+function to_font(fonts::FontFamily, s::Symbol)
+    if s in propertynames(fonts.attributes)
+        return to_font(fonts[s][])
+    else
+        try
+            # try to search for this font and cache it.
+            font = search_font(family, string(s))
+            fonts[s] = font
+            return font
+        catch e
+            @error "The font family \"$(fonts.family)\" does not have a font with style $(s).  Please add it manually, or amend your style."
+        end
+    end
+end
+
+to_font(fonts::FontFamily, s::String) = to_font(s)
+
+to_font(::FontFamily, x) = to_font(x)
 
 """
     to_font(family::String, s::Symbol)
@@ -988,6 +1006,8 @@ function to_font(family::String, s::Symbol)
 end
 
 to_font(fonts::String, s::String) = to_font(s)
+
+to_font(::String, x) = to_font(x)
 
 """
     rotation accepts:

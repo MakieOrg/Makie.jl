@@ -488,7 +488,8 @@ Plots one or multiple texts passed via the `text` keyword.
 
 - `text` specifies one piece of text or a vector of texts to show, where the number has to match the number of positions given. Makie supports `String` which is used for all normal text and `LaTeXString` which layouts mathematical expressions using `MathTeXEngine.jl`.
 - `align::Tuple{Union{Symbol, Real}, Union{Symbol, Real}} = (:left, :bottom)` sets the alignment of the string w.r.t. `position`. Uses `:left, :center, :right, :top, :bottom, :baseline` or fractions.
-- `font::Union{String, Vector{String}} = :regular` sets the font for the string or each character.
+- `font::Union{Symbol, String, Vector{String}} = :regular` sets the font for the string or each character.  Symbols are interpreted as styles within a font family, given by `fonts`.
+- `fonts::Union{Attributes, String, FontFamily} = default_font_family` sets the font family which is to be used when the font is given as a style symbol.  Can be an `Attributes`, `String` (representing a font family, lookup done using fontconfig) or `FontFamily` (cached version of a font family).
 - `justification::Union{Real, Symbol} = automatic` sets the alignment of text w.r.t its bounding box. Can be `:left, :center, :right` or a fraction. Will default to the horizontal alignment in `align`.
 - `rotation::Union{Real, Quaternion}` rotates text around the given position.
 - `textsize::Union{Real, Vec2f}` sets the size of each character.

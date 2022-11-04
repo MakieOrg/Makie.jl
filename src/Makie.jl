@@ -277,6 +277,9 @@ export save
 # colormap stuff from PlotUtils, and showgradients
 export cgrad, available_gradients, showgradients
 
+# font handling related stuff
+export FontFamily, search_font
+
 export Pattern
 
 export assetpath
