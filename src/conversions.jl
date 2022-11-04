@@ -918,7 +918,10 @@ const FONT_CACHE = Dict{String, NativeFont}()
 """
     font conversion
 
-a string naming a font, e.g. helvetica
+A String naming a font, e.g. "helvetica", is converted to a FreeType font.
+
+This works with single-strings, vectors of strings, file paths, FreeType `FTFont`,
+and font families given as `FontFamily` objects, `Attributes`, or simple strings.
 """
 function to_font(x::String)
     str = string(x)
@@ -965,6 +968,26 @@ end
 
 to_font(fonts::Attributes, x) = to_font(x)
 
+
+"""
+    to_font(family::String, s::Symbol)
+
+Search the font family `family` for a style `s`.  If not found, error.
+
+Note that this does not cache any fonts, so may be somewhat expensive in the long run.
+It is advised to use `FontFamily` objects which can cache loaded fonts.
+"""
+function to_font(family::String, s::Symbol)
+
+    try
+        search_font(family, string(s))
+    catch e
+        @error "The font family \"$(family)\" does not have a font with style $(s).  Please add it manually, or amend your style."
+    end
+
+end
+
+to_font(fonts::String, s::String) = to_font(s)
 
 """
     rotation accepts:
