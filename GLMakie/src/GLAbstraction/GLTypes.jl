@@ -313,7 +313,7 @@ mutable struct RenderObject{Pre}
             uniforms::Dict{Symbol,Any}, observables::Vector{Observable},
             vertexarray::GLVertexArray,
             prerenderfunctions, postrenderfunctions,
-            track_updates = true
+            visible, track_updates = true
         ) where Pre
         fxaa = to_value(pop!(uniforms, :fxaa, true))
         RENDER_OBJECT_ID_COUNTER[] += one(UInt32)
@@ -323,8 +323,6 @@ mutable struct RenderObject{Pre}
         # But with this implementation, the fxaa flag can't be changed,
         # and since this is a UUID, it shouldn't matter
         id = pack_bool(RENDER_OBJECT_ID_COUNTER[], fxaa)
-        visible = pop!(uniforms, :visible, Observable(true))
-
         robj = new(
             context,
             uniforms, observables, vertexarray,
@@ -428,10 +426,19 @@ function RenderObject(
     end
     buffers = filter(((key, value),) -> isa(value, GLBuffer) || key == :indices, data)
     uniforms = filter(((key, value),) -> !isa(value, GLBuffer) && key != :indices, data)
-    get!(data, :visible, Observable(true)) # make sure this exists
     merge!(data, passthrough) # in the end, we insert back the non opengl data, to keep things simple
-    p = gl_convert(to_value(program), data) # "compile" lazyshader
-    vertexarray = GLVertexArray(Dict(buffers), p)
+    program = gl_convert(to_value(program), data) # "compile" lazyshader
+    vertexarray = GLVertexArray(Dict(buffers), program)
+    visible = pop!(uniforms, :visible, Observable(true))
+
+    # remove all uniforms not occuring in shader
+    # ssao, instances transparency are special for rendering passes. TODO do this more cleanly
+    special = Set([:ssao, :transparency, :instances])
+    for k in setdiff(keys(data), keys(program.nametype))
+        if !(k in special)
+            delete!(data, k)
+        end
+    end
     robj = RenderObject{Pre}(
         context,
         data,
@@ -439,6 +446,7 @@ function RenderObject(
         vertexarray,
         pre,
         post,
+        visible,
         track_updates
     )
     # automatically integrate object ID, will be discarded if shader doesn't use it

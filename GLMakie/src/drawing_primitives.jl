@@ -46,7 +46,8 @@ end
 
 function connect_camera!(gl_attributes, cam, space = gl_attributes[:space])
     for key in (:pixel_space, :resolution, :eyeposition)
-        get!(gl_attributes, key, copy(getfield(cam, key)))
+        # Overwrite these, user defined attributes shouldn't use those!
+        gl_attributes[key] = copy(getfield(cam, key))
     end
     get!(gl_attributes, :view) do
         return lift(cam.view, space) do view, space
@@ -83,8 +84,8 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     robj = get!(screen.cache, objectid(x)) do
         filtered = filter(x.attributes) do (k, v)
             !in(k, (
-                :transformation, :tickranges, :ticklabels, :raw, :SSAO, 
-                :lightposition, :material, 
+                :transformation, :tickranges, :ticklabels, :raw, :SSAO,
+                :lightposition, :material,
                 :inspector_label, :inspector_hover, :inspector_clear, :inspectable
             ))
         end
