@@ -723,18 +723,19 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
 
         for sym in manually_cycled_attributes
             isym = findfirst(syms -> sym in syms, attrsyms(cycle))
-            index = allattrs[sym][].i
+            cycled = allattrs[sym][]::Cycled
             # replace the Cycled values with values from the correct palettes
             # at the index inside the Cycled object
-            allattrs[sym] = if cycle.covary
-                palettes[isym][mod1(index, length(palettes[isym]))]
+            cycled_value = if cycle.covary
+                palettes[isym][mod1(cycled.i, length(palettes[isym]))]
             else
                 cis = CartesianIndices(Tuple(length(p) for p in palettes))
                 n = length(cis)
-                k = mod1(index, n)
+                k = mod1(cycled.i, n)
                 idx = Tuple(cis[k])
                 palettes[isym][idx[isym]]
             end
+            allattrs[sym] = cycled.func(cycled_value)
         end
 
     elseif no_cycle_attribute_passed
