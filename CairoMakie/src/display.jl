@@ -48,6 +48,8 @@ function Base.display(screen::Screen{IMAGE}, scene::Scene; connect=false)
 end
 
 function Makie.backend_show(screen::Screen{SVG}, io::IO, ::MIME"image/svg+xml", scene::Scene)
+    # Display the plot on a new screen writing to a string, so that we can manipulate the
+    # result (the io in `screen` should directly write to the file we're saving)
     svg = sprint() do io2
         surface = surface_from_output_type(SVG, io2, size(screen)...)
         screen2 = Screen(scene, surface, screen.config)
