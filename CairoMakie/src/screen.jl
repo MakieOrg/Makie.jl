@@ -149,6 +149,7 @@ struct Screen{SurfaceRenderType} <: Makie.MakieScreen
     device_scaling_factor::Float64
     antialias::Int # cairo_antialias_t
     visible::Bool
+    config::ScreenConfig
 end
 
 function Base.empty!(screen::Screen)
@@ -224,7 +225,7 @@ function Screen(scene::Scene, surface::Cairo.CairoSurface, config::ScreenConfig)
     aa = to_cairo_antialias(config.antialias)
     Cairo.set_antialias(ctx, aa)
     set_miter_limit(ctx, 2.0)
-    return Screen{get_render_type(surface)}(scene, surface, ctx, dsf, aa, config.visible)
+    return Screen{get_render_type(surface)}(scene, surface, ctx, dsf, aa, config.visible, config)
 end
 
 ########################################
