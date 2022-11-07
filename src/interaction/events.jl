@@ -40,18 +40,20 @@ disconnect!(window::MakieScreen, signal) = disconnect!(to_native(window), signal
 function disconnect_screen(scene::Scene, screen)
     delete_screen!(scene, screen)
     e = events(scene)
-
-    disconnect!(screen, window_area)
-    disconnect!(screen, window_open)
-    disconnect!(screen, mouse_buttons)
-    disconnect!(screen, mouse_position)
-    disconnect!(screen, scroll)
-    disconnect!(screen, keyboard_buttons)
-    disconnect!(screen, unicode_input)
-    disconnect!(screen, dropped_files)
-    disconnect!(screen, hasfocus)
-    disconnect!(screen, entered_window)
-
+    # the isopen check was never needed, since we didn't seem to disconnect from a closed screen.
+    # But due to a bug, it became clear that disconnecting events from a destroyed screen may segfault...
+    if isopen(screen)
+        disconnect!(screen, window_area)
+        disconnect!(screen, window_open)
+        disconnect!(screen, mouse_buttons)
+        disconnect!(screen, mouse_position)
+        disconnect!(screen, scroll)
+        disconnect!(screen, keyboard_buttons)
+        disconnect!(screen, unicode_input)
+        disconnect!(screen, dropped_files)
+        disconnect!(screen, hasfocus)
+        disconnect!(screen, entered_window)
+    end
     return
 end
 

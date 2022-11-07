@@ -175,3 +175,30 @@ end
     close(screen)
     @test isempty(screen.renderlist)
 end
+
+@testset "closing" begin
+    # Closing let to multiple errors/segfaults because of incorrect clean ups:
+    # https://github.com/MakieOrg/Makie.jl/issues/2371
+    @testset "closing and redisplaying" begin
+        GLMakie.closeall()
+        fig = Figure()
+        ax = Axis(fig[1,1]) # only happens with axis
+        # lines!(ax, 1:5, rand(5); linewidth=5) # but doesn't need a plot
+        screen = display(fig)
+        GLMakie.closeall()
+        display(fig)
+        @test true # test for no errors for now
+    end
+
+    @testset "closing and redisplaying + resizing" begin
+        GLMakie.closeall()
+        fig = Figure()
+        ax = Axis(fig[1,1]) # only happens with axis
+        screen = display(fig)
+        close(screen)
+        screen = display(fig)
+        resize!(fig, 800,601)
+        @test true # test for no errors for now
+        close(screen)
+    end
+end

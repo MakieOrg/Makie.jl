@@ -200,6 +200,7 @@ function GLVertexArray(bufferdict::Dict, program::GLProgram)
     # get the size of the first array, to assert later, that all have the same size
     indexes = -1
     len = -1
+    ShaderAbstractions.switch_context!(program.context)
     id = glGenVertexArrays()
     glBindVertexArray(id)
     lenbuffer = 0
@@ -231,7 +232,14 @@ function GLVertexArray(bufferdict::Dict, program::GLProgram)
             end
             bind(buffer)
             attribLocation = get_attribute_location(program.id, attribute)
-            (attribLocation == -1) && continue
+            if attribLocation == -1
+                # Right now we may create a buffer e.g. in mesh.jl,
+                # but we don't use it so it gets optimized away in the shader (e.g. normals with shading=false)
+                # We still need to clean up that buffer in free(vertexarray), so we put it in the buffer list without binding it.
+                # TODO, don't even create the buffer if it isn't needed. Right now we don't have this info in meshes.jl, so it's a todo for now
+                buffers[attribute] = buffer
+                continue
+            end
             glVertexAttribPointer(attribLocation, cardinality(buffer), julia2glenum(eltype(buffer)), GL_FALSE, 0, C_NULL)
             glEnableVertexAttribArray(attribLocation)
             buffers[attribute] = buffer

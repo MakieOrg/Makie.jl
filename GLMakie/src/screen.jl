@@ -427,7 +427,7 @@ function singleton_screen(resolution; visible=true, start_renderloop=true)
         screen
     else
         if !isempty(screen_ref)
-            closeall(screen_ref)
+            _closeall(screen_ref)
         end
         screen = Screen(; resolution=resolution, visible=visible, start_renderloop=start_renderloop)
         push!(screen_ref, screen)
@@ -445,13 +445,19 @@ function destroy!(screen::Screen)
 end
 
 Base.close(screen::Screen) = destroy!(screen)
-function closeall(windows=GLFW_WINDOWS)
+function _closeall(windows)
     if !isempty(windows)
         for elem in windows
-            isopen(elem) && destroy!(elem)
+            destroy!(elem)
         end
         empty!(windows)
     end
+end
+
+function closeall()
+    _closeall(SINGLETON_SCREEN)
+    _closeall(SINGLETON_SCREEN_NO_RENDERLOOP)
+    @assert isempty(GLFW_WINDOWS)
 end
 
 function resize_native!(window::GLFW.Window, resolution...)
@@ -732,3 +738,10 @@ function renderloop(screen)
         destroy!(screen)
     end
 end
+
+
+function plot2robjs(screen::Screen, plot)
+    plots = Makie.flatten_plots(plot)
+    return map(x-> screen.cache[objectid(x)], plots)
+end
+export plot2robjs

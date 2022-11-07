@@ -162,6 +162,8 @@ function Base.empty!(screen::Screen)
     Cairo.restore(ctx)
 end
 
+Base.close(screen::Screen) = empty!(screen)
+
 # function clear(screen::Screen)
 #     ctx = screen.context
 #     Cairo.save(ctx)

@@ -6,6 +6,10 @@ JSServe.session(td::ThreeDisplay) = td.session
 Base.empty!(::ThreeDisplay) = nothing # TODO implement
 
 
+function Base.close(screen::ThreeDisplay)
+    # TODO implement
+end
+
 function Base.size(screen::ThreeDisplay)
     # look at d.qs().clientWidth for displayed width
     width, height = round.(Int, WGLMakie.JSServe.evaljs_value(screen.session, WGLMakie.JSServe.js"[document.querySelector('canvas').width, document.querySelector('canvas').height]"; time_out=100))
