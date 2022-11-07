@@ -323,7 +323,7 @@ mutable struct RenderObject{Pre}
             prerenderfunctions, postrenderfunctions,
             visible, track_updates = true
         ) where Pre
-        fxaa = to_value(pop!(uniforms, :fxaa, true))
+        fxaa = Bool(to_value(get!(uniforms, :fxaa, true)))
         RENDER_OBJECT_ID_COUNTER[] += one(UInt32)
         # Store fxaa in ID, so we can access it in the shader to create a mask
         # for the fxaa render pass
@@ -407,6 +407,7 @@ function RenderObject(
     delete!(data, :gl_convert_targets)
     passthrough = Dict{Symbol,Any}() # we also save a few non opengl related values in data
     observables = Observable[]
+
     for (k, v) in data # convert everything to OpenGL compatible types
         v isa Observable && push!(observables, v) # save for clean up
         if haskey(targets, k)
@@ -415,7 +416,7 @@ function RenderObject(
             # but in some cases we want a Texture, sometimes a GLBuffer or TextureBuffer
             data[k] = gl_convert(targets[k], v)
         else
-            k in (:indices, :visible, :fxaa, :ssao, :label, :cycle) && continue
+            k in (:indices, :visible, :ssao, :label, :cycle) && continue
             # structs are treated differently, since they have to be composed into their fields
             if isa_gl_struct(v)
                 merge!(data, gl_convert_struct(v, k))
@@ -438,15 +439,15 @@ function RenderObject(
     program = gl_convert(to_value(program), data) # "compile" lazyshader
     vertexarray = GLVertexArray(Dict(buffers), program)
     visible = pop!(uniforms, :visible, Observable(true))
-
     # remove all uniforms not occuring in shader
     # ssao, instances transparency are special for rendering passes. TODO do this more cleanly
-    special = Set([:ssao, :transparency, :instances])
+    special = Set([:ssao, :transparency, :instances, :fxaa])
     for k in setdiff(keys(data), keys(program.nametype))
         if !(k in special)
             delete!(data, k)
         end
     end
+
     robj = RenderObject{Pre}(
         context,
         data,

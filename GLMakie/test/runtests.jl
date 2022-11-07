@@ -44,6 +44,8 @@ include("unit_tests.jl")
         n_missing_images += length(missing_images)
         ReferenceTests.test_comparison(scores; threshold = 0.01)
     end
+    GLMakie.closeall()
+    GC.gc(true) # make sure no finalizers act up!
     # pass on status for Github Actions
     println("::set-output name=n_missing_refimages::$n_missing_images")
 end
