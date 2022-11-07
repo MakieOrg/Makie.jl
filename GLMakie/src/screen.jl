@@ -445,6 +445,7 @@ function destroy!(screen::Screen)
 end
 
 Base.close(screen::Screen) = destroy!(screen)
+
 function _closeall(windows)
     if !isempty(windows)
         for elem in windows

@@ -39,7 +39,6 @@ mutable struct Screen <: Makie.MakieScreen
     three::Union{Nothing, ThreeDisplay}
     display::Any
 end
-
 for M in WEB_MIMES
     @eval begin
         function Makie.backend_show(screen::Screen, io::IO, m::$M, scene::Scene)
@@ -59,6 +58,9 @@ end
 function Makie.backend_showable(::Type{Screen}, ::T) where {T<:MIME}
     return T in WEB_MIMES
 end
+
+# TODO implement
+Base.close(screen::Screen) = nothing
 
 function Base.size(screen::Screen)
     return size(get_three(screen))

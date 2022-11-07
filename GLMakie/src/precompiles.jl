@@ -19,8 +19,6 @@ let
         shared_precompile = joinpath(base_path, "shared-precompile.jl")
         include(shared_precompile)
     end
-    closeall(GLFW_WINDOWS)
-    closeall(SINGLETON_SCREEN)
-    closeall(SINGLETON_SCREEN_NO_RENDERLOOP)
+    closeall()
     nothing
 end

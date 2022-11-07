@@ -7,9 +7,7 @@ function project_sp(scene, point)
 end
 
 @testset "unit tests" begin
-    GLMakie.closeall(GLMakie.GLFW_WINDOWS)
-    GLMakie.closeall(GLMakie.SINGLETON_SCREEN)
-    GLMakie.closeall(GLMakie.SINGLETON_SCREEN_NO_RENDERLOOP)
+    GLMakie.closeall()
     @testset "Window handling" begin
         # Without previous windows/figures everything should be empty/unassigned
         @test isempty(GLMakie.GLFW_WINDOWS)
