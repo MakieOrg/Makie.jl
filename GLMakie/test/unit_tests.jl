@@ -10,39 +10,41 @@ end
     GLMakie.closeall()
     @testset "Window handling" begin
         # Without previous windows/figures everything should be empty/unassigned
-        @test isempty(GLMakie.GLFW_WINDOWS)
-        @test !isassigned(GLMakie.SINGLETON_SCREEN)
-        @test !isassigned(GLMakie.SINGLETON_SCREEN_NO_RENDERLOOP)
+        @test isempty(GLMakie.ALL_SCREENS)
+        @test isempty(GLMakie.SCREEN_REUSE_POOL)
+        @test isempty(GLMakie.SINGLETON_SCREEN)
 
         # A raw screen should be tracked in GLFW_WINDOWS
         screen = GLMakie.Screen(resolution = (100, 100), visible = false)
         @test isopen(screen)
-        @test length(GLMakie.GLFW_WINDOWS) == 1 && (GLMakie.GLFW_WINDOWS[1] === screen.glscreen)
-        @test !isassigned(GLMakie.SINGLETON_SCREEN)
-        @test !isassigned(GLMakie.SINGLETON_SCREEN_NO_RENDERLOOP)
+        @test GLMakie.ALL_SCREENS == Set([screen])
+        @test isempty(GLMakie.SCREEN_REUSE_POOL)
+        @test isempty(GLMakie.SINGLETON_SCREEN)
 
         # A displayed figure should create a singleton screen and leave other
         # screens untouched
         fig, ax, splot = scatter(1:4);
         screen2 = display(fig)
         @test screen !== screen2
-        @test length(GLMakie.GLFW_WINDOWS) == 2 && (GLMakie.GLFW_WINDOWS == [screen.glscreen, screen2.glscreen])
-        @test isassigned(GLMakie.SINGLETON_SCREEN) && (GLMakie.SINGLETON_SCREEN[] === screen2)
-        @test !isassigned(GLMakie.SINGLETON_SCREEN_NO_RENDERLOOP)
+        @test GLMakie.ALL_SCREENS == Set([screen, screen2])
+        @test GLMakie.SINGLETON_SCREEN == [screen2]
+        @test isempty(GLMakie.SCREEN_REUSE_POOL)
 
         # TODO overload getscreen for figure
         @test getscreen(ax.scene) === screen2
 
-        # closing screens should remove just the GLFW windows from GLFW_WINDOWS
+        # closing screens should just free it and put it in SCREEN_REUSE_POOL
         close(screen)
         @test !isopen(screen) && isopen(screen2)
-        @test length(GLMakie.GLFW_WINDOWS) == 1 && (GLMakie.GLFW_WINDOWS[1] == screen2.glscreen)
-        @test isassigned(GLMakie.SINGLETON_SCREEN) && (GLMakie.SINGLETON_SCREEN[] === screen2)
+        @test GLMakie.ALL_SCREENS == Set([screen, screen2])
+        @test GLMakie.SINGLETON_SCREEN == [screen2]
+        @test length(GLMakie.SCREEN_REUSE_POOL) == 1
 
         close(screen2)
         @test !isopen(screen) && !isopen(screen2)
-        @test length(GLMakie.GLFW_WINDOWS) == 0
-        @test isassigned(GLMakie.SINGLETON_SCREEN) && (GLMakie.SINGLETON_SCREEN[] === screen2)
+        @test GLMakie.SINGLETON_SCREEN == [screen2]
+        @test GLMakie.SCREEN_REUSE_POOL == Set([screen])
+        @test GLMakie.ALL_SCREENS == Set([screen, screen2])
 
         # assure we correctly close screen and remove it from plot
         @test getscreen(ax.scene) === nothing
@@ -53,15 +55,12 @@ end
         fig, ax, p = scatter(1:4);
         screen = display(fig)
         ptr = deepcopy(screen.glscreen.handle)
-        @test length(GLMakie.GLFW_WINDOWS) == 1 && (GLMakie.GLFW_WINDOWS[1] == screen.glscreen)
-        @test isopen(screen) && (screen === GLMakie.SINGLETON_SCREEN[])
+        @test isopen(screen) && (screen === GLMakie.SINGLETON_SCREEN[1])
         fig2, ax2, p2 = scatter(4:-1:1);
         screen2 = display(fig2)
-        @test length(GLMakie.GLFW_WINDOWS) == 1 && (GLMakie.GLFW_WINDOWS[1] == screen2.glscreen)
         @test isopen(screen2) && (screen2 === GLMakie.SINGLETON_SCREEN[])
         @test screen === screen2
         @test screen2.glscreen.handle == ptr
-        close(screen)
         close(screen2)
     end
 
@@ -90,7 +89,7 @@ end
         # scatter points should have indices equal to those in 99991:99998
         scatter_plot_idx = filter(pi -> pi[1] isa Scatter, picks)
         @test Set(last.(scatter_plot_idx)) == Set(99991:99998)
-        close(screen)
+        GLMakie.destroy!(screen)
     end
 end
 
@@ -130,7 +129,6 @@ end
     close(screen)
     @test isempty(screen.renderlist)
 end
-
 
 @testset "empty!(ax)" begin
     GLMakie.closeall()
@@ -197,6 +195,62 @@ end
         screen = display(fig)
         resize!(fig, 800,601)
         @test true # test for no errors for now
-        close(screen)
+        # GLMakie.destroy!(screen)
     end
+end
+
+@testset "destroying singleton screen" begin
+    screen = display(scatter(1:4))
+    GLMakie.destroy!(screen)
+    screen = display(scatter(1:4))
+    @test isopen(screen) # shouldn't run into double closing a destroyed window
+    GLMakie.destroy!(screen)
+end
+
+@testset "stresstest multi displays" begin
+    GLMakie.closeall()
+    screens = map(1:10) do i
+        fig = Figure(resolution=(500, 500))
+        rng  = Random.MersenneTwister(0)
+        ax, pl = image(fig[1, 1], 0..1, 0..1, rand(rng, 1000, 1000))
+        scatter!(ax, rand(rng, Point2f, 1000), color=:red)
+        lines!(ax, rand(rng, Point2f, 1000), transparency=true)
+
+        ax3d, pl = mesh(fig[1, 2], Sphere(Point3f(0), 1))
+        meshscatter!(ax3d, rand(rng, Point3f, 100), color=:red)
+
+        heatmap(fig[2, 1], rand(rng, 100, 100))
+        surface(fig[2, 2], 0..1, 0..1, rand(rng, 1000, 1000) ./ 2)
+
+        display(GLMakie.Screen(visible=false), fig)
+    end
+
+    images = map(Makie.colorbuffer, screens)
+    @test all(x-> x ≈ first(images), images)
+
+    @test Base.summarysize(screens) / 10^6 > 300
+    foreach(close, screens)
+
+    for screen in screens
+        @test !isopen(screen)
+
+        @test isempty(screen.screen2scene)
+        @test isempty(screen.screens)
+        @test isempty(screen.renderlist)
+        @test isempty(screen.cache)
+        @test isempty(screen.cache2plot)
+
+        @test isempty(screen.window_open.listeners)
+        @test isempty(screen.render_tick.listeners)
+
+        @test screen.root_scene === nothing
+        @test screen.rendertask === nothing
+        @test (Base.summarysize(screen) / 10^6) < 1.2
+    end
+    # All should go to pool after close
+    @test all(x-> x in GLMakie.SCREEN_REUSE_POOL, screens)
+
+    GLMakie.closeall()
+    # now every screen should be gone
+    @test isempty(GLMakie.SCREEN_REUSE_POOL)
 end

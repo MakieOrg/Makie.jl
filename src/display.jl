@@ -25,19 +25,27 @@ end
 Adds a screen to the scene and registeres a clean up event when screen closes.
 """
 function push_screen!(scene::Scene, screen::MakieScreen)
-    if !any(x -> x === screen, scene.current_screens)
-        push!(scene.current_screens, screen)
-        deregister = nothing
-        deregister = on(events(scene).window_open, priority=typemax(Int)) do is_open
-            # when screen closes, it should set the scene isopen event to false
-            # so that's when we can remove the screen
-            if !is_open
-                delete_screen!(scene, screen)
-                # deregister itself
-                !isnothing(deregister) && off(deregister)
-            end
-            return Consume(false)
+    if length(scene.current_screens) == 1 && scene.current_screens[1] === screen
+        # Nothing todo here, already displayed on screen
+        return
+    end
+    # Else we delete all other screens, only one screen per scene is allowed!!
+    while !isempty(scene.current_screens)
+        delete_screen!(scene, pop!(scene.current_screens))
+    end
+
+    # Now we push the screen :)
+    push!(scene.current_screens, screen)
+    deregister = nothing
+    deregister = on(events(scene).window_open, priority=typemax(Int)) do is_open
+        # when screen closes, it should set the scene isopen event to false
+        # so that's when we can remove the screen
+        if !is_open
+            delete_screen!(scene, screen)
+            # deregister itself
+            !isnothing(deregister) && off(deregister)
         end
+        return Consume(false)
     end
     return
 end
@@ -119,18 +127,29 @@ function Base.display(figlike::FigureLike; backend=current_backend(), screen_con
     if ALWAYS_INLINE_PLOTS[]
         Core.invoke(display, Tuple{Any}, figlike)
     else
-        screen = backend.Screen(get_scene(figlike); screen_config...)
-        return display(screen, figlike)
+        scene = get_scene(figlike)
+        screen = getscreen(scene, backend) do
+            # only update fig if not already displayed
+            update_state_before_display!(figlike)
+            return backend.Screen(scene; screen_config...)
+        end
+        display(screen, scene)
+        return screen
     end
 end
+
+is_displayed(screen::MakieScreen, scene::Scene) = screen in scene.current_screens
+
 
 # Backends overload display(::Backend.Screen, scene::Scene), while Makie overloads the below,
 # so that they don't need to worry
 # about stuff like `update_state_before_display!`
 function Base.display(screen::MakieScreen, figlike::FigureLike; display_attributes...)
-    update_state_before_display!(figlike)
     scene = get_scene(figlike)
-    display(screen, scene; display_attributes...)
+    if !is_displayed(screen, scene)
+        update_state_before_display!(figlike)
+    end
+    display(screen, get_scene(figlike); display_attributes...)
     return screen
 end
 
@@ -244,21 +263,10 @@ function FileIO.save(
         # Else, we create a new scene and update the state of the fig
         screen = getscreen(scene, backend) do
             screen = backend.Screen(scene, io, mime; visible=false, screen_config...)
-            display(screen, fig)
+            update_state_before_display!(fig)
             return screen
         end
-        # TODO, we kind of misusing display + backend_show, so
-        # calling backend_show for all cases is slower and bad for GLMakie
-        # Also this happens if always calling backend_show, since it calls empty!(screen):
-        # https://github.com/MakieOrg/Makie.jl/issues/2380
-        # I think we need figure out more strategically where to place `display` (i don't think it should be in backend_show)
-        # Maybe Screen(scene, ...) should just do what display does in GLMakie right now (adding all plots to the screen).
-        if F == FileIO.format"PNG" || F == FileIO.format"JPEG"
-            img = colorbuffer(screen)
-            FileIO.save(FileIO.Stream{F}(io), img)
-        else
-            backend_show(screen, io, mime, scene)
-        end
+        backend_show(screen, io, mime, scene)
     end
 end
 
@@ -331,7 +339,7 @@ function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; 
     scene = get_scene(fig)
     screen = getscreen(scene, backend) do
         screen = backend.Screen(scene, format; start_renderloop=false, visible=false, screen_config...)
-        display(screen, fig; connect=false)
+        update_state_before_display!(fig)
         return screen
     end
     return colorbuffer(screen, format)
@@ -339,14 +347,12 @@ end
 
 # Fallback for any backend that will just use colorbuffer to write out an image
 function backend_show(screen::MakieScreen, io::IO, m::MIME"image/png", scene::Scene)
-    display(screen, scene; connect=false)
     img = colorbuffer(screen)
     FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img)
     return
 end
 
 function backend_show(screen::MakieScreen, io::IO, m::MIME"image/jpeg", scene::Scene)
-    display(screen, scene; connect=false)
     img = colorbuffer(scene)
     FileIO.save(FileIO.Stream{FileIO.format"JPEG"}(Makie.raw_io(io)), img)
     return

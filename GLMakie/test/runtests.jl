@@ -5,6 +5,7 @@ using GeometryBasics: origin
 using Makie
 using ImageMagick
 using Pkg
+using Random
 
 if !GLMakie.ModernGL.enable_opengl_debugging
     # can't error, since we can't enable debugging for users

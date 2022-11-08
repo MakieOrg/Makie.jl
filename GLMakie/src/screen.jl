@@ -128,6 +128,7 @@ function activate!(; inline=LAST_INLINE[], screen_config...)
 end
 
 
+
 """
     Screen(; screen_config...)
 
@@ -143,9 +144,9 @@ mutable struct Screen{GLWindow} <: MakieScreen
     glscreen::GLWindow
     shader_cache::GLAbstraction.ShaderCache
     framebuffer::GLFramebuffer
-    config::ScreenConfig
+    config::Union{Nothing, ScreenConfig}
     stop_renderloop::Bool
-    rendertask::RefValue{Task}
+    rendertask::Union{Task, Nothing}
 
     screen2scene::Dict{WeakRef, ScreenID}
     screens::Vector{ScreenArea}
@@ -157,13 +158,17 @@ mutable struct Screen{GLWindow} <: MakieScreen
     render_tick::Observable{Nothing}
     window_open::Observable{Bool}
 
+    root_scene::Union{Scene, Nothing}
+    reuse::Bool
+    close_after_renderloop::Bool
+
     function Screen(
             glscreen::GLWindow,
             shader_cache::GLAbstraction.ShaderCache,
             framebuffer::GLFramebuffer,
-            config::ScreenConfig,
+            config::Union{Nothing, ScreenConfig},
             stop_renderloop::Bool,
-            rendertask::RefValue{Task},
+            rendertask::Union{Nothing, Task},
 
             screen2scene::Dict{WeakRef, ScreenID},
             screens::Vector{ScreenArea},
@@ -171,32 +176,28 @@ mutable struct Screen{GLWindow} <: MakieScreen
             postprocessors::Vector{PostProcessor},
             cache::Dict{UInt64, RenderObject},
             cache2plot::Dict{UInt32, AbstractPlot},
+            reuse::Bool
         ) where {GLWindow}
 
         s = size(framebuffer)
-        return new{GLWindow}(
+        screen = new{GLWindow}(
             glscreen, shader_cache, framebuffer,
             config, stop_renderloop, rendertask,
             screen2scene,
             screens, renderlist, postprocessors, cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(nothing),
-            Observable(true)
+            Observable(true), nothing, reuse, true
         )
+        push!(ALL_SCREENS, screen) # track all created screens
+        return screen
     end
 end
 
-function Screen(;
-        resolution = (10, 10),
-        visible = true,
-        start_renderloop = true,
-        screen_config...
-    )
-    # Screen config is managed by the current active theme, so managed by Makie
-    config = Makie.merge_screen_config(ScreenConfig, screen_config)
+# for e.g. closeall, track all created screens
+# gets removed in destroy!(screen)
+const ALL_SCREENS = Set{Screen}()
 
-    # Somehow this constant isn't wrapped by glfw
-    GLFW_FOCUS_ON_SHOW = 0x0002000C
-
+function empty_screen(debugging::Bool; reuse=true)
     windowhints = [
         (GLFW.SAMPLES,      0),
         (GLFW.DEPTH_BITS,   0),
@@ -210,23 +211,16 @@ function Screen(;
 
         (GLFW.STENCIL_BITS, 0),
         (GLFW.AUX_BUFFERS,  0),
-        (GLFW_FOCUS_ON_SHOW, config.focus_on_show),
-        (GLFW.DECORATED, config.decorated),
-        (GLFW.FLOATING, config.float),
-        # (GLFW.TRANSPARENT_FRAMEBUFFER, true)
     ]
-
+    resolution = (10, 10)
     window = try
         GLFW.Window(
             resolution = resolution,
             windowhints = windowhints,
             visible = false,
-            # from config
-            name = config.title,
-            focus = config.focus_on_show,
-            fullscreen = config.fullscreen,
-            debugging = config.debugging,
-            monitor = config.monitor
+            focus = false,
+            fullscreen = false,
+            debugging = debugging,
         )
     catch e
         @warn("""
@@ -245,43 +239,159 @@ function Screen(;
     # This is important for resource tracking, and only needed for the first context
     ShaderAbstractions.switch_context!(window)
     shader_cache = GLAbstraction.ShaderCache(window)
-    push!(GLFW_WINDOWS, window)
-
-    resize_native!(window, resolution...)
-
     fb = GLFramebuffer(resolution)
     postprocessors = [
-        config.ssao ? ssao_postprocessor(fb, shader_cache) : empty_postprocessor(),
-        config.oit ? OIT_postprocessor(fb, shader_cache) : empty_postprocessor(),
-        config.fxaa ? fxaa_postprocessor(fb, shader_cache) : empty_postprocessor(),
+        empty_postprocessor(),
+        empty_postprocessor(),
+        empty_postprocessor(),
         to_screen_postprocessor(fb, shader_cache)
     ]
 
     screen = Screen(
         window, shader_cache, fb,
-        config, !start_renderloop,
-        RefValue{Task}(),
+        nothing, false,
+        nothing,
         Dict{WeakRef, ScreenID}(),
         ScreenArea[],
         Tuple{ZIndex, ScreenID, RenderObject}[],
         postprocessors,
         Dict{UInt64, RenderObject}(),
         Dict{UInt32, AbstractPlot}(),
+        reuse,
     )
-
     GLFW.SetWindowRefreshCallback(window, window -> refreshwindowcb(window, screen))
+    return screen
+end
+
+const SCREEN_REUSE_POOL = Set{Screen}()
+
+function reopen!(screen::Screen)
+    gl = screen.glscreen
+    @assert !was_destroyed(gl)
+    if GLFW.WindowShouldClose(gl)
+        GLFW.SetWindowShouldClose(gl, false)
+    end
+    @assert isempty(screen.window_open.listeners)
+    screen.window_open[] = true
+    @assert isopen(screen)
+    return screen
+end
+
+function screen_from_pool(debugging)
+    screen = if isempty(SCREEN_REUSE_POOL)
+        empty_screen(debugging)
+    else
+        pop!(SCREEN_REUSE_POOL)
+    end
+    return reopen!(screen)
+end
+
+const SINGLETON_SCREEN = Screen[]
+
+function singleton_screen(debugging::Bool)
+    if !isempty(SINGLETON_SCREEN)
+        screen = SINGLETON_SCREEN[1]
+        close(screen; reuse=false)
+    else
+        screen = empty_screen(debugging; reuse=false)
+        push!(SINGLETON_SCREEN, screen)
+    end
+    return reopen!(screen)
+end
+
+const GLFW_FOCUS_ON_SHOW = 0x0002000C
+
+function apply_config!(screen::Screen, config::ScreenConfig; visible::Bool=true, start_renderloop::Bool=true)
+    ShaderAbstractions.switch_context!(screen.glscreen)
+    glw = screen.glscreen
+    ShaderAbstractions.switch_context!(glw)
+    GLFW.SetWindowAttrib(glw, GLFW_FOCUS_ON_SHOW, config.focus_on_show)
+    GLFW.SetWindowAttrib(glw, GLFW.DECORATED, config.decorated)
+    GLFW.SetWindowAttrib(glw, GLFW.FLOATING, config.float)
+    GLFW.SetWindowTitle(glw, config.title)
+
+    if !isnothing(config.monitor)
+        GLFW.SetWindowMonitor(glw, config.monitor)
+    end
+
+    function replace_processor!(postprocessor, idx)
+        fb = screen.framebuffer
+        shader_cache = screen.shader_cache
+        post = screen.postprocessors[idx]
+        if post.constructor !== postprocessor
+            destroy!(screen.postprocessors[idx])
+            screen.postprocessors[idx] = postprocessor(fb, shader_cache)
+        end
+        return
+    end
+
+    replace_processor!(config.ssao ? ssao_postprocessor : empty_postprocessor, 1)
+    replace_processor!(config.oit ? OIT_postprocessor : empty_postprocessor, 2)
+    replace_processor!(config.fxaa ? fxaa_postprocessor : empty_postprocessor, 3)
+    # Set the config
+    screen.config = config
 
     if start_renderloop
         start_renderloop!(screen)
-    end
-
-    # display window if visible!
-    if visible
-        GLFW.ShowWindow(window)
     else
-        GLFW.HideWindow(window)
+        stop_renderloop!(screen)
     end
 
+    GLFW.set_visibility!(screen, visible)
+    return screen
+end
+
+function Screen(;
+        resolution::Union{Nothing, Tuple{Int, Int}} = nothing,
+        visible = true,
+        start_renderloop = true,
+        screen_config...
+    )
+    # Screen config is managed by the current active theme, so managed by Makie
+    config = Makie.merge_screen_config(ScreenConfig, screen_config)
+    screen = screen_from_pool(config.debugging)
+    if !isnothing(resolution)
+        resize!(screen, resolution...)
+    end
+    apply_config!(screen, config; visible=visible, start_renderloop=start_renderloop)
+    return screen
+end
+
+GLFW.set_visibility!(screen::Screen, visible::Bool) = GLFW.set_visibility!(screen.glscreen, visible)
+
+function display_scene!(screen::Screen, scene::Scene)
+    resize!(screen, size(scene)...)
+    insertplots!(screen, scene)
+    Makie.push_screen!(scene, screen)
+    connect_screen(scene, screen)
+    screen.root_scene = scene
+    return
+end
+
+# Open an interactive window
+function Screen(scene::Scene; screen_config...)
+    config = Makie.merge_screen_config(ScreenConfig, screen_config)
+    screen = singleton_screen(config.debugging)
+    apply_config!(screen, config; visible=true, start_renderloop=true)
+    display_scene!(screen, scene)
+    return screen
+end
+
+# Screen to save a png/jpeg to file or io
+function Screen(scene::Scene, io_or_path::Union{Nothing, String, IO}, typ::MIME; screen_config...)
+    config = Makie.merge_screen_config(ScreenConfig, screen_config)
+    screen = singleton_screen(config.debugging)
+    apply_config!(screen, config; visible=false, start_renderloop=false)
+    display_scene!(screen, scene)
+    return screen
+end
+
+# Screen that is efficient for `colorbuffer(screen)`
+function Screen(scene::Scene, ::Makie.ImageStorageFormat; screen_config...)
+    config = Makie.merge_screen_config(ScreenConfig, screen_config)
+    screen = singleton_screen(config.debugging)
+    apply_config!(screen, config; visible=false, start_renderloop=false)
+    display_scene!(screen, scene)
     return screen
 end
 
@@ -291,7 +401,7 @@ function pollevents(screen::Screen)
     GLFW.PollEvents()
 end
 
-Base.wait(x::Screen) = isassigned(x.rendertask) && wait(x.rendertask[])
+Base.wait(x::Screen) = !isnothing(x.rendertask) && wait(x.rendertask)
 Base.wait(scene::Scene) = wait(Makie.getscreen(scene))
 
 Base.show(io::IO, screen::Screen) = print(io, "GLMakie.Screen(...)")
@@ -396,69 +506,79 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
 end
 
 function Base.empty!(screen::Screen)
-    empty!(screen.render_tick.listeners)
-    empty!(screen.window_open.listeners)
+    # we should never just "empty" an already destroyed screen
+    @assert !was_destroyed(screen.glscreen)
+
+    stop_renderloop!(screen; close_after_renderloop=false) # we be closin' already
+
+    GLFW.set_visibility!(screen, false)
+
+    if !isnothing(screen.root_scene)
+        Makie.disconnect_screen(screen.root_scene, screen)
+        screen.root_scene = nothing
+    end
 
     for plot in collect(values(screen.cache2plot))
         delete!(screen, Makie.rootparent(plot), plot)
     end
+
     @assert isempty(screen.renderlist)
     @assert isempty(screen.cache2plot)
     @assert isempty(screen.cache)
 
     empty!(screen.screen2scene)
     empty!(screen.screens)
-end
-
-const GLFW_WINDOWS = GLFW.Window[]
-const SINGLETON_SCREEN = Screen[]
-const SINGLETON_SCREEN_NO_RENDERLOOP = Screen[]
-
-function singleton_screen(resolution; visible=true, start_renderloop=true)
-    screen_ref = if start_renderloop
-        SINGLETON_SCREEN
-    else
-        SINGLETON_SCREEN_NO_RENDERLOOP
-    end
-
-    screen = if length(screen_ref) == 1 && isopen(screen_ref[1])
-        screen = screen_ref[1]
-        resize!(screen, resolution...)
-        screen
-    else
-        if !isempty(screen_ref)
-            _closeall(screen_ref)
-        end
-        screen = Screen(; resolution=resolution, visible=visible, start_renderloop=start_renderloop)
-        push!(screen_ref, screen)
-        screen
-    end
-    ShaderAbstractions.switch_context!(screen.glscreen)
-    return screen
+    Observables.clear(screen.render_tick)
+    Observables.clear(screen.window_open)
 end
 
 function destroy!(screen::Screen)
-    screen.window_open[] = false
-    empty!(screen)
-    filter!(win -> win != screen.glscreen, GLFW_WINDOWS)
+    close(screen; reuse=false)
+    # wait for rendertask to finish
+    # otherwise, during rendertask clean up we may run into a destroyed window
+    wait(screen)
+    screen.rendertask = nothing
     destroy!(screen.glscreen)
+    # Since those are sets, we can just delete them from there, even if they weren't in there (e.g. reuse=false)
+    delete!(SCREEN_REUSE_POOL, screen)
+    delete!(ALL_SCREENS, screen)
+    if screen in SINGLETON_SCREEN
+        empty!(SINGLETON_SCREEN)
+    end
+    return
 end
 
-Base.close(screen::Screen) = destroy!(screen)
-
-function _closeall(windows)
-    if !isempty(windows)
-        for elem in windows
-            destroy!(elem)
-        end
-        empty!(windows)
+"""
+    close(screen::Screen; reuse=true)
+Closes screen and emptying it.
+Doesn't destroy the screen and instead frees it for being re-used again, if `reuse=true`.
+"""
+function Base.close(screen::Screen; reuse=true)
+    screen.window_open[] = false
+    empty!(screen)
+    if reuse && screen.reuse
+        push!(SCREEN_REUSE_POOL, screen)
     end
+    GLFW.SetWindowShouldClose(screen.glscreen, true)
+    return
 end
 
 function closeall()
-    _closeall(SINGLETON_SCREEN)
-    _closeall(SINGLETON_SCREEN_NO_RENDERLOOP)
-    @assert isempty(GLFW_WINDOWS)
+    while !isempty(SCREEN_REUSE_POOL)
+        screen = pop!(SCREEN_REUSE_POOL)
+        delete!(ALL_SCREENS, screen)
+        destroy!(screen)
+    end
+    if !isempty(SINGLETON_SCREEN)
+        screen = pop!(SINGLETON_SCREEN)
+        delete!(ALL_SCREENS, screen)
+        destroy!(screen)
+    end
+    while !isempty(ALL_SCREENS)
+        screen = pop!(ALL_SCREENS)
+        destroy!(screen)
+    end
+    return
 end
 
 function resize_native!(window::GLFW.Window, resolution...)
@@ -598,7 +718,7 @@ function display_loading_image(screen::Screen)
 end
 
 function renderloop_running(screen::Screen)
-    return !screen.stop_renderloop && isassigned(screen.rendertask) && !istaskdone(screen.rendertask[])
+    return !screen.stop_renderloop && !isnothing(screen.rendertask) && !istaskdone(screen.rendertask)
 end
 
 function start_renderloop!(screen::Screen)
@@ -610,7 +730,7 @@ function start_renderloop!(screen::Screen)
         task = @async screen.config.renderloop(screen)
         yield()
         if istaskstarted(task)
-            screen.rendertask[] = task
+            screen.rendertask = task
         elseif istaskfailed(task)
             fetch(task)
         else
@@ -623,9 +743,22 @@ function pause_renderloop!(screen::Screen)
     screen.config.pause_renderloop = true
 end
 
-function stop_renderloop!(screen::Screen)
+function stop_renderloop!(screen::Screen; close_after_renderloop=screen.close_after_renderloop)
+    # don't double close when stopping renderloop
+    c = screen.close_after_renderloop
+    screen.close_after_renderloop = close_after_renderloop
     screen.stop_renderloop = true
-    wait(screen.rendertask[]) # Make sure we quit!
+    screen.close_after_renderloop = c
+
+    # stop_renderloop! may be called inside renderloop as part of close
+    # in which case we should not wait for the task to finish (deadlock)
+    if Base.current_task() != screen.rendertask
+        wait(screen)  # handle isnothing(rendertask) in wait(screen)
+        # after done, we can set the task to nothing
+        screen.rendertask = nothing
+    end
+    # else, we can't do that much in the rendertask itself
+    return
 end
 
 function set_framerate!(screen::Screen, fps=30)
@@ -637,19 +770,6 @@ function refreshwindowcb(window, screen)
     render_frame(screen)
     GLFW.SwapBuffers(window)
     return
-end
-
-# Open an interactive window
-Screen(scene::Scene; screen_config...) = singleton_screen(size(scene); visible=true, start_renderloop=true)
-
-# Screen to save a png/jpeg to file or io
-function Screen(scene::Scene, io_or_path::Union{Nothing, String, IO}, typ::MIME; screen_config...)
-    return singleton_screen(size(scene); visible=false, start_renderloop=false)
-end
-
-# Screen that is efficient for `colorbuffer(screen)`
-function Screen(scene::Scene, ::Makie.ImageStorageFormat; screen_config...)
-    return singleton_screen(size(scene); visible=false, start_renderloop=false)
 end
 
 # TODO add render_tick event to scene events
@@ -686,7 +806,6 @@ function fps_renderloop(screen::Screen)
         end
     end
 end
-
 
 function requires_update(screen::Screen)
     for (_, _, robj) in screen.renderlist
@@ -732,17 +851,23 @@ function renderloop(screen)
             fps_renderloop(screen)
         end
     catch e
-        showerror(stderr, e, catch_backtrace())
-        println(stderr)
+        @warn "error in renderloop" exception=(e, Base.catch_backtrace())
         rethrow(e)
-    finally
-        destroy!(screen)
     end
+    if screen.close_after_renderloop
+        try
+            close(screen)
+        catch e
+            @warn "error closing screen" exception=(e, Base.catch_backtrace())
+        end
+    end
+    screen.rendertask = nothing
+    return
 end
-
 
 function plot2robjs(screen::Screen, plot)
     plots = Makie.flatten_plots(plot)
     return map(x-> screen.cache[objectid(x)], plots)
 end
+
 export plot2robjs

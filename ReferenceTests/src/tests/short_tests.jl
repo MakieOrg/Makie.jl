@@ -238,7 +238,7 @@ end
     Makie.inline!(false)
     f = Figure()
     Menu(f[1,1], options=["one", "two", "three"])
-    screen = display(f)
+    screen = display(f; visible=false)
     # Close the window & redisplay
     close(screen)
     # Now, menu should be displayed again and not stay blank!
@@ -252,8 +252,8 @@ end
     ax = Axis(f[1,1])
     # Show something big for reference tests to make a difference
     lines!(ax, 1:5, 1:5, linewidth=20)
-    scatter!(ax, rand(Point2f, 10) .* 5, markersize=50)
-    display(f)
+    scatter!(ax, decompose(Point2f, Circle(Point2f(2.5), 2.5)), markersize=50)
+    display(f; visible=false)
     save("test.png", f)
     rm("test.png")
     # Trigger zoom interactions
