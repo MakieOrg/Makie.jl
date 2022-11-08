@@ -7,6 +7,68 @@ function convert_arguments(P::Type{<:AbstractPlot}, h::StatsBase.Histogram{<:Any
     to_plotspec(ptype, convert_arguments(ptype, map(f, h.edges)..., Float64.(h.weights)); kwargs...)
 end
 
+function convert_arguments(P::Type{<:Stairs}, h::StatsBase.Histogram{<:Any, 1})
+    edges = h.edges[1]
+    counts = h.weights
+    z = zero(eltype(counts))
+    phantomedge = 2*edges[end] - edges[end-1] # to bring step back to baseline
+    convert_arguments(P, vcat(edges, phantomedge), vcat(z, counts, z))
+end
+
+
+@recipe(StepHist, values) do scene
+    Attributes(
+        bins = 15, # Int or iterable of edges
+        normalization = :none,
+        weights = automatic,
+        cycle = [:color => :patchcolor],
+        color = theme(scene, :patchcolor),
+        offset = 0.0,
+        scale_to = nothing,
+
+        flip_labels_at = Inf,
+        label_color = theme(scene, :textcolor),
+        over_background_color = automatic,
+        over_bar_color = automatic,
+        label_offset = 5,
+        label_font = theme(scene, :font),
+        label_size = 20,
+    )
+end
+
+function Makie.plot!(plot::StepHist)
+
+    values = plot.values
+    edges = lift(pick_hist_edges, values, plot.bins) 
+
+    points = lift(edges, plot.normalization, plot.scale_to, plot.weights) do edges, normalization, scale_to, wgts
+        w = wgts === automatic ? () : (StatsBase.weights(wgts),)
+        h = StatsBase.fit(StatsBase.Histogram, values[], w..., edges)
+        h_norm = StatsBase.normalize(h, mode = normalization)
+        weights = h_norm.weights
+        if !isnothing(scale_to)
+            max = maximum(weights)
+            weights .= weights ./ max .* scale_to
+        end
+        phantomedge = edges[end] # to bring step back to baseline
+        edges = vcat(edges, phantomedge)
+        z = zero(eltype(weights))
+        heights = vcat(z, weights, z)
+        return Point2f.(edges, heights)
+    end
+    color = lift(plot.color) do color
+        if color === :values
+            return last.(points[])
+        else
+            return color
+        end
+    end
+
+    # plot the values, not the observables, to be in control of updating
+    bp = stairs!(plot, points[]; plot.attributes..., color=color)
+
+    plot
+end
 
 """
     hist(values; bins = 15, normalization = :none)
