@@ -338,8 +338,8 @@ or RGBA.
 function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; backend = current_backend(), screen_config...)
     scene = get_scene(fig)
     screen = getscreen(scene, backend) do
-        screen = backend.Screen(scene, format; start_renderloop=false, visible=false, screen_config...)
         update_state_before_display!(fig)
+        screen = backend.Screen(scene, format; start_renderloop=false, visible=false, screen_config...)
         return screen
     end
     return colorbuffer(screen, format)
