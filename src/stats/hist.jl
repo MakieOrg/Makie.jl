@@ -7,14 +7,6 @@ function convert_arguments(P::Type{<:AbstractPlot}, h::StatsBase.Histogram{<:Any
     to_plotspec(ptype, convert_arguments(ptype, map(f, h.edges)..., Float64.(h.weights)); kwargs...)
 end
 
-function convert_arguments(P::Type{<:Stairs}, h::StatsBase.Histogram{<:Any, 1})
-    edges = h.edges[1]
-    counts = h.weights
-    z = zero(eltype(counts))
-    phantomedge = 2*edges[end] - edges[end-1] # to bring step back to baseline
-    convert_arguments(P, vcat(edges, phantomedge), vcat(z, counts, z))
-end
-
 
 @recipe(StepHist, values) do scene
     Attributes(
