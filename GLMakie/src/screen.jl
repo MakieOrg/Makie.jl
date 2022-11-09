@@ -369,28 +369,31 @@ function display_scene!(screen::Screen, scene::Scene)
 end
 
 # Open an interactive window
-function Screen(scene::Scene; screen_config...)
+function Screen(scene::Scene; visible=true, start_renderloop=true, screen_config...)
     config = Makie.merge_screen_config(ScreenConfig, screen_config)
     screen = singleton_screen(config.debugging)
-    apply_config!(screen, config; visible=true, start_renderloop=true)
+    apply_config!(screen, config; visible=visible, start_renderloop=start_renderloop)
     display_scene!(screen, scene)
     return screen
 end
 
 # Screen to save a png/jpeg to file or io
-function Screen(scene::Scene, io_or_path::Union{Nothing, String, IO}, typ::MIME; screen_config...)
+function Screen(scene::Scene,
+        io_or_path::Union{Nothing, String, IO},
+        typ::MIME; visible=false, start_renderloop=false, screen_config...)
     config = Makie.merge_screen_config(ScreenConfig, screen_config)
     screen = singleton_screen(config.debugging)
-    apply_config!(screen, config; visible=false, start_renderloop=false)
+    apply_config!(screen, config; visible=visible, start_renderloop=start_renderloop)
     display_scene!(screen, scene)
     return screen
 end
 
 # Screen that is efficient for `colorbuffer(screen)`
-function Screen(scene::Scene, ::Makie.ImageStorageFormat; screen_config...)
+function Screen(scene::Scene, ::Makie.ImageStorageFormat;
+        visible=false, start_renderloop=false, screen_config...)
     config = Makie.merge_screen_config(ScreenConfig, screen_config)
     screen = singleton_screen(config.debugging)
-    apply_config!(screen, config; visible=false, start_renderloop=false)
+    apply_config!(screen, config; visible=visible, start_renderloop=start_renderloop)
     display_scene!(screen, scene)
     return screen
 end
