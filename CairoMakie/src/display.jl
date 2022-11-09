@@ -56,12 +56,15 @@ function Base.display(screen::Screen{IMAGE}, scene::Scene; connect=false)
 end
 
 function Makie.backend_show(screen::Screen{SVG}, io::IO, ::MIME"image/svg+xml", scene::Scene)
-
-    cairo_draw(screen, scene)
-    Cairo.flush(screen.surface)
-    Cairo.finish(screen.surface)
-
-    svg = String(take!(Makie.raw_io(screen.surface.stream)))
+    # Display the plot on a new screen writing to a string, so that we can manipulate the
+    # result (the io in `screen` should directly write to the file we're saving)
+    svg = sprint() do io2
+        surface = surface_from_output_type(SVG, io2, size(screen)...)
+        screen2 = Screen(scene, surface, screen.config)
+        cairo_draw(screen2, scene)
+        Cairo.flush(screen2.surface)
+        Cairo.finish(screen2.surface)
+    end
 
     # for some reason, in the svg, surfaceXXX ids keep counting up,
     # even with the very same figure drawn again and again
