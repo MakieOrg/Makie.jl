@@ -68,7 +68,7 @@ function Base.size(screen::Screen)
     return size(screen.scene)
 end
 
-function get_three(screen::Screen; timeout = 30)
+function get_three(screen::Screen; timeout = 100)
     tstart = time()
     while true
         sleep(0.001)
