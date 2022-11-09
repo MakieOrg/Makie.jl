@@ -42,7 +42,7 @@ and then you will have to start julia via VirtualGL
 ### GLMakie in CI
 
 You can also use GLMakie on CI or servers without a GPU by using `xvfb` for software rendering.
-This procedure is used in the [GLMakie tests](https://github.com/MakieOrg/GLMakie.jl/blob/8954fc34354a09ceb11159a8e8e35429c05a710f/.github/workflows/ci.yml#L41-L42).
+This procedure is used in the [GLMakie tests](https://github.com/MakieOrg/Makie.jl/blob/8504b27c28c45a522467c7c57f6953c3a680fa6a/.github/workflows/glmakie.yaml#L45-L57).
 
 ## WGLMakie
 
