@@ -82,10 +82,8 @@ function get_three(screen::Screen; timeout = 100)
     return nothing
 end
 
-Screen(scene::Scene) = Screen(Channel{ThreeDisplay}(1), nothing, scene)
-
 # TODO, create optimized screens, forward more options to JS/WebGL
-Screen(scene::Scene; kw...) = Screen(scene)
+Screen(scene::Scene; kw...) = Screen(Channel{ThreeDisplay}(1), nothing, scene)
 Screen(scene::Scene, ::IO, ::MIME; kw...) = Screen(scene)
 Screen(scene::Scene, ::Makie.ImageStorageFormat; kw...) = Screen(scene)
 
