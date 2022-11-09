@@ -365,10 +365,7 @@ function draw_atomic(screen::Screen, scene::Scene,
         end
         connect_camera!(gl_attributes, cam, markerspace)
 
-        # Avoid julia#15276
-        _robj = draw_scatter(screen, (DISTANCEFIELD, positions), gl_attributes)
-
-        return _robj
+        return draw_scatter(screen, (DISTANCEFIELD, positions), gl_attributes)
     end
 end
 

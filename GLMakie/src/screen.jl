@@ -422,7 +422,9 @@ function Makie.insertplots!(screen::Screen, scene::Scene)
     for elem in scene.plots
         insert!(screen, scene, elem)
     end
-    foreach(s-> insertplots!(screen, s), scene.children)
+    for s in scene.children
+        insertplots!(screen, s)
+    end
 end
 
 function Base.delete!(screen::Screen, scene::Scene)
