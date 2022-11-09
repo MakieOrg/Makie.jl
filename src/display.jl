@@ -23,6 +23,7 @@ end
     push_screen!(scene::Scene, screen::MakieScreen)
 
 Adds a screen to the scene and registeres a clean up event when screen closes.
+Also, makes sure that always just one screen is active for on scene.
 """
 function push_screen!(scene::Scene, screen::MakieScreen)
     if length(scene.current_screens) == 1 && scene.current_screens[1] === screen

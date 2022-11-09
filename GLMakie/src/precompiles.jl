@@ -4,10 +4,8 @@ macro compile(block)
     return quote
         let
             figlike = $(esc(block))
-            screen = Screen(visible=false)
-            display(screen, figlike)
-            Makie.colorbuffer(screen)
-            close(screen)
+            Makie.display(figlike; visible=false)
+            Makie.colorbuffer(figlike)
         end
     end
 end

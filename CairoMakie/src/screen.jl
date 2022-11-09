@@ -202,6 +202,13 @@ to_mime(screen::Screen) = to_mime(screen.typ)
 
 Screen(scene::Scene; screen_config...) = Screen(scene, nothing, IMAGE; screen_config...)
 
+# Recreate Screen with different surface type
+function Screen(screen::Screen, io_or_path::Union{Nothing, String, IO}, typ::Union{MIME, Symbol, RenderType})
+    # the surface size is the scene size scaled by the device scaling factor
+    surface = surface_from_output_type(typ, io_or_path, size(screen)...)
+    return Screen(screen.scene, surface, screen.config)
+end
+
 function Screen(scene::Scene, io_or_path::Union{Nothing, String, IO}, typ::Union{MIME, Symbol, RenderType}; screen_config...)
     config = Makie.merge_screen_config(ScreenConfig, screen_config)
     # the surface size is the scene size scaled by the device scaling factor

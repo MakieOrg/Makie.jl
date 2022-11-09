@@ -89,6 +89,8 @@ function three_display(session::Session, scene::Scene; screen_config...)
     canvas_width = lift(x -> [round.(Int, widths(x))...], pixelarea(scene))
 
     scene_id = objectid(scene)
+    done_init = Observable(false)
+
     setup = js"""
     function setup(scenes){
         const canvas = $(canvas)
@@ -104,11 +106,15 @@ function three_display(session::Session, scene::Scene; screen_config...)
                 const pixelRatio = renderer.getPixelRatio();
                 renderer.setSize(w_h[0] / pixelRatio, w_h[1] / pixelRatio);
             })
+            JSServe.update_obs($done_init, true)
+            return
         } else {
             const warning = $(WEBGL).getWebGLErrorMessage();
             $(wrapper).removeChild(canvas)
             $(wrapper).appendChild(warning)
         }
+        JSServe.update_obs($done_init, false)
+        return
     }
     """
 
@@ -125,5 +131,5 @@ function three_display(session::Session, scene::Scene; screen_config...)
         end
     end
 
-    return three, wrapper
+    return three, wrapper, done_init
 end
