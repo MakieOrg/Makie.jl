@@ -232,3 +232,34 @@ end
     ax2.blockscene.visible[] = false
     f
 end
+
+@reference_test "redisplay after closing screen" begin
+    # https://github.com/MakieOrg/Makie.jl/issues/2392
+    Makie.inline!(false)
+    f = Figure()
+    Menu(f[1,1], options=["one", "two", "three"])
+    screen = display(f; visible=false)
+    # Close the window & redisplay
+    close(screen)
+    # Now, menu should be displayed again and not stay blank!
+    f
+end
+
+# Needs a way to disable autolimits on show
+# @reference_test "interactions after close" begin
+#     # After saving, interactions may be cleaned up:
+#     # https://github.com/MakieOrg/Makie.jl/issues/2380
+#     f = Figure()
+#     ax = Axis(f[1,1])
+#     # Show something big for reference tests to make a difference
+#     lines!(ax, 1:5, 1:5, linewidth=20)
+#     scatter!(ax, decompose(Point2f, Circle(Point2f(2.5), 2.5)), markersize=50)
+#     display(f; visible=false)
+#     save("test.png", f)
+#     rm("test.png")
+#     # Trigger zoom interactions
+#     f.scene.events.mouseposition[] = (200, 200)
+#     f.scene.events.scroll[] = (0, -10)
+#     # reference test the zoomed out plot
+#     f
+# end
