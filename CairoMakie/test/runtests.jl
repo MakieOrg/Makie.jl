@@ -18,6 +18,20 @@ end
 include(joinpath(@__DIR__, "svg_tests.jl"))
 include(joinpath(@__DIR__, "rasterization_tests.jl"))
 
+@testset "changing screens" begin
+    # Now that scene.current_screens contains a CairoMakie screen after save
+    # switching formats is a bit more problematic
+    # See comments in src/display.jl + backend_show(screen::Screen, ...)
+    f = scatter(1:4)
+    save("test.svg", f)
+    save("test.png", f)
+    save("test.svg", f)
+    @test isfile("test.svg")
+    @test isfile("test.png")
+    rm("test.png")
+    rm("test.svg")
+end
+
 @testset "mimes" begin
     f, ax, pl = scatter(1:4)
     CairoMakie.activate!(type="pdf")

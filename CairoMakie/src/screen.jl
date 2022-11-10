@@ -142,7 +142,7 @@ $(Base.doc(ScreenConfig))
 
 $(Base.doc(MakieScreen))
 """
-struct Screen{SurfaceRenderType} <: Makie.MakieScreen
+mutable struct Screen{SurfaceRenderType} <: Makie.MakieScreen
     scene::Scene
     surface::Cairo.CairoSurface
     context::Cairo.CairoContext
@@ -162,6 +162,8 @@ function Base.empty!(screen::Screen)
     Cairo.paint_with_alpha(ctx, 1.0)
     Cairo.restore(ctx)
 end
+
+Base.close(screen::Screen) = empty!(screen)
 
 # function clear(screen::Screen)
 #     ctx = screen.context
@@ -198,26 +200,65 @@ to_mime(screen::Screen) = to_mime(screen.typ)
 #    Constructor                       #
 ########################################
 
-Screen(scene::Scene; screen_config...) = Screen(scene, nothing, IMAGE; screen_config...)
+function apply_config!(screen::Screen, config::ScreenConfig)
+    surface = screen.surface
+    context = screen.context
+    dsf = device_scaling_factor(surface, config)
+    surface_set_device_scale(surface, dsf)
+    aa = to_cairo_antialias(config.antialias)
+    Cairo.set_antialias(context, aa)
+    set_miter_limit(context, 2.0)
+    screen.antialias = aa
+    screen.device_scaling_factor = dsf
+    screen.config = config
+    return screen
+end
 
-function Screen(scene::Scene, io_or_path::Union{Nothing, String, IO}, typ::Union{MIME, Symbol, RenderType}; screen_config...)
+function Makie.apply_screen_config!(
+        screen::Screen{SCREEN_RT}, config::ScreenConfig, scene::Scene, io::IO, m::MIME{SYM}) where {SYM, SCREEN_RT}
+    # the surface size is the scene size scaled by the device scaling factor
+    new_rendertype = mime_to_rendertype(SYM)
+    if SCREEN_RT !== new_rendertype
+        screen = Screen(screen, io, new_rendertype)
+    end
+    apply_config!(screen, config)
+    return screen
+end
+
+function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene::Scene, args...)
+    apply_config!(screen, config)
+end
+
+function Screen(scene::Scene; screen_config...)
     config = Makie.merge_screen_config(ScreenConfig, screen_config)
+    return Screen(scene, config)
+end
+
+Screen(scene::Scene, config::ScreenConfig) = Screen(scene, config, nothing, IMAGE)
+
+# Recreate Screen with different surface type
+function Screen(screen::Screen, io_or_path::Union{Nothing, String, IO}, typ::Union{MIME, Symbol, RenderType})
+    # the surface size is the scene size scaled by the device scaling factor
+    surface = surface_from_output_type(typ, io_or_path, size(screen)...)
+    return Screen(screen.scene, screen.config, surface)
+end
+
+function Screen(scene::Scene, config::ScreenConfig, io_or_path::Union{Nothing, String, IO}, typ::Union{MIME, Symbol, RenderType})
     # the surface size is the scene size scaled by the device scaling factor
     w, h = round.(Int, size(scene) .* device_scaling_factor(typ, config))
     surface = surface_from_output_type(typ, io_or_path, w, h)
-    return Screen(scene, surface, config)
+    return Screen(scene, config, surface)
 end
 
-function Screen(scene::Scene, ::Makie.ImageStorageFormat; screen_config...)
-    config = Makie.merge_screen_config(ScreenConfig, screen_config)
+function Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat)
     w, h = round.(Int, size(scene) .* config.px_per_unit)
     # create an image surface to draw onto the image
     img = fill(ARGB32(0, 0, 0, 0), w, h)
     surface = Cairo.CairoImageSurface(img)
-    return Screen(scene, surface, config)
+    return Screen(scene, config, surface)
 end
 
-function Screen(scene::Scene, surface::Cairo.CairoSurface, config::ScreenConfig)
+function Screen(scene::Scene, config::ScreenConfig, surface::Cairo.CairoSurface)
     # the surface size is the scene size scaled by the device scaling factor
     dsf = device_scaling_factor(surface, config)
     surface_set_device_scale(surface, dsf)

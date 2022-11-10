@@ -106,6 +106,7 @@ const minimal_default = Attributes(
         renderloop = automatic,
         pause_renderloop = false,
         vsync = false,
+        render_on_demand = true,
         framerate = 30.0,
 
         # GLFW window attributes
