@@ -188,7 +188,9 @@ function Screen(scene::Scene; screen_config...)
 end
 
 function Screen(scene::Scene, config::ScreenConfig)
-    return Screen(size(scene), config)
+    screen = Screen(size(scene), config)
+    screen.scene = scene
+    return screen
 end
 
 Screen(scene::Scene, config::ScreenConfig, ::IO, ::MIME) = Screen(scene, config)
