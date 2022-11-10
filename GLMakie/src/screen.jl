@@ -370,6 +370,11 @@ function display_scene!(screen::Screen, scene::Scene)
     return
 end
 
+function Screen(scene::Scene; visible=true, start_renderloop=true, screen_config...)
+    config = Makie.merge_screen_config(ScreenConfig, screen_config)
+    return Screen(scene, config; visible=visible, start_renderloop=start_renderloop)
+end
+
 # Open an interactive window
 function Screen(scene::Scene, config::ScreenConfig; visible=true, start_renderloop=true)
     screen = singleton_screen(config.debugging)

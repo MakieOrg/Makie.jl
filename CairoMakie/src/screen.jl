@@ -229,6 +229,11 @@ function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene:
     apply_config!(screen, config)
 end
 
+function Screen(scene::Scene; screen_config...)
+    config = Makie.merge_screen_config(ScreenConfig, screen_config)
+    return Screen(scene, config)
+end
+
 Screen(scene::Scene, config::ScreenConfig) = Screen(scene, config, nothing, IMAGE)
 
 # Recreate Screen with different surface type

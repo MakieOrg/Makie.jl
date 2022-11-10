@@ -84,10 +84,11 @@ end
 
 # TODO, create optimized screens, forward more options to JS/WebGL
 Screen(scene::Scene; kw...) = Screen(Channel{ThreeDisplay}(1), nothing, scene)
-Screen(scene::Scene, ::IO, ::MIME; kw...) = Screen(scene)
-Screen(scene::Scene, ::Makie.ImageStorageFormat; kw...) = Screen(scene)
+Screen(scene::Scene, config::ScreenConfig) = Screen(Channel{ThreeDisplay}(1), nothing, scene)
+Screen(scene::Scene, config::ScreenConfig, ::IO, ::MIME) = Screen(scene)
+Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat) = Screen(scene)
 
-function Base.empty!(screen::WGLMakie.Screen)
+function Base.empty!(screen::Screen)
     screen.scene = nothing
     # TODO, empty state in JS, to be able to reuse screen
 end

@@ -206,12 +206,8 @@ function VideoStream(fig::FigureLike;
     dir = mktempdir()
     path = joinpath(dir, "$(gensym(:video)).$(format)")
     scene = get_scene(fig)
-
-    screen = getscreen(scene, backend) do
-        # only update fig if not already displayed
-        update_state_before_display!(fig)
-        return backend.Screen(scene, GLNative; visible=visible, start_renderloop=false, screen_config...)
-    end
+    update_state_before_display!(fig)
+    screen = getscreen(backend, scene, GLNative; visible=visible, start_renderloop=false, screen_config...)
     _xdim, _ydim = size(screen)
     xdim = iseven(_xdim) ? _xdim : _xdim + 1
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
