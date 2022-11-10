@@ -82,6 +82,10 @@ function get_three(screen::Screen; timeout = 100)
     return nothing
 end
 
+function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, args...)
+    #TODO implement
+end
+
 # TODO, create optimized screens, forward more options to JS/WebGL
 Screen(scene::Scene; kw...) = Screen(Channel{ThreeDisplay}(1), nothing, scene)
 Screen(scene::Scene, config::ScreenConfig) = Screen(Channel{ThreeDisplay}(1), nothing, scene)
