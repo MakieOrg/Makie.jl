@@ -46,7 +46,8 @@ end
 
 function connect_camera!(gl_attributes, cam, space = gl_attributes[:space])
     for key in (:pixel_space, :resolution, :eyeposition)
-        get!(gl_attributes, key, copy(getfield(cam, key)))
+        # Overwrite these, user defined attributes shouldn't use those!
+        gl_attributes[key] = copy(getfield(cam, key))
     end
     get!(gl_attributes, :view) do
         return lift(cam.view, space) do view, space
@@ -85,7 +86,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             !in(k, (
                 :transformation, :tickranges, :ticklabels, :raw, :SSAO,
                 :lightposition, :material,
-                :inspector_label, :inspector_hover, :inspector_clear
+                :inspector_label, :inspector_hover, :inspector_clear, :inspectable
             ))
         end
 
@@ -105,6 +106,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         if !isnothing(ambientlight)
             gl_attributes[:ambient] = ambientlight.color
         end
+        gl_attributes[:track_updates] = screen.config.render_on_demand
 
         robj = robj_func(gl_attributes)
 
@@ -363,10 +365,7 @@ function draw_atomic(screen::Screen, scene::Scene,
         end
         connect_camera!(gl_attributes, cam, markerspace)
 
-        # Avoid julia#15276
-        _robj = draw_scatter(screen, (DISTANCEFIELD, positions), gl_attributes)
-
-        return _robj
+        return draw_scatter(screen, (DISTANCEFIELD, positions), gl_attributes)
     end
 end
 
@@ -462,7 +461,7 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes)
     elseif to_value(color) isa Makie.AbstractPattern
         img = lift(x -> el32convert(Makie.to_image(x)), color)
         gl_attributes[:image] = ShaderAbstractions.Sampler(img, x_repeat=:repeat, minfilter=:nearest)
-        haskey(gl_attributes, :fetch_pixel) || (gl_attributes[:fetch_pixel] = true)
+        get!(gl_attributes, :fetch_pixel, true)
     elseif to_value(color) isa AbstractMatrix{<:Colorant}
         gl_attributes[:image] = Texture(const_lift(el32convert, color), minfilter = interp)
         delete!(gl_attributes, :color_map)

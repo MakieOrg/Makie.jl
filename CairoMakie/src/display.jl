@@ -38,21 +38,29 @@ function display_path(type::String)
     return abspath(joinpath(@__DIR__, "display." * type))
 end
 
+function Base.display(screen::Screen, scene::Scene; connect=false)
+    # Nothing to do, since drawing is done in the other functions
+    # TODO write to file and implement upenurl
+    return screen
+end
+
 function Base.display(screen::Screen{IMAGE}, scene::Scene; connect=false)
     path = display_path("png")
+    Makie.push_screen!(scene, screen)
     cairo_draw(screen, scene)
     Cairo.write_to_png(screen.surface, path)
     if screen.visible
         openurl("file:///" * path)
     end
+    return screen
 end
 
 function Makie.backend_show(screen::Screen{SVG}, io::IO, ::MIME"image/svg+xml", scene::Scene)
+    Makie.push_screen!(scene, screen)
     # Display the plot on a new screen writing to a string, so that we can manipulate the
     # result (the io in `screen` should directly write to the file we're saving)
     svg = sprint() do io2
-        surface = surface_from_output_type(SVG, io2, size(screen)...)
-        screen2 = Screen(scene, surface, screen.config)
+        screen2 = Screen(screen, io2, SVG)
         cairo_draw(screen2, scene)
         Cairo.flush(screen2.surface)
         Cairo.finish(screen2.surface)
@@ -85,18 +93,21 @@ function Makie.backend_show(screen::Screen{SVG}, io::IO, ::MIME"image/svg+xml", 
 end
 
 function Makie.backend_show(screen::Screen{PDF}, io::IO, ::MIME"application/pdf", scene::Scene)
+    Makie.push_screen!(scene, screen)
     cairo_draw(screen, scene)
     Cairo.finish(screen.surface)
     return screen
 end
 
 function Makie.backend_show(screen::Screen{EPS}, io::IO, ::MIME"application/postscript", scene::Scene)
+    Makie.push_screen!(scene, screen)
     cairo_draw(screen, scene)
     Cairo.finish(screen.surface)
     return screen
 end
 
 function Makie.backend_show(screen::Screen{IMAGE}, io::IO, ::MIME"image/png", scene::Scene)
+    Makie.push_screen!(scene, screen)
     cairo_draw(screen, scene)
     Cairo.write_to_png(screen.surface, io)
     return screen
