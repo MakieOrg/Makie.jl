@@ -252,12 +252,17 @@ function FileIO.save(
     # query the filetype only from the file extension
     F = filetype(file)
     mime = format2mime(F)
-    open(filename, "w") do io
-        # If the scene already got displayed, we get the current screen its displayed on
-        # Else, we create a new scene and update the state of the fig
-        update && update_state_before_display!(fig)
-        screen = getscreen(backend, scene, io, mime; visible=false, screen_config...)
-        backend_show(screen, io, mime, scene)
+    try
+        return open(filename, "w") do io
+            # If the scene already got displayed, we get the current screen its displayed on
+            # Else, we create a new scene and update the state of the fig
+            update && update_state_before_display!(fig)
+            screen = getscreen(backend, scene, io, mime; visible=false, screen_config...)
+            backend_show(screen, io, mime, scene)
+        end
+    finally
+        # So, if open(io-> error(...), "w"), the file will get created, but not removed...
+        isfile(filename) && rm(filename; force=true)
     end
 end
 

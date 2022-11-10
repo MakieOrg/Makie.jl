@@ -84,6 +84,7 @@ end
 
 function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, args...)
     #TODO implement
+    return screen
 end
 
 # TODO, create optimized screens, forward more options to JS/WebGL
