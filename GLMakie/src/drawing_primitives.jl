@@ -461,7 +461,7 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes)
     elseif to_value(color) isa Makie.AbstractPattern
         img = lift(x -> el32convert(Makie.to_image(x)), color)
         gl_attributes[:image] = ShaderAbstractions.Sampler(img, x_repeat=:repeat, minfilter=:nearest)
-        haskey(gl_attributes, :fetch_pixel) || (gl_attributes[:fetch_pixel] = true)
+        get!(gl_attributes, :fetch_pixel, true)
     elseif to_value(color) isa AbstractMatrix{<:Colorant}
         gl_attributes[:image] = Texture(const_lift(el32convert, color), minfilter = interp)
         delete!(gl_attributes, :color_map)

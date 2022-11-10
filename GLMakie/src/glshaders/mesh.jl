@@ -27,7 +27,7 @@ function to_opengl_mesh!(result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
     to_buffer(:uv, :texturecoordinates)
     to_buffer(:uvw, :texturecoordinates)
     # Only emit normals, when we shadin'
-    if to_value(get(result, :shading, true))
+    if to_value(get(result, :shading, true)) || !isnothing(to_value(get(result, :matcap, nothing)))
         to_buffer(:normals, :normals)
     end
     to_buffer(:attribute_id, :attribute_id)
