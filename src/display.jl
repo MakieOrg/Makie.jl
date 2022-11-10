@@ -260,9 +260,10 @@ function FileIO.save(
             screen = getscreen(backend, scene, io, mime; visible=false, screen_config...)
             backend_show(screen, io, mime, scene)
         end
-    finally
+    catch e
         # So, if open(io-> error(...), "w"), the file will get created, but not removed...
         isfile(filename) && rm(filename; force=true)
+        rethrow(e)
     end
 end
 
