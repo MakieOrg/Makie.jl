@@ -127,8 +127,6 @@ function activate!(; inline=LAST_INLINE[], screen_config...)
     return
 end
 
-
-
 """
     Screen(; screen_config...)
 
@@ -301,6 +299,10 @@ end
 
 const GLFW_FOCUS_ON_SHOW = 0x0002000C
 
+function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene::Scene, args...)
+    apply_config!(screen, config)
+end
+
 function apply_config!(screen::Screen, config::ScreenConfig; visible::Bool=true, start_renderloop::Bool=true)
     ShaderAbstractions.switch_context!(screen.glscreen)
     glw = screen.glscreen
@@ -369,8 +371,7 @@ function display_scene!(screen::Screen, scene::Scene)
 end
 
 # Open an interactive window
-function Screen(scene::Scene; visible=true, start_renderloop=true, screen_config...)
-    config = Makie.merge_screen_config(ScreenConfig, screen_config)
+function Screen(scene::Scene, config::ScreenConfig; visible=true, start_renderloop=true)
     screen = singleton_screen(config.debugging)
     apply_config!(screen, config; visible=visible, start_renderloop=start_renderloop)
     display_scene!(screen, scene)
@@ -378,10 +379,7 @@ function Screen(scene::Scene; visible=true, start_renderloop=true, screen_config
 end
 
 # Screen to save a png/jpeg to file or io
-function Screen(scene::Scene,
-        io_or_path::Union{Nothing, String, IO},
-        typ::MIME; visible=false, start_renderloop=false, screen_config...)
-    config = Makie.merge_screen_config(ScreenConfig, screen_config)
+function Screen(scene::Scene, config::ScreenConfig, io::Union{Nothing, String, IO}, typ::MIME; visible=false, start_renderloop=false)
     screen = singleton_screen(config.debugging)
     apply_config!(screen, config; visible=visible, start_renderloop=start_renderloop)
     display_scene!(screen, scene)
@@ -389,9 +387,7 @@ function Screen(scene::Scene,
 end
 
 # Screen that is efficient for `colorbuffer(screen)`
-function Screen(scene::Scene, ::Makie.ImageStorageFormat;
-        visible=false, start_renderloop=false, screen_config...)
-    config = Makie.merge_screen_config(ScreenConfig, screen_config)
+function Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat; visible=false, start_renderloop=false)
     screen = singleton_screen(config.debugging)
     apply_config!(screen, config; visible=visible, start_renderloop=start_renderloop)
     display_scene!(screen, scene)

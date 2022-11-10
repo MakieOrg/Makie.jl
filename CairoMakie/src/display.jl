@@ -55,23 +55,6 @@ function Base.display(screen::Screen{IMAGE}, scene::Scene; connect=false)
     return screen
 end
 
-for mime in [MIME"image/svg+xml", MIME"application/pdf", MIME"application/postscript", MIME"image/png"]
-    # Need to concretely type mime to not run into ambiguoity -.-
-    @eval function Makie.backend_show(screen::Screen, io::IO, m::$(mime), scene::Scene)
-        # This is a bit unfortunate.
-        # We now do `get_screen(()-> Backend.Screen(...), scene)`
-        # Makie/src/display.jl for saving a file.
-        # This helps speed up saving for plots already displayed, but for CairoMakie with its differen Screen types
-        # it means, when we do `save("test.png", fig); save("test.svg", fig)`, we will end up with a png Screen,
-        # in the save for SVG. We need to figure out a better `get_screen` method, which incorperates that the callback can create
-        # Screens of different types for the same backend. Since that's a bit more complicated, we'll stick with the below hack of just creating a new screen.
-        # This is simpler for now, especially since this should only be a not much run into edge case.
-        @assert screen.scene === scene
-        screen2 = Screen(screen, io, m)
-        Makie.backend_show(screen2, io, m, scene)
-    end
-end
-
 function Makie.backend_show(screen::Screen{SVG}, io::IO, ::MIME"image/svg+xml", scene::Scene)
     Makie.push_screen!(scene, screen)
     # Display the plot on a new screen writing to a string, so that we can manipulate the

@@ -130,9 +130,7 @@ function Base.display(figlike::FigureLike; backend=current_backend(), update=tru
     else
         scene = get_scene(figlike)
         update && update_state_before_display!(figlike)
-        screen = getscreen(scene, backend) do
-            return backend.Screen(scene; screen_config...)
-        end
+        screen = getscreen(backend, scene; screen_config...)
         display(screen, scene)
         return screen
     end
@@ -187,9 +185,7 @@ function Base.show(io::IO, m::MIME, figlike::FigureLike)
     backend = current_backend()
     # get current screen the scene is already displayed on, or create a new screen
     update_state_before_display!(figlike)
-    screen = getscreen(scene, backend) do
-        return backend.Screen(scene, io, m)
-    end
+    screen = getscreen(backend, scene, io, m)
     backend_show(screen, io, m, scene)
     return
 end
@@ -260,10 +256,7 @@ function FileIO.save(
         # If the scene already got displayed, we get the current screen its displayed on
         # Else, we create a new scene and update the state of the fig
         update && update_state_before_display!(fig)
-        screen = getscreen(scene, backend) do
-            screen = backend.Screen(scene, io, mime; visible=false, screen_config...)
-            return screen
-        end
+        screen = getscreen(backend, scene, io, mime; visible=false, screen_config...)
         backend_show(screen, io, mime, scene)
     end
 end
@@ -305,10 +298,13 @@ function colorbuffer(screen::MakieScreen, format::ImageStorageFormat)
     end
 end
 
-function getscreen(f::Function, scene::Scene, backend::Module)
+function apply_screen_config! end
+
+function getscreen(backend::Union{Missing, Module}, scene::Scene, args...; screen_config...)
     screen = getscreen(scene)
+    config = Makie.merge_screen_config(backend.ScreenConfig, screen_config)
     if !isnothing(screen) && parentmodule(typeof(screen)) == backend
-        return screen
+        return apply_screen_config!(screen, config, scene, args...)
     end
     if ismissing(backend)
         error("""
@@ -316,7 +312,7 @@ function getscreen(f::Function, scene::Scene, backend::Module)
             before trying to render a Scene.
             """)
     else
-        return f()
+        return backend.Screen(scene, config, args...)
     end
 end
 
@@ -336,10 +332,7 @@ or RGBA.
 function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; update=true, backend = current_backend(), screen_config...)
     scene = get_scene(fig)
     update && update_state_before_display!(fig)
-    screen = getscreen(scene, backend) do
-        screen = backend.Screen(scene, format; start_renderloop=false, visible=false, screen_config...)
-        return screen
-    end
+    screen = getscreen(backend, scene, format; start_renderloop=false, visible=false, screen_config...)
     return colorbuffer(screen, format)
 end
 
