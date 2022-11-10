@@ -85,7 +85,7 @@ end
     screen = display(GLMakie.Screen(;renderloop=(screen) -> nothing, start_renderloop=false), fig.scene)
     buff = RNG.rand(Point3f, 10^4) .* 20f0;
     update_loop(meshplot, buff, screen)
-    @test !isassigned(screen.rendertask)
+    @test isnothing(screen.rendertask)
     GLMakie.destroy!(screen)
     fig
 end

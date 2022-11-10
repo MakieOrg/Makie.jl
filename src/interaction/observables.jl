@@ -1,7 +1,5 @@
 const lift = map
 
-Base.close(obs::Observable) = empty!(obs.listeners)
-
 """
 Observables.off but without throwing an error
 """
