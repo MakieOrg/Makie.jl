@@ -115,7 +115,7 @@ Displays the figurelike in a window or the browser, depending on the backend.
 The parameters for `screen_config` are backend dependend,
 see `?Backend.Screen` or `Base.doc(Backend.Screen)` for applicable options.
 """
-function Base.display(figlike::FigureLike; backend=current_backend(), screen_config...)
+function Base.display(figlike::FigureLike; backend=current_backend(), update=true, screen_config...)
     if ismissing(backend)
         error("""
         No backend available!
@@ -129,9 +129,8 @@ function Base.display(figlike::FigureLike; backend=current_backend(), screen_con
         Core.invoke(display, Tuple{Any}, figlike)
     else
         scene = get_scene(figlike)
+        update && update_state_before_display!(figlike)
         screen = getscreen(scene, backend) do
-            # only update fig if not already displayed
-            update_state_before_display!(figlike)
             return backend.Screen(scene; screen_config...)
         end
         display(screen, scene)
@@ -145,11 +144,9 @@ is_displayed(screen::MakieScreen, scene::Scene) = screen in scene.current_screen
 # Backends overload display(::Backend.Screen, scene::Scene), while Makie overloads the below,
 # so that they don't need to worry
 # about stuff like `update_state_before_display!`
-function Base.display(screen::MakieScreen, figlike::FigureLike; display_attributes...)
+function Base.display(screen::MakieScreen, figlike::FigureLike; update=true, display_attributes...)
     scene = get_scene(figlike)
-    if !is_displayed(screen, scene)
-        update_state_before_display!(figlike)
-    end
+    update && update_state_before_display!(figlike)
     display(screen, get_scene(figlike); display_attributes...)
     return screen
 end
@@ -189,9 +186,8 @@ function Base.show(io::IO, m::MIME, figlike::FigureLike)
     scene = get_scene(figlike)
     backend = current_backend()
     # get current screen the scene is already displayed on, or create a new screen
+    update_state_before_display!(figlike)
     screen = getscreen(scene, backend) do
-        # only update fig if not already displayed
-        update_state_before_display!(figlike)
         return backend.Screen(scene, io, m)
     end
     backend_show(screen, io, m, scene)
@@ -243,6 +239,7 @@ function FileIO.save(
         file::FileIO.Formatted, fig::FigureLike;
         resolution = size(get_scene(fig)),
         backend = current_backend(),
+        update = true,
         screen_config...
     )
     scene = get_scene(fig)
@@ -262,9 +259,9 @@ function FileIO.save(
     open(filename, "w") do io
         # If the scene already got displayed, we get the current screen its displayed on
         # Else, we create a new scene and update the state of the fig
+        update && update_state_before_display!(fig)
         screen = getscreen(scene, backend) do
             screen = backend.Screen(scene, io, mime; visible=false, screen_config...)
-            update_state_before_display!(fig)
             return screen
         end
         backend_show(screen, io, mime, scene)
@@ -336,10 +333,10 @@ or RGBA.
                         used in FFMPEG without conversion
 - `screen_config`: Backend dependend, look up via `?Backend.Screen`/`Base.doc(Backend.Screen)`
 """
-function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; backend = current_backend(), screen_config...)
+function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; update=true, backend = current_backend(), screen_config...)
     scene = get_scene(fig)
+    update && update_state_before_display!(fig)
     screen = getscreen(scene, backend) do
-        update_state_before_display!(fig)
         screen = backend.Screen(scene, format; start_renderloop=false, visible=false, screen_config...)
         return screen
     end
