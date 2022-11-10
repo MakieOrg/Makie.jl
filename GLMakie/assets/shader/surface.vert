@@ -47,9 +47,7 @@ vec3 getnormal(Grid2D pos, Nothing xs, Nothing ys, sampler2D zs, vec2 uv);
 vec3 getnormal(Nothing pos, sampler2D xs, sampler2D ys, sampler2D zs, vec2 uv);
 vec3 getnormal(Nothing pos, sampler1D xs, sampler1D ys, sampler2D zs, vec2 uv);
 
-uniform bool wireframe;
 uniform uint objectid;
-uniform float stroke_width;
 uniform vec2 uv_scale;
 flat out uvec2 o_id;
 out vec4 o_color;

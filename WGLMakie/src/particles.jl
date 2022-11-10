@@ -100,10 +100,16 @@ function scatter_shader(scene::Scene, attributes)
                          :uv_offset_width, :quad_offset, :marker_offset)
     uniform_dict = Dict{Symbol,Any}()
     uniform_dict[:image] = false
+    marker = nothing
     if haskey(attributes, :marker)
         font = get(attributes, :font, Observable(Makie.defaultfont()))
-        marker = lift(Makie.to_spritemarker, attributes[:marker])
+        marker = lift(attributes[:marker]) do marker
+            marker isa Makie.FastPixel && return Rect # FastPixel not supported, but same as Rect just slower
+            return Makie.to_spritemarker(marker)
+        end
+
         markersize = lift(Makie.to_2d_scale, attributes[:markersize])
+
         msize, offset = Makie.marker_attributes(marker, markersize, font, attributes[:quad_offset])
         attributes[:markersize] = msize
         attributes[:quad_offset] = offset
@@ -129,9 +135,10 @@ function scatter_shader(scene::Scene, attributes)
         k in IGNORE_KEYS && continue
         uniform_dict[k] = lift_convert(k, v, nothing)
     end
-
-    get!(uniform_dict, :shape_type) do
-        return Makie.marker_to_sdf_shape(attributes[:marker])
+    if !isnothing(marker)
+        get!(uniform_dict, :shape_type) do
+            return Makie.marker_to_sdf_shape(marker)
+        end
     end
 
     if uniform_dict[:shape_type][] == 3
