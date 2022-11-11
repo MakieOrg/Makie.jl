@@ -150,18 +150,27 @@ end
 
 struct ScrollZoom
     speed::Float32
-    reset_timer::Ref{Any}
-    prev_xticklabelspace::Ref{Any}
-    prev_yticklabelspace::Ref{Any}
+    reset_timer::RefValue{Union{Nothing, Timer}}
+    prev_xticklabelspace::RefValue{Union{Automatic, Float64}}
+    prev_yticklabelspace::RefValue{Union{Automatic, Float64}}
     reset_delay::Float32
 end
 
+function ScrollZoom(speed, reset_delay)
+    return ScrollZoom(speed, RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Float64}}(0.0), RefValue{Union{Automatic, Float64}}(0.0), reset_delay)
+end
+
 struct DragPan
-    reset_timer::Ref{Any}
-    prev_xticklabelspace::Ref{Any}
-    prev_yticklabelspace::Ref{Any}
+    reset_timer::RefValue{Union{Nothing, Timer}}
+    prev_xticklabelspace::RefValue{Union{Automatic, Float64}}
+    prev_yticklabelspace::RefValue{Union{Automatic, Float64}}
     reset_delay::Float32
 end
+
+function DragPan(reset_delay)
+    return DragPan(RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Float64}}(0.0), RefValue{Union{Automatic, Float64}}(0.0), reset_delay)
+end
+
 
 struct DragRotate
 end
@@ -454,10 +463,12 @@ end
 
 function RectangleZoom(f::Function, ax::Axis; kw...)
     r = RectangleZoom(f; kw...)
-    selection_vertices = lift(_selection_vertices, ax.finallimits, r.rectnode)
+    selection_vertices = lift(_selection_vertices, Observable(ax.scene), ax.finallimits, r.rectnode)
     # manually specify correct faces for a rectangle with a rectangle hole inside
     faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
-    mesh = mesh!(ax.scene, selection_vertices, faces, color = (:black, 0.2), shading = false,
+    # plot to blockscene, so ax.scene stays exclusive for user plots
+    # That's also why we need to pass `ax.scene` to _selection_vertices, so it can project to that space
+    mesh = mesh!(ax.blockscene, selection_vertices, faces, color = (:black, 0.2), shading = false,
                  inspectable = false, visible=r.active, transparency=true)
     # translate forward so selection mesh and frame are never behind data
     translate!(mesh, 0, 0, 100)

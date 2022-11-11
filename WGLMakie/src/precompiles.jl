@@ -3,6 +3,10 @@ using SnoopPrecompile
 macro compile(block)
     return quote
         figlike = $(esc(block))
+        # We don't do something like colorbuffer(fig)
+        # since we can't guarantee that the user has a browser setup
+        # while precompiling
+        # So we just do all parts of the stack we can do without browser
         scene = Makie.get_scene(figlike)
         three_display(Session(), scene)
         JSServe.jsrender(Session(), figlike)

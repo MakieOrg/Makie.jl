@@ -597,3 +597,37 @@ Plots polygons, which are defined by
         space = :data
     )
 end
+
+@recipe(Wireframe) do scene
+    # default_theme(scene, LineSegments)
+    Attributes(;
+        default_theme(scene, LineSegments)...,
+        depth_shift = -1f-5,
+    )
+end
+
+@recipe(Arrows, points, directions) do scene
+    attr = merge!(
+        default_theme(scene),
+        Attributes(
+            arrowhead = automatic,
+            arrowtail = automatic,
+            color = :black,
+            linecolor = automatic,
+            arrowsize = automatic,
+            linestyle = nothing,
+            align = :origin,
+            normalize = false,
+            lengthscale = 1f0,
+            colormap = theme(scene, :colormap),
+            quality = 32,
+            inspectable = theme(scene, :inspectable),
+            markerspace = :pixel,
+        )
+    )
+    attr[:fxaa] = automatic
+    attr[:linewidth] = automatic
+    # connect arrow + linecolor by default
+    get!(attr, :arrowcolor, attr[:linecolor])
+    attr
+end

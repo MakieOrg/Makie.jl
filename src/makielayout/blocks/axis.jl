@@ -71,13 +71,9 @@ function register_events!(ax, scene)
 
     register_interaction!(ax, :limitreset, LimitReset())
 
-    register_interaction!(ax,
-        :scrollzoom,
-        ScrollZoom(0.1, Ref{Any}(nothing), Ref{Any}(0), Ref{Any}(0), 0.2))
+    register_interaction!(ax, :scrollzoom, ScrollZoom(0.1, 0.2))
 
-    register_interaction!(ax,
-        :dragpan,
-        DragPan(Ref{Any}(nothing), Ref{Any}(0), Ref{Any}(0), 0.2))
+    register_interaction!(ax, :dragpan, DragPan(0.2))
 
     return
 end
@@ -1307,8 +1303,8 @@ function Base.delete!(ax::Axis, plot::AbstractPlot)
 end
 
 function Base.empty!(ax::Axis)
-    for plot in copy(ax.scene.plots)
-        delete!(ax, plot)
+    while !isempty(ax.scene.plots)
+        delete!(ax, ax.scene.plots[end])
     end
     ax
 end
