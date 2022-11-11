@@ -2,6 +2,23 @@
 
 ## master
 
+- Add `render_on_demand` flag for `GLMakie.Screen`. Setting this to `true` will skip rendering until plots get updated. This is the new default [#2336](https://github.com/MakieOrg/Makie.jl/pull/2336), [#2397](https://github.com/MakieOrg/Makie.jl/pull/2397).
+
+## v0.18.2
+
+- Fix Axis3 tick flipping with negative azimuth [#2364](https://github.com/MakieOrg/Makie.jl/pull/2364).
+- Fix empty!(fig) and empty!(ax) [#2374](https://github.com/MakieOrg/Makie.jl/pull/2374), [#2375](https://github.com/MakieOrg/Makie.jl/pull/2375).
+- Remove stencil buffer [#2389](https://github.com/MakieOrg/Makie.jl/pull/2389).
+- Move Arrows and Wireframe to MakieCore [#2384](https://github.com/MakieOrg/Makie.jl/pull/2384).
+- Skip legend entry if label is nothing [#2350](https://github.com/MakieOrg/Makie.jl/pull/2350).
+
+## v0.18.1
+
+- fix heatmap interpolation [#2343](https://github.com/MakieOrg/Makie.jl/pull/2343).
+- move poly to MakieCore [#2334](https://github.com/MakieOrg/Makie.jl/pull/2334)
+- Fix picking warning and update_axis_camera [#2352](https://github.com/MakieOrg/Makie.jl/pull/2352).
+- bring back inline!, to not open a window in VSCode repl [#2353](https://github.com/MakieOrg/Makie.jl/pull/2353).
+
 ## v0.18
 
 - **Breaking** Added `BezierPath` which can be constructed from SVG like command list, SVG string or from a `Polygon`.

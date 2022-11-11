@@ -172,7 +172,7 @@ function group_labels(category_labels, data_array)
 end
 
 function ungroup_labels(category_labels, data_array)
-    if eltype(data_array) isa AbstractVector
+    if eltype(data_array) <: AbstractVector
         @warn "Using a nested array for raincloud is deprected. Read raincloud's documentation and update your usage accordingly."
         data_array_ = reduce(vcat, data_array)
         category_labels_ = similar(category_labels, length(data_array_))
@@ -190,7 +190,6 @@ function convert_arguments(::Type{<: RainClouds}, category_labels, data_array)
     cloud_plot_check_args(category_labels, data_array)
     return (category_labels, data_array)
 end
-
 
 function plot!(plot::RainClouds)
     category_labels = plot.category_labels[]
@@ -274,9 +273,9 @@ function plot!(plot::RainClouds)
             edges = pick_hist_edges(data_array, hist_bins)
             # dodge belongs below: it ensure that the histogram groups labels by both dodge
             # and category (so there is a separate histogram for each dodge group)
-            groupings = if plot.dodge[] isa MakieCore.Automatic 
-                category_labels 
-            else 
+            groupings = if plot.dodge[] isa MakieCore.Automatic
+                category_labels
+            else
                 zip(category_labels, plot.dodge[])
             end
             for (_, ixs) in group_labels(groupings, data_array)
@@ -286,7 +285,7 @@ function plot!(plot::RainClouds)
                         scale_to=(side == :left ? -1 : 1)*cloud_width*width_ratio, bins=edges,
                         # yes, we really do want :x when orientation is :vertical
                         # an :x directed histogram has a vertical orientation
-                        direction=plot.orientation[] == :vertical ? :x : :y, 
+                        direction=plot.orientation[] == :vertical ? :x : :y,
                         color=getuniquevalue(plot.color[], ixs))
             end
         else

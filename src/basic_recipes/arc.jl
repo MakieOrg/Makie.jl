@@ -28,5 +28,7 @@ function plot!(p::Arc)
             origin .+ Point2f((cos(angle), sin(angle)) .* radius)
         end
     end
-    lines!(p, Attributes(p), positions)
+    attr = Attributes(p)
+    delete!(attr, :resolution)
+    lines!(p, attr, positions)
 end

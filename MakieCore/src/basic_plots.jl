@@ -532,3 +532,101 @@ Plots one or multiple texts passed via the `text` keyword.
         inspectable = theme(scene, :inspectable)
     )
 end
+
+"""
+    poly(vertices, indices; kwargs...)
+    poly(points; kwargs...)
+    poly(shape; kwargs...)
+    poly(mesh; kwargs...)
+
+Plots a polygon based on the arguments given.
+When vertices and indices are given, it functions similarly to `mesh`.
+When points are given, it draws one polygon that connects all the points in order.
+When a shape is given (essentially anything decomposable by `GeometryBasics`), it will plot `decompose(shape)`.
+
+    poly(coordinates, connectivity; kwargs...)
+
+Plots polygons, which are defined by
+`coordinates` (the coordinates of the vertices) and
+`connectivity` (the edges between the vertices).
+
+## Attributes
+
+### Specific to `Poly`
+
+- `lowclip::Union{Nothing, Symbol, <:Colorant} = nothing` sets a color for any value below the colorrange.
+- `highclip::Union{Nothing, Symbol, <:Colorant} = nothing` sets a color for any value above the colorrange.
+- `strokecolor::Union{Symbol, <:Colorant} = :black` sets the color of the outline around a marker.
+- `strokewidth::Real = 0` sets the width of the outline around a marker.
+- `linestyle::Union{Nothing, Symbol, Vector} = nothing` sets the pattern of the line (e.g. `:solid`, `:dot`, `:dashdot`)
+
+### Generic
+
+- `visible::Bool = true` sets whether the plot will be rendered or not.
+- `overdraw::Bool = false` sets whether the plot will draw over other plots. This specifically means ignoring depth checks in GL backends.
+- `transparency::Bool = false` adjusts how the plot deals with transparency. In GLMakie `transparency = true` results in using Order Independent Transparency.
+- `fxaa::Bool = true` adjusts whether the plot is rendered with fxaa (anti-aliasing).
+- `inspectable::Bool = true` sets whether this plot should be seen by `DataInspector`.
+- `color` is set by the plot.
+- `colormap::Union{Symbol, Vector{<:Colorant}} = [:black, :white` sets the colormap that is sampled for numeric `color`s.
+- `colorrange::Tuple{<:Real, <:Real}` sets the values representing the start and end points of `colormap`.
+- `nan_color::Union{Symbol, <:Colorant} = RGBAf(0,0,0,0)` sets a replacement color for `color = NaN`.
+- `space::Symbol = :data` sets the transformation space for the position of the image. See `Makie.spaces()` for possible inputs.
+- `cycle::Vector{Symbol} = [:color => :patchcolor]` sets which attributes to cycle when creating multiple plots.
+- `shading = false` enables lighting.
+"""
+@recipe(Poly) do scene
+    Attributes(;
+        color = theme(scene, :patchcolor),
+        visible = theme(scene, :visible),
+        strokecolor = theme(scene, :patchstrokecolor),
+        colormap = theme(scene, :colormap),
+        colorrange = automatic,
+        lowclip = automatic,
+        highclip = automatic,
+        nan_color = :transparent,
+        strokewidth = theme(scene, :patchstrokewidth),
+        shading = false,
+        fxaa = true,
+        linestyle = nothing,
+        overdraw = false,
+        transparency = false,
+        cycle = [:color => :patchcolor],
+        inspectable = theme(scene, :inspectable),
+        space = :data
+    )
+end
+
+@recipe(Wireframe) do scene
+    # default_theme(scene, LineSegments)
+    Attributes(;
+        default_theme(scene, LineSegments)...,
+        depth_shift = -1f-5,
+    )
+end
+
+@recipe(Arrows, points, directions) do scene
+    attr = merge!(
+        default_theme(scene),
+        Attributes(
+            arrowhead = automatic,
+            arrowtail = automatic,
+            color = :black,
+            linecolor = automatic,
+            arrowsize = automatic,
+            linestyle = nothing,
+            align = :origin,
+            normalize = false,
+            lengthscale = 1f0,
+            colormap = theme(scene, :colormap),
+            quality = 32,
+            inspectable = theme(scene, :inspectable),
+            markerspace = :pixel,
+        )
+    )
+    attr[:fxaa] = automatic
+    attr[:linewidth] = automatic
+    # connect arrow + linecolor by default
+    get!(attr, :arrowcolor, attr[:linecolor])
+    attr
+end

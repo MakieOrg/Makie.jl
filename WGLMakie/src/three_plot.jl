@@ -3,6 +3,12 @@ struct ThreeDisplay <: Makie.MakieScreen
 end
 
 JSServe.session(td::ThreeDisplay) = td.session
+Base.empty!(::ThreeDisplay) = nothing # TODO implement
+
+
+function Base.close(screen::ThreeDisplay)
+    # TODO implement
+end
 
 function Base.size(screen::ThreeDisplay)
     # look at d.qs().clientWidth for displayed width
@@ -70,14 +76,13 @@ function three_display(session::Session, scene::Scene; screen_config...)
     comm = Observable(Dict{String,Any}())
     canvas_width = lift(x -> [round.(Int, widths(x))...], pixelarea(scene))
     done_init = Observable(false)
-    texture_atlas = Observable(vec(get_texture_atlas().data))
     setup = js"""
     (wrapper)=>{
         console.log("registering windows onloaaaad!");
         const canvas = $canvas;
         console.log(canvas);
         $(WGL).then(WGL => {
-            WGL.create_scene($wrapper, canvas, $canvas_width, $scene_data, $comm, $width, $height, $(config.framerate), $(texture_atlas))
+            WGL.create_scene($wrapper, canvas, $canvas_width, $scene_data, $comm, $width, $height, $(config.framerate), $(TEXTURE_ATLAS))
         })
         $(done_init).notify(true)
     }

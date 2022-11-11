@@ -59,11 +59,21 @@ function activate!(; screen_config...)
     return
 end
 
-const TEXTURE_ATLAS_CHANGED = Ref(false)
+const TEXTURE_ATLAS = Observable{Vector{Float32}}()
 
 function __init__()
     # Activate WGLMakie as backend!
     activate!()
+    # if there is a browserdisplay in stack, dont inline plots
+    # browser_display = JSServe.BrowserDisplay() in Base.Multimedia.displays
+    # Makie.inline!(!browser_display)
+    # We need to update the texture atlas whenever it changes!
+    # We do this in three_plot!
+    TEXTURE_ATLAS[] = convert(Vector{Float32}, vec(get_texture_atlas().data))
+
+    Makie.font_render_callback!() do sd, uv
+        TEXTURE_ATLAS[] = convert(Vector{Float32}, vec(get_texture_atlas().data))
+    end
 end
 
 # re-export Makie, including deprecated names

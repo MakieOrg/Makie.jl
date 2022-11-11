@@ -564,8 +564,8 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     else
         ys = regularly_spaced_array_to_range(ys)
     end
-    model = primitive[:model][]
-    interp_requested = to_value(get(primitive, :interpolate, true))
+    model = primitive.model[]::Mat4f
+    interpolate = to_value(primitive.interpolate)
 
     # Debug attribute we can set to disable fastpath
     # probably shouldn't really be part of the interface
@@ -577,7 +577,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     identity_transform = (t === identity || t isa Tuple && all(x-> x === identity, t)) && (abs(model[1, 2]) < 1e-15)
     regular_grid = xs isa AbstractRange && ys isa AbstractRange
 
-    if interp_requested
+    if interpolate
         if !regular_grid
             error("$(typeof(primitive).parameters[1]) with interpolate = true with a non-regular grid is not supported right now.")
         end
@@ -593,10 +593,6 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     xy = project_position(scene, space, Point2f(first.(imsize)), model)
     xymax = project_position(scene, space, Point2f(last.(imsize)), model)
     w, h = xymax .- xy
-    image_resolution_larger_than_surface = abs(w) < length(xs) || abs(h) < length(ys)
-    automatic_interpolation = image_resolution_larger_than_surface & regular_grid & identity_transform
-
-    interpolate = interp_requested || automatic_interpolation
 
     can_use_fast_path = !(is_vector && !interpolate) && regular_grid && identity_transform
     use_fast_path = can_use_fast_path && !disable_fast_path
@@ -608,7 +604,6 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         if s.width > weird_cairo_limit || s.height > weird_cairo_limit
             error("Cairo stops rendering images bigger than $(weird_cairo_limit), which is likely a bug in Cairo. Please resample your image/heatmap with e.g. `ImageTransformations.imresize`")
         end
-
         Cairo.rectangle(ctx, xy..., w, h)
         Cairo.save(ctx)
         Cairo.translate(ctx, xy...)

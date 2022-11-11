@@ -2,7 +2,7 @@
 
 The Cairo Backend for Makie
 
-Read the docs for Makie and it's backends [here](http://docs.makie.org/stable)
+Read the docs for Makie and its backends [here](http://docs.makie.org/stable)
 
 
 ## Issues
