@@ -700,6 +700,25 @@ function start_renderloop(renderer, three_scenes, cam, fps) {
     renderloop();
 }
 
+// from: https://www.geeksforgeeks.org/javascript-throttling/
+function throttle_function(func, delay) {
+    // Previously called time of the function
+    let prev = 0;
+    return (...args) => {
+      // Current called time of the function
+      const now = new Date().getTime();
+      // If difference is greater than delay call
+      // the function again.
+      if(now - prev > delay){
+        prev = now;
+        // "..." is the spread operator here
+        // returning the function with the
+        // array of arguments
+        return func(...args);
+      }
+    }
+  }
+
 function threejs_module(canvas, comm, width, height) {
     let context = canvas.getContext("webgl2", {
         preserveDrawingBuffer: true,
@@ -729,13 +748,15 @@ function threejs_module(canvas, comm, width, height) {
     renderer.setPixelRatio(pixelRatio);
     renderer.setSize(width / pixelRatio, height / pixelRatio);
 
+    const mouse_callback = (x, y) => comm.notify({mouseposition: [x, y]});
+    const notify_mouse_throttled = throttle_function(mouse_callback, 40)
+
     function mousemove(event) {
         var rect = canvas.getBoundingClientRect();
         var x = (event.clientX - rect.left) * pixelRatio;
         var y = (event.clientY - rect.top) * pixelRatio;
-        comm.notify({
-            mouseposition: [x, y],
-        });
+
+        notify_mouse_throttled(x, y)
         return false;
     }
 
