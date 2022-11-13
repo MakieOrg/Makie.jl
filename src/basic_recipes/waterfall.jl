@@ -1,10 +1,14 @@
 """
     waterfall(x, y; kwargs...)
 
-Plots a waterfall chart;
+Plots a [waterfall chart](https://en.wikipedia.org/wiki/Waterfall_chart) to visualize individual
+positive and negative components that add up to a net result as a barplot with stacked bars next
+to each other.
 
 ## Attributes
 $(ATTRIBUTES)
+
+Furthermore the same attributes as for `barplot` are supported.
 """
 @recipe(Waterfall, x, y) do scene
     return Attributes(;
