@@ -8,7 +8,7 @@
 ```julia
 using GLMakie
 GLMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 fig = Figure()
 ax = LScene(fig[1, 1], show_axis=false)
@@ -17,19 +17,21 @@ x = LinRange(0, π, 50)
 y = LinRange(0, 2π, 100)
 z = LinRange(0, 3π, 150)
 
-lsgrid = labelslidergrid!(
-  fig,
-  ["yz plane - x axis", "xz plane - y axis", "xy plane - z axis"],
-  [1:length(x), 1:length(y), 1:length(z)]
+sgrid = SliderGrid(
+    fig[2, 1],
+    (label = "yz plane - x axis", range = 1:length(x)),
+    (label = "xz plane - y axis", range = 1:length(y)),
+    (label = "xy plane - z axis", range = 1:length(z)),
 )
-fig[2, 1] = lo = lsgrid.layout
+
+lo = sgrid.layout
 nc = ncols(lo)
 
 vol = [cos(X)*sin(Y)*sin(Z) for X ∈ x, Y ∈ y, Z ∈ z]
 plt = volumeslices!(ax, x, y, z, vol)
 
 # connect sliders to `volumeslices` update methods
-sl_yz, sl_xz, sl_xy = lsgrid.sliders
+sl_yz, sl_xz, sl_xy = sgrid.sliders
 
 on(sl_yz.value) do v; plt[:update_yz][](v) end
 on(sl_xz.value) do v; plt[:update_xz][](v) end
@@ -44,7 +46,7 @@ hmaps = [plt[Symbol(:heatmap_, s)][] for s ∈ (:yz, :xz, :xy)]
 toggles = [Toggle(lo[i, nc + 1], active = true) for i ∈ 1:length(hmaps)]
 
 map(zip(hmaps, toggles)) do (h, t)
-  connect!(h.visible, t.active)
+    connect!(h.visible, t.active)
 end
 
 # cam3d!(ax.scene, projectiontype=Makie.Orthographic)

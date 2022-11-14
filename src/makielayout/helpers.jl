@@ -11,17 +11,13 @@ function round_to_IRect2D(r::Rect{2})
 end
 
 function sceneareanode!(finalbbox, limits, aspect)
-
-    scenearea = Observable(Recti(0, 0, 100, 100))
-
-    onany(finalbbox, limits, aspect) do bbox, limits, aspect
+    return map(finalbbox, limits, aspect; ignore_equal_values=true) do bbox, limits, aspect
 
         w = width(bbox)
         h = height(bbox)
         # as = mw / mh
         as = w / h
         mw, mh = w, h
-
 
         if aspect isa AxisAspect
             aspect = aspect.aspect
@@ -50,16 +46,9 @@ function sceneareanode!(finalbbox, limits, aspect)
         newbbox = BBox(l, l + mw, b, b + mh)
 
         # only update scene if pixel positions change
-        new_scenearea = round_to_IRect2D(newbbox)
-        if new_scenearea != scenearea[]
-            scenearea[] = new_scenearea
-        end
+        return round_to_IRect2D(newbbox)
     end
-
-    scenearea
 end
-
-
 
 function roundedrectvertices(rect, cornerradius, cornersegments)
     cr = cornerradius
@@ -304,6 +293,8 @@ end
     labelslider!(scene, label, range; format = string, sliderkw = Dict(),
     labelkw = Dict(), valuekw = Dict(), value_column_width = automatic, layoutkw...)
 
+**`labelslider!` is deprecated, use `SliderGrid` instead**
+
 Construct a horizontal GridLayout with a label, a slider and a value label in `scene`.
 
 Returns a `NamedTuple`:
@@ -332,6 +323,8 @@ function labelslider!(scene, label, range; format = string,
     valuelabel = Label(scene, lift(x -> apply_format(x, format), slider.value); valuekw...)
     layout = hbox!(label, slider, valuelabel; layoutkw...)
 
+    Base.depwarn("labelslider! is deprecated and will be removed in the future. Use SliderGrid instead." , :labelslider!, force = true)
+
     if value_column_width === automatic
         maxwidth = 0.0
         initial_value = slider.value[]
@@ -358,6 +351,8 @@ end
         sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(),
         value_column_width = automatic, layoutkw...)
 
+**`labelslidergrid!` is deprecated, use `SliderGrid` instead**
+
 Construct a GridLayout with a column of label, a column of sliders and a column of value labels in `scene`.
 The argument values are broadcast, so you can use scalars if you want to keep labels, ranges or formats constant across rows.
 
@@ -382,6 +377,8 @@ layout[1, 1] = ls.layout
 """
 function labelslidergrid!(scene, labels, ranges; formats = [string], value_column_width = automatic,
         sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), layoutkw...)
+
+    Base.depwarn("labelslidergrid! is deprecated and will be removed in the future. Use SliderGrid instead." , :labelslidergrid!, force = true)
 
     elements = broadcast(labels, ranges, formats) do label, range, format
         slider = Slider(scene; range = range, sliderkw...)
@@ -430,133 +427,6 @@ end
 function apply_format(value, formatstring::String)
     Formatting.format(formatstring, value)
 end
-
-
-# helper function to create either h or vlines depending on `direction`
-# this works only with Axes because it needs to react to limit changes
-function hvlines!(ax::Axis, direction::Int, datavals, axmins, axmaxs; attributes...)
-
-    datavals, axmins, axmaxs = map(x -> x isa Observable ? x : Observable(x), (datavals, axmins, axmaxs))
-
-    linesegs = lift(ax.finallimits, ax.scene.px_area, datavals, axmins, axmaxs) do lims, pxa,
-            datavals, axmins, axmaxs
-
-        xlims = (minimum(lims)[direction], maximum(lims)[direction])
-        xfrac(f) = xlims[1] + f * (xlims[2] - xlims[1])
-        segs = broadcast(datavals, axmins, axmaxs) do dataval, axmin, axmax
-            if direction == 1
-                (Point2f(xfrac(axmin), dataval), Point2f(xfrac(axmax), dataval))
-            elseif direction == 2
-                (Point2f(dataval, xfrac(axmin)), Point2f(dataval, xfrac(axmax)))
-            else
-                error("direction must be 1 or 2")
-            end
-        end
-        # handle case that none of the inputs is an array, but we need an array for linesegments!
-        if segs isa Tuple
-            segs = [segs]
-        end
-        segs
-    end
-
-    linesegments!(ax, linesegs; xautolimits = direction == 2, yautolimits = direction == 1, attributes...)
-end
-
-"""
-    hlines!(ax::Axis, ys; xmin = 0.0, xmax = 1.0, attrs...)
-
-Create horizontal lines across `ax` at `ys` in data coordinates and `xmin` to `xmax`
-in axis coordinates (0 to 1). All three of these can have single or multiple values because
-they are broadcast to calculate the final line segments.
-"""
-hlines!(ax::Axis, ys; xmin = 0.0, xmax = 1.0, attrs...) =
-    hvlines!(ax, 1, ys, xmin, xmax; attrs...)
-
-"""
-    vlines!(ax::Axis, xs; ymin = 0.0, ymax = 1.0, attrs...)
-
-Create vertical lines across `ax` at `xs` in data coordinates and `ymin` to `ymax`
-in axis coordinates (0 to 1). All three of these can have single or multiple values because
-they are broadcast to calculate the final line segments.
-"""
-vlines!(ax::Axis, xs; ymin = 0.0, ymax = 1.0, attrs...) =
-    hvlines!(ax, 2, xs, ymin, ymax; attrs...)
-
-"""
-    abline!(axis::Axis, a::Number, b::Number; line_kw_args...)
-Adds a line defined by `f(x) = x * b + a` to the axis.
-kwargs are the same as for a `line` plot and are passed directly to the line attributess.
-"""
-function abline!(axis::Axis, a::Number, b::Number; kwargs...)
-    f(x) = x * b + a
-    line = map(axis.finallimits) do limits
-        xmin, xmax = first.(extrema(limits))
-        return [Point2f(xmin, f(xmin)), Point2f(xmax, f(xmax))]
-    end
-    return linesegments!(axis, line; xautolimits=false, yautolimits=false, kwargs...)
-end
-
-
-
-# helper function to create either h or vspans depending on `direction`
-# this works only with Axes because it needs to react to limit changes
-function hvspan!(ax::Axis, direction::Int, datavals_low, datavals_high,
-        axmins, axmaxs; attributes...)
-
-    datavals_low, datavals_high, axmins, axmaxs = map(x -> x isa Observable ? x : Observable(x), (datavals_low, datavals_high, axmins, axmaxs))
-
-    rects = lift(ax.finallimits, ax.scene.px_area, datavals_low, datavals_high,
-        axmins, axmaxs) do lims, pxa,
-            datavals_low, datavals_high, axmins, axmaxs
-
-        xlims = (minimum(lims)[direction], maximum(lims)[direction])
-        xfrac(f) = xlims[1] + f * (xlims[2] - xlims[1])
-        rects = broadcast(datavals_low, datavals_high,
-                axmins, axmaxs) do dataval_low, dataval_high, axmin, axmax
-
-            if direction ∉ (1, 2)
-                error("direction must be 1 or 2")
-            end
-
-            p1 = direction == 1 ? Point2f(xfrac(axmin), dataval_low) : Point2f(dataval_low, xfrac(axmin))
-            p2 = direction == 1 ? Point2f(xfrac(axmax), dataval_high) : Point2f(dataval_high, xfrac(axmax))
-
-            widths = p2 - p1
-            Rect2f(p1, widths)
-        end
-        # handle case that none of the inputs is an array, but we need an array for linesegments!
-        if rects isa Tuple
-            rects = [rects]
-        end
-        rects
-    end
-
-    poly!(ax, rects; xautolimits = direction == 2, yautolimits = direction == 1, attributes...)
-end
-
-
-"""
-    hspan!(ax::Axis, y_lows, y_highs; xmin = 0.0, xmax = 1.0, attrs...)
-
-Create horizontal spans across `ax` from `y_lows` to `y_highs` in data coordinates
-and `xmin` to `xmax` in axis coordinates (0 to 1 by default).
-All four of these can have single or multiple values because
-they are broadcast to calculate the final spans.
-"""
-hspan!(ax::Axis, y_lows, y_highs; xmin = 0.0, xmax = 1.0, attrs...) =
-    hvspan!(ax, 1, y_lows, y_highs, xmin, xmax; attrs...)
-
-"""
-    vspan!(ax::Axis, x_lows, x_highs; ymin = 0.0, ymax = 1.0, attrs...)
-
-Create vertical spans across `ax` from `x_lows` to `x_highs` in data coordinates
-and `ymin` to `ymax` in axis coordinates (0 to 1 by default).
-All four of these can have single or multiple values because
-they are broadcast to calculate the final spans.
-"""
-vspan!(ax::Axis, x_lows, x_highs; ymin = 0.0, ymax = 1.0, attrs...) =
-    hvspan!(ax, 2, x_lows, x_highs, ymin, ymax; attrs...)
-
 
 Makie.get_scene(ax::Axis) = ax.scene
 Makie.get_scene(ax::Axis3) = ax.scene

@@ -76,7 +76,7 @@ Base.merge(target::Attributes, args::Attributes...) = merge!(copy(target), args.
 
 @generated hasfield(x::T, ::Val{key}) where {T, key} = :($(key in fieldnames(T)))
 
-@inline function Base.getproperty(x::T, key::Symbol) where T <: Union{Attributes, Transformable}
+@inline function Base.getproperty(x::Union{Attributes, AbstractPlot}, key::Symbol)
     if hasfield(x, Val(key))
         getfield(x, key)
     else
@@ -84,7 +84,7 @@ Base.merge(target::Attributes, args::Attributes...) = merge!(copy(target), args.
     end
 end
 
-@inline function Base.setproperty!(x::T, key::Symbol, value) where T <: Union{Attributes, Transformable}
+@inline function Base.setproperty!(x::Union{Attributes, AbstractPlot}, key::Symbol, value)
     if hasfield(x, Val(key))
         setfield!(x, key, value)
     else
@@ -238,8 +238,14 @@ function Base.setindex!(x::AbstractPlot, value::Observable, key::Symbol)
 end
 
 # a few shortcut functions to make attribute conversion easier
-function get_attribute(dict, key)
-    convert_attribute(to_value(dict[key]), Key{key}())
+function get_attribute(dict, key, default=nothing)
+    if haskey(dict, key)
+        value = to_value(dict[key])
+        value isa Automatic && return default
+        return convert_attribute(to_value(dict[key]), Key{key}())
+    else
+        return default
+    end
 end
 
 function merge_attributes!(input::Attributes, theme::Attributes)
@@ -256,4 +262,8 @@ function merge_attributes!(input::Attributes, theme::Attributes)
         end
     end
     return input
+end
+
+function Base.propertynames(x::Union{Attributes, AbstractPlot})
+    return (keys(x.attributes)...,)
 end

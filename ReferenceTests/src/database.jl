@@ -1,13 +1,4 @@
-
-struct Entry
-    title::String
-    source_location::LineNumberNode
-    code::Expr
-    func::Function
-    used_functions::Set{Symbol}
-end
-
-function Entry(title, source_location, code, func)
+function used_functions(code)
     used_functions = Set{Symbol}()
     MacroTools.postwalk(code) do x
         if @capture(x, f_(xs__))
@@ -18,30 +9,43 @@ function Entry(title, source_location, code, func)
         end
         return x
     end
-    return Entry(title, source_location, code, func, used_functions)
+    return used_functions
 end
 
-const DATABASE = Dict{String, Entry}()
+const REGISTERED_TESTS = Set{String}()
+const RECORDING_DIR = Base.RefValue{String}()
+const SKIP_TITLES = Set{String}()
+const SKIP_FUNCTIONS = Set{Symbol}()
 
-function cell_expr(name, code, source)
+"""
+    @reference_test(name, code)
+
+Records `code` and saves the result to `joinpath(ReferenceTests.RECORDING_DIR[], "recorded", name)`.
+`RECORDING_DIR` gets set automatically, if tests included via `@include_reference_tests`.
+"""
+macro reference_test(name, code)
     title = string(name)
+    funcs = used_functions(code)
+    skip = (title in SKIP_TITLES) || any(x-> x in funcs, SKIP_FUNCTIONS)
     return quote
-        closure = () -> $(esc(code))
-        entry = ReferenceTests.Entry(
-            $(title),
-            $(QuoteNode(source)),
-            $(QuoteNode(code)),
-            closure
-        )
-        if haskey(ReferenceTests.DATABASE, $title)
-            error("Titles must be unique for tests")
+        @testset $(title) begin
+            if $skip
+                @test_broken false
+            else
+                if $title in $REGISTERED_TESTS
+                    error("title must be unique. Duplicate title: $(title)")
+                end
+                println("running: $($title)")
+                Makie.set_theme!(resolution=(500, 500))
+                ReferenceTests.RNG.seed_rng!()
+                result = let
+                    $(esc(code))
+                end
+                @test save_result(joinpath(RECORDING_DIR[], $title), result)
+                push!($REGISTERED_TESTS, $title)
+            end
         end
-        ReferenceTests.DATABASE[$title] = entry
     end
-end
-
-macro cell(name, code)
-    return cell_expr(name, code, __source__)
 end
 
 """
@@ -50,35 +54,49 @@ end
 Helper, to more easily save all kind of results from the test database
 """
 function save_result(path::String, scene::Makie.FigureLike)
+    isfile(path * ".png") && rm(path * ".png"; force=true)
     FileIO.save(path * ".png", scene)
+    return true
 end
 
 function save_result(path::String, stream::VideoStream)
+    isfile(path * ".mp4") && rm(path * ".mp4"; force=true)
     FileIO.save(path * ".mp4", stream)
+    return true
 end
 
 function save_result(path::String, object)
+    isfile(path) && rm(path; force=true)
     FileIO.save(path, object)
+    return true
 end
 
-function load_database()
-    empty!(DATABASE)
-    include(joinpath(@__DIR__, "tests/primitives.jl"))
-    include(joinpath(@__DIR__, "tests/text.jl"))
-    include(joinpath(@__DIR__, "tests/attributes.jl"))
-    include(joinpath(@__DIR__, "tests/examples2d.jl"))
-    include(joinpath(@__DIR__, "tests/examples3d.jl"))
-    include(joinpath(@__DIR__, "tests/short_tests.jl"))
-    include(joinpath(@__DIR__, "tests/unitful.jl"))
-    include(joinpath(@__DIR__, "tests/dates.jl"))
-    include(joinpath(@__DIR__, "tests/categorical.jl"))
-    return DATABASE
+function mark_broken_tests(title_excludes = []; functions=[])
+    empty!(SKIP_TITLES)
+    empty!(SKIP_FUNCTIONS)
+    union!(SKIP_TITLES, title_excludes)
+    union!(SKIP_FUNCTIONS, functions)
 end
 
-function database_filtered(title_excludes = []; functions=[])
-    database = ReferenceTests.load_database()
-    return filter(database) do (name, entry)
-        !(entry.title in title_excludes) &&
-        !any(x-> x in entry.used_functions, functions)
-    end
+macro include_reference_tests(path)
+    toplevel_folder = dirname(string(__source__.file))
+    return esc(quote
+        using ReferenceTests: @reference_test
+        name = splitext(basename($(path)))[1]
+        include_path = isdir($path) ? $path : joinpath(@__DIR__, "tests", $path)
+        recording_dir = joinpath($toplevel_folder, "recorded_reference_images", name)
+        if isdir(recording_dir)
+            rm(recording_dir; force=true, recursive=true)
+        end
+        ReferenceTests.RECORDING_DIR[] = joinpath(recording_dir, "recorded")
+        mkpath(joinpath(recording_dir, "recorded"))
+        @testset "$name" begin
+            empty!(ReferenceTests.REGISTERED_TESTS)
+            include(include_path)
+        end
+        recorded_files = collect(ReferenceTests.REGISTERED_TESTS)
+        recording_dir = recording_dir
+        empty!(ReferenceTests.REGISTERED_TESTS)
+        (recorded_files, recording_dir)
+    end)
 end

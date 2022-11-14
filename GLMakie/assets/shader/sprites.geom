@@ -122,7 +122,7 @@ void main(void)
     trans = (billboard ? projection : pview) * qmat(g_rotation[0]) * trans;
 
     // Compute centre of billboard in clipping coordinates
-    vec4 vclip = pview*model*vec4(g_position[0],1) + trans*vec4(sprite_bbox_centre,0,0);
+    vec4 vclip = pview*vec4(g_position[0],1) + trans*vec4(sprite_bbox_centre,0,0);
 
     // Extra buffering is required around sprites which are antialiased so that
     // the antialias blur doesn't get cut off (see #15). This blur falls to

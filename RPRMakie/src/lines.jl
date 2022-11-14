@@ -61,6 +61,7 @@ function to_rpr_object(context, matsys, scene, plot::Makie.LineSegments)
     color = to_color(plot.color[])
 
     function set_color!(colorvec)
+        isempty(colorvec) && return
         tex = RPR.ImageTextureMaterial(matsys)
         ncols = length(colorvec)
         img = RPR.Image(context, reshape(colorvec, (ncols, 1)))

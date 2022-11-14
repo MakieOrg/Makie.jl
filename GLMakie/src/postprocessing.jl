@@ -21,17 +21,19 @@ rcpframe(x) = 1f0 ./ Vec2f(x[1], x[2])
 struct PostProcessor{F}
     robjs::Vector{RenderObject}
     render::F
+    constructor::Any
 end
 
 function empty_postprocessor(args...; kwargs...)
-    PostProcessor(RenderObject[], screen -> nothing)
+    PostProcessor(RenderObject[], screen -> nothing, empty_postprocessor)
 end
 
 
-function OIT_postprocessor(framebuffer)
+function OIT_postprocessor(framebuffer, shader_cache)
     # Based on https://jcgt.org/published/0002/02/09/, see #1390
     # OIT setup
     shader = LazyShader(
+        shader_cache,
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/OIT_blend.frag")
     )
@@ -67,17 +69,16 @@ function OIT_postprocessor(framebuffer)
         # Blend transparent onto opaque
         glDrawBuffer(color_id)
         glViewport(0, 0, w, h)
-        glDisable(GL_STENCIL_TEST)
         GLAbstraction.render(pass)
     end
 
-    PostProcessor(RenderObject[pass], full_render)
+    PostProcessor(RenderObject[pass], full_render, OIT_postprocessor)
 end
 
 
 
 
-function ssao_postprocessor(framebuffer)
+function ssao_postprocessor(framebuffer, shader_cache)
     # Add missing buffers
     if !haskey(framebuffer, :position)
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
@@ -112,6 +113,7 @@ function ssao_postprocessor(framebuffer)
 
     # compute occlusion
     shader1 = LazyShader(
+        shader_cache,
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/SSAO.frag"),
         view = Dict(
@@ -137,6 +139,7 @@ function ssao_postprocessor(framebuffer)
 
     # blur occlusion and combine with color
     shader2 = LazyShader(
+        shader_cache,
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/SSAO_blur.frag")
     )
@@ -159,7 +162,6 @@ function ssao_postprocessor(framebuffer)
         # SSAO - calculate occlusion
         glDrawBuffer(normal_occ_id)  # occlusion buffer
         glViewport(0, 0, w, h)
-        glDisable(GL_STENCIL_TEST)
         glEnable(GL_SCISSOR_TEST)
 
         for (screenid, scene) in screen.screens
@@ -191,7 +193,7 @@ function ssao_postprocessor(framebuffer)
         glDisable(GL_SCISSOR_TEST)
     end
 
-    PostProcessor(RenderObject[pass1, pass2], full_render)
+    PostProcessor(RenderObject[pass1, pass2], full_render, ssao_postprocessor)
 end
 
 """
@@ -199,7 +201,7 @@ end
 
 Returns a PostProcessor that handles fxaa.
 """
-function fxaa_postprocessor(framebuffer)
+function fxaa_postprocessor(framebuffer, shader_cache)
     # Add missing buffers
     if !haskey(framebuffer, :color_luma)
         if !haskey(framebuffer, :HDR_color)
@@ -215,6 +217,7 @@ function fxaa_postprocessor(framebuffer)
 
     # calculate luma for FXAA
     shader1 = LazyShader(
+        shader_cache,
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/postprocess.frag")
     )
@@ -227,6 +230,7 @@ function fxaa_postprocessor(framebuffer)
 
     # perform FXAA
     shader2 = LazyShader(
+        shader_cache,
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/fxaa.frag")
     )
@@ -255,7 +259,7 @@ function fxaa_postprocessor(framebuffer)
         GLAbstraction.render(pass2)
     end
 
-    PostProcessor(RenderObject[pass1, pass2], full_render)
+    PostProcessor(RenderObject[pass1, pass2], full_render, fxaa_postprocessor)
 end
 
 
@@ -265,9 +269,10 @@ end
 Sets up a Postprocessor which copies the color buffer to the screen. Used as a
 final step for displaying the screen.
 """
-function to_screen_postprocessor(framebuffer)
+function to_screen_postprocessor(framebuffer, shader_cache)
     # draw color buffer
     shader = LazyShader(
+        shader_cache,
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/copy.frag")
     )
@@ -288,5 +293,12 @@ function to_screen_postprocessor(framebuffer)
         GLAbstraction.render(pass) # copy postprocess
     end
 
-    PostProcessor(RenderObject[pass], full_render)
+    PostProcessor(RenderObject[pass], full_render, to_screen_postprocessor)
+end
+
+function destroy!(pp::PostProcessor)
+    while !isempty(pp.robjs)
+        destroy!(pop!(pp.robjs))
+    end
+    return
 end

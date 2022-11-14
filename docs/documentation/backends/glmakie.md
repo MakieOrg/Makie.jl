@@ -1,32 +1,30 @@
 # GLMakie
 
-[GLMakie](https://github.com/JuliaPlots/Makie.jl/tree/master/GLMakie) is the native, desktop-based backend, and is the most feature-complete.
+[GLMakie](https://github.com/MakieOrg/Makie.jl/tree/master/GLMakie) is the native, desktop-based backend, and is the most feature-complete.
 It requires an OpenGL enabled graphics card with OpenGL version 3.3 or higher.
 
-### Special GLMakie Properties
+## Activation and screen config
 
-#### Window Parameters
-
-You can set parameters of the window with the function `set_window_config!` which only takes effect when opening a new window.
-
-```julia
-set_window_config!(;
-    renderloop = renderloop,
-    vsync = false,
-    framerate = 30.0,
-    float = false,
-    pause_rendering = false,
-    focus_on_show = false,
-    decorated = true,
-    title = "Makie"
-)
+Activate the backend by calling `GLMakie.activate!()` with the following options:
+```julia:docs
+# hideall
+using GLMakie, Markdown
+println("~~~")
+println(Markdown.html(@doc GLMakie.activate!))
+println("~~~")
 ```
+\textoutput{docs}
+
+#### Multiple Windows
+
+GLMakie has experimental support for displaying multiple independent figures (or scenes). To open a new window, use `display(GLMakie.Screen(), figure_or_scene)`.
+
 
 ## Forcing Dedicated GPU Use In Linux
 
 Normally the dedicated GPU is used for rendering.
 If instead an integrated GPU is used, one can tell Julia to use the dedicated GPU while launching julia as `$ sudo DRI_PRIME=1 julia` in the bash terminal.
-
+To have it permanently used, add the line `export DRI_PRIME=1` in  your `.bashrc` or `.zshrc` file.
 
 ## Troubleshooting OpenGL
 
@@ -43,7 +41,7 @@ proper graphics drivers.
 
 You can find a demo on how to set that up in this [nextjournal article](https://nextjournal.com/sdanisch/GLMakie-nogpu).
 
-GLMakie's CI has no GPU, so you can also look at [.github/workflows/glmakie.yaml](https://github.com/JuliaPlots/Makie.jl/blob/master/.github/workflows/glmakie.yaml) for a working setup.
+GLMakie's CI has no GPU, so you can also look at [.github/workflows/glmakie.yaml](https://github.com/MakieOrg/Makie.jl/blob/master/.github/workflows/glmakie.yaml) for a working setup.
 
 If none of these work for you, take a look at the other [backends](/documentation/backends/), which all work without a GPU.
 

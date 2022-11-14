@@ -122,9 +122,9 @@ function _chosen_limits(rz, ax)
     return r
 end
 
-function _selection_vertices(outer, inner)
+function _selection_vertices(ax_scene, outer, inner)
     _clamp(p, plow, phigh) = Point2f(clamp(p[1], plow[1], phigh[1]), clamp(p[2], plow[2], phigh[2]))
-
+    proj(point) = project(ax_scene, point) .+ minimum(ax_scene.px_area[])
     outer = positivize(outer)
     inner = positivize(inner)
 
@@ -137,8 +137,9 @@ function _selection_vertices(outer, inner)
     ibr = _clamp(bottomright(inner), obl, otr)
     itl = _clamp(topleft(inner), obl, otr)
     itr = _clamp(topright(inner), obl, otr)
-
-    return [obl, obr, otr, otl, ibl, ibr, itr, itl]
+    # We plot the selection vertices in blockscene, which is pixelspace, so we need to manually
+    # project the points to the space of `ax.scene`
+    return [proj(obl), proj(obr), proj(otr), proj(otl), proj(ibl), proj(ibr), proj(itr), proj(itl)]
 end
 
 function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)

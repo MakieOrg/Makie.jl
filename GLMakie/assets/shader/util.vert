@@ -200,7 +200,7 @@ vec4 _color(Nothing color, sampler1D intensity, sampler1D color_map, vec2 color_
     return color_lookup(texture(intensity, float(index)/float(len-1)).x, color_map, color_norm);
 }
 vec4 _color(Nothing color, samplerBuffer intensity, sampler1D color_map, vec2 color_norm, int index, int len){
-    return color_lookup(texelFetch(intensity, index).x, color_map, color_norm);
+    return vec4(texelFetch(intensity, index).x, 0.0, 0.0, 0.0);
 }
 vec4 _color(Nothing color, float intensity, sampler1D color_map, vec2 color_norm, int index, int len){
     return color_lookup(intensity, color_map, color_norm);
@@ -352,4 +352,30 @@ vec3 getnormal(Nothing pos, sampler1D xs, sampler1D ys, sampler2D zs, vec2 uv){
     s4 = vec3(texture(xs, off4.x).x, texture(ys, off4.y).x, texture(zs, off4).x);
 
     return normal_from_points(s0, s1, s2, s3, s4, uv, off1, off2, off3, off4);
+}
+
+uniform vec4 highclip;
+uniform vec4 lowclip;
+uniform vec4 nan_color;
+
+vec4 get_color_from_cmap(float value, sampler1D color_map, vec2 colorrange) {
+    float cmin = colorrange.x;
+    float cmax = colorrange.y;
+    if (value <= cmax && value >= cmin) {
+        // in value range, continue!
+    } else if (value < cmin) {
+        return lowclip;
+    } else if (value > cmax) {
+        return highclip;
+    } else {
+        // isnan CAN be broken (of course) -.-
+        // so if outside value range and not smaller/bigger min/max we assume NaN
+        return nan_color;
+    }
+    float i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0);
+    // 1/0 corresponds to the corner of the colormap, so to properly interpolate
+    // between the colors, we need to scale it, so that the ends are at 1 - (stepsize/2) and 0+(stepsize/2).
+    float stepsize = 1.0 / float(textureSize(color_map, 0));
+    i01 = (1.0 - stepsize) * i01 + 0.5 * stepsize;
+    return texture(color_map, i01);
 }

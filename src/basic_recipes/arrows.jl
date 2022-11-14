@@ -21,31 +21,12 @@ grid.
 ## Attributes
 $(ATTRIBUTES)
 """
-@recipe(Arrows, points, directions) do scene
-    attr = merge!(
-        default_theme(scene),
-        Attributes(
-            arrowhead = automatic,
-            arrowtail = automatic,
-            color = :black,
-            linecolor = automatic,
-            arrowsize = automatic,
-            linestyle = nothing,
-            align = :origin,
-            normalize = false,
-            lengthscale = 1f0,
-            colormap = theme(scene, :colormap),
-            quality = 32,
-            inspectable = theme(scene, :inspectable),
-            markerspace = :pixel,
-        )
-    )
-    attr[:fxaa] = automatic
-    attr[:linewidth] = automatic
-    # connect arrow + linecolor by default
-    get!(attr, :arrowcolor, attr[:linecolor])
-    attr
-end
+arrows
+
+"""
+See [`arrows`](@ref).
+"""
+arrows!
 
 # For the matlab/matplotlib users
 const quiver = arrows
@@ -198,20 +179,22 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
         fxaa_bool = @lift($fxaa == automatic ? true : $fxaa)
 
         msize = Observable{Union{Vec3f, Vector{Vec3f}}}()
-        markersize = Observable{Vec3f}()
+        markersize = Observable{Union{Vec3f, Vector{Vec3f}}}()
         map!(msize, directions, normalize, linewidth, lengthscale, arrowsize) do dirs, n, linewidth, ls, as
             ms = as isa Automatic ? Vec3f(0.2, 0.2, 0.3) : as
             markersize[] = to_3d_scale(ms)
             lw = linewidth isa Automatic ? minimum(ms) * 0.5 : linewidth
             if n
-                return Vec3f(lw, lw, ls)
+                return broadcast((lw, ls) -> Vec3f(lw, lw, ls), lw, ls)
             else
-                return map(dir -> Vec3f(lw, lw, norm(dir) * ls), dirs)
+                return broadcast(lw, dirs, ls) do lw, dir, s
+                    Vec3f(lw, lw, norm(dir) * s)
+                end
             end
         end
 
-        start = lift(points, directions, align, lengthscale) do points, dirs, align, s
-            map(points, dirs) do p, dir
+        start = lift(points, directions, align, lengthscale) do points, dirs, align, scales
+            broadcast(points, dirs, scales) do p, dir, s
                 if align in (:head, :lineend, :tailend, :headstart, :center)
                     shift = Vec3f(0)
                 else

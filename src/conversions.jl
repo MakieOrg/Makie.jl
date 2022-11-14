@@ -26,7 +26,7 @@ function convert_arguments(T::PlotFunc, args...; kw...)
                         $(join("::" .* string.(typeof.(args)), ", "))
 
                         Makie needs to convert all plot input arguments to types that can be consumed by the backends (typically Arrays with Float32 elements).
-                        You can define a method for `Makie.convert_arguments` (a type recipe) for these types or their supertypes to make this set of arguments convertible (See http://makie.juliaplots.org/stable/documentation/recipes/index.html).
+                        You can define a method for `Makie.convert_arguments` (a type recipe) for these types or their supertypes to make this set of arguments convertible (See http://docs.makie.org/stable/documentation/recipes/index.html).
 
                         Alternatively, you can define `Makie.convert_single_argument` for single arguments which have types that are unknown to Makie but which can be converted to known types and fed back to the conversion pipeline.
                         """
@@ -88,6 +88,14 @@ end
 """
 Wrap a single point or equivalent object in a single-element array.
 """
+function convert_arguments(::PointBased, x::Real, y::Real)
+    ([Point2f(x, y)],)
+end
+
+function convert_arguments(::PointBased, x::Real, y::Real, z::Real)
+    ([Point3f(x, y, z)],)
+end
+
 function convert_arguments(::PointBased, position::VecTypes{N, <: Number}) where N
     ([convert(Point{N, Float32}, position)],)
 end
@@ -295,7 +303,7 @@ function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::A
     return map(el32convert, adjust_axes(SL, x, y, z))
 end
 
-convert_arguments(::SurfaceLike, x::AbstractMatrix, y::AbstractMatrix) = (x, y, zeros(size(y)))
+convert_arguments(sl::SurfaceLike, x::AbstractMatrix, y::AbstractMatrix) = convert_arguments(sl, x, y, zeros(size(y)))
 
 """
     convert_arguments(P, x, y, z)::Tuple{ClosedInterval, ClosedInterval, Matrix}
@@ -557,7 +565,7 @@ function convert_arguments(P::PlotFunc, i::AbstractInterval, f::Function)
 end
 
 # The following `tryrange` code was copied from Plots.jl
-# https://github.com/JuliaPlots/Plots.jl/blob/15dc61feb57cba1df524ce5d69f68c2c4ea5b942/src/series.jl#L399-L416
+# https://github.com/MakieOrg/Plots.jl/blob/15dc61feb57cba1df524ce5d69f68c2c4ea5b942/src/series.jl#L399-L416
 
 # try some intervals over which the function may be defined
 function tryrange(F::AbstractArray, vec)
@@ -716,9 +724,9 @@ Converts a `color` symbol (e.g. `:blue`) to a color RGBA.
 convert_attribute(color, ::key"color") = to_color(color)
 
 """
-    to_colormap(cm[, N = 20])
+    to_colormap(cm)
 
-Converts a colormap `cm` symbol (e.g. `:Spectral`) to a colormap RGB array, where `N` specifies the number of color points.
+Converts a colormap `cm` symbol/string (e.g. `:Spectral`) to a colormap RGB array.
 """
 convert_attribute(colormap, ::key"colormap") = to_colormap(colormap)
 convert_attribute(rotation, ::key"rotation") = to_rotation(rotation)
@@ -736,7 +744,7 @@ struct Palette
    i::Ref{Int}
    Palette(colors) = new(to_color.(colors), zero(Int))
 end
-Palette(name::Union{String, Symbol}, n = 8) = Palette(to_colormap(name, n))
+Palette(name::Union{String, Symbol}, n = 8) = Palette(categorical_colors(name, n))
 function to_color(p::Palette)
     N = length(p.colors)
     p.i[] = p.i[] == N ? 1 : p.i[] + 1
@@ -744,7 +752,7 @@ function to_color(p::Palette)
 end
 
 to_color(c::Nothing) = c # for when color is not used
-to_color(c::Number) = Float32(c)
+to_color(c::Real) = Float32(c)
 to_color(c::Colorant) = convert(RGBA{Float32}, c)
 to_color(c::Symbol) = to_color(string(c))
 to_color(c::String) = parse(RGBA{Float32}, c)
@@ -907,7 +915,7 @@ a string naming a font, e.g. helvetica
 function to_font(x::Union{Symbol, String})
     str = string(x)
     get!(FONT_CACHE, str) do
-        str == "default" && return to_font("Dejavu Sans")
+        str == "default" && return to_font("TeX Gyre Heros Makie")
 
         # check if the string points to a font file and load that
         if isfile(str)
@@ -922,12 +930,12 @@ function to_font(x::Union{Symbol, String})
         fontpath = assetpath("fonts")
         font = FreeTypeAbstraction.findfont(str; additional_fonts=fontpath)
         if font === nothing
-            @warn("Could not find font $str, using Dejavu Sans")
-            if "dejavu sans" == lowercase(str)
-                # since we fall back to dejavu sans, we need to check for recursion
-                error("Recursion encountered; DejaVu Sans cannot be located in the font path $fontpath")
+            @warn("Could not find font $str, using TeX Gyre Heros Makie")
+            if "tex gyre heros makie" == lowercase(str)
+                # since we fall back to TeX Gyre Heros Makie, we need to check for recursion
+                error("Recursion encountered; TeX Gyre Heros Makie cannot be located in the font path $fontpath")
             end
-            return to_font("dejavu sans")
+            return to_font("TeX Gyre Heros Makie")
         end
         return font
     end
@@ -957,8 +965,8 @@ function to_rotation(s::VecTypes{N}) where N
     end
 end
 
-to_rotation(s::Tuple{VecTypes, AbstractFloat}) = qrotation(to_ndim(Vec3f, s[1], 0.0), s[2])
-to_rotation(angle::AbstractFloat) = qrotation(Vec3f(0, 0, 1), Float32(angle))
+to_rotation(s::Tuple{VecTypes, Number}) = qrotation(to_ndim(Vec3f, s[1], 0.0), s[2])
+to_rotation(angle::Number) = qrotation(Vec3f(0, 0, 1), angle)
 to_rotation(r::AbstractVector) = to_rotation.(r)
 to_rotation(r::AbstractVector{<: Quaternionf}) = r
 
@@ -1001,6 +1009,45 @@ function available_gradients()
     end
 end
 
+
+to_colormap(cm, categories::Integer) = error("`to_colormap(cm, categories)` is deprecated. Use `Makie.categorical_colors(cm, categories)` for categorical colors, and `resample_cmap(cmap, ncolors)` for continous resampling.")
+
+"""
+    categorical_colors(colormaplike, categories::Integer)
+
+Creates categorical colors and tries to match `categories`.
+Will error if color scheme doesn't contain enough categories. Will drop the n last colors, if request less colors than contained in scheme.
+"""
+function categorical_colors(cols::AbstractVector{<: Colorant}, categories::Integer)
+    if length(cols) < categories
+        error("Not enough colors for number of categories. Categories: $(categories), colors: $(length(cols))")
+    end
+    return cols[1:categories]
+end
+
+function categorical_colors(cols::AbstractVector, categories::Integer)
+    return categorical_colors(to_color.(cols), categories)
+end
+
+function categorical_colors(cs::Union{String, Symbol}, categories::Integer)
+    cs_string = string(cs)
+    if cs_string in all_gradient_names
+        if haskey(ColorBrewer.colorSchemes, cs_string)
+            return to_colormap(ColorBrewer.palette(cs_string, categories))
+        else
+            return categorical_colors(to_colormap(cs_string), categories)
+        end
+    else
+        error(
+            """
+            There is no color gradient named $cs.
+            See `available_gradients()` for the list of available gradients,
+            or look at http://docs.makie.org/dev/generated/colors#Colormap-reference.
+            """
+        )
+    end
+end
+
 """
 Reverses the attribute T upon conversion
 """
@@ -1011,8 +1058,10 @@ end
 to_colormap(r::Reverse) = reverse(to_colormap(r.data))
 to_colormap(cs::ColorScheme) = to_colormap(cs.colors)
 
+
+
 """
-    to_colormap(b)
+    to_colormap(b::AbstractVector)
 
 An `AbstractVector{T}` with any object that [`to_color`](@ref) accepts.
 """
@@ -1025,6 +1074,8 @@ function to_colormap(cs::Tuple{<: Union{Reverse, Symbol, AbstractString}, Real})
 end
 
 """
+    to_colormap(cs::Union{String, Symbol})::Vector{RGBAf}
+
 A Symbol/String naming the gradient. For more on what names are available please see: `available_gradients()`.
 For now, we support gradients from `PlotUtils` natively.
 """
@@ -1035,24 +1086,25 @@ function to_colormap(cs::Union{String, Symbol})::Vector{RGBAf}
             return to_colormap(ColorBrewer.palette(cs_string, 8))
         else
             # cs_string must be in plotutils_names
-            return to_colormap(PlotUtils.get_colorscheme(Symbol(cs_string)).colors)
+            return to_colormap(PlotUtils.get_colorscheme(Symbol(cs_string)))
         end
     else
         error(
             """
             There is no color gradient named $cs.
             See `Makie.available_gradients()` for the list of available gradients,
-            or look at http://makie.juliaplots.org/dev/generated/colors#Colormap-reference.
+            or look at http://docs.makie.org/dev/generated/colors#Colormap-reference.
             """
         )
     end
 end
 
-to_colormap(cg::PlotUtils.ContinuousColorGradient)::Vector{RGBAf} = to_colormap(cg.colors)
-
-function to_colormap(cg::PlotUtils.CategoricalColorGradient)::Vector{RGBAf}
-    colors = to_colormap(cg.colors)
-    return repeat(colors; inner=20)
+# Handle inbuilt PlotUtils types
+function to_colormap(cg::PlotUtils.ColorGradient)::Vector{RGBAf}
+    # We sample the colormap using cg[val]. This way, we get a concrete representation of
+    # the underlying gradient, like it being categorical or using a log scale.
+    # 256 is just a high enough constant, without being too big to slow things down.
+    return to_colormap(getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), 256)))
 end
 
 """
@@ -1089,28 +1141,44 @@ function convert_attribute(value::Union{Symbol, String}, k::key"algorithm")
     end, k)
 end
 
-const _marker_map = Dict(
-    :rect => '■',
-    :star5 => '★',
-    :diamond => '◆',
-    :hexagon => '⬢',
-    :cross => '✚',
-    :xcross => '❌',
-    :utriangle => '▲',
-    :dtriangle => '▼',
-    :ltriangle => '◀',
-    :rtriangle => '▶',
-    :pentagon => '⬟',
-    :octagon => '⯄',
-    :star4 => '✦',
-    :star6 => '🟋',
-    :star8 => '✷',
-    :vline => '┃',
-    :hline => '━',
-    :+ => '+',
-    :x => 'x',
-    :circle => '●'
-)
+const DEFAULT_MARKER_MAP = Dict{Symbol, BezierPath}()
+
+function default_marker_map()
+    # The bezier markers should not look out of place when used together with text
+    # where both markers and text are given the same size, i.e. the marker and textsizes
+    # should correspond approximately in a visual sense.
+
+    # All the basic bezier shapes are approximately built in a 1 by 1 square centered
+    # around the origin, with slight deviations to match them better to each other.
+
+    # An 'x' of DejaVu sans is only about 55pt high at 100pt font size, so if the marker
+    # shapes are just used as is, they look much too large in comparison.
+    # To me, a factor of 0.75 looks ok compared to both uppercase and lowercase letters of Dejavu.
+    if isempty(DEFAULT_MARKER_MAP)
+        size_factor = 0.75
+        DEFAULT_MARKER_MAP[:rect] = scale(BezierSquare, size_factor)
+        DEFAULT_MARKER_MAP[:diamond] = scale(rotate(BezierSquare, pi/4), size_factor)
+        DEFAULT_MARKER_MAP[:hexagon] = scale(bezier_ngon(6, 0.5, pi/2), size_factor)
+        DEFAULT_MARKER_MAP[:cross] = scale(BezierCross, size_factor)
+        DEFAULT_MARKER_MAP[:xcross] = scale(BezierX, size_factor)
+        DEFAULT_MARKER_MAP[:utriangle] = scale(BezierUTriangle, size_factor)
+        DEFAULT_MARKER_MAP[:dtriangle] = scale(BezierDTriangle, size_factor)
+        DEFAULT_MARKER_MAP[:ltriangle] = scale(BezierLTriangle, size_factor)
+        DEFAULT_MARKER_MAP[:rtriangle] = scale(BezierRTriangle, size_factor)
+        DEFAULT_MARKER_MAP[:pentagon] = scale(bezier_ngon(5, 0.5, pi/2), size_factor)
+        DEFAULT_MARKER_MAP[:octagon] = scale(bezier_ngon(8, 0.5, pi/2), size_factor)
+        DEFAULT_MARKER_MAP[:star4] = scale(bezier_star(4, 0.25, 0.6, pi/2), size_factor)
+        DEFAULT_MARKER_MAP[:star5] = scale(bezier_star(5, 0.28, 0.6, pi/2), size_factor)
+        DEFAULT_MARKER_MAP[:star6] = scale(bezier_star(6, 0.30, 0.6, pi/2), size_factor)
+        DEFAULT_MARKER_MAP[:star8] = scale(bezier_star(8, 0.33, 0.6, pi/2), size_factor)
+        DEFAULT_MARKER_MAP[:vline] = scale(scale(BezierSquare, (0.2, 1.0)), size_factor)
+        DEFAULT_MARKER_MAP[:hline] = scale(scale(BezierSquare, (1.0, 0.2)), size_factor)
+        DEFAULT_MARKER_MAP[:+] = scale(BezierCross, size_factor)
+        DEFAULT_MARKER_MAP[:x] = scale(BezierX, size_factor)
+        DEFAULT_MARKER_MAP[:circle] = scale(BezierCircle, size_factor)
+    end
+    return DEFAULT_MARKER_MAP
+end
 
 """
     available_marker_symbols()
@@ -1119,8 +1187,8 @@ Displays all available marker symbols.
 """
 function available_marker_symbols()
     println("Marker Symbols:")
-    for (k, v) in _marker_map
-        println("    ", k, " => ", v)
+    for (k, v) in default_marker_map()
+        println("    :", k)
     end
 end
 
@@ -1138,11 +1206,24 @@ Note, that this will draw markers always as 1 pixel.
 """
 struct FastPixel end
 
+"""
+Vector of anything that is accepted as a single marker will give each point it's own marker.
+Note that it needs to be a uniform vector with the same element type!
+"""
+to_spritemarker(marker::AbstractVector) = map(to_spritemarker, marker)
+to_spritemarker(marker::AbstractVector{Char}) = marker # Don't dispatch to the above!
 to_spritemarker(x::FastPixel) = x
 to_spritemarker(x::Circle) = x
-to_spritemarker(::Type{<: Circle}) = Circle(Point2f(0), 1f0)
-to_spritemarker(::Type{<: Rect}) = Rect(Vec2f(0), Vec2f(1))
+to_spritemarker(::Type{<: Circle}) = Circle
+to_spritemarker(::Type{<: Rect}) = Rect
 to_spritemarker(x::Rect) = x
+to_spritemarker(b::BezierPath) = b
+to_spritemarker(b::Polygon) = BezierPath(b)
+to_spritemarker(b) = error("Not a valid scatter marker: $(typeof(b))")
+
+function to_spritemarker(str::String)
+    error("Using strings for multiple char markers is deprecated. Use `collect(string)` or `['x', 'o', ...]` instead. Found: $(str)")
+end
 
 """
     to_spritemarker(b, marker::Char)
@@ -1165,29 +1246,16 @@ to_spritemarker(marker::AbstractMatrix{<: Colorant}) = marker
 A `Symbol` - Available options can be printed with `available_marker_symbols()`
 """
 function to_spritemarker(marker::Symbol)
-    if haskey(_marker_map, marker)
-        return to_spritemarker(_marker_map[marker])
+    if haskey(default_marker_map(), marker)
+        return to_spritemarker(default_marker_map()[marker])
     else
         @warn("Unsupported marker: $marker, using ● instead")
         return '●'
     end
 end
 
-to_spritemarker(marker::String) = marker
-to_spritemarker(marker::AbstractVector{Char}) = String(marker)
 
-"""
-Vector of anything that is accepted as a single marker will give each point it's own marker.
-Note that it needs to be a uniform vector with the same element type!
-"""
-function to_spritemarker(marker::AbstractVector)
-    marker = to_spritemarker.(marker)
-    if isa(marker, AbstractVector{Char})
-        String(marker)
-    else
-        marker
-    end
-end
+
 
 convert_attribute(value, ::key"marker", ::key"scatter") = to_spritemarker(value)
 convert_attribute(value, ::key"isovalue", ::key"volume") = Float32(value)

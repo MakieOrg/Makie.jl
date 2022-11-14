@@ -18,22 +18,38 @@ function default_theme(scene)
     )
 end
 
+
+
 function color_and_colormap!(plot, intensity = plot[:color])
     if isa(intensity[], AbstractArray{<: Number})
         haskey(plot, :colormap) || error("Plot $(typeof(plot)) needs to have a colormap to allow the attribute color to be an array of numbers")
 
         replace_automatic!(plot, :colorrange) do
-            lift(extrema_nan, intensity)
+            lift(distinct_extrema_nan, intensity)
+        end
+        replace_automatic!(plot, :highclip) do
+            lift(plot.colormap) do cmap
+                return to_colormap(cmap)[end]
+            end
+        end
+        replace_automatic!(plot, :lowclip) do
+            lift(plot.colormap) do cmap
+                return to_colormap(cmap)[1]
+            end
         end
         return true
     else
+        delete!(plot, :highclip)
+        delete!(plot, :lowclip)
         delete!(plot, :colorrange)
         return false
     end
 end
 
-function calculated_attributes!(::Type{<: Mesh}, plot)
-    need_cmap = color_and_colormap!(plot)
+function calculated_attributes!(T::Type{<: Mesh}, plot)
+    mesha = lift(GeometryBasics.attributes, plot.mesh)
+    color = haskey(mesha[], :color) ? lift(x-> x[:color], mesha) : plot.color
+    need_cmap = color_and_colormap!(plot, color)
     need_cmap || delete!(plot, :colormap)
     return
 end
@@ -65,7 +81,7 @@ function calculated_attributes!(::Type{<: Scatter}, plot)
 
     replace_automatic!(plot, :marker_offset) do
         # default to middle
-        lift(x-> to_2d_scale(x .* (-0.5f0)), plot[:markersize])
+        lift(x-> to_2d_scale(map(x-> x .* -0.5f0, x)), plot[:markersize])
     end
 
     replace_automatic!(plot, :markerspace) do
@@ -307,8 +323,8 @@ function convert_plot_arguments(P::PlotFunc, attributes::Attributes, args, conve
     # apply_conversion deals with that!
 
     FinalType, argsconverted = apply_convert!(PreType, attributes, converted)
-    converted_node = Observable{Any}(argsconverted)
-    input_nodes =  convert.(Observable{Any}, args)
+    converted_node = Observable(argsconverted)
+    input_nodes =  convert.(Observable, args)
     onany(kw_signal, input_nodes...) do kwargs, args...
         # do the argument conversion inside a lift
         result = convert_func(FinalType, args...; kwargs...)

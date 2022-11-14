@@ -1,4 +1,3 @@
-
 """
     wireframe(x, y, z)
     wireframe(positions)
@@ -9,13 +8,12 @@ Draws a wireframe, either interpreted as a surface or as a mesh.
 ## Attributes
 $(ATTRIBUTES)
 """
-@recipe(Wireframe) do scene
-    # default_theme(scene, LineSegments)
-    Attributes(;
-        default_theme(scene, LineSegments)...,
-        depth_shift = -1f-5,
-    )
-end
+wireframe
+
+"""
+See [`wireframe`](@ref).
+"""
+wireframe!
 
 is_plot_3d(::Type{<: Wireframe}) = true
 
@@ -46,8 +44,13 @@ function plot!(plot::Wireframe{Tuple{T}}) where T
     points = lift(plot[1]) do g
         # get the point representation of the geometry
         indices = decompose(LineFace{GLIndex}, g)
-        points = decompose(Point3f, g)
-        return connect(points, indices)
+        points = decompose(Point, g)
+        if isnothing(indices)
+            # Some primitives don't have line faces defined, so we just connect each line segment
+            return collect(reinterpret(eltype(points), connect(points, Line, 1)))
+        else
+            return connect(points, indices)
+        end
     end
     linesegments!(plot, Attributes(plot), points)
 end

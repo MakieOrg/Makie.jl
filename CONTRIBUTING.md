@@ -5,7 +5,7 @@
 Before filing an issue please
 - check that there are no similar existing issues already
 - check that your versions are up to date
-  - you can do this by forcing the latest version using `]add Makie@newest-version`, where `newest-version` can be found on the [releases page](https://github.com/JuliaPlots/Makie.jl/releases).
+  - you can do this by forcing the latest version using `]add Makie@newest-version`, where `newest-version` can be found on the [releases page](https://github.com/MakieOrg/Makie.jl/releases).
 
 If you want to report a bug, include your version and system information, as well as stack traces with all relevant information.
 If possible, condense your bug into the shortest example possible that the maintainers can replicate, a so called "minimal working example" or MWE.

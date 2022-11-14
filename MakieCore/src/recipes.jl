@@ -20,6 +20,7 @@ func2type(f::Function) = Combined{f}
 
 plotkey(::Type{<: AbstractPlot{Typ}}) where Typ = Symbol(lowercase(func2string(Typ)))
 plotkey(::T) where T <: AbstractPlot = plotkey(T)
+plotkey(::Nothing) = :scatter
 
 """
      default_plot_signatures(funcname, funcname!, PlotType)
@@ -95,7 +96,7 @@ We use an example to show how this works:
     # arguments (x, y, z) && theme are optional
     @recipe(MyPlot, x, y, z) do scene
         Attributes(
-            plot_color => :red
+            plot_color = :red
         )
     end
 
@@ -133,7 +134,7 @@ plots `MyPlot`:
 
     function default_theme(scene, ::MyPlot)
         Attributes(
-            plot_color => :red
+            plot_color = :red
         )
     end
 

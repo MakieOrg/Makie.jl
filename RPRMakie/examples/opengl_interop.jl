@@ -13,7 +13,7 @@ lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
 
 fig = Figure(; resolution=(1500, 1000))
 ax = LScene(fig[1, 1]; show_axis=false, scenekw=(lights=lights,))
-screen = RPRMakie.RPRScreen(size(ax.scene); plugin=RPR.Tahoe)
+screen = RPRMakie.Screen(size(ax.scene); plugin=RPR.Tahoe)
 material = RPR.UberMaterial(screen.matsys)
 
 surface!(ax, f.(u, v'), g.(u, v'), h.(u, v'); ambient=Vec3f(0.5), diffuse=Vec3f(1), specular=0.5,

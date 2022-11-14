@@ -99,7 +99,7 @@ function to_rpr_scene(context::RPR.Context, matsys, mscene::Makie.Scene)
     return scene
 end
 
-function replace_scene_rpr!(scene::Makie.Scene, screen=RPRScreen(scene); refresh=Observable(nothing))
+function replace_scene_rpr!(scene::Makie.Scene, screen=Screen(scene); refresh=Observable(nothing))
     context = screen.context
     matsys = screen.matsys
     screen.scene = scene
@@ -140,9 +140,19 @@ function replace_scene_rpr!(scene::Makie.Scene, screen=RPRScreen(scene); refresh
     return context, task, rpr_scene
 end
 
-struct RPRBackend <: Makie.AbstractBackend end
 
-mutable struct RPRScreen <: Makie.AbstractScreen
+"""
+    Screen(args...; screen_config...)
+
+# Arguments one can pass via `screen_config`:
+
+$(Base.doc(ScreenConfig))
+
+# Constructors:
+
+$(Base.doc(MakieScreen))
+"""
+mutable struct Screen <: Makie.MakieScreen
     context::RPR.Context
     matsys::RPR.MaterialSystem
     framebuffer1::RPR.FrameBuffer
@@ -155,26 +165,49 @@ mutable struct RPRScreen <: Makie.AbstractScreen
     cleared::Bool
 end
 
-function RPRScreen(scene::Scene; kw...)
-    fb_size = size(scene)
-    screen = RPRScreen(fb_size; kw...)
+Base.size(screen::Screen) = screen.fb_size
+
+function Base.show(io::IO, ::MIME"image/png", screen::Screen)
+    img = colorbuffer(screen)
+    FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img)
+end
+
+function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig)
+    context = RPR.Context(; resource=config.resource, plugin=config.plugin)
+    screen.context = context
+    screen.matsys = RPR.MaterialSystem(context, 0)
+    set_standard_tonemapping!(context)
+    set!(context, RPR.RPR_CONTEXT_MAX_RECURSION, UInt(config.max_recursion))
+    screen.iterations = config.iterations
+    return screen
+end
+
+function Screen(scene::Scene; screen_config...)
+    config = Makie.merge_screen_config(ScreenConfig, screen_config)
+    return Screen(scene, config)
+end
+
+function Screen(scene::Scene, config::ScreenConfig)
+    screen = Screen(size(scene), config)
     screen.scene = scene
     return screen
 end
 
-function RPRScreen(fb_size::NTuple{2,<:Integer};
-                   iterations=NUM_ITERATIONS[],
-                   resource=RENDER_RESOURCE[],
-                   plugin=RENDER_PLUGIN[], max_recursion=10)
-    context = RPR.Context(; resource=resource, plugin=plugin)
+Screen(scene::Scene, config::ScreenConfig, ::IO, ::MIME) = Screen(scene, config)
+Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat) = Screen(scene, config)
+
+function Screen(fb_size::NTuple{2,<:Integer}, config::ScreenConfig)
+    context = RPR.Context(; resource=config.resource, plugin=config.plugin)
     matsys = RPR.MaterialSystem(context, 0)
     set_standard_tonemapping!(context)
-    set!(context, RPR.RPR_CONTEXT_MAX_RECURSION, UInt(max_recursion))
+    set!(context, RPR.RPR_CONTEXT_MAX_RECURSION, UInt(config.max_recursion))
     framebuffer1 = RPR.FrameBuffer(context, RGBA, fb_size)
     framebuffer2 = RPR.FrameBuffer(context, RGBA, fb_size)
     set!(context, RPR.RPR_AOV_COLOR, framebuffer1)
-    return RPRScreen(context, matsys, framebuffer1, framebuffer2, fb_size, nothing, false, nothing,
-                     iterations, false)
+    return Screen(
+        context, matsys, framebuffer1, framebuffer2, fb_size,
+        nothing, false, nothing,
+        config.iterations, false)
 end
 
 function render(screen; clear=true, iterations=screen.iterations)
@@ -201,9 +234,9 @@ function render(screen; clear=true, iterations=screen.iterations)
     return framebuffer2
 end
 
-function Makie.colorbuffer(screen::RPRScreen)
+function Makie.colorbuffer(screen::Screen)
     if !screen.setup_scene
-        Makie.backend_display(screen, screen.scene)
+        display(screen, screen.scene)
     end
     data_1d = RPR.get_data(render(screen))
     r = reverse(reshape(data_1d, screen.fb_size), dims=2)
@@ -213,13 +246,7 @@ function Makie.colorbuffer(screen::RPRScreen)
     end
 end
 
-function Makie.backend_display(::RPRBackend, scene::Scene)
-    screen = RPRScreen(scene)
-    Makie.backend_display(screen, scene)
-    return screen
-end
-
-function Makie.backend_display(screen::RPRScreen, scene::Scene)
+function Base.display(screen::Screen, scene::Scene; display_kw...)
     screen.scene = scene
     rpr_scene = to_rpr_scene(screen.context, screen.matsys, scene)
     screen.rpr_scene = rpr_scene
@@ -232,7 +259,7 @@ function Makie.backend_display(screen::RPRScreen, scene::Scene)
     return screen
 end
 
-function Base.insert!(screen::RPRScreen, scene::Scene, plot::AbstractPlot)
+function Base.insert!(screen::Screen, scene::Scene, plot::AbstractPlot)
     context = screen.context
     matsys = screen.matsys
     rpr_scene = screen.rpr_scene
@@ -240,15 +267,4 @@ function Base.insert!(screen::RPRScreen, scene::Scene, plot::AbstractPlot)
     return screen
 end
 
-function Makie.backend_show(b::RPRBackend, io::IO, ::MIME"image/png", scene::Scene)
-    screen = Makie.backend_display(b, scene)
-    img = Makie.colorbuffer(screen)
-    FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img)
-    return screen
-end
-
-function Base.show(io::IO, ::MIME"image/png", screen::RPRScreen)
-    img = Makie.colorbuffer(screen)
-    FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img)
-    return screen
-end
+Makie.backend_showable(::Type{Screen}, ::Union{MIME"image/jpeg", MIME"image/png"}) = true

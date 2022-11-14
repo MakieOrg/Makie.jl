@@ -9,8 +9,8 @@
     
     scene = Scene()
     campixel!(scene)
-    p = text!(scene, str, position = Point2f(30, 37), align = (:left, :baseline))
-    glyph_collection = p.plots[1][1][]
+    p = text!(scene, Point2f(30, 37), text = str, align = (:left, :baseline))
+    glyph_collection = p.plots[1][1][][]
     
     # This doesn't work well because FreeTypeAbstraction doesn't quite scale 
     # linearly
@@ -41,15 +41,21 @@
     ])
 
     @test glyph_collection isa Makie.GlyphCollection
-    @test glyph_collection.glyphs == chars
+    @test glyph_collection.glyphs == FreeTypeAbstraction.glyph_index.(font, chars)
     @test glyph_collection.fonts == [font for _ in 1:4]
-    @test glyph_collection.origins == [Point3f(x, 0, 0) for x in origins]
-    @test glyph_collection.extents == unit_extents
+    @test all(isapprox.(glyph_collection.origins, [Point3f(x, 0, 0) for x in origins], atol = 1e-10))
     @test glyph_collection.scales.sv == [Vec2f(p.textsize[]) for _ in 1:4]
     @test glyph_collection.rotations.sv == [Quaternionf(0,0,0,1) for _ in 1:4]
     @test glyph_collection.colors.sv == [RGBAf(0,0,0,1) for _ in 1:4]
     @test glyph_collection.strokecolors.sv == [RGBAf(0,0,0,0) for _ in 1:4]
     @test glyph_collection.strokewidths.sv == Float32[0, 0, 0, 0]
+
+    makie_hi_bb = Makie.height_insensitive_boundingbox.(glyph_collection.extents)
+    makie_hi_bb_wa = Makie.height_insensitive_boundingbox_with_advance.(glyph_collection.extents)
+    fta_hi_bb = FreeTypeAbstraction.height_insensitive_boundingbox.(unit_extents, Ref(font))
+    fta_ha = FreeTypeAbstraction.hadvance.(unit_extents)
+    @test makie_hi_bb == fta_hi_bb
+    @test fta_ha == [bb.origin[1] + bb.widths[1] for bb in makie_hi_bb_wa]
 
     # Test quad data
     positions, char_offsets, quad_offsets, uvs, scales = Makie.text_quads(
@@ -81,4 +87,16 @@
     @test char_offsets == glyph_collection.origins
     @test quad_offsets == fta_quad_offsets
     @test scales  == fta_scales
+end
+
+
+@testset "old text syntax" begin
+    text("text", position = Point2f(0, 0))
+    text(["text"], position = [Point2f(0, 0)])
+    text(["text", "text"], position = [Point2f(0, 0), Point2f(1, 1)])
+    text(collect(zip(["text", "text"], [Point2f(0, 0), Point2f(1, 1)])))
+    text(L"text", position = Point2f(0, 0))
+    text([L"text"], position = [Point2f(0, 0)])
+    text([L"text", L"text"], position = [Point2f(0, 0), Point2f(1, 1)])
+    text(collect(zip([L"text", L"text"], [Point2f(0, 0), Point2f(1, 1)])))
 end

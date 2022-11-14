@@ -1,9 +1,9 @@
-# Minimal sanity checks for MakieLayout
-@testset "Layoutables constructors" begin
+# Minimal sanity checks for Makie Layout
+@testset "Blocks constructors" begin
     fig = Figure()
     ax = Axis(fig[1, 1])
     cb = Colorbar(fig[1, 2])
-    gl2 = fig[2, :] = MakieLayout.GridLayout()
+    gl2 = fig[2, :] = Makie.GridLayout()
     bu = gl2[1, 1] = Button(fig)
     sl = gl2[1, 2] = Slider(fig)
 
@@ -24,13 +24,33 @@ end
     sc = scatter!(ax, randn(100, 2))
     li = lines!(ax, randn(100, 2))
     hm = heatmap!(ax, randn(20, 20))
-    # axis contains 3 + 1 plots, one for the zoomrectangle
-    @test length(ax.scene.plots) == 4
-    delete!(ax, sc)
+    # axis contains 3 plots
     @test length(ax.scene.plots) == 3
+    delete!(ax, sc)
+    @test length(ax.scene.plots) == 2
     @test sc ∉ ax.scene.plots
     empty!(ax)
     @test isempty(ax.scene.plots)
+end
+
+@testset "zero heatmap" begin
+    xs = LinRange(0, 20, 10)
+    ys = LinRange(0, 15, 10)
+    zs = zeros(length(xs), length(ys))
+
+    fig = Figure()
+    _, hm = heatmap(fig[1, 1], xs, ys, zs)
+    cb = Colorbar(fig[1, 2], hm)
+
+    @test hm.attributes[:colorrange][] == (-.5, .5)
+    @test cb.limits[] == (-.5, .5)
+
+    hm.attributes[:colorrange][] = Float32.((-1, 1))
+    @test cb.limits[] == (-1, 1)
+
+    # TODO: This doesn't work anymore because colorbar doesn't use the same observable
+    # cb.limits[] = Float32.((-2, 2))
+    # @test hm.attributes[:colorrange][] == (-2, 2)
 end
 
 @testset "Axis limits basics" begin
@@ -52,10 +72,12 @@ end
     ax.xautolimitmargin = (0, 0)
     ax.yautolimitmargin = (0, 0)
     scatter!(Point2f[(0, 0), (1, 2)])
+    reset_limits!(ax)
     @test ax.limits[] == (nothing, nothing)
     @test ax.targetlimits[] == BBox(0, 1, 0, 2)
     @test ax.finallimits[] == BBox(0, 1, 0, 2)
     scatter!(Point2f(3, 4))
+    reset_limits!(ax)
     @test ax.limits[] == (nothing, nothing)
     @test ax.targetlimits[] == BBox(0, 3, 0, 4)
     @test ax.finallimits[] == BBox(0, 3, 0, 4)
@@ -64,6 +86,7 @@ end
     @test ax.targetlimits[] == BBox(-1, 1, 0, 2)
     @test ax.finallimits[] == BBox(-1, 1, 0, 2)
     scatter!(Point2f(5, 6))
+    reset_limits!(ax)
     @test ax.limits[] == ((-1, 1), (0, 2))
     @test ax.targetlimits[] == BBox(-1, 1, 0, 2)
     @test ax.finallimits[] == BBox(-1, 1, 0, 2)
@@ -71,21 +94,23 @@ end
     @test ax.limits[] == (nothing, nothing)
     @test ax.targetlimits[] == BBox(0, 5, 0, 6)
     @test ax.finallimits[] == BBox(0, 5, 0, 6)
-    xlims!(-10, 10)
-    @test ax.limits[] == ((-10, 10), nothing)
+    xlims!(ax, [-10, 10])
+    @test ax.limits[] == ([-10, 10], nothing)
     @test ax.targetlimits[] == BBox(-10, 10, 0, 6)
     @test ax.finallimits[] == BBox(-10, 10, 0, 6)
     scatter!(Point2f(11, 12))
-    @test ax.limits[] == ((-10, 10), nothing)
+    reset_limits!(ax)
+    @test ax.limits[] == ([-10, 10], nothing)
     @test ax.targetlimits[] == BBox(-10, 10, 0, 12)
     @test ax.finallimits[] == BBox(-10, 10, 0, 12)
     autolimits!(ax)
-    ylims!(ax, 5, 7)
-    @test ax.limits[] == (nothing, (5, 7))
+    ylims!(ax, [5, 7])
+    @test ax.limits[] == (nothing, [5, 7])
     @test ax.targetlimits[] == BBox(0, 11, 5, 7)
     @test ax.finallimits[] == BBox(0, 11, 5, 7)
     scatter!(Point2f(-5, -7))
-    @test ax.limits[] == (nothing, (5, 7))
+    reset_limits!(ax)
+    @test ax.limits[] == (nothing, [5, 7])
     @test ax.targetlimits[] == BBox(-5, 11, 5, 7)
     @test ax.finallimits[] == BBox(-5, 11, 5, 7)
 end
@@ -110,9 +135,9 @@ end
     automatic = Makie.automatic
     Automatic = Makie.Automatic
 
-    get_ticks = MakieLayout.get_ticks
-    get_tickvalues = MakieLayout.get_tickvalues
-    get_ticklabels = MakieLayout.get_ticklabels
+    get_ticks = Makie.get_ticks
+    get_tickvalues = Makie.get_tickvalues
+    get_ticklabels = Makie.get_ticklabels
 
     for func in [identity, log, log2, log10, Makie.logit]
         tup = ([1, 2, 3], ["a", "b", "c"])
@@ -135,4 +160,114 @@ end
     hmap = heatmap!(Axis(fig[1, 1]), rand(4, 4))
     cb1 = Colorbar(fig[1,2], hmap; height = Relative(0.65))
     @test cb1.height[] == Relative(0.65)
+    @testset "conversion" begin
+        # https://github.com/MakieOrg/Makie.jl/issues/2278
+        fig = Figure()
+        cbar = Colorbar(fig[1,1], colormap=:viridis, colorrange=Vec2f(0, 1))
+        ticklabel_strings = first.(cbar.axis.elements[:ticklabels][1][])
+        @test ticklabel_strings[1] == "0.0"
+        @test ticklabel_strings[end] == "1.0"
+    end
+end
+
+@testset "cycling" begin
+    fig = Figure()
+    ax = Axis(fig[1, 1], palette = (patchcolor = [:blue, :green],))
+    pl = density!(rand(10); color = Cycled(2))
+    @test pl.color[] == :green
+    pl = density!(rand(10); color = Cycled(1))
+    @test pl.color[] == :blue
+end
+
+@testset "briefly empty ticklabels" begin
+    # issue 2079, for some reason at Axis initialization briefly there would be a zero-element
+    # ticklabel/position array and this would be split into a Vector{Any} for the positions,
+    # triggering a conversion error
+    # So we just check that the same scenario doesn't error again
+    f = Figure()
+    ax = Axis(f[1,1], xticks = 20:10:80)
+    scatter!(ax, 30:10:100, rand(Float64, 8), color = :red)
+end
+
+# issues 1958 and 2006
+@testset "axislegend number align" begin
+    f = Figure()
+    ax = Axis(f[1,1], xticks = 20:10:80)
+    lines!(ax, 1:10, label = "A line")
+    leg = axislegend(ax, position = (0.4, 0.8))
+    @test leg.halign[] == 0.4
+    @test leg.valign[] == 0.8
+end
+
+# issue 2005
+@testset "invalid plotting function keyword arguments" begin
+    for T in [Axis, Axis3, LScene]
+        f = Figure()
+        kw = (; backgroundcolor = :red)
+        @test_throws ArgumentError lines(f[1, 1], 1:10, figure = kw)
+        @test_nowarn               lines(f[1, 2], 1:10, axis = kw)
+        @test_throws ArgumentError lines(f[1, 3][1, 1], 1:10, figure = kw)
+        @test_nowarn               lines(f[1, 4][1, 2], 1:10, axis = kw)
+        ax = T(f[1, 5])
+        @test_throws ArgumentError lines!(ax, 1:10, axis = kw)
+        @test_throws ArgumentError lines!(ax, 1:10, axis = kw)
+        @test_throws ArgumentError lines!(1:10, axis = kw)
+        @test_throws ArgumentError lines!(1:10, figure = kw)
+        @test_nowarn               lines!(1:10)
+        @test_throws ArgumentError lines!(f[1, 5], 1:10, figure = kw)
+        @test_throws ArgumentError lines!(f[1, 5], 1:10, axis = kw)
+        @test_nowarn               lines!(f[1, 5], 1:10)
+    end
+end
+
+@testset "Linked axes" begin
+    # this tests a bug in 0.17.4 where the first axis targetlimits
+    # don't change because the second axis has limits contained inside those
+    # of the first, so the axis linking didn't proliferate
+    f = Figure()
+    ax1 = Axis(f[1, 1], xautolimitmargin = (0, 0), yautolimitmargin = (0, 0))
+    ax2 = Axis(f[2, 1], xautolimitmargin = (0, 0), yautolimitmargin = (0, 0))
+    scatter!(ax1, 1:5, 2:6)
+    scatter!(ax2, 2:3, 3:4)
+    reset_limits!(ax1)
+    reset_limits!(ax2)
+    @test first.(extrema(ax1.finallimits[])) == (1, 5)
+    @test last.(extrema(ax1.finallimits[])) == (2, 6)
+    @test first.(extrema(ax2.finallimits[])) == (2, 3)
+    @test last.(extrema(ax2.finallimits[])) == (3, 4)
+    linkxaxes!(ax1, ax2)
+    @test first.(extrema(ax1.finallimits[])) == (1, 5)
+    @test last.(extrema(ax1.finallimits[])) == (2, 6)
+    @test first.(extrema(ax2.finallimits[])) == (1, 5)
+    @test last.(extrema(ax2.finallimits[])) == (3, 4)
+    linkyaxes!(ax1, ax2)
+    @test first.(extrema(ax1.finallimits[])) == (1, 5)
+    @test last.(extrema(ax1.finallimits[])) == (2, 6)
+    @test first.(extrema(ax2.finallimits[])) == (1, 5)
+    @test last.(extrema(ax2.finallimits[])) == (2, 6)
+end
+
+# issue 1718
+@testset "Linked axes of linked axes" begin
+    # check that if linking axis A and B, where B has already been linked to C, A and C are also linked
+    f = Figure()
+    ax1 = Axis(f[1, 1])
+    ax2 = Axis(f[1, 2])
+    ax3 = Axis(f[1, 3])
+
+    linkaxes!(ax2, ax3)
+    @test Set(ax1.xaxislinks) == Set([])
+    @test Set(ax2.xaxislinks) == Set([ax3])
+    @test Set(ax3.xaxislinks) == Set([ax2])
+    @test Set(ax1.yaxislinks) == Set([])
+    @test Set(ax2.yaxislinks) == Set([ax3])
+    @test Set(ax3.yaxislinks) == Set([ax2])
+
+    linkaxes!(ax1, ax2)
+    @test Set(ax1.xaxislinks) == Set([ax2, ax3])
+    @test Set(ax2.xaxislinks) == Set([ax1, ax3])
+    @test Set(ax3.xaxislinks) == Set([ax1, ax2])
+    @test Set(ax1.yaxislinks) == Set([ax2, ax3])
+    @test Set(ax2.yaxislinks) == Set([ax1, ax3])
+    @test Set(ax3.yaxislinks) == Set([ax1, ax2])
 end
