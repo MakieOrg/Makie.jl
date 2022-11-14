@@ -100,7 +100,7 @@ function convert_axis_dim(ticks::CategoricalTicks, values_obs::Observable)
     return values_num
 end
 
-function MakieLayout.get_ticks(ticks::CategoricalTicks, scale, formatter, vmin, vmax)
+function get_ticks(ticks::CategoricalTicks, scale, formatter, vmin, vmax)
     scale != identity && error("Scale $(scale) not supported for categorical ticks")
     # TODO, do we want to support leaving out ticks? Right now, every category will become a tick
     # Maybe another function like filter?

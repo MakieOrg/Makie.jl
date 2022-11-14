@@ -20,6 +20,11 @@ include("defaultattributes.jl")
 include("lineaxis.jl")
 include("interactions.jl")
 include("blocks/axis.jl")
+
+include("blocks/unitful-integration.jl")
+include("blocks/dates-integration.jl")
+include("blocks/categorical-integration.jl")
+
 include("blocks/axis3d.jl")
 include("blocks/colorbar.jl")
 include("blocks/label.jl")

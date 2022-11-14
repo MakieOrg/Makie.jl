@@ -320,8 +320,10 @@ function initialize_block!(ax::Axis; palette = nothing)
         ticksvisible = ax.xticksvisible, spinevisible = xspinevisible, spinecolor = xspinecolor, spinewidth = ax.spinewidth,
         ticklabelsize = ax.xticklabelsize, trimspine = ax.xtrimspine, ticksize = ax.xticksize,
         reversed = ax.xreversed, tickwidth = ax.xtickwidth, tickcolor = ax.xtickcolor,
-        minorticksvisible = ax.xminorticksvisible, minortickalign = ax.xminortickalign, minorticksize = ax.xminorticksize, minortickwidth = ax.xminortickwidth, minortickcolor = ax.xminortickcolor, minorticks = ax.xminorticks, scale = ax.xscale,
-        )
+        minorticksvisible = ax.xminorticksvisible, minortickalign = ax.xminortickalign, minorticksize = ax.xminorticksize,
+        minortickwidth = ax.xminortickwidth, minortickcolor = ax.xminortickcolor, minorticks = ax.xminorticks, scale = ax.xscale,
+        labelpostfix = ax.xlabelpostfix)
+
     ax.xaxis = xaxis
 
     yaxis = LineAxis(topscene, endpoints = yaxis_endpoints, limits = ylims,
@@ -331,10 +333,10 @@ function initialize_block!(ax::Axis; palette = nothing)
         label = ax.ylabel, labelfont = ax.ylabelfont, ticklabelfont = ax.yticklabelfont, ticklabelcolor = ax.yticklabelcolor, labelcolor = ax.ylabelcolor, tickalign = ax.ytickalign,
         ticklabelspace = ax.yticklabelspace, ticks = ax.yticks, tickformat = ax.ytickformat, ticklabelsvisible = ax.yticklabelsvisible,
         ticksvisible = ax.yticksvisible, spinevisible = yspinevisible, spinecolor = yspinecolor, spinewidth = ax.spinewidth,
-        trimspine = ax.ytrimspine, ticklabelsize = ax.yticklabelsize, ticksize = ax.yticksize, flip_vertical_label = ax.flip_ylabel, reversed = ax.yreversed, tickwidth = ax.ytickwidth,
-            tickcolor = ax.ytickcolor,
-        minorticksvisible = ax.yminorticksvisible, minortickalign = ax.yminortickalign, minorticksize = ax.yminorticksize, minortickwidth = ax.yminortickwidth, minortickcolor = ax.yminortickcolor, minorticks = ax.yminorticks, scale = ax.yscale,
-        )
+        trimspine = ax.ytrimspine, ticklabelsize = ax.yticklabelsize, ticksize = ax.yticksize, flip_vertical_label = ax.flip_ylabel, reversed = ax.yreversed,
+        tickwidth = ax.ytickwidth, tickcolor = ax.ytickcolor, minorticksvisible = ax.yminorticksvisible, minortickalign = ax.yminortickalign,
+        minorticksize = ax.yminorticksize, minortickwidth = ax.yminortickwidth, minortickcolor = ax.yminortickcolor, minorticks = ax.yminorticks, scale = ax.yscale,
+        labelpostfix = ax.ylabelpostfix)
 
     ax.yaxis = yaxis
 
@@ -768,10 +770,103 @@ function convert_axis_dim(::Automatic, values::Observable)
     end
 end
 
-convert_axis_dim(ticks, values) = values
+to_typed(x::Observable) = convert(Observable{typeof(x[])}, x) # should not create a new observable if already typed
 
-    _disallow_keyword(:axis, allattrs)
-    _disallow_keyword(:figure, allattrs)
+"""
+    apply_axis_attributes!(ax::Axis, plot)
+If plot has Axis attribute, applies them to the axis, as long as they're not already set by the user.
+This allows recipes to change axis defaults!
+"""
+function apply_axis_attributes!(ax::Axis, plot)
+    if haskey(plot, :Axis)
+        topscene = ax.scene
+        # TODO, we have to figure out which attributes are still set to the defaults,
+        # to be able to decide which we can set from the plot type...
+        default_attrs = default_attributes(Axis, topscene).attributes
+        theme_attrs = subtheme(topscene, :Axis)
+        attrs = merge!(copy(theme_attrs), default_attrs)
+        for (k, v) in plot.Axis
+            if !haskey(attrs, k)
+                error("$(k) is not an Axis attribute. Check recipe implementation for $(FinalType)")
+            end
+            default = to_value(attrs[k])
+            current = to_value(ax.attributes[k])
+            if default == current
+                setproperty!(ax, k, to_value(v))
+            end
+        end
+    end
+end
+
+
+# single arguments gets ignored for now
+# TODO: add similar overloads as convert_arguments for the most common ones that work with units
+axis_convert(P, ::Axis, x::Observable) = (x,)
+
+# we leave Z + n alone for now!
+function axis_convert(P, ax::Axis, x::Observable, y::Observable, z::Observable, args...)
+    return (axis_convert(P, ax, x, y)..., z, args...)
+end
+
+get_element_type(::T) where T = T
+function get_element_type(arr::AbstractArray{T}) where T
+    if T == Any
+        return mapreduce(typeof, promote_type, arr)
+    else
+        return T
+    end
+end
+
+ticks_from_type(::Type{<: Number}) = automatic
+ticks_from_type(any) = automatic
+
+ticks_from_args(ticks, values) = ticks
+
+function ticks_from_args(::Automatic, values)
+    return ticks_from_type(get_element_type(values))
+end
+
+function axis_convert(FinalType, ax::Axis, x::Observable, y::Observable)
+    xticks = ax.xticks[]
+    xticks_new = ticks_from_args(xticks, x[])
+    if xticks !== xticks_new
+        ax.xticks = xticks_new
+        connect!(ax, ax.xticks, xticks_new, 1)
+    end
+    if ax.xlabelpostfix[] isa Automatic
+        postfix = label_postfix(xticks_new)
+        ax.xlabelpostfix[] = to_value(postfix)
+        if postfix isa Observables.AbstractObservable
+            on(postfix) do postfix
+                ax.xlabelpostfix[] = postfix
+            end
+        end
+    end
+    xconv = convert_axis_dim(xticks_new, x)
+
+    yticks = ax.yticks[]
+    yticks_new = ticks_from_args(yticks, y[])
+    yticks !== yticks_new && (ax.yticks = yticks_new)
+    if yticks !== yticks_new
+        ax.yticks = yticks_new
+        connect!(ax, ax.yticks, yticks_new, 2)
+    end
+    if ax.ylabelpostfix[] isa Automatic
+        postfix = label_postfix(yticks_new)
+        ax.ylabelpostfix[] = to_value(postfix)
+        if postfix isa Observables.AbstractObservable
+            on(postfix) do postfix
+                ax.ylabelpostfix[] = postfix
+            end
+        end
+    end
+    yconv = convert_axis_dim(yticks_new, y)
+    tuple = map((x, y)-> try_convert_arguments(FinalType, x, y), xconv, yconv)
+    return Makie.seperate_tuple(tuple, typed=true)
+end
+
+function Makie.plot!(la::Axis, P::Makie.PlotFunc,
+    allattrs::Makie.Attributes, args...)
 
     cycle = get_cycle_for_plottype(allattrs, P)
     add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
@@ -790,7 +885,7 @@ convert_axis_dim(ticks, values) = values
     if is_open_or_any_parent(la.scene)
         reset_limits!(la)
     end
-    plot
+    plot_object
 end
 
 is_open_or_any_parent(s::Scene) = isopen(s) || is_open_or_any_parent(s.parent)

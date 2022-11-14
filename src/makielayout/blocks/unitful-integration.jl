@@ -1,5 +1,7 @@
 
-using Dates, Unitful, Observables
+using Dates, Observables
+import Unitful
+using Unitful: Quantity, @u_str
 
 const UNIT_POWER_OF_TENS = sort!(collect(keys(Unitful.prefixdict)))
 
@@ -75,7 +77,7 @@ function get_all_base10_units(value::Unitful.Unit)
     return [value]
 end
 
-function get_all_base10_units(x::Unitful.Unit{Sym, Unitful.𝐓}) where {Sym, Dim}
+function get_all_base10_units(x::Unitful.Unit{Sym, Unitful.𝐓}) where {Sym}
     return getfield.((Unitful,), TIME_UNIT_NAMES)
 end
 
@@ -193,17 +195,17 @@ function label_postfix(ticks::UnitfulTicks)
     end
 end
 
-function MakieLayout.get_ticks(ticks::UnitfulTicks, scale, formatter, vmin, vmax)
+function get_ticks(ticks::UnitfulTicks, scale, formatter, vmin, vmax)
     unit = ticks.unit[]
     unit isa Automatic && return [], []
 
     vmin_tu = convert_from_preferred_striped(unit, vmin)
     vmax_tu = convert_from_preferred_striped(unit, vmax)
     unit_str = unit_string(unit)
-    tick_vals = MakieLayout.get_tickvalues(ticks.tickformatter, scale, vmin_tu, vmax_tu)
+    tick_vals = get_tickvalues(ticks.tickformatter, scale, vmin_tu, vmax_tu)
     tick_vals_preferred = convert_to_preferred.((unit,), tick_vals)
 
-    labels = MakieLayout.get_ticklabels(formatter, tick_vals)
+    labels = get_ticklabels(formatter, tick_vals)
     if !ticks.units_in_label[]
         labels = labels .* unit_str
     end

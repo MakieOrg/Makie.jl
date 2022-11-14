@@ -9,10 +9,35 @@ Base.show(io::IO, ::MIME"text/plain", fap::FigureAxisPlot) = print(io, "FigureAx
 Base.iterate(fap::FigureAxisPlot, args...) = iterate((fap.figure, fap.axis, fap.plot), args...)
 Base.iterate(ap::AxisPlot, args...) = iterate((ap.axis, ap.plot), args...)
 
+
+# This is such a hack ...  We really need to clean up the conversion pipeline
+# But, we really want to convert arguments before we apply axis conversions, so that
+# convert_arguments can return units etc...
+# Now, we DON'T want to convert things to points though, since axis conversions
+# are applied to x and y values separately... This is why we need this beautiful function:
+function convert_arguments_no_points(P, args...; kw...)
+    if Makie.conversion_trait(P) isa Makie.PointBased && length(args) == 2 && all(x-> x isa AbstractVector, args)
+        return args
+    end
+    return try_convert_arguments(P, args...; kw...)
+end
+
+function try_convert_arguments(P, args...; kw...)
+    try
+        return Makie.convert_arguments(P, args...; kw...)
+    catch e
+        if e isa MethodError || e isa Makie.ConversionError
+            return args
+        else
+            rethrow(e)
+        end
+    end
+end
+
 function is_plot_3d(p::PlotFunc, args...)
     result = is_plot_3d(p)
     isnothing(result) || return result
-    converted = MakieLayout.try_convert_arguments(p, to_value.(args)...)
+    converted = try_convert_arguments(p, to_value.(args)...)
     if converted isa Tuple
         return is_plot_3d(converted...)
     else

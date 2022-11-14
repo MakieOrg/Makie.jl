@@ -458,6 +458,9 @@ end
         xscale = identity
         "The y axis scale"
         yscale = identity
+
+        xlabelpostfix::String = ""
+        ylabelpostfix::String = ""
     end
 end
 

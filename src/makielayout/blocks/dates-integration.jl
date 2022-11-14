@@ -12,7 +12,7 @@ number_to_date(::Type{DateTime}, i) = DateTime(Dates.UTM(round(Int64, i)))
 date_to_number(::Type{T}, value::Dates.AbstractTime) where T = Float64(Dates.value(value))
 
 # Allow to plot quantities into a Time unit axis
-function date_to_number(::Type{Time}, value::Unitful.Quantity) where T
+function date_to_number(::Type{Time}, value::Unitful.Quantity)
     isnan(value) && return NaN
     ns = Nanosecond(round(u"ns", value))
     return Float64(Dates.value(Time(ns)))
@@ -84,7 +84,7 @@ function convert_axis_dim(ticks::DateTimeTicks, values::Observable)
     end
 end
 
-function MakieLayout.get_ticks(ticks::DateTimeTicks, scale, formatter, vmin, vmax)
+function get_ticks(ticks::DateTimeTicks, scale, formatter, vmin, vmax)
     if !(formatter isa Automatic)
         error("You can't use a formatter with DateTime ticks")
     end
