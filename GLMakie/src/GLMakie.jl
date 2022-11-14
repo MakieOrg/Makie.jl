@@ -22,6 +22,7 @@ import Makie: RelocatableFolders
 using ShaderAbstractions
 using FreeTypeAbstraction
 using GeometryBasics: StaticVector
+using Observables
 
 using Base: RefValue
 import Base: push!, isopen, show

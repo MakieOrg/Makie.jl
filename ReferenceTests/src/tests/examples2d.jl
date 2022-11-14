@@ -555,12 +555,12 @@ end
     tt = tooltip!(ax, Point2f(0), text = "left", placement = :left)
     tt.backgroundcolor[] = :red
     tooltip!(
-        ax, 0, 0, "above with \nnewline\nand offset", 
+        ax, 0, 0, "above with \nnewline\nand offset",
         placement = :above, textpadding = (8, 5, 3, 2), align = 0.8
     )
     tooltip!(ax, Point2f(0), "below", placement = :below, outline_color = :red, outline_linestyle = :dot)
     tooltip!(
-        ax, 0, 0, text = "right", placement = :right, textsize = 30, 
+        ax, 0, 0, text = "right", placement = :right, textsize = 30,
         outline_linewidth = 5, offset = 30, triangle_size = 15,
         strokewidth = 2f0, strokecolor = :cyan
     )

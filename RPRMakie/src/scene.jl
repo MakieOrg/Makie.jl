@@ -172,18 +172,31 @@ function Base.show(io::IO, ::MIME"image/png", screen::Screen)
     FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img)
 end
 
+function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig)
+    context = RPR.Context(; resource=config.resource, plugin=config.plugin)
+    screen.context = context
+    screen.matsys = RPR.MaterialSystem(context, 0)
+    set_standard_tonemapping!(context)
+    set!(context, RPR.RPR_CONTEXT_MAX_RECURSION, UInt(config.max_recursion))
+    screen.iterations = config.iterations
+    return screen
+end
+
 function Screen(scene::Scene; screen_config...)
-    fb_size = size(scene)
-    screen = Screen(fb_size; screen_config...)
+    config = Makie.merge_screen_config(ScreenConfig, screen_config)
+    return Screen(scene, config)
+end
+
+function Screen(scene::Scene, config::ScreenConfig)
+    screen = Screen(size(scene), config)
     screen.scene = scene
     return screen
 end
 
-Screen(scene::Scene, ::IO, ::MIME; screen_config...) = Screen(scene; screen_config...)
-Screen(scene::Scene, ::Makie.ImageStorageFormat; screen_config...) = Screen(scene; screen_config...)
+Screen(scene::Scene, config::ScreenConfig, ::IO, ::MIME) = Screen(scene, config)
+Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat) = Screen(scene, config)
 
-function Screen(fb_size::NTuple{2,<:Integer}; screen_config...)
-    config = Makie.merge_screen_config(ScreenConfig, screen_config)
+function Screen(fb_size::NTuple{2,<:Integer}, config::ScreenConfig)
     context = RPR.Context(; resource=config.resource, plugin=config.plugin)
     matsys = RPR.MaterialSystem(context, 0)
     set_standard_tonemapping!(context)

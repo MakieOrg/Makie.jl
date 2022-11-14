@@ -1,22 +1,19 @@
 # File to run to snoop/trace all functions to compile
 using GeometryBasics
 
+@compile begin
+    atlas = Makie.get_texture_atlas()
+    Makie.insert_glyph!(atlas, '≈', to_font("default"))
+    Makie.marker_attributes(Observable(:circle), Observable(20), Observable(nothing), Observable(Vec2f(0)))
+    Makie.marker_attributes(Observable('c'), Observable(20), to_font("default"), Observable(Vec2f(0)))
+    Scene()
+end
+
 @compile poly(Recti(0, 0, 200, 200), strokewidth=20, strokecolor=:red, color=(:black, 0.4))
-
-@compile begin
-    f, ax, pl = poly([Rect(0, 0, 20, 20)])
-    scatter!(Rect(0, 0, 20, 20), color=:red, markersize=20)
-    f
-end
-
-@compile begin
-    scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
-end
 
 @compile scatter(0..1, rand(10), markersize=rand(10) .* 20)
 @compile scatter(LinRange(0, 1, 10), rand(10))
 @compile scatter(-1..1, x -> x^2)
-
 
 @compile begin
     f, ax, pl = lines(Rect(0, 0, 1, 1), linewidth=4)
@@ -29,106 +26,28 @@ end
 @compile lines(Circle(Point2f(0), Float32(1)))
 @compile lines(-1..1, x -> x^2)
 
+# @compile heatmap(rand(50, 50), colormap=(:RdBu, 0.2))
 
-@compile begin
-    angles = range(0, stop=2pi, length=20)
-    pos = Point2f.(sin.(angles), cos.(angles))
-    f, ax, pl = scatter(pos, markersize=0.2, markerspace=:data, rotations=-angles, marker='▲', axis=(;aspect = DataAspect()))
-    scatter!(pos, markersize=10, color=:red)
-    f
-end
-
-@compile heatmap(rand(50, 50), colormap=(:RdBu, 0.2))
-
-# @compile contour(rand(10, 100))
-# @compile contour(rand(100, 10))
 # @compile contour(randn(100, 90), levels=3)
-# @compile contour(randn(100, 90), levels=[0.1, 0.5, 0.8])
 # @compile contour(randn(33, 30), levels=[0.1, 0.5, 0.9], color=[:black, :green, (:blue, 0.4)], linewidth=2)
-# @compile contour(
-#     rand(33, 30) .* 6 .- 3, levels=[-2.5, 0.4, 0.5, 0.6, 2.5],
-#     colormap=[(:black, 0.2), :red, :blue, :green, (:black, 0.2)],
-#     colorrange=(0.2, 0.8)
-# )
-
-# @compile begin
-#     v(x::Point2{T}) where T = Point2{T}(x[2], 4 * x[1])
-#     streamplot(v, -2..2, -2..2, arrow_size=10)
-# end
 
 # @compile meshscatter(rand(10), rand(10), rand(10), color=rand(10))
-# @compile meshscatter(rand(10), rand(10), rand(10), color=rand(RGBAf, 10), transparency=true)
-
-function xy_data(x, y)
-    r = sqrt(x^2 + y^2)
-    r == 0.0 ? 1f0 : (sin(r) / r)
-end
+# @compile meshscatter(rand(Point3f, 10), color=rand(RGBAf, 10), transparency=true)
 
 # @compile begin
-#     NL = 15
-#     NR = 31
-
-#     lspace = range(-10, stop=10, length=NL)
-#     rspace = range(-10, stop=10, length=NR)
-
-#     z = Float32[xy_data(x, y) for x in lspace, y in rspace]
-#     l = range(0, stop=3, length=NL)
-#     r = range(0, stop=3, length=NR)
-#     surface(
-#         l, r, z,
-#         colormap=:Spectral
-#     )
+#     l = range(-10, stop=10, length=10)
+#     surface(l, l, rand(10, 10), colormap=:Spectral)
 # end
 
 # @compile begin
 #     NL = 30
 #     NR = 31
-
-#     lspace = range(-10, stop=10, length=NL)
-#     rspace = range(-10, stop=10, length=NR)
-
-#     z = Float32[xy_data(x, y) for x in lspace, y in rspace]
 #     l = range(0, stop=3, length=NL)
 #     r = range(0, stop=3, length=NR)
 #     surface(
-#         [l for l in l, r in r], [r for l in l, r in r], z,
+#         [l for l in l, r in r], [r for l in l, r in r], rand(NL, NR),
 #         colormap=:Spectral
 #     )
-# end
-
-# @compile begin
-#     data =
-#         hcat(LinRange(2, 3, 4), LinRange(2, 2.5, 4), LinRange(2.5, 3, 4), [1, NaN, NaN, 5])
-
-#     fig = Figure()
-#     heatmap(
-#         fig[1, 1],
-#         data,
-#         colorrange = (2, 3),
-#         highclip = :red,
-#         lowclip = :black,
-#         nan_color = (:green, 0.5),
-#     )
-#     surface(
-#         fig[1, 2],
-#         zeros(size(data)),
-#         color = data,
-#         colorrange = (2, 3),
-#         highclip = :red,
-#         lowclip = :black,
-#         nan_color = (:green, 0.5),
-#         shading = false,
-#     )
-#     surface!(
-#         Axis(fig[2, 2]),
-#         data,
-#         colorrange = (2, 3),
-#         highclip = :red,
-#         lowclip = :black,
-#         nan_color = (:green, 0.5),
-#         shading = false,
-#     )
-#     fig
 # end
 
 @compile begin

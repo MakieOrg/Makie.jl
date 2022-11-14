@@ -22,6 +22,8 @@ concurrency:
 jobs:
   test:
     name: GLMakie Julia ${{ matrix.version }}
+    env:
+      MODERNGL_DEBUGGING: "true" # turn on errors when running OpenGL tests
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false

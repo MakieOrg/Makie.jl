@@ -46,7 +46,8 @@ end
 
 function connect_camera!(gl_attributes, cam, space = gl_attributes[:space])
     for key in (:pixel_space, :resolution, :eyeposition)
-        get!(gl_attributes, key, copy(getfield(cam, key)))
+        # Overwrite these, user defined attributes shouldn't use those!
+        gl_attributes[key] = copy(getfield(cam, key))
     end
     get!(gl_attributes, :view) do
         return lift(cam.view, space) do view, space
@@ -85,7 +86,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             !in(k, (
                 :transformation, :tickranges, :ticklabels, :raw, :SSAO,
                 :lightposition, :material,
-                :inspector_label, :inspector_hover, :inspector_clear
+                :inspector_label, :inspector_hover, :inspector_clear, :inspectable
             ))
         end
 
@@ -105,6 +106,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         if !isnothing(ambientlight)
             gl_attributes[:ambient] = ambientlight.color
         end
+        gl_attributes[:track_updates] = screen.config.render_on_demand
 
         robj = robj_func(gl_attributes)
 
@@ -361,10 +363,7 @@ function draw_atomic(screen::Screen, scene::Scene, x, ::Text)
         end
         connect_camera!(gl_attributes, cam, markerspace)
 
-        # Avoid julia#15276
-        _robj = draw_scatter(screen, (DISTANCEFIELD, positions), gl_attributes)
-
-        return _robj
+        return draw_scatter(screen, (DISTANCEFIELD, positions), gl_attributes)
     end
 end
 

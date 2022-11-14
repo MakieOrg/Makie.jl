@@ -12,13 +12,10 @@ hasfocus(scene, native_window) = not_implemented_for(native_window)
 entered_window(scene, native_window) = not_implemented_for(native_window)
 
 function connect_screen(scene::Scene, screen)
-    while !isempty(scene.current_screens)
-        old_screen = pop!(scene.current_screens)
-        disconnect_screen(scene, old_screen)
-        old_screen !== screen && close(old_screen)
-    end
 
-    push_screen!(scene, screen)
+    on(screen.window_open) do open
+        events(scene).window_open[] = open
+    end
 
     window_area(scene, screen)
     window_open(scene, screen)
@@ -38,20 +35,21 @@ to_native(window::MakieScreen) = error("to_native(window) not implemented for $(
 disconnect!(window::MakieScreen, signal) = disconnect!(to_native(window), signal)
 
 function disconnect_screen(scene::Scene, screen)
-    delete_screen!(scene, screen)
     e = events(scene)
-
-    disconnect!(screen, window_area)
-    disconnect!(screen, window_open)
-    disconnect!(screen, mouse_buttons)
-    disconnect!(screen, mouse_position)
-    disconnect!(screen, scroll)
-    disconnect!(screen, keyboard_buttons)
-    disconnect!(screen, unicode_input)
-    disconnect!(screen, dropped_files)
-    disconnect!(screen, hasfocus)
-    disconnect!(screen, entered_window)
-
+    # the isopen check was never needed, since we didn't seem to disconnect from a closed screen.
+    # But due to a bug, it became clear that disconnecting events from a destroyed screen may segfault...
+    if isopen(screen)
+        disconnect!(screen, window_area)
+        disconnect!(screen, window_open)
+        disconnect!(screen, mouse_buttons)
+        disconnect!(screen, mouse_position)
+        disconnect!(screen, scroll)
+        disconnect!(screen, keyboard_buttons)
+        disconnect!(screen, unicode_input)
+        disconnect!(screen, dropped_files)
+        disconnect!(screen, hasfocus)
+        disconnect!(screen, entered_window)
+    end
     return
 end
 

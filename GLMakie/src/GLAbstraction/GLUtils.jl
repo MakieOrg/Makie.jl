@@ -101,11 +101,7 @@ macro gen_defaults!(dict, args)
 end
 export @gen_defaults!
 
-makesignal(s::Observable) = s
-makesignal(v) = Observable(v)
+makesignal(@nospecialize(v)) = convert(Observable, v)
 
 const_lift(f::Union{DataType, Type, Function}, inputs...) = lift(f, map(makesignal, inputs)...)
 export const_lift
-
-convert_texcoordinates(uv::AbstractVector{Vec2f}) = uv
-convert_texcoordinates(x::AbstractVector{<:Number}) = convert(Vector{Float32}, x)

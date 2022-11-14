@@ -22,7 +22,6 @@ using ReferenceTests
     @test !showable("blaaa", f)
 end
 
-
 excludes = Set([
     "Streamplot animation",
     "Transforming lines",
