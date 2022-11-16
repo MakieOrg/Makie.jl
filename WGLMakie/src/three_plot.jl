@@ -71,18 +71,18 @@ function three_display(session::Session, scene::Scene; screen_config...)
 
     window_open = scene.events.window_open
     width, height = size(scene)
-    canvas = DOM.um("canvas", tabindex="0")
+    canvas_width = lift(x -> [round.(Int, widths(x))...], pixelarea(scene))
+    canvas = DOM.um("canvas"; tabindex="0")
     wrapper = DOM.div(canvas)
     comm = Observable(Dict{String,Any}())
-    canvas_width = lift(x -> [round.(Int, widths(x))...], pixelarea(scene))
     done_init = Observable(false)
+    # Keep texture atlas in parent session, so we don't need to send it over and over again
+    ta = JSServe.Retain(TEXTURE_ATLAS)
     setup = js"""
     (wrapper)=>{
-        console.log("registering windows onloaaaad!");
         const canvas = $canvas;
-        console.log(canvas);
         $(WGL).then(WGL => {
-            WGL.create_scene($wrapper, canvas, $canvas_width, $scene_data, $comm, $width, $height, $(config.framerate), $(TEXTURE_ATLAS))
+            WGL.create_scene($wrapper, canvas, $canvas_width, $scene_data, $comm, $width, $height, $(config.framerate), $(ta))
         })
         $(done_init).notify(true)
     }

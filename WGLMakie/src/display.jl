@@ -1,7 +1,10 @@
 
 function JSServe.jsrender(session::Session, scene::Scene)
     three, canvas, on_init = three_display(session, scene)
-    Makie.push_screen!(scene, three)
+    c = Channel{ThreeDisplay}(1)
+    put!(c, three)
+    screen = Screen(c, true, scene)
+    Makie.push_screen!(scene, screen)
     return canvas
 end
 
@@ -82,6 +85,10 @@ function get_three(screen::Screen; timeout = 100)
     return nothing
 end
 
+function Makie.apply_screen_config!(screen::ThreeDisplay, config::ScreenConfig, args...)
+    #TODO implement
+    return screen
+end
 function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, args...)
     #TODO implement
     return screen
