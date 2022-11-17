@@ -128,7 +128,6 @@ function session2image(sessionlike)
     yield()
     s = JSServe.session(sessionlike)
     to_data = js"""function (){
-        $(WGL).current_renderloop()
         return document.querySelector('canvas').toDataURL()
     }()
     """
