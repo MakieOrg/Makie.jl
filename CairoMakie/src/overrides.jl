@@ -124,6 +124,8 @@ function polypath(ctx, polygon)
     end
 end
 
+draw_poly(scene::Scene, screen::Screen, poly, polygon::Polygon) = draw_poly(scene, screen, poly, [polygon])
+
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<:Polygon})
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
