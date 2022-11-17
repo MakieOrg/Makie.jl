@@ -59,15 +59,21 @@ function Makie.plot!(p::Waterfall)
         final_gap = p.final_gap[] === automatic ? p.dodge[] == automatic ? 0 : p.gap : p.final_gap
         barplot!(
             p,
-            fromto[].final;
-            dodge=p.dodge[],
+            lift(x -> x.final, fromto);
+            dodge=p.dodge,
             color=p.final_color,
             dodge_gap=p.final_dodge_gap,
             gap=final_gap,
         )
     end
 
-    barplot!(p, fromto[].xy; p.attributes..., fillto=fromto[].fillto, stack=automatic)
+    barplot!(
+        p,
+        lift(x -> x.xy, fromto);
+        p.attributes...,
+        fillto=lift(x -> x.fillto, fromto),
+        stack=automatic,
+    )
 
     if p.show_direction[]
         function direction_markers(
@@ -108,7 +114,11 @@ function Makie.plot!(p::Waterfall)
             p.dodge_gap,
         )
 
-        scatter!(p, markers[].xy; marker=markers[].shapes, color=p.direction_color)
+        scatter!(
+            p,
+            lift(x -> x.xy, markers);
+            marker=lift(x -> x.shapes, markers),
+            color=p.direction_color)
     end
 
     return p
