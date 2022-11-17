@@ -12,7 +12,8 @@ end
 
 function Base.size(screen::ThreeDisplay)
     # look at d.qs().clientWidth for displayed width
-    width, height = round.(Int, WGLMakie.JSServe.evaljs_value(screen.session, WGLMakie.JSServe.js"[document.querySelector('canvas').width, document.querySelector('canvas').height]"; time_out=100))
+    js = js"[document.querySelector('canvas').width, document.querySelector('canvas').height]"
+    width, height = round.(Int, JSServe.evaljs_value(screen.session, js; time_out=100))
     return (width, height)
 end
 
@@ -22,7 +23,7 @@ js_uuid(object) = string(objectid(object))
 function Base.insert!(td::ThreeDisplay, scene::Scene, plot::Combined)
     plot_data = serialize_plots(scene, [plot])
     JSServe.evaljs_value(td.session, js"""
-        $(WGL).insert_plot($(js_uuid(scene)), $plot_data)
+        WGLMakie.insert_plot($(js_uuid(scene)), $plot_data))
     """)
     return
 end
@@ -60,7 +61,7 @@ end
 
 function JSServe.print_js_code(io::IO, plot::AbstractPlot, context)
     uuids = js_uuid.(Makie.flatten_plots(plot))
-    JSServe.print_js_code(io, js"$(WGL).find_plots($(uuids))", context)
+    JSServe.print_js_code(io, js"WGLMakie.find_plots($(uuids))", context)
 end
 
 function three_display(session::Session, scene::Scene; screen_config...)
@@ -82,6 +83,8 @@ function three_display(session::Session, scene::Scene; screen_config...)
     (wrapper)=>{
         const canvas = $canvas;
         $(WGL).then(WGL => {
+            // well.... not nice, but can't deal with the `Promise` in all the other functions
+            window.WGLMakie = WGL
             WGL.create_scene($wrapper, canvas, $canvas_width, $scene_data, $comm, $width, $height, $(config.framerate), $(ta))
         })
         $(done_init).notify(true)
