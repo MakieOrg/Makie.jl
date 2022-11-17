@@ -3,6 +3,9 @@
 ## master
 
 - Add `render_on_demand` flag for `GLMakie.Screen`. Setting this to `true` will skip rendering until plots get updated. This is the new default [#2336](https://github.com/MakieOrg/Makie.jl/pull/2336), [#2397](https://github.com/MakieOrg/Makie.jl/pull/2397).
+- Clean up OpenGL state handling in GLMakie [#2397](https://github.com/MakieOrg/Makie.jl/pull/2397).
+- Fix salting [#2407](https://github.com/MakieOrg/Makie.jl/pull/2407).
+- Fixes for [GtkMakie](https://github.com/jwahlstrand/GtkMakie.jl) [#2418](https://github.com/MakieOrg/Makie.jl/pull/2418).
 
 ## v0.18.2
 
