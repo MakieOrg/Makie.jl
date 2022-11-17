@@ -74,7 +74,7 @@ end
 function get_three(screen::Screen; timeout = 100)
     tstart = time()
     while true
-        sleep(0.001)
+        yield()
         if time() - tstart > timeout
             return nothing # we waited LONG ENOUGH!!
         end
@@ -102,6 +102,7 @@ Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat) = Screen(
 
 function Base.empty!(screen::Screen)
     screen.scene = nothing
+    screen.display = false
     # TODO, empty state in JS, to be able to reuse screen
 end
 

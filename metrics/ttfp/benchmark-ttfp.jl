@@ -21,6 +21,8 @@ end
 
 if Package == :WGLMakie
     using ElectronDisplay
+    using WGLMakie.JSServe
+    JSServe.configure_server!(listen_port=rand(8000:9000))
     ElectronDisplay.CONFIG.showable = showable
     ElectronDisplay.CONFIG.single_window = true
     ElectronDisplay.CONFIG.focus = false
@@ -41,6 +43,7 @@ old = isfile(result) ? JSON.parse(read(result, String)) : [[], [], [], [], []]
 push!.(old[1:3], [t_using, create_time, display_time])
 
 b1 = @benchmark fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
+
 b2 = @benchmark get_colorbuffer(fig)
 
 using Statistics
