@@ -84,6 +84,6 @@ for name in names(Makie, all=true)
     end
 end
 
-# include("precompiles.jl")
+include("precompiles.jl")
 
 end # module
