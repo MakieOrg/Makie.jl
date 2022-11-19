@@ -71,8 +71,10 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
             else
                 uniforms[:uniform_color] = Sampler(color_signal) # Texture
                 uniforms[:color] = false
-                !haskey(attributes, :uv) &&
-                    @warn "Mesh doesn't use Texturecoordinates, but has a Texture. Colors won't map"
+                # add texture coordinates
+                uv = Buffer(lift(decompose_uv, mesh_signal))
+                delete!(uniforms, :uv)
+                attributes[:uv] = uv
             end
             if eltype(color_signal[]) <: Number
                 uniforms[:colorrange] = converted_attribute(plot, :colorrange)
