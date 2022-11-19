@@ -43,7 +43,7 @@ function limits_to_uvmesh(plot)
     px, py, pz = plot[1], plot[2], plot[3]
     px = map((x, z)-> xy_convert(x, size(z, 1)), px, pz)
     py = map((y, z)-> xy_convert(y, size(z, 2)), py, pz)
-    # Special path for ranges of length 2 wich
+    # Special path for ranges of length 2 which
     # can be displayed as a rectangle
     t = Makie.transform_func_obs(plot)[]
     if px[] isa StepRangeLen && py[] isa StepRangeLen && Makie.is_identity_transform(t)
