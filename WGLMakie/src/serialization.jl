@@ -103,15 +103,17 @@ three_type(::Type{Float16}) = "FloatType"
 three_type(::Type{Float32}) = "FloatType"
 three_type(::Type{N0f8}) = "UnsignedByteType"
 
-function three_filter(sym)
-    sym == :linear && return "LinearFilter"
-    return sym == :nearest && return "NearestFilter"
+function three_filter(sym::Symbol)
+    sym === :linear && return "LinearFilter"
+    sym === :nearest && return "NearestFilter"
+    error("Unknown filter mode '$sym'")
 end
 
 function three_repeat(s::Symbol)
-    s == :clamp_to_edge && return "ClampToEdgeWrapping"
-    s == :mirrored_repeat && return "MirroredRepeatWrapping"
-    return s == :repeat && return "RepeatWrapping"
+    s === :clamp_to_edge && return "ClampToEdgeWrapping"
+    s === :mirrored_repeat && return "MirroredRepeatWrapping"
+    s === :repeat && return "RepeatWrapping"
+    error("Unknown repeat mode '$s'")
 end
 
 """
