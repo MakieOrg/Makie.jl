@@ -71,6 +71,10 @@ function serialize_three(array::AbstractArray{Float64})
     return Dict(:type => "Float64Array", :data => array)
 end
 
+function serialize_three(p::Makie.AbstractPattern)
+    return serialize_three(Makie.to_image(p))
+end
+
 function serialize_three(color::Sampler{T,N}) where {T,N}
     tex = Dict(:type => "Sampler", :data => serialize_three(color.data),
                :size => [size(color.data)...], :three_format => three_format(T),
