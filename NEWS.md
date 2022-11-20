@@ -2,6 +2,7 @@
 
 ## master
 
+- Add support for `AbstractPattern` in `WGLMakie`.
 - Add `render_on_demand` flag for `GLMakie.Screen`. Setting this to `true` will skip rendering until plots get updated. This is the new default [#2336](https://github.com/MakieOrg/Makie.jl/pull/2336), [#2397](https://github.com/MakieOrg/Makie.jl/pull/2397).
 
 ## v0.18.2
