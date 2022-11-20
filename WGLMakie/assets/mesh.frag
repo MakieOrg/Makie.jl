@@ -35,7 +35,9 @@ vec4 get_color(bool color, vec2 uv, bool colorrange, bool colormap){
 }
 
 vec4 get_color(sampler2D color, vec2 uv, bool colorrange, bool colormap){
-    return texture(color, uv);
+    vec2 size = vec2(textureSize(color, 0));
+    vec2 pos = gl_FragCoord.xy;
+    return texelFetch(color, ivec2(mod(pos.x, size.x), mod(pos.y, size.y)), 0);
 }
 
 float _normalize(float val, float from, float to){return (val-from) / (to - from);}
