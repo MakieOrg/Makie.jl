@@ -99,7 +99,7 @@ function fit_qqplot(x, y; qqline = :none)
         itc, slp = hcat(fill!(similar(h.qx), 1), h.qx) \ h.qy
         ys = @. slp * xs + itc
     else # if qqline == :fitrobust
-        quantx, quanty = quantile(x, [0.25, 0.75]), quantile(y, [0.25, 0.75])
+        quantx, quanty = quantile.(Ref(x), [0.25, 0.75]), quantile.(Ref(y), [0.25, 0.75])
         slp = (quanty[2] - quanty[1]) / (quantx[2] - quantx[1])
         ys = @. quanty + slp * (xs - quantx)
     end
