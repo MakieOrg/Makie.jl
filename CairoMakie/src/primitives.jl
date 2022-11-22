@@ -437,7 +437,7 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
 
     glyph_pos = let
         transform_func = scene.transformation.transform_func[]
-        p = Makie.apply_transform(transform_func, position)
+        p = Makie.apply_transform(transform_func, position, space)
 
         Makie.clip_to_space(scene.camera, markerspace) *
         Makie.space_to_clip(scene.camera, space) *
@@ -797,7 +797,7 @@ function draw_mesh3D(
     # and have `func` be fully typed inside closure
     vs = broadcast(meshpoints, (func,)) do v, f
         # Should v get a nan2zero?
-        v = Makie.apply_transform(f, v)
+        v = Makie.apply_transform(f, v, space)
         p4d = to_ndim(Vec4f, scale .* to_ndim(Vec3f, v, 0f0), 1f0)
         view * (model * p4d .+ to_ndim(Vec4f, pos, 0f0))
     end

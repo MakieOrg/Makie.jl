@@ -55,10 +55,10 @@ function limits_to_uvmesh(plot)
         positions = Buffer(lift(rect-> decompose(Point2f, rect), rect))
         faces = Buffer(lift(rect -> decompose(GLTriangleFace, rect), rect))
         uv = Buffer(lift(decompose_uv, rect))
-    else
-        grid(x, y, trans) = Makie.matrix_grid(p-> apply_transform(trans, p), x, y, zeros(length(x), length(y)))
+    else 
+        grid(x, y, trans, space) = Makie.matrix_grid(p-> apply_transform(trans, p, space), x, y, zeros(length(x), length(y)))
         rect = lift((x, y) -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), (length(x), length(y))), px, py)
-        positions = Buffer(lift(grid, px, py, t))
+        positions = Buffer(lift(grid, px, py, t, get(plot, :space, :data)))
         faces = Buffer(lift(r -> decompose(GLTriangleFace, r), rect))
         uv = Buffer(lift(decompose_uv, rect))
     end
@@ -79,8 +79,8 @@ end
 function create_shader(mscene::Scene, plot::Surface)
     # TODO OWN OPTIMIZED SHADER ... Or at least optimize this a bit more ...
     px, py, pz = plot[1], plot[2], plot[3]
-    grid(x, y, z, trans) = Makie.matrix_grid(p-> apply_transform(trans, p), x, y, z)
-    positions = Buffer(lift(grid, px, py, pz, transform_func_obs(plot)))
+    grid(x, y, z, trans, space) = Makie.matrix_grid(p-> apply_transform(trans, p, space), x, y, z)
+    positions = Buffer(lift(grid, px, py, pz, transform_func_obs(plot), get(plot, :space, :data)))
     rect = lift(z -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), size(z)), pz)
     faces = Buffer(lift(r -> decompose(GLTriangleFace, r), rect))
     uv = Buffer(lift(decompose_uv, rect))
