@@ -445,29 +445,8 @@ function process_rt_node!(stack, lines, rt::RichText, fonts)
     _type(r::RichText) = r.type
 
     push!(stack, new_glyphstate(stack[end], rt, Val(rt.type), fonts))
-    sup_x = 0f0
     for (i, c) in enumerate(rt.children)
-        if _type(c) == :sup
-            sup_x = stack[end].x
-        end
-        # This special implementation allows to stack super and subscripts.
-        # In the naive implementation, x can only grow with each character,
-        # however, to stack super and subscript, we need to track back to the
-        # previous x value and afterwards continue with the maximum of super
-        # and subscript.
-        if i > 1 && _type(c) === :sub && _type(rt.children[i-1]) == :sup
-            gs = stack[end]
-            sup_x_end = gs.x
-            gs_modified = Setfield.@set gs.x = sup_x
-            stack[end] = gs_modified
-            process_rt_node!(stack, lines, c, fonts)
-            gs = stack[end]
-            max_x = max(sup_x_end, gs.x)
-            gs_max_x = Setfield.@set gs.x = max_x
-            stack[end] = gs_max_x
-        else
-            process_rt_node!(stack, lines, c, fonts)
-        end
+        process_rt_node!(stack, lines, c, fonts)
     end
     gs = pop!(stack)
     gs_top = stack[end]
