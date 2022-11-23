@@ -19,7 +19,7 @@ const TEXTURE_RESOLUTION = Ref((2048, 2048))
 const PIXELSIZE_IN_ATLAS = Ref(HIGH_PIXELSIZE)
 # Small padding results in artifacts during downsampling. It seems like roughly
 # 1.5px padding is required for a scaled glyph to be displayed without artifacts.
-# E.g. for textsize = 8px we need 1.5/8 * 64 = 12px+ padding (in each direction)
+# E.g. for fontsize = 8px we need 1.5/8 * 64 = 12px+ padding (in each direction)
 # for things to look clear with a 64px glyph size.
 const GLYPH_PADDING = Ref(12)
 

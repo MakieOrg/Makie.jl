@@ -7,11 +7,11 @@ function plot!(plot::Text)
     linecolors = Observable(RGBAf[])
     lineindices = Ref(Int[])
     
-    onany(plot.text, plot.textsize, plot.font, plot.align,
+    onany(plot.text, plot.fontsize, plot.font, plot.align,
             plot.rotation, plot.justification, plot.lineheight, plot.color, 
             plot.strokecolor, plot.strokewidth, plot.word_wrap_width) do str,
                 ts, f, al, rot, jus, lh, col, scol, swi, www
-        ts = to_textsize(ts)
+        ts = to_fontsize(ts)
         f = to_font(f)
         rot = to_rotation(rot)
         col = to_color(col)

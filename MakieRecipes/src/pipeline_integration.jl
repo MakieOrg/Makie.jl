@@ -310,7 +310,7 @@ function plot_series_annotations!(plt, args, pt, plotattributes)
 
     @debug("Series annotations say hi")
 
-    annotations!(plt, strs, positions; textsize = fontsize/30, align = (:center, :center), color = get(plotattributes, :textcolor, :black))
+    annotations!(plt, strs, positions; fontsize = fontsize/30, align = (:center, :center), color = get(plotattributes, :textcolor, :black))
 
 end
 
@@ -326,7 +326,7 @@ function plot_annotations!(plt, args, pt, plotattributes)
 
     @debug("Annotations say hi")
 
-    annotations!(plt, strs, positions; textsize = fontsizes ./ 80, align = (:center, :center), color = get(plotattributes, :textcolor, :black))
+    annotations!(plt, strs, positions; fontsize = fontsizes ./ 80, align = (:center, :center), color = get(plotattributes, :textcolor, :black))
 
 end
 

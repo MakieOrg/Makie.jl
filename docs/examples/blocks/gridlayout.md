@@ -214,11 +214,11 @@ for i in 1:3
     Axis(f[end+1, :])
 end
 
-Label(f[0, :], text = "Super Title", textsize = 50)
-Label(f[end+1, :], text = "Sub Title", textsize = 50)
-Label(f[1:end-1, 0], text = "Left Text", textsize = 50,
+Label(f[0, :], text = "Super Title", fontsize = 50)
+Label(f[end+1, :], text = "Sub Title", fontsize = 50)
+Label(f[1:end-1, 0], text = "Left Text", fontsize = 50,
     rotation = pi/2)
-Label(f[1:end-1, end+1], text = "Right Text", textsize = 50,
+Label(f[1:end-1, end+1], text = "Right Text", fontsize = 50,
     rotation = -pi/2)
 
 f
@@ -239,9 +239,9 @@ for i in 1:3, j in 1:3
     Axis(f[i, j])
 end
 
-Label(f[0, :], text = "First Supertitle", textsize = 20)
-Label(f[-1, :], text = "Second Supertitle", textsize = 30)
-Label(f[-2, :], text = "Third Supertitle", textsize = 40)
+Label(f[0, :], text = "First Supertitle", fontsize = 20)
+Label(f[-1, :], text = "Second Supertitle", fontsize = 30)
+Label(f[-2, :], text = "Third Supertitle", fontsize = 40)
 
 f
 ```

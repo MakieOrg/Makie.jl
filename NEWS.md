@@ -2,6 +2,9 @@
 
 ## master
 
+- **Breaking** The attribute `textsize` has been removed everywhere in favor of the attribute `fontsize` which had also been in use.
+  To migrate, search and replace all uses of `textsize` to `fontsize`.
+
 ## v0.18.3
 
 - Add `render_on_demand` flag for `GLMakie.Screen`. Setting this to `true` will skip rendering until plots get updated. This is the new default [#2336](https://github.com/MakieOrg/Makie.jl/pull/2336), [#2397](https://github.com/MakieOrg/Makie.jl/pull/2397).

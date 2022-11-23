@@ -46,7 +46,7 @@ function TextBuffer(
         scene::SceneLike, ::Type{Point{N}} = Point{2};
         rotation = [Quaternionf(0,0,0,1)],
         color = RGBAf[RGBAf(0,0,0,0)],
-        textsize = Float32[0],
+        fontsize = Float32[0],
         font = [defaultfont()],
         align = [Vec2f(0)],
         kw_args...
@@ -55,7 +55,7 @@ function TextBuffer(
         scene, String[" "], [Point{N, Float32}(0)];
         rotation = rotation,
         color = color,
-        textsize = textsize,
+        fontsize = fontsize,
         font = font,
         align = align,
         kw_args...
@@ -63,7 +63,7 @@ function TextBuffer(
 end
 
 function start!(tb::Annotations)
-    for key in (1, :color, :rotation, :textsize, :font, :align)
+    for key in (1, :color, :rotation, :fontsize, :font, :align)
         empty!(tb[key][])
     end
     return
@@ -74,7 +74,7 @@ function finish!(tb::Annotations)
     # now update all callbacks
     # TODO this is a bit shaky, buuuuhut, in theory the whole lift(color, ...)
     # in basic_recipes annotations should depend on all signals here, so updating one should be enough
-    if length(tb[1][]) != length(tb.textsize[])
+    if length(tb[1][]) != length(tb.fontsize[])
         error("Inconsistent buffer state for $(tb[1][])")
     end
     notify(tb[1])
@@ -95,7 +95,7 @@ end
 function append!(tb::Annotations, text_positions::Vector{Tuple{String, Point{N, Float32}}}; kw_args...) where N
     append!(tb[1][], text_positions)
     kw = Dict(kw_args)
-    for key in (:color, :rotation, :textsize, :font, :align)
+    for key in (:color, :rotation, :fontsize, :font, :align)
         val = get(kw, key) do
             isempty(tb[key][]) && error("please provide default for $key")
             return last(tb[key][])
