@@ -40,7 +40,7 @@ Compute a GlyphCollection for a `string` given fontsize, font, align, rotation, 
 """
 function layout_text(
         string::AbstractString, fontsize::Union{AbstractVector, Number},
-        font, align, rotation, justification, lineheight, color, 
+        font, fonts, align, rotation, justification, lineheight, color, 
         strokecolor, strokewidth, word_wrap_width
     )
 

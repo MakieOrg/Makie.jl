@@ -587,7 +587,7 @@ function get_ticks(l::LogTicks, scale::Union{typeof(log10), typeof(log2), typeof
         xs -> Showoff.showoff(xs, :plain),
         ticks_scaled
     )
-    labels = _logbase(scale) .* Makie.UnicodeFun.to_superscript.(labels_scaled)
+    labels = rich.(_logbase(scale), superscript.(labels_scaled, offset = Vec2f(0.1f0, 0f0)))
 
     (ticks, labels)
 end
@@ -650,7 +650,7 @@ end
 """
     get_ticklabels(::Automatic, values)
 
-Gets tick labels by applying `Showoff.showoff` to `values`.
+Gets tick labels by applying `showoff` to `values`.
 """
 get_ticklabels(::Automatic, values) = Showoff.showoff(values)
 
@@ -676,7 +676,6 @@ function get_ticks(m::MultiplesTicks, any_scale, ::Automatic, vmin, vmax)
 
     multiples .* m.multiple, Showoff.showoff(multiples) .* m.suffix
 end
-
 
 function get_minor_tickvalues(i::IntervalsBetween, scale, tickvalues, vmin, vmax)
     vals = Float64[]

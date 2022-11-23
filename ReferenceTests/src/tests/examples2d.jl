@@ -761,3 +761,18 @@ end
     ax.yticks = ([3, 6, 9], [L"x" , L"y" , L"z"])
     f
 end
+
+@reference_test "Rich text" begin
+    f = Figure(fontsize = 30, resolution = (800, 600))
+    ax = Axis(f[1, 1],
+        limits = (1, 100, 0.001, 1),
+        xscale = log10,
+        yscale = log2,
+        title = rich("A ", rich("title", color = :red, font = :bold_italic)),
+        xlabel = rich("X", subscript("label", fontsize = 25)),
+        ylabel = rich("Y", superscript("label")),
+    )
+    Label(f[1, 2], rich("Hi", rich("Hi", offset = (0.2, 0.2), color = :blue)), tellheight = false)
+    Label(f[1, 3], rich("X", superscript("super"), subscript("sub")), tellheight = false)
+    f
+end

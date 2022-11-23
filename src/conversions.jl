@@ -920,7 +920,7 @@ const FONT_CACHE = Dict{String, NativeFont}()
 
 a string naming a font, e.g. helvetica
 """
-function to_font(x::Union{Symbol, String})
+function to_font(x::String)
     str = string(x)
     get!(FONT_CACHE, str) do
         str == "default" && return to_font("TeX Gyre Heros Makie")
@@ -951,6 +951,20 @@ end
 to_font(x::Vector{String}) = to_font.(x)
 to_font(x::NativeFont) = x
 to_font(x::Vector{NativeFont}) = x
+
+function to_font(fonts::Attributes, s::Symbol)
+    if haskey(fonts, s)
+        f = fonts[s][]
+        if f isa Symbol
+            error("The value for font $(repr(s)) was Symbol $(repr(f)), which is not allowed. The value for a font in the fonts collection cannot be another Symbol and must be resolvable via `to_font(x)`.")
+        end
+        return to_font(fonts[s][])
+    end
+    error("The symbol $(repr(s)) is not present in the fonts collection:\n$fonts.")
+end
+
+to_font(fonts::Attributes, x) = to_font(x)
+
 
 """
     rotation accepts:

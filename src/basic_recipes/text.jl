@@ -7,12 +7,12 @@ function plot!(plot::Text)
     linecolors = Observable(RGBAf[])
     lineindices = Ref(Int[])
     
-    onany(plot.text, plot.fontsize, plot.font, plot.align,
+    onany(plot.text, plot.fontsize, plot.font, plot.fonts, plot.align,
             plot.rotation, plot.justification, plot.lineheight, plot.color, 
             plot.strokecolor, plot.strokewidth, plot.word_wrap_width) do str,
-                ts, f, al, rot, jus, lh, col, scol, swi, www
+                ts, f, fs, al, rot, jus, lh, col, scol, swi, www
         ts = to_fontsize(ts)
-        f = to_font(f)
+        f = to_font(fs, f)
         rot = to_rotation(rot)
         col = to_color(col)
         scol = to_color(scol)
@@ -36,12 +36,12 @@ function plot!(plot::Text)
             # as per string.
             broadcast_foreach(
                 func, 
-                str, 1:attr_broadcast_length(str), ts, f, al, rot, jus, lh, col, scol, swi, www
+                str, 1:attr_broadcast_length(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www
             )
         else
             # Otherwise Vector arguments are interpreted by layout_text/
             # glyph_collection as per character.
-            func(str, 1, ts, f, al, rot, jus, lh, col, scol, swi, www)
+            func(str, 1, ts, f, fs, al, rot, jus, lh, col, scol, swi, www)
         end
         glyphcollections[] = gcs
         linewidths[] = lwidths
@@ -70,17 +70,20 @@ function plot!(plot::Text)
     pop!(attrs, :align)
     pop!(attrs, :color)
 
-    text!(plot, glyphcollections; attrs..., position = positions)
+    t = text!(plot, glyphcollections; attrs..., position = positions)
+    # remove attributes that the backends will choke on
+    pop!(t.attributes, :font)
+    pop!(t.attributes, :fonts)
     linesegments!(plot, linesegs_shifted; linewidth = linewidths, color = linecolors, space = :pixel)
 
     plot
 end
 
-function _get_glyphcollection_and_linesegments(str::AbstractString, index, ts, f, al, rot, jus, lh, col, scol, swi, www)
-    gc = layout_text(string(str), ts, f, al, rot, jus, lh, col, scol, swi, www)
+function _get_glyphcollection_and_linesegments(str::AbstractString, index, ts, f, fs, al, rot, jus, lh, col, scol, swi, www)
+    gc = layout_text(string(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www)
     gc, Point2f[], Float32[], RGBAf[], Int[]
 end
-function _get_glyphcollection_and_linesegments(latexstring::LaTeXString, index, ts, f, al, rot, jus, lh, col, scol, swi, www)
+function _get_glyphcollection_and_linesegments(latexstring::LaTeXString, index, ts, f, fs, al, rot, jus, lh, col, scol, swi, www)
     tex_elements, glyphcollections, offset = texelems_and_glyph_collection(latexstring, ts,
                 al[1], al[2], rot, col, scol, swi, www)
 
@@ -258,3 +261,276 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
 end
 
 iswhitespace(l::LaTeXString) = iswhitespace(replace(l.s, '$' => ""))
+
+struct RichText <: AbstractString
+    type::Symbol
+    children::Vector{Union{RichText,String}}
+    attributes::Dict{Symbol, Any}
+    function RichText(type::Symbol, children...; kwargs...)
+        cs = Union{RichText,String}[children...]
+        typeof(cs)
+        new(type, cs, Dict(kwargs))
+    end
+end
+
+function Base.String(r::RichText)
+    fn(io, x::RichText) = foreach(x -> fn(io, x), x.children)
+    fn(io, s::String) = print(io, s)
+    sprint() do io
+        fn(io, r)
+    end
+end
+
+Base.ncodeunits(r::RichText) = ncodeunits(String(r)) # needed for isempty
+
+function Base.show(io::IO, ::MIME"text/plain", r::RichText)
+    print(io, "RichText: \"$(String(r))\"")
+end
+
+function Base.:(==)(r1::RichText, r2::RichText)
+    r1.type == r2.type && r1.children == r2.children && r1.attributes == r2.attributes
+end
+
+rich(args...; kwargs...) = RichText(:span, args...; kwargs...)
+subscript(args...; kwargs...) = RichText(:sub, args...; kwargs...)
+superscript(args...; kwargs...) = RichText(:sup, args...; kwargs...)
+
+export rich, subscript, superscript
+
+function _get_glyphcollection_and_linesegments(rt::RichText, index, ts, f, fset, al, rot, jus, lh, col, scol, swi, www)
+    gc = layout_text(rt, ts, f, fset, al, rot, jus, lh, col)
+    gc, Point2f[], Float32[], RGBAf[], Int[]
+end
+
+struct GlyphState
+    x::Float32
+    baseline::Float32
+    size::Vec2f
+    font::FreeTypeAbstraction.FTFont
+    color::RGBAf
+end
+
+struct GlyphInfo
+    glyph::Int
+    font::FreeTypeAbstraction.FTFont
+    origin::Point2f
+    extent::GlyphExtent
+    size::Vec2f
+    rotation::Quaternion
+    color::RGBAf
+    strokecolor::RGBAf
+    strokewidth::Float32
+end
+
+function GlyphCollection(v::Vector{GlyphInfo})
+    GlyphCollection(
+        [i.glyph for i in v],
+        [i.font for i in v],
+        [Point3f(i.origin..., 0) for i in v],
+        [i.extent for i in v],
+        [i.size for i in v],
+        [i.rotation for i in v],
+        [i.color for i in v],
+        [i.strokecolor for i in v],
+        [i.strokewidth for i in v],
+    )
+end
+
+
+function layout_text(rt::RichText, ts, f, fset, al, rot, jus, lh, col)
+
+    _f = to_font(fset, f)
+
+    stack = [GlyphState(0, 0, Vec2f(ts), _f, to_color(col))]
+
+    lines = [GlyphInfo[]]
+    
+    process_rt_node!(stack, lines, rt, fset)
+
+    apply_lineheight!(lines, lh)
+    apply_alignment_and_justification!(lines, jus, al)
+
+    gc = GlyphCollection(reduce(vcat, lines))
+    quat = to_rotation(rot)::Quaternionf
+    gc.origins .= Ref(quat) .* gc.origins
+    @assert gc.rotations.sv isa Vector # should always be a vector because that's how the glyphcollection is created
+    gc.rotations.sv .= Ref(quat) .* gc.rotations.sv
+    gc
+end
+
+function apply_lineheight!(lines, lh)
+    for (i, line) in enumerate(lines)
+        for j in eachindex(line)
+            l = line[j]
+            l = Setfield.@set l.origin[2] -= (i-1) * 20 # TODO: Lineheight
+            line[j] = l
+        end
+    end
+    return
+end
+
+function apply_alignment_and_justification!(lines, ju, al)
+    max_xs = map(lines) do line
+        maximum(line, init = 0f0) do ginfo
+            ginfo.origin[1] + ginfo.extent.hadvance * ginfo.size[1]
+        end
+    end
+    max_x = maximum(max_xs)
+
+    top_y = maximum(lines[1]) do ginfo
+        ginfo.origin[2] + ginfo.extent.ascender * ginfo.size[2]
+    end
+    bottom_y = minimum(lines[end]) do ginfo
+        ginfo.origin[2] + ginfo.extent.descender * ginfo.size[2]
+    end
+
+    al_offset_x = if al[1] == :center
+        max_x / 2
+    elseif al[1] == :left
+        0f0
+    elseif al[1] == :right
+        max_x
+    else
+        0f0
+    end
+
+    al_offset_y = if al[2] == :center
+        0.5 * (top_y + bottom_y)
+    elseif al[2] == :bottom
+        bottom_y
+    elseif al[2] == :top
+        top_y
+    else
+        0f0
+    end
+
+    fju = float_justification(ju, al)
+    
+    for (i, line) in enumerate(lines)
+        ju_offset = fju * (max_x - max_xs[i])
+        for j in eachindex(line)
+            l = line[j]
+            l = Setfield.@set l.origin -= Point2f(al_offset_x - ju_offset, al_offset_y)
+            line[j] = l
+        end
+    end
+    return
+end
+
+function float_justification(ju, al)::Float32
+    halign = al[1]
+    float_justification = if ju === automatic
+        if halign == :left || halign == 0
+            0.0f0
+        elseif halign == :right || halign == 1
+            1.0f0
+        elseif halign == :center || halign == 0.5
+            0.5f0
+        else
+            0.5f0
+        end
+    elseif ju == :left
+        0.0f0
+    elseif ju == :right
+        1.0f0
+    elseif ju == :center
+        0.5f0
+    else
+        Float32(ju)
+    end
+end
+
+function process_rt_node!(stack, lines, rt::RichText, fonts)
+    _type(x) = nothing
+    _type(r::RichText) = r.type
+
+    push!(stack, new_glyphstate(stack[end], rt, Val(rt.type), fonts))
+    for (i, c) in enumerate(rt.children)
+        process_rt_node!(stack, lines, c, fonts)
+    end
+    gs = pop!(stack)
+    gs_top = stack[end]
+    # x needs to continue even if going a level up
+    stack[end] = GlyphState(gs.x, gs_top.baseline, gs_top.size, gs_top.font, gs_top.color)
+    return
+end
+
+function process_rt_node!(stack, lines, s::String, _)
+    gs = stack[end]
+    y = gs.baseline
+    x = gs.x
+    for char in s
+        if char === '\n'
+            x = 0
+            push!(lines, GlyphInfo[])
+        else
+            gi = FreeTypeAbstraction.glyph_index(gs.font, char)
+            gext = GlyphExtent(gs.font, char)
+            ori = Point2f(x, y)
+            push!(lines[end], GlyphInfo(
+                gi,
+                gs.font,
+                ori,
+                gext,
+                gs.size,
+                to_rotation(0),
+                gs.color,
+                RGBAf(0, 0, 0, 0),
+                0f0,
+            ))
+            x = x + gext.hadvance * gs.size[1]
+        end
+    end
+    stack[end] = GlyphState(x, y, gs.size, gs.font, gs.color)
+    return
+end
+
+function new_glyphstate(gs::GlyphState, rt::RichText, val::Val, fonts)
+    gs
+end
+
+_get_color(attributes, default)::RGBAf = haskey(attributes, :color) ? to_color(attributes[:color]) : default
+_get_font(attributes, default::NativeFont, fonts)::NativeFont = haskey(attributes, :font) ? to_font(fonts, attributes[:font]) : default
+_get_fontsize(attributes, default)::Vec2f = haskey(attributes, :fontsize) ? Vec2f(to_textsize(attributes[:fontsize])) : default
+_get_offset(attributes, default)::Vec2f = haskey(attributes, :offset) ? Vec2f(attributes[:offset]) : default
+
+function new_glyphstate(gs::GlyphState, rt::RichText, val::Val{:sup}, fonts)
+    att = rt.attributes
+    fontsize = _get_fontsize(att, gs.size * 0.66)
+    offset = _get_offset(att, Vec2f(0)) .* fontsize
+    GlyphState(
+        gs.x + offset[1],
+        gs.baseline + 0.4 * gs.size[2] + offset[2],
+        fontsize,
+        _get_font(att, gs.font, fonts),
+        _get_color(att, gs.color),
+    )
+end
+
+function new_glyphstate(gs::GlyphState, rt::RichText, val::Val{:span}, fonts)
+    att = rt.attributes
+    fontsize = _get_fontsize(att, gs.size)
+    offset = _get_offset(att, Vec2f(0)) .* fontsize
+    GlyphState(
+        gs.x + offset[1],
+        gs.baseline + offset[2],
+        fontsize,
+        _get_font(att, gs.font, fonts),
+        _get_color(att, gs.color),
+    )
+end
+
+function new_glyphstate(gs::GlyphState, rt::RichText, val::Val{:sub}, fonts)
+    att = rt.attributes
+    fontsize = _get_fontsize(att, gs.size * 0.66)
+    offset = _get_offset(att, Vec2f(0)) .* fontsize
+    GlyphState(
+        gs.x + offset[1],
+        gs.baseline - 0.15 * gs.size[2] + offset[2],
+        fontsize,
+        _get_font(att, gs.font, fonts),
+        _get_color(att, gs.color),
+    )
+end
+
+iswhitespace(r::RichText) = iswhitespace(String(r))

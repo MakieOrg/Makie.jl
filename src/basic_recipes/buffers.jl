@@ -100,7 +100,11 @@ function append!(tb::Annotations, text_positions::Vector{Tuple{String, Point{N, 
             isempty(tb[key][]) && error("please provide default for $key")
             return last(tb[key][])
         end
-        val_vec = same_length_array(text_positions, val, Key{key}())
+        val_vec = if key === :font
+            same_length_array(text_positions, to_font(tb.fonts, val))
+        else
+            same_length_array(text_positions, val, Key{key}())
+        end
         append!(tb[key][], val_vec)
     end
     return

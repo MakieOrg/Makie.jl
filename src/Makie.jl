@@ -50,6 +50,7 @@ import FileIO
 import SparseArrays
 import TriplotBase
 import MiniQhull
+import Setfield
 
 using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints
 using FixedPointNumbers: N0f8
@@ -88,6 +89,9 @@ const RGBAf = RGBA{Float32}
 const RGBf = RGB{Float32}
 const NativeFont = FreeTypeAbstraction.FTFont
 
+const ASSETS_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
+assetpath(files...) = normpath(joinpath(ASSETS_DIR, files...))
+
 include("documentation/docstringextension.jl")
 include("utilities/quaternions.jl")
 include("bezier.jl")
@@ -101,16 +105,16 @@ include("utilities/utilities.jl") # need Makie.AbstractPattern
 # Basic scene/plot/recipe interfaces + types
 include("scenes.jl")
 
+include("interfaces.jl")
+include("conversions.jl")
+include("units.jl")
+include("shorthands.jl")
 include("theming.jl")
 include("themes/theme_ggplot2.jl")
 include("themes/theme_black.jl")
 include("themes/theme_minimal.jl")
 include("themes/theme_light.jl")
 include("themes/theme_dark.jl")
-include("interfaces.jl")
-include("units.jl")
-include("conversions.jl")
-include("shorthands.jl")
 
 # camera types + functions
 include("camera/projection_math.jl")
@@ -272,9 +276,6 @@ export save
 export cgrad, available_gradients, showgradients
 
 export Pattern
-
-const ASSETS_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
-assetpath(files...) = normpath(joinpath(ASSETS_DIR, files...))
 
 export assetpath
 # default icon for Makie
