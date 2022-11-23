@@ -763,7 +763,7 @@ end
 end
 
 @reference_test "Rich text" begin
-    f = Figure(fontsize = 30)
+    f = Figure(fontsize = 30, resolution = (800, 600))
     ax = Axis(f[1, 1],
         limits = (1, 100, 0.001, 1),
         xscale = log10,
