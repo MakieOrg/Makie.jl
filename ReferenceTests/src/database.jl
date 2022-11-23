@@ -54,16 +54,19 @@ end
 Helper, to more easily save all kind of results from the test database
 """
 function save_result(path::String, scene::Makie.FigureLike)
+    isfile(path * ".png") && rm(path * ".png"; force=true)
     FileIO.save(path * ".png", scene)
     return true
 end
 
 function save_result(path::String, stream::VideoStream)
+    isfile(path * ".mp4") && rm(path * ".mp4"; force=true)
     FileIO.save(path * ".mp4", stream)
     return true
 end
 
 function save_result(path::String, object)
+    isfile(path) && rm(path; force=true)
     FileIO.save(path, object)
     return true
 end

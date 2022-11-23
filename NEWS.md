@@ -5,6 +5,21 @@
 - **Breaking** The attribute `textsize` has been removed everywhere in favor of the attribute `fontsize` which had also been in use.
   To migrate, search and replace all uses of `textsize` to `fontsize`.
 
+## v0.18.3
+
+- Add `render_on_demand` flag for `GLMakie.Screen`. Setting this to `true` will skip rendering until plots get updated. This is the new default [#2336](https://github.com/MakieOrg/Makie.jl/pull/2336), [#2397](https://github.com/MakieOrg/Makie.jl/pull/2397).
+- Clean up OpenGL state handling in GLMakie [#2397](https://github.com/MakieOrg/Makie.jl/pull/2397).
+- Fix salting [#2407](https://github.com/MakieOrg/Makie.jl/pull/2407).
+- Fixes for [GtkMakie](https://github.com/jwahlstrand/GtkMakie.jl) [#2418](https://github.com/MakieOrg/Makie.jl/pull/2418).
+
+## v0.18.2
+
+- Fix Axis3 tick flipping with negative azimuth [#2364](https://github.com/MakieOrg/Makie.jl/pull/2364).
+- Fix empty!(fig) and empty!(ax) [#2374](https://github.com/MakieOrg/Makie.jl/pull/2374), [#2375](https://github.com/MakieOrg/Makie.jl/pull/2375).
+- Remove stencil buffer [#2389](https://github.com/MakieOrg/Makie.jl/pull/2389).
+- Move Arrows and Wireframe to MakieCore [#2384](https://github.com/MakieOrg/Makie.jl/pull/2384).
+- Skip legend entry if label is nothing [#2350](https://github.com/MakieOrg/Makie.jl/pull/2350).
+
 ## v0.18.1
 
 - fix heatmap interpolation [#2343](https://github.com/MakieOrg/Makie.jl/pull/2343).
