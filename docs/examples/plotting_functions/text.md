@@ -58,7 +58,7 @@ text!(
     rotation = [i / 7 * 1.5pi for i in 1:7],
     color = [cgrad(:viridis)[x] for x in LinRange(0, 1, 7)],
     align = (:left, :baseline),
-    textsize = 1,
+    fontsize = 1,
     markerspace = :data
 )
 

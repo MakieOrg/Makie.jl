@@ -62,6 +62,7 @@ const minimal_default = Attributes(
         :italic => "TeX Gyre Heros Makie Italic",
         :bold_italic => "TeX Gyre Heros Makie Bold Italic",
     ),
+    fontsize = 16,
     textcolor = :black,
     padding = Vec3f(0.05),
     figure_padding = 16,

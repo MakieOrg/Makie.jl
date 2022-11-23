@@ -32,27 +32,27 @@ end
 
 """
     layout_text(
-        string::AbstractString, textsize::Union{AbstractVector, Number},
+        string::AbstractString, fontsize::Union{AbstractVector, Number},
         font, align, rotation, justification, lineheight, word_wrap_width
     )
 
-Compute a GlyphCollection for a `string` given textsize, font, align, rotation, model, justification, and lineheight.
+Compute a GlyphCollection for a `string` given fontsize, font, align, rotation, model, justification, and lineheight.
 """
 function layout_text(
-        string::AbstractString, textsize::Union{AbstractVector, Number},
+        string::AbstractString, fontsize::Union{AbstractVector, Number},
         font, fonts, align, rotation, justification, lineheight, color, 
         strokecolor, strokewidth, word_wrap_width
     )
 
     ft_font = to_font(font)
-    rscale = to_textsize(textsize)
+    rscale = to_fontsize(fontsize)
     rot = to_rotation(rotation)
 
     fontperchar = attribute_per_char(string, ft_font)
-    textsizeperchar = attribute_per_char(string, rscale)
+    fontsizeperchar = attribute_per_char(string, rscale)
 
     glyphcollection = glyph_collection(
-        string, fontperchar, textsizeperchar, align[1], align[2], 
+        string, fontperchar, fontsizeperchar, align[1], align[2], 
         lineheight, justification, rot, color, 
         strokecolor, strokewidth, word_wrap_width
     )
@@ -332,7 +332,7 @@ function text_quads(position::VecTypes, gc::GlyphCollection, offset, transfunc)
     # quad_offsets are 2D offsets of the quad origin to the character origins
     #   (these transform differently than character offsets, also marker space)
     # uvs are the texture coordinates of each character
-    # scales is the size of the quad including textsize, character size and texture atlas padding
+    # scales is the size of the quad including fontsize, character size and texture atlas padding
     return pos, char_offsets, quad_offsets, uvs, scales
 end
 

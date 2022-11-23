@@ -491,8 +491,8 @@ Plots one or multiple texts passed via the `text` keyword.
 - `font::Union{String, Vector{String}} = :regular` sets the font for the string or each character.
 - `justification::Union{Real, Symbol} = automatic` sets the alignment of text w.r.t its bounding box. Can be `:left, :center, :right` or a fraction. Will default to the horizontal alignment in `align`.
 - `rotation::Union{Real, Quaternion}` rotates text around the given position.
-- `textsize::Union{Real, Vec2f}` sets the size of each character.
-- `markerspace::Symbol = :pixel` sets the space in which `textsize` acts. See `Makie.spaces()` for possible inputs.
+- `fontsize::Union{Real, Vec2f}` sets the size of each character.
+- `markerspace::Symbol = :pixel` sets the space in which `fontsize` acts. See `Makie.spaces()` for possible inputs.
 - `strokewidth::Real = 0` sets the width of the outline around a marker.
 - `strokecolor::Union{Symbol, <:Colorant} = :black` sets the color of the outline around a marker.
 - `glowwidth::Real = 0` sets the size of a glow effect around the marker.
@@ -522,7 +522,7 @@ Plots one or multiple texts passed via the `text` keyword.
         strokewidth = 0,
         align = (:left, :bottom),
         rotation = 0.0,
-        textsize = 20,
+        fontsize = theme(scene, :fontsize),
         position = (0.0, 0.0),
         justification = automatic,
         lineheight = 1.0,
