@@ -56,7 +56,7 @@ serialize_three(array::AbstractArray{Float64}) = vec(array)
 
 function serialize_three(color::Sampler{T,N}) where {T,N}
     tex = Dict(:type => "Sampler", :data => serialize_three(color.data),
-               :size => [size(color.data)...], :three_format => three_format(T),
+               :size => Int32[size(color.data)...], :three_format => three_format(T),
                :three_type => three_type(eltype(T)),
                :minFilter => three_filter(color.minfilter),
                :magFilter => three_filter(color.magfilter),
@@ -191,8 +191,8 @@ function uniform_updater(uniforms::Dict)
     for (name, value) in uniforms
         if value isa Sampler
             on(ShaderAbstractions.updater(value).update) do (f, args)
-                if args[2] isa Colon && f == setindex!
-                    updater[] = [name, serialize_three(args[1])]
+                if f == setindex! && args[2] isa Colon
+                    updater[] = [name, [Int32[size(value.data)...], serialize_three(args[1])]]
                 end
                 return
             end
@@ -230,7 +230,7 @@ end
 
 function serialize_scene(scene::Scene, serialized_scenes=[])
     hexcolor(c) = "#" * hex(Colors.color(to_color(c)))
-    pixel_area = lift(area -> [minimum(area)..., widths(area)...], pixelarea(scene))
+    pixel_area = lift(area -> Int32[minimum(area)..., widths(area)...], pixelarea(scene))
     cam_controls = cameracontrols(scene)
     cam3d_state = if cam_controls isa Camera3D
         fields = (:lookat, :upvector, :eyeposition, :fov, :near, :far)
