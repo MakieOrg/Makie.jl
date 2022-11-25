@@ -31,7 +31,7 @@ jobs:
           - '1.6'
           - '1' # automatically expands to the latest stable 1.x release of Julia
         os:
-          - ubuntu-latest
+          - ubuntu-20.04
         arch:
           - x64
     steps:
