@@ -40,12 +40,7 @@ function Base.iterate(x::Attributes, state...)
 end
 
 function Base.copy(attributes::Attributes)
-    result = Attributes()
-    for (k, v) in attributes
-        # We need to create a new Signal to have a real copy
-        result[k] = copy(v)
-    end
-    return result
+    return Attributes(copy(attributes(attributes)))
 end
 
 function Base.deepcopy(obs::Observable)
