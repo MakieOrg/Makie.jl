@@ -269,7 +269,7 @@ end
 Sets up a Postprocessor which copies the color buffer to the screen. Used as a
 final step for displaying the screen.
 """
-function to_screen_postprocessor(framebuffer, shader_cache)
+function to_screen_postprocessor(framebuffer, shader_cache, default_id = 0)
     # draw color buffer
     shader = LazyShader(
         shader_cache,
@@ -287,7 +287,7 @@ function to_screen_postprocessor(framebuffer, shader_cache)
         w, h = size(fb)
 
         # transfer everything to the screen
-        glBindFramebuffer(GL_FRAMEBUFFER, 0)
+        glBindFramebuffer(GL_FRAMEBUFFER, default_id)
         glViewport(0, 0, w, h)
         glClear(GL_COLOR_BUFFER_BIT)
         GLAbstraction.render(pass) # copy postprocess
