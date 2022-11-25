@@ -1,6 +1,8 @@
 using Test
 using CairoMakie
 using Pkg
+using Makie.FileIO
+
 path = normpath(joinpath(dirname(pathof(Makie)), "..", "ReferenceTests"))
 Pkg.develop(PackageSpec(path = path))
 # Before changing Pkg environment, try the test in #864
@@ -19,17 +21,51 @@ include(joinpath(@__DIR__, "svg_tests.jl"))
 include(joinpath(@__DIR__, "rasterization_tests.jl"))
 
 @testset "changing screens" begin
-    # Now that scene.current_screens contains a CairoMakie screen after save
-    # switching formats is a bit more problematic
-    # See comments in src/display.jl + backend_show(screen::Screen, ...)
-    f = scatter(1:4)
-    save("test.svg", f)
-    save("test.png", f)
-    save("test.svg", f)
-    @test isfile("test.svg")
-    @test isfile("test.png")
-    rm("test.png")
-    rm("test.svg")
+    @testset "svg -> png" begin
+        # Now that scene.current_screens contains a CairoMakie screen after save
+        # switching formats is a bit more problematic
+        # See comments in src/display.jl + backend_show(screen::Screen, ...)
+        f = scatter(1:4)
+        save("test.svg", f)
+        save("test.png", f)
+        save("test.svg", f)
+        @test isfile("test.svg")
+        @test isfile("test.png")
+        rm("test.png")
+        rm("test.svg")
+    end
+
+    @testset "saving pdf two times" begin
+        # https://github.com/MakieOrg/Makie.jl/issues/2433
+        fig = Figure(resolution=(480, 792))
+        ax = Axis(fig[1, 1])
+        # The IO was shared between screens, which left the second figure empty
+        save("fig.pdf", fig, pt_per_unit=0.5)
+        save("fig2.pdf", fig, pt_per_unit=0.5)
+        @test !isempty("fig.pdf")
+        @test !isempty("fig2.pdf")
+        rm("fig.pdf")
+        rm("fig2.pdf")
+    end
+
+    @testset "switching from pdf screen to png, colorbuffer" begin
+        # https://github.com/MakieOrg/Makie.jl/issues/2438
+        # This bug was caused by using the screen size of the pdf screen, which
+        # has a different device_scaling_factor, and therefore a different screen size
+        fig = scatter(1:4, figure=(; resolution=(800, 800)))
+        save("test.pdf", fig)
+        size(Makie.colorbuffer(fig)) == (800, 800)
+        rm("test.pdf")
+    end
+
+    @testset "switching from pdf screen to png, save" begin
+        fig = scatter(1:4, figure=(; resolution=(800, 800)))
+        save("test.pdf", fig)
+        save("test.png", fig)
+        @test size(load("test.png")) == (800, 800)
+        rm("test.pdf")
+        rm("test.png")
+    end
 end
 
 @testset "mimes" begin
