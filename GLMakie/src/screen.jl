@@ -362,6 +362,7 @@ end
 GLFW.set_visibility!(screen::Screen, visible::Bool) = GLFW.set_visibility!(screen.glscreen, visible)
 
 function display_scene!(screen::Screen, scene::Scene)
+    empty!(screen)
     resize!(screen, size(scene)...)
     insertplots!(screen, scene)
     Makie.push_screen!(scene, screen)
@@ -515,10 +516,6 @@ function Base.empty!(screen::Screen)
     # we should never just "empty" an already destroyed screen
     @assert !was_destroyed(screen.glscreen)
 
-    stop_renderloop!(screen; close_after_renderloop=false) # we be closin' already
-
-    GLFW.set_visibility!(screen, false)
-
     if !isnothing(screen.root_scene)
         Makie.disconnect_screen(screen.root_scene, screen)
         screen.root_scene = nothing
@@ -560,6 +557,8 @@ Closes screen and emptying it.
 Doesn't destroy the screen and instead frees it for being re-used again, if `reuse=true`.
 """
 function Base.close(screen::Screen; reuse=true)
+    GLFW.set_visibility!(screen, false)
+    stop_renderloop!(screen; close_after_renderloop=false)
     screen.window_open[] = false
     empty!(screen)
     if reuse && screen.reuse
