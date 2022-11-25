@@ -39,8 +39,8 @@ function Base.iterate(x::Attributes, state...)
     return (s[1] => x[s[1]], s[2])
 end
 
-function Base.copy(attributes::Attributes)
-    return Attributes(copy(attributes(attributes)))
+function Base.copy(attr::Attributes)
+    return Attributes(copy(attributes(attr)))
 end
 
 function Base.deepcopy(obs::Observable)

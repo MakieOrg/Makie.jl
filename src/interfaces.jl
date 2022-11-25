@@ -208,6 +208,7 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     ArgTyp = typeof(to_value(args))
     # construct the fully qualified plot type, from the possible incomplete (abstract)
     # PlotType
+
     FinalType = Combined{Typ, ArgTyp}
     plot_attributes = merged_get!(
         ()-> default_theme(scene, FinalType),
