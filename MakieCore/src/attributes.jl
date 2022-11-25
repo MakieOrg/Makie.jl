@@ -246,7 +246,7 @@ end
 function merge_attributes!(input::Attributes, theme::Attributes)
     for (key, value) in theme
         if !haskey(input, key)
-            input[key] = copy(value)
+            input[key] = value
         else
             current_value = input[key]
             if value isa Attributes && current_value isa Attributes
