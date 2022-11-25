@@ -22,20 +22,20 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
     );
 }
 
-vec4 get_color(vec3 color, vec2 uv, bool colorrange, bool colormap, bool pattern){
+vec4 get_color(vec3 color, vec2 uv, bool colorrange, bool colormap){
     return vec4(color, 1.0);
 }
 
-vec4 get_color(vec4 color, vec2 uv, bool colorrange, bool colormap, bool pattern){
+vec4 get_color(vec4 color, vec2 uv, bool colorrange, bool colormap){
     return color;
 }
 
-vec4 get_color(bool color, vec2 uv, bool colorrange, bool colormap, bool pattern){
+vec4 get_color(bool color, vec2 uv, bool colorrange, bool colormap){
     return frag_color;  // color not in uniform
 }
 
-vec4 get_color(sampler2D color, vec2 uv, bool colorrange, bool colormap, bool pattern){
-    if (pattern) {
+vec4 get_color(sampler2D color, vec2 uv, bool colorrange, bool colormap){
+    if (get_pattern()) {
         vec2 size = vec2(textureSize(color, 0));
         vec2 pos = gl_FragCoord.xy;
         return texelFetch(color, ivec2(mod(pos.x, size.x), mod(pos.y, size.y)), 0);
@@ -68,7 +68,7 @@ vec4 get_color_from_cmap(float value, sampler2D color_map, vec2 colorrange) {
     return texture(color_map, vec2(i01, 0.0));
 }
 
-vec4 get_color(bool color, vec2 uv, vec2 colorrange, sampler2D colormap, bool pattern){
+vec4 get_color(bool color, vec2 uv, vec2 colorrange, sampler2D colormap){
     if (get_interpolate_in_fragment_shader()) {
         return get_color_from_cmap(frag_color.x, colormap, colorrange);
     } else {
@@ -76,17 +76,17 @@ vec4 get_color(bool color, vec2 uv, vec2 colorrange, sampler2D colormap, bool pa
     }
 }
 
-vec4 get_color(sampler2D values, vec2 uv, vec2 colorrange, sampler2D colormap, bool pattern){
+vec4 get_color(sampler2D values, vec2 uv, vec2 colorrange, sampler2D colormap){
     float value = texture(values, uv).x;
     return get_color_from_cmap(value, colormap, colorrange);
 }
 
-vec4 get_color(sampler2D color, vec2 uv, bool colorrange, sampler2D colormap, bool pattern){
+vec4 get_color(sampler2D color, vec2 uv, bool colorrange, sampler2D colormap){
     return texture(color, uv);
 }
 
 void main() {
-    vec4 real_color = get_color(uniform_color, frag_uv, get_colorrange(), colormap, pattern);
+    vec4 real_color = get_color(uniform_color, frag_uv, get_colorrange(), colormap);
     vec3 shaded_color = real_color.rgb;
 
     if(get_shading()){
