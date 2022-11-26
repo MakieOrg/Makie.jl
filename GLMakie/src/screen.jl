@@ -159,6 +159,8 @@ mutable struct Screen{GLWindow} <: MakieScreen
     root_scene::Union{Scene, Nothing}
     reuse::Bool
     close_after_renderloop::Bool
+    # To trigger rerenders that aren't related to an existing renderobject.
+    requires_update::Bool
 
     function Screen(
             glscreen::GLWindow,
@@ -184,7 +186,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
             screen2scene,
             screens, renderlist, postprocessors, cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(nothing),
-            Observable(true), nothing, reuse, true
+            Observable(true), nothing, reuse, true, false
         )
         push!(ALL_SCREENS, screen) # track all created screens
         return screen
@@ -362,6 +364,7 @@ end
 GLFW.set_visibility!(screen::Screen, visible::Bool) = GLFW.set_visibility!(screen.glscreen, visible)
 
 function display_scene!(screen::Screen, scene::Scene)
+    empty!(screen)
     resize!(screen, size(scene)...)
     insertplots!(screen, scene)
     Makie.push_screen!(scene, screen)
@@ -509,15 +512,13 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
         end
         delete!(screen.cache, objectid(plot))
     end
+    screen.requires_update = true
+    return
 end
 
 function Base.empty!(screen::Screen)
     # we should never just "empty" an already destroyed screen
     @assert !was_destroyed(screen.glscreen)
-
-    stop_renderloop!(screen; close_after_renderloop=false) # we be closin' already
-
-    GLFW.set_visibility!(screen, false)
 
     if !isnothing(screen.root_scene)
         Makie.disconnect_screen(screen.root_scene, screen)
@@ -560,6 +561,8 @@ Closes screen and emptying it.
 Doesn't destroy the screen and instead frees it for being re-used again, if `reuse=true`.
 """
 function Base.close(screen::Screen; reuse=true)
+    GLFW.set_visibility!(screen, false)
+    stop_renderloop!(screen; close_after_renderloop=false)
     screen.window_open[] = false
     empty!(screen)
     if reuse && screen.reuse
@@ -814,6 +817,10 @@ function fps_renderloop(screen::Screen)
 end
 
 function requires_update(screen::Screen)
+    if screen.requires_update
+        screen.requires_update = false 
+        return true
+    end
     for (_, _, robj) in screen.renderlist
         robj.requires_update && return true
     end
