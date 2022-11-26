@@ -361,7 +361,7 @@ function draw_marker(ctx, marker::Matrix{T}, pos, scale,
         marker_offset, rotation) where T<:Colorant
 
     # convert marker to Cairo compatible image data
-    argb32_marker = convert.(ARGB32, marker)
+    argb32_marker = convert.(ARGB32, premultiplied_rgba(marker))
     argb32_marker = permutedims(argb32_marker, (2,1)) # swap x-y for Cairo
     marker_surf   = Cairo.CairoImageSurface(argb32_marker)
 
