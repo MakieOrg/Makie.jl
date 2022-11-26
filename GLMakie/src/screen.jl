@@ -159,6 +159,8 @@ mutable struct Screen{GLWindow} <: MakieScreen
     root_scene::Union{Scene, Nothing}
     reuse::Bool
     close_after_renderloop::Bool
+    # To trigger rerenders that aren't related to an existing renderobject.
+    requires_update::Bool
 
     function Screen(
             glscreen::GLWindow,
@@ -184,7 +186,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
             screen2scene,
             screens, renderlist, postprocessors, cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(nothing),
-            Observable(true), nothing, reuse, true
+            Observable(true), nothing, reuse, true, false
         )
         push!(ALL_SCREENS, screen) # track all created screens
         return screen
@@ -510,6 +512,8 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
         end
         delete!(screen.cache, objectid(plot))
     end
+    screen.requires_update = true
+    return
 end
 
 function Base.empty!(screen::Screen)
@@ -813,6 +817,10 @@ function fps_renderloop(screen::Screen)
 end
 
 function requires_update(screen::Screen)
+    if screen.requires_update
+        screen.requires_update = false 
+        return true
+    end
     for (_, _, robj) in screen.renderlist
         robj.requires_update && return true
     end
