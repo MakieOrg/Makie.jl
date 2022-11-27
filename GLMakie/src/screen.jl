@@ -562,7 +562,7 @@ Closes screen and emptying it.
 Doesn't destroy the screen and instead frees it for being re-used again, if `reuse=true`.
 """
 function Base.close(screen::Screen; reuse=true)
-    GLFW.set_visibility!(screen, false)
+    set_screen_visibility!(screen, false)
     stop_renderloop!(screen; close_after_renderloop=false)
     screen.window_open[] = false
     empty!(screen)
@@ -819,7 +819,7 @@ end
 
 function requires_update(screen::Screen)
     if screen.requires_update
-        screen.requires_update = false 
+        screen.requires_update = false
         return true
     end
     for (_, _, robj) in screen.renderlist
