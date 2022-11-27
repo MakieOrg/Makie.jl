@@ -341,7 +341,7 @@ function apply_config!(screen::Screen, config::ScreenConfig; visible::Bool=true,
         stop_renderloop!(screen)
     end
 
-    GLFW.set_visibility!(screen, visible)
+    set_screen_visibility!(screen, visible)
     return screen
 end
 
@@ -361,7 +361,8 @@ function Screen(;
     return screen
 end
 
-GLFW.set_visibility!(screen::Screen, visible::Bool) = GLFW.set_visibility!(screen.glscreen, visible)
+set_screen_visibility!(screen::Screen, visible::Bool) = set_screen_visibility!(screen.glscreen, visible)
+set_screen_visibility!(nw::GLFW.Window, visible::Bool) = GLFW.set_visibility!(nw, visible)
 
 function display_scene!(screen::Screen, scene::Scene)
     empty!(screen)
