@@ -22,6 +22,7 @@ function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
     get!(uniforms, :colormap, false)
     get!(uniforms, :colorrange, false)
     get!(uniforms, :color, false)
+    get!(uniforms, :pattern, false)
     get!(uniforms, :model, plot.model)
     get!(uniforms, :depth_shift, 0f0)
     get!(uniforms, :lightposition, Vec3f(1))
@@ -43,7 +44,7 @@ function limits_to_uvmesh(plot)
     px, py, pz = plot[1], plot[2], plot[3]
     px = map((x, z)-> xy_convert(x, size(z, 1)), px, pz)
     py = map((y, z)-> xy_convert(y, size(z, 2)), py, pz)
-    # Special path for ranges of length 2 wich
+    # Special path for ranges of length 2 which
     # can be displayed as a rectangle
     t = Makie.transform_func_obs(plot)[]
     if px[] isa StepRangeLen && py[] isa StepRangeLen && Makie.is_identity_transform(t)
