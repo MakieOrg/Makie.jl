@@ -341,7 +341,7 @@ function apply_config!(screen::Screen, config::ScreenConfig; visible::Bool=true,
         stop_renderloop!(screen)
     end
 
-    GLFW.set_visibility!(screen, visible)
+    set_screen_visibility!(screen, visible)
     return screen
 end
 
@@ -361,7 +361,8 @@ function Screen(;
     return screen
 end
 
-GLFW.set_visibility!(screen::Screen, visible::Bool) = GLFW.set_visibility!(screen.glscreen, visible)
+set_screen_visibility!(screen::Screen, visible::Bool) = set_screen_visibility!(screen.glscreen, visible)
+set_screen_visibility!(nw::GLFW.Window, visible::Bool) = GLFW.set_visibility!(nw, visible)
 
 function display_scene!(screen::Screen, scene::Scene)
     empty!(screen)
@@ -561,7 +562,7 @@ Closes screen and emptying it.
 Doesn't destroy the screen and instead frees it for being re-used again, if `reuse=true`.
 """
 function Base.close(screen::Screen; reuse=true)
-    GLFW.set_visibility!(screen, false)
+    set_screen_visibility!(screen, false)
     stop_renderloop!(screen; close_after_renderloop=false)
     screen.window_open[] = false
     empty!(screen)
@@ -818,7 +819,7 @@ end
 
 function requires_update(screen::Screen)
     if screen.requires_update
-        screen.requires_update = false 
+        screen.requires_update = false
         return true
     end
     for (_, _, robj) in screen.renderlist
