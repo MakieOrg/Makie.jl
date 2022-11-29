@@ -113,5 +113,9 @@ void main() {
         }
         return;
     }
+
+    if (real_color.a <= 0.0){
+        discard;
+    }
     fragment_color = vec4(shaded_color, real_color.a);
 }

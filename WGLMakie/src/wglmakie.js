@@ -925,7 +925,7 @@ function create_scene(
         const screen = { renderer, picking_target, camera, fps, canvas };
 
         const three_scene = deserialize_scene(scenes, screen);
-
+        console.log(three_scene)
         start_renderloop(three_scene);
 
         canvas_width.on((w_h) => {

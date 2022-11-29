@@ -254,5 +254,9 @@ void main()
         }
         return;
     }
+    if (color.a <= 0.0){
+        discard;
+    }
     fragment_color = color;
+
 }

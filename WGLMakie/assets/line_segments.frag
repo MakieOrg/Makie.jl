@@ -18,5 +18,9 @@ void main() {
         }
         return;
     }
+
+    if (frag_color.a <= 0.0){
+        discard;
+    }
     fragment_color = frag_color;
 }

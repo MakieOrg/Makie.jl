@@ -107,5 +107,8 @@ void main() {
         }
         return;
     }
+    if (final_color.a <= 0.0){
+        discard;
+    }
     fragment_color = final_color;
 }
