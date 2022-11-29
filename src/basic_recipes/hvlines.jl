@@ -13,10 +13,10 @@ All style attributes are the same as for `LineSegments`.
         xautolimits = false,
         xmin = 0,
         xmax = 1,
-        default_theme(LineSegments, scene)...,
+        default_theme(scene, LineSegments)...,
         cycle = :color,
     )
-    end
+end
 
 """
     vlines(xs; ymin = 0.0, ymax = 1.0, attrs...)
@@ -33,7 +33,7 @@ All style attributes are the same as for `LineSegments`.
         yautolimits = false,
         ymin = 0,
         ymax = 1,
-        default_theme(LineSegments, scene)...,
+        default_theme(scene, LineSegments)...,
         cycle = :color,
     )
 end
@@ -41,12 +41,12 @@ end
 function projview_to_2d_limits(pv)
     xmin, xmax = minmax((((-1, 1) .- pv[1, 4]) ./ pv[1, 1])...)
     ymin, ymax = minmax((((-1, 1) .- pv[2, 4]) ./ pv[2, 2])...)
-    origin = Makie.Vec2(xmin, ymin)
-    Makie.Rect2(origin, Makie.Vec2(xmax, ymax) - origin)
+    origin = Vec2f(xmin, ymin)
+    return Rect2f(origin, Vec2f(xmax, ymax) - origin)
 end
 
 function Makie.plot!(p::Union{HLines, VLines})
-    scene = Makie.parent_scene(p)
+    scene = parent_scene(p)
     transf = transform_func_obs(scene)
 
     limits = lift(projview_to_2d_limits, scene.camera.projectionview)
@@ -55,7 +55,7 @@ function Makie.plot!(p::Union{HLines, VLines})
 
     mi = p isa HLines ? p.xmin : p.ymin
     ma = p isa HLines ? p.xmax : p.ymax
-    
+
     onany(limits, p[1], mi, ma, transf) do lims, vals, mi, ma, transf
         inv = inverse_transform(transf)
         empty!(points[])
@@ -83,6 +83,17 @@ function Makie.plot!(p::Union{HLines, VLines})
 
     notify(p[1])
 
-    linesegments!(p, points; p.attributes...)
+    line_attributes = extract_keys(p.attributes, [
+        :linewidth,
+        :color,
+        :colormap,
+        :colorrange,
+        :linestyle,
+        :fxaa,
+        :cycle,
+        :transparency,
+        :inspectable])
+
+    linesegments!(p, line_attributes, points)
     p
 end

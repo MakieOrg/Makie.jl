@@ -54,6 +54,10 @@ serialize_three(array::AbstractArray{Float32}) = vec(array)
 serialize_three(array::AbstractArray{Float16}) = vec(array)
 serialize_three(array::AbstractArray{Float64}) = vec(array)
 
+function serialize_three(p::Makie.AbstractPattern)
+    return serialize_three(Makie.to_image(p))
+end
+
 function serialize_three(color::Sampler{T,N}) where {T,N}
     tex = Dict(:type => "Sampler", :data => serialize_three(color.data),
                :size => Int32[size(color.data)...], :three_format => three_format(T),
@@ -86,15 +90,17 @@ three_type(::Type{Float16}) = "FloatType"
 three_type(::Type{Float32}) = "FloatType"
 three_type(::Type{N0f8}) = "UnsignedByteType"
 
-function three_filter(sym)
-    sym == :linear && return "LinearFilter"
-    return sym == :nearest && return "NearestFilter"
+function three_filter(sym::Symbol)
+    sym === :linear && return "LinearFilter"
+    sym === :nearest && return "NearestFilter"
+    error("Unknown filter mode '$sym'")
 end
 
 function three_repeat(s::Symbol)
-    s == :clamp_to_edge && return "ClampToEdgeWrapping"
-    s == :mirrored_repeat && return "MirroredRepeatWrapping"
-    return s == :repeat && return "RepeatWrapping"
+    s === :clamp_to_edge && return "ClampToEdgeWrapping"
+    s === :mirrored_repeat && return "MirroredRepeatWrapping"
+    s === :repeat && return "RepeatWrapping"
+    error("Unknown repeat mode '$s'")
 end
 
 """
