@@ -922,7 +922,7 @@ function create_scene(
         const size = new THREE.Vector2();
         renderer.getDrawingBufferSize(size);
         const picking_target = new THREE.WebGLRenderTarget(size.x, size.y);
-        const screen = { renderer, picking_target, camera, fps };
+        const screen = { renderer, picking_target, camera, fps, canvas };
 
         const three_scene = deserialize_scene(scenes, screen);
 
