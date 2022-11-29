@@ -152,6 +152,16 @@ end
     fig
 end
 
+@reference_test "Polygons with holes" begin
+    # example from the docs page
+    fig, ax, pol = poly(
+        Point2f[(0, 0), (2, 0), (3, 1), (1, 1)],
+        [Point2f[(0.75, 0.25), (1.75, 0.25), (2.25, 0.75), (1.25, 0.75)]])
+    # self-intersecting polygon
+    poly!(Point2f[(3, 0), (5, 0), (6, 1), (4, 1)],
+        [Point2f[(3.75, 0.25), (10, 0.25), (10, 0.75), (4.25, 0.75)]])
+end
+
 @reference_test "Text Annotation" begin
     text(
         ". This is an annotation!",
