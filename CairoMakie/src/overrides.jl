@@ -108,11 +108,11 @@ end
 
 function polypath(ctx, polygon)
     ext = decompose(Point2f, polygon.exterior)
+
     Cairo.move_to(ctx, ext[1]...)
     for point in ext[2:end]
         Cairo.line_to(ctx, point...)
     end
-    Cairo.close_path(ctx)
 
     interiors = decompose.(Point2f, polygon.interiors)
     for interior in interiors
@@ -120,8 +120,9 @@ function polypath(ctx, polygon)
         for point in interior[2:end]
             Cairo.line_to(ctx, point...)
         end
-        Cairo.close_path(ctx)
     end
+
+    Cairo.close_path(ctx)
 end
 
 draw_poly(scene::Scene, screen::Screen, poly, polygon::Polygon) = draw_poly(scene, screen, poly, [polygon])
