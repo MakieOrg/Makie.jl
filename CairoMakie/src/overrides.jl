@@ -106,23 +106,25 @@ function draw_poly(scene::Scene, screen::Screen, poly, rects::Vector{<:Rect2})
     end
 end
 
-function polypath(ctx, polygon)
+function polypath_contour(ctx, polygon::Polygon)
     ext = decompose(Point2f, polygon.exterior)
 
     Cairo.move_to(ctx, ext[1]...)
     for point in ext[2:end]
         Cairo.line_to(ctx, point...)
     end
+    Cairo.close_path(ctx)
+end
 
+function polypath_clip(ctx, polygon::Polygon)
     interiors = decompose.(Point2f, polygon.interiors)
     for interior in interiors
         Cairo.move_to(ctx, interior[1]...)
         for point in interior[2:end]
             Cairo.line_to(ctx, point...)
         end
+        Cairo.close_path(ctx)
     end
-
-    Cairo.close_path(ctx)
 end
 
 draw_poly(scene::Scene, screen::Screen, poly, polygon::Polygon) = draw_poly(scene, screen, poly, [polygon])
@@ -147,14 +149,15 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
         strokecolor = to_color(strokecolor)
     end
     broadcast_foreach(projected_polys, color, strokecolor, poly.strokewidth[]) do po, c, sc, sw
-        polypath(screen.context, po)
+        polypath_contour(screen.context, po)
         Cairo.set_source_rgba(screen.context, rgbatuple(c)...)
         Cairo.fill_preserve(screen.context)
         Cairo.set_source_rgba(screen.context, rgbatuple(sc)...)
         Cairo.set_line_width(screen.context, sw)
         Cairo.stroke(screen.context)
+        polypath_clip(screen.context, po)
+        Cairo.clip(screen.context)
     end
-
 end
 
 
@@ -211,7 +214,7 @@ function draw_plot(scene::Scene, screen::Screen, tric::Tricontourf)
 
     function draw_tripolys(polys, colornumbers, colors)
         for (i, (pol, colnum, col)) in enumerate(zip(polys, colornumbers, colors))
-            polypath(screen.context, pol)
+            polypath_contour(screen.context, pol)
             if i == length(colornumbers) || colnum != colornumbers[i+1]
                 Cairo.set_source_rgba(screen.context, rgbatuple(col)...)
                 Cairo.fill(screen.context)
