@@ -341,12 +341,7 @@ function create_texture(data) {
 
 function re_create_texture(old_texture, buffer, size) {
     if (size.length == 3) {
-        const tex = new THREE.DataTexture3D(
-            buffer,
-            size[0],
-            size[1],
-            size[2]
-        );
+        const tex = new THREE.DataTexture3D(buffer, size[0], size[1], size[2]);
         tex.format = old_texture.format;
         tex.type = old_texture.type;
         return tex;
@@ -635,9 +630,9 @@ function connect_uniforms(mesh, updater) {
             if (tex_data.length == im_data.data.length) {
                 im_data.data.set(tex_data);
             } else {
-                const old_texture = uniform.value
-                uniform.value = re_create_texture(old_texture, tex_data, size)
-                old_texture.dispose()
+                const old_texture = uniform.value;
+                uniform.value = re_create_texture(old_texture, tex_data, size);
+                old_texture.dispose();
             }
             uniform.value.needsUpdate = true;
         } else {
@@ -731,7 +726,7 @@ function connect_attributes(mesh, updater) {
 }
 
 export function render_scene(scene) {
-    const {camera, renderer} = scene.screen
+    const { camera, renderer } = scene.screen;
     const canvas = renderer.domElement;
     if (!document.body.contains(canvas)) {
         console.log("EXITING WGL");
@@ -749,16 +744,16 @@ export function render_scene(scene) {
         renderer.setClearColor(scene.backgroundcolor.value);
         renderer.render(scene, camera);
     }
-    return true
+    return true;
 }
 
 function start_renderloop(three_scenes) {
     if (three_scenes.length == 0) {
-        return
+        return;
     }
     // extract the first scene for screen, which should be shared by all scenes!
-    const scene1 = three_scenes[0]
-    const {fps} = scene1.screen
+    const scene1 = three_scenes[0];
+    const { fps } = scene1.screen;
     const time_per_frame = (1 / fps) * 1000; // default is 30 fps
     // make sure we immediately render the first frame and dont wait 30ms
     let last_time_stamp = performance.now();
@@ -768,7 +763,7 @@ function start_renderloop(three_scenes) {
             if (!all_rendered) {
                 // if scenes don't render it means they're not displayed anymore
                 // - time to quit the renderin' business
-                return
+                return;
             }
             last_time_stamp = performance.now();
         }
@@ -920,17 +915,17 @@ function create_scene(
     TEXTURE_ATLAS[0] = texture_atlas_obs;
 
     if (renderer) {
-        const camera = new THREE.PerspectiveCamera(45, 1, 0, 100)
+        const camera = new THREE.PerspectiveCamera(45, 1, 0, 100);
         camera.updateProjectionMatrix();
-        const size = new THREE.Vector2()
-        renderer.getDrawingBufferSize(size)
+        const size = new THREE.Vector2();
+        renderer.getDrawingBufferSize(size);
         const picking_target = new THREE.WebGLRenderTarget(size.x, size.y);
-        const screen = {renderer, picking_target, camera, fps}
+        const screen = { renderer, picking_target, camera, fps };
 
         const three_scenes = scenes.map((x) => {
-            const three_scene = deserialize_scene(x, canvas)
-            three_scene.screen = screen
-            return three_scene
+            const three_scene = deserialize_scene(x, canvas);
+            three_scene.screen = screen;
+            return three_scene;
         });
 
         start_renderloop(three_scenes);
@@ -948,91 +943,92 @@ function create_scene(
 }
 
 export function event2scene_pixel(scene, event) {
-    const canvas = scene.screen.renderer.domElement
+    const canvas = scene.screen.renderer.domElement;
     const rect = canvas.getBoundingClientRect();
     const pixelRatio = window.devicePixelRatio || 1.0;
     const x = (event.clientX - rect.left) * pixelRatio;
-    const y = (rect.height - ((event.clientY - rect.top))) * pixelRatio;
-    return [x, y]
+    const y = (rect.height - (event.clientY - rect.top)) * pixelRatio;
+    return [x, y];
 }
 
 function set_picking_uniforms(scene, last_id, picking, picked_plots, plots) {
     scene.children.forEach((plot, index) => {
-        const {material} = plot
-        const {uniforms} = material
+        const { material } = plot;
+        const { uniforms } = material;
         if (picking) {
-            uniforms.object_id.value = last_id + index
-            uniforms.picking.value = true
-            material.blending = THREE.NoBlending
+            uniforms.object_id.value = last_id + index;
+            uniforms.picking.value = true;
+            material.blending = THREE.NoBlending;
         } else {
             // clean up after picking
-            uniforms.picking.value = false
-            material.blending = THREE.NormalBlending
+            uniforms.picking.value = false;
+            material.blending = THREE.NormalBlending;
             // we also collect the picked/matched plots as part of the clean up
-            const id = uniforms.object_id.value
+            const id = uniforms.object_id.value;
             if (id in picked_plots) {
-                plots.push([plot, picked_plots[id]])
+                plots.push([plot, picked_plots[id]]);
             }
         }
-    })
-    return last_id + scene.children.length
+    });
+    return last_id + scene.children.length;
 }
 
 export function pick_native(scenes, x, y, w, h) {
-
-    const {renderer, camera, picking_target} = scenes[0].screen
-        // render the scene
-    renderer.setRenderTarget(picking_target)
+    const { renderer, camera, picking_target } = scenes[0].screen;
+    // render the scene
+    renderer.setRenderTarget(picking_target);
 
     const pixelRatio = window.devicePixelRatio || 1.0;
 
-    let last_id = 1
-    scenes.forEach(scene => {
-
-        last_id = set_picking_uniforms(scene, last_id, true)
+    let last_id = 1;
+    scenes.forEach((scene) => {
+        last_id = set_picking_uniforms(scene, last_id, true);
 
         const area = JSServe.get_observable(scene.pixelarea);
-        const [_x, _y, _w, _h] = area.map(t => t / pixelRatio);
-        renderer.autoClear = true
+        const [_x, _y, _w, _h] = area.map((t) => t / pixelRatio);
+        renderer.autoClear = true;
         renderer.setViewport(_x, _y, _w, _h);
         renderer.setScissor(_x, _y, _w, _h);
         renderer.setScissorTest(true);
-        renderer.setClearAlpha(0)
+        renderer.setClearAlpha(0);
         renderer.setClearColor(new THREE.Color(0), 0.0);
         renderer.render(scene, camera);
-    })
+    });
 
     renderer.setRenderTarget(null); // reset render target
 
-    const nbytes = w * h * 4
+    const nbytes = w * h * 4;
     const pixel_bytes = new Uint8Array(nbytes);
 
     //read the pixel
     renderer.readRenderTargetPixels(
         picking_target,
-        x,   // x
-        y,   // y
-        w,   // width
-        h,   // height
-        pixel_bytes);
+        x, // x
+        y, // y
+        w, // width
+        h, // height
+        pixel_bytes
+    );
 
-    const picked_plots = {}
+    const picked_plots = {};
     const reinterpret_view = new DataView(pixel_bytes.buffer);
 
     for (let i = 0; i < pixel_bytes.length / 4; i++) {
-        const id = reinterpret_view.getUint16(i*4)
-        const index = reinterpret_view.getUint16(i*4 + 2)
-        picked_plots[id] = index
+        const id = reinterpret_view.getUint16(i * 4);
+        const index = reinterpret_view.getUint16(i * 4 + 2);
+        picked_plots[id] = index;
     }
     // dict of plot_uuid => primitive_index (e.g. instance id or triangle index)
-    const plots = []
-    scenes.forEach(scene => set_picking_uniforms(scene, 0, false, picked_plots, plots))
-    return plots
+    const plots = [];
+    scenes.forEach((scene) =>
+        set_picking_uniforms(scene, 0, false, picked_plots, plots)
+    );
+    return plots;
 }
 
 export function pick_native_uuid(scenes, x, y, w, h) {
-    const picked_plots = pick_native(scenes, x, y, w, h)
-    return picked_plots.map(x=> [x[0].uuid, x[1]])
+    const picked_plots = pick_native(scenes, x, y, w, h);
+    return picked_plots.map((x) => [x[0].uuid, x[1]]);
 }
 
 export {
