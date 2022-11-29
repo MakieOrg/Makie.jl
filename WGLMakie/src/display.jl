@@ -126,7 +126,6 @@ function Base.delete!(td::Screen, scene::Scene, plot::AbstractPlot)
 end
 
 function session2image(session::Session, scene::Scene)
-    println("hehe")
     to_data = js"""function (){
         return $(scene).then(scene => {
             const {renderer} = scene.screen

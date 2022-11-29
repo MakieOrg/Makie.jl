@@ -116,25 +116,6 @@ vec4 volumergba(vec3 front, vec3 dir)
     return vec4(Lo, 1.0 - T);
 }
 
-// vec4 volumeindexedrgba(vec3 front, vec3 dir)
-// {
-//     vec3 pos = front;
-//     float T = 1.0;
-//     vec3 Lo = vec3(0.0);
-//     int i = 0;
-//     for (i; i < num_samples; ++i) {
-//         int index = int(texture(volumedata, pos).x) - 1;
-//         vec4 density = color_lookup(colormap, index);
-//         float opacity = step_size*density.a;
-//         Lo += (T*opacity)*density.rgb;
-//         T *= 1.0 - opacity;
-//         if (T <= 0.01)
-//             break;
-//         pos += dir;
-//     }
-//     return vec4(Lo, 1-T);
-// }
-
 vec4 contours(vec3 front, vec3 dir)
 {
     vec3 pos = front;
@@ -197,8 +178,6 @@ vec4 mip(vec3 front, vec3 dir)
 }
 
 uniform uint objectid;
-
-void write2framebuffer(vec4 color, uvec2 id);
 
 const float typemax = 100000000000000000000000000000000000000.0;
 
@@ -271,7 +250,7 @@ void main()
 
     if (picking) {
         if (color.a > 0.1) {
-            fragment_color = pack_int(object_id, 0);
+            fragment_color = pack_int(object_id, uint(0));
         }
         return;
     }
