@@ -110,21 +110,22 @@ function polypath(screen, polygon::Polygon)
     ctx = screen.context
     w, h = screen.surface.width, screen.surface.height
 
-    # establish an exterior clip by surrounding the actual clip with a rectangle
-    # of the size of the surface
-    Cairo.move_to(ctx, 0, 0)
-    Cairo.line_to(ctx, w, 0)
-    Cairo.line_to(ctx, w, h)
-    Cairo.line_to(ctx, 0, h)
-    Cairo.close_path(ctx)
     interiors = decompose.(Point2f, polygon.interiors)
     for interior in interiors
+        # establish an 'exterior' clip by surrounding the actual clip with a rectangle
+        # of the size of the surface
+        Cairo.move_to(ctx, 0, 0)
+        Cairo.line_to(ctx, w, 0)
+        Cairo.line_to(ctx, w, h)
+        Cairo.line_to(ctx, 0, h)
+        Cairo.close_path(ctx)
         Cairo.move_to(ctx, interior[1]...)
         for point in interior[2:end]
             Cairo.line_to(ctx, point...)
         end
+        Cairo.close_path(ctx)
+        Cairo.clip(ctx)
     end
-    Cairo.clip(ctx)
 
     ext = decompose(Point2f, polygon.exterior)
     Cairo.move_to(ctx, ext[1]...)
