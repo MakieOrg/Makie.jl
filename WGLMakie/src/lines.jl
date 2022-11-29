@@ -62,6 +62,10 @@ function create_shader(scene::Scene, plot::Union{Lines,LineSegments})
                      uv=Vec2f[(0, 0), (0, 0), (0, 0), (0, 0)])
     instance = GeometryBasics.Mesh(positions, GLTriangleFace[(1, 2, 3), (2, 4, 3)])
 
+    # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
+    uniforms[:picking] = false
+    uniforms[:object_id] = UInt32(0)
+
     return InstancedProgram(WebGL(), lasset("line_segments.vert"),
                             lasset("line_segments.frag"), instance,
                             VertexArray(; per_instance...); uniforms...)

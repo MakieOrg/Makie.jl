@@ -125,21 +125,21 @@ function Base.delete!(td::Screen, scene::Scene, plot::AbstractPlot)
     delete!(get_three(td), scene, plot)
 end
 
-function session2image(sessionlike)
-    yield()
-    s = JSServe.session(sessionlike)
+function session2image(session::Session, scene::Scene)
+    println("hehe")
     to_data = js"""function (){
-        return document.querySelector('canvas').toDataURL()
+        return $(scene).then(scene => {
+            const {renderer} = scene.screen
+            //WGLMakie.render_scene(scene)
+            const img = renderer.domElement.toDataURL()
+            return img
+        })
     }()
     """
-    picture_base64 = JSServe.evaljs_value(s, to_data; timeout=100)
+    picture_base64 = JSServe.evaljs_value(session, to_data; timeout=100)
     picture_base64 = replace(picture_base64, "data:image/png;base64," => "")
     bytes = JSServe.Base64.base64decode(picture_base64)
     return ImageMagick.load_(bytes)
-end
-
-function Makie.colorbuffer(screen::ThreeDisplay)
-    return session2image(screen)
 end
 
 function Makie.colorbuffer(screen::Screen)
@@ -150,7 +150,7 @@ function Makie.colorbuffer(screen::Screen)
     if isnothing(three)
         error("Not able to show scene in a browser")
     end
-    return session2image(three)
+    return session2image(three.session, screen.scene)
 end
 
 function Base.insert!(td::Screen, scene::Scene, plot::Combined)

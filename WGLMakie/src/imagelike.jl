@@ -33,6 +33,10 @@ function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
         return transpose(inv(v[i, i] * m[i, i]))
     end
 
+    # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
+    uniforms[:picking] = false
+    uniforms[:object_id] = UInt32(0)
+
     return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), mesh; uniforms...)
 end
 
@@ -161,5 +165,7 @@ function create_shader(mscene::Scene, plot::Volume)
                    model=model2, depth_shift = get(plot, :depth_shift, Observable(0f0)),
                    # these get filled in later by serialization, but we need them
                    # as dummy values here, so that the correct uniforms are emitted
-                   lightposition=Vec3f(1), eyeposition=Vec3f(1), ambient=Vec3f(1))
+                   lightposition=Vec3f(1), eyeposition=Vec3f(1), ambient=Vec3f(1),
+                   picking=false, object_id=UInt32(0)
+                   )
 end

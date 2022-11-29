@@ -240,8 +240,8 @@ disable!(inspector::DataInspector) = inspector.attributes.enabled[] = false
 Creates a data inspector which will show relevant information in a tooltip
 when you hover over a plot.
 
-This functionality can eb disabled on a per-plot basis by setting 
-`plot.inspectable[] = false`. The displayed text can be adjusted by setting 
+This functionality can eb disabled on a per-plot basis by setting
+`plot.inspectable[] = false`. The displayed text can be adjusted by setting
 `plot.inspector_label` to a function `(plot, index, position) -> "my_label"`
 returning a label. See Makie documentation for more detail.
 
@@ -348,9 +348,9 @@ function show_data_recursion(inspector, plot, idx)
     if processed
         return true
     else
-        # Some show_data methods use the current selection to tell whether the 
-        # temporary plots (indicator plots) are theirs or not, so we want to 
-        # reset after processing them. We also don't want to reset when the 
+        # Some show_data methods use the current selection to tell whether the
+        # temporary plots (indicator plots) are theirs or not, so we want to
+        # reset after processing them. We also don't want to reset when the
         processed = if haskey(plot, :inspector_hover)
             plot[:inspector_hover][](inspector, plot, idx)
         else
@@ -370,9 +370,9 @@ function show_data_recursion(inspector, plot::AbstractPlot, idx, source)
     if processed
         return true
     else
-        # Some show_data methods use the current selection to tell whether the 
-        # temporary plots (indicator plots) are theirs or not, so we want to 
-        # reset after processing them. We also don't want to reset when the 
+        # Some show_data methods use the current selection to tell whether the
+        # temporary plots (indicator plots) are theirs or not, so we want to
+        # reset after processing them. We also don't want to reset when the
         processed = if haskey(plot, :inspector_hover)
             plot[:inspector_hover][](inspector, plot, idx, source)
         else
@@ -382,7 +382,7 @@ function show_data_recursion(inspector, plot::AbstractPlot, idx, source)
         if processed
             inspector.selection = plot
         end
-        
+
         return processed
     end
 end

@@ -66,6 +66,10 @@ function JSServe.print_js_code(io::IO, plot::AbstractPlot, context)
     JSServe.print_js_code(io, js"""$(WGL).then(WGL=> WGL.find_plots($(uuids)))""", context)
 end
 
+function JSServe.print_js_code(io::IO, scene::Scene, context::IdDict)
+    JSServe.print_js_code(io, js"""$(WGL).then(WGL=> WGL.find_scene($(js_uuid(scene))))""", context)
+end
+
 function three_display(session::Session, scene::Scene; screen_config...)
 
     config = Makie.merge_screen_config(ScreenConfig, screen_config)::ScreenConfig
@@ -98,4 +102,25 @@ function three_display(session::Session, scene::Scene; screen_config...)
     connect_scene_events!(scene, comm)
     three = ThreeDisplay(session)
     return three, wrapper, done_init
+end
+
+function wgl_pick(scene::Scene, screen::ThreeDisplay, rect::Rect2i)
+    task = @async begin
+        (x, y) = minimum(rect)
+        (w, h) = widths(rect)
+        plot_ids = JSServe.evaljs_value(screen.session, js"""
+            $(WGL).pick_native_uuid([$(scene)], $x, $y, $w, $h)
+        """)
+        if isempty(plot_ids)
+            return Tuple{AbstractPlot, Int}[]
+        else
+            all_children = Makie.flatten_plots(scene.plots)
+            lookup = Dict(Pair.(js_uuid.(all_children), all_children))
+            return map(plot_ids) do (uuid, index)
+                !haskey(lookup, uuid) && error("Internal error, should always be able to lookup found plots")
+                return (lookup[uuid], Int(index) + 1)
+            end
+        end
+    end
+    return fetch(task)
 end

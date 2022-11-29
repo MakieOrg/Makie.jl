@@ -88,6 +88,10 @@ function create_shader(scene::Scene, plot::MeshScatter)
         end
     end
 
+    # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
+    uniform_dict[:picking] = false
+    uniform_dict[:object_id] = UInt32(0)
+
     return InstancedProgram(WebGL(), lasset("particles.vert"), lasset("particles.frag"),
                             instance, VertexArray(; per_instance...); uniform_dict...)
 end
@@ -180,7 +184,11 @@ function scatter_shader(scene::Scene, attributes)
     # Don't send obs, since it's overwritten in JS to be updated by the camera
     uniform_dict[:resolution] = scene.camera.resolution[]
 
-    return InstancedProgram(WebGL(), lasset("simple.vert"), lasset("sprites.frag"),
+    # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
+    uniform_dict[:picking] = false
+    uniform_dict[:object_id] = UInt32(0)
+
+    return InstancedProgram(WebGL(), lasset("sprites.vert"), lasset("sprites.frag"),
                             instance, VertexArray(; per_instance...); uniform_dict...)
 end
 
