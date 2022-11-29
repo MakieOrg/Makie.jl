@@ -337,3 +337,11 @@ end
 function matrix_grid(f, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
     matrix_grid(f, LinRange(extrema(x)..., size(z, 1)), LinRange(extrema(x)..., size(z, 2)), z)
 end
+
+function extract_keys(attributes, keys)
+    attr = Attributes()
+    for key in keys
+        attr[key] = attributes[key]
+    end
+    return attr
+end

@@ -235,10 +235,10 @@ const WGLMakie = (function () {
         tex.magFilter = THREE[data.magFilter];
         tex.anisotropy = data.anisotropy;
         tex.wrapS = THREE[data.wrapS];
-        if (data.size.length > 2) {
+        if (data.size.length > 1) {
             tex.wrapT = THREE[data.wrapT];
         }
-        if (data.size.length > 3) {
+        if (data.size.length > 2) {
             tex.wrapR = THREE[data.wrapR];
         }
         return tex;
