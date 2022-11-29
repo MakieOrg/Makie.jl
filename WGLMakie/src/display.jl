@@ -132,7 +132,7 @@ function session2image(sessionlike)
         return document.querySelector('canvas').toDataURL()
     }()
     """
-    picture_base64 = JSServe.evaljs_value(s, to_data; time_out=100)
+    picture_base64 = JSServe.evaljs_value(s, to_data; timeout=100)
     picture_base64 = replace(picture_base64, "data:image/png;base64," => "")
     bytes = JSServe.Base64.base64decode(picture_base64)
     return ImageMagick.load_(bytes)

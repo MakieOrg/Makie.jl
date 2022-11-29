@@ -21,10 +21,12 @@ end
 js_uuid(object) = string(objectid(object))
 
 function Base.insert!(td::ThreeDisplay, scene::Scene, plot::Combined)
+    JSServe.wait_for_ready(td.session)
     plot_data = serialize_plots(scene, [plot])
     JSServe.evaljs_value(td.session, js"""
-        WGLMakie.insert_plot($(js_uuid(scene)), $plot_data)
-    """)
+    $(WGL).then(WGL=> {
+        WGL.insert_plot($(js_uuid(scene)), $plot_data);
+    })""")
     return
 end
 
@@ -61,7 +63,7 @@ end
 
 function JSServe.print_js_code(io::IO, plot::AbstractPlot, context)
     uuids = js_uuid.(Makie.flatten_plots(plot))
-    JSServe.print_js_code(io, js"WGLMakie.find_plots($(uuids))", context)
+    JSServe.print_js_code(io, js"""$(WGL).then(WGL=> WGL.find_plots($(uuids)))""", context)
 end
 
 function three_display(session::Session, scene::Scene; screen_config...)
