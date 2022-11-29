@@ -160,6 +160,7 @@ end
     # self-intersecting polygon
     poly!(Point2f[(3, 0), (5, 0), (6, 1), (4, 1)],
         [Point2f[(3.75, 0.25), (10, 0.25), (10, 0.75), (4.25, 0.75)]])
+    fig
 end
 
 @reference_test "Text Annotation" begin
