@@ -234,16 +234,21 @@ function serialize_three(program::Program)
                 :attribute_updater => attribute_updater)
 end
 
-function serialize_scene(scene::Scene, serialized_scenes=[])
+function serialize_scene(scene::Scene)
+
     hexcolor(c) = "#" * hex(Colors.color(to_color(c)))
     pixel_area = lift(area -> Int32[minimum(area)..., widths(area)...], pixelarea(scene))
+
     cam_controls = cameracontrols(scene)
+
     cam3d_state = if cam_controls isa Camera3D
         fields = (:lookat, :upvector, :eyeposition, :fov, :near, :far)
         Dict((f => serialize_three(getfield(cam_controls, f)[]) for f in fields))
     else
         nothing
     end
+
+    children = map(child-> serialize_scene(child), scene.children)
 
     serialized = Dict(:pixelarea => pixel_area,
                       :backgroundcolor => lift(hexcolor, scene.backgroundcolor),
@@ -252,12 +257,11 @@ function serialize_scene(scene::Scene, serialized_scenes=[])
                       :plots => serialize_plots(scene, scene.plots),
                       :cam3d_state => cam3d_state,
                       :visible => scene.visible,
-                      :uuid => js_uuid(scene))
+                      :uuid => js_uuid(scene),
+                      :children => children)
 
-    push!(serialized_scenes, serialized)
-    foreach(child -> serialize_scene(child, serialized_scenes), scene.children)
 
-    return serialized_scenes
+    return serialized
 end
 
 function serialize_plots(scene::Scene, plots::Vector{T}, result=[]) where {T<:AbstractPlot}

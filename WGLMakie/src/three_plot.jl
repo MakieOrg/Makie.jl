@@ -71,10 +71,8 @@ function JSServe.print_js_code(io::IO, scene::Scene, context::IdDict)
 end
 
 function three_display(session::Session, scene::Scene; screen_config...)
-
     config = Makie.merge_screen_config(ScreenConfig, screen_config)::ScreenConfig
-
-    scene_data = serialize_scene(scene)
+    scene_serialized = serialize_scene(scene)
 
     window_open = scene.events.window_open
     width, height = size(scene)
@@ -91,14 +89,13 @@ function three_display(session::Session, scene::Scene; screen_config...)
         $(WGL).then(WGL => {
             // well.... not nice, but can't deal with the `Promise` in all the other functions
             window.WGLMakie = WGL
-            WGL.create_scene($wrapper, canvas, $canvas_width, $scene_data, $comm, $width, $height, $(config.framerate), $(ta))
+            WGL.create_scene($wrapper, canvas, $canvas_width, $scene_serialized, $comm, $width, $height, $(config.framerate), $(ta))
         })
         $(done_init).notify(true)
     }
     """
 
     JSServe.onload(session, wrapper, setup)
-
     connect_scene_events!(scene, comm)
     three = ThreeDisplay(session)
     return three, wrapper, done_init

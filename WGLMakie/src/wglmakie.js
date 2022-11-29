@@ -65,7 +65,7 @@ function delete_plots(scene_id, plot_uuids) {
     });
 }
 
-function to_world(scene, x, y) {
+export function to_world(scene, x, y) {
     const proj_inv = scene.wgl_camera.projectionview.value.clone().invert();
     const [_x, _y, w, h] = JSServe.get_observable(scene.pixelarea);
     const pix_space = new THREE.Vector4(
@@ -563,8 +563,10 @@ function deserialize_plot(data) {
     return mesh;
 }
 
-function deserialize_scene(data, canvas) {
+function deserialize_scene(data, screen) {
     const scene = new THREE.Scene();
+    scene.screen = screen;
+    const { canvas } = screen;
     add_scene(data.uuid, scene);
     scene.frustumCulled = false;
     scene.pixelarea = data.pixelarea;
@@ -611,6 +613,9 @@ function deserialize_scene(data, canvas) {
     data.plots.forEach((plot_data) => {
         add_plot(scene, plot_data);
     });
+    scene.scene_children = data.children.map((child) =>
+        deserialize_scene(child, screen)
+    );
     return scene;
 }
 
@@ -744,22 +749,19 @@ export function render_scene(scene) {
         renderer.setClearColor(scene.backgroundcolor.value);
         renderer.render(scene, camera);
     }
-    return true;
+
+    return scene.scene_children.every(render_scene);
 }
 
-function start_renderloop(three_scenes) {
-    if (three_scenes.length == 0) {
-        return;
-    }
+function start_renderloop(three_scene) {
     // extract the first scene for screen, which should be shared by all scenes!
-    const scene1 = three_scenes[0];
-    const { fps } = scene1.screen;
+    const { fps } = three_scene.screen;
     const time_per_frame = (1 / fps) * 1000; // default is 30 fps
     // make sure we immediately render the first frame and dont wait 30ms
     let last_time_stamp = performance.now();
     function renderloop(timestamp) {
         if (timestamp - last_time_stamp > time_per_frame) {
-            const all_rendered = three_scenes.every(render_scene);
+            const all_rendered = render_scene(three_scene);
             if (!all_rendered) {
                 // if scenes don't render it means they're not displayed anymore
                 // - time to quit the renderin' business
@@ -770,7 +772,7 @@ function start_renderloop(three_scenes) {
         window.requestAnimationFrame(renderloop);
     }
     // render one time before starting loop, so that we don't wait 30ms before first render
-    three_scenes.forEach(render_scene);
+    render_scene(three_scene);
     renderloop();
 }
 
@@ -922,13 +924,9 @@ function create_scene(
         const picking_target = new THREE.WebGLRenderTarget(size.x, size.y);
         const screen = { renderer, picking_target, camera, fps };
 
-        const three_scenes = scenes.map((x) => {
-            const three_scene = deserialize_scene(x, canvas);
-            three_scene.screen = screen;
-            return three_scene;
-        });
+        const three_scene = deserialize_scene(scenes, screen);
 
-        start_renderloop(three_scenes);
+        start_renderloop(three_scene);
 
         canvas_width.on((w_h) => {
             // `renderer.setSize` correctly updates `canvas` dimensions
