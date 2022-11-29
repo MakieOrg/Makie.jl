@@ -65,6 +65,14 @@ function delete_plots(scene_id, plot_uuids) {
     });
 }
 
+export function event2scene_pixel(scene, event) {
+    const canvas = scene.screen.renderer.domElement;
+    const rect = canvas.getBoundingClientRect();
+    const x = (event.clientX - rect.left) * pixelRatio;
+    const y = (rect.height - (event.clientY - rect.top)) * pixelRatio;
+    return [x, y];
+}
+
 export function to_world(scene, x, y) {
     const proj_inv = scene.wgl_camera.projectionview.value.clone().invert();
     const [_x, _y, w, h] = JSServe.get_observable(scene.pixelarea);
@@ -208,8 +216,14 @@ function add_plot(scene, plot_data) {
     scene.add(p);
 }
 
+function in_scene(scene, mouse_event) {
+    const [x, y] = event2scene_pixel(scene, mouse_event)
+    const [sx, sy, sw, sh] = scene.pixelarea.value;
+    return x >= sx && x < sx + sw && y >= sy && y < sy + sh
+}
+
 // Taken from https://andreasrohner.at/posts/Web%20Development/JavaScript/Simple-orbital-camera-controls-for-THREE-js/
-function attach_3d_camera(domElement, camera_matrices, cam3d) {
+function attach_3d_camera(canvas, camera_matrices, cam3d, scene) {
     if (cam3d === undefined) {
         // we just support 3d cameras atm
         return;
@@ -241,6 +255,9 @@ function attach_3d_camera(domElement, camera_matrices, cam3d) {
         let startDragY = null;
         function mouseWheelHandler(e) {
             e = window.event || e;
+            if (!in_scene(scene, e)) {
+                return
+            }
             const delta = Math.sign(e.deltaY);
             if (delta == -1) {
                 zoomOut();
@@ -251,12 +268,18 @@ function attach_3d_camera(domElement, camera_matrices, cam3d) {
             e.preventDefault();
         }
         function mouseDownHandler(e) {
+            if (!in_scene(scene, e)) {
+                return
+            }
             startDragX = e.clientX;
             startDragY = e.clientY;
 
             e.preventDefault();
         }
         function mouseMoveHandler(e) {
+            if (!in_scene(scene, e)) {
+                return
+            }
             if (startDragX === null || startDragY === null) return;
 
             if (drag) drag(e.clientX - startDragX, e.clientY - startDragY);
@@ -266,6 +289,9 @@ function attach_3d_camera(domElement, camera_matrices, cam3d) {
             e.preventDefault();
         }
         function mouseUpHandler(e) {
+            if (!in_scene(scene, e)) {
+                return
+            }
             mouseMoveHandler.call(this, e);
             startDragX = null;
             startDragY = null;
@@ -310,7 +336,7 @@ function attach_3d_camera(domElement, camera_matrices, cam3d) {
         update();
     }
 
-    addMouseHandler(domElement, drag, zoomIn, zoomOut);
+    addMouseHandler(canvas, drag, zoomIn, zoomOut);
 }
 
 function create_texture(data) {
@@ -572,6 +598,7 @@ function deserialize_scene(data, screen) {
     scene.pixelarea = data.pixelarea;
     scene.backgroundcolor = data.backgroundcolor;
     scene.clearscene = data.clearscene;
+    scene.visible = data.visible;
 
     const cam = {
         view: new THREE.Uniform(new THREE.Matrix4()),
@@ -606,7 +633,7 @@ function deserialize_scene(data, screen) {
     update_cam(data.camera.value);
 
     if (data.cam3d_state) {
-        attach_3d_camera(canvas, cam, data.cam3d_state);
+        attach_3d_camera(canvas, cam, data.cam3d_state, scene);
     } else {
         data.camera.on(update_cam);
     }
@@ -738,6 +765,10 @@ export function render_scene(scene) {
         renderer.state.reset();
         renderer.dispose();
         return false;
+    }
+    // dont render invisible scenes
+    if (!scene.visible.value) {
+        return true
     }
     renderer.autoClear = scene.clearscene;
     const area = scene.pixelarea.value;
@@ -938,15 +969,6 @@ function create_scene(
         // wrapper.removeChild(canvas)
         wrapper.appendChild(warning);
     }
-}
-
-export function event2scene_pixel(scene, event) {
-    const canvas = scene.screen.renderer.domElement;
-    const rect = canvas.getBoundingClientRect();
-    const pixelRatio = window.devicePixelRatio || 1.0;
-    const x = (event.clientX - rect.left) * pixelRatio;
-    const y = (rect.height - (event.clientY - rect.top)) * pixelRatio;
-    return [x, y];
 }
 
 function set_picking_uniforms(scene, last_id, picking, picked_plots, plots) {
