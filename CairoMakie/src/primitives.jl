@@ -713,9 +713,9 @@ function draw_mesh2D(scene, screen, per_face_cols, space::Symbol,
     ctx = screen.context
     # Priorize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
-    pattern = Cairo.CairoPatternMesh()
 
     for (f, (c1, c2, c3)) in zip(fs, per_face_cols)
+        pattern = Cairo.CairoPatternMesh()
         t1, t2, t3 =  project_position.(scene, space, vs[f], (model,)) #triangle points
         Cairo.mesh_pattern_begin_patch(pattern)
 
@@ -728,10 +728,11 @@ function draw_mesh2D(scene, screen, per_face_cols, space::Symbol,
         mesh_pattern_set_corner_color(pattern, 2, c3)
 
         Cairo.mesh_pattern_end_patch(pattern)
+        Cairo.set_source(ctx, pattern)
+        Cairo.close_path(ctx)
+        Cairo.paint(ctx)
+        Cairo.destroy(pattern)
     end
-    Cairo.set_source(ctx, pattern)
-    Cairo.close_path(ctx)
-    Cairo.paint(ctx)
     return nothing
 end
 
@@ -857,9 +858,9 @@ function _calculate_shaded_vertexcolors(N, v, c, lightpos, ambient, diffuse, spe
 end
 
 function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightpos, shininess, diffuse, ambient, specular)
-    pattern = Cairo.CairoPatternMesh()
-
     for k in reverse(zorder)
+        pattern = Cairo.CairoPatternMesh()
+
         f = meshfaces[k]
         # avoid SizedVector through Face indexing
         t1 = ts[f[1]]
@@ -898,10 +899,12 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
         mesh_pattern_set_corner_color(pattern, 2, c3)
 
         Cairo.mesh_pattern_end_patch(pattern)
+        Cairo.set_source(ctx, pattern)
+        Cairo.close_path(ctx)
+        Cairo.paint(ctx)
+        Cairo.destroy(pattern)
     end
-    Cairo.set_source(ctx, pattern)
-    Cairo.close_path(ctx)
-    Cairo.paint(ctx)
+    
 end
 
 ################################################################################
