@@ -1,10 +1,10 @@
-function vertexbuffer(x, trans)
+function vertexbuffer(x, trans, space)
     pos = decompose(Point, x)
-    return apply_transform(trans,  pos)
+    return apply_transform(trans,  pos, space)
 end
 
 function vertexbuffer(x::Observable, p)
-    return Buffer(lift(vertexbuffer, x, transform_func_obs(p)))
+    return Buffer(lift(vertexbuffer, x, transform_func_obs(p), get(p, :space, :data)))
 end
 
 facebuffer(x) = facebuffer(GeometryBasics.faces(x))

@@ -53,7 +53,8 @@ function create_shader(scene::Scene, plot::MeshScatter)
     per_instance = filter(plot.attributes.attributes) do (k, v)
         return k in per_instance_keys && !(isscalar(v[]))
     end
-    per_instance[:offset] = apply_transform(transform_func_obs(plot),  plot[1])
+    space = get(plot, :space, :data)
+    per_instance[:offset] = apply_transform(transform_func_obs(plot),  plot[1], space)
 
     for (k, v) in per_instance
         per_instance[k] = Buffer(lift_convert(k, v, plot))
@@ -202,7 +203,8 @@ function create_shader(scene::Scene, plot::Scatter)
     attributes = copy(plot.attributes.attributes)
     cam = scene.camera
     attributes[:preprojection] = Mat4f(I) # calculate this in JS
-    attributes[:pos] = apply_transform(transform_func_obs(plot),  plot[1])
+    attributes[:pos] = apply_transform(transform_func_obs(plot),  plot[1], space)
+
     quad_offset = get(attributes, :marker_offset, Observable(Vec2f(0)))
     attributes[:marker_offset] = Vec3f(0)
     attributes[:quad_offset] = quad_offset
@@ -246,8 +248,8 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         gcollection = Observable(glyphcollection)
     end
 
-    glyph_data = map(pos, gcollection, offset, transfunc) do pos, gc, offset, transfunc
-        Makie.text_quads(pos, to_value(gc), offset, transfunc)
+    glyph_data = map(pos, gcollection, offset, transfunc, space) do pos, gc, offset, transfunc, space
+        Makie.text_quads(pos, to_value(gc), offset, transfunc, space)
     end
 
     # unpack values from the one signal:
