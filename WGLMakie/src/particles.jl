@@ -201,6 +201,7 @@ function create_shader(scene::Scene, plot::Scatter)
         return k in per_instance_keys && !(isscalar(v[]))
     end
     attributes = copy(plot.attributes.attributes)
+    space = get(attributes, :space, :data)
     cam = scene.camera
     attributes[:preprojection] = Mat4f(I) # calculate this in JS
     attributes[:pos] = apply_transform(transform_func_obs(plot),  plot[1], space)
@@ -276,10 +277,6 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     end
 
     cam = scene.camera
-    # gl_attributes[:preprojection] = Observable(Mat4f(I))
-    preprojection = map(space, markerspace, cam.projectionview, cam.resolution) do s, ms, pv, res
-        Makie.clip_to_space(cam, ms) * Makie.space_to_clip(cam, s)
-    end
 
     uniforms = Dict(
         :model => plot.model,
@@ -290,7 +287,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         :marker_offset => char_offset,
         :quad_offset => quad_offset,
         :markersize => scale,
-        :preprojection => preprojection,
+        :preprojection => Mat4f(I),
         :uv_offset_width => uv_offset_width,
         :transform_marker => get(plot.attributes, :transform_marker, Observable(true)),
         :billboard => Observable(false),
