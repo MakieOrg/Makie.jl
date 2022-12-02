@@ -4,6 +4,7 @@
 
 ## v0.18.4
 
+- Added the `waterfall` plotting function [#2416](https://github.com/JuliaPlots/Makie.jl/pull/2416).
 - Add support for `AbstractPattern` in `WGLMakie` [#2432](https://github.com/MakieOrg/Makie.jl/pull/2432).
 - Broadcast replaces deprecated method for quantile [#2430](https://github.com/MakieOrg/Makie.jl/pull/2430).
 - Fix CairoMakie's screen re-using [#2440](https://github.com/MakieOrg/Makie.jl/pull/2440).

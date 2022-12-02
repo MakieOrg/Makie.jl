@@ -144,6 +144,7 @@ include("basic_recipes/streamplot.jl")
 include("basic_recipes/timeseries.jl")
 include("basic_recipes/tricontourf.jl")
 include("basic_recipes/volumeslices.jl")
+include("basic_recipes/waterfall.jl")
 include("basic_recipes/wireframe.jl")
 include("basic_recipes/tooltip.jl")
 
