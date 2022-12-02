@@ -60,7 +60,7 @@
     # Test quad data
     positions, char_offsets, quad_offsets, uvs, scales = Makie.text_quads(
         to_ndim(Point3f, p.position[], 0), glyph_collection,
-        Vec2f(0), Makie.transform_func_obs(scene)[]
+        Vec2f(0), Makie.transform_func_obs(scene)[], :data
     )
 
     # Also doesn't work 

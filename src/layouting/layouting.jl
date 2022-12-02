@@ -302,8 +302,8 @@ _offset_at(o::Vector, i) = o[i]
 Base.getindex(x::ScalarOrVector, i) = x.sv isa Vector ? x.sv[i] : x.sv
 Base.lastindex(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
 
-function text_quads(position::VecTypes, gc::GlyphCollection, offset, transfunc)
-    p = apply_transform(transfunc, position)
+function text_quads(position::VecTypes, gc::GlyphCollection, offset, transfunc, space)
+    p = apply_transform(transfunc, position, space)
     pos = [to_ndim(Point3f, p, 0) for _ in gc.origins]
 
     atlas = get_texture_atlas()
@@ -336,8 +336,8 @@ function text_quads(position::VecTypes, gc::GlyphCollection, offset, transfunc)
     return pos, char_offsets, quad_offsets, uvs, scales
 end
 
-function text_quads(position::Vector, gcs::Vector{<: GlyphCollection}, offset, transfunc)
-    ps = apply_transform(transfunc, position)
+function text_quads(position::Vector, gcs::Vector{<: GlyphCollection}, offset, transfunc, space)
+    ps = apply_transform(transfunc, position, space)
     pos = [to_ndim(Point3f, p, 0) for (p, gc) in zip(ps, gcs) for _ in gc.origins]
 
     atlas = get_texture_atlas()

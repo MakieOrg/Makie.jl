@@ -82,7 +82,8 @@ function update_axis_camera(camera::Camera, t, lims, xrev::Bool, yrev::Bool)
     nearclip = -10_000f0
     farclip = 10_000f0
 
-    tlims = Makie.apply_transform(t, lims)
+    # we are computing transformed camera position, so this isn't space dependent
+    tlims = Makie.apply_transform(t, lims) 
 
     left, bottom = minimum(tlims)
     right, top = maximum(tlims)
