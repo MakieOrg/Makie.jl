@@ -9,7 +9,7 @@
     
     scene = Scene()
     campixel!(scene)
-    p = text!(scene, Point2f(30, 37), text = str, align = (:left, :baseline))
+    p = text!(scene, Point2f(30, 37), text = str, align = (:left, :baseline), fontsize = 20)
     glyph_collection = p.plots[1][1][][]
     
     # This doesn't work well because FreeTypeAbstraction doesn't quite scale 
@@ -24,7 +24,7 @@
     #     )
     # end
     # origins = let 
-    #     glyph_scale = p.textsize[] / 64
+    #     glyph_scale = p.fontsize[] / 64
     #     cumsum(vcat(
     #         - glyph_scale * fta_glyphs[1][2].horizontal_bearing[1],
     #         [glyph_scale * fta_glyphs[i][2].advance[1] for i in 1:3]
@@ -44,7 +44,7 @@
     @test glyph_collection.glyphs == FreeTypeAbstraction.glyph_index.(font, chars)
     @test glyph_collection.fonts == [font for _ in 1:4]
     @test all(isapprox.(glyph_collection.origins, [Point3f(x, 0, 0) for x in origins], atol = 1e-10))
-    @test glyph_collection.scales.sv == [Vec2f(p.textsize[]) for _ in 1:4]
+    @test glyph_collection.scales.sv == [Vec2f(p.fontsize[]) for _ in 1:4]
     @test glyph_collection.rotations.sv == [Quaternionf(0,0,0,1) for _ in 1:4]
     @test glyph_collection.colors.sv == [RGBAf(0,0,0,1) for _ in 1:4]
     @test glyph_collection.strokecolors.sv == [RGBAf(0,0,0,0) for _ in 1:4]
@@ -65,11 +65,11 @@
 
     # Also doesn't work 
     # fta_offsets = map(fta_glyphs) do (img, extent)
-    #     (extent.horizontal_bearing .- Makie.GLYPH_PADDING[]) * p.textsize[] / 
+    #     (extent.horizontal_bearing .- Makie.GLYPH_PADDING[]) * p.fontsize[] / 
     #         Makie.PIXELSIZE_IN_ATLAS[]
     # end
     # fta_scales = map(fta_glyphs) do (img, extent)
-    #     (extent.scale .+ 2 * Makie.GLYPH_PADDING[]) * p.textsize[] / 
+    #     (extent.scale .+ 2 * Makie.GLYPH_PADDING[]) * p.fontsize[] / 
     #         Makie.PIXELSIZE_IN_ATLAS[]
     # end
     
@@ -99,4 +99,8 @@ end
     text([L"text"], position = [Point2f(0, 0)])
     text([L"text", L"text"], position = [Point2f(0, 0), Point2f(1, 1)])
     text(collect(zip([L"text", L"text"], [Point2f(0, 0), Point2f(1, 1)])))
+
+    err = ArgumentError("The attribute `textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version.")
+    @test_throws err Label(Figure()[1, 1], "hi", textsize = 30)
+    @test_throws err text(1, 2, text = "hi", textsize = 30)
 end

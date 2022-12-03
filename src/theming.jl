@@ -55,7 +55,14 @@ const default_palettes = Attributes(
 
 const minimal_default = Attributes(
     palette = default_palettes,
-    font = "TeX Gyre Heros Makie",
+    font = :regular,
+    fonts = Attributes(
+        :regular => "TeX Gyre Heros Makie",
+        :bold => "TeX Gyre Heros Makie Bold",
+        :italic => "TeX Gyre Heros Makie Italic",
+        :bold_italic => "TeX Gyre Heros Makie Bold Italic",
+    ),
+    fontsize = 16,
     textcolor = :black,
     padding = Vec3f(0.05),
     figure_padding = 16,

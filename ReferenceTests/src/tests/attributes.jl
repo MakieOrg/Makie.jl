@@ -18,7 +18,7 @@ end
 
 @reference_test "position" begin
     fig, ax, sc = scatter(RNG.rand(10), color=:red)
-    text!(ax, 5, 1.1, text = "adding text", textsize=0.6)
+    text!(ax, 5, 1.1, text = "adding text", fontsize=0.6)
     fig
 end
 

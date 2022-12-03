@@ -101,7 +101,7 @@ function initialize_block!(ax::Axis3)
         blockscene, ax.title,
         position = titlepos,
         visible = ax.titlevisible,
-        textsize = ax.titlesize,
+        fontsize = ax.titlesize,
         align = titlealignnode,
         font = ax.titlefont,
         color = ax.titlecolor,
@@ -544,7 +544,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     end
 
     ticklabels = text!(topscene, labels_positions, align = align,
-        color = attr(:ticklabelcolor), textsize = attr(:ticklabelsize),
+        color = attr(:ticklabelcolor), fontsize = attr(:ticklabelsize),
         font = attr(:ticklabelfont), visible = attr(:ticklabelsvisible), inspectable = false
     )
 
@@ -627,7 +627,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
 
     label = text!(topscene, attr(:label),
         color = attr(:labelcolor),
-        textsize = attr(:labelsize),
+        fontsize = attr(:labelsize),
         font = attr(:labelfont),
         position = label_position,
         rotation = label_rotation,

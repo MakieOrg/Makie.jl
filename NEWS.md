@@ -1,6 +1,10 @@
 # News
 
-## master
+## v0.19.0
+
+- **Breaking** The attribute `textsize` has been removed everywhere in favor of the attribute `fontsize` which had also been in use.
+  To migrate, search and replace all uses of `textsize` to `fontsize` [#2387](https://github.com/MakieOrg/Makie.jl/pull/2387).
+- Added rich text which allows to more easily use superscripts and subscripts as well as differing colors, fonts, fontsizes, etc. for parts of a given text [#2321](https://github.com/MakieOrg/Makie.jl/pull/2321).
 
 ## v0.18.4
 
