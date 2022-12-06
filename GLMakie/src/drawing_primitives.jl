@@ -200,11 +200,11 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Union{Scatte
         gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
         marker = lift_convert(:marker, pop!(gl_attributes, :marker), x)
 
+        space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         positions = handle_view(x[1], gl_attributes)
-        positions = apply_transform(transform_func_obs(x), positions)
+        positions = apply_transform(transform_func_obs(x), positions, space)
 
         if isa(x, Scatter)
-            space = get(gl_attributes, :space, :data)
             mspace = get(gl_attributes, :markerspace, :pixel)
             cam = scene.camera
             gl_attributes[:preprojection] = map(space, mspace, cam.projectionview, cam.resolution) do space, mspace, _, _
@@ -260,8 +260,9 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
             linewidth = gl_attributes[:thickness]
             data[:pattern] = ls .* (to_value(linewidth) * 0.25)
         end
+        space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         positions = handle_view(x[1], data)
-        positions = apply_transform(transform_func_obs(x), positions)
+        positions = apply_transform(transform_func_obs(x), positions, space)
         handle_intensities!(data)
         connect_camera!(data, scene.camera)
         return draw_lines(screen, positions, data)
@@ -279,8 +280,9 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::LineSegments
             linewidth = gl_attributes[:thickness]
             data[:pattern] = ls .* (to_value(linewidth) * 0.25)
         end
+        space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         positions = handle_view(x.converted[1], data)
-        positions = apply_transform(transform_func_obs(x), positions)
+        positions = apply_transform(transform_func_obs(x), positions, space)
         if haskey(data, :color) && data[:color][] isa AbstractVector{<: Number}
             c = pop!(data, :color)
             data[:color] = el32convert(c)
@@ -302,13 +304,13 @@ function draw_atomic(screen::Screen, scene::Scene,
 
         transfunc =  Makie.transform_func_obs(scene)
         pos = gl_attributes[:position]
-        space = get(gl_attributes, :space, Observable(:data))
+        space = get(gl_attributes, :space, Observable(:data)) # needs to happen before connect_camera! call
         markerspace = gl_attributes[:markerspace]
         offset = pop!(gl_attributes, :offset, Vec2f(0))
 
         # calculate quad metrics
-        glyph_data = map(pos, glyphcollection, offset, transfunc) do pos, gc, offset, transfunc
-            Makie.text_quads(pos, to_value(gc), offset, transfunc)
+        glyph_data = map(pos, glyphcollection, offset, transfunc, space) do pos, gc, offset, transfunc, space
+            Makie.text_quads(pos, to_value(gc), offset, transfunc, space)
         end
 
         # unpack values from the one signal:
@@ -322,7 +324,7 @@ function draw_atomic(screen::Screen, scene::Scene,
             # These are liftkeys without model
             !(k in (
                 :position, :space, :markerspace, :font,
-                :textsize, :rotation, :justification
+                :fontsize, :rotation, :justification
             )) # space,
         end
 
@@ -379,7 +381,8 @@ function draw_atomic(screen::Screen, scene::Scene, x::Heatmap)
     return cached_robj!(screen, scene, x) do gl_attributes
         t = Makie.transform_func_obs(scene)
         mat = x[3]
-        xypos = map(t, x[1], x[2]) do t, x, y
+        space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
+        xypos = map(t, x[1], x[2], space) do t, x, y, space
             x1d = xy_convert(x, size(mat[], 1))
             y1d = xy_convert(y, size(mat[], 2))
             # Only if transform doesn't do anything, we can stay linear in 1/2D
@@ -389,10 +392,10 @@ function draw_atomic(screen::Screen, scene::Scene, x::Heatmap)
                 # If we do any transformation, we have to assume things aren't on the grid anymore
                 # so x + y need to become matrices.
                 map!(x1d, x1d) do x
-                    return apply_transform(t, Point(x, 0))[1]
+                    return apply_transform(t, Point(x, 0), space)[1]
                 end
                 map!(y1d, y1d) do y
-                    return apply_transform(t, Point(0, y))[2]
+                    return apply_transform(t, Point(0, y), space)[2]
                 end
                 return (x1d, y1d)
             end
@@ -436,8 +439,9 @@ function draw_atomic(screen::Screen, scene::Scene, x::Image)
         end
         gl_attributes[:color] = x[3]
         gl_attributes[:shading] = false
+        space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         connect_camera!(gl_attributes, scene.camera)
-        return mesh_inner(screen, mesh, transform_func_obs(x), gl_attributes)
+        return mesh_inner(screen, mesh, transform_func_obs(x), gl_attributes, space)
     end
 end
 
@@ -448,7 +452,7 @@ function update_positions(mesh::GeometryBasics.Mesh, positions)
     return GeometryBasics.Mesh(meta(positions; attr...), faces(mesh))
 end
 
-function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes)
+function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, space=:data)
     # signals not supported for shading yet
     gl_attributes[:shading] = to_value(pop!(gl_attributes, :shading))
     color = pop!(gl_attributes, :color)
@@ -474,9 +478,9 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes)
     else
         error("Unsupported color type: $(typeof(to_value(color)))")
     end
-    mesh = map(mesh, transfunc) do mesh, func
+    mesh = map(mesh, transfunc, space) do mesh, func, space
         if !Makie.is_identity_transform(func)
-            return update_positions(mesh, apply_transform.(Ref(func), mesh.position))
+            return update_positions(mesh, apply_transform.(Ref(func), mesh.position, space))
         end
         return mesh
     end
@@ -486,8 +490,9 @@ end
 function draw_atomic(screen::Screen, scene::Scene, meshplot::Mesh)
     return cached_robj!(screen, scene, meshplot) do gl_attributes
         t = transform_func_obs(meshplot)
+        space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         connect_camera!(gl_attributes, scene.camera)
-        return mesh_inner(screen, meshplot[1], t, gl_attributes)
+        return mesh_inner(screen, meshplot[1], t, gl_attributes, space)
     end
 end
 
@@ -513,6 +518,8 @@ function draw_atomic(screen::Screen, scene::Scene, x::Surface)
             gl_attributes[:color_norm] = nothing
         end
 
+        space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
+
         gl_attributes[:image] = img
         gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
         connect_camera!(gl_attributes, scene.camera)
@@ -523,17 +530,17 @@ function draw_atomic(screen::Screen, scene::Scene, x::Surface)
         if all(T -> T <: Union{AbstractMatrix, AbstractVector}, types)
             t = Makie.transform_func_obs(scene)
             mat = x[3]
-            xypos = map(t, x[1], x[2]) do t, x, y
+            xypos = map(t, x[1], x[2], space) do t, x, y, space
                 # Only if transform doesn't do anything, we can stay linear in 1/2D
                 if Makie.is_identity_transform(t)
                     return (x, y)
                 else
                     matrix = if x isa AbstractMatrix && y isa AbstractMatrix
-                        apply_transform.((t,), Point.(x, y))
+                        apply_transform.((t,), Point.(x, y), space)
                     else
                         # If we do any transformation, we have to assume things aren't on the grid anymore
                         # so x + y need to become matrices.
-                        [apply_transform(t, Point(x, y)) for x in x, y in y]
+                        [apply_transform(t, Point(x, y), space) for x in x, y in y]
                     end
                     return (first.(matrix), last.(matrix))
                 end
