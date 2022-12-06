@@ -1,5 +1,7 @@
 import * as THREE from "https://cdn.esm.sh/v66/three@0.136/es2021/three.js";
 import { getWebGLErrorMessage } from "./WEBGL.js";
+import * as Camera from "./Camera.js";
+
 window.THREE = THREE;
 
 const TEXTURE_ATLAS = [undefined];
@@ -65,116 +67,10 @@ function delete_plots(scene_id, plot_uuids) {
     });
 }
 
-export function event2scene_pixel(scene, event) {
-    const canvas = scene.screen.renderer.domElement;
-    const rect = canvas.getBoundingClientRect();
-    const x = (event.clientX - rect.left) * pixelRatio;
-    const y = (rect.height - (event.clientY - rect.top)) * pixelRatio;
-    return [x, y];
-}
-
-export function to_world(scene, x, y) {
-    const proj_inv = scene.wgl_camera.projectionview.value.clone().invert();
-    const [_x, _y, w, h] = JSServe.get_observable(scene.pixelarea);
-    const pix_space = new THREE.Vector4(
-        ((x - _x) / w) * 2 - 1,
-        ((y - _y) / h) * 2 - 1,
-        0,
-        1.0
-    );
-    pix_space.applyMatrix4(proj_inv);
-    return new THREE.Vector2(
-        pix_space.x / pix_space.w,
-        pix_space.y / pix_space.w
-    );
-}
-
-function clip_to_space(cam, space) {
-    if (space == "data") {
-        return cam.projectionview.value.clone().invert();
-    } else if (space == "pixel") {
-        const [w, h] = cam.resolution.value;
-        const mati = new THREE.Matrix4();
-        mati.fromArray([
-            0.5 * w,
-            0,
-            0,
-            0,
-            0,
-            0.5 * h,
-            0,
-            0,
-            0,
-            0,
-            -10_000,
-            0,
-            0.5 * w,
-            0.5 * h,
-            0,
-            1,
-        ]);
-        return mati;
-    } else if (space == "relative") {
-        const mati2 = new THREE.Matrix4();
-        mati2.fromArray([
-            0.5, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.5,
-            0.5, 0.0, 1.0,
-        ]);
-        return mati2;
-    } else if (space == "clip") {
-        return new THREE.Matrix4();
-    } else {
-        throw new Error(`Space ${space} not recognized`);
-    }
-}
-
-function space_to_clip(cam, space) {
-    if (space == "data") {
-        return cam.projectionview.value;
-    } else if (space == "pixel") {
-        return cam.pixel_space.value;
-    } else if (space == "relative") {
-        const mati = new THREE.Matrix4();
-        mati.fromArray([2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, -1, -1, 0, 1]);
-        return mati;
-    } else if (space == "clip") {
-        return new THREE.Matrix4();
-    } else {
-        throw new Error(`Space ${space} not recognized`);
-    }
-}
-
-function preprojection_matrix(cam, space, mspace) {
-    const cp = clip_to_space(cam, mspace);
-    const sc = space_to_clip(cam, space);
-    const result = cp.clone();
-    result.multiply(sc);
-    return result;
-}
-
 function add_plot(scene, plot_data) {
     // fill in the camera uniforms, that we don't sent in serialization per plot
     const cam = scene.wgl_camera;
-    const rel = new THREE.Matrix4();
-    rel.set(
-        2.0,
-        0.0,
-        0.0,
-        -1.0,
-        0.0,
-        2.0,
-        0.0,
-        -1.0,
-        0.0,
-        0.0,
-        1.0,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        1.0
-    );
-    const id = new THREE.Uniform(new THREE.Matrix4());
+    const identity = new THREE.Uniform(new THREE.Matrix4());
 
     if (plot_data.cam_space == "data") {
         plot_data.uniforms.view = cam.view;
@@ -182,161 +78,31 @@ function add_plot(scene, plot_data) {
         plot_data.uniforms.projectionview = cam.projectionview;
         plot_data.uniforms.eyeposition = cam.eyeposition;
     } else if (plot_data.cam_space == "pixel") {
-        plot_data.uniforms.view = id;
+        plot_data.uniforms.view = identity;
         plot_data.uniforms.projection = cam.pixel_space;
         plot_data.uniforms.projectionview = cam.pixel_space;
     } else if (plot_data.cam_space == "relative") {
-        plot_data.uniforms.view = id;
-        plot_data.uniforms.projection = rel;
-        plot_data.uniforms.projectionview = rel;
+        plot_data.uniforms.view = identity;
+        plot_data.uniforms.projection = cam.relative_space;
+        plot_data.uniforms.projectionview = cam.relative_space;
     } else {
         // clip space
-        plot_data.uniforms.view = id;
-        plot_data.uniforms.projection = id;
-        plot_data.uniforms.projectionview = id;
+        plot_data.uniforms.view = identity;
+        plot_data.uniforms.projection = identity;
+        plot_data.uniforms.projectionview = identity;
     }
     plot_data.uniforms.resolution = cam.resolution;
 
     if (plot_data.uniforms.preprojection) {
         const { space, markerspace } = plot_data;
-        const preprojection = new THREE.Uniform(
-            preprojection_matrix(cam, space.value, markerspace.value)
+        plot_data.uniforms.preprojection = cam.preprojection_matrix(
+            space.value,
+            markerspace.value
         );
-        plot_data.uniforms.preprojection = preprojection;
-        cam.cam_uniform.on((new_cam_data) => {
-            preprojection.value = preprojection_matrix(
-                cam,
-                space.value,
-                markerspace.value
-            );
-        });
     }
     const p = deserialize_plot(plot_data);
     plot_cache[plot_data.uuid] = p;
     scene.add(p);
-}
-
-function in_scene(scene, mouse_event) {
-    const [x, y] = event2scene_pixel(scene, mouse_event)
-    const [sx, sy, sw, sh] = scene.pixelarea.value;
-    return x >= sx && x < sx + sw && y >= sy && y < sy + sh
-}
-
-// Taken from https://andreasrohner.at/posts/Web%20Development/JavaScript/Simple-orbital-camera-controls-for-THREE-js/
-function attach_3d_camera(canvas, camera_matrices, cam3d, scene) {
-    if (cam3d === undefined) {
-        // we just support 3d cameras atm
-        return;
-    }
-    const w = camera_matrices.resolution.value.x;
-    const h = camera_matrices.resolution.value.y;
-    const camera = new THREE.PerspectiveCamera(
-        cam3d.fov,
-        w / h,
-        cam3d.near,
-        cam3d.far
-    );
-
-    const center = new THREE.Vector3(...cam3d.lookat);
-    camera.up = new THREE.Vector3(...cam3d.upvector);
-    camera.position.set(...cam3d.eyeposition);
-    camera.lookAt(center);
-
-    function update() {
-        camera.updateProjectionMatrix();
-        camera.updateWorldMatrix();
-        camera_matrices.view.value = camera.matrixWorldInverse;
-        camera_matrices.projection.value = camera.projectionMatrix;
-        camera_matrices.eyeposition.value = camera.position;
-    }
-
-    function addMouseHandler(domObject, drag, zoomIn, zoomOut) {
-        let startDragX = null;
-        let startDragY = null;
-        function mouseWheelHandler(e) {
-            e = window.event || e;
-            if (!in_scene(scene, e)) {
-                return
-            }
-            const delta = Math.sign(e.deltaY);
-            if (delta == -1) {
-                zoomOut();
-            } else if (delta == 1) {
-                zoomIn();
-            }
-
-            e.preventDefault();
-        }
-        function mouseDownHandler(e) {
-            if (!in_scene(scene, e)) {
-                return
-            }
-            startDragX = e.clientX;
-            startDragY = e.clientY;
-
-            e.preventDefault();
-        }
-        function mouseMoveHandler(e) {
-            if (!in_scene(scene, e)) {
-                return
-            }
-            if (startDragX === null || startDragY === null) return;
-
-            if (drag) drag(e.clientX - startDragX, e.clientY - startDragY);
-
-            startDragX = e.clientX;
-            startDragY = e.clientY;
-            e.preventDefault();
-        }
-        function mouseUpHandler(e) {
-            if (!in_scene(scene, e)) {
-                return
-            }
-            mouseMoveHandler.call(this, e);
-            startDragX = null;
-            startDragY = null;
-            e.preventDefault();
-        }
-        domObject.addEventListener("wheel", mouseWheelHandler);
-        domObject.addEventListener("mousedown", mouseDownHandler);
-        domObject.addEventListener("mousemove", mouseMoveHandler);
-        domObject.addEventListener("mouseup", mouseUpHandler);
-    }
-
-    function drag(deltaX, deltaY) {
-        const radPerPixel = Math.PI / 450;
-        const deltaPhi = radPerPixel * deltaX;
-        const deltaTheta = radPerPixel * deltaY;
-        const pos = camera.position.sub(center);
-        const radius = pos.length();
-        let theta = Math.acos(pos.z / radius);
-        let phi = Math.atan2(pos.y, pos.x);
-
-        // Subtract deltaTheta and deltaPhi
-        theta = Math.min(Math.max(theta - deltaTheta, 0), Math.PI);
-        phi -= deltaPhi;
-
-        // Turn back into Cartesian coordinates
-        pos.x = radius * Math.sin(theta) * Math.cos(phi);
-        pos.y = radius * Math.sin(theta) * Math.sin(phi);
-        pos.z = radius * Math.cos(theta);
-
-        camera.position.add(center);
-        camera.lookAt(center);
-        update();
-    }
-
-    function zoomIn() {
-        camera.position.sub(center).multiplyScalar(0.9).add(center);
-        update();
-    }
-
-    function zoomOut() {
-        camera.position.sub(center).multiplyScalar(1.1).add(center);
-        update();
-    }
-
-    addMouseHandler(canvas, drag, zoomIn, zoomOut);
 }
 
 function create_texture(data) {
@@ -600,40 +366,19 @@ function deserialize_scene(data, screen) {
     scene.clearscene = data.clearscene;
     scene.visible = data.visible;
 
-    const cam = {
-        view: new THREE.Uniform(new THREE.Matrix4()),
-        projection: new THREE.Uniform(new THREE.Matrix4()),
-        projectionview: new THREE.Uniform(new THREE.Matrix4()),
-        pixel_space: new THREE.Uniform(new THREE.Matrix4()),
-        resolution: new THREE.Uniform(new THREE.Vector2()),
-        eyeposition: new THREE.Uniform(new THREE.Vector3()),
-        cam_uniform: data.camera,
-    };
+    const camera = new Camera.MakieCamera();
 
-    scene.wgl_camera = cam;
+    scene.wgl_camera = camera;
 
-    function update_cam(camera) {
-        const [
-            view,
-            projection,
-            projectionview,
-            resolution,
-            eyepos,
-            pixel_space,
-        ] = camera;
-        const resolution_scaled = resolution;
-        cam.view.value.fromArray(view);
-        cam.projection.value.fromArray(projection);
-        cam.projectionview.value.fromArray(projectionview);
-        cam.pixel_space.value.fromArray(pixel_space);
-        cam.resolution.value.fromArray(resolution_scaled);
-        cam.eyeposition.value.fromArray(eyepos);
+    function update_cam(camera_matrices) {
+        const [view, projection, resolution, eyepos] = camera_matrices;
+        camera.update_matrices(view, projection, resolution, eyepos);
     }
 
     update_cam(data.camera.value);
 
     if (data.cam3d_state) {
-        attach_3d_camera(canvas, cam, data.cam3d_state, scene);
+        Camera.attach_3d_camera(canvas, camera, data.cam3d_state, scene);
     } else {
         data.camera.on(update_cam);
     }
@@ -768,7 +513,7 @@ export function render_scene(scene) {
     }
     // dont render invisible scenes
     if (!scene.visible.value) {
-        return true
+        return true;
     }
     renderer.autoClear = scene.clearscene;
     const area = scene.pixelarea.value;
@@ -956,7 +701,7 @@ function create_scene(
         const screen = { renderer, picking_target, camera, fps, canvas };
 
         const three_scene = deserialize_scene(scenes, screen);
-        console.log(three_scene)
+        console.log(three_scene);
         start_renderloop(three_scene);
 
         canvas_width.on((w_h) => {

@@ -278,7 +278,6 @@ for (key, (obs, input)) in pairs(sliders)
     push!(labels, Label(fig, string(key); align=:left))
     push!(inputs, input)
     on(obs) do value
-        @show key value
         setproperty!(material, key, value)
         return notify(refresh)
     end

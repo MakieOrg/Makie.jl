@@ -320,13 +320,10 @@ end
 
 function serialize_camera(scene::Scene)
     cam = scene.camera
-    return lift(cam.view, cam.projection, cam.resolution) do v, p, res
-        # projectionview updates with projection & view
-        pv = cam.projectionview[]
-        # same goes for eyeposition, since an eyepos change will trigger
+    return lift(cam.view, cam.projection, cam.resolution) do view, proj, res
+        # eyeposition updates with viewmatrix, since an eyepos change will trigger
         # a view matrix change!
         ep = cam.eyeposition[]
-        pixel_space = cam.pixel_space[]
-        return [serialize_three.((v, p, pv, res, ep, pixel_space))...]
+        return [view, proj, res, ep]
     end
 end
