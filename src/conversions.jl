@@ -920,7 +920,7 @@ const FONT_CACHE = Dict{String, NativeFont}()
 
 a string naming a font, e.g. helvetica
 """
-function to_font(x::Union{Symbol, String})
+function to_font(x::String)
     str = string(x)
     get!(FONT_CACHE, str) do
         str == "default" && return to_font("TeX Gyre Heros Makie")
@@ -952,6 +952,20 @@ to_font(x::Vector{String}) = to_font.(x)
 to_font(x::NativeFont) = x
 to_font(x::Vector{NativeFont}) = x
 
+function to_font(fonts::Attributes, s::Symbol)
+    if haskey(fonts, s)
+        f = fonts[s][]
+        if f isa Symbol
+            error("The value for font $(repr(s)) was Symbol $(repr(f)), which is not allowed. The value for a font in the fonts collection cannot be another Symbol and must be resolvable via `to_font(x)`.")
+        end
+        return to_font(fonts[s][])
+    end
+    error("The symbol $(repr(s)) is not present in the fonts collection:\n$fonts.")
+end
+
+to_font(fonts::Attributes, x) = to_font(x)
+
+
 """
     rotation accepts:
     to_rotation(b, quaternion)
@@ -981,9 +995,9 @@ to_rotation(r::AbstractVector{<: Quaternionf}) = r
 convert_attribute(x, ::key"colorrange") = to_colorrange(x)
 to_colorrange(x) = isnothing(x) ? nothing : Vec2f(x)
 
-convert_attribute(x, ::key"textsize") = to_textsize(x)
-to_textsize(x::Number) = Float32(x)
-to_textsize(x::AbstractVector{T}) where T <: Number = el32convert(x)
+convert_attribute(x, ::key"fontsize") = to_fontsize(x)
+to_fontsize(x::Number) = Float32(x)
+to_fontsize(x::AbstractVector{T}) where T <: Number = el32convert(x)
 
 convert_attribute(x, ::key"linewidth") = to_linewidth(x)
 to_linewidth(x) = Float32(x)
@@ -1153,7 +1167,7 @@ const DEFAULT_MARKER_MAP = Dict{Symbol, BezierPath}()
 
 function default_marker_map()
     # The bezier markers should not look out of place when used together with text
-    # where both markers and text are given the same size, i.e. the marker and textsizes
+    # where both markers and text are given the same size, i.e. the marker and fontsizes
     # should correspond approximately in a visual sense.
 
     # All the basic bezier shapes are approximately built in a 1 by 1 square centered

@@ -259,7 +259,7 @@ end
     axis[:names, :axisnames] = ("\\bf{ℜ}[u]", "\\bf{𝕴}[u]", " OK\n\\bf{δ}\n γ")
     tstyle = axis[:names] # or just get the nested attributes and work directly with them
 
-    tstyle[:textsize] = 10
+    tstyle[:fontsize] = 10
     tstyle[:textcolor] = (:red, :green, :black)
     tstyle[:font] = "helvetica"
 
@@ -270,7 +270,7 @@ end
         "Multipole Representation of first resonances of U-238",
         position=(wh[1] / 2.0, wh[2] - 20.0),
         align=(:center,  :center),
-        textsize=20,
+        fontsize=20,
         font="helvetica"
     )
     c = lines!(scene, Circle(Point2f(0.1, 0.5), 0.1f0), color=:red, offset=Vec3f(0, 0, 1))
