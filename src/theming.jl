@@ -195,7 +195,14 @@ function with_theme(f, theme = Theme(); kwargs...)
     end
 end
 
-theme(::Nothing, key::Symbol) = deepcopy(current_default_theme()[key])
+function theme(::Nothing, key::Symbol)
+    val = to_value(CURRENT_DEFAULT_THEME[key])
+    if val isa Attributes
+        return val
+    else
+        Observable{Any}(val)
+    end
+end
 
 """
     update_theme!(with_theme::Theme; kwargs...)
