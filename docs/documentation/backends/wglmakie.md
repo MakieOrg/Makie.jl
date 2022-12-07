@@ -31,8 +31,7 @@ process, which makes sense for the kind of static export we do in Documenter.
 
 \begin{showhtml}{}
 ```julia
-using JSServe, Markdown
-Page(exportable=true, offline=true)
+
 ```
 \end{showhtml}
 
@@ -42,6 +41,8 @@ After the page got displayed by the frontend, we can start with creating plots a
 \begin{showhtml}{}
 ```julia
 using WGLMakie
+using JSServe, Markdown
+Page(exportable=true, offline=true)
 WGLMakie.activate!()
 scatter(1:4, color=1:4)
 ```
