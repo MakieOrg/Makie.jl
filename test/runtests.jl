@@ -18,6 +18,7 @@ using Makie: volume
         @test all(hi .>= (8,8,10))
     end
 
+    include("pipeline.jl")
     include("record.jl")
     include("scenes.jl")
     include("conversions.jl")
