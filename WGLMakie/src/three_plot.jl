@@ -61,7 +61,7 @@ function find_plots(session::Session, plot::AbstractPlot)
     return WGL.find_plots(session, uuids)
 end
 
-function JSServe.print_js_code(io::IO, plot::AbstractPlot, context)
+function JSServe.print_js_code(io::IO, plot::AbstractPlot, context::IdDict)
     uuids = js_uuid.(Makie.flatten_plots(plot))
     JSServe.print_js_code(io, js"""$(WGL).then(WGL=> WGL.find_plots($(uuids)))""", context)
 end
