@@ -223,9 +223,6 @@ export class MakieCamera {
         this.pixel_space_inverse = new THREE.Uniform(Identity4x4());
         this.projectionview_inverse = new THREE.Uniform(Identity4x4());
 
-        // preprojection matrix needed for markers + sprites
-        this.preprojection = new THREE.Uniform(Identity4x4());
-
         // Constant matrices
         this.relative_space = new THREE.Uniform(relative_space());
         this.relative_inverse = new THREE.Uniform(relative_space().invert());
@@ -234,6 +231,8 @@ export class MakieCamera {
         // needed for some shaders (e.g. resolution -> line shader, or eyeposition -> volume shader)
         this.resolution = new THREE.Uniform(new THREE.Vector2());
         this.eyeposition = new THREE.Uniform(new THREE.Vector3());
+
+        // preprojection matrix needed for markers + sprites
         // Lazy calculation, only if a plot type requests them
         // will be of the form: {[space, markerspace]: THREE.Uniform(...)}
         this.preprojections = {};

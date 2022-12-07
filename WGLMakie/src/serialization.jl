@@ -13,7 +13,8 @@ function lift_convert(key, value, plot)
     end
 end
 
-function Base.pairs(mesh::GeometryBasics.Mesh)
+_pairs(any) = Base.pairs(any)
+function _pairs(mesh::GeometryBasics.Mesh)
     return (kv for kv in GeometryBasics.attributes(mesh))
 end
 
@@ -34,11 +35,6 @@ serialize_three(val::RGBA) = Float32[red(val), green(val), blue(val), alpha(val)
 serialize_three(val::Mat4f) = collect(vec(val))
 serialize_three(val::Mat3) = collect(vec(val))
 
-function serialize_three(observable::Observable)
-    return Dict(:type => "Observable", :id => observable.id,
-                :value => serialize_three(observable[]))
-end
-
 function serialize_three(array::AbstractArray)
     return serialize_three(flatten_buffer(array))
 end
@@ -56,30 +52,6 @@ serialize_three(array::AbstractArray{Float64}) = vec(array)
 
 function serialize_three(p::Makie.AbstractPattern)
     return serialize_three(Makie.to_image(p))
-end
-
-function serialize_three(color::Sampler{T,N}) where {T,N}
-    tex = Dict(:type => "Sampler", :data => serialize_three(color.data),
-               :size => Int32[size(color.data)...], :three_format => three_format(T),
-               :three_type => three_type(eltype(T)),
-               :minFilter => three_filter(color.minfilter),
-               :magFilter => three_filter(color.magfilter),
-               :wrapS => three_repeat(color.repeat[1]), :anisotropy => color.anisotropic)
-    if N > 1
-        tex[:wrapT] = three_repeat(color.repeat[2])
-    end
-    if N > 2
-        tex[:wrapR] = three_repeat(color.repeat[3])
-    end
-    return tex
-end
-
-function serialize_uniforms(dict::Dict)
-    result = Dict{Symbol,Any}()
-    for (k, v) in dict
-        result[k] = serialize_three(to_value(v))
-    end
-    return result
 end
 
 three_format(::Type{<:Real}) = "RedFormat"
@@ -103,8 +75,37 @@ function three_repeat(s::Symbol)
     error("Unknown repeat mode '$s'")
 end
 
+function serialize_three(color::Sampler{T,N}) where {T,N}
+    tex = Dict(:type => "Sampler", :data => serialize_three(color.data),
+               :size => Int32[size(color.data)...], :three_format => three_format(T),
+               :three_type => three_type(eltype(T)),
+               :minFilter => three_filter(color.minfilter),
+               :magFilter => three_filter(color.magfilter),
+               :wrapS => three_repeat(color.repeat[1]), :anisotropy => color.anisotropic)
+    if N > 1
+        tex[:wrapT] = three_repeat(color.repeat[2])
+    end
+    if N > 2
+        tex[:wrapR] = three_repeat(color.repeat[3])
+    end
+    return tex
+end
+
+function serialize_uniforms(dict::Dict)
+    result = Dict{Symbol,Any}()
+    for (k, v) in dict
+        # we don't send observables and instead use
+        # uniform_updater(dict)
+        result[k] = serialize_three(to_value(v))
+    end
+    return result
+end
+
+
+
 """
     flatten_buffer(array::AbstractArray)
+
 Flattens `array` array to be a 1D Vector of Float32 / UInt8.
 If presented with AbstractArray{<: Colorant/Tuple/SVector}, it will flatten those
 to their element type.
@@ -162,13 +163,13 @@ function serialize_buffer_attribute(buffer::AbstractVector{T}) where {T}
 end
 
 function serialize_named_buffer(buffer)
-    return Dict(map(pairs(buffer)) do (name, buff)
+    return Dict(map(_pairs(buffer)) do (name, buff)
                     return name => serialize_buffer_attribute(buff)
                 end)
 end
 
 function register_geometry_updates(update_buffer::Observable, named_buffers)
-    for (name, buffer) in pairs(named_buffers)
+    for (name, buffer) in _pairs(named_buffers)
         if buffer isa Buffer
             on(ShaderAbstractions.updater(buffer).update) do (f, args)
                 # update to replace the whole buffer!
@@ -259,8 +260,6 @@ function serialize_scene(scene::Scene)
                       :visible => scene.visible,
                       :uuid => js_uuid(scene),
                       :children => children)
-
-
     return serialized
 end
 
@@ -307,6 +306,7 @@ function serialize_three(scene::Scene, plot::AbstractPlot)
             return
         end
     end
+
     if haskey(plot, :markerspace)
         mesh[:markerspace] = plot.markerspace
     end
@@ -324,6 +324,6 @@ function serialize_camera(scene::Scene)
         # eyeposition updates with viewmatrix, since an eyepos change will trigger
         # a view matrix change!
         ep = cam.eyeposition[]
-        return [view, proj, res, ep]
+        return [vec(collect(view)), vec(collect(proj)), Int32[res...], Float32[ep...]]
     end
 end
