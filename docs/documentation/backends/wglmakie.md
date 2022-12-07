@@ -28,13 +28,6 @@ Exportable has the effect of inlining all data & js dependencies, so that everyt
 `offline=true` will make the Page not even try to connect to a running Julia
 process, which makes sense for the kind of static export we do in Documenter.
 
-
-\begin{showhtml}{}
-```julia
-
-```
-\end{showhtml}
-
 After the page got displayed by the frontend, we can start with creating plots and JSServe Apps:
 
 
@@ -121,7 +114,7 @@ You can for example directly register javascript function that get run on change
 ```julia
 using JSServe: onjs
 
-app = App() do session::Session
+App() do session::Session
     s1 = Slider(1:100)
     slider_val = DOM.p(s1[]) # initialize with current value
     # call the `on_update` function whenever s1.value changes in JS:
@@ -148,7 +141,7 @@ But while this isn't in place, logging the the returned object makes it pretty e
 ```julia
 using JSServe: onjs, evaljs, on_document_load
 
-app = App() do session::Session
+App() do session::Session
     s1 = Slider(1:100)
     slider_val = DOM.p(s1[]) # initialize with current value
 
@@ -214,8 +207,8 @@ For example, your first cell can be
 
 ```julia
 begin
-	using JSServe
-	Page()
+    using JSServe
+    Page()
 end
 ```
 
@@ -223,12 +216,11 @@ As is common with files meant to be shared, you might wish to set up a temporary
 
 ```julia
 begin
-	using Pkg
-	Pkg.activate(mktempdir())
-
-	Pkg.add("JSServe")
-	using JSServe
-	Page()
+    using Pkg
+    Pkg.activate(mktempdir())
+    Pkg.add("JSServe")
+    using JSServe
+    Page()
 end
 ```
 
@@ -236,8 +228,8 @@ If you're accessing the notebook from another PC, you must set:
 
 ```julia
 begin
-	using JSServe
-	Page(listen_url="0.0.0.0")
+    using JSServe
+    Page(listen_url="0.0.0.0")
 end
 ```
 
