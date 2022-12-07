@@ -2,7 +2,7 @@ import * as THREE from "https://cdn.esm.sh/v66/three@0.136/es2021/three.js";
 
 const pixelRatio = window.devicePixelRatio || 1.0;
 export function event2scene_pixel(scene, event) {
-    const canvas = scene.screen.renderer.domElement;
+    const { canvas } = scene.screen;
     const rect = canvas.getBoundingClientRect();
     const x = (event.clientX - rect.left) * pixelRatio;
     const y = (rect.height - (event.clientY - rect.top)) * pixelRatio;
@@ -11,7 +11,7 @@ export function event2scene_pixel(scene, event) {
 
 export function to_world(scene, x, y) {
     const proj_inv = scene.wgl_camera.projectionview_inverse.value;
-    const [_x, _y, w, h] = JSServe.get_observable(scene.pixelarea);
+    const [_x, _y, w, h] = scene.pixelarea.value;
     const pix_space = new THREE.Vector4(
         ((x - _x) / w) * 2 - 1,
         ((y - _y) / h) * 2 - 1,

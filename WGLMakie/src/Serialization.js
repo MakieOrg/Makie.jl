@@ -138,6 +138,7 @@ export function deserialize_plot(data) {
     mesh.name = data.name;
     mesh.frustumCulled = false;
     mesh.matrixAutoUpdate = false;
+    mesh.plot_uuid = data.uuid
     const update_visible = (v) => {
         mesh.visible = v;
         // don't return anything, since that will disable on_update callback

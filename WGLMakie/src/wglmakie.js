@@ -1,6 +1,7 @@
 import * as THREE from "https://cdn.esm.sh/v66/three@0.136/es2021/three.js";
 import { getWebGLErrorMessage } from "./WEBGL.js";
 import { delete_scenes, insert_plot, delete_plots, deserialize_scene, delete_scene, TEXTURE_ATLAS} from "./Serialization.js";
+import { event2scene_pixel } from "./Camera.js";
 
 window.THREE = THREE;
 
@@ -253,7 +254,7 @@ export function pick_native(scenes, x, y, w, h) {
     scenes.forEach((scene) => {
         last_id = set_picking_uniforms(scene, last_id, true);
 
-        const area = JSServe.get_observable(scene.pixelarea);
+        const area = scene.pixelarea.value;
         const [_x, _y, _w, _h] = area.map((t) => t / pixelRatio);
         renderer.autoClear = true;
         renderer.setViewport(_x, _y, _w, _h);
@@ -297,7 +298,7 @@ export function pick_native(scenes, x, y, w, h) {
 
 export function pick_native_uuid(scenes, x, y, w, h) {
     const picked_plots = pick_native(scenes, x, y, w, h);
-    return picked_plots.map((x) => [x[0].uuid, x[1]]);
+    return picked_plots.map((x) => [x[0].plot_uuid, x[1]]);
 }
 
 export {
@@ -313,4 +314,5 @@ export {
     plot_cache,
     delete_scenes,
     create_scene,
+    event2scene_pixel,
 };
