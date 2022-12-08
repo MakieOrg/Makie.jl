@@ -280,6 +280,7 @@ end
     fig, ax, _ = scatter(0:1; axis)
     st = Stepper(fig)
 
+    # FIXME: write some tests
     #=
     record(fig, "rot.gif") do io
         for rot in LinRange(0, 2π, N)
