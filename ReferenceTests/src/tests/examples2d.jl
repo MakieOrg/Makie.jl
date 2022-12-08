@@ -271,6 +271,29 @@ end
     st
 end
 
+@reference_test "Label rotations" begin
+    N = 18  # number of rotations
+    axis = (
+        xlabel = "a nice and long x label for this axis",
+        ylabel = "a nice and long y label for this axis",
+    )
+    fig, ax, _ = scatter(0:1; axis)
+    st = Stepper(fig)
+
+    #=
+    record(fig, "rot.gif") do io
+        for rot in LinRange(0, 2π, N)
+            ax.xlabelrotation[] = rot
+            ax.ylabelrotation[] = rot
+            recordframe!(io)
+        end
+    end
+    =#
+
+    Makie.step!(st)
+    st
+end
+
 @reference_test "Errorbars x y low high" begin
     x = 1:10
     y = sin.(x)
