@@ -261,7 +261,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
         ticklabelspace, ticklabelpad, labelpadding,
         ticklabelsize, ticklabelsvisible, spinewidth, spinecolor, label, labelsize, labelcolor,
         labelfont, ticklabelfont, ticklabelcolor,
-        labelvisible, spinevisible, trimspine, flip_vertical_label, reversed,
+        labelrotation, labelvisible, spinevisible, trimspine, flip_vertical_label, reversed,
         minorticksvisible, minortickalign, minorticksize, minortickwidth, minortickcolor, minorticks)
 
     pos_extents_horizontal = lift(calculate_horizontal_extends, endpoints; ignore_equal_values=true)
@@ -370,16 +370,15 @@ function LineAxis(parent::Scene, attrs::Attributes)
         end
     end
 
-    labelrotation = Observable(0f0; ignore_equal_values=true)
-    map!(labelrotation, horizontal, flip_vertical_label) do horizontal::Bool, flip_vertical_label::Bool
-        if horizontal
-            return 0f0
-        else
-            if flip_vertical_label
-                return Float32(-0.5pi)
+    labelrotation = @lift begin
+        if $labelrotation isa Automatic
+            if $horizontal
+                return 0f0
             else
-                return Float32(0.5pi)
+                return $flip_vertical_label ? -0.5f0pi : 0.5f0pi
             end
+        else
+            return Float32($labelrotation)
         end
     end
 

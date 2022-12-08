@@ -254,6 +254,10 @@ end
         xlabelpadding::Float64 = 3f0
         "The padding between the ylabel and the ticks or axis."
         ylabelpadding::Float64 = 5f0 # xlabels usually have some more visual padding because of ascenders, which are larger than the hadvance gaps of ylabels
+        "The xlabel rotation in radians."
+        xlabelrotation = Makie.automatic
+        "The ylabel rotation in radians."
+        ylabelrotation = Makie.automatic
         "The font family of the xticklabels."
         xticklabelfont = :regular
         "The font family of the yticklabels."
@@ -527,7 +531,7 @@ end
         tickcolor = RGBf(0, 0, 0)
         "The horizontal and vertical alignment of the tick labels."
         ticklabelalign = Makie.automatic
-        "The rotation of the ticklabels"
+        "The rotation of the ticklabels."
         ticklabelrotation = 0f0
         "The line width of the spines."
         spinewidth = 1f0
@@ -1216,11 +1220,11 @@ end
         ylabelfont = :regular
         "The z label font"
         zlabelfont = :regular
-        "The x label rotation"
+        "The x label rotation in radians"
         xlabelrotation = Makie.automatic
-        "The y label rotation"
+        "The y label rotation in radians"
         ylabelrotation = Makie.automatic
-        "The z label rotation"
+        "The z label rotation in radians"
         zlabelrotation = Makie.automatic
         "The x label align"
         xlabelalign = Makie.automatic
