@@ -89,7 +89,7 @@ function create_linepoints(
 
 end
 
-function calculate_real_ticklabel_align(al, horizontal, fl::Bool, rot::Number)
+function calculate_real_label_align(al, horizontal, fl::Bool, rot::Number)
     hor = horizontal[]::Bool
     if al isa Automatic
         if rot == 0 || !(rot isa Real)
@@ -288,7 +288,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
 
     realticklabelalign = Observable{Tuple{Symbol, Symbol}}((:none, :none); ignore_equal_values=true)
 
-    map!(calculate_real_ticklabel_align, realticklabelalign, ticklabelalign, horizontal, flipped, ticklabelrotation)
+    map!(calculate_real_label_align, realticklabelalign, ticklabelalign, horizontal, flipped, ticklabelrotation)
 
     ticklabel_annotation_obs = Observable(Tuple{AbstractString, Point2f}[]; ignore_equal_values=true)
     ticklabels = nothing # this gets overwritten later to be used in the below
@@ -354,21 +354,6 @@ function LineAxis(parent::Scene, attrs::Attributes)
             return Point2f(x_or_y, middle)
         end
     end
-    # Initial values should be overwritten by map!. `ignore_equal_values` doesn't work right now without initial values
-    labelalign = Observable((:none, :none); ignore_equal_values=true)
-
-    map!(labelalign, horizontal, flipped, flip_vertical_label) do horizontal::Bool, flipped::Bool, flip_vertical_label::Bool
-        if horizontal
-            return (:center, flipped ? :bottom : :top)
-        else
-            return (:center, if flipped
-                    flip_vertical_label ? :bottom : :top
-                else
-                    flip_vertical_label ? :top : :bottom
-                end
-            )
-        end
-    end
 
     labelrotation = @lift begin
         if $labelrotation isa Automatic
@@ -381,6 +366,10 @@ function LineAxis(parent::Scene, attrs::Attributes)
             return Float32($labelrotation)
         end
     end
+
+    # Initial values should be overwritten by map!. `ignore_equal_values` doesn't work right now without initial values
+    labelalign = Observable((:none, :none); ignore_equal_values=true)
+    map!(calculate_real_label_align, labelalign, Makie.automatic, horizontal, flipped, labelrotation)
 
     labeltext = text!(
         parent, labelpos, text = label, fontsize = labelsize, color = labelcolor,
