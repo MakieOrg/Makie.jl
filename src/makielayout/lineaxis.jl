@@ -89,7 +89,7 @@ function create_linepoints(
 
 end
 
-function calculate_real_label_align(al, horizontal, fl::Bool, rot::Number)
+function calculate_real_ticklabel_align(al, horizontal, fl::Bool, rot::Number)
     hor = horizontal[]::Bool
     if al isa Automatic
         if rot == 0 || !(rot isa Real)
@@ -288,7 +288,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
 
     realticklabelalign = Observable{Tuple{Symbol, Symbol}}((:none, :none); ignore_equal_values=true)
 
-    map!(calculate_real_label_align, realticklabelalign, ticklabelalign, horizontal, flipped, ticklabelrotation)
+    map!(calculate_real_ticklabel_align, realticklabelalign, ticklabelalign, horizontal, flipped, ticklabelrotation)
 
     ticklabel_annotation_obs = Observable(Tuple{AbstractString, Point2f}[]; ignore_equal_values=true)
     ticklabels = nothing # this gets overwritten later to be used in the below
