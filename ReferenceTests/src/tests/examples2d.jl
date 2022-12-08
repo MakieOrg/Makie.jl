@@ -272,14 +272,13 @@ end
 end
 
 @reference_test "Label rotations" begin
-    N = 18  # number of rotations
+    N = 360  # number of rotations
     axis = (
         xlabel = "a nice and long x label for this axis",
         ylabel = "a nice and long y label for this axis",
     )
-    fig, ax, _ = scatter(0:1; axis)
+    fig, ax, plot = scatter(0:1; axis)
     st = Stepper(fig)
-
     # FIXME: write some tests
     #=
     record(fig, "rot.gif") do io

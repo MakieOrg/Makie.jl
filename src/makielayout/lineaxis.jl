@@ -323,53 +323,34 @@ function LineAxis(parent::Scene, attrs::Attributes)
         end
     end
 
-    tickspace = Observable(0f0; ignore_equal_values=true)
-    map!(tickspace, ticksvisible, ticksize, tickalign) do ticksvisible,
-            ticksize, tickalign
+    tickspace = @lift $ticksvisible ? max(0f0, $ticksize * (1f0 - $tickalign)) : 0f0
 
-        ticksvisible ? max(0f0, ticksize * (1f0 - tickalign)) : 0f0
+    labelgap = @lift $spinewidth + $tickspace + if $ticklabelsvisible
+        $actual_ticklabelspace + $ticklabelpad
+    else
+        0f0
+    end + $labelpadding
+
+    labelrotation = @lift if $labelrotation isa Automatic
+        if $horizontal
+            0f0
+        else
+            $flip_vertical_label ? -0.5f0pi : 0.5f0pi
+        end
+    else
+        Float32($labelrotation)
     end
 
-    labelgap = Observable(0f0; ignore_equal_values=true)
-    map!(labelgap, spinewidth, tickspace, ticklabelsvisible, actual_ticklabelspace,
-        ticklabelpad, labelpadding) do spinewidth, tickspace, ticklabelsvisible,
-            actual_ticklabelspace, ticklabelpad, labelpadding
-
-        return spinewidth + tickspace +
-            (ticklabelsvisible ? actual_ticklabelspace + ticklabelpad : 0f0) +
-            labelpadding
-    end
-
-    labelpos = Observable(Point2f(NaN); ignore_equal_values=true)
-
-    map!(labelpos, pos_extents_horizontal, flipped, labelgap) do (position, extents, horizontal), flipped, labelgap
-        # fullgap = tickspace[] + labelgap
+    labelpos = @lift let (position, extents, horizontal) = $pos_extents_horizontal
         middle = extents[1] + 0.5f0 * (extents[2] - extents[1])
 
-        x_or_y = flipped ? position + labelgap : position - labelgap
+        x_or_y = position + ($flipped ? 1 : -1) * $labelgap
 
-        if horizontal
-            return Point2f(middle, x_or_y)
-        else
-            return Point2f(x_or_y, middle)
-        end
-    end
-
-    labelrotation = @lift begin
-        if $labelrotation isa Automatic
-            if $horizontal
-                return 0f0
-            else
-                return $flip_vertical_label ? -0.5f0pi : 0.5f0pi
-            end
-        else
-            return Float32($labelrotation)
-        end
+        horizontal ? Point2f(middle, x_or_y) : Point2f(x_or_y, middle)
     end
 
     # Initial values should be overwritten by map!. `ignore_equal_values` doesn't work right now without initial values
-    labelalign = Observable((:none, :none); ignore_equal_values=true)
-    map!(calculate_real_label_align, labelalign, Makie.automatic, horizontal, flipped, labelrotation)
+    labelalign = Observable((:center, :center); ignore_equal_values=true)
 
     labeltext = text!(
         parent, labelpos, text = label, fontsize = labelsize, color = labelcolor,
@@ -377,6 +358,16 @@ function LineAxis(parent::Scene, attrs::Attributes)
         align = labelalign, rotation = labelrotation, font = labelfont,
         markerspace = :data, inspectable = false
     )
+
+    on(labeltext.rotation) do _
+        wx, wy = widths(boundingbox(labeltext))
+        xs, ys = if horizontal[]
+            0, -wy / 2
+        else
+            -wx / 2, 0
+        end
+        translate!(labeltext, xs, ys, 0)
+    end
 
     decorations[:labeltext] = labeltext
 
