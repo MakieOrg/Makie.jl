@@ -331,7 +331,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
         0f0
     end + $labelpadding
 
-    labelrotation = @lift if $labelrotation isa Automatic
+    labelrot = @lift if $labelrotation isa Automatic
         if $horizontal
             0f0
         else
@@ -349,27 +349,40 @@ function LineAxis(parent::Scene, attrs::Attributes)
         horizontal ? Point2f(middle, x_or_y) : Point2f(x_or_y, middle)
     end
 
-    # initial values should be overwritten by `map!`.
-    # `ignore_equal_values` doesn't work right now without initial values.
-    labelalign = Observable((:center, :center); ignore_equal_values=true)
+    labelalign = @lift if $labelrotation isa Automatic
+        if $horizontal 
+            return (:center, $flipped ? :bottom : :top) 
+        else 
+            return (:center, if $flipped 
+                    $flip_vertical_label ? :bottom : :top 
+                else 
+                    $flip_vertical_label ? :top : :bottom 
+                end 
+            ) 
+        end
+    else
+        (:center, :center)
+    end
 
     labeltext = text!(
         parent, labelpos, text = label, fontsize = labelsize, color = labelcolor,
         visible = labelvisible,
-        align = labelalign, rotation = labelrotation, font = labelfont,
+        align = labelalign, rotation = labelrot, font = labelfont,
         markerspace = :data, inspectable = false
     )
 
     # translate axis labels so that they do not overlap the plot
-    on(labelrotation) do _
-        wx, wy = widths(boundingbox(labeltext))
-        sign = flipped[] ? 1 : -1
-        xs, ys = if horizontal[]
-            0, sign * wy / 2
-        else
-            sign * wx / 2, 0
+    on(labelrot) do _
+        if !(labelrotation[] isa Automatic)
+            wx, wy = widths(boundingbox(labeltext))
+            sign = flipped[] ? 1 : -1
+            xs, ys = if horizontal[]
+                0, sign * wy / 2
+            else
+                sign * wx / 2, 0
+            end
+            translate!(labeltext, xs, ys, 0)
         end
-        translate!(labeltext, xs, ys, 0)
     end
 
     decorations[:labeltext] = labeltext
@@ -429,7 +442,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
         Observable((horizontal, labeltext, ticklabel_annotation_obs)),
         ticksvisible, label, labelvisible, labelpadding, tickspace, ticklabelsvisible, actual_ticklabelspace, ticklabelpad,
         # we don't need these as arguments to calculate it, but we need to pass it because it indirectly influences the protrosion
-        labelfont, labelrotation, labelsize, ticklabelfont, tickalign)
+        labelfont, labelalign, labelrot, labelsize, ticklabelfont, tickalign)
 
     # trigger whole pipeline once to fill tickpositions and tickstrings
     # etc to avoid empty ticks bug #69
