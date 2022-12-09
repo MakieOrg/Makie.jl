@@ -272,26 +272,33 @@ end
 end
 
 @reference_test "Label rotations" begin
-    N = 360  # number of rotations
     axis = (
         xlabel = "a nice and long x label for this axis",
-        ylabel = "a nice and long y label for this axis",
-        yaxisposition = :right,
-        xaxisposition = :top,
+        ylabel = "a nice and long y\nlabel for this axis",
+        xlabelrotation = π / 4,
+        ylabelrotation = 0,
     )
     fig, ax, plot = scatter(0:1; axis)
     st = Stepper(fig)
-    # FIXME: write some tests
-    #=
-    record(fig, "rot.gif") do io
-        for rot in LinRange(0, 2π, N)
-            ax.xlabelrotation[] = rot
-            ax.ylabelrotation[] = rot
-            recordframe!(io)
-        end
-    end
-    =#
+
+    ax.xlabelrotation[] = Makie.automatic
     Makie.step!(st)
+
+    ax.yaxisposition[] = :right
+    ax.ylabelrotation[] = Makie.automatic
+    ax.xlabelrotation[] = -π / 4
+    Makie.step!(st)
+
+    ax.xaxisposition[] = :top
+    ax.xlabelrotation[] = 2π / 3
+    ax.ylabelrotation[] = π / 4
+    Makie.step!(st)
+
+    ax.xaxisposition[] = :bottom
+    ax.yaxisposition[] = :left
+    ax.xlabelrotation[] = ax.ylabelrotation[] = Makie.automatic
+    Makie.step!(st)
+
     st
 end
 
