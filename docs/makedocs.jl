@@ -174,7 +174,6 @@ function populate_stork_config(deploydecision)
     end
 
     for file in ["config_box", "config_page"]
-        println("__site/libs/stork/$(file).toml")
         cp("__site/libs/stork/$(file).toml", "__site/libs/stork/$(file)_filled.toml", force = true)
 
         toml = TOML.parsefile("__site/libs/stork/$(file).toml")
