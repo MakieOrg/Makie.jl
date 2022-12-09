@@ -121,7 +121,7 @@ end
 using GLMakie
 GLMakie.activate!(pause_renderloop=true)
 
-# serve(; single=true, cleanup=false, fail_on_warning=true)
+serve(; single=true, cleanup=false, fail_on_warning=true)
 # for interactive development of the docs, use:
 # cd(@__DIR__); serve(single=false, cleanup=true, clear=true, fail_on_warning = false)
 
