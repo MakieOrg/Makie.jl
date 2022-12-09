@@ -180,7 +180,7 @@ function populate_stork_config(deploydecision)
         open("__site/libs/stork/$(file)_filled.toml", "w") do io
             toml["input"]["files"] = map(Dict ∘ pairs, sites)
             subf = deploydecision.subfolder
-            toml["input"]["url_prefix"] = isempty(subf) ? "" : "/" * subf * "/" # then url without / prefix
+            toml["input"]["url_prefix"] = isempty(subf) ? "/" : "/" * subf * "/" # then url without / prefix
             TOML.print(io, toml, sorted = true)
         end
     end
