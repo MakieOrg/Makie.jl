@@ -348,7 +348,8 @@ function LineAxis(parent::Scene, attrs::Attributes)
         horizontal ? Point2f(middle, x_or_y) : Point2f(x_or_y, middle)
     end
 
-    # Initial values should be overwritten by map!. `ignore_equal_values` doesn't work right now without initial values
+    # initial values should be overwritten by `map!`.
+    # `ignore_equal_values` doesn't work right now without initial values.
     labelalign = Observable((:center, :center); ignore_equal_values=true)
 
     labeltext = text!(
@@ -358,7 +359,8 @@ function LineAxis(parent::Scene, attrs::Attributes)
         markerspace = :data, inspectable = false
     )
 
-    on(labeltext.rotation) do _
+    # translate axis labels so that they do not overlap the plot
+    on(labelrotation) do _
         wx, wy = widths(boundingbox(labeltext))
         xs, ys = if horizontal[]
             0, -wy / 2
