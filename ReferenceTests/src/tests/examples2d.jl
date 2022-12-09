@@ -276,6 +276,8 @@ end
     axis = (
         xlabel = "a nice and long x label for this axis",
         ylabel = "a nice and long y label for this axis",
+        yaxisposition = :right,
+        xaxisposition = :top,
     )
     fig, ax, plot = scatter(0:1; axis)
     st = Stepper(fig)
@@ -289,7 +291,6 @@ end
         end
     end
     =#
-
     Makie.step!(st)
     st
 end

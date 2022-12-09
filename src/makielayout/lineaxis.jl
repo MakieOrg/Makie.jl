@@ -141,7 +141,7 @@ function update_ticklabel_node(
 
     nticks = length(tickvalues[])
 
-    local ticklabelgap::Float32 = spinewidth[] + tickspace[] + ticklabelpad[]
+    ticklabelgap::Float32 = spinewidth[] + tickspace[] + ticklabelpad[]
 
     shift = if horizontal[]
         Point2f(0f0, flipped ? ticklabelgap : -ticklabelgap)
@@ -164,16 +164,17 @@ end
 function update_tick_obs(tick_obs, horizontal::Observable{Bool}, flipped::Observable{Bool}, tickpositions, tickalign, ticksize, spinewidth)
     result = tick_obs[]
     empty!(result) # re-use allocated array
+    sign = flipped[] ? -1 : 1
     if horizontal[]
         for tp in tickpositions
-            tstart = tp + (flipped[] ? -1f0 : 1f0) * Point2f(0f0, tickalign * ticksize - 0.5f0 * spinewidth)
-            tend = tstart + (flipped[] ? -1f0 : 1f0) * Point2f(0f0, -ticksize)
+            tstart = tp + sign * Point2f(0f0, tickalign * ticksize - 0.5f0 * spinewidth)
+            tend = tstart + sign * Point2f(0f0, -ticksize)
             push!(result, tstart, tend)
         end
     else
         for tp in tickpositions
-            tstart = tp + (flipped[] ? -1f0 : 1f0) * Point2f(tickalign * ticksize - 0.5f0 * spinewidth, 0f0)
-            tend = tstart + (flipped[] ? -1f0 : 1f0) * Point2f(-ticksize, 0f0)
+            tstart = tp + sign * Point2f(tickalign * ticksize - 0.5f0 * spinewidth, 0f0)
+            tend = tstart + sign * Point2f(-ticksize, 0f0)
             push!(result, tstart, tend)
         end
     end
@@ -362,10 +363,11 @@ function LineAxis(parent::Scene, attrs::Attributes)
     # translate axis labels so that they do not overlap the plot
     on(labelrotation) do _
         wx, wy = widths(boundingbox(labeltext))
+        sign = flipped[] ? 1 : -1
         xs, ys = if horizontal[]
-            0, -wy / 2
+            0, sign * wy / 2
         else
-            -wx / 2, 0
+            sign * wx / 2, 0
         end
         translate!(labeltext, xs, ys, 0)
     end
