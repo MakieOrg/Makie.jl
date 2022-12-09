@@ -23,24 +23,23 @@ end
 function calculate_protrusion(
         closure_args,
         ticksvisible::Bool, label, labelvisible::Bool, labelpadding::Number, tickspace::Number, ticklabelsvisible::Bool,
-        actual_ticklabelspace::Number, ticklabelpad::Number, _, _, _, _)
+        actual_ticklabelspace::Number, ticklabelpad::Number, _...)
 
     horizontal, labeltext, ticklabel_annotation_obs = closure_args
 
+    label_is_empty::Bool = iswhitespace(label) || isempty(label)
 
-    local label_is_empty::Bool = iswhitespace(label) || isempty(label)
-
-    local real_labelsize::Float32 = if label_is_empty
+    real_labelsize::Float32 = if label_is_empty
         0f0
     else
-        horizontal[] ? boundingbox(labeltext).widths[2] : boundingbox(labeltext).widths[1]
+        boundingbox(labeltext).widths[horizontal[] ? 2 : 1]
     end
 
-    local labelspace::Float32 = (labelvisible && !label_is_empty) ? real_labelsize + labelpadding : 0f0
+    labelspace::Float32 = (labelvisible && !label_is_empty) ? real_labelsize + labelpadding : 0f0
 
-    local _tickspace::Float32 = (ticksvisible && !isempty(ticklabel_annotation_obs[])) ? tickspace : 0f0
+    _tickspace::Float32 = (ticksvisible && !isempty(ticklabel_annotation_obs[])) ? tickspace : 0f0
 
-    local ticklabelgap::Float32 = (ticklabelsvisible && actual_ticklabelspace > 0) ? actual_ticklabelspace + ticklabelpad : 0f0
+    ticklabelgap::Float32 = (ticklabelsvisible && actual_ticklabelspace > 0) ? actual_ticklabelspace + ticklabelpad : 0f0
 
     return _tickspace + ticklabelgap + labelspace
 end
@@ -422,11 +421,11 @@ function LineAxis(parent::Scene, attrs::Attributes)
     protrusion = Observable(0f0; ignore_equal_values=true)
 
     map!(calculate_protrusion, protrusion,
-        # We pass these as observables, to not trigger on them
+        # we pass these as observables, to not trigger on them
         Observable((horizontal, labeltext, ticklabel_annotation_obs)),
         ticksvisible, label, labelvisible, labelpadding, tickspace, ticklabelsvisible, actual_ticklabelspace, ticklabelpad,
-        # We don't need these as arguments to calculate it, but we need to pass it because it indirectly influences the protrosion
-        labelfont, ticklabelfont, labelsize, tickalign)
+        # we don't need these as arguments to calculate it, but we need to pass it because it indirectly influences the protrosion
+        labelfont, labelrotation, labelsize, ticklabelfont, tickalign)
 
     # trigger whole pipeline once to fill tickpositions and tickstrings
     # etc to avoid empty ticks bug #69
