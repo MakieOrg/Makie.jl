@@ -1,6 +1,6 @@
 # News
 
-## v0.19.1
+## master
 
 - Added `xlabelrotation` and `ylabelrotation` [#2478](https://github.com/MakieOrg/Makie.jl/pull/2478).
 
