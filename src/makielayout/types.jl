@@ -504,7 +504,7 @@ end
         "The gap between the label and the ticks."
         labelpadding = 5f0
         "The label rotation in radians."
-        labelrotation = 0f0
+        labelrotation = Makie.automatic
         "The font family of the tick labels."
         ticklabelfont = :regular
         "The font size of the tick labels."

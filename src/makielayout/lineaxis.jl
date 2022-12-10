@@ -21,11 +21,11 @@ end
 
 
 function calculate_protrusion(
-        closure_args,
+        non_triggered_obs,
         ticksvisible::Bool, label, labelvisible::Bool, labelpadding::Number, tickspace::Number, ticklabelsvisible::Bool,
         actual_ticklabelspace::Number, ticklabelpad::Number, _...)
 
-    horizontal, labeltext, ticklabel_annotation_obs = closure_args
+    horizontal, labeltext, ticklabel_annotation_obs = non_triggered_obs
 
     label_is_empty::Bool = iswhitespace(label) || isempty(label)
 
@@ -47,9 +47,9 @@ end
 
 function create_linepoints(
         pos_ext_hor,
-        flipped::Bool, spine_width::Number, trimspine::Union{Bool, Tuple{Bool, Bool}}, tickpositions::Vector{Point2f}, tickwidth::Number)
+        flipped::Bool, spine_width::Number, trimspine::Union{Bool, NTuple{2, Bool}}, tickpositions::Vector{Point2f}, tickwidth::Number)
 
-    (position::Float32, extents::Tuple{Float32, Float32}, horizontal::Bool) = pos_ext_hor
+    (position::Float32, extents::NTuple{2, Float32}, horizontal::Bool) = pos_ext_hor
 
     if trimspine isa Bool
         trimspine = (trimspine, trimspine)
@@ -122,10 +122,10 @@ function calculate_real_ticklabel_align(al, horizontal, fl::Bool, rot::Number)
                 (fl ? :left : :right, :center)
             end
         end
-    elseif al isa Tuple{Symbol, Symbol}
+    elseif al isa NTuple{2, Symbol}
         return al
     else
-        error("Align needs to be a Tuple{Symbol, Symbol}.")
+        error("Align needs to be a NTuple{2, Symbol}, or Makie.automatic.")
     end
 end
 
@@ -185,7 +185,7 @@ end
 function update_tickpos_string(closure_args, tickvalues_labels_unfiltered, reversed::Bool, scale)
 
     tickstrings, tickpositions, tickvalues, pos_extents_horizontal, limits_obs = closure_args
-    limits = limits_obs[]::Tuple{Float32, Float32}
+    limits = limits_obs[]::NTuple{2, Float32}
 
     tickvalues_unfiltered, tickstrings_unfiltered = tickvalues_labels_unfiltered
 
@@ -226,7 +226,7 @@ function update_tickpos_string(closure_args, tickvalues_labels_unfiltered, rever
     return
 end
 
-function update_minor_ticks(minortickpositions, limits::Tuple{Float32, Float32}, pos_extents_horizontal, minortickvalues, scale, reversed::Bool)
+function update_minor_ticks(minortickpositions, limits::NTuple{2, Float32}, pos_extents_horizontal, minortickvalues, scale, reversed::Bool)
 
     position::Float32, extents_uncorrected::NTuple{2, Float32}, horizontal::Bool = pos_extents_horizontal
 
@@ -267,7 +267,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
     pos_extents_horizontal = lift(calculate_horizontal_extends, endpoints; ignore_equal_values=true)
     horizontal = lift(x-> x[3], pos_extents_horizontal)
     # Tuple constructor converts more than `convert(Tuple{Float32, Float32}, x)` but we still need the conversion to Float32 tuple:
-    limits = lift(x-> convert(Tuple{Float32, Float32}, Tuple(x)), attrs.limits; ignore_equal_values=true)
+    limits = lift(x-> convert(NTuple{2, Float32}, Tuple(x)), attrs.limits; ignore_equal_values=true)
     flipped = lift(x-> convert(Bool, x), attrs.flipped; ignore_equal_values=true)
 
     ticksnode = Observable(Point2f[]; ignore_equal_values=true)
@@ -286,7 +286,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
     decorations[:minorticklines] = minorticklines
     translate!(minorticklines, 0, 0, 10)
 
-    realticklabelalign = Observable{Tuple{Symbol, Symbol}}((:none, :none); ignore_equal_values=true)
+    realticklabelalign = Observable{NTuple{2, Symbol}}((:none, :none); ignore_equal_values=true)
 
     map!(calculate_real_ticklabel_align, realticklabelalign, ticklabelalign, horizontal, flipped, ticklabelrotation)
 
@@ -323,15 +323,37 @@ function LineAxis(parent::Scene, attrs::Attributes)
         end
     end
 
-    tickspace = @lift $ticksvisible ? max(0f0, $ticksize * (1f0 - $tickalign)) : 0f0
+    tickspace::Observable{Float32} = @lift $ticksvisible ? max(0f0, $ticksize * (1f0 - $tickalign)) : 0f0
 
-    labelgap = @lift $spinewidth + $tickspace + if $ticklabelsvisible
+    labelgap::Observable{Float32} = @lift $spinewidth + $tickspace + if $ticklabelsvisible
         $actual_ticklabelspace + $ticklabelpad
     else
         0f0
     end + $labelpadding
 
-    labelrot = @lift if $labelrotation isa Automatic
+    labelpos::Observable{Point2f} = @lift let (position, extents, horizontal) = $pos_extents_horizontal
+        middle = extents[1] + 0.5f0 * (extents[2] - extents[1])
+
+        x_or_y = position + ($flipped ? 1 : -1) * $labelgap
+
+        horizontal ? Point2f(middle, x_or_y) : Point2f(x_or_y, middle)
+    end
+
+    labelalign::Observable{NTuple{2, Symbol}} = @lift if $labelrotation isa Automatic
+        if $horizontal
+            (:center, $flipped ? :bottom : :top)
+        else 
+            (:center, if $flipped
+                $flip_vertical_label ? :bottom : :top
+            else 
+                $flip_vertical_label ? :top : :bottom
+            end) 
+        end
+    else
+        (:center, :center)
+    end
+
+    labelrot::Observable{Float32} = @lift if $labelrotation isa Automatic
         if $horizontal
             0f0
         else
@@ -341,29 +363,6 @@ function LineAxis(parent::Scene, attrs::Attributes)
         Float32($labelrotation)
     end
 
-    labelpos = @lift let (position, extents, horizontal) = $pos_extents_horizontal
-        middle = extents[1] + 0.5f0 * (extents[2] - extents[1])
-
-        x_or_y = position + ($flipped ? 1 : -1) * $labelgap
-
-        horizontal ? Point2f(middle, x_or_y) : Point2f(x_or_y, middle)
-    end
-
-    labelalign = @lift if $labelrotation isa Automatic
-        if $horizontal 
-            return (:center, $flipped ? :bottom : :top) 
-        else 
-            return (:center, if $flipped 
-                    $flip_vertical_label ? :bottom : :top 
-                else 
-                    $flip_vertical_label ? :top : :bottom 
-                end 
-            ) 
-        end
-    else
-        (:center, :center)
-    end
-
     labeltext = text!(
         parent, labelpos, text = label, fontsize = labelsize, color = labelcolor,
         visible = labelvisible,
@@ -371,18 +370,21 @@ function LineAxis(parent::Scene, attrs::Attributes)
         markerspace = :data, inspectable = false
     )
 
-    # translate axis labels so that they do not overlap the plot
-    on(labelrot) do _
-        if !(labelrotation[] isa Automatic)
+    # translate axis labels on explicit rotations
+    # in order to prevent plot and axis overlap
+    onany(labelrotation, flipped, horizontal) do labelrotation, flipped, horizontal
+        xs::Float32, ys::Float32 = if labelrotation isa Automatic
+            0f0, 0f0
+        else
             wx, wy = widths(boundingbox(labeltext))
-            sign = flipped[] ? 1 : -1
-            xs, ys = if horizontal[]
-                0, sign * wy / 2
+            sign = flipped ? 1 : -1
+            if horizontal
+                0f0, Float32(sign * 0.5f0 * wy)
             else
-                sign * wx / 2, 0
+                Float32(sign * 0.5f0 * wx), 0f0
             end
-            translate!(labeltext, xs, ys, 0)
         end
+        translate!(labeltext, xs, ys, 0f0)
     end
 
     decorations[:labeltext] = labeltext
@@ -441,7 +443,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
         # we pass these as observables, to not trigger on them
         Observable((horizontal, labeltext, ticklabel_annotation_obs)),
         ticksvisible, label, labelvisible, labelpadding, tickspace, ticklabelsvisible, actual_ticklabelspace, ticklabelpad,
-        # we don't need these as arguments to calculate it, but we need to pass it because it indirectly influences the protrosion
+        # we don't need these as arguments to calculate it, but we need to pass it because it indirectly influences the protrusion
         labelfont, labelalign, labelrot, labelsize, ticklabelfont, tickalign)
 
     # trigger whole pipeline once to fill tickpositions and tickstrings
@@ -477,10 +479,11 @@ function LineAxis(parent::Scene, attrs::Attributes)
 end
 
 function tight_ticklabel_spacing!(la::LineAxis)
+    ep = la.attributes.endpoints[]
 
-    horizontal = if la.attributes.endpoints[][1][2] == la.attributes.endpoints[][2][2]
+    horizontal = if ep[1][2] == ep[2][2]
         true
-    elseif la.attributes.endpoints[][1][1] == la.attributes.endpoints[][2][1]
+    elseif ep[1][1] == ep[2][1]
         false
     else
         error("endpoints not on a horizontal or vertical line")
