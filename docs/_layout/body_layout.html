@@ -11,10 +11,13 @@
             <!-- <form id="lunrSearchForm" name="lunrSearchForm" action="/search/index.html">
               <input class="search-input" name="q" placeholder="Search docs" type="text">
             </form> -->
+            {{if searchpage}}
+            {{else}}
             <div class="stork-wrapper">
-              <input data-stork="makiesearch" class="stork-input" placeholder="Search documentation"/>
+              <input id="search-box" data-stork="makiesearch" class="stork-input" onkeypress="handleKeyPress(event)" placeholder="Search documentation"/>
               <div data-stork="makiesearch-output" class="stork-output"></div>
             </div>
+            {{end}}
             <h1>Navigation</h1>
             {{ navigation }}
           </div>
