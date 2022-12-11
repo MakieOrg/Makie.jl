@@ -27,6 +27,7 @@ function calculate_protrusion(
 
     horizontal, labeltext, ticklabel_annotation_obs = closure_args
 
+
     local label_is_empty::Bool = iswhitespace(label) || isempty(label)
 
     local real_labelsize::Float32 = if label_is_empty
@@ -125,7 +126,7 @@ function calculate_real_ticklabel_align(al, horizontal, fl::Bool, rot::Number)
     elseif al isa Tuple{Symbol, Symbol}
         return al
     else
-        error("Align needs to be a NTuple{2, Symbol}, or Makie.automatic.")
+        error("Align needs to be a Tuple{Symbol, Symbol}.")
     end
 end
 
@@ -322,44 +323,74 @@ function LineAxis(parent::Scene, attrs::Attributes)
         end
     end
 
-    tickspace = @lift $ticksvisible ? max(0f0, $ticksize * (1f0 - $tickalign)) : 0f0
+    tickspace = Observable(0f0; ignore_equal_values=true)
+    map!(tickspace, ticksvisible, ticksize, tickalign) do ticksvisible,
+            ticksize, tickalign
 
-    labelgap = @lift $spinewidth + $tickspace + if $ticklabelsvisible
-        $actual_ticklabelspace + $ticklabelpad
-    else
-        0f0
-    end + $labelpadding
+        ticksvisible ? max(0f0, ticksize * (1f0 - tickalign)) : 0f0
+    end
 
-    labelpos = @lift let (position, extents, horizontal) = $pos_extents_horizontal
+    labelgap = Observable(0f0; ignore_equal_values=true)
+    map!(labelgap, spinewidth, tickspace, ticklabelsvisible, actual_ticklabelspace,
+        ticklabelpad, labelpadding) do spinewidth, tickspace, ticklabelsvisible,
+            actual_ticklabelspace, ticklabelpad, labelpadding
+
+        return spinewidth + tickspace +
+            (ticklabelsvisible ? actual_ticklabelspace + ticklabelpad : 0f0) +
+            labelpadding
+    end
+
+    labelpos = Observable(Point2f(NaN); ignore_equal_values=true)
+
+    map!(labelpos, pos_extents_horizontal, flipped, labelgap) do (position, extents, horizontal), flipped, labelgap
+        # fullgap = tickspace[] + labelgap
         middle = extents[1] + 0.5f0 * (extents[2] - extents[1])
 
-        x_or_y = position + ($flipped ? 1 : -1) * $labelgap
+        x_or_y = flipped ? position + labelgap : position - labelgap
 
-        horizontal ? Point2f(middle, x_or_y) : Point2f(x_or_y, middle)
-    end
-
-    labelalign = @lift if $labelrotation isa Automatic
-        if $horizontal
-            (:center, $flipped ? :bottom : :top)
-        else 
-            (:center, if $flipped
-                $flip_vertical_label ? :bottom : :top
-            else 
-                $flip_vertical_label ? :top : :bottom
-            end) 
-        end
-    else
-        (:center, :center)
-    end
-
-    labelrot = @lift if $labelrotation isa Automatic
-        if $horizontal
-            0f0
+        if horizontal
+            return Point2f(middle, x_or_y)
         else
-            $flip_vertical_label ? -0.5f0pi : 0.5f0pi
+            return Point2f(x_or_y, middle)
         end
-    else
-        Float32($labelrotation)
+    end
+
+    # Initial values should be overwritten by map!. `ignore_equal_values` doesn't work right now without initial values
+    labelalign = Observable((:none, :none); ignore_equal_values=true)
+    map!(labelalign, labelrotation, horizontal, flipped, flip_vertical_label) do labelrotation,
+            horizontal::Bool, flipped::Bool, flip_vertical_label::Bool
+        if labelrotation isa Automatic
+            if horizontal
+                return (:center, flipped ? :bottom : :top)
+            else
+                return (:center, if flipped
+                        flip_vertical_label ? :bottom : :top
+                    else
+                        flip_vertical_label ? :top : :bottom
+                    end
+                )
+            end
+        else
+            return (:center, :center)
+        end
+    end
+
+    labelrot = Observable(0f0; ignore_equal_values=true)
+    map!(labelrot, labelrotation, horizontal, flip_vertical_label) do labelrotation,
+            horizontal::Bool, flip_vertical_label::Bool
+        if labelrotation isa Automatic
+            if horizontal
+                return 0f0
+            else
+                if flip_vertical_label
+                    return Float32(-0.5pi)
+                else
+                    return Float32(0.5pi)
+                end
+            end
+        else
+            return Float32(labelrotation)
+        end
     end
 
     labeltext = text!(
