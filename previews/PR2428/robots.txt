@@ -1,0 +1,4 @@
+Sitemap: github.com/MakieOrg/Makie.jl.git/sitemap.xml
+
+User-agent: *
+Disallow:

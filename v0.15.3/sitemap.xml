@@ -1,0 +1,484 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/documentation/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/documentation/nodes/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/stem/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/documentation/backends_and_output/figure_size/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/layoutables/toggle/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/documentation/cameras/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/layoutables/box/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/layoutables/legend/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/barplot/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/tutorials/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/scatterlines/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/image/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/documentation/latex/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/wireframe/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/layoutables/lscene/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/violin/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/layoutables/axis3/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/documentation/animation/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/layoutables/colorbar/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/volume/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/boxplot/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/documentation/news/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/errorbars/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/crossbar/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/layoutables/menu/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/layoutables/intervalslider/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/band/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/mesh/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/linesegments/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/surface/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/404/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/volumeslices/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/arrows/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/density/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/hist/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/documentation/backends_and_output/wglmakie/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/streamplot/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/documentation/theming/predefined_themes/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/layoutables/button/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/layoutables/textbox/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/documentation/colors/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/hvlines/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/stairs/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/layoutables/label/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/scatter/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/layoutables/slider/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/heatmap/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/documentation/inspector/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/contourf/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/contour/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/layoutables/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/poly/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/documentation/layoutables/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/documentation/remote/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/documentation/events/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/hvspan/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/documentation/scenes/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/documentation/api_reference/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/documentation/plot_method_signatures/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/search/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/documentation/lighting/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/text/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/documentation/recipes/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/rangebars/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/documentation/theming/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/series/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/lines/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/documentation/faq/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/meshscatter/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/layoutables/gridlayout/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/documentation/backends_and_output/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/plotting_functions/abline/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/documentation/layouting/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/documentation/figure/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/tutorials/basic-tutorial/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/tutorials/layout-tutorial/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>github.com/JuliaPlots/Makie.jl.git/examples/layoutables/axis/index.html</loc>
+    <lastmod>2021-10-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+</urlset>

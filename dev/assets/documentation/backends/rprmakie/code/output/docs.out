@@ -1,0 +1,26 @@
+~~~
+<pre><code>RPRMakie.activate&#33;&#40;; screen_config...&#41;</code></pre>
+<p>Sets RPRMakie as the currently active backend and also allows to quickly set the <code>screen_config</code>. Note, that the <code>screen_config</code> can also be set permanently via <code>Makie.set_theme&#33;&#40;RPRMakie&#61;&#40;screen_config...,&#41;&#41;</code>.</p>
+<h1>Arguments one can pass via <code>screen_config</code>:</h1>
+<ul>
+<li><p><code>iterations &#61; 200</code>: Iterations of light simulations. The more iterations, the less noisy the picture becomes, but higher numbers take much longer. For e.g. <code>iterations&#61;10</code> one should expect rendering to take a couple of seconds but it will produce pretty noisy output. 200 is a good middle ground taking around ~30s on an old nvidia 1060. For highest quality output, numbers above 500 are required.</p>
+</li>
+<li><p><code>resource &#61; RPR.RPR_CREATION_FLAGS_ENABLE_GPU0</code>: GPU or CPU to use. Multiple GPUs and CPUs can be used together by using <code>&amp;</code> &#40;e.g. <code>RPR.RPR_CREATION_FLAGS_ENABLE_GPU0 &amp; RPR.RPR_CREATION_FLAGS_ENABLE_CPU</code>&#41;.</p>
+</li>
+<li><p><code>plugin &#61; RPR.Tahoe</code>:</p>
+<ul>
+<li><p><code>RPR.Tahoe</code>, the legacy RadeonProRender backend. It&#39;s the most stable, but doesn&#39;t have all new features &#40;e.g. the <code>RPR.MatX</code> material&#41;, and may be slower than others</p>
+</li>
+<li><p><code>RPR.Northstar</code>, the new rewritten backend, faster and optimized for many iterations. Single iterations are much slower, so less usable for interactive display. Sometimes, Northstar just produces black, jiggly objects. It&#39;s not clear yet, if that&#39;s just a bug, or the result of using an unsupported/deprecated feature. Switch to <code>Tahoe</code> if that happens.</p>
+</li>
+<li><p><code>RPR.Hybrid</code>: Vulkan backend, fit for real time rendering, using AMDs and NVIDIAs new hardware accelerated ray tracing. Doesn&#39;t work reliably yet and only works with <code>RPR.Uber</code> material.</p>
+</li>
+<li><p><code>RPR.HybridPro</code>: The same as Hybrid, but works only for Radeon GPUs, using AMDs own hardware acceleration API.</p>
+</li>
+</ul>
+</li>
+</ul>
+
+
+
+~~~

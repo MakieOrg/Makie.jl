@@ -1,0 +1,4 @@
+Sitemap: github.com/JuliaPlots/Makie.jl.git/sitemap.xml
+
+User-agent: *
+Disallow:
