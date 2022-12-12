@@ -2,7 +2,7 @@
 
 ## master
 
-- Added `xlabelrotation` and `ylabelrotation` [#2478](https://github.com/MakieOrg/Makie.jl/pull/2478).
+- Added `xlabelrotation`, `ylabelrotation` (`Axis`) and `labelrotation` (`Colorbar`) [#2478](https://github.com/MakieOrg/Makie.jl/pull/2478).
 
 ## v0.19.0
 
