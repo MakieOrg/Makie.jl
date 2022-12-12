@@ -271,14 +271,15 @@ end
     st
 end
 
-@reference_test "Label rotations" begin
+@reference_test "Axes label rotations" begin
     axis = (
         xlabel = "a long x label for this axis",
         ylabel = "a long y\nlabel for this axis",
         xlabelrotation = π / 4,
         ylabelrotation = 0,
     )
-    fig, ax, plot = scatter(0:1; axis)
+    fig, ax, _ = scatter(0:1; axis)
+
     st = Stepper(fig)
     Makie.step!(st)
 
@@ -298,21 +299,29 @@ end
     ax.xlabelrotation[] = ax.ylabelrotation[] = Makie.automatic
     Makie.step!(st)
 
-    # add colorbars
+    st
+end
+
+@reference_test "Colorbar label rotations" begin
+    axis = (
+        xlabel = "x axis label",
+        ylabel = "y axis label",
+        xlabelrotation = -π / 10,
+        ylabelrotation = -π / 3,
+        yaxisposition = :right,
+    )
+    fig, _, _ = scatter(0:1; axis)
+
     cb_vert = Colorbar(fig[1, 2]; label = "vertical cbar", labelrotation = 0)
+    cb_horz = Colorbar(fig[2, 1]; label = "horizontal cbar", labelrotation = π / 5, vertical = false)
+
+    st = Stepper(fig)
     Makie.step!(st)
 
-    ax.yaxisposition[] = :right
-    ax.ylabelrotation[] = -π / 3
-    Makie.step!(st)
-
+    # reset to defaults
     cb_vert.labelrotation[] = Makie.automatic
     Makie.step!(st)
 
-    cb_horz = Colorbar(fig[2, 1]; label = "horizontal cbar", labelrotation = π / 5, vertical = false)
-    Makie.step!(st)
-
-    ax.xlabelrotation[] = -π / 10
     cb_horz.labelrotation[] = Makie.automatic
     Makie.step!(st)
 
