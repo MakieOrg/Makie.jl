@@ -28,7 +28,8 @@ $(ATTRIBUTES)
         linestyle = nothing,
         alpha = 1.0,
         enable_depth = true,
-        transparency = false
+        transparency = false,
+        labels = false,
     )
 end
 
@@ -45,22 +46,27 @@ $(ATTRIBUTES)
     default_theme(scene, Contour)
 end
 
-function contourlines(::Type{<: Contour}, contours, cols)
+nice_label(x) = string(isinteger(x) ? round(Int, x) : x)
+
+function contourlines(::Type{<: Contour}, contours, cols, extract_labels)
     result = Point2f[]
     colors = RGBA{Float32}[]
+    labels = Tuple{String,Point2f}[]
     for (color, c) in zip(cols, Contours.levels(contours))
         for elem in Contours.lines(c)
             append!(result, elem.vertices)
             push!(result, Point2f(NaN32))
             append!(colors, fill(color, length(elem.vertices) + 1))
+            extract_labels && push!(labels, (nice_label(c.level), elem.vertices[1]))
         end
     end
-    result, colors
+    result, colors, labels
 end
 
-function contourlines(::Type{<: Contour3d}, contours, cols)
+function contourlines(::Type{<: Contour3d}, contours, cols, extract_labels)
     result = Point3f[]
     colors = RGBA{Float32}[]
+    labels = Tuple{String,Point3f}[]
     for (color, c) in zip(cols, Contours.levels(contours))
         for elem in Contours.lines(c)
             for p in elem.vertices
@@ -68,9 +74,12 @@ function contourlines(::Type{<: Contour3d}, contours, cols)
             end
             push!(result, Point3f(NaN32))
             append!(colors, fill(color, length(elem.vertices) + 1))
+            extract_labels && let p = elem.vertices[1]
+                push!(labels, (nice_label(c.level), Point3f(p[1], p[2], c.level)))
+            end
         end
     end
-    result, colors
+    result, colors, labels
 end
 
 to_levels(x::AbstractVector{<: Number}, cnorm) = x
@@ -172,18 +181,49 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
 
     replace_automatic!(()-> zrange, plot, :colorrange)
 
-    args = @extract plot (color, colormap, colorrange, alpha)
+    labels, args... = @extract plot (labels, color, colormap, colorrange, alpha)
     level_colors = lift(color_per_level, args..., levels)
-    result = lift(x, y, z, levels, level_colors) do x, y, z, levels, level_colors
+    result = lift(x, y, z, levels, level_colors, labels) do x, y, z, levels, level_colors, labels
         t = eltype(z)
         # Compute contours
         xv, yv = to_vector(x, size(z,1), t), to_vector(y, size(z,2), t)
         contours = Contours.contours(xv, yv, z,  convert(Vector{eltype(z)}, levels))
-        contourlines(T, contours, level_colors)
+        contourlines(T, contours, level_colors, labels)
     end
-    lines!(
-        plot, lift(first, result);
-        color = lift(last, result),
+
+    masked_lines = lift(result) do (segments, _, labels)
+        P = eltype(segments)
+        masked = sizehint!(P[], length(segments))
+        sc = parent_scene(plot)
+        transf = transform_func_obs(sc)
+        space = get(plot, :space, :data)
+        nseg = length(segments)
+        nlab = length(labels)
+        n = 0
+        bb = nothing
+        for (i, p_curr) in enumerate(segments)
+            p_prev = segments[i > 1 ? i - 1 : i]
+            p_next = segments[i < nseg ? i + 1 : i]
+            if (i == 1 || isnan(p_next)) && n < nlab
+                n += 1
+                bb = Rect2f(boundingbox(text!(plot, labels[n:n]; align = (:center, :center), fontsize = 10)))
+            end
+            if bb !== nothing && (
+                scene_to_screen(apply_transform(transf, p_prev, space), sc) in bb ||
+                scene_to_screen(apply_transform(transf, p_curr, space), sc) in bb ||
+                scene_to_screen(apply_transform(transf, p_next, space), sc) in bb
+            )
+                push!(masked, P(NaN32))
+            else
+                push!(masked, p_curr)
+            end
+        end
+        return masked
+    end
+
+    cont_lines = lines!(
+        plot, masked_lines;
+        color = lift(x -> x[2], result),
         linewidth = plot.linewidth,
         inspectable = plot.inspectable,
         transparency = plot.transparency,
