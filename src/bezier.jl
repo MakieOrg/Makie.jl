@@ -46,7 +46,7 @@ end
 
 StableHashTraits.transform(path::BezierPath) = path.commands
 StableHashTraits.transform(c::EllipticalArc) = [c.c[1], c.c[2], c.r1, c.r2, c.angle, c.a1, c.a2]
-StableHashTraits.transform(c::CurveTo) = [c.c1[1], c.c1[2], c.c2p1, c.c2[2], c.p[1], c.p[2]]
+StableHashTraits.transform(c::CurveTo) = [c.c1[1], c.c1[2], c.c2[1], c.c2[2], c.p[1], c.p[2]]
 StableHashTraits.transform(c::LineTo) = [c.p[1], c.p[2]]
 StableHashTraits.transform(c::MoveTo) = [c.p[1], c.p[2]]
 StableHashTraits.transform(c::ClosePath) = 0
