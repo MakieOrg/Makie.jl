@@ -48,25 +48,25 @@ end
 
 nice_label(x) = string(isinteger(x) ? round(Int, x) : x)
 
-function contourlines(::Type{<: Contour}, contours, cols, extract_labels)
+function contourlines(::Type{<: Contour}, contours, cols, labels)
     result = Point2f[]
     colors = RGBA{Float32}[]
-    labels = Tuple{String,Point2f}[]
+    str_pos = Tuple{String,Point2f}[]
     for (color, c) in zip(cols, Contours.levels(contours))
         for elem in Contours.lines(c)
             append!(result, elem.vertices)
             push!(result, Point2f(NaN32))
             append!(colors, fill(color, length(elem.vertices) + 1))
-            extract_labels && push!(labels, (nice_label(c.level), elem.vertices[1]))
+            labels && push!(str_pos, (nice_label(c.level), elem.vertices[1]))
         end
     end
-    result, colors, labels
+    result, colors, str_pos
 end
 
-function contourlines(::Type{<: Contour3d}, contours, cols, extract_labels)
+function contourlines(::Type{<: Contour3d}, contours, cols, labels)
     result = Point3f[]
     colors = RGBA{Float32}[]
-    labels = Tuple{String,Point3f}[]
+    str_pos = Tuple{String,Point3f}[]
     for (color, c) in zip(cols, Contours.levels(contours))
         for elem in Contours.lines(c)
             for p in elem.vertices
@@ -74,12 +74,12 @@ function contourlines(::Type{<: Contour3d}, contours, cols, extract_labels)
             end
             push!(result, Point3f(NaN32))
             append!(colors, fill(color, length(elem.vertices) + 1))
-            extract_labels && let p = elem.vertices[1]
-                push!(labels, (nice_label(c.level), Point3f(p[1], p[2], c.level)))
+            labels && let p = elem.vertices[1]
+                push!(str_pos, (nice_label(c.level), Point3f(p[1], p[2], c.level)))
             end
         end
     end
-    result, colors, labels
+    result, colors, str_pos
 end
 
 to_levels(x::AbstractVector{<: Number}, cnorm) = x
@@ -191,22 +191,25 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         contourlines(T, contours, level_colors, labels)
     end
 
-    masked_lines = lift(result) do (segments, _, labels)
+    masked_lines = lift(labels, result) do labels, (segments, _, str_pos)
+        labels || return segments  # `labels = false`, early return
         P = eltype(segments)
         masked = sizehint!(P[], length(segments))
         sc = parent_scene(plot)
         transf = transform_func_obs(sc)
         space = get(plot, :space, :data)
         nseg = length(segments)
-        nlab = length(labels)
-        n = 0
-        bb = nothing
+        nlab = length(str_pos)
+        # TODO: figure out a way to pass text attributes such as color, fontsize, ...
+        # FIXME: it doesn't seem to be possible to access the underlying glyphcollections
+        texts = map(l -> text!(plot, [l]; align = (:center, :center), fontsize = 10), str_pos)
+        bboxes = map(Rect2f ∘ boundingbox, texts)
+        bb, n = nothing, 0
         for (i, p_curr) in enumerate(segments)
             p_prev = segments[i > 1 ? i - 1 : i]
             p_next = segments[i < nseg ? i + 1 : i]
             if (i == 1 || isnan(p_next)) && n < nlab
-                n += 1
-                bb = Rect2f(boundingbox(text!(plot, labels[n:n]; align = (:center, :center), fontsize = 10)))
+                bb = bboxes[n += 1]  # consider the next label (FIXME: this is not very robust)
             end
             if bb !== nothing && (
                 scene_to_screen(apply_transform(transf, p_prev, space), sc) in bb ||
@@ -218,10 +221,10 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
                 push!(masked, p_curr)
             end
         end
-        return masked
+        masked
     end
 
-    cont_lines = lines!(
+    lines!(
         plot, masked_lines;
         color = lift(x -> x[2], result),
         linewidth = plot.linewidth,
