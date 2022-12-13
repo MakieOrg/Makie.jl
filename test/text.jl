@@ -1,18 +1,18 @@
 @testset "Glyph Collections" begin
     using Makie.FreeTypeAbstraction
 
-    # Test whether Makie's padded signed distance field text matches 
+    # Test whether Makie's padded signed distance field text matches
     # FreeTypeAbstraction characters in terms of boundingbox
     str = "^_lg"
     chars = collect(str)
     font = Makie.defaultfont()
-    
+
     scene = Scene()
     campixel!(scene)
     p = text!(scene, Point2f(30, 37), text = str, align = (:left, :baseline))
     glyph_collection = p.plots[1][1][][]
-    
-    # This doesn't work well because FreeTypeAbstraction doesn't quite scale 
+
+    # This doesn't work well because FreeTypeAbstraction doesn't quite scale
     # linearly
     # fta_glyphs = map(char -> renderface(font, char, 64), chars)
     # unit_extents = map(fta_glyphs) do (img, extent)
@@ -23,7 +23,7 @@
     #         extent.scale * 20f0 / 64f0
     #     )
     # end
-    # origins = let 
+    # origins = let
     #     glyph_scale = p.textsize[] / 64
     #     cumsum(vcat(
     #         - glyph_scale * fta_glyphs[1][2].horizontal_bearing[1],
@@ -56,31 +56,22 @@
     fta_ha = FreeTypeAbstraction.hadvance.(unit_extents)
     @test makie_hi_bb == fta_hi_bb
     @test fta_ha == [bb.origin[1] + bb.widths[1] for bb in makie_hi_bb_wa]
-
+    atlas = Makie.get_texture_atlas()
     # Test quad data
     positions, char_offsets, quad_offsets, uvs, scales = Makie.text_quads(
+        atlas,
         to_ndim(Point3f, p.position[], 0), glyph_collection,
         Vec2f(0), Makie.transform_func_obs(scene)[]
     )
 
-    # Also doesn't work 
-    # fta_offsets = map(fta_glyphs) do (img, extent)
-    #     (extent.horizontal_bearing .- Makie.GLYPH_PADDING[]) * p.textsize[] / 
-    #         Makie.PIXELSIZE_IN_ATLAS[]
-    # end
-    # fta_scales = map(fta_glyphs) do (img, extent)
-    #     (extent.scale .+ 2 * Makie.GLYPH_PADDING[]) * p.textsize[] / 
-    #         Makie.PIXELSIZE_IN_ATLAS[]
-    # end
-    
     fta_quad_offsets = map(chars) do c
         mini = FreeTypeAbstraction.metrics_bb(c, font, 20.0)[1] |> minimum
-        Vec2f(mini .- Makie.GLYPH_PADDING[] * 20.0 / Makie.PIXELSIZE_IN_ATLAS[])
+        Vec2f(mini .- atlas.glyph_padding * 20.0 / atlas.pix_per_glyph)
     end
 
     fta_scales = map(chars) do c
         mini = FreeTypeAbstraction.metrics_bb(c, font, 20.0)[1] |> widths
-        Vec2f(mini .+ 2 * Makie.GLYPH_PADDING[] * 20.0 / Makie.PIXELSIZE_IN_ATLAS[])
+        Vec2f(mini .+ 2 * atlas.glyph_padding * 20.0 / atlas.pix_per_glyph)
     end
 
     @test all(isequal(to_ndim(Point3f, p.position[], 0f0)), positions)

@@ -1,4 +1,4 @@
-using Makie: get_texture_atlas, glyph_uv_width!, transform_func_obs, apply_transform
+using Makie: transform_func_obs, apply_transform
 using Makie: attribute_per_char, FastPixel, el32convert, Pixel
 using Makie: convert_arguments
 
@@ -217,10 +217,13 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Union{Scatte
 
             gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.rotations)
             isnothing(gl_attributes[:distancefield][]) && delete!(gl_attributes, :distancefield)
-            gl_attributes[:uv_offset_width][] == Vec4f(0) && delete!(gl_attributes, :uv_offset_width)
 
+            atlas = gl_texture_atlas()
+            get!(gl_attributes, :uv_offset_width) do
+                Makie.primitive_uv_offset_width(atlas, marker)
+            end
             font = get(gl_attributes, :font, Observable(Makie.defaultfont()))
-            scale, quad_offset = Makie.marker_attributes(marker, gl_attributes[:scale], font, gl_attributes[:quad_offset])
+            scale, quad_offset = Makie.marker_attributes(atlas, marker, gl_attributes[:scale], font, gl_attributes[:quad_offset])
             gl_attributes[:scale] = scale
             gl_attributes[:quad_offset] = quad_offset
         else
@@ -305,10 +308,11 @@ function draw_atomic(screen::Screen, scene::Scene,
         space = get(gl_attributes, :space, Observable(:data))
         markerspace = gl_attributes[:markerspace]
         offset = pop!(gl_attributes, :offset, Vec2f(0))
+        atlas = gl_texture_atlas()
 
         # calculate quad metrics
         glyph_data = map(pos, glyphcollection, offset, transfunc) do pos, gc, offset, transfunc
-            Makie.text_quads(pos, to_value(gc), offset, transfunc)
+            Makie.text_quads(atlas, pos, to_value(gc), offset, transfunc)
         end
 
         # unpack values from the one signal:
@@ -316,7 +320,6 @@ function draw_atomic(screen::Screen, scene::Scene,
             lift(getindex, glyph_data, i)
         end
 
-        atlas = get_texture_atlas()
 
         filter!(gl_attributes) do (k, v)
             # These are liftkeys without model

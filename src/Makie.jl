@@ -27,7 +27,6 @@ using Packing
 using SignedDistanceFields
 using Markdown
 using DocStringExtensions # documentation
-using Serialization # serialize events
 using StructArrays
 # Text related packages
 using FreeType

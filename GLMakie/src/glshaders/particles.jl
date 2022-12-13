@@ -11,8 +11,6 @@ function to_meshcolor(color)
     color
 end
 
-using Makie: get_texture_atlas
-
 vec2quaternion(rotation::StaticVector{4}) = rotation
 
 function vec2quaternion(r::StaticVector{2})
@@ -193,7 +191,7 @@ function draw_scatter(screen, (marker, position), data)
         stroke_color    = RGBA{Float32}(0,0,0,0) => GLBuffer
         stroke_width    = 0f0
         glow_width      = 0f0
-        uv_offset_width = Makie.primitive_uv_offset_width(marker) => GLBuffer
+        uv_offset_width = Vec4f(0) => GLBuffer
 
         distancefield   = texture_distancefield(shape) => Texture
         indices         = const_lift(length, position) => to_index_buffer

@@ -16,7 +16,7 @@ using .GLAbstraction
 
 const atlas_texture_cache = Dict{Any, Tuple{Texture{Float16, 2}, Function}}()
 
-function get_texture!(atlas)
+function get_texture!(atlas::Makie.TextureAtlas)
     if !GLAbstraction.context_alive(GLAbstraction.current_context())
         return nothing
     end
@@ -25,7 +25,7 @@ function get_texture!(atlas)
         if GLAbstraction.context_alive(ctx)
             return true
         else
-            Makie.remove_font_render_callback!(tex_func[2])
+            Makie.remove_font_render_callback!(atlas, tex_func[2])
             return false
         end
     end
@@ -51,7 +51,7 @@ function get_texture!(atlas)
                 ShaderAbstractions.switch_context!(prev_ctx)
             end
         end
-        Makie.font_render_callback!(callback)
+        Makie.font_render_callback!(atlas, callback)
         return (tex, callback)
     end
     return tex

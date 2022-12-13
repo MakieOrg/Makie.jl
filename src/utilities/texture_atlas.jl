@@ -1,23 +1,49 @@
-mutable struct TextureAtlas
-    rectangle_packer::RectanglePacker
-    # styled glyph to index in sprite_attributes
-    mapping::Dict{Union{BezierPath, Tuple{UInt64, String}}, Int}
+struct TextureAtlas
+    rectangle_packer::RectanglePacker{Int32}
+    # hash of what we're rendering to index in `uv_rectangles`
+    mapping::Dict{UInt64, Int64}
     data::Matrix{Float16}
     # rectangles we rendered our glyphs into in normalized uv coordinates
     uv_rectangles::Vector{Vec4f}
+    pix_per_glyph::Int32
+    # To draw a symbol from a sdf we essentially do `color * (sdf > 0)`. For
+    # antialiasing we smooth out the step function `sdf > 0`. That means we
+    # need a few values outside the symbol. To guarantee that we have those
+    # at all relevant scales we add padding to the rendered bitmap and the
+    # resulting sdf.
+    glyph_padding::Int32
+    # We save glyphs as signed distance fields, i.e. we save the distance
+    # a pixel is away from the edge of a symbol (continuous at the edge).
+    # To get accurate distances we want to draw the symbol at high
+    # resolution and then downsample to the pix_per_glyph.
+    downsample::Int32
+    font_render_callback::Vector{Function}
 end
 
 Base.size(atlas::TextureAtlas) = size(atlas.data)
 
-function TextureAtlas(initial_size = (2048, 2048))
+function TextureAtlas(; resolution=(2048, 2048), pix_per_glyph=64, glyph_padding=12, downsample=5)
     return TextureAtlas(
-        RectanglePacker(Rect2(0, 0, initial_size...)),
-        Dict{Tuple{UInt64, String}, Int}(),
-        1,
+        RectanglePacker(Rect2{Int32}(0, 0, resolution...)),
+        Dict{UInt64, Int}(),
         # We use float max here to avoid texture bleed. See #2096
-        fill(Float16(0.5PIXELSIZE_IN_ATLAS[] + GLYPH_PADDING[]), initial_size...),
+        fill(Float16(0.5pix_per_glyph + glyph_padding), resolution...),
         Vec4f[],
+        pix_per_glyph,
+        glyph_padding,
+        downsample,
+        Function[]
     )
+end
+
+function Base.show(io::IO, atlas::TextureAtlas)
+    println(io, "TextureAtlas:")
+    println(io, "  mappings: ", length(atlas.mapping))
+    println(io, "  data: ", size(atlas))
+    println(io, "  pix_per_glyph: ", atlas.pix_per_glyph)
+    println(io, "  glyph_padding: ", atlas.glyph_padding)
+    println(io, "  downsample: ", atlas.downsample)
+    println(io, "  font_render_callback: ", length(atlas.font_render_callback))
 end
 
 # basically a singleton for the textureatlas
@@ -32,33 +58,81 @@ function get_cache_path(resolution::Int, pix_per_glyph::Int)
     return path
 end
 
-function store_texture_atlas(path::AbstractString, atlas::TextureAtlas)
-    open(path, "w") do io
-        dict = Dict(map(fieldnames(typeof(atlas))) do name
-            name => getfield(atlas, name)
-        end)
-        Serialization.serialize(io, dict)
+function write_node(io::IO, packer::RectanglePacker)
+    write(io, Ref(packer.area))
+    l = Packing.left(packer)
+    write(io, isnothing(l) ? UInt8(0) : UInt8(1))
+    if !isnothing(l)
+        write_node(io, l)
+    end
+    r = Packing.right(packer)
+    write(io, isnothing(r) ? UInt8(0) : UInt8(1))
+    if !isnothing(r)
+        write_node(io, r)
     end
 end
 
-function load_texture_atlas((path::AbstractString, atlas::TextureAtlas)
+function read_node(io, T)
+    area = Ref{Rect2{T}}()
+    read!(io, area)
+    hasleft = read(io, UInt8)
+    left = hasleft == 1 ? read_node(io, T) : nothing
+    hasright = read(io, UInt8)
+    right = hasright == 1 ? read_node(io, T) : nothing
+    node = Packing.BinaryNode{RectanglePacker{T}}()
+    node.left = left
+    node.right = right
+    return RectanglePacker{T}(node, area[])
+end
+
+function write_array(io::IO, array::AbstractArray)
+    write(io, Int32(ndims(array)))
+    write(io, Int32.(size(array))...)
+    write(io, array)
+end
+
+function read_array(io::IO, T)
+    nd = read(io, Int32)
+    size = Vector{Int32}(undef, nd)
+    read!(io, size)
+    array = Array{T}(undef, size...)
+    read!(io, array)
+    return array
+end
+
+function store_texture_atlas(path::AbstractString, atlas::TextureAtlas)
+    open(path, "w") do io
+        write_node(io, atlas.rectangle_packer)
+        write_array(io, collect(atlas.mapping))
+        write_array(io, atlas.data)
+        write_array(io, atlas.uv_rectangles)
+        write(io, atlas.pix_per_glyph)
+        write(io, atlas.glyph_padding)
+        write(io, atlas.downsample)
+    end
+end
+
+function load_texture_atlas(path::AbstractString)
     open(path) do io
-        dict = Serialization.deserialize(io)
-        fields = map(fieldnames(TextureAtlas)) do n
-            v = dict[n]
-            isa(v, Vector) ? copy(v) : v # otherwise there seems to be a problem with resizing
-        end
-        return TextureAtlas(fields...)
+        packer = read_node(io, Int32)
+        mapping = read_array(io, Pair{UInt64, Int64})
+        data = read_array(io, Float16)
+        uv_rectangles = read_array(io, Vec4f)
+        pix_per_glyph = read(io, Int32)
+        glyph_padding = read(io, Int32)
+        downsample = read(io, Int32)
+        return TextureAtlas(packer, Dict(mapping), data, uv_rectangles, pix_per_glyph, glyph_padding, downsample, Function[])
     end
 end
 
 const TEXTURE_ATLASES = Dict{Tuple{Int, Int}, TextureAtlas}()
 
-function get_texture_atlas(resolution::Int, pix_per_glyph::Int)
+function get_texture_atlas(resolution::Int = 2048, pix_per_glyph::Int = 32)
     return get!(TEXTURE_ATLASES, (resolution, pix_per_glyph)) do
         return cached_load(resolution, pix_per_glyph) # initialize only on demand
     end
 end
+
 function cached_load(resolution::Int, pix_per_glyph::Int)
     path = get_cache_path(resolution, pix_per_glyph)
     if isfile(path)
@@ -72,7 +146,7 @@ function cached_load(resolution::Int, pix_per_glyph::Int)
     end
     atlas = TextureAtlas()
     @info("Makie is caching fonts, this may take a while. Needed only on first run!")
-    load_ascii_chars!(atlas)
+    render_default_glyphs!(atlas)
     store_texture_atlas(path, atlas) # cache it
     return atlas
 end
@@ -104,16 +178,15 @@ function alternativefonts()
     return _alternative_fonts
 end
 
-function load_ascii_chars!(atlas)
-    # for c in '\u0000':'\u00ff' #make sure all ascii is mapped linearly
-    #     insert_glyph!(atlas, c, defaultfont())
-    # end
-    for c in '0':'9' #make sure all ascii is mapped linearly
-        insert_glyph!(atlas, c, defaultfont())
+function render_default_glyphs!(atlas)
+    font = defaultfont()
+    for c in '\u0000':'\u00ff' #make sure all ascii is mapped linearly
+        insert_glyph!(atlas, c, font)
     end
-    for c in 'A':'Z' #make sure all ascii is mapped linearly
-        insert_glyph!(atlas, c, defaultfont())
+    for (_, path) in default_marker_map()
+        insert_glyph!(atlas, path)
     end
+    return atlas
 end
 
 """
@@ -154,31 +227,17 @@ function glyph_uv_width!(atlas::TextureAtlas, glyph, font::NativeFont)
     return atlas.uv_rectangles[glyph_index!(atlas, glyph, font)]
 end
 
-function glyph_uv_width!(glyph)
-    return glyph_uv_width!(get_texture_atlas(), glyph, defaultfont())
-end
-
 function glyph_uv_width!(atlas::TextureAtlas, b::BezierPath)
     return atlas.uv_rectangles[glyph_index!(atlas, b)]
 end
 
 function insert_glyph!(atlas::TextureAtlas, glyph, font::NativeFont)
     glyphindex = FreeTypeAbstraction.glyph_index(font, glyph)
-    return get!(atlas.mapping, (glyphindex, FreeTypeAbstraction.fontname(font))) do
-        # We save glyphs as signed distance fields, i.e. we save the distance
-        # a pixel is away from the edge of a symbol (continuous at the edge).
-        # To get accurate distances we want to draw the symbol at high
-        # resolution and then downsample to the PIXELSIZE_IN_ATLAS.
-        downsample = 5
-        # To draw a symbol from a sdf we essentially do `color * (sdf > 0)`. For
-        # antialiasing we smooth out the step function `sdf > 0`. That means we
-        # need a few values outside the symbol. To guarantee that we have those
-        # at all relevant scales we add padding to the rendered bitmap and the
-        # resulting sdf.
-        pad = GLYPH_PADDING[]
+    key = (glyphindex, FreeTypeAbstraction.fontname(font))
+    return get!(atlas.mapping, hash(key)) do
 
-        uv_pixel = render(atlas, glyphindex, font, downsample, pad)
-        tex_size = Vec2f(size(atlas.data) .- 1) # starts at 1
+        uv_pixel = render(atlas, glyphindex, font)
+        tex_size = Vec2f(size(atlas) .- 1) # starts at 1
 
         # 0 based
         idx_left_bottom = minimum(uv_pixel)
@@ -190,29 +249,15 @@ function insert_glyph!(atlas::TextureAtlas, glyph, font::NativeFont)
         uv_right_top_pad = (idx_right_top .- 1) ./ tex_size
 
         uv_offset_rect = Vec4f(uv_left_bottom_pad..., uv_right_top_pad...)
-        i = atlas.index
         push!(atlas.uv_rectangles, uv_offset_rect)
-        atlas.index = i + 1
-        return i
+        return length(atlas.uv_rectangles)
     end
 end
 
 function insert_glyph!(atlas::TextureAtlas, path::BezierPath)
-    return get!(atlas.mapping, path) do
-        # We save glyphs as signed distance fields, i.e. we save the distance
-        # a pixel is away from the edge of a symbol (continuous at the edge).
-        # To get accurate distances we want to draw the symbol at high
-        # resolution and then downsample to the PIXELSIZE_IN_ATLAS.
-        downsample = 5
-        # To draw a symbol from a sdf we essentially do `color * (sdf > 0)`. For
-        # antialiasing we smooth out the step function `sdf > 0`. That means we
-        # need a few values outside the symbol. To guarantee that we have those
-        # at all relevant scales we add padding to the rendered bitmap and the
-        # resulting sdf.
-        pad = GLYPH_PADDING[]
-
-        uv_pixel = render(atlas, path, downsample, pad)
-        tex_size = Vec2f(size(atlas.data) .- 1) # starts at 1
+    return get!(atlas.mapping, hash(path)) do
+        uv_pixel = render(atlas, path)
+        tex_size = Vec2f(size(atlas) .- 1) # starts at 1
 
         # 0 based
         idx_left_bottom = minimum(uv_pixel)
@@ -225,7 +270,7 @@ function insert_glyph!(atlas::TextureAtlas, path::BezierPath)
 
         uv_offset_rect = Vec4f(uv_left_bottom_pad..., uv_right_top_pad...)
         push!(atlas.uv_rectangles, uv_offset_rect)
-        return i
+        return length(atlas.uv_rectangles)
     end
 end
 
@@ -255,40 +300,38 @@ function sdistancefield(img, downsample, pad)
     return Float16.(sdf(in_or_out, xres, yres) ./ downsample)
 end
 
-const font_render_callbacks = Dict{Int, Vector{Function}}()
-
-function font_render_callback!(f)
-    funcs = get!(font_render_callbacks, PIXELSIZE_IN_ATLAS[], Function[])
-    push!(funcs, f)
+function font_render_callback!(atlas::TextureAtlas, f)
+    push!(atlas.font_render_callback, f)
 end
 
-function remove_font_render_callback!(f)
-    for (s, callbacks) in font_render_callbacks
-        filter!(f2-> f2 != f, callbacks)
-    end
+function remove_font_render_callback!(atlas::TextureAtlas, f)
+    filter!(f2-> f2 != f, atlas.font_render_callback)
 end
 
-function render(atlas::TextureAtlas, glyph_index, font, downsample=5, pad=6)
+function render(atlas::TextureAtlas, glyph_index, font)
+    downsample = atlas.downsample
+    pad = atlas.glyph_padding
+    # the target pixel size of our distance field
+    pixelsize = atlas.pix_per_glyph
+
     # TODO: Is this needed or should newline be filtered before this?
     if glyph_index == 0 # don't render  newline and others
         # TODO, render them as box and filter out newlines in GlyphCollection
         glyph_index = FreeTypeAbstraction.glyph_index(font, ' ')
     end
 
-    # the target pixel size of our distance field
-    pixelsize = PIXELSIZE_IN_ATLAS[]
     # we render the font `downsample` sizes times bigger
     # Make sure the font doesn't have a mutated font matrix from e.g. Cairo
     FreeTypeAbstraction.FreeType.FT_Set_Transform(font, C_NULL, C_NULL)
     bitmap, extent = renderface(font, glyph_index, pixelsize * downsample)
     # Our downsampeld & padded distancefield
     sd = sdistancefield(bitmap, downsample, pad)
-    rect = Rect2(0, 0, size(sd)...)
+    rect = Rect2{Int32}(0, 0, size(sd)...)
     uv = push!(atlas.rectangle_packer, rect) # find out where to place the rectangle
     uv == nothing && error("texture atlas is too small. Resizing not implemented yet. Please file an issue at Makie if you encounter this") #TODO resize surface
     # write distancefield into texture
     atlas.data[uv.area] = sd
-    for f in get(font_render_callbacks, pixelsize, ())
+    for f in atlas.font_render_callback
         # update everyone who uses the atlas image directly (e.g. in GLMakie)
         f(sd, uv.area)
     end
@@ -296,18 +339,19 @@ function render(atlas::TextureAtlas, glyph_index, font, downsample=5, pad=6)
     return uv.area
 end
 
-function render(atlas::TextureAtlas, b::BezierPath, downsample=5, pad=6)
-    # the target pixel size of our distance field
-    pixelsize = PIXELSIZE_IN_ATLAS[]
+function render(atlas::TextureAtlas, b::BezierPath)
+    downsample = atlas.downsample
+    pad = atlas.glyph_padding
+    pixelsize = atlas.pix_per_glyph
     bitmap = render_path(b)
     # Our downsampeld & padded distancefield
     sd = sdistancefield(bitmap, downsample, pad)
-    rect = Rect2(0, 0, size(sd)...)
+    rect = Rect2{Int32}(0, 0, size(sd)...)
     uv = push!(atlas.rectangle_packer, rect) # find out where to place the rectangle
     uv == nothing && error("texture atlas is too small. Resizing not implemented yet. Please file an issue at Makie if you encounter this") #TODO resize surface
     # write distancefield into texture
     atlas.data[uv.area] = sd
-    for f in get(font_render_callbacks, pixelsize, ())
+    for f in atlas.font_render_callback
         # update everyone who uses the atlas image directly (e.g. in GLMakie)
         f(sd, uv.area)
     end
@@ -367,86 +411,85 @@ primitive_offset(x, scale) = scale ./ -2f0  # default offset
 """
 Extracts the uv offset and width from a primitive.
 """
-primitive_uv_offset_width(x) = Vec4f(0,0,1,1)
-primitive_uv_offset_width(b::Union{Char, BezierPath}) = glyph_uv_width!(b)
-primitive_uv_offset_width(x::AbstractVector) = map(primitive_uv_offset_width, x)
-function primitive_uv_offset_width(marker::Observable)
-    return lift(primitive_uv_offset_width, marker; ignore_equal_values=true)
+primitive_uv_offset_width(atlas::TextureAtlas, x) = Vec4f(0,0,1,1)
+primitive_uv_offset_width(atlas::TextureAtlas, b::Union{Char, BezierPath}) = glyph_uv_width!(atlas, b)
+primitive_uv_offset_width(atlas::TextureAtlas, x::AbstractVector) = map(m-> primitive_uv_offset_width(atlas, m), x)
+function primitive_uv_offset_width(atlas::TextureAtlas, marker::Observable)
+    return lift(m-> primitive_uv_offset_width(atlas, m), marker; ignore_equal_values=true)
 end
 
 _bcast(x::Vec) = (x,)
 _bcast(x) = x
 
 # Calculates the scaling factor from unpadded size -> padded size
-# Here we assume the glyph to be representative of Makie.PIXELSIZE_IN_ATLAS[]
+# Here we assume the glyph to be representative of pix_per_glyph
 # regardless of its true size.
-function marker_scale_factor(char::Char, font)
-    ta = Makie.get_texture_atlas()
-    lbrt = glyph_uv_width!(ta, char, font)
+function marker_scale_factor(atlas::TextureAtlas, char::Char, font)
+    lbrt = glyph_uv_width!(atlas, char, font)
     uv_width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
-    full_pixel_size_in_atlas = uv_width .* Vec2f(size(ta.data) .- 1)
-    return full_pixel_size_in_atlas ./ Makie.PIXELSIZE_IN_ATLAS[]
+    full_pixel_size_in_atlas = uv_width .* Vec2f(size(atlas) .- 1)
+    return full_pixel_size_in_atlas ./ atlas.pix_per_glyph
 end
 
 # full_pad / unpadded_atlas_width
-function bezierpath_pad_scale_factor(bp)
-    ta = Makie.get_texture_atlas()
-    lbrt = glyph_uv_width!(bp)
+function bezierpath_pad_scale_factor(atlas::TextureAtlas, bp)
+    lbrt = glyph_uv_width!(atlas, bp)
     uv_width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
-    full_pixel_size_in_atlas = uv_width * Vec2f(size(ta.data) .- 1)
-    full_pad = 2f0 * Makie.GLYPH_PADDING[] # left + right pad
+    full_pixel_size_in_atlas = uv_width * Vec2f(size(atlas) .- 1)
+    full_pad = 2f0 * atlas.glyph_padding # left + right pad
     return full_pad ./ (full_pixel_size_in_atlas .- full_pad)
 end
 
-function marker_scale_factor(path::BezierPath)
+function marker_scale_factor(atlas::TextureAtlas, path::BezierPath)
     # padded_width = (unpadded_target_width + unpadded_target_width * pad_per_unit)
     path_width = widths(Makie.bbox(path))
-    return (1f0 .+ bezierpath_pad_scale_factor(path)) .* path_width
+    return (1f0 .+ bezierpath_pad_scale_factor(atlas, path)) .* path_width
 end
 
-function rescale_marker(pathmarker::BezierPath, font, markersize)
-    return markersize .* marker_scale_factor(pathmarker)
+function rescale_marker(atlas::TextureAtlas, pathmarker::BezierPath, font, markersize)
+    return markersize .* marker_scale_factor(atlas, pathmarker)
 end
 
-function rescale_marker(pathmarker::AbstractVector{T}, font, markersize) where T <: BezierPath
-    return _bcast(markersize) .* marker_scale_factor.(pathmarker)
+function rescale_marker(atlas::TextureAtlas, pathmarker::AbstractVector{T}, font, markersize) where T <: BezierPath
+    return _bcast(markersize) .* marker_scale_factor.(Ref(atlas), pathmarker)
 end
 
 # Rect / Circle dont need no rescaling
-rescale_marker(char, font, markersize) = markersize
+rescale_marker(atlas, char, font, markersize) = markersize
 
-function rescale_marker(char::AbstractVector{Char}, font, markersize)
-    return _bcast(markersize) .* marker_scale_factor.(char, font)
+function rescale_marker(atlas::TextureAtlas, char::AbstractVector{Char}, font, markersize)
+    return _bcast(markersize) .* marker_scale_factor.(Ref(atlas), char, font)
 end
 
-function rescale_marker(char::Char, font, markersize)
-    factor = marker_scale_factor.(char, font)
+function rescale_marker(atlas::TextureAtlas, char::Char, font, markersize)
+    factor = marker_scale_factor.(Ref(atlas), char, font)
     return markersize .* factor
 end
 
-function offset_bezierpath(bp::BezierPath, markersize::Vec2, markeroffset::Vec2)
-    bb = Makie.bbox(bp)
-    pad_offset = (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(bp) .* widths(bb))
+function offset_bezierpath(atlas::TextureAtlas, bp::BezierPath, markersize::Vec2, markeroffset::Vec2)
+    bb = bbox(bp)
+    pad_offset = (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(atlas, bp) .* widths(bb))
     return markersize .* pad_offset
 end
 
-function offset_bezierpath(bp, scale, offset)
-    return offset_bezierpath.(bp, _bcast(scale), _bcast(offset))
+function offset_bezierpath(atlas::TextureAtlas, bp, scale, offset)
+    return offset_bezierpath.(Ref(atlas), bp, _bcast(scale), _bcast(offset))
 end
 
-function offset_marker(marker::Union{T, AbstractVector{T}}, font, markersize, markeroffset) where T <: BezierPath
-    return offset_bezierpath(marker, markersize, markeroffset)
+function offset_marker(atlas::TextureAtlas, marker::Union{T, AbstractVector{T}}, font, markersize, markeroffset) where T <: BezierPath
+    return offset_bezierpath(atlas, marker, markersize, markeroffset)
 end
 
-function offset_marker(marker::Union{T, AbstractVector{T}}, font, markersize, markeroffset) where T <: Char
-    return rescale_marker(marker, font, markeroffset)
+function offset_marker(atlas::TextureAtlas, marker::Union{T, AbstractVector{T}}, font, markersize, markeroffset) where T <: Char
+    return rescale_marker(atlas, marker, font, markeroffset)
 end
 
-offset_marker(marker, font, markersize, markeroffset) = markeroffset
+offset_marker(atlas, marker, font, markersize, markeroffset) = markeroffset
 
-function marker_attributes(marker, markersize, font, marker_offset)
-    scale = map(rescale_marker, marker, font, markersize; ignore_equal_values=true)
-    quad_offset = map(offset_marker, marker, font, markersize, marker_offset; ignore_equal_values=true)
+function marker_attributes(atlas::TextureAtlas, marker, markersize, font, marker_offset)
+    atlas_obs = Observable(atlas) # for map to work
+    scale = map(rescale_marker, atlas_obs, marker, font, markersize; ignore_equal_values=true)
+    quad_offset = map(offset_marker, atlas_obs, marker, font, markersize, marker_offset; ignore_equal_values=true)
 
     return scale, quad_offset
 end
