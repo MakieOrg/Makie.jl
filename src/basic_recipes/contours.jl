@@ -191,7 +191,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         contourlines(T, contours, level_colors, labels)
     end
 
-    masked_lines = lift(labels, result) do labels, (segments, _, str_pos)
+    masked_lines = lift(labels, color, result) do labels, color, (segments, _, str_pos)
         labels || return segments  # `labels = false`, early return
         P = eltype(segments)
         masked = sizehint!(P[], length(segments))
@@ -200,9 +200,9 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         space = get(plot, :space, :data)
         nseg = length(segments)
         nlab = length(str_pos)
-        # TODO: figure out a way to pass text attributes such as color, fontsize, ...
+        # TODO: figure out a way to pass text attributes such as fontsize, ...
         # FIXME: it doesn't seem to be possible to access the underlying glyphcollections
-        texts = map(l -> text!(plot, [l]; align = (:center, :center), fontsize = 10), str_pos)
+        texts = map(l -> text!(plot, [l]; align = (:center, :center), color = color, fontsize = 10), str_pos)
         bboxes = map(Rect2f ∘ boundingbox, texts)
         bb, n = nothing, 0
         for (i, p_curr) in enumerate(segments)
@@ -212,7 +212,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
                 bb = bboxes[n += 1]  # consider the next label (FIXME: this is not very robust)
             end
             if bb !== nothing && (
-                scene_to_screen(apply_transform(transf, p_prev, space), sc) in bb ||
+                scene_to_screen(apply_transform(transf, p_prev, space), sc) in bb || 
                 scene_to_screen(apply_transform(transf, p_curr, space), sc) in bb ||
                 scene_to_screen(apply_transform(transf, p_next, space), sc) in bb
             )

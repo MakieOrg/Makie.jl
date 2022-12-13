@@ -676,6 +676,20 @@ end
     f
 end
 
+@reference_test "contour labels" begin
+    circle = (x, y) -> 10(x^2 + y^2)
+
+    x = range(-4, 4; length=40)
+    y = range(-4, 4; length=60)
+    z = circle.(x, y')
+
+    fig, ax, hm = heatmap(x, y, z)
+    Colorbar(fig[1, 2], hm)
+
+    contour!(ax, x, y, z; color = :red, levels = 0:20:100, labels = true)
+    fig
+end
+
 @reference_test "marker offset in data space" begin
     f = Figure()
     ax = Axis(f[1, 1]; xticks=0:1, yticks=0:10)
