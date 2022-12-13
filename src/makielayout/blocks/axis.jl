@@ -82,7 +82,8 @@ function update_axis_camera(camera::Camera, t, lims, xrev::Bool, yrev::Bool)
     nearclip = -10_000f0
     farclip = 10_000f0
 
-    tlims = Makie.apply_transform(t, lims)
+    # we are computing transformed camera position, so this isn't space dependent
+    tlims = Makie.apply_transform(t, lims) 
 
     left, bottom = minimum(tlims)
     right, top = maximum(tlims)
@@ -445,7 +446,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         topscene, subtitlepos,
         text = ax.subtitle,
         visible = ax.subtitlevisible,
-        textsize = ax.subtitlesize,
+        fontsize = ax.subtitlesize,
         align = titlealignnode,
         font = ax.subtitlefont,
         color = ax.subtitlecolor,
@@ -460,7 +461,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         topscene, titlepos,
         text = ax.title,
         visible = ax.titlevisible,
-        textsize = ax.titlesize,
+        fontsize = ax.titlesize,
         align = titlealignnode,
         font = ax.titlefont,
         color = ax.titlecolor,

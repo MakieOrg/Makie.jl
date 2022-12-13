@@ -31,7 +31,6 @@ function get_uv_img(atlas::TextureAtlas, uv_rect::Vec4f)
     return atlas.data[Rect(xmin, ymin, xmax - xmin, ymax - ymin)]
 end
 
-
 function TextureAtlas(; resolution=2048, pix_per_glyph=64, glyph_padding=12, downsample=5)
     return TextureAtlas(
         RectanglePacker(Rect2{Int32}(0, 0, resolution, resolution)),
