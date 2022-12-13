@@ -416,7 +416,7 @@ Extracts the uv offset and width from a primitive.
 primitive_uv_offset_width(atlas::TextureAtlas, x, font) = Vec4f(0,0,1,1)
 primitive_uv_offset_width(atlas::TextureAtlas, b::BezierPath, font) = glyph_uv_width!(atlas, b)
 primitive_uv_offset_width(atlas::TextureAtlas, b::Union{UInt64, Char}, font) = glyph_uv_width!(atlas, b, font)
-primitive_uv_offset_width(atlas::TextureAtlas, x::AbstractVector, font) = map((m, f)-> primitive_uv_offset_width(atlas, m, f), x)
+primitive_uv_offset_width(atlas::TextureAtlas, x::AbstractVector, font) = map(m-> primitive_uv_offset_width(atlas, m, font), x)
 function primitive_uv_offset_width(atlas::TextureAtlas, marker::Observable, font::Observable)
     return lift((m, f)-> primitive_uv_offset_width(atlas, m, f), marker, font; ignore_equal_values=true)
 end
