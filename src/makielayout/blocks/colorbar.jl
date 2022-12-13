@@ -87,6 +87,8 @@ function initialize_block!(cb::Colorbar)
         return something(limits, colorrange, (0, 1))
     end
 
+    unscaled_limits = @lift inverse_transform($(cb.scale)).($limits)
+
     onany(cb.size, cb.vertical) do sz, vertical
         if vertical
             cb.layoutobservables.autosize[] = (sz, nothing)
@@ -170,7 +172,6 @@ function initialize_block!(cb::Colorbar)
     # for categorical colormaps we make a number of rectangle polys
 
     rects_and_colors = lift(barbox, cb.vertical, steps, cgradient, cb.scale, limits) do bbox, v, steps, gradient, scale, lims
-
         # we need to convert the 0 to 1 steps into rescaled 0 to 1 steps given the
         # colormap's `scale` attribute
 
@@ -313,7 +314,7 @@ function initialize_block!(cb::Colorbar)
     end
 
     axis = LineAxis(blockscene, endpoints = axispoints, flipped = cb.flipaxis,
-        limits = limits, ticklabelalign = cb.ticklabelalign, label = cb.label,
+        limits = unscaled_limits, ticklabelalign = cb.ticklabelalign, label = cb.label,
         labelpadding = cb.labelpadding, labelvisible = cb.labelvisible, labelsize = cb.labelsize,
         labelcolor = cb.labelcolor, labelrotation = cb.labelrotation,
         labelfont = cb.labelfont, ticklabelfont = cb.ticklabelfont, ticks = cb.ticks, tickformat = cb.tickformat,

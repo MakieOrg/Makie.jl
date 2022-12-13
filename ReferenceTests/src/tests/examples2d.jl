@@ -580,6 +580,14 @@ end
     fig
 end
 
+@reference_test "scaled colormap" begin
+    x = 10.0.^(1:0.1:4)
+    y = 1.0:0.1:5.0
+    fig, ax, hm = heatmap(x, y, (x, y) -> log10(x); axis = (; xscale = log10))
+    Colorbar(fig[1, 2], hm; scale = log10)
+    fig
+end
+
 @reference_test "multi rect with poly" begin
     # use thick strokewidth, so it will make tests fail if something is missing
     poly([Rect2f(0, 0, 1, 1)], color=:green, strokewidth=100, strokecolor=:black)
