@@ -12,6 +12,8 @@ The attribute levels can be either
 
     an AbstractVector{<:Real} that lists n consecutive edges from low to high, which result in n-1 levels or bands
 
+To add contour labels, use `labels = true`, and pass additional text attributes via the `label_attributes` namedtuple.
+
 ## Attributes
 $(ATTRIBUTES)
 """
@@ -30,6 +32,7 @@ $(ATTRIBUTES)
         enable_depth = true,
         transparency = false,
         labels = false,
+        label_attributes = (;),
     )
 end
 
@@ -181,7 +184,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
 
     replace_automatic!(()-> zrange, plot, :colorrange)
 
-    labels, args... = @extract plot (labels, color, colormap, colorrange, alpha)
+    labels, label_attributes, args... = @extract plot (labels, label_attributes, color, colormap, colorrange, alpha)
     level_colors = lift(color_per_level, args..., levels)
     result = lift(x, y, z, levels, level_colors, labels) do x, y, z, levels, level_colors, labels
         t = eltype(z)
@@ -202,7 +205,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         nlab = length(str_pos)
         # TODO: figure out a way to pass text attributes such as fontsize, ...
         # FIXME: it doesn't seem to be possible to access the underlying glyphcollections
-        texts = map(l -> text!(plot, [l]; align = (:center, :center), color = color, fontsize = 10), str_pos)
+        texts = map(l -> text!(plot, [l]; align = (:center, :center), color = color, label_attributes...), str_pos)
         bboxes = map(Rect2f ∘ boundingbox, texts)
         bb, n = nothing, 0
         for (i, p_curr) in enumerate(segments)
