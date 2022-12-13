@@ -173,6 +173,10 @@ function color_per_level(::Nothing, colormap, colorrange, a, levels)
     end
 end
 
+transform_point(sc, transf, space, p::Point3f)::Point3f = apply_transform(transf, p, space)
+transform_point(sc, transf, space, p::Point2f)::Point3f = 
+    Point3f(scene_to_screen(apply_transform(transf, p, space), sc)..., eltype(p)(0))
+
 function plot!(plot::T) where T <: Union{Contour, Contour3d}
     x, y, z = plot[1:3]
     zrange = lift(nan_extrema, z)
@@ -208,7 +212,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         # FIXME: it doesn't seem to be possible to access the child
         # glyphcollections after using `text!(plot, labels; kw...)`
         texts = map(x -> text!(plot, [x[1:2]]; rotation = x[3], align = (:center, :center), color = color, label_attributes...), str_pos_ang)
-        bboxes = map(Rect2f ∘ boundingbox, texts)
+        bboxes = map(boundingbox, texts)
         bb, n = nothing, 0
         for (i, p_curr) in enumerate(segments)
             p_prev = segments[i > 1 ? i - 1 : i]
@@ -217,9 +221,9 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
                 bb = bboxes[n += 1]  # consider the next label
             end
             if bb !== nothing && (
-                scene_to_screen(apply_transform(transf, p_prev, space), sc) in bb || 
-                scene_to_screen(apply_transform(transf, p_curr, space), sc) in bb ||
-                scene_to_screen(apply_transform(transf, p_next, space), sc) in bb
+                transform_point(sc, transf, space, p_prev) in bb || 
+                transform_point(sc, transf, space, p_curr) in bb ||
+                transform_point(sc, transf, space, p_next) in bb
             )
                 push!(masked, P(NaN32))
             else
