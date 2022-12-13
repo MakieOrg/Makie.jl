@@ -18,7 +18,7 @@
 
     </div>   <!-- closure of class site-container -->
 
-    
+
 
     <script src="/libs/navbar.js"></script>
     <!-- <script src="/libs/lunr/lunr.min.js"></script>
@@ -30,12 +30,26 @@
     prefix will be so everything has to be relative, but make_links_relative can only work with
     things like the src attribute of images, so we just use that -->
     <img id="stork-library-path-placeholder" src="/libs/stork" style="display:none"/>
+    {{if searchpage}}
     <script>
       storkfolder = document.querySelector("#stork-library-path-placeholder").src;
-      stork.register("makiesearch", `${storkfolder}/index.st`);
+      stork.register("makiesearch", `${storkfolder}/index_page.st`);
     </script>
+    {{else}}
+    <script>
+      storkfolder = document.querySelector("#stork-library-path-placeholder").src;
+      stork.register("makiesearch", `${storkfolder}/index_box.st`);
+      function handleKeyPress(e){
+        // Redirect to search-page if enter is pressed in search-box
+        var key=e.keyCode || e.which;
+        if (key==13){
+          var input = document.getElementById("search-box").value
+          window.location = ("/search?q=" + input)
+        }
+      }
+    </script>
+    {{end}}
 
-    
     <!-- <script src="/libs/minimal-mistakes/main.min.js"></script> -->
     <script defer src="https://use.fontawesome.com/releases/v5.8.2/js/all.js" integrity="sha384-DJ25uNYET2XCl5ZF++U8eNxPWqcKohUUBUpKGlNLMchM7q4Wjg2CUpjHLaL8yYPH" crossorigin="anonymous"></script>
 
