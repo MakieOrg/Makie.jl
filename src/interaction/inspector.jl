@@ -1017,3 +1017,43 @@ function show_data(inspector::DataInspector, plot::VolumeSlices, idx, child::Hea
 
     return true
 end
+
+
+function Makie.show_data(inspector::DataInspector, plot::Band, ::Integer, ::Mesh)
+    tt = inspector.plot
+    pos = Point2f(mouseposition(Makie.parent_scene(plot)))
+    low = plot.converted[1][]
+    high = plot.converted[2][]
+
+    # find relevant data
+    left = 1
+    right = 2
+    for i in 3:length(low)
+        if abs(low[i][1] - pos[1]) < abs(low[right][1] - pos[1])
+            left = right
+            right = i
+        end
+    end
+
+    # interpolate to current pos
+    s = (pos[1] - low[left][1]) / (low[right][1] - low[left][1])
+    bot_val = low[left][2] + s * (low[right][2] - low[left][2])
+    top_val = high[left][2] + s * (high[right][2] - high[left][2])
+    closest = 2 * pos[2] > top_val + bot_val ? top_val : bot_val
+
+    # Get pixel position (in root window)
+    px_pos = Makie.project(Makie.parent_scene(plot), Point2f(pos[1], closest))
+    px_pos += minimum(Makie.parent_scene(plot).px_area[])
+    Makie.update_tooltip_alignment!(inspector, px_pos)
+
+    # Update tooltip
+    tt.offset[] = 0
+    if haskey(plot, :inspector_label)
+        tt.text[] = plot[:inspector_label][](plot, right, Point3f(pos[1], bot_val, top_val))
+    else
+        tt.text[] = @sprintf("(%0.3f, %0.3f..%0.3f)", pos[1], bot_val, top_val)
+    end
+    tt.visible[] = true
+
+    return true
+end
