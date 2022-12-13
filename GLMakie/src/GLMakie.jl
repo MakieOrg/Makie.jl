@@ -45,7 +45,7 @@ const GL_ASSET_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
 const SHADER_DIR = RelocatableFolders.@path joinpath(GL_ASSET_DIR, "shader")
 loadshader(name) = joinpath(SHADER_DIR, name)
 
-gl_texture_atlas() = Makie.get_texture_atlas(2048, 32)
+gl_texture_atlas() = Makie.get_texture_atlas(2048, 64)
 
 # don't put this into try catch, to not mess with normal errors
 include("gl_backend.jl")

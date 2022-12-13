@@ -216,13 +216,22 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Union{Scatte
             end
 
             gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.rotations)
-            isnothing(gl_attributes[:distancefield][]) && delete!(gl_attributes, :distancefield)
-
             atlas = gl_texture_atlas()
-            get!(gl_attributes, :uv_offset_width) do
-                Makie.primitive_uv_offset_width(atlas, marker)
+            isnothing(gl_attributes[:distancefield][]) && delete!(gl_attributes, :distancefield)
+            shape = lift(m-> Cint(Makie.marker_to_sdf_shape(m)), marker)
+            gl_attributes[:shape] = shape
+            get!(gl_attributes, :distancefield) do
+                if shape[] === Cint(DISTANCEFIELD)
+                    return get_texture!(atlas)
+                else
+                    return nothing
+                end
             end
             font = get(gl_attributes, :font, Observable(Makie.defaultfont()))
+            gl_attributes[:uv_offset_width][] == Vec4f(0) && delete!(gl_attributes, :uv_offset_width)
+            get!(gl_attributes, :uv_offset_width) do
+                return Makie.primitive_uv_offset_width(atlas, marker, font)
+            end
             scale, quad_offset = Makie.marker_attributes(atlas, marker, gl_attributes[:scale], font, gl_attributes[:quad_offset])
             gl_attributes[:scale] = scale
             gl_attributes[:quad_offset] = quad_offset
@@ -355,6 +364,7 @@ function draw_atomic(screen::Screen, scene::Scene,
             end
         end
 
+        gl_attributes[:shape] = Cint(DISTANCEFIELD)
         gl_attributes[:scale] = scale
         gl_attributes[:quad_offset] = quad_offset
         gl_attributes[:marker_offset] = char_offset

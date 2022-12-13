@@ -21,13 +21,23 @@ struct TextureAtlas
 end
 
 Base.size(atlas::TextureAtlas) = size(atlas.data)
+Base.size(atlas::TextureAtlas, dim) = size(atlas)[dim]
 
-function TextureAtlas(; resolution=(2048, 2048), pix_per_glyph=64, glyph_padding=12, downsample=5)
+# Helper to debug texture atlas (this usually happens on the GPU)!
+function get_uv_img(atlas::TextureAtlas, uv_rect::Vec4f)
+    xmin, ymin, xmax, ymax = round.(Int, uv_rect .* Vec4f(size(atlas)..., size(atlas)...))
+    xmax = xmax + 1
+    ymax = ymax + 1
+    return atlas.data[Rect(xmin, ymin, xmax - xmin, ymax - ymin)]
+end
+
+
+function TextureAtlas(; resolution=2048, pix_per_glyph=64, glyph_padding=12, downsample=5)
     return TextureAtlas(
-        RectanglePacker(Rect2{Int32}(0, 0, resolution...)),
+        RectanglePacker(Rect2{Int32}(0, 0, resolution, resolution)),
         Dict{UInt64, Int}(),
         # We use float max here to avoid texture bleed. See #2096
-        fill(Float16(0.5pix_per_glyph + glyph_padding), resolution...),
+        fill(Float16(0.5pix_per_glyph + glyph_padding), resolution, resolution),
         Vec4f[],
         pix_per_glyph,
         glyph_padding,
@@ -46,11 +56,13 @@ function Base.show(io::IO, atlas::TextureAtlas)
     println(io, "  font_render_callback: ", length(atlas.font_render_callback))
 end
 
+const SERIALIZATION_FORMAT_VERSION = "v1"
+
 # basically a singleton for the textureatlas
 function get_cache_path(resolution::Int, pix_per_glyph::Int)
     path = abspath(
         first(Base.DEPOT_PATH), "makie",
-        "texture_atlas_$(resolution)_$(pix_per_glyph).bin"
+        "$(SERIALIZATION_FORMAT_VERSION)_texture_atlas_$(resolution)_$(pix_per_glyph).bin"
     )
     if !ispath(dirname(path))
         mkpath(dirname(path))
@@ -127,25 +139,29 @@ end
 
 const TEXTURE_ATLASES = Dict{Tuple{Int, Int}, TextureAtlas}()
 
-function get_texture_atlas(resolution::Int = 2048, pix_per_glyph::Int = 32)
+function get_texture_atlas(resolution::Int = 2048, pix_per_glyph::Int = 64)
     return get!(TEXTURE_ATLASES, (resolution, pix_per_glyph)) do
         return cached_load(resolution, pix_per_glyph) # initialize only on demand
     end
 end
 
+const CACHE_DOWNLOAD_URL = "https://github.com/MakieOrg/Makie.jl/releases/download/v0.19.0/"
+
 function cached_load(resolution::Int, pix_per_glyph::Int)
     path = get_cache_path(resolution, pix_per_glyph)
-    if isfile(path)
+    if !isfile(path)
         try
-            return load_texture_atlas(path)
+            url = CACHE_DOWNLOAD_URL * basename(path)
+            Downloads.download(url, path)
         catch e
-            @info("You can likely ignore the following warning, if you just switched Julia versions for Makie")
-            @warn(e)
-            rm(path)
+            @warn "downloading texture atlas failed, need to re-create from scratch." exception=(e, Base.catch_backtrace())
         end
     end
-    atlas = TextureAtlas()
-    @info("Makie is caching fonts, this may take a while. Needed only on first run!")
+    if isfile(path)
+        return load_texture_atlas(path)
+    end
+    atlas = TextureAtlas(; resolution=resolution, pix_per_glyph=pix_per_glyph)
+    @warn("Makie is caching fonts, this may take a while. This should usually not happen, unless you're getting your own texture atlas or are without internet!")
     render_default_glyphs!(atlas)
     store_texture_atlas(path, atlas) # cache it
     return atlas
@@ -300,7 +316,7 @@ function sdistancefield(img, downsample, pad)
     return Float16.(sdf(in_or_out, xres, yres) ./ downsample)
 end
 
-function font_render_callback!(atlas::TextureAtlas, f)
+function font_render_callback!(f, atlas::TextureAtlas)
     push!(atlas.font_render_callback, f)
 end
 
@@ -389,20 +405,6 @@ function marker_to_sdf_shape(marker::Observable)
 end
 
 """
-Gets the texture atlas if primitive shape needs it.
-"""
-function primitive_distancefield(shape)
-    if Cint(shape) === Cint(DISTANCEFIELD)
-        return get_texture_atlas()
-    else
-        return nothing
-    end
-end
-
-function primitive_distancefield(marker::Observable)
-    return lift(primitive_distancefield, marker; ignore_equal_values=true)
-end
-"""
 Extracts the offset from a primitive.
 """
 primitive_offset(x, scale::Nothing) = Vec2f(0) # default offset
@@ -411,11 +413,12 @@ primitive_offset(x, scale) = scale ./ -2f0  # default offset
 """
 Extracts the uv offset and width from a primitive.
 """
-primitive_uv_offset_width(atlas::TextureAtlas, x) = Vec4f(0,0,1,1)
-primitive_uv_offset_width(atlas::TextureAtlas, b::Union{Char, BezierPath}) = glyph_uv_width!(atlas, b)
-primitive_uv_offset_width(atlas::TextureAtlas, x::AbstractVector) = map(m-> primitive_uv_offset_width(atlas, m), x)
-function primitive_uv_offset_width(atlas::TextureAtlas, marker::Observable)
-    return lift(m-> primitive_uv_offset_width(atlas, m), marker; ignore_equal_values=true)
+primitive_uv_offset_width(atlas::TextureAtlas, x, font) = Vec4f(0,0,1,1)
+primitive_uv_offset_width(atlas::TextureAtlas, b::BezierPath, font) = glyph_uv_width!(atlas, b)
+primitive_uv_offset_width(atlas::TextureAtlas, b::Union{UInt64, Char}, font) = glyph_uv_width!(atlas, b, font)
+primitive_uv_offset_width(atlas::TextureAtlas, x::AbstractVector, font) = map((m, f)-> primitive_uv_offset_width(atlas, m, f), x)
+function primitive_uv_offset_width(atlas::TextureAtlas, marker::Observable, font::Observable)
+    return lift((m, f)-> primitive_uv_offset_width(atlas, m, f), marker, font; ignore_equal_values=true)
 end
 
 _bcast(x::Vec) = (x,)

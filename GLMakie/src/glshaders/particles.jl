@@ -156,12 +156,6 @@ function draw_scatter(
     return draw_scatter(screen, (RECTANGLE, p[2]), data)
 end
 
-function texture_distancefield(shape)
-    df = Makie.primitive_distancefield(to_value(shape))
-    isnothing(df) && return nothing
-    return get_texture!(df)
-end
-
 """
 Main assemble functions for scatter particles.
 Sprites are anything like distance fields, images and simple geometries
@@ -172,7 +166,7 @@ function draw_scatter(screen, (marker, position), data)
     delete!(data, :rotation)
 
     @gen_defaults! data begin
-        shape       = Makie.marker_to_sdf_shape(marker)
+        shape       = Cint(0)
         position    = position => GLBuffer
         marker_offset = Vec3f(0) => GLBuffer;
         scale       = Vec2f(0) => GLBuffer
@@ -193,7 +187,7 @@ function draw_scatter(screen, (marker, position), data)
         glow_width      = 0f0
         uv_offset_width = Vec4f(0) => GLBuffer
 
-        distancefield   = texture_distancefield(shape) => Texture
+        distancefield   = nothing => Texture
         indices         = const_lift(length, position) => to_index_buffer
         # rotation and billboard don't go along
         billboard        = rotation == Vec4f(0,0,0,1) => "if `billboard` == true, particles will always face camera"

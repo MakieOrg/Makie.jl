@@ -114,7 +114,7 @@ function scatter_shader(scene::Scene, attributes)
         msize, offset = Makie.marker_attributes(atlas, marker, markersize, font, attributes[:quad_offset])
         attributes[:markersize] = msize
         attributes[:quad_offset] = offset
-        attributes[:uv_offset_width] = Makie.primitive_uv_offset_width(atlas, marker)
+        attributes[:uv_offset_width] = Makie.primitive_uv_offset_width(atlas, marker, font)
         if to_value(marker) isa AbstractMatrix
             uniform_dict[:image] = Sampler(lift(el32convert, marker))
         end

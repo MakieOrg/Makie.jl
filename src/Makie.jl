@@ -36,6 +36,7 @@ using LinearAlgebra
 using Statistics
 using MakieCore
 using OffsetArrays
+using Downloads
 
 import RelocatableFolders
 import StatsBase

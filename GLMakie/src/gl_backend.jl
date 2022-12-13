@@ -51,7 +51,7 @@ function get_texture!(atlas::Makie.TextureAtlas)
                 ShaderAbstractions.switch_context!(prev_ctx)
             end
         end
-        Makie.font_render_callback!(atlas, callback)
+        Makie.font_render_callback!(callback, atlas)
         return (tex, callback)
     end
     return tex
