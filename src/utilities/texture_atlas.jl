@@ -1,7 +1,7 @@
 struct TextureAtlas
     rectangle_packer::RectanglePacker{Int32}
     # hash of what we're rendering to index in `uv_rectangles`
-    mapping::Dict{UInt64, Int64}
+    mapping::Dict{UInt32, Int64}
     data::Matrix{Float16}
     # rectangles we rendered our glyphs into in normalized uv coordinates
     uv_rectangles::Vector{Vec4f}
@@ -35,7 +35,7 @@ end
 function TextureAtlas(; resolution=2048, pix_per_glyph=64, glyph_padding=12, downsample=5)
     return TextureAtlas(
         RectanglePacker(Rect2{Int32}(0, 0, resolution, resolution)),
-        Dict{UInt64, Int}(),
+        Dict{UInt32, Int}(),
         # We use float max here to avoid texture bleed. See #2096
         fill(Float16(0.5pix_per_glyph + glyph_padding), resolution, resolution),
         Vec4f[],
@@ -127,7 +127,7 @@ end
 function load_texture_atlas(path::AbstractString)
     open(path) do io
         packer = read_node(io, Int32)
-        mapping = read_array(io, Pair{UInt64, Int64})
+        mapping = read_array(io, Pair{UInt32, Int64})
         data = read_array(io, Float16)
         uv_rectangles = read_array(io, Vec4f)
         pix_per_glyph = read(io, Int32)
@@ -250,7 +250,7 @@ end
 function insert_glyph!(atlas::TextureAtlas, glyph, font::NativeFont)
     glyphindex = FreeTypeAbstraction.glyph_index(font, glyph)
     key = (glyphindex, FreeTypeAbstraction.fontname(font))
-    return get!(atlas.mapping, hash(key)) do
+    return get!(atlas.mapping, StableHashTraits.stable_hash(key)) do
 
         uv_pixel = render(atlas, glyphindex, font)
         tex_size = Vec2f(size(atlas) .- 1) # starts at 1
@@ -271,7 +271,7 @@ function insert_glyph!(atlas::TextureAtlas, glyph, font::NativeFont)
 end
 
 function insert_glyph!(atlas::TextureAtlas, path::BezierPath)
-    return get!(atlas.mapping, hash(path)) do
+    return get!(atlas.mapping, StableHashTraits.stable_hash(path)) do
         uv_pixel = render(atlas, path)
         tex_size = Vec2f(size(atlas) .- 1) # starts at 1
 

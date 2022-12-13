@@ -1,5 +1,7 @@
 const BEZIERPATH_BITMAP_SIZE = Ref(256)
 
+using StableHashTraits
+
 struct MoveTo
     p::Point2{Float64}
 end
@@ -42,10 +44,16 @@ struct BezierPath
     commands::Vector{PathCommand}
 end
 
+StableHashTraits.transform(path::BezierPath) = path.commands
+StableHashTraits.transform(c::EllipticalArc) = [c.c[1], c.c[2], c.r1, c.r2, c.angle, c.a1, c.a2]
+StableHashTraits.transform(c::CurveTo) = [c.c1[1], c.c1[2], c.c2p1, c.c2[2], c.p[1], c.p[2]]
+StableHashTraits.transform(c::LineTo) = [c.p[1], c.p[2]]
+StableHashTraits.transform(c::MoveTo) = [c.p[1], c.p[2]]
+StableHashTraits.transform(c::ClosePath) = 0
+
 # so that the same bezierpath with a different instance of a vector hashes the same
 # and we don't create the same texture atlas entry twice
 Base.:(==)(b1::BezierPath, b2::BezierPath) = b1.commands == b2.commands
-Base.hash(b::BezierPath) = hash(b.commands)
 Base.broadcastable(b::BezierPath) = Ref(b)
 
 function Base.:+(pc::P, p::Point2) where P <: PathCommand
@@ -506,24 +514,27 @@ function render_path(path)
     pitch = w * 1 # 8 bit gray
     pixelbuffer = zeros(UInt8, h * pitch)
     bitmap_ref = Ref{FT_Bitmap}()
-    bitmap_ref[] = FT_Bitmap(
-        h,
-        w,
-        pitch,
-        Base.unsafe_convert(Ptr{UInt8}, pixelbuffer),
-        256,
-        FT_PIXEL_MODE_GRAY,
-        C_NULL,
-        C_NULL
-    )
-
-    FT_Outline_Get_Bitmap(
-        Makie.FreeTypeAbstraction.FREE_FONT_LIBRARY[],
-        outline_ref[1],
-        bitmap_ref,
-    )
-
-    reshape(pixelbuffer, (w, h))
+    GC.@preserve pixelbuffer outline_ref begin
+        bitmap_ref[] = FT_Bitmap(
+            h,
+            w,
+            pitch,
+            pointer(pixelbuffer),
+            256,
+            FT_PIXEL_MODE_GRAY,
+            C_NULL,
+            C_NULL
+        )
+        lib = FreeTypeAbstraction.FREE_FONT_LIBRARY[]
+        @assert lib != C_NULL
+        err = FT_Outline_Get_Bitmap(
+            FreeTypeAbstraction.FREE_FONT_LIBRARY[],
+            outline_ref[1],
+            bitmap_ref,
+        )
+        @assert err == 0
+        return reshape(pixelbuffer, (w, h))
+    end
 end
 
 # FreeType can only handle lines and cubic / conic beziers so ClosePath
