@@ -203,31 +203,30 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         labels || return segments  # `labels = false`, early return
         scene = parent_scene(plot)
         bboxes = map(str_pos) do (str, (p1, p2, p3))
-            ang = angle(project(scene, p1), project(scene, p3))
+            ang = angle(project(scene, p1), project(scene, p2))
             # transition from an angle from horizontal axis in [-π; π]
             # to a readable text with a rotation from vertical axis in [-π / 2; π / 2]
             rotation = abs(ang) > π / 2 ? ang - copysign(π, ang) : ang
-            text!(scene, [(str, (p1 + p2 + p3) / 3)]; rotation, color, align = (:center, :center), label_attributes...) |> boundingbox
+            text!(scene, [(str, p1)]; rotation, color, align = (:center, :center), label_attributes...) |> boundingbox
         end
-        proj(p) = project(scene.camera, plot.space[], :pixel, p)
 
         n = 1
         bb = bboxes[n]
         nlab = length(str_pos)
         masked = copy(segments)
         P = eltype(segments)
-        for (i, p_curr) in enumerate(segments)
-            if isnan(p_curr) && n < nlab
-                bb = bboxes[n += 1]  # consider the next label
+        for (i, p) in enumerate(segments)
+            if isnan(p) && n < nlab
+                bb = bboxes[n += 1]  # next segment is materialized by a NaN, thus consider next label
             end
-            if proj(p_curr) ∈ bb
+            if project(scene.camera, plot.space[], :pixel, p) in bb
                 masked[i] = P(NaN32)
                 for dir in (-1, +1)
                     j = i
                     while true
                         j += dir
                         checkbounds(Bool, segments, j) || break
-                        proj(segments[j]) in bb || break
+                        project(scene.camera, plot.space[], :pixel, segments[j]) in bb || break
                         masked[j] = P(NaN32)
                     end
                 end
