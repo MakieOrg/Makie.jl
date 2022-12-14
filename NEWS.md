@@ -2,6 +2,8 @@
 
 ## master
 
+- Add `show_data` method for `band` which shows the min and max values of the band at the x position of the cursor. [#2497](https://github.com/MakieOrg/Makie.jl/pull/2497)
+
 ## v0.18.4
 
 - Add support for `AbstractPattern` in `WGLMakie` [#2432](https://github.com/MakieOrg/Makie.jl/pull/2432).
