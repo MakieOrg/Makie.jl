@@ -15,6 +15,7 @@ end
         weights = automatic,
         cycle = [:color => :patchcolor],
         color = theme(scene, :patchcolor),
+        linestyle = :solid,
         offset = 0.0,
         scale_to = nothing,
 
