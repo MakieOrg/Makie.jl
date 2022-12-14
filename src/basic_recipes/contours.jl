@@ -51,29 +51,30 @@ end
 
 nice_label(x) = string(isinteger(x) ? round(Int, x) : x)
 
-angle(p1, p2) = atan(p2[2] - p1[2], p2[1] - p1[1])  # result in [-π, π]
+angle(p1::Union{Vec2f,Point2f}, p2::Union{Vec2f,Point2f}) =
+    atan(p2[2] - p1[2], p2[1] - p1[1])  # result in [-π, π]
 
 function contourlines(::Type{<: Contour}, contours, cols, labels)
     result = Point2f[]
     colors = RGBA{Float32}[]
-    str_pos_ang = Tuple{String,Point2f,Float32}[]
+    str_pos = Tuple{String,NTuple{3,Point2f}}[]
     for (color, c) in zip(cols, Contours.levels(contours))
         for elem in Contours.lines(c)
             append!(result, elem.vertices)
             push!(result, Point2f(NaN32))
             append!(colors, fill(color, length(elem.vertices) + 1))
-            labels && let p1 = elem.vertices[1], p2 = elem.vertices[2]
-                push!(str_pos_ang, (nice_label(c.level), p1, angle(p1, p2)))
+            labels && let p1 = Point2f(elem.vertices[1]), p2 = Point2f(elem.vertices[2]), p3 = Point2f(elem.vertices[3])
+                push!(str_pos, (nice_label(c.level), (p1, p2, p3)))
             end
         end
     end
-    result, colors, str_pos_ang
+    result, colors, str_pos
 end
 
 function contourlines(::Type{<: Contour3d}, contours, cols, labels)
     result = Point3f[]
     colors = RGBA{Float32}[]
-    str_pos_ang = Tuple{String,Point3f,Float32}[]
+    str_pos = Tuple{String,NTuple{3,Point3f}}[]
     for (color, c) in zip(cols, Contours.levels(contours))
         for elem in Contours.lines(c)
             for p in elem.vertices
@@ -81,12 +82,12 @@ function contourlines(::Type{<: Contour3d}, contours, cols, labels)
             end
             push!(result, Point3f(NaN32))
             append!(colors, fill(color, length(elem.vertices) + 1))
-            labels && let p1 = elem.vertices[1], p2 = elem.vertices[2]
-                push!(str_pos_ang, (nice_label(c.level), Point3f(p1[1], p1[2], c.level), angle(p1, p2)))
+            labels && let p1 = Point3f(elem.vertices[1]..., c.level), p2 = Point3f(elem.vertices[2]..., c.level), p3 = Point3f(elem.vertices[3]..., c.level)
+                push!(str_pos, (nice_label(c.level), (p1, p2, p3)))
             end
         end
     end
-    result, colors, str_pos_ang
+    result, colors, str_pos
 end
 
 to_levels(x::AbstractVector{<: Number}, cnorm) = x
@@ -173,10 +174,6 @@ function color_per_level(::Nothing, colormap, colorrange, a, levels)
     end
 end
 
-transform_point(sc, transf, space, p::Point3f)::Point3f = apply_transform(transf, p, space)
-transform_point(sc, transf, space, p::Point2f)::Point3f = 
-    Point3f(scene_to_screen(apply_transform(transf, p, space), sc)..., eltype(p)(0))
-
 function plot!(plot::T) where T <: Union{Contour, Contour3d}
     x, y, z = plot[1:3]
     zrange = lift(nan_extrema, z)
@@ -202,35 +199,38 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         contourlines(T, contours, level_colors, labels)
     end
 
-    masked_lines = lift(labels, label_attributes, color, result) do labels, label_attributes, color, (segments, _, str_pos_ang)
+    masked_lines = lift(labels, label_attributes, color, result) do labels, label_attributes, color, (segments, _, str_pos)
         labels || return segments  # `labels = false`, early return
-        P = eltype(segments)
-        masked = sizehint!(P[], length(segments))
-        sc = parent_scene(plot)
-        transf, space = transform_func_obs(sc), get(plot, :space, :data)
-        nseg, nlab = length(segments), length(str_pos_ang)
-        texts = map(str_pos_ang) do (str, pos, ang)
+        scene = parent_scene(plot)
+        bboxes = map(str_pos) do (str, (p1, p2, p3))
+            ang = angle(project(scene, p1), project(scene, p3))
             # transition from an angle from horizontal axis in [-π; π]
             # to a readable text with a rotation from vertical axis in [-π / 2; π / 2]
             rotation = abs(ang) > π / 2 ? ang - copysign(π, ang) : ang
-            text!(plot, [(str, pos)]; rotation, color, align = (:center, :center), label_attributes...)
+            text!(scene, [(str, (p1 + p2 + p3) / 3)]; rotation, color, align = (:center, :center), label_attributes...) |> boundingbox
         end
-        bboxes = map(boundingbox, texts)
-        bb, n = nothing, 0
+        proj(p) = project(scene.camera, plot.space[], :pixel, p)
+
+        n = 1
+        bb = bboxes[n]
+        nlab = length(str_pos)
+        masked = copy(segments)
+        P = eltype(segments)
         for (i, p_curr) in enumerate(segments)
-            p_prev = segments[i > 1 ? i - 1 : i]
-            p_next = segments[i < nseg ? i + 1 : i]
-            if (i == 1 || isnan(p_next)) && n < nlab
+            if isnan(p_curr) && n < nlab
                 bb = bboxes[n += 1]  # consider the next label
             end
-            if bb !== nothing && (
-                transform_point(sc, transf, space, p_prev) in bb ||
-                transform_point(sc, transf, space, p_curr) in bb ||
-                transform_point(sc, transf, space, p_next) in bb
-            )
-                push!(masked, P(NaN32))
-            else
-                push!(masked, p_curr)
+            if proj(p_curr) ∈ bb
+                masked[i] = P(NaN32)
+                for dir in (-1, +1)
+                    j = i
+                    while true
+                        j += dir
+                        checkbounds(Bool, segments, j) || break
+                        proj(segments[j]) in bb || break
+                        masked[j] = P(NaN32)
+                    end
+                end
             end
         end
         masked
