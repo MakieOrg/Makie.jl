@@ -198,36 +198,44 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         contours = Contours.contours(xv, yv, z,  convert(Vector{eltype(z)}, levels))
         contourlines(T, contours, level_colors, labels)
     end
+    scene = parent_scene(plot)
 
-    masked_lines = lift(labels, label_attributes, color, result) do labels, label_attributes, color, (segments, _, str_pos)
-        labels || return segments  # `labels = false`, early return
-        scene = parent_scene(plot)
-        bboxes = map(str_pos) do (str, (p1, p2, p3))
+    texts = lift(labels, label_attributes, color, result) do labels, label_attributes, color, (_, _, str_pos)
+        labels || return
+        map(str_pos) do (str, (p1, p2, p3))
             ang = angle(project(scene, p1), project(scene, p2))
             # transition from an angle from horizontal axis in [-π; π]
             # to a readable text with a rotation from vertical axis in [-π / 2; π / 2]
             rotation = abs(ang) > π / 2 ? ang - copysign(π, ang) : ang
-            text!(scene, [(str, p1)]; rotation, color, align = (:center, :center), label_attributes...) |> boundingbox
+            text!(scene, [(str, p1)]; rotation, color, align = (:center, :center), label_attributes...)
         end
+    end
 
+    bboxes = lift(scene.camera.projectionview, scene.px_area, labels, texts) do _, _, labels, texts
+        labels || return
+        boundingbox.(texts)
+    end
+
+    masked_lines = lift(bboxes, labels, result) do bboxes, labels, (segments, _, _)
+        labels || return segments
         n = 1
         bb = bboxes[n]
-        nlab = length(str_pos)
+        nlab = length(bboxes)
         masked = copy(segments)
-        P = eltype(segments)
+        nan = eltype(segments)(NaN32)
         for (i, p) in enumerate(segments)
             if isnan(p) && n < nlab
                 bb = bboxes[n += 1]  # next segment is materialized by a NaN, thus consider next label
-            end
-            if project(scene.camera, plot.space[], :pixel, p) in bb
-                masked[i] = P(NaN32)
+                wireframe!(plot, bb, space = :pixel)  # debug 2D - fails 3D ?
+            elseif project(scene.camera, plot.space[], :pixel, p) in bb
+                masked[i] = nan
                 for dir in (-1, +1)
                     j = i
                     while true
                         j += dir
                         checkbounds(Bool, segments, j) || break
                         project(scene.camera, plot.space[], :pixel, segments[j]) in bb || break
-                        masked[j] = P(NaN32)
+                        masked[j] = nan
                     end
                 end
             end
