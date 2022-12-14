@@ -51,7 +51,7 @@ end
 
 nice_label(x) = string(isinteger(x) ? round(Int, x) : x)
 
-angle(p1, p2) = mod(atan(p2[2] - p1[2], p2[1] - p1[1]), -π)
+angle(p1, p2) = atan(p2[2] - p1[2], p2[1] - p1[1])  # result in [-π, π]
 
 function contourlines(::Type{<: Contour}, contours, cols, labels)
     result = Point2f[]
@@ -209,9 +209,12 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         sc = parent_scene(plot)
         transf, space = transform_func_obs(sc), get(plot, :space, :data)
         nseg, nlab = length(segments), length(str_pos_ang)
-        # FIXME: it doesn't seem to be possible to access the child
-        # glyphcollections after using `text!(plot, labels; kw...)`
-        texts = map(x -> text!(plot, [x[1:2]]; rotation = x[3], align = (:center, :center), color = color, label_attributes...), str_pos_ang)
+        texts = map(str_pos_ang) do (str, pos, ang)
+            # transition from an angle from horizontal axis in [-π; π]
+            # to a readable text with a rotation from vertical axis in [-π / 2; π / 2]
+            rotation = abs(ang) > π / 2 ? ang - copysign(π, ang) : ang
+            text!(plot, [(str, pos)]; rotation, color, align = (:center, :center), label_attributes...)
+        end
         bboxes = map(boundingbox, texts)
         bb, n = nothing, 0
         for (i, p_curr) in enumerate(segments)
@@ -221,7 +224,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
                 bb = bboxes[n += 1]  # consider the next label
             end
             if bb !== nothing && (
-                transform_point(sc, transf, space, p_prev) in bb || 
+                transform_point(sc, transf, space, p_prev) in bb ||
                 transform_point(sc, transf, space, p_curr) in bb ||
                 transform_point(sc, transf, space, p_next) in bb
             )
