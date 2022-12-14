@@ -153,6 +153,7 @@ mutable struct Screen{SurfaceRenderType} <: Makie.MakieScreen
 end
 
 function Base.empty!(screen::Screen)
+    isopen(screen) || return
     ctx = screen.context
     Cairo.save(ctx)
     bg = rgbatuple(screen.scene.backgroundcolor[])
@@ -165,14 +166,14 @@ end
 
 Base.close(screen::Screen) = empty!(screen)
 
-# function clear(screen::Screen)
-#     ctx = screen.context
-#     Cairo.save(ctx)
-#     Cairo.set_operator(ctx, Cairo.OPERATOR_SOURCE)
-#     Cairo.set_source_rgba(ctx, rgbatuple(screen.scene.backgroundcolor[])...)
-#     Cairo.paint_with_alpha(ctx, 0.0)
-#     Cairo.restore(ctx)
-# end
+function destroy!(screen::Screen)
+    Cairo.destroy(screen.surface)
+    Cairo.destroy(screen.context)
+end
+
+function Base.isopen(screen::Screen)
+    return !(screen.surface.ptr == C_NULL || screen.context.ptr == C_NULL)
+end
 
 Base.size(screen::Screen) = round.(Int, (screen.surface.width, screen.surface.height))
 # we render the scene directly, since we have
@@ -201,6 +202,7 @@ to_mime(screen::Screen) = to_mime(screen.typ)
 ########################################
 
 function apply_config!(screen::Screen, config::ScreenConfig)
+    empty!(screen)
     surface = screen.surface
     context = screen.context
     dsf = device_scaling_factor(surface, config)
@@ -214,19 +216,32 @@ function apply_config!(screen::Screen, config::ScreenConfig)
     return screen
 end
 
+function scaled_scene_resolution(typ::RenderType, config::ScreenConfig, scene::Scene)
+    dsf = device_scaling_factor(typ, config)
+    return round.(Int, size(scene) .* dsf)
+end
+
 function Makie.apply_screen_config!(
-        screen::Screen{SCREEN_RT}, config::ScreenConfig, scene::Scene, io::IO, m::MIME{SYM}) where {SYM, SCREEN_RT}
+        screen::Screen{SCREEN_RT}, config::ScreenConfig, scene::Scene, io::Union{Nothing, IO}, m::MIME{SYM}) where {SYM, SCREEN_RT}
     # the surface size is the scene size scaled by the device scaling factor
     new_rendertype = mime_to_rendertype(SYM)
-    if SCREEN_RT !== new_rendertype
-        screen = Screen(screen, io, new_rendertype)
+    # we need to re-create the screen if the rendertype changes, or for all vector backends
+    # since they need to use the new IO, or if the resolution changed!
+    new_resolution = scaled_scene_resolution(new_rendertype, config, scene)
+    if SCREEN_RT !== new_rendertype || is_vector_backend(new_rendertype) || size(screen) != new_resolution
+        old_screen = screen
+        surface = surface_from_output_type(new_rendertype, io, new_resolution...)
+        screen = Screen(scene, config, surface)
+        @assert new_resolution == size(screen)
+        destroy!(old_screen)
     end
     apply_config!(screen, config)
     return screen
 end
 
 function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene::Scene, args...)
-    apply_config!(screen, config)
+    # No mime as an argument implies we want an image based surface
+    Makie.apply_screen_config!(screen, config, scene, nothing, MIME"image/png"())
 end
 
 function Screen(scene::Scene; screen_config...)
@@ -236,22 +251,23 @@ end
 
 Screen(scene::Scene, config::ScreenConfig) = Screen(scene, config, nothing, IMAGE)
 
-# Recreate Screen with different surface type
 function Screen(screen::Screen, io_or_path::Union{Nothing, String, IO}, typ::Union{MIME, Symbol, RenderType})
-    # the surface size is the scene size scaled by the device scaling factor
-    surface = surface_from_output_type(typ, io_or_path, size(screen)...)
+    rtype = convert(RenderType, typ)
+    # the resolution may change between rendertypes, so, we can't just use `size(screen)` here for recreating the Screen:
+    w, h = scaled_scene_resolution(rtype, screen.config, screen.scene)
+    surface = surface_from_output_type(rtype, io_or_path, w, h)
     return Screen(screen.scene, screen.config, surface)
 end
 
 function Screen(scene::Scene, config::ScreenConfig, io_or_path::Union{Nothing, String, IO}, typ::Union{MIME, Symbol, RenderType})
-    # the surface size is the scene size scaled by the device scaling factor
-    w, h = round.(Int, size(scene) .* device_scaling_factor(typ, config))
-    surface = surface_from_output_type(typ, io_or_path, w, h)
+    rtype = convert(RenderType, typ)
+    w, h = scaled_scene_resolution(rtype, config, scene)
+    surface = surface_from_output_type(rtype, io_or_path, w, h)
     return Screen(scene, config, surface)
 end
 
 function Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat)
-    w, h = round.(Int, size(scene) .* config.px_per_unit)
+    w, h = scaled_scene_resolution(IMAGE, config, scene)
     # create an image surface to draw onto the image
     img = fill(ARGB32(0, 0, 0, 0), w, h)
     surface = Cairo.CairoImageSurface(img)
@@ -282,8 +298,8 @@ function Makie.colorbuffer(screen::Screen)
     img = fill(ARGB32(0, 0, 0, 0), w, h)
     # create an image surface to draw onto the image
     surf = Cairo.CairoImageSurface(img)
-    s = Screen(scene, surf; device_scaling_factor=screen.device_scaling_factor, antialias=screen.antialias)
-    return colorbuffer(s)
+    s = Screen(scene, screen.config, surf)
+    return Makie.colorbuffer(s)
 end
 
 function Makie.colorbuffer(screen::Screen{IMAGE})

@@ -189,7 +189,7 @@ Axis(
     f[2, 1],
     title = "Third Title",
     titlecolor = :gray50,
-    titlefont = "TeX Gyre Heros Bold Italic Makie",
+    titlefont = :bold_italic,
     titlealign = :right,
     titlesize = 25,
 )
@@ -200,7 +200,7 @@ Axis(
     titlealign = :left,
     subtitlegap = 2,
     titlegap = 5,
-    subtitlefont = "TeX Gyre Heros Italic Makie",
+    subtitlefont = :italic,
     subtitlelineheight = 0.9,
     titlelineheight = 0.9,
 )
