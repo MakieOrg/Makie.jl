@@ -1070,10 +1070,9 @@ function show_data(inspector::DataInspector, plot::Band, ::Integer, ::Mesh)
     # Get pixel position (in root window)
     px_pos = project(scene, Point2f(x, closest))
     px_pos += minimum(scene.px_area[])
-    update_tooltip_alignment!(inspector, px_pos)
+    update_tooltip_alignment!(inspector, mouseposition_px(inspector.root))
 
     # Update tooltip
-    tt.offset[] = 0
     if haskey(plot, :inspector_label)
         tt.text[] = plot[:inspector_label][](plot, right, Point3f(x, bot_val, top_val))
     else
