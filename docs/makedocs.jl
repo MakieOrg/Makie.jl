@@ -32,8 +32,6 @@ deploydecision = deploy_folder(cfg; repo, push_preview, devbranch="master", devu
 
 @info "Setting PREVIEW_FRANKLIN_WEBSITE_URL to $repo"
 ENV["PREVIEW_FRANKLIN_WEBSITE_URL"] = repo
-@info "Setting FRANKLIN_PREFIX to $(deploydecision.subfolder)"
-ENV["FRANKLIN_PREFIX"] = deploydecision.subfolder
 
 """
 Converts the string `s` which might be an absolute path,

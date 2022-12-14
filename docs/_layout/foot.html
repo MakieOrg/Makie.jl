@@ -37,9 +37,6 @@
       stork.register("makiesearch", `${storkfolder}/index_page.st`);
     </script>
     {{else}}
-    <!-- Franklin.jl ignores page variables inside script tags therefore we
-    need this placeholder to get the prefix variable -->
-    <label id="prefix-placeholder" style="display:none">{{prefix}}</label>
     <script>
       storkfolder = document.querySelector("#stork-library-path-placeholder").src;
       stork.register("makiesearch", `${storkfolder}/index_box.st`);
@@ -48,12 +45,7 @@
         var key=e.keyCode || e.which;
         if (key==13){
           var input = document.getElementById("search-box").value
-          var prefix = document.getElementById("prefix-placeholder").innerHTML
-          if (prefix.length == 0) {
-            window.location = ("/search?q=" + input)
-          } else {
-            window.location = ("/" + prefix + "/search?q=" + input)
-          }
+          window.location = ("/search?q=" + input)
         }
       }
     </script>
