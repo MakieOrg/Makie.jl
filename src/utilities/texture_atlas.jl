@@ -327,7 +327,7 @@ function sdistancefield(img, downsample, pad)
 
     yres, xres = dividable_size .÷ downsample
     # divide by downsample to normalize distances!
-    return Float16.(sdf(in_or_out, xres, yres) ./ downsample)
+    return Float32.(sdf(in_or_out, xres, yres) ./ downsample)
 end
 
 function font_render_callback!(f, atlas::TextureAtlas)
