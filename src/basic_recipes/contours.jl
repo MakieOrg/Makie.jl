@@ -198,7 +198,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         contours = Contours.contours(xv, yv, z,  convert(Vector{eltype(z)}, levels))
         contourlines(T, contours, level_colors, labels)
     end
-    P = T <: Contour ? Point2f : Point3f
+    P = plot isa Contour ? Point2f : Point3f
     texts = text!(
         plot,
         Observable(P[]);
@@ -211,8 +211,8 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     lift(labels, label_attributes, color, result) do labels, label_attributes, color, (_, _, str_pos)
         labels || return
         pos = texts.positions[]; empty!(pos)
-        lbl = texts.text[]; empty!(lbl)
         rot = texts.rotation[]; empty!(rot)
+        lbl = texts.text[]; empty!(lbl)
         for (str, (p1, p2, p3)) in str_pos
             ang = angle(project(scene, p1), project(scene, p2))
             # transition from an angle from horizontal axis in [-π; π]
@@ -231,6 +231,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         labels || return
         broadcast(texts.plots[1][1][], texts.positions[], to_rotation(texts.rotation[])) do gc, pt, rot
             pt = project(scene.camera, plot.space[], :pixel, pt)
+            # rotate_bbox(boundingbox(gc, Point3f(0), to_rotation(0)), rot) + pt  # rotate bbox after does not work
             boundingbox(gc, pt, rot)
         end
     end
