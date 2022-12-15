@@ -1,5 +1,8 @@
 # News
 
+## v0.19.1
+- Added the `stephist` plotting function [#2408](https://github.com/JuliaPlots/Makie.jl/pull/2408).
+
 ## v0.19.0
 
 - **Breaking** The attribute `textsize` has been removed everywhere in favor of the attribute `fontsize` which had also been in use.
