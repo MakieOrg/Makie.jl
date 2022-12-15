@@ -198,9 +198,10 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         contours = Contours.contours(xv, yv, z,  convert(Vector{eltype(z)}, levels))
         contourlines(T, contours, level_colors, labels)
     end
+    P = T <: Contour ? Point2f : Point3f
     texts = text!(
         plot,
-        Observable(Point2f[]);
+        Observable(P[]);
         text = Observable(String[]),
         rotation = Observable(Float32[]),
         align = (:center, :center)
@@ -226,10 +227,10 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         end
     end
 
-    bboxes = lift(scene.camera.projectionview, scene.px_area, labels, result) do _, _, labels, (_, _, str_pos)
+    bboxes = lift(scene.camera.projectionview, scene.px_area, labels) do _, _, labels
         labels || return
-        broadcast(texts.plots[1][1][], to_rotation(texts.rotation[]), str_pos) do gc, rot, (_, (p1, _, _))
-            pt = project(scene.camera, plot.space[], :pixel, to_ndim(Point3f, p1, 0))
+        broadcast(texts.plots[1][1][], texts.positions[], to_rotation(texts.rotation[])) do gc, pt, rot
+            pt = project(scene.camera, plot.space[], :pixel, pt)
             boundingbox(gc, pt, rot)
         end
     end
@@ -240,7 +241,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         bb = bboxes[n]
         nlab = length(bboxes)
         masked = copy(segments)
-        nan = eltype(segments)(NaN32)
+        nan = P(NaN32)
         for (i, p) in enumerate(segments)
             if isnan(p) && n < nlab
                 bb = bboxes[n += 1]  # next segment is materialized by a NaN, thus consider next label
