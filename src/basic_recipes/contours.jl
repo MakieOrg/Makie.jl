@@ -49,10 +49,11 @@ $(ATTRIBUTES)
     default_theme(scene, Contour)
 end
 
-nice_label(x) = string(isinteger(x) ? round(Int, x) : x)
-
-angle(p1::Union{Vec2f,Point2f}, p2::Union{Vec2f,Point2f}) =
+angle(p1::Union{Vec2f,Point2f}, p2::Union{Vec2f,Point2f})::Float32 =
     atan(p2[2] - p1[2], p2[1] - p1[1])  # result in [-π, π]
+
+label_info(lev, vertices) =
+    (string(isinteger(lev) ? round(Int, lev) : lev), map(p -> to_ndim(Point3f, p, lev), Tuple(@view(vertices[1:3]))))
 
 function contourlines(::Type{<: Contour}, contours, cols, labels)
     result = Point2f[]
@@ -63,9 +64,7 @@ function contourlines(::Type{<: Contour}, contours, cols, labels)
             append!(result, elem.vertices)
             push!(result, Point2f(NaN32))
             append!(colors, fill(color, length(elem.vertices) + 1))
-            labels && let p1 = Point2f(elem.vertices[1]), p2 = Point2f(elem.vertices[2]), p3 = Point2f(elem.vertices[3])
-                push!(str_pos, (nice_label(c.level), (p1, p2, p3)))
-            end
+            labels && push!(str_pos, label_info(c.level, elem.vertices))
         end
     end
     result, colors, str_pos
@@ -78,13 +77,11 @@ function contourlines(::Type{<: Contour3d}, contours, cols, labels)
     for (color, c) in zip(cols, Contours.levels(contours))
         for elem in Contours.lines(c)
             for p in elem.vertices
-                push!(result, Point3f(p[1], p[2], c.level))
+                push!(result, to_ndim(Point3f, p, c.level))
             end
             push!(result, Point3f(NaN32))
             append!(colors, fill(color, length(elem.vertices) + 1))
-            labels && let p1 = Point3f(elem.vertices[1]..., c.level), p2 = Point3f(elem.vertices[2]..., c.level), p3 = Point3f(elem.vertices[3]..., c.level)
-                push!(str_pos, (nice_label(c.level), (p1, p2, p3)))
-            end
+            labels && push!(str_pos, label_info(c.level, elem.vertices))
         end
     end
     result, colors, str_pos
@@ -194,11 +191,15 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     result = lift(x, y, z, levels, level_colors, labels) do x, y, z, levels, level_colors, labels
         t = eltype(z)
         # Compute contours
-        xv, yv = to_vector(x, size(z,1), t), to_vector(y, size(z,2), t)
-        contours = Contours.contours(xv, yv, z,  convert(Vector{eltype(z)}, levels))
+        xv, yv = to_vector(x, size(z, 1), t), to_vector(y, size(z, 2), t)
+        contours = Contours.contours(xv, yv, z,  convert(Vector{t}, levels))
         contourlines(T, contours, level_colors, labels)
     end
-    P = plot isa Contour ? Point2f : Point3f
+
+    P = T <: Contour ? Point2f : Point3f
+    scene = parent_scene(plot)
+    space = plot.space[]
+
     texts = text!(
         plot,
         Observable(P[]);
@@ -207,18 +208,21 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         align = (:center, :center)
     )
 
-    scene = parent_scene(plot)
-    space = plot.space[]
     lift(labels, label_attributes, color, result) do labels, label_attributes, color, (_, _, str_pos)
         labels || return
         pos = texts.positions.val; empty!(pos)
         rot = texts.rotation.val; empty!(rot)
         lbl = texts.text.val; empty!(lbl)
         for (str, (p1, p2, p3)) in str_pos
-            ang = angle(project(scene, p1), project(scene, p2))
+            rot_from_horz::Float32 = angle(project(scene, p1), project(scene, p3))
             # transition from an angle from horizontal axis in [-π; π]
             # to a readable text with a rotation from vertical axis in [-π / 2; π / 2]
-            push!(rot, abs(ang) > π / 2 ? ang - copysign(π, ang) : ang)
+            rot_from_vert::Float32 = if abs(rot_from_horz) > 0.5f0 * π
+                rot_from_horz - copysign(Float32(π), rot_from_horz)
+            else
+                rot_from_horz
+            end
+            push!(rot, rot_from_vert)
             push!(lbl, str)
             push!(pos, p1)
         end
@@ -227,19 +231,19 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
             getproperty(texts, k).val = v[]
         end
         notify(texts.text)
+        nothing
     end
 
     bboxes = lift(scene.camera.projectionview, scene.px_area, labels) do _, _, labels
         labels || return
-        broadcast(texts.plots[1][1].val, texts.positions.val, to_rotation(texts.rotation.val)) do gc, pt, rot
-            pt = project(scene.camera, space, :pixel, pt)
-            # rotate_bbox(boundingbox(gc, Point3f(0), to_rotation(0)), rot) + pt  # rotate bbox after does not work
-            boundingbox(gc, pt, rot)
+        broadcast(texts.plots[1][1].val, texts.positions.val, texts.rotation.val) do gc, pt, rot
+            # drop the depth component of the bounding box for 3D
+            Rect2f(boundingbox(gc, project(scene.camera, space, :pixel, pt), to_rotation(rot)))
         end
     end
 
-    masked_lines = lift(bboxes, labels) do bboxes, labels
-        segments = result[][1]
+    masked_lines = lift(labels, bboxes) do labels, bboxes
+        segments = result.val[1]
         labels || return segments
         n = 1
         bb = bboxes[n]
@@ -249,7 +253,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         for (i, p) in enumerate(segments)
             if isnan(p) && n < nlab
                 bb = bboxes[n += 1]  # next segment is materialized by a NaN, thus consider next label
-                wireframe!(plot, bb, space = :pixel)  # debug 2D - fails 3D ?
+                # wireframe!(plot, bb, space = :pixel)  # toggle to debug labels
             elseif project(scene.camera, space, :pixel, p) in bb
                 masked[i] = nan
                 for dir in (-1, +1)
