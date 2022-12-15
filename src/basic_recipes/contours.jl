@@ -198,22 +198,39 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         contours = Contours.contours(xv, yv, z,  convert(Vector{eltype(z)}, levels))
         contourlines(T, contours, level_colors, labels)
     end
-    scene = parent_scene(plot)
+    texts = text!(
+        plot,
+        Observable(Point2f[]);
+        text = Observable(String[]),
+        rotation = Observable(Float32[]),
+        align = (:center, :center)
+    )
 
-    texts = lift(labels, label_attributes, color, result) do labels, label_attributes, color, (_, _, str_pos)
+    scene = parent_scene(plot)
+    lift(labels, label_attributes, color, result) do labels, label_attributes, color, (_, _, str_pos)
         labels || return
-        map(str_pos) do (str, (p1, p2, p3))
+        pos = texts.positions[]; empty!(pos)
+        lbl = texts.text[]; empty!(lbl)
+        rot = texts.rotation[]; empty!(rot)
+        for (str, (p1, p2, p3)) in str_pos
             ang = angle(project(scene, p1), project(scene, p2))
             # transition from an angle from horizontal axis in [-π; π]
             # to a readable text with a rotation from vertical axis in [-π / 2; π / 2]
-            rotation = abs(ang) > π / 2 ? ang - copysign(π, ang) : ang
-            text!(scene, [(str, p1)]; rotation, color, align = (:center, :center), label_attributes...)
+            push!(rot, abs(ang) > π / 2 ? ang - copysign(π, ang) : ang)
+            push!(lbl, str)
+            push!(pos, p1)
+        end
+        texts.color[] = color
+        for (k, v) in label_attributes
+            getproperty(texts, k)[] = v[]
         end
     end
 
-    bboxes = lift(scene.camera.projectionview, scene.px_area, labels, texts) do _, _, labels, texts
+    bboxes = lift(scene.camera.projectionview, scene.px_area, labels) do _, _, labels
         labels || return
-        boundingbox.(texts)
+        broadcast(texts.plots[1][1][], texts.positions[], to_rotation(texts.rotation[])) do gc, pt, rot
+            boundingbox(gc, to_ndim(Point3f, project(scene, pt), 0), rot)
+        end
     end
 
     masked_lines = lift(bboxes, labels, result) do bboxes, labels, (segments, _, _)
