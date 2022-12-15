@@ -208,11 +208,12 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     )
 
     scene = parent_scene(plot)
+    space = plot.space[]
     lift(labels, label_attributes, color, result) do labels, label_attributes, color, (_, _, str_pos)
         labels || return
-        pos = texts.positions[]; empty!(pos)
-        rot = texts.rotation[]; empty!(rot)
-        lbl = texts.text[]; empty!(lbl)
+        pos = texts.positions.val; empty!(pos)
+        rot = texts.rotation.val; empty!(rot)
+        lbl = texts.text.val; empty!(lbl)
         for (str, (p1, p2, p3)) in str_pos
             ang = angle(project(scene, p1), project(scene, p2))
             # transition from an angle from horizontal axis in [-π; π]
@@ -221,22 +222,24 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
             push!(lbl, str)
             push!(pos, p1)
         end
-        texts.color[] = color
+        texts.color.val = color
         for (k, v) in label_attributes
-            getproperty(texts, k)[] = v[]
+            getproperty(texts, k).val = v[]
         end
+        notify(texts.text)
     end
 
     bboxes = lift(scene.camera.projectionview, scene.px_area, labels) do _, _, labels
         labels || return
-        broadcast(texts.plots[1][1][], texts.positions[], to_rotation(texts.rotation[])) do gc, pt, rot
-            pt = project(scene.camera, plot.space[], :pixel, pt)
+        broadcast(texts.plots[1][1].val, texts.positions.val, to_rotation(texts.rotation.val)) do gc, pt, rot
+            pt = project(scene.camera, space, :pixel, pt)
             # rotate_bbox(boundingbox(gc, Point3f(0), to_rotation(0)), rot) + pt  # rotate bbox after does not work
             boundingbox(gc, pt, rot)
         end
     end
 
-    masked_lines = lift(bboxes, labels, result) do bboxes, labels, (segments, _, _)
+    masked_lines = lift(bboxes, labels) do bboxes, labels
+        segments = result[][1]
         labels || return segments
         n = 1
         bb = bboxes[n]
@@ -247,14 +250,14 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
             if isnan(p) && n < nlab
                 bb = bboxes[n += 1]  # next segment is materialized by a NaN, thus consider next label
                 wireframe!(plot, bb, space = :pixel)  # debug 2D - fails 3D ?
-            elseif project(scene.camera, plot.space[], :pixel, p) in bb
+            elseif project(scene.camera, space, :pixel, p) in bb
                 masked[i] = nan
                 for dir in (-1, +1)
                     j = i
                     while true
                         j += dir
                         checkbounds(Bool, segments, j) || break
-                        project(scene.camera, plot.space[], :pixel, segments[j]) in bb || break
+                        project(scene.camera, space, :pixel, segments[j]) in bb || break
                         masked[j] = nan
                     end
                 end
