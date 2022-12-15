@@ -226,10 +226,11 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         end
     end
 
-    bboxes = lift(scene.camera.projectionview, scene.px_area, labels) do _, _, labels
+    bboxes = lift(scene.camera.projectionview, scene.px_area, labels, result) do _, _, labels, (_, _, str_pos)
         labels || return
-        broadcast(texts.plots[1][1][], texts.positions[], to_rotation(texts.rotation[])) do gc, pt, rot
-            boundingbox(gc, to_ndim(Point3f, project(scene, pt), 0), rot)
+        broadcast(texts.plots[1][1][], to_rotation(texts.rotation[]), str_pos) do gc, rot, (_, (p1, _, _))
+            pt = project(scene.camera, plot.space[], :pixel, to_ndim(Point3f, p1, 0))
+            boundingbox(gc, pt, rot)
         end
     end
 
