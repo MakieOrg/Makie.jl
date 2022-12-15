@@ -1,3 +1,4 @@
+
 struct TextureAtlas
     rectangle_packer::RectanglePacker{Int32}
     # hash of what we're rendering to index in `uv_rectangles`
@@ -23,7 +24,19 @@ end
 Base.size(atlas::TextureAtlas) = size(atlas.data)
 Base.size(atlas::TextureAtlas, dim) = size(atlas)[dim]
 
-# Helper to debug texture atlas (this usually happens on the GPU)!
+"""
+    get_uv_img(atlas::TextureAtlas, glyph_bezierpath, [font])
+
+Helper to debug texture atlas (this usually happens on the GPU)!
+
+can be used like this:
+```julia
+matr = Makie.get_uv_img(atlas, glyph_index, font)
+scatter(Point2f(0), distancefield=matr, uv_offset_width=Vec4f(0, 0, 1, 1), markersize=100)
+```
+"""
+get_uv_img(atlas::TextureAtlas, glyph, font) = get_uv_img(atlas, primitive_uv_offset_width(atlas, glyph, font))
+get_uv_img(atlas::TextureAtlas, path) = get_uv_img(atlas, primitive_uv_offset_width(atlas, path, nothing))
 function get_uv_img(atlas::TextureAtlas, uv_rect::Vec4f)
     xmin, ymin, xmax, ymax = round.(Int, uv_rect .* Vec4f(size(atlas)..., size(atlas)...))
     xmax = xmax + 1
@@ -71,12 +84,13 @@ end
 
 function write_node(io::IO, packer::RectanglePacker)
     write(io, Ref(packer.area))
-    l = Packing.left(packer)
+    write(io, UInt8(packer.filled))
+    l = packer.left
     write(io, isnothing(l) ? UInt8(0) : UInt8(1))
     if !isnothing(l)
         write_node(io, l)
     end
-    r = Packing.right(packer)
+    r = packer.right
     write(io, isnothing(r) ? UInt8(0) : UInt8(1))
     if !isnothing(r)
         write_node(io, r)
@@ -86,14 +100,12 @@ end
 function read_node(io, T)
     area = Ref{Rect2{T}}()
     read!(io, area)
+    filled = read(io, UInt8)
     hasleft = read(io, UInt8)
     left = hasleft == 1 ? read_node(io, T) : nothing
     hasright = read(io, UInt8)
     right = hasright == 1 ? read_node(io, T) : nothing
-    node = Packing.BinaryNode{RectanglePacker{T}}()
-    node.left = left
-    node.right = right
-    return RectanglePacker{T}(node, area[])
+    return RectanglePacker{T}(area[], filled, left, right)
 end
 
 function write_array(io::IO, array::AbstractArray)
@@ -195,8 +207,12 @@ end
 
 function render_default_glyphs!(atlas)
     font = defaultfont()
-    for c in '\u0000':'\u00ff' #make sure all ascii is mapped linearly
-        insert_glyph!(atlas, c, font)
+    chars = ['a':'z'..., 'A':'Z'..., '0':'9'..., '.', '-']
+    fonts = to_font.(to_value.(values(Makie.minimal_default.fonts)))
+    for font in fonts
+        for c in chars
+            insert_glyph!(atlas, c, font)
+        end
     end
     for (_, path) in default_marker_map()
         insert_glyph!(atlas, path)
@@ -250,7 +266,6 @@ function insert_glyph!(atlas::TextureAtlas, glyph, font::NativeFont)
     glyphindex = FreeTypeAbstraction.glyph_index(font, glyph)
     key = (glyphindex, FreeTypeAbstraction.fontname(font))
     return get!(atlas.mapping, StableHashTraits.stable_hash(key)) do
-
         uv_pixel = render(atlas, glyphindex, font)
         tex_size = Vec2f(size(atlas) .- 1) # starts at 1
 
