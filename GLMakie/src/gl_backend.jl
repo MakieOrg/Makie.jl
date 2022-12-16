@@ -22,14 +22,14 @@ function get_texture!(atlas::Makie.TextureAtlas)
     end
     # clean up dead context!
     filter!(atlas_texture_cache) do (ctx, tex_func)
-        if GLAbstraction.context_alive(ctx)
+        if GLAbstraction.context_alive(ctx[2])
             return true
         else
             Makie.remove_font_render_callback!(atlas, tex_func[2])
             return false
         end
     end
-    tex, func = get!(atlas_texture_cache, GLAbstraction.current_context()) do
+    tex, func = get!(atlas_texture_cache, (atlas.data, GLAbstraction.current_context())) do
         tex = Texture(
                 atlas.data,
                 minfilter = :linear,

@@ -12,6 +12,10 @@ struct TextureAtlas
     # need a few values outside the symbol. To guarantee that we have those
     # at all relevant scales we add padding to the rendered bitmap and the
     # resulting sdf.
+    # Small padding results in artifacts during downsampling. It seems like roughly
+    # 1.5px padding is required for a scaled glyph to be displayed without artifacts.
+    # E.g. for fontsize = 8px we need 1.5/8 * 64 = 12px+ padding (in each direction)
+    # for things to look clear with a 64px glyph size.
     glyph_padding::Int32
     # We save glyphs as signed distance fields, i.e. we save the distance
     # a pixel is away from the edge of a symbol (continuous at the edge).
@@ -169,7 +173,12 @@ function cached_load(resolution::Int, pix_per_glyph::Int)
         end
     end
     if isfile(path)
-        return load_texture_atlas(path)
+        try
+            return load_texture_atlas(path)
+        catch e
+            @warn "reading texture atlas on disk failed, need to re-create from scratch." exception=(e, Base.catch_backtrace())
+            rm(path; force=true)
+        end
     end
     atlas = TextureAtlas(; resolution=resolution, pix_per_glyph=pix_per_glyph)
     @warn("Makie is caching fonts, this may take a while. This should usually not happen, unless you're getting your own texture atlas or are without internet!")
@@ -220,6 +229,22 @@ function render_default_glyphs!(atlas)
     return atlas
 end
 
+function regenerate_texture_atlas(resolution, pix_per_glyph)
+    path = get_cache_path(resolution, pix_per_glyph)
+    isfile(path) && rm(path; force=true)
+    atlas = TextureAtlas(; resolution=resolution, pix_per_glyph=pix_per_glyph)
+    render_default_glyphs!(atlas)
+    store_texture_atlas(path, atlas) # cache it
+    atlas
+end
+
+function regenerate_texture_atlas()
+    empty!(TEXTURE_ATLASES)
+    TEXTURE_ATLASES[(1024, 32)] = regenerate_texture_atlas(1024, 32) # for WGLMakie
+    TEXTURE_ATLASES[(2048, 64)] = regenerate_texture_atlas(2048, 64) # for GLMakie
+end
+
+
 """
     find_font_for_char(c::Char, font::NativeFont)
 
@@ -264,40 +289,26 @@ end
 
 function insert_glyph!(atlas::TextureAtlas, glyph, font::NativeFont)
     glyphindex = FreeTypeAbstraction.glyph_index(font, glyph)
-    key = (glyphindex, FreeTypeAbstraction.fontname(font))
-    return get!(atlas.mapping, StableHashTraits.stable_hash(key)) do
-        uv_pixel = render(atlas, glyphindex, font)
-        tex_size = Vec2f(size(atlas) .- 1) # starts at 1
-
-        # 0 based
-        idx_left_bottom = minimum(uv_pixel)
-        idx_right_top = maximum(uv_pixel)
-
-        # transform to normalized texture coordinates
-        # -1 for indexing offset
-        uv_left_bottom_pad = (idx_left_bottom) ./ tex_size
-        uv_right_top_pad = (idx_right_top .- 1) ./ tex_size
-
-        uv_offset_rect = Vec4f(uv_left_bottom_pad..., uv_right_top_pad...)
-        push!(atlas.uv_rectangles, uv_offset_rect)
-        return length(atlas.uv_rectangles)
-    end
+    hash = StableHashTraits.stable_hash((glyphindex, FreeTypeAbstraction.fontname(font)))
+    return insert_glyph!(atlas, hash, (glyphindex, font))
 end
 
 function insert_glyph!(atlas::TextureAtlas, path::BezierPath)
-    return get!(atlas.mapping, StableHashTraits.stable_hash(path)) do
-        uv_pixel = render(atlas, path)
-        tex_size = Vec2f(size(atlas) .- 1) # starts at 1
+    return insert_glyph!(atlas, StableHashTraits.stable_hash(path), path)
+end
 
+
+function insert_glyph!(atlas::TextureAtlas, hash::UInt32, path_or_glyp::Union{BezierPath, Tuple{UInt64, NativeFont}})
+    return get!(atlas.mapping, hash) do
+        uv_pixel = render(atlas, path_or_glyp)
+        tex_size = Vec2f(size(atlas))
         # 0 based
         idx_left_bottom = minimum(uv_pixel)
         idx_right_top = maximum(uv_pixel)
-
         # transform to normalized texture coordinates
         # -1 for indexing offset
         uv_left_bottom_pad = (idx_left_bottom) ./ tex_size
         uv_right_top_pad = (idx_right_top .- 1) ./ tex_size
-
         uv_offset_rect = Vec4f(uv_left_bottom_pad..., uv_right_top_pad...)
         push!(atlas.uv_rectangles, uv_offset_rect)
         return length(atlas.uv_rectangles)
@@ -338,7 +349,7 @@ function remove_font_render_callback!(atlas::TextureAtlas, f)
     filter!(f2-> f2 != f, atlas.font_render_callback)
 end
 
-function render(atlas::TextureAtlas, glyph_index, font)
+function render(atlas::TextureAtlas, (glyph_index, font)::Tuple{UInt64, NativeFont})
     downsample = atlas.downsample
     pad = atlas.glyph_padding
     # the target pixel size of our distance field
@@ -378,6 +389,7 @@ function render(atlas::TextureAtlas, b::BezierPath)
     sd = sdistancefield(bitmap, downsample, pad)
     rect = Rect2{Int32}(0, 0, size(sd)...)
     uv = push!(atlas.rectangle_packer, rect) # find out where to place the rectangle
+
     uv == nothing && error("texture atlas is too small. Resizing not implemented yet. Please file an issue at Makie if you encounter this") #TODO resize surface
     # write distancefield into texture
     atlas.data[uv.area] = sd
