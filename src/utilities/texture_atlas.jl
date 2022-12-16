@@ -308,7 +308,8 @@ function insert_glyph!(atlas::TextureAtlas, hash::UInt32, path_or_glyp::Union{Be
         # transform to normalized texture coordinates
         # -1 for indexing offset
         uv_left_bottom_pad = (idx_left_bottom) ./ tex_size
-        uv_right_top_pad = (idx_right_top .- 1) ./ tex_size
+        # TODO, why does 0.8 work best?
+        uv_right_top_pad = (idx_right_top .- 0.8) ./ tex_size
         uv_offset_rect = Vec4f(uv_left_bottom_pad..., uv_right_top_pad...)
         push!(atlas.uv_rectangles, uv_offset_rect)
         return length(atlas.uv_rectangles)
@@ -456,7 +457,7 @@ _bcast(x) = x
 function marker_scale_factor(atlas::TextureAtlas, char::Char, font)
     lbrt = glyph_uv_width!(atlas, char, font)
     uv_width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
-    full_pixel_size_in_atlas = uv_width .* Vec2f(size(atlas) .- 1)
+    full_pixel_size_in_atlas = uv_width .* Vec2f(size(atlas))
     return full_pixel_size_in_atlas ./ atlas.pix_per_glyph
 end
 
@@ -464,7 +465,7 @@ end
 function bezierpath_pad_scale_factor(atlas::TextureAtlas, bp)
     lbrt = glyph_uv_width!(atlas, bp)
     uv_width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
-    full_pixel_size_in_atlas = uv_width * Vec2f(size(atlas) .- 1)
+    full_pixel_size_in_atlas = uv_width * Vec2f(size(atlas))
     full_pad = 2f0 * atlas.glyph_padding # left + right pad
     return full_pad ./ (full_pixel_size_in_atlas .- full_pad)
 end
