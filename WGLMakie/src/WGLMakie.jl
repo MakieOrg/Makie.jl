@@ -32,6 +32,7 @@ struct WebGL <: ShaderAbstractions.AbstractContext end
 
 const WGL = ES6Module(@path joinpath(@__DIR__, "wglmakie.js"))
 
+include("display.jl")
 include("three_plot.jl")
 include("serialization.jl")
 include("events.jl")
@@ -39,7 +40,7 @@ include("particles.jl")
 include("lines.jl")
 include("meshes.jl")
 include("imagelike.jl")
-include("display.jl")
+include("picking.jl")
 
 
 """

@@ -1,3 +1,21 @@
+struct ThreeDisplay <: Makie.MakieScreen
+    session::JSServe.Session
+end
+
+JSServe.session(td::ThreeDisplay) = td.session
+Base.empty!(::ThreeDisplay) = nothing # TODO implement
+
+
+function Base.close(screen::ThreeDisplay)
+    # TODO implement
+end
+
+function Base.size(screen::ThreeDisplay)
+    # look at d.qs().clientWidth for displayed width
+    js = js"[document.querySelector('canvas').width, document.querySelector('canvas').height]"
+    width, height = round.(Int, JSServe.evaljs_value(screen.session, js; time_out=100))
+    return (width, height)
+end
 
 function JSServe.jsrender(session::Session, scene::Scene)
     three, canvas, on_init = three_display(session, scene)

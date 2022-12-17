@@ -1,13 +1,20 @@
 import * as THREE from "https://cdn.esm.sh/v66/three@0.136/es2021/three.js";
 import { getWebGLErrorMessage } from "./WEBGL.js";
-import { delete_scenes, insert_plot, delete_plots, deserialize_scene, delete_scene, TEXTURE_ATLAS} from "./Serialization.js";
+import {
+    delete_scenes,
+    insert_plot,
+    delete_plots,
+    deserialize_scene,
+    delete_scene,
+    TEXTURE_ATLAS,
+} from "./Serialization.js";
 import { event2scene_pixel } from "./Camera.js";
 
 window.THREE = THREE;
 
 const pixelRatio = window.devicePixelRatio || 1.0;
 
-export function render_scene(scene) {
+export function render_scene(scene, picking = false) {
     const { camera, renderer } = scene.screen;
     const canvas = renderer.domElement;
     if (!document.body.contains(canvas)) {
@@ -27,11 +34,15 @@ export function render_scene(scene) {
         renderer.setViewport(x, y, w, h);
         renderer.setScissor(x, y, w, h);
         renderer.setScissorTest(true);
-        renderer.setClearColor(scene.backgroundcolor.value);
+        if (picking) {
+            renderer.setClearAlpha(0);
+            renderer.setClearColor(new THREE.Color(0), 0.0);
+        } else {
+            renderer.setClearColor(scene.backgroundcolor.value);
+        }
         renderer.render(scene, camera);
     }
-
-    return scene.scene_children.every(render_scene);
+    return scene.scene_children.every((x) => render_scene(x, picking));
 }
 
 function start_renderloop(three_scene) {
@@ -221,7 +232,14 @@ function create_scene(
     }
 }
 
-function set_picking_uniforms(scene, last_id, picking, picked_plots, plots) {
+function set_picking_uniforms(
+    scene,
+    last_id,
+    picking,
+    picked_plots,
+    plots,
+    id_to_plot
+) {
     scene.children.forEach((plot, index) => {
         const { material } = plot;
         const { uniforms } = material;
@@ -237,39 +255,34 @@ function set_picking_uniforms(scene, last_id, picking, picked_plots, plots) {
             const id = uniforms.object_id.value;
             if (id in picked_plots) {
                 plots.push([plot, picked_plots[id]]);
+                id_to_plot[id] = plot; // create mapping from id to plot at the same time
             }
         }
     });
-    return last_id + scene.children.length;
+    let next_id = last_id + scene.children.length;
+    scene.scene_children.forEach((scene) => {
+        next_id = set_picking_uniforms(
+            scene,
+            next_id,
+            picking,
+            picked_plots,
+            plots,
+            id_to_plot
+        );
+    });
+    return next_id;
 }
 
-export function pick_native(scenes, x, y, w, h) {
-    const { renderer, camera, picking_target } = scenes[0].screen;
+export function pick_native(scene, x, y, w, h) {
+    const { renderer, picking_target } = scene.screen;
     // render the scene
     renderer.setRenderTarget(picking_target);
-
-    const pixelRatio = window.devicePixelRatio || 1.0;
-
-    let last_id = 1;
-    scenes.forEach((scene) => {
-        last_id = set_picking_uniforms(scene, last_id, true);
-
-        const area = scene.pixelarea.value;
-        const [_x, _y, _w, _h] = area.map((t) => t / pixelRatio);
-        renderer.autoClear = true;
-        renderer.setViewport(_x, _y, _w, _h);
-        renderer.setScissor(_x, _y, _w, _h);
-        renderer.setScissorTest(true);
-        renderer.setClearAlpha(0);
-        renderer.setClearColor(new THREE.Color(0), 0.0);
-        renderer.render(scene, camera);
-    });
-
+    set_picking_uniforms(scene, 1, true);
+    render_scene(scene, true);
     renderer.setRenderTarget(null); // reset render target
 
     const nbytes = w * h * 4;
     const pixel_bytes = new Uint8Array(nbytes);
-
     //read the pixel
     renderer.readRenderTargetPixels(
         picking_target,
@@ -279,26 +292,130 @@ export function pick_native(scenes, x, y, w, h) {
         h, // height
         pixel_bytes
     );
-
     const picked_plots = {};
+    const picked_plots_array = [];
+
     const reinterpret_view = new DataView(pixel_bytes.buffer);
 
     for (let i = 0; i < pixel_bytes.length / 4; i++) {
         const id = reinterpret_view.getUint16(i * 4);
         const index = reinterpret_view.getUint16(i * 4 + 2);
+        picked_plots_array.push([id, index]);
         picked_plots[id] = index;
     }
     // dict of plot_uuid => primitive_index (e.g. instance id or triangle index)
     const plots = [];
-    scenes.forEach((scene) =>
-        set_picking_uniforms(scene, 0, false, picked_plots, plots)
-    );
-    return plots;
+    const id_to_plot = {};
+    set_picking_uniforms(scene, 0, false, picked_plots, plots, id_to_plot);
+    const picked_plots_matrix = picked_plots_array.map(([id, index]) => {
+        const p = id_to_plot[id];
+        return [p ? p.plot_uuid : null, index];
+    });
+    console.log(picked_plots_matrix);
+    console.log(w, h);
+    const plot_matrix = { data: picked_plots_matrix, size: [w, h] };
+
+    return [plot_matrix, plots];
 }
 
-export function pick_native_uuid(scenes, x, y, w, h) {
-    const picked_plots = pick_native(scenes, x, y, w, h);
-    return picked_plots.map((x) => [x[0].plot_uuid, x[1]]);
+export function pick_closest(scene, xy, range) {
+    const { picking_target } = scene.screen;
+    const { width, height } = picking_target;
+    console.log(width, height, xy, range);
+
+    if (!(1.0 <= xy[0] <= width && 1.0 <= xy[1] <= height)) {
+        return [null, 0];
+    }
+
+    const x0 = Math.max(1, xy[0] - range);
+    const y0 = Math.max(1, xy[1] - range);
+    const x1 = Math.min(width, Math.floor(xy[0] + range));
+    const y1 = Math.min(height, Math.floor(xy[1] + range));
+    console.log("-0-----");
+    console.log(width, height, x0, y0, x1, y1);
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    const [plot_data, _] = pick_native(scene, x0, y0, dx, dy);
+    const plot_matrix = plot_data.data;
+    console.log(plot_matrix);
+    let min_dist = range ^ 2;
+    let selection = [null, 0];
+    const x = xy[0] + 1 - x0;
+    const y = xy[1] + 1 - y0;
+    let pindex = 0;
+    for (let i = 1; i <= dx; i++) {
+        for (let j = 1; j <= dx; j++) {
+            const d = (x - i) ^ (2 + (y - j)) ^ 2;
+            const [plot_uuid, index] = plot_matrix[pindex];
+            pindex = pindex + 1;
+            if (d < min_dist && plot_uuid) {
+                min_dist = d;
+                selection = [plot_uuid, index];
+            }
+        }
+    }
+    return selection;
+}
+
+export function pick_sorted(scene, xy, range) {
+    const { picking_target } = scene.screen;
+    const { width, height } = picking_target;
+    console.log(width, height, xy, range);
+
+    if (!(1.0 <= xy[0] <= width && 1.0 <= xy[1] <= height)) {
+        return [null, 0];
+    }
+
+    const x0 = Math.max(1, xy[0] - range);
+    const y0 = Math.max(1, xy[1] - range);
+    const x1 = Math.min(width, Math.floor(xy[0] + range));
+    const y1 = Math.min(height, Math.floor(xy[1] + range));
+
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    const [plot_data, selected] = pick_native(scene, x0, y0, dx, dy);
+    if (selected.length == 0) {
+        return [];
+    }
+
+    const plot_matrix = plot_data.data;
+    const distances = selected.map((x) => range ^ 2);
+    const x = xy[0] + 1 - x0;
+    const y = xy[1] + 1 - y0;
+    let pindex = 0;
+    for (let i = 1; i <= dx; i++) {
+        for (let j = 1; j <= dx; j++) {
+            const d = (x - i) ^ (2 + (y - j)) ^ 2;
+            const [plot_uuid, index] = plot_matrix[pindex];
+            pindex = pindex + 1;
+            const plot_index = selected.findIndex(
+                (x) => x[0].plot_uuid == plot_uuid
+            );
+            if (plot_index >= 0 && d < distances[plot_index]) {
+                distances[plot_index] = d;
+            }
+        }
+    }
+
+    const sorted_indices = Array.from(Array(distances.length).keys()).sort(
+        (a, b) =>
+            distances[a] < distances[b] ? -1 : (distances[b] < distances[a]) | 0
+    );
+
+    return sorted_indices.map((idx) => {
+        const [plot, index] = selected[idx];
+        return [plot.plot_uuid, index];
+    });
+}
+
+export function pick_native_uuid(scene, x, y, w, h) {
+    const [_, picked_plots] = pick_native(scene, x, y, w, h);
+    return picked_plots.map(([p, index]) => [p.plot_uuid, index]);
+}
+
+export function pick_native_matrix(scene, x, y, w, h) {
+    const [matrix, _] = pick_native(scene, x, y, w, h);
+    return matrix;
 }
 
 export {

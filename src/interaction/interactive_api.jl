@@ -56,6 +56,12 @@ function flatten_plots(array, plots = AbstractPlot[])
     plots
 end
 
+function flatten_plots(scene::Scene, plots = AbstractPlot[])
+    flatten_plots(scene.plots, plots)
+    flatten_plots(scene.children, plots)
+    plots
+end
+
 """
     mouse_in_scene(fig/ax/scene[, priority = 0])
 
