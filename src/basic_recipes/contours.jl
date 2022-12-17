@@ -56,35 +56,35 @@ label_info(lev, vertices) =
     (string(isinteger(lev) ? round(Int, lev) : lev), map(p -> to_ndim(Point3f, p, lev), Tuple(@view(vertices[1:3]))))
 
 function contourlines(::Type{<: Contour}, contours, cols, labels)
-    result = Point2f[]
+    points = Point2f[]
     colors = RGBA{Float32}[]
     str_pos = Tuple{String,NTuple{3,Point2f}}[]
     for (color, c) in zip(cols, Contours.levels(contours))
         for elem in Contours.lines(c)
-            append!(result, elem.vertices)
-            push!(result, Point2f(NaN32))
+            append!(points, elem.vertices)
+            push!(points, Point2f(NaN32))
             append!(colors, fill(color, length(elem.vertices) + 1))
             labels && push!(str_pos, label_info(c.level, elem.vertices))
         end
     end
-    result, colors, str_pos
+    points, colors, str_pos
 end
 
 function contourlines(::Type{<: Contour3d}, contours, cols, labels)
-    result = Point3f[]
+    points = Point3f[]
     colors = RGBA{Float32}[]
     str_pos = Tuple{String,NTuple{3,Point3f}}[]
     for (color, c) in zip(cols, Contours.levels(contours))
         for elem in Contours.lines(c)
             for p in elem.vertices
-                push!(result, to_ndim(Point3f, p, c.level))
+                push!(points, to_ndim(Point3f, p, c.level))
             end
-            push!(result, Point3f(NaN32))
+            push!(points, Point3f(NaN32))
             append!(colors, fill(color, length(elem.vertices) + 1))
             labels && push!(str_pos, label_info(c.level, elem.vertices))
         end
     end
-    result, colors, str_pos
+    points, colors, str_pos
 end
 
 to_levels(x::AbstractVector{<: Number}, cnorm) = x
@@ -208,7 +208,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         align = (:center, :center)
     )
 
-    lift(labels, label_attributes, color, result) do labels, label_attributes, color, (_, _, str_pos)
+    lift(scene.camera.projectionview, scene.px_area, labels, label_attributes, color, result) do _, _, labels, label_attributes, color, (_, _, str_pos)
         labels || return
         pos = texts.positions.val; empty!(pos)
         rot = texts.rotation.val; empty!(rot)
@@ -234,7 +234,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         nothing
     end
 
-    bboxes = lift(scene.camera.projectionview, scene.px_area, labels) do _, _, labels
+    bboxes = lift(labels, texts.text) do labels, _
         labels || return
         broadcast(texts.plots[1][1].val, texts.positions.val, texts.rotation.val) do gc, pt, rot
             # drop the depth component of the bounding box for 3D
