@@ -37,6 +37,7 @@
       stork.register("makiesearch", `${storkfolder}/index_page.st`);
     </script>
     {{else}}
+    <img id="search-path-placeholder" src="/search" style="display:none"/>
     <script>
       storkfolder = document.querySelector("#stork-library-path-placeholder").src;
       stork.register("makiesearch", `${storkfolder}/index_box.st`);
@@ -44,8 +45,9 @@
         // Redirect to search-page if enter is pressed in search-box
         var key=e.keyCode || e.which;
         if (key==13){
-          var input = document.getElementById("search-box").value
-          window.location = ("/search?q=" + input)
+          var input = document.getElementById("search-box").value;
+          var path = document.getElementById("search-path-placeholder").src;
+          window.location = (path + "?q=" + input);
         }
       }
     </script>
