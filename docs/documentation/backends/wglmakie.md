@@ -205,6 +205,32 @@ end
 
 This summarizes the current state of interactivity with WGLMakie inside static pages.
 
+
+## Offline Tooltip
+
+`Makie.DataInspector` works just fine with WGLMakie, but it requires a running Julia process to show and update the tooltip.
+
+There is also a way to show a tooltip in Javascript directly, which needs to be inserted into the HTML dom.
+This means, we actually need to use `JSServe.App` to return a `DOM` object:
+
+\begin{showhtml}{}
+```
+App() do session
+    f, ax, pl = scatter(1:4, markersize=100)
+    on_hover_callback = js"""(plot, index) => {
+        console.log(plot)
+        // return either a string, or an HTMLNode:
+        return "test: " + plot.name + " " + index
+    }
+    """
+
+    # ToolTip(figurelike, js_callback; plots=plots_you_want_to_hover)
+    tooltip = WGLMakie.ToolTip(f, on_hover_callback; plots=pl)
+    return DOM.div(f, tooltip)
+end
+```
+\end{showhtml}
+
 # Pluto/IJulia
 
 Note that the normal interactivity from Makie is preserved with WGLMakie in e.g. Pluto, as long as the Julia session is running.

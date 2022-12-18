@@ -66,6 +66,31 @@ function Makie.pick(scene::Scene, screen::Screen, xy) where Screen
 end
 
 
+
+"""
+    ToolTip(figurelike, js_callback; plots=plots_you_want_to_hover)
+
+Returns a JSServe DOM element, which creates a popup whenever you click on a plot in `plots`.
+The content of the popup is filled with the return value of js_callback, which can be a string or `HTMLNode`.
+
+Usage example:
+
+```julia
+App() do session
+    f, ax, pl = scatter(1:4, markersize=100)
+    on_hover_callback = js\"\"\"(plot, index) => {
+        console.log(plot)
+        // return either a string, or an HTMLNode:
+        return "test: " + plot.name + " " + index
+    }
+    \"\"\"
+
+    # ToolTip(figurelike, js_callback; plots=plots_you_want_to_hover)
+    tooltip = WGLMakie.ToolTip(f, on_hover_callback; plots=pl)
+    return DOM.div(f, tooltip)
+end
+```
+"""
 struct ToolTip
     scene::Scene
     callback::JSServe.JSCode
@@ -84,7 +109,6 @@ const POPUP_CSS = JSServe.Asset(joinpath(@__DIR__, "popup.css"))
 
 function JSServe.jsrender(session::Session, tt::ToolTip)
     scene = tt.scene
-    popup_css = JSServe.Asset("popup.css")
     popup =  DOM.div("", class="popup")
 
     JSServe.onload(session, popup, js"""
@@ -123,5 +147,5 @@ function JSServe.jsrender(session::Session, tt::ToolTip)
         })
     }
     """)
-    return DOM.span(JSServe.jsrender(session, popup_css), popup)
+    return DOM.span(JSServe.jsrender(session, POPUP_CSS), popup)
 end
