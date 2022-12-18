@@ -52,7 +52,7 @@ function TextureAtlas(; resolution=2048, pix_per_glyph=64, glyph_padding=12, dow
     return TextureAtlas(
         RectanglePacker(Rect2{Int32}(0, 0, resolution, resolution)),
         Dict{UInt32, Int}(),
-        # We use float max here to avoid texture bleed. See #2096
+        # We use the maximum distance of a glyph as a background to reduce texture bleed. See #2096
         fill(Float16(0.5pix_per_glyph + glyph_padding), resolution, resolution),
         Vec4f[],
         pix_per_glyph,

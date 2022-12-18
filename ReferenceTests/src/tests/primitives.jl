@@ -328,3 +328,54 @@ end
     marker = [Polygon(p_big, [p_small]), Polygon(reverse(p_big), [p_small]), Polygon(p_big, [reverse(p_small)]), Polygon(reverse(p_big), [reverse(p_small)])]
     scatter(1:4, fill(0, 4), marker=marker, markersize=100, color=1:4, axis=(limits=(0, 5, -1, 1),))
 end
+
+function centered_rect(w, h)
+    wh, hh = w/2, h/2
+    return Point2f[(-wh, -hh), (-wh, hh), (wh, hh), (wh, -hh)]
+end
+
+function create_marker(inner)
+    p_big = decompose(Point2f, Circle(Point2f(0), 0.5))
+    p_small = decompose(Point2f, Circle(Point2f(0), inner))
+    marker = Polygon(p_big, [p_small])
+    return Makie.to_spritemarker(marker)
+end
+
+function create_rect(inner)
+    p_big = centered_rect(1, 1)
+    p_small = centered_rect(inner, inner)
+    marker = Polygon(p_big, [p_small])
+    return Makie.to_spritemarker(marker)
+end
+
+function plot_test!(scene, xoffset, yoffset, inner, reverse=true, marker=create_marker)
+    bpath = marker(inner)
+    p = [Point2f(xoffset, yoffset) .+ 150]
+    if reverse
+        scatter!(scene, p, marker=bpath, markersize=280, color=:black, space=:pixel)
+        scatter!(scene, p, marker=Rect, markersize=280, color=:red, space=:pixel)
+    else
+        scatter!(scene, p, marker=Rect, markersize=280, color=:red, space=:pixel)
+        scatter!(scene, p, marker=bpath, markersize=280, color=:black, space=:pixel)
+    end
+end
+
+function plot_row!(scene, yoffset, reverse)
+    plot_test!(scene, 0, yoffset + 0, 0.4, reverse)
+    plot_test!(scene, 300, yoffset + 0, 0.3, reverse)
+    plot_test!(scene, 0, yoffset + 300, 0.2, reverse)
+    plot_test!(scene, 300, yoffset + 300, 0.1, reverse)
+
+    plot_test!(scene, 600, yoffset + 0, 0.4, reverse, create_rect)
+    plot_test!(scene, 900, yoffset + 0, 0.3, reverse, create_rect)
+    plot_test!(scene, 600, yoffset + 300, 0.2, reverse, create_rect)
+    plot_test!(scene, 900, yoffset + 300, 0.1, reverse, create_rect)
+end
+
+@reference_test "marker/glyph alignment" begin
+    scene = Scene(resolution=(1200, 1200))
+    # Create differently sized cut outs, so that we have to write new values into the texture atlas!
+    plot_row!(scene, 0, false)
+    plot_row!(scene, 600, true)
+    scene
+end
