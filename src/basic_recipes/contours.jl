@@ -12,7 +12,7 @@ The attribute levels can be either
 
     an AbstractVector{<:Real} that lists n consecutive edges from low to high, which result in n-1 levels or bands
 
-To add contour labels, use `labels = true`, and pass additional label attributes such as `label_color`, `label_size`, `label_font`.
+To add contour labels, use `labels = true`, and pass additional label attributes such as `labelcolor`, `labelsize`, `labelfont`.
 
 ## Attributes
 $(ATTRIBUTES)
@@ -32,9 +32,9 @@ $(ATTRIBUTES)
         enable_depth = true,
         transparency = false,
         labels = false,
-        label_font = theme(scene, :font),
-        label_color = nothing,  # matches color by default
-        label_size = 10,  # arbitrary
+        labelfont = theme(scene, :font),
+        labelcolor = nothing,  # matches color by default
+        labelsize = 10,  # arbitrary
     )
 end
 
@@ -188,7 +188,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
 
     replace_automatic!(()-> zrange, plot, :colorrange)
 
-    labels, labelattrs... =  @extract plot (labels, label_size, label_color, label_font)
+    labels, labelattrs... =  @extract plot (labels, labelsize, labelcolor, labelfont)
     args = @extract plot (color, colormap, colorrange, alpha)
     level_colors = lift(color_per_level, args..., levels)
     cont_lines = lift(x, y, z, levels, level_colors, labels) do x, y, z, levels, level_colors, labels
@@ -212,7 +212,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         align = (:center, :center),
     )
 
-    lift(scene.camera.projectionview, scene.px_area, labels, labelattrs..., cont_lines) do _, _, labels, label_size, label_color, label_font, (_, _, str_col_pos)
+    lift(scene.camera.projectionview, scene.px_area, labels, labelattrs..., cont_lines) do _, _, labels, labelsize, labelcolor, labelfont, (_, _, str_col_pos)
         labels || return
         pos = texts.positions.val; empty!(pos)
         rot = texts.rotation.val; empty!(rot)
@@ -227,13 +227,13 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
             else
                 rot_from_horz
             end
-            push!(col, something(label_color, color))
+            push!(col, something(labelcolor, color))
             push!(rot, rot_from_vert)
             push!(lbl, str)
             push!(pos, p1)
         end
-        texts.fontsize.val = label_size
-        texts.font.val = label_font
+        texts.fontsize.val = labelsize
+        texts.font.val = labelfont
         notify(texts.text)
         nothing
     end
