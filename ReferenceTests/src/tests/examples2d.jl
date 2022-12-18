@@ -677,11 +677,11 @@ end
 end
 
 @reference_test "contour labels 2D" begin
-    circle = (x, y) -> 10(x^2 + y^2)
+    paraboloid = (x, y) -> 10(x^2 + y^2)
 
-    x = range(-4, 4; length=40)
-    y = range(-4, 4; length=60)
-    z = circle.(x, y')
+    x = range(-4, 4; length = 40)
+    y = range(-4, 4; length = 60)
+    z = paraboloid.(x, y')
 
     fig, ax, hm = heatmap(x, y, z)
     Colorbar(fig[1, 2], hm)

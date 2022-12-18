@@ -54,28 +54,31 @@ end
 angle(p1::Union{Vec2f,Point2f}, p2::Union{Vec2f,Point2f})::Float32 =
     atan(p2[2] - p1[2], p2[1] - p1[1])  # result in [-π, π]
 
-label_info(lev, col, vertices) =
-    (string(isinteger(lev) ? round(Int, lev) : lev), col, map(p -> to_ndim(Point3f, p, lev), Tuple(@view(vertices[1:3]))))
+label_info(lev, vertices, col) = (
+    string(isinteger(lev) ? round(Int, lev) : lev),
+    map(p -> to_ndim(Point3f, p, lev), Tuple(@view(vertices[1:3]))),
+    col,
+)
 
 function contourlines(::Type{<: Contour}, contours, cols, labels)
     points = Point2f[]
     colors = RGBA{Float32}[]
-    str_col_pos = Tuple{String,RGBA{Float32},NTuple{3,Point2f}}[]
+    str_pos_col = Tuple{String,NTuple{3,Point2f},RGBA{Float32}}[]
     for (color, c) in zip(cols, Contours.levels(contours))
         for elem in Contours.lines(c)
             append!(points, elem.vertices)
             push!(points, Point2f(NaN32))
             append!(colors, fill(color, length(elem.vertices) + 1))
-            labels && push!(str_col_pos, label_info(c.level, color, elem.vertices))
+            labels && push!(str_pos_col, label_info(c.level, elem.vertices, color))
         end
     end
-    points, colors, str_col_pos
+    points, colors, str_pos_col
 end
 
 function contourlines(::Type{<: Contour3d}, contours, cols, labels)
     points = Point3f[]
     colors = RGBA{Float32}[]
-    str_col_pos = Tuple{String,RGBA{Float32},NTuple{3,Point3f}}[]
+    str_pos_col = Tuple{String,NTuple{3,Point3f},RGBA{Float32}}[]
     for (color, c) in zip(cols, Contours.levels(contours))
         for elem in Contours.lines(c)
             for p in elem.vertices
@@ -83,10 +86,10 @@ function contourlines(::Type{<: Contour3d}, contours, cols, labels)
             end
             push!(points, Point3f(NaN32))
             append!(colors, fill(color, length(elem.vertices) + 1))
-            labels && push!(str_col_pos, label_info(c.level, color, elem.vertices))
+            labels && push!(str_pos_col, label_info(c.level, elem.vertices, color))
         end
     end
-    points, colors, str_col_pos
+    points, colors, str_pos_col
 end
 
 to_levels(x::AbstractVector{<: Number}, cnorm) = x
@@ -188,7 +191,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
 
     replace_automatic!(()-> zrange, plot, :colorrange)
 
-    labels, labelsize, labelcolor, labelfont =  @extract plot (labels, labelsize, labelcolor, labelfont)
+    labels, labelsize, labelfont, labelcolor =  @extract plot (labels, labelsize, labelfont, labelcolor)
     args = @extract plot (color, colormap, colorrange, alpha)
     level_colors = lift(color_per_level, args..., levels)
     cont_lines = lift(x, y, z, levels, level_colors, labels) do x, y, z, levels, level_colors, labels
@@ -214,13 +217,13 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         font = labelfont,
     )
 
-    lift(scene.camera.projectionview, scene.px_area, labels, labelcolor, cont_lines) do _, _, labels, labelcolor, (_, _, str_col_pos)
+    lift(scene.camera.projectionview, scene.px_area, labels, labelcolor, cont_lines) do _, _, labels, labelcolor, (_, _, str_pos_col)
         labels || return
         pos = texts.positions.val; empty!(pos)
         rot = texts.rotation.val; empty!(rot)
         col = texts.color.val; empty!(col)
         lbl = texts.text.val; empty!(lbl)
-        for (str, color, (p1, p2, p3)) in str_col_pos
+        for (str, (p1, p2, p3), color) in str_pos_col
             rot_from_horz::Float32 = angle(project(scene, p1), project(scene, p3))
             # transition from an angle from horizontal axis in [-π; π]
             # to a readable text with a rotation from vertical axis in [-π / 2; π / 2]
