@@ -372,7 +372,7 @@ function plot_row!(scene, yoffset, reverse)
     plot_test!(scene, 900, yoffset + 300, 0.1, reverse, create_rect)
 end
 
-@reference_test "marker/glyph alignment" begin
+@reference_test "marke glyph alignment" begin
     scene = Scene(resolution=(1200, 1200))
     # Create differently sized cut outs, so that we have to write new values into the texture atlas!
     plot_row!(scene, 0, false)
