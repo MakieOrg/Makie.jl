@@ -725,17 +725,8 @@ convert_attribute(s::SceneLike, x, key::Key, ::Key) = convert_attribute(s, x, ke
 convert_attribute(s::SceneLike, x, key::Key) = convert_attribute(x, key)
 convert_attribute(x, key::Key) = x
 
-"""
-    to_color(color)
-Converts a `color` symbol (e.g. `:blue`) to a color RGBA.
-"""
 convert_attribute(color, ::key"color") = to_color(color)
 
-"""
-    to_colormap(cm)
-
-Converts a colormap `cm` symbol/string (e.g. `:Spectral`) to a colormap RGB array.
-"""
 convert_attribute(colormap, ::key"colormap") = to_colormap(colormap)
 convert_attribute(rotation, ::key"rotation") = to_rotation(rotation)
 convert_attribute(font, ::key"font") = to_font(font)
@@ -802,16 +793,12 @@ convert_attribute(c, ::key"strokecolor") = to_color(c)
 
 convert_attribute(x::Nothing, ::key"linestyle") = x
 
-"""
-    `AbstractVector{<:AbstractFloat}` for denoting sequences of fill/nofill. e.g.
-
-[0.5, 0.8, 1.2] will result in 0.5 filled, 0.3 unfilled, 0.4 filled. 1.0 unit is one linewidth!
-"""
+#     `AbstractVector{<:AbstractFloat}` for denoting sequences of fill/nofill. e.g.
+# 
+# [0.5, 0.8, 1.2] will result in 0.5 filled, 0.3 unfilled, 0.4 filled. 1.0 unit is one linewidth!
 convert_attribute(A::AbstractVector, ::key"linestyle") = A
 
-"""
-    A `Symbol` equal to `:dash`, `:dot`, `:dashdot`, `:dashdotdot`
-"""
+# A `Symbol` equal to `:dash`, `:dot`, `:dashdot`, `:dashdotdot`
 convert_attribute(ls::Union{Symbol,AbstractString}, ::key"linestyle") = line_pattern(ls, :normal)
 
 function convert_attribute(ls::Tuple{<:Union{Symbol,AbstractString},<:Any}, ::key"linestyle")
@@ -1129,11 +1116,7 @@ function to_colormap(cg::PlotUtils.ColorGradient)::Vector{RGBAf}
     return to_colormap(getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), 256)))
 end
 
-"""
-    to_volume_algorithm(b, x)
-
-Enum values: `IsoValue` `Absorption` `MaximumIntensityProjection` `AbsorptionRGBA` `AdditiveRGBA` `IndexedAbsorptionRGBA`
-"""
+# Enum values: `IsoValue` `Absorption` `MaximumIntensityProjection` `AbsorptionRGBA` `AdditiveRGBA` `IndexedAbsorptionRGBA`
 function convert_attribute(value, ::key"algorithm")
     if isa(value, RaymarchAlgorithm)
         return Int32(value)
@@ -1146,9 +1129,7 @@ function convert_attribute(value, ::key"algorithm")
     end
 end
 
-"""
-Symbol/String: iso, absorption, mip, absorptionrgba, indexedabsorption
-"""
+# Symbol/String: iso, absorption, mip, absorptionrgba, indexedabsorption
 function convert_attribute(value::Union{Symbol, String}, k::key"algorithm")
     vals = Dict(
         :iso => IsoValue,
