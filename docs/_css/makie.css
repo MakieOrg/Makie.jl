@@ -800,3 +800,23 @@ button.copy-code:focus {
     outline: none;
 }
 
+.outdated-warning-overlay {
+    left: 0;
+    right: 0;
+    top: 0;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    background-color: #ffaba7;
+    color: rgba(0, 0, 0, 0.7);
+    border-bottom: 3px solid #da0b00;
+    padding: 10px 35px;
+    text-align: center;
+    font-size: 15px;
+}
+
+.outdated-warning-overlay a {
+    color: #2e63b8;
+}
+
+.outdated-warning-overlay a:hover {
+    color: #363636;
+}
