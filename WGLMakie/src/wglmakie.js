@@ -8,6 +8,7 @@ import {
     delete_scene,
     TEXTURE_ATLAS,
 } from "./Serialization.js";
+
 import { event2scene_pixel } from "./Camera.js";
 
 window.THREE = THREE;
@@ -311,8 +312,6 @@ export function pick_native(scene, x, y, w, h) {
         const p = id_to_plot[id];
         return [p ? p.plot_uuid : null, index];
     });
-    console.log(picked_plots_matrix);
-    console.log(w, h);
     const plot_matrix = { data: picked_plots_matrix, size: [w, h] };
 
     return [plot_matrix, plots];
@@ -321,7 +320,6 @@ export function pick_native(scene, x, y, w, h) {
 export function pick_closest(scene, xy, range) {
     const { picking_target } = scene.screen;
     const { width, height } = picking_target;
-    console.log(width, height, xy, range);
 
     if (!(1.0 <= xy[0] <= width && 1.0 <= xy[1] <= height)) {
         return [null, 0];
@@ -331,13 +329,10 @@ export function pick_closest(scene, xy, range) {
     const y0 = Math.max(1, xy[1] - range);
     const x1 = Math.min(width, Math.floor(xy[0] + range));
     const y1 = Math.min(height, Math.floor(xy[1] + range));
-    console.log("-0-----");
-    console.log(width, height, x0, y0, x1, y1);
     const dx = x1 - x0;
     const dy = y1 - y0;
     const [plot_data, _] = pick_native(scene, x0, y0, dx, dy);
     const plot_matrix = plot_data.data;
-    console.log(plot_matrix);
     let min_dist = range ^ 2;
     let selection = [null, 0];
     const x = xy[0] + 1 - x0;
@@ -360,7 +355,6 @@ export function pick_closest(scene, xy, range) {
 export function pick_sorted(scene, xy, range) {
     const { picking_target } = scene.screen;
     const { width, height } = picking_target;
-    console.log(width, height, xy, range);
 
     if (!(1.0 <= xy[0] <= width && 1.0 <= xy[1] <= height)) {
         return [null, 0];

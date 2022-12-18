@@ -183,7 +183,7 @@ function scatter_shader(scene::Scene, attributes)
 
     instance = uv_mesh(Rect2(-0.5f0, -0.5f0, 1f0, 1f0))
     # Don't send obs, since it's overwritten in JS to be updated by the camera
-    uniform_dict[:resolution] = scene.camera.resolution[]
+    uniform_dict[:resolution] = to_value(scene.camera.resolution)
 
     # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
     uniform_dict[:picking] = false

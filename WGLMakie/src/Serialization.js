@@ -1,4 +1,5 @@
 import * as Camera from "./Camera.js";
+import * as THREE from "https://cdn.esm.sh/v66/three@0.136/es2021/three.js";
 
 // global scene cache to look them up for dynamic operations in Makie
 // e.g. insert!(scene, plot) / delete!(scene, plot)
@@ -77,12 +78,21 @@ function convert_texture(data) {
     return tex;
 }
 
+function is_three_fixed_array(value) {
+    return (
+        value instanceof THREE.Vector2 ||
+        value instanceof THREE.Vector3 ||
+        value instanceof THREE.Vector4 ||
+        value instanceof THREE.Matrix4
+    );
+}
+
 function to_uniform(data) {
     if (data.type !== undefined) {
         if (data.type == "Sampler") {
             return convert_texture(data);
         }
-        throw new Error(`Type ${data.type} not known`)
+        throw new Error(`Type ${data.type} not known`);
     }
     if (Array.isArray(data) || ArrayBuffer.isView(data)) {
         if (!data.every((x) => typeof x === "number")) {
@@ -112,12 +122,12 @@ function to_uniform(data) {
 function deserialize_uniforms(data) {
     const result = {};
     // Deno may change constructor names..so...
-    const uniform_constructor = new THREE.Uniform(2).constructor.name;
+
     for (const name in data) {
         const value = data[name];
         // this is already a uniform - happens when we attach additional
         // uniforms like the camera matrices in a later stage!
-        if (value.constructor.name == uniform_constructor) {
+        if (value instanceof THREE.Uniform) {
             // nothing needs to be converted
             result[name] = value;
         } else {
@@ -138,7 +148,7 @@ export function deserialize_plot(data) {
     mesh.name = data.name;
     mesh.frustumCulled = false;
     mesh.matrixAutoUpdate = false;
-    mesh.plot_uuid = data.uuid
+    mesh.plot_uuid = data.uuid;
     const update_visible = (v) => {
         mesh.visible = v;
         // don't return anything, since that will disable on_update callback
@@ -175,6 +185,7 @@ export function add_plot(scene, plot_data) {
         plot_data.uniforms.projection = identity;
         plot_data.uniforms.projectionview = identity;
     }
+
     plot_data.uniforms.resolution = cam.resolution;
 
     if (plot_data.uniforms.preprojection) {
@@ -188,7 +199,6 @@ export function add_plot(scene, plot_data) {
     plot_cache[plot_data.uuid] = p;
     scene.add(p);
 }
-
 
 function connect_uniforms(mesh, updater) {
     updater.on(([name, data]) => {
@@ -210,10 +220,15 @@ function connect_uniforms(mesh, updater) {
             }
             uniform.value.needsUpdate = true;
         } else {
-            uniform.value = data;
+            if (is_three_fixed_array(uniform.value)) {
+                uniform.value.fromArray(data)
+            } else {
+                uniform.value = data;
+            }
         }
     });
 }
+
 function create_texture(data) {
     const buffer = data.data;
     if (data.size.length == 3) {
@@ -351,7 +366,6 @@ function create_instanced_mesh(program) {
     return new THREE.Mesh(buffer_geometry, material);
 }
 
-
 function first(x) {
     return x[Object.keys(x)[0]];
 }
@@ -472,6 +486,4 @@ export function deserialize_scene(data, screen) {
     return scene;
 }
 
-export {
-    TEXTURE_ATLAS
-}
+export { TEXTURE_ATLAS };
