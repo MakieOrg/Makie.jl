@@ -12,7 +12,7 @@ The attribute levels can be either
 
     an AbstractVector{<:Real} that lists n consecutive edges from low to high, which result in n-1 levels or bands
 
-To add contour labels, use `labels = true`, and pass additional text attributes via the `label_attributes` namedtuple.
+To add contour labels, use `labels = true`, and pass additional label attributes such as `label_color`, `label_size`, `label_font`.
 
 ## Attributes
 $(ATTRIBUTES)
@@ -32,7 +32,9 @@ $(ATTRIBUTES)
         enable_depth = true,
         transparency = false,
         labels = false,
-        label_attributes = (;),
+        label_font = theme(scene, :font),
+        label_color = nothing,  # matches color by default
+        label_size = 10,  # arbitrary
     )
 end
 
@@ -52,28 +54,28 @@ end
 angle(p1::Union{Vec2f,Point2f}, p2::Union{Vec2f,Point2f})::Float32 =
     atan(p2[2] - p1[2], p2[1] - p1[1])  # result in [-π, π]
 
-label_info(lev, vertices) =
-    (string(isinteger(lev) ? round(Int, lev) : lev), map(p -> to_ndim(Point3f, p, lev), Tuple(@view(vertices[1:3]))))
+label_info(lev, col, vertices) =
+    (string(isinteger(lev) ? round(Int, lev) : lev), col, map(p -> to_ndim(Point3f, p, lev), Tuple(@view(vertices[1:3]))))
 
 function contourlines(::Type{<: Contour}, contours, cols, labels)
     points = Point2f[]
     colors = RGBA{Float32}[]
-    str_pos = Tuple{String,NTuple{3,Point2f}}[]
+    str_col_pos = Tuple{String,RGBA{Float32},NTuple{3,Point2f}}[]
     for (color, c) in zip(cols, Contours.levels(contours))
         for elem in Contours.lines(c)
             append!(points, elem.vertices)
             push!(points, Point2f(NaN32))
             append!(colors, fill(color, length(elem.vertices) + 1))
-            labels && push!(str_pos, label_info(c.level, elem.vertices))
+            labels && push!(str_col_pos, label_info(c.level, color, elem.vertices))
         end
     end
-    points, colors, str_pos
+    points, colors, str_col_pos
 end
 
 function contourlines(::Type{<: Contour3d}, contours, cols, labels)
     points = Point3f[]
     colors = RGBA{Float32}[]
-    str_pos = Tuple{String,NTuple{3,Point3f}}[]
+    str_col_pos = Tuple{String,RGBA{Float32},NTuple{3,Point3f}}[]
     for (color, c) in zip(cols, Contours.levels(contours))
         for elem in Contours.lines(c)
             for p in elem.vertices
@@ -81,10 +83,10 @@ function contourlines(::Type{<: Contour3d}, contours, cols, labels)
             end
             push!(points, Point3f(NaN32))
             append!(colors, fill(color, length(elem.vertices) + 1))
-            labels && push!(str_pos, label_info(c.level, elem.vertices))
+            labels && push!(str_col_pos, label_info(c.level, color, elem.vertices))
         end
     end
-    points, colors, str_pos
+    points, colors, str_col_pos
 end
 
 to_levels(x::AbstractVector{<: Number}, cnorm) = x
@@ -186,9 +188,10 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
 
     replace_automatic!(()-> zrange, plot, :colorrange)
 
-    labels, label_attributes, args... = @extract plot (labels, label_attributes, color, colormap, colorrange, alpha)
+    labels, labelattrs... =  @extract plot (labels, label_size, label_color, label_font)
+    args = @extract plot (color, colormap, colorrange, alpha)
     level_colors = lift(color_per_level, args..., levels)
-    result = lift(x, y, z, levels, level_colors, labels) do x, y, z, levels, level_colors, labels
+    cont_lines = lift(x, y, z, levels, level_colors, labels) do x, y, z, levels, level_colors, labels
         t = eltype(z)
         # Compute contours
         xv, yv = to_vector(x, size(z, 1), t), to_vector(y, size(z, 2), t)
@@ -203,17 +206,19 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     texts = text!(
         plot,
         Observable(P[]);
-        text = Observable(String[]),
+        color = Observable(RGBA{Float32}[]),
         rotation = Observable(Float32[]),
-        align = (:center, :center)
+        text = Observable(String[]),
+        align = (:center, :center),
     )
 
-    lift(scene.camera.projectionview, scene.px_area, labels, label_attributes, color, result) do _, _, labels, label_attributes, color, (_, _, str_pos)
+    lift(scene.camera.projectionview, scene.px_area, labels, labelattrs..., cont_lines) do _, _, labels, label_size, label_color, label_font, (_, _, str_col_pos)
         labels || return
         pos = texts.positions.val; empty!(pos)
         rot = texts.rotation.val; empty!(rot)
+        col = texts.color.val; empty!(col)
         lbl = texts.text.val; empty!(lbl)
-        for (str, (p1, p2, p3)) in str_pos
+        for (str, color, (p1, p2, p3)) in str_col_pos
             rot_from_horz::Float32 = angle(project(scene, p1), project(scene, p3))
             # transition from an angle from horizontal axis in [-π; π]
             # to a readable text with a rotation from vertical axis in [-π / 2; π / 2]
@@ -222,14 +227,13 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
             else
                 rot_from_horz
             end
+            push!(col, something(label_color, color))
             push!(rot, rot_from_vert)
             push!(lbl, str)
             push!(pos, p1)
         end
-        texts.color.val = color
-        for (k, v) in label_attributes
-            getproperty(texts, k).val = v[]
-        end
+        texts.fontsize.val = label_size
+        texts.font.val = label_font
         notify(texts.text)
         nothing
     end
@@ -243,7 +247,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     end
 
     masked_lines = lift(labels, bboxes) do labels, bboxes
-        segments = result.val[1]
+        segments = cont_lines.val[1]
         labels || return segments
         n = 1
         bb = bboxes[n]
@@ -272,7 +276,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
 
     lines!(
         plot, masked_lines;
-        color = lift(x -> x[2], result),
+        color = lift(x -> x[2], cont_lines),
         linewidth = plot.linewidth,
         inspectable = plot.inspectable,
         transparency = plot.transparency,

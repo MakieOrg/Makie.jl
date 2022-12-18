@@ -694,13 +694,12 @@ end
     fig = Figure()
     Axis3(fig[1, 1])
 
-    label_attributes = (; fontsize = 10)
     xs = ys = range(-.5, .5; length = 50)
     zs = @. √(xs^2 + ys'^2)
 
     levels = .025:.05:.475
-    contour3d!(-zs; levels = -levels, labels = true, label_attributes, color = :blue)
-    contour3d!(+zs; levels = +levels, labels = true, label_attributes, color = :red)
+    contour3d!(-zs; levels = -levels, labels = true, color = :blue)
+    contour3d!(+zs; levels = +levels, labels = true, color = :red)
     fig
 end
 
