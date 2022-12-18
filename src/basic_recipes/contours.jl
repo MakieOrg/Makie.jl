@@ -125,15 +125,15 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
         cmap = to_colormap(_cmap)
         v_interval = cliprange[1] .. cliprange[2]
         # resample colormap and make the empty area between iso surfaces transparent
-        return map(1:N) do i
+        map(1:N) do i
             i01 = (i-1) / (N - 1)
             c = Makie.interpolated_getindex(cmap, i01)
             isoval = vrange[1] + (i01 * (vrange[2] - vrange[1]))
             line = reduce(levels, init = false) do v0, level
-                (isoval in v_interval) || return false
-                v0 || (abs(level - isoval) <= iso_eps)
+                isoval in v_interval || return false
+                v0 || abs(level - isoval) <= iso_eps
             end
-            return RGBAf(Colors.color(c), line ? alpha : 0.0)
+            RGBAf(Colors.color(c), line ? alpha : 0.0)
         end
     end
 
@@ -142,6 +142,11 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     attr[:colormap] = cmap
     attr[:algorithm] = 7
     pop!(attr, :levels)
+    # unused attributes
+    pop!(attr, :labels)
+    pop!(attr, :labelfont)
+    pop!(attr, :labelsize)
+    pop!(attr, :labelcolor)
     volume!(plot, attr, x, y, z, volume)
 end
 
@@ -191,7 +196,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
 
     replace_automatic!(()-> zrange, plot, :colorrange)
 
-    labels, labelsize, labelfont, labelcolor =  @extract plot (labels, labelsize, labelfont, labelcolor)
+    @extract plot (labels, labelsize, labelfont, labelcolor)
     args = @extract plot (color, colormap, colorrange, alpha)
     level_colors = lift(color_per_level, args..., levels)
     cont_lines = lift(x, y, z, levels, level_colors, labels) do x, y, z, levels, level_colors, labels
@@ -217,7 +222,8 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         font = labelfont,
     )
 
-    lift(scene.camera.projectionview, scene.px_area, labels, labelcolor, cont_lines) do _, _, labels, labelcolor, (_, _, str_pos_col)
+    lift(scene.camera.projectionview, scene.px_area, labels, labelcolor, cont_lines) do _, _,
+            labels, labelcolor, (_, _, str_pos_col)
         labels || return
         pos = texts.positions.val; empty!(pos)
         rot = texts.rotation.val; empty!(rot)
