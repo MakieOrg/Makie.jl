@@ -53,11 +53,18 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
         Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => WGL.pick_sorted(scene, $(xy_vec), $(range)))
     """)
     lookup = plot_lookup(scene)
-    @show selection
     return map(selection) do (plot_id, index)
         return (lookup[plot_id], index + 1)
     end
 end
+
+
+function Makie.pick(scene::Scene, screen::Screen, xy) where Screen
+    plot_matrix = pick_native(screen, Rect2i(xy..., 1, 1))
+    @assert size(plot_matrix) == (1, 1)
+    return plot_matrix[1, 1]
+end
+
 
 struct ToolTip
     scene::Scene
