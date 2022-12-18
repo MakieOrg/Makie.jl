@@ -686,7 +686,11 @@ end
     fig, ax, hm = heatmap(x, y, z)
     Colorbar(fig[1, 2], hm)
 
-    contour!(ax, x, y, z; color = :red, levels = 0:20:100, labels = true)
+    contour!(
+        ax, x, y, z;
+        color = :red, levels = 0:20:100, labels = true,
+        labelsize = 15, labelfont = :bold, labelcolor = :orange,
+    )
     fig
 end
 
@@ -699,7 +703,7 @@ end
 
     levels = .025:.05:.475
     contour3d!(-zs; levels = -levels, labels = true, color = :blue)
-    contour3d!(+zs; levels = +levels, labels = true, color = :red)
+    contour3d!(+zs; levels = +levels, labels = true, color = :red, labelcolor = :black)
     fig
 end
 

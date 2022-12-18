@@ -188,7 +188,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
 
     replace_automatic!(()-> zrange, plot, :colorrange)
 
-    labels, labelattrs... =  @extract plot (labels, labelsize, labelcolor, labelfont)
+    labels, labelsize, labelcolor, labelfont =  @extract plot (labels, labelsize, labelcolor, labelfont)
     args = @extract plot (color, colormap, colorrange, alpha)
     level_colors = lift(color_per_level, args..., levels)
     cont_lines = lift(x, y, z, levels, level_colors, labels) do x, y, z, levels, level_colors, labels
@@ -210,9 +210,11 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         rotation = Observable(Float32[]),
         text = Observable(String[]),
         align = (:center, :center),
+        fontsize = labelsize,
+        font = labelfont,
     )
 
-    lift(scene.camera.projectionview, scene.px_area, labels, labelattrs..., cont_lines) do _, _, labels, labelsize, labelcolor, labelfont, (_, _, str_col_pos)
+    lift(scene.camera.projectionview, scene.px_area, labels, labelcolor, cont_lines) do _, _, labels, labelcolor, (_, _, str_col_pos)
         labels || return
         pos = texts.positions.val; empty!(pos)
         rot = texts.rotation.val; empty!(rot)
@@ -227,13 +229,11 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
             else
                 rot_from_horz
             end
-            push!(col, something(labelcolor, color))
+            push!(col, labelcolor === nothing ? color : to_color(labelcolor))
             push!(rot, rot_from_vert)
             push!(lbl, str)
             push!(pos, p1)
         end
-        texts.fontsize.val = labelsize
-        texts.font.val = labelfont
         notify(texts.text)
         nothing
     end
