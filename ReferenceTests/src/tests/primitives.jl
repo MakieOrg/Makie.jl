@@ -352,30 +352,65 @@ function plot_test!(scene, xoffset, yoffset, inner, reverse=true, marker=create_
     bpath = marker(inner)
     p = [Point2f(xoffset, yoffset) .+ 150]
     if reverse
-        scatter!(scene, p, marker=bpath, markersize=280, color=:black, space=:pixel)
-        scatter!(scene, p, marker=Rect, markersize=280, color=:red, space=:pixel)
+        scatter!(scene, p, marker=bpath, markersize=280, color=:black)
+        scatter!(scene, p, marker=Rect, markersize=280, color=:red)
     else
-        scatter!(scene, p, marker=Rect, markersize=280, color=:red, space=:pixel)
-        scatter!(scene, p, marker=bpath, markersize=280, color=:black, space=:pixel)
+        scatter!(scene, p, marker=Rect, markersize=280, color=:red)
+        scatter!(scene, p, marker=bpath, markersize=280, color=:black)
     end
 end
 
 function plot_row!(scene, yoffset, reverse)
+    # Create differently sized cut outs, so that we have to write new values into the texture atlas!
     plot_test!(scene, 0, yoffset + 0, 0.4, reverse)
     plot_test!(scene, 300, yoffset + 0, 0.3, reverse)
-    plot_test!(scene, 0, yoffset + 300, 0.2, reverse)
-    plot_test!(scene, 300, yoffset + 300, 0.1, reverse)
-
     plot_test!(scene, 600, yoffset + 0, 0.4, reverse, create_rect)
     plot_test!(scene, 900, yoffset + 0, 0.3, reverse, create_rect)
-    plot_test!(scene, 600, yoffset + 300, 0.2, reverse, create_rect)
-    plot_test!(scene, 900, yoffset + 300, 0.1, reverse, create_rect)
+end
+
+function draw_marker_test!(scene, marker, center; markersize=300)
+    # scatter!(scene, center, distancefield=matr, uv_offset_width=Vec4f(0, 0, 1, 1), markersize=600)
+    scatter!(scene, center, marker=marker, markersize=markersize, markerspace=:pixel)
+
+    font = Makie.defaultfont()
+    charextent = Makie.FreeTypeAbstraction.get_extent(font, marker)
+    inkbb = Makie.FreeTypeAbstraction.inkboundingbox(charextent)
+
+    # scale normalized bbox by font size
+    w, h = widths(inkbb) .* markersize
+    ox, oy = origin(inkbb) .* markersize
+    mhalf = markersize / 2
+    bbmin = center .+ Point2f(-w/2, -h/2)
+    inkbb_scaled = Rect2f(bbmin..., w, h)
+
+    lines!(scene, inkbb_scaled, linewidth=5, color=:green)
+    points = Point2f[(center[1], center[2] - h/2), (center[1], center[2] + h/2), (center[1] - w/2, center[2]), (center[1] + w/2, center[2])]
+    linesegments!(scene, points, color=:red)
+
+    scene
 end
 
 @reference_test "marke glyph alignment" begin
     scene = Scene(resolution=(1200, 1200))
-    # Create differently sized cut outs, so that we have to write new values into the texture atlas!
+    campixel!(scene)
+    # marker is in front, so it should not be smaller than the background rectangle
     plot_row!(scene, 0, false)
-    plot_row!(scene, 600, true)
+    # marker is in the background, so one shouldnt see a single pixel of the marker
+    plot_row!(scene, 300, true)
+
+    center = Point2f(size(scene) ./ 2)
+
+    # Markers should be well aligned to the red cross and just about touch the green
+    # boundingbox!
+    draw_marker_test!(scene, 'x', Point2f(150, 750); markersize=550)
+    draw_marker_test!(scene, 'X', Point2f(450, 750); markersize=400)
+    draw_marker_test!(scene, 'I', Point2f(750, 750); markersize=400)
+    draw_marker_test!(scene, 'O', Point2f(1050, 750); markersize=300)
+
+    draw_marker_test!(scene, 'L', Point2f(150, 1050); markersize=350)
+    draw_marker_test!(scene, 'Y', Point2f(450, 1050); markersize=350)
+    draw_marker_test!(scene, 'y', Point2f(750, 1050); markersize=350)
+    draw_marker_test!(scene, 'u', Point2f(1050, 1050); markersize=500)
+
     scene
 end

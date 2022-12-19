@@ -327,9 +327,9 @@ function sdistancefield(img, downsample, pad)
 
     # for the downsampling, we need to make sure that
     # we can divide the image size by `downsample` without reminder
-    
-    # Note: This adds extra space with `ceil` and removes space with `floor`. 
-    # This effectively shrinks or enlarges the glyph, doing the opposite to the 
+
+    # Note: This adds extra space with `ceil` and removes space with `floor`.
+    # This effectively shrinks or enlarges the glyph, doing the opposite to the
     # rendered marker (as it is scaled up to the same size either way)
     dividable_size = ceil.(Int, padded_size ./ downsample) .* downsample
 
@@ -387,7 +387,7 @@ function render(atlas::TextureAtlas, b::BezierPath)
     pad = atlas.glyph_padding
     pixelsize = atlas.pix_per_glyph
 
-    # `sdf` may adjust the size of the source image to make it dividable by 
+    # `sdf` may adjust the size of the source image to make it dividable by
     # downsample. To avoid this, we use a fitting size here.
     source_size = floor(Int, 256 / downsample) * downsample
     bitmap = render_path(b, source_size)
