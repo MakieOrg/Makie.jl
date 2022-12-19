@@ -1,5 +1,3 @@
-const BEZIERPATH_BITMAP_SIZE = Ref(256)
-
 using StableHashTraits
 
 struct MoveTo
@@ -488,8 +486,7 @@ function convert_command(c::CurveTo)
     false, 3, ftvec.([c.c1, c.c2, c.p]), [FT_Curve_Tag_Cubic, FT_Curve_Tag_Cubic, FT_Curve_Tag_On]
 end
 
-function render_path(path)
-    bitmap_size_px = BEZIERPATH_BITMAP_SIZE[]
+function render_path(path, bitmap_size_px = 256)
     # in the outline, 1 unit = 1/64px
     scale_factor = bitmap_size_px * 64
 
