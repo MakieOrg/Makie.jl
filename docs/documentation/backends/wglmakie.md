@@ -214,7 +214,7 @@ There is also a way to show a tooltip in Javascript directly, which needs to be 
 This means, we actually need to use `JSServe.App` to return a `DOM` object:
 
 \begin{showhtml}{}
-```
+```julia
 App() do session
     f, ax, pl = scatter(1:4, markersize=100)
     on_hover_callback = js"""(plot, index) => {
