@@ -43,8 +43,6 @@ get_uv_img(atlas::TextureAtlas, glyph, font) = get_uv_img(atlas, primitive_uv_of
 get_uv_img(atlas::TextureAtlas, path) = get_uv_img(atlas, primitive_uv_offset_width(atlas, path, nothing))
 function get_uv_img(atlas::TextureAtlas, uv_rect::Vec4f)
     xmin, ymin, xmax, ymax = round.(Int, uv_rect .* Vec4f(size(atlas)..., size(atlas)...))
-    xmax = xmax + 1
-    ymax = ymax + 1
     return atlas.data[Rect(xmin, ymin, xmax - xmin, ymax - ymin)]
 end
 
@@ -306,10 +304,9 @@ function insert_glyph!(atlas::TextureAtlas, hash::UInt32, path_or_glyp::Union{Be
         idx_left_bottom = minimum(uv_pixel)
         idx_right_top = maximum(uv_pixel)
         # transform to normalized texture coordinates
-        # -1 for indexing offset
-        uv_left_bottom_pad = (idx_left_bottom) ./ tex_size
-        # TODO, why does 0.8 work best?
-        uv_right_top_pad = (idx_right_top .- 0.8) ./ tex_size
+        # these should be flush with outer borders of pixels
+        uv_left_bottom_pad = idx_left_bottom ./ tex_size
+        uv_right_top_pad = idx_right_top ./ tex_size
         uv_offset_rect = Vec4f(uv_left_bottom_pad..., uv_right_top_pad...)
         push!(atlas.uv_rectangles, uv_offset_rect)
         return length(atlas.uv_rectangles)
@@ -330,7 +327,7 @@ function sdistancefield(img, downsample, pad)
 
     # for the downsampling, we need to make sure that
     # we can divide the image size by `downsample` without reminder
-    dividable_size = ceil.(Int, padded_size ./ downsample) .* downsample
+    dividable_size = floor.(Int, padded_size ./ downsample) .* downsample
 
     in_or_out = fill(false, dividable_size)
     # the size we fill the image up to
