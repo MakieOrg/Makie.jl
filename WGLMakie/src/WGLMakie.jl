@@ -22,8 +22,8 @@ using ShaderAbstractions: InstancedProgram
 using GeometryBasics: StaticVector
 
 import Makie.FileIO
-using Makie: get_texture_atlas, glyph_uv_width!, SceneSpace, Pixel
-using Makie: attribute_per_char, glyph_uv_width!, layout_text
+using Makie: get_texture_atlas, SceneSpace, Pixel
+using Makie: attribute_per_char, layout_text
 using Makie: MouseButtonEvent, KeyEvent
 using Makie: apply_transform, transform_func_obs
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
@@ -56,11 +56,12 @@ $(Base.doc(ScreenConfig))
 function activate!(; screen_config...)
     Makie.set_active_backend!(WGLMakie)
     Makie.set_screen_config!(WGLMakie, screen_config)
-    Makie.set_glyph_resolution!(Makie.Low)
     return
 end
 
 const TEXTURE_ATLAS = Observable{Vector{Float32}}()
+
+wgl_texture_atlas() = Makie.get_texture_atlas(1024, 32)
 
 function __init__()
     # Activate WGLMakie as backend!
@@ -70,10 +71,10 @@ function __init__()
     # Makie.inline!(!browser_display)
     # We need to update the texture atlas whenever it changes!
     # We do this in three_plot!
-    TEXTURE_ATLAS[] = convert(Vector{Float32}, vec(get_texture_atlas().data))
+    TEXTURE_ATLAS[] = convert(Vector{Float32}, vec(wgl_texture_atlas().data))
 
     Makie.font_render_callback!() do sd, uv
-        TEXTURE_ATLAS[] = convert(Vector{Float32}, vec(get_texture_atlas().data))
+        TEXTURE_ATLAS[] = convert(Vector{Float32}, vec(wgl_texture_atlas().data))
     end
 end
 

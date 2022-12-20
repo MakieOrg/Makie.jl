@@ -36,7 +36,7 @@ export quiver, quiver!
 arrow_head(N, marker, quality) = marker
 function arrow_head(N, marker::Automatic, quality)
     if N == 2
-        return '▲'
+        return :utriangle
     else
         merge([
            _circle(Point3f(0), 0.5f0, Vec3f(0,0,-1), quality),

@@ -130,6 +130,7 @@ function scatter_shader(scene::Scene, attributes)
     uniform_dict = Dict{Symbol,Any}()
     uniform_dict[:image] = false
     marker = nothing
+    atlas = wgl_texture_atlas()
     if haskey(attributes, :marker)
         font = get(attributes, :font, Observable(Makie.defaultfont()))
         marker = lift(attributes[:marker]) do marker
@@ -139,10 +140,10 @@ function scatter_shader(scene::Scene, attributes)
 
         markersize = lift(Makie.to_2d_scale, attributes[:markersize])
 
-        msize, offset = Makie.marker_attributes(marker, markersize, font, attributes[:quad_offset])
+        msize, offset = Makie.marker_attributes(atlas, marker, markersize, font, attributes[:quad_offset])
         attributes[:markersize] = msize
         attributes[:quad_offset] = offset
-        attributes[:uv_offset_width] = Makie.primitive_uv_offset_width(marker)
+        attributes[:uv_offset_width] = Makie.primitive_uv_offset_width(atlas, marker, font)
         if to_value(marker) isa AbstractMatrix
             uniform_dict[:image] = Sampler(lift(el32convert, marker))
         end
@@ -171,7 +172,7 @@ function scatter_shader(scene::Scene, attributes)
     end
 
     if uniform_dict[:shape_type][] == 3
-        atlas = Makie.get_texture_atlas()
+        atlas = wgl_texture_atlas()
         uniform_dict[:distancefield] = NoDataTextureAtlas(size(atlas.data))
         uniform_dict[:atlas_texture_size] = Float32(size(atlas.data, 1)) # Texture must be quadratic
     else
@@ -248,9 +249,9 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         # the actual, new value gets then taken in the below lift with to_value
         gcollection = Observable(glyphcollection)
     end
-
+    atlas = wgl_texture_atlas()
     glyph_data = map(pos, gcollection, offset, transfunc, space) do pos, gc, offset, transfunc, space
-        Makie.text_quads(pos, to_value(gc), offset, transfunc, space)
+        Makie.text_quads(atlas, pos, to_value(gc), offset, transfunc, space)
     end
 
     # unpack values from the one signal:

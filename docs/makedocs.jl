@@ -172,16 +172,18 @@ function populate_stork_config(deploydecision)
     finally
         cd(wd)
     end
-    cp("__site/libs/stork/config.toml", "__site/libs/stork/config_filled.toml", force = true)
 
-    toml = TOML.parsefile("__site/libs/stork/config.toml")
-    open("__site/libs/stork/config_filled.toml", "w") do io
-        toml["input"]["files"] = map(Dict ∘ pairs, sites)
-        subf = deploydecision.subfolder
-        toml["input"]["url_prefix"] = isempty(subf) ? "" : "/" * subf * "/" # then url without / prefix
-        TOML.print(io, toml, sorted = true)
+    for file in ["config_box", "config_page"]
+        cp("__site/libs/stork/$(file).toml", "__site/libs/stork/$(file)_filled.toml", force = true)
+
+        toml = TOML.parsefile("__site/libs/stork/$(file).toml")
+        open("__site/libs/stork/$(file)_filled.toml", "w") do io
+            toml["input"]["files"] = map(Dict ∘ pairs, sites)
+            subf = deploydecision.subfolder
+            toml["input"]["url_prefix"] = isempty(subf) ? "/" : "/" * subf * "/" # then url without / prefix
+            TOML.print(io, toml, sorted = true)
+        end
     end
-
     return
 end
 
@@ -189,7 +191,8 @@ function run_stork()
     wd = pwd()
     try
         cd("__site/libs/stork")
-        run(`$stork build --input config_filled.toml --output index.st`)
+        run(`$stork build --input config_box_filled.toml --output index_box.st`)
+        run(`$stork build --input config_page_filled.toml --output index_page.st`)
     finally
         cd(wd)
     end
