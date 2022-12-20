@@ -305,8 +305,8 @@ function insert_glyph!(atlas::TextureAtlas, hash::UInt32, path_or_glyp::Union{Be
         idx_right_top = maximum(uv_pixel)
         # transform to normalized texture coordinates
         # these should be flush with outer borders of pixels
-        uv_left_bottom_pad = idx_left_bottom ./ tex_size
-        uv_right_top_pad = idx_right_top ./ tex_size
+        uv_left_bottom_pad = (idx_left_bottom .+ 0.5) ./ tex_size
+        uv_right_top_pad = (idx_right_top .- 0.5) ./ tex_size
         uv_offset_rect = Vec4f(uv_left_bottom_pad..., uv_right_top_pad...)
         push!(atlas.uv_rectangles, uv_offset_rect)
         return length(atlas.uv_rectangles)
@@ -472,7 +472,8 @@ function bezierpath_pad_scale_factor(atlas::TextureAtlas, bp)
     lbrt = glyph_uv_width!(atlas, bp)
     uv_width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
     full_pixel_size_in_atlas = uv_width * Vec2f(size(atlas))
-    full_pad = 2f0 * atlas.glyph_padding # left + right pad
+    # left + right pad - cutoff from pixel centering
+    full_pad = 2f0 * atlas.glyph_padding - 1 
     return full_pad ./ (full_pixel_size_in_atlas .- full_pad)
 end
 
