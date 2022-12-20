@@ -46,7 +46,7 @@ end
 
 @reference_test "streamplot with func" begin
     v(x::Point2{T}) where T = Point2{T}(x[2], 4 * x[1])
-    streamplot(v, -2..2, -2..2, arrow_size=10)
+    streamplot(v, -2..2, -2..2)
 end
 
 @reference_test "lines with func" lines(-1..1, x -> x^2)
