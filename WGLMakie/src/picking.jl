@@ -58,35 +58,41 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     end
 end
 
-
 function Makie.pick(scene::Scene, screen::Screen, xy)
     plot_matrix = pick_native(screen, Rect2i(xy..., 1, 1))
     @assert size(plot_matrix) == (1, 1)
     return plot_matrix[1, 1]
 end
 
-
-
 """
     ToolTip(figurelike, js_callback; plots=plots_you_want_to_hover)
 
-Returns a JSServe DOM element, which creates a popup whenever you click on a plot in `plots`.
+Returns a JSServe DOM element, which creates a popup whenever you click on a plot element in `plots`.
 The content of the popup is filled with the return value of js_callback, which can be a string or `HTMLNode`.
 
 Usage example:
 
 ```julia
 App() do session
-    f, ax, pl = scatter(1:4, markersize=100)
-    on_hover_callback = js\"\"\"(plot, index) => {
+    f, ax, pl = scatter(1:4, markersize=100, color=Float32[0.3, 0.4, 0.5, 0.6])
+    custom_info = ["a", "b", "c", "d"]
+    on_click_callback = js\"\"\"(plot, index) => {
+        // the plot object is currently just the raw THREEJS mesh
         console.log(plot)
+        // Which can be used to extract e.g. position or color:
+        const {pos, color} = plot.geometry.attributes
+        console.log(pos)
+        console.log(color)
+        const x = pos.array[index*2] // everything is a flat array in JS
+        const y = pos.array[index*2+1]
+        const c = Math.round(color.array[index] * 10) / 10 // rounding to a digit in JS
+        const custom = $(custom_info)[index]
         // return either a string, or an HTMLNode:
-        return "test: " + plot.name + " " + index
+        return "Point: <" + x + ", " + y + ">, value: " + c + " custom: " + custom
     }
     \"\"\"
 
-    # ToolTip(figurelike, js_callback; plots=plots_you_want_to_hover)
-    tooltip = WGLMakie.ToolTip(f, on_hover_callback; plots=pl)
+    tooltip = WGLMakie.ToolTip(f, on_click_callback; plots=pl)
     return DOM.div(f, tooltip)
 end
 ```

@@ -215,6 +215,16 @@ function create_scene(
         camera.updateProjectionMatrix();
         const size = new THREE.Vector2();
         renderer.getDrawingBufferSize(size);
+        // BIG TODO here...
+        // We should only make the picking target as big as the area we're picking
+        // e.g. for just the mouse position it should be 1x1
+        // Or we should just always bind the target and render to it in one pass
+        // 1) One Pass:
+        //      Only works on WebGL 2.0, which is still not as widely supported
+        //      Also it's a bit more complicated to setup
+        // 2) Only Area we pick
+        //      It's currently not as easy to change the offset + area of the camera
+        //      So, we'll need to make that easier first
         const picking_target = new THREE.WebGLRenderTarget(size.x, size.y);
         const screen = { renderer, picking_target, camera, fps, canvas };
 
