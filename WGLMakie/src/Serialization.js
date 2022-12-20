@@ -161,6 +161,12 @@ export function deserialize_plot(data) {
     return mesh;
 }
 
+const ON_NEXT_INSERT = new Set()
+
+export function on_next_insert(f) {
+    ON_NEXT_INSERT.add(f)
+}
+
 export function add_plot(scene, plot_data) {
     // fill in the camera uniforms, that we don't sent in serialization per plot
     const cam = scene.wgl_camera;
@@ -198,6 +204,9 @@ export function add_plot(scene, plot_data) {
     const p = deserialize_plot(plot_data);
     plot_cache[plot_data.uuid] = p;
     scene.add(p);
+    // execute all next insert callbacks
+    const next_insert = new Set(ON_NEXT_INSERT);// copy
+    next_insert.forEach(f=> f())
 }
 
 function connect_uniforms(mesh, updater) {

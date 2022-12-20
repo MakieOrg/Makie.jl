@@ -7,6 +7,7 @@ import {
     deserialize_scene,
     delete_scene,
     TEXTURE_ATLAS,
+    on_next_insert,
 } from "./Serialization.js";
 
 import { event2scene_pixel } from "./Camera.js";
@@ -426,4 +427,5 @@ export {
     delete_scenes,
     create_scene,
     event2scene_pixel,
+    on_next_insert
 };

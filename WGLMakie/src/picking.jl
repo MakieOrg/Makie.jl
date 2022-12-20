@@ -59,7 +59,7 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
 end
 
 
-function Makie.pick(scene::Scene, screen::Screen, xy) where Screen
+function Makie.pick(scene::Scene, screen::Screen, xy)
     plot_matrix = pick_native(screen, Rect2i(xy..., 1, 1))
     @assert size(plot_matrix) == (1, 1)
     return plot_matrix[1, 1]

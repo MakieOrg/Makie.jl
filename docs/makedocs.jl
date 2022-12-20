@@ -2,7 +2,7 @@ using Pkg
 cd(@__DIR__)
 Pkg.activate(".")
 pkg"dev .. ../MakieCore ../CairoMakie ../GLMakie ../WGLMakie ../RPRMakie"
-pkg"add MeshIO GeometryBasics JSServe#master"
+pkg"add MeshIO GeometryBasics JSServe#sd/pluto"
 Pkg.instantiate()
 Pkg.precompile()
 

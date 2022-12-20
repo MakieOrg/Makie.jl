@@ -46,7 +46,22 @@ end
 
 function JSServe.print_js_code(io::IO, plot::AbstractPlot, context::IdDict)
     uuids = js_uuid.(Makie.flatten_plots(plot))
-    JSServe.print_js_code(io, js"""$(WGL).then(WGL=> WGL.find_plots($(uuids)))""", context)
+    # This is a bit more complicated then it has to be, since evaljs / on_document_load
+    # isn't guaranteed to run after plot initialization in an App... So, if we don't find any plots,
+    # we have to check again after inserting new plots
+    JSServe.print_js_code(io, js"""(new Promise(resolve => {
+        $(WGL).then(WGL=> {
+            const find = ()=> {
+                const plots = WGL.find_plots($(uuids))
+                if (plots.length > 0) {
+                    resolve(plots)
+                } else {
+                    WGL.on_next_insert(find)
+                }
+            };
+            find()
+        })
+    }))""", context)
 end
 
 function JSServe.print_js_code(io::IO, scene::Scene, context::IdDict)
