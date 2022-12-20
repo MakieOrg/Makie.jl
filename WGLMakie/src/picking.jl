@@ -86,7 +86,7 @@ App() do session
         const x = pos.array[index*2] // everything is a flat array in JS
         const y = pos.array[index*2+1]
         const c = Math.round(color.array[index] * 10) / 10 // rounding to a digit in JS
-        const custom = $(custom_info)[index]
+        const custom = \$(custom_info)[index]
         // return either a string, or an HTMLNode:
         return "Point: <" + x + ", " + y + ">, value: " + c + " custom: " + custom
     }
