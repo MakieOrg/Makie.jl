@@ -200,7 +200,7 @@ end
     sf = Observable(Base.Fix2(v, 0e0))
     title_str = Observable("t = 0.00")
     sp = streamplot(sf, -2..2, -2..2;
-                    linewidth=2,  arrow_size=20, colormap=:magma, axis=(;title=title_str))
+                    linewidth=2, colormap=:magma, axis=(;title=title_str))
     Record(sp, LinRange(0, 20, 5)) do i
         sf[] = Base.Fix2(v, i)
         title_str[] = "t = $(round(i; sigdigits=2))"
@@ -614,7 +614,7 @@ end
     )
     tooltip!(ax, Point2f(0), "below", placement = :below, outline_color = :red, outline_linestyle = :dot)
     tooltip!(
-        ax, 0, 0, text = "right", placement = :right, fontsize = 30, 
+        ax, 0, 0, text = "right", placement = :right, fontsize = 30,
         outline_linewidth = 5, offset = 30, triangle_size = 15,
         strokewidth = 2f0, strokecolor = :cyan
     )
