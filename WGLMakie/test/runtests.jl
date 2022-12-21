@@ -1,10 +1,29 @@
-using ElectronDisplay
-ElectronDisplay.CONFIG.showable = showable
-ElectronDisplay.CONFIG.single_window = true
-ElectronDisplay.CONFIG.focus = false
-using ImageMagick, FileIO
+using ImageMagick, FileIO, Electron
 using WGLMakie, Makie, Test
 using Pkg
+
+struct ElectronDisplay <: Base.Multimedia.AbstractDisplay
+    window::Electron.Window
+end
+
+function ElectronDisplay()
+    w = Electron.Window()
+    Electron.toggle_devtools(w)
+    return ElectronDisplay(w)
+end
+
+Base.displayable(d::ElectronDisplay, ::MIME{Symbol("text/html")}) = true
+
+function Base.display(ed::ElectronDisplay, app::App)
+    d = JSServe.HTTPServer.BrowserDisplay()
+    session_url = "/browser-display"
+    old_app = JSServe.route!(d.server, Pair{Any,Any}(session_url, app))
+    url = JSServe.online_url(d.server, "/browser-display")
+    return Electron.load(ed.window, JSServe.URI(url))
+end
+Base.Multimedia.pushdisplay(ElectronDisplay())
+
+
 path = normpath(joinpath(dirname(pathof(Makie)), "..", "ReferenceTests"))
 Pkg.develop(PackageSpec(path = path))
 using ReferenceTests
