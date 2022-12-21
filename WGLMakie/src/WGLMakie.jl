@@ -71,9 +71,10 @@ function __init__()
     # Makie.inline!(!browser_display)
     # We need to update the texture atlas whenever it changes!
     # We do this in three_plot!
-    TEXTURE_ATLAS[] = convert(Vector{Float32}, vec(wgl_texture_atlas().data))
+    atlas = wgl_texture_atlas()
+    TEXTURE_ATLAS[] = convert(Vector{Float32}, vec(atlas.data))
 
-    Makie.font_render_callback!() do sd, uv
+    Makie.font_render_callback!(atlas) do sd, uv
         TEXTURE_ATLAS[] = convert(Vector{Float32}, vec(wgl_texture_atlas().data))
     end
 end
