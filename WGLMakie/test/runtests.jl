@@ -1,6 +1,7 @@
 using ImageMagick, FileIO, Electron
 using WGLMakie, Makie, Test
 using Pkg
+using WGLMakie.JSServe
 
 struct ElectronDisplay <: Base.Multimedia.AbstractDisplay
     window::Electron.Window
