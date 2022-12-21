@@ -43,3 +43,20 @@ contour!(zs,levels=-1:0.1:1)
 f
 ```
 \end{examplefigure}
+
+One can also add labels and control label attributes such as `labelsize`, `labelcolor` or `labelfont`.
+
+\begin{examplefigure}{}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+
+
+himmelblau(x, y) = (x^2 + y - 11)^2 + (x + y^2 - 7)^2
+x = y = range(-6, 6; length = 100)
+z = himmelblau.(x, y')
+
+f, ax, ct = contour(x, y, z; labels = true, levels = 10.0.^range(0.3, 3.5; length = 10))
+f
+```
+\end{examplefigure}

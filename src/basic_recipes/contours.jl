@@ -54,11 +54,16 @@ end
 angle(p1::Union{Vec2f,Point2f}, p2::Union{Vec2f,Point2f})::Float32 =
     atan(p2[2] - p1[2], p2[1] - p1[1])  # result in [-π, π]
 
-label_info(lev, vertices, col) = (
-    string(isinteger(lev) ? round(Int, lev) : lev),
-    map(p -> to_ndim(Point3f, p, lev), Tuple(@view(vertices[1:3]))),
-    col,
-)
+function label_info(lev, vertices, col)
+    mid = ceil(Int, 0.5f0 * length(vertices))
+    pts = (vertices[max(firstindex(vertices), mid - 1)], vertices[mid], vertices[min(mid + 1, lastindex(vertices))])
+    lev_short = round(lev; digits = 2)
+    (
+        string(isinteger(lev_short) ? round(Int, lev_short) : lev_short),
+        map(p -> to_ndim(Point3f, p, lev), Tuple(pts)),
+        col,
+    )
+end
 
 function contourlines(::Type{<: Contour}, contours, cols, labels)
     points = Point2f[]
