@@ -132,12 +132,12 @@ end
 function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
     colormap = get_attribute(primitive, :colormap)::Vector{RGBAf}
     colorrange = get_attribute(primitive, :colorrange)::Union{Nothing, Vec2f}
-    transform = composed_transform_func(primitive)
+    colorscale = get_attribute(primitive, :colorscale)
     cmin, cmax = if isnothing(colorrange)
         # TODO, plot primitive should always expand automatic values
-        transform.(Vec2f(extrema_nan(numbers)))
+        colorscale.(Vec2f(extrema_nan(numbers)))
     else
-        transform.(colorrange)
+        colorscale.(colorrange)
     end
 
     lowclip = get_attribute(primitive, :lowclip)
@@ -145,7 +145,7 @@ function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
     nan_color = get_attribute(primitive, :nan_color, RGBAf(0,0,0,0))
 
     return map(numbers) do number
-        scaled_number = transform(Float64(number))  # ints don't work in interpolated_getindex
+        scaled_number = colorscale(Float64(number))  # ints don't work in interpolated_getindex
         if isnan(scaled_number)
             return nan_color
         elseif !isnothing(lowclip) && scaled_number < cmin

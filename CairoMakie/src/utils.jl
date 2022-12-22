@@ -122,14 +122,13 @@ function to_cairo_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
 end
 
 function to_rgba_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
-    Makie.@get_attribute attributes (colormap, colorrange, nan_color, lowclip, highclip)
-    transform = Makie.composed_transform_func(attributes)
+    Makie.@get_attribute attributes (colormap, colorrange, colorscale, nan_color, lowclip, highclip)
     nan_color = Makie.to_color(nan_color)
     lowclip = isnothing(lowclip) ? lowclip : Makie.to_color(lowclip)
     highclip = isnothing(highclip) ? highclip : Makie.to_color(highclip)
 
-    colorrange = transform.(colorrange)
-    [get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip) for pixel in transform.(img)]
+    colorrange = colorscale.(colorrange)
+    [get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip) for pixel in colorscale.(img)]
 end
 
 to_rgba_image(img::AbstractMatrix{<: Colorant}, attributes) = RGBAf.(img)

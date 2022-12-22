@@ -46,6 +46,7 @@ function Colorbar(fig_or_scene, heatmap::Union{Heatmap, Image}; kwargs...)
         limits = heatmap.colorrange,
         highclip = heatmap.highclip,
         lowclip = heatmap.lowclip,
+        scale = heatmap.colorscale,
         kwargs...
     )
 end
