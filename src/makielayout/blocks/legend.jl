@@ -186,7 +186,7 @@ function initialize_block!(leg::Legend,
                 push!(titletexts, nothing)
             else
                 push!(titletexts, Label(scene, text = title, font = leg.titlefont, color = leg.titlecolor,
-                    textsize = leg.titlesize, halign = leg.titlehalign, valign = leg.titlevalign))
+                    fontsize = leg.titlesize, halign = leg.titlehalign, valign = leg.titlevalign))
             end
 
             etexts = []
@@ -196,12 +196,14 @@ function initialize_block!(leg::Legend,
                 # fill missing entry attributes with those carried by the legend
                 merge!(e.attributes, preset_attrs)
 
+                isnothing(e.label[]) && continue
+
                 # create the label
                 justification = map(leg.labeljustification, e.labelhalign) do lj, lha
                     return lj isa Automatic ? lha : lj
                 end
                 push!(etexts,
-                      Label(scene; text=e.label, textsize=e.labelsize, font=e.labelfont, justification=justification,
+                      Label(scene; text=e.label, fontsize=e.labelsize, font=e.labelfont, justification=justification,
                             color=e.labelcolor, halign=e.labelhalign, valign=e.labelvalign))
 
                 # create the patch rectangle
@@ -309,7 +311,7 @@ legendelements(le::LegendElement, legend) = LegendElement[le]
 legendelements(les::AbstractArray{<:LegendElement}, legend) = LegendElement[les...]
 
 
-function LegendEntry(label::AbstractString, contentelements::AbstractArray, legend; kwargs...)
+function LegendEntry(label::Optional{AbstractString}, contentelements::AbstractArray, legend; kwargs...)
     attrs = Attributes(label = label)
 
     kwargattrs = Attributes(kwargs)
@@ -319,7 +321,7 @@ function LegendEntry(label::AbstractString, contentelements::AbstractArray, lege
     LegendEntry(elems, attrs)
 end
 
-function LegendEntry(label::AbstractString, contentelement, legend; kwargs...)
+function LegendEntry(label::Optional{AbstractString}, contentelement, legend; kwargs...)
     attrs = Attributes(label = label)
 
     kwargattrs = Attributes(kwargs)
@@ -464,7 +466,7 @@ one content element. A content element can be an `AbstractPlot`, an array of
 """
 function Legend(fig_or_scene,
         contents::AbstractArray,
-        labels::AbstractArray{<:AbstractString},
+        labels::AbstractArray{<:Optional{AbstractString}},
         title::Optional{<:AbstractString} = nothing;
         kwargs...)
 

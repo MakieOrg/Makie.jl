@@ -71,13 +71,9 @@ function register_events!(ax, scene)
 
     register_interaction!(ax, :limitreset, LimitReset())
 
-    register_interaction!(ax,
-        :scrollzoom,
-        ScrollZoom(0.1, Ref{Any}(nothing), Ref{Any}(0), Ref{Any}(0), 0.2))
+    register_interaction!(ax, :scrollzoom, ScrollZoom(0.1, 0.2))
 
-    register_interaction!(ax,
-        :dragpan,
-        DragPan(Ref{Any}(nothing), Ref{Any}(0), Ref{Any}(0), 0.2))
+    register_interaction!(ax, :dragpan, DragPan(0.2))
 
     return
 end
@@ -86,7 +82,8 @@ function update_axis_camera(camera::Camera, t, lims, xrev::Bool, yrev::Bool)
     nearclip = -10_000f0
     farclip = 10_000f0
 
-    tlims = Makie.apply_transform(t, lims)
+    # we are computing transformed camera position, so this isn't space dependent
+    tlims = Makie.apply_transform(t, lims) 
 
     left, bottom = minimum(tlims)
     right, top = maximum(tlims)
@@ -319,7 +316,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         flipped = xaxis_flipped, ticklabelrotation = ax.xticklabelrotation,
         ticklabelalign = ax.xticklabelalign, labelsize = ax.xlabelsize,
         labelpadding = ax.xlabelpadding, ticklabelpad = ax.xticklabelpad, labelvisible = ax.xlabelvisible,
-        label = ax.xlabel, labelfont = ax.xlabelfont, ticklabelfont = ax.xticklabelfont, ticklabelcolor = ax.xticklabelcolor, labelcolor = ax.xlabelcolor, tickalign = ax.xtickalign,
+        label = ax.xlabel, labelfont = ax.xlabelfont, labelrotation = ax.xlabelrotation, ticklabelfont = ax.xticklabelfont, ticklabelcolor = ax.xticklabelcolor, labelcolor = ax.xlabelcolor, tickalign = ax.xtickalign,
         ticklabelspace = ax.xticklabelspace, ticks = ax.xticks, tickformat = ax.xtickformat, ticklabelsvisible = ax.xticklabelsvisible,
         ticksvisible = ax.xticksvisible, spinevisible = xspinevisible, spinecolor = xspinecolor, spinewidth = ax.spinewidth,
         ticklabelsize = ax.xticklabelsize, trimspine = ax.xtrimspine, ticksize = ax.xticksize,
@@ -332,7 +329,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         flipped = yaxis_flipped, ticklabelrotation = ax.yticklabelrotation,
         ticklabelalign = ax.yticklabelalign, labelsize = ax.ylabelsize,
         labelpadding = ax.ylabelpadding, ticklabelpad = ax.yticklabelpad, labelvisible = ax.ylabelvisible,
-        label = ax.ylabel, labelfont = ax.ylabelfont, ticklabelfont = ax.yticklabelfont, ticklabelcolor = ax.yticklabelcolor, labelcolor = ax.ylabelcolor, tickalign = ax.ytickalign,
+        label = ax.ylabel, labelfont = ax.ylabelfont, labelrotation = ax.ylabelrotation, ticklabelfont = ax.yticklabelfont, ticklabelcolor = ax.yticklabelcolor, labelcolor = ax.ylabelcolor, tickalign = ax.ytickalign,
         ticklabelspace = ax.yticklabelspace, ticks = ax.yticks, tickformat = ax.ytickformat, ticklabelsvisible = ax.yticklabelsvisible,
         ticksvisible = ax.yticksvisible, spinevisible = yspinevisible, spinecolor = yspinecolor, spinewidth = ax.spinewidth,
         trimspine = ax.ytrimspine, ticklabelsize = ax.yticklabelsize, ticksize = ax.yticksize, flip_vertical_label = ax.flip_ylabel, reversed = ax.yreversed, tickwidth = ax.ytickwidth,
@@ -449,7 +446,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         topscene, subtitlepos,
         text = ax.subtitle,
         visible = ax.subtitlevisible,
-        textsize = ax.subtitlesize,
+        fontsize = ax.subtitlesize,
         align = titlealignnode,
         font = ax.subtitlefont,
         color = ax.subtitlecolor,
@@ -464,7 +461,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         topscene, titlepos,
         text = ax.title,
         visible = ax.titlevisible,
-        textsize = ax.titlesize,
+        fontsize = ax.titlesize,
         align = titlealignnode,
         font = ax.titlefont,
         color = ax.titlecolor,
@@ -1307,8 +1304,8 @@ function Base.delete!(ax::Axis, plot::AbstractPlot)
 end
 
 function Base.empty!(ax::Axis)
-    for plot in copy(ax.scene.plots)
-        delete!(ax, plot)
+    while !isempty(ax.scene.plots)
+        delete!(ax, ax.scene.plots[end])
     end
     ax
 end
