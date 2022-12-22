@@ -27,6 +27,7 @@ and vertical positions `ys`.
 - `model::Makie.Mat4f` sets a model matrix for the plot. This replaces adjustments made with `translate!`, `rotate!` and `scale!`.
 - `color` sets the color of the plot. It can be given as a named color `Symbol` or a `Colors.Colorant`. Transparency can be included either directly as an alpha value in the `Colorant` or as an additional float in a tuple `(color, alpha)`. The color can also be set for each scattered marker by passing a `Vector` of colors or be used to index the `colormap` by passing a `Real` number or `Vector{<: Real}`.
 - `colormap::Union{Symbol, Vector{<:Colorant}} = :viridis` sets the colormap from which the band colors are sampled.
+- `colorscale::Function = identity` color transform function.
 
 ## Attributes
 $(ATTRIBUTES)
@@ -36,6 +37,7 @@ $(ATTRIBUTES)
         levels = 10,
         mode = :normal,
         colormap = theme(scene, :colormap),
+        colorscale = identity,
         extendlow = nothing,
         extendhigh = nothing,
         nan_color = :transparent,
@@ -164,6 +166,7 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:AbstractVector{<:Real},<:AbstractV
     poly!(c,
         polys,
         colormap = c._computed_colormap,
+        colorscale = c.colorscale,
         colorrange = colorrange,
         highclip = highcolor,
         lowclip = lowcolor,

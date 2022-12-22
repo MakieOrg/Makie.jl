@@ -110,7 +110,7 @@ convert_arguments(::Type{<: Arrows}, x, y, z, u, v, w) = (Point3f.(x, y, z), Vec
 
 function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) where {N, V}
     @extract arrowplot (
-        points, directions, colormap, normalize, align,
+        points, directions, colormap, colorscale, normalize, align,
         arrowtail, color, linecolor, linestyle, linewidth, lengthscale,
         arrowhead, arrowsize, arrowcolor, quality,
         # passthrough
@@ -160,7 +160,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
 
         linesegments!(
             arrowplot, headstart,
-            color = line_c, colormap = colormap, linestyle = linestyle,
+            color = line_c, colormap = colormap, colorscale = colorscale, linestyle = linestyle,
             linewidth = @lift($linewidth === automatic ? 1f0 : $linewidth),
             fxaa = fxaa_bool, inspectable = inspectable,
             transparency = transparency, visible = visible,
@@ -208,7 +208,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
             start, rotations = directions,
             marker = @lift(arrow_tail(3, $arrowtail, $quality)),
             markersize = msize,
-            color = line_c, colormap = colormap,
+            color = line_c, colormap = colormap, colorscale = colorscale, 
             fxaa = fxaa_bool, ssao = ssao,
             diffuse = diffuse,
             specular = specular, shininess = shininess, inspectable = inspectable,
@@ -219,7 +219,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
             start, rotations = directions,
             marker = @lift(arrow_head(3, $arrowhead, $quality)),
             markersize = markersize,
-            color = arrow_c, colormap = colormap,
+            color = arrow_c, colormap = colormap, colorscale = colorscale, 
             fxaa = fxaa_bool, ssao = ssao,
             diffuse = diffuse,
             specular = specular, shininess = shininess, inspectable = inspectable,

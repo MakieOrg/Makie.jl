@@ -18,6 +18,7 @@ $(ATTRIBUTES)
         marker = automatic,
         markersize = automatic,
         colormap = theme(scene, :colormap),
+        colorscale = identity,
         colorrange = automatic,
         framecolor = :black,
         framesize = 1,
@@ -76,7 +77,7 @@ function plot!(p::Spy)
         p,
         lift(first, xycol), color = lift(last, xycol),
         marker = marker, markersize = markersize, colorrange = p.colorrange,
-        colormap = p.colormap, inspectable = p.inspectable, visible = p.visible
+        colormap = p.colormap, colorscale = p.colorscale,inspectable = p.inspectable, visible = p.visible
     )
 
     lines!(p, rect, color = p.framecolor, linewidth = p.framesize, inspectable = p.inspectable,

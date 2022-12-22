@@ -13,6 +13,7 @@ function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}
         plot, lift(triangle_mesh, plot[1]),
         color = plot[:color],
         colormap = plot[:colormap],
+        colorscale = plot[:colorscale],
         colorrange = plot[:colorrange],
         lowclip = plot[:lowclip],
         highclip = plot[:highclip],
@@ -91,6 +92,7 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
         shading = plot.shading,
         color = plot.color,
         colormap = plot.colormap,
+        colorscale = plot.colorscale,
         colorrange = plot.colorrange,
         lowclip = plot.lowclip,
         highclip = plot.highclip,
@@ -136,6 +138,7 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
         highclip = get(plot, :highclip, automatic),
         nan_color = get(plot, :nan_color, :transparent),
         colormap = get(plot, :colormap, nothing),
+        colorscale = get(plot, :colorscale, identity),
         colorrange = get(plot, :colorrange, automatic)
     )
 

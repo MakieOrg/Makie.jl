@@ -12,6 +12,7 @@ $(ATTRIBUTES)
     Attributes(
         color = l_theme.color,
         colormap = l_theme.colormap,
+        colorscale = l_theme.colorscale,
         colorrange = get(l_theme.attributes, :colorrange, automatic),
         linestyle = l_theme.linestyle,
         linewidth = l_theme.linewidth,
@@ -45,6 +46,7 @@ function plot!(p::Combined{scatterlines, <:NTuple{N, Any}}) where N
         linestyle = p.linestyle,
         linewidth = p.linewidth,
         colormap = p.colormap,
+        colorscale = p.colorscale,
         colorrange = p.colorrange,
         inspectable = p.inspectable
     )
@@ -55,6 +57,7 @@ function plot!(p::Combined{scatterlines, <:NTuple{N, Any}}) where N
         marker = p.marker,
         markersize = p.markersize,
         colormap = p.markercolormap,
+        colorscale = p.colorscale,
         colorrange = p.markercolorrange,
         inspectable = p.inspectable
     )

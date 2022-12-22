@@ -29,6 +29,7 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
         fig_or_scene;
         colormap = plot.colormap,
         limits = plot.colorrange,
+        scale = plot.colorscale,
         kwargs...
     )
 end
@@ -71,6 +72,7 @@ function Colorbar(fig_or_scene, contourf::Union{Contourf, Tricontourf}; kwargs..
         limits = limits,
         lowclip = contourf._computed_extendlow,
         highclip = contourf._computed_extendhigh,
+        scale = contourf.colorscale,
         kwargs...
     )
 

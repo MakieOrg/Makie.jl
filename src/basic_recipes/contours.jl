@@ -22,6 +22,7 @@ $(ATTRIBUTES)
         default...,
         color = nothing,
         colormap = theme(scene, :colormap),
+        colorscale = identity, 
         colorrange = Makie.automatic,
         levels = 5,
         linewidth = 1.0,
@@ -126,19 +127,11 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     volume!(plot, attr, x, y, z, volume)
 end
 
-function color_per_level(color, colormap, colorrange, alpha, levels)
-    color_per_level(to_color(color), colormap, colorrange, alpha, levels)
-end
+color_per_level(color, args...) = color_per_level(to_color(color), args...)
+color_per_level(color::Colorant, _, _, _, _, levels) = fill(color, length(levels))
+color_per_level(colors::AbstractVector, args...) = color_per_level(to_colormap(colors), args...)
 
-function color_per_level(color::Colorant, colormap, colorrange, alpha, levels)
-    fill(color, length(levels))
-end
-
-function color_per_level(colors::AbstractVector, colormap, colorrange, alpha, levels)
-    color_per_level(to_colormap(colors), colormap, colorrange, alpha, levels)
-end
-
-function color_per_level(colors::AbstractVector{<: Colorant}, colormap, colorrange, alpha, levels)
+function color_per_level(colors::AbstractVector{<: Colorant}, _, _, _, _, levels)
     if length(levels) == length(colors)
         return colors
     else
@@ -149,10 +142,10 @@ function color_per_level(colors::AbstractVector{<: Colorant}, colormap, colorran
     end
 end
 
-function color_per_level(::Nothing, colormap, colorrange, a, levels)
+function color_per_level(::Nothing, colormap, colorscale, colorrange, a, levels)
     cmap = to_colormap(colormap)
     map(levels) do level
-        c = interpolated_getindex(cmap, level, colorrange)
+        c = interpolated_getindex(cmap, colorscale(level), colorscale.(colorrange))
         RGBAf(color(c), alpha(c) * a)
     end
 end
@@ -172,7 +165,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
 
     replace_automatic!(()-> zrange, plot, :colorrange)
 
-    args = @extract plot (color, colormap, colorrange, alpha)
+    args = @extract plot (color, colormap, colorscale, colorrange, alpha)
     level_colors = lift(color_per_level, args..., levels)
     result = lift(x, y, z, levels, level_colors) do x, y, z, levels, level_colors
         t = eltype(z)
