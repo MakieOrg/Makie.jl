@@ -360,6 +360,16 @@ function inv_symlog10(x, low, high)
     end
 end
 
+const CONCRETE_INVERSE_SCALES = Union{
+    typeof(log10),
+    typeof(log),
+    typeof(log2),
+    typeof(sqrt),
+    typeof(pseudolog10),
+    typeof(logit),
+    Symlog10,
+}
+
 inverse_transform(::typeof(identity)) = identity
 inverse_transform(::typeof(log10)) = exp10
 inverse_transform(::typeof(log)) = exp

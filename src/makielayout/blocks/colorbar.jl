@@ -77,6 +77,15 @@ function Colorbar(fig_or_scene, contourf::Union{Contourf, Tricontourf}; kwargs..
 
 end
 
+unscale_limits(lims, _) = lims  # noop
+function unscale_limits(lims, scale::CONCRETE_INVERSE_SCALES)
+    inverse_transform(scale).(lims)
+end
+
+colorbar_range(start, stop, length, _) = LinRange(start, stop, length)  # noop
+function colorbar_range(start, stop, length, scale::CONCRETE_INVERSE_SCALES)
+    inverse_transform(scale).(range(start, stop; length))
+end
 
 function initialize_block!(cb::Colorbar)
     blockscene = cb.blockscene
@@ -86,8 +95,6 @@ function initialize_block!(cb::Colorbar)
         end
         return something(limits, colorrange, (0, 1))
     end
-
-    unscaled_limits = @lift inverse_transform($(cb.scale)).($limits)
 
     onany(cb.size, cb.vertical) do sz, vertical
         if vertical
@@ -152,11 +159,11 @@ function initialize_block!(cb::Colorbar)
 
     map_is_categorical = lift(x -> x isa PlotUtils.CategoricalColorGradient, cgradient)
 
-    steps = lift(cgradient, cb.nsteps) do cgradient, n
+    steps = lift(cgradient, cb.nsteps, cb.scale) do cgradient, n, scale
         s = if cgradient isa PlotUtils.CategoricalColorGradient
             cgradient.values
         else
-            collect(LinRange(0, 1, n))
+            collect(colorbar_range(0, 1, n, scale))
         end::Vector{Float64}
     end
 
@@ -207,7 +214,7 @@ function initialize_block!(cb::Colorbar)
 
     continous_pixels = lift(cb.vertical, cb.nsteps, cgradient, limits, cb.scale) do v, n, grad, lims, scale
 
-        s_steps = scaled_steps(LinRange(0, 1, n), scale, lims)
+        s_steps = scaled_steps(colorbar_range(0, 1, n, scale), scale, lims)
         px = get.(Ref(grad), s_steps)
         v ? reshape(px, 1, n) : reshape(px, n, 1)
     end
@@ -269,24 +276,16 @@ function initialize_block!(cb::Colorbar)
     borderpoints = lift(barbox, highclip_tri_visible, lowclip_tri_visible) do bb, hcv, lcv
         if cb.vertical[]
             points = [bottomright(bb), topright(bb)]
-            if hcv
-                push!(points, highclip_tri[][3])
-            end
+            hcv && push!(points, highclip_tri[][3])
             append!(points, [topleft(bb), bottomleft(bb)])
-            if lcv
-                push!(points, lowclip_tri[][3])
-            end
+            lcv && push!(points, lowclip_tri[][3])
             push!(points, bottomright(bb))
             points
         else
             points = [bottomleft(bb), bottomright(bb)]
-            if hcv
-                push!(points, highclip_tri[][3])
-            end
+            hcv && push!(points, highclip_tri[][3])
             append!(points, [topright(bb), topleft(bb)])
-            if lcv
-                push!(points, lowclip_tri[][3])
-            end
+            lcv && push!(points, lowclip_tri[][3])
             push!(points, bottomleft(bb))
             points
         end
@@ -314,7 +313,7 @@ function initialize_block!(cb::Colorbar)
     end
 
     axis = LineAxis(blockscene, endpoints = axispoints, flipped = cb.flipaxis,
-        limits = unscaled_limits, ticklabelalign = cb.ticklabelalign, label = cb.label,
+        limits = limits, ticklabelalign = cb.ticklabelalign, label = cb.label,
         labelpadding = cb.labelpadding, labelvisible = cb.labelvisible, labelsize = cb.labelsize,
         labelcolor = cb.labelcolor, labelrotation = cb.labelrotation,
         labelfont = cb.labelfont, ticklabelfont = cb.ticklabelfont, ticks = cb.ticks, tickformat = cb.tickformat,
@@ -330,11 +329,7 @@ function initialize_block!(cb::Colorbar)
 
     cb.axis = axis
 
-
-    onany(axis.protrusion, cb.vertical, cb.flipaxis) do axprotrusion,
-            vertical, flipaxis
-
-
+    onany(axis.protrusion, cb.vertical, cb.flipaxis) do axprotrusion, vertical, flipaxis
         left, right, top, bottom = 0f0, 0f0, 0f0, 0f0
 
         if vertical
@@ -368,10 +363,7 @@ end
 
 Sets the space allocated for the ticklabels of the `Colorbar` to the minimum that is needed and returns that value.
 """
-function tight_ticklabel_spacing!(cb::Colorbar)
-    space = tight_ticklabel_spacing!(cb.axis)
-    return space
-end
+tight_ticklabel_spacing!(cb::Colorbar) = tight_ticklabel_spacing!(cb.axis)
 
 function scaled_steps(steps, scale, lims)
     # first scale to limits so we can actually apply the scale to the values
@@ -380,5 +372,5 @@ function scaled_steps(steps, scale, lims)
     # scale with scaling function
     s_limits_scaled = scale.(s_limits)
     # then rescale to 0 to 1
-    s_scaled = (s_limits_scaled .- s_limits_scaled[1]) ./ (s_limits_scaled[end] - s_limits_scaled[1])
+    (s_limits_scaled .- s_limits_scaled[1]) ./ (s_limits_scaled[end] - s_limits_scaled[1])
 end
