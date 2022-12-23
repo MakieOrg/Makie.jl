@@ -128,6 +128,9 @@ end
 const DISABLED_MIMES = Set{String}()
 const SUPPORTED_MIMES = Set([
     "text/html",
+    "application/vnd.webio.application+html",
+    "application/prs.juno.plotpane+html",
+    "juliavscode/html",
     "image/svg+xml",
     "application/pdf",
     "application/postscript",
