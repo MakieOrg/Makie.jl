@@ -81,8 +81,8 @@ end
 to_cairo_antialias(aa::Int) = aa
 
 """
-* `px_per_unit = 1.0`: see [figure size docs](https://docs.makie.org/v0.17.13/documentation/figure_size/index.html).
-* `pt_per_unit = 0.75`: see [figure size docs](https://docs.makie.org/v0.17.13/documentation/figure_size/index.html).
+* `px_per_unit = 2.0`: see [figure size docs](https://docs.makie.org/stable/documentation/figure_size/index.html).
+* `pt_per_unit = 0.75`: see [figure size docs](https://docs.makie.org/stable/documentation/figure_size/index.html).
 * `antialias::Union{Symbol, Int} = :best`: antialias modus Cairo uses to draw. Applicable options: `[:best => Cairo.ANTIALIAS_BEST, :good => Cairo.ANTIALIAS_GOOD, :subpixel => Cairo.ANTIALIAS_SUBPIXEL, :none => Cairo.ANTIALIAS_NONE]`.
 * `visible::Bool`: if true, a browser/image viewer will open to display rendered output.
 """
