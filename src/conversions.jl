@@ -913,41 +913,59 @@ convert_attribute(c::VecTypes{N}, ::key"position") where N = Point{N, Float32}(c
 to_align(x::Tuple{Symbol, Symbol}) = Vec2f(alignment2num.(x))
 to_align(x::Vec2f) = x
 
+function find_and_load_font(str::String)
+    fontpath = assetpath("fonts")
+    font_path, font = FreeTypeAbstraction.findfont(str; additional_fonts=fontpath)
+    if font === nothing
+        @warn("Could not find font $str, using TeX Gyre Heros Makie")
+        if "tex gyre heros makie" == lowercase(str)
+            # since we fall back to TeX Gyre Heros Makie, we need to check for recursion
+            error("Recursion encountered; TeX Gyre Heros Makie cannot be located in the font path $fontpath")
+        end
+        return find_and_load_font("TeX Gyre Heros Makie")
+    end
+    return font_path, font
+end
+
+const FONT_PATHS = Dict{String, String}(
+    "regular" => find_and_load_font("TeX Gyre Heros Makie")[1],
+    "bold" => find_and_load_font("TeX Gyre Heros Makie Bold")[1],
+    "italic" => find_and_load_font("TeX Gyre Heros Makie Italic")[1],
+    "bold_italic" => find_and_load_font("TeX Gyre Heros Makie Bold Italic")[1],
+)
 const FONT_CACHE = Dict{String, NativeFont}()
+
+function load_font_from_path(str::String)
+    font = FreeTypeAbstraction.try_load(str)
+    isnothing(font) && error("Could not load font file $str")
+    font
+end
+
+function load_font(str::String)
+    str == "default" && return load_font("TeX Gyre Heros Makie")
+
+    if (font_path = get(FONT_PATHS, str, nothing)) !== nothing
+        return load_font_from_path(font_path)
+    elseif isfile(str)  # check if the string points to a font file and load that
+        return load_font_from_path(str)
+    end
+
+    # costly (scans directories)
+    FONT_PATHS[str], font = find_and_load_font(str)
+    font
+end
 
 """
     font conversion
 
 a string naming a font, e.g. helvetica
 """
-function to_font(x::String)
-    str = string(x)
-    get!(FONT_CACHE, str) do
-        str == "default" && return to_font("TeX Gyre Heros Makie")
-
-        # check if the string points to a font file and load that
-        if isfile(str)
-            font = FreeTypeAbstraction.try_load(str)
-            if isnothing(font)
-                error("Could not load font file $str")
-            else
-                return font
-            end
+to_font(x::AbstractString) =
+    let str = string(x)
+        get!(FONT_CACHE, str) do
+            return load_font(str)
         end
-
-        fontpath = assetpath("fonts")
-        font = FreeTypeAbstraction.findfont(str; additional_fonts=fontpath)
-        if font === nothing
-            @warn("Could not find font $str, using TeX Gyre Heros Makie")
-            if "tex gyre heros makie" == lowercase(str)
-                # since we fall back to TeX Gyre Heros Makie, we need to check for recursion
-                error("Recursion encountered; TeX Gyre Heros Makie cannot be located in the font path $fontpath")
-            end
-            return to_font("TeX Gyre Heros Makie")
-        end
-        return font
     end
-end
 to_font(x::Vector{String}) = to_font.(x)
 to_font(x::NativeFont) = x
 to_font(x::Vector{NativeFont}) = x
