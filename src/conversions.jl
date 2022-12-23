@@ -960,13 +960,12 @@ end
 
 a string naming a font, e.g. helvetica
 """
-to_font(x::AbstractString) =
-    let str = string(x)
-        if (font = get(FreeTypeAbstraction.FONT_CACHE, str, nothing)) === nothing
-            return load_font(str)
-        end
-        font
+function to_font(x::AbstractString)
+    str = string(x)
+    get!(FreeTypeAbstraction.FONT_CACHE, str) do
+        return load_font(str)
     end
+end
 to_font(x::Vector{String}) = to_font.(x)
 to_font(x::NativeFont) = x
 to_font(x::Vector{NativeFont}) = x
