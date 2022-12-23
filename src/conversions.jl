@@ -915,7 +915,7 @@ to_align(x::Vec2f) = x
 
 function find_and_load_font(str::String)
     fontpath = assetpath("fonts")
-    font_path, font = FreeTypeAbstraction.findfont(str; additional_fonts=fontpath)
+    font = FreeTypeAbstraction.findfont(str; additional_fonts=fontpath)
     if font === nothing
         @warn("Could not find font $str, using TeX Gyre Heros Makie")
         if "tex gyre heros makie" == lowercase(str)
@@ -924,16 +924,15 @@ function find_and_load_font(str::String)
         end
         return find_and_load_font("TeX Gyre Heros Makie")
     end
-    return font_path, font
+    return font
 end
 
 const FONT_PATHS = Dict{String, String}(
-    "regular" => find_and_load_font("TeX Gyre Heros Makie")[1],
-    "bold" => find_and_load_font("TeX Gyre Heros Makie Bold")[1],
-    "italic" => find_and_load_font("TeX Gyre Heros Makie Italic")[1],
-    "bold_italic" => find_and_load_font("TeX Gyre Heros Makie Bold Italic")[1],
+    "regular" => FreeTypeAbstraction.get_path(find_and_load_font("TeX Gyre Heros Makie")),
+    "bold" => FreeTypeAbstraction.get_path(find_and_load_font("TeX Gyre Heros Makie Bold")),
+    "italic" => FreeTypeAbstraction.get_path(find_and_load_font("TeX Gyre Heros Makie Italic")),
+    "bold_italic" => FreeTypeAbstraction.get_path(find_and_load_font("TeX Gyre Heros Makie Bold Italic")),
 )
-const FONT_CACHE = Dict{String, NativeFont}()
 
 function load_font_from_path(str::String)
     font = FreeTypeAbstraction.try_load(str)
@@ -944,14 +943,15 @@ end
 function load_font(str::String)
     str == "default" && return load_font("TeX Gyre Heros Makie")
 
-    if (font_path = get(FONT_PATHS, str, nothing)) !== nothing
-        return load_font_from_path(font_path)
+    font = if (ft_path = get(FONT_PATHS, str, nothing)) !== nothing
+        load_font_from_path(ft_path)
     elseif isfile(str)  # check if the string points to a font file and load that
-        return load_font_from_path(str)
+        load_font_from_path(str)
+    else
+        find_and_load_font(str)  # costly (scans directories)
     end
 
-    # costly (scans directories)
-    FONT_PATHS[str], font = find_and_load_font(str)
+    FONT_PATHS[str] = FreeTypeAbstraction.get_path(font)
     font
 end
 
@@ -962,9 +962,10 @@ a string naming a font, e.g. helvetica
 """
 to_font(x::AbstractString) =
     let str = string(x)
-        get!(FONT_CACHE, str) do
+        if (font = get(FreeTypeAbstraction.FONT_CACHE, str, nothing)) === nothing
             return load_font(str)
         end
+        font
     end
 to_font(x::Vector{String}) = to_font.(x)
 to_font(x::NativeFont) = x
