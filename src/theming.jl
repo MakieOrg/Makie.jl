@@ -101,7 +101,7 @@ const minimal_default = Attributes(
     inspectable = true,
 
     CairoMakie = Attributes(
-        px_per_unit = 1.0,
+        px_per_unit = 2.0,
         pt_per_unit = 0.75,
         antialias = :best,
         visible = true,
