@@ -12,7 +12,7 @@ function Base.convert(::Type{RenderType}, type::String)
         return PDF
     elseif type == "eps"
         return EPS
-    elseif type == "html"
+    elseif type in ("html", "text/html", "application/vnd.webio.application+html", "application/prs.juno.plotpane+html", "juliavscode/html")
         return HTML
     else
         error("Unsupported cairo render type: $type")
@@ -125,7 +125,7 @@ function activate!(; inline=LAST_INLINE[], type="png", screen_config...)
         # So, if we want to prefer the png mime, we disable the mimes that are usually higher up in the stack.
         disable_mime!("svg", "pdf")
     elseif type == "svg"
-        disable_mime!("html", "png")
+        disable_mime!("text/html", "application/vnd.webio.application+html", "application/prs.juno.plotpane+html", "juliavscode/html", "png")
     else
         enable_only_mime!(type)
     end
