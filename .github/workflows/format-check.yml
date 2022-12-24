@@ -20,7 +20,9 @@ jobs:
       - name: Install JuliaFormatter and format
         shell: julia --project=@. --color=yes {0}
         run: |
-          using Pkg; Pkg.add("JuliaFormatter")
+          using Pkg
+          Pkg.activate(; temp=true)
+          Pkg.add("JuliaFormatter")
           using JuliaFormatter
           format(["src", "test", "MakieCore", "CairoMakie", "GLMakie", "WGLMakie", "RPRMakie", "ReferenceTests", "MakieRecipes"], verbose=true)
       - name: Format check
