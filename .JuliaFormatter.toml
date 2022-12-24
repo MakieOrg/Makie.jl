@@ -1,9 +1,5 @@
-margin = 110
-always_for_in = true
-pipe_to_function_call = true
-remove_extra_newlines = true
-short_to_long_function_def = true
-long_to_short_function_def = true
+style = "minimal"
 whitespace_ops_in_indices = true
 whitespace_in_kwargs = true
-whitespace_typedefs = true
+indent_submodule = true
+always_for_in = true
