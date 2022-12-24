@@ -136,6 +136,8 @@ function Base.display(screen::Screen, scene::Scene; kw...)
     end
     display(app)
     screen.display = true
+    # wait for plot to be full initialized, so that operations don't get racy (e.g. record/RamStepper & friends)
+    get_three(screen)
     return screen
 end
 

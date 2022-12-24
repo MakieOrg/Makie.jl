@@ -123,7 +123,7 @@ function flatten_buffer(array::AbstractArray{T}) where {T<:N0f8}
 end
 
 function flatten_buffer(array::AbstractArray{T}) where {T}
-    return flatten_buffer(reinterpret(eltype(T), array))
+    return flatten_buffer(collect(reinterpret(eltype(T), array)))
 end
 
 lasset(paths...) = read(joinpath(@__DIR__, "..", "assets", paths...), String)
