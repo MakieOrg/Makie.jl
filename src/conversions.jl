@@ -946,7 +946,8 @@ function load_font(str::String)
 
     font = if (ft_path = get(FONT_PATHS, str, nothing)) !== nothing
         if (ft = load_font_from_path(ft_path, false)) === nothing
-            ft = find_and_load_font(str)  # can be invalidated on relocation, hard reload
+            # font path can be invalidated on relocation so find the font again, and load it
+            ft = find_and_load_font(str)
         end
         ft
     elseif isfile(str)  # check if the string points to a font file and load that
