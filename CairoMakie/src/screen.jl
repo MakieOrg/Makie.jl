@@ -125,7 +125,7 @@ function activate!(; inline=LAST_INLINE[], type="png", screen_config...)
         # So, if we want to prefer the png mime, we disable the mimes that are usually higher up in the stack.
         disable_mime!("svg", "pdf")
     elseif type == "svg"
-        disable_mime!("text/html", "application/vnd.webio.application+html", "application/prs.juno.plotpane+html", "juliavscode/html", "png")
+        disable_mime!("text/html", "application/vnd.webio.application+html", "application/prs.juno.plotpane+html", "juliavscode/html")
     else
         enable_only_mime!(type)
     end
