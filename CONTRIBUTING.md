@@ -28,9 +28,9 @@ It is also appreciated if you add docstrings or documentation, and add an entry 
 
 ## Format
 
-We use a consistent formatting in Makie.
+A formatter check is used in Makie in order to work with consistent formatting in source files.
 
-Plase run the following to format the files, and for the format check to pass in Pull Requests:
+Please run the following snippet (maybe multiple times) for the format check to pass in PRs:
 ```julia
 pkg> add JuliaFormatter
 julia> using JuliaFormatter
