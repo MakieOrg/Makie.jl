@@ -34,8 +34,7 @@ Plase run the following to format the files, and for the format check to pass in
 ```julia
 pkg> add JuliaFormatter
 julia> using JuliaFormatter
-julia> dirs = ["src", "test", "MakieCore", "CairoMakie", "GLMakie", "WGLMakie", "RPRMakie", "MakieRecipes", "ReferenceTests"]
-julia> format([joinpath(dn, sub) for dn in dirs for sub in ("src", "test")])
+julia> format(["src", "test", "MakieCore", "CairoMakie", "GLMakie", "WGLMakie", "RPRMakie", "MakieRecipes", "ReferenceTests"])
 ```
 
 ### Tests

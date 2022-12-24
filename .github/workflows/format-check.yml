@@ -22,8 +22,7 @@ jobs:
         run: |
           using Pkg; Pkg.add("JuliaFormatter")
           using JuliaFormatter
-          dirs = [".", "MakieCore", "CairoMakie", "GLMakie", "WGLMakie", "RPRMakie", "ReferenceTests", "MakieRecipes"]
-          format([joinpath(dn, sub) for dn in dirs for sub in ("src", "test")], verbose=true)
+          format(["src", "test", "MakieCore", "CairoMakie", "GLMakie", "WGLMakie", "RPRMakie", "ReferenceTests", "MakieRecipes"], verbose=true)
       - name: Format check
         run: |
           julia -e '
