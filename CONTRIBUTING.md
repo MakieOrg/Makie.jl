@@ -26,6 +26,18 @@ Please add tests for any new functionality that you want to add.
 Makie uses both reference tests that check for visual regressions, and unit tests that check correctness of functions etc.
 It is also appreciated if you add docstrings or documentation, and add an entry to the NEWS file.
 
+## Format
+
+We use a consistent formatting in Makie.
+
+Plase run the following to format the files, and for the format check to pass in Pull Requests:
+```julia
+pkg> add JuliaFormatter
+julia> using JuliaFormatter
+julia> dirs = ["src", "test", "MakieCore", "CairoMakie", "GLMakie", "WGLMakie", "RPRMakie", "MakieRecipes", "ReferenceTests"]
+julia> format([joinpath(dn, sub) for dn in dirs for sub in ("src", "test")])
+```
+
 ### Tests
 
 Please ensure locally that your feature works by running the tests.
