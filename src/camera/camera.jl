@@ -29,9 +29,7 @@ function disconnect!(c::Camera)
     return
 end
 
-function disconnect!(c::EmptyCamera)
-    return
-end
+disconnect!(c::EmptyCamera) = nothing
 
 function disconnect!(observables::Vector)
     for obs in observables
