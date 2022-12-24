@@ -934,9 +934,10 @@ const FONT_PATHS = Dict{String, String}(
     "bold_italic" => FreeTypeAbstraction.get_path(find_and_load_font("TeX Gyre Heros Makie Bold Italic")),
 )
 
-function load_font_from_path(str::String)
-    font = FreeTypeAbstraction.try_load(str)
-    isnothing(font) && error("Could not load font file $str")
+function load_font_from_path(str::String, strict=true)
+    if (font = FreeTypeAbstraction.try_load(str)) === nothing
+        strict && error("Could not load font file $str")
+    end
     font
 end
 
@@ -944,7 +945,10 @@ function load_font(str::String)
     str == "default" && return load_font("TeX Gyre Heros Makie")
 
     font = if (ft_path = get(FONT_PATHS, str, nothing)) !== nothing
-        load_font_from_path(ft_path)
+        if (ft = load_font_from_path(ft_path, false)) === nothing
+            ft = find_and_load_font(str)  # can be invalidated on relocation, hard reload
+        end
+        ft
     elseif isfile(str)  # check if the string points to a font file and load that
         load_font_from_path(str)
     else
