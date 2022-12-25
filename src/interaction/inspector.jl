@@ -67,7 +67,7 @@ _to_rotation(x::Vector, idx) = to_rotation(x[idx])
 ### Selecting a point on a nearby line
 ########################################
 
-function closest_point_on_line(p0::Point2f, p1::Point2f, r::Point2f)
+function closest_point_on_line(A::Point2f, B::Point2f, P::Point2f)
     # This only works in 2D
     AP = P .- A; AB = B .- A
     A .+ AB * dot(AP, AB) / dot(AB, AB)
@@ -120,7 +120,19 @@ function closest_point_on_line(A::Point3f, B::Point3f, origin::Point3f, dir::Vec
     A .+ clamp(t, 0.0, AB_norm) * u_AB
 end
 
-function ray_triangle_intersection(A, B, C, origin, dir)
+function point_in_triangle(A::Point2, B::Point2, C::Point2, P::Point2, ϵ = 1e-6)
+    # adjusted from ray_triangle_intersection
+    AO = A .- P
+    BO = B .- P
+    CO = C .- P
+    A1 = 0.5 * (BO[1] * CO[2] - BO[2] * CO[1])
+    A2 = 0.5 * (CO[1] * AO[2] - CO[2] * AO[1])
+    A3 = 0.5 * (AO[1] * BO[2] - AO[2] * BO[1])
+
+    return (A1 > -ϵ && A2 > -ϵ && A3 > -ϵ) || (A1 < ϵ && A2 < ϵ && A3 < ϵ)
+end
+
+function ray_triangle_intersection(A, B, C, origin, dir, ϵ = 1e-6)
     # See: https://www.iue.tuwien.ac.at/phd/ertl/node114.html
     AO = A .- origin
     BO = B .- origin
@@ -130,7 +142,7 @@ function ray_triangle_intersection(A, B, C, origin, dir)
     A3 = 0.5 * dot(cross(AO, BO), dir)
 
     e = 1e-3
-    if (A1 > -e && A2 > -e && A3 > -e) || (A1 < e && A2 < e && A3 < e)
+    if (A1 > -ϵ && A2 > -ϵ && A3 > -ϵ) || (A1 < ϵ && A2 < ϵ && A3 < ϵ)
         Point3f((A1 * A .+ A2 * B .+ A3 * C) / (A1 + A2 + A3))
     else
         Point3f(NaN)
@@ -180,6 +192,51 @@ function ncoords(poly::Polygon)
     end
     N
 end
+
+## Band Sections
+########################################
+
+"""
+    point_in_quad_parameter(A, B, C, D, P[; iterations = 20, epsilon = 1e-6])
+
+Given a quad
+
+A --- B
+|     |
+D --- C
+
+this computes parameter `f` such that the line from `A + f * (B - A)` to 
+`D + f * (C - D)` crosses through the given point `P`. This assumes that `P` is 
+inside the quad and that none of the edges cross.
+"""
+function point_in_quad_parameter(
+        A::Point2, B::Point2, C::Point2, D::Point2, P::Point2; 
+        iterations = 50, epsilon = 1e-6
+    )
+
+    # Our initial guess is that P is in the center of the quad (in terms of AB and DC)
+    f = 0.5
+
+    for i in 0:iterations
+        # vector between top and bottom point of the current line
+        dir = (D + f * (C - D)) - (A + f * (B - A))
+        DC = C - D
+        AB = B - A
+        # solves P + _ * dir = A + f1 * (B - A) (intersection point of ray & line)
+        f1, _ = inv(Mat2f(AB..., dir...)) * (P - A)
+        f2, _ = inv(Mat2f(DC..., dir...)) * (P - D)
+
+        # next fraction estimate should be between f1 and f2
+        # adding 2f to this helps avoid jumping between low and high values
+        f = 0.25 * (2f + f1 + f2)
+        if abs(f2 - f1) < epsilon
+            return f
+        end
+    end
+
+    return f
+end
+
 
 ## Shifted projection
 ########################################
@@ -1022,63 +1079,65 @@ end
 function show_data(inspector::DataInspector, plot::Band, ::Integer, ::Mesh)
     scene = parent_scene(plot)
     tt = inspector.plot
-    pos = Point2f(mouseposition(scene))
-    x = pos[1]
-    low = plot.converted[1][]
-    high = plot.converted[2][]
-
-    # find relevant data
-    left = 1
-    right = 2
-    for i in 3:length(low)
-        if abs(low[i][1] - x) < abs(low[right][1] - x)
-            left = right
-            right = i
-        end
-    end
-
-    # interpolate to current pos
-    s = (x - low[left][1]) / (low[right][1] - low[left][1])
-    bot_val = low[left][2] + s * (low[right][2] - low[left][2])
-    top_val = high[left][2] + s * (high[right][2] - high[left][2])
-    closest = 2 * pos[2] > top_val + bot_val ? top_val : bot_val
-
-    # Draw Indicator line
     a = inspector.attributes
-    if a.enable_indicators[]
-        model = plot.model[]
 
-        if inspector.selection != plot
-            clear_temporary_plots!(inspector, plot)
-            p = lines!(
-                scene, Point2f[(x, bot_val), (x, top_val)], model = model, 
-                color = a.indicator_color, strokewidth = a.indicator_linewidth, 
-                linestyle = a.indicator_linestyle,
-                visible = a.indicator_visible, inspectable = false
-            )
-            translate!(p, Vec3f(0, 0, a.depth[]))
-            push!(inspector.temp_plots, p)
-        elseif !isempty(inspector.temp_plots)
-            p = inspector.temp_plots[1]
-            p[1][] = Point2f[(x, bot_val), (x, top_val)]
-            p.model[] = model
+    pos = Point2f(mouseposition(scene))
+    ps1 = plot.converted[1][]
+    ps2 = plot.converted[2][]
+
+    # find first triangle containing the cursor position
+    idx = findfirst(1:length(ps1)-1) do i
+        point_in_triangle(ps1[i], ps1[i+1], ps2[i+1], pos) ||
+        point_in_triangle(ps1[i], ps2[i+1], ps2[i], pos)
+    end
+
+    if idx !== nothing
+        # (idx, idx+1) picks the quad that contains the cursor position
+        # Within the quad we can draw a line from ps1[idx] + f * (ps1[idx+1] - ps1[idx])
+        # to ps2[idx] + f * (ps2[idx+1] - ps2[idx]) which crosses through the
+        # cursor position. Find the parameter f that describes this line
+        f = point_in_quad_parameter(ps1[idx], ps1[idx+1], ps2[idx+1], ps2[idx], pos)
+        P1 = ps1[idx] + f * (ps1[idx+1] - ps1[idx])
+        P2 = ps2[idx] + f * (ps2[idx+1] - ps2[idx])
+
+        # Draw the line
+        if a.enable_indicators[]
+            model = plot.model[]
+
+            if inspector.selection != plot || isempty(inspector.temp_plots)
+                clear_temporary_plots!(inspector, plot)
+                p = lines!(
+                    scene, [P1, P2], model = model, 
+                    color = a.indicator_color, strokewidth = a.indicator_linewidth, 
+                    linestyle = a.indicator_linestyle,
+                    visible = a.indicator_visible, inspectable = false
+                )
+                translate!(p, Vec3f(0, 0, a.depth[]))
+                push!(inspector.temp_plots, p)
+            elseif !isempty(inspector.temp_plots)
+                p = inspector.temp_plots[1]
+                p[1][] = [P1, P2]
+                p.model[] = model
+            end
+
+            a.indicator_visible[] = true
         end
 
-        a.indicator_visible[] = true
-    end
+        # Update tooltip
+        update_tooltip_alignment!(inspector, mouseposition_px(inspector.root))
 
-    # Get pixel position (in root window)
-    px_pos = project(scene, Point2f(x, closest))
-    px_pos += minimum(scene.px_area[])
-    update_tooltip_alignment!(inspector, mouseposition_px(inspector.root))
-
-    # Update tooltip
-    if haskey(plot, :inspector_label)
-        tt.text[] = plot[:inspector_label][](plot, right, Point3f(x, bot_val, top_val))
+        if haskey(plot, :inspector_label)
+            tt.text[] = plot[:inspector_label][](plot, right, (P1, P2))
+        else
+            tt.text[] = @sprintf("(%0.3f, %0.3f) .. (%0.3f, %0.3f)", P1[1], P1[2], P2[1], P2[2])
+        end
+        tt.visible[] = true
     else
-        tt.text[] = @sprintf("(%0.3f, %0.3f..%0.3f)", x, bot_val, top_val)
+        # to simplify things we discard any positions outside the band
+        # (likely doesn't work with parameter search)
+        tt.visible[] = false
+        a.indicator_visible[] = false
     end
-    tt.visible[] = true
 
     return true
 end
