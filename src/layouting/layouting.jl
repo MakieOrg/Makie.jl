@@ -32,28 +32,28 @@ end
 
 """
     layout_text(
-        string::AbstractString, textsize::Union{AbstractVector, Number},
+        string::AbstractString, fontsize::Union{AbstractVector, Number},
         font, align, rotation, justification, lineheight, word_wrap_width
     )
 
-Compute a GlyphCollection for a `string` given textsize, font, align, rotation, model, justification, and lineheight.
+Compute a GlyphCollection for a `string` given fontsize, font, align, rotation, model, justification, and lineheight.
 """
 function layout_text(
-        string::AbstractString, textsize::Union{AbstractVector, Number},
-        font, align, rotation, justification, lineheight, color, 
+        string::AbstractString, fontsize::Union{AbstractVector, Number},
+        font, fonts, align, rotation, justification, lineheight, color,
         strokecolor, strokewidth, word_wrap_width
     )
 
     ft_font = to_font(font)
-    rscale = to_textsize(textsize)
+    rscale = to_fontsize(fontsize)
     rot = to_rotation(rotation)
 
     fontperchar = attribute_per_char(string, ft_font)
-    textsizeperchar = attribute_per_char(string, rscale)
+    fontsizeperchar = attribute_per_char(string, rscale)
 
     glyphcollection = glyph_collection(
-        string, fontperchar, textsizeperchar, align[1], align[2], 
-        lineheight, justification, rot, color, 
+        string, fontperchar, fontsizeperchar, align[1], align[2],
+        lineheight, justification, rot, color,
         strokecolor, strokewidth, word_wrap_width
     )
 
@@ -69,7 +69,7 @@ rotated to wherever it is needed in the plot.
 """
 function glyph_collection(
         str::AbstractString, font_per_char, fontscale_px, halign, valign,
-        lineheight_factor, justification, rotation, color, 
+        lineheight_factor, justification, rotation, color,
         strokecolor, strokewidth, word_wrap_width
     )
 
@@ -100,9 +100,9 @@ function glyph_collection(
         xs = [Float32[]]
 
         # If word_wrap_width > 0:
-        # Whenever a space is hit, record its index in last_space_local_idx and 
-        # last_space_global_index. If there is already a space on record and the 
-        # current word overflows word_wrap_width, replace the last space with 
+        # Whenever a space is hit, record its index in last_space_local_idx and
+        # last_space_global_index. If there is already a space on record and the
+        # current word overflows word_wrap_width, replace the last space with
         # a newline. newline character unset the last space index
         # word{space}word{space}word{space}
         #        ↑      ↑   ↑
@@ -112,7 +112,7 @@ function glyph_collection(
         for (i, ci) in enumerate(charinfos)
             push!(xs[end], x)
             x += ci.extent.hadvance * ci.scale
-            
+
             if 0 < word_wrap_width < x && last_space_local_idx != 0 &&
                     ((ci.char in (' ', '\n')) || i == length(charinfos))
 
@@ -124,9 +124,9 @@ function glyph_collection(
                 x = xs[end][end] + ci.extent.hadvance * ci.scale
 
                 # TODO Do we need to redo the metrics for newlines?
-                charinfos[last_space_global_idx] = let 
+                charinfos[last_space_global_idx] = let
                     _, font, scale, lineheight, extent = charinfos[last_space_global_idx]
-                    (char = '\n', font = font, scale = scale, 
+                    (char = '\n', font = font, scale = scale,
                         lineheight = lineheight, extent = extent)
                 end
             end
@@ -302,12 +302,11 @@ _offset_at(o::Vector, i) = o[i]
 Base.getindex(x::ScalarOrVector, i) = x.sv isa Vector ? x.sv[i] : x.sv
 Base.lastindex(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
 
-function text_quads(position::VecTypes, gc::GlyphCollection, offset, transfunc)
-    p = apply_transform(transfunc, position)
+function text_quads(atlas::TextureAtlas, position::VecTypes, gc::GlyphCollection, offset, transfunc, space)
+    p = apply_transform(transfunc, position, space)
     pos = [to_ndim(Point3f, p, 0) for _ in gc.origins]
 
-    atlas = get_texture_atlas()
-    pad = GLYPH_PADDING[] / PIXELSIZE_IN_ATLAS[]
+    pad = atlas.glyph_padding / atlas.pix_per_glyph
     off = _offset_to_vec(offset)
 
     char_offsets = Vector{Vec3f}(undef, length(pos)) # TODO can this be Vec2f?
@@ -332,21 +331,20 @@ function text_quads(position::VecTypes, gc::GlyphCollection, offset, transfunc)
     # quad_offsets are 2D offsets of the quad origin to the character origins
     #   (these transform differently than character offsets, also marker space)
     # uvs are the texture coordinates of each character
-    # scales is the size of the quad including textsize, character size and texture atlas padding
+    # scales is the size of the quad including fontsize, character size and texture atlas padding
     return pos, char_offsets, quad_offsets, uvs, scales
 end
 
-function text_quads(position::Vector, gcs::Vector{<: GlyphCollection}, offset, transfunc)
-    ps = apply_transform(transfunc, position)
+function text_quads(atlas::TextureAtlas, position::Vector, gcs::Vector{<: GlyphCollection}, offset, transfunc, space)
+    ps = apply_transform(transfunc, position, space)
     pos = [to_ndim(Point3f, p, 0) for (p, gc) in zip(ps, gcs) for _ in gc.origins]
 
-    atlas = get_texture_atlas()
-    pad = GLYPH_PADDING[] / PIXELSIZE_IN_ATLAS[]
+    pad = atlas.glyph_padding / atlas.pix_per_glyph
     off = _offset_to_vec(offset)
 
     # To avoid errors due to asynchronous updates of text attributes
     M = min(
-        length(gcs), length(position), 
+        length(gcs), length(position),
         ifelse(off isa StaticVector || length(off) == 1, typemax(Int), length(off))
     )
 

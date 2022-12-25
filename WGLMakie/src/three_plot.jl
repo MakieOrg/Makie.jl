@@ -70,7 +70,7 @@ function three_display(session::Session, scene::Scene; screen_config...)
     serialized = serialize_scene(scene)
 
     if TEXTURE_ATLAS_CHANGED[]
-        JSServe.update_cached_value!(session, Makie.get_texture_atlas().data)
+        JSServe.update_cached_value!(session, wgl_texture_atlas().data)
         TEXTURE_ATLAS_CHANGED[] = false
     end
 

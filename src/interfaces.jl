@@ -208,6 +208,7 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     ArgTyp = typeof(to_value(args))
     # construct the fully qualified plot type, from the possible incomplete (abstract)
     # PlotType
+
     FinalType = Combined{Typ, ArgTyp}
     plot_attributes = merged_get!(
         ()-> default_theme(scene, FinalType),
@@ -408,7 +409,10 @@ end
 function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, input::NTuple{N, Observable}, args::Observable) where {N}
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
     scene_attributes = extract_scene_attributes!(attributes)
-    plot_object = P(scene, copy(attributes), input, args)
+    if haskey(attributes, :textsize)
+        throw(ArgumentError("The attribute `textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
+    end
+    plot_object = P(scene, attributes, input, args)
     # transfer the merged attributes from theme and user defined to the scene
     for (k, v) in scene_attributes
         error("setting $k for scene via plot attribute not supported anymore")

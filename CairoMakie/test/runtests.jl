@@ -20,6 +20,7 @@ end
 include(joinpath(@__DIR__, "svg_tests.jl"))
 include(joinpath(@__DIR__, "rasterization_tests.jl"))
 
+
 @testset "changing screens" begin
     @testset "svg -> png" begin
         # Now that scene.current_screens contains a CairoMakie screen after save
@@ -33,6 +34,7 @@ include(joinpath(@__DIR__, "rasterization_tests.jl"))
         @test isfile("test.png")
         rm("test.png")
         rm("test.svg")
+
     end
 
     @testset "saving pdf two times" begin
@@ -64,6 +66,16 @@ include(joinpath(@__DIR__, "rasterization_tests.jl"))
         save("test.png", fig)
         @test size(load("test.png")) == (800, 800)
         rm("test.pdf")
+        rm("test.png")
+    end
+
+    @testset "changing resolution of same format" begin
+        # see: https://github.com/MakieOrg/Makie.jl/issues/2433
+        # and: https://github.com/MakieOrg/AlgebraOfGraphics.jl/pull/441
+        scene = Scene(resolution=(800, 800));
+        load_save(s; kw...) = (save("test.png", s; kw...); load("test.png"))
+        @test size(load_save(scene, px_per_unit=2)) == (1600, 1600)
+        @test size(load_save(scene, px_per_unit=1)) == (800, 800)
         rm("test.png")
     end
 end

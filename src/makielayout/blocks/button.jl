@@ -33,13 +33,13 @@ function initialize_block!(b::Button)
     lcolor = Observable{RGBColors}()
     map!((s,_...)-> to_color(lcolors[s][]), lcolor, mousestate, values(lcolors)...)
 
-    labeltext = text!(subscene, textpos, text = b.label, textsize = b.textsize, font = b.font,
+    labeltext = text!(subscene, textpos, text = b.label, fontsize = b.fontsize, font = b.font,
         color = lcolor, align = (:center, :center), markerspace = :data, inspectable = false)
 
     # move text in front of background to be sure it's not occluded
     translate!(labeltext, 0, 0, 1)
 
-    onany(b.label, b.textsize, b.font, b.padding) do label, textsize, font, padding
+    onany(b.label, b.fontsize, b.font, b.padding) do label, fontsize, font, padding
         textbb = Rect2f(boundingbox(labeltext))
         autowidth = width(textbb) + padding[1] + padding[2]
         autoheight = height(textbb) + padding[3] + padding[4]
