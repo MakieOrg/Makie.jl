@@ -116,7 +116,7 @@ function flatten_buffer(array::AbstractArray{<: Number})
     return array
 end
 function flatten_buffer(array::AbstractArray{<:AbstractFloat})
-    return convert(Vector{Float32}, array)
+    return convert(Array{Float32}, array)
 end
 function flatten_buffer(array::Buffer)
     return flatten_buffer(getfield(array, :data))
