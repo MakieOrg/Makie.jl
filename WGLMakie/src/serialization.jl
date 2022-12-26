@@ -19,8 +19,10 @@ function _pairs(mesh::GeometryBasics.Mesh)
 end
 
 # Don't overload faces to not invalidate
-_faces(x::VertexArray) = GeometryBasics.faces(getfield(x, :data))
-_faces(x) = GeometryBasics.faces(x)
+_faces(x::VertexArray) = _faces(getfield(x, :data))
+function _faces(x)
+    return GeometryBasics.faces(x)
+end
 
 tlength(T) = length(T)
 tlength(::Type{<:Real}) = 1
@@ -113,7 +115,9 @@ to their element type.
 function flatten_buffer(array::AbstractArray{<: Number})
     return array
 end
-
+function flatten_buffer(array::AbstractArray{<:AbstractFloat})
+    return convert(Vector{Float32}, array)
+end
 function flatten_buffer(array::Buffer)
     return flatten_buffer(getfield(array, :data))
 end
@@ -221,9 +225,21 @@ function serialize_three(ip::InstancedProgram)
     return program
 end
 
+reinterpret_faces(faces::AbstractVector) = collect(reinterpret(UInt32, decompose(GLTriangleFace, faces)))
+
+function reinterpret_faces(faces::Buffer)
+    result = Observable(reinterpret_faces(ShaderAbstractions.data(faces)))
+    on(ShaderAbstractions.updater(faces).update) do (f, args)
+        if f === (setindex!) && args[1] isa AbstractArray && args[2] isa Colon
+            result[] = reinterpret_faces(args[1])
+        end
+    end
+    return result
+end
+
+
 function serialize_three(program::Program)
-    indices = _faces(program.vertexarray)
-    indices = reinterpret(UInt32, indices)
+    indices = convert(Observable, reinterpret_faces(_faces(program.vertexarray)))
     uniforms = serialize_uniforms(program.uniforms)
     attribute_updater = Observable(["", [], 0])
     register_geometry_updates(attribute_updater, program)

@@ -297,7 +297,13 @@ function InstanceBufferAttribute(buffer) {
 
 function attach_geometry(buffer_geometry, vertexarrays, faces) {
     for (const name in vertexarrays) {
-        const buffer = BufferAttribute(vertexarrays[name]);
+        const buff = vertexarrays[name]
+        let buffer;
+        if (buff.to_update) {
+            buffer = new THREE.BufferAttribute(buff.to_update, buff.itemSize)
+        } else {
+            buffer = BufferAttribute(buff);
+        }
         buffer_geometry.setAttribute(name, buffer);
     }
     buffer_geometry.setIndex(faces);
@@ -313,6 +319,13 @@ function attach_instanced_geometry(buffer_geometry, instance_attributes) {
         const buffer = InstanceBufferAttribute(instance_attributes[name]);
         buffer_geometry.setAttribute(name, buffer);
     }
+}
+
+function recreate_geometry(mesh, vertexarrays, faces) {
+    const buffer_geometry = new THREE.BufferGeometry();
+    attach_geometry(buffer_geometry, vertexarrays, faces);
+    mesh.geometry = buffer_geometry;
+    mesh.needsUpdate = true;
 }
 
 function recreate_instanced_geometry(mesh) {
@@ -360,7 +373,10 @@ function create_material(program) {
 
 function create_mesh(program) {
     const buffer_geometry = new THREE.BufferGeometry();
-    const faces = new THREE.BufferAttribute(program.faces, 1);
+    const faces = new THREE.BufferAttribute(program.faces.value, 1);
+    program.faces.on(x=> {
+        buffer_geometry.setIndex(new THREE.BufferAttribute(x, 1));
+    })
     attach_geometry(buffer_geometry, program.vertexarrays, faces);
     const material = create_material(program);
     return new THREE.Mesh(buffer_geometry, material);
@@ -368,7 +384,7 @@ function create_mesh(program) {
 
 function create_instanced_mesh(program) {
     const buffer_geometry = new THREE.InstancedBufferGeometry();
-    const faces = new THREE.BufferAttribute(program.faces, 1);
+    const faces = new THREE.BufferAttribute(program.faces.value, 1);
     attach_geometry(buffer_geometry, program.vertexarrays, faces);
     attach_instanced_geometry(buffer_geometry, program.instance_attributes);
     const material = create_material(program);
@@ -409,6 +425,7 @@ function connect_attributes(mesh, updater) {
     re_assign_buffers();
 
     updater.on(([name, new_values, length]) => {
+
         if (length > 0) {
             const buffer = mesh.geometry.attributes[name];
             let buffers;
@@ -439,19 +456,22 @@ function connect_attributes(mesh, updater) {
                 // won't have any effect, but like this we can collect the
                 // newly sized arrays untill all of them have the same length
                 buffer.to_update = new_values;
-                if (
-                    Object.values(buffers).every(
+                const all_have_same_length = Object.values(buffers).every(
                         (x) =>
                             x.to_update &&
                             x.to_update.length / x.itemSize == length
                     )
-                ) {
+                if (all_have_same_length) {
+                    console.log(`is instance: ${is_instance}`)
                     if (is_instance) {
                         recreate_instanced_geometry(mesh);
-                        // we just replaced geometry & all buffers, so we need to update thise
+                        // we just replaced geometry & all buffers, so we need to update these
                         re_assign_buffers();
                         mesh.geometry.instanceCount =
                             new_values.length / buffer.itemSize;
+                    } else {
+                        re_assign_buffers();
+                        recreate_geometry(mesh, buffers, mesh.geometry.index);
                     }
                 }
             }

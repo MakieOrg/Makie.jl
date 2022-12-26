@@ -7,11 +7,10 @@ function vertexbuffer(x::Observable, p)
     return Buffer(lift(vertexbuffer, x, transform_func_obs(p), get(p, :space, :data)))
 end
 
-facebuffer(x) = facebuffer(GeometryBasics.faces(x))
+facebuffer(x) = faces(x)
+facebuffer(x::AbstractArray{<:GLTriangleFace}) = x
 facebuffer(x::Observable) = Buffer(lift(facebuffer, x))
-function facebuffer(x::AbstractArray{GLTriangleFace})
-    return x
-end
+
 
 function array2color(colors, cmap, crange)
     cmap = RGBAf.(Colors.color.(to_colormap(cmap)), 1.0)
