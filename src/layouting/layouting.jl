@@ -8,7 +8,9 @@ end
 
 function attribute_per_char(string, attribute)
     n_words = 0
-    if attribute isa Vector
+    if attribute isa GeometryBasics.StaticArray
+        return one_attribute_per_char(attribute, string)
+    elseif attribute isa AbstractVector
         if length(attribute) == length(string)
             return attribute
         else
