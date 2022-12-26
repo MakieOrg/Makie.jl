@@ -998,6 +998,8 @@ to_colorrange(x) = isnothing(x) ? nothing : Vec2f(x)
 convert_attribute(x, ::key"fontsize") = to_fontsize(x)
 to_fontsize(x::Number) = Float32(x)
 to_fontsize(x::AbstractVector{T}) where T <: Number = el32convert(x)
+to_fontsize(x::Vec2) = Vec2f(x)
+to_fontsize(x::AbstractVector{T}) where T <: Vec2 = Vec2f.(x)
 
 convert_attribute(x, ::key"linewidth") = to_linewidth(x)
 to_linewidth(x) = Float32(x)
