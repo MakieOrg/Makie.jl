@@ -201,7 +201,8 @@ function Base.display(ed::ElectronDisplay, app::App)
     server = JSServe.get_server()
     old_app = JSServe.route!(server, Pair{Any,Any}(session_url, app))
     url = JSServe.online_url(server, "/browser-display")
-    return Electron().load(ed.window, JSServe.URI(url))
+    E = Electron()
+    return E.load(ed.window, E.URI(url))
 end
 
 function use_electron_display()
