@@ -111,11 +111,11 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     for i in 1:dx, j in 1:dy
         if picks[i, j].id > 0
             d = (x-i)^2 + (y-j)^2
-            i = findfirst(isequal(picks[i, j]), selected)
-            if i === nothing
-                @warn "This shouldn't happen..."
-            elseif distances[i] > d
-                distances[i] = d
+            idx = findfirst(isequal(picks[i, j]), selected)
+            if idx === nothing
+                continue
+            elseif distances[idx] > d
+                distances[idx] = d
             end
         end
     end
