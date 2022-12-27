@@ -199,6 +199,7 @@ end
     interactions::Dict{Symbol, Tuple{Bool, Any}}
     xaxis::LineAxis
     yaxis::LineAxis
+    elements::Dict{Symbol, Any}
     @attributes begin
         "The xlabel string."
         xlabel = ""
