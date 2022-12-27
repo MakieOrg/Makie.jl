@@ -167,44 +167,51 @@ function Makie.disconnect!(window::GLFW.Window, ::typeof(unicode_input))
     GLFW.SetCharCallback(window, nothing)
 end
 
-# TODO memoise? Or to bug ridden for the small performance gain?
-function retina_scaling_factor(w, fb)
-    (w[1] == 0 || w[2] == 0) && return (1.0, 1.0)
-    fb ./ w
-end
+# # TODO memoise? Or to bug ridden for the small performance gain?
+# function retina_scaling_factor(w, fb)
+#     (w[1] == 0 || w[2] == 0) && return (1.0, 1.0)
+#     fb ./ w
+# end
 
-# TODO both of these methods are slow!
-# ~90µs, ~80µs
-# This is too slow for events that may happen 100x per frame
-function framebuffer_size(window::GLFW.Window)
-    wh = GLFW.GetFramebufferSize(window)
-    (wh.width, wh.height)
-end
-function window_size(window::GLFW.Window)
-    wh = GLFW.GetWindowSize(window)
-    (wh.width, wh.height)
-end
-function retina_scaling_factor(window::GLFW.Window)
-    w, fb = window_size(window), framebuffer_size(window)
-    retina_scaling_factor(w, fb)
-end
+# # TODO both of these methods are slow!
+# # ~90µs, ~80µs
+# # This is too slow for events that may happen 100x per frame
+# function framebuffer_size(window::GLFW.Window)
+#     wh = GLFW.GetFramebufferSize(window)
+#     (wh.width, wh.height)
+# end
+# function window_size(window::GLFW.Window)
+#     wh = GLFW.GetWindowSize(window)
+#     (wh.width, wh.height)
+# end
+# function retina_scaling_factor(window::GLFW.Window)
+#     w, fb = window_size(window), framebuffer_size(window)
+#     retina_scaling_factor(w, fb)
+# end
 
-function correct_mouse(window::GLFW.Window, w, h)
-    ws, fb = window_size(window), framebuffer_size(window)
-    s = retina_scaling_factor(ws, fb)
-    (w * s[1], fb[2] - (h * s[2]))
-end
+# function correct_mouse(window::GLFW.Window, w, h)
+#     ws, fb = window_size(window), framebuffer_size(window)
+#     s = retina_scaling_factor(ws, fb)
+#     (w * s[1], fb[2] - (h * s[2]))
+# end
 
 struct MousePositionUpdater
     window::GLFW.Window
+    screen_config::ScreenConfig
     mouseposition::Observable{Tuple{Float64, Float64}}
+    window_resolution::Observable{Rect2{Int64}}
     hasfocus::Observable{Bool}
 end
 
 function (p::MousePositionUpdater)(::Nothing)
     !p.hasfocus[] && return
     x, y = GLFW.GetCursorPos(p.window)
-    pos = correct_mouse(p.window, x, y)
+    # pos = correct_mouse(p.window, x, y)
+    # pos = (x * s[1], fb[2] - y * s[2])
+    _, h = widths(p.window_resolution[])
+    # pos = p.screen_config.px_per_unit .* (x, h - y)
+    pos = (x, h - y)
+
     if pos != p.mouseposition[]
         @print_error p.mouseposition[] = pos
         # notify!(e.mouseposition)
@@ -221,7 +228,9 @@ which is not in scene coordinates, with the upper left window corner being 0
 function Makie.mouse_position(scene::Scene, screen::Screen)
     disconnect!(screen, mouse_position)
     updater = MousePositionUpdater(
-        to_native(screen), scene.events.mouseposition, scene.events.hasfocus
+        to_native(screen), screen.config,
+        scene.events.mouseposition, 
+        scene.events.window_area, scene.events.hasfocus
     )
     on(updater, screen.render_tick)
     return

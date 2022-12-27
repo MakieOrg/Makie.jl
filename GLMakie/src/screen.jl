@@ -28,6 +28,7 @@ function renderloop end
 * `fullscreen = false`: Starts the window in fullscreen.
 * `debugging = false`: Starts the GLFW.Window/OpenGL context with debug output.
 * `monitor::Union{Nothing, GLFW.Monitor} = nothing`: Sets the monitor on which the Window should be opened.
+* `px_per_unit::Float64 = 1.0`
 
 ## Postprocessor
 * `oit = false`: Enles order independent transparency for the window.
@@ -52,6 +53,7 @@ mutable struct ScreenConfig
     fullscreen::Bool
     debugging::Bool
     monitor::Union{Nothing, GLFW.Monitor}
+    px_per_unit::Float64
 
     # Postprocessor
     oit::Bool
@@ -74,6 +76,7 @@ mutable struct ScreenConfig
             fullscreen::Bool,
             debugging::Bool,
             monitor::Union{Nothing, GLFW.Monitor},
+            px_per_unit::Float64,
             # Preproccessor
             oit::Bool,
             fxaa::Bool,
@@ -95,6 +98,7 @@ mutable struct ScreenConfig
             fullscreen,
             debugging,
             monitor,
+            px_per_unit,
             # Preproccessor
             oit,
             fxaa,
@@ -334,6 +338,8 @@ function apply_config!(screen::Screen, config::ScreenConfig; visible::Bool=true,
     # Set the config
     screen.config = config
 
+    # TODO do we need to trigger some update for px_per_unit here?
+
     if start_renderloop
         start_renderloop!(screen)
     else
@@ -414,7 +420,8 @@ Base.wait(scene::Scene) = wait(Makie.getscreen(scene))
 Base.show(io::IO, screen::Screen) = print(io, "GLMakie.Screen(...)")
 
 Base.isopen(x::Screen) = isopen(x.glscreen)
-Base.size(x::Screen) = size(x.framebuffer)
+Base.size(x::Screen) = windowsize(x.glscreen)
+# Base.size(x::Screen) = size(x.framebuffer)
 
 function Makie.insertplots!(screen::Screen, scene::Scene)
     ShaderAbstractions.switch_context!(screen.glscreen)
@@ -590,24 +597,21 @@ function closeall()
     return
 end
 
-function resize_native!(window::GLFW.Window, resolution...)
+function resize_native!(window::GLFW.Window, w, h)
     if isopen(window)
         ShaderAbstractions.switch_context!(window)
-        oldsize = windowsize(window)
-        retina_scale = retina_scaling_factor(window)
-        w, h = resolution ./ retina_scale
-        if oldsize == (w, h)
-            return
-        end
-        GLFW.SetWindowSize(window, round(Int, w), round(Int, h))
+        windowsize(window) == (w, h) && return
+        GLFW.SetWindowSize(window, w, h)
     end
+    return
 end
 
 function Base.resize!(screen::Screen, w, h)
     nw = to_native(screen)
     resize_native!(nw, w, h)
     fb = screen.framebuffer
-    resize!(fb, (w, h))
+    resize!(fb, trunc_scale(screen.config.px_per_unit, (w, h)))
+    return
 end
 
 function fast_color_data!(dest::Array{RGB{N0f8}, 2}, source::Texture{T, 2}) where T

@@ -157,6 +157,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
     full_render = screen -> begin
         fb = screen.framebuffer
         w, h = size(fb)
+        scale = screen.config.px_per_unit
 
         # Setup rendering
         # SSAO - calculate occlusion
@@ -170,8 +171,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
             # scenes. It should be a leaf scene to avoid repeatedly shading
             # the same region (though this is not guaranteed...)
             isempty(scene.children) || continue
-            a = pixelarea(scene)[]
-            glScissor(minimum(a)..., widths(a)...)
+            glScissor(trunc_scale(scale, scene)...)
             # update uniforms
             data1[:projection] = scene.camera.projection[]
             data1[:bias] = scene.ssao.bias[]
@@ -185,7 +185,8 @@ function ssao_postprocessor(framebuffer, shader_cache)
             # Select the area of one leaf scene
             isempty(scene.children) || continue
             a = pixelarea(scene)[]
-            glScissor(minimum(a)..., widths(a)...)
+            # glScissor(minimum(a)..., widths(a)...)
+            glScissor(trunc_scale(scale, scene)...)
             # update uniforms
             data2[:blur_range] = scene.ssao.blur
             GLAbstraction.render(pass2)
@@ -285,8 +286,7 @@ function to_screen_postprocessor(framebuffer, shader_cache, screen_fb_id = nothi
     pass.postrenderfunction = () -> draw_fullscreen(pass.vertexarray.id)
 
     full_render = screen -> begin
-        fb = screen.framebuffer
-        w, h = size(fb)
+        w, h = size(screen)
 
         # transfer everything to the screen
         default_id = isnothing(screen_fb_id) ? 0 : screen_fb_id[]

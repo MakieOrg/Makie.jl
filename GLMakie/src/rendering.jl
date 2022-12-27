@@ -1,18 +1,26 @@
+trunc_scale(scale::Real, x::Real) = trunc(Int, scale * x)
+trunc_scale(scale::Real, x::Union{Tuple, Vector, Point, Vec}) = trunc.(Int, scale .* x)
+function trunc_scale(scale::Real, x::Rect2)
+    xy = trunc_scale(scale, minimum(x))
+    wh = trunc_scale(scale, widths(x))
+    @inbounds return (xy[1], xy[2], wh[1], wh[2])
+end
+trunc_scale(scale::Real, scene::Scene) = trunc_scale(scale, pixelarea(scene)[])
 
 function setup!(screen)
     glEnable(GL_SCISSOR_TEST)
     if isopen(screen)
-        glScissor(0, 0, size(screen)...)
+        scale = screen.config.px_per_unit
+        glScissor(0, 0, trunc_scale(scale, size(screen))...)
         glClearColor(1, 1, 1, 1)
         glClear(GL_COLOR_BUFFER_BIT)
         for (id, scene) in screen.screens
             if scene.visible[]
-                a = pixelarea(scene)[]
-                rt = (minimum(a)..., widths(a)...)
-                glViewport(rt...)
+                xywh = trunc_scale(scale, scene)
+                glViewport(xywh...)
                 if scene.clear
                     c = scene.backgroundcolor[]
-                    glScissor(rt...)
+                    glScissor(xywh...)
                     glClearColor(red(c), green(c), blue(c), alpha(c))
                     glClear(GL_COLOR_BUFFER_BIT)
                 end
@@ -46,10 +54,9 @@ function render_frame(screen::Screen; resize_buffers=true)
 
     fb = screen.framebuffer
     if resize_buffers
-        wh = Int.(framebuffer_size(nw))
-        resize!(fb, wh)
+        wh = GLFW.GetFramebufferSize(nw)
+        resize!(fb, trunc_scale(screen.config.px_per_unit, (wh.width, wh.height)))
     end
-    w, h = size(fb)
 
     # prepare stencil (for sub-scenes)
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id)
@@ -115,14 +122,14 @@ end
 function GLAbstraction.render(filter_elem_func, screen::Screen)
     # Somehow errors in here get ignored silently!?
     try
+        scale = screen.config.px_per_unit
         for (zindex, screenid, elem) in screen.renderlist
             filter_elem_func(elem)::Bool || continue
 
             found, scene = id2scene(screen, screenid)
             found || continue
             scene.visible[] || continue
-            a = pixelarea(scene)[]
-            glViewport(minimum(a)..., widths(a)...)
+            glViewport(trunc_scale(scale, scene)...)
             render(elem)
         end
     catch e
