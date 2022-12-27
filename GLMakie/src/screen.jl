@@ -359,9 +359,15 @@ function Screen(;
     # Screen config is managed by the current active theme, so managed by Makie
     config = Makie.merge_screen_config(ScreenConfig, screen_config)
     screen = screen_from_pool(config.debugging)
+    
+    # to avoid error in resize!
+    if !isdefined(screen, :config)
+        screen.config = config
+    end
     if !isnothing(resolution)
         resize!(screen, resolution...)
     end
+    
     apply_config!(screen, config; visible=visible, start_renderloop=start_renderloop)
     return screen
 end
