@@ -167,7 +167,8 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     topscene = ax.blockscene
 
-    decorations = Dict{Symbol, Any}()
+    elements = Dict{Symbol, Any}()
+    ax.elements = elements
 
     if palette === nothing
         palette = haskey(topscene.theme, :palette) ? deepcopy(topscene.theme[:palette]) : copy(Makie.default_palettes)
@@ -208,7 +209,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     # so it doesn't rasterize the scene
     background = poly!(topscene, scenearea; color=ax.backgroundcolor, inspectable=false, shading=false, strokecolor=:transparent)
     translate!(background, 0, 0, -100)
-    decorations[:background] = background
+    elements[:background] = background
 
     block_limit_linking = Observable(false)
     setfield!(ax, :block_limit_linking, block_limit_linking)
@@ -223,7 +224,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(xgridlines, 0, 0, -10)
-    decorations[:xgridlines] = xgridlines
+    elements[:xgridlines] = xgridlines
 
     xminorgridnode = Observable(Point2f[]; ignore_equal_values=true)
     xminorgridlines = linesegments!(
@@ -232,7 +233,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(xminorgridlines, 0, 0, -10)
-    decorations[:xminorgridlines] = xminorgridlines
+    elements[:xminorgridlines] = xminorgridlines
 
     ygridnode = Observable(Point2f[]; ignore_equal_values=true)
     ygridlines = linesegments!(
@@ -241,7 +242,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(ygridlines, 0, 0, -10)
-    decorations[:ygridlines] = ygridlines
+    elements[:ygridlines] = ygridlines
 
     yminorgridnode = Observable(Point2f[]; ignore_equal_values=true)
     yminorgridlines = linesegments!(
@@ -250,7 +251,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(yminorgridlines, 0, 0, -10)
-    decorations[:yminorgridlines] = yminorgridlines
+    elements[:yminorgridlines] = yminorgridlines
 
     onany(ax.xscale, ax.yscale) do xsc, ysc
         scene.transformation.transform_func[] = (xsc, ysc)
@@ -387,13 +388,13 @@ function initialize_block!(ax::Axis; palette = nothing)
     xoppositeline = linesegments!(topscene, xoppositelinepoints, linewidth = ax.spinewidth,
         visible = xoppositespinevisible, color = xoppositespinecolor, inspectable = false,
         linestyle = nothing)
-    decorations[:xoppositeline] = xoppositeline
+    elements[:xoppositeline] = xoppositeline
     translate!(xoppositeline, 0, 0, 20)
 
     yoppositeline = linesegments!(topscene, yoppositelinepoints, linewidth = ax.spinewidth,
         visible = yoppositespinevisible, color = yoppositespinecolor, inspectable = false,
         linestyle = nothing)
-    decorations[:yoppositeline] = yoppositeline
+    elements[:yoppositeline] = yoppositeline
     translate!(yoppositeline, 0, 0, 20)
 
     onany(xaxis.tickpositions, scene.px_area) do tickpos, area
@@ -468,7 +469,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         lineheight = ax.titlelineheight,
         markerspace = :data,
         inspectable = false)
-    decorations[:title] = titlet
+    elements[:title] = titlet
 
     map!(compute_protrusions, ax.layoutobservables.protrusions, ax.title, ax.titlesize, ax.titlegap, ax.titlevisible, ax.spinewidth,
             ax.topspinevisible, ax.bottomspinevisible, ax.leftspinevisible, ax.rightspinevisible,
