@@ -2,7 +2,7 @@
 
 ## master
 
-- Add default `colorscale = identity` to all plotting functions. As such, `scale` for `hexbin` is replaced with `colorscale`.
+- Add default `colorscale = identity` to all plotting functions. Consequently, `scale` for `hexbin` is replaced with `colorscale`.
 
 ## v0.19.1
 

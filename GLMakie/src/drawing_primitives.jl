@@ -198,6 +198,15 @@ function handle_intensities!(attributes)
     end
 end
 
+function handle_colorscale!(p::AbstractPlot, attributes, x)
+    colorscale = to_value(p.colorscale)
+    color_norm = to_value(pop!(attributes, :color_norm))
+    attributes[:color_norm] = apply_scale(colorscale, color_norm)
+    lift(x) do x
+        el32convert(apply_scale(colorscale, to_value(x)))
+    end
+end
+
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Union{Scatter, MeshScatter}))
     return cached_robj!(screen, scene, x) do gl_attributes
         # signals not supported for shading yet
@@ -412,7 +421,7 @@ function draw_atomic(screen::Screen, scene::Scene, x::Heatmap)
         colorscale = to_value(x.colorscale)
         xpos = map(first, xypos)
         ypos = map(last, xypos)
-        mat = map(x -> apply_scale(colorscale, x), x[3])
+        mat = handle_colorscale!(x, gl_attributes, x[3])
         gl_attributes[:position_x] = Texture(xpos, minfilter = :nearest)
         gl_attributes[:position_y] = Texture(ypos, minfilter = :nearest)
         # number of planes used to render the heatmap
@@ -428,7 +437,6 @@ function draw_atomic(screen::Screen, scene::Scene, x::Heatmap)
         end
         pop!(gl_attributes, :color)
         gl_attributes[:stroke_width] = pop!(gl_attributes, :thickness)
-        gl_attributes[:color_norm] = apply_scale(colorscale, pop!(gl_attributes, :color_norm)[])
         connect_camera!(gl_attributes, scene.camera)
 
         return draw_heatmap(screen, tex, gl_attributes)
@@ -515,7 +523,7 @@ function draw_atomic(screen::Screen, scene::Scene, x::Surface)
         # signals not supported for shading yet
         # We automatically insert x[3] into the color channel, so if it's equal we don't need to do anything
         if isa(to_value(color), AbstractMatrix{<: Number}) && to_value(color) !== to_value(x[3])
-            img = el32convert(color)
+            img = handle_colorscale!(x, gl_attributes, color)
         elseif to_value(color) isa Makie.AbstractPattern
             pattern_img = lift(x -> el32convert(Makie.to_image(x)), color)
             img = ShaderAbstractions.Sampler(pattern_img, x_repeat=:repeat, minfilter=:nearest)
@@ -536,12 +544,14 @@ function draw_atomic(screen::Screen, scene::Scene, x::Surface)
         gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
         connect_camera!(gl_attributes, scene.camera)
 
-        @assert to_value(x[3]) isa AbstractMatrix
-        types = map(v -> typeof(to_value(v)), x[1:2])
+        mat = x[3]
+        @assert to_value(mat) isa AbstractMatrix
 
-        if all(T -> T <: Union{AbstractMatrix, AbstractVector}, types)
+        if isnothing(img)
+            gl_attributes[:image] = Texture(handle_colorscale!(x, gl_attributes, mat); minfilter=:linear)
+        end
+        if all(T -> T <: Union{AbstractMatrix, AbstractVector}, map(v -> typeof(to_value(v)), x[1:2]))
             t = Makie.transform_func_obs(scene)
-            mat = x[3]
             xypos = map(t, x[1], x[2], space) do t, x, y, space
                 # Only if transform doesn't do anything, we can stay linear in 1/2D
                 if Makie.is_identity_transform(t)
@@ -562,16 +572,11 @@ function draw_atomic(screen::Screen, scene::Scene, x::Surface)
             args = map((xpos, ypos, mat)) do arg
                 Texture(map(x-> convert(Array, el32convert(x)), arg); minfilter=:linear)
             end
-            if isnothing(img)
-                gl_attributes[:image] = args[3]
-            end
+            
             return draw_surface(screen, args, gl_attributes)
         else
             gl_attributes[:ranges] = to_range.(to_value.(x[1:2]))
-            z_data = Texture(el32convert(x[3]); minfilter=:linear)
-            if isnothing(img)
-                gl_attributes[:image] = z_data
-            end
+            z_data = Texture(el32convert(mat); minfilter=:linear)
             return draw_surface(screen, z_data, gl_attributes)
         end
     end
