@@ -693,6 +693,7 @@ function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
     uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
     model = plot.model[]::Mat4f
     colormap = haskey(plot, :colormap) ? to_colormap(plot.colormap[]) : nothing
+    colorscale = haskey(plot, :colorscale) ? plot.colorscale[] : nothing
     colorrange = convert_attribute(to_value(get(plot, :colorrange, nothing)), key"colorrange"())::Union{Nothing, Vec2f}
 
     lowclip = get_color_attr(plot, :lowclip)
@@ -700,7 +701,7 @@ function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
     nan_color = get_color_attr(plot, :nan_color)
 
     cols = per_face_colors(
-        color, colormap, colorrange, nothing, fs, nothing, uv,
+        color, colormap, colorscale, colorrange, nothing, fs, nothing, uv,
         lowclip, highclip, nan_color)
 
     space = to_value(get(plot, :space, :data))::Symbol
@@ -746,9 +747,10 @@ nan2zero(x) = !isnan(x) * x
 
 function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f0)
     # Priorize colors of the mesh if present
-    @get_attribute(attributes, (color,))
+    @get_attribute attributes (color,)
 
     colormap = haskey(attributes, :colormap) ? to_colormap(attributes.colormap[]) : nothing
+    colorscale = haskey(plot, :colorscale) ? plot.colorscale[] : nothing
     colorrange = convert_attribute(to_value(get(attributes, :colorrange, nothing)), key"colorrange"())::Union{Nothing, Vec2f}
     matcap = to_value(get(attributes, :matcap, nothing))
 
@@ -763,12 +765,11 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
     nan_color = get_color_attr(attributes, :nan_color)
 
     per_face_col = per_face_colors(
-        color, colormap, colorrange, matcap, meshfaces, meshnormals, meshuvs,
+        color, colormap, colorscale, colorrange, matcap, meshfaces, meshnormals, meshuvs,
         lowclip, highclip, nan_color
     )
 
-    @get_attribute(attributes, (shading, diffuse,
-        specular, shininess, faceculling))
+    @get_attribute attributes (shading, diffuse, specular, shininess, faceculling)
 
     model = attributes.model[]::Mat4f
     space = to_value(get(attributes, :space, :data))::Symbol

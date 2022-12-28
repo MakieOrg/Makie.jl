@@ -194,7 +194,7 @@ function get_color_attr(attributes, attribute)::Union{Nothing, RGBAf}
 end
 
 function per_face_colors(
-        color, colormap, colorrange, matcap, faces, normals, uv,
+        color, colormap, colorscale, colorrange, matcap, faces, normals, uv,
         lowclip=nothing, highclip=nothing, nan_color=nothing
     )
     if matcap !== nothing
@@ -212,7 +212,8 @@ function per_face_colors(
         if color isa AbstractVector{<: Colorant}
             return FaceIterator(color, faces)
         elseif color isa AbstractArray{<: Number}
-            low, high = extrema(colorrange)
+            scaled_colorrange = colorscale.(colorrange)
+            low, high = extrema(scaled_colorrange)
             cvec = map(color[:]) do c
                 if isnan(c) && nan_color !== nothing
                     return nan_color
@@ -221,7 +222,7 @@ function per_face_colors(
                 elseif c > high && highclip !== nothing
                     return highclip
                 else
-                    Makie.interpolated_getindex(colormap, c, colorrange)
+                    Makie.interpolated_getindex(colormap, colorscale(c), scaled_colorrange)
                 end
             end
             return FaceIterator(cvec, faces)
