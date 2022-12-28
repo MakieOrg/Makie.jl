@@ -1,4 +1,4 @@
-using ImageMagick, FileIO, Electron
+using ImageMagick, FileIO
 using WGLMakie, Makie, Test
 using Pkg
 using WGLMakie.JSServe
