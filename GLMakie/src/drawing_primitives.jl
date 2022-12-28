@@ -85,7 +85,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         filtered = filter(x.attributes) do (k, v)
             !in(k, (
                 :transformation, :tickranges, :ticklabels, :raw, :SSAO,
-                :lightposition, :material,
+                :lightposition, :material, :colorscale,
                 :inspector_label, :inspector_hover, :inspector_clear, :inspectable
             ))
         end
@@ -182,6 +182,10 @@ function pixel2world(scene, msize::StaticVector{2})
 end
 
 pixel2world(scene, msize::AbstractVector) = pixel2world.(scene, msize)
+
+apply_scale(::Nothing, x) = x
+apply_scale(::typeof(identity), x) = x
+apply_scale(scale, x) = broadcast(scale, x)
 
 function handle_intensities!(attributes)
     if haskey(attributes, :color) && attributes[:color][] isa AbstractVector{<: Number}
@@ -392,28 +396,23 @@ xy_convert(x, n) = Float32[LinRange(extrema(x)..., n + 1);]
 function draw_atomic(screen::Screen, scene::Scene, x::Heatmap)
     return cached_robj!(screen, scene, x) do gl_attributes
         t = Makie.transform_func_obs(scene)
-        mat = x[3]
         space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
-        xypos = map(t, x[1], x[2], space) do t, x, y, space
-            x1d = xy_convert(x, size(mat[], 1))
-            y1d = xy_convert(y, size(mat[], 2))
+        xypos = map(t, x[1], x[2], x[3], space) do t, xs, ys, mat, space
+            x1d = xy_convert(xs, size(mat, 1))
+            y1d = xy_convert(ys, size(mat, 2))
             # Only if transform doesn't do anything, we can stay linear in 1/2D
-            if Makie.is_identity_transform(t)
-                return (x1d, y1d)
-            else
+            if !Makie.is_identity_transform(t)
                 # If we do any transformation, we have to assume things aren't on the grid anymore
                 # so x + y need to become matrices.
-                map!(x1d, x1d) do x
-                    return apply_transform(t, Point(x, 0), space)[1]
-                end
-                map!(y1d, y1d) do y
-                    return apply_transform(t, Point(0, y), space)[2]
-                end
-                return (x1d, y1d)
+                map!(x -> apply_transform(t, Point(x, 0), space)[1], x1d, x1d)
+                map!(y -> apply_transform(t, Point(0, y), space)[2], y1d, y1d)
             end
+            return x1d, y1d
         end
+        colorscale = to_value(x.colorscale)
         xpos = map(first, xypos)
         ypos = map(last, xypos)
+        mat = map(x -> apply_scale(colorscale, x), x[3])
         gl_attributes[:position_x] = Texture(xpos, minfilter = :nearest)
         gl_attributes[:position_y] = Texture(ypos, minfilter = :nearest)
         # number of planes used to render the heatmap
@@ -429,6 +428,7 @@ function draw_atomic(screen::Screen, scene::Scene, x::Heatmap)
         end
         pop!(gl_attributes, :color)
         gl_attributes[:stroke_width] = pop!(gl_attributes, :thickness)
+        gl_attributes[:color_norm] = apply_scale(colorscale, pop!(gl_attributes, :color_norm)[])
         connect_camera!(gl_attributes, scene.camera)
 
         return draw_heatmap(screen, tex, gl_attributes)
