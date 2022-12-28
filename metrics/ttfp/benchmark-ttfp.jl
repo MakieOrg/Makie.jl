@@ -20,10 +20,15 @@ function get_colorbuffer(fig)
 end
 
 if Package == :WGLMakie
-    using ElectronDisplay
-    ElectronDisplay.CONFIG.showable = showable
-    ElectronDisplay.CONFIG.single_window = true
-    ElectronDisplay.CONFIG.focus = false
+    if isdefined(WGLMakie, :use_electron_display)
+        import Electron
+        WGLMakie.use_electron_display()
+    else
+        using ElectronDisplay
+        ElectronDisplay.CONFIG.showable = showable
+        ElectronDisplay.CONFIG.single_window = true
+        ElectronDisplay.CONFIG.focus = false
+    end
 end
 
 create_time = @ctime fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
