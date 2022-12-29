@@ -5,7 +5,7 @@ to_func_name(x::Symbol) = Symbol(lowercase(string(x)))
 # Will get overloaded by recipe Macro
 plotsym(x) = :plot
 
-plotkey(plot::PlotObject) where T <: AbstractPlot = Symbol(lowercase(string(nameof(plot.type))))
+plotkey(plot::PlotObject) = Symbol(lowercase(string(nameof(plot.type))))
 
 """
      default_plot_signatures(funcname, funcname!, PlotType)
@@ -19,6 +19,7 @@ function default_plot_signatures(funcname, funcname!, PlotType)
             attributes = Dict{Symbol, Any}(kw)
             P = $(PlotType)
             figlike, plot_kw, plot_args = create_figurelike(P, attributes, args...)
+            @show typeof(figlike)
             plot = PlotObject(P, Any[plot_args...], plot_kw)
             plot!(figlike, plot)
             return figurelike_return(figlike, plot)

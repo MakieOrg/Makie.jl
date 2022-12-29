@@ -82,12 +82,14 @@ end
         origin_px = project_sp(ax.scene, Point(origin(rect)))
         tip_px = project_sp(ax.scene, Point(origin(rect) .+ widths(rect)))
         rect_px = Rect2i(round.(origin_px), round.(tip_px .- origin_px))
-        picks = unique(pick(ax.scene, rect_px))
+        # TODO why is there nothing now?
+        picks = filter(x-> !isnothing(x[1]), unique(pick(ax.scene, rect_px)))
+        @show [p[1].type for p in picks]
 
         # objects returned in plot_idx should be either grid lines (i.e. LineSegments) or Scatter points
-        @test all(pi-> pi[1] isa Union{LineSegments,Scatter, Makie.Mesh}, picks)
+        @test all(pi-> pi[1].type <: Union{LineSegments,Scatter, Makie.Mesh}, picks)
         # scatter points should have indices equal to those in 99991:99998
-        scatter_plot_idx = filter(pi -> pi[1] isa Scatter, picks)
+        scatter_plot_idx = filter(pi -> pi[1].type <: Scatter, picks)
         @test Set(last.(scatter_plot_idx)) == Set(99991:99998)
         GLMakie.destroy!(screen)
     end

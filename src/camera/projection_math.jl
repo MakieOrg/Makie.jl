@@ -219,7 +219,7 @@ end
 function transformationmatrix(translation, scale, rotation::Quaternion)
     trans_scale = transformationmatrix(translation, scale)
     rotation = Mat4f(rotation)
-    trans_scale*rotation
+    return trans_scale * rotation
 end
 
 #Calculate rotation between two vectors

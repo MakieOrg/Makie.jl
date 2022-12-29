@@ -196,7 +196,7 @@ a_length(x::Automatic) = x
 
 function calculated_attributes!(::Type{<: Axis3D}, plot)
     ticks = plot.ticks
-    args = (plot[1], ticks.ranges, ticks.labels, ticks.formatter)
+    args = (plot[1], get(ticks, :ranges, automatic), get(ticks, :labels, automatic), ticks.formatter)
     ticks[:ranges_labels] = lift(args...) do lims, ranges, labels, formatter
         num_ticks = labels === automatic ? automatic : a_length.(labels)
         ranges = default_ticks(ranges, lims, num_ticks)
@@ -323,7 +323,9 @@ function axis3d!(scene::Scene, args...; attributes...)
     axis.parent = scene
     connect!(transformation(scene), transformation(axis))
     apply_theme!(parent_scene(scene), axis)
+
     convert_arguments!(axis)
+    calculated_attributes!(Axis3D, axis)
 
     # Disable any non linear transform for the axis plot!
     axis.transformation.transform_func[] = identity

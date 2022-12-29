@@ -116,7 +116,7 @@ function boundingbox_text(plot)
     end
 end
 
-function boundingbox(plot::PlotObject)
+function boundingbox(plot::PlotObject, exclude = (p)-> false)
     if plot.type <: Text
         boundingbox_text(plot)
     else

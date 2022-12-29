@@ -42,10 +42,10 @@ end
 # TODO?
 function point_iterator(plot::TypedPlot{Text})
     if is_data_space(plot.markerspace[])
-        return decompose(Point, boundingbox(plot))
+        return decompose(Point, boundingbox_text(plot))
     else
         if plot.position[] isa VecTypes
-            return [to_ndim(Point3f, text.position[], 0.0)]
+            return [to_ndim(Point3f, plot.position[], 0.0)]
         else
             return convert_arguments(PointBased(), plot.position[])[1]
         end
@@ -236,6 +236,13 @@ function data_limits(plot::TypedPlot{Surface})
 end
 
 function data_limits(plot::TypedPlot{Heatmap})
+    mini_maxi = extrema_nan.((plot.x[], plot.y[]))
+    mini = Vec3f(first.(mini_maxi)..., 0)
+    maxi = Vec3f(last.(mini_maxi)..., 0)
+    return Rect3f(mini, maxi .- mini)
+end
+
+function data_limits(plot::TypedPlot{Image})
     mini_maxi = extrema_nan.((plot.x[], plot.y[]))
     mini = Vec3f(first.(mini_maxi)..., 0)
     maxi = Vec3f(last.(mini_maxi)..., 0)

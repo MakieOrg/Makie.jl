@@ -9,7 +9,7 @@ calculated_attributes!(trait, plot) = nothing
     `calculated_attributes!(plot::AbstractPlot)`
 Fill in values that can only be calculated when we have all other attributes filled
 """
-calculated_attributes!(plot::T) where T = calculated_attributes!(T, plot)
+calculated_attributes!(plot::PlotObject) = calculated_attributes!(plot.type, plot)
 
 """
     image(x, y, image)

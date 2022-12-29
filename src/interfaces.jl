@@ -83,6 +83,7 @@ function calculated_attributes!(::Type{<: Mesh}, plot)
 end
 
 function calculated_attributes!(::Type{<: Union{Heatmap, Image}}, plot)
+    println("hehehe")
     plot[:color] = plot[3]
     color_and_colormap!(plot)
 end
@@ -192,7 +193,7 @@ function apply_convert!(P, attributes::Attributes, x::PlotSpec{S}) where S
         end
     end
     pt = plottype(S, P)
-    return (pt, values(convert_arguments_typed(pt, args...)))
+    return (pt, values(convert_arguments_typed(pt(), args...)))
 end
 
 function seperate_tuple(args::Observable{<: NTuple{N, Any}}) where N

@@ -62,6 +62,9 @@ function preferred_axis_type(@nospecialize(p::PlotFunc), @nospecialize(args...))
     RealP = plottype(p, non_obs...)
     result = plot_preferred_axis(RealP)
     isnothing(result) || return result
+
+    pre_conversion_result = args_preferred_axis(RealP, non_obs...)
+    isnothing(pre_conversion_result) || return pre_conversion_result
     conv = convert_arguments(RealP, non_obs...)
     Typ, args_conv = apply_convert!(RealP(), Attributes(), conv)
     result = args_preferred_axis(Typ, args_conv...)
@@ -86,8 +89,11 @@ function _disallow_keyword(kw, attributes)
     end
 end
 
+to_dict(dict::Dict) = dict
+to_dict(nt::NamedTuple) = Dict{Symbol, Any}(pairs(nt))
+
 function create_axis_from_kw(PlotType, figlike, attributes::Dict, args...)
-    axis_kw = pop!(attributes, :axis, Dict{Symbol, Any}())
+    axis_kw = to_dict(pop!(attributes, :axis, Dict{Symbol, Any}()))
     AxType = if haskey(axis_kw, :type)
         pop!(axis_kw, :type)
     else
@@ -119,6 +125,24 @@ function create_figurelike!(PlotType, attributes::Dict, gp::GridPosition, args..
     return ax, attributes, args
 end
 
+
+function create_figurelike(PlotType, attributes::Dict, gp::GridPosition, args...)
+    f = get_top_parent(gp)
+    c = contents(gp, exact = true)
+    if !isempty(c)
+        error("""
+        You have used the non-mutating plotting syntax with a GridPosition, which requires an empty GridLayout slot to create an axis in, but there are already the following objects at this layout position:
+        $(c)
+        If you meant to plot into an axis at this position, use the plotting function with `!` (e.g. `func!` instead of `func`).
+        If you really want to place an axis on top of other blocks, make your intention clear and create it manually.
+        """)
+    end
+
+    ax = create_axis_from_kw(PlotType, f, attributes, args...)
+    gp[] = ax
+    return ax, attributes, args
+end
+
 function create_figurelike!(PlotType, attributes::Dict, ax::Axis, args...)
     return ax, attributes, args
 end
@@ -146,6 +170,7 @@ end
 
 figurelike_return(fa::FigureAxis, plot) = FigureAxisPlot(fa.figure, fa.axis, plot)
 figurelike_return(ax::Axis, plot) = AxisPlot(ax, plot)
-figurelike_return!(ax::Axis, plot) = AxisPlot(ax, plot)
+figurelike_return(ax::LScene, plot) = AxisPlot(ax, plot)
+figurelike_return!(ax::Axis, plot) = plot
 
 plot!(fa::FigureAxis, plot) = plot!(fa.axis, plot)

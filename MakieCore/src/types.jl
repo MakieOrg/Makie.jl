@@ -39,7 +39,7 @@ push_screen!(scene, screen)
 """
 abstract type MakieScreen <: AbstractDisplay end
 
-const SceneLike = Union{AbstractScene, AbstractScene}
+const SceneLike = Union{AbstractScene, AbstractPlot}
 
 """
 Main structure for holding attributes, for theming plots etc!
@@ -85,7 +85,6 @@ mutable struct PlotObject <: AbstractPlot
     function PlotObject(type, transformation, kw, args)
         return new(type, transformation, kw, args, (), Attributes(), PlotObject[])
     end
-
 end
 
 function Base.getproperty(x::PlotObject, key::Symbol)

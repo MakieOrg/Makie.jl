@@ -8,13 +8,14 @@ function LinesegmentBuffer(
         color = RGBAf[], linewidth = Float32[],
         kw_args...
     ) where N
-    linesegments!(
+    pl = linesegments!(
         scene, Point{N, Float32}[]; color = color,
         linewidth = linewidth, kw_args...
     )
+    return TypedPlot{LineSegments}(pl)
 end
 
-function append!(lsb::LineSegments, positions::Vector{Point{N, Float32}}; color = :black, linewidth = 1.0) where N
+function append!(lsb::TypedPlot{LineSegments}, positions::Vector{Point{N, Float32}}; color = :black, linewidth = 1.0) where N
     thickv = same_length_array(positions, linewidth, key"linewidth"())
     colorv = same_length_array(positions, color, key"color"())
     append!(lsb[1][], positions)
@@ -23,18 +24,18 @@ function append!(lsb::LineSegments, positions::Vector{Point{N, Float32}}; color 
     return
 end
 
-function push!(tb::LineSegments, positions::Point{N, Float32}; kw_args...) where N
+function push!(tb::TypedPlot{LineSegments}, positions::Point{N, Float32}; kw_args...) where N
     append!(tb, [positions]; kw_args...)
 end
 
-function start!(lsb::LineSegments)
+function start!(lsb::TypedPlot{LineSegments})
     resize!(lsb[1][], 0)
     resize!(lsb[:color][], 0)
     resize!(lsb[:linewidth][], 0)
     return
 end
 
-function finish!(lsb::LineSegments)
+function finish!(lsb::TypedPlot{LineSegments})
     # update the signal!
     lsb[1][] = lsb[1][]
     lsb[:color][] = lsb[:color][]
@@ -51,8 +52,8 @@ function TextBuffer(
         align = [Vec2f(0)],
         kw_args...
     ) where N
-    annotations!(
-        scene, String[" "], [Point{N, Float32}(0)];
+    pl = text!(
+        scene, [(" ", Point{N, Float32}(0))];
         rotation = rotation,
         color = color,
         textsize = textsize,
@@ -60,16 +61,17 @@ function TextBuffer(
         align = align,
         kw_args...
     )
+    return TypedPlot{Text}(pl)
 end
 
-function start!(tb::Annotations)
+function start!(tb::TypedPlot{Text})
     for key in (1, :color, :rotation, :textsize, :font, :align)
         empty!(tb[key][])
     end
     return
 end
 
-function finish!(tb::Annotations)
+function finish!(tb::TypedPlot{Text})
     # update the signal!
     # now update all callbacks
     # TODO this is a bit shaky, buuuuhut, in theory the whole lift(color, ...)
@@ -82,17 +84,17 @@ function finish!(tb::Annotations)
 end
 
 
-function push!(tb::Annotations, text::String, position::VecTypes{N}; kw_args...) where N
+function push!(tb::TypedPlot{Text}, text::String, position::VecTypes{N}; kw_args...) where N
     append!(tb, [(String(text), Point{N, Float32}(position))]; kw_args...)
 end
 
-function append!(tb::Annotations, text::Vector{String}, positions::Vector{Point{N, Float32}}; kw_args...) where N
-    text_positions = convert_argument(Annotations, text, positions)[1]
+function append!(tb::TypedPlot{Text}, text::Vector{String}, positions::Vector{Point{N, Float32}}; kw_args...) where N
+    text_positions = convert_argument(Text, text, positions)[1]
     append!(tb, text_positions; kw_args...)
     return
 end
 
-function append!(tb::Annotations, text_positions::Vector{Tuple{String, Point{N, Float32}}}; kw_args...) where N
+function append!(tb::TypedPlot{Text}, text_positions::Vector{Tuple{String, Point{N, Float32}}}; kw_args...) where N
     append!(tb[1][], text_positions)
     kw = Dict(kw_args)
     for key in (:color, :rotation, :textsize, :font, :align)
