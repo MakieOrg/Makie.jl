@@ -46,7 +46,7 @@ end
 
 @reference_test "streamplot with func" begin
     v(x::Point2{T}) where T = Point2{T}(x[2], 4 * x[1])
-    streamplot(v, -2..2, -2..2, arrow_size=10)
+    streamplot(v, -2..2, -2..2)
 end
 
 @reference_test "lines with func" lines(-1..1, x -> x^2)
@@ -247,6 +247,19 @@ end
     # Now, menu should be displayed again and not stay blank!
     f
 end
+
+@reference_test "space test in transformed axis" begin
+    f = lines(exp.(0.1*(1.0:100));  axis=(yscale=log10,))
+    poly!(Rect(1, 1, 100, 100), color=:red, space=:pixel)
+    scatter!(2*mod.(1:100:10000, 97), 2*mod.(1:101:10000, 97), color=:blue, space=:pixel)
+    scatter!(Point2f(0, 0.25), space=:clip)
+    lines!([0.5,0.5], [0, 1];  space=:relative)
+    lines!([50,50], [0, 100];  space=:pixel)
+    lines!([0,1], [0.25, 0.25];  space=:clip)
+    scatter!(Point2f(0.5, 0), space=:relative)
+    f
+end
+
 
 # Needs a way to disable autolimits on show
 # @reference_test "interactions after close" begin

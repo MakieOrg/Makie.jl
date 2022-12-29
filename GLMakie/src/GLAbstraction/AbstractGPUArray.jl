@@ -8,7 +8,6 @@ import Base: getindex
 import Base: map
 import Base: size
 import Base: iterate
-using Serialization
 
 abstract type GPUArray{T, NDim} <: AbstractArray{T, NDim} end
 
@@ -203,18 +202,6 @@ function (::Type{GPUArrayType})(data::Observable; kw...) where GPUArrayType <: G
     end
     return gpu_mem
 end
-
-const BaseSerializer = Serialization.AbstractSerializer
-
-function Serialization.serialize(s::BaseSerializer, t::T) where T<:GPUArray
-    Serialization.serialize_type(s, T)
-    Serialization.serialize(s, Array(t))
-end
-function Serialization.deserialize(s::BaseSerializer, ::Type{T}) where T <: GPUArray
-    A = Serialization.deserialize(s)
-    T(A)
-end
-
 
 export data
 export resize

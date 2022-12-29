@@ -24,7 +24,7 @@ See the function `Makie.streamplot_impl` for implementation details.
             maxsteps = 500,
             colormap = theme(scene, :colormap),
             colorrange = Makie.automatic,
-            arrow_size = 10,
+            arrow_size = 15,
             arrow_head = automatic,
             density = 1.0,
             quality = 16
@@ -38,6 +38,7 @@ function convert_arguments(::Type{<: StreamPlot}, f::Function, xrange, yrange)
     ymin, ymax = extrema(yrange)
     return (f, Rect(xmin, ymin, xmax - xmin, ymax - ymin))
 end
+
 function convert_arguments(::Type{<: StreamPlot}, f::Function, xrange, yrange, zrange)
     xmin, xmax = extrema(xrange)
     ymin, ymax = extrema(yrange)
@@ -50,7 +51,6 @@ end
 function convert_arguments(::Type{<: StreamPlot}, f::Function, limits::Rect)
     return (f, limits)
 end
-
 
 scatterfun(N) = N == 2 ? scatter! : meshscatter!
 

@@ -28,7 +28,7 @@ Creates a tooltip pointing at `position` displaying the given `string`
 
 - `textpadding = (4, 4, 4, 4)` sets the padding around text in the tooltip. This is given as `(left, right, bottom top)` offsets.
 - `textcolor = theme(scene, :textcolor)` sets the text color.
-- `textsize = 16` sets the text size.
+- `fontsize = 16` sets the text size.
 - `font = theme(scene, :font)` sets the font.
 - `strokewidth = 0`: Gives text an outline if set to a positive value.
 - `strokecolor = :white` sets the text outline color.
@@ -53,7 +53,7 @@ Creates a tooltip pointing at `position` displaying the given `string`
         # Text
         textpadding = (4, 4, 4, 4), # LRBT
         textcolor = theme(scene, :textcolor),
-        textsize = 16,
+        fontsize = 16,
         font = theme(scene, :font),
         strokewidth = 0,
         strokecolor = :white,
@@ -135,7 +135,7 @@ function plot!(p::PlotObject, ::Tooltip, ::VecTypes)
 
     tp = text!(
         p, px_pos, text = p.text, justification = p.justification,
-        align = text_align, offset = text_offset, textsize = p.textsize,
+        align = text_align, offset = text_offset, fontsize = p.fontsize,
         color = p.textcolor, font = p.font, fxaa = false,
         strokewidth = p.strokewidth, strokecolor = p.strokecolor,
         transparency = p.transparency, visible = p.visible,

@@ -1,14 +1,6 @@
 # File to run to snoop/trace all functions to compile
 using GeometryBasics
 
-@compile begin
-    atlas = Makie.get_texture_atlas()
-    Makie.insert_glyph!(atlas, '≈', to_font("default"))
-    Makie.marker_attributes(Observable(:circle), Observable(20), Observable(nothing), Observable(Vec2f(0)))
-    Makie.marker_attributes(Observable('c'), Observable(20), to_font("default"), Observable(Vec2f(0)))
-    Scene()
-end
-
 @compile poly(Recti(0, 0, 200, 200), strokewidth=20, strokecolor=:red, color=(:black, 0.4))
 
 @compile scatter(0..1, rand(10), markersize=rand(10) .* 20)

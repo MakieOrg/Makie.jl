@@ -83,7 +83,6 @@ function calculated_attributes!(::Type{<: Mesh}, plot)
 end
 
 function calculated_attributes!(::Type{<: Union{Heatmap, Image}}, plot)
-    println("hehehe")
     plot[:color] = plot[3]
     color_and_colormap!(plot)
 end

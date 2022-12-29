@@ -260,6 +260,6 @@ function plot!(p::PlotObject, ::BarPlot)
         highclip = p.highclip, lowclip = p.lowclip, nan_color = p.nan_color,
     )
     if !isnothing(p.bar_labels[])
-        text!(p, labels; align=label_aligns, offset=label_offsets, color=label_colors, font=p.label_font, textsize=p.label_size, rotation=p.label_rotation)
+        text!(p, labels; align=label_aligns, offset=label_offsets, color=label_colors, font=p.label_font, fontsize=p.label_size, rotation=p.label_rotation)
     end
 end

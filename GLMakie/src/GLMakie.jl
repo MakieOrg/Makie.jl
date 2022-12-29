@@ -16,7 +16,7 @@ using Makie: @get_attribute, to_value, to_colormap, extrema_nan
 using Makie: ClosedInterval, (..)
 using Makie: to_native
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
-import Makie: to_font, glyph_uv_width!, el32convert, Shape, CIRCLE, RECTANGLE, ROUNDED_RECTANGLE, DISTANCEFIELD, TRIANGLE
+import Makie: to_font, el32convert, Shape, CIRCLE, RECTANGLE, ROUNDED_RECTANGLE, DISTANCEFIELD, TRIANGLE
 import Makie: RelocatableFolders
 
 using ShaderAbstractions
@@ -47,6 +47,8 @@ export Sampler, Buffer
 const GL_ASSET_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
 const SHADER_DIR = RelocatableFolders.@path joinpath(GL_ASSET_DIR, "shader")
 loadshader(name) = joinpath(SHADER_DIR, name)
+
+gl_texture_atlas() = Makie.get_texture_atlas(2048, 64)
 
 # don't put this into try catch, to not mess with normal errors
 include("gl_backend.jl")

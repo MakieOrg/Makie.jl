@@ -186,7 +186,7 @@ function initialize_block!(leg::Legend,
                 push!(titletexts, nothing)
             else
                 push!(titletexts, Label(scene, text = title, font = leg.titlefont, color = leg.titlecolor,
-                    textsize = leg.titlesize, halign = leg.titlehalign, valign = leg.titlevalign))
+                    fontsize = leg.titlesize, halign = leg.titlehalign, valign = leg.titlevalign))
             end
 
             etexts = []
@@ -203,7 +203,7 @@ function initialize_block!(leg::Legend,
                     return lj isa Automatic ? lha : lj
                 end
                 push!(etexts,
-                      Label(scene; text=e.label, textsize=e.labelsize, font=e.labelfont, justification=justification,
+                      Label(scene; text=e.label, fontsize=e.labelsize, font=e.labelfont, justification=justification,
                             color=e.labelcolor, halign=e.labelhalign, valign=e.labelvalign))
 
                 # create the patch rectangle

@@ -53,7 +53,8 @@ function create_shader(scene::Scene, plot::MeshScatter)
     per_instance = filter(plot.attributes.attributes) do (k, v)
         return k in per_instance_keys && !(isscalar(v[]))
     end
-    per_instance[:offset] = apply_transform(transform_func_obs(plot),  plot[1])
+    space = get(plot, :space, :data)
+    per_instance[:offset] = apply_transform(transform_func_obs(plot),  plot[1], space)
 
     for (k, v) in per_instance
         per_instance[k] = Buffer(lift_convert(k, v, plot))
@@ -101,6 +102,7 @@ function scatter_shader(scene::Scene, attributes)
     uniform_dict = Dict{Symbol,Any}()
     uniform_dict[:image] = false
     marker = nothing
+    atlas = wgl_texture_atlas()
     if haskey(attributes, :marker)
         font = get(attributes, :font, Observable(Makie.defaultfont()))
         marker = lift(attributes[:marker]) do marker
@@ -110,10 +112,10 @@ function scatter_shader(scene::Scene, attributes)
 
         markersize = lift(Makie.to_2d_scale, attributes[:markersize])
 
-        msize, offset = Makie.marker_attributes(marker, markersize, font, attributes[:quad_offset])
+        msize, offset = Makie.marker_attributes(atlas, marker, markersize, font, attributes[:quad_offset])
         attributes[:markersize] = msize
         attributes[:quad_offset] = offset
-        attributes[:uv_offset_width] = Makie.primitive_uv_offset_width(marker)
+        attributes[:uv_offset_width] = Makie.primitive_uv_offset_width(atlas, marker, font)
         if to_value(marker) isa AbstractMatrix
             uniform_dict[:image] = Sampler(lift(el32convert, marker))
         end
@@ -142,10 +144,9 @@ function scatter_shader(scene::Scene, attributes)
     end
 
     if uniform_dict[:shape_type][] == 3
-        atlas = Makie.get_texture_atlas()
         uniform_dict[:distancefield] = Sampler(atlas.data, minfilter=:linear,
                                                magfilter=:linear, anisotropic=16f0)
-        uniform_dict[:atlas_texture_size] = Float32(size(atlas.data, 1)) # Texture must be quadratic
+        uniform_dict[:atlas_texture_size] = Float32(size(atlas, 1)) # Texture must be quadratic
     else
         uniform_dict[:atlas_texture_size] = 0f0
         uniform_dict[:distancefield] = Observable(false)
@@ -174,7 +175,7 @@ function create_shader(scene::Scene, plot::Scatter)
     attributes[:preprojection] = map(space, mspace, cam.projectionview, cam.resolution) do space, mspace, _, _
         Makie.clip_to_space(cam, mspace) * Makie.space_to_clip(cam, space)
     end
-    attributes[:pos] = apply_transform(transform_func_obs(plot),  plot[1])
+    attributes[:pos] = apply_transform(transform_func_obs(plot),  plot[1], space)
     quad_offset = get(attributes, :marker_offset, Observable(Vec2f(0)))
     attributes[:marker_offset] = Vec3f(0)
     attributes[:quad_offset] = quad_offset
@@ -218,9 +219,9 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         # the actual, new value gets then taken in the below lift with to_value
         gcollection = Observable(glyphcollection)
     end
-
-    glyph_data = map(pos, gcollection, offset, transfunc) do pos, gc, offset, transfunc
-        Makie.text_quads(pos, to_value(gc), offset, transfunc)
+    atlas = wgl_texture_atlas()
+    glyph_data = map(pos, gcollection, offset, transfunc, space) do pos, gc, offset, transfunc, space
+        Makie.text_quads(atlas, pos, to_value(gc), offset, transfunc, space)
     end
 
     # unpack values from the one signal:

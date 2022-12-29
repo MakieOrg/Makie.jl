@@ -172,3 +172,39 @@ function Base.insert!(td::Screen, scene::Scene, plot::PlotObject)
     disp === nothing && error("Plot needs to be displayed to insert additional plots")
     insert!(disp, scene, plot)
 end
+
+# Poor mans Require.jl for Electron
+const ELECTRON_PKG_ID = Base.PkgId(Base.UUID("a1bb12fb-d4d1-54b4-b10a-ee7951ef7ad3"), "Electron")
+function Electron()
+    if haskey(Base.loaded_modules, ELECTRON_PKG_ID)
+        return Base.loaded_modules[ELECTRON_PKG_ID]
+    else
+        error("Please Load Electron, if you want to use it!")
+    end
+end
+
+struct ElectronDisplay{EWindow} <: Base.Multimedia.AbstractDisplay
+    window::EWindow # a type parameter here so, that we dont need to depend on Electron Directly!
+end
+
+function ElectronDisplay()
+    w = Electron().Window()
+    Electron().toggle_devtools(w)
+    return ElectronDisplay(w)
+end
+
+Base.displayable(d::ElectronDisplay, ::MIME{Symbol("text/html")}) = true
+
+function Base.display(ed::ElectronDisplay, app::App)
+    d = JSServe.BrowserDisplay()
+    session_url = "/browser-display"
+    server = JSServe.get_server()
+    old_app = JSServe.route!(server, Pair{Any,Any}(session_url, app))
+    url = JSServe.online_url(server, "/browser-display")
+    E = Electron()
+    return E.load(ed.window, E.URI(url))
+end
+
+function use_electron_display()
+    Base.Multimedia.pushdisplay(ElectronDisplay())
+end

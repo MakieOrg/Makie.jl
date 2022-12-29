@@ -160,6 +160,16 @@ transform_func(x) = transform_func_obs(x)[]
 transform_func_obs(x) = transformation(x).transform_func
 
 """
+    apply_transform(f, data, space)
+Apply the data transform func to the data if the space matches one
+of the the transformation spaces (currently only :data is transformed)
+"""
+apply_transform(f, data, space) = space == :data ? apply_transform(f, data) : data  
+function apply_transform(f::Observable, data::Observable, space::Observable) 
+    return lift((f, d, s)-> apply_transform(f, d, s), f, data, space)
+end 
+
+"""
     apply_transform(f, data)
 Apply the data transform func to the data
 """
@@ -337,3 +347,5 @@ end
 # by heatmaps or images
 zvalue2d(x)::Float32 = Makie.translation(x)[][3] + zvalue2d(x.parent)
 zvalue2d(::Nothing)::Float32 = 0f0
+
+

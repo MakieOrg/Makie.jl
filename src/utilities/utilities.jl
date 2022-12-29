@@ -354,4 +354,10 @@ function regularly_spaced_array_to_range(arr)
     end
 end
 
-regularly_spaced_array_to_range(arr::AbstractRange) = arr
+function extract_keys(attributes, keys)
+    attr = Attributes()
+    for key in keys
+        attr[key] = attributes[key]
+    end
+    return attr
+end

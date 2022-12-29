@@ -248,10 +248,3 @@ function data_limits(plot::TypedPlot{Image})
     maxi = Vec3f(last.(mini_maxi)..., 0)
     return Rect3f(mini, maxi .- mini)
 end
-
-function data_limits(plot::TypedPlot{Image})
-    mini_maxi = extrema_nan.((plot.x[], plot.y[]))
-    mini = Vec3f(first.(mini_maxi)..., 0)
-    maxi = Vec3f(last.(mini_maxi)..., 0)
-    return Rect3f(mini, maxi .- mini)
-end
