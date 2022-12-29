@@ -208,7 +208,7 @@ ENV["JULIA_PKG_PRECOMPILE_AUTO"] = 0
 project1 = make_project_folder("current-pr")
 Pkg.activate(project1)
 pkgs = [(; path="./MakieCore"), (; path="."), (; path="./$Package"), (;name="BenchmarkTools")]
-Package == "WGLMakie" && push!(pkgs, (; name="ElectronDisplay"))
+Package == "WGLMakie" && push!(pkgs, (; name="Electron"))
 # cd("dev/Makie")
 Pkg.develop(pkgs)
 @time Pkg.precompile()
