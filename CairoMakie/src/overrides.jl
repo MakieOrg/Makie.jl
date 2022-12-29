@@ -75,7 +75,7 @@ draw_poly(scene::Scene, screen::Screen, poly, rect::Rect2) = draw_poly(scene, sc
 function draw_poly(scene::Scene, screen::Screen, poly, rects::Vector{<:Rect2})
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
-    projected_rects = project_rect.(Ref(scene), space, rects, Ref(model))
+    projected_rects = project_rect.(Ref(scene), space, rects, (model,))
 
     color = poly.color[]
     if color isa AbstractArray{<:Number}
