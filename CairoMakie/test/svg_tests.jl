@@ -17,6 +17,15 @@ end
     @test svg_isnt_rasterized(lines(1:3))
     @test svg_isnt_rasterized(heatmap(rand(5, 5)))
     @test !svg_isnt_rasterized(image(rand(5, 5)))
+    # issue 2510
+    @test svg_isnt_rasterized(begin
+        fig = Figure()
+        ax = Axis(fig[1,1])
+        poly!(ax, GeometryBasics.Polygon(Point2.([[0,0],[1,0],[0,1],[0,0]])), color = ("#FF0000", 0.7), label = "foo")
+        poly!(ax, GeometryBasics.Polygon(Point2.([[0,0],[1,0],[0,1],[0,0]])), color = (:blue, 0.7), label = "bar")
+        fig[1, 2] = Legend(fig, ax, "Bar")
+        fig
+    end)
 end
 
 @testset "reproducable svg ids" begin
