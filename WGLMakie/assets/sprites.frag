@@ -34,13 +34,16 @@ float triangle(vec2 P){
     float r2 = P.y;
     return -max(r1,r2);
 }
+
 float circle(vec2 uv){
     return 0.5-length(uv-vec2(0.5));
 }
+
 float rectangle(vec2 uv){
     vec2 d = max(-uv, uv-vec2(1));
     return -((length(max(vec2(0.0), d)) + min(0.0, max(d.x, d.y))));
 }
+
 float rounded_rectangle(vec2 uv, vec2 tl, vec2 br){
     vec2 d = max(tl-uv, uv-br);
     return -((length(max(vec2(0.0), d)) + min(0.0, max(d.x, d.y)))-tl.x);

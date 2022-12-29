@@ -56,6 +56,9 @@ $(Base.doc(ScreenConfig))
 function activate!(; screen_config...)
     Makie.set_active_backend!(WGLMakie)
     Makie.set_screen_config!(WGLMakie, screen_config)
+    # # if there is a browserdisplay in stack, dont inline plots
+    # browser_display = JSServe.BrowserDisplay() in Base.Multimedia.displays
+    # Makie.inline!(!browser_display)
     return
 end
 
@@ -66,14 +69,10 @@ wgl_texture_atlas() = Makie.get_texture_atlas(1024, 32)
 function __init__()
     # Activate WGLMakie as backend!
     activate!()
-    # if there is a browserdisplay in stack, dont inline plots
-    # browser_display = JSServe.BrowserDisplay() in Base.Multimedia.displays
-    # Makie.inline!(!browser_display)
     # We need to update the texture atlas whenever it changes!
     # We do this in three_plot!
     atlas = wgl_texture_atlas()
     TEXTURE_ATLAS[] = convert(Vector{Float32}, vec(atlas.data))
-
     Makie.font_render_callback!(atlas) do sd, uv
         TEXTURE_ATLAS[] = convert(Vector{Float32}, vec(wgl_texture_atlas().data))
     end
