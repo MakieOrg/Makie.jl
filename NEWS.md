@@ -3,6 +3,7 @@
 ## master
 
 - Added `xlabelrotation`, `ylabelrotation` (`Axis`) and `labelrotation` (`Colorbar`) [#2478](https://github.com/MakieOrg/Makie.jl/pull/2478).
+- Fixed forced rasterization in CairoMakie svg files when polygons with colors with alpha components were used [#2535](https://github.com/MakieOrg/Makie.jl/pull/2535).
 
 ## v0.19.0
 
