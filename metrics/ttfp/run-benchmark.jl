@@ -216,7 +216,7 @@ Pkg.develop(pkgs)
 project2 = make_project_folder(base_branch)
 Pkg.activate(project2)
 pkgs = [(; rev=base_branch, name="MakieCore"), (; rev=base_branch, name="Makie"), (; rev=base_branch, name="$Package"), (;name="BenchmarkTools")]
-Package == "WGLMakie" && push!(pkgs, (; name="ElectronDisplay"))
+Package == "WGLMakie" && push!(pkgs, (; name="Electron"))
 Pkg.add(pkgs)
 @time Pkg.precompile()
 
