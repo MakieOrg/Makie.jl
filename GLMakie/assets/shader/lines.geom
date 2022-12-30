@@ -5,7 +5,7 @@
 {{GLSL_EXTENSIONS}}
 
 layout(lines_adjacency) in;
-layout(triangle_strip, max_vertices = 7) out;
+layout(triangle_strip, max_vertices = 15) out;
 
 in vec4 g_color[];
 in float g_lastlen[];
@@ -17,6 +17,7 @@ out vec2 f_uv;
 out float f_thickness;
 
 flat out uvec2 f_id;
+flat out int f_type;
 
 uniform vec2 resolution;
 uniform float maxlength;
@@ -25,19 +26,41 @@ uniform float pattern_length;
 
 
 #define MITER_LIMIT -0.4
+// types
+#define LINE              0
+#define CIRCLE            4
+#define RECTANGLE         5
+#define TRIANGLE          6
+
 
 vec2 screen_space(vec4 vertex)
 {
     return vec2(vertex.xy / vertex.w) * resolution;
 }
+
+// for line sections
 void emit_vertex(vec2 position, vec2 uv, int index, float ratio)
 {
     vec4 inpos  = gl_in[index].gl_Position;
     f_uv        = vec2((g_lastlen[index] * ratio) / pattern_length / (thickness+4) / 2.0, uv.y);
-    f_color     = g_color[index];
+    f_color     = vec4(0, 1, 0, 1); //g_color[index];
     gl_Position = vec4((position/resolution)*inpos.w, inpos.z, inpos.w);
     f_id        = g_id[index];
     f_thickness = thickness;
+    f_type      = LINE;
+    EmitVertex();
+}
+
+// for linecaps
+void emit_vertex(vec2 position, vec2 uv, int index, int type)
+{
+    vec4 inpos  = gl_in[index].gl_Position;
+    f_uv        = uv;
+    f_color     = vec4(1,0,1,1);
+    gl_Position = vec4((position/resolution)*inpos.w, inpos.z, inpos.w);
+    f_id        = g_id[index];
+    f_thickness = thickness;
+    f_type      = type;
     EmitVertex();
 }
 
@@ -160,8 +183,28 @@ void main(void)
     // generate the triangle strip
 
     emit_vertex(p1 + length_a * miter_a, vec2( 0, -uvy), 1, ratio);
-    emit_vertex(p1 - length_a * miter_a, vec2( 0, uvy), 1, ratio);
+    emit_vertex(p1 - length_a * miter_a, vec2( 0,  uvy), 1, ratio);
 
-    emit_vertex(p2 + length_b * miter_b, vec2( 0, -uvy ), 2, ratio);
-    emit_vertex(p2 - length_b * miter_b, vec2( 0, uvy), 2, ratio);
+    emit_vertex(p2 + length_b * miter_b, vec2( 0, -uvy), 2, ratio);
+    emit_vertex(p2 - length_b * miter_b, vec2( 0,  uvy), 2, ratio);
+
+    // generate quad for line cap
+    if (!isvalid[0] && isvalid[1]) {
+        // there is no line before this
+        EndPrimitive();
+        int cap = CIRCLE;
+        emit_vertex(p1 + thickness * (-v1 + n1), vec2(0.0, 0.0), 1, cap);
+        emit_vertex(p1 + thickness * (-v1 - n1), vec2(0.0, 1.0), 1, cap);
+        emit_vertex(p1 + thickness * (+ n1),     vec2(0.5, 0.0), 1, cap);
+        emit_vertex(p1 + thickness * (- n1),     vec2(0.5, 1.0), 1, cap);
+    }
+    if (isvalid[2] && !isvalid[3]) {
+        // there is no line after this
+        EndPrimitive();
+        int cap = CIRCLE;
+        emit_vertex(p2 + thickness * (+ n1),    vec2(0.5, 0.0), 2, cap);
+        emit_vertex(p2 + thickness * (- n1),    vec2(0.5, 1.0), 2, cap);
+        emit_vertex(p2 + thickness * (v1 + n1), vec2(1.0, 0.0), 2, cap);
+        emit_vertex(p2 + thickness * (v1 - n1), vec2(1.0, 1.0), 2, cap);
+    }
 }
