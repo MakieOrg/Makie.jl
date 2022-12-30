@@ -54,9 +54,7 @@ float triangle(vec2 P){
     P -= vec2(0.5);
     float x = P.y - P.x;
     float y = P.y + P.x;
-    float r1 = max(abs(x), abs(y)) - 0.5;
-    float r2 = -P.x;
-    return -max(r1,r2);
+    return 0.5 - max(abs(x), abs(y));
 }
 float circle(vec2 uv){
     // Radius 0.5 circle centered at (0.5, 0.5)

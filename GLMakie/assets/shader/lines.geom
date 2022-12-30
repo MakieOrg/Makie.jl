@@ -189,22 +189,23 @@ void main(void)
     emit_vertex(p2 - length_b * miter_b, vec2( 0,  uvy), 2, ratio);
 
     // generate quad for line cap
-    if (!isvalid[0] && isvalid[1]) {
-        // there is no line before this
-        EndPrimitive();
-        int cap = CIRCLE;
-        emit_vertex(p1 + thickness * (-v1 + n1), vec2(0.0, 0.0), 1, cap);
-        emit_vertex(p1 + thickness * (-v1 - n1), vec2(0.0, 1.0), 1, cap);
-        emit_vertex(p1 + thickness * (+ n1),     vec2(0.5, 0.0), 1, cap);
-        emit_vertex(p1 + thickness * (- n1),     vec2(0.5, 1.0), 1, cap);
-    }
-    if (isvalid[2] && !isvalid[3]) {
-        // there is no line after this
-        EndPrimitive();
-        int cap = CIRCLE;
-        emit_vertex(p2 + thickness * (+ n1),    vec2(0.5, 0.0), 2, cap);
-        emit_vertex(p2 + thickness * (- n1),    vec2(0.5, 1.0), 2, cap);
-        emit_vertex(p2 + thickness * (v1 + n1), vec2(1.0, 0.0), 2, cap);
-        emit_vertex(p2 + thickness * (v1 - n1), vec2(1.0, 1.0), 2, cap);
+    int cap = RECTANGLE;
+    if (cap != LINE) {
+        if (!isvalid[0] && isvalid[1]) {
+            // there is no line before this
+            EndPrimitive();
+            emit_vertex(p1 + thickness * (-v1 + n1), vec2(0.0, 0.0), 1, cap);
+            emit_vertex(p1 + thickness * (-v1 - n1), vec2(0.0, 1.0), 1, cap);
+            emit_vertex(p1 + thickness * (+ n1),     vec2(0.5, 0.0), 1, cap);
+            emit_vertex(p1 + thickness * (- n1),     vec2(0.5, 1.0), 1, cap);
+        }
+        if (isvalid[2] && !isvalid[3]) {
+            // there is no line after this
+            EndPrimitive();
+            emit_vertex(p2 + thickness * (+ n1),    vec2(0.5, 0.0), 2, cap);
+            emit_vertex(p2 + thickness * (- n1),    vec2(0.5, 1.0), 2, cap);
+            emit_vertex(p2 + thickness * (v1 + n1), vec2(1.0, 0.0), 2, cap);
+            emit_vertex(p2 + thickness * (v1 - n1), vec2(1.0, 1.0), 2, cap);
+        }
     }
 }
