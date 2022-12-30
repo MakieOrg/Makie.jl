@@ -19,17 +19,17 @@ function initialize_block!(ax::Axis3)
     cam = OrthographicCamera()
     cameracontrols!(scene, cam)
 
-    mi1 = Observable(!(pi/2 <= ax.azimuth[] % 2pi < 3pi/2))
-    mi2 = Observable(0 <= ax.azimuth[] % 2pi < pi)
+    mi1 = Observable(!(pi/2 <= mod1(ax.azimuth[], 2pi) < 3pi/2))
+    mi2 = Observable(0 <= mod1(ax.azimuth[], 2pi) < pi)
     mi3 = Observable(ax.elevation[] > 0)
 
     on(ax.azimuth) do x
-        b = !(pi/2 <= x % 2pi < 3pi/2)
+        b = !(pi/2 <= mod1(x, 2pi) < 3pi/2)
         mi1.val == b || (mi1[] = b)
         return
     end
     on(ax.azimuth) do x
-        b = 0 <= x % 2pi < pi
+        b = 0 <= mod1(x, 2pi) < pi
         mi2.val == b || (mi2[] = b)
         return
     end
@@ -101,7 +101,7 @@ function initialize_block!(ax::Axis3)
         blockscene, ax.title,
         position = titlepos,
         visible = ax.titlevisible,
-        textsize = ax.titlesize,
+        fontsize = ax.titlesize,
         align = titlealignnode,
         font = ax.titlefont,
         color = ax.titlecolor,
@@ -487,7 +487,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
             p1 = dpoint(t, f1, f2)
             p2 = if dim == 3
                 # special case the z axis, here it depends on azimuth in which direction the ticks go
-                if 45 <= (rad2deg(azimuth[]) % 180) <= 135
+                if 45 <= mod1(rad2deg(azimuth[]), 180) <= 135
                     dpoint(t, f1 + 0.03 * diff_f1, f2)
                 else
                     dpoint(t, f1, f2 + 0.03 * diff_f2)
@@ -544,7 +544,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     end
 
     ticklabels = text!(topscene, labels_positions, align = align,
-        color = attr(:ticklabelcolor), textsize = attr(:ticklabelsize),
+        color = attr(:ticklabelcolor), fontsize = attr(:ticklabelsize),
         font = attr(:ticklabelfont), visible = attr(:ticklabelsvisible), inspectable = false
     )
 
@@ -627,7 +627,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
 
     label = text!(topscene, attr(:label),
         color = attr(:labelcolor),
-        textsize = attr(:labelsize),
+        fontsize = attr(:labelsize),
         font = attr(:labelfont),
         position = label_position,
         rotation = label_rotation,

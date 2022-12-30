@@ -20,10 +20,15 @@ function get_colorbuffer(fig)
 end
 
 if Package == :WGLMakie
-    using ElectronDisplay
-    ElectronDisplay.CONFIG.showable = showable
-    ElectronDisplay.CONFIG.single_window = true
-    ElectronDisplay.CONFIG.focus = false
+    if isdefined(WGLMakie, :use_electron_display)
+        import Electron
+        WGLMakie.use_electron_display()
+    else
+        using ElectronDisplay
+        ElectronDisplay.CONFIG.showable = showable
+        ElectronDisplay.CONFIG.single_window = true
+        ElectronDisplay.CONFIG.focus = false
+    end
 end
 
 create_time = @ctime fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
@@ -41,7 +46,7 @@ old = isfile(result) ? JSON.parse(read(result, String)) : [[], [], [], [], []]
 push!.(old[1:3], [t_using, create_time, display_time])
 
 b1 = @benchmark fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
-b2 = @benchmark get_colorbuffer(fig)
+b2 = @benchmark get_colorbuffer(fig) setup=(fig=scatter(1:4))
 
 using Statistics
 

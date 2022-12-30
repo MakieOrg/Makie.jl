@@ -17,6 +17,8 @@ mutable struct Texture{T <: GLArrayEltypes, NDIM} <: OpenglTexture{T, NDIM}
     parameters      ::TextureParameters{NDIM}
     size            ::NTuple{NDIM, Int}
     context         ::GLContext
+    requires_update ::Observable{Bool}
+    observers       ::Vector{Observables.ObserverFunction}
     function Texture{T, NDIM}(
             id              ::GLuint,
             texturetype     ::GLenum,
@@ -34,7 +36,9 @@ mutable struct Texture{T <: GLArrayEltypes, NDIM} <: OpenglTexture{T, NDIM}
             format,
             parameters,
             size,
-            current_context()
+            current_context(),
+            Observable(true),
+            Observables.ObserverFunction[]
         )
         finalizer(free, tex)
         tex
@@ -45,16 +49,30 @@ end
 mutable struct TextureBuffer{T <: GLArrayEltypes} <: OpenglTexture{T, 1}
     texture::Texture{T, 1}
     buffer::GLBuffer{T}
+    requires_update::Observable{Bool}
+
+    function TextureBuffer(texture::Texture{T, 1}, buffer::GLBuffer{T}) where T
+        x = map((_, _) -> true, buffer.requires_update, texture.requires_update)
+        new{T}(texture, buffer, x)
+    end
 end
 Base.size(t::TextureBuffer) = size(t.buffer)
 Base.size(t::TextureBuffer, i::Integer) = size(t.buffer, i)
 Base.length(t::TextureBuffer) = length(t.buffer)
-bind(t::Texture) = glBindTexture(t.texturetype, t.id)
+function bind(t::Texture)
+    if t.id == 0
+        error("Binding freed Texture{$(eltype(t))}")
+    end
+    glBindTexture(t.texturetype, t.id)
+end
+
 bind(t::Texture, id) = glBindTexture(t.texturetype, id)
 ShaderAbstractions.switch_context!(t::TextureBuffer) = switch_context!(t.texture.context)
+
 function unsafe_free(tb::TextureBuffer)
     unsafe_free(tb.texture)
     unsafe_free(tb.buffer)
+    Observables.clear(tb.requires_update)
 end
 
 is_texturearray(t::Texture) = t.texturetype == GL_TEXTURE_2D_ARRAY
@@ -126,7 +144,8 @@ function Texture(s::ShaderAbstractions.Sampler{T, N}; kwargs...) where {T, N}
         x_repeat = s.repeat[1], y_repeat = s.repeat[min(2, N)], z_repeat = s.repeat[min(3, N)],
         anisotropic = s.anisotropic; kwargs...
     )
-    ShaderAbstractions.connect!(s, tex)
+    obsfunc = ShaderAbstractions.connect!(s, tex)
+    push!(tex.observers, obsfunc)
     return tex
 end
 
@@ -238,41 +257,43 @@ end
 # GPUArray interface:
 function unsafe_copy!(a::Vector{T}, readoffset::Int, b::TextureBuffer{T}, writeoffset::Int, len::Int) where T
     copy!(a, readoffset, b.buffer, writeoffset, len)
-    glBindTexture(b.texture.texturetype, b.texture.id)
+    bind(b.texture)
     glTexBuffer(b.texture.texturetype, b.texture.internalformat, b.buffer.id) # update texture
 end
 
 function unsafe_copy!(a::TextureBuffer{T}, readoffset::Int, b::Vector{T}, writeoffset::Int, len::Int) where T
     copy!(a.buffer, readoffset, b, writeoffset, len)
-    glBindTexture(a.texture.texturetype, a.texture.id)
+    bind(a.texture)
     glTexBuffer(a.texture.texturetype, a.texture.internalformat, a.buffer.id) # update texture
 end
 
 function unsafe_copy!(a::TextureBuffer{T}, readoffset::Int, b::TextureBuffer{T}, writeoffset::Int, len::Int) where T
     unsafe_copy!(a.buffer, readoffset, b.buffer, writeoffset, len)
 
-    glBindTexture(a.texture.texturetype, a.texture.id)
+    bind(a.texture)
     glTexBuffer(a.texture.texturetype, a.texture.internalformat, a.buffer.id) # update texture
 
-    glBindTexture(b.texture.texturetype, btexture..id)
+    bind(b.texture)
     glTexBuffer(b.texture.texturetype, b.texture.internalformat, b.buffer.id) # update texture
-    glBindTexture(t.texture.texturetype, 0)
+    bind(t.texture, 0)
 end
+
 function gpu_setindex!(t::TextureBuffer{T}, newvalue::Vector{T}, indexes::UnitRange{I}) where {T, I <: Integer}
-    glBindTexture(t.texture.texturetype, t.texture.id)
+    bind(t.texture)
     t.buffer[indexes] = newvalue # set buffer indexes
     glTexBuffer(t.texture.texturetype, t.texture.internalformat, t.buffer.id) # update texture
-    glBindTexture(t.texture.texturetype, 0)
+    bind(t.texture, 0)
 end
+
 function gpu_setindex!(t::Texture{T, 1}, newvalue::Array{T, 1}, indexes::UnitRange{I}) where {T, I <: Integer}
-    glBindTexture(t.texturetype, t.id)
+    bind(t)
     texsubimage(t, newvalue, indexes)
-    glBindTexture(t.texturetype, 0)
+    bind(t, 0)
 end
 function gpu_setindex!(t::Texture{T, N}, newvalue::Array{T, N}, indexes::Union{UnitRange,Integer}...) where {T, N}
-    glBindTexture(t.texturetype, t.id)
+    bind(t)
     texsubimage(t, newvalue, indexes...)
-    glBindTexture(t.texturetype, 0)
+    bind(t, 0)
 end
 
 
@@ -340,10 +361,10 @@ end
 # Resize Texture
 function gpu_resize!(t::TextureBuffer{T}, newdims::NTuple{1, Int}) where T
     resize!(t.buffer, newdims)
-    glBindTexture(t.texture.texturetype, t.texture.id)
+    bind(t.texture)
     glTexBuffer(t.texture.texturetype, t.texture.internalformat, t.buffer.id) #update data in texture
     t.texture.size  = newdims
-    glBindTexture(t.texture.texturetype, 0)
+    bind(t.texture, 0)
     t
 end
 # Resize Texture
@@ -379,9 +400,9 @@ Base.iterate(t::TextureBuffer{T}) where {T} = iterate(t.buffer)
 function Base.iterate(t::TextureBuffer{T}, state::Tuple{Ptr{T}, Int}) where T
     v_idx = iterate(t.buffer, state)
     if v_idx === nothing
-        glBindTexture(t.texturetype, t.id)
+        bind(t)
         glTexBuffer(t.texturetype, t.internalformat, t.buffer.id)
-        glBindTexture(t.texturetype, 0)
+        bind(t, 0)
     end
     v_idx
 end
@@ -511,7 +532,13 @@ function set_parameters(t::Texture{T, N}, params::TextureParameters=t.parameters
     if N >= 3 && !is_texturearray(t) # for texture arrays, third dimension can not be set
         push!(result, (GL_TEXTURE_WRAP_R, data[:repeat][3]))
     end
-    push!(result, (GL_TEXTURE_MAX_ANISOTROPY_EXT, params.anisotropic))
+    try
+        if GLFW.ExtensionSupported("GL_ARB_texture_filter_anisotropic")
+            push!(result, (GL_TEXTURE_MAX_ANISOTROPY_EXT, params.anisotropic))
+        end
+    catch e
+        e.code == GLFW.NO_CURRENT_CONTEXT || rethrow(e)
+    end
     t.parameters = params
     set_parameters(t, result)
 end

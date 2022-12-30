@@ -1,10 +1,10 @@
-function vertexbuffer(x, trans)
+function vertexbuffer(x, trans, space)
     pos = decompose(Point, x)
-    return apply_transform(trans,  pos)
+    return apply_transform(trans,  pos, space)
 end
 
 function vertexbuffer(x::Observable, p)
-    return Buffer(lift(vertexbuffer, x, transform_func_obs(p)))
+    return Buffer(lift(vertexbuffer, x, transform_func_obs(p), get(p, :space, :data)))
 end
 
 facebuffer(x) = facebuffer(GeometryBasics.faces(x))
@@ -66,13 +66,18 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
         end
 
         if color isa AbstractArray
-            if color_signal[] isa AbstractVector
+            if color isa AbstractVector
                 attributes[:color] = Buffer(color_signal) # per vertex colors
             else
                 uniforms[:uniform_color] = Sampler(color_signal) # Texture
                 uniforms[:color] = false
-                !haskey(attributes, :uv) &&
-                    @warn "Mesh doesn't use Texturecoordinates, but has a Texture. Colors won't map"
+                if color isa Makie.AbstractPattern
+                    uniforms[:pattern] = true
+                    # add texture coordinates
+                    uv = Buffer(lift(decompose_uv, mesh_signal))
+                    delete!(uniforms, :uv)
+                    attributes[:uv] = uv
+                end
             end
             if eltype(color_signal[]) <: Number
                 uniforms[:colorrange] = converted_attribute(plot, :colorrange)
@@ -100,6 +105,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
 
     get!(uniforms, :colorrange, true)
     get!(uniforms, :colormap, true)
+    get!(uniforms, :pattern, false)
     get!(uniforms, :model, plot.model)
     get!(uniforms, :lightposition, Vec3f(1))
     get!(uniforms, :ambient, Vec3f(1))

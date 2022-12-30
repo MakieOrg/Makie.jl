@@ -5,14 +5,20 @@ module VideoBackend
     struct Screen <: MakieScreen
         size::Tuple{Int, Int}
     end
+    struct ScreenConfig
+    end
     Base.size(screen::Screen) = screen.size
-    Screen(scene::Scene, ::Makie.ImageStorageFormat; screen_config...) = Screen(size(scene))
+    Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat) = Screen(size(scene))
     Makie.backend_showable(::Type{Screen}, ::MIME"text/html") = true
     Makie.backend_showable(::Type{Screen}, ::MIME"image/png") = true
     Makie.colorbuffer(screen::Screen) = zeros(RGBf, reverse(screen.size)...)
     Base.display(::Screen, ::Scene; kw...) = nothing
 end
+
 Makie.set_active_backend!(VideoBackend)
+# We need a screenconfig in the theme for every backend!
+set_theme!(VideoBackend=Attributes())
+
 
 mktempdir() do tempdir
     @testset "Video encoding" begin

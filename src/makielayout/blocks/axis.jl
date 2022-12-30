@@ -71,13 +71,9 @@ function register_events!(ax, scene)
 
     register_interaction!(ax, :limitreset, LimitReset())
 
-    register_interaction!(ax,
-        :scrollzoom,
-        ScrollZoom(0.1, Ref{Any}(nothing), Ref{Any}(0), Ref{Any}(0), 0.2))
+    register_interaction!(ax, :scrollzoom, ScrollZoom(0.1, 0.2))
 
-    register_interaction!(ax,
-        :dragpan,
-        DragPan(Ref{Any}(nothing), Ref{Any}(0), Ref{Any}(0), 0.2))
+    register_interaction!(ax, :dragpan, DragPan(0.2))
 
     return
 end
@@ -86,7 +82,8 @@ function update_axis_camera(camera::Camera, t, lims, xrev::Bool, yrev::Bool)
     nearclip = -10_000f0
     farclip = 10_000f0
 
-    tlims = Makie.apply_transform(t, lims)
+    # we are computing transformed camera position, so this isn't space dependent
+    tlims = Makie.apply_transform(t, lims) 
 
     left, bottom = minimum(tlims)
     right, top = maximum(tlims)
@@ -170,7 +167,8 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     topscene = ax.blockscene
 
-    decorations = Dict{Symbol, Any}()
+    elements = Dict{Symbol, Any}()
+    ax.elements = elements
 
     if palette === nothing
         palette = haskey(topscene.theme, :palette) ? deepcopy(topscene.theme[:palette]) : copy(Makie.default_palettes)
@@ -211,7 +209,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     # so it doesn't rasterize the scene
     background = poly!(topscene, scenearea; color=ax.backgroundcolor, inspectable=false, shading=false, strokecolor=:transparent)
     translate!(background, 0, 0, -100)
-    decorations[:background] = background
+    elements[:background] = background
 
     block_limit_linking = Observable(false)
     setfield!(ax, :block_limit_linking, block_limit_linking)
@@ -226,7 +224,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(xgridlines, 0, 0, -10)
-    decorations[:xgridlines] = xgridlines
+    elements[:xgridlines] = xgridlines
 
     xminorgridnode = Observable(Point2f[]; ignore_equal_values=true)
     xminorgridlines = linesegments!(
@@ -235,7 +233,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(xminorgridlines, 0, 0, -10)
-    decorations[:xminorgridlines] = xminorgridlines
+    elements[:xminorgridlines] = xminorgridlines
 
     ygridnode = Observable(Point2f[]; ignore_equal_values=true)
     ygridlines = linesegments!(
@@ -244,7 +242,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(ygridlines, 0, 0, -10)
-    decorations[:ygridlines] = ygridlines
+    elements[:ygridlines] = ygridlines
 
     yminorgridnode = Observable(Point2f[]; ignore_equal_values=true)
     yminorgridlines = linesegments!(
@@ -253,7 +251,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(yminorgridlines, 0, 0, -10)
-    decorations[:yminorgridlines] = yminorgridlines
+    elements[:yminorgridlines] = yminorgridlines
 
     onany(ax.xscale, ax.yscale) do xsc, ysc
         scene.transformation.transform_func[] = (xsc, ysc)
@@ -319,7 +317,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         flipped = xaxis_flipped, ticklabelrotation = ax.xticklabelrotation,
         ticklabelalign = ax.xticklabelalign, labelsize = ax.xlabelsize,
         labelpadding = ax.xlabelpadding, ticklabelpad = ax.xticklabelpad, labelvisible = ax.xlabelvisible,
-        label = ax.xlabel, labelfont = ax.xlabelfont, ticklabelfont = ax.xticklabelfont, ticklabelcolor = ax.xticklabelcolor, labelcolor = ax.xlabelcolor, tickalign = ax.xtickalign,
+        label = ax.xlabel, labelfont = ax.xlabelfont, labelrotation = ax.xlabelrotation, ticklabelfont = ax.xticklabelfont, ticklabelcolor = ax.xticklabelcolor, labelcolor = ax.xlabelcolor, tickalign = ax.xtickalign,
         ticklabelspace = ax.xticklabelspace, ticks = ax.xticks, tickformat = ax.xtickformat, ticklabelsvisible = ax.xticklabelsvisible,
         ticksvisible = ax.xticksvisible, spinevisible = xspinevisible, spinecolor = xspinecolor, spinewidth = ax.spinewidth,
         ticklabelsize = ax.xticklabelsize, trimspine = ax.xtrimspine, ticksize = ax.xticksize,
@@ -332,7 +330,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         flipped = yaxis_flipped, ticklabelrotation = ax.yticklabelrotation,
         ticklabelalign = ax.yticklabelalign, labelsize = ax.ylabelsize,
         labelpadding = ax.ylabelpadding, ticklabelpad = ax.yticklabelpad, labelvisible = ax.ylabelvisible,
-        label = ax.ylabel, labelfont = ax.ylabelfont, ticklabelfont = ax.yticklabelfont, ticklabelcolor = ax.yticklabelcolor, labelcolor = ax.ylabelcolor, tickalign = ax.ytickalign,
+        label = ax.ylabel, labelfont = ax.ylabelfont, labelrotation = ax.ylabelrotation, ticklabelfont = ax.yticklabelfont, ticklabelcolor = ax.yticklabelcolor, labelcolor = ax.ylabelcolor, tickalign = ax.ytickalign,
         ticklabelspace = ax.yticklabelspace, ticks = ax.yticks, tickformat = ax.ytickformat, ticklabelsvisible = ax.yticklabelsvisible,
         ticksvisible = ax.yticksvisible, spinevisible = yspinevisible, spinecolor = yspinecolor, spinewidth = ax.spinewidth,
         trimspine = ax.ytrimspine, ticklabelsize = ax.yticklabelsize, ticksize = ax.yticksize, flip_vertical_label = ax.flip_ylabel, reversed = ax.yreversed, tickwidth = ax.ytickwidth,
@@ -390,13 +388,13 @@ function initialize_block!(ax::Axis; palette = nothing)
     xoppositeline = linesegments!(topscene, xoppositelinepoints, linewidth = ax.spinewidth,
         visible = xoppositespinevisible, color = xoppositespinecolor, inspectable = false,
         linestyle = nothing)
-    decorations[:xoppositeline] = xoppositeline
+    elements[:xoppositeline] = xoppositeline
     translate!(xoppositeline, 0, 0, 20)
 
     yoppositeline = linesegments!(topscene, yoppositelinepoints, linewidth = ax.spinewidth,
         visible = yoppositespinevisible, color = yoppositespinecolor, inspectable = false,
         linestyle = nothing)
-    decorations[:yoppositeline] = yoppositeline
+    elements[:yoppositeline] = yoppositeline
     translate!(yoppositeline, 0, 0, 20)
 
     onany(xaxis.tickpositions, scene.px_area) do tickpos, area
@@ -449,7 +447,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         topscene, subtitlepos,
         text = ax.subtitle,
         visible = ax.subtitlevisible,
-        textsize = ax.subtitlesize,
+        fontsize = ax.subtitlesize,
         align = titlealignnode,
         font = ax.subtitlefont,
         color = ax.subtitlecolor,
@@ -464,14 +462,14 @@ function initialize_block!(ax::Axis; palette = nothing)
         topscene, titlepos,
         text = ax.title,
         visible = ax.titlevisible,
-        textsize = ax.titlesize,
+        fontsize = ax.titlesize,
         align = titlealignnode,
         font = ax.titlefont,
         color = ax.titlecolor,
         lineheight = ax.titlelineheight,
         markerspace = :data,
         inspectable = false)
-    decorations[:title] = titlet
+    elements[:title] = titlet
 
     map!(compute_protrusions, ax.layoutobservables.protrusions, ax.title, ax.titlesize, ax.titlegap, ax.titlevisible, ax.spinewidth,
             ax.topspinevisible, ax.bottomspinevisible, ax.leftspinevisible, ax.rightspinevisible,
@@ -1307,8 +1305,8 @@ function Base.delete!(ax::Axis, plot::AbstractPlot)
 end
 
 function Base.empty!(ax::Axis)
-    for plot in copy(ax.scene.plots)
-        delete!(ax, plot)
+    while !isempty(ax.scene.plots)
+        delete!(ax, ax.scene.plots[end])
     end
     ax
 end

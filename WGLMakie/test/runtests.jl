@@ -1,10 +1,10 @@
-using ElectronDisplay
-ElectronDisplay.CONFIG.showable = showable
-ElectronDisplay.CONFIG.single_window = true
-ElectronDisplay.CONFIG.focus = false
 using ImageMagick, FileIO
 using WGLMakie, Makie, Test
 using Pkg
+using WGLMakie.JSServe
+import Electron
+WGLMakie.use_electron_display()
+
 path = normpath(joinpath(dirname(pathof(Makie)), "..", "ReferenceTests"))
 Pkg.develop(PackageSpec(path = path))
 using ReferenceTests
@@ -21,7 +21,6 @@ using ReferenceTests
     # see https://github.com/MakieOrg/Makie.jl/pull/2167
     @test !showable("blaaa", f)
 end
-
 
 excludes = Set([
     "Streamplot animation",
@@ -52,7 +51,6 @@ excludes = Set([
     "Animated surface and wireframe",
     "Array of Images Scatter",
     "Image Scatter different sizes",
-    "pattern barplot", # not implemented yet
     "scatter with stroke",
     "scatter with glow"
 ])
