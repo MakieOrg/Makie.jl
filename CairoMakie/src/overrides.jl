@@ -33,7 +33,7 @@ end
 
 function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2})
     color = to_color(poly.color[])
-    strokecolor = to_color(poly.color[])
+    strokecolor = to_color(poly.strokecolor[])
     draw_poly(scene, screen, poly, points, color, poly.model[], strokecolor, poly.strokewidth[])
 end
 
