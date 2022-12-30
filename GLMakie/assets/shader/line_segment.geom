@@ -31,7 +31,7 @@ void emit_vertex(vec2 position, vec2 uv, int index)
 {
     vec4 inpos = gl_in[index].gl_Position;
     f_uv = uv;
-    f_color = vec4(0,1,0,0.5); //g_color[index];
+    f_color = g_color[index];
     gl_Position = vec4((position / resolution) * inpos.w, inpos.z, inpos.w);
     f_id = g_id[index];
     f_thickness = g_thickness[index] + AA_THICKNESS;
@@ -44,7 +44,7 @@ void emit_vertex(vec2 position, vec2 uv, int index, int type)
 {
     vec4 inpos  = gl_in[index].gl_Position;
     f_uv        = uv;
-    f_color     = vec4(1,0,1,1);
+    f_color     = g_color[index];
     gl_Position = vec4((position/resolution)*inpos.w, inpos.z, inpos.w);
     f_id        = g_id[index];
     f_thickness = g_thickness[index];
@@ -87,21 +87,20 @@ void main(void)
     emit_vertex(p1 - linecap_gap1 + thickness_aa1 * n0, vec2(l, -uv1), 1);
     emit_vertex(p1 - linecap_gap1 - thickness_aa1 * n0, vec2(l,  uv1), 1);
 
-    // generate quad for line cap
+    // generate quads for line cap
     if (linecap != 0) { // 0 doubles as no line cap
         /*
-        Following the order of emit_vertex below
+        Line with line caps:
 
           cap      line      cap
-        A-----C----    ----A-----C ^
+        1-----3----    ----5-----7 ^
         |     |            |     | | off_n
         |     p1---    ---p2     | '
         |     |            |     |
-        B-----D----    ----B-----D
+        2-----4----    ----6-----8
                             ----> off_l
 
-        The size of the liencap quad is increase slightly to give space for 
-        antialiasing. du and dv correct this scaling
+        1 .. 8 are the emit_vertex calls below
         */
 
         vec2 off_n, off_l;

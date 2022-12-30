@@ -190,21 +190,20 @@ void main(void)
     emit_vertex(p2 - linecap_gap2 + length_b * miter_b, vec2( 0, -uvy), 2, ratio);
     emit_vertex(p2 - linecap_gap2 - length_b * miter_b, vec2( 0,  uvy), 2, ratio);
 
-    // generate quad for line cap
+    // generate quads for line cap
     if (linecap != 0) { // 0 doubles as no line cap
         /*
-        Following the order of emit_vertex below
+        Line with line caps:
 
           cap      line      cap
-        A-----C----    ----A-----C ^
+        1-----3----    ----5-----7 ^
         |     |            |     | | off_n
         |     p1---    ---p2     | '
         |     |            |     |
-        B-----D----    ----B-----D
+        2-----4----    ----6-----8
                             ----> off_l
 
-        The size of the liencap quad is increase slightly to give space for 
-        antialiasing. du and dv correct this scaling
+        1 .. 8 are the emit_vertex calls below
         */
 
         if (!isvalid[0]) {
