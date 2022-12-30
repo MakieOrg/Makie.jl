@@ -4,8 +4,11 @@
 WGLMakie uses [JSServe](https://github.com/SimonDanisch/JSServe.jl) to generate the HTML and JavaScript for displaying the plots. On the JavaScript side, we use [ThreeJS](https://threejs.org/) and [WebGL](https://de.wikipedia.org/wiki/WebGL) to render the plots.
 Moving more of the implementation to JavaScript is currently the goal and will give us a better JavaScript API, and more interaction without a running Julia server.
 
+
 !!! warning
-    WGLMakie can be considered experimental because the JavaScript API isn't stable yet and the notebook integration isn't perfect yet, but all plot types should work, and therefore all recipes, but there are certain caveats:
+    WGLMakie can be considered experimental because the JavaScript API isn't stable yet and the notebook integration isn't perfect yet, but all plot types should work, and therefore all recipes, but there are certain caveats
+
+
 
 #### Missing Backend Features
 
@@ -14,12 +17,15 @@ Moving more of the implementation to JavaScript is currently the goal and will g
 
 #### Browser Support
 
+
 ##### IJulia
+
 
 * JSServe now uses the IJulia connection, and therefore can be used even with complex proxy setup without any additional setup
 * reload of the page isn't supported, if you reload, you need to re-execute all cells and make sure that `Page()` is executed first.
 
 #### JupyterHub / Jupyterlab / Binder
+
 
 * Plots should show up, but connection to Julia process is not implemented, so interactions won't work
 * Setting up connection shouldn't be too hard to setup.
@@ -27,7 +33,9 @@ Moving more of the implementation to JavaScript is currently the goal and will g
 * https://github.com/MakieOrg/Makie.jl/issues/2405
 * https://github.com/MakieOrg/Makie.jl/issues/1396
 
+
 #### Pluto
+
 
 * still uses JSServe's Websocket connection, so needs extra setup for remote servers.
 * reload of the page isn't supported, if you reload, you need to re-execute all cells and make sure that `Page()` is executed first.
@@ -38,11 +46,13 @@ Moving more of the implementation to JavaScript is currently the goal and will g
 * VSCode in the browser should work out of the box.
 * Pluto in JuliaHub still has a bug with the websocket connection, which gets closed after some time. So, you will see a plot, but interaction stops working.
 
+
 #### Browser Support
 
 Some browsers may have only WebGL 1.0, or need extra steps to enable WebGL, but in general, all modern browsers on [mobile and desktop should support WebGL 2.0](https://www.lambdatest.com/web-technologies/webgl2).
 Safari users may need to [enable](https://discussions.apple.com/thread/8655829) WebGL, though.
 If you end up stuck on WebGL 1.0, the main missing feature will be `volume` & `contour(volume)`.
+
 
 
 ## Activation and screen config
