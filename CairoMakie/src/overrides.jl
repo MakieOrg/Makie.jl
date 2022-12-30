@@ -65,7 +65,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vec
     color = to_color(poly.color[])
     strokecolor = to_color(poly.strokecolor[])
     broadcast_foreach(points_list, color,
-        strokecolor, poly.strokewidth[], Ref(poly.model[])) do points, color, strokecolor, strokewidth, model
+        strokecolor, poly.strokewidth[], (poly.model[],)) do points, color, strokecolor, strokewidth, model
             draw_poly(scene, screen, poly, points, color, model, strokecolor, strokewidth)
     end
 end
