@@ -107,6 +107,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             gl_attributes[:ambient] = ambientlight.color
         end
         gl_attributes[:track_updates] = screen.config.render_on_demand
+        gl_attributes[:px_per_unit] = screen.px_per_unit
 
         robj = robj_func(gl_attributes)
 

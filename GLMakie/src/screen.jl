@@ -8,19 +8,19 @@ function renderloop end
 """
 ## Renderloop
 
-* `renderloop = GLMakie.renderloop`: sets a function `renderloop(::GLMakie.Screen)` which starts a renderloop for the screen.
+* `renderloop = GLMakie.renderloop`: Sets a function `renderloop(::GLMakie.Screen)` which starts a renderloop for the screen.
 
-
-    !!! warning
+!!! warning
     The below are not effective if renderloop isn't set to `GLMakie.renderloop`, unless implemented in custom renderloop:
-
 
 * `pause_renderloop = false`: creates a screen with paused renderlooop. Can be started with `GLMakie.start_renderloop!(screen)` or paused again with `GLMakie.pause_renderloop!(screen)`.
 * `vsync = false`: enables vsync for the window.
 * `render_on_demand = true`: renders the scene only if something has changed in it.
 * `framerate = 30.0`: sets the currently rendered frames per second.
+* `px_per_unit = automatic`: Sets the ratio between the number of rendered pixels and the `Makie` resolution. It defaults to the value of `scalefactor` but may be any positive real number.
 
 ## GLFW window attributes
+
 * `float = false`: Lets the opened window float above anything else.
 * `focus_on_show = false`: Focusses the window when newly opened.
 * `decorated = true`: shows the window decorations or not.
@@ -28,6 +28,8 @@ function renderloop end
 * `fullscreen = false`: Starts the window in fullscreen.
 * `debugging = false`: Starts the GLFW.Window/OpenGL context with debug output.
 * `monitor::Union{Nothing, GLFW.Monitor} = nothing`: Sets the monitor on which the Window should be opened.
+* `visible = true`: Sets whether the window is user-visible.
+* `scalefactor = automatic`: Sets the window scaling factor, such as `2.0` on HiDPI/Retina displays. It is set automatically based on the display, but may be any positive real number.
 
 ## Postprocessor
 * `oit = false`: Enles order independent transparency for the window.
@@ -43,6 +45,7 @@ mutable struct ScreenConfig
     vsync::Bool
     render_on_demand::Bool
     framerate::Float64
+    px_per_unit::Union{Nothing, Float32}
 
     # GLFW window attributes
     float::Bool
@@ -53,6 +56,7 @@ mutable struct ScreenConfig
     debugging::Bool
     monitor::Union{Nothing, GLFW.Monitor}
     visible::Bool
+    scalefactor::Union{Nothing, Float32}
 
     # Postprocessor
     oit::Bool
@@ -67,6 +71,7 @@ mutable struct ScreenConfig
             vsync::Bool,
             render_on_demand::Bool,
             framerate::Number,
+            px_per_unit::Union{Makie.Automatic, Number},
             # GLFW window attributes
             float::Bool,
             focus_on_show::Bool,
@@ -76,6 +81,7 @@ mutable struct ScreenConfig
             debugging::Bool,
             monitor::Union{Nothing, GLFW.Monitor},
             visible::Bool,
+            scalefactor::Union{Makie.Automatic, Number},
 
             # Preproccessor
             oit::Bool,
@@ -90,6 +96,7 @@ mutable struct ScreenConfig
             vsync,
             render_on_demand,
             framerate,
+            px_per_unit isa Makie.Automatic ? nothing : Float32(px_per_unit),
             # GLFW window attributes
             float,
             focus_on_show,
@@ -99,6 +106,7 @@ mutable struct ScreenConfig
             debugging,
             monitor,
             visible,
+            scalefactor isa Makie.Automatic ? nothing : Float32(scalefactor),
             # Preproccessor
             oit,
             fxaa,
@@ -148,6 +156,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     config::Union{Nothing, ScreenConfig}
     stop_renderloop::Bool
     rendertask::Union{Task, Nothing}
+    px_per_unit::Observable{Float32}
 
     screen2scene::Dict{WeakRef, ScreenID}
     screens::Vector{ScreenArea}
@@ -158,6 +167,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     framecache::Matrix{RGB{N0f8}}
     render_tick::Observable{Nothing}
     window_open::Observable{Bool}
+    scalefactor::Observable{Float32}
 
     root_scene::Union{Scene, Nothing}
     reuse::Bool
@@ -186,10 +196,10 @@ mutable struct Screen{GLWindow} <: MakieScreen
         screen = new{GLWindow}(
             glscreen, shader_cache, framebuffer,
             config, stop_renderloop, rendertask,
-            screen2scene,
+            Observable(0f0), screen2scene,
             screens, renderlist, postprocessors, cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(nothing),
-            Observable(true), nothing, reuse, true, false
+            Observable(true), Observable(0f0), nothing, reuse, true, false
         )
         push!(ALL_SCREENS, screen) # track all created screens
         return screen
@@ -214,6 +224,8 @@ function empty_screen(debugging::Bool; reuse=true)
 
         (GLFW.STENCIL_BITS, 0),
         (GLFW.AUX_BUFFERS,  0),
+
+        (GLFW.SCALE_TO_MONITOR, true),
     ]
     resolution = (10, 10)
     window = try
@@ -263,6 +275,14 @@ function empty_screen(debugging::Bool; reuse=true)
         reuse,
     )
     GLFW.SetWindowRefreshCallback(window, window -> refreshwindowcb(window, screen))
+    GLFW.SetWindowContentScaleCallback(window, (window, xs, ys) -> scalechangecb(screen, window, xs, ys))
+    on(screen.scalefactor) do sf
+        if !isnothing(screen.root_scene)
+            resize!(screen, size(screen.root_scene)...)
+        end
+        return nothing
+    end
+
     return screen
 end
 
@@ -302,8 +322,6 @@ function singleton_screen(debugging::Bool)
     return reopen!(screen)
 end
 
-const GLFW_FOCUS_ON_SHOW = 0x0002000C
-
 function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene::Scene, args...)
     apply_config!(screen, config)
 end
@@ -311,7 +329,7 @@ end
 function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::Bool=true)
     glw = screen.glscreen
     ShaderAbstractions.switch_context!(glw)
-    GLFW.SetWindowAttrib(glw, GLFW_FOCUS_ON_SHOW, config.focus_on_show)
+    GLFW.SetWindowAttrib(glw, GLFW.FOCUS_ON_SHOW, config.focus_on_show)
     GLFW.SetWindowAttrib(glw, GLFW.DECORATED, config.decorated)
     GLFW.SetWindowAttrib(glw, GLFW.FLOATING, config.float)
     GLFW.SetWindowTitle(glw, config.title)
@@ -319,6 +337,8 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
     if !isnothing(config.monitor)
         GLFW.SetWindowMonitor(glw, config.monitor)
     end
+    screen.scalefactor[] = !isnothing(config.scalefactor) ? config.scalefactor : scale_factor(glw)
+    screen.px_per_unit[] = !isnothing(config.px_per_unit) ? config.px_per_unit : screen.scalefactor[]
 
     function replace_processor!(postprocessor, idx)
         fb = screen.framebuffer
@@ -355,10 +375,10 @@ function Screen(;
     # Screen config is managed by the current active theme, so managed by Makie
     config = Makie.merge_screen_config(ScreenConfig, screen_config)
     screen = screen_from_pool(config.debugging)
+    apply_config!(screen, config; start_renderloop=start_renderloop)
     if !isnothing(resolution)
         resize!(screen, resolution...)
     end
-    apply_config!(screen, config; start_renderloop=start_renderloop)
     return screen
 end
 
@@ -600,24 +620,29 @@ function closeall()
     return
 end
 
-function resize_native!(window::GLFW.Window, resolution...)
-    if isopen(window)
-        ShaderAbstractions.switch_context!(window)
-        oldsize = windowsize(window)
-        retina_scale = retina_scaling_factor(window)
-        w, h = resolution ./ retina_scale
-        if oldsize == (w, h)
-            return
-        end
-        GLFW.SetWindowSize(window, round(Int, w), round(Int, h))
-    end
-end
+function Base.resize!(screen::Screen, w::Int, h::Int)
+    window = to_native(screen)
+    (w > 0 && h > 0 && isopen(window)) || return nothing
 
-function Base.resize!(screen::Screen, w, h)
-    nw = to_native(screen)
-    resize_native!(nw, w, h)
-    fb = screen.framebuffer
-    resize!(fb, (w, h))
+    # Resize the window which appears on the user desktop (if necessary).
+    # Apple Retina displays work in logical dimensions (and automatically scales the
+    # backing frame buffer by 2), whereas both Linux and Windows have window and buffer
+    # dimensions match (so we must scale manually from logical size to window size).
+    #
+    # N.B. The GLFW framebuffer is different from the rendering framebuffers resized below.
+    ShaderAbstractions.switch_context!(window)
+    winscale = @static Sys.isapple() ? 1f0 : screen.scalefactor[]
+    winw, winh = round.(Int, winscale .* (w, h))
+    if window_size(window) != (winw, winh)
+        GLFW.SetWindowSize(window, winw, winh)
+    end
+
+    # Then resize the underlying rendering framebuffers as well, which can be scaled
+    # independently of the window scale factor.
+    fbscale = screen.px_per_unit[]
+    fbw, fbh = round.(Int, fbscale .* (w, h))
+    resize!(screen.framebuffer, fbw, fbh)
+    return nothing
 end
 
 function fast_color_data!(dest::Array{RGB{N0f8}, 2}, source::Texture{T, 2}) where T
@@ -662,8 +687,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     # polling may change window size, when its bigger than monitor!
     # we still need to poll though, to get all the newest events!
     # GLFW.PollEvents()
-    # keep current buffer size to allows larger-than-window renders
-    render_frame(screen, resize_buffers=false) # let it render
+    render_frame(screen, resize_buffers=true) # let it render
     glFinish() # block until opengl is done rendering
     if size(ctex) != size(screen.framecache)
         screen.framecache = Matrix{RGB{N0f8}}(undef, size(ctex))
@@ -788,6 +812,16 @@ function refreshwindowcb(window, screen)
     screen.render_tick[] = nothing
     render_frame(screen)
     GLFW.SwapBuffers(window)
+    return
+end
+
+function scalechangecb(screen, window, xscale, yscale)
+    sf = min(xscale, yscale)
+    if isnothing(screen.config.px_per_unit) && screen.scalefactor[] == screen.px_per_unit[]
+        screen.px_per_unit[] = sf
+    end
+    screen.scalefactor[] = sf
+    resize!(screen, size(screen.root_scene)...)
     return
 end
 

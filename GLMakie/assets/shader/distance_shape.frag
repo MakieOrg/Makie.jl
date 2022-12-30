@@ -25,6 +25,7 @@ uniform float           stroke_width;
 uniform float           glow_width;
 uniform int             shape; // shape is a uniform for now. Making them a in && using them for control flow is expected to kill performance
 uniform vec2            resolution;
+uniform float           px_per_unit;
 uniform bool            transparent_picking;
 
 flat in float           f_viewport_from_u_scale;
@@ -97,7 +98,9 @@ void stroke(vec4 strokecolor, float signed_distance, float width, inout vec4 col
 
 void glow(vec4 glowcolor, float signed_distance, float inside, inout vec4 color){
     if (glow_width > 0.0){
-        float outside = (abs(signed_distance)-stroke_width)/glow_width;
+        float s_stroke_width = px_per_unit * stroke_width;
+        float s_glow_width = px_per_unit * glow_width;
+        float outside = (abs(signed_distance)-s_stroke_width)/s_glow_width;
         float alpha = 1-outside;
         color = mix(vec4(glowcolor.rgb, glowcolor.a*alpha), color, inside);
     }
@@ -145,13 +148,14 @@ void main(){
     // See notes in geometry shader where f_viewport_from_u_scale is computed.
     signed_distance *= f_viewport_from_u_scale;
 
-    float inside_start = max(-stroke_width, 0.0);
+    float s_stroke_width = px_per_unit * stroke_width;
+    float inside_start = max(-s_stroke_width, 0.0);
     float inside = aastep(inside_start, signed_distance);
     vec4 final_color = f_bg_color;
 
     fill(f_color, image, tex_uv, inside, final_color);
-    stroke(f_stroke_color, signed_distance, -stroke_width, final_color);
-    glow(f_glow_color, signed_distance, aastep(-stroke_width, signed_distance), final_color);
+    stroke(f_stroke_color, signed_distance, -s_stroke_width, final_color);
+    glow(f_glow_color, signed_distance, aastep(-s_stroke_width, signed_distance), final_color);
     // TODO: In 3D, we should arguably discard fragments outside the sprite
     //       But note that this may interfere with object picking.
     // if (final_color == f_bg_color)

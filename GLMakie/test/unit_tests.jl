@@ -254,3 +254,116 @@ end
     # now every screen should be gone
     @test isempty(GLMakie.SCREEN_REUSE_POOL)
 end
+
+@testset "HiDPI displays" begin
+    import FileIO: @format_str, File, load
+    GLMakie.closeall()
+
+    W, H = 400, 400
+    N = 51
+    x = collect(range(0.0, 2π, length=N))
+    y = sin.(x)
+    fig, ax, pl = scatter(x, y, figure = (; resolution = (W, H)));
+    hidedecorations!(ax)
+
+    screen = display(GLMakie.Screen(visible = false, scalefactor = 2), fig)
+    @test screen.scalefactor[] === 2f0
+    @test screen.px_per_unit[] === 2f0  # inherited from scale factor
+    @test size(screen.framebuffer) == (2W, 2H)
+    if !Sys.isapple()
+        @test GLMakie.window_size(screen.glscreen) == (2W, 2H)
+    else
+        @test GLMakie.window_size(screen.glscreen) == (W, H)
+    end
+
+    # check that picking works through the resized GL buffers
+    GLMakie.Makie.colorbuffer(screen)  # force render
+    # - point pick
+    point_px = project_sp(ax.scene, Point2f(x[end÷2], y[end÷2]))
+    elem, idx = pick(ax.scene, point_px)
+    @test elem === pl
+    @test idx == length(x) ÷ 2
+    # - area pick
+    bottom_px = project_sp(ax.scene, Point2f(π, -1))
+    right_px = project_sp(ax.scene, Point2f(2π, 0))
+    quadrant = Rect2i(round.(bottom_px)..., round.(right_px - bottom_px)...)
+    picks = pick(ax.scene, quadrant)
+    points = Set(Int(p[2]) for p in picks if p[1] isa Scatter)
+    @test points == Set(((N+1)÷2):N)
+
+    # render at lower resolution
+    screen = display(GLMakie.Screen(visible = false, scalefactor = 2, px_per_unit = 1), fig)
+    @test screen.scalefactor[] === 2f0
+    @test screen.px_per_unit[] === 1f0
+    @test size(screen.framebuffer) == (W, H)
+
+    # decrease the scale factor after-the-fact
+    screen.scalefactor[] = 1
+    sleep(0.1)  # TODO: Necessary?? Are observable callbacks asynchronous?
+    @test GLMakie.window_size(screen.glscreen) == (W, H)
+
+    # save images of different resolutions
+    mktemp() do path, io
+        close(io)
+        file = File{format"PNG"}(path)
+
+        # save at current size
+        @test screen.px_per_unit[] == 1
+        save(file, fig)
+        img = load(file)
+        @test size(img) == (W, H)
+
+        # save with a different resolution
+        save(file, fig, px_per_unit = 2)
+        img = load(file)
+        @test size(img) == (2W, 2H)
+        # writing to file should not effect the visible figure
+        @test_broken screen.px_per_unit[] == 1
+    end
+
+    if Sys.islinux()
+        # Test that GLMakie is correctly getting the default scale factor from X11 in a
+        # HiDPI environment.
+
+        checkcmd = `which xrdb` & `which xsettingsd`
+        checkcmd = pipeline(ignorestatus(checkcmd), stdout = devnull, stderr = devnull)
+        hasxrdb = success(run(checkcmd))
+
+        # Only continue if running within an Xvfb environment where the setting is
+        # empty by default. Overriding during a user's session could be problematic
+        # (i.e. if running interactively rather than in CI).
+        inxvfb = hasxrdb ? isempty(readchomp(`xrdb -query`)) : false
+
+        if hasxrdb && inxvfb
+            # GLFW looks for Xft.dpi resource setting. Spawn a temporary xsettingsd daemon
+            # to be the X resource manager
+            xsettingsd = run(pipeline(`xsettingsd -c /dev/null`), wait = false)
+            try
+                # Then set the DPI to 192, i.e. 2 times the default of 96dpi
+                run(pipeline(`echo "Xft.dpi: 192"`, `xrdb -merge`))
+
+                # Print out the automatically-determined scale factor from the GLScreen
+                jlscript = raw"""
+                using GLMakie
+                fig, ax, pl = scatter(1:2, 3:4)
+                screen = display(GLMakie.Screen(visible = false), fig)
+                print(Int(screen.scalefactor[]))
+                """
+                cmd = ```
+                    $(Base.julia_cmd())
+                    --project=$(Base.active_project())
+                    --eval $jlscript
+                    ```
+                scalefactor = readchomp(cmd)
+                @test scalefactor == "2"
+            finally
+                # cleanup: kill the daemon before continuing with more tests
+                kill(xsettingsd)
+            end
+        else
+            @test_broken hasxrdb && inxvfb
+        end
+    else
+        @test_broken Sys.islinux()
+    end
+end

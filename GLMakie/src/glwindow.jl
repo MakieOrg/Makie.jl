@@ -124,15 +124,13 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     )
 end
 
-function Base.resize!(fb::GLFramebuffer, window_size)
-    ws = Int.((window_size[1], window_size[2]))
-    if ws != size(fb) && all(x-> x > 0, window_size)
-        for (name, buffer) in fb.buffers
-            resize_nocopy!(buffer, ws)
-        end
-        fb.resolution[] = ws
+function Base.resize!(fb::GLFramebuffer, w::Int, h::Int)
+    (w > 0 && h > 0 && (w, h) != size(fb)) || return
+    for (name, buffer) in fb.buffers
+        resize_nocopy!(buffer, (w, h))
     end
-    nothing
+    fb.resolution[] = (w, h)
+    return nothing
 end
 
 
@@ -188,10 +186,17 @@ function destroy!(nw::GLFW.Window)
     was_current && ShaderAbstractions.switch_context!()
 end
 
-function windowsize(nw::GLFW.Window)
+function window_size(nw::GLFW.Window)
     was_destroyed(nw) && return (0, 0)
-    size = GLFW.GetFramebufferSize(nw)
-    return (size.width, size.height)
+    return Tuple(GLFW.GetWindowSize(nw))
+end
+function framebuffer_size(nw::GLFW.Window)
+    was_destroyed(nw) && return (0, 0)
+    return Tuple(GLFW.GetFramebufferSize(nw))
+end
+function scale_factor(nw::GLFW.Window)
+    was_destroyed(nw) && return 1f0
+    return minimum(GLFW.GetWindowContentScale(nw))
 end
 
 function Base.isopen(window::GLFW.Window)
