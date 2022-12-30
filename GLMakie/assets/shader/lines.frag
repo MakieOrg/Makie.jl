@@ -47,14 +47,19 @@ vec2 get_sd(Nothing _, vec2 uv){
 #define CIRCLE            4
 #define RECTANGLE         5
 #define TRIANGLE          6
+#define MIRRORED_TRIANGLE 7
 
 float triangle(vec2 P){
-    // adjusted from distance shape to fill TODO (0..0.5, 0..1)
-    // reused for 
+    // adjusted from distance shape, technically diamond shape <>
     P -= vec2(0.5);
     float x = P.y - P.x;
     float y = P.y + P.x;
     return 0.5 - max(abs(x), abs(y));
+}
+float mirrored_triangle(vec2 P){
+    // Like >< for triangle markers cutting into lines
+    P -= vec2(0.5);
+    return min(0.5, abs(P.x)) - abs(P.y);
 }
 float circle(vec2 uv){
     // Radius 0.5 circle centered at (0.5, 0.5)
@@ -78,6 +83,9 @@ void main(){
         color = mix(color, f_color, aastep(0, sd));
     } else if (f_type == TRIANGLE) {
         float sd = f_thickness * triangle(f_uv);
+        color = mix(color, f_color, smoothstep(-ALIASING_CONST, ALIASING_CONST, sd));
+    } else if (f_type == MIRRORED_TRIANGLE) {
+        float sd = f_thickness * mirrored_triangle(f_uv);
         color = mix(color, f_color, smoothstep(-ALIASING_CONST, ALIASING_CONST, sd));
     } else {
         vec2 xy = get_sd(pattern, f_uv);

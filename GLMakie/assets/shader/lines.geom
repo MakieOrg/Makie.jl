@@ -182,13 +182,16 @@ void main(void)
         length_b = thickness_aa;
     }
 
+    // shorten lines if linecap_length is negative
+    vec2 linecap_gap = -min(linecap_length, 0) * v1;
+
     // generate the triangle strip
 
-    emit_vertex(p1 + length_a * miter_a, vec2( 0, -uvy), 1, ratio);
-    emit_vertex(p1 - length_a * miter_a, vec2( 0,  uvy), 1, ratio);
+    emit_vertex(p1 + linecap_gap + length_a * miter_a, vec2( 0, -uvy), 1, ratio);
+    emit_vertex(p1 + linecap_gap - length_a * miter_a, vec2( 0,  uvy), 1, ratio);
 
-    emit_vertex(p2 + length_b * miter_b, vec2( 0, -uvy), 2, ratio);
-    emit_vertex(p2 - length_b * miter_b, vec2( 0,  uvy), 2, ratio);
+    emit_vertex(p2 - linecap_gap + length_b * miter_b, vec2( 0, -uvy), 2, ratio);
+    emit_vertex(p2 - linecap_gap - length_b * miter_b, vec2( 0,  uvy), 2, ratio);
 
     // generate quad for line cap
     if (linecap != LINE) {
