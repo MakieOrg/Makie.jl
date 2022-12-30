@@ -65,7 +65,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vec
     color = to_color(poly.color[])
     strokecolor = to_color(poly.strokecolor[])
     broadcast_foreach(points_list, color,
-        strokecolor, poly.strokewidth[], (poly.model[],)) do points, color, strokecolor, strokewidth, model
+        strokecolor, poly.strokewidth[], Ref(poly.model[])) do points, color, strokecolor, strokewidth, model
             draw_poly(scene, screen, poly, points, color, model, strokecolor, strokewidth)
     end
 end
@@ -75,7 +75,7 @@ draw_poly(scene::Scene, screen::Screen, poly, rect::Rect2) = draw_poly(scene, sc
 function draw_poly(scene::Scene, screen::Screen, poly, rects::Vector{<:Rect2})
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
-    projected_rects = project_rect.(Ref(scene), space, rects, (model,))
+    projected_rects = project_rect.(Ref(scene), space, rects, Ref(model))
 
     color = poly.color[]
     if color isa AbstractArray{<:Number}
