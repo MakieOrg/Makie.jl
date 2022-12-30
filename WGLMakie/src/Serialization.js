@@ -161,10 +161,10 @@ export function deserialize_plot(data) {
     return mesh;
 }
 
-const ON_NEXT_INSERT = new Set()
+const ON_NEXT_INSERT = new Set();
 
 export function on_next_insert(f) {
-    ON_NEXT_INSERT.add(f)
+    ON_NEXT_INSERT.add(f);
 }
 
 export function add_plot(scene, plot_data) {
@@ -205,8 +205,8 @@ export function add_plot(scene, plot_data) {
     plot_cache[plot_data.uuid] = p;
     scene.add(p);
     // execute all next insert callbacks
-    const next_insert = new Set(ON_NEXT_INSERT);// copy
-    next_insert.forEach(f=> f())
+    const next_insert = new Set(ON_NEXT_INSERT); // copy
+    next_insert.forEach((f) => f());
 }
 
 function connect_uniforms(mesh, updater) {
@@ -230,7 +230,7 @@ function connect_uniforms(mesh, updater) {
             uniform.value.needsUpdate = true;
         } else {
             if (is_three_fixed_array(uniform.value)) {
-                uniform.value.fromArray(data)
+                uniform.value.fromArray(data);
             } else {
                 uniform.value = data;
             }
@@ -297,10 +297,10 @@ function InstanceBufferAttribute(buffer) {
 
 function attach_geometry(buffer_geometry, vertexarrays, faces) {
     for (const name in vertexarrays) {
-        const buff = vertexarrays[name]
+        const buff = vertexarrays[name];
         let buffer;
         if (buff.to_update) {
-            buffer = new THREE.BufferAttribute(buff.to_update, buff.itemSize)
+            buffer = new THREE.BufferAttribute(buff.to_update, buff.itemSize);
         } else {
             buffer = BufferAttribute(buff);
         }
@@ -324,7 +324,7 @@ function attach_instanced_geometry(buffer_geometry, instance_attributes) {
 function recreate_geometry(mesh, vertexarrays, faces) {
     const buffer_geometry = new THREE.BufferGeometry();
     attach_geometry(buffer_geometry, vertexarrays, faces);
-    mesh.geometry.dispose()
+    mesh.geometry.dispose();
     mesh.geometry = buffer_geometry;
     mesh.needsUpdate = true;
 }
@@ -381,7 +381,7 @@ function create_mesh(program) {
     program.faces.on((x) => {
         mesh.geometry.setIndex(new THREE.BufferAttribute(x, 1));
     });
-    return mesh
+    return mesh;
 }
 
 function create_instanced_mesh(program) {
@@ -431,54 +431,48 @@ function connect_attributes(mesh, updater) {
     re_assign_buffers();
 
     updater.on(([name, new_values, length]) => {
-
-        if (length > 0) {
-            const buffer = mesh.geometry.attributes[name];
-            let buffers;
-            let first_buffer;
-            let real_length;
-            let is_instance = false;
-            // First, we need to figure out if this is an instance / geometry buffer
-            if (name in instance_buffers) {
-                buffers = instance_buffers;
-                first_buffer = first_instance_buffer;
-                real_length = real_instance_length;
-                is_instance = true;
-            } else {
-                buffers = geometry_buffers;
-                first_buffer = first_geometry_buffer;
-                real_length = real_geometry_length;
+        const buffer = mesh.geometry.attributes[name];
+        let buffers;
+        let first_buffer;
+        let real_length;
+        let is_instance = false;
+        // First, we need to figure out if this is an instance / geometry buffer
+        if (name in instance_buffers) {
+            buffers = instance_buffers;
+            first_buffer = first_instance_buffer;
+            real_length = real_instance_length;
+            is_instance = true;
+        } else {
+            buffers = geometry_buffers;
+            first_buffer = first_geometry_buffer;
+            real_length = real_geometry_length;
+        }
+        if (length <= real_length[0]) {
+            // this is simple - we can just update the values
+            buffer.set(new_values);
+            buffer.needsUpdate = true;
+            if (is_instance) {
+                mesh.geometry.instanceCount = length;
             }
-            if (length <= real_length[0]) {
-                // this is simple - we can just update the values
-                buffer.set(new_values);
-                buffer.needsUpdate = true;
+        } else {
+            // resizing is a bit more complex
+            // first we directly overwrite the array - this
+            // won't have any effect, but like this we can collect the
+            // newly sized arrays untill all of them have the same length
+            buffer.to_update = new_values;
+            const all_have_same_length = Object.values(buffers).every(
+                (x) => x.to_update && x.to_update.length / x.itemSize == length
+            );
+            if (all_have_same_length) {
                 if (is_instance) {
-                    mesh.geometry.instanceCount = length;
-                }
-            } else {
-                // resizing is a bit more complex
-                // first we directly overwrite the array - this
-                // won't have any effect, but like this we can collect the
-                // newly sized arrays untill all of them have the same length
-                buffer.to_update = new_values;
-                const all_have_same_length = Object.values(buffers).every(
-                        (x) =>
-                            x.to_update &&
-                            x.to_update.length / x.itemSize == length
-                    )
-                if (all_have_same_length) {
-                    console.log(`is instance: ${is_instance}`)
-                    if (is_instance) {
-                        recreate_instanced_geometry(mesh);
-                        // we just replaced geometry & all buffers, so we need to update these
-                        re_assign_buffers();
-                        mesh.geometry.instanceCount =
-                            new_values.length / buffer.itemSize;
-                    } else {
-                        recreate_geometry(mesh, buffers, mesh.geometry.index);
-                        re_assign_buffers();
-                    }
+                    recreate_instanced_geometry(mesh);
+                    // we just replaced geometry & all buffers, so we need to update these
+                    re_assign_buffers();
+                    mesh.geometry.instanceCount =
+                        new_values.length / buffer.itemSize;
+                } else {
+                    recreate_geometry(mesh, buffers, mesh.geometry.index);
+                    re_assign_buffers();
                 }
             }
         }
