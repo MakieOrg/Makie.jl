@@ -23,11 +23,13 @@ uniform vec2 resolution;
 uniform float maxlength;
 uniform float thickness;
 uniform float pattern_length;
+uniform int linecap;
+uniform float linecap_length;
 
 
 #define MITER_LIMIT -0.4
-// types
-#define LINE              0
+// linecap styles
+#define LINE              0 // doubles as no line cap
 #define CIRCLE            4
 #define RECTANGLE         5
 #define TRIANGLE          6
@@ -189,23 +191,41 @@ void main(void)
     emit_vertex(p2 - length_b * miter_b, vec2( 0,  uvy), 2, ratio);
 
     // generate quad for line cap
-    int cap = RECTANGLE;
-    if (cap != LINE) {
+    if (linecap != LINE) {
+        /*
+        Following the order of emit_vertex below
+
+          cap      line      cap
+        A-----C----    ----A-----C ^
+        |     |            |     | | off_n
+        |     p1---    ---p2     | '
+        |     |            |     |
+        B-----D----    ----B-----D
+         ----> off_l
+
+        The size of the liencap quad is increase slightly to give space for 
+        antialiasing. du and dv correct this scaling
+        */
+        vec2 off_n = thickness_aa * n1;
+        vec2 off_l = sign(linecap_length) * (abs(linecap_length) + 4) * v1;
+        float du = 2 / abs(linecap_length);
+        float dv = 2 / thickness;
+
         if (!isvalid[0] && isvalid[1]) {
             // there is no line before this
             EndPrimitive();
-            emit_vertex(p1 + thickness * (-v1 + n1), vec2(0.0, 0.0), 1, cap);
-            emit_vertex(p1 + thickness * (-v1 - n1), vec2(0.0, 1.0), 1, cap);
-            emit_vertex(p1 + thickness * (+ n1),     vec2(0.5, 0.0), 1, cap);
-            emit_vertex(p1 + thickness * (- n1),     vec2(0.5, 1.0), 1, cap);
+            emit_vertex(p1 + off_n - off_l, vec2(-du, -dv),  1, linecap);
+            emit_vertex(p1 - off_n - off_l, vec2(-du, 1+dv), 1, linecap);
+            emit_vertex(p1 + off_n,         vec2(0.5, -dv),  1, linecap);
+            emit_vertex(p1 - off_n,         vec2(0.5, 1+dv), 1, linecap);
         }
         if (isvalid[2] && !isvalid[3]) {
             // there is no line after this
             EndPrimitive();
-            emit_vertex(p2 + thickness * (+ n1),    vec2(0.5, 0.0), 2, cap);
-            emit_vertex(p2 + thickness * (- n1),    vec2(0.5, 1.0), 2, cap);
-            emit_vertex(p2 + thickness * (v1 + n1), vec2(1.0, 0.0), 2, cap);
-            emit_vertex(p2 + thickness * (v1 - n1), vec2(1.0, 1.0), 2, cap);
+            emit_vertex(p2 + off_n,         vec2(0.5,  -dv),  2, linecap);
+            emit_vertex(p2 - off_n,         vec2(0.5,  1+dv), 2, linecap);
+            emit_vertex(p2 + off_n + off_l, vec2(1+dv, -dv),  2, linecap);
+            emit_vertex(p2 - off_n + off_l, vec2(1+dv, 1+dv), 2, linecap);
         }
     }
 }
