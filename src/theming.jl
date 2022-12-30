@@ -95,6 +95,7 @@ const minimal_default = Attributes(
         debugging = false,
         monitor = nothing,
         visible = true,
+        px_per_unit = automatic,
 
         # Postproccessor
         oit = true,

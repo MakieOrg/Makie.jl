@@ -1,14 +1,14 @@
-
 function setup!(screen)
     glEnable(GL_SCISSOR_TEST)
     if isopen(screen)
-        glScissor(0, 0, size(screen)...)
+        sf = screen.px_per_unit[]
+        glScissor(0, 0, round.(Int, size(screen) .* sf)...)
         glClearColor(1, 1, 1, 1)
         glClear(GL_COLOR_BUFFER_BIT)
         for (id, scene) in screen.screens
             if scene.visible[]
                 a = pixelarea(scene)[]
-                rt = (minimum(a)..., widths(a)...)
+                rt = (round.(Int, sf .* minimum(a))..., round.(Int, sf .* widths(a))...)
                 glViewport(rt...)
                 if scene.clear
                     c = scene.backgroundcolor[]
@@ -46,7 +46,7 @@ function render_frame(screen::Screen; resize_buffers=true)
 
     fb = screen.framebuffer
     if resize_buffers
-        wh = Int.(framebuffer_size(nw))
+        wh = Int.(windowsize(nw))
         resize!(fb, wh)
     end
     w, h = size(fb)
@@ -121,8 +121,9 @@ function GLAbstraction.render(filter_elem_func, screen::Screen)
             found, scene = id2scene(screen, screenid)
             found || continue
             scene.visible[] || continue
+            sf = screen.px_per_unit[]
             a = pixelarea(scene)[]
-            glViewport(minimum(a)..., widths(a)...)
+            glViewport(round.(Int, sf .* minimum(a))..., round.(Int, sf .* widths(a))...)
             render(elem)
         end
     catch e

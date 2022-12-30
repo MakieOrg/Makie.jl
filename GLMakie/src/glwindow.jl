@@ -194,6 +194,11 @@ function windowsize(nw::GLFW.Window)
     return (size.width, size.height)
 end
 
+function scale_factor(nw::GLFW.Window)
+    was_destroyed(nw) && return 1f0
+    return minimum(GLFW.GetWindowContentScale(nw))
+end
+
 function Base.isopen(window::GLFW.Window)
     was_destroyed(window) && return false
     try
