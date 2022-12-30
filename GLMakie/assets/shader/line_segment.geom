@@ -34,7 +34,7 @@ void emit_vertex(vec2 position, vec2 uv, int index)
     f_color = g_color[index];
     gl_Position = vec4((position / resolution) * inpos.w, inpos.z, inpos.w);
     f_id = g_id[index];
-    f_thickness = g_thickness[index] + AA_THICKNESS;
+    f_thickness = g_thickness[index];
     f_type = 0;
     EmitVertex();
 }
@@ -82,10 +82,10 @@ void main(void)
     vec2 linecap_gap0 = -min(g_linecap_length[0], 0) * v0;
     vec2 linecap_gap1 = -min(g_linecap_length[1], 0) * v0;
 
-    emit_vertex(p0 + linecap_gap0 + thickness_aa0 * n0, vec2(0, -uv0), 0);
-    emit_vertex(p0 + linecap_gap0 - thickness_aa0 * n0, vec2(0,  uv0), 0);
-    emit_vertex(p1 - linecap_gap1 + thickness_aa1 * n0, vec2(l, -uv1), 1);
-    emit_vertex(p1 - linecap_gap1 - thickness_aa1 * n0, vec2(l,  uv1), 1);
+    emit_vertex(p0 + linecap_gap0 + thickness_aa0 * n0, vec2(0, -thickness_aa0), 0);
+    emit_vertex(p0 + linecap_gap0 - thickness_aa0 * n0, vec2(0,  thickness_aa0), 0);
+    emit_vertex(p1 - linecap_gap1 + thickness_aa1 * n0, vec2(l, -thickness_aa1), 1);
+    emit_vertex(p1 - linecap_gap1 - thickness_aa1 * n0, vec2(l,  thickness_aa1), 1);
 
     // generate quads for line cap
     if (linecap != 0) { // 0 doubles as no line cap

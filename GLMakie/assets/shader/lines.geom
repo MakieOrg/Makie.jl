@@ -148,10 +148,6 @@ void main(void)
     float xend   = g_lastlen[2];
     float ratio = length(p2 - p1) / (xend - xstart);
 
-    float uvy1 = thickness_aa1 / g_thickness[1];
-    float uvy2 = thickness_aa2 / g_thickness[2];
-    float uvy = min(uvy1, uvy2);
-
     if( dot( v0, v1 ) < MITER_LIMIT ){
         /*
                  n1
@@ -162,14 +158,14 @@ void main(void)
         bool gap = dot( v0, n1 ) > 0;
         // close the gap
         if(gap){
-            emit_vertex(p1 + thickness_aa1 * n0, vec2(1, -uvy), 1, ratio);
-            emit_vertex(p1 + thickness_aa1 * n1, vec2(1, -uvy), 1, ratio);
+            emit_vertex(p1 + thickness_aa1 * n0, vec2(1, -thickness_aa1), 1, ratio);
+            emit_vertex(p1 + thickness_aa1 * n1, vec2(1, -thickness_aa1), 1, ratio);
             emit_vertex(p1,                      vec2(0, 0.0), 1, ratio);
             EndPrimitive();
         }else{
-            emit_vertex(p1 - thickness_aa1 * n0, vec2(1, uvy), 1, ratio);
+            emit_vertex(p1 - thickness_aa1 * n0, vec2(1, thickness_aa1), 1, ratio);
             emit_vertex(p1,                      vec2(0, 0.0), 1, ratio);
-            emit_vertex(p1 - thickness_aa1 * n1, vec2(1, uvy), 1, ratio);
+            emit_vertex(p1 - thickness_aa1 * n1, vec2(1, thickness_aa1), 1, ratio);
             EndPrimitive();
         }
         miter_a = n1;
@@ -185,10 +181,10 @@ void main(void)
     vec2 linecap_gap1 = -min(g_linecap_length[1], 0) * float(!isvalid[0]) * v1;
     vec2 linecap_gap2 = -min(g_linecap_length[2], 0) * float(!isvalid[3]) * v1;
 
-    emit_vertex(p1 + linecap_gap1 + length_a * miter_a, vec2( 0, -uvy), 1, ratio);
-    emit_vertex(p1 + linecap_gap1 - length_a * miter_a, vec2( 0,  uvy), 1, ratio);
-    emit_vertex(p2 - linecap_gap2 + length_b * miter_b, vec2( 0, -uvy), 2, ratio);
-    emit_vertex(p2 - linecap_gap2 - length_b * miter_b, vec2( 0,  uvy), 2, ratio);
+    emit_vertex(p1 + linecap_gap1 + length_a * miter_a, vec2( 0, -thickness_aa1), 1, ratio);
+    emit_vertex(p1 + linecap_gap1 - length_a * miter_a, vec2( 0,  thickness_aa1), 1, ratio);
+    emit_vertex(p2 - linecap_gap2 + length_b * miter_b, vec2( 0, -thickness_aa2), 2, ratio);
+    emit_vertex(p2 - linecap_gap2 - length_b * miter_b, vec2( 0,  thickness_aa2), 2, ratio);
 
     // generate quads for line cap
     if (linecap != 0) { // 0 doubles as no line cap
