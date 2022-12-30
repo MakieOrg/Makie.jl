@@ -34,10 +34,6 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         color = numbers_to_colors(color, primitive)
     end
 
-    if primitive isa Lines && primitive.input_args[1][] isa BezierPath
-        return draw_bezierpath_lines(ctx, primitive.input_args[1][], scene, color, space, model)
-    end
-
     # color is now a color or an array of colors
     # if it's an array of colors, each segment must be stroked separately
 
@@ -53,6 +49,11 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     if !isnothing(linestyle) && !(linewidth isa AbstractArray)
         Cairo.set_dash(ctx, diff(Float64.(linestyle)) .* linewidth)
     end
+
+    if primitive isa Lines && primitive.input_args[1][] isa BezierPath
+        return draw_bezierpath_lines(ctx, primitive.input_args[1][], scene, color, space, model, linewidth)
+    end
+
     if color isa AbstractArray || linewidth isa AbstractArray
         # stroke each segment separately, this means disjointed segments with probably
         # wonky dash patterns if segments are short
@@ -76,12 +77,13 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     nothing
 end
 
-function draw_bezierpath_lines(ctx, bezierpath::BezierPath, scene, color, space, model)
+function draw_bezierpath_lines(ctx, bezierpath::BezierPath, scene, color, space, model, linewidth)
     for c in bezierpath.commands
         proj_comm = project_command(c, scene, space, model)
         path_command(ctx, proj_comm)
     end
     Cairo.set_source_rgba(ctx, rgbatuple(color)...)
+    Cairo.set_line_width(ctx, linewidth)
     Cairo.stroke(ctx)
     return
 end
