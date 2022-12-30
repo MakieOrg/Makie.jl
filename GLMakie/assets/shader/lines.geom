@@ -28,11 +28,6 @@ uniform float linecap_length;
 
 
 #define MITER_LIMIT -0.4
-// linecap styles
-#define LINE              0 // doubles as no line cap
-#define CIRCLE            4
-#define RECTANGLE         5
-#define TRIANGLE          6
 
 
 vec2 screen_space(vec4 vertex)
@@ -49,7 +44,7 @@ void emit_vertex(vec2 position, vec2 uv, int index, float ratio)
     gl_Position = vec4((position/resolution)*inpos.w, inpos.z, inpos.w);
     f_id        = g_id[index];
     f_thickness = thickness;
-    f_type      = LINE;
+    f_type      = 0; // line 
     EmitVertex();
 }
 
@@ -62,7 +57,7 @@ void emit_vertex(vec2 position, vec2 uv, int index, int type)
     gl_Position = vec4((position/resolution)*inpos.w, inpos.z, inpos.w);
     f_id        = g_id[index];
     f_thickness = thickness;
-    f_type      = type;
+    f_type      = type; // some cap style
     EmitVertex();
 }
 
@@ -187,14 +182,14 @@ void main(void)
 
     // generate the triangle strip
 
-    emit_vertex(p1 + linecap_gap + length_a * miter_a, vec2( 0, -uvy), 1, ratio);
-    emit_vertex(p1 + linecap_gap - length_a * miter_a, vec2( 0,  uvy), 1, ratio);
+    emit_vertex(p1 + float(!isvalid[0]) * linecap_gap + length_a * miter_a, vec2( 0, -uvy), 1, ratio);
+    emit_vertex(p1 + float(!isvalid[0]) * linecap_gap - length_a * miter_a, vec2( 0,  uvy), 1, ratio);
 
-    emit_vertex(p2 - linecap_gap + length_b * miter_b, vec2( 0, -uvy), 2, ratio);
-    emit_vertex(p2 - linecap_gap - length_b * miter_b, vec2( 0,  uvy), 2, ratio);
+    emit_vertex(p2 - float(!isvalid[3]) * linecap_gap + length_b * miter_b, vec2( 0, -uvy), 2, ratio);
+    emit_vertex(p2 - float(!isvalid[3]) * linecap_gap - length_b * miter_b, vec2( 0,  uvy), 2, ratio);
 
     // generate quad for line cap
-    if (linecap != LINE) {
+    if (linecap != 0) { // 0 doubles as no line cap
         /*
         Following the order of emit_vertex below
 
@@ -214,7 +209,7 @@ void main(void)
         float du = 2 / abs(linecap_length);
         float dv = 2 / thickness;
 
-        if (!isvalid[0] && isvalid[1]) {
+        if (!isvalid[0]) {
             // there is no line before this
             EndPrimitive();
             emit_vertex(p1 + off_n - off_l, vec2(-du, -dv),  1, linecap);
@@ -222,7 +217,7 @@ void main(void)
             emit_vertex(p1 + off_n,         vec2(0.5, -dv),  1, linecap);
             emit_vertex(p1 - off_n,         vec2(0.5, 1+dv), 1, linecap);
         }
-        if (isvalid[2] && !isvalid[3]) {
+        if (!isvalid[3]) {
             // there is no line after this
             EndPrimitive();
             emit_vertex(p2 + off_n,         vec2(0.5,  -dv),  2, linecap);
