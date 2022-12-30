@@ -41,7 +41,7 @@ void emit_vertex(vec2 position, vec2 uv, int index, float ratio)
 {
     vec4 inpos  = gl_in[index].gl_Position;
     f_uv        = vec2((g_lastlen[index] * ratio) / pattern_length / (g_thickness[index] + AA_THICKNESS) / 2.0, uv.y);
-    f_color     = vec4(0, 1, 0, 0.5); //g_color[index];
+    f_color     = g_color[index];
     gl_Position = vec4((position/resolution)*inpos.w, inpos.z, inpos.w);
     f_id        = g_id[index];
     f_thickness = g_thickness[index];
@@ -54,7 +54,7 @@ void emit_vertex(vec2 position, vec2 uv, int index, int type)
 {
     vec4 inpos  = gl_in[index].gl_Position;
     f_uv        = uv;
-    f_color     = vec4(1,0,1,1);
+    f_color     = g_color[index];
     gl_Position = vec4((position/resolution)*inpos.w, inpos.z, inpos.w);
     f_id        = g_id[index];
     f_thickness = g_thickness[index];
@@ -150,6 +150,7 @@ void main(void)
 
     float uvy1 = thickness_aa1 / g_thickness[1];
     float uvy2 = thickness_aa2 / g_thickness[2];
+    float uvy = min(uvy1, uvy2);
 
     if( dot( v0, v1 ) < MITER_LIMIT ){
         /*
@@ -161,14 +162,14 @@ void main(void)
         bool gap = dot( v0, n1 ) > 0;
         // close the gap
         if(gap){
-            emit_vertex(p1 + thickness_aa1 * n0, vec2(1, -uvy1), 1, ratio);
-            emit_vertex(p1 + thickness_aa1 * n1, vec2(1, -uvy1), 1, ratio);
+            emit_vertex(p1 + thickness_aa1 * n0, vec2(1, -uvy), 1, ratio);
+            emit_vertex(p1 + thickness_aa1 * n1, vec2(1, -uvy), 1, ratio);
             emit_vertex(p1,                      vec2(0, 0.0), 1, ratio);
             EndPrimitive();
         }else{
-            emit_vertex(p1 - thickness_aa1 * n0, vec2(1, uvy1), 1, ratio);
+            emit_vertex(p1 - thickness_aa1 * n0, vec2(1, uvy), 1, ratio);
             emit_vertex(p1,                      vec2(0, 0.0), 1, ratio);
-            emit_vertex(p1 - thickness_aa1 * n1, vec2(1, uvy1), 1, ratio);
+            emit_vertex(p1 - thickness_aa1 * n1, vec2(1, uvy), 1, ratio);
             EndPrimitive();
         }
         miter_a = n1;
@@ -184,13 +185,10 @@ void main(void)
     vec2 linecap_gap1 = -min(g_linecap_length[1], 0) * float(!isvalid[0]) * v1;
     vec2 linecap_gap2 = -min(g_linecap_length[2], 0) * float(!isvalid[3]) * v1;
 
-    // generate the triangle strip
-
-    emit_vertex(p1 + linecap_gap1 + length_a * miter_a, vec2( 0, -uvy1), 1, ratio);
-    emit_vertex(p1 + linecap_gap1 - length_a * miter_a, vec2( 0,  uvy1), 1, ratio);
-
-    emit_vertex(p2 - linecap_gap2 + length_b * miter_b, vec2( 0, -uvy2), 2, ratio);
-    emit_vertex(p2 - linecap_gap2 - length_b * miter_b, vec2( 0,  uvy2), 2, ratio);
+    emit_vertex(p1 + linecap_gap1 + length_a * miter_a, vec2( 0, -uvy), 1, ratio);
+    emit_vertex(p1 + linecap_gap1 - length_a * miter_a, vec2( 0,  uvy), 1, ratio);
+    emit_vertex(p2 - linecap_gap2 + length_b * miter_b, vec2( 0, -uvy), 2, ratio);
+    emit_vertex(p2 - linecap_gap2 - length_b * miter_b, vec2( 0,  uvy), 2, ratio);
 
     // generate quad for line cap
     if (linecap != 0) { // 0 doubles as no line cap
