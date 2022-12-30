@@ -113,6 +113,8 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         color_map           = nothing => Texture
         color_norm          = nothing
         thickness           = 2f0 => GLBuffer
+        linecap             = 0
+        linecap_length      = thickness => GLBuffer
         shape               = RECTANGLE
         pattern             = nothing
         fxaa                = false

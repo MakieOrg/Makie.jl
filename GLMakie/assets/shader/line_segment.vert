@@ -7,6 +7,7 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 
 {{vertex_type}} vertex;
 {{thickness_type}} thickness;
+{{linecap_length_type}} linecap_length;
 
 {{color_type}} color;
 {{color_map_type}}  color_map;
@@ -18,6 +19,7 @@ uniform uint objectid;
 out uvec2 g_id;
 out vec4 g_color;
 out float g_thickness;
+out float g_linecap_length;
 
 vec4 getindex(sampler2D tex, int index);
 vec4 getindex(sampler1D tex, int index);
@@ -42,6 +44,7 @@ void main()
     g_id = uvec2(objectid, index+1);
     g_color = to_color(color, color_map, color_norm, index);
     g_thickness = thickness;
+    g_linecap_length = linecap_length;
     gl_Position = projectionview * model * to_vec4(vertex);
     gl_Position.z += gl_Position.w * depth_shift;
 }
