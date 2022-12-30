@@ -95,4 +95,4 @@ function Makie.plot!(pl::Bracket)
     pl
 end
 
-data_limits(pl::Bracket) = Rect3f()
+data_limits(pl::Bracket) = Rect3f(pl[1][])
