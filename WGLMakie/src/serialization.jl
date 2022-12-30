@@ -239,7 +239,8 @@ end
 
 
 function serialize_three(program::Program)
-    indices = convert(Observable, reinterpret_faces(_faces(program.vertexarray)))
+    facies = reinterpret_faces(_faces(program.vertexarray))
+    indices = convert(Observable, facies)
     uniforms = serialize_uniforms(program.uniforms)
     attribute_updater = Observable(["", [], 0])
     register_geometry_updates(attribute_updater, program)

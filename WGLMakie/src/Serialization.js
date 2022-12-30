@@ -324,6 +324,7 @@ function attach_instanced_geometry(buffer_geometry, instance_attributes) {
 function recreate_geometry(mesh, vertexarrays, faces) {
     const buffer_geometry = new THREE.BufferGeometry();
     attach_geometry(buffer_geometry, vertexarrays, faces);
+    mesh.geometry.dispose()
     mesh.geometry = buffer_geometry;
     mesh.needsUpdate = true;
 }
@@ -374,12 +375,13 @@ function create_material(program) {
 function create_mesh(program) {
     const buffer_geometry = new THREE.BufferGeometry();
     const faces = new THREE.BufferAttribute(program.faces.value, 1);
-    program.faces.on(x=> {
-        buffer_geometry.setIndex(new THREE.BufferAttribute(x, 1));
-    })
     attach_geometry(buffer_geometry, program.vertexarrays, faces);
     const material = create_material(program);
-    return new THREE.Mesh(buffer_geometry, material);
+    const mesh = new THREE.Mesh(buffer_geometry, material);
+    program.faces.on((x) => {
+        mesh.geometry.setIndex(new THREE.BufferAttribute(x, 1));
+    });
+    return mesh
 }
 
 function create_instanced_mesh(program) {
@@ -388,7 +390,11 @@ function create_instanced_mesh(program) {
     attach_geometry(buffer_geometry, program.vertexarrays, faces);
     attach_instanced_geometry(buffer_geometry, program.instance_attributes);
     const material = create_material(program);
-    return new THREE.Mesh(buffer_geometry, material);
+    const mesh = new THREE.Mesh(buffer_geometry, material);
+    program.faces.on((x) => {
+        mesh.geometry.setIndex(new THREE.BufferAttribute(x, 1));
+    });
+    return mesh;
 }
 
 function first(x) {
@@ -470,8 +476,8 @@ function connect_attributes(mesh, updater) {
                         mesh.geometry.instanceCount =
                             new_values.length / buffer.itemSize;
                     } else {
-                        re_assign_buffers();
                         recreate_geometry(mesh, buffers, mesh.geometry.index);
+                        re_assign_buffers();
                     }
                 }
             }
