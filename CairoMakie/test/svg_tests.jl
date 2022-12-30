@@ -26,6 +26,7 @@ end
         fig[1, 2] = Legend(fig, ax, "Bar")
         fig
     end)
+    @test svg_isnt_rasterized(poly(Circle(Point2f(0, 0), 10)))
 end
 
 @testset "reproducable svg ids" begin
