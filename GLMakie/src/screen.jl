@@ -53,6 +53,7 @@ mutable struct ScreenConfig
     debugging::Bool
     monitor::Union{Nothing, GLFW.Monitor}
     visible::Bool
+    px_per_unit::Union{Nothing, Float64}
 
     # Postprocessor
     oit::Bool
@@ -76,6 +77,7 @@ mutable struct ScreenConfig
             debugging::Bool,
             monitor::Union{Nothing, GLFW.Monitor},
             visible::Bool,
+            px_per_unit::Union{Makie.Automatic, Float64},
 
             # Preproccessor
             oit::Bool,
@@ -99,6 +101,7 @@ mutable struct ScreenConfig
             debugging,
             monitor,
             visible,
+            px_per_unit isa Makie.Automatic ? nothing : px_per_unit,
             # Preproccessor
             oit,
             fxaa,
@@ -158,6 +161,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     framecache::Matrix{RGB{N0f8}}
     render_tick::Observable{Nothing}
     window_open::Observable{Bool}
+    px_per_unit::Observable{Float32}
 
     root_scene::Union{Scene, Nothing}
     reuse::Bool
@@ -189,7 +193,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
             screen2scene,
             screens, renderlist, postprocessors, cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(nothing),
-            Observable(true), nothing, reuse, true, false
+            Observable(true), Observable(0f0), nothing, reuse, true, false
         )
         push!(ALL_SCREENS, screen) # track all created screens
         return screen
@@ -214,6 +218,8 @@ function empty_screen(debugging::Bool; reuse=true)
 
         (GLFW.STENCIL_BITS, 0),
         (GLFW.AUX_BUFFERS,  0),
+
+        (GLFW.SCALE_TO_MONITOR, true),
     ]
     resolution = (10, 10)
     window = try
@@ -302,8 +308,6 @@ function singleton_screen(debugging::Bool)
     return reopen!(screen)
 end
 
-const GLFW_FOCUS_ON_SHOW = 0x0002000C
-
 function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene::Scene, args...)
     apply_config!(screen, config)
 end
@@ -311,13 +315,19 @@ end
 function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::Bool=true)
     glw = screen.glscreen
     ShaderAbstractions.switch_context!(glw)
-    GLFW.SetWindowAttrib(glw, GLFW_FOCUS_ON_SHOW, config.focus_on_show)
+    GLFW.SetWindowAttrib(glw, GLFW.FOCUS_ON_SHOW, config.focus_on_show)
     GLFW.SetWindowAttrib(glw, GLFW.DECORATED, config.decorated)
     GLFW.SetWindowAttrib(glw, GLFW.FLOATING, config.float)
     GLFW.SetWindowTitle(glw, config.title)
 
     if !isnothing(config.monitor)
         GLFW.SetWindowMonitor(glw, config.monitor)
+    end
+    if isnothing(config.px_per_unit)
+        config.px_per_unit = scale_factor(glw)
+    end
+    if iszero(screen.px_per_unit[])
+        screen.px_per_unit[] = config.px_per_unit
     end
 
     function replace_processor!(postprocessor, idx)
@@ -355,6 +365,7 @@ function Screen(;
     # Screen config is managed by the current active theme, so managed by Makie
     config = Makie.merge_screen_config(ScreenConfig, screen_config)
     screen = screen_from_pool(config.debugging)
+    screen.config = config
     if !isnothing(resolution)
         resize!(screen, resolution...)
     end
@@ -600,24 +611,19 @@ function closeall()
     return
 end
 
-function resize_native!(window::GLFW.Window, resolution...)
+function resize_native!(window::GLFW.Window, w, h)
     if isopen(window)
         ShaderAbstractions.switch_context!(window)
-        oldsize = windowsize(window)
-        retina_scale = retina_scaling_factor(window)
-        w, h = resolution ./ retina_scale
-        if oldsize == (w, h)
-            return
-        end
-        GLFW.SetWindowSize(window, round(Int, w), round(Int, h))
+        windowsize(window) == (w, h) && return
+        GLFW.SetWindowSize(window, w, h)
     end
 end
 
 function Base.resize!(screen::Screen, w, h)
-    nw = to_native(screen)
-    resize_native!(nw, w, h)
-    fb = screen.framebuffer
-    resize!(fb, (w, h))
+    sf = screen.px_per_unit[]
+    w, h = round.(Int, sf .* (w, h))
+    resize_native!(to_native(screen), w, h)
+    resize!(screen.framebuffer, (w, h))
 end
 
 function fast_color_data!(dest::Array{RGB{N0f8}, 2}, source::Texture{T, 2}) where T
