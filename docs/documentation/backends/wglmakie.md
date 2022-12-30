@@ -1,9 +1,11 @@
 # WGLMakie
 
-[WGLMakie](https://github.com/MakieOrg/Makie.jl/tree/master/WGLMakie) uses [JSServe](https://github.com/SimonDanisch/JSServe.jl) to generate the HTML and JavaScript for displaying the plots. In JavaScript, we use [ThreeJS](https://threejs.org/) and [WebGL](https://de.wikipedia.org/wiki/WebGL) to render the plots.
-It Makie's Web-based backend, which is mostly implemented in Julia right now. Moving more of the implementation to JavaScript is currently the goal and will give us a better JavaScript API, and more interaction without a running Julia server.
+[WGLMakie](https://github.com/MakieOrg/Makie.jl/tree/master/WGLMakie) is the web-based backend, which is mostly implemented in Julia right now.
+WGLMakie uses [JSServe](https://github.com/SimonDanisch/JSServe.jl) to generate the HTML and JavaScript for displaying the plots. On the JavaScript side, we use [ThreeJS](https://threejs.org/) and [WebGL](https://de.wikipedia.org/wiki/WebGL) to render the plots.
+Moving more of the implementation to JavaScript is currently the goal and will give us a better JavaScript API, and more interaction without a running Julia server.
 
-It's still experimental, but all plot types should work, and therefore all recipes, but there are certain caveats:
+!!! warning
+    WGLMakie can be considered experimental because the JavaScript API isn't stable yet and the notebook integration isn't perfect yet, but all plot types should work, and therefore all recipes, but there are certain caveats:
 
 #### Missing Backend Features
 
@@ -14,7 +16,7 @@ It's still experimental, but all plot types should work, and therefore all recip
 
 ##### IJulia
 
-* JSServe now uses the IJulia connection, and therefore can be used even with complex Proxy setup
+* JSServe now uses the IJulia connection, and therefore can be used even with complex proxy setup without any additional setup
 * reload of the page isn't supported, if you reload, you need to re-execute all cells and make sure that `Page()` is executed first.
 
 #### JupyterHub / Jupyterlab / Binder
@@ -38,7 +40,7 @@ It's still experimental, but all plot types should work, and therefore all recip
 
 #### Browser Support
 
-Some browsers may have only WebGL 1.0, or need extra steps to enable WebGL, but in general, all modern browsers on mobile and [desktop should support WebGL 2.0](https://www.lambdatest.com/web-technologies/webgl2).
+Some browsers may have only WebGL 1.0, or need extra steps to enable WebGL, but in general, all modern browsers on [mobile and desktop should support WebGL 2.0](https://www.lambdatest.com/web-technologies/webgl2).
 Safari users may need to [enable](https://discussions.apple.com/thread/8655829) WebGL, though.
 If you end up stuck on WebGL 1.0, the main missing feature will be `volume` & `contour(volume)`.
 
@@ -66,7 +68,7 @@ This tutorial will run through the different modes and what kind of limitations 
 `Page()` can be used to reset the JSServe state needed for multipage output like it's the case for `Documenter` or the various notebooks (IJulia/Pluto/etc).
 Previously, it was necessary to always insert and display the `Page` call in notebooks, but now the call to `Page()` is optional and doesn't need to be displayed.
 What it does is purely reset the state for a new multi-page output, which is usually the case for `Documenter`, which creates multiple pages in one Julia session, or you can use it to reset the state in notebooks, e.g. after a page reload.
-`Page(exportable=true, offline=true)` can be used to force inlining all data & js dependencies, so that everything can be loaded in a single HTML object without a running Julia process. The defaults should already be chosen this way for e.g. Documenter, so this should mostly be used for e.g. `Pluto` offline export (which is currently not fully supported).
+`Page(exportable=true, offline=true)` can be used to force inlining all data & js dependencies, so that everything can be loaded in a single HTML object without a running Julia process. The defaults should already be chosen this way for e.g. Documenter, so this should mostly be used for e.g. `Pluto` offline export (which is currently not fully supported, but should be soon).
 
 Here is an example of how to use this in Franklin:
 
@@ -284,8 +286,8 @@ end
 # Pluto/IJulia
 
 Note that the normal interactivity from Makie is preserved with WGLMakie in e.g. Pluto, as long as the Julia session is running.
-Which brings us to setting up Pluto/IJulia sessions! How to use Page was already explained in the [#Page]() paragraph.
-Note, that if you're accessing the notebook from another PC, you must set:
+Which brings us to setting up Pluto/IJulia sessions!
+Locally, WGLMakie should just work out of the box for Pluto/IJulia, but if you're accessing the notebook from another PC, you must set something like:
 
 ```julia
 begin
@@ -296,6 +298,7 @@ end
 ```
 Or also specify a proxy URL, if you have a more complex proxy setup.
 For more advanced setups consult the `?Page` docs and `JSServe.configure_server!`.
+In the [headless](/documentation/headless/index.html#wglmakie) documentation, you can also read more about setting up the JSServe server and port forwarding.
 
 ## Styling
 
