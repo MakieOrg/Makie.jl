@@ -269,6 +269,7 @@ function empty_screen(debugging::Bool; reuse=true)
         reuse,
     )
     GLFW.SetWindowRefreshCallback(window, window -> refreshwindowcb(window, screen))
+    GLFW.SetWindowContentScaleCallback(window, (window, xs, ys) -> scalechangecb(screen, window, xs, ys))
     return screen
 end
 
@@ -794,6 +795,11 @@ function refreshwindowcb(window, screen)
     screen.render_tick[] = nothing
     render_frame(screen)
     GLFW.SwapBuffers(window)
+    return
+end
+
+function scalechangecb(screen, window, xscale, yscale)
+    screen.px_per_unit[] = min(xscale, yscale)
     return
 end
 
