@@ -28,10 +28,7 @@ function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
     get!(uniforms, :lightposition, Vec3f(1))
     get!(uniforms, :ambient, Vec3f(1))
     get!(uniforms, :interpolate_in_fragment_shader, true)
-    uniforms[:normalmatrix] = map(mscene.camera.view, plot.model) do v, m
-        i = Vec(1, 2, 3)
-        return transpose(inv(v[i, i] * m[i, i]))
-    end
+    uniforms[:normalmatrix] = Mat3f(I) # gets set in JS
 
     # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
     uniforms[:picking] = false
@@ -60,7 +57,7 @@ function limits_to_uvmesh(plot)
         positions = Buffer(lift(rect-> decompose(Point2f, rect), rect))
         faces = Buffer(lift(rect -> decompose(GLTriangleFace, rect), rect))
         uv = Buffer(lift(decompose_uv, rect))
-    else 
+    else
         grid(x, y, trans, space) = Makie.matrix_grid(p-> apply_transform(trans, p, space), x, y, zeros(length(x), length(y)))
         rect = lift((x, y) -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), (length(x), length(y))), px, py)
         positions = Buffer(lift(grid, px, py, t, get(plot, :space, :data)))

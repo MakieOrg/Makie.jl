@@ -192,6 +192,9 @@ export function add_plot(scene, plot_data) {
         plot_data.uniforms.projectionview = identity;
     }
 
+    plot_data.uniforms.normalmatrix = cam.normalmatrix
+    console.log(cam.normalmatrix)
+
     plot_data.uniforms.resolution = cam.resolution;
 
     if (plot_data.uniforms.preprojection) {
@@ -211,6 +214,8 @@ export function add_plot(scene, plot_data) {
 
 function connect_uniforms(mesh, updater) {
     updater.on(([name, data]) => {
+        console.log(`${name}:`)
+        console.log(data)
         // this is the initial value, which shouldn't end up getting updated -
         // TODO, figure out why this gets pushed!!
         if (name === "none") {

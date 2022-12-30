@@ -223,6 +223,7 @@ export class MakieCamera {
         // inverses
         this.pixel_space_inverse = new THREE.Uniform(Identity4x4());
         this.projectionview_inverse = new THREE.Uniform(Identity4x4());
+        this.normalmatrix = new THREE.Uniform(new THREE.Matrix3());
 
         // Constant matrices
         this.relative_space = new THREE.Uniform(relative_space());
@@ -254,6 +255,8 @@ export class MakieCamera {
         this.projectionview.value = proj_view;
 
         this.projectionview_inverse.value = proj_view.clone().invert();
+
+        this.normalmatrix.value.getNormalMatrix(proj_view);
 
         // update all existing preprojection matrices
         Object.keys(this.preprojections).forEach((key) => {
