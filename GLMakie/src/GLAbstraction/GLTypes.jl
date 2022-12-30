@@ -292,7 +292,7 @@ function Base.show(io::IO, vao::GLVertexArray)
     show(io, vao.program)
     println(io, "GLVertexArray $(vao.id):")
     print(io, "GLVertexArray $(vao.id) buffers: ")
-    writemime(io, MIME("text/plain"), vao.buffers)
+    show(io, MIME("text/plain"), vao.buffers)
     println(io, "\nGLVertexArray $(vao.id) indices: ", vao.indices)
 end
 
