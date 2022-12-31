@@ -137,7 +137,11 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         end
         tex = GLAbstraction.Texture(ticks(pattern, 100), x_repeat = :repeat)
         data[:pattern] = tex
-        data[:pattern_length] = Float32(last(pattern))
+        @gen_defaults! data begin
+            pattern_length = Float32(last(pattern))
+            lastlen   = const_lift(sumlengths, positions) => GLBuffer
+            maxlength = const_lift(last, lastlen)
+        end
     end
     return assemble_shader(data)
 end

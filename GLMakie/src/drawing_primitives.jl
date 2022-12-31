@@ -260,6 +260,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Union{Scatte
     end
 end
 
+_mean(xs) = sum(xs) / length(xs) # skip Statistics import
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
     return cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
@@ -269,7 +270,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
             data[:pattern] = ls
         else
             linewidth = gl_attributes[:thickness]
-            data[:pattern] = ls .* (to_value(linewidth) * 0.25)
+            data[:pattern] = ls * _mean(to_value(linewidth))
         end
         space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         positions = handle_view(x[1], data)
@@ -289,7 +290,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::LineSegments
             data[:pattern] = ls
         else
             linewidth = gl_attributes[:thickness]
-            data[:pattern] = ls .* (to_value(linewidth) * 0.25)
+            data[:pattern] = ls .* _mean(to_value(linewidth))
         end
         space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         positions = handle_view(x.converted[1], data)

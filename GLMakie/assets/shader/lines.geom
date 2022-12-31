@@ -37,10 +37,10 @@ vec2 screen_space(vec4 vertex)
 }
 
 // for line sections
-void emit_vertex(vec2 position, vec2 uv, int index, float ratio)
+void emit_vertex(vec2 position, float v, int index, float ratio)
 {
     vec4 inpos  = gl_in[index].gl_Position;
-    f_uv        = vec2((g_lastlen[index] * ratio) / pattern_length / (g_thickness[index] + AA_THICKNESS) / 2.0, uv.y);
+    f_uv        = vec2(0.5 * g_lastlen[index] * ratio / pattern_length, v);
     f_color     = g_color[index];
     gl_Position = vec4((position/resolution)*inpos.w, inpos.z, inpos.w);
     f_id        = g_id[index];
@@ -158,14 +158,14 @@ void main(void)
         bool gap = dot( v0, n1 ) > 0;
         // close the gap
         if(gap){
-            emit_vertex(p1 + thickness_aa1 * n0, vec2(1, -thickness_aa1), 1, ratio);
-            emit_vertex(p1 + thickness_aa1 * n1, vec2(1, -thickness_aa1), 1, ratio);
-            emit_vertex(p1,                      vec2(0, 0.0), 1, ratio);
+            emit_vertex(p1 + thickness_aa1 * n0, -thickness_aa1, 1, ratio);
+            emit_vertex(p1 + thickness_aa1 * n1, -thickness_aa1, 1, ratio);
+            emit_vertex(p1,                      0.0,            1, ratio);
             EndPrimitive();
         }else{
-            emit_vertex(p1 - thickness_aa1 * n0, vec2(1, thickness_aa1), 1, ratio);
-            emit_vertex(p1,                      vec2(0, 0.0), 1, ratio);
-            emit_vertex(p1 - thickness_aa1 * n1, vec2(1, thickness_aa1), 1, ratio);
+            emit_vertex(p1 - thickness_aa1 * n0, thickness_aa1, 1, ratio);
+            emit_vertex(p1,                      0.0,           1, ratio);
+            emit_vertex(p1 - thickness_aa1 * n1, thickness_aa1, 1, ratio);
             EndPrimitive();
         }
         miter_a = n1;
@@ -181,10 +181,10 @@ void main(void)
     vec2 linecap_gap1 = -min(g_linecap_length[1], 0) * float(!isvalid[0]) * v1;
     vec2 linecap_gap2 = -min(g_linecap_length[2], 0) * float(!isvalid[3]) * v1;
 
-    emit_vertex(p1 + linecap_gap1 + length_a * miter_a, vec2( 0, -thickness_aa1), 1, ratio);
-    emit_vertex(p1 + linecap_gap1 - length_a * miter_a, vec2( 0,  thickness_aa1), 1, ratio);
-    emit_vertex(p2 - linecap_gap2 + length_b * miter_b, vec2( 0, -thickness_aa2), 2, ratio);
-    emit_vertex(p2 - linecap_gap2 - length_b * miter_b, vec2( 0,  thickness_aa2), 2, ratio);
+    emit_vertex(p1 + linecap_gap1 + length_a * miter_a, -thickness_aa1, 1, ratio);
+    emit_vertex(p1 + linecap_gap1 - length_a * miter_a,  thickness_aa1, 1, ratio);
+    emit_vertex(p2 - linecap_gap2 + length_b * miter_b, -thickness_aa2, 2, ratio);
+    emit_vertex(p2 - linecap_gap2 - length_b * miter_b,  thickness_aa2, 2, ratio);
 
     // generate quads for line cap
     if (linecap != 0) { // 0 doubles as no line cap

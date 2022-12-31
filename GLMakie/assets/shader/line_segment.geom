@@ -12,6 +12,7 @@ uniform int linecap;
 in vec4 g_color[];
 in uvec2 g_id[];
 in float g_thickness[];
+in float g_lastlen[];
 in float g_linecap_length[];
 
 out float f_thickness;
@@ -27,10 +28,10 @@ vec2 screen_space(vec4 vertex)
     return vec2(vertex.xy / vertex.w)*resolution;
 }
 
-void emit_vertex(vec2 position, vec2 uv, int index)
+void emit_vertex(vec2 position, float v, float ratio, int index)
 {
     vec4 inpos = gl_in[index].gl_Position;
-    f_uv = uv;
+    f_uv = vec2(0.5 * g_lastlen[index] * ratio / pattern_length, v);
     f_color = g_color[index];
     gl_Position = vec4((position / resolution) * inpos.w, inpos.z, inpos.w);
     f_id = g_id[index];
@@ -72,20 +73,16 @@ void main(void)
     vec2 v0 = normalize(vun0);
     // determine the normal of each of the 3 segments (previous, current, next)
     vec2 n0 = vec2(-v0.y, v0.x);
-    float l = length(p1-p0);
-    l /= (pattern_length*10);
-
-    float uv0 = thickness_aa0/g_thickness[0];
-    float uv1 = thickness_aa1/g_thickness[1];
+    float ratio = length(p1 - p0) / (g_lastlen[1] - g_lastlen[0]);
 
     // shortens line if g_linecap_length is negative and the line terminates
     vec2 linecap_gap0 = -min(g_linecap_length[0], 0) * v0;
     vec2 linecap_gap1 = -min(g_linecap_length[1], 0) * v0;
 
-    emit_vertex(p0 + linecap_gap0 + thickness_aa0 * n0, vec2(0, -thickness_aa0), 0);
-    emit_vertex(p0 + linecap_gap0 - thickness_aa0 * n0, vec2(0,  thickness_aa0), 0);
-    emit_vertex(p1 - linecap_gap1 + thickness_aa1 * n0, vec2(l, -thickness_aa1), 1);
-    emit_vertex(p1 - linecap_gap1 - thickness_aa1 * n0, vec2(l,  thickness_aa1), 1);
+    emit_vertex(p0 + linecap_gap0 + thickness_aa0 * n0, -thickness_aa0, ratio, 0);
+    emit_vertex(p0 + linecap_gap0 - thickness_aa0 * n0,  thickness_aa0, ratio, 0);
+    emit_vertex(p1 - linecap_gap1 + thickness_aa1 * n0, -thickness_aa1, ratio, 1);
+    emit_vertex(p1 - linecap_gap1 - thickness_aa1 * n0,  thickness_aa1, ratio, 1);
 
     // generate quads for line cap
     if (linecap != 0) { // 0 doubles as no line cap
