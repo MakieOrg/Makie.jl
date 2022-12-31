@@ -263,7 +263,7 @@ ispressed(scene, key::Keyboard.Button) = ispressed(events(scene), key)
 ispressed(scene, op::And) = ispressed(scene, op.left) && ispressed(scene, op.right)
 ispressed(scene, op::Or)  = ispressed(scene, op.left) || ispressed(scene, op.right)
 ispressed(scene, op::Not) = !ispressed(scene, op.x)
-ispressed(scene::Scene, op::Exclusively) = ispressed(events(scene), op)
+ispressed(scene, op::Exclusively) = ispressed(events(scene), op)
 ispressed(e::Events, op::Exclusively) = op.x == union(e.keyboardstate, e.mousebuttonstate)
 
 # collections
