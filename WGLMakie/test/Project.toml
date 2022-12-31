@@ -8,4 +8,4 @@ Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
-Electron = "3.1.1"
+Electron = "4.1.1"
