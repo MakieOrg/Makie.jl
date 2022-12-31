@@ -3,8 +3,8 @@
 ## master
 
 - Added `xlabelrotation`, `ylabelrotation` (`Axis`) and `labelrotation` (`Colorbar`) [#2478](https://github.com/MakieOrg/Makie.jl/pull/2478).
-- Added support for `linecap` in GLMakie [#2536](https://github.com/MakieOrg/Makie.jl/pull/2536)
-- Added support for per-position `lindwidth` to `lines!` in GLMakie [#2536](https://github.com/MakieOrg/Makie.jl/pull/2536)
+- Added support for `linecap` to CairoMakie and GLMakie [#2536](https://github.com/MakieOrg/Makie.jl/pull/2536)
+- Added support for per-position `linewidth` to `lines!` in GLMakie [#2536](https://github.com/MakieOrg/Makie.jl/pull/2536)
 
 ## v0.19.0
 
