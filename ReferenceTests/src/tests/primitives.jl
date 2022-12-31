@@ -36,6 +36,26 @@ end
     s
 end
 
+@reference_test "lines with caps" begin
+    scene = Scene(resolution = (400, 400))
+    xs = [-0.8, -0.2, 0.2, 0.8]
+    lw = 40
+
+    # check default
+    lines!(scene, xs, fill(0, 4), linewidth = lw)
+    scatter!(scene, xs, fill(0, 4), color = :red)
+
+    # check options
+    for (plt, dy) in zip((lines!, linesegments!), (0, 1))
+        styles = [nothing, :square, :round]
+        for (y, style) in zip(0.75:-0.25:0.25, styles)
+            plt(scene, xs, fill(y-dy, 4), linewidth = lw, linecap = style)
+            scatter!(scene, xs, fill(y-dy, 4), color = :red)
+        end
+    end
+    scene
+end
+
 @reference_test "scatters" begin
     s = Scene(resolution = (800, 800), camera = campixel!)
 
