@@ -79,8 +79,7 @@ void main(){
         color = mix(color, f_color, smoothstep(-ALIASING_CONST, ALIASING_CONST, sd));
     } else if (f_type == RECTANGLE) {
         float sd = f_thickness * rectangle(f_uv);
-        // color = mix(color, f_color, smoothstep(-ALIASING_CONST, ALIASING_CONST, sd));
-        color = mix(color, f_color, aastep(0, sd));
+        color = mix(color, f_color, smoothstep(-ALIASING_CONST, ALIASING_CONST, sd));
     } else if (f_type == TRIANGLE) {
         float sd = f_thickness * triangle(f_uv);
         color = mix(color, f_color, smoothstep(-ALIASING_CONST, ALIASING_CONST, sd));
