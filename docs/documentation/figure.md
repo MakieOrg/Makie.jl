@@ -188,7 +188,7 @@ The default value is 2, which means that image output should look sharp on typic
 
 Here is a table that shows how to set your Figure's resolution depending on what `px_per_unit` value you choose.
 
-| Physical size | DPI | resolution in dots | px_per_unit | Figure size |
+| Physical size | DPI | resolution in dots | `px_per_unit` | Figure size |
 |:--|:--|:--|:--|:--|
 | 4 x 3 inches | 300 | 1200 x 900 | 1 | 1200 x 900 |
 |   |   |  | 2 | 600 x 450 |
@@ -212,7 +212,7 @@ The default fontsize of `16` will by default look like `12pt` in web and print c
 
 The following table shows you how to set your font size and scaling factor to achieve a consistent output font size.
 
-| Desired fontsize in pt | fontsize value | desired dpi | px_per_unit | pt_per_unit |
+| Desired fontsize in pt | fontsize value | desired dpi | `px_per_unit` | `pt_per_unit` |
 |:--|:--|:--|:--|:--|
 | 12 | 12 | 72 | 1 | |
 | 12 | 12 | 144 | 2 | |
