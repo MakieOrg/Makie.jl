@@ -21,8 +21,8 @@ using ReferenceTests.RNG
             y = r*[-sin(angle/2),0,sin(angle/2)]
 
             linewidth = 40 * 2.0^j
-            lines!(scene, x .+ sep*i, y .+ sep*j, color=RGBAf(0,0,0,0.5), linewidth=linewidth)
-            lines!(scene, x .+ sep*i, y .+ sep*j, color=:red)
+            lines!(scene, x .+ sep*i, y .+ sep*j, color=RGBAf(0,0,0,0.5), linewidth=linewidth, linecap = nothing)
+            lines!(scene, x .+ sep*i, y .+ sep*j, color=:red, linecap = nothing)
         end
     end
     center!(scene)
