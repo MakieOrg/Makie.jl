@@ -3,7 +3,7 @@
 ################################################################################
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Union{Lines, LineSegments}))
-    fields = @get_attribute(primitive, (color, linewidth, linestyle))
+    @get_attribute(primitive, (color, linewidth, linestyle, linecap))
     linestyle = Makie.convert_attribute(linestyle, Makie.key"linestyle"())
     ctx = screen.context
     model = primitive[:model][]
@@ -49,12 +49,19 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     if !isnothing(linestyle) && !(linewidth isa AbstractArray)
         Cairo.set_dash(ctx, diff(Float64.(linestyle)) .* linewidth)
     end
+
+    if linecap == :square
+        Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_SQUARE)
+    elseif linecap == :round
+        Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_ROUND)
+    else
+        Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_BUTT)
+    end
+
+
     if color isa AbstractArray || linewidth isa AbstractArray
         # stroke each segment separately, this means disjointed segments with probably
         # wonky dash patterns if segments are short
-
-        # we can hide the gaps by setting the line cap to round
-        Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_ROUND)
         draw_multi(
             primitive, ctx,
             projected_positions,
