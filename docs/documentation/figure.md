@@ -213,7 +213,7 @@ The default fontsize of `16` will by default look like `12pt` in web and print c
 The following table shows you how to set your font size and scaling factor to achieve a consistent output font size.
 
 | Desired fontsize in pt | fontsize value | desired dpi | px_per_unit | pt_per_unit |
-|--|--|--|--|--|
+|:--|:--|:--|:--|:--|
 | 12 | 12 | 72 | 1 | |
 | 12 | 12 | 144 | 2 | |
 | 12 | 12 | 600 | 8.33 | |
