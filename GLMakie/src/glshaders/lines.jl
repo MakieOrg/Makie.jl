@@ -63,7 +63,6 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         color_norm          = nothing
         color               = (color_map == nothing ? default(RGBA, s) : nothing) => GLBuffer
         thickness           = 2f0 => GLBuffer
-        linecap             = 0
         linecap_length      = thickness => GLBuffer
         pattern             = nothing
         fxaa                = false
@@ -113,7 +112,6 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         color_map           = nothing => Texture
         color_norm          = nothing
         thickness           = 2f0 => GLBuffer
-        linecap             = 0
         linecap_length      = thickness => GLBuffer
         shape               = RECTANGLE
         pattern             = nothing

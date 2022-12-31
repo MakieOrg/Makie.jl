@@ -260,11 +260,24 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Union{Scatte
     end
 end
 
+
 _mean(xs) = sum(xs) / length(xs) # skip Statistics import
+
+gl_linecap(::Nothing) = 0
+function gl_linecap(cap::Symbol)
+    cap == :square   && return 5
+    cap == :round    && return 4
+    cap == :triangle && return 6
+    # default to no extrusion
+    return 0
+end
+
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
     return cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
+        linecap = pop!(gl_attributes, :linecap)
         data = Dict{Symbol, Any}(gl_attributes)
+        data[:linecap] = map(gl_linecap, linecap)
         ls = to_value(linestyle)
         if isnothing(ls)
             data[:pattern] = ls
@@ -284,7 +297,9 @@ end
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::LineSegments))
     return cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
+        linecap = pop!(gl_attributes, :linecap)
         data = Dict{Symbol, Any}(gl_attributes)
+        data[:linecap] = map(gl_linecap, linecap)
         ls = to_value(linestyle)
         if isnothing(ls)
             data[:pattern] = ls

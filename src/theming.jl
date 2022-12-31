@@ -78,6 +78,7 @@ const minimal_default = Attributes(
     linecolor = :black,
     linewidth = 1.5,
     linestyle = nothing,
+    linecap = :square,
     patchcolor = RGBAf(0, 0, 0, 0.6),
     patchstrokecolor = :black,
     patchstrokewidth = 0,
