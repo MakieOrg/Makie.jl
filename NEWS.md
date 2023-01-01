@@ -2,6 +2,7 @@
 
 ## master
 
+- Add `show_data` method for `band` which shows the min and max values of the band at the x position of the cursor. [#2497](https://github.com/MakieOrg/Makie.jl/pull/2497)
 - Added `xlabelrotation`, `ylabelrotation` (`Axis`) and `labelrotation` (`Colorbar`) [#2478](https://github.com/MakieOrg/Makie.jl/pull/2478).
 - Fixed forced rasterization in CairoMakie svg files when polygons with colors specified as (color, alpha) tuples were used [#2535](https://github.com/MakieOrg/Makie.jl/pull/2535).
 - Added support for `linecap` to CairoMakie and GLMakie [#2536](https://github.com/MakieOrg/Makie.jl/pull/2536)
