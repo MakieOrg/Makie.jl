@@ -22,6 +22,9 @@ flat out uvec2 f_id;
 flat out int f_type;
 
 #define AA_THICKNESS 4.0
+#define LINE              0
+#define CIRCLE            4
+#define RECTANGLE         5
 
 vec2 screen_space(vec4 vertex)
 {
@@ -36,7 +39,7 @@ void emit_vertex(vec2 position, float v, float ratio, int index)
     gl_Position = vec4((position / resolution) * inpos.w, inpos.z, inpos.w);
     f_id = g_id[index];
     f_thickness = g_thickness[index];
-    f_type = 0;
+    f_type = LINE;
     EmitVertex();
 }
 
@@ -75,17 +78,25 @@ void main(void)
     vec2 n0 = vec2(-v0.y, v0.x);
     float ratio = length(p1 - p0) / (g_lastlen[1] - g_lastlen[0]);
 
-    // shortens line if g_linecap_length is negative and the line terminates
-    vec2 linecap_gap0 = -min(g_linecap_length[0], 0) * v0;
-    vec2 linecap_gap1 = -min(g_linecap_length[1], 0) * v0;
+    vec2 linecap_gap0;
+    vec2 linecap_gap1;
+    if (linecap == RECTANGLE){
+        // shorten or extend line
+        linecap_gap0 = g_linecap_length[0] * v0;
+        linecap_gap1 = g_linecap_length[1] * v0;
+    } else {
+        // shortens line if g_linecap_length is negative and the line terminates
+        linecap_gap0 = min(g_linecap_length[0], 0) * v0;
+        linecap_gap1 = min(g_linecap_length[1], 0) * v0;
+    }
 
-    emit_vertex(p0 + linecap_gap0 + thickness_aa0 * n0, -thickness_aa0, ratio, 0);
-    emit_vertex(p0 + linecap_gap0 - thickness_aa0 * n0,  thickness_aa0, ratio, 0);
-    emit_vertex(p1 - linecap_gap1 + thickness_aa1 * n0, -thickness_aa1, ratio, 1);
-    emit_vertex(p1 - linecap_gap1 - thickness_aa1 * n0,  thickness_aa1, ratio, 1);
+    emit_vertex(p0 - linecap_gap0 + thickness_aa0 * n0, -thickness_aa0, ratio, 0);
+    emit_vertex(p0 - linecap_gap0 - thickness_aa0 * n0,  thickness_aa0, ratio, 0);
+    emit_vertex(p1 + linecap_gap1 + thickness_aa1 * n0, -thickness_aa1, ratio, 1);
+    emit_vertex(p1 + linecap_gap1 - thickness_aa1 * n0,  thickness_aa1, ratio, 1);
 
     // generate quads for line cap
-    if (linecap != 0) { // 0 doubles as no line cap
+    if (linecap == CIRCLE) { // 0 doubles as no line cap
         /*
         Line with line caps:
 

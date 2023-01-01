@@ -30,6 +30,10 @@ uniform int linecap;
 #define MITER_LIMIT -0.4
 #define AA_THICKNESS 4
 
+#define LINE              0
+#define CIRCLE            4
+#define RECTANGLE         5
+
 
 vec2 screen_space(vec4 vertex)
 {
@@ -45,7 +49,7 @@ void emit_vertex(vec2 position, float v, int index, float ratio)
     gl_Position = vec4((position/resolution)*inpos.w, inpos.z, inpos.w);
     f_id        = g_id[index];
     f_thickness = g_thickness[index];
-    f_type      = 0; // line 
+    f_type      = LINE;
     EmitVertex();
 }
 
@@ -177,17 +181,25 @@ void main(void)
         length_b = thickness_aa2;
     }
 
-    // shortens line if g_linecap_length is negative and the line terminates
-    vec2 linecap_gap1 = -min(g_linecap_length[1], 0) * float(!isvalid[0]) * v1;
-    vec2 linecap_gap2 = -min(g_linecap_length[2], 0) * float(!isvalid[3]) * v1;
+    vec2 linecap_gap1;
+    vec2 linecap_gap2;
+    if (linecap == RECTANGLE){
+        // shorten or extend line
+        linecap_gap1 = g_linecap_length[1] * float(!isvalid[0]) * v1;
+        linecap_gap2 = g_linecap_length[2] * float(!isvalid[3]) * v1;
+    } else {
+        // shortens line if g_linecap_length is negative and the line terminates
+        linecap_gap1 = min(g_linecap_length[1], 0) * float(!isvalid[0]) * v1;
+        linecap_gap2 = min(g_linecap_length[2], 0) * float(!isvalid[3]) * v1;
+    }
 
-    emit_vertex(p1 + linecap_gap1 + length_a * miter_a, -thickness_aa1, 1, ratio);
-    emit_vertex(p1 + linecap_gap1 - length_a * miter_a,  thickness_aa1, 1, ratio);
-    emit_vertex(p2 - linecap_gap2 + length_b * miter_b, -thickness_aa2, 2, ratio);
-    emit_vertex(p2 - linecap_gap2 - length_b * miter_b,  thickness_aa2, 2, ratio);
+    emit_vertex(p1 - linecap_gap1 + length_a * miter_a, -thickness_aa1, 1, ratio);
+    emit_vertex(p1 - linecap_gap1 - length_a * miter_a,  thickness_aa1, 1, ratio);
+    emit_vertex(p2 + linecap_gap2 + length_b * miter_b, -thickness_aa2, 2, ratio);
+    emit_vertex(p2 + linecap_gap2 - length_b * miter_b,  thickness_aa2, 2, ratio);
 
     // generate quads for line cap
-    if (linecap != 0) { // 0 doubles as no line cap
+    if (linecap == CIRCLE) {
         /*
         Line with line caps:
 

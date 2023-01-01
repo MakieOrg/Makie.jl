@@ -230,7 +230,7 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
 - `cycle::Vector{Symbol} = [:color]` sets which attributes to cycle when creating multiple plots.
 - `linestyle::Union{Nothing, Symbol, Vector} = nothing` sets the pattern of the line (e.g. `:solid`, `:dot`, `:dashdot`)
 - `linewidth::Real = 1.5` sets the width of the line in pixel units.
-- `linecap::Union{Nothing, Symbol} = :square` sets the line cap style. Options include nothing (no cap), :square (extend line by one linewidth), `:round` and `:triangle`.
+- `linecap::Union{Nothing, Symbol} = :square` sets the line cap style. Options include nothing (no cap), :square (extend line by one linewidth) and `:round`.
 
 ### Generic
 
@@ -278,7 +278,7 @@ Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
 - `cycle::Vector{Symbol} = [:color]` sets which attributes to cycle when creating multiple plots.
 - `linestyle::Union{Nothing, Symbol, Vector} = nothing` sets the pattern of the line (e.g. `:solid`, `:dot`, `:dashdot`)
 - `linewidth::Real = 1.5` sets the width of the line in pixel units.
-- `linecap::Union{Nothing, Symbol} = :square` sets the line cap style. Options include nothing (no cap), :square (extend line by one linewidth), `:round` and `:triangle`.
+- `linecap::Union{Nothing, Symbol} = :square` sets the line cap style. Options include nothing (no cap), :square (extend line by one linewidth) and `:round`.
 
 ### Generic
 
