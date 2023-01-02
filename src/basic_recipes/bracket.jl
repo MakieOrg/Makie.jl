@@ -27,6 +27,7 @@ $(ATTRIBUTES)
         linewidth = theme(scene, :linewidth),
         linestyle = :solid,
         justification = automatic,
+        style = :curly,
     )
 end
 
@@ -51,14 +52,13 @@ function Makie.plot!(pl::Bracket)
 
     realtextoffset = @lift($(pl.textoffset) === automatic ? Float32.(0.75 .* $(pl.fontsize)) : Float32.($(pl.textoffset)))
     
-    strength = 1.0 # hardcoded for now, maybe other bracket types in the future need different settings
-    onany(points, scene.camera.projectionview, pl.offset, pl.width, pl.orientation, realtextoffset) do points, pv, offset, width, orientation, textoff
+    onany(points, scene.camera.projectionview, pl.offset, pl.width, pl.orientation, realtextoffset, pl.style) do points, pv, offset, width, orientation, textoff, style
 
         empty!(bp[])
         empty!(textoffset_vec[])
         empty!(textpoints[])
 
-        broadcast_foreach(points, offset, width, orientation, textoff) do (_p1, _p2), offset, width, orientation, textoff
+        broadcast_foreach(points, offset, width, orientation, textoff, style) do (_p1, _p2), offset, width, orientation, textoff, style
             p1 = scene_to_screen(_p1, scene)
             p2 = scene_to_screen(_p2, scene)
             
@@ -70,22 +70,12 @@ function Makie.plot!(pl::Bracket)
                 d2 = -d2
             end
 
+            off = offset * d2
+
             push!(textoffset_vec[], d2 * textoff)
 
-            p12 = 0.5 * (p1 + p2) + width * d2
-
-            c1 = p1 + width * d2 * strength
-            c2 = p12 - width * d2 * strength
-            c3 = p2 + width * d2 * strength
-
-            off = offset * d2
-            push!(textpoints[], p12 + off)
-
-            b = BezierPath([
-                MoveTo(p1 + off),
-                CurveTo(c1 + off, c2 + off, p12 + off),
-                CurveTo(c2 + off, c3 + off, p2 + off),
-            ])
+            b, textpoint = bracket_bezierpath(style, p1 + off, p2 + off, d2, width)
+            push!(textpoints[], textpoint)
             push!(bp[], b)
         end
 
@@ -121,4 +111,36 @@ end
 
 data_limits(pl::Bracket) = mapreduce(union, pl[1][]) do points
     Rect3f([points...])
+end
+
+bracket_bezierpath(style::Symbol, args...) = bracket_bezierpath(Val(style), args...)
+
+function bracket_bezierpath(::Val{:curly}, p1, p2, d, width)
+    p12 = 0.5 * (p1 + p2) + width * d
+
+    c1 = p1 + width * d
+    c2 = p12 - width * d
+    c3 = p2 + width * d
+
+    b = BezierPath([
+        MoveTo(p1),
+        CurveTo(c1, c2, p12),
+        CurveTo(c2, c3, p2),
+    ])
+    return b, p12
+end
+
+function bracket_bezierpath(::Val{:square}, p1, p2, d, width)
+    p12 = 0.5 * (p1 + p2) + width * d
+
+    c1 = p1 + width * d
+    c2 = p2 + width * d
+
+    b = BezierPath([
+        MoveTo(p1),
+        LineTo(c1),
+        LineTo(c2),
+        LineTo(p2),
+    ])
+    return b, p12
 end
