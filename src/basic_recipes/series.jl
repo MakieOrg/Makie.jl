@@ -26,7 +26,7 @@ Curves can be:
         color=:lighttest,
         solid_color=nothing,
         labels=nothing,
-
+        linestyle=:solid,
         marker=nothing,
         markersize=nothing,
         markercolor=automatic,
