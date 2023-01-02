@@ -1,9 +1,12 @@
 """
     bracket(x1, y1, x2, y2; kwargs...)
+    bracket(x1s, y1s, x2s, y2s; kwargs...)
     bracket(point1, point2; kwargs...)
-    bracket(points; kwargs...)
+    bracket(vec_of_point_tuples; kwargs...)
 
-Draws a bracket between two points with a text label at the midpoint.
+Draws a bracket between each pair of points (x1, y1) and (x2, y2) with a text label at the midpoint.
+
+By default each label is rotated parallel to the line between the bracket points.
 
 ## Attributes
 $(ATTRIBUTES)
@@ -29,26 +32,31 @@ end
 
 Makie.convert_arguments(::Type{<:Bracket}, point1::VecTypes, point2::VecTypes) = ([(Point2f(point1), Point2f(point2))],)
 Makie.convert_arguments(::Type{<:Bracket}, x1::Real, y1::Real, x2::Real, y2::Real) = ([(Point2f(x1, y1), Point2f(x2, y2))],)
-# Makie.convert_arguments(::Type{<:Bracket}, points::AbstractVector{<:VecTypes{2}}) = (convert(Vector{Point2f}, points),)
+function Makie.convert_arguments(::Type{<:Bracket}, x1::AbstractVector{<:Real}, y1::AbstractVector{<:Real}, x2::AbstractVector{<:Real}, y2::AbstractVector{<:Real})
+    points = broadcast(x1, y1, x2, y2) do x1, y1, x2, y2
+        (Point2f(x1, y1), Point2f(x2, y2))
+    end
+    (points,)
+end
 
 function Makie.plot!(pl::Bracket)
 
     points = pl[1]
-    @show points
 
     scene = parent_scene(pl)
 
     textoffset_vec = Observable(Vec2f[])
     bp = Observable(BezierPath[])
+    textpoints = Observable(Point2f[])
 
     realtextoffset = @lift($(pl.textoffset) === automatic ? Float32(0.75 * $(pl.fontsize)) : Float32($(pl.textoffset)))
     
     strength = 1.0 # hardcoded for now, maybe other bracket types in the future need different settings
     onany(points, scene.camera.projectionview, pl.offset, pl.width, pl.orientation, realtextoffset) do points, pv, offset, width, orientation, textoff
 
-        @show points
         empty!(bp[])
         empty!(textoffset_vec[])
+        empty!(textpoints[])
 
         broadcast_foreach(points, offset, width, orientation, textoff) do (_p1, _p2), offset, width, orientation, textoff
             p1 = scene_to_screen(_p1, scene)
@@ -71,6 +79,7 @@ function Makie.plot!(pl::Bracket)
             c3 = p2 + width * d2 * strength
 
             off = offset * d2
+            push!(textpoints[], p12 + off)
 
             b = BezierPath([
                 MoveTo(p1 + off),
@@ -85,23 +94,31 @@ function Makie.plot!(pl::Bracket)
 
     notify(points)
 
-    # p = @lift $bp.commands[2].p
+    autorotations = lift(pl.rotation, textoffset_vec) do rot, tv
+        rots = Quaternionf[]
+        broadcast_foreach(rot, tv) do rot, tv
+            r = if rot === automatic
+                to_rotation(tv[2] >= 0 ? tv : -tv)
+            else
+                to_rotation(rot)
+            end
+            push!(rots, r)
+        end
+        return rots
+    end
 
-    # autorotation = lift(pl.rotation, textoffset_vec) do rot, tv
-    #     if rot === automatic
-    #         to_rotation(tv[2] >= 0 ? tv : -tv)
-    #     else
-    #         to_rotation(rot)
-    #     end
-    # end
+    # TODO: this works around `text()` not being happy if text="xyz" comes with one-element vector attributes
+    texts = lift(pl.text) do text
+        text isa AbstractString ? [text] : text
+    end
 
     series!(pl, bp; space = :pixel, solid_color = pl.color, linewidth = pl.linewidth, linestyle = pl.linestyle)
-    # text!(pl, p, text = pl.text, space = :pixel, align = pl.align, offset = textoffset_vec,
-    #     fontsize = pl.fontsize, font = pl.font, rotation = autorotation, color = pl.textcolor,
-    #     justification = pl.justification)
+    text!(pl, textpoints, text = texts, space = :pixel, align = pl.align, offset = textoffset_vec,
+        fontsize = pl.fontsize, font = pl.font, rotation = autorotations, color = pl.textcolor,
+        justification = pl.justification)
     pl
 end
 
-data_limits(pl::Bracket) = mapreduce(union, pl[1][], init = Rect3f()) do points
+data_limits(pl::Bracket) = mapreduce(union, pl[1][]) do points
     Rect3f([points...])
 end
