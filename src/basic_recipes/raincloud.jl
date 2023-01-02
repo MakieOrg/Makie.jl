@@ -89,6 +89,7 @@ paired with the scatter plot so the default is to not show them)
         strokewidth = 1.0,
         show_median = true,
         boxplot_nudge = 0.075,
+        linecap = theme(scene, :linecap),
 
         gap = 0.2,
 
@@ -312,7 +313,8 @@ function plot!(plot::RainClouds)
                  markersize=markersize,
                  show_outliers=plot.show_boxplot_outliers[],
                  color=plot.color,
-                 cycle=plot.cycle)
+                 cycle=plot.cycle,
+                 linecap = plot.linecap)
     end
 
     return plot

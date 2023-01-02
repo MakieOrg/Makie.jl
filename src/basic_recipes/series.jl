@@ -22,7 +22,9 @@ Curves can be:
 """
 @recipe(Series, curves) do scene
     Attributes(
-        linewidth=2,
+        linewidth = theme(scene, :linewidth),
+        linestyle = theme(scene, :linestyle),
+        linecap = theme(scene, :linecap),
         color=:lighttest,
         solid_color=nothing,
         labels=nothing,
@@ -84,10 +86,13 @@ function plot!(plot::Series)
             mcolor = plot.markercolor
             markercolor = @lift $mcolor == automatic ? $series_color : $mcolor
             scatterlines!(plot, positions;
-                linewidth=linewidth, color=series_color, markercolor=series_color,
+                linewidth=linewidth, linestyle = p.linestyle, linecap = p.linecap,
+                color=series_color, markercolor=series_color,
                 label=label[], scatter...)
         else
-            lines!(plot, positions; linewidth=linewidth, color=series_color, label=label)
+            lines!(plot, positions; 
+                linewidth=linewidth, linestyle = p.linestyle, linecap = p.linecap,
+                color=series_color, label=label)
         end
     end
 end

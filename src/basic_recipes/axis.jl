@@ -323,8 +323,10 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
     axis.transformation.transform_func[] = identity
     textbuffer = TextBuffer(axis, Point3, transparency = true, markerspace = :data,
         inspectable = axis.inspectable, visible = axis.visible)
-    linebuffer = LinesegmentBuffer(axis, Point3, transparency = true, inspectable = axis.inspectable,
-        visible = axis.visible)
+    linebuffer = LinesegmentBuffer(
+        axis, Point3, transparency = true, inspectable = axis.inspectable,
+        visible = axis.visible, linecap = nothing
+    )
 
     tstyle, ticks, frame = to_value.(getindex.(axis, (:names, :ticks, :frame)))
     titlevals = getindex.(tstyle, (:axisnames, :textcolor, :fontsize, :rotation, :align, :font, :gap))

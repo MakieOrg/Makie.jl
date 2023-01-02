@@ -28,7 +28,8 @@ function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}
         plot, plot[1],
         color = plot[:strokecolor], linestyle = plot[:linestyle], space = plot[:space],
         linewidth = plot[:strokewidth], visible = plot[:visible], overdraw = plot[:overdraw],
-        inspectable = plot[:inspectable], transparency = plot[:transparency]
+        inspectable = plot[:inspectable], transparency = plot[:transparency],
+        linecap = plot[:linecap]
     )
 end
 
@@ -121,7 +122,8 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
         color = stroke, linestyle = plot.linestyle,
         linewidth = plot.strokewidth, space = plot.space,
         overdraw = plot.overdraw, transparency = plot.transparency,
-        inspectable = plot.inspectable, depth_shift = -1f-5
+        inspectable = plot.inspectable,
+        linecap = plot.linecap
     )
 end
 

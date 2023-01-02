@@ -597,7 +597,8 @@ Plots polygons, which are defined by
         transparency = false,
         cycle = [:color => :patchcolor],
         inspectable = theme(scene, :inspectable),
-        space = :data
+        space = :data,
+        linecap = theme(scene, :linecap)
     )
 end
 
@@ -626,6 +627,8 @@ end
             quality = 32,
             inspectable = theme(scene, :inspectable),
             markerspace = :pixel,
+            linecap = nothing,
+            linecap_length = automatic
         )
     )
     attr[:fxaa] = automatic

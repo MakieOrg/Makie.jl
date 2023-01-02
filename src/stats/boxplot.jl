@@ -46,6 +46,7 @@ The boxplot has 3 components:
         dodge_gap = 0.03,
         strokecolor = theme(scene, :patchstrokecolor),
         strokewidth = theme(scene, :patchstrokewidth),
+        linecap = theme(scene, :linecap),
         # notch
         show_notch = false,
         notchwidth = 0.5,
@@ -211,6 +212,7 @@ function Makie.plot!(plot::BoxPlot)
         plot,
         color = plot[:whiskercolor],
         linewidth = plot[:whiskerlinewidth],
+        linecap = plot.linecap,
         t_segments,
         inspectable = plot[:inspectable]
     )

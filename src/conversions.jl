@@ -1304,3 +1304,7 @@ end
 function convert_attribute(value::AbstractGeometry, ::key"marker", ::key"meshscatter")
     return normal_mesh(value)
 end
+
+
+
+convert_attribute(value::Real, ::key"depth_shift") = Float32(value)

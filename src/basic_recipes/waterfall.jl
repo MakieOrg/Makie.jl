@@ -27,6 +27,7 @@ Furthermore the same attributes as for `barplot` are supported.
         final_color=plot_color(:grey90, 0.5),
         final_gap=automatic,
         final_dodge_gap=0,
+        linecap = nothing
     )
 end
 

@@ -35,6 +35,7 @@ It is most commonly used as part of the `boxplot`.
     dodge_gap = 0.03,
     strokecolor = theme(scene, :patchstrokecolor),
     strokewidth = theme(scene, :patchstrokewidth),
+    linecap = theme(scene, :linecap),
     # notch
     show_notch=false,
     notchmin=automatic,
@@ -113,7 +114,9 @@ function Makie.plot!(plot::CrossBar)
         colormap=plot.colormap,
         strokecolor=plot.strokecolor,
         strokewidth=plot.strokewidth,
-        inspectable = plot[:inspectable]
+        inspectable = plot.inspectable,
+        linecap = plot.linecap,
+        fxaa = false
     )
     linesegments!(
         plot,
@@ -122,9 +125,10 @@ function Makie.plot!(plot::CrossBar)
             plot.midlinecolor,
             plot.strokecolor,
         ),
-        linewidth=plot[:midlinewidth],
-        visible=plot[:show_midline],
-        inspectable = plot[:inspectable],
-        midlines,
+        linewidth = plot.midlinewidth,
+        visible = plot.show_midline,
+        inspectable = plot.inspectable,
+        linecap = nothing,
+        midlines
     )
 end

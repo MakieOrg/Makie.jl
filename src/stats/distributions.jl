@@ -62,6 +62,7 @@ Graphical attributes are
         color = l_theme.color,
         linestyle = l_theme.linestyle,
         linewidth = l_theme.linewidth,
+        linecap = l_theme.linecap,
         markercolor = automatic,
         markersize = s_theme.markersize,
         strokecolor = s_theme.strokecolor,
@@ -143,6 +144,7 @@ function Makie.plot!(p::QQPlot)
         color = p.color,
         linestyle = p.linestyle,
         linewidth = p.linewidth,
+        linecap = p.linecap,
         inspectable = p.inspectable
     )
 end

@@ -22,6 +22,7 @@ $(ATTRIBUTES)
         whiskerwidth = 0,
         color = theme(scene, :linecolor),
         linewidth = theme(scene, :linewidth),
+        linecap = nothing, # otherwise 0 width whiskers draw
         direction = :y,
         visible = theme(scene, :visible),
         colormap = theme(scene, :colormap),
@@ -50,6 +51,7 @@ $(ATTRIBUTES)
         whiskerwidth = 0,
         color = theme(scene, :linecolor),
         linewidth = theme(scene, :linewidth),
+        linecap = nothing,
         direction = :y,
         visible = theme(scene, :visible),
         colormap = theme(scene, :colormap),
@@ -226,12 +228,12 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
     linesegments!(
         plot, linesegpairs, color = color, linewidth = linewidth, visible = visible,
         colormap = colormap, colorrange = colorrange, inspectable = inspectable,
-        transparency = transparency
+        transparency = transparency, linecap = plot.linecap
     )
     linesegments!(
         plot, whiskers, color = whiskercolors, linewidth = whiskerlinewidths,
         visible = visible, colormap = colormap, colorrange = colorrange,
-        inspectable = inspectable, transparency = transparency
+        inspectable = inspectable, transparency = transparency, linecap = plot.linecap
     )
     plot
 end

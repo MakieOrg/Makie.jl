@@ -30,6 +30,7 @@ $(ATTRIBUTES)
         stack = automatic,
         strokewidth = theme(scene, :patchstrokewidth),
         strokecolor = theme(scene, :patchstrokecolor),
+        linecap = theme(scene, :linecap),
         width = automatic,
         direction = :y,
         visible = theme(scene, :visible),
@@ -256,7 +257,7 @@ function Makie.plot!(p::BarPlot)
     poly!(
         p, bars, color = p.color, colormap = p.colormap, colorrange = p.colorrange,
         strokewidth = p.strokewidth, strokecolor = p.strokecolor, visible = p.visible,
-        inspectable = p.inspectable, transparency = p.transparency,
+        inspectable = p.inspectable, transparency = p.transparency, linecap = p.linecap,
         highclip = p.highclip, lowclip = p.lowclip, nan_color = p.nan_color,
     )
     if !isnothing(p.bar_labels[])

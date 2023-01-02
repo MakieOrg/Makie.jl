@@ -26,6 +26,7 @@ $(ATTRIBUTES)
         levels = 5,
         linewidth = 1.0,
         linestyle = nothing,
+        linecap = theme(scene, :linecap),
         alpha = 1.0,
         enable_depth = true,
         transparency = false
@@ -187,7 +188,8 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         linewidth = plot.linewidth,
         inspectable = plot.inspectable,
         transparency = plot.transparency,
-        linestyle = plot.linestyle
+        linestyle = plot.linestyle,
+        linecap = plot.linecap
     )
     plot
 end

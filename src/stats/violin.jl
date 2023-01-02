@@ -32,6 +32,7 @@ Draw a violin plot.
         show_median = false,
         mediancolor = theme(scene, :linecolor),
         medianlinewidth = theme(scene, :linewidth),
+        linecap = nothing
     )
 end
 
@@ -143,6 +144,7 @@ function plot!(plot::Violin)
         color = plot[:mediancolor],
         linewidth = plot[:medianlinewidth],
         visible = plot[:show_median],
-        inspectable = plot[:inspectable]
+        inspectable = plot[:inspectable],
+        linecap = plot.linecap
     )
 end

@@ -13,7 +13,8 @@ $(ATTRIBUTES)
     Attributes(;
         default_theme(scene, Heatmap)...,
         bbox_visible = true,
-        bbox_color = RGBAf(0.5, 0.5, 0.5, 0.5)
+        bbox_color = RGBAf(0.5, 0.5, 0.5, 0.5),
+        linecap = nothing
     )
 end
 
@@ -27,6 +28,7 @@ function plot!(plot::VolumeSlices)
     attr = copy(Attributes(plot))
     bbox_color = pop!(attr, :bbox_color)
     bbox_visible = pop!(attr, :bbox_visible)
+    linecap = pop!(attr, :linecap)
     pop!(attr, :model) # stops `transform!()` from working
 
     bbox = map(x, y, z) do x, y, z
@@ -51,7 +53,10 @@ function plot!(plot::VolumeSlices)
         update(1) # trigger once to place heatmaps correctly
     end
 
-    linesegments!(plot, bbox, color = bbox_color, visible = bbox_visible, inspectable = false)
+    linesegments!(
+        plot, bbox, color = bbox_color, visible = bbox_visible, 
+        inspectable = false, linecap = linecap
+    )
 
     plot
 end

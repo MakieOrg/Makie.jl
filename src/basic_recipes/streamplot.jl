@@ -169,11 +169,10 @@ function plot!(p::StreamPlot)
     end
     lines!(
         p,
-        lift(x->x[3], data), color = lift(last, data), colormap = p.colormap, colorrange = p.colorrange,
-        linestyle = p.linestyle,
-        linewidth = p.linewidth,
-        inspectable = p.inspectable,
-        transparency = p.transparency
+        lift(x->x[3], data), color = lift(last, data), 
+        colormap = p.colormap, colorrange = p.colorrange,
+        linestyle = p.linestyle, linewidth = p.linewidth, linecap = p.linecap,
+        inspectable = p.inspectable, transparency = p.transparency, visible = p.visible
     )
     N = ndims(p.limits[])
 
@@ -206,6 +205,7 @@ function plot!(p::StreamPlot)
         marker = @lift(arrow_head(N, $(p.arrow_head), $(p.quality))),
         color = lift(x-> x[4], data), rotations = rotations,
         colormap = p.colormap, colorrange = p.colorrange,
-        inspectable = p.inspectable, transparency = p.transparency
+        inspectable = p.inspectable, transparency = p.transparency, 
+        visible = p.visible
     )
 end

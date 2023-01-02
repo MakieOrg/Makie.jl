@@ -80,5 +80,5 @@ function plot!(p::Spy)
     )
 
     lines!(p, rect, color = p.framecolor, linewidth = p.framesize, inspectable = p.inspectable,
-           visible = p.visible)
+           visible = p.visible, linecap = nothing)
 end

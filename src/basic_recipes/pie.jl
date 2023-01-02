@@ -12,6 +12,7 @@ $(ATTRIBUTES)
         color = :gray,
         strokecolor = :black,
         strokewidth = 1,
+        linecap = theme(scene, :linecap),
         vertex_per_deg = 1,
         radius = 1,
         inner_radius = 0,
@@ -69,7 +70,8 @@ function plot!(plot::Pie)
         plot, polys, 
         color = plot.color, strokewidth = plot.strokewidth, 
         strokecolor = plot.strokecolor, inspectable = plot.inspectable, 
-        visible = plot.visible, transparency = plot.transparency
+        visible = plot.visible, transparency = plot.transparency,
+        linecap = plot.linecap
     )
 
     plot

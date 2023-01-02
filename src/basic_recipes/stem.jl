@@ -64,7 +64,8 @@ function plot!(s::Stem{<:Tuple{<:AbstractVector{<:Point}}})
         colorrange = s.trunkcolorrange,
         visible = s.visible,
         linestyle = s.trunklinestyle,
-        inspectable = s.inspectable)
+        inspectable = s.inspectable,
+        linecap = nothing)
     linesegments!(s, stemtuples,
         linewidth = s.stemwidth,
         color = s.stemcolor,
@@ -72,7 +73,8 @@ function plot!(s::Stem{<:Tuple{<:AbstractVector{<:Point}}})
         colorrange = s.stemcolorrange,
         visible = s.visible,
         linestyle = s.stemlinestyle,
-        inspectable = s.inspectable)
+        inspectable = s.inspectable,
+        linecap = nothing)
     scatter!(s, s[1],
         color = s.color,
         colormap = s.colormap,

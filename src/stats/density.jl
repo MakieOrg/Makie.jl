@@ -41,6 +41,7 @@ $(ATTRIBUTES)
         strokecolor = theme(scene, :patchstrokecolor),
         strokewidth = theme(scene, :patchstrokewidth),
         linestyle = nothing,
+        linecap = nothing,
         strokearound = false,
         npoints = 200,
         offset = 0.0,
@@ -117,6 +118,6 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
         colorrange = plot.colorrange, inspectable = plot.inspectable)
     l = lines!(plot, linepoints, color = plot.strokecolor,
         linestyle = plot.linestyle, linewidth = plot.strokewidth,
-        inspectable = plot.inspectable)
+        inspectable = plot.inspectable, linecap = plot.linecap)
     plot
 end

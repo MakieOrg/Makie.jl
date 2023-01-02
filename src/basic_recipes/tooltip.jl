@@ -25,6 +25,7 @@ Creates a tooltip pointing at `position` displaying the given `string`
 - `outline_color = :black` sets the color of the tooltip outline.
 - `outline_linewidth = 2f0` sets the linewidth of the tooltip outline.
 - `outline_linestyle = nothing` sets the linestyle of the tooltip outline.
+- `outline_linecap = ntohing` sets the linecap for the tooltip outline.
 
 - `textpadding = (4, 4, 4, 4)` sets the padding around text in the tooltip. This is given as `(left, right, bottom top)` offsets.
 - `textcolor = theme(scene, :textcolor)` sets the text color.
@@ -67,6 +68,7 @@ Creates a tooltip pointing at `position` displaying the given `string`
         outline_color = :black,
         outline_linewidth = 2f0,
         outline_linestyle = nothing,
+        outline_linecap = nothing
     )
 end
 
@@ -264,7 +266,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         linewidth = p.outline_linewidth, linestyle = p.outline_linestyle,
         transparency = p.transparency, visible = p.visible,
         overdraw = p.overdraw, depth_shift = p.depth_shift,
-        inspectable = p.inspectable
+        inspectable = p.inspectable, linecap = p.outline_linecap
     )
 
     notify(p[1])
