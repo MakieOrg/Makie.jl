@@ -32,6 +32,7 @@ Curves can be:
         markercolor=automatic,
         strokecolor=nothing,
         strokewidth=nothing,
+        space = :data,
     )
 end
 
@@ -64,7 +65,7 @@ function convert_arguments(::Type{<: Series}, arg::AbstractVector{<: AbstractVec
 end
 
 function plot!(plot::Series)
-    @extract plot (curves, labels, linewidth, color, solid_color)
+    @extract plot (curves, labels, linewidth, color, solid_color, space)
     sargs = [:marker, :markersize, :strokecolor, :strokewidth]
     scatter = Dict((f => plot[f] for f in sargs if !isnothing(plot[f][])))
     nseries = length(curves[])
@@ -85,9 +86,9 @@ function plot!(plot::Series)
             markercolor = @lift $mcolor == automatic ? $series_color : $mcolor
             scatterlines!(plot, positions;
                 linewidth=linewidth, color=series_color, markercolor=series_color,
-                label=label[], scatter...)
+                label=label[], scatter..., space = space)
         else
-            lines!(plot, positions; linewidth=linewidth, color=series_color, label=label)
+            lines!(plot, positions; linewidth=linewidth, color=series_color, label=label, space = space)
         end
     end
 end
