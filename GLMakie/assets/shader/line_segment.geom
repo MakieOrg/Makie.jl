@@ -5,14 +5,12 @@ layout(lines) in;
 layout(triangle_strip, max_vertices = 12) out;
 
 uniform vec2 resolution;
-uniform float maxlength;
 uniform float pattern_length;
 uniform int linecap;
 
 in vec4 g_color[];
 in uvec2 g_id[];
 in float g_thickness[];
-in float g_lastlen[];
 in float g_linecap_length[];
 
 out float f_thickness;
@@ -31,10 +29,10 @@ vec2 screen_space(vec4 vertex)
     return vec2(vertex.xy / vertex.w)*resolution;
 }
 
-void emit_vertex(vec2 position, float v, float ratio, int index)
+void emit_vertex(vec2 position, vec2 uv, int index)
 {
     vec4 inpos = gl_in[index].gl_Position;
-    f_uv = vec2(0.5 * g_lastlen[index] * ratio / pattern_length, v);
+    f_uv = uv;
     f_color = g_color[index];
     gl_Position = vec4((position / resolution) * inpos.w, inpos.z, inpos.w);
     f_id = g_id[index];
@@ -73,10 +71,15 @@ void main(void)
     float thickness_aa1 = g_thickness[1]+AA_THICKNESS;
     // determine the direction of each of the 3 segments (previous, current, next)
     vec2 vun0 = p1 - p0;
-    vec2 v0 = normalize(vun0);
+    float vnorm = length(vun0);
+    vec2 v0 = vun0 / vnorm;
     // determine the normal of each of the 3 segments (previous, current, next)
     vec2 n0 = vec2(-v0.y, v0.x);
-    float ratio = length(p1 - p0) / (g_lastlen[1] - g_lastlen[0]);
+    
+    // Hack to remove anti-aliasing border with circle (Assuming 100 as textureSize)
+    float u_min = (float(linecap == CIRCLE) + 0.5) / 100.0;
+    // Map 0 .. pattern_length pixels to 0 .. 1 in uv space
+    float u_max = 0.5 * vnorm / pattern_length + u_min;
 
     vec2 linecap_gap0;
     vec2 linecap_gap1;
@@ -90,10 +93,10 @@ void main(void)
         linecap_gap1 = min(g_linecap_length[1], 0) * v0;
     }
 
-    emit_vertex(p0 - linecap_gap0 + thickness_aa0 * n0, -thickness_aa0, ratio, 0);
-    emit_vertex(p0 - linecap_gap0 - thickness_aa0 * n0,  thickness_aa0, ratio, 0);
-    emit_vertex(p1 + linecap_gap1 + thickness_aa1 * n0, -thickness_aa1, ratio, 1);
-    emit_vertex(p1 + linecap_gap1 - thickness_aa1 * n0,  thickness_aa1, ratio, 1);
+    emit_vertex(p0 - linecap_gap0 + thickness_aa0 * n0, vec2(u_min, -thickness_aa0), 0);
+    emit_vertex(p0 - linecap_gap0 - thickness_aa0 * n0, vec2(u_min,  thickness_aa0), 0);
+    emit_vertex(p1 + linecap_gap1 + thickness_aa1 * n0, vec2(u_max, -thickness_aa1), 1);
+    emit_vertex(p1 + linecap_gap1 - thickness_aa1 * n0, vec2(u_max,  thickness_aa1), 1);
 
     // generate quads for line cap
     if (linecap == CIRCLE) { // 0 doubles as no line cap

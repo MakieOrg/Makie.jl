@@ -32,7 +32,6 @@ void write2framebuffer(vec4 color, uvec2 id);
 float get_sd(sampler2D pattern, vec2 uv){
     return texture(pattern, uv).x;
 }
-uniform float maxlength;
 // x pattern
 vec2 get_sd(sampler1D pattern, vec2 uv){
     return vec2(texture(pattern, uv.x).x, uv.y);
