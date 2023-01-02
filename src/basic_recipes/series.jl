@@ -65,7 +65,7 @@ function convert_arguments(::Type{<: Series}, arg::AbstractVector{<: AbstractVec
 end
 
 function plot!(plot::Series)
-    @extract plot (curves, labels, linewidth, color, solid_color, space)
+    @extract plot (curves, labels, linewidth, color, solid_color, space, linestyle)
     sargs = [:marker, :markersize, :strokecolor, :strokewidth]
     scatter = Dict((f => plot[f] for f in sargs if !isnothing(plot[f][])))
     nseries = length(curves[])
@@ -81,14 +81,16 @@ function plot!(plot::Series)
         label = @lift isnothing($labels) ? "series $(i)" : $labels[i]
         positions = @lift $curves[i]
         series_color = @lift $colors isa AbstractVector ? $colors[i] : $colors
+        series_linestyle = @lift $linestyle isa AbstractVector ? $linestyle[i] : $linestyle
         if !isempty(scatter)
             mcolor = plot.markercolor
             markercolor = @lift $mcolor == automatic ? $series_color : $mcolor
             scatterlines!(plot, positions;
                 linewidth=linewidth, color=series_color, markercolor=series_color,
-                label=label[], scatter..., space = space)
+                label=label[], scatter..., space = space, linestyle = series_linestyle)
         else
-            lines!(plot, positions; linewidth=linewidth, color=series_color, label=label, space = space)
+            lines!(plot, positions; linewidth=linewidth, color=series_color, label=label, space = space,
+                linestyle = series_linestyle)
         end
     end
 end
