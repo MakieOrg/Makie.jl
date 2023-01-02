@@ -55,6 +55,7 @@ bracket!(ax,
     linestyle = [:dash, :dot, :dash, :dot, :dash],
     orientation = [:up, :down, :up, :down, :up],
     textcolor = [:red, :blue, :green, :orange, :brown],
+    fontsize = range(12, 24, length = 5),
 )
 
 f

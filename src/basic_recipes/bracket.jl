@@ -49,7 +49,7 @@ function Makie.plot!(pl::Bracket)
     bp = Observable(BezierPath[])
     textpoints = Observable(Point2f[])
 
-    realtextoffset = @lift($(pl.textoffset) === automatic ? Float32(0.75 * $(pl.fontsize)) : Float32($(pl.textoffset)))
+    realtextoffset = @lift($(pl.textoffset) === automatic ? Float32.(0.75 .* $(pl.fontsize)) : Float32.($(pl.textoffset)))
     
     strength = 1.0 # hardcoded for now, maybe other bracket types in the future need different settings
     onany(points, scene.camera.projectionview, pl.offset, pl.width, pl.orientation, realtextoffset) do points, pv, offset, width, orientation, textoff
