@@ -54,9 +54,9 @@ function (x::WindowAreaUpdater)(::Nothing)
     # TODO put back window position, but right now it makes more trouble than it helps#
     # x, y = GLFW.GetWindowPos(nw)
     # if minimum(rect) != Vec(x, y)
-    #     event[] = Recti(x, y, framebuffer_size(window))
+    #     event[] = Recti(x, y, framebuffer_size((window))
     # end
-    w, h = round.(Int, windowsize(nw) ./ x.screen.px_per_unit[])
+    w, h = round.(Int, framebuffer_size(nw) ./ x.screen.px_per_unit[])
     if Vec(w, h) != widths(rect)
         monitor = GLFW.GetPrimaryMonitor()
         props = MonitorProperties(monitor)
@@ -170,8 +170,12 @@ end
 
 function correct_mouse(screen::Screen, w, h)
     sf = screen.px_per_unit[]
-    _, wh = windowsize(to_native(screen))
-    return (w / sf, (wh - h) / sf)
+    _, wh = framebuffer_size(to_native(screen))
+    @static if Sys.isapple()
+        return w, (wh / sf) - h
+    else
+        return w / sf, (wh - h) / sf
+    end
 end
 
 struct MousePositionUpdater
