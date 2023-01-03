@@ -15,7 +15,7 @@ $(ATTRIBUTES)
         colorrange = get(l_theme.attributes, :colorrange, automatic),
         linestyle = l_theme.linestyle,
         linewidth = l_theme.linewidth,
-        linecap = l.linecap,
+        linecap = l_theme.linecap,
         markercolor = automatic,
         markercolormap = s_theme.colormap,
         markercolorrange = get(s_theme.attributes, :colorrange, automatic),
