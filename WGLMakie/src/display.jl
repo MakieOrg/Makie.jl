@@ -66,7 +66,7 @@ for M in WEB_MIMES
         function Makie.backend_show(screen::Screen, io::IO, m::$M, scene::Scene)
             inline_display = App() do session::Session
                 three, canvas, init_obs = three_display(session, scene)
-                Makie.push_screen!(scene, three)
+                Makie.push_screen!(scene, screen)
                 on(init_obs) do _
                     put!(screen.three, three)
                 end
