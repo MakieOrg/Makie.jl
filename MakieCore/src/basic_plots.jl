@@ -563,6 +563,7 @@ Plots polygons, which are defined by
 - `strokecolor::Union{Symbol, <:Colorant} = :black` sets the color of the outline around a marker.
 - `strokewidth::Real = 0` sets the width of the outline around a marker.
 - `linestyle::Union{Nothing, Symbol, Vector} = nothing` sets the pattern of the line (e.g. `:solid`, `:dot`, `:dashdot`)
+- `lincap::Union{Nothing, Symbol} = nothing` sets the linecap style (nothing, :square or :round)
 
 ### Generic
 
