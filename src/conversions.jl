@@ -1308,3 +1308,5 @@ end
 
 
 convert_attribute(value::Real, ::key"depth_shift") = Float32(value)
+
+convert_attribute(cap::Nothing, ::key"linecap") = :butt

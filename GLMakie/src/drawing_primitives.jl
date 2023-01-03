@@ -263,7 +263,6 @@ end
 
 _mean(xs) = sum(xs) / length(xs) # skip Statistics import
 
-gl_linecap(::Nothing) = 0
 function gl_linecap(cap::Symbol)
     cap == :square   && return 5
     cap == :round    && return 4
