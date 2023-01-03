@@ -8,7 +8,9 @@ end
 
 function attribute_per_char(string, attribute)
     n_words = 0
-    if attribute isa AbstractVector
+    if attribute isa GeometryBasics.StaticArray
+        return one_attribute_per_char(attribute, string)
+    elseif attribute isa AbstractVector
         if length(attribute) == length(string)
             return attribute
         else
@@ -40,7 +42,7 @@ Compute a GlyphCollection for a `string` given fontsize, font, align, rotation, 
 """
 function layout_text(
         string::AbstractString, fontsize::Union{AbstractVector, Number},
-        font, fonts, align, rotation, justification, lineheight, color, 
+        font, fonts, align, rotation, justification, lineheight, color,
         strokecolor, strokewidth, word_wrap_width
     )
 
@@ -52,8 +54,8 @@ function layout_text(
     fontsizeperchar = attribute_per_char(string, rscale)
 
     glyphcollection = glyph_collection(
-        string, fontperchar, fontsizeperchar, align[1], align[2], 
-        lineheight, justification, rot, color, 
+        string, fontperchar, fontsizeperchar, align[1], align[2],
+        lineheight, justification, rot, color,
         strokecolor, strokewidth, word_wrap_width
     )
 
@@ -69,7 +71,7 @@ rotated to wherever it is needed in the plot.
 """
 function glyph_collection(
         str::AbstractString, font_per_char, fontscale_px, halign, valign,
-        lineheight_factor, justification, rotation, color, 
+        lineheight_factor, justification, rotation, color,
         strokecolor, strokewidth, word_wrap_width
     )
 
@@ -83,7 +85,7 @@ function glyph_collection(
             char = char,
             font = font,
             scale = scale,
-            lineheight = Float32(font.height / font.units_per_EM * lineheight_factor * scale),
+            lineheight = Float32(font.height / font.units_per_EM * lineheight_factor * last(scale)),
             extent = GlyphExtent(font, char)
         )
     end
@@ -100,9 +102,9 @@ function glyph_collection(
         xs = [Float32[]]
 
         # If word_wrap_width > 0:
-        # Whenever a space is hit, record its index in last_space_local_idx and 
-        # last_space_global_index. If there is already a space on record and the 
-        # current word overflows word_wrap_width, replace the last space with 
+        # Whenever a space is hit, record its index in last_space_local_idx and
+        # last_space_global_index. If there is already a space on record and the
+        # current word overflows word_wrap_width, replace the last space with
         # a newline. newline character unset the last space index
         # word{space}word{space}word{space}
         #        ↑      ↑   ↑
@@ -111,8 +113,8 @@ function glyph_collection(
 
         for (i, ci) in enumerate(charinfos)
             push!(xs[end], x)
-            x += ci.extent.hadvance * ci.scale
-            
+            x += ci.extent.hadvance * first(ci.scale)
+
             if 0 < word_wrap_width < x && last_space_local_idx != 0 &&
                     ((ci.char in (' ', '\n')) || i == length(charinfos))
 
@@ -121,12 +123,12 @@ function glyph_collection(
                 xs[end-1] = xs[end-1][1:last_space_local_idx]
                 push!(lineinfos, view(charinfos, last_line_start:last_space_global_idx))
                 last_line_start = last_space_global_idx+1
-                x = xs[end][end] + ci.extent.hadvance * ci.scale
+                x = xs[end][end] + ci.extent.hadvance * first(ci.scale)
 
                 # TODO Do we need to redo the metrics for newlines?
-                charinfos[last_space_global_idx] = let 
+                charinfos[last_space_global_idx] = let
                     _, font, scale, lineheight, extent = charinfos[last_space_global_idx]
-                    (char = '\n', font = font, scale = scale, 
+                    (char = '\n', font = font, scale = scale,
                         lineheight = lineheight, extent = extent)
                 end
             end
@@ -156,7 +158,7 @@ function glyph_collection(
         # if the last and not the only character is \n, take the previous one
         # to compute the width
         i = (nchars > 1 && line[end].char == '\n') ? nchars - 1 : nchars
-        xx[i] + line[i].extent.hadvance * line[i].scale
+        xx[i] + line[i].extent.hadvance * first(line[i].scale)
     end
 
     # the maximum width is needed for justification
@@ -217,11 +219,11 @@ function glyph_collection(
     # for y alignment, we need the largest ascender of the first line
     # and the largest descender of the last line
     first_line_ascender = maximum(lineinfos[1]) do l
-        l.scale * l.extent.ascender
+        last(l.scale) * l.extent.ascender
     end
 
     last_line_descender = minimum(lineinfos[end]) do l
-        l.scale * l.extent.descender
+        last(l.scale) * l.extent.descender
     end
 
     # compute the height of all lines together
@@ -302,12 +304,11 @@ _offset_at(o::Vector, i) = o[i]
 Base.getindex(x::ScalarOrVector, i) = x.sv isa Vector ? x.sv[i] : x.sv
 Base.lastindex(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
 
-function text_quads(position::VecTypes, gc::GlyphCollection, offset, transfunc, space)
+function text_quads(atlas::TextureAtlas, position::VecTypes, gc::GlyphCollection, offset, transfunc, space)
     p = apply_transform(transfunc, position, space)
     pos = [to_ndim(Point3f, p, 0) for _ in gc.origins]
 
-    atlas = get_texture_atlas()
-    pad = GLYPH_PADDING[] / PIXELSIZE_IN_ATLAS[]
+    pad = atlas.glyph_padding / atlas.pix_per_glyph
     off = _offset_to_vec(offset)
 
     char_offsets = Vector{Vec3f}(undef, length(pos)) # TODO can this be Vec2f?
@@ -336,17 +337,16 @@ function text_quads(position::VecTypes, gc::GlyphCollection, offset, transfunc, 
     return pos, char_offsets, quad_offsets, uvs, scales
 end
 
-function text_quads(position::Vector, gcs::Vector{<: GlyphCollection}, offset, transfunc, space)
+function text_quads(atlas::TextureAtlas, position::Vector, gcs::Vector{<: GlyphCollection}, offset, transfunc, space)
     ps = apply_transform(transfunc, position, space)
     pos = [to_ndim(Point3f, p, 0) for (p, gc) in zip(ps, gcs) for _ in gc.origins]
 
-    atlas = get_texture_atlas()
-    pad = GLYPH_PADDING[] / PIXELSIZE_IN_ATLAS[]
+    pad = atlas.glyph_padding / atlas.pix_per_glyph
     off = _offset_to_vec(offset)
 
     # To avoid errors due to asynchronous updates of text attributes
     M = min(
-        length(gcs), length(position), 
+        length(gcs), length(position),
         ifelse(off isa StaticVector || length(off) == 1, typemax(Int), length(off))
     )
 

@@ -67,7 +67,7 @@ _to_rotation(x::Vector, idx) = to_rotation(x[idx])
 ### Selecting a point on a nearby line
 ########################################
 
-function closest_point_on_line(p0::Point2f, p1::Point2f, r::Point2f)
+function closest_point_on_line(A::Point2f, B::Point2f, P::Point2f)
     # This only works in 2D
     AP = P .- A; AB = B .- A
     A .+ AB * dot(AP, AB) / dot(AB, AB)
@@ -120,7 +120,19 @@ function closest_point_on_line(A::Point3f, B::Point3f, origin::Point3f, dir::Vec
     A .+ clamp(t, 0.0, AB_norm) * u_AB
 end
 
-function ray_triangle_intersection(A, B, C, origin, dir)
+function point_in_triangle(A::Point2, B::Point2, C::Point2, P::Point2, ϵ = 1e-6)
+    # adjusted from ray_triangle_intersection
+    AO = A .- P
+    BO = B .- P
+    CO = C .- P
+    A1 = 0.5 * (BO[1] * CO[2] - BO[2] * CO[1])
+    A2 = 0.5 * (CO[1] * AO[2] - CO[2] * AO[1])
+    A3 = 0.5 * (AO[1] * BO[2] - AO[2] * BO[1])
+
+    return (A1 > -ϵ && A2 > -ϵ && A3 > -ϵ) || (A1 < ϵ && A2 < ϵ && A3 < ϵ)
+end
+
+function ray_triangle_intersection(A, B, C, origin, dir, ϵ = 1e-6)
     # See: https://www.iue.tuwien.ac.at/phd/ertl/node114.html
     AO = A .- origin
     BO = B .- origin
@@ -130,7 +142,7 @@ function ray_triangle_intersection(A, B, C, origin, dir)
     A3 = 0.5 * dot(cross(AO, BO), dir)
 
     e = 1e-3
-    if (A1 > -e && A2 > -e && A3 > -e) || (A1 < e && A2 < e && A3 < e)
+    if (A1 > -ϵ && A2 > -ϵ && A3 > -ϵ) || (A1 < ϵ && A2 < ϵ && A3 < ϵ)
         Point3f((A1 * A .+ A2 * B .+ A3 * C) / (A1 + A2 + A3))
     else
         Point3f(NaN)
@@ -180,6 +192,51 @@ function ncoords(poly::Polygon)
     end
     N
 end
+
+## Band Sections
+########################################
+
+"""
+    point_in_quad_parameter(A, B, C, D, P[; iterations = 20, epsilon = 1e-6])
+
+Given a quad
+
+A --- B
+|     |
+D --- C
+
+this computes parameter `f` such that the line from `A + f * (B - A)` to 
+`D + f * (C - D)` crosses through the given point `P`. This assumes that `P` is 
+inside the quad and that none of the edges cross.
+"""
+function point_in_quad_parameter(
+        A::Point2, B::Point2, C::Point2, D::Point2, P::Point2; 
+        iterations = 50, epsilon = 1e-6
+    )
+
+    # Our initial guess is that P is in the center of the quad (in terms of AB and DC)
+    f = 0.5
+
+    for i in 0:iterations
+        # vector between top and bottom point of the current line
+        dir = (D + f * (C - D)) - (A + f * (B - A))
+        DC = C - D
+        AB = B - A
+        # solves P + _ * dir = A + f1 * (B - A) (intersection point of ray & line)
+        f1, _ = inv(Mat2f(AB..., dir...)) * (P - A)
+        f2, _ = inv(Mat2f(DC..., dir...)) * (P - D)
+
+        # next fraction estimate should be between f1 and f2
+        # adding 2f to this helps avoid jumping between low and high values
+        f = 0.25 * (2f + f1 + f2)
+        if abs(f2 - f1) < epsilon
+            return f
+        end
+    end
+
+    return f
+end
+
 
 ## Shifted projection
 ########################################
@@ -240,8 +297,8 @@ disable!(inspector::DataInspector) = inspector.attributes.enabled[] = false
 Creates a data inspector which will show relevant information in a tooltip
 when you hover over a plot.
 
-This functionality can eb disabled on a per-plot basis by setting 
-`plot.inspectable[] = false`. The displayed text can be adjusted by setting 
+This functionality can eb disabled on a per-plot basis by setting
+`plot.inspectable[] = false`. The displayed text can be adjusted by setting
 `plot.inspector_label` to a function `(plot, index, position) -> "my_label"`
 returning a label. See Makie documentation for more detail.
 
@@ -348,9 +405,9 @@ function show_data_recursion(inspector, plot, idx)
     if processed
         return true
     else
-        # Some show_data methods use the current selection to tell whether the 
-        # temporary plots (indicator plots) are theirs or not, so we want to 
-        # reset after processing them. We also don't want to reset when the 
+        # Some show_data methods use the current selection to tell whether the
+        # temporary plots (indicator plots) are theirs or not, so we want to
+        # reset after processing them. We also don't want to reset when the
         processed = if haskey(plot, :inspector_hover)
             plot[:inspector_hover][](inspector, plot, idx)
         else
@@ -370,9 +427,9 @@ function show_data_recursion(inspector, plot::AbstractPlot, idx, source)
     if processed
         return true
     else
-        # Some show_data methods use the current selection to tell whether the 
-        # temporary plots (indicator plots) are theirs or not, so we want to 
-        # reset after processing them. We also don't want to reset when the 
+        # Some show_data methods use the current selection to tell whether the
+        # temporary plots (indicator plots) are theirs or not, so we want to
+        # reset after processing them. We also don't want to reset when the
         processed = if haskey(plot, :inspector_hover)
             plot[:inspector_hover][](inspector, plot, idx, source)
         else
@@ -382,7 +439,7 @@ function show_data_recursion(inspector, plot::AbstractPlot, idx, source)
         if processed
             inspector.selection = plot
         end
-        
+
         return processed
     end
 end
@@ -1014,6 +1071,73 @@ function show_data(inspector::DataInspector, plot::VolumeSlices, idx, child::Hea
         tt.visible[] = false
     end
     a.indicator_visible[] && (a.indicator_visible[] = false)
+
+    return true
+end
+
+
+function show_data(inspector::DataInspector, plot::Band, ::Integer, ::Mesh)
+    scene = parent_scene(plot)
+    tt = inspector.plot
+    a = inspector.attributes
+
+    pos = Point2f(mouseposition(scene))
+    ps1 = plot.converted[1][]
+    ps2 = plot.converted[2][]
+
+    # find first triangle containing the cursor position
+    idx = findfirst(1:length(ps1)-1) do i
+        point_in_triangle(ps1[i], ps1[i+1], ps2[i+1], pos) ||
+        point_in_triangle(ps1[i], ps2[i+1], ps2[i], pos)
+    end
+
+    if idx !== nothing
+        # (idx, idx+1) picks the quad that contains the cursor position
+        # Within the quad we can draw a line from ps1[idx] + f * (ps1[idx+1] - ps1[idx])
+        # to ps2[idx] + f * (ps2[idx+1] - ps2[idx]) which crosses through the
+        # cursor position. Find the parameter f that describes this line
+        f = point_in_quad_parameter(ps1[idx], ps1[idx+1], ps2[idx+1], ps2[idx], pos)
+        P1 = ps1[idx] + f * (ps1[idx+1] - ps1[idx])
+        P2 = ps2[idx] + f * (ps2[idx+1] - ps2[idx])
+
+        # Draw the line
+        if a.enable_indicators[]
+            model = plot.model[]
+
+            if inspector.selection != plot || isempty(inspector.temp_plots)
+                clear_temporary_plots!(inspector, plot)
+                p = lines!(
+                    scene, [P1, P2], model = model, 
+                    color = a.indicator_color, strokewidth = a.indicator_linewidth, 
+                    linestyle = a.indicator_linestyle,
+                    visible = a.indicator_visible, inspectable = false
+                )
+                translate!(p, Vec3f(0, 0, a.depth[]))
+                push!(inspector.temp_plots, p)
+            elseif !isempty(inspector.temp_plots)
+                p = inspector.temp_plots[1]
+                p[1][] = [P1, P2]
+                p.model[] = model
+            end
+
+            a.indicator_visible[] = true
+        end
+
+        # Update tooltip
+        update_tooltip_alignment!(inspector, mouseposition_px(inspector.root))
+
+        if haskey(plot, :inspector_label)
+            tt.text[] = plot[:inspector_label][](plot, right, (P1, P2))
+        else
+            tt.text[] = @sprintf("(%0.3f, %0.3f) .. (%0.3f, %0.3f)", P1[1], P1[2], P2[1], P2[2])
+        end
+        tt.visible[] = true
+    else
+        # to simplify things we discard any positions outside the band
+        # (likely doesn't work with parameter search)
+        tt.visible[] = false
+        a.indicator_visible[] = false
+    end
 
     return true
 end

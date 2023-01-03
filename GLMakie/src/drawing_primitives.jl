@@ -1,4 +1,4 @@
-using Makie: get_texture_atlas, glyph_uv_width!, transform_func_obs, apply_transform
+using Makie: transform_func_obs, apply_transform
 using Makie: attribute_per_char, FastPixel, el32convert, Pixel
 using Makie: convert_arguments
 
@@ -210,19 +210,30 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Union{Scatte
             gl_attributes[:preprojection] = map(space, mspace, cam.projectionview, cam.resolution) do space, mspace, _, _
                 return Makie.clip_to_space(cam, mspace) * Makie.space_to_clip(cam, space)
             end
+            # fast pixel does its own setup
             if !(marker[] isa FastPixel)
-                # fast pixel does its own camera setup
                 connect_camera!(gl_attributes, cam, mspace)
+                gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.rotations)
+                atlas = gl_texture_atlas()
+                isnothing(gl_attributes[:distancefield][]) && delete!(gl_attributes, :distancefield)
+                shape = lift(m-> Cint(Makie.marker_to_sdf_shape(m)), marker)
+                gl_attributes[:shape] = shape
+                get!(gl_attributes, :distancefield) do
+                    if shape[] === Cint(DISTANCEFIELD)
+                        return get_texture!(atlas)
+                    else
+                        return nothing
+                    end
+                end
+                font = get(gl_attributes, :font, Observable(Makie.defaultfont()))
+                gl_attributes[:uv_offset_width][] == Vec4f(0) && delete!(gl_attributes, :uv_offset_width)
+                get!(gl_attributes, :uv_offset_width) do
+                    return Makie.primitive_uv_offset_width(atlas, marker, font)
+                end
+                scale, quad_offset = Makie.marker_attributes(atlas, marker, gl_attributes[:scale], font, gl_attributes[:quad_offset])
+                gl_attributes[:scale] = scale
+                gl_attributes[:quad_offset] = quad_offset
             end
-
-            gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.rotations)
-            isnothing(gl_attributes[:distancefield][]) && delete!(gl_attributes, :distancefield)
-            gl_attributes[:uv_offset_width][] == Vec4f(0) && delete!(gl_attributes, :uv_offset_width)
-
-            font = get(gl_attributes, :font, Observable(Makie.defaultfont()))
-            scale, quad_offset = Makie.marker_attributes(marker, gl_attributes[:scale], font, gl_attributes[:quad_offset])
-            gl_attributes[:scale] = scale
-            gl_attributes[:quad_offset] = quad_offset
         else
             connect_camera!(gl_attributes, scene.camera)
         end
@@ -307,10 +318,11 @@ function draw_atomic(screen::Screen, scene::Scene,
         space = get(gl_attributes, :space, Observable(:data)) # needs to happen before connect_camera! call
         markerspace = gl_attributes[:markerspace]
         offset = pop!(gl_attributes, :offset, Vec2f(0))
+        atlas = gl_texture_atlas()
 
         # calculate quad metrics
         glyph_data = map(pos, glyphcollection, offset, transfunc, space) do pos, gc, offset, transfunc, space
-            Makie.text_quads(pos, to_value(gc), offset, transfunc, space)
+            Makie.text_quads(atlas, pos, to_value(gc), offset, transfunc, space)
         end
 
         # unpack values from the one signal:
@@ -318,7 +330,6 @@ function draw_atomic(screen::Screen, scene::Scene,
             lift(getindex, glyph_data, i)
         end
 
-        atlas = get_texture_atlas()
 
         filter!(gl_attributes) do (k, v)
             # These are liftkeys without model
@@ -354,6 +365,7 @@ function draw_atomic(screen::Screen, scene::Scene,
             end
         end
 
+        gl_attributes[:shape] = Cint(DISTANCEFIELD)
         gl_attributes[:scale] = scale
         gl_attributes[:quad_offset] = quad_offset
         gl_attributes[:marker_offset] = char_offset

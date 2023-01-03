@@ -1,0 +1,37 @@
+/* The actual popup (appears on top) */
+.popup {
+    visibility: hidden;
+    background-color: #555;
+    color: #fff;
+    text-align: left;
+    border-radius: 6px;
+    position: absolute;
+    z-index: 1;
+    padding: 10px;
+}
+
+/* Toggle this class when clicking on the popup container (hide and show the popup) */
+.show {
+    visibility: visible;
+    -webkit-animation: fadeIn 1s;
+    animation: fadeIn 1s;
+}
+
+/* Add animation (fade in the popup) */
+@-webkit-keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
