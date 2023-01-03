@@ -272,7 +272,7 @@ function legendelement_plots!(scene, element::LineElement, bbox::Observable{Rect
     fracpoints = attrs.linepoints
     points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
     lin = lines!(scene, points, linewidth = attrs.linewidth, color = attrs.linecolor,
-        linestyle = attrs.linestyle, inspectable = false, linecap = false)
+        linestyle = attrs.linestyle, inspectable = false, linecap = nothing)
     [lin]
 end
 
