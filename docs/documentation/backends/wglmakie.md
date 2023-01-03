@@ -27,15 +27,12 @@ Moving more of the implementation to JavaScript is currently the goal and will g
 #### JupyterHub / Jupyterlab / Binder
 
 
-* Plots should show up, but connection to Julia process is not implemented, so interactions won't work
-* Setting up connection shouldn't be too hard to setup.
-* https://github.com/MakieOrg/Makie.jl/issues/2464
-* https://github.com/MakieOrg/Makie.jl/issues/2405
-* https://github.com/MakieOrg/Makie.jl/issues/1396
+* WGLMakie should mostly work with a websocket connection. JSServe tries to [infer the proxy setup](https://github.com/SimonDanisch/JSServe.jl/blob/master/src/server-defaults.jl) needed to connect to the julia process. On local jupyterlab instances, this should work without problem, on hosted ones one may need add `jupyter-server-proxy`. See:
+    * https://github.com/MakieOrg/Makie.jl/issues/2464
+    * https://github.com/MakieOrg/Makie.jl/issues/2405
 
 
 #### Pluto
-
 
 * still uses JSServe's Websocket connection, so needs extra setup for remote servers.
 * reload of the page isn't supported, if you reload, you need to re-execute all cells and make sure that `Page()` is executed first.
@@ -44,7 +41,7 @@ Moving more of the implementation to JavaScript is currently the goal and will g
 #### JuliaHub
 
 * VSCode in the browser should work out of the box.
-* Pluto in JuliaHub still has a bug with the websocket connection, which gets closed after some time. So, you will see a plot, but interaction stops working.
+* Pluto in JuliaHub still has a [problem](https://github.com/SimonDanisch/JSServe.jl/issues/140) with the websocket connection. So, you will see a plot, but interaction doesn't work.
 
 
 #### Browser Support
