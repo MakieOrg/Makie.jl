@@ -124,8 +124,9 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     )
 end
 
-function Base.resize!(fb::GLFramebuffer, window_size)
+function Base.resize!(fb::GLFramebuffer, window_size, px_per_unit)
     ws = Int.((window_size[1], window_size[2]))
+    ws = @static Sys.isapple() ? ws : round.(Int, px_per_unit .* ws)
     if ws != size(fb) && all(x-> x > 0, window_size)
         for (name, buffer) in fb.buffers
             resize_nocopy!(buffer, ws)
@@ -188,7 +189,7 @@ function destroy!(nw::GLFW.Window)
     was_current && ShaderAbstractions.switch_context!()
 end
 
-function windowsize(nw::GLFW.Window)
+function framebuffer_size(nw::GLFW.Window)
     was_destroyed(nw) && return (0, 0)
     size = GLFW.GetFramebufferSize(nw)
     return (size.width, size.height)

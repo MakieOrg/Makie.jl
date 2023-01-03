@@ -46,8 +46,8 @@ function render_frame(screen::Screen; resize_buffers=true)
 
     fb = screen.framebuffer
     if resize_buffers
-        wh = Int.(windowsize(nw))
-        resize!(fb, wh)
+        wh = Int.(framebuffer_size(nw))
+        resize!(fb, wh, screen.px_per_unit[])
     end
     w, h = size(fb)
 

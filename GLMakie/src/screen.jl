@@ -615,16 +615,14 @@ end
 function resize_native!(window::GLFW.Window, w, h)
     if isopen(window)
         ShaderAbstractions.switch_context!(window)
-        windowsize(window) == (w, h) && return
+        framebuffer_size(window) == (w, h) && return
         GLFW.SetWindowSize(window, w, h)
     end
 end
 
 function Base.resize!(screen::Screen, w, h)
-    sf = screen.px_per_unit[]
-    w, h = round.(Int, sf .* (w, h))
     resize_native!(to_native(screen), w, h)
-    resize!(screen.framebuffer, (w, h))
+    resize!(screen.framebuffer, (w, h), screen.px_per_unit[])
 end
 
 function fast_color_data!(dest::Array{RGB{N0f8}, 2}, source::Texture{T, 2}) where T
