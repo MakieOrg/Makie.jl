@@ -56,9 +56,6 @@ $(Base.doc(ScreenConfig))
 function activate!(; screen_config...)
     Makie.set_active_backend!(WGLMakie)
     Makie.set_screen_config!(WGLMakie, screen_config)
-    # # if there is a browserdisplay in stack, dont inline plots
-    # browser_display = JSServe.BrowserDisplay() in Base.Multimedia.displays
-    # Makie.inline!(!browser_display)
     return
 end
 

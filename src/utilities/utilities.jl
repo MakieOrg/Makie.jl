@@ -106,7 +106,7 @@ function extract_expr(extract_func, dictlike, args)
 end
 
 """
-usage @exctract scene (a, b, c, d)
+usage @extract scene (a, b, c, d)
 """
 macro extract(scene, args)
     extract_expr(getindex, scene, args)
