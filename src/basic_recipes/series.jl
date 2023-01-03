@@ -86,12 +86,12 @@ function plot!(plot::Series)
             mcolor = plot.markercolor
             markercolor = @lift $mcolor == automatic ? $series_color : $mcolor
             scatterlines!(plot, positions;
-                linewidth=linewidth, linestyle = p.linestyle, linecap = plot.linecap,
+                linewidth=linewidth, linestyle = plot.linestyle, linecap = plot.linecap,
                 color=series_color, markercolor=series_color,
                 label=label[], scatter...)
         else
             lines!(plot, positions; 
-                linewidth=linewidth, linestyle = p.linestyle, linecap = plot.linecap,
+                linewidth=linewidth, linestyle = plot.linestyle, linecap = plot.linecap,
                 color=series_color, label=label)
         end
     end
