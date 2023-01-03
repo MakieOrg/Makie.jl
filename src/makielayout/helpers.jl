@@ -171,13 +171,13 @@ function axislines!(scene, rect, spinewidth, topspinevisible, rightspinevisible,
         [p1, p2]
     end
 
-    (lines!(scene, bottomline, linewidth = spinewidth,
+    (lines!(scene, bottomline, linewidth = spinewidth, linecap = nothing,
         visible = bottomspinevisible, color = bottomspinecolor),
-    lines!(scene, leftline, linewidth = spinewidth,
+    lines!(scene, leftline, linewidth = spinewidth, linecap = nothing,
         visible = leftspinevisible, color = leftspinecolor),
-    lines!(scene, rightline, linewidth = spinewidth,
+    lines!(scene, rightline, linewidth = spinewidth, linecap = nothing,
         visible = rightspinevisible, color = rightspinecolor),
-    lines!(scene, topline, linewidth = spinewidth,
+    lines!(scene, topline, linewidth = spinewidth, linecap = nothing,
         visible = topspinevisible, color = topspinecolor))
 end
 

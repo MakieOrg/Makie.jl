@@ -403,7 +403,7 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
     gridline1 = linesegments!(scene, endpoints, color = attr(:gridcolor),
         linewidth = attr(:gridwidth),
         xautolimits = false, yautolimits = false, zautolimits = false, transparency = true,
-        visible = attr(:gridvisible), inspectable = false)
+        visible = attr(:gridvisible), inspectable = false, linecap = nothing)
 
     endpoints2 = lift(limits, tickvalues, min1, min2) do lims, ticks, min1, min2
         f1 = min1 ? minimum(lims)[d1] : maximum(lims)[d1]
@@ -418,7 +418,7 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
     gridline2 = linesegments!(scene, endpoints2, color = attr(:gridcolor),
         linewidth = attr(:gridwidth),
         xautolimits = false, yautolimits = false, zautolimits = false, transparency = true,
-        visible = attr(:gridvisible), inspectable = false)
+        visible = attr(:gridvisible), inspectable = false, linecap = nothing)
 
 
     framepoints = lift(limits, scene.camera.projectionview, scene.px_area, min1, min2
@@ -444,7 +444,7 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
     map!(vcat, colors, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3))
     framelines = linesegments!(topscene, framepoints, color = colors, linewidth = attr(:spinewidth),
         # transparency = true,
-        visible = attr(:spinesvisible), inspectable = false)
+        visible = attr(:spinesvisible), inspectable = false, linecap = nothing)
 
     return gridline1, gridline2, framelines
 end
@@ -511,7 +511,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
 
     ticks = linesegments!(topscene, tick_segments_2dz,
         xautolimits = false, yautolimits = false, zautolimits = false,
-        transparency = true, inspectable = false,
+        transparency = true, inspectable = false, linecap = nothing,
         color = attr(:tickcolor), linewidth = attr(:tickwidth), visible = attr(:ticksvisible))
 
     labels_positions = lift(scene.px_area, scene.camera.projectionview,

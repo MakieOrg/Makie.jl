@@ -82,7 +82,7 @@ function initialize_block!(sl::Slider)
         markersize = sl.linewidth, strokewidth = 0, inspectable = false, marker=Circle)
 
     linesegs = linesegments!(topscene, linepoints, color = linecolors,
-        linewidth = sl.linewidth, inspectable = false)
+        linewidth = sl.linewidth, inspectable = false, linecap = nothing)
 
     button_magnification = Observable(1.0)
     buttonsize = @lift($(sl.linewidth) * $button_magnification)

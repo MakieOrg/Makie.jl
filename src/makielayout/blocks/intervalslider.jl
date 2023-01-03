@@ -87,11 +87,11 @@ function initialize_block!(isl::IntervalSlider)
         [ci, ci]
     end
 
-    endbuttons = scatter!(blockscene, endpoints, color = endbuttoncolors,
+    endbuttons = scatter!(blockscene, endpoints, marker = Circle, color = endbuttoncolors,
         markersize = isl.linewidth, strokewidth = 0, inspectable = false)
 
     linesegs = linesegments!(blockscene, linepoints, color = linecolors,
-        linewidth = isl.linewidth, inspectable = false)
+        linewidth = isl.linewidth, inspectable = false, linecap = nothing)
 
     state = Observable(:none)
     button_magnifications = lift(state) do state
@@ -107,7 +107,7 @@ function initialize_block!(isl::IntervalSlider)
     end
     buttonsizes = @lift($(isl.linewidth) .* $button_magnifications)
     buttons = scatter!(blockscene, middlepoints, color = isl.color_active, strokewidth = 0,
-        markersize = buttonsizes, inspectable = false)
+        markersize = buttonsizes, inspectable = false, marker = Circle)
 
     mouseevents = addmouseevents!(blockscene, isl.layoutobservables.computedbbox)
 

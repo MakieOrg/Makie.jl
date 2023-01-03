@@ -272,7 +272,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
     ticksnode = Observable(Point2f[]; ignore_equal_values=true)
     ticklines = linesegments!(
         parent, ticksnode, linewidth = tickwidth, color = tickcolor, linestyle = nothing,
-        visible = ticksvisible, inspectable = false
+        visible = ticksvisible, inspectable = false, linecap = nothing
     )
     decorations[:ticklines] = ticklines
     translate!(ticklines, 0, 0, 10)
@@ -280,7 +280,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
     minorticksnode = Observable(Point2f[]; ignore_equal_values=true)
     minorticklines = linesegments!(
         parent, minorticksnode, linewidth = minortickwidth, color = minortickcolor,
-        linestyle = nothing, visible = minorticksvisible, inspectable = false
+        linestyle = nothing, visible = minorticksvisible, inspectable = false, linecap = nothing
     )
     decorations[:minorticklines] = minorticklines
     translate!(minorticklines, 0, 0, 10)
@@ -451,7 +451,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
     linepoints = lift(create_linepoints, pos_extents_horizontal, flipped, spinewidth, trimspine, tickpositions, tickwidth)
 
     decorations[:axisline] = linesegments!(parent, linepoints, linewidth = spinewidth, visible = spinevisible,
-        color = spinecolor, inspectable = false, linestyle = nothing)
+        color = spinecolor, inspectable = false, linestyle = nothing, linecap = nothing)
 
     translate!(decorations[:axisline], 0, 0, 20)
 

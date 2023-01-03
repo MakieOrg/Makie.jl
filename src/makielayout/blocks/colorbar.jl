@@ -291,7 +291,8 @@ function initialize_block!(cb::Colorbar)
         end
     end
 
-    lines!(blockscene, borderpoints, linewidth = cb.spinewidth, color = cb.topspinecolor, inspectable = false)
+    lines!(blockscene, borderpoints, linewidth = cb.spinewidth, color = cb.topspinecolor, 
+        inspectable = false, linecap = nothing)
 
     axispoints = lift(barbox, cb.vertical, cb.flipaxis) do scenearea,
             vertical, flipaxis

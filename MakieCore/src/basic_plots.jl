@@ -598,12 +598,11 @@ Plots polygons, which are defined by
         cycle = [:color => :patchcolor],
         inspectable = theme(scene, :inspectable),
         space = :data,
-        linecap = theme(scene, :linecap)
+        linecap = nothing
     )
 end
 
 @recipe(Wireframe) do scene
-    # default_theme(scene, LineSegments)
     Attributes(;
         default_theme(scene, LineSegments)...,
         depth_shift = -1f-5,

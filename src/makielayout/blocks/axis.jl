@@ -220,7 +220,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     xgridnode = Observable(Point2f[]; ignore_equal_values=true)
     xgridlines = linesegments!(
         topscene, xgridnode, linewidth = ax.xgridwidth, visible = ax.xgridvisible,
-        color = ax.xgridcolor, linestyle = ax.xgridstyle, inspectable = false
+        color = ax.xgridcolor, linestyle = ax.xgridstyle, inspectable = false, linecap = nothing
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(xgridlines, 0, 0, -10)
@@ -229,7 +229,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     xminorgridnode = Observable(Point2f[]; ignore_equal_values=true)
     xminorgridlines = linesegments!(
         topscene, xminorgridnode, linewidth = ax.xminorgridwidth, visible = ax.xminorgridvisible,
-        color = ax.xminorgridcolor, linestyle = ax.xminorgridstyle, inspectable = false
+        color = ax.xminorgridcolor, linestyle = ax.xminorgridstyle, inspectable = false, linecap = nothing
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(xminorgridlines, 0, 0, -10)
@@ -238,7 +238,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     ygridnode = Observable(Point2f[]; ignore_equal_values=true)
     ygridlines = linesegments!(
         topscene, ygridnode, linewidth = ax.ygridwidth, visible = ax.ygridvisible,
-        color = ax.ygridcolor, linestyle = ax.ygridstyle, inspectable = false
+        color = ax.ygridcolor, linestyle = ax.ygridstyle, inspectable = false, linecap = nothing
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(ygridlines, 0, 0, -10)
@@ -247,7 +247,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     yminorgridnode = Observable(Point2f[]; ignore_equal_values=true)
     yminorgridlines = linesegments!(
         topscene, yminorgridnode, linewidth = ax.yminorgridwidth, visible = ax.yminorgridvisible,
-        color = ax.yminorgridcolor, linestyle = ax.yminorgridstyle, inspectable = false
+        color = ax.yminorgridcolor, linestyle = ax.yminorgridstyle, inspectable = false, linecap = nothing
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(yminorgridlines, 0, 0, -10)
@@ -370,30 +370,30 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     xticksmirrored = lift(mirror_ticks, xaxis.tickpositions, ax.xticksize, ax.xtickalign, Ref(scene.px_area), :x, ax.xaxisposition[])
     xticksmirrored_lines = linesegments!(topscene, xticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xticksvisible)),
-        linewidth = ax.xtickwidth, color = ax.xtickcolor)
+        linewidth = ax.xtickwidth, color = ax.xtickcolor, linecap = nothing)
     translate!(xticksmirrored_lines, 0, 0, 10)
     yticksmirrored = lift(mirror_ticks, yaxis.tickpositions, ax.yticksize, ax.ytickalign, Ref(scene.px_area), :y, ax.yaxisposition[])
     yticksmirrored_lines = linesegments!(topscene, yticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yticksvisible)),
-        linewidth = ax.ytickwidth, color = ax.ytickcolor)
+        linewidth = ax.ytickwidth, color = ax.ytickcolor, linecap = nothing)
     translate!(yticksmirrored_lines, 0, 0, 10)
     xminorticksmirrored = lift(mirror_ticks, xaxis.minortickpositions, ax.xminorticksize, ax.xminortickalign, Ref(scene.px_area), :x, ax.xaxisposition[])
     xminorticksmirrored_lines = linesegments!(topscene, xminorticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xminorticksvisible)),
-        linewidth = ax.xminortickwidth, color = ax.xminortickcolor)
+        linewidth = ax.xminortickwidth, color = ax.xminortickcolor, linecap = nothing)
     translate!(xminorticksmirrored_lines, 0, 0, 10)
     yminorticksmirrored = lift(mirror_ticks, yaxis.minortickpositions, ax.yminorticksize, ax.yminortickalign, Ref(scene.px_area), :y, ax.yaxisposition[])
     yminorticksmirrored_lines = linesegments!(topscene, yminorticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yminorticksvisible)),
-        linewidth = ax.yminortickwidth, color = ax.yminortickcolor)
+        linewidth = ax.yminortickwidth, color = ax.yminortickcolor, linecap = nothing)
     translate!(yminorticksmirrored_lines, 0, 0, 10)
 
     xoppositeline = linesegments!(topscene, xoppositelinepoints, linewidth = ax.spinewidth,
         visible = xoppositespinevisible, color = xoppositespinecolor, inspectable = false,
-        linestyle = nothing)
+        linestyle = nothing, linecap = nothing)
     elements[:xoppositeline] = xoppositeline
     translate!(xoppositeline, 0, 0, 20)
 
     yoppositeline = linesegments!(topscene, yoppositelinepoints, linewidth = ax.spinewidth,
         visible = yoppositespinevisible, color = yoppositespinecolor, inspectable = false,
-        linestyle = nothing)
+        linestyle = nothing, linecap = nothing)
     elements[:yoppositeline] = yoppositeline
     translate!(yoppositeline, 0, 0, 20)
 
