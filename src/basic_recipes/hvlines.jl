@@ -83,17 +83,8 @@ function Makie.plot!(p::Union{HLines, VLines})
 
     notify(p[1])
 
-    line_attributes = extract_keys(p.attributes, [
-        :linewidth,
-        :color,
-        :colormap,
-        :colorrange,
-        :linestyle,
-        :fxaa,
-        :cycle,
-        :transparency,
-        :inspectable])
-
+    line_attributes = copy(p.attributes)
+    delete!.(line_attributes, (:ymin, :ymax, :yautolimits))
     linesegments!(p, line_attributes, points)
     p
 end
