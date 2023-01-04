@@ -548,8 +548,6 @@ function destroy!(screen::Screen)
     # otherwise, during rendertask clean up we may run into a destroyed window
     wait(screen)
     screen.rendertask = nothing
-    @info "stop renderloop"
-    stop_renderloop!(screen, close_after_renderloop = false)
     destroy!(screen.glscreen)
     # Since those are sets, we can just delete them from there, even if they weren't in there (e.g. reuse=false)
     delete!(SCREEN_REUSE_POOL, screen)
