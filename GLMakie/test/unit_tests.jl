@@ -222,7 +222,7 @@ end
         heatmap(fig[2, 1], rand(rng, 100, 100))
         surface(fig[2, 2], 0..1, 0..1, rand(rng, 1000, 1000) ./ 2)
 
-        display(GLMakie.Screen(visible=false), fig)
+        display(GLMakie.Screen(visible=false, scalefactor=1, px_per_unit=1), fig)
     end
 
     images = map(Makie.colorbuffer, screens)
