@@ -204,13 +204,15 @@ catch e
 end
 
 ENV["JULIA_PKG_PRECOMPILE_AUTO"] = 0
-
 project1 = make_project_folder("current-pr")
 Pkg.activate(project1)
-pkgs = [(; path="./MakieCore"), (; path="."), (; path="./$Package"), (;name="BenchmarkTools")]
-Package == "WGLMakie" && push!(pkgs, (; name="Electron"))
+if Package == "WGLMakie"
+    Pkg.add([(; name="Electron"), (; name="JSServe", rev="master")])
+end
+pkgs = NamedTuple[(; path="./MakieCore"), (; path="."), (; path="./$Package"), (;name="BenchmarkTools")]
 # cd("dev/Makie")
 Pkg.develop(pkgs)
+
 @time Pkg.precompile()
 
 project2 = make_project_folder(base_branch)
