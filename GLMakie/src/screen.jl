@@ -366,11 +366,10 @@ function Screen(;
     # Screen config is managed by the current active theme, so managed by Makie
     config = Makie.merge_screen_config(ScreenConfig, screen_config)
     screen = screen_from_pool(config.debugging)
-    screen.config = config
+    apply_config!(screen, config; start_renderloop=start_renderloop)
     if !isnothing(resolution)
         resize!(screen, resolution...)
     end
-    apply_config!(screen, config; start_renderloop=start_renderloop)
     return screen
 end
 
