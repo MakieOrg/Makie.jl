@@ -121,14 +121,14 @@ IntervalsBetween(n) = IntervalsBetween(n, true)
 
 mutable struct LineAxis
     parent::Scene
-    protrusion::Observable{Float32}
+    protrusion::Observable{Float64}
     attributes::Attributes
     elements::Dict{Symbol, Any}
     tickpositions::Observable{Vector{Point2f}}
-    tickvalues::Observable{Vector{Float32}}
+    tickvalues::Observable{Vector{Float64}}
     ticklabels::Observable{Vector{AbstractString}}
     minortickpositions::Observable{Vector{Point2f}}
-    minortickvalues::Observable{Vector{Float32}}
+    minortickvalues::Observable{Vector{Float64}}
 end
 
 struct LimitReset end
@@ -188,8 +188,9 @@ end
     scene::Scene
     xaxislinks::Vector{Axis}
     yaxislinks::Vector{Axis}
-    targetlimits::Observable{Rect2f}
-    finallimits::Observable{Rect2f}
+    targetlimits::Observable{Rect2{Float64}}
+    finallimits::Observable{Rect2{Float64}}
+    autoscaling::AutoScaling{2, Float64}
     cycler::Cycler
     palette::Attributes
     block_limit_linking::Observable{Bool}

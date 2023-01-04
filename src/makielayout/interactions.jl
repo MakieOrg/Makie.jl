@@ -109,15 +109,15 @@ end
 
 function _chosen_limits(rz, ax)
 
-    r = positivize(Rect2f(rz.from, rz.to .- rz.from))
+    r = positivize(Rect2(rz.from, rz.to .- rz.from))
     lims = ax.finallimits[]
     # restrict to y change
     if rz.restrict_x || !ax.xrectzoom[]
-        r = Rect2f(lims.origin[1], r.origin[2], widths(lims)[1], widths(r)[2])
+        r = Rect2(lims.origin[1], r.origin[2], widths(lims)[1], widths(r)[2])
     end
     # restrict to x change
     if rz.restrict_y || !ax.yrectzoom[]
-        r = Rect2f(r.origin[1], lims.origin[2], widths(r)[1], widths(lims)[2])
+        r = Rect2(r.origin[1], lims.origin[2], widths(r)[1], widths(lims)[2])
     end
     return r
 end
@@ -203,11 +203,11 @@ function process_interaction(r::RectangleZoom, event::KeysEvent, ax::Axis)
     return Consume(true)
 end
 
-function positivize(r::Rect2f)
+function positivize(r::Rect2)
     negwidths = r.widths .< 0
     newori = ifelse.(negwidths, r.origin .+ r.widths, r.origin)
     newwidths = ifelse.(negwidths, -r.widths, r.widths)
-    return Rect2f(newori, newwidths)
+    return Rect2(newori, newwidths)
 end
 
 function process_interaction(l::LimitReset, event::MouseEvent, ax::Axis)
@@ -275,11 +275,11 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
         timed_ticklabelspace_reset(ax, s.reset_timer, s.prev_xticklabelspace, s.prev_yticklabelspace, s.reset_delay)
 
         newrect_trans = if ispressed(scene, xzoomkey[])
-            Rectf(newxorigin, yorigin, newxwidth, ywidth)
+            Rect(newxorigin, yorigin, newxwidth, ywidth)
         elseif ispressed(scene, yzoomkey[])
-            Rectf(xorigin, newyorigin, xwidth, newywidth)
+            Rect(xorigin, newyorigin, xwidth, newywidth)
         else
-            Rectf(newxorigin, newyorigin, newxwidth, newywidth)
+            Rect(newxorigin, newyorigin, newxwidth, newywidth)
         end
 
         inv_transf = Makie.inverse_transform(transf)
@@ -346,7 +346,7 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
     timed_ticklabelspace_reset(ax, dp.reset_timer, dp.prev_xticklabelspace, dp.prev_yticklabelspace, dp.reset_delay)
 
     inv_transf = Makie.inverse_transform(transf)
-    newrect_trans = Rectf(Vec2f(xori, yori), widths(tlimits_trans))
+    newrect_trans = Rect(Vec2(xori, yori), widths(tlimits_trans))
     tlimits[] = Makie.apply_transform(inv_transf, newrect_trans)
 
     return Consume(true)

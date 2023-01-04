@@ -78,12 +78,13 @@ function register_events!(ax, scene)
     return
 end
 
-function update_axis_camera(camera::Camera, t, lims, xrev::Bool, yrev::Bool)
+function update_axis_camera(camera::Camera, t, lims, autoscale, xrev::Bool, yrev::Bool)
     nearclip = -10_000f0
     farclip = 10_000f0
 
     # we are computing transformed camera position, so this isn't space dependent
-    tlims = Makie.apply_transform(t, lims) 
+    _lims = apply_autoscale(autoscale, lims)
+    tlims = Makie.apply_transform(t, _lims)
 
     left, bottom = minimum(tlims)
     right, top = maximum(tlims)
@@ -177,10 +178,13 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     # initialize either with user limits, or pick defaults based on scales
     # so that we don't immediately error
-    targetlimits = Observable{Rect2f}(defaultlimits(ax.limits[], ax.xscale[], ax.yscale[]))
-    finallimits = Observable{Rect2f}(targetlimits[]; ignore_equal_values=true)
+    targetlimits = Observable{Rect2{Float64}}(defaultlimits(ax.limits[], ax.xscale[], ax.yscale[]))
+    finallimits = Observable{Rect2{Float64}}(targetlimits[]; ignore_equal_values=true)
     setfield!(ax, :targetlimits, targetlimits)
     setfield!(ax, :finallimits, finallimits)
+    setfield!(ax, :autoscaling, AutoScaling(2))
+
+    on(limits -> update_limits!(ax.autoscaling, limits), finallimits)
 
     ax.cycler = Cycler()
 
@@ -260,7 +264,9 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     notify(ax.xscale)
 
-    onany(update_axis_camera, camera(scene), scene.transformation.transform_func, finallimits, ax.xreversed, ax.yreversed)
+    onany(camera(scene), scene.transformation.transform_func, ax.autoscaling.updater, finallimits, ax.xreversed, ax.yreversed) do cam, transform, _, lims, xrev, yrev
+        update_axis_camera(cam, transform, lims, ax.autoscaling, xrev, yrev)
+    end
 
     xaxis_endpoints = lift(ax.xaxisposition, scene.px_area; ignore_equal_values=true) do xaxisposition, area
         if xaxisposition == :bottom
@@ -572,7 +578,7 @@ function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
             (lo, hi)
         end
     else
-        convert(Tuple{Float32, Float32}, tuple(mxlims...))
+        convert(Tuple{Float64, Float64}, tuple(mxlims...))
     end
     ylims = if isnothing(mylims) || mylims[1] === nothing || mylims[2] === nothing
         l = if yauto
@@ -588,7 +594,7 @@ function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
             (lo, hi)
         end
     else
-        convert(Tuple{Float32, Float32}, tuple(mylims...))
+        convert(Tuple{Float64, Float64}, tuple(mylims...))
     end
 
     if ax isa Axis3
@@ -606,7 +612,7 @@ function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
                 (lo, hi)
             end
         else
-            convert(Tuple{Float32, Float32}, tuple(mzlims...))
+            convert(Tuple{Float64, Float64}, tuple(mzlims...))
         end
     end
 
@@ -623,7 +629,7 @@ function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
     end
 
     if ax isa Axis
-        ax.targetlimits[] = BBox(xlims..., ylims...)
+        ax.targetlimits[] = Rect2(xlims[1], ylims[1], xlims[2]-xlims[1], ylims[2]-ylims[1])
     elseif ax isa Axis3
         ax.targetlimits[] = Rect3f(
             Vec3f(xlims[1], ylims[1], zlims[1]),
@@ -766,6 +772,7 @@ function Makie.plot!(
         kw_attributes...)
 
     allattrs = merge(attributes, Attributes(kw_attributes))
+    processed_args = map_autoscale(la.autoscaling, args)
 
     _disallow_keyword(:axis, allattrs)
     _disallow_keyword(:figure, allattrs)
@@ -773,7 +780,7 @@ function Makie.plot!(
     cycle = get_cycle_for_plottype(allattrs, P)
     add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
 
-    plot = Makie.plot!(la.scene, P, allattrs, args...)
+    plot = Makie.plot!(la.scene, P, allattrs, processed_args...)
 
     # some area-like plots basically always look better if they cover the whole plot area.
     # adjust the limit margins in those cases automatically.
@@ -856,12 +863,16 @@ function getlimits(la::Axis, dim)
         return !to_value(get(plot, :visible, true))
     end
     # get all data limits, minus the excluded plots
-    boundingbox = Makie.data_limits(la.scene, exclude)
+    dl = Makie.data_limits(la.scene, exclude)
+    @info "DL $dl"
+    boundingbox = apply_inv_autoscale(la.autoscaling, dl)
+    @info "BB $boundingbox"
     # if there are no bboxes remaining, `nothing` signals that no limits could be determined
     Makie.isfinite_rect(boundingbox) || return nothing
 
     # otherwise start with the first box
     mini, maxi = minimum(boundingbox), maximum(boundingbox)
+    @info "output: $mini, $maxi"
     return (mini[dim], maxi[dim])
 end
 
@@ -896,7 +907,10 @@ function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, tlim
             otherylims = limits(otherlims, 2)
             if thisxlims != otherxlims
                 xlink.block_limit_linking[] = true
-                xlink.targetlimits[] = BBox(thisxlims[1], thisxlims[2], otherylims[1], otherylims[2])
+                xlink.targetlimits[] = Rect2{Float64}(
+                    thisxlims[1], otherylims[1], 
+                    thisxlims[2] - thisxlims[1], otherylims[2] - otherylims[1]
+                )
                 xlink.block_limit_linking[] = false
             end
         end
@@ -907,7 +921,10 @@ function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, tlim
             otherylims = limits(otherlims, 2)
             if thisylims != otherylims
                 ylink.block_limit_linking[] = true
-                ylink.targetlimits[] = BBox(otherxlims[1], otherxlims[2], thisylims[1], thisylims[2])
+                ylink.targetlimits[] = Rect2{Float64}(
+                    otherxlims[1], thisylims[1], 
+                    otherxlims[2] - otherxlims[1], thisylims[2] - thisylims[1]
+                )
                 ylink.block_limit_linking[] = false
             end
         end
@@ -1014,7 +1031,7 @@ function adjustlimits!(la)
         ylims = expandlimits(ylims, (((1 / correction_factor) - 1) .* ratios)..., identity) # don't use scale here?
     end
 
-    bbox = BBox(xlims[1], xlims[2], ylims[1], ylims[2])
+    bbox = Rect2{Float64}(xlims[1], ylims[1], xlims[2] - xlims[1] , ylims[2] - ylims[1])
     la.finallimits[] = bbox
     return
 end
@@ -1316,7 +1333,8 @@ Makie.transform_func(ax::Axis) = Makie.transform_func(ax.scene)
 # these functions pick limits for different x and y scales, so that
 # we don't pick values that are invalid, such as 0 for log etc.
 function defaultlimits(userlimits::Tuple{Real, Real, Real, Real}, xscale, yscale)
-    BBox(userlimits...)
+    x0, x1, y0, y1 = userlimits
+    Rect2{Float64}(x0, y0, x1 - x0, y1 - y0)
 end
 
 defaultlimits(l::Tuple{Any, Any, Any, Any}, xscale, yscale) = defaultlimits(((l[1], l[2]), (l[3], l[4])), xscale, yscale)
@@ -1324,7 +1342,7 @@ defaultlimits(l::Tuple{Any, Any, Any, Any}, xscale, yscale) = defaultlimits(((l[
 function defaultlimits(userlimits::Tuple{Any, Any}, xscale, yscale)
     xl = defaultlimits(userlimits[1], xscale)
     yl = defaultlimits(userlimits[2], yscale)
-    BBox(xl..., yl...)
+    Rect2{Float64}(xl[1], yl[1], xl[2] - xl[1], yl[2] - yl[1])
 end
 
 defaultlimits(limits::Nothing, scale) = defaultlimits(scale)

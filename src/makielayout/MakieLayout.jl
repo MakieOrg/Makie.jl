@@ -9,6 +9,7 @@ const FPS = Observable(30)
 const COLOR_ACCENT = Ref(RGBf(((79, 122, 214) ./ 255)...))
 const COLOR_ACCENT_DIMMED = Ref(RGBf(((174, 192, 230) ./ 255)...))
 
+include("data_preprocessor.jl")
 include("blocks.jl")
 include("geometrybasics_extension.jl")
 include("mousestatemachine.jl")
