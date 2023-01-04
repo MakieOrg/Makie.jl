@@ -27,7 +27,17 @@ jobs:
         with:
           version: 'nightly'
           arch: x64
-      - uses: julia-actions/cache@v1
+      - name: Cache julia compilation
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-julia
+        with:
+          path: ~/.julia
+          key: ${{ runner.os }}-test-${{ env.cache-name }}-${{ hashFiles('**/Project.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-test-${{ env.cache-name }}-
+            ${{ runner.os }}-test-
+            ${{ runner.os }}-
       - name: Benchmark
         continue-on-error: true
         env:
