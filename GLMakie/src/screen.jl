@@ -69,7 +69,7 @@ mutable struct ScreenConfig
             vsync::Bool,
             render_on_demand::Bool,
             framerate::Number,
-            px_per_unit::Union{Makie.Automatic, Float32},
+            px_per_unit::Union{Makie.Automatic, Number},
             # GLFW window attributes
             float::Bool,
             focus_on_show::Bool,
@@ -79,7 +79,7 @@ mutable struct ScreenConfig
             debugging::Bool,
             monitor::Union{Nothing, GLFW.Monitor},
             visible::Bool,
-            scalefactor::Union{Makie.Automatic, Float32},
+            scalefactor::Union{Makie.Automatic, Number},
 
             # Preproccessor
             oit::Bool,
@@ -94,7 +94,7 @@ mutable struct ScreenConfig
             vsync,
             render_on_demand,
             framerate,
-            px_per_unit isa Makie.Automatic ? nothing : px_per_unit,
+            px_per_unit isa Makie.Automatic ? nothing : Float32(px_per_unit),
             # GLFW window attributes
             float,
             focus_on_show,
@@ -104,7 +104,7 @@ mutable struct ScreenConfig
             debugging,
             monitor,
             visible,
-            scalefactor isa Makie.Automatic ? nothing : scalefactor,
+            scalefactor isa Makie.Automatic ? nothing : Float32(scalefactor),
             # Preproccessor
             oit,
             fxaa,
