@@ -864,15 +864,12 @@ function getlimits(la::Axis, dim)
     end
     # get all data limits, minus the excluded plots
     dl = Makie.data_limits(la.scene, exclude)
-    @info "DL $dl"
     boundingbox = apply_inv_autoscale(la.autoscaling, dl)
-    @info "BB $boundingbox"
     # if there are no bboxes remaining, `nothing` signals that no limits could be determined
     Makie.isfinite_rect(boundingbox) || return nothing
 
     # otherwise start with the first box
     mini, maxi = minimum(boundingbox), maximum(boundingbox)
-    @info "output: $mini, $maxi"
     return (mini[dim], maxi[dim])
 end
 

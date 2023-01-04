@@ -32,10 +32,8 @@ function AutoScaling(dims::Int, threshold = 1e6, target = 1e3)
 end
 
 function update_limits!(auto::AutoScaling{2}, limits::Rect2{Float64})
-    @info "Autolimits update"
     _min = minimum(limits)
     _max = maximum(limits)
-    @info "Limits: $_min, $_max"
 
     requires_update = false
 
@@ -46,13 +44,11 @@ function update_limits!(auto::AutoScaling{2}, limits::Rect2{Float64})
         check1 = 1.0 / auto.threshold[dim] < x1 - x0 < auto.threshold[dim]
         check2 = -auto.threshold[dim] < x0
         check3 = x1 < auto.threshold[dim]
-        @info "[$dim] $x0, $x1, $(x1-x0) $check1 $check2 $check3"
 
         if !(check1 && check2 && check3)
             T = auto.transforms[dim]
             T.scale  = 2 * auto.target[dim] ./ (_max[dim] .- _min[dim]) 
             T.offset = auto.target[dim] - T.scale .* _max[dim]
-            @info "Tranform $T"
             requires_update = true
         end
     end
@@ -98,12 +94,10 @@ function map_autoscale(auto::AutoScaling{2}, args::Tuple{<: Vector, <: Vector})
     return (
         map(auto.updater) do _ 
             x = auto.transforms[1].(args[1])
-            @info "transformed: $x"
             return x
         end,
         map(auto.updater) do _ 
             x = auto.transforms[2].(args[2])
-            @info "transformed: $x"
             return x
         end
     )
