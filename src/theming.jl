@@ -115,6 +115,7 @@ const minimal_default = Attributes(
         vsync = false,
         render_on_demand = true,
         framerate = 30.0,
+        px_per_unit = automatic,
 
         # GLFW window attributes
         float = false,
@@ -125,7 +126,7 @@ const minimal_default = Attributes(
         debugging = false,
         monitor = nothing,
         visible = true,
-        px_per_unit = automatic,
+        scalefactor = automatic,
 
         # Postproccessor
         oit = true,

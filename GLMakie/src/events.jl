@@ -56,7 +56,7 @@ function (x::WindowAreaUpdater)(::Nothing)
     # if minimum(rect) != Vec(x, y)
     #     event[] = Recti(x, y, framebuffer_size((window))
     # end
-    w, h = round.(Int, framebuffer_size(nw) ./ x.screen.px_per_unit[])
+    w, h = round.(Int, framebuffer_size(nw) ./ x.screen.scalefactor[])
     if Vec(w, h) != widths(rect)
         monitor = GLFW.GetPrimaryMonitor()
         props = MonitorProperties(monitor)
@@ -169,12 +169,12 @@ function Makie.disconnect!(window::GLFW.Window, ::typeof(unicode_input))
 end
 
 function correct_mouse(screen::Screen, w, h)
-    sf = screen.px_per_unit[]
-    _, wh = framebuffer_size(to_native(screen))
+    sf = screen.scalefactor[]
+    _, winh = framebuffer_size(to_native(screen))
     @static if Sys.isapple()
-        return w, (wh / sf) - h
+        return w, (winh / sf) - h
     else
-        return w / sf, (wh - h) / sf
+        return w / sf, (winh - h) / sf
     end
 end
 

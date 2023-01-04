@@ -1,4 +1,4 @@
-function setup!(screen)
+function setup!(screen::Screen)
     glEnable(GL_SCISSOR_TEST)
     if isopen(screen)
         sf = screen.px_per_unit[]
@@ -45,11 +45,10 @@ function render_frame(screen::Screen; resize_buffers=true)
     # render order here may introduce artifacts because of that.
 
     fb = screen.framebuffer
-    if resize_buffers
-        wh = Int.(framebuffer_size(nw))
-        resize!(fb, wh, screen.px_per_unit[])
+    if resize_buffers && !isnothing(screen.root_scene)
+        sf = screen.px_per_unit[]
+        resize!(fb, round.(Int, sf .* size(screen))...)
     end
-    w, h = size(fb)
 
     # prepare stencil (for sub-scenes)
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id)
