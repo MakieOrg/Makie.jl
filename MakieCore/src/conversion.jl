@@ -4,7 +4,7 @@ function convert_arguments end
 """
     convert_attribute(value, attribute::Key[, plottype::Key])
 
-Convert `value` into into a suitable domain for use as `attribute`.
+Convert `value` into a suitable domain for use as `attribute`.
 
 # Example
 ```jldoctest
