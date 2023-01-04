@@ -30,8 +30,6 @@ function attribute_per_char(string, attribute)
     error("A vector of attributes with $(length(attribute)) elements was given but this fits neither the length of '$string' ($(length(string))) nor the number of words ($(n_words))")
 end
 
-
-
 """
     layout_text(
         string::AbstractString, fontsize::Union{AbstractVector, Number},
@@ -45,8 +43,12 @@ function layout_text(
         font, fonts, align, rotation, justification, lineheight, color,
         strokecolor, strokewidth, word_wrap_width
     )
-
-    ft_font = to_font(font)
+    # TODO, narrow down and specify the correct arguments this function should be called with?
+    if font isa NativeFont
+        ft_font = font
+    else
+        ft_font = to_font(fonts, Symbol(font))
+    end
     rscale = to_fontsize(fontsize)
     rot = to_rotation(rotation)
 
