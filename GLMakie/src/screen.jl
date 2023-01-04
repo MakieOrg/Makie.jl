@@ -43,6 +43,7 @@ mutable struct ScreenConfig
     vsync::Bool
     render_on_demand::Bool
     framerate::Float64
+    px_per_unit::Union{Nothing, Float32}
 
     # GLFW window attributes
     float::Bool
@@ -53,7 +54,7 @@ mutable struct ScreenConfig
     debugging::Bool
     monitor::Union{Nothing, GLFW.Monitor}
     visible::Bool
-    px_per_unit::Union{Nothing, Float64}
+    scalefactor::Union{Nothing, Float32}
 
     # Postprocessor
     oit::Bool
@@ -68,6 +69,7 @@ mutable struct ScreenConfig
             vsync::Bool,
             render_on_demand::Bool,
             framerate::Number,
+            px_per_unit::Union{Makie.Automatic, Float32},
             # GLFW window attributes
             float::Bool,
             focus_on_show::Bool,
@@ -77,7 +79,7 @@ mutable struct ScreenConfig
             debugging::Bool,
             monitor::Union{Nothing, GLFW.Monitor},
             visible::Bool,
-            px_per_unit::Union{Makie.Automatic, Float64},
+            scalefactor::Union{Makie.Automatic, Float32},
 
             # Preproccessor
             oit::Bool,
@@ -92,6 +94,7 @@ mutable struct ScreenConfig
             vsync,
             render_on_demand,
             framerate,
+            px_per_unit isa Makie.Automatic ? nothing : px_per_unit,
             # GLFW window attributes
             float,
             focus_on_show,
@@ -101,7 +104,7 @@ mutable struct ScreenConfig
             debugging,
             monitor,
             visible,
-            px_per_unit isa Makie.Automatic ? nothing : px_per_unit,
+            scalefactor isa Makie.Automatic ? nothing : scalefactor,
             # Preproccessor
             oit,
             fxaa,
@@ -151,6 +154,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     config::Union{Nothing, ScreenConfig}
     stop_renderloop::Bool
     rendertask::Union{Task, Nothing}
+    px_per_unit::Observable{Float32}
 
     screen2scene::Dict{WeakRef, ScreenID}
     screens::Vector{ScreenArea}
@@ -161,7 +165,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     framecache::Matrix{RGB{N0f8}}
     render_tick::Observable{Nothing}
     window_open::Observable{Bool}
-    px_per_unit::Observable{Float32}
+    scalefactor::Observable{Float32}
 
     root_scene::Union{Scene, Nothing}
     reuse::Bool
@@ -190,7 +194,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
         screen = new{GLWindow}(
             glscreen, shader_cache, framebuffer,
             config, stop_renderloop, rendertask,
-            screen2scene,
+            Observable(0f0), screen2scene,
             screens, renderlist, postprocessors, cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(nothing),
             Observable(true), Observable(0f0), nothing, reuse, true, false
@@ -324,12 +328,8 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
     if !isnothing(config.monitor)
         GLFW.SetWindowMonitor(glw, config.monitor)
     end
-    if isnothing(config.px_per_unit)
-        config.px_per_unit = scale_factor(glw)
-    end
-    if iszero(screen.px_per_unit[])
-        screen.px_per_unit[] = config.px_per_unit
-    end
+    screen.scalefactor[] = !isnothing(config.scalefactor) ? config.scalefactor : scale_factor(glw)
+    screen.px_per_unit[] = !isnothing(config.px_per_unit) ? config.px_per_unit : screen.scalefactor[]
 
     function replace_processor!(postprocessor, idx)
         fb = screen.framebuffer
@@ -434,7 +434,7 @@ Base.wait(scene::Scene) = wait(Makie.getscreen(scene))
 Base.show(io::IO, screen::Screen) = print(io, "GLMakie.Screen(...)")
 
 Base.isopen(x::Screen) = isopen(x.glscreen)
-Base.size(x::Screen) = size(x.framebuffer)
+Base.size(x::Screen) = !isnothing(x.root_scene) ? size(x.root_scene) : (0, 0)
 
 function Makie.insertplots!(screen::Screen, scene::Scene)
     ShaderAbstractions.switch_context!(screen.glscreen)
@@ -612,17 +612,29 @@ function closeall()
     return
 end
 
-function resize_native!(window::GLFW.Window, w, h)
-    if isopen(window)
-        ShaderAbstractions.switch_context!(window)
-        framebuffer_size(window) == (w, h) && return
-        GLFW.SetWindowSize(window, w, h)
-    end
-end
+function Base.resize!(screen::Screen, w::Int, h::Int)
+    window = to_native(screen)
+    (w > 0 && h > 0 && isopen(window)) || return nothing
 
-function Base.resize!(screen::Screen, w, h)
-    resize_native!(to_native(screen), w, h)
-    resize!(screen.framebuffer, (w, h), screen.px_per_unit[])
+    # Resize the window which appears on the user desktop (if necessary).
+    # Apple Retina displays work in logical dimensions (and automatically scales the
+    # backing frame buffer by 2), whereas both Linux and Windows have window and buffer
+    # dimensions match (so we must scale manually from logical size to window size).
+    #
+    # N.B. The GLFW framebuffer is different from the rendering framebuffers resized below.
+    ShaderAbstractions.switch_context!(window)
+    winscale = @static Sys.isapple() ? 1f0 : screen.scalefactor[]
+    winw, winh = round.(Int, winscale .* (w, h))
+    if window_size(window) != (winw, winh)
+        GLFW.SetWindowSize(window, winw, winh)
+    end
+
+    # Then resize the underlying rendering framebuffers as well, which can be scaled
+    # independently of the window scale factor.
+    fbscale = screen.px_per_unit[]
+    fbw, fbh = round.(Int, fbscale .* (w, h))
+    resize!(screen.framebuffer, fbw, fbh)
+    return nothing
 end
 
 function fast_color_data!(dest::Array{RGB{N0f8}, 2}, source::Texture{T, 2}) where T
@@ -797,7 +809,12 @@ function refreshwindowcb(window, screen)
 end
 
 function scalechangecb(screen, window, xscale, yscale)
-    screen.px_per_unit[] = min(xscale, yscale)
+    sf = min(xscale, yscale)
+    if isnothing(screen.config.px_per_unit) && screen.scalefactor[] == screen.px_per_unit[]
+        screen.px_per_unit[] = sf
+    end
+    screen.scalefactor[] = sf
+    resize!(screen, size(screen)...)
     return
 end
 
