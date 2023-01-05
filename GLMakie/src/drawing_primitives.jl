@@ -183,10 +183,16 @@ end
 
 pixel2world(scene, msize::AbstractVector) = pixel2world.(scene, msize)
 
-function handle_intensities!(attributes)
+function handle_intensities!(attributes, colorscale)
     if haskey(attributes, :color) && attributes[:color][] isa AbstractVector{<: Number}
-        c = pop!(attributes, :color)
-        attributes[:intensity] = lift(x-> convert(Vector{Float32}, x), c)
+        color = pop!(attributes, :color)
+        attributes[:intensity] = lift(color, colorscale) do color, colorscale
+            return convert(Vector{Float32}, Makie.apply_scale(colorscale, color))
+        end
+        if haskey(attributes, :color_norm)
+            color_norm = to_value(attributes[:color_norm])
+            attributes[:color_norm] = Makie.apply_scale(colorscale, color_norm)
+        end
     else
         delete!(attributes, :intensity)
         delete!(attributes, :color_map)
@@ -261,7 +267,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Union{Scatte
             end
             return draw_pixel_scatter(screen, positions, gl_attributes)
         else
-            handle_intensities!(gl_attributes)
+            handle_intensities!(gl_attributes, x.colorscale)
             if x isa MeshScatter
                 return draw_mesh_particle(screen, (marker, positions), gl_attributes)
             else
@@ -285,7 +291,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
         space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         positions = handle_view(x[1], data)
         positions = apply_transform(transform_func_obs(x), positions, space)
-        handle_intensities!(data)
+        handle_intensities!(data, x.colorscale)
         connect_camera!(data, scene.camera)
         return draw_lines(screen, positions, data)
     end
