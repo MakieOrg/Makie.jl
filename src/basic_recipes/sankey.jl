@@ -162,7 +162,7 @@ module SankeyPlots
     end
 
     function compute_node_layers(nodes, settings)
-        (; align) = settings
+        align = settings.align
         x = maximum(n -> n.depth, nodes) + 1
         kx = (settings.x1 - settings.x0 - settings.dx) / (x - 1)
         columns = [eltype(nodes)[] for _ in 1:x]
