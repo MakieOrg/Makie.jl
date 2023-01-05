@@ -93,6 +93,7 @@ function create_shader(mscene::Scene, plot::Surface)
     pcolor = if haskey(plot, :color) && plot.color[] isa AbstractArray
         if plot.color[] isa AbstractMatrix{<:Colorant}
             delete!(plot_attributes, :colormap)
+            delete!(plot_attributes, :colorscale)
             delete!(plot_attributes, :colorrange)
         end
         plot.color
@@ -100,7 +101,9 @@ function create_shader(mscene::Scene, plot::Surface)
         pz
     end
     minfilter = to_value(get(plot, :interpolate, true)) ? :linear : :nearest
-    color = Sampler(lift(x -> el32convert(to_color(permutedims(x))), pcolor), minfilter=minfilter)
+    color = Sampler(lift(x -> el32convert(to_color(Makie.apply_scale(plot.colorscale, permutedims(x)))), pcolor);
+                    minfilter=minfilter)
+    delete!(plot_attributes, :colorscale)  # handled here
     normals = Buffer(lift(surface_normals, px, py, pz))
     vertices = GeometryBasics.meta(positions; uv=uv, normals=normals)
     mesh = GeometryBasics.Mesh(vertices, faces)
@@ -116,7 +119,7 @@ end
 
 function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
     image = plot[3]
-    color = Sampler(map(x -> el32convert(x'), image);
+    color = Sampler(lift(x -> el32convert(Makie.apply_scale(plot.colorscale, permutedims(x))), image);
                     minfilter=to_value(get(plot, :interpolate, false)) ? :linear : :nearest)
     mesh = limits_to_uvmesh(plot)
     plot_attributes = copy(plot.attributes)
@@ -124,7 +127,7 @@ function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
         delete!(plot_attributes, :colormap)
         delete!(plot_attributes, :colorrange)
     end
-
+    delete!(plot_attributes, :colorscale)  # handled here
     return draw_mesh(mscene, mesh, plot_attributes;
                      uniform_color=color, color=false,
                      normals=Vec3f(0), shading=false,

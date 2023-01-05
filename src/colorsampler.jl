@@ -76,10 +76,6 @@ function apply_scaling(value::Number, scaling::Scaling)::Float64
     return isfinite(clamped) ? clamped : zero(clamped)
 end
 
-apply_scale(::Nothing, x) = x
-apply_scale(::typeof(identity), x) = x
-apply_scale(scale, x) = broadcast(scale, x)
-
 function Base.getindex(sampler::Sampler, i)::RGBAf
     value = sampler.values[i]
     scaled = apply_scaling(value, sampler.scaling)
@@ -132,6 +128,10 @@ function sampler(cmap::Matrix{<: Colorant}, uv::AbstractVector{Vec2f};
     return Sampler(cmap, uv, alpha, interpolation, Scaling())
 end
 
+apply_scale(::Nothing, x) = x
+apply_scale(::typeof(identity), x) = x
+apply_scale(scale, x) = broadcast(scale, x)
+apply_scale(scale::AbstractObservable, x) = apply_scale(scale[], x)
 
 function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
     colormap = get_attribute(primitive, :colormap)::Vector{RGBAf}
@@ -155,9 +155,9 @@ function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
         if isnan(scaled_number)
             return nan_color
         elseif !isnothing(lowclip) && scaled_number < cmin_scaled
-            return apply_scale(colorscale, lowclip)
+            return lowclip
         elseif !isnothing(highclip) && scaled_number > cmax_scaled
-            return apply_scale(colorscale, highclip)
+            return highclip
         end
         return interpolated_getindex(
             colormap,
