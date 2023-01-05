@@ -15,7 +15,7 @@ function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
         uniforms[:colormap] = Sampler(cmap)
     end
 
-    colorscale = pop!(plot, :colorscale)
+    colorscale = pop!(plot, :colorscale, identity)
 
     colorrange = if haskey(plot, :colorrange)
         uniforms[:colorrange] = lift(plot.colorrange, colorscale) do colorrange, colorscale

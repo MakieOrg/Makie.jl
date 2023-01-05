@@ -693,7 +693,7 @@ function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
     uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
     model = plot.model[]::Mat4f
     colormap = haskey(plot, :colormap) ? to_colormap(plot.colormap[]) : nothing
-    colorscale = haskey(plot, :colorscale) ? plot.colorscale[] : nothing
+    colorscale = haskey(plot, :colorscale) ? plot.colorscale : nothing
     colorrange = convert_attribute(to_value(get(plot, :colorrange, nothing)), key"colorrange"())::Union{Nothing, Vec2f}
 
     lowclip = get_color_attr(plot, :lowclip)
@@ -750,7 +750,7 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
     @get_attribute attributes (color,)
 
     colormap = haskey(attributes, :colormap) ? to_colormap(attributes.colormap[]) : nothing
-    colorscale = haskey(attributes, :colorscale) ? attributes.colorscale[] : nothing
+    colorscale = haskey(attributes, :colorscale) ? attributes.colorscale : nothing
     colorrange = convert_attribute(to_value(get(attributes, :colorrange, nothing)), key"colorrange"())::Union{Nothing, Vec2f}
     matcap = to_value(get(attributes, :matcap, nothing))
 

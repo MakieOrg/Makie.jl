@@ -195,9 +195,9 @@ function handle_intensities!(attributes)
 end
 
 function handle_colorscale!(p::AbstractPlot, attributes, x)
-    colorscale = haskey(p, :colorscale) ? to_value(p.colorscale) : nothing
+    colorscale = haskey(p, :colorscale) ? p.colorscale : nothing
     if haskey(attributes, :color_norm)
-        color_norm = to_value(pop!(attributes, :color_norm))
+        color_norm = to_value(attributes[:color_norm])
         attributes[:color_norm] = Makie.apply_scale(colorscale, color_norm)
     end
     lift(x) do x

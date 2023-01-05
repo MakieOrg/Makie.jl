@@ -215,15 +215,15 @@ function per_face_colors(
             scaled_colorrange = Makie.apply_scale(colorscale, colorrange)
             low, high = extrema(scaled_colorrange)
             cvec = map(color[:]) do c
-                c_scaled = Makie.apply_scale(colorscale, c)
-                if isnan(c_scaled) && nan_color !== nothing
+                scaled_c = Makie.apply_scale(colorscale, c)
+                if isnan(scaled_c) && nan_color !== nothing
                     return nan_color
-                elseif c_scaled < low && lowclip !== nothing
+                elseif scaled_c < low && lowclip !== nothing
                     return lowclip
-                elseif c_scaled > high && highclip !== nothing
+                elseif scaled_c > high && highclip !== nothing
                     return highclip
                 else
-                    Makie.interpolated_getindex(colormap, c_scaled, scaled_colorrange)
+                    Makie.interpolated_getindex(colormap, scaled_c, scaled_colorrange)
                 end
             end
             return FaceIterator(cvec, faces)

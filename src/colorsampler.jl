@@ -128,10 +128,9 @@ function sampler(cmap::Matrix{<: Colorant}, uv::AbstractVector{Vec2f};
     return Sampler(cmap, uv, alpha, interpolation, Scaling())
 end
 
-apply_scale(::Nothing, x) = x
-apply_scale(::typeof(identity), x) = x
-apply_scale(scale, x) = broadcast(scale, x)
 apply_scale(scale::AbstractObservable, x) = apply_scale(scale[], x)
+apply_scale(::Union{Nothing,typeof(identity)}, x) = x  # noop
+apply_scale(scale, x) = broadcast(scale, x)
 
 function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
     colormap = get_attribute(primitive, :colormap)::Vector{RGBAf}
@@ -143,8 +142,8 @@ function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
     else
         colorrange
     end
-    cmin_scaled = apply_scale(colorscale, cmin)
-    cmax_scaled = apply_scale(colorscale, cmax)
+    scaled_cmin = apply_scale(colorscale, cmin)
+    scaled_cmax = apply_scale(colorscale, cmax)
 
     lowclip = get_attribute(primitive, :lowclip)
     highclip = get_attribute(primitive, :highclip)
@@ -154,14 +153,14 @@ function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
         scaled_number = apply_scale(colorscale, Float64(number))  # ints don't work in interpolated_getindex
         if isnan(scaled_number)
             return nan_color
-        elseif !isnothing(lowclip) && scaled_number < cmin_scaled
+        elseif !isnothing(lowclip) && scaled_number < scaled_cmin
             return lowclip
-        elseif !isnothing(highclip) && scaled_number > cmax_scaled
+        elseif !isnothing(highclip) && scaled_number > scaled_cmax
             return highclip
         end
         return interpolated_getindex(
             colormap,
             scaled_number, 
-            (cmin_scaled, cmax_scaled))
+            (scaled_cmin, scaled_cmax))
     end
 end
