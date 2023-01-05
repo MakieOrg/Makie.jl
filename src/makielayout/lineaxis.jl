@@ -721,7 +721,7 @@ function get_minor_tickvalues(i::IntervalsBetween, _, tickvalues, vmin, vmax)
 end
 
 # for log scales, we need to step in log steps at the edges
-function get_minor_tickvalues(i::IntervalsBetween, scale::CONCRETE_INVERSE_SCALES, tickvalues, vmin, vmax)
+function get_minor_tickvalues(i::IntervalsBetween, scale::INVERSABLE_SCALES, tickvalues, vmin, vmax)
     vals = Float64[]
     length(tickvalues) < 2 && return vals
     n = i.n

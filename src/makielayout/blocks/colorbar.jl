@@ -25,7 +25,6 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
             error("You should not pass the `$key` attribute to the colorbar when constructing it using an existing plot object. This attribute is copied from the plot object, and setting it from the colorbar will make the plot object and the colorbar go out of sync.")
         end
     end
-
     Colorbar(
         fig_or_scene;
         colormap = plot.colormap,
@@ -41,7 +40,6 @@ function Colorbar(fig_or_scene, heatmap::Union{Heatmap, Image}; kwargs...)
             error("You should not pass the `$key` attribute to the colorbar when constructing it using an existing plot object. This attribute is copied from the plot object, and setting it from the colorbar will make the plot object and the colorbar go out of sync.")
         end
     end
-
     Colorbar(
         fig_or_scene;
         colormap = heatmap.colormap,
@@ -77,13 +75,8 @@ function Colorbar(fig_or_scene, contourf::Union{Contourf, Tricontourf}; kwargs..
 
 end
 
-unscale_limits(lims, _) = lims  # noop
-function unscale_limits(lims, scale::CONCRETE_INVERSE_SCALES)
-    inverse_transform(scale).(lims)
-end
-
 colorbar_range(start, stop, length, _) = LinRange(start, stop, length)  # noop
-function colorbar_range(start, stop, length, scale::CONCRETE_INVERSE_SCALES)
+function colorbar_range(start, stop, length, scale::INVERSABLE_SCALES)
     inverse_transform(scale).(range(start, stop; length))
 end
 

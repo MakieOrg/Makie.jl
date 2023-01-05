@@ -195,6 +195,16 @@ transformationmatrix(x) = transformation(x).model
 transform_func(x) = transform_func_obs(x)[]
 transform_func_obs(x) = transformation(x).transform_func
 
+reduce_transform(x::Tuple) = reduce(∘, x)
+reduce_transform(x) = x
+
+"""
+    composed_transform_func(x)
+
+Returns transformation composition  e.g. log10 ∘ identity for xscale=log10 in 2D.
+"""
+composed_transform_func(x) = reduce_transform(transform_func(x))
+
 """
     apply_transform(f, data, space)
 Apply the data transform func to the data if the space matches one
@@ -360,7 +370,8 @@ function inv_symlog10(x, low, high)
     end
 end
 
-const CONCRETE_INVERSE_SCALES = Union{
+const INVERSABLE_SCALES = Union{
+    # typeof(identity),  # no, this is a noop
     typeof(log10),
     typeof(log),
     typeof(log2),

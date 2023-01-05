@@ -123,13 +123,13 @@ end
 
 function to_rgba_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
     Makie.@get_attribute attributes (colormap, colorrange, nan_color, lowclip, highclip)
-    tr = reduce(∘, Makie.transform_func_obs(attributes)[])
+    transform = Makie.composed_transform_func(attributes)
     nan_color = Makie.to_color(nan_color)
     lowclip = isnothing(lowclip) ? lowclip : Makie.to_color(lowclip)
     highclip = isnothing(highclip) ? highclip : Makie.to_color(highclip)
 
-    colorrange = tr.(colorrange)
-    [get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip) for pixel in tr.(img)]
+    colorrange = transform.(colorrange)
+    [get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip) for pixel in transform.(img)]
 end
 
 to_rgba_image(img::AbstractMatrix{<: Colorant}, attributes) = RGBAf.(img)
