@@ -1,3 +1,7 @@
+if get(ENV, "MAKIE_PRECOMPILE", "true") == "false"
+    __precompile__(false)
+end
+
 module GLMakie
 
 if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@max_methods"))

@@ -1,3 +1,7 @@
+if get(ENV, "MAKIE_PRECOMPILE", "true") == "false"
+    __precompile__(false)
+end
+
 module CairoMakie
 
 using Makie, LinearAlgebra
