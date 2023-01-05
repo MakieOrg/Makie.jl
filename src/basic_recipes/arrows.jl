@@ -108,7 +108,7 @@ function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVect
 end
 convert_arguments(::Type{<: Arrows}, x, y, z, u, v, w) = (Point3f.(x, y, z), Vec3f.(u, v, w))
 
-function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) where {N, T, V}
+function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) where {N, V}
     @extract arrowplot (
         points, directions, colormap, normalize, align,
         arrowtail, color, linecolor, linestyle, linewidth, lengthscale,

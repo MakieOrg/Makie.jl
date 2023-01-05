@@ -3,6 +3,8 @@
 *.jl.mem
 src/.cache
 src/logo.png
+*.bundled.js
+
 **/._*
 Manifest.toml
 /build
