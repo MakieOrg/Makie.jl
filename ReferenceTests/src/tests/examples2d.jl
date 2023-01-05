@@ -580,7 +580,7 @@ end
     fig
 end
 
-@reference_test "scaled colors (heatmap)" begin
+@reference_test "colorscale (heatmap)" begin
     x = 10.0.^(1:0.1:4)
     y = 1.0:0.1:5.0
     fig, ax, hm = heatmap(x, y, (x, y) -> x; axis = (; xscale = log10), colorscale = log10)
@@ -588,7 +588,7 @@ end
     fig
 end
 
-@reference_test "scaled colors (lines)" begin
+@reference_test "colorscale (lines)" begin
     xs = 0:0.01:10
     ys = 2(1 .+ sin.(xs))
     fig = Figure()
@@ -597,7 +597,7 @@ end
     fig
 end
 
-@reference_test "scaled colors (scatter)" begin
+@reference_test "colorscale (scatter)" begin
     xs = range(0, 10; length = 30)
     ys = 0.5 .* sin.(xs)
     markersize = range(5, 30; length = 30)
@@ -605,6 +605,15 @@ end
     fig = Figure()
     scatter(fig[1, 1], xs, ys; markersize, color, colorscale = identity)
     scatter(fig[2, 1], xs, ys; markersize, color, colorscale = log10)
+    fig
+end
+
+@reference_test "colorscale (hexbin)" begin
+    x = RNG.randn(10_000)
+    y = RNG.randn(10_000)
+    fig = Figure()
+    hexbin(fig[1, 1], x, y; bins = 40, colorscale = identity)
+    hexbin(fig[1, 2], x, y; bins = 40, colorscale = log10)
     fig
 end
 
