@@ -22,7 +22,6 @@ using ReferenceTests
     @test !showable("blaaa", f)
 end
 
-
 excludes = Set([
     "Streamplot animation",
     "Transforming lines",
@@ -52,7 +51,6 @@ excludes = Set([
     "Animated surface and wireframe",
     "Array of Images Scatter",
     "Image Scatter different sizes",
-    "pattern barplot", # not implemented yet
     "scatter with stroke",
     "scatter with glow"
 ])

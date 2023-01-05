@@ -4,7 +4,7 @@
 
 function project_position(scene, transform_func::T, space, point, model, yflip::Bool = true) where T
     # use transform func
-    point = Makie.apply_transform(transform_func, point)
+    point = Makie.apply_transform(transform_func, point, space)
     _project_position(scene, space, point, model, yflip)
 end
 

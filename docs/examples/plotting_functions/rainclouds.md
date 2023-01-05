@@ -196,7 +196,7 @@ rainclouds!(Axis(fig[5, 1:2]), category_labels, data_array;
     dist_between_categories = 0.5,
     color = colors[indexin(category_labels, unique(category_labels))])
 
-supertitle = Label(fig[0, :], "Cloud Plot Testing (Scatter, Violin, Boxplot)", textsize=30)
+supertitle = Label(fig[0, :], "Cloud Plot Testing (Scatter, Violin, Boxplot)", fontsize=30)
 fig
 ```
 \end{examplefigure}

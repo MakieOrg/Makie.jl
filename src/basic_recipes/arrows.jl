@@ -21,31 +21,12 @@ grid.
 ## Attributes
 $(ATTRIBUTES)
 """
-@recipe(Arrows, points, directions) do scene
-    attr = merge!(
-        default_theme(scene),
-        Attributes(
-            arrowhead = automatic,
-            arrowtail = automatic,
-            color = :black,
-            linecolor = automatic,
-            arrowsize = automatic,
-            linestyle = nothing,
-            align = :origin,
-            normalize = false,
-            lengthscale = 1f0,
-            colormap = theme(scene, :colormap),
-            quality = 32,
-            inspectable = theme(scene, :inspectable),
-            markerspace = :pixel,
-        )
-    )
-    attr[:fxaa] = automatic
-    attr[:linewidth] = automatic
-    # connect arrow + linecolor by default
-    get!(attr, :arrowcolor, attr[:linecolor])
-    attr
-end
+arrows
+
+"""
+See [`arrows`](@ref).
+"""
+arrows!
 
 # For the matlab/matplotlib users
 const quiver = arrows
@@ -55,7 +36,7 @@ export quiver, quiver!
 arrow_head(N, marker, quality) = marker
 function arrow_head(N, marker::Automatic, quality)
     if N == 2
-        return '▲'
+        return :utriangle
     else
         merge([
            _circle(Point3f(0), 0.5f0, Vec3f(0,0,-1), quality),

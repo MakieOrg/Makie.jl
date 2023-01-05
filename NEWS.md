@@ -2,6 +2,38 @@
 
 ## master
 
+- Added `xlabelrotation`, `ylabelrotation` (`Axis`) and `labelrotation` (`Colorbar`) [#2478](https://github.com/MakieOrg/Makie.jl/pull/2478).
+
+## v0.19.0
+
+- **Breaking** The attribute `textsize` has been removed everywhere in favor of the attribute `fontsize` which had also been in use.
+  To migrate, search and replace all uses of `textsize` to `fontsize` [#2387](https://github.com/MakieOrg/Makie.jl/pull/2387).
+- Added rich text which allows to more easily use superscripts and subscripts as well as differing colors, fonts, fontsizes, etc. for parts of a given text [#2321](https://github.com/MakieOrg/Makie.jl/pull/2321).
+
+## v0.18.4
+
+- Added the `waterfall` plotting function [#2416](https://github.com/JuliaPlots/Makie.jl/pull/2416).
+- Add support for `AbstractPattern` in `WGLMakie` [#2432](https://github.com/MakieOrg/Makie.jl/pull/2432).
+- Broadcast replaces deprecated method for quantile [#2430](https://github.com/MakieOrg/Makie.jl/pull/2430).
+- Fix CairoMakie's screen re-using [#2440](https://github.com/MakieOrg/Makie.jl/pull/2440).
+- Fix repeated rendering with invisible objects [#2437](https://github.com/MakieOrg/Makie.jl/pull/2437).
+- Fix hvlines for GLMakie [#2446](https://github.com/MakieOrg/Makie.jl/pull/2446).
+
+## v0.18.3
+
+- Add `render_on_demand` flag for `GLMakie.Screen`. Setting this to `true` will skip rendering until plots get updated. This is the new default [#2336](https://github.com/MakieOrg/Makie.jl/pull/2336), [#2397](https://github.com/MakieOrg/Makie.jl/pull/2397).
+- Clean up OpenGL state handling in GLMakie [#2397](https://github.com/MakieOrg/Makie.jl/pull/2397).
+- Fix salting [#2407](https://github.com/MakieOrg/Makie.jl/pull/2407).
+- Fixes for [GtkMakie](https://github.com/jwahlstrand/GtkMakie.jl) [#2418](https://github.com/MakieOrg/Makie.jl/pull/2418).
+
+## v0.18.2
+
+- Fix Axis3 tick flipping with negative azimuth [#2364](https://github.com/MakieOrg/Makie.jl/pull/2364).
+- Fix empty!(fig) and empty!(ax) [#2374](https://github.com/MakieOrg/Makie.jl/pull/2374), [#2375](https://github.com/MakieOrg/Makie.jl/pull/2375).
+- Remove stencil buffer [#2389](https://github.com/MakieOrg/Makie.jl/pull/2389).
+- Move Arrows and Wireframe to MakieCore [#2384](https://github.com/MakieOrg/Makie.jl/pull/2384).
+- Skip legend entry if label is nothing [#2350](https://github.com/MakieOrg/Makie.jl/pull/2350).
+
 ## v0.18.1
 
 - fix heatmap interpolation [#2343](https://github.com/MakieOrg/Makie.jl/pull/2343).
@@ -132,7 +164,7 @@ role as `datalimits` in `violin` [#2137](https://github.com/MakieOrg/Makie.jl/pu
 - Fixed manual cycling of plot attributes [#1873](https://github.com/MakieOrg/Makie.jl/pull/1873).
 - Fixed type constraints in ticklabelalign attributes [#1882](https://github.com/MakieOrg/Makie.jl/pull/1882).
 
-##  v0.16.4
+## v0.16.4
 
 - Fixed WGLMakie performance bug and added option to set fps via `WGLMakie.activate!(fps=30)`.
 - Implemented `nan_color`, `lowclip`, `highclip` for `image(::Matrix{Float})` in shader.
