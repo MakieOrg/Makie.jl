@@ -2,6 +2,8 @@
 
 ## master
 
+- Add default `colorscale = identity` to all plotting functions. As such, `scale` for `hexbin` is replaced with `colorscale`.
+
 ## v0.19.1
 
 - Add `show_data` method for `band` which shows the min and max values of the band at the x position of the cursor [#2497](https://github.com/MakieOrg/Makie.jl/pull/2497).

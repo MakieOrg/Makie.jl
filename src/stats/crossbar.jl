@@ -25,6 +25,7 @@ It is most commonly used as part of the `boxplot`.
     t = Theme(
     color=theme(scene, :patchcolor),
     colormap=theme(scene, :colormap),
+    colorscale=identity,
     colorrange=automatic,
     orientation=:vertical,
     # box and dodging
@@ -111,6 +112,7 @@ function Makie.plot!(plot::CrossBar)
         color=plot.color,
         colorrange=plot.colorrange,
         colormap=plot.colormap,
+        colorscale=plot.colorscale,
         strokecolor=plot.strokecolor,
         strokewidth=plot.strokewidth,
         inspectable = plot[:inspectable]

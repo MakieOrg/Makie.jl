@@ -10,7 +10,7 @@ Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
 - `bins = 20`: If an `Int`, sets the number of bins in x and y direction. If a `Tuple{Int, Int}`, sets the number of bins for x and y separately.
 - `cellsize = nothing`: If a `Real`, makes equally-sided hexagons with width `cellsize`. If a `Tuple{Real, Real}` specifies hexagon width and height separately.
 - `threshold::Int = 1`: The minimal number of observations in the bin to be shown. If 0, all zero-count hexagons fitting into the data limits will be shown.
-- `scale = identity`: A function to scale the number of observations in a bin, eg. log10.
+- `colorscale = identity`: A function to scale the number of observations in a bin, eg. log10.
 
 ### Generic
 
@@ -20,11 +20,11 @@ Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
 @recipe(Hexbin) do scene
     return Attributes(;
                       colormap=theme(scene, :colormap),
+                      colorscale=identity,
                       colorrange=Makie.automatic,
                       bins=20,
                       cellsize=nothing,
                       threshold=1,
-                      scale=identity,
                       strokewidth=0,
                       strokecolor=:black)
 end
@@ -76,7 +76,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
     count_hex = Observable(Float64[])
     markersize = Observable(Vec2f(1, 1))
 
-    function calculate_grid(xy, bins, cellsize, threshold, scale)
+    function calculate_grid(xy, bins, cellsize, threshold)
         empty!(points[])
         empty!(count_hex[])
 
@@ -93,8 +93,8 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         x_diff = xma - xmi
         y_diff = yma - ymi
 
-        xspacing, yspacing, xoff, yoff, nbinsx, nbinsy = spacings_offsets_nbins(bins, cellsize, xmi, xma, ymi,
-                                                                                yma)                                                                     
+        xspacing, yspacing, xoff, yoff, nbinsx, nbinsy =
+            spacings_offsets_nbins(bins, cellsize, xmi, xma, ymi, yma)                                                                     
 
         ysize = yspacing / 3 * 4
         ry = ysize / 2
@@ -143,7 +143,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
                     _y = yoff + iy * yspacing
                     c = get(d, (ix, iy), 0)
                     push!(points[], Point2f(_x, _y))
-                    push!(count_hex[], scale(c))
+                    push!(count_hex[], c)
                 end
             end
         else
@@ -153,7 +153,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
                     _x = xoff + 2 * ix * xspacing + (isodd(iy) * xspacing)
                     _y = yoff + iy * yspacing
                     push!(points[], Point2f(_x, _y))
-                    push!(count_hex[], scale(value))
+                    push!(count_hex[], value)
                 end
             end
         end
@@ -162,7 +162,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         notify(points)
         return notify(count_hex)
     end
-    onany(calculate_grid, xy, hb.bins, hb.cellsize, hb.threshold, hb.scale)
+    onany(calculate_grid, xy, hb.bins, hb.cellsize, hb.threshold)
     # trigger once
     notify(hb.bins)
 
@@ -180,6 +180,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
                     colorrange=hb.colorrange,
                     color=count_hex,
                     colormap=hb.colormap,
+                    colorscale=hb.colorscale,
                     marker=hexmarker,
                     markersize=markersize,
                     markerspace=:data,

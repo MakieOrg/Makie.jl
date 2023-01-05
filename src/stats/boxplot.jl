@@ -36,6 +36,7 @@ The boxplot has 3 components:
         weights = automatic,
         color = theme(scene, :patchcolor),
         colormap = theme(scene, :colormap),
+        colorscale=identity,
         colorrange = automatic,
         orientation = :vertical,
         # box and dodging
@@ -219,6 +220,7 @@ function Makie.plot!(plot::BoxPlot)
         color = boxcolor,
         colorrange = plot[:colorrange],
         colormap = plot[:colormap],
+        colorscale = plot[:colorscale],
         strokecolor = plot[:strokecolor],
         strokewidth = plot[:strokewidth],
         midlinecolor = plot[:mediancolor],
