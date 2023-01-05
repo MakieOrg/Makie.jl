@@ -580,11 +580,31 @@ end
     fig
 end
 
-@reference_test "scaled colormap" begin
+@reference_test "scaled colors (heatmap)" begin
     x = 10.0.^(1:0.1:4)
     y = 1.0:0.1:5.0
-    fig, ax, hm = heatmap(x, y, (x, y) -> log10(x); axis = (; xscale = log10))
-    Colorbar(fig[1, 2], hm; scale = log10)
+    fig, ax, hm = heatmap(x, y, (x, y) -> x; axis = (; xscale = log10), colorscale = log10)
+    Colorbar(fig[1, 2], hm)
+    fig
+end
+
+@reference_test "scaled colors (lines)" begin
+    xs = 0:0.01:10
+    ys = 2(1 .+ sin.(xs))
+    fig = Figure()
+    lines(fig[1, 1], xs, ys; linewidth = 10, color = ys, colorscale = identity)
+    lines(fig[2, 1], xs, ys; linewidth = 10, color = ys, colorscale = sqrt)
+    fig
+end
+
+@reference_test "scaled colors (scatter)" begin
+    xs = range(0, 10; length = 30)
+    ys = 0.5 .* sin.(xs)
+    markersize = range(5, 30; length = 30)
+    color = 1:30
+    fig = Figure()
+    scatter(fig[1, 1], xs, ys; markersize, color, colorscale = identity)
+    scatter(fig[2, 1], xs, ys; markersize, color, colorscale = log10)
     fig
 end
 
