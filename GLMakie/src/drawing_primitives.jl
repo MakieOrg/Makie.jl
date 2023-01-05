@@ -200,8 +200,10 @@ end
 
 function handle_colorscale!(p::AbstractPlot, attributes, x)
     colorscale = to_value(p.colorscale)
-    color_norm = to_value(pop!(attributes, :color_norm))
-    attributes[:color_norm] = apply_scale(colorscale, color_norm)
+    if haskey(attributes, :color_norm)
+        color_norm = to_value(pop!(attributes, :color_norm))
+        attributes[:color_norm] = apply_scale(colorscale, color_norm)
+    end
     lift(x) do x
         el32convert(apply_scale(colorscale, to_value(x)))
     end
