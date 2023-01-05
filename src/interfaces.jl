@@ -18,30 +18,36 @@ function default_theme(scene)
     )
 end
 
+apply_scale(::Nothing, x) = x
+apply_scale(::typeof(identity), x) = x
+apply_scale(scale, x) = broadcast(scale, x)
 
-
-function color_and_colormap!(plot, intensity = plot[:color])
+function color_colormap_and_colorscale!(plot, intensity = plot[:color])
     if isa(intensity[], AbstractArray{<: Number})
         haskey(plot, :colormap) || error("Plot $(typeof(plot)) needs to have a colormap to allow the attribute color to be an array of numbers")
 
         replace_automatic!(plot, :colorrange) do
-            lift(distinct_extrema_nan, intensity)
+            lift(intensity, plot.colorscale) do intensity, colorscale
+                return apply_scale(colorscale, distinct_extrema_nan(intensity))
+            end
         end
         replace_automatic!(plot, :highclip) do
-            lift(plot.colormap) do cmap
-                return to_colormap(cmap)[end]
+            lift(plot.colormap, plot.colorscale) do cmap, colorscale
+                return apply_scale(colorscale, to_colormap(cmap)[end])
             end
         end
         replace_automatic!(plot, :lowclip) do
-            lift(plot.colormap) do cmap
-                return to_colormap(cmap)[1]
+            lift(plot.colormap, plot.colorscale) do cmap, colorscale
+                return apply_scale(colorscale, to_colormap(cmap)[begin])
             end
         end
+        delete!(plot, :colorscale)  # handled here, on the CPU
         return true
     else
         delete!(plot, :highclip)
         delete!(plot, :lowclip)
         delete!(plot, :colorrange)
+        delete!(plot, :colorscale)
         return false
     end
 end
@@ -49,14 +55,14 @@ end
 function calculated_attributes!(T::Type{<: Mesh}, plot)
     mesha = lift(GeometryBasics.attributes, plot.mesh)
     color = haskey(mesha[], :color) ? lift(x-> x[:color], mesha) : plot.color
-    need_cmap = color_and_colormap!(plot, color)
+    need_cmap = color_colormap_and_colorscale!(plot, color)
     need_cmap || delete!(plot, :colormap)
     return
 end
 
 function calculated_attributes!(::Type{<: Union{Heatmap, Image}}, plot)
     plot[:color] = plot[3]
-    color_and_colormap!(plot)
+    color_colormap_and_colorscale!(plot)
 end
 
 function calculated_attributes!(::Type{<: Surface}, plot)
@@ -67,17 +73,17 @@ function calculated_attributes!(::Type{<: Surface}, plot)
             colors = plot[:color]
         end
     end
-    color_and_colormap!(plot, colors)
+    color_colormap_and_colorscale!(plot, colors)
 end
 
 function calculated_attributes!(::Type{<: MeshScatter}, plot)
-    color_and_colormap!(plot)
+    color_colormap_and_colorscale!(plot)
 end
 
 
 function calculated_attributes!(::Type{<: Scatter}, plot)
     # calculate base case
-    color_and_colormap!(plot)
+    color_colormap_and_colorscale!(plot)
 
     replace_automatic!(plot, :marker_offset) do
         # default to middle
@@ -96,7 +102,7 @@ function calculated_attributes!(::Type{<: Scatter}, plot)
 end
 
 function calculated_attributes!(::Type{T}, plot) where {T<:Union{Lines, LineSegments}}
-    color_and_colormap!(plot)
+    color_colormap_and_colorscale!(plot)
     pos = plot[1][]
     # extend one color/linewidth per linesegment to be one (the same) color/linewidth per vertex
     if T <: LineSegments
