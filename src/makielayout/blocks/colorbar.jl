@@ -79,7 +79,7 @@ function Colorbar(fig_or_scene, contourf::Union{Contourf, Tricontourf}; kwargs..
 end
 
 colorbar_range(start, stop, length, _) = LinRange(start, stop, length)  # noop
-function colorbar_range(start, stop, length, scale::INVERSABLE_SCALES)
+function colorbar_range(start, stop, length, scale::REVERSIBLE_SCALES)
     inverse_transform(scale).(range(start, stop; length))
 end
 

@@ -360,7 +360,7 @@ function inv_symlog10(x, low, high)
     end
 end
 
-const INVERSABLE_SCALES = Union{
+const REVERSIBLE_SCALES = Union{
     # typeof(identity),  # no, this is a noop
     typeof(log10),
     typeof(log),

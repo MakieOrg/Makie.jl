@@ -183,10 +183,6 @@ end
 
 pixel2world(scene, msize::AbstractVector) = pixel2world.(scene, msize)
 
-apply_scale(::Nothing, x) = x
-apply_scale(::typeof(identity), x) = x
-apply_scale(scale, x) = broadcast(scale, x)
-
 function handle_intensities!(attributes)
     if haskey(attributes, :color) && attributes[:color][] isa AbstractVector{<: Number}
         c = pop!(attributes, :color)
@@ -199,13 +195,13 @@ function handle_intensities!(attributes)
 end
 
 function handle_colorscale!(p::AbstractPlot, attributes, x)
-    colorscale = to_value(p.colorscale)
+    colorscale = haskey(p, :colorscale) ? to_value(p.colorscale) : nothing
     if haskey(attributes, :color_norm)
         color_norm = to_value(pop!(attributes, :color_norm))
-        attributes[:color_norm] = apply_scale(colorscale, color_norm)
+        attributes[:color_norm] = Makie.apply_scale(colorscale, color_norm)
     end
     lift(x) do x
-        el32convert(apply_scale(colorscale, to_value(x)))
+        el32convert(Makie.apply_scale(colorscale, to_value(x)))
     end
 end
 
@@ -420,7 +416,6 @@ function draw_atomic(screen::Screen, scene::Scene, x::Heatmap)
             end
             return x1d, y1d
         end
-        colorscale = to_value(x.colorscale)
         xpos = map(first, xypos)
         ypos = map(last, xypos)
         mat = handle_colorscale!(x, gl_attributes, x[3])

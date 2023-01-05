@@ -76,6 +76,10 @@ function apply_scaling(value::Number, scaling::Scaling)::Float64
     return isfinite(clamped) ? clamped : zero(clamped)
 end
 
+apply_scale(::Nothing, x) = x
+apply_scale(::typeof(identity), x) = x
+apply_scale(scale, x) = broadcast(scale, x)
+
 function Base.getindex(sampler::Sampler, i)::RGBAf
     value = sampler.values[i]
     scaled = apply_scaling(value, sampler.scaling)
@@ -135,27 +139,29 @@ function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
     colorscale = get_attribute(primitive, :colorscale)
     cmin, cmax = if isnothing(colorrange)
         # TODO, plot primitive should always expand automatic values
-        colorscale.(Vec2f(extrema_nan(numbers)))
+        Vec2f(extrema_nan(numbers))
     else
-        colorscale.(colorrange)
+        colorrange
     end
+    cmin_scaled = apply_scale(colorscale, cmin)
+    cmax_scaled = apply_scale(colorscale, cmax)
 
     lowclip = get_attribute(primitive, :lowclip)
     highclip = get_attribute(primitive, :highclip)
     nan_color = get_attribute(primitive, :nan_color, RGBAf(0,0,0,0))
 
     return map(numbers) do number
-        scaled_number = colorscale(Float64(number))  # ints don't work in interpolated_getindex
+        scaled_number = apply_scale(colorscale, Float64(number))  # ints don't work in interpolated_getindex
         if isnan(scaled_number)
             return nan_color
-        elseif !isnothing(lowclip) && scaled_number < cmin
-            return lowclip
-        elseif !isnothing(highclip) && scaled_number > cmax
-            return highclip
+        elseif !isnothing(lowclip) && scaled_number < cmin_scaled
+            return apply_scale(colorscale, lowclip)
+        elseif !isnothing(highclip) && scaled_number > cmax_scaled
+            return apply_scale(colorscale, highclip)
         end
         return interpolated_getindex(
             colormap,
             scaled_number, 
-            (cmin, cmax))
+            (cmin_scaled, cmax_scaled))
     end
 end

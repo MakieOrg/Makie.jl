@@ -18,27 +18,23 @@ function default_theme(scene)
     )
 end
 
-apply_scale(::Nothing, x) = x
-apply_scale(::typeof(identity), x) = x
-apply_scale(scale, x) = broadcast(scale, x)
-
 function color_colormap_and_colorscale!(plot, intensity = plot[:color])
     if isa(intensity[], AbstractArray{<: Number})
         haskey(plot, :colormap) || error("Plot $(typeof(plot)) needs to have a colormap to allow the attribute color to be an array of numbers")
 
         replace_automatic!(plot, :colorrange) do
             lift(intensity, plot.colorscale) do intensity, colorscale
-                return apply_scale(colorscale, distinct_extrema_nan(intensity))
+                return Makie.apply_scale(colorscale, distinct_extrema_nan(intensity))
             end
         end
         replace_automatic!(plot, :highclip) do
             lift(plot.colormap, plot.colorscale) do cmap, colorscale
-                return apply_scale(colorscale, to_colormap(cmap)[end])
+                return Makie.apply_scale(colorscale, to_colormap(cmap)[end])
             end
         end
         replace_automatic!(plot, :lowclip) do
             lift(plot.colormap, plot.colorscale) do cmap, colorscale
-                return apply_scale(colorscale, to_colormap(cmap)[begin])
+                return Makie.apply_scale(colorscale, to_colormap(cmap)[begin])
             end
         end
         delete!(plot, :colorscale)  # handled here, on the CPU
