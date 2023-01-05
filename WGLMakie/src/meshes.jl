@@ -12,15 +12,6 @@ facebuffer(x::AbstractArray{<:GLTriangleFace}) = x
 facebuffer(x::Observable) = Buffer(lift(facebuffer, x))
 
 
-function array2color(colors, cmap, crange)
-    cmap = RGBAf.(Colors.color.(to_colormap(cmap)), 1.0)
-    return Makie.interpolated_getindex.((cmap,), colors, (crange,))
-end
-
-function array2color(colors::AbstractArray{<:Colorant}, cmap, crange)
-    return RGBAf.(colors)
-end
-
 function converted_attribute(plot::AbstractPlot, key::Symbol)
     return lift(plot[key]) do value
         return convert_attribute(value, Key{key}(), Key{plotkey(plot)}())
