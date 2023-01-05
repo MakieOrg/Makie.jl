@@ -15,8 +15,12 @@ function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
         uniforms[:colormap] = Sampler(cmap)
     end
 
+    colorscale = pop!(plot, :colorscale)
+
     colorrange = if haskey(plot, :colorrange)
-        uniforms[:colorrange] = lift(Vec2f, plot.colorrange)
+        uniforms[:colorrange] = lift(plot.colorrange, colorscale) do colorrange, colorscale
+            return Vec2f(Makie.apply_scale(colorscale, colorrange))
+        end
     end
 
     get!(uniforms, :colormap, false)
@@ -103,7 +107,6 @@ function create_shader(mscene::Scene, plot::Surface)
     minfilter = to_value(get(plot, :interpolate, true)) ? :linear : :nearest
     color = Sampler(lift(x -> el32convert(to_color(Makie.apply_scale(plot.colorscale, permutedims(x)))), pcolor);
                     minfilter=minfilter)
-    delete!(plot_attributes, :colorscale)  # handled here
     normals = Buffer(lift(surface_normals, px, py, pz))
     vertices = GeometryBasics.meta(positions; uv=uv, normals=normals)
     mesh = GeometryBasics.Mesh(vertices, faces)
@@ -119,20 +122,18 @@ end
 
 function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
     image = plot[3]
-    color = Sampler(lift(x -> el32convert(Makie.apply_scale(plot.colorscale, permutedims(x))), image);
+    plot_attributes = copy(plot.attributes)
+    color = Sampler(map(x -> el32convert(Makie.apply_scale(plot.colorscale, permutedims(x))), image);
                     minfilter=to_value(get(plot, :interpolate, false)) ? :linear : :nearest)
     mesh = limits_to_uvmesh(plot)
-    plot_attributes = copy(plot.attributes)
     if eltype(color) <: Colorant
         delete!(plot_attributes, :colormap)
         delete!(plot_attributes, :colorrange)
     end
-    delete!(plot_attributes, :colorscale)  # handled here
     return draw_mesh(mscene, mesh, plot_attributes;
                      uniform_color=color, color=false,
                      normals=Vec3f(0), shading=false,
                      diffuse=plot.diffuse, specular=plot.specular,
-                     colorrange=haskey(plot, :colorrange) ? plot.colorrange : false,
                      shininess=plot.shininess,
                      highclip=get_color(plot, :highclip),
                      lowclip=get_color(plot, :lowclip),
@@ -159,7 +160,6 @@ function create_shader(mscene::Scene, plot::Volume)
     return Program(WebGL(), lasset("volume.vert"), lasset("volume.frag"), box,
                    volumedata=Sampler(lift(Makie.el32convert, vol)),
                    modelinv=modelinv, colormap=Sampler(lift(to_colormap, plot.colormap)),
-                   colorrange=lift(Vec2f, plot.colorrange),
                    isovalue=lift(Float32, plot.isovalue),
                    isorange=lift(Float32, plot.isorange),
                    absorption=lift(Float32, get(plot, :absorption, Observable(1f0))),
