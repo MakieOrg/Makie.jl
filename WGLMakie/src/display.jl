@@ -1,4 +1,4 @@
-struct ThreeDisplay
+struct ThreeDisplay <: Makie.MakieScreen
     session::JSServe.Session
 end
 
