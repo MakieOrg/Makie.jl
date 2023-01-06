@@ -230,6 +230,15 @@ end
     fig
 end
 
+@reference_test "colorscale (surface)" begin
+    x = y = range(-1, 1; length = 20)
+    f(x, y) = exp(-(x^2 + y^2)^2)
+    fig = Figure()
+    surface(fig[1, 1], x, y, f; colorscale = identity)
+    surface(fig[1, 2], x, y, f; colorscale = log10)
+    fig
+end
+
 @reference_test "FEM mesh 3D" begin
     cat = loadasset("cat.obj")
     vertices = decompose(Point3f, cat)
