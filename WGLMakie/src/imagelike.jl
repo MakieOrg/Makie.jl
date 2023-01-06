@@ -1,4 +1,4 @@
-using Makie: el32convert, surface_normals, get_dim
+using Makie: el32convert, surface_normals, get_dim, apply_scale
 
 # Somehow we started using Nothing for some colors in Makie,
 # but the convert leaves them at nothing -.-
@@ -19,7 +19,7 @@ function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
 
     colorrange = if haskey(plot, :colorrange)
         uniforms[:colorrange] = lift(plot.colorrange, colorscale) do colorrange, colorscale
-            return Vec2f(Makie.apply_scale(colorscale, colorrange))
+            return Vec2f(apply_scale(colorscale, colorrange))
         end
     end
 
@@ -105,7 +105,7 @@ function create_shader(mscene::Scene, plot::Surface)
         pz
     end
     minfilter = to_value(get(plot, :interpolate, true)) ? :linear : :nearest
-    color = Sampler(lift(x -> el32convert(to_color(Makie.apply_scale(plot.colorscale, permutedims(x)))), pcolor);
+    color = Sampler(lift(x -> el32convert(to_color(apply_scale(plot.colorscale, permutedims(x)))), pcolor);
                     minfilter=minfilter)
     normals = Buffer(lift(surface_normals, px, py, pz))
     vertices = GeometryBasics.meta(positions; uv=uv, normals=normals)
@@ -123,7 +123,7 @@ end
 function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
     image = plot[3]
     plot_attributes = copy(plot.attributes)
-    color = Sampler(map(x -> el32convert(Makie.apply_scale(plot.colorscale, permutedims(x))), image);
+    color = Sampler(map(x -> el32convert(apply_scale(plot.colorscale, permutedims(x))), image);
                     minfilter=to_value(get(plot, :interpolate, false)) ? :linear : :nearest)
     mesh = limits_to_uvmesh(plot)
     if eltype(color) <: Colorant
@@ -158,8 +158,9 @@ function create_shader(mscene::Scene, plot::Volume)
     algorithm = lift(x -> Cuint(convert_attribute(x, key"algorithm"())), plot.algorithm)
 
     return Program(WebGL(), lasset("volume.vert"), lasset("volume.frag"), box,
-                   volumedata=Sampler(lift(Makie.el32convert, vol)),
+                   volumedata=Sampler(lift(el32convert, apply_scale(plot.colorscale, vol))),
                    modelinv=modelinv, colormap=Sampler(lift(to_colormap, plot.colormap)),
+                   colorrange=lift(Vec2f, apply_scale(plot.colorscale, plot.colorrange)),
                    isovalue=lift(Float32, plot.isovalue),
                    isorange=lift(Float32, plot.isorange),
                    absorption=lift(Float32, get(plot, :absorption, Observable(1f0))),
