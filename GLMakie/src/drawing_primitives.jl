@@ -1,4 +1,4 @@
-using Makie: transform_func_obs, apply_transform
+using Makie: transform_func_obs, apply_transform, apply_scale
 using Makie: attribute_per_char, FastPixel, el32convert, Pixel
 using Makie: convert_arguments
 
@@ -187,11 +187,11 @@ function handle_intensities!(attributes, colorscale)
     if haskey(attributes, :color) && attributes[:color][] isa AbstractVector{<: Number}
         color = pop!(attributes, :color)
         attributes[:intensity] = lift(color, colorscale) do color, colorscale
-            return convert(Vector{Float32}, Makie.apply_scale(colorscale, color))
+            return convert(Vector{Float32}, apply_scale(colorscale, color))
         end
         if haskey(attributes, :color_norm)
             color_norm = to_value(attributes[:color_norm])
-            attributes[:color_norm] = Makie.apply_scale(colorscale, color_norm)
+            attributes[:color_norm] = apply_scale(colorscale, color_norm)
         end
     else
         delete!(attributes, :intensity)
@@ -204,10 +204,10 @@ function handle_colorscale!(p::AbstractPlot, attributes, x)
     colorscale = haskey(p, :colorscale) ? p.colorscale : nothing
     if haskey(attributes, :color_norm)
         color_norm = to_value(attributes[:color_norm])
-        attributes[:color_norm] = Makie.apply_scale(colorscale, color_norm)
+        attributes[:color_norm] = apply_scale(colorscale, color_norm)
     end
     lift(x) do x
-        el32convert(Makie.apply_scale(colorscale, to_value(x)))
+        el32convert(apply_scale(colorscale, to_value(x)))
     end
 end
 
