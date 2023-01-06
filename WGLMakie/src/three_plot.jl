@@ -3,22 +3,6 @@
 # We use objectid to find objects on the js side
 js_uuid(object) = string(objectid(object))
 
-function Base.insert!(td::ThreeDisplay, scene::Scene, plot::Combined)
-    JSServe.wait_for_ready(td.session)
-    plot_data = serialize_plots(scene, [plot])
-    JSServe.evaljs_value(td.session, js"""
-    $(WGL).then(WGL=> {
-        WGL.insert_plot($(js_uuid(scene)), $plot_data);
-    })""")
-    return
-end
-
-function Base.delete!(td::ThreeDisplay, scene::Scene, plot::Combined)
-    uuids = js_uuid.(Makie.flatten_plots(plot))
-    WGL.delete_plots(td.session, js_uuid(scene), uuids)
-    return
-end
-
 function all_plots_scenes(scene::Scene; scene_uuids=String[], plot_uuids=String[])
     push!(scene_uuids, js_uuid(scene))
     for plot in scene.plots
@@ -28,20 +12,6 @@ function all_plots_scenes(scene::Scene; scene_uuids=String[], plot_uuids=String[
         all_plots_scenes(child, plot_uuids=plot_uuids, scene_uuids=scene_uuids)
     end
     return scene_uuids, plot_uuids
-end
-
-"""
-    find_plots(td::ThreeDisplay, plot::AbstractPlot)
-
-Gets the ThreeJS object representing the plot object.
-"""
-function find_plots(td::ThreeDisplay, plot::AbstractPlot)
-    return find_plots(JSServe.session(td), plot)
-end
-
-function find_plots(session::Session, plot::AbstractPlot)
-    uuids = js_uuid.(Makie.flatten_plots(plot))
-    return WGL.find_plots(session, uuids)
 end
 
 function JSServe.print_js_code(io::IO, plot::AbstractPlot, context::IdDict)
