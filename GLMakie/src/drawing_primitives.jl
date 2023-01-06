@@ -183,16 +183,19 @@ end
 
 pixel2world(scene, msize::AbstractVector) = pixel2world.(scene, msize)
 
+function handle_color_norm!(attributes, colorscale)
+    if haskey(attributes, :color_norm)
+        attributes[:color_norm] = apply_scale(colorscale, attributes[:color_norm])
+    end
+end
+
 function handle_intensities!(attributes, colorscale)
     if haskey(attributes, :color) && attributes[:color][] isa AbstractVector{<: Number}
         color = pop!(attributes, :color)
         attributes[:intensity] = lift(color, colorscale) do color, colorscale
             return convert(Vector{Float32}, apply_scale(colorscale, color))
         end
-        if haskey(attributes, :color_norm)
-            color_norm = to_value(attributes[:color_norm])
-            attributes[:color_norm] = apply_scale(colorscale, color_norm)
-        end
+        handle_color_norm!(attributes, colorscale)
     else
         delete!(attributes, :intensity)
         delete!(attributes, :color_map)
@@ -202,13 +205,8 @@ end
 
 function handle_colorscale!(p::AbstractPlot, attributes, x)
     colorscale = haskey(p, :colorscale) ? p.colorscale : nothing
-    if haskey(attributes, :color_norm)
-        color_norm = to_value(attributes[:color_norm])
-        attributes[:color_norm] = apply_scale(colorscale, color_norm)
-    end
-    lift(x) do x
-        el32convert(apply_scale(colorscale, to_value(x)))
-    end
+    handle_color_norm!(attributes, colorscale)
+    lift(x -> el32convert(apply_scale(colorscale, x)), x)
 end
 
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Union{Scatter, MeshScatter}))
@@ -464,7 +462,7 @@ function draw_atomic(screen::Screen, scene::Scene, x::Image)
         gl_attributes[:shading] = false
         space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         connect_camera!(gl_attributes, scene.camera)
-        return mesh_inner(screen, mesh, transform_func_obs(x), gl_attributes, space)
+        return mesh_inner(screen, mesh, transform_func_obs(x), x.colorscale, gl_attributes, space)
     end
 end
 
@@ -475,12 +473,13 @@ function update_positions(mesh::GeometryBasics.Mesh, positions)
     return GeometryBasics.Mesh(meta(positions; attr...), faces(mesh))
 end
 
-function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, space=:data)
+function mesh_inner(screen::Screen, mesh, transfunc, colorscale, gl_attributes, space=:data)
     # signals not supported for shading yet
     gl_attributes[:shading] = to_value(pop!(gl_attributes, :shading))
     color = pop!(gl_attributes, :color)
     interp = to_value(pop!(gl_attributes, :interpolate, true))
     interp = interp ? :linear : :nearest
+
     if to_value(color) isa Colorant
         gl_attributes[:vertex_color] = color
         delete!(gl_attributes, :color_map)
@@ -494,10 +493,14 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, space=:data)
         delete!(gl_attributes, :color_map)
         delete!(gl_attributes, :color_norm)
     elseif to_value(color) isa AbstractMatrix{<: Number}
-        gl_attributes[:image] = Texture(const_lift(el32convert, color), minfilter = interp)
+        gl_attributes[:image] = Texture(const_lift(el32convert, apply_scale(colorscale, color)), minfilter = interp)
+        handle_color_norm!(gl_attributes, colorscale)
         gl_attributes[:color] = nothing
-    elseif to_value(color) isa AbstractVector{<: Union{Number, Colorant}}
+    elseif to_value(color) isa AbstractVector{<:Colorant}
         gl_attributes[:vertex_color] = lift(el32convert, color)
+    elseif to_value(color) isa AbstractVector{<:Number}
+        gl_attributes[:vertex_color] = lift(el32convert, apply_scale(colorscale, color))
+        handle_color_norm!(gl_attributes, colorscale)
     else
         error("Unsupported color type: $(typeof(to_value(color)))")
     end
@@ -510,12 +513,12 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, space=:data)
     return draw_mesh(screen, mesh, gl_attributes)
 end
 
-function draw_atomic(screen::Screen, scene::Scene, meshplot::Mesh)
-    return cached_robj!(screen, scene, meshplot) do gl_attributes
-        t = transform_func_obs(meshplot)
+function draw_atomic(screen::Screen, scene::Scene, x::Mesh)
+    return cached_robj!(screen, scene, x) do gl_attributes
+        t = transform_func_obs(x)
         space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         connect_camera!(gl_attributes, scene.camera)
-        return mesh_inner(screen, meshplot[1], t, gl_attributes, space)
+        return mesh_inner(screen, x[1], t, x.colorscale, gl_attributes, space)
     end
 end
 
