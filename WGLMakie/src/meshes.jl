@@ -46,20 +46,22 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
         uniforms[:uniform_color] = false
     else
         color_signal = converted_attribute(plot, :color)
+        if color_signal[] isa Colorant && haskey(data, :color)
+            color_signal = get_attribute(mesh_signal, :color)
+        end
         color = color_signal[]
-        mesh_color = color_signal[]
         uniforms[:uniform_color] = Observable(false) # this is the default
 
-        if color isa Colorant && haskey(data, :color)
-            color_signal = get_attribute(mesh_signal, :color)
-            color = color_signal[]
-        end
-
         if color isa AbstractArray
+            if eltype(color) <: Number
+                uniforms[:colorrange] = lift(x -> Makie.apply_scale(plot.colorscale, x), converted_attribute(plot, :colorrange))
+                uniforms[:colormap] = Sampler(converted_attribute(plot, :colormap))
+                color = Makie.apply_scale(plot.colorscale, color)
+            end
             if color isa AbstractVector
-                attributes[:color] = Buffer(color_signal) # per vertex colors
+                attributes[:color] = Buffer(color) # per vertex colors
             else
-                uniforms[:uniform_color] = Sampler(color_signal) # Texture
+                uniforms[:uniform_color] = Sampler(color) # Texture
                 uniforms[:color] = false
                 if color isa Makie.AbstractPattern
                     uniforms[:pattern] = true
@@ -68,10 +70,6 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
                     delete!(uniforms, :uv)
                     attributes[:uv] = uv
                 end
-            end
-            if eltype(color_signal[]) <: Number
-                uniforms[:colorrange] = converted_attribute(plot, :colorrange)
-                uniforms[:colormap] = Sampler(converted_attribute(plot, :colormap))
             end
         elseif color isa Colorant && !haskey(attributes, :color)
             uniforms[:uniform_color] = color_signal
