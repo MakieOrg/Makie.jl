@@ -25,7 +25,7 @@ import Makie.FileIO
 using Makie: get_texture_atlas, SceneSpace, Pixel
 using Makie: attribute_per_char, layout_text
 using Makie: MouseButtonEvent, KeyEvent
-using Makie: apply_transform, transform_func_obs
+using Makie: apply_transform, apply_scale, transform_func_obs, el32convert
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
 
 struct WebGL <: ShaderAbstractions.AbstractContext end

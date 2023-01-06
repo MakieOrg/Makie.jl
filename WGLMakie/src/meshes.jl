@@ -54,9 +54,9 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
 
         if color isa AbstractArray
             if eltype(color) <: Number
-                uniforms[:colorrange] = lift(x -> Makie.apply_scale(plot.colorscale, x), converted_attribute(plot, :colorrange))
+                uniforms[:colorrange] = lift(x -> apply_scale(plot.colorscale, x), converted_attribute(plot, :colorrange))
                 uniforms[:colormap] = Sampler(converted_attribute(plot, :colormap))
-                color = Makie.apply_scale(plot.colorscale, color)
+                color = apply_scale(plot.colorscale, color)
             end
             if color isa AbstractVector
                 attributes[:color] = Buffer(color) # per vertex colors

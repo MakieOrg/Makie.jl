@@ -15,7 +15,7 @@ function handle_color!(uniform_dict, instance_dict)
     elseif color isa AbstractArray{<:Real}
         if haskey(uniform_dict, :colorscale)
             colorscale = pop!(uniform_dict, :colorscale)
-            udict[:color] = c = Makie.apply_scale(colorscale, color)
+            udict[:color] = c = apply_scale(colorscale, color)
             uniform_dict[:colorrange] = Vec2f(Makie.distinct_extrema_nan(c))
         end
         uniform_dict[:color_getter] = """

@@ -1,5 +1,3 @@
-using Makie: el32convert, surface_normals, get_dim, apply_scale
-
 # Somehow we started using Nothing for some colors in Makie,
 # but the convert leaves them at nothing -.-
 # TODO clean this up in Makie
@@ -107,7 +105,7 @@ function create_shader(mscene::Scene, plot::Surface)
     minfilter = to_value(get(plot, :interpolate, true)) ? :linear : :nearest
     color = Sampler(lift(x -> el32convert(to_color(apply_scale(plot.colorscale, permutedims(x)))), pcolor);
                     minfilter=minfilter)
-    normals = Buffer(lift(surface_normals, px, py, pz))
+    normals = Buffer(lift(Makie.surface_normals, px, py, pz))
     vertices = GeometryBasics.meta(positions; uv=uv, normals=normals)
     mesh = GeometryBasics.Mesh(vertices, faces)
     return draw_mesh(mscene, mesh, plot_attributes; uniform_color=color, color=false,

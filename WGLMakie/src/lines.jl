@@ -13,7 +13,7 @@ end
 
 function array2color(colors, cmap, crange, cscale)
     cmap = RGBAf.(Colors.color.(to_colormap(cmap)), 1.0)
-    return Makie.interpolated_getindex.((cmap,), Makie.apply_scale(cscale, colors), (Makie.apply_scale(cscale, crange),))
+    return Makie.interpolated_getindex.((cmap,), apply_scale(cscale, colors), (apply_scale(cscale, crange),))
 end
 
 function array2color(colors::AbstractArray{<:Colorant}, _, _, _)

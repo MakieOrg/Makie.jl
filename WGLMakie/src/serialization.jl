@@ -152,9 +152,9 @@ end
 function wgl_convert(value, key1, key2)
     val = Makie.convert_attribute(value, key1, key2)
     return if val isa AbstractArray{<:Float64}
-        return Makie.el32convert(val)
+        el32convert(val)
     else
-        return val
+        val
     end
 end
 

@@ -127,8 +127,8 @@ function to_rgba_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
     lowclip = isnothing(lowclip) ? lowclip : Makie.to_color(lowclip)
     highclip = isnothing(highclip) ? highclip : Makie.to_color(highclip)
 
-    colorrange = Makie.apply_scale(colorscale, colorrange)
-    [get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip) for pixel in Makie.apply_scale(colorscale, img)]
+    colorrange = apply_scale(colorscale, colorrange)
+    [get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip) for pixel in apply_scale(colorscale, img)]
 end
 
 to_rgba_image(img::AbstractMatrix{<: Colorant}, attributes) = RGBAf.(img)
@@ -212,10 +212,10 @@ function per_face_colors(
         if color isa AbstractVector{<: Colorant}
             return FaceIterator(color, faces)
         elseif color isa AbstractArray{<: Number}
-            scaled_colorrange = Makie.apply_scale(colorscale, colorrange)
+            scaled_colorrange = apply_scale(colorscale, colorrange)
             low, high = extrema(scaled_colorrange)
             cvec = map(color[:]) do c
-                scaled_c = Makie.apply_scale(colorscale, c)
+                scaled_c = apply_scale(colorscale, c)
                 if isnan(scaled_c) && nan_color !== nothing
                     return nan_color
                 elseif scaled_c < low && lowclip !== nothing
