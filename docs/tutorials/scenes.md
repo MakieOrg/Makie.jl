@@ -287,13 +287,8 @@ Let's use WGLMakie with it's offline export feature, to create a plot with slide
 ```julia
 using WGLMakie, JSServe
 WGLMakie.activate!()
-Page(offline=true, exportable=true)
-```
-\end{showhtml}
-
-\begin{showhtml}{}
-```julia
 using MeshIO, FileIO, GeometryBasics
+Page(offline=true, exportable=true)
 
 colors = Dict(
     "eyes" => "#000",

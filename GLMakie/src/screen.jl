@@ -123,7 +123,6 @@ function activate!(; inline=LAST_INLINE[], screen_config...)
     LAST_INLINE[] = inline
     Makie.set_screen_config!(GLMakie, screen_config)
     Makie.set_active_backend!(GLMakie)
-    Makie.set_glyph_resolution!(Makie.High)
     return
 end
 
@@ -306,7 +305,6 @@ function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene:
 end
 
 function apply_config!(screen::Screen, config::ScreenConfig; visible::Bool=true, start_renderloop::Bool=true)
-    ShaderAbstractions.switch_context!(screen.glscreen)
     glw = screen.glscreen
     ShaderAbstractions.switch_context!(glw)
     GLFW.SetWindowAttrib(glw, GLFW_FOCUS_ON_SHOW, config.focus_on_show)
@@ -476,7 +474,7 @@ function destroy!(rob::RenderObject)
     # These need explicit clean up because (some of) the source observables
     # remain when the plot is deleted.
     GLAbstraction.switch_context!(rob.context)
-    tex = get_texture!(get_texture_atlas())
+    tex = get_texture!(gl_texture_atlas())
     for (k, v) in rob.uniforms
         if v isa Observable
             Observables.clear(v)

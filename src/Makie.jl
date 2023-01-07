@@ -27,7 +27,6 @@ using Packing
 using SignedDistanceFields
 using Markdown
 using DocStringExtensions # documentation
-using Serialization # serialize events
 using StructArrays
 # Text related packages
 using FreeType
@@ -37,6 +36,7 @@ using LinearAlgebra
 using Statistics
 using MakieCore
 using OffsetArrays
+using Downloads
 
 import RelocatableFolders
 import StatsBase

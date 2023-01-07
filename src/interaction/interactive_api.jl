@@ -56,6 +56,12 @@ function flatten_plots(array, plots = AbstractPlot[])
     plots
 end
 
+function flatten_plots(scene::Scene, plots = AbstractPlot[])
+    flatten_plots(scene.plots, plots)
+    flatten_plots(scene.children, plots)
+    plots
+end
+
 """
     mouse_in_scene(fig/ax/scene[, priority = 0])
 
@@ -135,6 +141,8 @@ function pick_closest(scene::SceneLike, screen, xy, range)
     return selected == (0, 0) ? (nothing, 0) : picks[selected[1], selected[2]]
 end
 
+using InteractiveUtils
+
 """
     pick_sorted(fig/ax/scene, xy::VecLike, range)
 
@@ -144,11 +152,11 @@ sorted by distance to `xy`.
 function pick_sorted(scene::Scene, xy, range)
     screen = getscreen(scene)
     screen === nothing && return Tuple{AbstractPlot, Int}[]
-    pick_sorted(scene, screen, xy, range)
+    return pick_sorted(scene, screen, xy, range)
 end
 
 function pick_sorted(scene::Scene, screen, xy, range)
-    w, h = widths(events(scene).window_area[])
+    w, h = size(scene)
     if !((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h))
         return Tuple{AbstractPlot, Int}[]
     end

@@ -1,7 +1,17 @@
 # News
 
-## v0.19.1
+## master
 - Added the `stephist` plotting function [#2408](https://github.com/JuliaPlots/Makie.jl/pull/2408).
+
+## v0.19.1
+
+- Add `show_data` method for `band` which shows the min and max values of the band at the x position of the cursor [#2497](https://github.com/MakieOrg/Makie.jl/pull/2497).
+- Added `xlabelrotation`, `ylabelrotation` (`Axis`) and `labelrotation` (`Colorbar`) [#2478](https://github.com/MakieOrg/Makie.jl/pull/2478).
+- Fixed forced rasterization in CairoMakie svg files when polygons with colors specified as (color, alpha) tuples were used [#2535](https://github.com/MakieOrg/Makie.jl/pull/2535).
+- Do less copies of Observables in Attributes + plot pipeline [#2443](https://github.com/MakieOrg/Makie.jl/pull/2443). 
+- Add Search Page and tweak Result Ordering [#2474](https://github.com/MakieOrg/Makie.jl/pull/2474).
+- Remove all global attributes from TextureAtlas implementation and fix julia#master [#2498](https://github.com/MakieOrg/Makie.jl/pull/2498). 
+- Use new JSServe, implement WGLMakie picking, improve performance and fix lots of WGLMakie bugs [#2428](https://github.com/MakieOrg/Makie.jl/pull/2428).
 
 ## v0.19.0
 
@@ -163,7 +173,7 @@ role as `datalimits` in `violin` [#2137](https://github.com/MakieOrg/Makie.jl/pu
 - Fixed manual cycling of plot attributes [#1873](https://github.com/MakieOrg/Makie.jl/pull/1873).
 - Fixed type constraints in ticklabelalign attributes [#1882](https://github.com/MakieOrg/Makie.jl/pull/1882).
 
-##  v0.16.4
+## v0.16.4
 
 - Fixed WGLMakie performance bug and added option to set fps via `WGLMakie.activate!(fps=30)`.
 - Implemented `nan_color`, `lowclip`, `highclip` for `image(::Matrix{Float})` in shader.

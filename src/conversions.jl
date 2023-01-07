@@ -915,34 +915,42 @@ to_align(x::Vec2f) = x
 
 const FONT_CACHE = Dict{String, NativeFont}()
 
-"""
-    font conversion
+function load_font(filepath)
+    font = FreeTypeAbstraction.try_load(filepath)
+    if isnothing(font)
+        error("Could not load font file \"$filepath\"")
+    else
+        return font
+    end
+end
 
-a string naming a font, e.g. helvetica
 """
-function to_font(x::String)
-    str = string(x)
+    to_font(str::String)
+
+Loads a font specified by `str` and returns a `NativeFont` object storing the font handle.
+A font can either be specified by a file path, such as "folder/with/fonts/font.otf",
+or by a (partial) name such as "Helvetica", "Helvetica Bold" etc.
+"""
+function to_font(str::String)
     get!(FONT_CACHE, str) do
-        str == "default" && return to_font("TeX Gyre Heros Makie")
-
-        # check if the string points to a font file and load that
-        if isfile(str)
-            font = FreeTypeAbstraction.try_load(str)
-            if isnothing(font)
-                error("Could not load font file $str")
-            else
-                return font
-            end
+        # load default fonts without font search to avoid latency
+        if str == "default" || str == "TeX Gyre Heros Makie"
+            return load_font(assetpath("fonts", "TeXGyreHerosMakie-Regular.otf"))
+        elseif str == "TeX Gyre Heros Makie Bold"
+            return load_font(assetpath("fonts", "TeXGyreHerosMakie-Bold.otf"))
+        elseif str == "TeX Gyre Heros Makie Italic"
+            return load_font(assetpath("fonts", "TeXGyreHerosMakie-Italic.otf"))
+        elseif str == "TeX Gyre Heros Makie Bold Italic"
+            return load_font(assetpath("fonts", "TeXGyreHerosMakie-BoldItalic.otf"))
+        # load fonts directly if they are given as font paths
+        elseif isfile(str)
+            return load_font(str)
         end
-
+        # for all other cases, search for the best match on the system
         fontpath = assetpath("fonts")
         font = FreeTypeAbstraction.findfont(str; additional_fonts=fontpath)
         if font === nothing
             @warn("Could not find font $str, using TeX Gyre Heros Makie")
-            if "tex gyre heros makie" == lowercase(str)
-                # since we fall back to TeX Gyre Heros Makie, we need to check for recursion
-                error("Recursion encountered; TeX Gyre Heros Makie cannot be located in the font path $fontpath")
-            end
             return to_font("TeX Gyre Heros Makie")
         end
         return font
@@ -998,6 +1006,8 @@ to_colorrange(x) = isnothing(x) ? nothing : Vec2f(x)
 convert_attribute(x, ::key"fontsize") = to_fontsize(x)
 to_fontsize(x::Number) = Float32(x)
 to_fontsize(x::AbstractVector{T}) where T <: Number = el32convert(x)
+to_fontsize(x::Vec2) = Vec2f(x)
+to_fontsize(x::AbstractVector{T}) where T <: Vec2 = Vec2f.(x)
 
 convert_attribute(x, ::key"linewidth") = to_linewidth(x)
 to_linewidth(x) = Float32(x)

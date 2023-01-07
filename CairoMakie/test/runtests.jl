@@ -76,6 +76,7 @@ include(joinpath(@__DIR__, "rasterization_tests.jl"))
         load_save(s; kw...) = (save("test.png", s; kw...); load("test.png"))
         @test size(load_save(scene, px_per_unit=2)) == (1600, 1600)
         @test size(load_save(scene, px_per_unit=1)) == (800, 800)
+        rm("test.png")
     end
 end
 

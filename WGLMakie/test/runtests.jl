@@ -1,10 +1,10 @@
-using ElectronDisplay
-ElectronDisplay.CONFIG.showable = showable
-ElectronDisplay.CONFIG.single_window = true
-ElectronDisplay.CONFIG.focus = false
 using ImageMagick, FileIO
 using WGLMakie, Makie, Test
 using Pkg
+using WGLMakie.JSServe
+import Electron
+JSServe.use_electron_display()
+
 path = normpath(joinpath(dirname(pathof(Makie)), "..", "ReferenceTests"))
 Pkg.develop(PackageSpec(path = path))
 using ReferenceTests
