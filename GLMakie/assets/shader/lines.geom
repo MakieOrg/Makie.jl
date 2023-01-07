@@ -19,7 +19,6 @@ out float f_thickness;
 flat out uvec2 f_id;
 
 uniform vec2 resolution;
-uniform float px_per_unit;
 uniform float maxlength;
 uniform float thickness;
 uniform float pattern_length;
@@ -29,16 +28,16 @@ uniform float pattern_length;
 
 vec2 screen_space(vec4 vertex)
 {
-    return vec2(vertex.xy / vertex.w) * resolution*px_per_unit;
+    return vec2(vertex.xy / vertex.w) * resolution;
 }
 void emit_vertex(vec2 position, vec2 uv, int index, float ratio)
 {
     vec4 inpos  = gl_in[index].gl_Position;
     f_uv        = vec2((g_lastlen[index] * ratio) / pattern_length / (thickness+4) / 2.0, uv.y);
     f_color     = g_color[index];
-    gl_Position = vec4((position / (resolution*px_per_unit)) * inpos.w, inpos.z, inpos.w);
+    gl_Position = vec4((position/resolution)*inpos.w, inpos.z, inpos.w);
     f_id        = g_id[index];
-    f_thickness = px_per_unit * thickness;
+    f_thickness = thickness;
     EmitVertex();
 }
 
@@ -76,7 +75,7 @@ void main(void)
     vec2 p2 = screen_space(gl_in[2].gl_Position); // end of current segment, start of next segment
     vec2 p3 = screen_space(gl_in[3].gl_Position); // end of next segment
 
-    float thickness_aa = px_per_unit * thickness + 4;
+    float thickness_aa = thickness+4;
 
     // determine the direction of each of the 3 segments (previous, current, next)
     vec2 v1 = normalize(p2 - p1);
@@ -127,7 +126,7 @@ void main(void)
     float xend   = g_lastlen[2];
     float ratio = length(p2 - p1) / (xend - xstart);
 
-    float uvy = thickness_aa / (px_per_unit * thickness);
+    float uvy = thickness_aa/thickness;
 
     if( dot( v0, v1 ) < MITER_LIMIT ){
         /*
