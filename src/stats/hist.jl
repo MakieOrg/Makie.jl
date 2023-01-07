@@ -55,8 +55,6 @@ $(ATTRIBUTES)
 
         flip_labels_at = Inf,
         label_color = theme(scene, :textcolor),
-        over_background_color = automatic,
-        over_bar_color = automatic,
         label_offset = 5,
         label_font = theme(scene, :font),
         label_size = 20,
