@@ -17,14 +17,17 @@ function block_docs(::Type{Colorbar})
     """
 end
 
-
-function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
-
-    for key in (:colormap, :limits)
-        if key in keys(kwargs)
+function colorbar_check(keys, kwargs_keys)
+    for key in keys
+        if key in kwargs_keys
             error("You should not pass the `$key` attribute to the colorbar when constructing it using an existing plot object. This attribute is copied from the plot object, and setting it from the colorbar will make the plot object and the colorbar go out of sync.")
         end
     end
+end
+
+function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
+    colorbar_check((:colormap, :limits), keys(kwargs))
+
     Colorbar(
         fig_or_scene;
         colormap = plot.colormap,
@@ -35,12 +38,8 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
 end
 
 function Colorbar(fig_or_scene, heatmap::Union{Heatmap, Image}; kwargs...)
+    colorbar_check((:colormap, :limits, :highclip, :lowclip), keys(kwargs))
 
-    for key in (:colormap, :limits, :highclip, :lowclip)
-        if key in keys(kwargs)
-            error("You should not pass the `$key` attribute to the colorbar when constructing it using an existing plot object. This attribute is copied from the plot object, and setting it from the colorbar will make the plot object and the colorbar go out of sync.")
-        end
-    end
     Colorbar(
         fig_or_scene;
         colormap = heatmap.colormap,
@@ -53,12 +52,7 @@ function Colorbar(fig_or_scene, heatmap::Union{Heatmap, Image}; kwargs...)
 end
 
 function Colorbar(fig_or_scene, contourf::Union{Contourf, Tricontourf}; kwargs...)
-
-    for key in (:colormap, :limits, :highclip, :lowclip)
-        if key in keys(kwargs)
-            error("You should not pass the `$key` attribute to the colorbar when constructing it using an existing plot object. This attribute is copied from the plot object, and setting it from the colorbar will make the plot object and the colorbar go out of sync.")
-        end
-    end
+    colorbar_check((:colormap, :limits, :highclip, :lowclip), keys(kwargs))
 
     steps = contourf._computed_levels
 
