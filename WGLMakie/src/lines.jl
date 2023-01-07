@@ -11,13 +11,10 @@ function topoint(x::AbstractArray{<:Tuple{P,P}}) where {P<:Point}
     return topoint(reinterpret(P, x))
 end
 
+array2color(colors::AbstractArray{<:Colorant}, _, _, _) = RGBAf.(colors)
 function array2color(colors, cmap, crange, cscale)
     cmap = RGBAf.(Colors.color.(to_colormap(cmap)), 1.0)
     return Makie.interpolated_getindex.((cmap,), apply_scale(cscale, colors), (apply_scale(cscale, crange),))
-end
-
-function array2color(colors::AbstractArray{<:Colorant}, _, _, _)
-    return RGBAf.(colors)
 end
 
 function create_shader(scene::Scene, plot::Union{Lines,LineSegments})

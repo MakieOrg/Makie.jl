@@ -818,7 +818,7 @@ function expandlimits(lims, margin_low, margin_high, scale)
     w_scaled = lims_scaled[2] - lims_scaled[1]
     d_low_scaled = w_scaled * margin_low
     d_high_scaled = w_scaled * margin_high
-    inverse = inverse_transform(scale)
+    inverse = Makie.inverse_transform(scale)
     lims = inverse.((lims_scaled[1] - d_low_scaled, lims_scaled[2] + d_high_scaled))
 
     # guard against singular limits from something like a vline or hline
