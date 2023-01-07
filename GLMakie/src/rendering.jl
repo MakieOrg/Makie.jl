@@ -1,8 +1,8 @@
 function setup!(screen::Screen)
     glEnable(GL_SCISSOR_TEST)
-    if isopen(screen)
+    if isopen(screen) && !isnothing(screen.root_scene)
         sf = screen.px_per_unit[]
-        glScissor(0, 0, round.(Int, size(screen) .* sf)...)
+        glScissor(0, 0, round.(Int, size(screen.root_scene) .* sf)...)
         glClearColor(1, 1, 1, 1)
         glClear(GL_COLOR_BUFFER_BIT)
         for (id, scene) in screen.screens
@@ -47,7 +47,7 @@ function render_frame(screen::Screen; resize_buffers=true)
     fb = screen.framebuffer
     if resize_buffers && !isnothing(screen.root_scene)
         sf = screen.px_per_unit[]
-        resize!(fb, round.(Int, sf .* size(screen))...)
+        resize!(fb, round.(Int, sf .* size(screen.root_scene))...)
     end
 
     # prepare stencil (for sub-scenes)

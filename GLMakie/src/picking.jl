@@ -12,7 +12,7 @@ function pick_native(screen::Screen, rect::Rect2i)
     glReadBuffer(GL_COLOR_ATTACHMENT1)
     rx, ry = minimum(rect)
     rw, rh = widths(rect)
-    w, h = size(screen)
+    w, h = size(screen.root_scene)
     if rx > 0 && ry > 0 && rx + rw <= w && ry + rh <= h
         rx, ry, rw, rh = round.(Int, screen.px_per_unit[] .* (rx, ry, rw, rh))
         sid = zeros(SelectionID{UInt32}, rw, rh)
@@ -31,7 +31,7 @@ function pick_native(screen::Screen, xy::Vec{2, Float64})
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
     glReadBuffer(GL_COLOR_ATTACHMENT1)
     x, y = floor.(Int, xy)
-    w, h = size(screen)
+    w, h = size(screen.root_scene)
     if x > 0 && y > 0 && x <= w && y <= h
         x, y = round.(Int, screen.px_per_unit[] .* (x, y))
         sid = Base.RefValue{SelectionID{UInt32}}()
@@ -65,7 +65,7 @@ end
 # Skips one set of allocations
 function Makie.pick_closest(scene::Scene, screen::Screen, xy, range)
     isopen(screen) || return (nothing, 0)
-    w, h = size(screen)
+    w, h = size(scene)
     ((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h)) || return (nothing, 0)
 
     x0, y0 = max.(1, floor.(Int, xy .- range))
@@ -95,7 +95,7 @@ end
 # Skips some allocations
 function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     isopen(screen) || return (nothing, 0)
-    w, h = size(screen)
+    w, h = size(scene)
     if !((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h))
         return Tuple{AbstractPlot, Int}[]
     end

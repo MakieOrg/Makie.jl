@@ -433,7 +433,7 @@ Base.wait(scene::Scene) = wait(Makie.getscreen(scene))
 Base.show(io::IO, screen::Screen) = print(io, "GLMakie.Screen(...)")
 
 Base.isopen(x::Screen) = isopen(x.glscreen)
-Base.size(x::Screen) = !isnothing(x.root_scene) ? size(x.root_scene) : (0, 0)
+Base.size(x::Screen) = size(x.framebuffer)
 
 function Makie.insertplots!(screen::Screen, scene::Scene)
     ShaderAbstractions.switch_context!(screen.glscreen)
@@ -812,7 +812,7 @@ function scalechangecb(screen, window, xscale, yscale)
         screen.px_per_unit[] = sf
     end
     screen.scalefactor[] = sf
-    resize!(screen, size(screen)...)
+    resize!(screen, size(screen.root_scene)...)
     return
 end
 
