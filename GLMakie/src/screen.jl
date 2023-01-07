@@ -274,6 +274,13 @@ function empty_screen(debugging::Bool; reuse=true)
     )
     GLFW.SetWindowRefreshCallback(window, window -> refreshwindowcb(window, screen))
     GLFW.SetWindowContentScaleCallback(window, (window, xs, ys) -> scalechangecb(screen, window, xs, ys))
+    on(screen.scalefactor) do sf
+        if !isnothing(screen.root_scene)
+            resize!(screen, size(screen.root_scene)...)
+        end
+        return nothing
+    end
+
     return screen
 end
 
