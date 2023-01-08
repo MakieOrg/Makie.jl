@@ -54,8 +54,8 @@ function deploy(params; root = Documenter.Utilities.currentdir(), target)
     end
 end
 
-function push_build(
-        root, temp, repo;
+function push_build(;
+        root, temp, repo,
         branch="gh-pages", dirname="", target="site", sha="",
         config, subfolder,
         is_preview::Bool
