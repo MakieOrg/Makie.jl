@@ -112,7 +112,7 @@ function push_build(;
 
         # Copy docs to `subfolder` directory.
         deploy_dir = subfolder === nothing ? dirname : joinpath(dirname, subfolder)
-        gitrm_copy(target_dir, deploy_dir)
+        Documenter.gitrm_copy(target_dir, deploy_dir)
 
         open(joinpath(deploy_dir, "siteinfo.js"), "w") do io
             println(io, """
