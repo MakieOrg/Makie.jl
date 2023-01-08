@@ -67,6 +67,11 @@ function push_build(;
 
     git = Documenter.git
 
+    NO_KEY_ENV = Dict(
+        "DOCUMENTER_KEY" => nothing,
+        "DOCUMENTER_KEY_PREVIEWS" => nothing,
+    )
+
     # Generate a closure with common commands for ssh and https
     function git_commands(sshconfig=nothing)
         # Setup git.
