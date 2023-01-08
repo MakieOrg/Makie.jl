@@ -754,7 +754,7 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
     matcap = to_value(get(attributes, :matcap, nothing))
 
     color = hasproperty(mesh, :color) ? mesh.color : color
-    meshpoints = decompose(Point3f, mesh)::Vector{Point3f}
+    meshpoints = decompose(Point3{Float64}, mesh)::Vector{Point3{Float64}}
     meshfaces = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
     meshnormals = decompose_normals(mesh)::Vector{Vec3f}
     meshuvs = texturecoordinates(mesh)::Union{Nothing, Vector{Vec2f}}
@@ -800,8 +800,8 @@ function draw_mesh3D(
     vs = broadcast(meshpoints, (func,)) do v, f
         # Should v get a nan2zero?
         v = Makie.apply_transform(f, v, space)
-        p4d = to_ndim(Vec4f, scale .* to_ndim(Vec3f, v, 0f0), 1f0)
-        view * (model * p4d .+ to_ndim(Vec4f, pos, 0f0))
+        p4d = to_ndim(Vec4{Float64}, scale .* to_ndim(Vec3{Float64}, v, 0.0), 1.0)
+        view * (model * p4d .+ to_ndim(Vec4{Float64}, pos, 0.0))
     end
 
     ns = map(n -> normalize(normalmatrix * n), meshnormals)
