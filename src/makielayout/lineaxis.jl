@@ -185,7 +185,7 @@ end
 function update_tickpos_string(closure_args, tickvalues_labels_unfiltered, reversed::Bool, scale)
 
     tickstrings, tickpositions, tickvalues, pos_extents_horizontal, limits_obs = closure_args
-    limits = limits_obs[]::NTuple{2, Float32}
+    limits = limits_obs[]::NTuple{2, Float64}
 
     tickvalues_unfiltered, tickstrings_unfiltered = tickvalues_labels_unfiltered
 
@@ -226,7 +226,7 @@ function update_tickpos_string(closure_args, tickvalues_labels_unfiltered, rever
     return
 end
 
-function update_minor_ticks(minortickpositions, limits::NTuple{2, Float32}, pos_extents_horizontal, minortickvalues, scale, reversed::Bool)
+function update_minor_ticks(minortickpositions, limits::NTuple{2, Float64}, pos_extents_horizontal, minortickvalues, scale, reversed::Bool)
     position::Float32, extents_uncorrected::NTuple{2, Float32}, horizontal::Bool = pos_extents_horizontal
 
     extents = reversed ? reverse(extents_uncorrected) : extents_uncorrected
@@ -266,7 +266,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
     pos_extents_horizontal = lift(calculate_horizontal_extends, endpoints; ignore_equal_values=true)
     horizontal = lift(x-> x[3], pos_extents_horizontal)
     # Tuple constructor converts more than `convert(NTuple{2, Float32}, x)` but we still need the conversion to Float32 tuple:
-    limits = lift(x-> convert(NTuple{2, Float32}, Tuple(x)), attrs.limits; ignore_equal_values=true)
+    limits = lift(x-> convert(NTuple{2, Float64}, Tuple(x)), attrs.limits; ignore_equal_values=true)
     flipped = lift(x-> convert(Bool, x), attrs.flipped; ignore_equal_values=true)
 
     ticksnode = Observable(Point2f[]; ignore_equal_values=true)
@@ -407,9 +407,9 @@ function LineAxis(parent::Scene, attrs::Attributes)
 
     decorations[:labeltext] = labeltext
 
-    tickvalues = Observable(Float32[]; ignore_equal_values=true)
+    tickvalues = Observable(Float64[]; ignore_equal_values=true)
 
-    tickvalues_labels_unfiltered = Observable{Tuple{Vector{Float32},Vector{AbstractString}}}()
+    tickvalues_labels_unfiltered = Observable{Tuple{Vector{Float64},Vector{AbstractString}}}()
     map!(tickvalues_labels_unfiltered, pos_extents_horizontal, limits, ticks, tickformat, attrs.scale) do (position, extents, horizontal),
             limits, ticks, tickformat, scale
         get_ticks(ticks, scale, tickformat, limits...)
@@ -422,7 +422,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
         Observable((tickstrings, tickpositions, tickvalues, pos_extents_horizontal, limits)),
         tickvalues_labels_unfiltered, reversed, attrs.scale)
 
-    minortickvalues = Observable(Float32[]; ignore_equal_values=true)
+    minortickvalues = Observable(Float64[]; ignore_equal_values=true)
     minortickpositions = Observable(Point2f[]; ignore_equal_values=true)
 
     onany(tickvalues, minorticks) do tickvalues, minorticks

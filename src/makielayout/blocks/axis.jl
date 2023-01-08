@@ -79,12 +79,11 @@ function register_events!(ax, scene)
 end
 
 function update_axis_camera(camera::Camera, t, lims, xrev::Bool, yrev::Bool)
-    nearclip = -10_000f0
-    farclip = 10_000f0
+    nearclip = -10_000.0
+    farclip  =  10_000.0
 
     # we are computing transformed camera position, so this isn't space dependent
     tlims = Makie.apply_transform(t, lims) 
-
     left, bottom = minimum(tlims)
     right, top = maximum(tlims)
 
@@ -92,11 +91,11 @@ function update_axis_camera(camera::Camera, t, lims, xrev::Bool, yrev::Bool)
     bottomtop = yrev ? (top, bottom) : (bottom, top)
 
     projection = Makie.orthographicprojection(
-        Float32,
+        Float64,
         leftright...,
         bottomtop..., nearclip, farclip)
 
-    Makie.set_proj_view!(camera, projection, Makie.Mat4f(Makie.I))
+    Makie.set_proj_view!(camera, projection, Makie.Mat4{Float64}(Makie.I))
     return
 end
 
@@ -177,8 +176,8 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     # initialize either with user limits, or pick defaults based on scales
     # so that we don't immediately error
-    targetlimits = Observable{Rect2f}(defaultlimits(ax.limits[], ax.xscale[], ax.yscale[]))
-    finallimits = Observable{Rect2f}(targetlimits[]; ignore_equal_values=true)
+    targetlimits = Observable{Rect2{Float64}}(defaultlimits(ax.limits[], ax.xscale[], ax.yscale[]))
+    finallimits = Observable{Rect2{Float64}}(targetlimits[]; ignore_equal_values=true)
     setfield!(ax, :targetlimits, targetlimits)
     setfield!(ax, :finallimits, finallimits)
 
@@ -572,7 +571,7 @@ function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
             (lo, hi)
         end
     else
-        convert(Tuple{Float32, Float32}, tuple(mxlims...))
+        convert(Tuple{Float64, Float64}, tuple(mxlims...))
     end
     ylims = if isnothing(mylims) || mylims[1] === nothing || mylims[2] === nothing
         l = if yauto
@@ -588,7 +587,7 @@ function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
             (lo, hi)
         end
     else
-        convert(Tuple{Float32, Float32}, tuple(mylims...))
+        convert(Tuple{Float64, Float64}, tuple(mylims...))
     end
 
     if ax isa Axis3
@@ -606,7 +605,7 @@ function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
                 (lo, hi)
             end
         else
-            convert(Tuple{Float32, Float32}, tuple(mzlims...))
+            convert(Tuple{Float64, Float64}, tuple(mzlims...))
         end
     end
 
@@ -623,7 +622,7 @@ function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
     end
 
     if ax isa Axis
-        ax.targetlimits[] = BBox(xlims..., ylims...)
+        ax.targetlimits[] = Rect2{Float64}(xlims[1], ylims[1], xlims[2]-xlims[1], ylims[2]-ylims[1])
     elseif ax isa Axis3
         ax.targetlimits[] = Rect3f(
             Vec3f(xlims[1], ylims[1], zlims[1]),
@@ -1316,7 +1315,9 @@ Makie.transform_func(ax::Axis) = Makie.transform_func(ax.scene)
 # these functions pick limits for different x and y scales, so that
 # we don't pick values that are invalid, such as 0 for log etc.
 function defaultlimits(userlimits::Tuple{Real, Real, Real, Real}, xscale, yscale)
-    BBox(userlimits...)
+    # BBox(userlimits...)
+    x0, x1, y0, x1 = userlimits
+    Rect2{Float64}(x0, y0, x1-x0, y1-y0)
 end
 
 defaultlimits(l::Tuple{Any, Any, Any, Any}, xscale, yscale) = defaultlimits(((l[1], l[2]), (l[3], l[4])), xscale, yscale)
@@ -1324,7 +1325,8 @@ defaultlimits(l::Tuple{Any, Any, Any, Any}, xscale, yscale) = defaultlimits(((l[
 function defaultlimits(userlimits::Tuple{Any, Any}, xscale, yscale)
     xl = defaultlimits(userlimits[1], xscale)
     yl = defaultlimits(userlimits[2], yscale)
-    BBox(xl..., yl...)
+    # BBox(xl..., yl...)
+    Rect2{Float64}(xl[1], yl[1], xl[2]-xl[1], yl[2]-yl[1])
 end
 
 defaultlimits(limits::Nothing, scale) = defaultlimits(scale)
