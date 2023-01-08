@@ -330,7 +330,7 @@ Allows to supply `f`, which gets applied to every point.
 """
 function matrix_grid(f, x::AbstractArray, y::AbstractArray, z::AbstractMatrix)
     g = map(CartesianIndices(z)) do i
-        return f(Point3f(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), z[i]))
+        return f(Point3(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), z[i]))
     end
     return vec(g)
 end
