@@ -147,51 +147,14 @@ function push_build(;
         end
     end
 
-    # Get the parts of the repo path and create upstream repo path
-    user, host, upstream = Documenter.user_host_upstream(repo)
-
-    keyfile = abspath(joinpath(root, ".documenter"))
+    # upstream is used by the closures above, kind of hard to track
+    upstream = Documenter.authenticated_repo_url(config)
     try
-        keycontent = Documenter.documenter_key(config)
-        write(keyfile, Documenter.base64decode(keycontent))
-    catch e
-        @error """
-        Documenter failed to decode the DOCUMENTER_KEY environment variable.
-        Make sure that the environment variable is properly set up as a Base64-encoded string
-        of the SSH private key. You may need to re-generate the keys with DocumenterTools.
-        """
-        rm(keyfile; force=true)
-        rethrow(e)
-    end
-    chmod(keyfile, 0o600)
-
-    try
-        mktemp() do sshconfig, io
-            print(io,
-            """
-            Host $host
-                StrictHostKeyChecking no
-                User $user
-                HostName $host
-                IdentityFile "$keyfile"
-                IdentitiesOnly yes
-                BatchMode yes
-            """)
-            close(io)
-            chmod(sshconfig, 0o600)
-            # git config core.sshCommand requires git 2.10.0, but
-            # GIT_SSH_COMMAND works from 2.3.0 so define both.
-            withenv("GIT_SSH_COMMAND" => "ssh -F $(sshconfig)", NO_KEY_ENV...) do
-                cd(() -> git_commands(sshconfig), temp)
-            end
-        end
+        cd(() -> withenv(git_commands, NO_KEY_ENV...), temp)
         Documenter.post_status(config; repo=repo, type="success", subfolder=subfolder)
     catch e
         @error "Failed to push:" exception=(e, catch_backtrace())
         Documenter.post_status(config; repo=repo, type="error")
         rethrow(e)
-    finally
-        # Remove the unencrypted private key.
-        isfile(keyfile) && rm(keyfile)
     end
 end
