@@ -624,9 +624,9 @@ function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
     if ax isa Axis
         ax.targetlimits[] = Rect2{Float64}(xlims[1], ylims[1], xlims[2]-xlims[1], ylims[2]-ylims[1])
     elseif ax isa Axis3
-        ax.targetlimits[] = Rect3f(
-            Vec3f(xlims[1], ylims[1], zlims[1]),
-            Vec3f(xlims[2] - xlims[1], ylims[2] - ylims[1], zlims[2] - zlims[1]),
+        ax.targetlimits[] = Rect3(
+            Vec3(xlims[1], ylims[1], zlims[1]),
+            Vec3(xlims[2] - xlims[1], ylims[2] - ylims[1], zlims[2] - zlims[1]),
         )
     end
     nothing

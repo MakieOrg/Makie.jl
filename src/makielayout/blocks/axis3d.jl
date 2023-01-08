@@ -9,7 +9,7 @@ function initialize_block!(ax::Axis3)
     end
     notify(ax.protrusions)
 
-    finallimits = Observable(Rect3f(Vec3f(0f0, 0f0, 0f0), Vec3f(100f0, 100f0, 100f0)))
+    finallimits = Observable(Rect3(Vec3(0.0), Vec3(100.0)))
     setfield!(ax, :finallimits, finallimits)
 
     scenearea = lift(round_to_IRect2D, ax.layoutobservables.computedbbox)
@@ -218,10 +218,10 @@ function calculate_matrices(limits, px_area, elev, azim, perspectiveness, aspect
     view_matrix = lookat_matrix * scale_matrix
 
     projection_matrix = projectionmatrix(view_matrix, limits, eyepos, radius, azim, elev, angle, w, h, scales, viewmode)
-
+    
     # for eyeposition dependent algorithms, we need to present the position as if
     # there was no scaling applied
-    eyeposition = Vec3f(inv(scale_matrix) * Vec4f(eyepos..., 1))
+    eyeposition = Vec3{Float64}(inv(scale_matrix) * Vec4(eyepos..., 1.0))
 
     view_matrix, projection_matrix, eyeposition
 end
@@ -240,8 +240,8 @@ function projectionmatrix(viewmatrix, limits, eyepos, radius, azim, elev, angle,
         pm = Makie.perspectiveprojection(Float64, angle, aspect_ratio, near, far)
 
         if viewmode in (:fitzoom, :stretch)
-            points = decompose(Point3f, limits)
-            projpoints = Ref(pm * viewmatrix) .* to_ndim.(Point4f, points, 1)
+            points = decompose(Point3{Float64}, limits)
+            projpoints = Ref(pm * viewmatrix) .* to_ndim.(Point4{Float64}, points, 1)
 
             maxx = maximum(x -> abs(x[1] / x[4]), projpoints)
             maxy = maximum(x -> abs(x[2] / x[4]), projpoints)
@@ -302,15 +302,15 @@ function autolimits!(ax::Axis3)
     ylims = getlimits(ax, 2)
     zlims = getlimits(ax, 3)
 
-    ori = Vec3f(xlims[1], ylims[1], zlims[1])
-    widths = Vec3f(xlims[2] - xlims[1], ylims[2] - ylims[1], zlims[2] - zlims[1])
+    ori = Vec3(xlims[1], ylims[1], zlims[1])
+    widths = Vec3(xlims[2] - xlims[1], ylims[2] - ylims[1], zlims[2] - zlims[1])
 
     enlarge_factor = 0.1
 
     nori = ori .- (0.5 * enlarge_factor) * widths
     nwidths = widths .* (1 + enlarge_factor)
 
-    lims = Rect3f(nori, nwidths)
+    lims = Rect3(nori, nwidths)
 
     ax.finallimits[] = lims
     nothing
@@ -453,10 +453,10 @@ end
 # small z value
 function to_topscene_z_2d(p3d, scene)
     o = scene.px_area[].origin
-    p2d = Point2f(o + Makie.project(scene, p3d))
+    p2d = Point2{Float64}(o + Makie.project(scene, p3d))
     # -10000 is an arbitrary weird constant that in preliminary testing didn't seem
     # to clip into plot objects anymore
-    Point3f(p2d..., -10000)
+    return Point3(p2d..., -10000.0)
 end
 
 function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, ticknode, miv, min1, min2, azimuth)
@@ -518,7 +518,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
             tick_segments, ticklabels, attr(:ticklabelpad)) do pxa, pv, ticksegs, ticklabs, pad
 
         o = pxa.origin
-
+        
         points = map(ticksegs) do (tstart, tend)
             tstartp = Point2f(o + Makie.project(scene, tstart))
             tendp = Point2f(o + Makie.project(scene, tend))
@@ -550,7 +550,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
 
     translate!(ticklabels, 0, 0, 1000)
 
-    label_position = Observable(Point2f(0))
+    label_position = Observable(Point2(0.0))
     label_rotation = Observable(0f0)
     label_align = Observable((:center, :top))
 
@@ -569,8 +569,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         p2 = dpoint(maximum(lims)[dim], f1, f2)
 
         # project them into screen space
-        pp1 = Point2f(o + Makie.project(scene, p1))
-        pp2 = Point2f(o + Makie.project(scene, p2))
+        pp1 = Point2e(o + Makie.project(scene, p1))
+        pp2 = Point2e(o + Makie.project(scene, p2))
 
         # find the midpoint
         midpoint = (pp1 + pp2) ./ 2
