@@ -47,29 +47,29 @@ end
 function connect_camera!(gl_attributes, cam, space = gl_attributes[:space])
     for key in (:pixel_space, :resolution, :eyeposition)
         # Overwrite these, user defined attributes shouldn't use those!
-        gl_attributes[key] = copy(getfield(cam, key))
+        gl_attributes[key] = getfield(cam, key)
     end
     get!(gl_attributes, :view) do
         return lift(cam.view, space) do view, space
-            return is_data_space(space) ? view : Mat4f(I)
+            return is_data_space(space) ? Mat4f(view) : Mat4f(I)
         end
     end
     get!(gl_attributes, :normalmatrix) do
         return lift(gl_attributes[:view], gl_attributes[:model]) do v, m
             i = Vec(1, 2, 3)
-            return transpose(inv(v[i, i] * m[i, i]))
+            return transpose(inv(Mat3f(v[i, i]) * Mat3f(m[i, i])))
         end
     end
 
     get!(gl_attributes, :projection) do
         return lift(cam.projection, cam.pixel_space, space) do _, _, space
-            return Makie.space_to_clip(cam, space, false)
+            return Mat4f(Makie.space_to_clip(cam, space, false))
         end
     end
 
     get!(gl_attributes, :projectionview) do
         return lift(cam.projectionview, cam.pixel_space, space) do _, _, space
-            Makie.space_to_clip(cam, space, true)
+            Mat4f(Makie.space_to_clip(cam, space, true))
         end
     end
 
@@ -203,12 +203,13 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Union{Scatte
         space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         positions = handle_view(x[1], gl_attributes)
         positions = apply_transform(transform_func_obs(x), positions, space)
+        positions = map(el32convert, positions)
 
         if isa(x, Scatter)
             mspace = get(gl_attributes, :markerspace, :pixel)
             cam = scene.camera
             gl_attributes[:preprojection] = map(space, mspace, cam.projectionview, cam.resolution) do space, mspace, _, _
-                return Makie.clip_to_space(cam, mspace) * Makie.space_to_clip(cam, space)
+                return Mat4f(Makie.clip_to_space(cam, mspace) * Makie.space_to_clip(cam, space))
             end
             # fast pixel does its own setup
             if !(marker[] isa FastPixel)
@@ -274,6 +275,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
         space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         positions = handle_view(x[1], data)
         positions = apply_transform(transform_func_obs(x), positions, space)
+        positions = map(el32convert, positions)
         handle_intensities!(data)
         connect_camera!(data, scene.camera)
         return draw_lines(screen, positions, data)
@@ -294,6 +296,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::LineSegments
         space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         positions = handle_view(x.converted[1], data)
         positions = apply_transform(transform_func_obs(x), positions, space)
+        positions = map(el32convert, positions)
         if haskey(data, :color) && data[:color][] isa AbstractVector{<: Number}
             c = pop!(data, :color)
             data[:color] = el32convert(c)
@@ -329,7 +332,6 @@ function draw_atomic(screen::Screen, scene::Scene,
         positions, char_offset, quad_offset, uv_offset_width, scale = map((1, 2, 3, 4, 5)) do i
             lift(getindex, glyph_data, i)
         end
-
 
         filter!(gl_attributes) do (k, v)
             # These are liftkeys without model
@@ -373,9 +375,8 @@ function draw_atomic(screen::Screen, scene::Scene,
         gl_attributes[:distancefield] = get_texture!(atlas)
         gl_attributes[:visible] = x.visible
         cam = scene.camera
-        # gl_attributes[:preprojection] = Observable(Mat4f(I))
         gl_attributes[:preprojection] = map(space, markerspace, cam.projectionview, cam.resolution) do s, ms, pv, res
-            Makie.clip_to_space(cam, ms) * Makie.space_to_clip(cam, s)
+            Mat4f(Makie.clip_to_space(cam, ms) * Makie.space_to_clip(cam, s))
         end
         connect_camera!(gl_attributes, cam, markerspace)
 
@@ -458,10 +459,10 @@ function draw_atomic(screen::Screen, scene::Scene, x::Image)
 end
 
 function update_positions(mesh::GeometryBasics.Mesh, positions)
-    points = coordinates(mesh)
+    points = el32convert(positions)
     attr = GeometryBasics.attributes(points)
     delete!(attr, :position) # position == metafree(points)
-    return GeometryBasics.Mesh(meta(positions; attr...), faces(mesh))
+    return GeometryBasics.Mesh(meta(points; attr...), faces(mesh))
 end
 
 function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, space=:data)
@@ -492,9 +493,12 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, space=:data)
     end
     mesh = map(mesh, transfunc, space) do mesh, func, space
         if !Makie.is_identity_transform(func)
-            return update_positions(mesh, apply_transform.(Ref(func), mesh.position, space))
+            pos = apply_transform.(Ref(func), mesh.position, space)
+        else
+            pos = mesh.position
         end
-        return mesh
+        m = update_positions(mesh, pos)
+        return m
     end
     return draw_mesh(screen, mesh, gl_attributes)
 end
@@ -545,14 +549,14 @@ function draw_atomic(screen::Screen, scene::Scene, x::Surface)
             xypos = map(t, x[1], x[2], space) do t, x, y, space
                 # Only if transform doesn't do anything, we can stay linear in 1/2D
                 if Makie.is_identity_transform(t)
-                    return (x, y)
+                    return (el32convert(x), el32convert(y))
                 else
                     matrix = if x isa AbstractMatrix && y isa AbstractMatrix
                         apply_transform.((t,), Point.(x, y), space)
                     else
                         # If we do any transformation, we have to assume things aren't on the grid anymore
                         # so x + y need to become matrices.
-                        [apply_transform(t, Point(x, y), space) for x in x, y in y]
+                        Point3f[apply_transform(t, Point(x, y), space) for x in x, y in y]
                     end
                     return (first.(matrix), last.(matrix))
                 end
