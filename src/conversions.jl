@@ -69,12 +69,12 @@ convert_single_argument(x) = x
 
 # replace missings with NaNs
 function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Real}})
-    [ismissing(x) ? NaN32 : convert(Float32, x) for x in a]
+    [ismissing(x) ? NaN : convert(Float64, x) for x in a]
 end
 
 # same for points
 function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Point{N}}}) where N
-    [ismissing(x) ? Point{N, Float32}(NaN32) : Point{N, Float32}(x) for x in a]
+    [ismissing(x) ? Point{N, Float64}(NaN) : Point{N, Float64}(x) for x in a]
 end
 
 ################################################################################
@@ -85,19 +85,19 @@ end
 Wrap a single point or equivalent object in a single-element array.
 """
 function convert_arguments(::PointBased, x::Real, y::Real)
-    ([Point2f(x, y)],)
+    ([Point2e(x, y)],)
 end
 
 function convert_arguments(::PointBased, x::Real, y::Real, z::Real)
-    ([Point3f(x, y, z)],)
+    ([Point3e(x, y, z)],)
 end
 
 function convert_arguments(::PointBased, position::VecTypes{N, <: Number}) where N
-    ([convert(Point{N, Float32}, position)],)
+    ([convert(Point{N, Float64}, position)],)
 end
 
 function convert_arguments(::PointBased, positions::AbstractVector{<: VecTypes{N, <: Number}}) where N
-    (elconvert(Point{N, Float32}, positions),)
+    (elconvert(Point{N, Float64}, positions),)
 end
 
 function convert_arguments(::PointBased, positions::SubArray{<: VecTypes, 1})
@@ -110,7 +110,7 @@ Enables to use scatter like a surface plot with x::Vector, y::Vector, z::Matrix
 spanning z over the grid spanned by x y
 """
 function convert_arguments(::PointBased, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
-    (vec(Point3f.(x, y', z)),)
+    (vec(Point3e.(x, y', z)),)
 end
 """
     convert_arguments(P, x, y, z)::(Vector)
@@ -119,7 +119,7 @@ Takes vectors `x`, `y`, and `z` and turns it into a vector of 3D points of the v
 from `x`, `y`, and `z`.
 `P` is the plot Type (it is optional).
 """
-convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVector) = (Point3f.(x, y, z),)
+convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVector) = (Point3e.(x, y, z),)
 
 """
     convert_arguments(P, x)::(Vector)
@@ -133,9 +133,11 @@ function convert_arguments(::PointBased, pos::AbstractMatrix{<: Number})
     (to_vertices(pos),)
 end
 
-convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}) = (Point2f.(x, y),)
+function convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real})
+    (Point2e.(x, y),)
+end
 
-convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real}) = (Point3f.(x, y, z),)
+convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real}) = (Point3e.(x, y, z),)
 
 """
     convert_arguments(P, y)::Vector
@@ -155,7 +157,9 @@ from `x` and `y`.
 `P` is the plot Type (it is optional).
 """
 #convert_arguments(::PointBased, x::RealVector, y::RealVector) = (Point2f.(x, y),)
-convert_arguments(P::PointBased, x::ClosedInterval, y::RealVector) = convert_arguments(P, LinRange(extrema(x)..., length(y)), y)
+function convert_arguments(P::PointBased, x::ClosedInterval, y::RealVector)
+    return convert_arguments(P, LinRange(extrema(x)..., length(y)), y)
+end
 convert_arguments(P::PointBased, x::RealVector, y::ClosedInterval) = convert_arguments(P, x, LinRange(extrema(y)..., length(x)))
 
 
@@ -168,11 +172,11 @@ Takes an input `Rect` `x` and decomposes it to points.
 """
 function convert_arguments(P::PointBased, x::Rect2)
     # TODO fix the order of decompose
-    return convert_arguments(P, decompose(Point2f, x)[[1, 2, 4, 3]])
+    return convert_arguments(P, decompose(Point2e, x)[[1, 2, 4, 3]])
 end
 
 function convert_arguments(P::PointBased, mesh::AbstractMesh)
-    return convert_arguments(P, decompose(Point3f, mesh))
+    return convert_arguments(P, decompose(Point3e, mesh))
 end
 
 function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) where {P<:AbstractPoint}
@@ -181,18 +185,18 @@ function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) wh
 end
 
 function convert_arguments(P::PointBased, rect::Rect3)
-    return (decompose(Point3f, rect),)
+    return (decompose(Point3e, rect),)
 end
 
 function convert_arguments(P::Type{<: LineSegments}, rect::Rect3)
     f = decompose(LineFace{Int}, rect)
-    p = connect(decompose(Point3f, rect), f)
+    p = connect(decompose(Point3e, rect), f)
     return convert_arguments(P, p)
 end
 
 function convert_arguments(::Type{<: Lines}, rect::Rect3)
-    points = unique(decompose(Point3f, rect))
-    push!(points, Point3f(NaN)) # use to seperate linesegments
+    points = unique(decompose(Point3e, rect))
+    push!(points, Point3e(NaN)) # use to seperate linesegments
     return (points[[1, 2, 3, 4, 1, 5, 6, 2, 9, 6, 8, 3, 9, 5, 7, 4, 9, 7, 8]],)
 end
 """
@@ -213,7 +217,7 @@ Takes an input `Array{LineString}` or a `MultiLineString` and decomposes it to p
 function convert_arguments(PB::PointBased, linestring::Union{Array{<:LineString}, MultiLineString})
     arr = copy(convert_arguments(PB, linestring[1])[1])
     for ls in 2:length(linestring)
-        push!(arr, Point2f(NaN))
+        push!(arr, Point2e(NaN))
         append!(arr, convert_arguments(PB, linestring[ls])[1])
     end
     return (arr,)
@@ -229,12 +233,12 @@ function convert_arguments(PB::PointBased, pol::Polygon)
     arr = copy(convert_arguments(PB, pol.exterior)[1])
     push!(arr, arr[1]) # close exterior
     if !isempty(pol.interiors)
-        push!(arr, Point2f(NaN))
+        push!(arr, Point2e(NaN))
         for interior in pol.interiors
             inter = convert_arguments(PB, interior)[1]
             append!(arr, inter)
             # close interior + separate!
-            push!(arr, inter[1], Point2f(NaN))
+            push!(arr, inter[1], Point2e(NaN))
         end
     end
     return (arr,)
@@ -249,7 +253,7 @@ Takes an input `Array{Polygon}` or a `MultiPolygon` and decomposes it to points.
 function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon}, MultiPolygon})
     arr = copy(convert_arguments(PB, mp[1])[1])
     for p in 2:length(mp)
-        push!(arr, Point2f(NaN))
+        push!(arr, Point2e(NaN))
         append!(arr, convert_arguments(PB, mp[p])[1])
     end
     return (arr,)
@@ -430,7 +434,7 @@ end
 
 function convert_arguments(::Type{<: Lines}, x::Rect2)
     # TODO fix the order of decompose
-    points = decompose(Point2f, x)
+    points = decompose(Point2e, x)
     return (points[[1, 2, 4, 3, 1]],)
 end
 
@@ -443,12 +447,12 @@ Accepts a Vector of Pair of Points (e.g. `[Point(0, 0) => Point(1, 1), ...]`)
 to encode e.g. linesegments or directions.
 """
 function convert_arguments(::Type{<: LineSegments}, positions::AbstractVector{E}) where E <: Union{Pair{A, A}, Tuple{A, A}} where A <: VecTypes{N, T} where {N, T}
-    (elconvert(Point{N, Float32}, reinterpret(Point{N, T}, positions)),)
+    (elconvert(Point{N, Float64}, reinterpret(Point{N, T}, positions)),)
 end
 
 function convert_arguments(::Type{<: LineSegments}, x::Rect2)
     # TODO fix the order of decompose
-    points = decompose(Point2f, x)
+    points = decompose(Point2e, x)
     return (points[[1, 2, 2, 4, 4, 3, 3, 1]],)
 end
 

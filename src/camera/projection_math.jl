@@ -291,13 +291,13 @@ function project(scene::Scene, point::T) where T<:StaticVector
     )
 end
 
-function project(matrix::Mat4f, p::T, dim4 = 1.0) where T <: VecTypes
+function project(matrix::Mat4, p::T, dim4 = 1.0) where T <: VecTypes
     p = to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), dim4)
     p = matrix * p
     to_ndim(T, p, 0.0)
 end
 
-function project(proj_view::Mat4f, resolution::Vec2, point::Point)
+function project(proj_view::Mat4, resolution::Vec2, point::Point)
     p4d = to_ndim(Vec4f, to_ndim(Vec3f, point, 0f0), 1f0)
     clip = proj_view * p4d
     p = (clip ./ clip[4])[Vec(1, 2)]

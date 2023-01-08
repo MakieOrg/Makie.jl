@@ -89,6 +89,13 @@ const RGBAf = RGBA{Float32}
 const RGBf = RGB{Float32}
 const NativeFont = FreeTypeAbstraction.FTFont
 
+const Vec2e = Vec2{Float64}
+const Vec3e = Vec3{Float64}
+const Vec4e = Vec4{Float64}
+const Point2e = Point2{Float64}
+const Point3e = Point3{Float64}
+const Point4e = Point4{Float64}
+
 const ASSETS_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
 assetpath(files...) = normpath(joinpath(ASSETS_DIR, files...))
 

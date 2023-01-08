@@ -205,32 +205,32 @@ struct Camera
     """
     projection used to convert pixel to device units
     """
-    pixel_space::Observable{Mat4f}
+    pixel_space::Observable{Mat4{Float64}}
 
     """
     View matrix is usually used to rotate, scale and translate the scene
     """
-    view::Observable{Mat4f}
+    view::Observable{Mat4{Float64}}
 
     """
     Projection matrix is used for any perspective transformation
     """
-    projection::Observable{Mat4f}
+    projection::Observable{Mat4{Float64}}
 
     """
     just projection * view
     """
-    projectionview::Observable{Mat4f}
+    projectionview::Observable{Mat4{Float64}}
 
     """
     resolution of the canvas this camera draws to
     """
-    resolution::Observable{Vec2f}
+    resolution::Observable{Vec2{Float64}}
 
     """
     Eye position of the camera, sued for e.g. ray tracing.
     """
-    eyeposition::Observable{Vec3f}
+    eyeposition::Observable{Vec3{Float64}}
 
     """
     To make camera interactive, steering observables are connected to the different matrices.

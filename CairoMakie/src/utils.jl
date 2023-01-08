@@ -10,15 +10,15 @@ end
 
 function _project_position(scene, space, point, model, yflip)
     res = scene.camera.resolution[]
-    p4d = to_ndim(Vec4f, to_ndim(Vec3f, point, 0f0), 1f0)
-    clip = Makie.space_to_clip(scene.camera, space) * model * p4d
+    p4d = to_ndim(Vec4{Float64}, to_ndim(Vec3{Float64}, point, 0.0), 1.0)
+    clip = Mat4{Float64}(Makie.space_to_clip(scene.camera, space)) * Mat4{Float64}(model) * p4d
     @inbounds begin
         # between -1 and 1
         p = (clip ./ clip[4])[Vec(1, 2)]
         # flip y to match cairo
-        p_yflip = Vec2f(p[1], (1f0 - 2f0 * yflip) * p[2])
+        p_yflip = Vec2{Float64}(p[1], (1.0 - 2.0 * yflip) * p[2])
         # normalize to between 0 and 1
-        p_0_to_1 = (p_yflip .+ 1f0) ./ 2f0
+        p_0_to_1 = (p_yflip .+ 1.0) ./ 2.0
     end
     # multiply with scene resolution for final position
     return p_0_to_1 .* res
