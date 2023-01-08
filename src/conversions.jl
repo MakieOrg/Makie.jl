@@ -297,10 +297,12 @@ If they are centers, convert to edges. Convert eltypes to `Float32` and return
 outputs as a `Tuple`.
 """
 function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<: Union{Number, Colorant}})
-    return adjust_axes(SL, x, y, z)
+    _x, _y, _z = adjust_axes(SL, x, y, z)
+    return elconvert(Float64, _x), elconvert(Float64, _y), el32convert(_z)
 end
 function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<:Number})
-    return adjust_axes(SL, x, y, z)
+    _x, _y, _z = adjust_axes(SL, x, y, z)
+    return elconvert(Float64, _x), elconvert(Float64, _y), el32convert(_z)
 end
 
 convert_arguments(sl::SurfaceLike, x::AbstractMatrix, y::AbstractMatrix) = convert_arguments(sl, x, y, zeros(size(y)))
