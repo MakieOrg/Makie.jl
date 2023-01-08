@@ -327,13 +327,13 @@ and stores the `ClosedInterval` to `n` and `m`, plus the original matrix in a Tu
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(sl::SurfaceLike, data::AbstractMatrix)
-    n, m = Float32.(size(data))
-    convert_arguments(sl, 0f0 .. n, 0f0 .. m, el32convert(data))
+    n, m = Float64.(size(data))
+    convert_arguments(sl, 0.0 .. n, 0.0 .. m, el32convert(data))
 end
 
 function convert_arguments(ds::DiscreteSurface, data::AbstractMatrix)
-    n, m = Float32.(size(data))
-    convert_arguments(ds, edges(1:n), edges(1:m), el32convert(data))
+    n, m = Float64.(size(data))
+    convert_arguments(ds, edges(1.0:n), edges(1.0:m), el32convert(data))
 end
 
 function convert_arguments(SL::SurfaceLike, x::AbstractVector{<:Number}, y::AbstractVector{<:Number}, z::AbstractVector{<:Number})
@@ -620,14 +620,14 @@ to_linspace(interval, N) = range(minimum(interval), stop = maximum(interval), le
 Converts the elemen array type to `T1` without making a copy if the element type matches
 """
 elconvert(::Type{T1}, x::AbstractArray{T2, N}) where {T1, T2, N} = convert(AbstractArray{T1, N}, x)
-float32type(x::Type) = Float32
+float32type(::Type) = Float32
 float32type(::Type{<: RGB}) = RGB{Float32}
 float32type(::Type{<: RGBA}) = RGBA{Float32}
 float32type(::Type{<: Colorant}) = RGBA{Float32}
 float32type(::Type{<: Point{N}}) where {N} = Point{N, Float32}
 float32type(::Type{<: Vec{N}}) where {N} = Vec{N, Float32}
-float32type(x::AbstractArray{T}) where T = float32type(T)
-float32type(x::T) where T = float32type(T)
+float32type(::AbstractArray{T}) where T = float32type(T)
+float32type(::T) where T = float32type(T)
 el32convert(x::AbstractArray) = elconvert(float32type(x), x)
 el32convert(x::AbstractArray{Float32}) = x
 el32convert(x::Observable) = lift(el32convert, x)
