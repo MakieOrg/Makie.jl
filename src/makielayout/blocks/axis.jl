@@ -1316,7 +1316,7 @@ Makie.transform_func(ax::Axis) = Makie.transform_func(ax.scene)
 # we don't pick values that are invalid, such as 0 for log etc.
 function defaultlimits(userlimits::Tuple{Real, Real, Real, Real}, xscale, yscale)
     # BBox(userlimits...)
-    x0, x1, y0, x1 = userlimits
+    x0, x1, y0, y1 = userlimits
     Rect2{Float64}(x0, y0, x1-x0, y1-y0)
 end
 

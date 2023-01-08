@@ -185,7 +185,7 @@ end
 function update_boundingbox!(bb_ref, bb::Rect)
     # ref is uninitialized, so just set it to the first bb
     if !isfinite_rect(bb_ref[])
-        bb_ref[] = bb
+        bb_ref[] = Rect3{Float64}(bb) # TODO check when this avoids an error # hexbin scale, hexbin threshold
         return
     end
     # don't update if not finite
