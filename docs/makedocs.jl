@@ -17,18 +17,20 @@ run(`chmod +x $stork`)
 success(`$stork`)
 
 using Franklin
-using Documenter: deploydocs, deploy_folder, GitHubActions
+using Documenter: Documenter
 using Gumbo
 using AbstractTrees
 using Random
 import TOML
 
-cfg = GitHubActions() # this should pick up all details via GHA environment variables
+include("deploydocs.jl")
 
 repo = "github.com/MakieOrg/Makie.jl.git"
 push_preview = true
+devbranch = "master"
+devurl = "dev"
 
-deploydecision = deploy_folder(cfg; repo, push_preview, devbranch="master", devurl="dev")
+params = deployparameters(; repo, devbranch, devurl, push_preview)
 
 @info "Setting PREVIEW_FRANKLIN_WEBSITE_URL to $repo"
 ENV["PREVIEW_FRANKLIN_WEBSITE_URL"] = repo
@@ -126,7 +128,7 @@ serve(; single=true, cleanup=false, fail_on_warning=true)
 # cd(@__DIR__); serve(single=false, cleanup=true, clear=true, fail_on_warning = false)
 
 
-function populate_stork_config(deploydecision)
+function populate_stork_config(subfolder)
     wd = pwd()
     sites = []
     tempdir = mktempdir()
@@ -179,8 +181,7 @@ function populate_stork_config(deploydecision)
         toml = TOML.parsefile("__site/libs/stork/$(file).toml")
         open("__site/libs/stork/$(file)_filled.toml", "w") do io
             toml["input"]["files"] = map(Dict ∘ pairs, sites)
-            subf = deploydecision.subfolder
-            toml["input"]["url_prefix"] = isempty(subf) ? "/" : "/" * subf * "/" # then url without / prefix
+            toml["input"]["url_prefix"] = isempty(subfolder) ? "/" : "/" * subfolder * "/" # then url without / prefix
             TOML.print(io, toml, sorted = true)
         end
     end
@@ -198,7 +199,7 @@ function run_stork()
     end
 end
 
-populate_stork_config(deploydecision)
+populate_stork_config(params.subfolder)
 run_stork()
 
 # lunr()
@@ -211,4 +212,8 @@ optimize(; minify=false, prerender=false)
 @info "Rewriting all absolute links as relative"
 make_links_relative()
 
-deploydocs(; repo, push_preview, target="__site")
+
+deploy(
+    params;
+    target = "__site",
+)
