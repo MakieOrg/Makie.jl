@@ -460,7 +460,7 @@ end
 
 function update_positions(mesh::GeometryBasics.Mesh, positions)
     points = el32convert(positions)
-    attr = GeometryBasics.attributes(points)
+    attr = GeometryBasics.attributes(mesh)
     delete!(attr, :position) # position == metafree(points)
     return GeometryBasics.Mesh(meta(points; attr...), faces(mesh))
 end
