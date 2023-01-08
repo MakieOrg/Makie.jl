@@ -688,7 +688,7 @@ end
 function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
     @get_attribute(plot, (color,))
     color = to_color(hasproperty(mesh, :color) ? mesh.color : color)
-    vs =  decompose(Point2f, mesh)::Vector{Point2f}
+    vs = decompose(Point2{Float64}, mesh)::Vector{Point2{Float64}}
     fs = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
     uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
     model = plot.model[]::Mat4f
@@ -708,7 +708,7 @@ function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
 end
 
 function draw_mesh2D(scene, screen, per_face_cols, space::Symbol,
-        vs::Vector{Point2f}, fs::Vector{GLTriangleFace}, model::Mat4f)
+        vs::Vector{Point2{Float64}}, fs::Vector{GLTriangleFace}, model::Mat4f)
 
     ctx = screen.context
     # Priorize colors of the mesh if present

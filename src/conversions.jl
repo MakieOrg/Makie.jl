@@ -482,7 +482,7 @@ function convert_arguments(
         T::Type{<:Mesh},
         x::RealVector, y::RealVector, z::RealVector
     )
-    convert_arguments(T, Point3f.(x, y, z))
+    convert_arguments(T, Point3e.(x, y, z))
 end
 """
     convert_arguments(Mesh, xyz::AbstractVector)::GLNormalMesh
@@ -508,7 +508,7 @@ function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N}) where {
             mesh = GeometryBasics.pointmeta(mesh, decompose(Vec3f, n))
         end
     end
-    return (GeometryBasics.mesh(mesh, pointtype=Point{N, Float32}, facetype=GLTriangleFace),)
+    return (GeometryBasics.mesh(mesh, pointtype=Point{N, Float64}, facetype=GLTriangleFace),)
 end
 
 function convert_arguments(
@@ -542,7 +542,7 @@ function convert_arguments(
         x::RealVector, y::RealVector, z::RealVector,
         indices::AbstractVector
     )
-    return convert_arguments(T, Point3f.(x, y, z), indices)
+    return convert_arguments(T, Point3e.(x, y, z), indices)
 end
 
 """

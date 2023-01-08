@@ -168,8 +168,11 @@ function iterate_transformed(plot)
     iterate_transformed(points, model, trans_func)
 end
 
-function iterate_transformed(points, model, trans_func)
-    (to_ndim(Point3{eltype(point)}, project(model, apply_transform(trans_func, point)), 0.0) for point in points)
+function iterate_transformed(points::Vector{<: VecTypes{N}}, model, trans_func) where N
+    Iterators.map(points) do point
+        p = apply_transform(trans_func, Point{N, Float64}(point))
+        to_ndim(Point3e, project(model, p), 0.0)
+    end
 end
 
 function update_boundingbox!(bb_ref, point)
@@ -200,7 +203,8 @@ function _update_rect(rect::Rect{N, T}, point::Point{N, T}) where {N, T}
     mi = minimum(rect)
     ma = maximum(rect)
     mis_mas = map(mi, ma, point) do _mi, _ma, _p
-        (isnan(_mi) ? _p : _p < _mi ? _p : _mi), (isnan(_ma) ? _p : _p > _ma ? _p : _ma)
+        (isnan(_mi) ? _p : _p < _mi ? _p : _mi), 
+        (isnan(_ma) ? _p : _p > _ma ? _p : _ma)
     end
     new_o = map(first, mis_mas)
     new_w = map(mis_mas) do (mi, ma)
