@@ -297,10 +297,10 @@ If they are centers, convert to edges. Convert eltypes to `Float32` and return
 outputs as a `Tuple`.
 """
 function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<: Union{Number, Colorant}})
-    return map(el32convert, adjust_axes(SL, x, y, z))
+    return adjust_axes(SL, x, y, z)
 end
 function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<:Number})
-    return map(el32convert, adjust_axes(SL, x, y, z))
+    return adjust_axes(SL, x, y, z)
 end
 
 convert_arguments(sl::SurfaceLike, x::AbstractMatrix, y::AbstractMatrix) = convert_arguments(sl, x, y, zeros(size(y)))
@@ -634,6 +634,9 @@ function el32convert(x::AbstractArray{T, N}) where {T<:Union{Missing, <: Number}
         return (ismissing(elem) ? NaN32 : convert(Float32, elem))::Float32
     end::Array{Float32, N}
 end
+
+
+
 """
     to_triangles(indices)
 

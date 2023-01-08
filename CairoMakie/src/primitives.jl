@@ -550,6 +550,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     ctx = screen.context
     image = primitive[3][]
     xs, ys = primitive[1][], primitive[2][]
+
     if !(xs isa AbstractVector)
         l, r = extrema(xs)
         N = size(image, 1)
@@ -590,8 +591,8 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     # find projected image corners
     # this already takes care of flipping the image to correct cairo orientation
     space = to_value(get(primitive, :space, :data))
-    xy = project_position(scene, space, Point2f(first.(imsize)), model)
-    xymax = project_position(scene, space, Point2f(last.(imsize)), model)
+    xy = project_position(scene, space, Point2{Float64}(first.(imsize)), model)
+    xymax = project_position(scene, space, Point2{Float64}(last.(imsize)), model)
     w, h = xymax .- xy
 
     can_use_fast_path = !(is_vector && !interpolate) && regular_grid && identity_transform
