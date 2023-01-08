@@ -1,6 +1,6 @@
 function parent_transform(x)
     p = parent(transformation(x))
-    isnothing(p) ? Mat4f(I) : p.model[]
+    isnothing(p) ? Mat4{Float64}(I) : Mat4{Float64}(p.model[])
 end
 
 function boundingbox(x, exclude = (p)-> false)
@@ -13,9 +13,9 @@ function project_widths(matrix, vec)
     return pr - zero
 end
 
-function rotate_bbox(bb::Rect3f, rot)
-    points = decompose(Point3f, bb)
-    Rect3f(Ref(rot) .* points)
+function rotate_bbox(bb::Rect3, rot)
+    points = decompose(Point3e, bb)
+    Rect3{Float64}(Ref(rot) .* points)
 end
 
 function gl_bboxes(gl::GlyphCollection)
@@ -23,10 +23,9 @@ function gl_bboxes(gl::GlyphCollection)
     map(gl.glyphs, gl.extents, scales) do c, ext, scale
         hi_bb = height_insensitive_boundingbox_with_advance(ext)
         # TODO c != 0 filters out all non renderables, which is not always desired
-        Rect2f(
-            Makie.origin(hi_bb) * scale,
-            (c != 0) * widths(hi_bb) * scale
-        )
+        o = Makie.origin(hi_bb) * scale
+        w = (c != 0) * widths(hi_bb) * scale
+        Rect3{Float64}(Point3{Float64}(o[1], o[2], 0.0), Vec3{Float64}(w[1], w[2], 0))
     end
 end
 
@@ -35,7 +34,7 @@ function height_insensitive_boundingbox(ext::GlyphExtent)
     w = ext.ink_bounding_box.widths[1]
     b = ext.descender
     h = ext.ascender
-    return Rect2f((l, b), (w, h - b))
+    return Rect2{Float64}((l, b), (w, h - b))
 end
 
 function height_insensitive_boundingbox_with_advance(ext::GlyphExtent)
@@ -43,26 +42,26 @@ function height_insensitive_boundingbox_with_advance(ext::GlyphExtent)
     r = ext.hadvance
     b = ext.descender
     h = ext.ascender
-    return Rect2f((l, b), (r - l, h - b))
+    return Rect2{Float64}((l, b), (r - l, h - b))
 end
 
 _inkboundingbox(ext::GlyphExtent) = ext.ink_bounding_box
 
-function boundingbox(glyphcollection::GlyphCollection, position::Point3f, rotation::Quaternion)
+function boundingbox(glyphcollection::GlyphCollection, position::Point3, rotation::Quaternion)
     return boundingbox(glyphcollection, rotation) + position
 end
 
 function boundingbox(glyphcollection::GlyphCollection, rotation::Quaternion)
     if isempty(glyphcollection.glyphs)
-        return Rect3f(Point3f(0), Vec3f(0))
+        return Rect3(Point3e(0), Vec3e(0))
     end
 
     glyphorigins = glyphcollection.origins
     glyphbbs = gl_bboxes(glyphcollection)
 
-    bb = Rect3f()
+    bb = Rect3{Float64}()
     for (charo, glyphbb) in zip(glyphorigins, glyphbbs)
-        charbb = rotate_bbox(Rect3f(glyphbb), rotation) + charo
+        charbb = rotate_bbox(Rect3{Float64}(glyphbb), rotation) + charo
         if !isfinite_rect(bb)
             bb = charbb
         else
@@ -75,9 +74,9 @@ end
 
 function boundingbox(layouts::AbstractArray{<:GlyphCollection}, positions, rotations)
     if isempty(layouts)
-        return Rect3f((0, 0, 0), (0, 0, 0))
+        return Rect3{Float64}((0, 0, 0), (0, 0, 0))
     else
-        bb = Rect3f()
+        bb = Rect3{Float64}()
         broadcast_foreach(layouts, positions, rotations) do layout, pos, rot
             if !isfinite_rect(bb)
                 bb = boundingbox(layout, pos, rot)
@@ -92,7 +91,7 @@ end
 
 function boundingbox(x::Text{<:Tuple{<:GlyphCollection}})
     if x.space[] == x.markerspace[]
-        pos = to_ndim(Point3f, x.position[], 0)
+        pos = to_ndim(Point3e, x.position[], 0)
     else
         cam = parent_scene(x).camera
         transformed = apply_transform(x.transformation.transform_func[], x.position[])
@@ -103,7 +102,7 @@ end
 
 function boundingbox(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}})
     if x.space[] == x.markerspace[]
-        pos = to_ndim.(Point3f, x.position[], 0)
+        pos = to_ndim.(Point3e, x.position[], 0)
     else
         cam = (parent_scene(x).camera,)
         transformed = apply_transform(x.transformation.transform_func[], x.position[])
@@ -113,7 +112,7 @@ function boundingbox(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}})
 end
 
 function boundingbox(plot::Text)
-    bb = Rect3f()
+    bb = Rect3{Float64}()
     for p in plot.plots
         _bb = boundingbox(p)
         if !isfinite_rect(bb)

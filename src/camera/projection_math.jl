@@ -291,10 +291,10 @@ function project(scene::Scene, point::T) where T<:StaticVector
     )
 end
 
-function project(matrix::Mat4, p::T, dim4 = 1.0) where T <: VecTypes
-    p = to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), dim4)
+function project(matrix::Mat4, p::VT, dim4 = 1.0) where {N, T, VT <: VecTypes{N, T}}
+    p = to_ndim(Vec4{T}, to_ndim(Vec3{T}, p, 0.0), dim4)
     p = matrix * p
-    to_ndim(T, p, 0.0)
+    to_ndim(VT, p, 0.0)
 end
 
 function project(proj_view::Mat4, resolution::Vec2, point::Point)

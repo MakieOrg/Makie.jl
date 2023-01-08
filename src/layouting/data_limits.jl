@@ -120,7 +120,7 @@ function point_iterator(x::Volume)
     extremata = map(extrema∘to_value, axes)
     minpoint = Point3f(first.(extremata)...)
     widths = last.(extremata) .- first.(extremata)
-    rect = Rect3f(minpoint, Vec3f(widths))
+    rect = Rect3(minpoint, Vec3(widths))
     return unique(decompose(Point, rect))
 end
 
@@ -169,12 +169,12 @@ function iterate_transformed(plot)
 end
 
 function iterate_transformed(points, model, trans_func)
-    (to_ndim(Point3f, project(model, apply_transform(trans_func, point)), 0f0) for point in points)
+    (to_ndim(Point3{eltype(point)}, project(model, apply_transform(trans_func, point)), 0.0) for point in points)
 end
 
 function update_boundingbox!(bb_ref, point)
     if all(isfinite, point)
-        vec = to_ndim(Vec3f, point, 0.0)
+        vec = to_ndim(Vec3{Float64}, point, 0.0)
         bb_ref[] = update(bb_ref[], vec)
     end
 end
@@ -210,14 +210,14 @@ function _update_rect(rect::Rect{N, T}, point::Point{N, T}) where {N, T}
 end
 
 function limits_from_transformed_points(points_iterator)
-    isempty(points_iterator) && return Rect3f()
+    isempty(points_iterator) && return Rect3{Float64}()
     first, rest = Iterators.peel(points_iterator)
-    bb = foldl(_update_rect, rest, init = Rect3f(first, zero(first)))
+    bb = foldl(_update_rect, rest, init = Rect3{Float64}(first, zero(first)))
     return bb
 end
 
 function data_limits(scenelike, exclude=(p)-> false)
-    bb_ref = Base.RefValue(Rect3f())
+    bb_ref = Base.RefValue(Rect3{Float64}())
     foreach_plot(scenelike) do plot
         if !exclude(plot)
             update_boundingbox!(bb_ref, data_limits(plot))
@@ -231,19 +231,19 @@ function data_limits(plot::Surface)
     mini_maxi = extrema_nan.((plot.x[], plot.y[], plot.z[]))
     mini = first.(mini_maxi)
     maxi = last.(mini_maxi)
-    return Rect3f(mini, maxi .- mini)
+    return Rect3{Float64}(mini, maxi .- mini)
 end
 
 function data_limits(plot::Heatmap)
     mini_maxi = extrema_nan.((plot.x[], plot.y[]))
-    mini = Vec3f(first.(mini_maxi)..., 0)
-    maxi = Vec3f(last.(mini_maxi)..., 0)
-    return Rect3f(mini, maxi .- mini)
+    mini = Vec3(first.(mini_maxi)..., 0)
+    maxi = Vec3(last.(mini_maxi)..., 0)
+    return Rect3{Float64}(mini, maxi .- mini)
 end
 
 function data_limits(plot::Image)
     mini_maxi = extrema_nan.((plot.x[], plot.y[]))
-    mini = Vec3f(first.(mini_maxi)..., 0)
-    maxi = Vec3f(last.(mini_maxi)..., 0)
-    return Rect3f(mini, maxi .- mini)
+    mini = Vec3(first.(mini_maxi)..., 0)
+    maxi = Vec3(last.(mini_maxi)..., 0)
+    return Rect3{Float64}(mini, maxi .- mini)
 end
