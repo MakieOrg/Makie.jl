@@ -168,9 +168,9 @@ function iterate_transformed(plot)
     iterate_transformed(points, model, trans_func)
 end
 
-function iterate_transformed(points::Vector{<: VecTypes{N}}, model, trans_func) where N
+function iterate_transformed(points, model, trans_func)
     Iterators.map(points) do point
-        p = apply_transform(trans_func, Point{N, Float64}(point))
+        p = apply_transform(trans_func, Point{length(point), Float64}(point))
         to_ndim(Point3e, project(model, p), 0.0)
     end
 end

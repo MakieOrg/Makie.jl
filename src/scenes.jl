@@ -512,10 +512,10 @@ end
 
 function center!(scene::Scene, padding=0.01, exclude = not_in_data_space)
     bb = boundingbox(scene, exclude)
-    bb = transformationmatrix(scene)[] * bb
+    bb = Mat4{Float64}(transformationmatrix(scene)[]) * bb
     w = widths(bb)
     padd = w .* padding
-    bb = Rect3f(minimum(bb) .- padd, w .+ 2padd)
+    bb = Rect3{Float64}(minimum(bb) .- padd, w .+ 2padd)
     update_cam!(scene, bb)
     scene
 end
