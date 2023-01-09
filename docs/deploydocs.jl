@@ -131,7 +131,10 @@ function push_build(;
             """)
         end
 
-        Documenter.rm_and_add_symlink(max_version, joinpath(dirname, "stable"))
+        stablelink = join(dirname, "stable")
+        rm(stablelink, force = true)
+        rm(stablelink, recursive = true, force = true)
+        symlink(max_version, stablelink; dir_target = true)
 
         # Add, commit, and push the docs to the remote.
         run(`$(git()) add -A .`)
