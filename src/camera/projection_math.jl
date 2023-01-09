@@ -122,12 +122,12 @@ function perspectiveprojection(
 end
 
 """
-cam_move(elevation, azimuth, distance, up)
+azel2xyz(elevation, azimuth, distance, up)
 
-Compute the camera displacement from origin to a specificed elevation, azimuth and distance (spherical coordinates) w.r.t to origin and an up-vector.
-Use lookat + cam_move(elevation, azimuth, distance, up) to compute a camera position.
+Compute the eulerian space coordinates from a specified elevation, azimuth and distance (spherical coordinates) w.r.t to origin and an up-vector.
+Use lookat + azel2xyz(azimuth, elevation, distance, up) to e.g. compute a camera position.
 """
-function cam_move(elevation, azimuth, distance, up::Vec{3, T}) where T
+function azel2xyz(azimuth, elevation, distance, up::Vec{3, T}) where T
     sum(abs, up) == 1 || throw(ArgumentError("up must be a vector with a single unit value e.g. Vec3f(0, 0, 1) for +z as upvector"))
     a = distance * sin(elevation)
     b = distance * cos(azimuth) * cos(elevation)
