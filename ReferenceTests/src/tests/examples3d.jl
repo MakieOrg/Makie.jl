@@ -533,7 +533,6 @@ end
     fig
 end
 
-
 @reference_test "Order Independent Transparency" begin
     # top row (yellow, cyan, magenta) contains stacks with the same alpha value
     # bottom row (red, green, blue) contains stacks with varying alpha values
@@ -561,7 +560,6 @@ end
     fig
 end
 
-
 @reference_test "space 3D" begin
     fig = Figure()
     for ax in [LScene(fig[1, 1]), Axis3(fig[1, 2])]
@@ -572,4 +570,47 @@ end
         image!(ax, 0..40, 0..800, [x for x in range(0, 1, length=40), _ in 1:10], space = :pixel)
     end
     fig
+end
+
+function normal_map_example()
+    obj = loadasset("matball_outer.obj")
+
+    coords = getproperty.(coordinates(obj), :position)
+    centroid, = sum(coords; dims = 1) / length(coords)
+
+    # en.wikipedia.org/wiki/Normal_mapping
+    color = map(GeometryBasics.normals(obj)) do n
+        x, y, z = map(x -> (x + 1) / 2, n)  # map in [0; 1] range for RGBAf
+        RGBAf(x, y, z, 1)
+    end
+
+    fig = Figure()
+    axis = (type = LScene, show_axis = false)
+    fig, ax, _ = mesh(obj; axis, color)
+    cam3d!(ax.scene)
+    fig, ax, Vec3f(centroid)
+end
+
+@reference_test "normal map (elevation)" begin
+    fig, ax, lookat = normal_map_example()
+    az = -2π / 3
+
+    Record(fig, 0:(π / 4):2π; framerate=1) do el
+        up = Vec3f(0, 0, copysign(1, cos(el)))
+        disp = Makie.azel2xyz(az, el, 1, up)
+        eyepos = lookat + disp
+        update_cam!(ax.scene, cameracontrols(ax.scene), eyepos, lookat, up)
+    end
+end
+
+@reference_test "normal map (azimuth)" begin
+    fig, ax, lookat = normal_map_example()
+    el = π / 4
+    up = Vec3f(0, 0, 1)
+
+    Record(fig, 0:(π / 4):2π; framerate=1) do az
+        disp = Makie.azel2xyz(az, el, 1, up)
+        eyepos = lookat + disp
+        update_cam!(ax.scene, cameracontrols(ax.scene), eyepos, lookat, up)
+    end
 end
