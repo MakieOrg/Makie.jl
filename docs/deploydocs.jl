@@ -131,7 +131,7 @@ function push_build(;
             """)
         end
 
-        stablelink = join(dirname, "stable")
+        stablelink = joinpath(dirname, "stable")
         rm(stablelink, force = true)
         rm(stablelink, recursive = true, force = true)
         symlink(max_version, stablelink; dir_target = true)
