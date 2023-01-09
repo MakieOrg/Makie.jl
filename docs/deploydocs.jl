@@ -131,6 +131,9 @@ function push_build(;
             """)
         end
 
+        # generate the sitemap only for the highest version so google doesn't advertise old docs
+        generate_sitemap(dirname, max_version)
+
         stablelink = joinpath(dirname, "stable")
         rm(stablelink, force = true)
         rm(stablelink, recursive = true, force = true)
@@ -155,5 +158,30 @@ function push_build(;
         @error "Failed to push:" exception=(e, catch_backtrace())
         Documenter.post_status(config; repo=repo, type="error")
         rethrow(e)
+    end
+end
+
+function generate_sitemap(dirname, max_version)
+    folder = joinpath(dirname, max_version)
+    open(joinpath(dirname, "sitemap.xml"), "w") do io
+        println(io, """
+        <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+        <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+        """)
+
+        for (root, dirs, files) in walkdir(folder)
+            for file in files
+                endswith(file, ".html") || continue
+                url = joinpath("https://docs.makie.org/$max_version", relpath(joinpath(root, file), folder))
+                println(io, """
+                <url>
+                    <loc>$url</loc>
+                    <lastmod>$(today())</lastmod>
+                    <changefreq>monthly</changefreq>
+                    <priority>0.5</priority>
+                </url>
+                """)
+            end
+        end
     end
 end

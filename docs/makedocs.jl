@@ -22,9 +22,11 @@ using Gumbo
 using AbstractTrees
 using Random
 import TOML
+using Dates
 
 include("deploydocs.jl")
 
+docs_url = "docs.makie.org"
 repo = "github.com/MakieOrg/Makie.jl.git"
 push_preview = true
 devbranch = "master"
@@ -32,8 +34,8 @@ devurl = "dev"
 
 params = deployparameters(; repo, devbranch, devurl, push_preview)
 
-@info "Setting PREVIEW_FRANKLIN_WEBSITE_URL to $repo"
-ENV["PREVIEW_FRANKLIN_WEBSITE_URL"] = repo
+@info "Setting PREVIEW_FRANKLIN_WEBSITE_URL to $docs_url"
+ENV["PREVIEW_FRANKLIN_WEBSITE_URL"] = docs_url
 
 """
 Converts the string `s` which might be an absolute path,
