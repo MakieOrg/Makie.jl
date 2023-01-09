@@ -127,11 +127,14 @@ azel2xyz(elevation, azimuth, distance, up)
 Compute the eulerian space coordinates from a specified elevation, azimuth and distance (spherical coordinates) w.r.t to origin and an up-vector.
 Use lookat + azel2xyz(azimuth, elevation, distance, up) to e.g. compute a camera position.
 """
-function azel2xyz(azimuth, elevation, distance, up::Vec{3, T}) where T
+function azel2xyz(azimuth, elevation::E, distance, up::Vec{3, T}) where {E,T}
     sum(abs, up) == 1 || throw(ArgumentError("up must be a vector with a single unit value e.g. Vec3f(0, 0, 1) for +z as upvector"))
-    a = distance * sin(elevation)
-    b = distance * cos(azimuth) * cos(elevation)
-    c = distance * sin(azimuth) * cos(elevation)
+    sin_el, cos_el = sincos(elevation)
+    sin_az, cos_az = sincos(azimuth)
+    cos_el_nz = copysign(max(sqrt(eps(E)), abs(cos_el)), cos_el)  # avoid mult underflow
+    a = distance * sin_el
+    b = distance * cos_az * cos_el_nz
+    c = distance * sin_az * cos_el_nz
     return if (dir = findfirst(!iszero, up)) == 1
         Vec{3, T}(a, b, c)
     elseif dir == 2
