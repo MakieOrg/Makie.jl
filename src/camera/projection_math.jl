@@ -122,6 +122,26 @@ function perspectiveprojection(
 end
 
 """
+cam_move(elevation, azimuth, distance, up)
+
+Compute the camera displacement from origin to a specificed elevation, azimuth and distance (spherical coordinates) w.r.t to origin and an up-vector.
+Use lookat + cam_move(elevation, azimuth, distance, up) to compute a camera position.
+"""
+function cam_move(elevation, azimuth, distance, up::Vec{3, T}) where T
+    sum(abs, up) == 1 || throw(ArgumentError("up must be a vector with a single unit value e.g. Vec3f(0, 0, 1) for +z as upvector"))
+    a = distance * sin(elevation)
+    b = distance * cos(azimuth) * cos(elevation)
+    c = distance * sin(azimuth) * cos(elevation)
+    return if (dir = findfirst(!iszero, up)) == 1
+        Vec{3, T}(a, b, c)
+    elseif dir == 2
+        Vec{3, T}(c, a, b)
+    elseif dir == 3
+        Vec{3, T}(b, c, a)
+    end
+end
+
+"""
 `view = lookat(eyeposition, lookat, up)` creates a view matrix with
 the eye located at `eyeposition` and looking at position `lookat`,
 with the top of the window corresponding to the direction `up`. Only
@@ -144,24 +164,6 @@ end
 
 function lookat(::Type{T}, eyePos::Vec{3}, lookAt::Vec{3}, up::Vec{3}) where T
     lookat(Vec{3,T}(eyePos), Vec{3,T}(lookAt), Vec{3,T}(up))
-end
-
-"""
-Variant using elevation, azimuth and distance.
-"""
-function lookat(elevation, azimuth, distance, lookAt::Vec{3, T}, up::Vec{3, T}) where T
-    sum(up) == 1 || throw(ArgumentError("up must be a vector with a single unit value e.g. Vec3f(0, 0, 1) for +z as upvector"))
-    a = distance * sin(elevation)
-    b = distance * cos(azimuth) * cos(elevation)
-    c = distance * sin(azimuth) * cos(elevation)
-    eyePos = if (dir = findfirst(==(1), up)) == 1
-        Vec{3, T}(a, b, c)
-    elseif dir == 2
-        Vec{3, T}(c, a, b)
-    elseif dir == 3
-        Vec{3, T}(b, c, a)
-    end
-    lookat(eyePos, lookAt, up)
 end
 
 function orthographicprojection(wh::Rect2, near::T, far::T) where T
