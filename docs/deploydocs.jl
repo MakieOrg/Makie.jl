@@ -172,7 +172,7 @@ function generate_sitemap(dirname, max_version)
         for (root, dirs, files) in walkdir(folder)
             for file in files
                 endswith(file, ".html") || continue
-                url = joinpath("https://docs.makie.org/$max_version", relpath(joinpath(root, file), folder))
+                url = joinpath("https://docs.makie.org/stable", relpath(joinpath(root, file), folder))
                 println(io, """
                 <url>
                     <loc>$url</loc>
