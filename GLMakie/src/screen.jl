@@ -360,7 +360,10 @@ function Screen(;
 end
 
 set_screen_visibility!(screen::Screen, visible::Bool) = set_screen_visibility!(screen.glscreen, visible)
-set_screen_visibility!(nw::GLFW.Window, visible::Bool) = GLFW.set_visibility!(nw, visible)
+function set_screen_visibility!(nw::GLFW.Window, visible::Bool)
+    @assert nw.handle !== C_NULL
+    GLFW.set_visibility!(nw, visible)
+end
 
 function display_scene!(screen::Screen, scene::Scene)
     empty!(screen)
@@ -562,7 +565,9 @@ Doesn't destroy the screen and instead frees it for being re-used again, if `reu
 function Base.close(screen::Screen; reuse=true)
     set_screen_visibility!(screen, false)
     stop_renderloop!(screen; close_after_renderloop=false)
-    screen.window_open[] = false
+    if screen.window_open[] # otherwise we trigger an infinite loop of closing
+        screen.window_open[] = false
+    end
     empty!(screen)
     if reuse && screen.reuse
         push!(SCREEN_REUSE_POOL, screen)
