@@ -10,7 +10,7 @@ convert_arguments(::Type{<: Poly}, m::GeometryBasics.GeometryPrimitive) = (m,)
 
 function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}})
     mesh!(
-        plot, lift(triangle_mesh, plot[1]),
+        plot, lift(_triangle_mesh, plot[1]),
         color = plot[:color],
         colormap = plot[:colormap],
         colorrange = plot[:colorrange],
@@ -33,19 +33,22 @@ function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}
 end
 
 # Poly conversion
+function _triangle_mesh(geom::GeometryBasics.Meshable{N, T}) where {N, T}
+    GeometryBasics.mesh(geom; pointtype = Point{N, T}, facetype=GeometryBasics.GLTriangleFace)
+end
 function poly_convert(geometries)
     isempty(geometries) && return typeof(GeometryBasics.Mesh(Point2f[], GLTriangleFace[]))[]
-    return triangle_mesh.(geometries)
+    return _triangle_mesh.(geometries)
 end
 poly_convert(meshes::AbstractVector{<:AbstractMesh}) = meshes
-poly_convert(polys::AbstractVector{<:Polygon}) = triangle_mesh.(polys)
+poly_convert(polys::AbstractVector{<:Polygon}) = _triangle_mesh.(polys)
 function poly_convert(multipolygons::AbstractVector{<:MultiPolygon})
-    return [merge(triangle_mesh.(multipoly.polygons)) for multipoly in multipolygons]
+    return [merge(_triangle_mesh.(multipoly.polygons)) for multipoly in multipolygons]
 end
 
 poly_convert(mesh::GeometryBasics.Mesh) = mesh
 
-poly_convert(polygon::Polygon) = triangle_mesh(polygon)
+poly_convert(polygon::Polygon) = _triangle_mesh(polygon)
 
 function poly_convert(polygon::AbstractVector{<: VecTypes})
     return poly_convert([convert_arguments(Scatter, polygon)[1]])
@@ -171,7 +174,7 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
         if isempty(meshes)
             return GeometryBasics.Mesh(Point2f[], GLTriangleFace[])
         else
-            return merge(GeometryBasics.triangle_mesh.(meshes))
+            return merge(_triangle_mesh.(meshes))
         end
     end
     mesh!(plot, attributes, bigmesh)

@@ -510,7 +510,8 @@ function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N}) where {
             mesh = GeometryBasics.pointmeta(mesh, decompose(Vec3f, n))
         end
     end
-    return (GeometryBasics.mesh(mesh, pointtype=Point{N, Float64}, facetype=GLTriangleFace),)
+    PT = eltype(mesh.position) # TODO do we need to guard against abstract types?
+    return (GeometryBasics.mesh(mesh, pointtype=PT, facetype=GLTriangleFace),)
 end
 
 function convert_arguments(
@@ -522,15 +523,20 @@ end
 
 function convert_arguments(
         MT::Type{<:Mesh},
-        xyz::Union{AbstractPolygon, AbstractVector{<: AbstractPoint{2}}}
+        xyz::Union{AbstractPolygon{2, T}, AbstractVector{<: AbstractPoint{2, T}}} where T
     )
-    return convert_arguments(MT, triangle_mesh(xyz))
+    return (GeometryBasics.mesh(
+        xyz; pointtype = Point{2, T}, facetype = GeometryBasics.GLTriangleFace
+    ), )
 end
 
-function convert_arguments(MT::Type{<:Mesh}, geom::GeometryPrimitive)
+function convert_arguments(MT::Type{<:Mesh}, geom::GeometryPrimitive{N, T}) where {N, T}
     # we convert to UV mesh as default, because otherwise the uv informations get lost
     # - we can still drop them, but we can't add them later on
-    return (GeometryBasics.uv_normal_mesh(geom),)
+    return (GeometryBasics.mesh(
+        geom; pointtype = Point{N,T}, uv = Vec2f, normaltype = Vec3f,
+        facetype = GeometryBasics.GLTriangleFace
+    ), )
 end
 
 """
@@ -555,12 +561,13 @@ See [`to_vertices`](@ref) and [`to_triangles`](@ref) for more information about
 accepted types.
 """
 function convert_arguments(
-        ::Type{<:Mesh},
-        vertices::AbstractArray,
-        indices::AbstractArray
-    )
-    m = normal_mesh(to_vertices(vertices), to_triangles(indices))
-    (m,)
+        ::Type{<:Mesh}, vertices::AbstractArray{PT}, indices::AbstractArray
+    ) where {PT <: Point}
+    _points = GeometryBasics.decompose(PT, to_vertices(vertices))
+    _faces = to_triangles(indices)
+    return (GeometryBasics.Mesh(GeometryBasics.meta(
+        _points; normals = GeometryBasics.normals(_points, _faces)
+    ), _faces), )
 end
 
 ################################################################################
@@ -685,7 +692,7 @@ end
     to_vertices(v)
 
 Converts a representation of vertices `v` to its canonical representation as a
-`Vector{Point3f}`. `v` can be:
+`Vector{Point3{T}}`. `v` can be:
 
 - An `AbstractVector` of 3-element `Tuple`s or `StaticVector`s,
 
@@ -697,15 +704,14 @@ Converts a representation of vertices `v` to its canonical representation as a
   - otherwise if `v` has 2 or 3 columns, it will treat each row as a vertex.
 """
 function to_vertices(verts::AbstractVector{<: VecTypes{3, T}}) where T
-    vert3f0 = T != Float32 ? Point3f.(verts) : verts
-    return reinterpret(Point3f, vert3f0)
+    return reinterpret(Point3{T}, verts)
 end
 
-function to_vertices(verts::AbstractVector{<: VecTypes})
-    to_vertices(to_ndim.(Point3f, verts, 0.0))
+function to_vertices(verts::AbstractVector{<: VecTypes{N, T}}) where {N, T}
+    to_vertices(to_ndim.(Point{3, T}, verts, 0.0))
 end
 
-function to_vertices(verts::AbstractMatrix{<: Number})
+function to_vertices(verts::AbstractMatrix{<: Real})
     if size(verts, 1) in (2, 3)
         to_vertices(verts, Val(1))
     elseif size(verts, 2) in (2, 3)
@@ -715,23 +721,23 @@ function to_vertices(verts::AbstractMatrix{<: Number})
     end
 end
 
-function to_vertices(verts::AbstractMatrix{T}, ::Val{1}) where T <: Number
+function to_vertices(verts::AbstractMatrix{T}, ::Val{1}) where T <: Real
     N = size(verts, 1)
-    if T == Float32 && N == 3
+    if N == 3
         reinterpret(Point{N, T}, elconvert(T, vec(verts)))
     else
         let N = Val(N), lverts = verts
             broadcast(1:size(verts, 2), N) do vidx, n
-                to_ndim(Point3f, ntuple(i-> lverts[i, vidx], n), 0.0)
+                to_ndim(Point3{T}, ntuple(i-> lverts[i, vidx], n), 0.0)
             end
         end
     end
 end
 
-function to_vertices(verts::AbstractMatrix{T}, ::Val{2}) where T <: Number
+function to_vertices(verts::AbstractMatrix{T}, ::Val{2}) where T <: Real
     let N = Val(size(verts, 2)), lverts = verts
         broadcast(1:size(verts, 1), N) do vidx, n
-            to_ndim(Point3f, ntuple(i-> lverts[vidx, i], n), 0.0)
+            to_ndim(Point3{T}, ntuple(i-> lverts[vidx, i], n), 0.0)
         end
     end
 end
