@@ -560,14 +560,17 @@ Takes `vertices` and `indices`, and creates a triangle mesh out of those.
 See [`to_vertices`](@ref) and [`to_triangles`](@ref) for more information about
 accepted types.
 """
+function convert_arguments(MT::Type{<:Mesh}, vertices::AbstractArray, indices::AbstractArray)
+    return convert_arguments(MT, to_vertices(vertices), to_triangles(indices))
+end
+
 function convert_arguments(
-        ::Type{<:Mesh}, vertices::AbstractArray{PT}, indices::AbstractArray
-    ) where {PT <: Point}
-    _points = GeometryBasics.decompose(PT, to_vertices(vertices))
-    _faces = to_triangles(indices)
+        ::Type{<:Mesh}, pos::Vector{VT}, faces::Vector{GLTriangleFace}
+    ) where {N, T, VT <: VecTypes{N, T}}
+    _points = decompose(Point{N, T}, pos)
     return (GeometryBasics.Mesh(GeometryBasics.meta(
-        _points; normals = GeometryBasics.normals(_points, _faces)
-    ), _faces), )
+        _points; normals = GeometryBasics.normals(_points, faces)
+    ), faces), )
 end
 
 ################################################################################
@@ -709,6 +712,10 @@ end
 
 function to_vertices(verts::AbstractVector{<: VecTypes{N, T}}) where {N, T}
     to_vertices(to_ndim.(Point{3, T}, verts, 0.0))
+end
+
+function to_vertices(verts::AbstractVector{<: VecTypes})
+    to_vertices(to_ndim.(Point{3, Float32}, verts, 0.0))
 end
 
 function to_vertices(verts::AbstractMatrix{<: Real})
