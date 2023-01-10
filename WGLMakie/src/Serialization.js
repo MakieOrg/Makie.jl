@@ -11,7 +11,7 @@ function add_scene(scene_id, three_scene) {
     scene_cache[scene_id] = three_scene;
 }
 
-function find_scene(scene_id) {
+export function find_scene(scene_id) {
     return scene_cache[scene_id];
 }
 
@@ -26,7 +26,7 @@ export function delete_scene(scene_id) {
     delete scene_cache[scene_id];
 }
 
-function find_plots(plot_uuids) {
+export function find_plots(plot_uuids) {
     const plots = [];
     plot_uuids.forEach((id) => {
         const plot = plot_cache[id];
@@ -515,4 +515,4 @@ export function deserialize_scene(data, screen) {
     return scene;
 }
 
-export { TEXTURE_ATLAS };
+export { TEXTURE_ATLAS, scene_cache };
