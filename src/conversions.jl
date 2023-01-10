@@ -523,8 +523,8 @@ end
 
 function convert_arguments(
         MT::Type{<:Mesh},
-        xyz::Union{AbstractPolygon{2, T}, AbstractVector{<: AbstractPoint{2, T}}} where T
-    )
+        xyz::Union{AbstractPolygon{2, T}, AbstractVector{<: AbstractPoint{2, T}}}
+    ) where T
     return (GeometryBasics.mesh(
         xyz; pointtype = Point{2, T}, facetype = GeometryBasics.GLTriangleFace
     ), )
