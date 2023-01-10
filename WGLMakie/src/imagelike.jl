@@ -48,7 +48,6 @@ function limits_to_uvmesh(plot)
     px, py, pz = plot[1], plot[2], plot[3]
     px = map((x, z)-> xy_convert(x, size(z, 1)), px, pz)
     py = map((y, z)-> xy_convert(y, size(z, 2)), py, pz)
-    @info px
     # Special path for ranges of length 2 which
     # can be displayed as a rectangle
     t = Makie.transform_func_obs(plot)[]
@@ -69,7 +68,6 @@ function limits_to_uvmesh(plot)
         faces = Buffer(lift(r -> decompose(GLTriangleFace, r), rect))
         uv = Buffer(lift(decompose_uv, rect))
     end
-    @info positions
     vertices = GeometryBasics.meta(positions; uv=uv)
 
     return GeometryBasics.Mesh(vertices, faces)
@@ -121,7 +119,6 @@ function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
     color = Sampler(map(x -> el32convert(x'), image);
                     minfilter=to_value(get(plot, :interpolate, false)) ? :linear : :nearest)
     mesh = limits_to_uvmesh(plot)
-    @info mesh
     plot_attributes = copy(plot.attributes)
     if eltype(color) <: Colorant
         delete!(plot_attributes, :colormap)
