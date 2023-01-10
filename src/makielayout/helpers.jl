@@ -431,3 +431,9 @@ end
 Makie.get_scene(ax::Axis) = ax.scene
 Makie.get_scene(ax::Axis3) = ax.scene
 Makie.get_scene(ax::LScene) = ax.scene
+
+function BBox64(left::Number, right::Number, bottom::Number, top::Number)
+    mini = (left, bottom)
+    maxi = (right, top)
+    return Rect2{Float64}(mini, maxi .- mini)
+end

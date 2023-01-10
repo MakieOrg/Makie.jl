@@ -622,7 +622,7 @@ function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
     end
 
     if ax isa Axis
-        ax.targetlimits[] = Rect2{Float64}(xlims[1], ylims[1], xlims[2]-xlims[1], ylims[2]-ylims[1])
+        ax.targetlimits[] = BBox64(xlims[1], xlims[2], ylims[1], ylims[2])
     elseif ax isa Axis3
         ax.targetlimits[] = Rect3(
             Vec3(xlims[1], ylims[1], zlims[1]),
@@ -895,7 +895,7 @@ function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, tlim
             otherylims = limits(otherlims, 2)
             if thisxlims != otherxlims
                 xlink.block_limit_linking[] = true
-                xlink.targetlimits[] = BBox(thisxlims[1], thisxlims[2], otherylims[1], otherylims[2])
+                xlink.targetlimits[] = BBox64(thisxlims[1], thisxlims[2], otherylims[1], otherylims[2])
                 xlink.block_limit_linking[] = false
             end
         end
@@ -906,7 +906,7 @@ function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, tlim
             otherylims = limits(otherlims, 2)
             if thisylims != otherylims
                 ylink.block_limit_linking[] = true
-                ylink.targetlimits[] = BBox(otherxlims[1], otherxlims[2], thisylims[1], thisylims[2])
+                ylink.targetlimits[] = BBox64(otherxlims[1], otherxlims[2], thisylims[1], thisylims[2])
                 ylink.block_limit_linking[] = false
             end
         end
@@ -1315,9 +1315,7 @@ Makie.transform_func(ax::Axis) = Makie.transform_func(ax.scene)
 # these functions pick limits for different x and y scales, so that
 # we don't pick values that are invalid, such as 0 for log etc.
 function defaultlimits(userlimits::Tuple{Real, Real, Real, Real}, xscale, yscale)
-    # BBox(userlimits...)
-    x0, x1, y0, y1 = userlimits
-    Rect2{Float64}(x0, y0, x1-x0, y1-y0)
+    BBox64(userlimits...)
 end
 
 defaultlimits(l::Tuple{Any, Any, Any, Any}, xscale, yscale) = defaultlimits(((l[1], l[2]), (l[3], l[4])), xscale, yscale)
@@ -1325,8 +1323,7 @@ defaultlimits(l::Tuple{Any, Any, Any, Any}, xscale, yscale) = defaultlimits(((l[
 function defaultlimits(userlimits::Tuple{Any, Any}, xscale, yscale)
     xl = defaultlimits(userlimits[1], xscale)
     yl = defaultlimits(userlimits[2], yscale)
-    # BBox(xl..., yl...)
-    Rect2{Float64}(xl[1], yl[1], xl[2]-xl[1], yl[2]-yl[1])
+    BBox64(xl..., yl...)
 end
 
 defaultlimits(limits::Nothing, scale) = defaultlimits(scale)
