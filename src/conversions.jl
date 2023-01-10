@@ -565,9 +565,9 @@ function convert_arguments(MT::Type{<:Mesh}, vertices::AbstractArray, indices::A
 end
 
 function convert_arguments(
-        ::Type{<:Mesh}, pos::Vector{VT}, faces::Vector{GLTriangleFace}
+        ::Type{<:Mesh}, pos::AbstractVector{VT}, faces::AbstractVector{GLTriangleFace}
     ) where {N, T, VT <: VecTypes{N, T}}
-    _points = decompose(Point{N, T}, pos)
+    _points = to_ndim.(Point{3, T}, pos, T(0))
     return (GeometryBasics.Mesh(GeometryBasics.meta(
         _points; normals = GeometryBasics.normals(_points, faces)
     ), faces), )
