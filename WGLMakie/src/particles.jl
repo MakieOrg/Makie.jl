@@ -54,7 +54,9 @@ function create_shader(scene::Scene, plot::MeshScatter)
         return k in per_instance_keys && !(isscalar(v[]))
     end
     space = get(plot, :space, :data)
-    per_instance[:offset] = apply_transform(transform_func_obs(plot),  plot[1], space)
+    per_instance[:offset] = map(transform_func_obs(plot),  plot[1], space) do tf, pos, space
+        el32convert(apply_transform(tf, pos, space))
+    end
 
     for (k, v) in per_instance
         per_instance[k] = Buffer(lift_convert(k, v, plot))
@@ -71,7 +73,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
     end
 
     handle_color!(uniform_dict, per_instance)
-    instance = convert_attribute(plot.marker[], key"marker"(), key"meshscatter"())
+    instance = el32convert(convert_attribute(plot.marker[], key"marker"(), key"meshscatter"()))
 
     if !hasproperty(instance, :uv)
         uniform_dict[:uv] = Vec2f(0)
@@ -182,7 +184,7 @@ function scatter_shader(scene::Scene, attributes)
 
     handle_color!(uniform_dict, per_instance)
 
-    instance = uv_mesh(Rect2(-0.5f0, -0.5f0, 1f0, 1f0))
+    instance = uv_mesh(Rect2f(-0.5f0, -0.5f0, 1f0, 1f0))
     # Don't send obs, since it's overwritten in JS to be updated by the camera
     uniform_dict[:resolution] = to_value(scene.camera.resolution)
 
@@ -204,7 +206,9 @@ function create_shader(scene::Scene, plot::Scatter)
     space = get(attributes, :space, :data)
     cam = scene.camera
     attributes[:preprojection] = Mat4f(I) # calculate this in JS
-    attributes[:pos] = apply_transform(transform_func_obs(plot),  plot[1], space)
+    attributes[:pos] = map(transform_func_obs(plot), plot[1], space) do tf, pos, space
+        el32convert(apply_transform(tf,  pos, space))
+    end
 
     quad_offset = get(attributes, :marker_offset, Observable(Vec2f(0)))
     attributes[:marker_offset] = Vec3f(0)

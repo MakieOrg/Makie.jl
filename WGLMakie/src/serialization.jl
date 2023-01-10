@@ -342,5 +342,10 @@ function serialize_camera(scene::Scene)
         # a view matrix change!
         ep = cam.eyeposition[]
         return [vec(collect(view)), vec(collect(proj)), Int32[res...], Float32[ep...]]
+        # eyepos32 = Vector{Float32}(cam.eyeposition[])
+        # res32 = Vector{Int32}(res)
+        # view32 = Vector{Float32}(vec(view))
+        # proj32 = Vector{Float32}(vec(proj))
+        # return [view32, proj32, res32, eyepos32]
     end
 end

@@ -458,13 +458,6 @@ function draw_atomic(screen::Screen, scene::Scene, x::Image)
     end
 end
 
-function update_positions(mesh::GeometryBasics.Mesh, positions)
-    points = el32convert(positions)
-    attr = GeometryBasics.attributes(mesh)
-    delete!(attr, :position) # position == metafree(points)
-    return GeometryBasics.Mesh(meta(points; attr...), faces(mesh))
-end
-
 function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, space=:data)
     # signals not supported for shading yet
     gl_attributes[:shading] = to_value(pop!(gl_attributes, :shading))
@@ -497,7 +490,7 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, space=:data)
         else
             pos = mesh.position
         end
-        m = update_positions(mesh, pos)
+        m = el32convert(mesh, pos)
         return m
     end
     return draw_mesh(screen, mesh, gl_attributes)

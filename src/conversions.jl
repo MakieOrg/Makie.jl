@@ -639,6 +639,16 @@ function el32convert(x::AbstractArray{T, N}) where {T<:Union{Missing, <: Number}
     end::Array{Float32, N}
 end
 
+function el32convert(mesh::GeometryBasics.Mesh, positions = mesh.position)
+    points = el32convert(positions)
+    attr = GeometryBasics.attributes(mesh)
+    delete!(attr, :position)
+    for key in keys(attr)
+        attr[key] = el32convert(attr[key])
+    end
+    return GeometryBasics.Mesh(meta(points; attr...), faces(mesh))
+end
+
 
 
 """

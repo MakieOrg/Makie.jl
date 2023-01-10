@@ -1,6 +1,6 @@
 function vertexbuffer(x, trans, space)
     pos = decompose(Point, x)
-    return apply_transform(trans,  pos, space)
+    return el32convert(apply_transform(trans,  pos, space))
 end
 
 function vertexbuffer(x::Observable, p)
@@ -41,7 +41,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
 
     for (key, default) in (:uv => Vec2f(0), :normals => Vec3f(0))
         if haskey(data, key)
-            attributes[key] = Buffer(get_attribute(mesh_signal, key))
+            attributes[key] = Buffer(map(el32convert, get_attribute(mesh_signal, key)))
         else
             uniforms[key] = Observable(default)
         end
@@ -121,7 +121,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
 
     uniforms[:normalmatrix] = map(scene.camera.view, plot.model) do v, m
         i = Vec(1, 2, 3)
-        return transpose(inv(v[i, i] * m[i, i]))
+        return transpose(Mat3f(inv(v[i, i] * m[i, i])))
     end
 
     # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
