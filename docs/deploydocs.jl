@@ -183,5 +183,7 @@ function generate_sitemap(dirname, max_version)
                 """)
             end
         end
+
+        println(io, "</urlset>")
     end
 end
