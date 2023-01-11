@@ -122,10 +122,10 @@ function perspectiveprojection(
 end
 
 """
-azel2xyz(elevation, azimuth, distance, up)
+    azel2xyz(azimuth, elevation, distance, up)
 
 Compute the eulerian space coordinates from a specified elevation, azimuth and distance (spherical coordinates) w.r.t to origin and an up-vector.
-Use lookat + azel2xyz(azimuth, elevation, distance, up) to e.g. compute a camera position.
+Use e.g. lookat + azel2xyz(π / 3, deg2rad(60), 1., Vec3f(0, 0, 1)) to compute a camera position.
 """
 function azel2xyz(azimuth, elevation::E, distance, up::Vec{3, T}) where {E,T}
     sum(abs, up) == 1 || throw(ArgumentError("up must be a vector with a single unit value e.g. Vec3f(0, 0, 1) for +z as upvector"))
