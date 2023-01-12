@@ -161,6 +161,42 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
 end
 
 
+function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<: MultiPolygon})
+
+    println("Hello there")
+
+    model = poly.model[]
+    space = to_value(get(poly, :space, :data))
+    projected_polys = project_multipolygon.(Ref(scene), space, polygons, Ref(model))
+
+    color = poly.color[]
+    if color isa AbstractArray{<:Number}
+        color = numbers_to_colors(color, poly)
+    elseif color isa String
+        # string is erroneously broadcasted as chars otherwise
+        color = to_color(color)
+    end
+    strokecolor = poly.strokecolor[]
+    if strokecolor isa AbstractArray{<:Number}
+        strokecolor = numbers_to_colors(strokecolor, poly)
+    elseif strokecolor isa String
+        # string is erroneously broadcasted as chars otherwise
+        strokecolor = to_color(strokecolor)
+    end
+    broadcast_foreach(projected_polys, color, strokecolor, poly.strokewidth[]) do mpo, c, sc, sw
+        for po in mpo.polygons
+            polypath(screen.context, po)
+            Cairo.set_source_rgba(screen.context, rgbatuple(c)...)
+            Cairo.fill_preserve(screen.context)
+            Cairo.set_source_rgba(screen.context, rgbatuple(sc)...)
+            Cairo.set_line_width(screen.context, sw)
+            Cairo.stroke(screen.context)
+        end
+    end
+
+end
+
+
 ################################################################################
 #                                     Band                                     #
 #     Override because band is usually a polygon, but because it supports      #
