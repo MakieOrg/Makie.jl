@@ -225,7 +225,7 @@ varname => default_value pairs.
     )
 """
 macro documented_attributes(exp)
-    if exp.head != :block
+    if exp.head !== :block
         error("Not a block")
     end
 

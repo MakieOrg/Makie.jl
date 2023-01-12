@@ -48,7 +48,7 @@ function FixedGeomView(T, max_primitives, primitive_in, primitive_out)
     buffer = Vector{Tuple{Point4f, T}}(undef, max_primitives)
     # TODO implement primitive_in and out correctly
     # this is for triangle_strip and 4 max_primitives
-    if max_primitives != 4 || primitive_out != :triangle_strip
+    if max_primitives != 4 || primitive_out !== :triangle_strip
         error("Not implemented for max_primitives == $max_primitives and primitive_out == $primitive_out.")
     end
     geometry_view = if primitive_out === :triangle_strip

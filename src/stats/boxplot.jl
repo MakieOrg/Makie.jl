@@ -157,7 +157,7 @@ function Makie.plot!(plot::BoxPlot)
         if orientation === :horizontal
             outlier_points = flip_xy.(outlier_points)
             t_segments = flip_xy.(t_segments)
-        elseif orientation != :vertical
+        elseif orientation !== :vertical
             error("Invalid orientation $orientation. Valid options: :horizontal or :vertical.")
         end
 

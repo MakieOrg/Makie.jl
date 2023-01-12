@@ -63,7 +63,7 @@ function plot!(p::Stairs{<:Tuple{<:AbstractVector{<:Point2}}})
         end
     end
 
-    lines!(p, steppoints; [x for x in pairs(p.attributes) if x[1] != :step]...)
+    lines!(p, steppoints; [x for x in pairs(p.attributes) if x[1] !== :step]...)
     p
 end
 
