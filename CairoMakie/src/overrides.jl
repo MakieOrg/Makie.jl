@@ -162,9 +162,6 @@ end
 
 
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<: MultiPolygon})
-
-    println("Hello there")
-
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
     projected_polys = project_multipolygon.(Ref(scene), space, polygons, Ref(model))
