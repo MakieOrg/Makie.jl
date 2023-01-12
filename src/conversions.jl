@@ -127,7 +127,7 @@ convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVector) = (
 Takes an input GeometryPrimitive `x` and decomposes it to points.
 `P` is the plot Type (it is optional).
 """
-convert_arguments(p::PointBased, x::GeometryPrimitive) = convert_arguments(p, decompose(Point, x))
+convert_arguments(p::PointBased, x::GeometryPrimitive) = convert_arguments(p, decompose(Point3e, x))
 
 function convert_arguments(::PointBased, pos::AbstractMatrix{<: Number})
     (to_vertices(pos),)
@@ -510,8 +510,8 @@ function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N}) where {
             mesh = GeometryBasics.pointmeta(mesh, decompose(Vec3f, n))
         end
     end
-    PT = eltype(mesh.position) # TODO do we need to guard against abstract types?
-    return (GeometryBasics.mesh(mesh, pointtype=PT, facetype=GLTriangleFace),)
+    # PT = eltype(mesh.position) # TODO do we need to guard against abstract types?
+    return (GeometryBasics.mesh(mesh, pointtype=Point{N, Float64}, facetype=GLTriangleFace),)
 end
 
 function convert_arguments(
@@ -526,7 +526,7 @@ function convert_arguments(
         xyz::Union{AbstractPolygon{2, T}, AbstractVector{<: AbstractPoint{2, T}}}
     ) where T
     return (GeometryBasics.mesh(
-        xyz; pointtype = Point{2, T}, facetype = GeometryBasics.GLTriangleFace
+        xyz; pointtype = Point{2, Float64}, facetype = GeometryBasics.GLTriangleFace
     ), )
 end
 
@@ -534,7 +534,7 @@ function convert_arguments(MT::Type{<:Mesh}, geom::GeometryPrimitive{N, T}) wher
     # we convert to UV mesh as default, because otherwise the uv informations get lost
     # - we can still drop them, but we can't add them later on
     return (GeometryBasics.mesh(
-        geom; pointtype = Point{N,T}, uv = Vec2f, normaltype = Vec3f,
+        geom; pointtype = Point{N, Float64}, uv = Vec2f, normaltype = Vec3f,
         facetype = GeometryBasics.GLTriangleFace
     ), )
 end
@@ -706,16 +706,16 @@ Converts a representation of vertices `v` to its canonical representation as a
   - if `v` has 2 or 3 rows, it will treat each column as a vertex,
   - otherwise if `v` has 2 or 3 columns, it will treat each row as a vertex.
 """
-function to_vertices(verts::AbstractVector{<: VecTypes{3, T}}) where T
-    return reinterpret(Point3{T}, verts)
-end
+# function to_vertices(verts::AbstractVector{<: VecTypes{3, T}}) where T
+#     return reinterpret(Point3{Float64}, verts)
+# end
 
-function to_vertices(verts::AbstractVector{<: VecTypes{N, T}}) where {N, T}
-    to_vertices(to_ndim.(Point{3, T}, verts, 0.0))
-end
+# function to_vertices(verts::AbstractVector{<: VecTypes{N, T}}) where {N, T}
+#     to_vertices(to_ndim.(Point{3, Float64}, verts, 0.0))
+# end
 
 function to_vertices(verts::AbstractVector{<: VecTypes})
-    to_vertices(to_ndim.(Point{3, Float32}, verts, 0.0))
+    to_ndim.(Point{3, Float64}, verts, 0.0)
 end
 
 function to_vertices(verts::AbstractMatrix{<: Real})
