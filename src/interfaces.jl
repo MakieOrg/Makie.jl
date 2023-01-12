@@ -322,7 +322,7 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
     FinalType, argsconverted = apply_convert!(PreType, attributes, converted)
     converted_node = Observable(argsconverted)
     input_nodes =  convert.(Observable, args)
-    onany(kw_signal, input_nodes...) do kwargs, args...
+    map!(converted_node, kw_signal, input_nodes...) do kwargs, args...
         # do the argument conversion inside a lift
         result = convert_arguments(FinalType, args...; kwargs...)
         finaltype, argsconverted_ = apply_convert!(FinalType, attributes, result) # avoid a Core.Box (https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-captured)
@@ -331,7 +331,7 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
                 Changing the plot type based on values in convert_arguments is not allowed"
             )
         end
-        converted_node[] = argsconverted_
+        return argsconverted_
     end
     plot!(scene, FinalType, attributes, input_nodes, converted_node)
 end
