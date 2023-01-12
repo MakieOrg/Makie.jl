@@ -826,15 +826,15 @@ end
 "The linestyle patterns are inspired by the LaTeX package tikZ as seen here https://tex.stackexchange.com/questions/45275/tikz-get-values-for-predefined-dash-patterns."
 
 function line_diff_pattern(ls::Symbol, gaps = :normal)
-    if ls == :solid
+    if ls === :solid
         nothing
-    elseif ls == :dash
+    elseif ls === :dash
         line_diff_pattern("-", gaps)
-    elseif ls == :dot
+    elseif ls === :dot
         line_diff_pattern(".", gaps)
-    elseif ls == :dashdot
+    elseif ls === :dashdot
         line_diff_pattern("-.", gaps)
-    elseif ls == :dashdotdot
+    elseif ls === :dashdotdot
         line_diff_pattern("-..", gaps)
     else
         error(
@@ -1294,7 +1294,7 @@ convert_attribute(value, ::key"isovalue", ::key"volume") = Float32(value)
 convert_attribute(value, ::key"isorange", ::key"volume") = Float32(value)
 
 function convert_attribute(value::Symbol, ::key"marker", ::key"meshscatter")
-    if value == :Sphere
+    if value === :Sphere
         return normal_mesh(Sphere(Point3f(0), 1f0))
     else
         error("Unsupported marker: $(value)")

@@ -79,8 +79,8 @@ function initialize_block!(m::Menu; default = 1)
             round_to_IRect2D(BBox(
                 left(bbox),
                 right(bbox),
-                d == :down ? max(0, bottom(bbox) - h) : top(bbox),
-                d == :down ? bottom(bbox) : min(top(bbox) + h, top(blockscene.px_area[]))))
+                d === :down ? max(0, bottom(bbox) - h) : top(bbox),
+                d === :down ? bottom(bbox) : min(top(bbox) + h, top(blockscene.px_area[]))))
     end
 
     menuscene = Scene(blockscene, scenearea, camera = campixel!, clear=true)

@@ -51,7 +51,7 @@ function FixedGeomView(T, max_primitives, primitive_in, primitive_out)
     if max_primitives != 4 || primitive_out != :triangle_strip
         error("Not implemented for max_primitives == $max_primitives and primitive_out == $primitive_out.")
     end
-    geometry_view = if primitive_out == :triangle_strip
+    geometry_view = if primitive_out === :triangle_strip
         TriangleStripView(buffer)
     else
         error("$primitive_out not supported. Only :triangle_strip supported right now")
