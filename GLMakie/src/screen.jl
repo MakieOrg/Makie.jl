@@ -349,7 +349,6 @@ end
 
 function Screen(;
         resolution::Union{Nothing, Tuple{Int, Int}} = nothing,
-        visible = true,
         start_renderloop = true,
         screen_config...
     )
@@ -359,7 +358,7 @@ function Screen(;
     if !isnothing(resolution)
         resize!(screen, resolution...)
     end
-    apply_config!(screen, config; visible=visible, start_renderloop=start_renderloop)
+    apply_config!(screen, config; start_renderloop=start_renderloop)
     return screen
 end
 
@@ -381,7 +380,7 @@ end
 
 function Screen(scene::Scene; start_renderloop=true, screen_config...)
     config = Makie.merge_screen_config(ScreenConfig, screen_config)
-    return Screen(scene, config; visible=visible, start_renderloop=start_renderloop)
+    return Screen(scene, config; start_renderloop=start_renderloop)
 end
 
 # Open an interactive window
