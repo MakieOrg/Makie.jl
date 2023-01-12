@@ -61,6 +61,10 @@ function project_polygon(scene, space, poly::P, model) where P <: Polygon
     )
 end
 
+function project_multipolygon(scene, space, multipoly::MP, model) where MP <: MultiPolygon
+    return MultiPolygon(project_polygon.(Ref(scene), Ref(space), multipoly.polygons, Ref(model)))
+end
+
 scale_matrix(x, y) = Cairo.CairoMatrix(x, 0.0, 0.0, y, 0.0, 0.0)
 
 ########################################
