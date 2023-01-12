@@ -238,7 +238,9 @@ function Makie.plot!(
             push!(bar_tos[], s.close)
         end
         append!(colors[], [x.close > x.open for x in stockvalues])
-        colors[] = colors[]
+        notify(linesegs)
+        notify(colors)
+        return
     end
 
     # connect `update_plot` so that it is called whenever `times`
