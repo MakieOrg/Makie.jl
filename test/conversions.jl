@@ -21,7 +21,7 @@ end
 @testset "changing input types" begin
     input = Observable{Any}(decompose(Point2f, Circle(Point2f(0), 2f0)))
     f, ax, pl = mesh(input)
-    m = Makie.triangle_mesh(Circle(Point2f(0), 1f0))
+    m = Makie._triangle_mesh(Circle(Point2(0.0), 1.0))
     input[] = m
     @test pl[1][] == m
 end
