@@ -124,6 +124,7 @@ const minimal_default = Attributes(
         fullscreen = false,
         debugging = false,
         monitor = nothing,
+        visible = true,
 
         # Postproccessor
         oit = true,

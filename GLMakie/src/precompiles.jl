@@ -21,7 +21,7 @@ let
             shared_precompile = joinpath(base_path, "shared-precompile.jl")
             include(shared_precompile)
             try
-                display(plot(x))
+                display(plot(x); visible=false)
             catch
             end
             closeall()
