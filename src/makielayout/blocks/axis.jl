@@ -1013,7 +1013,7 @@ function adjustlimits!(la)
         ylims = expandlimits(ylims, (((1 / correction_factor) - 1) .* ratios)..., identity) # don't use scale here?
     end
 
-    bbox = BBox(xlims[1], xlims[2], ylims[1], ylims[2])
+    bbox = BBox64(xlims[1], xlims[2], ylims[1], ylims[2])
     la.finallimits[] = bbox
     return
 end
