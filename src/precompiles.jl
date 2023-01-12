@@ -19,3 +19,8 @@ let
     end
     nothing
 end
+
+for T in (DragPan, RectangleZoom, LimitReset)
+    precompile(process_interaction, (T, MouseEvent, Axis))
+end
+precompile(process_axis_event, (Axis, MouseEvent))
