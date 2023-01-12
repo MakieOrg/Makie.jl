@@ -366,5 +366,6 @@ end
     ax.xlabel[] = L"1 + \alpha^2"
     ax.ylabel[] = L"\lim_{x\to\infty} f(x)"
     ax.zlabel[] = L"\sum_{n=1}^{\infty} 2^{-n} = 1"
+    fig
 end
 
