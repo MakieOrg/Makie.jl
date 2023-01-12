@@ -9,9 +9,7 @@ function has_forwarded_layout end
 
 macro Block(name::Symbol, body::Expr = Expr(:block))
 
-    if !(body.head === :block)
-        error("A Block needs to be defined within a `begin end` block")
-    end
+    body.head === :block || error("A Block needs to be defined within a `begin end` block")
 
     structdef = quote
         mutable struct $name <: Makie.Block

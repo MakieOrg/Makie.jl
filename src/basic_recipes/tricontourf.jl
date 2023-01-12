@@ -55,10 +55,10 @@ function compute_contourf_colormap(levels, cmap, elow, ehigh)
 
     _cmap = to_colormap(cmap)
 
-    if elow === :auto && !(ehigh === :auto)
+    if elow === :auto && ehigh !== :auto
         cm_base = cgrad(_cmap, n + 1; categorical=true)[2:end]
         cm = cgrad(cm_base, levels_scaled; categorical=true)
-    elseif ehigh === :auto && !(elow === :auto)
+    elseif ehigh === :auto && elow !== :auto
         cm_base = cgrad(_cmap, n + 1; categorical=true)[1:(end - 1)]
         cm = cgrad(cm_base, levels_scaled; categorical=true)
     elseif ehigh === :auto && elow === :auto
