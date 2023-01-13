@@ -68,11 +68,3 @@
     {{ end }}
   </body>
 </html>
-<script src="https://files.stork-search.net/releases/v1.6.0/stork.js"></script>
-    <img id="stork-library-path-placeholder" src="libs/stork" style="display:none"/>
-    <img id="search-path-placeholder" src="search" style="display:none"/>
-    <script>
-      storkfolder = document.querySelector("#stork-library-path-placeholder").src;
-      stork.register("makiesearch", `${storkfolder}/index_box.st`, {
-        transformResultUrl: (url) => url.replace(DOCUMENTER_CURRENT_VERSION, "stable")
-      });
