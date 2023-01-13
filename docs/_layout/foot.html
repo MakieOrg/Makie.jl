@@ -35,7 +35,7 @@
     <script>
       storkfolder = document.querySelector("#stork-library-path-placeholder").src;
       stork.register("makiesearch", `${storkfolder}/index_page.st`, {
-        transformResultUrl: (url) => url.replace(DOCUMENTER_CURRENT_VERSION, "stable")
+        transformResultUrl: (url) => url.replace(DOCUMENTER_NEWEST, "stable")
       });
     </script>
     {{else}}
@@ -43,7 +43,7 @@
     <script>
       storkfolder = document.querySelector("#stork-library-path-placeholder").src;
       stork.register("makiesearch", `${storkfolder}/index_box.st`, {
-        transformResultUrl: (url) => url.replace(DOCUMENTER_CURRENT_VERSION, "stable")
+        transformResultUrl: (url) => url.replace(DOCUMENTER_NEWEST, "stable")
       });
       function handleKeyPress(e){
         // Redirect to search-page if enter is pressed in search-box
