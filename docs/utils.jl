@@ -87,7 +87,7 @@ function env_examplefigure(com, _)
 
     str = """
     ```julia:example_figure
-    __result = begin # hide
+    __result = let # hide
         $code
     end # hide
     save(joinpath(@OUTPUT, "$pngfile"), __result; $rest_kwargs_str) # hide

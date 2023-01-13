@@ -2,11 +2,12 @@
 
 {{doc text}}
 
-## Pixel space text
+## Marker space pixel
 
-By default, text is drawn in pixel space (`space = :pixel`).
-The text anchor is given in data coordinates, but the size of the glyphs is independent of data scaling.
-The boundingbox of the text will include every data point or every text anchor point.
+By default, text is drawn with `markerspace = :pixel`, which means that the text size is interpreted in pixel space.
+(The space of the text position is determined by the `space` attribute instead.)
+
+The boundingbox of text with `markerspace = :pixel` will include every data point or every text anchor point but not the text itself, because its extent depends on the current projection of the axis it is in.
 This also means that `autolimits!` might cut off your text, because the glyphs don't have a meaningful size in data coordinates (the size is independent of zoom level), and you have to take some care to manually place the text or set data limits such that it is fully visible.
 
 You can either plot one string with one position, or a vector of strings with a vector of positions.
@@ -38,7 +39,7 @@ f
 ```
 \end{examplefigure}
 
-## Data space text
+## Marker space data
 
 For text whose dimensions are meaningful in data space, set `markerspace = :data`.
 This means that the boundingbox of the text in data coordinates will include every glyph.
@@ -156,6 +157,40 @@ hideydecorations!(ax)
 barplot!(horsepower, direction = :x)
 text!(Point.(horsepower, 1:5), text = cars, align = (:right, :center),
     offset = (-20, 0), color = :white)
+
+f
+```
+\end{examplefigure}
+
+## Relative space
+
+The default setting of `text` is `space = :data`, which means the final position depends on the axis limits and scaling.
+However, it can be useful to place text relative to the axis itself, independent of scaling.
+With `space = :relative`, the position `(0, 0)` refers to the lower left corner and `(1, 1)` the upper right.
+A common scenario is to place labels within axes:
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+
+f = Figure()
+
+ax1 = Axis(f[1, 1], limits = (1, 2, 3, 4))
+ax2 = Axis(f[1, 2], width = 300, limits = (5, 6, 7, 8))
+ax3 = Axis(f[2, 1:2], limits = (9, 10, 11, 12))
+
+for (ax, label) in zip([ax1, ax2, ax3], ["A", "B", "C"])
+    text!(
+        ax, 0, 1,
+        text = label, 
+        font = :bold,
+        align = (:left, :top),
+        offset = (4, -2),
+        space = :relative,
+        fontsize = 24
+    )
+end
 
 f
 ```
