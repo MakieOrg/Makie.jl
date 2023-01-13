@@ -5,6 +5,7 @@ using FileIO
 using ImageTransformations
 using Colors
 using Pkg
+using Memoize
 
 ############################ Initialization ##############################
 
@@ -86,7 +87,7 @@ function env_examplefigure(com, _)
     push!(pngsvec, pngfile)
 
     str = """
-    ```julia:example_figure
+    ```julia:example_figure_$name
     __result = begin # hide
         $code
     end # hide
@@ -256,6 +257,10 @@ end
 
 
 function hfun_colorschemes()
+    create_colorscheme_markdown()
+end
+
+@memoize function create_colorscheme_markdown()
     return sprint() do md
         write(md, """
         <h2>misc</h2>
@@ -287,7 +292,10 @@ function lx_outputimage(lxc, _)
 end
 
 function hfun_generating_versions()
+    versions_markdown()
+end
 
+@memoize function versions_markdown()
     function dep_version(depname)
         deps = Pkg.dependencies()
         version = first(d for d in deps if d.second.name == depname).second.version
@@ -402,10 +410,6 @@ end
 
             print(io, "</div>")
 
-            if active
-                print(io, contenttable())
-            end
-
             printlist(io, naventry.children, this_level)
             print(io, "</li>\n")
         end
@@ -416,7 +420,7 @@ end
 end
 
 
-function contenttable()
+function hfun_tableofcontents()
     isempty(Franklin.PAGE_HEADERS) && return ""
 
     return sprint() do io
