@@ -25,7 +25,7 @@ function onpick(f, scene::Scene, plots::AbstractPlot...; range=1)
     fplots = flatten_plots(plots)
     args = range == 1 ? (scene,) : (scene, range)
     on(events(scene).mouseposition) do mp
-        p, idx = mouse_selection(args...)
+        p, idx = pick(args...)
         (p in fplots) && f(p, idx)
         return Consume(false)
     end
@@ -56,6 +56,12 @@ function flatten_plots(array, plots = AbstractPlot[])
     plots
 end
 
+function flatten_plots(scene::Scene, plots = AbstractPlot[])
+    flatten_plots(scene.plots, plots)
+    flatten_plots(scene.children, plots)
+    plots
+end
+
 """
     mouse_in_scene(fig/ax/scene[, priority = 0])
 
@@ -63,7 +69,7 @@ Returns a new observable that is true whenever the cursor is inside the given sc
 
 See also: [`is_mouseinside`](@ref)
 """
-function mouse_in_scene(scene::Scene; priority = Int8(0))
+function mouse_in_scene(scene::Scene; priority = 0)
     p = rootparent(scene)
     output = Observable(Vec2(0.0))
     on(events(scene).mouseposition, priority = priority) do mp
@@ -90,7 +96,7 @@ end
 
 Return the plot under pixel position xy.
 """
-pick(obj) = pick(get_scene(obj), mouseposition_px(get_scene(obj)))
+pick(obj) = pick(get_scene(obj), events(obj).mouseposition[])
 pick(obj, xy::VecTypes{2}) = pick(get_scene(obj), xy)
 function pick(scene::Scene, xy::VecTypes{2})
     screen = getscreen(scene)
@@ -103,7 +109,7 @@ end
 
 Return the plot closest to xy within a given range.
 """
-pick(obj, range::Real) = pick(get_scene(obj), mouseposition_px(get_scene(obj)), range)
+pick(obj, range::Real) = pick(get_scene(obj), events(obj).mouseposition[], range)
 pick(obj, xy::VecTypes{2}, range::Real) = pick(get_scene(obj), xy, range)
 function pick(scene::Scene, xy::VecTypes{2}, range::Real)
     screen = getscreen(scene)
@@ -135,6 +141,8 @@ function pick_closest(scene::SceneLike, screen, xy, range)
     return selected == (0, 0) ? (nothing, 0) : picks[selected[1], selected[2]]
 end
 
+using InteractiveUtils
+
 """
     pick_sorted(fig/ax/scene, xy::VecLike, range)
 
@@ -144,11 +152,11 @@ sorted by distance to `xy`.
 function pick_sorted(scene::Scene, xy, range)
     screen = getscreen(scene)
     screen === nothing && return Tuple{AbstractPlot, Int}[]
-    pick_sorted(scene, screen, xy, range)
+    return pick_sorted(scene, screen, xy, range)
 end
 
 function pick_sorted(scene::Scene, screen, xy, range)
-    w, h = widths(screen)
+    w, h = size(scene)
     if !((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h))
         return Tuple{AbstractPlot, Int}[]
     end
@@ -158,16 +166,14 @@ function pick_sorted(scene::Scene, screen, xy, range)
 
     picks = pick(scene, screen, Rect2i(x0, y0, dx, dy))
 
-    selected = filter(x -> x[1] != nothing, unique(vec(picks)))
+    selected = filter(x -> x[1] !== nothing, unique(vec(picks)))
     distances = [range^2 for _ in selected]
     x, y =  xy .+ 1 .- Vec2f(x0, y0)
     for i in 1:dx, j in 1:dy
-        if picks[i, j][1] != nothing
+        if picks[i, j][1] !== nothing
             d = (x-i)^2 + (y-j)^2
-            i = findfirst(isequal(picks[i, j]), selected)
-            if i === nothing
-                @warn "This shouldn't happen..."
-            elseif distances[i] > d
+            i = findfirst(isequal(picks[i, j]), selected)::Int
+            if distances[i] > d
                 distances[i] = d
             end
         end
@@ -211,15 +217,12 @@ By default uses the `scene` that the mouse is currently hovering over.
 """
 mouseposition(x) = mouseposition(get_scene(x))
 function mouseposition(scene::Scene = hovered_scene())
-    to_world(scene, mouseposition_px(scene))
+    return to_world(scene, mouseposition_px(scene))
 end
 
 mouseposition_px(x) = mouseposition_px(get_scene(x))
 function mouseposition_px(scene::Scene = hovered_scene())
-    screen_relative(
-        scene,
-        events(scene).mouseposition[]
-    )
+    return screen_relative(scene, events(scene).mouseposition[])
 end
 
 """

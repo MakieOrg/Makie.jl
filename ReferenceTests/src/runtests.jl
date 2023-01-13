@@ -1,10 +1,3 @@
-
-function extract_frames(video, frame_folder)
-    path = joinpath(frame_folder, "frames%04d.png")
-    FFMPEG.ffmpeg_exe(`-loglevel quiet -i $video -y $path`)
-end
-
-
 function get_frames(a, b)
     return (get_frames(a), get_frames(b))
 end
@@ -13,7 +6,7 @@ function get_frames(video)
     mktempdir() do folder
         afolder = joinpath(folder, "a")
         mkpath(afolder)
-        extract_frames(video, afolder)
+        Makie.extract_frames(video, afolder)
         aframes = joinpath.(afolder, readdir(afolder))
         if length(aframes) > 10
             # we don't want to compare too many frames since it's time costly
@@ -44,6 +37,13 @@ function compare_media(a, b; sigma=[1,1])
         return compare_media(conv(imga), conv(imgb), sigma=sigma)
     elseif ext in (".mp4", ".gif")
         aframes, bframes = get_frames(a, b)
+        # Frames can differ in length, which usually shouldn't be the case but can happen
+        # when the implementation of record changes, or when the example changes its number of frames
+        # In that case, we just return inf + warn
+        if length(aframes) != length(bframes)
+            @warn "not the same number of frames in video, difference will be Inf"
+            return Inf
+        end
         return mean(compare_media.(aframes, bframes; sigma=sigma))
     else
         error("Unknown media extension: $ext")
@@ -56,9 +56,11 @@ function get_all_relative_filepaths_recursively(dir)
     end
 end
 
-function record_comparison(base_folder::String; record_folder_name="recorded", reference_folder_name = "reference")
+function record_comparison(base_folder::String; record_folder_name="recorded", reference_name = basename(base_folder), tag=last_major_version())
     record_folder = joinpath(base_folder, record_folder_name)
-    reference_folder = joinpath(base_folder, reference_folder_name)
+    reference_folder = download_refimages(tag; name=reference_name)
+    # we copy the reference images into the output folder, since we want to upload it all as an artifact, to know against what images we compared
+    cp(reference_folder, joinpath(base_folder, "reference"))
     testimage_paths = get_all_relative_filepaths_recursively(record_folder)
     missing_refimages, scores = compare(testimage_paths, reference_folder, record_folder)
 
@@ -78,9 +80,8 @@ function record_comparison(base_folder::String; record_folder_name="recorded", r
     return missing_refimages, scores
 end
 
-function test_comparison(missing_refimages, scores; threshold)
-    @testset "Comparison scores and missing reference images" begin
-        @test isempty(missing_refimages)
+function test_comparison(scores; threshold)
+    @testset "Comparison scores" begin
         for (image, score) in pairs(scores)
             @testset "$image" begin
                 @test score <= threshold
@@ -104,40 +105,3 @@ function compare(relative_test_paths::Vector{String}, reference_dir::String, rec
     end
     return missing_refimages, scores
 end
-
-
-function record_tests(db=load_database(); recording_dir=basedir("recorded"))
-    recorded_files = String[]
-    @testset "Record tests" begin
-        rm(recording_dir, recursive=true, force=true)
-        mkdir(recording_dir)
-        Makie.inline!(true)
-        no_backend = Makie.current_backend[] === missing
-        for (source_location, entry) in db
-            try
-                Makie.set_theme!(resolution=(500, 500))
-                # we currently can't record anything without a backend!
-                if no_backend && ((:Record in entry.used_functions) || (:Stepper in entry.used_functions))
-                    continue
-                end
-                RNG.seed_rng!()
-                result = Base.invokelatest(entry.func)
-                # only save if we have a backend for saving
-                uname = entry.title
-                if !no_backend
-                    save_result(joinpath(recording_dir, uname), result)
-                end
-                push!(recorded_files, uname)
-                @info("Tested: $(entry.title)")
-                @test true
-            catch e
-                @info("Test: $(entry.title) didn't pass")
-                @test false
-                Base.showerror(stderr, e)
-                Base.show_backtrace(stderr, Base.catch_backtrace())
-            end
-        end
-    end
-    return recorded_files, recording_dir
-end
-

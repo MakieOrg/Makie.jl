@@ -6,30 +6,32 @@ on:
       - '*.md'
     branches:
       - master
+      - breaking-release
   push:
     paths-ignore:
       - 'docs/**'
       - '*.md'
     branches:
       - master
+      - breaking-release
     tags: '*'
 
-concurrency: 
-  group: cairomakie-${{ github.ref }}
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
   test:
-    name: CairoMakie Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    name: CairoMakie Julia ${{ matrix.version }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         version:
-          - '1.3'
           - '1.6'
+          - '1' # automatically expands to the latest stable 1.x release of Julia
         os:
-          - ubuntu-latest
+          - ubuntu-20.04
         arch:
           - x64
     steps:
@@ -45,17 +47,17 @@ jobs:
         run: |
           using Pkg;
           # dev mono repo versions
-          pkg"dev . MakieCore CairoMakie ReferenceTests"
+          pkg"dev . ./MakieCore ./CairoMakie ./ReferenceTests"
       - name: Run the tests
         continue-on-error: true
         run: >
           julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("CairoMakie", coverage=true)'
-          && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV 
+          && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
         uses: actions/upload-artifact@v2
         with:
           name: ReferenceImages_${{ matrix.os }}_${{ matrix.arch }}_${{ matrix.version }}
-          path: ./CairoMakie/test/reference_test_output
+          path: ./CairoMakie/test/recorded_reference_images/
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1

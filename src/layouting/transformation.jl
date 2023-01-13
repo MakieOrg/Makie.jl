@@ -217,13 +217,23 @@ function apply_transform(f, data::AbstractArray)
     map(point-> apply_transform(f, point), data)
 end
 
+"""
+    apply_transform(f, data, space)
+Apply the data transform func to the data if the space matches one
+of the the transformation spaces (currently only :data is transformed)
+"""
+apply_transform(f, data, space) = space === :data ? apply_transform(f, data) : data
+function apply_transform(f::Observable, data::Observable, space::Observable)
+    return lift((f, d, s) -> apply_transform(f, d, s), f, data, space)
+end
+
 # To not create ambiguities, we need to define these methods on all types
 for Type in (AbstractArray, VecTypes, Number, ClosedInterval, Rect)
     @eval begin
-        apply_transform(f::typeof(identity), x::$(Type)) = x
-        apply_transform(f::Tuple{typeof(identity)}, x::$(Type)) = x
-        apply_transform(f::NTuple{2, typeof(identity)}, x::$(Type)) = x
-        apply_transform(f::NTuple{3, typeof(identity)}, x::$(Type)) = x
+        apply_transform(f::typeof(identity), x::$(Type), space) = x
+        apply_transform(f::Tuple{typeof(identity)}, x::$(Type), space) = x
+        apply_transform(f::NTuple{2, typeof(identity)}, x::$(Type), space) = x
+        apply_transform(f::NTuple{3, typeof(identity)}, x::$(Type), space) = x
     end
 end
 apply_transform(f::NTuple{2, typeof(identity)}, point::VecTypes{2}) = point
@@ -281,12 +291,6 @@ function apply_transform(f, r::Rect)
     ma_t = apply_transform(f, Point(ma))
     return Rect(Vec(mi_t), Vec(ma_t .- mi_t))
 end
-
-# ambiguity fix
-apply_transform(f::typeof(identity), r::Rect) = r
-apply_transform(f::NTuple{2, typeof(identity)}, r::Rect) = r
-apply_transform(f::NTuple{3, typeof(identity)}, r::Rect) = r
-
 
 pseudolog10(x) = sign(x) * log10(abs(x) + 1)
 inv_pseudolog10(x) = sign(x) * (exp10(abs(x)) - 1)

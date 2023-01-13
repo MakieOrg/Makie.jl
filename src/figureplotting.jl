@@ -11,8 +11,28 @@ Base.iterate(ap::AxisPlot, args...) = iterate((ap.axis, ap.plot), args...)
 
 get_scene(ap::AxisPlot) = get_scene(ap.axis.scene)
 
+function _validate_nt_like_keyword(@nospecialize(kw), name)
+    if !(kw isa NamedTuple || kw isa AbstractDict{Symbol} || kw isa Attributes)
+        throw(ArgumentError("""
+            The $name keyword argument received an unexpected value $(repr(kw)).
+            The $name keyword expects a collection of Symbol => value pairs, such as NamedTuple, Attributes, or AbstractDict{Symbol}.
+            The most common cause of this error is trying to create a one-element NamedTuple like (key = value) which instead creates a variable `key` with value `value`.
+            Write (key = value,) or (; key = value) instead."""
+        ))
+    end
+end
+
+function _disallow_keyword(kw, attributes)
+    if haskey(attributes, kw)
+        throw(ArgumentError("You cannot pass `$kw` as a keyword argument to this plotting function. Note that `axis` can only be passed to non-mutating plotting functions (not ending with a `!`) that implicitly create an axis, and `figure` only to those that implicitly create a `Figure`."))
+    end
+end
+
 function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), kw_attributes...)
-    # scene_attributes = extract_scene_attributes!(attributes)
+    
+    _validate_nt_like_keyword(axis, "axis")
+    _validate_nt_like_keyword(figure, "figure")
+
     fig = Figure(; figure...)
 
     axis = Dict(pairs(axis))
@@ -29,7 +49,7 @@ function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), 
         if is2d(proxyscene)
             ax = Axis(fig; axis...)
         else
-            ax = LScene(fig; scenekw = (camera=cam3d!, axis...))
+            ax = LScene(fig; axis...)
         end
     end
 
@@ -48,7 +68,9 @@ end
 
 function plot(P::PlotFunc, gp::GridPosition, args...; axis = NamedTuple(), kwargs...)
 
-    f = MakieLayout.get_top_parent(gp)
+    _validate_nt_like_keyword(axis, "axis")
+
+    f = get_top_parent(gp)
 
     c = contents(gp, exact = true)
     if !isempty(c)
@@ -58,7 +80,7 @@ function plot(P::PlotFunc, gp::GridPosition, args...; axis = NamedTuple(), kwarg
         $(c)
 
         If you meant to plot into an axis at this position, use the plotting function with `!` (e.g. `func!` instead of `func`).
-        If you really want to place an axis on top of other layoutables, make your intention clear and create it manually.
+        If you really want to place an axis on top of other blocks, make your intention clear and create it manually.
         """)
     end
 
@@ -74,7 +96,7 @@ function plot(P::PlotFunc, gp::GridPosition, args...; axis = NamedTuple(), kwarg
         if is2d(proxyscene)
             ax = Axis(f; axis...)
         else
-            ax = LScene(f; scenekw = (camera = cam3d!, axis...))
+            ax = LScene(f; axis...)
         end
     end
 
@@ -86,8 +108,8 @@ end
 function plot!(P::PlotFunc, gp::GridPosition, args...; kwargs...)
 
     c = contents(gp, exact = true)
-    if !(length(c) == 1 && c[1] isa Union{Axis, LScene})
-        error("There needs to be a single axis at $(gp.span), $(gp.side) to plot into.\nUse a non-mutating plotting command to create an axis implicitly.")
+    if !(length(c) == 1 && can_be_current_axis(c[1]))
+        error("There needs to be a single axis-like object at $(gp.span), $(gp.side) to plot into.\nUse a non-mutating plotting command to create an axis implicitly.")
     end
     ax = first(c)
     plot!(P, ax, args...; kwargs...)
@@ -95,6 +117,8 @@ end
 
 function plot(P::PlotFunc, gsp::GridSubposition, args...; axis = NamedTuple(), kwargs...)
 
+    _validate_nt_like_keyword(axis, "axis")
+    
     layout = GridLayoutBase.get_layout_at!(gsp.parent, createmissing = true)
     c = contents(gsp, exact = true)
     if !isempty(c)
@@ -104,11 +128,11 @@ function plot(P::PlotFunc, gsp::GridSubposition, args...; axis = NamedTuple(), k
         $(c)
 
         If you meant to plot into an axis at this position, use the plotting function with `!` (e.g. `func!` instead of `func`).
-        If you really want to place an axis on top of other layoutables, make your intention clear and create it manually.
+        If you really want to place an axis on top of other blocks, make your intention clear and create it manually.
         """)
     end
 
-    fig = MakieLayout.get_top_parent(gsp)
+    fig = get_top_parent(gsp)
 
     axis = Dict(pairs(axis))
 
@@ -123,7 +147,7 @@ function plot(P::PlotFunc, gsp::GridSubposition, args...; axis = NamedTuple(), k
         if is2d(proxyscene)
             ax = Axis(fig; axis...)
         else
-            ax = LScene(fig; scenekw = (camera = automatic, axis...))
+            ax = LScene(fig; axis..., scenekw = (camera = automatic,))
         end
     end
 
@@ -139,9 +163,18 @@ function plot!(P::PlotFunc, gsp::GridSubposition, args...; kwargs...)
     gp = layout[gsp.rows, gsp.cols, gsp.side]
 
     c = contents(gp, exact = true)
-    if !(length(c) == 1 && c[1] isa Union{Axis, LScene})
+    if !(length(c) == 1 && can_be_current_axis(c[1]))
         error("There is not just one axis at $(gp).")
     end
     ax = first(c)
     plot!(P, ax, args...; kwargs...)
+end
+
+update_state_before_display!(f::FigureAxisPlot) = update_state_before_display!(f.figure)
+
+function update_state_before_display!(f::Figure)
+    for c in f.content
+        update_state_before_display!(c)
+    end
+    return
 end

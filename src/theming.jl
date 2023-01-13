@@ -55,7 +55,14 @@ const default_palettes = Attributes(
 
 const minimal_default = Attributes(
     palette = default_palettes,
-    font = "Dejavu Sans",
+    font = :regular,
+    fonts = Attributes(
+        :regular => "TeX Gyre Heros Makie",
+        :bold => "TeX Gyre Heros Makie Bold",
+        :italic => "TeX Gyre Heros Makie Italic",
+        :bold_italic => "TeX Gyre Heros Makie Bold Italic",
+    ),
+    fontsize = 16,
     textcolor = :black,
     padding = Vec3f(0.05),
     figure_padding = 16,
@@ -63,8 +70,8 @@ const minimal_default = Attributes(
     colgap = 24,
     backgroundcolor = :white,
     colormap = :viridis,
-    marker = Circle,
-    markersize = 9,
+    marker = :circle,
+    markersize = 12,
     markercolor = :black,
     markerstrokecolor = :black,
     markerstrokewidth = 0,
@@ -91,13 +98,60 @@ const minimal_default = Attributes(
     ),
     ambient = RGBf(0.55, 0.55, 0.55),
     lightposition = :eyeposition,
-    inspectable = true
+    inspectable = true,
+
+    CairoMakie = Attributes(
+        px_per_unit = 1.0,
+        pt_per_unit = 0.75,
+        antialias = :best,
+        visible = true,
+        start_renderloop = false
+    ),
+
+    GLMakie = Attributes(
+        # Renderloop
+        renderloop = automatic,
+        pause_renderloop = false,
+        vsync = false,
+        render_on_demand = true,
+        framerate = 30.0,
+
+        # GLFW window attributes
+        float = false,
+        focus_on_show = false,
+        decorated = true,
+        title = "Makie",
+        fullscreen = false,
+        debugging = false,
+        monitor = nothing,
+        visible = true,
+
+        # Postproccessor
+        oit = true,
+        fxaa = true,
+        ssao = false,
+        # This adjusts a factor in the rendering shaders for order independent
+        # transparency. This should be the same for all of them (within one rendering
+        # pipeline) otherwise depth "order" will be broken.
+        transparency_weight_scale = 1000f0
+    ),
+
+    WGLMakie = Attributes(
+        framerate = 30.0
+    ),
+
+    RPRMakie = Attributes(
+        iterations = 200,
+        resource = automatic,
+        plugin = automatic,
+        max_recursion = 10
+    )
 )
 
-const _current_default_theme = deepcopy(minimal_default)
+const CURRENT_DEFAULT_THEME = deepcopy(minimal_default)
 
 function current_default_theme(; kw_args...)
-    return merge!(Attributes(kw_args), deepcopy(_current_default_theme))
+    return merge!(Attributes(kw_args), deepcopy(CURRENT_DEFAULT_THEME))
 end
 
 """
@@ -107,10 +161,10 @@ Set the global default theme to `theme` and add / override any attributes given
 as keyword arguments.
 """
 function set_theme!(new_theme = Theme()::Attributes; kwargs...)
-    empty!(_current_default_theme)
+    empty!(CURRENT_DEFAULT_THEME)
     new_theme = merge!(deepcopy(new_theme), deepcopy(minimal_default))
     new_theme = merge!(Theme(kwargs), new_theme)
-    merge!(_current_default_theme, new_theme)
+    merge!(CURRENT_DEFAULT_THEME, new_theme)
     return
 end
 
@@ -142,7 +196,14 @@ function with_theme(f, theme = Theme(); kwargs...)
     end
 end
 
-theme(::Nothing, key::Symbol) = deepcopy(current_default_theme()[key])
+function theme(::Nothing, key::Symbol)
+    val = to_value(CURRENT_DEFAULT_THEME[key])
+    if val isa Attributes
+        return val
+    else
+        Observable{Any}(val)
+    end
+end
 
 """
     update_theme!(with_theme::Theme; kwargs...)
@@ -152,7 +213,7 @@ Nested attributes are either also updated incrementally, or replaced if they are
 """
 function update_theme!(with_theme = Theme()::Attributes; kwargs...)
     new_theme = merge!(with_theme, Theme(kwargs))
-    _update_attrs!(_current_default_theme, new_theme)
+    _update_attrs!(CURRENT_DEFAULT_THEME, new_theme)
     return
 end
 

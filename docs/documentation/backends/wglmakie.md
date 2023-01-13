@@ -1,9 +1,58 @@
 # WGLMakie
 
-[WGLMakie](https://github.com/JuliaPlots/Makie.jl/tree/master/WGLMakie) is the Web-based backend, and is still experimental (though relatively feature-complete). WGLMakie uses [JSServe](https://github.com/SimonDanisch/JSServe.jl) to generate the HTML and JS for the Makie plots.
+[WGLMakie](https://github.com/MakieOrg/Makie.jl/tree/master/WGLMakie) is the web-based backend, which is mostly implemented in Julia right now.
+WGLMakie uses [JSServe](https://github.com/SimonDanisch/JSServe.jl) to generate the HTML and JavaScript for displaying the plots. On the JavaScript side, we use [ThreeJS](https://threejs.org/) and [WebGL](https://de.wikipedia.org/wiki/WebGL) to render the plots.
+Moving more of the implementation to JavaScript is currently the goal and will give us a better JavaScript API, and more interaction without a running Julia server.
 
 
-## Activation
+!!! warning
+    WGLMakie can be considered experimental because the JavaScript API isn't stable yet and the notebook integration isn't perfect yet, but all plot types should work, and therefore all recipes, but there are certain caveats
+
+
+
+#### Missing Backend Features
+
+* glow & stroke for scatter markers aren't implemented yet
+* `lines(...)` just creates unconnected linesegments and `linestyle` isn't supported
+
+#### Browser Support
+
+
+##### IJulia
+
+
+* JSServe now uses the IJulia connection, and therefore can be used even with complex proxy setup without any additional setup
+* reload of the page isn't supported, if you reload, you need to re-execute all cells and make sure that `Page()` is executed first.
+
+#### JupyterHub / Jupyterlab / Binder
+
+
+* WGLMakie should mostly work with a websocket connection. JSServe tries to [infer the proxy setup](https://github.com/SimonDanisch/JSServe.jl/blob/master/src/server-defaults.jl) needed to connect to the julia process. On local jupyterlab instances, this should work without problem, on hosted ones one may need add `jupyter-server-proxy`. See:
+    * https://github.com/MakieOrg/Makie.jl/issues/2464
+    * https://github.com/MakieOrg/Makie.jl/issues/2405
+
+
+#### Pluto
+
+* still uses JSServe's Websocket connection, so needs extra setup for remote servers.
+* reload of the page isn't supported, if you reload, you need to re-execute all cells and make sure that `Page()` is executed first.
+* static html export not fully working yet
+
+#### JuliaHub
+
+* VSCode in the browser should work out of the box.
+* Pluto in JuliaHub still has a [problem](https://github.com/SimonDanisch/JSServe.jl/issues/140) with the websocket connection. So, you will see a plot, but interaction doesn't work.
+
+
+#### Browser Support
+
+Some browsers may have only WebGL 1.0, or need extra steps to enable WebGL, but in general, all modern browsers on [mobile and desktop should support WebGL 2.0](https://www.lambdatest.com/web-technologies/webgl2).
+Safari users may need to [enable](https://discussions.apple.com/thread/8655829) WebGL, though.
+If you end up stuck on WebGL 1.0, the main missing feature will be `volume` & `contour(volume)`.
+
+
+
+## Activation and screen config
 
 Activate the backend by calling `WGLMakie.activate!()` with the following options:
 ```julia:docs
@@ -21,30 +70,21 @@ You can use JSServe and WGLMakie in Pluto, IJulia, Webpages and Documenter to cr
 
 This tutorial will run through the different modes and what kind of limitations to expect.
 
-First, one should use the new Page mode for anything that displays multiple outputs, like Pluto/IJulia/Documenter.
-This creates a single entry point, to connect to the Julia process and load dependencies.
-For Documenter, the page needs to be set to `exportable=true, offline=true`.
-Exportable has the effect of inlining all data & js dependencies, so that everything can be loaded in a single HTML object.
-`offline=true` will make the Page not even try to connect to a running Julia
-process, which makes sense for the kind of static export we do in Documenter.
+### Page
 
+`Page()` can be used to reset the JSServe state needed for multipage output like it's the case for `Documenter` or the various notebooks (IJulia/Pluto/etc).
+Previously, it was necessary to always insert and display the `Page` call in notebooks, but now the call to `Page()` is optional and doesn't need to be displayed.
+What it does is purely reset the state for a new multi-page output, which is usually the case for `Documenter`, which creates multiple pages in one Julia session, or you can use it to reset the state in notebooks, e.g. after a page reload.
+`Page(exportable=true, offline=true)` can be used to force inlining all data & js dependencies, so that everything can be loaded in a single HTML object without a running Julia process. The defaults should already be chosen this way for e.g. Documenter, so this should mostly be used for e.g. `Pluto` offline export (which is currently not fully supported, but should be soon).
 
-\begin{showhtml}{}
-```julia
-using JSServe, Markdown
-Page(exportable=true, offline=true)
-```
-\end{showhtml}
-
-After the page got displayed by the frontend, we can start with creating plots and JSServe Apps:
-
+Here is an example of how to use this in Franklin:
 
 \begin{showhtml}{}
 ```julia
 using WGLMakie
+using JSServe, Markdown
+Page(exportable=true, offline=true) # for Franklin, you still need to configure
 WGLMakie.activate!()
-# Set the default resolution to something that fits the Documenter theme
-set_theme!(resolution=(800, 400))
 scatter(1:4, color=1:4)
 ```
 \end{showhtml}
@@ -122,7 +162,7 @@ You can for example directly register javascript function that get run on change
 ```julia
 using JSServe: onjs
 
-app = App() do session::Session
+App() do session::Session
     s1 = Slider(1:100)
     slider_val = DOM.p(s1[]) # initialize with current value
     # call the `on_update` function whenever s1.value changes in JS:
@@ -148,8 +188,9 @@ But while this isn't in place, logging the the returned object makes it pretty e
 \begin{showhtml}{}
 ```julia
 using JSServe: onjs, evaljs, on_document_load
+using WGLMakie
 
-app = App() do session::Session
+App() do session::Session
     s1 = Slider(1:100)
     slider_val = DOM.p(s1[]) # initialize with current value
 
@@ -158,47 +199,53 @@ app = App() do session::Session
     # With on_document_load one can run JS after everything got loaded.
     # This is an alternative to `evaljs`, which we can't use here,
     # since it gets run asap, which means the plots won't be found yet.
-
     on_document_load(session, js"""
-        const plots = $(splot)
-        const scatter_plot = plots[0]
-        // open the console with ctr+shift+i, to inspect the values
-        // tip - you can right click on the log and store the actual variable as a global, and directly interact with it to change the plot.
-        console.log(scatter_plot)
-        console.log(scatter_plot.material.uniforms)
-        console.log(scatter_plot.geometry.attributes)
+        // you get a promise for an array of plots, when interpolating into JS:
+        $(splot).then(plots=>{
+            // just one plot for atomics like scatter, but for recipes it can be multiple plots
+            const scatter_plot = plots[0]
+            // open the console with ctr+shift+i, to inspect the values
+            // tip - you can right click on the log and store the actual variable as a global, and directly interact with it to change the plot.
+            console.log(scatter_plot)
+            console.log(scatter_plot.material.uniforms)
+            console.log(scatter_plot.geometry.attributes)
+        })
     """)
 
     # with the above, we can find out that the positions are stored in `offset`
     # (*sigh*, this is because threejs special cases `position` attributes so it can't be used)
     # Now, lets go and change them when using the slider :)
     onjs(session, s1.value, js"""function on_update(new_value) {
-        const plots = $(splot)
-        const scatter_plot = plots[0]
-
-        // change first point x + y value
-        scatter_plot.geometry.attributes.offset.array[0] = (new_value/100) * 4
-        scatter_plot.geometry.attributes.offset.array[1] = (new_value/100) * 4
-        // this always needs to be set of geometry attributes after an update
-        scatter_plot.geometry.attributes.offset.needsUpdate = true
+        $(splot).then(plots=>{
+            const scatter_plot = plots[0]
+            // change first point x + y value
+            scatter_plot.geometry.attributes.pos.array[0] = (new_value/100) * 4
+            scatter_plot.geometry.attributes.pos.array[1] = (new_value/100) * 4
+            // this always needs to be set of geometry attributes after an update
+            scatter_plot.geometry.attributes.pos.needsUpdate = true
+        })
     }
     """)
     # and for got measures, add a slider to change the color:
     color_slider = Slider(LinRange(0, 1, 100))
     onjs(session, color_slider.value, js"""function on_update(hue) {
-        const plot = $(splot)[0]
-        const color = new THREE.Color()
-        color.setHSL(hue, 1.0, 0.5)
-        plot.material.uniforms.color.value.x = color.r
-        plot.material.uniforms.color.value.y = color.g
-        plot.material.uniforms.color.value.z = color.b
+        $(splot).then(plots=>{
+            const scatter_plot = plots[0]
+            const color = new THREE.Color()
+            color.setHSL(hue, 1.0, 0.5)
+            scatter_plot.material.uniforms.color.value.x = color.r
+            scatter_plot.material.uniforms.color.value.y = color.g
+            scatter_plot.material.uniforms.color.value.z = color.b
+        })
     }""")
 
     markersize = Slider(1:100)
     onjs(session, markersize.value, js"""function on_update(size) {
-        const plot = $(splot)[0]
-        plot.material.uniforms.markersize.value.x = size
-        plot.material.uniforms.markersize.value.y = size
+        $(splot).then(plots=>{
+            const scatter_plot = plots[0]
+            scatter_plot.material.uniforms.markersize.value.x = size
+            scatter_plot.material.uniforms.markersize.value.y = size
+        })
     }""")
     return DOM.div(s1, color_slider, markersize, fig)
 end
@@ -207,42 +254,58 @@ end
 
 This summarizes the current state of interactivity with WGLMakie inside static pages.
 
+
+## Offline Tooltip
+
+`Makie.DataInspector` works just fine with WGLMakie, but it requires a running Julia process to show and update the tooltip.
+
+There is also a way to show a tooltip in Javascript directly, which needs to be inserted into the HTML dom.
+This means, we actually need to use `JSServe.App` to return a `DOM` object:
+
+\begin{showhtml}{}
+```julia
+App() do session
+    f, ax, pl = scatter(1:4, markersize=100, color=Float32[0.3, 0.4, 0.5, 0.6])
+    custom_info = ["a", "b", "c", "d"]
+    on_click_callback = js"""(plot, index) => {
+        // the plot object is currently just the raw THREEJS mesh
+        console.log(plot)
+        // Which can be used to extract e.g. position or color:
+        const {pos, color} = plot.geometry.attributes
+        console.log(pos)
+        console.log(color)
+        const x = pos.array[index*2] // everything is a flat array in JS
+        const y = pos.array[index*2+1]
+        const c = Math.round(color.array[index] * 10) / 10 // rounding to a digit in JS
+        const custom = $(custom_info)[index]
+        // return either a string, or an HTMLNode:
+        return "Point: <" + x + ", " + y + ">, value: " + c + " custom: " + custom
+    }
+    """
+
+    # ToolTip(figurelike, js_callback; plots=plots_you_want_to_hover)
+    tooltip = WGLMakie.ToolTip(f, on_click_callback; plots=pl)
+    return DOM.div(f, tooltip)
+end
+```
+\end{showhtml}
+
 # Pluto/IJulia
 
 Note that the normal interactivity from Makie is preserved with WGLMakie in e.g. Pluto, as long as the Julia session is running.
-Which brings us to setting up Pluto/IJulia sessions! The return value of your first cell must be the return value of the function `Page`.
-For example, your first cell can be
+Which brings us to setting up Pluto/IJulia sessions!
+Locally, WGLMakie should just work out of the box for Pluto/IJulia, but if you're accessing the notebook from another PC, you must set something like:
 
 ```julia
 begin
-	using JSServe
-	Page()
+    using JSServe
+    some_forwarded_port = 8080
+    Page(listen_url="0.0.0.0", listen_port=some_forwarded_port)
 end
 ```
-
-As is common with files meant to be shared, you might wish to set up a temporary directory so as to not pollute other people's environment. The following code will also be a valid first cell.
-
-```julia
-begin
-	using Pkg
-	Pkg.activate(mktempdir())
-
-	Pkg.add("JSServe")
-	using JSServe
-	Page()
-end
-```
-
-If you're accessing the notebook from another PC, you must set:
-
-```julia
-begin
-	using JSServe
-	Page(listen_url="0.0.0.0")
-end
-```
-
+Or also specify a proxy URL, if you have a more complex proxy setup.
 For more advanced setups consult the `?Page` docs and `JSServe.configure_server!`.
+In the [headless](/documentation/headless/index.html#wglmakie) documentation, you can also read more about setting up the JSServe server and port forwarding.
 
 ## Styling
 
@@ -356,9 +419,7 @@ open("index.html", "w") do io
         </head>
         <body>
     """)
-    # before doing anything else,
-    # make sure the Page setup code gets rendered as HTML
-    show(io, MIME"text/html"(), Page(exportable=true, offline=true))
+    Page(exportable=true, offline=true)
     # Then, you can just inline plots or whatever you want :)
     show(io, MIME"text/html"(), scatter(1:4))
     show(io, MIME"text/html"(), surface(rand(4, 4)))
@@ -370,9 +431,3 @@ open("index.html", "w") do io
     """)
 end
 ```
-
-# Troubleshooting
-
-## Plots don't display in Safari
-
-Safari users may need to [enable](https://discussions.apple.com/thread/8655829) WebGL.

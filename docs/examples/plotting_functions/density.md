@@ -8,7 +8,7 @@
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 Axis(f[1, 1])
@@ -23,7 +23,7 @@ f
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 Axis(f[1, 1])
@@ -38,7 +38,7 @@ f
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 Axis(f[1, 1])
@@ -54,7 +54,7 @@ f
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 Axis(f[1, 1])
@@ -78,7 +78,7 @@ You can color density plots with gradients by choosing `color = :x` or `:y`, dep
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 months = ["January", "February", "March", "April",
     "May", "June", "July", "August", "September",
@@ -105,7 +105,7 @@ Due to technical limitations, if you color the `:vertical` dimension (or :horizo
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 Axis(f[1, 1])
@@ -114,5 +114,26 @@ for x in 1:5
         color = :y, colormap = [:darkblue, :gray95])
 end
 f
+```
+\end{examplefigure}
+
+#### Using statistical weights
+
+\begin{examplefigure}{}
+```julia
+using CairoMakie, Distributions
+CairoMakie.activate!() # hide
+
+
+N = 100_000
+x = rand(Uniform(-2, 2), N)
+
+w = pdf.(Normal(), x)
+
+fig = Figure()
+density(fig[1,1], x)
+density(fig[1,2], x, weights = w)
+
+fig
 ```
 \end{examplefigure}

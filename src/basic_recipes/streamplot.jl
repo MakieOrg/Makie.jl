@@ -24,7 +24,7 @@ See the function `Makie.streamplot_impl` for implementation details.
             maxsteps = 500,
             colormap = theme(scene, :colormap),
             colorrange = Makie.automatic,
-            arrow_size = 10,
+            arrow_size = 15,
             arrow_head = automatic,
             density = 1.0,
             quality = 16
@@ -38,6 +38,7 @@ function convert_arguments(::Type{<: StreamPlot}, f::Function, xrange, yrange)
     ymin, ymax = extrema(yrange)
     return (f, Rect(xmin, ymin, xmax - xmin, ymax - ymin))
 end
+
 function convert_arguments(::Type{<: StreamPlot}, f::Function, xrange, yrange, zrange)
     xmin, xmax = extrema(xrange)
     ymin, ymax = extrema(yrange)
@@ -51,14 +52,13 @@ function convert_arguments(::Type{<: StreamPlot}, f::Function, limits::Rect)
     return (f, limits)
 end
 
-
 scatterfun(N) = N == 2 ? scatter! : meshscatter!
 
 """
 streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize)
 
 Code adapted from an example implementation by Moritz Schauer (@mschauer)
-from https://github.com/JuliaPlots/Makie.jl/issues/355#issuecomment-504449775
+from https://github.com/MakieOrg/Makie.jl/issues/355#issuecomment-504449775
 
 Background: The algorithm puts an arrow somewhere and extends the
 streamline in both directions from there. Then, it chooses a new
@@ -104,7 +104,7 @@ function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize
         end)
         ind += 1
         if mask[c]
-            x0 = Point(ntuple(N) do i
+            x0 = Point{N}(ntuple(N) do i
                 first(r[i]) + (c[i] - 0.5) * step(r[i])
             end)
             point = apply_f(x0, CallType)
@@ -184,7 +184,7 @@ function plot!(p::StreamPlot)
         rotations = lift(scene.camera.projectionview, scene.px_area, data) do pv, pxa, data
             angles = map(data[1], data[2]) do pos, dir
                 pstart = project(scene, pos)
-                pstop = project(scene, pos .+ dir)
+                pstop = project(scene, pos + dir)
                 pdir = pstop - pstart
                 n = norm(pdir)
                 if n == 0

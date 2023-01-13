@@ -1,14 +1,12 @@
 const lift = map
 
-Base.close(obs::Observable) = empty!(obs.listeners)
-
 """
 Observables.off but without throwing an error
 """
 function safe_off(o::Observables.AbstractObservable, f)
     l = listeners(o)
     for i in 1:length(l)
-        if f === l[i]
+        if f === l[i][2]
             deleteat!(l, i)
             for g in Observables.removehandler_callbacks
                 g(o, f)

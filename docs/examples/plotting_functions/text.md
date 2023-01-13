@@ -2,35 +2,6 @@
 
 {{doc text}}
 
-## Attributes
-
-### Generic
-
-- `visible::Bool = true` sets whether the plot will be rendered or not.
-- `overdraw::Bool = false` sets whether the plot will draw over other plots. This specifically means ignoring depth checks in GL backends.
-- `transparency::Bool = false` adjusts how the plot deals with transparency. In GLMakie `transparency = true` results in using Order Independent Transparency.
-- `fxaa::Bool = false` adjusts whether the plot is rendered with fxaa (anti-aliasing). Note that text plots already include a different form of anti-aliasing.
-- `inspectable::Bool = true` sets whether this plot should be seen by `DataInspector`.
-- `depth_shift::Float32 = 0f0` adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw).
-- `model::Makie.Mat4f` sets a model matrix for the plot. This replaces adjustments made with `translate!`, `rotate!` and `scale!`.
-- `color` sets the color of the plot. It can be given as a named color `Symbol` or a `Colors.Colorant`. Transparency can be included either directly as an alpha value in the `Colorant` or as an additional float in a tuple `(color, alpha)`. The color can also be set for each character by passing a `Vector` of colors.
-- `space::Symbol = :data` sets the transformation space for text positions. See `Makie.spaces()` for possible inputs.
-
-### Other
-
-- `align::Tuple{Union{Symbol, Real}, Union{Symbol, Real}} = (:left, :bottom)` sets the alignment of the string w.r.t. `position`. Uses `:left, :center, :right, :top, :bottom, :baseline` or fractions.
-- `font::Union{String, Vector{String}} = "Dejavu Sans"` sets the font for the string or each character.
-- `justification::Union{Real, Symbol} = automatic` sets the alignment of text w.r.t its bounding box. Can be `:left, :center, :right` or a fraction. Will default to the horizontal alignment in `align`.
-- `position::Union{Point2f, Point3f} = Point2f(0)` sets an anchor position for text. Can also be a `Vector` of positions.
-- `rotation::Union{Real, Quaternion}` rotates text around the given position.
-- `textsize::Union{Real, Vec2f}` sets the size of each character.
-- `markerspace::Symbol = :pixel` sets the space in which `textsize` acts. See `Makie.spaces()` for possible inputs.
-- `strokewidth::Real = 0` sets the width of the outline around a marker.
-- `strokecolor::Union{Symbol, <:Colorant} = :black` sets the color of the outline around a marker.
-- `glowwidth::Real = 0` sets the size of a glow effect around the marker.
-- `glowcolor::Union{Symbol, <:Colorant} = (:black, 0)` sets the color of the glow effect.
-
-
 ## Pixel space text
 
 By default, text is drawn in pixel space (`space = :pixel`).
@@ -40,24 +11,24 @@ This also means that `autolimits!` might cut off your text, because the glyphs d
 
 You can either plot one string with one position, or a vector of strings with a vector of positions.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 
 Axis(f[1, 1], aspect = DataAspect(), backgroundcolor = :gray50)
 
 scatter!(Point2f(0, 0))
-text!("center", position = (0, 0), align = (:center, :center))
+text!(0, 0, text = "center", align = (:center, :center))
 
 circlepoints = [(cos(a), sin(a)) for a in LinRange(0, 2pi, 16)[1:end-1]]
 scatter!(circlepoints)
 text!(
-    "this is point " .* string.(1:15),
-    position = circlepoints,
+    circlepoints,
+    text = "this is point " .* string.(1:15),
     rotation = LinRange(0, 2pi, 16)[1:end-1],
     align = (:right, :baseline),
     color = cgrad(:Spectral)[LinRange(0, 1, 15)]
@@ -69,29 +40,49 @@ f
 
 ## Data space text
 
-For text whose dimensions are meaningful in data space, set `space = :data`.
+For text whose dimensions are meaningful in data space, set `markerspace = :data`.
 This means that the boundingbox of the text in data coordinates will include every glyph.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 LScene(f[1, 1])
 
 text!(
-    fill("Makie", 7),
+    [Point3f(0, 0, i/2) for i in 1:7],
+    text = fill("Makie", 7),
     rotation = [i / 7 * 1.5pi for i in 1:7],
-    position = [Point3f(0, 0, i/2) for i in 1:7],
     color = [cgrad(:viridis)[x] for x in LinRange(0, 1, 7)],
     align = (:left, :baseline),
-    textsize = 1,
-    space = :data
+    fontsize = 1,
+    markerspace = :data
 )
 
 f
+```
+\end{examplefigure}
+
+## Alignment
+
+Text can be aligned with the horizontal alignments `:left`, `:center`, `:right` and the vertical alignments `:bottom`, `:baseline`, `:center`, `:top`.
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+
+
+aligns = [(h, v) for v in [:bottom, :baseline, :center, :top]
+                 for h in [:left, :center, :right]]
+x = repeat(1:3, 4)
+y = repeat(1:4, inner = 3)
+scatter(x, y)
+text!(x, y, text = string.(aligns), align = aligns)
+current_figure()
 ```
 \end{examplefigure}
 
@@ -101,11 +92,11 @@ By default, justification of multiline text follows alignment.
 Text that is left aligned is also left justified.
 You can override this with the `justification` attribute.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 scene = Scene(camera = campixel!, resolution = (800, 800))
 
@@ -116,9 +107,10 @@ symbols = (:left, :center, :right)
 
 for ((justification, halign), point) in zip(Iterators.product(symbols, symbols), points)
 
-    t = text!(scene, "a\nshort\nparagraph",
+    t = text!(scene,
+        point,
+        text = "a\nshort\nparagraph",
         color = (:black, 0.5),
-        position = point,
         align = (halign, :center),
         justification = justification)
 
@@ -127,12 +119,12 @@ for ((justification, halign), point) in zip(Iterators.product(symbols, symbols),
 end
 
 for (p, al) in zip(points[3:3:end], (:left, :center, :right))
-    text!(scene, "align :" * string(al), position = p .+ (0, 80),
+    text!(scene, p .+ (0, 80), text = "align :" * string(al),
         align = (:center, :baseline))
 end
 
 for (p, al) in zip(points[7:9], (:left, :center, :right))
-    text!(scene, "justification\n:" * string(al), position = p .+ (80, 0),
+    text!(scene, p .+ (80, 0), text = "justification\n:" * string(al),
         align = (:center, :top), rotation = pi/2)
 end
 
@@ -146,11 +138,11 @@ The offset attribute can be used to shift text away from its position.
 This is especially useful with `space = :pixel`, for example to place text together with barplots.
 You can specify the end of the barplots in data coordinates, and then offset the text a little bit to the left.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 
@@ -162,7 +154,7 @@ tightlimits!(ax, Left())
 hideydecorations!(ax)
 
 barplot!(horsepower, direction = :x)
-text!(cars, position = Point.(horsepower, 1:5), align = (:right, :center),
+text!(Point.(horsepower, 1:5), text = cars, align = (:right, :center),
     offset = (-20, 0), color = :white)
 
 f
@@ -172,13 +164,27 @@ f
 ## MathTeX
 
 Makie can render LaTeX strings from the LaTeXStrings.jl package using [MathTeXEngine.jl](https://github.com/Kolaru/MathTeXEngine.jl/).
-For example, you can pass L-strings as labels to the legend.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
+
+lines(0.5..20, x -> sin(x) / sqrt(x), color = :black)
+text!(7, 0.38, text = L"\frac{\sin(x)}{\sqrt{x}}", color = :black)
+current_figure()
+```
+\end{examplefigure}
+
+
+You can also pass L-strings to many objects that use text, for example as labels in the legend.
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+
 
 f = Figure()
 ax = Axis(f[1, 1])
@@ -189,6 +195,79 @@ lines!(0..10, x -> sin(x^2) / (cos(sqrt(x)) + 2),
     label = L"\frac{\sin(x^2)}{\cos(\sqrt{x}) + 2}")
 
 Legend(f[1, 2], ax)
+
+f
+```
+\end{examplefigure}
+
+## Rich text
+
+With rich text, you can conveniently plot text whose parts have different colors or fonts, and you can position sections as subscripts and superscripts.
+You can create such rich text objects using the functions `rich`, `superscript` and `subscript`, all of which create `RichText` objects.
+
+Each of these functions takes a variable number of arguments, each of which can be a `String` or `RichText`.
+Each can also take keyword arguments such as `color` or `font`, to set these attributes for the given part.
+The top-level settings for font, color, etc. are taken from the `text` attributes as usual.
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+f = Figure(fontsize = 30)
+Label(
+    f[1, 1],
+    rich(
+        "H", subscript("2"), "O is the formula for ",
+        rich("water", color = :cornflowerblue, font = :italic)
+    )
+)
+
+str = "A BEAUTIFUL RAINBOW"
+rainbow = cgrad(:rainbow, length(str), categorical = true)
+fontsizes = 30 .+ 10 .* sin.(range(0, 3pi, length = length(str)))
+
+rainbow_chars = map(enumerate(str)) do (i, c)
+    rich("$c", color = rainbow[i], fontsize = fontsizes[i])
+end
+
+Label(f[2, 1], rich(rainbow_chars...), font = :bold)
+
+f
+```
+\end{examplefigure}
+
+### Tweaking offsets
+
+Sometimes, when using regular and italic fonts next to each other, the gaps between glyphs are too narrow or too wide.
+You can use the `offset` value for rich text to shift glyphs by an amount proportional to the fontsize.
+
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+f = Figure(fontsize = 30)
+Label(
+    f[1, 1],
+    rich(
+        "ITALIC",
+        superscript("Regular without x offset", font = :regular),
+        font = :italic
+    )
+)
+
+Label(
+    f[2, 1],
+    rich(
+        "ITALIC",
+        superscript("Regular with x offset", font = :regular, offset = (0.15, 0)),
+        font = :italic
+    )
+)
 
 f
 ```

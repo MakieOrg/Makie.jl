@@ -2,7 +2,7 @@ using GLMakie, GeometryBasics, RPRMakie, RadeonProRender
 using Colors, FileIO
 using Colors: N0f8
 RPR = RadeonProRender
-GLMakie.set_window_config!(float=true, focus_on_show=false)
+GLMakie.activate!(float=true, focus_on_show=false)
 cat = load(GLMakie.assetpath("cat.obj"))
 
 begin

@@ -1,11 +1,15 @@
 {{GLSL_VERSION}}
 
+struct Nothing{ //Nothing type, to encode if some variable doesn't contain any data
+    bool _; //empty structs are not allowed
+};
+
 in vec2 o_uv;
 flat in uvec2 o_objectid;
 
 {{intensity_type}} intensity;
 uniform sampler1D color_map;
-uniform vec2 color_norm;
+{{color_norm_type}} color_norm;
 
 uniform float stroke_width;
 uniform vec4 stroke_color;
@@ -17,22 +21,26 @@ uniform vec4 nan_color;
 
 vec4 getindex(sampler2D image, vec2 uv){return texture(image, vec2(uv.x, 1-uv.y));}
 vec4 getindex(sampler1D image, vec2 uv){return texture(image, uv.y);}
-float range_01(float val, float from, float to){
-    return (val - from) / (to - from);
-}
 
 #define ALIASING_CONST 0.70710678118654757
 #define M_PI 3.1415926535897932384626433832795
 
-float aastep(float threshold1, float threshold2, float value) {
-    float afwidth = length(vec2(dFdx(value), dFdy(value))) * ALIASING_CONST;
-    return smoothstep(threshold1-afwidth, threshold1+afwidth, value)-smoothstep(threshold2-afwidth, threshold2+afwidth, value);
-}
-float aastep(float threshold1, float value) {
-    float afwidth = length(vec2(dFdx(value), dFdy(value))) * ALIASING_CONST;
-    return smoothstep(threshold1-afwidth, threshold1+afwidth, value);
-}
 void write2framebuffer(vec4 color, uvec2 id);
+
+vec4 get_color_from_cmap(float value, sampler1D color_map, vec2 colorrange) {
+    float cmin = colorrange.x;
+    float cmax = colorrange.y;
+    float i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0);
+    // 1/0 corresponds to the corner of the colormap, so to properly interpolate
+    // between the colors, we need to scale it, so that the ends are at 1 - (stepsize/2) and 0+(stepsize/2).
+    float stepsize = 1.0 / float(textureSize(color_map, 0));
+    i01 = (1.0 - stepsize) * i01 + 0.5 * stepsize;
+    return texture(color_map, i01);
+}
+
+vec4 get_color(sampler2D intensity, vec2 uv, Nothing color_norm, sampler1D color_map){
+    return getindex(intensity, uv);
+}
 
 vec4 get_color(sampler2D intensity, vec2 uv, vec2 color_norm, sampler1D color_map){
     float i = float(getindex(intensity, uv).x);
@@ -43,16 +51,7 @@ vec4 get_color(sampler2D intensity, vec2 uv, vec2 color_norm, sampler1D color_ma
     } else if (i > color_norm.y) {
         return highclip;
     }
-    i = range_01(i, color_norm.x, color_norm.y);
-    vec4 color = texture(color_map, clamp(i, 0.0, 1.0));
-    if(stroke_width > 0.0){
-        float lines = i * levels;
-        lines = abs(fract(lines - 0.5));
-        float half_stroke = stroke_width * 0.5;
-        lines = aastep(0.5 - half_stroke, 0.5 + half_stroke, lines);
-        color = mix(color, stroke_color, lines);
-    }
-    return color;
+    return get_color_from_cmap(i, color_map, color_norm);
 }
 
 void main(){

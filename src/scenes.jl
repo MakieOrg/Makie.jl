@@ -106,7 +106,7 @@ mutable struct Scene <: AbstractScene
     """
     The Screens which the Scene is displayed to.
     """
-    current_screens::Vector{AbstractScreen}
+    current_screens::Vector{MakieScreen}
 
     # Attributes
     backgroundcolor::Observable{RGBAf}
@@ -154,7 +154,7 @@ function Scene(;
         plots::Vector{AbstractPlot} = AbstractPlot[],
         theme::Attributes = Attributes(),
         children::Vector{Scene} = Scene[],
-        current_screens::Vector{AbstractScreen} = AbstractScreen[],
+        current_screens::Vector{MakieScreen} = MakieScreen[],
         parent = nothing,
         visible = Observable(true),
         ssao = SSAO(),
@@ -174,7 +174,7 @@ function Scene(;
 
     cam = camera isa Camera ? camera : Camera(px_area)
     if wasnothing
-        on(events.window_area, priority = typemax(Int8)) do w_area
+        on(events.window_area, priority = typemax(Int)) do w_area
             if !any(x -> x ≈ 0.0, widths(w_area)) && px_area[] != w_area
                 px_area[] = w_area
             end
@@ -196,7 +196,7 @@ function Scene(;
     if lights isa Automatic
         lightposition = to_value(get(m_theme, :lightposition, nothing))
         if !isnothing(lightposition)
-            position = if lightposition == :eyeposition
+            position = if lightposition === :eyeposition
                 scene.camera.eyeposition
             else
                 m_theme.lightposition
@@ -238,9 +238,9 @@ function Scene(
         kw...
     )
     if isnothing(px_area)
-        px_area = lift(zero_origin, parent.px_area)
+        px_area = lift(zero_origin, parent.px_area; ignore_equal_values=true)
     else
-        px_area = lift(pixelarea(parent), convert(Observable, px_area)) do p, a
+        px_area = lift(pixelarea(parent), convert(Observable, px_area); ignore_equal_values=true) do p, a
             # make coordinates relative to parent
             rect = Rect2i(minimum(p) .+ minimum(a), widths(a))
             return rect
@@ -350,13 +350,54 @@ function getindex(scene::Scene, ::Type{OldAxis})
 end
 
 function Base.empty!(scene::Scene)
-    empty!(scene.plots)
-    disconnect!(scene.camera)
-    scene.camera_controls[] = EmptyCamera()
-    empty!(scene.theme)
-    merge!(scene.theme, _current_default_theme)
+    # clear all child scenes
+    foreach(_empty_recursion, scene.children)
     empty!(scene.children)
-    empty!(scene.current_screens)
+
+    # clear plots of this scenes
+    for plot in reverse(scene.plots)
+        for screen in scene.current_screens
+            delete!(screen, scene, plot)
+        end
+    end
+    empty!(scene.plots)
+
+    empty!(scene.theme)
+    merge!(scene.theme, CURRENT_DEFAULT_THEME)
+
+    disconnect!(scene.camera)
+    scene.camera_controls = EmptyCamera()
+
+    return nothing
+end
+
+function _empty_recursion(scene::Scene)
+    # empty all children
+    foreach(_empty_recursion, scene.children)
+    empty!(scene.children)
+
+    # remove scene (and all its plots) from the rendering
+    for screen in scene.current_screens
+        delete!(screen, scene)
+    end
+    empty!(scene.plots)
+
+    # clean up some onsverables (there are probably more...)
+    disconnect!(scene.camera)
+    scene.camera_controls = EmptyCamera()
+
+    # top level scene.px_area needs to remain for GridLayout?
+    off.(scene.px_area.inputs)
+    empty!(scene.px_area.listeners)
+    for fieldname in (:rotation, :translation, :scale, :transform_func, :model)
+        obs = getfield(scene.transformation, fieldname)
+        if isdefined(obs, :inputs)
+            off.(obs.inputs)
+        end
+        empty!(obs.listeners)
+    end
+
+    return
 end
 
 Base.push!(scene::Combined, subscene) = nothing # Combined plots add themselves uppon creation
@@ -369,8 +410,12 @@ function Base.push!(scene::Scene, plot::AbstractPlot)
     end
 end
 
-function Base.delete!(screen::AbstractScreen, ::Scene, ::AbstractPlot)
+function Base.delete!(screen::MakieScreen, ::Scene, ::AbstractPlot)
     @warn "Deleting plots not implemented for backend: $(typeof(screen))"
+end
+function Base.delete!(screen::MakieScreen, ::Scene)
+    # This may not be necessary for every backed
+    @debug "Deleting scenes not implemented for backend: $(typeof(screen))"
 end
 
 function Base.delete!(scene::Scene, plot::AbstractPlot)
