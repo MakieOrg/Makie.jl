@@ -166,7 +166,8 @@ f
 
 The default setting of `text` is `space = :data`, which means the final position depends on the axis limits and scaling.
 However, it can be useful to place text relative to the axis itself, independent of scaling.
-With `space = :relative`, the position `(0, 0)` refers to the lower left corner and `(1, 1)` the upper right.
+With `space = :relative`, the position `(0, 0)` refers to the lower left corner and `(1, 1)` the upper right of the `Scene` that a plot object is in (for an `Axis` that is equivalent to the plotting area, which is implemented using a `Scene`).
+
 A common scenario is to place labels within axes:
 
 \begin{examplefigure}{svg = true}
