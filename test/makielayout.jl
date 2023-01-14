@@ -24,10 +24,10 @@ end
     sc = scatter!(ax, randn(100, 2))
     li = lines!(ax, randn(100, 2))
     hm = heatmap!(ax, randn(20, 20))
-    # axis contains 3 + 1 plots, one for the zoomrectangle
-    @test length(ax.scene.plots) == 4
-    delete!(ax, sc)
+    # axis contains 3 plots
     @test length(ax.scene.plots) == 3
+    delete!(ax, sc)
+    @test length(ax.scene.plots) == 2
     @test sc ∉ ax.scene.plots
     empty!(ax)
     @test isempty(ax.scene.plots)
@@ -174,9 +174,9 @@ end
     fig = Figure()
     ax = Axis(fig[1, 1], palette = (patchcolor = [:blue, :green],))
     pl = density!(rand(10); color = Cycled(2))
-    @test pl.color[] == :green
+    @test pl.color[] === :green
     pl = density!(rand(10); color = Cycled(1))
-    @test pl.color[] == :blue
+    @test pl.color[] === :blue
 end
 
 @testset "briefly empty ticklabels" begin

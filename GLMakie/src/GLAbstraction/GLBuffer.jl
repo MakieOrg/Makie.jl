@@ -1,9 +1,12 @@
 mutable struct GLBuffer{T} <: GPUArray{T, 1}
-    id          ::GLuint
-    size        ::NTuple{1, Int}
-    buffertype  ::GLenum
-    usage       ::GLenum
-    context     ::GLContext
+    id::GLuint
+    size::NTuple{1, Int}
+    buffertype::GLenum
+    usage::GLenum
+    context::GLContext
+    # TODO maybe also delay upload to when render happens?
+    requires_update::Observable{Bool}
+    observers::Vector{Observables.ObserverFunction}
 
     function GLBuffer{T}(ptr::Ptr{T}, buff_length::Int, buffertype::GLenum, usage::GLenum) where T
         id = glGenBuffers()
@@ -13,13 +16,22 @@ mutable struct GLBuffer{T} <: GPUArray{T, 1}
         glBufferData(buffertype, buff_length * sizeof(T), ptr, usage)
         glBindBuffer(buffertype, 0)
 
-        obj = new(id, (buff_length,), buffertype, usage, current_context())
+        obj = new(
+            id, (buff_length,), buffertype, usage, current_context(),
+            Observable(true), Observables.ObserverFunction[])
+
         finalizer(free, obj)
         obj
     end
 end
 
-bind(buffer::GLBuffer) = glBindBuffer(buffer.buffertype, buffer.id)
+function bind(buffer::GLBuffer)
+    if buffer.id == 0
+        error("Binding freed GLBuffer{$(eltype(buffer))}")
+    end
+    glBindBuffer(buffer.buffertype, buffer.id)
+end
+
 #used to reset buffer target
 bind(buffer::GLBuffer, other_target) = glBindBuffer(buffer.buffertype, other_target)
 
@@ -53,7 +65,8 @@ function GLBuffer(
         buffertype::GLenum = GL_ARRAY_BUFFER, usage::GLenum = GL_STATIC_DRAW
     ) where T <: GLArrayEltypes
     b = GLBuffer(ShaderAbstractions.data(buffer); buffertype=buffertype, usage=usage)
-    ShaderAbstractions.connect!(buffer, b)
+    obsfunc = ShaderAbstractions.connect!(buffer, b)
+    push!(b.observers, obsfunc)
     return b
 end
 
@@ -142,6 +155,7 @@ end
 # could be a setindex! operation, with subarrays for buffers
 function unsafe_copy!(a::GLBuffer{T}, readoffset::Int, b::GLBuffer{T}, writeoffset::Int, len::Int) where T
     multiplicator = sizeof(T)
+    @assert a.id != 0 & b.id != 0
     glBindBuffer(GL_COPY_READ_BUFFER, a.id)
     glBindBuffer(GL_COPY_WRITE_BUFFER, b.id)
     glCopyBufferSubData(

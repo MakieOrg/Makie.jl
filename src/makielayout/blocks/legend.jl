@@ -5,8 +5,8 @@ function initialize_block!(leg::Legend,
 
     # by default, `tellwidth = true` and `tellheight = false` for vertical legends
     # and vice versa for horizontal legends
-    real_tellwidth = @lift $(leg.tellwidth) === automatic ? $(leg.orientation) == :vertical : $(leg.tellwidth)
-    real_tellheight = @lift $(leg.tellheight) === automatic ? $(leg.orientation) == :horizontal : $(leg.tellheight)
+    real_tellwidth = @lift $(leg.tellwidth) === automatic ? $(leg.orientation) === :vertical : $(leg.tellwidth)
+    real_tellheight = @lift $(leg.tellheight) === automatic ? $(leg.orientation) === :horizontal : $(leg.tellheight)
     setfield!(leg, :_tellheight, real_tellheight)
     setfield!(leg, :_tellwidth, real_tellwidth)
 
@@ -71,26 +71,26 @@ function initialize_block!(leg::Legend,
             etexts = entrytexts[g]
             erects = entryrects[g]
 
-            subgl = if leg.orientation[] == :vertical
-                if leg.titleposition[] == :left
+            subgl = if leg.orientation[] === :vertical
+                if leg.titleposition[] === :left
                     isnothing(title) || (grid[g, 1] = title)
                     grid[g, 2] = GridLayout(halign = leg.gridshalign[], valign = leg.gridsvalign[])
-                elseif leg.titleposition[] == :top
+                elseif leg.titleposition[] === :top
                     isnothing(title) || (grid[2g - 1, 1] = title)
                     grid[2g, 1] = GridLayout(halign = leg.gridshalign[], valign = leg.gridsvalign[])
                 end
-            elseif leg.orientation[] == :horizontal
-                if leg.titleposition[] == :left
+            elseif leg.orientation[] === :horizontal
+                if leg.titleposition[] === :left
                     isnothing(title) || (grid[1, 2g-1] = title)
                     grid[1, 2g] = GridLayout(halign = leg.gridshalign[], valign = leg.gridsvalign[])
-                elseif leg.titleposition[] == :top
+                elseif leg.titleposition[] === :top
                     isnothing(title) || (grid[1, g] = title)
                     grid[2, g] = GridLayout(halign = leg.gridshalign[], valign = leg.gridsvalign[])
                 end
             end
 
             for (n, (et, er)) in enumerate(zip(etexts, erects))
-                i, j = leg.orientation[] == :vertical ? rowcol(n) : reverse(rowcol(n))
+                i, j = leg.orientation[] === :vertical ? rowcol(n) : reverse(rowcol(n))
                 subgl[i, 2j-1] = er
                 subgl[i, 2j] = et
             end
@@ -102,31 +102,31 @@ function initialize_block!(leg::Legend,
         end
 
         for r in 1:nrows(grid)-1
-            if leg.orientation[] == :horizontal
-                if leg.titleposition[] == :left
+            if leg.orientation[] === :horizontal
+                if leg.titleposition[] === :left
                     # nothing
-                elseif leg.titleposition[] == :top
+                elseif leg.titleposition[] === :top
                     rowgap!(grid, r, leg.titlegap[])
                 end
-            elseif leg.orientation[] == :vertical
-                if leg.titleposition[] == :left
+            elseif leg.orientation[] === :vertical
+                if leg.titleposition[] === :left
                     rowgap!(grid, r, leg.groupgap[])
-                elseif leg.titleposition[] == :top
+                elseif leg.titleposition[] === :top
                     rowgap!(grid, r, r % 2 == 1 ? leg.titlegap[] : leg.groupgap[])
                 end
             end
         end
         for c in 1:ncols(grid)-1
-            if leg.orientation[] == :horizontal
-                if leg.titleposition[] == :left
+            if leg.orientation[] === :horizontal
+                if leg.titleposition[] === :left
                     colgap!(grid, c, c % 2 == 1 ? leg.titlegap[] : leg.groupgap[])
-                elseif leg.titleposition[] == :top
+                elseif leg.titleposition[] === :top
                     colgap!(grid, c, leg.groupgap[])
                 end
-            elseif leg.orientation[] == :vertical
-                if leg.titleposition[] == :left
+            elseif leg.orientation[] === :vertical
+                if leg.titleposition[] === :left
                     colgap!(grid, c, leg.titlegap[])
-                elseif leg.titleposition[] == :top
+                elseif leg.titleposition[] === :top
                     # nothing here
                 end
             end
@@ -186,7 +186,7 @@ function initialize_block!(leg::Legend,
                 push!(titletexts, nothing)
             else
                 push!(titletexts, Label(scene, text = title, font = leg.titlefont, color = leg.titlecolor,
-                    textsize = leg.titlesize, halign = leg.titlehalign, valign = leg.titlevalign))
+                    fontsize = leg.titlesize, halign = leg.titlehalign, valign = leg.titlevalign))
             end
 
             etexts = []
@@ -196,12 +196,14 @@ function initialize_block!(leg::Legend,
                 # fill missing entry attributes with those carried by the legend
                 merge!(e.attributes, preset_attrs)
 
+                isnothing(e.label[]) && continue
+
                 # create the label
                 justification = map(leg.labeljustification, e.labelhalign) do lj, lha
                     return lj isa Automatic ? lha : lj
                 end
                 push!(etexts,
-                      Label(scene; text=e.label, textsize=e.labelsize, font=e.labelfont, justification=justification,
+                      Label(scene; text=e.label, fontsize=e.labelsize, font=e.labelfont, justification=justification,
                             color=e.labelcolor, halign=e.labelhalign, valign=e.labelvalign))
 
                 # create the patch rectangle
@@ -315,7 +317,7 @@ legendelements(le::LegendElement, legend) = LegendElement[le]
 legendelements(les::AbstractArray{<:LegendElement}, legend) = LegendElement[les...]
 
 
-function LegendEntry(label::AbstractString, contentelements::AbstractArray, legend; kwargs...)
+function LegendEntry(label::Optional{AbstractString}, contentelements::AbstractArray, legend; kwargs...)
     attrs = Attributes(label = label)
 
     kwargattrs = Attributes(kwargs)
@@ -325,7 +327,7 @@ function LegendEntry(label::AbstractString, contentelements::AbstractArray, lege
     LegendEntry(elems, attrs)
 end
 
-function LegendEntry(label::AbstractString, contentelement, legend; kwargs...)
+function LegendEntry(label::Optional{AbstractString}, contentelement, legend; kwargs...)
     attrs = Attributes(label = label)
 
     kwargattrs = Attributes(kwargs)
@@ -479,7 +481,7 @@ one content element. A content element can be an `AbstractPlot`, an array of
 """
 function Legend(fig_or_scene,
         contents::AbstractArray,
-        labels::AbstractArray{<:AbstractString},
+        labels::AbstractArray{<:Optional{AbstractString}},
         title::Optional{<:AbstractString} = nothing;
         kwargs...)
 

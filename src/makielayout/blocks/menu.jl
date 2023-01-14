@@ -79,8 +79,8 @@ function initialize_block!(m::Menu; default = 1)
             round_to_IRect2D(BBox(
                 left(bbox),
                 right(bbox),
-                d == :down ? max(0, bottom(bbox) - h) : top(bbox),
-                d == :down ? bottom(bbox) : min(top(bbox) + h, top(blockscene.px_area[]))))
+                d === :down ? max(0, bottom(bbox) - h) : top(bbox),
+                d === :down ? bottom(bbox) : min(top(bbox) + h, top(blockscene.px_area[]))))
     end
 
     menuscene = Scene(blockscene, scenearea, camera = campixel!, clear=true)
@@ -113,10 +113,10 @@ function initialize_block!(m::Menu; default = 1)
     selectiontextpos = Observable(Point2f(0, 0); ignore_equal_values=true)
     selectiontext = text!(
         blockscene, selectiontextpos, text = selected_text, align = (:left, :center),
-        textsize = m.textsize, color = m.textcolor, markerspace = :data, inspectable = false
+        fontsize = m.fontsize, color = m.textcolor, markerspace = :data, inspectable = false
     )
 
-    onany(selected_text, m.textsize, m.textpadding) do _, _, (l, r, b, t)
+    onany(selected_text, m.fontsize, m.textpadding) do _, _, (l, r, b, t)
         bb = boundingbox(selectiontext)
         m.layoutobservables.autosize[] = width(bb) + l + r, height(bb) + b + t
     end
@@ -157,7 +157,7 @@ function initialize_block!(m::Menu; default = 1)
 
     optionpolys = poly!(menuscene, optionrects, color = optionpolycolors, inspectable = false)
     optiontexts = text!(menuscene, textpositions, text = optionstrings, align = (:left, :center),
-        textsize = m.textsize, inspectable = false)
+        fontsize = m.fontsize, inspectable = false)
 
     onany(optionstrings, m.textpadding, m.layoutobservables.computedbbox) do _, pad, bbox
         gcs = optiontexts.plots[1][1][]::Vector{GlyphCollection}

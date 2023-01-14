@@ -32,11 +32,13 @@ function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2},
 end
 
 function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2})
-    draw_poly(scene, screen, poly, points, poly.color[], poly.model[], poly.strokecolor[], poly.strokewidth[])
+    color = to_color(poly.color[])
+    strokecolor = to_color(poly.strokecolor[])
+    draw_poly(scene, screen, poly, points, color, poly.model[], strokecolor, poly.strokewidth[])
 end
 
 # when color is a Makie.AbstractPattern, we don't need to go to Mesh
-function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::Union{Symbol, Colorant, Makie.AbstractPattern},
+function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::Union{Colorant, Makie.AbstractPattern},
         model, strokecolor, strokewidth)
     space = to_value(get(poly, :space, :data))
     points = project_position.(Ref(scene), space, points, Ref(model))
@@ -60,10 +62,11 @@ function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2},
 end
 
 function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vector{<:Point2}})
-    broadcast_foreach(points_list, poly.color[],
-        poly.strokecolor[], poly.strokewidth[]) do points, color, strokecolor, strokewidth
-
-            draw_poly(scene, screen, poly, points, color, poly.model[], strokecolor, strokewidth)
+    color = to_color(poly.color[])
+    strokecolor = to_color(poly.strokecolor[])
+    broadcast_foreach(points_list, color,
+        strokecolor, poly.strokewidth[], Ref(poly.model[])) do points, color, strokecolor, strokewidth, model
+            draw_poly(scene, screen, poly, points, color, model, strokecolor, strokewidth)
     end
 end
 
@@ -123,6 +126,9 @@ function polypath(ctx, polygon)
         Cairo.close_path(ctx)
     end
 end
+
+draw_poly(scene::Scene, screen::Screen, poly, polygon::Polygon) = draw_poly(scene, screen, poly, [polygon])
+draw_poly(scene::Scene, screen::Screen, poly, circle::Circle) = draw_poly(scene, screen, poly, decompose(Point2f, circle))
 
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<:Polygon})
     model = poly.model[]

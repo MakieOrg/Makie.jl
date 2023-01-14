@@ -1,7 +1,31 @@
+struct ThreeDisplay
+    session::JSServe.Session
+end
+
+JSServe.session(td::ThreeDisplay) = td.session
+Base.empty!(::ThreeDisplay) = nothing # TODO implement
+
+
+function Base.close(screen::ThreeDisplay)
+    # TODO implement
+end
+
+function Base.size(screen::ThreeDisplay)
+    # look at d.qs().clientWidth for displayed width
+    js = js"[document.querySelector('canvas').width, document.querySelector('canvas').height]"
+    width, height = round.(Int, JSServe.evaljs_value(screen.session, js; time_out=100))
+    return (width, height)
+end
 
 function JSServe.jsrender(session::Session, scene::Scene)
-    three, canvas = three_display(session, scene)
-    Makie.push_screen!(scene, three)
+    three, canvas, on_init = three_display(session, scene)
+    c = Channel{ThreeDisplay}(1)
+    put!(c, three)
+    screen = Screen(c, true, scene)
+    Makie.push_screen!(scene, screen)
+    on(on_init) do i
+        mark_as_displayed!(screen, scene)
+    end
     return canvas
 end
 
@@ -15,7 +39,6 @@ const WEB_MIMES = (
     MIME"application/vnd.webio.application+html",
     MIME"application/prs.juno.plotpane+html",
     MIME"juliavscode/html")
-
 
 """
 * `framerate = 30`: Set framerate (frames per second) to a higher number for smoother animations, or to a lower to use less resources.
@@ -36,21 +59,40 @@ $(Base.doc(ScreenConfig))
 $(Base.doc(MakieScreen))
 """
 mutable struct Screen <: Makie.MakieScreen
-    three::Union{Nothing, ThreeDisplay}
+    three::Channel{ThreeDisplay}
     display::Any
+    scene::Union{Nothing, Scene}
+    displayed_scenes::Set{String}
+    function Screen(
+            three::Channel{ThreeDisplay},
+            display::Any,
+            scene::Union{Nothing, Scene})
+        return new(three, display, scene, Set{String}())
+    end
+end
+
+function mark_as_displayed!(screen::Screen, scene::Scene)
+    push!(screen.displayed_scenes, js_uuid(scene))
+    for child_scene in scene.children
+        mark_as_displayed!(screen, child_scene)
+    end
+    return
 end
 
 for M in WEB_MIMES
     @eval begin
         function Makie.backend_show(screen::Screen, io::IO, m::$M, scene::Scene)
-            three = nothing
             inline_display = App() do session::Session
-                three, canvas = three_display(session, scene)
-                Makie.push_screen!(scene, three)
+                three, canvas, init_obs = three_display(session, scene)
+                Makie.push_screen!(scene, screen)
+                on(init_obs) do _
+                    put!(screen.three, three)
+                    mark_as_displayed!(screen, scene)
+                    return
+                end
                 return canvas
             end
             Base.show(io, m, inline_display)
-            screen.three = three
             return screen
         end
     end
@@ -60,39 +102,70 @@ function Makie.backend_showable(::Type{Screen}, ::T) where {T<:MIME}
     return T in WEB_MIMES
 end
 
+# TODO implement
+Base.close(screen::Screen) = nothing
+
 function Base.size(screen::Screen)
-    return size(get_three(screen))
+    return size(screen.scene)
 end
 
-function get_three(screen::Screen)::ThreeDisplay
-    if isnothing(screen.three)
-        error("WGLMakie screen not yet shown in browser.")
+function get_three(screen::Screen; timeout = 100, error::Union{Nothing, String}=nothing)::Union{Nothing, ThreeDisplay}
+    tstart = time()
+    result = nothing
+    while true
+        yield()
+        if time() - tstart > timeout
+            break # we waited LONG ENOUGH!!
+        end
+        if isready(screen.three)
+            result = fetch(screen.three)
+            break
+        end
     end
-    return screen.three
+    # Throw error if error message specified
+    if isnothing(result) && !isnothing(error)
+        Base.error(error)
+    end
+    return result
 end
 
-Screen() = Screen(nothing, nothing)
+function Makie.apply_screen_config!(screen::ThreeDisplay, config::ScreenConfig, args...)
+    #TODO implement
+    return screen
+end
+function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, args...)
+    #TODO implement
+    return screen
+end
 
 # TODO, create optimized screens, forward more options to JS/WebGL
-Screen(::Scene; kw...) = Screen()
-Screen(::Scene, ::IO, ::MIME; kw...) = Screen()
-Screen(::Scene, ::Makie.ImageStorageFormat; kw...) = Screen()
-function Base.empty!(::WGLMakie.Screen)
+Screen(scene::Scene; kw...) = Screen(Channel{ThreeDisplay}(1), nothing, scene)
+Screen(scene::Scene, config::ScreenConfig) = Screen(Channel{ThreeDisplay}(1), nothing, scene)
+Screen(scene::Scene, config::ScreenConfig, ::IO, ::MIME) = Screen(scene)
+Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat) = Screen(scene)
+
+function Base.empty!(screen::Screen)
+    screen.scene = nothing
+    screen.display = false
     # TODO, empty state in JS, to be able to reuse screen
 end
 
 function Base.display(screen::Screen, scene::Scene; kw...)
     Makie.push_screen!(scene, screen)
     # Reference to three object which gets set once we serve this to a browser
-    three_ref = Base.RefValue{ThreeDisplay}()
     app = App() do session, request
-        three, canvas = three_display(session, scene)
-        three_ref[] = three
+        three, canvas, done_init = three_display(session, scene)
+        on(done_init) do _
+            put!(screen.three, three)
+            mark_as_displayed!(screen, scene)
+            return
+        end
         return canvas
     end
-    actual_display = display(app)
-    screen.three = wait_for_three(three_ref)
-    screen.display = actual_display
+    display(app)
+    screen.display = true
+    # wait for plot to be full initialized, so that operations don't get racy (e.g. record/RamStepper & friends)
+    get_three(screen)
     return screen
 end
 
@@ -100,51 +173,73 @@ function Base.delete!(td::Screen, scene::Scene, plot::AbstractPlot)
     delete!(get_three(td), scene, plot)
 end
 
-function session2image(sessionlike)
-    yield()
-    s = JSServe.session(sessionlike)
+function session2image(session::Session, scene::Scene)
     to_data = js"""function (){
-        $(WGL).current_renderloop()
-        return document.querySelector('canvas').toDataURL()
+        return $(scene).then(scene => {
+            const {renderer} = scene.screen
+            WGLMakie.render_scene(scene)
+            const img = renderer.domElement.toDataURL()
+            return img
+        })
     }()
     """
-    picture_base64 = JSServe.evaljs_value(s, to_data; time_out=100)
+    picture_base64 = JSServe.evaljs_value(session, to_data; timeout=100)
     picture_base64 = replace(picture_base64, "data:image/png;base64," => "")
     bytes = JSServe.Base64.base64decode(picture_base64)
     return ImageMagick.load_(bytes)
 end
 
-function Makie.colorbuffer(screen::ThreeDisplay)
-    return session2image(screen)
-end
-
 function Makie.colorbuffer(screen::Screen)
-    return session2image(get_three(screen))
-end
-
-function wait_for_three(three_ref::Base.RefValue{ThreeDisplay}; timeout = 30)::Union{Nothing, ThreeDisplay}
-    # Screen is not guaranteed to get displayed in the browser, so we wait a while
-    # to see if anything gets displayed!
-    tstart = time()
-    while time() - tstart < timeout
-        if isassigned(three_ref)
-            three = three_ref[]
-            session = JSServe.session(three)
-            if isready(session.js_fully_loaded)
-                # Error on js during init! We can't continue like this :'(
-                if session.init_error[] !== nothing
-                    throw(session.init_error[])
-                end
-                return three
-            end
-        end
-        yield()
+    if screen.display !== true
+        Base.display(screen, screen.scene)
     end
-    return nothing
+    three = get_three(screen; error="Not able to show scene in a browser")
+    return session2image(three.session, screen.scene)
 end
 
-function Base.insert!(td::Screen, scene::Scene, plot::Combined)
-    disp = get_three(td)
-    disp === nothing && error("Plot needs to be displayed to insert additional plots")
-    insert!(disp, scene, plot)
+function Base.insert!(screen::Screen, scene::Scene, plot::Combined)
+    disp = get_three(screen; error="Plot needs to be displayed to insert additional plots")
+    if js_uuid(scene) in screen.displayed_scenes
+        plot_data = serialize_plots(scene, [plot])
+        JSServe.evaljs_value(disp.session, js"""
+        $(WGL).then(WGL=> {
+            WGL.insert_plot($(js_uuid(scene)), $plot_data);
+        })""")
+    else
+        # Newly created scene gets inserted!
+        # This must be a child plot of some parent, otherwise a plot wouldn't be inserted via `insert!(screen, ...)`
+        parent = scene.parent
+        @assert parent !== scene
+        if isnothing(parent)
+            # This shouldn't happen, since insert! only gets called for scenes, that already got displayed on a screen
+            error("Scene has no parent, but hasn't been displayed yet")
+        end
+        # We serialize the whole scene (containing `plot` as well),
+        # since, we should only get here if scene is newly created and this is the first plot we insert!
+        @assert scene.plots[1] == plot
+        scene_ser = serialize_scene(scene)
+        parent_uuid = js_uuid(parent)
+        err = "Cant find scene js_uuid(scene) == $(parent_uuid)"
+        evaljs_value(disp.session, js"""
+        $(WGL).then(WGL=> {
+            const parent = WGL.find_scene($(parent_uuid));
+            if (!parent) {
+                throw new Error($(err))
+            }
+            const new_scene = WGL.deserialize_scene($scene_ser, parent.screen);
+            parent.scene_children.push(new_scene);
+        })
+        """)
+        mark_as_displayed!(screen, scene)
+    end
+    return
+end
+
+function Base.delete!(td::Screen, scene::Scene, plot::Combined)
+    uuids = js_uuid.(Makie.flatten_plots(plot))
+    JSServe.evaljs(td.session, js"""
+    $(WGL).then(WGL=> {
+        WGL.delete_plots($(js_uuid(scene)), $uuids);
+    })""")
+    return
 end

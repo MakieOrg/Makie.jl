@@ -39,13 +39,8 @@ function Base.iterate(x::Attributes, state...)
     return (s[1] => x[s[1]], s[2])
 end
 
-function Base.copy(attributes::Attributes)
-    result = Attributes()
-    for (k, v) in attributes
-        # We need to create a new Signal to have a real copy
-        result[k] = copy(v)
-    end
-    return result
+function Base.copy(attr::Attributes)
+    return Attributes(copy(attributes(attr)))
 end
 
 function Base.deepcopy(obs::Observable)
@@ -251,7 +246,7 @@ end
 function merge_attributes!(input::Attributes, theme::Attributes)
     for (key, value) in theme
         if !haskey(input, key)
-            input[key] = copy(value)
+            input[key] = value
         else
             current_value = input[key]
             if value isa Attributes && current_value isa Attributes
