@@ -3,8 +3,8 @@
     contour(x, y, z)
     contour(z::Matrix)
 
-Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix
-If only `z::Matrix` is supplied, the indices of the elements in `z` will be used as the x and y locations when plotting the contour.
+Creates a contour plot of the plane spanning `x::Vector`, `y::Vector`, `z::Matrix`.
+If only `z::Matrix` is supplied, the indices of the elements in `z` will be used as the `x` and `y` locations when plotting the contour.
 
 The attribute levels can be either
 
@@ -25,9 +25,10 @@ $(ATTRIBUTES)
         colorrange = Makie.automatic,
         levels = 5,
         linewidth = 1.0,
+        linestyle = nothing,
         alpha = 1.0,
-        fillrange = false,
-        enable_depth = true
+        enable_depth = true,
+        transparency = false
     )
 end
 
@@ -156,44 +157,38 @@ function color_per_level(::Nothing, colormap, colorrange, a, levels)
     end
 end
 
-
 function plot!(plot::T) where T <: Union{Contour, Contour3d}
     x, y, z = plot[1:3]
-    if to_value(plot[:fillrange])
-        plot[:interpolate] = true
-        # TODO normalize linewidth for heatmap
-        plot[:linewidth] = map(x-> x ./ 10f0, plot[:linewidth])
-        heatmap!(plot, Attributes(plot), x, y, z)
-    else
-        zrange = lift(nan_extrema, z)
-        levels = lift(plot[:levels], zrange) do levels, zrange
-            if levels isa AbstractVector{<: Number}
-                return levels
-            elseif levels isa Integer
-                to_levels(levels, zrange)
-            else
-                error("Level needs to be Vector of iso values, or a single integer to for a number of automatic levels")
-            end
+    zrange = lift(nan_extrema, z)
+    levels = lift(plot.levels, zrange) do levels, zrange
+        if levels isa AbstractVector{<: Number}
+            return levels
+        elseif levels isa Integer
+            to_levels(levels, zrange)
+        else
+            error("Level needs to be Vector of iso values, or a single integer to for a number of automatic levels")
         end
-        replace_automatic!(plot, :colorrange) do
-            lift(nan_extrema, levels)
-        end
-        args = @extract plot (color, colormap, colorrange, alpha)
-        level_colors = lift(color_per_level, args..., levels)
-        result = lift(x, y, z, levels, level_colors) do x, y, z, levels, level_colors
-            t = eltype(z)
-            # Compute contours
-            xv, yv = to_vector(x, size(z,1), t), to_vector(y, size(z,2), t)
-            contours = Contours.contours(xv, yv, z,  convert(Vector{eltype(z)}, levels))
-            contourlines(T, contours, level_colors)
-        end
-        lines!(
-            plot, lift(first, result);
-            color = lift(last, result), linewidth = plot[:linewidth],
-            inspectable = plot[:inspectable],
-            transparency = plot[:transparency]
-        )
     end
+
+    replace_automatic!(()-> zrange, plot, :colorrange)
+
+    args = @extract plot (color, colormap, colorrange, alpha)
+    level_colors = lift(color_per_level, args..., levels)
+    result = lift(x, y, z, levels, level_colors) do x, y, z, levels, level_colors
+        t = eltype(z)
+        # Compute contours
+        xv, yv = to_vector(x, size(z,1), t), to_vector(y, size(z,2), t)
+        contours = Contours.contours(xv, yv, z,  convert(Vector{eltype(z)}, levels))
+        contourlines(T, contours, level_colors)
+    end
+    lines!(
+        plot, lift(first, result);
+        color = lift(last, result),
+        linewidth = plot.linewidth,
+        inspectable = plot.inspectable,
+        transparency = plot.transparency,
+        linestyle = plot.linestyle
+    )
     plot
 end
 

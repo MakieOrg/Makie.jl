@@ -8,7 +8,7 @@
 ```julia
 using GLMakie
 GLMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 data = randn(1000)
 
@@ -63,7 +63,7 @@ fig
 ```julia
 using CairoMakie, Distributions
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 N = 100_000
 x = rand(Uniform(-5, 5), N)

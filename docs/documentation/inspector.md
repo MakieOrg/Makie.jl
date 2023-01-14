@@ -9,36 +9,40 @@ By default the inspector will be able to pick any plot other than `text` and
 `plot.inspectable[] = false`. With that the next closest plot (in range) will be
 picked.
 
-## Attributes of `DataInspector`
+{{doc DataInspector}}
 
-The `inspector = DataInspector(fig)` contains the following attributes:
+## Custom text
 
-- `range = 10`: Controls the snapping range for selecting an element of a plot.
-- `enabled = true`: Disables inspection of plots when set to false. Can also be adjusted with `enable!(inspector)` and `disable!(inspector)`.
-- `text_padding = Vec4f(5, 5, 3, 3)`: Padding for the box drawn around the tooltip text. (left, right, bottom, top)
-- `text_align = (:left, :bottom)`: Alignment of text within the tooltip. This does not affect the alignment of the tooltip relative to the cursor.
-- `textcolor = :black`: Tooltip text color.
-- `textsize = 20`: Tooltip text size.
-- `font = "TeX Gyre Heros Makie"`: Tooltip font.
-- `background_color = :white`: Background color of the tooltip.
-- `outline_color = :grey`: Outline color of the tooltip.
-- `outline_linestyle = nothing`: Linestyle of the tooltip outline.
-- `outline_linewidth = 2`: Linewidth of the tooltip outline.
-- `indicator_color = :red`: Color of the selection indicator.
-- `indicator_linewidth = 2`: Linewidth of the selection indicator.
-- `indicator_linestyle = nothing`: Linestyle of the selection indicator
-- `tooltip_align = (:center, :top)`: Default position of the tooltip relative to the cursor or current selection. The real align may adjust to keep the tooltip in view.
-- `tooltip_offset = Vec2f(20)`: Offset from the indicator to the tooltip.
-- `depth = 9e3`: Depth value of the tooltip. This should be high so that the tooltip is always in front.
-- `priority = 100`: The priority of creating a tooltip on a mouse movement or scrolling event.
+The text that `DataInspector` displays can be adjusted on a per-plot basis 
+through the `inspector_label` attribute. It should hold a function 
+`(plot, index, position) -> "my_string"`, where `plot` is the plot whose label
+is getting adjusted, `index` is the index returned by `pick` (see events 
+documentation) and `position` is the position of the inspected object.
 
-## Extending the `DataInspector`
+```julia
+lbls = ["Type A", "Type B"]
+fig, ax, p = scatter(
+    rand(10), color = rand(1:2, 10), colormap = [:red, :blue],
+    inspector_label = (self, i, p) -> lbls[self.color[][i]]
+)
+DataInspector(fig)
+fig
+```
 
-The inspector implements tooltips for primitive plots and a few non-primitive
-(i.e. a recipe) plots. All other plots will fall back to tooltips of their
-hovered child. While this means that most plots have a tooltip it also means
-many may not have a fitting one. If you wish to implement a more fitting tooltip
-for non-primitive plot you may do so by creating a method
+## Extending `DataInspector`
+
+The inspector implements tooltips for primitive plots and a few non-primitive 
+plots (i.e. recipes). All other plots fall back to tooltips of one of their 
+child plots. 
+
+For example a `poly` consists of a `mesh` and a `wireframe` plot, where 
+`wireframe` is implemented as `lines`. Since neither `poly` nor `wireframe` has 
+a specialized `show_data` method, DataInspector uses either `mesh` or `lines` 
+to generate the tooltip.
+
+While this means that most plots have a tooltip it also means many may not have 
+a fitting one. If you wish to implement a more fitting tooltip for a new plot 
+type you can do so by extending
 
 ```julia
 function show_data(inspector::DataInspector, my_plot::MyPlot, idx, primitive_child::SomePrimitive)
@@ -47,16 +51,18 @@ end
 ```
 
 Here `my_plot` is the plot you want to create a custom tooltip for,
-`primitive_child` is one of the primitives your plot is made from and `idx` is
+`primitive_child` is one of the primitives your plot is made from (scatter, 
+text, lines, linesegments, mesh, surface, volume, image or heatmap) and `idx` is
 the index into that primitive plot. The latter two are the result from
-`pick_sorted` at the mouseposition. In general you will need to adjust `idx` to
-be useful for `MyPlot`.
+`pick_sorted` at the current mouseposition. In general you will need to adjust 
+`idx` to be useful for `MyPlot`.
 
-Let's take a look at the `BarPlot` overload, which also powers `hist`. It
+Let's take a look at the `BarPlot` method, which also powers `hist`. It
 contains two primitive plots - `Mesh` and `Lines`. The `idx` from picking a
-`Mesh` is based on vertices, which there are four per rectangle. From `Lines` we
-get an index based on the end point of the line. To draw the outline of a
-rectangle we need 5 points and a seperator, totaling 6. We thus implement
+`Mesh` is based on vertices, of which there are four per rectangle. From `Lines` 
+we get an index based on the end point of a line. To draw the outline of a
+rectangle as is done in barplot, we need 5 points and a separator totaling 6. 
+We thus implement
 
 ```julia
 import Makie: show_data
@@ -70,40 +76,43 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx, ::Mesh)
 end
 ```
 
-to map the primitive `idx` to one relevant for `BarPlot`. With this we can now
-get the position of the hovered bar with `plot[1][][idx]`. To align the tooltip
-to the selection we need to compute the relevant position in screen space and
-update the tooltip position.
+to map the primitive `idx` to one identifying the bars in `BarPlot`. With this 
+we can now get the position of the hovered bar with `plot[1][][idx]`. To align 
+the tooltip to the selection we need to compute the relevant position in screen 
+space and update the tooltip position.
 
 ```julia
 using Makie: parent_scene, shift_project, update_tooltip_alignment!, position2string
 
 function show_barplot(inspector::DataInspector, plot::BarPlot, idx)
-    # All the attributes of DataInspector are here
-    a = inspector.plot.attributes
+    # Get the tooltip plot
+    tt = inspector.plot
 
     # Get the scene BarPlot lives in
     scene = parent_scene(plot)
 
-    # Get the hovered world-space position
+    # Get the hovered data-space position
     pos = plot[1][][idx]
     # project to screen space and shift it to be correct on the root scene
     proj_pos = shift_project(scene, to_ndim(Point3f, pos, 0))
     # anchor the tooltip at the projected position
     update_tooltip_alignment!(inspector, proj_pos)
 
-    # Update the final text of the tooltip
-    # position2string is just an `@sprintf`
-    a._display_text[] = position2string(pos)
+    # Update the final text of the tooltip.
+    if haskey(plot, :inspector_label)
+        tt.text[] = plot[:inspector_label][](plot, idx, pos)
+    else
+        tt.text[] = position2string(pos)
+    end
     # Show the tooltip
-    a._visible[] = true
+    tt.visible[] = true
 
     # return true to indicate that we have updated the tooltip
     return true
 end
 ```
 
-Next we need to mark the rectangle we are hovering. In this case we can use the
+Next we want to mark the rectangle we are hovering. In this case we can use the
 rectangles which `BarPlot` passes to `Poly`, i.e. `plot.plots[1][1][][idx]`. The
 `DataInspector` contains some functionality for keeping track of temporary plots,
 so we can plot the indicator to the same `scene` that `BarPlot` uses. Doing so
@@ -114,55 +123,71 @@ using Makie:
     parent_scene, shift_project, update_tooltip_alignment!, position2string,
     clear_temporary_plots!
 
-
-function show_barplot(inspector::DataInspector, plot::BarPlot, idx)
-    a = inspector.plot.attributes
+function show_data(inspector::DataInspector, plot::BarPlot, idx)
+    # inspector.attributes holds some attributes relevant to indicators and is
+    # used as a cache for indicator observables
+    a = inspector.attributes
+    tt = inspector.plot
     scene = parent_scene(plot)
 
     pos = plot[1][][idx]
-    proj_pos = shift_project(scene, to_ndim(Point3f, pos, 0))
+    proj_pos = shift_project(scene, plot, to_ndim(Point3f, pos, 0))
     update_tooltip_alignment!(inspector, proj_pos)
 
-    # Get the rectangle BarPlot generated for Poly
-    # `_bbox2D` is a observable meant for saving a `Rect2` indicator. There is also
-    # a `_bbox3D`. Here we keep `_bbox2D` updated and use it as a source for
-    # our custom indicator.
-    a._bbox2D[] = plot.plots[1][1][][idx]
-    a._model[] = plot.model[]
+    # We only want to mark the rectangle if that setting is enabled
+    if a.enable_indicators[]
+        # Get the relevant rectangle
+        bbox = plot.plots[1][1][][idx]
 
-    # Only plot the indicator once. It'll be updated via `_bbox2D`.
-    if inspector.selection != plot
-        # Clear any old temporary plots (i.e. other indicators like this)
-        # this also updates inspector.selection.
-        clear_temporary_plots!(inspector, plot)
+        # If we haven't yet created an indicator create it
+        if inspector.selection != plot
+            # clear old indicators
+            clear_temporary_plots!(inspector, plot)
 
-        # create the indicator using a bunch of the DataInspector attributes.
-        # Note that temporary plots only cleared when a new one is created. To
-        # control whether indicator is visible or not `a._bbox_visible` is set
-        # instead, so it should be in any custom indicator like this.
-        p = wireframe!(
-            scene, a._bbox2D, model = a._model, color = a.indicator_color,
-            strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
-            visible = a._bbox_visible, inspectable = false
-        )
+            # Create the new indicator using some settings from `DataInspector`.
+            p = wireframe!(
+                scene, bbox, model = plot.model[], color = a.indicator_color,
+                strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
+                visible = a.indicator_visible, inspectable = false
+            )
 
-        # Make sure this draws on top
-        translate!(p, Vec3f(0, 0, a.depth[]))
+            # tooltips are pushed forward a certain amount to make sure they're
+            # drown on top of other things. This indicator should also be pushed
+            # forward that much
+            translate!(p, Vec3f(0, 0, a.depth[]))
 
-        # register this indicator for later cleanup.
-        push!(inspector.temp_plots, p)
+            # Keep track of the indicator plot
+            push!(inspector.temp_plots, p)
+
+        # If we have already created an indicator plot we just need to update 
+        # it. In this case we only need to update the rectangle.
+        elseif !isempty(inspector.temp_plots)
+            p = inspector.temp_plots[1]
+            p[1][] = bbox
+        end
+
+        # Moving away from a plot will automatically set this to false, so we 
+        # always need to set it to true.
+        a.indicator_visible[] = true
     end
 
-    a._display_text[] = position2string(pos)
-    a._visible[] = true
-
-    # Show our custom indicator
-    a._bbox_visible[] = true
-    # Don't show the default screen space indicator
-    a._px_bbox_visible[] = false
+    if haskey(plot, :inspector_label)
+        tt.text[] = plot[:inspector_label][](plot, idx, pos)
+    else
+        tt.text[] = position2string(pos)
+    end
+    tt.visible[] = true
 
     return true
 end
 ```
 
 which finishes the implementation of a custom tooltip for `BarPlot`.
+
+## Per-plot `show_data`
+
+It is also possible to replace a call to `show_data` on a per-plot basis via 
+the `inspector_hover` attribute. DataInspector assumes this to be a function
+`(inspector, this_plot, index, hovered_child) -> Bool`. You can also set up 
+custom clean up with `plot.inspector_clear = (inspector, plot) -> ...` which is 
+called whenever the plot is deselected.

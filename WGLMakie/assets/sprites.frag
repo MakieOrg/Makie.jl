@@ -34,20 +34,28 @@ float triangle(vec2 P){
     float r2 = P.y;
     return -max(r1,r2);
 }
+
 float circle(vec2 uv){
     return 0.5-length(uv-vec2(0.5));
 }
+
 float rectangle(vec2 uv){
     vec2 d = max(-uv, uv-vec2(1));
     return -((length(max(vec2(0.0), d)) + min(0.0, max(d.x, d.y))));
 }
+
 float rounded_rectangle(vec2 uv, vec2 tl, vec2 br){
     vec2 d = max(tl-uv, uv-br);
     return -((length(max(vec2(0.0), d)) + min(0.0, max(d.x, d.y)))-tl.x);
 }
 
-void fill(vec4 fillcolor, vec2 uv, float infill, inout vec4 color){
+void fill(bool image, vec4 fillcolor, vec2 uv, float infill, inout vec4 color){
     color = mix(color, fillcolor, infill);
+}
+
+void fill(sampler2D image, vec4 fillcolor, vec2 uv, float infill, inout vec4 color){
+    vec4 im_color = texture(image, uv.yx);
+    color = mix(color, im_color, infill);
 }
 
 in float frag_uvscale;
@@ -65,7 +73,18 @@ float scaled_distancefield(bool distancefield, vec2 uv){
     return 0.0;
 }
 
+flat in uint frag_instance_id;
+vec4 pack_int(uint id, uint index) {
+    vec4 unpack;
+    unpack.x = float((id & uint(0xff00)) >> 8) / 255.0;
+    unpack.y = float((id & uint(0x00ff)) >> 0) / 255.0;
+    unpack.z = float((index & uint(0xff00)) >> 8) / 255.0;
+    unpack.w = float((index & uint(0x00ff)) >> 0) / 255.0;
+    return unpack;
+}
+
 void main() {
+
     int shape = get_shape_type();
     float signed_distance = 0.0;
     vec4 uv_off = frag_uv_offset_width;
@@ -84,6 +103,15 @@ void main() {
     signed_distance *= frag_uvscale;
     float inside = aastep(0.0, signed_distance);
     vec4 final_color = vec4(frag_color.xyz, 0);
-    fill(frag_color, frag_uv, inside, final_color);
+    fill(image, frag_color, frag_uv, inside, final_color);
+    if (picking) {
+        if (final_color.a > 0.1) {
+            fragment_color = pack_int(object_id, frag_instance_id);
+        }
+        return;
+    }
+    if (final_color.a <= 0.0){
+        discard;
+    }
     fragment_color = final_color;
 }

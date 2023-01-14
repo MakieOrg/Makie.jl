@@ -26,18 +26,20 @@ function to_opengl_mesh!(result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
     to_buffer(:color, :vertex_color)
     to_buffer(:uv, :texturecoordinates)
     to_buffer(:uvw, :texturecoordinates)
-    to_buffer(:normals, :normals)
+    # Only emit normals, when we shadin'
+    if to_value(get(result, :shading, true)) || !isnothing(to_value(get(result, :matcap, nothing)))
+        to_buffer(:normals, :normals)
+    end
     to_buffer(:attribute_id, :attribute_id)
-
     return result
 end
 
-function draw_mesh(@nospecialize(mesh), data::Dict)
+function draw_mesh(screen, @nospecialize(mesh), data::Dict)
     to_opengl_mesh!(data, mesh)
     @gen_defaults! data begin
         shading = true
         backlight = 0f0
-        vertex_color = Vec4f(0)
+        vertex_color = nothing => GLBuffer
         texturecoordinates = Vec2f(0)
         image = nothing => Texture
         matcap = nothing => Texture
@@ -46,12 +48,14 @@ function draw_mesh(@nospecialize(mesh), data::Dict)
         fetch_pixel = false
         uv_scale = Vec2f(1)
         transparency = false
+        interpolate_in_fragment_shader = true
         shader = GLVisualizeShader(
+            screen,
             "util.vert", "mesh.vert", "mesh.frag", "fragment_output.frag",
             view = Dict(
                 "light_calc" => light_calc(shading),
-                "buffers" => output_buffers(to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(to_value(transparency))
+                "buffers" => output_buffers(screen, to_value(transparency)),
+                "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
             )
         )
     end

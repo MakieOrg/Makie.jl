@@ -10,13 +10,6 @@ using Pkg
 
 include("colormap_generation.jl")
 
-# Pause renderloop for slow software rendering.
-# This way, we only render if we actualy save e.g. an image
-GLMakie.set_window_config!(;
-    framerate = 1.0,
-    pause_rendering = true
-)
-
 # copy NEWS file over to documentation
 cp(
     joinpath(@__DIR__, "..", "NEWS.md"),

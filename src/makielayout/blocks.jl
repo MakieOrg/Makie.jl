@@ -9,14 +9,12 @@ function has_forwarded_layout end
 
 macro Block(name::Symbol, body::Expr = Expr(:block))
 
-    if !(body.head == :block)
-        error("A Block needs to be defined within a `begin end` block")
-    end
+    body.head === :block || error("A Block needs to be defined within a `begin end` block")
 
     structdef = quote
-        mutable struct $name <: Makie.MakieLayout.Block
+        mutable struct $name <: Makie.Block
             parent::Union{Figure, Scene, Nothing}
-            layoutobservables::Makie.MakieLayout.LayoutObservables{GridLayout}
+            layoutobservables::Makie.LayoutObservables{GridLayout}
             blockscene::Scene
         end
     end
@@ -27,7 +25,7 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
     attrs = extract_attributes!(body)
 
     i_forwarded_layout = findfirst(
-        x -> x isa Expr && x.head == :macrocall &&
+        x -> x isa Expr && x.head === :macrocall &&
             x.args[1] == Symbol("@forwarded_layout"),
         body.args
     )
@@ -63,18 +61,18 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
 
         export $name
 
-        function Makie.MakieLayout.is_attribute(::Type{$(name)}, sym::Symbol)
+        function Makie.is_attribute(::Type{$(name)}, sym::Symbol)
             sym in ($((attrs !== nothing ? [QuoteNode(a.symbol) for a in attrs] : [])...),)
         end
 
-        function Makie.MakieLayout.default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
+        function Makie.default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
             sceneattrs = scene === nothing ? Attributes() : theme(scene)
             curdeftheme = Makie.current_default_theme()
 
             $(make_attr_dict_expr(attrs, :sceneattrs, :curdeftheme))
         end
 
-        function Makie.MakieLayout.attribute_default_expressions(::Type{$name})
+        function Makie.attribute_default_expressions(::Type{$name})
             $(
                 if attrs === nothing
                     Dict{Symbol, String}()
@@ -84,7 +82,7 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
             )
         end
 
-        function Makie.MakieLayout._attribute_docs(::Type{$(name)})
+        function Makie._attribute_docs(::Type{$(name)})
             Dict(
                 $(
                     (attrs !== nothing ?
@@ -94,7 +92,7 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
             )
         end
 
-        Makie.MakieLayout.has_forwarded_layout(::Type{$name}) = $has_forwarded_layout
+        Makie.has_forwarded_layout(::Type{$name}) = $has_forwarded_layout
     end
 
     esc(q)
@@ -110,17 +108,27 @@ end
 block_docs(x) = ""
 
 function Docs.getdoc(@nospecialize T::Type{<:Block})
+    if T === Block
+        Markdown.parse("""
+            abstract type Block
 
-    s = """
-    # `$T <: Block`
+        `Block` is an abstract type that groups objects which can be placed in a `Figure`
+        and positioned in its `GridLayout` as rectangular objects.
 
-    $(block_docs(T))
+        Concrete `Block` types should only be defined via the `@Block` macro.
+        """)
+    else
+        s = """
+        # `$T <: Block`
 
-    ## Attributes
+        $(block_docs(T))
 
-    $(_attribute_list(T))
-    """
-    Markdown.parse(s)
+        ## Attributes
+
+        $(_attribute_list(T))
+        """
+        Markdown.parse(s)
+    end
 end
 
 function _attribute_list(T)
@@ -145,7 +153,7 @@ function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
     pairs = map(attrs) do a
 
         d = a.default
-        if d isa Expr && d.head == :macrocall && d.args[1] == Symbol("@inherit")
+        if d isa Expr && d.head === :macrocall && d.args[1] == Symbol("@inherit")
             if length(d.args) != 4
                 error("@inherit works with exactly 2 arguments, expression was $d")
             end
@@ -186,8 +194,8 @@ end
 
 function extract_attributes!(body)
     i = findfirst(
-        (x -> x isa Expr && x.head == :macrocall && x.args[1] == Symbol("@attributes") &&
-            x.args[3] isa Expr && x.args[3].head == :block),
+        (x -> x isa Expr && x.head === :macrocall && x.args[1] == Symbol("@attributes") &&
+            x.args[3] isa Expr && x.args[3].head === :block),
         body.args
     )
     if i === nothing
@@ -221,7 +229,7 @@ function extract_attributes!(body)
     args = filter(x -> !(x isa LineNumberNode), attrs_block.args)
 
     function extract_attr(arg)
-        has_docs = arg isa Expr && arg.head == :macrocall && arg.args[1] isa GlobalRef
+        has_docs = arg isa Expr && arg.head === :macrocall && arg.args[1] isa GlobalRef
 
         if has_docs
             docs = arg.args[3]
@@ -231,7 +239,7 @@ function extract_attributes!(body)
             attr = arg
         end
 
-        if !(attr isa Expr && attr.head == :(=) && length(attr.args) == 2)
+        if !(attr isa Expr && attr.head === :(=) && length(attr.args) == 2)
             error("$attr is not a valid attribute line like :x[::Type] = default_value")
         end
         left = attr.args[1]
@@ -240,7 +248,7 @@ function extract_attributes!(body)
             attr_symbol = left
             type = Any
         else
-            if !(left isa Expr && left.head == :(::) && length(left.args) == 2)
+            if !(left isa Expr && left.head === :(::) && length(left.args) == 2)
                 error("$left is not a Symbol or an expression such as x::Type")
             end
             attr_symbol = left.args[1]::Symbol
@@ -290,6 +298,11 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
 
     # first sort out all user kwargs that correspond to block attributes
     kwdict = Dict(kwargs)
+    
+    if haskey(kwdict, :textsize)
+        throw(ArgumentError("The attribute `textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
+    end
+
     attribute_kwargs = Dict{Symbol, Any}()
     for (key, value) in kwdict
         if is_attribute(T, key)
@@ -332,8 +345,8 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
     layout_height = Observable{Any}(nothing)
     layout_tellwidth = Observable(true)
     layout_tellheight = Observable(true)
-    layout_halign = Observable(:center)
-    layout_valign = Observable(:center)
+    layout_halign = Observable{GridLayoutBase.HorizontalAlignment}(:center)
+    layout_valign = Observable{GridLayoutBase.VerticalAlignment}(:center)
     layout_alignmode = Observable{Any}(Inside())
 
     lobservables = LayoutObservables(
@@ -385,9 +398,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
         empty!(b.layout.layoutobservables.computedbbox.listeners)
         # connect the block's layoutobservables.computedbbox to the align action that
         # usually the GridLayout executes itself
-        on(lobservables.computedbbox) do bb
-            GridLayoutBase.align_to_bbox!(b.layout, bb)
-        end
+        onany(GridLayoutBase.align_to_bbox!, b.layout, lobservables.computedbbox)
     end
 
     # in this function, the block specific setup logic is executed and the remaining

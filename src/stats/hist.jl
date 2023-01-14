@@ -30,10 +30,10 @@ Statistical weights can be provided via the `weights` keyword argument.
 
 The following attributes can move the histogram around,
 which comes in handy when placing multiple histograms into one plot:
-* offset = 0.0: adds an offset to every value
-* fillto = 0.0: defines where the bar starts
-* scale_to = nothing: allows to scale all values to a certain height
-* flip = false: flips all values
+* `offset = 0.0`: adds an offset to every value
+* `fillto = 0.0`: defines where the bar starts
+* `scale_to = nothing`: allows to scale all values to a certain height
+* `flip = false`: flips all values
 
 Color can either be:
 * a vector of `bins` colors
@@ -66,26 +66,27 @@ $(ATTRIBUTES)
     )
 end
 
+function pick_hist_edges(vals, bins)
+    if bins isa Int
+        mi, ma = float.(extrema(vals))
+        if mi == ma
+            return [mi - 0.5, ma + 0.5]
+        end
+        # hist is right-open, so to include the upper data point, make the last bin a tiny bit bigger
+        ma = nextfloat(ma)
+        return range(mi, ma, length = bins+1)
+    else
+        if !issorted(bins)
+            error("Histogram bins are not sorted: $bins")
+        end
+        return bins
+    end
+end
+
 function Makie.plot!(plot::Hist)
 
     values = plot.values
-
-    edges = lift(values, plot.bins) do vals, bins
-        if bins isa Int
-            mi, ma = float.(extrema(vals))
-            if mi == ma
-                return [mi - 0.5, ma + 0.5]
-            end
-            # hist is right-open, so to include the upper data point, make the last bin a tiny bit bigger
-            ma = nextfloat(ma)
-            return range(mi, ma, length = bins+1)
-        else
-            if !issorted(bins)
-                error("Histogram bins are not sorted: $bins")
-            end
-            return bins
-        end
-    end
+    edges = lift(pick_hist_edges, values, plot.bins) 
 
     points = lift(edges, plot.normalization, plot.scale_to, plot.weights) do edges, normalization, scale_to, wgts
         w = wgts === automatic ? () : (StatsBase.weights(wgts),)
