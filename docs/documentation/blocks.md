@@ -17,7 +17,7 @@ Here's one way to add a `Block`, in this case an `Axis`, to a Figure.
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 ax = Axis(f[1, 1])
@@ -38,7 +38,7 @@ Here's an example where two axes are placed manually:
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 Axis(f, bbox = BBox(100, 300, 100, 500), title = "Axis 1")

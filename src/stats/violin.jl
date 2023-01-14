@@ -9,7 +9,7 @@ Draw a violin plot.
 - `orientation=:vertical`: orientation of the violins (`:vertical` or `:horizontal`)
 - `width=1`: width of the box before shrinking
 - `gap=0.2`: shrinking factor, `width -> width * (1 - gap)`
-- `show_median=true`: show median as midline
+- `show_median=false`: show median as midline
 - `side=:both`: specify `:left` or `:right` to only plot the violin on one side
 - `datalimits`: specify values to trim the `violin`. Can be a `Tuple` or a `Function` (e.g. `datalimits=extrema`)
 """
@@ -56,13 +56,13 @@ function plot!(plot::Violin)
 
         # for horizontal violin just flip all componentes
         point_func = Point2f
-        if orientation == :horizontal
+        if orientation === :horizontal
             point_func = flip_xy ∘ point_func
         end
 
         # Allow `side` to be either scalar or vector
         sides = broadcast(x̂, vside) do _, s
-            return s == :left ? - 1 : s == :right ? 1 : 0
+            return s === :left ? - 1 : s === :right ? 1 : 0
         end
 
         sa = StructArray((x = x̂, side = sides))

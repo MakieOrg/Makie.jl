@@ -94,7 +94,7 @@ function nan_extrema(array)
 end
 
 function extract_expr(extract_func, dictlike, args)
-    if args.head != :tuple
+    if args.head !== :tuple
         error("Usage: args need to be a tuple. Found: $args")
     end
     expr = Expr(:block)
@@ -106,7 +106,7 @@ function extract_expr(extract_func, dictlike, args)
 end
 
 """
-usage @exctract scene (a, b, c, d)
+usage @extract scene (a, b, c, d)
 """
 macro extract(scene, args)
     extract_expr(getindex, scene, args)
@@ -153,20 +153,24 @@ macro extractvalue(scene, args)
 end
 
 
-attr_broadcast_length(x::NativeFont) = 1 # these are our rules, and for what we do, Vecs are usually scalars
+attr_broadcast_length(x::NativeFont) = 1
 attr_broadcast_length(x::VecTypes) = 1 # these are our rules, and for what we do, Vecs are usually scalars
 attr_broadcast_length(x::AbstractArray) = length(x)
+attr_broadcast_length(x::AbstractPattern) = 1
 attr_broadcast_length(x) = 1
 attr_broadcast_length(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
 
-attr_broadcast_getindex(x::NativeFont, i) = x # these are our rules, and for what we do, Vecs are usually scalars
+attr_broadcast_getindex(x::NativeFont, i) = x
 attr_broadcast_getindex(x::VecTypes, i) = x # these are our rules, and for what we do, Vecs are usually scalars
 attr_broadcast_getindex(x::AbstractArray, i) = x[i]
+attr_broadcast_getindex(x::AbstractPattern, i) = x
 attr_broadcast_getindex(x, i) = x
+attr_broadcast_getindex(x::Ref, i) = x[] # unwrap Refs just like in normal broadcasting, for protecting iterables
 attr_broadcast_getindex(x::ScalarOrVector, i) = x.sv isa Vector ? x.sv[i] : x.sv
 
 is_vector_attribute(x::AbstractArray) = true
 is_vector_attribute(x::NativeFont) = false
+is_vector_attribute(x::Quaternion) = false
 is_vector_attribute(x::VecTypes) = false
 is_vector_attribute(x) = false
 
@@ -333,4 +337,12 @@ end
 
 function matrix_grid(f, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
     matrix_grid(f, LinRange(extrema(x)..., size(z, 1)), LinRange(extrema(x)..., size(z, 2)), z)
+end
+
+function extract_keys(attributes, keys)
+    attr = Attributes()
+    for key in keys
+        attr[key] = attributes[key]
+    end
+    return attr
 end

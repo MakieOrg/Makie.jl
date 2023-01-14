@@ -10,10 +10,10 @@ struct DataAspect end
 
 
 struct Cycler
-    counters::Dict{Type, Int}
+    counters::IdDict{Type, Int}
 end
 
-Cycler() = Cycler(Dict{Type, Int}())
+Cycler() = Cycler(IdDict{Type, Int}())
 
 
 struct Cycle
@@ -126,7 +126,7 @@ mutable struct LineAxis
     elements::Dict{Symbol, Any}
     tickpositions::Observable{Vector{Point2f}}
     tickvalues::Observable{Vector{Float32}}
-    ticklabels::Observable{Vector{String}}
+    ticklabels::Observable{Vector{AbstractString}}
     minortickpositions::Observable{Vector{Point2f}}
     minortickvalues::Observable{Vector{Float32}}
 end
@@ -150,18 +150,27 @@ end
 
 struct ScrollZoom
     speed::Float32
-    reset_timer::Ref{Any}
-    prev_xticklabelspace::Ref{Any}
-    prev_yticklabelspace::Ref{Any}
+    reset_timer::RefValue{Union{Nothing, Timer}}
+    prev_xticklabelspace::RefValue{Union{Automatic, Float64}}
+    prev_yticklabelspace::RefValue{Union{Automatic, Float64}}
     reset_delay::Float32
 end
 
+function ScrollZoom(speed, reset_delay)
+    return ScrollZoom(speed, RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Float64}}(0.0), RefValue{Union{Automatic, Float64}}(0.0), reset_delay)
+end
+
 struct DragPan
-    reset_timer::Ref{Any}
-    prev_xticklabelspace::Ref{Any}
-    prev_yticklabelspace::Ref{Any}
+    reset_timer::RefValue{Union{Nothing, Timer}}
+    prev_xticklabelspace::RefValue{Union{Automatic, Float64}}
+    prev_yticklabelspace::RefValue{Union{Automatic, Float64}}
     reset_delay::Float32
 end
+
+function DragPan(reset_delay)
+    return DragPan(RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Float64}}(0.0), RefValue{Union{Automatic, Float64}}(0.0), reset_delay)
+end
+
 
 struct DragRotate
 end
@@ -190,6 +199,7 @@ end
     interactions::Dict{Symbol, Tuple{Bool, Any}}
     xaxis::LineAxis
     yaxis::LineAxis
+    elements::Dict{Symbol, Any}
     @attributes begin
         "The xlabel string."
         xlabel = ""
@@ -198,7 +208,7 @@ end
         "The axis title string."
         title = ""
         "The font family of the title."
-        titlefont::Makie.FreeTypeAbstraction.FTFont = "TeX Gyre Heros Makie Bold"
+        titlefont = :bold
         "The title's font size."
         titlesize::Float64 = @inherit(:fontsize, 16f0)
         "The gap between axis and title."
@@ -214,7 +224,7 @@ end
         "The axis subtitle string."
         subtitle = ""
         "The font family of the subtitle."
-        subtitlefont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "TeX Gyre Heros Makie")
+        subtitlefont = :regular
         "The subtitle's font size."
         subtitlesize::Float64 = @inherit(:fontsize, 16f0)
         "The gap between subtitle and title."
@@ -226,9 +236,9 @@ end
         "The axis subtitle line height multiplier."
         subtitlelineheight::Float64 = 1
         "The font family of the xlabel."
-        xlabelfont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "TeX Gyre Heros Makie")
+        xlabelfont = :regular
         "The font family of the ylabel."
-        ylabelfont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "TeX Gyre Heros Makie")
+        ylabelfont = :regular
         "The color of the xlabel."
         xlabelcolor::RGBAf = @inherit(:textcolor, :black)
         "The color of the ylabel."
@@ -245,10 +255,14 @@ end
         xlabelpadding::Float64 = 3f0
         "The padding between the ylabel and the ticks or axis."
         ylabelpadding::Float64 = 5f0 # xlabels usually have some more visual padding because of ascenders, which are larger than the hadvance gaps of ylabels
+        "The xlabel rotation in radians."
+        xlabelrotation = Makie.automatic
+        "The ylabel rotation in radians."
+        ylabelrotation = Makie.automatic
         "The font family of the xticklabels."
-        xticklabelfont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "TeX Gyre Heros Makie")
+        xticklabelfont = :regular
         "The font family of the yticklabels."
-        yticklabelfont::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "TeX Gyre Heros Makie")
+        yticklabelfont = :regular
         "The color of xticklabels."
         xticklabelcolor::RGBAf = @inherit(:textcolor, :black)
         "The color of yticklabels."
@@ -297,6 +311,10 @@ end
         xtickcolor::RGBAf = RGBf(0, 0, 0)
         "The color of the ytick marks."
         ytickcolor::RGBAf = RGBf(0, 0, 0)
+        "Controls if the x ticks and minor ticks are mirrored on the other side of the Axis."
+        xticksmirrored::Bool = false
+        "Controls if the y ticks and minor ticks are mirrored on the other side of the Axis."
+        yticksmirrored::Bool = false
         "Locks interactive panning in the x direction."
         xpanlock::Bool = false
         "Locks interactive panning in the y direction."
@@ -400,9 +418,9 @@ end
         "The position of the y axis (`:left` or `:right`)."
         yaxisposition::Symbol = :left
         "Controls if the x spine is limited to the furthest tick marks or not."
-        xtrimspine::Bool = false
+        xtrimspine::Union{Bool, Tuple{Bool,Bool}}  = false
         "Controls if the y spine is limited to the furthest tick marks or not."
-        ytrimspine::Bool = false
+        ytrimspine::Union{Bool, Tuple{Bool,Bool}} = false
         "The background color of the axis."
         backgroundcolor::RGBAf = :white
         "Controls if the ylabel's rotation is flipped."
@@ -450,12 +468,13 @@ end
 
 function RectangleZoom(f::Function, ax::Axis; kw...)
     r = RectangleZoom(f; kw...)
-    selection_vertices = lift(_selection_vertices, ax.finallimits, r.rectnode)
+    selection_vertices = lift(_selection_vertices, Observable(ax.scene), ax.finallimits, r.rectnode)
     # manually specify correct faces for a rectangle with a rectangle hole inside
     faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
-    # fxaa false seems necessary for correct transparency
-    mesh = mesh!(ax.scene, selection_vertices, faces, color = (:black, 0.2), shading = false,
-                 fxaa = false, inspectable = false, visible=r.active, transparency=true)
+    # plot to blockscene, so ax.scene stays exclusive for user plots
+    # That's also why we need to pass `ax.scene` to _selection_vertices, so it can project to that space
+    mesh = mesh!(ax.blockscene, selection_vertices, faces, color = (:black, 0.2), shading = false,
+                 inspectable = false, visible=r.active, transparency=true)
     # translate forward so selection mesh and frame are never behind data
     translate!(mesh, 0, 0, 100)
     return r
@@ -471,21 +490,24 @@ function RectangleZoom(ax::Axis; kw...)
 end
 
 @Block Colorbar begin
+    axis::LineAxis
     @attributes begin
         "The color bar label string."
         label = ""
         "The label color."
         labelcolor = @inherit(:textcolor, :black)
         "The label font family."
-        labelfont = @inherit(:font, "TeX Gyre Heros Makie")
+        labelfont = :regular
         "The label font size."
         labelsize = @inherit(:fontsize, 16f0)
         "Controls if the label is visible."
         labelvisible = true
         "The gap between the label and the ticks."
         labelpadding = 5f0
+        "The label rotation in radians."
+        labelrotation = Makie.automatic
         "The font family of the tick labels."
-        ticklabelfont = @inherit(:font, "TeX Gyre Heros Makie")
+        ticklabelfont = :regular
         "The font size of the tick labels."
         ticklabelsize = @inherit(:fontsize, 16f0)
         "Controls if the tick labels are visible."
@@ -512,7 +534,7 @@ end
         tickcolor = RGBf(0, 0, 0)
         "The horizontal and vertical alignment of the tick labels."
         ticklabelalign = Makie.automatic
-        "The rotation of the ticklabels"
+        "The rotation of the ticklabels."
         ticklabelrotation = 0f0
         "The line width of the spines."
         spinewidth = 1f0
@@ -592,9 +614,9 @@ end
         "The color of the text."
         color::RGBAf = @inherit(:textcolor, :black)
         "The font size of the text."
-        textsize::Float32 = @inherit(:fontsize, 16f0)
+        fontsize::Float32 = @inherit(:fontsize, 16f0)
         "The font family of the text."
-        font::Makie.FreeTypeAbstraction.FTFont = @inherit(:font, "TeX Gyre Heros Makie")
+        font = :regular
         "The justification of the text (:left, :right, :center)."
         justification = :center
         "The lineheight multiplier for the text."
@@ -764,11 +786,11 @@ end
         "The extra space added to the sides of the button label's boundingbox."
         padding = (10f0, 10f0, 10f0, 10f0)
         "The font size of the button label."
-        textsize = @inherit(:fontsize, 16f0)
+        fontsize = @inherit(:fontsize, 16f0)
         "The text of the button label."
         label = "Button"
         "The font family of the button label."
-        font = @inherit(:font, "TeX Gyre Heros Makie")
+        font = :regular
         "The width setting of the button."
         width = Auto()
         "The height setting of the button."
@@ -856,9 +878,9 @@ end
         valign = :center
         "The alignment of the menu in its suggested bounding box."
         alignmode = Inside()
-        "Index of selected item"
+        "Index of selected item. Should not be set by the user."
         i_selected = 0
-        "Selected item value"
+        "Selected item value. This is the output observable that you should listen to to react to menu interaction. Should not be set by the user."
         selection = nothing
         "Is the menu showing the available options"
         is_open = false
@@ -875,11 +897,11 @@ end
         "Color of the dropdown arrow"
         dropdown_arrow_color = (:black, 0.2)
         "Size of the dropdown arrow"
-        dropdown_arrow_size = 12px
+        dropdown_arrow_size = 20
         "The list of options selectable in the menu. This can be any iterable of a mixture of strings and containers with one string and one other value. If an entry is just a string, that string is both label and selection. If an entry is a container with one string and one other value, the string is the label and the other value is the selection."
         options = ["no options"]
         "Font size of the cell texts"
-        textsize = @inherit(:fontsize, 16f0)
+        fontsize = @inherit(:fontsize, 16f0)
         "Padding of entry texts"
         textpadding = (10, 10, 10, 10)
         "Color of entry texts"
@@ -932,7 +954,7 @@ const EntryGroup = Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}
         "Controls if the parent layout can adjust to this element's height"
         tellheight = automatic
         "The font family of the legend group titles."
-        titlefont = "TeX Gyre Heros Makie Bold"
+        titlefont = :bold
         "The font size of the legend group titles."
         titlesize = @inherit(:fontsize, 16f0)
         "The horizontal alignment of the legend group titles."
@@ -948,7 +970,7 @@ const EntryGroup = Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}
         "The font size of the entry labels."
         labelsize = @inherit(:fontsize, 16f0)
         "The font family of the entry labels."
-        labelfont = @inherit(:font, "TeX Gyre Heros Makie")
+        labelfont = :regular
         "The color of the entry labels."
         labelcolor = @inherit(:textcolor, :black)
         "The horizontal alignment of the entry labels."
@@ -1081,13 +1103,13 @@ end
         "Controls if the textbox is defocused when a string is submitted."
         defocus_on_submit = true
         "Text size."
-        textsize = @inherit(:fontsize, 16f0)
+        fontsize = @inherit(:fontsize, 16f0)
         "Text color."
         textcolor = @inherit(:textcolor, :black)
         "Text color for the placeholder."
         textcolor_placeholder = RGBf(0.5, 0.5, 0.5)
         "Font family."
-        font = @inherit(:font, "TeX Gyre Heros Makie")
+        font = :regular
         "Color of the box."
         boxcolor = :transparent
         "Color of the box when focused."
@@ -1196,16 +1218,16 @@ end
         "The z label size"
         zlabelsize = @inherit(:fontsize, 16f0)
         "The x label font"
-        xlabelfont = @inherit(:font, "TeX Gyre Heros Makie")
+        xlabelfont = :regular
         "The y label font"
-        ylabelfont = @inherit(:font, "TeX Gyre Heros Makie")
+        ylabelfont = :regular
         "The z label font"
-        zlabelfont = @inherit(:font, "TeX Gyre Heros Makie")
-        "The x label rotation"
+        zlabelfont = :regular
+        "The x label rotation in radians"
         xlabelrotation = Makie.automatic
-        "The y label rotation"
+        "The y label rotation in radians"
         ylabelrotation = Makie.automatic
-        "The z label rotation"
+        "The z label rotation in radians"
         zlabelrotation = Makie.automatic
         "The x label align"
         xlabelalign = Makie.automatic
@@ -1238,11 +1260,11 @@ end
         "The z ticklabel pad"
         zticklabelpad = 10
         "The x ticklabel font"
-        xticklabelfont = @inherit(:font, "TeX Gyre Heros Makie")
+        xticklabelfont = :regular
         "The y ticklabel font"
-        yticklabelfont = @inherit(:font, "TeX Gyre Heros Makie")
+        yticklabelfont = :regular
         "The z ticklabel font"
-        zticklabelfont = @inherit(:font, "TeX Gyre Heros Makie")
+        zticklabelfont = :regular
         "The x grid color"
         xgridcolor = RGBAf(0, 0, 0, 0.12)
         "The y grid color"
@@ -1320,7 +1342,7 @@ end
         "The axis title string."
         title = ""
         "The font family of the title."
-        titlefont = "TeX Gyre Heros Makie Bold"
+        titlefont = :bold
         "The title's font size."
         titlesize = @inherit(:fontsize, 16f0)
         "The gap between axis and title."

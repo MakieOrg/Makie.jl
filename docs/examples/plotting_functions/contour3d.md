@@ -8,7 +8,7 @@
 ```julia
 using GLMakie
 GLMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 Axis3(f[1, 1], aspect=(0.5,0.5,1), perspectiveness=0.75)
@@ -29,7 +29,7 @@ Omitting the `xs` and `ys` results in the indices of `zs` being used. We can als
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 Axis3(f[1, 1], aspect=(0.5,0.5,1), perspectiveness=0.75)

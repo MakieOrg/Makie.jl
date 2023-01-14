@@ -8,7 +8,7 @@
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 Axis(f[1, 1])
@@ -29,7 +29,7 @@ f
 using Statistics
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 Axis(f[1, 1])
@@ -50,7 +50,7 @@ f
 ```julia
 using GLMakie
 GLMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 lower = fill(Point3f(0,0,0), 100)
 upper = [Point3f(sin(x), cos(x), 1.0) for x in range(0,2pi, length=100)]
 col = repeat([1:50;50:-1:1],outer=2)

@@ -25,11 +25,34 @@ end
     fig
 end
 
+@reference_test "menus" begin
+    fig = Figure()
+    funcs = [sqrt, x->x^2, sin, cos]
+    options = zip(["Square Root", "Square", "Sine", "Cosine"], funcs)
+
+    menu1 = Menu(fig, options = ["viridis", "heat", "blues"], default = 1)
+    menu2 = Menu(fig, options = options, default = "Square")
+    menu3 = Menu(fig, options = options, default = nothing)
+    menu4 = Menu(fig, options = options, default = nothing)
+
+    fig[1, 1] = grid!(
+        [
+            Label(fig, "A", width = nothing) Label(fig, "C", width = nothing);
+            menu1                            menu3;
+            Label(fig, "B", width = nothing) Label(fig, "D", width = nothing);
+            menu2                            menu4;
+        ]
+    )
+    menu2.is_open = true
+    menu4.is_open = true
+    fig
+end
+
 @reference_test "Label with text wrapping" begin
     lorem_ipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
     fig = Figure(resolution = (1000, 660))
     m!(fig, lbl) = mesh!(fig.scene, lbl.layoutobservables.computedbbox, color = (:red, 0.5), shading=false)
-    lbl1 = Label(fig[1, 1:2], "HEADER "^10, textsize = 40, word_wrap = true)
+    lbl1 = Label(fig[1, 1:2], "HEADER "^10, fontsize = 40, word_wrap = true)
     m!(fig, lbl1)
 
     lbl2 = Label(fig[2, 1], lorem_ipsum, word_wrap = true, justification = :left)
@@ -85,27 +108,16 @@ end
     f
 end
 
-@testset "Linked axes" begin
-    # this tests a bug in 0.17.4 where the first axis targetlimits
-    # don't change because the second axis has limits contained inside those
-    # of the first, so the axis linking didn't proliferate
-    f = Figure()
-    ax1 = Axis(f[1, 1], xautolimitmargin = (0, 0), yautolimitmargin = (0, 0))
-    ax2 = Axis(f[2, 1], xautolimitmargin = (0, 0), yautolimitmargin = (0, 0))
-    scatter!(ax1, 1:5, 2:6)
-    scatter!(ax2, 2:3, 3:4)
-    @test first.(extrema(ax1.finallimits[])) == (1, 5)
-    @test last.(extrema(ax1.finallimits[])) == (2, 6)
-    @test first.(extrema(ax2.finallimits[])) == (2, 3)
-    @test last.(extrema(ax2.finallimits[])) == (3, 4)
-    linkxaxes!(ax1, ax2)
-    @test first.(extrema(ax1.finallimits[])) == (1, 5)
-    @test last.(extrema(ax1.finallimits[])) == (2, 6)
-    @test first.(extrema(ax2.finallimits[])) == (1, 5)
-    @test last.(extrema(ax2.finallimits[])) == (3, 4)
-    linkyaxes!(ax1, ax2)
-    @test first.(extrema(ax1.finallimits[])) == (1, 5)
-    @test last.(extrema(ax1.finallimits[])) == (2, 6)
-    @test first.(extrema(ax2.finallimits[])) == (1, 5)
-    @test last.(extrema(ax2.finallimits[])) == (2, 6)
+@reference_test "Legend draw order" begin
+    with_theme(Lines = (linewidth = 10,)) do
+        f = Figure()
+        ax = Axis(f[1, 1], backgroundcolor = :gray80)
+        for i in 1:3
+            lines!(ax,( 1:10) .* i, label = "$i")
+        end
+        # To verify that RGB values differ across entries
+        axislegend(ax, position = :lt, patchcolor = :red, patchsize = (100, 100), bgcolor = :gray50);
+        Legend(f[1, 2], ax, patchcolor = :gray80, patchsize = (100, 100), bgcolor = :gray50);
+        f
+    end
 end

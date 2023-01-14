@@ -8,7 +8,7 @@
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 xs = rand(1:3, 1000)
 ys = randn(1000)
@@ -21,7 +21,7 @@ violin(xs, ys)
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 xs = rand(1:3, 1000)
 ys = map(xs) do x
@@ -36,15 +36,15 @@ violin(xs, ys, datalimits = extrema)
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 N = 1000
 xs = rand(1:3, N)
 dodge = rand(1:2, N)
 side = rand([:left, :right], N)
-color = @. ifelse(side == :left, :orange, :teal)
+color = @. ifelse(side === :left, :orange, :teal)
 ys = map(side) do s
-    return s == :left ? randn() : rand()
+    return s === :left ? randn() : rand()
 end
 
 violin(xs, ys, dodge = dodge, side = side, color = color)
@@ -55,17 +55,17 @@ violin(xs, ys, dodge = dodge, side = side, color = color)
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 N = 1000
 xs = rand(1:3, N)
 side = rand([:left, :right], N)
 color = map(xs, side) do x, s
-    colors = s == :left ? [:red, :orange, :yellow] : [:blue, :teal, :cyan]
+    colors = s === :left ? [:red, :orange, :yellow] : [:blue, :teal, :cyan]
     return colors[x]
 end
 ys = map(side) do s
-    return s == :left ? randn() : rand()
+    return s === :left ? randn() : rand()
 end
 
 violin(xs, ys, side = side, color = color)
@@ -78,7 +78,7 @@ violin(xs, ys, side = side, color = color)
 ```julia
 using CairoMakie, Distributions
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 N = 100_000
 x = rand(1:3, N)
