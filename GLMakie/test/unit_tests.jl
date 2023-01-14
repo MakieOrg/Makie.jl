@@ -307,13 +307,59 @@ end
         @test screen.px_per_unit[] == 1
         save(file, fig)
         img = load(file)
-        @test size(img) == (400, 400)
+        @test size(img) == (W, H)
 
         # save with a different resolution
         save(file, fig, px_per_unit = 2)
         img = load(file)
-        @test size(img) == (800, 800)
+        @test size(img) == (2W, 2H)
         # writing to file should not effect the visible figure
         @test_broken screen.px_per_unit[] == 1
+    end
+
+    if Sys.islinux()
+        # Test that GLMakie is correctly getting the default scale factor from X11 in a
+        # HiDPI environment.
+
+        checkcmd = `which xrdb` & `which xsettingsd`
+        checkcmd = pipeline(ignorestatus(checkcmd), stdout = devnull, stderr = devnull)
+        hasxrdb = success(run(checkcmd))
+
+        # Only continue if running within an Xvfb environment where the setting is
+        # empty by default. Overriding during a user's session could be problematic
+        # (i.e. if running interactively rather than in CI).
+        inxvfb = hasxrdb ? isempty(readchomp(`xrdb -get Xft.dpi`)) : false
+
+        if hasxrdb && inxvfb
+            # GLFW looks for Xft.dpi resource setting. Spawn a temporary xsettingsd daemon
+            # to be the X resource manager
+            xsettingsd = run(pipeline(`xsettingsd -c /dev/null`), wait = false)
+            try
+                # Then set the DPI to 192, i.e. 2 times the default of 96dpi
+                run(pipeline(`echo "Xft.dpi: 192"`, `xrdb -merge`))
+
+                # Print out the automatically-determined scale factor from the GLScreen
+                jlscript = raw"""
+                using GLMakie
+                fig, ax, pl = scatter(1:2, 3:4)
+                screen = display(GLMakie.Screen(visible = false), fig)
+                print(Int(screen.scalefactor[]))
+                """
+                cmd = ```
+                    $(Base.julia_cmd())
+                    --project=$(Base.active_project())
+                    --eval $jlscript
+                    ```
+                scalefactor = readchomp(cmd)
+                @test scalefactor == "2"
+            finally
+                # cleanup: kill the daemon before continuing with more tests
+                kill(xsettingsd)
+            end
+        else
+            @test_broken hasxrdb && inxvfb
+        end
+    else
+        @test_broken Sys.islinux()
     end
 end
