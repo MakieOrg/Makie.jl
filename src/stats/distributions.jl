@@ -91,15 +91,15 @@ function fit_qqplot(x, y; qqline = :none)
     end
     h = qqbuild(x, y)
     points = Point2f.(h.qx, h.qy)
-    qqline == :none && return points, Point2f[]
+    qqline === :none && return points, Point2f[]
     xs = collect(extrema(h.qx))
-    if qqline == :identity
+    if qqline === :identity
         ys = xs
-    elseif qqline == :fit
+    elseif qqline === :fit
         itc, slp = hcat(fill!(similar(h.qx), 1), h.qx) \ h.qy
         ys = @. slp * xs + itc
-    else # if qqline == :fitrobust
-        quantx, quanty = quantile(x, [0.25, 0.75]), quantile(y, [0.25, 0.75])
+    else # if qqline === :fitrobust
+        quantx, quanty = quantile.(Ref(x), [0.25, 0.75]), quantile.(Ref(y), [0.25, 0.75])
         slp = (quanty[2] - quanty[1]) / (quantx[2] - quantx[1])
         ys = @. quanty + slp * (xs - quantx)
     end

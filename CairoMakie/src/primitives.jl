@@ -361,11 +361,11 @@ function draw_marker(ctx, marker::Matrix{T}, pos, scale,
         marker_offset, rotation) where T<:Colorant
 
     # convert marker to Cairo compatible image data
-    argb32_marker = convert.(ARGB32, marker)
-    argb32_marker = permutedims(argb32_marker, (2,1)) # swap x-y for Cairo
-    marker_surf   = Cairo.CairoImageSurface(argb32_marker)
+    marker = permutedims(marker, (2,1))
+    marker_surf = to_cairo_image(marker, ())
 
-    w, h = size(argb32_marker)
+    w, h = size(marker)
+
     Cairo.translate(ctx,
                     scale[1]/2 + pos[1] + marker_offset[1],
                     scale[2]/2 + pos[2] + marker_offset[2])
@@ -437,7 +437,7 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
 
     glyph_pos = let
         transform_func = scene.transformation.transform_func[]
-        p = Makie.apply_transform(transform_func, position)
+        p = Makie.apply_transform(transform_func, position, space)
 
         Makie.clip_to_space(scene.camera, markerspace) *
         Makie.space_to_clip(scene.camera, space) *
@@ -564,8 +564,8 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     else
         ys = regularly_spaced_array_to_range(ys)
     end
-    model = primitive[:model][]
-    interp_requested = to_value(get(primitive, :interpolate, true))
+    model = primitive.model[]::Mat4f
+    interpolate = to_value(primitive.interpolate)
 
     # Debug attribute we can set to disable fastpath
     # probably shouldn't really be part of the interface
@@ -577,7 +577,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     identity_transform = (t === identity || t isa Tuple && all(x-> x === identity, t)) && (abs(model[1, 2]) < 1e-15)
     regular_grid = xs isa AbstractRange && ys isa AbstractRange
 
-    if interp_requested
+    if interpolate
         if !regular_grid
             error("$(typeof(primitive).parameters[1]) with interpolate = true with a non-regular grid is not supported right now.")
         end
@@ -593,10 +593,6 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     xy = project_position(scene, space, Point2f(first.(imsize)), model)
     xymax = project_position(scene, space, Point2f(last.(imsize)), model)
     w, h = xymax .- xy
-    image_resolution_larger_than_surface = abs(w) < length(xs) || abs(h) < length(ys)
-    automatic_interpolation = image_resolution_larger_than_surface & regular_grid & identity_transform
-
-    interpolate = interp_requested || automatic_interpolation
 
     can_use_fast_path = !(is_vector && !interpolate) && regular_grid && identity_transform
     use_fast_path = can_use_fast_path && !disable_fast_path
@@ -608,7 +604,6 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         if s.width > weird_cairo_limit || s.height > weird_cairo_limit
             error("Cairo stops rendering images bigger than $(weird_cairo_limit), which is likely a bug in Cairo. Please resample your image/heatmap with e.g. `ImageTransformations.imresize`")
         end
-
         Cairo.rectangle(ctx, xy..., w, h)
         Cairo.save(ctx)
         Cairo.translate(ctx, xy...)
@@ -718,9 +713,9 @@ function draw_mesh2D(scene, screen, per_face_cols, space::Symbol,
     ctx = screen.context
     # Priorize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
-    pattern = Cairo.CairoPatternMesh()
 
     for (f, (c1, c2, c3)) in zip(fs, per_face_cols)
+        pattern = Cairo.CairoPatternMesh()
         t1, t2, t3 =  project_position.(scene, space, vs[f], (model,)) #triangle points
         Cairo.mesh_pattern_begin_patch(pattern)
 
@@ -733,10 +728,11 @@ function draw_mesh2D(scene, screen, per_face_cols, space::Symbol,
         mesh_pattern_set_corner_color(pattern, 2, c3)
 
         Cairo.mesh_pattern_end_patch(pattern)
+        Cairo.set_source(ctx, pattern)
+        Cairo.close_path(ctx)
+        Cairo.paint(ctx)
+        Cairo.destroy(pattern)
     end
-    Cairo.set_source(ctx, pattern)
-    Cairo.close_path(ctx)
-    Cairo.paint(ctx)
     return nothing
 end
 
@@ -802,7 +798,7 @@ function draw_mesh3D(
     # and have `func` be fully typed inside closure
     vs = broadcast(meshpoints, (func,)) do v, f
         # Should v get a nan2zero?
-        v = Makie.apply_transform(f, v)
+        v = Makie.apply_transform(f, v, space)
         p4d = to_ndim(Vec4f, scale .* to_ndim(Vec3f, v, 0f0), 1f0)
         view * (model * p4d .+ to_ndim(Vec4f, pos, 0f0))
     end
@@ -862,9 +858,9 @@ function _calculate_shaded_vertexcolors(N, v, c, lightpos, ambient, diffuse, spe
 end
 
 function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightpos, shininess, diffuse, ambient, specular)
-    pattern = Cairo.CairoPatternMesh()
-
     for k in reverse(zorder)
+        pattern = Cairo.CairoPatternMesh()
+
         f = meshfaces[k]
         # avoid SizedVector through Face indexing
         t1 = ts[f[1]]
@@ -903,10 +899,12 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
         mesh_pattern_set_corner_color(pattern, 2, c3)
 
         Cairo.mesh_pattern_end_patch(pattern)
+        Cairo.set_source(ctx, pattern)
+        Cairo.close_path(ctx)
+        Cairo.paint(ctx)
+        Cairo.destroy(pattern)
     end
-    Cairo.set_source(ctx, pattern)
-    Cairo.close_path(ctx)
-    Cairo.paint(ctx)
+    
 end
 
 ################################################################################

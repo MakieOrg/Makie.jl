@@ -49,9 +49,13 @@ vec4 tovec4(vec4 v){return v;}
 mat2 diagm(vec2 v){
     return mat2(v.x, 0.0, 0.0, v.y);
 }
+
 float _determinant(mat2 m) {
   return m[0][0] * m[1][1] - m[0][1] * m[1][0];
 }
+
+flat out uint frag_instance_id;
+
 void main(){
     vec2 bbox_signed_radius = 0.5 * get_markersize(); // note; components may be negative.
     vec2 sprite_bbox_centre = get_quad_offset() + bbox_signed_radius;
@@ -113,4 +117,6 @@ void main(){
     vec4 quad_vertex = (trans * vec4(2.0 * bbox_signed_radius * get_position(), 0.0, 0.0));
     gl_Position = vclip + quad_vertex;
     gl_Position.z += gl_Position.w * get_depth_shift();
+
+    frag_instance_id = uint(gl_InstanceID);
 }

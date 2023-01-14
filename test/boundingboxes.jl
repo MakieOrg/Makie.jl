@@ -51,7 +51,7 @@
     # text transforms to pixel space atm (TODO)
     fig = Figure(resolution = (400, 400))
     ax = Axis(fig[1, 1])
-    p = text!(ax, Point2f(10), text = "test")
+    p = text!(ax, Point2f(10), text = "test", fontsize = 20)
     bb = boundingbox(p)
     @test bb.origin ≈ Point3f(340, 341, 0)
     @test bb.widths ≈ Vec3f(32.24, 23.3, 0)

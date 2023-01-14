@@ -55,7 +55,14 @@ const default_palettes = Attributes(
 
 const minimal_default = Attributes(
     palette = default_palettes,
-    font = "TeX Gyre Heros Makie",
+    font = :regular,
+    fonts = Attributes(
+        :regular => "TeX Gyre Heros Makie",
+        :bold => "TeX Gyre Heros Makie Bold",
+        :italic => "TeX Gyre Heros Makie Italic",
+        :bold_italic => "TeX Gyre Heros Makie Bold Italic",
+    ),
+    fontsize = 16,
     textcolor = :black,
     padding = Vec3f(0.05),
     figure_padding = 16,
@@ -106,6 +113,7 @@ const minimal_default = Attributes(
         renderloop = automatic,
         pause_renderloop = false,
         vsync = false,
+        render_on_demand = true,
         framerate = 30.0,
 
         # GLFW window attributes
@@ -116,6 +124,7 @@ const minimal_default = Attributes(
         fullscreen = false,
         debugging = false,
         monitor = nothing,
+        visible = true,
 
         # Postproccessor
         oit = true,
@@ -187,7 +196,14 @@ function with_theme(f, theme = Theme(); kwargs...)
     end
 end
 
-theme(::Nothing, key::Symbol) = deepcopy(current_default_theme()[key])
+function theme(::Nothing, key::Symbol)
+    val = to_value(CURRENT_DEFAULT_THEME[key])
+    if val isa Attributes
+        return val
+    else
+        Observable{Any}(val)
+    end
+end
 
 """
     update_theme!(with_theme::Theme; kwargs...)
