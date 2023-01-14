@@ -222,7 +222,7 @@ end
         heatmap(fig[2, 1], rand(rng, 100, 100))
         surface(fig[2, 2], 0..1, 0..1, rand(rng, 1000, 1000) ./ 2)
 
-        display(GLMakie.Screen(visible=false, scalefactor=1, px_per_unit=1), fig)
+        display(GLMakie.Screen(visible=false), fig)
     end
 
     images = map(Makie.colorbuffer, screens)
@@ -253,4 +253,67 @@ end
     GLMakie.closeall()
     # now every screen should be gone
     @test isempty(GLMakie.SCREEN_REUSE_POOL)
+end
+
+@testset "HiDPI displays" begin
+    import FileIO: @format_str, File, load
+    GLMakie.closeall()
+
+    W, H = 400, 400
+    N = 51
+    x = collect(range(0.0, 2π, N))
+    y = sin.(x)
+    fig, ax, pl = scatter(x, y, figure = (; resolution = (W, H)));
+    hidedecorations!(ax)
+
+    screen = display(GLMakie.Screen(visible = false, scalefactor = 2), fig)
+    @test screen.scalefactor[] === 2f0
+    @test screen.px_per_unit[] === 2f0  # inherited from scale factor
+    @test size(screen.framebuffer) == (2W, 2H)
+    if !Sys.isapple()
+        @test GLMakie.window_size(screen.glscreen) == (2W, 2H)
+    else
+        @test GLMakie.window_size(screen.glscreen) == (W, H)
+    end
+
+    # check that picking works through the resized GL buffers
+    # - point pick
+    point_px = project_sp(ax.scene, Point2f(x[end÷2], y[end÷2]))
+    elem, idx = pick(ax.scene, point_px)
+    @test elem === pl
+    @test idx == length(x) ÷ 2
+    # - area pick
+    bottom_px = project_sp(ax.scene, Point2f(π, -1))
+    right_px = project_sp(ax.scene, Point2f(2π, 0))
+    quadrant = Rect2i(round.(bottom_px)..., round.(right_px - bottom_px)...)
+    picks = pick(ax.scene, quadrant)
+    points = Set(Int(p[2]) for p in picks if p[1] isa Scatter)
+    @test points == Set(((N+1)÷2):N)
+
+    screen = display(GLMakie.Screen(visible = false, scalefactor = 2, px_per_unit = 1), fig)
+    @test screen.scalefactor[] === 2f0
+    @test screen.px_per_unit[] === 1f0
+    @test size(screen.framebuffer) == (W, H)
+
+    screen.scalefactor[] = 1
+    sleep(0.1)  # TODO: Necessary?? Are observable callbacks asynchronous?
+    @test GLMakie.window_size(screen.glscreen) == (W, H)
+
+    mktemp() do path, io
+        close(io)
+        file = File{format"PNG"}(path)
+
+        # save at current size
+        @test screen.px_per_unit[] == 1
+        save(file, fig)
+        img = load(file)
+        @test size(img) == (400, 400)
+
+        # save with a different resolution
+        save(file, fig, px_per_unit = 2)
+        img = load(file)
+        @test size(img) == (800, 800)
+        # writing to file should not effect the visible figure
+        @test_broken screen.px_per_unit[] == 1
+    end
 end
