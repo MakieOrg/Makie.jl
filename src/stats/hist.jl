@@ -30,10 +30,10 @@ Statistical weights can be provided via the `weights` keyword argument.
 
 The following attributes can move the histogram around,
 which comes in handy when placing multiple histograms into one plot:
-* offset = 0.0: adds an offset to every value
-* fillto = 0.0: defines where the bar starts
-* scale_to = nothing: allows to scale all values to a certain height
-* flip = false: flips all values
+* `offset = 0.0`: adds an offset to every value
+* `fillto = 0.0`: defines where the bar starts
+* `scale_to = nothing`: allows to scale all values to a certain height
+* `flip = false`: flips all values
 
 Color can either be:
 * a vector of `bins` colors

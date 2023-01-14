@@ -19,17 +19,17 @@ function initialize_block!(ax::Axis3)
     cam = OrthographicCamera()
     cameracontrols!(scene, cam)
 
-    mi1 = Observable(!(pi/2 <= ax.azimuth[] % 2pi < 3pi/2))
-    mi2 = Observable(0 <= ax.azimuth[] % 2pi < pi)
+    mi1 = Observable(!(pi/2 <= mod1(ax.azimuth[], 2pi) < 3pi/2))
+    mi2 = Observable(0 <= mod1(ax.azimuth[], 2pi) < pi)
     mi3 = Observable(ax.elevation[] > 0)
 
     on(ax.azimuth) do x
-        b = !(pi/2 <= x % 2pi < 3pi/2)
+        b = !(pi/2 <= mod1(x, 2pi) < 3pi/2)
         mi1.val == b || (mi1[] = b)
         return
     end
     on(ax.azimuth) do x
-        b = 0 <= x % 2pi < pi
+        b = 0 <= mod1(x, 2pi) < pi
         mi2.val == b || (mi2[] = b)
         return
     end
@@ -78,11 +78,11 @@ function initialize_block!(ax::Axis3)
 
     titlepos = lift(scene.px_area, ax.titlegap, ax.titlealign) do a, titlegap, align
 
-        x = if align == :center
+        x = if align === :center
             a.origin[1] + a.widths[1] / 2
-        elseif align == :left
+        elseif align === :left
             a.origin[1]
-        elseif align == :right
+        elseif align === :right
             a.origin[1] + a.widths[1]
         else
             error("Title align $align not supported.")
@@ -101,7 +101,7 @@ function initialize_block!(ax::Axis3)
         blockscene, ax.title,
         position = titlepos,
         visible = ax.titlevisible,
-        textsize = ax.titlesize,
+        fontsize = ax.titlesize,
         align = titlealignnode,
         font = ax.titlefont,
         color = ax.titlecolor,
@@ -175,9 +175,9 @@ function calculate_matrices(limits, px_area, elev, azim, perspectiveness, aspect
 
 
     t = Makie.translationmatrix(-Float64.(limits.origin))
-    s = if aspect == :equal
+    s = if aspect === :equal
         scales = 2 ./ Float64.(ws)
-    elseif aspect == :data
+    elseif aspect === :data
         scales = 2 ./ max.(maximum(ws), Float64.(ws))
     elseif aspect isa VecTypes{3}
         scales = 2 ./ Float64.(ws) .* Float64.(aspect) ./ maximum(aspect)
@@ -241,7 +241,6 @@ function projectionmatrix(viewmatrix, limits, eyepos, radius, azim, elev, angle,
 
         if viewmode in (:fitzoom, :stretch)
             points = decompose(Point3f, limits)
-            # @show points
             projpoints = Ref(pm * viewmatrix) .* to_ndim.(Point4f, points, 1)
 
             maxx = maximum(x -> abs(x[1] / x[4]), projpoints)
@@ -250,7 +249,7 @@ function projectionmatrix(viewmatrix, limits, eyepos, radius, azim, elev, angle,
             ratio_x = maxx
             ratio_y = maxy
 
-            if viewmode == :fitzoom
+            if viewmode === :fitzoom
                 if ratio_y > ratio_x
                     pm = Makie.scalematrix(Vec3(1/ratio_y, 1/ratio_y, 1)) * pm
                 else
@@ -282,13 +281,20 @@ function Makie.plot!(
 
     plot = Makie.plot!(ax.scene, P, allattrs, args...)
 
-    reset_limits!(ax)
+    if is_open_or_any_parent(ax.scene)
+        reset_limits!(ax)
+    end
     plot
 end
 
 function Makie.plot!(P::Makie.PlotFunc, ax::Axis3, args...; kw_attributes...)
     attributes = Makie.Attributes(kw_attributes)
     Makie.plot!(ax, P, attributes, args...)
+end
+
+function update_state_before_display!(ax::Axis3)
+    reset_limits!(ax)
+    return
 end
 
 function autolimits!(ax::Axis3)
@@ -481,7 +487,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
             p1 = dpoint(t, f1, f2)
             p2 = if dim == 3
                 # special case the z axis, here it depends on azimuth in which direction the ticks go
-                if 45 <= (rad2deg(azimuth[]) % 180) <= 135
+                if 45 <= mod1(rad2deg(azimuth[]), 180) <= 135
                     dpoint(t, f1 + 0.03 * diff_f1, f2)
                 else
                     dpoint(t, f1, f2 + 0.03 * diff_f2)
@@ -538,7 +544,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     end
 
     ticklabels = text!(topscene, labels_positions, align = align,
-        color = attr(:ticklabelcolor), textsize = attr(:ticklabelsize),
+        color = attr(:ticklabelcolor), fontsize = attr(:ticklabelsize),
         font = attr(:ticklabelfont), visible = attr(:ticklabelsvisible), inspectable = false
     )
 
@@ -621,7 +627,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
 
     label = text!(topscene, attr(:label),
         color = attr(:labelcolor),
-        textsize = attr(:labelsize),
+        fontsize = attr(:labelsize),
         font = attr(:labelfont),
         position = label_position,
         rotation = label_rotation,

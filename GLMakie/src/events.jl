@@ -19,6 +19,7 @@ returns `Observable{Bool}`
 [GLFW Docs](http://www.glfw.org/docs/latest/group__window.html#gaade9264e79fae52bdb78e2df11ee8d6a)
 """
 Makie.window_open(scene::Scene, screen) = window_open(scene, to_native(screen))
+
 function Makie.window_open(scene::Scene, window::GLFW.Window)
     event = scene.events.window_open
     function windowclose(win)
@@ -68,12 +69,12 @@ end
 
 function Makie.window_area(scene::Scene, screen::Screen)
     disconnect!(screen, window_area)
-    
+
     updater = WindowAreaUpdater(
         to_native(screen), scene.events.window_dpi, scene.events.window_area
     )
     on(updater, screen.render_tick)
-    
+
     return
 end
 
@@ -223,18 +224,6 @@ function Makie.mouse_position(scene::Scene, screen::Screen)
         to_native(screen), scene.events.mouseposition, scene.events.hasfocus
     )
     on(updater, screen.render_tick)
-
-    # function cursorposition(window, w::Cdouble, h::Cdouble)
-    #     @print_error begin
-    #         pos = correct_mouse(window, w, h)
-    #         @timeit "triggerless mouseposition" begin
-    #             e.mouseposition.val = pos
-    #         end
-    #         return
-    #     end
-    # end
-    # GLFW.SetCursorPosCallback(window, cursorposition)
-
     return
 end
 function Makie.disconnect!(screen::Screen, ::typeof(mouse_position))

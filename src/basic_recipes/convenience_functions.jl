@@ -25,7 +25,7 @@ end
 """
     showgradients(
         cgrads::AbstractVector{Symbol};
-        h = 0.0, offset = 0.2, textsize = 0.7,
+        h = 0.0, offset = 0.2, fontsize = 0.7,
         resolution = (800, length(cgrads) * 84)
     )::Scene
 
@@ -36,7 +36,7 @@ function showgradients(
         cgrads::AbstractVector{Symbol};
         h = 0.0,
         offset = 0.4,
-        textsize = 0.7,
+        fontsize = 0.7,
         resolution = (800, length(cgrads) * 84),
         monospace = true
     )::Scene
@@ -60,7 +60,7 @@ function showgradients(
             cmapstr,
             position = Point2f(-0.1, 0.5 + h),
             align = (:right, :center),
-            textsize = textsize
+            fontsize = fontsize
         )
 
         translate!(cbar, 0, h, 0)

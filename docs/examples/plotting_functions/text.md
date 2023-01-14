@@ -15,7 +15,7 @@ You can either plot one string with one position, or a vector of strings with a 
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 
@@ -47,7 +47,7 @@ This means that the boundingbox of the text in data coordinates will include eve
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 LScene(f[1, 1])
@@ -58,7 +58,7 @@ text!(
     rotation = [i / 7 * 1.5pi for i in 1:7],
     color = [cgrad(:viridis)[x] for x in LinRange(0, 1, 7)],
     align = (:left, :baseline),
-    textsize = 1,
+    fontsize = 1,
     markerspace = :data
 )
 
@@ -74,7 +74,7 @@ Text can be aligned with the horizontal alignments `:left`, `:center`, `:right` 
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 aligns = [(h, v) for v in [:bottom, :baseline, :center, :top]
                  for h in [:left, :center, :right]]
@@ -96,7 +96,7 @@ You can override this with the `justification` attribute.
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 scene = Scene(camera = campixel!, resolution = (800, 800))
 
@@ -107,7 +107,7 @@ symbols = (:left, :center, :right)
 
 for ((justification, halign), point) in zip(Iterators.product(symbols, symbols), points)
 
-    t = text!(scene, 
+    t = text!(scene,
         point,
         text = "a\nshort\nparagraph",
         color = (:black, 0.5),
@@ -142,7 +142,7 @@ You can specify the end of the barplots in data coordinates, and then offset the
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 
@@ -169,7 +169,7 @@ Makie can render LaTeX strings from the LaTeXStrings.jl package using [MathTeXEn
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 lines(0.5..20, x -> sin(x) / sqrt(x), color = :black)
 text!(7, 0.38, text = L"\frac{\sin(x)}{\sqrt{x}}", color = :black)
@@ -184,7 +184,7 @@ You can also pass L-strings to many objects that use text, for example as labels
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 ax = Axis(f[1, 1])
@@ -195,6 +195,79 @@ lines!(0..10, x -> sin(x^2) / (cos(sqrt(x)) + 2),
     label = L"\frac{\sin(x^2)}{\cos(\sqrt{x}) + 2}")
 
 Legend(f[1, 2], ax)
+
+f
+```
+\end{examplefigure}
+
+## Rich text
+
+With rich text, you can conveniently plot text whose parts have different colors or fonts, and you can position sections as subscripts and superscripts.
+You can create such rich text objects using the functions `rich`, `superscript` and `subscript`, all of which create `RichText` objects.
+
+Each of these functions takes a variable number of arguments, each of which can be a `String` or `RichText`.
+Each can also take keyword arguments such as `color` or `font`, to set these attributes for the given part.
+The top-level settings for font, color, etc. are taken from the `text` attributes as usual.
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+f = Figure(fontsize = 30)
+Label(
+    f[1, 1],
+    rich(
+        "H", subscript("2"), "O is the formula for ",
+        rich("water", color = :cornflowerblue, font = :italic)
+    )
+)
+
+str = "A BEAUTIFUL RAINBOW"
+rainbow = cgrad(:rainbow, length(str), categorical = true)
+fontsizes = 30 .+ 10 .* sin.(range(0, 3pi, length = length(str)))
+
+rainbow_chars = map(enumerate(str)) do (i, c)
+    rich("$c", color = rainbow[i], fontsize = fontsizes[i])
+end
+
+Label(f[2, 1], rich(rainbow_chars...), font = :bold)
+
+f
+```
+\end{examplefigure}
+
+### Tweaking offsets
+
+Sometimes, when using regular and italic fonts next to each other, the gaps between glyphs are too narrow or too wide.
+You can use the `offset` value for rich text to shift glyphs by an amount proportional to the fontsize.
+
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+f = Figure(fontsize = 30)
+Label(
+    f[1, 1],
+    rich(
+        "ITALIC",
+        superscript("Regular without x offset", font = :regular),
+        font = :italic
+    )
+)
+
+Label(
+    f[2, 1],
+    rich(
+        "ITALIC",
+        superscript("Regular with x offset", font = :regular, offset = (0.15, 0)),
+        font = :italic
+    )
+)
 
 f
 ```

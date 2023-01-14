@@ -1,4 +1,4 @@
-using Makie: get_texture_atlas, glyph_uv_width!, transform_func_obs, apply_transform
+using Makie: transform_func_obs, apply_transform
 using Makie: attribute_per_char, FastPixel, el32convert, Pixel
 using Makie: convert_arguments
 
@@ -29,45 +29,46 @@ function to_range(x::AbstractArray)
 end
 
 function to_glvisualize_key(k)
-    k == :rotations && return :rotation
-    k == :markersize && return :scale
-    k == :glowwidth && return :glow_width
-    k == :glowcolor && return :glow_color
-    k == :strokewidth && return :stroke_width
-    k == :strokecolor && return :stroke_color
-    k == :positions && return :position
-    k == :linewidth && return :thickness
-    k == :marker_offset && return :quad_offset
-    k == :colormap && return :color_map
-    k == :colorrange && return :color_norm
-    k == :transform_marker && return :scale_primitive
+    k === :rotations && return :rotation
+    k === :markersize && return :scale
+    k === :glowwidth && return :glow_width
+    k === :glowcolor && return :glow_color
+    k === :strokewidth && return :stroke_width
+    k === :strokecolor && return :stroke_color
+    k === :positions && return :position
+    k === :linewidth && return :thickness
+    k === :marker_offset && return :quad_offset
+    k === :colormap && return :color_map
+    k === :colorrange && return :color_norm
+    k === :transform_marker && return :scale_primitive
     return k
 end
 
 function connect_camera!(gl_attributes, cam, space = gl_attributes[:space])
     for key in (:pixel_space, :resolution, :eyeposition)
-        get!(gl_attributes, key, getfield(cam, key))
+        # Overwrite these, user defined attributes shouldn't use those!
+        gl_attributes[key] = copy(getfield(cam, key))
     end
     get!(gl_attributes, :view) do
-        return map(cam.view, space) do view, space
+        return lift(cam.view, space) do view, space
             return is_data_space(space) ? view : Mat4f(I)
         end
     end
     get!(gl_attributes, :normalmatrix) do
-        return map(gl_attributes[:view], gl_attributes[:model]) do v, m
+        return lift(gl_attributes[:view], gl_attributes[:model]) do v, m
             i = Vec(1, 2, 3)
             return transpose(inv(v[i, i] * m[i, i]))
         end
     end
 
     get!(gl_attributes, :projection) do
-        return map(cam.projection, cam.pixel_space, space) do _, _, space
+        return lift(cam.projection, cam.pixel_space, space) do _, _, space
             return Makie.space_to_clip(cam, space, false)
         end
     end
 
     get!(gl_attributes, :projectionview) do
-        return map(cam.projectionview, cam.pixel_space, space) do _, _, space
+        return lift(cam.projectionview, cam.pixel_space, space) do _, _, space
             Makie.space_to_clip(cam, space, true)
         end
     end
@@ -82,7 +83,11 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     pollevents(screen)
     robj = get!(screen.cache, objectid(x)) do
         filtered = filter(x.attributes) do (k, v)
-            !(k in (:transformation, :tickranges, :ticklabels, :raw, :SSAO, :lightposition, :material))
+            !in(k, (
+                :transformation, :tickranges, :ticklabels, :raw, :SSAO,
+                :lightposition, :material,
+                :inspector_label, :inspector_hover, :inspector_clear, :inspectable
+            ))
         end
 
         gl_attributes = Dict{Symbol, Any}(map(filtered) do key_value
@@ -101,6 +106,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         if !isnothing(ambientlight)
             gl_attributes[:ambient] = ambientlight.color
         end
+        gl_attributes[:track_updates] = screen.config.render_on_demand
 
         robj = robj_func(gl_attributes)
 
@@ -112,7 +118,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     robj
 end
 
-function Base.insert!(screen::GLScreen, scene::Scene, x::Combined)
+function Base.insert!(screen::Screen, scene::Scene, x::Combined)
     ShaderAbstractions.switch_context!(screen.glscreen)
     # poll inside functions to make wait on compile less prominent
     pollevents(screen)
@@ -165,20 +171,6 @@ end
 to_vec4(val::RGB) = RGBAf(val, 1.0)
 to_vec4(val::RGBA) = RGBAf(val)
 
-function lift_convert_inner(value, ::key"highclip", plot_key, plot)
-    return lift(value, plot.colormap) do value, cmap
-        val = value === nothing ? to_colormap(cmap)[end] : to_color(value)
-        return to_vec4(val)
-    end
-end
-
-function lift_convert_inner(value, ::key"lowclip", plot_key, plot)
-    return lift(value, plot.colormap) do value, cmap
-        val = value === nothing ? to_colormap(cmap)[1] : to_color(value)
-        return to_vec4(val)
-    end
-end
-
 pixel2world(scene, msize::Number) = pixel2world(scene, Point2f(msize))[1]
 
 function pixel2world(scene, msize::StaticVector{2})
@@ -202,30 +194,46 @@ function handle_intensities!(attributes)
     end
 end
 
-function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Union{Scatter, MeshScatter}))
+function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Union{Scatter, MeshScatter}))
     return cached_robj!(screen, scene, x) do gl_attributes
         # signals not supported for shading yet
         gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
         marker = lift_convert(:marker, pop!(gl_attributes, :marker), x)
 
+        space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         positions = handle_view(x[1], gl_attributes)
-        positions = apply_transform(transform_func_obs(x), positions)
+        positions = apply_transform(transform_func_obs(x), positions, space)
 
         if isa(x, Scatter)
-            space = get(gl_attributes, :space, :data)
             mspace = get(gl_attributes, :markerspace, :pixel)
             cam = scene.camera
             gl_attributes[:preprojection] = map(space, mspace, cam.projectionview, cam.resolution) do space, mspace, _, _
                 return Makie.clip_to_space(cam, mspace) * Makie.space_to_clip(cam, space)
             end
+            # fast pixel does its own setup
             if !(marker[] isa FastPixel)
-                # fast pixel does its own camera setup
                 connect_camera!(gl_attributes, cam, mspace)
+                gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.rotations)
+                atlas = gl_texture_atlas()
+                isnothing(gl_attributes[:distancefield][]) && delete!(gl_attributes, :distancefield)
+                shape = lift(m-> Cint(Makie.marker_to_sdf_shape(m)), marker)
+                gl_attributes[:shape] = shape
+                get!(gl_attributes, :distancefield) do
+                    if shape[] === Cint(DISTANCEFIELD)
+                        return get_texture!(atlas)
+                    else
+                        return nothing
+                    end
+                end
+                font = get(gl_attributes, :font, Observable(Makie.defaultfont()))
+                gl_attributes[:uv_offset_width][] == Vec4f(0) && delete!(gl_attributes, :uv_offset_width)
+                get!(gl_attributes, :uv_offset_width) do
+                    return Makie.primitive_uv_offset_width(atlas, marker, font)
+                end
+                scale, quad_offset = Makie.marker_attributes(atlas, marker, gl_attributes[:scale], font, gl_attributes[:quad_offset])
+                gl_attributes[:scale] = scale
+                gl_attributes[:quad_offset] = quad_offset
             end
-
-            gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.rotations)
-            isnothing(gl_attributes[:distancefield][]) && delete!(gl_attributes, :distancefield)
-            gl_attributes[:uv_offset_width][] == Vec4f(0) && delete!(gl_attributes, :uv_offset_width)
         else
             connect_camera!(gl_attributes, scene.camera)
         end
@@ -234,25 +242,25 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Union{Scat
             # connect camera
             connect_camera!(gl_attributes, cam, get(gl_attributes, :space, :data))
             filter!(gl_attributes) do (k, v,)
-                k in (:color_map, :color, :color_norm, :scale, :model, :projectionview)
+                k in (:color_map, :color, :color_norm, :scale, :model, :projectionview, :visible)
             end
             if !(gl_attributes[:color][] isa AbstractVector{<: Number})
                 delete!(gl_attributes, :color_norm)
                 delete!(gl_attributes, :color_map)
             end
-            return draw_pixel_scatter(screen.shader_cache, positions, gl_attributes)
+            return draw_pixel_scatter(screen, positions, gl_attributes)
         else
             handle_intensities!(gl_attributes)
             if x isa MeshScatter
-                return draw_mesh_particle(screen.shader_cache, (marker, positions), gl_attributes)
+                return draw_mesh_particle(screen, (marker, positions), gl_attributes)
             else
-                return draw_scatter(screen.shader_cache, (marker, positions), gl_attributes)
+                return draw_scatter(screen, (marker, positions), gl_attributes)
             end
         end
     end
 end
 
-function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Lines))
+function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
     return cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
@@ -263,15 +271,16 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Lines))
             linewidth = gl_attributes[:thickness]
             data[:pattern] = ls .* (to_value(linewidth) * 0.25)
         end
+        space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         positions = handle_view(x[1], data)
-        positions = apply_transform(transform_func_obs(x), positions)
+        positions = apply_transform(transform_func_obs(x), positions, space)
         handle_intensities!(data)
         connect_camera!(data, scene.camera)
-        return draw_lines(screen.shader_cache, positions, data)
+        return draw_lines(screen, positions, data)
     end
 end
 
-function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::LineSegments))
+function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::LineSegments))
     return cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
@@ -282,8 +291,9 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::LineSegmen
             linewidth = gl_attributes[:thickness]
             data[:pattern] = ls .* (to_value(linewidth) * 0.25)
         end
+        space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         positions = handle_view(x.converted[1], data)
-        positions = apply_transform(transform_func_obs(x), positions)
+        positions = apply_transform(transform_func_obs(x), positions, space)
         if haskey(data, :color) && data[:color][] isa AbstractVector{<: Number}
             c = pop!(data, :color)
             data[:color] = el32convert(c)
@@ -293,11 +303,11 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::LineSegmen
         end
         connect_camera!(data, scene.camera)
 
-        return draw_linesegments(screen.shader_cache, positions, data)
+        return draw_linesegments(screen, positions, data)
     end
 end
 
-function draw_atomic(screen::GLScreen, scene::Scene,
+function draw_atomic(screen::Screen, scene::Scene,
         x::Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
 
     return cached_robj!(screen, scene, x) do gl_attributes
@@ -305,13 +315,14 @@ function draw_atomic(screen::GLScreen, scene::Scene,
 
         transfunc =  Makie.transform_func_obs(scene)
         pos = gl_attributes[:position]
-        space = get(gl_attributes, :space, Observable(:data))
+        space = get(gl_attributes, :space, Observable(:data)) # needs to happen before connect_camera! call
         markerspace = gl_attributes[:markerspace]
         offset = pop!(gl_attributes, :offset, Vec2f(0))
+        atlas = gl_texture_atlas()
 
         # calculate quad metrics
-        glyph_data = map(pos, glyphcollection, offset, transfunc) do pos, gc, offset, transfunc
-            Makie.text_quads(pos, to_value(gc), offset, transfunc)
+        glyph_data = map(pos, glyphcollection, offset, transfunc, space) do pos, gc, offset, transfunc, space
+            Makie.text_quads(atlas, pos, to_value(gc), offset, transfunc, space)
         end
 
         # unpack values from the one signal:
@@ -319,13 +330,12 @@ function draw_atomic(screen::GLScreen, scene::Scene,
             lift(getindex, glyph_data, i)
         end
 
-        atlas = get_texture_atlas()
 
         filter!(gl_attributes) do (k, v)
             # These are liftkeys without model
             !(k in (
                 :position, :space, :markerspace, :font,
-                :textsize, :rotation, :justification
+                :fontsize, :rotation, :justification
             )) # space,
         end
 
@@ -355,6 +365,7 @@ function draw_atomic(screen::GLScreen, scene::Scene,
             end
         end
 
+        gl_attributes[:shape] = Cint(DISTANCEFIELD)
         gl_attributes[:scale] = scale
         gl_attributes[:quad_offset] = quad_offset
         gl_attributes[:marker_offset] = char_offset
@@ -368,10 +379,7 @@ function draw_atomic(screen::GLScreen, scene::Scene,
         end
         connect_camera!(gl_attributes, cam, markerspace)
 
-        # Avoid julia#15276
-        _robj = draw_scatter(screen.shader_cache, (DISTANCEFIELD, positions), gl_attributes)
-
-        return _robj
+        return draw_scatter(screen, (DISTANCEFIELD, positions), gl_attributes)
     end
 end
 
@@ -381,11 +389,12 @@ xy_convert(x::AbstractArray{Float32}, n) = copy(x)
 xy_convert(x::AbstractArray, n) = el32convert(x)
 xy_convert(x, n) = Float32[LinRange(extrema(x)..., n + 1);]
 
-function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
+function draw_atomic(screen::Screen, scene::Scene, x::Heatmap)
     return cached_robj!(screen, scene, x) do gl_attributes
         t = Makie.transform_func_obs(scene)
         mat = x[3]
-        xypos = map(t, x[1], x[2]) do t, x, y
+        space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
+        xypos = map(t, x[1], x[2], space) do t, x, y, space
             x1d = xy_convert(x, size(mat[], 1))
             y1d = xy_convert(y, size(mat[], 2))
             # Only if transform doesn't do anything, we can stay linear in 1/2D
@@ -395,10 +404,10 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
                 # If we do any transformation, we have to assume things aren't on the grid anymore
                 # so x + y need to become matrices.
                 map!(x1d, x1d) do x
-                    return apply_transform(t, Point(x, 0))[1]
+                    return apply_transform(t, Point(x, 0), space)[1]
                 end
                 map!(y1d, y1d) do y
-                    return apply_transform(t, Point(0, y))[2]
+                    return apply_transform(t, Point(0, y), space)[2]
                 end
                 return (x1d, y1d)
             end
@@ -422,11 +431,11 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
         gl_attributes[:stroke_width] = pop!(gl_attributes, :thickness)
         connect_camera!(gl_attributes, scene.camera)
 
-        return draw_heatmap(screen.shader_cache, tex, gl_attributes)
+        return draw_heatmap(screen, tex, gl_attributes)
     end
 end
 
-function draw_atomic(screen::GLScreen, scene::Scene, x::Image)
+function draw_atomic(screen::Screen, scene::Scene, x::Image)
     return cached_robj!(screen, scene, x) do gl_attributes
         mesh = const_lift(x[1], x[2]) do x, y
             r = to_range(x, y)
@@ -442,8 +451,9 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Image)
         end
         gl_attributes[:color] = x[3]
         gl_attributes[:shading] = false
+        space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         connect_camera!(gl_attributes, scene.camera)
-        return mesh_inner(screen.shader_cache, mesh, transform_func_obs(x), gl_attributes)
+        return mesh_inner(screen, mesh, transform_func_obs(x), gl_attributes, space)
     end
 end
 
@@ -454,7 +464,7 @@ function update_positions(mesh::GeometryBasics.Mesh, positions)
     return GeometryBasics.Mesh(meta(positions; attr...), faces(mesh))
 end
 
-function mesh_inner(shader_cache, mesh, transfunc, gl_attributes)
+function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, space=:data)
     # signals not supported for shading yet
     gl_attributes[:shading] = to_value(pop!(gl_attributes, :shading))
     color = pop!(gl_attributes, :color)
@@ -467,36 +477,38 @@ function mesh_inner(shader_cache, mesh, transfunc, gl_attributes)
     elseif to_value(color) isa Makie.AbstractPattern
         img = lift(x -> el32convert(Makie.to_image(x)), color)
         gl_attributes[:image] = ShaderAbstractions.Sampler(img, x_repeat=:repeat, minfilter=:nearest)
-        haskey(gl_attributes, :fetch_pixel) || (gl_attributes[:fetch_pixel] = true)
+        get!(gl_attributes, :fetch_pixel, true)
     elseif to_value(color) isa AbstractMatrix{<:Colorant}
         gl_attributes[:image] = Texture(const_lift(el32convert, color), minfilter = interp)
         delete!(gl_attributes, :color_map)
         delete!(gl_attributes, :color_norm)
     elseif to_value(color) isa AbstractMatrix{<: Number}
         gl_attributes[:image] = Texture(const_lift(el32convert, color), minfilter = interp)
+        gl_attributes[:color] = nothing
     elseif to_value(color) isa AbstractVector{<: Union{Number, Colorant}}
-        mesh = lift(mesh, color) do mesh, color
-            return GeometryBasics.pointmeta(mesh, color=el32convert(color))
-        end
+        gl_attributes[:vertex_color] = lift(el32convert, color)
+    else
+        error("Unsupported color type: $(typeof(to_value(color)))")
     end
-    mesh = map(mesh, transfunc) do mesh, func
+    mesh = map(mesh, transfunc, space) do mesh, func, space
         if !Makie.is_identity_transform(func)
-            return update_positions(mesh, apply_transform.(Ref(func), mesh.position))
+            return update_positions(mesh, apply_transform.(Ref(func), mesh.position, space))
         end
         return mesh
     end
-    return draw_mesh(shader_cache, mesh, gl_attributes)
+    return draw_mesh(screen, mesh, gl_attributes)
 end
 
-function draw_atomic(screen::GLScreen, scene::Scene, meshplot::Mesh)
+function draw_atomic(screen::Screen, scene::Scene, meshplot::Mesh)
     return cached_robj!(screen, scene, meshplot) do gl_attributes
         t = transform_func_obs(meshplot)
+        space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         connect_camera!(gl_attributes, scene.camera)
-        return mesh_inner(screen.shader_cache, meshplot[1], t, gl_attributes)
+        return mesh_inner(screen, meshplot[1], t, gl_attributes, space)
     end
 end
 
-function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
+function draw_atomic(screen::Screen, scene::Scene, x::Surface)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         color = pop!(gl_attributes, :color)
         img = nothing
@@ -518,6 +530,8 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
             gl_attributes[:color_norm] = nothing
         end
 
+        space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
+
         gl_attributes[:image] = img
         gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
         connect_camera!(gl_attributes, scene.camera)
@@ -528,17 +542,17 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
         if all(T -> T <: Union{AbstractMatrix, AbstractVector}, types)
             t = Makie.transform_func_obs(scene)
             mat = x[3]
-            xypos = map(t, x[1], x[2]) do t, x, y
+            xypos = map(t, x[1], x[2], space) do t, x, y, space
                 # Only if transform doesn't do anything, we can stay linear in 1/2D
                 if Makie.is_identity_transform(t)
                     return (x, y)
                 else
                     matrix = if x isa AbstractMatrix && y isa AbstractMatrix
-                        apply_transform.((t,), Point.(x, y))
+                        apply_transform.((t,), Point.(x, y), space)
                     else
                         # If we do any transformation, we have to assume things aren't on the grid anymore
                         # so x + y need to become matrices.
-                        [apply_transform(t, Point(x, y)) for x in x, y in y]
+                        [apply_transform(t, Point(x, y), space) for x in x, y in y]
                     end
                     return (first.(matrix), last.(matrix))
                 end
@@ -546,19 +560,25 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
             xpos = map(first, xypos)
             ypos = map(last, xypos)
             args = map((xpos, ypos, mat)) do arg
-                Texture(map(x-> convert(Array, el32convert(x)), arg); minfilter=:nearest)
+                Texture(map(x-> convert(Array, el32convert(x)), arg); minfilter=:linear)
             end
-            return draw_surface(screen.shader_cache, args, gl_attributes)
+            if isnothing(img)
+                gl_attributes[:image] = args[3]
+            end
+            return draw_surface(screen, args, gl_attributes)
         else
             gl_attributes[:ranges] = to_range.(to_value.(x[1:2]))
-            z_data = Texture(el32convert(x[3]); minfilter=:nearest)
-            return draw_surface(screen.shader_cache, z_data, gl_attributes)
+            z_data = Texture(el32convert(x[3]); minfilter=:linear)
+            if isnothing(img)
+                gl_attributes[:image] = z_data
+            end
+            return draw_surface(screen, z_data, gl_attributes)
         end
     end
     return robj
 end
 
-function draw_atomic(screen::GLScreen, scene::Scene, vol::Volume)
+function draw_atomic(screen::Screen, scene::Scene, vol::Volume)
     robj = cached_robj!(screen, scene, vol) do gl_attributes
         model = vol[:model]
         x, y, z = vol[1], vol[2], vol[3]
@@ -575,6 +595,6 @@ function draw_atomic(screen::GLScreen, scene::Scene, vol::Volume)
             return convert(Mat4f, m) * m2
         end
         connect_camera!(gl_attributes, scene.camera)
-        return draw_volume(screen.shader_cache, vol[4], gl_attributes)
+        return draw_volume(screen, vol[4], gl_attributes)
     end
 end

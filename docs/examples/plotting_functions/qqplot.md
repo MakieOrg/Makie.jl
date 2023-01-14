@@ -11,7 +11,7 @@ Test if `xs` and `ys` follow the same distribution.
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 xs = randn(100)
 ys = randn(100)
@@ -26,7 +26,7 @@ Test if `ys` is normally distributed.
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 ys = 2 .* randn(100) .+ 3
 

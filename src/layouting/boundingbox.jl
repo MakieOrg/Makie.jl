@@ -22,9 +22,10 @@ function gl_bboxes(gl::GlyphCollection)
     scales = gl.scales.sv isa Vec2f ? (gl.scales.sv for _ in gl.extents) : gl.scales.sv
     map(gl.glyphs, gl.extents, scales) do c, ext, scale
         hi_bb = height_insensitive_boundingbox_with_advance(ext)
+        # TODO c != 0 filters out all non renderables, which is not always desired
         Rect2f(
             Makie.origin(hi_bb) * scale,
-            (c != '\n') * widths(hi_bb) * scale
+            (c != 0) * widths(hi_bb) * scale
         )
     end
 end
@@ -124,14 +125,15 @@ function boundingbox(plot::Text)
     return bb
 end
 
-_is_latex_string(x::AbstractVector{<:LaTeXString}) = true 
-_is_latex_string(x::LaTeXString) = true 
-_is_latex_string(other) = false 
+_is_latex_string(x::AbstractVector{<:LaTeXString}) = true
+_is_latex_string(x::LaTeXString) = true
+_is_latex_string(other) = false
 
 function text_bb(str, font, size)
     rot = Quaternionf(0,0,0,1)
+    fonts = nothing # TODO: remove the arg if possible
     layout = layout_text(
-        str, size, font, Vec2f(0), rot, 0.5, 1.0,
+        str, size, font, fonts, Vec2f(0), rot, 0.5, 1.0,
         RGBAf(0, 0, 0, 0), RGBAf(0, 0, 0, 0), 0f0, 0f0)
     return boundingbox(layout, Point3f(0), rot)
 end

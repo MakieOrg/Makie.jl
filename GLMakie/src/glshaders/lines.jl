@@ -48,7 +48,7 @@ function ticks(points, resolution)
 end
 
 @nospecialize
-function draw_lines(shader_cache, position::Union{VectorTypes{T}, MatTypes{T}}, data::Dict) where T<:Point
+function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::Dict) where T<:Point
     p_vec = if isa(position, GPUArray)
         position
     else
@@ -74,11 +74,11 @@ function draw_lines(shader_cache, position::Union{VectorTypes{T}, MatTypes{T}}, 
         end => to_index_buffer
         transparency = false
         shader              = GLVisualizeShader(
-            shader_cache,
+            screen,
             "fragment_output.frag", "util.vert", "lines.vert", "lines.geom", "lines.frag",
             view = Dict(
-                "buffers" => output_buffers(to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(to_value(transparency))
+                "buffers" => output_buffers(screen, to_value(transparency)),
+                "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
             )
         )
         gl_primitive        = GL_LINE_STRIP_ADJACENCY
@@ -104,7 +104,7 @@ function draw_lines(shader_cache, position::Union{VectorTypes{T}, MatTypes{T}}, 
     return assemble_shader(data)
 end
 
-function draw_linesegments(shader_cache, positions::VectorTypes{T}, data::Dict) where T <: Point
+function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where T <: Point
     @gen_defaults! data begin
         vertex              = positions => GLBuffer
         color               = default(RGBA, s, 1) => GLBuffer
@@ -118,11 +118,11 @@ function draw_linesegments(shader_cache, positions::VectorTypes{T}, data::Dict) 
         # TODO update boundingbox
         transparency = false
         shader              = GLVisualizeShader(
-            shader_cache, 
+            screen,
             "fragment_output.frag", "util.vert", "line_segment.vert", "line_segment.geom", "lines.frag",
             view = Dict(
-                "buffers" => output_buffers(to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(to_value(transparency))
+                "buffers" => output_buffers(screen, to_value(transparency)),
+                "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
             )
         )
         gl_primitive = GL_LINES

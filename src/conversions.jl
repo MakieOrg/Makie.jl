@@ -22,7 +22,7 @@ function convert_arguments(T::PlotFunc, args...; kw...)
                         $(join("::" .* string.(typeof.(args)), ", "))
 
                         Makie needs to convert all plot input arguments to types that can be consumed by the backends (typically Arrays with Float32 elements).
-                        You can define a method for `Makie.convert_arguments` (a type recipe) for these types or their supertypes to make this set of arguments convertible (See http://makie.juliaplots.org/stable/documentation/recipes/index.html).
+                        You can define a method for `Makie.convert_arguments` (a type recipe) for these types or their supertypes to make this set of arguments convertible (See http://docs.makie.org/stable/documentation/recipes/index.html).
 
                         Alternatively, you can define `Makie.convert_single_argument` for single arguments which have types that are unknown to Makie but which can be converted to known types and fed back to the conversion pipeline.
                         """
@@ -573,7 +573,7 @@ function convert_arguments(P::PlotFunc, i::AbstractInterval, f::Function)
 end
 
 # The following `tryrange` code was copied from Plots.jl
-# https://github.com/JuliaPlots/Plots.jl/blob/15dc61feb57cba1df524ce5d69f68c2c4ea5b942/src/series.jl#L399-L416
+# https://github.com/MakieOrg/Plots.jl/blob/15dc61feb57cba1df524ce5d69f68c2c4ea5b942/src/series.jl#L399-L416
 
 # try some intervals over which the function may be defined
 function tryrange(F::AbstractArray, vec)
@@ -725,17 +725,8 @@ convert_attribute(s::SceneLike, x, key::Key, ::Key) = convert_attribute(s, x, ke
 convert_attribute(s::SceneLike, x, key::Key) = convert_attribute(x, key)
 convert_attribute(x, key::Key) = x
 
-"""
-    to_color(color)
-Converts a `color` symbol (e.g. `:blue`) to a color RGBA.
-"""
 convert_attribute(color, ::key"color") = to_color(color)
 
-"""
-    to_colormap(cm)
-
-Converts a colormap `cm` symbol/string (e.g. `:Spectral`) to a colormap RGB array.
-"""
 convert_attribute(colormap, ::key"colormap") = to_colormap(colormap)
 convert_attribute(rotation, ::key"rotation") = to_rotation(rotation)
 convert_attribute(font, ::key"font") = to_font(font)
@@ -760,7 +751,7 @@ function to_color(p::Palette)
 end
 
 to_color(c::Nothing) = c # for when color is not used
-to_color(c::Number) = Float32(c)
+to_color(c::Real) = Float32(c)
 to_color(c::Colorant) = convert(RGBA{Float32}, c)
 to_color(c::Symbol) = to_color(string(c))
 to_color(c::String) = parse(RGBA{Float32}, c)
@@ -802,16 +793,12 @@ convert_attribute(c, ::key"strokecolor") = to_color(c)
 
 convert_attribute(x::Nothing, ::key"linestyle") = x
 
-"""
-    `AbstractVector{<:AbstractFloat}` for denoting sequences of fill/nofill. e.g.
-
-[0.5, 0.8, 1.2] will result in 0.5 filled, 0.3 unfilled, 0.4 filled. 1.0 unit is one linewidth!
-"""
+#     `AbstractVector{<:AbstractFloat}` for denoting sequences of fill/nofill. e.g.
+# 
+# [0.5, 0.8, 1.2] will result in 0.5 filled, 0.3 unfilled, 0.4 filled. 1.0 unit is one linewidth!
 convert_attribute(A::AbstractVector, ::key"linestyle") = A
 
-"""
-    A `Symbol` equal to `:dash`, `:dot`, `:dashdot`, `:dashdotdot`
-"""
+# A `Symbol` equal to `:dash`, `:dot`, `:dashdot`, `:dashdotdot`
 convert_attribute(ls::Union{Symbol,AbstractString}, ::key"linestyle") = line_pattern(ls, :normal)
 
 function convert_attribute(ls::Tuple{<:Union{Symbol,AbstractString},<:Any}, ::key"linestyle")
@@ -826,15 +813,15 @@ end
 "The linestyle patterns are inspired by the LaTeX package tikZ as seen here https://tex.stackexchange.com/questions/45275/tikz-get-values-for-predefined-dash-patterns."
 
 function line_diff_pattern(ls::Symbol, gaps = :normal)
-    if ls == :solid
+    if ls === :solid
         nothing
-    elseif ls == :dash
+    elseif ls === :dash
         line_diff_pattern("-", gaps)
-    elseif ls == :dot
+    elseif ls === :dot
         line_diff_pattern(".", gaps)
-    elseif ls == :dashdot
+    elseif ls === :dashdot
         line_diff_pattern("-.", gaps)
-    elseif ls == :dashdotdot
+    elseif ls === :dashdotdot
         line_diff_pattern("-..", gaps)
     else
         error(
@@ -915,34 +902,42 @@ to_align(x::Vec2f) = x
 
 const FONT_CACHE = Dict{String, NativeFont}()
 
-"""
-    font conversion
+function load_font(filepath)
+    font = FreeTypeAbstraction.try_load(filepath)
+    if isnothing(font)
+        error("Could not load font file \"$filepath\"")
+    else
+        return font
+    end
+end
 
-a string naming a font, e.g. helvetica
 """
-function to_font(x::Union{Symbol, String})
-    str = string(x)
+    to_font(str::String)
+
+Loads a font specified by `str` and returns a `NativeFont` object storing the font handle.
+A font can either be specified by a file path, such as "folder/with/fonts/font.otf",
+or by a (partial) name such as "Helvetica", "Helvetica Bold" etc.
+"""
+function to_font(str::String)
     get!(FONT_CACHE, str) do
-        str == "default" && return to_font("TeX Gyre Heros Makie")
-
-        # check if the string points to a font file and load that
-        if isfile(str)
-            font = FreeTypeAbstraction.try_load(str)
-            if isnothing(font)
-                error("Could not load font file $str")
-            else
-                return font
-            end
+        # load default fonts without font search to avoid latency
+        if str == "default" || str == "TeX Gyre Heros Makie"
+            return load_font(assetpath("fonts", "TeXGyreHerosMakie-Regular.otf"))
+        elseif str == "TeX Gyre Heros Makie Bold"
+            return load_font(assetpath("fonts", "TeXGyreHerosMakie-Bold.otf"))
+        elseif str == "TeX Gyre Heros Makie Italic"
+            return load_font(assetpath("fonts", "TeXGyreHerosMakie-Italic.otf"))
+        elseif str == "TeX Gyre Heros Makie Bold Italic"
+            return load_font(assetpath("fonts", "TeXGyreHerosMakie-BoldItalic.otf"))
+        # load fonts directly if they are given as font paths
+        elseif isfile(str)
+            return load_font(str)
         end
-
+        # for all other cases, search for the best match on the system
         fontpath = assetpath("fonts")
         font = FreeTypeAbstraction.findfont(str; additional_fonts=fontpath)
         if font === nothing
             @warn("Could not find font $str, using TeX Gyre Heros Makie")
-            if "tex gyre heros makie" == lowercase(str)
-                # since we fall back to TeX Gyre Heros Makie, we need to check for recursion
-                error("Recursion encountered; TeX Gyre Heros Makie cannot be located in the font path $fontpath")
-            end
             return to_font("TeX Gyre Heros Makie")
         end
         return font
@@ -951,6 +946,20 @@ end
 to_font(x::Vector{String}) = to_font.(x)
 to_font(x::NativeFont) = x
 to_font(x::Vector{NativeFont}) = x
+
+function to_font(fonts::Attributes, s::Symbol)
+    if haskey(fonts, s)
+        f = fonts[s][]
+        if f isa Symbol
+            error("The value for font $(repr(s)) was Symbol $(repr(f)), which is not allowed. The value for a font in the fonts collection cannot be another Symbol and must be resolvable via `to_font(x)`.")
+        end
+        return to_font(fonts[s][])
+    end
+    error("The symbol $(repr(s)) is not present in the fonts collection:\n$fonts.")
+end
+
+to_font(fonts::Attributes, x) = to_font(x)
+
 
 """
     rotation accepts:
@@ -981,9 +990,11 @@ to_rotation(r::AbstractVector{<: Quaternionf}) = r
 convert_attribute(x, ::key"colorrange") = to_colorrange(x)
 to_colorrange(x) = isnothing(x) ? nothing : Vec2f(x)
 
-convert_attribute(x, ::key"textsize") = to_textsize(x)
-to_textsize(x::Number) = Float32(x)
-to_textsize(x::AbstractVector{T}) where T <: Number = el32convert(x)
+convert_attribute(x, ::key"fontsize") = to_fontsize(x)
+to_fontsize(x::Number) = Float32(x)
+to_fontsize(x::AbstractVector{T}) where T <: Number = el32convert(x)
+to_fontsize(x::Vec2) = Vec2f(x)
+to_fontsize(x::AbstractVector{T}) where T <: Vec2 = Vec2f.(x)
 
 convert_attribute(x, ::key"linewidth") = to_linewidth(x)
 to_linewidth(x) = Float32(x)
@@ -1050,7 +1061,7 @@ function categorical_colors(cs::Union{String, Symbol}, categories::Integer)
             """
             There is no color gradient named $cs.
             See `available_gradients()` for the list of available gradients,
-            or look at http://makie.juliaplots.org/dev/generated/colors#Colormap-reference.
+            or look at http://docs.makie.org/dev/generated/colors#Colormap-reference.
             """
         )
     end
@@ -1101,7 +1112,7 @@ function to_colormap(cs::Union{String, Symbol})::Vector{RGBAf}
             """
             There is no color gradient named $cs.
             See `Makie.available_gradients()` for the list of available gradients,
-            or look at http://makie.juliaplots.org/dev/generated/colors#Colormap-reference.
+            or look at http://docs.makie.org/dev/generated/colors#Colormap-reference.
             """
         )
     end
@@ -1115,11 +1126,7 @@ function to_colormap(cg::PlotUtils.ColorGradient)::Vector{RGBAf}
     return to_colormap(getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), 256)))
 end
 
-"""
-    to_volume_algorithm(b, x)
-
-Enum values: `IsoValue` `Absorption` `MaximumIntensityProjection` `AbsorptionRGBA` `AdditiveRGBA` `IndexedAbsorptionRGBA`
-"""
+# Enum values: `IsoValue` `Absorption` `MaximumIntensityProjection` `AbsorptionRGBA` `AdditiveRGBA` `IndexedAbsorptionRGBA`
 function convert_attribute(value, ::key"algorithm")
     if isa(value, RaymarchAlgorithm)
         return Int32(value)
@@ -1132,9 +1139,7 @@ function convert_attribute(value, ::key"algorithm")
     end
 end
 
-"""
-Symbol/String: iso, absorption, mip, absorptionrgba, indexedabsorption
-"""
+# Symbol/String: iso, absorption, mip, absorptionrgba, indexedabsorption
 function convert_attribute(value::Union{Symbol, String}, k::key"algorithm")
     vals = Dict(
         :iso => IsoValue,
@@ -1149,28 +1154,44 @@ function convert_attribute(value::Union{Symbol, String}, k::key"algorithm")
     end, k)
 end
 
-const _marker_map = Dict(
-    :rect => '■',
-    :star5 => '★',
-    :diamond => '◆',
-    :hexagon => '⬢',
-    :cross => '✚',
-    :xcross => '❌',
-    :utriangle => '▲',
-    :dtriangle => '▼',
-    :ltriangle => '◀',
-    :rtriangle => '▶',
-    :pentagon => '⬟',
-    :octagon => '⯄',
-    :star4 => '✦',
-    :star6 => '🟋',
-    :star8 => '✷',
-    :vline => '┃',
-    :hline => '━',
-    :+ => '+',
-    :x => 'x',
-    :circle => '●'
-)
+const DEFAULT_MARKER_MAP = Dict{Symbol, BezierPath}()
+
+function default_marker_map()
+    # The bezier markers should not look out of place when used together with text
+    # where both markers and text are given the same size, i.e. the marker and fontsizes
+    # should correspond approximately in a visual sense.
+
+    # All the basic bezier shapes are approximately built in a 1 by 1 square centered
+    # around the origin, with slight deviations to match them better to each other.
+
+    # An 'x' of DejaVu sans is only about 55pt high at 100pt font size, so if the marker
+    # shapes are just used as is, they look much too large in comparison.
+    # To me, a factor of 0.75 looks ok compared to both uppercase and lowercase letters of Dejavu.
+    if isempty(DEFAULT_MARKER_MAP)
+        size_factor = 0.75
+        DEFAULT_MARKER_MAP[:rect] = scale(BezierSquare, size_factor)
+        DEFAULT_MARKER_MAP[:diamond] = scale(rotate(BezierSquare, pi/4), size_factor)
+        DEFAULT_MARKER_MAP[:hexagon] = scale(bezier_ngon(6, 0.5, pi/2), size_factor)
+        DEFAULT_MARKER_MAP[:cross] = scale(BezierCross, size_factor)
+        DEFAULT_MARKER_MAP[:xcross] = scale(BezierX, size_factor)
+        DEFAULT_MARKER_MAP[:utriangle] = scale(BezierUTriangle, size_factor)
+        DEFAULT_MARKER_MAP[:dtriangle] = scale(BezierDTriangle, size_factor)
+        DEFAULT_MARKER_MAP[:ltriangle] = scale(BezierLTriangle, size_factor)
+        DEFAULT_MARKER_MAP[:rtriangle] = scale(BezierRTriangle, size_factor)
+        DEFAULT_MARKER_MAP[:pentagon] = scale(bezier_ngon(5, 0.5, pi/2), size_factor)
+        DEFAULT_MARKER_MAP[:octagon] = scale(bezier_ngon(8, 0.5, pi/2), size_factor)
+        DEFAULT_MARKER_MAP[:star4] = scale(bezier_star(4, 0.25, 0.6, pi/2), size_factor)
+        DEFAULT_MARKER_MAP[:star5] = scale(bezier_star(5, 0.28, 0.6, pi/2), size_factor)
+        DEFAULT_MARKER_MAP[:star6] = scale(bezier_star(6, 0.30, 0.6, pi/2), size_factor)
+        DEFAULT_MARKER_MAP[:star8] = scale(bezier_star(8, 0.33, 0.6, pi/2), size_factor)
+        DEFAULT_MARKER_MAP[:vline] = scale(scale(BezierSquare, (0.2, 1.0)), size_factor)
+        DEFAULT_MARKER_MAP[:hline] = scale(scale(BezierSquare, (1.0, 0.2)), size_factor)
+        DEFAULT_MARKER_MAP[:+] = scale(BezierCross, size_factor)
+        DEFAULT_MARKER_MAP[:x] = scale(BezierX, size_factor)
+        DEFAULT_MARKER_MAP[:circle] = scale(BezierCircle, size_factor)
+    end
+    return DEFAULT_MARKER_MAP
+end
 
 """
     available_marker_symbols()
@@ -1179,8 +1200,8 @@ Displays all available marker symbols.
 """
 function available_marker_symbols()
     println("Marker Symbols:")
-    for (k, v) in _marker_map
-        println("    ", k, " => ", v)
+    for (k, v) in default_marker_map()
+        println("    :", k)
     end
 end
 
@@ -1198,11 +1219,24 @@ Note, that this will draw markers always as 1 pixel.
 """
 struct FastPixel end
 
+"""
+Vector of anything that is accepted as a single marker will give each point it's own marker.
+Note that it needs to be a uniform vector with the same element type!
+"""
+to_spritemarker(marker::AbstractVector) = map(to_spritemarker, marker)
+to_spritemarker(marker::AbstractVector{Char}) = marker # Don't dispatch to the above!
 to_spritemarker(x::FastPixel) = x
 to_spritemarker(x::Circle) = x
-to_spritemarker(::Type{<: Circle}) = Circle(Point2f(0), 1f0)
-to_spritemarker(::Type{<: Rect}) = Rect(Vec2f(0), Vec2f(1))
+to_spritemarker(::Type{<: Circle}) = Circle
+to_spritemarker(::Type{<: Rect}) = Rect
 to_spritemarker(x::Rect) = x
+to_spritemarker(b::BezierPath) = b
+to_spritemarker(b::Polygon) = BezierPath(b)
+to_spritemarker(b) = error("Not a valid scatter marker: $(typeof(b))")
+
+function to_spritemarker(str::String)
+    error("Using strings for multiple char markers is deprecated. Use `collect(string)` or `['x', 'o', ...]` instead. Found: $(str)")
+end
 
 """
     to_spritemarker(b, marker::Char)
@@ -1225,36 +1259,23 @@ to_spritemarker(marker::AbstractMatrix{<: Colorant}) = marker
 A `Symbol` - Available options can be printed with `available_marker_symbols()`
 """
 function to_spritemarker(marker::Symbol)
-    if haskey(_marker_map, marker)
-        return to_spritemarker(_marker_map[marker])
+    if haskey(default_marker_map(), marker)
+        return to_spritemarker(default_marker_map()[marker])
     else
         @warn("Unsupported marker: $marker, using ● instead")
         return '●'
     end
 end
 
-to_spritemarker(marker::String) = marker
-to_spritemarker(marker::AbstractVector{Char}) = String(marker)
 
-"""
-Vector of anything that is accepted as a single marker will give each point it's own marker.
-Note that it needs to be a uniform vector with the same element type!
-"""
-function to_spritemarker(marker::AbstractVector)
-    marker = to_spritemarker.(marker)
-    if isa(marker, AbstractVector{Char})
-        String(marker)
-    else
-        marker
-    end
-end
+
 
 convert_attribute(value, ::key"marker", ::key"scatter") = to_spritemarker(value)
 convert_attribute(value, ::key"isovalue", ::key"volume") = Float32(value)
 convert_attribute(value, ::key"isorange", ::key"volume") = Float32(value)
 
 function convert_attribute(value::Symbol, ::key"marker", ::key"meshscatter")
-    if value == :Sphere
+    if value === :Sphere
         return normal_mesh(Sphere(Point3f(0), 1f0))
     else
         error("Unsupported marker: $(value)")

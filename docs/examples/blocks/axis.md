@@ -43,7 +43,7 @@ You can also remove all plots with `empty!(ax)`.
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 
@@ -75,7 +75,7 @@ but they will be changed to fit the chosen ratio.
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 
@@ -105,7 +105,7 @@ You can set half limits by either giving one argument as `nothing` or by using t
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 
@@ -143,7 +143,7 @@ The user-defined limits are stored in `ax.limits`. This can either be a tuple wi
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 
@@ -166,7 +166,7 @@ The gap between title and subtitle is set with `subtitlegap` and the gap between
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 
@@ -189,7 +189,7 @@ Axis(
     f[2, 1],
     title = "Third Title",
     titlecolor = :gray50,
-    titlefont = "TeX Gyre Heros Bold Italic Makie",
+    titlefont = :bold_italic,
     titlealign = :right,
     titlesize = 25,
 )
@@ -200,7 +200,7 @@ Axis(
     titlealign = :left,
     subtitlegap = 2,
     titlegap = 5,
-    subtitlefont = "TeX Gyre Heros Italic Makie",
+    subtitlefont = :italic,
     subtitlelineheight = 0.9,
     titlelineheight = 0.9,
 )
@@ -226,7 +226,7 @@ Note that the number is only a target, the actual number of ticks can be higher 
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 fig = Figure()
 for (i, n) in enumerate([2, 4, 6])
@@ -250,7 +250,7 @@ A common scenario is plotting a trigonometric function which should be marked at
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 lines(0..20, sin, axis = (xticks = MultiplesTicks(4, pi, "π"),))
 ```
@@ -262,7 +262,7 @@ lines(0..20, sin, axis = (xticks = MultiplesTicks(4, pi, "π"),))
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 lines(0..20, sin, axis = (xticks = 0:3:18,))
 ```
@@ -274,7 +274,7 @@ lines(0..20, sin, axis = (xticks = 0:3:18,))
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 values = [0, 5, 10, 15, 20]
 labels = ["zero", "five", "ten", "fifteen", "twenty"]
@@ -294,7 +294,7 @@ This can be useful for log plots where all powers of 10 should be shown.
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 struct IntegerTicks end
 
@@ -319,7 +319,7 @@ For example, you could append "k" for numbers larger than one thousand:
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 function k_suffix(values)
     map(values) do v
@@ -346,7 +346,7 @@ Color, size and alignment of the mirrored ticks are the same as for the normal t
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 Axis(f[1, 1],
@@ -375,7 +375,7 @@ Here are the same ticks with different format strings:
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 for (i, str) in enumerate(["{:.1f}", "{:.2f}", "t = {:.4f}ms"])
@@ -412,7 +412,7 @@ The idea is to not actually implement new tick finding, just to rescale the valu
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 struct TimeTicks end
 
@@ -464,7 +464,7 @@ The default minor tick type is `IntervalsBetween(n, mirror = true)` where `n` gi
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 theme = Attributes(
     Axis = (
@@ -494,7 +494,7 @@ Minor ticks can also be given as an `AbstractVector` of real numbers.
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 lines(1..10, sin, axis = (
     yminorgridvisible = true,
@@ -517,7 +517,7 @@ To hide spines, you can use `hidespines!`.
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 
@@ -539,7 +539,7 @@ It's common, e.g., to hide everything but the grid lines in facet plots.
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 
@@ -557,20 +557,20 @@ f
 
 ## Trimmed spines
 
-The attributes `xtrimspine` and `ytrimspine` can be used to limit the respective spines to the range of the outermost major ticks.
+The attributes `xtrimspine` and `ytrimspine` can be used to limit the respective spines to the range of the outermost major ticks. A tuple of Boolean values can be given to trim only one end of the spine.
 
 \begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 hist(randn(100) ./ 4 .+ 5,
     strokewidth = 1,
     strokecolor = :black,
     axis = (
         xtrimspine = true,
-        ytrimspine = true,
+        ytrimspine = (false, true),
         topspinevisible = false,
         rightspinevisible = false,
         title = "Trimmed spines",
@@ -591,7 +591,7 @@ Take care that the axis limits always stay inside the limits appropriate for the
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 data = LinRange(0.01, 0.99, 200)
 
@@ -618,7 +618,7 @@ Some plotting functions, like barplots or density plots, have offset parameters 
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 processors = ["VAX-11/780", "Sun-4/260", "PowerPC 604",
     "Alpha 21164", "Intel Pentium III", "Intel Xeon"]
@@ -642,7 +642,7 @@ Another option for symmetric log scales including zero is the symmetric log scal
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure(resolution = (800, 700))
 
@@ -678,7 +678,7 @@ it necessarily has to break the layout a little bit.
 using CairoMakie
 using FileIO
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 using Random # hide
 Random.seed!(1) # hide
 
@@ -794,7 +794,7 @@ separately.
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 
@@ -835,7 +835,7 @@ Note how x and y labels are misaligned in this figure due to different tick labe
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 

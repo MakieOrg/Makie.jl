@@ -24,10 +24,10 @@ end
     sc = scatter!(ax, randn(100, 2))
     li = lines!(ax, randn(100, 2))
     hm = heatmap!(ax, randn(20, 20))
-    # axis contains 3 + 1 plots, one for the zoomrectangle
-    @test length(ax.scene.plots) == 4
-    delete!(ax, sc)
+    # axis contains 3 plots
     @test length(ax.scene.plots) == 3
+    delete!(ax, sc)
+    @test length(ax.scene.plots) == 2
     @test sc ∉ ax.scene.plots
     empty!(ax)
     @test isempty(ax.scene.plots)
@@ -72,10 +72,12 @@ end
     ax.xautolimitmargin = (0, 0)
     ax.yautolimitmargin = (0, 0)
     scatter!(Point2f[(0, 0), (1, 2)])
+    reset_limits!(ax)
     @test ax.limits[] == (nothing, nothing)
     @test ax.targetlimits[] == BBox(0, 1, 0, 2)
     @test ax.finallimits[] == BBox(0, 1, 0, 2)
     scatter!(Point2f(3, 4))
+    reset_limits!(ax)
     @test ax.limits[] == (nothing, nothing)
     @test ax.targetlimits[] == BBox(0, 3, 0, 4)
     @test ax.finallimits[] == BBox(0, 3, 0, 4)
@@ -84,6 +86,7 @@ end
     @test ax.targetlimits[] == BBox(-1, 1, 0, 2)
     @test ax.finallimits[] == BBox(-1, 1, 0, 2)
     scatter!(Point2f(5, 6))
+    reset_limits!(ax)
     @test ax.limits[] == ((-1, 1), (0, 2))
     @test ax.targetlimits[] == BBox(-1, 1, 0, 2)
     @test ax.finallimits[] == BBox(-1, 1, 0, 2)
@@ -96,6 +99,7 @@ end
     @test ax.targetlimits[] == BBox(-10, 10, 0, 6)
     @test ax.finallimits[] == BBox(-10, 10, 0, 6)
     scatter!(Point2f(11, 12))
+    reset_limits!(ax)
     @test ax.limits[] == ([-10, 10], nothing)
     @test ax.targetlimits[] == BBox(-10, 10, 0, 12)
     @test ax.finallimits[] == BBox(-10, 10, 0, 12)
@@ -105,6 +109,7 @@ end
     @test ax.targetlimits[] == BBox(0, 11, 5, 7)
     @test ax.finallimits[] == BBox(0, 11, 5, 7)
     scatter!(Point2f(-5, -7))
+    reset_limits!(ax)
     @test ax.limits[] == (nothing, [5, 7])
     @test ax.targetlimits[] == BBox(-5, 11, 5, 7)
     @test ax.finallimits[] == BBox(-5, 11, 5, 7)
@@ -155,15 +160,23 @@ end
     hmap = heatmap!(Axis(fig[1, 1]), rand(4, 4))
     cb1 = Colorbar(fig[1,2], hmap; height = Relative(0.65))
     @test cb1.height[] == Relative(0.65)
+    @testset "conversion" begin
+        # https://github.com/MakieOrg/Makie.jl/issues/2278
+        fig = Figure()
+        cbar = Colorbar(fig[1,1], colormap=:viridis, colorrange=Vec2f(0, 1))
+        ticklabel_strings = first.(cbar.axis.elements[:ticklabels][1][])
+        @test ticklabel_strings[1] == "0.0"
+        @test ticklabel_strings[end] == "1.0"
+    end
 end
 
 @testset "cycling" begin
     fig = Figure()
     ax = Axis(fig[1, 1], palette = (patchcolor = [:blue, :green],))
     pl = density!(rand(10); color = Cycled(2))
-    @test pl.color[] == :green
+    @test pl.color[] === :green
     pl = density!(rand(10); color = Cycled(1))
-    @test pl.color[] == :blue
+    @test pl.color[] === :blue
 end
 
 @testset "briefly empty ticklabels" begin
@@ -216,6 +229,8 @@ end
     ax2 = Axis(f[2, 1], xautolimitmargin = (0, 0), yautolimitmargin = (0, 0))
     scatter!(ax1, 1:5, 2:6)
     scatter!(ax2, 2:3, 3:4)
+    reset_limits!(ax1)
+    reset_limits!(ax2)
     @test first.(extrema(ax1.finallimits[])) == (1, 5)
     @test last.(extrema(ax1.finallimits[])) == (2, 6)
     @test first.(extrema(ax2.finallimits[])) == (2, 3)
@@ -239,7 +254,7 @@ end
     ax1 = Axis(f[1, 1])
     ax2 = Axis(f[1, 2])
     ax3 = Axis(f[1, 3])
-    
+
     linkaxes!(ax2, ax3)
     @test Set(ax1.xaxislinks) == Set([])
     @test Set(ax2.xaxislinks) == Set([ax3])

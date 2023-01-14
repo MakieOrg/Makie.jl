@@ -9,7 +9,7 @@ For 3D scenes, `GLMakie` offers several attributes to control the lighting of th
 - `lightposition::Vec3f`: The location of the main light source; by default, the light source is at the location of the camera.
 
 You can find more information on how these were implemented [here](https://learnopengl.com/Lighting/Basic-Lighting).
-Some usage examples can be found in the [RPRMakie examples](https://makie.juliaplots.org/stable/documentation/backends/rprmakie/) and in the [examples](https://makie.juliaplots.org/stable/documentation/lighting/#examples).
+Some usage examples can be found in the [RPRMakie examples](https://docs.makie.org/stable/documentation/backends/rprmakie/) and in the [examples](https://docs.makie.org/stable/documentation/lighting/#examples).
 
 ## SSAO
 
@@ -27,7 +27,7 @@ GLMakie also implements [_screen-space ambient occlusion_](https://learnopengl.c
   a good compromise.
 
 !!! note
-    The SSAO postprocessor is turned off by default to save on resources. To turn it on, set `GLMakie.enable_SSAO[] = true`, close any existing GLMakie window and reopen it.
+    The SSAO postprocessor is turned off by default to save on resources. To turn it on, set `GLMakie.activate!(ssao=true)`, close any existing GLMakie window and reopen it.
 
 ## Matcap
 
@@ -37,16 +37,9 @@ A matcap (material capture) is a texture which is applied based on the normals o
 
 \begin{showhtml}{}
 ```julia
-using JSServe
-Page(exportable=true, offline=true)
-```
-\end{showhtml}
-
-\begin{showhtml}{}
-```julia
 using WGLMakie
 using JSServe
-
+Page(exportable=true, offline=true)
 WGLMakie.activate!() # hide
 xs = -10:0.1:10
 ys = -10:0.1:10
@@ -95,8 +88,7 @@ app
 \begin{examplefigure}{}
 ```julia
 using GLMakie
-GLMakie.activate!() # hide
-GLMakie.enable_SSAO[] = true
+GLMakie.activate!(ssao=true)
 GLMakie.closeall() # close any open screen
 
 fig = Figure()
@@ -113,7 +105,7 @@ fig
 \end{examplefigure}
 
 ```julia:disable-ssao
-GLMakie.enable_SSAO[] = false # hide
+GLMakie.activate!(ssao=false) # hide
 GLMakie.closeall() # hide
 ```
 
