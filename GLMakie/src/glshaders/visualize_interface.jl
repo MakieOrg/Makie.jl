@@ -1,4 +1,3 @@
-@enum Shape CIRCLE RECTANGLE ROUNDED_RECTANGLE DISTANCEFIELD TRIANGLE
 @enum CubeSides TOP BOTTOM FRONT BACK RIGHT LEFT
 
 struct Grid{N,T <: AbstractRange}
@@ -66,9 +65,13 @@ function GLAbstraction.gl_convert_struct(g::Grid{1,T}, uniform_name::Symbol) whe
 end
 
 struct GLVisualizeShader <: AbstractLazyShader
+    screen::Screen
     paths::Tuple
     kw_args::Dict{Symbol,Any}
-    function GLVisualizeShader(paths::String...; view=Dict{String,String}(), kw_args...)
+    function GLVisualizeShader(
+            screen::Screen, paths::String...;
+            view = Dict{String,String}(), kw_args...
+        )
         # TODO properly check what extensions are available
         @static if !Sys.isapple()
             view["GLSL_EXTENSIONS"] = "#extension GL_ARB_conservative_depth: enable"
@@ -77,42 +80,45 @@ struct GLVisualizeShader <: AbstractLazyShader
         args = Dict{Symbol, Any}(kw_args)
         args[:view] = view
         args[:fragdatalocation] = [(0, "fragment_color"), (1, "fragment_groupid")]
-        new(map(x -> loadshader(x), paths), args)
+        new(screen, map(x -> loadshader(x), paths), args)
     end
 end
 
-function assemble_robj(data, program, bb, primitive, pre_fun, post_fun)
+function GLAbstraction.gl_convert(shader::GLVisualizeShader, data)
+    GLAbstraction.gl_convert(shader.screen.shader_cache, shader, data)
+end
+
+function assemble_shader(data)
+    shader = data[:shader]::GLVisualizeShader
+    delete!(data, :shader)
+    primitive = get(data, :gl_primitive, GL_TRIANGLES)
+    pre_fun = get(data, :prerender, nothing)
+    post_fun = get(data, :postrender, nothing)
+
     transp = get(data, :transparency, Observable(false))
     overdraw = get(data, :overdraw, Observable(false))
+
     pre = if !isnothing(pre_fun)
         _pre_fun = GLAbstraction.StandardPrerender(transp, overdraw)
         ()->(_pre_fun(); pre_fun())
     else
         GLAbstraction.StandardPrerender(transp, overdraw)
     end
-    robj = RenderObject(data, program, pre, nothing, bb, nothing)
+
+    robj = RenderObject(data, shader, pre, shader.screen.glscreen)
+
     post = if haskey(data, :instances)
-        GLAbstraction.StandardPostrenderInstanced(data[:instances], robj.vertexarray, primitive)
+        GLAbstraction.StandardPostrenderInstanced(pop!(data, :instances), robj.vertexarray, primitive)
     else
         GLAbstraction.StandardPostrender(robj.vertexarray, primitive)
     end
+
     robj.postrenderfunction = if !isnothing(post_fun)
         () -> (post(); post_fun())
     else
         post
     end
-    robj
-end
-
-function assemble_shader(data)
-    shader = data[:shader]
-    delete!(data, :shader)
-    glp = get(data, :gl_primitive, GL_TRIANGLES)
-    return assemble_robj(
-        data, shader, Rect3f(), glp,
-        get(data, :prerender, nothing),
-        get(data, :postrender, nothing)
-    )
+    return robj
 end
 
 """
@@ -142,17 +148,12 @@ to_index_buffer(x) = error(
     Please choose from Int, Vector{UnitRange{Int}}, Vector{Int} or a signal of either of them"
 )
 
-function visualize(@nospecialize(main), @nospecialize(s), @nospecialize(data))
-    data = _default(main, s, copy(data))
-    return assemble_shader(data)
-end
-
-function output_buffers(transparency = false)
+function output_buffers(screen::Screen, transparency = false)
     if transparency
         """
         layout(location=2) out float coverage;
         """
-    elseif enable_SSAO[]
+    elseif screen.config.ssao
         """
         layout(location=2) out vec3 fragment_position;
         layout(location=3) out vec3 fragment_normal_occlusion;
@@ -162,16 +163,16 @@ function output_buffers(transparency = false)
     end
 end
 
-function output_buffer_writes(transparency = false)
+function output_buffer_writes(screen::Screen, transparency = false)
     if transparency
-        scale = transparency_weight_scale[]
+        scale = screen.config.transparency_weight_scale
         """
         float weight = color.a * max(0.01, $scale * pow((1 - gl_FragCoord.z), 3));
         coverage = 1.0 - clamp(color.a, 0.0, 1.0);
         fragment_color.rgb = weight * color.rgb;
         fragment_color.a = weight;
         """
-    elseif enable_SSAO[]
+    elseif screen.config.ssao
         """
         fragment_color = color;
         fragment_position = o_view_pos;

@@ -1,11 +1,15 @@
 {{GLSL_VERSION}}
 
+struct Nothing{ //Nothing type, to encode if some variable doesn't contain any data
+    bool _; //empty structs are not allowed
+};
+
 in vec2 o_uv;
 flat in uvec2 o_objectid;
 
 {{intensity_type}} intensity;
 uniform sampler1D color_map;
-uniform vec2 color_norm;
+{{color_norm_type}} color_norm;
 
 uniform float stroke_width;
 uniform vec4 stroke_color;
@@ -34,13 +38,17 @@ vec4 get_color_from_cmap(float value, sampler1D color_map, vec2 colorrange) {
     return texture(color_map, i01);
 }
 
+vec4 get_color(sampler2D intensity, vec2 uv, Nothing color_norm, sampler1D color_map){
+    return getindex(intensity, uv);
+}
+
 vec4 get_color(sampler2D intensity, vec2 uv, vec2 color_norm, sampler1D color_map){
     float i = float(getindex(intensity, uv).x);
     if (isnan(i)) {
         return nan_color;
     } else if (i < color_norm.x) {
         return lowclip;
-} else if (i > color_norm.y) {
+    } else if (i > color_norm.y) {
         return highclip;
     }
     return get_color_from_cmap(i, color_map, color_norm);

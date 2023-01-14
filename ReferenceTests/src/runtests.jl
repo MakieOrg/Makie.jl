@@ -1,8 +1,3 @@
-function extract_frames(video, frame_folder)
-    path = joinpath(frame_folder, "frames%04d.png")
-    FFMPEG.ffmpeg_exe(`-loglevel quiet -i $video -y $path`)
-end
-
 function get_frames(a, b)
     return (get_frames(a), get_frames(b))
 end
@@ -11,7 +6,7 @@ function get_frames(video)
     mktempdir() do folder
         afolder = joinpath(folder, "a")
         mkpath(afolder)
-        extract_frames(video, afolder)
+        Makie.extract_frames(video, afolder)
         aframes = joinpath.(afolder, readdir(afolder))
         if length(aframes) > 10
             # we don't want to compare too many frames since it's time costly
@@ -42,6 +37,13 @@ function compare_media(a, b; sigma=[1,1])
         return compare_media(conv(imga), conv(imgb), sigma=sigma)
     elseif ext in (".mp4", ".gif")
         aframes, bframes = get_frames(a, b)
+        # Frames can differ in length, which usually shouldn't be the case but can happen
+        # when the implementation of record changes, or when the example changes its number of frames
+        # In that case, we just return inf + warn
+        if length(aframes) != length(bframes)
+            @warn "not the same number of frames in video, difference will be Inf"
+            return Inf
+        end
         return mean(compare_media.(aframes, bframes; sigma=sigma))
     else
         error("Unknown media extension: $ext")
@@ -78,9 +80,8 @@ function record_comparison(base_folder::String; record_folder_name="recorded", r
     return missing_refimages, scores
 end
 
-function test_comparison(missing_refimages, scores; threshold)
-    @testset "Comparison scores and missing reference images" begin
-        @test isempty(missing_refimages)
+function test_comparison(scores; threshold)
+    @testset "Comparison scores" begin
         for (image, score) in pairs(scores)
             @testset "$image" begin
                 @test score <= threshold

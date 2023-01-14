@@ -6,22 +6,12 @@ import Base: resize!
 import Base: setindex!
 import Base: getindex
 import Base: map
-import Base: length
-import Base: eltype
-import Base: lastindex
-import Base: ndims
 import Base: size
 import Base: iterate
-using Serialization
 
 abstract type GPUArray{T, NDim} <: AbstractArray{T, NDim} end
 
-length(A::GPUArray) = prod(size(A))
-eltype(b::GPUArray{T, NDim}) where {T, NDim} = T
-lastindex(A::GPUArray) = length(A)
-ndims(A::GPUArray{T, NDim}) where {T, NDim} = NDim
 size(A::GPUArray) = A.size
-size(A::GPUArray, i::Integer) = i <= ndims(A) ? A.size[i] : 1
 
 function checkdimensions(value::Array, ranges::Union{Integer, UnitRange}...)
     array_size   = size(value)
@@ -58,13 +48,15 @@ function setindex!(A::GPUArray{T, N}, value::Array{T, N}, ranges::UnitRange...) 
     checkbounds(A, ranges...)
     checkdimensions(value, ranges...)
     gpu_setindex!(A, value, ranges...)
-    nothing
+    return
 end
 
+ShaderAbstractions.switch_context!(A::GPUArray) = switch_context!(A.context)
 function update!(A::GPUArray{T, N}, value::AbstractArray{T2, N}) where {T, N, T2}
     update!(A, convert(Array{T, N}, value))
 end
 function update!(A::GPUArray{T, N}, value::AbstractArray{T, N}) where {T, N}
+    switch_context!(A)
     if length(A) != length(value)
         if isa(A, GLBuffer)
             resize!(A, length(value))
@@ -78,7 +70,7 @@ function update!(A::GPUArray{T, N}, value::AbstractArray{T, N}) where {T, N}
     end
     dims = map(x-> 1:x, size(A))
     A[dims...] = value
-    nothing
+    return
 end
 update!(A::GPUArray, value::ShaderAbstractions.Sampler) = update!(A, value.data)
 
@@ -105,22 +97,13 @@ function update!(A::GPUVector{T}, value::AbstractVector{T}) where T
     end
     dims = map(x->1:x, size(A))
     A.buffer[dims...] = value
-    return nothing
+    return
 end
 
-length(v::GPUVector)            = prod(size(v))
-size(v::GPUVector)              = v.size
-size(v::GPUVector, i::Integer)  = v.size[i]
-ndims(::GPUVector)              = 1
-eltype(::GPUVector{T}) where {T}       = T
-lastindex(A::GPUVector)             = length(A)
-
-
+size(v::GPUVector) = v.size
 iterate(b::GPUVector, state = 1) = iterate(b.buffer, state)
-
-gpu_data(A::GPUVector)          = A.buffer[1:length(A)]
-
-getindex(v::GPUVector, index::Int)       = v.buffer[index]
+gpu_data(A::GPUVector) = A.buffer[1:length(A)]
+getindex(v::GPUVector, index::Int) = v.buffer[index]
 getindex(v::GPUVector, index::UnitRange) = v.buffer[index]
 setindex!(v::GPUVector{T}, value::T, index::Int) where {T} = v.buffer[index] = value
 setindex!(v::GPUVector{T}, value::T, index::UnitRange) where {T} = v.buffer[index] = value
@@ -175,8 +158,9 @@ function splice!(v::GPUVector{T}, index::UnitRange, x::Vector=T[]) where T
     v.real_length = length(buffer)
     v.size        = (v.real_length,)
     copy!(x, 1, buffer, first(index), length(x)) # copy contents of insertion vector
-    nothing
+    return
 end
+
 splice!(v::GPUVector{T}, index::Int, x::T) where {T} = v[index] = x
 splice!(v::GPUVector{T}, index::Int, x::Vector=T[]) where {T} = splice!(v, index:index, map(T, x))
 
@@ -206,23 +190,18 @@ gpu_setindex!(t) = error("gpu_setindex! not implemented for: $(typeof(t)). This 
 max_dim(t)       = error("max_dim not implemented for: $(typeof(t)). This happens, when you call setindex! on an array, without implementing the GPUArray interface")
 
 
-function (::Type{T})(x::Observable; kw...) where T <: GPUArray
-    gpu_mem = T(x[]; kw...)
-    on(x-> update!(gpu_mem, x), x)
-    gpu_mem
+function (::Type{GPUArrayType})(data::Observable; kw...) where GPUArrayType <: GPUArray
+    gpu_mem = GPUArrayType(data[]; kw...)
+    # TODO merge these and handle update tracking during contruction
+    obs1 = on(_-> gpu_mem.requires_update[] = true, data)
+    obs2 = on(new_data -> update!(gpu_mem, new_data), data)
+    if GPUArrayType <: TextureBuffer
+        push!(gpu_mem.buffer.observers, obs1, obs2)
+    else
+        push!(gpu_mem.observers, obs1, obs2)
+    end
+    return gpu_mem
 end
-
-const BaseSerializer = Serialization.AbstractSerializer
-
-function Serialization.serialize(s::BaseSerializer, t::T) where T<:GPUArray
-    Serialization.serialize_type(s, T)
-    Serialization.serialize(s, Array(t))
-end
-function Serialization.deserialize(s::BaseSerializer, ::Type{T}) where T <: GPUArray
-    A = Serialization.deserialize(s)
-    T(A)
-end
-
 
 export data
 export resize

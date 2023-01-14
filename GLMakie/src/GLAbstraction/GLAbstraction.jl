@@ -10,7 +10,7 @@ using Printf
 using LinearAlgebra
 using Observables
 using ShaderAbstractions
-using ShaderAbstractions: current_context, is_context_active, context_alive
+using ShaderAbstractions: current_context, is_context_active, context_alive, switch_context!
 using GeometryBasics: StaticVector
 
 import FixedPointNumbers: N0f8, N0f16, N0f8, Normed
@@ -54,8 +54,6 @@ export gpu_data                 # gets the data of a gpu array as a Julia Array
 export RenderObject             # An object which holds all GPU handles and datastructes to ready for rendering by calling render(obj)
 export prerender!               # adds a function to a RenderObject, which gets executed befor setting the OpenGL render state
 export postrender!              # adds a function to a RenderObject, which gets executed after setting the OpenGL render states
-export std_renderobject            # creates a renderobject with standard parameters
-export instanced_renderobject    # simplification for creating a RenderObject which renders instances
 export extract_renderable
 export set_arg!
 export GLVertexArray            # VertexArray wrapper object

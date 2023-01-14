@@ -1,7 +1,7 @@
 notchheight(q2, q4, N) = 1.58 * (q4 - q2) / sqrt(N)
 
 #=
-Taken from https://github.com/JuliaPlots/StatPlots.jl/blob/master/src/boxplot.jl#L7
+Taken from https://github.com/MakieOrg/StatPlots.jl/blob/master/src/boxplot.jl#L7
 The StatPlots.jl package is licensed under the MIT "Expat" License:
     Copyright (c) 2016: Thomas Breloff.
 =#
@@ -88,10 +88,10 @@ function Makie.plot!(plot::BoxPlot)
         args...,
     ) do x, y, color, weights, width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap
         x̂, boxwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
-        if !(whiskerwidth == :match || whiskerwidth >= 0)
+        if !(whiskerwidth === :match || whiskerwidth >= 0)
             error("whiskerwidth must be :match or a positive number. Found: $whiskerwidth")
         end
-        ww = whiskerwidth == :match ? boxwidth : whiskerwidth * boxwidth
+        ww = whiskerwidth === :match ? boxwidth : whiskerwidth * boxwidth
         outlier_points = Point2f[]
         centers = Float32[]
         medians = Float32[]
@@ -154,10 +154,10 @@ function Makie.plot!(plot::BoxPlot)
         end
 
         # for horizontal boxplots just flip all components
-        if orientation == :horizontal
+        if orientation === :horizontal
             outlier_points = flip_xy.(outlier_points)
             t_segments = flip_xy.(t_segments)
-        elseif orientation != :vertical
+        elseif orientation !== :vertical
             error("Invalid orientation $orientation. Valid options: :horizontal or :vertical.")
         end
 

@@ -31,7 +31,7 @@ end
 """
 A matrix of Intensities will result in a contourf kind of plot
 """
-function draw_heatmap(main, data::Dict)
+function draw_heatmap(screen, main, data::Dict)
     primitive = triangle_mesh(Rect2(0f0,0f0,1f0,1f0))
     to_opengl_mesh!(data, primitive)
     @gen_defaults! data begin
@@ -46,10 +46,11 @@ function draw_heatmap(main, data::Dict)
         stroke_color = RGBA{Float32}(0,0,0,0)
         transparency = false
         shader = GLVisualizeShader(
+            screen,
             "fragment_output.frag", "heatmap.vert", "heatmap.frag",
             view = Dict(
-                "buffers" => output_buffers(to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(to_value(transparency))
+                "buffers" => output_buffers(screen, to_value(transparency)),
+                "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
             )
         )
         fxaa = false
@@ -57,7 +58,7 @@ function draw_heatmap(main, data::Dict)
     return assemble_shader(data)
 end
 
-function draw_volume(main::VolumeTypes, data::Dict)
+function draw_volume(screen, main::VolumeTypes, data::Dict)
     geom = Rect3f(Vec3f(0), Vec3f(1))
     to_opengl_mesh!(data, const_lift(GeometryBasics.triangle_mesh, geom))
     @gen_defaults! data begin
@@ -75,14 +76,15 @@ function draw_volume(main::VolumeTypes, data::Dict)
         enable_depth = true
         transparency = false
         shader = GLVisualizeShader(
+            screen,
             "fragment_output.frag", "util.vert", "volume.vert", "volume.frag",
             view = Dict(
                 "depth_init"  => vol_depth_init(to_value(enable_depth)),
                 "depth_default"  => vol_depth_default(to_value(enable_depth)),
                 "depth_main"  => vol_depth_main(to_value(enable_depth)),
                 "depth_write" => vol_depth_write(to_value(enable_depth)),
-                "buffers" => output_buffers(to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(to_value(transparency))
+                "buffers" => output_buffers(screen, to_value(transparency)),
+                "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
             )
         )
         prerender = VolumePrerender(data[:transparency], data[:overdraw])

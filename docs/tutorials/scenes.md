@@ -20,7 +20,7 @@ scene = Scene(;
 )
 ```
 
-A scene is doing three things:
+A scene is doing four things:
 
 * holds a local theme, that gets applied to all plot objects in that scene
 * manages the camera, projection and transformation matrices
@@ -106,6 +106,7 @@ In GLMakie, we can actually take a look at the depthbuffer, to see how it looks 
 GLMakie.activate!() # hide
 screen = display(scene) # use display, to get a reference to the screen object
 depth_color = GLMakie.depthbuffer(screen)
+close(screen)
 # Look at result:
 f, ax, pl = heatmap(depth_color)
 Colorbar(f[1, 2], pl)
@@ -286,13 +287,8 @@ Let's use WGLMakie with it's offline export feature, to create a plot with slide
 ```julia
 using WGLMakie, JSServe
 WGLMakie.activate!()
-Page(offline=true, exportable=true)
-```
-\end{showhtml}
-
-\begin{showhtml}{}
-```julia
 using MeshIO, FileIO, GeometryBasics
+Page(offline=true, exportable=true)
 
 colors = Dict(
     "eyes" => "#000",

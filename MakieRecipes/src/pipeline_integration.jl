@@ -153,7 +153,7 @@ function translate_to_makie!(st, pa)
 
         pa[:linewidth] = get(pa, :linewidth, 1)
 
-    elseif st == :scatter
+    elseif st === :scatter
         if !isnothing(get(pa, :color, nothing))
             # pa[:color] = pa[:color]
         end
@@ -192,11 +192,11 @@ function translate_to_makie!(st, pa)
     elseif st ∈ (:surface, :heatmap, :image)
         haskey(pa, :fill_z) && (pa[:color] = pa[:fill_z])
         pa[:shading] = false # set shading to false, default in Plots
-    elseif st == :contour
+    elseif st === :contour
         # pa[:levels] = pa[:levels]
-    elseif st == :bar
+    elseif st === :bar
         haskey(pa, :widths) && (pa[:width] = pa[:widths])
-    elseif st == :shape
+    elseif st === :shape
         if haskey(pa, :nodecolor)
             if pa[:nodecolor] isa Int
                 pa[:color] = get(pa, :palette, default_palette).colors[pa[:nodecolor]]
@@ -237,7 +237,7 @@ function set_series_color!(scene, st, plotattributes)
     has_color = (haskey(plotattributes, :color) && plotattributes[:color] !== automatic) || any(
         if st ∈ (:path, :path3d, :curves)
             haskey.(Ref(plotattributes), (:linecolor, :line_z, :seriescolor))
-        elseif st == :scatter
+        elseif st === :scatter
             haskey.(Ref(plotattributes), (:markercolor, :marker_z, :seriescolor))
         elseif st ∈ (:shape, :heatmap, :image, :surface, :contour, :bar)
             haskey.(Ref(plotattributes), (:fillcolor, :fill_z, :seriescolor, :cgrad))
@@ -310,7 +310,7 @@ function plot_series_annotations!(plt, args, pt, plotattributes)
 
     @debug("Series annotations say hi")
 
-    annotations!(plt, strs, positions; textsize = fontsize/30, align = (:center, :center), color = get(plotattributes, :textcolor, :black))
+    annotations!(plt, strs, positions; fontsize = fontsize/30, align = (:center, :center), color = get(plotattributes, :textcolor, :black))
 
 end
 
@@ -326,7 +326,7 @@ function plot_annotations!(plt, args, pt, plotattributes)
 
     @debug("Annotations say hi")
 
-    annotations!(plt, strs, positions; textsize = fontsizes ./ 80, align = (:center, :center), color = get(plotattributes, :textcolor, :black))
+    annotations!(plt, strs, positions; fontsize = fontsizes ./ 80, align = (:center, :center), color = get(plotattributes, :textcolor, :black))
 
 end
 

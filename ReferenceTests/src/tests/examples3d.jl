@@ -136,7 +136,7 @@ end
 
     linesegments!(ax, linepoints, linestyle=:dot)
 
-    Record(fig, 1:2) do i
+    Record(fig, 1:2; framerate=1) do i
         t[] = i / 10
     end
 end
@@ -259,7 +259,7 @@ end
     axis[:names, :axisnames] = ("\\bf{ℜ}[u]", "\\bf{𝕴}[u]", " OK\n\\bf{δ}\n γ")
     tstyle = axis[:names] # or just get the nested attributes and work directly with them
 
-    tstyle[:textsize] = 10
+    tstyle[:fontsize] = 10
     tstyle[:textcolor] = (:red, :green, :black)
     tstyle[:font] = "helvetica"
 
@@ -270,7 +270,7 @@ end
         "Multipole Representation of first resonances of U-238",
         position=(wh[1] / 2.0, wh[2] - 20.0),
         align=(:center,  :center),
-        textsize=20,
+        fontsize=20,
         font="helvetica"
     )
     c = lines!(scene, Circle(Point2f(0.1, 0.5), 0.1f0), color=:red, offset=Vec3f(0, 0, 1))
@@ -374,7 +374,7 @@ end
     wf = wireframe!(ax, xrange, xrange, lift(x -> x .+ 1.0, surf[3]),
         linewidth=2f0, color=lift(x -> to_colormap(x)[5], surf[:colormap])
     )
-    Record(fig, range(5, stop=40, length=3)) do i
+    Record(fig, range(5, stop=40, length=3); framerate=1) do i
         surf[3] = surf_func(i)
     end
 end
@@ -391,20 +391,6 @@ end
 
 @reference_test "Sphere Mesh" begin
     mesh(Sphere(Point3f(0), 1f0), color=:blue)
-end
-
-@reference_test "Stars" begin
-    stars = 100_000
-    scene = Scene(backgroundcolor=:black, camera=cam2d!)
-    scatter!(
-        scene,
-        map(i -> (RNG.randn(Point3f) .- 0.5) .* 10, 1:stars),
-        color=RNG.rand(stars),
-        colormap=[(:white, 0.4), (:blue, 0.4), (:yellow, 0.4)], strokewidth=0,
-        markersize=RNG.rand(range(2, stop=8, length=100), stars),
-    )
-    update_cam!(scene, Rect3f(Vec3f(-5), Vec3f(10)))
-    scene
 end
 
 @reference_test "Unicode Marker" begin
@@ -438,7 +424,7 @@ end
     Makie.translate!(p, 0, 0, 0)
     colors = to_colormap(:RdYlBu)
     N = 5
-    Record(f, 1:N) do i
+    Record(f, 1:N; framerate=1) do i
         t = i/(N/5)
         if length(lineplots) < 20
             p = lines!(
@@ -530,7 +516,7 @@ end
             lines!(ax, ps, color = color, depth_shift = shift)
             linesegments!(ax, ps .+ Point3f(-1, 1, 0), color = color, depth_shift = shift)
             scatter!(ax, ps, color = color, markersize=10, depth_shift = shift)
-            text!(ax, "Test", position = Point3f(0, 1, 1.1), color = color, depth_shift = shift)
+            text!(ax, 0, 1, 1.1, text = "Test", color = color, depth_shift = shift)
             surface!(ax, -1..0, 1..2, mat, colormap = [color, color], depth_shift = shift)
             meshscatter!(ax, ps .+ Point3f(-1, 1, 0), color = color, depth_shift = shift)
             # # left side in axis
@@ -582,7 +568,7 @@ end
         mesh!(ax, Rect3(Point3f(-10), Vec3f(20)), color = :orange)
         mesh!(ax, Rect2f(0.8, 0.1, 0.1, 0.8), space = :relative, color = :blue, shading = false)
         linesegments!(ax, Rect2f(-0.5, -0.5, 1, 1), space = :clip, color = :cyan, linewidth = 5)
-        text!(ax, "Clip Space", position = Point2f(0, 0.52), align = (:center, :bottom), space = :clip)
+        text!(ax, 0, 0.52, text = "Clip Space", align = (:center, :bottom), space = :clip)
         image!(ax, 0..40, 0..800, [x for x in range(0, 1, length=40), _ in 1:10], space = :pixel)
     end
     fig
