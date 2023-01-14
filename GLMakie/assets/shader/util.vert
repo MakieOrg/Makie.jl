@@ -49,7 +49,6 @@ vec3 _normalize(vec3 val, vec3 from, vec3 to){
     return (val-from) / (to - from);
 }
 
-
 mat4 getmodelmatrix(vec3 xyz, vec3 scale){
    return mat4(
       vec4(scale.x, 0, 0, 0),
@@ -103,8 +102,6 @@ void rotate(samplerBuffer vectors, int index, inout vec3 V, inout vec3 N){
     vec4 r = texelFetch(vectors, index);
     rotate(r, index, V, N);
 }
-
-
 
 mat4 translate_scale(vec3 xyz, vec3 scale){
    return mat4(
@@ -170,32 +167,16 @@ vec4 getindex(sampler3D tex, int index){
 
 
 
-//vec3 _scale(vec3  scale, Nothing scale_x, Nothing scale_y, Nothing scale_z, int index){return scale;}
-vec3 _scale(vec2  scale, Nothing scale_x, Nothing scale_y, Nothing scale_z, int index){return vec3(scale,1);}
-vec3 _scale(float scale, Nothing scale_x, Nothing scale_y, Nothing scale_z, int index){return vec3(scale);}
-vec3 _scale(Nothing  scale, float scale_x, float scale_y, float scale_z, int index){
-    return vec3(scale_x, scale_y, scale_z);
+vec3 _scale(vec2 scale, int index){
+    return vec3(scale.x, scale.y, 1.0);
 }
-vec3 _scale(vec2  scale, float scale_x, float scale_y, float scale_z, int index){
-    return vec3(scale.x*scale_x, scale.y*scale_y, scale_z);
+
+vec3 _scale(vec3  scale, int index){
+    return scale;
 }
-vec3 _scale(vec3  scale, float scale_x, float scale_y, float scale_z, int index){
-    return vec3(scale_x, scale_y, scale_z)*scale;
-}
-vec3 _scale(samplerBuffer scale, Nothing scale_x, Nothing scale_y, Nothing scale_z, int index){
+
+vec3 _scale(samplerBuffer scale, int index){
     return getindex(scale, index).xyz;
-}
-vec3 _scale(vec3 scale, float scale_x, float scale_y, samplerBuffer scale_z, int index){
-    return vec3(scale_x, scale_y, getindex(scale_z, index).x);
-}
-vec3 _scale(Nothing scale, float scale_x, float scale_y, samplerBuffer scale_z, int index){
-    return vec3(scale_x, scale_y, getindex(scale_z, index).x);
-}
-vec3 _scale(vec3 scale, float scale_x, samplerBuffer scale_y, float scale_z, int index){
-    return vec3(scale_x, getindex(scale_y, index).x, scale_z);
-}
-vec3 _scale(Nothing scale, float scale_x, samplerBuffer scale_y, float scale_z, int index){
-    return vec3(scale_x, getindex(scale_y, index).x, scale_z);
 }
 
 vec4 color_lookup(float intensity, vec4 color, vec2 norm){
@@ -219,13 +200,13 @@ vec4 _color(Nothing color, sampler1D intensity, sampler1D color_map, vec2 color_
     return color_lookup(texture(intensity, float(index)/float(len-1)).x, color_map, color_norm);
 }
 vec4 _color(Nothing color, samplerBuffer intensity, sampler1D color_map, vec2 color_norm, int index, int len){
-    return color_lookup(texelFetch(intensity, index).x, color_map, color_norm);
+    return vec4(texelFetch(intensity, index).x, 0.0, 0.0, 0.0);
 }
 vec4 _color(Nothing color, float intensity, sampler1D color_map, vec2 color_norm, int index, int len){
     return color_lookup(intensity, color_map, color_norm);
 }
 
-out vec4 o_view_pos;
+out vec3 o_view_pos;
 out vec3 o_normal;
 out vec3 o_lightdir;
 out vec3 o_camdir;
@@ -234,6 +215,7 @@ out vec3 o_camdir;
 uniform mat3 normalmatrix;
 uniform vec3 lightposition;
 uniform vec3 eyeposition;
+uniform float depth_shift;
 
 
 void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 lightposition)
@@ -241,16 +223,18 @@ void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 l
     // normal in world space
     o_normal = normalmatrix * normal;
     // position in view space (as seen from camera)
-    o_view_pos = view * position_world;
+    vec4 view_pos = view * position_world;
     // position in clip space (w/ depth)
-    gl_Position = projection * o_view_pos;
+    gl_Position = projection * view_pos;
+    gl_Position.z += gl_Position.w * depth_shift;
     // direction to light
-    o_lightdir = normalize(view*vec4(lightposition, 1.0) - o_view_pos).xyz;
+    o_lightdir = normalize(view*vec4(lightposition, 1.0) - view_pos).xyz;
     // direction to camera
     // This is equivalent to
-    // normalize(view*vec4(eyeposition, 1.0) - o_view_pos).xyz
+    // normalize(view*vec4(eyeposition, 1.0) - view_pos).xyz
     // (by definition `view * eyeposition = 0`)
-    o_camdir = normalize(-o_view_pos).xyz;
+    o_camdir = normalize(-view_pos).xyz;
+    o_view_pos = view_pos.xyz / view_pos.w;
 }
 
 //
@@ -368,4 +352,30 @@ vec3 getnormal(Nothing pos, sampler1D xs, sampler1D ys, sampler2D zs, vec2 uv){
     s4 = vec3(texture(xs, off4.x).x, texture(ys, off4.y).x, texture(zs, off4).x);
 
     return normal_from_points(s0, s1, s2, s3, s4, uv, off1, off2, off3, off4);
+}
+
+uniform vec4 highclip;
+uniform vec4 lowclip;
+uniform vec4 nan_color;
+
+vec4 get_color_from_cmap(float value, sampler1D color_map, vec2 colorrange) {
+    float cmin = colorrange.x;
+    float cmax = colorrange.y;
+    if (value <= cmax && value >= cmin) {
+        // in value range, continue!
+    } else if (value < cmin) {
+        return lowclip;
+    } else if (value > cmax) {
+        return highclip;
+    } else {
+        // isnan CAN be broken (of course) -.-
+        // so if outside value range and not smaller/bigger min/max we assume NaN
+        return nan_color;
+    }
+    float i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0);
+    // 1/0 corresponds to the corner of the colormap, so to properly interpolate
+    // between the colors, we need to scale it, so that the ends are at 1 - (stepsize/2) and 0+(stepsize/2).
+    float stepsize = 1.0 / float(textureSize(color_map, 0));
+    i01 = (1.0 - stepsize) * i01 + 0.5 * stepsize;
+    return texture(color_map, i01);
 }

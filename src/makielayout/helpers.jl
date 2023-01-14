@@ -11,17 +11,13 @@ function round_to_IRect2D(r::Rect{2})
 end
 
 function sceneareanode!(finalbbox, limits, aspect)
-
-    scenearea = Node(Recti(0, 0, 100, 100))
-
-    onany(finalbbox, limits, aspect) do bbox, limits, aspect
+    return map(finalbbox, limits, aspect; ignore_equal_values=true) do bbox, limits, aspect
 
         w = width(bbox)
         h = height(bbox)
         # as = mw / mh
         as = w / h
         mw, mh = w, h
-
 
         if aspect isa AxisAspect
             aspect = aspect.aspect
@@ -50,16 +46,9 @@ function sceneareanode!(finalbbox, limits, aspect)
         newbbox = BBox(l, l + mw, b, b + mh)
 
         # only update scene if pixel positions change
-        new_scenearea = round_to_IRect2D(newbbox)
-        if new_scenearea != scenearea[]
-            scenearea[] = new_scenearea
-        end
+        return round_to_IRect2D(newbbox)
     end
-
-    scenearea
 end
-
-
 
 function roundedrectvertices(rect, cornerradius, cornersegments)
     cr = cornerradius
@@ -108,7 +97,7 @@ Sets the autolimit margins to zero on all sides.
 function tightlimits!(la::Axis)
     la.xautolimitmargin = (0, 0)
     la.yautolimitmargin = (0, 0)
-    autolimits!(la)
+    reset_limits!(la)
 end
 
 """
@@ -148,30 +137,6 @@ function tightlimits!(la::Axis, ::Top)
     autolimits!(la)
 end
 
-
-"""
-    layoutscene(padding = 30; kwargs...)
-
-Create a `Scene` in `campixel!` mode and a `GridLayout` aligned to the scene's pixel area with `alignmode = Outside(padding)`.
-"""
-function layoutscene(padding = 30; inspectable = false, kwargs...)
-    scene = Scene(; camera = campixel!, inspectable = inspectable, kwargs...)
-    gl = GridLayout(scene, alignmode = Outside(padding))
-    scene, gl
-end
-
-"""
-    layoutscene(nrows::Int, ncols::Int, padding = 30; kwargs...)
-
-Create a `Scene` in `campixel!` mode and a `GridLayout` aligned to the scene's pixel area with size `nrows` x `ncols` and `alignmode = Outside(padding)`.
-"""
-function layoutscene(nrows::Int, ncols::Int, padding = 30; inspectable = false, kwargs...)
-    scene = Scene(; camera = campixel!, inspectable = inspectable, kwargs...)
-    gl = GridLayout(scene, nrows, ncols, alignmode = Outside(padding))
-    scene, gl
-end
-
-
 GridLayoutBase.GridLayout(scene::Scene, args...; kwargs...) = GridLayout(args...; bbox = lift(x -> Rect2f(x), pixelarea(scene)), kwargs...)
 
 function axislines!(scene, rect, spinewidth, topspinevisible, rightspinevisible,
@@ -206,13 +171,13 @@ function axislines!(scene, rect, spinewidth, topspinevisible, rightspinevisible,
         [p1, p2]
     end
 
-    (lines!(scene, bottomline, linewidth = spinewidth, show_axis = false,
+    (lines!(scene, bottomline, linewidth = spinewidth,
         visible = bottomspinevisible, color = bottomspinecolor),
-    lines!(scene, leftline, linewidth = spinewidth, show_axis = false,
+    lines!(scene, leftline, linewidth = spinewidth,
         visible = leftspinevisible, color = leftspinecolor),
-    lines!(scene, rightline, linewidth = spinewidth, show_axis = false,
+    lines!(scene, rightline, linewidth = spinewidth,
         visible = rightspinevisible, color = rightspinecolor),
-    lines!(scene, topline, linewidth = spinewidth, show_axis = false,
+    lines!(scene, topline, linewidth = spinewidth,
         visible = topspinevisible, color = topspinecolor))
 end
 
@@ -260,14 +225,14 @@ varname => default_value pairs.
     )
 """
 macro documented_attributes(exp)
-    if exp.head != :block
+    if exp.head !== :block
         error("Not a block")
     end
 
     expressions = filter(x -> !(x isa LineNumberNode), exp.args)
 
     vars_and_exps = map(expressions) do e
-        if e.head == :macrocall && e.args[1] == GlobalRef(Core, Symbol("@doc"))
+        if e.head === :macrocall && e.args[1] == GlobalRef(Core, Symbol("@doc"))
             varname = e.args[4].args[1]
             var_exp = e.args[4].args[2]
             str_exp = e.args[3]
@@ -325,7 +290,10 @@ end
 
 
 """
-    labelslider!(scene, label, range; format = string, sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), layoutkw...)
+    labelslider!(scene, label, range; format = string, sliderkw = Dict(),
+    labelkw = Dict(), valuekw = Dict(), value_column_width = automatic, layoutkw...)
+
+**`labelslider!` is deprecated, use `SliderGrid` instead**
 
 Construct a horizontal GridLayout with a label, a slider and a value label in `scene`.
 
@@ -333,10 +301,12 @@ Returns a `NamedTuple`:
 
 `(slider = slider, label = label, valuelabel = valuelabel, layout = layout)`
 
-Specify a format function for the value label with the `format` keyword.
+Specify a format function for the value label with the `format` keyword or pass a format string used by `Formatting.format`.
 The slider is forwarded the keywords from `sliderkw`.
 The label is forwarded the keywords from `labelkw`.
 The value label is forwarded the keywords from `valuekw`.
+You can set the column width for the value label column with the keyword `value_column_width`.
+By default, the width is determined heuristically by sampling a few values from the slider range.
 All other keywords are forwarded to the `GridLayout`.
 
 Example:
@@ -347,18 +317,41 @@ layout[1, 1] = ls.layout
 ```
 """
 function labelslider!(scene, label, range; format = string,
-        sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), layoutkw...)
+        sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), value_column_width = automatic, layoutkw...)
     slider = Slider(scene; range = range, sliderkw...)
     label = Label(scene, label; labelkw...)
-    valuelabel = Label(scene, lift(format, slider.value); valuekw...)
+    valuelabel = Label(scene, lift(x -> apply_format(x, format), slider.value); valuekw...)
     layout = hbox!(label, slider, valuelabel; layoutkw...)
+
+    Base.depwarn("labelslider! is deprecated and will be removed in the future. Use SliderGrid instead." , :labelslider!, force = true)
+
+    if value_column_width === automatic
+        maxwidth = 0.0
+        initial_value = slider.value[]
+        a = first(slider.range[])
+        b = last(slider.range[])
+        for frac in (0.0, 0.5, 1.0)
+            fracvalue = a + frac * (b - a)
+            set_close_to!(slider, fracvalue)
+            labelwidth = GridLayoutBase.computedbboxobservable(valuelabel)[].widths[1]
+            maxwidth = max(maxwidth, labelwidth)
+        end
+        set_close_to!(slider, initial_value)
+        colsize!(layout, 3, maxwidth)
+    else
+        colsize!(layout, 3, value_column_width)
+    end
+
     (slider = slider, label = label, valuelabel = valuelabel, layout = layout)
 end
 
 
 """
     labelslidergrid!(scene, labels, ranges; formats = [string],
-        sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), layoutkw...)
+        sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(),
+        value_column_width = automatic, layoutkw...)
+
+**`labelslidergrid!` is deprecated, use `SliderGrid` instead**
 
 Construct a GridLayout with a column of label, a column of sliders and a column of value labels in `scene`.
 The argument values are broadcast, so you can use scalars if you want to keep labels, ranges or formats constant across rows.
@@ -367,10 +360,12 @@ Returns a `NamedTuple`:
 
 `(sliders = sliders, labels = labels, valuelabels = valuelabels, layout = layout)`
 
-Specify format functions for the value labels with the `formats` keyword.
+Specify format functions for the value labels with the `formats` keyword or pass format strings used by `Formatting.format`.
 The sliders are forwarded the keywords from `sliderkw`.
 The labels are forwarded the keywords from `labelkw`.
 The value labels are forwarded the keywords from `valuekw`.
+You can set the column width for the value label column with the keyword `value_column_width`.
+By default, the width is determined heuristically by sampling a few values from the slider ranges.
 All other keywords are forwarded to the `GridLayout`.
 
 Example:
@@ -380,13 +375,15 @@ ls = labelslidergrid!(scene, ["Voltage", "Ampere"], Ref(0:0.1:100); format = x -
 layout[1, 1] = ls.layout
 ```
 """
-function labelslidergrid!(scene, labels, ranges; formats = [string],
+function labelslidergrid!(scene, labels, ranges; formats = [string], value_column_width = automatic,
         sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), layoutkw...)
+
+    Base.depwarn("labelslidergrid! is deprecated and will be removed in the future. Use SliderGrid instead." , :labelslidergrid!, force = true)
 
     elements = broadcast(labels, ranges, formats) do label, range, format
         slider = Slider(scene; range = range, sliderkw...)
         label = Label(scene, label; halign = :left, labelkw...)
-        valuelabel = Label(scene, lift(format, slider.value); halign = :right, valuekw...)
+        valuelabel = Label(scene, lift(x -> apply_format(x, format), slider.value); halign = :right, valuekw...)
         (; slider = slider, label = label, valuelabel = valuelabel)
     end
 
@@ -396,132 +393,41 @@ function labelslidergrid!(scene, labels, ranges; formats = [string],
 
     layout = grid!(hcat(labels, sliders, valuelabels); layoutkw...)
 
+    # This is a bit of a hacky way to determine a good column width for the value labels.
+    # We set each slider to the first, middle and last value, record the width of the
+    # value label, and then choose the maximum overall value so that hopefully each possible
+    # value fits. This can of course go wrong in many scenarios depending on the slider ranges
+    # and formatters that can be used, but it's better than nothing or constant jitter.
+    if value_column_width === automatic
+        maxwidth = 0.0
+        for e in elements
+            initial_value = e.slider.value[]
+            a = first(e.slider.range[])
+            b = last(e.slider.range[])
+            for frac in (0.0, 0.5, 1.0)
+                fracvalue = a + frac * (b - a)
+                set_close_to!(e.slider, fracvalue)
+                labelwidth = GridLayoutBase.computedbboxobservable(e.valuelabel)[].widths[1]
+                maxwidth = max(maxwidth, labelwidth)
+            end
+            set_close_to!(e.slider, initial_value)
+        end
+        colsize!(layout, 3, maxwidth)
+    else
+        colsize!(layout, 3, value_column_width)
+    end
+
     (sliders = sliders, labels = labels, valuelabels = valuelabels, layout = layout)
 end
 
-
-
-# helper function to create either h or vlines depending on `direction`
-# this works only with Axes because it needs to react to limit changes
-function hvlines!(ax::Axis, direction::Int, datavals, axmins, axmaxs; attributes...)
-
-    datavals, axmins, axmaxs = map(x -> x isa Observable ? x : Observable(x), (datavals, axmins, axmaxs))
-
-    linesegs = lift(ax.finallimits, ax.scene.px_area, datavals, axmins, axmaxs) do lims, pxa,
-            datavals, axmins, axmaxs
-
-        xlims = (minimum(lims)[direction], maximum(lims)[direction])
-        xfrac(f) = xlims[1] + f * (xlims[2] - xlims[1])
-        segs = broadcast(datavals, axmins, axmaxs) do dataval, axmin, axmax
-            if direction == 1
-                (Point2f(xfrac(axmin), dataval), Point2f(xfrac(axmax), dataval))
-            elseif direction == 2
-                (Point2f(dataval, xfrac(axmin)), Point2f(dataval, xfrac(axmax)))
-            else
-                error("direction must be 1 or 2")
-            end
-        end
-        # handle case that none of the inputs is an array, but we need an array for linesegments!
-        if segs isa Tuple
-            segs = [segs]
-        end
-        segs
-    end
-
-    linesegments!(ax, linesegs; xautolimits = direction == 2, yautolimits = direction == 1, attributes...)
+function apply_format(value, format)
+    format(value)
 end
 
-"""
-    hlines!(ax::Axis, ys; xmin = 0.0, xmax = 1.0, attrs...)
-
-Create horizontal lines across `ax` at `ys` in data coordinates and `xmin` to `xmax`
-in axis coordinates (0 to 1). All three of these can have single or multiple values because
-they are broadcast to calculate the final line segments.
-"""
-hlines!(ax::Axis, ys; xmin = 0.0, xmax = 1.0, attrs...) =
-    hvlines!(ax, 1, ys, xmin, xmax; attrs...)
-
-"""
-    vlines!(ax::Axis, xs; ymin = 0.0, ymax = 1.0, attrs...)
-
-Create vertical lines across `ax` at `xs` in data coordinates and `ymin` to `ymax`
-in axis coordinates (0 to 1). All three of these can have single or multiple values because
-they are broadcast to calculate the final line segments.
-"""
-vlines!(ax::Axis, xs; ymin = 0.0, ymax = 1.0, attrs...) =
-    hvlines!(ax, 2, xs, ymin, ymax; attrs...)
-
-"""
-    abline!(axis::Axis, a::Number, b::Number; line_kw_args...)
-Adds a line defined by `f(x) = x * b + a` to the axis.
-kwargs are the same as for a `line` plot and are passed directly to the line attributess.
-"""
-function abline!(axis::Axis, a::Number, b::Number; kwargs...)
-    f(x) = x * b + a
-    line = map(axis.finallimits) do limits
-        xmin, xmax = first.(extrema(limits))
-        return [Point2f(xmin, f(xmin)), Point2f(xmax, f(xmax))]
-    end
-    return linesegments!(axis, line; xautolimits=false, yautolimits=false, kwargs...)
+function apply_format(value, formatstring::String)
+    Formatting.format(formatstring, value)
 end
 
-
-
-# helper function to create either h or vspans depending on `direction`
-# this works only with Axes because it needs to react to limit changes
-function hvspan!(ax::Axis, direction::Int, datavals_low, datavals_high,
-        axmins, axmaxs; attributes...)
-
-    datavals_low, datavals_high, axmins, axmaxs = map(x -> x isa Observable ? x : Observable(x), (datavals_low, datavals_high, axmins, axmaxs))
-
-    rects = lift(ax.finallimits, ax.scene.px_area, datavals_low, datavals_high,
-        axmins, axmaxs) do lims, pxa,
-            datavals_low, datavals_high, axmins, axmaxs
-
-        xlims = (minimum(lims)[direction], maximum(lims)[direction])
-        xfrac(f) = xlims[1] + f * (xlims[2] - xlims[1])
-        rects = broadcast(datavals_low, datavals_high,
-                axmins, axmaxs) do dataval_low, dataval_high, axmin, axmax
-
-            if direction ∉ (1, 2)
-                error("direction must be 1 or 2")
-            end
-
-            p1 = direction == 1 ? Point2f(xfrac(axmin), dataval_low) : Point2f(dataval_low, xfrac(axmin))
-            p2 = direction == 1 ? Point2f(xfrac(axmax), dataval_high) : Point2f(dataval_high, xfrac(axmax))
-
-            widths = p2 - p1
-            Rect2f(p1, widths)
-        end
-        # handle case that none of the inputs is an array, but we need an array for linesegments!
-        if rects isa Tuple
-            rects = [rects]
-        end
-        rects
-    end
-
-    poly!(ax, rects; xautolimits = direction == 2, yautolimits = direction == 1, attributes...)
-end
-
-
-"""
-    hspan!(ax::Axis, y_lows, y_highs; xmin = 0.0, xmax = 1.0, attrs...)
-
-Create horizontal spans across `ax` from `y_lows` to `y_highs` in data coordinates
-and `xmin` to `xmax` in axis coordinates (0 to 1 by default).
-All four of these can have single or multiple values because
-they are broadcast to calculate the final spans.
-"""
-hspan!(ax::Axis, y_lows, y_highs; xmin = 0.0, xmax = 1.0, attrs...) =
-    hvspan!(ax, 1, y_lows, y_highs, xmin, xmax; attrs...)
-
-"""
-    vspan!(ax::Axis, x_lows, x_highs; ymin = 0.0, ymax = 1.0, attrs...)
-
-Create vertical spans across `ax` from `x_lows` to `x_highs` in data coordinates
-and `ymin` to `ymax` in axis coordinates (0 to 1 by default).
-All four of these can have single or multiple values because
-they are broadcast to calculate the final spans.
-"""
-vspan!(ax::Axis, x_lows, x_highs; ymin = 0.0, ymax = 1.0, attrs...) =
-    hvspan!(ax, 2, x_lows, x_highs, ymin, ymax; attrs...)
+Makie.get_scene(ax::Axis) = ax.scene
+Makie.get_scene(ax::Axis3) = ax.scene
+Makie.get_scene(ax::LScene) = ax.scene

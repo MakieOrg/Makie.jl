@@ -1,5 +1,5 @@
 #=
-S. Axen implementation from https://github.com/JuliaPlots/StatsMakie.jl/blob/master/src/recipes/crossbar.jl#L22
+S. Axen implementation from https://github.com/MakieOrg/StatsMakie.jl/blob/master/src/recipes/crossbar.jl#L22
 The StatMakie.jl package is licensed under the MIT "Expat" License:
     Copyright (c) 2018: Pietro Vertechi. =#
 """
@@ -13,7 +13,8 @@ It is most commonly used as part of the `boxplot`.
 - `ymax`: upper limit of the box
 # Keywords
 - `orientation=:vertical`: orientation of box (`:vertical` or `:horizontal`)
-- `width=0.8`: width of the box
+- `width=1`: width of the box before shrinking
+- `gap=0.2`: shrinking factor, `width -> width * (1 - gap)`
 - `show_notch=false`: draw the notch
 - `notchmin=automatic`: lower limit of the notch
 - `notchmax=automatic`: upper limit of the notch
@@ -30,7 +31,7 @@ It is most commonly used as part of the `boxplot`.
     width = automatic,
     dodge = automatic,
     n_dodge = automatic,
-    x_gap = 0.2,
+    gap = 0.2,
     dodge_gap = 0.03,
     strokecolor = theme(scene, :patchstrokecolor),
     strokewidth = theme(scene, :patchstrokewidth),
@@ -50,7 +51,7 @@ It is most commonly used as part of the `boxplot`.
 end
 
 function Makie.plot!(plot::CrossBar)
-    args = @extract plot (width, dodge, n_dodge, x_gap, dodge_gap, show_notch, notchmin, notchmax, notchwidth, orientation)
+    args = @extract plot (width, dodge, n_dodge, gap, dodge_gap, show_notch, notchmin, notchmax, notchwidth, orientation)
 
     signals = lift(
         plot[1],
@@ -58,14 +59,14 @@ function Makie.plot!(plot::CrossBar)
         plot[3],
         plot[4],
         args...,
-    ) do x, y, ymin, ymax, width, dodge, n_dodge, x_gap, dodge_gap, show_notch, nmin, nmax, nw, orientation
-        x̂, boxwidth = xw_from_dodge(x, width, 1.0, x_gap, dodge, n_dodge, dodge_gap)
+    ) do x, y, ymin, ymax, width, dodge, n_dodge, gap, dodge_gap, show_notch, nmin, nmax, nw, orientation
+        x̂, boxwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
         show_notch = show_notch && (nmin !== automatic && nmax !== automatic)
 
         # for horizontal crossbars just flip all components
         fpoint, frect = Point2f, Rectf
-        if orientation == :horizontal
-            fpoint, frect = _flip_xy ∘ fpoint, _flip_xy ∘ frect
+        if orientation === :horizontal
+            fpoint, frect = flip_xy ∘ fpoint, flip_xy ∘ frect
         end
 
         # make the shape
@@ -87,7 +88,9 @@ function Makie.plot!(plot::CrossBar)
                 fpoint.(l, ymax),
                 fpoint.(l, nmax),
                 fpoint.(m .- nw .* hw, y), # notch left
-                fpoint.(l, nmin),)))
+                fpoint.(l, nmin),
+                fpoint.(l, ymin)
+               )))
             boxes = if points isa AbstractVector{<: Point} # poly
                 [GeometryBasics.triangle_mesh(points)]
             else # multiple polys (Vector{Vector{<:Point}})

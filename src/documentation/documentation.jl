@@ -32,7 +32,7 @@ function _help(io::IO, input::Type{T}; extended = false) where T <: AbstractPlot
     str = to_string(input)
 
     # Print docstrings
-    println(io, Base.Docs.doc(func))
+    println(io, Base.doc(func))
 
     # Arguments
     help_arguments(io, func)
@@ -218,7 +218,7 @@ function print_rec(io::IO, dict, indent::Int = 1; extended = false)
             print(io, ": ")
             println(io)
             print_rec(io, v.attributes, indent + 1; extended = extended)
-        elseif isa(v, Node)
+        elseif isa(v, Observable)
             if extended
                 print(io, ": ")
                 println(io, isnothing(to_value(v)) ? "nothing" : to_value(v))

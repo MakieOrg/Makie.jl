@@ -16,17 +16,17 @@ include("interaction/iodevices.jl")
 
 
 """
-This struct provides accessible `PriorityObservable`s to monitor the events
+This struct provides accessible `Observable`s to monitor the events
 associated with a Scene.
 
-Functions that act on a `PriorityObservable` must return `Consume()` if the function
+Functions that act on a `Observable` must return `Consume()` if the function
 consumes an event. When an event is consumed it does
 not trigger other observer functions. The order in which functions are exectued
 can be controlled via the `priority` keyword (default 0) in `on`.
 
 Example:
 ```
-on(events(scene).mousebutton, priority = Int8(20)) do event
+on(events(scene).mousebutton, priority = 20) do event
     if is_correct_event(event)
         do_something()
         return Consume()
@@ -42,15 +42,15 @@ struct Events
     """
     The area of the window in pixels, as a `Rect2`.
     """
-    window_area::PriorityObservable{Rect2i}
+    window_area::Observable{Rect2i}
     """
     The DPI resolution of the window, as a `Float64`.
     """
-    window_dpi::PriorityObservable{Float64}
+    window_dpi::Observable{Float64}
     """
     The state of the window (open => true, closed => false).
     """
-    window_open::PriorityObservable{Bool}
+    window_open::Observable{Bool}
 
     """
     Most recently triggered `MouseButtonEvent`. Contains the relevant
@@ -58,7 +58,7 @@ struct Events
 
     See also [`ispressed`](@ref).
     """
-    mousebutton::PriorityObservable{MouseButtonEvent}
+    mousebutton::Observable{MouseButtonEvent}
     """
     A Set of all currently pressed mousebuttons.
     """
@@ -67,11 +67,11 @@ struct Events
     The position of the mouse as a `NTuple{2, Float64}`.
     Updates once per event poll/frame.
     """
-    mouseposition::PriorityObservable{NTuple{2, Float64}} # why no Vec2?
+    mouseposition::Observable{NTuple{2, Float64}} # why no Vec2?
     """
     The direction of scroll
     """
-    scroll::PriorityObservable{NTuple{2, Float64}} # why no Vec2?
+    scroll::Observable{NTuple{2, Float64}} # why no Vec2?
 
     """
     Most recently triggered `KeyEvent`. Contains the relevant `event.key` and
@@ -79,7 +79,7 @@ struct Events
 
     See also [`ispressed`](@ref).
     """
-    keyboardbutton::PriorityObservable{KeyEvent}
+    keyboardbutton::Observable{KeyEvent}
     """
     Contains all currently pressed keys.
     """
@@ -88,26 +88,57 @@ struct Events
     """
     Contains the last typed character.
     """
-    unicode_input::PriorityObservable{Char}
+    unicode_input::Observable{Char}
     """
     Contains a list of filepaths to files dragged into the scene.
     """
-    dropped_files::PriorityObservable{Vector{String}}
+    dropped_files::Observable{Vector{String}}
     """
     Whether the Scene window is in focus or not.
     """
-    hasfocus::PriorityObservable{Bool}
+    hasfocus::Observable{Bool}
     """
     Whether the mouse is inside the window or not.
     """
-    entered_window::PriorityObservable{Bool}
+    entered_window::Observable{Bool}
+end
+
+function Base.show(io::IO, events::Events)
+    println(io, "Events:")
+    fields = propertynames(events)
+    maxlen = maximum(length ∘ string, fields)
+    for field in propertynames(events)
+        pad = maxlen - length(string(field)) + 1
+        println(io, "  $field:", " "^pad, to_value(getproperty(events, field)))
+    end
 end
 
 function Events()
-    mousebutton = PriorityObservable(MouseButtonEvent(Mouse.none, Mouse.release))
-    mousebuttonstate = Set{Mouse.Button}()
-    on(mousebutton, priority = typemax(Int8)) do event
-        set = mousebuttonstate
+    events = Events(
+        Observable(Recti(0, 0, 0, 0)),
+        Observable(100.0),
+        Observable(false),
+
+        Observable(MouseButtonEvent(Mouse.none, Mouse.release)),
+        Set{Mouse.Button}(),
+        Observable((0.0, 0.0)),
+        Observable((0.0, 0.0)),
+
+        Observable(KeyEvent(Keyboard.unknown, Keyboard.release)),
+        Set{Keyboard.Button}(),
+        Observable('\0'),
+        Observable(String[]),
+        Observable(false),
+        Observable(false),
+    )
+
+    connect_states!(events)
+    return events
+end
+
+function connect_states!(e::Events)
+    on(e.mousebutton, priority = typemax(Int)) do event
+        set = e.mousebuttonstate
         if event.action == Mouse.press
             push!(set, event.button)
         elseif event.action == Mouse.release
@@ -119,10 +150,8 @@ function Events()
         return Consume(false)
     end
 
-    keyboardbutton = PriorityObservable(KeyEvent(Keyboard.unknown, Keyboard.release))
-    keyboardstate = Set{Keyboard.Button}()
-    on(keyboardbutton, priority = typemax(Int8)) do event
-        set = keyboardstate
+    on(e.keyboardbutton, priority = typemax(Int)) do event
+        set = e.keyboardstate
         if event.key != Keyboard.unknown
             if event.action == Keyboard.press
                 push!(set, event.key)
@@ -137,105 +166,76 @@ function Events()
         # This never consumes because it just keeps track of the state
         return Consume(false)
     end
-
-    return Events(
-        PriorityObservable(Recti(0, 0, 0, 0)),
-        PriorityObservable(100.0),
-        PriorityObservable(false),
-
-        mousebutton, mousebuttonstate,
-        PriorityObservable((0.0, 0.0)),
-        PriorityObservable((0.0, 0.0)),
-
-        keyboardbutton, keyboardstate,
-
-        PriorityObservable('\0'),
-        PriorityObservable(String[]),
-        PriorityObservable(false),
-        PriorityObservable(false),
-    )
+    return
 end
 
 # Compat only
 function Base.getproperty(e::Events, field::Symbol)
-    if field == :mousebuttons
-        try
-            error()
-        catch ex
-            bt = catch_backtrace()
-            @warn(
-                "`events.mousebuttons` is deprecated. Use `events.mousebutton` to " *
-                "react to `MouseButtonEvent`s instead and ``."
-            )
-            Base.show_backtrace(stderr, bt)
-            println(stderr)
-        end
-        mousebuttons = Node(Set{Mouse.Button}())
-        on(getfield(e, :mousebutton), priority=typemax(Int8)-1) do event
-            mousebuttons[] = getfield(e, :mousebuttonstate)
-            return Consume(false)
-        end
-        return mousebuttons
-    elseif field == :keyboardbuttons
-        try
-            error()
-        catch ex
-            bt = catch_backtrace()
-            @warn(
-                "`events.keyboardbuttons` is deprecated. Use " *
-                "`events.keyboardbutton` to react to `KeyEvent`s instead."
-            )
-            Base.show_backtrace(stderr, bt)
-            println(stderr)
-        end
-        keyboardbuttons = Node(Set{Keyboard.Button}())
-        on(getfield(e, :keyboardbutton), priority=typemax(Int8)-1) do event
-            keyboardbuttons[] = getfield(e, :keyboardstate)
-            return Consume(false)
-        end
-        return keyboardbuttons
-    elseif field == :mousedrag
-        try
-            error()
-        catch ex
-            bt = catch_backtrace()
-            @warn(
-                "`events.mousedrag` is deprecated. Use `events.mousebutton` or a " *
-                "mouse state machine (`addmouseevents!`) instead."
-            )
-            Base.show_backtrace(stderr, bt)
-            println(stderr)
-        end
-        mousedrag = Node(Mouse.notpressed)
-        on(getfield(e, :mousebutton), priority=typemax(Int8)-1) do event
-            if (event.action == Mouse.press) && (length(e.mousebuttonstate) == 1)
-                mousedrag[] = Mouse.down
-            elseif mousedrag[] in (Mouse.down, Mouse.pressed)
-                mousedrag[] = Mouse.up
-            end
-            return Consume(false)
-        end
-        on(getfield(e, :mouseposition), priority=typemax(Int8)-1) do pos
-            if mousedrag[] in (Mouse.down, Mouse.pressed)
-                mousedrag[] = Mouse.pressed
-            elseif mousedrag[] == Mouse.up
-                mousedrag[] = Mouse.notpressed
-            end
-            return Consume(false)
-        end
-        return mousedrag
+    if field === :mousebuttons
+        error("`events.mousebuttons` is deprecated. Use `events.mousebutton` to react to `MouseButtonEvent`s instead.")
+    elseif field === :keyboardbuttons
+        error("`events.keyboardbuttons` is deprecated. Use `events.keyboardbutton` to react to `KeyEvent`s instead.")
+    elseif field === :mousedrag
+        error("`events.mousedrag` is deprecated. Use `events.mousebutton` or a mouse state machine (`addmouseevents!`) instead.")
     else
-        getfield(e, field)
+        return getfield(e, field)
     end
 end
 
-mutable struct Camera
-    pixel_space::Node{Mat4f}
-    view::Node{Mat4f}
-    projection::Node{Mat4f}
-    projectionview::Node{Mat4f}
-    resolution::Node{Vec2f}
-    eyeposition::Node{Vec3f}
+function Base.empty!(events::Events)
+    for field in fieldnames(Events)
+        field in (:mousebuttonstate, :keyboardstate) && continue
+        obs = getfield(events, field)
+        for (prio, f) in obs.listeners
+            prio == typemax(Int) && continue
+            off(obs, f)
+        end
+    end
+    return
+end
+
+
+"""
+    Camera(pixel_area)
+
+Struct to hold all relevant matrices and additional parameters, to let backends
+apply camera based transformations.
+"""
+struct Camera
+    """
+    projection used to convert pixel to device units
+    """
+    pixel_space::Observable{Mat4f}
+
+    """
+    View matrix is usually used to rotate, scale and translate the scene
+    """
+    view::Observable{Mat4f}
+
+    """
+    Projection matrix is used for any perspective transformation
+    """
+    projection::Observable{Mat4f}
+
+    """
+    just projection * view
+    """
+    projectionview::Observable{Mat4f}
+
+    """
+    resolution of the canvas this camera draws to
+    """
+    resolution::Observable{Vec2f}
+
+    """
+    Eye position of the camera, sued for e.g. ray tracing.
+    """
+    eyeposition::Observable{Vec3f}
+
+    """
+    To make camera interactive, steering observables are connected to the different matrices.
+    We need to keep track of them, so, that we can connect and disconnect them.
+    """
     steering_nodes::Vector{ObserverFunction}
 end
 
@@ -245,19 +245,17 @@ Holds the transformations for Scenes.
 $(TYPEDFIELDS)
 """
 struct Transformation <: Transformable
-    parent::RefValue{Transformable}
-    translation::Node{Vec3f}
-    scale::Node{Vec3f}
-    rotation::Node{Quaternionf}
-    model::Node{Mat4f}
-    flip::Node{NTuple{3, Bool}}
-    align::Node{Vec2f}
-    # data conversion node, for e.g. log / log10 etc
-    transform_func::Node{Any}
-    function Transformation(translation, scale, rotation, model, flip, align, transform_func)
+    parent::RefValue{Transformation}
+    translation::Observable{Vec3f}
+    scale::Observable{Vec3f}
+    rotation::Observable{Quaternionf}
+    model::Observable{Mat4f}
+    # data conversion observable, for e.g. log / log10 etc
+    transform_func::Observable{Any}
+    function Transformation(translation, scale, rotation, model, transform_func)
         return new(
-            RefValue{Transformable}(),
-            translation, scale, rotation, model, flip, align, transform_func
+            RefValue{Transformation}(),
+            translation, scale, rotation, model, transform_func
         )
     end
 end
@@ -308,15 +306,49 @@ function collect_vector(sv::ScalarOrVector, n::Int)
 end
 
 """
+    GlyphExtent
+
+Store information about the bounding box of a single glyph.
+"""
+struct GlyphExtent
+    ink_bounding_box::Rect2f
+    ascender::Float32
+    descender::Float32
+    hadvance::Float32
+end
+
+function GlyphExtent(font, char)
+    extent = get_extent(font, char)
+    ink_bb = FreeTypeAbstraction.inkboundingbox(extent)
+    ascender = FreeTypeAbstraction.ascender(font)
+    descender = FreeTypeAbstraction.descender(font)
+    hadvance = FreeTypeAbstraction.hadvance(extent)
+
+    return GlyphExtent(ink_bb, ascender, descender, hadvance)
+end
+
+function GlyphExtent(texchar::TeXChar)
+    l = MathTeXEngine.leftinkbound(texchar)
+    r = MathTeXEngine.rightinkbound(texchar)
+    b = MathTeXEngine.bottominkbound(texchar)
+    t = MathTeXEngine.topinkbound(texchar)
+    ascender = MathTeXEngine.ascender(texchar)
+    descender = MathTeXEngine.descender(texchar)
+    hadvance = MathTeXEngine.hadvance(texchar)
+
+    return GlyphExtent(Rect2f((l, b), (r - l, t - b)), ascender, descender, hadvance)
+end
+
+"""
     GlyphCollection
 
 Stores information about the glyphs in a string that had a layout calculated for them.
 """
 struct GlyphCollection
-    glyphs::Vector{Char}
+    glyphs::Vector{UInt64}
     fonts::Vector{FTFont}
     origins::Vector{Point3f}
-    extents::Vector{FreeTypeAbstraction.FontExtent{Float32}}
+    extents::Vector{GlyphExtent}
     scales::ScalarOrVector{Vec2f}
     rotations::ScalarOrVector{Quaternionf}
     colors::ScalarOrVector{RGBAf}
@@ -327,11 +359,11 @@ struct GlyphCollection
             colors, strokecolors, strokewidths)
 
         n = length(glyphs)
-        @assert length(fonts)  == n
-        @assert length(origins)  == n
-        @assert length(extents)  == n
+        @assert length(fonts) == n
+        @assert length(origins) == n
+        @assert length(extents) == n
         @assert attr_broadcast_length(scales) in (n, 1)
-        @assert attr_broadcast_length(rotations)  in (n, 1)
+        @assert attr_broadcast_length(rotations) in (n, 1)
         @assert attr_broadcast_length(colors) in (n, 1)
 
         rotations = convert_attribute(rotations, key"rotation"())
@@ -342,3 +374,7 @@ struct GlyphCollection
         new(glyphs, fonts, origins, extents, scales, rotations, colors, strokecolors, strokewidths)
     end
 end
+
+
+# The color type we ideally use for most color attributes
+const RGBColors = Union{RGBAf, Vector{RGBAf}, Vector{Float32}}

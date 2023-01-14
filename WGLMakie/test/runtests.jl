@@ -1,15 +1,26 @@
-using ElectronDisplay
-ElectronDisplay.CONFIG.showable = showable
-ElectronDisplay.CONFIG.single_window = true
-ElectronDisplay.CONFIG.focus = false
 using ImageMagick, FileIO
 using WGLMakie, Makie, Test
 using Pkg
+using WGLMakie.JSServe
+import Electron
+JSServe.use_electron_display()
+
 path = normpath(joinpath(dirname(pathof(Makie)), "..", "ReferenceTests"))
 Pkg.develop(PackageSpec(path = path))
-
 using ReferenceTests
-using ReferenceTests: database_filtered
+
+@testset "mimes" begin
+    f, ax, pl = scatter(1:4)
+    @testset for mime in WGLMakie.WEB_MIMES
+        @test showable(mime(), f)
+    end
+    # I guess we explicitely don't say we can show those since it's highly Inefficient compared to html
+    # See: https://github.com/MakieOrg/Makie.jl/blob/master/WGLMakie/src/display.jl#L66-L68=
+    @test !showable("image/png", f)
+    @test !showable("image/jpeg", f)
+    # see https://github.com/MakieOrg/Makie.jl/pull/2167
+    @test !showable("blaaa", f)
+end
 
 excludes = Set([
     "Streamplot animation",
@@ -32,13 +43,22 @@ excludes = Set([
     "UnicodeMarker",
     # Not sure, looks pretty similar to me! Maybe blend mode?
     "Test heatmap + image overlap",
-    "Stars",
     "heatmaps & surface",
-    "OldAxis + Surface"
+    "OldAxis + Surface",
+    "Order Independent Transparency",
+    "Record Video",
+    "fast pixel marker",
+    "Animated surface and wireframe",
+    "Array of Images Scatter",
+    "Image Scatter different sizes",
+    "scatter with stroke",
+    "scatter with glow"
 ])
-excludes2 = Set(["short_tests_83", "short_tests_78", "short_tests_40", "short_tests_13", "short_tests_5", "short_tests_41"])
-database = database_filtered(excludes, excludes2)
 
-recorded = joinpath(@__DIR__, "recorded")
-rm(recorded; force=true, recursive=true); mkdir(recorded)
-ReferenceTests.run_reference_tests(database, recorded; difference=0.06)
+@testset "refimages" begin
+    WGLMakie.activate!()
+    ReferenceTests.mark_broken_tests(excludes)
+    recorded_files, recording_dir = @include_reference_tests "refimages.jl"
+    missing_images, scores = ReferenceTests.record_comparison(recording_dir)
+    ReferenceTests.test_comparison(scores; threshold = 0.032)
+end

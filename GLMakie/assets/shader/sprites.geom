@@ -38,6 +38,7 @@ uniform float stroke_width;
 uniform float glow_width;
 uniform int shape; // for RECTANGLE hack below
 uniform vec2 resolution;
+uniform float depth_shift;
 
 in int g_primitive_index[];
 in vec4 g_uv_texture_bbox[];
@@ -60,8 +61,7 @@ flat out uvec2 f_id;
 out vec2 f_uv;
 flat out vec4 f_uv_texture_bbox;
 
-uniform bool use_pixel_marker;
-uniform mat4 projection, view, model, pixel_space;
+uniform mat4 projection, view, model;
 
 float get_distancefield_scale(sampler2D distancefield){
     // Glyph distance field units are in pixels; convert to dimensionless
@@ -79,6 +79,7 @@ float get_distancefield_scale(Nothing distancefield){
 void emit_vertex(vec4 vertex, vec2 uv)
 {
     gl_Position       = vertex;
+    gl_Position.z     += gl_Position.w * depth_shift;
     f_uv              = uv;
     f_uv_texture_bbox = g_uv_texture_bbox[0];
     f_primitive_index = g_primitive_index[0];
@@ -95,12 +96,12 @@ mat2 diagm(vec2 v){
     return mat2(v.x, 0.0, 0.0, v.y);
 }
 
-out vec4 o_view_pos;
+out vec3 o_view_pos;
 out vec3 o_normal;
 
 void main(void)
 {
-    o_view_pos = vec4(0);
+    o_view_pos = vec3(0);
     o_normal = vec3(0);
 
     // emit quad as triangle strip
@@ -118,11 +119,10 @@ void main(void)
     mat4 pview = projection * view;
     // Compute transform for the offset vectors from the central point
     mat4 trans = scale_primitive ? model : mat4(1.0);
-    mat4 billtrans = use_pixel_marker ? pixel_space : projection;
-    trans = (billboard ? billtrans : pview) * qmat(g_rotation[0]) * trans;
+    trans = (billboard ? projection : pview) * qmat(g_rotation[0]) * trans;
 
     // Compute centre of billboard in clipping coordinates
-    vec4 vclip = pview*model*vec4(g_position[0],1) + trans*vec4(sprite_bbox_centre,0,0);
+    vec4 vclip = pview*vec4(g_position[0],1) + trans*vec4(sprite_bbox_centre,0,0);
 
     // Extra buffering is required around sprites which are antialiased so that
     // the antialias blur doesn't get cut off (see #15). This blur falls to

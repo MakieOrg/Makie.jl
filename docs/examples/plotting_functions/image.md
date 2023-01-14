@@ -2,13 +2,13 @@
 
 {{doc image}}
 
-### Examples
+## Examples
 
 \begin{examplefigure}{}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 using FileIO
 
 img = load(assetpath("cow.png"))

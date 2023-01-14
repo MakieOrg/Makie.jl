@@ -2,13 +2,13 @@
 
 {{doc meshscatter}}
 
-### Examples
+## Examples
 
 \begin{examplefigure}{}
 ```julia
 using GLMakie
 GLMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 xs = cos.(1:0.5:20)
 ys = sin.(1:0.5:20)

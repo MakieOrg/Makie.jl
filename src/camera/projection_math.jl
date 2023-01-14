@@ -147,7 +147,8 @@ function lookat(::Type{T}, eyePos::Vec{3}, lookAt::Vec{3}, up::Vec{3}) where T
 end
 
 function orthographicprojection(wh::Rect2, near::T, far::T) where T
-    orthographicprojection(zero(T), T(wh.w), zero(T), T(wh.h), near, far)
+    w, h = widths(wh)
+    orthographicprojection(zero(T), T(w), zero(T), T(h), near, far)
 end
 
 function orthographicprojection(
@@ -157,9 +158,9 @@ function orthographicprojection(
 end
 
 function orthographicprojection(
-        left  ::T, right::T,
-        bottom::T, top  ::T,
-        znear ::T, zfar ::T
+        left::T, right::T,
+        bottom::T, top::T,
+        znear::T, zfar::T
     ) where T
     (right==left || bottom==top || znear==zfar) && return Mat{4,4,T}(I)
     T0, T1, T2 = zero(T), one(T), T(2)
@@ -197,7 +198,6 @@ GeometryBasics.origin(p::Pivot) = p.origin
 
 rotationmatrix4(q::Quaternion{T}) where {T} = Mat4{T}(q)
 
-
 function transformationmatrix(p::Pivot)
     translationmatrix(p.origin) * #go to origin
     rotationmatrix4(p.rotation) * #apply rotation
@@ -208,11 +208,11 @@ end
 function transformationmatrix(translation, scale)
     T = eltype(translation)
     T0, T1 = zero(T), one(T)
-    Mat{4}(
+    return Mat{4}(
         scale[1],T0,  T0,  T0,
         T0,  scale[2],T0,  T0,
         T0,  T0,  scale[3],T0,
-        translation[1],translation[2],translation[3], T1
+        translation[1], translation[2], translation[3], T1
     )
 end
 
@@ -220,41 +220,6 @@ function transformationmatrix(translation, scale, rotation::Quaternion)
     trans_scale = transformationmatrix(translation, scale)
     rotation = Mat4f(rotation)
     trans_scale*rotation
-end
-
-function transformationmatrix(
-        translation::Vec{3}, scale::Vec{3}, rotation::Quaternion,
-        align, flip::NTuple{3, Bool}, boundingbox::Nothing
-    )
-    return transformationmatrix(translation, scale, rotation)
-end
-
-function transformationmatrix(
-        translation::Vec{3}, scale::Vec{3}, rotation::Quaternion,
-        align, flip::NTuple{3, Bool}, boundingbox::Rect3
-    )
-    full_width = widths(boundingbox)
-    mini = minimum(boundingbox)
-    half_width = full_width ./ 2
-    to_origin = (half_width + mini)
-    if isnan(to_origin)
-        to_origin = Vec3f(0)
-    end
-    align_middle = translationmatrix(-to_origin)
-    align_back = translationmatrix(to_origin)
-    flipsign = map(x-> ifelse(x, -1f0, 1f0), Vec{3}(flip))
-    flipped = align_back * scalematrix(flipsign) * align_middle
-    aligned = flipped #translationmatrix(align .* full_width) * flipped
-    trans_scale = transformationmatrix(translation, scale)
-    rotation = Mat4f(rotation)
-    aligned * trans_scale * rotation
-end
-
-function transformationmatrix(
-        translation, scale, _rotation::Vec{3,T}, up = Vec{3,T}(0,0,1)
-    ) where T
-    q = rotation(_rotation, up)
-    transformationmatrix(translation, scale, q)
 end
 
 #Calculate rotation between two vectors
@@ -273,8 +238,6 @@ function rotation(u::Vec{3, T}, v::Vec{3, T}) where T
     return Quaternion(cross(u, half)..., dot(u, half))
 end
 
-
-
 function to_world(scene::Scene, point::T) where T <: StaticVector
     cam = scene.camera
     x = to_world(
@@ -289,6 +252,7 @@ end
 
 w_component(x::Point) = 1.0
 w_component(x::Vec) = 0.0
+
 function to_world(
         p::StaticVector{N, T},
         prj_view_inv::Mat4,
@@ -316,11 +280,14 @@ end
 
 function project(scene::Scene, point::T) where T<:StaticVector
     cam = scene.camera
-    project(
-        cam.projection[] *
-        cam.view[] *
+    area = pixelarea(scene)[]
+    # TODO, I think we need  .+ minimum(area)
+    # Which would be semi breaking at this point though, I suppose
+    return project(
+        cam.projectionview[] *
         transformationmatrix(scene)[],
-        Vec2f(widths(pixelarea(scene)[])), point
+        Vec2f(widths(area)),
+        Point(point)
     )
 end
 
@@ -333,9 +300,9 @@ end
 function project(proj_view::Mat4f, resolution::Vec2, point::Point)
     p4d = to_ndim(Vec4f, to_ndim(Vec3f, point, 0f0), 1f0)
     clip = proj_view * p4d
-    p = (clip / clip[4])[Vec(1, 2)]
+    p = (clip ./ clip[4])[Vec(1, 2)]
     p = Vec2f(p[1], p[2])
-    return (((p .+ 1f0) / 2f0) .* (resolution .- 1f0)) .+ 1f0
+    return (((p .+ 1f0) ./ 2f0) .* (resolution .- 1f0)) .+ 1f0
 end
 
 function project_point2(mat4::Mat4, point2::Point2)
@@ -345,4 +312,43 @@ end
 function transform(model::Mat4, x::T) where T
     x4d = to_ndim(Vec4f, x, 0.0)
     to_ndim(T, model * x4d, 0.0)
+end
+
+# project between different coordinate systems/spaces
+function space_to_clip(cam::Camera, space::Symbol, projectionview::Bool=true)
+    if is_data_space(space)
+        return projectionview ? cam.projectionview[] : cam.projection[]
+    elseif is_pixel_space(space)
+        return cam.pixel_space[]
+    elseif is_relative_space(space)
+        return Mat4f(2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, -1, -1, 0, 1)
+    elseif is_clip_space(space)
+        return Mat4f(I)
+    else
+        error("Space $space not recognized. Must be one of $(spaces())")
+    end
+end
+
+function clip_to_space(cam::Camera, space::Symbol)
+    if is_data_space(space)
+        return inv(cam.projectionview[])
+    elseif is_pixel_space(space)
+        w, h = cam.resolution[]
+        return Mat4f(0.5w, 0, 0, 0, 0, 0.5h, 0, 0, 0, 0, -10_000, 0, 0.5w, 0.5h, 0, 1) # -10_000
+    elseif is_relative_space(space)
+        return Mat4f(0.5, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 1, 0, 0.5, 0.5, 0, 1)
+    elseif is_clip_space(space)
+        return Mat4f(I)
+    else
+        error("Space $space not recognized. Must be one of $(spaces())")
+    end
+end
+
+function project(cam::Camera, input_space::Symbol, output_space::Symbol, pos)
+    input_space === output_space && return to_ndim(Point3f, pos, 0)
+    clip_from_input = space_to_clip(cam, input_space)
+    output_from_clip = clip_to_space(cam, output_space)
+    p4d = to_ndim(Point4f, to_ndim(Point3f, pos, 0), 1)
+    transformed = output_from_clip * clip_from_input * p4d
+    return Point3f(transformed[Vec(1, 2, 3)] ./ transformed[4])
 end

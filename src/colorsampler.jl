@@ -33,10 +33,8 @@ You can use `norm`, to change the range of 0..1 to whatever you want.
 """
 function interpolated_getindex(cmap::AbstractArray, value::Number, norm::VecTypes)
     cmin, cmax = norm
-    i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0)
-    if !isfinite(i01)
-        i01 = 0.0
-    end
+    cmin == cmax && error("Can't interpolate in a range where cmin == cmax. This can happen, for example, if a colorrange is set automatically but there's only one unique value present.")
+    i01 = clamp((value - cmin) / (cmax - cmin), zero(value), one(value))
     return interpolated_getindex(cmap, i01)
 end
 
@@ -46,13 +44,14 @@ end
 Like getindex, but accepts values between 0..1 for `value` and interpolates those to the full range of `cmap`.
 """
 function interpolated_getindex(cmap::AbstractArray{T}, i01::AbstractFloat) where T
+    isfinite(i01) || error("Looking up a non-finite or NaN value in a colormap is undefined.")
     i1len = (i01 * (length(cmap) - 1)) + 1
     down = floor(Int, i1len)
     up = ceil(Int, i1len)
     down == up && return cmap[down]
     interp_val = i1len - down
     downc, upc = cmap[down], cmap[up]
-    return convert(T, (downc * (1.0 - interp_val)) + (upc * interp_val))
+    return convert(T, downc * (one(interp_val) - interp_val) + upc * interp_val)
 end
 
 function nearest_getindex(cmap::AbstractArray, value::AbstractFloat)
@@ -71,16 +70,10 @@ end
 
 function apply_scaling(value::Number, scaling::Scaling)::Float64
     value_scaled = scaling.scaling_function(value)
-    if scaling.range === nothing
-        return value_scaled
-    end
+    scaling.range === nothing && return value_scaled
     cmin, cmax = scaling.range
-    clamped = clamp((value_scaled - cmin) / (cmax - cmin), 0.0, 1.0)
-    if isfinite(clamped)
-        return clamped
-    else
-        return 0.0
-    end
+    clamped = clamp((value_scaled - cmin) / (cmax - cmin), zero(value), one(value))
+    return isfinite(clamped) ? clamped : zero(clamped)
 end
 
 function Base.getindex(sampler::Sampler, i)::RGBAf
@@ -133,4 +126,36 @@ end
 function sampler(cmap::Matrix{<: Colorant}, uv::AbstractVector{Vec2f};
                  alpha=1.0, interpolation=Linear)
     return Sampler(cmap, uv, alpha, interpolation, Scaling())
+end
+
+
+function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
+    colormap = get_attribute(primitive, :colormap)::Vector{RGBAf}
+    _colorrange = get_attribute(primitive, :colorrange)::Union{Nothing, Vec2f}
+    colorrange = if isnothing(_colorrange)
+        # TODO, plot primitive should always expand automatic values
+        Vec2f(extrema_nan(numbers))
+    else
+        _colorrange
+    end
+
+    lowclip = get_attribute(primitive, :lowclip)
+    highclip = get_attribute(primitive, :highclip)
+    nan_color = get_attribute(primitive, :nan_color, RGBAf(0,0,0,0))
+
+    cmin, cmax = colorrange::Vec2f
+
+    return map(numbers) do number
+        if isnan(number)
+            return nan_color
+        elseif !isnothing(lowclip) && number < cmin
+            return lowclip
+        elseif !isnothing(highclip) && number > cmax
+            return highclip
+        end
+        return interpolated_getindex(
+            colormap,
+            Float64(number), # ints don't work in interpolated_getindex
+            (cmin, cmax))
+    end
 end

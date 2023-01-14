@@ -2,13 +2,13 @@
 
 {{doc linesegments}}
 
-### Examples
+## Examples
 
 \begin{examplefigure}{}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 Axis(f[1, 1])

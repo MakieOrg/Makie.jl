@@ -2,6 +2,13 @@
 
 Recipes allow you to extend `Makie` with your own custom types and plotting commands.
 
+!!! note
+    If you're a package developer, it's possible to add recipes without adding all of
+    `Makie.jl` as a dependency. Instead, you can use the `MakieCore` package, which
+    is a lightweight package which provides all the necessary elements to create a recipe,
+    such as the `@recipe` macro, `convert_arguments` and `convert_attribute` functions,
+    and even some basic plot type definitions.
+
 There are two types of recipes:
 
 - _Type recipes_ define a simple mapping from a user defined type to an existing plot type
@@ -26,6 +33,9 @@ Plotting of a `Circle` for example can be defined via a conversion into a vector
 
 ```julia
 Makie.convert_arguments(x::Circle) = (decompose(Point2f, x),)
+
+# or if you picked up MakieCore as a light-weight recipe system dependency
+MakieCore.convert_arguments(x::Circle) = (decompose(Point2f, x),)
 ```
 
 !!! warning
@@ -76,7 +86,7 @@ We use an example to show how this works:
 ```julia
 @recipe(MyPlot, x, y, z) do scene
     Theme(
-        plot_color => :red
+        plot_color = :red
     )
 end
 ```
@@ -99,7 +109,9 @@ myplot!(args...; kw_args...) = ...
 A specialization of `argument_names` is emitted if you have an argument list
 `(x,y,z)` provided to the recipe macro:
 
-    `argument_names(::Type{<: MyPlot}) = (:x, :y, :z)`
+```julia
+argument_names(::Type{<: MyPlot}) = (:x, :y, :z)
+```
 
 This is optional but it will allow the use of `plot_object[:x]` to
 fetch the first argument from the call
@@ -111,10 +123,10 @@ will provide `plot_object[:arg1]` etc.
 
 The theme given in the body of the `@recipe` invocation is inserted into a
 specialization of `default_theme` which inserts the theme into any scene that
-plots `Myplot`:
+plots `MyPlot`:
 
 ```julia
-function default_theme(scene, ::Myplot)
+function default_theme(scene, ::MyPlot)
     Theme(
         plot_color => :red
     )
@@ -155,7 +167,7 @@ In this example, we will create a special type to hold this information, and a r
 
 First, we make a struct to hold the stock's values for a given day:
 
-```julia:stock1
+```julia:eval-env
 using CairoMakie
 CairoMakie.activate!() # hide
 
@@ -170,7 +182,7 @@ end
 Now we create a new plot type called `StockChart`.
 The `do scene` closure is just a function that returns our default attributes, in this case they color stocks going down red, and stocks going up green.
 
-```julia:stock2
+```julia:eval-env
 @recipe(StockChart) do scene
     Attributes(
         downcolor = :red,
@@ -189,7 +201,7 @@ Note that the input arguments we receive inside the `plot!` method, which we can
 This means that we must construct our plotting function in a dynamic way so that it will update itself whenever the input observables change.
 This can be a bit trickier than recipes you might know from other plotting packages which produce mostly static plots.
 
-```julia:stock3
+```julia:eval-env
 function Makie.plot!(
         sc::StockChart{<:Tuple{AbstractVector{<:Real}, AbstractVector{<:StockValue}}})
 
@@ -202,10 +214,10 @@ function Makie.plot!(
     # and barplots we need to draw
     # this is necessary because in Makie we want every recipe to be interactively updateable
     # and therefore need to connect the observable machinery to do so
-    linesegs = Node(Point2f[])
-    bar_froms = Node(Float32[])
-    bar_tos = Node(Float32[])
-    colors = Node(Bool[])
+    linesegs = Observable(Point2f[])
+    bar_froms = Observable(Float32[])
+    bar_tos = Observable(Float32[])
+    colors = Observable(Bool[])
 
     # this helper function will update our observables
     # whenever `times` or `stockvalues` change
@@ -242,7 +254,8 @@ function Makie.plot!(
     # we build this colormap out of our `downcolor` and `upcolor`
     # we give the observable element type `Any` so it will not error when we change
     # a color from a symbol like :red to a different type like RGBf(1, 0, 1)
-    colormap = lift(Any, sc.downcolor, sc.upcolor) do dc, uc
+    colormap = Observable{Any}()
+    map!(colormap, sc.downcolor, sc.upcolor) do dc, uc
         [dc, uc]
     end
 
@@ -292,12 +305,12 @@ As a last example, lets pretend our stock data is coming in dynamically, and we 
 This is easy if we use observables as input arguments which we then update frame by frame:
 
 ```julia:stockchart_animation
-timestamps = Node(collect(1:100))
-stocknode = Node(stockvalues)
+timestamps = Observable(collect(1:100))
+stocknode = Observable(stockvalues)
 
 fig, ax, sc = stockchart(timestamps, stocknode)
 
-record(fig, joinpath(@OUTPUT, "stockchart_animation.mp4"), 101:200,
+record(fig, "stockchart_animation.mp4", 101:200,
         framerate = 30) do t
     # push a new timestamp without triggering the observable
     push!(timestamps[], t)

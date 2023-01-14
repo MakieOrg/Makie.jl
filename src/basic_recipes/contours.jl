@@ -3,8 +3,8 @@
     contour(x, y, z)
     contour(z::Matrix)
 
-Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix
-If only `z::Matrix` is supplied, the indices of the elements in `z` will be used as the x and y locations when plotting the contour.
+Creates a contour plot of the plane spanning `x::Vector`, `y::Vector`, `z::Matrix`.
+If only `z::Matrix` is supplied, the indices of the elements in `z` will be used as the `x` and `y` locations when plotting the contour.
 
 The attribute levels can be either
 
@@ -25,8 +25,10 @@ $(ATTRIBUTES)
         colorrange = Makie.automatic,
         levels = 5,
         linewidth = 1.0,
+        linestyle = nothing,
         alpha = 1.0,
-        fillrange = false
+        enable_depth = true,
+        transparency = false
     )
 end
 
@@ -91,15 +93,20 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     cliprange = replace_automatic!(plot, :colorrange) do
         valuerange
     end
-    cmap = lift(colormap, levels, linewidth, alpha, cliprange, valuerange) do _cmap, l, lw, alpha, cliprange, vrange
+    cmap = lift(colormap, levels, alpha, cliprange, valuerange) do _cmap, l, alpha, cliprange, vrange
         levels = to_levels(l, vrange)
         nlevels = length(levels)
-        N = nlevels * 50
-        iso_eps = nlevels * ((vrange[2] - vrange[1]) / N) # TODO calculate this
+        N = 50 * nlevels
+
+        iso_eps = if haskey(plot, :isorange)
+            plot.isorange[]
+        else
+            nlevels * ((vrange[2] - vrange[1]) / N) # TODO calculate this
+        end
         cmap = to_colormap(_cmap)
         v_interval = cliprange[1] .. cliprange[2]
         # resample colormap and make the empty area between iso surfaces transparent
-        map(1:N) do i
+        return map(1:N) do i
             i01 = (i-1) / (N - 1)
             c = Makie.interpolated_getindex(cmap, i01)
             isoval = vrange[1] + (i01 * (vrange[2] - vrange[1]))
@@ -107,15 +114,16 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
                 (isoval in v_interval) || return false
                 v0 || (abs(level - isoval) <= iso_eps)
             end
-            RGBAf(Colors.color(c), line ? alpha : 0.0)
+            return RGBAf(Colors.color(c), line ? alpha : 0.0)
         end
     end
-    volume!(
-        plot, x, y, z, volume, colormap = cmap, colorrange = cliprange, algorithm = 7,
-        transparency = plot.transparency, overdraw = plot.overdraw,
-        ambient = plot.ambient, diffuse = plot.diffuse, lightposition = plot.lightposition,
-        shininess = plot.shininess, specular = plot.specular, inspectable = plot.inspectable
-    )
+
+    attr = Attributes(plot)
+    attr[:colorrange] = cliprange
+    attr[:colormap] = cmap
+    attr[:algorithm] = 7
+    pop!(attr, :levels)
+    volume!(plot, attr, x, y, z, volume)
 end
 
 function color_per_level(color, colormap, colorrange, alpha, levels)
@@ -149,46 +157,46 @@ function color_per_level(::Nothing, colormap, colorrange, a, levels)
     end
 end
 
-
 function plot!(plot::T) where T <: Union{Contour, Contour3d}
     x, y, z = plot[1:3]
-    if to_value(plot[:fillrange])
-        plot[:interpolate] = true
-        # TODO normalize linewidth for heatmap
-        plot[:linewidth] = map(x-> x ./ 10f0, plot[:linewidth])
-        heatmap!(plot, Attributes(plot), x, y, z)
-    else
-        zrange = lift(nan_extrema, z)
-        levels = lift(plot[:levels], zrange) do levels, zrange
-            if levels isa AbstractVector{<: Number}
-                return levels
-            elseif levels isa Integer
-                to_levels(levels, zrange)
-            else
-                error("Level needs to be Vector of iso values, or a single integer to for a number of automatic levels")
-            end
+    zrange = lift(nan_extrema, z)
+    levels = lift(plot.levels, zrange) do levels, zrange
+        if levels isa AbstractVector{<: Number}
+            return levels
+        elseif levels isa Integer
+            to_levels(levels, zrange)
+        else
+            error("Level needs to be Vector of iso values, or a single integer to for a number of automatic levels")
         end
-        replace_automatic!(plot, :colorrange) do
-            lift(nan_extrema, levels)
-        end
-        args = @extract plot (color, colormap, colorrange, alpha)
-        level_colors = lift(color_per_level, args..., levels)
-        result = lift(x, y, z, levels, level_colors) do x, y, z, levels, level_colors
-            t = eltype(z)
-            # Compute contours
-            xv, yv = to_vector(x, size(z,1), t), to_vector(y, size(z,2), t)
-            contours = Contours.contours(xv, yv, z,  convert(Vector{eltype(z)}, levels))
-            contourlines(T, contours, level_colors)
-        end
-        lines!(
-            plot, lift(first, result);
-            color = lift(last, result), linewidth = plot[:linewidth],
-            inspectable = plot[:inspectable]
-        )
     end
+
+    replace_automatic!(()-> zrange, plot, :colorrange)
+
+    args = @extract plot (color, colormap, colorrange, alpha)
+    level_colors = lift(color_per_level, args..., levels)
+    result = lift(x, y, z, levels, level_colors) do x, y, z, levels, level_colors
+        t = eltype(z)
+        # Compute contours
+        xv, yv = to_vector(x, size(z,1), t), to_vector(y, size(z,2), t)
+        contours = Contours.contours(xv, yv, z,  convert(Vector{eltype(z)}, levels))
+        contourlines(T, contours, level_colors)
+    end
+    lines!(
+        plot, lift(first, result);
+        color = lift(last, result),
+        linewidth = plot.linewidth,
+        inspectable = plot.inspectable,
+        transparency = plot.transparency,
+        linestyle = plot.linestyle
+    )
     plot
 end
 
-function data_limits(x::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
-    return xyz_boundingbox(transform_func(x), to_value.((x[1], x[2]))...)
+function point_iterator(x::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
+    axes = (x[1], x[2])
+    extremata = map(extrema∘to_value, axes)
+    minpoint = Point2f(first.(extremata)...)
+    widths = last.(extremata) .- first.(extremata)
+    rect = Rect2f(minpoint, Vec2f(widths))
+    return unique(decompose(Point, rect))
 end

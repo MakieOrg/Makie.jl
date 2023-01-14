@@ -1,5 +1,3 @@
-not_implemented_for(x) = error("Not implemented for $(x). You might want to put:  `using Makie` into your code!")
-
 function default_theme(scene)
     Attributes(
         # color = theme(scene, :color),
@@ -9,34 +7,49 @@ function default_theme(scene)
         visible = true,
         transparency = false,
         overdraw = false,
-        ambient = Vec3f(0.55),
         diffuse = Vec3f(0.4),
         specular = Vec3f(0.2),
         shininess = 32f0,
-        lightposition = :eyeposition,
         nan_color = RGBAf(0,0,0,0),
         ssao = false,
-        inspectable = theme(scene, :inspectable)
+        inspectable = theme(scene, :inspectable),
+        depth_shift = 0f0,
+        space = :data
     )
 end
+
+
 
 function color_and_colormap!(plot, intensity = plot[:color])
     if isa(intensity[], AbstractArray{<: Number})
         haskey(plot, :colormap) || error("Plot $(typeof(plot)) needs to have a colormap to allow the attribute color to be an array of numbers")
 
         replace_automatic!(plot, :colorrange) do
-            lift(extrema_nan, intensity)
+            lift(distinct_extrema_nan, intensity)
+        end
+        replace_automatic!(plot, :highclip) do
+            lift(plot.colormap) do cmap
+                return to_colormap(cmap)[end]
+            end
+        end
+        replace_automatic!(plot, :lowclip) do
+            lift(plot.colormap) do cmap
+                return to_colormap(cmap)[1]
+            end
         end
         return true
     else
+        delete!(plot, :highclip)
+        delete!(plot, :lowclip)
         delete!(plot, :colorrange)
         return false
     end
 end
 
-
-function calculated_attributes!(::Type{<: Mesh}, plot)
-    need_cmap = color_and_colormap!(plot)
+function calculated_attributes!(T::Type{<: Mesh}, plot)
+    mesha = lift(GeometryBasics.attributes, plot.mesh)
+    color = haskey(mesha[], :color) ? lift(x-> x[:color], mesha) : plot.color
+    need_cmap = color_and_colormap!(plot, color)
     need_cmap || delete!(plot, :colormap)
     return
 end
@@ -68,15 +81,15 @@ function calculated_attributes!(::Type{<: Scatter}, plot)
 
     replace_automatic!(plot, :marker_offset) do
         # default to middle
-        lift(x-> to_2d_scale(x .* (-0.5f0)), plot[:markersize])
+        lift(x-> to_2d_scale(map(x-> x .* -0.5f0, x)), plot[:markersize])
     end
 
     replace_automatic!(plot, :markerspace) do
         lift(plot.markersize) do ms
             if ms isa Pixel || (ms isa AbstractVector && all(x-> ms isa Pixel, ms))
-                return Pixel
+                return :pixel
             else
-                return SceneSpace
+                return :data
             end
         end
     end
@@ -113,7 +126,9 @@ end
 """
     used_attributes(args...) = ()
 
-function used to indicate what keyword args one wants to get passed in `convert_arguments`.
+Function used to indicate what keyword args one wants to get passed in `convert_arguments`.
+Those attributes will not be forwarded to the backend, but only used during the
+conversion pipeline.
 Usage:
 ```julia
     struct MyType end
@@ -150,10 +165,10 @@ function apply_convert!(P, attributes::Attributes, x::PlotSpec{S}) where S
     for (k, v) in pairs(kwargs)
         attributes[k] = v
     end
-    return (plottype(P, S), args)
+    return (plottype(S, P), args)
 end
 
-function seperate_tuple(args::Node{<: NTuple{N, Any}}) where N
+function seperate_tuple(args::Observable{<: NTuple{N, Any}}) where N
     ntuple(N) do i
         lift(args) do x
             if i <= length(x)
@@ -166,7 +181,7 @@ function seperate_tuple(args::Node{<: NTuple{N, Any}}) where N
 end
 
 function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::Attributes, args) where Typ
-    input = convert.(Node, args)
+    input = convert.(Observable, args)
     argnodes = lift(input...) do args...
         convert_arguments(PlotType, args...)
     end
@@ -193,6 +208,7 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     ArgTyp = typeof(to_value(args))
     # construct the fully qualified plot type, from the possible incomplete (abstract)
     # PlotType
+
     FinalType = Combined{Typ, ArgTyp}
     plot_attributes = merged_get!(
         ()-> default_theme(scene, FinalType),
@@ -214,10 +230,8 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     replace_automatic!(plot_attributes, :model) do
         transformation.model
     end
-    # create the plot, with the full attributes, the input signals, and the final signal nodes.
+    # create the plot, with the full attributes, the input signals, and the final signals.
     plot_obj = FinalType(scene, transformation, plot_attributes, input, seperate_tuple(args))
-
-    transformation.parent[] = plot_obj
     calculated_attributes!(plot_obj)
     plot_obj
 end
@@ -268,24 +282,6 @@ const PlotFunc = Union{Type{Any}, Type{<: AbstractPlot}}
 # In this section, the plotting functions have P as the first argument
 # These are called from type recipes
 
-# # non-mutating, without positional attributes
-
-# function plot(P::PlotFunc, args...; kw_attributes...)
-#     attributes = Attributes(kw_attributes)
-#     plot(P, attributes, args...)
-# end
-
-# # with positional attributes
-
-# function plot(P::PlotFunc, attrs::Attributes, args...; kw_attributes...)
-#     attributes = merge!(Attributes(kw_attributes), attrs)
-#     scene_attributes = extract_scene_attributes!(attributes)
-#     scene = Scene(; scene_attributes...)
-#     plot!(scene, P, attributes, args...)
-# end
-
-# mutating, without positional attributes
-
 function plot!(P::PlotFunc, scene::SceneLike, args...; kw_attributes...)
     attributes = Attributes(kw_attributes)
     plot!(scene, P, attributes, args...)
@@ -313,9 +309,10 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
     PreType = Combined{plotfunc(PreType), typeof(argvalues)}
     convert_keys = intersect(used_attributes(PreType, argvalues...), keys(attributes))
     kw_signal = if isempty(convert_keys) # lift(f) isn't supported so we need to catch the empty case
-        Node(())
+        Observable(())
     else
-        lift((args...)-> Pair.(convert_keys, args), getindex.(attributes, convert_keys)...) # make them one tuple to easier pass through
+        # Remove used attributes from `attributes` and collect them in a `Tuple` to pass them more easily
+        lift((args...)-> Pair.(convert_keys, args), pop!.(attributes, convert_keys)...)
     end
     # call convert_arguments for a first time to get things started
     converted = convert_arguments(PreType, argvalues...; kw_signal[]...)
@@ -323,18 +320,18 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
     # apply_conversion deals with that!
 
     FinalType, argsconverted = apply_convert!(PreType, attributes, converted)
-    converted_node = Node(argsconverted)
-    input_nodes =  convert.(Node, args)
-    onany(kw_signal, lift(tuple, input_nodes...)) do kwargs, args
+    converted_node = Observable(argsconverted)
+    input_nodes =  convert.(Observable, args)
+    onany(kw_signal, input_nodes...) do kwargs, args...
         # do the argument conversion inside a lift
         result = convert_arguments(FinalType, args...; kwargs...)
-        finaltype, argsconverted = apply_convert!(FinalType, attributes, result)
+        finaltype, argsconverted_ = apply_convert!(FinalType, attributes, result) # avoid a Core.Box (https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-captured)
         if finaltype != FinalType
             error("Plot type changed from $FinalType to $finaltype after conversion.
                 Changing the plot type based on values in convert_arguments is not allowed"
             )
         end
-        converted_node[] = argsconverted
+        converted_node[] = argsconverted_
     end
     plot!(scene, FinalType, attributes, input_nodes, converted_node)
 end
@@ -409,46 +406,24 @@ function extract_scene_attributes!(attributes)
     return result
 end
 
-function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, input::NTuple{N, Node}, args::Node) where {N}
+function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, input::NTuple{N, Observable}, args::Observable) where {N}
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
     scene_attributes = extract_scene_attributes!(attributes)
-    plot_object = P(scene, copy(attributes), input, args)
+    if haskey(attributes, :textsize)
+        throw(ArgumentError("The attribute `textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
+    end
+    plot_object = P(scene, attributes, input, args)
     # transfer the merged attributes from theme and user defined to the scene
     for (k, v) in scene_attributes
-        scene.attributes[k] = v
+        error("setting $k for scene via plot attribute not supported anymore")
     end
-    # We allow certain scene attributes to be part of the plot theme
-    for k in (:camera, :raw)
-        if haskey(plot_object, k)
-            scene.attributes[k] = plot_object[k]
-        end
-    end
-
     # call user defined recipe overload to fill the plot type
     plot!(plot_object)
-
     push!(scene, plot_object)
-    if !scene.raw[] && scene.show_axis[]
-        lims = lift(scene.limits, scene.data_limits) do sl, dl
-            sl === automatic && return dl
-            return sl
-        end
-        if !any(x-> x isa Axis3D, scene.plots)
-            axis3d!(scene, Attributes(), lims, ticks = (ranges = automatic, labels = automatic))
-            # move axis to pos 1
-            sort!(scene.plots, by=x-> !(x isa Axis3D))
-        end
-
-    end
-
-    if !scene.raw[] || scene[:camera][] !== automatic
-        # if no camera controls yet, setup camera
-        setup_camera!(scene)
-    end
     return plot_object
 end
 
-function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, input::NTuple{N,Node}, args::Node) where {N}
+function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, input::NTuple{N,Observable}, args::Observable) where {N}
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
 
     plot_object = P(scene, attributes, input, args)
@@ -456,30 +431,4 @@ function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, input::NTup
     plot!(plot_object)
     push!(scene.plots, plot_object)
     plot_object
-end
-
-function apply_camera!(scene::Scene, cam_func)
-    if cam_func in (cam2d!, cam3d!, old_cam3d!, campixel!, cam3d_cad!)
-        cam_func(scene)
-    else
-        error("Unrecognized `camera` attribute type: $(typeof(cam_func)). Use automatic, cam2d!, cam3d!, old_cam3d!, campixel!, cam3d_cad!")
-    end
-end
-
-function setup_camera!(scene::Scene)
-    theme_cam = scene[:camera][]
-    if theme_cam == automatic
-        cam = cameracontrols(scene)
-        # only automatically add camera when cameracontrols are empty (not set)
-        if cam == EmptyCamera()
-            if is2d(scene)
-                cam2d!(scene)
-            else
-                cam3d!(scene)
-            end
-        end
-    else
-        apply_camera!(scene, theme_cam)
-    end
-    scene
 end

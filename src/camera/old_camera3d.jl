@@ -2,18 +2,18 @@
 @enum ProjectionEnum Perspective Orthographic
 
 struct OldCamera3D <: AbstractCamera
-    rotationspeed::Node{Float32}
-    translationspeed::Node{Float32}
-    eyeposition::Node{Vec3f}
-    lookat::Node{Vec3f}
-    upvector::Node{Vec3f}
-    fov::Node{Float32}
-    near::Node{Float32}
-    far::Node{Float32}
-    projectiontype::Node{ProjectionEnum}
-    pan_button::Node{ButtonTypes}
-    rotate_button::Node{ButtonTypes}
-    move_key::Node{ButtonTypes}
+    rotationspeed::Observable{Float32}
+    translationspeed::Observable{Float32}
+    eyeposition::Observable{Vec3f}
+    lookat::Observable{Vec3f}
+    upvector::Observable{Vec3f}
+    fov::Observable{Float32}
+    near::Observable{Float32}
+    far::Observable{Float32}
+    projectiontype::Observable{ProjectionEnum}
+    pan_button::Observable{ButtonTypes}
+    rotate_button::Observable{ButtonTypes}
+    move_key::Observable{ButtonTypes}
 end
 
 """
@@ -23,7 +23,7 @@ Creates a 3D camera for `scene` which rotates around
 the _viewer_'s "up" axis - similarly to how it's done
 in CAD software cameras.
 """
-function old_cam3d_cad!(scene; kw_args...)
+function old_cam3d_cad!(scene::Scene; kw_args...)
     cam_attributes = merged_get!(:cam3d, scene, Attributes(kw_args)) do
         Attributes(
             rotationspeed = 0.01,
@@ -59,7 +59,7 @@ end
 Creates a 3D camera for `scene`, which rotates around
 the plot's axis.
 """
-function old_cam3d_turntable!(scene; kw_args...)
+function old_cam3d_turntable!(scene::Scene; kw_args...)
     cam_attributes = merged_get!(:cam3d, scene, Attributes(kw_args)) do
         Attributes(
             rotationspeed = 0.01,
@@ -222,7 +222,7 @@ end
 """
     translate_cam!(scene::Scene, translation::VecTypes)
 
-Translate the camera by a translation vector given in camera space. 
+Translate the camera by a translation vector given in camera space.
 """
 translate_cam!(scene::Scene, translation::VecTypes) = translate_cam!(scene, cameracontrols(scene), translation)
 function translate_cam!(scene::Scene, cam::OldCamera3D, _translation::VecTypes)
@@ -264,7 +264,7 @@ function zoom!(scene, point::VecTypes, zoom_step, shift_lookat::Bool)
     # the offset perpendicular to `eyeposition - lookat`, based on mouse offset ~ ray_dir
     # the offset parallel to `eyeposition - lookat` ~ dir
     ray_eye = inv(scene.camera.projection[]) * Vec4f(point[1],point[2],0,0)
-    ray_eye = Vec4f(ray_eye[1:2]...,0,0)
+    ray_eye = Vec4f(ray_eye[Vec(1, 2)]...,0,0)
     ray_dir = Vec3f((inv(scene.camera.view[]) * ray_eye))
 
     dir = eyeposition - lookat
@@ -325,10 +325,7 @@ function update_cam!(scene::Scene, cam::OldCamera3D)
     far = max(zoom * 5f0, 30f0)
     proj = projection_switch(scene.px_area[], fov, near, far, projectiontype, zoom)
     view = Makie.lookat(eyeposition, lookat, upvector)
-
-    scene.camera.projection[] = proj
-    scene.camera.view[] = view
-    scene.camera.projectionview[] = proj * view
+    set_proj_view!(camera(scene), proj, view)
     scene.camera.eyeposition[] = cam.eyeposition[]
 end
 

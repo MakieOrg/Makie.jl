@@ -22,7 +22,7 @@ function convert_arguments(T::PlotFunc, args...; kw...)
                         $(join("::" .* string.(typeof.(args)), ", "))
 
                         Makie needs to convert all plot input arguments to types that can be consumed by the backends (typically Arrays with Float32 elements).
-                        You can define a method for `Makie.convert_arguments` (a type recipe) for these types or their supertypes to make this set of arguments convertible (See http://makie.juliaplots.org/stable/documentation/recipes/index.html).
+                        You can define a method for `Makie.convert_arguments` (a type recipe) for these types or their supertypes to make this set of arguments convertible (See http://docs.makie.org/stable/documentation/recipes/index.html).
 
                         Alternatively, you can define `Makie.convert_single_argument` for single arguments which have types that are unknown to Makie but which can be converted to known types and fed back to the conversion pipeline.
                         """
@@ -84,6 +84,14 @@ end
 """
 Wrap a single point or equivalent object in a single-element array.
 """
+function convert_arguments(::PointBased, x::Real, y::Real)
+    ([Point2f(x, y)],)
+end
+
+function convert_arguments(::PointBased, x::Real, y::Real, z::Real)
+    ([Point3f(x, y, z)],)
+end
+
 function convert_arguments(::PointBased, position::VecTypes{N, <: Number}) where N
     ([convert(Point{N, Float32}, position)],)
 end
@@ -136,7 +144,7 @@ an arbitrary `x` axis.
 
 `P` is the plot Type (it is optional).
 """
-convert_arguments(P::PointBased, y::RealVector) = convert_arguments(P, 1:length(y), y)
+convert_arguments(P::PointBased, y::RealVector) = convert_arguments(P, keys(y), y)
 
 """
     convert_arguments(P, x, y)::(Vector)
@@ -160,7 +168,7 @@ Takes an input `Rect` `x` and decomposes it to points.
 """
 function convert_arguments(P::PointBased, x::Rect2)
     # TODO fix the order of decompose
-    return convert_arguments(P, decompose(Point2f, x)[[1, 2, 4, 3, 1]])
+    return convert_arguments(P, decompose(Point2f, x)[[1, 2, 4, 3]])
 end
 
 function convert_arguments(P::PointBased, mesh::AbstractMesh)
@@ -172,15 +180,21 @@ function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) wh
     return convert_arguments(PB, collect(reinterpret(P, linesegments)))
 end
 
-function convert_arguments(P::PointBased, x::Rect3)
-    inds = [
-        1, 2, 3, 4, 5, 6, 7, 8,
-        1, 5, 5, 7, 7, 3, 1, 3,
-        4, 8, 8, 6, 2, 4, 2, 6
-    ]
-    convert_arguments(P, decompose(Point3f, x)[inds])
+function convert_arguments(P::PointBased, rect::Rect3)
+    return (decompose(Point3f, rect),)
 end
 
+function convert_arguments(P::Type{<: LineSegments}, rect::Rect3)
+    f = decompose(LineFace{Int}, rect)
+    p = connect(decompose(Point3f, rect), f)
+    return convert_arguments(P, p)
+end
+
+function convert_arguments(::Type{<: Lines}, rect::Rect3)
+    points = unique(decompose(Point3f, rect))
+    push!(points, Point3f(NaN)) # use to seperate linesegments
+    return (points[[1, 2, 3, 4, 1, 5, 6, 2, 9, 6, 8, 3, 9, 5, 7, 4, 9, 7, 8]],)
+end
 """
 
     convert_arguments(PB, LineString)
@@ -212,14 +226,18 @@ end
 Takes an input `Polygon` and decomposes it to points.
 """
 function convert_arguments(PB::PointBased, pol::Polygon)
-    if isempty(pol.interiors)
-        return convert_arguments(PB, pol.exterior)
-    else
-        arr = copy(convert_arguments(PB, pol.exterior)[1])
+    arr = copy(convert_arguments(PB, pol.exterior)[1])
+    push!(arr, arr[1]) # close exterior
+    if !isempty(pol.interiors)
         push!(arr, Point2f(NaN))
-        append!(arr, convert_arguments(PB, pol.interiors)[1])
-        return (arr,)
+        for interior in pol.interiors
+            inter = convert_arguments(PB, interior)[1]
+            append!(arr, inter)
+            # close interior + separate!
+            push!(arr, inter[1], Point2f(NaN))
+        end
     end
+    return (arr,)
 end
 
 """
@@ -281,7 +299,7 @@ function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::A
     return map(el32convert, adjust_axes(SL, x, y, z))
 end
 
-convert_arguments(::SurfaceLike, x::AbstractMatrix, y::AbstractMatrix) = (x, y, zeros(size(y)))
+convert_arguments(sl::SurfaceLike, x::AbstractMatrix, y::AbstractMatrix) = convert_arguments(sl, x, y, zeros(size(y)))
 
 """
     convert_arguments(P, x, y, z)::Tuple{ClosedInterval, ClosedInterval, Matrix}
@@ -302,14 +320,14 @@ and stores the `ClosedInterval` to `n` and `m`, plus the original matrix in a Tu
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::SurfaceLike, data::AbstractMatrix)
+function convert_arguments(sl::SurfaceLike, data::AbstractMatrix)
     n, m = Float32.(size(data))
-    (0f0 .. n, 0f0 .. m, el32convert(data))
+    convert_arguments(sl, 0f0 .. n, 0f0 .. m, el32convert(data))
 end
 
-function convert_arguments(::DiscreteSurface, data::AbstractMatrix)
+function convert_arguments(ds::DiscreteSurface, data::AbstractMatrix)
     n, m = Float32.(size(data))
-    (0.5f0 .. n+0.5f0, 0.5f0 .. m+0.5f0, el32convert(data))
+    convert_arguments(ds, edges(1:n), edges(1:m), el32convert(data))
 end
 
 function convert_arguments(SL::SurfaceLike, x::AbstractVector{<:Number}, y::AbstractVector{<:Number}, z::AbstractVector{<:Number})
@@ -324,17 +342,17 @@ function convert_arguments(SL::SurfaceLike, x::AbstractVector{<:Number}, y::Abst
         error("Found duplicate x/y coordinates: $cdup")
     end
 
-    xs = Float32.(sort(unique(x)))
-    any(isnan, xs) && error("x must not have NaN values.")
-    ys = Float32.(sort(unique(y)))
-    any(isnan, ys) && error("x must not have NaN values.")
-    zs = fill(NaN32, length(xs), length(ys))
+    x_centers = sort(unique(x))
+    any(isnan, x_centers) && error("x must not have NaN values.")
+    y_centers = sort(unique(y))
+    any(isnan, y_centers) && error("x must not have NaN values.")
+    zs = fill(NaN32, length(x_centers), length(y_centers))
     foreach(zip(x, y, z)) do (xi, yi, zi)
-        i = searchsortedfirst(xs, xi)
-        j = searchsortedfirst(ys, yi)
+        i = searchsortedfirst(x_centers, xi)
+        j = searchsortedfirst(y_centers, yi)
         @inbounds zs[i, j] = zi
     end
-    convert_arguments(SL, xs, ys, zs)
+    convert_arguments(SL, x_centers, y_centers, zs)
 end
 
 
@@ -404,6 +422,16 @@ function convert_arguments(::VolumeLike, x::AbstractVector, y::AbstractVector, z
         reshape(A, ntuple(j-> j != i ? 1 : length(A), Val(3)))
     end
     return (x, y, z, el32convert.(f.(_x, _y, _z)))
+end
+
+################################################################################
+#                                <:Lines                                       #
+################################################################################
+
+function convert_arguments(::Type{<: Lines}, x::Rect2)
+    # TODO fix the order of decompose
+    points = decompose(Point2f, x)
+    return (points[[1, 2, 4, 3, 1]],)
 end
 
 ################################################################################
@@ -545,7 +573,7 @@ function convert_arguments(P::PlotFunc, i::AbstractInterval, f::Function)
 end
 
 # The following `tryrange` code was copied from Plots.jl
-# https://github.com/JuliaPlots/Plots.jl/blob/15dc61feb57cba1df524ce5d69f68c2c4ea5b942/src/series.jl#L399-L416
+# https://github.com/MakieOrg/Plots.jl/blob/15dc61feb57cba1df524ce5d69f68c2c4ea5b942/src/series.jl#L399-L416
 
 # try some intervals over which the function may be defined
 function tryrange(F::AbstractArray, vec)
@@ -564,6 +592,16 @@ function tryrange(F, vec)
         end
     end
     error("$F is not a Function, or is not defined at any of the values $vec")
+end
+
+# OffsetArrays conversions
+function convert_arguments(sl::SurfaceLike, wm::OffsetArray)
+  x1, y1 = wm.offsets .+ 1
+  nx, ny = size(wm)
+  x = range(x1, length = nx)
+  y = range(y1, length = ny)
+  v = parent(wm)
+  return convert_arguments(sl, x, y, v)
 end
 
 ################################################################################
@@ -616,10 +654,9 @@ function to_triangles(faces::AbstractVector{TriangleFace{T}}) where T
 end
 
 function to_triangles(faces::AbstractMatrix{T}) where T <: Integer
-    let N = Val(size(faces, 2)), lfaces = faces
-        broadcast(1:size(faces, 1), N) do fidx, n
-            to_ndim(GLTriangleFace, ntuple(i-> lfaces[fidx, i], n), 0.0)
-        end
+    @assert size(faces, 2) == 3
+    return broadcast(1:size(faces, 1), 3) do fidx, n
+        GLTriangleFace(ntuple(i-> faces[fidx, i], n))
     end
 end
 
@@ -683,27 +720,17 @@ end
 #                            Attribute conversions                             #
 ################################################################################
 
-"""
-    to_color(color)
-Converts a `color` symbol (e.g. `:blue`) to a color RGBA.
-"""
-to_color(color) = convert_attribute(color, key"color"())
-
-"""
-    to_colormap(cm[, N = 20])
-
-Converts a colormap `cm` symbol (e.g. `:Spectral`) to a colormap RGB array, where `N` specifies the number of color points.
-"""
-to_colormap(colormap) = convert_attribute(colormap, key"colormap"())
-to_rotation(rotation) = convert_attribute(rotation, key"rotation"())
-to_font(font) = convert_attribute(font, key"font"())
-to_align(align) = convert_attribute(align, key"align"())
-to_textsize(textsize) = convert_attribute(textsize, key"textsize"())
-
 convert_attribute(x, key::Key, ::Key) = convert_attribute(x, key)
 convert_attribute(s::SceneLike, x, key::Key, ::Key) = convert_attribute(s, x, key)
 convert_attribute(s::SceneLike, x, key::Key) = convert_attribute(x, key)
 convert_attribute(x, key::Key) = x
+
+convert_attribute(color, ::key"color") = to_color(color)
+
+convert_attribute(colormap, ::key"colormap") = to_colormap(colormap)
+convert_attribute(rotation, ::key"rotation") = to_rotation(rotation)
+convert_attribute(font, ::key"font") = to_font(font)
+convert_attribute(align, ::key"align") = to_align(align)
 
 convert_attribute(p, ::key"highclip") = to_color(p)
 convert_attribute(p::Nothing, ::key"highclip") = p
@@ -711,35 +738,29 @@ convert_attribute(p, ::key"lowclip") = to_color(p)
 convert_attribute(p::Nothing, ::key"lowclip") = p
 convert_attribute(p, ::key"nan_color") = to_color(p)
 
-struct Palette{N}
-   colors::SArray{Tuple{N},RGBA{Float32},1,N}
-   i::Ref{UInt8}
-   Palette(colors) = new{length(colors)}(SVector{length(colors)}(to_color.(colors)), zero(UInt8))
+struct Palette
+   colors::Vector{RGBA{Float32}}
+   i::Ref{Int}
+   Palette(colors) = new(to_color.(colors), zero(Int))
 end
-Palette(name::Union{String, Symbol}, n = 8) = Palette(to_colormap(name, n))
-
-function convert_attribute(p::Palette{N}, ::key"color") where {N}
-    p.i[] = p.i[] == N ? one(UInt8) : p.i[] + one(UInt8)
-    p.colors[p.i[]]
-end
-
-convert_attribute(c::Colorant, ::key"color") = convert(RGBA{Float32}, c)
-convert_attribute(c::Symbol, k::key"color") = convert_attribute(string(c), k)
-function convert_attribute(c::String, ::key"color")
-    return parse(RGBA{Float32}, c)
+Palette(name::Union{String, Symbol}, n = 8) = Palette(categorical_colors(name, n))
+function to_color(p::Palette)
+    N = length(p.colors)
+    p.i[] = p.i[] == N ? 1 : p.i[] + 1
+    return p.colors[p.i[]]
 end
 
-# Do we really need all colors to be RGBAf?!
-convert_attribute(c::AbstractArray{<: Colorant}, k::key"color") = el32convert(c)
-convert_attribute(c::AbstractArray, k::key"color") = to_color.(c)
-
-convert_attribute(c::AbstractArray, ::key"color", ::key"heatmap") = el32convert(c)
-
-convert_attribute(c::Tuple, k::key"color") = convert_attribute.(c, k)
-convert_attribute(p::AbstractPattern, k::key"color") = p
-
-function convert_attribute(c::Tuple{T, F}, k::key"color") where {T, F <: Number}
-    RGBAf(Colors.color(to_color(c[1])), c[2])
+to_color(c::Nothing) = c # for when color is not used
+to_color(c::Real) = Float32(c)
+to_color(c::Colorant) = convert(RGBA{Float32}, c)
+to_color(c::Symbol) = to_color(string(c))
+to_color(c::String) = parse(RGBA{Float32}, c)
+to_color(c::AbstractArray) = to_color.(c)
+to_color(c::AbstractArray{<: Colorant, N}) where N = convert(Array{RGBAf, N}, c)
+to_color(p::AbstractPattern) = p
+function to_color(c::Tuple{<: Any,  <: Number})
+    col = to_color(c[1])
+    return RGBAf(Colors.color(col), alpha(col) * c[2])
 end
 
 convert_attribute(b::Billboard{Float32}, ::key"rotations") = to_rotation(b.rotation)
@@ -749,11 +770,7 @@ convert_attribute(r::StaticVector, ::key"rotations") = to_rotation(r)
 convert_attribute(r, ::key"rotations") = to_rotation(r)
 
 convert_attribute(c, ::key"markersize", ::key"scatter") = to_2d_scale(c)
-convert_attribute(c, k1::key"markersize", k2::key"meshscatter") = to_3d_scale(c)
-
-convert_attribute(x, ::key"uv_offset_width") = Vec4f(x)
-convert_attribute(x::AbstractVector{Vec4f}, ::key"uv_offset_width") = x
-
+convert_attribute(c, ::key"markersize", ::key"meshscatter") = to_3d_scale(c)
 to_2d_scale(x::Number) = Vec2f(x)
 to_2d_scale(x::VecTypes) = to_ndim(Vec2f, x, 1)
 to_2d_scale(x::Tuple{<:Number, <:Number}) = to_ndim(Vec2f, x, 1)
@@ -763,23 +780,25 @@ to_3d_scale(x::Number) = Vec3f(x)
 to_3d_scale(x::VecTypes) = to_ndim(Vec3f, x, 1)
 to_3d_scale(x::AbstractVector) = to_3d_scale.(x)
 
+
+convert_attribute(x, ::key"uv_offset_width") = Vec4f(x)
+convert_attribute(x::AbstractVector{Vec4f}, ::key"uv_offset_width") = x
+
+
 convert_attribute(c::Number, ::key"glowwidth") = Float32(c)
+convert_attribute(c::Number, ::key"strokewidth") = Float32(c)
+
 convert_attribute(c, ::key"glowcolor") = to_color(c)
 convert_attribute(c, ::key"strokecolor") = to_color(c)
-convert_attribute(c::Number, ::key"strokewidth") = Float32(c)
 
 convert_attribute(x::Nothing, ::key"linestyle") = x
 
-"""
-    `AbstractVector{<:AbstractFloat}` for denoting sequences of fill/nofill. e.g.
-
-[0.5, 0.8, 1.2] will result in 0.5 filled, 0.3 unfilled, 0.4 filled. 1.0 unit is one linewidth!
-"""
+#     `AbstractVector{<:AbstractFloat}` for denoting sequences of fill/nofill. e.g.
+# 
+# [0.5, 0.8, 1.2] will result in 0.5 filled, 0.3 unfilled, 0.4 filled. 1.0 unit is one linewidth!
 convert_attribute(A::AbstractVector, ::key"linestyle") = A
 
-"""
-    A `Symbol` equal to `:dash`, `:dot`, `:dashdot`, `:dashdotdot`
-"""
+# A `Symbol` equal to `:dash`, `:dot`, `:dashdot`, `:dashdotdot`
 convert_attribute(ls::Union{Symbol,AbstractString}, ::key"linestyle") = line_pattern(ls, :normal)
 
 function convert_attribute(ls::Tuple{<:Union{Symbol,AbstractString},<:Any}, ::key"linestyle")
@@ -794,15 +813,15 @@ end
 "The linestyle patterns are inspired by the LaTeX package tikZ as seen here https://tex.stackexchange.com/questions/45275/tikz-get-values-for-predefined-dash-patterns."
 
 function line_diff_pattern(ls::Symbol, gaps = :normal)
-    if ls == :solid
+    if ls === :solid
         nothing
-    elseif ls == :dash
+    elseif ls === :dash
         line_diff_pattern("-", gaps)
-    elseif ls == :dot
+    elseif ls === :dot
         line_diff_pattern(".", gaps)
-    elseif ls == :dashdot
+    elseif ls === :dashdot
         line_diff_pattern("-.", gaps)
-    elseif ls == :dashdotdot
+    elseif ls === :dashdotdot
         line_diff_pattern("-..", gaps)
     else
         error(
@@ -871,14 +890,6 @@ function convert_gaps(gaps)
   (dot_gap = dot_gap, dash_gap = dash_gap)
 end
 
-function convert_attribute(f::Symbol, ::key"frames")
-    f == :box && return ((true, true), (true, true))
-    f == :semi && return ((true, false), (true, false))
-    f == :none && return ((false, false), (false, false))
-    throw(MethodError("$(string(f)) is not a valid framestyle. Options are `:box`, `:semi` and `:none`"))
-end
-convert_attribute(f::Tuple{Tuple{Bool,Bool},Tuple{Bool,Bool}}, ::key"frames") = f
-
 convert_attribute(c::Tuple{<: Number, <: Number}, ::key"position") = Point2f(c[1], c[2])
 convert_attribute(c::Tuple{<: Number, <: Number, <: Number}, ::key"position") = Point3f(c)
 convert_attribute(c::VecTypes{N}, ::key"position") where N = Point{N, Float32}(c)
@@ -886,46 +897,69 @@ convert_attribute(c::VecTypes{N}, ::key"position") where N = Point{N, Float32}(c
 """
     Text align, e.g.:
 """
-convert_attribute(x::Tuple{Symbol, Symbol}, ::key"align") = Vec2f(alignment2num.(x))
-convert_attribute(x::Vec2f, ::key"align") = x
+to_align(x::Tuple{Symbol, Symbol}) = Vec2f(alignment2num.(x))
+to_align(x::Vec2f) = x
 
-const _font_cache = Dict{String, NativeFont}()
+const FONT_CACHE = Dict{String, NativeFont}()
+
+function load_font(filepath)
+    font = FreeTypeAbstraction.try_load(filepath)
+    if isnothing(font)
+        error("Could not load font file \"$filepath\"")
+    else
+        return font
+    end
+end
 
 """
-    font conversion
+    to_font(str::String)
 
-a string naming a font, e.g. helvetica
+Loads a font specified by `str` and returns a `NativeFont` object storing the font handle.
+A font can either be specified by a file path, such as "folder/with/fonts/font.otf",
+or by a (partial) name such as "Helvetica", "Helvetica Bold" etc.
 """
-function convert_attribute(x::Union{Symbol, String}, k::key"font")
-    str = string(x)
-    get!(_font_cache, str) do
-        str == "default" && return to_font("Dejavu Sans")
-
-        # check if the string points to a font file and load that
-        if isfile(str)
-            font = FreeTypeAbstraction.try_load(str)
-            if isnothing(font)
-                error("Could not load font file $str")
-            else
-                return font
-            end
+function to_font(str::String)
+    get!(FONT_CACHE, str) do
+        # load default fonts without font search to avoid latency
+        if str == "default" || str == "TeX Gyre Heros Makie"
+            return load_font(assetpath("fonts", "TeXGyreHerosMakie-Regular.otf"))
+        elseif str == "TeX Gyre Heros Makie Bold"
+            return load_font(assetpath("fonts", "TeXGyreHerosMakie-Bold.otf"))
+        elseif str == "TeX Gyre Heros Makie Italic"
+            return load_font(assetpath("fonts", "TeXGyreHerosMakie-Italic.otf"))
+        elseif str == "TeX Gyre Heros Makie Bold Italic"
+            return load_font(assetpath("fonts", "TeXGyreHerosMakie-BoldItalic.otf"))
+        # load fonts directly if they are given as font paths
+        elseif isfile(str)
+            return load_font(str)
         end
-
+        # for all other cases, search for the best match on the system
         fontpath = assetpath("fonts")
         font = FreeTypeAbstraction.findfont(str; additional_fonts=fontpath)
         if font === nothing
-            @warn("Could not find font $str, using Dejavu Sans")
-            if "dejavu sans" == lowercase(str)
-                # since we fall back to dejavu sans, we need to check for recursion
-                error("Recursion encountered; DejaVu Sans cannot be located in the font path $fontpath")
-            end
-            return to_font("dejavu sans")
+            @warn("Could not find font $str, using TeX Gyre Heros Makie")
+            return to_font("TeX Gyre Heros Makie")
         end
         return font
     end
 end
-convert_attribute(x::Vector{String}, k::key"font") = convert_attribute.(x, k)
-convert_attribute(x::NativeFont, k::key"font") = x
+to_font(x::Vector{String}) = to_font.(x)
+to_font(x::NativeFont) = x
+to_font(x::Vector{NativeFont}) = x
+
+function to_font(fonts::Attributes, s::Symbol)
+    if haskey(fonts, s)
+        f = fonts[s][]
+        if f isa Symbol
+            error("The value for font $(repr(s)) was Symbol $(repr(f)), which is not allowed. The value for a font in the fonts collection cannot be another Symbol and must be resolvable via `to_font(x)`.")
+        end
+        return to_font(fonts[s][])
+    end
+    error("The symbol $(repr(s)) is not present in the fonts collection:\n$fonts.")
+end
+
+to_font(fonts::Attributes, x) = to_font(x)
+
 
 """
     rotation accepts:
@@ -933,37 +967,38 @@ convert_attribute(x::NativeFont, k::key"font") = x
     to_rotation(b, tuple_float)
     to_rotation(b, vec4)
 """
-convert_attribute(s::Quaternionf, ::key"rotation") = s
-convert_attribute(s::Quaternion, ::key"rotation") = Quaternionf(s.data...)
-function convert_attribute(s::VecTypes{N}, ::key"rotation") where N
+to_rotation(s::Quaternionf) = s
+to_rotation(s::Quaternion) = Quaternionf(s.data...)
+
+function to_rotation(s::VecTypes{N}) where N
     if N == 4
         Quaternionf(s...)
     elseif N == 3
         rotation_between(Vec3f(0, 0, 1), to_ndim(Vec3f, s, 0.0))
     elseif N == 2
-
         rotation_between(Vec3f(0, 1, 0), to_ndim(Vec3f, s, 0.0))
     else
         error("The $N dimensional vector $s can't be converted to a rotation.")
     end
 end
 
-function convert_attribute(s::Tuple{VecTypes, AbstractFloat}, ::key"rotation")
-    qrotation(to_ndim(Vec3f, s[1], 0.0), s[2])
-end
-convert_attribute(angle::AbstractFloat, ::key"rotation") = qrotation(Vec3f(0, 0, 1), Float32(angle))
-convert_attribute(r::AbstractVector, k::key"rotation") = to_rotation.(r)
-convert_attribute(r::AbstractVector{<: Quaternionf}, k::key"rotation") = r
+to_rotation(s::Tuple{VecTypes, Number}) = qrotation(to_ndim(Vec3f, s[1], 0.0), s[2])
+to_rotation(angle::Number) = qrotation(Vec3f(0, 0, 1), angle)
+to_rotation(r::AbstractVector) = to_rotation.(r)
+to_rotation(r::AbstractVector{<: Quaternionf}) = r
 
+convert_attribute(x, ::key"colorrange") = to_colorrange(x)
+to_colorrange(x) = isnothing(x) ? nothing : Vec2f(x)
 
-convert_attribute(x, k::key"colorrange") = x==nothing ? nothing : Vec2f(x)
+convert_attribute(x, ::key"fontsize") = to_fontsize(x)
+to_fontsize(x::Number) = Float32(x)
+to_fontsize(x::AbstractVector{T}) where T <: Number = el32convert(x)
+to_fontsize(x::Vec2) = Vec2f(x)
+to_fontsize(x::AbstractVector{T}) where T <: Vec2 = Vec2f.(x)
 
-convert_attribute(x, k::key"textsize") = Float32(x)
-convert_attribute(x::AbstractVector, k::key"textsize") = convert_attribute.(x, k)
-convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: Number = el32convert(x)
-convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: VecTypes = elconvert(Vec2f, x)
-convert_attribute(x, k::key"linewidth") = Float32(x)
-convert_attribute(x::AbstractVector, k::key"linewidth") = el32convert(x)
+convert_attribute(x, ::key"linewidth") = to_linewidth(x)
+to_linewidth(x) = Float32(x)
+to_linewidth(x::AbstractVector) = el32convert(x)
 
 # ColorBrewer colormaps that support only 8 colors require special handling on the backend, so we show them here.
 const colorbrewer_8color_names = String.([
@@ -993,6 +1028,45 @@ function available_gradients()
     end
 end
 
+
+to_colormap(cm, categories::Integer) = error("`to_colormap(cm, categories)` is deprecated. Use `Makie.categorical_colors(cm, categories)` for categorical colors, and `resample_cmap(cmap, ncolors)` for continous resampling.")
+
+"""
+    categorical_colors(colormaplike, categories::Integer)
+
+Creates categorical colors and tries to match `categories`.
+Will error if color scheme doesn't contain enough categories. Will drop the n last colors, if request less colors than contained in scheme.
+"""
+function categorical_colors(cols::AbstractVector{<: Colorant}, categories::Integer)
+    if length(cols) < categories
+        error("Not enough colors for number of categories. Categories: $(categories), colors: $(length(cols))")
+    end
+    return cols[1:categories]
+end
+
+function categorical_colors(cols::AbstractVector, categories::Integer)
+    return categorical_colors(to_color.(cols), categories)
+end
+
+function categorical_colors(cs::Union{String, Symbol}, categories::Integer)
+    cs_string = string(cs)
+    if cs_string in all_gradient_names
+        if haskey(ColorBrewer.colorSchemes, cs_string)
+            return to_colormap(ColorBrewer.palette(cs_string, categories))
+        else
+            return categorical_colors(to_colormap(cs_string), categories)
+        end
+    else
+        error(
+            """
+            There is no color gradient named $cs.
+            See `available_gradients()` for the list of available gradients,
+            or look at http://docs.makie.org/dev/generated/colors#Colormap-reference.
+            """
+        )
+    end
+end
+
 """
 Reverses the attribute T upon conversion
 """
@@ -1000,81 +1074,59 @@ struct Reverse{T}
     data::T
 end
 
-function convert_attribute(r::Reverse, ::key"colormap", n::Integer=20)
-    reverse(to_colormap(r.data, n))
-end
+to_colormap(r::Reverse) = reverse(to_colormap(r.data))
+to_colormap(cs::ColorScheme) = to_colormap(cs.colors)
 
-function convert_attribute(cs::ColorScheme, ::key"colormap", n::Integer=20)
-    return to_colormap(cs.colors, n)
-end
+
 
 """
-    to_colormap(b, x)
+    to_colormap(b::AbstractVector)
 
 An `AbstractVector{T}` with any object that [`to_color`](@ref) accepts.
 """
-convert_attribute(cm::AbstractVector, ::key"colormap", n::Int=length(cm)) = to_colormap(to_color.(cm), n)
+to_colormap(cm::AbstractVector)::Vector{RGBAf} = map(to_color, cm)
+to_colormap(cm::AbstractVector{<: Colorant}) = convert(Vector{RGBAf}, cm)
 
-function convert_attribute(cm::AbstractVector{<: Colorant}, ::key"colormap", n::Int=length(cm))
-    colormap = length(cm) == n ? cm : resample(cm, n)
-    return el32convert(colormap)
+function to_colormap(cs::Tuple{<: Union{Reverse, Symbol, AbstractString}, Real})::Vector{RGBAf}
+    cmap = to_colormap(cs[1])
+    return RGBAf.(color.(cmap), alpha.(cmap) .* cs[2]) # We need to rework this to conform to the backend interface.
 end
 
 """
-Tuple(A, B) or Pair{A, B} with any object that [`to_color`](@ref) accepts
-"""
-function convert_attribute(cs::Union{Tuple, Pair}, ::key"colormap", n::Int=2)
-    return to_colormap([to_color.(cs)...], n)
-end
+    to_colormap(cs::Union{String, Symbol})::Vector{RGBAf}
 
-function convert_attribute(cs::Tuple{<: Union{Symbol, AbstractString}, Real}, ::key"colormap", n::Int=30)
-    return RGBAf.(to_colormap(cs[1]), cs[2]) # We need to rework this to conform to the backend interface.
-end
-
-function convert_attribute(cs::NamedTuple{(:colormap, :alpha, :n), Tuple{Union{Symbol, AbstractString}, Real, Int}}, ::key"colormap")
-    return RGBAf.(to_colormap(cs.colormap, cs.n), cs.alpha)
-end
-
-to_colormap(x, n::Integer) = convert_attribute(x, key"colormap"(), n)
-
-"""
 A Symbol/String naming the gradient. For more on what names are available please see: `available_gradients()`.
 For now, we support gradients from `PlotUtils` natively.
 """
-function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Integer=40)
+function to_colormap(cs::Union{String, Symbol})::Vector{RGBAf}
     cs_string = string(cs)
     if cs_string in all_gradient_names
         if cs_string in colorbrewer_8color_names # special handling for 8 color only
-            return to_colormap(ColorBrewer.palette(cs_string, 8), n)
-        else                                    # cs_string must be in plotutils_names
-            return to_colormap(PlotUtils.get_colorscheme(Symbol(cs_string)).colors, n)
+            return to_colormap(ColorBrewer.palette(cs_string, 8))
+        else
+            # cs_string must be in plotutils_names
+            return to_colormap(PlotUtils.get_colorscheme(Symbol(cs_string)))
         end
     else
         error(
             """
             There is no color gradient named $cs.
             See `Makie.available_gradients()` for the list of available gradients,
-            or look at http://makie.juliaplots.org/dev/generated/colors#Colormap-reference.
+            or look at http://docs.makie.org/dev/generated/colors#Colormap-reference.
             """
         )
     end
 end
 
-function Makie.convert_attribute(cg::PlotUtils.ContinuousColorGradient, ::key"colormap", n::Integer=length(cg.values))
-    # PlotUtils does not always give [0, 1] range, so we adapt to what it has
-    return getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), n))
+# Handle inbuilt PlotUtils types
+function to_colormap(cg::PlotUtils.ColorGradient)::Vector{RGBAf}
+    # We sample the colormap using cg[val]. This way, we get a concrete representation of
+    # the underlying gradient, like it being categorical or using a log scale.
+    # 256 is just a high enough constant, without being too big to slow things down.
+    return to_colormap(getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), 256)))
 end
 
-function Makie.convert_attribute(cg::PlotUtils.CategoricalColorGradient, ::key"colormap", n::Integer = length(cg.colors) * 20)
-    # PlotUtils does not always give [0, 1] range, so we adapt to what it has
-    return vcat(fill.(cg.colors.colors, Ref(n ÷ length(cg.colors)))...)
-end
-
-"""
-    to_volume_algorithm(b, x)
-
-Enum values: `IsoValue` `Absorption` `MaximumIntensityProjection` `AbsorptionRGBA` `AdditiveRGBA` `IndexedAbsorptionRGBA`
-"""
+# Enum values: `IsoValue` `Absorption` `MaximumIntensityProjection` `AbsorptionRGBA` `AdditiveRGBA` `IndexedAbsorptionRGBA`
 function convert_attribute(value, ::key"algorithm")
     if isa(value, RaymarchAlgorithm)
         return Int32(value)
@@ -1087,9 +1139,7 @@ function convert_attribute(value, ::key"algorithm")
     end
 end
 
-"""
-Symbol/String: iso, absorption, mip, absorptionrgba, indexedabsorption
-"""
+# Symbol/String: iso, absorption, mip, absorptionrgba, indexedabsorption
 function convert_attribute(value::Union{Symbol, String}, k::key"algorithm")
     vals = Dict(
         :iso => IsoValue,
@@ -1104,30 +1154,44 @@ function convert_attribute(value::Union{Symbol, String}, k::key"algorithm")
     end, k)
 end
 
+const DEFAULT_MARKER_MAP = Dict{Symbol, BezierPath}()
 
+function default_marker_map()
+    # The bezier markers should not look out of place when used together with text
+    # where both markers and text are given the same size, i.e. the marker and fontsizes
+    # should correspond approximately in a visual sense.
 
-const _marker_map = Dict(
-    :rect => '■',
-    :star5 => '★',
-    :diamond => '◆',
-    :hexagon => '⬢',
-    :cross => '✚',
-    :xcross => '❌',
-    :utriangle => '▲',
-    :dtriangle => '▼',
-    :ltriangle => '◀',
-    :rtriangle => '▶',
-    :pentagon => '⬟',
-    :octagon => '⯄',
-    :star4 => '✦',
-    :star6 => '🟋',
-    :star8 => '✷',
-    :vline => '┃',
-    :hline => '━',
-    :+ => '+',
-    :x => 'x',
-    :circle => '●'
-)
+    # All the basic bezier shapes are approximately built in a 1 by 1 square centered
+    # around the origin, with slight deviations to match them better to each other.
+
+    # An 'x' of DejaVu sans is only about 55pt high at 100pt font size, so if the marker
+    # shapes are just used as is, they look much too large in comparison.
+    # To me, a factor of 0.75 looks ok compared to both uppercase and lowercase letters of Dejavu.
+    if isempty(DEFAULT_MARKER_MAP)
+        size_factor = 0.75
+        DEFAULT_MARKER_MAP[:rect] = scale(BezierSquare, size_factor)
+        DEFAULT_MARKER_MAP[:diamond] = scale(rotate(BezierSquare, pi/4), size_factor)
+        DEFAULT_MARKER_MAP[:hexagon] = scale(bezier_ngon(6, 0.5, pi/2), size_factor)
+        DEFAULT_MARKER_MAP[:cross] = scale(BezierCross, size_factor)
+        DEFAULT_MARKER_MAP[:xcross] = scale(BezierX, size_factor)
+        DEFAULT_MARKER_MAP[:utriangle] = scale(BezierUTriangle, size_factor)
+        DEFAULT_MARKER_MAP[:dtriangle] = scale(BezierDTriangle, size_factor)
+        DEFAULT_MARKER_MAP[:ltriangle] = scale(BezierLTriangle, size_factor)
+        DEFAULT_MARKER_MAP[:rtriangle] = scale(BezierRTriangle, size_factor)
+        DEFAULT_MARKER_MAP[:pentagon] = scale(bezier_ngon(5, 0.5, pi/2), size_factor)
+        DEFAULT_MARKER_MAP[:octagon] = scale(bezier_ngon(8, 0.5, pi/2), size_factor)
+        DEFAULT_MARKER_MAP[:star4] = scale(bezier_star(4, 0.25, 0.6, pi/2), size_factor)
+        DEFAULT_MARKER_MAP[:star5] = scale(bezier_star(5, 0.28, 0.6, pi/2), size_factor)
+        DEFAULT_MARKER_MAP[:star6] = scale(bezier_star(6, 0.30, 0.6, pi/2), size_factor)
+        DEFAULT_MARKER_MAP[:star8] = scale(bezier_star(8, 0.33, 0.6, pi/2), size_factor)
+        DEFAULT_MARKER_MAP[:vline] = scale(scale(BezierSquare, (0.2, 1.0)), size_factor)
+        DEFAULT_MARKER_MAP[:hline] = scale(scale(BezierSquare, (1.0, 0.2)), size_factor)
+        DEFAULT_MARKER_MAP[:+] = scale(BezierCross, size_factor)
+        DEFAULT_MARKER_MAP[:x] = scale(BezierX, size_factor)
+        DEFAULT_MARKER_MAP[:circle] = scale(BezierCircle, size_factor)
+    end
+    return DEFAULT_MARKER_MAP
+end
 
 """
     available_marker_symbols()
@@ -1136,8 +1200,8 @@ Displays all available marker symbols.
 """
 function available_marker_symbols()
     println("Marker Symbols:")
-    for (k, v) in _marker_map
-        println("    ", k, " => ", v)
+    for (k, v) in default_marker_map()
+        println("    :", k)
     end
 end
 
@@ -1155,11 +1219,24 @@ Note, that this will draw markers always as 1 pixel.
 """
 struct FastPixel end
 
+"""
+Vector of anything that is accepted as a single marker will give each point it's own marker.
+Note that it needs to be a uniform vector with the same element type!
+"""
+to_spritemarker(marker::AbstractVector) = map(to_spritemarker, marker)
+to_spritemarker(marker::AbstractVector{Char}) = marker # Don't dispatch to the above!
 to_spritemarker(x::FastPixel) = x
 to_spritemarker(x::Circle) = x
-to_spritemarker(::Type{<: Circle}) = Circle(Point2f(0), 1f0)
-to_spritemarker(::Type{<: Rect}) = Rect(Vec2f(0), Vec2f(1))
+to_spritemarker(::Type{<: Circle}) = Circle
+to_spritemarker(::Type{<: Rect}) = Rect
 to_spritemarker(x::Rect) = x
+to_spritemarker(b::BezierPath) = b
+to_spritemarker(b::Polygon) = BezierPath(b)
+to_spritemarker(b) = error("Not a valid scatter marker: $(typeof(b))")
+
+function to_spritemarker(str::String)
+    error("Using strings for multiple char markers is deprecated. Use `collect(string)` or `['x', 'o', ...]` instead. Found: $(str)")
+end
 
 """
     to_spritemarker(b, marker::Char)
@@ -1182,36 +1259,23 @@ to_spritemarker(marker::AbstractMatrix{<: Colorant}) = marker
 A `Symbol` - Available options can be printed with `available_marker_symbols()`
 """
 function to_spritemarker(marker::Symbol)
-    if haskey(_marker_map, marker)
-        return to_spritemarker(_marker_map[marker])
+    if haskey(default_marker_map(), marker)
+        return to_spritemarker(default_marker_map()[marker])
     else
         @warn("Unsupported marker: $marker, using ● instead")
         return '●'
     end
 end
 
-to_spritemarker(marker::String) = marker
-to_spritemarker(marker::AbstractVector{Char}) = String(marker)
 
-"""
-Vector of anything that is accepted as a single marker will give each point it's own marker.
-Note that it needs to be a uniform vector with the same element type!
-"""
-function to_spritemarker(marker::AbstractVector)
-    marker = to_spritemarker.(marker)
-    if isa(marker, AbstractVector{Char})
-        String(marker)
-    else
-        marker
-    end
-end
+
 
 convert_attribute(value, ::key"marker", ::key"scatter") = to_spritemarker(value)
 convert_attribute(value, ::key"isovalue", ::key"volume") = Float32(value)
 convert_attribute(value, ::key"isorange", ::key"volume") = Float32(value)
 
 function convert_attribute(value::Symbol, ::key"marker", ::key"meshscatter")
-    if value == :Sphere
+    if value === :Sphere
         return normal_mesh(Sphere(Point3f(0), 1f0))
     else
         error("Unsupported marker: $(value)")

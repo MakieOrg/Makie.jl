@@ -1,9 +1,12 @@
 mutable struct GLBuffer{T} <: GPUArray{T, 1}
-    id          ::GLuint
-    size        ::NTuple{1, Int}
-    buffertype  ::GLenum
-    usage       ::GLenum
-    context     ::GLContext
+    id::GLuint
+    size::NTuple{1, Int}
+    buffertype::GLenum
+    usage::GLenum
+    context::GLContext
+    # TODO maybe also delay upload to when render happens?
+    requires_update::Observable{Bool}
+    observers::Vector{Observables.ObserverFunction}
 
     function GLBuffer{T}(ptr::Ptr{T}, buff_length::Int, buffertype::GLenum, usage::GLenum) where T
         id = glGenBuffers()
@@ -13,13 +16,22 @@ mutable struct GLBuffer{T} <: GPUArray{T, 1}
         glBufferData(buffertype, buff_length * sizeof(T), ptr, usage)
         glBindBuffer(buffertype, 0)
 
-        obj = new(id, (buff_length,), buffertype, usage, current_context())
+        obj = new(
+            id, (buff_length,), buffertype, usage, current_context(),
+            Observable(true), Observables.ObserverFunction[])
+
         finalizer(free, obj)
         obj
     end
 end
 
-bind(buffer::GLBuffer) = glBindBuffer(buffer.buffertype, buffer.id)
+function bind(buffer::GLBuffer)
+    if buffer.id == 0
+        error("Binding freed GLBuffer{$(eltype(buffer))}")
+    end
+    glBindBuffer(buffer.buffertype, buffer.id)
+end
+
 #used to reset buffer target
 bind(buffer::GLBuffer, other_target) = glBindBuffer(buffer.buffertype, other_target)
 
@@ -34,15 +46,33 @@ function GLBuffer(
         buffer::Union{Base.ReinterpretArray{T, 1}, DenseVector{T}};
         buffertype::GLenum = GL_ARRAY_BUFFER, usage::GLenum = GL_STATIC_DRAW
     ) where T <: GLArrayEltypes
-    GLBuffer{T}(pointer(buffer), length(buffer), buffertype, usage)
+    GC.@preserve buffer begin
+        return GLBuffer{T}(pointer(buffer), length(buffer), buffertype, usage)
+    end
 end
 
 function GLBuffer(
         buffer::DenseVector{T};
         buffertype::GLenum = GL_ARRAY_BUFFER, usage::GLenum = GL_STATIC_DRAW
     ) where T <: GLArrayEltypes
-    GLBuffer{T}(pointer(buffer), length(buffer), buffertype, usage)
+    GC.@preserve buffer begin
+        return GLBuffer{T}(pointer(buffer), length(buffer), buffertype, usage)
+    end
 end
+
+function GLBuffer(
+        buffer::ShaderAbstractions.Buffer{T};
+        buffertype::GLenum = GL_ARRAY_BUFFER, usage::GLenum = GL_STATIC_DRAW
+    ) where T <: GLArrayEltypes
+    b = GLBuffer(ShaderAbstractions.data(buffer); buffertype=buffertype, usage=usage)
+    obsfunc = ShaderAbstractions.connect!(buffer, b)
+    push!(b.observers, obsfunc)
+    return b
+end
+
+# no-op conversions
+GLBuffer(buffer::GLBuffer) = buffer
+GLBuffer{T}(buffer::GLBuffer{T}) where {T} = buffer
 
 function GLBuffer(
         buffer::AbstractVector{T};
@@ -125,6 +155,7 @@ end
 # could be a setindex! operation, with subarrays for buffers
 function unsafe_copy!(a::GLBuffer{T}, readoffset::Int, b::GLBuffer{T}, writeoffset::Int, len::Int) where T
     multiplicator = sizeof(T)
+    @assert a.id != 0 & b.id != 0
     glBindBuffer(GL_COPY_READ_BUFFER, a.id)
     glBindBuffer(GL_COPY_WRITE_BUFFER, b.id)
     glCopyBufferSubData(
@@ -138,21 +169,9 @@ function unsafe_copy!(a::GLBuffer{T}, readoffset::Int, b::GLBuffer{T}, writeoffs
     return nothing
 end
 
-function Base.iterate(buffer::GLBuffer{T}) where T
-    length(buffer) < 1 && return nothing
-    glBindBuffer(buffer.buffertype, buffer.id)
-    ptr = Ptr{T}(glMapBuffer(buffer.buffertype, GL_READ_WRITE))
-    return (unsafe_load(ptr, i), (ptr, 1))
-end
-
-function Base.iterate(buffer::GLBuffer{T}, state::Tuple{Ptr{T}, Int}) where T
-    ptr, i = state
-    if i > length(buffer)
-        glUnmapBuffer(buffer.buffertype)
-        return nothing
-    end
-    val = unsafe_load(ptr, i)
-    return (val, (ptr, i + 1))
+function Base.iterate(buffer::GLBuffer{T}, i=1) where T
+    i > length(buffer) && return nothing
+    return gpu_getindex(buffer, i:i)[], i+1
 end
 
 #copy inside one buffer

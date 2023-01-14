@@ -1,7 +1,7 @@
 notchheight(q2, q4, N) = 1.58 * (q4 - q2) / sqrt(N)
 
 #=
-Taken from https://github.com/JuliaPlots/StatPlots.jl/blob/master/src/boxplot.jl#L7
+Taken from https://github.com/MakieOrg/StatPlots.jl/blob/master/src/boxplot.jl#L7
 The StatPlots.jl package is licensed under the MIT "Expat" License:
     Copyright (c) 2016: Thomas Breloff.
 =#
@@ -17,8 +17,10 @@ The boxplot has 3 components:
 - `x`: positions of the categories
 - `y`: variables within the boxes
 # Keywords
+- `weights`: vector of statistical weights (length of data). By default, each observation has weight `1`.
 - `orientation=:vertical`: orientation of box (`:vertical` or `:horizontal`)
-- `width=0.8`: width of the box
+- `width=1`: width of the box before shrinking
+- `gap=0.2`: shrinking factor, `width -> width * (1 - gap)`
 - `show_notch=false`: draw the notch
 - `notchwidth=0.5`: multiplier of `width` for narrowest width of notch
 - `show_median=true`: show median as midline
@@ -26,9 +28,12 @@ The boxplot has 3 components:
 - `whiskerwidth`: multiplier of `width` for width of T's on whiskers, or
     `:match` to match `width`
 - `show_outliers`: show outliers as points
+- `dodge`: vector of `Integer` (length of data) of grouping variable to create multiple side-by-side boxes at the same `x` position
+- `dodge_gap = 0.03`: spacing between dodged boxes
 """
 @recipe(BoxPlot, x, y) do scene
     Theme(
+        weights = automatic,
         color = theme(scene, :patchcolor),
         colormap = theme(scene, :colormap),
         colorrange = automatic,
@@ -37,7 +42,7 @@ The boxplot has 3 components:
         width = automatic,
         dodge = automatic,
         n_dodge = automatic,
-        x_gap = 0.2,
+        gap = 0.2,
         dodge_gap = 0.03,
         strokecolor = theme(scene, :patchstrokecolor),
         strokewidth = theme(scene, :patchstrokewidth),
@@ -70,23 +75,23 @@ conversion_trait(x::Type{<:BoxPlot}) = SampleBased()
 _cycle(v::AbstractVector, idx::Integer) = v[mod1(idx, length(v))]
 _cycle(v, idx::Integer) = v
 
-_flip_xy(p::Point2f) = reverse(p)
-_flip_xy(r::Rect{2,T}) where {T} = Rect{2,T}(reverse(r.origin), reverse(r.widths))
+flip_xy(p::Point2f) = reverse(p)
+flip_xy(r::Rect{2,T}) where {T} = Rect{2,T}(reverse(r.origin), reverse(r.widths))
 
 function Makie.plot!(plot::BoxPlot)
-    args = @extract plot (width, range, show_outliers, whiskerwidth, show_notch, orientation, x_gap, dodge, n_dodge, dodge_gap)
+    args = @extract plot (weights, width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap)
 
     signals = lift(
         plot[1],
         plot[2],
         plot[:color],
         args...,
-    ) do x, y, color, width, range, show_outliers, whiskerwidth, show_notch, orientation, x_gap, dodge, n_dodge, dodge_gap
-        x̂, boxwidth = xw_from_dodge(x, width, 1.0, x_gap, dodge, n_dodge, dodge_gap)
-        if !(whiskerwidth == :match || whiskerwidth >= 0)
+    ) do x, y, color, weights, width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap
+        x̂, boxwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
+        if !(whiskerwidth === :match || whiskerwidth >= 0)
             error("whiskerwidth must be :match or a positive number. Found: $whiskerwidth")
         end
-        ww = whiskerwidth == :match ? boxwidth : whiskerwidth * boxwidth
+        ww = whiskerwidth === :match ? boxwidth : whiskerwidth * boxwidth
         outlier_points = Point2f[]
         centers = Float32[]
         medians = Float32[]
@@ -102,7 +107,8 @@ function Makie.plot!(plot::BoxPlot)
             values = view(y, idxs)
 
             # compute quantiles
-            q1, q2, q3, q4, q5 = quantile(values, LinRange(0, 1, 5))
+            w = weights === automatic ? () : (StatsBase.weights(view(weights, idxs)),)
+            q1, q2, q3, q4, q5 = quantile(values, w..., LinRange(0, 1, 5))
 
             # notches
             if show_notch
@@ -148,10 +154,10 @@ function Makie.plot!(plot::BoxPlot)
         end
 
         # for horizontal boxplots just flip all components
-        if orientation == :horizontal
-            outlier_points = _flip_xy.(outlier_points)
-            t_segments = _flip_xy.(t_segments)
-        elseif orientation != :vertical
+        if orientation === :horizontal
+            outlier_points = flip_xy.(outlier_points)
+            t_segments = flip_xy.(t_segments)
+        elseif orientation !== :vertical
             error("Invalid orientation $orientation. Valid options: :horizontal or :vertical.")
         end
 
@@ -185,7 +191,7 @@ function Makie.plot!(plot::BoxPlot)
         c = outliercolor === automatic ? color : outliercolor
         if c isa AbstractVector
             return c[outlier_indices]
-        else 
+        else
             return c
         end
     end
@@ -198,7 +204,8 @@ function Makie.plot!(plot::BoxPlot)
         strokecolor = plot[:outlierstrokecolor],
         strokewidth = plot[:outlierstrokewidth],
         outliers,
-        inspectable = plot[:inspectable]
+        inspectable = plot[:inspectable],
+        colorrange = @lift($boxcolor isa AbstractArray{<:Real} ? extrema($boxcolor) : automatic), # if only one group has outliers, the colorrange will be width 0 otherwise, if it's not an array, it shouldn't matter
     )
     linesegments!(
         plot,
@@ -219,6 +226,7 @@ function Makie.plot!(plot::BoxPlot)
         show_midline = plot[:show_median],
         orientation = orientation,
         width = boxwidth,
+        gap = 0,
         show_notch = show_notch,
         notchmin = notchmin,
         notchmax = notchmax,

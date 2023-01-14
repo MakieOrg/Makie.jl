@@ -3,8 +3,8 @@ function mandelbrot(x, y)
     for i in 1:100.0; abs(z) > 2 && return i; z = z^2 + c; end; 0
 end
 
-x = Node(range(-2, 1, length = 400))
-y = Node(range(-1, 1, length = 300))
+x = Observable(range(-2, 1, length = 400))
+y = Observable(range(-1, 1, length = 300))
 
 fig, ax, img = heatmap(x, y, mandelbrot, colormap = Reverse(:deep),
     figure = (resolution = (400, 300),))
@@ -15,5 +15,3 @@ record(fig, "mandelbrot.mp4", 1:200) do frame
     y[] = y[] .+ ((0.645 .- y[]) .* 0.05)
     autolimits!(ax)
 end
-
-

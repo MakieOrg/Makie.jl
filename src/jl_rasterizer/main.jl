@@ -1,6 +1,7 @@
-using Colors, ColorVectorSpace, StaticArrays
-using GeometryTypes, Interpolations
-
+using Colors, ColorVectorSpace
+using GeometryBasics, Interpolations
+using ImageShow
+using Makie: orthographicprojection
 
 @inline function edge_function(a, b, c)
     (c[1] - a[1]) * (b[2] - a[2]) - (c[2] - a[2]) * (b[1] - a[1])
@@ -15,10 +16,10 @@ end
 one_minus_alpha(c::T) where {T <: Colorant} = one(T) .- src_alpha(c)
 blend(source, dest, src_func, dest_func) = clamp01(src_func(source) .+ dest_func(dest))
 ColorTypes.alpha(x::StaticVector) = x[4]
+
 function standard_transparency(source, dest::T) where T
     (alpha(source) .* source) .+ ((one(eltype(T)) - alpha(source)) .* dest)
 end
-
 
 mutable struct FixedGeomView{GeomOut, VT}
     buffer::Vector{GeomOut}
@@ -26,24 +27,42 @@ mutable struct FixedGeomView{GeomOut, VT}
     idx::Int
 end
 
+struct TriangleStripView{T} <: AbstractVector{NTuple{3, T}}
+    parent::AbstractVector{T}
+end
+
+Base.length(x::TriangleStripView) = 2
+Base.size(x::TriangleStripView) = (2,)
+
+function Base.getindex(x::TriangleStripView, i)
+    if i === 1
+        return ntuple(i-> x.parent[i], 3)
+    elseif i === 2
+        return map(i-> x.parent[i], (3, 2, 4))
+    else
+        error("Out of bounds")
+    end
+end
+
 function FixedGeomView(T, max_primitives, primitive_in, primitive_out)
-    buffer = Vector{Tuple{Point4f, T}}(max_primitives)
+    buffer = Vector{Tuple{Point4f, T}}(undef, max_primitives)
     # TODO implement primitive_in and out correctly
     # this is for triangle_strip and 4 max_primitives
-    if max_primitives != 4 || primitive_out != :triangle_strip
+    if max_primitives != 4 || primitive_out !== :triangle_strip
         error("Not implemented for max_primitives == $max_primitives and primitive_out == $primitive_out.")
     end
-    geometry_view = if primitive_out == :triangle_strip
-        view(buffer, [TriangleFace(1, 2, 3), TriangleFace(3, 2, 4)])
+    geometry_view = if primitive_out === :triangle_strip
+        TriangleStripView(buffer)
     else
         error("$primitive_out not supported. Only :triangle_strip supported right now")
     end
-    FixedGeomView(buffer, geometry_view, 1)
+    return FixedGeomView(buffer, geometry_view, 1)
 end
 
 function reset!(A::FixedGeomView)
     A.idx = 1
 end
+
 function Base.push!(A::FixedGeomView, element)
     if A.idx > length(A.buffer)
         error("Emit called more often than max_primitives. max_primitives: $(length(A.buffer))")
@@ -106,7 +125,7 @@ function rasterizer(
     )
 
     emit, geometry_view = nothing, nothing
-    fragment_in_ndim = if geometryshader != nothing
+    fragment_in_ndim = if !isnothing(geometryshader)
         T = geometry_return_type(vertexarray, vertexshader, geometryshader, uniforms)
         geometry_view = FixedGeomView(T, max_primitives, primitive_in, primitive_out)
         emit = (position, fragment_args) -> push!(geometry_view, (position, fragment_args))
@@ -134,14 +153,16 @@ end
 
 
 Base.@pure Next(::Val{N}) where {N} = Val(N - 1)
-@inline function interpolate(bary, face::NTuple{N, T}, vn::Val{0}, aggregate) where {N, T}
+
+function interpolate(bary, face::NTuple{N, T}, vn::Val{0}, aggregate) where {N, T}
     if T <: Tuple
         aggregate
     else
         T(aggregate...)
     end
 end
-@inline function interpolate(bary, face, vn::Val{N}, aggregate = ()) where N
+
+function interpolate(bary, face, vn::Val{N}, aggregate = ()) where N
     @inbounds begin
         res = (
             bary[1] * getfield(face[1], N) .+
@@ -149,17 +170,16 @@ end
             bary[3] * getfield(face[3], N)
         )
     end
-    interpolate(bary, face, Next(vn), (res, aggregate...))
+    return interpolate(bary, face, Next(vn), (res, aggregate...))
 end
 
 broadcastmin(a, b) = min.(a, b)
 broadcastmax(a, b) = max.(a, b)
 
-
 function clip2pixel_space(position, resolution)
-    clipspace = position / position[4]
+    clipspace = position ./ position[4]
     p = clipspace[Vec(1, 2)]
-    (((p + 1f0) / 2f0) .* (resolution - 1f0)) + 1f0, clipspace[3]
+    (((p .+ 1f0) / 2f0) .* (resolution .- 1f0)) .+ 1f0, clipspace[3]
 end
 
 
@@ -178,13 +198,15 @@ function (r::JLRasterizer{Vert, Args, FragN})(
         vertex_stage = map(reverse(face)) do f
             vshader(f, uniforms...)
         end
-        geom_stage = if isa(r.geometryshader, Nothing)
+
+        geom_stage = if isnothing(gshader)
             (vertex_stage,)
         else
             reset!(r.geometry_view)
             gshader(r.emit, vertex_stage, uniforms...)
             r.geometry_view.view
         end
+
         for geom_face in geom_stage
             fdepth = map(geom_face) do vert
                 fv = first(vert)
@@ -233,7 +255,7 @@ function (r::JLRasterizer{Vert, Args, FragN})(
     println("fragments drawn: ", fragments_drawn)
     return
 end
-circle(uv::Vec{2, T}) where {T} = T(0.5) - norm(uv)
+
 """
 smoothstep performs smooth Hermite interpolation between 0 and 1 when edge0 < x < edge1. This is useful in cases where a threshold function with a smooth transition is desired. smoothstep is equivalent to:
 ```
@@ -246,10 +268,12 @@ function smoothstep(edge0, edge1, x::T) where T
     t = clamp.((x .- edge0) ./ (edge1 .- edge0), T(0), T(1))
     return t * t * (T(3) - T(2) * t)
 end
+
 function aastep(threshold1::T, value) where T
     afwidth = norm(Vec2f(dFdx(value), dFdy(value))) * T(1.05);
     smoothstep(threshold1 - afwidth, threshold1 + afwidth, value)
 end
+
 function aastep(threshold1::T, threshold2::T, value::T) where T
     afwidth = norm(Vec2f(dFdx(value), dFdy(value))) * T(1.05);
     return (
@@ -257,6 +281,10 @@ function aastep(threshold1::T, threshold2::T, value::T) where T
         smoothstep(threshold2 - afwidth, threshold2 + afwidth, value)
     )
 end
+
+mix(x, y, a::T) where {T} = x .* (T(1) .- a) .+ y .* a
+fract(x) = x - floor(x)
+fabs(x::AbstractFloat) = abs(x)
 
 """
 Gradient in x direction
@@ -273,13 +301,6 @@ mutable struct Uniforms{F}
     glowcolor::Vec4f
     distance_func::F
 end
-
-mutable struct TextUniforms
-    projection::Mat4f
-    strokecolor::Vec4f
-    glowcolor::Vec4f
-end
-
 
 struct VertexCS{N, T}
     position::Vec{N, T}
@@ -318,6 +339,7 @@ function geom_particles(emit!, vertex_out, uniforms, image)
     geom_particles(emit!, vertex_out, uniforms)
     return
 end
+
 function geom_particles(emit!, vertex_out, uniforms)
     # get arguments from first face
     # (there is only one in there anywas, since primitive type is point)
@@ -347,55 +369,27 @@ function sdf2color(dist, bg_color, color)
     inside = aastep(0f0, dist)
     mix(bg_color, color, inside)
 end
+
 function frag_particles(geom_out, uniforms, image)
     uv = geom_out[1]; color = geom_out[2]
     dist = -image[uv][1]
     bg_color = Vec4f(0f0, 0f0, 0f0, 0f0)
     (sdf2color(dist, bg_color, color), )
 end
+
 function frag_particles(geom_out, uniforms)
     uv = geom_out[1]; color = geom_out[2]
     dist = uniforms.distance_func(uv)
     bg_color = Vec4f(0f0, 0f0, 0f0, 0f0)
+    # col = Vec4f(norm(uv .- 0.5), 0, 0, 1)
     (sdf2color(dist, bg_color, color), )
 end
 
-function orthographicprojection(wh::Rect2, near::T, far::T) where T
-    orthographicprojection(zero(T), T(wh.w), zero(T), T(wh.h), near, far)
-end
-function orthographicprojection(
-        ::Type{T}, wh::Rect2, near::Number, far::Number
-    ) where T
-    orthographicprojection(wh, T(near), T(far))
-end
+resolution = (1024, 1024)
 
-function orthographicprojection(
-        left  ::T, right::T,
-        bottom::T, top  ::T,
-        znear ::T, zfar ::T
-    ) where T
-    (right==left || bottom==top || znear==zfar) && return Mat{4,4,T}(I)
-    T0, T1, T2 = zero(T), one(T), T(2)
-    Mat{4}(
-        T2/(right-left), T0, T0,  T0,
-        T0, T2/(top-bottom), T0,  T0,
-        T0, T0, -T2/(zfar-znear), T0,
-        -(right+left)/(right-left), -(top+bottom)/(top-bottom), -(zfar+znear)/(zfar-znear), T1
-    )
-end
-function orthographicprojection(::Type{T},
-        left  ::Number, right::Number,
-        bottom::Number, top  ::Number,
-        znear ::Number, zfar ::Number
-    ) where T
-    orthographicprojection(
-        T(left),   T(right),
-        T(bottom), T(top),
-        T(znear),  T(zfar)
-    )
-end
+proj = Makie.orthographicprojection(Rect2(0, 0, resolution...), -10_000f0, 10_000f0)
 
-proj = orthographicprojection(Rect2(0, 0, resolution...), -10_000f0, 10_000f0)
+circle(uv::Vec{2, T}) where {T} = -T(norm(uv .- 0.5) - 0.5)
 
 uniforms = Uniforms(
     proj,
@@ -407,7 +401,7 @@ uniforms = Uniforms(
 
 N = 10
 middle = Vec2f(resolution) / 2f0
-radius = min(resolution...) / 2f0
+radius = (min(resolution...) / 2f0) - 50
 vertices = [(VertexCS(
     Vec2f((sin(2pi * (i / N)) , cos(2pi * (i / N))) .* radius) .+ middle,
     Vec4f(1, i/N, 0, 1),
@@ -430,20 +424,13 @@ struct Canvas{N}
     color::NTuple{N, Matrix{RGBA{Float32}}}
     depth::Matrix{Float32}
 end
-function canvas(xdim::Integer, ydim::Integer)
-    color = Matrix{RGBA{Float32}}(xdim, ydim)
-    color .= identity.(RGBA{Float32}(0,0,0,0))
+
+function Canvas(xdim::Integer, ydim::Integer)
+    color = fill(RGBA{Float32}(0,0,0,0), xdim, ydim)
     depth = ones(Float32, xdim, ydim)
-    Canvas((color,), depth)
+    return Canvas((color,), depth)
 end
 
-w = canvas(1024, 1024)
-
-
-mix(x, y, a::T) where {T} = x .* (T(1) .- a) .+ y .* a
-
-fract(x) = x - floor(x)
-fabs(x::AbstractFloat) = abs(x)
-raster(w, vertices, (uniforms,))
-using Imagesp
-w.color[1]
+c = Canvas(resolution...)
+raster(c, vertices, (uniforms,))
+save("test.png", c.color[1])

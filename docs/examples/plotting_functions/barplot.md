@@ -8,7 +8,7 @@
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 Axis(f[1, 1])
@@ -27,12 +27,12 @@ f
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 xs = 1:0.2:10
 ys = 0.5 .* sin.(xs)
 
-barplot(xs, ys, width = step(xs), color = :gray85, strokecolor = :black, strokewidth = 1)
+barplot(xs, ys, gap = 0, color = :gray85, strokecolor = :black, strokewidth = 1)
 ```
 \end{examplefigure}
 
@@ -40,7 +40,7 @@ barplot(xs, ys, width = step(xs), color = :gray85, strokecolor = :black, strokew
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 tbl = (x = [1, 1, 1, 2, 2, 2, 3, 3, 3],
        height = 0.1:0.1:0.9,
@@ -126,24 +126,6 @@ barplot(
 
 \begin{examplefigure}{}
 ```julia
-barplot(
-    tbl.x, tbl.height,
-    dodge = tbl.grp,
-    color = tbl.grp,
-    bar_labels = :y,
-    axis = (xticks = (1:3, ["left", "middle", "right"]),
-            title = "Dodged bars horizontal with labels"),
-    colormap = [:red, :green, :blue],
-    color_over_background=:red,
-    color_over_bar=:white,
-    flip_labels_at=0.85,
-    direction=:x,
-)
-```
-\end{examplefigure}
-
-\begin{examplefigure}{}
-```julia
 barplot([-1, -0.5, 0.5, 1],
     bar_labels = :y,
     axis = (title="Fonts + flip_labels_at",),
@@ -162,10 +144,10 @@ using CairoMakie
 
 #Gantt data
 gantt = (
-    machine = [1,2,1,2], 
-    job = [1,1,2,3], 
-    task = [1,2,3,3], 
-    start = [1, 3, 3.5, 5], 
+    machine = [1,2,1,2],
+    job = [1,1,2,3],
+    task = [1,2,3,3],
+    start = [1, 3, 3.5, 5],
     stop = [3, 4, 5, 6]
 )
 
@@ -189,14 +171,14 @@ barplot!(
     fillto = gantt.start,
     direction = :x,
     color = colors[gantt.job],
-    x_gap = 0.5
+    gap = 0.5
 )
 
 #Add labels
 bar_labels = ["task #$i" for i in gantt.task]
 text!(
     ["task #$i" for i in gantt.task],
-    position = Point2f0.(
+    position = Point2f.(
         (gantt.start .+ gantt.stop) ./ 2,
         gantt.machine
     ),

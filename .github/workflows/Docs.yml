@@ -4,14 +4,21 @@ on:
     branches:
       - main
       - master
+      - breaking-release
     tags: '*'
   pull_request:
     branches:
       - main
       - master
+      - breaking-release
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -30,7 +37,7 @@ jobs:
     - name: Install Julia
       uses: julia-actions/setup-julia@v1
       with:
-        version: 1.6
+        version: '1'
     - name: Build and deploy docs
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -38,4 +45,8 @@ jobs:
           cd docs;
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24'
           julia --color=yes makedocs.jl
-
+    - name: Upload site as artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: Docs build
+        path: ./docs/__site

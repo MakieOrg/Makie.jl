@@ -1,6 +1,5 @@
 module GLAbstraction
 
-using StaticArrays
 using GeometryBasics
 using ModernGL
 using Makie
@@ -11,11 +10,10 @@ using Printf
 using LinearAlgebra
 using Observables
 using ShaderAbstractions
-using ShaderAbstractions: current_context, is_context_active, context_alive
+using ShaderAbstractions: current_context, is_context_active, context_alive, switch_context!
+using GeometryBasics: StaticVector
 
 import FixedPointNumbers: N0f8, N0f16, N0f8, Normed
-
-import Makie: update!
 
 import Base: merge, resize!, similar, length, getindex, setindex!
 
@@ -43,10 +41,6 @@ import ModernGL.glViewport
 import ModernGL.glScissor
 
 include("GLUtils.jl")
-export @materialize #splats keywords from a dict into variables
-export @materialize!  #splats keywords from a dict into variables and deletes them from the dict
-export close_to_square
-export AND, OR, isnotempty
 
 include("shaderabstraction.jl")
 include("GLTypes.jl")
@@ -60,8 +54,6 @@ export gpu_data                 # gets the data of a gpu array as a Julia Array
 export RenderObject             # An object which holds all GPU handles and datastructes to ready for rendering by calling render(obj)
 export prerender!               # adds a function to a RenderObject, which gets executed befor setting the OpenGL render state
 export postrender!              # adds a function to a RenderObject, which gets executed after setting the OpenGL render states
-export std_renderobject            # creates a renderobject with standard parameters
-export instanced_renderobject    # simplification for creating a RenderObject which renders instances
 export extract_renderable
 export set_arg!
 export GLVertexArray            # VertexArray wrapper object
@@ -70,7 +62,6 @@ export indexbuffer              # Shortcut to create an OpenGL Buffer object for
 export opengl_compatible        # infers if a type is opengl compatible and returns stats like cardinality and eltype (will be deprecated)
 export cardinality              # returns the cardinality of the elements of a buffer
 
-export Style                    # Style Type, which is used to choose different visualization/editing styles via multiple dispatch
 export mergedefault!            # merges a style dict via a given style
 export TOrSignal, VecOrSignal, ArrayOrSignal, MatOrSignal, VolumeOrSignal, ArrayTypes, VectorTypes, MatTypes, VolumeTypes
 export MouseButton, MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT
@@ -106,10 +97,5 @@ include("GLInfo.jl")
 export getUniformsInfo
 export getProgramInfo
 export getAttributesInfo
-
-if Base.VERSION >= v"1.4.2"
-    include("precompile.jl")
-    _precompile_()
-end
 
 end # module

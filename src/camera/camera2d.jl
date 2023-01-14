@@ -1,11 +1,11 @@
 struct Camera2D <: AbstractCamera
-    area::Node{Rect2f}
-    zoomspeed::Node{Float32}
-    zoombutton::Node{ButtonTypes}
-    panbutton::Node{Union{ButtonTypes, Vector{ButtonTypes}}}
-    padding::Node{Float32}
-    last_area::Node{Vec{2, Int}}
-    update_limits::Node{Bool}
+    area::Observable{Rect2f}
+    zoomspeed::Observable{Float32}
+    zoombutton::Observable{ButtonTypes}
+    panbutton::Observable{Union{ButtonTypes, Vector{ButtonTypes}}}
+    padding::Observable{Float32}
+    last_area::Observable{Vec{2, Int}}
+    update_limits::Observable{Bool}
 end
 
 """
@@ -16,7 +16,7 @@ Creates a 2D camera for the given Scene.
 function cam2d!(scene::SceneLike; kw_args...)
     cam_attributes = merged_get!(:cam2d, scene, Attributes(kw_args)) do
         Attributes(
-            area = Node(Rectf(0, 0, 1, 1)),
+            area = Observable(Rectf(0, 0, 1, 1)),
             zoomspeed = 0.10f0,
             zoombutton = nothing,
             panbutton = Mouse.right,
@@ -50,7 +50,7 @@ update_cam!(scene::SceneLike, area) = update_cam!(scene, cameracontrols(scene), 
     update_cam!(scene::SceneLike)
 
 Updates the camera for the given `scene` to cover the limits of the `Scene`.
-Useful when using the `Node` pipeline.
+Useful when using the `Observable` pipeline.
 """
 update_cam!(scene::SceneLike) = update_cam!(scene, cameracontrols(scene), limits(scene)[])
 
@@ -79,13 +79,11 @@ end
 function update_cam!(scene::SceneLike, cam::Camera2D)
     x, y = minimum(cam.area[])
     w, h = widths(cam.area[]) ./ 2f0
-    # These nodes should be final, no one should do map(cam.projection),
+    # These observables should be final, no one should do map(cam.projection),
     # so we don't push! and just update the value in place
     view = translationmatrix(Vec3f(-x - w, -y - h, 0))
     projection = orthographicprojection(-w, w, -h, h, -10_000f0, 10_000f0)
-    camera(scene).view[] = view
-    camera(scene).projection[] = projection
-    camera(scene).projectionview[] = projection * view
+    set_proj_view!(camera(scene), projection, view)
     cam.last_area[] = Vec(size(scene))
     return
 end
@@ -111,32 +109,32 @@ function add_pan!(scene::SceneLike, cam::Camera2D)
 
     on(
         camera(scene),
-        Node.((scene, cam, startpos, drag_active))...,
+        Observable.((scene, cam, startpos, drag_active))...,
         e.mousebutton
     ) do scene, cam, startpos, active, event
-        if event.button == cam.panbutton[]
-            mp = e.mouseposition[]
-            if event.action == Mouse.press && is_mouseinside(scene)
+        mp = e.mouseposition[]
+        if ispressed(scene, cam.panbutton[])
+            if event.action == Mouse.press && is_mouseinside(scene) && !active[]
                 startpos[] = mp
                 active[] = true
                 return Consume(true)
-            elseif event.action == Mouse.release && active[]
-                diff = startpos[] .- mp
-                startpos[] = mp
-                area = cam.area[]
-                diff = Vec(diff) .* wscale(pixelarea(scene)[], area)
-                cam.area[] = Rectf(minimum(area) .+ diff, widths(area))
-                update_cam!(scene, cam)
-                active[] = false
-                return Consume(true)
             end
+        elseif event.action == Mouse.release && active[]
+            diff = startpos[] .- mp
+            startpos[] = mp
+            area = cam.area[]
+            diff = Vec(diff) .* wscale(pixelarea(scene)[], area)
+            cam.area[] = Rectf(minimum(area) .+ diff, widths(area))
+            update_cam!(scene, cam)
+            active[] = false
+            return Consume(true)
         end
         return Consume(false)
     end
 
     on(
         camera(scene),
-        Node.((scene, cam, startpos, drag_active))...,
+        Observable.((scene, cam, startpos, drag_active))...,
         e.mouseposition
     ) do scene, cam, startpos, active, pos
         if active[] && ispressed(scene, cam.panbutton[])
@@ -193,25 +191,22 @@ function selection_rect!(scene, cam, key)
     lw = 2f0
     scene_unscaled = Scene(
         scene, transformation = Transformation(),
-        cam = copy(camera(scene)), clear = false, raw = true
+        cam = copy(camera(scene)), clear = false
     )
     scene_unscaled.clear = false
-    scene_unscaled.updated = Node(false)
     rect_vis = lines!(
         scene_unscaled,
         rect[],
         linestyle = :dot,
         linewidth = 2f0,
         color = (:black, 0.4),
-        visible = false,
-        raw = true
+        visible = false
     )
     waspressed = RefValue(false)
     on(camera(scene), events(scene).mousebutton, key) do event, key
         if ispressed(scene, key) && is_mouseinside(scene)
-            mp = events(scene).mouseposition[]
-            mp = camspace(scene, cam, mp)
-            if event.action == Mouse.press
+            mp = camspace(scene, cam, events(scene).mouseposition[])
+            if event.action == Mouse.press && !waspressed[]
                 waspressed[] = true
                 rect_vis[:visible] = true # start displaying
                 rect[] = Rectf(mp, 0, 0)
@@ -240,6 +235,7 @@ function selection_rect!(scene, cam, key)
     on(camera(scene), events(scene).mouseposition, key) do mp, key
         # this is only true after a mousebutton update
         if ispressed(scene, key) && is_mouseinside(scene)
+            mp = camspace(scene, cam, mp)
             mini = minimum(rect[])
             rect[] = Rectf(mini, mp - mini)
             rect_vis[1] = rect[]
@@ -270,8 +266,6 @@ function reset!(cam, boundingbox, preserveratio = true)
     update_cam!(cam, Rectf(-p, -p, w1 .+ 2p))
     return
 end
-
-
 
 function add_restriction!(cam, window, rarea::Rect2, minwidths::Vec)
     area_ref = Base.RefValue(cam[Area])
@@ -307,25 +301,51 @@ function add_restriction!(cam, window, rarea::Rect2, minwidths::Vec)
 end
 
 struct PixelCamera <: AbstractCamera end
+
+
+struct UpdatePixelCam
+    camera::Camera
+    near::Float32
+    far::Float32
+end
+
+function (cam::UpdatePixelCam)(window_size)
+    w, h = Float32.(widths(window_size))
+    projection = orthographicprojection(0f0, w, 0f0, h, cam.near, cam.far)
+    set_proj_view!(cam.camera, projection, Mat4f(I))
+end
+
 """
-    campixel!(scene)
+    campixel!(scene; nearclip=-1000f0, farclip=1000f0)
 
 Creates a pixel-level camera for the `Scene`.  No controls!
 """
-function campixel!(scene)
-    scene.updated = Node(false)
-    camera(scene).view[] = Mat4f(I)
+function campixel!(scene::Scene; nearclip=-10_000f0, farclip=10_000f0)
+    disconnect!(camera(scene))
     update_once = Observable(false)
-    on(camera(scene), update_once, pixelarea(scene)) do u, window_size
-        nearclip = -10_000f0
-        farclip = 10_000f0
-        w, h = Float32.(widths(window_size))
-        projection = orthographicprojection(0f0, w, 0f0, h, nearclip, farclip)
-        camera(scene).projection[] = projection
-        camera(scene).projectionview[] = projection
-    end
+    closure = UpdatePixelCam(camera(scene), nearclip, farclip)
+    on(closure, camera(scene), pixelarea(scene))
     cam = PixelCamera()
+    # update once
+    closure(pixelarea(scene)[])
     cameracontrols!(scene, cam)
     update_once[] = true
+    return cam
+end
+
+struct RelativeCamera <: AbstractCamera end
+
+"""
+    cam_relative!(scene)
+
+Creates a pixel-level camera for the `Scene`.  No controls!
+"""
+function cam_relative!(scene::Scene; nearclip=-10_000f0, farclip=10_000f0)
+    projection = orthographicprojection(0f0, 1f0, 0f0, 1f0, nearclip, farclip)
+    set_proj_view!(camera(scene), projection, Mat4f(I))
+    cam = RelativeCamera()
+    cameracontrols!(scene, cam)
     cam
 end
+
+# disconnect!(::Makie.PixelCamera) = nothing

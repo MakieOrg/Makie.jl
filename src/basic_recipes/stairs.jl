@@ -26,7 +26,7 @@ function plot!(p::Stairs{<:Tuple{<:AbstractVector{<:Point2}}})
     points = p[1]
 
     steppoints = lift(points, p.step) do points, step
-        if step == :pre
+        if step === :pre
             s_points = Vector{Point2f}(undef, length(points) * 2 - 1)
             s_points[1] = point = points[1]
             for i in 1:length(points)-1
@@ -36,7 +36,7 @@ function plot!(p::Stairs{<:Tuple{<:AbstractVector{<:Point2}}})
                 point = nextpoint
             end
             s_points
-        elseif step == :post
+        elseif step === :post
             s_points = Vector{Point2f}(undef, length(points) * 2 - 1)
             s_points[1] = point = points[1]
             for i in 1:length(points)-1
@@ -46,7 +46,7 @@ function plot!(p::Stairs{<:Tuple{<:AbstractVector{<:Point2}}})
                 point = nextpoint
             end
             s_points
-        elseif step == :center
+        elseif step === :center
             s_points = Vector{Point2f}(undef, length(points) * 2)
             s_points[1] = point = points[1]
             for i in 1:length(points)-1
@@ -62,24 +62,6 @@ function plot!(p::Stairs{<:Tuple{<:AbstractVector{<:Point2}}})
             error("Invalid step $step. Valid options are :pre, :post and :center")
         end
     end
-
-    if isa(p.color[], AbstractVector)
-        stepcolor = lift(p.color, p.step) do color, step
-            if step == :pre
-                c = [color';color'][2:end]
-            elseif step == :post
-                c = [color';color'][1:end-1]
-            elseif step == :center
-                c = [color';color'][1:end]
-            else
-                error("Invalid step $step. Valid options are :pre, :post and :center")
-            end
-            c
-        end
-        lines!(p, steppoints; color=stepcolor, [x for x in pairs(p.attributes) if x[1] != :step && x[1] != :color]...)
-    else
-        lines!(p, steppoints; [x for x in pairs(p.attributes) if x[1] != :step]...)
-    end
-    p
+    lines!(p, steppoints; [x for x in pairs(p.attributes) if x[1] !== :step]...)
 end
 

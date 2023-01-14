@@ -24,6 +24,8 @@ Plot a kernel density estimate of `values`.
 shifted with `offset` and the `direction` set to :x or :y.
 `bandwidth` and `boundary` are determined automatically by default.
 
+Statistical weights can be provided via the `weights` keyword argument.
+
 `color` is usually set to a single color, but can also be set to `:x` or
 `:y` to color with a gradient. If you use `:y` when direction = `:x` (or vice versa),
 note that only 2-element colormaps can work correctly.
@@ -45,6 +47,7 @@ $(ATTRIBUTES)
         direction = :x,
         boundary = automatic,
         bandwidth = automatic,
+        weights = automatic,
         cycle = [:color => :patchcolor],
         inspectable = theme(scene, :inspectable)
     )
@@ -54,12 +57,13 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
     x = plot[1]
 
     lowerupper = lift(x, plot.direction, plot.boundary, plot.offset,
-        plot.npoints, plot.bandwidth) do x, dir, bound, offs, n, bw
+        plot.npoints, plot.bandwidth, plot.weights) do x, dir, bound, offs, n, bw, weights
 
         k = KernelDensity.kde(x;
             npoints = n,
             (bound === automatic ? NamedTuple() : (boundary = bound,))...,
             (bw === automatic ? NamedTuple() : (bandwidth = bw,))...,
+            (weights === automatic ? NamedTuple() : (weights = StatsBase.weights(weights),))...
         )
 
         if dir === :x
@@ -86,8 +90,8 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
         end
     end
 
-    lower = Node(Point2f[])
-    upper = Node(Point2f[])
+    lower = Observable(Point2f[])
+    upper = Observable(Point2f[])
 
     on(lowerupper) do (l, u)
         lower.val = l
@@ -95,16 +99,17 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
     end
     notify(lowerupper)
 
-    colorobs = lift(Any, plot.color, lowerupper, plot.direction) do c, lu, dir
-        if (dir == :x && c == :x) || (dir == :y && c == :y)
-            dim = dir == :x ? 1 : 2
-            [l[dim] for l in lu[1]]
-        elseif (dir == :y && c == :x) || (dir == :x && c == :y)
+    colorobs = Observable{RGBColors}()
+    map!(colorobs, plot.color, lowerupper, plot.direction) do c, lu, dir
+        if (dir === :x && c === :x) || (dir === :y && c === :y)
+            dim = dir === :x ? 1 : 2
+            return Float32[l[dim] for l in lu[1]]
+        elseif (dir === :y && c === :x) || (dir === :x && c === :y)
             o = Float32(plot.offset[])
-            dim = dir == :x ? 2 : 1
-            vcat([l[dim] - o for l in lu[1]], [l[dim] - o for l in lu[2]])
+            dim = dir === :x ? 2 : 1
+            return vcat(Float32[l[dim] - o for l in lu[1]], Float32[l[dim] - o for l in lu[2]])::Vector{Float32}
         else
-            c
+            return to_color(c)
         end
     end
 

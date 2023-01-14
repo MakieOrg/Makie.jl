@@ -3,72 +3,123 @@ Selection of random objects on the screen is realized by rendering an
 object id + plus an arbitrary index into the framebuffer.
 The index can be used for e.g. instanced geometries.
 """
-struct SelectionID{T <: Integer} <: FieldVector{2, T}
+struct SelectionID{T <: Integer}
     id::T
     index::T
 end
-
+Base.convert(::Type{SelectionID{T}}, s::SelectionID) where T = SelectionID{T}(T(s.id), T(s.index))
+Base.zero(::Type{GLMakie.SelectionID{T}}) where T = SelectionID{T}(T(0), T(0))
 
 mutable struct GLFramebuffer
-    resolution::Node{NTuple{2, Int}}
-    id::NTuple{2, GLuint}
+    resolution::Observable{NTuple{2, Int}}
+    id::GLuint
 
+    buffer_ids::Dict{Symbol, GLuint}
     buffers::Dict{Symbol, Texture}
     render_buffer_ids::Vector{GLuint}
 end
 
 # it's guaranteed, that they all have the same size
 Base.size(fb::GLFramebuffer) = size(fb.buffers[:color])
+Base.haskey(fb::GLFramebuffer, key::Symbol) = haskey(fb.buffers, key)
+Base.getindex(fb::GLFramebuffer, key::Symbol) = fb.buffer_ids[key] => fb.buffers[key]
+
+function getfallback(fb::GLFramebuffer, key::Symbol, fallback_key::Symbol)
+    haskey(fb, key) ? fb[key] : fb[fallback_key]
+end
 
 
 function attach_framebuffer(t::Texture{T, 2}, attachment) where T
     glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, t.id, 0)
 end
 
+# attach texture as color attachment with automatic id picking
+function attach_colorbuffer!(fb::GLFramebuffer, key::Symbol, t::Texture{T, 2}) where T
+    if haskey(fb.buffer_ids, key) || haskey(fb.buffers, key)
+        error("Key $key already exists.")
+    end
+
+    max_color_id = GL_COLOR_ATTACHMENT0
+    for id in values(fb.buffer_ids)
+        if GL_COLOR_ATTACHMENT0 <= id <= GL_COLOR_ATTACHMENT15 && id > max_color_id
+            max_color_id = id
+        end
+    end
+    next_color_id = max_color_id + 0x1
+    if next_color_id > GL_COLOR_ATTACHMENT15
+        error("Ran out of color buffers.")
+    end
+
+    glFramebufferTexture2D(GL_FRAMEBUFFER, next_color_id, GL_TEXTURE_2D, t.id, 0)
+    push!(fb.buffer_ids, key => next_color_id)
+    push!(fb.buffers, key => t)
+    return next_color_id
+end
+
 function GLFramebuffer(fb_size::NTuple{2, Int})
-    # First Framebuffer
-    render_framebuffer = glGenFramebuffers()
-    glBindFramebuffer(GL_FRAMEBUFFER, render_framebuffer)
+    # Create framebuffer
+    frambuffer_id = glGenFramebuffers()
+    glBindFramebuffer(GL_FRAMEBUFFER, frambuffer_id)
 
-    color_buffer = Texture(RGBA{N0f8}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
-    objectid_buffer = Texture(Vec{2, GLuint}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
-
+    # Buffers we always need
+    # Holds the image that eventually gets displayed
+    color_buffer = Texture(
+        RGBA{N0f8}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
+    )
+    # Holds a (plot id, element id) for point picking
+    objectid_buffer = Texture(
+        Vec{2, GLuint}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
+    )
+    # holds depth and stencil values
     depth_buffer = Texture(
         Ptr{GLAbstraction.DepthStencil_24_8}(C_NULL), fb_size,
         minfilter = :nearest, x_repeat = :clamp_to_edge,
         internalformat = GL_DEPTH24_STENCIL8,
         format = GL_DEPTH_STENCIL
     )
+    # Order Independent Transparency
+    HDR_color_buffer = Texture(
+        RGBA{Float16}, fb_size, minfilter = :linear, x_repeat = :clamp_to_edge
+    )
+    OIT_weight_buffer = Texture(
+        N0f8, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
+    )
 
     attach_framebuffer(color_buffer, GL_COLOR_ATTACHMENT0)
     attach_framebuffer(objectid_buffer, GL_COLOR_ATTACHMENT1)
+    attach_framebuffer(HDR_color_buffer, GL_COLOR_ATTACHMENT2)
+    attach_framebuffer(OIT_weight_buffer, GL_COLOR_ATTACHMENT3)
     attach_framebuffer(depth_buffer, GL_DEPTH_ATTACHMENT)
     attach_framebuffer(depth_buffer, GL_STENCIL_ATTACHMENT)
 
     status = glCheckFramebufferStatus(GL_FRAMEBUFFER)
     @assert status == GL_FRAMEBUFFER_COMPLETE
 
+    fb_size_node = Observable(fb_size)
 
-    # Second Framebuffer
-    # postprocessor adds buffers here
-    color_luma_framebuffer = glGenFramebuffers()
-    glBindFramebuffer(GL_FRAMEBUFFER, color_luma_framebuffer)
-
-    @assert status == GL_FRAMEBUFFER_COMPLETE
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0)
-    fb_size_node = Node(fb_size)
-
+    # To allow adding postprocessors in various combinations we need to keep
+    # track of the buffer ids that are already in use. We may also want to reuse
+    # buffers so we give them names for easy fetching.
+    buffer_ids = Dict(
+        :color    => GL_COLOR_ATTACHMENT0,
+        :objectid => GL_COLOR_ATTACHMENT1,
+        :HDR_color => GL_COLOR_ATTACHMENT2,
+        :OIT_weight => GL_COLOR_ATTACHMENT3,
+        :depth    => GL_DEPTH_ATTACHMENT,
+        :stencil  => GL_STENCIL_ATTACHMENT,
+    )
     buffers = Dict(
-        :color => color_buffer,
+        :color    => color_buffer,
         :objectid => objectid_buffer,
-        :depth => depth_buffer
+        :HDR_color => HDR_color_buffer,
+        :OIT_weight => OIT_weight_buffer,
+        :depth    => depth_buffer,
+        :stencil  => depth_buffer
     )
 
     return GLFramebuffer(
-        fb_size_node,
-        (render_framebuffer, color_luma_framebuffer),
-        buffers,
+        fb_size_node, frambuffer_id,
+        buffer_ids, buffers,
         [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1]
     )
 end

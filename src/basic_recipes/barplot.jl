@@ -5,7 +5,9 @@ end
 """
     barplot(x, y; kwargs...)
 
-Plots a barplot; `y` defines the height.  `x` and `y` should be 1 dimensional.
+Plots a barplot; `y` defines the height. `x` and `y` should be 1 dimensional.
+Bar width is determined by the attribute `width`, shrunk by `gap` in the following way:
+`width -> width * (1 - gap)`.
 
 ## Attributes
 $(ATTRIBUTES)
@@ -17,9 +19,12 @@ $(ATTRIBUTES)
         color = theme(scene, :patchcolor),
         colormap = theme(scene, :colormap),
         colorrange = automatic,
+        lowclip = automatic,
+        highclip = automatic,
+        nan_color = :transparent,
         dodge = automatic,
         n_dodge = automatic,
-        x_gap = 0.2,
+        gap = 0.2,
         dodge_gap = 0.03,
         marker = Rect,
         stack = automatic,
@@ -33,13 +38,15 @@ $(ATTRIBUTES)
 
         bar_labels = nothing,
         flip_labels_at = Inf,
+        label_rotation = 0π,
         label_color = theme(scene, :textcolor),
         color_over_background = automatic,
         color_over_bar = automatic,
         label_offset = 5,
         label_font = theme(scene, :font),
         label_size = 20,
-        label_formatter = bar_label_formatter
+        label_formatter = bar_label_formatter,
+        transparency = false
     )
 end
 
@@ -56,8 +63,9 @@ end
 
 flip(r::Rect2) = Rect2(reverse(origin(r)), reverse(widths(r)))
 
-function xw_from_dodge(x, width, minimum_distance, x_gap, dodge, n_dodge, dodge_gap)
-    width === automatic && (width = (1 - x_gap) * minimum_distance)
+function compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
+    width === automatic && (width = 1)
+    width *= 1 - gap
     if dodge === automatic
         i_dodge = 1
     elseif eltype(dodge) <: Integer
@@ -177,11 +185,12 @@ function barplot_labels(xpositions, ypositions, bar_labels, in_y_direction, flip
 end
 
 function Makie.plot!(p::BarPlot)
+
     labels = Observable(Tuple{String, Point2f}[])
     label_aligns = Observable(Vec2f[])
     label_offsets = Observable(Vec2f[])
     label_colors = Observable(RGBAf[])
-    function calculate_bars(xy, fillto, offset, width, dodge, n_dodge, x_gap, dodge_gap, stack,
+    function calculate_bars(xy, fillto, offset, width, dodge, n_dodge, gap, dodge_gap, stack,
                             dir, bar_labels, flip_labels_at, label_color, color_over_background,
                             color_over_bar, label_formatter, label_offset)
 
@@ -192,16 +201,15 @@ function Makie.plot!(p::BarPlot)
         x = first.(xy)
         y = last.(xy)
 
-        minimum_distance = nothing
-        # only really compute `minimum_distance` if `width` is `automatic`
+        # by default, `width` is `minimum(diff(sort(unique(x)))`
         if width === automatic
             x_unique = unique(filter(isfinite, x))
             x_diffs = diff(sort(x_unique))
-            minimum_distance = isempty(x_diffs) ? 1.0 : minimum(x_diffs)
+            width = isempty(x_diffs) ? 1.0 : minimum(x_diffs)
         end
 
         # compute width of bars and x̂ (horizontal position after dodging)
-        x̂, barwidth = xw_from_dodge(x, width, minimum_distance, x_gap, dodge, n_dodge, dodge_gap)
+        x̂, barwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
 
         # --------------------------------
         # ----------- Stacking -----------
@@ -241,16 +249,17 @@ function Makie.plot!(p::BarPlot)
         return bar_rectangle.(x̂, y .+ offset, barwidth, fillto, in_y_direction)
     end
 
-    bars = lift(calculate_bars, p[1], p.fillto, p.offset, p.width, p.dodge, p.n_dodge, p.x_gap,
+    bars = lift(calculate_bars, p[1], p.fillto, p.offset, p.width, p.dodge, p.n_dodge, p.gap,
                 p.dodge_gap, p.stack, p.direction, p.bar_labels, p.flip_labels_at,
                 p.label_color, p.color_over_background, p.color_over_bar, p.label_formatter, p.label_offset)
 
     poly!(
         p, bars, color = p.color, colormap = p.colormap, colorrange = p.colorrange,
         strokewidth = p.strokewidth, strokecolor = p.strokecolor, visible = p.visible,
-        inspectable = p.inspectable
+        inspectable = p.inspectable, transparency = p.transparency,
+        highclip = p.highclip, lowclip = p.lowclip, nan_color = p.nan_color,
     )
     if !isnothing(p.bar_labels[])
-        text!(p, labels; align=label_aligns, offset=label_offsets, color=label_colors, font=p.label_font, textsize=p.label_size)
+        text!(p, labels; align=label_aligns, offset=label_offsets, color=label_colors, font=p.label_font, fontsize=p.label_size, rotation=p.label_rotation)
     end
 end

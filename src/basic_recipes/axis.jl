@@ -20,6 +20,13 @@ module Formatters
 end
 using .Formatters
 
+
+to_3tuple(x) = ntuple(i -> x, Val(3))
+to_3tuple(x::NTuple{3,Any}) = x
+
+to_2tuple(x) = ntuple(i -> x, Val(2))
+to_2tuple(x::NTuple{2,Any}) = x
+
 """
     $(SIGNATURES)
 
@@ -59,14 +66,14 @@ $(ATTRIBUTES)
         scale = Vec3f(1),
         padding = 0.1,
         inspectable = false,
-
+        fonts = theme(scene, :fonts),
         names = Attributes(
             axisnames = ("x", "y", "z"),
             textcolor = (:black, :black, :black),
             rotation = axisnames_rotation3d,
-            textsize = (6.0, 6.0, 6.0),
+            fontsize = (6.0, 6.0, 6.0),
             align = axisnames_align3d,
-            font = lift(dim3, theme(scene, :font)),
+            font = lift(to_3tuple, theme(scene, :font)),
             gap = 3
         ),
 
@@ -77,10 +84,10 @@ $(ATTRIBUTES)
             textcolor = (tick_color, tick_color, tick_color),
 
             rotation = tickrotations3d,
-            textsize = (tsize, tsize, tsize),
+            fontsize = (tsize, tsize, tsize),
             align = tickalign3d,
             gap = 3,
-            font = lift(dim3, theme(scene, :font)),
+            font = lift(to_3tuple, theme(scene, :font)),
         ),
 
         frame = Attributes(
@@ -95,7 +102,7 @@ end
 isaxis(x) = false
 isaxis(x::Axis3D) = true
 
-const Limits{N} = NTuple{N, Tuple{Number, Number}}
+const Limits{N} = NTuple{N, <:Tuple{<: Number, <: Number}}
 
 function default_ticks(limits::Limits, ticks, scale_func::Function)
     default_ticks.(limits, (ticks,), scale_func)
@@ -115,8 +122,8 @@ function default_ticks(
     )
     # scale the limits
     scaled_ticks, mini, maxi = optimize_ticks(
-        scale_func(lmin),
-        scale_func(lmax);
+        Float64(scale_func(lmin)),
+        Float64(scale_func(lmax));
         k_min = 4, # minimum number of ticks
         k_max = 8, # maximum number of ticks
     )
@@ -128,8 +135,8 @@ function default_ticks(
         lmin::Number, lmax::Number, ticks::Integer, scale_func = identity
     )
     scaled_ticks, mini, maxi = optimize_ticks(
-        scale_func(lmin),
-        scale_func(lmax);
+        Float64(scale_func(lmin)),
+        Float64(scale_func(lmax));
         k_min = ticks, # minimum number of ticks
         k_max = ticks, # maximum number of ticks
         k_ideal = ticks,
@@ -181,7 +188,7 @@ default_labels(x::AbstractVector{<: AbstractString}, ranges::AbstractVector, for
 
 function convert_arguments(::Type{<: Axis3D}, limits::Rect)
     e = (minimum(limits), maximum(limits))
-    (((e[1][1], e[2][1]), (e[1][2], e[2][2]), (e[1][3], e[2][3])),)
+    return (((e[1][1], e[2][1]), (e[1][2], e[2][2]), (e[1][3], e[2][3])),)
 end
 
 a_length(x::AbstractVector) = length(x)
@@ -189,14 +196,10 @@ a_length(x::Automatic) = x
 
 function calculated_attributes!(::Type{<: Axis3D}, plot)
     ticks = plot.ticks
-    args = (plot.padding, plot[1], ticks.ranges, ticks.labels, ticks.formatter)
-    ticks[:ranges_labels] = lift(args...) do pad, lims, ranges, labels, formatter
-        limit_widths = map(x-> x[2] - x[1], lims)
-        pad = (limit_widths .* pad)
-        # pad the drawn limits and use them as the ranges
-        lim_pad = map((lim, p)-> (lim[1] - p, lim[2] + p), lims, pad)
+    args = (plot[1], ticks.ranges, ticks.labels, ticks.formatter)
+    ticks[:ranges_labels] = lift(args...) do lims, ranges, labels, formatter
         num_ticks = labels === automatic ? automatic : a_length.(labels)
-        ranges = default_ticks(ranges, lim_pad, num_ticks)
+        ranges = default_ticks(ranges, lims, num_ticks)
         labels = default_labels(labels, ranges, formatter)
         (ranges, labels)
     end
@@ -219,7 +222,7 @@ to3tuple(x::Tuple{Any, Any}) = (x[1], x[2], x[2])
 to3tuple(x::Tuple{Any, Any, Any}) = x
 to3tuple(x) = ntuple(i-> x, Val(3))
 
-function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, args...)
+function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts, args...)
     # make sure we extend all args to 3D
     ranges, ticklabels = ranges_labels
     args3d = to3tuple.(args)
@@ -228,22 +231,28 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, args.
         axisnames, axisnames_color, axisnames_size, axisrotation, axisalign,
         axisnames_font, titlegap,
         gridcolors, gridthickness, axislinewidth, axiscolors,
-        ttextcolor, trotation, ttextsize, talign, tfont, tgap
+        ttextcolor, trotation, tfontsize, talign, tfont, tgap,
+        padding,
     ) = args3d # splat to names
 
     N = 3
     start!(textbuffer)
     start!(linebuffer)
+
+    limit_widths = map(x-> x[2] - x[1], limits)
+    # pad the drawn limits and use them as the ranges
+    limits = map((lim, p)-> (lim[1] - p, lim[2] + p), limits, limit_widths .* padding)
+
     mini, maxi = first.(limits), last.(limits)
 
     origin = Point{N, Float32}(min.(mini, first.(ranges)))
     limit_widths = max.(last.(ranges), maxi) .- origin
     % = minimum(limit_widths) / 100 # percentage
-    ttextsize = (%) .* ttextsize
+    tfontsize = (%) .* tfontsize
     axisnames_size = (%) .* axisnames_size
 
     # index of the direction in which ticks and labels are drawn
-    offset_indices = [ifelse(i != 2, mod1(i + 1, N), 1) for i in 1:N]
+    offset_indices = Vec(ntuple(i-> ifelse(i != 2, mod1(i + 1, N), 1), N))
     # These need the real limits, not (%), to be scale-aware
     titlegap = 0.01limit_widths[offset_indices] .* titlegap
     tgap = 0.01limit_widths[offset_indices] .* tgap
@@ -269,20 +278,20 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, args.
                         push!(
                             textbuffer, str, startpos,
                             color = ttextcolor[i], rotation = trotation[i],
-                            textsize = ttextsize[i], align = talign[i], font = tfont[i]
+                            fontsize = tfontsize[i], align = talign[i], font = tfont[i]
                         )
                     end
                 end
             end
             if !isempty(axisnames[i])
-                font = to_font(tfont[i])
+                font = to_font(fonts, tfont[i])
                 tick_widths = maximum(ticklabels[i]) do label
-                    widths(text_bb(label, font, ttextsize[i]))[1]
+                    widths(text_bb(label, font, tfontsize[i]))[1]
                 end / scale[j]
                 pos = labelposition(ranges, i, tickdir, titlegap[i] + tick_widths, origin) .+ offset2
                 push!(
                     textbuffer, to_latex(axisnames[i]), pos,
-                    textsize = axisnames_size[i], color = axisnames_color[i],
+                    fontsize = axisnames_size[i], color = axisnames_color[i],
                     rotation = axisrotation[i], align = axisalign[i], font = axisnames_font[i]
                 )
             end
@@ -312,22 +321,28 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
     axis = Axis3D(scene, attributes, args)
     # Disable any non linear transform for the axis plot!
     axis.transformation.transform_func[] = identity
-    textbuffer = TextBuffer(axis, Point{3}, transparency = true, space = :data, inspectable = axis.inspectable)
-    linebuffer = LinesegmentBuffer(axis, Point{3}, transparency = true, inspectable = axis.inspectable)
+    textbuffer = TextBuffer(axis, Point3, transparency = true, markerspace = :data,
+        inspectable = axis.inspectable, visible = axis.visible)
+    linebuffer = LinesegmentBuffer(axis, Point3, transparency = true, inspectable = axis.inspectable,
+        visible = axis.visible)
 
     tstyle, ticks, frame = to_value.(getindex.(axis, (:names, :ticks, :frame)))
-    titlevals = getindex.(tstyle, (:axisnames, :textcolor, :textsize, :rotation, :align, :font, :gap))
+    titlevals = getindex.(tstyle, (:axisnames, :textcolor, :fontsize, :rotation, :align, :font, :gap))
     framevals = getindex.(frame, (:linecolor, :linewidth, :axislinewidth, :axiscolor))
-    tvals = getindex.(ticks, (:textcolor, :rotation, :textsize, :align, :font, :gap))
+    tvals = getindex.(ticks, (:textcolor, :rotation, :fontsize, :align, :font, :gap))
     args = (
         getindex.(axis, (:showaxis, :showticks, :showgrid))...,
-        titlevals..., framevals..., tvals...
+        titlevals..., framevals..., tvals..., axis.padding
     )
     map_once(
         draw_axis3d,
-        Node(textbuffer), Node(linebuffer), scale(scene),
-        axis[1], axis.ticks.ranges_labels, args...
+        Observable(textbuffer), Observable(linebuffer), scale(scene),
+        axis[1], axis.ticks.ranges_labels, Observable(axis.fonts), args...
     )
     push!(scene, axis)
     return axis
+end
+
+function axis3d!(scene::Scene, lims = data_limits(scene, p -> isaxis(p) || not_in_data_space(p)); kw...)
+    axis3d!(scene, Attributes(), lims; ticks = (ranges = automatic, labels = automatic), kw...)
 end

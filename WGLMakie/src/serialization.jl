@@ -1,27 +1,27 @@
-using Colors
 using ShaderAbstractions: InstancedProgram, Program
 using Makie: Key, plotkey
 using Colors: N0f8
-
-Makie.plotkey(::Nothing) = :scatter
 
 function lift_convert(key, value, plot)
     val = lift(value) do value
         return wgl_convert(value, Key{key}(), Key{plotkey(plot)}())
     end
-    if key == :colormap && val[] isa AbstractArray
+    if key === :colormap && val[] isa AbstractArray
         return ShaderAbstractions.Sampler(val)
     else
         return val
     end
 end
 
-function Base.pairs(mesh::GeometryBasics.Mesh)
+_pairs(any) = Base.pairs(any)
+function _pairs(mesh::GeometryBasics.Mesh)
     return (kv for kv in GeometryBasics.attributes(mesh))
 end
 
-function GeometryBasics.faces(x::VertexArray)
-    return GeometryBasics.faces(getfield(x, :data))
+# Don't overload faces to not invalidate
+_faces(x::VertexArray) = _faces(getfield(x, :data))
+function _faces(x)
+    return GeometryBasics.faces(x)
 end
 
 tlength(T) = length(T)
@@ -34,13 +34,8 @@ serialize_three(val::Vec4f) = convert(Vector{Float32}, val)
 serialize_three(val::Quaternion) = convert(Vector{Float32}, collect(val.data))
 serialize_three(val::RGB) = Float32[red(val), green(val), blue(val)]
 serialize_three(val::RGBA) = Float32[red(val), green(val), blue(val), alpha(val)]
-serialize_three(val::Mat4f) = vec(val)
-serialize_three(val::Mat3) = vec(val)
-
-function serialize_three(observable::Observable)
-    return Dict(:type => "Observable", :id => observable.id,
-                :value => serialize_three(observable[]))
-end
+serialize_three(val::Mat4f) = collect(vec(val))
+serialize_three(val::Mat3) = collect(vec(val))
 
 function serialize_three(array::AbstractArray)
     return serialize_three(flatten_buffer(array))
@@ -50,33 +45,41 @@ function serialize_three(array::Buffer)
     return serialize_three(flatten_buffer(array))
 end
 
-function serialize_three(array::AbstractArray{UInt8})
-    return Dict(:type => "Uint8Array", :data => array)
+serialize_three(array::AbstractArray{UInt8}) = vec(array)
+serialize_three(array::AbstractArray{Int32}) = vec(array)
+serialize_three(array::AbstractArray{UInt32}) = vec(array)
+serialize_three(array::AbstractArray{Float32}) = vec(array)
+serialize_three(array::AbstractArray{Float16}) = vec(array)
+serialize_three(array::AbstractArray{Float64}) = vec(array)
+
+function serialize_three(p::Makie.AbstractPattern)
+    return serialize_three(Makie.to_image(p))
 end
 
-function serialize_three(array::AbstractArray{Int32})
-    return Dict(:type => "Int32Array", :data => array)
+three_format(::Type{<:Real}) = "RedFormat"
+three_format(::Type{<:RGB}) = "RGBFormat"
+three_format(::Type{<:RGBA}) = "RGBAFormat"
+
+three_type(::Type{Float16}) = "FloatType"
+three_type(::Type{Float32}) = "FloatType"
+three_type(::Type{N0f8}) = "UnsignedByteType"
+
+function three_filter(sym::Symbol)
+    sym === :linear && return "LinearFilter"
+    sym === :nearest && return "NearestFilter"
+    error("Unknown filter mode '$sym'")
 end
 
-function serialize_three(array::AbstractArray{UInt32})
-    return Dict(:type => "Uint32Array", :data => array)
-end
-
-function serialize_three(array::AbstractArray{Float32})
-    return Dict(:type => "Float32Array", :data => array)
-end
-
-function serialize_three(array::AbstractArray{Float16})
-    return Dict(:type => "Float32Array", :data => array)
-end
-
-function serialize_three(array::AbstractArray{Float64})
-    return Dict(:type => "Float64Array", :data => array)
+function three_repeat(s::Symbol)
+    s === :clamp_to_edge && return "ClampToEdgeWrapping"
+    s === :mirrored_repeat && return "MirroredRepeatWrapping"
+    s === :repeat && return "RepeatWrapping"
+    error("Unknown repeat mode '$s'")
 end
 
 function serialize_three(color::Sampler{T,N}) where {T,N}
     tex = Dict(:type => "Sampler", :data => serialize_three(color.data),
-               :size => [size(color.data)...], :three_format => three_format(T),
+               :size => Int32[size(color.data)...], :three_format => three_format(T),
                :three_type => three_type(eltype(T)),
                :minFilter => three_filter(color.minfilter),
                :magFilter => three_filter(color.magfilter),
@@ -93,32 +96,18 @@ end
 function serialize_uniforms(dict::Dict)
     result = Dict{Symbol,Any}()
     for (k, v) in dict
+        # we don't send observables and instead use
+        # uniform_updater(dict)
         result[k] = serialize_three(to_value(v))
     end
     return result
 end
 
-three_format(::Type{<:Real}) = "RedFormat"
-three_format(::Type{<:RGB}) = "RGBFormat"
-three_format(::Type{<:RGBA}) = "RGBAFormat"
 
-three_type(::Type{Float16}) = "FloatType"
-three_type(::Type{Float32}) = "FloatType"
-three_type(::Type{N0f8}) = "UnsignedByteType"
-
-function three_filter(sym)
-    sym == :linear && return "LinearFilter"
-    return sym == :nearest && return "NearestFilter"
-end
-
-function three_repeat(s::Symbol)
-    s == :clamp_to_edge && return "ClampToEdgeWrapping"
-    s == :mirrored_repeat && return "MirroredRepeatWrapping"
-    return s == :repeat && return "RepeatWrapping"
-end
 
 """
     flatten_buffer(array::AbstractArray)
+
 Flattens `array` array to be a 1D Vector of Float32 / UInt8.
 If presented with AbstractArray{<: Colorant/Tuple/SVector}, it will flatten those
 to their element type.
@@ -126,7 +115,9 @@ to their element type.
 function flatten_buffer(array::AbstractArray{<: Number})
     return array
 end
-
+function flatten_buffer(array::AbstractArray{<:AbstractFloat})
+    return convert(Array{Float32}, array)
+end
 function flatten_buffer(array::Buffer)
     return flatten_buffer(getfield(array, :data))
 end
@@ -136,12 +127,13 @@ function flatten_buffer(array::AbstractArray{T}) where {T<:N0f8}
 end
 
 function flatten_buffer(array::AbstractArray{T}) where {T}
-    return flatten_buffer(reinterpret(eltype(T), array))
+    return flatten_buffer(collect(reinterpret(eltype(T), array)))
 end
 
 lasset(paths...) = read(joinpath(@__DIR__, "..", "assets", paths...), String)
 
-isscalar(x::StaticArrays.StaticArray) = true
+isscalar(x::StaticVector) = true
+isscalar(x::Mat) = true
 isscalar(x::AbstractArray) = false
 isscalar(x::Billboard) = isscalar(x.rotation)
 isscalar(x::Observable) = isscalar(x[])
@@ -175,13 +167,13 @@ function serialize_buffer_attribute(buffer::AbstractVector{T}) where {T}
 end
 
 function serialize_named_buffer(buffer)
-    return Dict(map(pairs(buffer)) do (name, buff)
+    return Dict(map(_pairs(buffer)) do (name, buff)
                     return name => serialize_buffer_attribute(buff)
                 end)
 end
 
 function register_geometry_updates(update_buffer::Observable, named_buffers)
-    for (name, buffer) in pairs(named_buffers)
+    for (name, buffer) in _pairs(named_buffers)
         if buffer isa Buffer
             on(ShaderAbstractions.updater(buffer).update) do (f, args)
                 # update to replace the whole buffer!
@@ -210,8 +202,8 @@ function uniform_updater(uniforms::Dict)
     for (name, value) in uniforms
         if value isa Sampler
             on(ShaderAbstractions.updater(value).update) do (f, args)
-                if args[2] isa Colon && f == setindex!
-                    updater[] = [name, serialize_three(args[1])]
+                if f == setindex! && args[2] isa Colon
+                    updater[] = [name, [Int32[size(value.data)...], serialize_three(args[1])]]
                 end
                 return
             end
@@ -233,9 +225,22 @@ function serialize_three(ip::InstancedProgram)
     return program
 end
 
+reinterpret_faces(faces::AbstractVector) = collect(reinterpret(UInt32, decompose(GLTriangleFace, faces)))
+
+function reinterpret_faces(faces::Buffer)
+    result = Observable(reinterpret_faces(ShaderAbstractions.data(faces)))
+    on(ShaderAbstractions.updater(faces).update) do (f, args)
+        if f === (setindex!) && args[1] isa AbstractArray && args[2] isa Colon
+            result[] = reinterpret_faces(args[1])
+        end
+    end
+    return result
+end
+
+
 function serialize_three(program::Program)
-    indices = GeometryBasics.faces(program.vertexarray)
-    indices = reinterpret(UInt32, indices)
+    facies = reinterpret_faces(_faces(program.vertexarray))
+    indices = convert(Observable, facies)
     uniforms = serialize_uniforms(program.uniforms)
     attribute_updater = Observable(["", [], 0])
     register_geometry_updates(attribute_updater, program)
@@ -247,16 +252,22 @@ function serialize_three(program::Program)
                 :attribute_updater => attribute_updater)
 end
 
-function serialize_scene(scene::Scene, serialized_scenes=[])
+function serialize_scene(scene::Scene)
+
     hexcolor(c) = "#" * hex(Colors.color(to_color(c)))
-    pixel_area = lift(area -> [minimum(area)..., widths(area)...], pixelarea(scene))
+    pixel_area = lift(area -> Int32[minimum(area)..., widths(area)...], pixelarea(scene))
+
     cam_controls = cameracontrols(scene)
+
     cam3d_state = if cam_controls isa Camera3D
         fields = (:lookat, :upvector, :eyeposition, :fov, :near, :far)
         Dict((f => serialize_three(getfield(cam_controls, f)[]) for f in fields))
     else
         nothing
     end
+
+    children = map(child-> serialize_scene(child), scene.children)
+
     serialized = Dict(:pixelarea => pixel_area,
                       :backgroundcolor => lift(hexcolor, scene.backgroundcolor),
                       :clearscene => scene.clear,
@@ -264,12 +275,9 @@ function serialize_scene(scene::Scene, serialized_scenes=[])
                       :plots => serialize_plots(scene, scene.plots),
                       :cam3d_state => cam3d_state,
                       :visible => scene.visible,
-                      :uuid => js_uuid(scene))
-
-    push!(serialized_scenes, serialized)
-    foreach(child -> serialize_scene(child, serialized_scenes), scene.children)
-
-    return serialized_scenes
+                      :uuid => js_uuid(scene),
+                      :children => children)
+    return serialized
 end
 
 function serialize_plots(scene::Scene, plots::Vector{T}, result=[]) where {T<:AbstractPlot}
@@ -294,38 +302,45 @@ function serialize_three(scene::Scene, plot::AbstractPlot)
     mesh[:uuid] = js_uuid(plot)
     mesh[:transparency] = plot.transparency
     mesh[:overdraw] = plot.overdraw
+
     uniforms = mesh[:uniforms]
     updater = mesh[:uniform_updater]
 
-    delete!(uniforms, :lightposition)
-
-    if haskey(plot, :lightposition)
-        eyepos = scene.camera.eyeposition
-        lightpos = lift(Vec3f, plot.lightposition, eyepos) do pos, eyepos
-            return ifelse(pos == :eyeposition, eyepos, pos)::Vec3f
-        end
-        uniforms[:lightposition] = serialize_three(lightpos[])
-        on(lightpos) do value
+    pointlight = Makie.get_point_light(scene)
+    if !isnothing(pointlight)
+        uniforms[:lightposition] = serialize_three(pointlight.position[])
+        on(pointlight.position) do value
             updater[] = [:lightposition, serialize_three(value)]
             return
         end
     end
-    if haskey(plot, :space)
-        mesh[:space] = plot.space[]
+
+    ambientlight = Makie.get_ambient_light(scene)
+    if !isnothing(ambientlight)
+        uniforms[:ambient] = serialize_three(ambientlight.color[])
+        on(ambientlight.color) do value
+            updater[] = [:ambient, serialize_three(value)]
+            return
+        end
     end
+
+    if haskey(plot, :markerspace)
+        mesh[:markerspace] = plot.markerspace
+    end
+    mesh[:space] = plot.space
+
+    key = haskey(plot, :markerspace) ? (:markerspace) : (:space)
+    mesh[:cam_space] = to_value(get(plot, key, :data))
 
     return mesh
 end
 
 function serialize_camera(scene::Scene)
     cam = scene.camera
-    return lift(cam.view, cam.projection, cam.resolution) do v, p, res
-        # projectionview updates with projection & view
-        pv = cam.projectionview[]
-        # same goes for eyeposition, since an eyepos change will trigger
+    return lift(cam.view, cam.projection, cam.resolution) do view, proj, res
+        # eyeposition updates with viewmatrix, since an eyepos change will trigger
         # a view matrix change!
         ep = cam.eyeposition[]
-        pixel_space = cam.pixel_space[]
-        return [serialize_three.((v, p, pv, res, ep, pixel_space))...]
+        return [vec(collect(view)), vec(collect(proj)), Int32[res...], Float32[ep...]]
     end
 end

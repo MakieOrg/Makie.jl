@@ -15,10 +15,11 @@ end
 
 """
 Returns a signal, which is true as long as the window is open.
-returns `Node{Bool}`
+returns `Observable{Bool}`
 [GLFW Docs](http://www.glfw.org/docs/latest/group__window.html#gaade9264e79fae52bdb78e2df11ee8d6a)
 """
 Makie.window_open(scene::Scene, screen) = window_open(scene, to_native(screen))
+
 function Makie.window_open(scene::Scene, window::GLFW.Window)
     event = scene.events.window_open
     function windowclose(win)
@@ -40,45 +41,56 @@ function window_position(window::GLFW.Window)
     (xy.x, xy.y)
 end
 
-function Makie.window_area(scene::Scene, screen::Screen)
-    window = to_native(screen)
-    event = scene.events.window_area
-    dpievent = scene.events.window_dpi
+struct WindowAreaUpdater
+    window::GLFW.Window
+    dpi::Observable{Float64}
+    area::Observable{GeometryBasics.HyperRectangle{2, Int64}}
+end
 
-    disconnect!(window, window_area)
-    monitor = GLFW.GetPrimaryMonitor()
-    props = MonitorProperties(monitor)
-    dpievent[] = minimum(props.dpi)
-
-    on(screen.render_tick) do _
-        rect = event[]
-        # TODO put back window position, but right now it makes more trouble than it helps#
-        # x, y = GLFW.GetWindowPos(window)
-        # if minimum(rect) != Vec(x, y)
-        #     event[] = Recti(x, y, framebuffer_size(window))
-        # end
-        w, h = GLFW.GetFramebufferSize(window)
-        if Vec(w, h) != widths(rect)
-            monitor = GLFW.GetPrimaryMonitor()
-            props = MonitorProperties(monitor)
-            # dpi of a monitor should be the same in x y direction.
-            # if not, minimum seems to be a fair default
-            dpievent[] = minimum(props.dpi)
-            event[] = Recti(minimum(rect), w, h)
-        end
+function (x::WindowAreaUpdater)(::Nothing)
+    ShaderAbstractions.switch_context!(x.window)
+    rect = x.area[]
+    # TODO put back window position, but right now it makes more trouble than it helps#
+    # x, y = GLFW.GetWindowPos(window)
+    # if minimum(rect) != Vec(x, y)
+    #     event[] = Recti(x, y, framebuffer_size(window))
+    # end
+    w, h = GLFW.GetFramebufferSize(x.window)
+    if Vec(w, h) != widths(rect)
+        monitor = GLFW.GetPrimaryMonitor()
+        props = MonitorProperties(monitor)
+        # dpi of a monitor should be the same in x y direction.
+        # if not, minimum seems to be a fair default
+        x.dpi[] = minimum(props.dpi)
+        x.area[] = Recti(minimum(rect), w, h)
     end
     return
 end
 
-function Makie.disconnect!(window::GLFW.Window, ::typeof(window_area))
-    GLFW.SetWindowPosCallback(window, nothing)
-    GLFW.SetFramebufferSizeCallback(window, nothing)
+function Makie.window_area(scene::Scene, screen::Screen)
+    disconnect!(screen, window_area)
+
+    updater = WindowAreaUpdater(
+        to_native(screen), scene.events.window_dpi, scene.events.window_area
+    )
+    on(updater, screen.render_tick)
+
+    return
+end
+
+function Makie.disconnect!(screen::Screen, ::typeof(window_area))
+    filter!(p -> !isa(p[2], WindowAreaUpdater), screen.render_tick.listeners)
+    return
+end
+function Makie.disconnect!(::GLFW.Window, ::typeof(window_area))
+    error("disconnect!(::Screen, ::window_area) should be called instead of disconnect!(::GLFW.Window, ::window_area)!")
+    return
 end
 
 
 """
 Registers a callback for the mouse buttons + modifiers
-returns `Node{NTuple{4, Int}}`
+returns `Observable{NTuple{4, Int}}`
 [GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#ga1e008c7a8751cea648c8f42cc91104cf)
 """
 Makie.mouse_buttons(scene::Scene, screen) = mouse_buttons(scene, to_native(screen))
@@ -113,7 +125,7 @@ end
 
 """
 Registers a callback for drag and drop of files.
-returns `Node{Vector{String}}`, which are absolute file paths
+returns `Observable{Vector{String}}`, which are absolute file paths
 [GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#gacc95e259ad21d4f666faa6280d4018fd)
 """
 Makie.dropped_files(scene::Scene, screen) = dropped_files(scene, to_native(screen))
@@ -134,7 +146,7 @@ end
 
 """
 Registers a callback for keyboard unicode input.
-returns an `Node{Vector{Char}}`,
+returns an `Observable{Vector{Char}}`,
 containing the pressed char. Is empty, if no key is pressed.
 [GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#ga1e008c7a8751cea648c8f42cc91104cf)
 """
@@ -183,48 +195,49 @@ function correct_mouse(window::GLFW.Window, w, h)
     (w * s[1], fb[2] - (h * s[2]))
 end
 
+struct MousePositionUpdater
+    window::GLFW.Window
+    mouseposition::Observable{Tuple{Float64, Float64}}
+    hasfocus::Observable{Bool}
+end
+
+function (p::MousePositionUpdater)(::Nothing)
+    !p.hasfocus[] && return
+    x, y = GLFW.GetCursorPos(p.window)
+    pos = correct_mouse(p.window, x, y)
+    if pos != p.mouseposition[]
+        @print_error p.mouseposition[] = pos
+        # notify!(e.mouseposition)
+    end
+    return
+end
+
 """
 Registers a callback for the mouse cursor position.
-returns an `Node{Vec{2, Float64}}`,
+returns an `Observable{Vec{2, Float64}}`,
 which is not in scene coordinates, with the upper left window corner being 0
 [GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#ga1e008c7a8751cea648c8f42cc91104cf)
 """
 function Makie.mouse_position(scene::Scene, screen::Screen)
-    window = to_native(screen)
-    e = events(scene)
-    on(screen.render_tick) do _
-        !e.hasfocus[] && return
-        x, y = GLFW.GetCursorPos(window)
-        pos = correct_mouse(window, x, y)
-        if pos != e.mouseposition[]
-            @print_error e.mouseposition[] = pos
-            # notify!(e.mouseposition)
-        end
-        return
-    end
-
-    # function cursorposition(window, w::Cdouble, h::Cdouble)
-    #     @print_error begin
-    #         pos = correct_mouse(window, w, h)
-    #         @timeit "triggerless mouseposition" begin
-    #             e.mouseposition.val = pos
-    #         end
-    #         return
-    #     end
-    # end
-    # disconnect!(window, mouse_position)
-    # GLFW.SetCursorPosCallback(window, cursorposition)
-
+    disconnect!(screen, mouse_position)
+    updater = MousePositionUpdater(
+        to_native(screen), scene.events.mouseposition, scene.events.hasfocus
+    )
+    on(updater, screen.render_tick)
+    return
+end
+function Makie.disconnect!(screen::Screen, ::typeof(mouse_position))
+    filter!(p -> !isa(p[2], MousePositionUpdater), screen.render_tick.listeners)
     return
 end
 function Makie.disconnect!(window::GLFW.Window, ::typeof(mouse_position))
-    GLFW.SetCursorPosCallback(window, nothing)
+    error("disconnect!(::Screen, ::mouse_position) should be called instead of disconnect!(::GLFW.Window, ::mouseposition)!")
     nothing
 end
 
 """
 Registers a callback for the mouse scroll.
-returns an `Node{Vec{2, Float64}}`,
+returns an `Observable{Vec{2, Float64}}`,
 which is an x and y offset.
 [GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#gacc95e259ad21d4f666faa6280d4018fd)
 """
@@ -245,7 +258,7 @@ end
 
 """
 Registers a callback for the focus of a window.
-returns an `Node{Bool}`,
+returns an `Observable{Bool}`,
 which is true whenever the window has focus.
 [GLFW Docs](http://www.glfw.org/docs/latest/group__window.html#ga6b5f973531ea91663ad707ba4f2ac104)
 """
@@ -268,7 +281,7 @@ end
 
 """
 Registers a callback for if the mouse has entered the window.
-returns an `Node{Bool}`,
+returns an `Observable{Bool}`,
 which is true whenever the cursor enters the window.
 [GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#ga762d898d9b0241d7e3e3b767c6cf318f)
 """

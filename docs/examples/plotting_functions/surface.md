@@ -2,13 +2,13 @@
 
 {{doc surface}}
 
-### Examples
+## Examples
 
 \begin{examplefigure}{}
 ```julia
 using GLMakie
 GLMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 xs = LinRange(0, 10, 100)
 ys = LinRange(0, 15, 100)
@@ -20,11 +20,27 @@ surface(xs, ys, zs, axis=(type=Axis3,))
 
 \begin{examplefigure}{}
 ```julia
+using GLMakie
+using DelimitedFiles
+GLMakie.activate!() # hide
+
+
+volcano = readdlm(Makie.assetpath("volcano.csv"), ',', Float64)
+
+surface(volcano,
+    colormap = :darkterrain,
+    colorrange = (80, 190),
+    axis=(type=Axis3, azimuth = pi/4))
+```
+\end{examplefigure}
+
+\begin{examplefigure}{}
+```julia
 using SparseArrays
 using LinearAlgebra
 using GLMakie
 GLMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 # This example was provided by Moritz Schauer (@mschauer).
 
@@ -63,6 +79,7 @@ data = 0.1randn(d,d) + reshape(
         d, d
 )
 
-surface(data; shading=false, colormap = :deep, axis = (show_axis = false,))
+surface(data; shading=false, colormap = :deep)
+surface(data; shading=false, colormap = :deep)
 ```
 \end{examplefigure}

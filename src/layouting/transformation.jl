@@ -1,67 +1,53 @@
+Base.parent(t::Transformation) = isassigned(t.parent) ? t.parent[] : nothing
 
-function Transformation(transform_func=identity)
-    flip = Node((false, false, false))
-    scale = Node(Vec3f(1))
-    scale = lift(flip, scale) do f, s
-        map((f, s)-> f ? -s : s, Vec(f), s)
-    end
-    translation, rotation, align = (
-        Node(Vec3f(0)),
-        Node(Quaternionf(0, 0, 0, 1)),
-        Node(Vec2f(0))
-    )
-    trans = nothing
-    model = map_once(scale, translation, rotation, align, flip) do s, o, q, a, flip
-        parent = if trans !== nothing && isassigned(trans.parent)
-            boundingbox(trans.parent[])
-        else
-            nothing
-        end
-        transformationmatrix(o, s, q, a, flip, parent)
-    end
+function Transformation(transform_func=identity;
+                        scale=Vec3f(1),
+                        translation=Vec3f(0),
+                        rotation=Quaternionf(0, 0, 0, 1))
+
+    scale_o = convert(Observable{Vec3f}, scale)
+    translation_o = convert(Observable{Vec3f}, translation)
+    rotation_o = convert(Observable{Quaternionf}, rotation)
+    model = map(transformationmatrix, translation_o, scale_o, rotation_o)
     return Transformation(
-        translation,
-        scale,
-        rotation,
+        translation_o,
+        scale_o,
+        rotation_o,
         model,
-        flip,
-        align,
-        Node{Any}(transform_func)
+        convert(Observable{Any}, transform_func)
     )
 end
 
-function Transformation(scene::SceneLike)
-    flip = Node((false, false, false))
-    scale = Node(Vec3f(1))
-    translation, rotation, align = (
-        Node(Vec3f(0)),
-        Node(Quaternionf(0, 0, 0, 1)),
-        Node(Vec2f(0))
-    )
-    pmodel = transformationmatrix(scene)
-    trans = nothing
-    model = map_once(scale, translation, rotation, align, pmodel, flip) do s, o, q, a, p, f
-        bb = if trans !== nothing && isassigned(trans.parent)
-            boundingbox(trans.parent[])
-        else
-            nothing
-        end
-        return p * transformationmatrix(o, s, q, align, f, bb)
+function Transformation(transformable::Transformable;
+                        scale=Vec3f(1),
+                        translation=Vec3f(0),
+                        rotation=Quaternionf(0, 0, 0, 1))
+
+    scale_o = convert(Observable{Vec3f}, scale)
+    translation_o = convert(Observable{Vec3f}, translation)
+    rotation_o = convert(Observable{Quaternionf}, rotation)
+    parent_transform = transformation(transformable)
+
+    pmodel = parent_transform.model
+    model = map(translation_o, scale_o, rotation_o, pmodel) do t, s, r, p
+        return p * transformationmatrix(t, s, r)
     end
 
-    ptrans = transformation(scene)
     trans = Transformation(
-        translation,
-        scale,
-        rotation,
+        translation_o,
+        scale_o,
+        rotation_o,
         model,
-        flip,
-        align,
-        copy(ptrans.transform_func)
+        copy(parent_transform.transform_func)
     )
+
+    trans.parent[] = parent_transform
     return trans
 end
 
+function model_transform(transformation::Transformation)
+    return transformationmatrix(transformation.translation[], transformation.scale[], transformation.rotation[])
+end
 
 function translated(scene::Scene, translation...)
     tscene = Scene(scene, transformation = Transformation())
@@ -76,17 +62,21 @@ function translated(scene::Scene; kw_args...)
 end
 
 function transform!(
-        scene::SceneLike;
+        scene::Transformable;
         translation = Vec3f(0),
         scale = Vec3f(1),
         rotation = 0.0,
     )
-    translate!(scene, translation)
-    scale!(scene, scale)
-    rotate!(scene, rotation)
+    translate!(scene, to_value(translation))
+    scale!(scene, to_value(scale))
+    rotate!(scene, to_value(rotation))
 end
 
-
+function transform!(
+        scene::Transformable, attributes::Union{Attributes, AbstractDict}
+    )
+    transform!(scene; attributes...)
+end
 
 transformation(t::Scene) = t.transformation
 transformation(t::AbstractPlot) = t.transformation
@@ -130,9 +120,9 @@ Apply a relative rotation to the Scene, by multiplying by the current rotation.
 rotate!(::Type{T}, scene::Transformable, axis_rot...) where T = rotate!(T, scene, axis_rot)
 
 """
-    rotate!(scene::Transformable, axis_rot::Quaternion)
-    rotate!(scene::Transformable, axis_rot::AbstractFloat)
-    rotate!(scene::Transformable, axis_rot...)
+    rotate!(t::Transformable, axis_rot::Quaternion)
+    rotate!(t::Transformable, axis_rot::AbstractFloat)
+    rotate!(t::Transformable, axis_rot...)
 
 Apply an absolute rotation to the Scene. Rotations are all internally converted to `Quaternion`s.
 """
@@ -173,13 +163,13 @@ Apply an absolute translation to the Scene, translating it to `x, y, z`.
 """
 translate!(scene::Transformable, xyz::VecTypes) = translate!(Absolute, scene, xyz)
 translate!(scene::Transformable, xyz...) = translate!(Absolute, scene, xyz)
+
 """
     translate!(Accum, scene::Transformable, xyz...)
 
 Translate the scene relative to its current position.
 """
 translate!(::Type{T}, scene::Transformable, xyz...) where T = translate!(T, scene, xyz)
-
 
 function transform!(scene::Transformable, x::Tuple{Symbol, <: Number})
     plane, dimval = string(x[1]), Float32(x[2])
@@ -204,6 +194,16 @@ transformationmatrix(x) = transformation(x).model
 
 transform_func(x) = transform_func_obs(x)[]
 transform_func_obs(x) = transformation(x).transform_func
+
+"""
+    apply_transform(f, data, space)
+Apply the data transform func to the data if the space matches one
+of the the transformation spaces (currently only :data is transformed)
+"""
+apply_transform(f, data, space) = space === :data ? apply_transform(f, data) : data  
+function apply_transform(f::Observable, data::Observable, space::Observable) 
+    return lift((f, d, s)-> apply_transform(f, d, s), f, data, space)
+end 
 
 """
     apply_transform(f, data)
@@ -308,6 +308,14 @@ function apply_transform(f, r::Rect)
     ma_t = apply_transform(f, ma)
     Rect(Vec(mi_t), Vec(ma_t .- mi_t))
 end
+function apply_transform(f::PointTrans, r::Rect)
+    mi = minimum(r)
+    ma = maximum(r)
+    mi_t = apply_transform(f, Point(mi))
+    ma_t = apply_transform(f, Point(ma))
+    Rect(Vec(mi_t), Vec(ma_t .- mi_t))
+end
+
 # ambiguity fix
 apply_transform(f::typeof(identity), r::Rect) = r
 apply_transform(f::NTuple{2, typeof(identity)}, r::Rect) = r
@@ -327,9 +335,9 @@ struct Symlog10
         new(Float64(low), Float64(high))
     end
 end
-function Symlog10(x)
-    Symlog10(-x, x)
-end
+
+Symlog10(x) = Symlog10(-x, x)
+
 function (s::Symlog10)(x)
     if x > 0
         x <= s.high ? x / s.high * log10(s.high) : log10(x)
@@ -339,6 +347,7 @@ function (s::Symlog10)(x)
         x
     end
 end
+
 function inv_symlog10(x, low, high)
     if x > 0
         l = log10(high)
@@ -360,7 +369,19 @@ inverse_transform(::typeof(pseudolog10)) = inv_pseudolog10
 inverse_transform(F::Tuple) = map(inverse_transform, F)
 inverse_transform(::typeof(logit)) = logistic
 inverse_transform(s::Symlog10) = x -> inv_symlog10(x, s.low, s.high)
+inverse_transform(s) = nothing
 
 function is_identity_transform(t)
     return t === identity || t isa Tuple && all(x-> x === identity, t)
 end
+
+
+# this is a simplification which will only really work with non-rotated or
+# scaled scene transformations, but for 2D scenes this should work well enough.
+# and this way we can use the z-value as a means to shift the drawing order
+# by translating e.g. the axis spines forward so they are not obscured halfway
+# by heatmaps or images
+zvalue2d(x)::Float32 = Makie.translation(x)[][3] + zvalue2d(x.parent)
+zvalue2d(::Nothing)::Float32 = 0f0
+
+

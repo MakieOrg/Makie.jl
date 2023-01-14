@@ -55,10 +55,10 @@ vec3 gennormal(vec3 uvw, float d)
 }
 
 vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
-    float diff_coeff = max(dot(L, N), 0.0);
+    float diff_coeff = max(dot(L, N), 0.0) + max(dot(L, -N), 0.0);
     // specular coefficient
     vec3 H = normalize(L + V);
-    float spec_coeff = pow(max(dot(H, N), 0.0), shininess);
+    float spec_coeff = pow(max(dot(H, N), 0.0) + max(dot(H, -N), 0.0), shininess);
     // final lighting model
     return vec3(
         ambient * color +
@@ -67,7 +67,8 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
     );
 }
 
-// Simple random generator found: http://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
+// Simple random generator found:
+// http://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
 float rand(){
     return fract(sin(gl_FragCoord.x * 12.9898 + gl_FragCoord.y * 78.233) * 43758.5453);
 }
@@ -115,25 +116,6 @@ vec4 volumergba(vec3 front, vec3 dir)
     return vec4(Lo, 1.0 - T);
 }
 
-// vec4 volumeindexedrgba(vec3 front, vec3 dir)
-// {
-//     vec3 pos = front;
-//     float T = 1.0;
-//     vec3 Lo = vec3(0.0);
-//     int i = 0;
-//     for (i; i < num_samples; ++i) {
-//         int index = int(texture(volumedata, pos).x) - 1;
-//         vec4 density = color_lookup(colormap, index);
-//         float opacity = step_size*density.a;
-//         Lo += (T*opacity)*density.rgb;
-//         T *= 1.0 - opacity;
-//         if (T <= 0.01)
-//             break;
-//         pos += dir;
-//     }
-//     return vec4(Lo, 1-T);
-// }
-
 vec4 contours(vec3 front, vec3 dir)
 {
     vec3 pos = front;
@@ -171,10 +153,10 @@ vec4 isosurface(vec3 front, vec3 dir)
         if(abs(density - isovalue) < isorange){
             vec3 N = gennormal(pos, step_size);
             vec3 L = normalize(o_light_dir - pos);
-            // back & frontface...
-            vec3 c1 = blinnphong(N, camdir, L, diffuse_color.rgb);
-            vec3 c2 = blinnphong(-N, camdir, L, diffuse_color.rgb);
-            c = vec4(0.5*c1 + 0.5*c2, diffuse_color.a);
+            c = vec4(
+                blinnphong(N, camdir, L, diffuse_color.rgb),
+                diffuse_color.a
+            );
             break;
         }
         pos += dir;
@@ -196,8 +178,6 @@ vec4 mip(vec3 front, vec3 dir)
 }
 
 uniform uint objectid;
-
-void write2framebuffer(vec4 color, uvec2 id);
 
 const float typemax = 100000000000000000000000000000000000000.0;
 
@@ -226,6 +206,15 @@ float min_bigger_0(vec3 v1, vec3 v2){
     float y = min_bigger_0(v1.y, v2.y);
     float z = min_bigger_0(v1.z, v2.z);
     return min(x, min(y, z));
+}
+
+vec4 pack_int(uint id, uint index) {
+    vec4 unpack;
+    unpack.x = float((id & uint(0xff00)) >> 8) / 255.0;
+    unpack.y = float((id & uint(0x00ff)) >> 0) / 255.0;
+    unpack.z = float((index & uint(0xff00)) >> 8) / 255.0;
+    unpack.w = float((index & uint(0x00ff)) >> 0) / 255.0;
+    return unpack;
 }
 
 void main()
@@ -259,5 +248,15 @@ void main()
     else
         color = contours(start, step_in_dir);
 
+    if (picking) {
+        if (color.a > 0.1) {
+            fragment_color = pack_int(object_id, uint(0));
+        }
+        return;
+    }
+    if (color.a <= 0.0){
+        discard;
+    }
     fragment_color = color;
+
 }

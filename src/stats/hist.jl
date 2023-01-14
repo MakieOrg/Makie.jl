@@ -3,12 +3,10 @@ const histogram_plot_types = [BarPlot, Heatmap, Volume]
 function convert_arguments(P::Type{<:AbstractPlot}, h::StatsBase.Histogram{<:Any, N}) where N
     ptype = plottype(P, histogram_plot_types[N])
     f(edges) = edges[1:end-1] .+ diff(edges)./2
-    kwargs = N == 1 ? (; width = step(h.edges[1])) : NamedTuple()
+    kwargs = N == 1 ? (; width = step(h.edges[1]), gap = 0, dodge_gap = 0) : NamedTuple()
     to_plotspec(ptype, convert_arguments(ptype, map(f, h.edges)..., Float64.(h.weights)); kwargs...)
 end
 
-
-import StatsBase
 
 """
     hist(values; bins = 15, normalization = :none)
@@ -28,12 +26,14 @@ can be normalized by setting `normalization`. Possible values are:
    norm 1.
 *  `:none`: Do not normalize.
 
+Statistical weights can be provided via the `weights` keyword argument.
+
 The following attributes can move the histogram around,
 which comes in handy when placing multiple histograms into one plot:
-* offset = 0.0: adds an offset to every value
-* fillto = 0.0: defines where the bar starts
-* scale_to = nothing: allows to scale all values to a certain height
-* flip = false: flips all values
+* `offset = 0.0`: adds an offset to every value
+* `fillto = 0.0`: defines where the bar starts
+* `scale_to = nothing`: allows to scale all values to a certain height
+* `flip = false`: flips all values
 
 Color can either be:
 * a vector of `bins` colors
@@ -47,6 +47,7 @@ $(ATTRIBUTES)
     Attributes(
         bins = 15, # Int or iterable of edges
         normalization = :none,
+        weights = automatic,
         cycle = [:color => :patchcolor],
         color = theme(scene, :patchcolor),
         offset = 0.0,
@@ -65,29 +66,31 @@ $(ATTRIBUTES)
     )
 end
 
+function pick_hist_edges(vals, bins)
+    if bins isa Int
+        mi, ma = float.(extrema(vals))
+        if mi == ma
+            return [mi - 0.5, ma + 0.5]
+        end
+        # hist is right-open, so to include the upper data point, make the last bin a tiny bit bigger
+        ma = nextfloat(ma)
+        return range(mi, ma, length = bins+1)
+    else
+        if !issorted(bins)
+            error("Histogram bins are not sorted: $bins")
+        end
+        return bins
+    end
+end
+
 function Makie.plot!(plot::Hist)
 
     values = plot.values
+    edges = lift(pick_hist_edges, values, plot.bins) 
 
-    edges = lift(values, plot.bins) do vals, bins
-        if bins isa Int
-            mi, ma = float.(extrema(vals))
-            if mi == ma
-                return [mi - 0.5, ma + 0.5]
-            end
-            # hist is right-open, so to include the upper data point, make the last bin a tiny bit bigger
-            ma = nextfloat(ma)
-            return range(mi, ma, length = bins+1)
-        else
-            if !issorted(bins)
-                error("Histogram bins are not sorted: $bins")
-            end
-            return bins
-        end
-    end
-
-    points = lift(edges, plot.normalization, plot.scale_to) do edges, normalization, scale_to
-        h = StatsBase.fit(StatsBase.Histogram, values[], edges)
+    points = lift(edges, plot.normalization, plot.scale_to, plot.weights) do edges, normalization, scale_to, wgts
+        w = wgts === automatic ? () : (StatsBase.weights(wgts),)
+        h = StatsBase.fit(StatsBase.Histogram, values[], w..., edges)
         h_norm = StatsBase.normalize(h, mode = normalization)
         centers = edges[1:end-1] .+ (diff(edges) ./ 2)
         weights = h_norm.weights
@@ -110,7 +113,7 @@ function Makie.plot!(plot::Hist)
         x === :values ? :y : x
     end
     # plot the values, not the observables, to be in control of updating
-    bp = barplot!(plot, points[]; width = widths[], plot.attributes..., fillto=plot.fillto, offset=plot.offset, bar_labels=bar_labels, color=color)
+    bp = barplot!(plot, points[]; width = widths[], gap = 0, plot.attributes..., fillto=plot.fillto, offset=plot.offset, bar_labels=bar_labels, color=color)
 
     # update the barplot points without triggering, then trigger with `width`
     on(widths) do w

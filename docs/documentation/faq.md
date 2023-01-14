@@ -92,13 +92,13 @@ If `Makie` can't find your font, you can do two things:
 
 ### Elements are squashed into the lower left corner
 
-Layoutable elements require a bounding box that they align themselves to. If you
+Block elements require a bounding box that they align themselves to. If you
 place such an element in a layout, the bounding box is controlled by that layout.
 If you forget to put an element in a layout, it will have its default bounding box
 of `BBox(0, 100, 0, 100)` which ends up being in the lower left corner. You can
 also choose to specify a bounding box manually if you need more control.
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
@@ -127,7 +127,7 @@ can be determined automatically, but
 it doesn't report it to the row or column of the layout. Alternatively, you can set the size
 of that row or column to `Auto(false)` (or any other value than `Auto(true)`).
 
-\begin{examplefigure}{}
+\begin{examplefigure}{svg = true}
 ```julia
 using CairoMakie
 
@@ -138,6 +138,54 @@ Axis(f[2, 1], title = "Expanded")
 Label(f[1, 2], "tellheight = true", tellheight = true)
 Label(f[2, 2], "tellheight = false", tellheight = false)
 
+f
+```
+\end{examplefigure}
+
+
+### The Figure content does not fit the Figure
+
+`GridLayout`s work by fitting all their child content into the space that is available to them.
+Therefore, the `Figure` size determines how the layout is solved, but the layout does not influence the `Figure` size.
+
+This works well when all content is adjustable in width and height, such as an `Axis` that can shrink or grow as needed.
+But it is also possible to constrain elements or rows/columns in width, height or aspect.
+And if too many elements have such constraints, it's not possible any longer to fit them all into the given `Figure` size, without leaving whitespace or clipping them at the borders.
+
+If this is the case, you can use the function `resize_to_layout!`, which determines the actual size of the main `GridLayout` given its content, and resizes the `Figure` to fit.
+
+Here is an example, where all `Axis` objects are given fixed widths and heights.
+There are not enough degrees of freedom for the layout algorithm to fit everything nicely into the `Figure`:
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+
+set_theme!(backgroundcolor = :gray90)
+
+f = Figure(resolution = (800, 600))
+
+for i in 1:3, j in 1:3
+    ax = Axis(f[i, j], title = "$i, $j", width = 100, height = 100)
+    i < 3 && hidexdecorations!(ax, grid = false)
+    j > 1 && hideydecorations!(ax, grid = false)
+end
+
+Colorbar(f[1:3, 4])
+
+f
+```
+\end{examplefigure}
+
+
+As you can see, there's empty space on all four sides, because there are no flexible objects that could fill it.
+
+But once we run `resize_to_layout!`, the `Figure` assumes the appropriate size for our axes:
+
+\begin{examplefigure}{svg = true}
+```julia
+resize_to_layout!(f)
+set_theme!() # hide
 f
 ```
 \end{examplefigure}

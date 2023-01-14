@@ -15,19 +15,31 @@ $(ATTRIBUTES)
         colorrange = get(l_theme.attributes, :colorrange, automatic),
         linestyle = l_theme.linestyle,
         linewidth = l_theme.linewidth,
-        markercolor = s_theme.color,
+        markercolor = automatic,
         markercolormap = s_theme.colormap,
         markercolorrange = get(s_theme.attributes, :colorrange, automatic),
         markersize = s_theme.markersize,
         strokecolor = s_theme.strokecolor,
         strokewidth = s_theme.strokewidth,
         marker = s_theme.marker,
-        inspectable = theme(scene, :inspectable)
+        inspectable = theme(scene, :inspectable),
+        cycle = [:color],
     )
 end
 
 
 function plot!(p::Combined{scatterlines, <:NTuple{N, Any}}) where N
+
+    # markercolor is the same as linecolor if left automatic
+    real_markercolor = Observable{Union{Vector{RGBAf}, RGBAf}}()
+    map!(real_markercolor, p.color, p.markercolor) do col, mcol
+        if mcol === automatic
+            return to_color(col)
+        else
+            return to_color(mcol)
+        end
+    end
+
     lines!(p, p[1:N]...;
         color = p.color,
         linestyle = p.linestyle,
@@ -37,7 +49,7 @@ function plot!(p::Combined{scatterlines, <:NTuple{N, Any}}) where N
         inspectable = p.inspectable
     )
     scatter!(p, p[1:N]...;
-        color = p.markercolor,
+        color = real_markercolor,
         strokecolor = p.strokecolor,
         strokewidth = p.strokewidth,
         marker = p.marker,
