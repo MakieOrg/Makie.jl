@@ -197,7 +197,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
 end
 
 """
-    fxaa_postprocessor(framebuffer)
+    fxaa_postprocessor(framebuffer, shader_cache)
 
 Returns a PostProcessor that handles fxaa.
 """
@@ -264,12 +264,14 @@ end
 
 
 """
-    to_screen_postprocessor(framebuffer)
+    to_screen_postprocessor(framebuffer, shader_cache, default_id = nothing)
 
 Sets up a Postprocessor which copies the color buffer to the screen. Used as a
-final step for displaying the screen.
+final step for displaying the screen. The argument `screen_fb_id` can be used
+to pass in a reference to the framebuffer ID of the screen. If `nothing` is
+used (the default), 0 is used.
 """
-function to_screen_postprocessor(framebuffer, shader_cache)
+function to_screen_postprocessor(framebuffer, shader_cache, screen_fb_id = nothing)
     # draw color buffer
     shader = LazyShader(
         shader_cache,
@@ -287,7 +289,9 @@ function to_screen_postprocessor(framebuffer, shader_cache)
         w, h = size(fb)
 
         # transfer everything to the screen
-        glBindFramebuffer(GL_FRAMEBUFFER, 0)
+        default_id = isnothing(screen_fb_id) ? 0 : screen_fb_id[]
+        # GLFW uses 0, Gtk uses a value that we have to probe at the beginning of rendering
+        glBindFramebuffer(GL_FRAMEBUFFER, default_id)
         glViewport(0, 0, w, h)
         glClear(GL_COLOR_BUFFER_BIT)
         GLAbstraction.render(pass) # copy postprocess

@@ -82,7 +82,8 @@ function update_axis_camera(camera::Camera, t, lims, xrev::Bool, yrev::Bool)
     nearclip = -10_000f0
     farclip = 10_000f0
 
-    tlims = Makie.apply_transform(t, lims)
+    # we are computing transformed camera position, so this isn't space dependent
+    tlims = Makie.apply_transform(t, lims) 
 
     left, bottom = minimum(tlims)
     right, top = maximum(tlims)
@@ -153,7 +154,7 @@ function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidt
 
     top += titlespace + subtitlespace
 
-    if yaxisposition == :left
+    if yaxisposition === :left
         left = yaxisprotrusion
     else
         right = yaxisprotrusion
@@ -166,7 +167,8 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     topscene = ax.blockscene
 
-    decorations = Dict{Symbol, Any}()
+    elements = Dict{Symbol, Any}()
+    ax.elements = elements
 
     if palette === nothing
         palette = haskey(topscene.theme, :palette) ? deepcopy(topscene.theme[:palette]) : copy(Makie.default_palettes)
@@ -207,7 +209,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     # so it doesn't rasterize the scene
     background = poly!(topscene, scenearea; color=ax.backgroundcolor, inspectable=false, shading=false, strokecolor=:transparent)
     translate!(background, 0, 0, -100)
-    decorations[:background] = background
+    elements[:background] = background
 
     block_limit_linking = Observable(false)
     setfield!(ax, :block_limit_linking, block_limit_linking)
@@ -222,7 +224,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(xgridlines, 0, 0, -10)
-    decorations[:xgridlines] = xgridlines
+    elements[:xgridlines] = xgridlines
 
     xminorgridnode = Observable(Point2f[]; ignore_equal_values=true)
     xminorgridlines = linesegments!(
@@ -231,7 +233,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(xminorgridlines, 0, 0, -10)
-    decorations[:xminorgridlines] = xminorgridlines
+    elements[:xminorgridlines] = xminorgridlines
 
     ygridnode = Observable(Point2f[]; ignore_equal_values=true)
     ygridlines = linesegments!(
@@ -240,7 +242,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(ygridlines, 0, 0, -10)
-    decorations[:ygridlines] = ygridlines
+    elements[:ygridlines] = ygridlines
 
     yminorgridnode = Observable(Point2f[]; ignore_equal_values=true)
     yminorgridlines = linesegments!(
@@ -249,7 +251,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(yminorgridlines, 0, 0, -10)
-    decorations[:yminorgridlines] = yminorgridlines
+    elements[:yminorgridlines] = yminorgridlines
 
     onany(ax.xscale, ax.yscale) do xsc, ysc
         scene.transformation.transform_func[] = (xsc, ysc)
@@ -261,9 +263,9 @@ function initialize_block!(ax::Axis; palette = nothing)
     onany(update_axis_camera, camera(scene), scene.transformation.transform_func, finallimits, ax.xreversed, ax.yreversed)
 
     xaxis_endpoints = lift(ax.xaxisposition, scene.px_area; ignore_equal_values=true) do xaxisposition, area
-        if xaxisposition == :bottom
+        if xaxisposition === :bottom
             return bottomline(Rect2f(area))
-        elseif xaxisposition == :top
+        elseif xaxisposition === :top
             return topline(Rect2f(area))
         else
             error("Invalid xaxisposition $xaxisposition")
@@ -271,17 +273,17 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     yaxis_endpoints = lift(ax.yaxisposition, scene.px_area; ignore_equal_values=true) do yaxisposition, area
-        if yaxisposition == :left
+        if yaxisposition === :left
             return leftline(Rect2f(area))
-        elseif yaxisposition == :right
+        elseif yaxisposition === :right
             return rightline(Rect2f(area))
         else
             error("Invalid yaxisposition $yaxisposition")
         end
     end
 
-    xaxis_flipped = lift(x->x == :top, ax.xaxisposition; ignore_equal_values=true)
-    yaxis_flipped = lift(x->x == :right, ax.yaxisposition; ignore_equal_values=true)
+    xaxis_flipped = lift(x->x === :top, ax.xaxisposition; ignore_equal_values=true)
+    yaxis_flipped = lift(x->x === :right, ax.yaxisposition; ignore_equal_values=true)
 
     xspinevisible = lift(xaxis_flipped, ax.bottomspinevisible, ax.topspinevisible; ignore_equal_values=true) do xflip, bv, tv
         xflip ? tv : bv
@@ -315,7 +317,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         flipped = xaxis_flipped, ticklabelrotation = ax.xticklabelrotation,
         ticklabelalign = ax.xticklabelalign, labelsize = ax.xlabelsize,
         labelpadding = ax.xlabelpadding, ticklabelpad = ax.xticklabelpad, labelvisible = ax.xlabelvisible,
-        label = ax.xlabel, labelfont = ax.xlabelfont, ticklabelfont = ax.xticklabelfont, ticklabelcolor = ax.xticklabelcolor, labelcolor = ax.xlabelcolor, tickalign = ax.xtickalign,
+        label = ax.xlabel, labelfont = ax.xlabelfont, labelrotation = ax.xlabelrotation, ticklabelfont = ax.xticklabelfont, ticklabelcolor = ax.xticklabelcolor, labelcolor = ax.xlabelcolor, tickalign = ax.xtickalign,
         ticklabelspace = ax.xticklabelspace, ticks = ax.xticks, tickformat = ax.xtickformat, ticklabelsvisible = ax.xticklabelsvisible,
         ticksvisible = ax.xticksvisible, spinevisible = xspinevisible, spinecolor = xspinecolor, spinewidth = ax.spinewidth,
         ticklabelsize = ax.xticklabelsize, trimspine = ax.xtrimspine, ticksize = ax.xticksize,
@@ -330,7 +332,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         flipped = yaxis_flipped, ticklabelrotation = ax.yticklabelrotation,
         ticklabelalign = ax.yticklabelalign, labelsize = ax.ylabelsize,
         labelpadding = ax.ylabelpadding, ticklabelpad = ax.yticklabelpad, labelvisible = ax.ylabelvisible,
-        label = ax.ylabel, labelfont = ax.ylabelfont, ticklabelfont = ax.yticklabelfont, ticklabelcolor = ax.yticklabelcolor, labelcolor = ax.ylabelcolor, tickalign = ax.ytickalign,
+        label = ax.ylabel, labelfont = ax.ylabelfont, labelrotation = ax.ylabelrotation, ticklabelfont = ax.yticklabelfont, ticklabelcolor = ax.yticklabelcolor, labelcolor = ax.ylabelcolor, tickalign = ax.ytickalign,
         ticklabelspace = ax.yticklabelspace, ticks = ax.yticks, tickformat = ax.ytickformat, ticklabelsvisible = ax.yticklabelsvisible,
         ticksvisible = ax.yticksvisible, spinevisible = yspinevisible, spinecolor = yspinecolor, spinewidth = ax.spinewidth,
         trimspine = ax.ytrimspine, ticklabelsize = ax.yticklabelsize, ticksize = ax.yticksize, flip_vertical_label = ax.flip_ylabel, reversed = ax.yreversed,
@@ -341,7 +343,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     ax.yaxis = yaxis
 
     xoppositelinepoints = lift(scene.px_area, ax.spinewidth, ax.xaxisposition; ignore_equal_values=true) do r, sw, xaxpos
-        if xaxpos == :top
+        if xaxpos === :top
             y = bottom(r)
             p1 = Point2f(left(r) - 0.5sw, y)
             p2 = Point2f(right(r) + 0.5sw, y)
@@ -355,7 +357,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     yoppositelinepoints = lift(scene.px_area, ax.spinewidth, ax.yaxisposition; ignore_equal_values=true) do r, sw, yaxpos
-        if yaxpos == :right
+        if yaxpos === :right
             x = left(r)
             p1 = Point2f(x, bottom(r) - 0.5sw)
             p2 = Point2f(x, top(r) + 0.5sw)
@@ -388,13 +390,13 @@ function initialize_block!(ax::Axis; palette = nothing)
     xoppositeline = linesegments!(topscene, xoppositelinepoints, linewidth = ax.spinewidth,
         visible = xoppositespinevisible, color = xoppositespinecolor, inspectable = false,
         linestyle = nothing)
-    decorations[:xoppositeline] = xoppositeline
+    elements[:xoppositeline] = xoppositeline
     translate!(xoppositeline, 0, 0, 20)
 
     yoppositeline = linesegments!(topscene, yoppositelinepoints, linewidth = ax.spinewidth,
         visible = yoppositespinevisible, color = yoppositespinecolor, inspectable = false,
         linestyle = nothing)
-    decorations[:yoppositeline] = yoppositeline
+    elements[:yoppositeline] = yoppositeline
     translate!(yoppositeline, 0, 0, 20)
 
     onany(xaxis.tickpositions, scene.px_area) do tickpos, area
@@ -411,30 +413,30 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     onany(xaxis.minortickpositions, scene.px_area) do tickpos, area
         local pxheight::Float32 = height(scene.px_area[])
-        local offset::Float32 = ax.xaxisposition[] == :bottom ? pxheight : -pxheight
+        local offset::Float32 = ax.xaxisposition[] === :bottom ? pxheight : -pxheight
         update_gridlines!(xminorgridnode, Point2f(0, offset), tickpos)
     end
 
     onany(yaxis.minortickpositions, scene.px_area) do tickpos, area
         local pxwidth::Float32 = width(scene.px_area[])
-        local offset::Float32 = ax.yaxisposition[] == :left ? pxwidth : -pxwidth
+        local offset::Float32 = ax.yaxisposition[] === :left ? pxwidth : -pxwidth
         update_gridlines!(yminorgridnode, Point2f(offset, 0), tickpos)
     end
 
     subtitlepos = lift(scene.px_area, ax.titlegap, ax.titlealign, ax.xaxisposition, xaxis.protrusion; ignore_equal_values=true) do a,
         titlegap, align, xaxisposition, xaxisprotrusion
 
-        x = if align == :center
+        x = if align === :center
             a.origin[1] + a.widths[1] / 2
-        elseif align == :left
+        elseif align === :left
             a.origin[1]
-        elseif align == :right
+        elseif align === :right
             a.origin[1] + a.widths[1]
         else
             error("Title align $align not supported.")
         end
 
-        yoffset = top(a) + titlegap + (xaxisposition == :top ? xaxisprotrusion : 0f0)
+        yoffset = top(a) + titlegap + (xaxisposition === :top ? xaxisprotrusion : 0f0)
 
         return Point2f(x, yoffset)
     end
@@ -447,7 +449,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         topscene, subtitlepos,
         text = ax.subtitle,
         visible = ax.subtitlevisible,
-        textsize = ax.subtitlesize,
+        fontsize = ax.subtitlesize,
         align = titlealignnode,
         font = ax.subtitlefont,
         color = ax.subtitlecolor,
@@ -462,14 +464,14 @@ function initialize_block!(ax::Axis; palette = nothing)
         topscene, titlepos,
         text = ax.title,
         visible = ax.titlevisible,
-        textsize = ax.titlesize,
+        fontsize = ax.titlesize,
         align = titlealignnode,
         font = ax.titlefont,
         color = ax.titlecolor,
         lineheight = ax.titlelineheight,
         markerspace = :data,
         inspectable = false)
-    decorations[:title] = titlet
+    elements[:title] = titlet
 
     map!(compute_protrusions, ax.layoutobservables.protrusions, ax.title, ax.titlesize, ax.titlegap, ax.titlevisible, ax.spinewidth,
             ax.topspinevisible, ax.bottomspinevisible, ax.leftspinevisible, ax.rightspinevisible,
@@ -515,16 +517,16 @@ end
 
 function mirror_ticks(tickpositions, ticksize, tickalign, px_area, side, axisposition)
     a = px_area[][]
-    if side == :x
-        opp = axisposition == :bottom ? top(a) : bottom(a)
-        sign =  axisposition == :bottom ? 1 : -1
+    if side === :x
+        opp = axisposition === :bottom ? top(a) : bottom(a)
+        sign =  axisposition === :bottom ? 1 : -1
     else
-        opp = axisposition == :left ? right(a) : left(a)
-        sign = axisposition == :left ? 1 : -1
+        opp = axisposition === :left ? right(a) : left(a)
+        sign = axisposition === :left ? 1 : -1
     end
     d = ticksize * sign
     points = Vector{Point2f}(undef, 2*length(tickpositions))
-    if side == :x
+    if side === :x
         for (i, (x, _)) in enumerate(tickpositions)
             points[2i-1] = Point2f(x, opp - d * tickalign)
             points[2i] = Point2f(x, opp + d - d * tickalign)

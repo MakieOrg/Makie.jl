@@ -52,6 +52,7 @@ mutable struct ScreenConfig
     fullscreen::Bool
     debugging::Bool
     monitor::Union{Nothing, GLFW.Monitor}
+    visible::Bool
 
     # Postprocessor
     oit::Bool
@@ -74,6 +75,8 @@ mutable struct ScreenConfig
             fullscreen::Bool,
             debugging::Bool,
             monitor::Union{Nothing, GLFW.Monitor},
+            visible::Bool,
+
             # Preproccessor
             oit::Bool,
             fxaa::Bool,
@@ -95,6 +98,7 @@ mutable struct ScreenConfig
             fullscreen,
             debugging,
             monitor,
+            visible,
             # Preproccessor
             oit,
             fxaa,
@@ -123,7 +127,6 @@ function activate!(; inline=LAST_INLINE[], screen_config...)
     LAST_INLINE[] = inline
     Makie.set_screen_config!(GLMakie, screen_config)
     Makie.set_active_backend!(GLMakie)
-    Makie.set_glyph_resolution!(Makie.High)
     return
 end
 
@@ -159,6 +162,8 @@ mutable struct Screen{GLWindow} <: MakieScreen
     root_scene::Union{Scene, Nothing}
     reuse::Bool
     close_after_renderloop::Bool
+    # To trigger rerenders that aren't related to an existing renderobject.
+    requires_update::Bool
 
     function Screen(
             glscreen::GLWindow,
@@ -184,7 +189,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
             screen2scene,
             screens, renderlist, postprocessors, cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(nothing),
-            Observable(true), nothing, reuse, true
+            Observable(true), nothing, reuse, true, false
         )
         push!(ALL_SCREENS, screen) # track all created screens
         return screen
@@ -303,8 +308,7 @@ function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene:
     apply_config!(screen, config)
 end
 
-function apply_config!(screen::Screen, config::ScreenConfig; visible::Bool=true, start_renderloop::Bool=true)
-    ShaderAbstractions.switch_context!(screen.glscreen)
+function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::Bool=true)
     glw = screen.glscreen
     ShaderAbstractions.switch_context!(glw)
     GLFW.SetWindowAttrib(glw, GLFW_FOCUS_ON_SHOW, config.focus_on_show)
@@ -339,13 +343,12 @@ function apply_config!(screen::Screen, config::ScreenConfig; visible::Bool=true,
         stop_renderloop!(screen)
     end
 
-    GLFW.set_visibility!(screen, visible)
+    set_screen_visibility!(screen, config.visible)
     return screen
 end
 
 function Screen(;
         resolution::Union{Nothing, Tuple{Int, Int}} = nothing,
-        visible = true,
         start_renderloop = true,
         screen_config...
     )
@@ -355,13 +358,18 @@ function Screen(;
     if !isnothing(resolution)
         resize!(screen, resolution...)
     end
-    apply_config!(screen, config; visible=visible, start_renderloop=start_renderloop)
+    apply_config!(screen, config; start_renderloop=start_renderloop)
     return screen
 end
 
-GLFW.set_visibility!(screen::Screen, visible::Bool) = GLFW.set_visibility!(screen.glscreen, visible)
+set_screen_visibility!(screen::Screen, visible::Bool) = set_screen_visibility!(screen.glscreen, visible)
+function set_screen_visibility!(nw::GLFW.Window, visible::Bool)
+    @assert nw.handle !== C_NULL
+    GLFW.set_visibility!(nw, visible)
+end
 
 function display_scene!(screen::Screen, scene::Scene)
+    empty!(screen)
     resize!(screen, size(scene)...)
     insertplots!(screen, scene)
     Makie.push_screen!(scene, screen)
@@ -370,31 +378,34 @@ function display_scene!(screen::Screen, scene::Scene)
     return
 end
 
-function Screen(scene::Scene; visible=true, start_renderloop=true, screen_config...)
+function Screen(scene::Scene; start_renderloop=true, screen_config...)
     config = Makie.merge_screen_config(ScreenConfig, screen_config)
-    return Screen(scene, config; visible=visible, start_renderloop=start_renderloop)
+    return Screen(scene, config; start_renderloop=start_renderloop)
 end
 
 # Open an interactive window
-function Screen(scene::Scene, config::ScreenConfig; visible=true, start_renderloop=true)
+function Screen(scene::Scene, config::ScreenConfig; visible=nothing, start_renderloop=true)
     screen = singleton_screen(config.debugging)
-    apply_config!(screen, config; visible=visible, start_renderloop=start_renderloop)
+    !isnothing(visible) && (config.visible = visible)
+    apply_config!(screen, config; start_renderloop=start_renderloop)
     display_scene!(screen, scene)
     return screen
 end
 
 # Screen to save a png/jpeg to file or io
-function Screen(scene::Scene, config::ScreenConfig, io::Union{Nothing, String, IO}, typ::MIME; visible=false, start_renderloop=false)
+function Screen(scene::Scene, config::ScreenConfig, io::Union{Nothing, String, IO}, typ::MIME; visible=nothing, start_renderloop=false)
     screen = singleton_screen(config.debugging)
-    apply_config!(screen, config; visible=visible, start_renderloop=start_renderloop)
+    !isnothing(visible) && (config.visible = visible)
+    apply_config!(screen, config; start_renderloop=start_renderloop)
     display_scene!(screen, scene)
     return screen
 end
 
 # Screen that is efficient for `colorbuffer(screen)`
-function Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat; visible=false, start_renderloop=false)
+function Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat;  start_renderloop=false)
     screen = singleton_screen(config.debugging)
-    apply_config!(screen, config; visible=visible, start_renderloop=start_renderloop)
+    config.visible = false
+    apply_config!(screen, config; start_renderloop=start_renderloop)
     display_scene!(screen, scene)
     return screen
 end
@@ -472,7 +483,7 @@ function destroy!(rob::RenderObject)
     # These need explicit clean up because (some of) the source observables
     # remain when the plot is deleted.
     GLAbstraction.switch_context!(rob.context)
-    tex = get_texture!(get_texture_atlas())
+    tex = get_texture!(gl_texture_atlas())
     for (k, v) in rob.uniforms
         if v isa Observable
             Observables.clear(v)
@@ -509,15 +520,13 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
         end
         delete!(screen.cache, objectid(plot))
     end
+    screen.requires_update = true
+    return
 end
 
 function Base.empty!(screen::Screen)
     # we should never just "empty" an already destroyed screen
     @assert !was_destroyed(screen.glscreen)
-
-    stop_renderloop!(screen; close_after_renderloop=false) # we be closin' already
-
-    GLFW.set_visibility!(screen, false)
 
     if !isnothing(screen.root_scene)
         Makie.disconnect_screen(screen.root_scene, screen)
@@ -560,7 +569,11 @@ Closes screen and emptying it.
 Doesn't destroy the screen and instead frees it for being re-used again, if `reuse=true`.
 """
 function Base.close(screen::Screen; reuse=true)
-    screen.window_open[] = false
+    set_screen_visibility!(screen, false)
+    stop_renderloop!(screen; close_after_renderloop=false)
+    if screen.window_open[] # otherwise we trigger an infinite loop of closing
+        screen.window_open[] = false
+    end
     empty!(screen)
     if reuse && screen.reuse
         push!(SCREEN_REUSE_POOL, screen)
@@ -814,6 +827,10 @@ function fps_renderloop(screen::Screen)
 end
 
 function requires_update(screen::Screen)
+    if screen.requires_update
+        screen.requires_update = false
+        return true
+    end
     for (_, _, robj) in screen.renderlist
         robj.requires_update && return true
     end

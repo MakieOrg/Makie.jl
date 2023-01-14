@@ -9,14 +9,14 @@ function initialize_block!(l::Label)
     word_wrap_width = Observable(-1f0)
 
     t = text!(
-        topscene, textpos, text = l.text, textsize = l.textsize, font = l.font, color = l.color,
+        topscene, textpos, text = l.text, fontsize = l.fontsize, font = l.font, color = l.color,
         visible = l.visible, align = (:center, :center), rotation = l.rotation, markerspace = :data,
         justification = l.justification, lineheight = l.lineheight, word_wrap_width = word_wrap_width, 
         inspectable = false)
 
     textbb = Ref(BBox(0, 1, 0, 1))
 
-    onany(l.text, l.textsize, l.font, l.rotation, word_wrap_width, l.padding) do _, _, _, _, _, padding
+    onany(l.text, l.fontsize, l.font, l.rotation, word_wrap_width, l.padding) do _, _, _, _, _, padding
         textbb[] = Rect2f(boundingbox(t))
         autowidth = width(textbb[]) + padding[1] + padding[2]
         autoheight = height(textbb[]) + padding[3] + padding[4]

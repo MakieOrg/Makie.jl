@@ -157,7 +157,7 @@ end
         ". This is an annotation!",
         position=(300, 200),
         align=(:center,  :center),
-        textsize=60,
+        fontsize=60,
         font="Blackchancery"
     )
 end
@@ -172,7 +172,7 @@ end
         push!(posis, p)
         text!(ax, "test",
             position=p,
-            textsize=50,
+            fontsize=50,
             rotation=1.5pi - r,
             align=(:center, :center)
         )
@@ -200,8 +200,8 @@ end
     sf = Observable(Base.Fix2(v, 0e0))
     title_str = Observable("t = 0.00")
     sp = streamplot(sf, -2..2, -2..2;
-                    linewidth=2,  arrow_size=20, colormap=:magma, axis=(;title=title_str))
-    Record(sp, LinRange(0, 20, 5)) do i
+                    linewidth=2, colormap=:magma, axis=(;title=title_str))
+    Record(sp, LinRange(0, 20, 5); framerate=1) do i
         sf[] = Base.Fix2(v, i)
         title_str[] = "t = $(round(i; sigdigits=2))"
     end
@@ -211,7 +211,7 @@ end
 @reference_test "Line changing colour" begin
     fig, ax, lineplot = lines(RNG.rand(10); linewidth=10)
     N = 20
-    Record(fig, 1:N; framerate=20) do i
+    Record(fig, 1:N; framerate=1) do i
         lineplot.color = RGBf(i / N, (N - i) / N, 0) # animate scene
     end
 end
@@ -266,6 +266,63 @@ end
     end
 
     Makie.step!(st)
+    st
+end
+
+@reference_test "Axes label rotations" begin
+    axis = (
+        xlabel = "a long x label for this axis",
+        ylabel = "a long y\nlabel for this axis",
+        xlabelrotation = π / 4,
+        ylabelrotation = 0,
+    )
+    fig, ax, _ = scatter(0:1; axis)
+
+    st = Stepper(fig)
+    Makie.step!(st)
+
+    ax.yaxisposition[] = :right
+    ax.ylabelrotation[] = Makie.automatic
+    ax.xlabelrotation[] = -π / 5
+    Makie.step!(st)
+
+    ax.xaxisposition[] = :top
+    ax.xlabelrotation[] = 3π / 4
+    ax.ylabelrotation[] = π / 4
+    Makie.step!(st)
+
+    # reset to defaults
+    ax.xaxisposition[] = :bottom
+    ax.yaxisposition[] = :left
+    ax.xlabelrotation[] = ax.ylabelrotation[] = Makie.automatic
+    Makie.step!(st)
+
+    st
+end
+
+@reference_test "Colorbar label rotations" begin
+    axis = (
+        xlabel = "x axis label",
+        ylabel = "y axis label",
+        xlabelrotation = -π / 10,
+        ylabelrotation = -π / 3,
+        yaxisposition = :right,
+    )
+    fig, _, _ = scatter(0:1; axis)
+
+    cb_vert = Colorbar(fig[1, 2]; label = "vertical cbar", labelrotation = 0)
+    cb_horz = Colorbar(fig[2, 1]; label = "horizontal cbar", labelrotation = π / 5, vertical = false)
+
+    st = Stepper(fig)
+    Makie.step!(st)
+
+    # reset to defaults
+    cb_vert.labelrotation[] = Makie.automatic
+    Makie.step!(st)
+
+    cb_horz.labelrotation[] = Makie.automatic
+    Makie.step!(st)
+
     st
 end
 
@@ -376,7 +433,7 @@ end
                 markersize = 5scales[j], space = space, markerspace = mspace)
             text!(
                 ax, "$space\n$mspace", position = Point2f(xs[i][i], xs[i][j]),
-                textsize = scales[j], space = space, markerspace = mspace,
+                fontsize = scales[j], space = space, markerspace = mspace,
                 align = (:center, :center), color = :black)
         end
     end
@@ -418,7 +475,7 @@ end
                 markersize = 5scales[j], space = space, markerspace = mspace)
             text!(
                 ax, "$space\n$mspace", position = Point2f(xs[i][i], xs[i][j]),
-                textsize = scales[j], space = space, markerspace = mspace,
+                fontsize = scales[j], space = space, markerspace = mspace,
                 align = (:center, :center), color = :black)
         end
     end
@@ -428,7 +485,7 @@ end
 @reference_test "Scatter & Text transformations" begin
     # Check that transformations apply in `space = :data`
     fig, ax, p = scatter(Point2f(100, 0.5), marker = 'a', markersize=50)
-    t = text!(Point2f(100, 0.5), text = "Test", textsize = 50)
+    t = text!(Point2f(100, 0.5), text = "Test", fontsize = 50)
     translate!(p, -100, 0, 0)
     translate!(t, -100, 0, 0)
 
@@ -438,7 +495,7 @@ end
     scale!(p2, 0.5, 0.5, 1)
 
     # but do act on glyphs of text
-    t2 = text!(ax, 1, 0, text = "Test", textsize = 50)
+    t2 = text!(ax, 1, 0, text = "Test", fontsize = 50)
     Makie.rotate!(t2, pi/4)
     scale!(t2, 0.5, 0.5, 1)
 
@@ -555,7 +612,7 @@ end
     )
     tooltip!(ax, Point2f(0), "below", placement = :below, outline_color = :red, outline_linestyle = :dot)
     tooltip!(
-        ax, 0, 0, text = "right", placement = :right, textsize = 30,
+        ax, 0, 0, text = "right", placement = :right, fontsize = 30,
         outline_linewidth = 5, offset = 30, triangle_size = 15,
         strokewidth = 2f0, strokecolor = :cyan
     )
@@ -757,5 +814,20 @@ end
     ax = Axis(f[1, 1])
     ax.xticks = ([3, 6, 9], [L"x" , L"y" , L"z"])
     ax.yticks = ([3, 6, 9], [L"x" , L"y" , L"z"])
+    f
+end
+
+@reference_test "Rich text" begin
+    f = Figure(fontsize = 30, resolution = (800, 600))
+    ax = Axis(f[1, 1],
+        limits = (1, 100, 0.001, 1),
+        xscale = log10,
+        yscale = log2,
+        title = rich("A ", rich("title", color = :red, font = :bold_italic)),
+        xlabel = rich("X", subscript("label", fontsize = 25)),
+        ylabel = rich("Y", superscript("label")),
+    )
+    Label(f[1, 2], rich("Hi", rich("Hi", offset = (0.2, 0.2), color = :blue)), tellheight = false)
+    Label(f[1, 3], rich("X", superscript("super"), subscript("sub")), tellheight = false)
     f
 end

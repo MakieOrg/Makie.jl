@@ -55,13 +55,13 @@ function compute_contourf_colormap(levels, cmap, elow, ehigh)
 
     _cmap = to_colormap(cmap)
 
-    if elow == :auto && !(ehigh == :auto)
+    if elow === :auto && ehigh !== :auto
         cm_base = cgrad(_cmap, n + 1; categorical=true)[2:end]
         cm = cgrad(cm_base, levels_scaled; categorical=true)
-    elseif ehigh == :auto && !(elow == :auto)
+    elseif ehigh === :auto && elow !== :auto
         cm_base = cgrad(_cmap, n + 1; categorical=true)[1:(end - 1)]
         cm = cgrad(cm_base, levels_scaled; categorical=true)
-    elseif ehigh == :auto && elow == :auto
+    elseif ehigh === :auto && elow === :auto
         cm_base = cgrad(_cmap, n + 2; categorical=true)[2:(end - 1)]
         cm = cgrad(cm_base, levels_scaled; categorical=true)
     else
@@ -73,7 +73,7 @@ end
 function compute_lowcolor(el, cmap)
     if isnothing(el)
         return RGBAf(0, 0, 0, 0)
-    elseif el === automatic || el == :auto
+    elseif el === automatic || el === :auto
         return RGBAf(to_colormap(cmap)[begin])
     else
         return to_color(el)::RGBAf
@@ -83,7 +83,7 @@ end
 function compute_highcolor(eh, cmap)
     if isnothing(eh)
         return RGBAf(0, 0, 0, 0)
-    elseif eh === automatic || eh == :auto
+    elseif eh === automatic || eh === :auto
         return RGBAf(to_colormap(cmap)[end])
     else
         return to_color(eh)::RGBAf
