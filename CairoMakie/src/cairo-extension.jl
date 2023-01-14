@@ -44,7 +44,7 @@ function show_glyph(ctx, glyph, x, y)
             ctx.ptr, cg, 1)
 end
 
-function glyph_path(ctx, glyph::Culong, x, y)
+function glyph_path(ctx, glyph, x, y)
     cg = Ref(CairoGlyph(glyph, x, y))
     ccall((:cairo_glyph_path, Cairo.libcairo),
             Nothing, (Ptr{Nothing}, Ptr{CairoGlyph}, Cint),
@@ -71,5 +71,5 @@ function get_render_type(surface::Cairo.CairoSurface)
     typ == Cairo.CAIRO_SURFACE_TYPE_PS && return EPS
     typ == Cairo.CAIRO_SURFACE_TYPE_SVG && return SVG
     typ == Cairo.CAIRO_SURFACE_TYPE_IMAGE && return IMAGE
-    error("Unsupported surface type: $(typ)")
+    return IMAGE # By default assume that the render type is IMAGE
 end

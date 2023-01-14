@@ -27,7 +27,6 @@ using Packing
 using SignedDistanceFields
 using Markdown
 using DocStringExtensions # documentation
-using Serialization # serialize events
 using StructArrays
 # Text related packages
 using FreeType
@@ -37,6 +36,7 @@ using LinearAlgebra
 using Statistics
 using MakieCore
 using OffsetArrays
+using Downloads
 
 import RelocatableFolders
 import StatsBase
@@ -50,6 +50,7 @@ import FileIO
 import SparseArrays
 import TriplotBase
 import MiniQhull
+import Setfield
 
 using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints
 using FixedPointNumbers: N0f8
@@ -68,15 +69,15 @@ import Base: getindex, setindex!, push!, append!, parent, get, get!, delete!, ha
 using Observables: listeners, to_value, notify
 
 using MakieCore: SceneLike, MakieScreen, ScenePlot, AbstractScene, AbstractPlot, Transformable, Attributes, Combined, Theme, Plot
-using MakieCore: Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Poly, Scatter, Surface, Text, Volume
+using MakieCore: Arrows, Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Poly, Scatter, Surface, Text, Volume, Wireframe
 using MakieCore: ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
 using MakieCore: Key, @key_str, Automatic, automatic, @recipe
 using MakieCore: Pixel, px, Unit, Billboard
 using MakieCore: not_implemented_for
 import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, calculated_attributes!,
 get_attribute, plotsym, plotkey, attributes, used_attributes
-import MakieCore: heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume
-import MakieCore: heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!
+import MakieCore: arrows, heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume
+import MakieCore: arrows!, heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!
 import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
 
 export @L_str
@@ -87,6 +88,9 @@ const RealVector{T} = AbstractVector{T} where T <: Number
 const RGBAf = RGBA{Float32}
 const RGBf = RGB{Float32}
 const NativeFont = FreeTypeAbstraction.FTFont
+
+const ASSETS_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
+assetpath(files...) = normpath(joinpath(ASSETS_DIR, files...))
 
 include("documentation/docstringextension.jl")
 include("utilities/quaternions.jl")
@@ -101,16 +105,16 @@ include("utilities/utilities.jl") # need Makie.AbstractPattern
 # Basic scene/plot/recipe interfaces + types
 include("scenes.jl")
 
+include("interfaces.jl")
+include("conversions.jl")
+include("units.jl")
+include("shorthands.jl")
 include("theming.jl")
 include("themes/theme_ggplot2.jl")
 include("themes/theme_black.jl")
 include("themes/theme_minimal.jl")
 include("themes/theme_light.jl")
 include("themes/theme_dark.jl")
-include("interfaces.jl")
-include("units.jl")
-include("conversions.jl")
-include("shorthands.jl")
 
 # camera types + functions
 include("camera/projection_math.jl")
@@ -144,6 +148,7 @@ include("basic_recipes/streamplot.jl")
 include("basic_recipes/timeseries.jl")
 include("basic_recipes/tricontourf.jl")
 include("basic_recipes/volumeslices.jl")
+include("basic_recipes/waterfall.jl")
 include("basic_recipes/wireframe.jl")
 include("basic_recipes/tooltip.jl")
 
@@ -213,7 +218,7 @@ export broadcast_foreach, to_vector, replace_automatic!
 
 # conversion infrastructure
 export @key_str, convert_attribute, convert_arguments
-export to_color, to_colormap, to_rotation, to_font, to_align, to_textsize, categorical_colors, resample_cmap
+export to_color, to_colormap, to_rotation, to_font, to_align, to_fontsize, categorical_colors, resample_cmap
 export to_ndim, Reverse
 
 # Transformations
@@ -273,9 +278,6 @@ export cgrad, available_gradients, showgradients
 
 export Pattern
 
-const ASSETS_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
-assetpath(files...) = normpath(joinpath(ASSETS_DIR, files...))
-
 export assetpath
 # default icon for Makie
 function icon()
@@ -329,9 +331,9 @@ include("basic_recipes/text.jl")
 include("basic_recipes/raincloud.jl")
 include("deprecated.jl")
 
-export Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Poly, Scatter, Surface, Text, Volume
-export heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume
-export heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!
+export Arrows  , Heatmap  , Image  , Lines  , LineSegments  , Mesh  , MeshScatter  , Poly  , Scatter  , Surface  , Text  , Volume  , Wireframe
+export arrows  , heatmap  , image  , lines  , linesegments  , mesh  , meshscatter  , poly  , scatter  , surface  , text  , volume  , wireframe
+export arrows! , heatmap! , image! , lines! , linesegments! , mesh! , meshscatter! , poly! , scatter! , surface! , text! , volume! , wireframe!
 
 export PointLight, EnvironmentLight, AmbientLight, SSAO
 

@@ -19,6 +19,7 @@ returns `Observable{Bool}`
 [GLFW Docs](http://www.glfw.org/docs/latest/group__window.html#gaade9264e79fae52bdb78e2df11ee8d6a)
 """
 Makie.window_open(scene::Scene, screen) = window_open(scene, to_native(screen))
+
 function Makie.window_open(scene::Scene, window::GLFW.Window)
     event = scene.events.window_open
     function windowclose(win)

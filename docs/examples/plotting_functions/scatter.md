@@ -121,7 +121,7 @@ CairoMakie.activate!() # hide
 
 
 f, ax, sc = scatter(1, 1, marker = 'A', markersize = 50)
-text!(2, 1, text = "A", textsize = 50, align = (:center, :center))
+text!(2, 1, text = "A", fontsize = 50, align = (:center, :center))
 xlims!(ax, -1, 4)
 f
 ```

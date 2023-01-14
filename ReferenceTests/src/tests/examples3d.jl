@@ -136,7 +136,7 @@ end
 
     linesegments!(ax, linepoints, linestyle=:dot)
 
-    Record(fig, 1:2) do i
+    Record(fig, 1:2; framerate=1) do i
         t[] = i / 10
     end
 end
@@ -259,7 +259,7 @@ end
     axis[:names, :axisnames] = ("\\bf{ℜ}[u]", "\\bf{𝕴}[u]", " OK\n\\bf{δ}\n γ")
     tstyle = axis[:names] # or just get the nested attributes and work directly with them
 
-    tstyle[:textsize] = 10
+    tstyle[:fontsize] = 10
     tstyle[:textcolor] = (:red, :green, :black)
     tstyle[:font] = "helvetica"
 
@@ -270,7 +270,7 @@ end
         "Multipole Representation of first resonances of U-238",
         position=(wh[1] / 2.0, wh[2] - 20.0),
         align=(:center,  :center),
-        textsize=20,
+        fontsize=20,
         font="helvetica"
     )
     c = lines!(scene, Circle(Point2f(0.1, 0.5), 0.1f0), color=:red, offset=Vec3f(0, 0, 1))
@@ -374,7 +374,7 @@ end
     wf = wireframe!(ax, xrange, xrange, lift(x -> x .+ 1.0, surf[3]),
         linewidth=2f0, color=lift(x -> to_colormap(x)[5], surf[:colormap])
     )
-    Record(fig, range(5, stop=40, length=3)) do i
+    Record(fig, range(5, stop=40, length=3); framerate=1) do i
         surf[3] = surf_func(i)
     end
 end
@@ -424,7 +424,7 @@ end
     Makie.translate!(p, 0, 0, 0)
     colors = to_colormap(:RdYlBu)
     N = 5
-    Record(f, 1:N) do i
+    Record(f, 1:N; framerate=1) do i
         t = i/(N/5)
         if length(lineplots) < 20
             p = lines!(

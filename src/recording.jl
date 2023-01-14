@@ -27,13 +27,13 @@ mutable struct RamStepper
 end
 
 function Stepper(figlike::FigureLike; backend=current_backend(), format=:png, visible=false, connect=false, srceen_kw...)
-    screen = backend.Screen(get_scene(figlike), JuliaNative; visible=visible, start_renderloop=false, srceen_kw...)
+    screen = getscreen(backend, get_scene(figlike), JuliaNative; visible=visible, start_renderloop=false, srceen_kw...)
     display(screen, figlike; connect=connect)
     return RamStepper(figlike, screen, Matrix{RGBf}[], format)
 end
 
 function Stepper(figlike::FigureLike, path::String, step::Int; format=:png, backend=current_backend(), visible=false, connect=false, screen_config...)
-    screen = backend.Screen(get_scene(figlike), JuliaNative; visible=visible, start_renderloop=false, screen_config...)
+    screen = getscreen(backend, get_scene(figlike), JuliaNative; visible=visible, start_renderloop=false, srceen_kw...)
     display(screen, figlike; connect=connect)
     return FolderStepper(figlike, screen, path, format, step)
 end

@@ -1,17 +1,16 @@
-function vertexbuffer(x, trans)
+function vertexbuffer(x, trans, space)
     pos = decompose(Point, x)
-    return apply_transform(trans,  pos)
+    return apply_transform(trans,  pos, space)
 end
 
 function vertexbuffer(x::Observable, p)
-    return Buffer(lift(vertexbuffer, x, transform_func_obs(p)))
+    return Buffer(lift(vertexbuffer, x, transform_func_obs(p), get(p, :space, :data)))
 end
 
-facebuffer(x) = facebuffer(GeometryBasics.faces(x))
+facebuffer(x) = faces(x)
+facebuffer(x::AbstractArray{<:GLTriangleFace}) = x
 facebuffer(x::Observable) = Buffer(lift(facebuffer, x))
-function facebuffer(x::AbstractArray{GLTriangleFace})
-    return x
-end
+
 
 function array2color(colors, cmap, crange)
     cmap = RGBAf.(Colors.color.(to_colormap(cmap)), 1.0)
@@ -66,13 +65,18 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
         end
 
         if color isa AbstractArray
-            if color_signal[] isa AbstractVector
+            if color isa AbstractVector
                 attributes[:color] = Buffer(color_signal) # per vertex colors
             else
                 uniforms[:uniform_color] = Sampler(color_signal) # Texture
                 uniforms[:color] = false
-                !haskey(attributes, :uv) &&
-                    @warn "Mesh doesn't use Texturecoordinates, but has a Texture. Colors won't map"
+                if color isa Makie.AbstractPattern
+                    uniforms[:pattern] = true
+                    # add texture coordinates
+                    uv = Buffer(lift(decompose_uv, mesh_signal))
+                    delete!(uniforms, :uv)
+                    attributes[:uv] = uv
+                end
             end
             if eltype(color_signal[]) <: Number
                 uniforms[:colorrange] = converted_attribute(plot, :colorrange)
@@ -100,6 +104,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
 
     get!(uniforms, :colorrange, true)
     get!(uniforms, :colormap, true)
+    get!(uniforms, :pattern, false)
     get!(uniforms, :model, plot.model)
     get!(uniforms, :lightposition, Vec3f(1))
     get!(uniforms, :ambient, Vec3f(1))
@@ -118,6 +123,10 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
         i = Vec(1, 2, 3)
         return transpose(inv(v[i, i] * m[i, i]))
     end
+
+    # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
+    uniforms[:picking] = false
+    uniforms[:object_id] = UInt32(0)
 
     return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), instance; uniforms...)
 end
