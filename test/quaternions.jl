@@ -1,3 +1,10 @@
+struct Degree{T} <: Number
+    θ::T
+end
+Base.:/(θ::Degree, x::Number) = Degree(θ.θ / x)
+Base.sin(θ::Degree) = sin(θ.θ * π/180)
+Base.cos(θ::Degree) = cos(θ.θ * π/180)
+
 @testset "Quaternions" begin
 
     qx = qrotation(Vec(1, 0, 0), pi / 4)
@@ -40,4 +47,13 @@
     #         @test angle(q) ≈ θ
     #     end
     # end
+
+    # Test `to_rotation` with other subtypes of `Number` than `AbstractFloat`
+    # such as `Base.Irrational` and Unitful's `90u"°"`
+    v = Vec(0.0, 0.0, 1.0)
+    # `π` is not an `AbstractFloat` but it is a `Number`
+    @test to_rotation(π) == to_rotation(1.0π)
+    @test to_rotation((v, π)) == to_rotation((v, 1.0π))
+    @test to_rotation(Degree(90)) == to_rotation(π/2)
+    @test to_rotation((v, Degree(90))) == to_rotation((v, π/2))
 end

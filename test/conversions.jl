@@ -7,7 +7,6 @@ using Makie:
     categorical_colors
 
 @testset "Conversions" begin
-
     # NoConversion
     struct NoConversionTestType end
     conversion_trait(::NoConversionTestType) = NoConversion()
@@ -17,6 +16,14 @@ using Makie:
         @test convert_arguments(ncttt, 1, 2, 3) == (1, 2, 3)
     end
 
+end
+
+@testset "changing input types" begin
+    input = Observable{Any}(decompose(Point2f, Circle(Point2f(0), 2f0)))
+    f, ax, pl = mesh(input)
+    m = Makie.triangle_mesh(Circle(Point2f(0), 1f0))
+    input[] = m
+    @test pl[1][] == m
 end
 
 @testset "to_vertices" begin
@@ -177,7 +184,27 @@ end
     @test categorical_colors([to_color(:red)], 1) == [to_color(:red)]
     @test categorical_colors([:red], 1) == [to_color(:red)]
     @test_throws ErrorException categorical_colors([to_color(:red)], 2)
-    @test categorical_colors(:darktest, 1) == to_color.(Makie.PlotUtils.palette(:darktest))
+    @test categorical_colors(:darktest, 1) == to_color.(Makie.PlotUtils.palette(:darktest))[1:1]
+    @test_throws ErrorException to_colormap(:viridis, 10) # deprecated
+    @test categorical_colors(:darktest, 1) == to_color.(Makie.PlotUtils.palette(:darktest))[1:1]
+    @test categorical_colors(:viridis, 10) == to_colormap(:viridis)[1:10]
+    # TODO why don't they exactly match?
+    @test categorical_colors(:Set1, 9) ≈ to_colormap(:Set1)
+
+    @test_throws ArgumentError Makie.categorical_colors(:PuRd, 20) # not enough categories
+end
+
+@testset "resample colormap" begin
+    cs = Makie.resample_cmap(:viridis, 10; alpha=LinRange(0, 1, 10))
+    @test Colors.alpha.(cs) == Float32.(LinRange(0, 1, 10))
+    cs = Makie.resample_cmap(:viridis, 2; alpha=0.5)
+    @test all(x-> x == 0.5, Colors.alpha.(cs))
+    @test Colors.color.(cs) == Colors.color.(Makie.resample(to_colormap(:viridis), 2))
+    cs = Makie.resample_cmap(:Set1, 100)
+    @test all(x-> x == 1.0, Colors.alpha.(cs))
+    @test Colors.color.(cs) == Colors.color.(Makie.resample(to_colormap(:Set1), 100))
+    cs = Makie.resample_cmap(:Set1, 10; alpha=(0, 1))
+    @test Colors.alpha.(cs) == Float32.(LinRange(0, 1, 10))
 end
 
 @testset "colors" begin
@@ -201,4 +228,43 @@ end
     @test_throws ErrorException convert_arguments(Heatmap, x, y, z)
     x = [NaN, 1, 2]
     @test_throws ErrorException convert_arguments(Heatmap, x, y, z)
+end
+
+@testset "to_colormap" begin
+    @test to_colormap([HSL(0, 10, 20)]) isa Vector{RGBAf}
+    @test to_colormap([:red, :green]) isa Vector{RGBAf}
+    @test to_colormap([(:red, 0.1), (:green, 0.2)]) isa Vector{RGBAf}
+    @test to_colormap((:viridis, 0.1)) isa Vector{RGBAf}
+    @test to_colormap(Reverse(:viridis)) isa Vector{RGBAf}
+    @test to_colormap(:cividis) isa Vector{RGBAf}
+    @test to_colormap(cgrad(:cividis, 8, categorical=true)) isa Vector{RGBAf}
+    @test to_colormap(cgrad(:cividis, 8)) isa Vector{RGBAf}
+    @test to_colormap(cgrad(:cividis)) isa Vector{RGBAf}
+    @test alpha(to_colormap(cgrad(:cividis, 8; alpha=0.5))[1]) == 0.5
+    @test alpha(to_colormap(cgrad(:cividis, 8; alpha=0.5, categorical=true))[1]) == 0.5
+
+
+    @inferred to_colormap([HSL(0, 10, 20)])
+    @inferred to_colormap([:red, :green])
+    @inferred to_colormap([(:red, 0.1), (:green, 0.2)])
+    @inferred to_colormap((:viridis, 0.1))
+    @inferred to_colormap(Reverse(:viridis))
+    @inferred to_colormap(:cividis)
+    @inferred to_colormap(cgrad(:cividis, 8, categorical=true))
+    @inferred to_colormap(cgrad(:cividis, 8))
+    @inferred to_colormap(cgrad(:cividis))
+    @inferred to_colormap(cgrad(:cividis, 8; alpha=0.5))
+    @inferred to_colormap(cgrad(:cividis, 8; alpha=0.5, categorical=true))
+end
+
+
+@testset "empty poly" begin
+    f, ax, pl = poly(Rect2f[]);
+    pl[1] = [Rect2f(0, 0, 1, 1)];
+    @test pl.plots[1][1][] == [GeometryBasics.triangle_mesh(Rect2f(0, 0, 1, 1))]
+
+    f, ax, pl = poly(Vector{Point2f}[])
+    points = decompose(Point2f, Circle(Point2f(0),1))
+    pl[1] = [points]
+    @test pl.plots[1][1][] == Makie.poly_convert(points)
 end

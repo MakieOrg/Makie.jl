@@ -6,30 +6,34 @@ on:
       - '*.md'
     branches:
       - master
+      - breaking-release
   push:
     paths-ignore:
       - 'docs/**'
       - '*.md'
     branches:
       - master
+      - breaking-release
     tags: '*'
 
-concurrency: 
-  group: glmakie-${{ github.ref }}
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
   test:
-    name: GLMakie Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    name: GLMakie Julia ${{ matrix.version }}
+    env:
+      MODERNGL_DEBUGGING: "true" # turn on errors when running OpenGL tests
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         version:
-          - '1.3'
           - '1.6'
+          - '1' # automatically expands to the latest stable 1.x release of Julia
         os:
-          - ubuntu-18.04
+          - ubuntu-20.04
         arch:
           - x64
     steps:
@@ -46,18 +50,29 @@ jobs:
         run: |
           using Pkg;
           # dev mono repo versions
-          pkg"dev . MakieCore GLMakie ReferenceTests"
+          pkg"dev . ./MakieCore ./GLMakie ./ReferenceTests"
       - name: Run the tests
+        id: referencetests
         continue-on-error: true
         run: >
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("GLMakie", coverage=true)'
-          && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV 
+          && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
+      - name: Comment if there are missing refimages
+        if: matrix.version == '1' && steps.referencetests.outputs.n_missing_refimages != '0'
+        uses: mshick/add-pr-comment@v1
+        with:
+          message: |
+            ## Missing reference images
+            Found ${{steps.referencetests.outputs.n_missing_refimages}} new images without existing references.
+            Upload new reference images before merging this PR.
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-repeats: true
       - name: Upload test Artifacts
         uses: actions/upload-artifact@v2
         with:
           name: ReferenceImages_${{ matrix.os }}_${{ matrix.arch }}_${{ matrix.version }}
           path: |
-            ./GLMakie/test/reference_test_output
+            ./GLMakie/test/recorded_reference_images/
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1

@@ -1,22 +1,18 @@
-using LinearAlgebra
-using FileIO, Colors, GeometryBasics
-using ReferenceTests: loadasset, RNG
-using Makie: Record, volume
 
-@cell "Image on Geometry (Moon)" begin
+@reference_test "Image on Geometry (Moon)" begin
     moon = loadasset("moon.png")
-    fig, ax, meshplot = mesh(Sphere(Point3f(0), 1f0), color=moon, shading=false, show_axis=false)
+    fig, ax, meshplot = mesh(Sphere(Point3f(0), 1f0), color=moon, shading=false, axis = (;show_axis=false))
     update_cam!(ax.scene, Vec3f(-2, 2, 2), Vec3f(0))
     fig
 end
 
-@cell "Image on Geometry (Earth)" begin
+@reference_test "Image on Geometry (Earth)" begin
     earth = loadasset("earth.png")
     m = uv_mesh(Tesselation(Sphere(Point3f(0), 1f0), 60))
     mesh(m, color=earth, shading=false)
 end
 
-@cell "Orthographic Camera" begin
+@reference_test "Orthographic Camera" begin
     function colormesh((geometry, color))
         mesh1 = normal_mesh(geometry)
         npoints = length(GeometryBasics.coordinates(mesh1))
@@ -50,20 +46,20 @@ end
     fig
 end
 
-@cell "Volume Function" begin
+@reference_test "Volume Function" begin
     volume(RNG.rand(32, 32, 32), algorithm=:mip)
 end
 
-@cell "Textured Mesh" begin
+@reference_test "Textured Mesh" begin
     catmesh = loadasset("cat.obj")
     mesh(catmesh, color=loadasset("diffusemap.png"))
 end
 
-@cell "Load Mesh" begin
+@reference_test "Load Mesh" begin
     mesh(loadasset("cat.obj"))
 end
 
-@cell "Colored Mesh" begin
+@reference_test "Colored Mesh" begin
     x = [0, 1, 2, 0]
     y = [0, 0, 1, 2]
     z = [0, 2, 0, 1]
@@ -76,15 +72,15 @@ end
     mesh(x, y, z, indices, color=color)
 end
 
-@cell "Wireframe of a Mesh" begin
+@reference_test "Wireframe of a Mesh" begin
     wireframe(loadasset("cat.obj"))
 end
 
-@cell "Wireframe of Sphere" begin
+@reference_test "Wireframe of Sphere" begin
     wireframe(Sphere(Point3f(0), 1f0))
 end
 
-@cell "Wireframe of a Surface" begin
+@reference_test "Wireframe of a Surface" begin
     function xy_data(x, y)
         r = sqrt(x^2 + y^2)
         r == 0.0 ? 1f0 : (sin(r) / r)
@@ -96,7 +92,7 @@ end
     wireframe(r, r, z)
 end
 
-@cell "Surface with image" begin
+@reference_test "Surface with image" begin
     N = 30
     function xy_data(x, y)
         r = sqrt(x^2 + y^2)
@@ -110,7 +106,7 @@ end
     )
 end
 
-@cell "Meshscatter Function" begin
+@reference_test "Meshscatter Function" begin
     large_sphere = Sphere(Point3f(0), 1f0)
     positions = decompose(Point3f, large_sphere)
     colS = [RGBAf(RNG.rand(), RNG.rand(), RNG.rand(), 1.0) for i = 1:length(positions)]
@@ -118,15 +114,16 @@ end
     meshscatter(positions, color=colS, markersize=sizesS)
 end
 
-@cell "scatter" begin
+@reference_test "scatter" begin
     scatter(RNG.rand(20), RNG.rand(20), markersize=10)
 end
 
-@cell "Marker sizes" begin
-    scatter(RNG.rand(20), RNG.rand(20), markersize=RNG.rand(20) .* 20, color=to_colormap(:Spectral, 20))
+@reference_test "Marker sizes" begin
+    colors = Makie.resample(to_colormap(:Spectral), 20)
+    scatter(RNG.rand(20), RNG.rand(20), markersize=RNG.rand(20) .* 20, color=colors)
 end
 
-@cell "Record Video" begin
+@reference_test "Record Video" begin
     f(t, v, s) = (sin(v + t) * s, cos(v + t) * s, (cos(v + t) + sin(v)) * s)
     t = Observable(0.0) # create a life signal
     limits = Rect3f(Vec3f(-1.5, -1.5, -3), Vec3f(3, 3, 6))
@@ -139,12 +136,12 @@ end
 
     linesegments!(ax, linepoints, linestyle=:dot)
 
-    Record(fig, 1:2) do i
+    Record(fig, 1:2; framerate=1) do i
         t[] = i / 10
     end
 end
 
-@cell "3D Contour with 2D contour slices" begin
+@reference_test "3D Contour with 2D contour slices" begin
     function test(x, y, z)
         xy = [x, y, z]
         ((xy') * Matrix(I, 3, 3) * xy) / 20
@@ -156,13 +153,13 @@ end
     xm, ym, zm = minimum(data_limits(c))
     contour!(ax, x, x, map(v -> v[1, :, :], c[4]), transformation=(:xy, zm), linewidth=2)
     heatmap!(ax, x, x, map(v -> v[:, 1, :], c[4]), transformation=(:xz, ym))
-    contour!(ax, x, x, map(v -> v[:, :, 1], c[4]), fillrange=true, transformation=(:yz, xm))
+    contourf!(ax, x, x, map(v -> v[:, :, 1], c[4]), transformation=(:yz, xm))
     # reorder plots for transparency
     ax.scene.plots[:] = ax.scene.plots[[1, 3, 4, 5, 2]]
     fig
 end
 
-@cell "Contour3d" begin
+@reference_test "Contour3d" begin
     function xy_data(x, y)
         r = sqrt(x * x + y * y)
         r == 0.0 ? 1f0 : (sin(r) / r)
@@ -171,7 +168,7 @@ end
     contour3d(r, r, (x, y) -> xy_data(10x, 10y), levels=20, linewidth=3)
 end
 
-@cell "Arrows 3D" begin
+@reference_test "Arrows 3D" begin
     function SphericalToCartesian(r::T, θ::T, ϕ::T) where T <: AbstractArray
         x = @.r * sin(θ) * cos(ϕ)
         y = @.r * sin(θ) * sin(ϕ)
@@ -186,7 +183,7 @@ end
     arrows(pts, (normalize.(pts) .* 0.1f0), arrowsize=0.02, linecolor=:green, arrowcolor=:darkblue)
 end
 
-@cell "Image on Surface Sphere" begin
+@reference_test "Image on Surface Sphere" begin
     n = 20
     θ = [0;(0.5:n - 0.5) / n;1]
     φ = [(0:2n - 2) * 2 / (2n - 1);2]
@@ -198,7 +195,7 @@ end
     f, ax, p = surface(x, y, z, color=Makie.logo(), transparency=true)
 end
 
-@cell "Arrows on Sphere" begin
+@reference_test "Arrows on Sphere" begin
     n = 20
     f   = (x, y, z) -> x * exp(cos(y) * z)
     ∇f  = (x, y, z) -> Point3f(exp(cos(y) * z), -sin(y) * z * x * exp(cos(y) * z), x * cos(y) * exp(cos(y) * z))
@@ -220,7 +217,7 @@ end
     current_figure()
 end
 
-@cell "surface + contour3d" begin
+@reference_test "surface + contour3d" begin
     vx = -1:0.01:1
     vy = -1:0.01:1
 
@@ -233,7 +230,7 @@ end
     fig
 end
 
-@cell "FEM mesh 3D" begin
+@reference_test "FEM mesh 3D" begin
     cat = loadasset("cat.obj")
     vertices = decompose(Point3f, cat)
     faces = decompose(TriangleFace{Int}, cat)
@@ -245,7 +242,7 @@ end
     )
 end
 
-@cell "OldAxis + Surface" begin
+@reference_test "OldAxis + Surface" begin
     vx = -1:0.01:1
     vy = -1:0.01:1
 
@@ -262,7 +259,7 @@ end
     axis[:names, :axisnames] = ("\\bf{ℜ}[u]", "\\bf{𝕴}[u]", " OK\n\\bf{δ}\n γ")
     tstyle = axis[:names] # or just get the nested attributes and work directly with them
 
-    tstyle[:textsize] = 10
+    tstyle[:fontsize] = 10
     tstyle[:textcolor] = (:red, :green, :black)
     tstyle[:font] = "helvetica"
 
@@ -273,7 +270,7 @@ end
         "Multipole Representation of first resonances of U-238",
         position=(wh[1] / 2.0, wh[2] - 20.0),
         align=(:center,  :center),
-        textsize=20,
+        fontsize=20,
         font="helvetica"
     )
     c = lines!(scene, Circle(Point2f(0.1, 0.5), 0.1f0), color=:red, offset=Vec3f(0, 0, 1))
@@ -281,7 +278,7 @@ end
     scene
 end
 
-@cell "Fluctuation 3D" begin
+@reference_test "Fluctuation 3D" begin
     # define points/edges
     perturbfactor = 4e1
     N = 3; nbfacese = 30; radius = 0.02
@@ -333,7 +330,7 @@ end
     fig
 end
 
-@cell "Connected Sphere" begin
+@reference_test "Connected Sphere" begin
     large_sphere = Sphere(Point3f(0), 1f0)
     positions = decompose(Point3f, large_sphere)
     linepos = view(positions, RNG.rand(1:length(positions), 1000))
@@ -346,7 +343,7 @@ end
     fig
 end
 
-@cell "image scatter" begin
+@reference_test "image scatter" begin
     scatter(
         1:10, 1:10, RNG.rand(10, 10) .* 10,
         rotations=normalize.(RNG.rand(Quaternionf, 10 * 10)),
@@ -357,13 +354,13 @@ end
     )
 end
 
-@cell "Simple meshscatter" begin
+@reference_test "Simple meshscatter" begin
     large_sphere = Sphere(Point3f(0), 1f0)
     positions = decompose(Point3f, large_sphere)
     meshscatter(positions, color=RGBAf(0.9, 0.2, 0.4, 1), markersize=0.05)
 end
 
-@cell "Animated surface and wireframe" begin
+@reference_test "Animated surface and wireframe" begin
     function xy_data(x, y)
         r = sqrt(x^2 + y^2)
         r == 0.0 ? 1f0 : (sin(r) / r)
@@ -377,12 +374,12 @@ end
     wf = wireframe!(ax, xrange, xrange, lift(x -> x .+ 1.0, surf[3]),
         linewidth=2f0, color=lift(x -> to_colormap(x)[5], surf[:colormap])
     )
-    Record(fig, range(5, stop=40, length=3)) do i
+    Record(fig, range(5, stop=40, length=3); framerate=1) do i
         surf[3] = surf_func(i)
     end
 end
 
-@cell "Normals of a Cat" begin
+@reference_test "Normals of a Cat" begin
     x = loadasset("cat.obj")
     mesh(x, color=:black)
     pos = map(decompose(Point3f, x), GeometryBasics.normals(x)) do p, n
@@ -392,30 +389,16 @@ end
     current_figure()
 end
 
-@cell "Sphere Mesh" begin
+@reference_test "Sphere Mesh" begin
     mesh(Sphere(Point3f(0), 1f0), color=:blue)
 end
 
-@cell "Stars" begin
-    stars = 100_000
-    scene = Scene(backgroundcolor=:black, camera=cam2d!)
-    scatter!(
-        scene,
-        map(i -> (RNG.randn(Point3f) .- 0.5) .* 10, 1:stars),
-        color=RNG.rand(stars),
-        colormap=[(:white, 0.4), (:blue, 0.4), (:yellow, 0.4)], strokewidth=0,
-        markersize=RNG.rand(range(2, stop=8, length=100), stars),
-    )
-    update_cam!(scene, Rect3f(Vec3f(-5), Vec3f(10)))
-    scene
-end
-
-@cell "Unicode Marker" begin
+@reference_test "Unicode Marker" begin
     scatter(Point3f[(1, 0, 0), (0, 1, 0), (0, 0, 1)], marker=[:x, :circle, :cross],
             markersize=35)
 end
 
-@cell "Merged color Mesh" begin
+@reference_test "Merged color Mesh" begin
     function colormesh((geometry, color))
         mesh1 = normal_mesh(geometry)
         npoints = length(GeometryBasics.coordinates(mesh1))
@@ -433,7 +416,7 @@ end
     mesh(merge(meshes))
 end
 
-@cell "Line GIF" begin
+@reference_test "Line GIF" begin
     us = range(0, stop=1, length=100)
     f, ax, p = linesegments(Rect3f(Vec3f(0, -1, 0), Vec3f(1, 2, 2)))
     p = lines!(ax, us, sin.(us), zeros(100), linewidth=3, transparency=true)
@@ -441,7 +424,7 @@ end
     Makie.translate!(p, 0, 0, 0)
     colors = to_colormap(:RdYlBu)
     N = 5
-    Record(f, 1:N) do i
+    Record(f, 1:N; framerate=1) do i
         t = i/(N/5)
         if length(lineplots) < 20
             p = lines!(
@@ -465,7 +448,7 @@ end
     end
 end
 
-@cell "Surface + wireframe + contour" begin
+@reference_test "Surface + wireframe + contour" begin
     N = 51
     x = range(-2, stop=2, length=N)
     y = x
@@ -486,7 +469,7 @@ let
         β::T
     end
 
-    @cell "Streamplot 3D" begin
+    @reference_test "Streamplot 3D" begin
         P = FitzhughNagumo(0.1, 0.0, 1.5, 0.8)
         f(x, P::FitzhughNagumo) = Point3f(
             (x[1] - x[2] - x[1]^3 + P.s) / P.ϵ,
@@ -498,7 +481,7 @@ let
     end
 end
 
-@cell "Volume on black background" begin
+@reference_test "Volume on black background" begin
     r = LinRange(-3, 3, 100);  # our value range
 
     ρ(x, y, z) = exp(-(abs(x))) # function (charge density)
@@ -513,7 +496,7 @@ end
     fig
 end
 
-@cell "Depth Shift" begin
+@reference_test "Depth Shift" begin
     # Up to some artifacts from fxaa the left side should be blue and the right red.
     fig = Figure(resolution = (800, 400))
 
@@ -533,14 +516,14 @@ end
             lines!(ax, ps, color = color, depth_shift = shift)
             linesegments!(ax, ps .+ Point3f(-1, 1, 0), color = color, depth_shift = shift)
             scatter!(ax, ps, color = color, markersize=10, depth_shift = shift)
-            text!(ax, "Test", position = Point3f(0, 1, 1.1), color = color, depth_shift = shift)
-            surface!(ax, -1..0, 1..2, mat, colormap = (color, color), depth_shift = shift)
+            text!(ax, 0, 1, 1.1, text = "Test", color = color, depth_shift = shift)
+            surface!(ax, -1..0, 1..2, mat, colormap = [color, color], depth_shift = shift)
             meshscatter!(ax, ps .+ Point3f(-1, 1, 0), color = color, depth_shift = shift)
             # # left side in axis
-            heatmap!(ax, 0..1, 0..1, mat, colormap = (color, color), depth_shift = shift)
+            heatmap!(ax, 0..1, 0..1, mat, colormap = [color, color], depth_shift = shift)
             # # right side in axis
-            image!(ax, -1..0, 1..2, mat, colormap = (color, color), depth_shift = shift)
-            p = volume!(ax, A, colormap = (:white, color), depth_shift = shift)
+            image!(ax, -1..0, 1..2, mat, colormap = [color, color], depth_shift = shift)
+            p = volume!(ax, A, colormap = [:white, color], depth_shift = shift)
             translate!(p, -1, 0, 0)
             scale!(p, 0.25, 0.25, 0.25)
         end
@@ -551,7 +534,7 @@ end
 end
 
 
-@cell "Order Independent Transparency" begin
+@reference_test "Order Independent Transparency" begin
     # top row (yellow, cyan, magenta) contains stacks with the same alpha value
     # bottom row (red, green, blue) contains stacks with varying alpha values
     fig = Figure()
@@ -579,13 +562,13 @@ end
 end
 
 
-@cell "space 3D" begin
+@reference_test "space 3D" begin
     fig = Figure()
     for ax in [LScene(fig[1, 1]), Axis3(fig[1, 2])]
         mesh!(ax, Rect3(Point3f(-10), Vec3f(20)), color = :orange)
         mesh!(ax, Rect2f(0.8, 0.1, 0.1, 0.8), space = :relative, color = :blue, shading = false)
         linesegments!(ax, Rect2f(-0.5, -0.5, 1, 1), space = :clip, color = :cyan, linewidth = 5)
-        text!(ax, "Clip Space", position = Point2f(0, 0.52), align = (:center, :bottom), space = :clip)
+        text!(ax, 0, 0.52, text = "Clip Space", align = (:center, :bottom), space = :clip)
         image!(ax, 0..40, 0..800, [x for x in range(0, 1, length=40), _ in 1:10], space = :pixel)
     end
     fig

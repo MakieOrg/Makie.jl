@@ -459,7 +459,7 @@ function _rotate_cam!(scene, cam::Camera3D, angles::VecTypes, from_mouse=false)
     right = cross(viewdir, up)  # +x
 
     x_axis = right
-    y_axis = cam.attributes[:fixed_axis][] ? Vec3f(0, 0, sign(up[3])) : up
+    y_axis = cam.attributes[:fixed_axis][] ? Vec3f(0, 0, ifelse(up[3] < 0, -1, 1)) : up
     z_axis = -viewdir
 
     fix_x = ispressed(scene, cam.attributes[:fix_x_key][])
@@ -502,7 +502,7 @@ function _rotate_cam!(scene, cam::Camera3D, angles::VecTypes, from_mouse=false)
 
     # TODO maybe generalize this to arbitrary center?
     # calculate positions from rotated vectors
-    if cam.attributes[:rotation_center][] == :lookat
+    if cam.attributes[:rotation_center][] === :lookat
         cam.eyeposition[] = lookat - viewdir
     else
         cam.lookat[] = eyepos + viewdir

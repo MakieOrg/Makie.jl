@@ -5,67 +5,49 @@ using GeometryBasics: origin
 using Makie
 using ImageMagick
 using Pkg
+using Random
 
-Pkg.develop(PackageSpec(
-    path = normpath(joinpath(dirname(pathof(Makie)), "..", "ReferenceTests"))
-))
+if !GLMakie.ModernGL.enable_opengl_debugging
+    # can't error, since we can't enable debugging for users
+    @warn("TESTING WITHOUT OPENGL DEBUGGING")
+end
 
+reference_tests_dir = normpath(joinpath(dirname(pathof(Makie)), "..", "ReferenceTests"))
+Pkg.develop(PackageSpec(path = reference_tests_dir))
 using ReferenceTests
-using ReferenceTests: @cell
 
-GLMakie.activate!()
-GLMakie.set_window_config!(;
-    framerate = 1.0,
-    pause_rendering = true
-)
+GLMakie.activate!(framerate=1.0)
+
+@testset "mimes" begin
+    f, ax, pl = scatter(1:4)
+    @test showable("image/png", f)
+    @test showable("image/jpeg", f)
+    # see https://github.com/MakieOrg/Makie.jl/pull/2167
+    @test !showable("blaaa", f)
+end
 
 # run the unit test suite
 include("unit_tests.jl")
 
-basefolder = joinpath(@__DIR__, "reference_test_output")
-rm(basefolder; force=true, recursive=true)
-mkdir(basefolder)
-
-main_refimage_set = "refimages"
-main_tests_root_folder = joinpath(basefolder, main_refimage_set)
-mkdir(main_tests_root_folder)
-
-main_tests_record_folder = joinpath(main_tests_root_folder, "recorded")
-mkdir(main_tests_record_folder)
-
-ReferenceTests.record_tests(ReferenceTests.load_database(), recording_dir = main_tests_record_folder)
-
-main_tests_refimages_download_folder = ReferenceTests.download_refimages(; name=main_refimage_set)
-main_tests_refimages_folder = joinpath(main_tests_root_folder, "reference")
-cp(main_tests_refimages_download_folder, main_tests_refimages_folder)
-
-missing_refimages_main, scores_main = ReferenceTests.record_comparison(main_tests_root_folder)
-
-
-
-empty!(ReferenceTests.DATABASE)
-include("glmakie_tests.jl")
-
-glmakie_refimage_set = "glmakie_refimages"
-glmakie_tests_root_folder = joinpath(basefolder, glmakie_refimage_set)
-mkdir(glmakie_tests_root_folder)
-
-glmakie_tests_record_folder = joinpath(glmakie_tests_root_folder, "recorded")
-mkdir(glmakie_tests_record_folder)
-
-ReferenceTests.record_tests(ReferenceTests.DATABASE, recording_dir = glmakie_tests_record_folder)
-
-glmakie_tests_refimages_download_folder = ReferenceTests.download_refimages(; name=glmakie_refimage_set)
-glmakie_tests_refimages_folder = joinpath(glmakie_tests_root_folder, "reference")
-cp(glmakie_tests_refimages_download_folder, glmakie_tests_refimages_folder)
-
-missing_refimages_glmakie, scores_glmakie = ReferenceTests.record_comparison(glmakie_tests_root_folder)
-
-@testset "compare refimages" begin
+@testset "Reference Tests" begin
+    n_missing_images = 0
     @testset "refimages" begin
-        ReferenceTests.test_comparison(missing_refimages_main, scores_main; threshold = 0.032)
+        ReferenceTests.mark_broken_tests()
+        recorded_files, recording_dir = @include_reference_tests "refimages.jl"
+        missing_images, scores = ReferenceTests.record_comparison(recording_dir)
+        n_missing_images += length(missing_images)
+        ReferenceTests.test_comparison(scores; threshold = 0.032)
     end
+
     @testset "glmakie_refimages" begin
-        ReferenceTests.test_comparison(missing_refimages_glmakie, scores_glmakie; threshold = 0.01)
+        recorded_files, recording_dir = @include_reference_tests joinpath(@__DIR__, "glmakie_refimages.jl")
+        missing_images, scores = ReferenceTests.record_comparison(recording_dir)
+        n_missing_images += length(missing_images)
+        ReferenceTests.test_comparison(scores; threshold = 0.01)
+        ReferenceTests.test_comparison(scores; threshold = 0.01)
     end
+    GLMakie.closeall()
+    GC.gc(true) # make sure no finalizers act up!
+    # pass on status for Github Actions
+    println("::set-output name=n_missing_refimages::$n_missing_images")
 end

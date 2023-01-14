@@ -2,11 +2,13 @@
 #                             Projection utilities                             #
 ################################################################################
 
-function project_position(scene, space, point, model, yflip = true)
-
+function project_position(scene, transform_func::T, space, point, model, yflip::Bool = true) where T
     # use transform func
-    point = Makie.apply_transform(scene.transformation.transform_func[], point)
+    point = Makie.apply_transform(transform_func, point, space)
+    _project_position(scene, space, point, model, yflip)
+end
 
+function _project_position(scene, space, point, model, yflip)
     res = scene.camera.resolution[]
     p4d = to_ndim(Vec4f, to_ndim(Vec3f, point, 0f0), 1f0)
     clip = Makie.space_to_clip(scene.camera, space) * model * p4d
@@ -22,21 +24,25 @@ function project_position(scene, space, point, model, yflip = true)
     return p_0_to_1 .* res
 end
 
+function project_position(scene, space, point, model, yflip::Bool = true)
+    project_position(scene, scene.transformation.transform_func[], space, point, model, yflip)
+end
+
 function project_scale(scene::Scene, space, s::Number, model = Mat4f(I))
     project_scale(scene, space, Vec2f(s), model)
 end
 
 function project_scale(scene::Scene, space, s, model = Mat4f(I))
+    p4d = model * to_ndim(Vec4f, s, 0f0)
     if is_data_space(space)
-        p4d = to_ndim(Vec4f, s, 0f0)
-        @inbounds p = (scene.camera.projectionview[] * model * p4d)[Vec(1, 2)]
+        @inbounds p = (scene.camera.projectionview[] * p4d)[Vec(1, 2)]
         return p .* scene.camera.resolution[] .* 0.5
     elseif is_pixel_space(space)
-        return Vec2f(s)
+        return p4d[Vec(1, 2)]
     elseif is_relative_space(space)
-        return Vec2f(s) .* scene.camera.resolution[]
+        return p4d[Vec(1, 2)] .* scene.camera.resolution[]
     else # clip
-        return Vec2f(s) .* scene.camera.resolution[] .* 0.5f0
+        return p4d[Vec(1, 2)] .* scene.camera.resolution[] .* 0.5f0
     end
 end
 
@@ -105,22 +111,7 @@ function rgbatuple(c)
     return rgbatuple(colorant)
 end
 
-to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, c))
-
-function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
-
-    colormap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
-    colorrange = get(primitive, :colorrange, nothing) |> to_value
-
-    if colorrange === Makie.automatic
-        colorrange = extrema(numbers)
-    end
-
-    Makie.interpolated_getindex.(
-        Ref(colormap),
-        Float64.(numbers), # ints don't work in interpolated_getindex
-        Ref(colorrange))
-end
+to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, premultiplied_rgba(c)))
 
 ########################################
 #     Image/heatmap -> ARGBSurface     #
@@ -144,7 +135,6 @@ to_rgba_image(img::AbstractMatrix{<: Colorant}, attributes) = RGBAf.(img)
 
 function get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip)
     vmin, vmax = colorrange
-
     if isnan(pixel)
         RGBAf(nan_color)
     elseif pixel < vmin && !isnothing(lowclip)
@@ -193,16 +183,18 @@ function FaceIterator(data::AbstractVector, faces)
     end
 end
 
-
 Base.size(fi::FaceIterator) = size(fi.faces)
 Base.getindex(fi::FaceIterator{:PerFace}, i::Integer) = fi.data[i]
 Base.getindex(fi::FaceIterator{:PerVert}, i::Integer) = fi.data[fi.faces[i]]
 Base.getindex(fi::FaceIterator{:Const}, i::Integer) = ntuple(i-> fi.data, 3)
 
 color_or_nothing(c) = isnothing(c) ? nothing : to_color(c)
+function get_color_attr(attributes, attribute)::Union{Nothing, RGBAf}
+    return color_or_nothing(to_value(get(attributes, attribute, nothing)))
+end
 
 function per_face_colors(
-        color, colormap, colorrange, matcap, vertices, faces, normals, uv,
+        color, colormap, colorrange, matcap, faces, normals, uv,
         lowclip=nothing, highclip=nothing, nan_color=nothing
     )
     if matcap !== nothing
@@ -233,6 +225,9 @@ function per_face_colors(
                 end
             end
             return FaceIterator(cvec, faces)
+        elseif color isa Makie.AbstractPattern
+            # let next level extend and fill with CairoPattern
+            return color
         elseif color isa AbstractMatrix{<: Colorant} && uv !== nothing
             wsize = reverse(size(color))
             wh = wsize .- 1
@@ -248,5 +243,31 @@ function per_face_colors(
     error("Unsupported Color type: $(typeof(color))")
 end
 
-mesh_pattern_set_corner_color(pattern, id, c::Colorant) =
+function mesh_pattern_set_corner_color(pattern, id, c::Colorant)
     Cairo.mesh_pattern_set_corner_color_rgba(pattern, id, rgbatuple(c)...)
+end
+
+# not piracy
+function Cairo.CairoPattern(color::Makie.AbstractPattern)
+    # the Cairo y-coordinate are fliped
+    bitmappattern = reverse!(ARGB32.(Makie.to_image(color)); dims=2)
+    cairoimage = Cairo.CairoImageSurface(bitmappattern)
+    cairopattern = Cairo.CairoPattern(cairoimage)
+    return cairopattern
+end
+
+"""
+Finds a font that can represent the unicode character!
+Returns Makie.defaultfont() if not representable!
+"""
+function best_font(c::Char, font = Makie.defaultfont())
+    if Makie.FreeType.FT_Get_Char_Index(font, c) == 0
+        for afont in Makie.alternativefonts()
+            if Makie.FreeType.FT_Get_Char_Index(afont, c) != 0
+                return afont
+            end
+        end
+        return Makie.defaultfont()
+    end
+    return font
+end

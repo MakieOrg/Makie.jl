@@ -18,22 +18,38 @@ function default_theme(scene)
     )
 end
 
+
+
 function color_and_colormap!(plot, intensity = plot[:color])
     if isa(intensity[], AbstractArray{<: Number})
         haskey(plot, :colormap) || error("Plot $(typeof(plot)) needs to have a colormap to allow the attribute color to be an array of numbers")
 
         replace_automatic!(plot, :colorrange) do
-            lift(extrema_nan, intensity)
+            lift(distinct_extrema_nan, intensity)
+        end
+        replace_automatic!(plot, :highclip) do
+            lift(plot.colormap) do cmap
+                return to_colormap(cmap)[end]
+            end
+        end
+        replace_automatic!(plot, :lowclip) do
+            lift(plot.colormap) do cmap
+                return to_colormap(cmap)[1]
+            end
         end
         return true
     else
+        delete!(plot, :highclip)
+        delete!(plot, :lowclip)
         delete!(plot, :colorrange)
         return false
     end
 end
 
-function calculated_attributes!(::Type{<: Mesh}, plot)
-    need_cmap = color_and_colormap!(plot)
+function calculated_attributes!(T::Type{<: Mesh}, plot)
+    mesha = lift(GeometryBasics.attributes, plot.mesh)
+    color = haskey(mesha[], :color) ? lift(x-> x[:color], mesha) : plot.color
+    need_cmap = color_and_colormap!(plot, color)
     need_cmap || delete!(plot, :colormap)
     return
 end
@@ -65,7 +81,7 @@ function calculated_attributes!(::Type{<: Scatter}, plot)
 
     replace_automatic!(plot, :marker_offset) do
         # default to middle
-        lift(x-> to_2d_scale(x .* (-0.5f0)), plot[:markersize])
+        lift(x-> to_2d_scale(map(x-> x .* -0.5f0, x)), plot[:markersize])
     end
 
     replace_automatic!(plot, :markerspace) do
@@ -192,6 +208,7 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     ArgTyp = typeof(to_value(args))
     # construct the fully qualified plot type, from the possible incomplete (abstract)
     # PlotType
+
     FinalType = Combined{Typ, ArgTyp}
     plot_attributes = merged_get!(
         ()-> default_theme(scene, FinalType),
@@ -215,7 +232,6 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     end
     # create the plot, with the full attributes, the input signals, and the final signals.
     plot_obj = FinalType(scene, transformation, plot_attributes, input, seperate_tuple(args))
-
     calculated_attributes!(plot_obj)
     plot_obj
 end
@@ -306,16 +322,16 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
     FinalType, argsconverted = apply_convert!(PreType, attributes, converted)
     converted_node = Observable(argsconverted)
     input_nodes =  convert.(Observable, args)
-    onany(kw_signal, lift(tuple, input_nodes...)) do kwargs, args
+    onany(kw_signal, input_nodes...) do kwargs, args...
         # do the argument conversion inside a lift
         result = convert_arguments(FinalType, args...; kwargs...)
-        finaltype, argsconverted = apply_convert!(FinalType, attributes, result)
+        finaltype, argsconverted_ = apply_convert!(FinalType, attributes, result) # avoid a Core.Box (https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-captured)
         if finaltype != FinalType
             error("Plot type changed from $FinalType to $finaltype after conversion.
                 Changing the plot type based on values in convert_arguments is not allowed"
             )
         end
-        converted_node[] = argsconverted
+        converted_node[] = argsconverted_
     end
     plot!(scene, FinalType, attributes, input_nodes, converted_node)
 end
@@ -393,7 +409,10 @@ end
 function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, input::NTuple{N, Observable}, args::Observable) where {N}
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
     scene_attributes = extract_scene_attributes!(attributes)
-    plot_object = P(scene, copy(attributes), input, args)
+    if haskey(attributes, :textsize)
+        throw(ArgumentError("The attribute `textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
+    end
+    plot_object = P(scene, attributes, input, args)
     # transfer the merged attributes from theme and user defined to the scene
     for (k, v) in scene_attributes
         error("setting $k for scene via plot attribute not supported anymore")
