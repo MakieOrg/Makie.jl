@@ -71,5 +71,5 @@ function get_render_type(surface::Cairo.CairoSurface)
     typ == Cairo.CAIRO_SURFACE_TYPE_PS && return EPS
     typ == Cairo.CAIRO_SURFACE_TYPE_SVG && return SVG
     typ == Cairo.CAIRO_SURFACE_TYPE_IMAGE && return IMAGE
-    error("Unsupported surface type: $(typ)")
+    return IMAGE # By default assume that the render type is IMAGE
 end

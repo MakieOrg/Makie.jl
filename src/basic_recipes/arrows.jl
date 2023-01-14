@@ -36,7 +36,7 @@ export quiver, quiver!
 arrow_head(N, marker, quality) = marker
 function arrow_head(N, marker::Automatic, quality)
     if N == 2
-        return '▲'
+        return :utriangle
     else
         merge([
            _circle(Point3f(0), 0.5f0, Vec3f(0,0,-1), quality),
@@ -108,7 +108,7 @@ function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVect
 end
 convert_arguments(::Type{<: Arrows}, x, y, z, u, v, w) = (Point3f.(x, y, z), Vec3f.(u, v, w))
 
-function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) where {N, T, V}
+function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) where {N, V}
     @extract arrowplot (
         points, directions, colormap, normalize, align,
         arrowtail, color, linecolor, linestyle, linewidth, lengthscale,

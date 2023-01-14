@@ -16,6 +16,7 @@ const REGISTERED_TESTS = Set{String}()
 const RECORDING_DIR = Base.RefValue{String}()
 const SKIP_TITLES = Set{String}()
 const SKIP_FUNCTIONS = Set{Symbol}()
+const COUNTER = Ref(0)
 
 """
     @reference_test(name, code)
@@ -35,7 +36,7 @@ macro reference_test(name, code)
                 if $title in $REGISTERED_TESTS
                     error("title must be unique. Duplicate title: $(title)")
                 end
-                println("running: $($title)")
+                println("running $(lpad(COUNTER[] += 1, 3)): $($title)")
                 Makie.set_theme!(resolution=(500, 500))
                 ReferenceTests.RNG.seed_rng!()
                 result = let

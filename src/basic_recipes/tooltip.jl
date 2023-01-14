@@ -28,7 +28,7 @@ Creates a tooltip pointing at `position` displaying the given `string`
 
 - `textpadding = (4, 4, 4, 4)` sets the padding around text in the tooltip. This is given as `(left, right, bottom top)` offsets.
 - `textcolor = theme(scene, :textcolor)` sets the text color.
-- `textsize = 16` sets the text size.
+- `fontsize = 16` sets the text size.
 - `font = theme(scene, :font)` sets the font.
 - `strokewidth = 0`: Gives text an outline if set to a positive value.
 - `strokecolor = :white` sets the text outline color.
@@ -53,7 +53,7 @@ Creates a tooltip pointing at `position` displaying the given `string`
         # Text
         textpadding = (4, 4, 4, 4), # LRBT
         textcolor = theme(scene, :textcolor),
-        textsize = 16,
+        fontsize = 16,
         font = theme(scene, :font),
         strokewidth = 0,
         strokecolor = :white,
@@ -103,9 +103,9 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     text_offset = map(p.offset, textpadding, p.triangle_size, p.placement, p.align) do o, pad, ts, placement, align
         l, r, b, t = pad
 
-        if placement == :left 
+        if placement === :left 
             return Vec2f(-o - r - ts, b - align * (b + t))
-        elseif placement == :right
+        elseif placement === :right
             return Vec2f( o + l + ts, b - align * (b + t))
         elseif placement in (:below, :down, :bottom)
             return Vec2f(l - align * (l + r), -o - t - ts)
@@ -118,9 +118,9 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     end
 
     text_align = map(p.placement, p.align) do placement, align
-        if placement == :left 
+        if placement === :left 
             return (1.0, align)
-        elseif placement == :right
+        elseif placement === :right
             return (0.0, align)
         elseif placement in (:below, :down, :bottom)
             return (align, 1.0)
@@ -134,7 +134,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
 
     tp = text!(
         p, px_pos, text = p.text, justification = p.justification,
-        align = text_align, offset = text_offset, textsize = p.textsize,
+        align = text_align, offset = text_offset, fontsize = p.fontsize,
         color = p.textcolor, font = p.font, fxaa = false,
         strokewidth = p.strokewidth, strokecolor = p.strokecolor,
         transparency = p.transparency, visible = p.visible,
@@ -180,10 +180,10 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         o = origin(bb); w = widths(bb)
         scale!(mp, s, s, s)
         
-        if placement == :left 
+        if placement === :left 
             translate!(mp, Vec3f(o[1] + w[1], o[2] + align * w[2], 0))
             rotate!(mp, qrotation(Vec3f(0,0,1), 0.5pi))
-        elseif placement == :right
+        elseif placement === :right
             translate!(mp, Vec3f(o[1], o[2] + align * w[2], 0))
             rotate!(mp, qrotation(Vec3f(0,0,1), -0.5pi))
         elseif placement in (:below, :down, :bottom)
@@ -212,7 +212,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         #  |    ____
         #  |   |
 
-        shift = if placement == :left 
+        shift = if placement === :left 
             Vec2f[
                 (l, b + 0.5h), (l, t), (r, t), 
                 (r,     b + align * h + 0.5s), 
@@ -220,7 +220,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
                 (r,     b + align * h - 0.5s),
                 (r, b), (l, b), (l, b + 0.5h)
             ]
-        elseif placement == :right
+        elseif placement === :right
             Vec2f[
                 (l + 0.5w, b), (l, b), 
                 (l,   b + align * h - 0.5s), 
