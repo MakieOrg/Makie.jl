@@ -52,7 +52,7 @@ function Colorbar(fig_or_scene, heatmap::Union{Heatmap, Image}; kwargs...)
     )
 end
 
-function Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
+function Colorbar(fig_or_scene, contourf::Union{Contourf, Tricontourf}; kwargs...)
 
     for key in (:colormap, :limits, :highclip, :lowclip)
         if key in keys(kwargs)
@@ -97,8 +97,30 @@ function initialize_block!(cb::Colorbar)
 
     framebox = @lift(round_to_IRect2D($(cb.layoutobservables.computedbbox)))
 
-    highclip_tri_visible = lift(x -> !(isnothing(x) || to_color(x) == to_color(:transparent)), cb.highclip)
-    lowclip_tri_visible = lift(x -> !(isnothing(x) || to_color(x) == to_color(:transparent)), cb.lowclip)
+    cgradient = Observable{PlotUtils.ColorGradient}()
+    map!(cgradient, cb.colormap) do cmap
+        if cmap isa PlotUtils.ColorGradient
+            # if we have a colorgradient directly, we want to keep it intact
+            # to enable correct categorical colormap behavior etc
+            return cmap
+        else
+            # this is a bit weird, first convert to a vector of colors,
+            # then use cgrad, but at least I can use `get` on that later
+            converted = Makie.to_colormap(cmap)
+            return cgrad(converted)
+        end
+    end
+
+    function isvisible(x, compare)
+        x isa Automatic && return false
+        x isa Nothing && return false
+        c = to_color(x)
+        alpha(c) <= 0.0 && return false
+        return c != compare
+    end
+
+    lowclip_tri_visible = lift(isvisible, cb.lowclip, lift(x-> get(x, 0), cgradient))
+    highclip_tri_visible = lift(isvisible, cb.highclip, lift(x-> get(x, 1), cgradient))
 
     tri_heights = lift(highclip_tri_visible, lowclip_tri_visible, framebox) do hv, lv, box
         if cb.vertical[]
@@ -125,19 +147,6 @@ function initialize_block!(cb::Colorbar)
         end
     end
 
-    cgradient = Observable{PlotUtils.ColorGradient}()
-    map!(cgradient, cb.colormap) do cmap
-        if cmap isa PlotUtils.ColorGradient
-            # if we have a colorgradient directly, we want to keep it intact
-            # to enable correct categorical colormap behavior etc
-            return cmap
-        else
-            # this is a bit weird, first convert to a vector of colors,
-            # then use cgrad, but at least I can use `get` on that later
-            converted = Makie.to_colormap(cmap)
-            return cgrad(converted)
-        end
-    end
 
     map_is_categorical = lift(x -> x isa PlotUtils.CategoricalColorGradient, cgradient)
 
@@ -230,13 +239,9 @@ function initialize_block!(cb::Colorbar)
         to_color(isnothing(hc) ? :transparent : hc)
     end
 
-    highclip_visible = lift(x -> !(isnothing(x) || to_color(x) == to_color(:transparent)), cb.highclip)
-
     highclip_tri_poly = poly!(blockscene, highclip_tri, color = highclip_tri_color,
         strokecolor = :transparent,
-        visible = highclip_visible, inspectable = false)
-
-
+        visible = highclip_tri_visible, inspectable = false)
 
     lowclip_tri = lift(barbox, cb.spinewidth) do box, spinewidth
         if cb.vertical[]
@@ -256,15 +261,11 @@ function initialize_block!(cb::Colorbar)
         to_color(isnothing(lc) ? :transparent : lc)
     end
 
-    lowclip_visible = lift(x -> !(isnothing(x) || to_color(x) == to_color(:transparent)), cb.lowclip)
-
     lowclip_tri_poly = poly!(blockscene, lowclip_tri, color = lowclip_tri_color,
         strokecolor = :transparent,
-        visible = lowclip_visible, inspectable = false)
+        visible = lowclip_tri_visible, inspectable = false)
 
-
-
-    borderpoints = lift(barbox, highclip_visible, lowclip_visible) do bb, hcv, lcv
+    borderpoints = lift(barbox, highclip_tri_visible, lowclip_tri_visible) do bb, hcv, lcv
         if cb.vertical[]
             points = [bottomright(bb), topright(bb)]
             if hcv
@@ -314,7 +315,7 @@ function initialize_block!(cb::Colorbar)
     axis = LineAxis(blockscene, endpoints = axispoints, flipped = cb.flipaxis,
         limits = limits, ticklabelalign = cb.ticklabelalign, label = cb.label,
         labelpadding = cb.labelpadding, labelvisible = cb.labelvisible, labelsize = cb.labelsize,
-        labelcolor = cb.labelcolor,
+        labelcolor = cb.labelcolor, labelrotation = cb.labelrotation,
         labelfont = cb.labelfont, ticklabelfont = cb.ticklabelfont, ticks = cb.ticks, tickformat = cb.tickformat,
         ticklabelsize = cb.ticklabelsize, ticklabelsvisible = cb.ticklabelsvisible, ticksize = cb.ticksize,
         ticksvisible = cb.ticksvisible, ticklabelpad = cb.ticklabelpad, tickalign = cb.tickalign,
@@ -325,6 +326,8 @@ function initialize_block!(cb::Colorbar)
         minorticksvisible = cb.minorticksvisible, minortickalign = cb.minortickalign,
         minorticksize = cb.minorticksize, minortickwidth = cb.minortickwidth,
         minortickcolor = cb.minortickcolor, minorticks = cb.minorticks, scale = cb.scale)
+
+    cb.axis = axis
 
 
     onany(axis.protrusion, cb.vertical, cb.flipaxis) do axprotrusion,
@@ -359,8 +362,14 @@ function initialize_block!(cb::Colorbar)
     return
 end
 
-function tight_ticklabel_spacing!(lc::Colorbar)
-    tight_ticklabel_spacing!(lc.elements[:axis])
+"""
+    space = tight_ticklabel_spacing!(cb::Colorbar)
+
+Sets the space allocated for the ticklabels of the `Colorbar` to the minimum that is needed and returns that value.
+"""
+function tight_ticklabel_spacing!(cb::Colorbar)
+    space = tight_ticklabel_spacing!(cb.axis)
+    return space
 end
 
 function scaled_steps(steps, scale, lims)

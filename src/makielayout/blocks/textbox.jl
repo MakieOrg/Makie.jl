@@ -1,3 +1,6 @@
+using InteractiveUtils: clipboard
+
+
 function initialize_block!(tbox::Textbox)
 
     topscene = tbox.blockscene
@@ -62,18 +65,17 @@ function initialize_block!(tbox::Textbox)
 
     t = Label(scene, text = tbox.displayed_string, bbox = bbox, halign = :left, valign = :top,
         width = Auto(true), height = Auto(true), color = realtextcolor,
-        textsize = tbox.textsize, padding = tbox.textpadding)
+        fontsize = tbox.fontsize, padding = tbox.textpadding)
 
-    displayed_charbbs = lift(t.layoutobservables.reportedsize) do sz
-        textplot = t.blockscene.plots[1]
+    textplot = t.blockscene.plots[1]
+    displayed_charbbs = lift(textplot.text, textplot[1]) do _, _
         charbbs(textplot)
     end
 
     cursorpoints = lift(cursorindex, displayed_charbbs) do ci, bbs
 
         textplot = t.blockscene.plots[1]
-        charbbs(textplot)
-        glyphcollection = textplot.plots[1][1][]::Makie.GlyphCollection
+        glyphcollection = textplot.plots[1][1][][]::Makie.GlyphCollection
 
         hadvances = Float32[]
         broadcast_foreach(glyphcollection.extents, glyphcollection.scales) do ex, sc
@@ -100,8 +102,8 @@ function initialize_block!(tbox::Textbox)
 
     tbox.cursoranimtask = nothing
 
-    on(t.layoutobservables.reportedsize) do sz
-        tbox.layoutobservables.autosize[] = sz
+    on(t.layoutobservables.reporteddimensions) do dims
+        tbox.layoutobservables.autosize[] = dims.inner
     end
 
     # trigger text for autosize
@@ -189,13 +191,6 @@ function initialize_block!(tbox::Textbox)
         return Consume(false)
     end
 
-
-    function submit()
-        if displayed_is_valid[]
-            tbox.stored_string[] = tbox.displayed_string[]
-        end
-    end
-
     function reset_to_stored()
         cursorindex[] = 0
         if isnothing(tbox.stored_string[])
@@ -218,6 +213,24 @@ function initialize_block!(tbox::Textbox)
 
     on(events(scene).keyboardbutton, priority = 60) do event
         if tbox.focused[]
+            ctrl_v = (Keyboard.left_control | Keyboard.right_control) & Keyboard.v
+            if ispressed(scene, ctrl_v)
+                local content::String = ""
+                try
+                    content = clipboard()
+                catch err
+                    @warn "Accessing the clipboard failed: $err"
+                    return Consume(false)
+                end
+
+                if all(char -> is_allowed(char, tbox.restriction[]), content)
+                    foreach(char -> insertchar!(char, cursorindex[] + 1), content)
+                    return Consume(true)
+                else
+                    return Consume(false)
+                end
+            end
+
             if event.action != Keyboard.release
                 key = event.key
                 if key == Keyboard.backspace
@@ -225,9 +238,13 @@ function initialize_block!(tbox::Textbox)
                 elseif key == Keyboard.delete
                     removechar!(cursorindex[] + 1)
                 elseif key == Keyboard.enter
-                    submit()
-                    if tbox.defocus_on_submit[]
-                        defocus!(tbox)
+                    # don't do anything for invalid input which should stay red
+                    if displayed_is_valid[]
+                        # submit the written text
+                        tbox.stored_string[] = tbox.displayed_string[]
+                        if tbox.defocus_on_submit[]
+                            defocus!(tbox)
+                        end
                     end
                 elseif key == Keyboard.escape
                     if tbox.reset_on_defocus[]
@@ -251,14 +268,15 @@ end
 
 
 function charbbs(text)
-    gc = text.plots[1][1][]
+    gc = text.plots[1][1][][]
     if !(gc isa Makie.GlyphCollection)
         error("Expected a single GlyphCollection from the textbox string, got a $(typeof(gc)).")
     end
-    pos = Point2f(text.position[])
+    pos = Point2f(text[1][][1])
     bbs = Rect2f[]
     broadcast_foreach(gc.extents, gc.scales, gc.origins) do ext, sc, ori
-        bb = Makie.height_insensitive_boundingbox_with_advance(ext) * sc
+        bb = Makie.height_insensitive_boundingbox_with_advance(ext)
+        bb = bb * sc
         fr = Rect2f(Point2f(ori) + bb.origin + pos, bb.widths)
         push!(bbs, fr)
     end

@@ -46,7 +46,7 @@ end
 
 @reference_test "streamplot with func" begin
     v(x::Point2{T}) where T = Point2{T}(x[2], 4 * x[1])
-    streamplot(v, -2..2, -2..2, arrow_size=10)
+    streamplot(v, -2..2, -2..2)
 end
 
 @reference_test "lines with func" lines(-1..1, x -> x^2)
@@ -191,3 +191,88 @@ end
 @reference_test "axsi3" begin
     meshscatter(RNG.rand(Point3f, 10), axis=(type=Axis3,))
 end
+
+@reference_test "pattern barplot" begin
+    barplot(1:5, color=Makie.LinePattern(linecolor=:red, background_color=:orange))
+end
+
+@reference_test "barplot lowclip highclip nan_color" begin
+    f = Figure()
+    attrs = (color=[-Inf, 2, NaN, Inf], colorrange=(2, 3), highclip = :red, lowclip=:green, nan_color=:black)
+    barplot(f[1, 1], 1:4; attrs...)
+    poly(
+        f[1, 2],
+        [
+            Point2f[(2, 0), (4, 0), (4, 1), (2, 1)],
+            Point2f[(0, 0), (2, 0), (2, 1), (0, 1)],
+            Point2f[(2, 1), (4, 1), (4, 2), (2, 2)],
+            Point2f[(0, 1), (2, 1), (2, 2), (0, 2)],
+        ];
+        strokewidth=2, attrs...
+    )
+    meshscatter(f[2, 1], 1:4, zeros(4), 1:4; attrs...)
+    volcano = readdlm(Makie.assetpath("volcano.csv"), ',', Float64)
+    ax, cf = contourf(f[2, 2], volcano, levels = range(100, 180, length = 10), extendlow = :green, extendhigh = :red, nan_color=:black)
+    Colorbar(f[:, 3], cf)
+    f
+end
+
+@reference_test "Colorbar" begin
+    f = Figure()
+    Colorbar(f[1, 1]; size = 200)
+    f
+end
+
+@reference_test "scene visibility" begin
+    f, ax, pl = scatter(1:4, markersize=200)
+    ax2, pl = scatter(f[1, 2][1, 1], 1:4, color=1:4, markersize=200)
+    ax3, pl = scatter(f[1, 2][2, 1], 1:4, color=1:4, markersize=200)
+    ax3.scene.visible[] = false
+    ax2.scene.visible[] = false
+    ax2.blockscene.visible[] = false
+    f
+end
+
+@reference_test "redisplay after closing screen" begin
+    # https://github.com/MakieOrg/Makie.jl/issues/2392
+    Makie.inline!(false)
+    f = Figure()
+    Menu(f[1,1], options=["one", "two", "three"])
+    screen = display(f; visible=false)
+    # Close the window & redisplay
+    close(screen)
+    # Now, menu should be displayed again and not stay blank!
+    f
+end
+
+@reference_test "space test in transformed axis" begin
+    f = lines(exp.(0.1*(1.0:100));  axis=(yscale=log10,))
+    poly!(Rect(1, 1, 100, 100), color=:red, space=:pixel)
+    scatter!(2*mod.(1:100:10000, 97), 2*mod.(1:101:10000, 97), color=:blue, space=:pixel)
+    scatter!(Point2f(0, 0.25), space=:clip)
+    lines!([0.5,0.5], [0, 1];  space=:relative)
+    lines!([50,50], [0, 100];  space=:pixel)
+    lines!([0,1], [0.25, 0.25];  space=:clip)
+    scatter!(Point2f(0.5, 0), space=:relative)
+    f
+end
+
+
+# Needs a way to disable autolimits on show
+# @reference_test "interactions after close" begin
+#     # After saving, interactions may be cleaned up:
+#     # https://github.com/MakieOrg/Makie.jl/issues/2380
+#     f = Figure()
+#     ax = Axis(f[1,1])
+#     # Show something big for reference tests to make a difference
+#     lines!(ax, 1:5, 1:5, linewidth=20)
+#     scatter!(ax, decompose(Point2f, Circle(Point2f(2.5), 2.5)), markersize=50)
+#     display(f; visible=false)
+#     save("test.png", f)
+#     rm("test.png")
+#     # Trigger zoom interactions
+#     f.scene.events.mouseposition[] = (200, 200)
+#     f.scene.events.scroll[] = (0, -10)
+#     # reference test the zoomed out plot
+#     f
+# end

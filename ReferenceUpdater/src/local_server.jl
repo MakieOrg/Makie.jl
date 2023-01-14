@@ -1,3 +1,5 @@
+const URL_CACHE = Dict{String, String}()
+
 function serve_update_page_from_dir(folder)
 
     folder = realpath(folder)
@@ -60,11 +62,20 @@ function serve_update_page_from_dir(folder)
         end
     end
 
-    HTTP.@register(router, "POST", "/", receive_update)
-    HTTP.@register(router, "GET", "/", serve_local_file)
+    HTTP.register!(router, "POST", "/", receive_update)
+    HTTP.register!(router, "GET", "/", serve_local_file)
+    HTTP.register!(router, "GET", "/**", serve_local_file)
 
-    @info "Starting server. Open http://localhost:8849 in your browser to view."
-    HTTP.serve(router, HTTP.Sockets.localhost, 8849)
+    @info "Starting server. Open http://localhost:8849 in your browser to view. Ctrl+C to quit."
+    try
+        HTTP.serve(router, HTTP.Sockets.localhost, 8849)
+    catch e
+        if e isa InterruptException
+            @info "Server stopped."
+        else
+            rethrow(e)
+        end
+    end
 end
 
 function serve_update_page(; commit = nothing, pr = nothing)
@@ -72,7 +83,7 @@ function serve_update_page(; commit = nothing, pr = nothing)
 
     commit !== nothing && pr !== nothing && error("Keyword arguments `commit` and `pr` can't be set at once.")
     if pr !== nothing
-        prinfo = JSON3.read(authget("https://api.github.com/repos/JuliaPlots/Makie.jl/pulls/$pr").body)
+        prinfo = JSON3.read(authget("https://api.github.com/repos/MakieOrg/Makie.jl/pulls/$pr").body)
         headsha = prinfo["head"]["sha"]
         @info "PR is $pr, using last commit hash $headsha"
     elseif commit !== nothing
@@ -81,7 +92,7 @@ function serve_update_page(; commit = nothing, pr = nothing)
         error("You have to specify either the keyword argument `commit` or `pr`.")
     end
 
-    checksinfo = JSON3.read(authget("https://api.github.com/repos/JuliaPlots/Makie.jl/commits/$headsha/check-runs").body)
+    checksinfo = JSON3.read(authget("https://api.github.com/repos/MakieOrg/Makie.jl/commits/$headsha/check-runs").body)
 
     # Somehow identical artifacts can occur double, but with different ids?
     # I don't know what happens, but we need to filter them out!
@@ -99,7 +110,7 @@ function serve_update_page(; commit = nothing, pr = nothing)
             else
                 push!(unique_artifacts, name)
             end
-            job = JSON3.read(authget("https://api.github.com/repos/JuliaPlots/Makie.jl/actions/jobs/$(id)").body)
+            job = JSON3.read(authget("https://api.github.com/repos/MakieOrg/Makie.jl/actions/jobs/$(id)").body)
             run = JSON3.read(authget(job["run_url"]).body)
             if run["status"] != "completed"
                 @info "$(name)'s run hasn't completed yet, no artifacts will be available."
@@ -123,7 +134,7 @@ function serve_update_page(; commit = nothing, pr = nothing)
     end
     check = checkruns[choice]
 
-    job = JSON3.read(authget("https://api.github.com/repos/JuliaPlots/Makie.jl/actions/jobs/$(check["id"])").body)
+    job = JSON3.read(authget("https://api.github.com/repos/MakieOrg/Makie.jl/actions/jobs/$(check["id"])").body)
     run = JSON3.read(authget(job["run_url"]).body)
 
     artifacts = JSON3.read(authget(run["artifacts_url"]).body)["artifacts"]
@@ -132,11 +143,17 @@ function serve_update_page(; commit = nothing, pr = nothing)
         if endswith(a["name"], "1.6")
             @info "Choosing artifact $(a["name"])"
             download_url = a["archive_download_url"]
-            @info "Downloading artifact from $download_url"
-            filepath = Downloads.download(download_url, headers = Dict("Authorization" => "token $(ENV["GITHUB_TOKEN"])"))
-            @info "Download successful"
-            tmpdir = mktempdir()
-            unzip(filepath, tmpdir)
+            if !haskey(URL_CACHE, download_url)
+                @info "Downloading artifact from $download_url"
+                filepath = Downloads.download(download_url, headers = Dict("Authorization" => "token $(ENV["GITHUB_TOKEN"])"))
+                @info "Download successful"
+                tmpdir = mktempdir()
+                unzip(filepath, tmpdir)
+                URL_CACHE[download_url] = tmpdir
+            else
+                tmpdir = URL_CACHE[download_url]
+                @info "$download_url cached at $tmpdir"
+            end
 
             folders = readdir(tmpdir)
             if length(folders) == 0

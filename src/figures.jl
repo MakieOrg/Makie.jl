@@ -111,6 +111,7 @@ function Base.setindex!(fig::Figure, obj::AbstractArray, rows, cols)
 end
 
 Base.lastindex(f::Figure, i) = lastindex(f.layout, i)
+Base.firstindex(f::Figure, i) = firstindex(f.layout, i)
 
 # for now just redirect figure display/show to the internal scene
 Base.show(io::IO, fig::Figure) = show(io, fig.scene)
@@ -140,6 +141,11 @@ Once resized, all content should fit the available space, including
 the `Figure`'s outer padding.
 """
 function resize_to_layout!(fig::Figure)
+    # it is assumed that all plot objects have been added at this point,
+    # but it's possible the limits have not been updated, yet,
+    # so without `update_state_before_display!` it's possible that the layout
+    # is optimized for the wrong ticks 
+    update_state_before_display!(fig)
     bbox = GridLayoutBase.tight_bbox(fig.layout)
     new_size = (widths(bbox)...,)
     resize!(fig.scene, widths(bbox)...)

@@ -8,6 +8,7 @@ nothing_or_color(c::Nothing) = RGBAf(0, 0, 0, 1)
 
 function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
     uniforms = Dict(uniforms)
+    filter!(kv -> !(kv[2] isa Function), uniforms)
 
     colormap = if haskey(plot, :colormap)
         cmap = lift(el32convert ∘ to_colormap, plot.colormap)
@@ -21,15 +22,20 @@ function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
     get!(uniforms, :colormap, false)
     get!(uniforms, :colorrange, false)
     get!(uniforms, :color, false)
+    get!(uniforms, :pattern, false)
     get!(uniforms, :model, plot.model)
     get!(uniforms, :depth_shift, 0f0)
     get!(uniforms, :lightposition, Vec3f(1))
     get!(uniforms, :ambient, Vec3f(1))
-
+    get!(uniforms, :interpolate_in_fragment_shader, true)
     uniforms[:normalmatrix] = map(mscene.camera.view, plot.model) do v, m
         i = Vec(1, 2, 3)
         return transpose(inv(v[i, i] * m[i, i]))
     end
+
+    # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
+    uniforms[:picking] = false
+    uniforms[:object_id] = UInt32(0)
 
     return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), mesh; uniforms...)
 end
@@ -42,7 +48,7 @@ function limits_to_uvmesh(plot)
     px, py, pz = plot[1], plot[2], plot[3]
     px = map((x, z)-> xy_convert(x, size(z, 1)), px, pz)
     py = map((y, z)-> xy_convert(y, size(z, 2)), py, pz)
-    # Special path for ranges of length 2 wich
+    # Special path for ranges of length 2 which
     # can be displayed as a rectangle
     t = Makie.transform_func_obs(plot)[]
     if px[] isa StepRangeLen && py[] isa StepRangeLen && Makie.is_identity_transform(t)
@@ -54,10 +60,10 @@ function limits_to_uvmesh(plot)
         positions = Buffer(lift(rect-> decompose(Point2f, rect), rect))
         faces = Buffer(lift(rect -> decompose(GLTriangleFace, rect), rect))
         uv = Buffer(lift(decompose_uv, rect))
-    else
-        grid(x, y, trans) = Makie.matrix_grid(p-> apply_transform(trans, p), x, y, zeros(length(x), length(y)))
+    else 
+        grid(x, y, trans, space) = Makie.matrix_grid(p-> apply_transform(trans, p, space), x, y, zeros(length(x), length(y)))
         rect = lift((x, y) -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), (length(x), length(y))), px, py)
-        positions = Buffer(lift(grid, px, py, t))
+        positions = Buffer(lift(grid, px, py, t, get(plot, :space, :data)))
         faces = Buffer(lift(r -> decompose(GLTriangleFace, r), rect))
         uv = Buffer(lift(decompose_uv, rect))
     end
@@ -67,11 +73,19 @@ function limits_to_uvmesh(plot)
     return GeometryBasics.Mesh(vertices, faces)
 end
 
+function get_color(plot, key::Symbol)::Observable{RGBAf}
+    if haskey(plot, key)
+        return lift(to_color, plot[key])
+    else
+        return Observable(RGBAf(0, 0, 0, 0))
+    end
+end
+
 function create_shader(mscene::Scene, plot::Surface)
     # TODO OWN OPTIMIZED SHADER ... Or at least optimize this a bit more ...
     px, py, pz = plot[1], plot[2], plot[3]
-    grid(x, y, z, trans) = Makie.matrix_grid(p-> apply_transform(trans, p), x, y, z)
-    positions = Buffer(lift(grid, px, py, pz, transform_func_obs(plot)))
+    grid(x, y, z, trans, space) = Makie.matrix_grid(p-> apply_transform(trans, p, space), x, y, z)
+    positions = Buffer(lift(grid, px, py, pz, transform_func_obs(plot), get(plot, :space, :data)))
     rect = lift(z -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), size(z)), pz)
     faces = Buffer(lift(r -> decompose(GLTriangleFace, r), rect))
     uv = Buffer(lift(decompose_uv, rect))
@@ -85,35 +99,41 @@ function create_shader(mscene::Scene, plot::Surface)
     else
         pz
     end
-    minfilter = to_value(get(plot, :interpolate, false)) ? :linear : :nearest
+    minfilter = to_value(get(plot, :interpolate, true)) ? :linear : :nearest
     color = Sampler(lift(x -> el32convert(to_color(permutedims(x))), pcolor), minfilter=minfilter)
     normals = Buffer(lift(surface_normals, px, py, pz))
     vertices = GeometryBasics.meta(positions; uv=uv, normals=normals)
     mesh = GeometryBasics.Mesh(vertices, faces)
-    return draw_mesh(mscene, mesh, plot_attributes; uniform_color=color, color=Vec4f(0),
+    return draw_mesh(mscene, mesh, plot_attributes; uniform_color=color, color=false,
                      shading=plot.shading, diffuse=plot.diffuse,
                      specular=plot.specular, shininess=plot.shininess,
                      depth_shift=get(plot, :depth_shift, Observable(0f0)),
                      backlight=plot.backlight,
-                     highclip=lift(nothing_or_color, plot.highclip),
-                     lowclip=lift(nothing_or_color, plot.lowclip),
-                     nan_color=lift(nothing_or_color, plot.nan_color))
+                     highclip=get_color(plot, :highclip),
+                     lowclip=get_color(plot, :lowclip),
+                     nan_color=get_color(plot, :nan_color))
 end
 
-function create_shader(mscene::Scene, plot::Union{Heatmap,Image})
+function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
     image = plot[3]
     color = Sampler(map(x -> el32convert(x'), image);
                     minfilter=to_value(get(plot, :interpolate, false)) ? :linear : :nearest)
     mesh = limits_to_uvmesh(plot)
+    plot_attributes = copy(plot.attributes)
+    if eltype(color) <: Colorant
+        delete!(plot_attributes, :colormap)
+        delete!(plot_attributes, :colorrange)
+    end
 
-    return draw_mesh(mscene, mesh, plot; uniform_color=color, color=Vec4f(0),
+    return draw_mesh(mscene, mesh, plot_attributes;
+                     uniform_color=color, color=false,
                      normals=Vec3f(0), shading=false,
                      diffuse=plot.diffuse, specular=plot.specular,
                      colorrange=haskey(plot, :colorrange) ? plot.colorrange : false,
                      shininess=plot.shininess,
-                     highclip=lift(nothing_or_color, plot.highclip),
-                     lowclip=lift(nothing_or_color, plot.lowclip),
-                     nan_color=lift(nothing_or_color, plot.nan_color),
+                     highclip=get_color(plot, :highclip),
+                     lowclip=get_color(plot, :lowclip),
+                     nan_color=get_color(plot, :nan_color),
                      backlight=0f0,
                      depth_shift = get(plot, :depth_shift, Observable(0f0)))
 end
@@ -145,5 +165,7 @@ function create_shader(mscene::Scene, plot::Volume)
                    model=model2, depth_shift = get(plot, :depth_shift, Observable(0f0)),
                    # these get filled in later by serialization, but we need them
                    # as dummy values here, so that the correct uniforms are emitted
-                   lightposition=Vec3f(1), eyeposition=Vec3f(1), ambient=Vec3f(1))
+                   lightposition=Vec3f(1), eyeposition=Vec3f(1), ambient=Vec3f(1),
+                   picking=false, object_id=UInt32(0)
+                   )
 end

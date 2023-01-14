@@ -1,10 +1,57 @@
+#= TODOs
+1) Use one GH-Action job in the end to merge all results and comment in one go (instead of merging with existing comment)
+2) Improve analysis of benchmark resutls to account for the variance in the benchmarks.
+3) Upload raw benchmark data as artifacts to e.g. create plots from It
+=#
+
 using Pkg
 Pkg.activate(@__DIR__)
 Pkg.instantiate()
-using Statistics, GitHub, Printf, BenchmarkTools
+using Statistics, GitHub, Printf, BenchmarkTools, Markdown, HypothesisTests
+using BenchmarkTools.JSON
+Package = ARGS[1]
+n_samples = length(ARGS) > 1 ? parse(Int, ARGS[2]) : 7
+base_branch = length(ARGS) > 2 ? ARGS[3] : "master"
+
+# Package = "CairoMakie"
+# n_samples = 2
+# base_branch = "breaking-release"
+
+@info("Benchmarking $(Package) against $(base_branch) with $(n_samples)")
+
+COMMENT_TEMPLATE = """
+## Compile Times benchmark
+
+Note, that these numbers may fluctuate on the CI servers, so take them with a grain of salt.
+All benchmark results are based on the mean time and negative percent mean faster than the base branch.
+Note, that GLMakie + WGLMakie run on an emulated GPU, so the runtime benchmark is much slower.
+Results are from running:
+
+```julia
+using_time = @ctime using Backend
+# Compile time
+create_time = @ctime fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
+display_time = @ctime Makie.colorbuffer(display(fig))
+# Runtime
+create_time = @benchmark fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
+display_time = @benchmark Makie.colorbuffer(display(fig))
+```
+
+|               | using     | create   | display  | create   | display  |
+|--------------:|:----------|:---------|:---------|:---------|:---------|
+| GLMakie       | --        | --       | --       | --       | --       |
+| $base_branch  | --        | --       | --       | --       | --       |
+| evaluation    | --        | --       | --       | --       | --       |
+| CairoMakie    | --        | --       | --       | --       | --       |
+| $base_branch  | --        | --       | --       | --       | --       |
+| evaluation    | --        | --       | --       | --       | --       |
+| WGLMakie      | --        | --       | --       | --       | --       |
+| $base_branch  | --        | --       | --       | --       | --       |
+| evaluation    | --        | --       | --       | --       | --       |
+"""
 
 function github_context()
-    owner = "JuliaPlots"
+    owner = "MakieOrg"
     return (
         owner = owner,
         repo = GitHub.Repo("$(owner)/Makie.jl"),
@@ -13,45 +60,139 @@ function github_context()
     )
 end
 
-function make_or_edit_comment(ctx, pr, comment)
+function best_unit(m)
+    if m < 1e3
+        return 1, "ns"
+    elseif m < 1e6
+        return 1e3, "μs"
+    elseif m < 1e9
+        return 1e6, "ms"
+    else
+        return 1e9, "s"
+    end
+end
+
+function cohen_d(x, y)
+    nx = length(x); ny = length(y)
+    ddof = nx + ny - 2
+    poolsd = sqrt(((nx - 1) * var(x) + (ny - 1) * var(y)) / ddof)
+    d = (mean(x) - mean(y)) / poolsd
+end
+
+function analyze(pr, master)
+    f, unit = best_unit(pr[1])
+    pr, master = Float64.(pr) ./ f, Float64.(master) ./ f
+    tt = UnequalVarianceTTest(pr, master)
+    d = cohen_d(pr, master)
+    std_p = (std(pr) + std(master)) / 2
+    m_pr = mean(pr)
+    m_m = mean(master)
+    mean_diff = mean(m_pr) - mean(m_m)
+    percent = (1 - (m_m / m_pr)) * 100
+    p = pvalue(tt)
+    mean_diff_str = string(round(mean_diff; digits=2), unit)
+
+    result = if p < 0.05
+        if abs(d) > 0.2
+            indicator = abs(percent) < 5 ? ["faster ✓", "slower X"] : ["**faster**✅", "**slower**❌"]
+            indicator[d < 0 ? 1 : 2]
+        else
+            "*invariant*"
+        end
+    else
+        if abs(percent) < 5
+            "*invariant*"
+        else
+            "*noisy*🤷‍♀️"
+        end
+    end
+
+    return @sprintf("%s%.2f%s, %s %s (%.2fd, %.2fp, %.2fstd)", percent > 0 ? "+" : "-", abs(percent), "%", mean_diff_str, result, d, p, std_p)
+end
+
+function summarize_stats(timings)
+    f, unit = best_unit(timings[1])
+    m = mean(timings) / f
+    mini = minimum(timings) /  f
+    maxi = maximum(timings) / f
+    s = std(timings) / f
+    @sprintf("%.2f%s (%.2f, %.2f) %.2f+-", m, unit, mini, maxi, s)
+end
+
+function get_row_values(results_pr, results_m)
+    master_row = []
+    pr_row = []
+    evaluation_row = []
+    n = length(results_pr)
+    for i in 1:n
+        push!(pr_row, summarize_stats(results_pr[i]))
+        push!(master_row, summarize_stats(results_m[i]))
+        push!(evaluation_row, analyze(results_pr[i], results_m[i]))
+    end
+    return pr_row, master_row, evaluation_row
+end
+
+function update_comment(old_comment, package_name, (pr_bench, master_bench, evaluation))
+    md = Markdown.parse(old_comment)
+    rows = md.content[end].rows
+    idx = findfirst(rows) do row
+        cell = first(row)
+        isempty(cell) && return false
+        return first(cell) == package_name
+    end
+    if isnothing(idx)
+        @warn("Could not find $package_name in $(md). Not updating benchmarks")
+        return old_comment
+    end
+    for (i, value) in enumerate(pr_bench)
+        rows[idx][i + 1] = [value]
+    end
+    for (i, value) in enumerate(master_bench)
+        rows[idx + 1][i + 1] = [value]
+    end
+    for (i, value) in enumerate(evaluation)
+        rows[idx + 2][i + 1] = [value]
+    end
+    return sprint(show, md)
+end
+
+function make_or_edit_comment(ctx, pr, package_name, benchmarks)
     prev_comments, _ = GitHub.comments(ctx.repo, pr; auth=ctx.auth)
     idx = findfirst(c-> c.user.login == "MakieBot", prev_comments)
     if isnothing(idx)
+        comment = update_comment(COMMENT_TEMPLATE, package_name, benchmarks)
+        println(comment)
         GitHub.create_comment(ctx.repo, pr; auth=ctx.auth, params=Dict("body"=>comment))
     else
-        GitHub.edit_comment(ctx.repo, prev_comments[idx], :pr; auth=ctx.auth, params=Dict("body"=>comment))
+        old_comment = prev_comments[idx].body
+        comment = update_comment(old_comment, package_name, benchmarks)
+        println(comment)
+        GitHub.edit_comment(ctx.repo, prev_comments[idx], :pr; auth=ctx.auth, params=Dict("body" => comment))
     end
 end
 
-function run_benchmarks(projects; n=7)
-    results = Dict{String, Vector{NTuple{2, Float64}}}()
+function run_benchmarks(projects; n=n_samples)
     benchmark_file = joinpath(@__DIR__, "benchmark-ttfp.jl")
     for project in repeat(projects; outer=n)
-        result = read(`$(Base.julia_cmd()) --startup-file=no --project=$(project) $benchmark_file`, String)
-        tup = eval(Meta.parse(result))
+        run(`$(Base.julia_cmd()) --startup-file=no --project=$(project) $benchmark_file $Package`)
         project_name = basename(project)
-        println("$project_name: $(tup)")
-        result = get!(results, project_name, NTuple{2, Float64}[])
-        push!(result, tup)
     end
-    return results
-end
-
-function create_trial(numbers)
-    params = BenchmarkTools.Parameters(gctrial=false, gcsample=false, evals=length(numbers))
-    trial = BenchmarkTools.Trial(params)
-    for number in numbers
-        push!(trial, number * 1e9, 0, 0, 0)
-    end
-    return trial
+    return
 end
 
 function make_project_folder(name)
+    result = "$name-benchmark.json"
+    isfile(result) && rm(result) # remove old benchmark resutls
     project = joinpath(@__DIR__, "benchmark-projects", name)
     # It seems, that between julia versions, the manifest must be deleted to not get problems
     isdir(project) && rm(project; force=true, recursive=true)
     mkpath(project)
     return project
+end
+
+function load_results(name)
+    result = "$name-benchmark.json"
+    return JSON.parse(read(result, String))
 end
 
 ctx = try
@@ -62,71 +203,39 @@ catch e
    exit()
 end
 
+ENV["JULIA_PKG_PRECOMPILE_AUTO"] = 0
 project1 = make_project_folder("current-pr")
 Pkg.activate(project1)
-Pkg.develop([(; path="./MakieCore"), (; path="."), (; path="./CairoMakie")])
-Pkg.precompile()
+if Package == "WGLMakie"
+    Pkg.add([(; name="Electron"), (; name="JSServe", rev="master")])
+end
+pkgs = NamedTuple[(; path="./MakieCore"), (; path="."), (; path="./$Package"), (;name="BenchmarkTools")]
+# cd("dev/Makie")
+Pkg.develop(pkgs)
 
-project2 = make_project_folder("makie-master")
+@time Pkg.precompile()
+
+project2 = make_project_folder(base_branch)
 Pkg.activate(project2)
-Pkg.add([(; rev="master", name="MakieCore"), (; rev="master", name="Makie"), (; rev="master", name="CairoMakie")])
-Pkg.precompile()
+pkgs = [(; rev=base_branch, name="MakieCore"), (; rev=base_branch, name="Makie"), (; rev=base_branch, name="$Package"), (;name="BenchmarkTools")]
+Package == "WGLMakie" && push!(pkgs, (; name="Electron"))
+Pkg.add(pkgs)
+@time Pkg.precompile()
 
 projects = [project1, project2]
 
-results = run_benchmarks(projects)
+run_benchmarks(projects)
 
-function all_stats(io, name, numbers)
-    mini = minimum(numbers)
-    maxi = maximum(numbers)
-    m = median(numbers)
-    s = std(numbers)
-    @printf(io, "    %s %.2f < %.2f > %.2f, %.2f+-\n", name, mini, m, maxi, s)
-end
+results_pr = load_results(basename(project1))
+results_m = load_results(basename(project2))
+benchmark_rows = get_row_values(results_pr, results_m)
 
-function speedup(io, name, master, pr)
-    t1 = create_trial(master)
-    t2 = create_trial(pr)
-    t = judge(median(t2), median(t1))
-    print(io, "    median:  ", BenchmarkTools.prettydiff(time(ratio(t))), " => ")
-    BenchmarkTools.printtimejudge(io, t)
-    println(io)
-    if t.time == :invariant
-        println(io, "This PR does **not** change the $(name) time.")
-    elseif t.time == :improvement
-        println(io, "This PR **improves** the $(name) time.")
-    else
-        println(io, "This PR makes the $(name) time **worse**.")
-    end
-end
-
-function print_analysis(io, results)
-    master = results["makie-master"]
-    pr = results["current-pr"]
-    println(io, "### using time")
-    all_stats(io, "master: ", first.(master))
-    all_stats(io, "pr:     ", first.(pr))
-    all_stats(io, "speedup:", first.(master) ./ first.(pr))
-    speedup(io, "using", first.(master), first.(pr))
-    println(io)
-
-    println(io, "### ttfp time")
-    all_stats(io, "master  ", last.(master))
-    all_stats(io, "pr      ", last.(pr))
-    all_stats(io, "speedup:", last.(master) ./ last.(pr))
-    speedup(io, "ttfp", last.(master), last.(pr))
-end
-
-comment = sprint() do io
-    println(io, "## Compile Times benchmark\n")
-    println(io, "Note, that these numbers may fluctuate on the CI servers, so take them with a grain of salt.\n")
-    print_analysis(io, results)
-end
-println(comment)
 pr_to_comment = get(ENV, "PR_NUMBER", nothing)
+
 if !isnothing(pr_to_comment)
     pr = GitHub.pull_request(ctx.repo, pr_to_comment)
-    make_or_edit_comment(ctx, pr, comment)
+    make_or_edit_comment(ctx, pr, Package, benchmark_rows)
 else
     @info("Not commenting, no PR found")
+    println(update_comment(COMMENT_TEMPLATE, Package, benchmark_rows))
 end

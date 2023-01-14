@@ -16,6 +16,7 @@ const REGISTERED_TESTS = Set{String}()
 const RECORDING_DIR = Base.RefValue{String}()
 const SKIP_TITLES = Set{String}()
 const SKIP_FUNCTIONS = Set{Symbol}()
+const COUNTER = Ref(0)
 
 """
     @reference_test(name, code)
@@ -35,7 +36,7 @@ macro reference_test(name, code)
                 if $title in $REGISTERED_TESTS
                     error("title must be unique. Duplicate title: $(title)")
                 end
-                println("running: $($title)")
+                println("running $(lpad(COUNTER[] += 1, 3)): $($title)")
                 Makie.set_theme!(resolution=(500, 500))
                 ReferenceTests.RNG.seed_rng!()
                 result = let
@@ -54,16 +55,19 @@ end
 Helper, to more easily save all kind of results from the test database
 """
 function save_result(path::String, scene::Makie.FigureLike)
+    isfile(path * ".png") && rm(path * ".png"; force=true)
     FileIO.save(path * ".png", scene)
     return true
 end
 
 function save_result(path::String, stream::VideoStream)
+    isfile(path * ".mp4") && rm(path * ".mp4"; force=true)
     FileIO.save(path * ".mp4", stream)
     return true
 end
 
 function save_result(path::String, object)
+    isfile(path) && rm(path; force=true)
     FileIO.save(path, object)
     return true
 end

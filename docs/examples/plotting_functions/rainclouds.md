@@ -1,12 +1,15 @@
 # rainclouds
 
+"Raincloud" plots are a combination of a (half) violin plot, box plot and scatter plots. The
+three together can make an appealing and informative visual, particularly for large N datasets.
+
 {{doc rainclouds}}
 
 \begin{examplefigure}{}
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 using Random
 using Makie: rand_localized
 
@@ -65,11 +68,22 @@ category_labels, data_array = mockup_categories_and_data_array(3)
 colors = Makie.wong_colors()
 rainclouds(category_labels, data_array;
     xlabel = "Categories of Distributions", ylabel = "Samples", title = "My Title",
-    plot_boxplots = false, cloud_width=0.5, clouds=hist, hist_bins=50, 
+    plot_boxplots = false, cloud_width=0.5, clouds=hist, hist_bins=50,
     color = colors[indexin(category_labels, unique(category_labels))])
 ```
 \end{examplefigure}
 
+
+\begin{examplefigure}{}
+```julia
+rainclouds(category_labels, data_array;
+    ylabel = "Categories of Distributions",
+    xlabel = "Samples", title = "My Title",
+    orientation = :horizontal,
+    plot_boxplots = true, cloud_width=0.5, clouds=hist,
+    color = colors[indexin(category_labels, unique(category_labels))])
+```
+\end{examplefigure}
 
 \begin{examplefigure}{}
 ```julia
@@ -81,6 +95,15 @@ rainclouds(category_labels, data_array;
 ```
 \end{examplefigure}
 
+
+\begin{examplefigure}{}
+```julia
+rainclouds(category_labels, data_array;
+    xlabel = "Categories of Distributions", ylabel = "Samples", title = "My Title",
+    plot_boxplots = true, cloud_width=0.5, side = :right,
+    violin_limits = extrema, color = colors[indexin(category_labels, unique(category_labels))])
+```
+\end{examplefigure}
 
 \begin{examplefigure}{}
 ```julia
@@ -173,7 +196,7 @@ rainclouds!(Axis(fig[5, 1:2]), category_labels, data_array;
     dist_between_categories = 0.5,
     color = colors[indexin(category_labels, unique(category_labels))])
 
-supertitle = Label(fig[0, :], "Cloud Plot Testing (Scatter, Violin, Boxplot)", textsize=30)
+supertitle = Label(fig[0, :], "Cloud Plot Testing (Scatter, Violin, Boxplot)", fontsize=30)
 fig
 ```
 \end{examplefigure}

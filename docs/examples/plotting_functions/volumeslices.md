@@ -8,7 +8,7 @@
 ```julia
 using GLMakie
 GLMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 fig = Figure()
 ax = LScene(fig[1, 1], show_axis=false)

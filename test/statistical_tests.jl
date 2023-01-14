@@ -280,18 +280,18 @@ end
     fig, ax, p = violin(x, y, side = :left, color = :blue)
     @test p isa Violin
     @test p.plots[1] isa Poly
-    @test p.plots[1][:color][] == :blue
+    @test p.plots[1][:color][] === :blue
     @test p.plots[2] isa LineSegments
-    @test p.plots[2][:color][] == :white
-    @test p.plots[2][:visible][] == :false
+    @test p.plots[2][:color][] === :white
+    @test p.plots[2][:visible][] === :false
 
     # test categorical
     x = repeat(["a", "b", "c", "d"], 250)
     fig2, ax2, p2 = violin(x, y, side = :left, color = :blue)
     @test p2 isa Violin
     @test p2.plots[1] isa Poly
-    @test p2.plots[1][:color][] == :blue
+    @test p2.plots[1][:color][] === :blue
     @test p2.plots[2] isa LineSegments
-    @test p2.plots[2][:color][] == :white
-    @test p2.plots[2][:visible][] == :false
+    @test p2.plots[2][:color][] === :white
+    @test p2.plots[2][:visible][] === :false
 end
