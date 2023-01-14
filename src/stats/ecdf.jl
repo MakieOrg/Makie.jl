@@ -19,11 +19,13 @@ function convert_arguments(P::PlotFunc, ecdf::StatsBase.ECDF; npoints=10_000)
     end
     return to_plotspec(ptype, convert_arguments(ptype, x, ecdf(x)); kwargs...)
 end
+
 function convert_arguments(P::PlotFunc, x::AbstractVector, ecdf::StatsBase.ECDF)
     ptype = plottype(P, Stairs)
     kwargs = ptype <: Stairs ? (; step=:post) : NamedTuple()
     return to_plotspec(ptype, convert_arguments(ptype, x, ecdf(x)); kwargs...)
 end
+
 function convert_arguments(P::PlotFunc, x0::AbstractInterval, ecdf::StatsBase.ECDF)
     xmin, xmax = extrema(x0)
     z = ecdf_xvalues(ecdf, Inf)
@@ -47,16 +49,19 @@ If `weights` for the values are provided, a weighted ECDF is plotted.
 $(ATTRIBUTES)
 """
 @recipe(ECDFPlot) do scene
-    default_theme(scene, Stairs)
+    merge!(
+        default_theme(scene, Stairs),
+        Attributes(
+            npoints = 10_000,
+            weights = StatsBase.Weights(Float64[])
+        )
+    )
 end
 
-used_attributes(::Type{<:ECDFPlot}, ::AbstractVector) = (:npoints, :weights)
-function convert_arguments(
-    ::Type{<:ECDFPlot},
-    x::AbstractVector;
-    npoints=10_000,
-    weights=StatsBase.Weights(Float64[]),
-)
-    ecdf = StatsBase.ecdf(x; weights=weights)
-    return convert_arguments(Stairs, ecdf; npoints=npoints)
+function plot!(p::ECDFPlot)
+    attr = copy(p.attributes)
+    weights = pop!(attr, :weights)
+    ecdf = map((x, w) -> StatsBase.ecdf(x; weights=w), p[1], weights)
+    stairs!(p, attr, ecdf)
+    return p
 end
