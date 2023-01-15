@@ -2,6 +2,8 @@
 
 ## master
 
+- `arrows` can now take input of the form `x::AbstractVector, y::AbstractVector, [z::AbstractVector,] f::Function`, where `f` must return a `VecTypes` of the appropriate dimension. [#2597](https://github.com/MakieOrg/Makie.jl/pull/2597)
+
 ## v0.19.1
 
 - Add `show_data` method for `band` which shows the min and max values of the band at the x position of the cursor [#2497](https://github.com/MakieOrg/Makie.jl/pull/2497).
