@@ -93,3 +93,32 @@ arrows(
 )
 ```
 \end{examplefigure}
+
+`arrows` can also take a function `f(x::Point{N})::Point{N}` which returns the arrow vector when given the arrow's origin.
+
+
+\begin{examplefigure}{}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+
+
+f = Figure(resolution = (800, 800))
+Axis(f[1, 1], backgroundcolor = "black")
+
+xs = LinRange(0, 2pi, 20)
+ys = LinRange(0, 3pi, 20)
+# explicit method
+us = [sin(x) * cos(y) for x in xs, y in ys]
+vs = [-cos(x) * sin(y) for x in xs, y in ys]
+strength = vec(sqrt.(us .^ 2 .+ vs .^ 2))
+# function method
+f(x) = Point2f(sin(x[1])*cos(x[2]), -cos(x[1])*sin(x[2])
+
+arrows!(xs, ys, f, arrowsize = 10, lengthscale = 0.3,
+    arrowcolor = strength, linecolor = strength)
+
+f
+```
+\end{examplefigure}
+
