@@ -1,6 +1,7 @@
 # News
 
 ## master
+- Fixed an issue where NaN was interpreted as zero when rendering `surface` through CairoMakie. [#2598](https://github.com/MakieOrg/Makie.jl/pull/2598)
 
 - Fixed an issue where `poly` plots with `Vector{<: MultiPolygon}` inputs with per-polygon color were mistakenly rendered as meshes using CairoMakie. [#2590]
 
