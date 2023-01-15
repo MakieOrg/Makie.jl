@@ -154,7 +154,7 @@ function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidt
 
     top += titlespace + subtitlespace
 
-    if yaxisposition == :left
+    if yaxisposition === :left
         left = yaxisprotrusion
     else
         right = yaxisprotrusion
@@ -263,9 +263,9 @@ function initialize_block!(ax::Axis; palette = nothing)
     onany(update_axis_camera, camera(scene), scene.transformation.transform_func, finallimits, ax.xreversed, ax.yreversed)
 
     xaxis_endpoints = lift(ax.xaxisposition, scene.px_area; ignore_equal_values=true) do xaxisposition, area
-        if xaxisposition == :bottom
+        if xaxisposition === :bottom
             return bottomline(Rect2f(area))
-        elseif xaxisposition == :top
+        elseif xaxisposition === :top
             return topline(Rect2f(area))
         else
             error("Invalid xaxisposition $xaxisposition")
@@ -273,17 +273,17 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     yaxis_endpoints = lift(ax.yaxisposition, scene.px_area; ignore_equal_values=true) do yaxisposition, area
-        if yaxisposition == :left
+        if yaxisposition === :left
             return leftline(Rect2f(area))
-        elseif yaxisposition == :right
+        elseif yaxisposition === :right
             return rightline(Rect2f(area))
         else
             error("Invalid yaxisposition $yaxisposition")
         end
     end
 
-    xaxis_flipped = lift(x->x == :top, ax.xaxisposition; ignore_equal_values=true)
-    yaxis_flipped = lift(x->x == :right, ax.yaxisposition; ignore_equal_values=true)
+    xaxis_flipped = lift(x->x === :top, ax.xaxisposition; ignore_equal_values=true)
+    yaxis_flipped = lift(x->x === :right, ax.yaxisposition; ignore_equal_values=true)
 
     xspinevisible = lift(xaxis_flipped, ax.bottomspinevisible, ax.topspinevisible; ignore_equal_values=true) do xflip, bv, tv
         xflip ? tv : bv
@@ -341,7 +341,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     ax.yaxis = yaxis
 
     xoppositelinepoints = lift(scene.px_area, ax.spinewidth, ax.xaxisposition; ignore_equal_values=true) do r, sw, xaxpos
-        if xaxpos == :top
+        if xaxpos === :top
             y = bottom(r)
             p1 = Point2f(left(r) - 0.5sw, y)
             p2 = Point2f(right(r) + 0.5sw, y)
@@ -355,7 +355,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     yoppositelinepoints = lift(scene.px_area, ax.spinewidth, ax.yaxisposition; ignore_equal_values=true) do r, sw, yaxpos
-        if yaxpos == :right
+        if yaxpos === :right
             x = left(r)
             p1 = Point2f(x, bottom(r) - 0.5sw)
             p2 = Point2f(x, top(r) + 0.5sw)
@@ -411,30 +411,30 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     onany(xaxis.minortickpositions, scene.px_area) do tickpos, area
         local pxheight::Float32 = height(scene.px_area[])
-        local offset::Float32 = ax.xaxisposition[] == :bottom ? pxheight : -pxheight
+        local offset::Float32 = ax.xaxisposition[] === :bottom ? pxheight : -pxheight
         update_gridlines!(xminorgridnode, Point2f(0, offset), tickpos)
     end
 
     onany(yaxis.minortickpositions, scene.px_area) do tickpos, area
         local pxwidth::Float32 = width(scene.px_area[])
-        local offset::Float32 = ax.yaxisposition[] == :left ? pxwidth : -pxwidth
+        local offset::Float32 = ax.yaxisposition[] === :left ? pxwidth : -pxwidth
         update_gridlines!(yminorgridnode, Point2f(offset, 0), tickpos)
     end
 
     subtitlepos = lift(scene.px_area, ax.titlegap, ax.titlealign, ax.xaxisposition, xaxis.protrusion; ignore_equal_values=true) do a,
         titlegap, align, xaxisposition, xaxisprotrusion
 
-        x = if align == :center
+        x = if align === :center
             a.origin[1] + a.widths[1] / 2
-        elseif align == :left
+        elseif align === :left
             a.origin[1]
-        elseif align == :right
+        elseif align === :right
             a.origin[1] + a.widths[1]
         else
             error("Title align $align not supported.")
         end
 
-        yoffset = top(a) + titlegap + (xaxisposition == :top ? xaxisprotrusion : 0f0)
+        yoffset = top(a) + titlegap + (xaxisposition === :top ? xaxisprotrusion : 0f0)
 
         return Point2f(x, yoffset)
     end
@@ -515,16 +515,16 @@ end
 
 function mirror_ticks(tickpositions, ticksize, tickalign, px_area, side, axisposition)
     a = px_area[][]
-    if side == :x
-        opp = axisposition == :bottom ? top(a) : bottom(a)
-        sign =  axisposition == :bottom ? 1 : -1
+    if side === :x
+        opp = axisposition === :bottom ? top(a) : bottom(a)
+        sign =  axisposition === :bottom ? 1 : -1
     else
-        opp = axisposition == :left ? right(a) : left(a)
-        sign = axisposition == :left ? 1 : -1
+        opp = axisposition === :left ? right(a) : left(a)
+        sign = axisposition === :left ? 1 : -1
     end
     d = ticksize * sign
     points = Vector{Point2f}(undef, 2*length(tickpositions))
-    if side == :x
+    if side === :x
         for (i, (x, _)) in enumerate(tickpositions)
             points[2i-1] = Point2f(x, opp - d * tickalign)
             points[2i] = Point2f(x, opp + d - d * tickalign)

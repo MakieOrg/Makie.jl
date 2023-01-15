@@ -196,7 +196,7 @@ function Scene(;
     if lights isa Automatic
         lightposition = to_value(get(m_theme, :lightposition, nothing))
         if !isnothing(lightposition)
-            position = if lightposition == :eyeposition
+            position = if lightposition === :eyeposition
                 scene.camera.eyeposition
             else
                 m_theme.lightposition
