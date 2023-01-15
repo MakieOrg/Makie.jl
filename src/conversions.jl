@@ -573,7 +573,7 @@ end
 function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function)
     points = [Point3f(x, y, z) for x in x, y in y, z in z]
     f_out = f.(points)
-    return (vec(points), vec(Vec3f.(getindex.(f_out, 1), getindex.(f_out, 2), getindex.(f_out, 3)))
+    return (vec(points), vec(Vec3f.(getindex.(f_out, 1), getindex.(f_out, 2), getindex.(f_out, 3))))
 end
 
 ################################################################################
