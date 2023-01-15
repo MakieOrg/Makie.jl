@@ -859,13 +859,17 @@ end
 
 function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightpos, shininess, diffuse, ambient, specular)
     for k in reverse(zorder)
-        pattern = Cairo.CairoPatternMesh()
 
         f = meshfaces[k]
         # avoid SizedVector through Face indexing
         t1 = ts[f[1]]
         t2 = ts[f[2]]
         t3 = ts[f[3]]
+        
+        # skip any mesh segments with NaN points.
+        if isnan(t1) || isnan(t2) || isnan(t3)
+            continue
+        end
 
         facecolors = per_face_col[k]
         # light calculation
@@ -887,6 +891,8 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
         # c1 = RGB(n1...)
         # c2 = RGB(n2...)
         # c3 = RGB(n3...)
+        
+        pattern = Cairo.CairoPatternMesh()
 
         Cairo.mesh_pattern_begin_patch(pattern)
 
@@ -928,7 +934,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
 end
 
 function surface2mesh(xs, ys, zs::AbstractMatrix)
-    ps = Makie.matrix_grid(p-> nan2zero.(p), xs, ys, zs)
+    ps = Makie.matrix_grid(identity, xs, ys, zs)
     rect = Tesselation(Rect2f(0, 0, 1, 1), size(zs))
     faces = decompose(QuadFace{Int}, rect)
     uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
