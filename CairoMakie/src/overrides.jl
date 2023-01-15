@@ -72,6 +72,7 @@ end
 
 draw_poly(scene::Scene, screen::Screen, poly, rect::Rect2) = draw_poly(scene, screen, poly, [rect])
 
+
 function draw_poly(scene::Scene, screen::Screen, poly, rects::Vector{<:Rect2})
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
@@ -80,30 +81,26 @@ function draw_poly(scene::Scene, screen::Screen, poly, rects::Vector{<:Rect2})
     color = poly.color[]
     if color isa AbstractArray{<:Number}
         color = numbers_to_colors(color, poly)
-    elseif color isa String
-        # string is erroneously broadcasted as chars otherwise
-        color = to_color(color)
     elseif color isa Makie.AbstractPattern
         cairopattern = Cairo.CairoPattern(color)
         Cairo.pattern_set_extend(cairopattern, Cairo.EXTEND_REPEAT);
     end
+    
     strokecolor = poly.strokecolor[]
     if strokecolor isa AbstractArray{<:Number}
         strokecolor = numbers_to_colors(strokecolor, poly)
-    elseif strokecolor isa String
-        # string is erroneously broadcasted as chars otherwise
-        strokecolor = to_color(strokecolor)
     end
+    println(typeof(strokecolor))
 
     broadcast_foreach(projected_rects, color, strokecolor, poly.strokewidth[]) do r, c, sc, sw
         Cairo.rectangle(screen.context, origin(r)..., widths(r)...)
         if c isa Makie.AbstractPattern
             Cairo.set_source(screen.context, cairopattern)
         else
-            Cairo.set_source_rgba(screen.context, rgbatuple(to_color(c))...)
+            Cairo.set_source_rgba(screen.context, rgbatuple(c)...)
         end
         Cairo.fill_preserve(screen.context)
-        Cairo.set_source_rgba(screen.context, rgbatuple(to_color(sc))...)
+        Cairo.set_source_rgba(screen.context, rgbatuple(sc)...)
         Cairo.set_line_width(screen.context, sw)
         Cairo.stroke(screen.context)
     end
@@ -138,20 +135,20 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
     color = poly.color[]
     if color isa AbstractArray{<:Number}
         color = numbers_to_colors(color, poly)
-    elseif color isa String
-        # string is erroneously broadcasted as chars otherwise
-        color = to_color(color)
     end
+
     strokecolor = poly.strokecolor[]
     if strokecolor isa AbstractArray{<:Number}
         strokecolor = numbers_to_colors(strokecolor, poly)
-    elseif strokecolor isa String
-        # string is erroneously broadcasted as chars otherwise
-        strokecolor = to_color(strokecolor)
     end
+
     broadcast_foreach(projected_polys, color, strokecolor, poly.strokewidth[]) do po, c, sc, sw
         polypath(screen.context, po)
-        Cairo.set_source_rgba(screen.context, rgbatuple(c)...)
+        if c isa Makie.AbstractPattern
+            Cairo.set_source(screen.context, cairopattern)
+        else
+            Cairo.set_source_rgba(screen.context, rgbatuple(c)...)
+        end
         Cairo.fill_preserve(screen.context)
         Cairo.set_source_rgba(screen.context, rgbatuple(sc)...)
         Cairo.set_line_width(screen.context, sw)
@@ -160,8 +157,8 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
 
 end
 
-
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<: MultiPolygon})
+
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
     projected_polys = project_multipolygon.(Ref(scene), space, polygons, Ref(model))
@@ -169,21 +166,21 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
     color = poly.color[]
     if color isa AbstractArray{<:Number}
         color = numbers_to_colors(color, poly)
-    elseif color isa String
-        # string is erroneously broadcasted as chars otherwise
-        color = to_color(color)
     end
+
     strokecolor = poly.strokecolor[]
     if strokecolor isa AbstractArray{<:Number}
         strokecolor = numbers_to_colors(strokecolor, poly)
-    elseif strokecolor isa String
-        # string is erroneously broadcasted as chars otherwise
-        strokecolor = to_color(strokecolor)
     end
+
     broadcast_foreach(projected_polys, color, strokecolor, poly.strokewidth[]) do mpo, c, sc, sw
         for po in mpo.polygons
             polypath(screen.context, po)
-            Cairo.set_source_rgba(screen.context, rgbatuple(c)...)
+            if c isa Makie.AbstractPattern
+                Cairo.set_source(screen.context, cairopattern)
+            else
+                Cairo.set_source_rgba(screen.context, rgbatuple(c)...)
+            end
             Cairo.fill_preserve(screen.context)
             Cairo.set_source_rgba(screen.context, rgbatuple(sc)...)
             Cairo.set_line_width(screen.context, sw)
