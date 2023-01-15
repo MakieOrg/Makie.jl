@@ -2,6 +2,8 @@
 
 ## master
 
+- Allow arbitrary functions to color `streamplot` lines by passing a `Function` to `color_func`.  This must accept `Point` of the appropriate dimension and return a `Point`, `Vec`, or other arraylike object. [#2002](https://github.com/MakieOrg/Makie.jl/pull/2002)
+
 ## v0.19.1
 
 - Add `show_data` method for `band` which shows the min and max values of the band at the x position of the cursor [#2497](https://github.com/MakieOrg/Makie.jl/pull/2497).
