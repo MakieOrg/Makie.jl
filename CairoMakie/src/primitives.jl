@@ -715,8 +715,15 @@ function draw_mesh2D(scene, screen, per_face_cols, space::Symbol,
     # This is a hack, which needs cleaning up in the Mesh plot type!
 
     for (f, (c1, c2, c3)) in zip(fs, per_face_cols)
-        pattern = Cairo.CairoPatternMesh()
+
         t1, t2, t3 =  project_position.(scene, space, vs[f], (model,)) #triangle points
+
+        # don't draw any mesh faces with NaN components.
+        if isnan(t1) || isnan(t2) || isnan(t3)
+            continue
+        end
+
+        pattern = Cairo.CairoPatternMesh()
         Cairo.mesh_pattern_begin_patch(pattern)
 
         Cairo.mesh_pattern_move_to(pattern, t1...)
@@ -804,7 +811,8 @@ function draw_mesh3D(
     end
 
     ns = map(n -> normalize(normalmatrix * n), meshnormals)
-    # Liight math happens in view/camera space
+
+    # Light math happens in view/camera space
     pointlight = Makie.get_point_light(scene)
     lightposition = if !isnothing(pointlight)
         pointlight.position[]
@@ -867,6 +875,10 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
         t3 = ts[f[3]]
         
         # skip any mesh segments with NaN points.
+        if isnan(t1) || isnan(t2) || isnan(t3)
+            continue
+        end
+
         if isnan(t1) || isnan(t2) || isnan(t3)
             continue
         end
