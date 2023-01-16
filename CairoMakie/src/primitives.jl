@@ -762,7 +762,7 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
     color = hasproperty(mesh, :color) ? mesh.color : color
     meshpoints = decompose(Point3f, mesh)::Vector{Point3f}
     meshfaces = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
-    meshnormals = decompose_normals(mesh)::Vector{Vec3f}
+    meshnormals = nan_aware_decompose_normals(mesh)::Vector{Vec3f}
     meshuvs = texturecoordinates(mesh)::Union{Nothing, Vector{Vec2f}}
 
     lowclip = get_color_attr(attributes, :lowclip)
@@ -950,8 +950,8 @@ function surface2mesh(xs, ys, zs::AbstractMatrix)
     rect = Tesselation(Rect2f(0, 0, 1, 1), size(zs))
     faces = decompose(QuadFace{Int}, rect)
     uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
-    uvm = GeometryBasics.Mesh(GeometryBasics.meta(ps; uv=uv), faces)
-    return GeometryBasics.normal_mesh(uvm)
+    uvm = GeometryBasics.Mesh(GeometryBasics.meta(ps; uv=uv), faces, )
+    return nan_aware_normal_mesh(uvm)
 end
 
 ################################################################################
