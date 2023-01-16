@@ -3,6 +3,28 @@
 ################################################################################
 
 
+function to_cairo_color(colors::AbstractVector{<: Number}, plot_object)
+    return numbers_to_colors(colors, plot_object)
+end
+
+function to_cairo_color(color::Makie.AbstractPattern, plot_object)
+    cairopattern = Cairo.CairoPattern(color)
+    Cairo.pattern_set_extend(cairopattern, Cairo.EXTEND_REPEAT);
+    return cairopattern
+end
+
+function to_cairo_color(color, plot_object)
+    return to_color(color)
+end
+
+function set_source(ctx::Cairo.CairoContext, pattern::Cairo.CairoPattern)
+    return Cairo.set_source(ctx, pattern)
+end
+
+function set_source(ctx::Cairo.CairoContext, color::Colorant)
+    return Cairo.set_source_rgba(ctx, rgbatuple(color)...)
+end
+
 """
 Special method for polys so we don't fall back to atomic meshes, which are much more
 complex and slower to draw than standard paths with single color.
@@ -32,13 +54,13 @@ function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2},
 end
 
 function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2})
-    color = to_color(poly.color[])
-    strokecolor = to_color(poly.strokecolor[])
+    color = to_cairo_color(poly.color[], poly)
+    strokecolor = to_cairo_color(poly.strokecolor[], poly)
     draw_poly(scene, screen, poly, points, color, poly.model[], strokecolor, poly.strokewidth[])
 end
 
 # when color is a Makie.AbstractPattern, we don't need to go to Mesh
-function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::Union{Colorant, Makie.AbstractPattern},
+function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::Union{Colorant, Cairo.CairoPattern},
         model, strokecolor, strokewidth)
     space = to_value(get(poly, :space, :data))
     points = project_position.(Ref(scene), space, points, Ref(model))
@@ -47,13 +69,8 @@ function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2},
         Cairo.line_to(screen.context, p...)
     end
     Cairo.close_path(screen.context)
-    if color isa Makie.AbstractPattern
-        cairopattern = Cairo.CairoPattern(color)
-        Cairo.pattern_set_extend(cairopattern, Cairo.EXTEND_REPEAT);
-        Cairo.set_source(screen.context, cairopattern)
-    else
-        Cairo.set_source_rgba(screen.context, rgbatuple(to_color(color))...)
-    end
+
+    set_source(screen.context, color)
 
     Cairo.fill_preserve(screen.context)
     Cairo.set_source_rgba(screen.context, rgbatuple(to_color(strokecolor))...)
@@ -78,29 +95,14 @@ function draw_poly(scene::Scene, screen::Screen, poly, rects::Vector{<:Rect2})
     space = to_value(get(poly, :space, :data))
     projected_rects = project_rect.(Ref(scene), space, rects, Ref(model))
 
-    color = poly.color[]
-    if color isa AbstractArray{<:Number}
-        color = numbers_to_colors(color, poly)
-    elseif color isa Makie.AbstractPattern
-        cairopattern = Cairo.CairoPattern(color)
-        Cairo.pattern_set_extend(cairopattern, Cairo.EXTEND_REPEAT);
-    end
-    
-    strokecolor = poly.strokecolor[]
-    if strokecolor isa AbstractArray{<:Number}
-        strokecolor = numbers_to_colors(strokecolor, poly)
-    end
-    println(typeof(strokecolor))
+    color = to_cairo_color(poly.color[], poly)
+    strokecolor = to_cairo_color(poly.strokecolor[], poly)
 
     broadcast_foreach(projected_rects, color, strokecolor, poly.strokewidth[]) do r, c, sc, sw
         Cairo.rectangle(screen.context, origin(r)..., widths(r)...)
-        if c isa Makie.AbstractPattern
-            Cairo.set_source(screen.context, cairopattern)
-        else
-            Cairo.set_source_rgba(screen.context, rgbatuple(c)...)
-        end
+        set_source(screen.context, c)
         Cairo.fill_preserve(screen.context)
-        Cairo.set_source_rgba(screen.context, rgbatuple(sc)...)
+        set_source(screen.context, sc)
         Cairo.set_line_width(screen.context, sw)
         Cairo.stroke(screen.context)
     end
@@ -132,25 +134,14 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
     space = to_value(get(poly, :space, :data))
     projected_polys = project_polygon.(Ref(scene), space, polygons, Ref(model))
 
-    color = poly.color[]
-    if color isa AbstractArray{<:Number}
-        color = numbers_to_colors(color, poly)
-    end
-
-    strokecolor = poly.strokecolor[]
-    if strokecolor isa AbstractArray{<:Number}
-        strokecolor = numbers_to_colors(strokecolor, poly)
-    end
+    color = to_cairo_color(poly.color[], poly)
+    strokecolor = to_cairo_color(poly.strokecolor[], poly)
 
     broadcast_foreach(projected_polys, color, strokecolor, poly.strokewidth[]) do po, c, sc, sw
         polypath(screen.context, po)
-        if c isa Makie.AbstractPattern
-            Cairo.set_source(screen.context, cairopattern)
-        else
-            Cairo.set_source_rgba(screen.context, rgbatuple(c)...)
-        end
+        set_source(screen.context, c)
         Cairo.fill_preserve(screen.context)
-        Cairo.set_source_rgba(screen.context, rgbatuple(sc)...)
+        set_source(screen.context, sc)
         Cairo.set_line_width(screen.context, sw)
         Cairo.stroke(screen.context)
     end
@@ -158,31 +149,19 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
 end
 
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<: MultiPolygon})
-
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
     projected_polys = project_multipolygon.(Ref(scene), space, polygons, Ref(model))
 
-    color = poly.color[]
-    if color isa AbstractArray{<:Number}
-        color = numbers_to_colors(color, poly)
-    end
-
-    strokecolor = poly.strokecolor[]
-    if strokecolor isa AbstractArray{<:Number}
-        strokecolor = numbers_to_colors(strokecolor, poly)
-    end
+    color = to_cairo_color(poly.color[], poly)
+    strokecolor = to_cairo_color(poly.strokecolor[], poly)
 
     broadcast_foreach(projected_polys, color, strokecolor, poly.strokewidth[]) do mpo, c, sc, sw
         for po in mpo.polygons
             polypath(screen.context, po)
-            if c isa Makie.AbstractPattern
-                Cairo.set_source(screen.context, cairopattern)
-            else
-                Cairo.set_source_rgba(screen.context, rgbatuple(c)...)
-            end
+            set_source(screen.context, c)
             Cairo.fill_preserve(screen.context)
-            Cairo.set_source_rgba(screen.context, rgbatuple(sc)...)
+            set_source(screen.context, sc)
             Cairo.set_line_width(screen.context, sw)
             Cairo.stroke(screen.context)
         end
@@ -201,6 +180,7 @@ function draw_plot(scene::Scene, screen::Screen,
         band::Band{<:Tuple{<:AbstractVector{<:Point2},<:AbstractVector{<:Point2}}})
 
     if !(band.color[] isa AbstractArray)
+        color = to_cairo_color(band.color[], band)
         upperpoints = band[1][]
         lowerpoints = band[2][]
         points = vcat(lowerpoints, reverse(upperpoints))
@@ -212,7 +192,7 @@ function draw_plot(scene::Scene, screen::Screen,
             Cairo.line_to(screen.context, p...)
         end
         Cairo.close_path(screen.context)
-        Cairo.set_source_rgba(screen.context, rgbatuple(to_color(band.color[]))...)
+        set_source(screen.context, color)
         Cairo.fill(screen.context)
     else
         for p in band.plots
@@ -234,10 +214,8 @@ function draw_plot(scene::Scene, screen::Screen, tric::Tricontourf)
 
     pol = only(tric.plots)::Poly
     colornumbers = pol.color[]
-    colors = numbers_to_colors(colornumbers, pol)
-
+    colors = to_cairo_color(colornumbers, pol)
     polygons = pol[1][]
-
     model = pol.model[]
     space = to_value(get(pol, :space, :data))
     projected_polys = project_polygon.(Ref(scene), space, polygons, Ref(model))
@@ -246,7 +224,7 @@ function draw_plot(scene::Scene, screen::Screen, tric::Tricontourf)
         for (i, (pol, colnum, col)) in enumerate(zip(polys, colornumbers, colors))
             polypath(screen.context, pol)
             if i == length(colornumbers) || colnum != colornumbers[i+1]
-                Cairo.set_source_rgba(screen.context, rgbatuple(col)...)
+                set_source(screen.context, col)
                 Cairo.fill(screen.context)
             end
         end
