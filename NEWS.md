@@ -3,6 +3,7 @@
 ## master
 
 - `arrows` can now take input of the form `x::AbstractVector, y::AbstractVector, [z::AbstractVector,] f::Function`, where `f` must return a `VecTypes` of the appropriate dimension. [#2597](https://github.com/MakieOrg/Makie.jl/pull/2597)
+- Fixed an issue where `poly` plots with `Vector{<: MultiPolygon}` inputs with per-polygon color were mistakenly rendered as meshes using CairoMakie. [#2590]
 
 ## v0.19.1
 
