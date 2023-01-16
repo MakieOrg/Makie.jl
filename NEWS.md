@@ -3,6 +3,7 @@
 ## master
 
 - Allow arbitrary functions to color `streamplot` lines by passing a `Function` to `color_func`.  This must accept `Point` of the appropriate dimension and return a `Point`, `Vec`, or other arraylike object. [#2002](https://github.com/MakieOrg/Makie.jl/pull/2002)
+- Fixed an issue where `poly` plots with `Vector{<: MultiPolygon}` inputs with per-polygon color were mistakenly rendered as meshes using CairoMakie. [#2590]
 
 ## v0.19.1
 
