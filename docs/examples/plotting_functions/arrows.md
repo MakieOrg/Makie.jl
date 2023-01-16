@@ -112,8 +112,8 @@ us = [sin(x) * cos(y) for x in xs, y in ys]
 vs = [-cos(x) * sin(y) for x in xs, y in ys]
 strength = vec(sqrt.(us .^ 2 .+ vs .^ 2))
 # function method
-f(x) = Point2f(sin(x[1])*cos(x[2]), -cos(x[1])*sin(x[2]))
-arrows!(ax, xs, ys, f, arrowsize = 10, lengthscale = 0.3,
+arrow_fun(x) = Point2f(sin(x[1])*cos(x[2]), -cos(x[1])*sin(x[2]))
+arrows!(ax, xs, ys, arrow_fun, arrowsize = 10, lengthscale = 0.3,
     arrowcolor = strength, linecolor = strength)
 fig
 ```
