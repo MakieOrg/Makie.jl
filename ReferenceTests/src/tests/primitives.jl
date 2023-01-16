@@ -1,4 +1,4 @@
-# @reference_test "lines and linestyles" begin
+@reference_test "lines and linestyles" begin
 quote
     # For now disabled until we fix GLMakie linestyle
     s = Scene(resolution = (800, 800), camera = campixel!)
