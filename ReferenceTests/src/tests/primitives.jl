@@ -414,3 +414,22 @@ end
 
     scene
 end
+
+@reference_test "Surface with NaN points" begin
+    N = 20
+
+    xs = LinRange(0, 6π, 10)
+    ys = LinRange(0, 6π, 10)
+    zs = sin.(xs) .* sin.(ys')
+
+    zs[3:5, 5:8] .= NaN
+
+    surface(
+        xs, ys, zs;
+        color = zs,
+        colormap = :RdBu,
+        shading = true # test shading as well.
+    )
+end
+
+end
