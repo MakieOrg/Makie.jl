@@ -260,54 +260,6 @@ function mesh_pattern_set_corner_color(pattern, id, c::Colorant)
     Cairo.mesh_pattern_set_corner_color_rgba(pattern, id, rgbatuple(c)...)
 end
 
-# NaN-aware normal handling
-
-
-"""
-    nan_aware_orthogonal_vector(v1, v2, v3) where N
-
-Returns an un-normalized normal vector for the triangle formed by the three input points.
-Skips any combination of the inputs for which any point has a NaN component.
-"""
-function nan_aware_orthogonal_vector(v1, v2, v3)
-    centroid = Vec3f(((v1 .+ v2 .+ v3) ./ 3)...)
-    normal = [0.0, 0.0, 0.0]
-    # if the coord is NaN, then do not add.
-    (isnan(v1) | isnan(v2)) || (normal += cross(v2 .- centroid, v1 .- centroid))
-    (isnan(v2) | isnan(v3)) || (normal += cross(v3 .- centroid, v2 .- centroid))
-    (isnan(v3) | isnan(v1)) || (normal += cross(v1 .- centroid, v3 .- centroid))
-    return Vec3f(normal).*-1
-end
-
-# A NaN-aware version of GeometryBasics.normals.
-function nan_aware_normals(vertices::AbstractVector{<:AbstractPoint{3,T}}, faces::AbstractVector{F}) where {T,F<:NgonFace}
-    normals_result = zeros(Vec3f, length(vertices))
-    free_verts = GeometryBasics.metafree.(vertices)
-
-    for face in faces
-
-        v1, v2, v3 = free_verts[face]
-        # we can get away with two edges since faces are planar.
-        n = nan_aware_orthogonal_vector(v1, v2, v3)
-
-        for i in 1:length(F)
-            fi = face[i]
-            normals_result[fi] = normals_result[fi] + n
-        end
-    end
-    normals_result .= GeometryBasics.normalize.(normals_result)
-    return normals_result
-end
-
-function nan_aware_normals(vertices::AbstractVector{<:AbstractPoint{2,T}}, faces::AbstractVector{F}) where {T,F<:NgonFace}
-    return Vec2f.(nan_aware_normals(map(v -> Point3{T}(v..., 0), vertices), faces))
-end
-
-
-function nan_aware_normals(vertices::AbstractVector{<:GeometryBasics.PointMeta{D,T}}, faces::AbstractVector{F}) where {D,T,F<:NgonFace}
-    return nan_aware_normals(collect(GeometryBasics.metafree.(vertices)), faces)
-end
-
 ################################################################################
 #                                Font handling                                 #
 ################################################################################
