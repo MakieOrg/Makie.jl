@@ -762,7 +762,7 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
     color = hasproperty(mesh, :color) ? mesh.color : color
     meshpoints = decompose(Point3f, mesh)::Vector{Point3f}
     meshfaces = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
-    meshnormals = nan_aware_decompose_normals(mesh)::Vector{Vec3f}
+    meshnormals = decompose_normals(mesh)::Vector{Vec3f} # note: can be made NaN-aware.
     meshuvs = texturecoordinates(mesh)::Union{Nothing, Vector{Vec2f}}
 
     lowclip = get_color_attr(attributes, :lowclip)
@@ -879,10 +879,6 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
             continue
         end
 
-        if isnan(t1) || isnan(t2) || isnan(t3)
-            continue
-        end
-
         facecolors = per_face_col[k]
         # light calculation
         if shading
@@ -946,12 +942,17 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
 end
 
 function surface2mesh(xs, ys, zs::AbstractMatrix)
+    # crate a `Matrix{Point3}`
     ps = Makie.matrix_grid(identity, xs, ys, zs)
+    # create valid tessellations (triangulations) for the mesh
+    # knowing that it is a regular grid makes this simple
     rect = Tesselation(Rect2f(0, 0, 1, 1), size(zs))
+    # we use quad faces so that color handling is consistent
     faces = decompose(QuadFace{Int}, rect)
+    # create the uv (texture) vectors
     uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
-    uvm = GeometryBasics.Mesh(GeometryBasics.meta(ps; uv=uv), faces, )
-    return nan_aware_normal_mesh(uvm)
+    # return a mesh with known uvs and normals.
+    return GeometryBasics.Mesh(GeometryBasics.meta(ps; uv=uv, normals = nan_aware_normals(ps, faces)), faces, )
 end
 
 ################################################################################

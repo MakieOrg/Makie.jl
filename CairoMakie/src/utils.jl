@@ -279,16 +279,9 @@ function nan_aware_orthogonal_vector(v1, v2, v3)
     return Vec3f(normal).*-1
 end
 
-# Hijack GeometryBasics.jl machinery
-
-"A wrapper type which instructs `GeometryBasics.normals`` to use the NaN-aware path.  Construct as `_NanAware{normaltype}()`."
-struct _NanAware{T}
-end
-
 # A NaN-aware version of GeometryBasics.normals.
-function GeometryBasics.normals(vertices::AbstractVector{<:AbstractPoint{3,T}}, faces::AbstractVector{F},
-                 ::_NanAware{N}) where {T,F<:NgonFace,N}
-    normals_result = zeros(N, length(vertices))
+function nan_aware_normals(vertices::AbstractVector{<:AbstractPoint{3,T}}, faces::AbstractVector{F}) where {T,F<:NgonFace}
+    normals_result = zeros(Vec3f, length(vertices))
     free_verts = GeometryBasics.metafree.(vertices)
 
     for face in faces
@@ -306,43 +299,14 @@ function GeometryBasics.normals(vertices::AbstractVector{<:AbstractPoint{3,T}}, 
     return normals_result
 end
 
-function GeometryBasics.normals(vertices::AbstractVector{<:AbstractPoint{2,T}}, faces::AbstractVector{F},
-    normaltype::_NanAware{N}) where {T,F<:NgonFace,N}
-    return Vec2f.(GeometryBasics.normals(map(v -> Point3{T}(v..., 0), vertices), faces, normaltype))
+function nan_aware_normals(vertices::AbstractVector{<:AbstractPoint{2,T}}, faces::AbstractVector{F}) where {T,F<:NgonFace}
+    return Vec2f.(nan_aware_normals(map(v -> Point3{T}(v..., 0), vertices), faces))
 end
 
 
-function GeometryBasics.normals(vertices::AbstractVector{<:GeometryBasics.PointMeta{D,T}}, faces::AbstractVector{F},
-    normaltype::_NanAware{N}) where {D,T,F<:NgonFace,N}
-    return GeometryBasics.normals(collect(metafree.(vertices)), faces, normaltype)
+function nan_aware_normals(vertices::AbstractVector{<:GeometryBasics.PointMeta{D,T}}, faces::AbstractVector{F}) where {D,T,F<:NgonFace}
+    return nan_aware_normals(collect(GeometryBasics.metafree.(vertices)), faces)
 end
-
-# Below are nan-aware versions of GeometryBasics functions.
-# These are basically copied straight from GeometryBasics.jl,
-# since the normal type on some of them is not exposed.
-
-function nan_aware_normal_mesh(primitive::GeometryBasics.Meshable{N}; nvertices=nothing) where {N}
-    if nvertices !== nothing
-        @warn("nvertices argument deprecated. Wrap primitive in `Tesselation(primitive, nvertices)`")
-        primitive = Tesselation(primitive, nvertices)
-    end
-    return GeometryBasics.mesh(primitive; pointtype=Point{N,Float32}, normaltype=_NanAware{Vec3f}(),
-                facetype=GLTriangleFace)
-end
-
-function nan_aware_normal_mesh(points::AbstractVector{<:AbstractPoint},
-    faces::AbstractVector{<:AbstractFace})
-    _points = GeometryBasics.decompose(Point3f, points)
-    _faces = GeometryBasics.decompose(GeometryBasics.GLTriangleFace, faces)
-    return GeometryBasics.Mesh(GeometryBasics.meta(_points; normals=GeometryBasics.normals(_points, _faces, _NanAware{Vec3f}())), _faces)
-end
-
-function nan_aware_decompose(NT::GeometryBasics.Normal{T}, primitive) where {T}
-    return GeometryBasics.collect_with_eltype(T, GeometryBasics.normals(GeometryBasics.coordinates(primitive), GeometryBasics.faces(primitive), _NanAware{T}()))
-end
-
-nan_aware_decompose_normals(primitive) = nan_aware_decompose(GeometryBasics.Normal(), primitive)
-
 
 ################################################################################
 #                                Font handling                                 #
