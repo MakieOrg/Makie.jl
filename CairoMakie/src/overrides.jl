@@ -126,7 +126,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
 
     broadcast_foreach(projected_polys, color, strokecolor, poly.strokewidth[]) do po, c, sc, sw
-        polypath(screen.context, po)
+        polypath(screen, po)
         set_source(screen.context, c)
         Cairo.fill_preserve(screen.context)
         set_source(screen.context, sc)
@@ -146,7 +146,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
 
     broadcast_foreach(projected_polys, color, strokecolor, poly.strokewidth[]) do mpo, c, sc, sw
         for po in mpo.polygons
-            polypath(screen.context, po)
+            polypath(screen, po)
             set_source(screen.context, c)
             Cairo.fill_preserve(screen.context)
             set_source(screen.context, sc)
