@@ -2,6 +2,7 @@
 
 ## master
 
+- Added dynamic font search using Fontconfig.  This can be accessed by the `FontFamily(family::String)` function, whose output can be passed to the `fonts` keyword. [#2602](https://github.com/MakieOrg/Makie.jl/pull/2602)
 - Fixed an issue where `poly` plots with `Vector{<: MultiPolygon}` inputs with per-polygon color were mistakenly rendered as meshes using CairoMakie. [#2590]
 
 ## v0.19.1
