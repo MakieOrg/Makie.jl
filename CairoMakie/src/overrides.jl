@@ -120,7 +120,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
 
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
-    strokestyle = Makie.convert_attribute(poly.linestyle[], key"linewidth")
+    strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle")
 
     broadcast_foreach(projected_polys, color, strokecolor, strokestyle, poly.strokewidth[]) do po, c, sc, ss, sw
         polypath(screen.context, po)
