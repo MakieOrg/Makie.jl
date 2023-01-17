@@ -334,13 +334,8 @@ Returns an un-normalized normal vector for the triangle formed by the three inpu
 Skips any combination of the inputs for which any point has a NaN component.
 """
 function nan_aware_orthogonal_vector(v1, v2, v3)
-    centroid = Vec3f(((v1 .+ v2 .+ v3) ./ 3)...)
-    normal = [0.0, 0.0, 0.0]
-    # if the coord is NaN, then do not add.
-    (isnan(v1) | isnan(v2)) || (normal += cross(v2 .- centroid, v1 .- centroid))
-    (isnan(v2) | isnan(v3)) || (normal += cross(v3 .- centroid, v2 .- centroid))
-    (isnan(v3) | isnan(v1)) || (normal += cross(v1 .- centroid, v3 .- centroid))
-    return Vec3f(normal).*-1
+    (isnan(v1) || isnan(v2) || isnan(v3)) && return Vec3f(0)
+    return Vec3f(cross(v2 - v1, v3 - v1))
 end
 
 """

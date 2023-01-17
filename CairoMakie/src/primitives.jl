@@ -949,6 +949,8 @@ function surface2mesh(xs, ys, zs::AbstractMatrix)
     rect = Tesselation(Rect2f(0, 0, 1, 1), size(zs))
     # we use quad faces so that color handling is consistent
     faces = decompose(QuadFace{Int}, rect)
+    # and remove quads that contain a NaN coordinate to avoid drawing triangles
+    faces = filter(f -> !any(i -> isnan(ps[i]), f), faces)
     # create the uv (texture) vectors
     uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
     # return a mesh with known uvs and normals.
