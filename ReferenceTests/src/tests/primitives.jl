@@ -36,7 +36,7 @@ end
     s
 end
 
-@reference_test "lines with caps" begin
+@reference_test "lines with linecaps" begin
     scene = Scene(resolution = (400, 400))
     xs = [-0.8, -0.2, 0.2, 0.8]
     lw = 40
