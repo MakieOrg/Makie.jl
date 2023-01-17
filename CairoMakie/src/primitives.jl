@@ -30,9 +30,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     space = to_value(get(primitive, :space, :data))
     projected_positions = project_position.(Ref(scene), Ref(space), positions, Ref(model))
 
-    if color isa AbstractArray{<: Number}
-        color = numbers_to_colors(color, primitive)
-    end
+    color = to_cairo_color(color, primitive)
 
     # color is now a color or an array of colors
     # if it's an array of colors, each segment must be stroked separately
@@ -185,11 +183,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
 
     font = to_font(to_value(get(primitive, :font, Makie.defaultfont())))
 
-    colors = if color isa AbstractArray{<: Number}
-        numbers_to_colors(color, primitive)
-    else
-        color
-    end
+    colors = to_cairo_color(color, primitive)
 
     markerspace = to_value(get(primitive, :markerspace, :pixel))
     space = to_value(get(primitive, :space, :data))
@@ -361,11 +355,11 @@ function draw_marker(ctx, marker::Matrix{T}, pos, scale,
         marker_offset, rotation) where T<:Colorant
 
     # convert marker to Cairo compatible image data
-    argb32_marker = convert.(ARGB32, marker)
-    argb32_marker = permutedims(argb32_marker, (2,1)) # swap x-y for Cairo
-    marker_surf   = Cairo.CairoImageSurface(argb32_marker)
+    marker = permutedims(marker, (2,1))
+    marker_surf = to_cairo_image(marker, ())
 
-    w, h = size(argb32_marker)
+    w, h = size(marker)
+
     Cairo.translate(ctx,
                     scale[1]/2 + pos[1] + marker_offset[1],
                     scale[2]/2 + pos[2] + marker_offset[2])
@@ -437,7 +431,7 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
 
     glyph_pos = let
         transform_func = scene.transformation.transform_func[]
-        p = Makie.apply_transform(transform_func, position)
+        p = Makie.apply_transform(transform_func, position, space)
 
         Makie.clip_to_space(scene.camera, markerspace) *
         Makie.space_to_clip(scene.camera, space) *
@@ -713,9 +707,9 @@ function draw_mesh2D(scene, screen, per_face_cols, space::Symbol,
     ctx = screen.context
     # Priorize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
-    pattern = Cairo.CairoPatternMesh()
 
     for (f, (c1, c2, c3)) in zip(fs, per_face_cols)
+        pattern = Cairo.CairoPatternMesh()
         t1, t2, t3 =  project_position.(scene, space, vs[f], (model,)) #triangle points
         Cairo.mesh_pattern_begin_patch(pattern)
 
@@ -728,10 +722,11 @@ function draw_mesh2D(scene, screen, per_face_cols, space::Symbol,
         mesh_pattern_set_corner_color(pattern, 2, c3)
 
         Cairo.mesh_pattern_end_patch(pattern)
+        Cairo.set_source(ctx, pattern)
+        Cairo.close_path(ctx)
+        Cairo.paint(ctx)
+        Cairo.destroy(pattern)
     end
-    Cairo.set_source(ctx, pattern)
-    Cairo.close_path(ctx)
-    Cairo.paint(ctx)
     return nothing
 end
 
@@ -797,7 +792,7 @@ function draw_mesh3D(
     # and have `func` be fully typed inside closure
     vs = broadcast(meshpoints, (func,)) do v, f
         # Should v get a nan2zero?
-        v = Makie.apply_transform(f, v)
+        v = Makie.apply_transform(f, v, space)
         p4d = to_ndim(Vec4f, scale .* to_ndim(Vec3f, v, 0f0), 1f0)
         view * (model * p4d .+ to_ndim(Vec4f, pos, 0f0))
     end
@@ -857,9 +852,9 @@ function _calculate_shaded_vertexcolors(N, v, c, lightpos, ambient, diffuse, spe
 end
 
 function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightpos, shininess, diffuse, ambient, specular)
-    pattern = Cairo.CairoPatternMesh()
-
     for k in reverse(zorder)
+        pattern = Cairo.CairoPatternMesh()
+
         f = meshfaces[k]
         # avoid SizedVector through Face indexing
         t1 = ts[f[1]]
@@ -898,10 +893,12 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
         mesh_pattern_set_corner_color(pattern, 2, c3)
 
         Cairo.mesh_pattern_end_patch(pattern)
+        Cairo.set_source(ctx, pattern)
+        Cairo.close_path(ctx)
+        Cairo.paint(ctx)
+        Cairo.destroy(pattern)
     end
-    Cairo.set_source(ctx, pattern)
-    Cairo.close_path(ctx)
-    Cairo.paint(ctx)
+    
 end
 
 ################################################################################

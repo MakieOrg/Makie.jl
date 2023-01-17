@@ -67,10 +67,10 @@ end
 Supported options: `[:best => Cairo.ANTIALIAS_BEST, :good => Cairo.ANTIALIAS_GOOD, :subpixel => Cairo.ANTIALIAS_SUBPIXEL, :none => Cairo.ANTIALIAS_NONE]`
 """
 function to_cairo_antialias(sym::Symbol)
-    sym == :best && return Cairo.ANTIALIAS_BEST
-    sym == :good && return Cairo.ANTIALIAS_GOOD
-    sym == :subpixel && return Cairo.ANTIALIAS_SUBPIXEL
-    sym == :none && return Cairo.ANTIALIAS_NONE
+    sym === :best && return Cairo.ANTIALIAS_BEST
+    sym === :good && return Cairo.ANTIALIAS_GOOD
+    sym === :subpixel && return Cairo.ANTIALIAS_SUBPIXEL
+    sym === :none && return Cairo.ANTIALIAS_NONE
     error("Wrong antialias setting: $(sym). Allowed: :best, :good, :subpixel, :none")
 end
 to_cairo_antialias(aa::Int) = aa
@@ -216,15 +216,23 @@ function apply_config!(screen::Screen, config::ScreenConfig)
     return screen
 end
 
+function scaled_scene_resolution(typ::RenderType, config::ScreenConfig, scene::Scene)
+    dsf = device_scaling_factor(typ, config)
+    return round.(Int, size(scene) .* dsf)
+end
+
 function Makie.apply_screen_config!(
         screen::Screen{SCREEN_RT}, config::ScreenConfig, scene::Scene, io::Union{Nothing, IO}, m::MIME{SYM}) where {SYM, SCREEN_RT}
     # the surface size is the scene size scaled by the device scaling factor
     new_rendertype = mime_to_rendertype(SYM)
     # we need to re-create the screen if the rendertype changes, or for all vector backends
-    # since they need to use the new IO
-    if SCREEN_RT !== new_rendertype || is_vector_backend(new_rendertype)
+    # since they need to use the new IO, or if the resolution changed!
+    new_resolution = scaled_scene_resolution(new_rendertype, config, scene)
+    if SCREEN_RT !== new_rendertype || is_vector_backend(new_rendertype) || size(screen) != new_resolution
         old_screen = screen
-        screen = Screen(screen, io, new_rendertype)
+        surface = surface_from_output_type(new_rendertype, io, new_resolution...)
+        screen = Screen(scene, config, surface)
+        @assert new_resolution == size(screen)
         destroy!(old_screen)
     end
     apply_config!(screen, config)
@@ -243,24 +251,23 @@ end
 
 Screen(scene::Scene, config::ScreenConfig) = Screen(scene, config, nothing, IMAGE)
 
-# Recreate Screen with different surface type
 function Screen(screen::Screen, io_or_path::Union{Nothing, String, IO}, typ::Union{MIME, Symbol, RenderType})
-    # we need to recalculate the screen size, since changing e.g. from vector -> image surface
-    # may result in different sizes depending on the scaling factor (which is by default different between vector / image surfaces)
-    w, h = round.(Int, size(screen.scene) .* device_scaling_factor(typ, screen.config))
-    surface = surface_from_output_type(typ, io_or_path, w, h)
+    rtype = convert(RenderType, typ)
+    # the resolution may change between rendertypes, so, we can't just use `size(screen)` here for recreating the Screen:
+    w, h = scaled_scene_resolution(rtype, screen.config, screen.scene)
+    surface = surface_from_output_type(rtype, io_or_path, w, h)
     return Screen(screen.scene, screen.config, surface)
 end
 
 function Screen(scene::Scene, config::ScreenConfig, io_or_path::Union{Nothing, String, IO}, typ::Union{MIME, Symbol, RenderType})
-    # the surface size is the scene size scaled by the device scaling factor
-    w, h = round.(Int, size(scene) .* device_scaling_factor(typ, config))
-    surface = surface_from_output_type(typ, io_or_path, w, h)
+    rtype = convert(RenderType, typ)
+    w, h = scaled_scene_resolution(rtype, config, scene)
+    surface = surface_from_output_type(rtype, io_or_path, w, h)
     return Screen(scene, config, surface)
 end
 
 function Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat)
-    w, h = round.(Int, size(scene) .* config.px_per_unit)
+    w, h = scaled_scene_resolution(IMAGE, config, scene)
     # create an image surface to draw onto the image
     img = fill(ARGB32(0, 0, 0, 0), w, h)
     surface = Cairo.CairoImageSurface(img)
