@@ -4,6 +4,8 @@
 
 - Added support for `linecap` to CairoMakie and GLMakie [#2536](https://github.com/MakieOrg/Makie.jl/pull/2536)
 - Added support for per-position `linewidth` to `lines!` in GLMakie [#2536](https://github.com/MakieOrg/Makie.jl/pull/2536)
+- Fixed an issue where `poly` plots with `Vector{<: MultiPolygon}` inputs with per-polygon color were mistakenly rendered as meshes using CairoMakie. [#2590](https://github.com/MakieOrg/Makie.jl/pulls/2478)
+- Fixed a small typo which caused an error in the `Stepper` constructor. [#2600](https://github.com/MakieOrg/Makie.jl/pulls/2478)
 
 ## v0.19.1
 

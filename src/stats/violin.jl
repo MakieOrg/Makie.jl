@@ -57,13 +57,13 @@ function plot!(plot::Violin)
 
         # for horizontal violin just flip all componentes
         point_func = Point2f
-        if orientation == :horizontal
+        if orientation === :horizontal
             point_func = flip_xy ∘ point_func
         end
 
         # Allow `side` to be either scalar or vector
         sides = broadcast(x̂, vside) do _, s
-            return s == :left ? - 1 : s == :right ? 1 : 0
+            return s === :left ? - 1 : s === :right ? 1 : 0
         end
 
         sa = StructArray((x = x̂, side = sides))

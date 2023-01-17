@@ -225,14 +225,14 @@ varname => default_value pairs.
     )
 """
 macro documented_attributes(exp)
-    if exp.head != :block
+    if exp.head !== :block
         error("Not a block")
     end
 
     expressions = filter(x -> !(x isa LineNumberNode), exp.args)
 
     vars_and_exps = map(expressions) do e
-        if e.head == :macrocall && e.args[1] == GlobalRef(Core, Symbol("@doc"))
+        if e.head === :macrocall && e.args[1] == GlobalRef(Core, Symbol("@doc"))
             varname = e.args[4].args[1]
             var_exp = e.args[4].args[2]
             str_exp = e.args[3]

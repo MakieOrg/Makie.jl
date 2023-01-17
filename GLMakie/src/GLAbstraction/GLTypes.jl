@@ -209,7 +209,7 @@ function GLVertexArray(bufferdict::Dict, program::GLProgram)
         if isa(buffer, GLBuffer) && buffer.buffertype == GL_ELEMENT_ARRAY_BUFFER
             bind(buffer)
             indexes = buffer
-        elseif Symbol(name) == :indices
+        elseif Symbol(name) === :indices
             indexes = buffer
         else
             attribute = string(name)
@@ -220,7 +220,7 @@ function GLVertexArray(bufferdict::Dict, program::GLProgram)
                 bufferlengths = ""
                 for (name, buffer) in bufferdict
                     if isa(buffer, GLBuffer) && buffer.buffertype == GL_ELEMENT_ARRAY_BUFFER
-                    elseif Symbol(name) == :indices
+                    elseif Symbol(name) === :indices
                     else
                         bufferlengths *= "\n\t$name has length $(length(buffer))"
                     end
@@ -433,8 +433,8 @@ function RenderObject(
             end
         end
     end
-    buffers = filter(((key, value),) -> isa(value, GLBuffer) || key == :indices, data)
-    uniforms = filter(((key, value),) -> !isa(value, GLBuffer) && key != :indices, data)
+    buffers = filter(((key, value),) -> isa(value, GLBuffer) || key === :indices, data)
+    uniforms = filter(((key, value),) -> !isa(value, GLBuffer) && key !== :indices, data)
     merge!(data, passthrough) # in the end, we insert back the non opengl data, to keep things simple
     program = gl_convert(to_value(program), data) # "compile" lazyshader
     vertexarray = GLVertexArray(Dict(buffers), program)

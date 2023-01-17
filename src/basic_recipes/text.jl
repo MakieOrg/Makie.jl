@@ -226,17 +226,17 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
         end
     end
 
-    xshift = if halign == :center
+    xshift = if halign === :center
         width(bb) ./ 2
-    elseif halign == :left
+    elseif halign === :left
         minimum(bb)[1]
-    elseif halign == :right
+    elseif halign === :right
         maximum(bb)[1]
     end
 
-    yshift = if valign == :center
+    yshift = if valign === :center
         maximum(bb)[2] - (height(bb) / 2)
-    elseif valign == :top
+    elseif valign === :top
         maximum(bb)[2]
     else
         minimum(bb)[2]
@@ -385,21 +385,21 @@ function apply_alignment_and_justification!(lines, ju, al)
         ginfo.origin[2] + ginfo.extent.descender * ginfo.size[2]
     end
 
-    al_offset_x = if al[1] == :center
+    al_offset_x = if al[1] === :center
         max_x / 2
-    elseif al[1] == :left
+    elseif al[1] === :left
         0f0
-    elseif al[1] == :right
+    elseif al[1] === :right
         max_x
     else
         0f0
     end
 
-    al_offset_y = if al[2] == :center
+    al_offset_y = if al[2] === :center
         0.5 * (top_y + bottom_y)
-    elseif al[2] == :bottom
+    elseif al[2] === :bottom
         bottom_y
-    elseif al[2] == :top
+    elseif al[2] === :top
         top_y
     else
         0f0
@@ -421,20 +421,20 @@ end
 function float_justification(ju, al)::Float32
     halign = al[1]
     float_justification = if ju === automatic
-        if halign == :left || halign == 0
+        if halign === :left || halign == 0
             0.0f0
-        elseif halign == :right || halign == 1
+        elseif halign === :right || halign == 1
             1.0f0
-        elseif halign == :center || halign == 0.5
+        elseif halign === :center || halign == 0.5
             0.5f0
         else
             0.5f0
         end
-    elseif ju == :left
+    elseif ju === :left
         0.0f0
-    elseif ju == :right
+    elseif ju === :right
         1.0f0
-    elseif ju == :center
+    elseif ju === :center
         0.5f0
     else
         Float32(ju)

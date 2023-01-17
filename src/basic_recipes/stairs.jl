@@ -38,7 +38,7 @@ function plot!(p::Stairs{<:Tuple{<:AbstractVector{<:Point2}}})
                 point = nextpoint
             end
             s_points
-        elseif step == :post
+        elseif step === :post
             s_points = Vector{Point2f}(undef, length(points) * 2 - 1)
             s_points[1] = point = points[1]
             for i in 1:length(points)-1
@@ -48,7 +48,7 @@ function plot!(p::Stairs{<:Tuple{<:AbstractVector{<:Point2}}})
                 point = nextpoint
             end
             s_points
-        elseif step == :center
+        elseif step === :center
             s_points = Vector{Point2f}(undef, length(points) * 2)
             s_points[1] = point = points[1]
             for i in 1:length(points)-1
