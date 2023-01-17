@@ -34,12 +34,12 @@ function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2})
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
-    draw_poly(scene, screen, poly, points, color, poly.model[], strokecolor, strokestyle,poly.strokewidth[])
+    draw_poly(scene, screen, poly, points, color, poly.model[], strokecolor, strokestyle, poly.strokewidth[])
 end
 
 # when color is a Makie.AbstractPattern, we don't need to go to Mesh
 function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::Union{Colorant, Cairo.CairoPattern},
-        model, strokestyle, strokecolor, strokewidth)
+        model, strokecolor, strokestyle, strokewidth)
     space = to_value(get(poly, :space, :data))
     points = project_position.(Ref(scene), space, points, Ref(model))
     Cairo.move_to(screen.context, points[1]...)
@@ -140,8 +140,8 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
 
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
-
-    broadcast_foreach(projected_polys, color, strokecolor, poly.strokewidth[]) do mpo, c, sc, sw
+    strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
+    broadcast_foreach(projected_polys, color, strokecolor, strokestyle, poly.strokewidth[]) do mpo, c, sc, ss, sw
         for po in mpo.polygons
             polypath(screen.context, po)
             set_source(screen.context, c)
