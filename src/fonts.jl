@@ -114,7 +114,7 @@ function is_italic_or_oblique(font::FreeTypeAbstraction.FTFont)
 end
 
 
-function search_font(family::String, style::String = "Regular"; exact = false)::NativeFont
+function search_font(family::String, style::String = "regular"; exact = false)::NativeFont
     style = lowercase(style) # for better font matching
     exact || (style = replace(style, "_" => " "))
 
@@ -178,3 +178,49 @@ function search_font(family::String, style::String = "Regular"; exact = false)::
     end
 
 end
+
+"""
+    FontFamily(family::String; search_kwargs)
+
+Constructs a `FontFamily` object which caches all styles of a font family,
+allowing the user to modify them at will by setindex!.
+"""
+struct FontFamily
+    family::String
+    attributes::Attributes
+end
+
+function FontFamily(family::String; search_kwargs...)
+    # first, populate the font family attribute list using all known fonts
+    attr_list = Attributes(populate_font_family(family; search_kwargs...))
+
+    for style in (:regular, :italic, :bold, :bold_italic)
+        haskey(attr_list, style) && continue
+        try
+            font = search_font(family, string(style))
+            attr_list[style] = font
+        catch e
+            @warn "Could not find a `$style` style for the font family $family, continuing."
+        end
+    end
+
+    return FontFamily(family, attr_list)
+end
+
+Base.propertynames(family::FontFamily) = (:family, propertynames(family.attributes)...)
+
+function Base.getproperty(family::FontFamily, name::Symbol)
+    if name in fieldnames(FontFamily)
+        return getfield(family, name)
+    else
+        return Base.getproperty(Base.getfield(family, :attributes), name)
+    end
+end
+
+function Base.setproperty!(family::FontFamily, name::Symbol, x)
+    Base.setproperty!(family.attributes, name, x)
+end
+
+Base.getindex(family::FontFamily, args...) = Base.getindex(family.attributes, args...)
+
+Base.setindex!(family::FontFamily, args...) = Base.setindex!(family.attributes, args...)
