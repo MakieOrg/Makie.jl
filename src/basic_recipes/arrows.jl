@@ -114,7 +114,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
         arrowtail, color, linecolor, linestyle, linewidth, lengthscale,
         arrowhead, arrowsize, arrowcolor, quality,
         # passthrough
-        diffuse, specular, shininess, linecap, linecap_length,
+        diffuse, specular, shininess, linecap,
         fxaa, ssao, transparency, visible, inspectable
     )
 
@@ -134,16 +134,6 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
                 Point2f(p1 .- shift) => Point2f(p1 .- shift .+ (dir .* s))
             end
         end
-
-        # Experimental - shorten line to not overlap with marker
-        # cap_len = map(linecap_length, arrowsize) do len, size
-        #     if len == automatic
-        #         h = last(size)
-        #         return Float32(0.5 - 0.5h)
-        #     else
-        #         return Float32(len)
-        #     end
-        # end
 
         scene = parent_scene(arrowplot)
         rotations = directions
@@ -173,8 +163,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
             color = line_c, colormap = colormap, linestyle = linestyle,
             linewidth = @lift($linewidth === automatic ? 1f0 : $linewidth),
             fxaa = fxaa_bool, inspectable = inspectable, 
-            linecap = linecap, # linecap_length = cap_len,
-            transparency = transparency, visible = visible,
+            linecap = linecap, transparency = transparency, visible = visible,
         )
         scatter!(
             arrowplot,
