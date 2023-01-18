@@ -261,7 +261,7 @@ end
 
     W, H = 400, 400
     N = 51
-    x = collect(range(0.0, 2π, N))
+    x = collect(range(0.0, 2π, length=N))
     y = sin.(x)
     fig, ax, pl = scatter(x, y, figure = (; resolution = (W, H)));
     hidedecorations!(ax)
@@ -277,6 +277,7 @@ end
     end
 
     # check that picking works through the resized GL buffers
+    GLMakie.Makie.colorbuffer(screen)  # force render
     # - point pick
     point_px = project_sp(ax.scene, Point2f(x[end÷2], y[end÷2]))
     elem, idx = pick(ax.scene, point_px)
@@ -290,15 +291,18 @@ end
     points = Set(Int(p[2]) for p in picks if p[1] isa Scatter)
     @test points == Set(((N+1)÷2):N)
 
+    # render at lower resolution
     screen = display(GLMakie.Screen(visible = false, scalefactor = 2, px_per_unit = 1), fig)
     @test screen.scalefactor[] === 2f0
     @test screen.px_per_unit[] === 1f0
     @test size(screen.framebuffer) == (W, H)
 
+    # decrease the scale factor after-the-fact
     screen.scalefactor[] = 1
     sleep(0.1)  # TODO: Necessary?? Are observable callbacks asynchronous?
     @test GLMakie.window_size(screen.glscreen) == (W, H)
 
+    # save images of different resolutions
     mktemp() do path, io
         close(io)
         file = File{format"PNG"}(path)
@@ -328,7 +332,7 @@ end
         # Only continue if running within an Xvfb environment where the setting is
         # empty by default. Overriding during a user's session could be problematic
         # (i.e. if running interactively rather than in CI).
-        inxvfb = hasxrdb ? isempty(readchomp(`xrdb -get Xft.dpi`)) : false
+        inxvfb = hasxrdb ? isempty(readchomp(`xrdb -query`)) : false
 
         if hasxrdb && inxvfb
             # GLFW looks for Xft.dpi resource setting. Spawn a temporary xsettingsd daemon
