@@ -196,8 +196,10 @@ function Scene(;
         if !isnothing(lightposition)
             position = if lightposition === :eyeposition
                 scene.camera.eyeposition
-            else
+            elseif lightposition isa Vec3
                 m_theme.lightposition
+            else
+                error("Wrong lightposition type, use `:eyeposition` or `Vec3f(...)`")
             end
             push!(scene.lights, PointLight(position, RGBf(1, 1, 1)))
         end

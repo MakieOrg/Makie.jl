@@ -120,8 +120,26 @@ const minimal_default = Attributes(
 
 const CURRENT_DEFAULT_THEME = deepcopy(minimal_default)
 
+# Basically like deepcopy but while merging it into another Attribute dict
+function merge_without_obs!(result::Attributes, theme::Attributes)
+    dict = attributes(result)
+    for (key, value) in theme
+        if !haskey(dict, key)
+            dict[key] = Observable{Any}(to_value(value)) # the deepcopy part for observables
+        else
+            current_value = result[key]
+            if value isa Attributes && current_value isa Attributes
+                # if nested attribute, we merge recursively
+                merge_without_obs!(current_value, value)
+            end
+            # we're good! result already has a value, can ignore theme
+        end
+    end
+    return result
+end
+
 function current_default_theme(; kw_args...)
-    return merge!(Attributes(kw_args), CURRENT_DEFAULT_THEME)
+    return merge_without_obs!(Attributes(kw_args), CURRENT_DEFAULT_THEME)
 end
 
 """
@@ -155,7 +173,7 @@ end
 ```
 """
 function with_theme(f, theme = Theme(); kwargs...)
-    previous_theme = Makie.current_default_theme()
+    previous_theme = copy(CURRENT_DEFAULT_THEME)
     try
         set_theme!(theme; kwargs...)
         f()

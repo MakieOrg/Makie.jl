@@ -154,7 +154,10 @@ Available algorithms are:
         colorrange = (0, 1),
         fxaa = true,
         inspectable = theme(scene, :inspectable),
-        space = :data
+        space = :data,
+        diffuse=0.4,
+        specular=0.2,
+        shininess=32.0f0
     )
 end
 
@@ -210,7 +213,10 @@ Plots a surface, where `(x, y)`  define a grid whose heights are the entries in 
         fxaa = true,
         invert_normals = false,
         inspectable = theme(scene, :inspectable),
-        space = :data
+        space = :data,
+        diffuse = 0.4,
+        specular = 0.2,
+        shininess = 32f0,
     )
 end
 
@@ -348,7 +354,10 @@ Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [Geome
         fxaa = true,
         inspectable = theme(scene, :inspectable),
         cycle = [:color => :patchcolor],
-        space = :data
+        space = :data,
+        diffuse = 0.4,
+        specular = 0.2,
+        shininess = 32f0,
     )
 end
 
@@ -471,6 +480,9 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
         fxaa = true,
         inspectable = theme(scene, :inspectable),
         cycle = [:color],
+        diffuse = 0.4,
+        specular = 0.2,
+        shininess = 32f0,
     )
 end
 
@@ -623,6 +635,9 @@ end
             quality = 32,
             inspectable = theme(scene, :inspectable),
             markerspace = :pixel,
+            diffuse=0.4,
+            specular=0.2,
+            shininess=32.0f0
         )
     )
     attr[:fxaa] = automatic

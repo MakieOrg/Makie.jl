@@ -296,10 +296,10 @@ function __init__()
     # This mutates module-level state so it could mess up other libraries using
     # GridLayoutBase at the same time as Makie, which is unlikely, though
     GridLayoutBase.DEFAULT_COLGAP_GETTER[] = function()
-        return to_value(Makie.theme(:colgap; default=GridLayoutBase.DEFAULT_COLGAP[]))
+        return convert(Float64, to_value(Makie.theme(:colgap; default=GridLayoutBase.DEFAULT_COLGAP[])))
     end
     GridLayoutBase.DEFAULT_ROWGAP_GETTER[] = function()
-        return to_value(Makie.theme(:rowgap; default=GridLayoutBase.DEFAULT_ROWGAP[]))
+        return convert(Float64, to_value(Makie.theme(:rowgap; default=GridLayoutBase.DEFAULT_ROWGAP[])))
     end
     # fonts aren't cacheable by precompilation, so we need to empty it on load!
     empty!(FONT_CACHE)
@@ -327,7 +327,7 @@ export arrows! , heatmap! , image! , lines! , linesegments! , mesh! , meshscatte
 
 export PointLight, EnvironmentLight, AmbientLight, SSAO
 
-include("precompiles.jl")
+# include("precompiles.jl")
 
 
 end # module

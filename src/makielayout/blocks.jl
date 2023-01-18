@@ -67,8 +67,7 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
 
         function Makie.default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
             sceneattrs = scene === nothing ? Attributes() : theme(scene)
-            curdeftheme = Makie.current_default_theme()
-
+            curdeftheme = deepcopy(CURRENT_DEFAULT_THEME)
             $(make_attr_dict_expr(attrs, :sceneattrs, :curdeftheme))
         end
 
@@ -318,7 +317,6 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
     default_attrs = default_attribute_values(T, topscene)
     typekey_scene_attrs = get(theme(topscene), nameof(T), Attributes())::Attributes
     typekey_attrs = theme(nameof(T); default=Attributes())::Attributes
-
     # make a final attribute dictionary using different priorities
     # for the different themes
     attributes = Dict{Symbol, Any}()
