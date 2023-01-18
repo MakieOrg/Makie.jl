@@ -27,6 +27,12 @@ void main()
     vec4 anchor;
     float thickness;
 
+    // apply offset
+    point1_screen -= get_length_offset_start() * dir;
+    point2_screen += get_length_offset_end() * dir;
+    point1_clip = vec4(point1_screen / get_resolution(), point1_clip.zw);
+    point2_clip = vec4(point2_screen / get_resolution(), point2_clip.zw);
+
     if(position.x == 0.0){
         anchor = point1_clip;
         frag_color = tovec4(get_color_start());

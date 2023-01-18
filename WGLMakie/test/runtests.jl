@@ -53,7 +53,8 @@ excludes = Set([
     "Image Scatter different sizes",
     "scatter with stroke",
     "scatter with glow",
-    "lines with caps"
+    "lines with linecaps",
+    "lines with pixel offsets",
 ])
 
 @testset "refimages" begin

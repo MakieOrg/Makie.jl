@@ -55,6 +55,33 @@ function create_shader(scene::Scene, plot::Union{Lines,LineSegments})
         end
     end
 
+
+    attribute = lift(plot[:length_offset], plot[1]) do x, ps
+        x = convert_attribute(x, Key{:length_offset}(), key"lines"())
+        if plot isa LineSegments
+            return x
+        elseif isscalar(x)
+            return x
+        else
+            y = map(eachindex(x)) do i
+                discriminator = (i == 1) || (i == length(ps)) || 
+                    isnan(ps[i-1]) || isnan(ps[i+1])
+                discriminator * x[i]
+            end
+            return reinterpret(eltype(y), TupleView{2, 1}(y))
+        end
+    end
+    if isscalar(attribute)
+        uniforms[:length_offset] = attribute
+        uniforms[Symbol("length_offset_start")] = attribute
+        uniforms[Symbol("length_offset_end")] = attribute
+    else
+        per_instance[Symbol("length_offset_start")] = Buffer(lift(x -> x[startr[]], attribute))
+        per_instance[Symbol("length_offset_end")] = Buffer(lift(x -> x[endr[]], attribute))
+    end
+
+
+
     uniforms[:resolution] = to_value(scene.camera.resolution) # updates in JS
 
     uniforms[:model] = plot.model
