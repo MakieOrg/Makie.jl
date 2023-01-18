@@ -3,7 +3,7 @@
 ################################################################################
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Union{Lines, LineSegments}))
-    @get_attribute(primitive, (color, linewidth, linestyle, linecap))
+    @get_attribute(primitive, (color, linewidth, linestyle, linecap, length_offset))
     linestyle = Makie.convert_attribute(linestyle, Makie.key"linestyle"())
     ctx = screen.context
     model = primitive[:model][]
@@ -29,6 +29,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
 
     space = to_value(get(primitive, :space, :data))
     projected_positions = project_position.(Ref(scene), Ref(space), positions, Ref(model))
+    projected_positions = apply_line_offsets(projected_positions, length_offset, primitive)
 
     if color isa AbstractArray{<: Number}
         color = numbers_to_colors(color, primitive)
@@ -77,6 +78,41 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         draw_single(primitive, ctx, projected_positions)
     end
     nothing
+end
+
+function apply_line_offsets(ps, off::Real, ::Lines)
+    out = copy(ps)
+    out[1]   -= off * normalize(ps[2] - ps[1])
+    out[end] += off * normalize(ps[end] - ps[end-1])
+    return out
+end
+
+function apply_line_offsets(ps, off::Vector, ::Lines)
+    out = copy(ps)
+    out[1] -= off[1] * normalize(ps[2] - ps[1])
+    for i in 2:length(ps) - 1
+        # This relies on false * NaN = 0. Note false * number * NaN = NaN
+        out[i] += isnan(ps[i+1]) * (off[i] * normalize(ps[i] - ps[i-1]))
+        out[i] -= isnan(ps[i-1]) * (off[i] * normalize(ps[i+1] - ps[i]))
+    end
+    out[end] += off[end] * normalize(ps[end] - ps[end-1])
+    return out
+end
+
+function apply_line_offsets(ps, off::Real, ::LineSegments)
+    out = copy(ps)
+    for i in eachindex(ps)
+        out[i] += off * normalize(ps[i] - ps[i + (2(i % 2) - 1)])
+    end
+    return out
+end
+
+function apply_line_offsets(ps, off::Vector, ::LineSegments)
+    out = copy(ps)
+    for i in eachindex(ps)
+        out[i] += off[i] * normalize(ps[i] - ps[i + (2(i % 2) - 1)])
+    end
+    return out
 end
 
 function draw_single(primitive::Lines, ctx, positions)
