@@ -60,7 +60,7 @@ function limits_to_uvmesh(plot)
         positions = Buffer(lift(rect-> decompose(Point2f, rect), rect))
         faces = Buffer(lift(rect -> decompose(GLTriangleFace, rect), rect))
         uv = Buffer(lift(decompose_uv, rect))
-    else 
+    else
         grid(x, y, trans, space) = Makie.matrix_grid(p-> apply_transform(trans, p, space), x, y, zeros(length(x), length(y)))
         rect = lift((x, y) -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), (length(x), length(y))), px, py)
         positions = Buffer(lift(grid, px, py, t, get(plot, :space, :data)))
@@ -128,9 +128,9 @@ function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
     return draw_mesh(mscene, mesh, plot_attributes;
                      uniform_color=color, color=false,
                      normals=Vec3f(0), shading=false,
-                     diffuse=plot.diffuse, specular=plot.specular,
+                     diffuse=Vec3f(0), specular=Vec3f(0),
+                     shininess=0f0,
                      colorrange=haskey(plot, :colorrange) ? plot.colorrange : false,
-                     shininess=plot.shininess,
                      highclip=get_color(plot, :highclip),
                      lowclip=get_color(plot, :lowclip),
                      nan_color=get_color(plot, :nan_color),
