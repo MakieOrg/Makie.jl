@@ -30,8 +30,8 @@ void main()
     // apply offset
     point1_screen -= get_length_offset_start() * dir;
     point2_screen += get_length_offset_end() * dir;
-    point1_clip = vec4(point1_screen / get_resolution(), point1_clip.zw);
-    point2_clip = vec4(point2_screen / get_resolution(), point2_clip.zw);
+    point1_clip = vec4(point1_screen / get_resolution(), point1_clip.z / point1_clip.w, 1.0);
+    point2_clip = vec4(point2_screen / get_resolution(), point2_clip.z / point2_clip.w, 1.0);
 
     if(position.x == 0.0){
         anchor = point1_clip;
