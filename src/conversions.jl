@@ -1290,4 +1290,9 @@ end
 
 convert_attribute(value::Real, ::key"depth_shift") = Float32(value)
 
+convert_attribute(value::Real, ::key"length_offset", ::key"lines") = Float32(value)
+convert_attribute(value::Real, ::key"length_offset", ::key"linesegments") = Float32(value)
+convert_attribute(value::Vector{<: Real}, ::key"length_offset", ::key"lines") = Float32.(value)
+convert_attribute(value::Vector{<: Real}, ::key"length_offset", ::key"linesegments") = Float32.(value)
+
 convert_attribute(cap::Nothing, ::key"linecap") = :butt

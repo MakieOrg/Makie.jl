@@ -63,7 +63,7 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         color_norm          = nothing
         color               = (color_map == nothing ? default(RGBA, s) : nothing) => GLBuffer
         thickness           = 2f0 => GLBuffer
-        linecap_length      = thickness => GLBuffer
+        length_offset       = 0f0 => GLBuffer
         pattern             = nothing
         fxaa                = false
         # Duplicate the vertex indices on the ends of the line, as our geometry
@@ -112,7 +112,7 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         color_map           = nothing => Texture
         color_norm          = nothing
         thickness           = 2f0 => GLBuffer
-        linecap_length      = thickness => GLBuffer
+        length_offset       = 0f0 => GLBuffer
         shape               = RECTANGLE
         pattern             = nothing
         fxaa                = false

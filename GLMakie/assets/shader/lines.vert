@@ -15,8 +15,8 @@ in float lastlen;
 {{color_map_type}}  color_map;
 {{intensity_type}}  intensity;
 {{color_norm_type}} color_norm;
-{{thickness_type}} thickness;
-{{linecap_length_type}} linecap_length;
+{{thickness_type}}  thickness;
+{{length_offset_type}} length_offset;
 
 vec4 _color(vec3 color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len);
 vec4 _color(vec4 color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len);
@@ -32,7 +32,7 @@ out vec4 g_color;
 out float g_lastlen;
 out int g_valid_vertex;
 out float g_thickness;
-out float g_linecap_length;
+out float g_length_offset;
 
 vec4 getindex(sampler2D tex, int index);
 vec4 getindex(sampler1D tex, int index);
@@ -52,7 +52,7 @@ void main()
     g_id = uvec2(objectid, index+1);
     g_valid_vertex = get_valid_vertex(valid_vertex);
     g_thickness = thickness;
-    g_linecap_length = linecap_length;
+    g_length_offset = length_offset;
 
     g_color = _color(color, intensity, color_map, color_norm, index, total_length);
     gl_Position = projection*view*model*to_vec4(vertex);

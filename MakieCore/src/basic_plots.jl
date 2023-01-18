@@ -231,6 +231,7 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
 - `linestyle::Union{Nothing, Symbol, Vector} = nothing` sets the pattern of the line (e.g. `:solid`, `:dot`, `:dashdot`)
 - `linewidth::Real = 1.5` sets the width of the line in pixel units.
 - `linecap::Union{Nothing, Symbol} = :square` sets the line cap style. Options include nothing (no cap), :square (extend line by one linewidth) and `:round`.
+- `length_offset::Union{Real, Vector} = 0` sets a pixel scale offset for the end points of a line. If given as a Vector there should be two values.
 
 ### Generic
 
@@ -252,6 +253,7 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
         default_theme(scene)...,
         linewidth = theme(scene, :linewidth),
         linecap = theme(scene, :linecap),
+        length_offset = 0,
         color = theme(scene, :linecolor),
         colormap = theme(scene, :colormap),
         colorrange = automatic,
@@ -279,6 +281,7 @@ Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
 - `linestyle::Union{Nothing, Symbol, Vector} = nothing` sets the pattern of the line (e.g. `:solid`, `:dot`, `:dashdot`)
 - `linewidth::Real = 1.5` sets the width of the line in pixel units.
 - `linecap::Union{Nothing, Symbol} = :square` sets the line cap style. Options include nothing (no cap), :square (extend line by one linewidth) and `:round`.
+- `length_offset::Union{Real, Vector} = 0` sets a pixel scale offset for the end points of each linesegments. If given as a Vector there should one value per point.
 
 ### Generic
 
@@ -628,7 +631,6 @@ end
             inspectable = theme(scene, :inspectable),
             markerspace = :pixel,
             linecap = nothing,
-            linecap_length = automatic
         )
     )
     attr[:fxaa] = automatic

@@ -12,7 +12,7 @@ in float g_lastlen[];
 in uvec2 g_id[];
 in int g_valid_vertex[];
 in float g_thickness[];
-in float g_linecap_length[];
+in float g_length_offset[];
 
 out vec4 f_color;
 out vec2 f_uv;
@@ -33,6 +33,7 @@ uniform int linecap;
 #define LINE              0
 #define CIRCLE            4
 #define RECTANGLE         5
+
 
 
 vec2 screen_space(vec4 vertex)
@@ -115,6 +116,10 @@ void main(void)
         v2 = normalize(p3 - p2);
     }
 
+    // apply offset if line terminates
+    p1 = p1 - 2 * float(!isvalid[0]) * g_length_offset[1] * v1;
+    p2 = p2 + 2 * float(!isvalid[3]) * g_length_offset[2] * v1;
+
     // determine the normal of each of the 3 segments (previous, current, next)
     vec2 n0 = vec2(-v0.y, v0.x);
     vec2 n1 = vec2(-v1.y, v1.x);
@@ -181,24 +186,16 @@ void main(void)
         length_b = thickness_aa2;
     }
 
-    vec2 linecap_gap1;
-    vec2 linecap_gap2;
-    if (linecap == RECTANGLE){
-        // shorten or extend line
-        linecap_gap1 = g_linecap_length[1] * float(!isvalid[0]) * v1;
-        linecap_gap2 = g_linecap_length[2] * float(!isvalid[3]) * v1;
-    } else {
-        // shortens line if g_linecap_length is negative and the line terminates
-        linecap_gap1 = min(g_linecap_length[1], 0) * float(!isvalid[0]) * v1;
-        linecap_gap2 = min(g_linecap_length[2], 0) * float(!isvalid[3]) * v1;
-    }
+    // extend line if we have a rectangular/square cap
+    vec2 linecap_gap1 = g_thickness[1] * float(!isvalid[0]) * float(linecap == RECTANGLE) * v1;
+    vec2 linecap_gap2 = g_thickness[2] * float(!isvalid[3]) * float(linecap == RECTANGLE) * v1;
 
     emit_vertex(p1 - linecap_gap1 + length_a * miter_a, -thickness_aa1, 1, ratio);
     emit_vertex(p1 - linecap_gap1 - length_a * miter_a,  thickness_aa1, 1, ratio);
     emit_vertex(p2 + linecap_gap2 + length_b * miter_b, -thickness_aa2, 2, ratio);
     emit_vertex(p2 + linecap_gap2 - length_b * miter_b,  thickness_aa2, 2, ratio);
 
-    // generate quads for line cap
+    // generate quads for round line cap
     if (linecap == CIRCLE) {
         /*
         Line with line caps:
@@ -217,28 +214,26 @@ void main(void)
         if (!isvalid[0]) {
             // there is no line before this
             vec2 off_n = thickness_aa1 * n1;
-            vec2 off_l = sign(g_linecap_length[1]) * (abs(g_linecap_length[1]) + AA_THICKNESS) * v1;
-            float du = 0.5 * AA_THICKNESS / abs(g_linecap_length[1]);
-            float dv = 0.5 * AA_THICKNESS / g_thickness[1];
+            vec2 off_l = thickness_aa1 * v1;
+            float duv = 0.5 * AA_THICKNESS / g_thickness[1];
 
             EndPrimitive();
-            emit_vertex(p1 + off_n - off_l, vec2(-du, -dv),  1, linecap);
-            emit_vertex(p1 - off_n - off_l, vec2(-du, 1+dv), 1, linecap);
-            emit_vertex(p1 + off_n,         vec2(0.5, -dv),  1, linecap);
-            emit_vertex(p1 - off_n,         vec2(0.5, 1+dv), 1, linecap);
+            emit_vertex(p1 + off_n - off_l, vec2(-duv, -duv),  1, linecap);
+            emit_vertex(p1 - off_n - off_l, vec2(-duv, 1+duv), 1, linecap);
+            emit_vertex(p1 + off_n,         vec2(0.5,  -duv),  1, linecap);
+            emit_vertex(p1 - off_n,         vec2(0.5,  1+duv), 1, linecap);
         }
         if (!isvalid[3]) {
             // there is no line after this
             vec2 off_n = thickness_aa2 * n1;
-            vec2 off_l = sign(g_linecap_length[2]) * (abs(g_linecap_length[2]) + AA_THICKNESS) * v1;
-            float du = 0.5 * AA_THICKNESS / abs(g_linecap_length[2]);
-            float dv = 0.5 * AA_THICKNESS / g_thickness[2];
+            vec2 off_l =thickness_aa2 * v1;
+            float duv = 0.5 * AA_THICKNESS / g_thickness[2];
 
             EndPrimitive();
-            emit_vertex(p2 + off_n,         vec2(0.5,   -dv), 2, linecap);
-            emit_vertex(p2 - off_n,         vec2(0.5,  1+dv), 2, linecap);
-            emit_vertex(p2 + off_n + off_l, vec2(1+dv,  -dv), 2, linecap);
-            emit_vertex(p2 - off_n + off_l, vec2(1+dv, 1+dv), 2, linecap);
+            emit_vertex(p2 + off_n,         vec2(0.5,    -duv), 2, linecap);
+            emit_vertex(p2 - off_n,         vec2(0.5,   1+duv), 2, linecap);
+            emit_vertex(p2 + off_n + off_l, vec2(1+duv,  -duv), 2, linecap);
+            emit_vertex(p2 - off_n + off_l, vec2(1+duv, 1+duv), 2, linecap);
         }
     }
 }

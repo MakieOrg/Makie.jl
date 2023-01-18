@@ -11,7 +11,7 @@ uniform int linecap;
 in vec4 g_color[];
 in uvec2 g_id[];
 in float g_thickness[];
-in float g_linecap_length[];
+in float g_length_offset[];
 
 out float f_thickness;
 out vec4 f_color;
@@ -69,11 +69,18 @@ void main(void)
 
     float thickness_aa0 = g_thickness[0]+AA_THICKNESS;
     float thickness_aa1 = g_thickness[1]+AA_THICKNESS;
-    // determine the direction of each of the 3 segments (previous, current, next)
+    
+    // determine the direction of each of the current segment
     vec2 vun0 = p1 - p0;
     float vnorm = length(vun0);
     vec2 v0 = vun0 / vnorm;
-    // determine the normal of each of the 3 segments (previous, current, next)
+
+    // apply offset and adjust norm
+    p0 = p0 - 2 * g_length_offset[0] * v0;
+    p1 = p1 + 2 * g_length_offset[1] * v0;
+    vnorm = vnorm + 2 * (g_length_offset[0] + g_length_offset[1]);
+
+    // determine the normal of each of the current segment
     vec2 n0 = vec2(-v0.y, v0.x);
     
     // Hack to remove anti-aliasing border with circle (Assuming 100 as textureSize)
@@ -81,17 +88,9 @@ void main(void)
     // Map 0 .. pattern_length pixels to 0 .. 1 in uv space
     float u_max = 0.5 * vnorm / pattern_length + u_min;
 
-    vec2 linecap_gap0;
-    vec2 linecap_gap1;
-    if (linecap == RECTANGLE){
-        // shorten or extend line
-        linecap_gap0 = g_linecap_length[0] * v0;
-        linecap_gap1 = g_linecap_length[1] * v0;
-    } else {
-        // shortens line if g_linecap_length is negative and the line terminates
-        linecap_gap0 = min(g_linecap_length[0], 0) * v0;
-        linecap_gap1 = min(g_linecap_length[1], 0) * v0;
-    }
+    // extend line if square cap is used
+    vec2 linecap_gap0 = float(linecap == RECTANGLE) * g_thickness[0] * v0;
+    vec2 linecap_gap1 = float(linecap == RECTANGLE) * g_thickness[1] * v0;
 
     emit_vertex(p0 - linecap_gap0 + thickness_aa0 * n0, vec2(u_min, -thickness_aa0), 0);
     emit_vertex(p0 - linecap_gap0 - thickness_aa0 * n0, vec2(u_min,  thickness_aa0), 0);
@@ -115,30 +114,28 @@ void main(void)
         */
 
         vec2 off_n, off_l;
-        float du, dv;
+        float duv;
 
         // start of line segment
         off_n = thickness_aa0 * n0;
-        off_l = sign(g_linecap_length[0]) * (abs(g_linecap_length[0]) + AA_THICKNESS) * v0;
-        du = 0.5 * AA_THICKNESS / abs(g_linecap_length[0]);
-        dv = 0.5 * AA_THICKNESS / g_thickness[0];
+        off_l = thickness_aa0 * v0;
+        duv = 0.5 * AA_THICKNESS / g_thickness[0];
 
         EndPrimitive();
-        emit_vertex(p0 + off_n - off_l, vec2(-du, -dv),  0, linecap);
-        emit_vertex(p0 - off_n - off_l, vec2(-du, 1+dv), 0, linecap);
-        emit_vertex(p0 + off_n,         vec2(0.5, -dv),  0, linecap);
-        emit_vertex(p0 - off_n,         vec2(0.5, 1+dv), 0, linecap);
+        emit_vertex(p0 + off_n - off_l, vec2(-duv,  -duv), 0, linecap);
+        emit_vertex(p0 - off_n - off_l, vec2(-duv, 1+duv), 0, linecap);
+        emit_vertex(p0 + off_n,         vec2(0.5,   -duv), 0, linecap);
+        emit_vertex(p0 - off_n,         vec2(0.5,  1+duv), 0, linecap);
 
         // end of line segment
         off_n = thickness_aa1 * n0;
-        off_l = sign(g_linecap_length[1]) * (abs(g_linecap_length[1]) + AA_THICKNESS) * v0;
-        du = 0.5 * AA_THICKNESS / abs(g_linecap_length[1]);
-        dv = 0.5 * AA_THICKNESS / g_thickness[1];
+        off_l = thickness_aa1 * v0;
+        duv = 0.5 * AA_THICKNESS / g_thickness[1];
 
         EndPrimitive();
-        emit_vertex(p1 + off_n,         vec2(0.5,   -dv), 1, linecap);
-        emit_vertex(p1 - off_n,         vec2(0.5,  1+dv), 1, linecap);
-        emit_vertex(p1 + off_n + off_l, vec2(1+dv,  -dv), 1, linecap);
-        emit_vertex(p1 - off_n + off_l, vec2(1+dv, 1+dv), 1, linecap);
+        emit_vertex(p1 + off_n,         vec2(0.5,    -duv), 1, linecap);
+        emit_vertex(p1 - off_n,         vec2(0.5,   1+duv), 1, linecap);
+        emit_vertex(p1 + off_n + off_l, vec2(1+duv,  -duv), 1, linecap);
+        emit_vertex(p1 - off_n + off_l, vec2(1+duv, 1+duv), 1, linecap);
     }
 }

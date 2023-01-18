@@ -8,7 +8,7 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 in float lastlen;
 {{vertex_type}} vertex;
 {{thickness_type}} thickness;
-{{linecap_length_type}} linecap_length;
+{{length_offset_type}} length_offset;
 
 {{color_type}} color;
 {{color_map_type}}  color_map;
@@ -21,7 +21,7 @@ uniform float depth_shift;
 out uvec2 g_id;
 out vec4 g_color;
 out float g_thickness;
-out float g_linecap_length;
+out float g_length_offset;
 
 vec4 getindex(sampler2D tex, int index);
 vec4 getindex(sampler1D tex, int index);
@@ -45,7 +45,7 @@ void main()
     g_id = uvec2(objectid, index+1);
     g_color = to_color(color, color_map, color_norm, index);
     g_thickness = thickness;
-    g_linecap_length = linecap_length;
+    g_length_offset = length_offset;
     gl_Position = projectionview * model * to_vec4(vertex);
     gl_Position.z += gl_Position.w * depth_shift;
 }
