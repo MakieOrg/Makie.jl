@@ -5,6 +5,9 @@
 
 - Fixed an issue where `poly` plots with `Vector{<: MultiPolygon}` inputs with per-polygon color were mistakenly rendered as meshes using CairoMakie. [#2590](https://github.com/MakieOrg/Makie.jl/pulls/2478)
 - Fixed a small typo which caused an error in the `Stepper` constructor. [#2600](https://github.com/MakieOrg/Makie.jl/pulls/2478)
+- GLMakie has gained support for HiDPI (aka Retina) screens.
+  This also enables saving images with higher resolution than screen pixel dimensions.
+  [#2544](https://github.com/MakieOrg/Makie.jl/pull/2544)
 
 ## v0.19.1
 
