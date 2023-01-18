@@ -34,7 +34,7 @@ gen_defaults! dict begin
 end
 """
 macro gen_defaults!(dict, args)
-    args.head == :block || error("second argument needs to be a block of form
+    args.head === :block || error("second argument needs to be a block of form
     begin
         a = 55
         b = a * 2 # variables, like a, will get made visible in local scope
@@ -54,14 +54,14 @@ macro gen_defaults!(dict, args)
         doc_strings           = :()
         if Meta.isexpr(elem, :(=))
             key_name, value_expr = elem.args
-            if isa(key_name, Expr) && key_name.head == :(::) # we need to convert to a julia type
+            if isa(key_name, Expr) && key_name.head === :(::) # we need to convert to a julia type
                 key_name, convert_target = key_name.args
                 convert_target = :(GLAbstraction.signal_convert($convert_target, $key_name))
             else
                 convert_target = :($key_name)
             end
             key_sym = Expr(:quote, key_name)
-            if isa(value_expr, Expr) && value_expr.head == :call && value_expr.args[1] == :(=>)  # we might need to insert a convert target
+            if isa(value_expr, Expr) && value_expr.head === :call && value_expr.args[1] === :(=>)  # we might need to insert a convert target
                 value_expr, target = value_expr.args[2:end]
                 undecided = []
                 if isa(target, Expr)

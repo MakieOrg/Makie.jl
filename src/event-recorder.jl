@@ -10,7 +10,7 @@ function record_events(f, scene::Scene, path::String)
     result = Vector{Pair{Float64,Pair{Symbol,Any}}}()
     for field in fieldnames(Events)
         # These are not Observables
-        (field == :mousebuttonstate || field == :keyboardstate) && continue
+        (field === :mousebuttonstate || field === :keyboardstate) && continue
         on(getfield(scene.events, field); priority=typemax(Int)) do value
             value = isa(value, Set) ? copy(value) : value
             push!(result, time() => (field => value))
@@ -35,7 +35,7 @@ function replay_events(f, scene::Scene, path::String)
     sort!(events; by=first)
     for i in 1:length(events)
         t1, (field, value) = events[i]
-        (field == :mousebuttonstate || field == :keyboardstate) && continue
+        (field === :mousebuttonstate || field === :keyboardstate) && continue
         Base.invokelatest() do
             return getfield(scene.events, field)[] = value
         end

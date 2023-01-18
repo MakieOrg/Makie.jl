@@ -476,16 +476,16 @@ map_texture_paramers(s::NTuple{N, Symbol}) where {N} = map(map_texture_paramers,
 
 function map_texture_paramers(s::Symbol)
 
-    s == :clamp_to_edge && return GL_CLAMP_TO_EDGE
-    s == :mirrored_repeat && return GL_MIRRORED_REPEAT
-    s == :repeat && return GL_REPEAT
+    s === :clamp_to_edge && return GL_CLAMP_TO_EDGE
+    s === :mirrored_repeat && return GL_MIRRORED_REPEAT
+    s === :repeat && return GL_REPEAT
 
-    s == :linear && return GL_LINEAR
-    s == :nearest && return GL_NEAREST
-    s == :nearest_mipmap_nearest && return GL_NEAREST_MIPMAP_NEAREST
-    s == :linear_mipmap_nearest && return GL_LINEAR_MIPMAP_NEAREST
-    s == :nearest_mipmap_linear && return GL_NEAREST_MIPMAP_LINEAR
-    s == :linear_mipmap_linear && return GL_LINEAR_MIPMAP_LINEAR
+    s === :linear && return GL_LINEAR
+    s === :nearest && return GL_NEAREST
+    s === :nearest_mipmap_nearest && return GL_NEAREST_MIPMAP_NEAREST
+    s === :linear_mipmap_nearest && return GL_LINEAR_MIPMAP_NEAREST
+    s === :nearest_mipmap_linear && return GL_NEAREST_MIPMAP_LINEAR
+    s === :linear_mipmap_linear && return GL_LINEAR_MIPMAP_LINEAR
 
     error("$s is not a valid texture parameter")
 end
@@ -498,7 +498,7 @@ function TextureParameters(T, NDim;
         z_repeat  = x_repeat, #wrap_r
         anisotropic = 1f0
     )
-    T <: Integer && (minfilter == :linear || magfilter == :linear) && error("Wrong Texture Parameter: Integer texture can't interpolate. Try :nearest")
+    T <: Integer && (minfilter === :linear || magfilter === :linear) && error("Wrong Texture Parameter: Integer texture can't interpolate. Try :nearest")
     repeat = (x_repeat, y_repeat, z_repeat)
     swizzle_mask = if T <: Gray
         GLenum[GL_RED, GL_RED, GL_RED, GL_ONE]

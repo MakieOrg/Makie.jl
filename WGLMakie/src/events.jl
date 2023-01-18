@@ -31,17 +31,17 @@ function code_to_keyboard(code::String)
     sym = Symbol(button)
     return if isdefined(Keyboard, sym)
         return getfield(Keyboard, sym)
-    elseif sym == :backquote
+    elseif sym === :backquote
         return Keyboard.grave_accent
-    elseif sym == :pageup
+    elseif sym === :pageup
         return Keyboard.page_up
-    elseif sym == :pagedown
+    elseif sym === :pagedown
         return Keyboard.page_down
-    elseif sym == :end
+    elseif sym === :end
         return Keyboard._end
-    elseif sym == :capslock
+    elseif sym === :capslock
         return Keyboard.caps_lock
-    elseif sym == :contextmenu
+    elseif sym === :contextmenu
         return Keyboard.menu
     else
         return Keyboard.unknown
