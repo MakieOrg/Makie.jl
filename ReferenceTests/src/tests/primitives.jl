@@ -56,6 +56,37 @@ end
     scene
 end
 
+@reference_test "lines with pixel offsets" begin
+    scene = Scene(resolution = (550, 450))
+    campixel!(scene)
+    # Expected size: 50x20
+    # Expected size: 70x20
+    # Expected size: 70x20 with a tiny bit of overflowing anti-aliasing
+    lines!(scene, Point2f[(100, 100), (150, 100)], linewidth = 20, linecap = nothing)
+    lines!(scene, Point2f[(100, 150), (150, 150)], linewidth = 20, linecap = :square)
+    lines!(scene, Point2f[(100, 200), (150, 200)], linewidth = 20, linecap = :round)
+    # Expected size: 70x20, 70x20
+    # Expected size: 40x20, 90x20
+    # Expected size: 20x20, 70x20
+    # Expected size: 50x20, 50x20
+    lines!(scene, [100, 150, NaN, 200, 250], [250 for _ in 1:5], linewidth = 20, linecap = :round)
+    lines!(scene, [100, 150, NaN, 200, 250], [300 for _ in 1:5], linewidth = 20, linecap = :round,  length_offset = [-10, -20, 0, 0, 20])
+    lines!(scene, [100, 150, NaN, 200, 250], [350 for _ in 1:5], linewidth = 20, linecap = nothing, length_offset = [-10, -20, 0, 0, 20])
+    lines!(scene, [100, 150, NaN, 200, 250], [400 for _ in 1:5], linewidth = 20, linecap = nothing)
+    # Expected: no artifacts from in-line offsets
+    lines!(scene, Point2f[(50, 50), (300, 50), (300, 400)], length_offset = [0, 50, 10], linewidth=20)
+    
+    # repeat with linesegments
+    linesegments!(scene, Point2f[(350, 100), (400, 100)], linewidth = 20, linecap = nothing)
+    linesegments!(scene, Point2f[(350, 150), (400, 150)], linewidth = 20, linecap = :square)
+    linesegments!(scene, Point2f[(350, 200), (400, 200)], linewidth = 20, linecap = :round)
+    linesegments!(scene, 250 .+ [100, 150, 200, 250], [250 for _ in 1:4], linewidth = 20, linecap = :round)
+    linesegments!(scene, 250 .+ [100, 150, 200, 250], [300 for _ in 1:4], linewidth = 20, linecap = :round,  length_offset = [-10, -20, 0, 20])
+    linesegments!(scene, 250 .+ [100, 150, 200, 250], [350 for _ in 1:4], linewidth = 20, linecap = nothing, length_offset = [-10, -20, 0, 20])
+    linesegments!(scene, 250 .+ [100, 150, 200, 250], [400 for _ in 1:4], linewidth = 20, linecap = nothing)
+    scene
+end
+
 @reference_test "scatters" begin
     s = Scene(resolution = (800, 800), camera = campixel!)
 
