@@ -163,13 +163,11 @@ function Scene(;
     )
     m_theme = current_default_theme(; theme..., theme_kw...)
 
-    bg = map(to_color, m_theme.backgroundcolor)
+    bg = Observable{RGBAf}(to_color(m_theme.backgroundcolor[]); ignore_equal_values=true)
 
     wasnothing = isnothing(px_area)
     if wasnothing
-        px_area = lift(m_theme.resolution) do res
-            Recti(0, 0, res)
-        end
+        px_area = Observable(Recti(0, 0, m_theme.resolution[]); ignore_equal_values=true)
     end
 
     cam = camera isa Camera ? camera : Camera(px_area)
