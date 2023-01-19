@@ -292,7 +292,10 @@ function initialize_block!(m::Menu; default = 1)
     on(menuscene.events.scroll, priority=61) do (x, y)
         if is_mouseinside(menuscene)
             t = translation(menuscene)[]
-            new_y = max(min(t[2] - y, 0), height(menuscene.px_area[]) - listheight[])
+            new_y = max(
+                min(t[2] - m.scroll_speed[] * y, 0), 
+                height(menuscene.px_area[]) - listheight[]
+            )
             translate!(menuscene, t[1], new_y, t[3])
             return Consume(true)
         else

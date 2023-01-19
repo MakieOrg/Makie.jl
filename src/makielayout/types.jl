@@ -910,6 +910,8 @@ end
         direction = automatic
         "The default message prompting a selection when i == 0"
         prompt = "Select..."
+        "Speed of scrolling in large Menu lists."
+        scroll_speed = Sys.isapple() ? 1 : 20
     end
 end
 
