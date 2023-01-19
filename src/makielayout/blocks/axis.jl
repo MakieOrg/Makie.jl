@@ -1261,13 +1261,13 @@ Makie.ylims!(ax = current_axis(); low = nothing, high = nothing) = Makie.ylims!(
 Makie.zlims!(ax = current_axis(); low = nothing, high = nothing) = Makie.zlims!(ax, low, high)
 
 
-Makie.xlims!(interval::IntevalSets.ClosedInterval{<: Real}) = xlims!(Makie.current_axis(), interval)
-Makie.ylims!(interval::IntevalSets.ClosedInterval{<: Real}) = ylims!(Makie.current_axis(), interval)
-Makie.zlims!(interval::IntevalSets.ClosedInterval{<: Real}) = zlims!(Makie.current_axis(), interval)
+Makie.xlims!(interval::IntervalSets.ClosedInterval{<: Real}) = xlims!(Makie.current_axis(), interval)
+Makie.ylims!(interval::IntervalSets.ClosedInterval{<: Real}) = ylims!(Makie.current_axis(), interval)
+Makie.zlims!(interval::IntervalSets.ClosedInterval{<: Real}) = zlims!(Makie.current_axis(), interval)
 
-Makie.xlims!(ax, interval::IntevalSets.ClosedInterval{<: Real}) = xlims!(ax, interval.left, interval.right)
-Makie.ylims!(ax, interval::IntevalSets.ClosedInterval{<: Real}) = ylims!(ax, interval.left, interval.right)
-Makie.zlims!(ax, interval::IntevalSets.ClosedInterva{<: Real}l) = zlims!(ax, interval.left, interval.right)
+Makie.xlims!(ax, interval::IntervalSets.ClosedInterval{<: Real}) = xlims!(ax, interval.left, interval.right)
+Makie.ylims!(ax, interval::IntervalSets.ClosedInterval{<: Real}) = ylims!(ax, interval.left, interval.right)
+Makie.zlims!(ax, interval::IntervalSets.ClosedInterval{<: Real}l) = zlims!(ax, interval.left, interval.right)
 
 """
     limits!(ax::Axis, xlims, ylims)
