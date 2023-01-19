@@ -4,6 +4,7 @@
 
 - Fixed an issue where `poly` plots with `Vector{<: MultiPolygon}` inputs with per-polygon color were mistakenly rendered as meshes using CairoMakie. [#2590](https://github.com/MakieOrg/Makie.jl/pulls/2478)
 - Fixed a small typo which caused an error in the `Stepper` constructor. [#2600](https://github.com/MakieOrg/Makie.jl/pulls/2478)
+- Allowed interval notation to be used in limit-setters for Axis and Axis3, i.e., `[x/y/z]lims!([ax], low..high)`.  [#2613](https://github.com/MakieOrg/Makie.jl/pulls/2613)
 
 ## v0.19.1
 
