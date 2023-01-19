@@ -416,18 +416,15 @@ end
 end
 
 @reference_test "Surface with NaN points" begin
-    N = 20
-
-    xs = LinRange(0, 6π, 10)
-    ys = LinRange(0, 6π, 10)
-    zs = sin.(xs) .* sin.(ys')
-
-    zs[3:5, 5:8] .= NaN
-
-    surface(
-        xs, ys, zs;
-        color = zs,
-        colormap = :RdBu,
-        shading = true # test shading as well.
-    )
+    # prepare surface data
+    zs = rand(10, 10)
+    ns = copy(zs)
+    ns[4, 3:6] .= NaN
+    # plot surface
+    f, a, p = surface(1..10, 1..10, ns, colormap = [:lightblue, :lightblue])
+    # plot a wireframe so we can see what's going on, and in which cells.
+    m = CairoMakie.surface2mesh(to_value.(p.converted)...)
+    scatter!(a, m.position, color = isnan.(m.normals), depth_shift = -1f-3)
+    wireframe!(a, m, depth_shift = -1f-3, color = :black)
+    f
 end
