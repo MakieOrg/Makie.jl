@@ -78,7 +78,7 @@ mutable struct Scene <: AbstractScene
     parent::Union{Nothing, Scene}
 
     "[`Events`](@ref) associated with the Scene."
-    events::Events
+    events::Union{Events, TrackedEvents} # TODO just TrackedEvents?
 
     "The current pixel area of the Scene."
     px_area::Observable{Rect2i}
@@ -145,7 +145,7 @@ end
 
 function Scene(;
         px_area::Union{Observable{Rect2i}, Nothing} = nothing,
-        events::Events = Events(),
+        events::Union{Events, TrackedEvents} = Events(),
         clear::Bool = true,
         transform_func=identity,
         camera::Union{Function, Camera, Nothing} = nothing,
@@ -227,7 +227,7 @@ get_ambient_light(scene::Scene) = get_one_light(scene, AmbientLight)
 
 function Scene(
         parent::Scene;
-        events=parent.events,
+        events=TrackedEvents(parent.events),
         px_area=nothing,
         clear=false,
         camera=nothing,
@@ -367,6 +367,7 @@ function Base.empty!(scene::Scene)
 
     disconnect!(scene.camera)
     scene.camera_controls = EmptyCamera()
+    empty!(scene.events)
 
     return nothing
 end
@@ -385,6 +386,7 @@ function _empty_recursion(scene::Scene)
     # clean up some onsverables (there are probably more...)
     disconnect!(scene.camera)
     scene.camera_controls = EmptyCamera()
+    empty!(scene.events)
 
     # top level scene.px_area needs to remain for GridLayout?
     off.(scene.px_area.inputs)
