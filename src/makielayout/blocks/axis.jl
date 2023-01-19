@@ -1265,9 +1265,9 @@ Makie.xlims!(interval::IntevalSets.ClosedInterval{<: Real}) = xlims!(Makie.curre
 Makie.ylims!(interval::IntevalSets.ClosedInterval{<: Real}) = ylims!(Makie.current_axis(), interval)
 Makie.zlims!(interval::IntevalSets.ClosedInterval{<: Real}) = zlims!(Makie.current_axis(), interval)
 
-Makie.xlims!(ax::Axis, interval::IntevalSets.ClosedInterval{<: Real}) = xlims!(ax, interval.left, interval.right)
-Makie.ylims!(ax::Axis, interval::IntevalSets.ClosedInterval{<: Real}) = ylims!(ax, interval.left, interval.right)
-Makie.zlims!(ax::Axis3, interval::IntevalSets.ClosedInterva{<: Real}l) = zlims!(ax, interval.left, interval.right)
+Makie.xlims!(ax, interval::IntevalSets.ClosedInterval{<: Real}) = xlims!(ax, interval.left, interval.right)
+Makie.ylims!(ax, interval::IntevalSets.ClosedInterval{<: Real}) = ylims!(ax, interval.left, interval.right)
+Makie.zlims!(ax, interval::IntevalSets.ClosedInterva{<: Real}l) = zlims!(ax, interval.left, interval.right)
 
 """
     limits!(ax::Axis, xlims, ylims)
