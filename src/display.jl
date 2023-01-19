@@ -42,6 +42,7 @@ function push_screen!(scene::Scene, screen::MakieScreen)
         # when screen closes, it should set the scene isopen event to false
         # so that's when we can remove the screen
         if !is_open
+            close(screen)
             delete_screen!(scene, screen)
             # deregister itself after letting other listeners run
             if !isnothing(deregister)

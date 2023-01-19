@@ -9,9 +9,7 @@ function has_forwarded_layout end
 
 macro Block(name::Symbol, body::Expr = Expr(:block))
 
-    if !(body.head == :block)
-        error("A Block needs to be defined within a `begin end` block")
-    end
+    body.head === :block || error("A Block needs to be defined within a `begin end` block")
 
     structdef = quote
         mutable struct $name <: Makie.Block
@@ -27,7 +25,7 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
     attrs = extract_attributes!(body)
 
     i_forwarded_layout = findfirst(
-        x -> x isa Expr && x.head == :macrocall &&
+        x -> x isa Expr && x.head === :macrocall &&
             x.args[1] == Symbol("@forwarded_layout"),
         body.args
     )
@@ -155,7 +153,7 @@ function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
     pairs = map(attrs) do a
 
         d = a.default
-        if d isa Expr && d.head == :macrocall && d.args[1] == Symbol("@inherit")
+        if d isa Expr && d.head === :macrocall && d.args[1] == Symbol("@inherit")
             if length(d.args) != 4
                 error("@inherit works with exactly 2 arguments, expression was $d")
             end
@@ -196,8 +194,8 @@ end
 
 function extract_attributes!(body)
     i = findfirst(
-        (x -> x isa Expr && x.head == :macrocall && x.args[1] == Symbol("@attributes") &&
-            x.args[3] isa Expr && x.args[3].head == :block),
+        (x -> x isa Expr && x.head === :macrocall && x.args[1] == Symbol("@attributes") &&
+            x.args[3] isa Expr && x.args[3].head === :block),
         body.args
     )
     if i === nothing
@@ -231,7 +229,7 @@ function extract_attributes!(body)
     args = filter(x -> !(x isa LineNumberNode), attrs_block.args)
 
     function extract_attr(arg)
-        has_docs = arg isa Expr && arg.head == :macrocall && arg.args[1] isa GlobalRef
+        has_docs = arg isa Expr && arg.head === :macrocall && arg.args[1] isa GlobalRef
 
         if has_docs
             docs = arg.args[3]
@@ -241,7 +239,7 @@ function extract_attributes!(body)
             attr = arg
         end
 
-        if !(attr isa Expr && attr.head == :(=) && length(attr.args) == 2)
+        if !(attr isa Expr && attr.head === :(=) && length(attr.args) == 2)
             error("$attr is not a valid attribute line like :x[::Type] = default_value")
         end
         left = attr.args[1]
@@ -250,7 +248,7 @@ function extract_attributes!(body)
             attr_symbol = left
             type = Any
         else
-            if !(left isa Expr && left.head == :(::) && length(left.args) == 2)
+            if !(left isa Expr && left.head === :(::) && length(left.args) == 2)
                 error("$left is not a Symbol or an expression such as x::Type")
             end
             attr_symbol = left.args[1]::Symbol
