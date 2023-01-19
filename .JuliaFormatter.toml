@@ -3,3 +3,4 @@ whitespace_ops_in_indices = true
 whitespace_in_kwargs = true
 indent_submodule = true
 always_for_in = true
+ignore = ["docs", "metrics"]

@@ -34,7 +34,7 @@ Please run the following snippet (maybe multiple times) for the format check to 
 ```julia
 pkg> add JuliaFormatter
 julia> using JuliaFormatter
-julia> format(["src", "test", "MakieCore", "CairoMakie", "GLMakie", "WGLMakie", "RPRMakie", "MakieRecipes", "ReferenceTests"])
+julia> format(".")
 ```
 
 ### Tests
