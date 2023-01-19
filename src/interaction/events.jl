@@ -254,8 +254,8 @@ will only return true if the currently pressed buttons match the request exactly
 See also: [`And`](@ref), [`Or`](@ref), [`Not`](@ref), [`Exclusively`](@ref),
 [`&`](@ref), [`|`](@ref), [`!`](@ref)
 """
-ispressed(events::Events, mb::Mouse.Button) = mb in events.mousebuttonstate
-ispressed(events::Events, key::Keyboard.Button) = key in events.keyboardstate
+ispressed(events::Union{Events, TrackedEvents}, mb::Mouse.Button) = mb in events.mousebuttonstate
+ispressed(events::Union{Events, TrackedEvents}, key::Keyboard.Button) = key in events.keyboardstate
 ispressed(parent, result::Bool) = result
 
 ispressed(parent, mb::Mouse.Button) = ispressed(events(parent), mb)
@@ -267,7 +267,9 @@ ispressed(parent, op::And) = ispressed(parent, op.left) && ispressed(parent, op.
 ispressed(parent, op::Or)  = ispressed(parent, op.left) || ispressed(parent, op.right)
 ispressed(parent, op::Not) = !ispressed(parent, op.x)
 ispressed(parent, op::Exclusively) = ispressed(events(parent), op)
-ispressed(e::Events, op::Exclusively) = op.x == union(e.keyboardstate, e.mousebuttonstate)
+function ispressed(e::Union{Events, TrackedEvents}, op::Exclusively)
+    return op.x == union(e.keyboardstate, e.mousebuttonstate)
+end
 
 # collections
 ispressed(parent, set::Set) = all(x -> ispressed(parent, x), set)

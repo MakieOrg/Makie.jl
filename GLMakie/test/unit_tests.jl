@@ -1,4 +1,5 @@
 using GLMakie.Makie: getscreen
+using GLMakie.Makie.Observables: listeners
 
 function project_sp(scene, point)
     point_px = Makie.project(scene, point)
@@ -49,7 +50,7 @@ end
         # assure we correctly close screen and remove it from plot
         @test getscreen(ax.scene) === nothing
         @test !events(ax.scene).window_open[]
-        @test isempty(events(ax.scene).window_open.listeners)
+        @test isempty(listeners(events(ax.scene).window_open))
 
         # Test singleton screen replacement
         fig, ax, p = scatter(1:4);
@@ -240,8 +241,8 @@ end
         @test isempty(screen.cache)
         @test isempty(screen.cache2plot)
 
-        @test isempty(screen.window_open.listeners)
-        @test isempty(screen.render_tick.listeners)
+        @test isempty(listeners(screen.window_open))
+        @test isempty(listeners(screen.render_tick))
 
         @test screen.root_scene === nothing
         @test screen.rendertask === nothing
