@@ -21,11 +21,14 @@ end
 
 
 function color_and_colormap!(plot, intensity = plot[:color])
-    if isa(intensity[], AbstractArray{<: Number})
+    if isa(intensity[], Union{Number,AbstractArray{<: Number}})
         haskey(plot, :colormap) || error("Plot $(typeof(plot)) needs to have a colormap to allow the attribute color to be an array of numbers")
 
         replace_automatic!(plot, :colorrange) do
-            lift(distinct_extrema_nan, intensity)
+            lift(intensity) do intens
+                intens isa Number && error("Cannot determine a colorrange automatically for single number color value $intens. Pass an explicit colorrange.")
+                distinct_extrema_nan(intens)
+            end
         end
         replace_automatic!(plot, :highclip) do
             lift(plot.colormap) do cmap

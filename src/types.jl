@@ -377,4 +377,4 @@ end
 
 
 # The color type we ideally use for most color attributes
-const RGBColors = Union{RGBAf, Vector{RGBAf}, Vector{Float32}}
+const RGBColors = Union{RGBAf, Vector{RGBAf}, Vector{Float32}, Float32}

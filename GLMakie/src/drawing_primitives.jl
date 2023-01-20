@@ -184,9 +184,9 @@ end
 pixel2world(scene, msize::AbstractVector) = pixel2world.(scene, msize)
 
 function handle_intensities!(attributes)
-    if haskey(attributes, :color) && attributes[:color][] isa AbstractVector{<: Number}
+    if haskey(attributes, :color) && attributes[:color][] isa Union{Number,AbstractVector{<:Number}}
         c = pop!(attributes, :color)
-        attributes[:intensity] = lift(x-> convert(Vector{Float32}, x), c)
+        attributes[:intensity] = lift(x-> x isa Number ? convert(Float32, x) : convert(Vector{Float32}, x), c)
     else
         delete!(attributes, :intensity)
         delete!(attributes, :color_map)
@@ -294,7 +294,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::LineSegments
         space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         positions = handle_view(x.converted[1], data)
         positions = apply_transform(transform_func_obs(x), positions, space)
-        if haskey(data, :color) && data[:color][] isa AbstractVector{<: Number}
+        if haskey(data, :color) && data[:color][] isa Union{Number,AbstractVector{<:Number}}
             c = pop!(data, :color)
             data[:color] = el32convert(c)
         else
@@ -485,7 +485,7 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, space=:data)
     elseif to_value(color) isa AbstractMatrix{<: Number}
         gl_attributes[:image] = Texture(const_lift(el32convert, color), minfilter = interp)
         gl_attributes[:color] = nothing
-    elseif to_value(color) isa AbstractVector{<: Union{Number, Colorant}}
+    elseif to_value(color) isa Union{Number,AbstractVector{<: Union{Number, Colorant}}}
         gl_attributes[:vertex_color] = lift(el32convert, color)
     else
         error("Unsupported color type: $(typeof(to_value(color)))")

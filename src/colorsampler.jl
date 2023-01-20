@@ -129,11 +129,12 @@ function sampler(cmap::Matrix{<: Colorant}, uv::AbstractVector{Vec2f};
 end
 
 
-function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
+function numbers_to_colors(numbers::Union{AbstractArray{<:Number},Number}, primitive)
     colormap = get_attribute(primitive, :colormap)::Vector{RGBAf}
     _colorrange = get_attribute(primitive, :colorrange)::Union{Nothing, Vec2f}
     colorrange = if isnothing(_colorrange)
         # TODO, plot primitive should always expand automatic values
+        numbers isa Number && error("Cannot determine a colorrange automatically for single number color value $numbers. Pass an explicit colorrange.")
         Vec2f(extrema_nan(numbers))
     else
         _colorrange

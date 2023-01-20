@@ -125,6 +125,10 @@ function to_cairo_color(colors::AbstractVector{<: Number}, plot_object)
     return numbers_to_colors(colors, plot_object)
 end
 
+function to_cairo_color(color::Number, plot_object)
+    return numbers_to_colors(color, plot_object)
+end
+
 function to_cairo_color(color::Makie.AbstractPattern, plot_object)
     cairopattern = Cairo.CairoPattern(color)
     Cairo.pattern_set_extend(cairopattern, Cairo.EXTEND_REPEAT);
