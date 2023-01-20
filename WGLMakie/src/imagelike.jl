@@ -6,6 +6,9 @@ using Makie: el32convert, surface_normals, get_dim
 nothing_or_color(c) = to_color(c)
 nothing_or_color(c::Nothing) = RGBAf(0, 0, 0, 1)
 
+lift_or(f, x) = f(x)
+lift_or(f, x::Observable) = lift(f, x)
+
 function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
     uniforms = Dict(uniforms)
     filter!(kv -> !(kv[2] isa Function), uniforms)
@@ -34,9 +37,8 @@ function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
     end
 
     for key in (:diffuse, :specular, :shininess, :backlight)
-        uniforms[key] = lift(x -> convert_attribute(x, Key{key}()), uniforms[key])
+        uniforms[key] = lift_or(x -> convert_attribute(x, Key{key}()), uniforms[key])
     end
-
     # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
     uniforms[:picking] = false
     uniforms[:object_id] = UInt32(0)
