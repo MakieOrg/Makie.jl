@@ -326,9 +326,9 @@ Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [Geome
 - `colormap::Union{Symbol, Vector{<:Colorant}} = :viridis` sets the colormap that is sampled for numeric `color`s.
 - `colorrange::Tuple{<:Real, <:Real}` sets the values representing the start and end points of `colormap`.
 - `nan_color::Union{Symbol, <:Colorant} = RGBAf(0,0,0,0)` sets a replacement color for `color = NaN`.
+- `lowclip::Union{Automatic, Symbol, <:Colorant} = automatic` sets a color for any value below the colorrange.
+- `highclip::Union{Automatic, Symbol, <:Colorant} = automatic` sets a color for any value above the colorrange.
 - `space::Symbol = :data` sets the transformation space for vertex positions. See `Makie.spaces()` for possible inputs.
-- `lowclip::Union{Nothing, Symbol, <:Colorant} = nothing` sets a color for any value below the colorrange.
-- `highclip::Union{Nothing, Symbol, <:Colorant} = nothing` sets a color for any value above the colorrange.
 - `interpolate::Bool = true` wether color=Matrix gets interpolated or not
 
 ### Generic 3D
@@ -396,6 +396,8 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
 - `colormap::Union{Symbol, Vector{<:Colorant}} = :viridis` sets the colormap that is sampled for numeric `color`s.
 - `colorrange::Tuple{<:Real, <:Real}` sets the values representing the start and end points of `colormap`.
 - `nan_color::Union{Symbol, <:Colorant} = RGBAf(0,0,0,0)` sets a replacement color for `color = NaN`.
+- `lowclip::Union{Automatic, Symbol, <:Colorant} = automatic` sets a color for any value below the colorrange.
+- `highclip::Union{Automatic, Symbol, <:Colorant} = automatic` sets a color for any value above the colorrange.
 - `space::Symbol = :data` sets the transformation space for positions of markers. See `Makie.spaces()` for possible inputs.
 """
 @recipe(Scatter, positions) do scene
@@ -404,6 +406,10 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
         color = theme(scene, :markercolor),
         colormap = theme(scene, :colormap),
         colorrange = automatic,
+        lowclip = automatic,
+        highclip = automatic,
+        nan_color = :transparent,
+
         marker = theme(scene, :marker),
         markersize = theme(scene, :markersize),
 
@@ -455,6 +461,8 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
 - `colormap::Union{Symbol, Vector{<:Colorant}} = :viridis` sets the colormap that is sampled for numeric `color`s.
 - `colorrange::Tuple{<:Real, <:Real}` sets the values representing the start and end points of `colormap`.
 - `nan_color::Union{Symbol, <:Colorant} = RGBAf(0,0,0,0)` sets a replacement color for `color = NaN`.
+- `lowclip::Union{Automatic, Symbol, <:Colorant} = automatic` sets a color for any value below the colorrange.
+- `highclip::Union{Automatic, Symbol, <:Colorant} = automatic` sets a color for any value above the colorrange.
 - `space::Symbol = :data` sets the transformation space for the positions of meshes. See `Makie.spaces()` for possible inputs.
 
 ### Generic 3D
@@ -471,6 +479,10 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
         color = :black,
         colormap = theme(scene, :colormap),
         colorrange = automatic,
+        lowclip = automatic,
+        highclip = automatic,
+        nan_color = :transparent,
+
         marker = :Sphere,
         markersize = 0.1,
         rotations = 0.0,
@@ -567,8 +579,8 @@ Plots polygons, which are defined by
 
 ### Specific to `Poly`
 
-- `lowclip::Union{Nothing, Symbol, <:Colorant} = nothing` sets a color for any value below the colorrange.
-- `highclip::Union{Nothing, Symbol, <:Colorant} = nothing` sets a color for any value above the colorrange.
+- `lowclip::Union{Automatic, Symbol, <:Colorant} = automatic` sets a color for any value below the colorrange.
+- `highclip::Union{Automatic, Symbol, <:Colorant} = automatic` sets a color for any value above the colorrange.
 - `strokecolor::Union{Symbol, <:Colorant} = :black` sets the color of the outline around a marker.
 - `strokewidth::Real = 0` sets the width of the outline around a marker.
 - `linestyle::Union{Nothing, Symbol, Vector} = nothing` sets the pattern of the line (e.g. `:solid`, `:dot`, `:dashdot`)
@@ -584,6 +596,8 @@ Plots polygons, which are defined by
 - `colormap::Union{Symbol, Vector{<:Colorant}} = [:black, :white` sets the colormap that is sampled for numeric `color`s.
 - `colorrange::Tuple{<:Real, <:Real}` sets the values representing the start and end points of `colormap`.
 - `nan_color::Union{Symbol, <:Colorant} = RGBAf(0,0,0,0)` sets a replacement color for `color = NaN`.
+- `lowclip::Union{Automatic, Symbol, <:Colorant} = automatic` sets a color for any value below the colorrange.
+- `highclip::Union{Automatic, Symbol, <:Colorant} = automatic` sets a color for any value above the colorrange.
 - `space::Symbol = :data` sets the transformation space for the position of the image. See `Makie.spaces()` for possible inputs.
 - `cycle::Vector{Symbol} = [:color => :patchcolor]` sets which attributes to cycle when creating multiple plots.
 - `shading = false` enables lighting.

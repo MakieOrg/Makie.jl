@@ -33,6 +33,10 @@ function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
         return transpose(inv(v[i, i] * m[i, i]))
     end
 
+    for key in (:diffuse, :specular, :shininess, :backlight)
+        uniforms[key] = lift(x -> convert_attribute(x, Key{key}()), uniforms[key])
+    end
+
     # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
     uniforms[:picking] = false
     uniforms[:object_id] = UInt32(0)
