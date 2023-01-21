@@ -159,6 +159,10 @@ function create_shader(mscene::Scene, plot::Volume)
     modelinv = lift(inv, model2)
     algorithm = lift(x -> Cuint(convert_attribute(x, key"algorithm"())), plot.algorithm)
 
+    diffuse = lift(x -> convert_attribute(x, Key{:diffuse}()), plot.diffuse)
+    specular = lift(x -> convert_attribute(x, Key{:specular}()), plot.specular)
+    shininess = lift(x -> convert_attribute(x, Key{:shininess}()), plot.shininess)
+
     return Program(WebGL(), lasset("volume.vert"), lasset("volume.frag"), box,
                    volumedata=Sampler(lift(Makie.el32convert, vol)),
                    modelinv=modelinv, colormap=Sampler(lift(to_colormap, plot.colormap)),
@@ -167,7 +171,7 @@ function create_shader(mscene::Scene, plot::Volume)
                    isorange=lift(Float32, plot.isorange),
                    absorption=lift(Float32, get(plot, :absorption, Observable(1f0))),
                    algorithm=algorithm,
-                   diffuse=plot.diffuse, specular=plot.specular, shininess=plot.shininess,
+                   diffuse=diffuse, specular=specular, shininess=shininess,
                    model=model2, depth_shift = get(plot, :depth_shift, Observable(0f0)),
                    # these get filled in later by serialization, but we need them
                    # as dummy values here, so that the correct uniforms are emitted
