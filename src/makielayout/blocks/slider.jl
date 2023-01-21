@@ -96,8 +96,6 @@ function initialize_block!(sl::Slider)
 
     onmouseleftdrag(mouseevents) do event
         dragging[] = true
-        # dif is never used?
-        # dif = event.px - event.prev_px
 
         fraction = current_sliderfraction(sl, event, endpoints, sliderrange)
         displayed_sliderfraction[] = fraction

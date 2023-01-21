@@ -12,7 +12,7 @@ This is necessary to ensure the value is actually present in the `range` attribu
 If the slider value is used for a relatively slow task, it may be more effective to
 use the attribute `value_dragstop` instead of `value`.  The `value_dragstop` is only
 updated when the mouse is released to conclude the slider drag operation.  It is 
-is synchronized with `value` when calling `set_cloe_to!(slider, value)` or one a mouse
+is synchronized with `value` when calling `set_close_to!(slider, value)` or one a mouse
 click or double click event.
 
 You can double-click the slider to reset it (approximately) to the value present in `startvalue`.
@@ -44,7 +44,12 @@ fig
 
 
 This slightly more complicated example compares the behavior of the `value`
-and `value_dragstop` slide attributes.
+and `value_dragstop` slide attributes.  There are two text fields displaying
+the x value selected with the horizontal slider.  However, one updates while the slider
+is ddragged to show continuous updates but the other text only updates on mouse
+release.  The vertical slider and associated text fields behave the same way.
+A more realistic application could use the the `value_dragstop` attribute to
+trigger a slow computation only on the mouse release event.
 
 \begin{examplefigure}{}
 ```julia
