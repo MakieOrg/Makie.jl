@@ -61,6 +61,10 @@ function project_polygon(scene, space, poly::P, model) where P <: Polygon
     )
 end
 
+function project_multipolygon(scene, space, multipoly::MP, model) where MP <: MultiPolygon
+    return MultiPolygon(project_polygon.(Ref(scene), Ref(space), multipoly.polygons, Ref(model)))
+end
+
 scale_matrix(x, y) = Cairo.CairoMatrix(x, 0.0, 0.0, y, 0.0, 0.0)
 
 ########################################
@@ -112,6 +116,32 @@ function rgbatuple(c)
 end
 
 to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, premultiplied_rgba(c)))
+
+########################################
+#        Common color utilities        #
+########################################
+
+function to_cairo_color(colors::AbstractVector{<: Number}, plot_object)
+    return numbers_to_colors(colors, plot_object)
+end
+
+function to_cairo_color(color::Makie.AbstractPattern, plot_object)
+    cairopattern = Cairo.CairoPattern(color)
+    Cairo.pattern_set_extend(cairopattern, Cairo.EXTEND_REPEAT);
+    return cairopattern
+end
+
+function to_cairo_color(color, plot_object)
+    return to_color(color)
+end
+
+function set_source(ctx::Cairo.CairoContext, pattern::Cairo.CairoPattern)
+    return Cairo.set_source(ctx, pattern)
+end
+
+function set_source(ctx::Cairo.CairoContext, color::Colorant)
+    return Cairo.set_source_rgba(ctx, rgbatuple(color)...)
+end
 
 ########################################
 #     Image/heatmap -> ARGBSurface     #

@@ -494,6 +494,9 @@ end
 
 function Base.delete!(block::Block)
     block.parent === nothing && return
+    
+    # detach plots, cameras, transformations, px_area
+    empty!(block.blockscene)
 
     s = get_topscene(block.parent)
     deleteat!(
