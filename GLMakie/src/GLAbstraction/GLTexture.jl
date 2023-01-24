@@ -340,6 +340,15 @@ function unsafe_copy!(dest::Array{T, N}, source::Texture{T, N}) where {T,N}
     nothing
 end
 
+# After updating to OpenGL 4.5 or higher, we can use glGetTextureSubImage to copy 
+# a piece of texture back from GPU buffer.
+function unsafe_copy!(dest::Array{T, N}, source::Texture{T, N}, xrange::UnitRange, yrange::UnitRange) where {T,N}
+    bind(source)
+    glReadPixels(first(xrange), first(yrange), length(xrange), length(yrange), source.format, source.pixeltype, dest)
+    bind(source, 0)
+    nothing
+end
+
 gpu_data(t::TextureBuffer{T}) where {T} = gpu_data(t.buffer)
 gpu_getindex(t::TextureBuffer{T}, i::UnitRange{Int64}) where {T} = t.buffer[i]
 
