@@ -293,7 +293,7 @@ function initialize_block!(m::Menu; default = 1)
         if is_mouseinside(menuscene)
             t = translation(menuscene)[]
             # Hack to differentiate mousewheel and trackpad scrolling
-            step = (isinteger(y) ? 15.0 : 1.0) * m.scroll_speed[] * y
+            step = m.scroll_speed[] * y
             new_y = max(min(t[2] - step, 0), height(menuscene.px_area[]) - listheight[])
             translate!(menuscene, t[1], new_y, t[3])
             return Consume(true)
