@@ -2,29 +2,6 @@
 #                    Poly - the not so primitive, primitive                    #
 ################################################################################
 
-
-function to_cairo_color(colors::AbstractVector{<: Number}, plot_object)
-    return numbers_to_colors(colors, plot_object)
-end
-
-function to_cairo_color(color::Makie.AbstractPattern, plot_object)
-    cairopattern = Cairo.CairoPattern(color)
-    Cairo.pattern_set_extend(cairopattern, Cairo.EXTEND_REPEAT);
-    return cairopattern
-end
-
-function to_cairo_color(color, plot_object)
-    return to_color(color)
-end
-
-function set_source(ctx::Cairo.CairoContext, pattern::Cairo.CairoPattern)
-    return Cairo.set_source(ctx, pattern)
-end
-
-function set_source(ctx::Cairo.CairoContext, color::Colorant)
-    return Cairo.set_source_rgba(ctx, rgbatuple(color)...)
-end
-
 """
 Special method for polys so we don't fall back to atomic meshes, which are much more
 complex and slower to draw than standard paths with single color.

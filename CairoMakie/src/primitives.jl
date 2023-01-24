@@ -31,9 +31,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     projected_positions = project_position.(Ref(scene), Ref(space), positions, Ref(model))
     projected_positions = apply_line_offsets(projected_positions, length_offset, primitive)
 
-    if color isa AbstractArray{<: Number}
-        color = numbers_to_colors(color, primitive)
-    end
+    color = to_cairo_color(color, primitive)
 
     # color is now a color or an array of colors
     # if it's an array of colors, each segment must be stroked separately
@@ -228,11 +226,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
 
     font = to_font(to_value(get(primitive, :font, Makie.defaultfont())))
 
-    colors = if color isa AbstractArray{<: Number}
-        numbers_to_colors(color, primitive)
-    else
-        color
-    end
+    colors = to_cairo_color(color, primitive)
 
     markerspace = to_value(get(primitive, :markerspace, :pixel))
     space = to_value(get(primitive, :space, :data))
