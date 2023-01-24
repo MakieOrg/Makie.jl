@@ -423,7 +423,17 @@ end
     # plot surface
     f, a, p = surface(1..10, 1..10, ns, colormap = [:lightblue, :lightblue])
     # plot a wireframe so we can see what's going on, and in which cells.
-    m = CairoMakie.surface2mesh(to_value.(p.converted)...)
+    m = let
+        xs, ys, zs = to_value.(p.converted)
+        ps = Makie.matrix_grid(identity, xs, ys, zs)
+        rect = Makie.Tesselation(Rect2f(0, 0, 1, 1), size(zs))
+        faces = Makie.decompose(Makie.QuadFace{Int}, rect)
+        faces = filter(f -> !any(i -> isnan(ps[i]), f), faces)
+        uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), Makie.decompose_uv(rect))
+        Makie.GeometryBasics.Mesh(
+            Makie.meta(ps; uv=uv, normals = Makie.nan_aware_normals(ps, faces)), faces, 
+        )
+    end
     scatter!(a, m.position, color = isnan.(m.normals), depth_shift = -1f-3)
     wireframe!(a, m, depth_shift = -1f-3, color = :black)
     f
