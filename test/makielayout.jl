@@ -58,18 +58,27 @@ end
 
     f = Figure()
     ax = Axis(f[1, 1], limits = (nothing, nothing))
+
     ax.targetlimits[] = BBox64(0, 10, 0, 20)
     @test ax.finallimits[] == BBox64(0, 10, 0, 20)
     @test ax.limits[] == (nothing, nothing)
+
     xlims!(ax, -10, 10)
     @test ax.limits[] == ((-10, 10), nothing)
     @test ax.finallimits[] == BBox64(-10, 10, 0, 20)
+
     ylims!(ax, -20, 30)
     @test ax.limits[] == ((-10, 10), (-20, 30))
     @test ax.finallimits[] == BBox64(-10, 10, -20, 30)
+
+    ylims!(ax, 1 - 0.5e-9, 1 + 1.5e-9)
+    @test ax.limits[] == ((-10, 10), (0.9999999995, 1.0000000015))
+    @test ax.finallimits[] == BBox64(-10, 10, 0.9999999995, 1.0000000015)
+
     limits!(ax, -5, 5, -10, 10)
     @test ax.finallimits[] == BBox64(-5, 5, -10, 10)
     @test ax.limits[] == ((-5, 5), (-10, 10))
+
     ax.limits[] = (nothing, nothing)
     ax.xautolimitmargin = (0, 0)
     ax.yautolimitmargin = (0, 0)
@@ -78,43 +87,53 @@ end
     @test ax.limits[] == (nothing, nothing)
     @test ax.targetlimits[] == BBox64(0, 1, 0, 2)
     @test ax.finallimits[]  == BBox64(0, 1, 0, 2)
+
     scatter!(Point2f(3, 4))
     reset_limits!(ax)
     @test ax.limits[] == (nothing, nothing)
     @test ax.targetlimits[] == BBox64(0, 3, 0, 4)
     @test ax.finallimits[]  == BBox64(0, 3, 0, 4)
+
     limits!(ax, -1, 1, 0, 2)
     @test ax.limits[] == ((-1, 1), (0, 2))
     @test ax.targetlimits[] == BBox64(-1, 1, 0, 2)
     @test ax.finallimits[]  == BBox64(-1, 1, 0, 2)
+
     scatter!(Point2f(5, 6))
     reset_limits!(ax)
     @test ax.limits[] == ((-1, 1), (0, 2))
     @test ax.targetlimits[] == BBox64(-1, 1, 0, 2)
     @test ax.finallimits[]  == BBox64(-1, 1, 0, 2)
+
     autolimits!(ax)
     @test ax.limits[] == (nothing, nothing)
     @test ax.targetlimits[] == BBox64(0, 5, 0, 6)
     @test ax.finallimits[]  == BBox64(0, 5, 0, 6)
+
     xlims!(ax, [-10, 10])
     @test ax.limits[] == ([-10, 10], nothing)
     @test ax.targetlimits[] == BBox64(-10, 10, 0, 6)
     @test ax.finallimits[]  == BBox64(-10, 10, 0, 6)
+
     scatter!(Point2f(11, 12))
     reset_limits!(ax)
     @test ax.limits[] == ([-10, 10], nothing)
     @test ax.targetlimits[] == BBox64(-10, 10, 0, 12)
     @test ax.finallimits[]  == BBox64(-10, 10, 0, 12)
+
     autolimits!(ax)
     ylims!(ax, [5, 7])
     @test ax.limits[] == (nothing, [5, 7])
     @test ax.targetlimits[] == BBox64(0, 11, 5, 7)
     @test ax.finallimits[]  == BBox64(0, 11, 5, 7)
+
     scatter!(Point2f(-5, -7))
     reset_limits!(ax)
     @test ax.limits[] == (nothing, [5, 7])
     @test ax.targetlimits[] == BBox64(-5, 11, 5, 7)
     @test ax.finallimits[]  == BBox64(-5, 11, 5, 7)
+
+
 end
 
 @testset "Colorbar plot object kwarg clash" begin
