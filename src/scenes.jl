@@ -232,7 +232,7 @@ function Scene(
         parent::Scene;
         events=parent.events,
         px_area=nothing,
-        clear=automatic,
+        clear=false,
         camera=nothing,
         camera_controls=parent.camera_controls,
         transformation=Transformation(parent),
