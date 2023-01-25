@@ -69,10 +69,10 @@ end
 
 function Camera(px_area)
     pixel_space = lift(px_area) do window_size
-        nearclip = -10_000f0
-        farclip  =  10_000f0
-        w, h = Float32.(widths(window_size))
-        return orthographicprojection(0f0, w, 0f0, h, nearclip, farclip)
+        nearclip = -10_000.0
+        farclip  =  10_000.0
+        w, h = Float64.(widths(window_size))
+        return orthographicprojection(0.0, w, 0.0, h, nearclip, farclip)
     end
     view = Observable(Mat4{Float64}(I))
     proj = Observable(Mat4{Float64}(I))
@@ -83,7 +83,7 @@ function Camera(px_area)
         proj,
         proj_view,
         lift(a-> Vec2f(widths(a)), px_area),
-        Observable(Vec3f(1)),
+        Observable(Vec3e(1)),
         ObserverFunction[]
     )
 end
