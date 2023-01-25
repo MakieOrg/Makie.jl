@@ -158,9 +158,11 @@ function Scene(;
         visible = Observable(true),
         ssao = SSAO(),
         lights = automatic,
+        theme = Attributes(),
         theme_kw...
     )
-    m_theme = current_default_theme(; theme_kw...)
+
+    m_theme = merge_without_obs!(current_default_theme(; theme_kw...), theme)
 
     bg = Observable{RGBAf}(to_color(m_theme.backgroundcolor[]); ignore_equal_values=true)
 
@@ -260,6 +262,7 @@ function Scene(
         parent=parent,
         transformation=transformation,
         current_screens=current_screens,
+        theme=theme(parent),
         kw...
     )
     push!(parent.children, child)
