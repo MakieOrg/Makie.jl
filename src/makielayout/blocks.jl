@@ -364,6 +364,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
         # for this it seems to be necessary to zero-out a possible non-zero
         # origin of the parent
         lift(Makie.zero_origin, topscene.px_area),
+        clear=false,
         camera = campixel!
     )
 

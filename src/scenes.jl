@@ -146,13 +146,12 @@ end
 function Scene(;
         px_area::Union{Observable{Rect2i}, Nothing} = nothing,
         events::Events = Events(),
-        clear::Bool = true,
+        clear::Union{Automatic, Bool} = automatic,
         transform_func=identity,
         camera::Union{Function, Camera, Nothing} = nothing,
         camera_controls::AbstractCamera = EmptyCamera(),
         transformation::Transformation = Transformation(transform_func),
         plots::Vector{AbstractPlot} = AbstractPlot[],
-        theme::Attributes = Attributes(),
         children::Vector{Scene} = Scene[],
         current_screens::Vector{MakieScreen} = MakieScreen[],
         parent = nothing,
@@ -161,7 +160,7 @@ function Scene(;
         lights = automatic,
         theme_kw...
     )
-    m_theme = current_default_theme(; theme..., theme_kw...)
+    m_theme = current_default_theme(; theme_kw...)
 
     bg = Observable{RGBAf}(to_color(m_theme.backgroundcolor[]); ignore_equal_values=true)
 
@@ -182,6 +181,10 @@ function Scene(;
 
     _lights = lights isa Automatic ? AbstractLight[] : lights
 
+    # if we have an opaque background, automatically set clear to true!
+    if clear isa Automatic
+        clear = alpha(bg[]) == 1 ? true : false
+    end
     scene = Scene(
         parent, events, px_area, clear, cam, camera_controls,
         transformation, plots, m_theme,
@@ -229,11 +232,10 @@ function Scene(
         parent::Scene;
         events=parent.events,
         px_area=nothing,
-        clear=false,
+        clear=automatic,
         camera=nothing,
         camera_controls=parent.camera_controls,
         transformation=Transformation(parent),
-        theme=theme(parent),
         current_screens=parent.current_screens,
         kw...
     )
@@ -257,7 +259,6 @@ function Scene(
         camera_controls=camera_controls,
         parent=parent,
         transformation=transformation,
-        theme=theme,
         current_screens=current_screens,
         kw...
     )
