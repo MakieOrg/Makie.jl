@@ -109,15 +109,15 @@ end
 
 function _chosen_limits(rz, ax)
 
-    r = positivize(Rect2f(rz.from, rz.to .- rz.from))
+    r = positivize(Rect2{Float64}(rz.from, rz.to .- rz.from))
     lims = ax.finallimits[]
     # restrict to y change
     if rz.restrict_x || !ax.xrectzoom[]
-        r = Rect2f(lims.origin[1], r.origin[2], widths(lims)[1], widths(r)[2])
+        r = Rect2{Float64}(lims.origin[1], r.origin[2], widths(lims)[1], widths(r)[2])
     end
     # restrict to x change
     if rz.restrict_y || !ax.yrectzoom[]
-        r = Rect2f(r.origin[1], lims.origin[2], widths(r)[1], widths(lims)[2])
+        r = Rect2{Float64}(r.origin[1], lims.origin[2], widths(r)[1], widths(lims)[2])
     end
     return r
 end

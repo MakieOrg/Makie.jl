@@ -138,14 +138,14 @@ mutable struct RectangleZoom
     active::Observable{Bool}
     restrict_x::Bool
     restrict_y::Bool
-    from::Union{Nothing, Point2f}
-    to::Union{Nothing, Point2f}
-    rectnode::Observable{Rect2f}
+    from::Union{Nothing, Point2e}
+    to::Union{Nothing, Point2e}
+    rectnode::Observable{Rect2{Float64}}
 end
 
 function RectangleZoom(callback::Function; restrict_x=false, restrict_y=false)
     return RectangleZoom(callback, Observable(false), restrict_x, restrict_y,
-                         nothing, nothing, Observable(Rect2f(0, 0, 1, 1)))
+                         nothing, nothing, Observable(Rect2{Float64}(0, 0, 1, 1)))
 end
 
 struct ScrollZoom
