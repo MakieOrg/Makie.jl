@@ -71,6 +71,8 @@ mutable struct Screen <: Makie.MakieScreen
     end
 end
 
+Base.isopen(::Screen) = true
+        
 function mark_as_displayed!(screen::Screen, scene::Scene)
     push!(screen.displayed_scenes, js_uuid(scene))
     for child_scene in scene.children
