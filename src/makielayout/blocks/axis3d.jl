@@ -78,11 +78,11 @@ function initialize_block!(ax::Axis3)
 
     titlepos = lift(scene.px_area, ax.titlegap, ax.titlealign) do a, titlegap, align
 
-        x = if align == :center
+        x = if align === :center
             a.origin[1] + a.widths[1] / 2
-        elseif align == :left
+        elseif align === :left
             a.origin[1]
-        elseif align == :right
+        elseif align === :right
             a.origin[1] + a.widths[1]
         else
             error("Title align $align not supported.")
@@ -175,9 +175,9 @@ function calculate_matrices(limits, px_area, elev, azim, perspectiveness, aspect
 
 
     t = Makie.translationmatrix(-Float64.(limits.origin))
-    s = if aspect == :equal
+    s = if aspect === :equal
         scales = 2 ./ Float64.(ws)
-    elseif aspect == :data
+    elseif aspect === :data
         scales = 2 ./ max.(maximum(ws), Float64.(ws))
     elseif aspect isa VecTypes{3}
         scales = 2 ./ Float64.(ws) .* Float64.(aspect) ./ maximum(aspect)
@@ -249,7 +249,7 @@ function projectionmatrix(viewmatrix, limits, eyepos, radius, azim, elev, angle,
             ratio_x = maxx
             ratio_y = maxy
 
-            if viewmode == :fitzoom
+            if viewmode === :fitzoom
                 if ratio_y > ratio_x
                     pm = Makie.scalematrix(Vec3(1/ratio_y, 1/ratio_y, 1)) * pm
                 else

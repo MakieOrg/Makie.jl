@@ -37,7 +37,7 @@ function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
     uniforms[:picking] = false
     uniforms[:object_id] = UInt32(0)
 
-    return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), mesh; uniforms...)
+    return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), mesh, uniforms)
 end
 
 xy_convert(x::AbstractArray{Float32}, n) = copy(x)
@@ -152,20 +152,27 @@ function create_shader(mscene::Scene, plot::Volume)
 
     modelinv = lift(inv, model2)
     algorithm = lift(x -> Cuint(convert_attribute(x, key"algorithm"())), plot.algorithm)
-
-    return Program(WebGL(), lasset("volume.vert"), lasset("volume.frag"), box,
-                   volumedata=Sampler(lift(Makie.el32convert, vol)),
-                   modelinv=modelinv, colormap=Sampler(lift(to_colormap, plot.colormap)),
-                   colorrange=lift(Vec2f, plot.colorrange),
-                   isovalue=lift(Float32, plot.isovalue),
-                   isorange=lift(Float32, plot.isorange),
-                   absorption=lift(Float32, get(plot, :absorption, Observable(1f0))),
-                   algorithm=algorithm,
-                   diffuse=plot.diffuse, specular=plot.specular, shininess=plot.shininess,
-                   model=model2, depth_shift = get(plot, :depth_shift, Observable(0f0)),
-                   # these get filled in later by serialization, but we need them
-                   # as dummy values here, so that the correct uniforms are emitted
-                   lightposition=Vec3f(1), eyeposition=Vec3f(1), ambient=Vec3f(1),
-                   picking=false, object_id=UInt32(0)
-                   )
+    uniforms = Dict{Symbol, Any}(
+        :volumedata => Sampler(lift(Makie.el32convert, vol)),
+        :modelinv => modelinv,
+        :colormap => Sampler(lift(to_colormap, plot.colormap)),
+        :colorrange => lift(Vec2f, plot.colorrange),
+        :isovalue => lift(Float32, plot.isovalue),
+        :isorange => lift(Float32, plot.isorange),
+        :absorption => lift(Float32, get(plot, :absorption, Observable(1.0f0))),
+        :algorithm => algorithm,
+        :diffuse => plot.diffuse,
+        :specular => plot.specular,
+        :shininess => plot.shininess,
+        :model => model2,
+        :depth_shift => get(plot, :depth_shift, Observable(0.0f0)),
+        # these get filled in later by serialization, but we need them
+        # as dummy values here, so that the correct uniforms are emitted
+        :lightposition => Vec3f(1),
+        :eyeposition => Vec3f(1),
+        :ambient => Vec3f(1),
+        :picking => false,
+        :object_id => UInt32(0)
+    )
+    return Program(WebGL(), lasset("volume.vert"), lasset("volume.frag"), box, uniforms)
 end

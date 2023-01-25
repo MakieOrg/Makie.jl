@@ -128,5 +128,5 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
     uniforms[:picking] = false
     uniforms[:object_id] = UInt32(0)
 
-    return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), instance; uniforms...)
+    return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), instance, uniforms)
 end

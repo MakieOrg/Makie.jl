@@ -176,9 +176,9 @@ end
     fig = Figure()
     ax = Axis(fig[1, 1], palette = (patchcolor = [:blue, :green],))
     pl = density!(rand(10); color = Cycled(2))
-    @test pl.color[] == :green
+    @test pl.color[] === :green
     pl = density!(rand(10); color = Cycled(1))
-    @test pl.color[] == :blue
+    @test pl.color[] === :blue
 end
 
 @testset "briefly empty ticklabels" begin

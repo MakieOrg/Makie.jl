@@ -10,10 +10,10 @@ struct DataAspect end
 
 
 struct Cycler
-    counters::Dict{Type, Int}
+    counters::IdDict{Type, Int}
 end
 
-Cycler() = Cycler(Dict{Type, Int}())
+Cycler() = Cycler(IdDict{Type, Int}())
 
 
 struct Cycle
