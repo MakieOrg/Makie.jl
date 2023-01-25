@@ -32,7 +32,7 @@ void main(void)
               }
           }
       }
-      blurred_occlusion = blurred_occlusion / weight;
+      blurred_occlusion = 1.0 - blurred_occlusion / weight;
       fragment_color = texture(color_texture, frag_uv) * blurred_occlusion;
       // Display occlusion instead:
       // fragment_color = vec4(vec3(blurred_occlusion), 1.0);
