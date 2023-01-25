@@ -4,6 +4,7 @@
 
 - Fixed an issue where `poly` plots with `Vector{<: MultiPolygon}` inputs with per-polygon color were mistakenly rendered as meshes using CairoMakie. [#2590](https://github.com/MakieOrg/Makie.jl/pulls/2478)
 - Fixed a small typo which caused an error in the `Stepper` constructor. [#2600](https://github.com/MakieOrg/Makie.jl/pulls/2478)
+- Switch `plot.converted` to Float64 types to avoid loss of precision. This should fix precision related issues for CairoMakie but not GL backends [2573](https://github.com/MakieOrg/Makie.jl/pull/2573)
 
 ## v0.19.1
 
