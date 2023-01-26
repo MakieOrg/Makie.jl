@@ -94,7 +94,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
     uniform_dict[:object_id] = UInt32(0)
 
     return InstancedProgram(WebGL(), lasset("particles.vert"), lasset("particles.frag"),
-                            instance, VertexArray(; per_instance...); uniform_dict...)
+                            instance, VertexArray(; per_instance...), uniform_dict)
 end
 
 using Makie: to_spritemarker
@@ -190,7 +190,7 @@ function scatter_shader(scene::Scene, attributes)
     uniform_dict[:picking] = false
     uniform_dict[:object_id] = UInt32(0)
     return InstancedProgram(WebGL(), lasset("sprites.vert"), lasset("sprites.frag"),
-                            instance, VertexArray(; per_instance...); uniform_dict...)
+                            instance, VertexArray(; per_instance...), uniform_dict)
 end
 
 function create_shader(scene::Scene, plot::Scatter)

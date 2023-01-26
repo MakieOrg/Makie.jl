@@ -37,7 +37,7 @@ function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
     uniforms[:picking] = false
     uniforms[:object_id] = UInt32(0)
 
-    return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), mesh; uniforms...)
+    return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), mesh, uniforms)
 end
 
 xy_convert(x::AbstractArray{Float32}, n) = copy(x)
@@ -60,7 +60,7 @@ function limits_to_uvmesh(plot)
         positions = Buffer(lift(rect-> decompose(Point2f, rect), rect))
         faces = Buffer(lift(rect -> decompose(GLTriangleFace, rect), rect))
         uv = Buffer(lift(decompose_uv, rect))
-    else 
+    else
         grid(x, y, trans, space) = Makie.matrix_grid(p-> apply_transform(trans, p, space), x, y, zeros(length(x), length(y)))
         rect = lift((x, y) -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), (length(x), length(y))), px, py)
         positions = Buffer(lift(grid, px, py, t, get(plot, :space, :data)))
@@ -152,20 +152,27 @@ function create_shader(mscene::Scene, plot::Volume)
 
     modelinv = lift(inv, model2)
     algorithm = lift(x -> Cuint(convert_attribute(x, key"algorithm"())), plot.algorithm)
-
-    return Program(WebGL(), lasset("volume.vert"), lasset("volume.frag"), box,
-                   volumedata=Sampler(lift(Makie.el32convert, vol)),
-                   modelinv=modelinv, colormap=Sampler(lift(to_colormap, plot.colormap)),
-                   colorrange=lift(Vec2f, plot.colorrange),
-                   isovalue=lift(Float32, plot.isovalue),
-                   isorange=lift(Float32, plot.isorange),
-                   absorption=lift(Float32, get(plot, :absorption, Observable(1f0))),
-                   algorithm=algorithm,
-                   diffuse=plot.diffuse, specular=plot.specular, shininess=plot.shininess,
-                   model=model2, depth_shift = get(plot, :depth_shift, Observable(0f0)),
-                   # these get filled in later by serialization, but we need them
-                   # as dummy values here, so that the correct uniforms are emitted
-                   lightposition=Vec3f(1), eyeposition=Vec3f(1), ambient=Vec3f(1),
-                   picking=false, object_id=UInt32(0)
-                   )
+    uniforms = Dict{Symbol, Any}(
+        :volumedata => Sampler(lift(Makie.el32convert, vol)),
+        :modelinv => modelinv,
+        :colormap => Sampler(lift(to_colormap, plot.colormap)),
+        :colorrange => lift(Vec2f, plot.colorrange),
+        :isovalue => lift(Float32, plot.isovalue),
+        :isorange => lift(Float32, plot.isorange),
+        :absorption => lift(Float32, get(plot, :absorption, Observable(1.0f0))),
+        :algorithm => algorithm,
+        :diffuse => plot.diffuse,
+        :specular => plot.specular,
+        :shininess => plot.shininess,
+        :model => model2,
+        :depth_shift => get(plot, :depth_shift, Observable(0.0f0)),
+        # these get filled in later by serialization, but we need them
+        # as dummy values here, so that the correct uniforms are emitted
+        :lightposition => Vec3f(1),
+        :eyeposition => Vec3f(1),
+        :ambient => Vec3f(1),
+        :picking => false,
+        :object_id => UInt32(0)
+    )
+    return Program(WebGL(), lasset("volume.vert"), lasset("volume.frag"), box, uniforms)
 end
