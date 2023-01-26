@@ -146,30 +146,29 @@ end
 function Scene(;
         px_area::Union{Observable{Rect2i}, Nothing} = nothing,
         events::Events = Events(),
-        clear::Bool = true,
+        clear::Union{Automatic, Bool} = automatic,
         transform_func=identity,
         camera::Union{Function, Camera, Nothing} = nothing,
         camera_controls::AbstractCamera = EmptyCamera(),
         transformation::Transformation = Transformation(transform_func),
         plots::Vector{AbstractPlot} = AbstractPlot[],
-        theme::Attributes = Attributes(),
         children::Vector{Scene} = Scene[],
         current_screens::Vector{MakieScreen} = MakieScreen[],
         parent = nothing,
         visible = Observable(true),
         ssao = SSAO(),
         lights = automatic,
+        theme = Attributes(),
         theme_kw...
     )
-    m_theme = current_default_theme(; theme..., theme_kw...)
 
-    bg = map(to_color, m_theme.backgroundcolor)
+    m_theme = merge_without_obs!(current_default_theme(; theme_kw...), theme)
+
+    bg = Observable{RGBAf}(to_color(m_theme.backgroundcolor[]); ignore_equal_values=true)
 
     wasnothing = isnothing(px_area)
     if wasnothing
-        px_area = lift(m_theme.resolution) do res
-            Recti(0, 0, res)
-        end
+        px_area = Observable(Recti(0, 0, m_theme.resolution[]); ignore_equal_values=true)
     end
 
     cam = camera isa Camera ? camera : Camera(px_area)
@@ -184,6 +183,10 @@ function Scene(;
 
     _lights = lights isa Automatic ? AbstractLight[] : lights
 
+    # if we have an opaque background, automatically set clear to true!
+    if clear isa Automatic
+        clear = alpha(bg[]) == 1 ? true : false
+    end
     scene = Scene(
         parent, events, px_area, clear, cam, camera_controls,
         transformation, plots, m_theme,
@@ -198,8 +201,10 @@ function Scene(;
         if !isnothing(lightposition)
             position = if lightposition === :eyeposition
                 scene.camera.eyeposition
-            else
+            elseif lightposition isa Vec3
                 m_theme.lightposition
+            else
+                error("Wrong lightposition type, use `:eyeposition` or `Vec3f(...)`")
             end
             push!(scene.lights, PointLight(position, RGBf(1, 1, 1)))
         end
@@ -233,7 +238,6 @@ function Scene(
         camera=nothing,
         camera_controls=parent.camera_controls,
         transformation=Transformation(parent),
-        theme=theme(parent),
         current_screens=parent.current_screens,
         kw...
     )
@@ -257,8 +261,8 @@ function Scene(
         camera_controls=camera_controls,
         parent=parent,
         transformation=transformation,
-        theme=theme,
         current_screens=current_screens,
+        theme=theme(parent),
         kw...
     )
     push!(parent.children, child)
