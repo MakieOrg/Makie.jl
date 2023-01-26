@@ -67,8 +67,7 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
 
         function Makie.default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
             sceneattrs = scene === nothing ? Attributes() : theme(scene)
-            curdeftheme = Makie.current_default_theme()
-
+            curdeftheme = deepcopy(CURRENT_DEFAULT_THEME)
             $(make_attr_dict_expr(attrs, :sceneattrs, :curdeftheme))
         end
 
@@ -298,7 +297,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
 
     # first sort out all user kwargs that correspond to block attributes
     kwdict = Dict(kwargs)
-    
+
     if haskey(kwdict, :textsize)
         throw(ArgumentError("The attribute `textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
     end
@@ -317,8 +316,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
     # and also the `Block = (...` style attributes from scene and global theme
     default_attrs = default_attribute_values(T, topscene)
     typekey_scene_attrs = get(theme(topscene), nameof(T), Attributes())::Attributes
-    typekey_attrs = get(Makie.current_default_theme(), nameof(T), Attributes())::Attributes
-
+    typekey_attrs = theme(nameof(T); default=Attributes())::Attributes
     # make a final attribute dictionary using different priorities
     # for the different themes
     attributes = Dict{Symbol, Any}()
@@ -366,6 +364,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
         # for this it seems to be necessary to zero-out a possible non-zero
         # origin of the parent
         lift(Makie.zero_origin, topscene.px_area),
+        clear=false,
         camera = campixel!
     )
 
