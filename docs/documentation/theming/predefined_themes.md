@@ -119,11 +119,11 @@ with_theme(demofigure, theme_dark())
 ```
 \end{examplefigure}
 
-## theme_jlmke
+## theme_pretty
 
 \begin{examplefigure}{}
 ```julia
-with_theme(demofigure, theme_jlmke())
+with_theme(demofigure, theme_pretty())
 ```
 \end{examplefigure}
 
