@@ -14,7 +14,7 @@ function all_plots_scenes(scene::Scene; scene_uuids=String[], plot_uuids=String[
     return scene_uuids, plot_uuids
 end
 
-function JSServe.print_js_code(io::IO, plot::AbstractPlot, context::IdDict)
+function JSServe.print_js_code(io::IO, plot::AbstractPlot, context::JSServe.JSSourceContext)
     uuids = js_uuid.(Makie.flatten_plots(plot))
     # This is a bit more complicated then it has to be, since evaljs / on_document_load
     # isn't guaranteed to run after plot initialization in an App... So, if we don't find any plots,
@@ -34,7 +34,7 @@ function JSServe.print_js_code(io::IO, plot::AbstractPlot, context::IdDict)
     }))""", context)
 end
 
-function JSServe.print_js_code(io::IO, scene::Scene, context::IdDict)
+function JSServe.print_js_code(io::IO, scene::Scene, context::JSServe.JSSourceContext)
     JSServe.print_js_code(io, js"""$(WGL).then(WGL=> WGL.find_scene($(js_uuid(scene))))""", context)
 end
 
