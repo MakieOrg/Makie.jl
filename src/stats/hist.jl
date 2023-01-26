@@ -81,9 +81,11 @@ function Makie.plot!(plot::StepHist)
             return color
         end
     end
-
+    attr = copy(plot.attributes)
+    # stop Automatic() from going too far
+    pop!(attr, :weights)
     # plot the values, not the observables, to be in control of updating
-    bp = stairs!(plot, points[]; plot.attributes..., color=color)
+    bp = stairs!(plot, points[]; attr..., color=color)
 
     plot
 end
