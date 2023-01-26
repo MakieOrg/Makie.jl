@@ -9,9 +9,7 @@ function has_forwarded_layout end
 
 macro Block(name::Symbol, body::Expr = Expr(:block))
 
-    if !(body.head == :block)
-        error("A Block needs to be defined within a `begin end` block")
-    end
+    body.head === :block || error("A Block needs to be defined within a `begin end` block")
 
     structdef = quote
         mutable struct $name <: Makie.Block
@@ -27,7 +25,7 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
     attrs = extract_attributes!(body)
 
     i_forwarded_layout = findfirst(
-        x -> x isa Expr && x.head == :macrocall &&
+        x -> x isa Expr && x.head === :macrocall &&
             x.args[1] == Symbol("@forwarded_layout"),
         body.args
     )
@@ -69,8 +67,7 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
 
         function Makie.default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
             sceneattrs = scene === nothing ? Attributes() : theme(scene)
-            curdeftheme = Makie.current_default_theme()
-
+            curdeftheme = deepcopy(CURRENT_DEFAULT_THEME)
             $(make_attr_dict_expr(attrs, :sceneattrs, :curdeftheme))
         end
 
@@ -155,7 +152,7 @@ function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
     pairs = map(attrs) do a
 
         d = a.default
-        if d isa Expr && d.head == :macrocall && d.args[1] == Symbol("@inherit")
+        if d isa Expr && d.head === :macrocall && d.args[1] == Symbol("@inherit")
             if length(d.args) != 4
                 error("@inherit works with exactly 2 arguments, expression was $d")
             end
@@ -196,8 +193,8 @@ end
 
 function extract_attributes!(body)
     i = findfirst(
-        (x -> x isa Expr && x.head == :macrocall && x.args[1] == Symbol("@attributes") &&
-            x.args[3] isa Expr && x.args[3].head == :block),
+        (x -> x isa Expr && x.head === :macrocall && x.args[1] == Symbol("@attributes") &&
+            x.args[3] isa Expr && x.args[3].head === :block),
         body.args
     )
     if i === nothing
@@ -231,7 +228,7 @@ function extract_attributes!(body)
     args = filter(x -> !(x isa LineNumberNode), attrs_block.args)
 
     function extract_attr(arg)
-        has_docs = arg isa Expr && arg.head == :macrocall && arg.args[1] isa GlobalRef
+        has_docs = arg isa Expr && arg.head === :macrocall && arg.args[1] isa GlobalRef
 
         if has_docs
             docs = arg.args[3]
@@ -241,7 +238,7 @@ function extract_attributes!(body)
             attr = arg
         end
 
-        if !(attr isa Expr && attr.head == :(=) && length(attr.args) == 2)
+        if !(attr isa Expr && attr.head === :(=) && length(attr.args) == 2)
             error("$attr is not a valid attribute line like :x[::Type] = default_value")
         end
         left = attr.args[1]
@@ -250,7 +247,7 @@ function extract_attributes!(body)
             attr_symbol = left
             type = Any
         else
-            if !(left isa Expr && left.head == :(::) && length(left.args) == 2)
+            if !(left isa Expr && left.head === :(::) && length(left.args) == 2)
                 error("$left is not a Symbol or an expression such as x::Type")
             end
             attr_symbol = left.args[1]::Symbol
@@ -300,7 +297,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
 
     # first sort out all user kwargs that correspond to block attributes
     kwdict = Dict(kwargs)
-    
+
     if haskey(kwdict, :textsize)
         throw(ArgumentError("The attribute `textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
     end
@@ -319,8 +316,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
     # and also the `Block = (...` style attributes from scene and global theme
     default_attrs = default_attribute_values(T, topscene)
     typekey_scene_attrs = get(theme(topscene), nameof(T), Attributes())::Attributes
-    typekey_attrs = get(Makie.current_default_theme(), nameof(T), Attributes())::Attributes
-
+    typekey_attrs = theme(nameof(T); default=Attributes())::Attributes
     # make a final attribute dictionary using different priorities
     # for the different themes
     attributes = Dict{Symbol, Any}()
@@ -368,6 +364,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
         # for this it seems to be necessary to zero-out a possible non-zero
         # origin of the parent
         lift(Makie.zero_origin, topscene.px_area),
+        clear=false,
         camera = campixel!
     )
 
@@ -496,6 +493,9 @@ end
 
 function Base.delete!(block::Block)
     block.parent === nothing && return
+    
+    # detach plots, cameras, transformations, px_area
+    empty!(block.blockscene)
 
     s = get_topscene(block.parent)
     deleteat!(

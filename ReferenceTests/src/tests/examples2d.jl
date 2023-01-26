@@ -201,7 +201,7 @@ end
     title_str = Observable("t = 0.00")
     sp = streamplot(sf, -2..2, -2..2;
                     linewidth=2, colormap=:magma, axis=(;title=title_str))
-    Record(sp, LinRange(0, 20, 5)) do i
+    Record(sp, LinRange(0, 20, 5); framerate=1) do i
         sf[] = Base.Fix2(v, i)
         title_str[] = "t = $(round(i; sigdigits=2))"
     end
@@ -211,7 +211,7 @@ end
 @reference_test "Line changing colour" begin
     fig, ax, lineplot = lines(RNG.rand(10); linewidth=10)
     N = 20
-    Record(fig, 1:N; framerate=20) do i
+    Record(fig, 1:N; framerate=1) do i
         lineplot.color = RGBf(i / N, (N - i) / N, 0) # animate scene
     end
 end

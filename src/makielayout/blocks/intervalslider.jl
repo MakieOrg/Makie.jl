@@ -95,11 +95,11 @@ function initialize_block!(isl::IntervalSlider)
 
     state = Observable(:none)
     button_magnifications = lift(state) do state
-        if state == :none
+        if state === :none
             [1.0, 1.0]
-        elseif state == :min
+        elseif state === :min
             [1.25, 1.0]
-        elseif state == :both
+        elseif state === :both
             [1.25, 1.25]
         else
             [1.0, 1.25]
@@ -133,7 +133,7 @@ function initialize_block!(isl::IntervalSlider)
                 snapindex = closest_fractionindex(isl.range[], fraction)
                 fraction = (snapindex - 1) / (length(isl.range[]) - 1)
             end
-            if state[] == :min
+            if state[] === :min
                 # if the mouse crosses over the current max, reverse
                 if fraction > displayed_sliderfractions[][2]
                     state[] = :max
@@ -155,7 +155,7 @@ function initialize_block!(isl::IntervalSlider)
             if isl.selected_indices[] != newindices
                 isl.selected_indices[] = newindices
             end
-        elseif state[] == :both
+        elseif state[] === :both
             fracdif = fraction - startfraction[]
 
             clamped_fracdif = clamp(fracdif, -start_disp_fractions[][1], 1 - start_disp_fractions[][2])

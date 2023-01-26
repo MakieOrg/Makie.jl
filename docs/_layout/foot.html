@@ -25,7 +25,7 @@
     <!-- <script src="/libs/lunr/lunr.min.js"></script>
     <script src="/libs/lunr/lunr_index.js"></script>
     <script src="/libs/lunr/lunrclient.min.js"></script> -->
-    <script src="https://files.stork-search.net/releases/v1.4.2/stork.js"></script>
+    <script src="https://files.stork-search.net/releases/v1.6.0/stork.js"></script>
 
     <!-- this is a hacky way to have stork receive a relative path, we don't know what the final
     prefix will be so everything has to be relative, but make_links_relative can only work with
@@ -34,13 +34,17 @@
     {{if searchpage}}
     <script>
       storkfolder = document.querySelector("#stork-library-path-placeholder").src;
-      stork.register("makiesearch", `${storkfolder}/index_page.st`);
+      stork.register("makiesearch", `${storkfolder}/index_page.st`, {
+        transformResultUrl: (url) => url.replace(DOCUMENTER_NEWEST, "stable")
+      });
     </script>
     {{else}}
     <img id="search-path-placeholder" src="/search" style="display:none"/>
     <script>
       storkfolder = document.querySelector("#stork-library-path-placeholder").src;
-      stork.register("makiesearch", `${storkfolder}/index_box.st`);
+      stork.register("makiesearch", `${storkfolder}/index_box.st`, {
+        transformResultUrl: (url) => url.replace(DOCUMENTER_NEWEST, "stable")
+      });
       function handleKeyPress(e){
         // Redirect to search-page if enter is pressed in search-box
         var key=e.keyCode || e.which;
@@ -55,6 +59,9 @@
 
     <!-- <script src="/libs/minimal-mistakes/main.min.js"></script> -->
     <script defer src="https://use.fontawesome.com/releases/v5.8.2/js/all.js" integrity="sha384-DJ25uNYET2XCl5ZF++U8eNxPWqcKohUUBUpKGlNLMchM7q4Wjg2CUpjHLaL8yYPH" crossorigin="anonymous"></script>
+    <!-- Cloudflare Web Analytics -->
+    <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "1d64fe1c797349838c82c16b692ff9b2"}'></script>
+    <!-- End Cloudflare Web Analytics -->
 
     {{ if hasmath }}
         {{ insert foot_katex.html }}

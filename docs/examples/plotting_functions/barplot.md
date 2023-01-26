@@ -126,24 +126,6 @@ barplot(
 
 \begin{examplefigure}{}
 ```julia
-barplot(
-    tbl.x, tbl.height,
-    dodge = tbl.grp,
-    color = tbl.grp,
-    bar_labels = :y,
-    axis = (xticks = (1:3, ["left", "middle", "right"]),
-            title = "Dodged bars horizontal with labels"),
-    colormap = [:red, :green, :blue],
-    color_over_background=:red,
-    color_over_bar=:white,
-    flip_labels_at=0.85,
-    direction=:x,
-)
-```
-\end{examplefigure}
-
-\begin{examplefigure}{}
-```julia
 barplot([-1, -0.5, 0.5, 1],
     bar_labels = :y,
     axis = (title="Fonts + flip_labels_at",),
