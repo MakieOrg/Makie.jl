@@ -69,6 +69,7 @@ function OIT_postprocessor(framebuffer, shader_cache)
         # Blend transparent onto opaque
         glDrawBuffer(color_id)
         glViewport(0, 0, w, h)
+        glDisable(GL_STENCIL_TEST)
         GLAbstraction.render(pass)
     end
 
@@ -162,6 +163,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
         # SSAO - calculate occlusion
         glDrawBuffer(normal_occ_id)  # occlusion buffer
         glViewport(0, 0, w, h)
+        glDisable(GL_STENCIL_TEST)
         glEnable(GL_SCISSOR_TEST)
 
         for (screenid, scene) in screen.screens
