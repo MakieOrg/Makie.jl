@@ -1,10 +1,19 @@
+function jlmke_colors(alpha=1.0)
+    colors = [RGB(0.0, 0.0, 0.0), RGB(0.082, 0.643, 0.918), RGB(0.91, 0.122, 0.361),
+              RGB(0.929, 0.773, 0.0), RGB(0.588, 0.196, 0.722), RGB(0.361, 0.722, 0.361),
+              RGB(0.522, 0.522, 0.522)]
+    @. RGBAf(red(colors), green(colors), blue(colors), alpha)
+end
+
+"""
+    theme_jlmke()::Attributes
+
+A theme by Lazaro Alonso (`@lazarusa`).
+Code to set the theme to `theme_jlmke` is as follows: `Makie.set_theme!(theme_jlmke())`.
+
+The first 3 colours in the palette definition are close to the ones used in the logo of Makie. The other two are close to those of the Julia logo.
+"""
 function theme_jlmke()
-    function jlmke_colors(alpha=1.0)
-        colors = [RGB(0.0, 0.0, 0.0), RGB(0.082, 0.643, 0.918), RGB(0.91, 0.122, 0.361),
-                  RGB(0.929, 0.773, 0.0), RGB(0.588, 0.196, 0.722), RGB(0.361, 0.722, 0.361),
-                  RGB(0.522, 0.522, 0.522)]
-        @. RGBAf(red(colors), green(colors), blue(colors), alpha)
-    end
     my_colors = jlmke_colors(0.8)
     my_markers = [:circle, :utriangle, :rect, :diamond, :dtriangle, :diamond, :pentagon]
     my_linestyle = [:solid, :dash, :dot, :dashdot, :dashdotdot, :dash]
@@ -62,8 +71,8 @@ function theme_jlmke()
             spinewidth=0.0,
             minorticksvisible= true),
         LScene = (
-            scenekw = (show_axis=true,)),
-            backgroundcolor = :white,
+            show_axis = true,
+            backgroundcolor = :white
     )
 end
 
