@@ -34,10 +34,7 @@ Statistical weights can be provided via the `weights` keyword argument.
 
 The following attributes can move the histogram around,
 which comes in handy when placing multiple histograms into one plot:
-* `offset = 0.0`: adds an offset to every value
-* `fillto = 0.0`: defines where the bar starts
 * `scale_to = nothing`: allows to scale all values to a certain height
-* `flip = false`: flips all values
 
 ## Attributes
 $(ATTRIBUTES)
@@ -50,14 +47,7 @@ $(ATTRIBUTES)
         cycle = [:color => :patchcolor],
         color = theme(scene, :patchcolor),
         linestyle = :solid,
-        offset = 0.0,
         scale_to = nothing,
-
-        flip_labels_at = Inf,
-        label_color = theme(scene, :textcolor),
-        label_offset = 5,
-        label_font = theme(scene, :font),
-        label_size = 20,
     )
 end
 
@@ -82,12 +72,13 @@ function Makie.plot!(plot::StepHist)
         end
     end
     attr = copy(plot.attributes)
-    # stop Automatic() from going too far
+    # Don't pass stephist attributes to the stairs primitive
     pop!(attr, :weights)
+    pop!(attr, :normalization)
+    pop!(attr, :scale_to)
+    pop!(attr, :bins)
     # plot the values, not the observables, to be in control of updating
-    bp = stairs!(plot, points[]; attr..., color=color)
-
-    plot
+    stairs!(plot, points[]; attr..., color=color)
 end
 
 """
