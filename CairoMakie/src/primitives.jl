@@ -898,7 +898,7 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
         Cairo.paint(ctx)
         Cairo.destroy(pattern)
     end
-    
+
 end
 
 ################################################################################

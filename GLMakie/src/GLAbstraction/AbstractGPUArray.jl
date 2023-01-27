@@ -29,7 +29,7 @@ end
 
 setindex!(A::GPUArray{T, N}, value::Union{T, Array{T, N}}) where {T, N} = (A[1] = value)
 
-function setindex!(A::GPUArray{T, N}, value, indices::Vararg{<: Integer, N}) where {T, N}
+function setindex!(A::GPUArray{T, N}, value, indices::Vararg{Integer, N}) where {T, N}
     v = Array{T, N}(undef, ntuple(i-> 1, N))
     v[1] = convert(T, value)
     setindex!(A, v, (:).(indices, indices)...)
