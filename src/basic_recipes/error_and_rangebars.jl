@@ -131,9 +131,9 @@ function Makie.plot!(plot::Errorbars{T}) where T <: Tuple{AbstractVector{<:VecTy
     x_y_low_high = plot[1]
 
     is_in_y_direction = lift(plot.direction) do dir
-        if dir == :y
+        if dir === :y
             true
-        elseif dir == :x
+        elseif dir === :x
             false
         else
             error("Invalid direction $dir. Options are :x and :y.")
@@ -158,9 +158,9 @@ function Makie.plot!(plot::Rangebars{T}) where T <: Tuple{AbstractVector{<:VecTy
     val_low_high = plot[1]
 
     is_in_y_direction = lift(plot.direction) do dir
-        if dir == :y
+        if dir === :y
             true
-        elseif dir == :x
+        elseif dir === :x
             false
         else
             error("Invalid direction $dir. Options are :x and :y.")

@@ -4,10 +4,13 @@ import {
     delete_scenes,
     insert_plot,
     delete_plots,
+    find_plots,
     deserialize_scene,
     delete_scene,
     TEXTURE_ATLAS,
     on_next_insert,
+    scene_cache,
+    find_scene,
 } from "./Serialization.js";
 
 import { event2scene_pixel } from "./Camera.js";
@@ -423,6 +426,22 @@ export function pick_native_matrix(scene, x, y, w, h) {
     return matrix;
 }
 
+window.WGL = {
+    deserialize_scene,
+    threejs_module,
+    start_renderloop,
+    delete_plots,
+    insert_plot,
+    find_plots,
+    delete_scene,
+    find_scene,
+    scene_cache,
+    delete_scenes,
+    create_scene,
+    event2scene_pixel,
+    on_next_insert,
+};
+
 export {
     deserialize_scene,
     threejs_module,
@@ -433,7 +452,6 @@ export {
     delete_scene,
     find_scene,
     scene_cache,
-    plot_cache,
     delete_scenes,
     create_scene,
     event2scene_pixel,

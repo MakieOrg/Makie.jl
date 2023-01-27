@@ -1,4 +1,4 @@
-struct ThreeDisplay <: Makie.MakieScreen
+struct ThreeDisplay
     session::JSServe.Session
 end
 
@@ -23,6 +23,9 @@ function JSServe.jsrender(session::Session, scene::Scene)
     put!(c, three)
     screen = Screen(c, true, scene)
     Makie.push_screen!(scene, screen)
+    on(on_init) do i
+        mark_as_displayed!(screen, scene)
+    end
     return canvas
 end
 
@@ -59,6 +62,26 @@ mutable struct Screen <: Makie.MakieScreen
     three::Channel{ThreeDisplay}
     display::Any
     scene::Union{Nothing, Scene}
+    displayed_scenes::Set{String}
+    function Screen(
+            three::Channel{ThreeDisplay},
+            display::Any,
+            scene::Union{Nothing, Scene})
+        return new(three, display, scene, Set{String}())
+    end
+end
+
+function Base.isopen(screen::Screen)
+    three = get_three(screen)
+    return !isnothing(three) && isopen(three.session)
+end
+
+function mark_as_displayed!(screen::Screen, scene::Scene)
+    push!(screen.displayed_scenes, js_uuid(scene))
+    for child_scene in scene.children
+        mark_as_displayed!(screen, child_scene)
+    end
+    return
 end
 
 for M in WEB_MIMES
@@ -69,6 +92,8 @@ for M in WEB_MIMES
                 Makie.push_screen!(scene, screen)
                 on(init_obs) do _
                     put!(screen.three, three)
+                    mark_as_displayed!(screen, scene)
+                    return
                 end
                 return canvas
             end
@@ -89,18 +114,24 @@ function Base.size(screen::Screen)
     return size(screen.scene)
 end
 
-function get_three(screen::Screen; timeout = 100)
+function get_three(screen::Screen; timeout = 100, error::Union{Nothing, String}=nothing)::Union{Nothing, ThreeDisplay}
     tstart = time()
+    result = nothing
     while true
         yield()
         if time() - tstart > timeout
-            return nothing # we waited LONG ENOUGH!!
+            break # we waited LONG ENOUGH!!
         end
         if isready(screen.three)
-            return fetch(screen.three)
+            result = fetch(screen.three)
+            break
         end
     end
-    return nothing
+    # Throw error if error message specified
+    if isnothing(result) && !isnothing(error)
+        Base.error(error)
+    end
+    return result
 end
 
 function Makie.apply_screen_config!(screen::ThreeDisplay, config::ScreenConfig, args...)
@@ -131,6 +162,8 @@ function Base.display(screen::Screen, scene::Scene; kw...)
         three, canvas, done_init = three_display(session, scene)
         on(done_init) do _
             put!(screen.three, three)
+            mark_as_displayed!(screen, scene)
+            return
         end
         return canvas
     end
@@ -165,15 +198,53 @@ function Makie.colorbuffer(screen::Screen)
     if screen.display !== true
         Base.display(screen, screen.scene)
     end
-    three = get_three(screen)
-    if isnothing(three)
-        error("Not able to show scene in a browser")
-    end
+    three = get_three(screen; error="Not able to show scene in a browser")
     return session2image(three.session, screen.scene)
 end
 
-function Base.insert!(td::Screen, scene::Scene, plot::Combined)
-    disp = get_three(td)
-    disp === nothing && error("Plot needs to be displayed to insert additional plots")
-    insert!(disp, scene, plot)
+function Base.insert!(screen::Screen, scene::Scene, plot::Combined)
+    disp = get_three(screen; error="Plot needs to be displayed to insert additional plots")
+    if js_uuid(scene) in screen.displayed_scenes
+        plot_data = serialize_plots(scene, [plot])
+        JSServe.evaljs_value(disp.session, js"""
+        $(WGL).then(WGL=> {
+            WGL.insert_plot($(js_uuid(scene)), $plot_data);
+        })""")
+    else
+        # Newly created scene gets inserted!
+        # This must be a child plot of some parent, otherwise a plot wouldn't be inserted via `insert!(screen, ...)`
+        parent = scene.parent
+        @assert parent !== scene
+        if isnothing(parent)
+            # This shouldn't happen, since insert! only gets called for scenes, that already got displayed on a screen
+            error("Scene has no parent, but hasn't been displayed yet")
+        end
+        # We serialize the whole scene (containing `plot` as well),
+        # since, we should only get here if scene is newly created and this is the first plot we insert!
+        @assert scene.plots[1] == plot
+        scene_ser = serialize_scene(scene)
+        parent_uuid = js_uuid(parent)
+        err = "Cant find scene js_uuid(scene) == $(parent_uuid)"
+        evaljs_value(disp.session, js"""
+        $(WGL).then(WGL=> {
+            const parent = WGL.find_scene($(parent_uuid));
+            if (!parent) {
+                throw new Error($(err))
+            }
+            const new_scene = WGL.deserialize_scene($scene_ser, parent.screen);
+            parent.scene_children.push(new_scene);
+        })
+        """)
+        mark_as_displayed!(screen, scene)
+    end
+    return
+end
+
+function Base.delete!(td::Screen, scene::Scene, plot::Combined)
+    uuids = js_uuid.(Makie.flatten_plots(plot))
+    JSServe.evaljs(td.session, js"""
+    $(WGL).then(WGL=> {
+        WGL.delete_plots($(js_uuid(scene)), $uuids);
+    })""")
+    return
 end
