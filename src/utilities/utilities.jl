@@ -324,7 +324,7 @@ end
 
 
 ############################################################
-#                NaN-aware normal handling                 #
+#            NaN-aware normal & mesh handling              #
 ############################################################
 
 """
@@ -373,6 +373,24 @@ end
 function nan_aware_normals(vertices::AbstractVector{<:GeometryBasics.PointMeta{D,T}}, faces::AbstractVector{F}) where {D,T,F<:NgonFace}
     return nan_aware_normals(collect(GeometryBasics.metafree.(vertices)), faces)
 end
+
+function surface2mesh(xs, ys, zs::AbstractMatrix, transform_func = identity, space = :data)
+    # crate a `Matrix{Point3}`
+    # ps = matrix_grid(identity, xs, ys, zs)
+    ps = matrix_grid(p -> apply_transform(transform_func, p, space), xs, ys, zs)
+    # create valid tessellations (triangulations) for the mesh
+    # knowing that it is a regular grid makes this simple
+    rect = Tesselation(Rect2f(0, 0, 1, 1), size(zs))
+    # we use quad faces so that color handling is consistent
+    faces = decompose(QuadFace{Int}, rect)
+    # and remove quads that contain a NaN coordinate to avoid drawing triangles
+    faces = filter(f -> !any(i -> isnan(ps[i]), f), faces)
+    # create the uv (texture) vectors
+    uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
+    # return a mesh with known uvs and normals.
+    return GeometryBasics.Mesh(GeometryBasics.meta(ps; uv=uv, normals = nan_aware_normals(ps, faces)), faces, )
+end
+
 
 ############################################################
 #         Matrix grid method for surface handling          #

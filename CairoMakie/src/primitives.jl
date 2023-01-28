@@ -922,7 +922,7 @@ end
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Surface))
     # Pretend the surface plot is a mesh plot and plot that instead
-    mesh = surface2mesh(primitive[1][], primitive[2][], primitive[3][])
+    mesh = Makie.surface2mesh(primitive[1][], primitive[2][], primitive[3][])
     old = primitive[:color]
     if old[] === nothing
         primitive[:color] = primitive[3]
@@ -935,21 +935,6 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     return nothing
 end
 
-function surface2mesh(xs, ys, zs::AbstractMatrix)
-    # crate a `Matrix{Point3}`
-    ps = Makie.matrix_grid(identity, xs, ys, zs)
-    # create valid tessellations (triangulations) for the mesh
-    # knowing that it is a regular grid makes this simple
-    rect = Tesselation(Rect2f(0, 0, 1, 1), size(zs))
-    # we use quad faces so that color handling is consistent
-    faces = decompose(QuadFace{Int}, rect)
-    # and remove quads that contain a NaN coordinate to avoid drawing triangles
-    faces = filter(f -> !any(i -> isnan(ps[i]), f), faces)
-    # create the uv (texture) vectors
-    uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
-    # return a mesh with known uvs and normals.
-    return GeometryBasics.Mesh(GeometryBasics.meta(ps; uv=uv, normals = Makie.nan_aware_normals(ps, faces)), faces, )
-end
 
 ################################################################################
 #                                 MeshScatter                                  #

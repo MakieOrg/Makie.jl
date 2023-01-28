@@ -90,26 +90,29 @@ end
 function create_shader(mscene::Scene, plot::Surface)
     # TODO OWN OPTIMIZED SHADER ... Or at least optimize this a bit more ...
     px, py, pz = plot[1], plot[2], plot[3]
-    grid(x, y, z, trans, space) = Makie.matrix_grid(p-> apply_transform(trans, p, space), x, y, z)
-    positions = Buffer(lift(grid, px, py, pz, transform_func_obs(plot), get(plot, :space, :data)))
-    rect = lift(z -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), size(z)), pz)
-    faces = Buffer(lift(r -> decompose(GLTriangleFace, r), rect))
-    uv = Buffer(lift(decompose_uv, rect))
+
+    _mesh = map(Makie.surface2mesh, px, py, pz, transform_func_obs(plot), get(plot, :space, :data))
+    positions = Buffer(map(m -> decompose(Point3f, m), _mesh))
+    faces = Buffer(map(m -> decompose(GLTriangleFace, m), _mesh))
+    uv = Buffer(map(decompose_uv, _mesh))
+    normals = Buffer(map(decompose_normals, _mesh))
+    vertices = GeometryBasics.meta(positions; uv=uv, normals=normals)
+    mesh = GeometryBasics.Mesh(vertices, faces)
+
     plot_attributes = copy(plot.attributes)
-    pcolor = if haskey(plot, :color) && plot.color[] isa AbstractArray
+    minfilter = to_value(get(plot, :interpolate, true)) ? :linear : :nearest
+    color = if haskey(plot, :color) && plot.color[] isa AbstractArray
         if plot.color[] isa AbstractMatrix{<:Colorant}
             delete!(plot_attributes, :colormap)
             delete!(plot_attributes, :colorrange)
         end
         plot.color
+        Sampler(lift(x -> el32convert(to_color(permutedims(x))), plot.color), minfilter=minfilter)
     else
-        pz
+        Sampler(lift(x -> el32convert(to_color(x)), pz), minfilter=minfilter)
     end
-    minfilter = to_value(get(plot, :interpolate, true)) ? :linear : :nearest
-    color = Sampler(lift(x -> el32convert(to_color(permutedims(x))), pcolor), minfilter=minfilter)
-    normals = Buffer(lift(surface_normals, px, py, pz))
-    vertices = GeometryBasics.meta(positions; uv=uv, normals=normals)
-    mesh = GeometryBasics.Mesh(vertices, faces)
+
+
     return draw_mesh(mscene, mesh, plot_attributes; uniform_color=color, color=false,
                      shading=plot.shading, diffuse=plot.diffuse,
                      specular=plot.specular, shininess=plot.shininess,
