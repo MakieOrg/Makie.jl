@@ -29,6 +29,12 @@ vec2 grid_pos(Grid2D position, vec2 uv){
     );
 }
 
+vec2 grid_pos(Grid2D position, ivec2 uv, ivec2 size){
+    return vec2(
+        (1 - uv.x / (size.x - 1)) * position.start[0] + uv.x / (size.x - 1) * position.stop[0],
+        (1 - uv.y / (size.y - 1)) * position.start[1] + uv.y / (size.y - 1) * position.stop[1]
+    );
+}
 
 // stretch is
 vec3 stretch(vec3 val, vec3 from, vec3 to){
@@ -265,22 +271,18 @@ vec3 normal_from_points(
         vec3 s0, vec3 s1, vec3 s2, vec3 s3, vec3 s4,
         vec2 uv, vec2 off1, vec2 off2, vec2 off3, vec2 off4
     ){
-    vec3 result = vec3(0);
-    if(isinbounds(off1) && isinbounds(off2))
-    {
-        result += cross(s2-s0, s1-s0);
-    }
-    if(isinbounds(off2) && isinbounds(off3))
-    {
-        result += cross(s3-s0, s2-s0);
-    }
-    if(isinbounds(off3) && isinbounds(off4))
-    {
-        result += cross(s4-s0, s3-s0);
-    }
-    if(isinbounds(off4) && isinbounds(off1))
-    {
-        result += cross(s1-s0, s4-s0);
+    vec3 result = vec3(0,0,0);
+    // isnan checks should avoid darkening around NaN positions but may not
+    // work with all systems
+    if (!isnan(s0.z)) {
+        bool check1 = isinbounds(off1) && !isnan(s1.z);
+        bool check2 = isinbounds(off2) && !isnan(s2.z);
+        bool check3 = isinbounds(off3) && !isnan(s3.z);
+        bool check4 = isinbounds(off4) && !isnan(s4.z);
+        if (check1 && check2) result += cross(s2-s0, s1-s0);
+        if (check2 && check3) result += cross(s3-s0, s2-s0);
+        if (check3 && check4) result += cross(s4-s0, s3-s0);
+        if (check4 && check1) result += cross(s1-s0, s4-s0);
     }
     // normal should be zero, but needs to be here, because the dead-code
     // elimanation of GLSL is overly enthusiastic
@@ -353,6 +355,91 @@ vec3 getnormal(Nothing pos, sampler1D xs, sampler1D ys, sampler2D zs, vec2 uv){
 
     return normal_from_points(s0, s1, s2, s3, s4, uv, off1, off2, off3, off4);
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Versions using ivec2 and texelFetch
+////////////////////////////////////////////////////////////////////////////////
+
+
+bool isinbounds(ivec2 uv, ivec2 size)
+{
+    return (0 <= uv.x && uv.x < size.x && 0 <= uv.y && uv.y < size.y);
+}
+
+vec3 normal_from_points(
+        vec3 s0, vec3 s1, vec3 s2, vec3 s3, vec3 s4,
+        ivec2 uv, ivec2 off1, ivec2 off2, ivec2 off3, ivec2 off4, ivec2 size
+    ){
+    vec3 result = vec3(0,0,0);
+    // isnan checks should avoid darkening around NaN positions but may not
+    // work with all systems
+    if (!isnan(s0.z)) {
+        bool check1 = isinbounds(off1, size) && !isnan(s1.z);
+        bool check2 = isinbounds(off2, size) && !isnan(s2.z);
+        bool check3 = isinbounds(off3, size) && !isnan(s3.z);
+        bool check4 = isinbounds(off4, size) && !isnan(s4.z);
+        if (check1 && check2) result += cross(s2-s0, s1-s0);
+        if (check2 && check3) result += cross(s3-s0, s2-s0);
+        if (check3 && check4) result += cross(s4-s0, s3-s0);
+        if (check4 && check1) result += cross(s1-s0, s4-s0);
+    }
+    // normal should be zero, but needs to be here, because the dead-code
+    // elimanation of GLSL is overly enthusiastic
+    return normalize(result);
+}
+
+vec3 getnormal(Nothing pos, sampler2D xs, sampler2D ys, sampler2D zs, ivec2 uv){
+    vec3 s0, s1, s2, s3, s4;
+    ivec2 off1 = uv + ivec2(-1,  0);
+    ivec2 off2 = uv + ivec2( 0,  1);
+    ivec2 off3 = uv + ivec2( 1,  0);
+    ivec2 off4 = uv + ivec2( 0, -1);
+
+    s0 = vec3(texelFetch(xs,   uv, 0).x, texelFetch(ys,   uv, 0).x, texelFetch(zs,   uv, 0).x);
+    s1 = vec3(texelFetch(xs, off1, 0).x, texelFetch(ys, off1, 0).x, texelFetch(zs, off1, 0).x);
+    s2 = vec3(texelFetch(xs, off2, 0).x, texelFetch(ys, off2, 0).x, texelFetch(zs, off2, 0).x);
+    s3 = vec3(texelFetch(xs, off3, 0).x, texelFetch(ys, off3, 0).x, texelFetch(zs, off3, 0).x);
+    s4 = vec3(texelFetch(xs, off4, 0).x, texelFetch(ys, off4, 0).x, texelFetch(zs, off4, 0).x);
+
+    return normal_from_points(s0, s1, s2, s3, s4, uv, off1, off2, off3, off4, textureSize(zs, 0));
+}
+
+
+vec3 getnormal(Grid2D pos, Nothing xs, Nothing ys, sampler2D zs, ivec2 uv){
+    ivec2 size = textureSize(zs, 0).xy;
+    vec3 s0, s1, s2, s3, s4;
+    ivec2 off1 = uv + ivec2(-1,  0);
+    ivec2 off2 = uv + ivec2( 0,  1);
+    ivec2 off3 = uv + ivec2( 1,  0);
+    ivec2 off4 = uv + ivec2( 0, -1);
+
+    s0 = vec3(grid_pos(pos,   uv, size).xy, texelFetch(zs,   uv, 0).x);
+    s1 = vec3(grid_pos(pos, off1, size).xy, texelFetch(zs, off1, 0).x);
+    s2 = vec3(grid_pos(pos, off2, size).xy, texelFetch(zs, off2, 0).x);
+    s3 = vec3(grid_pos(pos, off3, size).xy, texelFetch(zs, off3, 0).x);
+    s4 = vec3(grid_pos(pos, off4, size).xy, texelFetch(zs, off4, 0).x);
+
+    return normal_from_points(s0, s1, s2, s3, s4, uv, off1, off2, off3, off4, size);
+}
+
+
+vec3 getnormal(Nothing pos, sampler1D xs, sampler1D ys, sampler2D zs, ivec2 uv){
+    vec3 s0, s1, s2, s3, s4;
+    ivec2 off1 = uv + ivec2(-1,  0);
+    ivec2 off2 = uv + ivec2( 0,  1);
+    ivec2 off3 = uv + ivec2( 1,  0);
+    ivec2 off4 = uv + ivec2( 0, -1);
+
+    s0 = vec3(texelFetch(xs,   uv.x, 0).x, texelFetch(ys,   uv.y, 0).x, texelFetch(zs,   uv, 0).x);
+    s1 = vec3(texelFetch(xs, off1.x, 0).x, texelFetch(ys, off1.y, 0).x, texelFetch(zs, off1, 0).x);
+    s2 = vec3(texelFetch(xs, off2.x, 0).x, texelFetch(ys, off2.y, 0).x, texelFetch(zs, off2, 0).x);
+    s3 = vec3(texelFetch(xs, off3.x, 0).x, texelFetch(ys, off3.y, 0).x, texelFetch(zs, off3, 0).x);
+    s4 = vec3(texelFetch(xs, off4.x, 0).x, texelFetch(ys, off4.y, 0).x, texelFetch(zs, off4, 0).x);
+
+    return normal_from_points(s0, s1, s2, s3, s4, uv, off1, off2, off3, off4, textureSize(zs, 0));
+}
+
 
 uniform vec4 highclip;
 uniform vec4 lowclip;

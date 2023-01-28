@@ -47,6 +47,10 @@ vec3 getnormal(Grid2D pos, Nothing xs, Nothing ys, sampler2D zs, vec2 uv);
 vec3 getnormal(Nothing pos, sampler2D xs, sampler2D ys, sampler2D zs, vec2 uv);
 vec3 getnormal(Nothing pos, sampler1D xs, sampler1D ys, sampler2D zs, vec2 uv);
 
+vec3 getnormal(Grid2D pos,  Nothing xs,   Nothing ys,   sampler2D zs, ivec2 uv);
+vec3 getnormal(Nothing pos, sampler2D xs, sampler2D ys, sampler2D zs, ivec2 uv);
+vec3 getnormal(Nothing pos, sampler1D xs, sampler1D ys, sampler2D zs, ivec2 uv);
+
 uniform uint objectid;
 uniform vec2 uv_scale;
 flat out uvec2 o_id;
@@ -67,9 +71,5 @@ void main()
     vec3 normalvec = {{normal_calc}};
 
     o_color = vec4(0.0);
-    // we still want to render NaN values... TODO: make value customizable?
-    if (isnan(pos.z)) {
-        pos.z = 0.0;
-    }
     render(model * vec4(pos, 1), normalvec, view, projection, lightposition);
 }
