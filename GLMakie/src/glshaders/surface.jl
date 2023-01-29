@@ -6,7 +6,7 @@ end
 function normal_calc(x::Bool, invert_normals::Bool = false)
     i = invert_normals ? "-" : ""
     if x
-        return "$(i)getnormal(position, position_x, position_y, position_z, index2D);"
+        return "$(i)getnormal(position, position_x, position_y, position_z, index01);"
     else
         return "vec3(0, 0, $(i)1);"
     end
@@ -32,7 +32,8 @@ function _position_calc(
     """
     int index1D = index + offseti.x + offseti.y * dims.x + (index/(dims.x-1));
     ivec2 index2D = ind2sub(dims, index1D);
-    vec2 index01 = vec2(index2D) / (vec2(dims)-1.0);
+    vec2 index01 = (vec2(index2D) + 0.5) / (vec2(dims));
+
     pos = vec3(
         texelFetch(position_x, index2D, 0).x,
         texelFetch(position_y, index2D, 0).x,
@@ -48,7 +49,8 @@ function _position_calc(
     """
     int index1D = index + offseti.x + offseti.y * dims.x + (index/(dims.x-1));
     ivec2 index2D = ind2sub(dims, index1D);
-    vec2 index01 = vec2(index2D) / (vec2(dims)-1.0);
+    vec2 index01 = (vec2(index2D) + 0.5) / (vec2(dims));
+
     pos = vec3(
         texelFetch(position_x, index2D.x, 0).x,
         texelFetch(position_y, index2D.y, 0).x,
@@ -78,8 +80,9 @@ function _position_calc(
     """
     int index1D = index + offseti.x + offseti.y * dims.x + (index/(dims.x-1));
     ivec2 index2D = ind2sub(dims, index1D);
-    vec2 index01 = vec2(index2D) / (vec2(dims)-1.0);
-    float height = texture(position_z, index01).x;
+    vec2 index01 = (vec2(index2D) + 0.5) / (vec2(dims));
+
+    float height = texelFetch(position_z, index2D, 0).x;
     pos = vec3(grid_pos(position, index01), height);
     """
 end

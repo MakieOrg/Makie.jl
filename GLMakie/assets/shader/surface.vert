@@ -71,5 +71,10 @@ void main()
     vec3 normalvec = {{normal_calc}};
 
     o_color = vec4(0.0);
+    // we still want to render NaN values... TODO: make value customizable?
+    if (isnan(pos.z)) {
+        pos.z = 0.0;
+    }
+
     render(model * vec4(pos, 1), normalvec, view, projection, lightposition);
 }
