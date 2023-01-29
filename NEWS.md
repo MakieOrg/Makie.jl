@@ -1,6 +1,7 @@
 # News
 
 ## master
+- Added the `stephist` plotting function [#2408](https://github.com/JuliaPlots/Makie.jl/pull/2408).
 
 - Added support for `linecap` to CairoMakie and GLMakie [#2536](https://github.com/MakieOrg/Makie.jl/pull/2536)
 - Added support for per-position `linewidth` to `lines!` and `linesegments!` in GLMakie [#2536](https://github.com/MakieOrg/Makie.jl/pull/2536)

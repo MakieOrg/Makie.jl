@@ -83,7 +83,7 @@ function update_axis_camera(camera::Camera, t, lims, xrev::Bool, yrev::Bool)
     farclip = 10_000f0
 
     # we are computing transformed camera position, so this isn't space dependent
-    tlims = Makie.apply_transform(t, lims) 
+    tlims = Makie.apply_transform(t, lims)
 
     left, bottom = minimum(tlims)
     right, top = maximum(tlims)
@@ -676,13 +676,15 @@ function get_cycle_for_plottype(allattrs, P)::Cycle
 
     plottheme = Makie.default_theme(nothing, P)
 
-    cdt = Makie.current_default_theme()
     cycle_raw = if haskey(allattrs, :cycle)
         allattrs.cycle[]
-    elseif haskey(cdt, psym) && haskey(cdt[psym], :cycle)
-        cdt[psym].cycle[]
     else
-        haskey(plottheme, :cycle) ? plottheme.cycle[] : nothing
+        global_theme_cycle = theme(psym)
+        if !isnothing(global_theme_cycle) && haskey(global_theme_cycle, :cycle)
+            global_theme_cycle.cycle[]
+        else
+            haskey(plottheme, :cycle) ? plottheme.cycle[] : nothing
+        end
     end
 
     if isnothing(cycle_raw)

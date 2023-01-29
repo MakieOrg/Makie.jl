@@ -794,7 +794,7 @@ convert_attribute(c, ::key"strokecolor") = to_color(c)
 convert_attribute(x::Nothing, ::key"linestyle") = x
 
 #     `AbstractVector{<:AbstractFloat}` for denoting sequences of fill/nofill. e.g.
-# 
+#
 # [0.5, 0.8, 1.2] will result in 0.5 filled, 0.3 unfilled, 0.4 filled. 1.0 unit is one linewidth!
 convert_attribute(A::AbstractVector, ::key"linestyle") = A
 
@@ -1287,12 +1287,13 @@ function convert_attribute(value::AbstractGeometry, ::key"marker", ::key"meshsca
 end
 
 
-
 convert_attribute(value::Real, ::key"depth_shift") = Float32(value)
 
 convert_attribute(value::Real, ::key"length_offset", ::key"lines") = Float32(value)
 convert_attribute(value::Real, ::key"length_offset", ::key"linesegments") = Float32(value)
 convert_attribute(value::Vector{<: Real}, ::key"length_offset", ::key"lines") = Float32.(value)
 convert_attribute(value::Vector{<: Real}, ::key"length_offset", ::key"linesegments") = Float32.(value)
-
 convert_attribute(cap::Nothing, ::key"linecap") = :butt
+
+convert_attribute(value, ::key"diffuse") = Vec3f(value)
+convert_attribute(value, ::key"specular") = Vec3f(value)
