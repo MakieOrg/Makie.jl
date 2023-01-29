@@ -95,7 +95,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
     uniforms[:shading] = plot.shading
 
     for key in (:diffuse, :specular, :shininess, :backlight)
-        uniforms[key] = plot[key]
+        uniforms[key] = lift(x-> convert_attribute(x, Key{key}()), plot[key])
     end
 
     faces = facebuffer(mesh_signal)
@@ -128,5 +128,5 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
     uniforms[:picking] = false
     uniforms[:object_id] = UInt32(0)
 
-    return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), instance; uniforms...)
+    return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), instance, uniforms)
 end
