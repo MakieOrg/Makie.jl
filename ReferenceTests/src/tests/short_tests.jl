@@ -183,6 +183,8 @@ end
          Point2f[[0.32, 0.66], [0.46, 0.59], [0.09, 0.08]]])
     poly(P, color = [:red, :green], strokecolor = [:blue, :red], strokewidth = 2)
 end
+    
+@reference_test "polygon strokestyle" poly(Circle(Point2f(0), 10); strokewidth = 5, strokestyle = :dash)
 
 @reference_test "fast pixel marker" begin
     scatter(RNG.rand(Point2f, 10000), marker=Makie.FastPixel())
