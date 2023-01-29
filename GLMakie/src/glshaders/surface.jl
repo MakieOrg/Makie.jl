@@ -6,7 +6,7 @@ end
 function normal_calc(x::Bool, invert_normals::Bool = false)
     i = invert_normals ? "-" : ""
     if x
-        return "$(i)getnormal(position, position_x, position_y, position_z, index01);"
+        return "$(i)getnormal(position, position_x, position_y, position_z, index2D);"
     else
         return "vec3(0, 0, $(i)1);"
     end

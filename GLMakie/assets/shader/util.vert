@@ -31,8 +31,8 @@ vec2 grid_pos(Grid2D position, vec2 uv){
 
 vec2 grid_pos(Grid2D position, ivec2 uv, ivec2 size){
     return vec2(
-        (1 - uv.x / (size.x - 1)) * position.start[0] + uv.x / (size.x - 1) * position.stop[0],
-        (1 - uv.y / (size.y - 1)) * position.start[1] + uv.y / (size.y - 1) * position.stop[1]
+        (1.0 - (uv.x + 0.5) / size.x) * position.start[0] + (uv.x + 0.5) / size.x * position.stop[0],
+        (1.0 - (uv.y + 0.5) / size.y) * position.start[1] + (uv.y + 0.5) / size.y * position.stop[1]
     );
 }
 
@@ -243,118 +243,6 @@ void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 l
     o_view_pos = view_pos.xyz / view_pos.w;
 }
 
-//
-vec3 getnormal_fast(sampler2D zvalues, ivec2 uv)
-{
-    vec3 a = vec3(0, 0, 0);
-    vec3 b = vec3(1, 1, 0);
-    a.z = texelFetch(zvalues, uv, 0).r;
-    b.z = texelFetch(zvalues, uv + ivec2(1, 1), 0).r;
-    return normalize(a - b);
-}
-
-bool isinbounds(vec2 uv)
-{
-    return (uv.x <= 1.0 && uv.y <= 1.0 && uv.x >= 0.0 && uv.y >= 0.0);
-}
-
-
-/*
-Computes normal at s0 based on four surrounding positions s1 ... s4 and the
-respective uv coordinates uv, off1, ..., off4
-
-        s2
-     s1 s0 s3
-        s4
-*/
-vec3 normal_from_points(
-        vec3 s0, vec3 s1, vec3 s2, vec3 s3, vec3 s4,
-        vec2 uv, vec2 off1, vec2 off2, vec2 off3, vec2 off4
-    ){
-    vec3 result = vec3(0,0,0);
-    // isnan checks should avoid darkening around NaN positions but may not
-    // work with all systems
-    if (!isnan(s0.z)) {
-        bool check1 = isinbounds(off1) && !isnan(s1.z);
-        bool check2 = isinbounds(off2) && !isnan(s2.z);
-        bool check3 = isinbounds(off3) && !isnan(s3.z);
-        bool check4 = isinbounds(off4) && !isnan(s4.z);
-        if (check1 && check2) result += cross(s2-s0, s1-s0);
-        if (check2 && check3) result += cross(s3-s0, s2-s0);
-        if (check3 && check4) result += cross(s4-s0, s3-s0);
-        if (check4 && check1) result += cross(s1-s0, s4-s0);
-    }
-    // normal should be zero, but needs to be here, because the dead-code
-    // elimanation of GLSL is overly enthusiastic
-    return normalize(result);
-}
-
-// Overload for surface(Matrix, Matrix, Matrix)
-vec3 getnormal(Nothing pos, sampler2D xs, sampler2D ys, sampler2D zs, vec2 uv){
-    // The +1e-6 fixes precision errors at the edge
-    float du = 1.0 / textureSize(zs,0).x + 1e-6;
-    float dv = 1.0 / textureSize(zs,0).y + 1e-6;
-
-    vec3 s0, s1, s2, s3, s4;
-    vec2 off1 = uv + vec2(-du, 0);
-    vec2 off2 = uv + vec2(0, dv);
-    vec2 off3 = uv + vec2(du, 0);
-    vec2 off4 = uv + vec2(0, -dv);
-
-    s0 = vec3(texture(xs,   uv).x, texture(ys,   uv).x,   texture(zs, uv).x);
-    s1 = vec3(texture(xs, off1).x, texture(ys, off1).x, texture(zs, off1).x);
-    s2 = vec3(texture(xs, off2).x, texture(ys, off2).x, texture(zs, off2).x);
-    s3 = vec3(texture(xs, off3).x, texture(ys, off3).x, texture(zs, off3).x);
-    s4 = vec3(texture(xs, off4).x, texture(ys, off4).x, texture(zs, off4).x);
-
-    return normal_from_points(s0, s1, s2, s3, s4, uv, off1, off2, off3, off4);
-}
-
-
-// Overload for (range, range, Matrix) surface plots
-// Though this is only called by surface(Matrix)
-vec3 getnormal(Grid2D pos, Nothing xs, Nothing ys, sampler2D zs, vec2 uv){
-    // The +1e-6 fixes precision errors at the edge
-    float du = 1.0 / textureSize(zs,0).x + 1e-6;
-    float dv = 1.0 / textureSize(zs,0).y + 1e-6;
-
-    vec3 s0, s1, s2, s3, s4;
-    vec2 off1 = uv + vec2(-du, 0);
-    vec2 off2 = uv + vec2(0, dv);
-    vec2 off3 = uv + vec2(du, 0);
-    vec2 off4 = uv + vec2(0, -dv);
-
-    s0 = vec3(grid_pos(pos,   uv).xy, texture(zs,   uv).x);
-    s1 = vec3(grid_pos(pos, off1).xy, texture(zs, off1).x);
-    s2 = vec3(grid_pos(pos, off2).xy, texture(zs, off2).x);
-    s3 = vec3(grid_pos(pos, off3).xy, texture(zs, off3).x);
-    s4 = vec3(grid_pos(pos, off4).xy, texture(zs, off4).x);
-
-    return normal_from_points(s0, s1, s2, s3, s4, uv, off1, off2, off3, off4);
-}
-
-
-// Overload for surface(Vector, Vector, Matrix)
-// Makie converts almost everything to this
-vec3 getnormal(Nothing pos, sampler1D xs, sampler1D ys, sampler2D zs, vec2 uv){
-    // The +1e-6 fixes precision errors at the edge
-    float du = 1.0 / textureSize(zs,0).x + 1e-6;
-    float dv = 1.0 / textureSize(zs,0).y + 1e-6;
-
-    vec3 s0, s1, s2, s3, s4;
-    vec2 off1 = uv + vec2(-du, 0);
-    vec2 off2 = uv + vec2(0, dv);
-    vec2 off3 = uv + vec2(du, 0);
-    vec2 off4 = uv + vec2(0, -dv);
-
-    s0 = vec3(texture(xs,   uv.x).x, texture(ys,   uv.y).x, texture(zs,   uv).x);
-    s1 = vec3(texture(xs, off1.x).x, texture(ys, off1.y).x, texture(zs, off1).x);
-    s2 = vec3(texture(xs, off2.x).x, texture(ys, off2.y).x, texture(zs, off2).x);
-    s3 = vec3(texture(xs, off3.x).x, texture(ys, off3.y).x, texture(zs, off3).x);
-    s4 = vec3(texture(xs, off4.x).x, texture(ys, off4.y).x, texture(zs, off4).x);
-
-    return normal_from_points(s0, s1, s2, s3, s4, uv, off1, off2, off3, off4);
-}
 
 uniform vec4 highclip;
 uniform vec4 lowclip;
