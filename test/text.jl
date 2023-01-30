@@ -105,3 +105,17 @@ end
     @test_throws err Label(Figure()[1, 1], "hi", textsize = 30)
     @test_throws err text(1, 2, text = "hi", textsize = 30)
 end
+
+@testset "Font search" begin
+    tex_gyre_heros_font_family = font_family("TeX Gyre Heros Makie")
+    test_keys = Set(keys(tex_gyre_heros_font_family))
+    
+    @test test_keys == Set([:regular, :bold, :italic, :bold_italic, Symbol("bold italic")])
+
+    # test unknown fonts
+
+    @test_warn "Could not find family Up and at 'em!" font_family("Up and at 'em!")
+
+    @test_warn "Could not find font Roosters crow in the morning" to_font("Roosters crow in the morning") == Makie.defaultfont()
+
+end
