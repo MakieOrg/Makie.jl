@@ -46,7 +46,13 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     # Therefore, we take the diff of the given linestyle,
     # to convert the "absolute" coordinates into "relative" ones.
     if !isnothing(linestyle) && !(linewidth isa AbstractArray)
-        Cairo.set_dash(ctx, diff(Float64.(linestyle)) .* linewidth)
+        # linecaps are applied to every "on" segment, eating into the "off"
+        # segment. In GLMakie we don't do this, so we need to adjust the spacing
+        # here to fit the linecap without elongating dashes
+        capsize = linecap in (:square, :round) ? linewidth : 0.0
+        lengths_on_off = diff(Float64.(linestyle)) .* linewidth
+        lengths_on_off .+= (1 .- 2 .* (eachindex(lengths_on_off) .% 2)) .* capsize
+        Cairo.set_dash(ctx, lengths_on_off)
     end
 
     if linecap == :square
