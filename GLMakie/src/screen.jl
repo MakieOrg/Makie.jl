@@ -274,14 +274,8 @@ function empty_screen(debugging::Bool; reuse=true)
         Dict{UInt32, AbstractPlot}(),
         reuse,
     )
-    GLFW.SetWindowRefreshCallback(window, window -> refreshwindowcb(window, screen))
-    GLFW.SetWindowContentScaleCallback(window, (window, xs, ys) -> scalechangecb(screen, window, xs, ys))
-    on(screen.scalefactor) do sf
-        if !isnothing(screen.root_scene)
-            resize!(screen, size(screen.root_scene)...)
-        end
-        return nothing
-    end
+    GLFW.SetWindowRefreshCallback(window, refreshwindowcb(screen))
+    GLFW.SetWindowContentScaleCallback(window, scalechangecb(screen))
 
     return screen
 end
@@ -296,6 +290,7 @@ function reopen!(screen::Screen)
     end
     @assert isempty(screen.window_open.listeners)
     screen.window_open[] = true
+    on(scalechangeobs(screen), screen.scalefactor)
     @assert isopen(screen)
     return screen
 end
@@ -573,7 +568,10 @@ function destroy!(screen::Screen)
     # otherwise, during rendertask clean up we may run into a destroyed window
     wait(screen)
     screen.rendertask = nothing
-    destroy!(screen.glscreen)
+    window = screen.glscreen
+    GLFW.SetWindowRefreshCallback(window, nothing)
+    GLFW.SetWindowContentScaleCallback(window, nothing)
+    destroy!(window)
     # Since those are sets, we can just delete them from there, even if they weren't in there (e.g. reuse=false)
     delete!(SCREEN_REUSE_POOL, screen)
     delete!(ALL_SCREENS, screen)
@@ -595,6 +593,8 @@ function Base.close(screen::Screen; reuse=true)
         screen.window_open[] = false
     end
     empty!(screen)
+    Observables.clear(screen.px_per_unit)
+    Observables.clear(screen.scalefactor)
     if reuse && screen.reuse
         push!(SCREEN_REUSE_POOL, screen)
     end
@@ -625,13 +625,14 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
     (w > 0 && h > 0 && isopen(window)) || return nothing
 
     # Resize the window which appears on the user desktop (if necessary).
-    # Apple Retina displays work in logical dimensions (and automatically scales the
-    # backing frame buffer by 2), whereas both Linux and Windows have window and buffer
-    # dimensions match (so we must scale manually from logical size to window size).
     #
-    # N.B. The GLFW framebuffer is different from the rendering framebuffers resized below.
+    # On OSX with a Retina display, the window size is given in logical dimensions and
+    # is automatically scaled by the OS. To support arbitrary scale factors, we must account
+    # for the native scale factor when calculating the effective scaling to apply.
+    #
+    # On Linux and Windows, scale from the logical size to the pixel size.
     ShaderAbstractions.switch_context!(window)
-    winscale = @static Sys.isapple() ? 1f0 : screen.scalefactor[]
+    winscale = screen.scalefactor[] / (@static Sys.isapple() ? scale_factor(window) : 1)
     winw, winh = round.(Int, winscale .* (w, h))
     if window_size(window) != (winw, winh)
         GLFW.SetWindowSize(window, winw, winh)
@@ -808,12 +809,13 @@ function set_framerate!(screen::Screen, fps=30)
     screen.config.framerate = fps
 end
 
-function refreshwindowcb(window, screen)
+function refreshwindowcb(screen, window)
     screen.render_tick[] = nothing
     render_frame(screen)
     GLFW.SwapBuffers(window)
     return
 end
+refreshwindowcb(screen) = window -> refreshwindowcb(screen, window)
 
 function scalechangecb(screen, window, xscale, yscale)
     sf = min(xscale, yscale)
@@ -821,9 +823,18 @@ function scalechangecb(screen, window, xscale, yscale)
         screen.px_per_unit[] = sf
     end
     screen.scalefactor[] = sf
-    resize!(screen, size(screen.root_scene)...)
     return
 end
+scalechangecb(screen) = (window, xscale, yscale) -> scalechangecb(screen, window, xscale, yscale)
+
+function scalechangeobs(screen, _)
+    if !isnothing(screen.root_scene)
+        resize!(screen, size(screen.root_scene)...)
+    end
+    return nothing
+end
+scalechangeobs(screen) = scalefactor -> scalechangeobs(screen, scalefactor)
+
 
 # TODO add render_tick event to scene events
 function vsynced_renderloop(screen)

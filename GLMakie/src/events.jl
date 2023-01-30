@@ -51,19 +51,20 @@ function (x::WindowAreaUpdater)(::Nothing)
     nw = to_native(x.screen)
     ShaderAbstractions.switch_context!(nw)
     rect = x.area[]
+    winscale = x.screen.scalefactor[] / (@static Sys.isapple() ? scale_factor(nw) : 1)
+    winw, winh = round.(Int, window_size(nw) ./ winscale)
     # TODO put back window position, but right now it makes more trouble than it helps#
     # x, y = GLFW.GetWindowPos(nw)
     # if minimum(rect) != Vec(x, y)
-    #     event[] = Recti(x, y, framebuffer_size((window))
+    #     event[] = Recti(x, y, winw, winh)
     # end
-    w, h = round.(Int, framebuffer_size(nw) ./ x.screen.scalefactor[])
-    if Vec(w, h) != widths(rect)
+    if Vec(winw, winh) != widths(rect)
         monitor = GLFW.GetPrimaryMonitor()
         props = MonitorProperties(monitor)
         # dpi of a monitor should be the same in x y direction.
         # if not, minimum seems to be a fair default
         x.dpi[] = minimum(props.dpi)
-        x.area[] = Recti(minimum(rect), w, h)
+        x.area[] = Recti(minimum(rect), winw, winh)
     end
     return
 end
@@ -169,8 +170,9 @@ function Makie.disconnect!(window::GLFW.Window, ::typeof(unicode_input))
 end
 
 function correct_mouse(screen::Screen, w, h)
-    sf = screen.scalefactor[]
-    _, winh = framebuffer_size(to_native(screen))
+    nw = to_native(screen)
+    sf = screen.scalefactor[] / (@static Sys.isapple() ? scale_factor(nw) : 1)
+    _, winh = window_size(nw)
     @static if Sys.isapple()
         return w, (winh / sf) - h
     else
