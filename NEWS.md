@@ -1,8 +1,11 @@
 # News
 
 ## master
-- Added the `stephist` plotting function [#2408](https://github.com/JuliaPlots/Makie.jl/pull/2408).
 
+- Added dynamic font search using Fontconfig.  This can be accessed by the `font_family(family::String)` function, whose output can be passed to the `fonts` keyword. [#2602](https://github.com/MakieOrg/Makie.jl/pull/2602)
+
+## v0.19.2
+- Added the `stephist` plotting function [#2408](https://github.com/JuliaPlots/Makie.jl/pull/2408).
 - Fixed an issue where `poly` plots with `Vector{<: MultiPolygon}` inputs with per-polygon color were mistakenly rendered as meshes using CairoMakie. [#2590](https://github.com/MakieOrg/Makie.jl/pulls/2478)
 - Fixed a small typo which caused an error in the `Stepper` constructor. [#2600](https://github.com/MakieOrg/Makie.jl/pulls/2478)
 
