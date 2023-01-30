@@ -2,7 +2,7 @@
 
 ## master
 
-- Added dynamic font search using Fontconfig.  This can be accessed by the `font_family(family::String)` function, whose output can be passed to the `fonts` keyword. [#2602](https://github.com/MakieOrg/Makie.jl/pull/2602)
+- Added dynamic font search using Fontconfig.  This can be accessed by the `font_family(family::String)` function, whose output can be passed to the `fonts` keyword. [#2641](https://github.com/MakieOrg/Makie.jl/pull/2641)
 
 ## v0.19.2
 - Added the `stephist` plotting function [#2408](https://github.com/JuliaPlots/Makie.jl/pull/2408).
