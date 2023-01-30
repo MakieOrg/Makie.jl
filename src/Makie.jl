@@ -31,6 +31,7 @@ using StructArrays
 # Text related packages
 using FreeType
 using FreeTypeAbstraction
+using Fontconfig
 using UnicodeFun
 using LinearAlgebra
 using Statistics
@@ -308,6 +309,10 @@ function __init__()
         @warn "The global configuration file is no longer supported." *
         "Please include the file manually with `include(\"$cfg_path\")` before plotting."
     end
+    # Include Makie's native fonts in Fontconfig's search path on package loading
+    ccall((:FcConfigAppFontAddDir, Fontconfig.libfontconfig),
+    UInt8, (Ptr{Nothing}, Ptr{UInt8}),
+    C_NULL, Cchar.(collect(joinpath(dirname(@__DIR__), "assets", "fonts"))))
 end
 
 include("figures.jl")
