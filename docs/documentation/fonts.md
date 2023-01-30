@@ -51,6 +51,11 @@ f
 ```
 \end{examplefigure}
 
+### Font families
+
+If you want to work with a single font family, set e.g. `fonts = font_family("Helvetica")` in your theme.  This function returns a set of Attributes which
+are used in the same way as the named-tuples shown above.
+
 ## Emoji and color fonts
 
 Currently, Makie does not have the ability to draw emoji or other color fonts.
