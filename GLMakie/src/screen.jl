@@ -11,13 +11,13 @@ function renderloop end
 * `renderloop = GLMakie.renderloop`: Sets a function `renderloop(::GLMakie.Screen)` which starts a renderloop for the screen.
 
 !!! warning
-The below are not effective if renderloop isn't set to `GLMakie.renderloop`, unless implemented in custom renderloop:
+    The below are not effective if renderloop isn't set to `GLMakie.renderloop`, unless implemented in custom renderloop:
 
 * `pause_renderloop = false`: creates a screen with paused renderlooop. Can be started with `GLMakie.start_renderloop!(screen)` or paused again with `GLMakie.pause_renderloop!(screen)`.
 * `vsync = false`: enables vsync for the window.
 * `render_on_demand = true`: renders the scene only if something has changed in it.
 * `framerate = 30.0`: sets the currently rendered frames per second.
-* `px_per_unit = automatic`: Sets the number of display pixels which a logical pixel in `Makie` corresponds to.  Is usually set automatically with reference to the display.
+* `px_per_unit = automatic`: Sets the ratio between the number of rendered pixels and the `Makie` resolution. It defaults to the value of `scalefactor` but may be any positive real number.
 
 ## GLFW window attributes
 
@@ -29,7 +29,7 @@ The below are not effective if renderloop isn't set to `GLMakie.renderloop`, unl
 * `debugging = false`: Starts the GLFW.Window/OpenGL context with debug output.
 * `monitor::Union{Nothing, GLFW.Monitor} = nothing`: Sets the monitor on which the Window should be opened.
 * `visible = true`: Sets whether the window is user-visible.
-* `scalefactor = nothing`: Sets the scale factor for window size, but does not affect the size of the framebuffer.
+* `scalefactor = automatic`: Sets the window scaling factor, such as `2.0` on HiDPI/Retina displays. It is set automatically based on the display, but may be any positive real number.
 
 ## Postprocessor
 * `oit = false`: Enles order independent transparency for the window.
