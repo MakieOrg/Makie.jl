@@ -960,6 +960,35 @@ end
 
 to_font(fonts::Attributes, x) = to_font(x)
 
+"""
+    to_font(family::String, s::Union{Symbol, String})
+
+Search the font family `family` for a style `s`.  If not found, error.
+Note that this does not cache any fonts, so may be somewhat expensive when run multiple times.
+"""
+function to_font(family::String, s::String)
+
+    try
+        style_string = to_string_style(s)
+        font_file, _ = search_with_fallbacks(family, style_string, style_string, _known_style_fallbacks(style_string)...)
+    catch e
+        rethrow(e)
+    end
+
+    if isnothing(font_file)
+        @error "The font family \"$(family)\" does not have a font with style $(s), nor any known fallback.  Please add it manually, or amend your style."
+    else
+        return font_file
+    end
+
+end
+
+to_font(fonts::String, s::Symbol) = to_font(fonts, string(s))
+# generic fallback
+to_font(::String, x) = to_font(x)
+
+
+
 
 """
     rotation accepts:
