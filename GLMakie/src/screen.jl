@@ -317,7 +317,12 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
     GLFW.SetWindowTitle(glw, config.title)
 
     if !isnothing(config.monitor)
-        GLFW.SetWindowMonitor(glw, config.monitor)
+        # Get the size and refreshrate of the window requested
+        props = MonitorProperties(config.monitor)
+        xpos, ypos = 0, 0
+        width, height = props.videomode.width, props.videomode.height
+        refreshRate = props.videomode.refreshrate
+        GLFW.SetWindowMonitor(glw, config.monitor, xpos, ypos, width, height, refreshRate)
     end
 
     function replace_processor!(postprocessor, idx)
