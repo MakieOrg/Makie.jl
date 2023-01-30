@@ -242,6 +242,8 @@ end
 
         @test isempty(screen.window_open.listeners)
         @test isempty(screen.render_tick.listeners)
+        @test isempty(screen.px_per_unit.listeners)
+        @test isempty(screen.scalefactor.listeners)
 
         @test screen.root_scene === nothing
         @test screen.rendertask === nothing
@@ -266,15 +268,19 @@ end
     fig, ax, pl = scatter(x, y, figure = (; resolution = (W, H)));
     hidedecorations!(ax)
 
+    # On OSX, the native window size has an underlying scale factor that we need to account
+    # for when interpreting native window sizes with respect to the desired figure size
+    # and desired scaling factor.
+    function scaled(screen::GLMakie.Screen, dims::Tuple{Vararg{Int}})
+        sf = screen.scalefactor[] / (Sys.isapple() ? GLMakie.scale_factor(screen.glscreen) : 1)
+        return round.(Int, dims .* sf)
+    end
+
     screen = display(GLMakie.Screen(visible = false, scalefactor = 2), fig)
     @test screen.scalefactor[] === 2f0
     @test screen.px_per_unit[] === 2f0  # inherited from scale factor
     @test size(screen.framebuffer) == (2W, 2H)
-    if !Sys.isapple()
-        @test GLMakie.window_size(screen.glscreen) == (2W, 2H)
-    else
-        @test GLMakie.window_size(screen.glscreen) == (W, H)
-    end
+    @test GLMakie.window_size(screen.glscreen) == scaled(screen, (W, H))
 
     # check that picking works through the resized GL buffers
     GLMakie.Makie.colorbuffer(screen)  # force render
@@ -300,7 +306,7 @@ end
     # decrease the scale factor after-the-fact
     screen.scalefactor[] = 1
     sleep(0.1)  # TODO: Necessary?? Are observable callbacks asynchronous?
-    @test GLMakie.window_size(screen.glscreen) == (W, H)
+    @test GLMakie.window_size(screen.glscreen) == scaled(screen, (W, H))
 
     # save images of different resolutions
     mktemp() do path, io
