@@ -62,7 +62,7 @@ end
 # This performs a search using Fontconfig and loads the result
 # as a Makie-compatible NamedTuple.
 
-function _font_list_and_styles_from_fontconfig(family; additional_params_for_fontconfig...)
+function _font_list_and_styles_from_fontconfig(family::String; additional_params_for_fontconfig...)
     pattern = Fontconfig.Pattern(; family = family, additional_params_for_fontconfig...)
     # Use Fontconfig to generate a list of styles from that pattern.
     font_list = Fontconfig.list(pattern, ["family", "style", "file", "index"])
@@ -91,6 +91,8 @@ end
 Searches for a font defined by `family` and `style` using Fontconfig.  If no such font is found, replaces `key` in `style`
 with one of `fallbacks`, and tries again, iterating through `fallbacks`.  Returns a `Pair{NativeFont, String}` representing 
 the font and returned style.
+
+If nothing was found, returns `nothing => nothing`.
 """
 function search_with_fallbacks(family::String, style::String, key::String, fallbacks::String...; params_for_fontconfig...)
     # try the original search first
@@ -111,7 +113,7 @@ function search_with_fallbacks(family::String, style::String, key::String, fallb
         end
     end
     # we didn't find anything, so return nothing
-    return (nothing, nothing)
+    return nothing => nothing
 end
 
 ############################################################
@@ -181,6 +183,7 @@ end
 is_bold(x) = is_bold(to_font(x))
 
 to_string_style(sym::Symbol) = replace(string(sym), "_" => " ")
+to_string_style(str::String) = str
 
 # basically a lookup table for known fallbacks
 function _known_style_fallbacks(s::String)

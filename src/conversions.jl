@@ -935,7 +935,13 @@ function to_font(str::String)
         end
         # for all other cases, search for the best match on the system
         # first, try using Fontconfig
-        font_files, _ = _font_list_and_styles_from_fontconfig(str)
+        splitfont = unique(split(lowercase(str), r"\W+", keepempty=false))
+
+        if length(splitfont) > 1
+            font_files, styles = _font_list_and_styles_from_fontconfig(string(splitfont[1]); style = join(splitfont[2:end], " "))
+        else
+            font_files, styles = _font_list_and_styles_from_fontconfig(string(splitfont[1]))
+        end
         if isempty(font_files)
             @warn("Could not find font $str, using TeX Gyre Heros Makie")
             return to_font("TeX Gyre Heros Makie")
@@ -978,22 +984,23 @@ Note that this does not cache any fonts, so may be somewhat expensive when run m
 function to_font(family::String, s::String)
 
     try
-        style_string = to_string_style(s)
-        font_file, _ = search_with_fallbacks(family, style_string, style_string, _known_style_fallbacks(style_string)...)
+        font = get!(FONT_CACHE, family * " " * s) do
+            style_string = to_string_style(s)
+            _style, font_file = search_with_fallbacks(family, style_string, style_string, _known_style_fallbacks(style_string)...)
+            if isnothing(font_file)
+                @error "The font family \"$(family)\" does not have a font with style $(s), nor any known fallback.  Please add it manually, or amend your style."
+            else
+                return font_file
+            end
+        end
+        return font
     catch e
         rethrow(e)
-    end
-
-    if isnothing(font_file)
-        @error "The font family \"$(family)\" does not have a font with style $(s), nor any known fallback.  Please add it manually, or amend your style."
-    else
-        return font_file
     end
 
 end
 
 to_font(fonts::String, s::Symbol) = to_font(fonts, to_style_string(s))
-
 
 
 # generic fallback
