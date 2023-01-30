@@ -934,6 +934,15 @@ function to_font(str::String)
             return load_font(str)
         end
         # for all other cases, search for the best match on the system
+        # first, try using Fontconfig
+        font_files, _ = _font_list_and_styles_from_fontconfig(str)
+        if isempty(font_files)
+            @warn("Could not find font $str, using TeX Gyre Heros Makie")
+            return to_font("TeX Gyre Heros Makie")
+        else
+            return ftfont_from_fc_pattern(font_files[1])
+        end
+        # last, try FreeType
         fontpath = assetpath("fonts")
         font = FreeTypeAbstraction.findfont(str; additional_fonts=fontpath)
         if font === nothing
@@ -983,7 +992,10 @@ function to_font(family::String, s::String)
 
 end
 
-to_font(fonts::String, s::Symbol) = to_font(fonts, string(s))
+to_font(fonts::String, s::Symbol) = to_font(fonts, to_style_string(s))
+
+
+
 # generic fallback
 to_font(::String, x) = to_font(x)
 

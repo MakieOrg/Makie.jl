@@ -87,6 +87,10 @@ end
 
 """
     search_with_fallbacks(family::String, style::String, key::String, fallbacks::String...; params_for_fontconfig...)
+
+Searches for a font defined by `family` and `style` using Fontconfig.  If no such font is found, replaces `key` in `style`
+with one of `fallbacks`, and tries again, iterating through `fallbacks`.  Returns a `Pair{NativeFont, String}` representing 
+the font and returned style.
 """
 function search_with_fallbacks(family::String, style::String, key::String, fallbacks::String...; params_for_fontconfig...)
     # try the original search first
@@ -138,6 +142,14 @@ function font_family(family::String; additional_params_for_fontconfig...)
         end
     end
     
+    if isempty(attrs)
+        @warn """
+        Could not find family $family, using TeX Gyre Heros Makie.
+        Additional parameters were $additional_params_for_fontconfig.
+        """
+        return font_family("TeX Gyre Heros Makie")
+    end
+
     return attrs
 end
 
@@ -179,7 +191,7 @@ function _known_style_fallbacks(s::String)
     elseif s == "bold"
         return ("demibold", "semibold", "heavy")
     elseif s == "bold italic" || s == "bold_italic"
-        return ("bold oblique", "demibold italic", "demibold oblique", "semibold italic", "semibold oblique")
+        return ("bold oblique", "demibold italic", "demibold oblique", "semibold italic", "semibold oblique", "heavy italic", "heavy oblique")
     end
     return ()
 end
