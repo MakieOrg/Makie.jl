@@ -985,12 +985,12 @@ function to_font(family::String, s::String)
 
     try
         font = get!(FONT_CACHE, family * " " * s) do
-            style_string = to_string_style(s)
-            _style, font_file = search_with_fallbacks(family, style_string, style_string, _known_style_fallbacks(style_string)...)
+            style_string = Fontconfig.to_string_style(s)
+            _style, font_file = Fontconfig.search_with_fallbacks(family, style_string, style_string, Fontconfig._known_style_fallbacks(style_string)...)
             if isnothing(font_file)
                 @error "The font family \"$(family)\" does not have a font with style $(s), nor any known fallback.  Please add it manually, or amend your style."
             else
-                return font_file
+                return ftfont_from_fc_pattern(font_file)
             end
         end
         return font
