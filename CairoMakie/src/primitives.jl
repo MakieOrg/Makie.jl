@@ -188,7 +188,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
     markerspace = to_value(get(primitive, :markerspace, :pixel))
     space = to_value(get(primitive, :space, :data))
 
-    transfunc = scene.transformation.transform_func[]
+    transfunc = primitive.transformation.transform_func[]
 
     marker_conv = _marker_convert(marker)
 
@@ -391,7 +391,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text
 
     draw_glyph_collection(
         scene, ctx, position, glyph_collection, remove_billboard(rotation),
-        model, space, markerspace, offset
+        model, space, markerspace, offset, primitive.transformation
     )
 
     nothing
@@ -400,21 +400,21 @@ end
 
 function draw_glyph_collection(
         scene, ctx, positions, glyph_collections::AbstractArray, rotation,
-        model::Mat, space, markerspace, offset
+        model::Mat, space, markerspace, offset, transformation
     )
 
     # TODO: why is the Ref around model necessary? doesn't broadcast_foreach handle staticarrays matrices?
     broadcast_foreach(positions, glyph_collections, rotation, Ref(model), space,
         markerspace, offset) do pos, glayout, ro, mo, sp, msp, off
 
-        draw_glyph_collection(scene, ctx, pos, glayout, ro, mo, sp, msp, off)
+        draw_glyph_collection(scene, ctx, pos, glayout, ro, mo, sp, msp, off, transformation)
     end
 end
 
 _deref(x) = x
 _deref(x::Ref) = x[]
 
-function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation, _model, space, markerspace, offsets)
+function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation, _model, space, markerspace, offsets, transformation)
 
     glyphs = glyph_collection.glyphs
     glyphoffsets = glyph_collection.origins
@@ -430,7 +430,7 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
     id = Mat4f(I)
 
     glyph_pos = let
-        transform_func = scene.transformation.transform_func[]
+        transform_func = transformation.transform_func[]
         p = Makie.apply_transform(transform_func, position, space)
 
         Makie.clip_to_space(scene.camera, markerspace) *
