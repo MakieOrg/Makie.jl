@@ -766,16 +766,16 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
 
     model = attributes.model[]::Mat4f
     space = to_value(get(attributes, :space, :data))::Symbol
-
+    func = Makie.transform_func(attributes)
     draw_mesh3D(
-        scene, screen, space, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
+        scene, screen, space, func, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
         model, shading::Bool, diffuse::Vec3f,
         specular::Vec3f, shininess::Float32, faceculling::Int
     )
 end
 
 function draw_mesh3D(
-        scene, screen, space, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
+        scene, screen, space, transform_func, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
         model, shading, diffuse,
         specular, shininess, faceculling
     )
@@ -787,10 +787,10 @@ function draw_mesh3D(
 
     # Mesh data
     # transform to view/camera space
-    func = Makie.transform_func_obs(scene)[]
-    # pass func as argument to function, so that we get a function barrier
-    # and have `func` be fully typed inside closure
-    vs = broadcast(meshpoints, (func,)) do v, f
+
+    # pass transform_func as argument to function, so that we get a function barrier
+    # and have `transform_func` be fully typed inside closure
+    vs = broadcast(meshpoints, (transform_func,)) do v, f
         # Should v get a nan2zero?
         v = Makie.apply_transform(f, v, space)
         p4d = to_ndim(Vec4f, scale .* to_ndim(Vec3f, v, 0f0), 1f0)
@@ -959,7 +959,9 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         color=color,
         shading=primitive.shading, diffuse=primitive.diffuse,
         specular=primitive.specular, shininess=primitive.shininess,
-        faceculling=get(primitive, :faceculling, -10)
+        faceculling=get(primitive, :faceculling, -10),
+        transformation=transformation(primitive)
+
     )
 
     if !(rotations isa Vector)

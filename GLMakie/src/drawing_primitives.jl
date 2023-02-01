@@ -313,7 +313,7 @@ function draw_atomic(screen::Screen, scene::Scene,
     return cached_robj!(screen, scene, x) do gl_attributes
         glyphcollection = x[1]
 
-        transfunc =  Makie.transform_func_obs(scene)
+        transfunc =  Makie.transform_func_obs(x)
         pos = gl_attributes[:position]
         space = get(gl_attributes, :space, Observable(:data)) # needs to happen before connect_camera! call
         markerspace = gl_attributes[:markerspace]
@@ -391,7 +391,7 @@ xy_convert(x, n) = Float32[LinRange(extrema(x)..., n + 1);]
 
 function draw_atomic(screen::Screen, scene::Scene, x::Heatmap)
     return cached_robj!(screen, scene, x) do gl_attributes
-        t = Makie.transform_func_obs(scene)
+        t = Makie.transform_func_obs(x)
         mat = x[3]
         space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         xypos = map(t, x[1], x[2], space) do t, x, y, space
@@ -540,7 +540,7 @@ function draw_atomic(screen::Screen, scene::Scene, x::Surface)
         types = map(v -> typeof(to_value(v)), x[1:2])
 
         if all(T -> T <: Union{AbstractMatrix, AbstractVector}, types)
-            t = Makie.transform_func_obs(scene)
+            t = Makie.transform_func_obs(x)
             mat = x[3]
             xypos = map(t, x[1], x[2], space) do t, x, y, space
                 # Only if transform doesn't do anything, we can stay linear in 1/2D
