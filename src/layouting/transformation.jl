@@ -191,7 +191,7 @@ function transform!(scene::Transformable, x::Tuple{Symbol, <: Number})
 end
 
 transformationmatrix(x) = transformation(x).model
-transformation(x::Attributes) = x.transformation
+transformation(x::Attributes) = x.transformation[]
 transform_func(x) = transform_func_obs(x)[]
 transform_func_obs(x) = transformation(x).transform_func
 

@@ -960,7 +960,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         shading=primitive.shading, diffuse=primitive.diffuse,
         specular=primitive.specular, shininess=primitive.shininess,
         faceculling=get(primitive, :faceculling, -10),
-        transformation=transformation(primitive)
+        transformation=Makie.transformation(primitive)
 
     )
 
