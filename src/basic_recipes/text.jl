@@ -6,7 +6,12 @@ function plot!(plot::Text)
     linewidths = Observable(Float32[])
     linecolors = Observable(RGBAf[])
     lineindices = Ref(Int[])
-    
+    scatterpoints = Observable(Point2f[])
+    scattermarkers = Observable([])
+    scattercolors = Observable([])
+    scattermarkersizes = Observable(Vec2f[])
+    scatterindices = Ref(Int[])
+
     onany(plot.text, plot.fontsize, plot.font, plot.fonts, plot.align,
             plot.rotation, plot.justification, plot.lineheight, plot.color, 
             plot.strokecolor, plot.strokewidth, plot.word_wrap_width) do str,
@@ -17,47 +22,21 @@ function plot!(plot::Text)
         col = to_color(col)
         scol = to_color(scol)
 
-        gcs = GlyphCollection[]
-        lsegs = Point2f[]
-        lwidths = Float32[]
-        lcolors = RGBAf[]
-        lindices = Int[]
-        function push_args((gc, ls, lw, lc, lindex))
-            push!(gcs, gc)
-            append!(lsegs, ls)
-            append!(lwidths, lw)
-            append!(lcolors, lc)
-            append!(lindices, lindex)
-            return
-        end
-        func = push_args ∘ _get_glyphcollection_and_linesegments
-        if str isa Vector
-            # If we have a Vector of strings, Vector arguments are interpreted 
-            # as per string.
-            broadcast_foreach(
-                func, 
-                str, 1:attr_broadcast_length(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www
-            )
-        else
-            # Otherwise Vector arguments are interpreted by layout_text/
-            # glyph_collection as per character.
-            func(str, 1, ts, f, fs, al, rot, jus, lh, col, scol, swi, www)
-        end
-        glyphcollections[] = gcs
-        linewidths[] = lwidths
-        linecolors[] = lcolors
-        lineindices[] = lindices
-        linesegs[] = lsegs
+        glyphcollections[], linewidths[], linecolors[], lineindices[], linesegs[], scatterpoints[], scattermarkers[], scattercolors[], scattermarkersizes[], scatterindices[] = get_glyphcollection_linesegments_scatter(str, ts, f, fs, al, rot, jus, lh, col, scol, swi, www)
     end
 
     linesegs_shifted = Observable(Point2f[])
+    scatterpoints_shifted = Observable(Point2f[])
 
     sc = parent_scene(plot)
 
-    onany(linesegs, positions, sc.camera.projectionview, sc.px_area, 
-            transform_func_obs(sc), get(plot, :space, :data)) do segs, pos, _, _, transf, space
+    onany(linesegs, scatterpoints, positions, sc.camera.projectionview, sc.px_area, 
+            transform_func_obs(sc), get(plot, :space, :data)) do lsegs, spos, pos, _, _, transf, space
         pos_transf = scene_to_screen(apply_transform(transf, pos, space), sc)
-        linesegs_shifted[] = map(segs, lineindices[]) do seg, index
+        linesegs_shifted[] = map(lsegs, lineindices[]) do seg, index
+            seg + attr_broadcast_getindex(pos_transf, index)
+        end
+        scatterpoints_shifted[] = map(spos, scatterindices[]) do seg, index
             seg + attr_broadcast_getindex(pos_transf, index)
         end
     end
@@ -75,11 +54,60 @@ function plot!(plot::Text)
     # remove attributes that the backends will choke on
     pop!(t.attributes, :font)
     pop!(t.attributes, :fonts)
-    linesegments!(plot, linesegs_shifted; linewidth = linewidths, color = linecolors, space = :pixel)
-
+    linesegments!(plot, linesegs_shifted; linewidth = linewidths, color = linecolors, space = plot.space)
+    scatter!(plot, scatterpoints_shifted; marker = scattermarkers, color = scattercolors, markersize = scattermarkersizes, space = plot.space)
     plot
 end
 
+function get_glyphcollection_linesegments_scatter(str, ts, f, fs, al, rot, jus, lh, col, scol, swi, www)
+
+    gcs = GlyphCollection[]
+    lsegs = Point2f[]
+    lwidths = Float32[]
+    lcolors = RGBAf[]
+    lindices = Int[]
+    spoints = Point2f[]
+    smarkers = []
+    scolors = []
+    smarkersizes = Vec2f[]
+    sindices = Int[]
+
+    function push_args((gc, ls, lw, lc, lindex, spoint, smarker, scolor, smarkersize, sindex))
+        push!(gcs, gc)
+        append!(lsegs, ls)
+        append!(lwidths, lw)
+        append!(lcolors, lc)
+        append!(lindices, lindex)
+        append!(spoints, spoint)
+        append!(smarkers, smarker)
+        append!(scolors, scolor)
+        append!(smarkersizes, smarkersize)
+        append!(sindices, sindex)
+        return
+    end
+    func = push_args ∘ _get_glyphcollection_linesegments_scatter
+    if str isa Vector
+        # If we have a Vector of strings, Vector arguments are interpreted 
+        # as per string.
+        broadcast_foreach(
+            func, 
+            str, 1:attr_broadcast_length(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www
+        )
+    else
+        # Otherwise Vector arguments are interpreted by layout_text/
+        # glyph_collection as per character.
+        func(str, 1, ts, f, fs, al, rot, jus, lh, col, scol, swi, www)
+    end
+
+    return gcs, lsegs, lwidths, lcolors, lindices, lindices, spoints, smarkers, scolors, smarkersizes, sindices
+end
+
+# main entry point - can be overridden by anything else.
+function _get_glyphcollection_linesegments_scatter(args...; kwargs...)
+    return (_get_glyphcollection_and_linesegments(args...; kwargs...)..., Point2f[], [], [], Vec2f[], Int[])
+end
+
+# render a single String
 function _get_glyphcollection_and_linesegments(str::AbstractString, index, ts, f, fs, al, rot, jus, lh, col, scol, swi, www)
     gc = layout_text(string(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www)
     gc, Point2f[], Float32[], RGBAf[], Int[]
