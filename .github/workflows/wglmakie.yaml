@@ -48,7 +48,7 @@ jobs:
         run: |
           using Pkg;
           # dev mono repo versions
-          pkg"dev . ./MakieCore ./WGLMakie ./ReferenceTests"
+          pkg"add MsgPack#sd/perfi JSServe#sd/dashi; dev . ./MakieCore ./WGLMakie ./ReferenceTests"
       - name: Run the tests
         continue-on-error: true
         run: >
