@@ -5,29 +5,21 @@ function setup!(screen)
         glScissor(0, 0, size(screen)...)
         glClearColor(1, 1, 1, 1)
         glClear(GL_COLOR_BUFFER_BIT)
-        # Make sure we start with 0 for the root screen
-        stencil_idx = 0x00 - UInt8(!isempty(screen.screens) && screen.screens[1][2].clear) 
         for (id, scene) in screen.screens
             if scene.visible[]
                 a = pixelarea(scene)[]
                 rt = (minimum(a)..., widths(a)...)
                 glViewport(rt...)
 
-                # If `clear = true` for the current scene, the stencil index 
-                # increments and marks the scenes area in the stencil buffer.
-                # If `clear = false` the stencil buffer is not updated.
-                # Either way the current (maybe incremented) stencil index is 
-                # safed so for each scene.
-                # When rendering, each plot grabs a stencil index from its 
-                # parent scene. We only render it when its stencil index is 
-                # greater or equal to the stencil buffer value, as anything 
-                # smaller implies drawing under a `clear = true` scene.
-                # Note that will break with more than 255 clear = true scenes.
+                # Each scene gets a stencil index/value during scene insertion
+                # based on its depth in the scene tree (root = 0x00). When a 
+                # scene has `clear = true` we mark its area with its stencil 
+                # value here. When rendering we then discard any plot whose
+                # parent scene has a lower stencil value, i.e. we only allow the
+                # marked `clear = true` scene and its children to render plots.
 
                 bits = GL_STENCIL_BUFFER_BIT
-                stencil_idx += UInt8(scene.clear)
-                screen.stencil_index[id] = stencil_idx
-                glClearStencil(stencil_idx)
+                glClearStencil(screen.stencil_index[id])
                 if scene.clear
                     c = scene.backgroundcolor[]
                     glScissor(rt...)

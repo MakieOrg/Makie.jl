@@ -425,12 +425,14 @@ Base.show(io::IO, screen::Screen) = print(io, "GLMakie.Screen(...)")
 Base.isopen(x::Screen) = isopen(x.glscreen)
 Base.size(x::Screen) = size(x.framebuffer)
 
+count2root(scene) = Makie.isroot(scene) ? 0x00 : count2root(scene.parent) + 0x01
+
 function Makie.insertplots!(screen::Screen, scene::Scene)
     ShaderAbstractions.switch_context!(screen.glscreen)
     get!(screen.screen2scene, WeakRef(scene)) do
         id = length(screen.screens) + 1
         push!(screen.screens, (id, scene))
-        push!(screen.stencil_index, 0x00)
+        push!(screen.stencil_index, count2root(scene))
         return id
     end
     for elem in scene.plots
@@ -471,6 +473,7 @@ function Base.delete!(screen::Screen, scene::Scene)
 
             i = findfirst(id_scene -> id_scene[1] == max_id, screen.screens)::Int
             screen.screens[i] = (deleted_id, screen.screens[i][2])
+            screen.stencil_index[i] = count2root(screen.screens[i][2])
 
             screen.screen2scene[key] = deleted_id
 
@@ -691,7 +694,7 @@ function Base.push!(screen::Screen, scene::Scene, robj)
     screenid = get!(screen.screen2scene, WeakRef(scene)) do
         id = length(screen.screens) + 1
         push!(screen.screens, (id, scene))
-        push!(screen.stencil_index, 0x00)
+        push!(screen.stencil_index, count2root(scene))
         return id
     end
     push!(screen.renderlist, (0, screenid, robj))
