@@ -13,6 +13,8 @@ macro compile(block)
         JSServe.jsrender(session, figlike)
         s = serialize_scene(scene)
         JSServe.serialize_binary(session, Dict(:data => s))
+        close(session)
+        nothing
     end
 end
 
