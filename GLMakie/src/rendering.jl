@@ -5,16 +5,25 @@ function setup!(screen)
         glScissor(0, 0, size(screen)...)
         glClearColor(1, 1, 1, 1)
         glClear(GL_COLOR_BUFFER_BIT)
-        stencil_idx = 0x00
+        # Make sure we start with 0 for the root screen
+        stencil_idx = 0x00 - UInt8(!isempty(screen.screens) && screen.screens[1][2].clear) 
         for (id, scene) in screen.screens
             if scene.visible[]
                 a = pixelarea(scene)[]
                 rt = (minimum(a)..., widths(a)...)
                 glViewport(rt...)
 
-                # We use the stencil buffer to identify scenes with clear = true
-                # This may cause overlapping scenes to not be cleared/occluded
-                # correctly after 256 scenes with clear = true
+                # If `clear = true` for the current scene, the stencil index 
+                # increments and marks the scenes area in the stencil buffer.
+                # If `clear = false` the stencil buffer is not updated.
+                # Either way the current (maybe incremented) stencil index is 
+                # safed so for each scene.
+                # When rendering, each plot grabs a stencil index from its 
+                # parent scene. We only render it when its stencil index is 
+                # greater or equal to the stencil buffer value, as anything 
+                # smaller implies drawing under a `clear = true` scene.
+                # Note that will break with more than 255 clear = true scenes.
+
                 bits = GL_STENCIL_BUFFER_BIT
                 stencil_idx += UInt8(scene.clear)
                 screen.stencil_index[id] = stencil_idx
@@ -148,11 +157,7 @@ function GLAbstraction.render(filter_elem_func, screen::Screen)
             scene.visible[] || continue
             a = pixelarea(scene)[]
             glViewport(minimum(a)..., widths(a)...)
-            glStencilFunc(
-                # GL_EQUAL,
-                ifelse(scene.clear, GL_EQUAL, GL_GEQUAL), 
-                screen.stencil_index[screenid], 0xff
-            )
+            glStencilFunc(GL_GEQUAL, screen.stencil_index[screenid], 0xff)
             render(elem)
         end
     catch e
