@@ -10,7 +10,7 @@ on:
 jobs:
   benchmark:
     name: ${{ matrix.package }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
       matrix:
@@ -25,7 +25,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
       - uses: julia-actions/setup-julia@v1
         with:
-          version: nightly
+          version: '1'
           arch: x64
       - uses: julia-actions/cache@v1
       - name: Benchmark
@@ -34,4 +34,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.BENCHMARK_KEY }}
           PR_NUMBER: ${{ github.event.number }}
         run: >
-          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --project=./metrics/ttfp/ ./metrics/ttfp/run-benchmark.jl ${{ matrix.package }}
+          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --project=./metrics/ttfp/ ./metrics/ttfp/run-benchmark.jl ${{ matrix.package }} 7 ${{ github.event.pull_request.base.ref }}

@@ -7,7 +7,7 @@
 using CairoMakie
 using DelimitedFiles
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 volcano = readdlm(Makie.assetpath("volcano.csv"), ',', Float64)
 
@@ -27,7 +27,7 @@ f
 using CairoMakie
 using DelimitedFiles
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 volcano = readdlm(Makie.assetpath("volcano.csv"), ',', Float64)
 
@@ -51,7 +51,7 @@ f
 using CairoMakie
 using DelimitedFiles
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 volcano = readdlm(Makie.assetpath("volcano.csv"), ',', Float64)
 
@@ -81,7 +81,7 @@ to `:relative` and specify the levels from 0 to 1, relative to the current minim
 using CairoMakie
 using DelimitedFiles
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 volcano = readdlm(Makie.assetpath("volcano.csv"), ',', Float64)
 

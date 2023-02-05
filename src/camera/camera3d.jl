@@ -502,7 +502,7 @@ function _rotate_cam!(scene, cam::Camera3D, angles::VecTypes, from_mouse=false)
 
     # TODO maybe generalize this to arbitrary center?
     # calculate positions from rotated vectors
-    if cam.attributes[:rotation_center][] == :lookat
+    if cam.attributes[:rotation_center][] === :lookat
         cam.eyeposition[] = lookat - viewdir
     else
         cam.lookat[] = eyepos + viewdir

@@ -1,46 +1,3 @@
-"""
-    poly(vertices, indices; kwargs...)
-    poly(points; kwargs...)
-    poly(shape; kwargs...)
-    poly(mesh; kwargs...)
-
-Plots a polygon based on the arguments given.
-When vertices and indices are given, it functions similarly to `mesh`.
-When points are given, it draws one polygon that connects all the points in order.
-When a shape is given (essentially anything decomposable by `GeometryBasics`), it will plot `decompose(shape)`.
-
-    poly(coordinates, connectivity; kwargs...)
-
-Plots polygons, which are defined by
-`coordinates` (the coordinates of the vertices) and
-`connectivity` (the edges between the vertices).
-
-## Attributes
-$(ATTRIBUTES)
-"""
-@recipe(Poly) do scene
-    Attributes(;
-        color = theme(scene, :patchcolor),
-        visible = theme(scene, :visible),
-        strokecolor = theme(scene, :patchstrokecolor),
-        colormap = theme(scene, :colormap),
-        colorrange = automatic,
-        strokewidth = theme(scene, :patchstrokewidth),
-        shading = false,
-        # we turn this false for now, since otherwise shapes look transparent
-        # since we use meshes, which are drawn into a different framebuffer because of fxaa
-        # if we use fxaa=false, they're drawn into the same
-        # TODO, I still think this is a bug, since they should still use the same depth buffer!
-        fxaa = false,
-        linestyle = nothing,
-        overdraw = false,
-        transparency = false,
-        cycle = [:color => :patchcolor],
-        inspectable = theme(scene, :inspectable),
-        space = :data
-    )
-end
-
 const PolyElements = Union{Polygon, MultiPolygon, Circle, Rect, AbstractMesh, VecTypes, AbstractVector{<:VecTypes}}
 
 convert_arguments(::Type{<: Poly}, v::AbstractVector{<: PolyElements}) = (v,)
@@ -49,13 +6,22 @@ convert_arguments(::Type{<: Poly}, v::Union{Polygon, MultiPolygon}) = (v,)
 convert_arguments(::Type{<: Poly}, args...) = ([convert_arguments(Scatter, args...)[1]],)
 convert_arguments(::Type{<: Poly}, vertices::AbstractArray, indices::AbstractArray) = convert_arguments(Mesh, vertices, indices)
 convert_arguments(::Type{<: Poly}, m::GeometryBasics.Mesh) = (m,)
+convert_arguments(::Type{<: Poly}, m::GeometryBasics.GeometryPrimitive) = (m,)
 
 function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}})
     mesh!(
-        plot, plot[1],
-        color = plot[:color], colormap = plot[:colormap], colorrange = plot[:colorrange],
-        shading = plot[:shading], visible = plot[:visible], overdraw = plot[:overdraw],
-        inspectable = plot[:inspectable], transparency = plot[:transparency],
+        plot, lift(triangle_mesh, plot[1]),
+        color = plot[:color],
+        colormap = plot[:colormap],
+        colorrange = plot[:colorrange],
+        lowclip = plot[:lowclip],
+        highclip = plot[:highclip],
+        nan_color = plot[:nan_color],
+        shading = plot[:shading],
+        visible = plot[:visible],
+        overdraw = plot[:overdraw],
+        inspectable = plot[:inspectable],
+        transparency = plot[:transparency],
         space = plot[:space]
     )
     wireframe!(
@@ -67,7 +33,10 @@ function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}
 end
 
 # Poly conversion
-poly_convert(geometries) = triangle_mesh.(geometries)
+function poly_convert(geometries)
+    isempty(geometries) && return typeof(GeometryBasics.Mesh(Point2f[], GLTriangleFace[]))[]
+    return triangle_mesh.(geometries)
+end
 poly_convert(meshes::AbstractVector{<:AbstractMesh}) = meshes
 poly_convert(polys::AbstractVector{<:Polygon}) = triangle_mesh.(polys)
 function poly_convert(multipolygons::AbstractVector{<:MultiPolygon})
@@ -123,6 +92,9 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
         color = plot.color,
         colormap = plot.colormap,
         colorrange = plot.colorrange,
+        lowclip = plot.lowclip,
+        highclip = plot.highclip,
+        nan_color = plot.nan_color,
         overdraw = plot.overdraw,
         fxaa = plot.fxaa,
         transparency = plot.transparency,
@@ -159,36 +131,47 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
     attributes = Attributes(
         visible = plot.visible, shading = plot.shading, fxaa = plot.fxaa,
         inspectable = plot.inspectable, transparency = plot.transparency,
-        space = plot.space
+        space = plot.space, ssao = plot.ssao,
+        lowclip = get(plot, :lowclip, automatic),
+        highclip = get(plot, :highclip, automatic),
+        nan_color = get(plot, :nan_color, :transparent),
+        colormap = get(plot, :colormap, nothing),
+        colorrange = get(plot, :colorrange, automatic)
     )
 
-    attributes[:colormap] = get(plot, :colormap, nothing)
-    attributes[:colorrange] = get(plot, :colorrange, nothing)
+    num_meshes = lift(meshes; ignore_equal_values=true) do meshes
+        return Int[length(coordinates(m)) for m in meshes]
+    end
 
-    bigmesh = if color_node[] isa AbstractVector && length(color_node[]) == length(meshes[])
-        # One color per mesh
-        lift(meshes, color_node, attributes.colormap, attributes.colorrange) do meshes, colors, cmap, crange
-            # Color are reals, so we need to transform it to colors first
-            single_colors = if colors isa AbstractVector{<:Number}
-                interpolated_getindex.((to_colormap(cmap),), colors, (crange,))
-            else
-                to_color.(colors)
+    mesh_colors = Observable{Union{AbstractPattern, Matrix{RGBAf}, RGBColors}}()
+
+    map!(mesh_colors, plot.color, num_meshes) do colors, num_meshes
+        # one mesh per color
+        c_converted = to_color(colors)
+        if c_converted isa AbstractVector && length(c_converted) == length(num_meshes)
+            result = similar(c_converted, sum(num_meshes))
+            i = 1
+            for (cs, len) in zip(c_converted, num_meshes)
+                for j in 1:len
+                    result[i] = cs
+                    i += 1
+                end
             end
-            real_colors = RGBAf[]
-            # Map one single color per mesh to each vertex
-            for (mesh, color) in zip(meshes, single_colors)
-                append!(real_colors, Iterators.repeated(RGBAf(color), length(coordinates(mesh))))
-            end
-            # real_colors[] = real_colors[]
-            if P <: AbstractPolygon
-                meshes = triangle_mesh.(meshes)
-            end
-            return pointmeta(merge(meshes), color=real_colors)
+            # For GLMakie (right now), to not interpolate between the colors (which are meant to be per mesh)
+            attributes[:interpolate_in_fragment_shader] = false
+            return result
+        else
+            # If we have colors per vertex, we need to interpolate in fragment shader
+            attributes[:interpolate_in_fragment_shader] = true
+            return c_converted
         end
-    else
-        attributes[:color] = color_node
-        lift(meshes) do meshes
-            return merge(GeometryBasics.mesh.(meshes))
+    end
+    attributes[:color] = mesh_colors
+    bigmesh = lift(meshes) do meshes
+        if isempty(meshes)
+            return GeometryBasics.Mesh(Point2f[], GLTriangleFace[])
+        else
+            return merge(GeometryBasics.triangle_mesh.(meshes))
         end
     end
     mesh!(plot, attributes, bigmesh)

@@ -2,12 +2,12 @@
 
 The Cairo Backend for Makie
 
-Read the docs for Makie and it's backends [here](http://makie.juliaplots.org/stable)
+Read the docs for Makie and its backends [here](http://docs.makie.org/stable)
 
 
 ## Issues
 
-Please file all issues in [Makie.jl](https://github.com/JuliaPlots/Makie.jl/issues/new), and mention CairoMakie in the issue text.
+Please file all issues in [Makie.jl](https://github.com/MakieOrg/Makie.jl/issues/new), and mention CairoMakie in the issue text.
 
 ## Limitations
 
@@ -38,7 +38,8 @@ function drawonto(canvas, figure)
     @guarded draw(canvas) do _
         scene = figure.scene
         resize!(scene, Gtk.width(canvas), Gtk.height(canvas))
-        screen = CairoMakie.CairoScreen(scene, Gtk.cairo_surface(canvas), getgc(canvas), nothing)
+        config = CairoMakie.ScreenConfig(1.0, 1.0, :good, true, true)
+        screen = CairoMakie.Screen(scene, config, Gtk.cairo_surface(canvas))
         CairoMakie.cairo_draw(screen, scene)
     end
 end

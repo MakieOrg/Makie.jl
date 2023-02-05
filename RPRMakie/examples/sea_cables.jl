@@ -47,7 +47,6 @@ for i in 1:length(toLines)
 end
 
 earth_img = load(Downloads.download("https://upload.wikimedia.org/wikipedia/commons/5/56/Blue_Marble_Next_Generation_%2B_topography_%2B_bathymetry.jpg"))
-Makie.inline!(true)
 # the actual plot !
 RPRMakie.activate!(; iterations=100)
 scene = with_theme(theme_dark()) do

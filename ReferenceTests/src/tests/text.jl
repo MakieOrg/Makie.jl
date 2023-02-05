@@ -10,7 +10,7 @@
         position = [Point2f(x, y) for x in 1:10 for y in 1:10],
         align = (:center, :center),
         color = ifelse.(vec(values') .< 0.3, :white, :black),
-        textsize = 12)
+        fontsize = 12)
     fig
 end
 
@@ -22,7 +22,7 @@ end
         axis = (aspect = DataAspect(),),
         markerspace = :data,
         align = (:center, :center),
-        textsize = 2)
+        fontsize = 2)
     scatter!(pos)
     fig
 end
@@ -69,7 +69,7 @@ end
     scatter!(scene, points, marker = :circle, markersize = 10px)
 
 
-    text!(scene, strings, position = points, align = aligns, rotation = rotations,
+    text!(scene, points, text = strings, align = aligns, rotation = rotations,
         color = [(:black, alpha) for alpha in LinRange(0.3, 0.7, length(points))])
 
     scene
@@ -96,12 +96,12 @@ end
     end
 
     for (p, al) in zip(points[3:3:end], (:left, :center, :right))
-        text!(scene, "align :" * string(al), position = p .+ (0, 80),
+        text!(scene, p .+ (0, 80), text = "align :" * string(al),
             align = (:center, :baseline))
     end
 
     for (p, al) in zip(points[7:9], (:left, :center, :right))
-        text!(scene, "justification\n:" * string(al), position = p .+ (80, 0),
+        text!(scene, p .+ (80, 0), text = "justification\n:" * string(al),
             align = (:center, :top), rotation = pi/2)
     end
 
@@ -116,7 +116,7 @@ end
         position = [(200, 200) .+ 60 * Point2f(cos(a), sin(a)) for a in pi/4:pi/2:7pi/4],
         rotation = pi/4:pi/2:7pi/4,
         align = (:left, :center),
-        textsize = 30,
+        fontsize = 30,
         markerspace = :data
     )
 
@@ -127,7 +127,7 @@ end
         position = [(200, 600) .+ 60 * Point2f(cos(a), sin(a)) for a in pi/4:pi/2:7pi/4],
         rotation = pi/4:pi/2:7pi/4,
         align = (:left, :center),
-        textsize = 30,
+        fontsize = 30,
         markerspace = :pixel
     )
 
@@ -146,7 +146,7 @@ end
             position = (200, 200) .+ 60 * Point2f(cos(a), sin(a)),
             rotation = a,
             align = (:left, :center),
-            textsize = 30,
+            fontsize = 30,
             markerspace = :data
         )
 
@@ -157,7 +157,7 @@ end
             position = (200, 600) .+ 60 * Point2f(cos(a), sin(a)),
             rotation = a,
             align = (:left, :center),
-            textsize = 30,
+            fontsize = 30,
             markerspace = :pixel
         )
 
@@ -175,7 +175,7 @@ end
         position = [Point3f(0, 0, i/2) for i in 1:7],
         color = [cgrad(:viridis)[x] for x in LinRange(0, 1, 7)],
         align = (:left, :baseline),
-        textsize = 1,
+        fontsize = 1,
         markerspace = :data
     )
 end
@@ -204,7 +204,7 @@ end
         fill("Annotation", 10),
         position = positions,
         align = (:center, :center),
-        textsize = 20,
+        fontsize = 20,
         markerspace = :pixel,
         overdraw=false)
     fig
@@ -214,26 +214,26 @@ end
 @reference_test "Text offset" begin
     f = Figure(resolution = (1000, 1000))
     barplot(f[1, 1], 3:5)
-    text!("bar 1", position = (1, 3), offset = (0, 10), align = (:center, :baseline))
-    text!(["bar 2", "bar 3"], position = [(2, 4), (3, 5)],
+    text!(1, 3, text = "bar 1", offset = (0, 10), align = (:center, :baseline))
+    text!([(2, 4), (3, 5)], text = ["bar 2", "bar 3"],
         offset = [(0, -10), (0, -20)],
         align = (:center, :top), color = :white)
 
     scatter(f[1, 2], Point2f(0, 0))
-    text!("hello", position = (0, 0), offset = (40, 0), align = (:left, :center))
-    text!("hello", position = (0, 0), offset = (40, 0), align = (:left, :center),
+    text!(0, 0, text = "hello", offset = (40, 0), align = (:left, :center))
+    text!(0, 0, text = "hello", offset = (40, 0), align = (:left, :center),
         rotation = -pi/4)
-    text!("hello", position = (0, 0), offset = (40, 0), align = (:left, :center),
+    text!(0, 0, text = "hello", offset = (40, 0), align = (:left, :center),
         rotation = pi/4)
 
     scatter(f[2, 1], Point2f[(0, 0), (10, 0), (20, 10)])
-    text!("ABC", markerspace = :data, offset = (0, 0), color = (:red, 0.3), align = (:left, :baseline))
-    text!("ABC", markerspace = :data, offset = (10, 0), color = (:green, 0.3), align = (:left, :baseline))
-    text!("ABC", markerspace = :data, offset = (20, 10), color = (:blue, 0.3), align = (:left, :baseline))
+    text!(0, 0, text = "ABC", markerspace = :data, offset = (0, 0), color = (:red, 0.3), align = (:left, :baseline))
+    text!(0, 0, text = "ABC", markerspace = :data, offset = (10, 0), color = (:green, 0.3), align = (:left, :baseline))
+    text!(0, 0, text = "ABC", markerspace = :data, offset = (20, 10), color = (:blue, 0.3), align = (:left, :baseline))
 
     LScene(f[2, 2], show_axis=false)
     scatter!(Point3f[(0, 0, 0), (2, 2, 2)])
-    text!("hello", position = Point3f(1, 1, 1), offset = (10, 10))
+    text!(1, 1, 1, text = "hello", offset = (10, 10))
 
     f
 end
@@ -241,7 +241,7 @@ end
 
 @reference_test "Log10 text" begin
     barplot([1, 10, 100], fillto = 0.1, axis = (yscale = log10,))
-    text!(["bar 1", "bar 2", "bar 3"], position = [(1, 1), (2, 10), (3, 100)],
+    text!([(1, 1), (2, 10), (3, 100)], text = ["bar 1", "bar 2", "bar 3"],
         offset = (0, -10), color = :white, align = (:center, :top))
     tightlimits!(current_axis(), Bottom())
     current_figure()
@@ -256,9 +256,14 @@ end
             ),
         figure = (fontsize = 18,)
     )
-    text!(L"\int_{0}^{2π} \sin(x) dx", position = (500, 0))
+    text!(500, 0, text = L"\int_{0}^{2π} \sin(x) dx")
     Legend(f[1, 2], [l, l, l], [L"\sum{xy}", L"a\int_0^5x^2+2ab", L"||x-y||^2"])
     f
+end
+
+@reference_test "latex hlines in axis" begin
+    text(1, 1, text = L"\frac{\sqrt{x + y}}{\sqrt{x + y}}", fontsize = 50, rotation = pi/4,
+        align = (:center, :center))
 end
 
 @reference_test "latex simple" begin
@@ -346,10 +351,10 @@ end
 
     fig = Figure(resolution=(600, 500))
     ax = Axis(fig[1, 1])
-    text!(ax, latexstring(L"$1$ " * lorem_ipsum), word_wrap_width=250, textsize = 12, align = (:left, :bottom), justification = :left, color = :black)
-    text!(ax, lorem_ipsum, word_wrap_width=250, textsize = 12, align = (:left, :top), justification = :right, color = :black)
-    text!(ax, lorem_ipsum, word_wrap_width=250, textsize = 12, align = (:right, :bottom), justification = :center, color = :red)
-    text!(ax, lorem_ipsum, word_wrap_width=200, textsize = 12, align = (:center, :top), position = Point2f(-0.3, 0), color = :blue)
+    text!(ax, 0, 0, text = latexstring(L"$1$ " * lorem_ipsum), word_wrap_width=250, fontsize = 12, align = (:left, :bottom), justification = :left, color = :black)
+    text!(ax, 0, 0, text = lorem_ipsum, word_wrap_width=250, fontsize = 12, align = (:left, :top), justification = :right, color = :black)
+    text!(ax, 0, 0, text = lorem_ipsum, word_wrap_width=250, fontsize = 12, align = (:right, :bottom), justification = :center, color = :red)
+    text!(ax, -0.3, 0, text = lorem_ipsum, word_wrap_width=200, fontsize = 12, align = (:center, :top), color = :blue)
     xlims!(ax, -0.8, 0.8)
     ylims!(ax, -0.8, 0.6)
     fig

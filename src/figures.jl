@@ -66,10 +66,9 @@ to_rectsides(t::Tuple{Any, Any, Any, Any}) = GridLayoutBase.RectSides{Float32}(t
 function Figure(; kwargs...)
 
     kwargs_dict = Dict(kwargs)
-    padding = pop!(kwargs_dict, :figure_padding, current_default_theme()[:figure_padding])
+    padding = pop!(kwargs_dict, :figure_padding, theme(:figure_padding))
     scene = Scene(; camera=campixel!, kwargs_dict...)
-    padding = padding isa Observable ? padding : Observable{Any}(padding)
-
+    padding = convert(Observable{Any}, padding)
     alignmode = lift(Outside ∘ to_rectsides, padding)
 
     layout = GridLayout(scene)
@@ -111,6 +110,7 @@ function Base.setindex!(fig::Figure, obj::AbstractArray, rows, cols)
 end
 
 Base.lastindex(f::Figure, i) = lastindex(f.layout, i)
+Base.firstindex(f::Figure, i) = firstindex(f.layout, i)
 
 # for now just redirect figure display/show to the internal scene
 Base.show(io::IO, fig::Figure) = show(io, fig.scene)
@@ -140,6 +140,11 @@ Once resized, all content should fit the available space, including
 the `Figure`'s outer padding.
 """
 function resize_to_layout!(fig::Figure)
+    # it is assumed that all plot objects have been added at this point,
+    # but it's possible the limits have not been updated, yet,
+    # so without `update_state_before_display!` it's possible that the layout
+    # is optimized for the wrong ticks
+    update_state_before_display!(fig)
     bbox = GridLayoutBase.tight_bbox(fig.layout)
     new_size = (widths(bbox)...,)
     resize!(fig.scene, widths(bbox)...)

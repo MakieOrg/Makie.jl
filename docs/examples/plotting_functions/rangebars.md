@@ -8,7 +8,7 @@
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 Axis(f[1, 1])
@@ -27,7 +27,7 @@ f
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 f = Figure()
 Axis(f[1, 1])

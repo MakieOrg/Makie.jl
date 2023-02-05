@@ -1,8 +1,8 @@
 name: Doc Preview Cleanup
 
 on:
-  pull_request:
-    types: [closed]
+  schedule:
+    - cron: "0 0 * * *"
 
 jobs:
   doc-preview-cleanup:
@@ -12,15 +12,62 @@ jobs:
         uses: actions/checkout@v2
         with:
           ref: gh-pages
-      - name: Delete preview and history + push changes
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: '1'
+      - name: Check for stale PR previews
+        shell: julia {0}
         run: |
-            if [ -d "previews/PR$PRNUM" ]; then
-              git config user.name "Documenter.jl"
-              git config user.email "documenter@juliadocs.github.io"
-              git rm -rf "previews/PR$PRNUM"
-              git commit -m "delete preview"
-              git branch gh-pages-new $(echo "delete history" | git commit-tree HEAD^{tree})
-              git push --force origin gh-pages-new:gh-pages
-            fi
-        env:
-            PRNUM: ${{ github.event.number }}
+          using Pkg
+          pkg"activate --temp"
+          pkg"add HTTP JSON3"
+
+          using HTTP
+          using JSON3
+          using Dates
+
+          repo = ENV["GITHUB_REPOSITORY"]
+          retention_days = 14
+
+          pr_previews = map(filter(startswith("PR"), readdir("previews"))) do dir
+              parse(Int, match(r"PR(\d*)", dir)[1])
+          end
+
+          function all_prs()
+              query_prs(page) = JSON3.read(HTTP.get("https://api.github.com/repos/$repo/pulls?per_page=100;page=$(page)").body)
+              prs = []
+              page = 1
+              while true
+                  page_prs = query_prs(page)
+                  isempty(page_prs) && break
+                  append!(prs, page_prs)
+                  page += 1
+              end
+              return prs
+          end
+          prs = all_prs()
+          open_within_threshold = map(x -> x.number, filter(prs) do pr
+              time = DateTime(pr.updated_at[1:19], ISODateTimeFormat)
+              return pr.state == "open" && Dates.days(now() - time) <= retention_days
+          end)
+
+          stale_previews = setdiff(pr_previews, open_within_threshold)
+          @info "Found $(length(stale_previews)) stale previews"
+
+          if isempty(stale_previews)
+              @info "No stale previews"
+              exit(1)
+          end
+
+          for pr in stale_previews
+              path = joinpath("previews", "PR$pr")
+              @info "Removing $path"
+              run(`git rm -rf $path`)
+          end
+      - name: Push changes
+        run: |
+          git config user.name "Documenter.jl"
+          git config user.email "documenter@juliadocs.github.io"
+          git commit -m "delete preview"
+          git branch gh-pages-new $(echo "delete history" | git commit-tree HEAD^{tree})
+          git push --force origin gh-pages-new:gh-pages

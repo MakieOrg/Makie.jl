@@ -1,11 +1,11 @@
 <div align="center">
-    <img src="https://raw.githubusercontent.com/JuliaPlots/Makie.jl/master/assets/makie_logo_canvas.svg" alt="Makie.jl">
+    <img src="https://raw.githubusercontent.com/MakieOrg/Makie.jl/master/assets/makie_logo_canvas.svg" alt="Makie.jl">
 </div>
 
 From the japanese word [_Maki-e_](https://en.wikipedia.org/wiki/Maki-e), which is a technique to sprinkle lacquer with gold and silver powder.
 Data is the gold and silver of our age, so let's spread it out beautifully on the screen!
 
-[Check out the documentation here!](http://makie.juliaplots.org/stable/)
+[Check out the documentation here!](http://docs.makie.org/stable/)
 
 [![][docs-stable-img]][docs-stable-url] [![][docs-master-img]][docs-master-url] [![](https://img.shields.io/twitter/url/https/twitter.com/cloudposse.svg?style=social&label=Follow%20%40MakiePlots)](https://twitter.com/MakiePlots)
 
@@ -13,9 +13,9 @@ Data is the gold and silver of our age, so let's spread it out beautifully on th
 [gitlab-img]: https://gitlab.com/JuliaGPU/Makie.jl/badges/master/pipeline.svg
 [gitlab-url]: https://gitlab.com/JuliaGPU/Makie.jl/pipelines
 [docs-stable-img]: https://img.shields.io/badge/docs-stable-lightgrey.svg
-[docs-stable-url]: http://makie.juliaplots.org/stable/
+[docs-stable-url]: http://docs.makie.org/stable/
 [docs-master-img]: https://img.shields.io/badge/docs-master-blue.svg
-[docs-master-url]: http://makie.juliaplots.org/dev/
+[docs-master-url]: http://docs.makie.org/dev/
 
 # Citing Makie
 
@@ -83,7 +83,7 @@ For more info about ReferenceTests, check out its [README](./ReferenceTests/READ
 
 # Quick start
 
-The following examples are supposed to be self-explanatory. For further information [check out the documentation here!](http://makie.juliaplots.org/stable/)
+The following examples are supposed to be self-explanatory. For further information [check out the documentation!](http://docs.makie.org/stable/)
 
 ### A simple parabola
 
@@ -91,7 +91,7 @@ The following examples are supposed to be self-explanatory. For further informat
 x = 1:10
 fig = lines(x, x.^2; label = "Parabola")
 axislegend()
-save("./assets/parabola.png", fig,  resolution = (600,400))
+save("./assets/parabola.png", fig, resolution = (600, 400))
 fig
 ```
 
@@ -166,5 +166,5 @@ You can follow Makie on [twitter](https://twitter.com/MakiePlots) to get the lat
 
 ## Sponsors
 
-<img src="https://github.com/JuliaPlots/Makie.jl/blob/master/assets/BMBF_gefoerdert_2017_en.jpg?raw=true" width="300"/>
+<img src="https://github.com/MakieOrg/Makie.jl/blob/master/assets/BMBF_gefoerdert_2017_en.jpg?raw=true" width="300"/>
 Förderkennzeichen: 01IS10S27, 2020

@@ -8,7 +8,7 @@
 ```julia
 using CairoMakie
 CairoMakie.activate!() # hide
-Makie.inline!(true) # hide
+
 
 struct FitzhughNagumo{T}
     ϵ::T

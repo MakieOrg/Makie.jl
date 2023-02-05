@@ -33,6 +33,8 @@ function uniformfunc(typ::DataType, dims::Tuple{Int, Int})
     Symbol(string("glUniformMatrix", M == N ? "$M" : "$(M)x$(N)", opengl_postfix(typ)))
 end
 
+gluniform(location::Integer, x::Nothing) = nothing
+
 function gluniform(location::Integer, x::Union{StaticVector, Mat, Colorant})
     xref = [x]
     gluniform(location, xref)

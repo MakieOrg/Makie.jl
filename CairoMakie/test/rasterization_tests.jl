@@ -14,6 +14,8 @@ end
     fig = Figure()
     ax = Axis(fig[1,1])
     lp = lines!(ax, vcat(1:10, 10:-1:1))
+    pts = Makie.GeometryBasics.Point2f[(0,0), (1,0), (0,1)]
+    pl = poly!(ax, Makie.GeometryBasics.Polygon(pts))
 
     @testset "Unrasterized SVG" begin
         @test svg_has_image(fig)

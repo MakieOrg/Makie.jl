@@ -5,7 +5,10 @@ Add here global page variables to use throughout your website.
 author = "Makie.jl"
 mintoclevel = 2
 frontpage = false
+searchpage = false
 auto_code_path = true
+generate_robots = false
+generate_sitemap = false
 
 # Add here files or directories that should be ignored by Franklin, otherwise
 # these files might be copied and, if markdown, processed by Franklin which
@@ -18,7 +21,7 @@ generate_rss = true
 website_title = "Franklin Template"
 website_descr = "Example website using Franklin"
 prepath = get(ENV, "PREVIEW_FRANKLIN_PREPATH", "")
-website_url = get(ENV, "PREVIEW_FRANKLIN_WEBSITE_URL", "makie.juliaplots.org")
+website_url = get(ENV, "PREVIEW_FRANKLIN_WEBSITE_URL", "docs.makie.org")
 +++
 
 <!--

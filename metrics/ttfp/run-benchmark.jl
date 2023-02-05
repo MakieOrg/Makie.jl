@@ -10,13 +10,20 @@ Pkg.instantiate()
 using Statistics, GitHub, Printf, BenchmarkTools, Markdown, HypothesisTests
 using BenchmarkTools.JSON
 Package = ARGS[1]
-@info("Benchmarking $(Package)")
+n_samples = length(ARGS) > 1 ? parse(Int, ARGS[2]) : 7
+base_branch = length(ARGS) > 2 ? ARGS[3] : "master"
+
+# Package = "CairoMakie"
+# n_samples = 2
+# base_branch = "breaking-release"
+
+@info("Benchmarking $(Package) against $(base_branch) with $(n_samples)")
 
 COMMENT_TEMPLATE = """
 ## Compile Times benchmark
 
 Note, that these numbers may fluctuate on the CI servers, so take them with a grain of salt.
-All benchmark results are based on the mean time and negative percent mean faster than master.
+All benchmark results are based on the mean time and negative percent mean faster than the base branch.
 Note, that GLMakie + WGLMakie run on an emulated GPU, so the runtime benchmark is much slower.
 Results are from running:
 
@@ -33,18 +40,18 @@ display_time = @benchmark Makie.colorbuffer(display(fig))
 |               | using     | create   | display  | create   | display  |
 |--------------:|:----------|:---------|:---------|:---------|:---------|
 | GLMakie       | --        | --       | --       | --       | --       |
-| master        | --        | --       | --       | --       | --       |
+| $base_branch  | --        | --       | --       | --       | --       |
 | evaluation    | --        | --       | --       | --       | --       |
 | CairoMakie    | --        | --       | --       | --       | --       |
-| master        | --        | --       | --       | --       | --       |
+| $base_branch  | --        | --       | --       | --       | --       |
 | evaluation    | --        | --       | --       | --       | --       |
 | WGLMakie      | --        | --       | --       | --       | --       |
-| master        | --        | --       | --       | --       | --       |
+| $base_branch  | --        | --       | --       | --       | --       |
 | evaluation    | --        | --       | --       | --       | --       |
 """
 
 function github_context()
-    owner = "JuliaPlots"
+    owner = "MakieOrg"
     return (
         owner = owner,
         repo = GitHub.Repo("$(owner)/Makie.jl"),
@@ -84,18 +91,22 @@ function analyze(pr, master)
     percent = (1 - (m_m / m_pr)) * 100
     p = pvalue(tt)
     mean_diff_str = string(round(mean_diff; digits=2), unit)
+
     result = if p < 0.05
         if abs(d) > 0.2
-            d < 0 ? "faster✅" : "worse❌"
+            indicator = abs(percent) < 5 ? ["faster ✓", "slower X"] : ["**faster**✅", "**slower**❌"]
+            indicator[d < 0 ? 1 : 2]
         else
             "*invariant*"
         end
     else
-        "*noisy*🤷‍♀️"
+        if abs(percent) < 5
+            "*invariant*"
+        else
+            "*noisy*🤷‍♀️"
+        end
     end
-    if abs(percent) < 5
-        result = "*invariant*"
-    end
+
     return @sprintf("%s%.2f%s, %s %s (%.2fd, %.2fp, %.2fstd)", percent > 0 ? "+" : "-", abs(percent), "%", mean_diff_str, result, d, p, std_p)
 end
 
@@ -160,7 +171,7 @@ function make_or_edit_comment(ctx, pr, package_name, benchmarks)
     end
 end
 
-function run_benchmarks(projects; n=7)
+function run_benchmarks(projects; n=n_samples)
     benchmark_file = joinpath(@__DIR__, "benchmark-ttfp.jl")
     for project in repeat(projects; outer=n)
         run(`$(Base.julia_cmd()) --startup-file=no --project=$(project) $benchmark_file $Package`)
@@ -193,18 +204,21 @@ catch e
 end
 
 ENV["JULIA_PKG_PRECOMPILE_AUTO"] = 0
-
 project1 = make_project_folder("current-pr")
 Pkg.activate(project1)
-pkgs = [(; path="./MakieCore"), (; path="."), (; path="./$Package"), (;name="BenchmarkTools")]
-Package == "WGLMakie" && push!(pkgs, (; name="ElectronDisplay"))
+if Package == "WGLMakie"
+    Pkg.add([(; name="Electron"), (; name="JSServe")])
+end
+pkgs = NamedTuple[(; path="./MakieCore"), (; path="."), (; path="./$Package"), (;name="BenchmarkTools")]
+# cd("dev/Makie")
 Pkg.develop(pkgs)
+
 @time Pkg.precompile()
 
-project2 = make_project_folder("makie-master")
+project2 = make_project_folder(base_branch)
 Pkg.activate(project2)
-pkgs = [(; rev="master", name="MakieCore"), (; rev="master", name="Makie"), (; rev="master", name="$Package"), (;name="BenchmarkTools")]
-Package == "WGLMakie" && push!(pkgs, (; name="ElectronDisplay"))
+pkgs = [(; rev=base_branch, name="MakieCore"), (; rev=base_branch, name="Makie"), (; rev=base_branch, name="$Package"), (;name="BenchmarkTools")]
+Package == "WGLMakie" && push!(pkgs, (; name="Electron"))
 Pkg.add(pkgs)
 @time Pkg.precompile()
 

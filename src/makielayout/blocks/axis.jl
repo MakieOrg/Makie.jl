@@ -71,13 +71,9 @@ function register_events!(ax, scene)
 
     register_interaction!(ax, :limitreset, LimitReset())
 
-    register_interaction!(ax,
-        :scrollzoom,
-        ScrollZoom(0.1, Ref{Any}(nothing), Ref{Any}(0), Ref{Any}(0), 0.2))
+    register_interaction!(ax, :scrollzoom, ScrollZoom(0.1, 0.2))
 
-    register_interaction!(ax,
-        :dragpan,
-        DragPan(Ref{Any}(nothing), Ref{Any}(0), Ref{Any}(0), 0.2))
+    register_interaction!(ax, :dragpan, DragPan(0.2))
 
     return
 end
@@ -86,6 +82,7 @@ function update_axis_camera(camera::Camera, t, lims, xrev::Bool, yrev::Bool)
     nearclip = -10_000f0
     farclip = 10_000f0
 
+    # we are computing transformed camera position, so this isn't space dependent
     tlims = Makie.apply_transform(t, lims)
 
     left, bottom = minimum(tlims)
@@ -95,6 +92,7 @@ function update_axis_camera(camera::Camera, t, lims, xrev::Bool, yrev::Bool)
     bottomtop = yrev ? (top, bottom) : (bottom, top)
 
     projection = Makie.orthographicprojection(
+        Float32,
         leftright...,
         bottomtop..., nearclip, farclip)
 
@@ -156,7 +154,7 @@ function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidt
 
     top += titlespace + subtitlespace
 
-    if yaxisposition == :left
+    if yaxisposition === :left
         left = yaxisprotrusion
     else
         right = yaxisprotrusion
@@ -169,7 +167,8 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     topscene = ax.blockscene
 
-    decorations = Dict{Symbol, Any}()
+    elements = Dict{Symbol, Any}()
+    ax.elements = elements
 
     if palette === nothing
         palette = haskey(topscene.theme, :palette) ? deepcopy(topscene.theme[:palette]) : copy(Makie.default_palettes)
@@ -210,7 +209,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     # so it doesn't rasterize the scene
     background = poly!(topscene, scenearea; color=ax.backgroundcolor, inspectable=false, shading=false, strokecolor=:transparent)
     translate!(background, 0, 0, -100)
-    decorations[:background] = background
+    elements[:background] = background
 
     block_limit_linking = Observable(false)
     setfield!(ax, :block_limit_linking, block_limit_linking)
@@ -225,7 +224,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(xgridlines, 0, 0, -10)
-    decorations[:xgridlines] = xgridlines
+    elements[:xgridlines] = xgridlines
 
     xminorgridnode = Observable(Point2f[]; ignore_equal_values=true)
     xminorgridlines = linesegments!(
@@ -234,7 +233,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(xminorgridlines, 0, 0, -10)
-    decorations[:xminorgridlines] = xminorgridlines
+    elements[:xminorgridlines] = xminorgridlines
 
     ygridnode = Observable(Point2f[]; ignore_equal_values=true)
     ygridlines = linesegments!(
@@ -243,7 +242,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(ygridlines, 0, 0, -10)
-    decorations[:ygridlines] = ygridlines
+    elements[:ygridlines] = ygridlines
 
     yminorgridnode = Observable(Point2f[]; ignore_equal_values=true)
     yminorgridlines = linesegments!(
@@ -252,7 +251,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(yminorgridlines, 0, 0, -10)
-    decorations[:yminorgridlines] = yminorgridlines
+    elements[:yminorgridlines] = yminorgridlines
 
     onany(ax.xscale, ax.yscale) do xsc, ysc
         scene.transformation.transform_func[] = (xsc, ysc)
@@ -264,9 +263,9 @@ function initialize_block!(ax::Axis; palette = nothing)
     onany(update_axis_camera, camera(scene), scene.transformation.transform_func, finallimits, ax.xreversed, ax.yreversed)
 
     xaxis_endpoints = lift(ax.xaxisposition, scene.px_area; ignore_equal_values=true) do xaxisposition, area
-        if xaxisposition == :bottom
+        if xaxisposition === :bottom
             return bottomline(Rect2f(area))
-        elseif xaxisposition == :top
+        elseif xaxisposition === :top
             return topline(Rect2f(area))
         else
             error("Invalid xaxisposition $xaxisposition")
@@ -274,17 +273,17 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     yaxis_endpoints = lift(ax.yaxisposition, scene.px_area; ignore_equal_values=true) do yaxisposition, area
-        if yaxisposition == :left
+        if yaxisposition === :left
             return leftline(Rect2f(area))
-        elseif yaxisposition == :right
+        elseif yaxisposition === :right
             return rightline(Rect2f(area))
         else
             error("Invalid yaxisposition $yaxisposition")
         end
     end
 
-    xaxis_flipped = lift(x->x == :top, ax.xaxisposition; ignore_equal_values=true)
-    yaxis_flipped = lift(x->x == :right, ax.yaxisposition; ignore_equal_values=true)
+    xaxis_flipped = lift(x->x === :top, ax.xaxisposition; ignore_equal_values=true)
+    yaxis_flipped = lift(x->x === :right, ax.yaxisposition; ignore_equal_values=true)
 
     xspinevisible = lift(xaxis_flipped, ax.bottomspinevisible, ax.topspinevisible; ignore_equal_values=true) do xflip, bv, tv
         xflip ? tv : bv
@@ -318,7 +317,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         flipped = xaxis_flipped, ticklabelrotation = ax.xticklabelrotation,
         ticklabelalign = ax.xticklabelalign, labelsize = ax.xlabelsize,
         labelpadding = ax.xlabelpadding, ticklabelpad = ax.xticklabelpad, labelvisible = ax.xlabelvisible,
-        label = ax.xlabel, labelfont = ax.xlabelfont, ticklabelfont = ax.xticklabelfont, ticklabelcolor = ax.xticklabelcolor, labelcolor = ax.xlabelcolor, tickalign = ax.xtickalign,
+        label = ax.xlabel, labelfont = ax.xlabelfont, labelrotation = ax.xlabelrotation, ticklabelfont = ax.xticklabelfont, ticklabelcolor = ax.xticklabelcolor, labelcolor = ax.xlabelcolor, tickalign = ax.xtickalign,
         ticklabelspace = ax.xticklabelspace, ticks = ax.xticks, tickformat = ax.xtickformat, ticklabelsvisible = ax.xticklabelsvisible,
         ticksvisible = ax.xticksvisible, spinevisible = xspinevisible, spinecolor = xspinecolor, spinewidth = ax.spinewidth,
         ticklabelsize = ax.xticklabelsize, trimspine = ax.xtrimspine, ticksize = ax.xticksize,
@@ -331,7 +330,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         flipped = yaxis_flipped, ticklabelrotation = ax.yticklabelrotation,
         ticklabelalign = ax.yticklabelalign, labelsize = ax.ylabelsize,
         labelpadding = ax.ylabelpadding, ticklabelpad = ax.yticklabelpad, labelvisible = ax.ylabelvisible,
-        label = ax.ylabel, labelfont = ax.ylabelfont, ticklabelfont = ax.yticklabelfont, ticklabelcolor = ax.yticklabelcolor, labelcolor = ax.ylabelcolor, tickalign = ax.ytickalign,
+        label = ax.ylabel, labelfont = ax.ylabelfont, labelrotation = ax.ylabelrotation, ticklabelfont = ax.yticklabelfont, ticklabelcolor = ax.yticklabelcolor, labelcolor = ax.ylabelcolor, tickalign = ax.ytickalign,
         ticklabelspace = ax.yticklabelspace, ticks = ax.yticks, tickformat = ax.ytickformat, ticklabelsvisible = ax.yticklabelsvisible,
         ticksvisible = ax.yticksvisible, spinevisible = yspinevisible, spinecolor = yspinecolor, spinewidth = ax.spinewidth,
         trimspine = ax.ytrimspine, ticklabelsize = ax.yticklabelsize, ticksize = ax.yticksize, flip_vertical_label = ax.flip_ylabel, reversed = ax.yreversed, tickwidth = ax.ytickwidth,
@@ -342,7 +341,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     ax.yaxis = yaxis
 
     xoppositelinepoints = lift(scene.px_area, ax.spinewidth, ax.xaxisposition; ignore_equal_values=true) do r, sw, xaxpos
-        if xaxpos == :top
+        if xaxpos === :top
             y = bottom(r)
             p1 = Point2f(left(r) - 0.5sw, y)
             p2 = Point2f(right(r) + 0.5sw, y)
@@ -356,7 +355,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     yoppositelinepoints = lift(scene.px_area, ax.spinewidth, ax.yaxisposition; ignore_equal_values=true) do r, sw, yaxpos
-        if yaxpos == :right
+        if yaxpos === :right
             x = left(r)
             p1 = Point2f(x, bottom(r) - 0.5sw)
             p2 = Point2f(x, top(r) + 0.5sw)
@@ -369,16 +368,33 @@ function initialize_block!(ax::Axis; palette = nothing)
         end
     end
 
+    xticksmirrored = lift(mirror_ticks, xaxis.tickpositions, ax.xticksize, ax.xtickalign, Ref(scene.px_area), :x, ax.xaxisposition[])
+    xticksmirrored_lines = linesegments!(topscene, xticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xticksvisible)),
+        linewidth = ax.xtickwidth, color = ax.xtickcolor)
+    translate!(xticksmirrored_lines, 0, 0, 10)
+    yticksmirrored = lift(mirror_ticks, yaxis.tickpositions, ax.yticksize, ax.ytickalign, Ref(scene.px_area), :y, ax.yaxisposition[])
+    yticksmirrored_lines = linesegments!(topscene, yticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yticksvisible)),
+        linewidth = ax.ytickwidth, color = ax.ytickcolor)
+    translate!(yticksmirrored_lines, 0, 0, 10)
+    xminorticksmirrored = lift(mirror_ticks, xaxis.minortickpositions, ax.xminorticksize, ax.xminortickalign, Ref(scene.px_area), :x, ax.xaxisposition[])
+    xminorticksmirrored_lines = linesegments!(topscene, xminorticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xminorticksvisible)),
+        linewidth = ax.xminortickwidth, color = ax.xminortickcolor)
+    translate!(xminorticksmirrored_lines, 0, 0, 10)
+    yminorticksmirrored = lift(mirror_ticks, yaxis.minortickpositions, ax.yminorticksize, ax.yminortickalign, Ref(scene.px_area), :y, ax.yaxisposition[])
+    yminorticksmirrored_lines = linesegments!(topscene, yminorticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yminorticksvisible)),
+        linewidth = ax.yminortickwidth, color = ax.yminortickcolor)
+    translate!(yminorticksmirrored_lines, 0, 0, 10)
+
     xoppositeline = linesegments!(topscene, xoppositelinepoints, linewidth = ax.spinewidth,
         visible = xoppositespinevisible, color = xoppositespinecolor, inspectable = false,
         linestyle = nothing)
-    decorations[:xoppositeline] = xoppositeline
+    elements[:xoppositeline] = xoppositeline
     translate!(xoppositeline, 0, 0, 20)
 
     yoppositeline = linesegments!(topscene, yoppositelinepoints, linewidth = ax.spinewidth,
         visible = yoppositespinevisible, color = yoppositespinecolor, inspectable = false,
         linestyle = nothing)
-    decorations[:yoppositeline] = yoppositeline
+    elements[:yoppositeline] = yoppositeline
     translate!(yoppositeline, 0, 0, 20)
 
     onany(xaxis.tickpositions, scene.px_area) do tickpos, area
@@ -393,32 +409,32 @@ function initialize_block!(ax::Axis; palette = nothing)
         update_gridlines!(ygridnode, Point2f(offset, 0), tickpos)
     end
 
-    on(xaxis.minortickpositions) do tickpos
+    onany(xaxis.minortickpositions, scene.px_area) do tickpos, area
         local pxheight::Float32 = height(scene.px_area[])
-        local offset::Float32 = ax.xaxisposition[] == :bottom ? pxheight : -pxheight
+        local offset::Float32 = ax.xaxisposition[] === :bottom ? pxheight : -pxheight
         update_gridlines!(xminorgridnode, Point2f(0, offset), tickpos)
     end
 
-    on(yaxis.minortickpositions) do tickpos
+    onany(yaxis.minortickpositions, scene.px_area) do tickpos, area
         local pxwidth::Float32 = width(scene.px_area[])
-        local offset::Float32 = ax.yaxisposition[] == :left ? pxwidth : -pxwidth
+        local offset::Float32 = ax.yaxisposition[] === :left ? pxwidth : -pxwidth
         update_gridlines!(yminorgridnode, Point2f(offset, 0), tickpos)
     end
 
     subtitlepos = lift(scene.px_area, ax.titlegap, ax.titlealign, ax.xaxisposition, xaxis.protrusion; ignore_equal_values=true) do a,
         titlegap, align, xaxisposition, xaxisprotrusion
 
-        x = if align == :center
+        x = if align === :center
             a.origin[1] + a.widths[1] / 2
-        elseif align == :left
+        elseif align === :left
             a.origin[1]
-        elseif align == :right
+        elseif align === :right
             a.origin[1] + a.widths[1]
         else
             error("Title align $align not supported.")
         end
 
-        yoffset = top(a) + titlegap + (xaxisposition == :top ? xaxisprotrusion : 0f0)
+        yoffset = top(a) + titlegap + (xaxisposition === :top ? xaxisprotrusion : 0f0)
 
         return Point2f(x, yoffset)
     end
@@ -428,10 +444,10 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     subtitlet = text!(
-        topscene, ax.subtitle,
-        position = subtitlepos,
+        topscene, subtitlepos,
+        text = ax.subtitle,
         visible = ax.subtitlevisible,
-        textsize = ax.subtitlesize,
+        fontsize = ax.subtitlesize,
         align = titlealignnode,
         font = ax.subtitlefont,
         color = ax.subtitlecolor,
@@ -443,17 +459,17 @@ function initialize_block!(ax::Axis; palette = nothing)
         ax.titlealign, ax.xaxisposition, xaxis.protrusion, ax.subtitlelineheight, ax, subtitlet; ignore_equal_values=true)
 
     titlet = text!(
-        topscene, ax.title,
-        position = titlepos,
+        topscene, titlepos,
+        text = ax.title,
         visible = ax.titlevisible,
-        textsize = ax.titlesize,
+        fontsize = ax.titlesize,
         align = titlealignnode,
         font = ax.titlefont,
         color = ax.titlecolor,
         lineheight = ax.titlelineheight,
         markerspace = :data,
         inspectable = false)
-    decorations[:title] = titlet
+    elements[:title] = titlet
 
     map!(compute_protrusions, ax.layoutobservables.protrusions, ax.title, ax.titlesize, ax.titlegap, ax.titlevisible, ax.spinewidth,
             ax.topspinevisible, ax.bottomspinevisible, ax.leftspinevisible, ax.rightspinevisible,
@@ -495,6 +511,31 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     return ax
+end
+
+function mirror_ticks(tickpositions, ticksize, tickalign, px_area, side, axisposition)
+    a = px_area[][]
+    if side === :x
+        opp = axisposition === :bottom ? top(a) : bottom(a)
+        sign =  axisposition === :bottom ? 1 : -1
+    else
+        opp = axisposition === :left ? right(a) : left(a)
+        sign = axisposition === :left ? 1 : -1
+    end
+    d = ticksize * sign
+    points = Vector{Point2f}(undef, 2*length(tickpositions))
+    if side === :x
+        for (i, (x, _)) in enumerate(tickpositions)
+            points[2i-1] = Point2f(x, opp - d * tickalign)
+            points[2i] = Point2f(x, opp + d - d * tickalign)
+        end
+    else
+        for (i, (_, y)) in enumerate(tickpositions)
+            points[2i-1] = Point2f(opp - d * tickalign, y)
+            points[2i] = Point2f(opp + d - d * tickalign, y)
+        end
+    end
+    return points
 end
 
 """
@@ -635,13 +676,15 @@ function get_cycle_for_plottype(allattrs, P)::Cycle
 
     plottheme = Makie.default_theme(nothing, P)
 
-    cdt = Makie.current_default_theme()
     cycle_raw = if haskey(allattrs, :cycle)
         allattrs.cycle[]
-    elseif haskey(cdt, psym) && haskey(cdt[psym], :cycle)
-        cdt[psym].cycle[]
     else
-        haskey(plottheme, :cycle) ? plottheme.cycle[] : nothing
+        global_theme_cycle = theme(psym)
+        if !isnothing(global_theme_cycle) && haskey(global_theme_cycle, :cycle)
+            global_theme_cycle.cycle[]
+        else
+            haskey(plottheme, :cycle) ? plottheme.cycle[] : nothing
+        end
     end
 
     if isnothing(cycle_raw)
@@ -726,6 +769,9 @@ function Makie.plot!(
 
     allattrs = merge(attributes, Attributes(kw_attributes))
 
+    _disallow_keyword(:axis, allattrs)
+    _disallow_keyword(:figure, allattrs)
+
     cycle = get_cycle_for_plottype(allattrs, P)
     add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
 
@@ -735,9 +781,14 @@ function Makie.plot!(
     # adjust the limit margins in those cases automatically.
     needs_tight_limits(plot) && tightlimits!(la)
 
-    reset_limits!(la)
+    if is_open_or_any_parent(la.scene)
+        reset_limits!(la)
+    end
     plot
 end
+
+is_open_or_any_parent(s::Scene) = isopen(s) || is_open_or_any_parent(s.parent)
+is_open_or_any_parent(::Nothing) = false
 
 function Makie.plot!(P::Makie.PlotFunc, ax::Axis, args...; kw_attributes...)
     attributes = Makie.Attributes(kw_attributes)
@@ -970,56 +1021,41 @@ function adjustlimits!(la)
     return
 end
 
+function linkaxes!(dir::Union{Val{:x}, Val{:y}}, a::Axis, others...)
+    axes = Axis[a; others...]
+
+    all_links = Set{Axis}(axes)
+    for ax in axes
+        links = dir isa Val{:x} ? ax.xaxislinks : ax.yaxislinks
+        for ax in links
+            push!(all_links, ax)
+        end
+    end
+
+    for ax in all_links
+        links = (dir isa Val{:x} ? ax.xaxislinks : ax.yaxislinks)
+        for linked_ax in all_links
+            if linked_ax !== ax && linked_ax ∉ links
+                push!(links, linked_ax)
+            end
+        end
+    end
+    reset_limits!(a)
+end
+
 """
     linkxaxes!(a::Axis, others...)
 
 Link the x axes of all given `Axis` so that they stay synchronized.
 """
-function linkxaxes!(a::Axis, others...)
-    axes = Axis[a; others...]
-
-    for i in 1:length(axes)-1
-        for j in i+1:length(axes)
-            axa = axes[i]
-            axb = axes[j]
-
-            if axa ∉ axb.xaxislinks
-                push!(axb.xaxislinks, axa)
-            end
-            if axb ∉ axa.xaxislinks
-                push!(axa.xaxislinks, axb)
-            end
-        end
-    end
-    # update limits because users will expect to see the effect
-    reset_limits!(a)
-end
+linkxaxes!(a::Axis, others...) = linkaxes!(Val(:x), a, others...)
 
 """
     linkyaxes!(a::Axis, others...)
 
 Link the y axes of all given `Axis` so that they stay synchronized.
 """
-function linkyaxes!(a::Axis, others...)
-    axes = Axis[a; others...]
-
-    for i in 1:length(axes)-1
-        for j in i+1:length(axes)
-            axa = axes[i]
-            axb = axes[j]
-
-            if axa ∉ axb.yaxislinks
-                push!(axb.yaxislinks, axa)
-            end
-            if axb ∉ axa.yaxislinks
-                push!(axa.yaxislinks, axb)
-            end
-        end
-    end
-    # update limits because users will expect to see the effect
-    reset_limits!(a)
-end
-
+linkyaxes!(a::Axis, others...) = linkaxes!(Val(:y), a, others...)
 
 """
 Keeps the ticklabelspace static for a short duration and then resets it to its previous
@@ -1137,17 +1173,33 @@ function hidespines!(la::Axis, spines::Symbol... = (:l, :r, :b, :t)...)
     end
 end
 
-function tight_yticklabel_spacing!(la::Axis)
-    tight_ticklabel_spacing!(la.elements[:yaxis])
+"""
+    space = tight_xticklabel_spacing!(ax::Axis)
+
+Sets the space allocated for the xticklabels of the `Axis` to the minimum that is needed and returns that value.
+"""
+function tight_yticklabel_spacing!(ax::Axis)
+    space = tight_ticklabel_spacing!(ax.yaxis)
+    return space
 end
 
-function tight_xticklabel_spacing!(la::Axis)
-    tight_ticklabel_spacing!(la.elements[:xaxis])
+"""
+    space = tight_xticklabel_spacing!(ax::Axis)
+
+Sets the space allocated for the yticklabels of the `Axis` to the minimum that is needed and returns that value.
+"""
+function tight_xticklabel_spacing!(ax::Axis)
+    space = tight_ticklabel_spacing!(ax.xaxis)
+    return space
 end
 
-function tight_ticklabel_spacing!(la::Axis)
-    tight_xticklabel_spacing!(la)
-    tight_yticklabel_spacing!(la)
+"""
+Sets the space allocated for the xticklabels and yticklabels of the `Axis` to the minimum that is needed.
+"""
+function tight_ticklabel_spacing!(ax::Axis)
+    tight_xticklabel_spacing!(ax)
+    tight_yticklabel_spacing!(ax)
+    return
 end
 
 function Base.show(io::IO, ::MIME"text/plain", ax::Axis)
@@ -1255,8 +1307,8 @@ function Base.delete!(ax::Axis, plot::AbstractPlot)
 end
 
 function Base.empty!(ax::Axis)
-    for plot in copy(ax.scene.plots)
-        delete!(ax, plot)
+    while !isempty(ax.scene.plots)
+        delete!(ax, ax.scene.plots[end])
     end
     ax
 end
@@ -1299,3 +1351,8 @@ defined_interval(::typeof(sqrt)) = Interval{:closed,:open}(0, Inf)
 defined_interval(::typeof(Makie.logit)) = OpenInterval(0.0, 1.0)
 defined_interval(::typeof(Makie.pseudolog10)) = OpenInterval(-Inf, Inf)
 defined_interval(::Makie.Symlog10) = OpenInterval(-Inf, Inf)
+
+function update_state_before_display!(ax::Axis)
+    reset_limits!(ax)
+    return
+end

@@ -18,6 +18,14 @@ using Makie:
 
 end
 
+@testset "changing input types" begin
+    input = Observable{Any}(decompose(Point2f, Circle(Point2f(0), 2f0)))
+    f, ax, pl = mesh(input)
+    m = Makie.triangle_mesh(Circle(Point2f(0), 1f0))
+    input[] = m
+    @test pl[1][] == m
+end
+
 @testset "to_vertices" begin
     X1 = [Point(rand(3)...) for i = 1:10]
     V1 = to_vertices(X1)
@@ -247,4 +255,16 @@ end
     @inferred to_colormap(cgrad(:cividis))
     @inferred to_colormap(cgrad(:cividis, 8; alpha=0.5))
     @inferred to_colormap(cgrad(:cividis, 8; alpha=0.5, categorical=true))
+end
+
+
+@testset "empty poly" begin
+    f, ax, pl = poly(Rect2f[]);
+    pl[1] = [Rect2f(0, 0, 1, 1)];
+    @test pl.plots[1][1][] == [GeometryBasics.triangle_mesh(Rect2f(0, 0, 1, 1))]
+
+    f, ax, pl = poly(Vector{Point2f}[])
+    points = decompose(Point2f, Circle(Point2f(0),1))
+    pl[1] = [points]
+    @test pl.plots[1][1][] == Makie.poly_convert(points)
 end

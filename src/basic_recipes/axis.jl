@@ -66,12 +66,12 @@ $(ATTRIBUTES)
         scale = Vec3f(1),
         padding = 0.1,
         inspectable = false,
-
+        fonts = theme(scene, :fonts),
         names = Attributes(
             axisnames = ("x", "y", "z"),
             textcolor = (:black, :black, :black),
             rotation = axisnames_rotation3d,
-            textsize = (6.0, 6.0, 6.0),
+            fontsize = (6.0, 6.0, 6.0),
             align = axisnames_align3d,
             font = lift(to_3tuple, theme(scene, :font)),
             gap = 3
@@ -84,7 +84,7 @@ $(ATTRIBUTES)
             textcolor = (tick_color, tick_color, tick_color),
 
             rotation = tickrotations3d,
-            textsize = (tsize, tsize, tsize),
+            fontsize = (tsize, tsize, tsize),
             align = tickalign3d,
             gap = 3,
             font = lift(to_3tuple, theme(scene, :font)),
@@ -222,7 +222,7 @@ to3tuple(x::Tuple{Any, Any}) = (x[1], x[2], x[2])
 to3tuple(x::Tuple{Any, Any, Any}) = x
 to3tuple(x) = ntuple(i-> x, Val(3))
 
-function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, args...)
+function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts, args...)
     # make sure we extend all args to 3D
     ranges, ticklabels = ranges_labels
     args3d = to3tuple.(args)
@@ -231,7 +231,7 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, args.
         axisnames, axisnames_color, axisnames_size, axisrotation, axisalign,
         axisnames_font, titlegap,
         gridcolors, gridthickness, axislinewidth, axiscolors,
-        ttextcolor, trotation, ttextsize, talign, tfont, tgap,
+        ttextcolor, trotation, tfontsize, talign, tfont, tgap,
         padding,
     ) = args3d # splat to names
 
@@ -248,7 +248,7 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, args.
     origin = Point{N, Float32}(min.(mini, first.(ranges)))
     limit_widths = max.(last.(ranges), maxi) .- origin
     % = minimum(limit_widths) / 100 # percentage
-    ttextsize = (%) .* ttextsize
+    tfontsize = (%) .* tfontsize
     axisnames_size = (%) .* axisnames_size
 
     # index of the direction in which ticks and labels are drawn
@@ -278,20 +278,20 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, args.
                         push!(
                             textbuffer, str, startpos,
                             color = ttextcolor[i], rotation = trotation[i],
-                            textsize = ttextsize[i], align = talign[i], font = tfont[i]
+                            fontsize = tfontsize[i], align = talign[i], font = tfont[i]
                         )
                     end
                 end
             end
             if !isempty(axisnames[i])
-                font = to_font(tfont[i])
+                font = to_font(fonts, tfont[i])
                 tick_widths = maximum(ticklabels[i]) do label
-                    widths(text_bb(label, font, ttextsize[i]))[1]
+                    widths(text_bb(label, font, tfontsize[i]))[1]
                 end / scale[j]
                 pos = labelposition(ranges, i, tickdir, titlegap[i] + tick_widths, origin) .+ offset2
                 push!(
                     textbuffer, to_latex(axisnames[i]), pos,
-                    textsize = axisnames_size[i], color = axisnames_color[i],
+                    fontsize = axisnames_size[i], color = axisnames_color[i],
                     rotation = axisrotation[i], align = axisalign[i], font = axisnames_font[i]
                 )
             end
@@ -327,9 +327,9 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
         visible = axis.visible)
 
     tstyle, ticks, frame = to_value.(getindex.(axis, (:names, :ticks, :frame)))
-    titlevals = getindex.(tstyle, (:axisnames, :textcolor, :textsize, :rotation, :align, :font, :gap))
+    titlevals = getindex.(tstyle, (:axisnames, :textcolor, :fontsize, :rotation, :align, :font, :gap))
     framevals = getindex.(frame, (:linecolor, :linewidth, :axislinewidth, :axiscolor))
-    tvals = getindex.(ticks, (:textcolor, :rotation, :textsize, :align, :font, :gap))
+    tvals = getindex.(ticks, (:textcolor, :rotation, :fontsize, :align, :font, :gap))
     args = (
         getindex.(axis, (:showaxis, :showticks, :showgrid))...,
         titlevals..., framevals..., tvals..., axis.padding
@@ -337,7 +337,7 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
     map_once(
         draw_axis3d,
         Observable(textbuffer), Observable(linebuffer), scale(scene),
-        axis[1], axis.ticks.ranges_labels, args...
+        axis[1], axis.ticks.ranges_labels, Observable(axis.fonts), args...
     )
     push!(scene, axis)
     return axis
