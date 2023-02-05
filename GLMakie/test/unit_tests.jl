@@ -305,7 +305,6 @@ end
 
     # decrease the scale factor after-the-fact
     screen.scalefactor[] = 1
-    sleep(0.1)  # TODO: Necessary?? Are observable callbacks asynchronous?
     @test GLMakie.window_size(screen.glscreen) == scaled(screen, (W, H))
 
     # save images of different resolutions
@@ -326,6 +325,16 @@ end
         # writing to file should not effect the visible figure
         @test_broken screen.px_per_unit[] == 1
     end
+
+    # make sure there isn't a race between changing the scale factor and window_area updater
+    # see https://github.com/MakieOrg/Makie.jl/pull/2544#issuecomment-1416861800
+    screen = display(GLMakie.Screen(visible = false, scalefactor = 2, framerate = 60), fig)
+    @test GLMakie.window_size(screen.glscreen) == scaled(screen, (W, H))
+    on(screen.scalefactor) do sf
+        sleep(0.5)
+    end
+    screen.scalefactor[] = 1
+    @test GLMakie.window_size(screen.glscreen) == scaled(screen, (W, H))
 
     if Sys.islinux()
         # Test that GLMakie is correctly getting the default scale factor from X11 in a
@@ -372,4 +381,6 @@ end
     else
         @test_broken Sys.islinux()
     end
+
+    GLMakie.closeall()
 end

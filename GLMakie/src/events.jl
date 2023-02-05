@@ -36,52 +36,50 @@ function Makie.disconnect!(window::GLFW.Window, ::typeof(window_open))
     GLFW.SetWindowCloseCallback(window, nothing)
 end
 
-function window_position(window::GLFW.Window)
-    xy = GLFW.GetWindowPos(window)
-    (xy.x, xy.y)
-end
-
-struct WindowAreaUpdater
-    screen::Screen
-    dpi::Observable{Float64}
-    area::Observable{GeometryBasics.HyperRectangle{2, Int64}}
-end
-
-function (x::WindowAreaUpdater)(::Nothing)
-    nw = to_native(x.screen)
-    ShaderAbstractions.switch_context!(nw)
-    rect = x.area[]
-    winscale = x.screen.scalefactor[] / (@static Sys.isapple() ? scale_factor(nw) : 1)
-    winw, winh = round.(Int, window_size(nw) ./ winscale)
-    # TODO put back window position, but right now it makes more trouble than it helps#
-    # x, y = GLFW.GetWindowPos(nw)
-    # if minimum(rect) != Vec(x, y)
-    #     event[] = Recti(x, y, winw, winh)
-    # end
-    if Vec(winw, winh) != widths(rect)
-        monitor = GLFW.GetPrimaryMonitor()
-        props = MonitorProperties(monitor)
-        # dpi of a monitor should be the same in x y direction.
-        # if not, minimum seems to be a fair default
-        x.dpi[] = minimum(props.dpi)
-        x.area[] = Recti(minimum(rect), winw, winh)
-    end
-    return
-end
-
 function Makie.window_area(scene::Scene, screen::Screen)
     disconnect!(screen, window_area)
 
-    updater = WindowAreaUpdater(
-        screen, scene.events.window_dpi, scene.events.window_area
-    )
-    on(updater, screen.render_tick)
+    # TODO: Figure out which monitor the window is on and react to DPI changes
+    monitor = GLFW.GetPrimaryMonitor()
+    props = MonitorProperties(monitor)
+    scene.events.window_dpi[] = minimum(props.dpi)
 
+    function windowsizecb(window, width::Cint, height::Cint)
+        area = scene.events.window_area
+        sf = screen.scalefactor[]
+
+        ShaderAbstractions.switch_context!(window)
+        winscale = sf / (@static Sys.isapple() ? scale_factor(window) : 1)
+        winw, winh = round.(Int, (width, height) ./ winscale)
+        if Vec(winw, winh) != widths(area[])
+            area[] = Recti(minimum(area[]), winw, winh)
+        end
+        return
+    end
+    # TODO put back window position, but right now it makes more trouble than it helps
+    #function windowposcb(window, x::Cint, y::Cint)
+    #    area = scene.events.window_area
+    #    ShaderAbstractions.switch_context!(window)
+    #    winscale = screen.scalefactor[] / (@static Sys.isapple() ? scale_factor(window) : 1)
+    #    xs, ys = round.(Int, (x, y) ./ winscale)
+    #    if Vec(xs, ys) != minimum(area[])
+    #        area[] = Recti(xs, ys, widths(area[]))
+    #    end
+    #    return
+    #end
+
+    window = to_native(screen)
+    GLFW.SetWindowSizeCallback(window, (win, w, h) -> windowsizecb(win, w, h))
+    #GLFW.SetWindowPosCallback(window, (win, x, y) -> windowposcb(win, x, y))
+
+    windowsizecb(window, Cint.(window_size(window))...)
     return
 end
 
 function Makie.disconnect!(screen::Screen, ::typeof(window_area))
-    filter!(p -> !isa(p[2], WindowAreaUpdater), screen.render_tick.listeners)
+    window = to_native(screen)
+    #GLFW.SetWindowPosCallback(window, nothing)
+    GLFW.SetWindowSizeCallback(window, nothing)
     return
 end
 function Makie.disconnect!(::GLFW.Window, ::typeof(window_area))
