@@ -190,6 +190,10 @@ function window_size(nw::GLFW.Window)
     was_destroyed(nw) && return (0, 0)
     return Tuple(GLFW.GetWindowSize(nw))
 end
+function window_position(nw::GLFW.Window)
+    was_destroyed(nw) && return (0, 0)
+    return Tuple(GLFW.GetWindowPos(window))
+end
 function framebuffer_size(nw::GLFW.Window)
     was_destroyed(nw) && return (0, 0)
     return Tuple(GLFW.GetFramebufferSize(nw))
