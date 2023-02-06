@@ -6,6 +6,9 @@ using Makie: el32convert, surface_normals, get_dim
 nothing_or_color(c) = to_color(c)
 nothing_or_color(c::Nothing) = RGBAf(0, 0, 0, 1)
 
+lift_or(f, x) = f(x)
+lift_or(f, x::Observable) = lift(f, x)
+
 function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
     uniforms = Dict(uniforms)
     filter!(kv -> !(kv[2] isa Function), uniforms)
@@ -33,6 +36,9 @@ function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
         return Mat3f(transpose(inv(v[i, i] * m[i, i])))
     end
 
+    for key in (:diffuse, :specular, :shininess, :backlight)
+        uniforms[key] = lift_or(x -> convert_attribute(x, Key{key}()), uniforms[key])
+    end
     # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
     uniforms[:picking] = false
     uniforms[:object_id] = UInt32(0)
@@ -128,9 +134,9 @@ function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
     return draw_mesh(mscene, mesh, plot_attributes;
                      uniform_color=color, color=false,
                      normals=Vec3f(0), shading=false,
-                     diffuse=plot.diffuse, specular=plot.specular,
+                     diffuse=Vec3f(0), specular=Vec3f(0),
+                     shininess=0f0,
                      colorrange=haskey(plot, :colorrange) ? plot.colorrange : false,
-                     shininess=plot.shininess,
                      highclip=get_color(plot, :highclip),
                      lowclip=get_color(plot, :lowclip),
                      nan_color=get_color(plot, :nan_color),
@@ -152,6 +158,11 @@ function create_shader(mscene::Scene, plot::Volume)
 
     modelinv = lift(inv, model2)
     algorithm = lift(x -> Cuint(convert_attribute(x, key"algorithm"())), plot.algorithm)
+
+    diffuse = lift(x -> convert_attribute(x, Key{:diffuse}()), plot.diffuse)
+    specular = lift(x -> convert_attribute(x, Key{:specular}()), plot.specular)
+    shininess = lift(x -> convert_attribute(x, Key{:shininess}()), plot.shininess)
+
     uniforms = Dict{Symbol, Any}(
         :volumedata => Sampler(lift(Makie.el32convert, vol)),
         :modelinv => modelinv,
@@ -161,9 +172,9 @@ function create_shader(mscene::Scene, plot::Volume)
         :isorange => lift(Float32, plot.isorange),
         :absorption => lift(Float32, get(plot, :absorption, Observable(1.0f0))),
         :algorithm => algorithm,
-        :diffuse => plot.diffuse,
-        :specular => plot.specular,
-        :shininess => plot.shininess,
+        :diffuse => diffuse, 
+        :specular => specular, 
+        :shininess => shininess,
         :model => model2,
         :depth_shift => get(plot, :depth_shift, Observable(0.0f0)),
         # these get filled in later by serialization, but we need them
