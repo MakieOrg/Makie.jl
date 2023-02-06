@@ -28,7 +28,7 @@ The default theme has the following fonts set:
 
 ```julia:fonts2
 using Makie
-Makie.current_default_theme()[:fonts]
+Makie.theme(:fonts)
 ```
 \show{fonts2}
 
@@ -56,5 +56,3 @@ f
 Currently, Makie does not have the ability to draw emoji or other color fonts.
 This is due to the implementation of text drawing in GLMakie and WGLMakie, which relies on signed distance fields that can only be used to render monochrome glyphs, but not arbitrary bitmaps.
 If you want to use emoji as scatter markers, consider using images (you will need to find suitable images separately, you cannot easily extract emoji from fonts with Makie).
-
-
