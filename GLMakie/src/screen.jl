@@ -11,29 +11,29 @@ function renderloop end
 * `renderloop = GLMakie.renderloop`: sets a function `renderloop(::GLMakie.Screen)` which starts a renderloop for the screen.
 
 
-    !!! warning
-    The below are not effective if renderloop isn't set to `GLMakie.renderloop`, unless implemented in custom renderloop:
+!!! warning
+    The keyword arguments below are not effective if `renderloop` isn't set to `GLMakie.renderloop`, unless implemented in a custom renderloop function:
 
-
-* `pause_renderloop = false`: creates a screen with paused renderlooop. Can be started with `GLMakie.start_renderloop!(screen)` or paused again with `GLMakie.pause_renderloop!(screen)`.
-* `vsync = false`: enables vsync for the window.
-* `render_on_demand = true`: renders the scene only if something has changed in it.
-* `framerate = 30.0`: sets the currently rendered frames per second.
+* `pause_renderloop = false`: If `true`, creates a screen with a paused renderloop. The renderloop can be started with `GLMakie.start_renderloop!(screen)` and paused again with `GLMakie.pause_renderloop!(screen)`.
+* `vsync = false`: Whether to enable vsync for the window.
+* `render_on_demand = true`: If `true`, the scene will only be rendered if something has changed in it.
+* `framerate = 30.0`: Sets the currently rendered frames per second.
 
 ## GLFW window attributes
-* `float = false`: Lets the opened window float above anything else.
-* `focus_on_show = false`: Focusses the window when newly opened.
-* `decorated = true`: shows the window decorations or not.
+* `float = false`: Whether the window should float above other windows.
+* `focus_on_show = false`: If `true`, focuses the window when newly opened.
+* `decorated = true`: Whether or not to show window decorations.
 * `title::String = "Makie"`: Sets the window title.
-* `fullscreen = false`: Starts the window in fullscreen.
-* `debugging = false`: Starts the GLFW.Window/OpenGL context with debug output.
-* `monitor::Union{Nothing, GLFW.Monitor} = nothing`: Sets the monitor on which the Window should be opened.
+* `fullscreen = false`: Whether to start the window in fullscreen mode.
+* `debugging = false`: If `true`, starts the GLFW.Window/OpenGL context with debug output.
+* `monitor::Union{Nothing, GLFW.Monitor} = nothing`: Sets the monitor on which the window should be opened. If set to `nothing`, GLFW will decide which monitor to use.
+* `visible = true`: Whether or not the window should be visible when first created.
 
 ## Postprocessor
-* `oit = false`: Enles order independent transparency for the window.
-* `fxaa = true`: Enables fxaa (anti-aliasing) for the window.
-* `ssao = true`: Enables screen space ambient occlusion, which simulates natural shadowing at inner edges and crevices.
-* `transparency_weight_scale = 1000f0`: This adjusts a factor in the rendering shaders for order independent transparency.
+* `oit = false`: Whether to enable order independent transparency for the window.
+* `fxaa = true`: Whether to enable fxaa (anti-aliasing) for the window.
+* `ssao = true`: Whether to enable screen space ambient occlusion, which simulates natural shadowing at inner edges and crevices.
+* `transparency_weight_scale = 1000f0`: Adjusts a factor in the rendering shaders for order independent transparency.
     This should be the same for all of them (within one rendering pipeline) otherwise depth "order" will be broken.
 """
 mutable struct ScreenConfig
@@ -77,7 +77,7 @@ mutable struct ScreenConfig
             monitor::Union{Nothing, GLFW.Monitor},
             visible::Bool,
 
-            # Preproccessor
+            # Preprocessor
             oit::Bool,
             fxaa::Bool,
             ssao::Bool,
@@ -99,7 +99,7 @@ mutable struct ScreenConfig
             debugging,
             monitor,
             visible,
-            # Preproccessor
+            # Preprocessor
             oit,
             fxaa,
             ssao,
@@ -112,8 +112,8 @@ const LAST_INLINE = Ref(false)
 """
     GLMakie.activate!(; screen_config...)
 
-Sets GLMakie as the currently active backend and also allows to quickly set the `screen_config`.
-Note, that the `screen_config` can also be set permanently via `Makie.set_theme!(GLMakie=(screen_config...,))`.
+Sets GLMakie as the currently active backend and also optionally modifies the screen configuration using `screen_config` keyword arguments.
+Note that the `screen_config` can also be set permanently via `Makie.set_theme!(GLMakie=(screen_config...,))`.
 
 # Arguments one can pass via `screen_config`:
 
@@ -565,8 +565,9 @@ end
 
 """
     close(screen::Screen; reuse=true)
-Closes screen and emptying it.
-Doesn't destroy the screen and instead frees it for being re-used again, if `reuse=true`.
+
+Closes screen and empties it.
+Doesn't destroy the screen and instead frees it to be re-used again, if `reuse=true`.
 """
 function Base.close(screen::Screen; reuse=true)
     set_screen_visibility!(screen, false)
@@ -629,8 +630,9 @@ function fast_color_data!(dest::Array{RGB{N0f8}, 2}, source::Texture{T, 2}) wher
 end
 
 """
-depthbuffer(screen::Screen)
-Gets the depth buffer of screen.
+    depthbuffer(screen::Screen)
+
+Gets the depth buffer of a screen.
 Usage:
 ```
 using Makie, GLMakie
@@ -694,7 +696,10 @@ end
 Makie.to_native(x::Screen) = x.glscreen
 
 """
-Loads the makie loading icon and embedds it in an image the size of resolution
+    get_loading_image(resolution)
+
+Loads the makie loading icon, embeds it in an image the size of `resolution`,
+and returns the image.
 """
 function get_loading_image(resolution)
     icon = Matrix{N0f8}(undef, 192, 192)
