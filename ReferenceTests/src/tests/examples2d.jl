@@ -507,6 +507,12 @@ end
     fig
 end
 
+@reference_test "Scatter with complex numbers" begin
+    fig = Figure(resolution = (500, 500))
+    scatter(fig[1, 1], [1+0im, 1+.5im, 1+1im, 0+1im])
+    scatter(fig[1, 2], [1+0im, 1+.5im, 1+1im, 0+1im], [1, 2, 3, 4])
+end
+
 @reference_test "Array of Images Scatter" begin
     img = Makie.logo()
     scatter(1:2, 1:2, marker = [img, img], markersize=reverse(size(img) ./ 10), axis=(limits=(0.5, 2.5, 0.5, 2.5),))
