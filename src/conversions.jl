@@ -159,6 +159,11 @@ convert_arguments(P::PointBased, x::ClosedInterval, y::RealVector) = convert_arg
 convert_arguments(P::PointBased, x::RealVector, y::ClosedInterval) = convert_arguments(P, x, LinRange(extrema(y)..., length(x)))
 
 
+# Converts for complex number arrays
+
+convert_arguments(::PointBased, coords::AbstractVector{<:Complex{T}}) where T = (map(x -> Point2{T}(real(x), imag(x)), coords),)
+convert_arguments(::PointBased, coords::AbstractVector{<:Complex{T}}, heights::AbstractVector{<:Real}) where T = (map((x, z) -> Point3{T}(real(x), imag(x), float(z)), coords, heights),)
+
 """
     convert_arguments(P, x)::(Vector)
 
