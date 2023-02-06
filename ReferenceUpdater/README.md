@@ -10,6 +10,14 @@ ReferenceUpdater.serve_update_page(commit = "a1b2c3")
 ReferenceUpdater.serve_update_page(pr = 1234)
 ```
 
+Locally, tests are recorded inside the backends test folder, which can also be used to server a reference page.
+E.g., to see the results after running `]test WGLMakie` you can run:
+
+```julia
+using ReferenceUpdater
+ReferenceUpdater.serve_update_page_from_dir("Makie/WGLMakie/test/recorded_reference_images/refimages")
+```
+`ReferenceUpdater` is an unregistered package which is located in the Makie monorepo.  To add it, run `Pkg.dev(joinpath(dirname(dirname(pathof(Makie))), "ReferenceUpdater"))`, assuming that you've `dev`'ed Makie.
 You should be given a choice of different backend workflow runs.
 Choose one (usually GLMakie when updating reference images) and confirm.
 If reference images can be found for this run, they will be downloaded and extracted to a temp directory.

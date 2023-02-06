@@ -864,3 +864,8 @@ end
     Label(f[1, 3], rich("X", superscript("super"), subscript("sub")), tellheight = false)
     f
 end
+
+@reference_test "Stephist" begin
+    stephist(RNG.rand(10000))
+    current_figure()
+end
