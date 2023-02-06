@@ -632,7 +632,9 @@ end
 """
     depthbuffer(screen::Screen)
 
-Gets the depth buffer of a screen.
+Gets the depth buffer of `screen`.  Returns a `Matrix{Float32}` of the dimensions of the screen's `framebuffer`.  
+
+A depth buffer is used to determine which plot's contents should be shown at each pixel.
 Usage:
 ```
 using Makie, GLMakie
