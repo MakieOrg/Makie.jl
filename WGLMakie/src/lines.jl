@@ -69,5 +69,5 @@ function create_shader(scene::Scene, plot::Union{Lines,LineSegments})
 
     return InstancedProgram(WebGL(), lasset("line_segments.vert"),
                             lasset("line_segments.frag"), instance,
-                            VertexArray(; per_instance...); uniforms...)
+                            VertexArray(; per_instance...), uniforms)
 end

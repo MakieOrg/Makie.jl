@@ -6,7 +6,7 @@ function lift_convert(key, value, plot)
     val = lift(value) do value
         return wgl_convert(value, Key{key}(), Key{plotkey(plot)}())
     end
-    if key == :colormap && val[] isa AbstractArray
+    if key === :colormap && val[] isa AbstractArray
         return ShaderAbstractions.Sampler(val)
     else
         return val
