@@ -64,7 +64,7 @@ function load_frames(video, dir)
     mkdir(framedir)
     Makie.extract_frames(video, framedir)
     return map(readdir(framedir; join=true)) do path
-        return convert(Matrix{RGB{N0f8}}, load(path))
+        return convert(Matrix{RGB{N0f8}}, FileIO.load(path))
     end
 end
 

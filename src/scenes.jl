@@ -390,6 +390,7 @@ function getindex(scene::Scene, ::Type{OldAxis})
 end
 
 function Base.empty!(scene::Scene)
+    events(scene).window_open[] = false
     # clear all child scenes
     foreach(_empty_recursion, scene.children)
     empty!(scene.children)
