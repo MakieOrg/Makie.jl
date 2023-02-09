@@ -113,7 +113,43 @@ mutable struct Scene <: AbstractScene
     visible::Observable{Bool}
     ssao::SSAO
     lights::Vector{AbstractLight}
-
+    function Scene(
+            parent::Union{Nothing, Scene},
+            events::Events,
+            px_area::Observable{Rect2i},
+            clear::Bool,
+            camera::Camera,
+            camera_controls::AbstractCamera,
+            transformation::Transformation,
+            plots::Vector{AbstractPlot},
+            theme::Attributes,
+            children::Vector{Scene},
+            current_screens::Vector{MakieScreen},
+            backgroundcolor::Observable{RGBAf},
+            visible::Observable{Bool},
+            ssao::SSAO,
+            lights::Vector{AbstractLight}
+        )
+        scene = new(
+            parent,
+            events,
+            px_area,
+            clear,
+            camera,
+            camera_controls,
+            transformation,
+            plots,
+            theme,
+            children,
+            current_screens,
+            backgroundcolor,
+            visible,
+            ssao,
+            lights
+        )
+        finalizer(empty!, scene)
+        return scene
+    end
 end
 
 get_scene(scene::Scene) = scene
@@ -357,7 +393,6 @@ function Base.empty!(scene::Scene)
     # clear all child scenes
     foreach(_empty_recursion, scene.children)
     empty!(scene.children)
-
     # clear plots of this scenes
     for plot in reverse(scene.plots)
         for screen in scene.current_screens
@@ -365,13 +400,9 @@ function Base.empty!(scene::Scene)
         end
     end
     empty!(scene.plots)
-
     empty!(scene.theme)
-    merge!(scene.theme, CURRENT_DEFAULT_THEME)
-
     disconnect!(scene.camera)
     scene.camera_controls = EmptyCamera()
-
     return nothing
 end
 
@@ -400,7 +431,6 @@ function _empty_recursion(scene::Scene)
         end
         empty!(obs.listeners)
     end
-
     return
 end
 
