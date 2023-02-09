@@ -366,7 +366,6 @@ function Base.empty!(scene::Scene)
         end
     end
     empty!(scene.plots)
-
     empty!(scene.theme)
     merge!(scene.theme, CURRENT_DEFAULT_THEME)
 

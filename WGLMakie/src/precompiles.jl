@@ -13,7 +13,7 @@ macro compile(block)
             three_display(session, scene)
             JSServe.jsrender(session, figlike)
             s = serialize_scene(scene)
-            JSServe.serialize_binary(session, Dict(:data => s))
+            JSServe.SerializedMessage(session, Dict(:data => s))
             close(session)
             nothing
         end
