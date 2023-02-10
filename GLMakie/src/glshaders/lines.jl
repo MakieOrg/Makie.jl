@@ -104,8 +104,6 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         end
     end
     data[:intensity] = intensity_convert(intensity, vertex)
-    @info to_value(get(data, :lastlen, nothing))
-    @info to_value(pattern)
     return assemble_shader(data)
 end
 
