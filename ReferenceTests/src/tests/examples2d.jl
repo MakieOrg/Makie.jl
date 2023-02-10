@@ -838,3 +838,15 @@ end
     stephist(RNG.rand(10000))
     current_figure()
 end
+
+@reference_test "LaTeXStrings linesegment offsets" begin
+    s = Scene(camera = campixel!, resolution = (600, 600))
+    for (i, (offx, offy)) in enumerate(zip([0, 20, 50], [0, 10, 30]))
+        for (j, rot) in enumerate([0, pi/4, pi/2])
+            scatter!(s, 150i, 150j)
+            text!(s, 150i, 150j, text = L"\sqrt{x+y}", offset = (offx, offy),
+                rotation = rot, fontsize = 30)
+        end
+    end
+    s
+end
