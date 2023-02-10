@@ -15,6 +15,7 @@ in float lastlen;
 {{color_map_type}}  color_map;
 {{intensity_type}}  intensity;
 {{color_norm_type}} color_norm;
+{{thickness_type}}  thickness;
 
 vec4 _color(vec3 color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len);
 vec4 _color(vec4 color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len);
@@ -29,6 +30,7 @@ out uvec2 g_id;
 out vec4 g_color;
 out float g_lastlen;
 out int g_valid_vertex;
+out float g_thickness;
 
 vec4 getindex(sampler2D tex, int index);
 vec4 getindex(sampler1D tex, int index);
@@ -47,8 +49,9 @@ void main()
     int index = gl_VertexID;
     g_id = uvec2(objectid, index+1);
     g_valid_vertex = get_valid_vertex(valid_vertex);
+    g_thickness = thickness;
 
     g_color = _color(color, intensity, color_map, color_norm, index, total_length);
-    gl_Position = projection*view*model*to_vec4(vertex);
+    gl_Position = to_vec4(vertex);
     gl_Position.z += gl_Position.w * depth_shift;
 }

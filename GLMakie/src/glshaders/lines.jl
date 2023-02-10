@@ -1,11 +1,12 @@
 function sumlengths(points)
     T = eltype(points[1])
     result = zeros(T, length(points))
-    for i=1:length(points)
-        i0 = max(i-1,1)
+    i12 = Vec(1, 2)
+    for i in eachindex(points)
+        i0 = max(i-1, 1)
         p1, p2 = points[i0], points[i]
         if !(any(map(isnan, p1)) || any(map(isnan, p2)))
-            result[i] = result[i0] + norm(p1-p2)
+            result[i] = result[i0] + norm(p1[i12] - p2[i12])
         else
             result[i] = result[i0]
         end
@@ -44,7 +45,7 @@ function gappy(x, ps)
     return last(ps) - x
 end
 function ticks(points, resolution)
-    Float16[gappy(x, points) for x = range(first(points), stop=last(points), length=resolution)]
+    Float16[gappy(x, points) for x = range(first(points), stop=last(points), length=resolution+1)[1:end-1]]
 end
 
 @nospecialize
@@ -62,6 +63,7 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         color_map           = nothing => Texture
         color_norm          = nothing
         color               = (color_map == nothing ? default(RGBA, s) : nothing) => GLBuffer
+        thickness           = 2f0 => GLBuffer
         thickness::Float32  = 2f0
         pattern             = nothing
         fxaa                = false
@@ -101,6 +103,8 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         end
     end
     data[:intensity] = intensity_convert(intensity, vertex)
+    @info to_value(get(data, :lastlen, nothing))
+    @info to_value(pattern)
     return assemble_shader(data)
 end
 
@@ -127,7 +131,7 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         )
         gl_primitive = GL_LINES
     end
-    if !isa(pattern, Texture) && pattern != nothing
+    if !isa(pattern, Texture) && pattern !== nothing
         if !isa(pattern, Vector)
             error("Pattern needs to be a Vector of floats")
         end

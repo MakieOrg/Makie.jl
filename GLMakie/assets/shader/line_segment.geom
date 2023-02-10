@@ -5,8 +5,6 @@ layout(lines) in;
 layout(triangle_strip, max_vertices = 4) out;
 
 uniform vec2 resolution;
-uniform float maxlength;
-uniform float thickness;
 uniform float pattern_length;
 
 in vec4 g_color[];
@@ -17,8 +15,9 @@ out float f_thickness;
 out vec4 f_color;
 out vec2 f_uv;
 flat out uvec2 f_id;
+flat out vec4 f_uv_minmax;
 
-#define AA_THICKNESS 2.0
+#define AA_THICKNESS 4.0
 
 vec2 screen_space(vec4 vertex)
 {
@@ -45,6 +44,8 @@ void main(void)
 {
     o_view_pos = vec3(0);
     o_normal = vec3(0);
+    f_uv_minmax = vec4(-999999, 0, 9999999, 0);
+
     // get the four vertices passed to the shader:
     vec2 p0 = screen_space(gl_in[0].gl_Position); // start of previous segment
     vec2 p1 = screen_space(gl_in[1].gl_Position); // end of previous segment, start of current segment

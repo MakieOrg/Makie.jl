@@ -1,56 +1,95 @@
-// ------------------ Geometry Shader --------------------------------
-// This version of the line shader simply cuts off the corners and
-// draws the line with no overdraw on neighboring segments at all
 {{GLSL_VERSION}}
 {{GLSL_EXTENSIONS}}
+{{SUPPORTED_EXTENSIONS}}
+
+struct Nothing{ //Nothing type, to encode if some variable doesn't contain any data
+    bool _; //empty structs are not allowed
+};
 
 layout(lines_adjacency) in;
-layout(triangle_strip, max_vertices = 7) out;
+layout(triangle_strip, max_vertices = 9) out;
 
 in vec4 g_color[];
 in float g_lastlen[];
 in uvec2 g_id[];
 in int g_valid_vertex[];
+in float g_thickness[];
 
 out vec4 f_color;
 out vec2 f_uv;
 out float f_thickness;
 
 flat out uvec2 f_id;
+out vec4 f_uv_minmax;
 
 uniform vec2 resolution;
 uniform float maxlength;
-uniform float thickness;
 uniform float pattern_length;
+{{pattern_type}} pattern;
 
 
 #define MITER_LIMIT -0.4
+#define AA_THICKNESS 4
 
 vec2 screen_space(vec4 vertex)
 {
     return vec2(vertex.xy / vertex.w) * resolution;
 }
-void emit_vertex(vec2 position, vec2 uv, int index, float ratio)
+
+// detect pattern edges in [u - 0.5w, u + 0.5w] range (u, w pixels):
+// 0.0 no edge in section
+// +1 rising edge in section
+// -1 falling edge in section 
+float pattern_edge(Nothing _, float u, float w){return 0.0;}
+
+float pattern_edge(sampler1D pattern, float u, float w){
+    float left   = texture(pattern, u - (0.5 * w) / pattern_length).x;
+    float center = texture(pattern, u).x;
+    float right  = texture(pattern, u + (0.5 * w) / pattern_length).x;
+    // 4 if same sign right and same sign left, 0 else
+    float noedge = (1 + sign(left) * sign(center)) * (1 + sign(center) * sign(right));
+    return 0.25 * (4 - noedge) * sign(right - left);
+}
+
+// Get pattern values
+float fetch(Nothing _, float u){return 10000000.0;}
+float fetch(sampler1D pattern, float u){return texture(pattern, u).x;}
+
+void emit_vertex(vec2 position, vec2 uv, int index)
 {
     vec4 inpos  = gl_in[index].gl_Position;
-    f_uv        = vec2((g_lastlen[index] * ratio) / pattern_length / (thickness+4) / 2.0, uv.y);
+    f_uv        = uv;
     f_color     = g_color[index];
-    gl_Position = vec4((position/resolution)*inpos.w, inpos.z, inpos.w);
+    gl_Position = vec4(position / resolution, inpos.z, inpos.w);
     f_id        = g_id[index];
-    f_thickness = thickness;
+    f_thickness = g_thickness[index];
     EmitVertex();
 }
 
-uniform int max_primtives;
-const float infinity = 1.0 / 0.0;
+// for line sections
+void emit_vertex(vec2 position, float v, int index, vec2 line_unit, vec2 line_pos)
+{
+    vec4 inpos = gl_in[index].gl_Position;
+    // adjusts u values to extrusions made in vertex generation (e.g. to close lines)
+    float vertex_offset = dot(position - line_pos, line_unit);
+
+    f_uv        = vec2(0.5 * (g_lastlen[index] + vertex_offset) / pattern_length, v);
+    f_color     = g_color[index];
+    gl_Position = vec4(position / resolution, inpos.z, inpos.w);
+    f_id        = g_id[index];
+    f_thickness = g_thickness[index];
+    EmitVertex();
+}
 
 out vec3 o_view_pos;
 out vec3 o_normal;
 
 void main(void)
 {
+    // These need to be set but don't have reasonable values here 
     o_view_pos = vec3(0);
     o_normal = vec3(0);
+
     // We mark each of the four vertices as valid or not. Vertices can be
     // marked invalid on input (eg, if they contain NaN). We also mark them
     // invalid if they repeat in the index buffer. This allows us to render to
@@ -69,13 +108,16 @@ void main(void)
         // line, we don't emit anything.
         return;
     }
-    // get the four vertices passed to the shader:
-    vec2 p0 = screen_space(gl_in[0].gl_Position); // start of previous segment
-    vec2 p1 = screen_space(gl_in[1].gl_Position); // end of previous segment, start of current segment
-    vec2 p2 = screen_space(gl_in[2].gl_Position); // end of current segment, start of next segment
-    vec2 p3 = screen_space(gl_in[3].gl_Position); // end of next segment
 
-    float thickness_aa = thickness+4;
+    // get the four vertices passed to the shader: (screen/pixel space)
+    vec2 p0 = gl_in[0].gl_Position.xy; // start of previous segment
+    vec2 p1 = gl_in[1].gl_Position.xy; // end of previous segment, start of current segment
+    vec2 p2 = gl_in[2].gl_Position.xy; // end of current segment, start of next segment
+    vec2 p3 = gl_in[3].gl_Position.xy; // end of next segment
+
+    // linewidth with padding for anti aliasing
+    float thickness_aa1 = g_thickness[1] + AA_THICKNESS;
+    float thickness_aa2 = g_thickness[2] + AA_THICKNESS;
 
     // determine the direction of each of the 3 segments (previous, current, next)
     vec2 v1 = normalize(p2 - p1);
@@ -94,39 +136,67 @@ void main(void)
     vec2 n1 = vec2(-v1.y, v1.x);
     vec2 n2 = vec2(-v2.y, v2.x);
 
+    /*
+    The goal here is to make wide line segments join cleanly. For most
+    joins, it's enough to extend/contract the buffered lines into the
+    "normal miter" shape below. However, this can get really spiky if the
+    lines are almost anti-parallel, in which case we want the truncated
+    miter. For the truncated miter, we must emit the additional triangle
+    x-a-b. *
+    
+            normal miter               truncated miter
+          ------------------*        ----------a.
+                           /                   | '.
+                     x    /                    x_ '.
+          ------*        /           ------.     '--b
+               /        /                 /        /
+              /        /                 /        /
+    
+    Note that the way this is done below is fairly simple but results in
+    overdraw for semi transparent lines. Ideally would be nice to fix that
+    somehow.
+    
+    * This is true without anti-aliasing. With anti-aliasing our join may 
+    look something like this:
 
-    // The goal here is to make wide line segments join cleanly. For most
-    // joints, it's enough to extend/contract the buffered lines into the
-    // "normal miter" shape below. However, this can get really spiky if the
-    // lines are almost anti-parallel, in which case we want the truncated
-    // mitre. For the truncated miter, we must emit the additional triangle
-    // x-a-b.
-    //
-    //        normal miter               truncated miter
-    //      ------------------*        ----------a.
-    //                       /                   | '.
-    //                 x    /                    x_ '.
-    //      ------*        /           ------.     '--b
-    //           /        /                 /        /
-    //          /        /                 /        /
-    //
-    // Note that the way this is done below is fairly simple but results in
-    // overdraw for semi transparent lines. Ideally would be nice to fix that
-    // somehow.
+        ----------c.
+        ----------a.'.
+                  | '.'.
+                  x_ '.'.
+        ------.     '--b d
+             /        / /
+            /        / /
+        
+    The thickness of the line segments is extended by AA_THICKNESS, resulting
+    in vertices c and d. Using these for the triangle results in a a smaller
+    padding, so we need to add further padding to it. Extruding c and d further
+    is not useful, as the distance diverges as the segments become anti-parallel.
+    Instead we add anothe rectangle here.
+    */
 
     // determine miter lines by averaging the normals of the 2 segments
     vec2 miter_a = normalize(n0 + n1);    // miter at start of current segment
     vec2 miter_b = normalize(n1 + n2);    // miter at end of current segment
 
     // determine the length of the miter by projecting it onto normal and then inverse it
-    float length_a = thickness_aa / dot(miter_a, n1);
-    float length_b = thickness_aa / dot(miter_b, n1);
+    float length_a = thickness_aa1 / dot(miter_a, n1);
+    float length_b = thickness_aa2 / dot(miter_b, n1);
 
-    float xstart = g_lastlen[1];
-    float xend   = g_lastlen[2];
-    float ratio = length(p2 - p1) / (xend - xstart);
+    // f_uv_minmax is used to overwrite the results from pattern fetches. In the
+    // fragment shader we have:
+    // xy.x = ifelse(f_uv.x <= f_uv_minmax.x, (f_uv.x - f_uv_minmax.y) * pattern_length, xy.x);
+    // xy.x = ifelse(f_uv.x >= f_uv_minmax.z, (f_uv_minmax.w - f_uv.x) * pattern_length, xy.x);
+    // i.e. f_uv_minmax.x and z control where the replacement takes place 
+    // (below/above some limit) and f_uv_minmax.y and w control the respective
+    // adjustments relative to the current uv index.
+    // This sets the intial action to "no adjustment"
+    f_uv_minmax = vec4(-1000000.0, g_lastlen[1], 1000000.0, g_lastlen[2]); 
 
-    float uvy = thickness_aa/thickness;
+    float u1 = 0.5 * g_lastlen[1] / pattern_length;
+    float u2 = 0.5 * g_lastlen[2] / pattern_length;
+    float pattern_at_u1 = fetch(pattern, u1).x;
+    float pattern_at_u2 = fetch(pattern, u2).x;
+
 
     if( dot( v0, v1 ) < MITER_LIMIT ){
         /*
@@ -135,33 +205,212 @@ void main(void)
             v0    :
         . ------> :
         */
+
         bool gap = dot( v0, n1 ) > 0;
-        // close the gap
+
+        /*
+        With non solid lines the truncated miter join may open up gaps which we
+        want to avoid:
+
+                du  gap we want to fill when we drawn the truncated join
+               |  | /  
+           _.-'\    /|
+        .-'     \  / |
+          p1/x _ \/  |
+                  \  |  <- join
+         line in   \ |
+                    \|
+                 _.-'
+             _.-'
+          .-'
+
+        (This is padded with AA_THICKNESS to make sure we can anti-alias.)
+
+        For this we use `pattern_edge` to detect if the pattern flips between
+        "on" and "off" in the (u1 - du, u1 + du) section and check the pattern
+        value at u1 to make sure te edge isn't there. We want to:
+        // deny join:  edge == 0,   on_marker == 0       (pattern "off" in area)
+        // deny join:  egde == +-1, on_marker == either  (edge in (u1-du, u1+du))
+        // draw join:  edge == 0,   on_marker == 1       (no edge and pattern "on" in area)
+
+        u1 is the uv.x coordinate of p1/x
+        du is the distance between p1 (x) and the inner corner, which is the 
+        unnormalized uv distance between u1 and the uv coordinate of the corner.
+        */
+        float du = g_thickness[1] * abs(dot(n0, v1)) + AA_THICKNESS;
+        float edge = pattern_edge(pattern, u1, du);
+        float on_marker = float(pattern_at_u1 > 1);
+        f_uv_minmax.x = 1000000.0; // always trigger
+        // offset by large positive = deny
+        // offset by 0 = use raw uv.x 
+        f_uv_minmax.y = 1000000.0 - 1000000.0 * (1 - abs(edge)) * on_marker;
+
+  
+        /*
+        Another view of the join:
+
+                   uv.y = 0 in line segment
+                  /
+                .  -- uv.x = u0 in truncated join 
+              .' '.     uv.y = thickness in line segment
+            .'     '.  /   uv.y = thickness + AA_THICKNESS in line segment
+          .'_________'.   /_ uv.x = 0 in truncated join (constraint for AA)
+        .'_____________'.  _ uv.x = -proj_AA in truncated join (derived from line segment + constraint)
+        |               |  
+        |_______________|  _ uv.x = -proj_AA - AA_THICKNESS in truncated join
+
+        Here the / annotations come from the connecting line segment and are to
+        be viewed on the diagonal. The -- and _ annotations are relevant to the
+        truncated join and viewed vertically.
+        */
+        // div by pattern_length to counter normalization
+        // TODO there are factors 0.5 missing in a bunch of places I think. This is AA length normalization
+        float u0      = 0.5 * thickness_aa1 * abs(dot(miter_a, n1)) / pattern_length;
+        float proj_AA = 0.5 * AA_THICKNESS  * abs(dot(miter_a, n1)) / pattern_length;
+
+
         if(gap){
-            emit_vertex(p1 + thickness_aa * n0, vec2(1, -uvy), 1, ratio);
-            emit_vertex(p1 + thickness_aa * n1, vec2(1, -uvy), 1, ratio);
-            emit_vertex(p1,                     vec2(0, 0.0), 1, ratio);
+            emit_vertex(p1,                                               vec2(u0,                      0),              1);
+            emit_vertex(p1 + thickness_aa1 * n0,                          vec2(-proj_AA,                +thickness_aa1), 1);
+            emit_vertex(p1 + thickness_aa1 * n1,                          vec2(-proj_AA,                -thickness_aa1), 1);
+            emit_vertex(p1 + thickness_aa1 * n0 + AA_THICKNESS * miter_a, vec2(-proj_AA - AA_THICKNESS, +thickness_aa1), 1);
+            emit_vertex(p1 + thickness_aa1 * n1 + AA_THICKNESS * miter_a, vec2(-proj_AA - AA_THICKNESS, -thickness_aa1), 1);
             EndPrimitive();
         }else{
-            emit_vertex(p1 - thickness_aa * n0, vec2(1, uvy), 1, ratio);
-            emit_vertex(p1,                     vec2(0, 0.0), 1, ratio);
-            emit_vertex(p1 - thickness_aa * n1, vec2(1, uvy), 1, ratio);
+            emit_vertex(p1,                                               vec2(u0,                      0),              1);
+            emit_vertex(p1 - thickness_aa1 * n1,                          vec2(-proj_AA,                +thickness_aa1), 1);
+            emit_vertex(p1 - thickness_aa1 * n0,                          vec2(-proj_AA,                -thickness_aa1), 1);
+            emit_vertex(p1 - thickness_aa1 * n1 - AA_THICKNESS * miter_a, vec2(-proj_AA - AA_THICKNESS, +thickness_aa1), 1);
+            emit_vertex(p1 - thickness_aa1 * n0 - AA_THICKNESS * miter_a, vec2(-proj_AA - AA_THICKNESS, -thickness_aa1), 1);
             EndPrimitive();
         }
+
+        /*
+        Here we make adjustments to the line segment to avoid the gap. Since
+        this branch checks `dot(v0, v1)` we are on an outgoing line. We have
+        the following situations:
+        1. The pattern flips "on" in (u1-du, u1+du). In this case we want to
+           hold the AA edge in this line segment, specifically in (u1+AA, u1+du). 
+        2. The pattern flips "off" in (u1-du, u1+du). In this case we want to
+           deny the edge here and keep it in the other segment
+        3. The pattern is consistently "on" or "off" in (u1-du, u1+du). Here 
+           we want to leave the pattern unchanged.
+
+        With our edge identifier this becomes:
+
+        if ((edge > 0) && (fetch(pattern, u).x > -1)){
+            f_uv_minmax.x = g_lastlen[1] + 2 * AA_THICKNESS;
+            f_uv_minmax.y = g_lastlen[1] + AA_THICKNESS;
+        } else if (edge < 0) {
+            f_uv_minmax.x = g_lastlen[1] + du;
+            f_uv_minmax.y = 1000000.0;
+        } else {
+            f_uv_minmax.x = -1000000.0;
+        }
+
+        Translated to bool math:
+        */
+        f_uv_minmax.x = g_lastlen[1] + 
+            float(edge > 0 && pattern_at_u1 > -1) * 2 * AA_THICKNESS +
+            float(edge < 0) * du - 1000000.0 * float(edge == 0 || pattern_at_u1 < -1);
+        f_uv_minmax.y = float(edge > 0) * (g_lastlen[1] + AA_THICKNESS) + 
+                        float(edge < 0) * 1000000.0;
+
+        // Since we drew a truncated miter join the line vertices should not be
+        // extruded to meet.
         miter_a = n1;
-        length_a = thickness_aa;
+        length_a = thickness_aa1;
+
+
+    } else {
+        /*
+        In this case the line vertices get extruded. This branch handles 
+        the start of a line so for example:
+
+                dx = g_thickness[1] * abs(dot(miter_a, v1) / dot(miter_a, n1)) (px units)
+               |  |
+               .---------------------
+             .' \    ;
+           .'.   \   :
+         .'    .  x -- u1 (uv units)
+                 . \ :     line out
+         line in   .\:
+                    .'--------------------
+                  .'
+                .'
+        
+        Here we want to achieve the following:
+        1. If the pattern flips "on" in the dotted region, move the edge just
+           outside the region to the right
+        2. If the pattern flips "off" in the dotted region, move it outside to
+           the left, i.e. don't draw it here.
+        3. If the pattern is consistently "on" or "off" in the dotted region, 
+           handle it as usual.
+
+        We handle (3) by moving the detection edge `f_uv_minmax.x` outside the 
+        line segment if `abs(edge) == 0`. For (1) and (2) it is moved to 
+        `u1 + dx + 2*AA`.
+        To handle (1) we generate an edge at `u1 + dx + AA`. Everything to the 
+        left is denied (negative signed distance).
+        To handle (2) we push the edge outside the region to the right, so that
+        everything is denied (negative signed distance in full region)
+        */
+
+        float du = g_thickness[1] * abs(dot(miter_a, v1) / dot(miter_a, n1)) + AA_THICKNESS;
+        float edge = pattern_edge(pattern, u1, du);
+        f_uv_minmax.x = g_lastlen[1] - du + (2 * du + AA_THICKNESS) * abs(edge);
+        f_uv_minmax.y = (2 - sign(edge)) * (g_lastlen[1] + du);
     }
 
     if( dot( v1, v2 ) < MITER_LIMIT ) {
+        // truncated miter, incoming line
         miter_b = n1;
-        length_b = thickness_aa;
+        length_b = thickness_aa2;
+        
+        // Mostly analogous to the changes made to outgoing segment, see above.
+        // Here the roles of rising/falling edges switches and the region in
+        // question is to the right.
+        float du = g_thickness[2] * abs(dot(n2, v1)) + AA_THICKNESS;
+        float edge = pattern_edge(pattern, u2, du);
+
+        f_uv_minmax.z = g_lastlen[2] - 
+            float(edge < 0 && pattern_at_u2 > -1) * 2 * AA_THICKNESS -
+            float(edge > 0) * du + 
+            float(edge == 0 || pattern_at_u2 < -1) * 1000000.0;
+        f_uv_minmax.w = float(edge < 0) * (g_lastlen[2] - AA_THICKNESS) +
+                        -float(edge > 0) * 1000000.0;
+                    
+    } else {
+        // Extruded line join, incoming, compare with above
+        float du = g_thickness[2] * abs(dot(miter_b, v1) / dot(miter_b, n1)) + AA_THICKNESS;
+        float edge = pattern_edge(pattern, u2, du);
+        f_uv_minmax.z = g_lastlen[2] + du - (2 * du + AA_THICKNESS) * abs(edge) ;
+        f_uv_minmax.w = -sign(edge) * (g_lastlen[2] - du);
     }
 
-    // generate the triangle strip
+    // Force AA at line start/end (there can't be a join here)
+    if (!isvalid[0]) {
+        float off_marker = float(pattern_at_u1 < -1);
+        f_uv_minmax.x = g_lastlen[1] + 2 * AA_THICKNESS - 10.0 * off_marker;
+        f_uv_minmax.y = g_lastlen[1] + AA_THICKNESS - 1000000.0 * off_marker;
+    }
+    if (!isvalid[3]) {
+        float off_marker = float(pattern_at_u2 < -1);
+        f_uv_minmax.z = g_lastlen[2] - 2 * AA_THICKNESS + 10.0 * off_marker;
+        f_uv_minmax.w = g_lastlen[2] - AA_THICKNESS - 1000000.0 * off_marker;
+    }
 
-    emit_vertex(p1 + length_a * miter_a, vec2( 0, -uvy), 1, ratio);
-    emit_vertex(p1 - length_a * miter_a, vec2( 0, uvy), 1, ratio);
+    // apply normalization (pixel -> uv)
+    f_uv_minmax *= 0.5 / pattern_length;
 
-    emit_vertex(p2 + length_b * miter_b, vec2( 0, -uvy ), 2, ratio);
-    emit_vertex(p2 - length_b * miter_b, vec2( 0, uvy), 2, ratio);
+    // generate two triangles for the main line visualization
+    // length_a/b and miter_a/b may include extrusion
+    emit_vertex(p1 + length_a * miter_a, -thickness_aa1, 1, v1, p1);
+    emit_vertex(p1 - length_a * miter_a,  thickness_aa1, 1, v1, p1);
+    emit_vertex(p2 + length_b * miter_b, -thickness_aa2, 2, v1, p2);
+    emit_vertex(p2 - length_b * miter_b,  thickness_aa2, 2, v1, p2);
+    EndPrimitive();
+
+    // reset shifting
+    // f_uv_minmax = vec4(-999999, g_lastlen[1], 999999, g_lastlen[2]); 
 }
