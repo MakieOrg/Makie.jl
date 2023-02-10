@@ -87,6 +87,8 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         valid_vertex        = const_lift(p_vec) do points
             map(p-> Float32(all(isfinite, p)), points)
         end => GLBuffer
+        lastlen             = const_lift(sumlengths, p_vec) => GLBuffer
+        pattern_length      = 1f0 # we divide by pattern_length a lot.
     end
     if pattern !== nothing
         if !isa(pattern, Texture)
@@ -96,9 +98,8 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
             tex = GLAbstraction.Texture(ticks(pattern, 100), x_repeat = :repeat)
             data[:pattern] = tex
         end
+        data[:pattern_length] = Float32(last(pattern))
         @gen_defaults! data begin
-            pattern_length = Float32(last(pattern))
-            lastlen   = const_lift(sumlengths, p_vec) => GLBuffer
             maxlength = const_lift(last, lastlen)
         end
     end
