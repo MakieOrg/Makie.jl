@@ -304,7 +304,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::LineSegments
         data = Dict{Symbol, Any}(gl_attributes)
         ls = to_value(linestyle)
         if isnothing(ls)
-            data[:pattern] = ls
+            data[:pattern] = nothing
         else
             linewidth = gl_attributes[:thickness]
             data[:pattern] = ls .* _mean(to_value(linewidth))

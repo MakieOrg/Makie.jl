@@ -23,7 +23,6 @@ flat out uvec2 f_id;
 out vec4 f_uv_minmax;
 
 uniform vec2 resolution;
-uniform float maxlength;
 uniform float pattern_length;
 {{pattern_type}} pattern;
 

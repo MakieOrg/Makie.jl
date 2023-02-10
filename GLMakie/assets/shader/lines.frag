@@ -43,7 +43,7 @@ vec2 get_sd(sampler1D pattern, vec2 uv){
 }
 // normal line type
 vec2 get_sd(Nothing _, vec2 uv){
-    return vec2(0.5, uv.y);
+    return vec2(10.0, uv.y);
 }
 
 float ifelse(bool condition, float true_val, float false_val){

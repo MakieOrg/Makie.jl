@@ -130,7 +130,8 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
                 "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
             )
         )
-        gl_primitive = GL_LINES
+        gl_primitive   = GL_LINES
+        pattern_length = 1f0
     end
     if !isa(pattern, Texture) && pattern !== nothing
         if !isa(pattern, Vector)
