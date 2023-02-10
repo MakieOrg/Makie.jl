@@ -226,21 +226,8 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
         end
     end
 
-    xshift = if halign === :center
-        width(bb) ./ 2
-    elseif halign === :left
-        minimum(bb)[1]
-    elseif halign === :right
-        maximum(bb)[1]
-    end
-
-    yshift = if valign === :center
-        maximum(bb)[2] - (height(bb) / 2)
-    elseif valign === :top
-        maximum(bb)[2]
-    else
-        minimum(bb)[2]
-    end
+    xshift = get_xshift(minimum(bb)[1], maximum(bb)[1], halign)
+    yshift = get_yshift(minimum(bb)[2], maximum(bb)[2], valign, default=0f0)
 
     shift = Vec3f(xshift, yshift, 0)
     positions = basepositions .- Ref(shift)
@@ -385,25 +372,8 @@ function apply_alignment_and_justification!(lines, ju, al)
         ginfo.origin[2] + ginfo.extent.descender * ginfo.size[2]
     end
 
-    al_offset_x = if al[1] === :center
-        max_x / 2
-    elseif al[1] === :left
-        0f0
-    elseif al[1] === :right
-        max_x
-    else
-        0f0
-    end
-
-    al_offset_y = if al[2] === :center
-        0.5 * (top_y + bottom_y)
-    elseif al[2] === :bottom
-        bottom_y
-    elseif al[2] === :top
-        top_y
-    else
-        0f0
-    end
+    al_offset_x = get_xshift(0f0,      max_x, al[1]; default=0f0)
+    al_offset_y = get_yshift(bottom_y, top_y, al[2]; default=0f0)
 
     fju = float_justification(ju, al)
     
@@ -421,23 +391,9 @@ end
 function float_justification(ju, al)::Float32
     halign = al[1]
     float_justification = if ju === automatic
-        if halign === :left || halign == 0
-            0.0f0
-        elseif halign === :right || halign == 1
-            1.0f0
-        elseif halign === :center || halign == 0.5
-            0.5f0
-        else
-            0.5f0
-        end
-    elseif ju === :left
-        0.0f0
-    elseif ju === :right
-        1.0f0
-    elseif ju === :center
-        0.5f0
+        get_xshift(0f0, 1f0, halign)
     else
-        Float32(ju)
+        get_xshift(0f0, 1f0, ju; default=ju) # errors if wrong symbol is used
     end
 end
 
@@ -535,3 +491,21 @@ function new_glyphstate(gs::GlyphState, rt::RichText, val::Val{:sub}, fonts)
 end
 
 iswhitespace(r::RichText) = iswhitespace(String(r))
+
+function get_xshift(lb, ub, align; default=0.5f0)
+    if align isa Symbol
+        align = align === :left   ? 0.0f0 :
+                align === :center ? 0.5f0 :
+                align === :right  ? 1.0f0 : default
+    end
+    lb * (1-align) + ub * align |> Float32
+end
+
+function get_yshift(lb, ub, align; default=0.5f0)
+    if align isa Symbol
+        align = align === :bottom ? 0.0f0 :
+                align === :center ? 0.5f0 :
+                align === :top    ? 1.0f0 : default
+    end
+    lb * (1-align) + ub * align |> Float32
+end
