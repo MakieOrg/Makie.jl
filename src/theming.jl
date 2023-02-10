@@ -206,7 +206,7 @@ the rest is left intact.
 Nested attributes are either also updated incrementally, or replaced if they are not attributes in the new theme.
 
 # Example
-To change de default colormap to `:greys`, you can pass that mapping as 
+To change the default colormap to `:greys`, you can pass that attribute as 
 a keyword argument to `update_theme!` as demonstrated below.
 ```
 update_theme!(colormap=:greys)
