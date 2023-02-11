@@ -75,12 +75,14 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
             return isempty(p) ? Cuint[] : Cuint[0; 0:len0; len0]
         end => to_index_buffer
         transparency = false
+        fast         = false
         shader              = GLVisualizeShader(
             screen,
             "fragment_output.frag", "util.vert", "lines.vert", "lines.geom", "lines.frag",
             view = Dict(
                 "buffers" => output_buffers(screen, to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
+                "buffer_writes" => output_buffer_writes(screen, to_value(transparency)),
+                "define_fast_path" => to_value(fast) ? "#define FAST_PATH" : ""
             )
         )
         gl_primitive        = GL_LINE_STRIP_ADJACENCY

@@ -5,8 +5,9 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
     bool _; //empty structs are not allowed
 };
 
-{{vertex_type}} vertex;
+{{define_fast_path}}
 
+{{vertex_type}} vertex;
 
 in float lastlen;
 {{valid_vertex_type}} valid_vertex;
@@ -22,7 +23,7 @@ vec4 _color(vec4 color, Nothing intensity, Nothing color_map, Nothing color_norm
 vec4 _color(Nothing color, float intensity, sampler1D color_map, vec2 color_norm, int index, int len);
 vec4 _color(Nothing color, sampler1D intensity, sampler1D color_map, vec2 color_norm, int index, int len);
 
-uniform mat4 projection, view, model;
+uniform mat4 projectionview, model;
 uniform uint objectid;
 uniform int total_length;
 
@@ -52,6 +53,10 @@ void main()
     g_thickness = thickness;
 
     g_color = _color(color, intensity, color_map, color_norm, index, total_length);
-    gl_Position = to_vec4(vertex);
+    #ifdef FAST_PATH
+        gl_Position = projectionview * model * to_vec4(vertex);
+    #else
+        gl_Position = to_vec4(vertex);
+    #endif
     gl_Position.z += gl_Position.w * depth_shift;
 }

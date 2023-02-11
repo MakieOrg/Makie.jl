@@ -6,6 +6,8 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
     bool _; //empty structs are not allowed
 };
 
+{{define_fast_path}}
+
 layout(lines_adjacency) in;
 layout(triangle_strip, max_vertices = 9) out;
 
@@ -111,10 +113,17 @@ void main(void)
     }
 
     // get the four vertices passed to the shader: (screen/pixel space)
-    vec2 p0 = gl_in[0].gl_Position.xy; // start of previous segment
-    vec2 p1 = gl_in[1].gl_Position.xy; // end of previous segment, start of current segment
-    vec2 p2 = gl_in[2].gl_Position.xy; // end of current segment, start of next segment
-    vec2 p3 = gl_in[3].gl_Position.xy; // end of next segment
+    #ifdef FAST_PATH
+        vec2 p0 = screen_space(gl_in[0].gl_Position);
+        vec2 p1 = screen_space(gl_in[1].gl_Position);
+        vec2 p2 = screen_space(gl_in[2].gl_Position);
+        vec2 p3 = screen_space(gl_in[3].gl_Position);
+    #else
+        vec2 p0 = gl_in[0].gl_Position.xy; // start of previous segment
+        vec2 p1 = gl_in[1].gl_Position.xy; // end of previous segment, start of current segment
+        vec2 p2 = gl_in[2].gl_Position.xy; // end of current segment, start of next segment
+        vec2 p3 = gl_in[3].gl_Position.xy; // end of next segment
+    #endif
 
     // linewidth with padding for anti aliasing
     float thickness_aa1 = g_thickness[1] + AA_THICKNESS;
@@ -238,13 +247,15 @@ void main(void)
         du is the distance between p1 (x) and the inner corner, which is the 
         unnormalized uv distance between u1 and the uv coordinate of the corner.
         */
-        float du = g_thickness[1] * abs(dot(n0, v1)) + AA_THICKNESS;
-        float edge = pattern_edge(pattern, u1, du);
-        float on_marker = float(pattern_at_u1 > 1);
-        f_uv_minmax.x = 1000000.0; // always trigger
-        // offset by large positive = deny
-        // offset by 0 = use raw uv.x 
-        f_uv_minmax.y = 1000000.0 - 1000000.0 * (1 - abs(edge)) * on_marker;
+        #ifndef FAST_PATH
+            float du = g_thickness[1] * abs(dot(n0, v1)) + AA_THICKNESS;
+            float edge = pattern_edge(pattern, u1, du);
+            float on_marker = float(pattern_at_u1 > 1);
+            f_uv_minmax.x = 1000000.0; // always trigger
+            // offset by large positive = deny
+            // offset by 0 = use raw uv.x 
+            f_uv_minmax.y = 1000000.0 - 1000000.0 * (1 - abs(edge)) * on_marker;
+        #endif
 
   
         /*
@@ -268,7 +279,6 @@ void main(void)
         // TODO there are factors 0.5 missing in a bunch of places I think. This is AA length normalization
         float u0      = thickness_aa1 * abs(dot(miter_a, n1)) * px2uv;
         float proj_AA = AA_THICKNESS  * abs(dot(miter_a, n1)) * px2uv;
-
 
         if(gap){
             emit_vertex(p1,                                               vec2(u0,                      0),              1);
@@ -311,11 +321,13 @@ void main(void)
 
         Translated to bool math:
         */
-        f_uv_minmax.x = g_lastlen[1] + 
-            float(edge > 0 && pattern_at_u1 > -1) * 2 * AA_THICKNESS +
-            float(edge < 0) * du - 1000000.0 * float(edge == 0 || pattern_at_u1 < -1);
-        f_uv_minmax.y = float(edge > 0) * (g_lastlen[1] + AA_THICKNESS) + 
-                        float(edge < 0) * 1000000.0;
+        #ifndef FAST_PATH
+            f_uv_minmax.x = g_lastlen[1] + 
+                float(edge > 0 && pattern_at_u1 > -1) * 2 * AA_THICKNESS +
+                float(edge < 0) * du - 1000000.0 * float(edge == 0 || pattern_at_u1 < -1);
+            f_uv_minmax.y = float(edge > 0) * (g_lastlen[1] + AA_THICKNESS) + 
+                            float(edge < 0) * 1000000.0;
+        #endif
 
         // Since we drew a truncated miter join the line vertices should not be
         // extruded to meet.
@@ -356,11 +368,12 @@ void main(void)
         To handle (2) we push the edge outside the region to the right, so that
         everything is denied (negative signed distance in full region)
         */
-
-        float du = g_thickness[1] * abs(dot(miter_a, v1) / dot(miter_a, n1)) + AA_THICKNESS;
-        float edge = pattern_edge(pattern, u1, du);
-        f_uv_minmax.x = g_lastlen[1] - du + (2 * du + AA_THICKNESS) * abs(edge);
-        f_uv_minmax.y = (2 - sign(edge)) * (g_lastlen[1] + du);
+        #ifndef FAST_PATH
+            float du = g_thickness[1] * abs(dot(miter_a, v1) / dot(miter_a, n1)) + AA_THICKNESS;
+            float edge = pattern_edge(pattern, u1, du);
+            f_uv_minmax.x = g_lastlen[1] - du + (2 * du + AA_THICKNESS) * abs(edge);
+            f_uv_minmax.y = (2 - sign(edge)) * (g_lastlen[1] + du);
+        #endif
     }
 
     if( dot( v1, v2 ) < MITER_LIMIT ) {
@@ -371,22 +384,26 @@ void main(void)
         // Mostly analogous to the changes made to outgoing segment, see above.
         // Here the roles of rising/falling edges switches and the region in
         // question is to the right.
-        float du = g_thickness[2] * abs(dot(n2, v1)) + AA_THICKNESS;
-        float edge = pattern_edge(pattern, u2, du);
+        #ifndef FAST_PATH
+            float du = g_thickness[2] * abs(dot(n2, v1)) + AA_THICKNESS;
+            float edge = pattern_edge(pattern, u2, du);
 
-        f_uv_minmax.z = g_lastlen[2] - 
-            float(edge < 0 && pattern_at_u2 > -1) * 2 * AA_THICKNESS -
-            float(edge > 0) * du + 
-            float(edge == 0 || pattern_at_u2 < -1) * 1000000.0;
-        f_uv_minmax.w = float(edge < 0) * (g_lastlen[2] - AA_THICKNESS) +
-                        -float(edge > 0) * 1000000.0;
+            f_uv_minmax.z = g_lastlen[2] - 
+                float(edge < 0 && pattern_at_u2 > -1) * 2 * AA_THICKNESS -
+                float(edge > 0) * du + 
+                float(edge == 0 || pattern_at_u2 < -1) * 1000000.0;
+            f_uv_minmax.w = float(edge < 0) * (g_lastlen[2] - AA_THICKNESS) +
+                            -float(edge > 0) * 1000000.0;
+        #endif
                     
     } else {
         // Extruded line join, incoming, compare with above
-        float du = g_thickness[2] * abs(dot(miter_b, v1) / dot(miter_b, n1)) + AA_THICKNESS;
-        float edge = pattern_edge(pattern, u2, du);
-        f_uv_minmax.z = g_lastlen[2] + du - (2 * du + AA_THICKNESS) * abs(edge) ;
-        f_uv_minmax.w = -sign(edge) * (g_lastlen[2] - du);
+        #ifndef FAST_PATH
+            float du = g_thickness[2] * abs(dot(miter_b, v1) / dot(miter_b, n1)) + AA_THICKNESS;
+            float edge = pattern_edge(pattern, u2, du);
+            f_uv_minmax.z = g_lastlen[2] + du - (2 * du + AA_THICKNESS) * abs(edge) ;
+            f_uv_minmax.w = -sign(edge) * (g_lastlen[2] - du);
+        #endif
     }
 
     // Force AA at line start/end (there can't be a join here)

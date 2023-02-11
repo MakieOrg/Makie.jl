@@ -268,29 +268,34 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
     return cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
+
+        positions = handle_view(x[1], data)
+        space = get!(gl_attributes, :space, :data) # needs to happen before connect_camera! call
+        connect_camera!(data, scene.camera)
+        transform_func = transform_func_obs(x)
+        
         ls = to_value(linestyle)
         if isnothing(ls)
             data[:pattern] = ls
+            data[:fast] = true
+
+            positions = apply_transform(transform_func, positions, space)
         else
             linewidth = gl_attributes[:thickness]
             data[:pattern] = ls * _mean(to_value(linewidth))
-        end
-        
-        positions = handle_view(x[1], data)
-        connect_camera!(data, scene.camera)
-        space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
-        transform_func = transform_func_obs(x)
-        pvm = map(*, data[:projectionview], data[:model])
-        
-        positions = map(transform_func, positions, space, pvm, data[:resolution]) do f, ps, space, pvm, res
-            transformed = apply_transform(f, ps, space)
-            output = Vector{Point3f}(undef, length(transformed))
-            scale = Vec3f(res[1], res[2], 1f0)
-            for i in eachindex(transformed)
-                clip = pvm * to_ndim(Point4f, to_ndim(Point3f, transformed[i], 0f0), 1f0)
-                output[i] = scale .* Point3f(clip) ./ clip[4]
+            data[:fast] = false
+            
+            pvm = map(*, data[:projectionview], data[:model])
+            positions = map(transform_func, positions, space, pvm, data[:resolution]) do f, ps, space, pvm, res
+                transformed = apply_transform(f, ps, space)
+                output = Vector{Point3f}(undef, length(transformed))
+                scale = Vec3f(res[1], res[2], 1f0)
+                for i in eachindex(transformed)
+                    clip = pvm * to_ndim(Point4f, to_ndim(Point3f, transformed[i], 0f0), 1f0)
+                    output[i] = scale .* Point3f(clip) ./ clip[4]
+                end
+                output
             end
-            output
         end
             
         handle_intensities!(data)
