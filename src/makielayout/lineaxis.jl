@@ -27,7 +27,7 @@ function calculate_protrusion(
 
     horizontal, labeltext, ticklabel_annotation_obs = closure_args
 
-    label_is_empty::Bool = iswhitespace(label) || isempty(label)
+    label_is_empty::Bool = iswhitespace(label)
 
     real_labelsize::Float32 = if label_is_empty
         0f0
