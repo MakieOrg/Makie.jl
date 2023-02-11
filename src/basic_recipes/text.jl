@@ -293,7 +293,7 @@ superscript(args...; kwargs...) = RichText(:sup, args...; kwargs...)
 
 export rich, subscript, superscript
 
-function _get_glyphcollection_and_linesegments(rt::RichText, index, ts, f, fset, al, rot, jus, lh, col, scol, swi, www)
+function _get_glyphcollection_and_linesegments(rt::RichText, index, ts, f, fset, al, rot, jus, lh, col, scol, swi, www, offs)
     gc = layout_text(rt, ts, f, fset, al, rot, jus, lh, col)
     gc, Point2f[], Float32[], RGBAf[], Int[]
 end
