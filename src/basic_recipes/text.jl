@@ -16,7 +16,7 @@ function plot!(plot::Text)
         rot = to_rotation(rot)
         col = to_color(col)
         scol = to_color(scol)
-        offs = Vec2f(offs)
+        offs = to_offset(offs)
 
         gcs = GlyphCollection[]
         lsegs = Point2f[]
@@ -80,6 +80,9 @@ function plot!(plot::Text)
 
     plot
 end
+
+to_offset(v::VecTypes) = Vec2f(v)
+to_offset(v::AbstractVector) = map(to_offset, v)
 
 function _get_glyphcollection_and_linesegments(str::AbstractString, index, ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs)
     gc = layout_text(string(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www)
