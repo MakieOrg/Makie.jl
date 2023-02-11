@@ -390,13 +390,15 @@ void main(void)
     // Force AA at line start/end (there can't be a join here)
     if (!isvalid[0]) {
         float off_marker = float(pattern_at_u1 < -1);
-        f_uv_minmax.x = g_lastlen[1] + 2 * AA_THICKNESS - 10.0 * off_marker;
-        f_uv_minmax.y = g_lastlen[1] + AA_THICKNESS - 1000000.0 * off_marker;
+        f_uv_minmax.x = g_lastlen[1] + AA_THICKNESS - 10.0 * off_marker;
+        f_uv_minmax.y = g_lastlen[1] - 1000000.0 * off_marker;
+        p1 -= AA_THICKNESS * v1;
     }
     if (!isvalid[3]) {
         float off_marker = float(pattern_at_u2 < -1);
-        f_uv_minmax.z = g_lastlen[2] - 2 * AA_THICKNESS + 10.0 * off_marker;
-        f_uv_minmax.w = g_lastlen[2] - AA_THICKNESS - 1000000.0 * off_marker;
+        f_uv_minmax.z = g_lastlen[2] - AA_THICKNESS + 10.0 * off_marker;
+        f_uv_minmax.w = g_lastlen[2] - 1000000.0 * off_marker;
+        p2 += AA_THICKNESS * v1;
     }
 
     // apply normalization (pixel -> uv)
