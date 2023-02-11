@@ -26,6 +26,7 @@ uniform vec2 resolution;
 uniform float pattern_length;
 {{pattern_type}} pattern;
 
+float px2uv = 0.5 / pattern_length;
 
 #define MITER_LIMIT -0.4
 #define AA_THICKNESS 4
@@ -42,18 +43,19 @@ vec2 screen_space(vec4 vertex)
 float pattern_edge(Nothing _, float u, float w){return 0.0;}
 
 float pattern_edge(sampler1D pattern, float u, float w){
-    float left   = texture(pattern, u - (0.5 * w) / pattern_length).x;
+    float left   = texture(pattern, u - w * px2uv).x;
     float center = texture(pattern, u).x;
-    float right  = texture(pattern, u + (0.5 * w) / pattern_length).x;
+    float right  = texture(pattern, u + w * px2uv).x;
     // 4 if same sign right and same sign left, 0 else
     float noedge = (1 + sign(left) * sign(center)) * (1 + sign(center) * sign(right));
     return 0.25 * (4 - noedge) * sign(right - left);
 }
 
 // Get pattern values
-float fetch(Nothing _, float u){return 10000000.0;}
+float fetch(Nothing _, float u){return 10.0;}
 float fetch(sampler1D pattern, float u){return texture(pattern, u).x;}
 
+// For manual usage
 void emit_vertex(vec2 position, vec2 uv, int index)
 {
     vec4 inpos  = gl_in[index].gl_Position;
@@ -72,7 +74,7 @@ void emit_vertex(vec2 position, float v, int index, vec2 line_unit, vec2 line_po
     // adjusts u values to extrusions made in vertex generation (e.g. to close lines)
     float vertex_offset = dot(position - line_pos, line_unit);
 
-    f_uv        = vec2(0.5 * (g_lastlen[index] + vertex_offset) / pattern_length, v);
+    f_uv        = vec2((g_lastlen[index] + vertex_offset) * px2uv, v);
     f_color     = g_color[index];
     gl_Position = vec4(position / resolution, inpos.z, inpos.w);
     f_id        = g_id[index];
@@ -191,8 +193,8 @@ void main(void)
     // This sets the intial action to "no adjustment"
     f_uv_minmax = vec4(-1000000.0, g_lastlen[1], 1000000.0, g_lastlen[2]); 
 
-    float u1 = 0.5 * g_lastlen[1] / pattern_length;
-    float u2 = 0.5 * g_lastlen[2] / pattern_length;
+    float u1 = g_lastlen[1] * px2uv;
+    float u2 = g_lastlen[2] * px2uv;
     float pattern_at_u1 = fetch(pattern, u1).x;
     float pattern_at_u2 = fetch(pattern, u2).x;
 
@@ -264,8 +266,8 @@ void main(void)
         */
         // div by pattern_length to counter normalization
         // TODO there are factors 0.5 missing in a bunch of places I think. This is AA length normalization
-        float u0      = 0.5 * thickness_aa1 * abs(dot(miter_a, n1)) / pattern_length;
-        float proj_AA = 0.5 * AA_THICKNESS  * abs(dot(miter_a, n1)) / pattern_length;
+        float u0      = thickness_aa1 * abs(dot(miter_a, n1)) * px2uv;
+        float proj_AA = AA_THICKNESS  * abs(dot(miter_a, n1)) * px2uv;
 
 
         if(gap){
@@ -402,7 +404,7 @@ void main(void)
     }
 
     // apply normalization (pixel -> uv)
-    f_uv_minmax *= 0.5 / pattern_length;
+    f_uv_minmax *= px2uv;
 
     // generate two triangles for the main line visualization
     // length_a/b and miter_a/b may include extrusion
