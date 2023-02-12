@@ -59,7 +59,7 @@ function activate!(; screen_config...)
     return
 end
 
-const TEXTURE_ATLAS = Observable{Vector{Float32}}()
+const TEXTURE_ATLAS = Observable(Float32[])
 
 wgl_texture_atlas() = Makie.get_texture_atlas(1024, 32)
 

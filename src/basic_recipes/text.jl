@@ -121,7 +121,7 @@ end
 # conversion stopper for previous methods
 convert_arguments(::Type{<: Text}, gcs::AbstractVector{<:GlyphCollection}) = (gcs,)
 convert_arguments(::Type{<: Text}, gc::GlyphCollection) = (gc,)
-convert_arguments(::Type{<: Text}, vec::AbstractVector{<:Tuple{<:AbstractString, <:Point}}) = (vec,)
+convert_arguments(::Type{<: Text}, vec::AbstractVector{<:Tuple{<:Any, <:Point}}) = (vec,)
 convert_arguments(::Type{<: Text}, strings::AbstractVector{<:AbstractString}) = (strings,)
 convert_arguments(::Type{<: Text}, string::AbstractString) = (string,)
 
@@ -137,10 +137,10 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
 end
 
 # overload text plotting for a vector of tuples of a string and a point each
-function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:AbstractString, <:Point}}}})    
+function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:Point}}}})    
     strings_and_positions = plot[1]
 
-    strings = Observable{Vector{AbstractString}}(first.(strings_and_positions[]))
+    strings = Observable{Vector{Any}}(first.(strings_and_positions[]))
 
     positions = Observable(
         Point3f[to_ndim(Point3f, last(x), 0) for x in  strings_and_positions[]] # avoid Any for zero elements
@@ -263,7 +263,7 @@ end
 
 iswhitespace(l::LaTeXString) = iswhitespace(replace(l.s, '$' => ""))
 
-struct RichText <: AbstractString
+struct RichText
     type::Symbol
     children::Vector{Union{RichText,String}}
     attributes::Dict{Symbol, Any}
@@ -282,14 +282,8 @@ function Base.String(r::RichText)
     end
 end
 
-Base.ncodeunits(r::RichText) = ncodeunits(String(r)) # needed for isempty
-
 function Base.show(io::IO, ::MIME"text/plain", r::RichText)
     print(io, "RichText: \"$(String(r))\"")
-end
-
-function Base.:(==)(r1::RichText, r2::RichText)
-    r1.type == r2.type && r1.children == r2.children && r1.attributes == r2.attributes
 end
 
 rich(args...; kwargs...) = RichText(:span, args...; kwargs...)
