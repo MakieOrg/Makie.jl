@@ -28,7 +28,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     end
 
     space = to_value(get(primitive, :space, :data))
-    projected_positions = project_position.(Ref(scene), Ref(space), positions, Ref(model))
+    projected_positions = project_position.(Ref(scene), (Makie.transform_func(primitive),), Ref(space), positions, Ref(model))
 
     color = to_cairo_color(color, primitive)
 
@@ -188,7 +188,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
     markerspace = to_value(get(primitive, :markerspace, :pixel))
     space = to_value(get(primitive, :space, :data))
 
-    transfunc = primitive.transformation.transform_func[]
+    transfunc = Makie.transform_func(primitive)
 
     marker_conv = _marker_convert(marker)
 
@@ -567,7 +567,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     disable_fast_path = !fast_path
     # Vector backends don't support FILTER_NEAREST for interp == false, so in that case we also need to draw rects
     is_vector = is_vector_backend(ctx)
-    t = Makie.transform_func_obs(primitive)[]
+    t = Makie.transform_func(primitive)
     identity_transform = (t === identity || t isa Tuple && all(x-> x === identity, t)) && (abs(model[1, 2]) < 1e-15)
     regular_grid = xs isa AbstractRange && ys isa AbstractRange
 
@@ -614,7 +614,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         # find projected image corners
         # this already takes care of flipping the image to correct cairo orientation
         space = to_value(get(primitive, :space, :data))
-        xys = [project_position(scene, space, Point2f(x, y), model) for x in xs, y in ys]
+        xys = project_position.(scene, (Makie.transform_func(primitive),), space, [Point2f(x, y) for x in xs, y in ys], (model,))
         colors = to_rgba_image(image, primitive)
 
         # Note: xs and ys should have size ni+1, nj+1
@@ -698,10 +698,11 @@ function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
         lowclip, highclip, nan_color)
 
     space = to_value(get(plot, :space, :data))::Symbol
-    return draw_mesh2D(scene, screen, cols, space, vs, fs, model)
+    transform_func = Makie.transform_func(plot)
+    return draw_mesh2D(scene, screen, cols, space, transform_func, vs, fs, model)
 end
 
-function draw_mesh2D(scene, screen, per_face_cols, space::Symbol,
+function draw_mesh2D(scene, screen, per_face_cols, space::Symbol, transform_func,
         vs::Vector{Point2f}, fs::Vector{GLTriangleFace}, model::Mat4f)
 
     ctx = screen.context
@@ -710,7 +711,7 @@ function draw_mesh2D(scene, screen, per_face_cols, space::Symbol,
 
     for (f, (c1, c2, c3)) in zip(fs, per_face_cols)
         pattern = Cairo.CairoPatternMesh()
-        t1, t2, t3 =  project_position.(scene, space, vs[f], (model,)) #triangle points
+        t1, t2, t3 =  project_position.(scene, (transform_func,), space, vs[f], (model,)) #triangle points
         Cairo.mesh_pattern_begin_patch(pattern)
 
         Cairo.mesh_pattern_move_to(pattern, t1...)
