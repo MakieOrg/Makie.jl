@@ -468,7 +468,7 @@ end
 
 function RectangleZoom(f::Function, ax::Axis; kw...)
     r = RectangleZoom(f; kw...)
-    selection_vertices = lift(_selection_vertices, Observable(ax), ax.finallimits, r.rectnode)
+    selection_vertices = lift(_selection_vertices, Observable(ax.scene), ax.finallimits, r.rectnode)
     # manually specify correct faces for a rectangle with a rectangle hole inside
     faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
     # plot to blockscene, so ax.scene stays exclusive for user plots
