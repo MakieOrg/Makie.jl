@@ -3,7 +3,7 @@ function pick_native(screen::Screen, rect::Rect2i)
     task = @async begin
         (x, y) = minimum(rect)
         (w, h) = widths(rect)
-        session = get_three(screen).session
+        session = get_three(screen, "Can't do picking!").session
         scene = screen.scene
         picking_data = JSServe.evaljs_value(session, js"""
             Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => WGL.pick_native_matrix(scene, $x, $y, $w, $h))
@@ -36,7 +36,7 @@ function Makie.pick_closest(scene::Scene, screen::Screen, xy, range::Integer)
     # isopen(screen) || return (nothing, 0)
     xy_vec = Cint[round.(Cint, xy)...]
     range = round(Int, range)
-    session = get_three(screen).session
+    session = get_three(screen, "Can't do picking!").session
     selection = JSServe.evaljs_value(session, js"""
         Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => WGL.pick_closest(scene, $(xy_vec), $(range)))
     """)
@@ -48,7 +48,7 @@ end
 function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     xy_vec = Cint[round.(Cint, xy)...]
     range = round(Int, range)
-    session = get_three(screen).session
+    session = get_three(screen, "Can't do picking!").session
     selection = JSServe.evaljs_value(session, js"""
         Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => WGL.pick_sorted(scene, $(xy_vec), $(range)))
     """)

@@ -118,10 +118,22 @@ function Base.size(screen::Screen)
 end
 
 function get_three(screen::Screen; timeout = 100, error::Union{Nothing, String}=nothing)::Union{Nothing, ThreeDisplay}
-    if screen.display !== true
-        error("Screen hasn't displayed anything, so can't get three context")
+    function throw_error(status)
+        if !isnothing(error)
+            message = "Can't get three: $(status)\n$(error)"
+            Base.error(message)
+        end
     end
-    isnothing(screen.session) && return nothing
+    if screen.display !== true
+        throw_error("Screen hasn't displayed yet, so can't get connection to three")
+        return nothing
+    end
+    if isnothing(screen.session)
+        throw_error("Screen has no session. Not yet displayed?"); return nothing
+    end
+    if screen.session.status == JSServe.UNINITIALIZED
+        throw_error("Screen Session uninitialized. Not yet displayed?"); return nothing
+    end
     tstart = time()
     result = nothing
     while true
@@ -135,8 +147,8 @@ function get_three(screen::Screen; timeout = 100, error::Union{Nothing, String}=
         end
     end
     # Throw error if error message specified
-    if isnothing(result) && !isnothing(error)
-        Base.error(error)
+    if isnothing(result)
+        throw_error("Timed out waiting $(timeout)s for session to get initilize")
     end
     return result
 end
