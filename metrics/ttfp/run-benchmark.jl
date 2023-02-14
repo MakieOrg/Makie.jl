@@ -210,7 +210,7 @@ if Package == "WGLMakie"
     Pkg.add([(; name="Electron")])
 end
 pkgs = NamedTuple[(; path="./MakieCore"), (; path="."), (; path="./$Package"), (; name="BenchmarkTools"),
-                  (; name="Observables", dev="sd/fix-custom-obsfuncss")]
+                  (; name="Observables", rev="sd/fix-custom-obsfuncss")]
 # cd("dev/Makie")
 Pkg.develop(pkgs)
 
