@@ -30,7 +30,7 @@ float fetch(sampler1D pattern, float u){return texture(pattern, u).x;}
 
 vec2 screen_space(vec4 vertex)
 {
-    return vec2(vertex.xy / vertex.w)*resolution;
+    return vec2(vertex.xy / vertex.w) * resolution;
 }
 
 void emit_vertex(vec2 position, vec2 uv, int index)
