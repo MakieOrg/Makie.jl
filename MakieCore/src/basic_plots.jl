@@ -154,7 +154,10 @@ Available algorithms are:
         colorrange = (0, 1),
         fxaa = true,
         inspectable = theme(scene, :inspectable),
-        space = :data
+        space = :data,
+        diffuse=0.4,
+        specular=0.2,
+        shininess=32.0f0
     )
 end
 
@@ -210,7 +213,10 @@ Plots a surface, where `(x, y)`  define a grid whose heights are the entries in 
         fxaa = true,
         invert_normals = false,
         inspectable = theme(scene, :inspectable),
-        space = :data
+        space = :data,
+        diffuse = 0.4,
+        specular = 0.2,
+        shininess = 32f0,
     )
 end
 
@@ -320,9 +326,9 @@ Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [Geome
 - `colormap::Union{Symbol, Vector{<:Colorant}} = :viridis` sets the colormap that is sampled for numeric `color`s.
 - `colorrange::Tuple{<:Real, <:Real}` sets the values representing the start and end points of `colormap`.
 - `nan_color::Union{Symbol, <:Colorant} = RGBAf(0,0,0,0)` sets a replacement color for `color = NaN`.
+- `lowclip::Union{Automatic, Symbol, <:Colorant} = automatic` sets a color for any value below the colorrange.
+- `highclip::Union{Automatic, Symbol, <:Colorant} = automatic` sets a color for any value above the colorrange.
 - `space::Symbol = :data` sets the transformation space for vertex positions. See `Makie.spaces()` for possible inputs.
-- `lowclip::Union{Nothing, Symbol, <:Colorant} = nothing` sets a color for any value below the colorrange.
-- `highclip::Union{Nothing, Symbol, <:Colorant} = nothing` sets a color for any value above the colorrange.
 - `interpolate::Bool = true` wether color=Matrix gets interpolated or not
 
 ### Generic 3D
@@ -348,7 +354,10 @@ Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [Geome
         fxaa = true,
         inspectable = theme(scene, :inspectable),
         cycle = [:color => :patchcolor],
-        space = :data
+        space = :data,
+        diffuse = 0.4,
+        specular = 0.2,
+        shininess = 32f0,
     )
 end
 
@@ -387,6 +396,8 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
 - `colormap::Union{Symbol, Vector{<:Colorant}} = :viridis` sets the colormap that is sampled for numeric `color`s.
 - `colorrange::Tuple{<:Real, <:Real}` sets the values representing the start and end points of `colormap`.
 - `nan_color::Union{Symbol, <:Colorant} = RGBAf(0,0,0,0)` sets a replacement color for `color = NaN`.
+- `lowclip::Union{Automatic, Symbol, <:Colorant} = automatic` sets a color for any value below the colorrange.
+- `highclip::Union{Automatic, Symbol, <:Colorant} = automatic` sets a color for any value above the colorrange.
 - `space::Symbol = :data` sets the transformation space for positions of markers. See `Makie.spaces()` for possible inputs.
 """
 @recipe(Scatter, positions) do scene
@@ -395,6 +406,10 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
         color = theme(scene, :markercolor),
         colormap = theme(scene, :colormap),
         colorrange = automatic,
+        lowclip = automatic,
+        highclip = automatic,
+        nan_color = :transparent,
+
         marker = theme(scene, :marker),
         markersize = theme(scene, :markersize),
 
@@ -446,6 +461,8 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
 - `colormap::Union{Symbol, Vector{<:Colorant}} = :viridis` sets the colormap that is sampled for numeric `color`s.
 - `colorrange::Tuple{<:Real, <:Real}` sets the values representing the start and end points of `colormap`.
 - `nan_color::Union{Symbol, <:Colorant} = RGBAf(0,0,0,0)` sets a replacement color for `color = NaN`.
+- `lowclip::Union{Automatic, Symbol, <:Colorant} = automatic` sets a color for any value below the colorrange.
+- `highclip::Union{Automatic, Symbol, <:Colorant} = automatic` sets a color for any value above the colorrange.
 - `space::Symbol = :data` sets the transformation space for the positions of meshes. See `Makie.spaces()` for possible inputs.
 
 ### Generic 3D
@@ -462,6 +479,10 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
         color = :black,
         colormap = theme(scene, :colormap),
         colorrange = automatic,
+        lowclip = automatic,
+        highclip = automatic,
+        nan_color = :transparent,
+
         marker = :Sphere,
         markersize = 0.1,
         rotations = 0.0,
@@ -471,6 +492,9 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
         fxaa = true,
         inspectable = theme(scene, :inspectable),
         cycle = [:color],
+        diffuse = 0.4,
+        specular = 0.2,
+        shininess = 32f0,
     )
 end
 
@@ -488,11 +512,11 @@ Plots one or multiple texts passed via the `text` keyword.
 
 - `text` specifies one piece of text or a vector of texts to show, where the number has to match the number of positions given. Makie supports `String` which is used for all normal text and `LaTeXString` which layouts mathematical expressions using `MathTeXEngine.jl`.
 - `align::Tuple{Union{Symbol, Real}, Union{Symbol, Real}} = (:left, :bottom)` sets the alignment of the string w.r.t. `position`. Uses `:left, :center, :right, :top, :bottom, :baseline` or fractions.
-- `font::Union{String, Vector{String}} = "TeX Gyre Heros Makie"` sets the font for the string or each character.
+- `font::Union{String, Vector{String}} = :regular` sets the font for the string or each character.
 - `justification::Union{Real, Symbol} = automatic` sets the alignment of text w.r.t its bounding box. Can be `:left, :center, :right` or a fraction. Will default to the horizontal alignment in `align`.
 - `rotation::Union{Real, Quaternion}` rotates text around the given position.
-- `textsize::Union{Real, Vec2f}` sets the size of each character.
-- `markerspace::Symbol = :pixel` sets the space in which `textsize` acts. See `Makie.spaces()` for possible inputs.
+- `fontsize::Union{Real, Vec2f}` sets the size of each character.
+- `markerspace::Symbol = :pixel` sets the space in which `fontsize` acts. See `Makie.spaces()` for possible inputs.
 - `strokewidth::Real = 0` sets the width of the outline around a marker.
 - `strokecolor::Union{Symbol, <:Colorant} = :black` sets the color of the outline around a marker.
 - `glowwidth::Real = 0` sets the size of a glow effect around the marker.
@@ -517,11 +541,12 @@ Plots one or multiple texts passed via the `text` keyword.
         default_theme(scene)...,
         color = theme(scene, :textcolor),
         font = theme(scene, :font),
+        fonts = theme(scene, :fonts),
         strokecolor = (:black, 0.0),
         strokewidth = 0,
         align = (:left, :bottom),
         rotation = 0.0,
-        textsize = 20,
+        fontsize = theme(scene, :fontsize),
         position = (0.0, 0.0),
         justification = automatic,
         lineheight = 1.0,
@@ -554,8 +579,8 @@ Plots polygons, which are defined by
 
 ### Specific to `Poly`
 
-- `lowclip::Union{Nothing, Symbol, <:Colorant} = nothing` sets a color for any value below the colorrange.
-- `highclip::Union{Nothing, Symbol, <:Colorant} = nothing` sets a color for any value above the colorrange.
+- `lowclip::Union{Automatic, Symbol, <:Colorant} = automatic` sets a color for any value below the colorrange.
+- `highclip::Union{Automatic, Symbol, <:Colorant} = automatic` sets a color for any value above the colorrange.
 - `strokecolor::Union{Symbol, <:Colorant} = :black` sets the color of the outline around a marker.
 - `strokewidth::Real = 0` sets the width of the outline around a marker.
 - `linestyle::Union{Nothing, Symbol, Vector} = nothing` sets the pattern of the line (e.g. `:solid`, `:dot`, `:dashdot`)
@@ -571,6 +596,8 @@ Plots polygons, which are defined by
 - `colormap::Union{Symbol, Vector{<:Colorant}} = [:black, :white` sets the colormap that is sampled for numeric `color`s.
 - `colorrange::Tuple{<:Real, <:Real}` sets the values representing the start and end points of `colormap`.
 - `nan_color::Union{Symbol, <:Colorant} = RGBAf(0,0,0,0)` sets a replacement color for `color = NaN`.
+- `lowclip::Union{Automatic, Symbol, <:Colorant} = automatic` sets a color for any value below the colorrange.
+- `highclip::Union{Automatic, Symbol, <:Colorant} = automatic` sets a color for any value above the colorrange.
 - `space::Symbol = :data` sets the transformation space for the position of the image. See `Makie.spaces()` for possible inputs.
 - `cycle::Vector{Symbol} = [:color => :patchcolor]` sets which attributes to cycle when creating multiple plots.
 - `shading = false` enables lighting.
@@ -595,4 +622,41 @@ Plots polygons, which are defined by
         inspectable = theme(scene, :inspectable),
         space = :data
     )
+end
+
+@recipe(Wireframe) do scene
+    # default_theme(scene, LineSegments)
+    Attributes(;
+        default_theme(scene, LineSegments)...,
+        depth_shift = -1f-5,
+    )
+end
+
+@recipe(Arrows, points, directions) do scene
+    attr = merge!(
+        default_theme(scene),
+        Attributes(
+            arrowhead = automatic,
+            arrowtail = automatic,
+            color = :black,
+            linecolor = automatic,
+            arrowsize = automatic,
+            linestyle = nothing,
+            align = :origin,
+            normalize = false,
+            lengthscale = 1f0,
+            colormap = theme(scene, :colormap),
+            quality = 32,
+            inspectable = theme(scene, :inspectable),
+            markerspace = :pixel,
+            diffuse=0.4,
+            specular=0.2,
+            shininess=32.0f0
+        )
+    )
+    attr[:fxaa] = automatic
+    attr[:linewidth] = automatic
+    # connect arrow + linecolor by default
+    get!(attr, :arrowcolor, attr[:linecolor])
+    attr
 end

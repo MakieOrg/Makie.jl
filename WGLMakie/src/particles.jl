@@ -53,7 +53,8 @@ function create_shader(scene::Scene, plot::MeshScatter)
     per_instance = filter(plot.attributes.attributes) do (k, v)
         return k in per_instance_keys && !(isscalar(v[]))
     end
-    per_instance[:offset] = apply_transform(transform_func_obs(plot),  plot[1])
+    space = get(plot, :space, :data)
+    per_instance[:offset] = apply_transform(transform_func_obs(plot),  plot[1], space)
 
     for (k, v) in per_instance
         per_instance[k] = Buffer(lift_convert(k, v, plot))
@@ -88,11 +89,39 @@ function create_shader(scene::Scene, plot::MeshScatter)
         end
     end
 
+    # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
+    uniform_dict[:picking] = false
+    uniform_dict[:object_id] = UInt32(0)
+
     return InstancedProgram(WebGL(), lasset("particles.vert"), lasset("particles.frag"),
-                            instance, VertexArray(; per_instance...); uniform_dict...)
+                            instance, VertexArray(; per_instance...), uniform_dict)
 end
 
 using Makie: to_spritemarker
+
+
+"""
+    NoDataTextureAtlas(texture_atlas_size)
+
+Optimization to just send the texture atlas one time to JS and then look it up from there in wglmakie.js,
+instead of uploading this texture 10x in every plot.
+"""
+struct NoDataTextureAtlas <: ShaderAbstractions.AbstractSampler{Float16, 2}
+    dims::NTuple{2, Int}
+end
+
+function serialize_three(fta::NoDataTextureAtlas)
+    tex = Dict(:type => "Sampler", :data => "texture_atlas",
+               :size => [fta.dims...], :three_format => three_format(Float16),
+               :three_type => three_type(Float16),
+               :minFilter => three_filter(:linear),
+               :magFilter => three_filter(:linear),
+               :wrapS => "RepeatWrapping",
+               :anisotropy => 16f0)
+    tex[:wrapT] = "RepeatWrapping"
+    return tex
+end
+
 
 function scatter_shader(scene::Scene, attributes)
     # Potentially per instance attributes
@@ -100,14 +129,21 @@ function scatter_shader(scene::Scene, attributes)
                          :uv_offset_width, :quad_offset, :marker_offset)
     uniform_dict = Dict{Symbol,Any}()
     uniform_dict[:image] = false
+    marker = nothing
+    atlas = wgl_texture_atlas()
     if haskey(attributes, :marker)
         font = get(attributes, :font, Observable(Makie.defaultfont()))
-        marker = lift(Makie.to_spritemarker, attributes[:marker])
+        marker = lift(attributes[:marker]) do marker
+            marker isa Makie.FastPixel && return Rect # FastPixel not supported, but same as Rect just slower
+            return Makie.to_spritemarker(marker)
+        end
+
         markersize = lift(Makie.to_2d_scale, attributes[:markersize])
-        msize, offset = Makie.marker_attributes(marker, markersize, font, attributes[:quad_offset])
+
+        msize, offset = Makie.marker_attributes(atlas, marker, markersize, font, attributes[:quad_offset])
         attributes[:markersize] = msize
         attributes[:quad_offset] = offset
-        attributes[:uv_offset_width] = Makie.primitive_uv_offset_width(marker)
+        attributes[:uv_offset_width] = Makie.primitive_uv_offset_width(atlas, marker, font)
         if to_value(marker) isa AbstractMatrix
             uniform_dict[:image] = Sampler(lift(el32convert, marker))
         end
@@ -129,15 +165,15 @@ function scatter_shader(scene::Scene, attributes)
         k in IGNORE_KEYS && continue
         uniform_dict[k] = lift_convert(k, v, nothing)
     end
-
-    get!(uniform_dict, :shape_type) do
-        return Makie.marker_to_sdf_shape(attributes[:marker])
+    if !isnothing(marker)
+        get!(uniform_dict, :shape_type) do
+            return Makie.marker_to_sdf_shape(marker)
+        end
     end
 
     if uniform_dict[:shape_type][] == 3
-        atlas = Makie.get_texture_atlas()
-        uniform_dict[:distancefield] = Sampler(atlas.data, minfilter=:linear,
-                                               magfilter=:linear, anisotropic=16f0)
+        atlas = wgl_texture_atlas()
+        uniform_dict[:distancefield] = NoDataTextureAtlas(size(atlas.data))
         uniform_dict[:atlas_texture_size] = Float32(size(atlas.data, 1)) # Texture must be quadratic
     else
         uniform_dict[:atlas_texture_size] = 0f0
@@ -147,10 +183,14 @@ function scatter_shader(scene::Scene, attributes)
     handle_color!(uniform_dict, per_instance)
 
     instance = uv_mesh(Rect2(-0.5f0, -0.5f0, 1f0, 1f0))
-    uniform_dict[:resolution] = scene.camera.resolution
+    # Don't send obs, since it's overwritten in JS to be updated by the camera
+    uniform_dict[:resolution] = to_value(scene.camera.resolution)
 
-    return InstancedProgram(WebGL(), lasset("simple.vert"), lasset("sprites.frag"),
-                            instance, VertexArray(; per_instance...); uniform_dict...)
+    # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
+    uniform_dict[:picking] = false
+    uniform_dict[:object_id] = UInt32(0)
+    return InstancedProgram(WebGL(), lasset("sprites.vert"), lasset("sprites.frag"),
+                            instance, VertexArray(; per_instance...), uniform_dict)
 end
 
 function create_shader(scene::Scene, plot::Scatter)
@@ -162,18 +202,15 @@ function create_shader(scene::Scene, plot::Scatter)
     end
     attributes = copy(plot.attributes.attributes)
     space = get(attributes, :space, :data)
-    mspace = get(attributes, :markerspace, :pixel)
     cam = scene.camera
-    attributes[:preprojection] = map(space, mspace, cam.projectionview, cam.resolution) do space, mspace, _, _
-        Makie.clip_to_space(cam, mspace) * Makie.space_to_clip(cam, space)
-    end
-    attributes[:pos] = apply_transform(transform_func_obs(plot),  plot[1])
+    attributes[:preprojection] = Mat4f(I) # calculate this in JS
+    attributes[:pos] = apply_transform(transform_func_obs(plot),  plot[1], space)
+
     quad_offset = get(attributes, :marker_offset, Observable(Vec2f(0)))
     attributes[:marker_offset] = Vec3f(0)
     attributes[:quad_offset] = quad_offset
     attributes[:billboard] = map(rot -> isa(rot, Billboard), plot.rotations)
     attributes[:model] = plot.model
-    attributes[:markerspace] = plot.markerspace
     attributes[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
 
     delete!(attributes, :uv_offset_width)
@@ -211,9 +248,9 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         # the actual, new value gets then taken in the below lift with to_value
         gcollection = Observable(glyphcollection)
     end
-
-    glyph_data = map(pos, gcollection, offset, transfunc) do pos, gc, offset, transfunc
-        Makie.text_quads(pos, to_value(gc), offset, transfunc)
+    atlas = wgl_texture_atlas()
+    glyph_data = map(pos, gcollection, offset, transfunc, space) do pos, gc, offset, transfunc, space
+        Makie.text_quads(atlas, pos, to_value(gc), offset, transfunc, space)
     end
 
     # unpack values from the one signal:
@@ -240,10 +277,6 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     end
 
     cam = scene.camera
-    # gl_attributes[:preprojection] = Observable(Mat4f(I))
-    preprojection = map(space, markerspace, cam.projectionview, cam.resolution) do s, ms, pv, res
-        Makie.clip_to_space(cam, ms) * Makie.space_to_clip(cam, s)
-    end
 
     uniforms = Dict(
         :model => plot.model,
@@ -254,7 +287,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         :marker_offset => char_offset,
         :quad_offset => quad_offset,
         :markersize => scale,
-        :preprojection => preprojection,
+        :preprojection => Mat4f(I),
         :uv_offset_width => uv_offset_width,
         :transform_marker => get(plot.attributes, :transform_marker, Observable(true)),
         :billboard => Observable(false),

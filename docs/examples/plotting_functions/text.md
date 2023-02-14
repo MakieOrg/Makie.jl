@@ -2,11 +2,12 @@
 
 {{doc text}}
 
-## Pixel space text
+## Marker space pixel
 
-By default, text is drawn in pixel space (`space = :pixel`).
-The text anchor is given in data coordinates, but the size of the glyphs is independent of data scaling.
-The boundingbox of the text will include every data point or every text anchor point.
+By default, text is drawn with `markerspace = :pixel`, which means that the text size is interpreted in pixel space.
+(The space of the text position is determined by the `space` attribute instead.)
+
+The boundingbox of text with `markerspace = :pixel` will include every data point or every text anchor point but not the text itself, because its extent depends on the current projection of the axis it is in.
 This also means that `autolimits!` might cut off your text, because the glyphs don't have a meaningful size in data coordinates (the size is independent of zoom level), and you have to take some care to manually place the text or set data limits such that it is fully visible.
 
 You can either plot one string with one position, or a vector of strings with a vector of positions.
@@ -38,7 +39,7 @@ f
 ```
 \end{examplefigure}
 
-## Data space text
+## Marker space data
 
 For text whose dimensions are meaningful in data space, set `markerspace = :data`.
 This means that the boundingbox of the text in data coordinates will include every glyph.
@@ -58,7 +59,7 @@ text!(
     rotation = [i / 7 * 1.5pi for i in 1:7],
     color = [cgrad(:viridis)[x] for x in LinRange(0, 1, 7)],
     align = (:left, :baseline),
-    textsize = 1,
+    fontsize = 1,
     markerspace = :data
 )
 
@@ -161,6 +162,41 @@ f
 ```
 \end{examplefigure}
 
+## Relative space
+
+The default setting of `text` is `space = :data`, which means the final position depends on the axis limits and scaling.
+However, it can be useful to place text relative to the axis itself, independent of scaling.
+With `space = :relative`, the position `(0, 0)` refers to the lower left corner and `(1, 1)` the upper right of the `Scene` that a plot object is in (for an `Axis` that is equivalent to the plotting area, which is implemented using a `Scene`).
+
+A common scenario is to place labels within axes:
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+
+f = Figure()
+
+ax1 = Axis(f[1, 1], limits = (1, 2, 3, 4))
+ax2 = Axis(f[1, 2], width = 300, limits = (5, 6, 7, 8))
+ax3 = Axis(f[2, 1:2], limits = (9, 10, 11, 12))
+
+for (ax, label) in zip([ax1, ax2, ax3], ["A", "B", "C"])
+    text!(
+        ax, 0, 1,
+        text = label, 
+        font = :bold,
+        align = (:left, :top),
+        offset = (4, -2),
+        space = :relative,
+        fontsize = 24
+    )
+end
+
+f
+```
+\end{examplefigure}
+
 ## MathTeX
 
 Makie can render LaTeX strings from the LaTeXStrings.jl package using [MathTeXEngine.jl](https://github.com/Kolaru/MathTeXEngine.jl/).
@@ -195,6 +231,79 @@ lines!(0..10, x -> sin(x^2) / (cos(sqrt(x)) + 2),
     label = L"\frac{\sin(x^2)}{\cos(\sqrt{x}) + 2}")
 
 Legend(f[1, 2], ax)
+
+f
+```
+\end{examplefigure}
+
+## Rich text
+
+With rich text, you can conveniently plot text whose parts have different colors or fonts, and you can position sections as subscripts and superscripts.
+You can create such rich text objects using the functions `rich`, `superscript` and `subscript`, all of which create `RichText` objects.
+
+Each of these functions takes a variable number of arguments, each of which can be a `String` or `RichText`.
+Each can also take keyword arguments such as `color` or `font`, to set these attributes for the given part.
+The top-level settings for font, color, etc. are taken from the `text` attributes as usual.
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+f = Figure(fontsize = 30)
+Label(
+    f[1, 1],
+    rich(
+        "H", subscript("2"), "O is the formula for ",
+        rich("water", color = :cornflowerblue, font = :italic)
+    )
+)
+
+str = "A BEAUTIFUL RAINBOW"
+rainbow = cgrad(:rainbow, length(str), categorical = true)
+fontsizes = 30 .+ 10 .* sin.(range(0, 3pi, length = length(str)))
+
+rainbow_chars = map(enumerate(str)) do (i, c)
+    rich("$c", color = rainbow[i], fontsize = fontsizes[i])
+end
+
+Label(f[2, 1], rich(rainbow_chars...), font = :bold)
+
+f
+```
+\end{examplefigure}
+
+### Tweaking offsets
+
+Sometimes, when using regular and italic fonts next to each other, the gaps between glyphs are too narrow or too wide.
+You can use the `offset` value for rich text to shift glyphs by an amount proportional to the fontsize.
+
+
+\begin{examplefigure}{svg = true}
+```julia
+using CairoMakie
+CairoMakie.activate!() # hide
+Makie.inline!(true) # hide
+
+f = Figure(fontsize = 30)
+Label(
+    f[1, 1],
+    rich(
+        "ITALIC",
+        superscript("Regular without x offset", font = :regular),
+        font = :italic
+    )
+)
+
+Label(
+    f[2, 1],
+    rich(
+        "ITALIC",
+        superscript("Regular with x offset", font = :regular, offset = (0.15, 0)),
+        font = :italic
+    )
+)
 
 f
 ```

@@ -1,37 +1,7 @@
-const DEFAULT_RESOLUTION = Ref((1920, 1080))
-
-if Sys.iswindows()
-    function primary_resolution()
-        dc = ccall((:GetDC, :user32), Ptr{Cvoid}, (Ptr{Cvoid},), C_NULL)
-        ntuple(2) do i
-            Int(ccall((:GetDeviceCaps, :gdi32), Cint, (Ptr{Cvoid}, Cint), dc, (2 - i) + 117))
-        end
-    end
-elseif Sys.isapple()
-    const _CoreGraphics = "CoreGraphics.framework/CoreGraphics"
-    function primary_resolution()
-        dispid = ccall((:CGMainDisplayID, _CoreGraphics), UInt32,())
-        height = ccall((:CGDisplayPixelsHigh,_CoreGraphics), Int, (UInt32,), dispid)
-        width = ccall((:CGDisplayPixelsWide,_CoreGraphics), Int, (UInt32,), dispid)
-        return (width, height)
-    end
-else
-    # TODO implement linux
-    primary_resolution() = DEFAULT_RESOLUTION[]
-end
-
-"""
-Returns the resolution of the primary monitor.
-If the primary monitor can't be accessed, returns (1920, 1080) (full hd)
-"""
-function primary_resolution end
-
-
 #=
 Conservative 7-color palette from Points of view: Color blindness, Bang Wong - Nature Methods
 https://www.nature.com/articles/nmeth.1618?WT.ec_id=NMETH-201106
 =#
-
 function wong_colors(alpha = 1.0)
     colors = [
         RGB(0/255, 114/255, 178/255), # blue
@@ -42,12 +12,12 @@ function wong_colors(alpha = 1.0)
         RGB(213/255, 94/255, 0/255), # vermillion
         RGB(240/255, 228/255, 66/255), # yellow
     ]
-    @. RGBAf(red(colors), green(colors), blue(colors), alpha)
+    return RGBAf.(colors, alpha)
 end
 
 const default_palettes = Attributes(
     color = wong_colors(1),
-    patchcolor = Makie.wong_colors(0.8),
+    patchcolor = wong_colors(0.8),
     marker = [:circle, :utriangle, :cross, :rect, :diamond, :dtriangle, :pentagon, :xcross],
     linestyle = [nothing, :dash, :dot, :dashdot, :dashdotdot],
     side = [:left, :right]
@@ -55,7 +25,14 @@ const default_palettes = Attributes(
 
 const minimal_default = Attributes(
     palette = default_palettes,
-    font = "TeX Gyre Heros Makie",
+    font = :regular,
+    fonts = Attributes(
+        regular = "TeX Gyre Heros Makie",
+        bold = "TeX Gyre Heros Makie Bold",
+        italic = "TeX Gyre Heros Makie Italic",
+        bold_italic = "TeX Gyre Heros Makie Bold Italic",
+    ),
+    fontsize = 16,
     textcolor = :black,
     padding = Vec3f(0.05),
     figure_padding = 16,
@@ -106,6 +83,7 @@ const minimal_default = Attributes(
         renderloop = automatic,
         pause_renderloop = false,
         vsync = false,
+        render_on_demand = true,
         framerate = 30.0,
 
         # GLFW window attributes
@@ -116,6 +94,7 @@ const minimal_default = Attributes(
         fullscreen = false,
         debugging = false,
         monitor = nothing,
+        visible = true,
 
         # Postproccessor
         oit = true,
@@ -141,8 +120,26 @@ const minimal_default = Attributes(
 
 const CURRENT_DEFAULT_THEME = deepcopy(minimal_default)
 
+# Basically like deepcopy but while merging it into another Attribute dict
+function merge_without_obs!(result::Attributes, theme::Attributes)
+    dict = attributes(result)
+    for (key, value) in theme
+        if !haskey(dict, key)
+            dict[key] = Observable{Any}(to_value(value)) # the deepcopy part for observables
+        else
+            current_value = result[key]
+            if value isa Attributes && current_value isa Attributes
+                # if nested attribute, we merge recursively
+                merge_without_obs!(current_value, value)
+            end
+            # we're good! result already has a value, can ignore theme
+        end
+    end
+    return result
+end
+
 function current_default_theme(; kw_args...)
-    return merge!(Attributes(kw_args), deepcopy(CURRENT_DEFAULT_THEME))
+    return merge_without_obs!(Attributes(kw_args), CURRENT_DEFAULT_THEME)
 end
 
 """
@@ -151,7 +148,7 @@ end
 Set the global default theme to `theme` and add / override any attributes given
 as keyword arguments.
 """
-function set_theme!(new_theme = Theme()::Attributes; kwargs...)
+function set_theme!(new_theme=Attributes(); kwargs...)
     empty!(CURRENT_DEFAULT_THEME)
     new_theme = merge!(deepcopy(new_theme), deepcopy(minimal_default))
     new_theme = merge!(Theme(kwargs), new_theme)
@@ -176,7 +173,7 @@ end
 ```
 """
 function with_theme(f, theme = Theme(); kwargs...)
-    previous_theme = Makie.current_default_theme()
+    previous_theme = copy(CURRENT_DEFAULT_THEME)
     try
         set_theme!(theme; kwargs...)
         f()
@@ -187,7 +184,19 @@ function with_theme(f, theme = Theme(); kwargs...)
     end
 end
 
-theme(::Nothing, key::Symbol) = deepcopy(current_default_theme()[key])
+theme(::Nothing, key::Symbol) = theme(key)
+function theme(key::Symbol; default=nothing)
+    if haskey(CURRENT_DEFAULT_THEME, key)
+        val = to_value(CURRENT_DEFAULT_THEME[key])
+        if val isa Union{NamedTuple, Attributes}
+            return val
+        else
+            Observable{Any}(val)
+        end
+    else
+        return default
+    end
+end
 
 """
     update_theme!(with_theme::Theme; kwargs...)

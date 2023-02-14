@@ -65,7 +65,7 @@ function Makie.plot!(plot::CrossBar)
 
         # for horizontal crossbars just flip all components
         fpoint, frect = Point2f, Rectf
-        if orientation == :horizontal
+        if orientation === :horizontal
             fpoint, frect = flip_xy ∘ fpoint, flip_xy ∘ frect
         end
 

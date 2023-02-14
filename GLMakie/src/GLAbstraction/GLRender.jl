@@ -15,7 +15,7 @@ function render(list::Vector{RenderObject{Pre}}) where Pre
     glUseProgram(program.id)
     bind(vertexarray)
     for renderobject in list
-        Bool(to_value(renderobject.uniforms[:visible])) || continue # skip invisible
+        renderobject.visible || continue # skip invisible
         # make sure we only bind new programs and vertexarray when it is actually
         # different from the previous one
         if renderobject.vertexarray != vertexarray
@@ -55,7 +55,9 @@ So rewriting this function could get us a lot of performance for scenes with
 a lot of objects.
 """
 function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray)
-    if Bool(to_value(renderobject.uniforms[:visible]))
+    renderobject.requires_update = false
+    
+    if renderobject.visible
         renderobject.prerenderfunction()
         program = vertexarray.program
         glUseProgram(program.id)
@@ -71,7 +73,7 @@ function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray
                         error("Uniform tuple too long: $(length(value))")
                     end
                 catch e
-                    error("uniform $key doesn't work with value $(renderobject.uniforms[key])")
+                    @warn error("uniform $key doesn't work with value $(renderobject.uniforms[key])") exception=(e, Base.catch_backtrace())
                 end
             end
         end

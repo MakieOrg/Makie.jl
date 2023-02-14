@@ -21,13 +21,13 @@ end
 
 Plot a kernel density estimate of `values`.
 `npoints` controls the resolution of the estimate, the baseline can be
-shifted with `offset` and the `direction` set to :x or :y.
+shifted with `offset` and the `direction` set to `:x` or `:y`.
 `bandwidth` and `boundary` are determined automatically by default.
 
 Statistical weights can be provided via the `weights` keyword argument.
 
 `color` is usually set to a single color, but can also be set to `:x` or
-`:y` to color with a gradient. If you use `:y` when direction = `:x` (or vice versa),
+`:y` to color with a gradient. If you use `:y` when `direction = :x` (or vice versa),
 note that only 2-element colormaps can work correctly.
 
 ## Attributes
@@ -101,12 +101,12 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
 
     colorobs = Observable{RGBColors}()
     map!(colorobs, plot.color, lowerupper, plot.direction) do c, lu, dir
-        if (dir == :x && c == :x) || (dir == :y && c == :y)
-            dim = dir == :x ? 1 : 2
+        if (dir === :x && c === :x) || (dir === :y && c === :y)
+            dim = dir === :x ? 1 : 2
             return Float32[l[dim] for l in lu[1]]
-        elseif (dir == :y && c == :x) || (dir == :x && c == :y)
+        elseif (dir === :y && c === :x) || (dir === :x && c === :y)
             o = Float32(plot.offset[])
-            dim = dir == :x ? 2 : 1
+            dim = dir === :x ? 2 : 1
             return vcat(Float32[l[dim] - o for l in lu[1]], Float32[l[dim] - o for l in lu[2]])::Vector{Float32}
         else
             return to_color(c)

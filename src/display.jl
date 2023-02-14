@@ -23,21 +23,45 @@ end
     push_screen!(scene::Scene, screen::MakieScreen)
 
 Adds a screen to the scene and registeres a clean up event when screen closes.
+Also, makes sure that always just one screen is active for on scene.
 """
 function push_screen!(scene::Scene, screen::MakieScreen)
-    if !any(x -> x === screen, scene.current_screens)
-        push!(scene.current_screens, screen)
-        deregister = nothing
-        deregister = on(events(scene).window_open, priority=typemax(Int)) do is_open
-            # when screen closes, it should set the scene isopen event to false
-            # so that's when we can remove the screen
-            if !is_open
-                delete_screen!(scene, screen)
-                # deregister itself
-                !isnothing(deregister) && off(deregister)
+    if length(scene.current_screens) == 1 && scene.current_screens[1] === screen
+        # Nothing todo here, already displayed on screen
+        return
+    end
+    # Else we delete all other screens, only one screen per scene is allowed!!
+    while !isempty(scene.current_screens)
+        delete_screen!(scene, pop!(scene.current_screens))
+    end
+
+    # Now we push the screen :)
+    push!(scene.current_screens, screen)
+    deregister = nothing
+    deregister = on(events(scene).window_open, priority=typemax(Int)) do is_open
+        # when screen closes, it should set the scene isopen event to false
+        # so that's when we can remove the screen
+        if !is_open
+            close(screen)
+            delete_screen!(scene, screen)
+            # deregister itself after letting other listeners run
+            if !isnothing(deregister)
+                off(deregister)
+
+                # if there are multiple listeners removing this one will skip the
+                # second one (now first). To fix this we run the listener manually here
+                callbacks = listeners(events(scene).window_open)
+                if length(callbacks) > 0
+                    result = Base.invokelatest(callbacks[1][2], is_open)
+                    if result isa Consume && result.x
+                        # if the second listener consumes we need to consume here
+                        # to avoid executing the third (now second).
+                        return Consume(true)
+                    end
+                end
             end
-            return Consume(false)
         end
+        return Consume(false)
     end
     return
 end
@@ -106,7 +130,7 @@ Displays the figurelike in a window or the browser, depending on the backend.
 The parameters for `screen_config` are backend dependend,
 see `?Backend.Screen` or `Base.doc(Backend.Screen)` for applicable options.
 """
-function Base.display(figlike::FigureLike; backend=current_backend(), screen_config...)
+function Base.display(figlike::FigureLike; backend=current_backend(), update=true, screen_config...)
     if ismissing(backend)
         error("""
         No backend available!
@@ -119,18 +143,24 @@ function Base.display(figlike::FigureLike; backend=current_backend(), screen_con
     if ALWAYS_INLINE_PLOTS[]
         Core.invoke(display, Tuple{Any}, figlike)
     else
-        screen = backend.Screen(get_scene(figlike); screen_config...)
-        return display(screen, figlike)
+        scene = get_scene(figlike)
+        update && update_state_before_display!(figlike)
+        screen = getscreen(backend, scene; screen_config...)
+        display(screen, scene)
+        return screen
     end
 end
+
+is_displayed(screen::MakieScreen, scene::Scene) = screen in scene.current_screens
+
 
 # Backends overload display(::Backend.Screen, scene::Scene), while Makie overloads the below,
 # so that they don't need to worry
 # about stuff like `update_state_before_display!`
-function Base.display(screen::MakieScreen, figlike::FigureLike; display_attributes...)
-    update_state_before_display!(figlike)
+function Base.display(screen::MakieScreen, figlike::FigureLike; update=true, display_attributes...)
     scene = get_scene(figlike)
-    display(screen, scene; display_attributes...)
+    update && update_state_before_display!(figlike)
+    display(screen, get_scene(figlike); display_attributes...)
     return screen
 end
 
@@ -169,11 +199,8 @@ function Base.show(io::IO, m::MIME, figlike::FigureLike)
     scene = get_scene(figlike)
     backend = current_backend()
     # get current screen the scene is already displayed on, or create a new screen
-    screen = getscreen(scene, backend) do
-        # only update fig if not already displayed
-        update_state_before_display!(figlike)
-        return backend.Screen(scene, io, m)
-    end
+    update_state_before_display!(figlike)
+    screen = getscreen(backend, scene, io, m)
     backend_show(screen, io, m, scene)
     return
 end
@@ -223,6 +250,7 @@ function FileIO.save(
         file::FileIO.Formatted, fig::FigureLike;
         resolution = size(get_scene(fig)),
         backend = current_backend(),
+        update = true,
         screen_config...
     )
     scene = get_scene(fig)
@@ -239,14 +267,18 @@ function FileIO.save(
     # query the filetype only from the file extension
     F = filetype(file)
     mime = format2mime(F)
-    open(filename, "w") do io
-        # If the scene already got displayed, we get the current screen its displayed on
-        # Else, we create a new scene and update the state of the fig
-        screen = getscreen(scene, backend) do
-            update_state_before_display!(fig)
-            return backend.Screen(scene, io, mime; screen_config...)
+    try
+        return open(filename, "w") do io
+            # If the scene already got displayed, we get the current screen its displayed on
+            # Else, we create a new scene and update the state of the fig
+            update && update_state_before_display!(fig)
+            screen = getscreen(backend, scene, io, mime; visible=false, screen_config...)
+            backend_show(screen, io, mime, scene)
         end
-        backend_show(screen, io, mime, scene)
+    catch e
+        # So, if open(io-> error(...), "w"), the file will get created, but not removed...
+        isfile(filename) && rm(filename; force=true)
+        rethrow(e)
     end
 end
 
@@ -287,10 +319,13 @@ function colorbuffer(screen::MakieScreen, format::ImageStorageFormat)
     end
 end
 
-function getscreen(f::Function, scene::Scene, backend::Module)
+function apply_screen_config! end
+
+function getscreen(backend::Union{Missing, Module}, scene::Scene, args...; screen_config...)
     screen = getscreen(scene)
+    config = Makie.merge_screen_config(backend.ScreenConfig, screen_config)
     if !isnothing(screen) && parentmodule(typeof(screen)) == backend
-        return screen
+        return apply_screen_config!(screen, config, scene, args...)
     end
     if ismissing(backend)
         error("""
@@ -298,7 +333,7 @@ function getscreen(f::Function, scene::Scene, backend::Module)
             before trying to render a Scene.
             """)
     else
-        return f()
+        return backend.Screen(scene, config, args...)
     end
 end
 
@@ -315,26 +350,21 @@ or RGBA.
                         used in FFMPEG without conversion
 - `screen_config`: Backend dependend, look up via `?Backend.Screen`/`Base.doc(Backend.Screen)`
 """
-function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; backend = current_backend(), screen_config...)
+function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; update=true, backend = current_backend(), screen_config...)
     scene = get_scene(fig)
-    screen = getscreen(scene, backend) do
-        screen = backend.Screen(scene, format; start_renderloop=false, visible=false, screen_config...)
-        display(screen, fig; connect=false)
-        return screen
-    end
+    update && update_state_before_display!(fig)
+    screen = getscreen(backend, scene, format; start_renderloop=false, visible=false, screen_config...)
     return colorbuffer(screen, format)
 end
 
 # Fallback for any backend that will just use colorbuffer to write out an image
 function backend_show(screen::MakieScreen, io::IO, m::MIME"image/png", scene::Scene)
-    display(screen, scene; connect=false)
     img = colorbuffer(screen)
     FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img)
     return
 end
 
 function backend_show(screen::MakieScreen, io::IO, m::MIME"image/jpeg", scene::Scene)
-    display(screen, scene; connect=false)
     img = colorbuffer(scene)
     FileIO.save(FileIO.Stream{FileIO.format"JPEG"}(Makie.raw_io(io)), img)
     return

@@ -9,7 +9,7 @@ For CairoMakie, there shouldn't be any difference in using it on a remote or loc
 
 ## GLMakie
 
-For [GLMakie](https://github.com/MakieOrg/GLMakie.jl) you can either use X11 forwarding to render on the local
+For [GLMakie](https://github.com/MakieOrg/Makie.jl/tree/master/GLMakie) you can either use X11 forwarding to render on the local
 host or use [VirtualGL](https://www.virtualgl.org/) to render on the remote server.
 
 ### GLMakie with X11 forwarding
@@ -42,18 +42,17 @@ and then you will have to start julia via VirtualGL
 ### GLMakie in CI
 
 You can also use GLMakie on CI or servers without a GPU by using `xvfb` for software rendering.
-This procedure is used in the [GLMakie tests](https://github.com/MakieOrg/GLMakie.jl/blob/8954fc34354a09ceb11159a8e8e35429c05a710f/.github/workflows/ci.yml#L41-L42).
+This procedure is used in the [GLMakie tests](https://github.com/MakieOrg/Makie.jl/blob/8504b27c28c45a522467c7c57f6953c3a680fa6a/.github/workflows/glmakie.yaml#L45-L57).
 
 ## WGLMakie
 
 For WGLMakie, you can setup a server with JSServe and serve the content from a remote server.
 This also works for creating interactive plots with Documenter.
-Check out the [docs](http://juliaplots.org/WGLMakie.jl/stable/) for more details about this.
+Check out the [docs](/documentation/backends/wglmakie) for more details about this.
 
 If you want to use WGLMakie in VS Code on a remote server, you will have to forward the port
 used by WGLMakie in order for the plot pane integration to work.
-If you don't need to change the port on which WGLMakie,
-you will just have to [forward](https://code.visualstudio.com/docs/remote/ssh#_forwarding-a-port-creating-ssh-tunnel) the 9284 port.
+If you don't need to change the port, you will just have to [forward](https://code.visualstudio.com/docs/remote/ssh#_forwarding-a-port-creating-ssh-tunnel) the 9384 port.
 
 If you want to change the port on which WGLMakie runs on the remote, say `8081`, you will have to use the following
 ```julia

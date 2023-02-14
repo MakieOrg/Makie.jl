@@ -17,6 +17,8 @@ mutable struct Texture{T <: GLArrayEltypes, NDIM} <: OpenglTexture{T, NDIM}
     parameters      ::TextureParameters{NDIM}
     size            ::NTuple{NDIM, Int}
     context         ::GLContext
+    requires_update ::Observable{Bool}
+    observers       ::Vector{Observables.ObserverFunction}
     function Texture{T, NDIM}(
             id              ::GLuint,
             texturetype     ::GLenum,
@@ -34,7 +36,9 @@ mutable struct Texture{T <: GLArrayEltypes, NDIM} <: OpenglTexture{T, NDIM}
             format,
             parameters,
             size,
-            current_context()
+            current_context(),
+            Observable(true),
+            Observables.ObserverFunction[]
         )
         finalizer(free, tex)
         tex
@@ -45,6 +49,12 @@ end
 mutable struct TextureBuffer{T <: GLArrayEltypes} <: OpenglTexture{T, 1}
     texture::Texture{T, 1}
     buffer::GLBuffer{T}
+    requires_update::Observable{Bool}
+
+    function TextureBuffer(texture::Texture{T, 1}, buffer::GLBuffer{T}) where T
+        x = map((_, _) -> true, buffer.requires_update, texture.requires_update)
+        new{T}(texture, buffer, x)
+    end
 end
 Base.size(t::TextureBuffer) = size(t.buffer)
 Base.size(t::TextureBuffer, i::Integer) = size(t.buffer, i)
@@ -58,9 +68,11 @@ end
 
 bind(t::Texture, id) = glBindTexture(t.texturetype, id)
 ShaderAbstractions.switch_context!(t::TextureBuffer) = switch_context!(t.texture.context)
+
 function unsafe_free(tb::TextureBuffer)
     unsafe_free(tb.texture)
     unsafe_free(tb.buffer)
+    Observables.clear(tb.requires_update)
 end
 
 is_texturearray(t::Texture) = t.texturetype == GL_TEXTURE_2D_ARRAY
@@ -132,7 +144,8 @@ function Texture(s::ShaderAbstractions.Sampler{T, N}; kwargs...) where {T, N}
         x_repeat = s.repeat[1], y_repeat = s.repeat[min(2, N)], z_repeat = s.repeat[min(3, N)],
         anisotropic = s.anisotropic; kwargs...
     )
-    ShaderAbstractions.connect!(s, tex)
+    obsfunc = ShaderAbstractions.connect!(s, tex)
+    push!(tex.observers, obsfunc)
     return tex
 end
 
@@ -463,16 +476,16 @@ map_texture_paramers(s::NTuple{N, Symbol}) where {N} = map(map_texture_paramers,
 
 function map_texture_paramers(s::Symbol)
 
-    s == :clamp_to_edge && return GL_CLAMP_TO_EDGE
-    s == :mirrored_repeat && return GL_MIRRORED_REPEAT
-    s == :repeat && return GL_REPEAT
+    s === :clamp_to_edge && return GL_CLAMP_TO_EDGE
+    s === :mirrored_repeat && return GL_MIRRORED_REPEAT
+    s === :repeat && return GL_REPEAT
 
-    s == :linear && return GL_LINEAR
-    s == :nearest && return GL_NEAREST
-    s == :nearest_mipmap_nearest && return GL_NEAREST_MIPMAP_NEAREST
-    s == :linear_mipmap_nearest && return GL_LINEAR_MIPMAP_NEAREST
-    s == :nearest_mipmap_linear && return GL_NEAREST_MIPMAP_LINEAR
-    s == :linear_mipmap_linear && return GL_LINEAR_MIPMAP_LINEAR
+    s === :linear && return GL_LINEAR
+    s === :nearest && return GL_NEAREST
+    s === :nearest_mipmap_nearest && return GL_NEAREST_MIPMAP_NEAREST
+    s === :linear_mipmap_nearest && return GL_LINEAR_MIPMAP_NEAREST
+    s === :nearest_mipmap_linear && return GL_NEAREST_MIPMAP_LINEAR
+    s === :linear_mipmap_linear && return GL_LINEAR_MIPMAP_LINEAR
 
     error("$s is not a valid texture parameter")
 end
@@ -485,7 +498,7 @@ function TextureParameters(T, NDim;
         z_repeat  = x_repeat, #wrap_r
         anisotropic = 1f0
     )
-    T <: Integer && (minfilter == :linear || magfilter == :linear) && error("Wrong Texture Parameter: Integer texture can't interpolate. Try :nearest")
+    T <: Integer && (minfilter === :linear || magfilter === :linear) && error("Wrong Texture Parameter: Integer texture can't interpolate. Try :nearest")
     repeat = (x_repeat, y_repeat, z_repeat)
     swizzle_mask = if T <: Gray
         GLenum[GL_RED, GL_RED, GL_RED, GL_ONE]
@@ -519,7 +532,13 @@ function set_parameters(t::Texture{T, N}, params::TextureParameters=t.parameters
     if N >= 3 && !is_texturearray(t) # for texture arrays, third dimension can not be set
         push!(result, (GL_TEXTURE_WRAP_R, data[:repeat][3]))
     end
-    push!(result, (GL_TEXTURE_MAX_ANISOTROPY_EXT, params.anisotropic))
+    try
+        if GLFW.ExtensionSupported("GL_ARB_texture_filter_anisotropic")
+            push!(result, (GL_TEXTURE_MAX_ANISOTROPY_EXT, params.anisotropic))
+        end
+    catch e
+        e.code == GLFW.NO_CURRENT_CONTEXT || rethrow(e)
+    end
     t.parameters = params
     set_parameters(t, result)
 end
