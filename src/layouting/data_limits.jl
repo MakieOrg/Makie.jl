@@ -165,7 +165,7 @@ function iterate_transformed(plot)
     # Note: since we're transforming here, we need to invert whenever setting e.g. axis limits.
     trans_func = transform_func(t)
     # trans_func = identity
-    iterate_transformed(points, model, plot.space[], trans_func)
+    iterate_transformed(points, model, to_value(get(plot, :space, :data)), trans_func)
 end
 
 function iterate_transformed(points, model, space, trans_func)
