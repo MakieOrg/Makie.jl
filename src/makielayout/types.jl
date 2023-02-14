@@ -10,10 +10,10 @@ struct DataAspect end
 
 
 struct Cycler
-    counters::Dict{Type, Int}
+    counters::IdDict{Type, Int}
 end
 
-Cycler() = Cycler(Dict{Type, Int}())
+Cycler() = Cycler(IdDict{Type, Int}())
 
 
 struct Cycle
@@ -126,7 +126,7 @@ mutable struct LineAxis
     elements::Dict{Symbol, Any}
     tickpositions::Observable{Vector{Point2f}}
     tickvalues::Observable{Vector{Float32}}
-    ticklabels::Observable{Vector{AbstractString}}
+    ticklabels::Observable{Vector{Any}}
     minortickpositions::Observable{Vector{Point2f}}
     minortickvalues::Observable{Vector{Float32}}
 end

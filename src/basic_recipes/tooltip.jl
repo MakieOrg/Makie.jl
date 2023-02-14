@@ -103,9 +103,9 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     text_offset = map(p.offset, textpadding, p.triangle_size, p.placement, p.align) do o, pad, ts, placement, align
         l, r, b, t = pad
 
-        if placement == :left 
+        if placement === :left 
             return Vec2f(-o - r - ts, b - align * (b + t))
-        elseif placement == :right
+        elseif placement === :right
             return Vec2f( o + l + ts, b - align * (b + t))
         elseif placement in (:below, :down, :bottom)
             return Vec2f(l - align * (l + r), -o - t - ts)
@@ -118,9 +118,9 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     end
 
     text_align = map(p.placement, p.align) do placement, align
-        if placement == :left 
+        if placement === :left 
             return (1.0, align)
-        elseif placement == :right
+        elseif placement === :right
             return (0.0, align)
         elseif placement in (:below, :down, :bottom)
             return (align, 1.0)
@@ -180,10 +180,10 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         o = origin(bb); w = widths(bb)
         scale!(mp, s, s, s)
         
-        if placement == :left 
+        if placement === :left 
             translate!(mp, Vec3f(o[1] + w[1], o[2] + align * w[2], 0))
             rotate!(mp, qrotation(Vec3f(0,0,1), 0.5pi))
-        elseif placement == :right
+        elseif placement === :right
             translate!(mp, Vec3f(o[1], o[2] + align * w[2], 0))
             rotate!(mp, qrotation(Vec3f(0,0,1), -0.5pi))
         elseif placement in (:below, :down, :bottom)
@@ -212,7 +212,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         #  |    ____
         #  |   |
 
-        shift = if placement == :left 
+        shift = if placement === :left 
             Vec2f[
                 (l, b + 0.5h), (l, t), (r, t), 
                 (r,     b + align * h + 0.5s), 
@@ -220,7 +220,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
                 (r,     b + align * h - 0.5s),
                 (r, b), (l, b), (l, b + 0.5h)
             ]
-        elseif placement == :right
+        elseif placement === :right
             Vec2f[
                 (l + 0.5w, b), (l, b), 
                 (l,   b + align * h - 0.5s), 

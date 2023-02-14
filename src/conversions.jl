@@ -762,17 +762,8 @@ convert_attribute(s::SceneLike, x, key::Key, ::Key) = convert_attribute(s, x, ke
 convert_attribute(s::SceneLike, x, key::Key) = convert_attribute(x, key)
 convert_attribute(x, key::Key) = x
 
-"""
-    to_color(color)
-Converts a `color` symbol (e.g. `:blue`) to a color RGBA.
-"""
 convert_attribute(color, ::key"color") = to_color(color)
 
-"""
-    to_colormap(cm)
-
-Converts a colormap `cm` symbol/string (e.g. `:Spectral`) to a colormap RGB array.
-"""
 convert_attribute(colormap, ::key"colormap") = to_colormap(colormap)
 convert_attribute(rotation, ::key"rotation") = to_rotation(rotation)
 convert_attribute(font, ::key"font") = to_font(font)
@@ -839,16 +830,12 @@ convert_attribute(c, ::key"strokecolor") = to_color(c)
 
 convert_attribute(x::Nothing, ::key"linestyle") = x
 
-"""
-    `AbstractVector{<:AbstractFloat}` for denoting sequences of fill/nofill. e.g.
-
-[0.5, 0.8, 1.2] will result in 0.5 filled, 0.3 unfilled, 0.4 filled. 1.0 unit is one linewidth!
-"""
+#     `AbstractVector{<:AbstractFloat}` for denoting sequences of fill/nofill. e.g.
+#
+# [0.5, 0.8, 1.2] will result in 0.5 filled, 0.3 unfilled, 0.4 filled. 1.0 unit is one linewidth!
 convert_attribute(A::AbstractVector, ::key"linestyle") = A
 
-"""
-    A `Symbol` equal to `:dash`, `:dot`, `:dashdot`, `:dashdotdot`
-"""
+# A `Symbol` equal to `:dash`, `:dot`, `:dashdot`, `:dashdotdot`
 convert_attribute(ls::Union{Symbol,AbstractString}, ::key"linestyle") = line_pattern(ls, :normal)
 
 function convert_attribute(ls::Tuple{<:Union{Symbol,AbstractString},<:Any}, ::key"linestyle")
@@ -863,15 +850,15 @@ end
 "The linestyle patterns are inspired by the LaTeX package tikZ as seen here https://tex.stackexchange.com/questions/45275/tikz-get-values-for-predefined-dash-patterns."
 
 function line_diff_pattern(ls::Symbol, gaps = :normal)
-    if ls == :solid
+    if ls === :solid
         nothing
-    elseif ls == :dash
+    elseif ls === :dash
         line_diff_pattern("-", gaps)
-    elseif ls == :dot
+    elseif ls === :dot
         line_diff_pattern(".", gaps)
-    elseif ls == :dashdot
+    elseif ls === :dashdot
         line_diff_pattern("-.", gaps)
-    elseif ls == :dashdotdot
+    elseif ls === :dashdotdot
         line_diff_pattern("-..", gaps)
     else
         error(
@@ -1043,6 +1030,8 @@ to_colorrange(x) = isnothing(x) ? nothing : Vec2f(x)
 convert_attribute(x, ::key"fontsize") = to_fontsize(x)
 to_fontsize(x::Number) = Float32(x)
 to_fontsize(x::AbstractVector{T}) where T <: Number = el32convert(x)
+to_fontsize(x::Vec2) = Vec2f(x)
+to_fontsize(x::AbstractVector{T}) where T <: Vec2 = Vec2f.(x)
 
 convert_attribute(x, ::key"linewidth") = to_linewidth(x)
 to_linewidth(x) = Float32(x)
@@ -1174,11 +1163,7 @@ function to_colormap(cg::PlotUtils.ColorGradient)::Vector{RGBAf}
     return to_colormap(getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), 256)))
 end
 
-"""
-    to_volume_algorithm(b, x)
-
-Enum values: `IsoValue` `Absorption` `MaximumIntensityProjection` `AbsorptionRGBA` `AdditiveRGBA` `IndexedAbsorptionRGBA`
-"""
+# Enum values: `IsoValue` `Absorption` `MaximumIntensityProjection` `AbsorptionRGBA` `AdditiveRGBA` `IndexedAbsorptionRGBA`
 function convert_attribute(value, ::key"algorithm")
     if isa(value, RaymarchAlgorithm)
         return Int32(value)
@@ -1191,9 +1176,7 @@ function convert_attribute(value, ::key"algorithm")
     end
 end
 
-"""
-Symbol/String: iso, absorption, mip, absorptionrgba, indexedabsorption
-"""
+# Symbol/String: iso, absorption, mip, absorptionrgba, indexedabsorption
 function convert_attribute(value::Union{Symbol, String}, k::key"algorithm")
     vals = Dict(
         :iso => IsoValue,
@@ -1329,7 +1312,7 @@ convert_attribute(value, ::key"isovalue", ::key"volume") = Float32(value)
 convert_attribute(value, ::key"isorange", ::key"volume") = Float32(value)
 
 function convert_attribute(value::Symbol, ::key"marker", ::key"meshscatter")
-    if value == :Sphere
+    if value === :Sphere
         return normal_mesh(Sphere(Point3f(0), 1f0))
     else
         error("Unsupported marker: $(value)")
@@ -1339,3 +1322,6 @@ end
 function convert_attribute(value::AbstractGeometry, ::key"marker", ::key"meshscatter")
     return normal_mesh(value)
 end
+
+convert_attribute(value, ::key"diffuse") = Vec3f(value)
+convert_attribute(value, ::key"specular") = Vec3f(value)

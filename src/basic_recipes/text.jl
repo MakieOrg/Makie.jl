@@ -9,13 +9,14 @@ function plot!(plot::Text)
     
     onany(plot.text, plot.fontsize, plot.font, plot.fonts, plot.align,
             plot.rotation, plot.justification, plot.lineheight, plot.color, 
-            plot.strokecolor, plot.strokewidth, plot.word_wrap_width) do str,
-                ts, f, fs, al, rot, jus, lh, col, scol, swi, www
+            plot.strokecolor, plot.strokewidth, plot.word_wrap_width, plot.offset) do str,
+                ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs
         ts = to_fontsize(ts)
         f = to_font(fs, f)
         rot = to_rotation(rot)
         col = to_color(col)
         scol = to_color(scol)
+        offs = to_offset(offs)
 
         gcs = GlyphCollection[]
         lsegs = Point2f[]
@@ -36,12 +37,12 @@ function plot!(plot::Text)
             # as per string.
             broadcast_foreach(
                 func, 
-                str, 1:attr_broadcast_length(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www
+                str, 1:attr_broadcast_length(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs
             )
         else
             # Otherwise Vector arguments are interpreted by layout_text/
             # glyph_collection as per character.
-            func(str, 1, ts, f, fs, al, rot, jus, lh, col, scol, swi, www)
+            func(str, 1, ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs)
         end
         glyphcollections[] = gcs
         linewidths[] = lwidths
@@ -80,11 +81,14 @@ function plot!(plot::Text)
     plot
 end
 
-function _get_glyphcollection_and_linesegments(str::AbstractString, index, ts, f, fs, al, rot, jus, lh, col, scol, swi, www)
+to_offset(v::VecTypes) = Vec2f(v)
+to_offset(v::AbstractVector) = map(to_offset, v)
+
+function _get_glyphcollection_and_linesegments(str::AbstractString, index, ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs)
     gc = layout_text(string(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www)
     gc, Point2f[], Float32[], RGBAf[], Int[]
 end
-function _get_glyphcollection_and_linesegments(latexstring::LaTeXString, index, ts, f, fs, al, rot, jus, lh, col, scol, swi, www)
+function _get_glyphcollection_and_linesegments(latexstring::LaTeXString, index, ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs)
     tex_elements, glyphcollections, offset = texelems_and_glyph_collection(latexstring, ts,
                 al[1], al[2], rot, col, scol, swi, www)
 
@@ -99,8 +103,8 @@ function _get_glyphcollection_and_linesegments(latexstring::LaTeXString, index, 
         if element isa MathTeXEngine.HLine
             h = element
             x, y = position
-            push!(linesegs, rotate_2d(rot, ts * Point2f(x, y) - offset))
-            push!(linesegs, rotate_2d(rot, ts * Point2f(x + h.width, y) - offset))
+            push!(linesegs, rotate_2d(rot, ts * Point2f(x, y) - offset) + offs)
+            push!(linesegs, rotate_2d(rot, ts * Point2f(x + h.width, y) - offset) + offs)
             push!(linewidths, ts * h.thickness)
             push!(linewidths, ts * h.thickness)
             push!(linecolors, col) # TODO how to specify color better?
@@ -121,7 +125,7 @@ end
 # conversion stopper for previous methods
 convert_arguments(::Type{<: Text}, gcs::AbstractVector{<:GlyphCollection}) = (gcs,)
 convert_arguments(::Type{<: Text}, gc::GlyphCollection) = (gc,)
-convert_arguments(::Type{<: Text}, vec::AbstractVector{<:Tuple{<:AbstractString, <:Point}}) = (vec,)
+convert_arguments(::Type{<: Text}, vec::AbstractVector{<:Tuple{<:Any, <:Point}}) = (vec,)
 convert_arguments(::Type{<: Text}, strings::AbstractVector{<:AbstractString}) = (strings,)
 convert_arguments(::Type{<: Text}, string::AbstractString) = (string,)
 
@@ -137,10 +141,10 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
 end
 
 # overload text plotting for a vector of tuples of a string and a point each
-function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:AbstractString, <:Point}}}})    
+function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:Point}}}})    
     strings_and_positions = plot[1]
 
-    strings = Observable{Vector{AbstractString}}(first.(strings_and_positions[]))
+    strings = Observable{Vector{Any}}(first.(strings_and_positions[]))
 
     positions = Observable(
         Point3f[to_ndim(Point3f, last(x), 0) for x in  strings_and_positions[]] # avoid Any for zero elements
@@ -226,17 +230,17 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
         end
     end
 
-    xshift = if halign == :center
+    xshift = if halign === :center
         width(bb) ./ 2
-    elseif halign == :left
+    elseif halign === :left
         minimum(bb)[1]
-    elseif halign == :right
+    elseif halign === :right
         maximum(bb)[1]
     end
 
-    yshift = if valign == :center
+    yshift = if valign === :center
         maximum(bb)[2] - (height(bb) / 2)
-    elseif valign == :top
+    elseif valign === :top
         maximum(bb)[2]
     else
         minimum(bb)[2]
@@ -263,7 +267,7 @@ end
 
 iswhitespace(l::LaTeXString) = iswhitespace(replace(l.s, '$' => ""))
 
-struct RichText <: AbstractString
+struct RichText
     type::Symbol
     children::Vector{Union{RichText,String}}
     attributes::Dict{Symbol, Any}
@@ -282,14 +286,8 @@ function Base.String(r::RichText)
     end
 end
 
-Base.ncodeunits(r::RichText) = ncodeunits(String(r)) # needed for isempty
-
 function Base.show(io::IO, ::MIME"text/plain", r::RichText)
     print(io, "RichText: \"$(String(r))\"")
-end
-
-function Base.:(==)(r1::RichText, r2::RichText)
-    r1.type == r2.type && r1.children == r2.children && r1.attributes == r2.attributes
 end
 
 rich(args...; kwargs...) = RichText(:span, args...; kwargs...)
@@ -298,7 +296,7 @@ superscript(args...; kwargs...) = RichText(:sup, args...; kwargs...)
 
 export rich, subscript, superscript
 
-function _get_glyphcollection_and_linesegments(rt::RichText, index, ts, f, fset, al, rot, jus, lh, col, scol, swi, www)
+function _get_glyphcollection_and_linesegments(rt::RichText, index, ts, f, fset, al, rot, jus, lh, col, scol, swi, www, offs)
     gc = layout_text(rt, ts, f, fset, al, rot, jus, lh, col)
     gc, Point2f[], Float32[], RGBAf[], Int[]
 end
@@ -385,21 +383,21 @@ function apply_alignment_and_justification!(lines, ju, al)
         ginfo.origin[2] + ginfo.extent.descender * ginfo.size[2]
     end
 
-    al_offset_x = if al[1] == :center
+    al_offset_x = if al[1] === :center
         max_x / 2
-    elseif al[1] == :left
+    elseif al[1] === :left
         0f0
-    elseif al[1] == :right
+    elseif al[1] === :right
         max_x
     else
         0f0
     end
 
-    al_offset_y = if al[2] == :center
+    al_offset_y = if al[2] === :center
         0.5 * (top_y + bottom_y)
-    elseif al[2] == :bottom
+    elseif al[2] === :bottom
         bottom_y
-    elseif al[2] == :top
+    elseif al[2] === :top
         top_y
     else
         0f0
@@ -421,20 +419,20 @@ end
 function float_justification(ju, al)::Float32
     halign = al[1]
     float_justification = if ju === automatic
-        if halign == :left || halign == 0
+        if halign === :left || halign == 0
             0.0f0
-        elseif halign == :right || halign == 1
+        elseif halign === :right || halign == 1
             1.0f0
-        elseif halign == :center || halign == 0.5
+        elseif halign === :center || halign == 0.5
             0.5f0
         else
             0.5f0
         end
-    elseif ju == :left
+    elseif ju === :left
         0.0f0
-    elseif ju == :right
+    elseif ju === :right
         1.0f0
-    elseif ju == :center
+    elseif ju === :center
         0.5f0
     else
         Float32(ju)

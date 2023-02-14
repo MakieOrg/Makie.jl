@@ -7,11 +7,10 @@ function vertexbuffer(x::Observable, p)
     return Buffer(lift(vertexbuffer, x, transform_func_obs(p), get(p, :space, :data)))
 end
 
-facebuffer(x) = facebuffer(GeometryBasics.faces(x))
+facebuffer(x) = faces(x)
+facebuffer(x::AbstractArray{<:GLTriangleFace}) = x
 facebuffer(x::Observable) = Buffer(lift(facebuffer, x))
-function facebuffer(x::AbstractArray{GLTriangleFace})
-    return x
-end
+
 
 function array2color(colors, cmap, crange)
     cmap = RGBAf.(Colors.color.(to_colormap(cmap)), 1.0)
@@ -96,7 +95,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
     uniforms[:shading] = plot.shading
 
     for key in (:diffuse, :specular, :shininess, :backlight)
-        uniforms[key] = plot[key]
+        uniforms[key] = lift(x-> convert_attribute(x, Key{key}()), plot[key])
     end
 
     faces = facebuffer(mesh_signal)
@@ -125,5 +124,9 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
         return transpose(inv(v[i, i] * m[i, i]))
     end
 
-    return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), instance; uniforms...)
+    # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
+    uniforms[:picking] = false
+    uniforms[:object_id] = UInt32(0)
+
+    return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), instance, uniforms)
 end

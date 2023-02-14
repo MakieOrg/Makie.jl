@@ -42,9 +42,24 @@ function push_screen!(scene::Scene, screen::MakieScreen)
         # when screen closes, it should set the scene isopen event to false
         # so that's when we can remove the screen
         if !is_open
+            close(screen)
             delete_screen!(scene, screen)
-            # deregister itself
-            !isnothing(deregister) && off(deregister)
+            # deregister itself after letting other listeners run
+            if !isnothing(deregister)
+                off(deregister)
+
+                # if there are multiple listeners removing this one will skip the
+                # second one (now first). To fix this we run the listener manually here
+                callbacks = listeners(events(scene).window_open)
+                if length(callbacks) > 0
+                    result = Base.invokelatest(callbacks[1][2], is_open)
+                    if result isa Consume && result.x
+                        # if the second listener consumes we need to consume here
+                        # to avoid executing the third (now second).
+                        return Consume(true)
+                    end
+                end
+            end
         end
         return Consume(false)
     end
