@@ -131,7 +131,9 @@ void main(void)
     float thickness_aa2 = g_thickness[2] + AA_THICKNESS;
 
     // determine the direction of each of the 3 segments (previous, current, next)
-    vec2 v1 = normalize(p2 - p1);
+    vec2 v1 = p2 - p1;
+    float segment_length = length(v1);
+    v1 /= segment_length;
     vec2 v0 = v1;
     vec2 v2 = v1;
 
@@ -205,9 +207,12 @@ void main(void)
 
     float u1 = g_lastlen[1] * px2uv;
     float u2 = g_lastlen[2] * px2uv;
+
     float pattern_at_u1 = fetch(pattern, u1).x;
     float pattern_at_u2 = fetch(pattern, u2).x;
 
+    float off_a = 0;
+    float off_b = 0;
 
     if( dot( v0, v1 ) < MITER_LIMIT ){
         /*
@@ -339,7 +344,7 @@ void main(void)
         miter_a = n1;
         length_a = thickness_aa1;
 
-
+    #ifndef FAST_PATH
     } else {
         /*
         In this case the line vertices get extruded. This branch handles 
@@ -373,13 +378,15 @@ void main(void)
         To handle (2) we push the edge outside the region to the right, so that
         everything is denied (negative signed distance in full region)
         */
-        #ifndef FAST_PATH
-            float du = g_thickness[1] * abs(dot(miter_a, v1) / dot(miter_a, n1)) + AA_THICKNESS;
+        float du = g_thickness[1] * abs(dot(miter_a, v1) / dot(miter_a, n1)) + AA_THICKNESS;
+        if (segment_length > du) {
             float edge = pattern_edge(pattern, u1, du);
             f_uv_minmax.x = g_lastlen[1] - du + (2 * du + AA_THICKNESS) * abs(edge);
             f_uv_minmax.y = (2 - sign(edge)) * (g_lastlen[1] + du);
-        #endif
+        }
+    #endif
     }
+
 
     if( dot( v1, v2 ) < MITER_LIMIT ) {
         // truncated miter, incoming line
@@ -401,34 +408,34 @@ void main(void)
                             -float(edge > 0) * 1000000.0;
         #endif
                     
+    #ifndef FAST_PATH
     } else {
         // Extruded line join, incoming, compare with above
-        #ifndef FAST_PATH
-            float du = g_thickness[2] * abs(dot(miter_b, v1) / dot(miter_b, n1)) + AA_THICKNESS;
+        float du = g_thickness[2] * abs(dot(miter_b, v1) / dot(miter_b, n1)) + AA_THICKNESS;
+        if (segment_length > du) {
             float edge = pattern_edge(pattern, u2, du);
             f_uv_minmax.z = g_lastlen[2] + du - (2 * du + AA_THICKNESS) * abs(edge) ;
             f_uv_minmax.w = -sign(edge) * (g_lastlen[2] - du);
-        #endif
+        }
+    #endif
     }
 
     // Force AA at line start/end (there can't be a join here)
-    vec2 off_a = vec2(0);
     if (!isvalid[0]) {
         float off_marker = float(pattern_at_u1 < -1);
-        f_uv_minmax.x = g_lastlen[1] + AA_THICKNESS - 10.0 * off_marker;
+        f_uv_minmax.x = g_lastlen[1] + AA_THICKNESS - 1000000.0 * off_marker;
         f_uv_minmax.y = g_lastlen[1] - 1000000.0 * off_marker;
-        off_a = float(!isvalid[0]) * AA_THICKNESS * v1;
+        off_a = max(off_a, float(!isvalid[0]) * AA_THICKNESS);
     }
 
-    vec2 off_b = vec2(0);
     if (!isvalid[3]) {
         // for this to work with solid lines we must not rely on g_lastlen[2], 
         // as it is in data coordinates. Instead we calculate the pixel offset
         // from g_lastlen[1] here, which matches g_lastlen[2] for non-solid lines.
         float off_marker = float(pattern_at_u2 < -1);
-        f_uv_minmax.z = g_lastlen[1] + dot(p2 - p1, v1) - AA_THICKNESS + 10.0 * off_marker;
+        f_uv_minmax.z = g_lastlen[1] + dot(p2 - p1, v1) - AA_THICKNESS + 1000000.0 * off_marker;
         f_uv_minmax.w = g_lastlen[1] + dot(p2 - p1, v1) - 1000000.0 * off_marker;
-        off_b = float(!isvalid[3]) * AA_THICKNESS * v1;
+        off_b = max(off_b, float(!isvalid[3]) * AA_THICKNESS);
     }
 
     // apply normalization (pixel -> uv)
@@ -436,10 +443,10 @@ void main(void)
 
     // generate two triangles for the main line visualization
     // length_a/b and miter_a/b may include extrusion
-    emit_vertex(p1 + length_a * miter_a - off_a, -thickness_aa1, 1, v1, p1);
-    emit_vertex(p1 - length_a * miter_a - off_a,  thickness_aa1, 1, v1, p1);
-    emit_vertex(p2 + length_b * miter_b + off_b, -thickness_aa2, 2, v1, p1);
-    emit_vertex(p2 - length_b * miter_b + off_b,  thickness_aa2, 2, v1, p1);
+    emit_vertex(p1 + length_a * miter_a - off_a * v1, -thickness_aa1, 1, v1, p1);
+    emit_vertex(p1 - length_a * miter_a - off_a * v1,  thickness_aa1, 1, v1, p1);
+    emit_vertex(p2 + length_b * miter_b + off_b * v1, -thickness_aa2, 2, v1, p1);
+    emit_vertex(p2 - length_b * miter_b + off_b * v1,  thickness_aa2, 2, v1, p1);
     EndPrimitive();
 
     // reset shifting
