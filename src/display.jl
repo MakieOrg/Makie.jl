@@ -31,38 +31,39 @@ function push_screen!(scene::Scene, screen::MakieScreen)
         return
     end
     # Else we delete all other screens, only one screen per scene is allowed!!
+
     while !isempty(scene.current_screens)
         delete_screen!(scene, pop!(scene.current_screens))
     end
 
     # Now we push the screen :)
     push!(scene.current_screens, screen)
-    deregister = nothing
-    deregister = on(events(scene).window_open, priority=typemax(Int)) do is_open
-        # when screen closes, it should set the scene isopen event to false
-        # so that's when we can remove the screen
-        if !is_open
-            close(screen)
-            delete_screen!(scene, screen)
-            # deregister itself after letting other listeners run
-            if !isnothing(deregister)
-                off(deregister)
+    # deregister = nothing
+    # deregister = on(events(scene).window_open, priority=typemax(Int)) do is_open
+    #     # when screen closes, it should set the scene isopen event to false
+    #     # so that's when we can remove the screen
+    #     if !is_open
+    #         close(screen)
+    #         delete_screen!(scene, screen)
+    #         # deregister itself after letting other listeners run
+    #         if !isnothing(deregister)
+    #             off(deregister)
 
-                # if there are multiple listeners removing this one will skip the
-                # second one (now first). To fix this we run the listener manually here
-                callbacks = listeners(events(scene).window_open)
-                if length(callbacks) > 0
-                    result = Base.invokelatest(callbacks[1][2], is_open)
-                    if result isa Consume && result.x
-                        # if the second listener consumes we need to consume here
-                        # to avoid executing the third (now second).
-                        return Consume(true)
-                    end
-                end
-            end
-        end
-        return Consume(false)
-    end
+    #             # if there are multiple listeners removing this one will skip the
+    #             # second one (now first). To fix this we run the listener manually here
+    #             callbacks = listeners(events(scene).window_open)
+    #             if length(callbacks) > 0
+    #                 result = Base.invokelatest(callbacks[1][2], is_open)
+    #                 if result isa Consume && result.x
+    #                     # if the second listener consumes we need to consume here
+    #                     # to avoid executing the third (now second).
+    #                     return Consume(true)
+    #                 end
+    #             end
+    #         end
+    #     end
+    #     return Consume(false)
+    # end
     return
 end
 
@@ -165,12 +166,15 @@ function Base.display(screen::MakieScreen, figlike::FigureLike; update=true, dis
 end
 
 function _backend_showable(mime::MIME{SYM}) where SYM
+    # If we open a window, don't become part of the display/show system
+    !ALWAYS_INLINE_PLOTS[] && return false
     Backend = current_backend()
     if ismissing(Backend)
         return Symbol("text/plain") == SYM
     end
     return backend_showable(Backend.Screen, mime)
 end
+
 Base.showable(mime::MIME, fig::FigureLike) = _backend_showable(mime)
 
 # need to define this to resolve ambiguoity issue
@@ -196,11 +200,15 @@ function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
 end
 
 function Base.show(io::IO, m::MIME, figlike::FigureLike)
+    if !ALWAYS_INLINE_PLOTS[]
+        display(figlike)
+        throw(MethodError(show, io, m, figlike))
+    end
     scene = get_scene(figlike)
     backend = current_backend()
     # get current screen the scene is already displayed on, or create a new screen
     update_state_before_display!(figlike)
-    screen = getscreen(backend, scene, io, m)
+    screen = getscreen(backend, scene, io, m; visible=false)
     backend_show(screen, io, m, scene)
     return
 end

@@ -82,7 +82,6 @@ mutable struct ScreenConfig
             fxaa::Bool,
             ssao::Bool,
             transparency_weight_scale::Number)
-
         return new(
             # Renderloop
             renderloop isa Makie.Automatic ? GLMakie.renderloop : renderloop,
@@ -369,7 +368,6 @@ function set_screen_visibility!(nw::GLFW.Window, visible::Bool)
 end
 
 function display_scene!(screen::Screen, scene::Scene)
-    empty!(screen)
     resize!(screen, size(scene)...)
     insertplots!(screen, scene)
     Makie.push_screen!(scene, screen)
