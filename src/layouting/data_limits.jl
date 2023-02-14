@@ -231,19 +231,19 @@ function data_limits(plot::Surface)
     mini_maxi = extrema_nan.((plot.x[], plot.y[], plot.z[]))
     mini = first.(mini_maxi)
     maxi = last.(mini_maxi)
-    return Rect3f(mini, maxi .- mini)
+    return apply_transform(transform_func(plot), Rect3f(mini, maxi .- mini), to_value(get(plot, :space, :data)))
 end
 
 function data_limits(plot::Heatmap)
     mini_maxi = extrema_nan.((plot.x[], plot.y[]))
     mini = Vec3f(first.(mini_maxi)..., 0)
     maxi = Vec3f(last.(mini_maxi)..., 0)
-    return Rect3f(mini, maxi .- mini)
+    return apply_transform(transform_func(plot), Rect3f(mini, maxi .- mini), to_value(get(plot, :space, :data)))
 end
 
 function data_limits(plot::Image)
     mini_maxi = extrema_nan.((plot.x[], plot.y[]))
     mini = Vec3f(first.(mini_maxi)..., 0)
     maxi = Vec3f(last.(mini_maxi)..., 0)
-    return Rect3f(mini, maxi .- mini)
+    return apply_transform(transform_func(plot), Rect3f(mini, maxi .- mini), to_value(get(plot, :space, :data)))
 end
