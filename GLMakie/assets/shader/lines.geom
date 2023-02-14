@@ -256,6 +256,10 @@ void main(void)
             // offset by large positive = deny
             // offset by 0 = use raw uv.x 
             f_uv_minmax.y = 1000000.0 - 1000000.0 * (1 - abs(edge)) * on_marker;
+        #else
+            // for solid lines this should always trigger
+            // (we don't need to reset this since we always draw anyways)
+            f_uv_minmax.xy = vec2(1000000.0, 0.0);
         #endif
 
   
