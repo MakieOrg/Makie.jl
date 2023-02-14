@@ -1,5 +1,5 @@
 function sumlengths(points)
-    T = eltype(points[1])
+    T = eltype(eltype(typeof(points)))
     result = zeros(T, length(points))
     i12 = Vec(1, 2)
     for i in eachindex(points)
