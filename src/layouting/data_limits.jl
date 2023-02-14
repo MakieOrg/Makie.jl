@@ -162,8 +162,8 @@ function iterate_transformed(plot)
     points = point_iterator(plot)
     t = transformation(plot)
     model = model_transform(t)
-    # Note: since we're transforming here, we need to invert whenever setting e.g. axis limits.
-    trans_func = transform_func(t)
+    # TODO: without this, axes with log scales error.  Why?
+    trans_func = identity # transform_func(t)
     # trans_func = identity
     iterate_transformed(points, model, to_value(get(plot, :space, :data)), trans_func)
 end

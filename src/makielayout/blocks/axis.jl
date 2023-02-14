@@ -622,7 +622,7 @@ function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
         end
     end
 
-    transformed_tlims = if ax isa Axis
+    tlims = if ax isa Axis
         BBox(xlims..., ylims...)
     elseif ax isa Axis3
         Rect3f(
@@ -630,7 +630,7 @@ function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
             Vec3f(xlims[2] - xlims[1], ylims[2] - ylims[1], zlims[2] - zlims[1]),
         )
     end
-    ax.targetlimits[] = Makie.apply_transform(Makie.inverse_transform(transform_func(ax)), transformed_tlims)
+    ax.targetlimits[] = tlims
     nothing
 end
 
