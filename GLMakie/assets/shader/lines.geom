@@ -70,13 +70,14 @@ void emit_vertex(vec2 position, vec2 uv, int index)
 }
 
 // for line sections
-void emit_vertex(vec2 position, float v, int index, vec2 line_unit, vec2 line_pos)
+void emit_vertex(vec2 position, float v, int index, vec2 line_unit, vec2 p1)
 {
     vec4 inpos = gl_in[index].gl_Position;
-    // adjusts u values to extrusions made in vertex generation (e.g. to close lines)
-    float vertex_offset = dot(position - line_pos, line_unit);
-
-    f_uv        = vec2((g_lastlen[index] + vertex_offset) * px2uv, v);
+    // calculate distance between this vertex and line start p1 in line direction
+    // Do not rely on g_lastlen[2] here, as it is not the correct distance for 
+    // solid lines.
+    float vertex_offset = dot(position - p1, line_unit);
+    f_uv        = vec2((g_lastlen[1] + vertex_offset) * px2uv, v);
     f_color     = g_color[index];
     gl_Position = vec4(position / resolution, inpos.z, inpos.w);
     f_id        = g_id[index];
@@ -407,17 +408,23 @@ void main(void)
     }
 
     // Force AA at line start/end (there can't be a join here)
+    vec2 off_a = vec2(0);
     if (!isvalid[0]) {
         float off_marker = float(pattern_at_u1 < -1);
         f_uv_minmax.x = g_lastlen[1] + AA_THICKNESS - 10.0 * off_marker;
         f_uv_minmax.y = g_lastlen[1] - 1000000.0 * off_marker;
-        p1 -= AA_THICKNESS * v1;
+        off_a = float(!isvalid[0]) * AA_THICKNESS * v1;
     }
+
+    vec2 off_b = vec2(0);
     if (!isvalid[3]) {
+        // for this to work with solid lines we must not rely on g_lastlen[2], 
+        // as it is in data coordinates. Instead we calculate the pixel offset
+        // from g_lastlen[1] here, which matches g_lastlen[2] for non-solid lines.
         float off_marker = float(pattern_at_u2 < -1);
-        f_uv_minmax.z = g_lastlen[2] - AA_THICKNESS + 10.0 * off_marker;
-        f_uv_minmax.w = g_lastlen[2] - 1000000.0 * off_marker;
-        p2 += AA_THICKNESS * v1;
+        f_uv_minmax.z = g_lastlen[1] + dot(p2 - p1, v1) - AA_THICKNESS + 10.0 * off_marker;
+        f_uv_minmax.w = g_lastlen[1] + dot(p2 - p1, v1) - 1000000.0 * off_marker;
+        off_b = float(!isvalid[3]) * AA_THICKNESS * v1;
     }
 
     // apply normalization (pixel -> uv)
@@ -425,10 +432,10 @@ void main(void)
 
     // generate two triangles for the main line visualization
     // length_a/b and miter_a/b may include extrusion
-    emit_vertex(p1 + length_a * miter_a, -thickness_aa1, 1, v1, p1);
-    emit_vertex(p1 - length_a * miter_a,  thickness_aa1, 1, v1, p1);
-    emit_vertex(p2 + length_b * miter_b, -thickness_aa2, 2, v1, p2);
-    emit_vertex(p2 - length_b * miter_b,  thickness_aa2, 2, v1, p2);
+    emit_vertex(p1 + length_a * miter_a - off_a, -thickness_aa1, 1, v1, p1);
+    emit_vertex(p1 - length_a * miter_a - off_a,  thickness_aa1, 1, v1, p1);
+    emit_vertex(p2 + length_b * miter_b + off_b, -thickness_aa2, 2, v1, p1);
+    emit_vertex(p2 - length_b * miter_b + off_b,  thickness_aa2, 2, v1, p1);
     EndPrimitive();
 
     // reset shifting
