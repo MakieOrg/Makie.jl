@@ -165,11 +165,11 @@ function iterate_transformed(plot)
     # TODO: For some reason this was identity before and limit calculations in Axis with log scale are wrong if not, because they're already log transformed. What's the right behavior?
     # trans_func = t.transform_func[]
     trans_func = identity
-    iterate_transformed(points, model, trans_func)
+    iterate_transformed(points, model, plot.space[], trans_func)
 end
 
-function iterate_transformed(points, model, trans_func)
-    (to_ndim(Point3f, project(model, apply_transform(trans_func, point)), 0f0) for point in points)
+function iterate_transformed(points, model, space, trans_func)
+    (to_ndim(Point3f, project(model, apply_transform(trans_func, point, space)), 0f0) for point in points)
 end
 
 function update_boundingbox!(bb_ref, point)
