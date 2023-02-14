@@ -117,42 +117,12 @@ const POPUP_CSS = JSServe.Asset(joinpath(@__DIR__, "popup.css"))
 function JSServe.jsrender(session::Session, tt::ToolTip)
     scene = tt.scene
     popup =  DOM.div("", class="popup")
-
-    JSServe.onload(session, popup, js"""
-    (popup) => {
-        const plots_to_pick = new Set($(tt.plot_uuids));
-        const callback = $(tt.callback);
-        document.addEventListener("mousedown", event=> {
-            if (!popup.classList.contains("show")) {
-                popup.classList.add("show");
-            }
-            popup.style.left = event.pageX + 'px';
-            popup.style.top = event.pageY + 'px';
-            $(scene).then(scene => {
-                const [x, y] = WGLMakie.event2scene_pixel(scene, event)
-                const [_, picks] = WGLMakie.pick_native(scene, x, y, 1, 1)
-                if (picks.length == 1){
-                    const [plot, index] = picks[0];
-                    if (plots_to_pick.has(plot.plot_uuid)) {
-                        const result = callback(plot, index)
-                        if (typeof result === 'string' || result instanceof String) {
-                            popup.innerText = result
-                        } else {
-                            popup.innerHTML = result
-                        }
-                    }
-                } else {
-                    popup.classList.remove("show");
-                }
-            })
-
-        });
-        document.addEventListener("keyup", event=> {
-            if (event.key === "Escape") {
-                popup.classList.remove("show");
-            }
+    JSServe.evaljs(session, js"""
+        $(scene).then(scene => {
+            const plots_to_pick = new Set($(tt.plot_uuids));
+            const callback = $(tt.callback);
+            register_popup($popup, scene, plots_to_pick, callback)
         })
-    }
     """)
     return DOM.span(JSServe.jsrender(session, POPUP_CSS), popup)
 end
