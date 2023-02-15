@@ -212,7 +212,7 @@ end
 pkgs = NamedTuple[(; path="./MakieCore"), (; path="."), (; path="./$Package")]
 # cd("dev/Makie")
 Pkg.develop(pkgs)
-Pkg.add([(; name="BenchmarkTools"), (; name="Observables", rev="sd/fix-custom-obsfuncs")])
+Pkg.add([(; name="BenchmarkTools")])
 
 @time Pkg.precompile()
 
