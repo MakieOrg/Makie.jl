@@ -209,10 +209,10 @@ Pkg.activate(project1)
 if Package == "WGLMakie"
     Pkg.add([(; name="Electron")])
 end
-pkgs = NamedTuple[(; path="./MakieCore"), (; path="."), (; path="./$Package"), (; name="BenchmarkTools"),
-                  (; name="Observables", rev="sd/fix-custom-obsfuncss")]
+pkgs = NamedTuple[(; path="./MakieCore"), (; path="."), (; path="./$Package")]
 # cd("dev/Makie")
 Pkg.develop(pkgs)
+Pkg.add([(; name="BenchmarkTools"), (; name="Observables", rev="sd/fix-custom-obsfuncs")])
 
 @time Pkg.precompile()
 
