@@ -444,10 +444,9 @@ function Base.delete!(screen::Screen, scene::Scene)
     for plot in scene.plots
         delete!(screen, scene, plot)
     end
-
+    filter!(x -> x !== screen, scene.current_screens)
     if haskey(screen.screen2scene, WeakRef(scene))
         deleted_id = pop!(screen.screen2scene, WeakRef(scene))
-
         # TODO: this should always find something but sometimes doesn't...
         i = findfirst(id_scene -> id_scene[1] == deleted_id, screen.screens)
         i !== nothing && deleteat!(screen.screens, i)
@@ -526,13 +525,15 @@ function Base.empty!(screen::Screen)
     # we should never just "empty" an already destroyed screen
     @assert !was_destroyed(screen.glscreen)
 
-    if !isnothing(screen.root_scene)
-        Makie.disconnect_screen(screen.root_scene, screen)
-        screen.root_scene = nothing
-    end
 
     for plot in collect(values(screen.cache2plot))
         delete!(screen, Makie.rootparent(plot), plot)
+    end
+
+    if !isnothing(screen.root_scene)
+        Makie.disconnect_screen(screen.root_scene, screen)
+        delete!(screen, screen.root_scene)
+        screen.root_scene = nothing
     end
 
     @assert isempty(screen.renderlist)

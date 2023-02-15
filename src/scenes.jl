@@ -389,15 +389,27 @@ function getindex(scene::Scene, ::Type{OldAxis})
     return nothing
 end
 
+function delete_scene!(scene::Scene)
+    @warn "deprecated in favor of empty!(scene)"
+    empty!(scene)
+    return nothing
+end
+
 function Base.empty!(scene::Scene)
+
+    # clear plots of this scenes
+    for screen in scene.current_screens
+        println("deleting screen: $(typeof(screen))")
+        delete!(screen, scene)
+    end
     # clear all child scenes
+    if !isnothing(scene.parent)
+        filter!(x-> x !== scene, scene.parent.children)
+    end
     scene.parent = nothing
     foreach(empty!, scene.children)
     empty!(scene.children)
-    # clear plots of this scenes
-    for screen in scene.current_screens
-        delete!(screen, scene)
-    end
+
     empty!(scene.current_screens)
     empty!(scene.plots)
     empty!(scene.theme)

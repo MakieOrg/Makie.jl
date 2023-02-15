@@ -201,6 +201,8 @@ end
 
 function Base.show(io::IO, m::MIME, figlike::FigureLike)
     if !ALWAYS_INLINE_PLOTS[]
+        # If we always want to open a window, we call display manually here
+        # and then throw a method error to signal the calling display system, that we don't want to display it with them
         display(figlike)
         throw(MethodError(show, io, m, figlike))
     end
