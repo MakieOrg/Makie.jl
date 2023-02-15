@@ -501,6 +501,7 @@ function destroy!(rob::RenderObject)
 end
 
 function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
+    filter!(x-> x !== plot, scene.plots)
     if !isempty(plot.plots)
         # this plot consists of children, so we flatten it and delete the children instead
         for cplot in Makie.flatten_plots(plot)

@@ -496,12 +496,6 @@ function Base.delete!(block::Block)
 
     # detach plots, cameras, transformations, px_area
     empty!(block.blockscene)
-
-    s = get_topscene(block.parent)
-    deleteat!(
-        s.children,
-        findfirst(x -> x === block.blockscene, s.children)
-    )
     # TODO: what about the lift of the parent scene's
     # `px_area`, should this be cleaned up as well?
 
