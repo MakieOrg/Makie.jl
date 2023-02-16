@@ -398,7 +398,6 @@ end
 function Base.empty!(scene::Scene)
     # clear plots of this scenes
     for screen in copy(scene.current_screens)
-        println("deleting screen: $(typeof(screen))")
         delete!(screen, scene)
     end
     # clear all child scenes
