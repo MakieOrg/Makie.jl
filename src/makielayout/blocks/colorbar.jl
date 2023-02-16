@@ -26,10 +26,12 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
         end
     end
 
+    colormap_obs, colorrange_obs = get_concrete_colormap_colorrange_observables(plot::AbstractPlot)
+
     Colorbar(
         fig_or_scene;
-        colormap = plot.colormap,
-        limits = plot.colorrange,
+        colormap = colormap_obs,
+        limits = colorrange_obs,
         kwargs...
     )
 end
@@ -380,4 +382,24 @@ function scaled_steps(steps, scale, lims)
     s_limits_scaled = scale.(s_limits)
     # then rescale to 0 to 1
     s_scaled = (s_limits_scaled .- s_limits_scaled[1]) ./ (s_limits_scaled[end] - s_limits_scaled[1])
+end
+
+function get_concrete_colormap_colorrange_observables(p::AbstractPlot)
+    if haskey(p, :colormap) && haskey(p, :colorrange)
+        if p.colorrange != automatic
+            return p.colormap, p.colorrange
+        end
+    end
+    # no colormap/colorrange found, or colormap and colorrange were not sufficient
+    new_cmap, new_crange = nothing, nothing
+    for plot in p.plots
+        new_cmap, new_crange = get_concrete_colormap_colorrange_observables(plot)
+        if !(isnothing(new_cmap) && isnothing(new_crange))
+            return new_cmap, new_crange
+        end
+    end
+
+    if isnothing(new_cmap) || isnothing(new_crange)
+        @error("No colormap or colorrange found within $p or its child plots!")
+    end
 end
