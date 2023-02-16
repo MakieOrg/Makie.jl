@@ -160,6 +160,18 @@ function ScrollZoom(speed, reset_delay)
     return ScrollZoom(speed, RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Float64}}(0.0), RefValue{Union{Automatic, Float64}}(0.0), reset_delay)
 end
 
+struct ScrollPan
+  speed::Float32
+  reset_timer::RefValue{Union{Nothing, Timer}}
+  prev_xticklabelspace::RefValue{Union{Automatic, Float64}}
+  prev_yticklabelspace::RefValue{Union{Automatic, Float64}}
+  reset_delay::Float32
+end
+
+function ScrollPan(speed, reset_delay)
+  return ScrollPan(speed, RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Float64}}(0.0), RefValue{Union{Automatic, Float64}}(0.0), reset_delay)
+end
+
 struct DragPan
     reset_timer::RefValue{Union{Nothing, Timer}}
     prev_xticklabelspace::RefValue{Union{Automatic, Float64}}
@@ -413,6 +425,8 @@ end
         xzoomkey::Makie.Keyboard.Button = Makie.Keyboard.x
         "The key for limiting zooming to the y direction."
         yzoomkey::Makie.Keyboard.Button = Makie.Keyboard.y
+        "The button for zooming with scrolling"
+        scrollzoomkey = Or(Makie.Keyboard.left_shift | Makie.Keyboard.right_shift)
         "The position of the x axis (`:bottom` or `:top`)."
         xaxisposition::Symbol = :bottom
         "The position of the y axis (`:left` or `:right`)."

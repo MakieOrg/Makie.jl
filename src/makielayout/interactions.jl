@@ -228,6 +228,11 @@ function process_interaction(l::LimitReset, event::MouseEvent, ax::Axis)
 end
 
 function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
+
+    if !ispressed(ax.scene, ax.scrollzoomkey[])
+      return Consume(false)
+    end
+
     # use vertical zoom
     zoom = event.y
 
@@ -289,6 +294,46 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
 
     # NOTE this might be problematic if if we add scrolling to something like Menu
     return Consume(true)
+end
+
+function process_interaction(sp::ScrollPan, event::ScrollEvent, ax::Axis)
+
+  if ispressed(ax.scene, ax.scrollzoomkey[])
+    return Consume(false)
+  end
+  tlimits = ax.targetlimits
+
+  scene = ax.scene
+  cam = camera(scene)
+  pa = pixelarea(scene)[]
+
+  mp_axscene = Vec4f(sp.speed * event.x, sp.speed * -event.y, 0, 1)
+
+  mp_axfraction = (cam.pixel_space[] * mp_axscene)[Vec(1, 2)] .* (-2 .* ((ax.xreversed[], ax.yreversed[])) .+ 1) .* 0.5 .+ 0.5
+
+  xscale = ax.xscale[]
+  yscale = ax.yscale[]
+
+  transf = (xscale, yscale)
+  tlimits_trans = Makie.apply_transform(transf, tlimits[])
+
+  movement_frac = mp_axfraction
+  xscale = ax.xscale[]
+  yscale = ax.yscale[]
+
+  transf = (xscale, yscale)
+  tlimits_trans = Makie.apply_transform(transf, tlimits[])
+
+  xori, yori = tlimits_trans.origin .- movement_frac .* widths(tlimits_trans)
+
+
+  timed_ticklabelspace_reset(ax, sp.reset_timer, sp.prev_xticklabelspace, sp.prev_yticklabelspace, sp.reset_delay)
+
+  inv_transf = Makie.inverse_transform(transf)
+  newrect_trans = Rectf(Vec2f(xori, yori), widths(tlimits_trans))
+  tlimits[] = Makie.apply_transform(inv_transf, newrect_trans)
+
+  return Consume(true)
 end
 
 function process_interaction(dp::DragPan, event::MouseEvent, ax)

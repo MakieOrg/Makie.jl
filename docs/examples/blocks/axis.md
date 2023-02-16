@@ -919,6 +919,7 @@ You can zoom in an axis by scrolling in and out.
 If you press x or y while scrolling, the zoom movement is restricted to that dimension.
 These keys can be changed with the attributes `xzoomkey` and `yzoomkey`.
 You can also restrict the zoom dimensions all the time by setting the axis attributes `xzoomlock` or `yzoomlock` to `true`.
+Note that if scroll pan is enabled (see below), scroll zoom will require (left or right) `shift` to be pressed.
 
 ### Drag pan
 
@@ -926,6 +927,16 @@ You can pan around the axis by right-clicking and dragging.
 If you press x or y while panning, the pan movement is restricted to that dimension.
 These keys can be changed with the attributes `xpankey` and `ypankey`.
 You can also restrict the pan dimensions all the time by setting the axis attributes `xpanlock` or `ypanlock` to `true`.
+
+### Scroll pan
+
+Users of trackpads and mice with wheels (especially both horizontal and vertical) may like to pan using these as is typically possible in other programs. This is not enabled by default, but can be (on a per-axis basis) by calling `register_interaction`:
+
+```
+register_interaction!(ax, :scrollpan, GLMakie.Makie.ScrollPan(20.0, 0.2))
+```
+
+When this interaction is enabled, in order to not conflict, the scroll zoom will require (left or right) `shift` to be pressed.
 
 ### Limit reset
 
