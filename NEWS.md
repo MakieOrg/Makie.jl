@@ -6,6 +6,7 @@
 - Fixed an issue where `poly` plots with `Vector{<: MultiPolygon}` inputs with per-polygon color were mistakenly rendered as meshes using CairoMakie. [#2590](https://github.com/MakieOrg/Makie.jl/pulls/2478)
 - Fixed a small typo which caused an error in the `Stepper` constructor. [#2600](https://github.com/MakieOrg/Makie.jl/pulls/2478)
 - Fixed rectangle zoom for nonlinear axes [#2674](https://github.com/MakieOrg/Makie.jl/pull/2674)
+- Added scroll-to-pan optional functionality [#2688](https://github.com/MakieOrg/Makie.jl/pull/2688)
 
 ## v0.19.1
 
