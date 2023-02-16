@@ -4,6 +4,7 @@ macro compile(block)
     return quote
         let
             $(esc(block))
+            return nothing
         end
     end
 end
@@ -16,6 +17,7 @@ let
         empty!(FONT_CACHE)
         empty!(_default_font)
         empty!(_alternative_fonts)
+        Makie._current_figure[] = nothing
     end
     nothing
 end
