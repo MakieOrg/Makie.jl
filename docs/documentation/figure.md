@@ -207,7 +207,7 @@ Let's say we now decide that our figure is too large in vector format, because i
 
 We keep our figure with its resolution and font size as it is.
 The question is now only, how high should our dpi be.
-With CairoMakie's default of `px_per_unit = 2`, we would get a pixel size of 960 x 768` for our image, if we divide that by 5 x 4 inches we get a dpi of 192.
+With CairoMakie's default of `px_per_unit = 2`, we would get a pixel size of 960 x 768 for our image, if we divide that by 5 x 4 inches we get a dpi of 192.
 
 Let's say this is not sharp enough for our purposes and we want to bump to 600 dpi.
 The necessary pixel size of the image is 3000 x 2400.
