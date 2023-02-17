@@ -100,7 +100,7 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
             tex = GLAbstraction.Texture(ticks(pattern, 100), x_repeat = :repeat)
             data[:pattern] = tex
         end
-        data[:pattern_length] = Float32(last(pattern))
+        data[:pattern_length] = Float32(last(pattern) - first(pattern))
         @gen_defaults! data begin
             maxlength = const_lift(last, lastlen)
         end
@@ -139,7 +139,7 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         end
         tex = GLAbstraction.Texture(ticks(pattern, 100), x_repeat = :repeat)
         data[:pattern] = tex
-        data[:pattern_length] = Float32(last(pattern))
+        data[:pattern_length] = Float32(last(pattern) - first(pattern))
     end
     return assemble_shader(data)
 end
