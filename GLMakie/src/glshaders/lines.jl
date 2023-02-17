@@ -64,7 +64,6 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         color_norm          = nothing
         color               = (color_map == nothing ? default(RGBA, s) : nothing) => GLBuffer
         thickness           = 2f0 => GLBuffer
-        thickness::Float32  = 2f0
         pattern             = nothing
         fxaa                = false
         # Duplicate the vertex indices on the ends of the line, as our geometry
