@@ -173,69 +173,49 @@ The size or resolution of a Figure is given without units, such as `resolution =
 You can think of these values as "device-independent pixels".
 Like the `px` unit in CSS, these values do not directly correspond to physical pixels of your screen or pixels in a png file.
 Instead, they can be mapped to these device pixels using a scaling factor.
+
 Currently, these scaling factors are only directly supported by CairoMakie, but in the future they should be available for GLMakie and WGLMakie as well.
-Right now, the implicit scaling factor of GLMakie and WGLMakie is 1, which means that a window of a figure with resolution 800x600 will actually have 800x600 pixels.
-In the future, this should be adjustable, for example for "retina" or high-dpi displays, where the frame buffer for a 800x600 window typically has 1600x1200 pixels.
+Right now, the implicit scaling factor of GLMakie and WGLMakie is 1, which means that a window of a figure with resolution 800 x 600 will actually have 800 x 600 pixels in its frame buffer.
+In the future, this should be adjustable, for example for "retina" or high-dpi displays, where the frame buffer for a 800 x 600 window typically has 1600 x 1200 pixels.
 
-### Physical dimensions
+## Matching figure and font sizes to documents
 
-Device-independent pixels do not have a fixed mapping to physical measurements like centimeters or inches.
-If you need a bitmap file at a size of 6 x 4 inches, you will have to decide how many dpi, or dots per inch, you want.
-Typical values for printing are 300 to 600 dpi.
-
-In CairoMakie, you can adjust the `px_per_unit` attribute to decide how many output pixels per device-independent pixel you want to render.
-The default value is 2, which means that image output should look sharp on typical high-dpi displays.
-
-Here is a table that shows how to set your Figure's resolution depending on what `px_per_unit` value you choose.
-
-| Physical size | DPI | resolution in dots | `px_per_unit` | Figure size |
-|:--|:--|:--|:--|:--|
-| 4 x 3 inches | 300 | 1200 x 900 | 1 | 1200 x 900 |
-|   |   |  | 2 | 600 x 450 |
-|   |   |  | 3 | 600 x 450 |
-| 4 x 3 inches | 600 | 2400 x 1800 | 1 | 2400 x 1800 |
-|   |   |  | 2 | 1200 x 900 |
-|   |   |  | 3 | 800 x 600 |
-
-
-If you keep the physical size constant and increase the dpi by increasing `px_per_unit`, the relative size of text and other content will stay constant.
-However, if you keep the physical size constant and increase the dpi by increasing the Figure size, the relative size of text and other content will shrink.
-
-#### Matching font sizes
-
-If you need a font size of `12pt` in your final output, you need to control this with the combination of `fontsize` and `px_per_unit` for bitmaps, or `pt_per_unit` for vector graphics.
+Journal papers and other documents written in Word or LaTeX commonly use the `pt` unit to define font sizes.
 The unit `pt` is a physical dimension and is typically defined as `1 inch / 72`.
+To match font sizes of Makie plots with other text in these documents, you have to adjust both the figure size and font size together.
 
-By default, `px_per_unit` is 2 and `pt_per_unit` is 0.75.
-This is because in CSS, `1px` is equal to `0.75pt` and images with a density of 2 pixels for each `px` look sharper on modern high-density displays.
+First, you need to convert the physical target size of your figure in the document to device-independent pixels.
+For this, you have to decide a `px_per_unit` value if you're exporting a bitmap, or a `pt_per_unit` value if you export vector graphics.
+With those, you can convert the target font size into device-independent pixels as well.
+
+CairoMakie is the only backend that can export both bitmaps and vector graphics.
+By default, its `px_per_unit` is `2` and `pt_per_unit` is `0.75`, but those values are chosen with interactive plotting with web-technology tools in mind.
+The reason is that in normal web browsers, `1px` is equal to `0.75pt` and images with a density of 2 pixels for each device-independent `px` look sharper on modern high-dpi displays.
 The default fontsize of `16` will by default look like `12pt` in web and print contexts this way.
 
-The following table shows you how to set your font size and scaling factor to achieve a consistent output font size.
+### Example
 
-| Desired fontsize in pt | fontsize value | desired dpi | `px_per_unit` | `pt_per_unit` |
-|:--|:--|:--|:--|:--|
-| 12 | 12 | 72 | 1 | |
-| 12 | 12 | 144 | 2 | |
-| 12 | 12 | 600 | 8.33 | |
-| 12 | 24 | 72 | 0.5 | |
-| 12 | 24 | 144 | 1 | |
-| 12 | 24 | 600 | 4.16 | |
-| 12 | 12 | | | 1 |
-| 12 | 16 | | | 0.75 |
-| 12 | 24 | | | 0.5 |
+Let's say we want to create a vector graphic for a scientific paper set with 12pt font size, and the figure size should be 5 x 4 inches which is equivalent to 360 x 288 pt (multiply by 72).
 
-If you want to set up a Figure such that you can either save it as a vector graphic or bitmap, it's easiest if you use device-independent pixels with the CSS-like conversion ratio of 0.75 to `pt`, and then set `pt_per_unit` and `px_per_unit` accordingly.
-For example, let's say you need a font size of `12pt`, which is `16dip`.
+With the default `pt_per_unit = 0.75` we arrive at a necessary figure size of 480 x 384 device-independent pixels (divide by 0.75).
 
-```julia
-using CairoMakie
+Equivalently, the font size we need to match 12pt is `12 / 0.75 = 16`.
 
-size_inches = (4, 3)
-size_dip = size_inches .* 72 / 0.75 # 
-f = Figure(resolution = size_dip, fontsize = 16)
-save("figure.pdf", f, pt_per_unit = 0.75)
-dpi = 400
-save("figure.png", f, px_per_unit = dpi / 72 * 0.75)
-```
+Therefore, we can create our figure with `Figure(resolution = (480, 384), fontsize = 16)` and save with `save("figure.pdf", fig)`.
 
-If you export only vector graphics, you can of course set `pt_per_unit = 1` and use `fontsize = 12` directly, however this will currently not look as nice when switching back and forth to GLMakie with its implicit `px_per_unit = 1`.
+Let's say we now decide that our figure is too large in vector format, because it has a million scatter points, so we want to switch to bitmap format.
+
+We keep our figure with its resolution and font size as it is.
+The question is now only, how high should our dpi be.
+With CairoMakie's default of `px_per_unit = 2`, we would get a pixel size of 960 x 768` for our image, if we divide that by 5 x 4 inches we get a dpi of 192.
+
+Let's say this is not sharp enough for our purposes and we want to bump to 600 dpi.
+The necessary pixel size of the image is 3000 x 2400.
+With our figure size of 480 x 386 device-independent pixels, that gives a `px_per_unit` value of 6.25 to reach 600 dpi.
+Note that we do not have to change anything about the font or other content sizes in the figure, we just scale up the render size.
+We only need to run `save("figure.png", fig, px_per_unit = 6.25)` and take care to insert the image with the correct size of 5 x 4 inches, as image files usually don't store what physical size they are intended to be.
+
+!!! note
+    If you keep the intended physical size of an image constant and increase the dpi by increasing `px_per_unit`, the size of text and other content relative to the figure will stay constant.
+    However, if you instead try to increase the dpi by increasing the Figure size itself, the relative size of text and other content will shrink when viewed at the same physical size.
+    The first option is usually much more convenient, as it keeps the look and layout of the overall figure exactly the same, just with higher resolution.
