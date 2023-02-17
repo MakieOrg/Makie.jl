@@ -31,8 +31,7 @@ end
 function plot!(p::Combined{scatterlines, <:NTuple{N, Any}}) where N
 
     # markercolor is the same as linecolor if left automatic
-    real_markercolor = Observable{Union{Vector{RGBAf}, RGBAf}}()
-    map!(real_markercolor, p.color, p.markercolor) do col, mcol
+    real_markercolor = map(p.color, p.markercolor) do col, mcol
         if mcol === automatic
             return to_color(col)
         else
