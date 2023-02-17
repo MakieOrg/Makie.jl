@@ -30,9 +30,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     space = to_value(get(primitive, :space, :data))
     projected_positions = project_position.(Ref(scene), Ref(space), positions, Ref(model))
 
-    if color isa AbstractArray{<: Number}
-        color = numbers_to_colors(color, primitive)
-    end
+    color = to_cairo_color(color, primitive)
 
     # color is now a color or an array of colors
     # if it's an array of colors, each segment must be stroked separately
@@ -49,6 +47,11 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     if !isnothing(linestyle) && !(linewidth isa AbstractArray)
         Cairo.set_dash(ctx, diff(Float64.(linestyle)) .* linewidth)
     end
+
+    if primitive isa Lines && primitive.input_args[1][] isa BezierPath
+        return draw_bezierpath_lines(ctx, primitive.input_args[1][], scene, color, space, model, linewidth)
+    end
+
     if color isa AbstractArray || linewidth isa AbstractArray
         # stroke each segment separately, this means disjointed segments with probably
         # wonky dash patterns if segments are short
@@ -71,6 +74,35 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     end
     nothing
 end
+
+function draw_bezierpath_lines(ctx, bezierpath::BezierPath, scene, color, space, model, linewidth)
+    for c in bezierpath.commands
+        proj_comm = project_command(c, scene, space, model)
+        path_command(ctx, proj_comm)
+    end
+    Cairo.set_source_rgba(ctx, rgbatuple(color)...)
+    Cairo.set_line_width(ctx, linewidth)
+    Cairo.stroke(ctx)
+    return
+end
+
+function project_command(m::MoveTo, scene, space, model)
+    MoveTo(project_position(scene, space, m.p, model))
+end
+
+function project_command(l::LineTo, scene, space, model)
+    LineTo(project_position(scene, space, l.p, model))
+end
+
+function project_command(c::CurveTo, scene, space, model)
+    CurveTo(
+        project_position(scene, space, c.c1, model),
+        project_position(scene, space, c.c2, model),
+        project_position(scene, space, c.p, model),
+    )
+end
+
+project_command(c::ClosePath, scene, space, model) = c
 
 function draw_single(primitive::Lines, ctx, positions)
     n = length(positions)
@@ -185,11 +217,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
 
     font = to_font(to_value(get(primitive, :font, Makie.defaultfont())))
 
-    colors = if color isa AbstractArray{<: Number}
-        numbers_to_colors(color, primitive)
-    else
-        color
-    end
+    colors = to_cairo_color(color, primitive)
 
     markerspace = to_value(get(primitive, :markerspace, :pixel))
     space = to_value(get(primitive, :space, :data))
@@ -904,7 +932,7 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
         Cairo.paint(ctx)
         Cairo.destroy(pattern)
     end
-    
+
 end
 
 ################################################################################

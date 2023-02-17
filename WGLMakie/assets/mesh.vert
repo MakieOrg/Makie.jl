@@ -79,6 +79,8 @@ void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 l
     o_camdir = normalize(-view_pos).xyz;
 }
 
+flat out uint frag_instance_id;
+
 void main(){
     // get_* gets the global inputs (uniform, sampler, position array)
     // those functions will get inserted by the shader creation pipeline
@@ -92,4 +94,6 @@ void main(){
     frag_uv = get_uv();
     frag_uv = vec2(1.0 - frag_uv.y, frag_uv.x);
     frag_color = vertex_color(get_color(), get_colorrange(), colormap);
+
+    frag_instance_id = uint(gl_VertexID);
 }

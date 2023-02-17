@@ -29,18 +29,18 @@ function to_range(x::AbstractArray)
 end
 
 function to_glvisualize_key(k)
-    k == :rotations && return :rotation
-    k == :markersize && return :scale
-    k == :glowwidth && return :glow_width
-    k == :glowcolor && return :glow_color
-    k == :strokewidth && return :stroke_width
-    k == :strokecolor && return :stroke_color
-    k == :positions && return :position
-    k == :linewidth && return :thickness
-    k == :marker_offset && return :quad_offset
-    k == :colormap && return :color_map
-    k == :colorrange && return :color_norm
-    k == :transform_marker && return :scale_primitive
+    k === :rotations && return :rotation
+    k === :markersize && return :scale
+    k === :glowwidth && return :glow_width
+    k === :glowcolor && return :glow_color
+    k === :strokewidth && return :stroke_width
+    k === :strokecolor && return :stroke_color
+    k === :positions && return :position
+    k === :linewidth && return :thickness
+    k === :marker_offset && return :quad_offset
+    k === :colormap && return :color_map
+    k === :colorrange && return :color_norm
+    k === :transform_marker && return :scale_primitive
     return k
 end
 
