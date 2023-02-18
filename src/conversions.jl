@@ -255,6 +255,43 @@ function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon}, MultiPoly
     return (arr,)
 end
 
+function convert_arguments(::PointBased, b::BezierPath)
+    b2 = replace_nonfreetype_commands(b)
+    points = Point2f[]
+    last_point = Point2f(NaN)
+    last_moveto = false
+
+    function poly3(t, p0, p1, p2, p3)
+        Point2f((1-t)^3 .* p0 .+ t*p1*(3*(1-t)^2) + p2*(3*(1-t)*t^2) .+ p3*t^3)
+    end
+
+    for command in b2.commands
+        if command isa MoveTo
+            last_point = command.p
+            last_moveto = true
+        elseif command isa LineTo
+            if last_moveto
+                isempty(points) || push!(points, Point2f(NaN, NaN))
+                push!(points, last_point)
+            end
+            push!(points, command.p)
+            last_point = command.p
+            last_moveto = false
+        elseif command isa CurveTo
+            if last_moveto
+                isempty(points) || push!(points, Point2f(NaN, NaN))
+                push!(points, last_point)
+            end
+            last_moveto = false
+            for t in range(0, 1, length = 30)[2:end]
+                push!(points, poly3(t, last_point, command.c1, command.c2, command.p))
+            end
+            last_point = command.p
+        end
+    end
+    return (points,)
+end
+
 
 ################################################################################
 #                                 SurfaceLike                                  #
@@ -725,17 +762,8 @@ convert_attribute(s::SceneLike, x, key::Key, ::Key) = convert_attribute(s, x, ke
 convert_attribute(s::SceneLike, x, key::Key) = convert_attribute(x, key)
 convert_attribute(x, key::Key) = x
 
-"""
-    to_color(color)
-Converts a `color` symbol (e.g. `:blue`) to a color RGBA.
-"""
 convert_attribute(color, ::key"color") = to_color(color)
 
-"""
-    to_colormap(cm)
-
-Converts a colormap `cm` symbol/string (e.g. `:Spectral`) to a colormap RGB array.
-"""
 convert_attribute(colormap, ::key"colormap") = to_colormap(colormap)
 convert_attribute(rotation, ::key"rotation") = to_rotation(rotation)
 convert_attribute(font, ::key"font") = to_font(font)
@@ -802,16 +830,12 @@ convert_attribute(c, ::key"strokecolor") = to_color(c)
 
 convert_attribute(x::Nothing, ::key"linestyle") = x
 
-"""
-    `AbstractVector{<:AbstractFloat}` for denoting sequences of fill/nofill. e.g.
-
-[0.5, 0.8, 1.2] will result in 0.5 filled, 0.3 unfilled, 0.4 filled. 1.0 unit is one linewidth!
-"""
+#     `AbstractVector{<:AbstractFloat}` for denoting sequences of fill/nofill. e.g.
+#
+# [0.5, 0.8, 1.2] will result in 0.5 filled, 0.3 unfilled, 0.4 filled. 1.0 unit is one linewidth!
 convert_attribute(A::AbstractVector, ::key"linestyle") = A
 
-"""
-    A `Symbol` equal to `:dash`, `:dot`, `:dashdot`, `:dashdotdot`
-"""
+# A `Symbol` equal to `:dash`, `:dot`, `:dashdot`, `:dashdotdot`
 convert_attribute(ls::Union{Symbol,AbstractString}, ::key"linestyle") = line_pattern(ls, :normal)
 
 function convert_attribute(ls::Tuple{<:Union{Symbol,AbstractString},<:Any}, ::key"linestyle")
@@ -826,15 +850,15 @@ end
 "The linestyle patterns are inspired by the LaTeX package tikZ as seen here https://tex.stackexchange.com/questions/45275/tikz-get-values-for-predefined-dash-patterns."
 
 function line_diff_pattern(ls::Symbol, gaps = :normal)
-    if ls == :solid
+    if ls === :solid
         nothing
-    elseif ls == :dash
+    elseif ls === :dash
         line_diff_pattern("-", gaps)
-    elseif ls == :dot
+    elseif ls === :dot
         line_diff_pattern(".", gaps)
-    elseif ls == :dashdot
+    elseif ls === :dashdot
         line_diff_pattern("-.", gaps)
-    elseif ls == :dashdotdot
+    elseif ls === :dashdotdot
         line_diff_pattern("-..", gaps)
     else
         error(
@@ -1139,11 +1163,7 @@ function to_colormap(cg::PlotUtils.ColorGradient)::Vector{RGBAf}
     return to_colormap(getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), 256)))
 end
 
-"""
-    to_volume_algorithm(b, x)
-
-Enum values: `IsoValue` `Absorption` `MaximumIntensityProjection` `AbsorptionRGBA` `AdditiveRGBA` `IndexedAbsorptionRGBA`
-"""
+# Enum values: `IsoValue` `Absorption` `MaximumIntensityProjection` `AbsorptionRGBA` `AdditiveRGBA` `IndexedAbsorptionRGBA`
 function convert_attribute(value, ::key"algorithm")
     if isa(value, RaymarchAlgorithm)
         return Int32(value)
@@ -1156,9 +1176,7 @@ function convert_attribute(value, ::key"algorithm")
     end
 end
 
-"""
-Symbol/String: iso, absorption, mip, absorptionrgba, indexedabsorption
-"""
+# Symbol/String: iso, absorption, mip, absorptionrgba, indexedabsorption
 function convert_attribute(value::Union{Symbol, String}, k::key"algorithm")
     vals = Dict(
         :iso => IsoValue,
@@ -1294,7 +1312,7 @@ convert_attribute(value, ::key"isovalue", ::key"volume") = Float32(value)
 convert_attribute(value, ::key"isorange", ::key"volume") = Float32(value)
 
 function convert_attribute(value::Symbol, ::key"marker", ::key"meshscatter")
-    if value == :Sphere
+    if value === :Sphere
         return normal_mesh(Sphere(Point3f(0), 1f0))
     else
         error("Unsupported marker: $(value)")
@@ -1304,3 +1322,6 @@ end
 function convert_attribute(value::AbstractGeometry, ::key"marker", ::key"meshscatter")
     return normal_mesh(value)
 end
+
+convert_attribute(value, ::key"diffuse") = Vec3f(value)
+convert_attribute(value, ::key"specular") = Vec3f(value)

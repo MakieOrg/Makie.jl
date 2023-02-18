@@ -67,10 +67,10 @@ end
 Supported options: `[:best => Cairo.ANTIALIAS_BEST, :good => Cairo.ANTIALIAS_GOOD, :subpixel => Cairo.ANTIALIAS_SUBPIXEL, :none => Cairo.ANTIALIAS_NONE]`
 """
 function to_cairo_antialias(sym::Symbol)
-    sym == :best && return Cairo.ANTIALIAS_BEST
-    sym == :good && return Cairo.ANTIALIAS_GOOD
-    sym == :subpixel && return Cairo.ANTIALIAS_SUBPIXEL
-    sym == :none && return Cairo.ANTIALIAS_NONE
+    sym === :best && return Cairo.ANTIALIAS_BEST
+    sym === :good && return Cairo.ANTIALIAS_GOOD
+    sym === :subpixel && return Cairo.ANTIALIAS_SUBPIXEL
+    sym === :none && return Cairo.ANTIALIAS_NONE
     error("Wrong antialias setting: $(sym). Allowed: :best, :good, :subpixel, :none")
 end
 to_cairo_antialias(aa::Int) = aa

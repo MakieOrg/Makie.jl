@@ -94,7 +94,7 @@ function nan_extrema(array)
 end
 
 function extract_expr(extract_func, dictlike, args)
-    if args.head != :tuple
+    if args.head !== :tuple
         error("Usage: args need to be a tuple. Found: $args")
     end
     expr = Expr(:block)
