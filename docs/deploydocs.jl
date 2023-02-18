@@ -173,12 +173,11 @@ function generate_sitemap(dirname, max_version)
             for file in files
                 endswith(file, ".html") || continue
                 url = joinpath("https://docs.makie.org/stable", relpath(joinpath(root, file), folder))
+                # canonical links should not have a trailing `index.html`
+                url = replace(url, r"index\.html$" => "")
                 println(io, """
                 <url>
                     <loc>$url</loc>
-                    <lastmod>$(today())</lastmod>
-                    <changefreq>monthly</changefreq>
-                    <priority>0.5</priority>
                 </url>
                 """)
             end

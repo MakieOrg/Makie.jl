@@ -4,12 +4,14 @@ import {
     delete_scenes,
     insert_plot,
     delete_plots,
+    delete_scene,
+    delete_three_scene,
     find_plots,
     deserialize_scene,
-    delete_scene,
     TEXTURE_ATLAS,
     on_next_insert,
     scene_cache,
+    plot_cache,
     find_scene,
 } from "./Serialization.js";
 
@@ -26,6 +28,7 @@ export function render_scene(scene, picking = false) {
         console.log("EXITING WGL");
         renderer.state.reset();
         renderer.dispose();
+        delete_three_scene(scene);
         return false;
     }
     // dont render invisible scenes
@@ -436,6 +439,7 @@ window.WGL = {
     delete_scene,
     find_scene,
     scene_cache,
+    plot_cache,
     delete_scenes,
     create_scene,
     event2scene_pixel,
@@ -452,6 +456,7 @@ export {
     delete_scene,
     find_scene,
     scene_cache,
+    plot_cache,
     delete_scenes,
     create_scene,
     event2scene_pixel,

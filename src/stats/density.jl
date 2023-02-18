@@ -21,13 +21,13 @@ end
 
 Plot a kernel density estimate of `values`.
 `npoints` controls the resolution of the estimate, the baseline can be
-shifted with `offset` and the `direction` set to :x or :y.
+shifted with `offset` and the `direction` set to `:x` or `:y`.
 `bandwidth` and `boundary` are determined automatically by default.
 
 Statistical weights can be provided via the `weights` keyword argument.
 
 `color` is usually set to a single color, but can also be set to `:x` or
-`:y` to color with a gradient. If you use `:y` when direction = `:x` (or vice versa),
+`:y` to color with a gradient. If you use `:y` when `direction = :x` (or vice versa),
 note that only 2-element colormaps can work correctly.
 
 ## Attributes
