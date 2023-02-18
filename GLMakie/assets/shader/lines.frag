@@ -10,7 +10,7 @@ in vec4 f_color;
 in vec2 f_uv;
 in float f_thickness;
 flat in uvec2 f_id;
-in vec4 f_uv_minmax;
+// in vec4 f_uv_minmax;
 {{pattern_type}} pattern;
 
 uniform float pattern_length;
@@ -50,15 +50,16 @@ float ifelse(bool condition, float true_val, float false_val){
     return float(condition) * (true_val - false_val) + false_val;
 }
 
+uniform sampler1D pattern_sections;
 
 void main(){
     vec4 color = vec4(f_color.rgb, 0.0);
     vec2 xy = get_sd(pattern, f_uv);
 
-    // if we are at the start (end) of a (marked) line segment, replace the
-    // signed distance field values by a manual edge.
-    xy.x = ifelse(f_uv.x <= f_uv_minmax.x, (f_uv.x - f_uv_minmax.y) * pattern_length, xy.x);
-    xy.x = ifelse(f_uv.x >= f_uv_minmax.z, (f_uv_minmax.w - f_uv.x) * pattern_length, xy.x);
+    // // if we are at the start (end) of a (marked) line segment, replace the
+    // // signed distance field values by a manual edge.
+    // xy.x = ifelse(f_uv.x <= f_uv_minmax.x, (f_uv.x - f_uv_minmax.y) * pattern_length, xy.x);
+    // xy.x = ifelse(f_uv.x >= f_uv_minmax.z, (f_uv_minmax.w - f_uv.x) * pattern_length, xy.x);
 
     float alpha = aastep(0.0, xy.x);
     float alpha2 = aastep(-f_thickness, f_thickness, xy.y);

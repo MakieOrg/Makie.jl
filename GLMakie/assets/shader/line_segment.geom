@@ -20,7 +20,7 @@ out float f_thickness;
 out vec4 f_color;
 out vec2 f_uv;
 flat out uvec2 f_id;
-out vec4 f_uv_minmax;
+// out vec4 f_uv_minmax;
 
 #define AA_THICKNESS 4.0
 
@@ -53,7 +53,7 @@ void main(void)
 {
     o_view_pos = vec3(0);
     o_normal = vec3(0);
-    f_uv_minmax = vec4(-1000000.0, 0, 1000000.0, 0); // never trigger changes
+    // f_uv_minmax = vec4(-1000000.0, 0, 1000000.0, 0); // never trigger changes
 
     // get the four vertices passed to the shader:
     vec2 p0 = screen_space(gl_in[0].gl_Position); // start of previous segment
@@ -88,13 +88,13 @@ void main(void)
     // Force AA at line start/end 
     // This forces the signed distance field to be 0 at the start and end of a 
     // line, unless it is already negative due to a pattern.
-    float off_marker = float(fetch(pattern, 0).x < -1);
-    f_uv_minmax.x = AA_THICKNESS * px2u - 1000000.0 * off_marker;
-    f_uv_minmax.y = - 1000000.0 * off_marker;
+    // float off_marker = float(fetch(pattern, 0).x < -1);
+    // f_uv_minmax.x = AA_THICKNESS * px2u - 1000000.0 * off_marker;
+    // f_uv_minmax.y = - 1000000.0 * off_marker;
 
-    off_marker = float(fetch(pattern, u).x < -1);
-    f_uv_minmax.z = u - AA_THICKNESS * px2u + 1000000.0 * off_marker;
-    f_uv_minmax.w = u - 1000000.0 * off_marker;
+    // off_marker = float(fetch(pattern, u).x < -1);
+    // f_uv_minmax.z = u - AA_THICKNESS * px2u + 1000000.0 * off_marker;
+    // f_uv_minmax.w = u - 1000000.0 * off_marker;
 
     emit_vertex(p0 + thickness_aa0 * n0 - AA_offset, vec2(  - AA_THICKNESS * px2u, -thickness_aa0), 0);
     emit_vertex(p0 - thickness_aa0 * n0 - AA_offset, vec2(  - AA_THICKNESS * px2u,  thickness_aa0), 0);

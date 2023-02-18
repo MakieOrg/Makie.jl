@@ -22,11 +22,12 @@ out vec2 f_uv;
 out float f_thickness;
 
 flat out uvec2 f_id;
-out vec4 f_uv_minmax;
+// out vec4 f_uv_minmax;
 
 uniform vec2 resolution;
 uniform float pattern_length;
 {{pattern_type}} pattern;
+uniform sampler1D pattern_sections;
 
 float px2uv = 0.5 / pattern_length;
 
@@ -149,26 +150,94 @@ void main(void)
     vec2 n1 = vec2(-v1.y, v1.x);
     vec2 n2 = vec2(-v2.y, v2.x);
 
-    f_uv_minmax = vec4(-1000000.0, g_lastlen[1], 1000000.0, g_lastlen[2]); 
+    // f_uv_minmax = vec4(-1000000.0, g_lastlen[1], 1000000.0, g_lastlen[2]); 
 
     // harcoded for dots
     #ifndef FAST_PATH
-        float start = 2 * float(int(0.5 * g_lastlen[1] + 0.833333333333 * pattern_length) / int(pattern_length));
-        float stop  = 2 * float(int(0.5 * g_lastlen[2] + 0.833333333333 * pattern_length) / int(pattern_length));
-        stop -= 1.333333333;
+        float mid, start, stop, left, right, edge1, edge2, inv_pl;
+
+        inv_pl = 1.0 / pattern_length;
+        start = g_lastlen[2] * inv_pl;
+        stop  = g_lastlen[1] * inv_pl;
+        edge1 = 0.5 * (g_lastlen[1] + thickness_aa1);
+        edge2 = 0.5 * (g_lastlen[2] - thickness_aa2);
+
+        // figure out where on sections of the pattern start and stop
+        for (int i = 0; i < textureSize(pattern_sections, 0).x; i = i + 2)
+        {
+            left  = texelFetch(pattern_sections, i,   0).x;
+            right = texelFetch(pattern_sections, i+1, 0).x;
+
+            // start = min(start, 2 * (floor(1 + (edge1 - left) * inv_pl) + left  * inv_pl));
+            start = min(start, 2 * (ceil((edge1 - right) * inv_pl) + left * inv_pl));
+            stop  = max(stop,  2 * (floor((edge2 - left) * inv_pl) + right * inv_pl));
+        }
 
         if (stop > start){
-            // consider AA
-            start -= AA_THICKNESS / pattern_length;
-            stop  += AA_THICKNESS / pattern_length;
-        
-            p1 += (start  * pattern_length - g_lastlen[1]) * v1;
-            p2 += (stop   * pattern_length - g_lastlen[2]) * v1;
+            // init corner/linewidth handling
+            vec2 miter_a = n1;
+            vec2 miter_b = n1;
 
-            emit_vertex(p1 + thickness_aa1 * n1, vec2(0.5 * start, -thickness_aa1), 1);
-            emit_vertex(p1 - thickness_aa1 * n1, vec2(0.5 * start,  thickness_aa1), 1);
-            emit_vertex(p2 + thickness_aa2 * n1, vec2(0.5 * stop,  -thickness_aa2), 2);
-            emit_vertex(p2 - thickness_aa2 * n1, vec2(0.5 * stop,   thickness_aa2), 2);
+            float length_a = thickness_aa1;
+            float length_b = thickness_aa2;
+
+            // does left corner underflow?
+            if (start * pattern_length < g_lastlen[1] - thickness_aa1) {
+                // generate sharp corner at start
+                miter_a = normalize(n0 + n1);
+                length_a = thickness_aa1 / dot(miter_a, n1);
+
+                // truncated miter join
+                if( dot( v0, v1 ) < MITER_LIMIT ){
+                    bool gap = dot( v0, n1 ) > 0;
+                    float u0      = thickness_aa1 * abs(dot(miter_a, n1)) * px2uv;
+                    float proj_AA = AA_THICKNESS  * abs(dot(miter_a, n1)) * px2uv;
+
+                    if(gap){
+                        emit_vertex(p1,                                               vec2(start + u0,                      0),              1);
+                        emit_vertex(p1 + thickness_aa1 * n0,                          vec2(start - proj_AA,                +thickness_aa1), 1);
+                        emit_vertex(p1 + thickness_aa1 * n1,                          vec2(start - proj_AA,                -thickness_aa1), 1);
+                        emit_vertex(p1 + thickness_aa1 * n0 + AA_THICKNESS * miter_a, vec2(start - proj_AA - AA_THICKNESS * px2uv, +thickness_aa1), 1);
+                        emit_vertex(p1 + thickness_aa1 * n1 + AA_THICKNESS * miter_a, vec2(start - proj_AA - AA_THICKNESS * px2uv, -thickness_aa1), 1);
+                        EndPrimitive();
+                    }else{
+                        emit_vertex(p1,                                               vec2(start + u0,                      0),              1);
+                        emit_vertex(p1 - thickness_aa1 * n1,                          vec2(start - proj_AA,                +thickness_aa1), 1);
+                        emit_vertex(p1 - thickness_aa1 * n0,                          vec2(start - proj_AA,                -thickness_aa1), 1);
+                        emit_vertex(p1 - thickness_aa1 * n1 - AA_THICKNESS * miter_a, vec2(start - proj_AA - AA_THICKNESS * px2uv, +thickness_aa1), 1);
+                        emit_vertex(p1 - thickness_aa1 * n0 - AA_THICKNESS * miter_a, vec2(start - proj_AA - AA_THICKNESS * px2uv, -thickness_aa1), 1);
+                        EndPrimitive();
+                    }
+
+                    miter_a = n1;
+                    length_a = thickness_aa1;
+                }
+                    
+                start = g_lastlen[1] * inv_pl;
+            } else {
+                start -= AA_THICKNESS * inv_pl;
+                p1 += (start * pattern_length - g_lastlen[1]) * v1;
+            }
+
+            // does right corner overflow?
+            if (stop * pattern_length >= g_lastlen[2] + thickness_aa2) {
+                // generate sharp corner at end
+                if( dot( v1, v2 ) >= MITER_LIMIT ){
+                    miter_b = normalize(n1 + n2);
+                    length_b = thickness_aa2 / dot(miter_b, n1);
+                }
+
+                stop = g_lastlen[2] * inv_pl;
+            } else {
+                stop += AA_THICKNESS * inv_pl;
+                p2 += (stop  * pattern_length - g_lastlen[2]) * v1;
+            }
+        
+            // generate rectangle for this segment
+            emit_vertex(p1 + length_a * miter_a, vec2(0.5 * start + 0.5 * dot(v1, miter_a) * length_a * inv_pl, -thickness_aa1), 1);
+            emit_vertex(p1 - length_a * miter_a, vec2(0.5 * start - 0.5 * dot(v1, miter_a) * length_a * inv_pl,  thickness_aa1), 1);
+            emit_vertex(p2 + length_b * miter_b, vec2(0.5 * stop  + 0.5 * dot(v1, miter_b) * length_b * inv_pl,  -thickness_aa2), 2);
+            emit_vertex(p2 - length_b * miter_b, vec2(0.5 * stop  - 0.5 * dot(v1, miter_b) * length_b * inv_pl,   thickness_aa2), 2);
             EndPrimitive();
         }
     #else
@@ -182,3 +251,4 @@ void main(void)
     // reset shifting
     // f_uv_minmax = vec4(-999999, g_lastlen[1], 999999, g_lastlen[2]); 
 }
+

@@ -65,6 +65,7 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         color               = (color_map == nothing ? default(RGBA, s) : nothing) => GLBuffer
         thickness           = 2f0 => GLBuffer
         pattern             = nothing
+        pattern_sections    = pattern => Texture
         fxaa                = false
         # Duplicate the vertex indices on the ends of the line, as our geometry
         # shader in `layout(lines_adjacency)` mode requires each rendered
@@ -91,6 +92,9 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         lastlen             = const_lift(sumlengths, p_vec) => GLBuffer
         pattern_length      = 1f0 # we divide by pattern_length a lot.
     end
+
+    @info pattern
+
     if pattern !== nothing
         if !isa(pattern, Texture)
             if !isa(pattern, Vector)
