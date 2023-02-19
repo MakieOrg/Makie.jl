@@ -93,8 +93,6 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         pattern_length      = 1f0 # we divide by pattern_length a lot.
     end
 
-    @info pattern
-
     if pattern !== nothing
         if !isa(pattern, Texture)
             if !isa(pattern, Vector)
@@ -108,6 +106,7 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
             maxlength = const_lift(last, lastlen)
         end
     end
+
     data[:intensity] = intensity_convert(intensity, vertex)
     return assemble_shader(data)
 end
