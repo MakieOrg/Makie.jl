@@ -1,12 +1,18 @@
 {{GLSL_VERSION}}
 {{GLSL_EXTENSIONS}}
 
+{{define_fast_path}}
+
 struct Nothing{ //Nothing type, to encode if some variable doesn't contain any data
     bool _; //empty structs are not allowed
 };
 
 layout(lines) in;
-layout(triangle_strip, max_vertices = 4) out;
+#ifdef FAST_PATH
+    layout(triangle_strip, max_vertices = 6) out;
+#else
+    layout(triangle_strip, max_vertices = 4) out;
+#endif
 
 uniform vec2 resolution;
 uniform float pattern_length;
@@ -20,7 +26,6 @@ out float f_thickness;
 out vec4 f_color;
 out vec2 f_uv;
 flat out uvec2 f_id;
-// out vec4 f_uv_minmax;
 
 #define AA_THICKNESS 4.0
 
@@ -44,7 +49,19 @@ void emit_vertex(vec2 position, vec2 uv, int index)
     EmitVertex();
 }
 
-uniform int max_primtives;
+// for vertices in the center of a line segment
+// - position in screen space, half point applied
+// - uv unnormalized (since this is used for solid lines)
+void emit_mid_vertex(vec2 position, vec2 uv)
+{
+    vec4 inpos  = 0.5 * (gl_in[1].gl_Position + gl_in[2].gl_Position);
+    f_uv        = uv;
+    f_color     = 0.5 * (g_color[1] + g_color[2]);
+    gl_Position = vec4((position / resolution) * inpos.w, inpos.z, inpos.w);
+    f_id        = g_id[1];
+    f_thickness = 0.5 * (g_thickness[1] + g_thickness[2]);
+    EmitVertex();
+}
 
 out vec3 o_view_pos;
 out vec3 o_normal;
@@ -53,7 +70,6 @@ void main(void)
 {
     o_view_pos = vec3(0);
     o_normal = vec3(0);
-    // f_uv_minmax = vec4(-1000000.0, 0, 1000000.0, 0); // never trigger changes
 
     // get the four vertices passed to the shader:
     vec2 p0 = screen_space(gl_in[0].gl_Position); // start of previous segment
@@ -85,19 +101,21 @@ void main(void)
                 -AA_THICKNESS                    l + AA_THICKNESS
     */
 
-    // Force AA at line start/end 
-    // This forces the signed distance field to be 0 at the start and end of a 
-    // line, unless it is already negative due to a pattern.
-    // float off_marker = float(fetch(pattern, 0).x < -1);
-    // f_uv_minmax.x = AA_THICKNESS * px2u - 1000000.0 * off_marker;
-    // f_uv_minmax.y = - 1000000.0 * off_marker;
-
-    // off_marker = float(fetch(pattern, u).x < -1);
-    // f_uv_minmax.z = u - AA_THICKNESS * px2u + 1000000.0 * off_marker;
-    // f_uv_minmax.w = u - 1000000.0 * off_marker;
-
-    emit_vertex(p0 + thickness_aa0 * n0 - AA_offset, vec2(  - AA_THICKNESS * px2u, -thickness_aa0), 0);
-    emit_vertex(p0 - thickness_aa0 * n0 - AA_offset, vec2(  - AA_THICKNESS * px2u,  thickness_aa0), 0);
-    emit_vertex(p1 + thickness_aa1 * n0 + AA_offset, vec2(u + AA_THICKNESS * px2u, -thickness_aa1), 1);
-    emit_vertex(p1 - thickness_aa1 * n0 + AA_offset, vec2(u + AA_THICKNESS * px2u,  thickness_aa1), 1);
+    #ifdef FAST_PATH
+        // For solid lines uv's are used as signed distance values. To get AA
+        // we need 0 at each end of the line segment and positive uv.u 
+        // inbetween
+        emit_vertex(p0 + thickness_aa0 * n0 - AA_offset,      vec2(- 0.5 * AA_THICKNESS, -thickness_aa0), 0);
+        emit_vertex(p0 - thickness_aa0 * n0 - AA_offset,      vec2(- 0.5 * AA_THICKNESS,  thickness_aa0), 0);
+        emit_mid_vertex(0.5 * (p0 + p1) + thickness_aa0 * n0, vec2(  0.25 * l,           -thickness_aa0));
+        emit_mid_vertex(0.5 * (p0 + p1) - thickness_aa0 * n0, vec2(  0.25 * l,            thickness_aa0));
+        emit_vertex(p1 + thickness_aa1 * n0 + AA_offset,      vec2(- 0.5 * AA_THICKNESS, -thickness_aa1), 1);
+        emit_vertex(p1 - thickness_aa1 * n0 + AA_offset,      vec2(- 0.5 * AA_THICKNESS,  thickness_aa1), 1);
+    #else
+        // For patterned lines AA is done by sampling the pattern
+        emit_vertex(p0 + thickness_aa0 * n0 - AA_offset, vec2(  - AA_THICKNESS * px2u, -thickness_aa0), 0);
+        emit_vertex(p0 - thickness_aa0 * n0 - AA_offset, vec2(  - AA_THICKNESS * px2u,  thickness_aa0), 0);
+        emit_vertex(p1 + thickness_aa1 * n0 + AA_offset, vec2(u + AA_THICKNESS * px2u, -thickness_aa1), 1);
+        emit_vertex(p1 - thickness_aa1 * n0 + AA_offset, vec2(u + AA_THICKNESS * px2u,  thickness_aa1), 1);
+    #endif
 }

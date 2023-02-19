@@ -310,9 +310,11 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::LineSegments
         ls = to_value(linestyle)
         if isnothing(ls)
             data[:pattern] = nothing
+            data[:fast] = true
         else
             linewidth = gl_attributes[:thickness]
             data[:pattern] = ls .* _mean(to_value(linewidth))
+            data[:fast] = false
         end
         space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         positions = handle_view(x.converted[1], data)

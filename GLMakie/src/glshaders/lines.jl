@@ -129,7 +129,8 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
             "fragment_output.frag", "util.vert", "line_segment.vert", "line_segment.geom", "lines.frag",
             view = Dict(
                 "buffers" => output_buffers(screen, to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
+                "buffer_writes" => output_buffer_writes(screen, to_value(transparency)),
+                "define_fast_path" => to_value(fast) ? "#define FAST_PATH" : ""
             )
         )
         gl_primitive   = GL_LINES
