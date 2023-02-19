@@ -63,7 +63,7 @@ void main(){
     // color.r = 0.5;
     // color.g = mod(f_uv.x, 1.0);
     // color.b = mod(f_uv.x, 1.0);
-    color.a = 0.2 + 0.8 * color.a;
+    // color.a = 0.2 + 0.8 * color.a;
 
     
     write2framebuffer(color, f_id);
