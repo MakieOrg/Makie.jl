@@ -10,6 +10,7 @@ in vec4 f_color;
 in vec2 f_uv;
 in float f_thickness;
 flat in uvec2 f_id;
+flat in vec2 f_uv_minmax;
 {{pattern_type}} pattern;
 
 uniform float pattern_length;
@@ -25,6 +26,13 @@ float aastep(float threshold1, float threshold2, float dist) {
     // TODO 2* because our normalization is messy
     return smoothstep(threshold1 - 2 * ANTIALIAS_RADIUS, threshold1 + 2 * ANTIALIAS_RADIUS, dist) -
            smoothstep(threshold2 - 2 * ANTIALIAS_RADIUS, threshold2 + 2 * ANTIALIAS_RADIUS, dist);
+}
+
+float aastep_scaled(float threshold1, float threshold2, float dist) {
+    // TODO 2* because our normalization is messy
+    float AA = ANTIALIAS_RADIUS / pattern_length;
+    return smoothstep(threshold1 - AA, threshold1 + AA, dist) -
+           smoothstep(threshold2 - AA, threshold2 + AA, dist);
 }
 
 
@@ -47,6 +55,9 @@ vec2 get_sd(Nothing _, vec2 uv){
     return uv;
 }
 
+float ifelse(bool condition, float true_val, float false_val){
+    return float(condition) * (true_val - false_val) + false_val;
+}
 
 void main(){
     vec4 color = vec4(f_color.rgb, 0.0);
@@ -54,7 +65,10 @@ void main(){
 
     float alpha = aastep(0.0, xy.x);
     float alpha2 = aastep(-f_thickness, f_thickness, xy.y);
-    color = vec4(f_color.rgb, f_color.a*alpha*alpha2);
+    // float alpha3 = ifelse(xy.x > 2.0, aastep_scaled(f_uv_minmax.x, f_uv_minmax.y, f_uv.x), 1.0);
+    float alpha3 = aastep_scaled(f_uv_minmax.x, f_uv_minmax.y, f_uv.x);
+
+    color = vec4(f_color.rgb, f_color.a * alpha * alpha2 * alpha3);
 
     // Debug: Show uv values in line direction (repeating)
     // color = vec4(mod(f_uv.x, 1.0), 0, 0, 1);

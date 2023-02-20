@@ -121,6 +121,7 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         shape               = RECTANGLE
         pattern             = nothing
         fxaa                = false
+        fast                = false
         indices             = const_lift(length, positions) => to_index_buffer
         # TODO update boundingbox
         transparency = false

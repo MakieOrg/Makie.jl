@@ -20,8 +20,8 @@ in float g_thickness[];
 out vec4 f_color;
 out vec2 f_uv;
 out float f_thickness;
-
 flat out uvec2 f_id;
+flat out vec2 f_uv_minmax;
 
 uniform vec2 resolution;
 uniform float pattern_length;
@@ -36,6 +36,12 @@ float px2uv = 0.5 / pattern_length;
 vec2 screen_space(vec4 vertex)
 {
     return vec2(vertex.xy / vertex.w) * resolution;
+}
+
+// should be noticably faster than branching if true_val and false_val are
+// easy to calculate
+float ifelse(bool condition, float true_val, float false_val){
+    return float(condition) * (true_val - false_val) + false_val;
 }
 
 
@@ -58,19 +64,6 @@ void emit_vertex(vec2 position, vec2 uv, int index)
     EmitVertex();
 }
 
-// for vertices in the center of a line segment
-// - position in screen space, half point applied
-// - uv unnormalized (since this is used for solid lines)
-void emit_mid_vertex(vec2 position, vec2 uv)
-{
-    vec4 inpos  = 0.5 * (gl_in[1].gl_Position + gl_in[2].gl_Position);
-    f_uv        = uv;
-    f_color     = 0.5 * (g_color[1] + g_color[2]);
-    gl_Position = vec4((position / resolution) * inpos.w, inpos.z, inpos.w);
-    f_id        = g_id[1];
-    f_thickness = 0.5 * (g_thickness[1] + g_thickness[2]);
-    EmitVertex();
-}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -86,6 +79,9 @@ void main(void)
     // These need to be set but don't have reasonable values here 
     o_view_pos = vec3(0);
     o_normal = vec3(0);
+    // This sets a min and max value foir uv.u at which anti-aliasing is forced.
+    // With this setting it's never triggered.
+    f_uv_minmax = vec2(-1000000000.0, 1000000000.0);
 
     // We mark each of the four vertices as valid or not. Vertices can be
     // marked invalid on input (eg, if they contain NaN). We also mark them
@@ -166,7 +162,6 @@ void main(void)
     // draws after edge1
     // stop is the on-to-off (right) transition of the last pattern that still
     // draws before edge2
-    // if the next vertex is not valid, stop considers a fully draw pattern instead
     float start, stop, left, right, edge1, edge2, inv_pl;
 
     inv_pl = 1.0 / pattern_length;
@@ -181,12 +176,8 @@ void main(void)
         right = texelFetch(pattern_sections, i+1, 0).x;
 
         start = min(start, 2 * (ceil((edge1 - right) * inv_pl) + left * inv_pl));
-        if (isvalid[3])
-            stop  = max(stop, 2 * (floor((edge2 - left) * inv_pl) + right * inv_pl));
-        else
-            stop  = max(stop, 2 * (floor((0.5 * g_lastlen[2] - right) * inv_pl) + right * inv_pl));
+        stop  = max(stop, 2 * (floor((edge2 - left) * inv_pl) + right * inv_pl));
     }
-
 
     // if there is something to draw...
     if (stop > start){
@@ -206,7 +197,7 @@ void main(void)
         //               :   |              
         //               : - '--------------
         //  g_lastlen[1] - g_thickness[1]
-        if (start * pattern_length < g_lastlen[1] - g_thickness[1]) {
+        if (start * pattern_length < g_lastlen[1] - g_thickness[1] && isvalid[0]) {
             
             // setup for sharp corners
             //
@@ -262,8 +253,8 @@ void main(void)
                 With how we pick start and get in this branch u0 will always be
                 in a solidly drawn region of the pattern.
                 */
-                float u0      = start + thickness_aa1 * abs(dot(miter_a, n1)) * px2uv;
-                float proj_AA = start - AA_THICKNESS  * abs(dot(miter_a, n1)) * px2uv;
+                float u0      = 0.5 * start + thickness_aa1 * abs(dot(miter_a, n1)) * px2uv;
+                float proj_AA = 0.5 * start - AA_THICKNESS  * abs(dot(miter_a, n1)) * px2uv;
 
                 // to save some space
                 vec2 off0   = thickness_aa1 * n0;
@@ -300,7 +291,7 @@ void main(void)
         }
 
         // Same as above for a line end. 
-        if (stop * pattern_length >= g_lastlen[2] + g_thickness[2]) {
+        if (stop * pattern_length >= g_lastlen[2] + g_thickness[2] && isvalid[3]) {
             // generate sharp corner at end
             if( dot( v1, v2 ) >= MITER_LIMIT ){
                 miter_b = normalize(n1 + n2);
@@ -318,6 +309,11 @@ void main(void)
         // to save some space
         miter_a *= length_a;
         miter_b *= length_b;
+
+        // If this segment starts or ends a line we force anti-aliasing to
+        // happen at the respective edge.
+        f_uv_minmax.x = ifelse(isvalid[0], f_uv_minmax.x, g_lastlen[1] * px2uv);
+        f_uv_minmax.y = ifelse(isvalid[3], f_uv_minmax.y, g_lastlen[2] * px2uv);
         
         // generate rectangle for this segment
         emit_vertex(p1 + miter_a, vec2(0.5 * start + dot(v1, miter_a) * px2uv, -thickness_aa1), 1);
@@ -347,14 +343,14 @@ void main(void)
         bool gap = dot( v0, n1 ) > 0;
         // In this case uv's are used as signed distance field values, so we
         // want 0 where we had start before. 
-        float u0      = thickness_aa1 * abs(dot(miter_a, n1)) * 0.5;
-        float proj_AA = AA_THICKNESS  * abs(dot(miter_a, n1)) * 0.5;
+        float u0      = thickness_aa1 * abs(dot(miter_a, n1)) * px2uv;
+        float proj_AA = AA_THICKNESS  * abs(dot(miter_a, n1)) * px2uv;
 
         // to save some space
         vec2 off0   = thickness_aa1 * n0;
         vec2 off1   = thickness_aa1 * n1;
         vec2 off_AA = AA_THICKNESS * miter_a;
-        float u_AA  = AA_THICKNESS * 0.5;
+        float u_AA  = AA_THICKNESS * px2uv;
 
         if(gap){
             emit_vertex(p1,                 vec2(+ u0,                          0), 1);
@@ -384,46 +380,34 @@ void main(void)
 
 
     // Without a pattern (linestyle) we use uv.u directly as a signed 
-    // distance field. If we don't have an edge uv.u should be consistently
-    // > 0 (no AA edge). Since we extrude some lines it should be greater
-    // than 1 / MITER_LIMIT.
-    float u0 = 10.0 * g_thickness[1];
-    float u1 = 10.0 * g_thickness[2];
+    // distance field. If the line doesn't start or end with this line segment
+    // we keep uv.u > 0 (draw w/o AA). 
+    float u0 = 10.0 * pattern_length;
+    float u1 = u0 + segment_length * px2uv;
 
-    // If we are at an edge we make add an edge (0 crossing) in our uv.u
-    // to get anti-aliasing.
+    // If we are at an edge we need to treat AA
     if (!isvalid[0] && !isvalid[3]){
-        // line segments is cut off on both ends.
-        // We need to add a mid point here to get AA on both sides.
-        //
-        //  |-------- l + 2AA --------|    total length
-        //  .------------.------------.
-        //  |            |            |
-        //  p1    0.5 * (p1 + p2)    p2    points (adjusted)
-        //  |            |            |
-        //  '------------'------------'
-        // -AA          l/2          -AA   uv.u values
+        // start and end are part of this line segment
 
         // pad line to have space for AA
         p1 -= AA_THICKNESS * v1;
         p2 += AA_THICKNESS * v1;
 
-        // uv values (0.5 for double pixel space -> normalized space)
-        u0 = -0.5 * AA_THICKNESS;
-        u1 = 0.25 * segment_length;
+        // set the cut off points and add uv padding to uv.u values
+        f_uv_minmax = vec2(u0, u1);
+        u0 -= AA_THICKNESS * px2uv;
+        u1 -= AA_THICKNESS * px2uv;
 
         // TODO indices, half thickness
-        emit_vertex(p1 + thickness_aa1 * n1,                  vec2(u0, -thickness_aa1), 1);
-        emit_vertex(p1 - thickness_aa1 * n1,                  vec2(u0,  thickness_aa1), 1);
-        emit_mid_vertex(0.5 * (p1 + p2) + thickness_aa1 * n1, vec2(u1, -thickness_aa1));
-        emit_mid_vertex(0.5 * (p1 + p2) - thickness_aa1 * n1, vec2(u1,  thickness_aa1));
-        emit_vertex(p2 + thickness_aa2 * n1,                  vec2(u0, -thickness_aa2), 2);
-        emit_vertex(p2 - thickness_aa2 * n1,                  vec2(u0,  thickness_aa2), 2);
+        emit_vertex(p1 + thickness_aa1 * n1, vec2(u0, -thickness_aa1), 1);
+        emit_vertex(p1 - thickness_aa1 * n1, vec2(u0,  thickness_aa1), 1);
+        emit_vertex(p2 + thickness_aa2 * n1, vec2(u1, -thickness_aa2), 2);
+        emit_vertex(p2 - thickness_aa2 * n1, vec2(u1,  thickness_aa2), 2);
         EndPrimitive();
         return;
 
     // line starts or ends with this segment. Add space for AA and add an
-    // edge (0 crossover) in uv.u
+    // edge (0 crossover) in uv.u (This works without f_uv_minmax)
     } else if (!isvalid[0]){
         p1 -= AA_THICKNESS * v1;
         u0 = -AA_THICKNESS;
@@ -434,15 +418,18 @@ void main(void)
         u1 = -AA_THICKNESS;
     }
 
+    // if there is no start or end in the segment we can just leave things.
+    // The offset in u0 is big enough to work with a factor px2uv
+
     // to save some space
     miter_a *= length_a;
     miter_b *= length_b;
 
     // Generate line segment (with uv.u being signed distance field values)
-    emit_vertex(p1 + miter_a, vec2(0.5 * (u0 + dot(v1, miter_a)), -thickness_aa1), 1);
-    emit_vertex(p1 - miter_a, vec2(0.5 * (u0 - dot(v1, miter_a)),  thickness_aa1), 1);
-    emit_vertex(p2 + miter_b, vec2(0.5 * (u1 + dot(v1, miter_b)), -thickness_aa2), 2);
-    emit_vertex(p2 - miter_b, vec2(0.5 * (u1 - dot(v1, miter_b)),  thickness_aa2), 2);
+    emit_vertex(p1 + miter_a, vec2(px2uv * (u0 + dot(v1, miter_a)), -thickness_aa1), 1);
+    emit_vertex(p1 - miter_a, vec2(px2uv * (u0 - dot(v1, miter_a)),  thickness_aa1), 1);
+    emit_vertex(p2 + miter_b, vec2(px2uv * (u1 + dot(v1, miter_b)), -thickness_aa2), 2);
+    emit_vertex(p2 - miter_b, vec2(px2uv * (u1 - dot(v1, miter_b)),  thickness_aa2), 2);
 
 
     #endif

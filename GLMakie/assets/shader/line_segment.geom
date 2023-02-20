@@ -8,11 +8,7 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 };
 
 layout(lines) in;
-#ifdef FAST_PATH
-    layout(triangle_strip, max_vertices = 6) out;
-#else
-    layout(triangle_strip, max_vertices = 4) out;
-#endif
+layout(triangle_strip, max_vertices = 4) out;
 
 uniform vec2 resolution;
 uniform float pattern_length;
@@ -26,6 +22,7 @@ out float f_thickness;
 out vec4 f_color;
 out vec2 f_uv;
 flat out uvec2 f_id;
+flat out vec2 f_uv_minmax;
 
 #define AA_THICKNESS 4.0
 
@@ -46,20 +43,6 @@ void emit_vertex(vec2 position, vec2 uv, int index)
     gl_Position = vec4((position / resolution) * inpos.w, inpos.z, inpos.w);
     f_id = g_id[index];
     f_thickness = g_thickness[index];
-    EmitVertex();
-}
-
-// for vertices in the center of a line segment
-// - position in screen space, half point applied
-// - uv unnormalized (since this is used for solid lines)
-void emit_mid_vertex(vec2 position, vec2 uv)
-{
-    vec4 inpos  = 0.5 * (gl_in[1].gl_Position + gl_in[2].gl_Position);
-    f_uv        = uv;
-    f_color     = 0.5 * (g_color[1] + g_color[2]);
-    gl_Position = vec4((position / resolution) * inpos.w, inpos.z, inpos.w);
-    f_id        = g_id[1];
-    f_thickness = 0.5 * (g_thickness[1] + g_thickness[2]);
     EmitVertex();
 }
 
@@ -87,6 +70,7 @@ void main(void)
     float u = l * px2u;
 
     vec2 AA_offset = AA_THICKNESS * v0;
+    float AA = AA_THICKNESS * px2u;
 
     /*                  0              v0              l 
                         |             -->              | 
@@ -102,20 +86,22 @@ void main(void)
     */
 
     #ifdef FAST_PATH
-        // For solid lines uv's are used as signed distance values. To get AA
-        // we need 0 at each end of the line segment and positive uv.u 
-        // inbetween
-        emit_vertex(p0 + thickness_aa0 * n0 - AA_offset,      vec2(- 0.5 * AA_THICKNESS, -thickness_aa0), 0);
-        emit_vertex(p0 - thickness_aa0 * n0 - AA_offset,      vec2(- 0.5 * AA_THICKNESS,  thickness_aa0), 0);
-        emit_mid_vertex(0.5 * (p0 + p1) + thickness_aa0 * n0, vec2(  0.25 * l,           -thickness_aa0));
-        emit_mid_vertex(0.5 * (p0 + p1) - thickness_aa0 * n0, vec2(  0.25 * l,            thickness_aa0));
-        emit_vertex(p1 + thickness_aa1 * n0 + AA_offset,      vec2(- 0.5 * AA_THICKNESS, -thickness_aa1), 1);
-        emit_vertex(p1 - thickness_aa1 * n0 + AA_offset,      vec2(- 0.5 * AA_THICKNESS,  thickness_aa1), 1);
+        // For solid lines the uv cordinates are used as a signed distance field.
+        // We keep the values positive to draw a solid line and add limits to
+        // f_uv_minmax to add anti-aliasing at the start and end of the line
+        f_uv_minmax = vec2(u, 2*u);
+        emit_vertex(p0 + thickness_aa0 * n0 - AA_offset, vec2(  u - AA, -thickness_aa0), 0);
+        emit_vertex(p0 - thickness_aa0 * n0 - AA_offset, vec2(  u - AA,  thickness_aa0), 0);
+        emit_vertex(p1 + thickness_aa1 * n0 + AA_offset, vec2(2*u + AA, -thickness_aa1), 1);
+        emit_vertex(p1 - thickness_aa1 * n0 + AA_offset, vec2(2*u + AA,  thickness_aa1), 1);
     #else
-        // For patterned lines AA is done by sampling the pattern
-        emit_vertex(p0 + thickness_aa0 * n0 - AA_offset, vec2(  - AA_THICKNESS * px2u, -thickness_aa0), 0);
-        emit_vertex(p0 - thickness_aa0 * n0 - AA_offset, vec2(  - AA_THICKNESS * px2u,  thickness_aa0), 0);
-        emit_vertex(p1 + thickness_aa1 * n0 + AA_offset, vec2(u + AA_THICKNESS * px2u, -thickness_aa1), 1);
-        emit_vertex(p1 - thickness_aa1 * n0 + AA_offset, vec2(u + AA_THICKNESS * px2u,  thickness_aa1), 1);
+        // For patterned lines AA is mostly done by the pattern sampling. We 
+        // still set f_uv_minmax here to ensure that cut off patterns als have 
+        // anti-aliasing at the start/end of this segment
+        f_uv_minmax = vec2(0, u);
+        emit_vertex(p0 + thickness_aa0 * n0 - AA_offset, vec2(  - AA, -thickness_aa0), 0);
+        emit_vertex(p0 - thickness_aa0 * n0 - AA_offset, vec2(  - AA,  thickness_aa0), 0);
+        emit_vertex(p1 + thickness_aa1 * n0 + AA_offset, vec2(u + AA, -thickness_aa1), 1);
+        emit_vertex(p1 - thickness_aa1 * n0 + AA_offset, vec2(u + AA,  thickness_aa1), 1);
     #endif
 }
