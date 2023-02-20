@@ -382,7 +382,7 @@ void main(void)
     // Without a pattern (linestyle) we use uv.u directly as a signed 
     // distance field. If the line doesn't start or end with this line segment
     // we keep uv.u > 0 (draw w/o AA). 
-    float u0 = 10.0 * pattern_length;
+    float u0 = 10.0 * (abs(g_thickness[1] + g_thickness[2])) * pattern_length;
     float u1 = u0 + segment_length * px2uv;
 
     // If we are at an edge we need to treat AA
