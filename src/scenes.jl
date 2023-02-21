@@ -279,7 +279,7 @@ function Scene(
     )
     if isnothing(px_area)
         px_area = lift(zero_origin, parent.px_area; ignore_equal_values=true)
-    else
+    elseif !(px_area isa Observable) # observables are assumed to be already corrected against the parent to avoid double updates
         px_area = lift(pixelarea(parent), convert(Observable, px_area); ignore_equal_values=true) do p, a
             # make coordinates relative to parent
             rect = Rect2i(minimum(p) .+ minimum(a), widths(a))
