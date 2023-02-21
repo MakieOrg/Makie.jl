@@ -46,6 +46,12 @@ function initialize_block!(sg::SliderGrid, nts::NamedTuple...)
     sg.valuelabels = Label[]
     sg.labels = Label[]
 
+    push!(sg.finalizers, function()
+        delete!.(sg.sliders)
+        delete!.(sg.valuelabels)
+        delete!.(sg.labels)
+    end)
+
     extract_label_range_format(pair::Pair) = pair[1], extract_range_format(pair[2])...
     extract_range_format(p::Pair) = (p...,)
     extract_range_format(x) = (x, default_format)
