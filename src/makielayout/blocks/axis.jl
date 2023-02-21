@@ -55,10 +55,11 @@ function register_events!(ax, scene)
     end
 
     # TODO this should probably just forward KeyEvent from Makie
-    on(evs.keyboardbutton) do e
+    obsfunc = on(evs.keyboardbutton) do e
         keysevents[] = KeysEvent(evs.keyboardstate)
         return Consume(false)
     end
+    push!(ax.finalizers, offcaller(obsfunc))
 
     interactions = Dict{Symbol, Tuple{Bool, Any}}()
     setfield!(ax, :interactions, interactions)
