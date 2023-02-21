@@ -178,6 +178,10 @@ void main(void)
         start = min(start, 2 * (ceil((edge1 - right) * inv_pl) + left * inv_pl));
         stop  = max(stop, 2 * (floor((edge2 - left) * inv_pl) + right * inv_pl));
     }
+    // Technically start and stop should be offset by another 
+    // 1 / (2 * textureSize(pattern)) so the line segment is normalized to
+    // pattern texel centers rather than the left edge, but we have enough
+    // AA_THICKNESS for it to be irrelevant.
 
     // if there is something to draw...
     if (stop > start){

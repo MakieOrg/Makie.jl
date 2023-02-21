@@ -101,7 +101,12 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
             tex = GLAbstraction.Texture(ticks(pattern, 100), x_repeat = :repeat)
             data[:pattern] = tex
         end
-        data[:pattern_length] = Float32(last(pattern) - first(pattern))
+        # patterns are periodic, i.e. first(pattern) and last(pattern) both 
+        # represent 0, and only one is included. `ticks(pattern, N)` generates
+        # N+1 points and drops the last because of this. As a result the 
+        # pattern_length (which represents the length of `tex` in the shaders)
+        # needs to be scaled down by 100/101
+        data[:pattern_length] = Float32((last(pattern) - first(pattern)) / 1.01)
         @gen_defaults! data begin
             maxlength = const_lift(last, lastlen)
         end
@@ -143,7 +148,7 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         end
         tex = GLAbstraction.Texture(ticks(pattern, 100), x_repeat = :repeat)
         data[:pattern] = tex
-        data[:pattern_length] = Float32(last(pattern) - first(pattern))
+        data[:pattern_length] = Float32((last(pattern) - first(pattern)) / 1.01)
     end
     return assemble_shader(data)
 end
