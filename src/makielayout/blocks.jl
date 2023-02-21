@@ -522,7 +522,7 @@ function Base.delete!(block::Block)
     # `px_area`, should this be cleaned up as well?
 
     gc = GridLayoutBase.gridcontent(block)
-    gc === nothing || GridLayoutBase.remove_from_gridlayout!()
+    gc === nothing || GridLayoutBase.remove_from_gridlayout!(gc)
 
     delete_from_parent!(block.parent, block)
     block.parent = nothing
