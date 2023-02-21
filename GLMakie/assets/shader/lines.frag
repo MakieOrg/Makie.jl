@@ -23,13 +23,14 @@ float aastep(float threshold1, float dist) {
 }
 
 float aastep(float threshold1, float threshold2, float dist) {
-    // TODO 2* because our normalization is messy
-    return smoothstep(threshold1 - 2 * ANTIALIAS_RADIUS, threshold1 + 2 * ANTIALIAS_RADIUS, dist) -
-           smoothstep(threshold2 - 2 * ANTIALIAS_RADIUS, threshold2 + 2 * ANTIALIAS_RADIUS, dist);
+    // We use 2x pixel space in the geometry shaders which passes through
+    // in uv.y, so we need to treat it here by using 2 * ANTIALIAS_RADIUS
+    float AA = 2 * ANTIALIAS_RADIUS;
+    return smoothstep(threshold1 - AA, threshold1 + AA, dist) -
+           smoothstep(threshold2 - AA, threshold2 + AA, dist);
 }
 
 float aastep_scaled(float threshold1, float threshold2, float dist) {
-    // TODO 2* because our normalization is messy
     float AA = ANTIALIAS_RADIUS / pattern_length;
     return smoothstep(threshold1 - AA, threshold1 + AA, dist) -
            smoothstep(threshold2 - AA, threshold2 + AA, dist);

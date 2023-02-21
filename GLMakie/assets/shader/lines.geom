@@ -81,7 +81,7 @@ void main(void)
     o_normal = vec3(0);
     // This sets a min and max value foir uv.u at which anti-aliasing is forced.
     // With this setting it's never triggered.
-    f_uv_minmax = vec2(-1000000000.0, 1000000000.0);
+    f_uv_minmax = vec2(-1.0e12, 1.0e12);
 
     // We mark each of the four vertices as valid or not. Vertices can be
     // marked invalid on input (eg, if they contain NaN). We also mark them
