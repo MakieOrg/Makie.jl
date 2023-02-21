@@ -463,12 +463,13 @@ function process_rt_node!(stack, lines, s::String, _)
             x = 0
             push!(lines, GlyphInfo[])
         else
-            gi = FreeTypeAbstraction.glyph_index(gs.font, char)
-            gext = GlyphExtent(gs.font, char)
+            bestfont = find_font_for_char(char, gs.font)
+            gi = FreeTypeAbstraction.glyph_index(bestfont, char)
+            gext = GlyphExtent(bestfont, char)
             ori = Point2f(x, y)
             push!(lines[end], GlyphInfo(
                 gi,
-                gs.font,
+                bestfont,
                 ori,
                 gext,
                 gs.size,
