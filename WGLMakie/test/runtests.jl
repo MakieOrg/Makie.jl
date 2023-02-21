@@ -1,9 +1,9 @@
-using ImageMagick, FileIO
+using FileIO
 using WGLMakie, Makie, Test
 using Pkg
 using WGLMakie.JSServe
 import Electron
-JSServe.use_electron_display()
+d = JSServe.use_electron_display()
 
 path = normpath(joinpath(dirname(pathof(Makie)), "..", "ReferenceTests"))
 Pkg.develop(PackageSpec(path = path))

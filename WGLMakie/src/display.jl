@@ -22,6 +22,7 @@ function JSServe.jsrender(session::Session, scene::Scene)
     c = Channel{ThreeDisplay}(1)
     put!(c, three)
     screen = Screen(c, true, scene)
+    screen.session = session
     Makie.push_screen!(scene, screen)
     on(on_init) do i
         mark_as_displayed!(screen, scene)
@@ -60,6 +61,7 @@ $(Base.doc(MakieScreen))
 """
 mutable struct Screen <: Makie.MakieScreen
     three::Channel{ThreeDisplay}
+    session::Union{Nothing, Session}
     display::Any
     scene::Union{Nothing, Scene}
     displayed_scenes::Set{String}
@@ -67,7 +69,7 @@ mutable struct Screen <: Makie.MakieScreen
             three::Channel{ThreeDisplay},
             display::Any,
             scene::Union{Nothing, Scene})
-        return new(three, display, scene, Set{String}())
+        return new(three, nothing, display, scene, Set{String}())
     end
 end
 
@@ -88,6 +90,7 @@ for M in WEB_MIMES
     @eval begin
         function Makie.backend_show(screen::Screen, io::IO, m::$M, scene::Scene)
             inline_display = App() do session::Session
+                screen.session = session
                 three, canvas, init_obs = three_display(session, scene)
                 Makie.push_screen!(scene, screen)
                 on(init_obs) do _
@@ -115,6 +118,10 @@ function Base.size(screen::Screen)
 end
 
 function get_three(screen::Screen; timeout = 100, error::Union{Nothing, String}=nothing)::Union{Nothing, ThreeDisplay}
+    if screen.display !== true
+        error("Screen hasn't displayed anything, so can't get three context")
+    end
+    isnothing(screen.session) && return nothing
     tstart = time()
     result = nothing
     while true
@@ -159,6 +166,7 @@ function Base.display(screen::Screen, scene::Scene; kw...)
     Makie.push_screen!(scene, screen)
     # Reference to three object which gets set once we serve this to a browser
     app = App() do session, request
+        screen.session = session
         three, canvas, done_init = three_display(session, scene)
         on(done_init) do _
             put!(screen.three, three)
@@ -241,8 +249,13 @@ function Base.insert!(screen::Screen, scene::Scene, plot::Combined)
 end
 
 function Base.delete!(td::Screen, scene::Scene, plot::Combined)
+    isopen(scene) || return
+    three = get_three(td)
+    isnothing(three) && return # if no session we haven't displayed and dont need to delete
+    isready(three.session) || return
+
     uuids = js_uuid.(Makie.flatten_plots(plot))
-    JSServe.evaljs(td.session, js"""
+    JSServe.evaljs(three.session, js"""
     $(WGL).then(WGL=> {
         WGL.delete_plots($(js_uuid(scene)), $uuids);
     })""")

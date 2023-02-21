@@ -52,6 +52,7 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     selection = JSServe.evaljs_value(session, js"""
         Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => WGL.pick_sorted(scene, $(xy_vec), $(range)))
     """)
+    isnothing(selection) && return Tuple{Union{Nothing,AbstractPlot},Int}[]
     lookup = plot_lookup(scene)
     return map(selection) do (plot_id, index)
         return (lookup[plot_id], index + 1)
