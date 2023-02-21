@@ -113,6 +113,9 @@ function initialize_block!(tbox::Textbox)
     tbox.layoutobservables.suggestedbbox[] = tbox.layoutobservables.suggestedbbox[]
 
     mouseevents = addmouseevents!(scene)
+    for obsfunc in mouseevents.observerfuncs
+        push!(tbox.finalizers, offcaller(obsfunc))
+    end
 
     onmouseleftdown(mouseevents) do state
         focus!(tbox)
@@ -183,13 +186,14 @@ function initialize_block!(tbox::Textbox)
         tbox.displayed_string[] = join(newchars)
     end
 
-    on(events(scene).unicode_input, priority = 60) do char
+    obsfunc = on(events(scene).unicode_input, priority = 60) do char
         if tbox.focused[] && is_allowed(char, tbox.restriction[])
             insertchar!(char, cursorindex[] + 1)
             return Consume(true)
         end
         return Consume(false)
     end
+    push!(tbox.finalizers, offcaller(obsfunc))
 
     function reset_to_stored()
         cursorindex[] = 0
@@ -211,7 +215,7 @@ function initialize_block!(tbox::Textbox)
     end
 
 
-    on(events(scene).keyboardbutton, priority = 60) do event
+    obsfunc = on(events(scene).keyboardbutton, priority = 60) do event
         if tbox.focused[]
             ctrl_v = (Keyboard.left_control | Keyboard.right_control) & Keyboard.v
             if ispressed(scene, ctrl_v)
@@ -262,6 +266,7 @@ function initialize_block!(tbox::Textbox)
 
         return Consume(false)
     end
+    push!(tbox.finalizers, offcaller(obsfunc))
 
     tbox
 end
