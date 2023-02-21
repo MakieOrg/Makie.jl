@@ -492,7 +492,7 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, space=:data)
     end
     mesh = map(mesh, transfunc, space) do mesh, func, space
         if !Makie.is_identity_transform(func)
-            return update_positions(mesh, apply_transform.(Ref(func), mesh.position, space))
+            return update_positions(mesh, apply_transform.((func,), mesh.position, space))
         end
         return mesh
     end
