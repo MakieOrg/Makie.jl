@@ -112,23 +112,28 @@ function initialize_block!(ax::Axis3)
     ax.palette = copy(Makie.default_palettes)
 
     ax.mouseeventhandle = addmouseevents!(scene)
+    for obsfunc in ax.mouseeventhandle.observerfuncs
+        push!(ax.finalizers, offcaller(obsfunc))
+    end
     scrollevents = Observable(ScrollEvent(0, 0))
     setfield!(ax, :scrollevents, scrollevents)
     keysevents = Observable(KeysEvent(Set()))
     setfield!(ax, :keysevents, keysevents)
 
-    on(scene.events.scroll) do s
+    obsfunc = on(scene.events.scroll) do s
         if is_mouseinside(scene)
             ax.scrollevents[] = ScrollEvent(s[1], s[2])
             return Consume(true)
         end
         return Consume(false)
     end
+    push!(ax.finalizers, offcaller(obsfunc))
 
-    on(scene.events.keyboardbutton) do e
+    obsfunc = on(scene.events.keyboardbutton) do e
         ax.keysevents[] = KeysEvent(scene.events.keyboardstate)
         return Consume(false)
     end
+    push!(ax.finalizers, offcaller(obsfunc))
 
     ax.interactions = Dict{Symbol, Tuple{Bool, Any}}()
 
