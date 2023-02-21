@@ -220,7 +220,7 @@ function initialize_block!(m::Menu; default = 1)
         return false
     end
 
-    onany(e.mouseposition, e.mousebutton, priority=64) do position, butt
+    obsfuncs = onany(e.mouseposition, e.mousebutton, priority=64) do position, butt
         mp = screen_relative(menuscene, position)
         # track if we have been inside menu/options to clean up if we haven't been
         is_over_options = false
@@ -288,8 +288,11 @@ function initialize_block!(m::Menu; default = 1)
         end
         return Consume(false)
     end
+    for obsfunc in obsfuncs
+        push!(m.finalizers, offcaller(obsfunc))
+    end
 
-    on(menuscene.events.scroll, priority=61) do (x, y)
+    obsfunc = on(menuscene.events.scroll, priority=61) do (x, y)
         if is_mouseinside(menuscene)
             t = translation(menuscene)[]
             new_y = max(min(t[2] - y, 0), height(menuscene.px_area[]) - listheight[])
@@ -299,6 +302,7 @@ function initialize_block!(m::Menu; default = 1)
             return Consume(false)
         end
     end
+    push!(m.finalizers, offcaller(obsfunc))
 
     on(m.options) do options
         # Make sure i_selected is on a valid index when the contentgrid updates
