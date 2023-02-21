@@ -223,13 +223,6 @@ void main(void)
         length_a *= thickness_aa1;
         length_b *= thickness_aa2;
 
-        // Adjust to double-pixel scale
-        start = 2 * start;
-        stop  = 2 * stop;
-        // Keeping these at single-pixel size
-        // start_width *= 2;
-        // stop_width  *= 2;
-
         // if the "on" section of the pattern at start extends over the whole
         // potential corner we draw the corner. If not we extend the line.
         // 
@@ -247,7 +240,7 @@ void main(void)
         // (start * pattern_length + 2 * stop_width > g_lastlen[1] + left_offset)
         if (
             isvalid[0] &&
-            abs(start * pattern_length - g_lastlen[1] + start_width) < (start_width - left_offset)
+            abs(2 * start * pattern_length - g_lastlen[1] + start_width) < (start_width - left_offset)
             ) {
 
             // if the corner is too sharp, we do a truncated miter join
@@ -288,8 +281,8 @@ void main(void)
                 // greater than `start` will be drawn and smaller will be discarded.
                 // With how we pick start and get in this branch u0 will always be
                 // in a solidly drawn region of the pattern.
-                float u0      = 0.5 * start + thickness_aa1 * abs(dot(miter_a, n1)) * px2uv;
-                float proj_AA = 0.5 * start - AA_THICKNESS  * abs(dot(miter_a, n1)) * px2uv;
+                float u0      = start + thickness_aa1 * abs(dot(miter_a, n1)) * px2uv;
+                float proj_AA = start - AA_THICKNESS  * abs(dot(miter_a, n1)) * px2uv;
 
                 // to save some space
                 vec2 off0   = thickness_aa1 * n0;
@@ -315,10 +308,10 @@ void main(void)
 
                 miter_a = n1;
                 length_a = thickness_aa1;
-                start = g_lastlen[1] * inv_pl;
+                start = g_lastlen[1] * px2uv;
                     
             } else { // otherwise we do a sharp join
-                start = g_lastlen[1] * inv_pl;
+                start = g_lastlen[1] * px2uv;
             }
         } else {
             // We don't need to treat the join, so resize the line segment to
@@ -329,11 +322,11 @@ void main(void)
             // section of the pattern is in this segment, we draw it, else
             // we skip past the first "on" section.
             start = ifelse(
-                !isvalid[0] || (start * pattern_length + start_width > g_lastlen[1]), 
-                start - AA_THICKNESS * inv_pl,
-                start + (2 * start_width + AA_THICKNESS) * inv_pl
+                !isvalid[0] || (start > (g_lastlen[1] - start_width) * px2uv), 
+                start - AA_THICKNESS * px2uv,
+                start + (start_width + 0.5 * AA_THICKNESS) * inv_pl
             );
-            p1 += (start * pattern_length - g_lastlen[1]) * v1;
+            p1 += (2 * start * pattern_length - g_lastlen[1]) * v1;
         }
 
 
@@ -342,26 +335,26 @@ void main(void)
         // (stop * pattern_length + 2 * stop_width < g_lastlen[2] + right_offset)
         if (
             isvalid[3] &&
-            abs(stop * pattern_length - g_lastlen[2] + stop_width) < (stop_width - right_offset)
+            abs(2*stop * pattern_length - g_lastlen[2] + stop_width) < (stop_width - right_offset)
             ) {
             if( dot( v1, v2 ) < MITER_LIMIT ){
                 // setup for truncated join (flat line end)
                 miter_b = n1;
                 length_b = thickness_aa2;
-            stop = g_lastlen[2] * inv_pl;
-        } else {
+                stop = g_lastlen[2] * px2uv;
+            } else {
                 // setup for sharp join
-                stop = g_lastlen[2] * inv_pl;
+                stop = g_lastlen[2] * px2uv;
             }
         } else {
             miter_b = n1;
             length_b = thickness_aa2;
             stop = ifelse(
-                isvalid[3] && (stop * pattern_length + stop_width > g_lastlen[2]), 
-                stop - AA_THICKNESS * inv_pl,
-                stop + (2 * stop_width + AA_THICKNESS) * inv_pl
+                isvalid[3] && (stop > (g_lastlen[2] - stop_width) * px2uv), 
+                stop - AA_THICKNESS * px2uv,
+                stop + (stop_width + 0.5 * AA_THICKNESS) * inv_pl
             );
-            p2 += (stop * pattern_length - g_lastlen[2]) * v1;
+            p2 += (2 * stop * pattern_length - g_lastlen[2]) * v1;
         }
 
         // to save some space
@@ -374,10 +367,10 @@ void main(void)
         f_uv_minmax.y = ifelse(isvalid[3], f_uv_minmax.y, g_lastlen[2] * px2uv);
         
         // generate rectangle for this segment
-        emit_vertex(p1 + miter_a, vec2(0.5 * start + dot(v1, miter_a) * px2uv, -thickness_aa1), 1);
-        emit_vertex(p1 - miter_a, vec2(0.5 * start - dot(v1, miter_a) * px2uv,  thickness_aa1), 1);
-        emit_vertex(p2 + miter_b, vec2(0.5 * stop  + dot(v1, miter_b) * px2uv, -thickness_aa2), 2);
-        emit_vertex(p2 - miter_b, vec2(0.5 * stop  - dot(v1, miter_b) * px2uv,  thickness_aa2), 2);
+        emit_vertex(p1 + miter_a, vec2(start + dot(v1, miter_a) * px2uv, -thickness_aa1), 1);
+        emit_vertex(p1 - miter_a, vec2(start - dot(v1, miter_a) * px2uv,  thickness_aa1), 1);
+        emit_vertex(p2 + miter_b, vec2(stop  + dot(v1, miter_b) * px2uv, -thickness_aa2), 2);
+        emit_vertex(p2 - miter_b, vec2(stop  - dot(v1, miter_b) * px2uv,  thickness_aa2), 2);
     }
 
     return;
