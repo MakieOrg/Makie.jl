@@ -166,9 +166,9 @@ function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
             # then default value
             d = quote
                 if haskey($sceneattrsym, $key)
-                    $sceneattrsym[$key]
+                    $sceneattrsym[$key][] # only use value of theme entry
                 elseif haskey($curthemesym, $key)
-                    $curthemesym[$key]
+                    $curthemesym[$key][] # only use value of theme entry
                 else
                     $default
                 end
@@ -507,7 +507,7 @@ function Base.delete!(block::Block)
     for finalizer in block.finalizers
         finalizer()
     end
-    
+
     block.parent === nothing && return
     
     # detach plots, cameras, transformations, px_area
