@@ -45,6 +45,9 @@ function initialize_block!(t::Toggle)
         color = t.buttoncolor, strokewidth = 0, inspectable = false, marker = Circle)
 
     mouseevents = addmouseevents!(topscene, t.layoutobservables.computedbbox)
+    for obsfunc in mouseevents.observerfuncs
+        push!(t.finalizers, offcaller(obsfunc))
+    end
 
     onmouseleftdown(mouseevents) do event
         if animating[]
