@@ -162,21 +162,33 @@ void main(void)
     // draws after edge1
     // stop is the on-to-off (right) transition of the last pattern that still
     // draws before edge2
-    float start, stop, left, right, edge1, edge2, inv_pl;
+    float start, stop, start_width, stop_width, temp;
+    float left, right, edge1, edge2, inv_pl, left_offset, right_offset;
+
+    // normalized single pixel scale
+    start = g_lastlen[2] * px2uv;
+    stop  = g_lastlen[1] * px2uv;
+    start_width = 0.0;
+    stop_width  = 0.0;
 
     inv_pl = 1.0 / pattern_length;
-    start = g_lastlen[2] * inv_pl;
-    stop  = g_lastlen[1] * inv_pl;
-    edge1 = 0.5 * (g_lastlen[1] + g_thickness[1]);
-    edge2 = 0.5 * (g_lastlen[2] - g_thickness[2]);
+    edge1 = 0.5 * g_lastlen[1];
+    edge2 = 0.5 * g_lastlen[2];
 
     for (int i = 0; i < textureSize(pattern_sections, 0).x - 1; i = i + 2)
     {
         left  = texelFetch(pattern_sections, i,   0).x;
         right = texelFetch(pattern_sections, i+1, 0).x;
 
-        start = min(start, 2 * (ceil((edge1 - right) * inv_pl) + left * inv_pl));
-        stop  = max(stop, 2 * (floor((edge2 - left) * inv_pl) + right * inv_pl));
+        // update left side
+        temp = ceil((edge1 - right) * inv_pl) + left * inv_pl;
+        start_width = ifelse(temp < start, right - left, start_width);
+        start = min(start, temp);
+
+        // update right side
+        temp = floor((edge2 - left) * inv_pl) + left * inv_pl;
+        stop_width = ifelse(temp > stop, right - left, stop_width);
+        stop = max(stop, temp);
     }
     // Technically start and stop should be offset by another 
     // 1 / (2 * textureSize(pattern)) so the line segment is normalized to
@@ -184,40 +196,61 @@ void main(void)
     // AA_THICKNESS for it to be irrelevant.
 
     // if there is something to draw...
-    if (stop > start){
-        // init corner/linewidth handling (truncated miter join)
-        vec2 miter_a = n1;
-        vec2 miter_b = n1;
-
-        float length_a = thickness_aa1;
-        float length_b = thickness_aa2;
-
-        // if start goes beyond one thickness outside this segment we need to
-        // treat the join
-        //               g_lastlen[1]                
-        //               . - |--------------
-        //               :   |              
-        //               :   |              
-        //               :   |              
-        //               : - '--------------
-        //  g_lastlen[1] - g_thickness[1]
-        if (start * pattern_length < g_lastlen[1] - g_thickness[1] && isvalid[0]) {
+    if (stop + 1e-6 >= start){
             
-            // setup for sharp corners
-            //
-            //     2 length_b
-            //      |-----|    
-            //  -----------  
-            //          .'        ___
-            //        .'     .'|   |
-            //  -----'     .'  |   | 2 length_a
-            //           .'    |  _|_
-            //          |      |
-            //
-            miter_a = normalize(n0 + n1);
-            length_a = thickness_aa1 / dot(miter_a, n1);
+        // setup for sharp corners
+        //               miter_a / miter_b
+        //           ___         ↑      ___
+        //            |         .|.      |   
+        // length_a  _|_      .' | '.   _|_  length_b
+        //                  .'   |   '.
+        //                .'     |     '.
+        //              .'     .' '.     '.
+        //                   .'     '.
+        //          
+        vec2 miter_a = normalize(n0 + n1);
+        vec2 miter_b = normalize(n1 + n2);
+        float length_a = 1.0 / dot(miter_a, n1);
+        float length_b = 1.0 / dot(miter_b, n1);
 
-            // if the corner is too sharp, do a truncated miter join instead
+        // if we have a sharp corner: 
+        //   max(g_thickness[1], proj(length_a * miter_a, v1)) without AA padding
+        // otherwise just g_thickness[1]
+        left_offset  = g_thickness[1] * max(1.0, float(dot(v0, v1) >= MITER_LIMIT) * abs(dot(miter_a, v1)) * length_a);
+        right_offset = g_thickness[2] * max(1.0, float(dot(v1, v2) >= MITER_LIMIT) * abs(dot(miter_b, v1)) * length_b);
+
+        // Finish length_a/b
+        length_a *= thickness_aa1;
+        length_b *= thickness_aa2;
+
+        // Adjust to double-pixel scale
+        start = 2 * start;
+        stop  = 2 * stop;
+        // Keeping these at single-pixel size
+        // start_width *= 2;
+        // stop_width  *= 2;
+
+        // if the "on" section of the pattern at start extends over the whole
+        // potential corner we draw the corner. If not we extend the line.
+        // 
+        //               g_lastlen[1]                
+        //               . - |---.----------
+        //               :   |   :           
+        //               :   |   :           
+        //               :   |   :           
+        //               : - '---:----------
+        //             start     :
+        //               start + start_width
+        //
+        // Equivalent to
+        // (start * pattern_length                  < g_lastlen[1] - left_offset) &&
+        // (start * pattern_length + 2 * stop_width > g_lastlen[1] + left_offset)
+        if (
+            isvalid[0] &&
+            abs(start * pattern_length - g_lastlen[1] + start_width) < (start_width - left_offset)
+            ) {
+
+            // if the corner is too sharp, we do a truncated miter join
             //        ----------c.
             //        ----------a.'.
             //                  | '.'.
@@ -236,27 +269,25 @@ void main(void)
 
                 bool gap = dot( v0, n1 ) > 0;
 
-                /*
-                Another view of a truncated join (with lines joining like a V). 
-
-                        uv.y = 0 in line segment
-                         /
-                        .  -- uv.x = u0 in truncated join 
-                      .' '.     uv.y = thickness in line segment
-                    .'     '.  /   uv.y = thickness + AA_THICKNESS in line segment
-                  .'_________'.   /_ uv.x = start in truncated join (constraint for AA)
-                .'_____________'.  _ uv.x = -proj_AA in truncated join (derived from line segment + constraint)
-                |               |  
-                |_______________|  _ uv.x = -proj_AA - AA_THICKNESS in truncated join
-
-                Here the / annotations come from the connecting line segment and are to
-                be viewed on the diagonal. The -- and _ annotations are relevant to the
-                truncated join and viewed vertically.
-                Note that `start` marks off-to-on edge in the pattern. So values
-                greater than `start` will be drawn and smaller will be discarded.
-                With how we pick start and get in this branch u0 will always be
-                in a solidly drawn region of the pattern.
-                */
+                // Another view of a truncated join (with lines joining like a V). 
+                //
+                //         uv.y = 0 in line segment
+                //          /
+                //         .  -- uv.x = u0 in truncated join 
+                //       .' '.     uv.y = thickness in line segment
+                //     .'     '.  /   uv.y = thickness + AA_THICKNESS in line segment
+                //   .'_________'.   /_ uv.x = start in truncated join (constraint for AA)
+                // .'_____________'.  _ uv.x = -proj_AA in truncated join (derived from line segment + constraint)
+                // |               |  
+                // |_______________|  _ uv.x = -proj_AA - AA_THICKNESS in truncated join
+                //
+                // Here the / annotations come from the connecting line segment and are to
+                // be viewed on the diagonal. The -- and _ annotations are relevant to the
+                // truncated join and viewed vertically.
+                // Note that `start` marks off-to-on edge in the pattern. So values
+                // greater than `start` will be drawn and smaller will be discarded.
+                // With how we pick start and get in this branch u0 will always be
+                // in a solidly drawn region of the pattern.
                 float u0      = 0.5 * start + thickness_aa1 * abs(dot(miter_a, n1)) * px2uv;
                 float proj_AA = 0.5 * start - AA_THICKNESS  * abs(dot(miter_a, n1)) * px2uv;
 
@@ -284,29 +315,52 @@ void main(void)
 
                 miter_a = n1;
                 length_a = thickness_aa1;
-            }
+                start = g_lastlen[1] * inv_pl;
                     
-            start = g_lastlen[1] * inv_pl;
+            } else { // otherwise we do a sharp join
+                start = g_lastlen[1] * inv_pl;
+            }
         } else {
             // We don't need to treat the join, so resize the line segment to
             // the drawn region. (This may extend the line too)
-            start -= AA_THICKNESS * inv_pl;
+            miter_a = n1;
+            length_a = thickness_aa1;
+            // If the line starts with this segment or the center of the "on"
+            // section of the pattern is in this segment, we draw it, else
+            // we skip past the first "on" section.
+            start = ifelse(
+                !isvalid[0] || (start * pattern_length + start_width > g_lastlen[1]), 
+                start - AA_THICKNESS * inv_pl,
+                start + (2 * start_width + AA_THICKNESS) * inv_pl
+            );
             p1 += (start * pattern_length - g_lastlen[1]) * v1;
         }
 
-        // Same as above for a line end. 
-        if (stop * pattern_length >= g_lastlen[2] + g_thickness[2] && isvalid[3]) {
-            // generate sharp corner at end
-            if( dot( v1, v2 ) >= MITER_LIMIT ){
-                miter_b = normalize(n1 + n2);
-                length_b = thickness_aa2 / dot(miter_b, n1);
-            }
-            // for truncated miter join just leave it flat
 
+        // The other end of the line is analogous
+        // (g_lastlen[2] - right_offset > stop * pattern_length) &&
+        // (stop * pattern_length + 2 * stop_width < g_lastlen[2] + right_offset)
+        if (
+            isvalid[3] &&
+            abs(stop * pattern_length - g_lastlen[2] + stop_width) < (stop_width - right_offset)
+            ) {
+            if( dot( v1, v2 ) < MITER_LIMIT ){
+                // setup for truncated join (flat line end)
+                miter_b = n1;
+                length_b = thickness_aa2;
             stop = g_lastlen[2] * inv_pl;
         } else {
-            // resize to new limits
-            stop += AA_THICKNESS * inv_pl;
+                // setup for sharp join
+                stop = g_lastlen[2] * inv_pl;
+            }
+        } else {
+            miter_b = n1;
+            length_b = thickness_aa2;
+            stop = ifelse(
+                isvalid[3] && (stop * pattern_length + stop_width > g_lastlen[2]), 
+                stop - AA_THICKNESS * inv_pl,
+                stop + (2 * stop_width + AA_THICKNESS) * inv_pl
+            );
             p2 += (stop * pattern_length - g_lastlen[2]) * v1;
         }
 
