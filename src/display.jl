@@ -31,9 +31,18 @@ function push_screen!(scene::Scene, screen::MakieScreen)
         return
     end
     # Else we delete all other screens, only one screen per scene is allowed!!
-    while !isempty(scene.current_screens)
-        delete_screen!(scene, pop!(scene.current_screens))
+    unique_screen_types = Set{DataType}()
+    indices_for_deletion = Int[]
+
+    for (index, screen) in enumerate(scene.current_screens)
+        if typeof(screen) ∈ unique_screen_types # screen type already exists in current_screens, so delete this
+            push!(indices_for_deletion, index)
+        else # new type of screen
+            union!(unique_screen_types, (typeof(screen),))
+        end 
     end
+    # delete all screnes whose screentype already exists
+    delete_screen!.((scene,), scene.current_screens[indices_for_deletion])
 
     # Now we push the screen :)
     push!(scene.current_screens, screen)
