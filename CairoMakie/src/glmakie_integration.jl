@@ -1,22 +1,21 @@
 # Upstreamable code
 
 # TODO: make this function more efficient!
-function alpha_colorbuffer(Backend, scene::Scene)
+function alpha_colorbuffer(Backend, screen::MakieScreen)
     img = try
-        Backend.activate!()
-        display(scene)
+        scene = screen.root_scene
+        display(screen)
         bg = scene.backgroundcolor[]
         scene.backgroundcolor[] = RGBAf(0, 0, 0, 1)
-        b1 = copy(Makie.colorbuffer(scene))
+        b1 = Makie.colorbuffer(screen)
         scene.backgroundcolor[] = RGBAf(1, 1, 1, 1)
-        b2 = Makie.colorbuffer(scene)
+        b2 = Makie.colorbuffer(screen)
         scene.backgroundcolor[] = bg
         map(infer_alphacolor, b1, b2)
     catch e
         println("Error: something failed in alpha colorbuffer!")
         rethrow(e)
     finally
-        CairoMakie.activate!()
     end
 
     return img
@@ -75,24 +74,17 @@ end
 function plot2img(Backend, plot::Combined; scale::Real = 1, use_backgroundcolor = false)
     parent = Makie.parent_scene(plot)
     # obtain or create the render scene
-    render_scene = if haskey(parent.theme, :_render_scenes) && haskey(parent.theme._render_scenes.val, plot)
-        @show keys(parent.theme._render_scenes[])
-        parent.theme._render_scenes[][plot]
-    else # we have to create a render scene
-        println("Rerendering")
-        scene = create_render_scene(plot; scale = scale)
-
-        # set up cache
-        rs_dict = get!(parent.theme.attributes, :_render_scenes, Dict{Union{Makie.AbstractPlot, Makie.Combined}, Makie.Scene}())
-        rs_dict[][plot] = scene
-
-        scene
+    screen_ind = findfirst(x -> x isa Backend.Screen, parent.current_screens)
+    render_screen = if isnothing(screen_ind)
+        Backend.Screen(parent; visible = false, px_per_unit = scale)
+    else
+        parent.current_screens[screen_ind]
     end
 
     img = if use_backgroundcolor
-        Makie.colorbuffer(render_scene)
+        Makie.colorbuffer(render_screen)
     else # render with transparency, using the alpha-colorbuffer hack
-        alpha_colorbuffer(Backend, render_scene)
+        alpha_colorbuffer(Backend, render_screen)
     end
 
     return img
@@ -115,7 +107,7 @@ purge_render_cache!(fig::Figure) = purge_render_cache!(fig.scene)
 # which we set in the previous step to contain the scene.
 # This retrieval
 
-function draw_plot_as_image_with_backend(Backend, scene::Scene, screen::CairoScreen, plot; scale = 1)
+function draw_plot_as_image_with_backend(Backend, scene::Scene, screen::Screen, plot; scale = 1)
 
         # special case if CairoMakie is the backend, since
         # we don't want an infinite loop.
@@ -145,7 +137,7 @@ function draw_plot_as_image_with_backend(Backend, scene::Scene, screen::CairoScr
 
 end
 
-function draw_scene_as_image(Backend, scene::Scene, screen::CairoScreen; scale = 1)
+function draw_scene_as_image(Backend, scene::Scene, screen::Screen; scale = 1)
     w, h = Int.(scene.px_area[].widths)
 
     render_scene = create_render_scene(scene.plots[begin]; scale = scale)
