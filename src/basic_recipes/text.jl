@@ -1,7 +1,7 @@
 function plot!(plot::Text)
     positions = plot[1]
     # attach a function to any text that calculates the glyph layout and stores it
-    glyphcollections = Observable(GlyphCollection[])
+    glyphcollections = Observable(Any[])
     linesegs = Observable(Point2f[])
     linewidths = Observable(Float32[])
     linecolors = Observable(RGBAf[])
@@ -18,7 +18,7 @@ function plot!(plot::Text)
         scol = to_color(scol)
         offs = to_offset(offs)
 
-        gcs = GlyphCollection[]
+        gcs = Any[]
         lsegs = Point2f[]
         lwidths = Float32[]
         lcolors = RGBAf[]
