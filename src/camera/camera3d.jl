@@ -297,15 +297,10 @@ function add_translation!(scene, cam::Camera3D)
     end
 
     on(camera(scene), scene.events.scroll) do scroll
-        if is_mouseinside(scene)
-          if ispressed(scene, scroll_mod[])
+        if is_mouseinside(scene) && ispressed(scene, scroll_mod[])
             zoom_step = (1f0 + 0.1f0 * zoomspeed[]) ^ -scroll[2]
             zoom!(scene, cam, zoom_step, shift_lookat[], cad[])
-          else
-            camspeed = compute_diff([scroll[1], scroll[2]])
-            translate_cam!(scene, cam, 10f0 * Vec3f(-camspeed[1], camspeed[2], 0f0))
-          end
-          return Consume(true)
+            return Consume(true)
         end
         return Consume(false)
     end
