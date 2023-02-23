@@ -13,8 +13,8 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
 
     structdef = quote
         mutable struct $name <: Makie.Block
-            parent::Union{Figure, Scene, Nothing}
-            layoutobservables::Makie.LayoutObservables{GridLayout}
+            parent::Union{$(Makie).Figure, $(Makie).Scene, Nothing}
+            layoutobservables::$(Makie).LayoutObservables{$(Makie).GridLayout}
             blockscene::Scene
         end
     end
@@ -40,7 +40,7 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
 
     if attrs !== nothing
         attribute_fields = map(attrs) do a
-            :($(a.symbol)::Observable{$(a.type)})
+            :($(a.symbol)::$(Makie).Observable{$(a.type)})
         end
         append!(fields_vector, attribute_fields)
     end
@@ -61,17 +61,17 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
 
         export $name
 
-        function Makie.is_attribute(::Type{$(name)}, sym::Symbol)
+        function $(Makie).is_attribute(::Type{$(name)}, sym::Symbol)
             sym in ($((attrs !== nothing ? [QuoteNode(a.symbol) for a in attrs] : [])...),)
         end
 
-        function Makie.default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
+        function $(Makie).default_attribute_values(::Type{$(name)}, scene::Union{$(Makie).Scene, Nothing})
             sceneattrs = scene === nothing ? Attributes() : theme(scene)
-            curdeftheme = deepcopy(CURRENT_DEFAULT_THEME)
+            curdeftheme = deepcopy($(Makie).CURRENT_DEFAULT_THEME)
             $(make_attr_dict_expr(attrs, :sceneattrs, :curdeftheme))
         end
 
-        function Makie.attribute_default_expressions(::Type{$name})
+        function $(Makie).attribute_default_expressions(::Type{$name})
             $(
                 if attrs === nothing
                     Dict{Symbol, String}()
@@ -81,7 +81,7 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
             )
         end
 
-        function Makie._attribute_docs(::Type{$(name)})
+        function $(Makie)._attribute_docs(::Type{$(name)})
             Dict(
                 $(
                     (attrs !== nothing ?
@@ -91,7 +91,7 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
             )
         end
 
-        Makie.has_forwarded_layout(::Type{$name}) = $has_forwarded_layout
+        $(Makie).has_forwarded_layout(::Type{$name}) = $has_forwarded_layout
     end
 
     esc(q)
