@@ -37,7 +37,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2})
 end
 
 # when color is a Makie.AbstractPattern, we don't need to go to Mesh
-function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::Union{Colorant, Cairo.CairoPattern},
+function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::Union{Number, Colorant, Cairo.CairoPattern},
         model, strokecolor, strokewidth)
     space = to_value(get(poly, :space, :data))
     points = project_position.(Ref(scene), space, points, Ref(model))
@@ -47,7 +47,8 @@ function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2},
     end
     Cairo.close_path(screen.context)
 
-    set_source(screen.context, color)
+    col = to_cairo_color(color, poly)
+    set_source(screen.context, col)
 
     Cairo.fill_preserve(screen.context)
     Cairo.set_source_rgba(screen.context, rgbatuple(to_color(strokecolor))...)
