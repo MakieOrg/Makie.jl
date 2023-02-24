@@ -894,3 +894,14 @@ end
     end
     s
 end
+
+@reference_test "Scalar colors from colormaps" begin
+    s = Scene(camera = campixel!, resolution = (600, 600))
+    for i in 1:10
+        lines!(s, i .* [10, 10], [10, 590], color = i, colormap = :tab10, colorrange = (1, 10), linewidth = 5)
+        scatter!(s, fill(10 * i + 130, 50), range(10, 590, length = 50), color = i, colormap = :tab10, colorrange = (1, 10))
+        poly!(s, Ref(Point2f(260, i * 50)) .+ Point2f[(0, 0), (50, 0), (25, 40)], color = i, colormap = :tab10, colorrange = (1, 10))
+        text!(s, 360, i * 50, text = "$i", color = i, colormap = :tab10, colorrange = (1, 10), fontsize = 40)
+    end
+    s
+end
