@@ -896,12 +896,16 @@ end
 end
 
 @reference_test "Scalar colors from colormaps" begin
-    s = Scene(camera = campixel!, resolution = (600, 600))
+    f = Figure(resolution = (600, 600))
+    ax = Axis(f[1, 1])
+    hidedecorations!(ax)
+    hidespines!(ax)
     for i in 1:10
-        lines!(s, i .* [10, 10], [10, 590], color = i, colormap = :tab10, colorrange = (1, 10), linewidth = 5)
-        scatter!(s, fill(10 * i + 130, 50), range(10, 590, length = 50), color = i, colormap = :tab10, colorrange = (1, 10))
-        poly!(s, Ref(Point2f(260, i * 50)) .+ Point2f[(0, 0), (50, 0), (25, 40)], color = i, colormap = :tab10, colorrange = (1, 10))
-        text!(s, 360, i * 50, text = "$i", color = i, colormap = :tab10, colorrange = (1, 10), fontsize = 40)
+        lines!(ax, i .* [10, 10], [10, 590], color = i, colormap = :tab10, colorrange = (1, 10), linewidth = 5)
+        scatter!(ax, fill(10 * i + 130, 50), range(10, 590, length = 50), color = i, colormap = :tab10, colorrange = (1, 10))
+        poly!(ax, Ref(Point2f(260, i * 50)) .+ Point2f[(0, 0), (50, 0), (25, 40)], color = i, colormap = :tab10, colorrange = (1, 10))
+        poly!(ax, [Ref(Point2f(430 + 20 * j, 20 * j + i * 50)) .+ Point2f[(0, 0), (30, 0), (15, 22)] for j in 1:3], color = i, colormap = :tab10, colorrange = (1, 10))
+        text!(ax, 360, i * 50, text = "$i", color = i, colormap = :tab10, colorrange = (1, 10), fontsize = 40)
     end
-    s
+    f
 end
