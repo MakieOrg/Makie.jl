@@ -540,6 +540,8 @@ Plots one or multiple texts passed via the `text` keyword.
     Attributes(;
         default_theme(scene)...,
         color = theme(scene, :textcolor),
+        colormap = theme(scene, :colormap),
+        colorrange = automatic,
         font = theme(scene, :font),
         fonts = theme(scene, :fonts),
         strokecolor = (:black, 0.0),

@@ -8,13 +8,14 @@ function plot!(plot::Text)
     lineindices = Ref(Int[])
     
     onany(plot.text, plot.fontsize, plot.font, plot.fonts, plot.align,
-            plot.rotation, plot.justification, plot.lineheight, plot.color, 
+            plot.rotation, plot.justification, plot.lineheight, plot.color, plot.colormap, plot.colorrange,
             plot.strokecolor, plot.strokewidth, plot.word_wrap_width, plot.offset) do str,
-                ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs
+                ts, f, fs, al, rot, jus, lh, col, cmap, crange, scol, swi, www, offs
         ts = to_fontsize(ts)
         f = to_font(fs, f)
         rot = to_rotation(rot)
-        col = to_color(col)
+        col = col isa Union{Number,AbstractVector{<:Number}} ? numbers_to_colors(col, plot) : to_color(col)
+        
         scol = to_color(scol)
         offs = to_offset(offs)
 
