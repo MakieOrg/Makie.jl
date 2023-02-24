@@ -133,6 +133,7 @@ include("basic_recipes/axis.jl")
 include("basic_recipes/band.jl")
 include("basic_recipes/barplot.jl")
 include("basic_recipes/buffers.jl")
+include("basic_recipes/bracket.jl")
 include("basic_recipes/contours.jl")
 include("basic_recipes/contourf.jl")
 include("basic_recipes/error_and_rangebars.jl")
@@ -296,20 +297,10 @@ function __init__()
     # This mutates module-level state so it could mess up other libraries using
     # GridLayoutBase at the same time as Makie, which is unlikely, though
     GridLayoutBase.DEFAULT_COLGAP_GETTER[] = function()
-        ct = Makie.current_default_theme()
-        if haskey(ct, :colgap)
-            ct[:colgap][]
-        else
-            GridLayoutBase.DEFAULT_COLGAP[]
-        end
+        return convert(Float64, to_value(Makie.theme(:colgap; default=GridLayoutBase.DEFAULT_COLGAP[])))
     end
     GridLayoutBase.DEFAULT_ROWGAP_GETTER[] = function()
-        ct = Makie.current_default_theme()
-        if haskey(ct, :rowgap)
-            ct[:rowgap][]
-        else
-            GridLayoutBase.DEFAULT_ROWGAP[]
-        end
+        return convert(Float64, to_value(Makie.theme(:rowgap; default=GridLayoutBase.DEFAULT_ROWGAP[])))
     end
     # fonts aren't cacheable by precompilation, so we need to empty it on load!
     empty!(FONT_CACHE)
@@ -338,5 +329,6 @@ export arrows! , heatmap! , image! , lines! , linesegments! , mesh! , meshscatte
 export PointLight, EnvironmentLight, AmbientLight, SSAO
 
 include("precompiles.jl")
+
 
 end # module

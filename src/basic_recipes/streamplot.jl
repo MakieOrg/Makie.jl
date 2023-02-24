@@ -1,6 +1,6 @@
 
 """
-streamplot(f::function, xinterval, yinterval; kwargs...)
+    streamplot(f::function, xinterval, yinterval; kwargs...)
 
 f must either accept `f(::Point)` or `f(x::Number, y::Number)`.
 f must return a Point2.

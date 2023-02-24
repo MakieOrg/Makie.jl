@@ -1,24 +1,16 @@
 function default_theme(scene)
-    Attributes(
-        # color = theme(scene, :color),
-        linewidth = 1,
+    return Attributes(
         transformation = automatic,
         model = automatic,
         visible = true,
         transparency = false,
         overdraw = false,
-        diffuse = Vec3f(0.4),
-        specular = Vec3f(0.2),
-        shininess = 32f0,
-        nan_color = RGBAf(0,0,0,0),
         ssao = false,
-        inspectable = theme(scene, :inspectable),
+        inspectable = true,
         depth_shift = 0f0,
         space = :data
     )
 end
-
-
 
 function color_and_colormap!(plot, intensity = plot[:color])
     if isa(intensity[], Union{Number,AbstractArray{<: Number}})
