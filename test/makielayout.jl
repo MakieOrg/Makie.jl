@@ -348,4 +348,14 @@ end
         end
         @test isempty(d)
     end
+    @testset "Legend" begin
+        d = get_difference_dict() do scene
+            Legend(s, [
+                MarkerElement(marker = :cross),
+                LineElement(),
+                PolyElement(),
+            ], ["Label 1", "Label 2", "Label 3"])
+        end
+        @test isempty(d)
+    end
 end
