@@ -242,6 +242,18 @@ function per_face_colors(
         return FaceIterator(cvec, faces)
     elseif color isa Colorant
         return FaceIterator{:Const}(color, faces)
+    elseif color isa Number
+        low, high = extrema(colorrange)
+        col = if isnan(color) && nan_color !== nothing
+            return nan_color
+        elseif color < low && lowclip !== nothing
+            return lowclip
+        elseif color > high && highclip !== nothing
+            return highclip
+        else
+            Makie.interpolated_getindex(colormap, color, colorrange)
+        end
+        return FaceIterator{:Const}(col, faces)
     elseif color isa AbstractArray
         if color isa AbstractVector{<: Colorant}
             return FaceIterator(color, faces)
