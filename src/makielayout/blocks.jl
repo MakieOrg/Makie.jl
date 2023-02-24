@@ -507,25 +507,28 @@ function Base.delete!(block::Block)
     for finalizer in block.finalizers
         finalizer()
     end
-
-    block.parent === nothing && return
     
     # detach plots, cameras, transformations, px_area
-    empty!(block.blockscene)
+    empty!(block.blockscene) # TODO this hangs
 
-    s = get_topscene(block.parent)
-    deleteat!(
-        s.children,
-        findfirst(x -> x === block.blockscene, s.children)
-    )
-    # TODO: what about the lift of the parent scene's
-    # `px_area`, should this be cleaned up as well?
+    s = block.blockscene.parent
+
+    if s !== nothing
+        deleteat!(
+            s.children,
+            findfirst(x -> x === block.blockscene, s.children)
+        )
+    end
 
     gc = GridLayoutBase.gridcontent(block)
-    gc === nothing || GridLayoutBase.remove_from_gridlayout!(gc)
+    if gc !== nothing
+        GridLayoutBase.remove_from_gridlayout!(gc)
+    end
 
-    delete_from_parent!(block.parent, block)
-    block.parent = nothing
+    if block.parent !== nothing
+        delete_from_parent!(block.parent, block)
+        block.parent = nothing
+    end
 
     return
 end
