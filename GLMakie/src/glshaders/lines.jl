@@ -45,7 +45,19 @@ function gappy(x, ps)
     return last(ps) - x
 end
 function ticks(points, resolution)
-    Float16[gappy(x, points) for x = range(first(points), stop=last(points), length=resolution+1)[1:end-1]]
+    # This is used to map a vector of `points` to a signed distance field. The 
+    # points mark transition between "on" and "off" section of the pattern.
+
+    # The output should be periodic so the signed distance field value 
+    # representing points[1] should be equal to the one representing points[end].
+    # => range(..., length = resolution+1)[1:end-1]
+
+    # points[end] should still represent the full length of the pattern though,
+    # so we need rescaling by ((resolution + 1) / resolution)
+
+    scaled = ((resolution + 1) / resolution) .* points
+    r = range(first(scaled), stop=last(scaled), length=resolution+1)[1:end-1]
+    return Float16[gappy(x, scaled) for x = r]
 end
 
 @nospecialize
@@ -101,17 +113,12 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
             tex = GLAbstraction.Texture(ticks(pattern, 100), x_repeat = :repeat)
             data[:pattern] = tex
         end
-        # patterns are periodic, i.e. first(pattern) and last(pattern) both 
-        # represent 0, and only one is included. `ticks(pattern, N)` generates
-        # N+1 points and drops the last because of this. As a result the 
-        # pattern_length (which represents the length of `tex` in the shaders)
-        # needs to be scaled down by 100/101
-        data[:pattern_length] = Float32((last(pattern) - first(pattern)) / 1.01)
+        data[:pattern_length] = Float32((last(pattern) - first(pattern)))
         @gen_defaults! data begin
             maxlength = const_lift(last, lastlen)
         end
     end
-
+    @info data[:pattern_length]
     data[:intensity] = intensity_convert(intensity, vertex)
     return assemble_shader(data)
 end
@@ -148,7 +155,7 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         end
         tex = GLAbstraction.Texture(ticks(pattern, 100), x_repeat = :repeat)
         data[:pattern] = tex
-        data[:pattern_length] = Float32((last(pattern) - first(pattern)) / 1.01)
+        data[:pattern_length] = Float32((last(pattern) - first(pattern)))
     end
     return assemble_shader(data)
 end
