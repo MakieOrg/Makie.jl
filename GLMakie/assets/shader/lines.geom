@@ -147,21 +147,28 @@ void main(void)
 
     #ifndef FAST_PATH
 
-
-    // Figure out the pattern-aware size of the line segment. 
-    // g_lastlen[1]                        g_lastlen[2]
-    //     |-----------------------------------|
-    //     |   :                           :   |
-    //     |   :                           :   |
-    //     |   :                           :   |
-    //     '---:---------------------------:---'
-    //       edge1                       edge2
+    // The pattern may look like this:
     //
-    // start and stop are both cumulative length normalized by pattern_length
-    // start is the off-to-on (left) transition of the first pattern that still 
-    // draws after edge1
-    // stop is the on-to-off (right) transition of the last pattern that still
-    // draws before edge2
+    //      pattern_sections index
+    //     0        1        2    3
+    //     |########|        |####|    |(repeat)
+    //   left     right    left right
+    //        variable in loop
+    //
+    // We first figure out the extended size of this line segment, starting
+    // from the left end of the first relevant pattern section and ending at the 
+    // right end of the last relevant pattern section. E.g.:
+    //
+    //           g_lastlen[1]                  g_lastlen[2]       (2x pixel coords)
+    //             edge1                         edge2            (1x pixel coords)
+    //               |                             |
+    //  |####|    |########|        |####|    |########|        |####|    |########|      
+    //            | first  |                  | last   |
+    //            | pattern|                  | pattern|
+    //            | section|                  | section|
+    //          start                                 stop        (pattern coords (normalized))
+    //
+    // start_width and stop_width are the widths of the start and stop sections.
     float start, stop, start_width, stop_width, temp;
     float left, right, edge1, edge2, inv_pl, left_offset, right_offset;
 
@@ -186,7 +193,7 @@ void main(void)
         start = min(start, temp);
 
         // update right side
-        temp = floor((edge2 - left) * inv_pl) + left * inv_pl;
+        temp = floor((edge2 - left) * inv_pl) + right * inv_pl;
         stop_width = ifelse(temp > stop, right - left, stop_width);
         stop = max(stop, temp);
     }
@@ -196,7 +203,7 @@ void main(void)
     // AA_THICKNESS for it to be irrelevant.
 
     // if there is something to draw...
-    if (stop + 1e-6 >= start){
+    if (stop > start){
             
         // setup for sharp corners
         //               miter_a / miter_b
@@ -236,8 +243,8 @@ void main(void)
         //               start + start_width
         //
         // Equivalent to
-        // (start * pattern_length                  < g_lastlen[1] - left_offset) &&
-        // (start * pattern_length + 2 * stop_width > g_lastlen[1] + left_offset)
+        // (start * pattern_length                   < g_lastlen[1] - left_offset) &&
+        // (start * pattern_length + 2 * start_width > g_lastlen[1] + left_offset)
         if (
             isvalid[0] &&
             abs(2 * start * pattern_length - g_lastlen[1] + start_width) < (start_width - left_offset)
@@ -331,11 +338,13 @@ void main(void)
 
 
         // The other end of the line is analogous
-        // (g_lastlen[2] - right_offset > stop * pattern_length) &&
-        // (stop * pattern_length + 2 * stop_width < g_lastlen[2] + right_offset)
+        // (stop * pattern_length - 2 * stop_width < g_lastlen[2] - right_offset) &&
+        // (stop * pattern_length                  > g_lastlen[2] + right_offset)
+        // (stop * pattern_length - stop_width - g_lastlen[2] <  (stop_width - right_offset)) &&
+        // (stop * pattern_length - stop_width - g_lastlen[2] > -(stop_width - right_offset))
         if (
             isvalid[3] &&
-            abs(2*stop * pattern_length - g_lastlen[2] + stop_width) < (stop_width - right_offset)
+            abs(2*stop * pattern_length - g_lastlen[2] - stop_width) < (stop_width - right_offset)
             ) {
             if( dot( v1, v2 ) < MITER_LIMIT ){
                 // setup for truncated join (flat line end)
@@ -350,9 +359,9 @@ void main(void)
             miter_b = n1;
             length_b = thickness_aa2;
             stop = ifelse(
-                isvalid[3] && (stop > (g_lastlen[2] - stop_width) * px2uv), 
-                stop - AA_THICKNESS * px2uv,
-                stop + (stop_width + 0.5 * AA_THICKNESS) * inv_pl
+                isvalid[3] && (stop > (g_lastlen[2] + stop_width) * px2uv), 
+                stop - (stop_width + 0.5 * AA_THICKNESS) * inv_pl,
+                stop + AA_THICKNESS * px2uv
             );
             p2 += (2 * stop * pattern_length - g_lastlen[2]) * v1;
         }
