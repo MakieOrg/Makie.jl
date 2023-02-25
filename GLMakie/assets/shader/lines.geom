@@ -456,7 +456,7 @@ void main(void)
         // set the cut off points and add uv padding to uv.u values
         f_uv_minmax = vec2(u0, u1);
         u0 -= AA_THICKNESS * px2uv;
-        u1 -= AA_THICKNESS * px2uv;
+        u1 += AA_THICKNESS * px2uv;
 
         // TODO indices, half thickness
         emit_vertex(p1 + thickness_aa1 * n1, vec2(u0, -thickness_aa1), 1);
