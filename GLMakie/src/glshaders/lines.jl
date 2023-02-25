@@ -118,7 +118,7 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
             maxlength = const_lift(last, lastlen)
         end
     end
-    @info data[:pattern_length]
+    
     data[:intensity] = intensity_convert(intensity, vertex)
     return assemble_shader(data)
 end
