@@ -796,7 +796,7 @@ convert_attribute(x::Nothing, ::key"linestyle") = x
 #     `AbstractVector{<:AbstractFloat}` for denoting sequences of fill/nofill. e.g.
 #
 # [0.5, 0.8, 1.2] will result in 0.5 filled, 0.3 unfilled, 0.4 filled. 1.0 unit is one linewidth!
-convert_attribute(A::AbstractVector, ::key"linestyle") = A
+convert_attribute(A::AbstractVector, ::key"linestyle") = [float(x - A[1]) for x in A]
 
 # A `Symbol` equal to `:dash`, `:dot`, `:dashdot`, `:dashdotdot`
 convert_attribute(ls::Union{Symbol,AbstractString}, ::key"linestyle") = line_pattern(ls, :normal)
