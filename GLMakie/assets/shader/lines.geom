@@ -43,6 +43,9 @@ vec2 screen_space(vec4 vertex)
 float ifelse(bool condition, float true_val, float false_val){
     return float(condition) * (true_val - false_val) + false_val;
 }
+float ifelse(float condition, float true_val, float false_val){
+    return condition * (true_val - false_val) + false_val;
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -439,57 +442,34 @@ void main(void)
     }
 
 
-    // Without a pattern (linestyle) we use uv.u directly as a signed 
-    // distance field. If the line doesn't start or end with this line segment
-    // we keep uv.u > 0 (draw w/o AA). 
-    float u0 = 10.0 * (abs(g_thickness[1] + g_thickness[2])) * pattern_length;
-    float u1 = u0 + segment_length * px2uv;
+    // Without a pattern (linestyle) we use uv.u directly as a signed distance 
+    // field. We only care about u1 - u0 being the correct distance and
+    // u0 > AA_THICHKNESS at all times.
+    float u1 = 10.0 * AA_THICKNESS + thickness_aa1 + thickness_aa2;
+    float u2 = u1 + segment_length;
 
-    // If we are at an edge we need to treat AA
-    if (!isvalid[0] && !isvalid[3]){
-        // start and end are part of this line segment
+    // To treat line starts and ends we elongate the line in the respective
+    // direction and enforce an AA border at the original start/end position
+    // with f_uv_minmax.
+    float is_start = float(!isvalid[0]);
+    f_uv_minmax.x = ifelse(is_start, px2uv * u1, f_uv_minmax.x);
+    p1 -= is_start * AA_THICKNESS * v1;
+    u1 -= is_start * AA_THICKNESS;
 
-        // pad line to have space for AA
-        p1 -= AA_THICKNESS * v1;
-        p2 += AA_THICKNESS * v1;
-
-        // set the cut off points and add uv padding to uv.u values
-        f_uv_minmax = vec2(u0, u1);
-        u0 -= AA_THICKNESS * px2uv;
-        u1 += AA_THICKNESS * px2uv;
-
-        // TODO indices, half thickness
-        emit_vertex(p1 + thickness_aa1 * n1, vec2(u0, -thickness_aa1), 1);
-        emit_vertex(p1 - thickness_aa1 * n1, vec2(u0,  thickness_aa1), 1);
-        emit_vertex(p2 + thickness_aa2 * n1, vec2(u1, -thickness_aa2), 2);
-        emit_vertex(p2 - thickness_aa2 * n1, vec2(u1,  thickness_aa2), 2);
-        EndPrimitive();
-        return;
-
-    // line starts or ends with this segment. Add space for AA and add an
-    // edge (0 crossover) in uv.u (This works without f_uv_minmax)
-    } else if (!isvalid[0]){
-        p1 -= AA_THICKNESS * v1;
-        u0 = -AA_THICKNESS;
-        u1 = segment_length;
-    } else if (!isvalid[3]){
-        p2 += AA_THICKNESS * v1;
-        u0 = segment_length;
-        u1 = -AA_THICKNESS;
-    }
-
-    // if there is no start or end in the segment we can just leave things.
-    // The offset in u0 is big enough to work with a factor px2uv
+    float is_end   = float(!isvalid[3]);
+    f_uv_minmax.y = ifelse(is_end, px2uv * u2, f_uv_minmax.y);
+    u2 += is_end * AA_THICKNESS;
+    p2 += is_end * AA_THICKNESS * v1;
 
     // to save some space
     miter_a *= length_a;
     miter_b *= length_b;
 
     // Generate line segment (with uv.u being signed distance field values)
-    emit_vertex(p1 + miter_a, vec2(px2uv * (u0 + dot(v1, miter_a)), -thickness_aa1), 1);
-    emit_vertex(p1 - miter_a, vec2(px2uv * (u0 - dot(v1, miter_a)),  thickness_aa1), 1);
-    emit_vertex(p2 + miter_b, vec2(px2uv * (u1 + dot(v1, miter_b)), -thickness_aa2), 2);
-    emit_vertex(p2 - miter_b, vec2(px2uv * (u1 - dot(v1, miter_b)),  thickness_aa2), 2);
+    emit_vertex(p1 + miter_a, vec2(px2uv * (u1 + dot(v1, miter_a)), -thickness_aa1), 1);
+    emit_vertex(p1 - miter_a, vec2(px2uv * (u1 - dot(v1, miter_a)),  thickness_aa1), 1);
+    emit_vertex(p2 + miter_b, vec2(px2uv * (u2 + dot(v1, miter_b)), -thickness_aa2), 2);
+    emit_vertex(p2 - miter_b, vec2(px2uv * (u2 - dot(v1, miter_b)),  thickness_aa2), 2);
 
 
     #endif
