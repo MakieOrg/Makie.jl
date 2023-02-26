@@ -204,3 +204,29 @@ Colorbar(f[1, 2], hb,
 f
 ```
 \end{examplefigure}
+
+### Applying weights to observations
+
+\begin{examplefigure}{svg = true}
+```
+using CairoMakie
+CairoMakie.activate!() # hide
+
+using Random
+Random.seed!(1234)
+
+f = Figure(resolution = (800, 800))
+
+x = 1:100
+y = 1:100
+points = Point2f.(x, y') |> vec
+
+for (i, weight) in enumerate([nothing, rand(length(points)), Makie.StatsBase.eweights(length(points), 0.005), Makie.StatsBase.weights(randn(length(points)))])
+    ax = Axis(f[fldmod1(i, 2)...], title = "weights::$(typeof(weight))", aspect = DataAspect())
+    hexbin!(ax, points; weights = weight)
+    autolimits!(ax)
+end
+
+f
+```
+\end{examplefigure}
