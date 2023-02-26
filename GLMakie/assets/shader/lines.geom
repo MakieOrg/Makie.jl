@@ -448,6 +448,33 @@ void main(void)
     float u1 = 10.0 * AA_THICKNESS + thickness_aa1 + thickness_aa2;
     float u2 = u1 + segment_length;
 
+    // Fix #1129
+    // When points are very close together the AA padding propagated through
+    // shallow miter joins in v1 direction can draw outside the lines region.
+    //
+    //         | | <- extrusion in v1 direction from AA padding
+    // .----------
+    // | .--------
+    // | |'.    ##  <- potentially draws outside
+    // | |  '.  ##  <- the current line segment
+    // | |    '.--
+    // | |     | .
+    // | |     | |
+    //     
+    // Here we treat this by adding an artificial AA boundary at the line start
+    // and end. Note that always doing this will introduce AA where lines should
+    // smoothly connect. 
+    f_uv_minmax.x = ifelse(
+        segment_length < abs(length_a * dot(miter_a, v1)), 
+        (u1 - g_thickness[1] * abs(dot(miter_a, v1) / dot(miter_a, n1))) * px2uv,
+        f_uv_minmax.x
+    );
+    f_uv_minmax.y = ifelse(
+        segment_length < abs(length_b * dot(miter_b, v1)), 
+        (u2 + g_thickness[2] * abs(dot(miter_b, v1) / dot(miter_b, n1))) * px2uv,
+        f_uv_minmax.y
+    );
+
     // To treat line starts and ends we elongate the line in the respective
     // direction and enforce an AA border at the original start/end position
     // with f_uv_minmax.
@@ -456,7 +483,7 @@ void main(void)
     p1 -= is_start * AA_THICKNESS * v1;
     u1 -= is_start * AA_THICKNESS;
 
-    float is_end   = float(!isvalid[3]);
+    float is_end = float(!isvalid[3]);
     f_uv_minmax.y = ifelse(is_end, px2uv * u2, f_uv_minmax.y);
     u2 += is_end * AA_THICKNESS;
     p2 += is_end * AA_THICKNESS * v1;

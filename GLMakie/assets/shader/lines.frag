@@ -66,7 +66,6 @@ void main(){
 
     float alpha = aastep(0.0, xy.x);
     float alpha2 = aastep(-f_thickness, f_thickness, xy.y);
-    // float alpha3 = ifelse(xy.x > 2.0, aastep_scaled(f_uv_minmax.x, f_uv_minmax.y, f_uv.x), 1.0);
     float alpha3 = aastep_scaled(f_uv_minmax.x, f_uv_minmax.y, f_uv.x);
 
     color = vec4(f_color.rgb, f_color.a * alpha * alpha2 * alpha3);
