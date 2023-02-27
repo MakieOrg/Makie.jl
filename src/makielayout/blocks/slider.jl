@@ -3,7 +3,7 @@ function initialize_block!(sl::Slider)
     topscene = sl.blockscene
 
     sliderrange = sl.range
-    
+
     onany(sl.linewidth, sl.horizontal) do lw, horizontal
         if horizontal
             sl.layoutobservables.autosize[] = (nothing, Float32(lw))

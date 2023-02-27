@@ -917,14 +917,17 @@ end
 abstract type LegendElement end
 
 struct LineElement <: LegendElement
+    plots::Optional{Vector{AbstractPlot}}
     attributes::Attributes
 end
 
 struct MarkerElement <: LegendElement
+    plots::Optional{Vector{AbstractPlot}}
     attributes::Attributes
 end
 
 struct PolyElement <: LegendElement
+    plots::Optional{Vector{AbstractPlot}}
     attributes::Attributes
 end
 
