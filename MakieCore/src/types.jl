@@ -95,7 +95,18 @@ struct Pixel{T} <: Unit{T}
     value::T
 end
 
+Pixel{T1}(p::Pixel{T2}) where {T1, T2} = Pixel{T1}(T1(p.value))
+
+"A single pixel."
 const px = Pixel(1)
+"A point in pixel units"
+const pt = Pixel(1/0.75)
+"A millimeter in pixel units"
+const mm = Pixel(3.7795275591)
+"A centimeter in pixel units"
+const cm = mm * 100
+"An inch in pixel units"
+const inch = 96
 
 """
     Billboard([angle::Real])
