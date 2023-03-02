@@ -23,6 +23,9 @@ out float f_thickness;
 flat out uvec2 f_id;
 flat out vec2 f_uv_minmax;
 
+out vec3 o_view_pos;
+out vec3 o_normal;
+
 uniform vec2 resolution;
 uniform float pattern_length;
 {{pattern_type}} pattern;
@@ -70,54 +73,23 @@ void emit_vertex(vec2 position, vec2 uv, int index)
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// Main
+/// Patterned line
 ////////////////////////////////////////////////////////////////////////////////
 
 
-out vec3 o_view_pos;
-out vec3 o_normal;
 
-void main(void)
+void draw_patterned_line(bool isvalid[4])
 {
-    // These need to be set but don't have reasonable values here 
-    o_view_pos = vec3(0);
-    o_normal = vec3(0);
     // This sets a min and max value foir uv.u at which anti-aliasing is forced.
     // With this setting it's never triggered.
     f_uv_minmax = vec2(-1.0e12, 1.0e12);
 
-    // We mark each of the four vertices as valid or not. Vertices can be
-    // marked invalid on input (eg, if they contain NaN). We also mark them
-    // invalid if they repeat in the index buffer. This allows us to render to
-    // the very ends of a polyline without clumsy buffering the position data on the
-    // CPU side by repeating the first and last points via the index buffer. It
-    // just requires a little care further down to avoid degenerate normals.
-    bool isvalid[4] = bool[](
-        g_valid_vertex[0] == 1 && g_id[0].y != g_id[1].y,
-        g_valid_vertex[1] == 1,
-        g_valid_vertex[2] == 1,
-        g_valid_vertex[3] == 1 && g_id[2].y != g_id[3].y
-    );
-
-    if(!isvalid[1] || !isvalid[2]){
-        // If one of the central vertices is invalid or there is a break in the
-        // line, we don't emit anything.
-        return;
-    }
-
     // get the four vertices passed to the shader
     // without FAST_PATH the conversions happen on the CPU
-    #ifdef FAST_PATH
-        vec2 p0 = screen_space(gl_in[0].gl_Position);
-        vec2 p1 = screen_space(gl_in[1].gl_Position);
-        vec2 p2 = screen_space(gl_in[2].gl_Position);
-        vec2 p3 = screen_space(gl_in[3].gl_Position);
-    #else
-        vec2 p0 = gl_in[0].gl_Position.xy; // start of previous segment
-        vec2 p1 = gl_in[1].gl_Position.xy; // end of previous segment, start of current segment
-        vec2 p2 = gl_in[2].gl_Position.xy; // end of current segment, start of next segment
-        vec2 p3 = gl_in[3].gl_Position.xy; // end of next segment
-    #endif
+    vec2 p0 = gl_in[0].gl_Position.xy; // start of previous segment
+    vec2 p1 = gl_in[1].gl_Position.xy; // end of previous segment, start of current segment
+    vec2 p2 = gl_in[2].gl_Position.xy; // end of current segment, start of next segment
+    vec2 p3 = gl_in[3].gl_Position.xy; // end of next segment
 
     // linewidth with padding for anti aliasing
     float thickness_aa1 = g_thickness[1] + AA_THICKNESS;
@@ -141,14 +113,6 @@ void main(void)
     vec2 n0 = vec2(-v0.y, v0.x);
     vec2 n1 = vec2(-v1.y, v1.x);
     vec2 n2 = vec2(-v2.y, v2.x);
-
-
-    ////////////////////////////////////////////////////////////////////////////
-    ///  patterned lines
-    ////////////////////////////////////////////////////////////////////////////
-
-
-    #ifndef FAST_PATH
 
     // The pattern may look like this:
     //
@@ -386,14 +350,51 @@ void main(void)
     }
 
     return;
+}
 
 
-    ////////////////////////////////////////////////////////////////////////////
-    ///  solid lines
-    ////////////////////////////////////////////////////////////////////////////
 
-    #else
+////////////////////////////////////////////////////////////////////////////////
+/// Solid lines
+////////////////////////////////////////////////////////////////////////////////
 
+
+
+void draw_solid_line(bool isvalid[4])
+{
+    // This sets a min and max value foir uv.u at which anti-aliasing is forced.
+    // With this setting it's never triggered.
+    f_uv_minmax = vec2(-1.0e12, 1.0e12);
+
+    // get the four vertices passed to the shader
+    // without FAST_PATH the conversions happen on the CPU
+    vec2 p0 = screen_space(gl_in[0].gl_Position); // start of previous segment
+    vec2 p1 = screen_space(gl_in[1].gl_Position); // end of previous segment, start of current segment
+    vec2 p2 = screen_space(gl_in[2].gl_Position); // end of current segment, start of next segment
+    vec2 p3 = screen_space(gl_in[3].gl_Position); // end of next segment
+
+    // linewidth with padding for anti aliasing
+    float thickness_aa1 = g_thickness[1] + AA_THICKNESS;
+    float thickness_aa2 = g_thickness[2] + AA_THICKNESS;
+
+    // determine the direction of each of the 3 segments (previous, current, next)
+    vec2 v1 = p2 - p1;
+    float segment_length = length(v1);
+    v1 /= segment_length;
+    vec2 v0 = v1;
+    vec2 v2 = v1;
+
+    if (p1 != p0 && isvalid[0]) {
+        v0 = normalize(p1 - p0);
+    }
+    if (p3 != p2 && isvalid[3]) {
+        v2 = normalize(p3 - p2);
+    }
+
+    // determine the normal of each of the 3 segments (previous, current, next)
+    vec2 n0 = vec2(-v0.y, v0.x);
+    vec2 n1 = vec2(-v1.y, v1.x);
+    vec2 n2 = vec2(-v2.y, v2.x);
 
     // Setup for sharp corners (see above)
     vec2 miter_a = normalize(n0 + n1);
@@ -498,6 +499,49 @@ void main(void)
     emit_vertex(p2 + miter_b, vec2(px2uv * (u2 + dot(v1, miter_b)), -thickness_aa2), 2);
     emit_vertex(p2 - miter_b, vec2(px2uv * (u2 - dot(v1, miter_b)),  thickness_aa2), 2);
 
+    return;
+}
 
-    #endif
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// Main
+////////////////////////////////////////////////////////////////////////////////
+
+
+
+void main(void)
+{
+    // These need to be set but don't have reasonable values here 
+    o_view_pos = vec3(0);
+    o_normal = vec3(0);
+
+    // We mark each of the four vertices as valid or not. Vertices can be
+    // marked invalid on input (eg, if they contain NaN). We also mark them
+    // invalid if they repeat in the index buffer. This allows us to render to
+    // the very ends of a polyline without clumsy buffering the position data on the
+    // CPU side by repeating the first and last points via the index buffer. It
+    // just requires a little care further down to avoid degenerate normals.
+    bool isvalid[4] = bool[](
+        g_valid_vertex[0] == 1 && g_id[0].y != g_id[1].y,
+        g_valid_vertex[1] == 1,
+        g_valid_vertex[2] == 1,
+        g_valid_vertex[3] == 1 && g_id[2].y != g_id[3].y
+    );
+
+    if(!isvalid[1] || !isvalid[2]){
+        // If one of the central vertices is invalid or there is a break in the
+        // line, we don't emit anything.
+        return;
+    }
+
+    // get the four vertices passed to the shader
+    // without FAST_PATH the conversions happen on the CPU
+#ifdef FAST_PATH
+    draw_solid_line(isvalid);
+#else
+    draw_patterned_line(isvalid);
+#endif
+
+    return;
 }
