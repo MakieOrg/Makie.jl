@@ -1,4 +1,4 @@
-name: format
+name: JuliaFormatter
 
 on:
   pull_request:
@@ -24,7 +24,7 @@ jobs:
           Pkg.activate(; temp=true)
           Pkg.add("JuliaFormatter")
           using JuliaFormatter
-          format(["src", "test", "MakieCore", "CairoMakie", "GLMakie", "WGLMakie", "RPRMakie", "ReferenceTests", "MakieRecipes"], verbose=true)
+          format(".", verbose=true)
       - name: Format check
         run: |
           julia -e '
