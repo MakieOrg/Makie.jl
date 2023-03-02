@@ -1,7 +1,7 @@
 const ScreenID = UInt16
 const ZIndex = Int
 # ID, Area, clear, is visible, background color
-const ScreenArea = Tuple{ScreenID, Scene}
+const ScreenArea = Tuple{ScreenID,Scene}
 
 function renderloop end
 
@@ -51,7 +51,7 @@ mutable struct ScreenConfig
     title::String
     fullscreen::Bool
     debugging::Bool
-    monitor::Union{Nothing, GLFW.Monitor}
+    monitor::Union{Nothing,GLFW.Monitor}
     visible::Bool
 
     # Postprocessor
@@ -61,27 +61,27 @@ mutable struct ScreenConfig
     transparency_weight_scale::Float32
 
     function ScreenConfig(
-            # Renderloop
-            renderloop::Union{Makie.Automatic, Function},
-            pause_renderloop::Bool,
-            vsync::Bool,
-            render_on_demand::Bool,
-            framerate::Number,
-            # GLFW window attributes
-            float::Bool,
-            focus_on_show::Bool,
-            decorated::Bool,
-            title::AbstractString,
-            fullscreen::Bool,
-            debugging::Bool,
-            monitor::Union{Nothing, GLFW.Monitor},
-            visible::Bool,
+        # Renderloop
+        renderloop::Union{Makie.Automatic,Function},
+        pause_renderloop::Bool,
+        vsync::Bool,
+        render_on_demand::Bool,
+        framerate::Number,
+        # GLFW window attributes
+        float::Bool,
+        focus_on_show::Bool,
+        decorated::Bool,
+        title::AbstractString,
+        fullscreen::Bool,
+        debugging::Bool,
+        monitor::Union{Nothing,GLFW.Monitor},
+        visible::Bool,
 
-            # Preproccessor
-            oit::Bool,
-            fxaa::Bool,
-            ssao::Bool,
-            transparency_weight_scale::Number)
+        # Preproccessor
+        oit::Bool,
+        fxaa::Bool,
+        ssao::Bool,
+        transparency_weight_scale::Number)
 
         return new(
             # Renderloop
@@ -119,7 +119,7 @@ Note, that the `screen_config` can also be set permanently via `Makie.set_theme!
 
 $(Base.doc(ScreenConfig))
 """
-function activate!(; inline=LAST_INLINE[], screen_config...)
+function activate!(; inline = LAST_INLINE[], screen_config...)
     if haskey(screen_config, :pause_rendering)
         error("pause_rendering got renamed to pause_renderloop.")
     end
@@ -145,42 +145,40 @@ mutable struct Screen{GLWindow} <: MakieScreen
     glscreen::GLWindow
     shader_cache::GLAbstraction.ShaderCache
     framebuffer::GLFramebuffer
-    config::Union{Nothing, ScreenConfig}
+    config::Union{Nothing,ScreenConfig}
     stop_renderloop::Bool
-    rendertask::Union{Task, Nothing}
+    rendertask::Union{Task,Nothing}
 
-    screen2scene::Dict{WeakRef, ScreenID}
+    screen2scene::Dict{WeakRef,ScreenID}
     screens::Vector{ScreenArea}
-    renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}}
+    renderlist::Vector{Tuple{ZIndex,ScreenID,RenderObject}}
     postprocessors::Vector{PostProcessor}
-    cache::Dict{UInt64, RenderObject}
-    cache2plot::Dict{UInt32, AbstractPlot}
+    cache::Dict{UInt64,RenderObject}
+    cache2plot::Dict{UInt32,AbstractPlot}
     framecache::Matrix{RGB{N0f8}}
     render_tick::Observable{Nothing}
     window_open::Observable{Bool}
 
-    root_scene::Union{Scene, Nothing}
+    root_scene::Union{Scene,Nothing}
     reuse::Bool
     close_after_renderloop::Bool
     # To trigger rerenders that aren't related to an existing renderobject.
     requires_update::Bool
 
     function Screen(
-            glscreen::GLWindow,
-            shader_cache::GLAbstraction.ShaderCache,
-            framebuffer::GLFramebuffer,
-            config::Union{Nothing, ScreenConfig},
-            stop_renderloop::Bool,
-            rendertask::Union{Nothing, Task},
-
-            screen2scene::Dict{WeakRef, ScreenID},
-            screens::Vector{ScreenArea},
-            renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}},
-            postprocessors::Vector{PostProcessor},
-            cache::Dict{UInt64, RenderObject},
-            cache2plot::Dict{UInt32, AbstractPlot},
-            reuse::Bool
-        ) where {GLWindow}
+        glscreen::GLWindow,
+        shader_cache::GLAbstraction.ShaderCache,
+        framebuffer::GLFramebuffer,
+        config::Union{Nothing,ScreenConfig},
+        stop_renderloop::Bool,
+        rendertask::Union{Nothing,Task}, screen2scene::Dict{WeakRef,ScreenID},
+        screens::Vector{ScreenArea},
+        renderlist::Vector{Tuple{ZIndex,ScreenID,RenderObject}},
+        postprocessors::Vector{PostProcessor},
+        cache::Dict{UInt64,RenderObject},
+        cache2plot::Dict{UInt32,AbstractPlot},
+        reuse::Bool
+    ) where {GLWindow}
 
         s = size(framebuffer)
         screen = new{GLWindow}(
@@ -200,20 +198,18 @@ end
 # gets removed in destroy!(screen)
 const ALL_SCREENS = Set{Screen}()
 
-function empty_screen(debugging::Bool; reuse=true)
+function empty_screen(debugging::Bool; reuse = true)
     windowhints = [
-        (GLFW.SAMPLES,      0),
-        (GLFW.DEPTH_BITS,   0),
+        (GLFW.SAMPLES, 0),
+        (GLFW.DEPTH_BITS, 0),
 
         # SETTING THE ALPHA BIT IS REALLY IMPORTANT ON OSX, SINCE IT WILL JUST KEEP SHOWING A BLACK SCREEN
         # WITHOUT ANY ERROR -.-
-        (GLFW.ALPHA_BITS,   8),
-        (GLFW.RED_BITS,     8),
-        (GLFW.GREEN_BITS,   8),
-        (GLFW.BLUE_BITS,    8),
-
-        (GLFW.STENCIL_BITS, 0),
-        (GLFW.AUX_BUFFERS,  0),
+        (GLFW.ALPHA_BITS, 8),
+        (GLFW.RED_BITS, 8),
+        (GLFW.GREEN_BITS, 8),
+        (GLFW.BLUE_BITS, 8), (GLFW.STENCIL_BITS, 0),
+        (GLFW.AUX_BUFFERS, 0),
     ]
     resolution = (10, 10)
     window = try
@@ -254,12 +250,12 @@ function empty_screen(debugging::Bool; reuse=true)
         window, shader_cache, fb,
         nothing, false,
         nothing,
-        Dict{WeakRef, ScreenID}(),
+        Dict{WeakRef,ScreenID}(),
         ScreenArea[],
-        Tuple{ZIndex, ScreenID, RenderObject}[],
+        Tuple{ZIndex,ScreenID,RenderObject}[],
         postprocessors,
-        Dict{UInt64, RenderObject}(),
-        Dict{UInt32, AbstractPlot}(),
+        Dict{UInt64,RenderObject}(),
+        Dict{UInt32,AbstractPlot}(),
         reuse,
     )
     GLFW.SetWindowRefreshCallback(window, window -> refreshwindowcb(window, screen))
@@ -294,9 +290,9 @@ const SINGLETON_SCREEN = Screen[]
 function singleton_screen(debugging::Bool)
     if !isempty(SINGLETON_SCREEN)
         screen = SINGLETON_SCREEN[1]
-        close(screen; reuse=false)
+        close(screen; reuse = false)
     else
-        screen = empty_screen(debugging; reuse=false)
+        screen = empty_screen(debugging; reuse = false)
         push!(SINGLETON_SCREEN, screen)
     end
     return reopen!(screen)
@@ -308,7 +304,7 @@ function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene:
     apply_config!(screen, config)
 end
 
-function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::Bool=true)
+function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::Bool = true)
     glw = screen.glscreen
     ShaderAbstractions.switch_context!(glw)
     GLFW.SetWindowAttrib(glw, GLFW_FOCUS_ON_SHOW, config.focus_on_show)
@@ -348,17 +344,17 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
 end
 
 function Screen(;
-        resolution::Union{Nothing, Tuple{Int, Int}} = nothing,
-        start_renderloop = true,
-        screen_config...
-    )
+    resolution::Union{Nothing,Tuple{Int,Int}} = nothing,
+    start_renderloop = true,
+    screen_config...
+)
     # Screen config is managed by the current active theme, so managed by Makie
     config = Makie.merge_screen_config(ScreenConfig, screen_config)
     screen = screen_from_pool(config.debugging)
     if !isnothing(resolution)
         resize!(screen, resolution...)
     end
-    apply_config!(screen, config; start_renderloop=start_renderloop)
+    apply_config!(screen, config; start_renderloop = start_renderloop)
     return screen
 end
 
@@ -378,34 +374,34 @@ function display_scene!(screen::Screen, scene::Scene)
     return
 end
 
-function Screen(scene::Scene; start_renderloop=true, screen_config...)
+function Screen(scene::Scene; start_renderloop = true, screen_config...)
     config = Makie.merge_screen_config(ScreenConfig, screen_config)
-    return Screen(scene, config; start_renderloop=start_renderloop)
+    return Screen(scene, config; start_renderloop = start_renderloop)
 end
 
 # Open an interactive window
-function Screen(scene::Scene, config::ScreenConfig; visible=nothing, start_renderloop=true)
+function Screen(scene::Scene, config::ScreenConfig; visible = nothing, start_renderloop = true)
     screen = singleton_screen(config.debugging)
     !isnothing(visible) && (config.visible = visible)
-    apply_config!(screen, config; start_renderloop=start_renderloop)
+    apply_config!(screen, config; start_renderloop = start_renderloop)
     display_scene!(screen, scene)
     return screen
 end
 
 # Screen to save a png/jpeg to file or io
-function Screen(scene::Scene, config::ScreenConfig, io::Union{Nothing, String, IO}, typ::MIME; visible=nothing, start_renderloop=false)
+function Screen(scene::Scene, config::ScreenConfig, io::Union{Nothing,String,IO}, typ::MIME; visible = nothing, start_renderloop = false)
     screen = singleton_screen(config.debugging)
     !isnothing(visible) && (config.visible = visible)
-    apply_config!(screen, config; start_renderloop=start_renderloop)
+    apply_config!(screen, config; start_renderloop = start_renderloop)
     display_scene!(screen, scene)
     return screen
 end
 
 # Screen that is efficient for `colorbuffer(screen)`
-function Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat;  start_renderloop=false)
+function Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat; start_renderloop = false)
     screen = singleton_screen(config.debugging)
     config.visible = false
-    apply_config!(screen, config; start_renderloop=start_renderloop)
+    apply_config!(screen, config; start_renderloop = start_renderloop)
     display_scene!(screen, scene)
     return screen
 end
@@ -456,7 +452,7 @@ function Base.delete!(screen::Screen, scene::Scene)
 
         # Remap scene IDs to a continuous range by replacing the largest ID
         # with the one that got removed
-        if deleted_id-1 != length(screen.screens)
+        if deleted_id - 1 != length(screen.screens)
             key, max_id = first(screen.screen2scene)
             for p in screen.screen2scene
                 if p[2] > max_id
@@ -515,7 +511,7 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
         renderobject = get(screen.cache, objectid(plot), nothing)
         if !isnothing(renderobject)
             destroy!(renderobject)
-            filter!(x-> x[3] !== renderobject, screen.renderlist)
+            filter!(x -> x[3] !== renderobject, screen.renderlist)
             delete!(screen.cache2plot, renderobject.id)
         end
         delete!(screen.cache, objectid(plot))
@@ -548,7 +544,7 @@ function Base.empty!(screen::Screen)
 end
 
 function destroy!(screen::Screen)
-    close(screen; reuse=false)
+    close(screen; reuse = false)
     # wait for rendertask to finish
     # otherwise, during rendertask clean up we may run into a destroyed window
     wait(screen)
@@ -568,9 +564,9 @@ end
 Closes screen and emptying it.
 Doesn't destroy the screen and instead frees it for being re-used again, if `reuse=true`.
 """
-function Base.close(screen::Screen; reuse=true)
+function Base.close(screen::Screen; reuse = true)
     set_screen_visibility!(screen, false)
-    stop_renderloop!(screen; close_after_renderloop=false)
+    stop_renderloop!(screen; close_after_renderloop = false)
     if screen.window_open[] # otherwise we trigger an infinite loop of closing
         screen.window_open[] = false
     end
@@ -620,7 +616,7 @@ function Base.resize!(screen::Screen, w, h)
     resize!(fb, (w, h))
 end
 
-function fast_color_data!(dest::Array{RGB{N0f8}, 2}, source::Texture{T, 2}) where T
+function fast_color_data!(dest::Array{RGB{N0f8},2}, source::Texture{T,2}) where T
     GLAbstraction.bind(source)
     glPixelStorei(GL_PACK_ALIGNMENT, 1)
     glGetTexImage(source.texturetype, 0, GL_RGB, GL_UNSIGNED_BYTE, dest)
@@ -643,7 +639,7 @@ heatmap(depth_color, colormap=:grays)
 """
 function depthbuffer(screen::Screen)
     ShaderAbstractions.switch_context!(screen.glscreen)
-    render_frame(screen, resize_buffers=false) # let it render
+    render_frame(screen, resize_buffers = false) # let it render
     glFinish() # block until opengl is done rendering
     source = screen.framebuffer.buffers[:depth]
     depth = Matrix{Float32}(undef, size(source))
@@ -663,7 +659,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     # we still need to poll though, to get all the newest events!
     # GLFW.PollEvents()
     # keep current buffer size to allows larger-than-window renders
-    render_frame(screen, resize_buffers=false) # let it render
+    render_frame(screen, resize_buffers = false) # let it render
     glFinish() # block until opengl is done rendering
     if size(ctex) != size(screen.framecache)
         screen.framecache = Matrix{RGB{N0f8}}(undef, size(ctex))
@@ -762,7 +758,7 @@ function pause_renderloop!(screen::Screen)
     screen.config.pause_renderloop = true
 end
 
-function stop_renderloop!(screen::Screen; close_after_renderloop=screen.close_after_renderloop)
+function stop_renderloop!(screen::Screen; close_after_renderloop = screen.close_after_renderloop)
     # don't double close when stopping renderloop
     c = screen.close_after_renderloop
     screen.close_after_renderloop = close_after_renderloop
@@ -780,7 +776,7 @@ function stop_renderloop!(screen::Screen; close_after_renderloop=screen.close_af
     return
 end
 
-function set_framerate!(screen::Screen, fps=30)
+function set_framerate!(screen::Screen, fps = 30)
     screen.config.framerate = fps
 end
 
@@ -795,7 +791,8 @@ end
 function vsynced_renderloop(screen)
     while isopen(screen) && !screen.stop_renderloop
         if screen.config.pause_renderloop
-            pollevents(screen); sleep(0.1)
+            pollevents(screen)
+            sleep(0.1)
             continue
         end
         pollevents(screen) # GLFW poll
@@ -808,7 +805,8 @@ end
 function fps_renderloop(screen::Screen)
     while isopen(screen) && !screen.stop_renderloop
         if screen.config.pause_renderloop
-            pollevents(screen); sleep(0.1)
+            pollevents(screen)
+            sleep(0.1)
             continue
         end
         time_per_frame = 1.0 / screen.config.framerate
@@ -874,14 +872,14 @@ function renderloop(screen)
             fps_renderloop(screen)
         end
     catch e
-        @warn "error in renderloop" exception=(e, Base.catch_backtrace())
+        @warn "error in renderloop" exception = (e, Base.catch_backtrace())
         rethrow(e)
     end
     if screen.close_after_renderloop
         try
             close(screen)
         catch e
-            @warn "error closing screen" exception=(e, Base.catch_backtrace())
+            @warn "error closing screen" exception = (e, Base.catch_backtrace())
         end
     end
     screen.rendertask = nothing
@@ -890,7 +888,7 @@ end
 
 function plot2robjs(screen::Screen, plot)
     plots = Makie.flatten_plots(plot)
-    return map(x-> screen.cache[objectid(x)], plots)
+    return map(x -> screen.cache[objectid(x)], plots)
 end
 
 export plot2robjs

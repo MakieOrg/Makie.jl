@@ -19,14 +19,14 @@ Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
 """
 @recipe(Hexbin) do scene
     return Attributes(;
-                      colormap=theme(scene, :colormap),
-                      colorrange=Makie.automatic,
-                      bins=20,
-                      cellsize=nothing,
-                      threshold=1,
-                      scale=identity,
-                      strokewidth=0,
-                      strokecolor=:black)
+        colormap = theme(scene, :colormap),
+        colorrange = Makie.automatic,
+        bins = 20,
+        cellsize = nothing,
+        threshold = 1,
+        scale = identity,
+        strokewidth = 0,
+        strokecolor = :black)
 end
 
 function spacings_offsets_nbins(bins::Tuple{Int,Int}, cellsize::Nothing, xmi, xma, ymi, yma)
@@ -52,7 +52,7 @@ function spacings_offsets_nbins(bins, cellsizes::Tuple{<:Real,<:Real}, xmi, xma,
     yspacing = cellsizes[2] * 3 / 4
     (nx, restx), (ny, resty) = fldmod.((x_diff, y_diff), (xspacing, yspacing))
     return xspacing, yspacing, xmi - (restx > 0 ? (xspacing - restx) / 2 : 0),
-           ymi - (resty > 0 ? (yspacing - resty) / 2 : 0), Int(nx) + (restx > 0), Int(ny) + (resty > 0)
+    ymi - (resty > 0 ? (yspacing - resty) / 2 : 0), Int(nx) + (restx > 0), Int(ny) + (resty > 0)
 end
 
 Makie.conversion_trait(::Type{<:Hexbin}) = PointBased()
@@ -94,7 +94,7 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         y_diff = yma - ymi
 
         xspacing, yspacing, xoff, yoff, nbinsx, nbinsy = spacings_offsets_nbins(bins, cellsize, xmi, xma, ymi,
-                                                                                yma)                                                                     
+            yma)
 
         ysize = yspacing / 3 * 4
         ry = ysize / 2
@@ -119,16 +119,16 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             is_grid1 = d1 < d2
 
             # _xy = is_grid1 ? (nx, ny) : (nxs, nys)
-            
+
             id = if is_grid1
                 (
                     cld(dvx, 2),
-                    iseven(dvy) ? dvy : dvy+1
+                    iseven(dvy) ? dvy : dvy + 1
                 )
             else
                 (
                     fld(dvx, 2),
-                    iseven(dvy) ? dvy+1 : dvy,
+                    iseven(dvy) ? dvy + 1 : dvy,
                 )
             end
 
@@ -136,9 +136,9 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         end
 
         if threshold == 0
-            for iy in 0:nbinsy-1
+            for iy in 0:(nbinsy - 1)
                 _nx = isodd(iy) ? fld(nbinsx, 2) : cld(nbinsx, 2)
-                for ix in 0:_nx-1
+                for ix in 0:(_nx - 1)
                     _x = xoff + 2 * ix * xspacing + (isodd(iy) * xspacing)
                     _y = yoff + iy * yspacing
                     c = get(d, (ix, iy), 0)
@@ -174,17 +174,17 @@ function Makie.plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         end
     end
 
-    hexmarker = Polygon(Point2f[(cos(a), sin(a)) for a in range(pi / 6, 13pi / 6; length=7)[1:6]])
+    hexmarker = Polygon(Point2f[(cos(a), sin(a)) for a in range(pi / 6, 13pi / 6; length = 7)[1:6]])
 
     return scatter!(hb, points;
-                    colorrange=hb.colorrange,
-                    color=count_hex,
-                    colormap=hb.colormap,
-                    marker=hexmarker,
-                    markersize=markersize,
-                    markerspace=:data,
-                    strokewidth=hb.strokewidth,
-                    strokecolor=hb.strokecolor)
+        colorrange = hb.colorrange,
+        color = count_hex,
+        colormap = hb.colormap,
+        marker = hexmarker,
+        markersize = markersize,
+        markerspace = :data,
+        strokewidth = hb.strokewidth,
+        strokecolor = hb.strokecolor)
 end
 
 function center_value(dv, spacing, offset, is_grid1)

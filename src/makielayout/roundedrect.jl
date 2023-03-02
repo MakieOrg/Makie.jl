@@ -17,7 +17,7 @@ function plot!(roundrect::RoundedRect)
     widthattr = roundrect.width
 
     roundedrectpoints = lift(rect, cornerradius, cornersegments) do rect,
-            cr, csegs
+    cr, csegs
 
         cr = min(width(rect) / 2, height(rect) / 2, cr)
 
@@ -27,10 +27,10 @@ function plot!(roundrect::RoundedRect)
         icbl = bottomleft(rect) .+ Point2(cr, cr)
         icbr = bottomright(rect) .+ Point2(-cr, cr)
 
-        cstr = anglepoint.(Ref(ictr), LinRange(0, pi/2, csegs), cr)
-        cstl = anglepoint.(Ref(ictl), LinRange(pi/2, pi, csegs), cr)
-        csbl = anglepoint.(Ref(icbl), LinRange(pi, 3pi/2, csegs), cr)
-        csbr = anglepoint.(Ref(icbr), LinRange(3pi/2, 2pi, csegs), cr)
+        cstr = anglepoint.(Ref(ictr), LinRange(0, pi / 2, csegs), cr)
+        cstl = anglepoint.(Ref(ictl), LinRange(pi / 2, pi, csegs), cr)
+        csbl = anglepoint.(Ref(icbl), LinRange(pi, 3pi / 2, csegs), cr)
+        csbr = anglepoint.(Ref(icbr), LinRange(3pi / 2, 2pi, csegs), cr)
 
         return [cstr; cstl; csbl; csbr]
     end

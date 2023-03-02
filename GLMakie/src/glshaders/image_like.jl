@@ -19,12 +19,16 @@ function vol_depth_main(enable)
         vec4 frag_coord = projectionview * model * vec4(pos, 1);
         depth = min(depth, frag_coord.z / frag_coord.w);
         """
-    else "" end
+    else
+        ""
+    end
 end
 function vol_depth_write(enable)
     if enable
         "gl_FragDepth = depth == 100000.0 ? gl_FragDepth : 0.5 * depth + 0.5;"
-    else "" end
+    else
+        ""
+    end
 end
 
 @nospecialize
@@ -32,7 +36,7 @@ end
 A matrix of Intensities will result in a contourf kind of plot
 """
 function draw_heatmap(screen, main, data::Dict)
-    primitive = triangle_mesh(Rect2(0f0,0f0,1f0,1f0))
+    primitive = triangle_mesh(Rect2(0f0, 0f0, 1f0, 1f0))
     to_opengl_mesh!(data, primitive)
     @gen_defaults! data begin
         intensity = main => Texture
@@ -43,7 +47,7 @@ function draw_heatmap(screen, main, data::Dict)
         color_norm = nothing
         stroke_width::Float32 = 0.0f0
         levels::Float32 = 0f0
-        stroke_color = RGBA{Float32}(0,0,0,0)
+        stroke_color = RGBA{Float32}(0, 0, 0, 0)
         transparency = false
         shader = GLVisualizeShader(
             screen,
@@ -79,9 +83,9 @@ function draw_volume(screen, main::VolumeTypes, data::Dict)
             screen,
             "fragment_output.frag", "util.vert", "volume.vert", "volume.frag",
             view = Dict(
-                "depth_init"  => vol_depth_init(to_value(enable_depth)),
-                "depth_default"  => vol_depth_default(to_value(enable_depth)),
-                "depth_main"  => vol_depth_main(to_value(enable_depth)),
+                "depth_init" => vol_depth_init(to_value(enable_depth)),
+                "depth_default" => vol_depth_default(to_value(enable_depth)),
+                "depth_main" => vol_depth_main(to_value(enable_depth)),
                 "depth_write" => vol_depth_write(to_value(enable_depth)),
                 "buffers" => output_buffers(screen, to_value(transparency)),
                 "buffer_writes" => output_buffer_writes(screen, to_value(transparency))

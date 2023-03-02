@@ -1,43 +1,43 @@
-function scalematrix(s::Vec{3, T}) where T
+function scalematrix(s::Vec{3,T}) where T
     T0, T1 = zero(T), one(T)
     Mat{4}(
-        s[1],T0,  T0,  T0,
-        T0,  s[2],T0,  T0,
-        T0,  T0,  s[3],T0,
-        T0,  T0,  T0,  T1,
+        s[1], T0, T0, T0,
+        T0, s[2], T0, T0,
+        T0, T0, s[3], T0,
+        T0, T0, T0, T1,
     )
 end
 
-translationmatrix_x(x::T) where {T} = translationmatrix(Vec{3, T}(x, 0, 0))
-translationmatrix_y(y::T) where {T} = translationmatrix(Vec{3, T}(0, y, 0))
-translationmatrix_z(z::T) where {T} = translationmatrix(Vec{3, T}(0, 0, z))
+translationmatrix_x(x::T) where {T} = translationmatrix(Vec{3,T}(x, 0, 0))
+translationmatrix_y(y::T) where {T} = translationmatrix(Vec{3,T}(0, y, 0))
+translationmatrix_z(z::T) where {T} = translationmatrix(Vec{3,T}(0, 0, z))
 
-function translationmatrix(t::Vec{3, T}) where T
+function translationmatrix(t::Vec{3,T}) where T
     T0, T1 = zero(T), one(T)
     Mat{4}(
-        T1,  T0,  T0,  T0,
-        T0,  T1,  T0,  T0,
-        T0,  T0,  T1,  T0,
-        t[1],t[2],t[3],T1,
+        T1, T0, T0, T0,
+        T0, T1, T0, T0,
+        T0, T0, T1, T0,
+        t[1], t[2], t[3], T1,
     )
 end
 
 rotate(angle, axis::Vec{3}) = rotationmatrix4(qrotation(convert(Array, axis), angle))
-rotate(::Type{T}, angle::Number, axis::Vec{3}) where {T} = rotate(T(angle), convert(Vec{3, T}, axis))
+rotate(::Type{T}, angle::Number, axis::Vec{3}) where {T} = rotate(T(angle), convert(Vec{3,T}, axis))
 
 function rotationmatrix_x(angle::Number)
     T0, T1 = (0, 1)
     Mat{4}(
         T1, T0, T0, T0,
         T0, cos(angle), sin(angle), T0,
-        T0, -sin(angle), cos(angle),  T0,
+        T0, -sin(angle), cos(angle), T0,
         T0, T0, T0, T1
     )
 end
 function rotationmatrix_y(angle::Number)
     T0, T1 = (0, 1)
     Mat{4}(
-        cos(angle), T0, -sin(angle),  T0,
+        cos(angle), T0, -sin(angle), T0,
         T0, T1, T0, T0,
         sin(angle), T0, cos(angle), T0,
         T0, T0, T0, T1
@@ -47,7 +47,7 @@ function rotationmatrix_z(angle::Number)
     T0, T1 = (0, 1)
     Mat{4}(
         cos(angle), sin(angle), T0, T0,
-        -sin(angle), cos(angle),  T0, T0,
+        -sin(angle), cos(angle), T0, T0,
         T0, T0, T1, T0,
         T0, T0, T0, T1
     )
@@ -102,8 +102,8 @@ function perspectiveprojection(fovy::T, aspect::T, znear::T, zfar::T) where T
 end
 
 function perspectiveprojection(
-        ::Type{T}, fovy::Number, aspect::Number, znear::Number, zfar::Number
-    ) where T
+    ::Type{T}, fovy::Number, aspect::Number, znear::Number, zfar::Number
+) where T
     perspectiveprojection(T(fovy), T(aspect), T(znear), T(zfar))
 end
 """
@@ -112,13 +112,13 @@ projection ratio in terms of the rectangular view size `rect` rather
 than the aspect ratio.
 """
 function perspectiveprojection(wh::Rect2, fov::T, near::T, far::T) where T
-    perspectiveprojection(fov, T(wh.w/wh.h), near, far)
+    perspectiveprojection(fov, T(wh.w / wh.h), near, far)
 end
 
 function perspectiveprojection(
-        ::Type{T}, wh::Rect2, fov::Number, near::Number, far::Number
-    ) where T
-    perspectiveprojection(T(fov), T(wh.w/wh.h), T(near), T(far))
+    ::Type{T}, wh::Rect2, fov::Number, near::Number, far::Number
+) where T
+    perspectiveprojection(T(fov), T(wh.w / wh.h), T(near), T(far))
 end
 
 """
@@ -129,16 +129,16 @@ the component of `up` that is perpendicular to the vector pointing
 from `eyeposition` to `lookat` will be used.  All inputs must be
 supplied as 3-vectors.
 """
-function lookat(eyePos::Vec{3, T}, lookAt::Vec{3, T}, up::Vec{3, T}) where T
-    zaxis  = normalize(eyePos-lookAt)
-    xaxis  = normalize(cross(up,    zaxis))
-    yaxis  = normalize(cross(zaxis, xaxis))
+function lookat(eyePos::Vec{3,T}, lookAt::Vec{3,T}, up::Vec{3,T}) where T
+    zaxis = normalize(eyePos - lookAt)
+    xaxis = normalize(cross(up, zaxis))
+    yaxis = normalize(cross(zaxis, xaxis))
     T0, T1 = zero(T), one(T)
     return Mat{4}(
         xaxis[1], yaxis[1], zaxis[1], T0,
         xaxis[2], yaxis[2], zaxis[2], T0,
         xaxis[3], yaxis[3], zaxis[3], T0,
-        T0,       T0,       T0,       T1
+        T0, T0, T0, T1
     ) * translationmatrix(-eyePos)
 end
 
@@ -152,46 +152,46 @@ function orthographicprojection(wh::Rect2, near::T, far::T) where T
 end
 
 function orthographicprojection(
-        ::Type{T}, wh::Rect2, near::Number, far::Number
-    ) where T
+    ::Type{T}, wh::Rect2, near::Number, far::Number
+) where T
     orthographicprojection(wh, T(near), T(far))
 end
 
 function orthographicprojection(
-        left::T, right::T,
-        bottom::T, top::T,
-        znear::T, zfar::T
-    ) where T
-    (right==left || bottom==top || znear==zfar) && return Mat{4,4,T}(I)
+    left::T, right::T,
+    bottom::T, top::T,
+    znear::T, zfar::T
+) where T
+    (right == left || bottom == top || znear == zfar) && return Mat{4,4,T}(I)
     T0, T1, T2 = zero(T), one(T), T(2)
     Mat{4}(
-        T2/(right-left), T0, T0,  T0,
-        T0, T2/(top-bottom), T0,  T0,
-        T0, T0, -T2/(zfar-znear), T0,
-        -(right+left)/(right-left), -(top+bottom)/(top-bottom), -(zfar+znear)/(zfar-znear), T1
+        T2 / (right - left), T0, T0, T0,
+        T0, T2 / (top - bottom), T0, T0,
+        T0, T0, -T2 / (zfar - znear), T0,
+        -(right + left) / (right - left), -(top + bottom) / (top - bottom), -(zfar + znear) / (zfar - znear), T1
     )
 end
 
 function orthographicprojection(::Type{T},
-        left  ::Number, right::Number,
-        bottom::Number, top  ::Number,
-        znear ::Number, zfar ::Number
-    ) where T
+    left::Number, right::Number,
+    bottom::Number, top::Number,
+    znear::Number, zfar::Number
+) where T
     orthographicprojection(
-        T(left),   T(right),
+        T(left), T(right),
         T(bottom), T(top),
-        T(znear),  T(zfar)
+        T(znear), T(zfar)
     )
 end
 
 mutable struct Pivot{T}
-    origin      ::Vec{3, T}
-    xaxis       ::Vec{3, T}
-    yaxis       ::Vec{3, T}
-    zaxis       ::Vec{3, T}
-    rotation    ::Quaternion
-    translation ::Vec{3, T}
-    scale       ::Vec{3, T}
+    origin::Vec{3,T}
+    xaxis::Vec{3,T}
+    yaxis::Vec{3,T}
+    zaxis::Vec{3,T}
+    rotation::Quaternion
+    translation::Vec{3,T}
+    scale::Vec{3,T}
 end
 
 GeometryBasics.origin(p::Pivot) = p.origin
@@ -201,7 +201,7 @@ rotationmatrix4(q::Quaternion{T}) where {T} = Mat4{T}(q)
 function transformationmatrix(p::Pivot)
     translationmatrix(p.origin) * #go to origin
     rotationmatrix4(p.rotation) * #apply rotation
-    translationmatrix(-p.origin)* # go back to origin
+    translationmatrix(-p.origin) * # go back to origin
     translationmatrix(p.translation) #apply translation
 end
 
@@ -209,9 +209,9 @@ function transformationmatrix(translation, scale)
     T = eltype(translation)
     T0, T1 = zero(T), one(T)
     return Mat{4}(
-        scale[1],T0,  T0,  T0,
-        T0,  scale[2],T0,  T0,
-        T0,  T0,  scale[3],T0,
+        scale[1], T0, T0, T0,
+        T0, scale[2], T0, T0,
+        T0, T0, scale[3], T0,
         translation[1], translation[2], translation[3], T1
     )
 end
@@ -219,11 +219,11 @@ end
 function transformationmatrix(translation, scale, rotation::Quaternion)
     trans_scale = transformationmatrix(translation, scale)
     rotation = Mat4f(rotation)
-    trans_scale*rotation
+    trans_scale * rotation
 end
 
 #Calculate rotation between two vectors
-function rotation(u::Vec{3, T}, v::Vec{3, T}) where T
+function rotation(u::Vec{3,T}, v::Vec{3,T}) where T
     # It is important that the inputs are of equal length when
     # calculating the half-way vector.
     u, v = normalize(u), normalize(v)
@@ -231,14 +231,14 @@ function rotation(u::Vec{3, T}, v::Vec{3, T}) where T
     # in this case will be (0, 0, 0), which cannot be normalized.
     if (u == -v)
         # 180 degree rotation around any orthogonal vector
-        other = (abs(dot(u, Vec{3, T}(1,0,0))) < 1.0) ? Vec{3, T}(1,0,0) : Vec{3, T}(0,1,0)
+        other = (abs(dot(u, Vec{3,T}(1, 0, 0))) < 1.0) ? Vec{3,T}(1, 0, 0) : Vec{3,T}(0, 1, 0)
         return qrotation(normalize(cross(u, other)), T(180))
     end
-    half = normalize(u+v)
+    half = normalize(u + v)
     return Quaternion(cross(u, half)..., dot(u, half))
 end
 
-function to_world(scene::Scene, point::T) where T <: StaticVector
+function to_world(scene::Scene, point::T) where T<:StaticVector
     cam = scene.camera
     x = to_world(
         point,
@@ -254,13 +254,13 @@ w_component(x::Point) = 1.0
 w_component(x::Vec) = 0.0
 
 function to_world(
-        p::StaticVector{N, T},
-        prj_view_inv::Mat4,
-        cam_res::StaticVector
-    ) where {N, T}
+    p::StaticVector{N,T},
+    prj_view_inv::Mat4,
+    cam_res::StaticVector
+) where {N,T}
     VT = typeof(p)
     clip_space = ((VT(p) ./ VT(cam_res)) .* T(2)) .- T(1)
-    pix_space = Vec{4, T}(
+    pix_space = Vec{4,T}(
         clip_space[1],
         clip_space[2],
         T(0), w_component(p)
@@ -270,12 +270,12 @@ function to_world(
 end
 
 function to_world(
-        p::Vec{N, T},
-        prj_view_inv::Mat4,
-        cam_res::StaticVector
-    ) where {N, T}
+    p::Vec{N,T},
+    prj_view_inv::Mat4,
+    cam_res::StaticVector
+) where {N,T}
     to_world(Point(p), prj_view_inv, cam_res) .-
-        to_world(zeros(Point{N, T}), prj_view_inv, cam_res)
+    to_world(zeros(Point{N,T}), prj_view_inv, cam_res)
 end
 
 function project(scene::Scene, point::T) where T<:StaticVector
@@ -291,7 +291,7 @@ function project(scene::Scene, point::T) where T<:StaticVector
     )
 end
 
-function project(matrix::Mat4f, p::T, dim4 = 1.0) where T <: VecTypes
+function project(matrix::Mat4f, p::T, dim4 = 1.0) where T<:VecTypes
     p = to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), dim4)
     p = matrix * p
     to_ndim(T, p, 0.0)
@@ -315,7 +315,7 @@ function transform(model::Mat4, x::T) where T
 end
 
 # project between different coordinate systems/spaces
-function space_to_clip(cam::Camera, space::Symbol, projectionview::Bool=true)
+function space_to_clip(cam::Camera, space::Symbol, projectionview::Bool = true)
     if is_data_space(space)
         return projectionview ? cam.projectionview[] : cam.projection[]
     elseif is_pixel_space(space)

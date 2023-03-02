@@ -2,7 +2,7 @@
 function test_copy(; kw...)
     scene = Scene()
     return Makie.merged_get!(
-        ()-> Makie.default_theme(scene, Lines),
+        () -> Makie.default_theme(scene, Lines),
         :lines, scene, Attributes(kw)
     )
 end
@@ -13,13 +13,13 @@ end
 
 @testset "don't copy in theme merge" begin
     x = Observable{Any}(1)
-    res=test_copy(linewidth=x)
+    res = test_copy(linewidth = x)
     res.linewidth === x
 end
 
 @testset "don't copy observables in when calling merge!" begin
     x = Observable{Any}(1)
-    res=test_copy2(Attributes(linewidth=x))
+    res = test_copy2(Attributes(linewidth = x))
     res.linewidth === x
 end
 

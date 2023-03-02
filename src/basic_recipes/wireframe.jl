@@ -15,18 +15,18 @@ See [`wireframe`](@ref).
 """
 wireframe!
 
-function convert_arguments(::Type{<: Wireframe}, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
+function convert_arguments(::Type{<:Wireframe}, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
     (ngrid(x, y)..., z)
 end
 
 xvector(x::AbstractVector, len) = x
-xvector(x::ClosedInterval, len) = range(minimum(x), stop=maximum(x), length=len)
+xvector(x::ClosedInterval, len) = range(minimum(x), stop = maximum(x), length = len)
 xvector(x::AbstractMatrix, len) = x
 
 yvector(x, len) = xvector(x, len)'
 yvector(x::AbstractMatrix, len) = x
 
-function plot!(plot::Wireframe{<: Tuple{<: Any, <: Any, <: AbstractMatrix}})
+function plot!(plot::Wireframe{<:Tuple{<:Any,<:Any,<:AbstractMatrix}})
     points_faces = lift(plot[1:3]...) do x, y, z
         M, N = size(z)
         points = vec(Point3f.(xvector(x, M), yvector(y, N), z))

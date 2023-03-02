@@ -45,7 +45,7 @@ $(ATTRIBUTES)
     default_theme(scene, Contour)
 end
 
-function contourlines(::Type{<: Contour}, contours, cols)
+function contourlines(::Type{<:Contour}, contours, cols)
     result = Point2f[]
     colors = RGBA{Float32}[]
     for (color, c) in zip(cols, Contours.levels(contours))
@@ -58,7 +58,7 @@ function contourlines(::Type{<: Contour}, contours, cols)
     result, colors
 end
 
-function contourlines(::Type{<: Contour3d}, contours, cols)
+function contourlines(::Type{<:Contour3d}, contours, cols)
     result = Point3f[]
     colors = RGBA{Float32}[]
     for (color, c) in zip(cols, Contours.levels(contours))
@@ -73,7 +73,7 @@ function contourlines(::Type{<: Contour3d}, contours, cols)
     result, colors
 end
 
-to_levels(x::AbstractVector{<: Number}, cnorm) = x
+to_levels(x::AbstractVector{<:Number}, cnorm) = x
 
 function to_levels(n::Integer, cnorm)
     zmin, zmax = cnorm
@@ -81,12 +81,12 @@ function to_levels(n::Integer, cnorm)
     range(zmin + dz; step = dz, length = n)
 end
 
-conversion_trait(::Type{<: Contour3d}) = ContinuousSurface()
-conversion_trait(::Type{<: Contour}) = ContinuousSurface()
-conversion_trait(::Type{<: Contour{<: Tuple{X, Y, Z, Vol}}}) where {X, Y, Z, Vol} = VolumeLike()
-conversion_trait(::Type{<: Contour{<: Tuple{<: AbstractArray{T, 3}}}}) where T = VolumeLike()
+conversion_trait(::Type{<:Contour3d}) = ContinuousSurface()
+conversion_trait(::Type{<:Contour}) = ContinuousSurface()
+conversion_trait(::Type{<:Contour{<:Tuple{X,Y,Z,Vol}}}) where {X,Y,Z,Vol} = VolumeLike()
+conversion_trait(::Type{<:Contour{<:Tuple{<:AbstractArray{T,3}}}}) where T = VolumeLike()
 
-function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
+function plot!(plot::Contour{<:Tuple{X,Y,Z,Vol}}) where {X,Y,Z,Vol}
     x, y, z, volume = plot[1:4]
     @extract plot (colormap, levels, linewidth, alpha)
     valuerange = lift(nan_extrema, volume)
@@ -107,7 +107,7 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
         v_interval = cliprange[1] .. cliprange[2]
         # resample colormap and make the empty area between iso surfaces transparent
         return map(1:N) do i
-            i01 = (i-1) / (N - 1)
+            i01 = (i - 1) / (N - 1)
             c = Makie.interpolated_getindex(cmap, i01)
             isoval = vrange[1] + (i01 * (vrange[2] - vrange[1]))
             line = reduce(levels, init = false) do v0, level
@@ -138,7 +138,7 @@ function color_per_level(colors::AbstractVector, colormap, colorrange, alpha, le
     color_per_level(to_colormap(colors), colormap, colorrange, alpha, levels)
 end
 
-function color_per_level(colors::AbstractVector{<: Colorant}, colormap, colorrange, alpha, levels)
+function color_per_level(colors::AbstractVector{<:Colorant}, colormap, colorrange, alpha, levels)
     if length(levels) == length(colors)
         return colors
     else
@@ -157,11 +157,11 @@ function color_per_level(::Nothing, colormap, colorrange, a, levels)
     end
 end
 
-function plot!(plot::T) where T <: Union{Contour, Contour3d}
+function plot!(plot::T) where T<:Union{Contour,Contour3d}
     x, y, z = plot[1:3]
     zrange = lift(nan_extrema, z)
     levels = lift(plot.levels, zrange) do levels, zrange
-        if levels isa AbstractVector{<: Number}
+        if levels isa AbstractVector{<:Number}
             return levels
         elseif levels isa Integer
             to_levels(levels, zrange)
@@ -170,15 +170,15 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         end
     end
 
-    replace_automatic!(()-> zrange, plot, :colorrange)
+    replace_automatic!(() -> zrange, plot, :colorrange)
 
     args = @extract plot (color, colormap, colorrange, alpha)
     level_colors = lift(color_per_level, args..., levels)
     result = lift(x, y, z, levels, level_colors) do x, y, z, levels, level_colors
         t = eltype(z)
         # Compute contours
-        xv, yv = to_vector(x, size(z,1), t), to_vector(y, size(z,2), t)
-        contours = Contours.contours(xv, yv, z,  convert(Vector{eltype(z)}, levels))
+        xv, yv = to_vector(x, size(z, 1), t), to_vector(y, size(z, 2), t)
+        contours = Contours.contours(xv, yv, z, convert(Vector{eltype(z)}, levels))
         contourlines(T, contours, level_colors)
     end
     lines!(
@@ -192,9 +192,9 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     plot
 end
 
-function point_iterator(x::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
+function point_iterator(x::Contour{<:Tuple{X,Y,Z}}) where {X,Y,Z}
     axes = (x[1], x[2])
-    extremata = map(extrema∘to_value, axes)
+    extremata = map(extrema ∘ to_value, axes)
     minpoint = Point2f(first.(extremata)...)
     widths = last.(extremata) .- first.(extremata)
     rect = Rect2f(minpoint, Vec2f(widths))

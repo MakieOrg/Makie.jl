@@ -1,6 +1,6 @@
 @enum CubeSides TOP BOTTOM FRONT BACK RIGHT LEFT
 
-struct Grid{N,T <: AbstractRange}
+struct Grid{N,T<:AbstractRange}
     dims::NTuple{N,T}
 end
 Base.ndims(::Grid{N,T}) where {N,T} = N
@@ -11,7 +11,7 @@ function Grid(a::Array{T,N}) where {N,T}
     smax = maximum(s)
     s = s ./ smax
     Grid(ntuple(Val{N}) do i
-        range(0, stop=s[i], length=size(a, i))
+        range(0, stop = s[i], length = size(a, i))
     end)
 end
 
@@ -24,12 +24,12 @@ and all kind of range types. The constructor will make sure that all ranges matc
 the size of the dimension of the array `a`.
 """
 function Grid(a::AbstractArray{T,N}, ranges::Tuple) where {T,N}
-    length(ranges) = ! N && throw(ArgumentError(
+    length(ranges) = !N && throw(ArgumentError(
         "You need to supply a range for every dimension of the array. Given: $ranges
         given Array: $(typeof(a))"
     ))
     Grid(ntuple(Val(N)) do i
-        range(first(ranges[i]), stop=last(ranges[i]), length=size(a, i))
+        range(first(ranges[i]), stop = last(ranges[i]), length = size(a, i))
     end)
 end
 
@@ -42,7 +42,7 @@ function Base.getindex(p::Grid{N,T}, i) where {N,T}
     end)
 end
 
-Base.iterate(g::Grid, i=1) = i <= length(g) ? (g[i], i + 1) : nothing
+Base.iterate(g::Grid, i = 1) = i <= length(g) ? (g[i], i + 1) : nothing
 
 GLAbstraction.isa_gl_struct(x::Grid) = true
 GLAbstraction.toglsltype_string(t::Grid{N,T}) where {N,T} = "uniform Grid$(N)D"
@@ -69,15 +69,15 @@ struct GLVisualizeShader <: AbstractLazyShader
     paths::Tuple
     kw_args::Dict{Symbol,Any}
     function GLVisualizeShader(
-            screen::Screen, paths::String...;
-            view = Dict{String,String}(), kw_args...
-        )
+        screen::Screen, paths::String...;
+        view = Dict{String,String}(), kw_args...
+    )
         # TODO properly check what extensions are available
         @static if !Sys.isapple()
             view["GLSL_EXTENSIONS"] = "#extension GL_ARB_conservative_depth: enable"
             view["SUPPORTED_EXTENSIONS"] = "#define DEPTH_LAYOUT"
         end
-        args = Dict{Symbol, Any}(kw_args)
+        args = Dict{Symbol,Any}(kw_args)
         args[:view] = view
         args[:fragdatalocation] = [(0, "fragment_color"), (1, "fragment_groupid")]
         new(screen, map(x -> loadshader(x), paths), args)
@@ -100,7 +100,7 @@ function assemble_shader(data)
 
     pre = if !isnothing(pre_fun)
         _pre_fun = GLAbstraction.StandardPrerender(transp, overdraw)
-        ()->(_pre_fun(); pre_fun())
+        () -> (_pre_fun(); pre_fun())
     else
         GLAbstraction.StandardPrerender(transp, overdraw)
     end
@@ -131,15 +131,15 @@ to_index_buffer(x::TOrSignal{UnitRange{Int}}) = x
 """
 For integers, we transform it to 0 based indices
 """
-to_index_buffer(x::AbstractVector{I}) where {I <: Integer} = indexbuffer(Cuint.(x .- 1))
-function to_index_buffer(x::Observable{<: AbstractVector{I}}) where I <: Integer
+to_index_buffer(x::AbstractVector{I}) where {I<:Integer} = indexbuffer(Cuint.(x .- 1))
+function to_index_buffer(x::Observable{<:AbstractVector{I}}) where I<:Integer
     indexbuffer(lift(x -> Cuint.(x .- 1), x))
 end
 
 """
 If already GLuint, we assume its 0 based (bad heuristic, should better be solved with some Index type)
 """
-function to_index_buffer(x::VectorTypes{I}) where I <: Union{GLuint,LineFace{GLIndex}}
+function to_index_buffer(x::VectorTypes{I}) where I<:Union{GLuint,LineFace{GLIndex}}
     indexbuffer(x)
 end
 

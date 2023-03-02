@@ -6,8 +6,8 @@ end
 
 function Base.:(==)(a::Camera, b::Camera)
     to_value(a.view) == to_value(b.view) &&
-    to_value(a.projection) == to_value(b.projection) &&
-    to_value(a.resolution) == to_value(b.resolution)
+        to_value(a.projection) == to_value(b.projection) &&
+        to_value(a.resolution) == to_value(b.resolution)
 end
 
 function Base.show(io::IO, camera::Camera)
@@ -39,12 +39,12 @@ function disconnect!(observables::Vector)
     return
 end
 
-struct CameraLift{F, Args}
+struct CameraLift{F,Args}
     f::F
     args::Args
 end
 
-function (cl::CameraLift{F, Args})(val) where {F, Args}
+function (cl::CameraLift{F,Args})(val) where {F,Args}
     cl.f(map(to_value, cl.args)...)
 end
 
@@ -54,12 +54,12 @@ end
 When mapping over observables for the camera, we store them in the `steering_node` vector,
 to make it easier to disconnect the camera steering signals later!
 """
-function Observables.on(f, camera::Camera, observables::AbstractObservable...; priority=0)
+function Observables.on(f, camera::Camera, observables::AbstractObservable...; priority = 0)
     # PriorityObservables don't implement on_any, because that would replace
     # the method in Observables. CameraLift acts as a workaround for now.
     cl = CameraLift(f, observables)
     for n in observables
-        obs = on(cl, n, priority=priority)
+        obs = on(cl, n, priority = priority)
         push!(camera.steering_nodes, obs)
     end
     return f
@@ -80,7 +80,7 @@ function Camera(px_area)
         view,
         proj,
         proj_view,
-        lift(a-> Vec2f(widths(a)), px_area),
+        lift(a -> Vec2f(widths(a)), px_area),
         Observable(Vec3f(1)),
         ObserverFunction[]
     )

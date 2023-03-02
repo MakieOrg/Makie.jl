@@ -27,7 +27,7 @@ if an axis is placed at that position (if not it errors) or it can reference an 
 get_scene(fig::Figure) = fig.scene
 get_scene(fap::FigureAxisPlot) = fap.figure.scene
 
-const _current_figure = Ref{Union{Nothing, Figure}}(nothing)
+const _current_figure = Ref{Union{Nothing,Figure}}(nothing)
 "Returns the current active figure (or the last figure that got created)"
 current_figure() = _current_figure[]
 "Set `fig` as the current active scene"
@@ -61,13 +61,13 @@ function current_axis!(ax)
 end
 
 to_rectsides(n::Number) = to_rectsides((n, n, n, n))
-to_rectsides(t::Tuple{Any, Any, Any, Any}) = GridLayoutBase.RectSides{Float32}(t...)
+to_rectsides(t::Tuple{Any,Any,Any,Any}) = GridLayoutBase.RectSides{Float32}(t...)
 
 function Figure(; kwargs...)
 
     kwargs_dict = Dict(kwargs)
     padding = pop!(kwargs_dict, :figure_padding, theme(:figure_padding))
-    scene = Scene(; camera=campixel!, kwargs_dict...)
+    scene = Scene(; camera = campixel!, kwargs_dict...)
     padding = convert(Observable{Any}, padding)
     alignmode = lift(Outside ∘ to_rectsides, padding)
 

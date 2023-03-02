@@ -15,7 +15,7 @@ using Makie: volume
         lims = Makie.data_limits(vplot)
         lo, hi = extrema(lims)
         @test all(lo .<= 1)
-        @test all(hi .>= (8,8,10))
+        @test all(hi .>= (8, 8, 10))
     end
 
     include("pipeline.jl")

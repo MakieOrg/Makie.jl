@@ -45,9 +45,9 @@
     @test glyph_collection.fonts == [font for _ in 1:4]
     @test all(isapprox.(glyph_collection.origins, [Point3f(x, 0, 0) for x in origins], atol = 1e-10))
     @test glyph_collection.scales.sv == [Vec2f(p.fontsize[]) for _ in 1:4]
-    @test glyph_collection.rotations.sv == [Quaternionf(0,0,0,1) for _ in 1:4]
-    @test glyph_collection.colors.sv == [RGBAf(0,0,0,1) for _ in 1:4]
-    @test glyph_collection.strokecolors.sv == [RGBAf(0,0,0,0) for _ in 1:4]
+    @test glyph_collection.rotations.sv == [Quaternionf(0, 0, 0, 1) for _ in 1:4]
+    @test glyph_collection.colors.sv == [RGBAf(0, 0, 0, 1) for _ in 1:4]
+    @test glyph_collection.strokecolors.sv == [RGBAf(0, 0, 0, 0) for _ in 1:4]
     @test glyph_collection.strokewidths.sv == Float32[0, 0, 0, 0]
 
     makie_hi_bb = Makie.height_insensitive_boundingbox.(glyph_collection.extents)
@@ -87,7 +87,7 @@
     @test all(isequal(to_ndim(Point3f, p.position[], 0f0)), positions)
     @test char_offsets == glyph_collection.origins
     @test quad_offsets == fta_quad_offsets
-    @test scales  == fta_scales
+    @test scales == fta_scales
 end
 
 

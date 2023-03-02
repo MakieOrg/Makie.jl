@@ -44,7 +44,7 @@ end
 struct WindowAreaUpdater
     window::GLFW.Window
     dpi::Observable{Float64}
-    area::Observable{GeometryBasics.HyperRectangle{2, Int64}}
+    area::Observable{GeometryBasics.HyperRectangle{2,Int64}}
 end
 
 function (x::WindowAreaUpdater)(::Nothing)
@@ -197,7 +197,7 @@ end
 
 struct MousePositionUpdater
     window::GLFW.Window
-    mouseposition::Observable{Tuple{Float64, Float64}}
+    mouseposition::Observable{Tuple{Float64,Float64}}
     hasfocus::Observable{Bool}
 end
 

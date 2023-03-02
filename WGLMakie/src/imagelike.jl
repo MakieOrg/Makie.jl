@@ -76,8 +76,8 @@ end
 
 function limits_to_uvmesh(plot)
     px, py, pz = plot[1], plot[2], plot[3]
-    px = map((x, z)-> xy_convert(x, size(z, 1)), px, pz; ignore_equal_values=true)
-    py = map((y, z) -> xy_convert(y, size(z, 2)), py, pz; ignore_equal_values=true)
+    px = map((x, z) -> xy_convert(x, size(z, 1)), px, pz; ignore_equal_values = true)
+    py = map((y, z) -> xy_convert(y, size(z, 2)), py, pz; ignore_equal_values = true)
     # Special path for ranges of length 2 which
     # can be displayed as a rectangle
     t = Makie.transform_func_obs(plot)[]
@@ -90,17 +90,17 @@ function limits_to_uvmesh(plot)
             ymin, ymax = extrema(y)
             return Rect2(xmin, ymin, xmax - xmin, ymax - ymin)
         end
-        positions = Buffer(lift(rect-> decompose(Point2f, rect), rect))
+        positions = Buffer(lift(rect -> decompose(Point2f, rect), rect))
         faces = Buffer(lift(rect -> decompose(GLTriangleFace, rect), rect))
         uv = Buffer(lift(decompose_uv, rect))
     else
-        grid(x, y, trans, space) = Makie.matrix_grid(p-> apply_transform(trans, p, space), x, y, zeros(length(x), length(y)))
-        resolution = lift((x, y) -> (length(x), length(y)), px, py; ignore_equal_values=true)
+        grid(x, y, trans, space) = Makie.matrix_grid(p -> apply_transform(trans, p, space), x, y, zeros(length(x), length(y)))
+        resolution = lift((x, y) -> (length(x), length(y)), px, py; ignore_equal_values = true)
         positions = Buffer(lift(grid, px, py, t, get(plot, :space, :data)))
         faces = Buffer(lift(fast_faces, resolution))
         uv = Buffer(lift(fast_uv, resolution))
     end
-    vertices = GeometryBasics.meta(positions; uv=uv)
+    vertices = GeometryBasics.meta(positions; uv = uv)
     return GeometryBasics.Mesh(vertices, faces)
 end
 
@@ -115,7 +115,7 @@ end
 function create_shader(mscene::Scene, plot::Surface)
     # TODO OWN OPTIMIZED SHADER ... Or at least optimize this a bit more ...
     px, py, pz = plot[1], plot[2], plot[3]
-    grid(x, y, z, trans, space) = Makie.matrix_grid(p-> apply_transform(trans, p, space), x, y, z)
+    grid(x, y, z, trans, space) = Makie.matrix_grid(p -> apply_transform(trans, p, space), x, y, z)
     positions = Buffer(lift(grid, px, py, pz, transform_func_obs(plot), get(plot, :space, :data)))
     rect = lift(z -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), size(z)), pz)
     faces = Buffer(lift(r -> decompose(GLTriangleFace, r), rect))
@@ -131,24 +131,24 @@ function create_shader(mscene::Scene, plot::Surface)
         pz
     end
     minfilter = to_value(get(plot, :interpolate, true)) ? :linear : :nearest
-    color = Sampler(lift(x -> el32convert(to_color(permutedims(x))), pcolor), minfilter=minfilter)
+    color = Sampler(lift(x -> el32convert(to_color(permutedims(x))), pcolor), minfilter = minfilter)
     normals = Buffer(lift(surface_normals, px, py, pz))
-    vertices = GeometryBasics.meta(positions; uv=uv, normals=normals)
+    vertices = GeometryBasics.meta(positions; uv = uv, normals = normals)
     mesh = GeometryBasics.Mesh(vertices, faces)
-    return draw_mesh(mscene, mesh, plot_attributes; uniform_color=color, color=false,
-                     shading=plot.shading, diffuse=plot.diffuse,
-                     specular=plot.specular, shininess=plot.shininess,
-                     depth_shift=get(plot, :depth_shift, Observable(0f0)),
-                     backlight=plot.backlight,
-                     highclip=get_color(plot, :highclip),
-                     lowclip=get_color(plot, :lowclip),
-                     nan_color=get_color(plot, :nan_color))
+    return draw_mesh(mscene, mesh, plot_attributes; uniform_color = color, color = false,
+        shading = plot.shading, diffuse = plot.diffuse,
+        specular = plot.specular, shininess = plot.shininess,
+        depth_shift = get(plot, :depth_shift, Observable(0f0)),
+        backlight = plot.backlight,
+        highclip = get_color(plot, :highclip),
+        lowclip = get_color(plot, :lowclip),
+        nan_color = get_color(plot, :nan_color))
 end
 
-function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
+function create_shader(mscene::Scene, plot::Union{Heatmap,Image})
     image = plot[3]
     color = Sampler(map(x -> el32convert(x'), image);
-                    minfilter=to_value(get(plot, :interpolate, false)) ? :linear : :nearest)
+        minfilter = to_value(get(plot, :interpolate, false)) ? :linear : :nearest)
     mesh = limits_to_uvmesh(plot)
     plot_attributes = copy(plot.attributes)
     if eltype(color) <: Colorant
@@ -157,16 +157,16 @@ function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
     end
 
     return draw_mesh(mscene, mesh, plot_attributes;
-                     uniform_color=color, color=false,
-                     normals=Vec3f(0), shading=false,
-                     diffuse=Vec3f(0), specular=Vec3f(0),
-                     shininess=0f0,
-                     colorrange=haskey(plot, :colorrange) ? plot.colorrange : false,
-                     highclip=get_color(plot, :highclip),
-                     lowclip=get_color(plot, :lowclip),
-                     nan_color=get_color(plot, :nan_color),
-                     backlight=0f0,
-                     depth_shift = get(plot, :depth_shift, Observable(0f0)))
+        uniform_color = color, color = false,
+        normals = Vec3f(0), shading = false,
+        diffuse = Vec3f(0), specular = Vec3f(0),
+        shininess = 0f0,
+        colorrange = haskey(plot, :colorrange) ? plot.colorrange : false,
+        highclip = get_color(plot, :highclip),
+        lowclip = get_color(plot, :lowclip),
+        nan_color = get_color(plot, :nan_color),
+        backlight = 0f0,
+        depth_shift = get(plot, :depth_shift, Observable(0f0)))
 end
 
 function create_shader(mscene::Scene, plot::Volume)
@@ -188,7 +188,7 @@ function create_shader(mscene::Scene, plot::Volume)
     specular = lift(x -> convert_attribute(x, Key{:specular}()), plot.specular)
     shininess = lift(x -> convert_attribute(x, Key{:shininess}()), plot.shininess)
 
-    uniforms = Dict{Symbol, Any}(
+    uniforms = Dict{Symbol,Any}(
         :volumedata => Sampler(lift(Makie.el32convert, vol)),
         :modelinv => modelinv,
         :colormap => Sampler(lift(to_colormap, plot.colormap)),

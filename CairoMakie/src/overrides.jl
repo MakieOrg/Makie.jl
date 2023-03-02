@@ -37,8 +37,8 @@ function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2})
 end
 
 # when color is a Makie.AbstractPattern, we don't need to go to Mesh
-function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::Union{Colorant, Cairo.CairoPattern},
-        model, strokecolor, strokewidth)
+function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::Union{Colorant,Cairo.CairoPattern},
+    model, strokecolor, strokewidth)
     space = to_value(get(poly, :space, :data))
     points = project_position.(Ref(scene), space, points, Ref(model))
     Cairo.move_to(screen.context, points[1]...)
@@ -60,7 +60,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vec
     strokecolor = to_color(poly.strokecolor[])
     broadcast_foreach(points_list, color,
         strokecolor, poly.strokewidth[], Ref(poly.model[])) do points, color, strokecolor, strokewidth, model
-            draw_poly(scene, screen, poly, points, color, model, strokecolor, strokewidth)
+        draw_poly(scene, screen, poly, points, color, model, strokecolor, strokewidth)
     end
 end
 
@@ -125,7 +125,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
 
 end
 
-function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<: MultiPolygon})
+function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<:MultiPolygon})
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
     projected_polys = project_multipolygon.(Ref(scene), space, polygons, Ref(model))
@@ -154,7 +154,7 @@ end
 ################################################################################
 
 function draw_plot(scene::Scene, screen::Screen,
-        band::Band{<:Tuple{<:AbstractVector{<:Point2},<:AbstractVector{<:Point2}}})
+    band::Band{<:Tuple{<:AbstractVector{<:Point2},<:AbstractVector{<:Point2}}})
 
     if !(band.color[] isa AbstractArray)
         color = to_cairo_color(band.color[], band)
@@ -200,7 +200,7 @@ function draw_plot(scene::Scene, screen::Screen, tric::Tricontourf)
     function draw_tripolys(polys, colornumbers, colors)
         for (i, (pol, colnum, col)) in enumerate(zip(polys, colornumbers, colors))
             polypath(screen.context, pol)
-            if i == length(colornumbers) || colnum != colornumbers[i+1]
+            if i == length(colornumbers) || colnum != colornumbers[i + 1]
                 set_source(screen.context, col)
                 Cairo.fill(screen.context)
             end

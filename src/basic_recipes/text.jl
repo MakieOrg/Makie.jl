@@ -6,11 +6,11 @@ function plot!(plot::Text)
     linewidths = Observable(Float32[])
     linecolors = Observable(RGBAf[])
     lineindices = Ref(Int[])
-    
+
     onany(plot.text, plot.fontsize, plot.font, plot.fonts, plot.align,
-            plot.rotation, plot.justification, plot.lineheight, plot.color, 
-            plot.strokecolor, plot.strokewidth, plot.word_wrap_width, plot.offset) do str,
-                ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs
+        plot.rotation, plot.justification, plot.lineheight, plot.color,
+        plot.strokecolor, plot.strokewidth, plot.word_wrap_width, plot.offset) do str,
+    ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs
         ts = to_fontsize(ts)
         f = to_font(fs, f)
         rot = to_rotation(rot)
@@ -36,7 +36,7 @@ function plot!(plot::Text)
             # If we have a Vector of strings, Vector arguments are interpreted 
             # as per string.
             broadcast_foreach(
-                func, 
+                func,
                 str, 1:attr_broadcast_length(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs
             )
         else
@@ -55,8 +55,8 @@ function plot!(plot::Text)
 
     sc = parent_scene(plot)
 
-    onany(linesegs, positions, sc.camera.projectionview, sc.px_area, 
-            transform_func_obs(sc), get(plot, :space, :data)) do segs, pos, _, _, transf, space
+    onany(linesegs, positions, sc.camera.projectionview, sc.px_area,
+        transform_func_obs(sc), get(plot, :space, :data)) do segs, pos, _, _, transf, space
         pos_transf = scene_to_screen(apply_transform(transf, pos, space), sc)
         linesegs_shifted[] = map(segs, lineindices[]) do seg, index
             seg + attr_broadcast_getindex(pos_transf, index)
@@ -90,7 +90,7 @@ function _get_glyphcollection_and_linesegments(str::AbstractString, index, ts, f
 end
 function _get_glyphcollection_and_linesegments(latexstring::LaTeXString, index, ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs)
     tex_elements, glyphcollections, offset = texelems_and_glyph_collection(latexstring, ts,
-                al[1], al[2], rot, col, scol, swi, www)
+        al[1], al[2], rot, col, scol, swi, www)
 
     linesegs = Point2f[]
     linewidths = Float32[]
@@ -123,11 +123,11 @@ function plot!(plot::Text{<:Tuple{<:AbstractString}})
 end
 
 # conversion stopper for previous methods
-convert_arguments(::Type{<: Text}, gcs::AbstractVector{<:GlyphCollection}) = (gcs,)
-convert_arguments(::Type{<: Text}, gc::GlyphCollection) = (gc,)
-convert_arguments(::Type{<: Text}, vec::AbstractVector{<:Tuple{<:Any, <:Point}}) = (vec,)
-convert_arguments(::Type{<: Text}, strings::AbstractVector{<:AbstractString}) = (strings,)
-convert_arguments(::Type{<: Text}, string::AbstractString) = (string,)
+convert_arguments(::Type{<:Text}, gcs::AbstractVector{<:GlyphCollection}) = (gcs,)
+convert_arguments(::Type{<:Text}, gc::GlyphCollection) = (gc,)
+convert_arguments(::Type{<:Text}, vec::AbstractVector{<:Tuple{<:Any,<:Point}}) = (vec,)
+convert_arguments(::Type{<:Text}, strings::AbstractVector{<:AbstractString}) = (strings,)
+convert_arguments(::Type{<:Text}, string::AbstractString) = (string,)
 
 # TODO: is this necessary? there seems to be a recursive loop with the above
 # function without these two interceptions, but I didn't need it before merging
@@ -141,13 +141,13 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
 end
 
 # overload text plotting for a vector of tuples of a string and a point each
-function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:Point}}}})    
+function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:Any,<:Point}}}})
     strings_and_positions = plot[1]
 
     strings = Observable{Vector{Any}}(first.(strings_and_positions[]))
 
     positions = Observable(
-        Point3f[to_ndim(Point3f, last(x), 0) for x in  strings_and_positions[]] # avoid Any for zero elements
+        Point3f[to_ndim(Point3f, last(x), 0) for x in strings_and_positions[]] # avoid Any for zero elements
     )
 
     attrs = plot.attributes
@@ -169,7 +169,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:Point}}}})
 end
 
 function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, valign,
-        rotation, color, strokecolor, strokewidth, word_wrap_width)
+    rotation, color, strokecolor, strokewidth, word_wrap_width)
 
     rot = convert_attribute(rotation, key"rotation"())
 
@@ -208,12 +208,12 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
                 if last_space_idx != 0 && right_pos > word_wrap_width
                     section_offset = basepositions[last_space_idx + 1][1]
                     lineheight = maximum((height(bb) for bb in bboxes[last_newline_idx:last_space_idx]))
-                    last_newline_idx = last_space_idx+1
+                    last_newline_idx = last_space_idx + 1
                     newline_offset += Point3f(section_offset, lineheight, 0)
 
                     # TODO: newlines don't really need to represented at all?
                     # chars[last_space_idx] = '\n'
-                    for j in last_space_idx+1:i
+                    for j in (last_space_idx + 1):i
                         basepositions[j] -= Point3f(section_offset, lineheight, 0)
                     end
                 end
@@ -270,7 +270,7 @@ iswhitespace(l::LaTeXString) = iswhitespace(replace(l.s, '$' => ""))
 struct RichText
     type::Symbol
     children::Vector{Union{RichText,String}}
-    attributes::Dict{Symbol, Any}
+    attributes::Dict{Symbol,Any}
     function RichText(type::Symbol, children...; kwargs...)
         cs = Union{RichText,String}[children...]
         typeof(cs)
@@ -343,7 +343,7 @@ function layout_text(rt::RichText, ts, f, fset, al, rot, jus, lh, col)
     stack = [GlyphState(0, 0, Vec2f(ts), _f, to_color(col))]
 
     lines = [GlyphInfo[]]
-    
+
     process_rt_node!(stack, lines, rt, fset)
 
     apply_lineheight!(lines, lh)
@@ -361,7 +361,7 @@ function apply_lineheight!(lines, lh)
     for (i, line) in enumerate(lines)
         for j in eachindex(line)
             l = line[j]
-            l = Setfield.@set l.origin[2] -= (i-1) * 20 # TODO: Lineheight
+            l = Setfield.@set l.origin[2] -= (i - 1) * 20 # TODO: Lineheight
             line[j] = l
         end
     end
@@ -404,7 +404,7 @@ function apply_alignment_and_justification!(lines, ju, al)
     end
 
     fju = float_justification(ju, al)
-    
+
     for (i, line) in enumerate(lines)
         ju_offset = fju * (max_x - max_xs[i])
         for j in eachindex(line)

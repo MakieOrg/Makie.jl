@@ -79,11 +79,11 @@ end
 
 function serialize_three(color::Sampler{T,N}) where {T,N}
     tex = Dict(:type => "Sampler", :data => serialize_three(color.data),
-               :size => Int32[size(color.data)...], :three_format => three_format(T),
-               :three_type => three_type(eltype(T)),
-               :minFilter => three_filter(color.minfilter),
-               :magFilter => three_filter(color.magfilter),
-               :wrapS => three_repeat(color.repeat[1]), :anisotropy => color.anisotropic)
+        :size => Int32[size(color.data)...], :three_format => three_format(T),
+        :three_type => three_type(eltype(T)),
+        :minFilter => three_filter(color.minfilter),
+        :magFilter => three_filter(color.magfilter),
+        :wrapS => three_repeat(color.repeat[1]), :anisotropy => color.anisotropic)
     if N > 1
         tex[:wrapT] = three_repeat(color.repeat[2])
     end
@@ -112,7 +112,7 @@ Flattens `array` array to be a 1D Vector of Float32 / UInt8.
 If presented with AbstractArray{<: Colorant/Tuple/SVector}, it will flatten those
 to their element type.
 """
-function flatten_buffer(array::AbstractArray{<: Number})
+function flatten_buffer(array::AbstractArray{<:Number})
     return array
 end
 function flatten_buffer(array::AbstractArray{<:AbstractFloat})
@@ -140,12 +140,12 @@ isscalar(x::Observable) = isscalar(x[])
 isscalar(x) = true
 
 function ShaderAbstractions.type_string(::ShaderAbstractions.AbstractContext,
-                                        ::Type{<:Makie.Quaternion})
+    ::Type{<:Makie.Quaternion})
     return "vec4"
 end
 
 function ShaderAbstractions.convert_uniform(::ShaderAbstractions.AbstractContext,
-                                            t::Quaternion)
+    t::Quaternion)
     return convert(Quaternion, t)
 end
 
@@ -168,8 +168,8 @@ end
 
 function serialize_named_buffer(buffer)
     return Dict(map(_pairs(buffer)) do (name, buff)
-                    return name => serialize_buffer_attribute(buff)
-                end)
+        return name => serialize_buffer_attribute(buff)
+    end)
 end
 
 function register_geometry_updates(update_buffer::Observable, named_buffers)
@@ -245,11 +245,11 @@ function serialize_three(program::Program)
     attribute_updater = Observable(["", [], 0])
     register_geometry_updates(attribute_updater, program)
     return Dict(:vertexarrays => serialize_named_buffer(program.vertexarray),
-                :faces => indices, :uniforms => uniforms,
-                :vertex_source => program.vertex_source,
-                :fragment_source => program.fragment_source,
-                :uniform_updater => uniform_updater(program.uniforms),
-                :attribute_updater => attribute_updater)
+        :faces => indices, :uniforms => uniforms,
+        :vertex_source => program.vertex_source,
+        :fragment_source => program.fragment_source,
+        :uniform_updater => uniform_updater(program.uniforms),
+        :attribute_updater => attribute_updater)
 end
 
 function serialize_scene(scene::Scene)
@@ -266,21 +266,21 @@ function serialize_scene(scene::Scene)
         nothing
     end
 
-    children = map(child-> serialize_scene(child), scene.children)
+    children = map(child -> serialize_scene(child), scene.children)
 
     serialized = Dict(:pixelarea => pixel_area,
-                      :backgroundcolor => lift(hexcolor, scene.backgroundcolor),
-                      :clearscene => scene.clear,
-                      :camera => serialize_camera(scene),
-                      :plots => serialize_plots(scene, scene.plots),
-                      :cam3d_state => cam3d_state,
-                      :visible => scene.visible,
-                      :uuid => js_uuid(scene),
-                      :children => children)
+        :backgroundcolor => lift(hexcolor, scene.backgroundcolor),
+        :clearscene => scene.clear,
+        :camera => serialize_camera(scene),
+        :plots => serialize_plots(scene, scene.plots),
+        :cam3d_state => cam3d_state,
+        :visible => scene.visible,
+        :uuid => js_uuid(scene),
+        :children => children)
     return serialized
 end
 
-function serialize_plots(scene::Scene, plots::Vector{T}, result=[]) where {T<:AbstractPlot}
+function serialize_plots(scene::Scene, plots::Vector{T}, result = []) where {T<:AbstractPlot}
     for plot in plots
         # if no plots inserted, this truely is an atomic
         if isempty(plot.plots)

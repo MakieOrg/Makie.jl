@@ -2,9 +2,9 @@ struct Camera2D <: AbstractCamera
     area::Observable{Rect2f}
     zoomspeed::Observable{Float32}
     zoombutton::Observable{ButtonTypes}
-    panbutton::Observable{Union{ButtonTypes, Vector{ButtonTypes}}}
+    panbutton::Observable{Union{ButtonTypes,Vector{ButtonTypes}}}
     padding::Observable{Float32}
-    last_area::Observable{Vec{2, Int}}
+    last_area::Observable{Vec{2,Int}}
     update_limits::Observable{Bool}
 end
 
@@ -58,7 +58,7 @@ function update_cam!(scene::Scene, cam::Camera2D, area3d::Rect)
     area = Rect2f(area3d)
     area = positive_widths(area)
     # ignore rects with width almost 0
-    any(x-> x ≈ 0.0, widths(area)) && return
+    any(x -> x ≈ 0.0, widths(area)) && return
 
     pa = pixelarea(scene)[]
     px_wh = normalize(widths(pa))
@@ -320,7 +320,7 @@ end
 
 Creates a pixel-level camera for the `Scene`.  No controls!
 """
-function campixel!(scene::Scene; nearclip=-10_000f0, farclip=10_000f0)
+function campixel!(scene::Scene; nearclip = -10_000f0, farclip = 10_000f0)
     disconnect!(camera(scene))
     update_once = Observable(false)
     closure = UpdatePixelCam(camera(scene), nearclip, farclip)
@@ -340,7 +340,7 @@ struct RelativeCamera <: AbstractCamera end
 
 Creates a pixel-level camera for the `Scene`.  No controls!
 """
-function cam_relative!(scene::Scene; nearclip=-10_000f0, farclip=10_000f0)
+function cam_relative!(scene::Scene; nearclip = -10_000f0, farclip = 10_000f0)
     projection = orthographicprojection(0f0, 1f0, 0f0, 1f0, nearclip, farclip)
     set_proj_view!(camera(scene), projection, Mat4f(I))
     cam = RelativeCamera()

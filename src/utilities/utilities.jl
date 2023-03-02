@@ -1,6 +1,6 @@
 
 
-function to_image(image::AbstractMatrix{<: AbstractFloat}, colormap::AbstractVector{<: Colorant}, colorrange)
+function to_image(image::AbstractMatrix{<:AbstractFloat}, colormap::AbstractVector{<:Colorant}, colorrange)
     return interpolated_getindex.((to_value(colormap),), image, (to_value(colorrange),))
 end
 
@@ -10,7 +10,7 @@ Resample a vector with linear interpolation to have length `len`
 """
 function resample(A::AbstractVector, len::Integer)
     length(A) == len && return A
-    return interpolated_getindex.((A,), range(0.0, stop=1.0, length=len))
+    return interpolated_getindex.((A,), range(0.0, stop = 1.0, length = len))
 end
 
 
@@ -21,17 +21,17 @@ end
 * ncolors: number of desired colors
 * alpha: additional alpha applied to each color. Can also be an array, matching `colors`, or a tuple giving a start + stop alpha value.
 """
-function resample_cmap(cmap, ncolors::Integer; alpha=1.0)
+function resample_cmap(cmap, ncolors::Integer; alpha = 1.0)
     cols = to_colormap(cmap)
-    r = range(0.0, stop=1.0, length=ncolors)
-    if alpha isa Tuple{<:Number, <:Number}
+    r = range(0.0, stop = 1.0, length = ncolors)
+    if alpha isa Tuple{<:Number,<:Number}
         alphas = LinRange(alpha..., ncolors)
     else
         alphas = alpha
     end
     return broadcast(r, alphas) do i, a
         c = interpolated_getindex(cols, i)
-        return RGBAf(Colors.color(c), Colors.alpha(c) *  a)
+        return RGBAf(Colors.color(c), Colors.alpha(c) * a)
     end
 end
 
@@ -78,8 +78,8 @@ function is_unitrange(x::AbstractVector)
 end
 
 function ngrid(x::AbstractVector, y::AbstractVector)
-    xgrid = [Float32(x[i]) for i = 1:length(x), j = 1:length(y)]
-    ygrid = [Float32(y[j]) for i = 1:length(x), j = 1:length(y)]
+    xgrid = [Float32(x[i]) for i in 1:length(x), j in 1:length(y)]
+    ygrid = [Float32(y[j]) for i in 1:length(x), j in 1:length(y)]
     xgrid, ygrid
 end
 
@@ -228,7 +228,7 @@ function same_length_array(arr, value::Vector)
 end
 same_length_array(arr, value, key) = same_length_array(arr, convert_attribute(value, key))
 
-function to_ndim(T::Type{<: VecTypes{N,ET}}, vec::VecTypes{N2}, fillval) where {N,ET,N2}
+function to_ndim(T::Type{<:VecTypes{N,ET}}, vec::VecTypes{N2}, fillval) where {N,ET,N2}
     T(ntuple(Val(N)) do i
         i > N2 && return ET(fillval)
         @inbounds return vec[i]
@@ -261,7 +261,7 @@ function to_vector(x::AbstractArray, len, T)
 end
 function to_vector(x::ClosedInterval, len, T)
     a, b = T.(extrema(x))
-    range(a, stop=b, length=len)
+    range(a, stop = b, length = len)
 end
 
 """
@@ -271,7 +271,7 @@ x = ColorSampler(colormap, (0.0, 1.0))
 x[0.5] # returns color at half point of colormap
 ```
 """
-struct ColorSampler{Data <: AbstractArray}
+struct ColorSampler{Data<:AbstractArray}
     colormap::Data
     color_range::Tuple{Float64,Float64}
 end
@@ -288,10 +288,10 @@ end
 
 Return a nonlinear function on a grid.  Useful for test cases.
 """
-function peaks(n=49)
+function peaks(n = 49)
     x = LinRange(-3, 3, n)
     y = LinRange(-3, 3, n)
-    3 * (1 .- x').^2 .* exp.(-(x'.^2) .- (y .+ 1).^2) .- 10 * (x' / 5 .- x'.^3 .- y.^5) .* exp.(-x'.^2 .- y.^2) .- 1 / 3 * exp.(-(x' .+ 1).^2 .- y.^2)
+    3 * (1 .- x') .^ 2 .* exp.(-(x' .^ 2) .- (y .+ 1) .^ 2) .- 10 * (x' / 5 .- x' .^ 3 .- y .^ 5) .* exp.(-x' .^ 2 .- y .^ 2) .- 1 / 3 * exp.(-(x' .+ 1) .^ 2 .- y .^ 2)
 end
 
 
@@ -317,7 +317,7 @@ function surface_normals(x, y, z)
             s = size(z)
             return Vec3f(get_dim(x, off, 1, s), get_dim(y, off, 2, s), z[off])
         end
-        return normalize(mapreduce(offsets, +, init=Vec3f(0), of))
+        return normalize(mapreduce(offsets, +, init = Vec3f(0), of))
     end
     return vec(map(normal, CartesianIndices(z)))
 end

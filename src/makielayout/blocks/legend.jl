@@ -1,5 +1,5 @@
 function initialize_block!(leg::Legend,
-        entry_groups::Observable{Vector{Tuple{Optional{<:AbstractString}, Vector{LegendEntry}}}})
+    entry_groups::Observable{Vector{Tuple{Optional{<:AbstractString},Vector{LegendEntry}}}})
 
     blockscene = leg.blockscene
 
@@ -81,7 +81,7 @@ function initialize_block!(leg::Legend,
                 end
             elseif leg.orientation[] === :horizontal
                 if leg.titleposition[] === :left
-                    isnothing(title) || (grid[1, 2g-1] = title)
+                    isnothing(title) || (grid[1, 2g - 1] = title)
                     grid[1, 2g] = GridLayout(halign = leg.gridshalign[], valign = leg.gridsvalign[])
                 elseif leg.titleposition[] === :top
                     isnothing(title) || (grid[1, g] = title)
@@ -91,17 +91,17 @@ function initialize_block!(leg::Legend,
 
             for (n, (et, er)) in enumerate(zip(etexts, erects))
                 i, j = leg.orientation[] === :vertical ? rowcol(n) : reverse(rowcol(n))
-                subgl[i, 2j-1] = er
+                subgl[i, 2j - 1] = er
                 subgl[i, 2j] = et
             end
 
             rowgap!(subgl, leg.rowgap[])
-            for c in 1:ncols(subgl)-1
+            for c in 1:(ncols(subgl) - 1)
                 colgap!(subgl, c, c % 2 == 1 ? leg.patchlabelgap[] : leg.colgap[])
             end
         end
 
-        for r in 1:nrows(grid)-1
+        for r in 1:(nrows(grid) - 1)
             if leg.orientation[] === :horizontal
                 if leg.titleposition[] === :left
                     # nothing
@@ -116,7 +116,7 @@ function initialize_block!(leg::Legend,
                 end
             end
         end
-        for c in 1:ncols(grid)-1
+        for c in 1:(ncols(grid) - 1)
             if leg.orientation[] === :horizontal
                 if leg.titleposition[] === :left
                     colgap!(grid, c, c % 2 == 1 ? leg.titlegap[] : leg.groupgap[])
@@ -147,7 +147,7 @@ function initialize_block!(leg::Legend,
     end
 
     onany(leg.nbanks, leg.titleposition, leg.rowgap, leg.colgap, leg.patchlabelgap, leg.groupgap, leg.titlegap,
-            leg.titlevisible, leg.orientation, leg.gridshalign, leg.gridsvalign) do args...
+        leg.titlevisible, leg.orientation, leg.gridshalign, leg.gridsvalign) do args...
         relayout()
     end
 
@@ -203,12 +203,12 @@ function initialize_block!(leg::Legend,
                     return lj isa Automatic ? lha : lj
                 end
                 push!(etexts,
-                      Label(scene; text=e.label, fontsize=e.labelsize, font=e.labelfont, justification=justification,
-                            color=e.labelcolor, halign=e.labelhalign, valign=e.labelvalign))
+                    Label(scene; text = e.label, fontsize = e.labelsize, font = e.labelfont, justification = justification,
+                        color = e.labelcolor, halign = e.labelhalign, valign = e.labelvalign))
 
                 # create the patch rectangle
-                rect = Box(scene; color=e.patchcolor, strokecolor=e.patchstrokecolor, strokewidth=e.patchstrokewidth,
-                           width=lift(x -> x[1], e.patchsize), height=lift(x -> x[2], e.patchsize))
+                rect = Box(scene; color = e.patchcolor, strokecolor = e.patchstrokecolor, strokewidth = e.patchstrokewidth,
+                    width = lift(x -> x[1], e.patchsize), height = lift(x -> x[2], e.patchsize))
                 push!(erects, rect)
                 translate!(rect.blockscene, 0, 0, -5) # patches before background but behind legend elements (legend is at +10)
 
@@ -216,7 +216,7 @@ function initialize_block!(leg::Legend,
                 symbolplots = AbstractPlot[]
                 for element in e.elements
                     append!(symbolplots,
-                            legendelement_plots!(scene, element, rect.layoutobservables.computedbbox, e.attributes))
+                        legendelement_plots!(scene, element, rect.layoutobservables.computedbbox, e.attributes))
                 end
 
                 push!(eplots, symbolplots)
@@ -332,15 +332,15 @@ function LegendEntry(label::Optional{AbstractString}, contentelement, legend; kw
 end
 
 
-function LineElement(;kwargs...)
+function LineElement(; kwargs...)
     _legendelement(LineElement, Attributes(kwargs))
 end
 
-function MarkerElement(;kwargs...)
+function MarkerElement(; kwargs...)
     _legendelement(MarkerElement, Attributes(kwargs))
 end
 
-function PolyElement(;kwargs...)
+function PolyElement(; kwargs...)
     _legendelement(PolyElement, Attributes(kwargs))
 end
 
@@ -389,7 +389,7 @@ function scalar_lift(attr, default)
     return observable
 end
 
-function legendelements(plot::Union{Lines, LineSegments}, legend)
+function legendelements(plot::Union{Lines,LineSegments}, legend)
     LegendElement[LineElement(
         color = scalar_lift(plot.color, legend.linecolor),
         linestyle = scalar_lift(plot.linestyle, legend.linestyle),
@@ -407,7 +407,7 @@ function legendelements(plot::Scatter, legend)
     )]
 end
 
-function legendelements(plot::Union{Poly, Violin, BoxPlot, CrossBar, Density}, legend)
+function legendelements(plot::Union{Poly,Violin,BoxPlot,CrossBar,Density}, legend)
     LegendElement[PolyElement(
         color = scalar_lift(plot.color, legend.polycolor),
         strokecolor = scalar_lift(plot.strokecolor, legend.polystrokecolor),
@@ -429,7 +429,7 @@ function legendelements(plot, legend)::Vector{LegendElement}
     reduce(vcat, [legendelements(childplot, legend) for childplot in plot.plots])
 end
 
-function Base.getproperty(legendelement::T, s::Symbol) where T <: LegendElement
+function Base.getproperty(legendelement::T, s::Symbol) where T<:LegendElement
     if s in fieldnames(T)
         getfield(legendelement, s)
     else
@@ -437,7 +437,7 @@ function Base.getproperty(legendelement::T, s::Symbol) where T <: LegendElement
     end
 end
 
-function Base.setproperty!(legendelement::T, s::Symbol, value) where T <: LegendElement
+function Base.setproperty!(legendelement::T, s::Symbol, value) where T<:LegendElement
     if s in fieldnames(T)
         setfield!(legendelement, s, value)
     else
@@ -445,7 +445,7 @@ function Base.setproperty!(legendelement::T, s::Symbol, value) where T <: Legend
     end
 end
 
-function Base.propertynames(legendelement::T) where T <: LegendElement
+function Base.propertynames(legendelement::T) where T<:LegendElement
     [fieldnames(T)..., keys(legendelement.attributes)...]
 end
 
@@ -465,10 +465,10 @@ one content element. A content element can be an `AbstractPlot`, an array of
 `legendelements` method is defined.
 """
 function Legend(fig_or_scene,
-        contents::AbstractArray,
-        labels::AbstractArray{<:Optional{AbstractString}},
-        title::Optional{<:AbstractString} = nothing;
-        kwargs...)
+    contents::AbstractArray,
+    labels::AbstractArray{<:Optional{AbstractString}},
+    title::Optional{<:AbstractString} = nothing;
+    kwargs...)
 
     if length(contents) != length(labels)
         error("Number of elements not equal: $(length(contents)) content elements and $(length(labels)) labels.")
@@ -500,10 +500,10 @@ element can be an `AbstractPlot`, an array of `AbstractPlots`, a `LegendElement`
 or any other object for which the `legendelements` method is defined.
 """
 function Legend(fig_or_scene,
-        contentgroups::AbstractArray{<:AbstractArray},
-        labelgroups::AbstractArray{<:AbstractArray},
-        titles::AbstractArray{<:Optional{<:AbstractString}};
-        kwargs...)
+    contentgroups::AbstractArray{<:AbstractArray},
+    labelgroups::AbstractArray{<:AbstractArray},
+    titles::AbstractArray{<:Optional{<:AbstractString}};
+    kwargs...)
 
     if !(length(titles) == length(contentgroups) == length(labelgroups))
         error("Number of elements not equal: $(length(titles)) titles, $(length(contentgroups)) content groups and $(length(labelgroups)) label groups.")
@@ -513,7 +513,7 @@ function Legend(fig_or_scene,
     entrygroups = Observable{Vector{EntryGroup}}([])
     legend = Legend(fig_or_scene, entrygroups; kwargs...)
     entries = [[LegendEntry(l, pg, legend) for (l, pg) in zip(labelgroup, contentgroup)]
-        for (labelgroup, contentgroup) in zip(labelgroups, contentgroups)]
+               for (labelgroup, contentgroup) in zip(labelgroups, contentgroups)]
     entrygroups[] = [(t, en) for (t, en) in zip(titles, entries)]
     legend
 end
@@ -528,7 +528,7 @@ attribute `label` set.
 If `merge` is `true`, all plot objects with the same label will be layered on top of each other into one legend entry.
 If `unique` is `true`, all plot objects with the same plot type and label will be reduced to one occurrence.
 """
-function Legend(fig_or_scene, axis::Union{Axis, Axis3, Scene, LScene}, title = nothing; merge = false, unique = false, kwargs...)
+function Legend(fig_or_scene, axis::Union{Axis,Axis3,Scene,LScene}, title = nothing; merge = false, unique = false, kwargs...)
     plots, labels = get_labeled_plots(axis, merge = merge, unique = unique)
     isempty(plots) && error("There are no plots with labels in the given axis that can be put in the legend. Supply labels to plotting functions like `plot(args...; label = \"My label\")`")
     Legend(fig_or_scene, plots, labels, title; kwargs...)
@@ -552,7 +552,7 @@ function get_labeled_plots(ax; merge::Bool, unique::Bool)
     if merge
         ulabels = Base.unique(labels)
         mergedplots = [[lp for (i, lp) in enumerate(lplots) if labels[i] == ul]
-            for ul in ulabels]
+                       for ul in ulabels]
 
         lplots, labels = mergedplots, ulabels
     end
@@ -561,7 +561,7 @@ function get_labeled_plots(ax; merge::Bool, unique::Bool)
 end
 
 get_plots(p::AbstractPlot) = [p]
-get_plots(ax::Union{Axis, Axis3}) = get_plots(ax.scene)
+get_plots(ax::Union{Axis,Axis3}) = get_plots(ax.scene)
 get_plots(lscene::LScene) = get_plots(lscene.scene)
 function get_plots(scene::Scene)
     plots = AbstractPlot[]
@@ -624,6 +624,6 @@ function legend_position_to_aligns(s::Symbol)
     (halign = haligns[p[1]], valign = valigns[p[2]])
 end
 
-function legend_position_to_aligns(t::Tuple{Any, Any})
+function legend_position_to_aligns(t::Tuple{Any,Any})
     (halign = t[1], valign = t[2])
 end

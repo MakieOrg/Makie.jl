@@ -5,7 +5,7 @@ function last_major_version()
     return "v" * string(VersionNumber(version.major, version.minor))
 end
 
-function download_refimages(tag=last_major_version(); name="refimages")
+function download_refimages(tag = last_major_version(); name = "refimages")
     url = "https://github.com/MakieOrg/Makie.jl/releases/download/$(tag)/$(name).tar"
     images_tar = basedir("$(name).tar")
     images = basedir(name)
@@ -17,7 +17,7 @@ function download_refimages(tag=last_major_version(); name="refimages")
         end
     end
     !isfile(images_tar) && download(url, images_tar)
-    isdir(images) && rm(images, recursive=true, force=true)
+    isdir(images) && rm(images, recursive = true, force = true)
     Tar.extract(images_tar, images)
     return images
 end

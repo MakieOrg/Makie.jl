@@ -1,7 +1,7 @@
 ############################################################################
 const TOrSignal{T} = Union{Observable{T},T}
 
-const ArrayOrSignal{T,N} = TOrSignal{X} where X <: AbstractArray{T,N}
+const ArrayOrSignal{T,N} = TOrSignal{X} where X<:AbstractArray{T,N}
 const VecOrSignal{T} = ArrayOrSignal{T,1}
 const MatOrSignal{T} = ArrayOrSignal{T,2}
 const VolumeOrSignal{T} = ArrayOrSignal{T,3}
@@ -19,7 +19,7 @@ Returns the cardinality of a type. falls back to length
 """
 cardinality(x) = length(x)
 cardinality(x::Number) = 1
-cardinality(x::Type{T}) where {T <: Number} = 1
+cardinality(x::Type{T}) where {T<:Number} = 1
 
 struct Shader
     name::Symbol
@@ -132,24 +132,24 @@ const GLArrayEltypes = Union{StaticVector,Real,Colorant}
 """
 Transform julia datatypes to opengl enum type
 """
-julia2glenum(x::Type{T}) where {T <: FixedPoint} = julia2glenum(FixedPointNumbers.rawtype(x))
-julia2glenum(x::Union{Type{T},T}) where {T <: Union{StaticVector,Colorant}} = julia2glenum(eltype(x))
+julia2glenum(x::Type{T}) where {T<:FixedPoint} = julia2glenum(FixedPointNumbers.rawtype(x))
+julia2glenum(x::Union{Type{T},T}) where {T<:Union{StaticVector,Colorant}} = julia2glenum(eltype(x))
 julia2glenum(::Type{OffsetInteger{O,T}}) where {O,T} = julia2glenum(T)
-julia2glenum(::Type{GLubyte})  = GL_UNSIGNED_BYTE
-julia2glenum(::Type{GLbyte})   = GL_BYTE
-julia2glenum(::Type{GLuint})   = GL_UNSIGNED_INT
+julia2glenum(::Type{GLubyte}) = GL_UNSIGNED_BYTE
+julia2glenum(::Type{GLbyte}) = GL_BYTE
+julia2glenum(::Type{GLuint}) = GL_UNSIGNED_INT
 julia2glenum(::Type{GLushort}) = GL_UNSIGNED_SHORT
-julia2glenum(::Type{GLshort})  = GL_SHORT
-julia2glenum(::Type{GLint})    = GL_INT
-julia2glenum(::Type{GLfloat})  = GL_FLOAT
+julia2glenum(::Type{GLshort}) = GL_SHORT
+julia2glenum(::Type{GLint}) = GL_INT
+julia2glenum(::Type{GLfloat}) = GL_FLOAT
 julia2glenum(::Type{GLdouble}) = GL_DOUBLE
-julia2glenum(::Type{Float16})  = GL_HALF_FLOAT
+julia2glenum(::Type{Float16}) = GL_HALF_FLOAT
 
 struct DepthStencil_24_8 <: Real
     data::NTuple{4,UInt8}
 end
 
-Base.eltype(::Type{<: DepthStencil_24_8}) = DepthStencil_24_8
+Base.eltype(::Type{<:DepthStencil_24_8}) = DepthStencil_24_8
 julia2glenum(x::Type{DepthStencil_24_8}) = GL_UNSIGNED_INT_24_8
 
 function julia2glenum(::Type{T}) where T
@@ -255,7 +255,7 @@ function GLVertexArray(bufferdict::Dict, program::GLProgram)
     return obj
 end
 using ShaderAbstractions: Buffer
-function GLVertexArray(program::GLProgram, buffers::Buffer, triangles::AbstractVector{<: GLTriangleFace})
+function GLVertexArray(program::GLProgram, buffers::Buffer, triangles::AbstractVector{<:GLTriangleFace})
     # get the size of the first array, to assert later, that all have the same size
     id = glGenVertexArrays()
     glBindVertexArray(id)
@@ -317,12 +317,12 @@ mutable struct RenderObject{Pre}
     visible::Bool
 
     function RenderObject{Pre}(
-            context,
-            uniforms::Dict{Symbol,Any}, observables::Vector{Observable},
-            vertexarray::GLVertexArray,
-            prerenderfunctions, postrenderfunctions,
-            visible, track_updates = true
-        ) where Pre
+        context,
+        uniforms::Dict{Symbol,Any}, observables::Vector{Observable},
+        vertexarray::GLVertexArray,
+        prerenderfunctions, postrenderfunctions,
+        visible, track_updates = true
+    ) where Pre
         fxaa = Bool(to_value(get!(uniforms, :fxaa, true)))
         RENDER_OBJECT_ID_COUNTER[] += one(UInt32)
         # Store fxaa in ID, so we can access it in the shader to create a mask
@@ -391,10 +391,10 @@ mutable struct RenderObject{Pre}
 end
 
 function RenderObject(
-        data::Dict{Symbol,Any}, program,
-        pre::Pre, post,
-        context=current_context()
-    ) where Pre
+    data::Dict{Symbol,Any}, program,
+    pre::Pre, post,
+    context = current_context()
+) where Pre
 
     switch_context!(context)
 

@@ -23,30 +23,30 @@ It is most commonly used as part of the `boxplot`.
 """
 @recipe(CrossBar, x, y, ymin, ymax) do scene
     t = Theme(
-    color=theme(scene, :patchcolor),
-    colormap=theme(scene, :colormap),
-    colorrange=automatic,
-    orientation=:vertical,
-    # box and dodging
-    width = automatic,
-    dodge = automatic,
-    n_dodge = automatic,
-    gap = 0.2,
-    dodge_gap = 0.03,
-    strokecolor = theme(scene, :patchstrokecolor),
-    strokewidth = theme(scene, :patchstrokewidth),
-    # notch
-    show_notch=false,
-    notchmin=automatic,
-    notchmax=automatic,
-    notchwidth=0.5,
-    # median line
-    show_midline=true,
-    midlinecolor=automatic,
-    midlinewidth=theme(scene, :linewidth),
-    inspectable = theme(scene, :inspectable),
-    cycle = [:color => :patchcolor],
-)
+        color = theme(scene, :patchcolor),
+        colormap = theme(scene, :colormap),
+        colorrange = automatic,
+        orientation = :vertical,
+        # box and dodging
+        width = automatic,
+        dodge = automatic,
+        n_dodge = automatic,
+        gap = 0.2,
+        dodge_gap = 0.03,
+        strokecolor = theme(scene, :patchstrokecolor),
+        strokewidth = theme(scene, :patchstrokewidth),
+        # notch
+        show_notch = false,
+        notchmin = automatic,
+        notchmax = automatic,
+        notchwidth = 0.5,
+        # median line
+        show_midline = true,
+        midlinecolor = automatic,
+        midlinewidth = theme(scene, :linewidth),
+        inspectable = theme(scene, :inspectable),
+        cycle = [:color => :patchcolor],
+    )
     t
 end
 
@@ -90,8 +90,8 @@ function Makie.plot!(plot::CrossBar)
                 fpoint.(m .- nw .* hw, y), # notch left
                 fpoint.(l, nmin),
                 fpoint.(l, ymin)
-               )))
-            boxes = if points isa AbstractVector{<: Point} # poly
+            )))
+            boxes = if points isa AbstractVector{<:Point} # poly
                 [GeometryBasics.triangle_mesh(points)]
             else # multiple polys (Vector{Vector{<:Point}})
                 GeometryBasics.triangle_mesh.(points)
@@ -108,22 +108,22 @@ function Makie.plot!(plot::CrossBar)
     poly!(
         plot,
         boxes,
-        color=plot.color,
-        colorrange=plot.colorrange,
-        colormap=plot.colormap,
-        strokecolor=plot.strokecolor,
-        strokewidth=plot.strokewidth,
+        color = plot.color,
+        colorrange = plot.colorrange,
+        colormap = plot.colormap,
+        strokecolor = plot.strokecolor,
+        strokewidth = plot.strokewidth,
         inspectable = plot[:inspectable]
     )
     linesegments!(
         plot,
-        color=lift(
+        color = lift(
             (mc, sc) -> mc === automatic ? sc : mc,
             plot.midlinecolor,
             plot.strokecolor,
         ),
-        linewidth=plot[:midlinewidth],
-        visible=plot[:show_midline],
+        linewidth = plot[:midlinewidth],
+        visible = plot[:show_midline],
         inspectable = plot[:inspectable],
         midlines,
     )

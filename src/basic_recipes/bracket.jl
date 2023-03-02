@@ -51,7 +51,7 @@ function Makie.plot!(pl::Bracket)
     textpoints = Observable(Point2f[])
 
     realtextoffset = @lift($(pl.textoffset) === automatic ? Float32.(0.75 .* $(pl.fontsize)) : Float32.($(pl.textoffset)))
-    
+
     onany(points, scene.camera.projectionview, pl.offset, pl.width, pl.orientation, realtextoffset, pl.style) do points, pv, offset, width, orientation, textoff, style
 
         empty!(bp[])
@@ -61,7 +61,7 @@ function Makie.plot!(pl::Bracket)
         broadcast_foreach(points, offset, width, orientation, textoff, style) do (_p1, _p2), offset, width, orientation, textoff, style
             p1 = scene_to_screen(_p1, scene)
             p2 = scene_to_screen(_p2, scene)
-            
+
             v = p2 - p1
             d1 = normalize(v)
             d2 = [0 -1; 1 0] * d1
@@ -109,9 +109,10 @@ function Makie.plot!(pl::Bracket)
     pl
 end
 
-data_limits(pl::Bracket) = mapreduce(union, pl[1][]) do points
-    Rect3f([points...])
-end
+data_limits(pl::Bracket) =
+    mapreduce(union, pl[1][]) do points
+        Rect3f([points...])
+    end
 
 bracket_bezierpath(style::Symbol, args...) = bracket_bezierpath(Val(style), args...)
 

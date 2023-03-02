@@ -14,7 +14,7 @@ All style attributes are the same as for `LineSegments`.
         xmin = 0,
         xmax = 1,
         default_theme(scene, LineSegments)...,
-        cycle = :color,
+        cycle = :color
     )
 end
 
@@ -34,7 +34,7 @@ All style attributes are the same as for `LineSegments`.
         ymin = 0,
         ymax = 1,
         default_theme(scene, LineSegments)...,
-        cycle = :color,
+        cycle = :color
     )
 end
 
@@ -45,7 +45,7 @@ function projview_to_2d_limits(pv)
     return Rect2f(origin, Vec2f(xmax, ymax) - origin)
 end
 
-function Makie.plot!(p::Union{HLines, VLines})
+function Makie.plot!(p::Union{HLines,VLines})
     scene = parent_scene(p)
     transf = transform_func_obs(scene)
 

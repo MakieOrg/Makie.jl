@@ -11,7 +11,7 @@ function record_events(f, scene::Scene, path::String)
     for field in fieldnames(Events)
         # These are not Observables
         (field === :mousebuttonstate || field === :keyboardstate) && continue
-        on(getfield(scene.events, field); priority=typemax(Int)) do value
+        on(getfield(scene.events, field); priority = typemax(Int)) do value
             value = isa(value, Set) ? copy(value) : value
             push!(result, time() => (field => value))
             return Consume(false)
@@ -32,7 +32,7 @@ Replays the serialized events recorded with `record_events` in `path` in `scene`
 replay_events(scene::Scene, path::String) = replay_events(() -> nothing, scene, path)
 function replay_events(f, scene::Scene, path::String)
     events = open(io -> deserialize(io), path)
-    sort!(events; by=first)
+    sort!(events; by = first)
     for i in 1:length(events)
         t1, (field, value) = events[i]
         (field === :mousebuttonstate || field === :keyboardstate) && continue

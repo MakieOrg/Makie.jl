@@ -1,10 +1,10 @@
 using Makie: RectanglePacker
 
-function to_meshcolor(color::TOrSignal{Vector{T}}) where T <: Colorant
+function to_meshcolor(color::TOrSignal{Vector{T}}) where T<:Colorant
     TextureBuffer(color)
 end
 
-function to_meshcolor(color::TOrSignal{Matrix{T}}) where T <: Colorant
+function to_meshcolor(color::TOrSignal{Matrix{T}}) where T<:Colorant
     Texture(color)
 end
 function to_meshcolor(color)
@@ -21,11 +21,11 @@ function vec2quaternion(rotation::StaticVector{3})
 end
 
 vec2quaternion(rotation::Vec4f) = rotation
-vec2quaternion(rotation::VectorTypes) = const_lift(x-> vec2quaternion.(x), rotation)
+vec2quaternion(rotation::VectorTypes) = const_lift(x -> vec2quaternion.(x), rotation)
 vec2quaternion(rotation::Observable) = lift(vec2quaternion, rotation)
-vec2quaternion(rotation::Makie.Quaternion)= Vec4f(rotation.data)
-vec2quaternion(rotation)= vec2quaternion(to_rotation(rotation))
-GLAbstraction.gl_convert(rotation::Makie.Quaternion)= Vec4f(rotation.data)
+vec2quaternion(rotation::Makie.Quaternion) = Vec4f(rotation.data)
+vec2quaternion(rotation) = vec2quaternion(to_rotation(rotation))
+GLAbstraction.gl_convert(rotation::Makie.Quaternion) = Vec4f(rotation.data)
 to_pointsize(x::Number) = Float32(x)
 to_pointsize(x) = Float32(x[1])
 struct PointSizeRender
@@ -92,13 +92,13 @@ This is supposed to be the fastest way of displaying particles!
 """
 function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
     @gen_defaults! data begin
-        vertex       = position => GLBuffer
-        color_map    = nothing  => Texture
-        color        = (color_map === nothing ? default(RGBA{Float32}, s) : nothing) => GLBuffer
-        color_norm   = nothing
-        scale        = 2f0
+        vertex = position => GLBuffer
+        color_map = nothing => Texture
+        color = (color_map === nothing ? default(RGBA{Float32}, s) : nothing) => GLBuffer
+        color_norm = nothing
+        scale = 2f0
         transparency = false
-        shader       = GLVisualizeShader(
+        shader = GLVisualizeShader(
             screen,
             "fragment_output.frag", "dots.vert", "dots.frag",
             view = Dict(
@@ -113,29 +113,29 @@ function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
 end
 
 function draw_scatter(
-    screen, p::Tuple{TOrSignal{Matrix{C}}, VectorTypes{P}}, data::Dict
-    ) where {C <: Colorant, P <: Point}
+    screen, p::Tuple{TOrSignal{Matrix{C}},VectorTypes{P}}, data::Dict
+) where {C<:Colorant,P<:Point}
     data[:image] = p[1] # we don't want this to be overwritten by user
     @gen_defaults! data begin
-        scale = lift(x-> Vec2f(size(x)), p[1])
+        scale = lift(x -> Vec2f(size(x)), p[1])
         offset = Vec2f(0)
     end
     draw_scatter(screen, (RECTANGLE, p[2]), data)
 end
 
 function draw_scatter(
-        screen, p::Tuple{VectorTypes{Matrix{C}}, VectorTypes{P}}, data::Dict
-    ) where {C <: Colorant, P <: Point}
+    screen, p::Tuple{VectorTypes{Matrix{C}},VectorTypes{P}}, data::Dict
+) where {C<:Colorant,P<:Point}
     images = map(el32convert, to_value(p[1]))
     isempty(images) && error("Can not display empty vector of images as primitive")
     sizes = map(size, images)
-    if !all(x-> x == sizes[1], sizes) # if differently sized
+    if !all(x -> x == sizes[1], sizes) # if differently sized
         # create texture atlas
-        maxdims = sum(map(Vec{2, Int}, sizes))
-        rectangles = map(x->Rect2(0, 0, x...), sizes)
+        maxdims = sum(map(Vec{2,Int}, sizes))
+        rectangles = map(x -> Rect2(0, 0, x...), sizes)
         rpack = RectanglePacker(Rect2(0, 0, maxdims...))
         uv_coordinates = [push!(rpack, rect).area for rect in rectangles]
-        max_xy = mapreduce(maximum, (a,b)-> max.(a, b), uv_coordinates)
+        max_xy = mapreduce(maximum, (a, b) -> max.(a, b), uv_coordinates)
         texture_atlas = Texture(eltype(images[1]), (max_xy...,))
         for (area, img) in zip(uv_coordinates, images)
             texture_atlas[area] = img #transfer to texture atlas
@@ -166,34 +166,34 @@ function draw_scatter(screen, (marker, position), data)
     delete!(data, :rotation)
 
     @gen_defaults! data begin
-        shape       = Cint(0)
-        position    = position => GLBuffer
-        marker_offset = Vec3f(0) => GLBuffer;
-        scale       = Vec2f(0) => GLBuffer
-        rotation    = rot => GLBuffer
-        image       = nothing => Texture
+        shape = Cint(0)
+        position = position => GLBuffer
+        marker_offset = Vec3f(0) => GLBuffer
+        scale = Vec2f(0) => GLBuffer
+        rotation = rot => GLBuffer
+        image = nothing => Texture
     end
 
     @gen_defaults! data begin
-        quad_offset     = Vec2f(0) => GLBuffer
-        intensity       = nothing => GLBuffer
-        color_map       = nothing => Texture
-        color_norm      = nothing
-        color           = nothing => GLBuffer
+        quad_offset = Vec2f(0) => GLBuffer
+        intensity = nothing => GLBuffer
+        color_map = nothing => Texture
+        color_norm = nothing
+        color = nothing => GLBuffer
 
-        glow_color      = RGBA{Float32}(0,0,0,0) => GLBuffer
-        stroke_color    = RGBA{Float32}(0,0,0,0) => GLBuffer
-        stroke_width    = 0f0
-        glow_width      = 0f0
+        glow_color = RGBA{Float32}(0, 0, 0, 0) => GLBuffer
+        stroke_color = RGBA{Float32}(0, 0, 0, 0) => GLBuffer
+        stroke_width = 0f0
+        glow_width = 0f0
         uv_offset_width = Vec4f(0) => GLBuffer
 
-        distancefield   = nothing => Texture
-        indices         = const_lift(length, position) => to_index_buffer
+        distancefield = nothing => Texture
+        indices = const_lift(length, position) => to_index_buffer
         # rotation and billboard don't go along
-        billboard        = rotation == Vec4f(0,0,0,1) => "if `billboard` == true, particles will always face camera"
-        fxaa             = false
-        transparency     = false
-        shader           = GLVisualizeShader(
+        billboard = rotation == Vec4f(0, 0, 0, 1) => "if `billboard` == true, particles will always face camera"
+        fxaa = false
+        transparency = false
+        shader = GLVisualizeShader(
             screen,
             "fragment_output.frag", "util.vert", "sprites.geom",
             "sprites.vert", "distance_shape.frag",

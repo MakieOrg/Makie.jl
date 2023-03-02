@@ -1,6 +1,6 @@
-function Makie.plot!(plot::Plot(AbstractVector{<: Complex}))
+function Makie.plot!(plot::Plot(AbstractVector{<:Complex}))
     plot[:axis, :labels] = ("Re(x)", "Im(x)")
-    lines!(plot, lift(im-> Point2f.(real.(im), imag.(im)), x[1]))
+    lines!(plot, lift(im -> Point2f.(real.(im), imag.(im)), x[1]))
 end
 
 
@@ -33,13 +33,13 @@ Plots the given colour gradients arranged as horizontal colourbars.
 If you change the offsets or the font size, you may need to change the resolution.
 """
 function showgradients(
-        cgrads::AbstractVector{Symbol};
-        h = 0.0,
-        offset = 0.4,
-        fontsize = 0.7,
-        resolution = (800, length(cgrads) * 84),
-        monospace = true
-    )::Scene
+    cgrads::AbstractVector{Symbol};
+    h = 0.0,
+    offset = 0.4,
+    fontsize = 0.7,
+    resolution = (800, length(cgrads) * 84),
+    monospace = true
+)::Scene
 
     scene = Scene(resolution = resolution)
 
@@ -50,7 +50,7 @@ function showgradients(
             scene,
             range(0, stop = 10, length = length(c)),
             range(0, stop = 1, length = length(c)),
-            reshape(c, (length(c),1))
+            reshape(c, (length(c), 1))
         )[end]
 
         cmapstr = monospace ? UnicodeFun.to_latex("\\mono{$cmap}") : string(cmap, ":")

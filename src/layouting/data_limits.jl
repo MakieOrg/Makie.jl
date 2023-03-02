@@ -1,9 +1,9 @@
 _isfinite(x) = isfinite(x)
 _isfinite(x::VecTypes) = all(isfinite, x)
-isfinite_rect(x::Rect) = all(isfinite, x.origin) &&  all(isfinite, x.widths)
-scalarmax(x::Union{Tuple, AbstractArray}, y::Union{Tuple, AbstractArray}) = max.(x, y)
+isfinite_rect(x::Rect) = all(isfinite, x.origin) && all(isfinite, x.widths)
+scalarmax(x::Union{Tuple,AbstractArray}, y::Union{Tuple,AbstractArray}) = max.(x, y)
 scalarmax(x, y) = max(x, y)
-scalarmin(x::Union{Tuple, AbstractArray}, y::Union{Tuple, AbstractArray}) = min.(x, y)
+scalarmin(x::Union{Tuple,AbstractArray}, y::Union{Tuple,AbstractArray}) = min.(x, y)
 scalarmin(x, y) = min(x, y)
 
 extrema_nan(itr::Pair) = (itr[1], itr[2])
@@ -35,12 +35,12 @@ function distinct_extrema_nan(x)
     lo == hi ? (lo - 0.5f0, hi + 0.5f0) : (lo, hi)
 end
 
-function point_iterator(plot::Union{Scatter, MeshScatter, Lines, LineSegments})
+function point_iterator(plot::Union{Scatter,MeshScatter,Lines,LineSegments})
     return plot.positions[]
 end
 
 # TODO?
-function point_iterator(text::Text{<: Tuple{<: Union{GlyphCollection, AbstractVector{GlyphCollection}}}})
+function point_iterator(text::Text{<:Tuple{<:Union{GlyphCollection,AbstractVector{GlyphCollection}}}})
     if is_data_space(text.markerspace[])
         return decompose(Point, boundingbox(text))
     else
@@ -117,7 +117,7 @@ end
 
 function point_iterator(x::Volume)
     axes = (x[1], x[2], x[3])
-    extremata = map(extrema∘to_value, axes)
+    extremata = map(extrema ∘ to_value, axes)
     minpoint = Point3f(first.(extremata)...)
     widths = last.(extremata) .- first.(extremata)
     rect = Rect3f(minpoint, Vec3f(widths))
@@ -126,7 +126,7 @@ end
 
 function foreach_plot(f, s::Scene)
     foreach_plot(f, s.plots)
-    foreach(sub-> foreach_plot(f, sub), s.children)
+    foreach(sub -> foreach_plot(f, sub), s.children)
 end
 
 foreach_plot(f, s::Figure) = foreach_plot(f, s.scene)
@@ -196,7 +196,7 @@ function data_limits(plot::AbstractPlot)
     limits_from_transformed_points(iterate_transformed(plot))
 end
 
-function _update_rect(rect::Rect{N, T}, point::Point{N, T}) where {N, T}
+function _update_rect(rect::Rect{N,T}, point::Point{N,T}) where {N,T}
     mi = minimum(rect)
     ma = maximum(rect)
     mis_mas = map(mi, ma, point) do _mi, _ma, _p
@@ -216,7 +216,7 @@ function limits_from_transformed_points(points_iterator)
     return bb
 end
 
-function data_limits(scenelike, exclude=(p)-> false)
+function data_limits(scenelike, exclude = (p) -> false)
     bb_ref = Base.RefValue(Rect3f())
     foreach_plot(scenelike) do plot
         if !exclude(plot)

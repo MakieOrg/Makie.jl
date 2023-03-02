@@ -32,122 +32,122 @@ end
 @reference_test "poly and colormap" begin
     # example by @Paulms from MakieOrg/Makie.jl#310
     points = Point2f[[0.0, 0.0], [0.1, 0.0], [0.1, 0.1], [0.0, 0.1]]
-    colors = [0.0 ,0.0, 0.5, 0.0]
-    fig, ax, polyplot = poly(points, color=colors, colorrange=(0.0, 1.0))
+    colors = [0.0, 0.0, 0.5, 0.0]
+    fig, ax, polyplot = poly(points, color = colors, colorrange = (0.0, 1.0))
     points = Point2f[[0.1, 0.1], [0.2, 0.1], [0.2, 0.2], [0.1, 0.2]]
-    colors = [0.5,0.5,1.0,0.3]
-    poly!(ax, points, color=colors, colorrange=(0.0, 1.0))
+    colors = [0.5, 0.5, 1.0, 0.3]
+    poly!(ax, points, color = colors, colorrange = (0.0, 1.0))
     fig
 end
 
 @reference_test "quiver" begin
-    x = range(-2, stop=2, length=21)
-    arrows(x, x, RNG.rand(21, 21), RNG.rand(21, 21), arrowsize=0.05)
+    x = range(-2, stop = 2, length = 21)
+    arrows(x, x, RNG.rand(21, 21), RNG.rand(21, 21), arrowsize = 0.05)
 end
 
 @reference_test "Arrows on hemisphere" begin
     s = Sphere(Point3f(0), 0.9f0)
-    fig, ax, meshplot = mesh(s, transparency=true, alpha=0.05)
+    fig, ax, meshplot = mesh(s, transparency = true, alpha = 0.05)
     pos = decompose(Point3f, s)
     dirs = decompose_normals(s)
-    arrows!(ax, pos, dirs, arrowcolor=:red, arrowsize=0.1, linecolor=:red)
+    arrows!(ax, pos, dirs, arrowcolor = :red, arrowsize = 0.1, linecolor = :red)
     fig
 end
 
 @reference_test "image" begin
     fig = Figure()
-    image(fig[1,1], Makie.logo(), axis = (; aspect = DataAspect()))
+    image(fig[1, 1], Makie.logo(), axis = (; aspect = DataAspect()))
     image(fig[1, 2], RNG.rand(100, 500), axis = (; aspect = DataAspect()))
     fig
 end
 
 @reference_test "FEM polygon 2D" begin
     coordinates = [
-        0.0 0.0;
-        0.5 0.0;
-        1.0 0.0;
-        0.0 0.5;
-        0.5 0.5;
-        1.0 0.5;
-        0.0 1.0;
-        0.5 1.0;
-        1.0 1.0;
+        0.0 0.0
+        0.5 0.0
+        1.0 0.0
+        0.0 0.5
+        0.5 0.5
+        1.0 0.5
+        0.0 1.0
+        0.5 1.0
+        1.0 1.0
     ]
     connectivity = [
-        1 2 5;
-        1 4 5;
-        2 3 6;
-        2 5 6;
-        4 5 8;
-        4 7 8;
-        5 6 9;
-        5 8 9;
+        1 2 5
+        1 4 5
+        2 3 6
+        2 5 6
+        4 5 8
+        4 7 8
+        5 6 9
+        5 8 9
     ]
     color = [0.0, 0.0, 0.0, 0.0, -0.375, 0.0, 0.0, 0.0, 0.0]
-    poly(coordinates, connectivity, color=color, strokecolor=(:black, 0.6), strokewidth=4)
+    poly(coordinates, connectivity, color = color, strokecolor = (:black, 0.6), strokewidth = 4)
 end
 
 @reference_test "FEM mesh 2D" begin
     coordinates = [
-        0.0 0.0;
-        0.5 0.0;
-        1.0 0.0;
-        0.0 0.5;
-        0.5 0.5;
-        1.0 0.5;
-        0.0 1.0;
-        0.5 1.0;
-        1.0 1.0;
+        0.0 0.0
+        0.5 0.0
+        1.0 0.0
+        0.0 0.5
+        0.5 0.5
+        1.0 0.5
+        0.0 1.0
+        0.5 1.0
+        1.0 1.0
     ]
     connectivity = [
-        1 2 5;
-        1 4 5;
-        2 3 6;
-        2 5 6;
-        4 5 8;
-        4 7 8;
-        5 6 9;
-        5 8 9;
+        1 2 5
+        1 4 5
+        2 3 6
+        2 5 6
+        4 5 8
+        4 7 8
+        5 6 9
+        5 8 9
     ]
     color = [0.0, 0.0, 0.0, 0.0, -0.375, 0.0, 0.0, 0.0, 0.0]
-    fig, ax, meshplot = mesh(coordinates, connectivity, color=color, shading=false)
-    wireframe!(ax, meshplot[1], color=(:black, 0.6), linewidth=3)
+    fig, ax, meshplot = mesh(coordinates, connectivity, color = color, shading = false)
+    wireframe!(ax, meshplot[1], color = (:black, 0.6), linewidth = 3)
     fig
 end
 
 @reference_test "colored triangle" begin
     mesh(
-        [(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)], color=[:red, :green, :blue],
-        shading=false
+        [(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)], color = [:red, :green, :blue],
+        shading = false
     )
 end
 
 @reference_test "colored triangle with poly" begin
     poly(
         [(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)],
-        color=[:red, :green, :blue],
-        strokecolor=:black, strokewidth=2
+        color = [:red, :green, :blue],
+        strokecolor = :black, strokewidth = 2
     )
 end
 
 @reference_test "scale_plot" begin
-    t = range(0, stop=1, length=500) # time steps
+    t = range(0, stop = 1, length = 500) # time steps
     θ = (6π) .* t    # angles
     x =  # x coords of spiral
-    y =  # y coords of spiral
-    lines(t .* cos.(θ), t .* sin.(θ);
-        color=t, colormap=:algae, linewidth=8, axis = (; aspect = DataAspect()))
+        y =  # y coords of spiral
+            lines(t .* cos.(θ), t .* sin.(θ);
+                color = t, colormap = :algae, linewidth = 8, axis = (; aspect = DataAspect()))
 end
 
 @reference_test "Polygons" begin
     points = decompose(Point2f, Circle(Point2f(50), 50f0))
-    fig, ax, pol = poly(points, color=:gray, strokewidth=10, strokecolor=:red)
+    fig, ax, pol = poly(points, color = :gray, strokewidth = 10, strokecolor = :red)
     # Optimized forms
-    poly!(ax, [Circle(Point2f(50 + 300), 50f0)], color=:gray, strokewidth=10, strokecolor=:red)
-    poly!(ax, [Circle(Point2f(50 + i, 50 + i), 10f0) for i = 1:100:400], color=:red)
-    poly!(ax, [Rect2f(50 + i, 50 + i, 20, 20) for i = 1:100:400], strokewidth=2, strokecolor=:green)
+    poly!(ax, [Circle(Point2f(50 + 300), 50f0)], color = :gray, strokewidth = 10, strokecolor = :red)
+    poly!(ax, [Circle(Point2f(50 + i, 50 + i), 10f0) for i in 1:100:400], color = :red)
+    poly!(ax, [Rect2f(50 + i, 50 + i, 20, 20) for i in 1:100:400], strokewidth = 2, strokecolor = :green)
     linesegments!(ax,
-        [Point2f(50 + i, 50 + i) => Point2f(i + 70, i + 70) for i = 1:100:400], linewidth=8, color=:purple
+        [Point2f(50 + i, 50 + i) => Point2f(i + 70, i + 70) for i in 1:100:400], linewidth = 8, color = :purple
     )
     fig
 end
@@ -155,10 +155,10 @@ end
 @reference_test "Text Annotation" begin
     text(
         ". This is an annotation!",
-        position=(300, 200),
-        align=(:center,  :center),
-        fontsize=60,
-        font="Blackchancery"
+        position = (300, 200),
+        align = (:center, :center),
+        fontsize = 60,
+        font = "Blackchancery"
     )
 end
 
@@ -167,17 +167,17 @@ end
     ax = fig[1, 1] = Axis(fig)
     pos = (500, 500)
     posis = Point2f[]
-    for r in range(0, stop=2pi, length=20)
+    for r in range(0, stop = 2pi, length = 20)
         p = pos .+ (sin(r) * 100.0, cos(r) * 100)
         push!(posis, p)
         text!(ax, "test",
-            position=p,
-            fontsize=50,
-            rotation=1.5pi - r,
-            align=(:center, :center)
+            position = p,
+            fontsize = 50,
+            rotation = 1.5pi - r,
+            align = (:center, :center)
         )
     end
-    scatter!(ax, posis, markersize=10)
+    scatter!(ax, posis, markersize = 10)
     fig
 end
 
@@ -185,12 +185,12 @@ end
     # Sample 100 Brownian motion path and plot the mean trajectory together
     # with a ±1σ band (visualizing uncertainty as marginal standard deviation).
     n, m = 100, 101
-    t = range(0, 1, length=m)
-    X = cumsum(RNG.randn(n, m), dims=2)
+    t = range(0, 1, length = m)
+    X = cumsum(RNG.randn(n, m), dims = 2)
     X = X .- X[:, 1]
-    μ = vec(mean(X, dims=1)) # mean
+    μ = vec(mean(X, dims = 1)) # mean
     lines(t, μ)              # plot mean line
-    σ = vec(std(X, dims=1))  # stddev
+    σ = vec(std(X, dims = 1))  # stddev
     band!(t, μ + σ, μ - σ)   # plot stddev band
     current_figure()
 end
@@ -199,9 +199,9 @@ end
     v(x::Point2{T}, t) where T = Point2{T}(one(T) * x[2] * t, 4 * x[1])
     sf = Observable(Base.Fix2(v, 0e0))
     title_str = Observable("t = 0.00")
-    sp = streamplot(sf, -2..2, -2..2;
-                    linewidth=2, colormap=:magma, axis=(;title=title_str))
-    Record(sp, LinRange(0, 20, 5); framerate=1) do i
+    sp = streamplot(sf, -2 .. 2, -2 .. 2;
+        linewidth = 2, colormap = :magma, axis = (; title = title_str))
+    Record(sp, LinRange(0, 20, 5); framerate = 1) do i
         sf[] = Base.Fix2(v, i)
         title_str[] = "t = $(round(i; sigdigits=2))"
     end
@@ -209,9 +209,9 @@ end
 
 
 @reference_test "Line changing colour" begin
-    fig, ax, lineplot = lines(RNG.rand(10); linewidth=10)
+    fig, ax, lineplot = lines(RNG.rand(10); linewidth = 10)
     N = 20
-    Record(fig, 1:N; framerate=1) do i
+    Record(fig, 1:N; framerate = 1) do i
         lineplot.color = RGBf(i / N, (N - i) / N, 0) # animate scene
     end
 end
@@ -230,7 +230,7 @@ let
             P.γ * x[1] - x[2] + P.β
         )
         ff(x) = ff(x, P)
-        streamplot(ff, -1.5..1.5, -1.5..1.5, colormap=:magma)
+        streamplot(ff, -1.5 .. 1.5, -1.5 .. 1.5, colormap = :magma)
     end
 end
 
@@ -238,7 +238,7 @@ end
     N = 7 # number of colours in default palette
     fig = Figure()
     ax = Axis(fig)
-    fig[1,1] = ax
+    fig[1, 1] = ax
     st = Stepper(fig)
 
     xs = 0:9        # data
@@ -247,8 +247,8 @@ end
     plots = map(1:N) do i # plot lines
         lines!(ax,
             xs, ys;
-            color=colors[i],
-            linewidth=5
+            color = colors[i],
+            linewidth = 5
         ) # plot lines with colors
     end
 
@@ -261,9 +261,9 @@ end
             (8 - i),
             pi / 2,
             (pi / 2 - rot);
-            color=plots[i].color,
-            linewidth=5,
-            linestyle=:dash
+            color = plots[i].color,
+            linewidth = 5,
+            linestyle = :dash
         )
     end
 
@@ -351,17 +351,17 @@ end
 
 
 @reference_test "Simple pie chart" begin
-    fig = Figure(resolution=(800, 800))
-    pie(fig[1, 1], 1:5, color=collect(1:5), axis=(;aspect=DataAspect()))
+    fig = Figure(resolution = (800, 800))
+    pie(fig[1, 1], 1:5, color = collect(1:5), axis = (; aspect = DataAspect()))
     fig
 end
 
 @reference_test "Hollow pie chart" begin
-    pie(1:5, color=collect(1.0:5), radius=2, inner_radius=1, axis=(;aspect=DataAspect()))
+    pie(1:5, color = collect(1.0:5), radius = 2, inner_radius = 1, axis = (; aspect = DataAspect()))
 end
 
 @reference_test "Open pie chart" begin
-    pie(0.1:0.1:1.0, normalize=false, axis=(;aspect=DataAspect()))
+    pie(0.1:0.1:1.0, normalize = false, axis = (; aspect = DataAspect()))
 end
 
 @reference_test "intersecting polygon" begin
@@ -371,22 +371,22 @@ end
 
 
 @reference_test "Line Function" begin
-    x = range(0, stop=3pi)
+    x = range(0, stop = 3pi)
     fig, ax, lineplot = lines(x, sin.(x))
-    lines!(ax, x, cos.(x), color=:blue)
+    lines!(ax, x, cos.(x), color = :blue)
     fig
 end
 
 @reference_test "Grouped bar" begin
-    x1         = ["a_right", "a_right", "a_right", "a_right"]
-    y1         = [2, 3, -3, -2]
-    grp_dodge1 = [2, 2,  1,  1]
-    grp_stack1 = [1, 2,  1,  2]
+    x1 = ["a_right", "a_right", "a_right", "a_right"]
+    y1 = [2, 3, -3, -2]
+    grp_dodge1 = [2, 2, 1, 1]
+    grp_stack1 = [1, 2, 1, 2]
 
-    x2         = ["z_left", "z_left", "z_left", "z_left"]
-    y2         = [2, 3, -3, -2]
-    grp_dodge2 = [1, 2,  1,  2]
-    grp_stack2 = [1, 1,  2,  2]
+    x2 = ["z_left", "z_left", "z_left", "z_left"]
+    y2 = [2, 3, -3, -2]
+    grp_dodge2 = [1, 2, 1, 2]
+    grp_stack2 = [1, 1, 2, 2]
 
     perm = [1, 4, 2, 7, 5, 3, 8, 6]
     x = [x1; x2][perm]
@@ -398,7 +398,7 @@ end
     tbl = (; x = x, grp_dodge = grp_dodge, grp_stack = grp_stack, y = y)
 
     fig = Figure()
-    ax = Axis(fig[1,1])
+    ax = Axis(fig[1, 1])
 
     barplot!(ax, levelcode.(tbl.x), tbl.y, dodge = tbl.grp_dodge, stack = tbl.grp_stack, color = tbl.grp_stack)
 
@@ -486,19 +486,19 @@ end
 
 @reference_test "Scatter & Text transformations" begin
     # Check that transformations apply in `space = :data`
-    fig, ax, p = scatter(Point2f(100, 0.5), marker = 'a', markersize=50)
+    fig, ax, p = scatter(Point2f(100, 0.5), marker = 'a', markersize = 50)
     t = text!(Point2f(100, 0.5), text = "Test", fontsize = 50)
     translate!(p, -100, 0, 0)
     translate!(t, -100, 0, 0)
 
     # Check that scale and rotate don't act on the marker for scatter (only the position)
-    p2 = scatter!(ax, Point2f(1, 0), marker= 'a', markersize = 50)
-    Makie.rotate!(p2, pi/4)
+    p2 = scatter!(ax, Point2f(1, 0), marker = 'a', markersize = 50)
+    Makie.rotate!(p2, pi / 4)
     scale!(p2, 0.5, 0.5, 1)
 
     # but do act on glyphs of text
     t2 = text!(ax, 1, 0, text = "Test", fontsize = 50)
-    Makie.rotate!(t2, pi/4)
+    Makie.rotate!(t2, pi / 4)
     scale!(t2, 0.5, 0.5, 1)
 
     xlims!(ax, -0.2, 0.5)
@@ -509,39 +509,39 @@ end
 
 @reference_test "Array of Images Scatter" begin
     img = Makie.logo()
-    scatter(1:2, 1:2, marker = [img, img], markersize=reverse(size(img) ./ 10), axis=(limits=(0.5, 2.5, 0.5, 2.5),))
+    scatter(1:2, 1:2, marker = [img, img], markersize = reverse(size(img) ./ 10), axis = (limits = (0.5, 2.5, 0.5, 2.5),))
 end
 
 @reference_test "Image Scatter different sizes" begin
     img = Makie.logo()
     img2 = load(Makie.assetpath("doge.png"))
     images = [img, img2]
-    markersize = map(img-> Vec2f(reverse(size(img) ./ 10)), images)
-    scatter(1:2, 1:2, marker = images, markersize=markersize, axis=(limits=(0.5, 2.5, 0.5, 2.5),))
+    markersize = map(img -> Vec2f(reverse(size(img) ./ 10)), images)
+    scatter(1:2, 1:2, marker = images, markersize = markersize, axis = (limits = (0.5, 2.5, 0.5, 2.5),))
 end
 
 @reference_test "2D surface with explicit color" begin
-    surface(1:10, 1:10, ones(10, 10); color = [RGBf(x*y/100, 0, 0) for x in 1:10, y in 1:10], shading = false)
+    surface(1:10, 1:10, ones(10, 10); color = [RGBf(x * y / 100, 0, 0) for x in 1:10, y in 1:10], shading = false)
 end
 
 @reference_test "heatmap and image colormap interpolation" begin
-    f = Figure(resolution=(500, 500))
+    f = Figure(resolution = (500, 500))
     crange = LinRange(0, 255, 10)
     len = length(crange)
     img = zeros(Float32, len, len + 2)
     img[:, 1] .= 255f0
     for (i, v) in enumerate(crange)
         ib = i + 1
-        img[2:end-1, ib] .= v
-        img[1, ib] = 255-v
-        img[end, ib] = 255-v
+        img[2:(end - 1), ib] .= v
+        img[1, ib] = 255 - v
+        img[end, ib] = 255 - v
     end
 
-    kw(p, interpolate) = (axis=(title="$(p)(interpolate=$(interpolate))", aspect=DataAspect()), interpolate=interpolate, colormap=[:white, :black])
+    kw(p, interpolate) = (axis = (title = "$(p)(interpolate=$(interpolate))", aspect = DataAspect()), interpolate = interpolate, colormap = [:white, :black])
 
     for (i, p) in enumerate([heatmap, image])
         for (j, interpolate) in enumerate([true, false])
-            ax, pl = p(f[i,j], img; kw(p, interpolate)...)
+            ax, pl = p(f[i, j], img; kw(p, interpolate)...)
             hidedecorations!(ax)
         end
     end
@@ -557,11 +557,11 @@ end
     for (i, cat) in enumerate(categorical)
         for (j, scale) in enumerate(scales)
             cg = if cat
-                cgrad(:viridis, 5; scale = scale, categorical=true)
+                cgrad(:viridis, 5; scale = scale, categorical = true)
             else
-                cgrad(:viridis; scale = scale, categorical=nothing)
+                cgrad(:viridis; scale = scale, categorical = nothing)
             end
-            lines!(ax, Point2f.(LinRange(i+0.1, i+0.9, n), j); color = 1:n, colormap = cg, linewidth = 10)
+            lines!(ax, Point2f.(LinRange(i + 0.1, i + 0.9, n), j); color = 1:n, colormap = cg, linewidth = 10)
         end
     end
     ax.xticks[] = ((1:length(categorical)) .+ 0.5, ["categorical=false", "categorical=true"])
@@ -570,19 +570,19 @@ end
 end
 
 @reference_test "colormap with specific values" begin
-    cmap = cgrad([:black,:white,:orange],[0,0.2,1])
-    fig = Figure(resolution=(400,200))
-    ax = Axis(fig[1,1])
-    x = range(0,1,length=50)
-    scatter!(fig[1,1],Point2.(x,fill(0.,50)),color=x,colormap=cmap)
+    cmap = cgrad([:black, :white, :orange], [0, 0.2, 1])
+    fig = Figure(resolution = (400, 200))
+    ax = Axis(fig[1, 1])
+    x = range(0, 1, length = 50)
+    scatter!(fig[1, 1], Point2.(x, fill(0., 50)), color = x, colormap = cmap)
     hidedecorations!(ax)
-    Colorbar(fig[2,1],vertical=false,colormap=cmap)
+    Colorbar(fig[2, 1], vertical = false, colormap = cmap)
     fig
 end
 
 @reference_test "multi rect with poly" begin
     # use thick strokewidth, so it will make tests fail if something is missing
-    poly([Rect2f(0, 0, 1, 1)], color=:green, strokewidth=100, strokecolor=:black)
+    poly([Rect2f(0, 0, 1, 1)], color = :green, strokewidth = 100, strokecolor = :black)
 end
 
 @reference_test "minor grid & scales" begin
@@ -603,7 +603,7 @@ end
 end
 
 @reference_test "Tooltip" begin
-    fig, ax, p = scatter(Point2f(0,0))
+    fig, ax, p = scatter(Point2f(0, 0))
     xlims!(ax, -10, 10)
     ylims!(ax, -5, 5)
     tt = tooltip!(ax, Point2f(0), text = "left", placement = :left)
@@ -656,13 +656,13 @@ end
 
 @reference_test "tricontourf manual vs delaunay" begin
     n = 20
-    angles = range(0, 2pi, length = n+1)[1:end-1]
-    x = [cos.(angles); 2 .* cos.(angles .+ pi/n)]
-    y = [sin.(angles); 2 .* sin.(angles .+ pi/n)]
-    z = (x .- 0.5).^2 + (y .- 0.5).^2 .+ 0.5 .* RNG.randn.()
+    angles = range(0, 2pi, length = n + 1)[1:(end - 1)]
+    x = [cos.(angles); 2 .* cos.(angles .+ pi / n)]
+    y = [sin.(angles); 2 .* sin.(angles .+ pi / n)]
+    z = (x .- 0.5) .^ 2 + (y .- 0.5) .^ 2 .+ 0.5 .* RNG.randn.()
 
     triangulation_inner = reduce(hcat, map(i -> [0, 1, n] .+ i, 1:n))
-    triangulation_outer = reduce(hcat, map(i -> [n-1, n, 0] .+ i, 1:n))
+    triangulation_outer = reduce(hcat, map(i -> [n - 1, n, 0] .+ i, 1:n))
     triangulation = hcat(triangulation_inner, triangulation_outer)
 
     f, ax, _ = tricontourf(x, y, z, triangulation = triangulation,
@@ -678,9 +678,9 @@ end
 
 @reference_test "marker offset in data space" begin
     f = Figure()
-    ax = Axis(f[1, 1]; xticks=0:1, yticks=0:10)
-    scatter!(ax, fill(0, 10), 0:9, marker=Rect, marker_offset=Vec2f(0,0), transform_marker=true, markerspace=:data, markersize=Vec2f.(1, LinRange(0.1, 1, 10)))
-    lines!(ax, Rect(0, 0, 1, 10), color=:red)
+    ax = Axis(f[1, 1]; xticks = 0:1, yticks = 0:10)
+    scatter!(ax, fill(0, 10), 0:9, marker = Rect, marker_offset = Vec2f(0, 0), transform_marker = true, markerspace = :data, markersize = Vec2f.(1, LinRange(0.1, 1, 10)))
+    lines!(ax, Rect(0, 0, 1, 10), color = :red)
     f
 end
 
@@ -711,7 +711,7 @@ end
     y = RNG.rand(300)
 
     for i in 2:5
-        ax = Axis(f[fldmod1(i-1, 2)...], title = "bins = $i", aspect = DataAspect())
+        ax = Axis(f[fldmod1(i - 1, 2)...], title = "bins = $i", aspect = DataAspect())
         hexbin!(ax, x, y, bins = i)
         wireframe!(ax, Rect2f(Point2f.(x, y)), color = :red)
         scatter!(ax, x, y, color = :red, markersize = 5)
@@ -727,7 +727,7 @@ end
     y = RNG.rand(300)
 
     for i in 2:5
-        ax = Axis(f[fldmod1(i-1, 2)...], title = "bins = (3, $i)", aspect = DataAspect())
+        ax = Axis(f[fldmod1(i - 1, 2)...], title = "bins = (3, $i)", aspect = DataAspect())
         hexbin!(ax, x, y, bins = (3, i))
         wireframe!(ax, Rect2f(Point2f.(x, y)), color = :red)
         scatter!(ax, x, y, color = :red, markersize = 5)
@@ -790,7 +790,7 @@ end
     f = Figure()
     hexbin(f[1, 1], x, y, bins = 40,
         axis = (aspect = DataAspect(), title = "scale = identity"))
-    hexbin(f[1, 2], x, y, bins = 40, scale=log10,
+    hexbin(f[1, 2], x, y, bins = 40, scale = log10,
         axis = (aspect = DataAspect(), title = "scale = log10"))
     f
 end
@@ -814,8 +814,8 @@ end
 @reference_test "Latex labels after the fact" begin
     f = Figure(fontsize = 50)
     ax = Axis(f[1, 1])
-    ax.xticks = ([3, 6, 9], [L"x" , L"y" , L"z"])
-    ax.yticks = ([3, 6, 9], [L"x" , L"y" , L"z"])
+    ax.xticks = ([3, 6, 9], [L"x", L"y", L"z"])
+    ax.yticks = ([3, 6, 9], [L"x", L"y", L"z"])
     f
 end
 
@@ -835,19 +835,19 @@ end
 end
 
 @reference_test "bracket scalar" begin
-    f, ax, l = lines(0..9, sin; axis = (; xgridvisible = false, ygridvisible = false))
+    f, ax, l = lines(0 .. 9, sin; axis = (; xgridvisible = false, ygridvisible = false))
     ylims!(ax, -1.5, 1.5)
 
-    bracket!(pi/2, 1, 5pi/2, 1, offset = 5, text = "Period length", style = :square)
+    bracket!(pi / 2, 1, 5pi / 2, 1, offset = 5, text = "Period length", style = :square)
 
-    bracket!(pi/2, 1, pi/2, -1, text = "Amplitude", orientation = :down,
+    bracket!(pi / 2, 1, pi / 2, -1, text = "Amplitude", orientation = :down,
         linestyle = :dash, rotation = 0, align = (:right, :center), textoffset = 4, linewidth = 2, color = :red, textcolor = :red)
 
     bracket!(2.3, sin(2.3), 4.0, sin(4.0),
         text = "Falling", offset = 10, orientation = :up, color = :purple, textcolor = :purple)
 
     bracket!(Point(5.5, sin(5.5)), Point(7.0, sin(7.0)),
-        text = "Rising", offset = 10, orientation = :down, color = :orange, textcolor = :orange, 
+        text = "Rising", offset = 10, orientation = :down, color = :orange, textcolor = :orange,
         fontsize = 30, textoffset = 30, width = 50)
     f
 end
@@ -866,7 +866,7 @@ end
     )
 
     bracket!(ax,
-        [(Point2f(i, i-0.7), Point2f(i+2, i-0.7)) for i in 1:5],
+        [(Point2f(i, i - 0.7), Point2f(i + 2, i - 0.7)) for i in 1:5],
         text = ["F", "G", "H", "I", "J"],
         color = [:red, :blue, :green, :orange, :brown],
         linestyle = [:dash, :dot, :dash, :dot, :dash],
@@ -886,7 +886,7 @@ end
 @reference_test "LaTeXStrings linesegment offsets" begin
     s = Scene(camera = campixel!, resolution = (600, 600))
     for (i, (offx, offy)) in enumerate(zip([0, 20, 50], [0, 10, 30]))
-        for (j, rot) in enumerate([0, pi/4, pi/2])
+        for (j, rot) in enumerate([0, pi / 4, pi / 2])
             scatter!(s, 150i, 150j)
             text!(s, 150i, 150j, text = L"\sqrt{x+y}", offset = (offx, offy),
                 rotation = rot, fontsize = 30)

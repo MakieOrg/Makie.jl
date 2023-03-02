@@ -7,7 +7,7 @@ function initialize_block!(b::Button)
     subarea = lift(b.layoutobservables.computedbbox) do bbox
         round_to_IRect2D(bbox)
     end
-    subscene = Scene(scene, subarea, camera=campixel!)
+    subscene = Scene(scene, subarea, camera = campixel!)
 
     # buttonrect is without the left bottom offset of the bbox
     buttonrect = lift(b.layoutobservables.computedbbox) do bbox
@@ -24,14 +24,14 @@ function initialize_block!(b::Button)
 
     bcolors = (; out = b.buttoncolor, active = b.buttoncolor_active, hover = b.buttoncolor_hover)
     bcolor = Observable{RGBColors}()
-    map!((s,_...)-> to_color(bcolors[s][]), bcolor, mousestate, values(bcolors)...)
+    map!((s, _...) -> to_color(bcolors[s][]), bcolor, mousestate, values(bcolors)...)
 
     button = poly!(subscene, roundedrectpoints, strokewidth = b.strokewidth, strokecolor = b.strokecolor,
         color = bcolor, inspectable = false)
 
     lcolors = (; out = b.labelcolor, active = b.labelcolor_active, hover = b.labelcolor_hover)
     lcolor = Observable{RGBColors}()
-    map!((s,_...)-> to_color(lcolors[s][]), lcolor, mousestate, values(lcolors)...)
+    map!((s, _...) -> to_color(lcolors[s][]), lcolor, mousestate, values(lcolors)...)
 
     labeltext = text!(subscene, textpos, text = b.label, fontsize = b.fontsize, font = b.font,
         color = lcolor, align = (:center, :center), markerspace = :data, inspectable = false)

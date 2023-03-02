@@ -28,7 +28,7 @@ const selection_queries = Function[]
 """
 Renders a single frame of a `window`
 """
-function render_frame(screen::Screen; resize_buffers=true)
+function render_frame(screen::Screen; resize_buffers = true)
     nw = to_native(screen)
     ShaderAbstractions.switch_context!(nw)
     function sortby(x)

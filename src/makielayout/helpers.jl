@@ -7,11 +7,11 @@ function round_to_IRect2D(r::Rect{2})
     newori = round.(Int, minimum(r))
     othercorner = round.(Int, maximum(r))
     newwidth = othercorner .- newori
-    Rect{2, Int}(newori, newwidth)
+    Rect{2,Int}(newori, newwidth)
 end
 
 function sceneareanode!(finalbbox, limits, aspect)
-    return map(finalbbox, limits, aspect; ignore_equal_values=true) do bbox, limits, aspect
+    return map(finalbbox, limits, aspect; ignore_equal_values = true) do bbox, limits, aspect
 
         w = width(bbox)
         h = height(bbox)
@@ -67,24 +67,24 @@ function roundedrectvertices(rect, cornerradius, cornersegments)
     htouching = height(rect) / 2 == cr
 
     cstr = if wtouching
-        anglepoint.(Ref(ictr), LinRange(0, pi/2, csegs), cr)
+        anglepoint.(Ref(ictr), LinRange(0, pi / 2, csegs), cr)
     else
-        anglepoint.(Ref(ictr), LinRange(0, pi/2, csegs)[1:end-1], cr)
+        anglepoint.(Ref(ictr), LinRange(0, pi / 2, csegs)[1:(end - 1)], cr)
     end
     cstl = if htouching
-        anglepoint.(Ref(ictl), LinRange(pi/2, pi, csegs), cr)
+        anglepoint.(Ref(ictl), LinRange(pi / 2, pi, csegs), cr)
     else
-        anglepoint.(Ref(ictl), LinRange(pi/2, pi, csegs)[1:end-1], cr)
+        anglepoint.(Ref(ictl), LinRange(pi / 2, pi, csegs)[1:(end - 1)], cr)
     end
     csbl = if wtouching
-        anglepoint.(Ref(icbl), LinRange(pi, 3pi/2, csegs), cr)
+        anglepoint.(Ref(icbl), LinRange(pi, 3pi / 2, csegs), cr)
     else
-        anglepoint.(Ref(icbl), LinRange(pi, 3pi/2, csegs)[1:end-1], cr)
+        anglepoint.(Ref(icbl), LinRange(pi, 3pi / 2, csegs)[1:(end - 1)], cr)
     end
     csbr = if htouching
-        anglepoint.(Ref(icbr), LinRange(3pi/2, 2pi, csegs), cr)
+        anglepoint.(Ref(icbr), LinRange(3pi / 2, 2pi, csegs), cr)
     else
-        anglepoint.(Ref(icbr), LinRange(3pi/2, 2pi, csegs)[1:end-1], cr)
+        anglepoint.(Ref(icbr), LinRange(3pi / 2, 2pi, csegs)[1:(end - 1)], cr)
     end
     arr = [cstr; cstl; csbl; csbr]
 end
@@ -111,7 +111,7 @@ Example:
 tightlimits!(laxis, Bottom())
 ```
 """
-function tightlimits!(la::Axis, sides::Union{Left, Right, Bottom, Top}...)
+function tightlimits!(la::Axis, sides::Union{Left,Right,Bottom,Top}...)
     for s in sides
         tightlimits!(la, s)
     end
@@ -172,13 +172,13 @@ function axislines!(scene, rect, spinewidth, topspinevisible, rightspinevisible,
     end
 
     (lines!(scene, bottomline, linewidth = spinewidth,
-        visible = bottomspinevisible, color = bottomspinecolor),
-    lines!(scene, leftline, linewidth = spinewidth,
-        visible = leftspinevisible, color = leftspinecolor),
-    lines!(scene, rightline, linewidth = spinewidth,
-        visible = rightspinevisible, color = rightspinecolor),
-    lines!(scene, topline, linewidth = spinewidth,
-        visible = topspinevisible, color = topspinecolor))
+            visible = bottomspinevisible, color = bottomspinecolor),
+        lines!(scene, leftline, linewidth = spinewidth,
+            visible = leftspinevisible, color = leftspinecolor),
+        lines!(scene, rightline, linewidth = spinewidth,
+            visible = rightspinevisible, color = rightspinecolor),
+        lines!(scene, topline, linewidth = spinewidth,
+            visible = topspinevisible, color = topspinecolor))
 end
 
 
@@ -249,17 +249,17 @@ macro documented_attributes(exp)
     # make a dictionary of :variable_name => docstring_expression
     exp_docdict = Expr(:call, :Dict,
         (Expr(:call, Symbol("=>"), QuoteNode(name), strexp)
-            for (name, _, strexp) in vars_and_exps)...)
+         for (name, _, strexp) in vars_and_exps)...)
 
     # make a dictionary of :variable_name => docstring_expression
     defaults_dict = Expr(:call, :Dict,
         (Expr(:call, Symbol("=>"), QuoteNode(name), exp isa String ? "\"$exp\"" : string(exp))
-            for (name, exp, _) in vars_and_exps)...)
+         for (name, exp, _) in vars_and_exps)...)
 
     # make an Attributes instance with of variable_name = variable_expression
     exp_attrs = Expr(:call, :Attributes,
         (Expr(:kw, name, exp)
-            for (name, exp, _) in vars_and_exps)...)
+         for (name, exp, _) in vars_and_exps)...)
 
     esc(quote
         ($exp_attrs, $exp_docdict, $defaults_dict)
@@ -317,13 +317,13 @@ layout[1, 1] = ls.layout
 ```
 """
 function labelslider!(scene, label, range; format = string,
-        sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), value_column_width = automatic, layoutkw...)
+    sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), value_column_width = automatic, layoutkw...)
     slider = Slider(scene; range = range, sliderkw...)
     label = Label(scene, label; labelkw...)
     valuelabel = Label(scene, lift(x -> apply_format(x, format), slider.value); valuekw...)
     layout = hbox!(label, slider, valuelabel; layoutkw...)
 
-    Base.depwarn("labelslider! is deprecated and will be removed in the future. Use SliderGrid instead." , :labelslider!, force = true)
+    Base.depwarn("labelslider! is deprecated and will be removed in the future. Use SliderGrid instead.", :labelslider!, force = true)
 
     if value_column_width === automatic
         maxwidth = 0.0
@@ -376,9 +376,9 @@ layout[1, 1] = ls.layout
 ```
 """
 function labelslidergrid!(scene, labels, ranges; formats = [string], value_column_width = automatic,
-        sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), layoutkw...)
+    sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), layoutkw...)
 
-    Base.depwarn("labelslidergrid! is deprecated and will be removed in the future. Use SliderGrid instead." , :labelslidergrid!, force = true)
+    Base.depwarn("labelslidergrid! is deprecated and will be removed in the future. Use SliderGrid instead.", :labelslidergrid!, force = true)
 
     elements = broadcast(labels, ranges, formats) do label, range, format
         slider = Slider(scene; range = range, sliderkw...)

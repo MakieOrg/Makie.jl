@@ -1,4 +1,4 @@
-const URL_CACHE = Dict{String, String}()
+const URL_CACHE = Dict{String,String}()
 
 function serve_update_page_from_dir(folder)
 
@@ -161,7 +161,7 @@ function serve_update_page(; commit = nothing, pr = nothing)
             elseif length(folders) == 1
                 folder = only(folders)
             else
-                menu = REPL.TerminalMenus.RadioMenu(folders, pagesize=4)
+                menu = REPL.TerminalMenus.RadioMenu(folders, pagesize = 4)
                 choice = REPL.TerminalMenus.request("Choose a reference image set:", menu)
 
                 if choice == -1
@@ -183,15 +183,15 @@ function serve_update_page(; commit = nothing, pr = nothing)
 end
 
 function unzip(file, exdir = "")
-    fileFullPath = isabspath(file) ?  file : joinpath(pwd(),file)
+    fileFullPath = isabspath(file) ? file : joinpath(pwd(), file)
     basePath = dirname(fileFullPath)
-    outPath = (exdir == "" ? basePath : (isabspath(exdir) ? exdir : joinpath(pwd(),exdir)))
+    outPath = (exdir == "" ? basePath : (isabspath(exdir) ? exdir : joinpath(pwd(), exdir)))
     isdir(outPath) ? "" : mkdir(outPath)
     @info "Extracting zip file $file to $outPath"
     zarchive = ZipFile.Reader(fileFullPath)
     for f in zarchive.files
-        fullFilePath = joinpath(outPath,f.name)
-        if (endswith(f.name,"/") || endswith(f.name,"\\"))
+        fullFilePath = joinpath(outPath, f.name)
+        if (endswith(f.name, "/") || endswith(f.name, "\\"))
             mkdir(fullFilePath)
         else
             write(fullFilePath, read(f))

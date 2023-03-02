@@ -42,10 +42,10 @@ end
 conversion_trait(::Type{<:Stem}) = PointBased()
 
 
-trunkpoint(stempoint::P, offset::Number) where P <: Point2 = P(stempoint[1], offset)
-trunkpoint(stempoint::P, offset::Point2) where P <: Point2 = P(offset...)
-trunkpoint(stempoint::P, offset::Number) where P <: Point3 = P(stempoint[1], stempoint[2], offset)
-trunkpoint(stempoint::P, offset::Point3) where P <: Point3 = P(offset...)
+trunkpoint(stempoint::P, offset::Number) where P<:Point2 = P(stempoint[1], offset)
+trunkpoint(stempoint::P, offset::Point2) where P<:Point2 = P(offset...)
+trunkpoint(stempoint::P, offset::Number) where P<:Point3 = P(stempoint[1], stempoint[2], offset)
+trunkpoint(stempoint::P, offset::Point3) where P<:Point3 = P(offset...)
 
 
 function plot!(s::Stem{<:Tuple{<:AbstractVector{<:Point}}})

@@ -90,7 +90,7 @@ function initialize_block!(tbox::Textbox)
         end
 
         if 0 < ci < length(bbs)
-            [leftline(bbs[ci+1])...]
+            [leftline(bbs[ci + 1])...]
         elseif ci == 0
             [leftline(bbs[1])...]
         else
@@ -125,7 +125,7 @@ function initialize_block!(tbox::Textbox)
 
         pos = state.data
         closest_charindex = argmin(
-            [sum((pos .- center(bb)).^2) for bb in displayed_charbbs[]]
+            [sum((pos .- center(bb)) .^ 2) for bb in displayed_charbbs[]]
         )
         # set cursor to index of closest char if right of center, or previous char if left of center
         cursorindex[] = if (pos .- center(displayed_charbbs[][closest_charindex]))[1] > 0
@@ -160,7 +160,7 @@ function initialize_block!(tbox::Textbox)
             empty!(displayed_chars[])
             index = 1
         end
-        newchars = [displayed_chars[][1:index-1]; c; displayed_chars[][index:end]]
+        newchars = [displayed_chars[][1:(index - 1)]; c; displayed_chars[][index:end]]
         tbox.displayed_string[] = join(newchars)
         cursorindex[] = index
     end
@@ -170,7 +170,7 @@ function initialize_block!(tbox::Textbox)
     end
 
     function removechar!(index)
-        newchars = [displayed_chars[][1:index-1]; displayed_chars[][index+1:end]]
+        newchars = [displayed_chars[][1:(index - 1)]; displayed_chars[][(index + 1):end]]
 
         if isempty(newchars)
             newchars = [' ']
@@ -343,7 +343,7 @@ function focus!(tb::Textbox)
                 [0, 1.0],
                 [Colors.alphacolor(COLOR_ACCENT[], 0), Colors.alphacolor(COLOR_ACCENT[], 1)],
                 Animations.sineio(n = 2, yoyo = true, postwait = 0.2)),
-                0.0, 0.0, 1000)
+            0.0, 0.0, 1000)
 
         if !isnothing(tb.cursoranimtask)
             Animations.stop(tb.cursoranimtask)

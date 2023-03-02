@@ -126,7 +126,7 @@ end
 ### the two plotting functions create linesegpairs in two different ways
 ### and then hit the same underlying implementation in `_plot_bars!`
 
-function Makie.plot!(plot::Errorbars{T}) where T <: Tuple{AbstractVector{<:VecTypes{4}}}
+function Makie.plot!(plot::Errorbars{T}) where T<:Tuple{AbstractVector{<:VecTypes{4}}}
 
     x_y_low_high = plot[1]
 
@@ -144,8 +144,8 @@ function Makie.plot!(plot::Errorbars{T}) where T <: Tuple{AbstractVector{<:VecTy
 
         map(x_y_low_high) do (x, y, l, h)
             in_y ?
-                (Point2f(x, y - l), Point2f(x, y + h)) :
-                (Point2f(x - l, y), Point2f(x + h, y))
+            (Point2f(x, y - l), Point2f(x, y + h)) :
+            (Point2f(x - l, y), Point2f(x + h, y))
         end
     end
 
@@ -153,7 +153,7 @@ function Makie.plot!(plot::Errorbars{T}) where T <: Tuple{AbstractVector{<:VecTy
 end
 
 
-function Makie.plot!(plot::Rangebars{T}) where T <: Tuple{AbstractVector{<:VecTypes{3}}}
+function Makie.plot!(plot::Rangebars{T}) where T<:Tuple{AbstractVector{<:VecTypes{3}}}
 
     val_low_high = plot[1]
 
@@ -171,8 +171,8 @@ function Makie.plot!(plot::Rangebars{T}) where T <: Tuple{AbstractVector{<:VecTy
 
         map(vlh) do (v, l, h)
             in_y ?
-                (Point2f(v, l), Point2f(v, h)) :
-                (Point2f(l, v), Point2f(h, v))
+            (Point2f(v, l), Point2f(v, h)) :
+            (Point2f(l, v), Point2f(h, v))
         end
     end
 
@@ -197,8 +197,8 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
         screenendpoints = scene_to_screen(endpoints, scene)
 
         screenendpoints_shifted_pairs = map(screenendpoints) do sep
-            (sep .+ f_if(is_in_y_direction[], reverse, Point(0, -whiskerwidth/2)),
-             sep .+ f_if(is_in_y_direction[], reverse, Point(0,  whiskerwidth/2)))
+            (sep .+ f_if(is_in_y_direction[], reverse, Point(0, -whiskerwidth / 2)),
+                sep .+ f_if(is_in_y_direction[], reverse, Point(0, whiskerwidth / 2)))
         end
 
         screen_to_scene([p for pair in screenendpoints_shifted_pairs for p in pair], scene)
@@ -213,7 +213,7 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
             return to_color(color)::RGBAf
         end
     end
-    whiskerlinewidths = Observable{Union{Float32, Vector{Float32}}}()
+    whiskerlinewidths = Observable{Union{Float32,Vector{Float32}}}()
     map!(whiskerlinewidths, linewidth) do linewidth
         # same for linewidth
         if linewidth isa AbstractVector
@@ -250,14 +250,14 @@ function screen_to_scene(pts, scene)
     [Point2.(p[Vec(1, 2)]...) for p in projected]
 end
 
-function scene_to_screen(p::T, scene) where T <: Point
+function scene_to_screen(p::T, scene) where T<:Point
     p4 = to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), 1.0)
     p1m1 = scene.camera.projectionview[] * p4
     projected = inv(scene.camera.pixel_space[]) * p1m1
     T(projected[Vec(1, 2)]...)
 end
 
-function screen_to_scene(p::T, scene) where T <: Point
+function screen_to_scene(p::T, scene) where T<:Point
     p4 = to_ndim(Vec4f, to_ndim(Vec3f, p, 0.0), 1.0)
     p1m1 = scene.camera.pixel_space[] * p4
     projected = inv(scene.camera.projectionview[]) * p1m1
@@ -266,6 +266,6 @@ end
 
 
 # ignore whiskers when determining data limits
-function data_limits(bars::Union{Errorbars, Rangebars})
+function data_limits(bars::Union{Errorbars,Rangebars})
     data_limits(bars.plots[1])
 end

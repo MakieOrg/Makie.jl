@@ -9,7 +9,7 @@ macro compile(block)
             # while precompiling
             # So we just do all parts of the stack we can do without browser
             scene = Makie.get_scene(figlike)
-            session = Session(JSServe.NoConnection(); asset_server=JSServe.NoServer())
+            session = Session(JSServe.NoConnection(); asset_server = JSServe.NoServer())
             three_display(session, scene)
             JSServe.jsrender(session, figlike)
             s = serialize_scene(scene)

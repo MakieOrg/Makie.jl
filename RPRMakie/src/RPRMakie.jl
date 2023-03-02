@@ -61,7 +61,7 @@ function __init__()
     return
 end
 
-for name in names(Makie; all=true)
+for name in names(Makie; all = true)
     if Base.isexported(Makie, name)
         @eval using Makie: $(name)
         @eval export $(name)

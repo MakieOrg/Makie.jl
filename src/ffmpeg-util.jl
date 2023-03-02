@@ -42,8 +42,8 @@ struct VideoStreamOptions
     rawvideo::Bool
 
     function VideoStreamOptions(
-            format::AbstractString, framerate::Integer, compression, profile,
-            pixel_format, loglevel::String, input::String, rawvideo::Bool=true)
+        format::AbstractString, framerate::Integer, compression, profile,
+        pixel_format, loglevel::String, input::String, rawvideo::Bool = true)
 
         if format == "mp4"
             (profile === nothing) && (profile = "high422")
@@ -56,8 +56,8 @@ struct VideoStreamOptions
 
         # items are name, value, allowed_formats
         allowed_kwargs = [("compression", compression, ("mp4", "webm")),
-                          ("profile", profile, ("mp4",)),
-                          ("pixel_format", pixel_format, ("mp4",))]
+            ("profile", profile, ("mp4",)),
+            ("pixel_format", pixel_format, ("mp4",))]
 
         for (name, value, allowed_formats) in allowed_kwargs
             if !(format in allowed_formats) && value !== nothing
@@ -91,11 +91,11 @@ struct VideoStreamOptions
     end
 end
 
-function VideoStreamOptions(; format="mp4", framerate=24, compression=nothing, profile=nothing, pixel_format=nothing, loglevel="quiet", input="pipe:0", rawvideo=true)
+function VideoStreamOptions(; format = "mp4", framerate = 24, compression = nothing, profile = nothing, pixel_format = nothing, loglevel = "quiet", input = "pipe:0", rawvideo = true)
     return VideoStreamOptions(format, framerate, compression, profile, pixel_format, loglevel, input, rawvideo)
 end
 
-function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer=0, ydim::Integer=0)
+function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer = 0, ydim::Integer = 0)
     # explanation of ffmpeg args. note that the order of args is important; args pertaining
     # to the input have to go before -i and args pertaining to the output have to go after.
     # -y: "yes", overwrite any existing without confirmation
@@ -199,15 +199,15 @@ $(Base.doc(VideoStreamOptions))
 * `screen_config...`: See `?Backend.Screen` or `Base.doc(Backend.Screen)` for applicable options that can be passed and forwarded to the backend.
 """
 function VideoStream(fig::FigureLike;
-        format="mp4", framerate=24, compression=nothing, profile=nothing, pixel_format=nothing, loglevel="quiet",
-        visible=false, connect=false, backend=current_backend(),
-        screen_config...)
+    format = "mp4", framerate = 24, compression = nothing, profile = nothing, pixel_format = nothing, loglevel = "quiet",
+    visible = false, connect = false, backend = current_backend(),
+    screen_config...)
 
     dir = mktempdir()
     path = joinpath(dir, "$(gensym(:video)).$(format)")
     scene = get_scene(fig)
     update_state_before_display!(fig)
-    screen = getscreen(backend, scene, GLNative; visible=visible, start_renderloop=false, screen_config...)
+    screen = getscreen(backend, scene, GLNative; visible = visible, start_renderloop = false, screen_config...)
     _xdim, _ydim = size(screen)
     xdim = iseven(_xdim) ? _xdim : _xdim + 1
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
@@ -251,7 +251,7 @@ function save(path::String, io::VideoStream; video_options...)
         # Maybe warn?
         convert_video(io.path, path; video_options...)
     else
-        cp(io.path, path; force=true)
+        cp(io.path, path; force = true)
     end
     rm(io.path)
     return path
@@ -260,12 +260,12 @@ end
 function convert_video(input_path, output_path; video_options...)
     p, typ = splitext(output_path)
     format = lstrip(typ, '.')
-    vso = VideoStreamOptions(; format=format, input=input_path, rawvideo=false, video_options...)
+    vso = VideoStreamOptions(; format = format, input = input_path, rawvideo = false, video_options...)
     cmd = to_ffmpeg_cmd(vso)
     @ffmpeg_env run(`$cmd $output_path`)
 end
 
-function extract_frames(video, frame_folder; loglevel="quiet")
+function extract_frames(video, frame_folder; loglevel = "quiet")
     path = joinpath(frame_folder, "frame%04d.png")
     FFMPEG.ffmpeg_exe(`-loglevel $(loglevel) -i $video -y $path`)
 end

@@ -1,8 +1,8 @@
 getnames(check_function::Function) = filter(check_function, uint32(0:65534))
 
 # gets all the names currently boundo to programs
-getProgramNames()      = getnames(glIsProgram)
-getShaderNames()       = getnames(glIsShader)
+getProgramNames() = getnames(glIsProgram)
+getShaderNames() = getnames(glIsShader)
 getVertexArrayNames() = getnames(glIsVertexArray)
 
 # display info for all active uniforms in a program
@@ -16,9 +16,9 @@ function getUniformsInfo(p::GLProgram)
     size = Ref{GLint}(0)
     type = Ref{GLenum}()
 
-    for i=0:activeUnif-1
+    for i in 0:(activeUnif - 1)
         glGetActiveUniform(program, i, bufSize, buflen, size, type, name)
-        println(String(name),  " ", buflen[], " ", size[], " ", GLENUM(type[]).name)
+        println(String(name), " ", buflen[], " ", size[], " ", GLENUM(type[]).name)
     end
 end
 
@@ -29,7 +29,7 @@ function uniform_name_type(p::GLProgram, location)
     size = Ref{GLint}(0)
     type = Ref{GLenum}()
     glGetActiveUniform(p.id, location, bufSize, buflen, size, type, name)
-    println(String(name),  " ", buflen[], " ", size[], " ", GLENUM(type[]).name)
+    println(String(name), " ", buflen[], " ", size[], " ", GLENUM(type[]).name)
 end
 
 # display the values for uniforms in the default block
@@ -68,8 +68,8 @@ function getAttributesInfo(p::GLProgram)
     # how many attribs?
     @show activeAttr = glGetProgramiv(program, GL_ACTIVE_ATTRIBUTES)
     # get location and type for each attrib
-    for i=0:activeAttr-1
-        @show name, typ, siz = glGetActiveAttrib(program,    i)
+    for i in 0:(activeAttr - 1)
+        @show name, typ, siz = glGetActiveAttrib(program, i)
         @show loc = glGetAttribLocation(program, name)
     end
 end

@@ -158,7 +158,7 @@ end
     @test_throws ArgumentError lines(1:10, axis = (aspect = DataAspect()), figure = (resolution = (100, 100)))
     @test_throws ArgumentError lines(1:10, figure = (resolution = (100, 100)))
     @test_throws ArgumentError lines(1:10, axis = (aspect = DataAspect()))
-    
+
     # these just shouldn't error
     lines(1:10, axis = (aspect = DataAspect(),))
     lines(1:10, axis = Attributes(aspect = DataAspect()))

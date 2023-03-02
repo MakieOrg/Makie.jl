@@ -40,17 +40,17 @@ push_screen!(scene, screen)
 """
 abstract type MakieScreen <: AbstractDisplay end
 
-const SceneLike = Union{AbstractScene, ScenePlot}
+const SceneLike = Union{AbstractScene,ScenePlot}
 
 """
 Main structure for holding attributes, for theming plots etc!
 Will turn all values into observables, so that they can be updated.
 """
 struct Attributes
-    attributes::Dict{Symbol, Observable}
+    attributes::Dict{Symbol,Observable}
 end
 
-struct Combined{Typ, T} <: ScenePlot{Typ}
+struct Combined{Typ,T} <: ScenePlot{Typ}
     parent::SceneLike
     transformation::Transformable
     attributes::Attributes
@@ -104,7 +104,7 @@ const px = Pixel(1)
 Billboard attribute to always have a primitive face the camera.
 Can be used for rotation.
 """
-struct Billboard{T <: Union{Float32, Vector{Float32}}}
+struct Billboard{T<:Union{Float32,Vector{Float32}}}
     rotation::T
 end
 Billboard() = Billboard(0f0)

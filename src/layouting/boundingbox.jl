@@ -3,7 +3,7 @@ function parent_transform(x)
     isnothing(p) ? Mat4f(I) : p.model[]
 end
 
-function boundingbox(x, exclude = (p)-> false)
+function boundingbox(x, exclude = (p) -> false)
     return parent_transform(x) * data_limits(x, exclude)
 end
 
@@ -130,7 +130,7 @@ _is_latex_string(x::LaTeXString) = true
 _is_latex_string(other) = false
 
 function text_bb(str, font, size)
-    rot = Quaternionf(0,0,0,1)
+    rot = Quaternionf(0, 0, 0, 1)
     fonts = nothing # TODO: remove the arg if possible
     layout = layout_text(
         str, size, font, fonts, Vec2f(0), rot, 0.5, 1.0,
@@ -142,23 +142,23 @@ end
 Calculate an approximation of a tight rectangle around a 2D rectangle rotated by `angle` radians.
 This is not perfect but works well enough. Check an A vs X to see the difference.
 """
-function rotatedrect(rect::Rect{2, T}, angle)::Rect{2, T} where T
+function rotatedrect(rect::Rect{2,T}, angle)::Rect{2,T} where T
     ox, oy = rect.origin
     wx, wy = rect.widths
-    points = Mat{2, 4, T}(
+    points = Mat{2,4,T}(
         ox, oy,
-        ox, oy+wy,
-        ox+wx, oy,
-        ox+wx, oy+wy
+        ox, oy + wy,
+        ox + wx, oy,
+        ox + wx, oy + wy
     )
-    mrot = Mat{2, 2, T}(
+    mrot = Mat{2,2,T}(
         cos(angle), -sin(angle),
         sin(angle), cos(angle)
     )
     rotated = mrot * points
 
-    rmins = minimum(rotated; dims=2)
-    rmaxs = maximum(rotated; dims=2)
+    rmins = minimum(rotated; dims = 2)
+    rmaxs = maximum(rotated; dims = 2)
 
     return Rect2(rmins..., (rmaxs .- rmins)...)
 end

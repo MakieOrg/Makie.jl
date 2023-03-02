@@ -17,14 +17,14 @@ $(ATTRIBUTES)
 @recipe(Arc, origin, radius, start_angle, stop_angle) do scene
     Attributes(;
         default_theme(scene, Lines)...,
-        resolution = 361,
+        resolution = 361
     )
 end
 
 function plot!(p::Arc)
     args = getindex.(p, (:origin, :radius, :start_angle, :stop_angle, :resolution))
     positions = lift(args...) do origin, radius, start_angle, stop_angle, resolution
-        map(range(start_angle, stop=stop_angle, length=resolution)) do angle
+        map(range(start_angle, stop = stop_angle, length = resolution)) do angle
             origin .+ Point2f((cos(angle), sin(angle)) .* radius)
         end
     end

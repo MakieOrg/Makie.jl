@@ -23,7 +23,7 @@ function used_attributes end
 
 abstract type ConversionTrait end
 
-const XYBased = Union{MeshScatter, Scatter, Lines, LineSegments}
+const XYBased = Union{MeshScatter,Scatter,Lines,LineSegments}
 
 struct NoConversion <: ConversionTrait end
 
@@ -32,16 +32,16 @@ conversion_trait(::Type) = NoConversion()
 convert_arguments(::NoConversion, args...) = args
 
 struct PointBased <: ConversionTrait end
-conversion_trait(::Type{<: XYBased}) = PointBased()
-conversion_trait(::Type{<: Text}) = PointBased()
+conversion_trait(::Type{<:XYBased}) = PointBased()
+conversion_trait(::Type{<:Text}) = PointBased()
 
 abstract type SurfaceLike <: ConversionTrait end
 
 struct ContinuousSurface <: SurfaceLike end
-conversion_trait(::Type{<: Union{Surface, Image}}) = ContinuousSurface()
+conversion_trait(::Type{<:Union{Surface,Image}}) = ContinuousSurface()
 
 struct DiscreteSurface <: SurfaceLike end
-conversion_trait(::Type{<: Heatmap}) = DiscreteSurface()
+conversion_trait(::Type{<:Heatmap}) = DiscreteSurface()
 
 struct VolumeLike <: ConversionTrait end
-conversion_trait(::Type{<: Volume}) = VolumeLike()
+conversion_trait(::Type{<:Volume}) = VolumeLike()

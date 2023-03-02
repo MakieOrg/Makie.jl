@@ -48,24 +48,24 @@ end
 
 earth_img = load(Downloads.download("https://upload.wikimedia.org/wikipedia/commons/5/56/Blue_Marble_Next_Generation_%2B_topography_%2B_bathymetry.jpg"))
 # the actual plot !
-RPRMakie.activate!(; iterations=100)
+RPRMakie.activate!(; iterations = 100)
 scene = with_theme(theme_dark()) do
-    fig = Figure(; resolution=(1000, 1000))
+    fig = Figure(; resolution = (1000, 1000))
     radiance = 30
     lights = [EnvironmentLight(0.5, load(RPR.assetpath("starmap_4k.tif"))),
-              PointLight(Vec3f(1, 1, 3), RGBf(radiance, radiance, radiance))]
-    ax = LScene(fig[1, 1]; show_axis=false, scenekw=(lights=lights,))
+        PointLight(Vec3f(1, 1, 3), RGBf(radiance, radiance, radiance))]
+    ax = LScene(fig[1, 1]; show_axis = false, scenekw = (lights = lights,))
     n = 1024 ÷ 4 # 2048
     θ = LinRange(0, pi, n)
     φ = LinRange(-pi, pi, 2 * n)
     xe = [cos(φ) * sin(θ) for θ in θ, φ in φ]
     ye = [sin(φ) * sin(θ) for θ in θ, φ in φ]
     ze = [cos(θ) for θ in θ, φ in φ]
-    surface!(ax, xe, ye, ze; color=earth_img)
-    meshscatter!(toPoints3D; color=1:length(toPoints3D), markersize=0.005, colormap=:plasma)
+    surface!(ax, xe, ye, ze; color = earth_img)
+    meshscatter!(toPoints3D; color = 1:length(toPoints3D), markersize = 0.005, colormap = :plasma)
     colors = Makie.default_palettes.color[]
     c = Iterators.cycle(colors)
-    foreach(((l, c),) -> lines!(ax, l; linewidth=2, color=c), zip(splitLines3D, c))
+    foreach(((l, c),) -> lines!(ax, l; linewidth = 2, color = c), zip(splitLines3D, c))
     ax.scene.camera_controls.eyeposition[] = Vec3f(1.5)
     return ax.scene
 end

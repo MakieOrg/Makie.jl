@@ -34,7 +34,7 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
     )
 end
 
-function Colorbar(fig_or_scene, heatmap::Union{Heatmap, Image}; kwargs...)
+function Colorbar(fig_or_scene, heatmap::Union{Heatmap,Image}; kwargs...)
 
     for key in (:colormap, :limits, :highclip, :lowclip)
         if key in keys(kwargs)
@@ -52,7 +52,7 @@ function Colorbar(fig_or_scene, heatmap::Union{Heatmap, Image}; kwargs...)
     )
 end
 
-function Colorbar(fig_or_scene, contourf::Union{Contourf, Tricontourf}; kwargs...)
+function Colorbar(fig_or_scene, contourf::Union{Contourf,Tricontourf}; kwargs...)
 
     for key in (:colormap, :limits, :highclip, :lowclip)
         if key in keys(kwargs)
@@ -119,15 +119,15 @@ function initialize_block!(cb::Colorbar)
         return c != compare
     end
 
-    lowclip_tri_visible = lift(isvisible, cb.lowclip, lift(x-> get(x, 0), cgradient))
-    highclip_tri_visible = lift(isvisible, cb.highclip, lift(x-> get(x, 1), cgradient))
+    lowclip_tri_visible = lift(isvisible, cb.lowclip, lift(x -> get(x, 0), cgradient))
+    highclip_tri_visible = lift(isvisible, cb.highclip, lift(x -> get(x, 1), cgradient))
 
     tri_heights = lift(highclip_tri_visible, lowclip_tri_visible, framebox) do hv, lv, box
         if cb.vertical[]
             (lv * width(box), hv * width(box))
         else
             (lv * height(box), hv * height(box))
-        end .* sin(pi/3)
+        end .* sin(pi / 3)
     end
 
     barsize = lift(tri_heights) do heights
@@ -182,14 +182,14 @@ function initialize_block!(cb::Colorbar)
         rects = if v
             yvals = s_scaled .* (ymax - ymin) .+ ymin
             [BBox(xmin, xmax, b, t)
-                for (b, t) in zip(yvals[1:end-1], yvals[2:end])]
+             for (b, t) in zip(yvals[1:(end - 1)], yvals[2:end])]
         else
             xvals = s_scaled .* (xmax - xmin) .+ xmin
             [BBox(l, r, ymin, ymax)
-                for (l, r) in zip(xvals[1:end-1], xvals[2:end])]
+             for (l, r) in zip(xvals[1:(end - 1)], xvals[2:end])]
         end
 
-        colors = get.(Ref(gradient), (steps[1:end-1] .+ steps[2:end]) ./2)
+        colors = get.(Ref(gradient), (steps[1:(end - 1)] .+ steps[2:end]) ./ 2)
         rects, colors
     end
 
@@ -226,11 +226,11 @@ function initialize_block!(cb::Colorbar)
             lb, rb = topline(box)
             l = lb
             r = rb
-            t = ((l .+ r) ./ 2) .+ Point2f(0, sqrt(sum((r .- l) .^ 2)) * sin(pi/3))
+            t = ((l .+ r) ./ 2) .+ Point2f(0, sqrt(sum((r .- l) .^ 2)) * sin(pi / 3))
             [l, r, t]
         else
             b, t = rightline(box)
-            r = ((b .+ t) ./ 2) .+ Point2f(sqrt(sum((t .- b) .^ 2)) * sin(pi/3), 0)
+            r = ((b .+ t) ./ 2) .+ Point2f(sqrt(sum((t .- b) .^ 2)) * sin(pi / 3), 0)
             [t, b, r]
         end
     end
@@ -248,11 +248,11 @@ function initialize_block!(cb::Colorbar)
             lb, rb = bottomline(box)
             l = lb
             r = rb
-            t = ((l .+ r) ./ 2) .- Point2f(0, sqrt(sum((r .- l) .^ 2)) * sin(pi/3))
+            t = ((l .+ r) ./ 2) .- Point2f(0, sqrt(sum((r .- l) .^ 2)) * sin(pi / 3))
             [l, r, t]
         else
             b, t = leftline(box)
-            l = ((b .+ t) ./ 2) .- Point2f(sqrt(sum((t .- b) .^ 2)) * sin(pi/3), 0)
+            l = ((b .+ t) ./ 2) .- Point2f(sqrt(sum((t .- b) .^ 2)) * sin(pi / 3), 0)
             [b, t, l]
         end
     end
@@ -294,7 +294,7 @@ function initialize_block!(cb::Colorbar)
     lines!(blockscene, borderpoints, linewidth = cb.spinewidth, color = cb.topspinecolor, inspectable = false)
 
     axispoints = lift(barbox, cb.vertical, cb.flipaxis) do scenearea,
-            vertical, flipaxis
+    vertical, flipaxis
 
         if vertical
             if flipaxis
@@ -331,7 +331,7 @@ function initialize_block!(cb::Colorbar)
 
 
     onany(axis.protrusion, cb.vertical, cb.flipaxis) do axprotrusion,
-            vertical, flipaxis
+    vertical, flipaxis
 
 
         left, right, top, bottom = 0f0, 0f0, 0f0, 0f0
