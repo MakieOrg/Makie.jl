@@ -625,11 +625,11 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     end
     notify(attr(:labelalign))
 
-    label = text!(topscene, attr(:label),
+    label = text!(topscene, label_position,
+        text = attr(:label),
         color = attr(:labelcolor),
         fontsize = attr(:labelsize),
         font = attr(:labelfont),
-        position = label_position,
         rotation = label_rotation,
         align = label_align,
         visible = attr(:labelvisible),

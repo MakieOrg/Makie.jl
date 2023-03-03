@@ -27,7 +27,7 @@ function calculate_protrusion(
 
     horizontal, labeltext, ticklabel_annotation_obs = closure_args
 
-    label_is_empty::Bool = iswhitespace(label) || isempty(label)
+    label_is_empty::Bool = iswhitespace(label)
 
     real_labelsize::Float32 = if label_is_empty
         0f0
@@ -289,7 +289,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
 
     map!(calculate_real_ticklabel_align, realticklabelalign, ticklabelalign, horizontal, flipped, ticklabelrotation)
 
-    ticklabel_annotation_obs = Observable(Tuple{AbstractString, Point2f}[]; ignore_equal_values=true)
+    ticklabel_annotation_obs = Observable(Tuple{Any, Point2f}[]; ignore_equal_values=true)
     ticklabels = nothing # this gets overwritten later to be used in the below
     ticklabel_ideal_space = Observable(0f0; ignore_equal_values=true)
 
@@ -409,14 +409,14 @@ function LineAxis(parent::Scene, attrs::Attributes)
 
     tickvalues = Observable(Float64[]; ignore_equal_values=true)
 
-    tickvalues_labels_unfiltered = Observable{Tuple{Vector{Float64},Vector{AbstractString}}}()
+    tickvalues_labels_unfiltered = Observable{Tuple{Vector{Float64},Vector{Any}}}()
     map!(tickvalues_labels_unfiltered, pos_extents_horizontal, limits, ticks, tickformat, attrs.scale) do (position, extents, horizontal),
             limits, ticks, tickformat, scale
         get_ticks(ticks, scale, tickformat, limits...)
     end
 
     tickpositions = Observable(Point2f[]; ignore_equal_values=true)
-    tickstrings = Observable(AbstractString[]; ignore_equal_values=true)
+    tickstrings = Observable(Any[]; ignore_equal_values=true)
 
     onany(update_tickpos_string,
         Observable((tickstrings, tickpositions, tickvalues, pos_extents_horizontal, limits)),

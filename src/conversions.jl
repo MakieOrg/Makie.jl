@@ -259,6 +259,43 @@ function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon}, MultiPoly
     return (arr,)
 end
 
+function convert_arguments(::PointBased, b::BezierPath)
+    b2 = replace_nonfreetype_commands(b)
+    points = Point2f[]
+    last_point = Point2f(NaN)
+    last_moveto = false
+
+    function poly3(t, p0, p1, p2, p3)
+        Point2f((1-t)^3 .* p0 .+ t*p1*(3*(1-t)^2) + p2*(3*(1-t)*t^2) .+ p3*t^3)
+    end
+
+    for command in b2.commands
+        if command isa MoveTo
+            last_point = command.p
+            last_moveto = true
+        elseif command isa LineTo
+            if last_moveto
+                isempty(points) || push!(points, Point2f(NaN, NaN))
+                push!(points, last_point)
+            end
+            push!(points, command.p)
+            last_point = command.p
+            last_moveto = false
+        elseif command isa CurveTo
+            if last_moveto
+                isempty(points) || push!(points, Point2f(NaN, NaN))
+                push!(points, last_point)
+            end
+            last_moveto = false
+            for t in range(0, 1, length = 30)[2:end]
+                push!(points, poly3(t, last_point, command.c1, command.c2, command.p))
+            end
+            last_point = command.p
+        end
+    end
+    return (points,)
+end
+
 
 ################################################################################
 #                                 SurfaceLike                                  #
