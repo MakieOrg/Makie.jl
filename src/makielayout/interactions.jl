@@ -244,9 +244,9 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
     if zoom != 0
         pa = pixelarea(scene)[]
 
-        z = (1f0 - s.speed)^zoom
+        z = (1.0 - s.speed)^zoom
 
-        mp_axscene = Vec4f((e.mouseposition[] .- pa.origin)..., 0, 1)
+        mp_axscene = Vec4e((e.mouseposition[] .- pa.origin)..., 0, 1)
 
         # first to normal -1..1 space
         mp_axfraction =  (cam.pixel_space[] * mp_axscene)[Vec(1, 2)] .*
@@ -276,11 +276,11 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
         timed_ticklabelspace_reset(ax, s.reset_timer, s.prev_xticklabelspace, s.prev_yticklabelspace, s.reset_delay)
 
         newrect_trans = if ispressed(scene, xzoomkey[])
-            Rectf(newxorigin, yorigin, newxwidth, ywidth)
+            Rect2(newxorigin, yorigin, newxwidth, ywidth)
         elseif ispressed(scene, yzoomkey[])
-            Rectf(xorigin, newyorigin, xwidth, newywidth)
+            Rect2(xorigin, newyorigin, xwidth, newywidth)
         else
-            Rectf(newxorigin, newyorigin, newxwidth, newywidth)
+            Rect2(newxorigin, newyorigin, newxwidth, newywidth)
         end
 
         inv_transf = Makie.inverse_transform(transf)
@@ -308,8 +308,8 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
     cam = camera(scene)
     pa = pixelarea(scene)[]
 
-    mp_axscene = Vec4f((event.px .- pa.origin)..., 0, 1)
-    mp_axscene_prev = Vec4f((event.prev_px .- pa.origin)..., 0, 1)
+    mp_axscene = Vec4e((event.px .- pa.origin)..., 0, 1)
+    mp_axscene_prev = Vec4e((event.prev_px .- pa.origin)..., 0, 1)
 
     mp_axfraction, mp_axfraction_prev = map((mp_axscene, mp_axscene_prev)) do mp
         # first to normal -1..1 space
@@ -347,7 +347,7 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
     timed_ticklabelspace_reset(ax, dp.reset_timer, dp.prev_xticklabelspace, dp.prev_yticklabelspace, dp.reset_delay)
 
     inv_transf = Makie.inverse_transform(transf)
-    newrect_trans = Rectf(Vec2f(xori, yori), widths(tlimits_trans))
+    newrect_trans = Rect2(Vec2e(xori, yori), widths(tlimits_trans))
     tlimits[] = Makie.apply_transform(inv_transf, newrect_trans)
 
     return Consume(true)

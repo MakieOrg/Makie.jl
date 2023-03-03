@@ -240,14 +240,9 @@ end
 
 function to_world(scene::Scene, point::T) where T <: StaticVector
     cam = scene.camera
-    x = to_world(
-        point,
-        inv(transformationmatrix(scene)[]) *
-        inv(cam.view[]) *
-        inv(cam.projection[]),
-        T(widths(pixelarea(scene)[]))
-    )
-    Point2f(x[1], x[2])
+    pvm = cam.projectionview[] * transformationmatrix(scene)[]
+    x = to_world(point, inv(pvm), widths(pixelarea(scene)[]))
+    return Point2{eltype(point)}(x[1], x[2])
 end
 
 w_component(x::Point) = 1.0
@@ -266,7 +261,7 @@ function to_world(
         T(0), w_component(p)
     )
     ws = prj_view_inv * pix_space
-    ws ./ ws[4]
+    return ws ./ ws[4]
 end
 
 function to_world(
