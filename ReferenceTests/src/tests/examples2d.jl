@@ -907,8 +907,8 @@ end
         lines!(ax, i .* [10, 10], [10, 590]; color, colormap, colorrange, linewidth = 5)
         scatter!(ax, fill(10 * i + 130, 50), range(10, 590, length = 50); color, colormap, colorrange)
         poly!(ax, Ref(Point2f(260, i * 50)) .+ Point2f[(0, 0), (50, 0), (25, 40)]; color, colormap, colorrange)
-        poly!(ax, [Ref(Point2f(430 + 20 * j, 20 * j + i * 50)) .+ Point2f[(0, 0), (30, 0), (15, 22)] for j in 1:3]; color, colormap, colorrange)
         text!(ax, 360, i * 50, text = "$i"; color, colormap, colorrange, fontsize = 40)
+        poly!(ax, [Ref(Point2f(430 + 20 * j, 20 * j + i * 50)) .+ Point2f[(0, 0), (30, 0), (15, 22)] for j in 1:3]; color, colormap, colorrange)
     end
     f
 end
