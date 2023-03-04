@@ -72,11 +72,15 @@ function plot!(plot::Text)
     pop!(attrs, :text)
     pop!(attrs, :align)
     pop!(attrs, :color)
+    pop!(attrs, :colormap)
+    pop!(attrs, :colorrange)
 
     t = text!(plot, glyphcollections; attrs..., position = positions)
     # remove attributes that the backends will choke on
     pop!(t.attributes, :font)
     pop!(t.attributes, :fonts)
+    pop!(t.attributes, :colormap) # the color attributes are already in the glyphcollection
+    pop!(t.attributes, :colorrange)
     linesegments!(plot, linesegs_shifted; linewidth = linewidths, color = linecolors, space = :pixel)
 
     plot
