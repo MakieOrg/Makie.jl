@@ -10,8 +10,11 @@ For example, this can be useful for picking categorical colors.
 The number `1` will pick the first and the number `2` the second color from the 10-color categorical map `:tab10`, for example, if the `colorrange` is set to `(1, 10)`.
 
 `NaN` values are usually displayed with `:transparent` color, so they are invisible.
-But this can usually be change with the attribute `nan_color`.
+This can be changed with the attribute `nan_color`.
+
 If values exceed the `colorrange` at the low or high end, by default the start or end color of the map is picked, unless the `lowclip` and `highclip` attributes are set to some other color.
+
+## Cheat Sheet
 
 Here's a little cheat sheet showing common color specifications:
 
