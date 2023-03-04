@@ -116,7 +116,7 @@ text!(ax, 4, 0, text = ":viridis",
 ylims!(ax, -1, 2)
 f
 ```
-\end{examplefigure})
+\end{examplefigure}
 
 The following is a list of all the colormaps accessible via a `Symbol` in Makie which are defined in ColorSchemes.jl:
 
