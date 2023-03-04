@@ -43,6 +43,9 @@ function create_shader(scene::Scene, plot::Union{Lines,LineSegments})
             end
         end
         if isscalar(attribute)
+            if k === :color && attribute[] isa Number
+                attribute = lift(x -> Makie.numbers_to_colors(x, plot), attribute)
+            end
             uniforms[k] = attribute
             uniforms[Symbol("$(k)_start")] = attribute
             uniforms[Symbol("$(k)_end")] = attribute
