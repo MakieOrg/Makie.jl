@@ -350,7 +350,7 @@ end
     end
     @testset "Legend" begin
         d = get_difference_dict() do scene
-            Legend(s, [
+            Legend(scene, [
                 MarkerElement(marker = :cross),
                 LineElement(),
                 PolyElement(),
