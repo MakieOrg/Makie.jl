@@ -11,7 +11,7 @@ function handle_color!(uniform_dict, instance_dict)
               color isa AbstractVector{<:Colorant} ||
               color === nothing
         delete!(uniform_dict, :colormap)
-    elseif color isa AbstractArray{<:Real}
+    elseif color isa Union{AbstractArray{<:Real}, Real}
         uniform_dict[:color_getter] = """
             vec4 get_color(){
                 vec2 norm = get_colorrange();
