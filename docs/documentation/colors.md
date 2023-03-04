@@ -14,6 +14,11 @@ This can be changed with the attribute `nan_color`.
 
 If values exceed the `colorrange` at the low or high end, by default the start or end color of the map is picked, unless the `lowclip` and `highclip` attributes are set to some other color.
 
+## Alpha or Opacity
+
+There are no `alpha` or `opacity` keywords in Makie.
+Instead, one can make partially transparent colors or colormaps by using a tuple `(color, alpha)`.
+
 ## Cheat Sheet
 
 Here's a little cheat sheet showing common color specifications:
