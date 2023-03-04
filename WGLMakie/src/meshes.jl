@@ -64,7 +64,9 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
             color = color_signal[]
         end
 
-        if color isa AbstractArray
+        if color isa Number
+            uniforms[:uniform_color] = lift(x -> Makie.numbers_to_colors(x, plot), color_signal)
+        elseif color isa AbstractArray
             if color isa AbstractVector
                 attributes[:color] = Buffer(color_signal) # per vertex colors
             else
