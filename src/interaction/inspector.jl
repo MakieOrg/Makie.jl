@@ -499,9 +499,7 @@ function show_data(inspector::DataInspector, plot::Scatter, idx)
 
     proj_pos = shift_project(scene, plot, to_ndim(Point3f, plot[1][][idx], 0))
     update_tooltip_alignment!(inspector, proj_pos)
-    ms = plot.markersize[]
 
-    tt.offset[] = 0.5ms + 2
     if haskey(plot, :inspector_label)
         tt.text[] = plot[:inspector_label][](plot, idx, plot[1][][idx])
     else
