@@ -314,6 +314,8 @@ returning a label. See Makie documentation for more detail.
 - `enable_indicators = true)`: Enables or disables indicators
 - `depth = 9e3`: Depth value of the tooltip. This should be high so that the
     tooltip is always in front.
+- `apply_tooltip_offset = true`: Enables or disables offsetting tooltips based 
+    on, for example, markersize.
 - and all attributes from `Tooltip`
 """
 function DataInspector(fig_or_block; kwargs...)
@@ -332,6 +334,7 @@ function DataInspector(scene::Scene; priority = 100, kwargs...)
         depth = pop!(attrib_dict, :depth, 9e3),
         enable_indicators = pop!(attrib_dict, :show_bbox_indicators, true),
         offset = get(attrib_dict, :offset, 10f0),
+        apply_tooltip_offset = pop!(attrib_dict, :apply_tooltip_offset, true),
 
         # Settings for indicators (plots that highlight the current selection)
         indicator_color = pop!(attrib_dict, :indicator_color, :red),
@@ -505,6 +508,11 @@ function show_data(inspector::DataInspector, plot::Scatter, idx)
     else
         tt.text[] = position2string(plot[1][][idx])
     end
+    tt.offset[] = ifelse(
+        a.apply_tooltip_offset[], 
+        0.5 * sv_getindex(plot.markersize[], idx) + 2, 
+        a.offset[]
+    )
     tt.visible[] = true
     a.indicator_visible[] && (a.indicator_visible[] = false)
 
@@ -581,12 +589,16 @@ function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, i
     p0, p1 = plot[1][][idx-1:idx]
     origin, dir = view_ray(scene)
     pos = closest_point_on_line(p0, p1, origin, dir)
-    lw = plot.linewidth[] isa Vector ? plot.linewidth[][idx] : plot.linewidth[]
 
     proj_pos = shift_project(scene, plot, to_ndim(Point3f, pos, 0))
     update_tooltip_alignment!(inspector, proj_pos)
 
-    tt.offset[] = lw + 2
+    tt.offset[] = ifelse(
+        a.apply_tooltip_offset[], 
+        sv_getindex(plot.linewidth[], idx) + 2, 
+        a.offset[]
+    )
+
     if haskey(plot, :inspector_label)
         tt.text[] = plot[:inspector_label][](plot, idx, typeof(p0)(pos))
     else
