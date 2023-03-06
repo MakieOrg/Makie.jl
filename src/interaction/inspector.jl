@@ -509,8 +509,8 @@ function show_data(inspector::DataInspector, plot::Scatter, idx)
         tt.text[] = position2string(plot[1][][idx])
     end
     tt.offset[] = ifelse(
-        a.apply_tooltip_offset[], 
-        0.5 * sv_getindex(plot.markersize[], idx) + 2, 
+        a.apply_tooltip_offset[],
+        0.5 * maximum(sv_getindex(plot.markersize[], idx)) + 2,
         a.offset[]
     )
     tt.visible[] = true
