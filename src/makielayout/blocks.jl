@@ -506,12 +506,13 @@ end
 function Base.delete!(block::Block)
     block.parent === nothing && return
     # detach plots, cameras, transformations, px_area
-    empty!(block.blockscene)
     # TODO: what about the lift of the parent scene's
     # `px_area`, should this be cleaned up as well?
     for finalizer in block.finalizers
         finalizer()
     end
+    # Empty the complete scene, which should delete all plots etc (and remove itself from the parent)
+    empty!(block.blockscene)
     gc = GridLayoutBase.gridcontent(block)
     if gc !== nothing
         GridLayoutBase.remove_from_gridlayout!(gc)

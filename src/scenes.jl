@@ -337,23 +337,6 @@ function Base.resize!(scene::Scene, rect::Rect2)
     pixelarea(scene)[] = rect
 end
 
-"""
-    getscreen(scene::Scene)
-
-Gets the current screen a scene is associated with.
-Returns nothing if not yet displayed on a screen.
-"""
-function getscreen(scene::Scene)
-    if isempty(scene.current_screens)
-        isroot(scene) && return nothing # stop search
-        return getscreen(parent(scene)) # screen could be in parent
-    end
-    # TODO, when would we actually want to get a specific screen?
-    return last(scene.current_screens)
-end
-
-getscreen(scene::SceneLike) = getscreen(rootparent(scene))
-
 # Just indexing into a scene gets you plot 1, plot 2 etc
 Base.iterate(scene::Scene, idx=1) = idx <= length(scene) ? (scene[idx], idx + 1) : nothing
 Base.length(scene::Scene) = length(scene.plots)

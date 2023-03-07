@@ -305,8 +305,28 @@ end
 
 function apply_screen_config! end
 
+"""
+    getscreen(scene::Scene)
+
+Gets the current screen a scene is associated with.
+Returns nothing if not yet displayed on a screen.
+"""
+function getscreen(scene::Scene, backend=current_backend())
+    if isempty(scene.current_screens)
+        isroot(scene) && return nothing # stop search
+    end
+    idx = findfirst(scene.current_srceens) do screen
+        parentmodule(typeof(screen)) === backend
+    end
+    isnothing(idx) && return nothing
+    # TODO, when would we actually want to get a specific screen?
+    return scene.current_screens[idx]
+end
+
+getscreen(scene::SceneLike, backend=current_backend()) = getscreen(get_scene(scene), backend)
+
 function getscreen(backend::Union{Missing, Module}, scene::Scene, args...; screen_config...)
-    screen = getscreen(scene)
+    screen = getscreen(scene, backend)
     config = Makie.merge_screen_config(backend.ScreenConfig, screen_config)
     if !isnothing(screen) && parentmodule(typeof(screen)) == backend
         return apply_screen_config!(screen, config, scene, args...)
