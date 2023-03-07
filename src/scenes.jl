@@ -389,51 +389,40 @@ function getindex(scene::Scene, ::Type{OldAxis})
     return nothing
 end
 
+function delete_scene!(scene::Scene)
+    @warn "deprecated in favor of empty!(scene)"
+    empty!(scene)
+    return nothing
+end
+
 function Base.empty!(scene::Scene)
-    events(scene).window_open[] = false
-    # clear all child scenes
-    foreach(_empty_recursion, scene.children)
-    empty!(scene.children)
     # clear plots of this scenes
-    for plot in reverse(scene.plots)
-        for screen in scene.current_screens
-            delete!(screen, scene, plot)
-        end
+    for screen in copy(scene.current_screens)
+        delete!(screen, scene)
     end
+    # clear all child scenes
+    if !isnothing(scene.parent)
+        filter!(x-> x !== scene, scene.parent.children)
+    end
+    scene.parent = nothing
+    foreach(empty!, copy(scene.children))
+    empty!(scene.children)
+
+    empty!(scene.current_screens)
     empty!(scene.plots)
     empty!(scene.theme)
     disconnect!(scene.camera)
     scene.camera_controls = EmptyCamera()
+
+    for field in [:backgroundcolor, :px_area, :visible]
+        Observables.clear(getfield(scene, field))
+    end
+    for fieldname in (:rotation, :translation, :scale, :transform_func, :model)
+        Observables.clear(getfield(scene.transformation, fieldname))
+    end
     return nothing
 end
 
-function _empty_recursion(scene::Scene)
-    # empty all children
-    foreach(_empty_recursion, scene.children)
-    empty!(scene.children)
-
-    # remove scene (and all its plots) from the rendering
-    for screen in scene.current_screens
-        delete!(screen, scene)
-    end
-    empty!(scene.plots)
-
-    # clean up some onsverables (there are probably more...)
-    disconnect!(scene.camera)
-    scene.camera_controls = EmptyCamera()
-
-    # top level scene.px_area needs to remain for GridLayout?
-    off.(scene.px_area.inputs)
-    empty!(scene.px_area.listeners)
-    for fieldname in (:rotation, :translation, :scale, :transform_func, :model)
-        obs = getfield(scene.transformation, fieldname)
-        if isdefined(obs, :inputs)
-            off.(obs.inputs)
-        end
-        empty!(obs.listeners)
-    end
-    return
-end
 
 Base.push!(scene::Combined, subscene) = nothing # Combined plots add themselves uppon creation
 

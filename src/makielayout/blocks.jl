@@ -493,15 +493,9 @@ end
 
 function Base.delete!(block::Block)
     block.parent === nothing && return
-    
+
     # detach plots, cameras, transformations, px_area
     empty!(block.blockscene)
-
-    s = get_topscene(block.parent)
-    deleteat!(
-        s.children,
-        findfirst(x -> x === block.blockscene, s.children)
-    )
     # TODO: what about the lift of the parent scene's
     # `px_area`, should this be cleaned up as well?
 
@@ -546,14 +540,6 @@ function remove_element(xs::AbstractArray)
 end
 
 function remove_element(::Nothing)
-end
-
-function delete_scene!(s::Scene)
-    for p in copy(s.plots)
-        delete!(s, p)
-    end
-    deleteat!(s.parent.children, findfirst(x -> x === s, s.parent.children))
-    nothing
 end
 
 # if a non-observable is passed, its value is converted and placed into an observable of
