@@ -274,12 +274,11 @@ function Scene(
         camera=nothing,
         camera_controls=parent.camera_controls,
         transformation=Transformation(parent),
-        current_screens=parent.current_screens,
         kw...
     )
     if isnothing(px_area)
         px_area = lift(zero_origin, parent.px_area; ignore_equal_values=true)
-    else
+    elseif !(px_area isa Observable) # observables are assumed to be already corrected against the parent to avoid double updates
         px_area = lift(pixelarea(parent), convert(Observable, px_area); ignore_equal_values=true) do p, a
             # make coordinates relative to parent
             rect = Rect2i(minimum(p) .+ minimum(a), widths(a))
@@ -289,6 +288,7 @@ function Scene(
     if camera !== parent.camera
         camera_controls = EmptyCamera()
     end
+
     child = Scene(;
         events=events,
         px_area=px_area,
@@ -297,7 +297,7 @@ function Scene(
         camera_controls=camera_controls,
         parent=parent,
         transformation=transformation,
-        current_screens=current_screens,
+        current_screens=copy(parent.current_screens),
         theme=theme(parent),
         kw...
     )

@@ -297,7 +297,6 @@ function singleton_screen(debugging::Bool)
     if !isempty(SINGLETON_SCREEN)
         @debug("reusing singleton screen")
         screen = SINGLETON_SCREEN[1]
-        @show isopen(screen)
         close(screen; reuse=false)
     else
         @debug("new singleton screen")

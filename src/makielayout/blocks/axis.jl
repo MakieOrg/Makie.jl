@@ -40,25 +40,31 @@ end
 function register_events!(ax, scene)
 
     mouseeventhandle = addmouseevents!(scene)
+    for obsfunc in mouseeventhandle.observerfuncs
+        push!(ax.finalizers, offcaller(obsfunc))
+    end
     setfield!(ax, :mouseeventhandle, mouseeventhandle)
     scrollevents = Observable(ScrollEvent(0, 0))
     setfield!(ax, :scrollevents, scrollevents)
     keysevents = Observable(KeysEvent(Set()))
     setfield!(ax, :keysevents, keysevents)
     evs = events(scene)
-    on(evs.scroll) do s
+
+    obsfunc = on(evs.scroll) do s
         if is_mouseinside(scene)
             scrollevents[] = ScrollEvent(s[1], s[2])
             return Consume(true)
         end
         return Consume(false)
     end
-
+    push!(ax.finalizers, offcaller(obsfunc))
+    
     # TODO this should probably just forward KeyEvent from Makie
-    on(evs.keyboardbutton) do e
+    obsfunc = on(evs.keyboardbutton) do e
         keysevents[] = KeysEvent(evs.keyboardstate)
         return Consume(false)
     end
+    push!(ax.finalizers, offcaller(obsfunc))
 
     interactions = Dict{Symbol, Tuple{Bool, Any}}()
     setfield!(ax, :interactions, interactions)

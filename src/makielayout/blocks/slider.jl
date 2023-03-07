@@ -90,6 +90,9 @@ function initialize_block!(sl::Slider)
         markersize = buttonsize, inspectable = false, marker=Circle)
 
     mouseevents = addmouseevents!(topscene, sl.layoutobservables.computedbbox)
+    for obsfunc in mouseevents.observerfuncs
+        push!(sl.finalizers, offcaller(obsfunc))
+    end
 
     onmouseleftdrag(mouseevents) do event
         dragging[] = true

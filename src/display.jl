@@ -25,45 +25,19 @@ end
 Adds a screen to the scene and registeres a clean up event when screen closes.
 Also, makes sure that always just one screen is active for on scene.
 """
-function push_screen!(scene::Scene, screen::MakieScreen)
-    if length(scene.current_screens) == 1 && scene.current_screens[1] === screen
-        # Nothing todo here, already displayed on screen
-        return
+function push_screen!(scene::Scene, screen::T) where {T<:MakieScreen}
+    if !(screen in scene.current_screens)
+        # If screen isn't already part of this scene, we make sure
+        # that the screen only has one screen per type
+        of_same_type = filter(x -> x isa T, scene.current_screens) # collect all of same type
+        foreach(x -> delete_screen!(scene, x), of_same_type)
+        # Now we can push the screen :)
+        push!(scene.current_screens, screen)
     end
-    # Else we delete all other screens, only one screen per scene is allowed!!
-
-    while !isempty(scene.current_screens)
-        delete_screen!(scene, pop!(scene.current_screens))
+    # Now only thing left is to make sure all children also have the screen!
+    for children in scene.children
+        push_screen!(children, screen)
     end
-
-    # Now we push the screen :)
-    push!(scene.current_screens, screen)
-    # deregister = nothing
-    # deregister = on(events(scene).window_open, priority=typemax(Int)) do is_open
-    #     # when screen closes, it should set the scene isopen event to false
-    #     # so that's when we can remove the screen
-    #     if !is_open
-    #         close(screen)
-    #         delete_screen!(scene, screen)
-    #         # deregister itself after letting other listeners run
-    #         if !isnothing(deregister)
-    #             off(deregister)
-
-    #             # if there are multiple listeners removing this one will skip the
-    #             # second one (now first). To fix this we run the listener manually here
-    #             callbacks = listeners(events(scene).window_open)
-    #             if length(callbacks) > 0
-    #                 result = Base.invokelatest(callbacks[1][2], is_open)
-    #                 if result isa Consume && result.x
-    #                     # if the second listener consumes we need to consume here
-    #                     # to avoid executing the third (now second).
-    #                     return Consume(true)
-    #                 end
-    #             end
-    #         end
-    #     end
-    #     return Consume(false)
-    # end
     return
 end
 

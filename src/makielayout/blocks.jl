@@ -16,6 +16,7 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
             parent::Union{Figure, Scene, Nothing}
             layoutobservables::Makie.LayoutObservables{GridLayout}
             blockscene::Scene
+            finalizers::Vector{Any}
         end
     end
 
@@ -165,9 +166,9 @@ function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
             # then default value
             d = quote
                 if haskey($sceneattrsym, $key)
-                    $sceneattrsym[$key]
+                    $sceneattrsym[$key][] # only use value of theme entry
                 elseif haskey($curthemesym, $key)
-                    $curthemesym[$key]
+                    $curthemesym[$key][] # only use value of theme entry
                 else
                     $default
                 end
@@ -358,18 +359,26 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
         suggestedbbox = bbox
     )
 
+    finalizers = []
+
+    px_area = Observable{Rect2i}()
+    obsfunc = on(topscene.px_area, update = true) do pxa
+        px_area[] = Makie.zero_origin(pxa)
+    end
+    push!(finalizers, offcaller(obsfunc))
+
     blockscene = Scene(
         topscene,
         # the block scene tracks the parent scene exactly
         # for this it seems to be necessary to zero-out a possible non-zero
         # origin of the parent
-        lift(Makie.zero_origin, topscene.px_area),
+        px_area,
         clear=false,
         camera = campixel!
     )
 
     # create base block with otherwise undefined fields
-    b = T(fig_or_scene, lobservables, blockscene)
+    b = T(fig_or_scene, lobservables, blockscene, finalizers)
 
     for (key, val) in attributes
         OT = fieldtype(T, key)
@@ -432,6 +441,9 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene},
     b
 end
 
+offcaller(o::ObserverFunction) = () -> off(o) || error("Failed to deregister ObserverFunction $o")
+offcaller(o::AbstractObservable, func) = () -> off(o, func) || error("Failed to deregister function $func from observable $o")
+
 
 """
 Get the scene which blocks need from their parent to plot stuff into
@@ -493,18 +505,22 @@ end
 
 function Base.delete!(block::Block)
     block.parent === nothing && return
-
     # detach plots, cameras, transformations, px_area
     empty!(block.blockscene)
     # TODO: what about the lift of the parent scene's
     # `px_area`, should this be cleaned up as well?
+    for finalizer in block.finalizers
+        finalizer()
+    end
+    gc = GridLayoutBase.gridcontent(block)
+    if gc !== nothing
+        GridLayoutBase.remove_from_gridlayout!(gc)
+    end
 
-    GridLayoutBase.remove_from_gridlayout!(GridLayoutBase.gridcontent(block))
-
-    on_delete(block)
-    delete_from_parent!(block.parent, block)
-    block.parent = nothing
-
+    if block.parent !== nothing
+        delete_from_parent!(block.parent, block)
+        block.parent = nothing
+    end
     return
 end
 
@@ -518,13 +534,6 @@ function delete_from_parent!(figure::Figure, block::Block)
         current_axis!(figure, nothing)
     end
     nothing
-end
-
-"""
-Overload to execute cleanup actions for specific blocks that go beyond
-deleting elements and removing from gridlayout
-"""
-function on_delete(block)
 end
 
 function remove_element(x)
