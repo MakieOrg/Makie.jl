@@ -553,6 +553,8 @@ function Base.empty!(screen::Screen)
     empty!(screen.screens)
     Observables.clear(screen.render_tick)
     Observables.clear(screen.window_open)
+    GLFW.PollEvents()
+    return
 end
 
 function destroy!(screen::Screen)
@@ -590,6 +592,7 @@ function Base.close(screen::Screen; reuse=true)
         push!(SCREEN_REUSE_POOL, screen)
     end
     GLFW.SetWindowShouldClose(screen.glscreen, true)
+    GLFW.PollEvents()
     return
 end
 
