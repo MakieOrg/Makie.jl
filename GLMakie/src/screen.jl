@@ -268,6 +268,7 @@ end
 const SCREEN_REUSE_POOL = Set{Screen}()
 
 function reopen!(screen::Screen)
+    @debug("reopening screen")
     gl = screen.glscreen
     @assert !was_destroyed(gl)
     if GLFW.WindowShouldClose(gl)
@@ -281,8 +282,10 @@ end
 
 function screen_from_pool(debugging)
     screen = if isempty(SCREEN_REUSE_POOL)
+        @debug("create empty screen for pool")
         empty_screen(debugging)
     else
+        @debug("get old screen from pool")
         pop!(SCREEN_REUSE_POOL)
     end
     return reopen!(screen)
@@ -292,9 +295,13 @@ const SINGLETON_SCREEN = Screen[]
 
 function singleton_screen(debugging::Bool)
     if !isempty(SINGLETON_SCREEN)
+        @debug("reusing singleton screen")
         screen = SINGLETON_SCREEN[1]
+        @show isopen(screen)
         close(screen; reuse=false)
     else
+        @debug("new singleton screen")
+        # reuse=false, because we "manually" re-use the singleton screen!
         screen = empty_screen(debugging; reuse=false)
         push!(SINGLETON_SCREEN, screen)
     end
@@ -308,6 +315,7 @@ function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene:
 end
 
 function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::Bool=true)
+    @debug("Applying screen config! to existing screen")
     glw = screen.glscreen
     ShaderAbstractions.switch_context!(glw)
     GLFW.SetWindowAttrib(glw, GLFW_FOCUS_ON_SHOW, config.focus_on_show)
@@ -368,6 +376,7 @@ function set_screen_visibility!(nw::GLFW.Window, visible::Bool)
 end
 
 function display_scene!(screen::Screen, scene::Scene)
+    @debug("display scene on screen")
     resize!(screen, size(scene)...)
     insertplots!(screen, scene)
     Makie.push_screen!(scene, screen)
@@ -522,9 +531,9 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
 end
 
 function Base.empty!(screen::Screen)
+    @debug("empty screen!")
     # we should never just "empty" an already destroyed screen
     @assert !was_destroyed(screen.glscreen)
-
 
     for plot in collect(values(screen.cache2plot))
         delete!(screen, Makie.rootparent(plot), plot)
@@ -547,6 +556,7 @@ function Base.empty!(screen::Screen)
 end
 
 function destroy!(screen::Screen)
+    @debug("Destroy screen!")
     close(screen; reuse=false)
     # wait for rendertask to finish
     # otherwise, during rendertask clean up we may run into a destroyed window
@@ -568,6 +578,7 @@ Closes screen and emptying it.
 Doesn't destroy the screen and instead frees it for being re-used again, if `reuse=true`.
 """
 function Base.close(screen::Screen; reuse=true)
+    @debug("Close screen!")
     set_screen_visibility!(screen, false)
     stop_renderloop!(screen; close_after_renderloop=false)
     if screen.window_open[] # otherwise we trigger an infinite loop of closing
@@ -575,6 +586,7 @@ function Base.close(screen::Screen; reuse=true)
     end
     empty!(screen)
     if reuse && screen.reuse
+        @debug("reusing screen!")
         push!(SCREEN_REUSE_POOL, screen)
     end
     GLFW.SetWindowShouldClose(screen.glscreen, true)
@@ -855,6 +867,8 @@ function on_demand_renderloop(screen::Screen)
             yield()
         end
     end
+    cause = screen.stop_renderloop ? "stopped renderloop" : "closing window"
+    @debug("Leaving renderloop, cause: $(cause)")
 end
 
 function renderloop(screen)
@@ -878,6 +892,7 @@ function renderloop(screen)
     end
     if screen.close_after_renderloop
         try
+            @debug("Closing screen after quiting renderloop!")
             close(screen)
         catch e
             @warn "error closing screen" exception=(e, Base.catch_backtrace())

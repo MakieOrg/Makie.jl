@@ -24,6 +24,7 @@ function Makie.window_open(scene::Scene, window::GLFW.Window)
     event = scene.events.window_open
     function windowclose(win)
         @print_error begin
+            @debug("Closing event from GLFW")
             event[] = false
         end
     end
