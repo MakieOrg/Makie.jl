@@ -90,13 +90,13 @@ function draw_background(screen::Screen, scene::Scene)
     Cairo.save(cr)
     if scene.clear[]
         bg = scene.backgroundcolor[]
-        Cairo.set_source_rgba(cr, red(bg), green(bg), blue(bg), alpha(bg));
+        Cairo.set_source_rgba(cr, red(bg), green(bg), blue(bg), alpha(bg))
         r = pixelarea(scene)[]
         Cairo.rectangle(cr, origin(r)..., widths(r)...) # background
         fill(cr)
     end
     Cairo.restore(cr)
-    foreach(child_scene-> draw_background(screen, child_scene), scene.children)
+    foreach(child_scene -> draw_background(screen, child_scene), scene.children)
 end
 
 function draw_plot(scene::Scene, screen::Screen, primitive::Combined)

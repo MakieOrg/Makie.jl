@@ -5,24 +5,24 @@ using Colors: N0f8
 f = (u, v) -> cos(v) * (6 - (5 / 4 + sin(3 * u)) * sin(u - 3 * v))
 g = (u, v) -> sin(v) * (6 - (5 / 4 + sin(3 * u)) * sin(u - 3 * v))
 h = (u, v) -> -cos(u - 3 * v) * (5 / 4 + sin(3 * u));
-u = range(0; stop=2π, length=150)
-v = range(0; stop=2π, length=150)
+u = range(0; stop = 2π, length = 150)
+v = range(0; stop = 2π, length = 150)
 radiance = 500
 lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
-          PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1))]
+    PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1))]
 
-fig = Figure(; resolution=(1500, 1000))
-ax = LScene(fig[1, 1]; show_axis=false, scenekw=(lights=lights,))
-screen = RPRMakie.Screen(size(ax.scene); plugin=RPR.Tahoe)
+fig = Figure(; resolution = (1500, 1000))
+ax = LScene(fig[1, 1]; show_axis = false, scenekw = (lights = lights,))
+screen = RPRMakie.Screen(size(ax.scene); plugin = RPR.Tahoe)
 material = RPR.UberMaterial(screen.matsys)
 
-surface!(ax, f.(u, v'), g.(u, v'), h.(u, v'); ambient=Vec3f(0.5), diffuse=Vec3f(1), specular=0.5,
-         colormap=:balance, material=material)
+surface!(ax, f.(u, v'), g.(u, v'), h.(u, v'); ambient = Vec3f(0.5), diffuse = Vec3f(1), specular = 0.5,
+    colormap = :balance, material = material)
 
 function Input(fig, val::RGB)
-    hue = Slider(fig; range=1:380, width=200)
-    lightness = Slider(fig; range=LinRange(0, 1, 100), width=200)
-    labels = [Label(fig, "hue"; halign=:left), Label(fig, "light"; halign=:left)]
+    hue = Slider(fig; range = 1:380, width = 200)
+    lightness = Slider(fig; range = LinRange(0, 1, 100), width = 200)
+    labels = [Label(fig, "hue"; halign = :left), Label(fig, "light"; halign = :left)]
     layout = grid!(hcat(labels, [hue, lightness]))
     hsl = HSL(val)
     set_close_to!(hue, hsl.h)
@@ -32,34 +32,34 @@ function Input(fig, val::RGB)
 end
 
 function Input(fig, val::Vec4)
-    s = Slider(fig; range=LinRange(0, 1, 100), width=200)
+    s = Slider(fig; range = LinRange(0, 1, 100), width = 200)
     set_close_to!(s, first(val))
     return map(x -> Vec4f(x), s.value), s
 end
 
 function Input(fig, val::Bool)
-    toggle = Toggle(fig; active=val)
+    toggle = Toggle(fig; active = val)
     return toggle.active, toggle
 end
 
-sliders = (reflection_color=Input(fig, RGB(0, 0, 0)), reflection_weight=Input(fig, Vec4(0)),
-           reflection_roughness=Input(fig, Vec4(0)), reflection_anisotropy=Input(fig, Vec4(0)),
-           reflection_anisotropy_rotation=Input(fig, Vec4(0)), reflection_mode=Input(fig, Vec4(0)),
-           reflection_ior=Input(fig, Vec4(0)), reflection_metalness=Input(fig, Vec4(0)),
-           refraction_color=Input(fig, RGB(0, 0, 0)), refraction_weight=Input(fig, Vec4(0)),
-           refraction_roughness=Input(fig, Vec4(0)), refraction_ior=Input(fig, Vec4(0)),
-           refraction_absorption_color=Input(fig, RGB(0, 0, 0)),
-           refraction_absorption_distance=Input(fig, Vec4(0)), refraction_caustics=Input(fig, true),
-           sss_scatter_color=Input(fig, RGB(0, 0, 0)), sss_scatter_distance=Input(fig, Vec4(0)),
-           sss_scatter_direction=Input(fig, Vec4(0)), sss_weight=Input(fig, Vec4(0)),
-           sss_multiscatter=Input(fig, false), backscatter_weight=Input(fig, Vec4(0)),
-           backscatter_color=Input(fig, RGB(0, 0, 0)))
+sliders = (reflection_color = Input(fig, RGB(0, 0, 0)), reflection_weight = Input(fig, Vec4(0)),
+    reflection_roughness = Input(fig, Vec4(0)), reflection_anisotropy = Input(fig, Vec4(0)),
+    reflection_anisotropy_rotation = Input(fig, Vec4(0)), reflection_mode = Input(fig, Vec4(0)),
+    reflection_ior = Input(fig, Vec4(0)), reflection_metalness = Input(fig, Vec4(0)),
+    refraction_color = Input(fig, RGB(0, 0, 0)), refraction_weight = Input(fig, Vec4(0)),
+    refraction_roughness = Input(fig, Vec4(0)), refraction_ior = Input(fig, Vec4(0)),
+    refraction_absorption_color = Input(fig, RGB(0, 0, 0)),
+    refraction_absorption_distance = Input(fig, Vec4(0)), refraction_caustics = Input(fig, true),
+    sss_scatter_color = Input(fig, RGB(0, 0, 0)), sss_scatter_distance = Input(fig, Vec4(0)),
+    sss_scatter_direction = Input(fig, Vec4(0)), sss_weight = Input(fig, Vec4(0)),
+    sss_multiscatter = Input(fig, false), backscatter_weight = Input(fig, Vec4(0)),
+    backscatter_color = Input(fig, RGB(0, 0, 0)))
 
 labels = []
 inputs = []
 refresh = Observable(nothing)
 for (key, (obs, input)) in pairs(sliders)
-    push!(labels, Label(fig, string(key); align=:left))
+    push!(labels, Label(fig, string(key); align = :left))
     push!(inputs, input)
     on(obs) do value
         @show key value
@@ -68,7 +68,7 @@ for (key, (obs, input)) in pairs(sliders)
     end
 end
 
-fig[1, 2] = grid!(hcat(labels, inputs); width=500)
+fig[1, 2] = grid!(hcat(labels, inputs); width = 500)
 GLMakie.activate!()
 
 cam = cameracontrols(ax.scene)
@@ -79,7 +79,7 @@ cam.fov[] = 30
 
 display(fig)
 
-context, task = RPRMakie.replace_scene_rpr!(ax.scene, screen; refresh=refresh)
+context, task = RPRMakie.replace_scene_rpr!(ax.scene, screen; refresh = refresh)
 
 # Change light parameters interactively
 begin

@@ -5,18 +5,18 @@
 # TODO replace this file by just `using Quaternions`
 
 struct Quaternion{T}
-    data::NTuple{4, T}
-    Quaternion{T}(x::NTuple{4, Any}) where T = new{T}(T.(x))
-    Quaternion{T}(x::NTuple{4, T}) where T = new{T}(x)
+    data::NTuple{4,T}
+    Quaternion{T}(x::NTuple{4,Any}) where T = new{T}(T.(x))
+    Quaternion{T}(x::NTuple{4,T}) where T = new{T}(x)
 end
 
 Base.eltype(::Quaternion{T}) where T = T
 Base.eltype(::Type{Quaternion{T}}) where T = T
-Base.length(::Type{<: Quaternion}) = 4
+Base.length(::Type{<:Quaternion}) = 4
 Base.length(::Quaternion) = 4
 
 const Quaternionf = Quaternion{Float32}
-const SMat{N, L} = Mat{N, N, T, L} where T
+const SMat{N,L} = Mat{N,N,T,L} where T
 
 function Base.show(io::IO, q::Quaternion)
     pm(x) = x < 0 ? " - $(-x)" : " + $x"
@@ -27,12 +27,12 @@ Random.rand(mt::AbstractRNG, ::Random.SamplerType{Quaternion}) = rand(mt, Quater
 Random.rand(mt::AbstractRNG, ::Random.SamplerType{Quaternion{T}}) where T = Quaternion(rand(mt, T), rand(mt, T), rand(mt, T), 1.0)
 
 Quaternion{T}(x1, x2, x3, s) where T = Quaternion{T}((x1, x2, x3, s))
-Base.convert(T::Type{<: Quaternion}, x::NTuple{4, Any}) = T(x)
-function Base.convert(T::Type{Quaternion{T1}}, x::Quaternion{T2}) where {T1, T2}
+Base.convert(T::Type{<:Quaternion}, x::NTuple{4,Any}) = T(x)
+function Base.convert(T::Type{Quaternion{T1}}, x::Quaternion{T2}) where {T1,T2}
     T(T2.(x.data))
 end
 Quaternion(x1, x2, x3, s) = Quaternion(promote(x1, x2, x3, s))
-Quaternion(x::NTuple{4, T}) where T = Quaternion{T}(x)
+Quaternion(x::NTuple{4,T}) where T = Quaternion{T}(x)
 Base.getindex(x::Quaternion, i::Integer) = x.data[i]
 Base.isapprox(x::Quaternion, y::Quaternion) = all((x.data .≈ y.data))
 
@@ -52,13 +52,13 @@ LinearAlgebra.normalize(q::Quaternion) = q / abs(q)
 
 Base.:(/)(q::Quaternion, x::Real) = Quaternion(q[1] / x, q[2] / x, q[3] / x, q[4] / x)
 
-function Base.:(*)(quat::Quaternion, vec::P) where {P <: StaticVector{2}}
+function Base.:(*)(quat::Quaternion, vec::P) where {P<:StaticVector{2}}
     T = eltype(vec)
     x3 = quat * Vec(vec[1], vec[2], T(0))
     return P(x3[1], x3[2])
 end
 
-function Base.:(*)(quat::Quaternion{T}, vec::P) where {T, P <: StaticVector{3}}
+function Base.:(*)(quat::Quaternion{T}, vec::P) where {T,P<:StaticVector{3}}
     num = quat[1] * T(2)
     num2 = quat[2] * T(2)
     num3 = quat[3] * T(2)
@@ -92,45 +92,45 @@ function Base.:(*)(q::Quaternion, w::Quaternion)
     )
 end
 
-SMat{N, L}(q::Quaternion{T}) where {N, T, L} = Mat{N, N, T, L}(q)
+SMat{N,L}(q::Quaternion{T}) where {N,T,L} = Mat{N,N,T,L}(q)
 
-function Mat4{ET}(q::Quaternion{T}) where {T, ET}
-    sx, sy, sz = 2q[4]*q[1],  2q[4]*q[2],   2q[4]*q[3]
-    xx, xy, xz = 2q[1]^2,    2q[1]*q[2],  2q[1]*q[3]
-    yy, yz, zz = 2q[2]^2,    2q[2]*q[3],  2q[3]^2
+function Mat4{ET}(q::Quaternion{T}) where {T,ET}
+    sx, sy, sz = 2q[4] * q[1], 2q[4] * q[2], 2q[4] * q[3]
+    xx, xy, xz = 2q[1]^2, 2q[1] * q[2], 2q[1] * q[3]
+    yy, yz, zz = 2q[2]^2, 2q[2] * q[3], 2q[3]^2
     T0, T1 = zero(ET), one(ET)
-    return Mat{4, 4, ET}(
-        T1-(yy+zz), xy+sz,      xz-sy,      T0,
-        xy-sz,      T1-(xx+zz), yz+sx,      T0,
-        xz+sy,      yz-sx,      T1-(xx+yy), T0,
-        T0,         T0,         T0,         T1
+    return Mat{4,4,ET}(
+        T1 - (yy + zz), xy + sz, xz - sy, T0,
+        xy - sz, T1 - (xx + zz), yz + sx, T0,
+        xz + sy, yz - sx, T1 - (xx + yy), T0,
+        T0, T0, T0, T1
     )
 end
 
 concrete_type(::Type{Any}, ::Type{T}) where T = T
 concrete_type(::Type{T}, x) where T = T
 
-function Mat3{ET}(q::Quaternion{T}) where {T, ET}
-    sx, sy, sz = 2q[4]*q[1], 2q[4]*q[2],  2q[4]*q[3]
-    xx, xy, xz = 2q[1]^2,   2q[1]*q[2], 2q[1]*q[3]
-    yy, yz, zz = 2q[2]^2,   2q[2]*q[3], 2q[3]^2
+function Mat3{ET}(q::Quaternion{T}) where {T,ET}
+    sx, sy, sz = 2q[4] * q[1], 2q[4] * q[2], 2q[4] * q[3]
+    xx, xy, xz = 2q[1]^2, 2q[1] * q[2], 2q[1] * q[3]
+    yy, yz, zz = 2q[2]^2, 2q[2] * q[3], 2q[3]^2
     T0, T1 = zero(ET), one(ET)
-    return Mat{3, 3, ET}(
-        T1-(yy+zz), xy+sz,      xz-sy,
-        xy-sz,      T1-(xx+zz), yz+sx,
-        xz+sy,      yz-sx,      T1-(xx+yy)
+    return Mat{3,3,ET}(
+        T1 - (yy + zz), xy + sz, xz - sy,
+        xy - sz, T1 - (xx + zz), yz + sx,
+        xz + sy, yz - sx, T1 - (xx + yy)
     )
 end
 
-function orthogonal(v::T) where T <: StaticVector{3}
+function orthogonal(v::T) where T<:StaticVector{3}
     x, y, z = abs.(v)
     other = x < y ? (x < z ? unit(T, 1) : unit(T, 3)) : (y < z ? unit(T, 2) : unit(T, 3))
     return cross(v, other)
 end
 
-function rotation_between(u::StaticVector{3, T}, v::StaticVector{3, T}) where T
+function rotation_between(u::StaticVector{3,T}, v::StaticVector{3,T}) where T
     k_cos_theta = dot(u, v)
-    k = sqrt((norm(u) ^ 2) * (norm(v) ^ 2))
+    k = sqrt((norm(u)^2) * (norm(v)^2))
     if (k_cos_theta / k) ≈ T(-1)
         # 180 degree rotation around any orthogonal vector
         return Quaternion(normalize(orthogonal(u))..., T(0))

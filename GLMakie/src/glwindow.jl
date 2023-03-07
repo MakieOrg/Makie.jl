@@ -3,7 +3,7 @@ Selection of random objects on the screen is realized by rendering an
 object id + plus an arbitrary index into the framebuffer.
 The index can be used for e.g. instanced geometries.
 """
-struct SelectionID{T <: Integer}
+struct SelectionID{T<:Integer}
     id::T
     index::T
 end
@@ -11,11 +11,11 @@ Base.convert(::Type{SelectionID{T}}, s::SelectionID) where T = SelectionID{T}(T(
 Base.zero(::Type{GLMakie.SelectionID{T}}) where T = SelectionID{T}(T(0), T(0))
 
 mutable struct GLFramebuffer
-    resolution::Observable{NTuple{2, Int}}
+    resolution::Observable{NTuple{2,Int}}
     id::GLuint
 
-    buffer_ids::Dict{Symbol, GLuint}
-    buffers::Dict{Symbol, Texture}
+    buffer_ids::Dict{Symbol,GLuint}
+    buffers::Dict{Symbol,Texture}
     render_buffer_ids::Vector{GLuint}
 end
 
@@ -29,12 +29,12 @@ function getfallback(fb::GLFramebuffer, key::Symbol, fallback_key::Symbol)
 end
 
 
-function attach_framebuffer(t::Texture{T, 2}, attachment) where T
+function attach_framebuffer(t::Texture{T,2}, attachment) where T
     glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, t.id, 0)
 end
 
 # attach texture as color attachment with automatic id picking
-function attach_colorbuffer!(fb::GLFramebuffer, key::Symbol, t::Texture{T, 2}) where T
+function attach_colorbuffer!(fb::GLFramebuffer, key::Symbol, t::Texture{T,2}) where T
     if haskey(fb.buffer_ids, key) || haskey(fb.buffers, key)
         error("Key $key already exists.")
     end
@@ -56,7 +56,7 @@ function attach_colorbuffer!(fb::GLFramebuffer, key::Symbol, t::Texture{T, 2}) w
     return next_color_id
 end
 
-function GLFramebuffer(fb_size::NTuple{2, Int})
+function GLFramebuffer(fb_size::NTuple{2,Int})
     # Create framebuffer
     frambuffer_id = glGenFramebuffers()
     glBindFramebuffer(GL_FRAMEBUFFER, frambuffer_id)
@@ -68,7 +68,7 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     )
     # Holds a (plot id, element id) for point picking
     objectid_buffer = Texture(
-        Vec{2, GLuint}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
+        Vec{2,GLuint}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
     )
     # holds depth and stencil values
     depth_buffer = Texture(
@@ -101,20 +101,20 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     # track of the buffer ids that are already in use. We may also want to reuse
     # buffers so we give them names for easy fetching.
     buffer_ids = Dict(
-        :color    => GL_COLOR_ATTACHMENT0,
+        :color => GL_COLOR_ATTACHMENT0,
         :objectid => GL_COLOR_ATTACHMENT1,
         :HDR_color => GL_COLOR_ATTACHMENT2,
         :OIT_weight => GL_COLOR_ATTACHMENT3,
-        :depth    => GL_DEPTH_ATTACHMENT,
-        :stencil  => GL_STENCIL_ATTACHMENT,
+        :depth => GL_DEPTH_ATTACHMENT,
+        :stencil => GL_STENCIL_ATTACHMENT,
     )
     buffers = Dict(
-        :color    => color_buffer,
+        :color => color_buffer,
         :objectid => objectid_buffer,
         :HDR_color => HDR_color_buffer,
         :OIT_weight => OIT_weight_buffer,
-        :depth    => depth_buffer,
-        :stencil  => depth_buffer
+        :depth => depth_buffer,
+        :stencil => depth_buffer
     )
 
     return GLFramebuffer(
@@ -126,7 +126,7 @@ end
 
 function Base.resize!(fb::GLFramebuffer, window_size)
     ws = Int.((window_size[1], window_size[2]))
-    if ws != size(fb) && all(x-> x > 0, window_size)
+    if ws != size(fb) && all(x -> x > 0, window_size)
         for (name, buffer) in fb.buffers
             resize_nocopy!(buffer, ws)
         end
@@ -139,22 +139,22 @@ end
 struct MonitorProperties
     name::String
     isprimary::Bool
-    position::Vec{2, Int}
-    physicalsize::Vec{2, Int}
+    position::Vec{2,Int}
+    physicalsize::Vec{2,Int}
     videomode::GLFW.VidMode
     videomode_supported::Vector{GLFW.VidMode}
-    dpi::Vec{2, Float64}
+    dpi::Vec{2,Float64}
     monitor::GLFW.Monitor
 end
 
 function MonitorProperties(monitor::GLFW.Monitor)
     name = GLFW.GetMonitorName(monitor)
     isprimary = GLFW.GetPrimaryMonitor() == monitor
-    position = Vec{2, Int}(GLFW.GetMonitorPos(monitor)...)
-    physicalsize = Vec{2, Int}(GLFW.GetMonitorPhysicalSize(monitor)...)
+    position = Vec{2,Int}(GLFW.GetMonitorPos(monitor)...)
+    physicalsize = Vec{2,Int}(GLFW.GetMonitorPhysicalSize(monitor)...)
     videomode = GLFW.GetVideoMode(monitor)
     sfactor = Sys.isapple() ? 2.0 : 1.0
-    dpi = Vec(videomode.width * 25.4, videomode.height * 25.4) * sfactor ./ Vec{2, Float64}(physicalsize)
+    dpi = Vec(videomode.width * 25.4, videomode.height * 25.4) * sfactor ./ Vec{2,Float64}(physicalsize)
     videomode_supported = GLFW.GetVideoModes(monitor)
 
     MonitorProperties(name, isprimary, position, physicalsize, videomode, videomode_supported, dpi, monitor)

@@ -110,7 +110,7 @@ Note, that the `screen_config` can also be set permanently via `Makie.set_theme!
 
 $(Base.doc(ScreenConfig))
 """
-function activate!(; inline=LAST_INLINE[], type="png", screen_config...)
+function activate!(; inline = LAST_INLINE[], type = "png", screen_config...)
     Makie.inline!(inline)
     LAST_INLINE[] = inline
     Makie.set_screen_config!(CairoMakie, screen_config)
@@ -222,7 +222,7 @@ function scaled_scene_resolution(typ::RenderType, config::ScreenConfig, scene::S
 end
 
 function Makie.apply_screen_config!(
-        screen::Screen{SCREEN_RT}, config::ScreenConfig, scene::Scene, io::Union{Nothing, IO}, m::MIME{SYM}) where {SYM, SCREEN_RT}
+    screen::Screen{SCREEN_RT}, config::ScreenConfig, scene::Scene, io::Union{Nothing,IO}, m::MIME{SYM}) where {SYM,SCREEN_RT}
     # the surface size is the scene size scaled by the device scaling factor
     new_rendertype = mime_to_rendertype(SYM)
     # we need to re-create the screen if the rendertype changes, or for all vector backends
@@ -251,7 +251,7 @@ end
 
 Screen(scene::Scene, config::ScreenConfig) = Screen(scene, config, nothing, IMAGE)
 
-function Screen(screen::Screen, io_or_path::Union{Nothing, String, IO}, typ::Union{MIME, Symbol, RenderType})
+function Screen(screen::Screen, io_or_path::Union{Nothing,String,IO}, typ::Union{MIME,Symbol,RenderType})
     rtype = convert(RenderType, typ)
     # the resolution may change between rendertypes, so, we can't just use `size(screen)` here for recreating the Screen:
     w, h = scaled_scene_resolution(rtype, screen.config, screen.scene)
@@ -259,7 +259,7 @@ function Screen(screen::Screen, io_or_path::Union{Nothing, String, IO}, typ::Uni
     return Screen(screen.scene, screen.config, surface)
 end
 
-function Screen(scene::Scene, config::ScreenConfig, io_or_path::Union{Nothing, String, IO}, typ::Union{MIME, Symbol, RenderType})
+function Screen(scene::Scene, config::ScreenConfig, io_or_path::Union{Nothing,String,IO}, typ::Union{MIME,Symbol,RenderType})
     rtype = convert(RenderType, typ)
     w, h = scaled_scene_resolution(rtype, config, scene)
     surface = surface_from_output_type(rtype, io_or_path, w, h)

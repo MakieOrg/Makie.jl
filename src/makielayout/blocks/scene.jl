@@ -1,7 +1,7 @@
 function Makie.plot!(
-        lscene::LScene, P::Makie.PlotFunc,
-        attributes::Makie.Attributes, args...;
-        kw_attributes...)
+    lscene::LScene, P::Makie.PlotFunc,
+    attributes::Makie.Attributes, args...;
+    kw_attributes...)
 
     plot = Makie.plot!(lscene.scene, P, attributes, args...; kw_attributes...)
     notify(lscene.scene.theme.limits)
@@ -19,7 +19,7 @@ end
 function initialize_block!(ls::LScene; scenekw = NamedTuple())
     blockscene = ls.blockscene
     # pick a camera and draw axis.
-    scenekw = merge((clear = false, camera=cam3d!), scenekw)
+    scenekw = merge((clear = false, camera = cam3d!), scenekw)
     ls.scene = Scene(blockscene, lift(round_to_IRect2D, ls.layoutobservables.computedbbox); scenekw...)
 
     on(ls.show_axis) do show_axis
@@ -42,7 +42,7 @@ function initialize_block!(ls::LScene; scenekw = NamedTuple())
                 end
                 Makie.axis3d!(ls.scene, limits)
                 # Make sure axis is always in pos 1
-                sort!(ls.scene.plots, by=!Makie.isaxis)
+                sort!(ls.scene.plots, by = !Makie.isaxis)
             else
                 ax.visible = true
             end

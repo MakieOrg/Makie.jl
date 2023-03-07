@@ -31,7 +31,7 @@ Draw a violin plot.
         max_density = automatic,
         show_median = false,
         mediancolor = theme(scene, :linecolor),
-        medianlinewidth = theme(scene, :linewidth),
+        medianlinewidth = theme(scene, :linewidth)
     )
 end
 
@@ -62,7 +62,7 @@ function plot!(plot::Violin)
 
         # Allow `side` to be either scalar or vector
         sides = broadcast(x̂, vside) do _, s
-            return s === :left ? - 1 : s === :right ? 1 : 0
+            return s === :left ? -1 : s === :right ? 1 : 0
         end
 
         sa = StructArray((x = x̂, side = sides))
@@ -92,11 +92,11 @@ function plot!(plot::Violin)
         end
 
         vertices = Vector{Point2f}[]
-        lines = Pair{Point2f, Point2f}[]
+        lines = Pair{Point2f,Point2f}[]
         colors = RGBA{Float32}[]
 
         for spec in specs
-            scale = 0.5*violinwidth/max
+            scale = 0.5 * violinwidth / max
             xl = reverse(spec.x .- spec.kde.density .* scale)
             xr = spec.x .+ spec.kde.density .* scale
             yl = reverse(spec.kde.x)
@@ -116,8 +116,8 @@ function plot!(plot::Violin)
                 # interpolate median bounds between corresponding points
                 xm = spec.median
                 ip = findfirst(>(xm), spec.kde.x)
-                ym₋, ym₊ = spec.kde.density[ip-1], spec.kde.density[ip]
-                xm₋, xm₊ = spec.kde.x[ip-1], spec.kde.x[ip]
+                ym₋, ym₊ = spec.kde.density[ip - 1], spec.kde.density[ip]
+                xm₋, xm₊ = spec.kde.x[ip - 1], spec.kde.x[ip]
                 ym = (xm * (ym₊ - ym₋) + xm₊ * ym₋ - xm₋ * ym₊) / (xm₊ - xm₋)
                 median_left = point_func(spec.side == 1 ? spec.x : spec.x - ym * scale, xm)
                 median_right = point_func(spec.side == -1 ? spec.x : spec.x + ym * scale, xm)

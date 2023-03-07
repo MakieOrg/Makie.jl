@@ -6,7 +6,7 @@ function writebmp(io, img)
     # be a multiple of 4 bytes.
     extrabytes = 4 - ((w * 3) % 4)
     (extrabytes == 4) && (extrabytes = 0)
-    paddedsize = ((w * 3) + extrabytes) * h;
+    paddedsize = ((w * 3) + extrabytes) * h
 
     # file header
     write(io, b"BM")
@@ -34,7 +34,7 @@ function writebmp(io, img)
             write(io, reinterpret(UInt8, green(rgb)))
             write(io, reinterpret(UInt8, red(rgb)))
         end
-        for i = 1:extrabytes
+        for i in 1:extrabytes
             write(io, UInt8(0))
         end
     end

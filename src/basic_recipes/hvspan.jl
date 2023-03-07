@@ -14,9 +14,9 @@ All style attributes are the same as for `Poly`.
         xmin = 0,
         xmax = 1,
         default_theme(Poly, scene)...,
-        cycle = [:color => :patchcolor],
+        cycle = [:color => :patchcolor]
     )
-    end
+end
 
 """
     vspan(xs_low, xs_high; ymin = 0.0, ymax = 1.0, attrs...)
@@ -34,11 +34,11 @@ All style attributes are the same as for `Poly`.
         ymin = 0,
         ymax = 1,
         default_theme(Poly, scene)...,
-        cycle = [:color => :patchcolor],
+        cycle = [:color => :patchcolor]
     )
 end
 
-function Makie.plot!(p::Union{HSpan, VSpan})
+function Makie.plot!(p::Union{HSpan,VSpan})
     scene = Makie.parent_scene(p)
     transf = transform_func_obs(scene)
 
@@ -48,7 +48,7 @@ function Makie.plot!(p::Union{HSpan, VSpan})
 
     mi = p isa HSpan ? p.xmin : p.ymin
     ma = p isa HSpan ? p.xmax : p.ymax
-    
+
     onany(limits, p[1], p[2], mi, ma, transf) do lims, lows, highs, mi, ma, transf
         inv = inverse_transform(transf)
         empty!(rects[])

@@ -36,7 +36,7 @@ EllipticalArc(cx, cy, r1, r2, angle, a1, a2) = EllipticalArc(Point(cx, cy),
 
 struct ClosePath end
 
-const PathCommand = Union{MoveTo, LineTo, CurveTo, EllipticalArc, ClosePath}
+const PathCommand = Union{MoveTo,LineTo,CurveTo,EllipticalArc,ClosePath}
 
 struct BezierPath
     commands::Vector{PathCommand}
@@ -54,7 +54,7 @@ StableHashTraits.transform(c::ClosePath) = 0
 Base.:(==)(b1::BezierPath, b2::BezierPath) = b1.commands == b2.commands
 Base.broadcastable(b::BezierPath) = Ref(b)
 
-function Base.:+(pc::P, p::Point2) where P <: PathCommand
+function Base.:+(pc::P, p::Point2) where P<:PathCommand
     fnames = fieldnames(P)
     return P(map(f -> getfield(pc, f) + p, fnames)...)
 end
@@ -85,7 +85,7 @@ function scale(e::EllipticalArc, v::VecTypes{2})
     elseif x < 0 && y > 0
         pi - e.angle, -e.a1, -e.a2
     else
-        pi - e.angle, pi-e.a1, pi-e.a2
+        pi - e.angle, pi - e.a1, pi - e.a2
     end
     EllipticalArc(e.c .* v, e.r1 * abs(x), e.r2 * abs(y), ang, a1, a2)
 end
@@ -96,7 +96,7 @@ rotate(c::ClosePath, a) = c
 rotate(l::LineTo, a) = LineTo(rotmatrix2d(a) * l.p)
 function rotate(c::CurveTo, a)
     m = rotmatrix2d(a)
-    CurveTo(m * c.c1, m * c.c2, m *c.p)
+    CurveTo(m * c.c1, m * c.c2, m * c.p)
 end
 function rotate(e::EllipticalArc, a)
     m = rotmatrix2d(a)
@@ -148,9 +148,9 @@ const BezierUTriangle = let
     h = 0.97 # sqrt(aspect) * sqrt(2)
     w = 0.97 # 1/sqrt(aspect) * sqrt(2)
     # r = Float32(sqrt(1 / (3 * sqrt(3) / 4)))
-    p1 = Point(0, h/2)
-    p2 = Point2(-w/2, -h/2)
-    p3 = Point2(w/2, -h/2)
+    p1 = Point(0, h / 2)
+    p2 = Point2(-w / 2, -h / 2)
+    p3 = Point2(w / 2, -h / 2)
     centroid = (p1 + p2 + p3) / 3
     bp = BezierPath([
         MoveTo(p1 - centroid),
@@ -160,13 +160,13 @@ const BezierUTriangle = let
     ])
 end
 
-const BezierLTriangle = rotate(BezierUTriangle, pi/2)
+const BezierLTriangle = rotate(BezierUTriangle, pi / 2)
 const BezierDTriangle = rotate(BezierUTriangle, pi)
-const BezierRTriangle = rotate(BezierUTriangle, 3pi/2)
+const BezierRTriangle = rotate(BezierUTriangle, 3pi / 2)
 
 
 const BezierSquare = let
-    r = 0.95 * sqrt(pi)/2/2 # this gives a little less area as the r=0.5 circle
+    r = 0.95 * sqrt(pi) / 2 / 2 # this gives a little less area as the r=0.5 circle
     BezierPath([
         MoveTo(Point2(r, -r)),
         LineTo(Point2(r, r)),
@@ -177,12 +177,12 @@ const BezierSquare = let
 end
 
 const BezierCross = let
-    cutfraction = 2/3
+    cutfraction = 2 / 3
     r = 0.5 # 1/(2 * sqrt(1 - cutfraction^2))
     ri = 0.166 #r * (1 - cutfraction)
 
     first_three = Point2[(r, ri), (ri, ri), (ri, r)]
-    all = map(0:pi/2:3pi/2) do a
+    all = map(0:(pi / 2):(3pi / 2)) do a
         m = Mat2f(sin(a), cos(a), cos(a), -sin(a))
         Ref(m) .* first_three
     end |> x -> reduce(vcat, x)
@@ -194,13 +194,13 @@ const BezierCross = let
     ])
 end
 
-const BezierX = rotate(BezierCross, pi/4)
+const BezierX = rotate(BezierCross, pi / 4)
 
 function bezier_ngon(n, radius, angle)
     points = [radius * Point2f(cos(a + angle), sin(a + angle))
-        for a in range(0, 2pi, length = n+1)[1:end-1]]
+              for a in range(0, 2pi, length = n + 1)[1:(end - 1)]]
     BezierPath([
-        MoveTo(points[1]);
+        MoveTo(points[1])
         LineTo.(points[2:end])
     ])
 end
@@ -208,10 +208,10 @@ end
 function bezier_star(n, inner_radius, outer_radius, angle)
     points = [
         (isodd(i) ? outer_radius : inner_radius) *
-            Point2f(cos(a + angle), sin(a + angle))
-        for (i, a) in enumerate(range(0, 2pi, length = 2n+1)[1:end-1])]
+        Point2f(cos(a + angle), sin(a + angle))
+        for (i, a) in enumerate(range(0, 2pi, length = 2n + 1)[1:(end - 1)])]
     BezierPath([
-        MoveTo(points[1]);
+        MoveTo(points[1])
         LineTo.(points[2:end])
     ])
 end
@@ -301,27 +301,27 @@ function parse_bezier_commands(svg)
         end
 
         if comm == "M"
-            x, y = parse.(Float64, args[i+1:i+2])
+            x, y = parse.(Float64, args[(i + 1):(i + 2)])
             push!(commands, MoveTo(Point2(x, y)))
             i += 3
         elseif comm == "m"
-            x, y = parse.(Float64, args[i+1:i+2])
+            x, y = parse.(Float64, args[(i + 1):(i + 2)])
             push!(commands, MoveTo(Point2(x, y) + lastp()))
             i += 3
         elseif comm == "L"
-            x, y = parse.(Float64, args[i+1:i+2])
+            x, y = parse.(Float64, args[(i + 1):(i + 2)])
             push!(commands, LineTo(Point2(x, y)))
             i += 3
         elseif comm == "l"
-            x, y = parse.(Float64, args[i+1:i+2])
+            x, y = parse.(Float64, args[(i + 1):(i + 2)])
             push!(commands, LineTo(Point2(x, y) + lastp()))
             i += 3
         elseif comm == "H"
-            x = parse(Float64, args[i+1])
+            x = parse(Float64, args[i + 1])
             push!(commands, LineTo(Point2(x, lastp()[2])))
             i += 2
         elseif comm == "h"
-            x = parse(Float64, args[i+1])
+            x = parse(Float64, args[i + 1])
             push!(commands, LineTo(X(x) + lastp()))
             i += 2
         elseif comm == "Z"
@@ -331,55 +331,55 @@ function parse_bezier_commands(svg)
             push!(commands, ClosePath())
             i += 1
         elseif comm == "C"
-            x1, y1, x2, y2, x3, y3 = parse.(Float64, args[i+1:i+6])
+            x1, y1, x2, y2, x3, y3 = parse.(Float64, args[(i + 1):(i + 6)])
             push!(commands, CurveTo(Point2(x1, y1), Point2(x2, y2), Point2(x3, y3)))
             i += 7
         elseif comm == "c"
-            x1, y1, x2, y2, x3, y3 = parse.(Float64, args[i+1:i+6])
+            x1, y1, x2, y2, x3, y3 = parse.(Float64, args[(i + 1):(i + 6)])
             l = lastp()
             push!(commands, CurveTo(Point2(x1, y1) + l, Point2(x2, y2) + l, Point2(x3, y3) + l))
             i += 7
         elseif comm == "S"
-            x1, y1, x2, y2 = parse.(Float64, args[i+1:i+4])
+            x1, y1, x2, y2 = parse.(Float64, args[(i + 1):(i + 4)])
             prev = commands[end]
             reflected = prev.p + (prev.p - prev.c2)
             push!(commands, CurveTo(reflected, Point2(x1, y1), Point2(x2, y2)))
             i += 5
         elseif comm == "s"
-            x1, y1, x2, y2 = parse.(Float64, args[i+1:i+4])
+            x1, y1, x2, y2 = parse.(Float64, args[(i + 1):(i + 4)])
             prev = commands[end]
             reflected = prev.p + (prev.p - prev.c2)
             l = lastp()
             push!(commands, CurveTo(reflected, Point2(x1, y1) + l, Point2(x2, y2) + l))
             i += 5
         elseif comm == "A"
-            args[i+1:i+7]
-            r1, r2 = parse.(Float64, args[i+1:i+2])
-            angle = parse(Float64, args[i+3])
-            large_arc_flag, sweep_flag = parse.(Bool, args[i+4:i+5])
-            x2, y2 = parse.(Float64, args[i+6:i+7])
+            args[(i + 1):(i + 7)]
+            r1, r2 = parse.(Float64, args[(i + 1):(i + 2)])
+            angle = parse(Float64, args[i + 3])
+            large_arc_flag, sweep_flag = parse.(Bool, args[(i + 4):(i + 5)])
+            x2, y2 = parse.(Float64, args[(i + 6):(i + 7)])
             x1, y1 = lastp()
 
             push!(commands, EllipticalArc(x1, y1, x2, y2, r1, r2,
                 angle, large_arc_flag, sweep_flag))
             i += 8
         elseif comm == "a"
-            r1, r2 = parse.(Float64, args[i+1:i+2])
-            angle = parse(Float64, args[i+3])
-            large_arc_flag, sweep_flag = parse.(Bool, args[i+4:i+5])
+            r1, r2 = parse.(Float64, args[(i + 1):(i + 2)])
+            angle = parse(Float64, args[i + 3])
+            large_arc_flag, sweep_flag = parse.(Bool, args[(i + 4):(i + 5)])
             x1, y1 = lastp()
-            x2, y2 = parse.(Float64, args[i+6:i+7]) .+ (x1, y1)
+            x2, y2 = parse.(Float64, args[(i + 6):(i + 7)]) .+ (x1, y1)
 
             push!(commands, EllipticalArc(x1, y1, x2, y2, r1, r2,
                 angle, large_arc_flag, sweep_flag))
             i += 8
         elseif comm == "v"
-            dy = parse(Float64, args[i+1])
+            dy = parse(Float64, args[i + 1])
             l = lastp()
             push!(commands, LineTo(Point2(l[1], l[2] + dy)))
             i += 2
         elseif comm == "V"
-            y = parse(Float64, args[i+1])
+            y = parse(Float64, args[i + 1])
             l = lastp()
             push!(commands, LineTo(Point2(l[1], y)))
             i += 2
@@ -407,15 +407,15 @@ function EllipticalArc(x1, y1, x2, y2, rx, ry, ϕ, largearc::Bool, sweepflag::Bo
     x1′, y1′ = m1 * (0.5 * (p1 - p2))
 
     tempsqrt = (rx^2 * ry^2 - rx^2 * y1′^2 - ry^2 * x1′^2) /
-        (rx^2 * y1′^2 + ry^2 * x1′^2)
+               (rx^2 * y1′^2 + ry^2 * x1′^2)
 
     c′ = (largearc == sweepflag ? -1 : 1) *
-        sqrt(tempsqrt) * Point(rx * y1′ / ry, -ry * x1′ / rx)
+         sqrt(tempsqrt) * Point(rx * y1′ / ry, -ry * x1′ / rx)
 
     c = Mat2(cos(ϕ), sin(ϕ), -sin(ϕ), cos(ϕ)) * c′ + 0.5 * (p1 + p2)
 
     vecangle(u, v) = sign(u[1] * v[2] - u[2] * v[1]) *
-        acos(dot(u, v) / (norm(u) * norm(v)))
+                     acos(dot(u, v) / (norm(u) * norm(v)))
 
     px(sign) = Point((sign * x1′ - c′[1]) / rx, (sign * y1′ - c′[2]) / rx)
 
@@ -617,7 +617,7 @@ function cleanup_bbox(bb::Rect2f)
     return bb
 end
 
-bbox(p, x::Union{LineTo, CurveTo}) = bbox(segment(p, x))
+bbox(p, x::Union{LineTo,CurveTo}) = bbox(segment(p, x))
 function bbox(p, e::EllipticalArc)
     bbox(elliptical_arc_to_beziers(e))
 end
@@ -637,44 +637,44 @@ function bbox(b::BezierSegment)
     ma = [max.(p0, p3)...]
 
     c = -p0 + p1
-    b =  p0 - 2p1 + p2
+    b = p0 - 2p1 + p2
     a = -p0 + 3p1 - 3p2 + 1p3
 
-    h = [(b.*b - a.*c)...]
+    h = [(b .* b - a .* c)...]
 
     if h[1] > 0
         h[1] = sqrt(h[1])
         t = (-b[1] - h[1]) / a[1]
         if t > 0 && t < 1
-            s = 1.0-t
-            q = s*s*s*p0[1] + 3.0*s*s*t*p1[1] + 3.0*s*t*t*p2[1] + t*t*t*p3[1]
-            mi[1] = min(mi[1],q)
-            ma[1] = max(ma[1],q)
+            s = 1.0 - t
+            q = s * s * s * p0[1] + 3.0 * s * s * t * p1[1] + 3.0 * s * t * t * p2[1] + t * t * t * p3[1]
+            mi[1] = min(mi[1], q)
+            ma[1] = max(ma[1], q)
         end
-        t = (-b[1] + h[1])/a[1]
-        if t>0 && t<1
-            s = 1.0-t
-            q = s*s*s*p0[1] + 3.0*s*s*t*p1[1] + 3.0*s*t*t*p2[1] + t*t*t*p3[1]
-            mi[1] = min(mi[1],q)
-            ma[1] = max(ma[1],q)
+        t = (-b[1] + h[1]) / a[1]
+        if t > 0 && t < 1
+            s = 1.0 - t
+            q = s * s * s * p0[1] + 3.0 * s * s * t * p1[1] + 3.0 * s * t * t * p2[1] + t * t * t * p3[1]
+            mi[1] = min(mi[1], q)
+            ma[1] = max(ma[1], q)
         end
     end
 
-    if h[2]>0.0
+    if h[2] > 0.0
         h[2] = sqrt(h[2])
-        t = (-b[2] - h[2])/a[2]
-        if t>0.0 && t<1.0
-            s = 1.0-t
-            q = s*s*s*p0[2] + 3.0*s*s*t*p1[2] + 3.0*s*t*t*p2[2] + t*t*t*p3[2]
-            mi[2] = min(mi[2],q)
-            ma[2] = max(ma[2],q)
+        t = (-b[2] - h[2]) / a[2]
+        if t > 0.0 && t < 1.0
+            s = 1.0 - t
+            q = s * s * s * p0[2] + 3.0 * s * s * t * p1[2] + 3.0 * s * t * t * p2[2] + t * t * t * p3[2]
+            mi[2] = min(mi[2], q)
+            ma[2] = max(ma[2], q)
         end
-        t = (-b[2] + h[2])/a[2]
-        if t>0.0 && t<1.0
-            s = 1.0-t
-            q = s*s*s*p0[2] + 3.0*s*s*t*p1[2] + 3.0*s*t*t*p2[2] + t*t*t*p3[2]
-            mi[2] = min(mi[2],q)
-            ma[2] = max(ma[2],q)
+        t = (-b[2] + h[2]) / a[2]
+        if t > 0.0 && t < 1.0
+            s = 1.0 - t
+            q = s * s * s * p0[2] + 3.0 * s * s * t * p1[2] + 3.0 * s * t * t * p2[2] + t * t * t * p3[2]
+            mi[2] = min(mi[2], q)
+            ma[2] = max(ma[2], q)
         end
     end
 
@@ -688,9 +688,9 @@ function elliptical_arc_to_beziers(arc::EllipticalArc)
     angles = range(arc.a1, arc.a2, length = n_beziers + 1)
 
     startpoint = Point2f(cos(arc.a1), sin(arc.a1))
-    curves = map(angles[1:end-1], angles[2:end]) do start, stop
+    curves = map(angles[1:(end - 1)], angles[2:end]) do start, stop
         theta = stop - start
-        kappa = 4/3 * tan(theta/4)
+        kappa = 4 / 3 * tan(theta / 4)
         c1 = Point2f(cos(start) - kappa * sin(start), sin(start) + kappa * cos(start))
         c2 = Point2f(cos(stop) + kappa * sin(stop), sin(stop) - kappa * cos(stop))
         b = Point2f(cos(stop), sin(stop))

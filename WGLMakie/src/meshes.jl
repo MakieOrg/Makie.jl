@@ -1,6 +1,6 @@
 function vertexbuffer(x, trans, space)
     pos = decompose(Point, x)
-    return apply_transform(trans,  pos, space)
+    return apply_transform(trans, pos, space)
 end
 
 function vertexbuffer(x::Observable, p)
@@ -95,7 +95,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
     uniforms[:shading] = plot.shading
 
     for key in (:diffuse, :specular, :shininess, :backlight)
-        uniforms[key] = lift(x-> convert_attribute(x, Key{key}()), plot[key])
+        uniforms[key] = lift(x -> convert_attribute(x, Key{key}()), plot[key])
     end
 
     faces = facebuffer(mesh_signal)

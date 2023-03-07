@@ -56,16 +56,16 @@ function compute_contourf_colormap(levels, cmap, elow, ehigh)
     _cmap = to_colormap(cmap)
 
     if elow === :auto && ehigh !== :auto
-        cm_base = cgrad(_cmap, n + 1; categorical=true)[2:end]
-        cm = cgrad(cm_base, levels_scaled; categorical=true)
+        cm_base = cgrad(_cmap, n + 1; categorical = true)[2:end]
+        cm = cgrad(cm_base, levels_scaled; categorical = true)
     elseif ehigh === :auto && elow !== :auto
-        cm_base = cgrad(_cmap, n + 1; categorical=true)[1:(end - 1)]
-        cm = cgrad(cm_base, levels_scaled; categorical=true)
+        cm_base = cgrad(_cmap, n + 1; categorical = true)[1:(end - 1)]
+        cm = cgrad(cm_base, levels_scaled; categorical = true)
     elseif ehigh === :auto && elow === :auto
-        cm_base = cgrad(_cmap, n + 2; categorical=true)[2:(end - 1)]
-        cm = cgrad(cm_base, levels_scaled; categorical=true)
+        cm_base = cgrad(_cmap, n + 2; categorical = true)[2:(end - 1)]
+        cm = cgrad(cm_base, levels_scaled; categorical = true)
     else
-        cm = cgrad(_cmap, levels_scaled; categorical=true)
+        cm = cgrad(_cmap, levels_scaled; categorical = true)
     end
     return cm
 end
@@ -101,7 +101,7 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:AbstractVector{<:Real},<:AbstractV
         minimum(levels), maximum(levels)
     end
     computed_colormap = lift(compute_contourf_colormap, c._computed_levels, c.colormap, c.extendlow,
-                             c.extendhigh)
+        c.extendhigh)
     c.attributes[:_computed_colormap] = computed_colormap
 
     lowcolor = Observable{RGBAf}()
@@ -130,7 +130,7 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:AbstractVector{<:Real},<:AbstractV
         @assert issorted(levels)
         is_extended_low && pushfirst!(levels, -Inf)
         is_extended_high && push!(levels, Inf)
-        lows = levels[1:end-1]
+        lows = levels[1:(end - 1)]
         highs = levels[2:end]
 
         trianglelist = compute_triangulation(triangulation, xs, ys)
@@ -145,7 +145,7 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:AbstractVector{<:Real},<:AbstractV
             if isempty(pointvecs)
                 continue
             end
-            
+
             for pointvec in pointvecs
                 p = Makie.Polygon(pointvec)
                 push!(polys[], p)
@@ -199,9 +199,9 @@ function filled_tricontours(m::TriplotBase.TriMesh, z, levels)
     @assert issorted(levels)
     nlevels = length(levels)
     filled_contours = TriplotBase.FilledContour{eltype(levels)}[]
-    for i=1:nlevels-1
+    for i in 1:(nlevels - 1)
         lower = levels[i]
-        upper = levels[i+1]
+        upper = levels[i + 1]
         push!(filled_contours, TriplotBase.generate_filled_contours(m, z, lower, upper))
     end
     filled_contours

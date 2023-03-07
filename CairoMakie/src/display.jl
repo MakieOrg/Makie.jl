@@ -38,13 +38,13 @@ function display_path(type::String)
     return abspath(joinpath(@__DIR__, "display." * type))
 end
 
-function Base.display(screen::Screen, scene::Scene; connect=false)
+function Base.display(screen::Screen, scene::Scene; connect = false)
     # Nothing to do, since drawing is done in the other functions
     # TODO write to file and implement upenurl
     return screen
 end
 
-function Base.display(screen::Screen{IMAGE}, scene::Scene; connect=false)
+function Base.display(screen::Screen{IMAGE}, scene::Scene; connect = false)
     path = display_path("png")
     Makie.push_screen!(scene, screen)
     cairo_draw(screen, scene)
@@ -133,7 +133,7 @@ end
 
 Converts anything like `"png", :png, "image/png", MIME"image/png"()` to `"image/png"`.
 """
-function to_mime_string(mime::Union{String, Symbol, MIME})
+function to_mime_string(mime::Union{String,Symbol,MIME})
     if mime isa MIME
         mime_str = string(mime)
         if !(mime_str in SUPPORTED_MIMES)
@@ -156,7 +156,7 @@ The default is automatic, which lets the display system figure out the best mime
 If set to any other valid mime, will result in `showable(any_other_mime, figurelike)` to return false and only return true for `showable(preferred_mime, figurelike)`.
 Depending on the display system used, this may result in nothing getting displayed.
 """
-function disable_mime!(mimes::Union{String, Symbol, MIME}...)
+function disable_mime!(mimes::Union{String,Symbol,MIME}...)
     empty!(DISABLED_MIMES) # always start from 0
     if isempty(mimes)
         # Reset disabled mimes when called with no arguments
@@ -170,7 +170,7 @@ function disable_mime!(mimes::Union{String, Symbol, MIME}...)
     return
 end
 
-function enable_only_mime!(mimes::Union{String, Symbol, MIME}...)
+function enable_only_mime!(mimes::Union{String,Symbol,MIME}...)
     empty!(DISABLED_MIMES) # always start from 0
     if isempty(mimes)
         # Reset disabled mimes when called with no arguments

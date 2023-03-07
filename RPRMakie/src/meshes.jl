@@ -1,7 +1,7 @@
 function extract_material(matsys, plot)
     material = if haskey(plot, :material)
         if plot.material isa Attributes
-            return RPR.Material(matsys, Dict(map(((k,v),)-> k => to_value(v), plot.material)))
+            return RPR.Material(matsys, Dict(map(((k, v),) -> k => to_value(v), plot.material)))
         else
             return plot.material[]
         end
@@ -70,7 +70,7 @@ function to_rpr_object(context, matsys, scene, plot::Makie.MeshScatter)
     RPR.rprShapeSetObjectID(marker, 0)
     material = if haskey(plot, :material)
         if plot.material isa Attributes
-            RPR.Material(matsys, Dict(map(((k,v),)-> k => to_value(v), plot.material)))
+            RPR.Material(matsys, Dict(map(((k, v),) -> k => to_value(v), plot.material)))
         else
             plot.material[]
         end
@@ -78,7 +78,7 @@ function to_rpr_object(context, matsys, scene, plot::Makie.MeshScatter)
         RPR.DiffuseMaterial(matsys)
     end
     set!(marker, material)
-    for i in 1:(n_instances-1)
+    for i in 1:(n_instances - 1)
         inst = RPR.Shape(context, marker)
         RPR.rprShapeSetObjectID(inst, i)
         push!(instances, inst)
@@ -93,7 +93,7 @@ function to_rpr_object(context, matsys, scene, plot::Makie.MeshScatter)
         object_id = RPR.InputLookupMaterial(matsys)
         object_id.value = RPR.RPR_MATERIAL_NODE_LOOKUP_OBJECT_ID
 
-        uv = object_id * Vec3f(0, 1/n_instances, 0)
+        uv = object_id * Vec3f(0, 1 / n_instances, 0)
 
         tex = RPR.Texture(matsys, collect(color_from_num'); uv = uv)
 
@@ -151,7 +151,7 @@ function to_rpr_object(context, matsys, scene, plot::Makie.Surface)
     faces = decompose(GLTriangleFace, r)
     uv = decompose_uv(r)
     # with this we can beuild a mesh
-    mesh = GeometryBasics.Mesh(meta(vec(positions[]), uv=uv), faces)
+    mesh = GeometryBasics.Mesh(meta(vec(positions[]), uv = uv), faces)
 
     rpr_mesh = RPR.Shape(context, mesh)
     color = plot.color[]
@@ -175,7 +175,7 @@ function Makie.plot!(plot::Matball)
         mat = getproperty(plot, name)[]
         mat = mat isa Makie.Automatic ? base : mat
         mesh = load(assetpath("matball_$(name).obj"))
-        mesh!(plot, mesh, material=mat, color=plot.color)
+        mesh!(plot, mesh, material = mat, color = plot.color)
     end
     return plot
 end

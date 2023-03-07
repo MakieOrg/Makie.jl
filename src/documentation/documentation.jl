@@ -14,7 +14,7 @@ Use the optional `extended = true` keyword argument to see more details.
 """
 help(func; kw_args...) = help(stdout, func; kw_args...) #defaults to STDOUT
 
-function help(io::IO, input::Type{T}; extended = false) where T <: AbstractPlot
+function help(io::IO, input::Type{T}; extended = false) where T<:AbstractPlot
     buffer = IOBuffer()
     _help(buffer, input; extended = extended)
     Markdown.parse(String(take!(buffer)))
@@ -27,7 +27,7 @@ function help(io::IO, input::Function; extended = false)
 end
 
 # Internal help functions
-function _help(io::IO, input::Type{T}; extended = false) where T <: AbstractPlot
+function _help(io::IO, input::Type{T}; extended = false) where T<:AbstractPlot
     func = to_func(input)
     str = to_string(input)
 
@@ -104,7 +104,7 @@ usage:
 """
 help_attributes(x; kw...) = help_attributes(stdout, x; kw...)
 
-function help_attributes(io::IO, Typ::Type{T}; extended = false) where T <: AbstractPlot
+function help_attributes(io::IO, Typ::Type{T}; extended = false) where T<:AbstractPlot
     # get and sort list of attributes from function (using Scatter as an example)
     # this is a symbolic dictionary, with symbols as the keys
     attributes = default_theme(nothing, Typ)
@@ -155,7 +155,7 @@ function help_attributes(io::IO, func::Function; extended = false)
     help_attributes(io, to_type(func); extended = extended)
 end
 
-function help_attributes(io::IO, Typ::Type{T}; extended = false) where T <: Axis3D
+function help_attributes(io::IO, Typ::Type{T}; extended = false) where T<:Axis3D
     if extended
         println(io, "OldAxis attributes and their defaults for `$Typ` are: \n")
     else
@@ -174,7 +174,7 @@ end
 
 Maps the input of a Type name to its cooresponding function.
 """
-function to_func(Typ::Type{<: AbstractPlot{F}}) where F
+function to_func(Typ::Type{<:AbstractPlot{F}}) where F
     F
 end
 
@@ -188,7 +188,7 @@ Maps the input of a function name to its cooresponding Type.
 """
 to_type(func::Function) = Combined{func}
 
-to_type(Typ::Type{T}) where T <: AbstractPlot = Typ
+to_type(Typ::Type{T}) where T<:AbstractPlot = Typ
 
 """
     to_string(func)
@@ -199,7 +199,7 @@ function to_string(func::Function)
     str = string(typeof(func).name.mt.name)
 end
 
-to_string(Typ::Type{T}) where T <: AbstractPlot = to_string(to_func(Typ))
+to_string(Typ::Type{T}) where T<:AbstractPlot = to_string(to_func(Typ))
 to_string(s::Symbol) = string(s)
 to_string(s::String) = s
 
@@ -213,7 +213,7 @@ Use the optional `extended = true` keyword argument to see more details.
 """
 function print_rec(io::IO, dict, indent::Int = 1; extended = false)
     for (k, v) in dict
-        print(io, " "^(indent*4), k)
+        print(io, " "^(indent * 4), k)
         if isa(to_value(v), Makie.Attributes)
             print(io, ": ")
             println(io)

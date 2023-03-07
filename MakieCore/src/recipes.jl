@@ -5,21 +5,21 @@ to_func_name(x::Symbol) = Symbol(lowercase(string(x)))
 # Will get overloaded by recipe Macro
 plotsym(x) = :plot
 
-function func2string(func::F) where F <: Function
+function func2string(func::F) where F<:Function
     string(F.name.mt.name)
 end
 
 plotfunc(::Combined{F}) where F = F
-plotfunc(::Type{<: AbstractPlot{Func}}) where Func = Func
-plotfunc(::T) where T <: AbstractPlot = plotfunc(T)
+plotfunc(::Type{<:AbstractPlot{Func}}) where Func = Func
+plotfunc(::T) where T<:AbstractPlot = plotfunc(T)
 plotfunc(f::Function) = f
 
 func2type(x::T) where T = func2type(T)
-func2type(x::Type{<: AbstractPlot}) = x
+func2type(x::Type{<:AbstractPlot}) = x
 func2type(f::Function) = Combined{f}
 
-plotkey(::Type{<: AbstractPlot{Typ}}) where Typ = Symbol(lowercase(func2string(Typ)))
-plotkey(::T) where T <: AbstractPlot = plotkey(T)
+plotkey(::Type{<:AbstractPlot{Typ}}) where Typ = Symbol(lowercase(func2string(Typ)))
+plotkey(::T) where T<:AbstractPlot = plotkey(T)
 plotkey(::Nothing) = :scatter
 
 """
@@ -220,4 +220,4 @@ e.g.:
     plottype(x::Array{<: AbstractFloat, 3}) = Volume
 ```
 """
-plottype(plot_args...) = Combined{Any, Tuple{typeof.(to_value.(plot_args))...}} # default to dispatch to type recipes!
+plottype(plot_args...) = Combined{Any,Tuple{typeof.(to_value.(plot_args))...}} # default to dispatch to type recipes!

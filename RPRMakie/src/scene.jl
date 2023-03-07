@@ -14,7 +14,7 @@ function update_rpr_camera!(oldvals, camera, cam_controls, cam)
     RPR.rprCameraSetFarPlane(camera, far)
     RPR.rprCameraSetNearPlane(camera, near)
     h = norm(res)
-    RPR.rprCameraSetFocalLength(camera, (30*h)/fov)
+    RPR.rprCameraSetFocalLength(camera, (30 * h) / fov)
     # RPR_CAMERA_FSTOP
     # RPR_CAMERA_MODE
     return new_vals
@@ -30,7 +30,7 @@ function insert_plots!(context, matsys, scene, mscene::Makie.Scene, @nospecializ
         object = to_rpr_object(context, matsys, mscene, plot)
         if !isnothing(object)
             if object isa AbstractVector
-                foreach(x-> push!(scene, x), object)
+                foreach(x -> push!(scene, x), object)
             else
                 push!(scene, object)
             end
@@ -83,7 +83,7 @@ function to_rpr_scene(context::RPR.Context, matsys, mscene::Makie.Scene)
     set!(context, scene)
     # Only set background image if it isn't set by env light, since
     # background image takes precedence
-    if !any(x-> x isa Makie.EnvironmentLight, mscene.lights)
+    if !any(x -> x isa Makie.EnvironmentLight, mscene.lights)
         env_img = fill(to_color(mscene.backgroundcolor[]), 1, 1)
         img = RPR.Image(context, env_img)
         RPR.rprSceneSetBackgroundImage(scene, img)
@@ -99,7 +99,7 @@ function to_rpr_scene(context::RPR.Context, matsys, mscene::Makie.Scene)
     return scene
 end
 
-function replace_scene_rpr!(scene::Makie.Scene, screen=Screen(scene); refresh=Observable(nothing))
+function replace_scene_rpr!(scene::Makie.Scene, screen = Screen(scene); refresh = Observable(nothing))
     context = screen.context
     matsys = screen.matsys
     screen.scene = scene
@@ -129,13 +129,13 @@ function replace_scene_rpr!(scene::Makie.Scene, screen=Screen(scene); refresh=Ob
     cam_values = (;)
     task = @async while isopen(scene)
         cam_values = update_rpr_camera!(cam_values, camera, cam_controls, cam)
-        framebuffer2 = render(screen; clear=clear, iterations=1)
+        framebuffer2 = render(screen; clear = clear, iterations = 1)
         if clear
             clear = false
         end
         data = RPR.get_data(framebuffer2)
-        im[1] = reverse(reshape(data, screen.fb_size); dims=2)
-        sleep(1/10)
+        im[1] = reverse(reshape(data, screen.fb_size); dims = 2)
+        sleep(1 / 10)
     end
     return context, task, rpr_scene
 end
@@ -157,10 +157,10 @@ mutable struct Screen <: Makie.MakieScreen
     matsys::RPR.MaterialSystem
     framebuffer1::RPR.FrameBuffer
     framebuffer2::RPR.FrameBuffer
-    fb_size::Tuple{Int, Int}
-    scene::Union{Nothing, Scene}
+    fb_size::Tuple{Int,Int}
+    scene::Union{Nothing,Scene}
     setup_scene::Bool
-    rpr_scene::Union{Nothing, RPR.Scene}
+    rpr_scene::Union{Nothing,RPR.Scene}
     iterations::Int
     cleared::Bool
 end
@@ -173,7 +173,7 @@ function Base.show(io::IO, ::MIME"image/png", screen::Screen)
 end
 
 function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig)
-    context = RPR.Context(; resource=config.resource, plugin=config.plugin)
+    context = RPR.Context(; resource = config.resource, plugin = config.plugin)
     screen.context = context
     screen.matsys = RPR.MaterialSystem(context, 0)
     set_standard_tonemapping!(context)
@@ -197,7 +197,7 @@ Screen(scene::Scene, config::ScreenConfig, ::IO, ::MIME) = Screen(scene, config)
 Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat) = Screen(scene, config)
 
 function Screen(fb_size::NTuple{2,<:Integer}, config::ScreenConfig)
-    context = RPR.Context(; resource=config.resource, plugin=config.plugin)
+    context = RPR.Context(; resource = config.resource, plugin = config.plugin)
     matsys = RPR.MaterialSystem(context, 0)
     set_standard_tonemapping!(context)
     set!(context, RPR.RPR_CONTEXT_MAX_RECURSION, UInt(config.max_recursion))
@@ -210,7 +210,7 @@ function Screen(fb_size::NTuple{2,<:Integer}, config::ScreenConfig)
         config.iterations, false)
 end
 
-function render(screen; clear=true, iterations=screen.iterations)
+function render(screen; clear = true, iterations = screen.iterations)
     context = screen.context
     fb_size = screen.fb_size
     framebuffer1 = screen.framebuffer1
@@ -239,10 +239,10 @@ function Makie.colorbuffer(screen::Screen)
         display(screen, screen.scene)
     end
     data_1d = RPR.get_data(render(screen))
-    r = reverse(reshape(data_1d, screen.fb_size), dims=2)
+    r = reverse(reshape(data_1d, screen.fb_size), dims = 2)
     img = rotl90(r)
     return map(img) do color
-        RGB{Colors.N0f8}(mapc(x-> clamp(x, 0, 1), color))
+        RGB{Colors.N0f8}(mapc(x -> clamp(x, 0, 1), color))
     end
 end
 
@@ -267,4 +267,4 @@ function Base.insert!(screen::Screen, scene::Scene, plot::AbstractPlot)
     return screen
 end
 
-Makie.backend_showable(::Type{Screen}, ::Union{MIME"image/jpeg", MIME"image/png"}) = true
+Makie.backend_showable(::Type{Screen}, ::Union{MIME"image/jpeg",MIME"image/png"}) = true

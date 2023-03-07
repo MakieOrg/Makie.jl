@@ -1,4 +1,4 @@
-function Base.display(screen::Screen, scene::Scene; connect=true)
+function Base.display(screen::Screen, scene::Scene; connect = true)
     # So, the GLFW window events are not guarantee to fire
     # when we close a window, so we ensure this here!
     if !Makie.is_displayed(screen, scene)
@@ -10,4 +10,4 @@ function Base.display(screen::Screen, scene::Scene; connect=true)
     return screen
 end
 
-Makie.backend_showable(::Type{Screen}, ::Union{MIME"image/jpeg", MIME"image/png"}) = true
+Makie.backend_showable(::Type{Screen}, ::Union{MIME"image/jpeg",MIME"image/png"}) = true

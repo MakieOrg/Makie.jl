@@ -34,8 +34,8 @@ test(Observable(1), Observable(2))
 
 """
 function map_once(
-        f, input::Observable, inputrest::Observable...
-    )
+    f, input::Observable, inputrest::Observable...
+)
     for arg in (input, inputrest...)
         safe_off(arg, f)
     end

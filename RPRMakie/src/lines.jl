@@ -3,7 +3,7 @@ function line2segments(points)
     indices = RPR.rpr_int[]
     count = 0
     for i in 1:npoints
-        push!(indices, i -  1)
+        push!(indices, i - 1)
         count += 1
         if count == 4 && !(i == npoints)
             push!(indices, i - 1)
@@ -56,7 +56,7 @@ function to_rpr_object(context, matsys, scene, plot::Makie.LineSegments)
     end
 
     curve = RPR.Curve(context, points, indices, radius, Vec2f.(0.0, LinRange(0, 1, nsegments)),
-                      fill(1, nsegments))
+        fill(1, nsegments))
     material = RPR.DiffuseMaterial(matsys)
     color = to_color(plot.color[])
 
@@ -73,7 +73,7 @@ function to_rpr_object(context, matsys, scene, plot::Makie.LineSegments)
     if color isa AbstractVector{<:Colorant}
         set_color!(copy(color))
     elseif color isa AbstractVector{<:Number}
-        sampler = Makie.sampler(to_colormap(plot.colormap[]), color; scaling=Makie.Scaling(identity, plot.colorrange[]))
+        sampler = Makie.sampler(to_colormap(plot.colormap[]), color; scaling = Makie.Scaling(identity, plot.colorrange[]))
         set_color!(collect(sampler))
     else
         material.color = to_color(color)

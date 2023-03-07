@@ -1,14 +1,14 @@
-const PolyElements = Union{Polygon, MultiPolygon, Circle, Rect, AbstractMesh, VecTypes, AbstractVector{<:VecTypes}}
+const PolyElements = Union{Polygon,MultiPolygon,Circle,Rect,AbstractMesh,VecTypes,AbstractVector{<:VecTypes}}
 
-convert_arguments(::Type{<: Poly}, v::AbstractVector{<: PolyElements}) = (v,)
-convert_arguments(::Type{<: Poly}, v::Union{Polygon, MultiPolygon}) = (v,)
+convert_arguments(::Type{<:Poly}, v::AbstractVector{<:PolyElements}) = (v,)
+convert_arguments(::Type{<:Poly}, v::Union{Polygon,MultiPolygon}) = (v,)
 
-convert_arguments(::Type{<: Poly}, args...) = ([convert_arguments(Scatter, args...)[1]],)
-convert_arguments(::Type{<: Poly}, vertices::AbstractArray, indices::AbstractArray) = convert_arguments(Mesh, vertices, indices)
-convert_arguments(::Type{<: Poly}, m::GeometryBasics.Mesh) = (m,)
-convert_arguments(::Type{<: Poly}, m::GeometryBasics.GeometryPrimitive) = (m,)
+convert_arguments(::Type{<:Poly}, args...) = ([convert_arguments(Scatter, args...)[1]],)
+convert_arguments(::Type{<:Poly}, vertices::AbstractArray, indices::AbstractArray) = convert_arguments(Mesh, vertices, indices)
+convert_arguments(::Type{<:Poly}, m::GeometryBasics.Mesh) = (m,)
+convert_arguments(::Type{<:Poly}, m::GeometryBasics.GeometryPrimitive) = (m,)
 
-function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}})
+function plot!(plot::Poly{<:Tuple{Union{GeometryBasics.Mesh,GeometryPrimitive}}})
     mesh!(
         plot, lift(triangle_mesh, plot[1]),
         color = plot[:color],
@@ -47,11 +47,11 @@ poly_convert(mesh::GeometryBasics.Mesh) = mesh
 
 poly_convert(polygon::Polygon) = triangle_mesh(polygon)
 
-function poly_convert(polygon::AbstractVector{<: VecTypes})
+function poly_convert(polygon::AbstractVector{<:VecTypes})
     return poly_convert([convert_arguments(Scatter, polygon)[1]])
 end
 
-function poly_convert(polygons::AbstractVector{<: AbstractVector{<: VecTypes}})
+function poly_convert(polygons::AbstractVector{<:AbstractVector{<:VecTypes}})
     return map(polygons) do poly
         point2f = convert(Vector{Point2f}, poly)
         faces = GeometryBasics.earcut_triangulate([point2f])
@@ -77,13 +77,13 @@ function to_line_segments(meshes::AbstractVector)
     return line
 end
 
-function to_line_segments(polygon::AbstractVector{<: VecTypes})
+function to_line_segments(polygon::AbstractVector{<:VecTypes})
     result = Point2f.(polygon)
     push!(result, polygon[1])
     return result
 end
 
-function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyElements}}}})
+function plot!(plot::Poly{<:Tuple{<:Union{Polygon,AbstractVector{<:PolyElements}}}})
     geometries = plot[1]
     meshes = lift(poly_convert, geometries)
     mesh!(plot, meshes;
@@ -125,7 +125,7 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
     )
 end
 
-function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{AbstractMesh, Polygon}
+function plot!(plot::Mesh{<:Tuple{<:AbstractVector{P}}}) where P<:Union{AbstractMesh,Polygon}
     meshes = plot[1]
     color_node = plot.color
     attributes = Attributes(
@@ -139,11 +139,11 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
         colorrange = get(plot, :colorrange, automatic)
     )
 
-    num_meshes = lift(meshes; ignore_equal_values=true) do meshes
+    num_meshes = lift(meshes; ignore_equal_values = true) do meshes
         return Int[length(coordinates(m)) for m in meshes]
     end
 
-    mesh_colors = Observable{Union{AbstractPattern, Matrix{RGBAf}, RGBColors}}()
+    mesh_colors = Observable{Union{AbstractPattern,Matrix{RGBAf},RGBColors}}()
 
     map!(mesh_colors, plot.color, num_meshes) do colors, num_meshes
         # one mesh per color

@@ -1,32 +1,32 @@
 module MouseEventTypes
-    @enum MouseEventType begin
-        out
-        enter
-        over
-        leftdown
-        rightdown
-        middledown
-        leftup
-        rightup
-        middleup
-        leftdragstart
-        rightdragstart
-        middledragstart
-        leftdrag
-        rightdrag
-        middledrag
-        leftdragstop
-        rightdragstop
-        middledragstop
-        leftclick
-        rightclick
-        middleclick
-        leftdoubleclick
-        rightdoubleclick
-        middledoubleclick
-        downoutside
-    end
-    export MouseEventType
+@enum MouseEventType begin
+    out
+    enter
+    over
+    leftdown
+    rightdown
+    middledown
+    leftup
+    rightup
+    middleup
+    leftdragstart
+    rightdragstart
+    middledragstart
+    leftdrag
+    rightdrag
+    middledrag
+    leftdragstop
+    rightdragstop
+    middledragstop
+    leftclick
+    rightclick
+    middleclick
+    leftdoubleclick
+    rightdoubleclick
+    middledoubleclick
+    downoutside
+end
+export MouseEventType
 end
 
 using .MouseEventTypes
@@ -116,7 +116,7 @@ function addmouseevents!(scene, elements...; priority = 1)
     is_mouse_over_relevant_area() = isempty(elements) ? Makie.is_mouseinside(scene) : mouseover(scene, elements...)
     _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
 end
-function addmouseevents!(scene, bbox::Observables.AbstractObservable{<: Rect2}; priority = 1)
+function addmouseevents!(scene, bbox::Observables.AbstractObservable{<:Rect2}; priority = 1)
     is_mouse_over_relevant_area() = Makie.mouseposition_px(scene) in bbox[]
     _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
 end
@@ -143,7 +143,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
     last_click_was_double = Ref(false)
 
     # react to mouse position changes
-    mousepos_observerfunc = on(events(scene).mouseposition, priority=priority) do mp
+    mousepos_observerfunc = on(events(scene).mouseposition, priority = priority) do mp
         consumed = false
         t = time()
         data = mouseposition(scene)
@@ -229,7 +229,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
 
 
     # react to mouse button changes
-    mousedrag_observerfunc = on(events(scene).mousebutton, priority=priority) do event
+    mousedrag_observerfunc = on(events(scene).mousebutton, priority = priority) do event
         consumed = false
         t = time()
         data = prev_data[]
@@ -318,7 +318,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
                         # guard against mouse coming in from outside, then mouse upping
                         if mouse_downed_inside[]
                             if dt_last_click < dblclick_max_interval && !last_click_was_double[] &&
-                                    mouse_downed_button[] == b_last_click[]
+                               mouse_downed_button[] == b_last_click[]
 
                                 event = @match mouse_downed_button[] begin
                                     Mouse.left => MouseEventTypes.leftdoubleclick

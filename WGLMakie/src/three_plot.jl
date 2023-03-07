@@ -3,13 +3,13 @@
 # We use objectid to find objects on the js side
 js_uuid(object) = string(objectid(object))
 
-function all_plots_scenes(scene::Scene; scene_uuids=String[], plot_uuids=String[])
+function all_plots_scenes(scene::Scene; scene_uuids = String[], plot_uuids = String[])
     push!(scene_uuids, js_uuid(scene))
     for plot in scene.plots
         append!(plot_uuids, (js_uuid(p) for p in Makie.flatten_plots(plot)))
     end
     for child in scene.children
-        all_plots_scenes(child, plot_uuids=plot_uuids, scene_uuids=scene_uuids)
+        all_plots_scenes(child, plot_uuids = plot_uuids, scene_uuids = scene_uuids)
     end
     return scene_uuids, plot_uuids
 end
@@ -45,20 +45,23 @@ function three_display(session::Session, scene::Scene; screen_config...)
     window_open = scene.events.window_open
     width, height = size(scene)
     canvas_width = lift(x -> [round.(Int, widths(x))...], pixelarea(scene))
-    canvas = DOM.um("canvas"; tabindex="0")
+    canvas = DOM.um("canvas"; tabindex = "0")
     wrapper = DOM.div(canvas)
     comm = Observable(Dict{String,Any}())
     done_init = Observable(false)
     # Keep texture atlas in parent session, so we don't need to send it over and over again
     ta = JSServe.Retain(TEXTURE_ATLAS)
-    evaljs(session, js"""
-    $(WGL).then(WGL => {
-        // well.... not nice, but can't deal with the `Promise` in all the other functions
-        window.WGLMakie = WGL
-        WGL.create_scene($wrapper, $canvas, $canvas_width, $scene_serialized, $comm, $width, $height, $(config.framerate), $(ta))
-        $(done_init).notify(true)
-    })
-    """)
+    evaljs(
+        session,
+        js"""
+$(WGL).then(WGL => {
+    // well.... not nice, but can't deal with the `Promise` in all the other functions
+    window.WGLMakie = WGL
+    WGL.create_scene($wrapper, $canvas, $canvas_width, $scene_serialized, $comm, $width, $height, $(config.framerate), $(ta))
+    $(done_init).notify(true)
+})
+"""
+    )
 
     connect_scene_events!(scene, comm)
     three = ThreeDisplay(session)

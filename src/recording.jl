@@ -26,15 +26,15 @@ mutable struct RamStepper
     format::Symbol
 end
 
-function Stepper(figlike::FigureLike; backend=current_backend(), format=:png, visible=false, connect=false, screen_kw...)
-    screen = getscreen(backend, get_scene(figlike), JuliaNative; visible=visible, start_renderloop=false, screen_kw...)
-    display(screen, figlike; connect=connect)
+function Stepper(figlike::FigureLike; backend = current_backend(), format = :png, visible = false, connect = false, screen_kw...)
+    screen = getscreen(backend, get_scene(figlike), JuliaNative; visible = visible, start_renderloop = false, screen_kw...)
+    display(screen, figlike; connect = connect)
     return RamStepper(figlike, screen, Matrix{RGBf}[], format)
 end
 
-function Stepper(figlike::FigureLike, path::String, step::Int; format=:png, backend=current_backend(), visible=false, connect=false, screen_kw...)
-    screen = getscreen(backend, get_scene(figlike), JuliaNative; visible=visible, start_renderloop=false, screen_kw...)
-    display(screen, figlike; connect=connect)
+function Stepper(figlike::FigureLike, path::String, step::Int; format = :png, backend = current_backend(), visible = false, connect = false, screen_kw...)
+    screen = getscreen(backend, get_scene(figlike), JuliaNative; visible = visible, start_renderloop = false, screen_kw...)
+    display(screen, figlike; connect = connect)
     return FolderStepper(figlike, screen, path, format, step)
 end
 
@@ -139,13 +139,13 @@ end
 """
 function record(func, figlike::FigureLike, path::AbstractString; kw_args...)
     format = lstrip(splitext(path)[2], '.')
-    io = Record(func, figlike; format=format, kw_args...)
+    io = Record(func, figlike; format = format, kw_args...)
     save(path, io)
 end
 
 function record(func, figlike::FigureLike, path::AbstractString, iter; kw_args...)
     format = lstrip(splitext(path)[2], '.')
-    io = Record(func, figlike, iter; format=format, kw_args...)
+    io = Record(func, figlike, iter; format = format, kw_args...)
     save(path, io)
 end
 
@@ -166,7 +166,7 @@ function Record(func, figlike, iter; kw_args...)
     for i in iter
         func(i)
         recordframe!(io)
-        @debug "Recording" progress=i/length(iter)
+        @debug "Recording" progress = i / length(iter)
         yield()
     end
     return io

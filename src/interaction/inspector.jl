@@ -69,7 +69,8 @@ _to_rotation(x::Vector, idx) = to_rotation(x[idx])
 
 function closest_point_on_line(A::Point2f, B::Point2f, P::Point2f)
     # This only works in 2D
-    AP = P .- A; AB = B .- A
+    AP = P .- A
+    AB = B .- A
     A .+ AB * dot(AP, AB) / dot(AB, AB)
 end
 
@@ -153,11 +154,11 @@ end
 ### Surface positions
 ########################################
 
-surface_x(xs::ClosedInterval, i, j, N) = minimum(xs) + (maximum(xs) - minimum(xs)) * (i-1) / (N-1)
+surface_x(xs::ClosedInterval, i, j, N) = minimum(xs) + (maximum(xs) - minimum(xs)) * (i - 1) / (N - 1)
 surface_x(xs, i, j, N) = xs[i]
 surface_x(xs::AbstractMatrix, i, j, N) = xs[i, j]
 
-surface_y(ys::ClosedInterval, i, j, N) = minimum(ys) + (maximum(ys) - minimum(ys)) * (j-1) / (N-1)
+surface_y(ys::ClosedInterval, i, j, N) = minimum(ys) + (maximum(ys) - minimum(ys)) * (j - 1) / (N - 1)
 surface_y(ys, i, j, N) = ys[j]
 surface_y(ys::AbstractMatrix, i, j, N) = ys[i, j]
 
@@ -210,9 +211,9 @@ this computes parameter `f` such that the line from `A + f * (B - A)` to
 inside the quad and that none of the edges cross.
 """
 function point_in_quad_parameter(
-        A::Point2, B::Point2, C::Point2, D::Point2, P::Point2; 
-        iterations = 50, epsilon = 1e-6
-    )
+    A::Point2, B::Point2, C::Point2, D::Point2, P::Point2;
+    iterations = 50, epsilon = 1e-6
+)
 
     # Our initial guess is that P is in the center of the quad (in terms of AB and DC)
     f = 0.5
@@ -284,7 +285,7 @@ function cleanup(inspector::DataInspector)
     inspector
 end
 
-function Base.delete!(::Union{Scene, Figure}, inspector::DataInspector)
+function Base.delete!(::Union{Scene,Figure}, inspector::DataInspector)
     cleanup(inspector)
 end
 
@@ -345,10 +346,10 @@ function DataInspector(scene::Scene; priority = 100, kwargs...)
         indicator_visible = false,
 
         # General reusable
-        _color = RGBAf(0,0,0,0),
+        _color = RGBAf(0, 0, 0, 0),
     )
 
-    plot = tooltip!(parent, Observable(Point2f(0)), text = Observable(""); visible=false, attrib_dict...)
+    plot = tooltip!(parent, Observable(Point2f(0)), text = Observable(""); visible = false, attrib_dict...)
     on(z -> translate!(plot, 0, 0, z), base_attrib.depth)
     notify(base_attrib.depth)
 
@@ -461,9 +462,9 @@ function clear_temporary_plots!(inspector::DataInspector, plot)
 
     # clear attributes which are reused for indicator plots
     for key in (
-            :indicator_color, :indicator_linestyle,
-            :indicator_linewidth, :indicator_visible
-        )
+        :indicator_color, :indicator_linestyle,
+        :indicator_linewidth, :indicator_visible
+    )
         empty!(inspector.attributes[key].listeners)
     end
 
@@ -542,7 +543,7 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
                 upvector = cc.upvector[]
             end
 
-            bbox = Rect{3, Float32}(convert_attribute(
+            bbox = Rect{3,Float32}(convert_attribute(
                 plot.marker[], Key{:marker}(), Key{Makie.plotkey(plot)}()
             ))
 
@@ -580,13 +581,13 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
 end
 
 
-function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, idx)
+function show_data(inspector::DataInspector, plot::Union{Lines,LineSegments}, idx)
     a = inspector.attributes
     tt = inspector.plot
     scene = parent_scene(plot)
 
     # cast ray from cursor into screen, find closest point to line
-    p0, p1 = plot[1][][idx-1:idx]
+    p0, p1 = plot[1][][(idx - 1):idx]
     origin, dir = view_ray(scene)
     pos = closest_point_on_line(p0, p1, origin, dir)
 
@@ -672,19 +673,20 @@ function show_data(inspector::DataInspector, plot::Surface, idx)
     ys = plot[2][]
     zs = plot[3][]
     w, h = size(zs)
-    _i = mod1(idx, w); _j = div(idx-1, w)
+    _i = mod1(idx, w)
+    _j = div(idx - 1, w)
 
     # This isn't the most accurate so we include some neighboring faces
     origin, dir = view_ray(scene)
     pos = Point3f(NaN)
-    for i in _i-1:_i+1, j in _j-1:_j+1
+    for i in (_i - 1):(_i + 1), j in (_j - 1):(_j + 1)
         (1 <= i <= w) && (1 <= j < h) || continue
 
         if i - 1 > 0
             pos = ray_triangle_intersection(
                 surface_pos(xs, ys, zs, i, j),
-                surface_pos(xs, ys, zs, i-1, j),
-                surface_pos(xs, ys, zs, i, j+1),
+                surface_pos(xs, ys, zs, i - 1, j),
+                surface_pos(xs, ys, zs, i, j + 1),
                 origin, dir
             )
         end
@@ -692,8 +694,8 @@ function show_data(inspector::DataInspector, plot::Surface, idx)
         if i + 1 <= w && isnan(pos)
             pos = ray_triangle_intersection(
                 surface_pos(xs, ys, zs, i, j),
-                surface_pos(xs, ys, zs, i, j+1),
-                surface_pos(xs, ys, zs, i+1, j+1),
+                surface_pos(xs, ys, zs, i, j + 1),
+                surface_pos(xs, ys, zs, i + 1, j + 1),
                 origin, dir
             )
         end
@@ -737,7 +739,8 @@ function show_imagelike(inspector, plot, name, edge_based)
         x, y = mpos
     else
         i, j, z = _pixelated_getindex(plot[1][], plot[2][], plot[3][], mpos, edge_based)
-        x = i; y = j
+        x = i
+        y = j
     end
 
     if haskey(plot, :inspector_label)
@@ -774,11 +777,11 @@ function show_imagelike(inspector, plot, name, edge_based)
                     scene, position, color = a._color,
                     visible = a.indicator_visible,
                     inspectable = false,
-                    marker=:rect, markersize = map(r -> 3r, a.range),
+                    marker = :rect, markersize = map(r -> 3r, a.range),
                     strokecolor = a.indicator_color,
                     strokewidth = a.indicator_linewidth
                 )
-                translate!(p, Vec3f(0, 0, a.depth[]-1))
+                translate!(p, Vec3f(0, 0, a.depth[] - 1))
                 push!(inspector.temp_plots, p)
             elseif !isempty(inspector.temp_plots)
                 p = inspector.temp_plots[1]
@@ -794,7 +797,7 @@ function show_imagelike(inspector, plot, name, edge_based)
                     strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
                     visible = a.indicator_visible, inspectable = false
                 )
-                translate!(p, Vec3f(0, 0, a.depth[]-1))
+                translate!(p, Vec3f(0, 0, a.depth[] - 1))
                 push!(inspector.temp_plots, p)
             elseif !isempty(inspector.temp_plots)
                 p = inspector.temp_plots[1]
@@ -817,12 +820,12 @@ function _interpolated_getindex(xs, ys, img, mpos)
 
     i = clamp((x - x0) / (x1 - x0) * size(img, 1) + 0.5, 1, size(img, 1))
     j = clamp((y - y0) / (y1 - y0) * size(img, 2) + 0.5, 1, size(img, 2))
-    l = clamp(floor(Int, i), 1, size(img, 1)-1);
-    r = clamp(l+1, 2, size(img, 1))
-    b = clamp(floor(Int, j), 1, size(img, 2)-1);
-    t = clamp(b+1, 2, size(img, 2))
-    z = ((r-i) * img[l, b] + (i-l) * img[r, b]) * (t-j) +
-        ((r-i) * img[l, t] + (i-l) * img[r, t]) * (j-b)
+    l = clamp(floor(Int, i), 1, size(img, 1) - 1)
+    r = clamp(l + 1, 2, size(img, 1))
+    b = clamp(floor(Int, j), 1, size(img, 2) - 1)
+    t = clamp(b + 1, 2, size(img, 2))
+    z = ((r - i) * img[l, b] + (i - l) * img[r, b]) * (t - j) +
+        ((r - i) * img[l, t] + (i - l) * img[r, t]) * (j - b)
 
     # float, float, value (i, j are no longer used)
     return i, j, z
@@ -836,7 +839,7 @@ function _pixelated_getindex(xs, ys, img, mpos, edge_based)
     j = clamp(round(Int, (y - y0) / (y1 - y0) * size(img, 2) + 0.5), 1, size(img, 2))
 
     # int, int, value
-    return i, j, img[i,j]
+    return i, j, img[i, j]
 end
 
 function _interpolated_getindex(xs::Vector, ys::Vector, img, mpos)
@@ -846,16 +849,16 @@ function _interpolated_getindex(xs::Vector, ys::Vector, img, mpos)
     # z = ((xs[i+1] - x) / w * img[i, j]   + (x - xs[i]) / w * img[i+1, j])   * (ys[j+1] - y) / h +
     #     ((xs[i+1] - x) / w * img[i, j+1] + (x - xs[i]) / w * img[i+1, j+1]) * (y - ys[j]) / h
     # return i, j, z
-    _interpolated_getindex(minimum(xs)..maximum(xs), minimum(ys)..maximum(ys), img, mpos)
+    _interpolated_getindex(minimum(xs) .. maximum(xs), minimum(ys) .. maximum(ys), img, mpos)
 end
 function _pixelated_getindex(xs::Vector, ys::Vector, img, mpos, edge_based)
     if edge_based
         x, y = mpos
-        i = max(1, something(findfirst(v -> v >= x, xs), length(xs))-1)
-        j = max(1, something(findfirst(v -> v >= y, ys), length(ys))-1)
+        i = max(1, something(findfirst(v -> v >= x, xs), length(xs)) - 1)
+        j = max(1, something(findfirst(v -> v >= y, ys), length(ys)) - 1)
         return i, j, img[i, j]
     else
-        _pixelated_getindex(minimum(xs)..maximum(xs), minimum(ys)..maximum(ys), img, mpos, edge_based)
+        _pixelated_getindex(minimum(xs) .. maximum(xs), minimum(ys) .. maximum(ys), img, mpos, edge_based)
     end
 end
 
@@ -863,20 +866,20 @@ function _pixelated_image_bbox(xs, ys, img, i::Integer, j::Integer, edge_based)
     x0, x1 = extrema(xs)
     y0, y1 = extrema(ys)
     nw, nh = ((x1 - x0), (y1 - y0)) ./ size(img)
-    Rect2f(x0 + nw * (i-1), y0 + nh * (j-1), nw, nh)
+    Rect2f(x0 + nw * (i - 1), y0 + nh * (j - 1), nw, nh)
 end
 function _pixelated_image_bbox(xs::Vector, ys::Vector, img, i::Integer, j::Integer, edge_based)
     if edge_based
-        Rect2f(xs[i], ys[j], xs[i+1] - xs[i], ys[j+1] - ys[j])
+        Rect2f(xs[i], ys[j], xs[i + 1] - xs[i], ys[j + 1] - ys[j])
     else
         _pixelated_image_bbox(
-            minimum(xs)..maximum(xs), minimum(ys)..maximum(ys),
+            minimum(xs) .. maximum(xs), minimum(ys) .. maximum(ys),
             img, i, j, edge_based
         )
     end
 end
 
-function show_data(inspector::DataInspector, plot, idx, source=nothing)
+function show_data(inspector::DataInspector, plot, idx, source = nothing)
     return false
 end
 
@@ -888,11 +891,11 @@ end
 
 
 function show_data(inspector::DataInspector, plot::BarPlot, idx, ::Lines)
-    return show_data(inspector, plot, div(idx-1, 6)+1)
+    return show_data(inspector, plot, div(idx - 1, 6) + 1)
 end
 
 function show_data(inspector::DataInspector, plot::BarPlot, idx, ::Mesh)
-    return show_data(inspector, plot, div(idx-1, 4)+1)
+    return show_data(inspector, plot, div(idx - 1, 4) + 1)
 end
 
 
@@ -939,7 +942,7 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
 end
 
 function show_data(inspector::DataInspector, plot::Arrows, idx, ::LineSegments)
-    return show_data(inspector, plot, div(idx+1, 2), nothing)
+    return show_data(inspector, plot, div(idx + 1, 2), nothing)
 end
 function show_data(inspector::DataInspector, plot::Arrows, idx, source)
     a = inspector.plot.attributes
@@ -1014,7 +1017,7 @@ function show_poly(inspector, plot, idx, source)
                 strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
                 visible = a.indicator_visible, inspectable = false
             )
-            translate!(p, Vec3f(0, 0, a.depth[]-1))
+            translate!(p, Vec3f(0, 0, a.depth[] - 1))
             push!(inspector.temp_plots, p)
 
         elseif !isempty(inspector.temp_plots)
@@ -1057,11 +1060,14 @@ function show_data(inspector::DataInspector, plot::VolumeSlices, idx, child::Hea
     if !isnan(pos)
         child_idx = findfirst(isequal(child), plot.plots)
         if child_idx == 2
-            x = pos[2]; y = pos[3]
+            x = pos[2]
+            y = pos[3]
         elseif child_idx == 3
-            x = pos[1]; y = pos[3]
+            x = pos[1]
+            y = pos[3]
         else
-            x = pos[1]; y = pos[2]
+            x = pos[1]
+            y = pos[2]
         end
         i = clamp(round(Int, (x - qs[1]) / (qs[2] - qs[1]) * size(data, 1) + 0.5), 1, size(data, 1))
         j = clamp(round(Int, (y - ps[1]) / (ps[2] - ps[1]) * size(data, 2) + 0.5), 1, size(data, 2))
@@ -1096,9 +1102,9 @@ function show_data(inspector::DataInspector, plot::Band, ::Integer, ::Mesh)
     ps2 = plot.converted[2][]
 
     # find first triangle containing the cursor position
-    idx = findfirst(1:length(ps1)-1) do i
-        point_in_triangle(ps1[i], ps1[i+1], ps2[i+1], pos) ||
-        point_in_triangle(ps1[i], ps2[i+1], ps2[i], pos)
+    idx = findfirst(1:(length(ps1) - 1)) do i
+        point_in_triangle(ps1[i], ps1[i + 1], ps2[i + 1], pos) ||
+            point_in_triangle(ps1[i], ps2[i + 1], ps2[i], pos)
     end
 
     if idx !== nothing
@@ -1106,9 +1112,9 @@ function show_data(inspector::DataInspector, plot::Band, ::Integer, ::Mesh)
         # Within the quad we can draw a line from ps1[idx] + f * (ps1[idx+1] - ps1[idx])
         # to ps2[idx] + f * (ps2[idx+1] - ps2[idx]) which crosses through the
         # cursor position. Find the parameter f that describes this line
-        f = point_in_quad_parameter(ps1[idx], ps1[idx+1], ps2[idx+1], ps2[idx], pos)
-        P1 = ps1[idx] + f * (ps1[idx+1] - ps1[idx])
-        P2 = ps2[idx] + f * (ps2[idx+1] - ps2[idx])
+        f = point_in_quad_parameter(ps1[idx], ps1[idx + 1], ps2[idx + 1], ps2[idx], pos)
+        P1 = ps1[idx] + f * (ps1[idx + 1] - ps1[idx])
+        P2 = ps2[idx] + f * (ps2[idx + 1] - ps2[idx])
 
         # Draw the line
         if a.enable_indicators[]
@@ -1117,8 +1123,8 @@ function show_data(inspector::DataInspector, plot::Band, ::Integer, ::Mesh)
             if inspector.selection != plot || isempty(inspector.temp_plots)
                 clear_temporary_plots!(inspector, plot)
                 p = lines!(
-                    scene, [P1, P2], model = model, 
-                    color = a.indicator_color, strokewidth = a.indicator_linewidth, 
+                    scene, [P1, P2], model = model,
+                    color = a.indicator_color, strokewidth = a.indicator_linewidth,
                     linestyle = a.indicator_linestyle,
                     visible = a.indicator_visible, inspectable = false
                 )

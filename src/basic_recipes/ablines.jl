@@ -11,7 +11,7 @@ All style attributes are the same as for `LineSegments`.
         xautolimits = false,
         yautolimits = false,
         default_theme(LineSegments, scene)...,
-        cycle = :color,
+        cycle = :color
     )
 end
 
@@ -19,14 +19,14 @@ function Makie.plot!(p::ABLines)
     scene = Makie.parent_scene(p)
     transf = transform_func(scene)
 
-    
+
 
     is_identity_transform(transf) || throw(ArgumentError("ABLines is only defined for the identity transform, not $(typeof(transf))."))
 
     limits = lift(projview_to_2d_limits, scene.camera.projectionview)
 
     points = Observable(Point2f[])
-    
+
     onany(limits, p[1], p[2]) do lims, intercept, slope
         inv = inverse_transform(transf)
         empty!(points[])
@@ -47,6 +47,6 @@ function Makie.plot!(p::ABLines)
 end
 
 function abline!(args...; kwargs...)
-    Base.depwarn("abline! is deprecated and will be removed in the future. Use ablines / ablines! instead." , :abline!, force = true)
+    Base.depwarn("abline! is deprecated and will be removed in the future. Use ablines / ablines! instead.", :abline!, force = true)
     ablines!(args...; kwargs...)
 end

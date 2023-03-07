@@ -5,10 +5,10 @@ using Colors: N0f8
 image = begin
     radiance = 500
     lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
-              PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1))]
-    fig = Figure(; resolution=(1500, 700))
-    ax = LScene(fig[1, 1]; show_axis=false, scenekw=(lights=lights,))
-    screen = Screen(ax.scene; plugin=RPR.Northstar, iterations=400)
+        PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1))]
+    fig = Figure(; resolution = (1500, 700))
+    ax = LScene(fig[1, 1]; show_axis = false, scenekw = (lights = lights,))
+    screen = Screen(ax.scene; plugin = RPR.Northstar, iterations = 400)
 
     matsys = screen.matsys
     emissive = RPR.EmissiveMaterial(matsys)
@@ -19,20 +19,20 @@ image = begin
     dielectric = RPR.DielectricBrdfX(matsys)
     gold = RPR.SurfaceGoldX(matsys)
 
-    materials = [glass chrome;
-                 gold dielectric;
-                 emissive plastic]
+    materials = [glass chrome
+        gold dielectric
+        emissive plastic]
 
-    mesh!(ax, load(Makie.assetpath("matball_floor.obj")); color=:white)
+    mesh!(ax, load(Makie.assetpath("matball_floor.obj")); color = :white)
     palette = reshape(Makie.default_palettes.color[][1:6], size(materials))
 
     for i in CartesianIndices(materials)
         x, y = Tuple(i)
         mat = materials[i]
         mplot = if mat === emissive
-            matball!(ax, diffuse; inner=emissive, color=nothing)
+            matball!(ax, diffuse; inner = emissive, color = nothing)
         else
-            matball!(ax, mat; color=nothing)
+            matball!(ax, mat; color = nothing)
         end
         v = Vec3f(((x, y) .- (0.5 .* size(materials)) .- 0.5)..., 0)
         translate!(mplot, 0.9 .* (v .- Vec3f(0, 3, 0)))

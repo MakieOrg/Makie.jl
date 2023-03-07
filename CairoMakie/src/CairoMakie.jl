@@ -15,7 +15,7 @@ using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_s
 using Makie: numbers_to_colors
 
 # re-export Makie, including deprecated names
-for name in names(Makie, all=true)
+for name in names(Makie, all = true)
     if Base.isexported(Makie, name)
         @eval using Makie: $(name)
         @eval export $(name)

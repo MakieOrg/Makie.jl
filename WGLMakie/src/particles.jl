@@ -8,8 +8,8 @@ function handle_color!(uniform_dict, instance_dict)
         nothing, uniform_dict
     end
     if color isa Colorant ||
-              color isa AbstractVector{<:Colorant} ||
-              color === nothing
+       color isa AbstractVector{<:Colorant} ||
+       color === nothing
         delete!(uniform_dict, :colormap)
     elseif color isa AbstractArray{<:Real}
         uniform_dict[:color_getter] = """
@@ -54,7 +54,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
         return k in per_instance_keys && !(isscalar(v[]))
     end
     space = get(plot, :space, :data)
-    per_instance[:offset] = apply_transform(transform_func_obs(plot),  plot[1], space)
+    per_instance[:offset] = apply_transform(transform_func_obs(plot), plot[1], space)
 
     for (k, v) in per_instance
         per_instance[k] = Buffer(lift_convert(k, v, plot))
@@ -94,7 +94,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
     uniform_dict[:object_id] = UInt32(0)
 
     return InstancedProgram(WebGL(), lasset("particles.vert"), lasset("particles.frag"),
-                            instance, VertexArray(; per_instance...), uniform_dict)
+        instance, VertexArray(; per_instance...), uniform_dict)
 end
 
 using Makie: to_spritemarker
@@ -106,18 +106,18 @@ using Makie: to_spritemarker
 Optimization to just send the texture atlas one time to JS and then look it up from there in wglmakie.js,
 instead of uploading this texture 10x in every plot.
 """
-struct NoDataTextureAtlas <: ShaderAbstractions.AbstractSampler{Float16, 2}
-    dims::NTuple{2, Int}
+struct NoDataTextureAtlas <: ShaderAbstractions.AbstractSampler{Float16,2}
+    dims::NTuple{2,Int}
 end
 
 function serialize_three(fta::NoDataTextureAtlas)
     tex = Dict(:type => "Sampler", :data => "texture_atlas",
-               :size => [fta.dims...], :three_format => three_format(Float16),
-               :three_type => three_type(Float16),
-               :minFilter => three_filter(:linear),
-               :magFilter => three_filter(:linear),
-               :wrapS => "RepeatWrapping",
-               :anisotropy => 16f0)
+        :size => [fta.dims...], :three_format => three_format(Float16),
+        :three_type => three_type(Float16),
+        :minFilter => three_filter(:linear),
+        :magFilter => three_filter(:linear),
+        :wrapS => "RepeatWrapping",
+        :anisotropy => 16f0)
     tex[:wrapT] = "RepeatWrapping"
     return tex
 end
@@ -126,7 +126,7 @@ end
 function scatter_shader(scene::Scene, attributes)
     # Potentially per instance attributes
     per_instance_keys = (:pos, :rotations, :markersize, :color, :intensity,
-                         :uv_offset_width, :quad_offset, :marker_offset)
+        :uv_offset_width, :quad_offset, :marker_offset)
     uniform_dict = Dict{Symbol,Any}()
     uniform_dict[:image] = false
     marker = nothing
@@ -190,13 +190,13 @@ function scatter_shader(scene::Scene, attributes)
     uniform_dict[:picking] = false
     uniform_dict[:object_id] = UInt32(0)
     return InstancedProgram(WebGL(), lasset("sprites.vert"), lasset("sprites.frag"),
-                            instance, VertexArray(; per_instance...), uniform_dict)
+        instance, VertexArray(; per_instance...), uniform_dict)
 end
 
 function create_shader(scene::Scene, plot::Scatter)
     # Potentially per instance attributes
     per_instance_keys = (:offset, :rotations, :markersize, :color, :intensity,
-                         :quad_offset)
+        :quad_offset)
     per_instance = filter(plot.attributes.attributes) do (k, v)
         return k in per_instance_keys && !(isscalar(v[]))
     end
@@ -204,7 +204,7 @@ function create_shader(scene::Scene, plot::Scatter)
     space = get(attributes, :space, :data)
     cam = scene.camera
     attributes[:preprojection] = Mat4f(I) # calculate this in JS
-    attributes[:pos] = apply_transform(transform_func_obs(plot),  plot[1], space)
+    attributes[:pos] = apply_transform(transform_func_obs(plot), plot[1], space)
 
     quad_offset = get(attributes, :marker_offset, Observable(Vec2f(0)))
     attributes[:marker_offset] = Vec3f(0)
@@ -223,11 +223,11 @@ value_or_first(x::StaticVector) = x
 value_or_first(x::Mat) = x
 value_or_first(x) = x
 
-function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
+function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.GlyphCollection,<:AbstractVector{<:Makie.GlyphCollection}}}})
     glyphcollection = plot[1]
-    res = map(x->Vec2f(widths(x)), pixelarea(scene))
+    res = map(x -> Vec2f(widths(x)), pixelarea(scene))
     projview = scene.camera.projectionview
-    transfunc =  Makie.transform_func_obs(scene)
+    transfunc = Makie.transform_func_obs(scene)
     pos = plot.position
     space = plot.space
     markerspace = plot.markerspace

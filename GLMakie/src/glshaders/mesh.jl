@@ -1,10 +1,10 @@
-function to_opengl_mesh!(result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
+function to_opengl_mesh!(result, mesh_obs::TOrSignal{<:GeometryBasics.Mesh})
     m_attr = map(convert(Observable, mesh_obs)) do m
         return (m, GeometryBasics.attributes(m))
     end
 
-    result[:faces] = indexbuffer(map(((m,_),)-> faces(m), m_attr))
-    result[:vertices] = GLBuffer(map(((m,_),)-> decompose(Point, m), m_attr))
+    result[:faces] = indexbuffer(map(((m, _),) -> faces(m), m_attr))
+    result[:vertices] = GLBuffer(map(((m, _),) -> decompose(Point, m), m_attr))
 
     attribs = m_attr[][2]
 
@@ -12,7 +12,7 @@ function to_opengl_mesh!(result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
         if haskey(attribs, name)
             val = attribs[name]
             if mesh_obs isa Observable
-                val = map(((m, a),)-> a[name], m_attr)
+                val = map(((m, a),) -> a[name], m_attr)
             end
             if val[] isa AbstractVector
                 result[target] = GLBuffer(map(metafree, val))

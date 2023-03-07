@@ -29,7 +29,7 @@ function Base.show(io::IO, ssao::SSAO)
     println(io, "    blur:   ", ssao.blur[])
 end
 
-function SSAO(; radius=nothing, bias=nothing, blur=nothing)
+function SSAO(; radius = nothing, bias = nothing, blur = nothing)
     defaults = theme(nothing, :SSAO)
     _radius = isnothing(radius) ? defaults.radius[] : radius
     _bias = isnothing(bias) ? defaults.bias[] : bias
@@ -75,7 +75,7 @@ $(FIELDS)
 """
 mutable struct Scene <: AbstractScene
     "The parent of the Scene; if it is a top-level Scene, `parent == nothing`."
-    parent::Union{Nothing, Scene}
+    parent::Union{Nothing,Scene}
 
     "[`Events`](@ref) associated with the Scene."
     events::Events
@@ -114,22 +114,22 @@ mutable struct Scene <: AbstractScene
     ssao::SSAO
     lights::Vector{AbstractLight}
     function Scene(
-            parent::Union{Nothing, Scene},
-            events::Events,
-            px_area::Observable{Rect2i},
-            clear::Bool,
-            camera::Camera,
-            camera_controls::AbstractCamera,
-            transformation::Transformation,
-            plots::Vector{AbstractPlot},
-            theme::Attributes,
-            children::Vector{Scene},
-            current_screens::Vector{MakieScreen},
-            backgroundcolor::Observable{RGBAf},
-            visible::Observable{Bool},
-            ssao::SSAO,
-            lights::Vector{AbstractLight}
-        )
+        parent::Union{Nothing,Scene},
+        events::Events,
+        px_area::Observable{Rect2i},
+        clear::Bool,
+        camera::Camera,
+        camera_controls::AbstractCamera,
+        transformation::Transformation,
+        plots::Vector{AbstractPlot},
+        theme::Attributes,
+        children::Vector{Scene},
+        current_screens::Vector{MakieScreen},
+        backgroundcolor::Observable{RGBAf},
+        visible::Observable{Bool},
+        ssao::SSAO,
+        lights::Vector{AbstractLight}
+    )
         scene = new(
             parent,
             events,
@@ -174,37 +174,37 @@ function Base.show(io::IO, scene::Scene)
         print(io, ":")
         for (i, subscene) in enumerate(scene.children)
             print(io, "\n")
-            print(io,"    $(i == length(scene.children) ? '└' : '├') Scene ($(size(subscene, 1))px, $(size(subscene, 2))px)")
+            print(io, "    $(i == length(scene.children) ? '└' : '├') Scene ($(size(subscene, 1))px, $(size(subscene, 2))px)")
         end
     end
 end
 
 function Scene(;
-        px_area::Union{Observable{Rect2i}, Nothing} = nothing,
-        events::Events = Events(),
-        clear::Union{Automatic, Bool} = automatic,
-        transform_func=identity,
-        camera::Union{Function, Camera, Nothing} = nothing,
-        camera_controls::AbstractCamera = EmptyCamera(),
-        transformation::Transformation = Transformation(transform_func),
-        plots::Vector{AbstractPlot} = AbstractPlot[],
-        children::Vector{Scene} = Scene[],
-        current_screens::Vector{MakieScreen} = MakieScreen[],
-        parent = nothing,
-        visible = Observable(true),
-        ssao = SSAO(),
-        lights = automatic,
-        theme = Attributes(),
-        theme_kw...
-    )
+    px_area::Union{Observable{Rect2i},Nothing} = nothing,
+    events::Events = Events(),
+    clear::Union{Automatic,Bool} = automatic,
+    transform_func = identity,
+    camera::Union{Function,Camera,Nothing} = nothing,
+    camera_controls::AbstractCamera = EmptyCamera(),
+    transformation::Transformation = Transformation(transform_func),
+    plots::Vector{AbstractPlot} = AbstractPlot[],
+    children::Vector{Scene} = Scene[],
+    current_screens::Vector{MakieScreen} = MakieScreen[],
+    parent = nothing,
+    visible = Observable(true),
+    ssao = SSAO(),
+    lights = automatic,
+    theme = Attributes(),
+    theme_kw...
+)
 
     m_theme = merge_without_obs!(current_default_theme(; theme_kw...), theme)
 
-    bg = Observable{RGBAf}(to_color(m_theme.backgroundcolor[]); ignore_equal_values=true)
+    bg = Observable{RGBAf}(to_color(m_theme.backgroundcolor[]); ignore_equal_values = true)
 
     wasnothing = isnothing(px_area)
     if wasnothing
-        px_area = Observable(Recti(0, 0, m_theme.resolution[]); ignore_equal_values=true)
+        px_area = Observable(Recti(0, 0, m_theme.resolution[]); ignore_equal_values = true)
     end
 
     cam = camera isa Camera ? camera : Camera(px_area)
@@ -254,7 +254,7 @@ function Scene(;
 end
 
 function get_one_light(scene::Scene, Typ)
-    indices = findall(x-> x isa Typ, scene.lights)
+    indices = findall(x -> x isa Typ, scene.lights)
     isempty(indices) && return nothing
     if length(indices) > 1
         @warn("Only one light supported by backend right now. Using only first light")
@@ -267,20 +267,20 @@ get_ambient_light(scene::Scene) = get_one_light(scene, AmbientLight)
 
 
 function Scene(
-        parent::Scene;
-        events=parent.events,
-        px_area=nothing,
-        clear=false,
-        camera=nothing,
-        camera_controls=parent.camera_controls,
-        transformation=Transformation(parent),
-        current_screens=parent.current_screens,
-        kw...
-    )
+    parent::Scene;
+    events = parent.events,
+    px_area = nothing,
+    clear = false,
+    camera = nothing,
+    camera_controls = parent.camera_controls,
+    transformation = Transformation(parent),
+    current_screens = parent.current_screens,
+    kw...
+)
     if isnothing(px_area)
-        px_area = lift(zero_origin, parent.px_area; ignore_equal_values=true)
+        px_area = lift(zero_origin, parent.px_area; ignore_equal_values = true)
     else
-        px_area = lift(pixelarea(parent), convert(Observable, px_area); ignore_equal_values=true) do p, a
+        px_area = lift(pixelarea(parent), convert(Observable, px_area); ignore_equal_values = true) do p, a
             # make coordinates relative to parent
             rect = Rect2i(minimum(p) .+ minimum(a), widths(a))
             return rect
@@ -290,15 +290,15 @@ function Scene(
         camera_controls = EmptyCamera()
     end
     child = Scene(;
-        events=events,
-        px_area=px_area,
-        clear=clear,
-        camera=camera,
-        camera_controls=camera_controls,
-        parent=parent,
-        transformation=transformation,
-        current_screens=current_screens,
-        theme=theme(parent),
+        events = events,
+        px_area = px_area,
+        clear = clear,
+        camera = camera,
+        camera_controls = camera_controls,
+        parent = parent,
+        transformation = transformation,
+        current_screens = current_screens,
+        theme = theme(parent),
         kw...
     )
     push!(parent.children, child)
@@ -308,7 +308,7 @@ end
 
 # legacy constructor
 function Scene(parent::Scene, area; kw...)
-    return Scene(parent; px_area=area, kw...)
+    return Scene(parent; px_area = area, kw...)
 end
 
 # Base overloads for Scene
@@ -355,7 +355,7 @@ end
 getscreen(scene::SceneLike) = getscreen(rootparent(scene))
 
 # Just indexing into a scene gets you plot 1, plot 2 etc
-Base.iterate(scene::Scene, idx=1) = idx <= length(scene) ? (scene[idx], idx + 1) : nothing
+Base.iterate(scene::Scene, idx = 1) = idx <= length(scene) ? (scene[idx], idx + 1) : nothing
 Base.length(scene::Scene) = length(scene.plots)
 Base.lastindex(scene::Scene) = length(scene.plots)
 getindex(scene::Scene, idx::Integer) = scene.plots[idx]
@@ -364,22 +364,22 @@ struct OldAxis end
 zero_origin(area) = Recti(0, 0, widths(area))
 
 function child(scene::Scene; camera, attributes...)
-    return Scene(scene, lift(zero_origin, pixelarea(scene)); camera=camera, attributes...)
+    return Scene(scene, lift(zero_origin, pixelarea(scene)); camera = camera, attributes...)
 end
 
 """
 Creates a subscene with a pixel camera
 """
 function cam2d(scene::Scene)
-    return child(scene, clear=false, camera=cam2d!)
+    return child(scene, clear = false, camera = cam2d!)
 end
 
 function campixel(scene::Scene)
-    return child(scene, clear=false, camera=campixel!)
+    return child(scene, clear = false, camera = campixel!)
 end
 
 function camrelative(scene::Scene)
-    return child(scene, clear=false, camera=cam_relative!)
+    return child(scene, clear = false, camera = cam_relative!)
 end
 
 function getindex(scene::Scene, ::Type{OldAxis})
@@ -509,7 +509,7 @@ plots(scene::SceneLike) = scene.plots
 Fetches all plots sharing the same camera
 """
 plots_from_camera(scene::Scene) = plots_from_camera(scene, scene.camera)
-function plots_from_camera(scene::Scene, camera::Camera, list=AbstractPlot[])
+function plots_from_camera(scene::Scene, camera::Camera, list = AbstractPlot[])
     append!(list, scene.plots)
     for child in scene.children
         child.camera == camera && plots_from_camera(child, camera, list)
@@ -520,7 +520,7 @@ end
 """
 Flattens all the combined plots and returns a Vector of Atomic plots
 """
-function flatten_combined(plots::Vector, flat=AbstractPlot[])
+function flatten_combined(plots::Vector, flat = AbstractPlot[])
     for elem in plots
         if (elem isa Combined)
             flatten_combined(elem.plots, flat)
@@ -545,7 +545,7 @@ function not_in_data_space(p)
     !is_data_space(to_value(get(p, :space, :data)))
 end
 
-function center!(scene::Scene, padding=0.01, exclude = not_in_data_space)
+function center!(scene::Scene, padding = 0.01, exclude = not_in_data_space)
     bb = boundingbox(scene, exclude)
     bb = transformationmatrix(scene)[] * bb
     w = widths(bb)
@@ -593,4 +593,4 @@ struct FigureAxisPlot
     plot::AbstractPlot
 end
 
-const FigureLike = Union{Scene, Figure, FigureAxisPlot}
+const FigureLike = Union{Scene,Figure,FigureAxisPlot}

@@ -22,9 +22,9 @@ end
 
 function getinfolog(obj::GLuint)
     # Return the info log for obj, whether it be a shader or a program.
-    isShader    = glIsShader(obj)
-    getiv       = isShader == GL_TRUE ? glGetShaderiv : glGetProgramiv
-    get_log     = isShader == GL_TRUE ? glGetShaderInfoLog : glGetProgramInfoLog
+    isShader = glIsShader(obj)
+    getiv = isShader == GL_TRUE ? glGetShaderiv : glGetProgramiv
+    get_log = isShader == GL_TRUE ? glGetShaderInfoLog : glGetProgramInfoLog
 
     # Get the maximum possible length for the descriptive error message
     maxlength = GLint[0]
@@ -69,8 +69,8 @@ function shadertype(ext::AbstractString)
     error("$ext not a valid shader extension")
 end
 
-function uniformlocations(nametypedict::Dict{Symbol, GLenum}, program)
-    result = Dict{Symbol, Tuple}()
+function uniformlocations(nametypedict::Dict{Symbol,GLenum}, program)
+    result = Dict{Symbol,Tuple}()
     texturetarget = -1 # start -1, as texture samplers start at 0
     for (name, typ) in nametypedict
         loc = get_uniform_location(program, name)
@@ -88,18 +88,18 @@ struct ShaderCache
     # path --> template keys
     # cache for template keys per file
     context::Any
-    template_cache::Dict{String, Vector{String}}
+    template_cache::Dict{String,Vector{String}}
     # path --> Dict{template_replacements --> Shader)
-    shader_cache::Dict{String, Dict{Any, Shader}}
-    program_cache::Dict{Any, GLProgram}
+    shader_cache::Dict{String,Dict{Any,Shader}}
+    program_cache::Dict{Any,GLProgram}
 end
 
 function ShaderCache(context)
     ShaderCache(
         context,
-        Dict{String, Vector{String}}(),
-        Dict{String, Dict{Any, Shader}}(),
-        Dict{Any, GLProgram}()
+        Dict{String,Vector{String}}(),
+        Dict{String,Dict{Any,Shader}}(),
+        Dict{Any,GLProgram}()
     )
 end
 
@@ -108,10 +108,10 @@ abstract type AbstractLazyShader end
 struct LazyShader <: AbstractLazyShader
     shader_cache::ShaderCache
     paths::Tuple
-    kw_args::Dict{Symbol, Any}
+    kw_args::Dict{Symbol,Any}
     function LazyShader(cache::ShaderCache, paths...; kw_args...)
-        args = Dict{Symbol, Any}(kw_args)
-        get!(args, :view, Dict{String, String}())
+        args = Dict{Symbol,Any}(kw_args)
+        get!(args, :view, Dict{String,String}())
         new(cache, paths, args)
     end
 end
@@ -187,7 +187,7 @@ function compile_program(shaders, fragdatalocation)
     if !GLAbstraction.islinked(program)
         error(
             "program $program not linked. Error in: \n",
-            join(map(x-> string(x.name), shaders), " or "), "\n", getinfolog(program)
+            join(map(x -> string(x.name), shaders), " or "), "\n", getinfolog(program)
         )
     end
     # Can be deleted, as they will still be linked to Program and released after program gets released
@@ -201,7 +201,7 @@ end
 function get_view(kw_dict)
     _view = kw_dict[:view]
     extension = Sys.isapple() ? "" : "#extension GL_ARB_draw_instanced : enable\n"
-    _view["GLSL_EXTENSION"] = extension*get(_view, "GLSL_EXTENSIONS", "")
+    _view["GLSL_EXTENSION"] = extension * get(_view, "GLSL_EXTENSIONS", "")
     _view["GLSL_VERSION"] = glsl_version_string()
     _view
 end
@@ -213,20 +213,20 @@ end
 function gl_convert(cache::ShaderCache, lazyshader::AbstractLazyShader, data)
     kw_dict = lazyshader.kw_args
     paths = lazyshader.paths
-    if all(x-> isa(x, Shader), paths)
-        fragdatalocation = get(kw_dict, :fragdatalocation, Tuple{Int, String}[])
+    if all(x -> isa(x, Shader), paths)
+        fragdatalocation = get(kw_dict, :fragdatalocation, Tuple{Int,String}[])
         ShaderAbstractions.switch_context!(cache.context)
         return compile_program([paths...], fragdatalocation)
     end
     v = get_view(kw_dict)
-    fragdatalocation = get(kw_dict, :fragdatalocation, Tuple{Int, String}[])
+    fragdatalocation = get(kw_dict, :fragdatalocation, Tuple{Int,String}[])
 
     # Tuple(Source, ShaderType)
     if all(paths) do x
-            isa(x, Tuple) && length(x) == 2 &&
+        isa(x, Tuple) && length(x) == 2 &&
             isa(first(x), AbstractString) &&
             isa(last(x), GLenum)
-        end
+    end
         # we don't cache view & templates for shader strings!
         shaders = map(paths) do source_typ
             source, typ = source_typ
@@ -278,7 +278,7 @@ Replaces
 {{keyword}} with the key in `replace_view`, or replace_view(key)
 in a string
 """
-function mustache_replace(replace_view::Union{Dict, Function}, string)
+function mustache_replace(replace_view::Union{Dict,Function}, string)
     io = IOBuffer()
     replace_started = false
     open_mustaches = 0
@@ -296,7 +296,7 @@ function mustache_replace(replace_view::Union{Dict, Function}, string)
             if char == '}'
                 closed_mustaches += 1
                 if closed_mustaches == 2 # we found a complete mustache!
-                    insert_from_view(io, replace_view, SubString(string, replace_begin+1, i-2))
+                    insert_from_view(io, replace_view, SubString(string, replace_begin + 1, i - 2))
                     open_mustaches = 0
                     closed_mustaches = 0
                     replace_started = false
@@ -335,7 +335,8 @@ function mustache2replacement(mustache_key, view, attributes)
             if !isa(val, AbstractString)
                 if postfix == "_type"
                     return toglsltype_string(val)::String
-                else  postfix == "_calculation"
+                else
+                    postfix == "_calculation"
                     return glsl_variable_access(keystring, val)
                 end
             end
@@ -346,9 +347,9 @@ function mustache2replacement(mustache_key, view, attributes)
 end
 
 # Takes a shader template and renders the template and returns shader source
-template2source(source::Vector{UInt8}, view, attributes::Dict{Symbol, Any}) = template2source(String(source), attributes, view)
-function template2source(source::AbstractString, view, attributes::Dict{Symbol, Any})
-    replacements = Dict{String, String}()
+template2source(source::Vector{UInt8}, view, attributes::Dict{Symbol,Any}) = template2source(String(source), attributes, view)
+function template2source(source::AbstractString, view, attributes::Dict{Symbol,Any})
+    replacements = Dict{String,String}()
     source = mustache_replace(source) do mustache_key
         r = mustache2replacement(mustache_key, view, attributes)
         replacements[mustache_key] = r

@@ -67,11 +67,11 @@ struct Events
     The position of the mouse as a `NTuple{2, Float64}`.
     Updates once per event poll/frame.
     """
-    mouseposition::Observable{NTuple{2, Float64}} # why no Vec2?
+    mouseposition::Observable{NTuple{2,Float64}} # why no Vec2?
     """
     The direction of scroll
     """
-    scroll::Observable{NTuple{2, Float64}} # why no Vec2?
+    scroll::Observable{NTuple{2,Float64}} # why no Vec2?
 
     """
     Most recently triggered `KeyEvent`. Contains the relevant `event.key` and
@@ -117,14 +117,10 @@ function Events()
     events = Events(
         Observable(Recti(0, 0, 0, 0)),
         Observable(100.0),
-        Observable(false),
-
-        Observable(MouseButtonEvent(Mouse.none, Mouse.release)),
+        Observable(false), Observable(MouseButtonEvent(Mouse.none, Mouse.release)),
         Set{Mouse.Button}(),
         Observable((0.0, 0.0)),
-        Observable((0.0, 0.0)),
-
-        Observable(KeyEvent(Keyboard.unknown, Keyboard.release)),
+        Observable((0.0, 0.0)), Observable(KeyEvent(Keyboard.unknown, Keyboard.release)),
         Set{Keyboard.Button}(),
         Observable('\0'),
         Observable(String[]),
@@ -280,14 +276,14 @@ Base.getindex(p::PlotSpec, i::Symbol) = getproperty(p.kwargs, i)
 to_plotspec(::Type{P}, args; kwargs...) where {P} =
     PlotSpec{P}(args...; kwargs...)
 
-to_plotspec(::Type{P}, p::PlotSpec{S}; kwargs...) where {P, S} =
+to_plotspec(::Type{P}, p::PlotSpec{S}; kwargs...) where {P,S} =
     PlotSpec{plottype(P, S)}(p.args...; p.kwargs..., kwargs...)
 
 plottype(::PlotSpec{P}) where {P} = P
 
 
 struct ScalarOrVector{T}
-    sv::Union{T, Vector{T}}
+    sv::Union{T,Vector{T}}
 end
 
 Base.convert(::Type{<:ScalarOrVector}, v::AbstractVector{T}) where T = ScalarOrVector{T}(collect(v))
@@ -356,7 +352,7 @@ struct GlyphCollection
     strokewidths::ScalarOrVector{Float32}
 
     function GlyphCollection(glyphs, fonts, origins, extents, scales, rotations,
-            colors, strokecolors, strokewidths)
+        colors, strokecolors, strokewidths)
 
         n = length(glyphs)
         @assert length(fonts) == n
@@ -377,4 +373,4 @@ end
 
 
 # The color type we ideally use for most color attributes
-const RGBColors = Union{RGBAf, Vector{RGBAf}, Vector{Float32}}
+const RGBColors = Union{RGBAf,Vector{RGBAf},Vector{Float32}}

@@ -51,11 +51,11 @@ end
 function initialize_block!(m::Menu; default = 1)
     blockscene = m.blockscene
 
-    listheight = Observable(0.0; ignore_equal_values=true)
+    listheight = Observable(0.0; ignore_equal_values = true)
 
     # the direction is auto-chosen as up if there is too little space below and if the space below
     # is smaller than above
-    _direction = Observable{Symbol}(:none; ignore_equal_values=true)
+    _direction = Observable{Symbol}(:none; ignore_equal_values = true)
 
     map!(_direction, m.layoutobservables.computedbbox, m.direction) do bb, dir
         if dir == Makie.automatic
@@ -73,17 +73,17 @@ function initialize_block!(m::Menu; default = 1)
         end
     end
 
-    scenearea = lift(m.layoutobservables.computedbbox, listheight, _direction, m.is_open; ignore_equal_values=true) do bbox, h, d, open
+    scenearea = lift(m.layoutobservables.computedbbox, listheight, _direction, m.is_open; ignore_equal_values = true) do bbox, h, d, open
         !open ?
-            round_to_IRect2D(BBox(left(bbox), right(bbox), 0, 0)) :
-            round_to_IRect2D(BBox(
-                left(bbox),
-                right(bbox),
-                d === :down ? max(0, bottom(bbox) - h) : top(bbox),
-                d === :down ? bottom(bbox) : min(top(bbox) + h, top(blockscene.px_area[]))))
+        round_to_IRect2D(BBox(left(bbox), right(bbox), 0, 0)) :
+        round_to_IRect2D(BBox(
+            left(bbox),
+            right(bbox),
+            d === :down ? max(0, bottom(bbox) - h) : top(bbox),
+            d === :down ? bottom(bbox) : min(top(bbox) + h, top(blockscene.px_area[]))))
     end
 
-    menuscene = Scene(blockscene, scenearea, camera = campixel!, clear=true)
+    menuscene = Scene(blockscene, scenearea, camera = campixel!, clear = true)
     translate!(menuscene, 0, 0, 200)
 
     onany(scenearea, listheight) do area, listheight
@@ -93,9 +93,9 @@ function initialize_block!(m::Menu; default = 1)
         translate!(menuscene, t[1], new_y, t[3])
     end
 
-    optionstrings = lift(o -> optionlabel.(o), m.options; ignore_equal_values=true)
+    optionstrings = lift(o -> optionlabel.(o), m.options; ignore_equal_values = true)
 
-    selected_text = lift(m.prompt, m.i_selected; ignore_equal_values=true) do prompt, i_selected
+    selected_text = lift(m.prompt, m.i_selected; ignore_equal_values = true) do prompt, i_selected
         if i_selected == 0
             prompt
         else
@@ -103,14 +103,14 @@ function initialize_block!(m::Menu; default = 1)
         end
     end
 
-    selectionarea = Observable(Rect2f(0, 0, 0, 0); ignore_equal_values=true)
+    selectionarea = Observable(Rect2f(0, 0, 0, 0); ignore_equal_values = true)
 
     selectionpoly = poly!(
         blockscene, selectionarea, color = m.selection_cell_color_inactive[];
         inspectable = false
     )
 
-    selectiontextpos = Observable(Point2f(0, 0); ignore_equal_values=true)
+    selectiontextpos = Observable(Point2f(0, 0); ignore_equal_values = true)
     selectiontext = text!(
         blockscene, selectiontextpos, text = selected_text, align = (:left, :center),
         fontsize = m.fontsize, color = m.textcolor, markerspace = :data, inspectable = false
@@ -125,13 +125,13 @@ function initialize_block!(m::Menu; default = 1)
     on(m.layoutobservables.computedbbox) do cbb
         selectionarea[] = cbb
         ch = height(cbb)
-        selectiontextpos[] = cbb.origin + Point2f(m.textpadding[][1], ch/2)
+        selectiontextpos[] = cbb.origin + Point2f(m.textpadding[][1], ch / 2)
     end
 
-    textpositions = Observable(zeros(Point2f, length(optionstrings[])); ignore_equal_values=true)
+    textpositions = Observable(zeros(Point2f, length(optionstrings[])); ignore_equal_values = true)
 
-    optionrects = Observable([Rect2f(0, 0, 0, 0)]; ignore_equal_values=true)
-    optionpolycolors = Observable(RGBAf[RGBAf(0.5, 0.5, 0.5, 1)]; ignore_equal_values=true)
+    optionrects = Observable([Rect2f(0, 0, 0, 0)]; ignore_equal_values = true)
+    optionpolycolors = Observable(RGBAf[RGBAf(0.5, 0.5, 0.5, 1)]; ignore_equal_values = true)
 
     function update_option_colors!(hovered)
         n = length(optionstrings[])
@@ -166,7 +166,7 @@ function initialize_block!(m::Menu; default = 1)
         heights_cumsum = [zero(eltype(heights)); cumsum(heights)]
         h = sum(heights)
         list_y_bounds[] = h .- heights_cumsum
-        texts_y = @views h .- 0.5 .* (heights_cumsum[1:end-1] .+ heights_cumsum[2:end])
+        texts_y = @views h .- 0.5 .* (heights_cumsum[1:(end - 1)] .+ heights_cumsum[2:end])
         textpositions[] = Point2f.(pad[1], texts_y)
         listheight[] = h
         w_bbox = width(bbox)
@@ -174,7 +174,7 @@ function initialize_block!(m::Menu; default = 1)
         resize!(optionrects.val, length(bbs))
 
         optionrects.val .= map(eachindex(bbs)) do i
-            BBox(0, w_bbox, h - heights_cumsum[i+1], h - heights_cumsum[i])
+            BBox(0, w_bbox, h - heights_cumsum[i + 1], h - heights_cumsum[i])
         end
 
         update_option_colors!(0)
@@ -189,8 +189,8 @@ function initialize_block!(m::Menu; default = 1)
         # translation due to scrolling has to be removed first
         ytrans = y - translation(menuscene)[][2]
         i = argmin(
-            i -> abs(ytrans - 0.5 * (list_y_bounds[][i+1] + list_y_bounds[][i])),
-            1:length(list_y_bounds[])-1
+            i -> abs(ytrans - 0.5 * (list_y_bounds[][i + 1] + list_y_bounds[][i])),
+            1:(length(list_y_bounds[]) - 1)
         )
     end
 
@@ -220,7 +220,7 @@ function initialize_block!(m::Menu; default = 1)
         return false
     end
 
-    onany(e.mouseposition, e.mousebutton, priority=64) do position, butt
+    onany(e.mouseposition, e.mousebutton, priority = 64) do position, butt
         mp = screen_relative(menuscene, position)
         # track if we have been inside menu/options to clean up if we haven't been
         is_over_options = false
@@ -289,7 +289,7 @@ function initialize_block!(m::Menu; default = 1)
         return Consume(false)
     end
 
-    on(menuscene.events.scroll, priority=61) do (x, y)
+    on(menuscene.events.scroll, priority = 61) do (x, y)
         if is_mouseinside(menuscene)
             t = translation(menuscene)[]
             new_y = max(min(t[2] - y, 0), height(menuscene.px_area[]) - listheight[])
@@ -361,7 +361,7 @@ function initialize_block!(m::Menu; default = 1)
         if i === nothing
             error("Initial menu selection was set to $(default) but that was not found in the option names.")
         end
-        m.i_selected[] =  i
+        m.i_selected[] = i
     end
     notify(m.is_open)
 
@@ -375,7 +375,7 @@ function optionlabel(option)
     string(option)
 end
 
-function optionlabel(option::Tuple{Any, Any})
+function optionlabel(option::Tuple{Any,Any})
     string(option[1])
 end
 
@@ -383,6 +383,6 @@ function optionvalue(option)
     option
 end
 
-function optionvalue(option::Tuple{Any, Any})
+function optionvalue(option::Tuple{Any,Any})
     option[2]
 end

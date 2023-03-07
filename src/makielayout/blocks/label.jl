@@ -11,7 +11,7 @@ function initialize_block!(l::Label)
     t = text!(
         topscene, textpos, text = l.text, fontsize = l.fontsize, font = l.font, color = l.color,
         visible = l.visible, align = (:center, :center), rotation = l.rotation, markerspace = :data,
-        justification = l.justification, lineheight = l.lineheight, word_wrap_width = word_wrap_width, 
+        justification = l.justification, lineheight = l.lineheight, word_wrap_width = word_wrap_width,
         inspectable = false)
 
     textbb = Ref(BBox(0, 1, 0, 1))

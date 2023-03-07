@@ -12,7 +12,7 @@
 
     to = gl2[1, 4] = Toggle(fig)
     te = fig[0, :] = Label(fig, "A super title")
-    me = fig[end + 1, :] = Menu(fig, options=["one", "two", "three"])
+    me = fig[end + 1, :] = Menu(fig, options = ["one", "two", "three"])
     tb = fig[end + 1, :] = Textbox(fig)
     is = fig[end + 1, :] = IntervalSlider(fig)
     @test true
@@ -42,8 +42,8 @@ end
     _, hm = heatmap(fig[1, 1], xs, ys, zs)
     cb = Colorbar(fig[1, 2], hm)
 
-    @test hm.attributes[:colorrange][] == (-.5, .5)
-    @test cb.limits[] == (-.5, .5)
+    @test hm.attributes[:colorrange][] == (-0.5, 0.5)
+    @test cb.limits[] == (-0.5, 0.5)
 
     hm.attributes[:colorrange][] = Float32.((-1, 1))
     @test cb.limits[] == (-1, 1)
@@ -158,12 +158,12 @@ end
 @testset "Colorbars" begin
     fig = Figure()
     hmap = heatmap!(Axis(fig[1, 1]), rand(4, 4))
-    cb1 = Colorbar(fig[1,2], hmap; height = Relative(0.65))
+    cb1 = Colorbar(fig[1, 2], hmap; height = Relative(0.65))
     @test cb1.height[] == Relative(0.65)
     @testset "conversion" begin
         # https://github.com/MakieOrg/Makie.jl/issues/2278
         fig = Figure()
-        cbar = Colorbar(fig[1,1], colormap=:viridis, colorrange=Vec2f(0, 1))
+        cbar = Colorbar(fig[1, 1], colormap = :viridis, colorrange = Vec2f(0, 1))
         ticklabel_strings = first.(cbar.axis.elements[:ticklabels][1][])
         @test ticklabel_strings[1] == "0.0"
         @test ticklabel_strings[end] == "1.0"
@@ -185,14 +185,14 @@ end
     # triggering a conversion error
     # So we just check that the same scenario doesn't error again
     f = Figure()
-    ax = Axis(f[1,1], xticks = 20:10:80)
+    ax = Axis(f[1, 1], xticks = 20:10:80)
     scatter!(ax, 30:10:100, rand(Float64, 8), color = :red)
 end
 
 # issues 1958 and 2006
 @testset "axislegend number align" begin
     f = Figure()
-    ax = Axis(f[1,1], xticks = 20:10:80)
+    ax = Axis(f[1, 1], xticks = 20:10:80)
     lines!(ax, 1:10, label = "A line")
     leg = axislegend(ax, position = (0.4, 0.8))
     @test leg.halign[] == 0.4
@@ -205,18 +205,18 @@ end
         f = Figure()
         kw = (; backgroundcolor = :red)
         @test_throws ArgumentError lines(f[1, 1], 1:10, figure = kw)
-        @test_nowarn               lines(f[1, 2], 1:10, axis = kw)
+        @test_nowarn lines(f[1, 2], 1:10, axis = kw)
         @test_throws ArgumentError lines(f[1, 3][1, 1], 1:10, figure = kw)
-        @test_nowarn               lines(f[1, 4][1, 2], 1:10, axis = kw)
+        @test_nowarn lines(f[1, 4][1, 2], 1:10, axis = kw)
         ax = T(f[1, 5])
         @test_throws ArgumentError lines!(ax, 1:10, axis = kw)
         @test_throws ArgumentError lines!(ax, 1:10, axis = kw)
         @test_throws ArgumentError lines!(1:10, axis = kw)
         @test_throws ArgumentError lines!(1:10, figure = kw)
-        @test_nowarn               lines!(1:10)
+        @test_nowarn lines!(1:10)
         @test_throws ArgumentError lines!(f[1, 5], 1:10, figure = kw)
         @test_throws ArgumentError lines!(f[1, 5], 1:10, axis = kw)
-        @test_nowarn               lines!(f[1, 5], 1:10)
+        @test_nowarn lines!(f[1, 5], 1:10)
     end
 end
 

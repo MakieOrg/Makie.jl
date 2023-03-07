@@ -3,7 +3,7 @@ function initialize_block!(sl::Slider)
     topscene = sl.blockscene
 
     sliderrange = sl.range
-    
+
     onany(sl.linewidth, sl.horizontal) do lw, horizontal
         if horizontal
             sl.layoutobservables.autosize[] = (nothing, Float32(lw))
@@ -21,12 +21,12 @@ function initialize_block!(sl::Slider)
 
         if horizontal
             y = bottom(bb) + h / 2
-            [Point2f(left(bb) + h/2, y),
-             Point2f(right(bb) - h/2, y)]
+            [Point2f(left(bb) + h / 2, y),
+                Point2f(right(bb) - h / 2, y)]
         else
             x = left(bb) + w / 2
-            [Point2f(x, bottom(bb) + w/2),
-             Point2f(x, top(bb) - w/2)]
+            [Point2f(x, bottom(bb) + w / 2),
+                Point2f(x, top(bb) - w / 2)]
         end
     end
 
@@ -79,7 +79,7 @@ function initialize_block!(sl::Slider)
     end
 
     endbuttons = scatter!(topscene, endpoints, color = linecolors,
-        markersize = sl.linewidth, strokewidth = 0, inspectable = false, marker=Circle)
+        markersize = sl.linewidth, strokewidth = 0, inspectable = false, marker = Circle)
 
     linesegs = linesegments!(topscene, linepoints, color = linecolors,
         linewidth = sl.linewidth, inspectable = false)
@@ -87,7 +87,7 @@ function initialize_block!(sl::Slider)
     button_magnification = Observable(1.0)
     buttonsize = @lift($(sl.linewidth) * $button_magnification)
     button = scatter!(topscene, middlepoint, color = sl.color_active, strokewidth = 0,
-        markersize = buttonsize, inspectable = false, marker=Circle)
+        markersize = buttonsize, inspectable = false, marker = Circle)
 
     mouseevents = addmouseevents!(topscene, sl.layoutobservables.computedbbox)
 
@@ -95,10 +95,10 @@ function initialize_block!(sl::Slider)
         dragging[] = true
         dif = event.px - event.prev_px
         fraction = clamp(if sl.horizontal[]
-            (event.px[1] - endpoints[][1][1]) / (endpoints[][2][1] - endpoints[][1][1])
-        else
-            (event.px[2] - endpoints[][1][2]) / (endpoints[][2][2] - endpoints[][1][2])
-        end, 0, 1)
+                (event.px[1] - endpoints[][1][1]) / (endpoints[][2][1] - endpoints[][1][1])
+            else
+                (event.px[2] - endpoints[][1][2]) / (endpoints[][2][2] - endpoints[][1][2])
+            end, 0, 1)
 
         newindex = closest_fractionindex(sliderrange[], fraction)
         if sl.snap[]

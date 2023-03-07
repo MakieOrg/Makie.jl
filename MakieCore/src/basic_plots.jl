@@ -155,9 +155,9 @@ Available algorithms are:
         fxaa = true,
         inspectable = theme(scene, :inspectable),
         space = :data,
-        diffuse=0.4,
-        specular=0.2,
-        shininess=32.0f0
+        diffuse = 0.4,
+        specular = 0.2,
+        shininess = 32.0f0
     )
 end
 
@@ -216,7 +216,7 @@ Plots a surface, where `(x, y)`  define a grid whose heights are the entries in 
         space = :data,
         diffuse = 0.4,
         specular = 0.2,
-        shininess = 32f0,
+        shininess = 32f0
     )
 end
 
@@ -357,7 +357,7 @@ Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [Geome
         space = :data,
         diffuse = 0.4,
         specular = 0.2,
-        shininess = 32f0,
+        shininess = 32f0
     )
 end
 
@@ -408,17 +408,11 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
         colorrange = automatic,
         lowclip = automatic,
         highclip = automatic,
-        nan_color = :transparent,
-
-        marker = theme(scene, :marker),
-        markersize = theme(scene, :markersize),
-
-        strokecolor = theme(scene, :markerstrokecolor),
+        nan_color = :transparent, marker = theme(scene, :marker),
+        markersize = theme(scene, :markersize), strokecolor = theme(scene, :markerstrokecolor),
         strokewidth = theme(scene, :markerstrokewidth),
         glowcolor = (:black, 0.0),
-        glowwidth = 0.0,
-
-        rotations = Billboard(),
+        glowwidth = 0.0, rotations = Billboard(),
         marker_offset = automatic,
         transform_marker = false, # Applies the plots transformation to marker
         distancefield = nothing,
@@ -481,9 +475,7 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
         colorrange = automatic,
         lowclip = automatic,
         highclip = automatic,
-        nan_color = :transparent,
-
-        marker = :Sphere,
+        nan_color = :transparent, marker = :Sphere,
         markersize = 0.1,
         rotations = 0.0,
         backlight = 0f0,
@@ -494,7 +486,7 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
         cycle = [:color],
         diffuse = 0.4,
         specular = 0.2,
-        shininess = 32f0,
+        shininess = 32f0
     )
 end
 
@@ -628,7 +620,7 @@ end
     # default_theme(scene, LineSegments)
     Attributes(;
         default_theme(scene, LineSegments)...,
-        depth_shift = -1f-5,
+        depth_shift = -1f-5
     )
 end
 
@@ -649,9 +641,9 @@ end
             quality = 32,
             inspectable = theme(scene, :inspectable),
             markerspace = :pixel,
-            diffuse=0.4,
-            specular=0.2,
-            shininess=32.0f0
+            diffuse = 0.4,
+            specular = 0.2,
+            shininess = 32.0f0
         )
     )
     attr[:fxaa] = automatic

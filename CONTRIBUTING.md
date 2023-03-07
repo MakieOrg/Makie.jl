@@ -26,6 +26,17 @@ Please add tests for any new functionality that you want to add.
 Makie uses both reference tests that check for visual regressions, and unit tests that check correctness of functions etc.
 It is also appreciated if you add docstrings or documentation, and add an entry to the NEWS file.
 
+## Format
+
+A formatter check is used in Makie in order to work with consistent formatting in source files.
+
+Please run the following snippet (maybe multiple times) for the format check to pass in PRs:
+```julia
+pkg> add JuliaFormatter
+julia> using JuliaFormatter
+julia> format(".")
+```
+
 ### Tests
 
 Please ensure locally that your feature works by running the tests.

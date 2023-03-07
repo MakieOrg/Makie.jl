@@ -10,16 +10,16 @@ fig, ax, p = surface(rand(4, 7))
 fig, ax, p = volume(rand(4, 4, 4))
 begin
     fig, ax, p = heatmap(rand(4, 4))
-    scatter!(Makie.point_iterator(p) |> collect, color=:red, markersize=10)
+    scatter!(Makie.point_iterator(p) |> collect, color = :red, markersize = 10)
     display(fig)
 end
 
 fig, ax, p = image(rand(4, 5))
-scatter!(Makie.point_iterator(p) |> collect, color=:red, markersize=10)
+scatter!(Makie.point_iterator(p) |> collect, color = :red, markersize = 10)
 display(fig)
 
 begin
     fig, ax, p = scatter(1:5, rand(5))
-    linesegments!(Makie.data_limits(ax.scene), color=:red)
+    linesegments!(Makie.data_limits(ax.scene), color = :red)
     display(fig)
 end

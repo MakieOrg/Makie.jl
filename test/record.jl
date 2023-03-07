@@ -1,23 +1,23 @@
 using Logging
 
 module VideoBackend
-    using Makie
-    struct Screen <: MakieScreen
-        size::Tuple{Int, Int}
-    end
-    struct ScreenConfig
-    end
-    Base.size(screen::Screen) = screen.size
-    Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat) = Screen(size(scene))
-    Makie.backend_showable(::Type{Screen}, ::MIME"text/html") = true
-    Makie.backend_showable(::Type{Screen}, ::MIME"image/png") = true
-    Makie.colorbuffer(screen::Screen) = zeros(RGBf, reverse(screen.size)...)
-    Base.display(::Screen, ::Scene; kw...) = nothing
+using Makie
+struct Screen <: MakieScreen
+    size::Tuple{Int,Int}
+end
+struct ScreenConfig
+end
+Base.size(screen::Screen) = screen.size
+Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat) = Screen(size(scene))
+Makie.backend_showable(::Type{Screen}, ::MIME"text/html") = true
+Makie.backend_showable(::Type{Screen}, ::MIME"image/png") = true
+Makie.colorbuffer(screen::Screen) = zeros(RGBf, reverse(screen.size)...)
+Base.display(::Screen, ::Scene; kw...) = nothing
 end
 
 Makie.set_active_backend!(VideoBackend)
 # We need a screenconfig in the theme for every backend!
-set_theme!(VideoBackend=Attributes())
+set_theme!(VideoBackend = Attributes())
 
 
 mktempdir() do tempdir
@@ -53,10 +53,10 @@ mktempdir() do tempdir
                 (:compression, 20, ["mkv", "gif"], ["mp4", "webm"]),
                 (:profile, "high422", ["mkv", "webm", "gif"], ["mp4"]),
                 (
-                    kwarg=:pixel_format,
-                    value="yuv420p",
-                    warn_fmts=["mkv", "webm", "gif"],
-                    no_warn_fmts=["mp4"],
+                    kwarg = :pixel_format,
+                    value = "yuv420p",
+                    warn_fmts = ["mkv", "webm", "gif"],
+                    no_warn_fmts = ["mp4"],
                 ),
             ]
 

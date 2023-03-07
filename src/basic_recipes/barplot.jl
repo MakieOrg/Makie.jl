@@ -1,5 +1,5 @@
 function bar_label_formatter(value::Number)
-    return string(round(value; digits=3))
+    return string(round(value; digits = 3))
 end
 
 """
@@ -34,9 +34,7 @@ $(ATTRIBUTES)
         direction = :y,
         visible = theme(scene, :visible),
         inspectable = theme(scene, :inspectable),
-        cycle = [:color => :patchcolor],
-
-        bar_labels = nothing,
+        cycle = [:color => :patchcolor], bar_labels = nothing,
         flip_labels_at = Inf,
         label_rotation = 0π,
         label_color = theme(scene, :textcolor),
@@ -50,7 +48,7 @@ $(ATTRIBUTES)
     )
 end
 
-conversion_trait(::Type{<: BarPlot}) = PointBased()
+conversion_trait(::Type{<:BarPlot}) = PointBased()
 
 function bar_rectangle(x, y, width, fillto, in_y_direction)
     # y could be smaller than fillto...
@@ -87,7 +85,7 @@ end
 
 function stack_from_to_sorted(y)
     to = cumsum(y)
-    from = [0.0; to[firstindex(to):end-1]]
+    from = [0.0; to[firstindex(to):(end - 1)]]
 
     (from = from, to = to)
 end
@@ -108,7 +106,7 @@ end
 function stack_grouped_from_to(i_stack, y, grp)
 
     from = Array{Float64}(undef, length(y))
-    to   = Array{Float64}(undef, length(y))
+    to = Array{Float64}(undef, length(y))
 
     groupby = StructArray((; grp..., is_pos = y .> 0))
 
@@ -136,7 +134,7 @@ function text_attributes(values, in_y_direction, flip_labels_at, color_over_back
     function flip(k)
         if flip_labels_at isa Number
             return k > flip_labels_at || k < 0
-        elseif flip_labels_at isa Tuple{<:Number, <: Number}
+        elseif flip_labels_at isa Tuple{<:Number,<:Number}
             return (k > flip_labels_at[2] || k < 0) && k > flip_labels_at[1]
         else
             error("flip_labels_at needs to be a tuple of two numbers (low, high), or a single number (high)")
@@ -186,15 +184,15 @@ end
 
 function Makie.plot!(p::BarPlot)
 
-    labels = Observable(Tuple{String, Point2f}[])
+    labels = Observable(Tuple{String,Point2f}[])
     label_aligns = Observable(Vec2f[])
     label_offsets = Observable(Vec2f[])
     label_colors = Observable(RGBAf[])
     function calculate_bars(xy, fillto, offset, width, dodge, n_dodge, gap, dodge_gap, stack,
-                            dir, bar_labels, flip_labels_at, label_color, color_over_background,
-                            color_over_bar, label_formatter, label_offset)
+        dir, bar_labels, flip_labels_at, label_color, color_over_background,
+        color_over_bar, label_formatter, label_offset)
 
-        in_y_direction = get((y=true, x=false), dir) do
+        in_y_direction = get((y = true, x = false), dir) do
             error("Invalid direction $dir. Options are :x and :y.")
         end
 
@@ -241,8 +239,8 @@ function Makie.plot!(p::BarPlot)
             oback = color_over_background === automatic ? label_color : color_over_background
             obar = color_over_bar === automatic ? label_color : color_over_bar
             label_args = barplot_labels(x̂, y, bar_labels, in_y_direction,
-                                        flip_labels_at, to_color(oback), to_color(obar),
-                                        label_formatter, label_offset)
+                flip_labels_at, to_color(oback), to_color(obar),
+                label_formatter, label_offset)
             labels[], label_aligns[], label_offsets[], label_colors[] = label_args
         end
 
@@ -250,8 +248,8 @@ function Makie.plot!(p::BarPlot)
     end
 
     bars = lift(calculate_bars, p[1], p.fillto, p.offset, p.width, p.dodge, p.n_dodge, p.gap,
-                p.dodge_gap, p.stack, p.direction, p.bar_labels, p.flip_labels_at,
-                p.label_color, p.color_over_background, p.color_over_bar, p.label_formatter, p.label_offset)
+        p.dodge_gap, p.stack, p.direction, p.bar_labels, p.flip_labels_at,
+        p.label_color, p.color_over_background, p.color_over_bar, p.label_formatter, p.label_offset)
 
     poly!(
         p, bars, color = p.color, colormap = p.colormap, colorrange = p.colorrange,
@@ -260,6 +258,6 @@ function Makie.plot!(p::BarPlot)
         highclip = p.highclip, lowclip = p.lowclip, nan_color = p.nan_color,
     )
     if !isnothing(p.bar_labels[])
-        text!(p, labels; align=label_aligns, offset=label_offsets, color=label_colors, font=p.label_font, fontsize=p.label_size, rotation=p.label_rotation)
+        text!(p, labels; align = label_aligns, offset = label_offsets, color = label_colors, font = p.label_font, fontsize = p.label_size, rotation = p.label_rotation)
     end
 end

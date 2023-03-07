@@ -1,6 +1,6 @@
 @enum Interpolation Linear Nearest
 
-struct Scaling{F, R}
+struct Scaling{F,R}
     # a function to scale a value by, e.g. log10, sqrt etc
     scaling_function::F
     # If nothing, no scaling applied!
@@ -9,11 +9,11 @@ end
 
 Scaling() = Scaling(identity, nothing)
 
-const NoScaling = Scaling{typeof(identity), Nothing}
+const NoScaling = Scaling{typeof(identity),Nothing}
 
-struct Sampler{N, V} <: AbstractArray{RGBAf, 1}
+struct Sampler{N,V} <: AbstractArray{RGBAf,1}
     # the colors to sample from!
-    colors::AbstractArray{T, N} where T
+    colors::AbstractArray{T,N} where T
     # or an array of values, which are used to index into colors via interpolation!
     values::V
     # additional alpha that gets multiplied
@@ -87,7 +87,7 @@ function Base.getindex(sampler::Sampler, i)::RGBAf
     return RGBAf(color(c), alpha(c) * sampler.alpha)
 end
 
-function Base.getindex(sampler::Sampler{2, <: AbstractVector{Vec2f}}, i)::RGBAf
+function Base.getindex(sampler::Sampler{2,<:AbstractVector{Vec2f}}, i)::RGBAf
     uv = sampler.values[i]
     colors = sampler.colors
     # indexing confirming to OpenGL uv indexing
@@ -98,13 +98,13 @@ function Base.getindex(sampler::Sampler{2, <: AbstractVector{Vec2f}}, i)::RGBAf
     return RGBAf(color(c), alpha(c) * sampler.alpha)
 end
 
-function sampler(cmap::Union{Symbol, String}, n::Int = 20;
-                 scaling=Scaling(), alpha=1.0, interpolation=Linear)
+function sampler(cmap::Union{Symbol,String}, n::Int = 20;
+    scaling = Scaling(), alpha = 1.0, interpolation = Linear)
     return sampler(cmap, LinRange(0, 1, n); scaling = scaling, alpha = alpha, interpolation = interpolation)
 end
 
-function sampler(cmap::Union{Symbol, String}, values::AbstractVector{<: AbstractFloat};
-                 scaling=Scaling(), alpha=1.0, interpolation=Linear)
+function sampler(cmap::Union{Symbol,String}, values::AbstractVector{<:AbstractFloat};
+    scaling = Scaling(), alpha = 1.0, interpolation = Linear)
 
     cs = PlotUtils.get_colorscheme(cmap)
 
@@ -113,25 +113,25 @@ function sampler(cmap::Union{Symbol, String}, values::AbstractVector{<: Abstract
     return Sampler(colors, values, alpha, interpolation, scaling)
 end
 
-function sampler(cmap::Vector{<: Colorant}, values::AbstractVector{<: AbstractFloat};
-                 scaling=Scaling(), alpha=1.0, interpolation=Linear)
+function sampler(cmap::Vector{<:Colorant}, values::AbstractVector{<:AbstractFloat};
+    scaling = Scaling(), alpha = 1.0, interpolation = Linear)
     return Sampler(RGBAf.(cmap), values, alpha, interpolation, scaling)
 end
 
 function sampler(cmap::AbstractVector, values, crange;
-                 alpha=1.0, interpolation=Linear)
+    alpha = 1.0, interpolation = Linear)
     return Sampler(to_color.(cmap), values, alpha, interpolation, Scaling(identity, crange))
 end
 # uv texture sampler
-function sampler(cmap::Matrix{<: Colorant}, uv::AbstractVector{Vec2f};
-                 alpha=1.0, interpolation=Linear)
+function sampler(cmap::Matrix{<:Colorant}, uv::AbstractVector{Vec2f};
+    alpha = 1.0, interpolation = Linear)
     return Sampler(cmap, uv, alpha, interpolation, Scaling())
 end
 
 
 function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
     colormap = get_attribute(primitive, :colormap)::Vector{RGBAf}
-    _colorrange = get_attribute(primitive, :colorrange)::Union{Nothing, Vec2f}
+    _colorrange = get_attribute(primitive, :colorrange)::Union{Nothing,Vec2f}
     colorrange = if isnothing(_colorrange)
         # TODO, plot primitive should always expand automatic values
         Vec2f(extrema_nan(numbers))
@@ -141,7 +141,7 @@ function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
 
     lowclip = get_attribute(primitive, :lowclip)
     highclip = get_attribute(primitive, :highclip)
-    nan_color = get_attribute(primitive, :nan_color, RGBAf(0,0,0,0))
+    nan_color = get_attribute(primitive, :nan_color, RGBAf(0, 0, 0, 0))
 
     cmin, cmax = colorrange::Vec2f
 

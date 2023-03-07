@@ -19,7 +19,7 @@ function create_shader(scene::Scene, plot::Union{Lines,LineSegments})
             return points
         else
             # Repeat every second point to connect the lines !
-            return topoint(TupleView{2, 1}(points))
+            return topoint(TupleView{2,1}(points))
         end
         trans
     end
@@ -30,7 +30,7 @@ function create_shader(scene::Scene, plot::Union{Lines,LineSegments})
     end
 
     per_instance = Dict{Symbol,Any}(:segment_start => Buffer(lift(first, p_start_end)),
-                                    :segment_end => Buffer(lift(last, p_start_end)))
+        :segment_end => Buffer(lift(last, p_start_end)))
     uniforms = Dict{Symbol,Any}()
     for k in (:linewidth, :color)
         attribute = lift(plot[k]) do x
@@ -39,7 +39,7 @@ function create_shader(scene::Scene, plot::Union{Lines,LineSegments})
                 return x
             else
                 # Repeat every second point to connect the lines!
-                return isscalar(x) ? x : reinterpret(eltype(x), TupleView{2, 1}(x))
+                return isscalar(x) ? x : reinterpret(eltype(x), TupleView{2,1}(x))
             end
         end
         if isscalar(attribute)
@@ -60,7 +60,7 @@ function create_shader(scene::Scene, plot::Union{Lines,LineSegments})
     uniforms[:model] = plot.model
     uniforms[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
     positions = meta(Point2f[(0, -1), (0, 1), (1, -1), (1, 1)],
-                     uv=Vec2f[(0, 0), (0, 0), (0, 0), (0, 0)])
+        uv = Vec2f[(0, 0), (0, 0), (0, 0), (0, 0)])
     instance = GeometryBasics.Mesh(positions, GLTriangleFace[(1, 2, 3), (2, 4, 3)])
 
     # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
@@ -68,6 +68,6 @@ function create_shader(scene::Scene, plot::Union{Lines,LineSegments})
     uniforms[:object_id] = UInt32(0)
 
     return InstancedProgram(WebGL(), lasset("line_segments.vert"),
-                            lasset("line_segments.frag"), instance,
-                            VertexArray(; per_instance...), uniforms)
+        lasset("line_segments.frag"), instance,
+        VertexArray(; per_instance...), uniforms)
 end

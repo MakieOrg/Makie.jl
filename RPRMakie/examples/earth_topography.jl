@@ -27,13 +27,13 @@ function glow_material(data_normed)
     )
 end
 
-RPRMakie.activate!(iterations=32, plugin=RPR.Northstar)
-fig = Figure(; resolution=(2000, 800))
+RPRMakie.activate!(iterations = 32, plugin = RPR.Northstar)
+fig = Figure(; resolution = (2000, 800))
 radiance = 30000
 lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
-            PointLight(Vec3f(0, 100, 100), RGBf(radiance, radiance, radiance))]
+    PointLight(Vec3f(0, 100, 100), RGBf(radiance, radiance, radiance))]
 
-ax = LScene(fig[1, 1]; show_axis=false, scenekw=(lights=lights,))
+ax = LScene(fig[1, 1]; show_axis = false, scenekw = (lights = lights,))
 
 mini, maxi = extrema(data)
 data_normed = ((data .- mini) ./ (maxi - mini))
@@ -41,8 +41,8 @@ data_normed = ((data .- mini) ./ (maxi - mini))
 material = glow_material(data_normed)
 
 pltobj = surface!(ax, lon, lat, data_normed .* 20;
-                    material=material, colormap=[:black, :white, :brown],
-                    colorrange=(0.2, 0.8) .* 20)
+    material = material, colormap = [:black, :white, :brown],
+    colorrange = (0.2, 0.8) .* 20)
 # Set the camera to a nice angle
 cam = cameracontrols(ax.scene)
 cam.eyeposition[] = Vec3f(3, -300, 300)
