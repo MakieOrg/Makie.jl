@@ -329,7 +329,12 @@ function getscreen(backend::Union{Missing, Module}, scene::Scene, args...; scree
     screen = getscreen(scene, backend)
     config = Makie.merge_screen_config(backend.ScreenConfig, screen_config)
     if !isnothing(screen) && parentmodule(typeof(screen)) == backend
-        return apply_screen_config!(screen, config, scene, args...)
+        new_screen = apply_screen_config!(screen, config, scene, args...)
+        if new_screen !== screen
+            # Apply config is allowed to recreate a screen, but that means we need to delete the old one:
+            delete_screen!(scene, screen)
+        end
+        return new_screen
     end
     if ismissing(backend)
         error("""
