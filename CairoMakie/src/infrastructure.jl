@@ -41,9 +41,20 @@ function cairo_draw(screen::Screen, scene::Scene)
         # rasterize it when plotting to vector backends, by using the `rasterize`
         # keyword argument.  This can be set to a Bool or an Int which describes
         # the density of rasterization (in terms of a direct scaling factor.)
-        if to_value(get(p, :rasterize, false)) != false && should_rasterize
-            draw_plot_as_image(pparent, screen, p, p[:rasterize][])
-        else # draw vector
+        # This can also be set to a `Module` (i.e., )
+        if to_value(get(p, :rasterize, false)) != false
+            if p.rasterize[] isa Union{Bool, Int} && should_rasterize
+                draw_plot_as_image(pparent, screen, p, p[:rasterize][])
+            elseif p.rasterize[] isa Union{<: Module, Tuple{<: Module, Int}}
+                backend = p.rasterize[] isa Module ? p.rasterize[] : p.rasterize[][1]
+                scale   = p.rasterize[] isa Module ? 1 : p.rasterize[][2]
+                draw_plot_as_image_with_backend(backend, pparent, screen, p; scale = scale)
+            else # rasterization option was not recognized, or should_rasterize
+                 # was false and backend was not selected.
+                draw_plot(pparent, screen, p)
+            end
+        else # draw vector, only if a parent plot has not been rasterized
+
             draw_plot(pparent, screen, p)
         end
         Cairo.restore(screen.context)
