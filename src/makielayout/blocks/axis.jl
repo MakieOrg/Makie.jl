@@ -38,11 +38,7 @@ function process_axis_event(ax, event)
 end
 
 function register_events!(ax, scene)
-
     mouseeventhandle = addmouseevents!(scene)
-    for obsfunc in mouseeventhandle.observerfuncs
-        push!(ax.finalizers, offcaller(obsfunc))
-    end
     setfield!(ax, :mouseeventhandle, mouseeventhandle)
     scrollevents = Observable(ScrollEvent(0, 0))
     setfield!(ax, :scrollevents, scrollevents)
@@ -50,28 +46,26 @@ function register_events!(ax, scene)
     setfield!(ax, :keysevents, keysevents)
     evs = events(scene)
 
-    obsfunc = on(evs.scroll) do s
+    on(scene, evs.scroll) do s
         if is_mouseinside(scene)
             scrollevents[] = ScrollEvent(s[1], s[2])
             return Consume(true)
         end
         return Consume(false)
     end
-    push!(ax.finalizers, offcaller(obsfunc))
 
     # TODO this should probably just forward KeyEvent from Makie
-    obsfunc = on(evs.keyboardbutton) do e
+    on(scene, evs.keyboardbutton) do e
         keysevents[] = KeysEvent(evs.keyboardstate)
         return Consume(false)
     end
-    push!(ax.finalizers, offcaller(obsfunc))
 
     interactions = Dict{Symbol, Tuple{Bool, Any}}()
     setfield!(ax, :interactions, interactions)
 
-    onany(process_axis_event, ax, mouseeventhandle.obs)
-    onany(process_axis_event, ax, scrollevents)
-    onany(process_axis_event, ax, keysevents)
+    onany(process_axis_event, scene, ax, mouseeventhandle.obs)
+    onany(process_axis_event, scene, ax, scrollevents)
+    onany(process_axis_event, scene, ax, keysevents)
 
     register_interaction!(ax, :rectanglezoom, RectangleZoom(ax))
 

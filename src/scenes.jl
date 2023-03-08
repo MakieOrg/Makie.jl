@@ -162,8 +162,8 @@ function Observables.on(f, scene::Union{Combined,Scene}, observable::Observable;
     return to_deregister
 end
 
-function Observables.onany(f, scene::Union{Combined,Scene}, observables::Observable...)
-    to_deregister = onany(f, observables...)
+function Observables.onany(f, scene::Union{Combined,Scene}, observables::Observable...; priority=0)
+    to_deregister = onany(f, observables...; priority=priority)
     append!(scene.deregister_callbacks, to_deregister)
     return to_deregister
 end

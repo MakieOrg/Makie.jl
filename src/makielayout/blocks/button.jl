@@ -47,9 +47,6 @@ function initialize_block!(b::Button)
     end
 
     mouseevents = addmouseevents!(scene, b.layoutobservables.computedbbox)
-    for obsfunc in mouseevents.observerfuncs
-        push!(b.finalizers, offcaller(obsfunc))
-    end
 
     onmouseover(mouseevents) do _
         mousestate[] = :hover

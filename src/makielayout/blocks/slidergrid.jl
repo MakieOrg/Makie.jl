@@ -37,6 +37,13 @@ function block_docs(::Type{SliderGrid})
     """
 end
 
+function free(sg::SliderGrid)
+    foreach(delete!, sg.sliders)
+    foreach(delete!, sg.valuelabels)
+    foreach(delete!, sg.labels)
+    return
+end
+
 function initialize_block!(sg::SliderGrid, nts::NamedTuple...)
 
     default_format(x) = string(x)
@@ -45,12 +52,6 @@ function initialize_block!(sg::SliderGrid, nts::NamedTuple...)
     sg.sliders = Slider[]
     sg.valuelabels = Label[]
     sg.labels = Label[]
-
-    push!(sg.finalizers, function()
-        delete!.(sg.sliders)
-        delete!.(sg.valuelabels)
-        delete!.(sg.labels)
-    end)
 
     extract_label_range_format(pair::Pair) = pair[1], extract_range_format(pair[2])...
     extract_range_format(p::Pair) = (p...,)
