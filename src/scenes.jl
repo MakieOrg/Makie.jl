@@ -113,6 +113,8 @@ mutable struct Scene <: AbstractScene
     visible::Observable{Bool}
     ssao::SSAO
     lights::Vector{AbstractLight}
+    deregister_callbacks::Vector{Observables.ObserverFunction}
+
     function Scene(
             parent::Union{Nothing, Scene},
             events::Events,
@@ -145,11 +147,44 @@ mutable struct Scene <: AbstractScene
             backgroundcolor,
             visible,
             ssao,
-            lights
+            lights,
+            Observables.ObserverFunction[]
         )
         finalizer(empty!, scene)
         return scene
     end
+end
+
+# on & map versions that deregister when scene closes!
+function Observables.on(f, scene::Union{Combined,Scene}, observable::Observable; update=false, priority=0)
+    to_deregister = on(f, observable; update=update, priority=priority)
+    push!(scene.deregister_callbacks, to_deregister)
+    return to_deregister
+end
+
+function Observables.onany(f, scene::Union{Combined,Scene}, observables::Observable...)
+    to_deregister = onany(f, observables...)
+    append!(scene.deregister_callbacks, to_deregister)
+    return to_deregister
+end
+
+@inline function Base.map!(@nospecialize(f), scene::Union{Combined,Scene}, result::AbstractObservable, os...;
+                           update::Bool=true)
+    # note: the @inline prevents de-specialization due to the splatting
+    callback = Observables.MapCallback(f, result, os)
+    for o in os
+        o isa AbstractObservable && on(callback, scene, o)
+    end
+    update && callback(nothing)
+    return result
+end
+
+@inline function Base.map(f::F, scene::Union{Combined,Scene}, arg1::AbstractObservable, args...;
+                          ignore_equal_values=false) where {F}
+    # note: the @inline prevents de-specialization due to the splatting
+    obs = Observable(f(arg1[], map(Observables.to_value, args)...); ignore_equal_values=ignore_equal_values)
+    map!(f, scene, obs, arg1, args...; update=false)
+    return obs
 end
 
 get_scene(scene::Scene) = scene
@@ -208,15 +243,6 @@ function Scene(;
     end
 
     cam = camera isa Camera ? camera : Camera(px_area)
-    if wasnothing
-        on(events.window_area, priority = typemax(Int)) do w_area
-            if !any(x -> x ≈ 0.0, widths(w_area)) && px_area[] != w_area
-                px_area[] = w_area
-            end
-            return Consume(false)
-        end
-    end
-
     _lights = lights isa Automatic ? AbstractLight[] : lights
 
     # if we have an opaque background, automatically set clear to true!
@@ -228,8 +254,15 @@ function Scene(;
         transformation, plots, m_theme,
         children, current_screens, bg, visible, ssao, _lights
     )
-    if camera isa Function
-        cam = camera(scene)
+    camera isa Function && camera(scene)
+
+    if wasnothing
+        on(scene, events.window_area, priority = typemax(Int)) do w_area
+            if !any(x -> x ≈ 0.0, widths(w_area)) && px_area[] != w_area
+                px_area[] = w_area
+            end
+            return Consume(false)
+        end
     end
 
     if lights isa Automatic
@@ -276,22 +309,14 @@ function Scene(
         transformation=Transformation(parent),
         kw...
     )
-    if isnothing(px_area)
-        px_area = lift(zero_origin, parent.px_area; ignore_equal_values=true)
-    elseif !(px_area isa Observable) # observables are assumed to be already corrected against the parent to avoid double updates
-        px_area = lift(pixelarea(parent), convert(Observable, px_area); ignore_equal_values=true) do p, a
-            # make coordinates relative to parent
-            rect = Rect2i(minimum(p) .+ minimum(a), widths(a))
-            return rect
-        end
-    end
+
     if camera !== parent.camera
         camera_controls = EmptyCamera()
     end
-
+    child_px_area = px_area isa Observable ? px_area : Observable(Rect2i(0, 0, 0, 0); ignore_equal_values=true)
     child = Scene(;
         events=events,
-        px_area=px_area,
+        px_area=child_px_area,
         clear=clear,
         camera=camera,
         camera_controls=camera_controls,
@@ -301,6 +326,15 @@ function Scene(
         theme=theme(parent),
         kw...
     )
+    if isnothing(px_area)
+        map!(zero_origin, child, child_px_area, parent.px_area)
+    elseif !(px_area isa Observable) # observables are assumed to be already corrected against the parent to avoid double updates
+        a = Rect2i(px_area)
+        on(child, pixelarea(parent)) do p
+            # make coordinates relative to parent
+            return Rect2i(minimum(p) .+ minimum(a), widths(a))
+        end
+    end
     push!(parent.children, child)
     child.parent = parent
     return child
@@ -403,6 +437,10 @@ function Base.empty!(scene::Scene)
     for fieldname in (:rotation, :translation, :scale, :transform_func, :model)
         Observables.clear(getfield(scene.transformation, fieldname))
     end
+    for obsfunc in scene.deregister_callbacks
+        Observables.off(obsfunc)
+    end
+    empty!(scene.deregister_callbacks)
     return nothing
 end
 

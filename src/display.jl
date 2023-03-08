@@ -315,7 +315,7 @@ function getscreen(scene::Scene, backend=current_backend())
     if isempty(scene.current_screens)
         isroot(scene) && return nothing # stop search
     end
-    idx = findfirst(scene.current_srceens) do screen
+    idx = findfirst(scene.current_screens) do screen
         parentmodule(typeof(screen)) === backend
     end
     isnothing(idx) && return nothing

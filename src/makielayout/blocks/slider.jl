@@ -3,7 +3,7 @@ function initialize_block!(sl::Slider)
     topscene = sl.blockscene
 
     sliderrange = sl.range
-    
+
     onany(sl.linewidth, sl.horizontal) do lw, horizontal
         if horizontal
             sl.layoutobservables.autosize[] = (nothing, Float32(lw))
@@ -12,9 +12,9 @@ function initialize_block!(sl::Slider)
         end
     end
 
-    sliderbox = lift(identity, sl.layoutobservables.computedbbox)
+    sliderbox = lift(identity, topscene, sl.layoutobservables.computedbbox)
 
-    endpoints = lift(sliderbox, sl.horizontal) do bb, horizontal
+    endpoints = lift(topscene, sliderbox, sl.horizontal) do bb, horizontal
 
         h = height(bb)
         w = width(bb)
@@ -36,7 +36,7 @@ function initialize_block!(sl::Slider)
 
     # the fraction on the slider corresponding to the selected_index
     # this is only used after dragging
-    sliderfraction = lift(selected_index, sliderrange) do i, r
+    sliderfraction = lift(topscene, selected_index, sliderrange) do i, r
         (i - 1) / (length(r) - 1)
     end
 
@@ -46,7 +46,7 @@ function initialize_block!(sl::Slider)
     # the slider position is in an "invalid" position given the slider's range)
     displayed_sliderfraction = Observable(0.0)
 
-    on(sliderfraction) do frac
+    on(topscene, sliderfraction) do frac
         # only update displayed fraction through sliderfraction if not dragging
         # dragging overrides the value so there is clear mouse interaction
         if !dragging[]
@@ -55,26 +55,26 @@ function initialize_block!(sl::Slider)
     end
 
     # when the range is changed, switch to closest value
-    on(sliderrange) do rng
+    on(topscene, sliderrange) do rng
         selected_index[] = closest_index(rng, sl.value[])
     end
 
-    on(selected_index) do i
+    on(topscene, selected_index) do i
         sl.value[] = sliderrange[][i]
     end
 
     # initialize slider value with closest from range
     selected_index[] = closest_index(sliderrange[], sl.startvalue[])
 
-    middlepoint = lift(endpoints, displayed_sliderfraction) do ep, sf
+    middlepoint = lift(topscene, endpoints, displayed_sliderfraction) do ep, sf
         Point2f(ep[1] .+ sf .* (ep[2] .- ep[1]))
     end
 
-    linepoints = lift(endpoints, middlepoint) do eps, middle
+    linepoints = lift(topscene, endpoints, middlepoint) do eps, middle
         [eps[1], middle, middle, eps[2]]
     end
 
-    linecolors = lift(sl.color_active_dimmed, sl.color_inactive) do ca, ci
+    linecolors = lift(topscene, sl.color_active_dimmed, sl.color_inactive) do ca, ci
         [ca, ci]
     end
 
@@ -85,14 +85,11 @@ function initialize_block!(sl::Slider)
         linewidth = sl.linewidth, inspectable = false)
 
     button_magnification = Observable(1.0)
-    buttonsize = @lift($(sl.linewidth) * $button_magnification)
+    buttonsize = lift(*, topscene, sl.linewidth, button_magnification)
     button = scatter!(topscene, middlepoint, color = sl.color_active, strokewidth = 0,
         markersize = buttonsize, inspectable = false, marker=Circle)
 
     mouseevents = addmouseevents!(topscene, sl.layoutobservables.computedbbox)
-    for obsfunc in mouseevents.observerfuncs
-        push!(sl.finalizers, offcaller(obsfunc))
-    end
 
     onmouseleftdrag(mouseevents) do event
         dragging[] = true
@@ -150,7 +147,7 @@ function initialize_block!(sl::Slider)
     end
 
     # trigger autosize through linewidth for first layout
-    sl.linewidth[] = sl.linewidth[]
+    notify(sl.linewidth)
     sl
 end
 

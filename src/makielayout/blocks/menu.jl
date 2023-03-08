@@ -57,7 +57,7 @@ function initialize_block!(m::Menu; default = 1)
     # is smaller than above
     _direction = Observable{Symbol}(:none; ignore_equal_values=true)
 
-    map!(_direction, m.layoutobservables.computedbbox, m.direction) do bb, dir
+    map!(blockscene, _direction, m.layoutobservables.computedbbox, m.direction) do bb, dir
         if dir == Makie.automatic
             pxa = pixelarea(blockscene)[]
             bottomspace = abs(bottom(pxa) - bottom(bb))
@@ -73,7 +73,8 @@ function initialize_block!(m::Menu; default = 1)
         end
     end
 
-    scenearea = lift(m.layoutobservables.computedbbox, listheight, _direction, m.is_open; ignore_equal_values=true) do bbox, h, d, open
+    scenearea = lift(blockscene, m.layoutobservables.computedbbox, listheight, _direction, m.is_open;
+                     ignore_equal_values=true) do bbox, h, d, open
         !open ?
             round_to_IRect2D(BBox(left(bbox), right(bbox), 0, 0)) :
             round_to_IRect2D(BBox(
@@ -86,16 +87,16 @@ function initialize_block!(m::Menu; default = 1)
     menuscene = Scene(blockscene, scenearea, camera = campixel!, clear=true)
     translate!(menuscene, 0, 0, 200)
 
-    onany(scenearea, listheight) do area, listheight
+    onany(blockscene, scenearea, listheight) do area, listheight
         t = translation(menuscene)[]
         y = t[2]
         new_y = max(min(0, y), height(area) - listheight)
         translate!(menuscene, t[1], new_y, t[3])
     end
 
-    optionstrings = lift(o -> optionlabel.(o), m.options; ignore_equal_values=true)
+    optionstrings = lift(o -> optionlabel.(o), blockscene, m.options; ignore_equal_values=true)
 
-    selected_text = lift(m.prompt, m.i_selected; ignore_equal_values=true) do prompt, i_selected
+    selected_text = lift(blockscene, m.prompt, m.i_selected; ignore_equal_values=true) do prompt, i_selected
         if i_selected == 0
             prompt
         else
@@ -116,13 +117,13 @@ function initialize_block!(m::Menu; default = 1)
         fontsize = m.fontsize, color = m.textcolor, markerspace = :data, inspectable = false
     )
 
-    onany(selected_text, m.fontsize, m.textpadding) do _, _, (l, r, b, t)
+    onany(blockscene, selected_text, m.fontsize, m.textpadding) do _, _, (l, r, b, t)
         bb = boundingbox(selectiontext)
         m.layoutobservables.autosize[] = width(bb) + l + r, height(bb) + b + t
     end
     notify(selected_text)
 
-    on(m.layoutobservables.computedbbox) do cbb
+    on(blockscene, m.layoutobservables.computedbbox) do cbb
         selectionarea[] = cbb
         ch = height(cbb)
         selectiontextpos[] = cbb.origin + Point2f(m.textpadding[][1], ch/2)
@@ -159,7 +160,7 @@ function initialize_block!(m::Menu; default = 1)
     optiontexts = text!(menuscene, textpositions, text = optionstrings, align = (:left, :center),
         fontsize = m.fontsize, inspectable = false)
 
-    onany(optionstrings, m.textpadding, m.layoutobservables.computedbbox) do _, pad, bbox
+    onany(blockscene, optionstrings, m.textpadding, m.layoutobservables.computedbbox) do _, pad, bbox
         gcs = optiontexts.plots[1][1][]::Vector{GlyphCollection}
         bbs = map(x -> boundingbox(x, zero(Point3f), Quaternion(0, 0, 0, 0)), gcs)
         heights = map(bb -> height(bb) + pad[3] + pad[4], bbs)
@@ -220,7 +221,7 @@ function initialize_block!(m::Menu; default = 1)
         return false
     end
 
-    obsfuncs = onany(e.mouseposition, e.mousebutton, priority=64) do position, butt
+    obsfuncs = onany(blockscene, e.mouseposition, e.mousebutton; priority=64) do position, butt
         mp = screen_relative(menuscene, position)
         # track if we have been inside menu/options to clean up if we haven't been
         is_over_options = false
@@ -292,7 +293,7 @@ function initialize_block!(m::Menu; default = 1)
         push!(m.finalizers, offcaller(obsfunc))
     end
 
-    obsfunc = on(menuscene.events.scroll, priority=61) do (x, y)
+    obsfunc = on(blockscene, menuscene.events.scroll; priority=61) do (x, y)
         if is_mouseinside(menuscene)
             t = translation(menuscene)[]
             new_y = max(min(t[2] - y, 0), height(menuscene.px_area[]) - listheight[])
@@ -304,7 +305,7 @@ function initialize_block!(m::Menu; default = 1)
     end
     push!(m.finalizers, offcaller(obsfunc))
 
-    on(m.options) do options
+    on(blockscene, m.options) do options
         # Make sure i_selected is on a valid index when the contentgrid updates
         old_selection = m.selection[]
         old_selected_text = selected_text[]
@@ -326,10 +327,12 @@ function initialize_block!(m::Menu; default = 1)
         # trigger eventual selection actions
         m.i_selected[] = new_i
     end
+    symbol_pos = lift(blockscene, selectionarea, m.textpadding) do sa, tp
+        return mean(rightline(sa)) - Point2f(tp[2], 0)
+    end
     dropdown_arrow = scatter!(
-        blockscene,
-        @lift(mean(rightline($selectionarea)) - Point2f($(m.textpadding)[2], 0)),
-        marker = @lift($(m.is_open) ? '▴' : '▾'),
+        blockscene, symbol_pos;
+        marker=lift(iso -> iso ? '▴' : '▾', blockscene, m.is_open),
         markersize = m.dropdown_arrow_size,
         color = m.dropdown_arrow_color,
         strokecolor = :transparent,
@@ -337,7 +340,7 @@ function initialize_block!(m::Menu; default = 1)
 
     translate!(dropdown_arrow, 0, 0, 1)
 
-    on(m.i_selected) do i
+    on(blockscene, m.i_selected) do i
         if i == 0
             m.selection[] = nothing
         else
