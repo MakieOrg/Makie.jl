@@ -91,7 +91,7 @@ lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
             PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1))]
 fig = Figure(; resolution=(1500, 700))
 ax = LScene(fig[1, 1]; show_axis=false, scenekw=(; lights=lights))
-screen = Screen(ax.scene; plugin=RPR.Northstar, iterations=400)
+screen = RPRMakie.Screen(ax.scene; plugin=RPR.Northstar, iterations=400)
 
 matsys = screen.matsys
 emissive = RPR.EmissiveMaterial(matsys)
