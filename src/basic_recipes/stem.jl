@@ -55,7 +55,7 @@ function plot!(s::Stem{<:Tuple{<:AbstractVector{<:Point}}})
         tuple.(ps, trunkpoint.(ps, to))
     end
 
-    trunkpoints = lift(st -> last.(st), s, stemtuple)
+    trunkpoints = lift(st -> last.(st), s, stemtuples)
 
     lines!(s, trunkpoints,
         linewidth = s.trunkwidth,
