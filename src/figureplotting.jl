@@ -51,7 +51,6 @@ function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), 
         else
             ax = LScene(fig; axis...)
         end
-        println("empty proxy:")
         empty!(proxyscene)
     end
 
