@@ -320,8 +320,7 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
     FinalType, argsconverted = apply_convert!(PreType, attributes, converted)
     converted_node = Observable(argsconverted)
     input_nodes = convert.(Observable, args)
-    # TODO bind onany to plot life cycle, not scenes
-    onany(scene, kw_signal, input_nodes...) do kwargs, args...
+    obs_funcs = onany(kw_signal, input_nodes...) do kwargs, args...
         # do the argument conversion inside a lift
         result = convert_arguments(FinalType, args...; kwargs...)
         finaltype, argsconverted_ = apply_convert!(FinalType, attributes, result) # avoid a Core.Box (https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-captured)
@@ -332,7 +331,10 @@ function plot!(scene::Union{Combined, SceneLike}, P::PlotFunc, attributes::Attri
         end
         converted_node[] = argsconverted_
     end
-    plot!(scene, FinalType, attributes, input_nodes, converted_node)
+    plot_object = plot!(scene, FinalType, attributes, input_nodes, converted_node)
+    # bind observable clean up to plot object:
+    append!(plot_object.deregister_callbacks, obs_funcs)
+    return plot_object
 end
 
 plot!(p::Combined) = _plot!(p)

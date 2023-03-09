@@ -97,6 +97,25 @@ function inline!(inline=true)
     ALWAYS_INLINE_PLOTS[] = inline
 end
 
+function media_display(@nospecialize x)
+    disps = Base.Multimedia.displays
+    for i in length(disps):-1:1
+        disp = disps[i]
+        if Base.Multimedia.xdisplayable(disp, x)
+            try
+                return display(disp, x)
+            catch e
+                isa(e, MethodError) && (e.f === display || e.f === show) ||
+                    rethrow()
+            end
+        end
+    end
+    throw(MethodError(display, (x,)))
+end
+
+
+wait_for_display(screen) = nothing
+
 """
     Base.display(figlike::FigureLike; backend=current_backend(), screen_config...)
 
@@ -116,7 +135,10 @@ function Base.display(figlike::FigureLike; backend=current_backend(), update=tru
         """)
     end
     if ALWAYS_INLINE_PLOTS[]
-        Core.invoke(display, Tuple{Any}, figlike)
+        media_display(figlike)
+        screen = getscreen(get_scene(figlike))
+        wait_for_display(screen)
+        return screen
     else
         scene = get_scene(figlike)
         update && update_state_before_display!(figlike)
@@ -186,7 +208,7 @@ function Base.show(io::IO, m::MIME, figlike::FigureLike)
     update_state_before_display!(figlike)
     screen = getscreen(backend, scene, io, m; visible=false)
     backend_show(screen, io, m, scene)
-    return
+    return screen
 end
 
 format2mime(::Type{FileIO.format"PNG"}) = MIME("image/png")
@@ -312,9 +334,7 @@ Gets the current screen a scene is associated with.
 Returns nothing if not yet displayed on a screen.
 """
 function getscreen(scene::Scene, backend=current_backend())
-    if isempty(scene.current_screens)
-        isroot(scene) && return nothing # stop search
-    end
+    isempty(scene.current_screens) && return nothing # stop search
     idx = findfirst(scene.current_screens) do screen
         parentmodule(typeof(screen)) === backend
     end

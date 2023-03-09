@@ -73,7 +73,7 @@ function Figure(; kwargs...)
 
     layout = GridLayout(scene)
 
-    on(alignmode) do al
+    on(scene, alignmode) do al
         layout.alignmode[] = al
         GridLayoutBase.update!(layout)
     end

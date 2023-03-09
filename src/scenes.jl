@@ -162,7 +162,7 @@ function Observables.on(f, scene::Union{Combined,Scene}, observable::Observable;
     return to_deregister
 end
 
-function Observables.onany(f, scene::Union{Combined,Scene}, observables::Observable...; priority=0)
+function Observables.onany(f, scene::Union{Combined,Scene}, observables...; priority=0)
     to_deregister = onany(f, observables...; priority=priority)
     append!(scene.deregister_callbacks, to_deregister)
     return to_deregister
@@ -232,7 +232,6 @@ function Scene(;
         theme = Attributes(),
         theme_kw...
     )
-
     m_theme = merge_without_obs!(current_default_theme(; theme_kw...), theme)
 
     bg = Observable{RGBAf}(to_color(m_theme.backgroundcolor[]); ignore_equal_values=true)
@@ -413,7 +412,11 @@ function delete_scene!(scene::Scene)
 end
 
 function Base.empty!(scene::Scene)
-    # clear plots of this scenes
+    foreach(empty!, copy(scene.children))
+    # clear plots of this scene
+    for plot in copy(scene.plots)
+        delete!(scene, plot)
+    end
     for screen in copy(scene.current_screens)
         delete!(screen, scene)
     end
@@ -422,10 +425,9 @@ function Base.empty!(scene::Scene)
         filter!(x-> x !== scene, scene.parent.children)
     end
     scene.parent = nothing
-    foreach(empty!, copy(scene.children))
-    empty!(scene.children)
 
     empty!(scene.current_screens)
+    empty!(scene.children)
     empty!(scene.plots)
     empty!(scene.theme)
     disconnect!(scene.camera)
@@ -463,6 +465,18 @@ function Base.delete!(screen::MakieScreen, ::Scene)
     @debug "Deleting scenes not implemented for backend: $(typeof(screen))"
 end
 
+function free(plot::AbstractPlot)
+    for f in plot.deregister_callbacks
+        Observables.off(f)
+    end
+    foreach(free, plot.plots)
+    empty!(plot.plots)
+    empty!(plot.deregister_callbacks)
+    empty!(plot.attributes)
+    free(plot.transformation)
+    return
+end
+
 function Base.delete!(scene::Scene, plot::AbstractPlot)
     len = length(scene.plots)
     filter!(x -> x !== plot, scene.plots)
@@ -472,6 +486,7 @@ function Base.delete!(scene::Scene, plot::AbstractPlot)
     for screen in scene.current_screens
         delete!(screen, scene, plot)
     end
+    free(plot)
 end
 
 function Base.push!(scene::Scene, child::Scene)

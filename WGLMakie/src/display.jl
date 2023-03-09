@@ -101,6 +101,7 @@ for M in WEB_MIMES
                 return canvas
             end
             Base.show(io, m, inline_display)
+            screen.display = true
             return screen
         end
     end
@@ -119,7 +120,8 @@ end
 
 function get_three(screen::Screen; timeout = 100, error::Union{Nothing, String}=nothing)::Union{Nothing, ThreeDisplay}
     if screen.display !== true
-        error("Screen hasn't displayed anything, so can't get three context")
+        isnothing(error) && return nothing
+        Base.error("Screen hasn't displayed anything, so can't get three context!")
     end
     isnothing(screen.session) && return nothing
     tstart = time()
@@ -161,6 +163,8 @@ function Base.empty!(screen::Screen)
     screen.display = false
     # TODO, empty state in JS, to be able to reuse screen
 end
+
+Makie.wait_for_display(screen::Screen) = get_three(screen)
 
 function Base.display(screen::Screen, scene::Scene; kw...)
     Makie.push_screen!(scene, screen)
@@ -248,16 +252,77 @@ function Base.insert!(screen::Screen, scene::Scene, plot::Combined)
     return
 end
 
-function Base.delete!(td::Screen, scene::Scene, plot::Combined)
-    isopen(scene) || return
+struct LockfreeQueue{T, F}
+    # Double buffering to be lock free
+    queue1::Vector{T}
+    queue2::Vector{T}
+    current_queue::Threads.Atomic{Int}
+    task::Base.RefValue{Union{Nothing, Task}}
+    execute_job::F
+end
+
+function LockfreeQueue{T}(execute_job::F) where {T, F}
+    return LockfreeQueue{T, F}(
+        T[],
+        T[],
+        Threads.Atomic{Int}(1),
+        Base.RefValue{Union{Nothing, Task}}(nothing),
+        execute_job
+    )
+end
+
+function run_jobs!(queue::LockfreeQueue)
+    # already running:
+    !isnothing(queue.task[]) && !istaskdone(queue.task[]) && return
+
+    queue.task[] = @async while true
+        q = nothing
+        if !isempty(queue.queue1)
+            queue.current_queue[] = 1
+            q = queue.queue1
+        elseif !isempty(queue.queue2)
+            queue.current_queue[] = 2
+            q = queue.queue2
+        end
+        if !isnothing(q)
+            while !isempty(q)
+                item = pop!(q)
+                queue.execute_job(item...)
+            end
+        end
+        sleep(0.1)
+    end
+end
+
+function Base.push!(queue::LockfreeQueue, item)
+    run_jobs!(queue)
+    # Push to unused queue:
+    if queue.current_queue[] == 1
+        push!(queue.queue2, item)
+    else
+        push!(queue.queue1, item)
+    end
+end
+
+function delete_plot!(td::Screen, scene::String, uuids::Vector{String})
     three = get_three(td)
     isnothing(three) && return # if no session we haven't displayed and dont need to delete
     isready(three.session) || return
-
-    uuids = js_uuid.(Makie.flatten_plots(plot))
     JSServe.evaljs(three.session, js"""
     $(WGL).then(WGL=> {
-        WGL.delete_plots($(js_uuid(scene)), $uuids);
+        WGL.delete_plots($(scene), $(uuids));
     })""")
+    return
+end
+
+const DISABLE_JS_FINALZING = Base.RefValue(false)
+const DELETE_QUEUE = LockfreeQueue{Tuple{Screen,String,Vector{String}}}(delete_plot!)
+
+function Base.delete!(screen::Screen, scene::Scene, plot::Combined)
+    atomics = Makie.flatten_plots(plot) # delete all atomics
+    # only queue atomics to actually delete on js
+    if !DISABLE_JS_FINALZING[]
+        push!(DELETE_QUEUE, (screen, js_uuid(scene), js_uuid.(atomics)))
+    end
     return
 end

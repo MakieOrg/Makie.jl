@@ -102,7 +102,7 @@ end
     end
 end
 
-@testset "deletion" begin
+@reference_test "deletion" begin
     f = Figure()
     l = Legend(f[1, 1], [LineElement(color=:red)], ["Line"])
     s = display(f)
@@ -114,5 +114,15 @@ end
     ## legend should be gone
     ax = Axis(f[1, 1])
     scatter!(ax, 1:4, markersize=200, color=1:4)
+    f
+end
+
+@reference_test "deletion and observable args" begin
+    obs = Observable(1:5)
+    f, ax, pl = scatter(obs; markersize=150)
+    s = display(f)
+    @test length(obs.listeners) == 1
+    delete!(ax, pl)
+    @test length(obs.listeners) == 0
     f
 end

@@ -76,6 +76,8 @@ function __init__()
     Makie.font_render_callback!(atlas) do sd, uv
         TEXTURE_ATLAS[] = convert(Vector{Float32}, vec(wgl_texture_atlas().data))
     end
+    DISABLE_JS_FINALZING[] = false
+    return
 end
 
 # re-export Makie, including deprecated names
