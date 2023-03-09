@@ -187,6 +187,23 @@ scatter(x, y;
 The `;` in `(; resolution = (400, 400))` is nothing special, it just clarifies that we want a one-element `NamedTuple` and not a variable called `resolution`.
 It's good habit to include it but it's not needed for `NamedTuple`s with more than one entry.
 
+## Graph limitations
+
+To focus on the most relevant parts of our graphs, we can use the `limit!` function. To specify the visible range of the x-axis, we can use `x1` and `x2` to represent the minimum and maximum values, respectively. Similarly, for the y-axis, we can use `y1` and `y2`. 
+To reverse the order of the x and y axes, we can set the limits from high to low.
+
+\begin{examplefigure}{svg = true}
+```julia
+f = Figure()
+ax = Axis(f[1, 1])
+x = range(0, 10, length=100)
+y = sin.(x)
+lines!(ax, x, y)
+limits!(ax,0,10,-1,1 )
+f
+```
+\end{examplefigure}
+
 ## Argument conversions
 
 So far we have called `lines` and `scatter` with `x` and `y` arguments, where `x` was a range object and `y` vector of numbers.
