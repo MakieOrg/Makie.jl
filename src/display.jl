@@ -97,23 +97,6 @@ function inline!(inline=true)
     ALWAYS_INLINE_PLOTS[] = inline
 end
 
-function media_display(@nospecialize x)
-    disps = Base.Multimedia.displays
-    for i in length(disps):-1:1
-        disp = disps[i]
-        if Base.Multimedia.xdisplayable(disp, x)
-            try
-                return display(disp, x)
-            catch e
-                isa(e, MethodError) && (e.f === display || e.f === show) ||
-                    rethrow()
-            end
-        end
-    end
-    throw(MethodError(display, (x,)))
-end
-
-
 wait_for_display(screen) = nothing
 
 """
@@ -135,7 +118,7 @@ function Base.display(figlike::FigureLike; backend=current_backend(), update=tru
         """)
     end
     if ALWAYS_INLINE_PLOTS[]
-        media_display(figlike)
+        Core.invoke(display, Tuple{Any}, figlike)
         screen = getscreen(get_scene(figlike))
         wait_for_display(screen)
         return screen
