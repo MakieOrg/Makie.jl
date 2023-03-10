@@ -172,8 +172,5 @@ end
 
 Resizes the given `Figure` to the resolution given by `width` and `height`.
 If you want to resize the figure to its current layout content, use `resize_to_layout!(fig)` instead.
-
-If no figure is provided, `fig` defaults to `current_figure()`.
 """
 Makie.resize!(figure::Figure, args...) = resize!(figure.scene, args...)
-Makie.resize!(args...) = resize!(current_figure().scene, args...)  # Less specific type, so definition above is used if figure is passed.
