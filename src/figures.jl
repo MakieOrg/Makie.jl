@@ -129,8 +129,7 @@ function get_figure(gp::GridLayoutBase.GridPosition)
 end
 
 """
-    resize_to_layout!(fig::Figure)
-    resize_to_layout!()
+    resize_to_layout!(fig::Figure = current_figure())
 
 Resize `fig` so that it fits the current contents of its top `GridLayout`.
 If a `GridLayout` contains fixed-size content or aspect-constrained
