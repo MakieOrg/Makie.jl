@@ -918,10 +918,13 @@ end
 
 """
     autolimits!(la::Axis)
+    autolimits!()
 
-Reset manually specified limits of `la` to an automatically determined rectangle, that depends on the data limits of all plot objects in the axis, as well as the autolimit margins for x and y axis.
+Reset manually specified limits of `la` to an automatically determined rectangle, that depends on the 
+data limits of all plot objects in the axis, as well as the autolimit margins for x and y axis.
+If called without arguments, `la` defaults to `current_axis()`.
 """
-function autolimits!(ax::Axis)
+function autolimits!(ax::Axis=current_axis())
     ax.limits[] = (nothing, nothing)
     return
 end
