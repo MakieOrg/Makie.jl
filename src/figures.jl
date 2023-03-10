@@ -141,7 +141,7 @@ the `Figure`'s outer padding.
 
 If no figure is provided, `fig` defaults to `current_figure()`.
 """
-function resize_to_layout!(fig::Figure)
+function resize_to_layout!(fig::Figure = current_figure())
     # it is assumed that all plot objects have been added at this point,
     # but it's possible the limits have not been updated, yet,
     # so without `update_state_before_display!` it's possible that the layout
