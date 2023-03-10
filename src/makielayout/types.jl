@@ -1307,6 +1307,12 @@ end
         yspinecolor_3 = :black
         "The color of z spine 3 opposite of the ticks"
         zspinecolor_3 = :black
+        "new spine"
+        xspinecolor_4 = :black
+        "new spine"
+        yspinecolor_4 = :black
+        "new spine"
+        zspinecolor_4 = :black
         "The x spine width"
         xspinewidth = 1
         "The y spine width"

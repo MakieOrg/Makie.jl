@@ -432,16 +432,16 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
         p4 = dpoint(maximum(lims)[dim], f(mi1)(lims)[d1], f(mi2)(lims)[d2])
         p5 = dpoint(minimum(lims)[dim], f(mi1)(lims)[d1], f(!mi2)(lims)[d2])
         p6 = dpoint(maximum(lims)[dim], f(mi1)(lims)[d1], f(!mi2)(lims)[d2])
-        # p7 = dpoint(minimum(lims)[dim], f(!mi1)(lims)[d1], f(!mi2)(lims)[d2])
-        # p8 = dpoint(maximum(lims)[dim], f(!mi1)(lims)[d1], f(!mi2)(lims)[d2])
+        p7 = dpoint(minimum(lims)[dim], f(!mi1)(lims)[d1], f(!mi2)(lims)[d2])
+        p8 = dpoint(maximum(lims)[dim], f(!mi1)(lims)[d1], f(!mi2)(lims)[d2])
 
         # we are going to transform the 3d frame points into 2d of the topscene
         # because otherwise the frame lines can
         # be cut when they lie directly on the scene boundary
-        to_topscene_z_2d.([p1, p2, p3, p4, p5, p6], Ref(scene))
+        to_topscene_z_2d.([p1, p2, p3, p4, p5, p6, p7, p8], Ref(scene))
     end
     colors = Observable{Any}()
-    map!(vcat, colors, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3))
+    map!(vcat, colors, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3), attr(:spinecolor_4))
     framelines = linesegments!(topscene, framepoints, color = colors, linewidth = attr(:spinewidth),
         # transparency = true,
         visible = attr(:spinesvisible), inspectable = false)
