@@ -152,7 +152,6 @@ function resize_to_layout!(fig::Figure = current_figure())
     resize!(fig.scene, widths(bbox)...)
     new_size
 end
-resize_to_layout!() = resize_to_layout!(current_figure())
 
 # No default to `current_figure()` added, as `Base` owns this function
 function Base.empty!(fig::Figure)
