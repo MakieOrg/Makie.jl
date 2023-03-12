@@ -664,7 +664,7 @@ function update_cam!(scene::Scene, cam::Camera3D, area3d::Rect)
 end
 
 # Update camera position via camera Position & Orientation
-function update_cam!(scene::Scene, camera::Camera3D, eyeposition, lookat, up = cam.upvector[])
+function update_cam!(scene::Scene, camera::Camera3D, eyeposition, lookat, up = camera.upvector[])
     camera.lookat[]      = Vec3f(lookat)
     camera.eyeposition[] = Vec3f(eyeposition)
     camera.upvector[]    = Vec3f(up)
