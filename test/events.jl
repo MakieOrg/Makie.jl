@@ -200,7 +200,7 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
         e = events(scene)
         cam3d!(scene, fixed_axis=true, cad=false, zoom_shift_lookat=false)
         cc = cameracontrols(scene)
-
+        
         # Verify initial camera state
         @test cc.lookat[]       == Vec3f(0)
         @test cc.eyeposition[]  == Vec3f(3)
@@ -218,15 +218,15 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
         # 2) Outside scene, in drag
         e.mouseposition[] = (1000, 450)
         @test cc.lookat[]       ≈ Vec3f(0)
-        @test cc.eyeposition[]  ≈ Vec3f(-2.8912058, -3.8524969, -1.9491522)
-        @test cc.upvector[]     ≈ Vec3f(-0.5050875, -0.6730229, 0.5403024)
+        @test cc.eyeposition[]  ≈ Vec3f(0.7128954, -4.1037745, 3.106576)
+        @test cc.upvector[]     ≈ Vec3f(0.82216865, -0.17919835, 0.54030234)
 
         # 3) not in drag
         e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.release)
         e.mouseposition[] = (400, 250)
         @test cc.lookat[]       ≈ Vec3f(0)
-        @test cc.eyeposition[]  ≈ Vec3f(-2.8912058, -3.8524969, -1.9491522)
-        @test cc.upvector[]     ≈ Vec3f(-0.5050875, -0.6730229, 0.5403024)
+        @test cc.eyeposition[]  ≈ Vec3f(0.7128954, -4.1037745, 3.106576)
+        @test cc.upvector[]     ≈ Vec3f(0.82216865, -0.17919835, 0.54030234)
 
 
 
@@ -243,23 +243,24 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
 
         # translation
         # 1) In scene, in drag
+        e.mouseposition[] = (400, 250)
         e.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.press)
         e.mouseposition[] = (600, 250)
-        @test cc.lookat[]       ≈ Vec3f(5.4697413, -3.3484206, -2.1213205)
-        @test cc.eyeposition[]  ≈ Vec3f(8.469742, -0.34842062, 0.8786795)
+        @test cc.lookat[]       ≈ Vec3f(1.0146117, -1.0146117, 0.0)
+        @test cc.eyeposition[]  ≈ Vec3f(4.0146117, 1.9853883, 3.0)
         @test cc.upvector[]     ≈ Vec3f(0.0, 0.0, 1.0)
 
         # 2) Outside scene, in drag
         e.mouseposition[] = (1000, 450)
-        @test cc.lookat[]       ≈ Vec3f(9.257657, -5.4392805, -3.818377)
-        @test cc.eyeposition[]  ≈ Vec3f(12.257658, -2.4392805, -0.81837714)
+        @test cc.lookat[]       ≈ Vec3f(3.6296215, -2.4580488, -1.1715729)
+        @test cc.eyeposition[]  ≈ Vec3f(6.6296215, 0.5419513, 1.8284271)
         @test cc.upvector[]     ≈ Vec3f(0.0, 0.0, 1.0)
 
         # 3) not in drag
         e.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.release)
         e.mouseposition[] = (400, 250)
-        @test cc.lookat[]       ≈ Vec3f(9.257657, -5.4392805, -3.818377)
-        @test cc.eyeposition[]  ≈ Vec3f(12.257658, -2.4392805, -0.81837714)
+        @test cc.lookat[]       ≈ Vec3f(3.6296215, -2.4580488, -1.1715729)
+        @test cc.eyeposition[]  ≈ Vec3f(6.6296215, 0.5419513, 1.8284271)
         @test cc.upvector[]     ≈ Vec3f(0.0, 0.0, 1.0)
 
 
@@ -274,22 +275,20 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
         @test cc.lookat[]       == Vec3f(0)
         @test cc.eyeposition[]  == Vec3f(3)
         @test cc.upvector[]     == Vec3f(0, 0, 1)
-        @test cc.zoom_mult[]    == 1f0
 
         # Zoom
+        e.mouseposition[] = (400, 250) # for debugging
         e.scroll[] = (0.0, 4.0)
         @test cc.lookat[]       ≈ Vec3f(0)
-        @test cc.eyeposition[]  ≈ Vec3f(3)
+        @test cc.eyeposition[]  ≈ 0.6830134f0 * Vec3f(3)
         @test cc.upvector[]     ≈ Vec3f(0.0, 0.0, 1.0)
-        @test cc.zoom_mult[]    ≈ 0.6830134f0
 
         # should not work outside the scene
         e.mouseposition[] = (1000, 450)
         e.scroll[] = (0.0, 4.0)
         @test cc.lookat[]       ≈ Vec3f(0)
-        @test cc.eyeposition[]  ≈ Vec3f(3)
+        @test cc.eyeposition[]  ≈ 0.6830134f0 * Vec3f(3)
         @test cc.upvector[]     ≈ Vec3f(0.0, 0.0, 1.0)
-        @test cc.zoom_mult[]    ≈ 0.6830134f0
     end
 
     @testset "mouse state machine" begin
