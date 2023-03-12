@@ -34,7 +34,7 @@ The 3D camera is (or can be) unrestricted in terms of rotations and translations
 - `rotation_center = :lookat` sets the default center for camera rotations. Currently allows `:lookat` or `:eyeposition`.
 - `projectiontype = Perspective` sets the type of the projection. Can be `Orthographic` or `Perspective`.
 - `fixed_axis = false`: If true panning uses the (world/plot) z-axis instead of the camera up direction.
-- `zoom_shift_lookat = true`: If true attempts to keep data under the cursor in view when zooming.
+- `zoom_shift_lookat = true`: If true keeps the data under the cursor when zooming. Only applies to orthographic cameras.
 - `cad = false`: If true rotates the view around `lookat` when zooming off-center.
 
 The camera view follows from the position of the camera `eyeposition`, the point which the camera focuses `lookat` and the up direction of the camera `upvector`. These can be accessed as `cam.eyeposition` etc and adjusted via `update_cam!(scene, cameracontrols(scene), eyeposition, lookat[, upvector = Vec3f(0, 0, 1)])`. They can also be passed as keyword arguments when the camera is constructed.
@@ -132,10 +132,6 @@ function Camera3D(scene::Scene; kwargs...)
         mouse_rotationspeed = 1f0,
         mouse_translationspeed = 1f0,
         mouse_zoomspeed = 1f0,
-        
-        enable_translation = true,
-        enable_rotation = true,
-        enable_zoom = true,
         
         projectiontype = Makie.Perspective,
         circular_rotation = (true, true, true),
@@ -478,8 +474,6 @@ end
 
 
 function _translate_cam!(scene, cam::Camera3D, t)
-    cam.settings.enable_translation[] || return
-
     @extractvalue cam.controls (fix_x_key, fix_y_key, fix_z_key)
 
     # This uses a camera based coordinate system where
@@ -508,8 +502,6 @@ end
 
 
 function _rotate_cam!(scene, cam::Camera3D, angles::VecTypes, from_mouse=false)
-    cam.settings.enable_rotation[] || return
-
     @extractvalue cam.controls (fix_x_key, fix_y_key, fix_z_key)
     @extractvalue cam.settings (fixed_axis, circular_rotation, rotation_center)
 
@@ -577,8 +569,6 @@ end
 
 
 function _zoom!(scene, cam::Camera3D, zoom_step, cad = false)
-    cam.settings.enable_zoom[] || return
-
     lookat = cam.lookat[]
     eyepos = cam.eyeposition[]
     viewdir = lookat - eyepos   # -z
