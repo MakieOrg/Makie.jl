@@ -218,15 +218,15 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
         # 2) Outside scene, in drag
         e.mouseposition[] = (1000, 450)
         @test cc.lookat[]       ≈ Vec3f(0)
-        @test cc.eyeposition[]  ≈ Vec3f(0.7128954, -4.1037745, 3.106576)
-        @test cc.upvector[]     ≈ Vec3f(0.82216865, -0.17919835, 0.54030234)
+        @test cc.eyeposition[]  ≈ Vec3f(-2.8912058, -3.8524969, -1.9491514)
+        @test cc.upvector[]     ≈ Vec3f(-0.5050875, -0.6730229, 0.5403024)
 
         # 3) not in drag
         e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.release)
         e.mouseposition[] = (400, 250)
         @test cc.lookat[]       ≈ Vec3f(0)
-        @test cc.eyeposition[]  ≈ Vec3f(0.7128954, -4.1037745, 3.106576)
-        @test cc.upvector[]     ≈ Vec3f(0.82216865, -0.17919835, 0.54030234)
+        @test cc.eyeposition[]  ≈ Vec3f(-2.8912058, -3.8524969, -1.9491514)
+        @test cc.upvector[]     ≈ Vec3f(-0.5050875, -0.6730229, 0.5403024)
 
 
 

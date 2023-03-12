@@ -537,8 +537,10 @@ function _rotate_cam!(scene, cam::Camera3D, angles::VecTypes, from_mouse=false)
     rotation = Quaternionf(0, 0, 0, 1)
     if !xor(fix_x, fix_y, fix_z)
         # if there are more or less than one restriction apply all rotations
-        rotation *= qrotation(x_axis, angles[1])
+        # Note that the y rotation needs to happen first here so that 
+        # fixed_axis = true actually keeps the the axis fixed.
         rotation *= qrotation(y_axis, angles[2])
+        rotation *= qrotation(x_axis, angles[1])
         rotation *= qrotation(z_axis, angles[3])
     else
         # apply world space restrictions
@@ -557,8 +559,8 @@ function _rotate_cam!(scene, cam::Camera3D, angles::VecTypes, from_mouse=false)
             )
         else
             # restrict total quaternion rotation to one axis
-            rotation *= qrotation(x_axis, angles[1])
             rotation *= qrotation(y_axis, angles[2])
+            rotation *= qrotation(x_axis, angles[1])
             rotation *= qrotation(z_axis, angles[3])
             # the first three components are related to rotations around the x/y/z-axis
             rotation = Quaternionf(rotation.data .* (fix_x, fix_y, fix_z, 1))
