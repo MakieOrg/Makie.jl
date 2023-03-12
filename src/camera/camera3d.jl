@@ -34,7 +34,7 @@ Settings include anything that isn't a mouse or keyboard button.
 
 - `projectiontype = Perspective` sets the type of the projection. Can be `Orthographic` or `Perspective`.
 - `rotation_center = :lookat` sets the default center for camera rotations. Currently allows `:lookat` or `:eyeposition`.
-- `fixed_axis = false`: If true panning uses the (world/plot) z-axis instead of the camera up direction.
+- `fixed_axis = true`: If true panning uses the (world/plot) z-axis instead of the camera up direction.
 - `zoom_shift_lookat = true`: If true keeps the data under the cursor when zooming. Only applies to orthographic cameras.
 - `cad = false`: If true rotates the view around `lookat` when zooming off-center.
 
