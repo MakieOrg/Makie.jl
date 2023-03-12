@@ -335,7 +335,7 @@ function on_pulse(scene, cam::Camera3D, timestep)
 
     if zooming
         zoom_step = (1f0 + keyboard_zoomspeed * timestep) ^ (zoom_out - zoom_in)
-        _zoom!(scene, cam, zoom_step, false)
+        _zoom!(scene, cam, zoom_step, false, false)
     end
 
     # if any are active, update matrices, else stop clock
@@ -350,7 +350,7 @@ end
 
 function add_translation!(scene, cam::Camera3D)
     @extract cam.controls (translation_button, scroll_mod)
-    @extract cam.settings (mouse_translationspeed, mouse_zoomspeed, cad, projectiontype)
+    @extract cam.settings (mouse_translationspeed, mouse_zoomspeed, cad, projectiontype, zoom_shift_lookat)
 
     last_mousepos = RefValue(Vec2f(0, 0))
     dragging = RefValue(false)
@@ -400,7 +400,7 @@ function add_translation!(scene, cam::Camera3D)
     on(camera(scene), scene.events.scroll) do scroll
         if is_mouseinside(scene) && ispressed(scene, scroll_mod[])
             zoom_step = (1f0 + 0.1f0 * mouse_zoomspeed[]) ^ -scroll[2]
-            zoom!(scene, cam, zoom_step, cad[])
+            _zoom!(scene, cam, zoom_step, cad[], zoom_shift_lookat[])
             return Consume(true)
         end
         return Consume(false)
@@ -457,29 +457,53 @@ end
 
 
 # Simplified methods
+"""
+    translate_cam!(scene, cam::Camera3D, v::Vec3)
+
+Translates the camera by the given vector in camera space, i.e. by `v[1]` to 
+the right, `v[2]` to the top and `v[3]` forward.
+
+Note that this method reacts to `fix_x_key` etc. If any of those keys are 
+pressed the translation will be restricted to act in these directions.
+"""
 function translate_cam!(scene, cam::Camera3D, t::VecTypes)
     _translate_cam!(scene, cam, t)
     update_cam!(scene, cam)
     nothing
 end
 
+"""
+    rotate_cam!(scene, cam::Camera3D, angles::Vec3)
+
+Rotates the camera by the given `angles` around the camera x- (left, right), 
+y- (up, down) and z-axis (in out). The rotation around the y axis is applied 
+first, then x, then y.
+
+Note that this method reacts to `fix_x_key` etc and `fixed_axis`. The former 
+restrict the rotation around a specific axis when a given key is pressed. The 
+latter keeps the camera y axis fixed as the data space z axis.
+"""
 function rotate_cam!(scene, cam::Camera3D, angles::VecTypes, from_mouse=false)
     _rotate_cam!(scene, cam, angles, from_mouse)
     update_cam!(scene, cam)
     nothing
 end
 
+
+zoom!(scene, zoom_step) = zoom!(scene, cameracontrols(scene), zoom_step, false, false)
 """
-    zoom!(scene, zoom_step)
+    zoom!(scene, cam::Camera3D, zoom_step[, cad = false, zoom_shift_lookat = false])
 
 Zooms the camera in or out based on the multiplier `zoom_step`. A `zoom_step`
 of 1.0 is neutral, larger zooms out and lower zooms in.
 
-Note that this method only applies to Camera3D.
+If `cad = true` zooming will also apply a rotation based on how far the cursor 
+is from the center of the scene. If `zoom_shift_lookat = true` and 
+`projectiontype = Orthographic` zooming will keep the data under the cursor at
+the same screen space position. 
 """
-zoom!(scene, zoom_step) = zoom!(scene, cameracontrols(scene), zoom_step, false)
-function zoom!(scene, cam, zoom_step, cad = false)
-    _zoom!(scene, cam, zoom_step, cad)
+function zoom!(scene, cam::Camera3D, zoom_step, cad = false, zoom_shift_lookat = false)
+    _zoom!(scene, cam, zoom_step, cad, zoom_shift_lookat)
     update_cam!(scene, cam)
     nothing
 end
@@ -582,7 +606,7 @@ function _rotate_cam!(scene, cam::Camera3D, angles::VecTypes, from_mouse=false)
 end
 
 
-function _zoom!(scene, cam::Camera3D, zoom_step, cad = false)
+function _zoom!(scene, cam::Camera3D, zoom_step, cad = false, zoom_shift_lookat = false)
     lookat = cam.lookat[]
     eyepos = cam.eyeposition[]
     viewdir = lookat - eyepos   # -z
@@ -598,7 +622,7 @@ function _zoom!(scene, cam::Camera3D, zoom_step, cad = false)
         shift *= 0.1 * sign(1 - zoom_step) * norm(viewdir)
 
         cam.eyeposition[] = lookat - zoom_step * viewdir + shift
-    elseif cam.settings.projectiontype[] == Makie.Orthographic && cam.settings.zoom_shift_lookat[]
+    elseif cam.settings.projectiontype[] == Makie.Orthographic && zoom_shift_lookat[]
         # keep data under cursor
         u_z = normalize(viewdir)
         u_x = normalize(cross(u_z, cam.upvector[]))
