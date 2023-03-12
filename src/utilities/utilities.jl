@@ -106,7 +106,19 @@ function extract_expr(extract_func, dictlike, args)
 end
 
 """
-usage @extract scene (a, b, c, d)
+    @extract scene (a, b, c, d)
+
+This becomes
+
+```julia
+begin
+    a = scene[:a]
+    b = scene[:b]
+    c = scene[:d]
+    d = scene[:d]
+    (a, b, c, d)
+end
+```
 """
 macro extract(scene, args)
     extract_expr(getindex, scene, args)
@@ -250,6 +262,22 @@ function merged_get!(defaults::Function, key, scene::SceneLike, input::Attribute
     end
     return merge!(input, d)
 end
+
+function Base.replace!(target::Attributes, key, scene::SceneLike, overwrite::Attributes)
+    if haskey(theme(scene), key)
+        _replace!(target, theme(scene, key))
+    end
+    return _replace!(target, overwrite)
+end
+
+function _replace!(target::Attributes, overwrite::Attributes)
+    for k in keys(target)
+        haskey(overwrite, k) && (target[k] = overwrite[k])
+    end
+    return 
+end
+
+
 
 to_vector(x::AbstractVector, len, T) = convert(Vector{T}, x)
 function to_vector(x::AbstractArray, len, T)
