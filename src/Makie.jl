@@ -80,7 +80,7 @@ import MakieCore: arrows, heatmap, image, lines, linesegments, mesh, meshscatter
 import MakieCore: arrows!, heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!
 import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
 
-export @L_str
+export @L_str, @colorant_str
 export ConversionTrait, NoConversion, PointBased, SurfaceLike, ContinuousSurface, DiscreteSurface, VolumeLike
 export Pixel, px, Unit, plotkey, attributes, used_attributes
 
@@ -133,6 +133,7 @@ include("basic_recipes/axis.jl")
 include("basic_recipes/band.jl")
 include("basic_recipes/barplot.jl")
 include("basic_recipes/buffers.jl")
+include("basic_recipes/bracket.jl")
 include("basic_recipes/contours.jl")
 include("basic_recipes/contourf.jl")
 include("basic_recipes/error_and_rangebars.jl")
