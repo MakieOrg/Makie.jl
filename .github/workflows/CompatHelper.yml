@@ -1,26 +1,18 @@
 name: CompatHelper
-
 on:
   schedule:
-    - cron: '00 * * * *'
-  issues:
-    types: [opened, reopened]
-
+    - cron: '0 0 * * *'  # Everyday at midnight
+  workflow_dispatch:
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        julia-version: [1.2.0]
-        julia-arch: [x86]
-        os: [ubuntu-latest]
+  CompatHelper:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: julia-actions/setup-julia@latest
-        with:
-          version: ${{ matrix.julia-version }}
       - name: Pkg.add("CompatHelper")
         run: julia -e 'using Pkg; Pkg.add("CompatHelper")'
       - name: CompatHelper.main()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: julia -e 'using CompatHelper; CompatHelper.main(; subdirs=["", "CairoMakie", "GLMakie", "MakieCore", "WGLMakie"])'
+          COMPATHELPER_PRIV: ${{ secrets.DOCUMENTER_KEY }}
+        run: julia -e 'using CompatHelper; CompatHelper.main()'
