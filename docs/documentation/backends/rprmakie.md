@@ -11,6 +11,8 @@ using RadeonProRender
 RadeonProRender.Context()
 ```
 
+To use RPRMakie on a Mac with an M-series chip, for now, you need to use the x84 build of Julia (not the ARM build, you may have to download this manually).  RadeonProRender does not distribute binaries built for the ARM architecture of the M-series processors yet.
+
 ## Activation and screen config
 
 Activate the backend by calling `RPRMakie.activate!()` with the following options:
