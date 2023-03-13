@@ -129,11 +129,12 @@ function sampler(cmap::Matrix{<: Colorant}, uv::AbstractVector{Vec2f};
 end
 
 
-function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
+function numbers_to_colors(numbers::Union{AbstractArray{<:Number},Number}, primitive)
     colormap = get_attribute(primitive, :colormap)::Vector{RGBAf}
     _colorrange = get_attribute(primitive, :colorrange)::Union{Nothing, Vec2f}
     colorrange = if isnothing(_colorrange)
         # TODO, plot primitive should always expand automatic values
+        numbers isa Number && error("Cannot determine a colorrange automatically for single number color value $numbers. Pass an explicit colorrange.")
         Vec2f(extrema_nan(numbers))
     else
         _colorrange
@@ -143,8 +144,15 @@ function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
     highclip = get_attribute(primitive, :highclip)
     nan_color = get_attribute(primitive, :nan_color, RGBAf(0,0,0,0))
 
-    cmin, cmax = colorrange::Vec2f
+    return numbers_to_colors(numbers, colormap, colorrange, lowclip, highclip, nan_color)
+end
 
+
+function numbers_to_colors(numbers::Union{AbstractArray{<:Number},Number}, colormap, colorrange::Vec2,
+                           lowclip::RGBAf,
+                           highclip::RGBAf,
+                           nan_color::RGBAf)::RGBAf
+    cmin, cmax = colorrange
     return map(numbers) do number
         if isnan(number)
             return nan_color
@@ -153,9 +161,8 @@ function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
         elseif !isnothing(highclip) && number > cmax
             return highclip
         end
-        return interpolated_getindex(
-            colormap,
-            Float64(number), # ints don't work in interpolated_getindex
-            (cmin, cmax))
+        return interpolated_getindex(colormap,
+                                     Float64(number), # ints don't work in interpolated_getindex
+                                     (cmin, cmax))
     end
 end
