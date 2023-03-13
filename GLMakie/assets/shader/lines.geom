@@ -123,13 +123,13 @@ void draw_patterned_line(bool isvalid[4])
     //        variable in loop
     //
     // We first figure out the extended size of this line segment, starting
-    // from the left end of the first relevant pattern section and ending at the 
+    // from the left end of the first relevant pattern section and ending at the
     // right end of the last relevant pattern section. E.g.:
     //
     //           g_lastlen[1]                  g_lastlen[2]       (2x pixel coords)
     //             edge1                         edge2            (1x pixel coords)
     //               |                             |
-    //  |####|    |########|        |####|    |########|        |####|    |########|      
+    //  |####|    |########|        |####|    |########|        |####|    |########|
     //            | first  |                  | last   |
     //            | pattern|                  | pattern|
     //            | section|                  | section|
@@ -149,7 +149,9 @@ void draw_patterned_line(bool isvalid[4])
     edge1 = 0.5 * g_lastlen[1];
     edge2 = 0.5 * g_lastlen[2];
 
-    for (int i = 0; i < textureSize(pattern_sections, 0).x - 1; i = i + 2)
+    int pattern_texsize = textureSize(pattern_sections, 0);
+
+    for (int i = 0; i < pattern_texsize - 1; i = i + 2)
     {
         left  = texelFetch(pattern_sections, i,   0).x;
         right = texelFetch(pattern_sections, i+1, 0).x;
@@ -164,30 +166,30 @@ void draw_patterned_line(bool isvalid[4])
         stop_width = ifelse(temp > stop, right - left, stop_width);
         stop = max(stop, temp);
     }
-    // Technically start and stop should be offset by another 
+    // Technically start and stop should be offset by another
     // 1 / (2 * textureSize(pattern)) so the line segment is normalized to
     // pattern texel centers rather than the left edge, but we have enough
     // AA_THICKNESS for it to be irrelevant.
 
     // if there is something to draw...
     if (stop > start){
-            
+
         // setup for sharp corners
         //               miter_a / miter_b
         //           ___         ↑      ___
-        //            |         .|.      |   
+        //            |         .|.      |
         // length_a  _|_      .' | '.   _|_  length_b
         //                  .'   |   '.
         //                .'     |     '.
         //              .'     .' '.     '.
         //                   .'     '.
-        //          
+        //
         vec2 miter_a = normalize(n0 + n1);
         vec2 miter_b = normalize(n1 + n2);
         float length_a = 1.0 / dot(miter_a, n1);
         float length_b = 1.0 / dot(miter_b, n1);
 
-        // if we have a sharp corner: 
+        // if we have a sharp corner:
         //   max(g_thickness[1], proj(length_a * miter_a, v1)) without AA padding
         // otherwise just g_thickness[1]
         left_offset  = g_thickness[1] * max(1.0, float(dot(v0, v1) >= MITER_LIMIT) * abs(dot(miter_a, v1)) * length_a);
@@ -199,12 +201,12 @@ void draw_patterned_line(bool isvalid[4])
 
         // if the "on" section of the pattern at start extends over the whole
         // potential corner we draw the corner. If not we extend the line.
-        // 
-        //               g_lastlen[1]                
+        //
+        //               g_lastlen[1]
         //               . - |---.----------
-        //               :   |   :           
-        //               :   |   :           
-        //               :   |   :           
+        //               :   |   :
+        //               :   |   :
+        //               :   |   :
         //               : - '---:----------
         //             start     :
         //               start + start_width
@@ -236,16 +238,16 @@ void draw_patterned_line(bool isvalid[4])
 
                 bool gap = dot( v0, n1 ) > 0;
 
-                // Another view of a truncated join (with lines joining like a V). 
+                // Another view of a truncated join (with lines joining like a V).
                 //
                 //         uv.y = 0 in line segment
                 //          /
-                //         .  -- uv.x = u0 in truncated join 
+                //         .  -- uv.x = u0 in truncated join
                 //       .' '.     uv.y = thickness in line segment
                 //     .'     '.  /   uv.y = thickness + AA_THICKNESS in line segment
                 //   .'_________'.   /_ uv.x = start in truncated join (constraint for AA)
                 // .'_____________'.  _ uv.x = -proj_AA in truncated join (derived from line segment + constraint)
-                // |               |  
+                // |               |
                 // |_______________|  _ uv.x = -proj_AA - AA_THICKNESS in truncated join
                 //
                 // Here the / annotations come from the connecting line segment and are to
@@ -283,7 +285,7 @@ void draw_patterned_line(bool isvalid[4])
                 miter_a = n1;
                 length_a = thickness_aa1;
                 start = g_lastlen[1] * px2uv;
-                    
+
             } else { // otherwise we do a sharp join
                 start = g_lastlen[1] * px2uv;
             }
@@ -296,7 +298,7 @@ void draw_patterned_line(bool isvalid[4])
             // section of the pattern is in this segment, we draw it, else
             // we skip past the first "on" section.
             start = ifelse(
-                !isvalid[0] || (start > (g_lastlen[1] - start_width) * px2uv), 
+                !isvalid[0] || (start > (g_lastlen[1] - start_width) * px2uv),
                 start - AA_THICKNESS * px2uv,
                 start + (start_width + 0.5 * AA_THICKNESS) * inv_pl
             );
@@ -326,7 +328,7 @@ void draw_patterned_line(bool isvalid[4])
             miter_b = n1;
             length_b = thickness_aa2;
             stop = ifelse(
-                isvalid[3] && (stop > (g_lastlen[2] + stop_width) * px2uv), 
+                isvalid[3] && (stop > (g_lastlen[2] + stop_width) * px2uv),
                 stop - (stop_width + 0.5 * AA_THICKNESS) * inv_pl,
                 stop + AA_THICKNESS * px2uv
             );
@@ -341,7 +343,7 @@ void draw_patterned_line(bool isvalid[4])
         // happen at the respective edge.
         f_uv_minmax.x = ifelse(isvalid[0], f_uv_minmax.x, g_lastlen[1] * px2uv);
         f_uv_minmax.y = ifelse(isvalid[3], f_uv_minmax.y, g_lastlen[2] * px2uv);
-        
+
         // generate rectangle for this segment
         emit_vertex(p1 + miter_a, vec2(start + dot(v1, miter_a) * px2uv, -thickness_aa1), 1);
         emit_vertex(p1 - miter_a, vec2(start - dot(v1, miter_a) * px2uv,  thickness_aa1), 1);
@@ -406,7 +408,7 @@ void draw_solid_line(bool isvalid[4])
     if( dot( v0, v1 ) < MITER_LIMIT ){
         bool gap = dot( v0, n1 ) > 0;
         // In this case uv's are used as signed distance field values, so we
-        // want 0 where we had start before. 
+        // want 0 where we had start before.
         float u0      = thickness_aa1 * abs(dot(miter_a, n1)) * px2uv;
         float proj_AA = AA_THICKNESS  * abs(dot(miter_a, n1)) * px2uv;
 
@@ -443,7 +445,7 @@ void draw_solid_line(bool isvalid[4])
     }
 
 
-    // Without a pattern (linestyle) we use uv.u directly as a signed distance 
+    // Without a pattern (linestyle) we use uv.u directly as a signed distance
     // field. We only care about u1 - u0 being the correct distance and
     // u0 > AA_THICHKNESS at all times.
     float u1 = 10.0 * AA_THICKNESS + thickness_aa1 + thickness_aa2;
@@ -461,17 +463,17 @@ void draw_solid_line(bool isvalid[4])
     // | |    '.--
     // | |     | .
     // | |     | |
-    //     
+    //
     // Here we treat this by adding an artificial AA boundary at the line start
     // and end. Note that always doing this will introduce AA where lines should
-    // smoothly connect. 
+    // smoothly connect.
     f_uv_minmax.x = ifelse(
-        segment_length < abs(length_a * dot(miter_a, v1)), 
+        segment_length < abs(length_a * dot(miter_a, v1)),
         (u1 - g_thickness[1] * abs(dot(miter_a, v1) / dot(miter_a, n1))) * px2uv,
         f_uv_minmax.x
     );
     f_uv_minmax.y = ifelse(
-        segment_length < abs(length_b * dot(miter_b, v1)), 
+        segment_length < abs(length_b * dot(miter_b, v1)),
         (u2 + g_thickness[2] * abs(dot(miter_b, v1) / dot(miter_b, n1))) * px2uv,
         f_uv_minmax.y
     );
@@ -512,7 +514,7 @@ void draw_solid_line(bool isvalid[4])
 
 void main(void)
 {
-    // These need to be set but don't have reasonable values here 
+    // These need to be set but don't have reasonable values here
     o_view_pos = vec3(0);
     o_normal = vec3(0);
 
