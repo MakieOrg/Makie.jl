@@ -11,6 +11,8 @@ using RadeonProRender
 RadeonProRender.Context()
 ```
 
+To use RPRMakie on a Mac with an M-series chip, for now, you need to use the x84 build of Julia (not the ARM build, you may have to download this manually).  RadeonProRender does not distribute binaries built for the ARM architecture of the M-series processors yet.
+
 ## Activation and screen config
 
 Activate the backend by calling `RPRMakie.activate!()` with the following options:
@@ -91,7 +93,7 @@ lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
             PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1))]
 fig = Figure(; resolution=(1500, 700))
 ax = LScene(fig[1, 1]; show_axis=false, scenekw=(; lights=lights))
-screen = Screen(ax.scene; plugin=RPR.Northstar, iterations=400)
+screen = RPRMakie.Screen(ax.scene; plugin=RPR.Northstar, iterations=400)
 
 matsys = screen.matsys
 emissive = RPR.EmissiveMaterial(matsys)
