@@ -8,6 +8,7 @@
 - Fixed a small typo which caused an error in the `Stepper` constructor. [#2600](https://github.com/MakieOrg/Makie.jl/pulls/2478)
 - Fixed rectangle zoom for nonlinear axes [#2674](https://github.com/MakieOrg/Makie.jl/pull/2674)
 - Cleaned up linestyles in GLMakie (Fixing artifacting, spacing/size, anti-aliasing) [#2666](https://github.com/MakieOrg/Makie.jl/pull/2666)
+- Fixed issue with scatterlines only accepting concrete color types as `markercolor` [#2691](https://github.com/MakieOrg/Makie.jl/pull/2691)
 - Fixed an accidental issue where `LaTeXStrings` were not typeset correctly in `Axis3`. [#2558](https://github.com/MakieOrg/Makie.jl/pull/2588)
 - Fixed a bug where line segments in `text(lstr::LaTeXString)` were ignoring offsets. [#2668](https://github.com/MakieOrg/Makie.jl/pull/2668)
 - Re-exported the `@colorant_str` (`colorant"..."`) macro from Colors.jl. [#2726](https://github.com/MakieOrg/Makie.jl/pull/2726)
