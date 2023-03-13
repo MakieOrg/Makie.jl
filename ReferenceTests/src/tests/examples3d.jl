@@ -29,19 +29,11 @@ end
     meshes = map(colormesh, rectangles)
     fig, ax, meshplot = mesh(merge(meshes))
     scene = ax.scene
-    center!(scene)
     cam = cameracontrols(scene)
-    dir = widths(data_limits(scene)) ./ 2.
-    dir_scaled = Vec3f(
-        dir[1] * scene.transformation.scale[][1],
-        0.0,
-        dir[3] * scene.transformation.scale[][2],
-    )
+    cam.settings[:projectiontype][] = Makie.Orthographic
     cam.upvector[] = (0.0, 0.0, 1.0)
-    cam.lookat[] = minimum(data_limits(scene)) + dir_scaled
-    cam.eyeposition[] = (cam.lookat[][1], cam.lookat[][2] + 6.3, cam.lookat[][3])
-    cam.attributes[:projectiontype][] = Makie.Orthographic
-    cam.zoom_mult[] = 0.61f0
+    cam.lookat[] = Vec3f(0.595, 2.5, 0.5)
+    cam.eyeposition[] = (cam.lookat[][1], cam.lookat[][2] + 0.61, cam.lookat[][3])
     update_cam!(scene, cam)
     fig
 end
@@ -556,7 +548,7 @@ end
         end
     end
     cam = cameracontrols(ax.scene)
-    cam.attributes.fov[] = 22f0
+    cam.fov[] = 22f0
     update_cam!(ax.scene, cam, Vec3f(0.625, 0, 3.5), Vec3f(0.625, 0, 0), Vec3f(0, 1, 0))
     fig
 end
