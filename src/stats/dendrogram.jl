@@ -31,7 +31,7 @@ and parent nodes identified by `merges`.
         colormap = Makie.inherit(scene, :colormap, :viridis),
         colorrange = Makie.automatic,
         orientation = :vertical,
-        groups = Makie.automatic,
+        groups = nothing,
         fallback_color = :black,
         cycle = [:color => :patchcolor],
         inspectable = Makie.inherit(scene, :inspectable, false),
@@ -63,8 +63,8 @@ function recursive_dendrogram_points(node, nodes, ret_points = Point2f[], ret_co
     append!(ret_colors, [cgroup for _ in 1:length(l)])
     push!(ret_colors, NaN32) # separate segments
 
-    recursive_dendrogram_points(child1, nodes, ret_points, ret_colors; branch_shape)
-    recursive_dendrogram_points(child2, nodes, ret_points, ret_colors; branch_shape)
+    recursive_dendrogram_points(child1, nodes, ret_points, ret_colors; branch_shape, groups)
+    recursive_dendrogram_points(child2, nodes, ret_points, ret_colors; branch_shape, groups)
     return ret_points, ret_colors
 end
 
@@ -84,12 +84,7 @@ function Makie.plot!(plot::Dendrogram{<: Tuple{<: Dict{<: Integer, <: Union{DNod
         notify(points_vec); notify(colors_vec)
     end
 
-
-
-
-    colors_vec.val = fill(color.val, length(colors_vec.val))
-
-    
+   
     lines!(plot, points_vec; color = colors_vec, colormap = plot.colormap, colorrange = plot.colorrange, linewidth = plot.linewidth, inspectable = plot.inspectable, xautolimits = plot.xautolimits, yautolimits = plot.yautolimits) 
 end
 
