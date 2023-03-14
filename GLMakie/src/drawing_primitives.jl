@@ -271,7 +271,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
 
         positions = handle_view(x[1], data)
         space = get!(gl_attributes, :space, :data) # needs to happen before connect_camera! call
-        connect_camera!(data, scene.camera)
+        connect_camera!(x, data, scene.camera)
         transform_func = transform_func_obs(x)
         
         ls = to_value(linestyle)
