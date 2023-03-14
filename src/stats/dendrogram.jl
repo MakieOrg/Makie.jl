@@ -11,18 +11,22 @@ and parent nodes identified by `merges`.
 # Keywords
 - `merges`: specifies connections between nodes (see below)
 - `treestyle`: one of `:??`, `:??` 
+
+# Extended help
+
+$(ATTRIBUTES)
 """
 @recipe(Dendrogram, x, y) do scene
     Theme(
         weights = automatic,
-        color = theme(scene, :patchcolor),
-        colormap = theme(scene, :colormap),
+        color = Makie.inherit(scene, :color, :black),
+        colormap = Makie.inherit(scene, :colormap, :viridis),
         colorrange = automatic,
         orientation = :vertical,
-        strokecolor = theme(scene, :patchstrokecolor),
-        strokewidth = theme(scene, :patchstrokewidth),
+        strokecolor = Makie.inherit(scene, :strokecolor, :black),
+        strokewidth = Makie.inherit(scene, :strokewidth, 1.0),
         cycle = [:color => :patchcolor],
-        inspectable = theme(scene, :inspectable)
+        inspectable = Makie.inherit(scene, :inspectable)
     )
 end
 
