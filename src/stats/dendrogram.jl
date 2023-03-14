@@ -58,6 +58,8 @@ function recursive_dendrogram_points(node, nodes, ret_points = Point2f[], ret_co
         cgroup = length(unique(gs)) == 1 ? Float32(first(gs)) : fallback_color # this is not type stable...
     end
 
+    @info cgroup
+
     append!(ret_colors, [cgroup for _ in 1:length(l)])
     push!(ret_colors, NaN32) # separate segments
 
@@ -77,7 +79,7 @@ function Makie.plot!(plot::Dendrogram{<: Tuple{<: Dict{<: Integer, <: Union{DNod
 
     lift(plot[1], plot.branch_shape) do nodes, branch_shape
         # this pattern is basically first updating the values of the observables,
-        points_vec.val, colors_vec.val = recursive_dendrogram_points(nodes[maximum(keys(nodes))], nodes; branch_shape)
+        points_vec.val, colors_vec.val = recursive_dendrogram_points(nodes[maximum(keys(nodes))], nodes; branch_shape, groups=groups.val)
         # then propagating the signal, so that there is no error with differing lengths.
         notify(points_vec); notify(colors_vec)
     end
