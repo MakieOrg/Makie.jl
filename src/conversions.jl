@@ -423,9 +423,9 @@ and stores the `ClosedInterval` to `n`, `m` and `k`, plus the original array in 
 """
 function convert_arguments(::VolumeLike, data::AbstractArray{T, 3}) where T
     return (
-        Float32(firstindex(data, 1)) .. Float32(lastindex(data, 1)), 
-        Float32(firstindex(data, 2)) .. Float32(lastindex(data, 2)), 
-        Float32(firstindex(data, 3)) .. Float32(lastindex(data, 3)), 
+        firstindex(data, 1) .. lastindex(data, 1), 
+        firstindex(data, 2) .. lastindex(data, 2), 
+        firstindex(data, 3) .. lastindex(data, 3), 
         el32convert(collect(data))
     )
 end
