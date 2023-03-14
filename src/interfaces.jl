@@ -13,20 +13,26 @@ function default_theme(scene)
 end
 
 function color_and_colormap!(plot, intensity = plot[:color])
-    if isa(intensity[], AbstractArray{<: Number})
-        haskey(plot, :colormap) || error("Plot $(typeof(plot)) needs to have a colormap to allow the attribute color to be an array of numbers")
-
-        replace_automatic!(plot, :colorrange) do
-            lift(distinct_extrema_nan, plot, intensity)
-        end
+    if intensity[] isa Union{Number, AbstractArray{<: Number}}
+        @converted_attribute plot (colormap,)
         replace_automatic!(plot, :highclip) do
-            lift(plot, plot.colormap) do cmap
-                return to_colormap(cmap)[end]
-            end
+            lift(last, plot, colormap)
         end
         replace_automatic!(plot, :lowclip) do
-            lift(plot, plot.colormap) do cmap
-                return to_colormap(cmap)[1]
+            lift(first, plot, colormap)
+        end
+        get!(plot, :nan_color, RGBAf(0,0,0,0))
+        if intensity[] isa Number
+            plot[:colorrange][] isa Automatic &&
+                error("Cannot determine a colorrange automatically for single number color value $intens. Pass an explicit colorrange.")
+            args = @converted_attribute plot (colorrange, lowclip, highclip, nan_color)
+            plot[:color] = lift(numbers_to_colors, plot, intensity, colormap, args...)
+            delete!(plot, :colorrange)
+            delete!(plot, :colormap)
+        elseif intensity[] isa AbstractArray{<: Number}
+            haskey(plot, :colormap) || error("Plot $(typeof(plot)) needs to have a colormap to allow the attribute color to be an array of numbers")
+            replace_automatic!(plot, :colorrange) do
+                lift(x-> Vec2f(distinct_extrema_nan(x)), plot, intensity)
             end
         end
         return true
@@ -34,6 +40,7 @@ function color_and_colormap!(plot, intensity = plot[:color])
         delete!(plot, :highclip)
         delete!(plot, :lowclip)
         delete!(plot, :colorrange)
+        delete!(plot, :colormap)
         return false
     end
 end
@@ -66,6 +73,9 @@ function calculated_attributes!(::Type{<: MeshScatter}, plot)
     color_and_colormap!(plot)
 end
 
+function calculated_attributes!(::Type{<:Text}, plot)
+    return color_and_colormap!(plot)
+end
 
 function calculated_attributes!(::Type{<: Scatter}, plot)
     # calculate base case

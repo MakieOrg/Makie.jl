@@ -541,7 +541,13 @@ function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N}) where {
             mesh = GeometryBasics.pointmeta(mesh, decompose(Vec3f, n))
         end
     end
-    return (GeometryBasics.mesh(mesh, pointtype=Point{N, Float32}, facetype=GLTriangleFace),)
+    # If already correct eltypes for GL, we can pass the mesh through as is
+    if eltype(metafree(coordinates(mesh))) == Point{N, Float32} && eltype(faces(mesh)) == GLTriangleFace
+        return (mesh,)
+    else
+        # Else, we need to convert it!
+        return (GeometryBasics.mesh(mesh, pointtype=Point{N, Float32}, facetype=GLTriangleFace),)
+    end
 end
 
 function convert_arguments(

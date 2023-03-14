@@ -65,7 +65,12 @@ function GLBuffer(
         buffertype::GLenum = GL_ARRAY_BUFFER, usage::GLenum = GL_STATIC_DRAW
     ) where T <: GLArrayEltypes
     b = GLBuffer(ShaderAbstractions.data(buffer); buffertype=buffertype, usage=usage)
-    obsfunc = ShaderAbstractions.connect!(buffer, b)
+    au = ShaderAbstractions.updater(buffer)
+    obsfunc = on(au.update) do (f, args)
+        f(b, args...) # forward setindex! etc
+        b.requires_update[] = true
+        return
+    end
     push!(b.observers, obsfunc)
     return b
 end

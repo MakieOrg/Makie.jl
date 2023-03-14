@@ -42,8 +42,8 @@ end
     _, hm = heatmap(fig[1, 1], xs, ys, zs)
     cb = Colorbar(fig[1, 2], hm)
 
-    @test hm.attributes[:colorrange][] == (-.5, .5)
-    @test cb.limits[] == (-.5, .5)
+    @test hm.attributes[:colorrange][] == Vec(-.5, .5)
+    @test cb.limits[] == Vec(-.5, .5)
 
     hm.attributes[:colorrange][] = Float32.((-1, 1))
     @test cb.limits[] == (-1, 1)
