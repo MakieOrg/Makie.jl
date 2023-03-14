@@ -45,7 +45,9 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     # Therefore, we take the diff of the given linestyle,
     # to convert the "absolute" coordinates into "relative" ones.
     if !isnothing(linestyle) && !(linewidth isa AbstractArray)
-        Cairo.set_dash(ctx, diff(Float64.(linestyle)) .* linewidth)
+        pattern = diff(Float64.(linestyle)) .* linewidth
+        isodd(length(pattern)) && push!(pattern, 0)
+        Cairo.set_dash(ctx, pattern)
     end
 
     if primitive isa Lines && primitive.input_args[1][] isa BezierPath

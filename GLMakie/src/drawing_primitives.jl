@@ -260,22 +260,45 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Union{Scatte
     end
 end
 
+
+_mean(xs) = sum(xs) / length(xs) # skip Statistics import
+
+
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
     return cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
+
+        positions = handle_view(x[1], data)
+        space = get!(gl_attributes, :space, :data) # needs to happen before connect_camera! call
+        connect_camera!(data, scene.camera)
+        transform_func = transform_func_obs(x)
+        
         ls = to_value(linestyle)
         if isnothing(ls)
             data[:pattern] = ls
+            data[:fast] = true
+
+            positions = apply_transform(transform_func, positions, space)
         else
             linewidth = gl_attributes[:thickness]
-            data[:pattern] = ls .* (to_value(linewidth) * 0.25)
+            data[:pattern] = ls * _mean(to_value(linewidth))
+            data[:fast] = false
+            
+            pvm = map(*, data[:projectionview], data[:model])
+            positions = map(transform_func, positions, space, pvm, data[:resolution]) do f, ps, space, pvm, res
+                transformed = apply_transform(f, ps, space)
+                output = Vector{Point3f}(undef, length(transformed))
+                scale = Vec3f(res[1], res[2], 1f0)
+                for i in eachindex(transformed)
+                    clip = pvm * to_ndim(Point4f, to_ndim(Point3f, transformed[i], 0f0), 1f0)
+                    output[i] = scale .* Point3f(clip) ./ clip[4]
+                end
+                output
+            end
         end
-        space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
-        positions = handle_view(x[1], data)
-        positions = apply_transform(transform_func_obs(x), positions, space)
+            
         handle_intensities!(data)
-        connect_camera!(x, data, scene.camera)
         return draw_lines(screen, positions, data)
     end
 end
@@ -286,10 +309,12 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::LineSegments
         data = Dict{Symbol, Any}(gl_attributes)
         ls = to_value(linestyle)
         if isnothing(ls)
-            data[:pattern] = ls
+            data[:pattern] = nothing
+            data[:fast] = true
         else
             linewidth = gl_attributes[:thickness]
-            data[:pattern] = ls .* (to_value(linewidth) * 0.25)
+            data[:pattern] = ls .* _mean(to_value(linewidth))
+            data[:fast] = false
         end
         space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         positions = handle_view(x.converted[1], data)

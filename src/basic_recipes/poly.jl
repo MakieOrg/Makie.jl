@@ -59,14 +59,14 @@ function poly_convert(polygons::AbstractVector{<: AbstractVector{<: VecTypes}})
     end
 end
 
-to_line_segments(polygon) = convert_arguments(LineSegments, polygon)[1]
+to_lines(polygon) = convert_arguments(Lines, polygon)[1]
 # Need to explicitly overload for Mesh, since otherwise, Mesh will dispatch to AbstractVector
-to_line_segments(polygon::GeometryBasics.Mesh) = convert_arguments(PointBased(), polygon)[1]
+to_lines(polygon::GeometryBasics.Mesh) = convert_arguments(PointBased(), polygon)[1]
 
-function to_line_segments(meshes::AbstractVector)
+function to_lines(meshes::AbstractVector)
     line = Point2f[]
     for (i, mesh) in enumerate(meshes)
-        points = to_line_segments(mesh)
+        points = to_lines(mesh)
         append!(line, points)
         # push!(line, points[1])
         # dont need to separate the last line segment
@@ -77,7 +77,7 @@ function to_line_segments(meshes::AbstractVector)
     return line
 end
 
-function to_line_segments(polygon::AbstractVector{<: VecTypes})
+function to_lines(polygon::AbstractVector{<: VecTypes})
     result = Point2f.(polygon)
     push!(result, polygon[1])
     return result
@@ -101,7 +101,8 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
         inspectable = plot.inspectable,
         space = plot.space
     )
-    outline = lift(to_line_segments, plot, geometries)
+
+    outline = lift(to_lines, plot, geometries)
     stroke = lift(plot, outline, plot.strokecolor) do outline, sc
         if !(meshes[] isa Mesh) && meshes[] isa AbstractVector && sc isa AbstractVector && length(sc) == length(meshes[])
             idx = 1
