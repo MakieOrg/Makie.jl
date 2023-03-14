@@ -31,6 +31,7 @@ and parent nodes identified by `merges`.
         colormap = Makie.inherit(scene, :colormap, :viridis),
         colorrange = Makie.automatic,
         orientation = :vertical,
+        groups = Makie.automatic,
         cycle = [:color => :patchcolor],
         inspectable = Makie.inherit(scene, :inspectable, false),
         xautolimits = Makie.inherit(scene, :xautolimits, true),
@@ -69,9 +70,10 @@ function Makie.plot!(plot::Dendrogram{<: Tuple{<: Dict{<: Integer, <: Union{DNod
         # then propagating the signal, so that there is no error with differing lengths.
         notify(points_vec); notify(colors_vec)
     end
-
+    
+    colors_vec.val = fill(color.val, length(colors_vec.val))
+    
     lines!(plot, points_vec; color = colors_vec, colormap = plot.colormap, colorrange = plot.colorrange, linewidth = plot.linewidth, inspectable = plot.inspectable, xautolimits = plot.xautolimits, yautolimits = plot.yautolimits) 
-
 end
 
 
