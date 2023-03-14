@@ -151,7 +151,7 @@ end
 function numbers_to_colors(numbers::Union{AbstractArray{<:Number},Number}, colormap, colorrange::Vec2,
                            lowclip::RGBAf,
                            highclip::RGBAf,
-                           nan_color::RGBAf)::RGBAf
+                           nan_color::RGBAf)::Union{Vector{RGBAf},RGBAf}
     cmin, cmax = colorrange
     return map(numbers) do number
         if isnan(number)
