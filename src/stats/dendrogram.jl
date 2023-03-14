@@ -70,7 +70,7 @@ function get_box_connectors(parent, child1, child2)
     return [(x1, child1.y), (x1, yp), (x2, yp), (x2, child2.y)]
 end
 
-function recurssive_draw!(ax, node, nodes; branch_shape=:tree)
+function recursive_draw_dendrogram!(ax, node, nodes; branch_shape=:tree)
     isnothing(node.children) && return nothing
     child1 = nodes[node.children[1]]
     child2 = nodes[node.children[2]]
@@ -80,8 +80,8 @@ function recurssive_draw!(ax, node, nodes; branch_shape=:tree)
     
     lines!(ax, l)
 
-    recurssive_draw!(ax, child1, nodes; branch_shape)
-    recurssive_draw!(ax, child2, nodes; branch_shape)
+    recursive_draw_dendrogram!(ax, child1, nodes; branch_shape)
+    recursive_draw_dendrogram!(ax, child2, nodes; branch_shape)
     return nothing
 end
 
@@ -101,7 +101,7 @@ end
 
 function dendrogram(nodes::Dict{Int, DNode}; branch_shape=:tree)
     ax = Axis(Figure()[1,1])    
-    recurssive_draw!(ax, nodes[maximum(keys(nodes))], nodes; branch_shape)
+    recursive_draw_dendrogram!(ax, nodes[maximum(keys(nodes))], nodes; branch_shape)
     current_figure()
 end
 
