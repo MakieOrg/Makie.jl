@@ -300,12 +300,12 @@ end
 function edges(v::AbstractVector)
     l = length(v)
     if l == 1
-        return [v[1] - 0.5, v[1] + 0.5]
+        return [v[begin] - 0.5, v[begin] + 0.5]
     else
         # Equivalent to
         # mids = 0.5 .* (v[1:end-1] .+ v[2:end])
         # borders = [2v[1] - mids[1]; mids; 2v[end] - mids[end]]
-        borders = [0.5 * (v[max(1, i)] + v[min(end, i+1)]) for i in 0:length(v)]
+        borders = [0.5 * (v[max(begin, i)] + v[min(end, i+1)]) for i in (firstindex(v) - 1):lastindex(v)]
         borders[1] = 2borders[1] - borders[2]
         borders[end] = 2borders[end] - borders[end-1]
         return borders
@@ -359,12 +359,11 @@ and stores the `ClosedInterval` to `n` and `m`, plus the original matrix in a Tu
 """
 function convert_arguments(sl::SurfaceLike, data::AbstractMatrix)
     n, m = Float32.(size(data))
-    convert_arguments(sl, 0f0 .. n, 0f0 .. m, el32convert(data))
+    convert_arguments(sl, firstindex(data, 1) .. lastindex(data, 1), firstindex(data, 2) .. lastindex(data, 2), el32convert(collect(data)))
 end
 
 function convert_arguments(ds::DiscreteSurface, data::AbstractMatrix)
-    n, m = Float32.(size(data))
-    convert_arguments(ds, edges(1:n), edges(1:m), el32convert(data))
+    convert_arguments(ds, edges(axes(data, 1)), edges(axes(data, 2)), el32convert(collect(data)))
 end
 
 function convert_arguments(SL::SurfaceLike, x::AbstractVector{<:Number}, y::AbstractVector{<:Number}, z::AbstractVector{<:Number})
@@ -423,12 +422,16 @@ and stores the `ClosedInterval` to `n`, `m` and `k`, plus the original array in 
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(::VolumeLike, data::AbstractArray{T, 3}) where T
-    n, m, k = Float32.(size(data))
-    return (0f0 .. n, 0f0 .. m, 0f0 .. k, el32convert(data))
+    return (
+        Float32(firstindex(data, 1)) .. Float32(lastindex(data, 1)), 
+        Float32(firstindex(data, 2)) .. Float32(lastindex(data, 2)), 
+        Float32(firstindex(data, 3)) .. Float32(lastindex(data, 3)), 
+        el32convert(collect(data))
+    )
 end
 
 function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::AbstractArray{T, 3}) where T
-    return (x, y, z, el32convert(data))
+    return (x, y, z, el32convert(collect(data)))
 end
 """
     convert_arguments(P, x, y, z, i)::(Vector, Vector, Vector, Matrix)
@@ -629,16 +632,6 @@ function tryrange(F, vec)
         end
     end
     error("$F is not a Function, or is not defined at any of the values $vec")
-end
-
-# OffsetArrays conversions
-function convert_arguments(sl::SurfaceLike, wm::OffsetArray)
-  x1, y1 = wm.offsets .+ 1
-  nx, ny = size(wm)
-  x = range(x1, length = nx)
-  y = range(y1, length = ny)
-  v = parent(wm)
-  return convert_arguments(sl, x, y, v)
 end
 
 ################################################################################
