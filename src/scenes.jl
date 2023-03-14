@@ -358,7 +358,8 @@ getscreen(scene::SceneLike) = getscreen(rootparent(scene))
 Base.iterate(scene::Scene, idx=1) = idx <= length(scene) ? (scene[idx], idx + 1) : nothing
 Base.length(scene::Scene) = length(scene.plots)
 Base.lastindex(scene::Scene) = length(scene.plots)
-getindex(scene::Scene, idx::Integer) = scene.plots[idx]
+Base.getindex(scene::Scene, idx::Integer) = scene.plots[idx]
+Base.get!(scene::Scene, attr::Symbol, default) = Base.get!(scene.theme, attr, default)
 struct OldAxis end
 
 zero_origin(area) = Recti(0, 0, widths(area))
