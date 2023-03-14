@@ -58,7 +58,7 @@ end
 
 
 function Makie.plot!(plot::Dendrogram{<: Tuple{<: Dict{<: Integer, <: Union{DNode{2}, DNode{3}}}}})
-    # args = @extract plot (weights, width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap)
+    args = @extract plot (color, groups)
 
     points_vec = Observable{Any}()
     colors_vec = Observable{Any}()
@@ -152,4 +152,15 @@ function hcl_nodes(hcl; useheight=false)
     end
 
     return nodes
+end
+
+function recursive_leaf_groups(node, nodes, groups)
+    if isnothing(node.children)
+        return groups[node.idx]
+    else
+        return vcat(
+            recursive_leaf_groups(nodes[node.children[1]], nodes, groups),
+            recursive_leaf_groups(nodes[node.children[2]], nodes, groups)
+            )
+        end
 end
