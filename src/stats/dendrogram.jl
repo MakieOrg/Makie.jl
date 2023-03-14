@@ -32,6 +32,7 @@ and parent nodes identified by `merges`.
         colorrange = Makie.automatic,
         orientation = :vertical,
         groups = Makie.automatic,
+        fallback_color = :black,
         cycle = [:color => :patchcolor],
         inspectable = Makie.inherit(scene, :inspectable, false),
         xautolimits = Makie.inherit(scene, :xautolimits, true),
@@ -39,7 +40,7 @@ and parent nodes identified by `merges`.
     )
 end
 
-function recursive_dendrogram_points(node, nodes, ret_points = Point2f[], ret_colors = []; branch_shape=:tree)
+function recursive_dendrogram_points(node, nodes, ret_points = Point2f[], ret_colors = []; groups=nothing, branch_shape=:tree, fallback_color=:black)
     isnothing(node.children) && return nothing
     child1 = nodes[node.children[1]]
     child2 = nodes[node.children[2]]
@@ -49,7 +50,15 @@ function recursive_dendrogram_points(node, nodes, ret_points = Point2f[], ret_co
     # even if the inputs are 2d, the outputs should be 3d - this is what `to_ndim` does.
     append!(ret_points, Makie.to_ndim.(Point3f, l, 0))
     push!(ret_points, Point3f(NaN)) # separate segments
-    append!(ret_colors, [Float32(node.idx) for _ in 1:length(l)])
+
+    if isnothing(groups)
+        cgroup = Float32(node.idx)
+    else
+        gs = recursive_leaf_groups(node, nodes, groups)
+        cgroup = length(unique(gs)) == 1 ? Float32(first(gs)) : fallback_color # this is not type stable...
+    end
+
+    append!(ret_colors, [cgroup for _ in 1:length(l)])
     push!(ret_colors, NaN32) # separate segments
 
     recursive_dendrogram_points(child1, nodes, ret_points, ret_colors; branch_shape)
@@ -63,6 +72,8 @@ function Makie.plot!(plot::Dendrogram{<: Tuple{<: Dict{<: Integer, <: Union{DNod
 
     points_vec = Observable{Any}()
     colors_vec = Observable{Any}()
+    group_colors = Observable{Any}() # placeholder - I don't really understand this
+    group_colors = Dict(1=> :black, 2=> :blue, 3=> :orange) # want to get this automatically, but don't know how
 
     lift(plot[1], plot.branch_shape) do nodes, branch_shape
         # this pattern is basically first updating the values of the observables,
@@ -70,8 +81,12 @@ function Makie.plot!(plot::Dendrogram{<: Tuple{<: Dict{<: Integer, <: Union{DNod
         # then propagating the signal, so that there is no error with differing lengths.
         notify(points_vec); notify(colors_vec)
     end
-    
+
+
+
+
     colors_vec.val = fill(color.val, length(colors_vec.val))
+
     
     lines!(plot, points_vec; color = colors_vec, colormap = plot.colormap, colorrange = plot.colorrange, linewidth = plot.linewidth, inspectable = plot.inspectable, xautolimits = plot.xautolimits, yautolimits = plot.yautolimits) 
 end
