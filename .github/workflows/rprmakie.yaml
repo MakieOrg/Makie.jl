@@ -53,7 +53,7 @@ jobs:
           julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("RPRMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ReferenceImages_${{ matrix.os }}_${{ matrix.arch }}_${{ matrix.version }}
           path: ./RPRMakie/test/recorded
