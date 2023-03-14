@@ -140,7 +140,7 @@ end
 
 function hcl_nodes(hcl; useheight=false)
     nleaves = length(hcl.order)
-    nodes = Dict(i => DNode(i, x, 0, nothing) for (i,x) in enumerate(invperm(hcl.order)))
+    nodes = Dict(i => DNode(i, Point2f(x, 0), nothing) for (i,x) in enumerate(invperm(hcl.order)))
     nm = maximum(keys(nodes))
 
     for (m1, m2) in eachrow(hcl.merges)
