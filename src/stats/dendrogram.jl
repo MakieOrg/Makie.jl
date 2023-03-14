@@ -55,7 +55,7 @@ function recursive_dendrogram_points(node, nodes, ret_points = Point2f[], ret_co
         cgroup = Float32(node.idx)
     else
         gs = recursive_leaf_groups(node, nodes, groups)
-        cgroup = length(unique(gs)) == 1 ? Float32(first(gs)) : fallback_color # this is not type stable...
+        cgroup = length(unique(gs)) == 1 ? Float32(first(gs)) : 0f0 # needs to select fallback_color...
     end
 
     @info cgroup
@@ -170,7 +170,7 @@ end
 
 function recursive_leaf_groups(node, nodes, groups)
     if isnothing(node.children)
-        return groups[node.idx]
+        return [groups[node.idx]]
     else
         return vcat(
             recursive_leaf_groups(nodes[node.children[1]], nodes, groups),
