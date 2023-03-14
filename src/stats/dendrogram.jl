@@ -1,5 +1,17 @@
+# Node struct
+struct DNode{N}
+    idx::Int
+    position::Point{N, Float32}
+    children::Union{Tuple{Int,Int}, Nothing}
+end
+
+function DNode(idx::Int, point::Point{N}, children::Union{Tuple{Int,Int}, Nothing}) where N
+    return DNode{N}(idx, point, children)
+end
+
 """
     dendrogram(x, y; kwargs...)
+
 Draw a [dendrogram](https://en.wikipedia.org/wiki/Dendrogram),
 with leaf nodes specified by `x` and `y` coordinates,
 and parent nodes identified by `merges`.
@@ -8,7 +20,7 @@ and parent nodes identified by `merges`.
 - `y`: y positions of leaf nodes (default = 0)
 # Keywords
 - `merges`: specifies connections between nodes (see below)
-- `treestyle`: one of `:??`, `:??`.  Overload `dendrogram_connectors(::Val{:mystyle}, parent, child1, child2)` to define a new style.
+- `treestyle`: one of `:tree`, `:box`.  Overload `dendrogram_connectors(::Val{:mystyle}, parent, child1, child2)` to define a new style.
 """
 @recipe(Dendrogram, nodes) do scene
     Theme(
@@ -64,16 +76,6 @@ end
 
 
 # branching styles
-
-struct DNode{N}
-    idx::Int
-    position::Point{N, Float32}
-    children::Union{Tuple{Int,Int}, Nothing}
-end
-
-function DNode(idx::Int, point::Point{N}, children::Union{Tuple{Int,Int}, Nothing}) where N
-    return DNode{N}(idx, point, children)
-end
 
 function dendrogram_connectors(::Val{:tree}, parent, child1, child2)
     return [child1.position, parent.position, child2.position]
