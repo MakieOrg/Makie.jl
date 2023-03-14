@@ -316,7 +316,7 @@ end
 
 # project between different coordinate systems/spaces
 function space_to_clip(cam::Camera, space::Symbol, projectionview::Bool=true)
-    if is_data_space(space)
+    if is_data_space(space) || is_transformed_space(space)
         return projectionview ? cam.projectionview[] : cam.projection[]
     elseif is_pixel_space(space)
         return cam.pixel_space[]
@@ -330,7 +330,7 @@ function space_to_clip(cam::Camera, space::Symbol, projectionview::Bool=true)
 end
 
 function clip_to_space(cam::Camera, space::Symbol)
-    if is_data_space(space)
+    if is_data_space(space) || is_transformed_space(space)
         return inv(cam.projectionview[])
     elseif is_pixel_space(space)
         w, h = cam.resolution[]
