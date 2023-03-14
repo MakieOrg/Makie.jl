@@ -59,7 +59,7 @@ jobs:
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Comment if there are missing refimages
         if: matrix.version == '1' && steps.referencetests.outputs.n_missing_refimages != '0'
-        uses: mshick/add-pr-comment@v1
+        uses: mshick/add-pr-comment@v2
         with:
           message: |
             ## Missing reference images
