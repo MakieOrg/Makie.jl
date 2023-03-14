@@ -1,52 +1,107 @@
 """
     dendrogram(x, y; kwargs...)
-
 Draw a [dendrogram](https://en.wikipedia.org/wiki/Dendrogram),
 with leaf nodes specified by `x` and `y` coordinates,
 and parent nodes identified by `merges`.
-
 # Arguments
 - `x`: x positions of leaf nodes
 - `y`: y positions of leaf nodes (default = 0)
 # Keywords
 - `merges`: specifies connections between nodes (see below)
-- `treestyle`: one of `:??`, `:??` 
-
-# Extended help
-
-$(ATTRIBUTES)
+- `treestyle`: one of `:??`, `:??`.  Overload `dendrogram_connectors(::Val{:mystyle}, parent, child1, child2)` to define a new style.
 """
-@recipe(Dendrogram, x, y) do scene
+@recipe(Dendrogram, nodes) do scene
     Theme(
-        weights = automatic,
+        weights = Makie.automatic,
+        branch_shape = :box,
+        linewidth = Makie.inherit(scene, :linewidth, 1.0),
         color = Makie.inherit(scene, :color, :black),
         colormap = Makie.inherit(scene, :colormap, :viridis),
-        colorrange = automatic,
+        colorrange = Makie.automatic,
         orientation = :vertical,
-        strokecolor = Makie.inherit(scene, :strokecolor, :black),
-        strokewidth = Makie.inherit(scene, :strokewidth, 1.0),
         cycle = [:color => :patchcolor],
-        inspectable = Makie.inherit(scene, :inspectable)
+        inspectable = Makie.inherit(scene, :inspectable, false),
+        xautolimits = Makie.inherit(scene, :xautolimits, true),
+        yautolimits = Makie.inherit(scene, :yautolimits, true),
     )
 end
 
-conversion_trait(x::Type{<:Dendrogram}) = SampleBased() #??
+function recursive_dendrogram_points(node, nodes, ret_points = Point2f[], ret_colors = []; branch_shape=:tree)
+    isnothing(node.children) && return nothing
+    child1 = nodes[node.children[1]]
+    child2 = nodes[node.children[2]]
+   
+    l = dendrogram_connectors(Val(branch_shape), node, child1, child2)
+    
+    # even if the inputs are 2d, the outputs should be 3d - this is what `to_ndim` does.
+    append!(ret_points, Makie.to_ndim.(Point3f, l, 0))
+    push!(ret_points, Point3f(NaN)) # separate segments
+    append!(ret_colors, [Float32(node.idx) for _ in 1:length(l)])
+    push!(ret_colors, NaN32) # separate segments
 
-function Makie.plot!(plot::Dendrogram)
-    args = @extract plot (weights, width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap)
+    recursive_dendrogram_points(child1, nodes, ret_points, ret_colors; branch_shape)
+    recursive_dendrogram_points(child2, nodes, ret_points, ret_colors; branch_shape)
+    return ret_points, ret_colors
+end
+
+
+function Makie.plot!(plot::Dendrogram{<: Tuple{<: Dict{<: Integer, <: Union{DNode{2}, DNode{3}}}}})
+    # args = @extract plot (weights, width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap)
+
+    points_vec = Observable{Any}()
+    colors_vec = Observable{Any}()
+
+    lift(plot[1], plot.branch_shape) do nodes, branch_shape
+        # this pattern is basically first updating the values of the observables,
+        points_vec.val, colors_vec.val = recursive_dendrogram_points(nodes[maximum(keys(nodes))], nodes; branch_shape)
+        # then propagating the signal, so that there is no error with differing lengths.
+        notify(points_vec); notify(colors_vec)
+    end
+
+    lines!(plot, points_vec; color = colors_vec, colormap = plot.colormap, colorrange = plot.colorrange, linewidth = plot.linewidth, inspectable = plot.inspectable, xautolimits = plot.xautolimits, yautolimits = plot.yautolimits) 
 
 end
 
-##############
-# Playground #
-##############
 
-struct DNode
+# branching styles
+
+struct DNode{N}
     idx::Int
-    x::Float32
-    y::Float32
+    position::Point{N, Float32}
     children::Union{Tuple{Int,Int}, Nothing}
 end
+
+function DNode(idx::Int, point::Point{N}, children::Union{Tuple{Int,Int}, Nothing}) where N
+    return DNode{N}(idx, point, children)
+end
+
+function dendrogram_connectors(::Val{:tree}, parent, child1, child2)
+    return [child1.position, parent.position, child2.position]
+end
+
+function dendrogram_connectors(::Val{:box}, parent::DNode{2}, child1::DNode{2}, child2::DNode{2})
+    yp = parent.position[2]
+    x1 = child1.position[1]
+    x2 = child2.position[1]
+
+    return Point2f[(x1, child1.position[2]), (x1, yp), (x2, yp), (x2, child2.position[2])]
+end
+
+function dendrogram_connectors(::Val{:box}, parent::DNode{3}, child1::DNode{3}, child2::DNode{3})
+    yp = parent.position[2]
+    x1 = child1.position[1]
+    x2 = child2.position[1]
+
+    return Point3f[
+        (x1, child1.position[2], child1.position[3]), 
+        (x1, yp, (parent.position[3] + child1.position[3])./2), 
+        (x2, yp, (parent.position[3] + child2.position[3])./2), 
+        (x2, child2.position[2], child2.position[3])
+    ]
+end
+
+
+# convert utils
 
 function find_merge(n1, n2; height=1)
     newx = min(n1[1], n2[1]) + abs((n1[1] - n2[1])) / 2
@@ -54,59 +109,30 @@ function find_merge(n1, n2; height=1)
     return Point2f(newx, newy)
 end
 
-function find_merge(n1::DNode, n2::DNode; height=1, index=max(n1.idx, n2.idx)+1)
-    newx = min(n1.x, n2.x) + abs((n1.x - n2.x)) / 2
-    newy = max(n1.y, n2.y) + height
+function find_merge(n1::DNode{2}, n2::DNode{2}; height=1, index=max(n1.idx, n2.idx)+1)
+    newx = min(n1.position[1], n2.position[1]) + abs((n1.position[1] - n2.position[1])) / 2
+    newy = max(n1.position[2], n2.position[2]) + height
 
-    return DNode(index, Point2f(newx, newy)..., (n1.idx, n2.idx))
+    return DNode{2}(index, Point2f(newx, newy), (n1.idx, n2.idx))
 end
 
+function find_merge(n1::DNode{3}, n2::DNode{3}; height=1, index=max(n1.idx, n2.idx)+1)
+    newx = min(n1.position[1], n2.position[1]) + abs((n1.position[1] - n2.position[1])) / 2
+    newy = max(n1.position[2], n2.position[2]) + height
+    newz = min(n1.position[3], n2.position[3]) + abs((n1.position[3] - n2.position[3])) / 2
 
-function get_tree_connectors(parent, child1, child2)
-    return [(child1.x, child1.y), (parent.x, parent.y), (child2.x, child2.y)]
+    return DNode{3}(index, Point3f(newx, newy, newz), (n1.idx, n2.idx))
 end
 
-function get_box_connectors(parent, child1, child2)
-    yp = parent.y
-    x1 = child1.x
-    x2 = child2.x
-
-    return [(x1, child1.y), (x1, yp), (x2, yp), (x2, child2.y)]
-end
-
-function recursive_draw_dendrogram!(ax, node, nodes; branch_shape=:tree)
-    isnothing(node.children) && return nothing
-    child1 = nodes[node.children[1]]
-    child2 = nodes[node.children[2]]
-   
-    l = branch_shape == :tree ? get_tree_connectors(node, child1, child2) :
-        branch_shape == :box  ? get_box_connectors(node, child1, child2) : error()
-    
-    lines!(ax, l)
-
-    recursive_draw_dendrogram!(ax, child1, nodes; branch_shape)
-    recursive_draw_dendrogram!(ax, child2, nodes; branch_shape)
-    return nothing
-end
-
-
-function dendrogram(leaves, merges; branch_shape=:tree)
-    nodes = Dict(i => DNode(i, n[1], n[2], nothing) for (i,n) in enumerate(leaves))
+function Makie.convert_arguments(::Type{<: Dendrogram}, leaves::Vector{<: Point}, merges::Vector{<: Tuple{<: Integer, <: Integer}})
+    nodes = Dict(i => DNode(i, n, nothing) for (i,n) in enumerate(leaves))
     nm = maximum(keys(nodes))
 
     for m in merges
         nm += 1
         nodes[nm] = find_merge(nodes[m[1]], nodes[m[2]]; index = nm)
     end
-
-    dendrogram(nodes; branch_shape)
-end
-
-
-function dendrogram(nodes::Dict{Int, DNode}; branch_shape=:tree)
-    ax = Axis(Figure()[1,1])    
-    recursive_draw_dendrogram!(ax, nodes[maximum(keys(nodes))], nodes; branch_shape)
-    current_figure()
+    return (nodes,)
 end
 
 
