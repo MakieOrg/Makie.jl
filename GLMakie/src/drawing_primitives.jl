@@ -334,7 +334,6 @@ end
 
 function draw_atomic(screen::Screen, scene::Scene,
         x::Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
-
     return cached_robj!(screen, scene, x) do gl_attributes
         glyphcollection = x[1]
 

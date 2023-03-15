@@ -130,7 +130,7 @@ end
 #        Common color utilities        #
 ########################################
 
-function to_cairo_color(colors::AbstractVector{<: Number}, plot_object)
+function to_cairo_color(colors::Union{AbstractVector{<: Number},Number}, plot_object)
     return numbers_to_colors(colors, plot_object)
 end
 
