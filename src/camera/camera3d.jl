@@ -677,14 +677,14 @@ function update_cam!(scene::Scene, cam::Camera3D, area3d::Rect)
 
     old_dir = normalize(cam.eyeposition[] .- cam.lookat[])
     if cam.settings.projectiontype[] == Makie.Perspective
-        dist = 0.5 * norm(width) * (1.0 + 0.6 / tand(0.5 * cam.fov[]))
+        dist = 0.5 * norm(width) / tand(0.5 * cam.fov[])
     else
-        dist = 0.6 * norm(width)
+        dist = 0.5 * norm(width)
     end
 
-    cam.lookat[]      =  center
+    cam.lookat[] = center
     cam.eyeposition[] = cam.lookat[] .+ dist * old_dir
-    cam.upvector[]    = Vec3f(0, 0, 1) # Should we reset this?
+    cam.upvector[] = Vec3f(0, 0, 1) # Should we reset this?
 
     update_cam!(scene, cam)
 
