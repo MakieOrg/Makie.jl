@@ -11,6 +11,7 @@
 - Fixed issue with scatterlines only accepting concrete color types as `markercolor` [#2691](https://github.com/MakieOrg/Makie.jl/pull/2691)
 - Fixed an accidental issue where `LaTeXStrings` were not typeset correctly in `Axis3`. [#2558](https://github.com/MakieOrg/Makie.jl/pull/2588)
 - Fixed a bug where line segments in `text(lstr::LaTeXString)` were ignoring offsets. [#2668](https://github.com/MakieOrg/Makie.jl/pull/2668)
+- Fixed a bug where the `arrows` recipe accidentally called a `Bool` when `normalize = true`. [#2740](https://github.com/MakieOrg/Makie.jl/pull/2740)
 - Re-exported the `@colorant_str` (`colorant"..."`) macro from Colors.jl. [#2726](https://github.com/MakieOrg/Makie.jl/pull/2726)
 
 ## v0.19.1
