@@ -956,6 +956,7 @@ You can check which interactions are currently active by calling `interactions(a
 
 Often, you don't want to remove an interaction entirely but only disable it for a moment, then reenable it again.
 You can use the functions `activate_interaction!(ax, name::Symbol)` and `deactivate_interaction!(ax, name::Symbol)` for that.
+Registered interactions are stored in `ax.interactions`, including the default interactions `:dragpan`, `:limitreset`, `:rectanglezoom`, and `:scrollzoom`.
 
 #### `Function` interaction
 
