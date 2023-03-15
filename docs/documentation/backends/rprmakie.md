@@ -81,7 +81,7 @@ The examples are in [RPRMakie/examples](https://github.com/MakieOrg/Makie.jl/tre
 ## MaterialX and predefined materials (materials.jl)
 
 There are several predefined materials one can use in RadeonProRender.
-RPR also supports the [MaterialX](https://www.materialx.org/) standard to load a wide range of predefined Materials. Make sure to use the Northstar backend for `MaXx` materials.
+RPR also supports the [MaterialX](https://www.materialx.org/) standard to load a wide range of predefined Materials. Make sure to use the Northstar backend for `MaterialX`.
 
 ~~~
 <input id="hidecode5" class="hidecode" type="checkbox">
