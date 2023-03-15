@@ -58,9 +58,10 @@ function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2},
 end
 
 function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vector{<:Point2}})
-    color = to_color(poly.color[])
-    strokecolor = to_color(poly.strokecolor[])
+    color = to_cairo_color(poly.color[], poly)
+    strokecolor = to_cairo_color(poly.strokecolor[], poly)
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
+    
     broadcast_foreach(points_list, color,
         strokecolor, strokestyle, poly.strokewidth[], Ref(poly.model[])) do points, color, strokecolor, strokestyle, strokewidth, model
             draw_poly(scene, screen, poly, points, color, model, strokecolor, strokestyle, strokewidth)

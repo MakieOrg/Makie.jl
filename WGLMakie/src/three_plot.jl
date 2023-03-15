@@ -51,19 +51,15 @@ function three_display(session::Session, scene::Scene; screen_config...)
     done_init = Observable(false)
     # Keep texture atlas in parent session, so we don't need to send it over and over again
     ta = JSServe.Retain(TEXTURE_ATLAS)
-    setup = js"""
-    (wrapper)=>{
-        const canvas = $canvas;
-        $(WGL).then(WGL => {
-            // well.... not nice, but can't deal with the `Promise` in all the other functions
-            window.WGLMakie = WGL
-            WGL.create_scene($wrapper, canvas, $canvas_width, $scene_serialized, $comm, $width, $height, $(config.framerate), $(ta))
-            $(done_init).notify(true)
-        })
-    }
-    """
+    evaljs(session, js"""
+    $(WGL).then(WGL => {
+        // well.... not nice, but can't deal with the `Promise` in all the other functions
+        window.WGLMakie = WGL
+        WGL.create_scene($wrapper, $canvas, $canvas_width, $scene_serialized, $comm, $width, $height, $(config.framerate), $(ta))
+        $(done_init).notify(true)
+    })
+    """)
 
-    JSServe.onload(session, wrapper, setup)
     connect_scene_events!(scene, comm)
     three = ThreeDisplay(session)
     return three, wrapper, done_init

@@ -126,7 +126,7 @@ mutable struct LineAxis
     elements::Dict{Symbol, Any}
     tickpositions::Observable{Vector{Point2f}}
     tickvalues::Observable{Vector{Float32}}
-    ticklabels::Observable{Vector{AbstractString}}
+    ticklabels::Observable{Vector{Any}}
     minortickpositions::Observable{Vector{Point2f}}
     minortickvalues::Observable{Vector{Float32}}
 end
@@ -910,6 +910,8 @@ end
         direction = automatic
         "The default message prompting a selection when i == 0"
         prompt = "Select..."
+        "Speed of scrolling in large Menu lists."
+        scroll_speed = 15.0
     end
 end
 
