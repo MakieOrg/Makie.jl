@@ -235,7 +235,7 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
 
 - `cycle::Vector{Symbol} = [:color]` sets which attributes to cycle when creating multiple plots.
 - `linestyle::Union{Nothing, Symbol, Vector} = nothing` sets the pattern of the line (e.g. `:solid`, `:dot`, `:dashdot`)
-- `linewidth::Real = 1.5` sets the width of the line in pixel units.
+- `linewidth::Union{Real, Vector} = 1.5` sets the width of the line in pixel units.
 
 ### Generic
 
@@ -281,7 +281,7 @@ Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
 
 - `cycle::Vector{Symbol} = [:color]` sets which attributes to cycle when creating multiple plots.
 - `linestyle::Union{Nothing, Symbol, Vector} = nothing` sets the pattern of the line (e.g. `:solid`, `:dot`, `:dashdot`)
-- `linewidth::Real = 1.5` sets the width of the line in pixel units.
+- `linewidth::Union{Real, Vector} = 1.5` sets the width of the line in pixel units.
 
 ### Generic
 
@@ -540,6 +540,8 @@ Plots one or multiple texts passed via the `text` keyword.
     Attributes(;
         default_theme(scene)...,
         color = theme(scene, :textcolor),
+        colormap = theme(scene, :colormap),
+        colorrange = automatic,
         font = theme(scene, :font),
         fonts = theme(scene, :fonts),
         strokecolor = (:black, 0.0),
