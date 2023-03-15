@@ -227,7 +227,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     glyphcollection = plot[1]
     res = map(x->Vec2f(widths(x)), pixelarea(scene))
     projview = scene.camera.projectionview
-    transfunc =  Makie.transform_func_obs(scene)
+    transfunc = Makie.transform_func_obs(plot)
     pos = plot.position
     space = plot.space
     markerspace = plot.markerspace

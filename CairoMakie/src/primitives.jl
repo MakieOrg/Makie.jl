@@ -28,7 +28,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     end
 
     space = to_value(get(primitive, :space, :data))
-    projected_positions = project_position.(Ref(scene), Ref(space), positions, Ref(model))
+    projected_positions = project_position.(Ref(scene), (Makie.transform_func(primitive),), Ref(space), positions, Ref(model))
 
     color = to_cairo_color(color, primitive)
 
@@ -224,7 +224,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
     markerspace = to_value(get(primitive, :markerspace, :pixel))
     space = to_value(get(primitive, :space, :data))
 
-    transfunc = scene.transformation.transform_func[]
+    transfunc = Makie.transform_func(primitive)
 
     marker_conv = _marker_convert(marker)
 
@@ -427,7 +427,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text
 
     draw_glyph_collection(
         scene, ctx, position, glyph_collection, remove_billboard(rotation),
-        model, space, markerspace, offset
+        model, space, markerspace, offset, primitive.transformation
     )
 
     nothing
@@ -436,21 +436,21 @@ end
 
 function draw_glyph_collection(
         scene, ctx, positions, glyph_collections::AbstractArray, rotation,
-        model::Mat, space, markerspace, offset
+        model::Mat, space, markerspace, offset, transformation
     )
 
     # TODO: why is the Ref around model necessary? doesn't broadcast_foreach handle staticarrays matrices?
     broadcast_foreach(positions, glyph_collections, rotation, Ref(model), space,
         markerspace, offset) do pos, glayout, ro, mo, sp, msp, off
 
-        draw_glyph_collection(scene, ctx, pos, glayout, ro, mo, sp, msp, off)
+        draw_glyph_collection(scene, ctx, pos, glayout, ro, mo, sp, msp, off, transformation)
     end
 end
 
 _deref(x) = x
 _deref(x::Ref) = x[]
 
-function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation, _model, space, markerspace, offsets)
+function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation, _model, space, markerspace, offsets, transformation)
 
     glyphs = glyph_collection.glyphs
     glyphoffsets = glyph_collection.origins
@@ -466,7 +466,7 @@ function draw_glyph_collection(scene, ctx, position, glyph_collection, rotation,
     id = Mat4f(I)
 
     glyph_pos = let
-        transform_func = scene.transformation.transform_func[]
+        transform_func = transformation.transform_func[]
         p = Makie.apply_transform(transform_func, position, space)
 
         Makie.clip_to_space(scene.camera, markerspace) *
@@ -603,7 +603,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     disable_fast_path = !fast_path
     # Vector backends don't support FILTER_NEAREST for interp == false, so in that case we also need to draw rects
     is_vector = is_vector_backend(ctx)
-    t = Makie.transform_func_obs(primitive)[]
+    t = Makie.transform_func(primitive)
     identity_transform = (t === identity || t isa Tuple && all(x-> x === identity, t)) && (abs(model[1, 2]) < 1e-15)
     regular_grid = xs isa AbstractRange && ys isa AbstractRange
 
@@ -650,7 +650,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         # find projected image corners
         # this already takes care of flipping the image to correct cairo orientation
         space = to_value(get(primitive, :space, :data))
-        xys = [project_position(scene, space, Point2f(x, y), model) for x in xs, y in ys]
+        xys = project_position.(scene, (Makie.transform_func(primitive),), space, [Point2f(x, y) for x in xs, y in ys], (model,))
         colors = to_rgba_image(image, primitive)
 
         # Note: xs and ys should have size ni+1, nj+1
@@ -734,10 +734,11 @@ function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
         lowclip, highclip, nan_color)
 
     space = to_value(get(plot, :space, :data))::Symbol
-    return draw_mesh2D(scene, screen, cols, space, vs, fs, model)
+    transform_func = Makie.transform_func(plot)
+    return draw_mesh2D(scene, screen, cols, space, transform_func, vs, fs, model)
 end
 
-function draw_mesh2D(scene, screen, per_face_cols, space::Symbol,
+function draw_mesh2D(scene, screen, per_face_cols, space::Symbol, transform_func,
         vs::Vector{Point2f}, fs::Vector{GLTriangleFace}, model::Mat4f)
 
     ctx = screen.context
@@ -746,7 +747,7 @@ function draw_mesh2D(scene, screen, per_face_cols, space::Symbol,
 
     for (f, (c1, c2, c3)) in zip(fs, per_face_cols)
         pattern = Cairo.CairoPatternMesh()
-        t1, t2, t3 =  project_position.(scene, space, vs[f], (model,)) #triangle points
+        t1, t2, t3 =  project_position.(scene, (transform_func,), space, vs[f], (model,)) #triangle points
         Cairo.mesh_pattern_begin_patch(pattern)
 
         Cairo.mesh_pattern_move_to(pattern, t1...)
@@ -802,16 +803,16 @@ function draw_mesh3D(scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f
 
     model = attributes.model[]::Mat4f
     space = to_value(get(attributes, :space, :data))::Symbol
-
+    func = Makie.transform_func(attributes)
     draw_mesh3D(
-        scene, screen, space, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
+        scene, screen, space, func, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
         model, shading::Bool, diffuse::Vec3f,
         specular::Vec3f, shininess::Float32, faceculling::Int
     )
 end
 
 function draw_mesh3D(
-        scene, screen, space, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
+        scene, screen, space, transform_func, meshpoints, meshfaces, meshnormals, per_face_col, pos, scale,
         model, shading, diffuse,
         specular, shininess, faceculling
     )
@@ -823,10 +824,10 @@ function draw_mesh3D(
 
     # Mesh data
     # transform to view/camera space
-    func = Makie.transform_func_obs(scene)[]
-    # pass func as argument to function, so that we get a function barrier
-    # and have `func` be fully typed inside closure
-    vs = broadcast(meshpoints, (func,)) do v, f
+
+    # pass transform_func as argument to function, so that we get a function barrier
+    # and have `transform_func` be fully typed inside closure
+    vs = broadcast(meshpoints, (transform_func,)) do v, f
         # Should v get a nan2zero?
         v = Makie.apply_transform(f, v, space)
         p4d = to_ndim(Vec4f, scale .* to_ndim(Vec3f, v, 0f0), 1f0)
@@ -995,7 +996,9 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         color=color,
         shading=primitive.shading, diffuse=primitive.diffuse,
         specular=primitive.specular, shininess=primitive.shininess,
-        faceculling=get(primitive, :faceculling, -10)
+        faceculling=get(primitive, :faceculling, -10),
+        transformation=Makie.transformation(primitive)
+
     )
 
     if !(rotations isa Vector)
