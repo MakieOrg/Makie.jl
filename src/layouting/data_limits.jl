@@ -65,7 +65,9 @@ function point_iterator(list::AbstractVector)
     else
         points = Point3f[]
         for elem in list
-            append!(points, point_iterator(elem))
+            for point in point_iterator(elem)
+                push!(points, to_ndim(Point3f, point, 0))
+            end
         end
         return points
     end
