@@ -18,7 +18,7 @@ Colors = "0.9, 0.10, 0.11, 0.12"
 FileIO = "1.6"
 GeometryBasics = "0.4.1"
 Makie = "=0.19.2"
-RadeonProRender = "0.2.1"
+RadeonProRender = "0.2.15"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

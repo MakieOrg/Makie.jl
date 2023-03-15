@@ -44,7 +44,6 @@ include("unit_tests.jl")
         missing_images, scores = ReferenceTests.record_comparison(recording_dir)
         n_missing_images += length(missing_images)
         ReferenceTests.test_comparison(scores; threshold = 0.01)
-        ReferenceTests.test_comparison(scores; threshold = 0.01)
     end
     GLMakie.closeall()
     GC.gc(true) # make sure no finalizers act up!

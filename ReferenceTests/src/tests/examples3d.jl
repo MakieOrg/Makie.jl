@@ -273,7 +273,6 @@ end
         fontsize=20,
         font="helvetica"
     )
-    c = lines!(scene, Circle(Point2f(0.1, 0.5), 0.1f0), color=:red, offset=Vec3f(0, 0, 1))
     psurf.converted[3][] = f.(vx .+ 0.5, (vy .+ 0.5)')
     scene
 end

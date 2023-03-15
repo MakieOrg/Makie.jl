@@ -255,6 +255,43 @@ function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon}, MultiPoly
     return (arr,)
 end
 
+function convert_arguments(::PointBased, b::BezierPath)
+    b2 = replace_nonfreetype_commands(b)
+    points = Point2f[]
+    last_point = Point2f(NaN)
+    last_moveto = false
+
+    function poly3(t, p0, p1, p2, p3)
+        Point2f((1-t)^3 .* p0 .+ t*p1*(3*(1-t)^2) + p2*(3*(1-t)*t^2) .+ p3*t^3)
+    end
+
+    for command in b2.commands
+        if command isa MoveTo
+            last_point = command.p
+            last_moveto = true
+        elseif command isa LineTo
+            if last_moveto
+                isempty(points) || push!(points, Point2f(NaN, NaN))
+                push!(points, last_point)
+            end
+            push!(points, command.p)
+            last_point = command.p
+            last_moveto = false
+        elseif command isa CurveTo
+            if last_moveto
+                isempty(points) || push!(points, Point2f(NaN, NaN))
+                push!(points, last_point)
+            end
+            last_moveto = false
+            for t in range(0, 1, length = 30)[2:end]
+                push!(points, poly3(t, last_point, command.c1, command.c2, command.p))
+            end
+            last_point = command.p
+        end
+    end
+    return (points,)
+end
+
 
 ################################################################################
 #                                 SurfaceLike                                  #
@@ -504,7 +541,13 @@ function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N}) where {
             mesh = GeometryBasics.pointmeta(mesh, decompose(Vec3f, n))
         end
     end
-    return (GeometryBasics.mesh(mesh, pointtype=Point{N, Float32}, facetype=GLTriangleFace),)
+    # If already correct eltypes for GL, we can pass the mesh through as is
+    if eltype(metafree(coordinates(mesh))) == Point{N, Float32} && eltype(faces(mesh)) == GLTriangleFace
+        return (mesh,)
+    else
+        # Else, we need to convert it!
+        return (GeometryBasics.mesh(mesh, pointtype=Point{N, Float32}, facetype=GLTriangleFace),)
+    end
 end
 
 function convert_arguments(
@@ -796,7 +839,7 @@ convert_attribute(x::Nothing, ::key"linestyle") = x
 #     `AbstractVector{<:AbstractFloat}` for denoting sequences of fill/nofill. e.g.
 #
 # [0.5, 0.8, 1.2] will result in 0.5 filled, 0.3 unfilled, 0.4 filled. 1.0 unit is one linewidth!
-convert_attribute(A::AbstractVector, ::key"linestyle") = A
+convert_attribute(A::AbstractVector, ::key"linestyle") = [float(x - A[1]) for x in A]
 
 # A `Symbol` equal to `:dash`, `:dot`, `:dashdot`, `:dashdotdot`
 convert_attribute(ls::Union{Symbol,AbstractString}, ::key"linestyle") = line_pattern(ls, :normal)

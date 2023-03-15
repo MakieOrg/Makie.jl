@@ -260,22 +260,45 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Union{Scatte
     end
 end
 
+
+_mean(xs) = sum(xs) / length(xs) # skip Statistics import
+
+
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
     return cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
+
+        positions = handle_view(x[1], data)
+        space = get!(gl_attributes, :space, :data) # needs to happen before connect_camera! call
+        connect_camera!(data, scene.camera)
+        transform_func = transform_func_obs(x)
+        
         ls = to_value(linestyle)
         if isnothing(ls)
             data[:pattern] = ls
+            data[:fast] = true
+
+            positions = apply_transform(transform_func, positions, space)
         else
             linewidth = gl_attributes[:thickness]
-            data[:pattern] = ls .* (to_value(linewidth) * 0.25)
+            data[:pattern] = ls * _mean(to_value(linewidth))
+            data[:fast] = false
+            
+            pvm = map(*, data[:projectionview], data[:model])
+            positions = map(transform_func, positions, space, pvm, data[:resolution]) do f, ps, space, pvm, res
+                transformed = apply_transform(f, ps, space)
+                output = Vector{Point3f}(undef, length(transformed))
+                scale = Vec3f(res[1], res[2], 1f0)
+                for i in eachindex(transformed)
+                    clip = pvm * to_ndim(Point4f, to_ndim(Point3f, transformed[i], 0f0), 1f0)
+                    output[i] = scale .* Point3f(clip) ./ clip[4]
+                end
+                output
+            end
         end
-        space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
-        positions = handle_view(x[1], data)
-        positions = apply_transform(transform_func_obs(x), positions, space)
+            
         handle_intensities!(data)
-        connect_camera!(data, scene.camera)
         return draw_lines(screen, positions, data)
     end
 end
@@ -286,10 +309,12 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::LineSegments
         data = Dict{Symbol, Any}(gl_attributes)
         ls = to_value(linestyle)
         if isnothing(ls)
-            data[:pattern] = ls
+            data[:pattern] = nothing
+            data[:fast] = true
         else
             linewidth = gl_attributes[:thickness]
-            data[:pattern] = ls .* (to_value(linewidth) * 0.25)
+            data[:pattern] = ls .* _mean(to_value(linewidth))
+            data[:fast] = false
         end
         space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         positions = handle_view(x.converted[1], data)
@@ -309,11 +334,10 @@ end
 
 function draw_atomic(screen::Screen, scene::Scene,
         x::Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
-
     return cached_robj!(screen, scene, x) do gl_attributes
         glyphcollection = x[1]
 
-        transfunc =  Makie.transform_func_obs(scene)
+        transfunc =  Makie.transform_func_obs(x)
         pos = gl_attributes[:position]
         space = get(gl_attributes, :space, Observable(:data)) # needs to happen before connect_camera! call
         markerspace = gl_attributes[:markerspace]
@@ -391,7 +415,7 @@ xy_convert(x, n) = Float32[LinRange(extrema(x)..., n + 1);]
 
 function draw_atomic(screen::Screen, scene::Scene, x::Heatmap)
     return cached_robj!(screen, scene, x) do gl_attributes
-        t = Makie.transform_func_obs(scene)
+        t = Makie.transform_func_obs(x)
         mat = x[3]
         space = get(gl_attributes, :space, :data) # needs to happen before connect_camera! call
         xypos = map(t, x[1], x[2], space) do t, x, y, space
@@ -492,7 +516,7 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, space=:data)
     end
     mesh = map(mesh, transfunc, space) do mesh, func, space
         if !Makie.is_identity_transform(func)
-            return update_positions(mesh, apply_transform.(Ref(func), mesh.position, space))
+            return update_positions(mesh, apply_transform.((func,), mesh.position, space))
         end
         return mesh
     end
@@ -540,7 +564,7 @@ function draw_atomic(screen::Screen, scene::Scene, x::Surface)
         types = map(v -> typeof(to_value(v)), x[1:2])
 
         if all(T -> T <: Union{AbstractMatrix, AbstractVector}, types)
-            t = Makie.transform_func_obs(scene)
+            t = Makie.transform_func_obs(x)
             mat = x[3]
             xypos = map(t, x[1], x[2], space) do t, x, y, space
                 # Only if transform doesn't do anything, we can stay linear in 1/2D
