@@ -170,8 +170,8 @@ function Camera3D(scene::Scene; kwargs...)
 
         # Semi-Internal - projection matrix
         get(overwrites, :fov, Observable(45.0)),
-        get(overwrites, :near, Observable(0.1)),
-        get(overwrites, :far, Observable(10.0)),
+        get(overwrites, :near, Observable(0.01)),
+        get(overwrites, :far, Observable(100.0)),
     )
 
     disconnect!(camera(scene))
@@ -400,7 +400,7 @@ function add_translation!(scene, cam::Camera3D)
     on(camera(scene), scene.events.scroll) do scroll
         if is_mouseinside(scene) && ispressed(scene, scroll_mod[])
             zoom_step = (1f0 + 0.1f0 * mouse_zoomspeed[]) ^ -scroll[2]
-            _zoom!(scene, cam, zoom_step, cad[], zoom_shift_lookat[])
+            zoom!(scene, cam, zoom_step, cad[], zoom_shift_lookat[])
             return Consume(true)
         end
         return Consume(false)
