@@ -254,6 +254,7 @@ end
     lines!([50,50], [0, 100];  space=:pixel)
     lines!([0,1], [0.25, 0.25];  space=:clip)
     scatter!(Point2f(0.5, 0), space=:relative)
+    lines!([Point2f(50, 3), Point2f(55, 4)]; space=:transformed)
     f
 end
 
