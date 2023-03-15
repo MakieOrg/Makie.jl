@@ -125,7 +125,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
         fxaa_bool = @lift($fxaa == automatic ? false : $fxaa)
         headstart = lift(points, directions, normalize, align, lengthscale) do points, dirs, n, align, s
             map(points, dirs) do p1, dir
-                dir = n ? normalize(dir) : dir
+                dir = n ? LinearAlgebra.normalize(dir) : dir
                 if align in (:head, :lineend, :tailend, :headstart, :center)
                     shift = s .* dir
                 else
