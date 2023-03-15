@@ -6,6 +6,8 @@
 - Added the `brackets` plotting function. [#2356](https://github.com/MakieOrg/Makie.jl/pull/2356).
 - Fixed an issue where `poly` plots with `Vector{<: MultiPolygon}` inputs with per-polygon color were mistakenly rendered as meshes using CairoMakie. [#2590](https://github.com/MakieOrg/Makie.jl/pulls/2478)
 - Fixed a small typo which caused an error in the `Stepper` constructor. [#2600](https://github.com/MakieOrg/Makie.jl/pulls/2478)
+- Improve cleanup on block deletion [#2614](https://github.com/MakieOrg/Makie.jl/pull/2614)
+- Add `menu.scroll_speed` and increase default speed for non-apple [#2616](https://github.com/MakieOrg/Makie.jl/pull/2616)
 - Fixed rectangle zoom for nonlinear axes [#2674](https://github.com/MakieOrg/Makie.jl/pull/2674)
 - Cleaned up linestyles in GLMakie (Fixing artifacting, spacing/size, anti-aliasing) [#2666](https://github.com/MakieOrg/Makie.jl/pull/2666)
 - Fixed issue with scatterlines only accepting concrete color types as `markercolor` [#2691](https://github.com/MakieOrg/Makie.jl/pull/2691)
