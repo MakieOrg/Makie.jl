@@ -203,7 +203,7 @@ function session2image(session::Session, scene::Scene)
     picture_base64 = JSServe.evaljs_value(session, to_data; timeout=100)
     picture_base64 = replace(picture_base64, "data:image/png;base64," => "")
     bytes = JSServe.Base64.base64decode(picture_base64)
-    return ImageMagick.load_(bytes)
+    return PNGFiles.load(IOBuffer(bytes))
 end
 
 function Makie.colorbuffer(screen::Screen)

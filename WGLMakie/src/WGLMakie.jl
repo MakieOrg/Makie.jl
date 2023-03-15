@@ -8,7 +8,7 @@ using Colors
 using ShaderAbstractions
 using LinearAlgebra
 using GeometryBasics
-using ImageMagick
+using PNGFiles
 using FreeTypeAbstraction
 
 using JSServe: Session
