@@ -10,7 +10,7 @@ There are four backends which concretely implement all abstract rendering capabi
 | [`GLMakie.jl`](/documentation/backends/glmakie/)       | GPU-powered, interactive 2D and 3D plotting in standalone `GLFW.jl` windows.          |
 | [`CairoMakie.jl`](/documentation/backends/cairomakie/) | `Cairo.jl` based, non-interactive 2D (and some 3D) backend  for publication-quality vector graphics. |
 | [`WGLMakie.jl`](/documentation/backends/wglmakie/)     | WebGL-based interactive 2D and 3D plotting that runs within browsers.                 |
-| [`RPRMakie.jl`](/documentation/backends/rprmakie/)     | An experimental Ray tracing backend.                 |
+| [`RPRMakie.jl`](/documentation/backends/rprmakie/)     | An experimental ray tracing backend.                 |
 
 ### Activating Backends
 
@@ -22,3 +22,13 @@ Example with WGLMakie:
 using WGLMakie
 WGLMakie.activate!()
 ```
+
+Each backend's `activate!` function optionally takes keyword arguments (referred to as `screen_config...`) that control various aspects of the backend.
+For example, to activate the GLMakie backend and set it up to produce windows with a custom title and no anti-aliasing:
+
+```julia
+using GLMakie
+GLMakie.activate!(title = "Custom title", fxaa = false)
+```
+
+The keyword arguments accepted by each backend are listed in the backend-specific documentation pages linked in the table above.
