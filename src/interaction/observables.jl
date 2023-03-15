@@ -1,3 +1,4 @@
+# lift makes it easier to search + replace observable code, while `map` is really hard to differentiate from `map(f, array)`
 const lift = map
 
 """

@@ -42,6 +42,7 @@ include("meshes.jl")
 include("imagelike.jl")
 include("picking.jl")
 
+const LAST_INLINE = Ref(true)
 
 """
     WGLMakie.activate!(; screen_config...)
@@ -53,7 +54,9 @@ Note, that the `screen_config` can also be set permanently via `Makie.set_theme!
 
 $(Base.doc(ScreenConfig))
 """
-function activate!(; screen_config...)
+function activate!(; inline=LAST_INLINE[], screen_config...)
+    Makie.inline!(inline)
+    LAST_INLINE[] = inline
     Makie.set_active_backend!(WGLMakie)
     Makie.set_screen_config!(WGLMakie, screen_config)
     return
@@ -73,6 +76,8 @@ function __init__()
     Makie.font_render_callback!(atlas) do sd, uv
         TEXTURE_ATLAS[] = convert(Vector{Float32}, vec(wgl_texture_atlas().data))
     end
+    DISABLE_JS_FINALZING[] = false
+    return
 end
 
 # re-export Makie, including deprecated names

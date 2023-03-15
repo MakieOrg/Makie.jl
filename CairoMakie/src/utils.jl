@@ -121,7 +121,7 @@ to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, premultiplied_rgba(c)))
 #        Common color utilities        #
 ########################################
 
-function to_cairo_color(colors::AbstractVector{<: Number}, plot_object)
+function to_cairo_color(colors::Union{AbstractVector{<: Number},Number}, plot_object)
     return numbers_to_colors(colors, plot_object)
 end
 
