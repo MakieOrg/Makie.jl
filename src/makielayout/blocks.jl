@@ -67,7 +67,7 @@ macro Block(name::Symbol, body::Expr = Expr(:block))
 
         function Makie.default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
             sceneattrs = scene === nothing ? Attributes() : theme(scene)
-            curdeftheme = deepcopy(CURRENT_DEFAULT_THEME)
+            curdeftheme = deepcopy($(Makie).CURRENT_DEFAULT_THEME)
             $(make_attr_dict_expr(attrs, :sceneattrs, :curdeftheme))
         end
 

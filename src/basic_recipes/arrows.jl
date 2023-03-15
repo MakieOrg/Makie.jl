@@ -124,11 +124,9 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
 
     marker_head = lift((ah, q) -> arrow_head(N, ah, q), arrowplot, arrowhead, quality)
     if N == 2
-
-        headstart = lift(arrowplot, points, directions, normalize, align,
-                         lengthscale) do points, dirs, n, align, s
-            return map(points, dirs) do p1, dir
-                dir = n ? normalize(dir) : dir
+        headstart = lift(arrowplot, points, directions, normalize, align, lengthscale) do points, dirs, n, align, s
+            map(points, dirs) do p1, dir
+                dir = n ? LinearAlgebra.normalize(dir) : dir
                 if align in (:head, :lineend, :tailend, :headstart, :center)
                     shift = s .* dir
                 else

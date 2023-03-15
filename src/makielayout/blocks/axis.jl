@@ -641,14 +641,15 @@ function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
         end
     end
 
-    if ax isa Axis
-        ax.targetlimits[] = BBox(xlims..., ylims...)
+    tlims = if ax isa Axis
+        BBox(xlims..., ylims...)
     elseif ax isa Axis3
-        ax.targetlimits[] = Rect3f(
+        Rect3f(
             Vec3f(xlims[1], ylims[1], zlims[1]),
             Vec3f(xlims[2] - xlims[1], ylims[2] - ylims[1], zlims[2] - zlims[1]),
         )
     end
+    ax.targetlimits[] = tlims
     nothing
 end
 
