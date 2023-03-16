@@ -10,6 +10,7 @@ Pkg.develop(PackageSpec(path = path))
 using ReferenceTests
 
 @testset "mimes" begin
+    Makie.inline!(true)
     f, ax, pl = scatter(1:4)
     @testset for mime in WGLMakie.WEB_MIMES
         @test showable(mime(), f)

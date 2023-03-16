@@ -271,3 +271,91 @@ end
     @test Set(ax2.yaxislinks) == Set([ax1, ax3])
     @test Set(ax3.yaxislinks) == Set([ax1, ax2])
 end
+
+copy_listeners(obs::Observable) = copy(obs.listeners)
+function iterate_observable_fields(f, x::T) where T
+    for (fieldname, fieldtype) in zip(fieldnames(T), fieldtypes(T))
+        fieldtype <: Observable || continue
+        f(fieldname, getfield(x, fieldname))
+    end
+    return
+end
+
+function iterate_attributes(f, a::Attributes, prefix = "")
+    for (key, value) in a
+        if value isa Attributes
+            iterate_attributes(f, value, "$prefix:$key")
+        else
+            f("$prefix:$key", value)
+        end
+    end
+end
+
+function listener_dict(s::Scene)
+    d = Dict{String,Vector}()
+    iterate_observable_fields(s) do fieldname, field
+        d["$fieldname"] = copy_listeners(field)
+    end
+    iterate_observable_fields(s.events) do fieldname, field
+        d["events:$fieldname"] = copy_listeners(field)
+    end
+    iterate_observable_fields(s.camera) do fieldname, field
+        d["camera:$fieldname"] = copy_listeners(field)
+    end
+    iterate_attributes(s.theme) do prefix, obs
+        d["theme:$prefix"] = copy_listeners(obs)
+    end
+    return d
+end
+
+function dictdiff(before, after)
+    kd = setdiff(keys(before), keys(after))
+    isempty(kd) || error("Mismatching keys: $kd")
+    d = Dict{String,Vector}()
+    for key in keys(after)
+        befset = Set(last.(before[key]))
+        v = filter(after[key]) do (prio,func)
+            func ∉ befset
+        end
+        isempty(v) || (d[key] = v)
+    end
+    return d
+end
+
+function get_difference_dict(blockfunc)
+    s = Scene(camera = campixel!);
+    before = listener_dict(s)
+    block = blockfunc(s)
+    delete!(block)
+    after = listener_dict(s)
+    return dictdiff(before, after)
+end
+
+@testset "Deletion of Blocks" begin
+    blocks = [Axis, Axis3, Slider, Toggle, Label, Button, Menu, Textbox, Box]
+    @testset "$block" for block in blocks
+        d = get_difference_dict(block)
+        @test isempty(d)
+    end
+    @testset "Slidergrid" begin
+        d = get_difference_dict() do scene
+            SliderGrid(scene,
+                (label = "Amplitude", range = 0:0.1:10, startvalue = 5),
+                (label = "Frequency", range = 0:0.5:50, format = "{:.1f}Hz", startvalue = 10),
+                (label = "Phase", range = 0:0.01:2pi,
+                    format = x -> string(round(x/pi, digits = 2), "π"))
+            ) 
+        end
+        @test isempty(d)
+    end
+    @testset "Legend" begin
+        d = get_difference_dict() do scene
+            Legend(scene, [
+                MarkerElement(marker = :cross),
+                LineElement(),
+                PolyElement(),
+            ], ["Label 1", "Label 2", "Label 3"])
+        end
+        @test isempty(d)
+    end
+end
