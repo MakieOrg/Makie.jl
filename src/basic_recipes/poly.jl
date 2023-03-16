@@ -10,7 +10,7 @@ convert_arguments(::Type{<: Poly}, m::GeometryBasics.GeometryPrimitive) = (m,)
 
 function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}})
     mesh!(
-        plot, lift(triangle_mesh, plot[1]),
+        plot, lift(triangle_mesh, plot, plot[1]),
         color = plot[:color],
         colormap = plot[:colormap],
         colorrange = plot[:colorrange],
@@ -85,7 +85,7 @@ end
 
 function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyElements}}}})
     geometries = plot[1]
-    meshes = lift(poly_convert, geometries)
+    meshes = lift(poly_convert, plot, geometries)
     mesh!(plot, meshes;
         visible = plot.visible,
         shading = plot.shading,
@@ -101,8 +101,9 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
         inspectable = plot.inspectable,
         space = plot.space
     )
-    outline = lift(to_lines, geometries)
-    stroke = lift(outline, plot.strokecolor) do outline, sc
+
+    outline = lift(to_lines, plot, geometries)
+    stroke = lift(plot, outline, plot.strokecolor) do outline, sc
         if !(meshes[] isa Mesh) && meshes[] isa AbstractVector && sc isa AbstractVector && length(sc) == length(meshes[])
             idx = 1
             return map(outline) do point
@@ -139,13 +140,13 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
         colorrange = get(plot, :colorrange, automatic)
     )
 
-    num_meshes = lift(meshes; ignore_equal_values=true) do meshes
+    num_meshes = lift(plot, meshes; ignore_equal_values=true) do meshes
         return Int[length(coordinates(m)) for m in meshes]
     end
 
     mesh_colors = Observable{Union{AbstractPattern, Matrix{RGBAf}, RGBColors}}()
 
-    map!(mesh_colors, plot.color, num_meshes) do colors, num_meshes
+    map!(plot, mesh_colors, plot.color, num_meshes) do colors, num_meshes
         # one mesh per color
         c_converted = to_color(colors)
         if c_converted isa AbstractVector && length(c_converted) == length(num_meshes)
@@ -167,7 +168,7 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
         end
     end
     attributes[:color] = mesh_colors
-    bigmesh = lift(meshes) do meshes
+    bigmesh = lift(plot, meshes) do meshes
         if isempty(meshes)
             return GeometryBasics.Mesh(Point2f[], GLTriangleFace[])
         else
