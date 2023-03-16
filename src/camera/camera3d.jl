@@ -692,10 +692,32 @@ function update_cam!(scene::Scene, cam::Camera3D, area3d::Rect)
 end
 
 # Update camera position via camera Position & Orientation
-function update_cam!(scene::Scene, camera::Camera3D, eyeposition, lookat, up = camera.upvector[])
+function update_cam!(scene::Scene, camera::Camera3D, eyeposition::VecTypes, lookat::VecTypes, up::VecTypes = camera.upvector[])
     camera.lookat[]      = Vec3f(lookat)
     camera.eyeposition[] = Vec3f(eyeposition)
     camera.upvector[]    = Vec3f(up)
+    update_cam!(scene, camera)
+    return
+end
+
+update_cam!(scene::Scene, args::Real...) = update_cam!(scene, cameracontrols(scene), args...)
+
+"""
+    update_cam!(scene, cam::Camera3D, ϕ, θ[, radius])
+
+Set the camera position based on two angles `0 ≤ ϕ ≤ 2π` and `-pi/2 ≤ θ ≤ pi/2`
+and an optional radius around the current `cam.lookat[]`. 
+"""
+function update_cam!(
+        scene::Scene, camera::Camera3D, phi::Real, theta::Real, 
+        radius::Real = norm(camera.eyeposition[] - camera.lookat[])
+    )
+    st, ct = sincos(theta)
+    sp, cp = sincos(phi)
+    v = Vec3f(ct * cp, ct * sp, st)
+    u = Vec3f(-st * cp, -st * sp, ct)
+    camera.eyeposition[] = camera.lookat[] .+ radius * v
+    camera.upvector[]    = u
     update_cam!(scene, camera)
     return
 end
