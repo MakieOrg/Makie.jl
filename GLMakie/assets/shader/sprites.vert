@@ -23,6 +23,15 @@ struct Grid3D{
     ivec3 dims;
 };
 
+struct WorldAxisLimits{
+    vec3 min, max;
+};
+
+{{clip_planes_type}} clip_planes;
+
+void set_clip(Nothing planes, vec4 world_pos);
+void set_clip(WorldAxisLimits planes, vec4 world_pos);
+
 {{uv_offset_width_type}} uv_offset_width;
 //{{uv_x_type}} uv_width;
 {{position_type}} position;
@@ -95,7 +104,9 @@ void main(){
     g_primitive_index = index;
     vec3 pos;
     {{position_calc}}
-    vec4 p = preprojection * model * vec4(pos, 1);
+    vec4 world_pos = model * vec4(pos, 1);
+    set_clip(clip_planes, world_pos);
+    vec4 p = preprojection * world_pos;
     g_position        = p.xyz / p.w + mat3(model) * marker_offset;
     g_offset_width.xy = quad_offset.xy;
     g_offset_width.zw = scale.xy;

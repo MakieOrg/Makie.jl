@@ -64,5 +64,5 @@ void main(){
     vec4 world_pos = model * _position(vertex);
 	gl_Position = projectionview * world_pos;
     gl_Position.z += gl_Position.w * depth_shift;
-    set_clip(clip_panes, world_pos);
+    set_clip(clip_planes, world_pos);
 }
