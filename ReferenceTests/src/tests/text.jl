@@ -360,3 +360,13 @@ end
     ylims!(ax, -0.8, 0.6)
     fig
 end
+
+@reference_test "label type change" begin
+    fig = Figure()
+    ax = Axis3(fig[1, 1])
+    ax.xlabel[] = L"1 + \alpha^2"
+    ax.ylabel[] = L"\lim_{x\to\infty} f(x)"
+    ax.zlabel[] = L"\sum_{n=1}^{\infty} 2^{-n} = 1"
+    fig
+end
+

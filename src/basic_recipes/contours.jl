@@ -91,11 +91,11 @@ function plot!(plot::PlotObject, ::Contour, X, Y, Z, Vol) # 4 arg 3d volume
     x, y, z, volume = plot[1:4]
     @extract plot (colormap, levels, linewidth, alpha)
     valuerange = Observable{Vec2f}()
-    map!(nan_extrema, valuerange, volume)
+    map!(nan_extrema, plot, valuerange, volume)
     cliprange = replace_automatic!(plot, :colorrange) do
         valuerange
     end
-    colormap_obs = lift(colormap, levels, alpha, cliprange, valuerange) do _cmap, l, a, cliprange, vrange
+    colormap_obs = lift(plot, colormap, levels, alpha, cliprange, valuerange) do _cmap, l, a, cliprange, vrange
         alpha_num = Float32(a)
         level_vec = to_levels(l, vrange)
         nlevels = length(level_vec)
@@ -162,8 +162,8 @@ end
 
 function plot!(plot::PlotObject, ::T) where T <: Union{Contour, Contour3d}
     x, y, z = plot[1:3]
-    zrange = lift(nan_extrema, z)
-    levels = lift(plot.levels, zrange) do levels, zrange
+    zrange = lift(nan_extrema, plot, z)
+    levels = lift(plot, plot.levels, zrange) do levels, zrange
         if levels isa AbstractVector{<: Number}
             return levels
         elseif levels isa Integer
@@ -176,8 +176,8 @@ function plot!(plot::PlotObject, ::T) where T <: Union{Contour, Contour3d}
     replace_automatic!(()-> zrange, plot, :colorrange)
 
     args = @extract plot (color, colormap, colorrange, alpha)
-    level_colors = lift(color_per_level, args..., levels)
-    result = lift(x, y, z, levels, level_colors) do x, y, z, levels, level_colors
+    level_colors = lift(color_per_level, plot, args..., levels)
+    result = lift(plot, x, y, z, levels, level_colors) do x, y, z, levels, level_colors
         t = eltype(z)
         # Compute contours
         xv, yv = to_vector(x, size(z,1), t), to_vector(y, size(z,2), t)
@@ -185,8 +185,8 @@ function plot!(plot::PlotObject, ::T) where T <: Union{Contour, Contour3d}
         contourlines(T, contours, level_colors)
     end
     lines!(
-        plot, lift(first, result);
-        color = lift(last, result),
+        plot, lift(first, plot, result);
+        color=lift(last, plot, result),
         linewidth = plot.linewidth,
         inspectable = plot.inspectable,
         transparency = plot.transparency,

@@ -51,18 +51,20 @@ function plot!(plot::PlotObject, ::Violin)
     x, y = plot[1], plot[2]
     args = @extract plot (width, side, color, show_median, npoints, boundary, bandwidth, weights,
         datalimits, max_density, dodge, n_dodge, gap, dodge_gap, orientation)
-    signals = lift(x, y, args...) do x, y, width, vside, color, show_median, n, bound, bw, w, limits, max_density, dodge, n_dodge, gap, dodge_gap, orientation
+    signals = lift(plot, x, y,
+                   args...) do x, y, width, vside, color, show_median, n, bound, bw, w, limits, max_density,
+                               dodge, n_dodge, gap, dodge_gap, orientation
         x̂, violinwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
 
         # for horizontal violin just flip all componentes
         point_func = Point2f
-        if orientation == :horizontal
+        if orientation === :horizontal
             point_func = flip_xy ∘ point_func
         end
 
         # Allow `side` to be either scalar or vector
         sides = broadcast(x̂, vside) do _, s
-            return s == :left ? - 1 : s == :right ? 1 : 0
+            return s === :left ? - 1 : s === :right ? 1 : 0
         end
 
         sa = StructArray((x = x̂, side = sides))
@@ -132,14 +134,14 @@ function plot!(plot::PlotObject, ::Violin)
 
     poly!(
         plot,
-        lift(s -> s.vertices, signals),
-        color = lift(s -> s.colors, signals),
+        lift(s -> s.vertices, plot, signals);
+        color=lift(s -> s.colors, plot, signals),
         strokecolor = plot[:strokecolor],
         strokewidth = plot[:strokewidth],
     )
     linesegments!(
         plot,
-        lift(s -> s.lines, signals),
+        lift(s -> s.lines, plot, signals);
         color = plot[:mediancolor],
         linewidth = plot[:medianlinewidth],
         visible = plot[:show_median],

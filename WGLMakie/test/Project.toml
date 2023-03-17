@@ -1,11 +1,10 @@
 [deps]
 Electron = "a1bb12fb-d4d1-54b4-b10a-ee7951ef7ad3"
 FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
-ImageMagick = "6218d12a-5da1-5696-b52f-db25d2ecc6d1"
 JSServe = "824d6782-a2ef-11e9-3a09-e5662e0c26f9"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
-Electron = "3.1.1"
+Electron = "4.1.1"

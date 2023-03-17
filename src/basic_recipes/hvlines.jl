@@ -49,14 +49,14 @@ function Makie.plot!(p::Union{HLines, VLines})
     scene = parent_scene(p)
     transf = transform_func_obs(scene)
 
-    limits = lift(projview_to_2d_limits, scene.camera.projectionview)
+    limits = lift(projview_to_2d_limits, p, scene.camera.projectionview)
 
     points = Observable(Point2f[])
 
     mi = p isa HLines ? p.xmin : p.ymin
     ma = p isa HLines ? p.xmax : p.ymax
 
-    onany(limits, p[1], mi, ma, transf) do lims, vals, mi, ma, transf
+    onany(p, limits, p[1], mi, ma, transf) do lims, vals, mi, ma, transf
         inv = inverse_transform(transf)
         empty!(points[])
         min_x, min_y = minimum(lims)
@@ -83,17 +83,8 @@ function Makie.plot!(p::Union{HLines, VLines})
 
     notify(p[1])
 
-    line_attributes = extract_keys(p.attributes, [
-        :linewidth,
-        :color,
-        :colormap,
-        :colorrange,
-        :linestyle,
-        :fxaa,
-        :cycle,
-        :transparency,
-        :inspectable])
-
+    line_attributes = copy(p.attributes)
+    delete!.(line_attributes, (:ymin, :ymax, :yautolimits))
     linesegments!(p, line_attributes, points)
     p
 end

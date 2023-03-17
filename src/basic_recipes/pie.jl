@@ -26,7 +26,7 @@ function plot!(plot::PlotObject, ::Pie)
 
     values = plot[1]
 
-    polys = lift(values, plot.vertex_per_deg, plot.radius, plot.inner_radius, plot.offset, plot.normalize) do vals, vertex_per_deg, radius, inner_radius, offset, normalize
+    polys = lift(plot, values, plot.vertex_per_deg, plot.radius, plot.inner_radius, plot.offset, plot.normalize) do vals, vertex_per_deg, radius, inner_radius, offset, normalize
 
         T = eltype(vals)
 

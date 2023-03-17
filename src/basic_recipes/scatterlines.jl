@@ -32,7 +32,8 @@ conversion_trait(::Type{<:ScatterLines}) = PointBased()
 function plot!(p::PlotObject, ::ScatterLines, ::AbstractVector{<: Point})
 
     # markercolor is the same as linecolor if left automatic
-    real_markercolor = Observable{Union{Vector{RGBAf}, RGBAf}}()
+    # RGBColors -> union of all colortypes that `to_color` accepts + returns
+    real_markercolor = Observable{RGBColors}() 
     map!(real_markercolor, p.color, p.markercolor) do col, mcol
         if mcol === automatic
             return to_color(col)

@@ -80,10 +80,11 @@ mutable struct PlotObject <: AbstractPlot
     attributes::Attributes
 
     plots::Vector{PlotObject}
+    deregister_callbacks::Vector{Observables.ObserverFunction}
     parent::Union{AbstractScene, PlotObject}
 
     function PlotObject(type, transformation, kw, args)
-        return new(type, transformation, kw, args, (), Attributes(), PlotObject[])
+        return new(type, transformation, kw, args, (), Attributes(), PlotObject[], Observables.ObserverFunction[])
     end
 end
 

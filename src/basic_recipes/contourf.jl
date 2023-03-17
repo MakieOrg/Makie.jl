@@ -77,26 +77,26 @@ end
 function Makie.plot!(c::PlotObject, ::Contourf, ::AbstractVector{<:Real}, ::AbstractVector{<:Real}, ::AbstractMatrix{<:Real})
     xs, ys, zs = c[1:3]
 
-    c.attributes[:_computed_levels] = lift(zs, c.levels, c.mode) do zs, levels, mode
+    c.attributes[:_computed_levels] = lift(c, zs, c.levels, c.mode) do zs, levels, mode
         _get_isoband_levels(Val(mode), levels, vec(zs))
     end
 
-    colorrange = lift(c._computed_levels) do levels
+    colorrange = lift(c, c._computed_levels) do levels
         minimum(levels), maximum(levels)
     end
-    computed_colormap = lift(compute_contourf_colormap, c._computed_levels, c.colormap, c.extendlow,
+    computed_colormap = lift(compute_contourf_colormap, c, c._computed_levels, c.colormap, c.extendlow,
                              c.extendhigh)
     c.attributes[:_computed_colormap] = computed_colormap
 
     lowcolor = Observable{RGBAf}()
-    map!(compute_lowcolor, lowcolor, c.extendlow, c.colormap)
+    map!(compute_lowcolor, c, lowcolor, c.extendlow, c.colormap)
     c.attributes[:_computed_extendlow] = lowcolor
-    is_extended_low = lift(!isnothing, lowcolor)
+    is_extended_low = lift(!isnothing, c, lowcolor)
 
     highcolor = Observable{RGBAf}()
-    map!(compute_highcolor, highcolor, c.extendhigh, c.colormap)
+    map!(compute_highcolor, c, highcolor, c.extendhigh, c.colormap)
     c.attributes[:_computed_extendhigh] = highcolor
-    is_extended_high = lift(!isnothing, highcolor)
+    is_extended_high = lift(!isnothing, c, highcolor)
 
     PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
 
@@ -134,7 +134,7 @@ function Makie.plot!(c::PlotObject, ::Contourf, ::AbstractVector{<:Real}, ::Abst
         return
     end
 
-    onany(calculate_polys, xs, ys, zs, c._computed_levels, is_extended_low, is_extended_high)
+    onany(calculate_polys, c, xs, ys, zs, c._computed_levels, is_extended_low, is_extended_high)
     # onany doesn't get called without a push, so we call
     # it on a first run!
     calculate_polys(xs[], ys[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[])

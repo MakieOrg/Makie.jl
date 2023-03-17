@@ -8,7 +8,9 @@ end
 
 function attribute_per_char(string, attribute)
     n_words = 0
-    if attribute isa AbstractVector
+    if attribute isa GeometryBasics.StaticArray
+        return one_attribute_per_char(attribute, string)
+    elseif attribute isa AbstractVector
         if length(attribute) == length(string)
             return attribute
         else
@@ -83,7 +85,7 @@ function glyph_collection(
             char = char,
             font = font,
             scale = scale,
-            lineheight = Float32(font.height / font.units_per_EM * lineheight_factor * scale),
+            lineheight = Float32(font.height / font.units_per_EM * lineheight_factor * last(scale)),
             extent = GlyphExtent(font, char)
         )
     end
@@ -111,7 +113,7 @@ function glyph_collection(
 
         for (i, ci) in enumerate(charinfos)
             push!(xs[end], x)
-            x += ci.extent.hadvance * ci.scale
+            x += ci.extent.hadvance * first(ci.scale)
 
             if 0 < word_wrap_width < x && last_space_local_idx != 0 &&
                     ((ci.char in (' ', '\n')) || i == length(charinfos))
@@ -121,7 +123,7 @@ function glyph_collection(
                 xs[end-1] = xs[end-1][1:last_space_local_idx]
                 push!(lineinfos, view(charinfos, last_line_start:last_space_global_idx))
                 last_line_start = last_space_global_idx+1
-                x = xs[end][end] + ci.extent.hadvance * ci.scale
+                x = xs[end][end] + ci.extent.hadvance * first(ci.scale)
 
                 # TODO Do we need to redo the metrics for newlines?
                 charinfos[last_space_global_idx] = let
@@ -156,7 +158,7 @@ function glyph_collection(
         # if the last and not the only character is \n, take the previous one
         # to compute the width
         i = (nchars > 1 && line[end].char == '\n') ? nchars - 1 : nchars
-        xx[i] + line[i].extent.hadvance * line[i].scale
+        xx[i] + line[i].extent.hadvance * first(line[i].scale)
     end
 
     # the maximum width is needed for justification
@@ -168,20 +170,20 @@ function glyph_collection(
     # shift all x values by the justification amount needed for each line
     # if justification is automatic it depends on alignment
     float_justification = if justification === automatic
-        if halign == :left || halign == 0
+        if halign === :left || halign == 0
             0.0f0
-        elseif halign == :right || halign == 1
+        elseif halign === :right || halign == 1
             1.0f0
-        elseif halign == :center || halign == 0.5
+        elseif halign === :center || halign == 0.5
             0.5f0
         else
             0.5f0
         end
-    elseif justification == :left
+    elseif justification === :left
         0.0f0
-    elseif justification == :right
+    elseif justification === :right
         1.0f0
-    elseif justification == :center
+    elseif justification === :center
         0.5f0
     else
         Float32(justification)
@@ -203,11 +205,11 @@ function glyph_collection(
     # compute x values after left/center/right alignment
     halign = if halign isa Number
         Float32(halign)
-    elseif halign == :left
+    elseif halign === :left
         0.0f0
-    elseif halign == :center
+    elseif halign === :center
         0.5f0
-    elseif halign == :right
+    elseif halign === :right
         1.0f0
     else
         error("Invalid halign $halign. Valid values are <:Number, :left, :center and :right.")
@@ -217,27 +219,27 @@ function glyph_collection(
     # for y alignment, we need the largest ascender of the first line
     # and the largest descender of the last line
     first_line_ascender = maximum(lineinfos[1]) do l
-        l.scale * l.extent.ascender
+        last(l.scale) * l.extent.ascender
     end
 
     last_line_descender = minimum(lineinfos[end]) do l
-        l.scale * l.extent.descender
+        last(l.scale) * l.extent.descender
     end
 
     # compute the height of all lines together
     overall_height = first_line_ascender - ys[end] - last_line_descender
 
     # compute y values after top/center/bottom/baseline alignment
-    ys_aligned = if valign == :baseline
+    ys_aligned = if valign === :baseline
         ys .- first_line_ascender .+ overall_height .+ last_line_descender
     else
         va = if valign isa Number
             Float32(valign)
-        elseif valign == :top
+        elseif valign === :top
             1f0
-        elseif valign == :bottom
+        elseif valign === :bottom
             0f0
-        elseif valign == :center
+        elseif valign === :center
             0.5f0
         else
             error("Invalid valign $valign. Valid values are <:Number, :bottom, :baseline, :top, and :center.")
@@ -286,7 +288,7 @@ function padded_vcat(arrs::AbstractVector{T}, fillvalue) where T <: AbstractVect
 end
 
 function alignment2num(x::Symbol)
-    (x == :center) && return 0.5f0
+    (x === :center) && return 0.5f0
     (x in (:left, :bottom)) && return 0.0f0
     (x in (:right, :top)) && return 1.0f0
     return 0.0f0 # 0 default, or better to error?
@@ -297,8 +299,6 @@ end
 
 _offset_to_vec(o::VecTypes) = to_ndim(Vec3f, o, 0)
 _offset_to_vec(o::Vector) = to_ndim.(Vec3f, o, 0)
-_offset_at(o::Vec3f, i) = o
-_offset_at(o::Vector, i) = o[i]
 Base.getindex(x::ScalarOrVector, i) = x.sv isa Vector ? x.sv[i] : x.sv
 Base.lastindex(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
 
@@ -320,7 +320,7 @@ function text_quads(atlas::TextureAtlas, position::VecTypes, gc::GlyphCollection
         )
         uvs[i] = glyph_uv_width!(atlas, gc.glyphs[i], gc.fonts[i])
         scales[i] = widths(glyph_bb) .+ gc.scales[i] .* 2pad
-        char_offsets[i] = gc.origins[i] .+ _offset_at(off, i)
+        char_offsets[i] = gc.origins[i] .+ sv_getindex(off, i)
         quad_offsets[i] = minimum(glyph_bb) .- gc.scales[i] .* pad
     end
 
@@ -362,7 +362,7 @@ function text_quads(atlas::TextureAtlas, position::Vector, gcs::Vector{<: GlyphC
             )
             uvs[k] = glyph_uv_width!(atlas, gc.glyphs[i], gc.fonts[i])
             scales[k] = widths(glyph_bb) .+ gc.scales[i] * 2pad
-            char_offsets[k] = gc.origins[i] .+ _offset_at(off, j)
+            char_offsets[k] = gc.origins[i] .+ sv_getindex(off, j)
             quad_offsets[k] = minimum(glyph_bb) .- gc.scales[i] .* pad
             k += 1
         end

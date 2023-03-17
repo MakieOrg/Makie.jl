@@ -130,19 +130,18 @@ function Makie.plot!(plot::PlotObject, ::Errorbars, ::AbstractVector{<:VecTypes{
 
     x_y_low_high = plot[1]
 
-    is_in_y_direction = lift(plot.direction) do dir
-        if dir == :y
+    is_in_y_direction = lift(plot, plot.direction) do dir
+        if dir === :y
             true
-        elseif dir == :x
+        elseif dir === :x
             false
         else
             error("Invalid direction $dir. Options are :x and :y.")
         end
     end
 
-    linesegpairs = lift(x_y_low_high, is_in_y_direction) do x_y_low_high, in_y
-
-        map(x_y_low_high) do (x, y, l, h)
+    linesegpairs = lift(plot, x_y_low_high, is_in_y_direction) do x_y_low_high, in_y
+        return map(x_y_low_high) do (x, y, l, h)
             in_y ?
                 (Point2f(x, y - l), Point2f(x, y + h)) :
                 (Point2f(x - l, y), Point2f(x + h, y))
@@ -157,19 +156,18 @@ function Makie.plot!(plot::PlotObject, ::Rangebars, ::AbstractVector{<:VecTypes{
 
     val_low_high = plot[1]
 
-    is_in_y_direction = lift(plot.direction) do dir
-        if dir == :y
-            true
-        elseif dir == :x
-            false
+    is_in_y_direction = lift(plot, plot.direction) do dir
+        if dir === :y
+            return true
+        elseif dir === :x
+            return false
         else
             error("Invalid direction $dir. Options are :x and :y.")
         end
     end
 
-    linesegpairs = lift(val_low_high, is_in_y_direction) do vlh, in_y
-
-        map(vlh) do (v, l, h)
+    linesegpairs = lift(plot, val_low_high, is_in_y_direction) do vlh, in_y
+        return map(vlh) do (v, l, h)
             in_y ?
                 (Point2f(v, l), Point2f(v, h)) :
                 (Point2f(l, v), Point2f(h, v))
@@ -189,7 +187,7 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
 
     scene = parent_scene(plot)
 
-    whiskers = lift(linesegpairs, scene.camera.projectionview,
+    whiskers = lift(plot, linesegpairs, scene.camera.projectionview,
         scene.camera.pixel_space, whiskerwidth) do pairs, _, _, whiskerwidth
 
         endpoints = [p for pair in pairs for p in pair]
@@ -204,7 +202,7 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
         screen_to_scene([p for pair in screenendpoints_shifted_pairs for p in pair], scene)
     end
     whiskercolors = Observable{RGBColors}()
-    map!(whiskercolors, color) do color
+    map!(plot, whiskercolors, color) do color
         # we have twice as many linesegments for whiskers as we have errorbars, so we
         # need to duplicate colors if a vector of colors is given
         if color isa AbstractVector
@@ -214,7 +212,7 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
         end
     end
     whiskerlinewidths = Observable{Union{Float32, Vector{Float32}}}()
-    map!(whiskerlinewidths, linewidth) do linewidth
+    map!(plot, whiskerlinewidths, linewidth) do linewidth
         # same for linewidth
         if linewidth isa AbstractVector
             return repeat(convert(Vector{Float32}, linewidth), inner = 2)::Vector{Float32}
@@ -263,7 +261,6 @@ function screen_to_scene(p::T, scene) where T <: Point
     projected = inv(scene.camera.projectionview[]) * p1m1
     T(projected[Vec(1, 2)]...)
 end
-
 
 # ignore whiskers when determining data limits
 function data_limits(bars::Union{Errorbars, Rangebars})

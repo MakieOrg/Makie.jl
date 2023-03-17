@@ -27,7 +27,7 @@ yvector(x, len) = xvector(x, len)'
 yvector(x::AbstractMatrix, len) = x
 
 function plot!(plot, ::Wireframe)
-    points_faces = lift(plot[1:3]...) do x, y, z
+    points_faces = lift(plot, plot[1:3]...) do x, y, z
         M, N = size(z)
         points = vec(Point3f.(xvector(x, M), yvector(y, N), z))
         # Connect the vetices with faces, as one would use for a 2D Rectangle
@@ -38,8 +38,8 @@ function plot!(plot, ::Wireframe)
     linesegments!(plot, Attributes(plot), points_faces)
 end
 
-function plot!(plot::PlotObject, ::Wireframe)
-    points = lift(plot[1]) do g
+function plot!(plot::PlotObject, ::Wireframe, ::AbstractGeometry)
+    points = lift(plot, plot[1]) do g
         # get the point representation of the geometry
         indices = decompose(LineFace{GLIndex}, g)
         points = decompose(Point, g)

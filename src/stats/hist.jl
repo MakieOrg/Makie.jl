@@ -7,6 +7,80 @@ function convert_arguments(P::Type{<:AbstractPlot}, h::StatsBase.Histogram{<:Any
     to_plotspec(ptype, convert_arguments(ptype, map(f, h.edges)..., Float64.(h.weights)); kwargs...)
 end
 
+function _hist_center_weights(values, edges, normalization, scale_to, wgts)
+    w = wgts === automatic ? () : (StatsBase.weights(wgts),)
+    h = StatsBase.fit(StatsBase.Histogram, values[], w..., edges)
+    h_norm = StatsBase.normalize(h; mode = normalization)
+    weights = h_norm.weights
+    centers = edges[1:end-1] .+ (diff(edges) ./ 2)
+    if !isnothing(scale_to)
+        max = maximum(weights)
+        weights .= weights ./ max .* scale_to
+    end
+    return centers, weights
+end
+
+"""
+    stephist(values; bins = 15, normalization = :none)
+
+Plot a step histogram of `values`. `bins` can be an `Int` to create that
+number of equal-width bins over the range of `values`.
+Alternatively, it can be a sorted iterable of bin edges. The histogram
+can be normalized by setting `normalization`.
+
+Shares most options with `hist` plotting function.
+
+Statistical weights can be provided via the `weights` keyword argument.
+
+The following attributes can move the histogram around,
+which comes in handy when placing multiple histograms into one plot:
+* `scale_to = nothing`: allows to scale all values to a certain height
+
+## Attributes
+$(ATTRIBUTES)
+"""
+@recipe(StepHist, values) do scene
+    Attributes(
+        bins = 15, # Int or iterable of edges
+        normalization = :none,
+        weights = automatic,
+        cycle = [:color => :patchcolor],
+        color = theme(scene, :patchcolor),
+        linestyle = :solid,
+        scale_to = nothing,
+    )
+end
+
+function Makie.plot!(plot::StepHist)
+
+    values = plot.values
+    edges = lift(pick_hist_edges, plot, values, plot.bins)
+
+    points = lift(plot, edges, plot.normalization, plot.scale_to,
+                  plot.weights) do edges, normalization, scale_to, wgts
+        _, weights = _hist_center_weights(values, edges, normalization, scale_to, wgts)
+        phantomedge = edges[end] # to bring step back to baseline
+        edges = vcat(edges, phantomedge)
+        z = zero(eltype(weights))
+        heights = vcat(z, weights, z)
+        return Point2f.(edges, heights)
+    end
+    color = lift(plot, plot.color) do color
+        if color === :values
+            return last.(points[])
+        else
+            return color
+        end
+    end
+    attr = copy(plot.attributes)
+    # Don't pass stephist attributes to the stairs primitive
+    pop!(attr, :weights)
+    pop!(attr, :normalization)
+    pop!(attr, :scale_to)
+    pop!(attr, :bins)
+    # plot the values, not the observables, to be in control of updating
+    stairs!(plot, points[]; attr..., color=color)
+end
 
 """
     hist(values; bins = 15, normalization = :none)
@@ -86,22 +160,15 @@ end
 function Makie.plot!(plot::PlotObject, ::Hist)
 
     values = plot.values
-    edges = lift(pick_hist_edges, values, plot.bins)
+    edges = lift(pick_hist_edges, plot, values, plot.bins)
 
-    points = lift(edges, plot.normalization, plot.scale_to, plot.weights) do edges, normalization, scale_to, wgts
-        w = wgts === automatic ? () : (StatsBase.weights(wgts),)
-        h = StatsBase.fit(StatsBase.Histogram, values[], w..., edges)
-        h_norm = StatsBase.normalize(h, mode = normalization)
-        centers = edges[1:end-1] .+ (diff(edges) ./ 2)
-        weights = h_norm.weights
-        if !isnothing(scale_to)
-            max = maximum(weights)
-            weights .= weights ./ max .* scale_to
-        end
+    points = lift(plot, edges, plot.normalization, plot.scale_to,
+                  plot.weights) do edges, normalization, scale_to, wgts
+        centers, weights = _hist_center_weights(values, edges, normalization, scale_to, wgts)
         return Point2f.(centers, weights)
     end
-    widths = lift(diff, edges)
-    color = lift(plot.color) do color
+    widths = lift(diff, plot, edges)
+    color = lift(plot, plot.color) do color
         if color === :values
             return last.(points[])
         else
@@ -109,14 +176,14 @@ function Makie.plot!(plot::PlotObject, ::Hist)
         end
     end
 
-    bar_labels = map(plot.bar_labels) do x
+    bar_labels = lift(plot, plot.bar_labels) do x
         x === :values ? :y : x
     end
     # plot the values, not the observables, to be in control of updating
     bp = barplot!(plot, points[]; width = widths[], gap = 0, plot.attributes..., fillto=plot.fillto, offset=plot.offset, bar_labels=bar_labels, color=color)
 
     # update the barplot points without triggering, then trigger with `width`
-    on(widths) do w
+    on(plot, widths) do w
         bp[1].val = points[]
         bp.width = w
     end

@@ -4,7 +4,7 @@ function to_opengl_mesh!(result, mesh_obs::TOrSignal{<: GeometryBasics.AbstractM
     end
 
     result[:faces] = indexbuffer(map(((m,_),)-> faces(m), m_attr))
-    result[:vertices] = GLBuffer(map(((m,_),)-> decompose(Point, m), m_attr))
+    result[:vertices] = GLBuffer(map(((m, _),) -> metafree(coordinates(m)), m_attr))
 
     attribs = m_attr[][2]
 

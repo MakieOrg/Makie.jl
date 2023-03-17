@@ -51,11 +51,11 @@ trunkpoint(stempoint::P, offset::Point3) where P <: Point3 = P(offset...)
 function plot!(s::PlotObject, ::Stem, ::AbstractVector{<:Point})
     points = s[1]
 
-    stemtuples = lift(points, s.offset) do ps, to
+    stemtuples = lift(s, points, s.offset) do ps, to
         tuple.(ps, trunkpoint.(ps, to))
     end
 
-    trunkpoints = @lift(last.($stemtuples))
+    trunkpoints = lift(st -> last.(st), s, stemtuples)
 
     lines!(s, trunkpoints,
         linewidth = s.trunkwidth,

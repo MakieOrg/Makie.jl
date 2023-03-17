@@ -10,10 +10,10 @@ struct DataAspect end
 
 
 struct Cycler
-    counters::Dict{Type, Int}
+    counters::IdDict{Type, Int}
 end
 
-Cycler() = Cycler(Dict{Type, Int}())
+Cycler() = Cycler(IdDict{Type, Int}())
 
 
 struct Cycle
@@ -126,7 +126,7 @@ mutable struct LineAxis
     elements::Dict{Symbol, Any}
     tickpositions::Observable{Vector{Point2f}}
     tickvalues::Observable{Vector{Float32}}
-    ticklabels::Observable{Vector{AbstractString}}
+    ticklabels::Observable{Vector{Any}}
     minortickpositions::Observable{Vector{Point2f}}
     minortickvalues::Observable{Vector{Float32}}
 end
@@ -468,7 +468,8 @@ end
 
 function RectangleZoom(f::Function, ax::Axis; kw...)
     r = RectangleZoom(f; kw...)
-    selection_vertices = lift(_selection_vertices, Observable(ax.scene), ax.finallimits, r.rectnode)
+    selection_vertices = lift(_selection_vertices, ax.blockscene, Observable(ax.scene), ax.finallimits,
+                              r.rectnode)
     # manually specify correct faces for a rectangle with a rectangle hole inside
     faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
     # plot to blockscene, so ax.scene stays exclusive for user plots
@@ -910,6 +911,8 @@ end
         direction = automatic
         "The default message prompting a selection when i == 0"
         prompt = "Select..."
+        "Speed of scrolling in large Menu lists."
+        scroll_speed = 15.0
     end
 end
 

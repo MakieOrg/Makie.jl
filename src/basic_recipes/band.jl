@@ -22,18 +22,20 @@ convert_arguments(::Type{<: Band}, x, ylower, yupper) = (Point2f.(x, ylower), Po
 function band_connect(n)
     ns = 1:n-1
     ns2 = n+1:2n-1
-    [GLTriangleFace.(ns, ns .+ 1, ns2); GLTriangleFace.(ns .+ 1, ns2 .+ 1, ns2)]
+    return [GLTriangleFace.(ns, ns .+ 1, ns2); GLTriangleFace.(ns .+ 1, ns2 .+ 1, ns2)]
 end
 
 function Makie.plot!(plot::PlotObject, ::Band)
     @extract plot (lowerpoints, upperpoints)
-    @lift(@assert length($lowerpoints) == length($upperpoints) "length of lower band is not equal to length of upper band!")
-    coordinates = @lift([$lowerpoints; $upperpoints])
-    connectivity = lift(x -> band_connect(length(x)), plot[1])
+    coordinates = lift(plot, lowerpoints, upperpoints) do lowerpoints, upperpoints
+        @assert length(lowerpoints) == length(upperpoints) "length of lower band is not equal to length of upper band!"
+        return [lowerpoints; upperpoints]
+    end
+    connectivity = lift(x -> band_connect(length(x)), plot, plot[1])
 
     meshcolor = Observable{RGBColors}()
 
-    map!(meshcolor, plot.color) do c
+    map!(plot, meshcolor, plot.color) do c
         if c isa AbstractArray
             # if the same number of colors is given as there are
             # points on one side of the band, the colors are mirrored to the other
@@ -50,7 +52,6 @@ function Makie.plot!(plot::PlotObject, ::Band)
             return to_color(c)::RGBAf
         end
     end
-
     attr = Attributes(plot)
     attr[:color] = meshcolor
     mesh!(plot, attr, coordinates, connectivity)

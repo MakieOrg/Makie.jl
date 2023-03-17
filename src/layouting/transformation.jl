@@ -9,6 +9,16 @@ function Observables.connect!(parent::Transformation, child::Transformation)
     return
 end
 
+function free(transformation::Transformation)
+    # clear parent...Needs to be same type, so just use itself
+    transformation.parent[] = transformation
+    for name in [:translation, :scale, :rotation, :model, :transform_func]
+        obs = getfield(transformation, name)
+        Observables.clear(obs)
+    end
+    return
+end
+
 function model_transform(transformation::Transformation)
     return transformationmatrix(transformation.translation[], transformation.scale[], transformation.rotation[])
 end
@@ -155,7 +165,7 @@ function transform!(scene::Transformable, x::Tuple{Symbol, <: Number})
 end
 
 transformationmatrix(x) = transformation(x).model
-
+transformation(x::Attributes) = x.transformation[]
 transform_func(x) = transform_func_obs(x)[]
 transform_func_obs(x) = transformation(x).transform_func
 
@@ -164,10 +174,10 @@ transform_func_obs(x) = transformation(x).transform_func
 Apply the data transform func to the data if the space matches one
 of the the transformation spaces (currently only :data is transformed)
 """
-apply_transform(f, data, space) = space == :data ? apply_transform(f, data) : data  
-function apply_transform(f::Observable, data::Observable, space::Observable) 
+apply_transform(f, data, space) = space === :data ? apply_transform(f, data) : data
+function apply_transform(f::Observable, data::Observable, space::Observable)
     return lift((f, d, s)-> apply_transform(f, d, s), f, data, space)
-end 
+end
 
 """
     apply_transform(f, data)
@@ -347,5 +357,3 @@ end
 # by heatmaps or images
 zvalue2d(x)::Float32 = Makie.translation(x)[][3] + zvalue2d(x.parent)
 zvalue2d(::Nothing)::Float32 = 0f0
-
-

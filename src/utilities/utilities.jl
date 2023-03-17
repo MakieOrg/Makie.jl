@@ -94,7 +94,7 @@ function nan_extrema(array)
 end
 
 function extract_expr(extract_func, dictlike, args)
-    if args.head != :tuple
+    if args.head !== :tuple
         error("Usage: args need to be a tuple. Found: $args")
     end
     expr = Expr(:block)
@@ -106,7 +106,7 @@ function extract_expr(extract_func, dictlike, args)
 end
 
 """
-usage @exctract scene (a, b, c, d)
+usage @extract scene (a, b, c, d)
 """
 macro extract(scene, args)
     extract_expr(getindex, scene, args)
@@ -133,6 +133,20 @@ macro get_attribute(scene, args)
     extract_expr(get_attribute, scene, args)
 end
 
+# a few shortcut functions to make attribute conversion easier
+function converted_attribute(dict, key, default=nothing)
+    if haskey(dict, key)
+        return lift(x-> convert_attribute(x, Key{key}()), dict[key])
+    else
+        return default
+    end
+end
+
+macro converted_attribute(dictlike, args)
+    return extract_expr(converted_attribute, dictlike, args)
+end
+
+
 @inline getindex_value(x::Union{Dict,Attributes,AbstractPlot}, key::Symbol) = to_value(x[key])
 @inline getindex_value(x, key::Symbol) = to_value(getfield(x, key))
 
@@ -153,18 +167,19 @@ macro extractvalue(scene, args)
 end
 
 
-attr_broadcast_length(x::NativeFont) = 1 # these are our rules, and for what we do, Vecs are usually scalars
+attr_broadcast_length(x::NativeFont) = 1
 attr_broadcast_length(x::VecTypes) = 1 # these are our rules, and for what we do, Vecs are usually scalars
 attr_broadcast_length(x::AbstractArray) = length(x)
 attr_broadcast_length(x::AbstractPattern) = 1
 attr_broadcast_length(x) = 1
 attr_broadcast_length(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
 
-attr_broadcast_getindex(x::NativeFont, i) = x # these are our rules, and for what we do, Vecs are usually scalars
+attr_broadcast_getindex(x::NativeFont, i) = x
 attr_broadcast_getindex(x::VecTypes, i) = x # these are our rules, and for what we do, Vecs are usually scalars
 attr_broadcast_getindex(x::AbstractArray, i) = x[i]
 attr_broadcast_getindex(x::AbstractPattern, i) = x
 attr_broadcast_getindex(x, i) = x
+attr_broadcast_getindex(x::Ref, i) = x[] # unwrap Refs just like in normal broadcasting, for protecting iterables
 attr_broadcast_getindex(x::ScalarOrVector, i) = x.sv isa Vector ? x.sv[i] : x.sv
 
 is_vector_attribute(x::AbstractArray) = true
@@ -361,3 +376,7 @@ function extract_keys(attributes, keys)
     end
     return attr
 end
+
+# Scalar - Vector getindex
+sv_getindex(v::Vector, i::Integer) = v[i]
+sv_getindex(x, i::Integer) = x

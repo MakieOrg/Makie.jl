@@ -55,13 +55,13 @@ function compute_contourf_colormap(levels, cmap, elow, ehigh)
 
     _cmap = to_colormap(cmap)
 
-    if elow == :auto && !(ehigh == :auto)
+    if elow === :auto && ehigh !== :auto
         cm_base = cgrad(_cmap, n + 1; categorical=true)[2:end]
         cm = cgrad(cm_base, levels_scaled; categorical=true)
-    elseif ehigh == :auto && !(elow == :auto)
+    elseif ehigh === :auto && elow !== :auto
         cm_base = cgrad(_cmap, n + 1; categorical=true)[1:(end - 1)]
         cm = cgrad(cm_base, levels_scaled; categorical=true)
-    elseif ehigh == :auto && elow == :auto
+    elseif ehigh === :auto && elow === :auto
         cm_base = cgrad(_cmap, n + 2; categorical=true)[2:(end - 1)]
         cm = cgrad(cm_base, levels_scaled; categorical=true)
     else
@@ -73,7 +73,7 @@ end
 function compute_lowcolor(el, cmap)
     if isnothing(el)
         return RGBAf(0, 0, 0, 0)
-    elseif el === automatic || el == :auto
+    elseif el === automatic || el === :auto
         return RGBAf(to_colormap(cmap)[begin])
     else
         return to_color(el)::RGBAf
@@ -83,7 +83,7 @@ end
 function compute_highcolor(eh, cmap)
     if isnothing(eh)
         return RGBAf(0, 0, 0, 0)
-    elseif eh === automatic || eh == :auto
+    elseif eh === automatic || eh === :auto
         return RGBAf(to_colormap(cmap)[end])
     else
         return to_color(eh)::RGBAf
@@ -93,26 +93,24 @@ end
 function Makie.plot!(c::PlotObject, ::Tricontourf, ::AbstractVector{<:Real}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real})
     xs, ys, zs = c[1:3]
 
-    c.attributes[:_computed_levels] = lift(zs, c.levels, c.mode) do zs, levels, mode
-        _get_isoband_levels(Val(mode), levels, vec(zs))
+    c.attributes[:_computed_levels] = lift(c, zs, c.levels, c.mode) do zs, levels, mode
+        return _get_isoband_levels(Val(mode), levels, vec(zs))
     end
 
-    colorrange = lift(c._computed_levels) do levels
-        minimum(levels), maximum(levels)
-    end
-    computed_colormap = lift(compute_contourf_colormap, c._computed_levels, c.colormap, c.extendlow,
+    colorrange = lift(extrema_nan, c, c._computed_levels)
+    computed_colormap = lift(compute_contourf_colormap, c, c._computed_levels, c.colormap, c.extendlow,
                              c.extendhigh)
     c.attributes[:_computed_colormap] = computed_colormap
 
     lowcolor = Observable{RGBAf}()
     map!(compute_lowcolor, lowcolor, c.extendlow, c.colormap)
     c.attributes[:_computed_extendlow] = lowcolor
-    is_extended_low = lift(!isnothing, c.extendlow)
+    is_extended_low = lift(!isnothing, c, c.extendlow)
 
     highcolor = Observable{RGBAf}()
     map!(compute_highcolor, highcolor, c.extendhigh, c.colormap)
     c.attributes[:_computed_extendhigh] = highcolor
-    is_extended_high = lift(!isnothing, c.extendhigh)
+    is_extended_high = lift(!isnothing, c, c.extendhigh)
 
     PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
 
@@ -156,7 +154,7 @@ function Makie.plot!(c::PlotObject, ::Tricontourf, ::AbstractVector{<:Real}, ::A
         return
     end
 
-    onany(calculate_polys, xs, ys, zs, c._computed_levels, is_extended_low, is_extended_high, c.triangulation)
+    onany(calculate_polys, c, xs, ys, zs, c._computed_levels, is_extended_low, is_extended_high, c.triangulation)
     # onany doesn't get called without a push, so we call
     # it on a first run!
     calculate_polys(xs[], ys[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[], c.triangulation[])

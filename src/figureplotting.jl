@@ -128,6 +128,7 @@ end
 
 function create_figurelike(PlotType, attributes::Dict, gp::GridPosition, args...)
     f = get_top_parent(gp)
+    layout = GridLayoutBase.get_layout_at!(gsp.parent, createmissing = true)
     c = contents(gp, exact = true)
     if !isempty(c)
         error("""

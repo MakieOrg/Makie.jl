@@ -66,10 +66,11 @@ function set_miter_limit(ctx, limit)
 end
 
 function get_render_type(surface::Cairo.CairoSurface)
+    @assert surface.ptr != C_NULL
     typ = ccall((:cairo_surface_get_type, Cairo.libcairo), Cint, (Ptr{Nothing},), surface.ptr)
     typ == Cairo.CAIRO_SURFACE_TYPE_PDF && return PDF
     typ == Cairo.CAIRO_SURFACE_TYPE_PS && return EPS
     typ == Cairo.CAIRO_SURFACE_TYPE_SVG && return SVG
     typ == Cairo.CAIRO_SURFACE_TYPE_IMAGE && return IMAGE
-    error("Unsupported surface type: $(typ)")
+    return IMAGE # By default assume that the render type is IMAGE
 end

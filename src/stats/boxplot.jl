@@ -82,16 +82,17 @@ function Makie.plot!(plot::PlotObject, ::BoxPlot)
     args = @extract plot (weights, width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap)
 
     signals = lift(
+        plot,
         plot[1],
         plot[2],
         plot[:color],
         args...,
     ) do x, y, color, weights, width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap
         x̂, boxwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
-        if !(whiskerwidth == :match || whiskerwidth >= 0)
+        if !(whiskerwidth === :match || whiskerwidth >= 0)
             error("whiskerwidth must be :match or a positive number. Found: $whiskerwidth")
         end
-        ww = whiskerwidth == :match ? boxwidth : whiskerwidth * boxwidth
+        ww = whiskerwidth === :match ? boxwidth : whiskerwidth * boxwidth
         outlier_points = Point2f[]
         centers = Float32[]
         medians = Float32[]
@@ -154,10 +155,10 @@ function Makie.plot!(plot::PlotObject, ::BoxPlot)
         end
 
         # for horizontal boxplots just flip all components
-        if orientation == :horizontal
+        if orientation === :horizontal
             outlier_points = flip_xy.(outlier_points)
             t_segments = flip_xy.(t_segments)
-        elseif orientation != :vertical
+        elseif orientation !== :vertical
             error("Invalid orientation $orientation. Valid options: :horizontal or :vertical.")
         end
 

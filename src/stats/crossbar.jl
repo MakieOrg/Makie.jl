@@ -54,6 +54,7 @@ function Makie.plot!(plot::PlotObject, ::CrossBar)
     args = @extract plot (width, dodge, n_dodge, gap, dodge_gap, show_notch, notchmin, notchmax, notchwidth, orientation)
 
     signals = lift(
+        plot,
         plot[1],
         plot[2],
         plot[3],
@@ -65,7 +66,7 @@ function Makie.plot!(plot::PlotObject, ::CrossBar)
 
         # for horizontal crossbars just flip all components
         fpoint, frect = Point2f, Rectf
-        if orientation == :horizontal
+        if orientation === :horizontal
             fpoint, frect = flip_xy ∘ fpoint, flip_xy ∘ frect
         end
 
@@ -103,8 +104,8 @@ function Makie.plot!(plot::PlotObject, ::CrossBar)
         end
         return [boxes;], [midlines;]
     end
-    boxes = @lift($signals[1])
-    midlines = @lift($signals[2])
+    boxes = lift(s-> s[1], plot, signals)
+    midlines = lift(s-> s[2], plot, signals)
     poly!(
         plot,
         boxes,
@@ -119,6 +120,7 @@ function Makie.plot!(plot::PlotObject, ::CrossBar)
         plot,
         color=lift(
             (mc, sc) -> mc === automatic ? sc : mc,
+            plot,
             plot.midlinecolor,
             plot.strokecolor,
         ),

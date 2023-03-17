@@ -224,10 +224,10 @@ create_sets(s::Set) = [Set{Union{Keyboard.Button, Mouse.Button}}(s)]
 # ispressed and logic evaluation
 
 """
-    ispressed(scene, result::Bool)
-    ispressed(scene, button::Union{Mouse.Button, Keyboard.Button)
-    ispressed(scene, collection::Union{Set, Vector, Tuple})
-    ispressed(scene, op::BooleanOperator)
+    ispressed(parent, result::Bool)
+    ispressed(parent, button::Union{Mouse.Button, Keyboard.Button)
+    ispressed(parent, collection::Union{Set, Vector, Tuple})
+    ispressed(parent, op::BooleanOperator)
 
 This function checks if a button or combination of buttons is pressed.
 
@@ -238,10 +238,13 @@ outside.
 Passing a button or collection of buttons such as `Keyboard.enter` or
 `Mouse.left` will return true if all of the given buttons are pressed.
 
+Parent can be any object that has `get_scene` method implemented, which includes
+e.g. Figure, Axis, Axis3, Lscene, FigureAxisPlot, and AxisPlot.
+
 For more complicated combinations of buttons they can be combined into boolean
 expression with `&`, `|` and `!`. For example, you can have
-`ispressed(scene, !Keyboard.left_control & Keyboard.c))` and
-`ispressed(scene, Keyboard.left_control & Keyboard.c)` to avoid triggering both
+`ispressed(parent, !Keyboard.left_control & Keyboard.c))` and
+`ispressed(parent, Keyboard.left_control & Keyboard.c)` to avoid triggering both
 cases at the same time.
 
 Furthermore you can also make any button, button collection or boolean
@@ -253,20 +256,20 @@ See also: [`And`](@ref), [`Or`](@ref), [`Not`](@ref), [`Exclusively`](@ref),
 """
 ispressed(events::Events, mb::Mouse.Button) = mb in events.mousebuttonstate
 ispressed(events::Events, key::Keyboard.Button) = key in events.keyboardstate
-ispressed(scene, result::Bool) = result
+ispressed(parent, result::Bool) = result
 
-ispressed(scene, mb::Mouse.Button) = ispressed(events(scene), mb)
-ispressed(scene, key::Keyboard.Button) = ispressed(events(scene), key)
-@deprecate ispressed(scene, ::Nothing) ispressed(scene, true)
+ispressed(parent, mb::Mouse.Button) = ispressed(events(parent), mb)
+ispressed(parent, key::Keyboard.Button) = ispressed(events(parent), key)
+@deprecate ispressed(scene, ::Nothing) ispressed(parent, true)
 
 # Boolean Operator evaluation
-ispressed(scene, op::And) = ispressed(scene, op.left) && ispressed(scene, op.right)
-ispressed(scene, op::Or)  = ispressed(scene, op.left) || ispressed(scene, op.right)
-ispressed(scene, op::Not) = !ispressed(scene, op.x)
-ispressed(scene::Scene, op::Exclusively) = ispressed(events(scene), op)
+ispressed(parent, op::And) = ispressed(parent, op.left) && ispressed(parent, op.right)
+ispressed(parent, op::Or)  = ispressed(parent, op.left) || ispressed(parent, op.right)
+ispressed(parent, op::Not) = !ispressed(parent, op.x)
+ispressed(parent, op::Exclusively) = ispressed(events(parent), op)
 ispressed(e::Events, op::Exclusively) = op.x == union(e.keyboardstate, e.mousebuttonstate)
 
 # collections
-ispressed(scene, set::Set) = all(x -> ispressed(scene, x), set)
-ispressed(scene, set::Vector) = all(x -> ispressed(scene, x), set)
-ispressed(scene, set::Tuple) = all(x -> ispressed(scene, x), set)
+ispressed(parent, set::Set) = all(x -> ispressed(parent, x), set)
+ispressed(parent, set::Vector) = all(x -> ispressed(parent, x), set)
+ispressed(parent, set::Tuple) = all(x -> ispressed(parent, x), set)

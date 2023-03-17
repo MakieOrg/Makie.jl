@@ -8,11 +8,11 @@ using Colors
 using ShaderAbstractions
 using LinearAlgebra
 using GeometryBasics
-using ImageMagick
+using PNGFiles
 using FreeTypeAbstraction
 
 using JSServe: Session
-using JSServe: @js_str, onjs, Dependency, App
+using JSServe: @js_str, onjs, App, ES6Module
 using JSServe.DOM
 
 using RelocatableFolders: @path
@@ -30,10 +30,9 @@ using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_s
 
 struct WebGL <: ShaderAbstractions.AbstractContext end
 
-const THREE = Dependency(:THREE, ["https://unpkg.com/three@0.136.0/build/three.js"])
-const WGL = Dependency(:WGLMakie, [@path joinpath(@__DIR__, "wglmakie.js")])
-const WEBGL = Dependency(:WEBGL, [@path joinpath(@__DIR__, "WEBGL.js")])
+const WGL = ES6Module(@path joinpath(@__DIR__, "wglmakie.js"))
 
+include("display.jl")
 include("three_plot.jl")
 include("serialization.jl")
 include("events.jl")
@@ -41,8 +40,9 @@ include("particles.jl")
 include("lines.jl")
 include("meshes.jl")
 include("imagelike.jl")
-include("display.jl")
+include("picking.jl")
 
+const LAST_INLINE = Ref(true)
 
 """
     WGLMakie.activate!(; screen_config...)
@@ -54,28 +54,30 @@ Note, that the `screen_config` can also be set permanently via `Makie.set_theme!
 
 $(Base.doc(ScreenConfig))
 """
-function activate!(; screen_config...)
+function activate!(; inline=LAST_INLINE[], screen_config...)
+    Makie.inline!(inline)
+    LAST_INLINE[] = inline
     Makie.set_active_backend!(WGLMakie)
     Makie.set_screen_config!(WGLMakie, screen_config)
     return
 end
 
-const TEXTURE_ATLAS_CHANGED = Ref(false)
+const TEXTURE_ATLAS = Observable(Float32[])
 
 wgl_texture_atlas() = Makie.get_texture_atlas(1024, 32)
 
 function __init__()
     # Activate WGLMakie as backend!
     activate!()
-    # if there is a browserdisplay in stack, dont inline plots
-    browser_display = JSServe.BrowserDisplay() in Base.Multimedia.displays
-    Makie.inline!(!browser_display)
     # We need to update the texture atlas whenever it changes!
     # We do this in three_plot!
     atlas = wgl_texture_atlas()
+    TEXTURE_ATLAS[] = convert(Vector{Float32}, vec(atlas.data))
     Makie.font_render_callback!(atlas) do sd, uv
-        TEXTURE_ATLAS_CHANGED[] = true
+        TEXTURE_ATLAS[] = convert(Vector{Float32}, vec(wgl_texture_atlas().data))
     end
+    DISABLE_JS_FINALZING[] = false
+    return
 end
 
 # re-export Makie, including deprecated names

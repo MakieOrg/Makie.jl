@@ -26,12 +26,13 @@ Curves can be:
         color=:lighttest,
         solid_color=nothing,
         labels=nothing,
-
+        linestyle=:solid,
         marker=nothing,
         markersize=nothing,
         markercolor=automatic,
         strokecolor=nothing,
         strokewidth=nothing,
+        space = :data,
     )
 end
 
@@ -64,11 +65,11 @@ function convert_arguments(::Type{<: Series}, arg::AbstractVector{<: AbstractVec
 end
 
 function plot!(plot::Series)
-    @extract plot (curves, labels, linewidth, color, solid_color)
+    @extract plot (curves, labels, linewidth, color, solid_color, space, linestyle)
     sargs = [:marker, :markersize, :strokecolor, :strokewidth]
     scatter = Dict((f => plot[f] for f in sargs if !isnothing(plot[f][])))
     nseries = length(curves[])
-    colors = lift(color, solid_color) do color, scolor
+    colors = lift(plot, color, solid_color) do color, scolor
         if isnothing(scolor)
             return categorical_colors(color, nseries)
         else
@@ -77,17 +78,19 @@ function plot!(plot::Series)
     end
 
     for i in 1:nseries
-        label = @lift isnothing($labels) ? "series $(i)" : $labels[i]
-        positions = @lift $curves[i]
-        series_color = @lift $colors isa AbstractVector ? $colors[i] : $colors
+        label = lift(l-> isnothing(l) ? "series $(i)" : l[i], plot, labels)
+        positions = lift(c-> c[i], plot, curves)
+        series_color = lift(c-> c isa AbstractVector ? c[i] : c, plot, colors)
+        series_linestyle = lift(ls-> ls isa AbstractVector ? ls[i] : ls, plot, linestyle)
         if !isempty(scatter)
             mcolor = plot.markercolor
-            markercolor = @lift $mcolor == automatic ? $series_color : $mcolor
+            markercolor = lift((mc, sc)-> mc == automatic ? sc : mc, plot, mcolor, series_color)
             scatterlines!(plot, positions;
                 linewidth=linewidth, color=series_color, markercolor=series_color,
-                label=label[], scatter...)
+                label=label[], scatter..., space = space, linestyle = series_linestyle)
         else
-            lines!(plot, positions; linewidth=linewidth, color=series_color, label=label)
+            lines!(plot, positions; linewidth=linewidth, color=series_color, label=label, space = space,
+                linestyle = series_linestyle)
         end
     end
 end

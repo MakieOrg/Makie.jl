@@ -19,16 +19,9 @@ function get_colorbuffer(fig)
     end
 end
 
-if Package == :WGLMakie
-    if isdefined(WGLMakie, :use_electron_display)
-        import Electron
-        WGLMakie.use_electron_display()
-    else
-        using ElectronDisplay
-        ElectronDisplay.CONFIG.showable = showable
-        ElectronDisplay.CONFIG.single_window = true
-        ElectronDisplay.CONFIG.focus = false
-    end
+if Package === :WGLMakie
+    import Electron
+    WGLMakie.JSServe.use_electron_display()
 end
 
 create_time = @ctime fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
