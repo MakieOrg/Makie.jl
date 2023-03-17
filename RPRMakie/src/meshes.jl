@@ -14,10 +14,22 @@ function mesh_material(context, matsys, plot, color_obs = plot.color)
     specular = plot.specular[]
     shininess = plot.shininess[]
     color = to_value(color_obs)
+    colormap, crange, nan_color, highclip, lowclip = @get_attribute(plot, (colormap, colorrange, nan_color, highclip, lowclip))
     color_signal = if color isa AbstractMatrix{<:Number}
         tex = RPR.ImageTextureMaterial(matsys)
-        map(color_obs, plot.colormap, plot.colorrange) do color, cmap, crange
-            color_interp = Makie.interpolated_getindex.((to_colormap(cmap),), color, (crange,))
+        map(color_obs, colormap, colorrange, nan_color, highclip, lowclip) do color, colormap, crange, nan_color, highclip, lowclip
+            low, high = extrema(crange)
+            color_interp = map(color) do c
+                    if isnan(c) &&  !isnothing(nan_color)
+                        return nan_color
+                    elseif c < low && !isnothing(lowclip)
+                        return lowclip
+                    elseif c > high && !isnothing(highclip)
+                        return highclip
+                    else
+                        Makie.interpolated_getindex(cmap, c, crange)
+                    end
+                end
             img = RPR.Image(context, collect(color_interp'))
             tex.data = img
             return tex
@@ -47,6 +59,7 @@ function mesh_material(context, matsys, plot, color_obs = plot.color)
 
     return material
 end
+
 
 function to_rpr_object(context, matsys, scene, plot::Makie.Mesh)
     # Potentially per instance attributes
