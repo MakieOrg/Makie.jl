@@ -32,11 +32,37 @@ void colorize(sampler1D color, float intensity, vec2 color_norm){
 vec4 _position(vec3 p){return vec4(p,1);}
 vec4 _position(vec2 p){return vec4(p,0,1);}
 
+struct Nothing{
+    bool _;
+};
+
+struct WorldAxisLimits{
+    vec3 min, max;
+};
+
+{{clip_planes_type}} clip_planes;
+
+void set_clip(Nothing planes, vec4 world_pos){ return; }
+void set_clip(WorldAxisLimits planes, vec4 world_pos)
+{
+    // inside positive, outside negative?
+    vec3 min_dist = world_pos.xyz - planes.min;
+    vec3 max_dist = planes.max - world_pos.xyz;
+    gl_ClipDistance[0] = min_dist[0];
+    gl_ClipDistance[1] = max_dist[0];
+    gl_ClipDistance[2] = min_dist[1];
+    gl_ClipDistance[3] = max_dist[1];
+    gl_ClipDistance[4] = min_dist[2];
+    gl_ClipDistance[5] = max_dist[2];
+}
+
 uniform mat4 projectionview, model;
 
 void main(){
 	colorize(color_map, color, color_norm);
     o_objectid  = uvec2(objectid, gl_VertexID+1);
-	gl_Position = projectionview * model * _position(vertex);
+    vec4 world_pos = model * _position(vertex);
+	gl_Position = projectionview * world_pos;
     gl_Position.z += gl_Position.w * depth_shift;
+    set_clip(clip_panes, world_pos);
 }

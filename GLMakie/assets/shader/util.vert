@@ -30,12 +30,6 @@ vec2 grid_pos(Grid2D position, vec2 uv){
 }
 
 
-struct WorldAxisLimits{
-    vec3 min, max;
-};
-
-
-
 // stretch is
 vec3 stretch(vec3 val, vec3 from, vec3 to){
     return from + (val * (to - from));
@@ -222,6 +216,10 @@ uniform mat3 normalmatrix;
 uniform vec3 lightposition;
 uniform vec3 eyeposition;
 uniform float depth_shift;
+
+struct WorldAxisLimits{
+    vec3 min, max;
+};
 
 {{clip_planes_type}} clip_planes;
 
