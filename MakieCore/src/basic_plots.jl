@@ -355,7 +355,7 @@ Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [Geome
         cycle = [:color => :patchcolor],
         space = :data,
         normals = automatic,
-        texturecoordinates = automatic
+        texturecoordinates = automatic,
         diffuse = 0.4,
         specular = 0.2,
         shininess = 32f0,

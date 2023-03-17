@@ -208,7 +208,7 @@ function positivize(r::Rect2)
     negwidths = r.widths .< 0
     newori = ifelse.(negwidths, r.origin .+ r.widths, r.origin)
     newwidths = ifelse.(negwidths, -r.widths, r.widths)
-    return Rect2(newori, newwidths)
+    return Rect2(Vec2(newori), Vec2(newwidths))
 end
 
 function process_interaction(l::LimitReset, event::MouseEvent, ax::Axis)

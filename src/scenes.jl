@@ -156,19 +156,19 @@ mutable struct Scene <: AbstractScene
 end
 
 # on & map versions that deregister when scene closes!
-function Observables.on(f, scene::Union{Combined,Scene}, observable::Observable; update=false, priority=0)
+function Observables.on(f, scene::Union{PlotObject,Scene}, observable::Observable; update=false, priority=0)
     to_deregister = on(f, observable; update=update, priority=priority)
     push!(scene.deregister_callbacks, to_deregister)
     return to_deregister
 end
 
-function Observables.onany(f, scene::Union{Combined,Scene}, observables...; priority=0)
+function Observables.onany(f, scene::Union{PlotObject,Scene}, observables...; priority=0)
     to_deregister = onany(f, observables...; priority=priority)
     append!(scene.deregister_callbacks, to_deregister)
     return to_deregister
 end
 
-@inline function Base.map!(@nospecialize(f), scene::Union{Combined,Scene}, result::AbstractObservable, os...;
+@inline function Base.map!(@nospecialize(f), scene::Union{PlotObject,Scene}, result::AbstractObservable, os...;
                            update::Bool=true)
     # note: the @inline prevents de-specialization due to the splatting
     callback = Observables.MapCallback(f, result, os)
@@ -179,7 +179,7 @@ end
     return result
 end
 
-@inline function Base.map(f::F, scene::Union{Combined,Scene}, arg1::AbstractObservable, args...;
+@inline function Base.map(f::F, scene::Union{PlotObject,Scene}, arg1::AbstractObservable, args...;
                           ignore_equal_values=false) where {F}
     # note: the @inline prevents de-specialization due to the splatting
     obs = Observable(f(arg1[], map(Observables.to_value, args)...); ignore_equal_values=ignore_equal_values)
