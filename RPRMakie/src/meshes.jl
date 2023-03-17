@@ -10,6 +10,7 @@ function extract_material(matsys, plot)
     end
 end
 
+
 function mesh_material(context, matsys, plot, color_obs = plot.color)
     specular = plot.specular[]
     shininess = plot.shininess[]
@@ -20,14 +21,14 @@ function mesh_material(context, matsys, plot, color_obs = plot.color)
         map(color_obs, colormap, colorrange, nan_color, highclip, lowclip) do color, colormap, crange, nan_color, highclip, lowclip
             low, high = extrema(crange)
             color_interp = map(color) do c
-                    if isnan(c) &&  !isnothing(nan_color)
+                    if isnan(c) && nan_color !== nothing
                         return nan_color
-                    elseif c < low && !isnothing(lowclip)
+                    elseif c < low && lowclip !== nothing
                         return lowclip
-                    elseif c > high && !isnothing(highclip)
+                    elseif c > high && highclip !== nothing
                         return highclip
                     else
-                        Makie.interpolated_getindex(cmap, c, crange)
+                        Makie.interpolated_getindex(colormap, c, crange)
                     end
                 end
             img = RPR.Image(context, collect(color_interp'))
@@ -59,6 +60,7 @@ function mesh_material(context, matsys, plot, color_obs = plot.color)
 
     return material
 end
+
 
 
 function to_rpr_object(context, matsys, scene, plot::Makie.Mesh)
