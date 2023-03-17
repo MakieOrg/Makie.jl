@@ -30,6 +30,12 @@ vec2 grid_pos(Grid2D position, vec2 uv){
 }
 
 
+struct WorldAxisLimits{
+    vec3 min, max;
+};
+
+
+
 // stretch is
 vec3 stretch(vec3 val, vec3 from, vec3 to){
     return from + (val * (to - from));
@@ -217,6 +223,21 @@ uniform vec3 lightposition;
 uniform vec3 eyeposition;
 uniform float depth_shift;
 
+{{clip_planes_type}} clip_planes;
+
+void set_clip(Nothing planes, vec4 world_pos){ return; }
+void set_clip(WorldAxisLimits planes, vec4 world_pos)
+{
+    // inside positive, outside negative?
+    vec3 min_dist = world_pos.xyz - planes.min;
+    vec3 max_dist = planes.max - world_pos.xyz;
+    gl_ClipDistance[0] = min_dist[0];
+    gl_ClipDistance[1] = max_dist[0];
+    gl_ClipDistance[2] = min_dist[1];
+    gl_ClipDistance[3] = max_dist[1];
+    gl_ClipDistance[4] = min_dist[2];
+    gl_ClipDistance[5] = max_dist[2];
+}
 
 void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 lightposition)
 {
@@ -235,6 +256,8 @@ void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 l
     // (by definition `view * eyeposition = 0`)
     o_camdir = normalize(-view_pos).xyz;
     o_view_pos = view_pos.xyz / view_pos.w;
+
+    set_clip(clip_planes, position_world);
 }
 
 //

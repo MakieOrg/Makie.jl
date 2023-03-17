@@ -121,6 +121,11 @@ function GLAbstraction.render(filter_elem_func, screen::Screen)
             scene.visible[] || continue
             a = pixelarea(scene)[]
             glViewport(minimum(a)..., widths(a)...)
+            if haskey(elem.uniforms, Symbol("clip_planes.min"))
+                for i in 0x00:0x05
+                    glEnable(GL_CLIP_DISTANCE0 + i)
+                end
+            end
             render(elem)
         end
     catch e

@@ -69,6 +69,7 @@ const minimal_default = Attributes(
     ambient = RGBf(0.55, 0.55, 0.55),
     lightposition = :eyeposition,
     inspectable = true,
+    clip_planes = nothing,
 
     CairoMakie = Attributes(
         px_per_unit = 1.0,

@@ -12,6 +12,13 @@ function Makie.convert_attribute(s::ShaderAbstractions.Sampler{T, N}, k::key"col
     )
 end
 
+struct WorldAxisLimits
+    min::Vec3f
+    max::Vec3f
+end
+
+Makie.convert_attribute(r::Rect3, ::key"clip_planes") = WorldAxisLimits(minimum(r), maximum(r))
+
 gpuvec(x) = GPUVector(GLBuffer(x))
 
 to_range(x, y) = to_range.((x, y))
@@ -89,6 +96,8 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
                 :inspector_label, :inspector_hover, :inspector_clear, :inspectable
             ))
         end
+        
+        get!(filtered, :clip_planes, scene.theme[:clip_planes]) 
 
         gl_attributes = Dict{Symbol, Any}(map(filtered) do key_value
             key, value = key_value
@@ -96,6 +105,10 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             gl_value = lift_convert(key, value, x)
             gl_key => gl_value
         end)
+
+        # TODO make things work down the line with `Observable{Any}`
+        clip = pop!(gl_attributes, :clip_planes)
+        gl_attributes[:clip_planes] = map!(identity, Observable(clip[]), clip)
 
         pointlight = Makie.get_point_light(scene)
         if !isnothing(pointlight)
@@ -110,6 +123,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
 
         robj = robj_func(gl_attributes)
 
+        # TODO Does this even do anything? This is after `assemble_shader`...
         !haskey(gl_attributes, :ssao) && (robj[:ssao] = Observable(false))
         screen.cache2plot[robj.id] = x
         robj
