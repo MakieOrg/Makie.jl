@@ -2,7 +2,7 @@ using GeometryBasics, RPRMakie
 using Colors, FileIO
 using Colors: N0f8
 
-image = begin
+img = begin
     radiance = 500
     lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
               PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1))]
@@ -46,4 +46,4 @@ image = begin
     colorbuffer(screen)
 end
 
-save("materials.png", image)
+save("materials.png", img)
