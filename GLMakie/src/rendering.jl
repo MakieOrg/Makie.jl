@@ -121,9 +121,15 @@ function GLAbstraction.render(filter_elem_func, screen::Screen)
             scene.visible[] || continue
             a = pixelarea(scene)[]
             glViewport(minimum(a)..., widths(a)...)
+            # TODO - probably move this into render(elem) code?
             if haskey(elem.uniforms, Symbol("clip_planes.min"))
-                for i in 0x00:0x05
-                    glEnable(GL_CLIP_DISTANCE0 + i)
+                # TODO
+                if elem.vertexarray.program.shader[3].name == Symbol("/home/frederic/.julia/dev/Makie/GLMakie/assets/shader/sprites.geom")
+                    glEnable(GL_CLIP_DISTANCE0)
+                else
+                    for i in 0x00:0x05
+                        glEnable(GL_CLIP_DISTANCE0 + i)
+                    end
                 end
             end
             render(elem)
