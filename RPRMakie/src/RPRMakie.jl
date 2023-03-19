@@ -30,7 +30,7 @@ function ScreenConfig(iterations::Int, max_recursion::Int, render_resource, rend
         iterations,
         max_recursion,
         Int32(render_resource isa Makie.Automatic ? RPR.RPR_CREATION_FLAGS_ENABLE_GPU0 : render_resource),
-        render_plugin isa Makie.Automatic ? RPR.Tahoe : render_plugin
+        render_plugin isa Makie.Automatic ? RPR.Northstar : render_plugin
     )
 end
 

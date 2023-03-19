@@ -1,29 +1,41 @@
 function to_rpr_object(context, matsys, scene, plot::Makie.Volume)
     volume = plot.volume[]
-    xyz = plot.x[], plot.y[], plot.z[]
-    mini_maxi = extrema.(xyz)
-    mini = first.(mini_maxi)
-    maxi = last.(mini_maxi)
+    cube = RPR.VolumeCube(context)
 
-    vol_cube = RadeonProRender.Shape(context, Rect3f(mini, maxi .- mini))
+    function update_cube(m, xyz...)
+        mi = minimum.(xyz)
+        maxi = maximum.(xyz)
+        w = maxi .- mi
+        m2 = Mat4f(w[1], 0, 0, 0, 0, w[2], 0, 0, 0, 0, w[3], 0, mi[1], mi[2], mi[3], 1)
+        mat = convert(Mat4f, m) * m2
+        transform!(cube, mat)
+        return
+    end
+    onany(update_cube, plot.model, plot.x, plot.y, plot.z)
+
+    update_cube(plot.model[], plot.x[], plot.y[], plot.z[])
     color_lookup = to_colormap(plot.colormap[])
     density_lookup = [Vec3f(plot.absorption[])]
 
     mini, maxi = extrema(volume)
-    grid = RPR.VoxelGrid(context, (volume .- mini) ./ (maxi - mini))
-    rpr_vol = RPR.HeteroVolume(context)
+    vol_normed = (volume .- mini) ./ (maxi - mini)
+    grid = RPR.VoxelGrid(context, vol_normed)
+    gridsampler = RPR.GridSamplerMaterial(matsys)
+    gridsampler.data = grid
 
-    RPR.set_albedo_grid!(rpr_vol, grid)
-    RPR.set_albedo_lookup!(rpr_vol, color_lookup)
+    color_ramp = RPR.Image(context, color_lookup)
+    density_sampler = RPR.GridSamplerMaterial(matsys)
+    density_sampler.data = grid
 
-    RPR.set_density_grid!(rpr_vol, grid)
-    RPR.set_density_lookup!(rpr_vol, density_lookup)
+    color_sampler = RPR.ImageTextureMaterial(matsys)
+    color_sampler.data = color_ramp
+    color_sampler.uv = density_sampler
 
-    mat = RPR.TransparentMaterial(matsys)
-    mat.color = Vec4f(1)
+    volmat = RPR.VolumeMaterial(matsys)
+    volmat.density = Vec4f(plot.absorption[], plot.absorption[], plot.absorption[], 0.0)
+    volmat.densitygrid = gridsampler
+    volmat.color = color_sampler
+    set!(cube, volmat)
 
-    set!(vol_cube, rpr_vol)
-    set!(vol_cube, mat)
-
-    return [vol_cube, rpr_vol]
+    return [cube]
 end
