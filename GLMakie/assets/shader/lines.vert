@@ -22,16 +22,16 @@ in float lastlen;
 {{color_norm_type}} color_norm;
 {{thickness_type}}  thickness;
 
-// With FAST_PATH we apply camera matrices here, so we can handle clipping here
-#ifdef FAST_PATH
+// If we calculate pixel positions on the CPU we upload world positions as an 
+// extra buffer... Or should we just recalculate world positions on the GPU?
+#ifndef FAST_PATH
+in vec3 world_pos;
+#endif
+
 {{clip_planes_type}} clip_planes;
 
 void set_clip(Nothing planes, vec4 world_pos);
 void set_clip(WorldAxisLimits planes, vec4 world_pos);
-
-// TODO Otherwise we have more vertex arguments
-#else
-#endif
 
 vec4 _color(vec3 color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len);
 vec4 _color(vec4 color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len);
@@ -73,6 +73,7 @@ void main()
     set_clip(clip_planes, world_pos);
     gl_Position = projectionview * world_pos;
 #else
+    set_clip(clip_planes, vec4(world_pos, 1));
     gl_Position = to_vec4(vertex);
 #endif
     gl_Position.z += gl_Position.w * depth_shift;

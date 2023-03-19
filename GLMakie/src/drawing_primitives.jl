@@ -299,16 +299,20 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
             data[:pattern] = ls * _mean(to_value(linewidth))
             data[:fast] = false
             
-            pvm = map(*, data[:projectionview], data[:model])
-            positions = map(transform_func, positions, space, pvm, data[:resolution]) do f, ps, space, pvm, res
-                transformed = apply_transform(f, ps, space)
-                output = Vector{Point3f}(undef, length(transformed))
-                scale = Vec3f(res[1], res[2], 1f0)
-                for i in eachindex(transformed)
-                    clip = pvm * to_ndim(Point4f, to_ndim(Point3f, transformed[i], 0f0), 1f0)
-                    output[i] = scale .* Point3f(clip) ./ clip[4]
+            world_pos = map(transform_func, positions, space, data[:model]) do f, ps, space, model
+                return map(ps) do p
+                    p3 = to_ndim(Point3f, apply_transform(f, p, space), 0f0)
+                    return Point3f(model * to_ndim(Point4f, p3, 1f0))
                 end
-                output
+            end
+            data[:world_pos] = world_pos # for clipping
+
+            positions = map(world_pos, data[:projectionview], data[:resolution]) do ps, pv, res
+                scale = Point3f(res[1], res[2], 1f0)
+                return map(ps) do p
+                    clip = pv * to_ndim(Point4f, p, 1f0)
+                    return scale .* Point3f(clip) ./ clip[4]
+                end
             end
         end
             

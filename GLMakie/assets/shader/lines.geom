@@ -83,9 +83,7 @@ void emit_vertex(vec2 position, vec2 uv, int index)
     gl_Position = vec4((position / resolution) * inpos.w, inpos.z, inpos.w);
     f_id        = g_id[index];
     f_thickness = g_thickness[index];
-#ifdef FAST_PATH
     set_clip(clip_planes, index);
-#endif
     EmitVertex();
 }
 

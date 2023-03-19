@@ -105,6 +105,12 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         pattern_length      = 1f0 # we divide by pattern_length a lot.
     end
 
+    if !to_value(data[:fast])
+        @gen_defaults! data begin
+            world_pos = nothing => GLBuffer
+        end
+    end
+
     if pattern !== nothing
         if !isa(pattern, Texture)
             if !isa(pattern, Vector)
