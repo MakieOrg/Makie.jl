@@ -60,8 +60,10 @@ Controls include any kind of hotkey setting.
 - `forward_key  = Keyboard.w` sets the key for translations into the screen.
 - `backward_key = Keyboard.s` sets the key for translations out of the screen.
 
-- `zoom_in_key   = Keyboard.u` sets the key for zooming into the scene (enlarge, via fov).
-- `zoom_out_key  = Keyboard.o` sets the key for zooming out of the scene (shrink, via fov).
+- `zoom_in_key   = Keyboard.u` sets the key for zooming into the scene (translate eyeposition towards lookat).
+- `zoom_out_key  = Keyboard.o` sets the key for zooming out of the scene (translate eyeposition away from lookat).
+- `increase_fov_key = Keyboard.page_up` sets the key for increasing the fov.
+- `decrease_fov_key = Keyboard.page_down` sets the key for increasing the fov.
 
 - `pan_left_key  = Keyboard.j` sets the key for rotations around the screens vertical axis.
 - `pan_right_key = Keyboard.l` sets the key for rotations around the screens vertical axis.
@@ -116,6 +118,8 @@ function Camera3D(scene::Scene; kwargs...)
         # Zooms
         zoom_in_key   = Keyboard.u,
         zoom_out_key  = Keyboard.o,
+        increase_fov_key = Keyboard.page_up,
+        decrease_fov_key = Keyboard.page_down,
         # Rotations
         pan_left_key  = Keyboard.j,
         pan_right_key = Keyboard.l,
@@ -191,11 +195,11 @@ function Camera3D(scene::Scene; kwargs...)
 
     keynames = (
         :up_key, :down_key, :left_key, :right_key, :forward_key, :backward_key,
-        :zoom_in_key, :zoom_out_key,
+        :zoom_in_key, :zoom_out_key, :increase_fov_key, :decrease_fov_key,
         :pan_left_key, :pan_right_key, :tilt_up_key, :tilt_down_key,
         :roll_clockwise_key, :roll_counterclockwise_key
     )
-
+    
     # Start ticking if relevant keys are pressed
     on(camera(scene), events(scene).keyboardbutton) do event
         if event.action in (Keyboard.press, Keyboard.repeat) && cam.pulser[] == -1.0 &&
@@ -276,7 +280,7 @@ function on_pulse(scene, cam::Camera3D, timestep)
     @extractvalue cam.controls (
         right_key, left_key, up_key, down_key, backward_key, forward_key,
         tilt_up_key, tilt_down_key, pan_left_key, pan_right_key, roll_counterclockwise_key, roll_clockwise_key,
-        zoom_out_key, zoom_in_key
+        zoom_out_key, zoom_in_key, increase_fov_key, decrease_fov_key
     )
     @extractvalue cam.settings (
         keyboard_translationspeed, keyboard_rotationspeed, keyboard_zoomspeed, projectiontype
@@ -338,8 +342,18 @@ function on_pulse(scene, cam::Camera3D, timestep)
         _zoom!(scene, cam, zoom_step, false, false)
     end
 
+    # fov
+    fov_inc = ispressed(scene, increase_fov_key)
+    fov_dec = ispressed(scene, decrease_fov_key)
+    fov_adjustment = fov_inc || fov_dec
+
+    if fov_adjustment
+        step = (1 + keyboard_zoomspeed * timestep) ^ (fov_inc - fov_dec)
+        cam.fov[] = clamp(cam.fov[] * step, 0.1, 179)
+    end
+
     # if any are active, update matrices, else stop clock
-    if translating || rotating || zooming
+    if translating || rotating || zooming || fov_adjustment
         update_cam!(scene, cam)
         return true
     else
