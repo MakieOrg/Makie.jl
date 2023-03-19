@@ -6,6 +6,10 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
     bool _; //empty structs are not allowed
 };
 
+struct WorldAxisLimits{
+    vec3 min, max;
+};
+
 {{define_fast_path}}
 
 layout(lines_adjacency) in;
@@ -30,6 +34,7 @@ uniform vec2 resolution;
 uniform float pattern_length;
 {{pattern_type}} pattern;
 uniform sampler1D pattern_sections;
+{{clip_planes_type}} clip_planes;
 
 float px2uv = 0.5 / pattern_length;
 
@@ -50,6 +55,17 @@ float ifelse(float condition, float true_val, float false_val){
     return condition * (true_val - false_val) + false_val;
 }
 
+void set_clip(Nothing planes, int idx){ return; };
+void set_clip(WorldAxisLimits planes, int idx){
+    gl_ClipDistance[0] = gl_in[idx].gl_ClipDistance[0];
+    gl_ClipDistance[1] = gl_in[idx].gl_ClipDistance[1];
+    gl_ClipDistance[2] = gl_in[idx].gl_ClipDistance[2];
+    gl_ClipDistance[3] = gl_in[idx].gl_ClipDistance[3];
+    gl_ClipDistance[4] = gl_in[idx].gl_ClipDistance[4];
+    gl_ClipDistance[5] = gl_in[idx].gl_ClipDistance[5];
+};
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Emit Vertex Methods
@@ -67,6 +83,9 @@ void emit_vertex(vec2 position, vec2 uv, int index)
     gl_Position = vec4((position / resolution) * inpos.w, inpos.z, inpos.w);
     f_id        = g_id[index];
     f_thickness = g_thickness[index];
+#ifdef FAST_PATH
+    set_clip(clip_planes, index);
+#endif
     EmitVertex();
 }
 

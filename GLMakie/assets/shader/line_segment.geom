@@ -7,12 +7,17 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
     bool _; //empty structs are not allowed
 };
 
+struct WorldAxisLimits{
+    vec3 min, max;
+};
+
 layout(lines) in;
 layout(triangle_strip, max_vertices = 4) out;
 
 uniform vec2 resolution;
 uniform float pattern_length;
 {{pattern_type}} pattern;
+{{clip_planes_type}} clip_planes;
 
 in vec4 g_color[];
 in uvec2 g_id[];
@@ -35,6 +40,16 @@ vec2 screen_space(vec4 vertex)
     return vec2(vertex.xy / vertex.w) * resolution;
 }
 
+void set_clip(Nothing planes, int idx){ return; };
+void set_clip(WorldAxisLimits planes, int idx){
+    gl_ClipDistance[0] = gl_in[idx].gl_ClipDistance[0];
+    gl_ClipDistance[1] = gl_in[idx].gl_ClipDistance[1];
+    gl_ClipDistance[2] = gl_in[idx].gl_ClipDistance[2];
+    gl_ClipDistance[3] = gl_in[idx].gl_ClipDistance[3];
+    gl_ClipDistance[4] = gl_in[idx].gl_ClipDistance[4];
+    gl_ClipDistance[5] = gl_in[idx].gl_ClipDistance[5];
+};
+
 void emit_vertex(vec2 position, vec2 uv, int index)
 {
     vec4 inpos = gl_in[index].gl_Position;
@@ -43,6 +58,7 @@ void emit_vertex(vec2 position, vec2 uv, int index)
     gl_Position = vec4((position / resolution) * inpos.w, inpos.z, inpos.w);
     f_id = g_id[index];
     f_thickness = g_thickness[index];
+    set_clip(clip_planes, index);
     EmitVertex();
 }
 
