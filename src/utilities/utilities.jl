@@ -145,6 +145,20 @@ macro get_attribute(scene, args)
     extract_expr(get_attribute, scene, args)
 end
 
+# a few shortcut functions to make attribute conversion easier
+function converted_attribute(dict, key, default=nothing)
+    if haskey(dict, key)
+        return lift(x-> convert_attribute(x, Key{key}()), dict[key])
+    else
+        return default
+    end
+end
+
+macro converted_attribute(dictlike, args)
+    return extract_expr(converted_attribute, dictlike, args)
+end
+
+
 @inline getindex_value(x::Union{Dict,Attributes,AbstractPlot}, key::Symbol) = to_value(x[key])
 @inline getindex_value(x, key::Symbol) = to_value(getfield(x, key))
 

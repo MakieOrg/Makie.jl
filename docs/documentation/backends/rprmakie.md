@@ -11,6 +11,8 @@ using RadeonProRender
 RadeonProRender.Context()
 ```
 
+To use RPRMakie on a Mac with an M-series chip, for now, you need to use the x84 build of Julia (not the ARM build, you may have to download this manually).  RadeonProRender does not distribute binaries built for the ARM architecture of the M-series processors yet.
+
 ## Activation and screen config
 
 Activate the backend by calling `RPRMakie.activate!()` with the following options:
@@ -26,24 +28,27 @@ println("~~~")
 Since RPRMakie is quite the unique backend and still experimental, there are several gotchas when working with it.
 
 ```julia
-fig = Figure()
+fig = Figure(); # RPRMakie can't show Figures yet, since it only supports a physical 3D camera
 radiance = 10000
 # Lights are much more important for ray tracing,
 # so most examples will use extra lights and environment lights.
 # Note, that RPRMakie is the only backend
 # supporting multiple light sources and EnvironmentLights right now
 lights = [
-    EnvironmentLight(0.5, load(RPR.assetpath("studio026.exr"))),
-    PointLight(Vec3f(0, 0, 20), RGBf(radiance, radiance, radiance))]
+    EnvironmentLight(0.5, Makie.FileIO.load(RPR.assetpath("studio026.exr"))),
+    PointLight(Vec3f(0, 0, 20), RGBf(radiance, radiance, radiance))
+]
 
 # Only LScene is supported right now,
 # since the other projections don't map to the pysical acurate Camera in RPR.
-ax = LScene(fig[1, 1]; scenekw=(lights=lights,))
+ax = LScene(fig[1, 1]; show_axis = false, scenekw=(lights=lights,))
+# Note that since RPRMakie doesn't yet support text (this is being worked on!),
+# you can't show a 3d axis yet.
 
 # to create materials, one needs access to the RPR context.
 # Note, if you create an Screen manually, don't display the scene or fig anymore, since that would create a new RPR context, in which resources from the manually created Context would be invalid. Since RPRs error handling is pretty bad, this usually results in Segfaults.
 # See below how to render a picture with a manually created context
-screen = Screen(ax.scene; iterations=10, plugin=RPR.Northstar)
+screen = RPRMakie.Screen(ax.scene; iterations=10, plugin=RPR.Northstar)
 matsys = screen.matsys
 context = screen.context
 # You can use lots of materials from RPR.
@@ -51,7 +56,7 @@ context = screen.context
 # Or at least one, that doesn't need to access the RPR context
 mat = RPR.Chrome(matsys)
 # The material attribute is specific to RPRMakie and gets ignored by other Backends. This may change in the future
-mesh!(ax, Sphere(Point3f, 0), material=mat)
+mesh!(ax, Sphere(Point3f(0), 1), material=mat)
 
 # There are three main ways to turn a Makie scene into a picture:
 # Get the colorbuffer of the Screen. Screen also has `show` overloaded for the mime `image\png` so it should display in IJulia/Jupyter/VSCode.
@@ -76,7 +81,7 @@ The examples are in [RPRMakie/examples](https://github.com/MakieOrg/Makie.jl/tre
 ## MaterialX and predefined materials (materials.jl)
 
 There are several predefined materials one can use in RadeonProRender.
-RPR also supports the [MaterialX](https://www.materialx.org/) standard to load a wide range of predefined Materials. Make sure to use the Northstar backend for `Matx` materials.
+RPR also supports the [MaterialX](https://www.materialx.org/) standard to load a wide range of predefined Materials. Make sure to use the Northstar backend for `MaterialX`.
 
 ~~~
 <input id="hidecode5" class="hidecode" type="checkbox">
@@ -89,7 +94,7 @@ using Colors: N0f8
 radiance = 500
 lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
             PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1))]
-fig = Figure(; resolution=(1500, 700))
+fig = Figure(; resolution=(1500, 700));
 ax = LScene(fig[1, 1]; show_axis=false, scenekw=(; lights=lights))
 screen = RPRMakie.Screen(ax.scene; plugin=RPR.Northstar, iterations=400)
 

@@ -42,9 +42,14 @@ struct VideoStreamOptions
     rawvideo::Bool
 
     function VideoStreamOptions(
-            format::AbstractString, framerate::Integer, compression, profile,
+            format::AbstractString, framerate::Real, compression, profile,
             pixel_format, loglevel::String, input::String, rawvideo::Bool=true)
-
+        
+        if !isa(framerate, Integer)
+            @warn "The given framefrate is not a subtype of `Integer`, and will be rounded to the nearest integer. To supress this warning, provide an integer as the framerate."
+            framerate = round(Int, framerate)
+        end
+        
         if format == "mp4"
             (profile === nothing) && (profile = "high422")
             (pixel_format === nothing) && (pixel_format = (profile == "high444" ? "yuv444p" : "yuv420p"))
