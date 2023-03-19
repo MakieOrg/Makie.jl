@@ -35,7 +35,7 @@ Settings include anything that isn't a mouse or keyboard button.
 - `projectiontype = Perspective` sets the type of the projection. Can be `Orthographic` or `Perspective`.
 - `rotation_center = :lookat` sets the default center for camera rotations. Currently allows `:lookat` or `:eyeposition`.
 - `fixed_axis = true`: If true panning uses the (world/plot) z-axis instead of the camera up direction.
-- `zoom_shift_lookat = true`: If true keeps the data under the cursor when zooming. Only applies to orthographic cameras.
+- `zoom_shift_lookat = true`: If true keeps the data under the cursor when zooming.
 - `cad = false`: If true rotates the view around `lookat` when zooming off-center.
 
 - `keyboard_rotationspeed = 1f0` sets the speed of keyboard based rotations.
@@ -622,18 +622,27 @@ function _zoom!(scene, cam::Camera3D, zoom_step, cad = false, zoom_shift_lookat 
         shift *= 0.1 * sign(1 - zoom_step) * norm(viewdir)
 
         cam.eyeposition[] = lookat - zoom_step * viewdir + shift
-    elseif cam.settings.projectiontype[] == Makie.Orthographic && zoom_shift_lookat[]
+    elseif zoom_shift_lookat
         # keep data under cursor
         u_z = normalize(viewdir)
         u_x = normalize(cross(u_z, cam.upvector[]))
         u_y = normalize(cross(u_x, u_z))
-            
+
         ws = widths(scene.px_area[])
         rel_pos = (2.0 .* mouseposition_px(scene) .- ws) ./ ws[2]
-        shift = (1 - zoom_step) * norm(viewdir) * (rel_pos[1] * u_x + rel_pos[2] * u_y)
+        shift = (1 - zoom_step) * (rel_pos[1] * u_x + rel_pos[2] * u_y)
+        
+        if cam.settings.projectiontype[] == Makie.Orthographic
+            scale = norm(viewdir)
+        else
+            # With perspective projection depth scales shift, but there is no way
+            # to tell which depth the user may want to keep in view. So we just 
+            # assume it's the same depth as "lookat".
+            scale = norm(viewdir) * tand(0.5 * cam.fov[])
+        end
 
-        cam.lookat[]      = lookat + shift
-        cam.eyeposition[] = lookat - zoom_step * viewdir + shift
+        cam.lookat[]      = lookat + scale * shift
+        cam.eyeposition[] = lookat - zoom_step * viewdir + scale * shift
     else
         # just zoom in/out
         cam.eyeposition[] = lookat - zoom_step * viewdir
