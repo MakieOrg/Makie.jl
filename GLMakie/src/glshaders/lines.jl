@@ -14,6 +14,31 @@ function sumlengths(points)
     result
 end
 
+function sumlengths(points, fast, projectionview, model, resolution)
+    if fast
+        return sumlengths(points)
+    end
+
+    T = eltype(eltype(typeof(points)))
+    result = zeros(T, length(points))
+    i12 = Vec(1, 2)
+    pvm = Makie.scalematrix(Vec3f(resolution..., 1f0)) * projectionview * model
+
+    for i in eachindex(points)
+        i0 = max(i-1, 1)
+        p1, p2 = points[i0], points[i]
+        if !(any(map(isnan, p1)) || any(map(isnan, p2)))
+            clip1 = pvm * to_ndim(Point4f, to_ndim(Point3f, p1, 0f0), 1f0)
+            clip2 = pvm * to_ndim(Point4f, to_ndim(Point3f, p2, 0f0), 1f0)
+            delta = (clip1[i12] / clip1[4] - clip2[i12] / clip2[4])
+            result[i] = result[i0] + norm(delta)
+        else
+            result[i] = result[i0]
+        end
+    end
+    result
+end
+
 intensity_convert(intensity, verts) = intensity
 function intensity_convert(intensity::VecOrSignal{T}, verts) where T
     if length(to_value(intensity)) == length(to_value(verts))
@@ -68,6 +93,10 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         const_lift(vec, position)
     end
 
+    projectionview = data[:projectionview]
+    model = data[:model]
+    resolution = data[:resolution]
+
     @gen_defaults! data begin
         total_length::Int32 = const_lift(x-> Int32(length(x)), position)
         vertex              = p_vec => GLBuffer
@@ -101,7 +130,7 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         valid_vertex        = const_lift(p_vec) do points
             map(p-> Float32(all(isfinite, p)), points)
         end => GLBuffer
-        lastlen             = const_lift(sumlengths, p_vec) => GLBuffer
+        lastlen             = const_lift(sumlengths, p_vec, fast, projectionview, model, resolution) => GLBuffer
         pattern_length      = 1f0 # we divide by pattern_length a lot.
     end
 

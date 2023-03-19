@@ -103,10 +103,10 @@ void draw_patterned_line(bool isvalid[4])
 
     // get the four vertices passed to the shader
     // without FAST_PATH the conversions happen on the CPU
-    vec2 p0 = gl_in[0].gl_Position.xy; // start of previous segment
-    vec2 p1 = gl_in[1].gl_Position.xy; // end of previous segment, start of current segment
-    vec2 p2 = gl_in[2].gl_Position.xy; // end of current segment, start of next segment
-    vec2 p3 = gl_in[3].gl_Position.xy; // end of next segment
+    vec2 p0 = screen_space(gl_in[0].gl_Position); // start of previous segment
+    vec2 p1 = screen_space(gl_in[1].gl_Position); // end of previous segment, start of current segment
+    vec2 p2 = screen_space(gl_in[2].gl_Position); // end of current segment, start of next segment
+    vec2 p3 = screen_space(gl_in[3].gl_Position); // end of next segment
 
     // linewidth with padding for anti aliasing
     float thickness_aa1 = g_thickness[1] + AA_THICKNESS;

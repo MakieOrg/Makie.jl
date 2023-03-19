@@ -289,32 +289,10 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(x::Lines))
         transform_func = transform_func_obs(x)
         
         ls = to_value(linestyle)
-        if isnothing(ls)
-            data[:pattern] = ls
-            data[:fast] = true
 
-            positions = apply_transform(transform_func, positions, space)
-        else
-            linewidth = gl_attributes[:thickness]
-            data[:pattern] = ls * _mean(to_value(linewidth))
-            data[:fast] = false
-            
-            world_pos = map(transform_func, positions, space, data[:model]) do f, ps, space, model
-                return map(ps) do p
-                    p3 = to_ndim(Point3f, apply_transform(f, p, space), 0f0)
-                    return Point3f(model * to_ndim(Point4f, p3, 1f0))
-                end
-            end
-            data[:world_pos] = world_pos # for clipping
-
-            positions = map(world_pos, data[:projectionview], data[:resolution]) do ps, pv, res
-                scale = Point3f(res[1], res[2], 1f0)
-                return map(ps) do p
-                    clip = pv * to_ndim(Point4f, p, 1f0)
-                    return scale .* Point3f(clip) ./ clip[4]
-                end
-            end
-        end
+        data[:fast] = isnothing(ls)
+        positions = apply_transform(transform_func, positions, space)
+        data[:pattern] = isnothing(ls) ? ls : ls * _mean(to_value(gl_attributes[:thickness]))
             
         handle_intensities!(data)
         return draw_lines(screen, positions, data)

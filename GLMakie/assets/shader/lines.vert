@@ -21,13 +21,6 @@ in float lastlen;
 {{intensity_type}}  intensity;
 {{color_norm_type}} color_norm;
 {{thickness_type}}  thickness;
-
-// If we calculate pixel positions on the CPU we upload world positions as an 
-// extra buffer... Or should we just recalculate world positions on the GPU?
-#ifndef FAST_PATH
-in vec3 world_pos;
-#endif
-
 {{clip_planes_type}} clip_planes;
 
 void set_clip(Nothing planes, vec4 world_pos);
@@ -68,13 +61,9 @@ void main()
     g_thickness = thickness;
 
     g_color = _color(color, intensity, color_map, color_norm, index, total_length);
-#ifdef FAST_PATH
+
     vec4 world_pos = model * to_vec4(vertex);
     set_clip(clip_planes, world_pos);
     gl_Position = projectionview * world_pos;
-#else
-    set_clip(clip_planes, vec4(world_pos, 1));
-    gl_Position = to_vec4(vertex);
-#endif
     gl_Position.z += gl_Position.w * depth_shift;
 }
