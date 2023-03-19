@@ -719,13 +719,15 @@ and an optional radius around the current `cam.lookat[]`.
 """
 function update_cam!(
         scene::Scene, camera::Camera3D, phi::Real, theta::Real, 
-        radius::Real = norm(camera.eyeposition[] - camera.lookat[])
+        radius::Real = norm(camera.eyeposition[] - camera.lookat[]),
+        center = camera.lookat[]
     )
     st, ct = sincos(theta)
     sp, cp = sincos(phi)
     v = Vec3f(ct * cp, ct * sp, st)
     u = Vec3f(-st * cp, -st * sp, ct)
-    camera.eyeposition[] = camera.lookat[] .+ radius * v
+    camera.lookat[]      = center
+    camera.eyeposition[] = center .+ radius * v
     camera.upvector[]    = u
     update_cam!(scene, camera)
     return
