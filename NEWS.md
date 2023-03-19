@@ -1,5 +1,9 @@
 # News
 
+## next breaking
+
+- Made some adjustments to the 3D camera (switched back from fov to location based zoom, split hotkeys from other options & minor QoL changes) [#2746](https://github.com/MakieOrg/Makie.jl/pull/2746)
+
 ## master
 
 - Added the `stephist` plotting function. [#2408](https://github.com/JuliaPlots/Makie.jl/pull/2408).
