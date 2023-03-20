@@ -378,7 +378,7 @@ Furthermore you can wrap any of the above in `Exclusively` to discard matches wh
 
 ## Interactive Widgets
 
-Makie has a couple of useful interactive widgets like sliders, buttons and menus, which you can read about in the \myreflink{Blocks} section.
+Makie has a couple of useful interactive widgets like sliders, buttons and menus, which you can learn about in the [blocks and widgets](https://docs.makie.org/stable/examples/blocks/) section.
 
 ## Recording Animations with Interactions
 
