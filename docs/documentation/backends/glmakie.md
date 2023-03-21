@@ -5,7 +5,7 @@ It requires an OpenGL enabled graphics card with OpenGL version 3.3 or higher.
 
 ## Activation and screen config
 
-Activate the backend by calling `GLMakie.activate!()` with the following options:
+Activate the backend by calling `GLMakie.activate!()`:
 ```julia:docs
 # hideall
 using GLMakie, Markdown
@@ -72,8 +72,8 @@ To have it permanently used, add the line `export DRI_PRIME=1` in  your `.bashrc
 
 ## Troubleshooting OpenGL
 
-If you get any error loading GLMakie, it likely means, you don't have an OpenGL capable Graphic Card, or you don't have an OpenGL 3.3 capable driver installed.
-Note, that most GPUs, even 8 year old integrated ones, support OpenGL 3.3.
+If you get any error loading GLMakie, it likely means you don't have an OpenGL capable graphics card, or you don't have an OpenGL 3.3 capable driver installed.
+Note that most GPUs, even 8 year old integrated ones, support OpenGL 3.3.
 
 On Linux, you can find out your OpenGL version with:
 `glxinfo | grep "OpenGL version"`

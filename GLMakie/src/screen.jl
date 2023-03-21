@@ -11,31 +11,30 @@ function renderloop end
 * `renderloop = GLMakie.renderloop`: Sets a function `renderloop(::GLMakie.Screen)` which starts a renderloop for the screen.
 
 !!! warning
-    The below are not effective if renderloop isn't set to `GLMakie.renderloop`, unless implemented in custom renderloop:
+    The keyword arguments below are not effective if `renderloop` isn't set to `GLMakie.renderloop`, unless implemented in a custom renderloop function:
 
-* `pause_renderloop = false`: creates a screen with paused renderlooop. Can be started with `GLMakie.start_renderloop!(screen)` or paused again with `GLMakie.pause_renderloop!(screen)`.
-* `vsync = false`: enables vsync for the window.
-* `render_on_demand = true`: renders the scene only if something has changed in it.
-* `framerate = 30.0`: sets the currently rendered frames per second.
+* `pause_renderloop = false`: If `true`, creates a screen with a paused renderloop. The renderloop can be started with `GLMakie.start_renderloop!(screen)` and paused again with `GLMakie.pause_renderloop!(screen)`.
+* `vsync = false`: Whether to enable vsync for the window.
+* `render_on_demand = true`: If `true`, the scene will only be rendered if something has changed in it.
+* `framerate = 30.0`: Sets the currently rendered frames per second.
 * `px_per_unit = automatic`: Sets the ratio between the number of rendered pixels and the `Makie` resolution. It defaults to the value of `scalefactor` but may be any positive real number.
 
 ## GLFW window attributes
-
-* `float = false`: Lets the opened window float above anything else.
-* `focus_on_show = false`: Focusses the window when newly opened.
-* `decorated = true`: shows the window decorations or not.
+* `float = false`: Whether the window should float above other windows.
+* `focus_on_show = false`: If `true`, focuses the window when newly opened.
+* `decorated = true`: Whether or not to show window decorations.
 * `title::String = "Makie"`: Sets the window title.
-* `fullscreen = false`: Starts the window in fullscreen.
-* `debugging = false`: Starts the GLFW.Window/OpenGL context with debug output.
-* `monitor::Union{Nothing, GLFW.Monitor} = nothing`: Sets the monitor on which the Window should be opened.
-* `visible = true`: Sets whether the window is user-visible.
+* `fullscreen = false`: Whether to start the window in fullscreen mode.
+* `debugging = false`: If `true`, starts the GLFW.Window/OpenGL context with debug output.
+* `monitor::Union{Nothing, GLFW.Monitor} = nothing`: Sets the monitor on which the window should be opened. If set to `nothing`, GLFW will decide which monitor to use.
+* `visible = true`: Whether or not the window should be visible when first created.
 * `scalefactor = automatic`: Sets the window scaling factor, such as `2.0` on HiDPI/Retina displays. It is set automatically based on the display, but may be any positive real number.
 
 ## Postprocessor
-* `oit = false`: Enles order independent transparency for the window.
-* `fxaa = true`: Enables fxaa (anti-aliasing) for the window.
-* `ssao = true`: Enables screen space ambient occlusion, which simulates natural shadowing at inner edges and crevices.
-* `transparency_weight_scale = 1000f0`: This adjusts a factor in the rendering shaders for order independent transparency.
+* `oit = false`: Whether to enable order independent transparency for the window.
+* `fxaa = true`: Whether to enable fxaa (anti-aliasing) for the window.
+* `ssao = true`: Whether to enable screen space ambient occlusion, which simulates natural shadowing at inner edges and crevices.
+* `transparency_weight_scale = 1000f0`: Adjusts a factor in the rendering shaders for order independent transparency.
     This should be the same for all of them (within one rendering pipeline) otherwise depth "order" will be broken.
 """
 mutable struct ScreenConfig
@@ -83,12 +82,11 @@ mutable struct ScreenConfig
             visible::Bool,
             scalefactor::Union{Makie.Automatic, Number},
 
-            # Preproccessor
+            # Preprocessor
             oit::Bool,
             fxaa::Bool,
             ssao::Bool,
             transparency_weight_scale::Number)
-
         return new(
             # Renderloop
             renderloop isa Makie.Automatic ? GLMakie.renderloop : renderloop,
@@ -108,6 +106,7 @@ mutable struct ScreenConfig
             visible,
             scalefactor isa Makie.Automatic ? nothing : Float32(scalefactor),
             # Preproccessor
+            # Preprocessor
             oit,
             fxaa,
             ssao,
@@ -120,8 +119,8 @@ const LAST_INLINE = Ref(false)
 """
     GLMakie.activate!(; screen_config...)
 
-Sets GLMakie as the currently active backend and also allows to quickly set the `screen_config`.
-Note, that the `screen_config` can also be set permanently via `Makie.set_theme!(GLMakie=(screen_config...,))`.
+Sets GLMakie as the currently active backend and also optionally modifies the screen configuration using `screen_config` keyword arguments.
+Note that the `screen_config` can also be set permanently via `Makie.set_theme!(GLMakie=(screen_config...,))`.
 
 # Arguments one can pass via `screen_config`:
 
@@ -283,6 +282,7 @@ end
 const SCREEN_REUSE_POOL = Set{Screen}()
 
 function reopen!(screen::Screen)
+    @debug("reopening screen")
     gl = screen.glscreen
     @assert !was_destroyed(gl)
     if GLFW.WindowShouldClose(gl)
@@ -297,8 +297,10 @@ end
 
 function screen_from_pool(debugging)
     screen = if isempty(SCREEN_REUSE_POOL)
+        @debug("create empty screen for pool")
         empty_screen(debugging)
     else
+        @debug("get old screen from pool")
         pop!(SCREEN_REUSE_POOL)
     end
     return reopen!(screen)
@@ -308,9 +310,12 @@ const SINGLETON_SCREEN = Screen[]
 
 function singleton_screen(debugging::Bool)
     if !isempty(SINGLETON_SCREEN)
+        @debug("reusing singleton screen")
         screen = SINGLETON_SCREEN[1]
         close(screen; reuse=false)
     else
+        @debug("new singleton screen")
+        # reuse=false, because we "manually" re-use the singleton screen!
         screen = empty_screen(debugging; reuse=false)
         push!(SINGLETON_SCREEN, screen)
     end
@@ -322,6 +327,7 @@ function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene:
 end
 
 function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::Bool=true)
+    @debug("Applying screen config! to existing screen")
     glw = screen.glscreen
     ShaderAbstractions.switch_context!(glw)
     GLFW.SetWindowAttrib(glw, GLFW.FOCUS_ON_SHOW, config.focus_on_show)
@@ -384,7 +390,7 @@ function set_screen_visibility!(nw::GLFW.Window, visible::Bool)
 end
 
 function display_scene!(screen::Screen, scene::Scene)
-    empty!(screen)
+    @debug("display scene on screen")
     resize!(screen, size(scene)...)
     insertplots!(screen, scene)
     Makie.push_screen!(scene, screen)
@@ -461,10 +467,9 @@ function Base.delete!(screen::Screen, scene::Scene)
     for plot in scene.plots
         delete!(screen, scene, plot)
     end
-
+    filter!(x -> x !== screen, scene.current_screens)
     if haskey(screen.screen2scene, WeakRef(scene))
         deleted_id = pop!(screen.screen2scene, WeakRef(scene))
-
         # TODO: this should always find something but sometimes doesn't...
         i = findfirst(id_scene -> id_scene[1] == deleted_id, screen.screens)
         i !== nothing && deleteat!(screen.screens, i)
@@ -540,16 +545,18 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
 end
 
 function Base.empty!(screen::Screen)
+    @debug("empty screen!")
     # we should never just "empty" an already destroyed screen
     @assert !was_destroyed(screen.glscreen)
 
-    if !isnothing(screen.root_scene)
-        Makie.disconnect_screen(screen.root_scene, screen)
-        screen.root_scene = nothing
-    end
-
     for plot in collect(values(screen.cache2plot))
         delete!(screen, Makie.rootparent(plot), plot)
+    end
+
+    if !isnothing(screen.root_scene)
+        Makie.disconnect_screen(screen.root_scene, screen)
+        delete!(screen, screen.root_scene)
+        screen.root_scene = nothing
     end
 
     @assert isempty(screen.renderlist)
@@ -560,9 +567,12 @@ function Base.empty!(screen::Screen)
     empty!(screen.screens)
     Observables.clear(screen.render_tick)
     Observables.clear(screen.window_open)
+    GLFW.PollEvents()
+    return
 end
 
 function destroy!(screen::Screen)
+    @debug("Destroy screen!")
     close(screen; reuse=false)
     # wait for rendertask to finish
     # otherwise, during rendertask clean up we may run into a destroyed window
@@ -583,10 +593,12 @@ end
 
 """
     close(screen::Screen; reuse=true)
-Closes screen and emptying it.
-Doesn't destroy the screen and instead frees it for being re-used again, if `reuse=true`.
+
+Closes screen and empties it.
+Doesn't destroy the screen and instead frees it to be re-used again, if `reuse=true`.
 """
 function Base.close(screen::Screen; reuse=true)
+    @debug("Close screen!")
     set_screen_visibility!(screen, false)
     stop_renderloop!(screen; close_after_renderloop=false)
     if screen.window_open[] # otherwise we trigger an infinite loop of closing
@@ -596,9 +608,11 @@ function Base.close(screen::Screen; reuse=true)
     Observables.clear(screen.px_per_unit)
     Observables.clear(screen.scalefactor)
     if reuse && screen.reuse
+        @debug("reusing screen!")
         push!(SCREEN_REUSE_POOL, screen)
     end
     GLFW.SetWindowShouldClose(screen.glscreen, true)
+    GLFW.PollEvents()
     return
 end
 
@@ -655,8 +669,11 @@ function fast_color_data!(dest::Array{RGB{N0f8}, 2}, source::Texture{T, 2}) wher
 end
 
 """
-depthbuffer(screen::Screen)
-Gets the depth buffer of screen.
+    depthbuffer(screen::Screen)
+
+Gets the depth buffer of `screen`.  Returns a `Matrix{Float32}` of the dimensions of the screen's `framebuffer`.  
+
+A depth buffer is used to determine which plot's contents should be shown at each pixel.
 Usage:
 ```
 using Makie, GLMakie
@@ -719,7 +736,10 @@ end
 Makie.to_native(x::Screen) = x.glscreen
 
 """
-Loads the makie loading icon and embedds it in an image the size of resolution
+    get_loading_image(resolution)
+
+Loads the makie loading icon, embeds it in an image the size of `resolution`,
+and returns the image.
 """
 function get_loading_image(resolution)
     icon = Matrix{N0f8}(undef, 192, 192)
@@ -901,6 +921,8 @@ function on_demand_renderloop(screen::Screen)
             yield()
         end
     end
+    cause = screen.stop_renderloop ? "stopped renderloop" : "closing window"
+    @debug("Leaving renderloop, cause: $(cause)")
 end
 
 function renderloop(screen)
@@ -924,6 +946,7 @@ function renderloop(screen)
     end
     if screen.close_after_renderloop
         try
+            @debug("Closing screen after quiting renderloop!")
             close(screen)
         catch e
             @warn "error closing screen" exception=(e, Base.catch_backtrace())

@@ -23,8 +23,6 @@ function setup!(screen::Screen)
     return
 end
 
-const selection_queries = Function[]
-
 """
 Renders a single frame of a `window`
 """
