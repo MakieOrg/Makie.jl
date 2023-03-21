@@ -26,7 +26,7 @@ function cairo_draw(screen::Screen, scene::Scene)
         to_value(get(p, :visible, true)) || continue
         # only prepare for scene when it changes
         # this should reduce the number of unnecessary clipping masks etc.
-        pparent = p.parent::Scene
+        pparent = Makie.rootparent(p)
         pparent.visible[] || continue
         if pparent != last_scene
             Cairo.restore(screen.context)
@@ -54,10 +54,31 @@ function cairo_draw(screen::Screen, scene::Scene)
     return
 end
 
+"""
+    get_all_plots(scene::Scene, plots = AbstractPlot[])
+    get_all_plots(plot::AbstractPlot, plots = AbstractPlot[])
+
+"Flattens" all plots in the given container and returns a vector of plots.  
+This is overridden for `Poly`, `Band`, and `Tricontourf` so we can apply 
+CairoMakie-specific drawing methods to them.
+
+Plots with no children are presumed to be atomic and pushed to the vector.
+Plots with children are by default recursed into.  This can be overridden
+by defining specific dispatches for `get_all_plots` for a given plot type.
+"""
 function get_all_plots(scene, plots = AbstractPlot[])
-    append!(plots, scene.plots)
+    get_all_plots.(scene.plots, (plots,))
     for c in scene.children
         get_all_plots(c, plots)
+    end
+    plots
+end
+
+function get_all_plots(plot::AbstractPlot, plots = AbstractPlot[])
+    if isempty(plot.plots)
+        push!(plots, plot)
+    else
+        get_all_plots.(plot.plots, (plots,))
     end
     plots
 end

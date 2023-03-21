@@ -12,6 +12,12 @@ function draw_plot(scene::Scene, screen::Screen, poly::Poly)
     draw_poly(scene, screen, poly, to_value.(poly.input_args)...)
 end
 
+# Override `get_all_plots` to allow `poly` to remain a unit,
+# instead of auto-decomposing in lines and mesh.
+function get_all_plots(plot::Poly, plots = AbstractPlot[])
+    push!(plots, plot)
+end
+
 """
 Fallback method for args without special treatment.
 """
@@ -180,6 +186,12 @@ function draw_plot(scene::Scene, screen::Screen,
     nothing
 end
 
+# Override `get_all_plots` to allow `poly` to remain a unit,
+# instead of auto-decomposing in lines and mesh.
+function get_all_plots(plot::Band{<:Tuple{<:AbstractVector{<:Point2},<:AbstractVector{<:Point2}}}, plots = AbstractPlot[])
+    push!(plots, plot)
+end
+
 #################################################################################
 #                                  Tricontourf                                  #
 # Tricontourf creates many disjoint polygons that are adjacent and form contour #
@@ -211,4 +223,10 @@ function draw_plot(scene::Scene, screen::Screen, tric::Tricontourf)
     draw_tripolys(projected_polys, colornumbers, colors)
 
     return
+end
+
+# Override `get_all_plots` to allow `Tricontourf` to remain a unit,
+# instead of auto-decomposing in lines and mesh.
+function get_all_plots(plot::Tricontourf, plots = AbstractPlot[])
+    push!(plots, plot)
 end
