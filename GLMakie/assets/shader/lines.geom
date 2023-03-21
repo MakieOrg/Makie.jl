@@ -525,10 +525,10 @@ void main(void)
     // CPU side by repeating the first and last points via the index buffer. It
     // just requires a little care further down to avoid degenerate normals.
     bool isvalid[4] = bool[](
-        g_valid_vertex[0] == 1 && g_id[0].y != g_id[1].y,
+        g_valid_vertex[0] == 1,
         g_valid_vertex[1] == 1,
         g_valid_vertex[2] == 1,
-        g_valid_vertex[3] == 1 && g_id[2].y != g_id[3].y
+        g_valid_vertex[3] == 1
     );
 
     if(!isvalid[1] || !isvalid[2]){
