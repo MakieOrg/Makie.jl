@@ -186,7 +186,7 @@ function draw_plot(scene::Scene, screen::Screen,
     nothing
 end
 
-# Override `get_all_plots` to allow `poly` to remain a unit,
+# Override `get_all_plots` to allow this dispatch of `band` to remain a unit,
 # instead of auto-decomposing in lines and mesh.
 function get_all_plots(plot::Band{<:Tuple{<:AbstractVector{<:Point2},<:AbstractVector{<:Point2}}}, plots = AbstractPlot[])
     push!(plots, plot)
