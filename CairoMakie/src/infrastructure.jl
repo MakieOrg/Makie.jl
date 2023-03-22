@@ -28,7 +28,7 @@ function cairo_draw(screen::Screen, scene::Scene)
         end || continue
         # only prepare for scene when it changes
         # this should reduce the number of unnecessary clipping masks etc.
-        pparent = Makie.rootparent(p)
+        pparent = Makie.parent_scene(p)
         pparent.visible[] || continue
         if pparent != last_scene
             Cairo.restore(screen.context)
