@@ -186,7 +186,7 @@ function draw_plot(scene::Scene, screen::Screen,
     nothing
 end
 
-# Override `should_not_flatten` to allow `poly` to remain a unit,
+# Override `should_not_flatten` to allow this dispatch of `band` to remain a unit,
 # instead of auto-decomposing in lines and mesh.
 function should_not_flatten(plot::Band{<:Tuple{<:AbstractVector{<:Point2},<:AbstractVector{<:Point2}}})
     true
