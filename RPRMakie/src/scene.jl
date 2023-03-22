@@ -42,42 +42,6 @@ function insert_plots!(context, matsys, scene, mscene::Makie.Scene, @nospecializ
     end
 end
 
-function to_rpr_light(context::RPR.Context, light::Makie.PointLight)
-    pointlight = RPR.PointLight(context)
-    map(light.position) do pos
-        transform!(pointlight, Makie.translationmatrix(pos))
-    end
-    map(light.radiance) do r
-        setradiantpower!(pointlight, red(r), green(r), blue(r))
-    end
-    return pointlight
-end
-
-function to_rpr_light(context::RPR.Context, light::Makie.AmbientLight)
-    env_img = fill(light.color[], 1, 1)
-    img = RPR.Image(context, env_img)
-    env_light = RPR.EnvironmentLight(context)
-    set!(env_light, img)
-    return env_light
-end
-
-function to_rpr_light(context::RPR.Context, light::Makie.EnvironmentLight)
-    env_light = RPR.EnvironmentLight(context)
-    last_img = RPR.Image(context, light.image[])
-    set!(env_light, last_img)
-    setintensityscale!(env_light, light.intensity[])
-    on(light.intensity) do i
-        setintensityscale!(env_light, i)
-    end
-    on(light.image) do img
-        new_img = RPR.Image(context, img)
-        set!(env_light, new_img)
-        RPR.release(last_img)
-        last_img = new_img
-    end
-    return env_light
-end
-
 function to_rpr_scene(context::RPR.Context, matsys, mscene::Makie.Scene)
     scene = RPR.Scene(context)
     set!(context, scene)
