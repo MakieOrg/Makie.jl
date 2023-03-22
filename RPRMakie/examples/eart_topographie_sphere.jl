@@ -2,7 +2,7 @@ using NCDatasets, ColorSchemes, RPRMakie
 using ImageShow
 
 # Taken from https://lazarusa.github.io/BeautifulMakie/GeoPlots/topography/
-cmap = dataset = Dataset(joinpath(@__DIR__, "ETOPO1_halfdegree.nc"))
+cmap = dataset = Dataset(joinpath(dirname(dirname(pathof(RPRMakie))), "examples", "ETOPO1_halfdegree.nc"))
 lon = dataset["lon"][:]
 lat = dataset["lat"][:]
 
