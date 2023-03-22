@@ -1,15 +1,5 @@
 using SnoopPrecompile
 
-macro compile(block)
-    return quote
-        let
-            figlike = $(esc(block))
-            Makie.colorbuffer(figlike)
-            return nothing
-        end
-    end
-end
-
 let
     @precompile_setup begin
         x = rand(5)
@@ -18,9 +8,13 @@ let
             screen = GLMakie.singleton_screen(false)
             close(screen)
             destroy!(screen)
-            base_path = normpath(joinpath(dirname(pathof(Makie)), "..", "precompile"))
-            shared_precompile = joinpath(base_path, "shared-precompile.jl")
-            include(shared_precompile)
+
+            logo = Makie.logo()
+            fig = Makie.cheatsheet_3d(randn(10), logo)
+            Makie.colorbuffer(fig)
+            fig = Makie.cheatsheet_2d(logo)
+            Makie.colorbuffer(fig)
+
             try
                 display(plot(x); visible=false)
             catch

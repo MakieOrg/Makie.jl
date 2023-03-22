@@ -1,17 +1,12 @@
 using SnoopPrecompile
 
-macro compile(block)
-    return quote
-        figlike = $(esc(block))
-        Makie.colorbuffer(figlike)
-    end
-end
-
 let
     @precompile_all_calls begin
         CairoMakie.activate!()
-        base_path = normpath(joinpath(dirname(pathof(Makie)), "..", "precompile"))
-        shared_precompile = joinpath(base_path, "shared-precompile.jl")
-        include(shared_precompile)
+        logo = Makie.logo()
+        fig = Makie.cheatsheet_3d(randn(10), logo)
+        Makie.colorbuffer(fig)
+        fig = Makie.cheatsheet_2d(logo)
+        Makie.colorbuffer(fig)
     end
 end
