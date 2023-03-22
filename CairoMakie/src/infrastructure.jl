@@ -11,7 +11,7 @@ function cairo_draw(screen::Screen, scene::Scene)
     Cairo.save(screen.context)
     draw_background(screen, scene)
 
-    allplots = get_all_plots(scene)
+    allplots = Makie.flatten_plots(scene; additional_criteria = should_not_flatten)
     zvals = Makie.zvalue2d.(allplots)
     permute!(allplots, sortperm(zvals))
 
@@ -23,7 +23,9 @@ function cairo_draw(screen::Screen, scene::Scene)
 
     Cairo.save(screen.context)
     for p in allplots
-        to_value(get(p, :visible, true)) || continue
+        check_parent_plots(p) do plot
+            to_value(get(plot, :visible, true))
+        end || continue
         # only prepare for scene when it changes
         # this should reduce the number of unnecessary clipping masks etc.
         pparent = Makie.rootparent(p)
@@ -55,32 +57,35 @@ function cairo_draw(screen::Screen, scene::Scene)
 end
 
 """
-    get_all_plots(scene::Scene, plots = AbstractPlot[])
-    get_all_plots(plot::AbstractPlot, plots = AbstractPlot[])
+    should_not_flatten(plot::Combined)::Bool
 
-"Flattens" all plots in the given container and returns a vector of plots.  
+Returns whether the plot should be flattened (false) or not (true); for use in `Makie.flatten_plots`.
 This is overridden for `Poly`, `Band`, and `Tricontourf` so we can apply 
 CairoMakie-specific drawing methods to them.
 
-Plots with no children are presumed to be atomic and pushed to the vector.
 Plots with children are by default recursed into.  This can be overridden
-by defining specific dispatches for `get_all_plots` for a given plot type.
+by defining specific dispatches for `should_flatten` for a given plot type.
 """
-function get_all_plots(scene, plots = AbstractPlot[])
-    get_all_plots.(scene.plots, (plots,))
-    for c in scene.children
-        get_all_plots(c, plots)
-    end
-    plots
+function should_not_flatten(plot)
+    return false
 end
 
-function get_all_plots(plot::AbstractPlot, plots = AbstractPlot[])
-    if isempty(plot.plots)
-        push!(plots, plot)
+"""
+    check_parent_plots(f, plot::Combined)::Bool
+
+Returns whether the plot's parent tree satisfies the predicate `f`.
+`f` must return a `Bool` and take a plot as its only argument.
+"""
+function check_parent_plots(f, plot::Combined)
+    if f(plot)
+        check_parent_plots(f, parent(plot))
     else
-        get_all_plots.(plot.plots, (plots,))
+        return false
     end
-    plots
+end
+
+function check_parent_plots(f, scene::Scene)
+    return true
 end
 
 function prepare_for_scene(screen::Screen, scene::Scene)

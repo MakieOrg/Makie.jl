@@ -12,10 +12,10 @@ function draw_plot(scene::Scene, screen::Screen, poly::Poly)
     draw_poly(scene, screen, poly, to_value.(poly.input_args)...)
 end
 
-# Override `get_all_plots` to allow `poly` to remain a unit,
+# Override `should_not_flatten` to allow `poly` to remain a unit,
 # instead of auto-decomposing in lines and mesh.
-function get_all_plots(plot::Poly, plots = AbstractPlot[])
-    push!(plots, plot)
+function should_not_flatten(plot::Poly)
+    true
 end
 
 """
@@ -186,10 +186,10 @@ function draw_plot(scene::Scene, screen::Screen,
     nothing
 end
 
-# Override `get_all_plots` to allow `poly` to remain a unit,
+# Override `should_not_flatten` to allow `poly` to remain a unit,
 # instead of auto-decomposing in lines and mesh.
-function get_all_plots(plot::Band{<:Tuple{<:AbstractVector{<:Point2},<:AbstractVector{<:Point2}}}, plots = AbstractPlot[])
-    push!(plots, plot)
+function should_not_flatten(plot::Band{<:Tuple{<:AbstractVector{<:Point2},<:AbstractVector{<:Point2}}})
+    true
 end
 
 #################################################################################
@@ -225,8 +225,8 @@ function draw_plot(scene::Scene, screen::Screen, tric::Tricontourf)
     return
 end
 
-# Override `get_all_plots` to allow `Tricontourf` to remain a unit,
+# Override `should_not_flatten` to allow `Tricontourf` to remain a unit,
 # instead of auto-decomposing in lines and mesh.
-function get_all_plots(plot::Tricontourf, plots = AbstractPlot[])
-    push!(plots, plot)
+function should_not_flatten(plot::Tricontourf)
+    true
 end

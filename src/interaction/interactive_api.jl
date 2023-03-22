@@ -33,8 +33,15 @@ end
 
 @deprecate mouse_selection pick
 
-function flatten_plots(x::Combined, plots = AbstractPlot[])
-    if isempty(x.plots)
+"""
+    flatten_plots(scene::Scene, plots = AbstractPlot[]; additional_criteria = x -> false)
+    flatten_plots(x::Combined, plots = AbstractPlot[]; additional_criteria = x -> false)
+
+Flattens all plots in the provided `<: ScenePlot` and returns a vector of all plots 
+which are either atomic (`length(plot.plots) == 0`) or satisfy `additional_criteria`.
+"""
+function flatten_plots(x::Combined, plots = AbstractPlot[]; additional_criteria = x -> false)
+    if isempty(x.plots) || additional_criteria(x)
         # Atomic plot!
         push!(plots, x)
     else
@@ -45,14 +52,14 @@ function flatten_plots(x::Combined, plots = AbstractPlot[])
     return plots
 end
 
-function flatten_plots(array, plots = AbstractPlot[])
+function flatten_plots(array, plots = AbstractPlot[]; additional_criteria = x -> false)
     for elem in array
         flatten_plots(elem, plots)
     end
     plots
 end
 
-function flatten_plots(scene::Scene, plots = AbstractPlot[])
+function flatten_plots(scene::Scene, plots = AbstractPlot[]; additional_criteria = x -> false)
     flatten_plots(scene.plots, plots)
     flatten_plots(scene.children, plots)
     plots
