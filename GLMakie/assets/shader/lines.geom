@@ -482,12 +482,12 @@ void draw_solid_line(bool isvalid[4])
     // direction and enforce an AA border at the original start/end position
     // with f_uv_minmax.
     float is_start = float(!isvalid[0]);
-    f_uv_minmax.x = ifelse(is_start, px2uv * u1, f_uv_minmax.x);
+    if (!isvalid[0]) f_uv_minmax.x = px2uv * u1;
     p1 -= is_start * AA_THICKNESS * v1;
     u1 -= is_start * AA_THICKNESS;
 
     float is_end = float(!isvalid[3]);
-    f_uv_minmax.y = ifelse(is_end, px2uv * u2, f_uv_minmax.y);
+    if (!isvalid[3]) f_uv_minmax.y = px2uv * u2;
     u2 += is_end * AA_THICKNESS;
     p2 += is_end * AA_THICKNESS * v1;
 
@@ -525,10 +525,10 @@ void main(void)
     // CPU side by repeating the first and last points via the index buffer. It
     // just requires a little care further down to avoid degenerate normals.
     bool isvalid[4] = bool[](
-        g_valid_vertex[0] == 1 && g_id[0].y != g_id[1].y,
-        g_valid_vertex[1] == 1,
-        g_valid_vertex[2] == 1,
-        g_valid_vertex[3] == 1 && g_id[2].y != g_id[3].y
+        g_valid_vertex[0] == 1 && g_id[0].y != g_id[1].y, 
+        g_valid_vertex[1] == 1, 
+        g_valid_vertex[2] == 1, 
+        g_valid_vertex[3] == 1 && g_id[2].y != g_id[3].y 
     );
 
     if(!isvalid[1] || !isvalid[2]){

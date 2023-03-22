@@ -45,10 +45,10 @@ function gappy(x, ps)
     return last(ps) - x
 end
 function ticks(points, resolution)
-    # This is used to map a vector of `points` to a signed distance field. The 
+    # This is used to map a vector of `points` to a signed distance field. The
     # points mark transition between "on" and "off" section of the pattern.
 
-    # The output should be periodic so the signed distance field value 
+    # The output should be periodic so the signed distance field value
     # representing points[1] should be equal to the one representing points[end].
     # => range(..., length = resolution+1)[1:end-1]
 
@@ -104,7 +104,6 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         lastlen             = const_lift(sumlengths, p_vec) => GLBuffer
         pattern_length      = 1f0 # we divide by pattern_length a lot.
     end
-
     if pattern !== nothing
         if !isa(pattern, Texture)
             if !isa(pattern, Vector)
@@ -118,7 +117,7 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
             maxlength = const_lift(last, lastlen)
         end
     end
-    
+
     data[:intensity] = intensity_convert(intensity, vertex)
     return assemble_shader(data)
 end
