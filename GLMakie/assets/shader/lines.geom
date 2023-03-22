@@ -518,6 +518,12 @@ void main(void)
     o_view_pos = vec3(0);
     o_normal = vec3(0);
 
+    // we generate very thin lines for linewidth 0, so we manually skip them:
+    if (g_thickness[0] == 0.0 && g_thickness[1] == 0.0 && g_thickness[2] == 0.0 && g_thickness[3] == 0.0) {
+        return;
+    }
+
+
     // We mark each of the four vertices as valid or not. Vertices can be
     // marked invalid on input (eg, if they contain NaN). We also mark them
     // invalid if they repeat in the index buffer. This allows us to render to
@@ -525,10 +531,10 @@ void main(void)
     // CPU side by repeating the first and last points via the index buffer. It
     // just requires a little care further down to avoid degenerate normals.
     bool isvalid[4] = bool[](
-        g_valid_vertex[0] == 1 && g_id[0].y != g_id[1].y, 
-        g_valid_vertex[1] == 1, 
-        g_valid_vertex[2] == 1, 
-        g_valid_vertex[3] == 1 && g_id[2].y != g_id[3].y 
+        g_valid_vertex[0] == 1 && g_id[0].y != g_id[1].y,
+        g_valid_vertex[1] == 1,
+        g_valid_vertex[2] == 1,
+        g_valid_vertex[3] == 1 && g_id[2].y != g_id[3].y
     );
 
     if(!isvalid[1] || !isvalid[2]){
